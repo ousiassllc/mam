@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 )
@@ -30,13 +31,23 @@ type PromptInput struct {
 	Negative string `json:"negative_prompt,omitempty"`
 }
 
-// RefInput is an input image of a batch and the role it plays. Role is reference (a reference image of an image model, a free
-// reference of a video model), first_frame or last_frame (video).
+// RefInput is an input image of a batch and the role it plays. Role is reference (the whole picture: a reference image of an
+// image model, a free reference of a video model), face, style or edit (image models that take them, see
+// modelcatalog.Info.ReferenceRoles), first_frame or last_frame (video). Strength (0..1, nil: localcfg.DefaultReferenceStrength)
+// is how strongly an image model shows the reference.
 type RefInput struct {
-	Source    string `json:"source"`
-	ID        string `json:"id"`
-	ProjectID string `json:"project_id,omitempty"`
-	Role      string `json:"role,omitempty"`
+	Source    string   `json:"source"`
+	ID        string   `json:"id"`
+	ProjectID string   `json:"project_id,omitempty"`
+	Role      string   `json:"role,omitempty"`
+	Strength  *float64 `json:"strength,omitempty"`
+}
+
+// LoRAInput is a LoRA of the engine (its file name in the loras folder; modelcatalog.Catalog lists them) and its strength
+// (nil: localcfg.DefaultLoRAStrength).
+type LoRAInput struct {
+	Name     string   `json:"name"`
+	Strength *float64 `json:"strength,omitempty"`
 }
 
 // Request is a batch: every model x every prompt x Count results.
@@ -54,6 +65,11 @@ type Request struct {
 	Resolution      string     `json:"resolution,omitempty"`
 	DurationSeconds float64    `json:"duration_seconds,omitempty"`
 	References      []RefInput `json:"references,omitempty"`
+	// AvoidReferencePose adds localcfg.AvoidPoseNegative to the negative prompt of every image model that takes references,
+	// so that the pose and the composition of a reference are not copied.
+	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty"`
+	// LoRA is applied to every image model that can take one (modelcatalog.Info.SupportsLoRA), together with the references.
+	LoRA *LoRAInput `json:"lora,omitempty"`
 	// TranslateToEnglish translates the prompts and the negative prompts that are not English with the Reasoning LLM before
 	// they are sent (once per run; English ones are left as they are). A failed translation stops the run. The zero value is
 	// off: DefaultTranslate is what the screen and the MCP tools ask for when the caller does not say.
@@ -101,6 +117,16 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 		r.DurationSeconds = defaultSeconds
 	}
 	if err := s.checkReferences(r); err != nil {
+		return r, nil, err
+	}
+	if r.LoRA != nil {
+		l, err := refs.CheckLoRA(r.Media, r.LoRA.Name, r.LoRA.Strength)
+		if err != nil {
+			return r, nil, err
+		}
+		r.LoRA = &LoRAInput{Name: l.Name, Strength: &l.Strength} // a copy: the caller's request stays as it was
+	}
+	if err := refs.CheckAvoidPose(r.Media, r.AvoidReferencePose); err != nil {
 		return r, nil, err
 	}
 	if n := len(models) * len(r.Prompts) * r.Count; n > s.maxItems() {
@@ -165,8 +191,8 @@ func cleanPrompts(in []PromptInput) ([]PromptInput, error) {
 	return out, nil
 }
 
-// checkReferences checks the roles against the media. The files are read later; a model that cannot use a role is a warning
-// of the estimate, not a refusal.
+// checkReferences checks the roles and strengths against the media. The files are read later; a model that cannot use a role is
+// a warning of the estimate, not a refusal.
 func (s *Service) checkReferences(r Request) error {
 	if len(r.References) > MaxReferences {
 		return gterr.Invalid("入力画像は %d 枚までです", MaxReferences)
@@ -174,20 +200,12 @@ func (s *Service) checkReferences(r Request) error {
 	firsts, lasts := 0, 0
 	for i := range r.References {
 		ref := &r.References[i]
-		if ref.Role == "" {
-			ref.Role = gentestrepo.RoleReference
+		var err error
+		if ref.Role, err = refs.CheckRole(r.Media, ref.Role, ref.Strength); err != nil {
+			return err
 		}
-		switch ref.Role {
-		case gentestrepo.RoleReference:
-		case gentestrepo.RoleFirstFrame, gentestrepo.RoleLastFrame:
-			if r.Media != gentestrepo.MediaVideo {
-				return gterr.Invalid("最初・最後のフレームは動画だけで使えます")
-			}
-			firsts += btoi(ref.Role == gentestrepo.RoleFirstFrame)
-			lasts += btoi(ref.Role == gentestrepo.RoleLastFrame)
-		default:
-			return gterr.Invalid("入力画像の役割が正しくありません: %q（reference / first_frame / last_frame）", ref.Role)
-		}
+		firsts += btoi(ref.Role == gentestrepo.RoleFirstFrame)
+		lasts += btoi(ref.Role == gentestrepo.RoleLastFrame)
 		if err := checkSource(*ref); err != nil {
 			return err
 		}

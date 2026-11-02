@@ -27,11 +27,14 @@ const (
 	ParamReferenceImage Param = "reference_image"
 	ParamFirstFrame     Param = "first_frame"
 	ParamLastFrame      Param = "last_frame"
+	// ParamReferenceDenoise is how far an img2img workflow leaves its reference image: 1 minus the strength of the reference
+	// (1 when the run has no reference). It is image-only and goes into a float input (a sampler's denoise).
+	ParamReferenceDenoise Param = "reference_denoise"
 )
 
 // imageParams are the values an image workflow takes; videoParams the ones a video workflow takes.
 var (
-	imageParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamReferenceImage}
+	imageParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamReferenceImage, ParamReferenceDenoise}
 	videoParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamFrames, ParamFPS, ParamReferenceImage, ParamFirstFrame, ParamLastFrame}
 )
 
@@ -48,6 +51,9 @@ type Assignment struct {
 	Input string `json:"input"`
 	// Index is which reference image a ParamReferenceImage assignment takes (0 is the first).
 	Index int `json:"index,omitempty"`
+	// Optional (ParamReferenceImage only) lets the workflow run without that reference: the assignment's node is dropped and the
+	// inputs of other nodes that linked to it are removed (a variable number of references).
+	Optional bool `json:"optional,omitempty"`
 }
 
 // Workflow is a ComfyUI workflow in API format with the table that tells mam where its values go.
@@ -64,6 +70,17 @@ type Workflow struct {
 	FramesStep int `json:"frames_step,omitempty"`
 	// SizeMultiple is the multiple the width and height of a video are rounded to (0: 16).
 	SizeMultiple int `json:"size_multiple,omitempty"`
+	// ReferenceMode says how the workflow uses reference images (ReferenceMode); empty when it uses none or does not say.
+	ReferenceMode ReferenceMode `json:"reference_mode,omitempty"`
+	// NoReference is what a run without any reference image changes in the graph (an img2img workflow samples from an empty
+	// latent then).
+	NoReference []Override `json:"no_reference,omitempty"`
+	// ReferenceDenoiseMin (img2img, 0: no floor) is the lowest denoise a reference of strength 1 runs with. The denoise of a
+	// strength s is 1 - (1-min)*s: a model whose img2img changes nothing below some denoise (Chroma's schedule is crowded at
+	// the low end) gets the strength slider spread over the range in which the picture does change.
+	ReferenceDenoiseMin float64 `json:"reference_denoise_min,omitempty"`
+	// LoraModelNode is the node whose output 0 is the model: a LoRA of a request is inserted behind it. Empty: no LoRA.
+	LoraModelNode string `json:"lora_model_node,omitempty"`
 }
 
 // DefaultFPS is the frame rate of a video workflow that names none.
@@ -279,6 +296,9 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 		if a.Index < 0 || (a.Index > 0 && a.Param != ParamReferenceImage) {
 			errs = append(errs, fmt.Errorf("%s: index applies to reference_image only and cannot be negative", at))
 		}
+		if a.Optional && a.Param != ParamReferenceImage {
+			errs = append(errs, fmt.Errorf("%s: optional applies to reference_image only", at))
+		}
 	}
 	if !w.Has(ParamPrompt) {
 		errs = append(errs, fmt.Errorf("%s: no assignment of the prompt", where))
@@ -287,25 +307,9 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 		errs = append(errs, fmt.Errorf("%s: output_node %q is not a node of the workflow", where, w.OutputNode))
 	}
 	errs = append(errs, validateReferences(where, media, w)...)
+	errs = append(errs, validateReferenceMode(where, w, g)...)
 	if w.FPS < 0 || w.FPS > 240 || w.FramesStep < 0 || w.FramesStep > 64 || w.SizeMultiple < 0 || w.SizeMultiple > 128 {
 		errs = append(errs, fmt.Errorf("%s: fps must be within 0-240, frames_step within 0-64 and size_multiple within 0-128", where))
-	}
-	return errs
-}
-
-// validateReferences checks the reference image assignments: the indexes are 0..n-1 without gaps or
-// repeats, and a last frame needs a first frame.
-func validateReferences(where string, media Media, w Workflow) []error {
-	var errs []error
-	n := w.Count(ParamReferenceImage)
-	for i := range n {
-		if !slices.ContainsFunc(w.Assignments, func(a Assignment) bool { return a.Param == ParamReferenceImage && a.Index == i }) {
-			errs = append(errs, fmt.Errorf("%s: reference_image indexes must be 0..%d without gaps or repeats", where, n-1))
-			break
-		}
-	}
-	if media == MediaVideo && w.Has(ParamLastFrame) && !w.Has(ParamFirstFrame) {
-		errs = append(errs, fmt.Errorf("%s: a last_frame assignment needs a first_frame assignment", where))
 	}
 	return errs
 }

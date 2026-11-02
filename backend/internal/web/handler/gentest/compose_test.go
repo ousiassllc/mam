@@ -74,6 +74,7 @@ func TestLongLabelsAreShortAndTheirExplanationsAreInTheHelp(t *testing.T) {
 			"複数選べます", "そのままモデルに送ります", "最大 10 枚", "実行はまだしません。1 回に", "モデルが作れる長さに丸めます", "書き足します）",
 		} {
 			visible := regexp.MustCompile(`(?s)<div id="help-[0-9a-f]+" popover.*?</div>`).ReplaceAllString(body, "")
+			visible = regexp.MustCompile(`(?s) title="[^"]*"`).ReplaceAllString(visible, "") // a tooltip is not text on the page
 			assert.NotContains(t, visible, long, "%s: an explanation is not on the page", media)
 		}
 		for _, help := range []string{"複数選べます", "そのままモデルに送ります", "最大 10 枚", "1 回に 50 件まで", "Avoid:"} {

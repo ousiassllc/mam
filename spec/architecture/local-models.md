@@ -55,7 +55,7 @@ openai-compat:lmstudio/flux-schnell
 |---|---|---|
 | `endpoints.<名>` | `kind`、`base_url`、`max_concurrency`、`timeout_seconds` | 同時実行 1（GPU は通常 1 ジョブ）。タイムアウトは ComfyUI 3600 秒・互換 900 秒（上限 24 時間）。`base_url` は http(s) のホストで、資格情報・クエリ・フラグメントを含まず、リンクローカル・未指定・マルチキャストの IP でない |
 | `local_models.<接続先>/<名>` | `media`（image/video）。接続先が存在すること。`comfyui` は `workflow`、`openai-compat` は `model`（サーバーに渡すモデル ID）が必要 | `openai-compat` の動画は拒否 |
-| `workflow` | `graph`（API 形式）、`assignments`、`output_node`、`fps`（既定 16）、`frames_step`（正なら総フレーム数を `n×step+1` にする。Wan は 4、LTX は 8）、`size_multiple`（既定 16） | 割り当てが指すノード・入力が `graph` に無い、`output_node` が無い、プロンプトの割り当てが無い、は 422 |
+| `workflow` | `graph`（API 形式）、`assignments`、`output_node`、`fps`（既定 16）、`frames_step`（正なら総フレーム数を `n×step+1` にする。Wan は 4、LTX は 8）、`size_multiple`（既定 16）、画像の参照用に `reference_mode`・`no_reference`・`lora_model_node`（§4.2） | 割り当てが指すノード・入力が `graph` に無い、`output_node` が無い、プロンプトの割り当てが無い、は 422 |
 | `video` | `durations`（秒、昇順）、`resolutions`（短辺で `480p`・`720p`・`1080p` など）、`native_audio` | 動画モデルは必須。最初と最後のフレーム・参照画像の枚数は `assignments` から決まる |
 | 価格 | `cost_per_image_usd`、`cost_per_second_usd` | 既定 0（参考値。見積コストにのみ使う） |
 | 用途・Policy | `images.<purpose>`・`policies.<policy>` の `model` に識別子を書く（既存と同じ形式） | 参照先が `local_models` に無ければ起動時エラー。動画の対象は価格を要求しない |
@@ -64,13 +64,30 @@ openai-compat:lmstudio/flux-schnell
 
 ## 4. ComfyUI
 
-- **割り当て表（`assignments`）**: `param` の値をノード `node` の入力 `input` に入れる。使える `param`: `prompt`、`negative_prompt`、`seed`（実行ごとに乱数）、`width`、`height`、`frames`、`fps`、`reference_image`（`index` で何枚目か）、`first_frame`、`last_frame`。画像は `frames`・`fps`・`first_frame`・`last_frame` を使えない。幅・高さは縦横比と解像度から決め、`size_multiple` の倍数に丸める。
+- **割り当て表（`assignments`）**: `param` の値をノード `node` の入力 `input` に入れる。使える `param`: `prompt`、`negative_prompt`、`seed`（実行ごとに乱数）、`width`、`height`、`frames`、`fps`、`reference_image`（`index` で何枚目か。`optional: true` なら、その枚数が無い実行ではノードごと外れる）、`reference_denoise`（画像のみ。§4.2）、`first_frame`、`last_frame`。画像は `frames`・`fps`・`first_frame`・`last_frame` を使えない。幅・高さは縦横比と解像度から決め、`size_multiple` の倍数に丸める。
 - **入力画像**: 参照画像・最初／最後のフレームは `POST /upload/image` に**元の拡張子のまま**アップロードし、返った名前を入力に入れる。
 - **実行**: `/ws?clientId=…` を開いてから `POST /prompt`（`prompt_id` と `client_id` は mam が決める）。`/ws` の `progress`・`executing` から割合を求め、`/history/<id>` を確認して完了を待つ。結果は `GET /view` で取る（動画は `.mp4`・`.m4v`・`.webm`・`.mov` のみ。それ以外は投入後のエラー）。
 - **進捗**: 割合は Shot の進捗（`/ws/shots/:id`、チャットの進捗カード、Take カード）のメッセージに「動画を生成しています（42%）」の形で入る。モデル呼び出しの文脈に進捗の関数を持たせ（`modeladapter/progress`）、`generation/relay` が Orchestrator の通知（Take 数など）のメッセージに割合を足して配信する（`Progress` の型は変えない）。
 - **取り消し**: Take の生成を止めたときは、**自分の `prompt_id` だけ**を止める。まず `POST /api/jobs/<id>/cancel`、404 なら `GET /queue` で見て、実行中なら `POST /interrupt {"prompt_id"}`、待機中なら `POST /queue {"delete":[id]}`。対象を指さない割り込み・キューの全消しはしない。接続テストは ComfyUI が 0.3.57 未満だと「取り消しが他のジョブを止めうる」と注意を出す。
-- **組み込みテンプレート**: `localcfg/templates/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
+- **組み込みテンプレート**: `localcfg/templates/image/*.json`・`localcfg/templates/video/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
 - **取り込み**: 利用者の「Save (API Format)」の JSON を取り込める。エディタ形式（`nodes`/`links`）は拒否してヒントを返す。ノードと入力の一覧を返すので、割り当てを利用者が決める。
+
+### 4.2 画像モデルの参照画像・強さ・役割・LoRA（#933）
+画面と MCP は、どのモデルでも同じ「強さ」（0〜1、既定 0.7）と「役割」を渡す。ワークフローの作りの違いは `localcfg`・`comfyui` が吸収する。`reference_mode` が方式を決める（`localcfg.Model.ReferenceCaps()` が方式・上限枚数・選べる役割を返し、画面と `accepts_references`・`max_reference_images` の元になる）。
+
+| `reference_mode` | モデル | 枚数 | 役割 | 強さ s の効き方 |
+|---|---|---|---|---|
+| `img2img` | `chroma1-hd`（`txt2img-chroma`）、`flux1-dev-nsfw-master`（`txt2img-flux-dev-lora`） | 1 | 全体のみ | 参照を VAE で潜在にして途中から生成する。`reference_denoise` の割り当てに `1 − (1 − floor)×s` を入れる（`floor` は `reference_denoise_min`。既定 0、`chroma1-hd` は 0.6。Chroma の schedule は denoise 0.6 未満では絵がほとんど変わらず 0.95 で参照が消えるため、強さの範囲を変化のある区間に広げる。下限は 0.02）。参照が無い実行は `no_reference`（空の潜在に戻す）を当てて参照のノードを外し、テキストから生成と同じになる |
+| `edit` | `noctq-v4-qwen-image21`（`txt2img-qwen-image21`） | 最大 10（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象 | 参照は `TextEncodeQwenImage21` の `image_1`〜に入る（プロンプトの `<image1>` が 1 枚目）。強さ s の参照は、サンプリングの最初の `round(s×steps)` ステップ（最低 1）だけ条件に入り、残りはプロンプトだけで仕上げる。強さが違う参照ごとにサンプリングを区切り（最大 6 区間。区切りが 5 つを超えるほど強さが散らばるときは、均等に選んだ 5 つを残し、ほかの参照の区切りは一番近い残した区切りへ寄せる。終わりまで残る参照にはならない）、各区間を別のエンコーダー・`SamplerCustomAdvanced` で回す。役割は文で伝え（顔だけ: 「顔と同一性だけを保つ」、画風だけ: 「画風・色・雰囲気だけ」）、顔・画風は VAE を渡さない（ビジョンだけで読む）。VAE はデコードのノード（`VAEDecode`）がつなぐ `VAELoader` |
+
+- **LoRA**: `lora_model_node`（モデルを出力するノード）がある画像ワークフローだけが受ける。リクエストの LoRA は、そのノードの出力 0 を使うノードの手前に `LoraLoaderModelOnly` を差し込む（強さ既定 0.4）。受けないモデルでは警告 `lora_unsupported` を出し、送らない。
+- **インストール済みのモデルの更新**: モデルマネージャーはモデルの導入時にだけテンプレートを `local_models` へ写す。この対応より前に導入したモデルは参照を使えない古い写しのままなので、mam の起動時（`app` が `wfrefresh.Run` を呼ぶ。接続先の登録のあと）に、カタログのワークフロー名と同じ名前の保存済みモデルで、`reference_mode` が無く、テンプレートには有り、**利用者が書き換えていない古い写し**であるものを、テンプレートの内容に置き換える（利用者が付けた価格は残す）。「書き換えていない古い写し」は、保存済みのグラフのすべてのノードがテンプレートにも同じ `class_type` で有り、保存済みの各ノードの各入力が、値がリテラルならテンプレートに同じ値で有り（モデルファイル `unet_name`・`ckpt_name`、`steps`、`cfg`、`lora_name` などが違えば利用者の編集とみなす）、リンクならテンプレートでは別のリンクでもよい（参照画像のためにつなぎ替えた）こと、割り当てがすべてテンプレートにも有り、出力ノードが同じことで決める。テンプレートに増えたノード・入力・割り当ては差し支えない。利用者が書き換えたモデル、`--model-config` で固定したファイル、テンプレートが参照に対応しないモデル、すでに最新のモデルは変えない。
+- **画面・MCP での編集**: 保存済みのモデルを画面（`PUT .../models/:model`）や `update_local_model` で編集しても、フォームに欄の無い `reference_mode`・`reference_denoise_min`・`no_reference`・`lora_model_node`・`reference_image` の `optional`、フォームが 1 行に出す値の 2 つ目以降の割り当て（Chroma の参照の縮小ノードの `width`・`height`）は、保存済みのワークフローのまま残る。画面は保存済みのワークフローを土台に、グラフ・割り当ての表の行・出力ノード・fps などだけを置き換える（テンプレートから作る新規のモデルも、隠しフィールド `template` のテンプレートを土台にする）。参照画像の行は、保存済みのワークフローが持つ枚数（Qwen-Image 2.1 は 10）まで出す（最低 4）。MCP の `assignments` の `optional` を省くと、保存済みの同じ（`param`・`index`・`node`・`input`）の割り当ての値を引き継ぐ。
+- **参照なしの入力**: `reference_mode` があるモデルは、`ImageRequest.Options.Refs` が無いとき（キャラクターシートや Workflow のステップが `Inputs` だけを渡す経路）、`Inputs` を参照として扱わない（アップロードせず、参照のノードも使わない。テキストからの生成になる）。`reference_mode` が空のワークフロー（`img2img-sdxl` など利用者のもの）は、これまでどおり `Inputs` を取る。
+- **使える LoRA の一覧**: 同梱エンジンの `GET /object_info/LoraLoaderModelOnly` の `lora_name`。
+- **ポーズ・構図を真似させない**: ネガティブに `same pose as reference, same composition as reference, studio portrait` を足す（参照を 1 枚でも使うモデルだけ。ネガティブ欄が無いモデルは `Avoid:` としてプロンプトに畳み込む）。
+- **実機の確認（2026-11-02、RTX 3080 Ti 12GB、ComfyUI 0.42.1、`noctq-v4-qwen-image21`、seed 固定、25 ステップ）**: 参照に生成した顔の画像を 1 枚渡し、出力の顔と参照の顔の類似度（insightface buffalo_l のコサイン類似度）を測った。役割 `edit`・「同じ顔のまま浜辺に立つ」のプロンプトで、参照なし −0.08、強さ 0.5 → 0.16、0.7 → 0.30、0.85 → 0.39、1.0 → 0.49（同一人物と見なせる水準は 0.4〜0.5 以上が目安）。役割 `face`（髪・服・ポーズはプロンプト優先）は同じ強さでも効きが弱く、強さ 1.0 で 0.26。参照なしからは上がるが、顔を固定しきるものではない。顔を確実に揃えるなら LoRA を併用する。img2img の 2 方式（`chroma1-hd`・`flux1-dev-nsfw-master`）はワークフローの構造のテストのみで、GPU では未実行。
+  `chroma1-hd` の img2img（同条件、プロンプトは同じ人物の特徴を書いたもの）は、出力と参照の平均画素差（0〜255）が、参照なし 72、強さ 0.2 → 38、0.4 → 20、0.7 → 5.4、1.0 → 3.7 と単調に縮まる。`flux1-dev-nsfw-master` は重みを取得しておらず、LoRA の差し込みも実ファイルでは試していない（ワークフローの構造のテストと偽の ComfyUI でのテストのみ）。
 
 ### 4.1 LTX-2.5（Lightricks。映像と音声を一緒に作る動画モデル）
 

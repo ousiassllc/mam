@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/loras"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 
@@ -75,6 +76,8 @@ type Deps struct {
 	// Hidden says a model is left out of the model lists and refused as unknown: the adult models of the model manager while
 	// the age gate is closed (modelmanager.Service.HidesModel). May be nil.
 	Hidden func(modelID string) bool
+	// BundledEndpoint is the name of the registered endpoint of the bundled ComfyUI engine, whose LoRA files LoRAs lists ("": none).
+	BundledEndpoint string
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
 	Translator *prompttranslate.Translator
 	Logger     *slog.Logger
@@ -89,6 +92,7 @@ type Service struct {
 	// Link is the Project side: the inputs taken from a Project and the import of a result (its methods are the service's).
 	*projectlink.Link
 	catalog modelcatalog.Catalog
+	loras   loras.Lister
 
 	mu   sync.Mutex
 	runs map[string]*run // batch id -> the batch that is running in this process

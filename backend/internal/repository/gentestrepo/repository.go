@@ -35,8 +35,8 @@ func (r *Repository) CreateBatch(ctx context.Context, nb NewBatch) error {
 		}
 		for _, in := range nb.Inputs {
 			if _, err := tx.ExecContext(ctx,
-				`INSERT INTO gentest_input (`+inputColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-				in.ID, b.ID, in.Role, in.FilePath, in.MimeType, in.SizeBytes, string(orJSON(in.Origin, "{}")), in.Position); err != nil {
+				`INSERT INTO gentest_input (`+inputColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				in.ID, b.ID, in.Role, in.FilePath, in.MimeType, in.SizeBytes, string(orJSON(in.Origin, "{}")), in.Position, in.Strength); err != nil {
 				return fmt.Errorf("insert gentest input: %w", err)
 			}
 		}

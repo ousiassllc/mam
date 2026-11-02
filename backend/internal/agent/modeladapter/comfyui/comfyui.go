@@ -32,7 +32,7 @@ func (*Backend) Configured() bool { return true }
 
 // GenerateImage runs the workflow and returns the first file of its output node. apiModel is not used.
 func (b *Backend) GenerateImage(ctx context.Context, _ string, req modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
-	out, err := b.run(ctx, imageValues(req), false)
+	out, err := b.run(ctx, b.imageValues(req), false)
 	if err != nil {
 		return modeladapter.ImageResult{}, err
 	}

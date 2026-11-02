@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,6 +42,9 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 			{ID: "nano-banana-lite", Label: "nano-banana-lite", Source: "クラウド", Price: "$0.0336 / 枚", Reason: "API キーが登録されていません（設定の「API キー」）"},
 			{ID: "gpt-image-2", Label: "gpt-image-2", Source: "クラウド", Price: "$0.0530 / 枚"},
 		})),
+		// #933: the input images of an image model that takes references: three thumbnails with their roles and strengths, the
+		// options of the references, a LoRA, and a model that takes none (the notice).
+		"layout-gentest-refs.html": gentest.ComposeForm(gentestRefsCompose()),
 		"layout-gentest-video.html": gentest.ComposeForm(gentestCompose("video", []gentest.ModelChoice{
 			{ID: "luma-ray-3.2", Label: "luma-ray-3.2", Source: "クラウド", Price: "1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", Selected: true},
 			{ID: "runway-gen-4.5", Label: "runway-gen-4.5", Source: "クラウド", Price: "720p $0.1200 / 秒"},
@@ -75,4 +79,23 @@ func gentestCompose(media string, models []gentest.ModelChoice) gentest.Compose 
 		Resolutions: []string{"720p", "1080p"}, Durations: []string{"5", "10"}, Resolution: "720p", Duration: "5",
 		MaxPrompt: 4000, MaxCount: 20, MaxItems: 50, MaxReferences: 10, MaxCostUSD: "$5.00", Translate: true, // #913: the switch is drawn on
 	}
+}
+
+func gentestRefsCompose() gentest.Compose {
+	thumb := func(color string) string {
+		return "data:image/svg+xml," + url.PathEscape(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="`+color+`"/></svg>`)
+	}
+	c := gentestCompose("image", []gentest.ModelChoice{
+		{ID: "edit", Label: "Qwen Image Edit", Source: "ローカル", Price: "無料（ローカル）", Selected: true, Media: "image", RefMode: "edit", RefRoles: []string{"reference", "face", "style", "edit"}, CanLoRA: true},
+		{ID: "i2i", Label: "SDXL", Source: "ローカル", Price: "無料（ローカル）", Media: "image", RefMode: "img2img", RefRoles: []string{"reference"}},
+		{ID: "plain", Label: "FLUX.1 schnell", Source: "ローカル", Price: "無料（ローカル）", Media: "image"},
+	})
+	c.MaxImageBytes, c.LoRAs = 20<<20, []string{"face-a.safetensors", "style-b.safetensors"}
+	strength := func(v float64) *float64 { return &v }
+	c.Picked = []gentest.Ref{
+		{Value: "history::r1", Label: "FLUX・a red fox", ThumbURL: thumb("#c0392b"), Role: "reference", Strength: strength(0.7)},
+		{Value: "history::r2", Label: "FLUX・a blue fox", ThumbURL: thumb("#2980b9"), Role: "face", Strength: strength(0.5)},
+		{Value: "history::r3", Label: "FLUX・a green fox", ThumbURL: thumb("#27ae60"), Role: "style", Strength: strength(0.9)},
+	}
+	return c
 }

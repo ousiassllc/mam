@@ -12,8 +12,8 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/form` | フォームを画像／動画で切り替える（クエリ: 入力済みのフォームの値。プロンプト・本数・縦横比は保つ。モデルの選択は外す） |
 | GET | `/generation-test/prompt-row` | プロンプト欄を 1 つ足す。`?from=<プロンプト履歴の ID>` で内容を入れる |
 | GET | `/generation-test/picker` | 入力画像の選択肢。`?project=<ID>`（そのプロジェクトのアセット・参照項目。無い ID は 404）または `?source=history`（履歴の成功した画像） |
-| GET | `/generation-test/ref-row` | 選んだ入力画像の 1 行（`?ref=<source>:<project>:<id>`、`?media=`。動画は役割の選択つき。無ければ 404） |
-| POST | `/generation-test/estimate` | 見積り（multipart: `media`・`model`（複数）・`prompt`/`negative`（同じ順で複数）・`count`・`aspect_ratio`・`resolution`・`duration_seconds`・`translate`（`1` のとき英語に訳して送る。チェックボックスなので無いときは OFF。新しい画面は ON で開く）・`ref`（選んだ入力）と `role_<ref>`・ファイル `upload`・`upload_first`・`upload_last`）。アップロードは `_staging/` に置く。**何も実行しない**。200 で確認の区画（件数・モデルごとの内訳（`translate` が `1` のときは、訳す文の数の「プロンプトの英訳」の行が単価なしで入る）・合計・単価なしの注記・警告・上限超過。確認の本文に `estimate_id` と `confirmed_total_usd` を hidden で持つ） |
+| GET | `/generation-test/ref-row` | 選んだ入力画像の 1 行（`?ref=<source>:<project>:<id>`、`?media=`、`?model=`（選んでいるモデル。役割の選択肢をそれに合わせる）。サムネイル・番号・外す・並べ替えのボタン・役割と強さ（画像は役割 4 種と強さ、動画は 3 種）つき。無ければ 404） |
+| POST | `/generation-test/estimate` | 見積り（multipart: `media`・`model`（複数）・`prompt`/`negative`（同じ順で複数）・`count`・`aspect_ratio`・`resolution`・`duration_seconds`・`translate`（`1` のとき英語に訳して送る。チェックボックスなので無いときは OFF。新しい画面は ON で開く）・`ref`（選んだ入力。ブラウザで選んだファイルは `upload::#<n>` = `upload` の n 番目）と `role_<ref>`（`reference`・`face`・`style`・`edit`、動画は `first_frame`・`last_frame` も）・`strength_<ref>`（0〜1。無ければ既定 0.7）・`avoid_pose`（`on` でポーズ・構図を真似させない）・`lora`・`lora_strength`（既定 0.4）・ファイル `upload`・`upload_first`・`upload_last`）。アップロードは `_staging/` に置く。**何も実行しない**。200 で確認の区画（件数・モデルごとの内訳（`translate` が `1` のときは、訳す文の数の「プロンプトの英訳」の行が単価なしで入る）・合計・単価なしの注記・警告・上限超過。確認の本文に `estimate_id` と `confirmed_total_usd` を hidden で持つ） |
 | POST | `/generation-test/run` | 確認の区画のフォームの送信。サーバーが見積りをやり直し、`estimate_id` と合計が違う・上限（`gentest.max_items`・`gentest.max_cost_usd`）を超えるなら 409、入力の誤りは 422、英訳が必要なのに LLM が訳せなければ 502（何も生成しない）。202 で進捗と比較表の区画（`#gt-batch`）を返す |
 | GET | `/generation-test/batches/:id` | 進捗と比較表（行＝モデル、列＝プロンプト）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
 | POST | `/generation-test/batches/:id/cancel` | 取り消し。始めていない結果を取り消し、呼び出し中のものは終わるのを待つ。終わったバッチは 409 |
@@ -56,3 +56,5 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.0 | 2026-10-26 | 新規作成（ルート・エラーの対応・画面・テスト） | Issue #835。生成テストの画面 |
 | 1.1 | 2026-11-01 | 「画面」の節で、モデルはカードのタップで選ぶもの（見えないチェックボックス `model` が値を送る）に改め、選べない理由はカードでなく「?」ヘルプと読み上げにあることを足した | Issue #906。生成テスト画面の文字を減らし、モデルをカード選択にした |
 | 1.2 | 2026-11-01 | 見積りの `translate`（英語に訳して送る。無ければ OFF）と確認の「プロンプトの英訳」の行、`/run` の 502（訳せなかった）、エラーの対応の `*UpstreamError` を足した | Issue #913 |
+| 1.3 | 2026-11-02 | 見積りに `strength_<ref>`・`avoid_pose`・`lora`・`lora_strength` と役割 `face`・`style`・`edit`、ブラウザで選んだファイルの `upload::#<n>`、`ref-row` に `?model=` を足した | Issue #933 |
+| 1.4 | 2026-11-02 | `upload::#<n>` の n は届いたファイルの位置とし、空のファイルは保存せず番号を詰めない（その欄は捨てる。範囲外・数でない・同じ番号の 2 つ目も捨てる）。強さの値は範囲外・無限大を 0〜1 に丸める | Issue #933（PR #953 のレビュー） |

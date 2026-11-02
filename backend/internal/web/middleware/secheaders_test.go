@@ -34,7 +34,7 @@ func TestSecurityHeaders_PolicyForTheRequestHost(t *testing.T) {
 	csp := h.Get("Content-Security-Policy")
 	for _, want := range []string{
 		"default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'",
-		"connect-src 'self' ws://127.0.0.1:8787;", "img-src 'self' data:", "media-src 'self' blob:",
+		"connect-src 'self' ws://127.0.0.1:8787;", "img-src 'self' data: blob:", "media-src 'self' blob:",
 		"frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'",
 	} {
 		assert.Contains(t, csp, want)

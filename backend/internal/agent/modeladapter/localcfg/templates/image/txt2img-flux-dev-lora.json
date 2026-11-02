@@ -1,0 +1,39 @@
+{
+ "id": "txt2img-flux-dev-lora",
+ "label": "FLUX.1 dev + LoRA: テキスト・参照画像から画像",
+ "media": "image",
+ "description": "ComfyUI 標準ノードだけの FLUX.1 dev（fp8 チェックポイント flux1-dev-fp8.safetensors）に LoraLoaderModelOnly で LoRA（NSFW_master_Flux.safetensors、強さ 0.8）を重ねるワークフロー。FluxGuidance 3.5、20 ステップ、cfg 1。ベースは非商用ライセンスのモデル。参照画像（1 枚）があると img2img になる: 参照を VAE で潜在にして KSampler の denoise（1-強さ。既定 0.7 で 0.3）で途中から生成する。参照なしは空の潜在から生成する。リクエストの LoRA は固定の LoRA の後ろに重ねる。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "graph": {
+    "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "flux1-dev-fp8.safetensors"}},
+    "12": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "NSFW_master_Flux.safetensors", "strength_model": 0.8, "model": ["4", 0]}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["4", 1]}},
+    "10": {"class_type": "FluxGuidance", "inputs": {"guidance": 3.5, "conditioning": ["6", 0]}},
+    "11": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["6", 0]}},
+    "5": {"class_type": "EmptySD3LatentImage", "inputs": {"width": 1024, "height": 1024, "batch_size": 1}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 1, "model": ["12", 0], "positive": ["10", 0], "negative": ["11", 0], "latent_image": ["762", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+    "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "mam/image", "images": ["8", 0]}},
+    "760": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "761": {"class_type": "ImageScale", "inputs": {"image": ["760", 0], "upscale_method": "lanczos", "width": 1024, "height": 1024, "crop": "center"}},
+    "762": {"class_type": "VAEEncode", "inputs": {"pixels": ["761", 0], "vae": ["4", 2]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "5", "input": "width"},
+    {"param": "height", "node": "5", "input": "height"},
+    {"param": "reference_image", "node": "760", "input": "image"},
+    {"param": "width", "node": "761", "input": "width"},
+    {"param": "height", "node": "761", "input": "height"},
+    {"param": "reference_denoise", "node": "3", "input": "denoise"}
+   ],
+   "reference_mode": "img2img",
+   "no_reference": [{"node": "3", "input": "latent_image", "value": ["5", 0]}],
+   "lora_model_node": "12",
+   "output_node": "9"
+  }
+ }
+}

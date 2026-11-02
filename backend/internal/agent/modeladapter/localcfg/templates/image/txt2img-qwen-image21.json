@@ -1,0 +1,51 @@
+{
+ "id": "txt2img-qwen-image21",
+ "label": "Qwen-Image 2.1（Noct Q V4）: テキスト・参照画像から画像",
+ "media": "image",
+ "description": "ComfyUI 標準ノードだけの Qwen-Image 2.1（int8_convrot の拡散モデル NoctQ_V4_int8_convrot.safetensors、テキストエンコーダー qwen3vl_8b_int8_convrot.safetensors、VAE qwen_image_2.1_vae_bf16.safetensors）のワークフロー。作者のワークフローに従い、25 ステップ・euler/simple・cfg 3 でネガティブプロンプトを使う（TextEncodeQwenImage21 が肯定・否定の両方を作る）。GPU では未実行（構造のテストのみ）。参照画像は最大 10 枚で、TextEncodeQwenImage21 の image_1 以降に渡る（プロンプトの <image1> が 1 枚目）。強さ s の参照は、サンプリングの最初の s の割合のステップだけ条件に入り、その後はプロンプトだけで仕上げる（参照ごとに強さを持つので、強さの境目でサンプリングを区切って各区間を別々にエンコードする）。役割（顔だけ・画風だけ）はエンコーダーに渡す文で伝える。LoRA は LoraLoaderModelOnly を UNETLoader の後ろに差し込む。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "graph": {
+    "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "NoctQ_V4_int8_convrot.safetensors", "weight_dtype": "default"}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen3vl_8b_int8_convrot.safetensors", "type": "qwen_image", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "qwen_image_2.1_vae_bf16.safetensors"}},
+    "6": {"class_type": "TextEncodeQwenImage21", "inputs": {"prompt": "", "negative_prompt": "", "resolution": 1024, "clip": ["38", 0], "images.image_1": ["101", 0], "images.image_2": ["102", 0], "images.image_3": ["103", 0], "images.image_4": ["104", 0], "images.image_5": ["105", 0], "images.image_6": ["106", 0], "images.image_7": ["107", 0], "images.image_8": ["108", 0], "images.image_9": ["109", 0], "images.image_10": ["110", 0]}},
+    "5": {"class_type": "EmptyLatentImage", "inputs": {"width": 1024, "height": 1536, "batch_size": 1}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 25, "cfg": 3, "sampler_name": "euler", "scheduler": "simple", "denoise": 1, "model": ["37", 0], "positive": ["6", 0], "negative": ["6", 1], "latent_image": ["5", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["39", 0]}},
+    "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "mam/image", "images": ["8", 0]}},
+    "101": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "102": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "103": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "104": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "105": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "106": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "107": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "108": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "109": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "110": {"class_type": "LoadImage", "inputs": {"image": "example.png"}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "prompt"},
+    {"param": "negative_prompt", "node": "6", "input": "negative_prompt"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "5", "input": "width"},
+    {"param": "height", "node": "5", "input": "height"},
+    {"param": "reference_image", "node": "101", "input": "image", "index": 0, "optional": true},
+    {"param": "reference_image", "node": "102", "input": "image", "index": 1, "optional": true},
+    {"param": "reference_image", "node": "103", "input": "image", "index": 2, "optional": true},
+    {"param": "reference_image", "node": "104", "input": "image", "index": 3, "optional": true},
+    {"param": "reference_image", "node": "105", "input": "image", "index": 4, "optional": true},
+    {"param": "reference_image", "node": "106", "input": "image", "index": 5, "optional": true},
+    {"param": "reference_image", "node": "107", "input": "image", "index": 6, "optional": true},
+    {"param": "reference_image", "node": "108", "input": "image", "index": 7, "optional": true},
+    {"param": "reference_image", "node": "109", "input": "image", "index": 8, "optional": true},
+    {"param": "reference_image", "node": "110", "input": "image", "index": 9, "optional": true}
+   ],
+   "reference_mode": "edit",
+   "lora_model_node": "37",
+   "output_node": "9"
+  }
+ }
+}

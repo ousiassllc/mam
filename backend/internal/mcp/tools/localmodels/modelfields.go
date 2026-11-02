@@ -3,6 +3,7 @@ package localmodels
 import (
 	"context"
 	"encoding/json"
+	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -85,10 +86,7 @@ func (f ModelFields) apply(base localcfg.Model) (localcfg.Model, error) {
 			w.Graph = json.RawMessage(f.WorkflowJSON)
 		}
 		if f.Assignments != nil {
-			w.Assignments = make([]localcfg.Assignment, len(f.Assignments))
-			for i, a := range f.Assignments {
-				w.Assignments[i] = localcfg.Assignment{Param: localcfg.Param(a.Param), Node: a.Node, Input: a.Input, Index: a.Index}
-			}
+			w.Assignments = assignmentsFrom(f.Assignments, w.Assignments)
 		}
 		if f.OutputNode != "" {
 			w.OutputNode = f.OutputNode
@@ -107,6 +105,26 @@ func nonZero(v, fallback int) int {
 		return v
 	}
 	return fallback
+}
+
+// assignmentsFrom turns the given table into the workflow's. An assignment that leaves optional out takes it from the saved one
+// with the same param, index, node and input, so that a table sent back as get_local_model showed it (or an older client's, which
+// knows no optional) does not turn the optional reference slots of a bundled model into required ones.
+func assignmentsFrom(given []Assignment, saved []localcfg.Assignment) []localcfg.Assignment {
+	out := make([]localcfg.Assignment, len(given))
+	for i, a := range given {
+		out[i] = localcfg.Assignment{Param: localcfg.Param(a.Param), Node: a.Node, Input: a.Input, Index: a.Index}
+		if a.Optional != nil {
+			out[i].Optional = *a.Optional
+			continue
+		}
+		if j := slices.IndexFunc(saved, func(s localcfg.Assignment) bool {
+			return s.Param == out[i].Param && s.Index == out[i].Index && s.Node == out[i].Node && s.Input == out[i].Input
+		}); j >= 0 {
+			out[i].Optional = saved[j].Optional
+		}
+	}
+	return out
 }
 
 func (f ModelFields) touchesWorkflow() bool {

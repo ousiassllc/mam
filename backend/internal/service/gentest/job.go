@@ -32,6 +32,7 @@ type batchRun struct {
 // loaded is an input image in memory with its role.
 type loaded struct {
 	role     string
+	strength *float64
 	position int
 	in       modeladapter.Input
 }
@@ -91,7 +92,7 @@ func (s *Service) loadInputs(ctx context.Context, batchID string) (map[string]lo
 		if err != nil {
 			return nil, fmt.Errorf("read input image %s: %w", in.ID, err)
 		}
-		out[in.ID] = loaded{role: in.Role, position: in.Position, in: modeladapter.Input{Data: data, MimeType: in.MimeType}}
+		out[in.ID] = loaded{role: in.Role, strength: in.Strength, position: in.Position, in: modeladapter.Input{Data: data, MimeType: in.MimeType}}
 	}
 	return out, nil
 }

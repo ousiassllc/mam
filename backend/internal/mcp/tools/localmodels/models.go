@@ -35,10 +35,12 @@ func registerModels(r *mcpkit.Registrar, h handlers) {
 
 // Assignment says which input of which node a value of mam goes to.
 type Assignment struct {
-	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）"`
+	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, reference_denoise, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）"`
 	Node  string `json:"node" jsonschema:"ノード ID（import_local_workflow の nodes[].id）"`
 	Input string `json:"input" jsonschema:"そのノードの入力名。ほかのノードがつないでいる入力は使えない"`
 	Index int    `json:"index,omitempty" jsonschema:"reference_image だけ: 何枚目か（0 から、抜けなし）"`
+	// Optional is a pointer so that an update can leave it out: it is then the saved assignment's (same param, index, node, input).
+	Optional *bool `json:"optional,omitempty" jsonschema:"reference_image だけ: 使わない枚があってもよい（その枚のノードは外され、つないでいたほかのノードの入力も外される）。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
 }
 
 // VideoCapabilities is what a video model can make.
@@ -70,7 +72,11 @@ func assignmentsOf(w *localcfg.Workflow) []Assignment {
 		return out
 	}
 	for _, a := range w.Assignments {
-		out = append(out, Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index})
+		item := Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index}
+		if a.Optional {
+			item.Optional = &a.Optional
+		}
+		out = append(out, item)
 	}
 	return out
 }
@@ -161,13 +167,15 @@ type Model struct {
 	Media             string             `json:"media" jsonschema:"image or video"`
 	ModelID           string             `json:"model_id,omitempty" jsonschema:"OpenAI 互換: サーバーに渡すモデル ID"`
 	AcceptsReferences bool               `json:"accepts_references" jsonschema:"参照画像を受け取れる"`
+	ReferenceMode     string             `json:"reference_mode,omitempty" jsonschema:"ComfyUI の画像: 参照画像の使い方。edit（編集モデル。複数枚・顔 / スタイル / 編集の役割あり）/ img2img（1 枚から始める）。ワークフローが示さなければ空"`
+	SupportsLoRA      bool               `json:"supports_lora,omitempty" jsonschema:"ComfyUI の画像: 生成テストの LoRA を使える（ワークフローに LoRA を差し込むノードがある）"`
 	Assignments       []Assignment       `json:"assignments" jsonschema:"ComfyUI: 入力の割り当て"`
 	OutputNode        string             `json:"output_node,omitempty"`
 	FPS               int                `json:"fps,omitempty"`
 	FramesStep        int                `json:"frames_step,omitempty"`
 	SizeMultiple      int                `json:"size_multiple,omitempty"`
 	Video             *VideoCapabilities `json:"video,omitempty"`
-	MaxReferences     int                `json:"max_reference_images,omitempty" jsonschema:"動画: 参照画像の上限（割り当てから決まる）"`
+	MaxReferences     int                `json:"max_reference_images,omitempty" jsonschema:"参照画像の上限（割り当てから決まる。ComfyUI の画像・動画）。生成テストの list_generation_models と同じ値"`
 	FirstFrame        bool               `json:"first_frame,omitempty"`
 	LastFrame         bool               `json:"last_frame,omitempty"`
 	CostPerImageUSD   float64            `json:"cost_per_image_usd"`
@@ -187,6 +195,10 @@ func modelOf(m localmodels.ModelView) Model {
 	if caps, ok := m.VideoCaps(); ok {
 		out.MaxReferences, out.FirstFrame, out.LastFrame = caps.MaxReferenceImages, caps.FirstFrame, caps.LastFrame
 	}
+	if caps := m.ReferenceCaps(); caps.Max > 0 {
+		out.MaxReferences, out.ReferenceMode = caps.Max, string(caps.Mode)
+	}
+	out.SupportsLoRA = m.SupportsLoRA() && m.Media == localcfg.MediaImage
 	return out
 }
 

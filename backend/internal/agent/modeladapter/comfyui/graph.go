@@ -24,15 +24,26 @@ type values struct {
 	frames, fps      int
 	references       []modeladapter.Input
 	first, last      *modeladapter.Input
+	opts             localcfg.ImageOptions
+	denoiseFloor     float64 // the workflow's ReferenceDenoiseMin
 }
 
-func imageValues(req modeladapter.ImageRequest) values {
+// imageValues are the values of an image request. A workflow with a reference mode (a bundled img2img or editing model) takes
+// its inputs as references only when the request describes them (Options.Refs): the callers that pass bare Inputs (a character
+// sheet, a workflow step) meant a picture to see, not a picture to copy, and would get the model's default strength and every
+// image as a reference. The inputs are ignored then and the run is the text-to-image one. A workflow without a reference mode
+// (a user's own img2img graph) takes the inputs as it always did.
+func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 	w, h := aspectsize.Flux(req.AspectRatio)
 	negative := defaultNegative
 	if req.NegativePrompt != "" {
 		negative = req.NegativePrompt
 	}
-	return values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs}
+	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options}
+	if wf := b.Model.Workflow; wf != nil && wf.ReferenceMode != "" && len(req.Options.Refs) == 0 {
+		v.references = nil
+	}
+	return v
 }
 
 func videoValues(wf localcfg.Workflow, req modeladapter.VideoRequest) values {
@@ -88,6 +99,8 @@ func (v values) scalar(p localcfg.Param) any {
 		return v.frames
 	case localcfg.ParamFPS:
 		return v.fps
+	case localcfg.ParamReferenceDenoise:
+		return v.denoise()
 	}
 	return nil
 }
@@ -97,7 +110,7 @@ func (v values) scalar(p localcfg.Param) any {
 // the Adapter routes to the alternative model.
 func (b *Backend) missing(v values) error {
 	for _, a := range b.Model.Workflow.Assignments {
-		if in, isImage := v.input(a); isImage && in == nil {
+		if in, isImage := v.input(a); isImage && in == nil && !a.Optional && !b.noReferenceOK(v, a) {
 			return b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the workflow needs %s (%s), the request has none", a.Param, a.Node), nil)
 		}
 	}
@@ -107,17 +120,32 @@ func (b *Backend) missing(v values) error {
 // build puts the values into a copy of the workflow's graph. files are the names the images were uploaded
 // as, by assignment index.
 func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error) {
+	v.denoiseFloor = b.Model.Workflow.ReferenceDenoiseMin
+	if n := b.Model.Workflow.Count(localcfg.ParamReferenceImage); b.Model.Workflow.ReferenceMode != "" && len(v.references) > n {
+		v.references = v.references[:n] // the images beyond the slots were not uploaded
+	}
 	g, err := localcfg.ParseGraph(b.Model.Workflow.Graph)
 	if err != nil {
 		return nil, b.Client.Error(http.StatusUnprocessableEntity, "the workflow is unusable: "+err.Error(), nil)
 	}
 	for i, a := range b.Model.Workflow.Assignments {
 		value := v.scalar(a.Param)
-		if name, ok := files[i]; ok {
+		name, isFile := files[i]
+		if isFile {
 			value = name
+		} else if a.Param == localcfg.ParamReferenceImage {
+			continue // a slot the run has no image for: dropUnused takes its node out
 		}
-		raw, _ := json.Marshal(value)
+		raw, err := json.Marshal(value)
+		if err != nil {
+			return nil, b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the %s value cannot be put into the workflow: %v", a.Param, err), nil)
+		}
 		g[a.Node].Inputs[a.Input] = raw
+	}
+	dropUnused(g, *b.Model.Workflow, v)
+	applyLoRA(g, b.Model.Workflow.LoraModelNode, v.opts.LoRA)
+	if err := stage(g, *b.Model.Workflow, v); err != nil {
+		return nil, b.Client.Error(http.StatusUnprocessableEntity, "the workflow is unusable: "+err.Error(), nil)
 	}
 	return json.Marshal(g)
 }
@@ -128,8 +156,8 @@ func (b *Backend) upload(ctx context.Context, v values, promptID string) (map[in
 	files := map[int]string{}
 	for i, a := range b.Model.Workflow.Assignments {
 		in, isImage := v.input(a)
-		if !isImage {
-			continue
+		if !isImage || in == nil {
+			continue // not an image, or a slot the run has no image for (missing refused a required one)
 		}
 		name, err := b.uploadOne(ctx, in, fmt.Sprintf("mam-%s-%d", promptID[:8], i))
 		if err != nil {
@@ -160,4 +188,10 @@ func (b *Backend) uploadOne(ctx context.Context, in *modeladapter.Input, base st
 		return out.Subfolder + "/" + out.Name, nil
 	}
 	return out.Name, nil
+}
+
+// noReferenceOK says a run without any reference image may leave the reference assignment empty: the workflow lists what it
+// changes then (an img2img workflow samples from an empty latent).
+func (b *Backend) noReferenceOK(v values, a localcfg.Assignment) bool {
+	return a.Param == localcfg.ParamReferenceImage && len(v.references) == 0 && len(b.Model.Workflow.NoReference) > 0
 }

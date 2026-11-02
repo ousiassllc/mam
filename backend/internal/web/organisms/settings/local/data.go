@@ -59,7 +59,8 @@ func AssignField(param string, index int) string {
 	return "assign_" + param + "_" + strconv.Itoa(index)
 }
 
-// ReferenceSlots is how many reference images a workflow can be given inputs for.
+// ReferenceSlots is how many reference image rows the table of a workflow has at least: a workflow with more references (the
+// stored model of a bundled editing workflow takes ten) shows a row for each.
 const ReferenceSlots = 4
 
 // Data is the category and the page of an endpoint: the saved endpoints with their models and, on the page of an endpoint,
@@ -183,7 +184,9 @@ type ModelForm struct {
 	EndpointKind string
 	Name         string
 	Media        string
-	Source       string
+	// Source is the ID of the template a new model started from (a hidden field): the template's reference mode, LoRA node and
+	// the like are not fields of the form and are taken from it on save. Empty for an imported workflow and for an edit.
+	Source string
 
 	ModelID       string
 	AcceptsImages bool

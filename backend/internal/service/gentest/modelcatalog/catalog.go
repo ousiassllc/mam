@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -60,8 +61,17 @@ type Info struct {
 	Unavailable        string `json:"unavailable,omitempty"`
 	UnavailableMessage string `json:"unavailable_message,omitempty"`
 	// AcceptsReferences: an image model uses reference images.
-	AcceptsReferences bool       `json:"accepts_references"`
-	Video             *VideoCaps `json:"video,omitempty"`
+	AcceptsReferences bool `json:"accepts_references"`
+	// ReferenceMode is how an image model uses references: "edit" (an editing model: several images, roles) or "img2img" (one
+	// image the sampling starts from); empty for a model that takes none (and for a cloud model that does).
+	ReferenceMode string `json:"reference_mode,omitempty"`
+	// MaxReferenceImages is how many reference images an image model takes (0: not known or none).
+	MaxReferenceImages int `json:"max_reference_images,omitempty"`
+	// ReferenceRoles are the roles a reference of the model may have (localcfg.Role*; "reference" is the whole picture).
+	ReferenceRoles []string `json:"reference_roles,omitempty"`
+	// SupportsLoRA: a LoRA can be applied to the model.
+	SupportsLoRA bool       `json:"supports_lora,omitempty"`
+	Video        *VideoCaps `json:"video,omitempty"`
 	// SupportsSeed: the seed is sent to the model. Without it the n results of a combination are n calls with the same input.
 	SupportsSeed bool `json:"supports_seed"`
 	// NegativeField: the model has a negative prompt field. Without it the negative prompt is written into the prompt
@@ -125,6 +135,12 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	}
 	if media == gentestrepo.MediaImage {
 		mi.AcceptsReferences = cfg.AcceptsImages(m)
+		mi.SupportsLoRA = SupportsLoRA(cfg, m)
+		if caps := ReferenceCapsOf(cfg, m); caps.Max > 0 {
+			mi.ReferenceMode, mi.MaxReferenceImages, mi.ReferenceRoles = string(caps.Mode), caps.Max, slices.Clone(caps.Roles)
+		} else if mi.AcceptsReferences {
+			mi.ReferenceRoles = []string{localcfg.RoleWhole} // a model whose references are not described: the whole picture
+		}
 		return mi
 	}
 	if caps, ok := cfg.VideoCaps(m); ok {

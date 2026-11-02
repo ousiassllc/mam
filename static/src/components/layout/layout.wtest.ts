@@ -64,7 +64,7 @@ describe('a phone-width window (375 px)', () => {
     expect(overflowOf(), 'the page scrolls sideways').to.be.at.most(0);
   });
 
-  for (const media of ['image', 'video']) {
+  for (const media of ['image', 'refs', 'video']) {
     it(`keeps the generation test form (${media}) with its model cards inside the page`, async () => {
       await show(`layout-gentest-${media}.html`);
 

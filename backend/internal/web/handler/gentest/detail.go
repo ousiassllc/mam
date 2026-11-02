@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -25,10 +26,10 @@ func (h Handlers) detail(ctx context.Context, d gentest.ResultDetail, f view.Imp
 		Params: params(d),
 	}
 	if d.Media == gentest.MediaImage && d.HasFile {
-		v.UseURL = paths.GenerationTest() + "?ref=" + refValue{Source: gentest.FromHistory, ID: d.ID}.String()
+		v.UseURL = paths.GenerationTest() + "?ref=" + refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
 	}
 	for _, in := range d.Inputs {
-		v.Inputs = append(v.Inputs, view.InputCard{Role: roleText[in.Role], Origin: originText[in.Origin.Kind], URL: paths.GenerationTestPart("inputs", in.ID, "file")})
+		v.Inputs = append(v.Inputs, view.InputCard{Role: roleText(in), Origin: originText[in.Origin.Kind], URL: paths.GenerationTestPart("inputs", in.ID, "file")})
 	}
 	names := h.projectNames(ctx)
 	for _, im := range d.Imports {
@@ -49,7 +50,18 @@ func (h Handlers) detail(ctx context.Context, d gentest.ResultDetail, f view.Imp
 	return v
 }
 
-var roleText = map[string]string{gentest.RoleReference: "参照", gentest.RoleFirstFrame: "最初のフレーム", gentest.RoleLastFrame: "最後のフレーム"}
+var roleNames = map[string]string{
+	gentest.RoleReference: "参照", gentest.RoleFirstFrame: "最初のフレーム", gentest.RoleLastFrame: "最後のフレーム",
+	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象",
+}
+
+// roleText is the role of an input with the strength it was given (none was when the default was used).
+func roleText(in gentest.InputView) string {
+	if in.Strength == nil {
+		return roleNames[in.Role]
+	}
+	return fmt.Sprintf("%s・強さ %.2f", roleNames[in.Role], *in.Strength)
+}
 
 var originText = map[string]string{
 	gentest.FromStaged: "アップロード", gentest.FromProjectAsset: "プロジェクトのアセット", gentest.FromReferenceItem: "プロジェクトの参照画像", gentest.FromHistory: "履歴",

@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -48,6 +49,9 @@ type resultParams struct {
 	DurationSeconds float64 `json:"duration_seconds,omitempty"`
 	// Translation is the English the prompt (and negative prompt) was translated to; nil when it was sent as typed.
 	Translation *sentText `json:"translation,omitempty"`
+	// AvoidPose says the negative prompt got refs.WithAvoidPose; LoRA is the LoRA the model was given (image models only).
+	AvoidPose bool       `json:"avoid_pose,omitempty"`
+	LoRA      *refs.LoRA `json:"lora,omitempty"`
 }
 
 // randomSeed is a seed for FLUX.2 and Runway Gen-4.5: an unsigned 32-bit number (Runway takes 0 to 4294967295).
@@ -140,7 +144,7 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 		}
 		nb.Inputs = append(nb.Inputs, gentestrepo.Input{
 			ID: inputIDs[i], BatchID: id, Role: r.References[i].Role, FilePath: path.Join(id, name), MimeType: src.mime, SizeBytes: src.size,
-			Origin: src.origin, Position: i,
+			Origin: src.origin, Position: i, Strength: r.References[i].Strength,
 		})
 	}
 	for _, p := range r.Prompts {
@@ -154,14 +158,17 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 		}
 		for _, p := range r.Prompts {
 			send := tr.sendOf(p)
-			rp, _ := json.Marshal(resultParams{AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: tr.record(p)})
+			rp, _ := json.Marshal(resultParamsOf(r, mp, tr.record(p)))
 			for range r.Count {
 				res := gentestrepo.Result{
 					ID: domain.NewID(), BatchID: id, Position: pos, Media: r.Media, Model: mp.info.ID, APIModel: cfg.ModelSettings(domain.ModelName(mp.info.ID)).Model,
 					Prompt: p.Prompt, NegativePrompt: p.Negative, SentPrompt: send.Prompt, NegativeMode: gentestrepo.NegativeNone, Params: rp,
 					UsedInputs: used, CostBasis: mp.basis, EstimatedCost: mp.unit, CreatedAt: now,
 				}
-				if p.Negative != "" {
+				if p.Negative != "" || mp.avoidPose {
+					if mp.avoidPose {
+						send.Negative = refs.WithAvoidPose(send.Negative)
+					}
 					res.SentPrompt, res.NegativeMode = foldFor(mp.info, send)
 				}
 				if mp.info.SupportsSeed {

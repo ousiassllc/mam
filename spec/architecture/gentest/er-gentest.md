@@ -16,7 +16,7 @@
 
 ## gentest_input（バッチに渡した入力画像）
 
-`batch_id`（FK → `gentest_batch`、削除でカスケード）・`role`（`reference` / `first_frame` / `last_frame`）・`file_path`（`<バッチ ID>/` 以下の相対パス。**入力は履歴の側へ複製**するので、元のプロジェクトや結果を消しても残る）・`mime_type`・`size_bytes`・`origin`（JSON: `kind` = `upload` / `project_asset` / `reference_item` / `history`、`id`、`project_id`）・`position`。
+`batch_id`（FK → `gentest_batch`、削除でカスケード）・`role`（`reference` / `face` / `style` / `edit` / `first_frame` / `last_frame`。画像モデルの参照は前の 4 つ、動画は `reference` / `first_frame` / `last_frame`）・`file_path`（`<バッチ ID>/` 以下の相対パス。**入力は履歴の側へ複製**するので、元のプロジェクトや結果を消しても残る）・`mime_type`・`size_bytes`・`origin`（JSON: `kind` = `upload` / `project_asset` / `reference_item` / `history`、`id`、`project_id`）・`position`・`strength`（REAL、NULL 許容、CHECK 0〜1。画像モデルの参照を**どれだけ強く反映するか**。NULL は既定（0.7）と、強さのないフレーム）。
 
 ## gentest_result（1 件の生成）
 
@@ -25,7 +25,7 @@
 | `id`・`batch_id`・`position` | PK・FK（カスケード）・バッチ内の計画順（モデル → プロンプト → 本数） |
 | `media`・`model`・`api_model` | 種類・**正規のモデル識別子（代替しないので実際に使ったモデル）**・ベンダーの識別子 |
 | `prompt`・`negative_prompt`・`sent_prompt`・`negative_mode` | 入力・実際に送った文・`none` / `field`（モデルの欄）/ `folded`（「Avoid: …」としてプロンプトに書き足した） |
-| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
+| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・`avoid_pose`（参照を使うモデルのネガティブに「ポーズ・構図を真似ない」を足したとき true）・`lora`（`name`・`strength`。使ったときだけ）・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
 | `seed`・`seed_sent` | 送ったシード（対応しないモデルは NULL・0）。実際に送った値を保存する |
 | `status`・`error` | `queued` / `running` / `succeeded` / `failed` / `cancelled`・失敗の理由 |
 | `file_path`・`mime_type`・`size_bytes` | 結果のファイル（成功したときだけ） |

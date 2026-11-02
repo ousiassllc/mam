@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -54,9 +55,13 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 		}
 	}
 	for _, r := range f.refs {
-		if row, ok := h.refRow(ctx, refValue{Source: r.Source, ProjectID: r.ProjectID, ID: r.ID}, r.Role); ok {
+		if row, ok := h.refRow(ctx, r); ok {
 			c.Picked = append(c.Picked, row)
 		}
+	}
+	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.avoidPose, h.Svc.LoRAs(ctx, media)
+	if f.lora != nil {
+		c.LoRA, c.LoRAStrength = f.lora.Name, f.lora.Strength
 	}
 	if s, err := h.Svc.Spend(ctx); err == nil {
 		c.Spend = spendText(s)
@@ -102,8 +107,8 @@ func (h Handlers) Page(c *gin.Context) {
 		}
 	}
 	for _, raw := range c.QueryArray(view.FieldRef) {
-		if r, ok := parseRef(raw); ok {
-			f.refs = append(f.refs, gentest.RefInput{Source: r.Source, ProjectID: r.ProjectID, ID: r.ID, Role: gentest.RoleReference})
+		if r, ok := refform.Parse(raw); ok {
+			f.refs = append(f.refs, refform.Input(r, gentest.RoleReference, nil))
 		}
 	}
 	if f.media == "" && len(f.models) > 0 { // a model of the other media opens the form of that media
@@ -151,7 +156,7 @@ func (h Handlers) Picker(c *gin.Context) {
 		list, err := h.Svc.Pickable(ctx, pickerSize)
 		if err != nil {
 			status, msg := refuse(c, err)
-			render(c, status, view.Picker(nil, "", msg))
+			render(c, status, view.Picker(nil, msg))
 			return
 		}
 		empty = "履歴に画像がありません"
@@ -162,7 +167,7 @@ func (h Handlers) Picker(c *gin.Context) {
 		list, err := h.Svc.ProjectImages(ctx, c.Query("project"))
 		if err != nil {
 			status, msg := refuse(c, err)
-			render(c, status, view.Picker(nil, "", msg))
+			render(c, status, view.Picker(nil, msg))
 			return
 		}
 		empty = "このプロジェクトに画像がありません"
@@ -170,29 +175,33 @@ func (h Handlers) Picker(c *gin.Context) {
 			rows = append(rows, projectRef(c.Query("project"), im))
 		}
 	}
-	render(c, http.StatusOK, view.Picker(rows, "", empty))
+	render(c, http.StatusOK, view.Picker(rows, empty))
 }
 
 // RefRow answers GET /generation-test/ref-row: the row of one chosen input image ("?ref=<source>:<project>:<id>").
 func (h Handlers) RefRow(c *gin.Context) {
-	r, ok := parseRef(c.Query(view.FieldRef))
+	r, ok := refform.Parse(c.Query(view.FieldRef))
 	if !ok {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-	row, ok := h.refRow(c.Request.Context(), r, gentest.RoleReference)
+	ctx, media := c.Request.Context(), c.Query(view.FieldMedia)
+	row, ok := h.refRow(ctx, refform.Input(r, gentest.RoleReference, nil))
 	if !ok {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-	row.Checked = true
-	render(c, http.StatusOK, view.RefRow(row, c.Query(view.FieldMedia)))
+	var ui view.RefUI
+	if media != gentest.MediaVideo { // the controls follow the models that are ticked now
+		ui = view.RefUIOf(choicesOf(h.Svc.Models(ctx, gentest.MediaImage), c.QueryArray(view.FieldModel)))
+	}
+	render(c, http.StatusOK, view.RefRow(row, media, ui))
 }
 
 func historyRef(r gentest.ResultView) view.Ref {
-	v := refValue{Source: gentest.FromHistory, ID: r.ID}
+	v := refform.Value{Source: gentest.FromHistory, ID: r.ID}
 	return view.Ref{
-		Value: v.String(), Label: r.ModelLabel + "・" + shorten(r.Prompt, 40), Role: gentest.RoleReference, Checked: true,
+		Value: v.String(), Label: r.ModelLabel + "・" + shorten(r.Prompt, 40), Role: gentest.RoleReference,
 		ThumbURL: paths.GenerationTestPart("results", r.ID, "file"),
 	}
 }
@@ -204,14 +213,16 @@ func projectRef(projectID string, im projectImage) view.Ref {
 		source, id, label = gentest.FromReferenceItem, im.ReferenceItemID, im.Name+"（参照）"
 	}
 	return view.Ref{
-		Value: refValue{Source: source, ProjectID: projectID, ID: id}.String(), Label: label, Role: gentest.RoleReference, Checked: true,
+		Value: refform.Value{Source: source, ProjectID: projectID, ID: id}.String(), Label: label, Role: gentest.RoleReference,
 		ThumbURL: paths.Project(projectID, "assets", im.AssetID),
 	}
 }
 
-// refRow is the row of an input image the form names; false for one that is not there any more.
-func (h Handlers) refRow(ctx context.Context, r refValue, role string) (view.Ref, bool) {
+// refRow is the row of an input image the form names, with the role and the strength it holds; false for one that is not there
+// any more (and for an image that was chosen in the browser, whose file is in no list: the browser keeps it).
+func (h Handlers) refRow(ctx context.Context, in gentest.RefInput) (view.Ref, bool) {
 	var row view.Ref
+	r := refform.Value{Source: in.Source, ProjectID: in.ProjectID, ID: in.ID}
 	switch r.Source {
 	case gentest.FromHistory:
 		d, err := h.Svc.Result(ctx, r.ID)
@@ -219,8 +230,6 @@ func (h Handlers) refRow(ctx context.Context, r refValue, role string) (view.Ref
 			return row, false
 		}
 		row = historyRef(d.ResultView)
-	case gentest.FromStaged:
-		row = view.Ref{Value: r.String(), Label: "アップロードした画像"}
 	case gentest.FromProjectAsset, gentest.FromReferenceItem:
 		images, err := h.Svc.ProjectImages(ctx, r.ProjectID)
 		if err != nil {
@@ -236,7 +245,7 @@ func (h Handlers) refRow(ctx context.Context, r refValue, role string) (view.Ref
 	default:
 		return row, false
 	}
-	row.Role, row.Checked = role, true
+	row.Role, row.Strength = in.Role, in.Strength
 	return row, true
 }
 
