@@ -157,6 +157,9 @@ func (h handlers) get(ctx context.Context, in BatchInput) (gentest.BatchStatus, 
 		return gentest.BatchStatus{}, err
 	}
 	b, err := g.Batch(ctx, in.BatchID, true)
+	if err == nil && h.running(ctx, g, in.BatchID) {
+		b.State, b.Finished = gentest.StateRunning, false
+	}
 	return b, mapError(err)
 }
 

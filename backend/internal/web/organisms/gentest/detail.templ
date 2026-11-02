@@ -36,6 +36,9 @@ templ ResultDetail(d Detail) {
 			if d.UseURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "入力画像として使う", templ.SafeURL(d.UseURL), templ.Attributes{"data-testid": "gt-use"})
 			}
+			if d.MatchURL != "" {
+				@atoms.ButtonLink(atoms.ToneNeutral, "画像から似せる", templ.SafeURL(d.MatchURL), templ.Attributes{"data-testid": "gt-match-link"})
+			}
 			<form hx-delete={ paths.GenerationTestPart("results", d.Card.ID) } hx-confirm="この結果とファイルを削除しますか？" hx-target="body" hx-push-url="true">
 				@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"type": "submit", "data-testid": "gt-delete"})
 			</form>

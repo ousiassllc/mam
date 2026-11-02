@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -41,6 +42,8 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.POST(paths.GenerationTestPart("results", ":id", "import"), h.Import)
 	engine.DELETE(paths.GenerationTestPart("results", ":id"), h.DeleteResult)
 	engine.GET(paths.GenerationTestPart("inputs", ":id", "file"), h.InputFile)
+
+	matchscreen.Register(engine, svc)
 
 	engine.GET(paths.GenerationTestPrompts(), h.Prompts)
 	engine.DELETE(paths.GenerationTestPart("prompts", ":id"), h.DeletePrompt)

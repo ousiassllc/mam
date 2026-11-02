@@ -13,3 +13,7 @@ func GenerationTestHistory() string { return GenerationTestPart("history") }
 
 // GenerationTestPrompts is the prompt history of the generation test, "/generation-test/prompts".
 func GenerationTestPrompts() string { return GenerationTestPart("prompts") }
+
+// GenerationTestMatch is the prompt match of the generation test, "/generation-test/match" (#916): one reference image, a prompt
+// written for it and fixed until the generated image looks like it. "?ref=<source>:<project>:<id>" opens it with that image.
+func GenerationTestMatch() string { return GenerationTestPart("match") }

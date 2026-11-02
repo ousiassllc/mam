@@ -206,7 +206,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
 	modellicense.SetResolver(mgr.LicenseOf) // what the screens and tools say of a local model's commercial use (#928)
 	modellicense.SetDefaultFilter(mgr.DefaultFilter)
-	services.Gentest = newGentest(cfg, db, jobs, models, services, newTranslator(reasoning, llmCfg), logger)
+	services.Gentest = newGentest(cfg, db, jobs, models, services, newTranslator(reasoning, llmCfg), newMatcher(reasoning, llmCfg), logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {

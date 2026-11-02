@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
-
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 )
 
 // The media of a result (ResultView.Media), the status of a result (ResultView.Status) and the role of an input image.
