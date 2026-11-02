@@ -41,14 +41,14 @@ templ BatchBox(b Batch) {
 					hx-disabled-elt="find button[type=submit]"
 					hx-confirm="まだ始めていない生成を取り消しますか？（呼び出し中のものは終わるまで待ちます）"
 				>
-					@atoms.SmallButtonFor(atoms.ToneDanger, "取り消す", "生成", templ.Attributes{"type": "submit", "data-testid": "gt-cancel"})
+					@atoms.SmallButtonFor(atoms.ToneDanger, "取り消す", "生成", templ.Attributes{"type": "submit", "id": "gt-cancel", "data-testid": "gt-cancel"})
 				</form>
 			}
 		</div>
 		if !b.Finished {
 			<progress class="h-2 w-full" max="100" value={ itoa(b.Percent) } aria-label="生成の進み具合" data-testid="gt-progress"></progress>
 		}
-		<div class="overflow-x-auto">
+		<div class="overflow-x-auto" data-keep-scroll="gt-grid">
 			<table class="w-full min-w-max border-collapse text-sm" data-testid="gt-grid">
 				<thead>
 					<tr>
@@ -136,7 +136,7 @@ templ ResultCard(c Card) {
 			<p class="break-words text-neutral-400">{ c.Meta }</p>
 		}
 		if c.Detail != "" {
-			<a class="underline" href={ templ.SafeURL(c.Detail) } aria-label={ "結果の詳細: " + c.Model }>詳細</a>
+			<a id={ "gt-detail-" + c.ID } class="underline" href={ templ.SafeURL(c.Detail) } aria-label={ "結果の詳細: " + c.Model }>詳細</a>
 		}
 	</article>
 }

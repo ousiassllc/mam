@@ -15,6 +15,8 @@ import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
 import { initGentestInputs } from './components/gentest/inputs';
+import { installKeepScroll } from './components/scroll/keep-scroll';
+import { installPollGuard } from './components/poll/poll-guard';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -72,6 +74,12 @@ installModal();
 
 // The "コピー" button of a value that is shown once (an MCP token that was just issued).
 installCopy();
+
+// A scrolling box that a swap draws again (the grid of a running generation, which polls) keeps where it was scrolled to (#940).
+installKeepScroll();
+
+// A poll waits while the tab is hidden or a video in the section plays, so that the swap does not cut it off (#925).
+installPollGuard();
 
 lockDownHtmx(htmx.config);
 
