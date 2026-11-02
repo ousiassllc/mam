@@ -6,12 +6,14 @@ package gentest
 import (
 	"strconv"
 
-	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -51,7 +53,6 @@ const (
 // Limits of the text fields (the service checks the same).
 const (
 	MaxAspectLen = len("99:99")
-	MaxNameLen   = domain.MaxReferenceNameRunes
 )
 
 func itoa(n int) string { return strconv.Itoa(n) }
@@ -83,10 +84,7 @@ type ModelChoice struct {
 }
 
 // PromptText is a prompt and its negative prompt.
-type PromptText struct {
-	Text     string
-	Negative string
-}
+type PromptText = gentesttier.Prompt
 
 // RecentPrompt is an entry of the prompt history offered for reuse.
 type RecentPrompt struct {
@@ -142,7 +140,8 @@ type Compose struct {
 	// SpeedModes are the speed modes the video models offer (none: not drawn), SpeedMode the one chosen ("" for each model's default).
 	SpeedModes         []SpeedChoice
 	SpeedMode          string
-	gentestadv.Section // the "詳細設定" and the "?" of the prompt weights
+	gentestadv.Section                  // the "詳細設定" and the "?" of the prompt weights
+	Tier               gentesttier.Data // the tiers of an image form (かんたん / こだわり / ComfyUI; Issue #977)
 }
 
 // SpeedChoice is a speed mode of a video model (localcfg.SpeedMode): the ID the form posts and the label of its option.
@@ -283,33 +282,25 @@ type ImportRow struct {
 	At          string
 }
 
-// ImportForm is the form that imports a result into a Project.
-type ImportForm struct {
-	Message
-	ResultID string
-	Image    bool
-	Projects []ProjectChoice
-	// Done says the import was made: the form shows the outcome instead of the fields.
-	Done string
-}
-
 // Detail is one result with everything about it.
 type Detail struct {
 	Message
 	Card       Card
 	SentPrompt string
 	// English and EnglishNegative are the translation that was sent ("" when the text was sent as typed).
-	English                                  string
-	EnglishNegative                          string
-	Negative                                 string
-	NegMode                                  string
-	Params                                   []KV
-	Inputs                                   []InputCard
-	Imports                                  []ImportRow
-	Import                                   ImportForm
-	UseURL, MatchURL, InpaintURL, RedrawFrom string          // set for an image that has a file; RedrawFrom links to the picture this one redrew
-	Upscale                                  upscalebox.Form // "make it larger", and where an enlargement came from
-	Answer                                   commercial.View
+	English          string
+	EnglishNegative  string
+	Negative         string
+	NegMode          string
+	Params           []KV
+	Inputs           []InputCard
+	Imports          []ImportRow
+	Import           importbox.Form
+	UseURL, MatchURL string                // set for an image that has a file
+	Actions          gentestresult.Actions // the buttons under the picture (#977)
+	Used             gentestresult.Used    // the settings it was made with, folded
+	Upscale          upscalebox.Form       // "make it larger", and where an enlargement came from
+	Answer           commercial.View
 }
 
 // PromptRow is an entry of the prompt history.

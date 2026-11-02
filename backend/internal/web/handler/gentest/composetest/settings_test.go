@@ -21,7 +21,7 @@ func sdxlForm() url.Values {
 // the sampler and the scheduler; and each model card says what the model takes, for the script that shows and hides the settings.
 func TestTheFormHasTheDetailedSettingsAndTheCardsSayWhoTakesThem(t *testing.T) {
 	s := newScreen(t, gentesttest.WithTemplateModels())
-	body := s.page(paths.GenerationTest())
+	body := s.page(paths.GenerationTest() + "?tier=detail")
 
 	section := regexp.MustCompile(`(?s)<details[^>]*data-gt-advanced.*?</details>`).FindString(body)
 	require.NotEmpty(t, section)
@@ -98,7 +98,7 @@ func TestAModelThatDoesNotTakeTheValuesIsWarned(t *testing.T) {
 // for T5, does not for Qwen-Image (with what to do instead), and is not known for a cloud model.
 func TestThePromptHelpSaysHowEachModelReadsTheWeights(t *testing.T) {
 	s := newScreen(t, gentesttest.WithTemplateModels())
-	body := html.UnescapeString(s.page(paths.GenerationTest()))
+	body := html.UnescapeString(s.page(paths.GenerationTest() + "?tier=detail"))
 	help := regexp.MustCompile(`(?s)data-testid="gt-weight-help".*?</ul>`).FindString(body)
 	require.NotEmpty(t, help)
 	assert.Contains(t, body, "(語:1.3)")

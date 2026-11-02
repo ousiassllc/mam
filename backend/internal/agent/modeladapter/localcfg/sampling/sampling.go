@@ -85,6 +85,8 @@ type Caps struct {
 	CFG       *NumberCap `json:"cfg,omitempty"`
 	Sampler   *NameCap   `json:"sampler,omitempty"`
 	Scheduler *NameCap   `json:"scheduler,omitempty"`
+	// Presets are the values of the fast and the high quality (Issue #977); nil: the workflow has no quality to choose.
+	Presets *Presets `json:"quality_presets,omitempty" jsonschema:"品質のプリセット（fast: 速い / high: きれい の steps・cfg。standard はモデルの既定そのもの）。無いモデルは quality を指定しても標準で作る"`
 }
 
 // None says the workflow takes no sampling value.

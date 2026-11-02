@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/tierform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
 
@@ -35,6 +36,8 @@ type formState struct {
 	// opts are the options of the batch besides its inputs (refform.Options); adv the detailed settings (advform).
 	opts refform.Opts
 	adv  advform.Fields
+	// tier is the tier of the image form (tierform): the easy tier picks the model from its intent when it is estimated.
+	tier tierform.State
 }
 
 // readForm reads the compose form (a POST, multipart or not, or the query of a GET that includes the form). Input images that
@@ -63,6 +66,7 @@ func readForm(c *gin.Context, stage bool) (formState, error) {
 	f.refs = refform.Refs(v, f.media)
 	f.opts = refform.Options(v)
 	f.adv = advform.Read(v)
+	f.tier = tierform.Read(v)
 	return f, nil
 }
 

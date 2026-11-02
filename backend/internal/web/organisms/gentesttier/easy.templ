@@ -1,0 +1,116 @@
+package gentesttier
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+const easyHelp = "やりたいことを選ぶと、導入済みのモデルから合うものを選び、おすすめの設定で作ります。選ばれたモデルは下に小さく出ます。\n成人向けのモデルは、設定で成人向けを表示にしているときだけ候補に入ります。商用利用の絞り込みと、この PC に合わないモデルは外します。\n細かく決めたいときは「詳細設定を開く」へ。今の選びと入力は引き継ぎます。"
+
+const qualityHelp = "速い・きれいは、モデルごとにあらかじめ決めたステップ数の目安です（GPU では確かめていません）。標準は、モデルの既定の値そのままです。プリセットを持たないモデルでは、3 つのボタンは出ません。"
+
+// Easy is the easy tier: the choice of what to make, the model that choice picked, the quality and the size, the prompt. The input images
+// (the form's own, organisms/gentest, so that the easy tier uses the same as the other) are its children, and the estimate button is EasyActions.
+templ Easy(e EasyData, card templ.Component) {
+	<input type="hidden" name={ FieldTier } value={ TierEasy }/>
+	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-intents-title" data-testid="gt-intents">
+		@help.Row(help.ID("やりたいこと"), "やりたいこと", help.Text(easyHelp)) {
+			<span id="gt-intents-title" class="text-sm font-medium text-neutral-200">やりたいこと</span>
+		}
+		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+			for _, i := range e.Intents {
+				@pick.Card(templ.Attributes{
+					"type": "radio", "name": FieldIntent, "value": i.ID, "checked": i.Selected,
+					"hx-get": paths.GenerationTestPart("easy-pick"), "hx-trigger": "change", "hx-target": "#" + PickID, "hx-swap": "outerHTML",
+					"hx-include": "#" + FormID + " [name=intent]," + "#" + FormID + " [name=ref]," + "#" + FormID + " [name=quality]:checked",
+				}, "flex flex-col gap-0.5 px-3 py-2 text-sm") {
+					<span class="font-medium text-neutral-100">{ i.Label }</span>
+					<span class="text-xs text-neutral-400">{ i.Hint }</span>
+				}
+			}
+		</div>
+	</fieldset>
+	@EasyPick(e, card)
+	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-prompts-title" data-testid="gt-prompt-fields">
+		<span id="gt-prompts-title" class="text-sm font-medium text-neutral-200">プロンプト</span>
+		for i, p := range e.Prompts {
+			if i == 0 {
+				@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{
+					"name": FieldPrompt, "rows": "3", "maxlength": itoa(e.MaxPrompt), "aria-label": "プロンプト", "placeholder": "作りたい絵を書いてください", "data-testid": "gt-easy-prompt",
+				}, p.Text)
+			} else {
+				<input type="hidden" name={ FieldPrompt } value={ p.Text }/>
+			}
+			<input type="hidden" name={ FieldNegative } value={ p.Negative }/>
+		}
+		if e.Translate {
+			<input type="hidden" name={ FieldTranslate } value="1"/>
+		}
+		<input type="hidden" name={ FieldCount } value={ e.Count }/>
+	</fieldset>
+	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-size-title" data-testid="gt-sizes">
+		<span id="gt-size-title" class="text-sm font-medium text-neutral-200">サイズ</span>
+		<div class="flex flex-wrap gap-2">
+			for _, s := range e.Sizes {
+				@pick.Card(templ.Attributes{"type": "radio", "name": FieldAspect, "value": s.Value, "checked": s.Selected}, "px-4 py-1.5 text-center text-sm") {
+					{ s.Label }
+				}
+			}
+		</div>
+	</fieldset>
+	{ children... }
+}
+
+// EasyPick is the part of the easy tier that follows the choice of what to make: the model that was picked (a small line; the model's own
+// hidden card, which the inputs and the detailed settings read, is the caller's card), why there is none, and the quality buttons. It is swapped
+// on its own when the choice changes, so that a file chosen in the browser stays.
+templ EasyPick(e EasyData, card templ.Component) {
+	<div id={ PickID } class="flex flex-col gap-3" data-testid="gt-easy-pick" data-can-estimate={ boolText(e.CanEstimate) }>
+		if e.ModelLabel != "" {
+			<p class="text-xs text-neutral-400" data-testid="gt-easy-model">
+				使うモデル: <span class="text-neutral-200">{ e.ModelLabel }</span>
+				if e.ModelNote != "" {
+					<span class="block text-amber-300" data-testid="gt-easy-model-note">{ e.ModelNote }</span>
+				}
+			</p>
+		} else if e.Reason != "" {
+			<p class="text-sm text-amber-300" role="status" data-testid="gt-easy-nomodel">
+				{ e.Reason }
+				<a class="underline" href={ templ.SafeURL(e.ModelsURL) }>モデルマネージャーを開く</a>
+			</p>
+		}
+		if e.IntentHint != "" {
+			<p class="text-xs text-neutral-400" data-testid="gt-easy-hint">{ e.IntentHint }</p>
+		}
+		if card != nil {
+			@card
+		}
+		<fieldset class="flex flex-col gap-2" aria-labelledby="gt-quality-title" data-testid="gt-quality">
+			@help.Row(help.ID("品質"), "品質", help.Text(qualityHelp)) {
+				<span id="gt-quality-title" class="text-sm font-medium text-neutral-200">品質</span>
+			}
+			if len(e.Qualities) > 0 {
+				<div class="flex flex-wrap gap-2">
+					for _, q := range e.Qualities {
+						@pick.Card(templ.Attributes{"type": "radio", "name": FieldQuality, "value": q.ID, "checked": q.Selected}, "px-4 py-1.5 text-center text-sm") {
+							{ q.Label }
+						}
+					}
+				</div>
+			} else {
+				<p class="text-xs text-neutral-400" data-testid="gt-quality-reason">{ e.QualityReason }</p>
+			}
+		</fieldset>
+	</div>
+}
+
+// EasyActions is the end of the easy tier: the estimate button (off while no model was picked) and the way to the detail tier.
+templ EasyActions(canEstimate bool) {
+	<div class="flex flex-wrap items-center gap-3">
+		@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate", "disabled": !canEstimate, "data-gt-easy-estimate": ""})
+		<span class="text-xs text-neutral-400">実行はまだしません</span>
+		<a class="text-sm text-neutral-300 underline" { SwitchAttrs(TierDetail)... } data-testid="gt-open-detail">詳細設定を開く</a>
+	</div>
+}

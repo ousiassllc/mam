@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	gentest "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestinpaint"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -44,10 +45,15 @@ templ generationShell(title, csrfToken, current, lead string) {
 // GenerationTestPage is GET /generation-test: choose models and prompts, see the estimate, run, compare.
 templ GenerationTestPage(csrfToken string, c gentest.Compose) {
 	@generationShell("生成テスト", csrfToken, "new", "プロジェクトに属さない画像・動画の生成です。モデルとプロンプトを組み合わせて並べて比べ、気に入った結果だけプロジェクトに取り込めます。結果は Take・コスト台帳には入りません。") {
-		@gentest.ComposeForm(c)
-		@gentest.ConfirmEmpty()
-		@gentest.BatchEmpty()
-		@modal.Host()
+		if c.Tier.IsComfy() {
+			@gentesttier.Tabs(c.Tier)
+			@gentesttier.ComfyPanel()
+		} else {
+			@gentest.ComposeForm(c)
+			@gentest.ConfirmEmpty()
+			@gentest.BatchEmpty()
+			@modal.Host()
+		}
 	}
 }
 

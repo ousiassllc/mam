@@ -192,6 +192,7 @@
    ],
    "output_node": "9",
    "prompt_weight": "supported",
+   "quality_presets": {"fast": {"steps": 15}, "high": {"steps": 40}},
    "reference_mode": "controlnet"
   }
  }

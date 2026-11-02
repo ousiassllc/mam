@@ -88,6 +88,7 @@ openai-compat:lmstudio/flux-schnell
 - **速さのモードが優先（決定）**: `speed_modes` を持つワークフロー（Wan 2.2 14B + LightX2V など）は、蒸留 LoRA がそのステップ数と cfg でしか効かないので、`steps`・`cfg` を**速さのモードが決める**。リクエストの `steps`・`cfg` は、画面では欄を無効にして理由を出し、サーバー（`localcfg/sampling.Caps` の `Applicable`）でも**無視する**（警告 `sampling_ignored`）。`sampler`・`scheduler` は上書きできる。
 - **`sampling.Caps`（`localcfg/sampling`）**: ワークフローが受け取る値と既定（`Workflow.SamplingCaps()`）。`modelcatalog.Info.Sampling`・MCP の `list_generation_models` が返す。範囲は steps 1〜150・cfg 0〜30（`MinSteps` ほか。画面のスライダーと同じ）。サンプラー・スケジューラー名は ComfyUI の `comfy/samplers.py` の一覧（`sampling.Samplers`・`Schedulers`）。
 - **検証**: 保存時（`validateSampling`）、`ratio` は `steps` だけで 0〜1 の間、`steps`・`cfg` は数値の入力、`sampler`・`scheduler` は文字の入力に割り当てる。
+- **品質のプリセット（`quality_presets`。Issue #977）**: ワークフローの `quality_presets` = `{"fast": {"steps": N, "cfg": C}, "high": {…}}`（各項目は省ける）は、画面の「速い／きれい」と MCP の `quality` が使う steps・cfg。**標準は書かない**（標準 = グラフが持つ値のまま）。`steps`・`cfg` の割り当てを持つワークフローにだけ書け、速さのモード（`speed_modes`）を持つものには書けない（モードが steps・cfg を決める）。速いは steps が少なく、きれいは多い。値は mam の目安で GPU では確かめていない。ワークフローの steps から変えていない導入済みのコピーは、起動時に `wfrefresh` が更新する。詳しくは [gentest/gentest.md](gentest/gentest.md) §3.6。
 
 ### 4.4 プロンプトのウェイト（`prompt_weight`。Issue #972）
 

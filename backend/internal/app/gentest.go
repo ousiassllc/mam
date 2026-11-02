@@ -43,6 +43,7 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		},
 		Hidden:          services.ModelManager.HidesModel,
 		MissingNodes:    nodegate.ForModels(services.ModelManager.Nodes, modelmanager.BundledEndpoint), // a workflow whose custom node is not installed cannot be chosen
+		PlatformWarning: platformWarning(services.ModelManager),
 		BundledEndpoint: modelmanager.BundledEndpoint,
 		Translator:      translator,
 		Poses:           newPoseLibrary(logger),

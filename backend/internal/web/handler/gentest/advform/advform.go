@@ -17,15 +17,19 @@ import (
 	adv "github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
 )
 
-// Fields are the settings as the form holds them: trimmed, "" when not given.
-type Fields struct{ Seed, Steps, CFG, Sampler, Scheduler string }
+// FieldQuality is the form field of the easy tier's quality (fast / standard / high; Issue #977).
+const FieldQuality = "quality"
+
+// Fields are the settings as the form holds them: trimmed, "" when not given. Quality is the easy tier's: the preset the models take their steps
+// and cfg from where the form names none.
+type Fields struct{ Seed, Steps, CFG, Sampler, Scheduler, Quality string }
 
 // Read reads the fields of the form.
 func Read(v url.Values) Fields {
 	get := func(name string) string { return strings.TrimSpace(v.Get(name)) }
 	return Fields{
 		Seed: get(adv.FieldSeed), Steps: get(adv.FieldSteps), CFG: get(adv.FieldCFG),
-		Sampler: get(adv.FieldSampler), Scheduler: get(adv.FieldScheduler),
+		Sampler: get(adv.FieldSampler), Scheduler: get(adv.FieldScheduler), Quality: get(FieldQuality),
 	}
 }
 
@@ -53,12 +57,16 @@ func (f Fields) Apply(r *gentest.Request) error {
 		r.Sampling.CFG = &x
 	}
 	r.Sampling.Sampler, r.Sampling.Scheduler = f.Sampler, f.Scheduler
+	r.Quality = gentest.Quality(f.Quality)
 	return nil
 }
 
 // Hidden carries the settings of a request to the confirmation, so that "実行" runs the same request.
 func Hidden(r gentest.Request) []view.Hidden {
 	var h []view.Hidden
+	if r.Quality != "" {
+		h = append(h, view.Hidden{Name: FieldQuality, Value: string(r.Quality)})
+	}
 	if r.Seed != nil {
 		h = append(h, view.Hidden{Name: adv.FieldSeed, Value: strconv.FormatInt(*r.Seed, 10)})
 	}

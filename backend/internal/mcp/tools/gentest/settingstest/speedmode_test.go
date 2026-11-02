@@ -1,4 +1,4 @@
-package gentest_test
+package settingstest_test
 
 import (
 	"encoding/json"

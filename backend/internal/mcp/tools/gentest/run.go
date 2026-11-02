@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest/intentinfo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
@@ -27,6 +28,8 @@ type ListModelsOutput struct {
 	// when the engine is not running or has none.
 	LoRAs  []string `json:"loras" jsonschema:"同梱 ComfyUI エンジンにある LoRA ファイル名（昇順）。リクエストの lora.name に使う。supports_lora のモデルだけが使う。エンジンが止まっている・無いときは空"`
 	Limits Limits   `json:"limits"`
+	// Intents are the "やりたいこと" a request's intent takes, with the model each picks now (Issue #977).
+	Intents []intentinfo.IntentInfo `json:"intents" jsonschema:"リクエストの intent に使えるやりたいこと（photo / anime / landscape / face）と、いま選ばれるモデル（導入済み・商用の絞り込み・OS・GPU の条件に合うもの）"`
 }
 
 // Limits are the caps of one batch (models.json: gentest).
@@ -49,7 +52,7 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 	if err != nil {
 		return ListModelsOutput{}, mapError(err)
 	}
-	return ListModelsOutput{Models: models, CommercialFilter: string(filter), LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}}, nil
+	return ListModelsOutput{Models: models, CommercialFilter: string(filter), LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}, Intents: intentinfo.List(ctx, g)}, nil
 }
 
 // ReferenceInput is an input image of a batch.
@@ -77,7 +80,7 @@ type PromptInput struct {
 // RequestInput is a batch: every model x every prompt x count.
 type RequestInput struct {
 	Media           string           `json:"media" jsonschema:"image / video"`
-	Models          []string         `json:"models" jsonschema:"list_generation_models の id。使えないモデルは拒否される。代替モデルへは切り替えない"`
+	Models          []string         `json:"models,omitempty" jsonschema:"list_generation_models の id。使えないモデルは拒否される。代替モデルへは切り替えない。intent を指定するときは省く（同時には指定できない）"`
 	Prompts         []PromptInput    `json:"prompts" jsonschema:"1 件以上。同じ組は 1 件に数える"`
 	Count           int              `json:"count,omitempty" jsonschema:"モデルとプロンプトの組ごとの本数（1〜20、既定 1）"`
 	AspectRatio     string           `json:"aspect_ratio,omitempty" jsonschema:"16:9 のように。省くと画像は 1:1、動画は 16:9"`
@@ -94,6 +97,9 @@ type RequestInput struct {
 	Seed *int64 `json:"seed,omitempty" jsonschema:"シードを固定する（0〜4294967295）。n 本目は seed + n − 1 を使う（本数が多いときは seed + 本数 − 1 もこの範囲）。モデルごとに同じ seed で比べられ、結果の seed からいつでも作り直せる。省くと結果ごとにランダム。シードを渡せないモデルは警告 seed_ignored で使わない"`
 	// Sampling overrides the steps, cfg, sampler and scheduler of the models that take them.
 	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"詳細設定: steps（1〜150）・cfg（0〜30）・sampler・scheduler。省いた項目は各モデルの既定（list_generation_models の sampling の default）。受け取らない項目（sampling に無い）と、速さのモードがあるモデルの steps・cfg（sampling の locked が speed_mode）は警告 sampling_ignored で使わない（速さのモードが優先）。結果の sampling に使った値が残る"`
+	// Quality picks the steps and the cfg of every model from its preset (sampling.quality_presets); Intent leaves the choice of the model to mam.
+	Quality string `json:"quality,omitempty" jsonschema:"画像だけ。品質: fast（速い）/ standard（標準。省略と同じ: モデルの既定の値）/ high（きれい）。モデルの sampling.quality_presets にあるステップ数・CFG で作る（sampling に steps・cfg を書けばそちらが優先）。プリセットの無いモデルは警告 quality_ignored で標準の値で作る"`
+	Intent  string `json:"intent,omitempty" jsonschema:"画像だけ。やりたいこと: photo（人物写真）/ anime（アニメ）/ landscape（風景）/ face（同じ顔で。references に顔の写真が要る）。導入済みで使えるモデルを mam が選ぶ（models は省く。list_generation_models の intents に今選ばれるモデルが出る）。合うモデルが無いときは理由つきで validation"`
 	// Mask is the inpaint mask (same shape as a reference; white redraws). Every model must support inpaint. Denoise nil uses denoise_default.
 	Mask    *ReferenceInput `json:"mask,omitempty" jsonschema:"一部だけ描き直すときのマスク。references と同じ形式（source / id / project_id。role と strength は使わない）。白が描き直す部分、黒が残す部分。元画像は references に 1 枚だけ。supports_inpaint でないモデルは validation で拒否する"`
 	Denoise *float64        `json:"denoise,omitempty" jsonschema:"描き直しの強さ（0 より大きく 1 以下）。省くと各モデルの denoise_default。マスクが無いときは指定できない"`
@@ -105,6 +111,7 @@ func (in RequestInput) request() gentest.Request {
 	r := gentest.Request{
 		Media: in.Media, Models: in.Models, Count: in.Count, AspectRatio: in.AspectRatio, Resolution: in.Resolution,
 		DurationSeconds: in.DurationSeconds, TranslateToEnglish: gentest.DefaultTranslate, AvoidReferencePose: in.AvoidReferencePose, SpeedMode: in.SpeedMode,
+		Quality: sampling.Quality(in.Quality),
 	}
 	if in.LoRA != nil {
 		r.LoRA = &gentest.LoRAInput{Name: in.LoRA.Name, Strength: in.LoRA.Strength}
@@ -129,12 +136,26 @@ func (in RequestInput) request() gentest.Request {
 	return r
 }
 
+// resolve is the request of the input, with the model the intent picks when it names one.
+func (h handlers) resolve(ctx context.Context, g *gentest.Service, in RequestInput) (gentest.Request, error) {
+	r := in.request()
+	if in.Intent == "" {
+		return r, nil
+	}
+	r, _, err := g.ApplyIntent(ctx, r, in.Intent)
+	return r, mapError(err)
+}
+
 func (h handlers) estimate(ctx context.Context, in RequestInput) (gentest.Estimate, error) {
 	g, err := h.gt()
 	if err != nil {
 		return gentest.Estimate{}, err
 	}
-	e, err := g.Estimate(ctx, in.request())
+	r, err := h.resolve(ctx, g, in)
+	if err != nil {
+		return gentest.Estimate{}, err
+	}
+	e, err := g.Estimate(ctx, r)
 	return e, mapError(err)
 }
 
@@ -157,10 +178,14 @@ func (h handlers) run(ctx context.Context, in RunInput) (RunOutput, error) {
 	if err != nil {
 		return RunOutput{}, err
 	}
+	req, err := h.resolve(ctx, g, in.RequestInput)
+	if err != nil {
+		return RunOutput{}, err
+	}
 	var ref gentest.RunRef
 	jr, err := h.registrar.Jobs.Run(ctx, KindGentest, "", func(ctx context.Context) (string, error) {
 		var err error
-		ref, err = g.Run(ctx, in.request(), gentest.Confirmation{EstimateID: in.EstimateID, TotalUSD: in.ConfirmedTotalUSD})
+		ref, err = g.Run(ctx, req, gentest.Confirmation{EstimateID: in.EstimateID, TotalUSD: in.ConfirmedTotalUSD})
 		return ref.JobID, mapError(err)
 	})
 	return RunOutput{JobRef: jr, BatchID: ref.BatchID, TotalItems: ref.TotalItems}, err

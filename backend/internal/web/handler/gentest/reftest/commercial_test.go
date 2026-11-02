@@ -16,7 +16,7 @@ func TestComposeShowsTheCommercialBadgeOnEveryModelCardAndTheFilter(t *testing.T
 	s := newScreen(t)
 
 	for media, ids := range map[string][]string{"image": {"flux-2", "gpt-image-2", "nano-banana"}, "video": {"luma-ray-3.2", "kling-3.0", "runway-gen-4.5"}} {
-		page := s.page(paths.GenerationTest() + "?media=" + media)
+		page := s.page(paths.GenerationTest() + "?tier=detail&media=" + media)
 		for _, id := range ids {
 			c := card(t, page, id)
 			info := modellicense.Of(id)
@@ -47,7 +47,7 @@ func TestComposeDrawsTheFilterAtTheSettingsDefault(t *testing.T) {
 func TestTheModelCardsOfTheLocalModelsSayUnknownUntilTheModelManagerKnowsTheirLicense(t *testing.T) {
 	s := newScreen(t, gentesttest.WithNoReferenceModel())
 
-	page := s.page(paths.GenerationTest() + "?media=image")
+	page := s.page(paths.GenerationTest() + "?tier=detail&media=image")
 
 	c := card(t, page, string(gentesttest.NoReferenceModel))
 	assert.Contains(t, c, `data-commercial="unknown"`, "a model of an endpoint the user registered: mam did not check it")

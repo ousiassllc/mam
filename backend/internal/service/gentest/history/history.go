@@ -81,7 +81,8 @@ func (s *Store) Result(ctx context.Context, id string) (record.ResultDetail, err
 	if err != nil {
 		return record.ResultDetail{}, err
 	}
-	d := record.ResultDetail{ResultView: record.ViewOf(r), Inputs: []record.InputView{}, Imports: []record.ImportView{}, BatchEstimatedUSD: batch.EstimatedCost}
+	d := record.ResultDetail{ResultView: record.ViewOf(r), Inputs: []record.InputView{}, Imports: []record.ImportView{}, BatchEstimatedUSD: batch.EstimatedCost,
+		TranslateToEnglish: decode[record.BatchParams](batch.Params).TranslateToEnglish}
 	for _, in := range inputs {
 		d.Inputs = append(d.Inputs, record.InputView{ID: in.ID, Role: in.Role, MimeType: in.MimeType, SizeBytes: in.SizeBytes, Strength: in.Strength, Origin: decode[record.InputOrigin](in.Origin)})
 	}

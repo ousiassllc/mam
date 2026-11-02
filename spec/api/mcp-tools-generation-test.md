@@ -81,6 +81,15 @@
 - **結果**（`get_generation_result`・`get_generation_test` の `results[]`）: `sampling`（実際に使った `steps`・`cfg`・`sampler`・`scheduler`）と `seed` が残るので、同じ条件で作り直せる。英訳でウェイト（重みの数字・括弧）が消えたときは `lost_weights[]`。
 - 英訳は `(token:weight)`・`(word)`・`[word]` をそのまま残す指示で行う（[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.1）。
 
+## 品質とやりたいこと（Issue #977）
+
+- **入力**（画像だけ）: `estimate_generation_test`・`run_generation_test` に `quality`（`fast` 速い／`standard` 標準／`high` きれい。省くと標準）と `intent`（`photo`・`anime`・`landscape`・`face`）を足した。**既存の引数は何も変わらない**（`quality`・`intent` を省いたリクエストは今までと同じに動く。`models` は `intent` を使うときだけ省ける）。
+- **`quality`**: モデルの `sampling.quality_presets`（`list_generation_models`）の steps・cfg で作る。`sampling` に `steps`・`cfg` を書いた項目はそちらが優先。標準は何も上書きしない（モデルの既定のまま）。プリセットの無いモデル（クラウド・蒸留・速さのモード）は警告 `quality_ignored` で標準の値で作る。範囲外の名前は `validation`。
+- **`intent`**: 導入済みで呼べて、商用フィルター・成人ゲート・この PC の OS／GPU の条件に合うモデルを、mam が選ぶ（`models` と同時には指定できない。`validation`）。「同じ顔で」（`face`）は `references`（顔の写真）が要り、役割 `reference` のものは `face` として使う。合うモデルが無いときは、理由（導入されていない・条件に合わない）つきの `validation`。見積りの `request.models` に、選ばれたモデルが入る。
+- **`list_generation_models`**: `intents[]`（`id`・`label`・`hint`・`needs_references`・いま選ばれる `model`・`model_label`・`note`・選べない `reason`）と、各モデルの `sampling.quality_presets`（`fast`・`high` の `steps`・`cfg`）を足した。
+- 画面の「かんたん」と同じ `gentest.Service.Recommend`・`ApplyIntent`（[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.6）を呼ぶ。テストは `mcp/tools/gentest/settingstest/quality_test.go`。
+- 結果の「もう1枚」「もう一度」「この顔で作る」（画面の再現）に当たる MCP の操作は、既存の `get_generation_result`（使った `sampling`・`seed`）と `run_generation_test`（`seed`・`sampling`）の組み合わせで足りる（レシピは #977 のステージ 2）。
+
 ## 大きくする（アップスケール。Issue #975）
 
 - 画面の「大きくする」と同じ `gentest.Service.Upscale` を呼ぶ（`mcp/tools/gentest/upscale.go`）。実行は種別 `gentest` のジョブ（`get_job`・`get_generation_test`）で、進み具合は `progress` に出る。
@@ -105,3 +114,4 @@
 | 1.10 | 2026-11-03 | `list_generation_upscalers`・`upscale_generation_result`（結果 ID＋倍率 2 / 4 で大きくする。別の結果として残り、結果の `upscale` に元と使った値）を足した。`list_generation_models` にはアップスケールのワークフローは出さない | Issue #975 |
 | 1.11 | 2026-11-03 | `references[]` の `role` に `pose`、`source` に `pose_library` を足した（`list_generation_models` の `reference_roles` にも `pose`） | Issue #986 |
 | 1.12 | 2026-11-02 | `estimate_generation_test`・`run_generation_test` に `mask`・`denoise`、`list_generation_models` に `supports_inpaint`・`denoise_default`、結果に `inpaint`、警告 `denoise_ignored` を足した。対応しないモデルは `validation` | Issue #974 |
+| 1.13 | 2026-11-03 | `estimate_generation_test`・`run_generation_test` に `quality`（fast / standard / high）と `intent`（photo / anime / landscape / face）、`list_generation_models` に `intents[]` とモデルの `sampling.quality_presets`、警告 `quality_ignored` を足した。既存の引数は変えない | Issue #977（ステージ 1） |

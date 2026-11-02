@@ -69,6 +69,9 @@ func videoRole(v string) string {
 	return gentest.RoleReference
 }
 
+// ImageRole is the role of an image input named by v (reference when it is none of the roles of an image model).
+func ImageRole(v string) string { return imageRole(v) }
+
 func imageRole(v string) string {
 	if slices.Contains([]string{gentest.RoleFace, gentest.RoleStyle, gentest.RoleEdit, gentest.RolePose}, v) {
 		return v

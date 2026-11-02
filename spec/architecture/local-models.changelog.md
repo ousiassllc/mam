@@ -23,3 +23,4 @@
 | 1.14 | 2026-11-03 | §4.6 を新設: 「顔だけ」の参照の固定の第 1 段（顔のまわりへの自動の切り出し・指示文の 3 文化・既定の強さ 0.9。効果は未検証）、顔検出器と PuLID・InsightFace・SFace の採否の表、効果の測り方（旧指標との併記） | Issue #960 |
 | 1.15 | 2026-11-03 | §4.2: `edit` 方式の 3 モデルの役割に「ポーズだけ」（`pose`）を足した。役割の文（「`<imageN>` はポーズの参照としてだけ使う」）と、`face`・`style` と同じく VAE の潜在を作らない扱い（`stage.seenOnly`） | Issue #986 |
 | 1.16 | 2026-11-02 | §4.7 を新設: `reference_mode: inpaint` と割り当て `mask_image`・`denoise`。テンプレート `inpaint-sdxl`・`inpaint-flux-dev`（コアノード。`ImageCompositeMasked` でマスクの外を元画像のままにする。`prompt_weight` と steps・cfg・sampler・scheduler の割り当ても持つ）。`supports_inpaint`。起動時の更新は新しいワークフロー名を足さない | Issue #974 |
+| 1.17 | 2026-11-03 | §4.3 に、ワークフローの `quality_presets`（速い・きれいの steps・cfg。標準は書かない。速さのモードのワークフローには書けない）を足した | Issue #977 |

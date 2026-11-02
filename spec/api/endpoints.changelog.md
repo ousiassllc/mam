@@ -187,3 +187,4 @@
 | 1.180 | 2026-11-03 | [endpoints-gentest.md](endpoints-gentest.md)（1.11）に、生成テストの詳細設定のフィールド（`seed`・`steps`・`cfg`・`sampler`・`scheduler`）を足した | Issue #973・#972 |
 | 1.181 | 2026-11-03 | §1 の表に `GET /jobs`・`GET /jobs/list`（ジョブ一覧の画面と一覧の区画）の行を足し、[endpoints-jobs.md](endpoints-jobs.md) を作った | Issue #980 |
 | 1.182 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.14）に、`/generation-test/inpaint`（一部だけ描き直す。見積りと実行）を足した | Issue #974 |
+| 1.183 | 2026-11-03 | [endpoints-gentest.md](endpoints-gentest.md)（1.15）に、画像のフォームの 3 段（`tier`・`intent`・`quality`）、`GET /generation-test/easy-pick`、結果の `again` を足した | Issue #977 |

@@ -4,6 +4,8 @@
 
 [overview.md](overview.md) §3 のコンポーネントの階層に、生成テストの画面（Issue #835）を足す。ルートと挙動は [../api/endpoints-gentest.md](../api/endpoints-gentest.md)、仕組みは [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md)。
 
+> **#977 の追記（2026-11-03）**: 画像のフォームは「かんたん / こだわり / ComfyUI」の 3 段になった（初期表示はかんたん。動画・音声は今のまま）。以下の作成フォームの説明（モデルのカード・プロンプト・パラメーター・詳細設定・入力画像）は **こだわり**の中身で、かんたんは別のフォームを持つ。段・かんたん・結果のボタンと「使った設定」は [gentest-tiers.md](gentest-tiers.md)。
+
 | 区分 | コンポーネント | 責務 |
 |------|---------------|------|
 | pages（`gentest_pages.templ`） | `GenerationTestPage`・`GenerationHistoryPage`・`GenerationResultPage`・`GenerationPromptsPage` | 4 つのページ。共通の枠 `generationShell`（戻るリンク・見出しとその横の「?」ヘルプ（リード文はヘルプの中。Issue #866。[shared-ui-parts.md](shared-ui-parts.md) §9・§10）・ページ間のリンク `generationNav`）に organisms を入れる |
@@ -12,6 +14,7 @@
 | 〃 | `BatchBox`・`ResultCard` | 進捗（状態・件数・取り消し）と比較表（行＝モデル、列＝プロンプト、セル＝結果のカード） |
 | 〃 | `HistoryList`・`exportbar.Bar`・`HistoryLive`・`HistoryCard`・`FavoriteButton`・`refresh.Bar`（`molecules/refresh`。#962 で、モデルマネージャーと共用するため移した） | 履歴（絞り込み・ZIP の書き出しバー・合計コスト 1 行・最終更新の時刻と更新ボタン・動いている結果があるあいだの自動更新・お気に入りの付け外し・次のページ） |
 | 〃 | `ResultDetail`・`ImportBox` | 結果の詳細（設定・実際に送ったプロンプト・シード・入力画像・取り込み先）と取り込みフォーム |
+| 〃（`organisms/gentesttier/`・`organisms/gentestresult/`） | `Tabs`・`Easy`・`EasyPick`・`EasyActions`・`Refine`・`ComfyPanel`・`Row`・`Panel` | 画像のフォームの 3 段（Issue #977。[gentest-tiers.md](gentest-tiers.md)）: 段のタブ・かんたん（やりたいこと・使うモデル・品質・サイズ）・こだわりの「変えた項目」の欄・ComfyUI の入口、結果のボタン列と「使った設定」。ハンドラは `web/handler/gentest/tierform`（段・やりたいことからのモデル・品質のボタン）と `redo`（結果のボタンの URL・使った設定・復元） |
 | 〃（`upscale.templ`・`upscale_data.go`） | `UpscaleBox`・`UpscaleForm` | 結果の詳細の「大きくする」（Issue #975。倍率 2・4 と方式の選択・ボタン 1 つ。大きくした結果には元の結果へのリンク）。ハンドラは `web/handler/gentest/upscale.go` |
 | 〃（`match.templ`・`match_data.go`） | `MatchForm`・`MatchBox`・`MatchWords`・`MatchConfirmCleared` | プロンプトマッチ（Issue #916。[../architecture/gentest/prompt-match.md](../architecture/gentest/prompt-match.md)）。`MatchForm`: 参考の画像（ドロップゾーン 1 つ。選ぶとそのまま見える）・モデルの選択・進め方（おまかせ / 1回だけ / 調整のカード）・目標の似てる度（スライダーと大きな数字）・上限の回数（おまかせのときだけ出す）・言葉の指示（省略可）。`MatchBox`: 参考のサムネイル・「いちばん似ている」の大きな数字と目標・状態・取り消し・ベストのプロンプト（コピー・「生成テストで比べる」）・各回のタイムライン（画像・似てる度の数字とバー・直したところ・違い・プロンプトと直す前のプロンプト）。`MatchWords`: 言葉で直すフォーム（ポーリングで描き直す箱の外に置く。入力中の文字を失わないため）。確認は `ConfirmBox`（`Match`・`RunPath`）を使う |
 | 〃 | `PromptHistory` | プロンプト履歴（再利用のリンク・削除） |
@@ -22,6 +25,7 @@
 | 〃（`web/handler/gentest/advform/`） | `Read`・`Fields.Apply`・`Hidden`・`ViewOf`・`WeightLines` | 詳細設定のフォーム（`seed`・`steps`・`cfg`・`sampler`・`scheduler`）を `gentest.Request` に読み、確認の hidden に書き、モデルごとの「受け取る値」と「ウェイトの効き方」の行を作る |
 | static（`static/src/components/mask-paint/`） | `mam-mask-paint.ts` | 一部だけ描き直すマスク（`<mam-mask-paint>`。筆・消しゴム・太さ・全部消す。白が描き直す。キーボード B/E・`[` `]`・矢印。フォーム送信で `input[name=mask]` に PNG。`mam-mask-paint.wtest.ts`） |
 | static（`static/src/components/gentest/`） | `advanced.ts`・`advanced-model.ts` | 詳細設定の動き（選んだモデルが受け取る項目だけを出す・スライダーの「上書きする」・受け取らないモデルの注）。DOM を使わない規則は `advanced-model.ts`（vitest）、DOM は `advanced.ts`（web-test-runner） |
+| static（`static/src/components/gentest-tiers/`） | `refine.ts`・`refine-model.ts`・`easy.ts` | こだわりの「変えた」の印と元に戻す（規則は `refine-model.ts`。vitest）・かんたんの見積りのボタンとモデルの追従 |
 | static（`static/src/components/gentest/`） | `match.ts`・`match-model.ts` | プロンプトマッチのフォームの動き（選んだ・ドロップした画像のプレビュー、進め方に合わせた目標と上限の出し入れ、スライダーの数字）。DOM を使わない規則は `match-model.ts`（vitest） |
 | 〃 | `inputs.ts`・`inputs-model.ts`・`inputs-models.ts` | 入力画像の動き（ブラウザで選んだ画像のサムネイル・並べ替え・拡大・モデルの選択に合わせた役割と強さの表示）。DOM を使わない規則は `inputs-model.ts`（vitest）、DOM は `inputs.wtest.ts`（実 Chrome） |
 
@@ -84,3 +88,4 @@
 | 1.19 | 2026-11-03 | 入力画像の「?」に、「顔だけ」の固定は弱いことと向いているモデルの案内（`facelock.Help`）を足し、「顔だけ」のスライダーの既定を 0.9 にした（利用者が動かすまでは役割の切り替えに追従） | Issue #960 |
 | 1.20 | 2026-11-03 | 入力画像の区画に「ポーズを選ぶ」（専用のモーダル。導入の案内と同意・絞り込み・選んだモデルの商用利用の表示）と役割 `pose` を足した | Issue #986 |
 | 1.21 | 2026-11-02 | ナビとページ `GenerationInpaintPage`（`organisms/gentestinpaint`・`handler/gentest/inpaintscreen`）と、マスク部品 `<mam-mask-paint>`（`static/src/components/mask-paint/`）を足した。結果の詳細に「一部だけ描き直す」（`data-testid=gt-inpaint`）と、インペイント結果の「元の結果」。作成フォームではインペイント専用モデルを理由つきで選べなくした | Issue #974 |
+| 1.22 | 2026-11-03 | 画像のフォームを「かんたん / こだわり / ComfyUI」の 3 段にした（初期表示はかんたん。今のフォームはこだわり）。結果の詳細に、ボタン列（一部だけ描き直す・大きくする・似た感じでもう1枚・この顔で作る・この設定でもう一度）と折りたたみの「使った設定」を足した。`?again=`・`?tier=`・`GET /generation-test/easy-pick` | Issue #977（ステージ 1） |
