@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
@@ -24,6 +25,14 @@ func newRig(t *testing.T, scores []int, opts ...gentesttest.Option) rig {
 	r := gentesttest.New(t, opts...)
 	f := &gentesttest.FakeMatchLLM{Scores: scores, Err: map[string]error{}}
 	return rig{Rig: r, LLM: f, M: r.UseMatch(f)}
+}
+
+// newPricedRig is newRig whose LLM routes name the given targets (the estimate prices them).
+func newPricedRig(t *testing.T, create, judge llm.Target, opts ...gentesttest.Option) rig {
+	t.Helper()
+	r := gentesttest.New(t, opts...)
+	f := &gentesttest.FakeMatchLLM{Err: map[string]error{}}
+	return rig{Rig: r, LLM: f, M: r.UseMatchWith(f, create, judge)}
 }
 
 // request is a new match on flux-2 (0.03 USD a picture, takes a seed) with an uploaded reference.

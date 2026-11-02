@@ -721,6 +721,7 @@ Judge の Face / Character Identity 評価を補うローカル計測。Shot 間
 - **Repair**: `face_identity_drift` は Reference Reinforcement を優先候補とする
 - **Series**: Episode をまたいでも Series 正本の `face_reference` を基準に計測する（F-29）
 - **実行**: ローカル実行。顔画像は外部へ送信しない。YuNet / SFace と ONNX Runtime（purego、CGO なしの Go 単一バイナリ）は M1 で検証済み（`spec/architecture/model-adapters.md` §10.1）。残る確認は SFace の学習データの権利関係（同 §8）。Windows のインストーラーは ONNX Runtime の DLL を同梱しており数値評価が動く。DLL かモデルが無いとき（ポータブル版・モデル未配置）は定性評価にフォールバックする（`spec/requirements/non-functional.md` §1、`spec/architecture/model-adapters.md` §10.1）
+- **生成テストの「画像から似せる」への利用**: 生成した画像の顔と参考の顔のコサイン類似度を、LLM の似てる度に重み付きで混ぜられる（設定 `models.json` の `gentest.match_face`。既定は混ぜない。顔が取れないときは LLM の点だけ。`spec/architecture/gentest/prompt-match.md`）。この用途の閾値は上の Character 別の較正とは別で、固定の写し方（`floor` / `ceil`）を使う
 
 ---
 

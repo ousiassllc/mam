@@ -167,15 +167,16 @@ func (s *Service) continued(ctx context.Context, r Request) (Request, int, error
 }
 
 // Estimate is what the confirmation shows: how many rounds at most, what they are estimated to cost and the warnings. The work of
-// the LLM has no price (a call of the Reasoning LLM is not in the Cost Ledger, and the plans of ChatGPT are not per call), so it
-// is a line without one that is left out of the total, like the translation of a batch.
+// the LLM is in it (#965): a line for the prompts and a line for the comparison, priced per token at the models of their routes. A
+// line whose model has no checked price (the plans of ChatGPT are not per call) is left out of the total with the warning no_price,
+// like the translation of a batch.
 type Estimate struct {
 	// ID identifies the request and the estimate: Run refuses a confirmation whose ID is not the one of the request it is asked to run now.
 	ID         string                  `json:"estimate_id"`
 	Request    Request                 `json:"request"`
 	Rounds     int                     `json:"rounds" jsonschema:"今回の実行で生成する最大の回数（目標に届けばそこで止まる）"`
 	Breakdown  []gentest.ModelEstimate `json:"breakdown"`
-	TotalUSD   float64                 `json:"total_usd" jsonschema:"最大の回数ぶんの見積り（LLM の分は含まない）"`
+	TotalUSD   float64                 `json:"total_usd" jsonschema:"最大の回数ぶんの見積り（画像と、単価の分かる LLM の呼び出し。単価なしの行は含まない）"`
 	Warnings   []gentest.Warning       `json:"warnings"`
 	MaxCostUSD float64                 `json:"max_cost_usd" jsonschema:"1 回の見積り額の上限（0 は上限なし）"`
 	// OverLimit is why the match cannot run ("" when it can): the estimate is over max_cost_usd.
@@ -210,13 +211,8 @@ func (s *Service) estimate(ctx context.Context, r Request) (Estimate, plan, erro
 		e.Warnings = append(e.Warnings, gentest.Warning{Model: p.model.ID, Code: gentest.WarnNoPrice, Message: p.model.Label + " は単価が分からないため、見積りの合計に入れません"})
 	}
 	e.Breakdown = append(e.Breakdown, line)
-	create, judge := s.m.Targets()
-	label := fmt.Sprintf("プロンプトの作成・修正（%s / %s）・比較（%s / %s）", create.Provider, create.Model, judge.Provider, judge.Model)
-	if create == judge {
-		label = fmt.Sprintf("プロンプトの作成・比較・修正（%s / %s）", create.Provider, create.Model)
-	}
-	e.Breakdown = append(e.Breakdown, gentest.ModelEstimate{Model: LLMLine, Label: label, Items: 2*p.rounds + 1, Basis: modelcatalog.BasisUnknown})
-	e.Warnings = append(e.Warnings, gentest.Warning{Model: LLMLine, Code: gentest.WarnNoPrice, Message: "LLM の呼び出しは単価が分からないため、見積りの合計に入れません"})
+	s.addLLM(&e, p.rounds)
+	e.TotalUSD = round4(e.TotalUSD)
 	switch {
 	case p.req.MaxCostUSD > 0 && e.TotalUSD > p.req.MaxCostUSD:
 		e.OverLimit = fmt.Sprintf("見積り %.4f USD が指定した上限の費用 %.4f USD を超えています。上限の回数を減らすか、安いモデルにしてください", e.TotalUSD, p.req.MaxCostUSD)

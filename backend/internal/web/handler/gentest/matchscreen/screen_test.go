@@ -15,7 +15,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -48,6 +50,20 @@ func newScreen(t *testing.T, scores []int, withMatch bool, opts ...gentesttest.O
 	if withMatch {
 		rig.UseMatch(f)
 	}
+	return screenOver(t, rig, f)
+}
+
+// newFaceScreen is a screen whose match mixes the face into the similarity (faces and mix as the Judge setting says).
+func newFaceScreen(t *testing.T, scores []int, faces facesim.Engine, mix imagematch.FaceMix, opts ...gentesttest.Option) *screen {
+	t.Helper()
+	rig := gentesttest.New(t, opts...)
+	f := &gentesttest.FakeMatchLLM{Scores: scores, Err: map[string]error{}}
+	rig.UseMatcher(imagematch.New(f, gentesttest.Target, gentesttest.Target).UseFaces(faces, mix))
+	return screenOver(t, rig, f)
+}
+
+func screenOver(t *testing.T, rig *gentesttest.Rig, f *gentesttest.FakeMatchLLM) *screen {
+	t.Helper()
 	svc := servicetest.New(t, service.Deps{DB: rig.DB, Credentials: credentialtest.New()})
 	settings := settingsroutes.New(t.TempDir()+"/llm.json", false, t.TempDir()+"/m.json", false)
 	settings.Gentest = rig.Svc

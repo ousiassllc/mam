@@ -8,7 +8,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 
 | メソッド | パス | 内容 |
 |---|---|---|
-| GET | `/generation-test` | 画面（作成フォーム・確認・進捗）。クエリ `model`（そのモデルを選んで開く。動画モデルなら動画のフォーム）・`prompt`（プロンプト履歴の ID でプロンプトを入れる）・`ref`（`<source>:<project>:<id>` の入力画像を足す） |
+| GET | `/generation-test` | 画面（作成フォーム・確認・進捗）。クエリ `model`（そのモデルを選んで開く。動画モデルなら動画のフォーム）・`prompt`（プロンプト履歴の ID でプロンプトを入れる）・`ref`（`<source>:<project>:<id>` の入力画像を足す）・`from_result`（プロンプトマッチの回など、結果の ID。その結果のプロンプト・モデル・縦横比を入れて開き、「モデルを足して実行すると同じプロンプトで比べられます」の案内を出す。Issue #965） |
 | GET | `/generation-test/form` | フォームを画像／動画で切り替える（クエリ: 入力済みのフォームの値。プロンプト・本数・縦横比は保つ。モデルの選択は外す） |
 | GET | `/generation-test/prompt-row` | プロンプト欄を 1 つ足す。`?from=<プロンプト履歴の ID>` で内容を入れる |
 | GET | `/generation-test/picker` | 入力画像の選択肢。`?project=<ID>`（そのプロジェクトのアセット・参照項目。無い ID は 404）または `?source=history`（履歴の成功した画像） |
@@ -27,9 +27,9 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | DELETE | `/generation-test/results/:id` | 結果とファイルの削除。成功は `HX-Redirect: /generation-test/history`。生成中は 409、無ければ 404 |
 | GET | `/generation-test/prompts` | プロンプト履歴（再利用のリンク・削除） |
 | GET | `/generation-test/match` | プロンプトマッチの画面（Issue #916。[../architecture/gentest/prompt-match.md](../architecture/gentest/prompt-match.md)）。参考の画像 1 枚・モデル・進め方（おまかせ / 1回だけ / 調整）・目標の似てる度・上限の回数・言葉の指示。クエリ `ref`（`<source>:<project>:<id>` の画像を参考にして開く）・`model`。プロンプトマッチが無いアプリは 503 |
-| POST | `/generation-test/match/estimate` | プロンプトマッチの見積り（multipart: `upload`（参考の画像）または `ref`・`model`・`mode`（`auto`/`once`/`adjust`）・`target_score`（1〜100）・`max_rounds`（1〜10）・`max_cost_usd`（この実行で使ってよい費用。見積りが超えるなら実行ボタンが無効）・`instruction`（1000 文字まで）・続きは `continue_batch_id`）。確認の区画（最大の回数・モデルの内訳・LLM の単価なしの行・上限超過）を返す。拒否は 422・上限超過は確認にそのまま出る。`middleware` のアップロード用ルートの一覧に載せ、本文の上限を広げている |
+| POST | `/generation-test/match/estimate` | プロンプトマッチの見積り（multipart: `upload`（参考の画像）または `ref`・`model`・`mode`（`auto`/`once`/`adjust`）・`target_score`（1〜100）・`max_rounds`（1〜10）・`max_cost_usd`（この実行で使ってよい費用。見積りが超えるなら実行ボタンが無効）・`instruction`（1000 文字まで）・続きは `continue_batch_id`）。確認の区画（最大の回数・モデルの内訳・LLM の呼び出しの行（単価の分かるものは合計に入る。分からないものは「単価なし」で入らない）・上限超過）を返す。拒否は 422・上限超過は確認にそのまま出る。`middleware` のアップロード用ルートの一覧に載せ、本文の上限を広げている |
 | POST | `/generation-test/match/run` | 確認の区画のフォームの送信。見積りをやり直し、`estimate_id` と合計が違う・上限を超えるなら 409、入力の誤りは 422。202 でタイムライン（`#gt-batch`）と、言葉の指示のフォーム（`#gt-match-adjust`。帯域外）を返し、確認の区画は空にする |
-| GET | `/generation-test/match/batches/:id` | タイムライン（いちばん似ている回・目標・各回の画像・似てる度・直したところ・違い・プロンプトと直す前のプロンプト・ベストのプロンプトのコピー／生成テストで使う）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
+| GET | `/generation-test/match/batches/:id` | タイムライン（いちばん似ている回・目標・各回の画像・似てる度（顔を混ぜているときは点の内訳）・直したところ・違い・プロンプトと直す前のプロンプト・ベストのプロンプトのコピー／生成テストで比べる・各回の「プロンプトで比べる」）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
 | POST | `/generation-test/match/batches/:id/cancel` | 取り消し。始めていない回は取り消し、次の回は始まらない（作っている途中の絵は終わるのを待つ） |
 | POST | `/generation-test/match/batches/:id/adjust` | 言葉の指示（`instruction`）と `mode`（`adjust` = 1 回直す・`auto` = 自動で続ける）。**実行中**は次の直しに取り込む（確認の区画に 1 行の通知）。**終わっていれば**続きの見積りを確認の区画に返す（実行は `/match/run` に `continue_batch_id` つきで） |
 | DELETE | `/generation-test/prompts/:id` | プロンプト履歴の削除（結果は残る）。一覧の区画を返す |
@@ -69,3 +69,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.6 | 2026-11-02 | プロンプトマッチ（`GET /generation-test/match` と `/match/estimate`・`/match/run`・`/match/batches/:id`・`.../cancel`・`.../adjust`）を足した。`GET /generation-test` に `from_result`（プロンプトマッチの回の結果のプロンプト・モデル・縦横比を入れて開く）。結果の詳細に、回の記録と「画像から似せる」への入口を足した | Issue #916 |
 | 1.7 | 2026-11-02 | `GET /generation-test/export`（結果の ZIP）を足した。履歴の書き出しバー（選んだカード・絞り込みの新しい順 N 件）の `id`・`latest` ほか | Issue #932 |
 | 1.8 | 2026-11-02 | `GET /generation-test/export` に、`HX-Request` のときの事前の確認（理由の断片・`HX-Redirect`）を足した | 統合レビュー（#932）。書き出せないときのプレーンテキストが画面全体を置き換え、戻る導線が無かった |
+| 1.9 | 2026-11-02 | プロンプトマッチ: 確認の区画の LLM の行を、単価の分かるものは合計に入れる 2 行に（Issue #965）。タイムラインに点の内訳（顔を混ぜているとき。Issue #964）と、各回の「プロンプトで比べる」（`GET /generation-test?from_result=<結果の id>`。その回のプロンプト・モデル・縦横比で開き、モデルを足して比較する案内を出す） | Issue #964・#965 |

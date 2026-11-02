@@ -3,7 +3,11 @@
 package gentesttest
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"image/color"
+	"image/png"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -23,8 +27,19 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 )
 
-// PNG is the bytes the fake image backends return (a valid 1x1 PNG).
-var PNG = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe\xa7\x9a\xa0\xa0\x00\x00\x00\x00IEND\xaeB`\x82")
+// PNG is the bytes the fake image backends return: a 1x1 PNG that decodes (a face engine and the picture check of the prompt match
+// read its pixels, not only its header).
+var PNG = onePixelPNG()
+
+func onePixelPNG() []byte {
+	img := image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	img.Set(0, 0, color.NRGBA{R: 200, G: 30, B: 30, A: 255})
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
 
 // Call is one request a fake backend got.
 type Call struct {

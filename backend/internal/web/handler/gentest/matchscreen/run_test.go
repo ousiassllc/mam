@@ -1,6 +1,8 @@
 package matchscreen_test
 
 import (
+	"context"
+	"image"
 	"net/http"
 	"net/url"
 	"strings"
@@ -9,8 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -184,4 +188,72 @@ func TestTheModelChoicesSayAFreeModelTheSameWordsAsTheGenerationTestForm(t *test
 
 	assert.Contains(t, page, "（無料（ローカル））")
 	assert.NotContains(t, page, "（無料）")
+}
+
+// sameFace finds the same face in every picture: the cosine similarity of the reference and of the generated image is 1.
+type sameFace struct{}
+
+func (sameFace) Faces(context.Context, image.Image) ([]facesim.Face, error) {
+	return []facesim.Face{{Embedding: facesim.Embedding{1, 0}}}, nil
+}
+
+// noFace finds no face in any picture.
+type noFace struct{}
+
+func (noFace) Faces(context.Context, image.Image) ([]facesim.Face, error) { return nil, nil }
+
+func TestTheTimelineAndTheDetailShowHowTheFaceWasMixedIntoTheScore(t *testing.T) {
+	// the LLM says 40; the face is 100 points (cosine 1 above the ceil) at a weight of 0.5: 0.5 x 40 + 0.5 x 100 = 70
+	mix := imagematch.FaceMix{Weight: 0.5, Floor: 0.2, Ceil: 0.7}
+	s := newFaceScreen(t, []int{40}, sameFace{}, mix)
+	_, body := s.estimate(matchForm("once"))
+	require.Equal(t, http.StatusAccepted, s.post(paths.GenerationTestPart("match", "run"), hiddenOf(t, body)).Code)
+	id := s.batchID()
+	done := s.settled(id)
+	assert.Contains(t, done, ">70%<", "the score is the mix")
+	assert.Contains(t, done, `data-testid="gt-match-scoring"`)
+	assert.Contains(t, done, "LLM 40点 × 50% ＋ 顔 100点（一致度 1.00）× 50%")
+
+	list, err := s.rig.Svc.Batch(t.Context(), id, true)
+	require.NoError(t, err)
+	detail := s.get(paths.GenerationTestPart("results", list.Results[0].ID)).Body.String()
+	assert.Contains(t, detail, "点の内訳")
+	assert.Contains(t, detail, "LLM 40点 × 50% ＋ 顔 100点")
+}
+
+func TestTheTimelineSaysWhyTheScoreIsTheLLMsAloneWhenTheFaceCannotBeUsed(t *testing.T) {
+	mix := imagematch.FaceMix{Weight: 0.5, Floor: 0.2, Ceil: 0.7}
+	s := newFaceScreen(t, []int{40}, noFace{}, mix)
+	_, body := s.estimate(matchForm("once"))
+	require.Equal(t, http.StatusAccepted, s.post(paths.GenerationTestPart("match", "run"), hiddenOf(t, body)).Code)
+	done := s.settled(s.batchID())
+	assert.Contains(t, done, ">40%<", "the LLM's score alone")
+	assert.Contains(t, done, "LLM の点だけ（参考の画像に顔が見つかりません）")
+}
+
+func TestTheTimelineShowsNoBreakdownWhenTheFaceIsNotMixedIn(t *testing.T) {
+	s := newScreen(t, []int{90}, true)
+	_, body := s.estimate(matchForm("once"))
+	require.Equal(t, http.StatusAccepted, s.post(paths.GenerationTestPart("match", "run"), hiddenOf(t, body)).Code)
+	assert.NotContains(t, s.settled(s.batchID()), `data-testid="gt-match-scoring"`)
+}
+
+func TestEveryRoundWithAPictureCanOpenTheGenerationTestWithItsPromptToCompareModels(t *testing.T) {
+	s := newScreen(t, []int{40, 90}, true)
+	_, body := s.estimate(matchForm("auto"))
+	require.Equal(t, http.StatusAccepted, s.post(paths.GenerationTestPart("match", "run"), hiddenOf(t, body)).Code)
+	id := s.batchID()
+	done := s.settled(id)
+	list, err := s.rig.Svc.Batch(t.Context(), id, true)
+	require.NoError(t, err)
+	require.Len(t, list.Results, 2)
+	assert.Equal(t, 2, strings.Count(done, `data-testid="gt-match-round-use"`), "not only the best round")
+	for _, r := range list.Results {
+		assert.Contains(t, done, `href="`+paths.GenerationTest()+`?from_result=`+r.ID+`"`)
+	}
+
+	// the link opens the generation test with the prompt and the model of that round, and says how to compare
+	page := s.get(paths.GenerationTest() + "?from_result=" + list.Results[0].ID).Body.String()
+	assert.Contains(t, page, "prompt 1")
+	assert.Contains(t, page, "同じプロンプトで比べられます")
 }

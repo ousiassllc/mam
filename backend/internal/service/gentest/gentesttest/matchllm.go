@@ -99,7 +99,15 @@ func (f *FakeMatchLLM) Complete(_ context.Context, agent llm.Agent, req llm.Requ
 	return llm.Response{Text: string(raw), Provider: llm.ProviderAnthropic, Model: "fake-llm"}, nil
 }
 
-// UseMatch gives the Service the prompt match through f, and returns it.
-func (r *Rig) UseMatch(f *FakeMatchLLM) *match.Service {
-	return match.New(match.Deps{Gentest: r.Svc, Matcher: imagematch.New(f, Target, Target)})
+// UseMatch gives the Service the prompt match through f, and returns it. The targets the estimate names (Target) have no price.
+func (r *Rig) UseMatch(f *FakeMatchLLM) *match.Service { return r.UseMatchWith(f, Target, Target) }
+
+// UseMatchWith is UseMatch with the targets of the two routes: the one that writes the prompts and the one that compares.
+func (r *Rig) UseMatchWith(f *FakeMatchLLM, create, judge llm.Target) *match.Service {
+	return r.UseMatcher(imagematch.New(f, create, judge))
+}
+
+// UseMatcher gives the Service the prompt match through m (a Matcher a test has set up, for example with a face engine).
+func (r *Rig) UseMatcher(m *imagematch.Matcher) *match.Service {
+	return match.New(match.Deps{Gentest: r.Svc, Matcher: m})
 }

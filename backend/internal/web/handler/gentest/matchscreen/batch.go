@@ -66,20 +66,28 @@ func batchView(v match.View) view.MatchBatch {
 		}
 		if r.HasFile {
 			round.ImageURL = paths.GenerationTestPart("results", r.ResultID, "file")
+			if r.Prompt != "" {
+				round.UseURL = useURL(r.ResultID)
+			}
 		}
 		if r.Score != nil {
 			round.Score, round.Percent, round.Reached = percentText(*r.Score), *r.Score, *r.Score >= v.Target
+			round.ScoreNote = scoringText(r.Scoring)
 		}
 		if round.Active && r.HasFile && r.Score == nil {
 			round.StatusText = "比べています"
 		}
 		if r.Best {
-			b.BestUseURL = paths.GenerationTest() + "?from_result=" + r.ResultID
+			b.BestUseURL = useURL(r.ResultID)
 		}
 		b.Rounds = append(b.Rounds, round)
 	}
 	return b
 }
+
+// useURL opens the generation test with the prompt of a round, the model and the shape it was made with: the models of the comparison
+// are then added next to it (GET /generation-test?from_result=).
+func useURL(resultID string) string { return paths.GenerationTest() + "?from_result=" + resultID }
 
 // DetailKVs are the lines the detail of a result adds when the result is a round of a prompt match: what it measured, what was
 // fixed and what the user said. Nothing for any other result.
@@ -104,6 +112,7 @@ func DetailKVs(ctx context.Context, svc *gentest.Service, batchID, resultID stri
 		}
 		if r.Score != nil {
 			add("似てる度", percentText(*r.Score))
+			add("点の内訳", scoringText(r.Scoring))
 		}
 		add("残った違い", strings.Join(r.Differences, " / "))
 		add("直したところ", r.Change)

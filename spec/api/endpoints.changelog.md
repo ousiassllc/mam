@@ -182,3 +182,4 @@
 | 1.175 | 2026-11-02 | §1 の表に `GET /settings/licenses`・`GET /settings/licenses/:id`（設定画面「第三者のライセンス」と、項目の全文の断片）の行を足した（[endpoints-settings.md](endpoints-settings.md) §1・§5.4） | Issue #910 |
 | 1.176 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.5）の `GET /generation-test/history` に、`live=1`（変わる部分だけ）・最終更新の時刻・更新ボタン・動いている結果があるあいだの 2 秒ごとの取り直しを足した | Issue #925 |
 | 1.177 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.6）に、プロンプトマッチの画面とそのルート（`/generation-test/match` ほか）を足した | Issue #916 |
+| 1.178 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.9）に、プロンプトマッチの点の内訳・各回の「プロンプトで比べる」・LLM の行の単価を足した | Issue #964・#965 |

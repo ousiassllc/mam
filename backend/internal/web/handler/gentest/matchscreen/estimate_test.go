@@ -59,14 +59,15 @@ func TestThePageOpensWithAnImageOfTheHistoryAsTheReference(t *testing.T) {
 	assert.Contains(t, body, `name="ref" value="history::abc123"`)
 }
 
-func TestEstimateShowsTheRoundsTheTotalAndTheUnpricedLLMLine(t *testing.T) {
+func TestEstimateShowsTheRoundsTheTotalAndTheUnpricedLLMLines(t *testing.T) {
 	s := newScreen(t, nil, true)
 	rec, body := s.estimate(matchForm("auto"))
 	require.Equal(t, http.StatusOK, rec.Code, body)
 	assert.Contains(t, body, `data-testid="gt-confirm"`)
 	assert.Contains(t, body, "最大 <strong>4</strong> 回")
 	assert.Contains(t, body, "$0.1200", "4 rounds x 0.03")
-	assert.Contains(t, body, "プロンプトの作成・比較・修正")
+	assert.Contains(t, body, "プロンプトの作成・修正")
+	assert.Contains(t, body, "似てる度の比較")
 	assert.Contains(t, body, "単価なし")
 	assert.Contains(t, body, paths.GenerationTestPart("match", "run"), "the confirmation runs the match, not a batch")
 	form := hiddenOf(t, body)
