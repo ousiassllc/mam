@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
@@ -43,8 +44,11 @@ import (
 
 // Services are the services of the sections of the settings screen.
 type Services struct {
-	LLM    *llmassign.Service
-	Models *modelsettings.Service
+	LLM *llmassign.Service
+	// LLMModels are the models the LLM pull-downs offer for each provider (the API's list, else the candidates of mam). New
+	// builds one that knows no key and no sign-in (the candidates only); the app replaces it.
+	LLMModels *llmmodels.Service
+	Models    *modelsettings.Service
 	// Update checks for a newer version. Nil in the headless server, which cannot update itself: the
 	// version section then shows the version only and has no check route.
 	Update *appupdate.Service
@@ -84,7 +88,7 @@ type Services struct {
 // New builds the services over the settings files (llm.json / models.json, or the files the operator pinned
 // by a start option, which the screen shows and does not write).
 func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Services {
-	return &Services{LLM: llmassign.New(llmFile, llmPinned), Models: modelsettings.New(modelFile, modelPinned)}
+	return &Services{LLM: llmassign.New(llmFile, llmPinned), LLMModels: llmmodels.New(llmmodels.Options{}), Models: modelsettings.New(modelFile, modelPinned)}
 }
 
 // Register adds the pages of the settings screen (settingspage.Register: the overview and "API キーとログイン" always,
@@ -124,7 +128,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.PUT(paths.ChatGPTCodexPath(), chatgpthandler.CodexSetPath(s.ChatGPT))
 	}
 	if s != nil {
-		llmhandler.Register(engine, s.LLM, pages.Page(paths.SettingsLLM))
+		llmhandler.Register(engine, s.LLM, s.LLMModels, pages.Page(paths.SettingsLLM))
 		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
 	if s != nil && s.Audio != nil {

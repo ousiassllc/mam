@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/onboarding"
 )
 
@@ -32,6 +33,11 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 		}
 	})
 	settings.ChatGPT = gpt
+	models := llmmodels.Options{Keys: settings.Keys, Logger: logger}
+	if gpt != nil {
+		models.ChatGPT = llmmodels.FromChatGPT(gpt)
+	}
+	settings.LLMModels = llmmodels.New(models)
 	settings.ModelManager, settings.LocalRuntimes = services.ModelManager, services.LocalRuntimes
 	settings.Audio = newAudioSettings(cfg, services.LocalRuntimes, settings.Keys)
 	settings.Models.SetHidden(services.ModelManager.HidesModel)

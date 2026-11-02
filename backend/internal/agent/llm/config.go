@@ -138,7 +138,7 @@ func (c Config) breakerOpen() time.Duration {
 const (
 	defaultClaude = "claude-opus-4-5"
 	defaultGPT    = "gpt-5"
-	defaultGemini = "gemini-3.1-pro"
+	defaultGemini = "gemini-3.1-pro-preview"
 )
 
 func claude() Target { return Target{ProviderAnthropic, defaultClaude} }

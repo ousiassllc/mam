@@ -50,11 +50,36 @@ type Data struct {
 	MaxModelLength int
 }
 
+// ModelOption is one model of the pull-down: its id (what is saved) and, when the provider gave one, its display name.
+type ModelOption struct {
+	ID   string
+	Name string
+}
+
+// ModelField is the model pull-down of one target: the models of the provider, where they come from, and the model chosen.
+type ModelField struct {
+	// Agent and Role ("primary" / "fallback") say which field it is (the fragment is fetched again when the provider changes).
+	Agent, Role string
+	Provider    string
+	Options     []ModelOption
+	// Selected is the model the pull-down shows as chosen; Unlisted is whether it is none of Options (a saved name the provider
+	// does not list: it stays selectable, with a warning, and can be saved).
+	Selected string
+	Unlisted bool
+	// FromAPI is whether Options is the list the provider gave (else the candidates mam ships); Reason says why it is not.
+	FromAPI bool
+	Reason  string
+	// Default is the model the program ships for this target.
+	Default Target
+}
+
 // Form is what the modal of an Agent is drawn from: its row and, after a refusal, why and what was typed (Row holds it).
 type Form struct {
 	Row            Row
 	Providers      []string
 	MaxModelLength int
+	// Primary and Fallback are the model pull-downs of the two targets.
+	Primary, Fallback ModelField
 	// Error is why the last save was refused; Blame is the field it is about ("primary.model": the target and the field),
 	// which carries aria-invalid and the focus. Empty when no field is to blame.
 	Error, Blame string
@@ -76,3 +101,35 @@ func RowID(agent string) string { return "llm-row-" + agent }
 func FocusKey(agent string) string { return "edit-" + agent }
 
 func fieldID(role, field string) string { return "llm-" + role + "-" + field }
+
+// ModelFieldID is the id of the box that holds the model pull-down of a role (the provider's change replaces its content).
+func ModelFieldID(role string) string { return fieldID(role, "model-field") }
+
+// SaveButtonID is the id of the save button of the modal (a change of provider locks it until the models have come).
+const SaveButtonID = "llm-save"
+
+// Label is the option's text: the display name with the id, or the id alone.
+func (o ModelOption) Label() string {
+	if o.Name == "" || o.Name == o.ID {
+		return o.ID
+	}
+	return o.Name + "（" + o.ID + "）"
+}
+
+func groupLabel(m ModelField) string {
+	if m.FromAPI {
+		return "プロバイダーの API の一覧"
+	}
+	return "mam の既定候補"
+}
+
+// sourceNote says where the models come from, and, when they are the candidates of mam, why.
+func sourceNote(m ModelField) string {
+	if m.FromAPI {
+		return "出所: プロバイダーの API の一覧（このアカウント・API キーで使えるモデル）"
+	}
+	if m.Reason != "" {
+		return "出所: mam の既定候補（" + m.Reason + "）"
+	}
+	return "出所: mam の既定候補"
+}

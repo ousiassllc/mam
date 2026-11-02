@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
@@ -64,14 +65,10 @@ func find(v llmassign.View, agent string) (llmassign.Entry, bool) {
 	return v.Entries[i], true
 }
 
-func form(v llmassign.View, e llmassign.Entry) view.Form {
-	return view.Form{Row: rowOf(e), Providers: v.Providers, MaxModelLength: llmassign.MaxModelBytes}
-}
-
 // Edit answers the modal that edits the Agent :agent (GET /settings/llm/agents/:agent/edit). An unknown Agent is 404 and a
 // pinned file 409, each with a modal that says so. A request that is not HTMX (the address typed in, a reload) gets page,
 // the category page.
-func Edit(svc *llmassign.Service, page gin.HandlerFunc) gin.HandlerFunc {
+func Edit(svc *llmassign.Service, models *llmmodels.Service, page gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !settingshttp.IsHTMX(c) {
 			page(c)
@@ -85,7 +82,7 @@ func Edit(svc *llmassign.Service, page gin.HandlerFunc) gin.HandlerFunc {
 		case v.Pinned:
 			settingshttp.Render(c, http.StatusConflict, modal.Notice(e.Label+" の LLM", pinnedReason))
 		default:
-			settingshttp.Render(c, http.StatusOK, view.Modal(form(v, e)))
+			settingshttp.Render(c, http.StatusOK, view.Modal(form(c.Request.Context(), models, v, e)))
 		}
 	}
 }
@@ -94,24 +91,24 @@ func Edit(svc *llmassign.Service, page gin.HandlerFunc) gin.HandlerFunc {
 // "fallback.provider", "fallback.model") for the modal that sent it. The Agent is saved with the saved routes of the others,
 // checked together. The answer is the row replaced out of band, a toast and the event that closes the modal; 422 is the
 // modal again with why and what was typed (the file is then untouched), 409 a pinned file, 404 an unknown Agent.
-func SaveAgent(svc *llmassign.Service) gin.HandlerFunc {
+func SaveAgent(svc *llmassign.Service, models *llmmodels.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		typed := llmassign.Route{Primary: formTarget(c, "primary"), Fallback: formTarget(c, "fallback")}
-		change(c, svc, func(llmassign.Entry) llmassign.Route { return typed }, &typed, " の LLM を保存しました")
+		change(c, svc, models, func(llmassign.Entry) llmassign.Route { return typed }, &typed, " の LLM を保存しました")
 	}
 }
 
 // ResetAgent puts the Agent :agent back to the default (DELETE /settings/llm/agents/:agent): the saved route is the default
 // again, which the file does not keep. It answers like SaveAgent.
-func ResetAgent(svc *llmassign.Service) gin.HandlerFunc {
+func ResetAgent(svc *llmassign.Service, models *llmmodels.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		change(c, svc, func(e llmassign.Entry) llmassign.Route { return e.Default }, nil, " の LLM を既定に戻しました")
+		change(c, svc, models, func(e llmassign.Entry) llmassign.Route { return e.Default }, nil, " の LLM を既定に戻しました")
 	}
 }
 
 // change saves the route that route makes of the Agent of the request and answers. typed, when not nil, is what the modal's
 // form held: it is drawn again when the save is refused.
-func change(c *gin.Context, svc *llmassign.Service, route func(llmassign.Entry) llmassign.Route, typed *llmassign.Route, done string) {
+func change(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, route func(llmassign.Entry) llmassign.Route, typed *llmassign.Route, done string) {
 	agent := c.Param("agent")
 	v := svc.View()
 	e, ok := find(v, agent)
@@ -133,10 +130,10 @@ func change(c *gin.Context, svc *llmassign.Service, route func(llmassign.Entry) 
 		settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(row), atoms.SuccessToastOOB(e.Label+done+"。"+restartNeeded)))
 		return
 	}
-	f := form(v, e)
-	if typed != nil {
-		f.Row.Primary, f.Row.Fallback = target(typed.Primary), target(typed.Fallback)
+	if typed != nil { // the refused modal is drawn again with what was typed
+		e.Route = *typed
 	}
+	f := form(c.Request.Context(), models, v, e)
 	var invalid *llmassign.InvalidError
 	status := http.StatusUnprocessableEntity
 	switch {
@@ -156,8 +153,13 @@ func change(c *gin.Context, svc *llmassign.Service, route func(llmassign.Entry) 
 }
 
 // formTarget is the provider and the model of the target role ("primary" / "fallback") in the form.
+// A name typed in "<role>.model_custom" (for a model no list has) wins over the pull-down's "<role>.model".
 func formTarget(c *gin.Context, role string) llmassign.Target {
-	return llmassign.Target{Provider: c.PostForm(role + ".provider"), Model: strings.TrimSpace(c.PostForm(role + ".model"))}
+	model := strings.TrimSpace(c.PostForm(role + ".model_custom"))
+	if model == "" {
+		model = strings.TrimSpace(c.PostForm(role + ".model"))
+	}
+	return llmassign.Target{Provider: c.PostForm(role + ".provider"), Model: model}
 }
 
 // Save stores the whole assignment of the form (PUT /settings/llm; fields "<agent>.primary.provider",
@@ -204,10 +206,11 @@ func answer(c *gin.Context, svc *llmassign.Service, err error, notice string) {
 // Register adds the routes of the category: the modal (GET paths.LLMAgentEdit), the save and the reset of one Agent (PUT /
 // DELETE paths.LLMAgent) and of the whole assignment (PUT / DELETE paths.LLMSettings). page answers the modal route for a
 // request that is not HTMX.
-func Register(engine *gin.Engine, svc *llmassign.Service, page gin.HandlerFunc) {
-	engine.GET(paths.LLMAgentEdit(":agent"), Edit(svc, page))
-	engine.PUT(paths.LLMAgent(":agent"), SaveAgent(svc))
-	engine.DELETE(paths.LLMAgent(":agent"), ResetAgent(svc))
+func Register(engine *gin.Engine, svc *llmassign.Service, models *llmmodels.Service, page gin.HandlerFunc) {
+	engine.GET(paths.LLMAgentEdit(":agent"), Edit(svc, models, page))
+	engine.GET(paths.LLMModelField(":agent", ":role"), ModelField(svc, models, page))
+	engine.PUT(paths.LLMAgent(":agent"), SaveAgent(svc, models))
+	engine.DELETE(paths.LLMAgent(":agent"), ResetAgent(svc, models))
 	engine.PUT(paths.LLMSettings(), Save(svc))
 	engine.DELETE(paths.LLMSettings(), Reset(svc))
 }

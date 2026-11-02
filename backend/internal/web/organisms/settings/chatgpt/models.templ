@@ -37,7 +37,7 @@ templ ModelsModal(m ModelList) {
 		} else if len(m.Models) == 0 {
 			<p class="text-sm text-neutral-400">表示できるモデルがありません。</p>
 		} else {
-			<p class="text-xs text-neutral-400">「LLM の割り当て」のモデル欄に、次のモデル名（太字）を入力します。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p>
+			<p class="text-xs text-neutral-400">「LLM の割り当て」のモデル欄のプルダウンにも、同じ一覧が「プロバイダーの API の一覧」として出ます（モデル名は太字）。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p>
 			<ul class="flex flex-col gap-1 text-sm" data-testid={ modelsTestID(m.Kind) }>
 				for _, model := range m.Models {
 					<li>

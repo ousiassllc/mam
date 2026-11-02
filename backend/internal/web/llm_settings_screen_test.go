@@ -101,11 +101,14 @@ func agentForm(primaryProvider, primaryModel, fallbackProvider, fallbackModel st
 	}
 }
 
-func inputValue(t *testing.T, html, name string) string {
+// selectedValue is the option the <select> named name shows as chosen ("" when none is).
+func selectedValue(t *testing.T, html, name string) string {
 	t.Helper()
-	m := regexp.MustCompile(`<input[^>]*name="` + regexp.QuoteMeta(name) + `"[^>]*>`).FindString(html)
+	m := regexp.MustCompile(`(?s)<select[^>]*name="` + regexp.QuoteMeta(name) + `"[^>]*>.*?</select>`).FindString(html)
 	require.NotEmpty(t, m, name)
-	v := regexp.MustCompile(`value="([^"]*)"`).FindStringSubmatch(m)
-	require.Len(t, v, 2, m)
+	v := regexp.MustCompile(`<option value="([^"]*)" selected`).FindStringSubmatch(m)
+	if v == nil {
+		return ""
+	}
 	return v[1]
 }
