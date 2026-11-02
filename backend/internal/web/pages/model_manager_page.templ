@@ -1,26 +1,19 @@
 package pages
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
-	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // ModelManagerPage is GET /model-manager: the bundled ComfyUI engine, the local image and video models to install,
 // and the trial generations. It belongs to no Project.
 templ ModelManagerPage(csrfToken string, d modelmgr.Data) {
-	@layout.AppLayout("モデルマネージャー", csrfToken) {
-		<main class="mx-auto flex max-w-4xl flex-col gap-8 p-8">
-			<div>
-				@atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")
-				<h1 class="mb-1 mt-3 text-xl font-semibold">モデルマネージャー</h1>
-				<p class="text-sm text-neutral-400">
-					ローカルの画像・動画モデルを導入して、すぐに試し生成できます。すべてのプロジェクトで共通です（接続先の登録は
-					<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>）。
-				</p>
-			</div>
+	@layout.AppLayout("モデルマネージャー", csrfToken, sidenav.At(sidenav.ModelManager)) {
+		@pagehead.Main(pagehead.Medium) {
+			@pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入して、すぐに試し生成できます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。")
 			@modelmgr.Body(d)
-		</main>
+		}
 	}
 }

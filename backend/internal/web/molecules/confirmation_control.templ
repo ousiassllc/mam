@@ -3,6 +3,7 @@ package molecules
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -47,18 +48,12 @@ templ ConfirmationControl(p domain.Project) {
 			}
 		}
 		if p.ConfirmationLevel == domain.ConfirmCustomCheck {
-			<fieldset class="flex flex-wrap gap-x-3 gap-y-1">
+			<fieldset class="flex flex-wrap gap-2">
 				<legend class="sr-only">確認ポイント</legend>
 				for _, c := range domain.SelectableCheckpoints() {
-					<label class="flex items-center gap-1">
-						@atoms.Choice("", templ.Attributes{
-							"type":    "checkbox",
-							"name":    "checkpoints",
-							"value":   string(c),
-							"checked": hasCheckpoint(p, c),
-						})
+					@pick.Card(templ.Attributes{"type": "checkbox", "name": "checkpoints", "value": string(c), "checked": hasCheckpoint(p, c)}, "px-2 py-1 text-xs") {
 						{ c.Label() }
-					</label>
+					}
 				}
 			</fieldset>
 		}

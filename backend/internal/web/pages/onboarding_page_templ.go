@@ -11,6 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/onboarding"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // OnboardingPage is one step of the first-run guide (spec/components/onboarding-screen.md): the frame with its progress and
@@ -72,7 +73,7 @@ func OnboardingPage(csrfToken, title string, f onboarding.Frame, body templ.Comp
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.AppLayoutAt(title, csrfToken, "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.AppLayoutAt(title, csrfToken, "", sidenav.Off()).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

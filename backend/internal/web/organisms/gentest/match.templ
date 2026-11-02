@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -73,7 +74,7 @@ templ MatchForm(c MatchCompose) {
 					for _, m := range MatchModes {
 						<label class="relative block cursor-pointer" title={ m.Hint }>
 							<input type="radio" name={ FieldMatchMode } value={ m.Value } checked?={ c.Mode == m.Value } class="peer sr-only" data-gt-match-mode data-testid={ "gt-match-mode-" + m.Value }/>
-							<span class="block rounded-md border border-neutral-800 px-2 py-2 text-center text-sm transition-shadow hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-checked:shadow-[0_0_12px_1px] peer-checked:shadow-indigo-400/40 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 motion-reduce:transition-none">{ m.Label }</span>
+							<span class={ "block rounded-md border border-neutral-800 px-2 py-2 text-center text-sm", pick.Glow }>{ m.Label }</span>
 						</label>
 					}
 				</div>

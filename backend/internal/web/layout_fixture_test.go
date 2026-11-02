@@ -12,11 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // updateFixturesEnv rewrites the layout fixtures instead of comparing with them.
@@ -36,6 +38,8 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 				{Agent: "director", Label: "Director", Purpose: "カットの演出", Primary: target, Fallback: llm.Target{Provider: "openai", Model: "gpt-5"}, DefaultPrimary: target, DefaultFallback: target, Restart: true},
 			},
 		}),
+		// #915: the side menu of a Project's screen (the longest menu, a long Project name); the test puts the page beside it.
+		"layout-sidenav.html":   sidenav.Nav(sidenav.InProject(sidenav.Brief, domain.Project{ID: "p1", Name: "とても長い名前のプロジェクト、コーヒー店の三十秒の紹介動画"})),
 		"layout-hf-import.html": modelmgr.HFImportSection(modelmgr.HFImport{Kind: "text-to-image"}),
 		// #906: the model cards of the generation test, in both modes (the long unit prices of the video models are what
 		// pushes a card wide).

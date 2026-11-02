@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // ChatWorkspacePage is GET /projects/:id: the Chat Workspace as a full page.
@@ -54,7 +55,7 @@ func ChatWorkspacePage(csrfToken string, p domain.Project, msgs []domain.ThreadM
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.AppLayout(p.Name, csrfToken).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.AppLayout(p.Name, csrfToken, sidenav.InProject(sidenav.Chat, p)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

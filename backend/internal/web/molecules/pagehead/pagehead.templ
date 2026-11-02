@@ -1,0 +1,47 @@
+// Package pagehead is the frame every screen of the app shares inside the side menu (spec/components/side-menu.md §6):
+// the <main> with one set of margins and widths, and the heading with the title, what it is about, and the "?" help that
+// holds the explanation. A screen that has its own frame uses these two so that margins, text sizes and the heading level
+// are the same everywhere (#915).
+package pagehead
+
+import "github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+
+// Width is the widest the content of a screen gets: the class of its <main>.
+type Width string
+
+// The widths of the screens. Narrow is a form, Wide a list or a workspace, Full a screen that holds an embedded app.
+const (
+	Narrow Width = "max-w-3xl"
+	Medium Width = "max-w-4xl"
+	Wide   Width = "max-w-5xl"
+	Wider  Width = "max-w-6xl"
+	Full   Width = "max-w-7xl"
+)
+
+// Main is the <main> of a screen: centred at most Width wide, the blocks of the screen one under the other with the same gap.
+templ Main(w Width) {
+	<main class={ "mx-auto flex w-full flex-col gap-6 p-4 md:p-8", string(w) }>
+		{ children... }
+	</main>
+}
+
+// Header is the heading of a screen: the h1, the line under it that says whose screen it is (the Project, empty for none)
+// and, when lead is not empty, the "?" beside the h1 that opens it. It carries no link back: the side menu is the way
+// to another screen.
+templ Header(title, subtitle, lead string) {
+	<header class="flex flex-col gap-1">
+		@help.Row(help.ID(title), title, leadText(lead)) {
+			<h1 class="text-xl font-semibold">{ title }</h1>
+		}
+		if subtitle != "" {
+			<p class="truncate text-sm text-neutral-400">{ subtitle }</p>
+		}
+	</header>
+}
+
+func leadText(lead string) templ.Component {
+	if lead == "" {
+		return nil
+	}
+	return help.Text(lead)
+}

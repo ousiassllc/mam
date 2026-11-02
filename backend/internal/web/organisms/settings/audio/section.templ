@@ -2,6 +2,7 @@ package audio
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -52,31 +53,25 @@ templ providerCard(p Provider) {
 templ providerDetails(p Provider) {
 	<fieldset class="flex flex-col gap-2">
 		<legend class="sr-only">{ p.Title }のプロバイダー</legend>
-		<label class="flex items-start gap-2 text-sm">
-			@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": p.Field, "value": p.CloudValue, "checked": cloudChecked(p), "data-testid": "audio-" + p.Field + "-cloud"})
-			<span>
-				{ p.CloudLabel }
-				<span class="block text-xs text-neutral-400" data-testid={ "audio-key-" + p.Field }>
-					if p.CloudKeySet {
-						API キー（{ p.CloudKey }）: 設定済み
-					} else {
-						API キー（{ p.CloudKey }）: 未設定。
-						<a class="underline" href={ templ.SafeURL(paths.SettingsCategory(paths.SettingsAPIKeys)) }>「API キーとログイン」で登録してください</a>
-					}
-				</span>
+		@pick.Card(templ.Attributes{"type": "radio", "name": p.Field, "value": p.CloudValue, "checked": cloudChecked(p), "data-testid": "audio-" + p.Field + "-cloud"}, "flex flex-col gap-1 p-3 text-sm") {
+			<span>{ p.CloudLabel }</span>
+			<span class="text-xs text-neutral-400" data-testid={ "audio-key-" + p.Field }>
+				if p.CloudKeySet {
+					API キー（{ p.CloudKey }）: 設定済み
+				} else {
+					API キー（{ p.CloudKey }）: 未設定。
+					<a class="underline" href={ templ.SafeURL(paths.SettingsCategory(paths.SettingsAPIKeys)) }>「API キーとログイン」で登録してください</a>
+				}
 			</span>
-		</label>
+		}
 		if p.Local != nil {
-			<label class="flex items-start gap-2 text-sm">
-				@atoms.Choice("mt-1", templ.Attributes{
-					"type": "radio", "name": p.Field, "value": LocalValue, "checked": p.Selected == LocalValue && p.Local.Supported,
-					"disabled": !p.Local.Supported, "aria-describedby": "audio-state-" + p.Field, "data-testid": "audio-" + p.Field + "-local",
-				})
-				<span>
-					{ p.LocalLabel }
-					@atoms.BadgeWith(p.Local.Tone, p.Local.State, templ.Attributes{"data-testid": "audio-state-badge-" + p.Field})
-				</span>
-			</label>
+			@pick.Card(templ.Attributes{
+				"type": "radio", "name": p.Field, "value": LocalValue, "checked": p.Selected == LocalValue && p.Local.Supported,
+				"disabled": !p.Local.Supported, "aria-describedby": "audio-state-" + p.Field, "data-testid": "audio-" + p.Field + "-local",
+			}, "flex flex-wrap items-center gap-2 p-3 text-sm") {
+				<span>{ p.LocalLabel }</span>
+				@atoms.BadgeWith(p.Local.Tone, p.Local.State, templ.Attributes{"data-testid": "audio-state-badge-" + p.Field})
+			}
 			@localState(p)
 		}
 		if p.Note != "" {
@@ -86,7 +81,7 @@ templ providerDetails(p Provider) {
 }
 
 templ localState(p Provider) {
-	<div id={ "audio-state-" + p.Field } class="ml-6 flex flex-col gap-2 text-xs text-neutral-400" data-testid={ "audio-local-" + p.Field }>
+	<div id={ "audio-state-" + p.Field } class="flex flex-col gap-2 px-1 text-xs text-neutral-400" data-testid={ "audio-local-" + p.Field }>
 		if !p.Local.Supported {
 			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-unsupported-" + p.Field }>
 				<p>この PC では { p.Local.Name } を選べません。{ p.CloudLabel } のまま使えます。</p>

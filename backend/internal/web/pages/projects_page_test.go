@@ -15,11 +15,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
+// renderProjectsPage is the page without the side menu: the menu links to the same screens as the cards (side-menu.md §6), and
+// these tests are about what the page itself holds.
 func renderProjectsPage(t *testing.T, projects ...domain.Project) string {
 	t.Helper()
 	var sb strings.Builder
 	require.NoError(t, pages.ProjectsPage("tok", projects, organisms.NewProjectFormData{}).Render(context.Background(), &sb))
-	return sb.String()
+	html := sb.String()
+	return html[strings.Index(html, `id="content"`):]
 }
 
 // The tools are seven cards in three groups under the Project list; the status of five of them is read after the page is
@@ -76,7 +79,7 @@ func TestProjectsPage_WithoutProjectsTheCardsAreTheSame(t *testing.T) {
 func TestProjectsPage_IsOneWideColumnWithThreeCardColumns(t *testing.T) {
 	html := renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"})
 
-	assert.Contains(t, html, `<main class="mx-auto max-w-5xl p-8">`)
+	assert.Contains(t, html, `<main class="mx-auto flex w-full flex-col gap-6 p-4 md:p-8 max-w-5xl">`)
 	assert.NotContains(t, html, "max-w-3xl", "the heading, the forms and the list are not in a narrower wrapper")
 	assert.Equal(t, 3, strings.Count(html, `class="mt-2 grid grid-cols-3 gap-4"`), "each of the three groups is three columns")
 	assert.NotContains(t, html, "grid-cols-2")

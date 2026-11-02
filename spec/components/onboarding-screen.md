@@ -1,5 +1,7 @@
 # 画面仕様: 初回ガイド（ウォークスルーと初期セットアップ）
 
+> **#915 の追記（2026-11-02）**: このガイドは左メニューを持たない（`sidenav.Off()`）。ほかの全画面は左メニューを持つ。詳細は [side-menu.md](side-menu.md)。
+
 > **状態: 実装済み**（Issue #863）。ルートと応答は [../api/endpoints-onboarding.md](../api/endpoints-onboarding.md)。設定の保存先・モーダル・一覧の部品は [settings-screen.md](settings-screen.md)・[shared-ui-parts.md](shared-ui-parts.md) をそのまま使い、新しく持つのは「初回かどうかのフラグ」と、ガイドの枠・紹介の文面・ffmpeg の確認・Mac の案内だけである。
 
 起動直後にプロジェクト一覧が出るだけでは、何を設定すれば使えるのかが初めての人に分かりにくい。API キーも ChatGPT のログインも ffmpeg も無くても mam は起動するが、機能は使えなかったり縮退したりする。**初回だけ**、ウォークスルー（mam で何ができるか）→ 初期セットアップ（順番に入れる）→ プロジェクト一覧の順に案内する。

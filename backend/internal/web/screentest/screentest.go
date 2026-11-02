@@ -31,6 +31,8 @@ import (
 type Screen struct {
 	T   *testing.T
 	Rig *mmtest.Rig
+	// Svc is the service layer behind the screen (to create a Project the pages of the app can be opened for).
+	Svc *service.Services
 	// Rts are the local runtimes (NewWithRuntimes); nil for a screen without them.
 	Rts    *lrtest.Rig
 	engine http.Handler
@@ -60,7 +62,7 @@ func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig) *Screen {
 	if rts != nil {
 		settings.LocalRuntimes = rts.Svc
 	}
-	s := &Screen{T: t, Rig: rig, Rts: rts, engine: router.New(svc, router.Options{Settings: settings})}
+	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, engine: router.New(svc, router.Options{Settings: settings})}
 
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -96,6 +98,14 @@ func (s *Screen) Do(method, path string, form url.Values) *httptest.ResponseReco
 
 // Get sends an HTMX GET.
 func (s *Screen) Get(path string) *httptest.ResponseRecorder { return s.Do(http.MethodGet, path, nil) }
+
+// Visit is a browser's GET of a whole page (no HX-Request) at path.
+func (s *Screen) Visit(path string) *httptest.ResponseRecorder {
+	s.T.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req.AddCookie(s.cookie)
+	return s.send(req)
+}
 
 // Page is GET /model-manager (the whole page).
 func (s *Screen) Page() string {
