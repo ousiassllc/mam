@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
@@ -16,7 +17,8 @@ import (
 
 // newModelManager builds the model manager and registers its job handlers on jobs (before the queue starts). The
 // engine and the models live in the "comfyui" directory next to the executable, so that the uninstaller, which
-// removes the install directory, removes them too and the portable build keeps them next to its exe.
+// removes the install directory, removes them too and the portable build keeps them next to its exe. The custom nodes of the allowlist
+// are installed below the same directory (data\custom_nodes), by the model nodes service built from the same Nodes (newModelNodes).
 func newModelManager(lm *localmodels.Service, adapter *modeladapter.Adapter, jobs *jobqueue.Queue, table *repository.JobRepository,
 	keys credential.Store, backends localbackends.Options, logger *slog.Logger,
 ) (*modelmanager.Service, error) {
@@ -24,9 +26,11 @@ func newModelManager(lm *localmodels.Service, adapter *modeladapter.Adapter, job
 	if err != nil {
 		return nil, err
 	}
+	layout := store.ForExecutable(exe)
 	m, err := modelmanager.New(modelmanager.Deps{
-		Layout: store.ForExecutable(exe), Jobs: jobs, JobTable: table, Models: lm, Adapter: adapter,
+		Layout: layout, Jobs: jobs, JobTable: table, Models: lm, Adapter: adapter,
 		Keys: keys, Backends: backends, Logger: logger,
+		Nodes: nodes.New(layout), // the engine loads the custom nodes of the allowlist that this manager installed, and no other folder
 	})
 	if err != nil {
 		return nil, fmt.Errorf("model manager: %w", err)

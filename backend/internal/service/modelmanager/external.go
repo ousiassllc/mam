@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/detect"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
 )
 
 // modelFolders are the ComfyUI model folders the catalog installs into.
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models"}
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter"}
 
 // ExternalModel is a model of the catalog against an external ComfyUI: which of its files the server has.
 type ExternalModel struct {
@@ -102,3 +105,17 @@ func listFolder(ctx context.Context, c *localhttp.Client, folder string) ([]stri
 	}
 	return files, nil
 }
+
+// systemDetect looks for a ComfyUI on this machine: its usual ports and the ComfyUI Desktop configuration.
+func systemDetect(ctx context.Context) detect.Report {
+	dir, _ := os.UserConfigDir()
+	return detect.Detect(ctx, detect.Options{ConfigDir: dir})
+}
+
+// DetectGPU lists the GPUs of the machine and recommends the engine build for them (nothing when there is no
+// supported GPU: the screen then offers an external URL, or the CPU on an explicit choice).
+func (s *Service) DetectGPU(ctx context.Context) gpu.Report { return s.GPU(ctx) }
+
+// DetectComfyUI finds a ComfyUI that is already running on this machine. One that is found is used as an external
+// endpoint (a ComfyUI Desktop in particular): mam never starts or stops it.
+func (s *Service) DetectComfyUI(ctx context.Context) detect.Report { return s.Comfy(ctx) }

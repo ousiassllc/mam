@@ -33,6 +33,9 @@ templ Detail(m view.Model) {
 		if view.ShowsTokenGuide(m) {
 			<p class="text-sm text-amber-300" data-testid="mm-token-guide">{ m.TokenGuide } <a class="underline" href={ "#" + view.HFID } data-modal-close>トークンの区画へ</a></p>
 		}
+		if m.NeedsNodes != "" && m.State != "installed" {
+			<p class="text-sm text-amber-300" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
+		}
 		@commercial.Note(m.License.Answer)
 		if m.License.Regions != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-regions">{ m.License.Regions }</p>

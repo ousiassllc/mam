@@ -67,6 +67,9 @@ type Deps struct {
 	// Hidden says a model is left out of the model lists and refused as unknown: the adult models of the model manager while
 	// the age gate is closed (modelmanager.Service.HidesModel). May be nil.
 	Hidden func(modelID string) bool
+	// MissingNodes gives the reason a model of the bundled ComfyUI cannot be chosen because a custom node its workflow requires is not installed
+	// (modelnodes, nodegate.ForModels); empty when it can. Nil: no model is refused for its nodes.
+	MissingNodes func(modelID string, required []string) string
 	// BundledEndpoint is the name of the registered endpoint of the bundled ComfyUI engine, whose LoRA files LoRAs lists ("": none).
 	BundledEndpoint string
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
@@ -110,7 +113,7 @@ func New(d Deps) *Service {
 		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
-		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden},
+		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, MissingNodes: d.MissingNodes},
 	}
 }
 

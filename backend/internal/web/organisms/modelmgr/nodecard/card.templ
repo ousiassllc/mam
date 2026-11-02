@@ -1,0 +1,166 @@
+package nodecard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// NodesSection is the cards of the custom nodes of the allowlist, side by side like the models, with the refresh button that reads them all
+// again (#962). Each card swaps itself and polls while it has an install in progress. The consent dialog of an install opens above the cards.
+templ NodesSection(s Section) {
+	<div id={ SectionID } class="flex flex-col gap-3" data-testid="mm-nodes">
+		@refresh.Bar(paths.ModelManagerPart("nodes"), SectionID, "")
+		@view.Notice(s.Message, SectionID)
+		<div id={ DialogID } data-testid="mm-nodes-dialog"></div>
+		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+			for _, n := range s.Items {
+				@NodeCard(n)
+			}
+		</ul>
+	</div>
+}
+
+// stateBadge is the one badge that sums the card up.
+func stateBadge(n Node) (atoms.BadgeTone, string) {
+	switch {
+	case n.Install != nil:
+		return atoms.BadgeInfo, "導入中"
+	case n.State == "blocked":
+		return atoms.BadgeNeutral, "導入できません"
+	case n.State == "installed":
+		return atoms.BadgeOK, "導入済み"
+	case n.State == "outdated":
+		return atoms.BadgeWarn, "更新が必要（読み込まれません）"
+	case n.State == "modified":
+		return atoms.BadgeError, "内容が変わっています（読み込まれません）"
+	}
+	return atoms.BadgeNeutral, "未導入"
+}
+
+func card(n Node) modelcard.Card {
+	tone, label := stateBadge(n)
+	attrs := templ.Attributes{"data-testid": "mm-node", "data-node": n.ID, "data-state": n.State, "data-commercial": n.Commercial.Answer()}
+	if n.Polling() {
+		attrs["hx-get"], attrs["hx-trigger"], attrs["hx-swap"] = nodeURL(n), view.Polling, "outerHTML"
+	}
+	return modelcard.Card{
+		ID: NodeID(n.ID), Name: n.Name, Icon: atoms.IconPackage, Meta: "追加ノード・" + n.Size, DetailURL: detailURL(n),
+		State: modelcard.Badge{Tone: tone, Label: label, Attrs: templ.Attributes{"data-testid": "mm-node-badge"}}, Commercial: &n.Commercial, Attrs: attrs,
+	}
+}
+
+// NodeCard is the card of one custom node: its picture, name, size, state and commercial-use icon, what it is, what is wrong with it, the
+// progress of a running install, and the buttons. The rest (the commit and the SHA-256 it is pinned to, the license, the dependencies and
+// the review) is in its detail modal (NodeDetail).
+templ NodeCard(n Node) {
+	@modelcard.Item(card(n)) {
+		@view.Notice(n.Message, NodeID(n.ID))
+		<p class="text-xs text-neutral-300" data-testid="mm-node-description">{ n.Description }</p>
+		if n.Blocked != "" {
+			<p class="text-xs text-amber-300" role="note" data-testid="mm-node-blocked">導入できない理由: { n.Blocked }</p>
+		}
+		if n.Detail != "" {
+			<p class="text-xs text-amber-300" role="note" data-testid="mm-node-detail-note">{ n.Detail }</p>
+		}
+		if len(n.Models) > 0 {
+			<p class="text-xs text-neutral-400" data-testid="mm-node-models">このノードを使うモデル: { modelNames(n.Models) }</p>
+		}
+		if n.Install != nil {
+			@view.ProgressBar(*n.Install, n.Name+" の導入の進み具合")
+		}
+		@modelcard.Actions() {
+			@nodeActions(n)
+		}
+	}
+}
+
+templ nodeActions(n Node) {
+	switch  {
+		case n.Install != nil:
+			@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", n.Name, templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("nodes", n.ID, "cancel"), "hx-vals": atoms.HxVals(map[string]string{"job": n.Install.JobID}),
+				"hx-target": "#" + NodeID(n.ID), "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+				"hx-confirm": "「" + n.Name + "」の導入を中断します。ダウンロード済みの分は残り、導入し直すと続きから再開します。よろしいですか？",
+			})
+		case n.State == "blocked":
+		case n.Unavailable != "":
+			@atoms.SmallButtonFor(atoms.ToneNeutral, installLabel(n), n.Name, templ.Attributes{"type": "button", "disabled": true, "title": n.Unavailable})
+			<p class="text-xs text-amber-300" data-testid="mm-node-unavailable">{ n.Unavailable }</p>
+		default:
+			@atoms.SmallButtonFor(atoms.TonePrimary, installLabel(n), n.Name, templ.Attributes{
+				"type": "button", "hx-get": paths.ModelManagerPart("nodes", n.ID, "consent"), "hx-target": "#" + DialogID, "hx-swap": "innerHTML",
+				"data-testid": "mm-node-install",
+			})
+	}
+	if n.State != "not_installed" && n.State != "blocked" && n.Install == nil {
+		@atoms.SmallButtonFor(atoms.ToneDanger, "削除", n.Name, templ.Attributes{
+			"type": "button", "hx-delete": paths.ModelManagerPart("nodes", n.ID), "hx-target": "#" + NodeID(n.ID), "hx-swap": "outerHTML",
+			"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-node-remove",
+			"hx-confirm": "「" + n.Name + "」を削除します（ComfyUI を再起動します）。このノードを使うモデルは、導入し直すまで選べなくなります。よろしいですか？",
+		})
+	}
+}
+
+func installLabel(n Node) string {
+	switch n.State {
+	case "outdated", "modified":
+		return "導入し直す"
+	}
+	return "導入"
+}
+
+// ConsentDialog is the license and the security notice of a node, with the form that accepts them and starts the install. The server
+// enforces the acceptance: the form is only how a user gives it.
+templ ConsentDialog(n Node) {
+	<section
+		class="flex flex-col gap-3 rounded-md border border-amber-500/60 bg-neutral-900 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+		role="dialog"
+		aria-labelledby="mm-node-consent-title"
+		tabindex="-1"
+		data-inline-dialog
+		data-return-focus={ "#" + NodeID(n.ID) }
+		data-testid="mm-node-consent"
+	>
+		<h3 id="mm-node-consent-title" class="text-sm font-semibold">「{ n.Name }」の導入の前に確認してください</h3>
+		if n.Error != "" {
+			<p class="text-sm text-red-300 focus-visible:outline-none" role="alert" tabindex="-1" data-testid="mm-node-consent-error">{ n.Error }</p>
+		}
+		<p class="text-sm text-amber-300" role="note" data-testid="mm-node-consent-security">{ n.SecurityNotice }</p>
+		<p class="text-sm"><a class="underline" href={ templ.SafeURL(n.LicenseURL) } target="_blank" rel="noopener noreferrer">{ n.LicenseName }（{ n.LicenseVersion }）の全文</a></p>
+		<p class="text-sm text-neutral-200" data-testid="mm-node-consent-summary">{ n.LicenseSummary }</p>
+		<p class="flex flex-wrap items-center gap-2 text-sm" data-testid="mm-node-consent-commercial">
+			商用利用: { n.LicenseCommercial } @commercialBadge(n)
+		</p>
+		if n.LicenseNotice != "" {
+			<p class="text-xs text-neutral-400">{ n.LicenseNotice }</p>
+		}
+		<p class="break-all text-xs text-neutral-400">取得元: { n.Repo }（コミット <code>{ n.Commit }</code>。SHA-256 <code>{ n.ArchiveSHA }</code> を確かめます）</p>
+		<form
+			class="flex flex-col gap-3"
+			hx-post={ paths.ModelManagerPart("nodes", n.ID, "install") }
+			hx-target={ "#" + NodeID(n.ID) }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			data-testid="mm-node-consent-form"
+		>
+			<input type="hidden" name={ view.FieldLicenseID } value={ n.LicenseID }/>
+			<input type="hidden" name={ view.FieldLicenseV } value={ n.LicenseVersion }/>
+			<input type="hidden" name={ view.FieldNoticeV } value={ n.NoticeVersion }/>
+			<label class="flex items-start gap-2 text-sm">
+				@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": view.FieldAgree, "value": "1", "required": true, "data-testid": "mm-node-agree"})
+				<span>上の注意事項とライセンスの内容を確認し、同意します</span>
+			</label>
+			<div class="flex gap-2">
+				@atoms.Button(atoms.TonePrimary, "同意して導入", templ.Attributes{"type": "submit"})
+				@atoms.Button(atoms.ToneNeutral, "閉じる", templ.Attributes{
+					"type": "button", "hx-get": paths.ModelManagerPart("dialog"), "hx-target": "#" + DialogID, "hx-swap": "innerHTML",
+					"data-inline-dialog-close": true,
+				})
+			</div>
+		</form>
+	</section>
+}

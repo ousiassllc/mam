@@ -78,6 +78,9 @@ func modelBadges(m Model) []modelcard.Badge {
 	if m.NeedsToken {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "HF トークンが必要", Attrs: templ.Attributes{"data-testid": "mm-token-badge"}})
 	}
+	if m.NeedsNodes != "" && m.State != "installed" {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "追加ノードが必要", Attrs: templ.Attributes{"data-testid": "mm-nodes-badge"}})
+	}
 	if m.LowDisk && m.State != "installed" && m.State != "installing" {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-low-disk"}})
 	}
@@ -109,6 +112,9 @@ templ modelCard(m Model, blocked bool) {
 		if m.State == "installing" && m.Install != nil {
 			@progressBar(*m.Install, m.Name+" の導入の進み具合")
 		}
+		if m.NeedsNodes != "" && m.State != "installed" {
+			<p class="text-xs text-amber-300" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
+		}
 		@modelcard.Actions() {
 			@modelActions(m, blocked)
 		}
@@ -139,7 +145,7 @@ templ modelActions(m Model, blocked bool) {
 templ installButton(m Model, blocked bool) {
 	{{ label := installLabel(m) }}
 	switch  {
-		case blocked || m.LowDisk:
+		case blocked || m.LowDisk || m.NeedsNodes != "":
 			@atoms.SmallButtonFor(atoms.ToneNeutral, label, m.Name, templ.Attributes{"type": "button", "disabled": true})
 		case m.Consent && !m.Accepted:
 			@atoms.SmallButtonFor(atoms.TonePrimary, "ライセンスを確認して導入", m.Name, templ.Attributes{

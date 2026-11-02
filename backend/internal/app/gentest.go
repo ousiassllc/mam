@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 )
 
 // newGentest builds the generation test service and registers its job handler on jobs (before the queue starts and
@@ -38,6 +39,7 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 			return msg
 		},
 		Hidden:          services.ModelManager.HidesModel,
+		MissingNodes:    nodegate.ForModels(services.ModelManager.Nodes, modelmanager.BundledEndpoint), // a workflow whose custom node is not installed cannot be chosen
 		BundledEndpoint: modelmanager.BundledEndpoint,
 		Translator:      translator,
 		Logger:          logger,

@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 )
 
 // ModelState is where a model of the catalog stands.
@@ -68,6 +69,8 @@ type ModelView struct {
 	ModelIDs []string `json:"model_ids"`
 	// WorkflowCheck is "構造テストのみ・GPU 実機未検証": the workflows were not run on a GPU.
 	WorkflowCheck string `json:"workflow_check"`
+	// RequiresNodes are the IDs of the custom nodes (the allowlist) the workflows of the model need: it cannot be installed until they are.
+	RequiresNodes []string `json:"requires_nodes,omitempty"`
 	// AdultNotice is the notice for adult models, which the consent text shows after the license summary (adult models only).
 	AdultNotice string `json:"adult_notice,omitempty"`
 }
@@ -105,7 +108,7 @@ func (s *Service) view(m catalog.Model, st store.State) ModelView {
 		ID: m.ID, Name: m.Name, Kind: m.Kind, Tier: m.Tier, ContentRating: m.ContentRating, Description: m.Description,
 		TriggerWords: m.TriggerWords, TotalSize: m.TotalSize(), VRAM: m.VRAM,
 		License: m.License, ConsentRequired: m.ConsentRequired, RequiresHFToken: m.RequiresHFToken, WorkflowCheck: workflowCheck,
-		Files: make([]FileView, 0, len(m.Files)), ModelIDs: []string{},
+		Files: make([]FileView, 0, len(m.Files)), ModelIDs: []string{}, RequiresNodes: nodegate.Required(m),
 	}
 	if m.Adult() {
 		v.AdultNotice = AdultNotice
