@@ -8,8 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/failtext"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
-
-	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 )
 
 // DefaultTranslate is whether a batch translates its prompts into English when the caller does not say (the screen's switch starts
@@ -18,12 +17,6 @@ const DefaultTranslate = true
 
 // TranslateLine is the Model of the line of the estimate that is the translation (the line has no model of generation).
 const TranslateLine = "translate"
-
-// sentText is the English a result's prompt and negative prompt were translated to (gentest_result.params "translation").
-type sentText struct {
-	Prompt   string `json:"prompt"`
-	Negative string `json:"negative_prompt,omitempty"`
-}
 
 // translated is what a batch sends in place of the prompts that were translated, by the prompt as it was typed. A prompt that
 // is not in it (English already) is sent as it is.
@@ -108,18 +101,10 @@ func orSame(m map[string]string, s string) string {
 }
 
 // record is what a result of the prompt p keeps of its translation (nil when p was sent as typed).
-func (t translated) record(p PromptInput) *sentText {
+func (t translated) record(p PromptInput) *record.SentText {
 	en, ok := t[p]
 	if !ok {
 		return nil
 	}
-	return &sentText{Prompt: en.Prompt, Negative: en.Negative}
-}
-
-// sentNegative is the negative prompt a result sends in the model's own field: the English one when it was translated.
-func sentNegative(r gentestrepo.Result, p resultParams) string {
-	if p.Translation != nil {
-		return p.Translation.Negative
-	}
-	return r.NegativePrompt
+	return &record.SentText{Prompt: en.Prompt, Negative: en.Negative}
 }

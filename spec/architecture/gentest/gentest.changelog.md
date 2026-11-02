@@ -19,3 +19,4 @@
 | 1.12 | 2026-11-02 | §3.2 を新設: プロンプトマッチ（参考の画像から英語のプロンプトを作り、似るまで直して生成し直す）。詳細は [prompt-match.md](prompt-match.md) | Issue #916 |
 | 1.13 | 2026-11-02 | §7.1 を新設: 結果の ZIP エクスポート（`photos/` と `prompts/prompts.csv`。選び方は `export.Selection` 1 か所を画面と MCP で共有・ストリーム・分割・CSV インジェクション対策・ファイル名の無害化）。`gentestrepo.Filter.IDs` を足した | Issue #932 |
 | 1.14 | 2026-11-02 | §6: 動画の速さのモード（`speed_mode`。LightX2V の 4 ステップ / 通常 20 ステップ）、モデルの `video.speed_modes`、警告 `speed_mode_unsupported`、画面の「速さ」の選択、結果への記録を足した | Issue #930 |
+| 1.15 | 2026-11-02 | §10 を新設: `service/gentest` を責務ごとに `runner`・`history`・`record` へ分けたパッケージ構成と依存の向き（振る舞いは変えない） | Issue #963 |

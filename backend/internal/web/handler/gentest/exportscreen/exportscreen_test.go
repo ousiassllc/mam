@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -59,7 +60,7 @@ func (s *screen) get(path string, header ...string) *httptest.ResponseRecorder {
 }
 
 // images makes the results of one batch (one per prompt) with the model and returns them.
-func (s *screen) images(model string, prompts ...string) []gentest.ResultView {
+func (s *screen) images(model string, prompts ...string) []record.ResultView {
 	s.t.Helper()
 	req := gentest.Request{Media: "image", Models: []string{model}}
 	for _, p := range prompts {

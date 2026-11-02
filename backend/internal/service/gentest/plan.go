@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 )
 
@@ -175,8 +176,8 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 }
 
 // resultParamsOf is what is recorded of the request for the result of one model.
-func resultParamsOf(r Request, mp modelPlan, translation *sentText) resultParams {
-	p := resultParams{
+func resultParamsOf(r Request, mp modelPlan, translation *record.SentText) record.ResultParams {
+	p := record.ResultParams{
 		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode,
 	}
 	if mp.lora {

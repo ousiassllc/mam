@@ -17,7 +17,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyuitest"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -117,7 +117,7 @@ func TestTrial_RunsAsABatchOfTheGenerationTestAndTheResultIsServedInASandbox(t *
 	assert.Equal(t, comfyuitest.PNG, file.Body.Bytes())
 	assert.Equal(t, http.StatusNotFound, s.get(paths.ModelManagerPart("trials", "nope", "file")).Code)
 
-	hist, err := s.rig.Gentest.History(t.Context(), gentest.HistoryFilter{})
+	hist, err := s.rig.Gentest.History(t.Context(), history.Filter{})
 	require.NoError(t, err)
 	require.Len(t, hist, 1, "the trial is a result of the generation test")
 	assert.Equal(t, id, hist[0].ID)
@@ -145,7 +145,7 @@ func TestTrial_RefusalsAreCheckedAgainstTheModelBeforeAnythingIsQueued(t *testin
 	notPicture := s.multipartTrial(map[string]string{"model_id": "comfyui:box/img", "prompt": "x"}, []byte("GIF89a not what it says"))
 	assert.Equal(t, http.StatusUnprocessableEntity, notPicture.Code)
 	assert.Contains(t, notPicture.Body.String(), "PNG・JPEG・WebP")
-	hist, err := s.rig.Gentest.History(t.Context(), gentest.HistoryFilter{})
+	hist, err := s.rig.Gentest.History(t.Context(), history.Filter{})
 	require.NoError(t, err)
 	assert.Empty(t, hist, "nothing started")
 }

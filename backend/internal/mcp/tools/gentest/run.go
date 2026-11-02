@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
 // ListModelsInput narrows the models.
@@ -165,10 +166,10 @@ func (h handlers) get(ctx context.Context, in BatchInput) (gentest.BatchStatus, 
 	return b, mapError(err)
 }
 
-func (h handlers) cancel(ctx context.Context, in BatchInput) (gentest.CancelResult, error) {
+func (h handlers) cancel(ctx context.Context, in BatchInput) (runner.CancelResult, error) {
 	g, err := h.gt()
 	if err != nil {
-		return gentest.CancelResult{}, err
+		return runner.CancelResult{}, err
 	}
 	res, err := g.Cancel(ctx, in.BatchID)
 	return res, mapError(err)

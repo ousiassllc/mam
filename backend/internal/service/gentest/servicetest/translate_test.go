@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 )
 
 // english is a Reasoning LLM that translates the Japanese of these tests.
@@ -166,7 +167,7 @@ func TestRunLeavesEnglishAndSendsOnlyWhatIsNotEnglishToTheLLM(t *testing.T) {
 
 	require.Len(t, llmFake.Asked(), 1)
 	assert.Equal(t, []string{"ぼやけ"}, llmFake.Asked()[0].Texts, "English text is never sent to the LLM")
-	byPrompt := map[string]gentest.ResultView{}
+	byPrompt := map[string]record.ResultView{}
 	for _, res := range st.Results {
 		byPrompt[res.Prompt] = res
 	}
@@ -224,7 +225,7 @@ func TestRunGoesOnWithThePromptTheLLMReturnedUnchanged(t *testing.T) {
 
 	require.Len(t, llmFake.Asked(), 1)
 	assert.Equal(t, []string{"50Ω resistor", "50Ω resistor on a board", "ぼやけ"}, llmFake.Asked()[0].Texts)
-	byPrompt := map[string]gentest.ResultView{}
+	byPrompt := map[string]record.ResultView{}
 	for _, res := range st.Results {
 		byPrompt[res.Prompt] = res
 	}

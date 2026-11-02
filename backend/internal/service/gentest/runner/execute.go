@@ -1,4 +1,4 @@
-package gentest
+package runner
 
 import (
 	"context"
@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/failtext"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
@@ -25,7 +26,7 @@ import (
 // execute makes one result with the direct call of its model and settles it.
 func (br *batchRun) execute(ctx context.Context, r gentestrepo.Result) {
 	s := br.s
-	var p resultParams
+	var p record.ResultParams
 	_ = json.Unmarshal(r.Params, &p)
 	var (
 		file, mime string
@@ -63,7 +64,7 @@ func (br *batchRun) inputsOf(r gentestrepo.Result) []loaded {
 	return out
 }
 
-func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p resultParams) (file, mime string, size int64, cost *float64, err error) {
+func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.ResultParams) (file, mime string, size int64, cost *float64, err error) {
 	req := modeladapter.ImageRequest{Prompt: r.SentPrompt, AspectRatio: p.AspectRatio, Seed: seedOf(r)}
 	if r.NegativeMode == gentestrepo.NegativeField {
 		req.NegativePrompt = sentNegative(r, p)
@@ -92,7 +93,7 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p resultPar
 	return file, out.MimeType, int64(len(out.Data)), out.ActualCost, nil
 }
 
-func (br *batchRun) video(ctx context.Context, r gentestrepo.Result, p resultParams) (file, mime string, size int64, cost *float64, err error) {
+func (br *batchRun) video(ctx context.Context, r gentestrepo.Result, p record.ResultParams) (file, mime string, size int64, cost *float64, err error) {
 	req := modeladapter.VideoRequest{
 		Prompt: r.SentPrompt, DurationSeconds: p.DurationSeconds, Resolution: p.Resolution, AspectRatio: p.AspectRatio, Seed: seedOf(r), SpeedMode: p.SpeedMode,
 	}
@@ -150,7 +151,7 @@ func extensionFor(mime string) string {
 const maxErrorRunes = 400
 
 // failureText is what the history says about a failed result: a known failure in words, any other as the error says it.
-func (s *Service) failureText(ctx context.Context, err error) string {
+func (s *Runner) failureText(ctx context.Context, err error) string {
 	var msg string
 	explained := ""
 	if s.Explain != nil {
@@ -180,4 +181,12 @@ func (s *Service) failureText(ctx context.Context, err error) string {
 		msg = err.Error()
 	}
 	return textutil.TruncateRunes(msg, maxErrorRunes)
+}
+
+// sentNegative is the negative prompt a result sends in the model's own field: the English one when it was translated.
+func sentNegative(r gentestrepo.Result, p record.ResultParams) string {
+	if p.Translation != nil {
+		return p.Translation.Negative
+	}
+	return r.NegativePrompt
 }

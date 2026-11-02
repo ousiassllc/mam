@@ -1,6 +1,6 @@
 # 生成テスト（プロジェクトに属さない画像・動画の比較生成）
 
-Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)）、Model Adapter の直接呼び出し（[gentest-adapter.md](gentest-adapter.md)）、テーブル（[er-gentest.md](er-gentest.md)）、ルート（[../../api/endpoints-gentest.md](../../api/endpoints-gentest.md)）の全体の設計。実装は `backend/internal/service/gentest`（サービス。下位に `gterr`・`modelcatalog`・`projectlink`・`gentesttest`）・`backend/internal/repository/gentestrepo`・`web/handler/gentest`・`web/organisms/gentest`・`mcp/tools/gentest`。
+Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)）、Model Adapter の直接呼び出し（[gentest-adapter.md](gentest-adapter.md)）、テーブル（[er-gentest.md](er-gentest.md)）、ルート（[../../api/endpoints-gentest.md](../../api/endpoints-gentest.md)）の全体の設計。実装は `backend/internal/service/gentest`（サービス。下位に `gterr`・`modelcatalog`・`projectlink`・`history`・`record`・`runner`・`gentesttest` ほか。下の「パッケージの構成」）・`backend/internal/repository/gentestrepo`・`web/handler/gentest`・`web/organisms/gentest`・`mcp/tools/gentest`。
 
 目的: モデルとプロンプトを組み合わせて、**プロジェクトを作らずに**画像・動画を生成して見比べ、気に入った結果だけをプロジェクトに取り込む。生成は Take・コスト台帳・アセットを作らず、結果は履歴（`gentest_*` のテーブルと `<data-dir>/gentest/`）にだけ残る。
 
@@ -106,6 +106,21 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 ## 9. テスト
 
 見積り（3 状態・丸め・上限）・直接呼び出し（代替なし・プロンプトそのまま・シードは対応モデルだけ・ブレーカーと同時実行）・バッチのジョブ（全組み合わせ・取り消し・クラッシュ後の整理・Take・台帳が増えないこと）・履歴（絞り込み・お気に入り・プロンプトの重複排除・削除）・取り込み（参照・アセット・スロット・LOCK・ファイルの複製）・マイグレーションの up/down・画面（CSRF・流れ・HTMX の進捗）・MCP（見積り → 実行の 409・`get_job`・トークン URL）。英訳（ON/OFF・英語はそのまま LLM を呼ばない・1 回の実行で 1 回だけ・失敗でモデルを呼ばない・履歴に両方・見積りの単価なしの行・ネガティブの欄あり／なし。`servicetest/translate_test.go`、`agent/prompttranslate`）。偽のバックエンドは `service/gentest/gentesttest`、ローカルの ComfyUI を通した結果までは `service/gentest/localtest`。実際のベンダー API（シードの効き・価格）は実機で未確認。 ZIP のエクスポート（`export`: `photos/` と `prompts/prompts.csv` の構造・BOM・`encoding/csv` での再読み込み・番号とファイル名の対応・直近 N 件／バッチ／指定／お気に入り／モデル／種類／商用利用の選び方・分割・数式で始まるセル・ファイル名の無害化・ストリームの失敗）と、画面の選択（`export-pick.wtest.ts`: タップで枠が光る・自動更新で選択が消えない・隠れたカードを送らない）。
+
+## 10. パッケージの構成（Issue #963）
+
+`service/gentest` は 1 ディレクトリ 行数上限（linterly。ディレクトリ 2000 行）に収めるため、責務ごとにサブパッケージへ分けてある。依存は一方向（下から上）で、サブパッケージは `service/gentest` を import しない（`service` も import しない。拒否は `gterr`）。
+
+| 置き場所 | 責務 |
+|---|---|
+| `service/gentest`（直下） | `Service`・`Deps`（下のサブパッケージを束ねて公開の窓口にする）、リクエスト（`Request`・検査）、見積り（`Estimate`・`Confirmation`・`planModel`）、バッチの作成と実行の開始（`Run`）、入力画像の置き場と解決（`StageReference`・`ResolveInput`）、バッチの状態（`BatchStatus`）、英訳、モデルの一覧 |
+| `runner` | ジョブ `domain.JobGentest` のハンドラ（`RunJob`）、結果 1 件の生成と確定（`execute`・`settle`）、`Generate`・`Cancel`、失敗の理由（`Reason*`・日本語への直し） |
+| `history` | 履歴（一覧・詳細・ファイル・お気に入り・削除・プロンプト履歴・累計）。`Store` |
+| `record` | 履歴の JSON 列（`BatchParams`・`ResultParams`・`SentText`）、ジョブのペイロード、結果・入力・取り込み・プロンプトのビュー（`ResultView` ほか）。`runner`・`history`・直下が共有する型 |
+| `export` / `refs` / `match` / `matchinfo` / `modelcatalog` / `projectlink` / `loras` / `failtext` / `gterr` | それぞれ ZIP エクスポート、入力画像と LoRA の判定、プロンプトマッチ、マッチの記録、モデルの一覧、プロジェクト側、LoRA の一覧、失敗の文言、拒否の型 |
+| `gentesttest` / `servicetest` / `localtest` / `speedtest` | テストの道具と、パッケージをまたぐテスト |
+
+`Service` は `projectlink.Link`・`runner.Runner`・`history.Store` を埋め込み、これらのメソッドを自分のものとして公開する。`Deps.Extra`（プロンプトマッチ）は `runner.Runner` のフィールドで、`match.New` が組み立てるときに入れる。
 
 ## 改訂履歴
 

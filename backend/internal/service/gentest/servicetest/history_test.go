@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 )
 
 func runImages(t *testing.T, r *gentesttest.Rig, models ...string) gentest.BatchStatus {
@@ -33,22 +34,22 @@ func TestHistoryListsNewestFirstFiltersAndTotalsTheCost(t *testing.T) {
 	third := runImages(t, r, "nano-banana")
 	require.NoError(t, r.Svc.SetFavorite(ctx, first.Results[0].ID, true))
 
-	all, err := r.Svc.History(ctx, gentest.HistoryFilter{})
+	all, err := r.Svc.History(ctx, history.Filter{})
 	require.NoError(t, err)
 	require.Len(t, all, 3)
 	assert.Equal(t, third.Results[0].ID, all[0].ID, "newest first")
 	assert.Equal(t, first.Results[0].ID, all[2].ID)
 
-	vids, _ := r.Svc.History(ctx, gentest.HistoryFilter{Media: "video"})
+	vids, _ := r.Svc.History(ctx, history.Filter{Media: "video"})
 	require.Len(t, vids, 1)
 	assert.Equal(t, video.Results[0].ID, vids[0].ID)
 	assert.Equal(t, 4.0, vids[0].DurationSeconds)
-	byModel, _ := r.Svc.History(ctx, gentest.HistoryFilter{Model: "nano-banana"})
+	byModel, _ := r.Svc.History(ctx, history.Filter{Model: "nano-banana"})
 	assert.Len(t, byModel, 1)
-	fav, _ := r.Svc.History(ctx, gentest.HistoryFilter{FavoriteOnly: true})
+	fav, _ := r.Svc.History(ctx, history.Filter{FavoriteOnly: true})
 	require.Len(t, fav, 1)
 	assert.True(t, fav[0].Favorite)
-	_, err = r.Svc.History(ctx, gentest.HistoryFilter{Media: "audio"})
+	_, err = r.Svc.History(ctx, history.Filter{Media: "audio"})
 	assert.Error(t, err)
 
 	models, _ := r.Svc.HistoryModels(ctx)
@@ -59,7 +60,7 @@ func TestHistoryListsNewestFirstFiltersAndTotalsTheCost(t *testing.T) {
 	assert.InDelta(t, 0.03+0.0336+0.12*4, spend.PricedUSD, 1e-9)
 
 	require.NoError(t, r.Svc.SetFavorite(ctx, first.Results[0].ID, false))
-	fav, _ = r.Svc.History(ctx, gentest.HistoryFilter{FavoriteOnly: true})
+	fav, _ = r.Svc.History(ctx, history.Filter{FavoriteOnly: true})
 	assert.Empty(t, fav)
 	assert.ErrorIs(t, r.Svc.SetFavorite(ctx, "nope", true), gterr.ErrNotFound)
 }

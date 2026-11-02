@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 )
 
 // ListResultsInput filters the history.
@@ -19,8 +20,8 @@ type ListResultsInput struct {
 
 // ListResultsOutput is the history.
 type ListResultsOutput struct {
-	Results []gentest.ResultView `json:"results"`
-	Spend   gentest.Spend        `json:"spend" jsonschema:"履歴全体の合計コスト（絞り込みに関係なく。解析画面には出ない）"`
+	Results []record.ResultView `json:"results"`
+	Spend   record.Spend        `json:"spend" jsonschema:"履歴全体の合計コスト（絞り込みに関係なく。解析画面には出ない）"`
 }
 
 func (h handlers) listResults(ctx context.Context, in ListResultsInput) (ListResultsOutput, error) {
@@ -32,7 +33,7 @@ func (h handlers) listResults(ctx context.Context, in ListResultsInput) (ListRes
 	if limit <= 0 {
 		limit = 50
 	}
-	list, err := g.History(ctx, gentest.HistoryFilter{Model: in.Model, Media: in.Media, FavoriteOnly: in.Favorite, Limit: min(limit, 200), Offset: max(in.Offset, 0)})
+	list, err := g.History(ctx, history.Filter{Model: in.Model, Media: in.Media, FavoriteOnly: in.Favorite, Limit: min(limit, 200), Offset: max(in.Offset, 0)})
 	if err != nil {
 		return ListResultsOutput{}, mapError(err)
 	}
@@ -47,7 +48,7 @@ type ResultInput struct {
 
 // ResultOutput is a result with the URL of its file.
 type ResultOutput struct {
-	gentest.ResultDetail
+	record.ResultDetail
 	File *mcpkit.Link `json:"file,omitempty" jsonschema:"成功した結果のファイルのダウンロード URL（15 分有効）"`
 }
 
@@ -113,7 +114,7 @@ func (h handlers) setFavorite(ctx context.Context, in FavoriteInput) (FavoriteOu
 
 // ListPromptsOutput is the prompt history.
 type ListPromptsOutput struct {
-	Prompts []gentest.PromptView `json:"prompts"`
+	Prompts []record.PromptView `json:"prompts"`
 }
 
 func (h handlers) listPrompts(ctx context.Context, _ Input) (ListPromptsOutput, error) {

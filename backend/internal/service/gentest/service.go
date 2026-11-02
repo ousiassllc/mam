@@ -16,12 +16,13 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
-	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/loras"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
@@ -41,17 +42,6 @@ const (
 	MaxImageBytes = 20 << 20
 	// MaxCount is the most results per model and prompt (the batch limit of models.json applies as well).
 	MaxCount = 20
-)
-
-// The reasons recorded on results that did not finish.
-const (
-	// ReasonCancelled is the reason of a result the user cancelled before it started.
-	ReasonCancelled = "キャンセルされました"
-	// ReasonInterrupted is the reason of a result that was running or waiting when mam stopped.
-	ReasonInterrupted = "mam が停止したため中断されました（課金される生成は再開しません）"
-	// ReasonHidden is the reason of a queued result whose model was hidden before it started (the age gate of the model manager
-	// was closed): the call is not made.
-	ReasonHidden = "年齢確認が無効になったため、このモデルでは生成しませんでした"
 )
 
 // Deps are what the Service needs.
@@ -81,9 +71,6 @@ type Deps struct {
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
 	Translator *prompttranslate.Translator
 	Logger     *slog.Logger
-	Extra      interface { // runs the batches whose rounds it plans itself (the prompt match); Handle reports false for one that is not its own
-		Handle(context.Context, domain.Job, gentestrepo.Batch) (bool, error)
-	}
 	// Now and Seed are for tests.
 	Now  func() time.Time
 	Seed func() int64
@@ -94,11 +81,12 @@ type Service struct {
 	Deps
 	// Link is the Project side: the inputs taken from a Project and the import of a result (its methods are the service's).
 	*projectlink.Link
+	// Runner runs the batches (Generate, Cancel; the prompt match sets its Extra, the runner of the batches that plan their rounds
+	// themselves) and Store is the history (its methods are the service's).
+	*runner.Runner
+	*history.Store
 	catalog modelcatalog.Catalog
 	loras   loras.Lister
-
-	mu   sync.Mutex
-	runs map[string]*run // batch id -> the batch that is running in this process
 }
 
 // New returns the Service.
@@ -112,22 +100,28 @@ func New(d Deps) *Service {
 	if d.Seed == nil {
 		d.Seed = randomSeed
 	}
+	dir := filepath.Join(d.DataDir, DirName)
 	link := projectlink.New(projectlink.Deps{
-		Repo: d.Repo, Dir: filepath.Join(d.DataDir, DirName), AssetsDir: d.AssetsDir, Projects: d.Projects, References: d.References,
+		Repo: d.Repo, Dir: dir, AssetsDir: d.AssetsDir, Projects: d.Projects, References: d.References,
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
-	return &Service{Deps: d, Link: link, catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden}, runs: map[string]*run{}}
+	run := runner.New(runner.Deps{
+		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, Now: d.Now, Logger: d.Logger,
+	})
+	return &Service{
+		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden},
+	}
 }
 
 // Register installs the handler of domain.JobGentest (not resumable). Call it before the job queue starts.
 func (s *Service) Register() {
-	s.Jobs.Register(domain.JobGentest, s.handle, false)
+	s.Jobs.Register(domain.JobGentest, s.RunJob, false)
 }
 
 // OnStartup fails the results an abnormal termination left queued or running and removes staged inputs that no batch took.
 // Call it after the job queue recovered its jobs and before it starts.
 func (s *Service) OnStartup(ctx context.Context) {
-	n, err := s.Repo.FailUnfinished(ctx, ReasonInterrupted, s.Now().UTC())
+	n, err := s.Repo.FailUnfinished(ctx, runner.ReasonInterrupted, s.Now().UTC())
 	if err != nil {
 		s.Logger.Error("settle unfinished generation test results failed", "err", err)
 	} else if n > 0 {
