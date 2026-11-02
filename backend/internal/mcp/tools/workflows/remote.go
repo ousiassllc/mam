@@ -61,7 +61,7 @@ func (h handlers) importRemote(ctx context.Context, in ImportRemoteInput) (Saved
 
 // Warning is something the connected ComfyUI lacks.
 type Warning struct {
-	Kind    string `json:"kind" jsonschema:"node（ノードがない）, model（モデルファイルがない）, choice（選択肢にない値）"`
+	Kind    string `json:"kind" jsonschema:"node（ノードがない）, model（モデルファイルがない）, choice（選択肢にない値）, sampling（run_workflow で、使わなかった詳細設定）"`
 	Node    string `json:"node,omitempty"`
 	Class   string `json:"class_type,omitempty"`
 	Input   string `json:"input,omitempty"`

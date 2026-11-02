@@ -112,18 +112,34 @@ func (c *Caps) Applicable(s Settings) Settings {
 	return out
 }
 
-// Ignored lists, in words for a warning, the values s names that the workflow does not take; empty when it takes all of them.
-func (c *Caps) Ignored(s Settings) []string {
-	var out []string
-	add := func(named, takes bool, what string) {
-		if named && !takes {
-			out = append(out, what)
+// Skip is a value of a request that a workflow does not take: Name is it in words, Reason is LockedBySpeedMode when the workflow takes
+// it but a speed mode owns it, and empty when the workflow has no place for it.
+type Skip struct{ Name, Reason string }
+
+// Skipped lists the values s names that the workflow does not take; empty when it takes all of them.
+func (c *Caps) Skipped(s Settings) []Skip {
+	var out []Skip
+	number := func(named bool, cap *NumberCap, name string) {
+		switch {
+		case !named:
+		case c.None() || cap == nil:
+			out = append(out, Skip{Name: name})
+		case cap.Locked != "":
+			out = append(out, Skip{Name: name, Reason: cap.Locked})
 		}
 	}
-	add(s.Steps != nil, !c.None() && c.Steps != nil && c.Steps.Locked == "", "ステップ数")
-	add(s.CFG != nil, !c.None() && c.CFG != nil && c.CFG.Locked == "", "CFG")
-	add(s.Sampler != "", !c.None() && c.Sampler != nil, "サンプラー")
-	add(s.Scheduler != "", !c.None() && c.Scheduler != nil, "スケジューラー")
+	name := func(named bool, takes bool, what string) {
+		if named && !takes {
+			out = append(out, Skip{Name: what})
+		}
+	}
+	if c.None() {
+		c = &Caps{}
+	}
+	number(s.Steps != nil, c.Steps, "ステップ数")
+	number(s.CFG != nil, c.CFG, "CFG")
+	name(s.Sampler != "", c.Sampler != nil, "サンプラー")
+	name(s.Scheduler != "", c.Scheduler != nil, "スケジューラー")
 	return out
 }
 
@@ -134,11 +150,12 @@ func (c *Caps) Effective(s Settings) *Settings {
 		return nil
 	}
 	a := c.Applicable(s)
-	if c.Steps != nil && a.Steps == nil {
+	// a speed mode owns the steps and the cfg: what it uses is the mode (recorded as the speed mode), not these
+	if c.Steps != nil && c.Steps.Locked == "" && a.Steps == nil {
 		n := int(math.Round(c.Steps.Default))
 		a.Steps = &n
 	}
-	if c.CFG != nil && a.CFG == nil {
+	if c.CFG != nil && c.CFG.Locked == "" && a.CFG == nil {
 		f := c.CFG.Default
 		a.CFG = &f
 	}

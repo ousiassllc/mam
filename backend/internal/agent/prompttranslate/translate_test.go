@@ -98,3 +98,59 @@ func TestTranslateReturnsTheFailureOfTheLLM(t *testing.T) {
 	_, err := prompttranslate.New(&answer{err: llm.ErrNoAPIKey}, target).Translate(t.Context(), []string{"狐"})
 	assert.ErrorIs(t, err, llm.ErrNoAPIKey)
 }
+
+// #972: the instruction tells the LLM to keep the weight syntax, with the example of a weighted word, and what is sent is the text as it
+// was typed (the brackets and the numbers are not touched on the way in).
+func TestTheInstructionKeepsTheWeightSyntax(t *testing.T) {
+	a := &answer{text: `{"texts": ["(red fox:1.3), sunset"]}`}
+	got, err := prompttranslate.New(a, target).Translate(t.Context(), []string{"(赤い狐:1.3)、夕暮れ"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"(red fox:1.3), sunset"}, got)
+	for _, want := range []string{"(token:weight)", "(word)", "[word]", "keep every parenthesis, bracket, colon and number exactly as written", "(red fox:1.3)"} {
+		assert.Contains(t, a.req.System, want)
+	}
+	var sent struct{ Texts []string }
+	require.NoError(t, json.Unmarshal([]byte(a.req.User), &sent))
+	assert.Equal(t, []string{"(赤い狐:1.3)、夕暮れ"}, sent.Texts)
+}
+
+// An English prompt with weights is never sent to the LLM: it reaches the model as it was typed.
+func TestEnglishPromptsWithWeightsAreNotTranslated(t *testing.T) {
+	for _, text := range []string{"(red fox:1.3), [blurry], ((sunset))", "a (fox:0.8) in the snow", `\(not a weight\)`} {
+		assert.False(t, prompttranslate.Needs(text), text)
+		assert.Empty(t, prompttranslate.Select([]string{text}), text)
+	}
+}
+
+func TestHasWeights(t *testing.T) {
+	for text, want := range map[string]bool{
+		"(fox:1.3)": true, "a (fox) here": true, "[fox]": true, "((fox))": true, "(fox : 1.3)": true,
+		"a fox": false, "": false, `\(fox\)`: false, `\[fox\]`: false, "(unclosed": false, "closed)": false, "fox:1.3": false,
+		"(赤い狐:1.3)": true,
+	} {
+		assert.Equal(t, want, prompttranslate.HasWeights(text), text)
+	}
+}
+
+// What the translation lost of the weights is found by comparing the numbers and the brackets, not by trusting the LLM.
+func TestLostWeights(t *testing.T) {
+	for _, c := range []struct {
+		name, source, english string
+		lost                  []string
+	}{
+		{"kept", "(赤い狐:1.3)、夕暮れ", "(red fox:1.3), sunset", nil},
+		{"the spelling of a number is not its value", "(狐:1.30)", "(fox:1.3)", nil},
+		{"more is fine", "狐", "(fox:1.2)", nil},
+		{"the number is gone", "(狐:1.3)", "(fox)", []string{"重み :1.3"}},
+		{"the brackets are gone", "(狐:1.3)", "fox:1.3", []string{"重み :1.3", "丸括弧 ( )"}},
+		{"the number changed", "(狐:1.3)", "(fox:1.5)", []string{"重み :1.3"}},
+		{"one of two numbers", "(狐:1.3)、(雪:0.8)", "(fox:1.3), snow", []string{"重み :0.8", "丸括弧 ( )"}},
+		{"the same number twice, once kept", "(狐:1.2)、(猫:1.2)", "(fox:1.2), cat", []string{"重み :1.2", "丸括弧 ( )"}},
+		{"plain brackets", "((狐))、[雪]", "fox, snow", []string{"丸括弧 ( )", "角括弧 [ ]"}},
+		{"plain brackets kept", "((狐))、[雪]", "((fox)), [snow]", nil},
+		{"an escaped bracket is text", `\(狐\)`, "fox", nil},
+		{"nothing to keep", "狐", "fox", nil},
+	} {
+		assert.Equal(t, c.lost, prompttranslate.LostWeights(c.source, c.english), c.name)
+	}
+}

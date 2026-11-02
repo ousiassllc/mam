@@ -51,7 +51,7 @@ func TestSpeedModesLockTheStepsAndTheCFG(t *testing.T) {
 	assert.Nil(t, got.CFG)
 	assert.Equal(t, "heun", got.Sampler)
 	assert.Equal(t, "karras", got.Scheduler)
-	assert.Equal(t, []string{"ステップ数", "CFG"}, c.Ignored(sampling.Settings{Steps: &steps, CFG: &cfg, Sampler: "heun"}))
+	assert.Equal(t, []sampling.Skip{{Name: "ステップ数", Reason: "speed_mode"}, {Name: "CFG", Reason: "speed_mode"}}, c.Skipped(sampling.Settings{Steps: &steps, CFG: &cfg, Sampler: "heun"}))
 
 	// the same workflow without modes (the uncensored remix of it) takes them
 	plain := template(t, "img2video-wan22-14b-lightx2v-uncensored").Workflow.SamplingCaps()
@@ -63,7 +63,7 @@ func TestAWorkflowThatTakesNoSamplingValueSaysSo(t *testing.T) {
 		w := template(t, id).Workflow
 		assert.Nil(t, w.SamplingCaps(), id+": the sigmas of a distilled LTX-2.5 are fixed in the graph")
 		steps := 8
-		assert.Equal(t, []string{"ステップ数"}, w.SamplingCaps().Ignored(sampling.Settings{Steps: &steps}))
+		assert.Equal(t, []sampling.Skip{{Name: "ステップ数"}}, w.SamplingCaps().Skipped(sampling.Settings{Steps: &steps}))
 		assert.Nil(t, w.SamplingCaps().Effective(sampling.Settings{Steps: &steps}))
 	}
 }
@@ -78,6 +78,12 @@ func TestEffectiveIsWhatTheRunUsed(t *testing.T) {
 	assert.Equal(t, 7.0, *got.CFG)
 	assert.Equal(t, "euler", got.Sampler)
 	assert.Equal(t, "karras", got.Scheduler)
+
+	// under speed modes the steps and the cfg are the mode's: they are not in what the result keeps
+	locked := template(t, "img2video-wan22-14b-lightx2v").Workflow.SamplingCaps().Effective(sampling.Settings{Steps: &steps})
+	assert.Nil(t, locked.Steps)
+	assert.Nil(t, locked.CFG)
+	assert.Equal(t, "euler", locked.Sampler)
 }
 
 func TestSettingsAreCheckedAgainstTheRanges(t *testing.T) {

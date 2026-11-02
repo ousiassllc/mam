@@ -85,3 +85,28 @@ func TestSetShotWorkflowPinsTheVideoModelLockAndExistingToolsAcceptTheID(t *test
 	assert.Contains(t, r.CallError("set_shot_workflow", map[string]any{"shot_id": r.ShotID, "workflow_id": clip.ID, "version": 9}), "not_found")
 	assert.Contains(t, r.CallError("set_shot_workflow", map[string]any{"shot_id": "missing", "workflow_id": clip.ID}), "not_found")
 }
+
+// #973: run_workflow takes the seed and the sampling values, and its output and result say what the run used.
+func TestRunWorkflowTakesTheSeedAndTheSamplingValues(t *testing.T) {
+	r := newRig(t, true)
+	w := r.importWorkflow(t, "Stills", "image", "txt2img-sdxl")
+	var out workflows.RunOutput
+	r.CallOK("run_workflow", map[string]any{
+		"workflow_id": w.ID, "prompt": "a fox", "seed": 99, "sampling": map[string]any{"steps": 8, "cfg": 3.5},
+	}, &out)
+	assert.EqualValues(t, 99, out.Seed)
+	require.NotNil(t, out.Sampling)
+	assert.Equal(t, 8, *out.Sampling.Steps)
+	assert.Equal(t, 3.5, *out.Sampling.CFG)
+	assert.Equal(t, "karras", out.Sampling.Scheduler, "not named: the workflow's own")
+	st := r.WaitJob(out.JobID, 20*time.Second, 10*time.Millisecond)
+	require.Equal(t, mcpkit.JobSucceeded, st.State, st.Error)
+	assert.EqualValues(t, 99, st.Result["seed"])
+
+	g := r.comfy.Graph()
+	assert.JSONEq(t, "99", string(g["3"].Inputs["seed"]))
+	assert.JSONEq(t, "8", string(g["3"].Inputs["steps"]))
+	assert.JSONEq(t, "3.5", string(g["3"].Inputs["cfg"]))
+
+	assert.Contains(t, r.CallError("run_workflow", map[string]any{"workflow_id": w.ID, "prompt": "x", "sampling": map[string]any{"steps": 1000}}), "validation")
+}

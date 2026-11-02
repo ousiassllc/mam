@@ -82,6 +82,9 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 		sent := p.LoRA.Sent()
 		req.Options.LoRA = &sent
 	}
+	if p.Sampling != nil {
+		req.Options.Sampling = *p.Sampling
+	}
 	out, err := direct.Image(ctx, br.s.Adapter, domain.ModelName(r.Model), req)
 	if err != nil {
 		return "", "", 0, nil, err
@@ -99,6 +102,9 @@ func (br *batchRun) video(ctx context.Context, r gentestrepo.Result, p record.Re
 	}
 	if r.NegativeMode == gentestrepo.NegativeField {
 		req.NegativePrompt = sentNegative(r, p)
+	}
+	if p.Sampling != nil {
+		req.Sampling = *p.Sampling
 	}
 	for _, in := range br.inputsOf(r) {
 		img := in.in
