@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -72,12 +73,12 @@ type ModelChoice struct {
 	Selected bool
 	// Media is image or video. RefMode ("edit", "img2img" or "" when it does not say), RefRoles (empty: the model takes no input
 	// images) and CanLoRA are what the card's icon and the role, strength and LoRA controls follow.
-	Media    string
-	RefMode  string
-	RefRoles []string
-	CanLoRA  bool
-	// Answer is whether the model may be used commercially (#928): the badge on the card, data-commercial for the filter.
-	Answer commercial.View
+	Media                 string
+	RefMode               string
+	RefRoles              []string
+	CanLoRA               bool
+	Answer                commercial.View // whether the model may be used commercially (#928): the badge, data-commercial for the filter
+	gentestadv.ModelFacts                 // the detailed settings the model takes and how it reads prompt weights (the card's data attributes)
 }
 
 // PromptText is a prompt and its negative prompt.
@@ -130,18 +131,17 @@ type Compose struct {
 	Projects                                     []ProjectChoice
 	Picked                                       []Ref
 	Spend                                        string
-	// MaxImageBytes is the largest input image; the browser checks it when an image is chosen.
-	MaxImageBytes int
+	MaxImageBytes                                int // the largest input image; the browser checks it when an image is chosen
 	// AvoidPose is the checkbox "do not copy the pose of the references". LoRAs are the LoRA files of the engine (none: the choice
 	// is not drawn), LoRA the one chosen ("" for none) and LoRAStrength its strength (nil: not given, so the default).
 	AvoidPose    bool
 	LoRAs        []string
 	LoRA         string
 	LoRAStrength *float64
-	// SpeedModes are the speed modes the video models offer (none: the choice is not drawn) and SpeedMode the one chosen ("" for each
-	// model's default).
-	SpeedModes []SpeedChoice
-	SpeedMode  string
+	// SpeedModes are the speed modes the video models offer (none: not drawn), SpeedMode the one chosen ("" for each model's default).
+	SpeedModes         []SpeedChoice
+	SpeedMode          string
+	gentestadv.Section // the "詳細設定" and the "?" of the prompt weights
 }
 
 // SpeedChoice is a speed mode of a video model (localcfg.SpeedMode): the ID the form posts and the label of its option.

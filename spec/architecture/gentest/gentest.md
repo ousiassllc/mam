@@ -48,7 +48,20 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **訳せなければ止める**: LLM の失敗（API キー未登録・サーキットブレーカー・タイムアウト・使えない答え）、答えの件数が違う・空のときは `*gterr.UpstreamError`（画面 502・MCP `upstream`。メッセージは「何も生成していません。もう一度試すか、英訳を OFF にしてください」を含む）で `Run` を断る。バッチ・結果の行・プロンプト履歴・ジョブは作らず、モデルも呼ばない。**訳す対象の文が原文のまま返ったときは失敗にしない**: その文は入力した文のまま送り（`50Ω resistor` のように訳すものが無い文）、ほかの文は訳して使う。原文のまま送った文は `params.translation` に残さず、`translated` は偽になる（結果の行の `prompt` と `sent_prompt` は同じ）。**LLM の答えが無いのに黙って日本語で送ることはしない。**
 - **見積りに入れる**: `Estimate` の内訳に、訳す文の数を `items` とする 1 行（`model` は `translate`、ラベルは「プロンプトの英訳（プロバイダー / モデル）」）を足す（LLM は割り当ての主のターゲットを名指しする）。**LLM には単価が無い**（Reasoning LLM の呼び出しは Take でもコスト台帳でもなく、料金表を持たない。ChatGPT のサブスクのように 1 回ごとの単価にならない経路もある）ので、既存の単価なしの扱い（§3 の `unknown`）に従い、**合計には入れず**、`unknown_models` に `translate` を載せ、警告 `no_price`（`model=translate`）で知らせる。`unknown_items` は結果の数なので増やさず、`total_items` にも入れない。ON/OFF は `estimate_id` の対象（切り替えると見積りの確認をやり直す）。見積りは LLM を呼ばない（訳すのは `Run` のとき）。
 - **履歴には両方残す**: 結果の `prompt`・`negative_prompt` は入力した文のまま、訳した英語は結果の `params.translation`（`prompt`・`negative_prompt`）に残し、`ResultView` の `translated`・`translated_prompt`・`translated_negative_prompt` として出す。`sent_prompt` は実際に送った文（英語。ネガティブの欄が無いモデルは英語のネガティブを「Avoid: …」として書き足したもの）、ネガティブの欄があるモデルへは英語のネガティブを送る。バッチの `params` に `translate_to_english` を残す。プロンプト履歴（`gentest_prompt`）は入力した文で重複排除する。
+- **ウェイト構文は残す**（Issue #972）: 英訳の指示に「`(token:weight)`・`(word)`・`((word))`・`[word]` は括弧・コロン・数字をそのまま残し、中の語だけを訳す。各語は自分のかっこと数字の中に置き、消す・足す・動かす・数字を変えることはしない」と、例（`(赤い狐:1.3), 夕暮れ` → `(red fox:1.3), sunset`）を入れてある（`agent/prompttranslate`）。LLM の答えは機械でも確かめる: 英訳のあとで、元の文にあった重みの数字と丸括弧が欠けていないかを調べ（`prompttranslate.LostWeights`）、欠けていたら**止めずに**結果の `params.translation.lost_weights` に残す（`ResultView.lost_weights`・結果の詳細の「英訳で消えたウェイト」。補正はしない: LLM が語を入れ替えたかっこは、機械では直せない）。英語だけの文は英訳にかからず、ウェイトごとそのまま届く。ComfyUI が読むのは `(…)` と `(…:数字)` で、`[…]` は読まない（ただの文字。§ [local-models.md](../local-models.md) §4.4）。
+- **ウェイトの効き方の警告**: プロンプトに `(…)` があり、選んだモデルの `prompt_weight` が `unsupported`（Qwen-Image 系・FLUX.2 klein など。かっこと数字が文として読まれる）または `weak`（T5 系。効かないかもしれない）のとき、そのモデルに警告 `prompt_weight` を出す（代わりに文で強調する案内つき）。`unknown`（クラウド・自作）には出さない。
 - モデルマネージャーの試し生成（1 モデル・1 プロンプト）は英訳しない（OFF。ローカルのモデルを入力のまま試す用途）。
+
+## 3.3 生成の詳細設定（シード・ステップ数・CFG・サンプラー・スケジューラー。Issue #973）
+
+`Request` の `seed`（固定するシード）と `sampling`（`steps`・`cfg`・`sampler`・`scheduler`。`localcfg/sampling.Settings`）。画面の「詳細設定」と、MCP の `estimate_generation_test`・`run_generation_test` が同じ値を渡す。**何も指定しなければ今と同じ**（シードは 1 本ごとにランダム、サンプリングはモデルのテンプレートの値）。
+
+- **範囲**: シード 0〜4294967295、ステップ数 1〜150、CFG 0〜30、サンプラー・スケジューラーは ComfyUI の名前の一覧にあるもの。外れていれば、何も始めずに `validation`（画面 400）。
+- **シードを固定すると**: モデルごと・プロンプトごとの n 本目（0 から）に `seed + n` を使う（本数の最後も範囲内に収める）。同じシードでモデルを比べられ、本数が複数でも 1 本ずつ違う絵になる。シードを渡せないモデルには送らない（警告 `seed_ignored`）。空ならこれまでどおり 1 本ごとにランダム。結果の `seed` に使った値が残るので、同じ条件で作り直せる。
+- **モデルごとの扱い**: モデルが受け取る値は `modelcatalog.Info.Sampling`（`localcfg.Workflow.SamplingCaps()`。受け取る項目と既定。クラウドのモデルと、蒸留の LTX-2.5 は無し）。受け取らない値は**そのモデルには送らず**警告 `sampling_ignored`（「このモデルにはありません」）。**Speed mode（蒸留 LoRA）のあるモデルでは、`steps`・`cfg` を速さのモードが決める**ので、指定しても無視して警告 `sampling_ignored`（「速さのモードが決めます」。**Speed mode が優先**）。`sampler`・`scheduler` は上書きできる。
+- **履歴に残す**: 結果の `params.sampling`（`steps`・`cfg`・`sampler`・`scheduler`）に、そのモデルが**実際に使った値**（指定していない項目はモデルの既定）を残す。`ResultView.sampling` と結果の詳細の「サンプリング」の行、MCP の `get_generation_result` に出る。速さのモードのモデルは `speed_mode` が使った値を決める（`steps`・`cfg` は残さない）。
+- **見積り・ID**: 値は `Estimate.Request` に入り、見積りの ID に含まれる（確認した内容と違う値では実行できない）。単価は変わらない。
+- 実装は `service/gentest/sampling.go`（検証・`seedFor`・`planSampling`）と、`comfyui/sampling.go`（グラフへの書き込み）。
 
 ## 3.2 プロンプトマッチ（Issue #916）
 

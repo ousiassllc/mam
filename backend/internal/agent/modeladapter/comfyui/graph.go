@@ -26,8 +26,9 @@ type values struct {
 	references       []modeladapter.Input
 	first, last      *modeladapter.Input
 	opts             localcfg.ImageOptions
-	denoiseFloor     float64 // the workflow's ReferenceDenoiseMin
-	speedMode        string  // the request's VideoRequest.SpeedMode ("": the workflow's first)
+	denoiseFloor     float64                   // the workflow's ReferenceDenoiseMin
+	speedMode        string                    // the request's VideoRequest.SpeedMode ("": the workflow's first)
+	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
 }
 
 // imageValues are the values of an image request. A workflow with a reference mode (a bundled img2img or editing model) takes
@@ -41,7 +42,7 @@ func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 	if req.NegativePrompt != "" {
 		negative = req.NegativePrompt
 	}
-	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options}
+	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options, sampling: req.Options.Sampling}
 	if wf := b.Model.Workflow; wf != nil && wf.ReferenceMode != "" && len(req.Options.Refs) == 0 {
 		v.references = nil
 	}
@@ -53,7 +54,7 @@ func videoValues(wf localcfg.Workflow, req modeladapter.VideoRequest) values {
 	return values{
 		prompt: req.Prompt, negative: req.NegativePrompt, seed: seedOr(req.Seed), width: w, height: h,
 		frames: wf.Frames(req.DurationSeconds), fps: wf.FPSOrDefault(),
-		references: req.References, first: req.FirstFrame, last: req.LastFrame, speedMode: req.SpeedMode,
+		references: req.References, first: req.FirstFrame, last: req.LastFrame, speedMode: req.SpeedMode, sampling: req.Sampling,
 	}
 }
 
@@ -123,6 +124,7 @@ func (b *Backend) missing(v values) error {
 // as, by assignment index.
 func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error) {
 	v.denoiseFloor = b.Model.Workflow.ReferenceDenoiseMin
+	v.sampling = applicableSampling(*b.Model.Workflow, v.sampling)
 	if n := b.Model.Workflow.Count(localcfg.ParamReferenceImage); b.Model.Workflow.ReferenceMode != "" && len(v.references) > n {
 		v.references = v.references[:n] // the images beyond the slots were not uploaded
 	}
@@ -132,6 +134,12 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 	}
 	for i, a := range b.Model.Workflow.Assignments {
 		value := v.scalar(a.Param)
+		if sv, named, isSampling := samplingValue(v.sampling, a); isSampling {
+			if !named {
+				continue // the request names no value: the graph's own stays
+			}
+			value = sv
+		}
 		name, isFile := files[i]
 		if isFile {
 			value = name

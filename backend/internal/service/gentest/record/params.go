@@ -5,6 +5,7 @@
 package record
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 )
 
@@ -34,10 +35,16 @@ type ResultParams struct {
 	LoRA      *refs.LoRA `json:"lora,omitempty"`
 	// SpeedMode is the speed mode the video model was asked for (absent: its default).
 	SpeedMode string `json:"speed_mode,omitempty"`
+	// Sampling is the steps, cfg, sampler and scheduler the model ran with (the request's value where it took one, else the model's
+	// default; not the steps and cfg of a speed mode). Absent: the model takes none, or the result is older than the setting.
+	Sampling *sampling.Settings `json:"sampling,omitempty"`
 }
 
 // SentText is the English a result's prompt and negative prompt were translated to (gentest_result.params "translation").
 type SentText struct {
 	Prompt   string `json:"prompt"`
 	Negative string `json:"negative_prompt,omitempty"`
+	// LostWeights lists the weights of the prompt syntax ("(word:1.3)", brackets) that the English does not have any more (found by
+	// prompttranslate.LostWeights); absent when every one survived.
+	LostWeights []string `json:"lost_weights,omitempty"`
 }

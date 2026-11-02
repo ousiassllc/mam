@@ -7,6 +7,7 @@
   "media": "video",
   "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},
   "workflow": {
+   "prompt_weight": "weak",
    "graph": {
     "95": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
     "96": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
@@ -32,7 +33,17 @@
     {"param": "height", "node": "57", "input": "height"},
     {"param": "frames", "node": "57", "input": "length"},
     {"param": "fps", "node": "58", "input": "fps"},
-    {"param": "first_frame", "node": "56", "input": "image"}
+    {"param": "first_frame", "node": "56", "input": "image"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"},
+    {"param": "steps", "node": "3", "input": "end_at_step", "ratio": 0.5},
+    {"param": "steps", "node": "4", "input": "steps"},
+    {"param": "cfg", "node": "4", "input": "cfg"},
+    {"param": "sampler", "node": "4", "input": "sampler_name"},
+    {"param": "scheduler", "node": "4", "input": "scheduler"},
+    {"param": "steps", "node": "4", "input": "start_at_step", "ratio": 0.5}
    ],
    "output_node": "59",
    "fps": 16,

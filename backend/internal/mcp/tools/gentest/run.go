@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
@@ -89,6 +90,10 @@ type RequestInput struct {
 	LoRA *LoRAInput `json:"lora,omitempty" jsonschema:"画像だけ。参照画像と一緒に使う LoRA。supports_lora でないモデルは警告 lora_unsupported で使わない"`
 	// SpeedMode picks how a video model samples (VideoCaps.SpeedModes).
 	SpeedMode string `json:"speed_mode,omitempty" jsonschema:"動画だけ。速さのモード（list_generation_models のモデルの video.speed_modes の id。例: Wan 2.2 14B + LightX2V の fast = 4 ステップ・cfg 1 / standard = 通常の 20 ステップ・cfg 3.5）。省くと各モデルの既定（speed_modes の default）。そのモードを持たないモデルは警告 speed_mode_unsupported で既定のまま作る"`
+	// Seed fixes the seed of every result (the n-th result of each model and prompt gets seed + n - 1).
+	Seed *int64 `json:"seed,omitempty" jsonschema:"シードを固定する（0〜4294967295）。n 本目は seed + n − 1 を使う（本数が多いときは seed + 本数 − 1 もこの範囲）。モデルごとに同じ seed で比べられ、結果の seed からいつでも作り直せる。省くと結果ごとにランダム。シードを渡せないモデルは警告 seed_ignored で使わない"`
+	// Sampling overrides the steps, cfg, sampler and scheduler of the models that take them.
+	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"詳細設定: steps（1〜150）・cfg（0〜30）・sampler・scheduler。省いた項目は各モデルの既定（list_generation_models の sampling の default）。受け取らない項目（sampling に無い）と、速さのモードがあるモデルの steps・cfg（sampling の locked が speed_mode）は警告 sampling_ignored で使わない（速さのモードが優先）。結果の sampling に使った値が残る"`
 	// TranslateToEnglish is a pointer: omitted means the default of the screen (on), false is a deliberate off.
 	TranslateToEnglish *bool `json:"translate_to_english,omitempty" jsonschema:"プロンプトとネガティブプロンプトを LLM（LLM の割り当ての Prompt Planner）で英語に訳してから送る。既定 true（画面と同じ）。すでに英語の文は訳さずそのまま。訳せなければ何も生成せずエラー（upstream）。見積りには訳す文の数が単価なしの行（model が translate）として入る。false でそのまま送る"`
 }
@@ -103,6 +108,10 @@ func (in RequestInput) request() gentest.Request {
 	}
 	if in.TranslateToEnglish != nil {
 		r.TranslateToEnglish = *in.TranslateToEnglish
+	}
+	r.Seed = in.Seed
+	if in.Sampling != nil {
+		r.Sampling = *in.Sampling
 	}
 	for _, p := range in.Prompts {
 		r.Prompts = append(r.Prompts, gentest.PromptInput{Prompt: p.Prompt, Negative: p.NegativePrompt})

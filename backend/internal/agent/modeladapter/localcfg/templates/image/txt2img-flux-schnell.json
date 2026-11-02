@@ -6,6 +6,7 @@
  "model": {
   "media": "image",
   "workflow": {
+   "prompt_weight": "weak",
    "graph": {
     "30": {
      "class_type": "CheckpointLoaderSimple",
@@ -112,6 +113,26 @@
      "param": "height",
      "node": "27",
      "input": "height"
+    },
+    {
+     "param": "steps",
+     "node": "31",
+     "input": "steps"
+    },
+    {
+     "param": "cfg",
+     "node": "31",
+     "input": "cfg"
+    },
+    {
+     "param": "sampler",
+     "node": "31",
+     "input": "sampler_name"
+    },
+    {
+     "param": "scheduler",
+     "node": "31",
+     "input": "scheduler"
     }
    ],
    "output_node": "9"

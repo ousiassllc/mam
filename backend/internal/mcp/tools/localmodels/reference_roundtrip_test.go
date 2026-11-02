@@ -69,7 +69,7 @@ func TestAssignmentsSentBackKeepTheirOptionalFlag(t *testing.T) {
 
 	var got localmodels.Model
 	env.CallOK("get_local_model", map[string]any{"endpoint": "box", "name": "qwen"}, &got)
-	require.Len(t, got.Assignments, 15)
+	require.Len(t, got.Assignments, len(templateWorkflow(t, "txt2img-qwen-image21").Assignments))
 	require.NotNil(t, got.Assignments[5].Optional, "the optional flag is shown")
 	assert.True(t, *got.Assignments[5].Optional)
 

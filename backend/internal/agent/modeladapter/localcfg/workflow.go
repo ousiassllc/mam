@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
 )
 
 // Param is a value of a generation that an Assignment puts into a node of a ComfyUI workflow.
@@ -34,8 +36,8 @@ const (
 
 // imageParams are the values an image workflow takes; videoParams the ones a video workflow takes.
 var (
-	imageParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamReferenceImage, ParamReferenceDenoise}
-	videoParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamFrames, ParamFPS, ParamReferenceImage, ParamFirstFrame, ParamLastFrame}
+	imageParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamReferenceImage, ParamReferenceDenoise, ParamSteps, ParamCFG, ParamSampler, ParamScheduler}
+	videoParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamFrames, ParamFPS, ParamReferenceImage, ParamFirstFrame, ParamLastFrame, ParamSteps, ParamCFG, ParamSampler, ParamScheduler}
 )
 
 // ImageParams lists the values an image workflow takes.
@@ -54,6 +56,8 @@ type Assignment struct {
 	// Optional (ParamReferenceImage only) lets the workflow run without that reference: the assignment's node is dropped and the
 	// inputs of other nodes that linked to it are removed (a variable number of references).
 	Optional bool `json:"optional,omitempty"`
+	// Ratio (ParamSteps only, 0 < Ratio < 1) puts round(steps * Ratio) there instead of the steps: where a two-stage sampler (Wan 2.2) hands over.
+	Ratio float64 `json:"ratio,omitempty"`
 }
 
 // Workflow is a ComfyUI workflow in API format with the table that tells mam where its values go.
@@ -81,6 +85,8 @@ type Workflow struct {
 	ReferenceDenoiseMin float64 `json:"reference_denoise_min,omitempty"`
 	// LoraModelNode is the node whose output 0 is the model: a LoRA of a request is inserted behind it. Empty: no LoRA.
 	LoraModelNode string `json:"lora_model_node,omitempty"`
+	// PromptWeight says whether the model reads the weights of a prompt, "(word:1.3)" (package promptweight); empty: not said (unknown).
+	PromptWeight promptweight.Level `json:"prompt_weight,omitempty"`
 	// SpeedModes are the ways a video workflow can sample (SpeedMode); the first is the graph as it stands and the default. Empty: one way.
 	SpeedModes []SpeedMode `json:"speed_modes,omitempty"`
 }
@@ -311,6 +317,8 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 	errs = append(errs, validateReferences(where, media, w)...)
 	errs = append(errs, validateReferenceMode(where, w, g)...)
 	errs = append(errs, validateSpeedModes(where, media, w, g)...)
+	errs = append(errs, validateSampling(where, w, g)...)
+	errs = append(errs, validatePromptWeight(where, w)...)
 	if w.FPS < 0 || w.FPS > 240 || w.FramesStep < 0 || w.FramesStep > 64 || w.SizeMultiple < 0 || w.SizeMultiple > 128 {
 		errs = append(errs, fmt.Errorf("%s: fps must be within 0-240, frames_step within 0-64 and size_multiple within 0-128", where))
 	}

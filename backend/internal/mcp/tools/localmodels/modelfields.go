@@ -114,14 +114,20 @@ func assignmentsFrom(given []Assignment, saved []localcfg.Assignment) []localcfg
 	out := make([]localcfg.Assignment, len(given))
 	for i, a := range given {
 		out[i] = localcfg.Assignment{Param: localcfg.Param(a.Param), Node: a.Node, Input: a.Input, Index: a.Index}
-		if a.Optional != nil {
-			out[i].Optional = *a.Optional
-			continue
-		}
-		if j := slices.IndexFunc(saved, func(s localcfg.Assignment) bool {
+		kept := slices.IndexFunc(saved, func(s localcfg.Assignment) bool {
 			return s.Param == out[i].Param && s.Index == out[i].Index && s.Node == out[i].Node && s.Input == out[i].Input
-		}); j >= 0 {
-			out[i].Optional = saved[j].Optional
+		})
+		switch {
+		case a.Optional != nil:
+			out[i].Optional = *a.Optional
+		case kept >= 0:
+			out[i].Optional = saved[kept].Optional
+		}
+		switch {
+		case a.Ratio != nil:
+			out[i].Ratio = *a.Ratio
+		case kept >= 0:
+			out[i].Ratio = saved[kept].Ratio
 		}
 	}
 	return out

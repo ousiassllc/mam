@@ -64,7 +64,7 @@ openai-compat:lmstudio/flux-schnell
 
 ## 4. ComfyUI
 
-- **割り当て表（`assignments`）**: `param` の値をノード `node` の入力 `input` に入れる。使える `param`: `prompt`、`negative_prompt`、`seed`（実行ごとに乱数）、`width`、`height`、`frames`、`fps`、`reference_image`（`index` で何枚目か。`optional: true` なら、その枚数が無い実行ではノードごと外れる）、`reference_denoise`（画像のみ。§4.2）、`first_frame`、`last_frame`。画像は `frames`・`fps`・`first_frame`・`last_frame` を使えない。幅・高さは縦横比と解像度から決め、`size_multiple` の倍数に丸める。
+- **割り当て表（`assignments`）**: `param` の値をノード `node` の入力 `input` に入れる。使える `param`: `prompt`、`negative_prompt`、`seed`（実行ごとに乱数。生成テストと `run_workflow` は固定もできる）、`steps`・`cfg`・`sampler`・`scheduler`（§4.3）、`width`、`height`、`frames`、`fps`、`reference_image`（`index` で何枚目か。`optional: true` なら、その枚数が無い実行ではノードごと外れる）、`reference_denoise`（画像のみ。§4.2）、`first_frame`、`last_frame`。画像は `frames`・`fps`・`first_frame`・`last_frame` を使えない。幅・高さは縦横比と解像度から決め、`size_multiple` の倍数に丸める。
 - **入力画像**: 参照画像・最初／最後のフレームは `POST /upload/image` に**元の拡張子のまま**アップロードし、返った名前を入力に入れる。
 - **実行**: `/ws?clientId=…` を開いてから `POST /prompt`（`prompt_id` と `client_id` は mam が決める）。`/ws` の `progress`・`executing` から割合を求め、`/history/<id>` を確認して完了を待つ。結果は `GET /view` で取る（動画は `.mp4`・`.m4v`・`.webm`・`.mov` のみ。それ以外は投入後のエラー）。
 - **進捗**: 割合は Shot の進捗（`/ws/shots/:id`、チャットの進捗カード、Take カード）のメッセージに「動画を生成しています（42%）」の形で入る。モデル呼び出しの文脈に進捗の関数を持たせ（`modeladapter/progress`）、`generation/relay` が Orchestrator の通知（Take 数など）のメッセージに割合を足して配信する（`Progress` の型は変えない）。
@@ -79,6 +79,22 @@ openai-compat:lmstudio/flux-schnell
   - **既定を縮めない**: 既定は 10800 秒のまま。進みを報せないカスタムノードのワークフローや、進みの出ない長い処理（モデルの読み込み・VAE のデコード）では印が出ず、既定を縮めるとそれらを従来より早く打ち切ってしまうため。進みを報せる ComfyUI では、利用者が `timeout_seconds` を下げれば固まったジョブを早く見つけられる。
 - **組み込みテンプレート**: `localcfg/templates/image/*.json`・`localcfg/templates/video/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
 - **取り込み**: 利用者の「Save (API Format)」の JSON を取り込める。エディタ形式（`nodes`/`links`）は拒否してヒントを返す。ノードと入力の一覧を返すので、割り当てを利用者が決める。
+
+### 4.3 サンプリングの割り当て（steps・cfg・sampler・scheduler。Issue #973）
+
+- **`param`**: `steps`（ステップ数）・`cfg`・`sampler`（KSampler の `sampler_name`）・`scheduler` を、画像・動画のどちらでも割り当てられる（`localcfg.ParamSteps` ほか）。テンプレートは、KSampler・KSamplerAdvanced・SamplerCustom（`cfg`）・SamplerCustomAdvanced 系（`BasicScheduler`・`BetaSamplingScheduler`・`Flux2Scheduler`・`LTXVScheduler` の `steps`、`CFGGuider` の `cfg`、`KSamplerSelect` の `sampler_name`）の**入力そのもの**に割り当てる。割り当てが無い値は、そのモデルでは設定できない（画面は欄を出さず、リクエストの値は警告つきで使わない）。LTX-2.5 は蒸留版で `ManualSigmas` と固定の `cfg 1` だけなので、割り当てを持たない。
+- **既定は今のテンプレートの値**: グラフの値が既定で、リクエストが名前を出さない値は**グラフに書き込まない**。上書きしなければ、送るグラフは今と一字も変わらない（テスト `comfyui/samplingtest` が、組み込みテンプレートの全部でこれを確かめる）。
+- **`ratio`（`steps` の割り当てだけ。0〜1 の間）**: ステップ数そのものではなく `round(steps × ratio)` を入れる。2 段のサンプラー（Wan 2.2 14B の高ノイズ・低ノイズ。`KSamplerAdvanced` の `end_at_step`・`start_at_step`）の切り替えのステップが、ステップ数を変えても同じ割合の場所に残る（Wan 2.2 14B は 0.5、Remix は 20 ステップ中の 10 ではなく 12 ステップ中の 10 なので 0.8333）。結果は 1 以上で、後の段が動く余地を残す。保存済みの割り当てを送り返す更新（`update_local_model`・設定画面）は `ratio` を引き継ぐ。
+- **速さのモードが優先（決定）**: `speed_modes` を持つワークフロー（Wan 2.2 14B + LightX2V など）は、蒸留 LoRA がそのステップ数と cfg でしか効かないので、`steps`・`cfg` を**速さのモードが決める**。リクエストの `steps`・`cfg` は、画面では欄を無効にして理由を出し、サーバー（`localcfg/sampling.Caps` の `Applicable`）でも**無視する**（警告 `sampling_ignored`）。`sampler`・`scheduler` は上書きできる。
+- **`sampling.Caps`（`localcfg/sampling`）**: ワークフローが受け取る値と既定（`Workflow.SamplingCaps()`）。`modelcatalog.Info.Sampling`・MCP の `list_generation_models` が返す。範囲は steps 1〜150・cfg 0〜30（`MinSteps` ほか。画面のスライダーと同じ）。サンプラー・スケジューラー名は ComfyUI の `comfy/samplers.py` の一覧（`sampling.Samplers`・`Schedulers`）。
+- **検証**: 保存時（`validateSampling`）、`ratio` は `steps` だけで 0〜1 の間、`steps`・`cfg` は数値の入力、`sampler`・`scheduler` は文字の入力に割り当てる。
+
+### 4.4 プロンプトのウェイト（`prompt_weight`。Issue #972）
+
+- **値**: ワークフローの `prompt_weight` = `supported`（効く）・`weak`（適用されるが効きが弱いかもしれない）・`unsupported`（効かない）・`unknown`（確かめていない。省略も同じ）。`modelcatalog.Info.PromptWeight`・`list_generation_models` が返し、画面の「?」と警告 `prompt_weight` の源になる。組み込みテンプレートの全部に値を入れてある。
+- **根拠（ComfyUI `comfy/sd1_clip.py`・`comfy/text_encoders/*.py` を読んだ事実）**: ComfyUI は `(語:1.3)`・`(語)`（1.1 倍。入れ子は 1.1 ずつ）を、テキストエンコーダーのトークナイザーが `disable_weights` を立てていないときだけ読む（`SDTokenizer.tokenize_with_weights` が `token_weights` で切り出し、その語の埋め込みを重みで拡大する）。AUTOMATIC1111 の `[語]` は**読まない**（ただの文字）。`qwen_image`（Qwen-Image・Qwen-Image 2.1）・FLUX.2 klein（`Qwen3`/Mistral のテンプレート）・Hunyuan Video 1.5・LTX-2.5（Gemma）のトークナイザーは `disable_weights=True` なので、かっこと数字がそのまま言語モデルに文として渡る → `unsupported`。SDXL・SD 3.5 は CLIP が読む → `supported`。
+- **断定しないもの**: Flux.1（T5-XXL + CLIP-L。ComfyUI は重みを読むが、文を読むのは T5 で、効きは確かめていない）・Chroma（T5）・Wan 2.2（UMT5）・LTX-Video 0.9.5（T5）は `weak`。GPU での効き方は未確認（実機の確認が要る）。ユーザー自作のワークフローと外部のモデルは `unknown`（警告は出さない。当て推量の警告は雑音になる）。
+- **効かないモデルへの案内**: 画面の「?」と、見積りの警告 `prompt_weight`（プロンプトに `(…)` があるときだけ）が、「強調したい語を文で言い換える（特に・とても・大きく、先頭に置く、具体的に書く）」を出す。
 
 ### 4.2 画像モデルの参照画像・強さ・役割・LoRA（#933）
 画面と MCP は、どのモデルでも同じ「強さ」（0〜1、既定 0.7）と「役割」を渡す。ワークフローの作りの違いは `localcfg`・`comfyui` が吸収する。`reference_mode` が方式を決める（`localcfg.Model.ReferenceCaps()` が方式・上限枚数・選べる役割を返し、画面と `accepts_references`・`max_reference_images` の元になる）。

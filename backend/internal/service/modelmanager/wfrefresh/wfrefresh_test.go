@@ -220,3 +220,39 @@ func TestRunWarnsOfAFailureButNotOfAPinnedFile(t *testing.T) {
 	wfrefresh.Run(context.Background(), failing, cat, endpoint, loud.warn)
 	assert.Equal(t, 2, loud.n, "one warning for each model, none stops the others")
 }
+
+// A model installed before the detailed settings (#973) has no steps, cfg, sampler or scheduler assignments and no prompt weight value: the
+// refresh gives it the template's, as long as the user did not edit it, so that the generation test shows the settings for it too.
+func TestRunBringsAnOldCopyUpToTheSamplingAssignmentsAndThePromptWeight(t *testing.T) {
+	cur := template(t, "txt2img-sdxl")
+	w := *cur.Workflow
+	w.PromptWeight = ""
+	w.Assignments = nil
+	for _, a := range cur.Workflow.Assignments {
+		switch a.Param {
+		case localcfg.ParamSteps, localcfg.ParamCFG, localcfg.ParamSampler, localcfg.ParamScheduler:
+		default:
+			w.Assignments = append(w.Assignments, a)
+		}
+	}
+	cur.Workflow, cur.CostPerImage = &w, 0.03
+	f := &fakeModels{saved: []localmodels.ModelView{view(endpoint, "wf", cur)}}
+	wfrefresh.Run(context.Background(), f, catalogOf(catalog.Workflow{Name: "wf", Template: "txt2img-sdxl"}), endpoint, (&warnings{}).warn)
+
+	got, ok := f.updates[endpoint+"/wf"]
+	require.True(t, ok)
+	assert.True(t, got.Workflow.Has(localcfg.ParamSteps))
+	assert.True(t, got.Workflow.Has(localcfg.ParamScheduler))
+	assert.Equal(t, template(t, "txt2img-sdxl").Workflow.PromptWeight, got.Workflow.PromptWeight)
+	assert.InDelta(t, 0.03, got.CostPerImage, 1e-9, "the price the user set stays")
+
+	// the user's own steps: an edit, left alone
+	f = &fakeModels{saved: []localmodels.ModelView{view(endpoint, "wf", editGraph(t, cur, "3", "steps", 40))}}
+	wfrefresh.Run(context.Background(), f, catalogOf(catalog.Workflow{Name: "wf", Template: "txt2img-sdxl"}), endpoint, (&warnings{}).warn)
+	assert.Empty(t, f.updates)
+
+	// a copy that is up to date is not written again
+	f = &fakeModels{saved: []localmodels.ModelView{view(endpoint, "wf", template(t, "txt2img-sdxl"))}}
+	wfrefresh.Run(context.Background(), f, catalogOf(catalog.Workflow{Name: "wf", Template: "txt2img-sdxl"}), endpoint, (&warnings{}).warn)
+	assert.Empty(t, f.updates)
+}

@@ -69,6 +69,14 @@
 
 `mcptest` と `gentesttest`（組み込みの全モデルに偽のバックエンド・実際の DB・動くジョブキュー。参照画像・LoRA の検査には ComfyUI の偽のエンジンを足したモデルも使う）で、全組み合わせの実行と `get_job`・`get_generation_test`、見積りの確認（`estimate_id` なし・別の値・条件の変更・上限超え・`max_items` 超え）、取り消し、履歴の絞り込み・お気に入り・削除・プロンプト履歴、入力画像のアップロード（中身の検査）と結果のトークン URL、取り込み（参照・アセット・スロット割り当て・LOCK）、参照画像の役割・強さ・LoRA・ポーズを真似ない設定の往復（見積り・実行・履歴）と、枚数超過・役割・LoRA 非対応の警告、範囲外の強さ・動画への指定の拒否、`list_generation_models` の `reference_mode` など・`loras`、Take・コスト台帳・アセットが作られないこと、`get_job` が画面で始めたバッチを読めること、`unavailable`。
 
+## 詳細設定とプロンプトのウェイト（Issue #973・#972）
+
+- **入力**: `estimate_generation_test`・`run_generation_test` に `seed`（0〜4294967295。n 本目は `seed + n − 1`。省くと結果ごとにランダム）と `sampling`（`steps` 1〜150・`cfg` 0〜30・`sampler`・`scheduler`。省いた項目はモデルの既定）を足した。範囲外は `validation`。
+- **`list_generation_models`**: 各モデルに `sampling`（そのモデルが受け取る `steps`・`cfg`・`sampler`・`scheduler` と `default`。無い項目は受け取らない。`steps`・`cfg` の `locked: "speed_mode"` は速さのモードが決める＝指定しても無視）と `prompt_weight`（`supported` / `weak` / `unsupported` / `unknown`。`(語:1.3)` が効くか。`unsupported` のモデルは、強調したい語を文で言い換える）を足した。
+- **警告**（見積りの `warnings[]`）: `sampling_ignored`（モデルが受け取らない値、または速さのモードがあるモデルの `steps`・`cfg`。**速さのモードが優先**）・`seed_ignored`（シードを渡せないモデル）・`prompt_weight`（プロンプトに `(…)` があり、モデルが読まない `unsupported` か効きが弱い `weak`）。
+- **結果**（`get_generation_result`・`get_generation_test` の `results[]`）: `sampling`（実際に使った `steps`・`cfg`・`sampler`・`scheduler`）と `seed` が残るので、同じ条件で作り直せる。英訳でウェイト（重みの数字・括弧）が消えたときは `lost_weights[]`。
+- 英訳は `(token:weight)`・`(word)`・`[word]` をそのまま残す指示で行う（[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.1）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -82,3 +90,4 @@
 | 1.6 | 2026-11-02 | `estimate_generation_test`・`run_generation_test` に動画の `speed_mode`（Wan 2.2 14B + LightX2V の `fast` = 4 ステップ / `standard` = 通常）、`list_generation_models` のモデルの `video.speed_modes`（`id`・`label`・`default`）、警告 `speed_mode_unsupported`、結果の `speed_mode` を足した | Issue #930 |
 | 1.7 | 2026-11-02 | `get_job`（種別 `gentest`）と `get_generation_test` に、動いているローカル ComfyUI の生成の `progress`（ステップ・%・残りの見積り。取れないときは省く）を足した | Issue #966 |
 | 1.8 | 2026-11-02 | `estimate_prompt_match` の見積りに LLM の呼び出し 2 行（`match_llm`・`match_llm_compare`）を足し、単価の確かめられたモデルは合計に入れ、確かめられない行だけ `no_price` にした。`get_prompt_match` の回に `scoring`（顔を混ぜているときの点の内訳）を足した | Issue #964・#965 |
+| 1.9 | 2026-11-03 | `estimate_generation_test`・`run_generation_test` に `seed`・`sampling`、`list_generation_models` に `sampling`・`prompt_weight`、結果に `sampling`・`lost_weights`、警告 `sampling_ignored`・`seed_ignored`・`prompt_weight` を足した | Issue #973・#972 |

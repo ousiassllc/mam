@@ -25,7 +25,9 @@ type FakeLLM struct {
 // Asked is one call of the FakeLLM.
 type Asked struct {
 	Agent llm.Agent
-	Texts []string
+	// System is the instruction of the call.
+	System string
+	Texts  []string
 }
 
 // Complete answers {"texts": [...]} with the translation of the texts of the request.
@@ -35,7 +37,7 @@ func (f *FakeLLM) Complete(_ context.Context, agent llm.Agent, req llm.Request) 
 	}
 	_ = json.Unmarshal([]byte(req.User), &in)
 	f.mu.Lock()
-	f.asked = append(f.asked, Asked{Agent: agent, Texts: slices.Clone(in.Texts)})
+	f.asked = append(f.asked, Asked{Agent: agent, System: req.System, Texts: slices.Clone(in.Texts)})
 	say, err := f.Say, f.Err
 	f.mu.Unlock()
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/progress"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
@@ -50,6 +51,10 @@ type RunInput struct {
 	References []AssetRef
 	FirstFrame *AssetRef
 	LastFrame  *AssetRef
+	// Seed fixes the seed (nil: a new one, which the record keeps). Sampling overrides the steps, cfg, sampler and scheduler of a
+	// workflow that takes them (the assignments steps, cfg, sampler, scheduler); the others are left out with a warning.
+	Seed     *int64
+	Sampling sampling.Settings
 }
 
 // RunRecord is what a run left in <RunsDir>/<id>/run.json.
@@ -67,8 +72,12 @@ type RunRecord struct {
 	BootID     string     `json:"boot_id"`
 	StartedAt  time.Time  `json:"started_at"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
-	// Warnings are what the ComfyUI lacked for the workflow when the run started (never a reason not to run it).
+	// Warnings are what the ComfyUI lacked for the workflow when the run started, and the settings of the run it left out (never a
+	// reason not to run it).
 	Warnings []Warning `json:"warnings,omitempty"`
+	// Seed and Sampling are what the run used: with the prompt, the aspect ratio and the version, enough to run it again.
+	Seed     int64              `json:"seed"`
+	Sampling *sampling.Settings `json:"sampling,omitempty"`
 	// Percent and Message are the progress while it runs (this process only).
 	Percent int    `json:"percent,omitempty"`
 	Message string `json:"message,omitempty"`
@@ -99,18 +108,23 @@ func (s *Service) StartRun(ctx context.Context, in RunInput) (RunRecord, error) 
 	if err := s.Adapter.Gate.Check(domain.ModelName(modelID)); err != nil {
 		return RunRecord{}, invalid("%s", agegate.Reason(err))
 	}
-	req, err := s.prepare(ctx, saved, in)
+	set, err := settingsOf(saved, in)
+	if err != nil {
+		return RunRecord{}, err
+	}
+	req, err := s.prepare(ctx, saved, in, set)
 	if err != nil {
 		return RunRecord{}, err
 	}
 	id := domain.NewID()
 	rec := RunRecord{
 		ID: id, WorkflowID: wf.ID, ModelID: modelID, Media: string(saved.Model.Media), Prompt: in.Prompt,
-		Status: RunRunning, BootID: s.bootID, StartedAt: s.Now().UTC(),
+		Status: RunRunning, BootID: s.bootID, StartedAt: s.Now().UTC(), Seed: set.seed, Sampling: set.used,
 	}
 	if res := s.CheckGraph(ctx, saved.Endpoint, saved.Model.Workflow.Graph); res.Reachable {
 		rec.Warnings = res.Warnings
 	}
+	rec.Warnings = append(rec.Warnings, set.warnings...)
 	dir := filepath.Join(s.RunsDir, id)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return RunRecord{}, fmt.Errorf("create the run directory: %w", err)
@@ -145,7 +159,7 @@ type request struct {
 }
 
 // prepare turns the input into the backend's request, checked against what the workflow offers.
-func (s *Service) prepare(ctx context.Context, saved localcfg.SavedWorkflow, in RunInput) (request, error) {
+func (s *Service) prepare(ctx context.Context, saved localcfg.SavedWorkflow, in RunInput, set runSettings) (request, error) {
 	if in.Prompt == "" {
 		return request{}, invalid("プロンプトを入力してください")
 	}
@@ -161,12 +175,14 @@ func (s *Service) prepare(ctx context.Context, saved localcfg.SavedWorkflow, in 
 		if in.FirstFrame != nil || in.LastFrame != nil {
 			return request{}, invalid("画像のワークフローに最初・最後のフレームは渡せません")
 		}
-		return request{image: modeladapter.ImageRequest{Prompt: in.Prompt, AspectRatio: aspect, Inputs: refs}}, nil
+		return request{image: modeladapter.ImageRequest{
+			Prompt: in.Prompt, AspectRatio: aspect, Inputs: refs, Seed: &set.seed, Options: localcfg.ImageOptions{Sampling: set.apply},
+		}}, nil
 	}
 	caps, _ := saved.Model.VideoCaps()
 	r := modeladapter.VideoRequest{
 		Prompt: in.Prompt, NegativePrompt: in.NegativePrompt, AspectRatio: aspect, Resolution: in.Resolution,
-		References: refs, DurationSeconds: in.DurationSeconds,
+		References: refs, DurationSeconds: in.DurationSeconds, Seed: &set.seed, Sampling: set.apply,
 	}
 	if r.Resolution == "" {
 		r.Resolution = caps.Resolutions[0]
