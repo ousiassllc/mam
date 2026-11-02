@@ -149,7 +149,7 @@
 | テスト | ① | ② |
 |--------|---|---|
 | `web/global_settings_test.go` | `GET /settings` に全区画がある前提を、概要＋各分類のページに書き直す。API キーのパネルは `/settings/api-keys` | カードの `id`・`data-testid`（既存を維持）に合わせる |
-| `web/llm_settings_test.go`・`model_settings_test.go`・`model_settings_screen_test.go`・`mcp_settings_test.go`・`update_settings_test.go` | ページの取得先を各分類の URL に変える | モーダルの断片・Agent ごとの保存・OOB の行・422 の本文を検査するものに書き換える（今の全体フォームの検査は、`PUT /settings/llm` と `/settings/models` が残るので残す） |
+| `web/llmsettingstest/llm_settings_test.go`・`model_settings_test.go`・`model_settings_screen_test.go`・`mcp_settings_test.go`・`update_settings_test.go` | ページの取得先を各分類の URL に変える | モーダルの断片・Agent ごとの保存・OOB の行・422 の本文を検査するものに書き換える（今の全体フォームの検査は、`PUT /settings/llm` と `/settings/models` が残るので残す） |
 | `router/credential_test.go`・`web/credential_handler_test.go` | `GET /settings/api-keys` を取得する | 保存の応答を OOB の行＋ `HX-Trigger-After-Swap` に。422・キーが応答に出ないことは残す |
 | `web/handler/settings/local/screen_test.go`・`endpoints_test.go` | 取得先を `/settings/local-models`（HTMX でない）に | カード・モーダル・サブページ。`#model-assignment` の OOB の検査は、別ページになるため外す |
 | `web/handler/chatgptsettings/chatgptsettings_test.go` | `GET /settings/chatgpt`（HTMX なし）がページ全体、HTMX が断片 | カードの一覧の断片 |

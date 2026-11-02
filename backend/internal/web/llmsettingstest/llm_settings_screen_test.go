@@ -1,4 +1,4 @@
-package web_test
+package llmsettingstest_test
 
 import (
 	"net/http"
