@@ -36,8 +36,8 @@ func TestLockToggle_OffersTheVideoModelOfManualAndLockInTheSharedFieldLook(t *te
 		assert.Contains(t, html, `aria-label="Video Model"`, mode)
 		assert.Contains(t, html, `name="value"`, mode)
 		assert.Contains(t, html, "text-neutral-100", mode) // the look of atoms.Select, not a hand-written one
-		assert.Contains(t, html, `<option value="kling-3.0">kling-3.0</option>`, mode)
-		assert.Contains(t, html, `<option value="seedance-2.0" selected>seedance-2.0</option>`, mode)
+		assert.Contains(t, html, `<option value="kling-3.0" data-commercial="unknown">kling-3.0（不明）</option>`, mode, "the option says whether the model may be used commercially")
+		assert.Contains(t, html, `<option value="seedance-2.0" selected data-commercial="unknown">seedance-2.0（不明）</option>`, mode)
 		assert.Contains(t, html, `<option value="">（現在のモデル）</option>`, mode)
 	}
 }

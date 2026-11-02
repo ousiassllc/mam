@@ -1,0 +1,82 @@
+package commercial
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// Badge is the answer as an icon with its word; the tooltip says the license and the condition.
+templ Badge(v View) {
+	@atoms.CommercialBadge(v.Level, v.Detail(), templ.Attributes{"data-testid": "commercial-badge"})
+}
+
+// Mark is the answer as an icon only, for a result card or a table cell.
+templ Mark(v View) {
+	@atoms.CommercialMark(v.Level, v.Detail(), templ.Attributes{"data-testid": "commercial-badge"})
+}
+
+// Note says what to watch for in words, where there is room for it (a model card, a detail): the license (linked to its original with the
+// day it was read) and the condition or the notice. 商用OK has nothing to watch for and draws nothing; 不明 and 商用NG are drawn in
+// the warning colours with an edge, so that they are not overlooked.
+templ Note(v View) {
+	if v.NeedsNote() {
+		<div class={ noteClass(v) } role="note" data-testid="commercial-note" data-commercial-note={ v.Answer() }>
+			<p class="font-semibold">
+				@atoms.Icon(noteIcon(v), "mr-1 inline h-4 w-4 align-text-bottom")
+				{ v.Level.Label() }
+				if v.LicenseName != "" {
+					<span class="font-normal">・ { v.LicenseName }</span>
+				}
+			</p>
+			if v.Condition != "" {
+				<p data-testid="commercial-condition">{ v.Condition }</p>
+			}
+			if v.Notice != "" {
+				<p data-testid="commercial-notice">{ v.Notice }</p>
+			}
+			@sourceLink(v)
+		</div>
+	}
+}
+
+// sourceLink is the link to the license original with the day it was read.
+templ sourceLink(v View) {
+	if v.SourceURL != "" {
+		<p class="text-xs">
+			<a class="underline" href={ templ.SafeURL(v.SourceURL) } target="_blank" rel="noopener noreferrer">ライセンス原文</a>
+			if v.CheckedAt != "" {
+				<span>（{ v.CheckedAt } に確認）</span>
+			}
+		</p>
+	}
+}
+
+// Filter is the choice 「すべて / 商用OKのみ / 条件つきまで」 of a list. static/src/components/commercial-filter narrows the items
+// of the list that carry data-commercial. The radio buttons point at a form that does not exist (form="commercial-filter-no-form"),
+// so a form that contains the filter does not post them, unless the filter has a Field to post under.
+templ Filter(f FilterData) {
+	<div
+		class="flex flex-wrap items-center gap-2"
+		role="radiogroup"
+		aria-label="商用利用で絞り込む"
+		data-commercial-filter
+		data-commercial-filter-target={ f.Target }
+		data-testid="commercial-filter"
+		id={ f.ID }
+	>
+		@atoms.Icon(atoms.IconFilter, "h-4 w-4 shrink-0 text-neutral-400")
+		for _, opt := range filterOptions() {
+			<label class="relative cursor-pointer">
+				<input
+					type="radio"
+					class="peer sr-only"
+					name={ f.radioName() }
+					if f.Field == "" {
+						form="commercial-filter-no-form"
+					}
+					value={ string(opt) }
+					checked?={ opt == f.Current }
+				/>
+				<span class="inline-block rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400">{ opt.Label() }</span>
+			</label>
+		}
+		<span class="text-xs text-neutral-400" role="status" aria-live="polite" data-commercial-filter-status></span>
+	</div>
+}

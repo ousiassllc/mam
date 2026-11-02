@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -23,7 +25,7 @@ func (h Handlers) detail(ctx context.Context, d gentest.ResultDetail, f view.Imp
 	v := view.Detail{
 		Card: cardOf(d.ResultView, false), SentPrompt: d.SentPrompt, Negative: d.NegativePrompt, NegMode: negativeModeText[d.NegativeMode],
 		English: d.TranslatedPrompt, EnglishNegative: d.TranslatedNegativePrompt,
-		Params: params(d),
+		Params: params(d), Answer: commercial.Of(d.Model),
 	}
 	if d.Media == gentest.MediaImage && d.HasFile {
 		v.UseURL = paths.GenerationTest() + "?ref=" + refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()

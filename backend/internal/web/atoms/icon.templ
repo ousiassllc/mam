@@ -31,6 +31,11 @@ const (
 	IconImagePlus    IconName = "image-plus"
 	IconImageUp      IconName = "image-up"
 	IconImageOff     IconName = "image-off"
+	IconBadgeCheck   IconName = "badge-check"
+	IconBadgeAlert   IconName = "badge-alert"
+	IconBadgeHelp    IconName = "badge-help"
+	IconBan          IconName = "ban"
+	IconFilter       IconName = "filter"
 )
 
 // iconDefaultClass is the size of an icon whose class is empty.
@@ -202,6 +207,37 @@ templ Icon(name IconName, class string) {
 				<line x1="18" x2="21" y1="12" y2="15"></line>
 				<path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"></path>
 				<path d="M21 15V5a2 2 0 0 0-2-2H9"></path>
+			}
+		case IconBadgeCheck:
+			// badge-check
+			@iconSVG(class) {
+				<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path>
+				<path d="m16 9-5.5 5.5L8 12"></path>
+			}
+		case IconBadgeAlert:
+			// badge-alert
+			@iconSVG(class) {
+				<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path>
+				<line x1="12" x2="12" y1="8" y2="12"></line>
+				<line x1="12" x2="12.01" y1="16" y2="16"></line>
+			}
+		case IconBadgeHelp:
+			// badge-question-mark
+			@iconSVG(class) {
+				<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path>
+				<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+				<line x1="12" x2="12.01" y1="17" y2="17"></line>
+			}
+		case IconBan:
+			// ban
+			@iconSVG(class) {
+				<circle cx="12" cy="12" r="10"></circle>
+				<path d="M4.929 4.929 19.07 19.071"></path>
+			}
+		case IconFilter:
+			// funnel
+			@iconSVG(class) {
+				<path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"></path>
 			}
 	}
 }

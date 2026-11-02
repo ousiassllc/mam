@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 )
 
@@ -95,7 +96,7 @@ func TestGPTSoVITSAssetsHoldTheWeightsAndEveryDependencyThePackageNeeds(t *testi
 	assert.Equal(t, "https://huggingface.co/lj1995/GPT-SoVITS", w.Source.URL)
 	assert.Empty(t, w.Source.Note)
 	l, _ := s.License(w.License)
-	assert.Equal(t, catalog.CommercialYes, l.CommercialUse)
+	assert.Equal(t, modellicense.Yes, l.Commercial)
 	assert.Contains(t, assetNamed(t, *s, "lid.176").Source.Note, "dl.fbaipublicfiles.com")
 	assert.Contains(t, assetNamed(t, *s, "Open JTalk").Source.Note, "releases/download/v1.11.1")
 
@@ -143,7 +144,7 @@ func TestMuseTalkAssetsListTheWeightsAndTheirLicenses(t *testing.T) {
 	for _, id := range []string{"mit-musetalk", "mit-sd-vae-ft-mse", "apache-2.0-whisper-tiny", "apache-2.0-dwpose"} {
 		l, ok := s.License(id)
 		require.True(t, ok, id)
-		assert.Equal(t, catalog.CommercialYes, l.CommercialUse, id)
+		assert.Equal(t, modellicense.Yes, l.Commercial, id)
 	}
 }
 
@@ -225,18 +226,18 @@ func TestValidateRefusesAnAssetThatIsNotPinnedOrNotDescribed(t *testing.T) {
 		"an unclear license without a notice": {func(c *catalog.Catalog) {
 			s := setOf(t, c, "musetalk")
 			for i := range s.Licenses {
-				if s.Licenses[i].CommercialUse == catalog.CommercialUnclear {
+				if s.Licenses[i].Commercial == modellicense.Unknown {
 					s.Licenses[i].Notice = " "
 				}
 			}
 		}, "needs a notice"},
 		"a license that forbids commercial use without a notice": {func(c *catalog.Catalog) {
 			l := &c.ResourceSets[0].Licenses[0]
-			l.CommercialUse, l.Notice = catalog.CommercialNo, ""
+			l.Commercial, l.Notice = modellicense.No, ""
 		}, "needs a notice"},
 		"a commercial value that is not one of three": {func(c *catalog.Catalog) {
-			c.ResourceSets[0].Licenses[0].CommercialUse = "maybe"
-		}, "yes, no or unclear"},
+			c.ResourceSets[0].Licenses[0].Commercial = "maybe"
+		}, "yes, conditional, no or unknown"},
 		"a license without a summary": {func(c *catalog.Catalog) { c.ResourceSets[0].Licenses[0].Summary = "" }, "a summary are required"},
 		"a license url that is not https": {func(c *catalog.Catalog) {
 			c.ResourceSets[0].Licenses[0].URL = "http://example.com"

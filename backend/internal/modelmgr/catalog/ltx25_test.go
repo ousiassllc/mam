@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,7 +24,7 @@ func TestLTX25IsPinnedToTheGatedRepositoryAtOneCommit(t *testing.T) {
 	assert.True(t, m.ConsentRequired, "the license has a revenue condition: the consent is needed")
 	assert.Equal(t, catalog.TierAdvanced, m.Tier)
 	assert.Equal(t, catalog.RatingGeneral, m.ContentRating)
-	assert.True(t, m.License.CommercialUse)
+	assert.Equal(t, modellicense.Conditional, m.License.Commercial)
 	assert.Contains(t, m.License.CommercialCondition, "1,000 万米ドル")
 	assert.True(t, m.VRAM.Estimate, "no published minimum: mam's own estimate")
 

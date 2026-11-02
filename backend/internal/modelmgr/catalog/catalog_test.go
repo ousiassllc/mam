@@ -7,6 +7,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -38,30 +40,30 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 	for id, want := range map[string]struct {
 		license string
 		consent bool
-		commerc bool
+		commerc modellicense.Commercial
 		files   int
 	}{
-		"sdxl-base":               {"creativeml-openrail++-m", false, true, 1},
-		"flux1-schnell":           {"apache-2.0", false, true, 1},
-		"qwen-image":              {"apache-2.0", false, true, 3},
-		"wan22-ti2v-5b":           {"apache-2.0", false, true, 3},
-		"wan22-i2v-14b":           {"apache-2.0", false, true, 4},
-		"ltx-video-2b":            {"ltx-video-open-rail-m", false, true, 2},
-		"flux1-dev":               {"flux-1-dev-non-commercial", true, false, 1},
-		"sd35-medium":             {"stabilityai-ai-community", true, true, 1},
-		"hunyuanvideo15-480p":     {"tencent-hunyuan-community", true, true, 4},
-		"noctq-v4-qwen-image21":   {"qwen-research", true, false, 3},
-		"chroma1-hd":              {"apache-2.0", true, true, 3},
-		"flux1-dev-nsfw-master":   {"flux-1-dev-non-commercial", true, false, 2},
-		"wan22-remix-nsfw-i2v":    {"unspecified", true, false, 4},
-		"wan22-i2v-14b-nsfw-lora": {"unspecified", true, false, 6},
-		"ltx-2.5-22b-distilled":   {"ltx-2x-community", true, true, 5},
+		"sdxl-base":               {"creativeml-openrail++-m", false, modellicense.Yes, 1},
+		"flux1-schnell":           {"apache-2.0", false, modellicense.Yes, 1},
+		"qwen-image":              {"apache-2.0", false, modellicense.Yes, 3},
+		"wan22-ti2v-5b":           {"apache-2.0", false, modellicense.Yes, 3},
+		"wan22-i2v-14b":           {"apache-2.0", false, modellicense.Yes, 4},
+		"ltx-video-2b":            {"ltx-video-open-rail-m", false, modellicense.Yes, 2},
+		"flux1-dev":               {"flux-1-dev-non-commercial", true, modellicense.No, 1},
+		"sd35-medium":             {"stabilityai-ai-community", true, modellicense.Conditional, 1},
+		"hunyuanvideo15-480p":     {"tencent-hunyuan-community", true, modellicense.Conditional, 4},
+		"noctq-v4-qwen-image21":   {"qwen-research", true, modellicense.No, 3},
+		"chroma1-hd":              {"apache-2.0", true, modellicense.Yes, 3},
+		"flux1-dev-nsfw-master":   {"flux-1-dev-non-commercial", true, modellicense.No, 2},
+		"wan22-remix-nsfw-i2v":    {"unspecified", true, modellicense.Unknown, 4},
+		"wan22-i2v-14b-nsfw-lora": {"unspecified", true, modellicense.Unknown, 6},
+		"ltx-2.5-22b-distilled":   {"ltx-2x-community", true, modellicense.Conditional, 5},
 	} {
 		m, ok := c.Model(id)
 		require.True(t, ok, id)
 		assert.Equal(t, want.license, m.License.ID, id)
 		assert.Equal(t, want.consent, m.ConsentRequired, id)
-		assert.Equal(t, want.commerc, m.License.CommercialUse, id)
+		assert.Equal(t, want.commerc, m.License.Commercial, id)
 		assert.Len(t, m.Files, want.files, id)
 		assert.Equal(t, id == "ltx-2.5-22b-distilled", m.RequiresHFToken, id+": only the gated LTX-2.5 is behind the Hugging Face login")
 		assert.Positive(t, m.TotalSize(), id)
@@ -167,6 +169,21 @@ func TestValidateChecksLicensesConsentAndWorkflows(t *testing.T) {
 			find(c, "hunyuanvideo15-480p").Files[1].SHA256 = strings.Repeat("a", 64)
 		}, "the same destination"},
 		"duplicate model id": {func(c *catalog.Catalog) { find(c, "flux1-dev").ID = "sdxl-base" }, "duplicate id"},
+		// #928: the answer for the whole model is the strictest of its parts, and every license says when it was read.
+		"no check date":                     {func(c *catalog.Catalog) { find(c, "sdxl-base").License.CheckedAt = "" }, "checked_at"},
+		"no commercial answer":              {func(c *catalog.Catalog) { find(c, "sdxl-base").License.Commercial = "" }, "commercial"},
+		"a conditional without a condition": {func(c *catalog.Catalog) { find(c, "sd35-medium").License.CommercialCondition = "" }, "condition"},
+		"an answer looser than a part": {func(c *catalog.Catalog) {
+			find(c, "flux1-dev-nsfw-master").License.Commercial = modellicense.Yes
+		}, "strictest of the components is no"},
+		"a part that is not described": {func(c *catalog.Catalog) {
+			m := find(c, "flux1-dev-nsfw-master")
+			m.License.Components[0].URL = "http://example.com"
+		}, "license component"},
+		"a license without a text that is commercial": {func(c *catalog.Catalog) {
+			find(c, "wan22-remix-nsfw-i2v").License.Commercial = modellicense.Conditional
+			find(c, "wan22-remix-nsfw-i2v").License.Components = nil
+		}, "not commercial use"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			errs := mutate(t, tc.edit)
@@ -184,4 +201,49 @@ func TestLoadRefusesUnknownFields(t *testing.T) {
 	_, err := catalog.Load(fsys)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "bogus")
+}
+
+// #928: every model of the catalog has its license: the name, the answer, the original, the day it was read. A model that a later issue
+// adds without them is caught here (and by Validate), so the badges and the filter never meet a model without an answer.
+func TestEveryModelHasItsLicenseWithTheSourceAndTheDateItWasRead(t *testing.T) {
+	for _, m := range catalog.Default().Models {
+		l := m.License
+		assert.NoError(t, l.Info().Check(), m.ID)
+		if l.Commercial != modellicense.Yes {
+			assert.True(t, m.Tier == catalog.TierAdvanced && m.ConsentRequired, m.ID+": what is not 商用OK is shown before the install and needs consent")
+		}
+	}
+}
+
+// A model made of parts with different licenses shows the strictest one (a LoRA of unknown license on an Apache base is unknown, a LoRA
+// on a non-commercial base is non-commercial), and the parts are listed so that the reader can see why.
+func TestTheStricterOfTheBaseAndTheDerivativeIsShown(t *testing.T) {
+	c := catalog.Default()
+	for id, want := range map[string]modellicense.Commercial{
+		"flux1-dev-nsfw-master":   modellicense.No,      // FLUX.1 [dev] is non-commercial; the LoRA's license is not known
+		"wan22-i2v-14b-nsfw-lora": modellicense.Unknown, // the base is Apache-2.0; the LoRA has no license text
+		"wan22-remix-nsfw-i2v":    modellicense.Unknown,
+		"noctq-v4-qwen-image21":   modellicense.No, // the weights, the text encoder and the VAE are all Qwen RESEARCH
+		"ltx-2.5-22b-distilled":   modellicense.Conditional,
+	} {
+		m, ok := c.Model(id)
+		require.True(t, ok, id)
+		assert.Equal(t, want, m.License.Commercial, id)
+		assert.GreaterOrEqual(t, len(m.License.Components), 2, id+": the parts are listed")
+	}
+}
+
+// Qwen-Image-2.1 and what is made from it (Noct Q) are under the Qwen RESEARCH LICENSE AGREEMENT, whose section 2 grants the right for
+// non-commercial purposes only (read in the LICENSE of the repository on 2026-11-02): the catalog says 商用NG, with the source and the date.
+func TestNoctQQwenImage21IsNotForCommercialUse(t *testing.T) {
+	m, ok := catalog.Default().Model("noctq-v4-qwen-image21")
+	require.True(t, ok)
+
+	assert.Equal(t, modellicense.No, m.License.Commercial)
+	assert.Contains(t, m.License.URL, "huggingface.co/Noctaluna/Noct-Q-Uncensored-Qwen-Image-2.1")
+	assert.Equal(t, "2026-11-02", m.License.CheckedAt)
+	assert.NotEmpty(t, m.License.Notice)
+	for _, part := range m.License.Components {
+		assert.Equal(t, modellicense.No, part.Commercial, part.Part)
+	}
 }

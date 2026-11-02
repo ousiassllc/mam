@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -100,7 +102,7 @@ func TestMuseTalkRuntimeIsAssembledFromPinnedParts(t *testing.T) {
 	assert.False(t, rt.VRAM.Estimate)
 	assert.Contains(t, rt.Launch.Args, "--use-float16")
 
-	assert.True(t, rt.License.CommercialUse)
+	assert.Equal(t, modellicense.Conditional, rt.License.Commercial)
 	assert.Contains(t, rt.License.Summary, "MIT")
 }
 

@@ -25,7 +25,8 @@
   "name": "FLUX.1 [dev] Non-Commercial License v1.1.1",
   "url": "https://github.com/black-forest-labs/flux/blob/main/model_licenses/LICENSE-FLUX1-dev",
   "summary": "非商用・非本番の用途に限り無償で使える。商用や本番の用途には Black Forest Labs の別の商用ライセンスが要る。生成物は派生物に当たらない。",
-  "commercial_use": false,
+  "commercial": "no",
+  "checked_at": "2026-11-02",
   "notice": "この mam のインストール先に取得するモデルのライセンスです。非商用の用途にだけ使ってください。"
  },
  "consent_required": true,

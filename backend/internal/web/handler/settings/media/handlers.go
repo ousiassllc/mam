@@ -131,7 +131,7 @@ func EditImage(svc *modelsettings.Service, page gin.HandlerFunc) gin.HandlerFunc
 		if !ok {
 			return
 		}
-		settingshttp.Render(c, http.StatusOK, media.ImageModal(media.ImageForm{Row: imageRow(v, p, v.Images[p]), Models: imageModels(v)}))
+		settingshttp.Render(c, http.StatusOK, media.ImageModal(media.ImageForm{Row: imageRow(v, p, v.Images[p]), Models: imageModels(v), Filter: commercialFilter("media-image-commercial", "#media-image-form")}))
 	}
 }
 
@@ -147,7 +147,7 @@ func EditPolicy(svc *modelsettings.Service, page gin.HandlerFunc) gin.HandlerFun
 		if !ok {
 			return
 		}
-		settingshttp.Render(c, http.StatusOK, media.PolicyModal(media.PolicyForm{Row: policyRow(v, q, v.Policies[q]), Choices: videoChoices(v)}))
+		settingshttp.Render(c, http.StatusOK, media.PolicyModal(media.PolicyForm{Row: policyRow(v, q, v.Policies[q]), Choices: videoChoices(v), Filter: commercialFilter("media-policy-commercial", "#media-policy-form")}))
 	}
 }
 
@@ -171,7 +171,7 @@ func SaveImage(svc *modelsettings.Service) gin.HandlerFunc {
 		}
 		if err != nil {
 			refuse(c, err, func(msg, field string) templ.Component {
-				return media.ImageModal(media.ImageForm{Row: imageRow(v, p, route), Models: imageModels(v), Error: msg, Blame: field})
+				return media.ImageModal(media.ImageForm{Row: imageRow(v, p, route), Models: imageModels(v), Filter: commercialFilter("media-image-commercial", "#media-image-form"), Error: msg, Blame: field})
 			})
 			return
 		}
@@ -197,7 +197,7 @@ func SavePolicy(svc *modelsettings.Service) gin.HandlerFunc {
 		}
 		if err != nil {
 			refuse(c, err, func(msg, field string) templ.Component {
-				return media.PolicyModal(media.PolicyForm{Row: policyRow(v, q, route), Choices: videoChoices(v), Error: msg, Blame: field})
+				return media.PolicyModal(media.PolicyForm{Row: policyRow(v, q, route), Choices: videoChoices(v), Filter: commercialFilter("media-policy-commercial", "#media-policy-form"), Error: msg, Blame: field})
 			})
 			return
 		}

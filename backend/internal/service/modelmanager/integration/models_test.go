@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -27,7 +29,7 @@ func TestCatalogListsTheModelsWithStateLicenseAndSizes(t *testing.T) {
 	assert.Equal(t, a.TotalSize, a.NeedBytes)
 	assert.Equal(t, 8, a.VRAM.MinGB)
 	assert.True(t, a.VRAM.Estimate)
-	assert.True(t, a.License.CommercialUse)
+	assert.Equal(t, modellicense.Yes, a.License.Commercial)
 	assert.False(t, a.ConsentRequired)
 	assert.Equal(t, []string{"comfyui:bundled-comfyui/wf-a", "comfyui:bundled-comfyui/wf-a-i2i"}, a.ModelIDs)
 	assert.Contains(t, a.WorkflowCheck, "GPU 実機未検証")

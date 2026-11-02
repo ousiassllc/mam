@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
@@ -107,6 +109,7 @@ func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice
 		out[i] = view.ModelChoice{
 			ID: m.ID, Label: m.Label, Source: sourceLabel[m.Source], Price: priceText(m.Price), Features: featuresText(m),
 			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA,
+			Answer: commercial.FromInfo(m.License),
 		}
 		if !m.Available {
 			out[i].Reason = m.UnavailableMessage
@@ -144,7 +147,7 @@ func videoChoices(models []modelcatalog.Info) (resolutions, durations []string) 
 func cardOf(r gentest.ResultView, withDetail bool) view.Card {
 	c := view.Card{
 		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: statusText[r.Status], Error: r.Error,
-		Video: r.Media == gentest.MediaVideo, Favorite: r.Favorite, CreatedAt: timeText(r.CreatedAt),
+		Video: r.Media == gentest.MediaVideo, Favorite: r.Favorite, CreatedAt: timeText(r.CreatedAt), Answer: commercial.Of(r.Model),
 	}
 	if r.HasFile {
 		c.FileURL = paths.GenerationTestPart("results", r.ID, "file")

@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -26,7 +27,7 @@ templ HistoryList(h History) {
 				@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{"id": "gt-filter-model", "name": FieldModel}) {
 					<option value="">すべて</option>
 					for _, m := range h.Models {
-						<option value={ m } selected?={ m == h.Filter.Model }>{ m }</option>
+						<option value={ m } selected?={ m == h.Filter.Model } data-commercial={ h.ModelAnswers[m] }>{ m }</option>
 					}
 				}
 			</label>
@@ -42,6 +43,7 @@ templ HistoryList(h History) {
 				<input type="checkbox" name="favorite" value="1" checked?={ h.Filter.Favorite }/>
 				<span>お気に入りだけ</span>
 			</label>
+			@commercial.Filter(h.Commercial)
 			@atoms.Button(atoms.ToneNeutral, "絞り込む", templ.Attributes{"type": "submit"})
 		</form>
 		if len(h.Cards) == 0 {
@@ -49,7 +51,7 @@ templ HistoryList(h History) {
 		}
 		<ul class="flex flex-wrap gap-3">
 			for _, c := range h.Cards {
-				<li data-testid="gt-history-item">
+				<li data-testid="gt-history-item" data-commercial={ c.Answer.Answer() }>
 					@HistoryCard(c)
 				</li>
 			}

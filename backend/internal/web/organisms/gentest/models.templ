@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 )
 
@@ -20,11 +21,12 @@ templ sectionTitle(id, title string, explanation templ.Component) {
 // modelChoices are the models as cards: tapping a card ticks or unticks it (more than one can be chosen). Every one that can
 // be called now can be chosen; the others are dimmed and say so, and why is behind the "?" (one calm line says how many).
 templ modelChoices(c Compose) {
-	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-models-title" data-testid="gt-models">
+	<fieldset id="gt-models" class="flex flex-col gap-2" aria-labelledby="gt-models-title" data-testid="gt-models">
 		@sectionTitle("gt-models-title", "モデル", modelsHelp(c))
 		if n := unavailableCount(c.Models); n > 0 {
 			<p class="text-xs text-neutral-400" data-testid="gt-models-unavailable">{ strconv.Itoa(n) } 件は今は選べません（理由は「?」に）</p>
 		}
+		@commercial.Filter(c.Filter)
 		<ul class="grid gap-2 sm:grid-cols-2">
 			for _, m := range c.Models {
 				@modelCard(m)
@@ -46,6 +48,7 @@ templ modelCard(m ModelChoice) {
 		data-reference-mode={ m.RefMode }
 		data-reference-roles={ strings.Join(m.RefRoles, " ") }
 		data-supports-lora={ boolText(m.CanLoRA) }
+		data-commercial={ m.Answer.Answer() }
 	>
 		<label class="relative block cursor-pointer has-[:disabled]:cursor-not-allowed">
 			<input
@@ -66,10 +69,14 @@ templ modelCard(m ModelChoice) {
 					if m.Media != "video" {
 						@refIcon(m)
 					}
+					@commercial.Badge(m.Answer)
 					if m.Reason != "" {
 						@atoms.Badge(atoms.BadgeNeutral, "選べません")
 					}
 				</span>
+				if m.Answer.ShortNote() != "" {
+					<span class="break-words text-xs text-amber-300" data-testid="gt-model-commercial-note">{ m.Answer.ShortNote() }</span>
+				}
 			</span>
 			<span class="pointer-events-none absolute right-3 top-3 hidden text-indigo-300 peer-checked:block" aria-hidden="true" data-gt-model-mark>✓</span>
 		</label>
@@ -113,7 +120,10 @@ templ modelsHelp(c Compose) {
 	<p>複数選べます。代替のモデルへは切り替えません。</p>
 	<ul class="mt-2 flex flex-col gap-1.5" data-testid="gt-models-help">
 		for _, m := range c.Models {
-			<li class="break-words"><span class="text-neutral-100">{ m.Label }</span>: { modelNote(m) }</li>
+			<li class="break-words">
+				<span class="text-neutral-100">{ m.Label }</span>: { modelNote(m) }
+				<span class="block text-neutral-400" data-testid="gt-models-help-license">商用利用: { m.Answer.Level.Label() } ／ { m.Answer.Detail() }</span>
+			</li>
 		}
 	</ul>
 }

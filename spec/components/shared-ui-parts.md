@@ -24,6 +24,10 @@
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
 | カードの枠 | `border-neutral-800` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
 
+### 商用利用の可否（Issue #928）
+
+モデルの商用利用の可否は `Badge` の手書きではなく、`atoms.CommercialBadge`（アイコン + 語）・`atoms.CommercialMark`（アイコンだけ）と、それを包む `molecules/commercial`（`Badge`・`Mark`・`Note`・`Filter`）で出す。色は商用OK＝`BadgeOK`、条件つき＝`BadgeWarn`、商用NG＝`BadgeError`、不明＝`BadgeWarn` に枠を足したもの。詳細は [../architecture/model-license.md](../architecture/model-license.md) §4・§5。
+
 ### 状態の種類と `Badge` の対応（両 Issue で共通）
 
 | 意味 | `Badge` | 文言の例 | 決まり |

@@ -6,10 +6,12 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
 
@@ -77,12 +79,18 @@ func gpuData(ctx context.Context, svc *modelmanager.Service) view.GPU {
 var regionNames = map[string]string{"EU": "EU", "GB": "英国", "KR": "韓国"}
 
 func licenseOf(l catalog.License) view.License {
-	out := view.License{ID: l.ID, Version: l.Version, Name: l.Name, URL: l.URL, Summary: l.Summary, Notice: l.Notice}
+	out := view.License{ID: l.ID, Version: l.Version, Name: l.Name, URL: l.URL, Summary: l.Summary, Notice: l.Notice, Answer: commercial.FromInfo(l.Info())}
 	switch {
-	case l.CommercialUse && l.CommercialCondition != "":
+	case l.Commercial == modellicense.Conditional && l.CommercialCondition != "":
+		out.Commercial = "条件つきで可（" + l.CommercialCondition + "）"
+	case l.Commercial == modellicense.Conditional:
+		out.Commercial = "条件つきで可"
+	case l.Commercial == modellicense.Yes && l.CommercialCondition != "":
 		out.Commercial = "可（" + l.CommercialCondition + "）"
-	case l.CommercialUse:
+	case l.Commercial == modellicense.Yes:
 		out.Commercial = "可"
+	case l.Commercial == modellicense.Unknown:
+		out.Commercial = "不明（確認できていません）"
 	case l.CommercialCondition != "":
 		out.Commercial = "不可（" + l.CommercialCondition + "）"
 	default:

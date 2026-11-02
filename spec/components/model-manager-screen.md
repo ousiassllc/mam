@@ -7,6 +7,7 @@
 | pages | `model_manager_page`（`ModelManagerPage`） | `GET /model-manager` の全ページ。戻るリンク・見出し・説明（Issue #866 でも動かさない。h1 に「?」は付けない）と `modelmgr.Body` |
 | organisms（`organisms/modelmgr/`） | `Body` | 区画を `molecules.SettingsSection` で包んで縦に並べる。各区画の説明は、見出しの横の「?」ヘルプ（ポップオーバー）の中（Issue #866。契約は [shared-ui-parts.md](shared-ui-parts.md) §9）。区画の本体には操作・状態・結果・エラーだけを残す |
 | 〃 | `EngineCard`・`GPUBlock`・`DetectBlock` | エンジンのカード（導入の進捗・起動の状態・起動の失敗の理由・自動起動・更新・削除）、GPU の検出結果と導入フォーム、既存の ComfyUI の検出結果 |
+| 〃 | `CommercialCard`（設定「商用OKのモデルだけを使う」と、モデルの一覧のフィルター。#928） | 一覧の上の区画。スイッチ（`PUT /model-manager/commercial`）と、`molecules/commercial.Filter`（すべて／商用OKのみ／条件つきまで）。試し生成の選択肢も同じ既定に描き直す |
 | 〃 | `CatalogList`・`ConsentDialog`・`DialogClear` | モデルの一覧（1 つのモデルが 1 枚のカード `modelCard`。状態・大きさ・VRAM・ライセンス・商用可否・ファイル・導入の進捗・成人向けのバッジ・トリガー語・原本の場所）と、同意が要るモデルのライセンスのダイアログ（成人向けは注意書きも） |
 | 〃 | `AdultCard`・`AdultDialog` | 設定「成人向けモデルを表示する」（既定オフ）と、初めてオンにするときの年齢確認・注意書きのダイアログ |
 | 〃 | `TrialSection`・`TrialFormView`・`TrialList` | 試し生成のフォームと結果（動いているものは進捗、完了は画像・動画、失敗は理由） |
@@ -49,3 +50,4 @@
 | 1.8 | 2026-11-01 | 区画「ローカル音声・口パク」（`runtimecard.RuntimesSection`・`runtimecard.RuntimeCard`・`weightlist.List`）と、そのルールを足した（Issue #920。商用利用のバッジ・`unclear` の注記とバナー・使えない環境の理由とクラウドの案内） | 重み・依存ファイルの出典とライセンスを画面に出す決定事項 |
 | 1.9 | 2026-11-01 | 区画「ローカル音声・口パク」に MuseTalk 1.5 のカードが出ることを書いた。macOS・非 NVIDIA・VRAM 不足・RTX 50 シリーズでは、理由の文と「代わりに、クラウドの口パク（Sync Labs）を使ってください。」の案内が出る。重みの一覧に、MuseTalk の 12 件（出典・ライセンス・商用利用。`unclear` の 4 件は琥珀色の注記）が出る。画面の部品・ルートは変えていない（カタログのデータだけ）。意味は [local-runtime.md §13](../architecture/model-manager/local-runtime.md) | Issue #921 |
 | 1.10 | 2026-11-01 | 同意ダイアログを閉じたときのフォーカスの移動を `preventScroll: true` にし、ダイアログを開く・閉じるときのスクロール位置の扱い（開くと見える位置へ・閉じると押した時点の位置へ）を決めた | Issue #908。長い一覧の下のほうでライセンスの同意を済ませると、閉じたあとの位置が元とずれていた（実 Chrome で確認） |
+| 1.11 | 2026-11-02 | モデルの一覧の各カードに商用利用のバッジ（`molecules/commercial.Badge`）と、商用OK 以外の注意（`commercial.Note`。条件・注意・ライセンス原文・確認日）を足した。一覧の上に `CommercialCard`（設定「商用OKのモデルだけを使う」と共通のフィルター）。同意ダイアログの「商用利用」にバッジ、試し生成の選択肢に答えの語、Hugging Face の導入に各リポジトリ・各モデルのバッジ、ローカル実行環境の重みに 4 値のバッジ。意味と色は [model-license.md](../architecture/model-license.md) | Issue #928 |

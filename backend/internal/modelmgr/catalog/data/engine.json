@@ -10,7 +10,8 @@
   "name": "GNU General Public License v3.0",
   "url": "https://github.com/Comfy-Org/ComfyUI/blob/v0.42.1/LICENSE",
   "summary": "ComfyUI は mam とは別のプログラムで、GPL-3.0 で公開されている。mam は ComfyUI のバイトを配布せず、利用者の PC に公式のリリースから取得する。ソースコードは GitHub の v0.42.1 のタグにある。",
-  "commercial_use": true
+  "commercial": "yes",
+  "checked_at": "2026-11-01"
  },
  "variants": {
   "nvidia": {

@@ -2,6 +2,7 @@ package modelmgr
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -39,6 +40,7 @@ templ TrialFormView(f TrialForm) {
 		data-testid="mm-trial-form"
 	>
 		@notice(f.Message, "mm-trial")
+		@commercial.Filter(f.Filter)
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-model">
 			<span>モデル（導入済み・登録済みのもの）</span>
 			@atoms.Select(atoms.FieldMd, "w-full max-w-xl", templ.Attributes{
@@ -47,7 +49,7 @@ templ TrialFormView(f TrialForm) {
 				"hx-include": "[name=" + FieldPrompt + "],[name=" + FieldNegative + "],[name=" + FieldAspect + "]",
 			}) {
 				for _, m := range f.Models {
-					<option value={ m.ID } selected?={ m.Selected }>{ m.Label }</option>
+					<option value={ m.ID } selected?={ m.Selected } data-commercial={ m.Answer.Answer() }>{ m.Label }</option>
 				}
 			}
 		</label>
@@ -153,6 +155,7 @@ templ trialItem(t Trial) {
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<span class="flex flex-wrap items-center gap-2">
 				<code class="text-xs">{ t.ModelID }</code>
+				@commercial.Mark(t.Answer)
 				@atoms.Badge(trialTone(t.Status), t.StatusText)
 				<span class="text-xs text-neutral-400">{ t.CreatedAt }</span>
 			</span>

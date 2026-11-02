@@ -10,16 +10,18 @@ interface Chosen {
   lora: boolean;
 }
 
-/** The models that are ticked in the form. */
+/** The models that are ticked in the form (one that the commercial filter hid is disabled and does not count). */
 export function chosenModels(form: HTMLElement): Chosen[] {
-  return [...form.querySelectorAll<HTMLInputElement>('[data-model] input[name="model"]:checked')].map((input) => {
-    const card = input.closest<HTMLElement>('[data-model]')!;
-    return {
-      label: card.dataset.label ?? card.dataset.model ?? '',
-      roles: (card.dataset.referenceRoles ?? '').split(' ').filter(Boolean),
-      lora: card.dataset.supportsLora === 'true',
-    };
-  });
+  return [...form.querySelectorAll<HTMLInputElement>('[data-model] input[name="model"]:checked:not(:disabled)')].map(
+    (input) => {
+      const card = input.closest<HTMLElement>('[data-model]')!;
+      return {
+        label: card.dataset.label ?? card.dataset.model ?? '',
+        roles: (card.dataset.referenceRoles ?? '').split(' ').filter(Boolean),
+        lora: card.dataset.supportsLora === 'true',
+      };
+    },
+  );
 }
 
 /** Shows or hides a control and disables what is inside it while it is hidden. */

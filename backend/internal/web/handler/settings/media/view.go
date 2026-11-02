@@ -11,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
@@ -59,7 +62,7 @@ func Data(v modelsettings.View) media.Data {
 func imageModels(v modelsettings.View) []media.ImageModel {
 	var out []media.ImageModel
 	for _, m := range v.ImageModels {
-		out = append(out, media.ImageModel{Name: string(m.Model), Fast: m.Fast, AcceptsReferences: m.AcceptsReferences})
+		out = append(out, media.ImageModel{Name: string(m.Model), Fast: m.Fast, AcceptsReferences: m.AcceptsReferences, Answer: commercial.Of(string(m.Model))})
 	}
 	return out
 }
@@ -68,7 +71,7 @@ func videoChoices(v modelsettings.View) []media.VideoChoice {
 	var out []media.VideoChoice
 	for _, m := range v.VideoModels {
 		for _, res := range m.Resolutions {
-			out = append(out, media.VideoChoice{Value: choiceValue(m.Model, res), Label: string(m.Model) + " / " + res})
+			out = append(out, media.VideoChoice{Value: choiceValue(m.Model, res), Label: string(m.Model) + " / " + res, Answer: commercial.Of(string(m.Model))})
 		}
 	}
 	return out
@@ -172,4 +175,10 @@ func parsePolicy(form url.Values, q domain.QualityPolicy) modelsettings.PolicyRo
 func videoTarget(value string) modelsettings.VideoTarget {
 	model, resolution, _ := strings.Cut(value, "@")
 	return modelsettings.VideoTarget{Model: domain.ModelName(model), Resolution: resolution}
+}
+
+// commercialFilter is the commercial-use filter of a model modal's selects, at the setting's default. The saved choice stays in the
+// select whatever the filter says, so a narrowing never changes the assignment behind the user's back.
+func commercialFilter(id, target string) commercial.FilterData {
+	return commercial.NewFilter(id, target, modellicense.DefaultFilter())
 }

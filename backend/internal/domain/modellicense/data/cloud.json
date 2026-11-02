@@ -1,0 +1,108 @@
+{
+ "nano-banana": {
+  "commercial": "yes",
+  "license_name": "Gemini API 追加利用規約",
+  "source_url": "https://ai.google.dev/gemini-api/terms",
+  "checked_at": "2026-11-02",
+  "notice": "規約（Use of Generated Content）は「生成物の所有権を Google は主張しない」としている。無料枠では入力と出力が Google の改善に使われる。"
+ },
+ "nano-banana-lite": {
+  "commercial": "yes",
+  "license_name": "Gemini API 追加利用規約",
+  "source_url": "https://ai.google.dev/gemini-api/terms",
+  "checked_at": "2026-11-02",
+  "notice": "規約（Use of Generated Content）は「生成物の所有権を Google は主張しない」としている。無料枠では入力と出力が Google の改善に使われる。"
+ },
+ "flux-2": {
+  "commercial": "yes",
+  "license_name": "Black Forest Labs Terms of Service（API）",
+  "source_url": "https://bfl.ai/legal/terms-of-service",
+  "checked_at": "2026-11-02",
+  "notice": "規約は、生成物の所有権を BFL が主張せず、利用者が自分の目的に使えるとしている。"
+ },
+ "gpt-image-2": {
+  "commercial": "yes",
+  "license_name": "OpenAI Terms of Use",
+  "source_url": "https://openai.com/policies/terms-of-use/",
+  "checked_at": "2026-11-02",
+  "notice": "規約は、生成物（Output）を利用者が所有し、OpenAI の権利を利用者へ譲渡するとしている。"
+ },
+ "gpt-image-2:chatgpt-subscription": {
+  "commercial": "yes",
+  "license_name": "OpenAI Terms of Use（ChatGPT）",
+  "source_url": "https://openai.com/policies/terms-of-use/",
+  "checked_at": "2026-11-02",
+  "notice": "ChatGPT の利用規約では生成物（Output）は利用者のもの。ただし mam が使う経路は非公式（Codex）で、OpenAI が認めた使い方かどうかは確認できていない。"
+ },
+ "kling-3.0": {
+  "commercial": "unknown",
+  "license_name": "Kling AI Terms of API Paid Service",
+  "source_url": "https://kling.ai/document-api/guides/protocols/paid-service",
+  "checked_at": "2026-11-02",
+  "notice": "API の有料サービス規約から、生成物の商用利用の可否を読み取れていません。商用で使う前に規約と契約を確認してください。"
+ },
+ "kling-4.0": {
+  "commercial": "unknown",
+  "license_name": "Kling AI Terms of API Paid Service",
+  "source_url": "https://kling.ai/document-api/guides/protocols/paid-service",
+  "checked_at": "2026-11-02",
+  "notice": "API の有料サービス規約から、生成物の商用利用の可否を読み取れていません。商用で使う前に規約と契約を確認してください。"
+ },
+ "seedance-2.0": {
+  "commercial": "unknown",
+  "license_name": "BytePlus General Terms for AI Services",
+  "source_url": "https://docs.byteplus.com/docs/legal/AI-Services-terms",
+  "checked_at": "2026-11-02",
+  "notice": "規約のページは JavaScript で描画され、本文を読み取れていません。生成物の所有と商用利用の可否を確認できていないため、商用で使う前に規約と契約を確認してください。"
+ },
+ "seedance-2.5": {
+  "commercial": "unknown",
+  "license_name": "BytePlus General Terms for AI Services",
+  "source_url": "https://docs.byteplus.com/docs/legal/AI-Services-terms",
+  "checked_at": "2026-11-02",
+  "notice": "規約のページは JavaScript で描画され、本文を読み取れていません。生成物の所有と商用利用の可否を確認できていないため、商用で使う前に規約と契約を確認してください。"
+ },
+ "runway-gen-4.5": {
+  "commercial": "yes",
+  "license_name": "Runway Terms of Use",
+  "source_url": "https://runwayml.com/terms-of-use",
+  "checked_at": "2026-11-02",
+  "notice": "規約は、入力と生成物の所有権を Runway が主張しないとしている。"
+ },
+ "gemini-omni-flash": {
+  "commercial": "yes",
+  "license_name": "Gemini API 追加利用規約",
+  "source_url": "https://ai.google.dev/gemini-api/terms",
+  "checked_at": "2026-11-02",
+  "notice": "規約（Use of Generated Content）は「生成物の所有権を Google は主張しない」としている。無料枠では入力と出力が Google の改善に使われる。"
+ },
+ "minimax-h3": {
+  "commercial": "unknown",
+  "license_name": "MiniMax Terms of Service",
+  "source_url": "https://www.minimax.io/platform/protocol/terms-of-service",
+  "checked_at": "2026-11-02",
+  "notice": "規約から、API で作った動画の商用利用の可否を読み取れていません。商用で使う前に規約と契約を確認してください。"
+ },
+ "minimax-h3-max": {
+  "commercial": "unknown",
+  "license_name": "MiniMax Terms of Service",
+  "source_url": "https://www.minimax.io/platform/protocol/terms-of-service",
+  "checked_at": "2026-11-02",
+  "notice": "規約から、API で作った動画の商用利用の可否を読み取れていません。商用で使う前に規約と契約を確認してください。"
+ },
+ "wan-3.0": {
+  "commercial": "unknown",
+  "license_name": "Alibaba Cloud Model Studio サービス別規約",
+  "source_url": "https://help.aliyun.com/en/model-studio/bailian-service-notes",
+  "checked_at": "2026-11-02",
+  "notice": "規約に生成物の商用利用を許す文は見つからず、試用中の生成物には権利を主張しないよう求めている。商用で使う前に規約と契約を確認してください。"
+ },
+ "luma-ray-3.2": {
+  "commercial": "conditional",
+  "license_name": "Luma Terms of Service（API）",
+  "source_url": "https://lumalabs.ai/legal/tos",
+  "checked_at": "2026-11-02",
+  "condition": "生成物の商用利用を認めるサブスクリプション・契約（規約 §4）に限る",
+  "notice": "商用利用を認めないプランで作った生成物は、商用に使えません。契約のプランを確認してください。"
+ }
+}

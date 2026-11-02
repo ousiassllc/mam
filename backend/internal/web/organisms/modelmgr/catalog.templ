@@ -2,6 +2,7 @@ package modelmgr
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -24,7 +25,7 @@ templ CatalogList(c Catalog) {
 		if c.Blocked != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-catalog-blocked">{ c.Blocked }</p>
 		}
-		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="mm-models">
+		<ul id={ ModelsID } role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="mm-models">
 			for _, m := range c.Models {
 				@modelCard(m, c.Blocked != "")
 			}
@@ -57,7 +58,7 @@ func showsTokenGuide(m Model) bool {
 templ modelCard(m Model, blocked bool) {
 	{{ tone, label := stateTone(m.State) }}
 	{{ guided := showsTokenGuide(m) }}
-	<li class="@container flex min-w-0 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm" data-testid="mm-model" data-model={ m.ID } data-state={ m.State }>
+	<li class="@container flex min-w-0 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm" data-testid="mm-model" data-model={ m.ID } data-state={ m.State } data-commercial={ m.License.Answer.Answer() }>
 		<div class="flex flex-col gap-3 @min-[22rem]:flex-row @min-[22rem]:items-start @min-[22rem]:justify-between">
 			<div class="flex min-w-0 flex-1 flex-col gap-2">
 				<h3 class="break-words text-sm font-semibold text-neutral-100">{ m.Name }</h3>
@@ -73,6 +74,7 @@ templ modelCard(m Model, blocked bool) {
 						@atoms.BadgeWith(atoms.BadgeWarn, "HF トークンが必要", templ.Attributes{"data-testid": "mm-token-badge"})
 					}
 					@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-model-state"})
+					@commercial.Badge(m.License.Answer)
 				</span>
 				<p class="break-words text-xs text-neutral-400">{ m.Description }</p>
 			</div>
@@ -102,6 +104,7 @@ templ modelCard(m Model, blocked bool) {
 				<div class="col-span-2"><dt class="text-neutral-400">原本の場所</dt><dd class="break-words" data-testid="mm-sources">{ joinNames(m.Sources) }</dd></div>
 			}
 		</dl>
+		@commercial.Note(m.License.Answer)
 		if m.State == "installing" && m.Install != nil {
 			@progressBar(*m.Install, m.Name+" の導入の進み具合")
 		} else if m.State != "installed" {
@@ -212,7 +215,9 @@ templ ConsentDialog(c Consent) {
 		if len(c.Sources) > 0 {
 			<p class="text-xs text-neutral-300" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>
 		}
-		<p class="text-sm" data-testid="mm-consent-commercial">商用利用: { c.License.Commercial }</p>
+		<p class="flex flex-wrap items-center gap-2 text-sm" data-testid="mm-consent-commercial">
+			商用利用: { c.License.Commercial } @commercial.Badge(c.License.Answer)
+		</p>
 		if c.License.Regions != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-consent-regions">{ c.License.Regions }</p>
 		}

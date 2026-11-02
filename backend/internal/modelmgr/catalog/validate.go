@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 )
 
 var (
@@ -80,8 +81,28 @@ func validateLicense(where string, l License) []error {
 	if l.ID == "" || l.Version == "" || l.Name == "" || strings.TrimSpace(l.Summary) == "" {
 		errs = append(errs, fmt.Errorf("%s: the license needs id, version, name and summary", where))
 	}
-	if !strings.HasPrefix(l.URL, "https://") {
-		errs = append(errs, fmt.Errorf("%s: the license url must be https", where))
+	if err := l.Info().Check(); err != nil {
+		errs = append(errs, fmt.Errorf("%s: license: %w", where, err))
+	}
+	return append(errs, validateComponents(where, l)...)
+}
+
+// validateComponents checks the parts of a license: each has its name and an https source, and the answer for the whole is the
+// strictest of the parts (the stricter license of a base model and a derivative is what the screen shows).
+func validateComponents(where string, l License) []error {
+	var errs []error
+	if len(l.Components) == 0 {
+		return nil
+	}
+	answers := make([]modellicense.Commercial, 0, len(l.Components))
+	for _, c := range l.Components {
+		if c.Part == "" || c.Name == "" || !strings.HasPrefix(c.URL, "https://") || !c.Commercial.Valid() {
+			errs = append(errs, fmt.Errorf("%s: license component %q needs part, name, an https url and a valid commercial answer", where, c.Part))
+		}
+		answers = append(answers, c.Commercial)
+	}
+	if want := modellicense.Strictest(answers...); l.Commercial != want {
+		errs = append(errs, fmt.Errorf("%s: commercial is %s but the strictest of the components is %s", where, l.Commercial, want))
 	}
 	return errs
 }
@@ -137,7 +158,7 @@ func validateModel(m Model, shared map[string]File) []error {
 		errs = append(errs, fmt.Errorf("%s: vram needs min_gb and the source of the guideline", where))
 	}
 	errs = append(errs, validateLicense(where, m.License)...)
-	restricted := !m.License.CommercialUse || m.License.CommercialCondition != "" || len(m.License.ExcludedRegions) > 0
+	restricted := m.License.Commercial != modellicense.Yes || m.License.CommercialCondition != "" || len(m.License.ExcludedRegions) > 0
 	if m.ConsentRequired != (m.Tier == TierAdvanced) || (restricted && !m.ConsentRequired) {
 		errs = append(errs, fmt.Errorf("%s: an advanced model, and a model whose license is not plain commercial use, requires consent (and only those)", where))
 	}
@@ -168,8 +189,8 @@ func validateRating(where string, m Model) []error {
 	if m.Adult() && m.Tier != TierAdvanced {
 		errs = append(errs, fmt.Errorf("%s: an adult model is an advanced model (consent required)", where))
 	}
-	if m.License.ID == unspecifiedLicense && m.License.CommercialUse {
-		errs = append(errs, fmt.Errorf("%s: a license without a text (%s) is not commercial use", where, unspecifiedLicense))
+	if m.License.ID == unspecifiedLicense && (m.License.Commercial == modellicense.Yes || m.License.Commercial == modellicense.Conditional) {
+		errs = append(errs, fmt.Errorf("%s: a license without a text (%s) is not commercial use (no or unknown)", where, unspecifiedLicense))
 	}
 	hasLoRA := slices.ContainsFunc(m.Files, func(f File) bool { return f.Folder == "loras" })
 	if len(m.TriggerWords) > 0 && !hasLoRA {

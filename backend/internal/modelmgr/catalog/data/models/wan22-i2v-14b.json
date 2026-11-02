@@ -46,7 +46,8 @@
   "name": "Apache License 2.0",
   "url": "https://www.apache.org/licenses/LICENSE-2.0",
   "summary": "商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。",
-  "commercial_use": true
+  "commercial": "yes",
+  "checked_at": "2026-11-02"
  },
  "consent_required": false,
  "requires_hf_token": false,

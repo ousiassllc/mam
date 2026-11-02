@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -51,7 +53,7 @@ func machine(supported bool) runtimes {
 			v.Support = rtm.Support{Supported: true, Code: rtm.CodeOK}
 			v.Installed = true
 			v.Weights.State = localruntime.WeightsReady
-			v.Weights.Assets = []localruntime.AssetView{{Name: "whisper-tiny", License: catalog.ResourceLicense{CommercialUse: catalog.CommercialUnclear}}}
+			v.Weights.Assets = []localruntime.AssetView{{Name: "whisper-tiny", License: catalog.ResourceLicense{Commercial: modellicense.Unknown}}}
 		} else {
 			v.Support = rtm.Support{Code: rtm.CodeOS, Reason: "macOS では公式の PyTorch 版が使えません。", Fallback: "代わりに、クラウドを使ってください。"}
 		}

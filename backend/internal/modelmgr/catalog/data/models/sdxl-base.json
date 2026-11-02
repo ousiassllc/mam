@@ -25,7 +25,8 @@
   "name": "CreativeML Open RAIL++-M License",
   "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md",
   "summary": "商用を含めて使える。ただし違法・有害な用途（未成年の搾取、なりすまし、偽情報の拡散など）を禁じる使用制限（Attachment A）が付き、モデルを再配布するときは同じ制限を引き継ぐ。生成物の権利は主張されない。",
-  "commercial_use": true
+  "commercial": "yes",
+  "checked_at": "2026-11-02"
  },
  "consent_required": false,
  "requires_hf_token": false,

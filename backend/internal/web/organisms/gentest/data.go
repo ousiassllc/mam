@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 )
 
 // DOM ids the handlers' HTMX targets name.
@@ -72,6 +73,8 @@ type ModelChoice struct {
 	RefMode  string
 	RefRoles []string
 	CanLoRA  bool
+	// Answer is whether the model may be used commercially (#928): the badge on the card, data-commercial for the filter.
+	Answer commercial.View
 }
 
 // PromptText is a prompt and its negative prompt.
@@ -110,6 +113,8 @@ type Compose struct {
 	Message
 	Media  string // image or video
 	Models []ModelChoice
+	// Filter is the commercial-use filter of the model cards, checked at the setting's default.
+	Filter commercial.FilterData
 	// Prompts has at least one entry.
 	Prompts []PromptText
 	// Translate is the switch "英語に訳して送る" (on for a fresh form).
@@ -171,6 +176,8 @@ type Card struct {
 	Detail     string // the link to the detail
 	Meta       string // "seed 123 ・ 16:9 ・ 2.1 MiB"
 	CreatedAt  string
+	// Answer is whether the model that made the result may be used commercially (the mark on the card).
+	Answer commercial.View
 }
 
 // Col is a column of the comparison grid: one prompt, and the English it was sent as when it was translated.
@@ -184,8 +191,9 @@ type Col struct {
 
 // Row is a row of the comparison grid: one model with the results of every prompt.
 type Row struct {
-	Model string
-	Cells [][]Card
+	Model  string
+	Answer commercial.View
+	Cells  [][]Card
 }
 
 // Batch is the progress and the comparison grid of a batch.
@@ -209,6 +217,8 @@ type HistoryFilter struct {
 	Model    string
 	Media    string
 	Favorite bool
+	// Commercial is the commercial-use filter ("all", "ok", "ok_or_conditional"; "" for the default).
+	Commercial string
 }
 
 // History is the history list.
@@ -216,8 +226,11 @@ type History struct {
 	Message
 	Filter HistoryFilter
 	Models []string
-	Cards  []Card
-	Spend  string
+	// Commercial is the commercial-use filter of the cards and of the model choices; ModelAnswers are the answers of Models by id.
+	Commercial   commercial.FilterData
+	ModelAnswers map[string]string
+	Cards        []Card
+	Spend        string
 	// Next is the link to the next page ("" on the last).
 	Next string
 }
@@ -266,6 +279,8 @@ type Detail struct {
 	Imports         []ImportRow
 	Import          ImportForm
 	UseURL          string // compose with this result as an input ("" for a video)
+	// Answer is the license of the model that made the result: the detail says it in words (the note) as well as by the mark.
+	Answer commercial.View
 }
 
 // PromptRow is an entry of the prompt history.
