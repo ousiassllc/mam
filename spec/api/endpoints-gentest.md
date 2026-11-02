@@ -8,7 +8,9 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 
 | メソッド | パス | 内容 |
 |---|---|---|
-| GET | `/generation-test` | 画面（作成フォーム・確認・進捗）。クエリ `model`（そのモデルを選んで開く。動画モデルなら動画のフォーム）・`prompt`（プロンプト履歴の ID でプロンプトを入れる）・`ref`（`<source>:<project>:<id>` の入力画像を足す）・`from_result`（プロンプトマッチの回など、結果の ID。その結果のプロンプト・モデル・縦横比を入れて開き、「モデルを足して実行すると同じプロンプトで比べられます」の案内を出す。Issue #965） |
+| GET | `/generation-test` | 画面（作成フォーム・確認・進捗）。クエリ `model`（そのモデルを選んで開く。動画モデルなら動画のフォーム）・`prompt`（プロンプト履歴の ID でプロンプトを入れる）・`ref`（`<source>:<project>:<id>` の入力画像を足す）・`from_result`（プロンプトマッチの回など、結果の ID。その結果のプロンプト・モデル・縦横比を入れて開き、「モデルを足して実行すると同じプロンプトで比べられます」の案内を出す。Issue #965）・`tier`（`easy`／`detail`／`comfy`。画像のフォームの段。無い・知らない値はかんたん。モデルを名指す入口（`model`・`from_result`・`again`）は `tier` が無ければこだわり。`comfy` はノード画面などへの入口だけの画面。Issue #977）・`again`（結果の ID。その結果の設定を入れてこだわりで開く。`same_seed=1` でシードも入れる。入れられない項目は理由を 1 行で出す）・`ref_role`（`ref` の入力画像の役割。「この顔で作る」は `face`）・`intent`・`quality`（かんたんで選んでおく値） |
+| GET | `/generation-test/easy-pick` | かんたんの「使うモデル」と品質のボタンの区画 `#gt-easy-pick` だけ（やりたいことの選択で取り直す。クエリ: `intent`・`quality`・`ref`（入力画像の数をみる）。ブラウザで選んだ入力ファイルを壊さないために、フォーム全体は返さない）。Issue #977 |
+
 | GET | `/generation-test/form` | フォームを画像／動画で切り替える（クエリ: 入力済みのフォームの値。プロンプト・本数・縦横比は保つ。モデルの選択は外す） |
 | GET | `/generation-test/prompt-row` | プロンプト欄を 1 つ足す。`?from=<プロンプト履歴の ID>` で内容を入れる |
 | GET | `/generation-test/picker` | 入力画像の選択肢。`?project=<ID>`（そのプロジェクトのアセット・参照項目。無い ID は 404）または `?source=history`（履歴の成功した画像） |
@@ -17,7 +19,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/poses/results` | 一覧の部分だけ（絞り込みの変更で取り直す。クエリは `pose_q`・`pose_class`・`pose_angle`。解釈できない値は絞り込みなし） |
 | GET | `/generation-test/poses/image/:id` | ポーズの画像（`image/webp`。ID は `std_P001_front` の形。ポーズ集にない ID・成人向けのポーズは 404） |
 | POST | `/generation-test/poses/install` | ポーズ集の導入（`pose_accept=on` が要る。無ければ 400 で理由を返し、案内を残す）。成功は一覧を返す。取得に失敗した理由は日本語で出す |
-| POST | `/generation-test/estimate` | 見積り（multipart: `media`・`model`（複数）・`prompt`/`negative`（同じ順で複数）・`count`・`aspect_ratio`・`resolution`・`duration_seconds`・`translate`（`1` のとき英語に訳して送る。チェックボックスなので無いときは OFF。新しい画面は ON で開く）・`ref`（選んだ入力。ブラウザで選んだファイルは `upload::#<n>` = `upload` の n 番目）と `role_<ref>`（`reference`・`face`・`style`・`edit`、動画は `first_frame`・`last_frame` も）・`strength_<ref>`（0〜1。無ければ既定 0.7）・`avoid_pose`（`on` でポーズ・構図を真似させない）・`lora`・`lora_strength`（既定 0.4）・ファイル `upload`・`upload_first`・`upload_last`）。アップロードは `_staging/` に置く。**何も実行しない**。200 で確認の区画（件数・モデルごとの内訳（`translate` が `1` のときは、訳す文の数の「プロンプトの英訳」の行が単価なしで入る）・合計・単価なしの注記・警告・上限超過。確認の本文に `estimate_id` と `confirmed_total_usd` を hidden で持つ） |
+| POST | `/generation-test/estimate` | 見積り（multipart: `tier`（`easy` のとき、`intent` からモデルを決めて見積もる。`model` は読まない）・`intent`・`quality`（`fast`／`standard`／`high`。steps・cfg を名指ししていない項目にモデルのプリセットを入れる）・`media`・`model`（複数）・`prompt`/`negative`（同じ順で複数）・`count`・`aspect_ratio`・`resolution`・`duration_seconds`・`translate`（`1` のとき英語に訳して送る。チェックボックスなので無いときは OFF。新しい画面は ON で開く）・`ref`（選んだ入力。ブラウザで選んだファイルは `upload::#<n>` = `upload` の n 番目）と `role_<ref>`（`reference`・`face`・`style`・`edit`、動画は `first_frame`・`last_frame` も）・`strength_<ref>`（0〜1。無ければ既定 0.7）・`avoid_pose`（`on` でポーズ・構図を真似させない）・`lora`・`lora_strength`（既定 0.4）・ファイル `upload`・`upload_first`・`upload_last`）。アップロードは `_staging/` に置く。**何も実行しない**。200 で確認の区画（件数・モデルごとの内訳（`translate` が `1` のときは、訳す文の数の「プロンプトの英訳」の行が単価なしで入る）・合計・単価なしの注記・警告・上限超過。確認の本文に `estimate_id` と `confirmed_total_usd` を hidden で持つ） |
 | POST | `/generation-test/run-notice` | 見積りの警告 `role_unsupported` があるときだけ、確認の区画の実行ボタンが押されて呼ぶ（Issue #959）。確認のフォームをそのまま受け取り、見積りをやり直して、モデルが対応していない役割の参照を全体の参照として使うことを、モデルごとに言うモーダルの本文（HTML の断片。`#mam-modal-body` に入る）を返す。何も実行せず、課金もしない。選択肢は「戻る」（閉じるだけ）と「このまま実行」（`/generation-test/run` へ送る）の 2 つ。受け付けられない入力は 422 の理由の断片 |
 | POST | `/generation-test/run` | 確認の区画のフォームの送信。サーバーが見積りをやり直し、`estimate_id` と合計が違う・上限（`gentest.max_items`・`gentest.max_cost_usd`）を超えるなら 409、入力の誤りは 422、英訳が必要なのに LLM が訳せなければ 502（何も生成しない）。202 で進捗と比較表の区画（`#gt-batch`）を返す |
 | GET | `/generation-test/batches/:id` | 進捗と比較表（行＝モデル、列＝プロンプト）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
@@ -70,6 +72,14 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 
 範囲外・数でない値は 400（`validation`。理由は確認の区画に出る）。受け取らないモデルへの値と、Speed mode のモデルの `steps`・`cfg`（速さのモードが優先）は、見積りの警告 `sampling_ignored`（シードは `seed_ignored`）で使わない。プロンプトのウェイトを読まないモデルには警告 `prompt_weight`。仕様は [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.1・§3.3。画面は `#gt-compose` の中の折りたたみ `details[data-gt-advanced]`（[../components/gentest-screen.md](../components/gentest-screen.md)）。
 
+## かんたん・こだわり・結果のボタン（Issue #977）
+
+- **段**: 画像のフォームは `tier`（`easy`・`detail`・`comfy`）。かんたん（`easy`）のフォームは `model` を持たず、`intent`（`photo`・`anime`・`landscape`・`face`）と `quality`（`fast`・`standard`・`high`）と `aspect_ratio`（`9:16`・`16:9`・`1:1`）を送る。`POST /generation-test/estimate` は `intent` から、導入済みで使えるモデルを選び（`gentest.Service.ApplyIntent`）、確認の hidden に `model` を入れて返す（`/run` は見積りと同じ入力を走らせる）。合うモデルが無い・顔の写真が無い（`face`）ときは 422 で理由（モデルマネージャーでの導入の案内を含む）。
+- **品質**: `quality` は `Request.Quality`。`fast`・`high` は、**リクエストが `steps`・`cfg` を名指ししていない項目だけ**に、モデルのプリセット（`list_generation_models` の `sampling.quality_presets`）の値を入れる。`standard`・無しは何も上書きしない（テンプレートの値のまま）。`quality` の値が違えば 422（`validation`）。プリセットの無いモデル（クラウド・蒸留・速さのモード）への `quality` は、見積りの警告 `quality_ignored`（標準の値で作る）。確認の hidden は `quality`（標準以外）を持つ。
+- **こだわり**: 詳細設定のフィールド（上の節）に加え、かんたんから移るときは `easy_intent`・`easy_quality`（フォームが持ち回るだけ。リクエストは読まない）。
+- **結果の「もう1枚」・「もう一度」**: `GET /generation-test?tier=detail&again=<結果の ID>[&same_seed=1]`。記録された `params` から、モデル・プロンプトとネガティブ・英訳・縦横比・steps・cfg・サンプラー・スケジューラー・LoRA・ポーズを真似させない設定・入力画像（履歴・プロジェクト・ポーズ集。役割と強さ）を入れる。`same_seed=1` はシードも入れる（シードを渡せなかったモデルは入れず、理由を出す）。アップロードした入力画像・消えた入力画像・使えなくなったモデルは理由を出す。画像の結果でファイルがあり、インペイント・アップスケールでない結果だけ。
+- 結果の詳細は、ボタン列（`data-testid="gt-next"`）と折りたたみの「使った設定」（`data-testid="gt-used"`）を返す（画像でファイルがある結果だけ）。
+
 ## 画面
 
 区画は上から: **作成フォーム**（`#gt-compose`: 画像／動画・モデル・プロンプト・パラメーター・入力画像）・**確認**（`#gt-confirm`）・**進捗と比較表**（`#gt-batch`）。モデルはカード（タップで選ぶ。見えないチェックボックス `model` が値を送る）で無効なものも並べ、選べない理由はカードでなく「?」ヘルプと読み上げにある（Issue #906）。見積りの確認は、件数・モデルごとの内訳と合計・「単価なし」のモデルは合計に入らないという注記・警告・上限超過（実行ボタンを無効にする）を出す。結果のカードは完了なら画像（`<img>`）か動画（`<video controls>`）、失敗なら理由。
@@ -97,3 +107,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.12 | 2026-11-03 | `POST /generation-test/results/:id/upscale`（結果を 2 倍・4 倍に大きくする。成功は履歴への `HX-Redirect`・断りは箱を 422 で返す）を足した。結果の詳細に「大きくする」の箱 | Issue #975 |
 | 1.13 | 2026-11-03 | ポーズ集の 4 ルート（`/generation-test/poses`・`/poses/results`・`/poses/image/:id`・`POST /poses/install`）と、`ref-row` の `pose_library::<ID>`、役割 `pose` | Issue #986 |
 | 1.14 | 2026-11-02 | `GET/POST /generation-test/inpaint`（見積り・実行）を足した。結果の詳細に「一部だけ描き直す」と、インペイント結果の「元の結果」 | Issue #974 |
+| 1.15 | 2026-11-03 | 画像のフォームの 3 段（`tier`・`intent`・`quality`・`easy_intent`・`easy_quality`）、`GET /generation-test/easy-pick`、`GET /generation-test` の `tier`・`again`・`same_seed`・`ref_role`、見積りの警告 `quality_ignored`、結果の「もう1枚」「もう一度」「この顔で作る」を足した | Issue #977（ステージ 1） |

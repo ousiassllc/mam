@@ -17,7 +17,7 @@ import (
 
 func TestPageListsEveryModelAndSaysWhyOneCannotBeChosen(t *testing.T) {
 	s := newScreen(t, gentesttest.WithoutBackend(domain.ModelNanoBananaLite))
-	body := s.page(paths.GenerationTest())
+	body := s.page(paths.GenerationTest() + "?tier=detail")
 	assert.Contains(t, body, `data-testid="gt-form"`)
 	assert.Contains(t, body, `value="flux-2"`)
 	assert.Contains(t, body, `value="nano-banana"`)
@@ -69,7 +69,7 @@ func TestModelCardsAreSelectableAndTheirNotesAreInTheHelp(t *testing.T) {
 func TestLongLabelsAreShortAndTheirExplanationsAreInTheHelp(t *testing.T) {
 	s := newScreen(t)
 	for _, media := range []string{"image", "video"} {
-		body := s.get(paths.GenerationTestPart("form") + "?media=" + media).Body.String()
+		body := s.get(paths.GenerationTestPart("form") + "?tier=detail&media=" + media).Body.String()
 		for _, long := range []string{
 			"複数選べます", "そのままモデルに送ります", "最大 10 枚", "実行はまだしません。1 回に", "モデルが作れる長さに丸めます", "書き足します）",
 		} {
@@ -125,8 +125,8 @@ func TestPromptRowAndThePromptHistoryFillTheForm(t *testing.T) {
 	filled := s.get(paths.GenerationTestPart("prompt-row") + "?from=" + red).Body.String()
 	assert.Contains(t, filled, "a red fox")
 	assert.Contains(t, filled, "blurry")
-	assert.Contains(t, s.page(paths.GenerationTest()+"?prompt="+red), "a red fox", "the history's link fills the first prompt")
-	assert.Contains(t, s.page(paths.GenerationTest()), `data-testid="gt-recent"`, "recent prompts are offered")
+	assert.Contains(t, s.page(paths.GenerationTest()+"?tier=detail&prompt="+red), "a red fox", "the history's link fills the first prompt")
+	assert.Contains(t, s.page(paths.GenerationTest()+"?tier=detail"), `data-testid="gt-recent"`, "recent prompts are offered")
 }
 
 func TestPickerOffersProjectImagesAndTheHistory(t *testing.T) {

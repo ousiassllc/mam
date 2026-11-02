@@ -29,3 +29,4 @@
 | 1.22 | 2026-11-03 | §6: 参照の強さの既定を役割ごとにした（`localcfg.DefaultStrengthOf`。「顔だけ」は 0.9、他は 0.7）。編集モデルへ渡す「顔だけ」の参照は、バッチの入力を読む時に 1 回だけ顔のまわりに切る（`runner.FaceCropFunc`・`facesim.CropFace`。顔検出モデルがあるときだけ） | Issue #960。詳細は [local-models.md](../local-models.md) §4.6 |
 | 1.23 | 2026-11-03 | §6: 参照画像の役割 `pose`（ポーズだけ）、入力の出どころ `pose_library`（Shisei のポーズ集。`service/gentest/poses`）、VNCCS PoseStudio の扱い（ルート ①② は既存テンプレート、③④ は許可リストのみ）。§10 に `poses` | Issue #985・#986 |
 | 1.24 | 2026-11-02 | §3.5 を新設: 一部だけ描き直す（`mask`・`denoise`・`supports_inpaint`）。コアノードの `ImageCompositeMasked` でマスクの外を元画像のままにする。結果は別ファイルで `params.inpaint` に元を残す。画面 `/generation-test/inpaint`。入れ直しまで既存の導入済みモデルにはワークフローが増えない | Issue #974 |
+| 1.25 | 2026-11-03 | §3.6 を新設: 品質のプリセット（`Request.Quality`・テンプレートの `quality_presets`・警告 `quality_ignored`。標準は上書きなし）とやりたいこと（`service/gentest/intent`・`Recommend`・`ApplyIntent`）。画面の「かんたん」と MCP が同じ仕組みを使う | Issue #977（ステージ 1） |

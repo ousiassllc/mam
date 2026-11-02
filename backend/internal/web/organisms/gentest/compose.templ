@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -52,25 +53,38 @@ templ ComposeForm(c Compose) {
 				}
 			}
 		</fieldset>
-		@modelChoices(c)
-		@promptFields(c)
-		@parameterFields(c)
-		@gentestadv.Fields(c.Section)
-		@inputFields(c)
-		<div class="flex flex-wrap items-center gap-3">
-			@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate"})
-			<span class="text-xs text-neutral-400">実行はまだしません</span>
-			@help.Toggle(help.ID("見積り"), "見積り")
-			@help.Panel(help.ID("見積り"), "見積り") {
-				<p>
-					1 回に { itoa(c.MaxItems) } 件まで
-					if c.MaxCostUSD != "" {
-						、見積りが { c.MaxCostUSD } を超えるときは実行できません
-					}
-					。
-				</p>
+		if c.Tier.Has() {
+			@gentesttier.Tabs(c.Tier)
+		}
+		if c.Tier.IsEasy() {
+			@gentesttier.Easy(c.Tier.Easy, EasyCard(c.chosen())) {
+				@inputFields(c)
 			}
-		</div>
+			@gentesttier.EasyActions(c.Tier.Easy.CanEstimate)
+		} else {
+			if c.Tier.IsDetail() {
+				@gentesttier.Refine(c.Tier)
+			}
+			@modelChoices(c)
+			@promptFields(c)
+			@parameterFields(c)
+			@gentestadv.Fields(c.Section)
+			@inputFields(c)
+			<div class="flex flex-wrap items-center gap-3">
+				@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate"})
+				<span class="text-xs text-neutral-400">実行はまだしません</span>
+				@help.Toggle(help.ID("見積り"), "見積り")
+				@help.Panel(help.ID("見積り"), "見積り") {
+					<p>
+						1 回に { itoa(c.MaxItems) } 件まで
+						if c.MaxCostUSD != "" {
+							、見積りが { c.MaxCostUSD } を超えるときは実行できません
+						}
+						。
+					</p>
+				}
+			</div>
+		}
 	</form>
 }
 
@@ -209,4 +223,14 @@ func parametersHelp(media string) string {
 		t += "\n長さ（秒）は、モデルが作れる長さに丸めます。速さは、4 ステップの蒸留 LoRA（LightX2V）を使う Wan 2.2 14B のように、速さのモードを持つモデルだけに効きます（ほかのモデルは既定のまま作ります）。"
 	}
 	return t
+}
+
+// EasyCard is the card of the model the easy tier picked, hidden: the form posts it (the same checkbox the cards of the other tier are) and the
+// scripts of the input images and the detailed settings read what the model takes from it.
+templ EasyCard(models []ModelChoice) {
+	<ul hidden aria-hidden="true" data-testid="gt-easy-card">
+		for _, m := range models {
+			@modelCard(m)
+		}
+	</ul>
 }

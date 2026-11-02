@@ -37,7 +37,7 @@ func switchOf(body string) string {
 // #913: the switch starts on for a fresh form and keeps what the user chose when the form is drawn again.
 func TestTranslateSwitchStartsOnAndKeepsTheChoice(t *testing.T) {
 	s := newScreen(t)
-	fresh := switchOf(s.page(paths.GenerationTest()))
+	fresh := switchOf(s.page(paths.GenerationTest() + "?tier=detail"))
 	require.NotEmpty(t, fresh)
 	assert.Contains(t, fresh, `type="checkbox"`)
 	assert.Contains(t, fresh, `name="translate"`)
@@ -53,7 +53,7 @@ func TestTranslateSwitchStartsOnAndKeepsTheChoice(t *testing.T) {
 // #906: the screen has few words; the explanation is behind the "?".
 func TestTranslateExplanationIsInTheHelpNotOnThePage(t *testing.T) {
 	s := newScreen(t)
-	body := s.page(paths.GenerationTest())
+	body := s.page(paths.GenerationTest() + "?tier=detail")
 	panels := regexp.MustCompile(`(?s)<div id="help-[0-9a-f]+" popover.*?</div>`)
 	visible := panels.ReplaceAllString(body, "")
 	label := regexp.MustCompile(`(?s)data-testid="gt-translate".*?</label>`).FindString(visible)

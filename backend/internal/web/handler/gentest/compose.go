@@ -17,8 +17,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/tierform"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -34,17 +36,22 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	}
 	models := h.Svc.Models(ctx, media)
 	maxItems, maxCost := h.Svc.Limits()
+	if len(f.prompts) == 0 {
+		f.prompts = []view.PromptText{{}}
+	}
+	tiers := tierform.Apply(ctx, h.Svc, tierform.In{
+		State: f.tier, Media: media, Refs: len(f.refs), Models: f.models, Aspect: orDefault(f.aspect, defaultAspect(media)), Prompts: f.prompts,
+		Translate: f.translate, Count: orDefault(f.count, "1"), MaxPrompt: gentest.MaxPromptRunes, Adv: &f.adv,
+	})
+	f.models = tiers.Models
 	c := view.Compose{
-		Media: media, Models: choicesOf(models, f.models), Prompts: f.prompts, Translate: f.translate,
+		Media: media, Models: choicesOf(models, f.models), Prompts: f.prompts, Translate: f.translate, Tier: tiers.Data,
 		Filter: commercial.NewFilter("gt-commercial", "#gt-models", h.Svc.DefaultFilter()),
 		Count:  orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),
 		MaxPrompt: gentest.MaxPromptRunes, MaxCount: gentest.MaxCount, MaxItems: maxItems, MaxReferences: gentest.MaxReferences,
 	}
 	if maxCost > 0 {
 		c.MaxCostUSD = gtshare.USD(maxCost)
-	}
-	if len(c.Prompts) == 0 {
-		c.Prompts = []view.PromptText{{}}
 	}
 	if media == gentest.MediaVideo {
 		c.Resolutions, c.Durations = videoChoices(models)
@@ -109,7 +116,7 @@ func pick(v string, choices []string, preferred string) string {
 // "?ref=<source>:<project>:<id>" adds an input image (the detail of a result and the model manager link here).
 func (h Handlers) Page(c *gin.Context) {
 	ctx := c.Request.Context()
-	f := formState{media: c.Query(view.FieldMedia), models: c.QueryArray(view.FieldModel), translate: gentest.DefaultTranslate}
+	f := formState{media: c.Query(view.FieldMedia), models: c.QueryArray(view.FieldModel), translate: gentest.DefaultTranslate, tier: tierform.Read(c.Request.URL.Query())}
 	if id := c.Query("prompt"); id != "" {
 		if p, err := h.Svc.Prompt(ctx, id); err == nil {
 			f.prompts = []view.PromptText{{Text: p.Prompt, Negative: p.NegativePrompt}}
@@ -120,10 +127,18 @@ func (h Handlers) Page(c *gin.Context) {
 		f.prompts, f.models, f.aspect = []view.PromptText{{Text: d.SentPrompt}}, []string{d.Model}, d.AspectRatio
 		fromMatch = true
 	}
+	notice, again := h.restoreAgain(ctx, c, &f) // "似た感じでもう1枚" / "この設定でもう一度" (#977)
 	for _, raw := range c.QueryArray(view.FieldRef) {
 		if r, ok := refform.Parse(raw); ok {
-			f.refs = append(f.refs, refform.Input(r, gentest.RoleReference, nil))
+			f.refs = append(f.refs, refform.Input(r, refform.ImageRole(c.Query("ref_role")), nil)) // "この顔で作る" names the role face
 		}
+	}
+	if f.tier.Tier == "" && (len(f.models) > 0 || fromMatch || again) {
+		f.tier.Tier = gentesttier.TierDetail // a model, a prompt match round or a result that is named is a choice of the detail tier
+	}
+	if f.tier.Tier == gentesttier.TierComfy {
+		gtshare.Render(c, http.StatusOK, pages.GenerationTestPage(middleware.CSRFToken(c), view.Compose{Tier: gentesttier.Data{Tier: gentesttier.TierComfy}}))
+		return
 	}
 	if f.media == "" && len(f.models) > 0 { // a model of the other media opens the form of that media
 		if _, err := h.Svc.Model(ctx, gentest.MediaVideo, f.models[0]); err == nil {
@@ -133,6 +148,9 @@ func (h Handlers) Page(c *gin.Context) {
 	form := h.compose(ctx, f)
 	if fromMatch { // #965: the prompt of a round is the one to compare models with, so say how
 		form.Notice = fromMatchNotice
+	}
+	if again {
+		form.Notice = notice
 	}
 	gtshare.Render(c, http.StatusOK, pages.GenerationTestPage(middleware.CSRFToken(c), form))
 }
@@ -148,7 +166,9 @@ func (h Handlers) Form(c *gin.Context) {
 		gtshare.Render(c, status, view.ComposeForm(view.Compose{Message: view.Message{Error: msg}, Media: gentest.MediaImage}))
 		return
 	}
-	f.models = nil // the models of one media are not the models of the other
+	if f.tier.Tier == "" || f.media == gentest.MediaVideo { // a switch between the tiers of the image form keeps its models
+		f.models = nil // the models of one media are not the models of the other
+	}
 	gtshare.Render(c, http.StatusOK, view.ComposeForm(h.compose(c.Request.Context(), f)))
 }
 

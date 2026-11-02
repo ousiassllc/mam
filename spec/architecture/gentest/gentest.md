@@ -63,6 +63,15 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **見積り・ID**: 値は `Estimate.Request` に入り、見積りの ID に含まれる（確認した内容と違う値では実行できない）。単価は変わらない。
 - 実装は `service/gentest/sampling.go`（検証・`seedFor`・`planSampling`）と、`comfyui/sampling.go`（グラフへの書き込み）。
 
+## 3.6 品質のプリセットとやりたいこと（`quality`・`intent`。Issue #977）
+
+画面の「かんたん」（[../../components/gentest-tiers.md](../../components/gentest-tiers.md)）と MCP が同じ仕組みを使う。
+
+- **品質**: `Request.Quality`（`fast`・`standard`・`high`。`localcfg/sampling.Quality`）。モデルごとのプリセット（`localcfg.Workflow.QualityPresets` = テンプレートの `quality_presets`）の steps・cfg を、**リクエストの `sampling` が名指ししていない項目にだけ**入れる（`Caps.WithQuality`。名指しが勝つ）。`standard`・無しは何も上書きしない: **何も触らない要求のグラフは、これまでのテンプレートのグラフと同じ**（`service/gentest/qualitytest` がグラフを比べる）。`Caps.Presets` に載るので `modelcatalog.Info.Sampling.quality_presets`（`list_generation_models`）に出る。速さのモードのモデル（steps・cfg は `locked`）・受け取らないモデル・プリセットの無いモデルは、警告 `quality_ignored`（標準の値で作る）。実際に使った steps・cfg は `params.sampling` に残る（品質の名前は残さない）。
+- **プリセットの検査**: 読み込み時（`localcfg.ValidateModel`、`localcfg/quality.go`）に、プリセットが受け取る値（steps・cfg の割り当て）にだけ書かれ、速さのモードが無く、範囲内で、速いはワークフローの steps より少なく・きれいは多いことを確かめる。導入済みのコピーは `wfrefresh` が、テンプレートから steps を変えていないものだけ更新する。
+- **やりたいこと**: `service/gentest/intent`（`intents.json`。埋め込み）が、選択肢（`photo`・`anime`・`landscape`・`face`）ごとに、モデルの候補（カタログのワークフロー名）を好みの順に持つ。`Service.Recommend(intent, hasReferences)` は、導入済みで呼べる（`Info.Available`。成人ゲートが閉じていれば成人向けは一覧に無い）・商用フィルター（`DefaultFilter`）に合う・この PC の OS／GPU の列の外でない（`Deps.PlatformWarning` = `mmview.PlatformWarning`。#979）・入力画像があれば画像を使える（顔の役割が要る選択肢は `face` を読める）最初の候補を選ぶ。選べなければ `Reason`（導入されていない／条件に合わない）。`Service.ApplyIntent(request, intent)` は `Models` を埋める（`models` と同時には指定できない。画像だけ。顔の写真が要る選択肢は入力画像が無ければ `validation`。「同じ顔で」は役割 `reference` の入力を `face` にする）。画面の見積りと MCP の `estimate_generation_test`・`run_generation_test` が使う。
+- **復元**（結果の「もう1枚」「もう一度」）: `record.ResultDetail`（`TranslateToEnglish` を足した）から、画面の `redo.Of` が入力に戻す。新しいサービスの呼び出しは無い（画面のハンドラだけ）。
+
 ## 3.5 一部だけ描き直す（inpaint。Issue #974）
 
 元画像 1 枚とマスク（白＝描き直す、黒＝残す）で、マスクの内側だけを描き直す。リクエストの `mask`（参照と同じ `source` / `id` / `project_id`。役割ではない）と `denoise`（0 より大きく 1 以下。省くとモデルの `denoise_default`）。対応は `modelcatalog.Info.SupportsInpaint`（`reference_mode` が `inpaint` で、グラフに範囲内の `denoise` がある）。対応しないモデルを選ぶと見積りの時点で拒否する（警告ではない）。`denoise` を受け取らないモデルに強さを付けると警告 `denoise_ignored` でテンプレートの値のまま作る。マスクが真っ黒（白に近い画素が無い）・動画・マスク無しの `denoise` は拒否する。
@@ -164,6 +173,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | `record` | 履歴の JSON 列（`BatchParams`・`ResultParams`・`SentText`）、ジョブのペイロード、結果・入力・取り込み・プロンプトのビュー（`ResultView` ほか）。`runner`・`history`・直下が共有する型 |
 | `export` / `refs` / `match` / `matchinfo` / `modelcatalog` / `projectlink` / `loras` / `failtext` / `gterr` | それぞれ ZIP エクスポート、入力画像と LoRA の判定、プロンプトマッチ、マッチの記録、モデルの一覧、プロジェクト側、LoRA の一覧、失敗の文言、拒否の型 |
 | `poses` / `posetest` | Shisei のポーズ集（導入・一覧・絞り込み・ファイルの解決。`posestest` は偽の GitHub で導入までを走らせる道具）と、ポーズの画像を入力にした実行のテスト（Issue #986） |
+| `intent` / `qualitytest` | やりたいこと（`intents.json`。埋め込みの選択肢と候補モデル・`Recommend` の選び方。Issue #977）と、品質のプリセット・やりたいことの選択・何も触らないときのグラフを走らせるテスト |
 | `gentesttest` / `servicetest` / `localtest` / `speedtest` | テストの道具と、パッケージをまたぐテスト |
 
 `Service` は `projectlink.Link`・`runner.Runner`・`history.Store` を埋め込み、これらのメソッドを自分のものとして公開する。`Deps.Extra`（プロンプトマッチ）は `runner.Runner` のフィールドで、`match.New` が組み立てるときに入れる。

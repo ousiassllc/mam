@@ -128,6 +128,8 @@ type ResultDetail struct {
 	Imports []ImportView `json:"imports"`
 	// Estimate is the confirmed estimate of the batch the result belongs to.
 	BatchEstimatedUSD float64 `json:"batch_estimated_usd"`
+	// TranslateToEnglish is whether the batch asked for the prompts to be translated (the switch of the screen); Translated says this result's were.
+	TranslateToEnglish bool `json:"translate_to_english"`
 }
 
 // PromptView is an entry of the prompt history.

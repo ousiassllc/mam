@@ -16,28 +16,31 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/redo"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 var negativeModeText = map[string]string{"field": "モデルの欄に送った", "folded": "プロンプトに書き足した"}
 
 // detail builds the page of one result around the import form f.
-func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.ImportForm) view.Detail {
+func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f importbox.Form) view.Detail {
 	v := view.Detail{
 		Card: cardOf(d.ResultView, false), SentPrompt: d.SentPrompt, Negative: d.NegativePrompt, NegMode: negativeModeText[d.NegativeMode],
 		English: d.TranslatedPrompt, EnglishNegative: d.TranslatedNegativePrompt,
 		Params: append(append(params(d), upscaleKVs(d)...), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
 	}
+	inpaintURL, redrawFrom := "", ""
 	if d.Media == gentest.MediaImage && d.HasFile {
 		ref := refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
 		v.UseURL = paths.GenerationTest() + "?ref=" + ref
 		v.MatchURL = paths.GenerationTestMatch() + "?ref=" + ref
-		v.InpaintURL = paths.GenerationTestInpaint() + "?ref=" + ref + "&model=" + d.Model
+		inpaintURL = paths.GenerationTestInpaint() + "?ref=" + ref + "&model=" + d.Model
 	}
 	if d.Inpaint != nil && d.Inpaint.SourceKind == gentest.FromHistory && d.Inpaint.SourceID != "" {
-		v.RedrawFrom = paths.GenerationTestPart("results", d.Inpaint.SourceID)
+		redrawFrom = paths.GenerationTestPart("results", d.Inpaint.SourceID)
 	}
 	for _, in := range d.Inputs {
 		v.Inputs = append(v.Inputs, view.InputCard{Role: roleText(in), Origin: originText[in.Origin.Kind], URL: paths.GenerationTestPart("inputs", in.ID, "file")})
@@ -51,11 +54,12 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 	f.ResultID, f.Image = d.ID, d.Media == gentest.MediaImage
 	if list, err := h.Svc.ProjectList(ctx); err == nil {
 		for _, p := range list {
-			f.Projects = append(f.Projects, view.ProjectChoice{ID: p.ID, Name: p.Name})
+			f.Projects = append(f.Projects, importbox.Project{ID: p.ID, Name: p.Name})
 		}
 	}
 	v.Import = f
 	v.Upscale = h.upscaleForm(ctx, d, "")
+	v.Actions, v.Used = redo.ActionsOf(d, inpaintURL, redrawFrom, v.Upscale.Show), redo.UsedOf(d)
 	if !d.HasFile {
 		v.Import.Projects = nil
 	}
@@ -147,17 +151,17 @@ func (h Handlers) Import(c *gin.Context) {
 	d, derr := h.Svc.Result(ctx, c.Param("id"))
 	if derr != nil {
 		status, msg := refuse(c, derr)
-		gtshare.Render(c, status, view.ImportBox(view.ImportForm{Message: view.Message{Error: msg}}))
+		gtshare.Render(c, status, importbox.Box(importbox.Form{Error: msg}))
 		return
 	}
-	f := view.ImportForm{}
+	f := importbox.Form{}
 	status := http.StatusOK
 	if err != nil {
 		status, f.Error = refuse(c, err)
 	} else {
 		f.Done = importedText(out)
 	}
-	gtshare.Render(c, status, view.ImportBox(h.detail(ctx, d, f).Import))
+	gtshare.Render(c, status, importbox.Box(h.detail(ctx, d, f).Import))
 }
 
 func importedText(o projectlink.ImportOutcome) string {

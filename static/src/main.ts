@@ -19,6 +19,8 @@ import { installCommercialFilter } from './components/commercial-filter/commerci
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
 import { initGentestAdvanced } from './components/gentest/advanced';
+import { initGentestRefine } from './components/gentest-tiers/refine';
+import { initGentestEasy } from './components/gentest-tiers/easy';
 import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
 import { installExportPick } from './components/gentest/export-pick';
@@ -88,6 +90,8 @@ installCopy();
 initGentestMatch();
 // The detailed settings of the generation test (seed, steps, cfg, sampler, scheduler): shown while a ticked model takes them.
 initGentestAdvanced();
+initGentestRefine();
+initGentestEasy();
 // The filter of commercial use of the lists of models: 商用OKのみ / 条件つきまで / すべて.
 installCommercialFilter();
 
