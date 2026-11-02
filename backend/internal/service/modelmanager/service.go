@@ -143,6 +143,7 @@ type Service struct {
 	targets    map[string]*sync.Mutex
 	cancels    map[string]context.CancelCauseFunc // job id -> cancel of a running install
 	hf         *hf.Client
+	vram       vramMemo // GPUVRAM
 }
 
 // New returns the Service. It reads the record (a broken one is an error).

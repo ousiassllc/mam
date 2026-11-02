@@ -190,6 +190,8 @@ Wan 2.2 14B のベース（`wan22-i2v-14b`）は I2V のみ（決定 4）。Remi
 
 カタログのモデルの `vram`（`min_gb`・`recommended_gb`・`limits`）を、この PC の最大の GPU（ソフトウェアのアダプターを除く専用メモリ。`hfplan.VRAMOf`）と比べる（判定は `vramfit.For`。画面・MCP 側は `mmview.FitOf`。マーケティング上の GB に合わせ、バイト数を GiB に四捨五入してから比べる。RTX 4070 Ti SUPER の 16376 MiB は 16 GB）。
 
+GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒）を起こす。モデルの一覧は描画のたび・2 秒ごとのポーリング・詳細モーダルのたびにこれを使うので、**`Service.GPUVRAM`（`mmview.GPUVRAM` が呼ぶ。MCP の `list_model_catalog` も同じ）は 5 分間覚える**（PC の構成は動かしている間ほとんど変わらない）。検出に失敗したとき（`Report.Error`）は 30 秒、呼び出しが取り消されたときは覚えない。**`DetectGPU`（`detect_gpu`・エンジンの GPU 表示・`get_gpu_status` の「今の状態」）は覚えず、毎回検出する**（Issue #927 の統合レビュー。#954）。
+
 | 判定（`vram_fit.fit`） | 条件 | 画面・MCP の言葉 |
 |---|---|---|
 | `unknown` | GPU のメモリが分からない（GPU なし・検出の失敗） | 何も出さない（MCP は `vram_fit` から省く） |
