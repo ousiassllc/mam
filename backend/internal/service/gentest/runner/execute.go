@@ -75,7 +75,7 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	roles := modelcatalog.ReferenceCapsOf(br.s.Adapter.Config(), domain.ModelName(r.Model)).Roles
 	for _, in := range br.inputsOf(r) {
 		role, strength := refs.InputOf(roles, in.role, in.strength)
-		req.Inputs = append(req.Inputs, in.in)
+		req.Inputs = append(req.Inputs, in.forRole(role))
 		req.Options.Refs = append(req.Options.Refs, localcfg.RefOption{Role: role, Strength: strength})
 	}
 	if p.LoRA != nil {

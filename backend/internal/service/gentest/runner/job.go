@@ -51,9 +51,12 @@ type Deps struct {
 	// Hidden says a model is left out of the model lists and refused as unknown (the age gate). May be nil.
 	Hidden func(modelID string) bool
 	// Extra runs the batches that are not this runner's (nil: every batch is). The prompt match sets it once it is built, before the job queue starts.
-	Extra  Extra
-	Now    func() time.Time
-	Logger *slog.Logger
+	Extra Extra
+	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See
+	// FaceCropFunc.
+	FaceCrop FaceCropFunc
+	Now      func() time.Time
+	Logger   *slog.Logger
 }
 
 // Runner runs batches.
@@ -92,6 +95,8 @@ type loaded struct {
 	strength *float64
 	position int
 	in       modeladapter.Input
+	// face is the picture cut to the face of a reference of the role "face" (nil: none was made, the picture goes whole).
+	face *modeladapter.Input
 }
 
 // RunJob is the handler of domain.JobGentest. Every result is settled as it ends (the row, the file), so the history is
@@ -154,7 +159,9 @@ func (s *Runner) loadInputs(ctx context.Context, batchID string) (map[string]loa
 		if err != nil {
 			return nil, fmt.Errorf("read input image %s: %w", in.ID, err)
 		}
-		out[in.ID] = loaded{role: in.Role, strength: in.Strength, position: in.Position, in: modeladapter.Input{Data: data, MimeType: in.MimeType}}
+		l := loaded{role: in.Role, strength: in.Strength, position: in.Position, in: modeladapter.Input{Data: data, MimeType: in.MimeType}}
+		l.face = s.cropFace(ctx, l)
+		out[in.ID] = l
 	}
 	return out, nil
 }

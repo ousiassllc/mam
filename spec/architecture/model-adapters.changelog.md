@@ -86,3 +86,4 @@
 | 1.79 | 2026-11-02 | §8 に、SFace / YuNet のライセンスを一次情報で再確認した結果（重み Apache-2.0・MIT・学習データは明記なし）と、そのため顔の一致度をプロンプトマッチの似てる度に混ぜる設定を既定 OFF にしたことを足した | Issue #964 |
 | 1.80 | 2026-11-03 | §8 に、LLM のモデル名の選択肢（API の一覧、取れなければ `agent/llm/data/models.json` の既定候補）の方針を足した | Issue #988・#987 |
 | 1.81 | 2026-11-03 | §2.1 に、`Response.Usage`（プロバイダーが報告する使用トークン数。報告しない応答は nil で 0 と区別）と、既定の Gemini のモデル ID を公式の `gemini-3.1-pro-preview` に直し旧 ID `gemini-3.1-pro` を設定の読み込みで読み替えることを足した | Issue #981。プロンプトマッチの LLM 費用を見込みでなく実測にするため。旧 ID は公式の ID ではなく単価表に載らず `no_price` になっていた |
+| 1.82 | 2026-11-03 | §10.1 に、顔検出（YuNet）を生成テストの「顔だけ」の参照の切り出し（`facesim.CropFace`）にも使うこと、実モデルの手動テスト `TestONNX_CropFaceKeepsTheFace`・`TestONNX_FaceLockPairs`（旧指標との併記の表）を足した | Issue #960 |
