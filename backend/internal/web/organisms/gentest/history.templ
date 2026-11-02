@@ -3,6 +3,7 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -48,6 +49,7 @@ templ HistoryList(h History) {
 			@commercial.Filter(h.Commercial)
 			@atoms.Button(atoms.ToneNeutral, "絞り込む", templ.Attributes{"type": "submit"})
 		</form>
+		@exportbar.Bar(h.Export)
 		@HistoryLive(h)
 	</section>
 }
@@ -92,15 +94,33 @@ templ HistoryLive(h History) {
 	</div>
 }
 
-// HistoryCard is a result with its favorite toggle (the heart) and its prompt.
+// HistoryCard is a result with its favorite toggle (the heart) and its prompt. A result that made a file can be chosen for the ZIP
+// export (#932), as the model cards of the form are chosen (#906): the card is the choice. Tap it and its frame glows; a checkbox that
+// is only there for the keyboard and a screen reader (sr-only, the peer of the frame) holds the state, static/src/components/gentest/
+// export-pick.ts keeps it over the refresh of the list. A card without a file is not offered.
 templ HistoryCard(c Card) {
-	<div class="flex w-44 flex-col gap-1">
-		@ResultCard(c)
-		<p class="line-clamp-2 break-words text-xs text-neutral-300">{ c.Prompt }</p>
-		<div class="flex items-center justify-between text-xs text-neutral-400">
-			<span>{ c.CreatedAt }</span>
-			@FavoriteButton(c.ID, c.Favorite)
+	<div
+		class="relative w-47"
+		if c.FileURL != "" {
+			data-gt-pick={ c.ID }
+		}
+	>
+		if c.FileURL != "" {
+			<input type="checkbox" class="peer sr-only" aria-label="書き出しに選ぶ" data-gt-pick-input data-testid="gt-pick"/>
+		}
+		<div class="flex flex-col gap-1 rounded-lg border border-transparent p-1.5 transition-shadow peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-checked:shadow-[0_0_12px_1px] peer-checked:shadow-indigo-400/40 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 motion-reduce:transition-none">
+			@ResultCard(c)
+			<p class="line-clamp-2 break-words text-xs text-neutral-300">{ c.Prompt }</p>
+			<div class="flex items-center justify-between text-xs text-neutral-400">
+				<span>{ c.CreatedAt }</span>
+				@FavoriteButton(c.ID, c.Favorite)
+			</div>
 		</div>
+		if c.FileURL != "" {
+			<span class="pointer-events-none absolute left-3 top-3 hidden text-indigo-300 peer-checked:block" aria-hidden="true">
+				@atoms.Icon(atoms.IconCheck, "h-5 w-5")
+			</span>
+		}
 	</div>
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -250,6 +251,8 @@ type History struct {
 	Refresh   string
 	Active    bool
 	UpdatedAt string
+	// Export is the bar that saves results as a ZIP.
+	Export exportbar.Data
 }
 
 // KV is a line of the settings of a result.

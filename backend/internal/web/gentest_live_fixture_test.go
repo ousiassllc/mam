@@ -8,6 +8,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 )
 
 // The wtests static/src/components/scroll/gentest-live.wtest.ts (#940 the grid of a running batch keeps the place the reader
@@ -57,7 +58,7 @@ func liveBatch(done int) gentest.Batch {
 func liveHistory(running int, at string) gentest.History {
 	h := gentest.History{
 		Models: []string{"flux-2", "nano-banana"}, Spend: "これまでの生成テストの合計: $0.0900",
-		Refresh: "/generation-test/history?live=1", UpdatedAt: at, Active: running > 0,
+		Refresh: "/generation-test/history?live=1", UpdatedAt: at, Active: running > 0, Export: exportbar.Data{URL: "/generation-test/export", Commercial: "all"},
 	}
 	for n := range 3 {
 		c := liveCard(n, 3-running)

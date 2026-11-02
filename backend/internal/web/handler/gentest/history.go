@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -65,6 +66,7 @@ func (h Handlers) history(ctx context.Context, q url.Values) (view.History, erro
 		Filter: f, Commercial: commercial.NewFilter("gt-history-commercial", "#"+view.HistoryID, chosen).WithField(fieldCommercial),
 		Refresh: paths.GenerationTestHistory() + "?" + live.Encode(), UpdatedAt: time.Now().Format(time.TimeOnly),
 	}
+	out.Export = exportbar.Data{URL: paths.GenerationTestExport(), Model: f.Model, Media: f.Media, Favorite: f.Favorite, Commercial: string(chosen)}
 	list, err := h.Svc.History(ctx, gentest.HistoryFilter{Model: f.Model, Media: f.Media, FavoriteOnly: f.Favorite, Limit: historyPage + 1, Offset: offset})
 	if err != nil {
 		return out, err
