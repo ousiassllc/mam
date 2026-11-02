@@ -32,7 +32,7 @@ describe('the history of the generation test refreshes itself (#925)', () => {
     await waitUntil(() => !statuses().includes('running'), 'the finished result did not arrive', { timeout: 8000 });
 
     expect(statuses()).to.deep.equal(['succeeded', 'succeeded', 'succeeded']);
-    expect(byTestId('gt-updated').textContent).to.contain('10:00:05');
+    expect(byTestId('refresh-updated').textContent).to.contain('10:00:05');
     expect(byTestId('gt-history-live').hasAttribute('hx-trigger'), 'it still asks again').to.equal(false);
   });
 
@@ -56,18 +56,22 @@ describe('the history of the generation test refreshes itself (#925)', () => {
     expect(byTestId('gt-history-live').hasAttribute('hx-trigger'), 'nothing runs, so nothing is asked for').to.equal(
       false,
     );
-    expect(byTestId('gt-updated').textContent).to.contain('10:00:00');
-    const button = byTestId('gt-refresh') as HTMLButtonElement;
+    expect(byTestId('refresh-updated').textContent).to.contain('10:00:00');
+    const button = byTestId('refresh') as HTMLButtonElement;
     expect(button.getAttribute('aria-label')).to.equal('更新');
     button.focus();
 
     button.click();
-    await waitUntil(() => byTestId('gt-updated').textContent?.includes('10:00:05'), 'the history was not read again', {
-      timeout: 4000,
-    });
+    await waitUntil(
+      () => byTestId('refresh-updated').textContent?.includes('10:00:05'),
+      'the history was not read again',
+      {
+        timeout: 4000,
+      },
+    );
 
-    expect(byTestId('gt-refresh'), 'the button was not drawn again').not.to.equal(button);
-    expect(document.activeElement, 'the focus is not on the button').to.equal(byTestId('gt-refresh'));
+    expect(byTestId('refresh'), 'the button was not drawn again').not.to.equal(button);
+    expect(document.activeElement, 'the focus is not on the button').to.equal(byTestId('refresh'));
   });
 
   describe('the poll waits while it would spoil what the reader is doing', () => {
@@ -97,7 +101,7 @@ describe('the history of the generation test refreshes itself (#925)', () => {
 
       expect(beforeRequest(poller()), 'the poll went out over a playing video').to.equal(false);
       expect(
-        beforeRequest(byTestId('gt-refresh'), new MouseEvent('click')),
+        beforeRequest(byTestId('refresh'), new MouseEvent('click')),
         'the button of the reader was held back',
       ).to.equal(true);
       expect(beforeRequest(poller(), new MouseEvent('click')), 'a request of the reader was held back').to.equal(true);

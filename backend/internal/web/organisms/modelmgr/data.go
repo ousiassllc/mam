@@ -117,6 +117,8 @@ type Engine struct {
 	SourceURL   string
 	LicenseName string
 	LicenseURL  string
+	// UpdatedAt is the time of day it was read ("15:04:05"), beside the refresh button (#962).
+	UpdatedAt string
 }
 
 // Polling reports whether the card has something in progress (an install, a start).

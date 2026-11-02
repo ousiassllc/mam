@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
@@ -33,6 +34,7 @@ func engineData(ctx context.Context, svc *modelmanager.Service, job string, star
 		Installed: ev.Installed, Version: ev.Version, PinnedVersion: ev.PinnedVersion, Variant: ev.Variant, CPU: ev.CPU,
 		UpdateAvailable: ev.UpdateAvailable, Broken: ev.Broken, State: string(ev.Process.State), URL: ev.Process.URL,
 		ProcessError: ev.Process.Error, AutoStart: ev.AutoStart, SourceURL: ev.SourceURL, LicenseName: ev.License.Name, LicenseURL: ev.License.URL,
+		UpdatedAt: time.Now().Format(time.TimeOnly),
 	}
 	e.VariantLabel = ev.Variant
 	for _, v := range ev.Variants {
@@ -179,7 +181,7 @@ func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) 
 	free := svc.Engine().FreeBytes
 	gpuVRAM := mmview.GPUVRAM(ctx, svc)
 	hasToken, tokenErr := svc.HasHuggingFaceToken()
-	c := view.Catalog{Blocked: blockedText(ctx, svc)}
+	c := view.Catalog{Blocked: blockedText(ctx, svc), UpdatedAt: time.Now().Format(time.TimeOnly)}
 	names := map[string]string{}
 	for _, m := range svc.Catalog() {
 		md := modelData(ctx, svc, m, free, gpuVRAM, tokenErr == nil && !hasToken)

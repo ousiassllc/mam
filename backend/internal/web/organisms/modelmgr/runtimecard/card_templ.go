@@ -11,12 +11,14 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// RuntimesSection is the cards of the local runtimes (voice and lip sync), side by side like the models. Each card swaps itself and polls
-// while it has an install or a start in progress.
+// RuntimesSection is the cards of the local runtimes (voice and lip sync), side by side like the models, with the refresh button that reads them
+// all again (#962). Each card swaps itself and polls while it has an install or a start in progress, so the button shows no time: the cards
+// are read at different times.
 func RuntimesSection(r Runtimes) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -45,13 +47,17 @@ func RuntimesSection(r Runtimes) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(RuntimesID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 13, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 15, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-3\" data-testid=\"mm-runtimes\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = refresh.Bar(paths.ModelManagerPart("runtimes"), RuntimesID, "").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -271,7 +277,7 @@ func runtimeInstalled(r Runtime) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(r.ProcessError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 105, Col: 168}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 108, Col: 168}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -336,7 +342,7 @@ func runtimeInstalled(r Runtime) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.ModelManagerPart("runtimes", r.ID, "install"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 128, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 131, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 				if templ_7745c5c3_Err != nil {
@@ -349,7 +355,7 @@ func runtimeInstalled(r Runtime) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + RuntimeID(r.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 129, Col: 37}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 132, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 				if templ_7745c5c3_Err != nil {

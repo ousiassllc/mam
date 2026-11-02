@@ -93,3 +93,4 @@
 | 1.86 | 2026-11-02 | §5 のディレクトリ構成に `scripts/require-tests-passed.sh`（と `require-tests-passed_test.sh`）を足した | Issue #950。CI の `windows` ジョブで、実モデルのテストが全部 Skip されても緑になるのを防ぐ |
 | 1.87 | 2026-11-02 | §5 のディレクトリ構成に `third_party/`（`onnxruntime-purego/`）を足した | Issue #949。ONNX Runtime のバインディングを、個人フォークへの `replace` から、リポジトリ内のコピーに改めた |
 | 1.88 | 2026-11-02 | §5 のディレクトリ構成に `static/src/components/scroll/`（`keep-scroll.ts`）と `poll/`（`poll-guard.ts`）を足した | Issue #940・#925 |
+| 1.89 | 2026-11-02 | §5 の `static/src/components/poll/` の説明に、更新ボタン（`molecules/refresh.Bar`）の要求は止めないことを足した | Issue #962 |

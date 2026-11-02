@@ -6,9 +6,9 @@ import (
 )
 
 // GPUBlock is the GPU detection and the form that installs the engine (it replaces #mm-gpu in the card of an engine
-// that is not installed).
+// that is not installed). It is raised above the click area of the card (z-10), so that its form and links are pressed instead of the card.
 templ GPUBlock(g GPU) {
-	<div id={ GPUID } class="flex flex-col gap-3" data-testid="mm-gpu">
+	<div id={ GPUID } class="relative z-10 flex flex-col gap-3" data-testid="mm-gpu">
 		@notice(g.Message, "mm-gpu")
 		<div class="flex flex-col gap-1 text-sm">
 			<h3 class="text-sm font-semibold">GPU の検出結果</h3>
@@ -65,7 +65,7 @@ templ GPUBlock(g GPU) {
 					<span>GPU を使わず CPU で実行する（とても遅く、動画には向きません。対応する GPU が無いときだけの手段です）</span>
 				</label>
 			}
-			<p class="text-xs text-neutral-400">空き { g.Free }。取得するのは固定した版で、SHA-256 が合わなければ破棄します。中断しても続きから再開できます。</p>
+			<p class="text-xs text-neutral-400">空き { g.Free }</p>
 			<div>
 				@atoms.Button(atoms.TonePrimary, "ComfyUI を導入する", templ.Attributes{"type": "submit"})
 			</div>

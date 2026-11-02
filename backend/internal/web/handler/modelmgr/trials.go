@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -97,6 +98,13 @@ const trialListSize = 20
 // trials lists the latest results of the models of this screen, newest first (the generation test's history: a trial is a
 // batch of one). A result that waits or runs shows that, and the list asks for itself again.
 func (h Handlers) trials(ctx context.Context) view.Trials {
+	t := h.trialList(ctx)
+	t.UpdatedAt = time.Now().Format(time.TimeOnly)
+	return t
+}
+
+// trialList is trials without the time it was read.
+func (h Handlers) trialList(ctx context.Context) view.Trials {
 	if h.Gentest == nil {
 		return view.Trials{}
 	}

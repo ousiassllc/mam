@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 	"github.com/ousiassllc/mam/backend/internal/web/screentest"
 )
 
@@ -35,4 +36,22 @@ func TestRuntimes_TheDetailOfARuntimeThatIsNotThereIsTheReasonInTheModal(t *test
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Body.String(), "対象が見つかりません")
 	assert.Contains(t, rec.Body.String(), "data-modal-close")
+}
+
+// The section has a refresh button that reads every card again (#962): the answer is the whole section with the same id, and it carries no
+// time (the cards poll on their own and are read at different times) and no modal.
+func TestRuntimes_TheRefreshButtonReadsTheWholeSectionAgain(t *testing.T) {
+	s := newRuntimeScreen(t)
+	page := s.Page()
+	assert.Contains(t, page, `id="mm-runtimes-refresh"`)
+	assert.Contains(t, page, `hx-get="`+paths.ModelManagerPart("runtimes")+`"`)
+
+	rec := s.Get(paths.ModelManagerPart("runtimes"))
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, `id="mm-runtimes"`)
+	assert.Contains(t, body, `id="mm-runtime-gpt-sovits"`)
+	assert.Contains(t, body, `id="mm-runtimes-refresh"`)
+	assert.NotContains(t, body, "最終更新")
+	assert.NotContains(t, body, "<dialog")
 }

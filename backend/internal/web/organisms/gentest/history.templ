@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -73,7 +74,7 @@ templ HistoryLive(h History) {
 		@notice(h.Message, "gt-history")
 		<div class="flex items-center justify-between gap-3">
 			<p class="text-sm text-neutral-300" data-testid="gt-spend">{ h.Spend }</p>
-			@RefreshBar(h.Refresh, HistoryLiveID, h.UpdatedAt)
+			@refresh.Bar(h.Refresh, HistoryLiveID, h.UpdatedAt)
 		</div>
 		if len(h.Cards) == 0 {
 			<p class="text-sm text-neutral-400" data-testid="gt-history-empty">条件に合う結果はありません。</p>

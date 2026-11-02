@@ -4,10 +4,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// CatalogList is the list of models; while an install is running it polls itself.
+// CatalogList is the list of models with the refresh button (#962); while an install is running it polls itself.
 templ CatalogList(c Catalog) {
 	<div
 		id={ CatalogID }
@@ -22,6 +23,7 @@ templ CatalogList(c Catalog) {
 			hx-swap="outerHTML"
 		}
 	>
+		@refresh.Bar(catalogURL(c), CatalogID, c.UpdatedAt)
 		@notice(c.Message, "mm-catalog")
 		if c.Blocked != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-catalog-blocked">{ c.Blocked }</p>

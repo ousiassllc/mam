@@ -77,6 +77,8 @@ type Catalog struct {
 	OOB bool
 	// Blocked says why nothing can be installed now ("" when something can): no engine, an OS without it, a pinned file.
 	Blocked string
+	// UpdatedAt is the time of day it was read ("15:04:05"), beside the refresh button (#962).
+	UpdatedAt string
 }
 
 // Polling reports whether an install is running (or has not been seen to end yet).
