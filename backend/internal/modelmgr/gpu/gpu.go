@@ -29,6 +29,9 @@ type Adapter struct {
 	VendorID uint32 `json:"vendor_id"`
 	// VRAMBytes is the dedicated video memory (DedicatedVideoMemory, 64 bit).
 	VRAMBytes uint64 `json:"vram_bytes"`
+	// LUID is the locally unique ID of the adapter on Windows (high << 32 | low), which the performance counters name an adapter
+	// by; 0 when the Detector does not know it. It is not part of the report.
+	LUID uint64 `json:"-"`
 	// Software marks a software adapter (the Microsoft Basic Render Driver): never a candidate.
 	Software bool `json:"software,omitempty"`
 	// ComputeCap is the CUDA compute capability of an NVIDIA adapter (from nvidia-smi, else the name; 0: unknown). Detect fills it in:

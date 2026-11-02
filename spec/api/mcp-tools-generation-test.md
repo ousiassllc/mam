@@ -27,7 +27,7 @@
 | `run_prompt_match` | 確認した見積りどおりに実行する（ジョブ。種別 `gentest`）。サーバーが見積りをやり直し、`estimate_id`・合計が違う、上限超過は `conflict`（LLM も呼ばず何も生成しない） | 上と同じ + `estimate_id`, `confirmed_total_usd` | `job_id`, `state`, `batch_id`, `total_items`（最大の回数） | いいえ（外部へ接続・課金あり） |
 | `get_prompt_match` | マッチの状態と全ての回 | `batch_id` | `finished`, `stop`（`reached` / `limit` / `cancelled` / `error`）, `error`, `target_score`, `best_round`, `best_score`, `best_prompt`（そのまま使える。生成テストの `prompts` に渡す）, `rounds[]`（`round`, `result_id`, `status`, `prompt`（英語）, `score`, `differences[]`, `based_on`, `base_prompt`（直す前）, `change`（直したところ）, `instruction`, `error`, `best`） | はい |
 | `instruct_prompt_match` | **実行中**のマッチに、言葉（日本語でよい）の指示を足す。次にプロンプトを直すときに取り込む。終わったマッチは `conflict` | `batch_id`, `instruction` | `status` | いいえ |
-| `get_generation_test` | バッチの進捗と全結果 | `batch_id` | `state`, `total`, `done`, `queued`, `running`, `succeeded`, `failed`, `cancelled`, `finished`, `estimate`, `results[]`（下の結果） | はい |
+| `get_generation_test` | バッチの進捗と全結果。動いているローカルの ComfyUI の生成があれば、その進み具合 `progress`（`node`, `step`, `max_step`, `percent`, `eta_seconds`。取れないときは省く。Issue #966） | `batch_id` | `state`, `total`, `done`, `queued`, `running`, `succeeded`, `failed`, `cancelled`, `finished`, `estimate`, `progress`, `results[]`（下の結果） | はい |
 | `cancel_generation_test` | バッチを取り消す。始めていない結果は取り消し、呼び出し中のものは終わるのを待つ | `batch_id` | `cancelled`, `running` | いいえ |
 | `list_generation_results` | 履歴（新しい順） | `model`, `media`, `favorite`, `limit`, `offset` | `results[]`, `spend`（`items`, `priced_usd`, `unknown_items`） | はい |
 | `get_generation_result` | 結果 1 件（入力画像・取り込み先・ファイルの URL） | `result_id` | 結果 + `inputs[]`（`input_id`, `role`, `strength`, `mime_type`, `size_bytes`, `origin`）, `imports[]`, `file`（`url`, `expires_at`） | はい |
@@ -61,6 +61,8 @@
 |---------------|---------------|----------|------------------|----------|
 | `gentest` | `run_generation_test`・`run_prompt_match` | なし | 終わった結果の数 / 全結果の数 | `batch_id`, `succeeded`, `failed`, `cancelled`, `next` |
 
+`progress`（`get_job` と `get_generation_test` の両方。Issue #966）: バッチが `running` の間、バッチのジョブ（`job_id`）が呼んでいるローカルの ComfyUI の呼び出しが報告した最新のステップ（`node`・`step` / `max_step`・`percent`・`eta_seconds`。意味は [mcp-tools.md](mcp-tools.md)）。同時に複数の呼び出しが動くときは、最後に進んだもの 1 つ。クラウドのモデル・読み込み中・終わったバッチ・mam の再起動後は**フィールドごと省く**。`done` / `total` の件数は変わらない。
+
 `state`: 結果に動いているものがあれば `running`（まだ何も始まっていなければ `queued`）、終わっていて 1 件でも成功なら `succeeded`、全部失敗なら `failed`（`error` はジョブの理由）、取り消された結果があれば `cancelled`。バッチが削除されると `cancelled`。モデルマネージャーの画面の試し生成も同じ種別のジョブなので、`get_job` で読める。
 
 ## テスト
@@ -78,3 +80,4 @@
 | 1.4 | 2026-11-02 | プロンプトマッチの 4 ツール（`estimate_prompt_match`・`run_prompt_match`・`get_prompt_match`・`instruct_prompt_match`）を足した。見積り → 確認 → 実行の流れは `run_generation_test` と同じ。実行は種別 `gentest` のジョブで、`get_job` と `get_generation_test` は、最後の測定が終わるまで `running`。取り消しは `cancel_generation_test`、各回の画像は `get_generation_result` | Issue #916 |
 | 1.5 | 2026-11-02 | `export_generation_results` とダウンロードの種類 `gentest_export` を足した（結果を `photos/` と `prompts/prompts.csv` の ZIP にまとめる。直近 N 件・バッチ・指定・お気に入り・モデル・種類・商用利用で選び、大きいときは分割）。「ZIP は無い」を改めた | Issue #932 |
 | 1.6 | 2026-11-02 | `estimate_generation_test`・`run_generation_test` に動画の `speed_mode`（Wan 2.2 14B + LightX2V の `fast` = 4 ステップ / `standard` = 通常）、`list_generation_models` のモデルの `video.speed_modes`（`id`・`label`・`default`）、警告 `speed_mode_unsupported`、結果の `speed_mode` を足した | Issue #930 |
+| 1.7 | 2026-11-02 | `get_job`（種別 `gentest`）と `get_generation_test` に、動いているローカル ComfyUI の生成の `progress`（ステップ・%・残りの見積り。取れないときは省く）を足した | Issue #966 |

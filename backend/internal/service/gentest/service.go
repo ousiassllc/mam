@@ -26,6 +26,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -115,7 +116,7 @@ func New(d Deps) *Service {
 
 // Register installs the handler of domain.JobGentest (not resumable). Call it before the job queue starts.
 func (s *Service) Register() {
-	s.Jobs.Register(domain.JobGentest, s.RunJob, false)
+	s.Jobs.Register(domain.JobGentest, live.OwnedByJob(s.RunJob), false)
 }
 
 // OnStartup fails the results an abnormal termination left queued or running and removes staged inputs that no batch took.

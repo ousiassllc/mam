@@ -84,7 +84,7 @@ func (DXGI) Adapters(context.Context) ([]Adapter, error) {
 		}
 		out = append(out, Adapter{
 			Name: windows.UTF16ToString(d.Description[:]), VendorID: d.VendorID, VRAMBytes: uint64(d.DedicatedVideoMemory),
-			Software: d.Flags&softwareFlag != 0,
+			Software: d.Flags&softwareFlag != 0, LUID: uint64(uint32(d.LUIDHigh))<<32 | uint64(d.LUIDLow), //nolint:gosec // the high half of a LUID is a bit pattern, not a number
 		})
 	}
 	return out, nil

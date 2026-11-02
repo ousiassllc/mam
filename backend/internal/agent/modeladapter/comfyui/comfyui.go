@@ -96,6 +96,7 @@ func (b *Backend) run(ctx context.Context, v values, stage bool) (output, error)
 	// The job is known to the tools that show the GPU from the moment it is queued: the steps the server sends
 	// right after it accepts the prompt must find it.
 	job := live.Default.Start(b.Client.Name, promptID)
+	job.Own(live.OwnerOf(ctx))
 	defer job.End()
 	track := newTracker(ctx, promptID, parsed, job, b.Client.Clock)
 	stop := b.listen(ctx, clientID, track)
