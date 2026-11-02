@@ -33,6 +33,7 @@ type values struct {
 	speedMode        string                    // the request's VideoRequest.SpeedMode ("": the workflow's first)
 	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
 	upscaleRatio     float64                   // the workflow's Upscale.Ratio of the request's UpscaleScale (build sets it)
+	keepSlots        bool                      // no image is uploaded (GraphFor): the image nodes a workflow cannot run without keep the file the workflow holds
 }
 
 // imageValues are the values of an image request. A reference-mode workflow uses Inputs only when Options.Refs describes them;
@@ -173,8 +174,8 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 		name, isFile := files[i]
 		if isFile {
 			value = name
-		} else if a.Param == localcfg.ParamReferenceImage || (a.Param == localcfg.ParamDenoise && v.redraw == nil) {
-			continue // a slot the run has no image for, or a denoise the request leaves at the graph's value
+		} else if _, isImage := v.input(a); (isImage && v.keepSlots) || a.Param == localcfg.ParamReferenceImage || (a.Param == localcfg.ParamDenoise && v.redraw == nil) {
+			continue // a slot the run has no image for (GraphFor keeps the workflow's file), or a denoise the request leaves at the graph's value
 		}
 		raw, err := json.Marshal(value)
 		if err != nil {
