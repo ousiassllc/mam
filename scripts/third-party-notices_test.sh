@@ -10,7 +10,7 @@ trap 'rm -rf "$work"' EXIT
 # A throw-away repository: scripts/ holds a copy of the script (it works from its own parent directory).
 mkdir -p "$work/repo/scripts" "$work/repo/static/node_modules" "$work/bin" "$work/goroot" "$work/mods" "$work/npm"
 cp "$script" "$(dirname "$script")/fetch-onnxruntime.sh" "$work/repo/scripts/"
-cp "$(dirname "$script")/third-party-notices-musetalk.md" "$work/repo/scripts/"
+cp "$(dirname "$script")/third-party-notices-musetalk.md" "$(dirname "$script")/third-party-notices-poses.md" "$work/repo/scripts/"
 cat >"$work/bin/go" <<'STUB'
 #!/usr/bin/env bash
 case "$1" in
