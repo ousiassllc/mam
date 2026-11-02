@@ -1,6 +1,6 @@
 // The rules of the "詳細設定" section of the generation test form (Issue #973): which settings the chosen models take, which of them are
 // shown, the default a slider starts from and the note for the models that do not take what was set. The cards carry the facts
-// (data-sampling, data-supports-seed, data-sampling-locked, data-default-steps, data-default-cfg; models.templ).
+// (data-sampling, data-supports-seed, data-sampling-locked, data-default-steps, data-min-steps, data-default-cfg; models.templ).
 
 /** The settings the section draws, in their order. */
 export const KINDS = ['seed', 'steps', 'cfg', 'sampler', 'scheduler'] as const;
@@ -21,6 +21,8 @@ export interface ModelUse {
   /** The model's speed mode owns the steps and the cfg: they are not taken, and the note says why. */
   locked: boolean;
   defaultSteps: number;
+  /** The fewest steps the model takes (2 for a two-stage sampler such as Wan 2.2: one step leaves its second stage nothing to do). */
+  minSteps: number;
   defaultCfg: number;
 }
 
@@ -35,6 +37,7 @@ export function useOf(data: DOMStringMap): ModelUse {
     takes,
     locked: data.samplingLocked === 'true',
     defaultSteps: Number(data.defaultSteps),
+    minSteps: Number(data.minSteps) || 1,
     defaultCfg: Number(data.defaultCfg),
   };
 }
@@ -49,6 +52,11 @@ export function startValue(models: readonly ModelUse[], kind: 'steps' | 'cfg', f
   const m = models.find((x) => x.takes.has(kind));
   const v = m ? (kind === 'steps' ? m.defaultSteps : m.defaultCfg) : NaN;
   return Number.isFinite(v) ? v : fallback;
+}
+
+/** The lowest the steps slider goes: the largest minimum of the chosen models that take the steps (1 if none does), so that one value is right for all of them. */
+export function minStepsOf(models: readonly ModelUse[], fallback: number): number {
+  return models.filter((m) => m.takes.has('steps')).reduce((n, m) => Math.max(n, m.minSteps), fallback);
 }
 
 /** The note for the chosen models that do not take a setting that was given ("" when every one takes all of them). */

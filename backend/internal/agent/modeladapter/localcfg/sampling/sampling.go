@@ -17,6 +17,9 @@ const (
 	MaxCFG   = 30.0
 )
 
+// MinTwoStageSteps is the fewest steps of a workflow whose sampling is split between two samplers (Caps.TwoStage): one step per stage.
+const MinTwoStageSteps = 2
+
 // Settings are the values a request overrides; a nil or empty field leaves what the workflow has. The zero value overrides nothing,
 // so a request that names nothing runs the workflow exactly as it stands.
 type Settings struct {
@@ -45,6 +48,18 @@ func (s Settings) Validate() error {
 	}
 	if s.Scheduler != "" && !slices.Contains(Schedulers, s.Scheduler) {
 		return fmt.Errorf("スケジューラー %q は選べません", s.Scheduler)
+	}
+	return nil
+}
+
+// ValidateFor is Validate plus the fewest steps the workflow takes (Caps.MinSteps): a two-stage workflow cannot run its second stage on one
+// step. A workflow that takes no steps of a request (c has none, or a speed mode owns them) ignores them, so they are not refused.
+func (s Settings) ValidateFor(c *Caps) error {
+	if err := s.Validate(); err != nil {
+		return err
+	}
+	if min := c.MinSteps(); s.Steps != nil && *s.Steps < min && c.Steps != nil && c.Steps.Locked == "" {
+		return fmt.Errorf("このモデルのステップ数は %d〜%d にしてください（サンプリングを前半と後半の 2 段に分けるため、1 段に 1 ステップは要ります）", min, MaxSteps)
 	}
 	return nil
 }
@@ -85,8 +100,19 @@ type Caps struct {
 	CFG       *NumberCap `json:"cfg,omitempty"`
 	Sampler   *NameCap   `json:"sampler,omitempty"`
 	Scheduler *NameCap   `json:"scheduler,omitempty"`
+	// TwoStage marks a workflow that hands the sampling over from one sampler to another (Wan 2.2's high- and low-noise models, a steps assignment
+	// with a Ratio): with one step the second stage has nothing to do, so the steps start at MinTwoStageSteps.
+	TwoStage bool `json:"two_stage,omitempty" jsonschema:"サンプリングを 2 つのサンプラーに分けるワークフロー（Wan 2.2 など）。ステップ数は 2 以上にする"`
 	// Presets are the values of the fast and the high quality (Issue #977); nil: the workflow has no quality to choose.
 	Presets *Presets `json:"quality_presets,omitempty" jsonschema:"品質のプリセット（fast: 速い / high: きれい の steps・cfg。standard はモデルの既定そのもの）。無いモデルは quality を指定しても標準で作る"`
+}
+
+// MinSteps is the fewest steps a request can name for the workflow.
+func (c *Caps) MinSteps() int {
+	if c != nil && c.TwoStage {
+		return MinTwoStageSteps
+	}
+	return MinSteps
 }
 
 // None says the workflow takes no sampling value.

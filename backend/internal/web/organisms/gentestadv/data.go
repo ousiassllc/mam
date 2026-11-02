@@ -31,6 +31,8 @@ type SamplingUse struct {
 	Steps, CFG, Sampler, Scheduler, Seed bool
 	Locked                               bool
 	StepsDefault, CFGDefault             float64
+	// StepsMin is the fewest steps the model takes (sampling.Caps.MinSteps: 2 for a two-stage sampler, 1 otherwise).
+	StepsMin int
 }
 
 // Names is the settings the model takes as the space-separated list of the card's data-sampling.

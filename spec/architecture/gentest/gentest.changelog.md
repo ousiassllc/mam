@@ -31,3 +31,4 @@
 | 1.24 | 2026-11-02 | §3.5 を新設: 一部だけ描き直す（`mask`・`denoise`・`supports_inpaint`）。コアノードの `ImageCompositeMasked` でマスクの外を元画像のままにする。結果は別ファイルで `params.inpaint` に元を残す。画面 `/generation-test/inpaint`。入れ直しまで既存の導入済みモデルにはワークフローが増えない | Issue #974 |
 | 1.25 | 2026-11-03 | §3.6 を新設: 品質のプリセット（`Request.Quality`・テンプレートの `quality_presets`・警告 `quality_ignored`。標準は上書きなし）とやりたいこと（`service/gentest/intent`・`Recommend`・`ApplyIntent`）。画面の「かんたん」と MCP が同じ仕組みを使う | Issue #977（ステージ 1） |
 | 1.26 | 2026-11-04 | §3.7 を新設: レシピ（`recipe`・`reciperepo`）と画面に出す値（`exposed`・`exposedreq`・`exposedpick`）と今の設定を ComfyUI で開く（`comfyopen`・`graphui`）。§10 の構成の表に足した。er-gentest.md に `gentest_recipe` と結果の `params.exposed` を足した | Issue #977（ステージ 2） |
+| 1.27 | 2026-11-04 | §3.3: 2 段のサンプラー（Wan 2.2）のステップ数は 2〜150。§6（ポーズの参照）: 全体・編集対象の画像と同じ段では、顔・画風・ポーズの画素も参照の潜在として入ることがあると正確に直した（`needs_real_device`） | 1 ステップだと後の段が何もしない（Issue #973）。コードのコメントと仕様が、混在した段の実際の挙動（nodes_qwen.py）と食い違っていた（Issue #986。いずれもレビュー） |

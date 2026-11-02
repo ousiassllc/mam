@@ -6,7 +6,7 @@
  * swapped body.
  */
 
-import { KINDS, note, shown, startValue, useOf, type Kind, type ModelUse } from './advanced-model';
+import { KINDS, minStepsOf, note, shown, startValue, useOf, type Kind, type ModelUse } from './advanced-model';
 
 const SECTION = '[data-gt-advanced]';
 
@@ -52,6 +52,15 @@ function given(el: HTMLElement, show: boolean): boolean {
   return posts(el, show) && !!c && c.value !== '';
 }
 
+/** The steps slider starts at the largest minimum of the chosen models (2 for a two-stage sampler), and a value below it moves up to it. */
+function fitSteps(r: HTMLInputElement, models: readonly ModelUse[]): void {
+  r.min = String(minStepsOf(models, 1));
+  if (Number(r.value) < Number(r.min)) {
+    r.value = r.min;
+    r.dispatchEvent(new Event('input', { bubbles: true })); // the common slider repaints its fill
+  }
+}
+
 function sync(section: HTMLElement): void {
   const form = section.closest<HTMLElement>('form') ?? section;
   const models = chosen(form);
@@ -67,6 +76,7 @@ function sync(section: HTMLElement): void {
     const r = range(el);
     if (r) r.disabled = !posts(el, show);
     else if (c) c.disabled = !show;
+    if (r && kind === 'steps') fitSteps(r, models);
     writeOutput(el);
     if (given(el, show)) asked.push(kind);
   }

@@ -155,6 +155,9 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 	if u := b.Model.Workflow.Upscale; u != nil {
 		v.upscaleRatio = u.Ratio(v.opts.UpscaleScale)
 	}
+	if err := sampled.Check(*b.Model.Workflow, v.sampling); err != nil {
+		return nil, b.Client.Error(http.StatusUnprocessableEntity, err.Error(), nil)
+	}
 	v.sampling = sampled.Applicable(*b.Model.Workflow, v.sampling)
 	if n := b.Model.Workflow.Count(localcfg.ParamReferenceImage); b.Model.Workflow.ReferenceMode != "" && len(v.references) > n {
 		v.references = v.references[:n] // the images beyond the slots were not uploaded

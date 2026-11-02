@@ -78,14 +78,18 @@ func keepSlots(n, src localcfg.Node, active []refUse, e encoders) {
 	}
 }
 
-// seenOnly says a reference of the role is only looked at by the vision tower: its pixels do not go into the latents.
+// seenOnly says a reference of the role is only meant to be looked at by the vision tower: its pixels are not to go into the latents.
+// That holds for a part whose references are all of such roles (setVAE gives it no VAE). In a part that also has a whole or an edit
+// reference the encoder gets the VAE as a whole, and then its pixels may enter as reference latents too (as ComfyUI v0.42.1's
+// nodes_qwen.py reads); what such a mixed part does on a GPU is not checked (needs_real_device).
 func seenOnly(role string) bool {
 	return role == localcfg.RoleFace || role == localcfg.RoleStyle || role == localcfg.RolePose
 }
 
 // setVAE gives the encoder the VAE when a reference is to be reproduced (the whole picture or the one to edit): the encoder
-// then also hands the picture's latents to the model. A face, a style or a pose is read with the vision tower alone (its pixels are
-// not to appear in the result). The VAE is the
+// then also hands the pictures' latents to the model. The VAE goes to the encoder as a whole, not to single images: a face, a style or a pose
+// in the same part as such a reference may therefore get its pixels in as a latent too (unchecked on a GPU, see seenOnly). A part of
+// face, style and pose references only gets no VAE, and they are read with the vision tower alone. The VAE is the
 // one the VAEDecode node takes (the lowest ID of them when there are several), else the VAELoader with the lowest ID.
 func setVAE(g localcfg.Graph, n localcfg.Node, active []refUse) {
 	if !slices.ContainsFunc(active, func(u refUse) bool { return !seenOnly(u.role) }) {
