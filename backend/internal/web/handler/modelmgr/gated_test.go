@@ -17,9 +17,9 @@ import (
 // card is the HTML of the card of the model in the list.
 func card(t *testing.T, list, id string) string {
 	t.Helper()
-	_, rest, ok := strings.Cut(list, `data-model="`+id+`"`)
+	_, rest, ok := strings.Cut(list, `<li id="mm-model-`+id+`"`)
 	require.True(t, ok, id)
-	card, _, _ := strings.Cut(rest, `data-testid="mm-model"`)
+	card, _, _ := strings.Cut(rest, `<li id="mm-model-`)
 	return card
 }
 
@@ -27,31 +27,30 @@ func gatedForm() url.Values {
 	return url.Values{"license_id": {mmtest.GatedLicense.ID}, "license_version": {mmtest.GatedLicense.Version}, "agree": {"1"}}
 }
 
-// A model behind the Hugging Face login (Issue #877) has the badge 「HF トークンが必要」 on its card; while no token is stored the
-// card says what to do, with the link to the card of the token, in the words the service refuses with. The card of a model that
-// needs no login has neither, and the card of the token says who it is for.
+// A model behind the Hugging Face login (Issue #877) has the badge 「HF トークンが必要」 on its card; while no token is stored its detail modal says
+// what to do, with the link to the card of the token, in the words the service refuses with (#954: the guidance moved from the card to the modal).
+// The card of a model that needs no login has neither, and the card of the token says who it is for.
 func TestCatalog_AModelBehindTheLoginHasABadgeAndTheGuidanceWhileThereIsNoToken(t *testing.T) {
 	s := newScreen(t, mmtest.WithGatedModel(), mmtest.HFAuth())
 	s.rig.InstallEngine()
 	list := s.get(paths.ModelManagerPart("models")).Body.String()
+	detailOf := func(id string) string { return s.get(paths.ModelManagerPart("models", id, "detail")).Body.String() }
 
 	g := card(t, list, mmtest.GatedModelID)
 	assert.Contains(t, g, `data-testid="mm-token-badge"`)
 	assert.Contains(t, g, "HF トークンが必要")
-	assert.Contains(t, g, `data-testid="mm-token-guide"`)
-	assert.Contains(t, g, hfguide.NoToken, "the same words as the refusal")
-	assert.Contains(t, g, `href="#mm-hf"`, "the link to the card of the token")
-	// the guidance is beside the install button (the same group of actions), not under the description
-	button, guide := strings.Index(g, `data-testid="mm-consent-open"`), strings.Index(g, `data-testid="mm-token-guide"`)
-	assert.Greater(t, button, 0)
-	assert.Greater(t, guide, button, "after the button")
-	assert.Less(t, guide, strings.Index(g, `data-testid="mm-model-meta"`), "before the facts of the card, where the description ends")
-	description := strings.Index(g, ">d</p>")
+	assert.NotContains(t, g, "mm-token-guide", "the list is short: the guidance is in the modal")
+	gd := detailOf(mmtest.GatedModelID)
+	assert.Contains(t, gd, `data-testid="mm-token-guide"`)
+	assert.Contains(t, gd, hfguide.NoToken, "the same words as the refusal")
+	assert.Contains(t, gd, `href="#mm-hf"`, "the link to the card of the token")
+	assert.Contains(t, gd, "HF トークンが必要")
+	description := strings.Index(gd, ">d</p>")
 	assert.Greater(t, description, 0)
-	assert.Less(t, description, button, "the description comes first")
+	assert.Less(t, description, strings.Index(gd, `data-testid="mm-token-guide"`), "the description comes first")
 	a := card(t, list, "m-a")
 	assert.NotContains(t, a, "mm-token-badge")
-	assert.NotContains(t, a, "mm-token-guide")
+	assert.NotContains(t, detailOf("m-a"), "mm-token-guide")
 
 	page := s.page()
 	assert.Contains(t, page, `id="mm-hf"`)
@@ -64,7 +63,7 @@ func TestCatalog_AModelBehindTheLoginHasABadgeAndTheGuidanceWhileThereIsNoToken(
 	assert.NotContains(t, rec.Body.String(), s.rig.HF.Token, "the token is never shown")
 	g = card(t, s.get(paths.ModelManagerPart("models")).Body.String(), mmtest.GatedModelID)
 	assert.Contains(t, g, "mm-token-badge")
-	assert.NotContains(t, g, "mm-token-guide")
+	assert.NotContains(t, detailOf(mmtest.GatedModelID), "mm-token-guide")
 }
 
 // The install of such a model refuses before a job in the three ways with the guidance (422) and succeeds once the access was

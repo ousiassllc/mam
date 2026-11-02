@@ -7,7 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
 )
 
 // Models answers GET /model-manager/models, which the list polls while an install runs. The jobs it asks about
@@ -22,6 +25,22 @@ func (h Handlers) Models(c *gin.Context) {
 		return
 	}
 	render(c, http.StatusOK, view.CatalogList(cat))
+}
+
+// ModelDetail answers GET /model-manager/models/:id/detail with the modal of the card: the license, the sources, the memory and the
+// files with their SHA-256 (the list shows none of it). A model that is not there, or an adult one while the age gate is closed, is the
+// reason in the modal (404 / 409), so that a direct request does not name what the list hides.
+func (h Handlers) ModelDetail(c *gin.Context) {
+	ctx := c.Request.Context()
+	m, err := h.Svc.Model(c.Param("id"))
+	if err != nil {
+		status, msg := refuse(c, err)
+		render(c, status, modal.Notice("モデル", msg))
+		return
+	}
+	hasToken, tokenErr := h.Svc.HasHuggingFaceToken()
+	md := modelData(ctx, h.Svc, m, h.Svc.Engine().FreeBytes, mmview.GPUVRAM(ctx, h.Svc), tokenErr == nil && !hasToken)
+	render(c, http.StatusOK, modeldetail.Detail(md))
 }
 
 // Consent answers GET /model-manager/models/:id/consent with the license dialog (what the install button of a model that

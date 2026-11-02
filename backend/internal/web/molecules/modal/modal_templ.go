@@ -52,14 +52,14 @@ func Host() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"mam-modal\" data-modal aria-labelledby=\"mam-modal-title\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70\"><div id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"mam-modal\" data-modal aria-modal=\"true\" aria-labelledby=\"mam-modal-title\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70\"><div id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(BodyID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 29, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 30, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -80,6 +80,11 @@ func Host() templ.Component {
 		return nil
 	})
 }
+
+// StartClass is the class of the first block of a body that takes the focus when the modal opens (tabindex="-1" autofocus): a modal that is a
+// long read starts at its top, where a reader goes on from the heading, instead of at a button at its foot. The block is not a control, so no
+// ring is drawn around it.
+const StartClass = "focus-visible:outline-none"
 
 // OpenAttrs are the attributes of the button that opens the modal with the body of url. focusKey names the button: when
 // the row it is in is replaced, the focus goes back to the control of the new row with the same key.
@@ -125,7 +130,7 @@ func Frame(title, description string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 60, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 66, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -143,7 +148,7 @@ func Frame(title, description string) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 62, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 68, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -195,7 +200,7 @@ func Error(message string) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 70, Col: 234}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 76, Col: 234}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {

@@ -6,6 +6,8 @@ package runtimecard
 import (
 	"net/url"
 
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/weightlist"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -20,9 +22,11 @@ const RuntimesID = "mm-runtimes"
 // Runtime is the card of a local runtime (GPT-SoVITS, MuseTalk): the same surface as the card of the engine.
 type Runtime struct {
 	view.Message
-	ID          string
-	Name        string
-	Purpose     string
+	ID      string
+	Name    string
+	Purpose string
+	// Icon is the picture of the card (the tile of the purpose: a voice, a lip sync).
+	Icon        atoms.IconName
 	Description string
 	SourceURL   string
 	// Supported is false on a machine that cannot run the runtime; Reason says why (the same sentence on every screen) and Fallback
@@ -61,6 +65,8 @@ type Runtime struct {
 	LicenseURL       string
 	LicenseCondition string
 	Weights          weightlist.Weights
+	// Commercial is the strictest answer of the weights and dependencies: the icon of the card (the list is in its detail).
+	Commercial commercial.View
 }
 
 // Polling reports whether the card has something in progress (an install, a start).
@@ -71,6 +77,9 @@ type Runtimes struct {
 	view.Message
 	Items []Runtime
 }
+
+// detailURL is what the card opens: the modal with the sources, licenses, files and SHA-256 of the runtime.
+func detailURL(r Runtime) string { return paths.ModelManagerPart("runtimes", r.ID, "detail") }
 
 // runtimeURL is where the card asks for itself again: with the job it reports on.
 func runtimeURL(r Runtime) string {

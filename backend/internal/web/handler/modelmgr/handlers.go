@@ -63,12 +63,14 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	engine.PUT(paths.ModelManagerPart("commercial"), h.SetCommercial)
 
 	engine.GET(paths.ModelManagerPart("models"), h.Models)
+	engine.GET(paths.ModelManagerPart("models", ":id", "detail"), h.ModelDetail)
 	engine.GET(paths.ModelManagerPart("models", ":id", "consent"), h.Consent)
 	engine.POST(paths.ModelManagerPart("models", ":id", "install"), h.InstallModel)
 	engine.DELETE(paths.ModelManagerPart("models", ":id"), h.DeleteModel)
 
 	hfimport.Register(engine, svc, func(ctx context.Context) view.TrialPanel { return h.trialPanel(ctx, view.TrialForm{}, "", "") })
 	engine.GET(paths.ModelManagerPart("external"), h.External)
+	engine.GET(paths.ModelManagerPart("external", "detail"), h.ExternalDetail)
 
 	engine.GET(paths.ModelManagerPart("trials"), h.Trials)
 	engine.GET(paths.ModelManagerPart("trials", "form"), h.TrialForm)

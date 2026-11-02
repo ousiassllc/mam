@@ -73,9 +73,10 @@ func TestAdult_TheConfirmationDialogAndTheSetting(t *testing.T) {
 	assert.Contains(t, body, `data-model="m-d"`, "the model list is drawn again with the adult model")
 	assert.Contains(t, body, `data-testid="mm-adult-badge"`)
 	assert.Contains(t, body, "成人向け")
-	assert.Contains(t, body, `data-testid="mm-trigger-words"`)
-	assert.Contains(t, body, "nsfwsks")
-	assert.Contains(t, body, mmtest.AdultNoticeSource, "where the original of the mirrored file is")
+	detail := s.get(paths.ModelManagerPart("models", "m-d", "detail")).Body.String()
+	assert.Contains(t, detail, `data-testid="mm-trigger-words"`, "the trigger words are in the modal of the card")
+	assert.Contains(t, detail, "nsfwsks")
+	assert.Contains(t, detail, mmtest.AdultNoticeSource, "where the original of the mirrored file is")
 	assert.True(t, s.rig.Svc.AdultContentEnabled())
 
 	// off keeps the confirmation: on again is one request without the dialog

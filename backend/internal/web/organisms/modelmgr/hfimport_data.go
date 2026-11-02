@@ -123,12 +123,14 @@ type HFJob struct {
 
 // HFModel is a file the user added from Hugging Face.
 type HFModel struct {
-	Path     string
-	Name     string
-	Folder   string
-	Repo     string
-	Commit   string
-	Size     string
+	Path   string
+	Name   string
+	Folder string
+	Repo   string
+	Commit string
+	Size   string
+	// SHA256 is the digest the file was checked against at the import.
+	SHA256   string
 	License  string
 	Answer   commercial.View
 	Gated    bool

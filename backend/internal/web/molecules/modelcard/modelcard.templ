@@ -1,0 +1,56 @@
+package modelcard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
+)
+
+// Tile is the picture of a card: an icon on a raised tile. The meaning is in the words next to it, so the tile is decoration.
+templ Tile(icon atoms.IconName) {
+	<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-indigo-300" aria-hidden="true" data-testid="model-tile">
+		@atoms.Icon(icon, "h-6 w-6 shrink-0")
+	</span>
+}
+
+// Item is one card: the tile, the name (the h3, a button that opens the detail: its click area covers the whole card), the line of the kind and the
+// size, the commercial-use icon and the state. The children (a progress bar, a message, Actions) come under them; what in the children
+// is a control has to be raised above the click area (Actions does).
+templ Item(c Card) {
+	<li id={ c.ID } class={ "relative flex min-w-0 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm", pick.OpenFrame } data-card { c.Attrs... }>
+		<div class="flex items-start gap-3">
+			@Tile(c.Icon)
+			<div class="flex min-w-0 flex-1 flex-col gap-0.5">
+				<h3 class="text-sm font-semibold text-neutral-100">
+					<button
+						class="cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none"
+						aria-haspopup="dialog"
+						data-card-open
+						{ modal.OpenAttrs(c.DetailURL, c.FocusKey())... }
+					>{ c.Name }</button>
+				</h3>
+				<p class="text-xs text-neutral-400" data-testid="model-meta">{ c.Meta }</p>
+			</div>
+			if c.Commercial != nil {
+				<span class="relative z-10 shrink-0">
+					@commercial.Mark(*c.Commercial)
+				</span>
+			}
+		</div>
+		<div class="flex flex-wrap items-center gap-2">
+			@atoms.BadgeWith(c.State.Tone, c.State.Label, c.State.Attrs)
+			for _, b := range c.Badges {
+				@atoms.BadgeWith(b.Tone, b.Label, b.Attrs)
+			}
+		</div>
+		{ children... }
+	</li>
+}
+
+// Actions is the row of the buttons of a card, raised above the click area of the card so that they are pressed instead of it.
+templ Actions() {
+	<div class="relative z-10 mt-auto flex flex-wrap items-center gap-2">
+		{ children... }
+	</div>
+}

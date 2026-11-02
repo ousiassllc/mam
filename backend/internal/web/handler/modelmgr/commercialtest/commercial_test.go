@@ -110,29 +110,34 @@ func commercialURL() string { return paths.ModelManagerPart("commercial") }
 // cardOf is the markup of the card of the model id in the model list.
 func cardOf(t *testing.T, body, id string) string {
 	t.Helper()
-	m := regexp.MustCompile(`(?s)<li class="[^"]*" data-testid="mm-model" data-model="` + regexp.QuoteMeta(id) + `".*?</li>`).FindString(body)
+	m := regexp.MustCompile(`(?s)<li id="mm-model-` + regexp.QuoteMeta(id) + `" class="[^"]*" data-card[^>]*data-model="` + regexp.QuoteMeta(id) + `".*?</li>`).FindString(body)
 	require.NotEmpty(t, m, "the card of "+id)
 	return m
 }
 
-// #928: every model card of the model manager has the badge of the answer and data-commercial for the filter; what is not 商用OK says
-// what to watch for in words, with the link to the license and the day it was read.
-func TestCatalog_EveryModelCardHasTheCommercialBadgeAndTheNoteForWhatIsNotOK(t *testing.T) {
+// #928, #954: every model card of the model manager has the commercial-use answer as an icon and data-commercial for the filter; what is not
+// 商用OK says what to watch for in words, with the link to the license and the day it was read, in the modal that the card opens.
+func TestCatalog_EveryModelCardHasTheCommercialMarkAndItsModalTheNoteForWhatIsNotOK(t *testing.T) {
 	s := newScreen(t)
 	body := s.get(paths.ModelManagerPart("models")).Body.String()
+	detail := func(id string) string { return s.get(paths.ModelManagerPart("models", id, "detail")).Body.String() }
 
 	a := cardOf(t, body, "m-a")
 	assert.Contains(t, a, `data-commercial="yes"`)
 	assert.Contains(t, a, `data-commercial-badge="yes"`)
-	assert.Contains(t, a, "商用OK")
-	assert.NotContains(t, a, `data-testid="commercial-note"`, "商用OK has nothing to watch for")
+	assert.Contains(t, a, "商用OK", "the accessible name of the icon")
+	assert.NotContains(t, detail("m-a"), `data-testid="commercial-note"`, "商用OK has nothing to watch for")
 
 	c := cardOf(t, body, "m-c")
 	assert.Contains(t, c, `data-commercial="no"`)
+	assert.Contains(t, c, `data-commercial-badge="no"`)
 	assert.Contains(t, c, "商用NG")
-	assert.Contains(t, c, `data-testid="commercial-note"`)
-	assert.Contains(t, c, "ライセンス原文")
-	assert.Contains(t, c, "2026-11-02 に確認")
+	assert.NotContains(t, c, `data-testid="commercial-note"`, "the words are in the modal, the card keeps the icon")
+	d := detail("m-c")
+	assert.Contains(t, d, `data-testid="commercial-note"`)
+	assert.Contains(t, d, "ライセンス原文")
+	assert.Contains(t, d, "2026-11-02 に確認")
+	assert.Contains(t, d, `data-commercial-badge="no"`)
 }
 
 func TestConsentDialogShowsTheBadgeNextToTheCommercialUse(t *testing.T) {

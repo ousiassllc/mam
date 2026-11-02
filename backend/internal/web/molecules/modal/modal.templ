@@ -23,6 +23,7 @@ templ Host() {
 	<dialog
 		id="mam-modal"
 		data-modal
+		aria-modal="true"
 		aria-labelledby="mam-modal-title"
 		class="m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70"
 	>
@@ -38,6 +39,11 @@ templ Host() {
 		</button>
 	</dialog>
 }
+
+// StartClass is the class of the first block of a body that takes the focus when the modal opens (tabindex="-1" autofocus): a modal that is a
+// long read starts at its top, where a reader goes on from the heading, instead of at a button at its foot. The block is not a control, so no
+// ring is drawn around it.
+const StartClass = "focus-visible:outline-none"
 
 // OpenAttrs are the attributes of the button that opens the modal with the body of url. focusKey names the button: when
 // the row it is in is replaced, the focus goes back to the control of the new row with the same key.

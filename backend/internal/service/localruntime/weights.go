@@ -31,6 +31,9 @@ type AssetView struct {
 	Size        int64                   `json:"size"`
 	Source      catalog.ResourceSource  `json:"source"`
 	License     catalog.ResourceLicense `json:"license"`
+	// Files are the files the asset puts in the environment, each with the SHA-256 it is checked against (one for a single file, one per
+	// member of an archive).
+	Files []catalog.ResourceMember `json:"files"`
 }
 
 // WeightsView is the weights and dependencies of a runtime.
@@ -61,7 +64,7 @@ func weightsView(inst *instance, installed bool) WeightsView {
 		if !installed {
 			st = rtm.AssetMissing
 		}
-		w.Assets = append(w.Assets, AssetView{Name: a.Name, Description: a.Description, State: st, Required: a.Required, Size: a.Size, Source: a.Source, License: l})
+		w.Assets = append(w.Assets, AssetView{Name: a.Name, Description: a.Description, State: st, Required: a.Required, Size: a.Size, Source: a.Source, License: l, Files: a.Files()})
 		if l.Commercial != modellicense.Yes {
 			w.Unclear++
 		}

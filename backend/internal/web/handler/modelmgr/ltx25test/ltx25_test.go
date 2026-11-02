@@ -126,7 +126,7 @@ func resultID(t *testing.T, body string) string {
 // card is the markup of the card of the model id in the model list.
 func card(t *testing.T, body, id string) string {
 	t.Helper()
-	m := regexp.MustCompile(`(?s)<li class="[^"]*" data-testid="mm-model" data-model="` + regexp.QuoteMeta(id) + `".*?</li>`).FindString(body)
+	m := regexp.MustCompile(`(?s)<li id="mm-model-` + regexp.QuoteMeta(id) + `" class="[^"]*" data-card[^>]*data-model="` + regexp.QuoteMeta(id) + `".*?</li>`).FindString(body)
 	require.NotEmpty(t, m, "the card of "+id)
 	return m
 }
@@ -142,27 +142,37 @@ func withLTXLikeMemory() mmtest.Option {
 	}
 }
 
-// The card of a model shows how this PC's GPU stands to its VRAM guideline (Issue #927): 16 GB for a 32 GB recommendation is
-// 「動くが制約あり」 with the limits, in the warning colour; a smaller GPU is told it will probably not run; a GPU that meets the recommendation, or
-// a model with no higher recommendation, gets the plain line; no known GPU memory says nothing.
+// A model shows how this PC's GPU stands to its VRAM guideline (Issue #927): 16 GB for a 32 GB recommendation is 「動くが制約あり」 with the
+// limits, in the warning colour; a smaller GPU is told it will probably not run; a GPU that meets the recommendation, or a model with no
+// higher recommendation, gets the plain line; no known GPU memory says nothing. #954: the card carries a badge for the two warnings and the
+// sentence is in the modal that the card opens.
 func TestCatalog_ACardSaysHowTheGPUStandsToTheModelsVRAM(t *testing.T) {
 	s := newScreen(t, withLTXLikeMemory())
 	vram := func(mib uint64) string {
 		s.rig.GPUReport.Adapters = []gpu.Adapter{{Name: "NVIDIA GeForce RTX", VRAMBytes: mib << 20}}
 		return s.get(paths.ModelManagerPart("models")).Body.String()
 	}
+	detail := func(id string) string { return s.get(paths.ModelManagerPart("models", id, "detail")).Body.String() }
 
 	assert.NotContains(t, s.get(paths.ModelManagerPart("models")).Body.String(), `data-testid="mm-vram-fit"`, "no GPU memory is known")
+	assert.NotContains(t, detail("m-b"), "mm-vram-fit-text", "no GPU memory is known")
 
 	b := card(t, vram(16376), "m-b")
 	assert.Contains(t, b, `data-fit="limited"`)
-	assert.Contains(t, b, "動くが制約あり")
-	assert.Contains(t, b, "INT8・タイル VAE・オフロードが前提で遅い")
-	assert.Contains(t, b, "text-amber-300")
-	assert.Contains(t, b, "推奨 32 GB 以上", "the recommendation is in the guideline of the card")
+	assert.Contains(t, b, "VRAM に余裕なし", "the card warns in a badge")
+	assert.NotContains(t, b, "INT8・タイル VAE・オフロードが前提で遅い", "the limits are in the modal")
+	bd := detail("m-b")
+	assert.Contains(t, bd, `data-fit="limited"`)
+	assert.Contains(t, bd, "動くが制約あり")
+	assert.Contains(t, bd, "INT8・タイル VAE・オフロードが前提で遅い")
+	assert.Contains(t, bd, "text-amber-300")
+	assert.Contains(t, bd, "推奨 32 GB 以上", "the recommendation is in the guideline of the modal")
 	assert.Contains(t, card(t, vram(12288), "m-b"), `data-fit="short"`)
-	assert.Contains(t, card(t, vram(32607), "m-b"), `data-fit="enough"`)
+	assert.Contains(t, detail("m-b"), `data-fit="short"`)
+	assert.NotContains(t, card(t, vram(32607), "m-b"), `data-testid="mm-vram-fit"`, "a GPU that meets the recommendation is not warned")
+	assert.Contains(t, detail("m-b"), `data-fit="enough"`)
 	assert.NotContains(t, card(t, vram(16376), "m-a"), `data-testid="mm-vram-fit"`, "a model with no recommendation above its minimum is not judged: its minimum is a rough figure")
+	assert.NotContains(t, detail("m-a"), "mm-vram-fit-text")
 }
 
 // A model that makes the sound with the picture (LTX-2.5) says so on the trial form and on its result, and the player of the result is

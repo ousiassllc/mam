@@ -133,7 +133,7 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 
 func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free, gpuVRAM uint64, tokenMissing bool) view.Model {
 	out := view.Model{
-		ID: m.ID, Name: m.Name, KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
+		ID: m.ID, Name: m.Name, Kind: string(m.Kind), KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
 		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM),
 		License: licenseOf(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
@@ -147,7 +147,7 @@ func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.Mo
 		out.TokenGuide = hfguide.NoToken // the same words as the refusal of the install (service, MCP)
 	}
 	for _, f := range m.Files {
-		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
+		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), SHA256: f.SHA256, Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
 	}
 	if m.InstallJob != "" {
 		out.Install = progressOf(ctx, svc, m.InstallJob)

@@ -19,7 +19,7 @@ templ AdultCard(a Adult) {
 				"aria-pressed": "true", "data-testid": "mm-adult-off",
 			})
 		} else {
-			<p class="text-sm text-neutral-300" data-testid="mm-adult-status">成人向けモデル（非検閲のモデル・LoRA）は表示していません。18 歳以上の確認と注意書きへの同意の後に、一覧・導入・試し生成に出ます。</p>
+			<p class="text-sm text-neutral-300" data-testid="mm-adult-status">成人向けモデルは表示していません。</p>
 			if a.Confirmed {
 				@atoms.Button(atoms.ToneNeutral, "成人向けモデルを表示する", templ.Attributes{
 					"type": "button", "hx-put": paths.ModelManagerPart("adult"), "hx-vals": atoms.HxVals(map[string]string{FieldOn: "1"}),

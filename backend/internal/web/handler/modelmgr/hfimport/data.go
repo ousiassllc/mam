@@ -129,7 +129,7 @@ func ListData(ctx context.Context, svc *modelmanager.Service, jobs []string) vie
 
 func modelOf(um modelmanager.UserModelView) view.HFModel {
 	return view.HFModel{
-		Path: um.Path, Name: um.Name, Folder: um.Folder, Repo: um.Repo, Commit: shortCommit(um.Commit), Size: jobview.BytesText(um.Size),
+		Path: um.Path, Name: um.Name, Folder: um.Folder, Repo: um.Repo, Commit: shortCommit(um.Commit), Size: jobview.BytesText(um.Size), SHA256: um.SHA256,
 		License: licenseText(hf.License{ID: um.License.ID, Name: um.License.Name}), Answer: commercial.FromInfo(modellicense.FromHF(um.License.ID, um.License.Name, um.License.Link)), Gated: um.Gated, NFAA: um.NFAA, Family: um.Family,
 		ModelIDs: um.ModelIDs, Shared: slices.Clone(um.SharedWith), Missing: !um.Present, At: um.InstalledAt.Local().Format(time.DateTime),
 	}

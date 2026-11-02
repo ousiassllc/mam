@@ -1,0 +1,52 @@
+package modelmgr
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// HFModelCardID is the id of the card of a file the user added (the element a swap of the list draws again with the same id).
+func HFModelCardID(path string) string { return "mm-hfi-model-" + path }
+
+// HFModelDetailURL is what the card of a file the user added opens: the modal with its repository, commit, license and SHA-256.
+func HFModelDetailURL(path string) string {
+	return paths.ModelManagerPart("hf", "models", "detail") + "?" + FieldPath + "=" + queryEscape(path)
+}
+
+func hfModelBadges(m HFModel) []modelcard.Badge {
+	var out []modelcard.Badge
+	if m.Family == "sdxl" {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeOK, Label: "SDXL"})
+	}
+	if m.Gated {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "gated"})
+	}
+	if m.NFAA {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "NFAA"})
+	}
+	return out
+}
+
+// hfModelCard is a file the user added as the same card as the models of the catalog (modelcard.Item): its name, folder and size, whether the
+// file is there, the commercial-use icon and the delete button; the repository, commit, license, SHA-256 and the models made for it are in the
+// modal that the card opens.
+templ hfModelCard(m HFModel) {
+	{{ state := modelcard.Badge{Tone: atoms.BadgeOK, Label: "導入済み", Attrs: templ.Attributes{"data-testid": "mm-hfi-model-state"}} }}
+	if m.Missing {
+		{{ state = modelcard.Badge{Tone: atoms.BadgeWarn, Label: "ファイルが見つかりません", Attrs: templ.Attributes{"data-testid": "mm-hfi-model-state"}} }}
+	}
+	@modelcard.Item(modelcard.Card{
+		ID: HFModelCardID(m.Path), Name: m.Name, Icon: atoms.IconPackage, Meta: m.Folder + "・" + m.Size, DetailURL: HFModelDetailURL(m.Path),
+		State: state, Badges: hfModelBadges(m), Commercial: &m.Answer,
+		Attrs: templ.Attributes{"data-testid": "mm-hfi-model", "data-path": m.Path, "data-commercial": m.Answer.Answer()},
+	}) {
+		@modelcard.Actions() {
+			@atoms.SmallButtonFor(atoms.ToneDanger, "削除", m.Name, templ.Attributes{
+				"type": "button", "hx-delete": paths.ModelManagerPart("hf", "models") + "?" + FieldPath + "=" + queryEscape(m.Path),
+				"hx-target": "#" + HFModelsID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+				"hx-confirm": "「" + m.Name + "」を削除します。カタログのモデルと共有しているファイルは、そのモデルが残る間は消えません。よろしいですか？",
+			})
+		}
+	}
+}
