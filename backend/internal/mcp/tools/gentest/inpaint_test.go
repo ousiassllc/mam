@@ -24,7 +24,6 @@ func TestInpaintFromMCP(t *testing.T) {
 	assert.True(t, info.SupportsInpaint)
 	require.NotNil(t, info.DenoiseDefault)
 	assert.InDelta(t, 0.75, *info.DenoiseDefault, 1e-9)
-
 	src := r.stageUploads(1)
 	id, _, err := r.GT.Svc.StageReference(gentesttest.WhitePNG)
 	require.NoError(t, err)
@@ -40,17 +39,11 @@ func TestInpaintFromMCP(t *testing.T) {
 	require.NotNil(t, call.Inpaint.Denoise)
 	assert.InDelta(t, 0.55, *call.Inpaint.Denoise, 1e-9)
 	assert.NotEmpty(t, call.Inpaint.Mask.Data)
-
 	plain := map[string]any{
 		"media": "image", "models": []string{string(gentesttest.PlainModel)},
 		"prompts": []map[string]any{{"prompt": "a fox"}}, "references": src,
 		"mask": map[string]any{"source": "upload", "id": id},
 	}
-	r.CallErr("estimate_generation_test", plain)
-}
-
-func (r *rig) CallErr(name string, args any) {
-	r.T.Helper()
-	res := r.Call(name, args)
-	require.True(r.T, res.IsError, "expected %s to fail", name)
+	res := r.Call("estimate_generation_test", plain)
+	require.True(t, res.IsError)
 }

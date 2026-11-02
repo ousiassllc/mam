@@ -2,7 +2,13 @@
 // chosen models take, which files are taken, and where a dragged image is dropped. inputs.ts draws them.
 
 /** The roles of an image reference, in the order the select lists them. */
-export const ROLE_ORDER = ['reference', 'face', 'style', 'edit'] as const;
+export const ROLE_ORDER = ['reference', 'face', 'style', 'edit', 'pose'] as const;
+
+/**
+ * The strength a slider of an image starts at for its role: a face stays in the sampling longer than the whole picture (#960; the same
+ * numbers as localcfg.DefaultFaceReferenceStrength and DefaultReferenceStrength, which the server uses when no strength is posted).
+ */
+export const defaultStrength = (role: string): number => (role === 'face' ? 0.9 : 0.7);
 
 /** The types of file the screen takes (the same as the service). */
 export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];

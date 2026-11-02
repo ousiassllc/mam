@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/kind"
 )
 
 var (
@@ -37,7 +38,7 @@ const unspecifiedLicense = "unspecified"
 
 // modelFolders are the ComfyUI model folders a catalog file goes to. latent_upscale_models is the folder of the spatial upscaler
 // the LTX-2.5 workflow loads (LatentUpscaleModelLoader).
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models"}
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter", "upscale_models"}
 
 // loaderInputs are the inputs of the core loader nodes that name a model file, with the folder the file is in.
 var loaderInputs = map[string]map[string]string{
@@ -48,6 +49,7 @@ var loaderInputs = map[string]map[string]string{
 	"VAELoader":                {"vae_name": "vae"},
 	"LoraLoaderModelOnly":      {"lora_name": "loras"},
 	"LatentUpscaleModelLoader": {"model_name": "latent_upscale_models"},
+	"ControlNetLoader":         {"control_net_name": "controlnet"}, "CLIPVisionLoader": {"clip_name": "clip_vision"}, "IPAdapterModelLoader": {"ipadapter_file": "ipadapter"}, "UpscaleModelLoader": {"model_name": "upscale_models"},
 }
 
 // Validate checks the catalog: the pins (https URL at a commit or tag, SHA-256, size), the licenses, the
@@ -154,8 +156,8 @@ func validateModel(m Model, shared map[string]File) []error {
 	if !localcfg.ValidName(m.ID) || m.Name == "" || strings.TrimSpace(m.Description) == "" {
 		errs = append(errs, fmt.Errorf("%s: id (slug), name and description are required", where))
 	}
-	if m.Kind != localcfg.MediaImage && m.Kind != localcfg.MediaVideo {
-		errs = append(errs, fmt.Errorf("%s: kind must be image or video", where))
+	if !kind.Valid(m.Kind) {
+		errs = append(errs, fmt.Errorf("%s: kind must be image, video or upscale", where))
 	}
 	if m.Tier != TierStandard && m.Tier != TierAdvanced {
 		errs = append(errs, fmt.Errorf("%s: tier must be standard or advanced", where))
@@ -172,6 +174,7 @@ func validateModel(m Model, shared map[string]File) []error {
 		errs = append(errs, fmt.Errorf("%s: an advanced model, and a model whose license is not plain commercial use, requires consent (and only those)", where))
 	}
 	errs = append(errs, validateRating(where, m)...)
+	errs = append(errs, m.Validate(where)...)
 	if m.RequiresHFToken {
 		// The files of a login-only model stay at the Hugging Face repository that asks for the login: a mirror of a third
 		// party would be a way round the gate (and the install checks the access against that repository).
@@ -251,15 +254,19 @@ func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Te
 		return []error{fmt.Errorf("%s: name must be a slug", where)}
 	case !ok:
 		return []error{fmt.Errorf("%s: template %q does not exist", where, w.Template)}
-	case t.Media != m.Kind:
-		return []error{fmt.Errorf("%s: template %s makes %s, the model is %s", where, t.ID, t.Media, m.Kind)}
+	case !kind.Fits(m.Kind, t.Media, t.Model.IsUpscale()):
+		return []error{fmt.Errorf("%s: template %s (makes %s, upscale %t) does not fit the model of kind %s", where, t.ID, t.Media, t.Model.IsUpscale(), m.Kind)}
 	}
 	endpoints := map[string]localcfg.Endpoint{"bundled-comfyui": {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}}
+	model, err := w.Model(template)
+	if err != nil {
+		return []error{fmt.Errorf("%s: %w", where, err)}
+	}
 	var errs []error
-	for _, e := range localcfg.ValidateModel("bundled-comfyui/"+w.Name, t.Model, endpoints) {
+	for _, e := range localcfg.ValidateModel("bundled-comfyui/"+w.Name, model, endpoints) {
 		errs = append(errs, fmt.Errorf("%s: %w", where, e))
 	}
-	graph, err := localcfg.ParseGraph(t.Model.Workflow.Graph)
+	graph, err := localcfg.ParseGraph(model.Workflow.Graph)
 	if err != nil {
 		return append(errs, fmt.Errorf("%s: %w", where, err))
 	}

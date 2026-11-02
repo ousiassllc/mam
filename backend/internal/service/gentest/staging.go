@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -109,6 +110,12 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 			return Source{}, err
 		}
 		path, mime = p, m
+	case FromPoseLibrary:
+		p, err := s.poseFile(ref.ID)
+		if err != nil {
+			return Source{}, err
+		}
+		path, mime = p, "image/webp"
 	case FromHistory:
 		res, err := s.Repo.GetResult(ctx, ref.ID)
 		if errors.Is(err, repository.ErrNotFound) || (err == nil && (res.Media != gentestrepo.MediaImage || res.Status != gentestrepo.StatusSucceeded || res.FilePath == "")) {
@@ -131,6 +138,18 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 	}
 	origin, _ := json.Marshal(map[string]string{"kind": ref.Source, "id": ref.ID, "project_id": ref.ProjectID})
 	return Source{Path: path, Mime: mime, Size: info.Size(), Origin: origin}, nil
+}
+
+// poseFile finds the picture of the pose library (a refusal that says what to do when the library is not installed).
+func (s *Service) poseFile(id string) (string, error) {
+	if s.Poses == nil {
+		return "", gterr.Invalid("ポーズ集は使えません")
+	}
+	path, err := s.Poses.File(id)
+	if errors.Is(err, poses.ErrNotInstalled) {
+		return "", gterr.Invalid("ポーズ集が導入されていません。生成テストの「ポーズを選ぶ」から導入してください")
+	}
+	return path, err
 }
 
 // projectFile finds the image of a Project's asset or Reference Library entry inside the assets directory.

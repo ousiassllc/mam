@@ -1,0 +1,216 @@
+package gentestposes
+
+import (
+	"net/url"
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+)
+
+// OpenButton is the entry in the drop zone of the input images. It opens the dialog (inputs.ts) and loads its body.
+templ OpenButton(w Wire) {
+	@atoms.SmallButton(atoms.ToneNeutral, "ポーズを選ぶ", templ.Attributes{
+		"type": "button", "data-gt-open-picker": "pose", "data-testid": "gt-open-poses",
+		"hx-get": w.PanelURL, "hx-target": "#" + BodyID, "hx-swap": "innerHTML", "hx-include": w.IncludeForm,
+	})
+}
+
+// Dialog is the dialog the button opens: a native <dialog> (Esc closes it, the focus stays inside, the page behind is inert). Its body is
+// loaded when it is opened, so that it shows the state of the library and the models that are ticked at that moment.
+templ Dialog() {
+	<dialog
+		data-gt-pose-dialog
+		aria-labelledby="gt-pose-title"
+		data-testid="gt-pose-dialog"
+		class="m-auto w-[min(56rem,94vw)] max-h-[88vh] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-neutral-100 backdrop:bg-black/70"
+	>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<h2 id="gt-pose-title" class="text-sm font-medium">ポーズを選ぶ</h2>
+			@atoms.SmallButton(atoms.ToneNeutral, "閉じる", templ.Attributes{"type": "button", "data-gt-picker-close": ""})
+		</div>
+		<div id={ BodyID } class="mt-3 flex flex-col gap-3" data-testid="gt-pose-body" aria-live="polite">
+			<p class="text-xs text-neutral-400">読み込んでいます…</p>
+		</div>
+	</dialog>
+}
+
+// ModelNotes says what the ticked models do with a pose picture. A model that reads it as a pose says whether it may be used commercially,
+// in the words of its card (the Qwen-Image 2.1 family is for research only: 商用NG); one that does not is told to take it as a whole picture.
+templ ModelNotes(n Notes) {
+	<div class="flex flex-col gap-2 text-xs" data-testid="gt-pose-models">
+		switch  {
+			case n.Ticked == 0:
+				<p class="text-neutral-400" data-testid="gt-pose-models-none">
+					モデルを選ぶと、そのモデルがポーズを読めるか・商用で使えるかをここに出します。
+					if len(n.Capable) > 0 {
+						ポーズを読めるモデル: { joinNames(n.Capable) }
+					}
+				</p>
+			case len(n.Models) == 0:
+				<p class="text-amber-300" role="status" data-testid="gt-pose-models-unsupported">
+					選んだモデルは「ポーズだけ」の参照を読めません（全体の参照として使います）。
+					if len(n.Capable) > 0 {
+						ポーズを読めるモデル: { joinNames(n.Capable) }
+					}
+				</p>
+			default:
+				for _, m := range n.Models {
+					<div class="flex flex-col gap-1" data-testid="gt-pose-model" data-commercial={ m.Answer.Answer() }>
+						<p class="flex flex-wrap items-center gap-1.5 text-neutral-200">
+							<span class="font-medium">{ m.Label }</span>
+							<span class="text-neutral-400">がポーズを読みます</span>
+							@commercial.Badge(m.Answer)
+						</p>
+						@commercial.Note(m.Answer)
+					</div>
+				}
+		}
+	</div>
+}
+
+// InstallPanel is the offer to install the pose library: where the files come from and how large they are, the licenses with their
+// commercial-use answers, and the checkbox the install needs. The install is a request that returns when the files are in place.
+templ InstallPanel(w Wire, in Install) {
+	<div class="flex flex-col gap-3" data-testid="gt-pose-install">
+		<p class="text-sm text-neutral-200">
+			ポーズ集（Shisei）は、顔のない人形の線画で描いたポーズの見本です（{ strconv.Itoa(in.Poses) } 種類・{ strconv.Itoa(in.Images) } 枚。アングルは正面・斜め・横・上から・下から）。
+			MAM には同梱せず、初回だけ { in.Source } から { in.Download } をダウンロードします（リリースを固定し、ファイルごとに SHA-256 を検証します）。
+		</p>
+		<ul class="flex flex-col gap-2 text-xs" data-testid="gt-pose-licenses">
+			for _, l := range in.Licenses {
+				<li class="flex flex-col gap-1 rounded-md border border-neutral-800 p-2">
+					<p class="flex flex-wrap items-center gap-1.5 text-neutral-200">
+						<span class="font-medium">{ l.Name }</span>
+						@commercial.Badge(l.Answer)
+					</p>
+					<p class="text-neutral-400">{ l.Summary }</p>
+					@commercial.Note(l.Answer)
+				</li>
+			}
+		</ul>
+		@ModelNotes(in.Notes)
+		if in.Error != "" {
+			<p class="text-xs text-red-300" role="alert" data-testid="gt-pose-error">{ in.Error }</p>
+		}
+		<label class="flex items-start gap-2 text-xs text-neutral-300">
+			@atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-install-accept": "", "data-testid": "gt-pose-accept"})
+			<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span>
+		</label>
+		<div>
+			<button
+				type="button"
+				class="group inline-flex items-center justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+				data-testid="gt-pose-install-button"
+				hx-post={ w.InstallURL }
+				hx-target={ "#" + BodyID }
+				hx-swap="innerHTML"
+				hx-include={ "[data-gt-pose-install-accept], " + w.IncludeForm }
+				hx-disabled-elt="this"
+			>
+				<span class="group-[.htmx-request]:hidden">ポーズ集を導入する</span>
+				<span class="hidden group-[.htmx-request]:inline" role="status">ダウンロードしています…</span>
+			</button>
+		</div>
+	</div>
+}
+
+// GalleryPanel is the body of the dialog once the library is installed: the models' notes, the filters (search, category, angle) and the
+// poses that match.
+templ GalleryPanel(w Wire, g Gallery) {
+	<div class="flex flex-col gap-3" data-testid="gt-pose-gallery">
+		@ModelNotes(g.Notes)
+		<div class="flex flex-wrap items-end gap-3" data-gt-pose-filters data-testid="gt-pose-filters">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-pose-q">
+				<span>検索</span>
+				@atoms.Input(atoms.FieldSm, "w-48", templ.Attributes{
+					"id": "gt-pose-q", "type": "search", "name": FieldQuery, "form": noForm, "value": g.Query, "autocomplete": "off",
+					"placeholder": "名前・分類・番号（P001）・英語", "data-testid": "gt-pose-search",
+					"hx-get": w.ResultsURL, "hx-trigger": "input changed delay:300ms, search", "hx-target": "#" + ResultsID, "hx-swap": "outerHTML",
+					"hx-include": w.IncludeFilters, "hx-sync": "this:replace",
+				})
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-pose-class">
+				<span>分類</span>
+				@atoms.Select(atoms.FieldSm, "max-w-56", templ.Attributes{
+					"id": "gt-pose-class", "name": FieldClass, "form": noForm, "data-testid": "gt-pose-class",
+					"hx-get": w.ResultsURL, "hx-trigger": "change", "hx-target": "#" + ResultsID, "hx-swap": "outerHTML",
+					"hx-include": w.IncludeFilters,
+				}) {
+					<option value={ g.All.Value } selected?={ g.All.Selected }>{ g.All.Label }</option>
+					for _, grp := range g.Classes {
+						<optgroup label={ grp.Label }>
+							for _, o := range grp.Options {
+								<option value={ o.Value } selected?={ o.Selected }>{ o.Label }</option>
+							}
+						</optgroup>
+					}
+				}
+			</label>
+			<fieldset class="flex flex-col gap-1 text-xs text-neutral-400" data-testid="gt-pose-angles">
+				<legend class="mb-1">アングル</legend>
+				<div class="flex flex-wrap gap-1">
+					for _, a := range g.Angles {
+						<label class="relative cursor-pointer">
+							<input
+								type="radio"
+								class="peer sr-only"
+								name={ FieldAngle }
+								form={ noForm }
+								value={ a.Value }
+								checked?={ a.Selected }
+								hx-get={ w.ResultsURL }
+								hx-trigger="change"
+								hx-target={ "#" + ResultsID }
+								hx-swap="outerHTML"
+								hx-include={ w.IncludeFilters }
+							/>
+							<span class="inline-block rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400">{ a.Label }</span>
+						</label>
+					}
+				</div>
+			</fieldset>
+		</div>
+		@ResultsList(w, g.Results)
+	</div>
+}
+
+// Results are the poses that match the filters, as cards. The element is swapped as a whole when a filter changes (its status line is
+// read out: aria-live), and the cards have the shape of the picker's: static/src/components/gentest/inputs-dom.ts marks the ones that were added.
+templ ResultsList(w Wire, r Results) {
+	<div id={ ResultsID } data-testid="gt-pose-results" class="flex flex-col gap-2">
+		<p class="text-xs text-neutral-400" role="status" aria-live="polite" data-testid="gt-pose-count">{ strconv.Itoa(len(r.Cards)) } / { strconv.Itoa(r.Total) } 種類</p>
+		if len(r.Cards) == 0 {
+			<p class="text-xs text-neutral-400" data-testid="gt-pose-empty">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>
+		}
+		<ul class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+			for _, c := range r.Cards {
+				@card(w, c)
+			}
+		</ul>
+	</div>
+}
+
+templ card(w Wire, c Card) {
+	<li class="flex flex-col gap-1 rounded-md border border-neutral-800 p-2 text-xs" data-testid="gt-pick" data-pose-card>
+		<img
+			class="aspect-[3/4] w-full rounded bg-neutral-900 object-contain"
+			src={ c.Image }
+			alt={ c.Name + "（" + c.Angle + "）" }
+			loading="lazy"
+			width="300"
+			height="400"
+		/>
+		<span class="break-words text-neutral-200">{ c.Name }</span>
+		<span class="break-words text-neutral-400">
+			{ c.NameEN }
+			if c.Other {
+				（{ c.Angle }）
+			}
+		</span>
+		@atoms.SmallButtonFor(atoms.ToneNeutral, "追加", c.Name+"（"+c.Angle+"）", templ.Attributes{
+			"type": "button", "data-ref": c.Value, "hx-get": w.RowURL + "?ref=" + url.QueryEscape(c.Value), "hx-target": "#gt-refs", "hx-swap": "beforeend",
+			"hx-include": w.IncludeForm, "hx-sync": "this",
+		})
+	</li>
+}

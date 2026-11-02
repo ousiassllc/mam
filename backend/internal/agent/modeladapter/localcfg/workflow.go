@@ -36,7 +36,7 @@ const (
 
 // imageParams are the values an image workflow takes; videoParams the ones a video workflow takes.
 var (
-	imageParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamReferenceImage, ParamReferenceDenoise, ParamSteps, ParamCFG, ParamSampler, ParamScheduler}
+	imageParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamReferenceImage, ParamReferenceDenoise, ParamReferenceStrength, ParamSteps, ParamCFG, ParamSampler, ParamScheduler}
 	videoParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamFrames, ParamFPS, ParamReferenceImage, ParamFirstFrame, ParamLastFrame, ParamSteps, ParamCFG, ParamSampler, ParamScheduler}
 )
 
@@ -89,6 +89,9 @@ type Workflow struct {
 	PromptWeight promptweight.Level `json:"prompt_weight,omitempty"`
 	// SpeedModes are the ways a video workflow can sample (SpeedMode); the first is the graph as it stands and the default. Empty: one way.
 	SpeedModes []SpeedMode `json:"speed_modes,omitempty"`
+	Upscale    *Upscale    `json:"upscale,omitempty"` // marks a workflow that enlarges a picture; nil: one that makes pictures
+	// RequiresNodes are the IDs of the custom nodes (the allowlist, modelmgr/nodecat) the graph uses besides the core nodes. Empty: core only.
+	RequiresNodes []string `json:"requires_nodes,omitempty"`
 }
 
 // DefaultFPS is the frame rate of a video workflow that names none.
@@ -308,7 +311,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 			errs = append(errs, fmt.Errorf("%s: optional applies to reference_image only", at))
 		}
 	}
-	if !w.Has(ParamPrompt) {
+	if !w.Has(ParamPrompt) && w.Upscale == nil { // an upscale workflow without sampling has no prompt (validateUpscale)
 		errs = append(errs, fmt.Errorf("%s: no assignment of the prompt", where))
 	}
 	if _, ok := g[w.OutputNode]; !ok {
@@ -317,8 +320,9 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 	errs = append(errs, validateReferences(where, media, w)...)
 	errs = append(errs, validateReferenceMode(where, w, g)...)
 	errs = append(errs, validateSpeedModes(where, media, w, g)...)
+	errs = append(errs, validateRequiresNodes(where, w)...)
 	errs = append(errs, validateSampling(where, w, g)...)
-	errs = append(errs, validatePromptWeight(where, w)...)
+	errs = append(errs, append(validatePromptWeight(where, w), validateUpscale(where, media, w, g)...)...)
 	if w.FPS < 0 || w.FPS > 240 || w.FramesStep < 0 || w.FramesStep > 64 || w.SizeMultiple < 0 || w.SizeMultiple > 128 {
 		errs = append(errs, fmt.Errorf("%s: fps must be within 0-240, frames_step within 0-64 and size_multiple within 0-128", where))
 	}

@@ -32,7 +32,7 @@
 442	backend/internal/router/brand_test.go
 383	backend/internal/router/bundle_test.go
 450	backend/internal/router/review_test.go
-15164	backend/internal/service/
+15163	backend/internal/service/
 429	backend/internal/service/branch.go
 346	backend/internal/service/continue.go
 475	backend/internal/service/editor_reshoot.go

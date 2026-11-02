@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -121,8 +122,8 @@ type Compose struct {
 	Filter commercial.FilterData
 	// Prompts has at least one entry.
 	Prompts []PromptText
-	// Translate is the switch "英語に訳して送る" (on for a fresh form).
-	Translate                                    bool
+	// Translate is the switch "英語に訳して送る" (on for a fresh form); Poses says the pose library is there: "ポーズを選ぶ" is offered (an image batch only).
+	Translate, Poses                             bool
 	Count, Aspect, Resolution, Duration          string
 	Resolutions, Durations                       []string
 	MaxPrompt, MaxCount, MaxItems, MaxReferences int
@@ -297,8 +298,7 @@ type Detail struct {
 	Message
 	Card       Card
 	SentPrompt string
-	// English and EnglishNegative are what the prompt and the negative prompt were translated to before they were sent ("" when they
-	// were sent as typed); the originals are the "入力したプロンプト" of Params.
+	// English and EnglishNegative are the translation that was sent ("" when the text was sent as typed).
 	English                                  string
 	EnglishNegative                          string
 	Negative                                 string
@@ -307,9 +307,9 @@ type Detail struct {
 	Inputs                                   []InputCard
 	Imports                                  []ImportRow
 	Import                                   ImportForm
-	UseURL, MatchURL, InpaintURL, RedrawFrom string // set for an image that has a file; RedrawFrom links to the picture this one redrew
-	// Answer is the license of the model that made the result: the detail says it in words (the note) as well as by the mark.
-	Answer commercial.View
+	UseURL, MatchURL, InpaintURL, RedrawFrom string          // set for an image that has a file; RedrawFrom links to the picture this one redrew
+	Upscale                                  upscalebox.Form // "make it larger", and where an enlargement came from
+	Answer                                   commercial.View
 }
 
 // PromptRow is an entry of the prompt history.

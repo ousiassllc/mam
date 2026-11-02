@@ -23,14 +23,15 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 24)
+	require.Len(t, c.Models, 43)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
 	}
 	assert.Equal(t, []string{
-		"flux1-schnell", "flux2-klein-4b", "qwen-image", "qwen-image-edit-2511", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
-		"chroma1-hd", "flux1-dev", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "sd35-medium", // advanced: images, then videos
+		"flux1-schnell", "flux2-klein-4b", "qwen-image", "qwen-image-edit-2511", "sdxl-base", "sdxl-controlnet-canny", "sdxl-ipadapter-plus", "upscale-2pass-sdxl-span", "upscale-nomos-uni-span", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
+		"big-lust-v16", "bigasp-v2", "chroma1-hd", "cyberrealistic-pony-v18", "cyberrealistic-xl-v10", "epicrealism-xl-lastfame", "flux1-dev", "flux1-dev-nsfw-master", "juggernaut-xl-ragnarok", "lustify-sdxl-zenith-v9", "noctq-v4-qwen-image21", // advanced: images, then videos
+		"noobai-xl-v11", "pony-diffusion-v6-xl", "qwen-image-21-uncensored-int8", "realism-sdxl-stable-yogi-v8", "realvisxl-v50", "sd35-medium", "thisisreal-sdxl-v3", "wai-illustrious-sdxl-v17", "upscale-nomos-webphoto-esrgan",
 		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-dfr", "ltx-2.5-22b-distilled-nvfp4", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v",
 	}, ids)
 }
@@ -64,8 +65,8 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		"wan22-i2v-14b-nsfw-lora":           {"unspecified", true, modellicense.Unknown, 6},
 		"wan22-ti2v-5b-fp8":                 {"apache-2.0", false, modellicense.Yes, 3},
 		"ltx-2.5-22b-distilled":             {"ltx-2x-community", true, modellicense.Conditional, 6},
-		"ltx-2.5-22b-distilled-nvfp4":       {"ltx-2x-community", true, modellicense.Conditional, 5},
-		"ltx-2.5-22b-distilled-dfr":         {"ltx-2x-community", true, modellicense.Conditional, 7},
+		"ltx-2.5-22b-distilled-nvfp4":       {"ltx-2x-community", true, modellicense.Conditional, 6},
+		"ltx-2.5-22b-distilled-dfr":         {"ltx-2x-community", true, modellicense.Conditional, 8},
 		"ltx-2.5-22b-distilled-uncensored":  {"ltx-2x-community-uncensored-te", true, modellicense.Unknown, 5},
 	} {
 		m, ok := c.Model(id)

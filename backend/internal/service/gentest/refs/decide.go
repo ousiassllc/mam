@@ -46,7 +46,7 @@ type Decision struct {
 	Warnings  []Warning
 }
 
-var roleLabel = map[string]string{"face": "顔", "style": "スタイル", "edit": "編集"}
+var roleLabel = map[string]string{"face": "顔", "style": "スタイル", "edit": "編集", "pose": "ポーズ"}
 
 // Decide plans one image model: roles are the roles of the request's references, hasLoRA and avoidPose its options.
 func Decide(m Model, roles []string, hasLoRA, avoidPose bool) Decision {
@@ -94,6 +94,9 @@ func Decide(m Model, roles []string, hasLoRA, avoidPose bool) Decision {
 			warn(WarnLoRAUnsupported, "%s は LoRA に対応していないため、LoRA は使いません", m.Label)
 		}
 	}
-	d.AvoidPose = avoidPose && len(d.Used) > 0
+	// A pose reference is there to be copied: the option is about the other pictures (a pose chart the model reads as a pose is not one).
+	d.AvoidPose = avoidPose && slices.ContainsFunc(d.Used, func(i int) bool {
+		return roles[i] != localcfg.RolePose || !slices.Contains(m.Roles, localcfg.RolePose)
+	})
 	return d
 }

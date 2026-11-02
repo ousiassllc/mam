@@ -52,7 +52,7 @@ func TestQwenImageEdit2511HasTheThreeReferenceEditingWorkflow(t *testing.T) {
 	caps := tpl.Model.ReferenceCaps()
 	assert.Equal(t, localcfg.ModeEdit, caps.Mode)
 	assert.Equal(t, 3, caps.Max)
-	assert.Equal(t, []string{localcfg.RoleWhole, localcfg.RoleFace, localcfg.RoleStyle, localcfg.RoleEdit}, caps.Roles)
+	assert.Equal(t, []string{localcfg.RoleWhole, localcfg.RoleFace, localcfg.RoleStyle, localcfg.RoleEdit, localcfg.RolePose}, caps.Roles)
 	assert.True(t, tpl.Model.ImageInputs(localcfg.KindComfyUI))
 	assert.True(t, tpl.Model.SupportsLoRA())
 }

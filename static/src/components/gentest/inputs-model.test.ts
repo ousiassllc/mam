@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { dropSide, isUploadRef, moveItem, noRefNotice, takeFiles, unionRoles, uploadRef } from './inputs-model';
+import {
+  defaultStrength,
+  dropSide,
+  isUploadRef,
+  moveItem,
+  noRefNotice,
+  takeFiles,
+  unionRoles,
+  uploadRef,
+} from './inputs-model';
 
 const png = (name: string, size = 10) => new File([new Uint8Array(size)], name, { type: 'image/png' });
 
@@ -7,8 +16,14 @@ describe('the rules of the input images of the generation test', () => {
   it('lists the roles that at least one chosen model takes, in the order of the select', () => {
     expect(unionRoles([['style', 'reference'], ['reference']])).toEqual(['reference', 'style']);
     expect(unionRoles([['edit'], ['face', 'reference']])).toEqual(['reference', 'face', 'edit']);
+    expect(unionRoles([['pose', 'edit'], ['reference']])).toEqual(['reference', 'edit', 'pose']);
     expect(unionRoles([[], []])).toEqual([]);
     expect(unionRoles([])).toEqual([]);
+  });
+
+  it('starts the strength of a face higher than the others (#960)', () => {
+    expect(defaultStrength('face')).toBe(0.9);
+    for (const role of ['reference', 'style', 'edit']) expect(defaultStrength(role)).toBe(0.7);
   });
 
   it('names an image of the browser by its number among the files', () => {

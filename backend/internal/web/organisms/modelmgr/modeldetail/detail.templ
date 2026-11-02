@@ -33,6 +33,9 @@ templ Detail(m view.Model) {
 		if view.ShowsTokenGuide(m) {
 			<p class="text-sm text-amber-300" data-testid="mm-token-guide">{ m.TokenGuide } <a class="underline" href={ "#" + view.HFID } data-modal-close>トークンの区画へ</a></p>
 		}
+		if m.NeedsNodes != "" && m.State != "installed" {
+			<p class="text-sm text-amber-300" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
+		}
 		@commercial.Note(m.License.Answer)
 		if m.License.Regions != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-regions">{ m.License.Regions }</p>
@@ -52,6 +55,9 @@ templ Detail(m view.Model) {
 				<div class="col-span-2"><dt class="text-neutral-400">原本の場所</dt><dd class="break-words" data-testid="mm-sources">{ joinNames(m.Sources) }</dd></div>
 			}
 		</dl>
+		if m.PlatformWarning != "" {
+			<p class="text-xs text-amber-300" role="note" data-testid="mm-platform-warning-text">{ m.PlatformWarning }</p>
+		}
 		if m.VRAMFitText != "" {
 			<p class={ "text-xs " + view.FitClass(m.VRAMFit) } data-testid="mm-vram-fit-text" data-fit={ m.VRAMFit }>{ m.VRAMFitText }</p>
 		}

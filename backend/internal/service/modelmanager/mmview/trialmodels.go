@@ -38,6 +38,9 @@ func TrialModels(s *modelmanager.Service) []TrialModel {
 			continue
 		}
 		m := cfg.LocalModels[key]
+		if m.IsUpscale() { // an upscale workflow is no model to give a prompt to: the generation test's "make it larger" runs it
+			continue
+		}
 		if s.HidesModel(localcfg.ID(ep.Kind, endpoint, name)) {
 			continue
 		}

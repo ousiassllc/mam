@@ -18,6 +18,7 @@ templ Form(p Page) {
 		hx-post={ paths.GenerationTestPart("inpaint", "estimate") }
 		hx-target={ "#" + outID }
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
 		hx-disabled-elt="find button[type=submit]"
 		data-testid="gt-inpaint-form"
 	>
@@ -42,11 +43,11 @@ templ Form(p Page) {
 		</div>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-inpaint-prompt">
 			<span>プロンプト（描き直した部分の内容）</span>
-			@atoms.Textarea(atoms.FieldMd, "min-h-20", templ.Attributes{"id": "gt-inpaint-prompt", "name": "prompt", "required": true, "maxlength": "4000"}, "")
+			@atoms.Textarea(atoms.FieldMd, "min-h-20", templ.Attributes{"id": "gt-inpaint-prompt", "name": "prompt", "required": true, "maxlength": strconv.Itoa(p.MaxPrompt)}, "")
 		</label>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-inpaint-negative">
 			<span>ネガティブ（省略可）</span>
-			@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-inpaint-negative", "name": "negative", "type": "text", "maxlength": "4000"})
+			@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-inpaint-negative", "name": "negative", "type": "text", "maxlength": strconv.Itoa(p.MaxPrompt)})
 		</label>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-inpaint-denoise">
 			<span>描き直しの強さ（{ p.Denoise }。空にするとモデルの既定）</span>
@@ -105,6 +106,7 @@ templ Confirm(c Box) {
 			hx-post={ paths.GenerationTestPart("inpaint", "run") }
 			hx-target={ "#" + outID }
 			hx-swap="outerHTML"
+			hx-sync="this:drop"
 			hx-disabled-elt="find button[type=submit]"
 		>
 			for _, h := range c.Hidden {

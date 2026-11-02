@@ -45,10 +45,19 @@ func run(t *testing.T, tpl localcfg.Template, edit func(*localcfg.Workflow), s l
 	seed := int64(1234)
 	img := modeladapter.Input{Data: comfyuitest.PNG, MimeType: "image/png"}
 	if m.Media == localcfg.MediaImage {
-		_, err = b.GenerateImage(ctx, "", modeladapter.ImageRequest{
-			Prompt: "a fox", AspectRatio: "1:1", Seed: &seed, Options: localcfg.ImageOptions{Sampling: s},
+		opts := localcfg.ImageOptions{Sampling: s}
+		req := modeladapter.ImageRequest{
+			Prompt: "a fox", AspectRatio: "1:1", Seed: &seed, Options: opts,
 			Inputs: []modeladapter.Input{img}, // a workflow that needs a reference image gets one; the others leave it
-		})
+		}
+		switch m.Workflow.ReferenceMode {
+		case localcfg.ModeControlNet, localcfg.ModeIPAdapter:
+			req.Options.Refs = []localcfg.RefOption{{}} // these run on their one image only when the request describes it
+		case localcfg.ModeInpaint:
+			req.Options.Refs = []localcfg.RefOption{{}}
+			req.Inpaint = &modeladapter.Inpaint{Mask: img} // denoise stays the template's: naming nothing must not rewrite it
+		}
+		_, err = b.GenerateImage(ctx, "", req)
 	} else {
 		res, verr := b.GenerateVideo(ctx, "", modeladapter.VideoRequest{
 			Prompt: "waves", AspectRatio: "16:9", Resolution: "480p", DurationSeconds: 3, Seed: &seed, SpeedMode: speedMode, Sampling: s,

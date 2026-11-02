@@ -146,7 +146,8 @@ export class MamMaskPaint extends LitElement {
     m.fill();
     v.save();
     if (this.tool === 'eraser') v.globalCompositeOperation = 'destination-out';
-    v.fillStyle = this.tool === 'brush' ? 'rgba(255,60,60,0.55)' : '#000';
+    else v.globalAlpha = 0.55;
+    v.fillStyle = this.tool === 'brush' ? '#f33' : '#000';
     v.beginPath();
     v.arc(at.x, at.y, r, 0, Math.PI * 2);
     v.fill();

@@ -12,11 +12,23 @@ import (
 // hfRepoURL matches the Hugging Face repository a pinned file URL lies in.
 var hfRepoURL = regexp.MustCompile(`^(https://huggingface\.co/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/resolve/`)
 
-// inRepoOf reports whether the page at source is in the Hugging Face repository the pinned file url lies in: then the file is the
-// original, and a source note is not needed.
+// githubAssetURL matches a pinned file of a GitHub repository: a release asset (the tag is a name, so the SHA-256 is the pin) or a file at
+// a 40-digit commit (raw.githubusercontent.com). The first group is the repository's page; the raw form names it without the host.
+var githubAssetURL = regexp.MustCompile(`^(https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/releases/download/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$|^https://raw\.githubusercontent\.com/([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/[0-9a-f]{40}/[^?#\s]+$`)
+
+// inRepoOf reports whether the page at source is in the Hugging Face or GitHub repository the pinned file url lies in: then the file is
+// the original, and a source note is not needed.
 func inRepoOf(url, source string) bool {
-	m := hfRepoURL.FindStringSubmatch(url)
-	return m != nil && (source == m[1] || strings.HasPrefix(source, m[1]+"/"))
+	repo := ""
+	if m := hfRepoURL.FindStringSubmatch(url); m != nil {
+		repo = m[1]
+	} else if m := githubAssetURL.FindStringSubmatch(url); m != nil {
+		repo = m[1]
+		if repo == "" {
+			repo = "https://github.com/" + m[2]
+		}
+	}
+	return repo != "" && (source == repo || strings.HasPrefix(source, repo+"/"))
 }
 
 func validateResourceSets(c *Catalog) []error {
@@ -100,8 +112,8 @@ func validateResource(aw string, a Resource) []error {
 	switch {
 	case a.Name == "" || strings.TrimSpace(a.Description) == "":
 		errs = append(errs, fmt.Errorf("%s: name and description are required", aw))
-	case !modelURLPattern.MatchString(a.URL):
-		errs = append(errs, fmt.Errorf("%s: url must be https://huggingface.co/<repo>/resolve/<40-hex commit>/<path>", aw))
+	case !modelURLPattern.MatchString(a.URL) && !githubAssetURL.MatchString(a.URL):
+		errs = append(errs, fmt.Errorf("%s: url must be https://huggingface.co/<repo>/resolve/<40-hex commit>/<path>, a GitHub release asset or a raw.githubusercontent.com file at a 40-hex commit", aw))
 	case !sha256Pattern.MatchString(a.SHA256):
 		errs = append(errs, fmt.Errorf("%s: sha256 must be 64 lower-case hex digits", aw))
 	case a.Size <= 0:

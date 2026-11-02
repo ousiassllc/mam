@@ -17,6 +17,7 @@ const (
 	Projects       Key = "projects"
 	GenerationTest Key = "generation-test"
 	ModelManager   Key = "model-manager"
+	Jobs           Key = "jobs"
 	Workflows      Key = "workflows"
 	Nodes          Key = "nodes"
 	Reviews        Key = "reviews"
@@ -72,6 +73,7 @@ func Screens() []Item {
 		{Projects, "プロジェクト", paths.Home(), atoms.IconProjects},
 		{GenerationTest, "生成テスト", paths.GenerationTest(), atoms.IconFlask},
 		{ModelManager, "モデルマネージャー", paths.ModelManager(), atoms.IconPackage},
+		{Jobs, "ジョブ", paths.Jobs(), atoms.IconJobs},
 		{Workflows, "ワークフロー", paths.Workflows(), atoms.IconWorkflow},
 		{Nodes, "ノード", paths.Nodes(), atoms.IconNetwork},
 		{Reviews, "レビュー", paths.Reviews(), atoms.IconReview},

@@ -36,7 +36,7 @@ func (h Handlers) Page(c *gin.Context) {
 }
 
 func (h Handlers) page(c *gin.Context) gentestinpaint.Page {
-	p := gentestinpaint.Page{Denoise: "0.75", Translate: true}
+	p := gentestinpaint.Page{Denoise: "0.75", Translate: true, MaxPrompt: gentest.MaxPromptRunes}
 	if v, ok := refform.Parse(c.Query("ref")); ok {
 		p.SourceRef = v.String()
 		p.SourceURL = thumb(v)

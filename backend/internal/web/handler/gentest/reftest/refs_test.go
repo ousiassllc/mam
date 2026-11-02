@@ -12,7 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/facelock"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -36,7 +39,7 @@ func offered(t *testing.T, body string) []string {
 	row := regexp.MustCompile(`(?s)<li[^>]*data-gt-ref.*?</li>`).FindString(body)
 	require.NotEmpty(t, row, "an input image is drawn")
 	var out []string
-	for _, o := range regexp.MustCompile(`<option value="(reference|face|style|edit)"([^>]*)>`).FindAllStringSubmatch(row, -1) {
+	for _, o := range regexp.MustCompile(`<option value="(reference|face|style|edit|pose)"([^>]*)>`).FindAllStringSubmatch(row, -1) {
 		if !strings.Contains(o[2], "disabled") {
 			out = append(out, o[1])
 		}
@@ -54,7 +57,7 @@ func TestInputControlsFollowTheChosenModels(t *testing.T) {
 		roles       []string
 		lora        bool
 	}{
-		{string(gentesttest.EditModel), "編集", []string{"reference", "face", "style", "edit"}, true},
+		{string(gentesttest.EditModel), "編集", []string{"reference", "face", "style", "edit", "pose"}, true},
 		{string(gentesttest.Img2ImgModel), "画像から", []string{"reference"}, false},
 		{string(gentesttest.PlainModel), "", nil, false},
 	} {
@@ -145,8 +148,12 @@ func TestFormKeepsAStrengthOfZero(t *testing.T) {
 	q.Del("strength_" + ref)
 	q.Del("lora_strength")
 	body = s.fragment(paths.GenerationTestPart("form") + "?" + q.Encode())
-	assert.Equal(t, "0.7", sliderValue(t, body, "strength_"+ref), "none given: the default")
+	assert.Equal(t, "0.9", sliderValue(t, body, "strength_"+ref), "none given: the default of a face, which is higher (#960)")
 	assert.Equal(t, "0.4", sliderValue(t, body, "lora_strength"), "none given: the default")
+
+	q.Set("role_"+ref, "style")
+	body = s.fragment(paths.GenerationTestPart("form") + "?" + q.Encode())
+	assert.Equal(t, "0.7", sliderValue(t, body, "strength_"+ref), "none given: the default of the other roles")
 }
 
 // The confirmation form (strength, LoRA and an image chosen in the browser, as the estimate carried them) is accepted by "実行":
@@ -185,4 +192,22 @@ func TestRunAcceptsTheEstimateOfTheConfirmationWithReferences(t *testing.T) {
 
 	started := s.run(confirmation)
 	assert.Equal(t, http.StatusAccepted, started.Code, "the id of the estimate step is the one the service finds again: "+started.Body.String())
+}
+
+// The sliders start where the engine starts a reference that names no strength: a face higher than the rest (#960).
+func TestSliderDefaultsAreTheEngineDefaults(t *testing.T) {
+	assert.Equal(t, view.RoleFace, facelock.Role)
+	assert.Equal(t, localcfg.DefaultFaceReferenceStrength, facelock.DefaultStrengthOf(view.RoleFace))
+	for _, role := range []string{view.RoleReference, view.RoleStyle, view.RoleEdit} {
+		assert.Equal(t, localcfg.DefaultReferenceStrength, facelock.DefaultStrengthOf(role), role)
+	}
+	assert.Equal(t, view.DefaultRefStrength, facelock.DefaultStrength)
+	assert.Equal(t, localcfg.DefaultLoRAStrength, view.DefaultLoRAStrength)
+}
+
+// The "?" of the input images says that a face is held weakly by an editing model, for images and not for video (which has no face role).
+func TestInputsHelpSaysTheFaceIsHeldWeakly(t *testing.T) {
+	s := newScreen(t, gentesttest.WithReferenceModels(loras(t).URL))
+	assert.Contains(t, s.fragment(paths.GenerationTestPart("form")+"?media=image"), "同じ顔の固定は弱め")
+	assert.NotContains(t, s.fragment(paths.GenerationTestPart("form")+"?media=video"), "同じ顔の固定は弱め")
 }

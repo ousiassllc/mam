@@ -1,0 +1,60 @@
+{
+ "id": "realvisxl-v50",
+ "name": "RealVisXL V5.0（実写・SDXL）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け）。作者のカードは「SFW も NSFW も作れる」と書く。VAE 入りの fp16 の 1 ファイル（約 6.9 GB）。作者の推奨はネガティブプロンプトありで、DPM++ SDE Karras なら 30 ステップ以上（DPM++ 2M Karras なら 50 以上）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。Lightning 版ではなく通常版。",
+ "files": [
+  {
+   "name": "RealVisXL_V5.0_fp16.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/SG161222/RealVisXL_V5.0/resolve/ac93e0dda1f6d448cae19bbfab8c5e720a5e48bc/RealVisXL_V5.0_fp16.safetensors",
+   "sha256": "6a35a7855770ae9820a3c931d4964c3817b6d9e3c6f9c4dabb5b3a94e5643b80",
+   "size": 6938065488,
+   "source_note": "作者の Hugging Face リポジトリ（SG161222/RealVisXL_V5.0）。原本は Civitai の RealVisXL V5.0 V5.0 (BakedVAE) fp16（model 139562、version 789646、realvisxlV50_v50Bakedvae_703211.safetensors）で、SHA-256 が一致することを 2026-11-03 に確かめた。"
+  }
+ ],
+ "vram": {
+  "min_gb": 8,
+  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "creativeml-openrail++-m",
+  "version": "2023-07-26",
+  "name": "openrail++（Hugging Face のモデルカードの license タグ。作者 SG161222 の公式リポジトリ）",
+  "url": "https://huggingface.co/SG161222/RealVisXL_V5.0/blob/ac93e0dda1f6d448cae19bbfab8c5e720a5e48bc/README.md",
+  "summary": "商用を含めて使える。ただし違法・有害な用途（未成年の搾取、なりすまし、偽情報の拡散など）を禁じる使用制限（Attachment A）が付き、モデルを再配布するときは同じ制限を引き継ぐ。ベースの SDXL 1.0 も同じライセンスで、このモデルはそれに作者が手を加えたもの（マージ・追加学習）。元にしたほかのモデルのライセンスは作者のカードに書かれていない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Stable Diffusion XL 1.0）",
+    "name": "CreativeML Open RAIL++-M License",
+    "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/462165984030d82259a11f4367a4eed129e94a7b/LICENSE.md",
+    "commercial": "yes"
+   },
+   {
+    "part": "RealVisXL V5.0（SG161222 のマージ・追加学習）",
+    "name": "openrail++（Hugging Face のモデルカードの license タグ。作者 SG161222 の公式リポジトリ）",
+    "url": "https://huggingface.co/SG161222/RealVisXL_V5.0/blob/ac93e0dda1f6d448cae19bbfab8c5e720a5e48bc/README.md",
+    "commercial": "yes"
+   }
+  ]
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "realvisxl-v50",
+   "template": "txt2img-sdxl",
+   "model_file": "RealVisXL_V5.0_fp16.safetensors"
+  },
+  {
+   "name": "realvisxl-v50-img2img",
+   "template": "img2img-sdxl",
+   "model_file": "RealVisXL_V5.0_fp16.safetensors"
+  }
+ ]
+}

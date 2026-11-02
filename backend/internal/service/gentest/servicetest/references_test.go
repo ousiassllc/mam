@@ -53,12 +53,14 @@ func TestEstimateRefusesAnInvalidRoleStrengthOrLoRA(t *testing.T) {
 		mut(&q)
 		cases[name] = q
 	}
-	add("unknown role", func(q *gentest.Request) { q.References = ref("pose", nil) })
+	add("unknown role", func(q *gentest.Request) { q.References = ref("middle", nil) })
+	add("mask is not a reference role", func(q *gentest.Request) { q.References = ref("mask", nil) })
 	add("strength above 1", func(q *gentest.Request) { q.References = ref("face", f64(1.01)) })
 	add("negative strength", func(q *gentest.Request) { q.References = ref("reference", f64(-0.1)) })
 	add("lora without a name", func(q *gentest.Request) { q.LoRA = &gentest.LoRAInput{Name: "  "} })
 	add("lora strength above 1", func(q *gentest.Request) { q.LoRA = &gentest.LoRAInput{Name: "a.safetensors", Strength: f64(2)} })
 	cases["face on a video"] = video(ref("face", nil))
+	cases["pose on a video"] = video(ref("pose", nil))
 	cases["strength on a video"] = video(ref("reference", f64(0.5)))
 	cases["lora on a video"] = func() gentest.Request {
 		q := video(nil)
@@ -259,7 +261,7 @@ func TestModelInfoDescribesTheReferencesAndTheLoRAOfAnImageModel(t *testing.T) {
 	assert.True(t, edit.AcceptsReferences)
 	assert.Equal(t, "edit", edit.ReferenceMode)
 	assert.Equal(t, 3, edit.MaxReferenceImages)
-	assert.Equal(t, []string{"reference", "face", "style", "edit"}, edit.ReferenceRoles)
+	assert.Equal(t, []string{"reference", "face", "style", "edit", "pose"}, edit.ReferenceRoles)
 	assert.True(t, edit.SupportsLoRA)
 
 	i2i := info(string(gentesttest.Img2ImgModel))

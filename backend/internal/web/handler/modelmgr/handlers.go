@@ -19,7 +19,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
@@ -35,11 +37,13 @@ type Handlers struct {
 	Gentest *gentest.Service
 	// Runtimes are the local voice and lip-sync runtimes (section "ローカル音声・口パク"). Nil leaves the section and its routes out.
 	Runtimes *localruntime.Service
+	// Nodes are the custom nodes of the allowlist (section "追加ノード"). Nil leaves the section and its routes out.
+	Nodes *modelnodes.Service
 }
 
 // Register adds the routes of the screen to the engine.
-func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service) {
-	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts}
+func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service) {
+	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds}
 	engine.GET(paths.ModelManager(), h.Page)
 	engine.GET(paths.ModelManagerPart("dialog"), h.CloseDialog)
 
@@ -56,6 +60,9 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 
 	if rts != nil {
 		runtimes.Register(engine, rts)
+	}
+	if nds != nil {
+		nodes.Register(engine, nds)
 	}
 
 	engine.GET(paths.ModelManagerPart("adult", "confirm"), h.AdultConfirm)

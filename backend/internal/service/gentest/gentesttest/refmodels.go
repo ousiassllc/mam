@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 )
 
 // The local ComfyUI image models WithReferenceModels adds (ids of the bundled engine's models).
@@ -69,4 +70,9 @@ func WithSpeedModel() Option {
 		localbackends.Publish(r.Config)
 		r.T.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
 	}
+}
+
+// WithPoseLibrary gives the Service a pose library (Deps.Poses; poses/posestest builds an installed one over a fake GitHub).
+func WithPoseLibrary(lib *poses.Library) Option {
+	return func(_ *Rig, d *gentest.Deps) { d.Poses = lib }
 }

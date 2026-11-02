@@ -26,18 +26,16 @@ type values struct {
 	references       []modeladapter.Input
 	first, last      *modeladapter.Input
 	opts             localcfg.ImageOptions
-	mask             *modeladapter.Input       // the inpaint mask (nil: none)
-	redraw           *float64                  // the inpaint strength (nil: the graph's own denoise)
+	mask             *modeladapter.Input // inpaint mask (nil: none); redraw is its strength (nil: the graph's denoise)
+	redraw           *float64
 	denoiseFloor     float64                   // the workflow's ReferenceDenoiseMin
 	speedMode        string                    // the request's VideoRequest.SpeedMode ("": the workflow's first)
 	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
+	upscaleRatio     float64                   // the workflow's Upscale.Ratio of the request's UpscaleScale (build sets it)
 }
 
-// imageValues are the values of an image request. A workflow with a reference mode (a bundled img2img or editing model) takes
-// its inputs as references only when the request describes them (Options.Refs): the callers that pass bare Inputs (a character
-// sheet, a workflow step) meant a picture to see, not a picture to copy, and would get the model's default strength and every
-// image as a reference. The inputs are ignored then and the run is the text-to-image one. A workflow without a reference mode
-// (a user's own img2img graph) takes the inputs as it always did.
+// imageValues are the values of an image request. A reference-mode workflow uses Inputs only when Options.Refs describes them;
+// bare Inputs (a picture to see, not to copy) are ignored and the run is text-to-image. Without a reference mode, Inputs are used as given.
 func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 	w, h := aspectsize.Flux(req.AspectRatio)
 	negative := defaultNegative
@@ -45,9 +43,9 @@ func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 		negative = req.NegativePrompt
 	}
 	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options, sampling: req.Options.Sampling}
-	if req.Inpaint != nil {
-		mask := req.Inpaint.Mask
-		v.mask, v.redraw = &mask, req.Inpaint.Denoise
+	if in := req.Inpaint; in != nil {
+		mask := in.Mask
+		v.mask, v.redraw = &mask, in.Denoise
 	}
 	if wf := b.Model.Workflow; wf != nil && wf.ReferenceMode != "" && len(req.Options.Refs) == 0 {
 		v.references = nil
@@ -117,6 +115,10 @@ func (v values) scalar(p localcfg.Param) any {
 			return nil
 		}
 		return *v.redraw
+	case localcfg.ParamUpscaleRatio:
+		return v.upscaleRatio
+	case localcfg.ParamReferenceStrength:
+		return v.opts.Ref(0).StrengthOrDefault()
 	}
 	return nil
 }
@@ -127,16 +129,30 @@ func (v values) scalar(p localcfg.Param) any {
 func (b *Backend) missing(v values) error {
 	for _, a := range b.Model.Workflow.Assignments {
 		if in, isImage := v.input(a); isImage && in == nil && !a.Optional && !b.noReferenceOK(v, a) {
-			return b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the workflow needs %s (%s), the request has none", a.Param, a.Node), nil)
+			return b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the workflow needs %s (%s)%s, the request has none", a.Param, a.Node, b.referenceRole()), nil)
 		}
 	}
 	return nil
+}
+
+// referenceRole names what the reference image is for in a ControlNet or an IP-Adapter workflow (they cannot run without it), "" otherwise.
+func (b *Backend) referenceRole() string {
+	switch b.Model.Workflow.ReferenceMode {
+	case localcfg.ModeControlNet:
+		return " as the control image of its ControlNet"
+	case localcfg.ModeIPAdapter:
+		return " as the image its IP-Adapter takes the look from"
+	}
+	return ""
 }
 
 // build puts the values into a copy of the workflow's graph. files are the names the images were uploaded
 // as, by assignment index.
 func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error) {
 	v.denoiseFloor = b.Model.Workflow.ReferenceDenoiseMin
+	if u := b.Model.Workflow.Upscale; u != nil {
+		v.upscaleRatio = u.Ratio(v.opts.UpscaleScale)
+	}
 	v.sampling = applicableSampling(*b.Model.Workflow, v.sampling)
 	if n := b.Model.Workflow.Count(localcfg.ParamReferenceImage); b.Model.Workflow.ReferenceMode != "" && len(v.references) > n {
 		v.references = v.references[:n] // the images beyond the slots were not uploaded

@@ -33,6 +33,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
@@ -99,6 +100,8 @@ type Deps struct {
 	// Backends are the options the external ComfyUI view reads (staging directory).
 	Backends localbackends.Options
 	Logger   *slog.Logger
+	// Nodes are the custom nodes of the allowlist the engine may load (modelmgr/nodes; nil: none): the engine is started with exactly their folders.
+	Nodes *nodes.Manager
 
 	// The following default to the real implementations; tests replace them.
 
@@ -176,7 +179,7 @@ func New(d Deps) (*Service, error) {
 	s := &Service{Deps: d, Book: mmlicense.New(d.Catalog, st, BundledEndpoint), cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
 		active: map[string]string{}, activeDest: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
 	s.hf = hf.New(hf.Options{Base: d.HFBase, HTTP: d.Fetch.Client, CheckURL: d.Fetch.CheckURL, AuthHost: d.Fetch.AuthHost, Token: s.huggingFaceToken})
-	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now}
+	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now, CustomNodes: d.Nodes.Enabled}
 	build := d.Command
 	if build == nil {
 		build = s.engine.Command

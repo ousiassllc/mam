@@ -12,7 +12,11 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/form` | フォームを画像／動画で切り替える（クエリ: 入力済みのフォームの値。プロンプト・本数・縦横比は保つ。モデルの選択は外す） |
 | GET | `/generation-test/prompt-row` | プロンプト欄を 1 つ足す。`?from=<プロンプト履歴の ID>` で内容を入れる |
 | GET | `/generation-test/picker` | 入力画像の選択肢。`?project=<ID>`（そのプロジェクトのアセット・参照項目。無い ID は 404）または `?source=history`（履歴の成功した画像） |
-| GET | `/generation-test/ref-row` | 選んだ入力画像の 1 行（`?ref=<source>:<project>:<id>`、`?media=`、`?model=`（選んでいるモデル。役割の選択肢をそれに合わせる）。サムネイル・番号・外す・並べ替えのボタン・役割と強さ（画像は役割 4 種と強さ、動画は 3 種）つき。無ければ 404） |
+| GET | `/generation-test/ref-row` | 選んだ入力画像の 1 行（`?ref=<source>:<project>:<id>`（ポーズ集の画像は `pose_library::<画像 ID>`。役割は `pose` で出す）、`?media=`、`?model=`（選んでいるモデル。役割の選択肢をそれに合わせる）。サムネイル・番号・外す・並べ替えのボタン・役割と強さ（画像は役割 4 種と強さ、動画は 3 種）つき。無ければ 404） |
+| GET | `/generation-test/poses` | ポーズ集のモーダルの中身（Issue #986）。未導入なら導入の案内（出典・ライセンス・商用利用の可否・取得するサイズ・同意のチェックボックス `pose_accept`）、導入済みなら絞り込み（`pose_q` 文字・`pose_class` 分類・`pose_angle` アングル）つきの一覧。`?model=`（選んでいるモデル。複数可）で、そのモデルがポーズの役割を読めるかと商用利用の可否を添える。ポーズ集が無い構成は 404 |
+| GET | `/generation-test/poses/results` | 一覧の部分だけ（絞り込みの変更で取り直す。クエリは `pose_q`・`pose_class`・`pose_angle`。解釈できない値は絞り込みなし） |
+| GET | `/generation-test/poses/image/:id` | ポーズの画像（`image/webp`。ID は `std_P001_front` の形。ポーズ集にない ID・成人向けのポーズは 404） |
+| POST | `/generation-test/poses/install` | ポーズ集の導入（`pose_accept=on` が要る。無ければ 400 で理由を返し、案内を残す）。成功は一覧を返す。取得に失敗した理由は日本語で出す |
 | POST | `/generation-test/estimate` | 見積り（multipart: `media`・`model`（複数）・`prompt`/`negative`（同じ順で複数）・`count`・`aspect_ratio`・`resolution`・`duration_seconds`・`translate`（`1` のとき英語に訳して送る。チェックボックスなので無いときは OFF。新しい画面は ON で開く）・`ref`（選んだ入力。ブラウザで選んだファイルは `upload::#<n>` = `upload` の n 番目）と `role_<ref>`（`reference`・`face`・`style`・`edit`、動画は `first_frame`・`last_frame` も）・`strength_<ref>`（0〜1。無ければ既定 0.7）・`avoid_pose`（`on` でポーズ・構図を真似させない）・`lora`・`lora_strength`（既定 0.4）・ファイル `upload`・`upload_first`・`upload_last`）。アップロードは `_staging/` に置く。**何も実行しない**。200 で確認の区画（件数・モデルごとの内訳（`translate` が `1` のときは、訳す文の数の「プロンプトの英訳」の行が単価なしで入る）・合計・単価なしの注記・警告・上限超過。確認の本文に `estimate_id` と `confirmed_total_usd` を hidden で持つ） |
 | POST | `/generation-test/run-notice` | 見積りの警告 `role_unsupported` があるときだけ、確認の区画の実行ボタンが押されて呼ぶ（Issue #959）。確認のフォームをそのまま受け取り、見積りをやり直して、モデルが対応していない役割の参照を全体の参照として使うことを、モデルごとに言うモーダルの本文（HTML の断片。`#mam-modal-body` に入る）を返す。何も実行せず、課金もしない。選択肢は「戻る」（閉じるだけ）と「このまま実行」（`/generation-test/run` へ送る）の 2 つ。受け付けられない入力は 422 の理由の断片 |
 | POST | `/generation-test/run` | 確認の区画のフォームの送信。サーバーが見積りをやり直し、`estimate_id` と合計が違う・上限（`gentest.max_items`・`gentest.max_cost_usd`）を超えるなら 409、入力の誤りは 422、英訳が必要なのに LLM が訳せなければ 502（何も生成しない）。202 で進捗と比較表の区画（`#gt-batch`）を返す |
@@ -25,6 +29,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/inputs/:id/file` | バッチの入力画像のファイル（同じ扱い） |
 | POST | `/generation-test/results/:id/favorite` | お気に入りの付け外し（`favorite=1`/`0`）。ボタンを返す |
 | POST | `/generation-test/results/:id/import` | プロジェクトへの取り込み（`project_id`・`as`=`reference`/`asset`・`kind`・`name`・`tags`・`assign_target`/`assign_id`/`assign_slot`）。取り込みフォームの区画を返す |
+| POST | `/generation-test/results/:id/upscale` | 結果を 2 倍・4 倍に大きくする（Issue #975。[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.4）。フォーム `scale`（`2`/`4`）・`upscale_model`（方式のモデル識別子。省くとプロンプトの要らない最初のもの）。見積り・確認は要らない（ローカルのモデルで無料）。成功は HTMX なら `204` と `HX-Redirect: /generation-test/history`（そうでなければ `303`）で、新しい結果は別のバッチ・別のファイルの結果として履歴に出る。倍率が 2・4 以外・アップスケール用のモデルが入っていない・名指しのモデルが使えない・出力が上限（64 Mpx。2 パスは 16 Mpx）を超える・元が画像として使えない、は `422` で、箱（`#gt-upscale`）を理由つきで返す。結果が無ければ 404 |
 | DELETE | `/generation-test/results/:id` | 結果とファイルの削除。成功は `HX-Redirect: /generation-test/history`。生成中は 409、無ければ 404 |
 | GET | `/generation-test/prompts` | プロンプト履歴（再利用のリンク・削除） |
 | GET | `/generation-test/match` | プロンプトマッチの画面（Issue #916。[../architecture/gentest/prompt-match.md](../architecture/gentest/prompt-match.md)）。参考の画像 1 枚・モデル・進め方（おまかせ / 1回だけ / 調整）・目標の似てる度・上限の回数・言葉の指示。クエリ `ref`（`<source>:<project>:<id>` の画像を参考にして開く）・`model`。プロンプトマッチが無いアプリは 503 |
@@ -89,4 +94,6 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.9 | 2026-11-02 | `POST /generation-test/run-notice` を足した（未対応の役割のモーダルの本文）。`POST /generation-test/run` の応答に `HX-Trigger-After-Swap: modal-close` を付けた（モーダルから実行したときに閉じる） | Issue #959 |
 | 1.10 | 2026-11-02 | プロンプトマッチ: 確認の区画の LLM の行を、単価の分かるものは合計に入れる 2 行に（Issue #965）。タイムラインに点の内訳（顔を混ぜているとき。Issue #964）と、各回の「プロンプトで比べる」（`GET /generation-test?from_result=<結果の id>`。その回のプロンプト・モデル・縦横比で開き、モデルを足して比較する案内を出す） | Issue #964・#965 |
 | 1.11 | 2026-11-03 | 見積り・実行に詳細設定のフィールド `seed`・`steps`・`cfg`・`sampler`・`scheduler` を足した（範囲・警告 `sampling_ignored`・`seed_ignored`・`prompt_weight`） | Issue #973・#972 |
-| 1.12 | 2026-11-02 | `GET/POST /generation-test/inpaint`（見積り・実行）を足した。結果の詳細に「一部だけ描き直す」と、インペイント結果の「元の結果」 | Issue #974 |
+| 1.12 | 2026-11-03 | `POST /generation-test/results/:id/upscale`（結果を 2 倍・4 倍に大きくする。成功は履歴への `HX-Redirect`・断りは箱を 422 で返す）を足した。結果の詳細に「大きくする」の箱 | Issue #975 |
+| 1.13 | 2026-11-03 | ポーズ集の 4 ルート（`/generation-test/poses`・`/poses/results`・`/poses/image/:id`・`POST /poses/install`）と、`ref-row` の `pose_library::<ID>`、役割 `pose` | Issue #986 |
+| 1.14 | 2026-11-02 | `GET/POST /generation-test/inpaint`（見積り・実行）を足した。結果の詳細に「一部だけ描き直す」と、インペイント結果の「元の結果」 | Issue #974 |

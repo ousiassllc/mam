@@ -175,7 +175,8 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		return nil, nil, nil, err
 	}
 	manager.Store(mgr)
-	rts, err := newLocalRuntimes(jobs, jobTable, mgr, logger)
+	nodeSvc, installNext := newModelNodes(jobs, jobTable, mgr, logger) // the custom nodes' jobs first, the runtimes' wrap them
+	rts, err := newLocalRuntimes(jobs, jobTable, installNext, logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -201,12 +202,13 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
 	services.ModelManager = mgr
 	services.LocalRuntimes = rts
+	services.ModelNodes = nodeSvc
 	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
 	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
 	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
 	modellicense.SetResolver(mgr.LicenseOf) // what the screens and tools say of a local model's commercial use (#928)
 	modellicense.SetDefaultFilter(mgr.DefaultFilter)
-	services.Gentest = newGentest(cfg, db, jobs, models, services, newTranslator(reasoning, llmCfg), newMatcher(reasoning, llmCfg, judging.engine(), models.Config().Gentest.Face()), logger)
+	services.Gentest = newGentest(cfg, db, jobs, models, services, newTranslator(reasoning, llmCfg), newMatcher(reasoning, llmCfg, judging.engine(), models.Config().Gentest.Face()), judging.engine(), logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
@@ -215,6 +217,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	services.Gentest.OnStartup(ctx) // after the queue failed the interrupted jobs: settles the results they left
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
+	nodeSvc.OnStartup() // before the engine starts: it removes what an interrupted install left in custom_nodes
 	mgr.OnStartup(ctx)
 	wfrefresh.Run(ctx, localModels, catalog.Default(), modelmanager.BundledEndpoint, logger.Warn) // after the endpoint is registered
 	rts.OnStartup(ctx)

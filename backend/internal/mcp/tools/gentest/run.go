@@ -54,10 +54,10 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 
 // ReferenceInput is an input image of a batch.
 type ReferenceInput struct {
-	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（生成テストの成功した画像結果の result_id）"`
+	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（生成テストの成功した画像結果の result_id）/ pose_library（ポーズ集 Shisei の画像。id は std_P001_front のような画像 ID で、導入済みのときだけ。役割 pose と使う）"`
 	ID        string `json:"id" jsonschema:"source に応じた ID"`
 	ProjectID string `json:"project_id,omitempty" jsonschema:"project_asset / reference_item のとき"`
-	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）。動画: reference / first_frame / last_frame。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`
+	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）/ pose（ポーズだけ。ポーズ集 Shisei の画像や人形の写真。list_generation_models の reference_roles に pose があるモデルだけ）。動画: reference / first_frame / last_frame。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`
 	// Strength is a pointer: omitted means the default (0.7), 0 is a deliberate "barely".
 	Strength *float64 `json:"strength,omitempty" jsonschema:"画像モデルだけ。参照画像をどれだけ強く反映するか（0〜1、既定 0.7）。モデルごとの実現方法は隠す。動画では指定できない（validation）。強さを実現できるのは同梱 ComfyUI の参照対応モデルだけで、クラウドの画像モデルなどでは無視され、警告も出ない"`
 }
@@ -94,10 +94,9 @@ type RequestInput struct {
 	Seed *int64 `json:"seed,omitempty" jsonschema:"シードを固定する（0〜4294967295）。n 本目は seed + n − 1 を使う（本数が多いときは seed + 本数 − 1 もこの範囲）。モデルごとに同じ seed で比べられ、結果の seed からいつでも作り直せる。省くと結果ごとにランダム。シードを渡せないモデルは警告 seed_ignored で使わない"`
 	// Sampling overrides the steps, cfg, sampler and scheduler of the models that take them.
 	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"詳細設定: steps（1〜150）・cfg（0〜30）・sampler・scheduler。省いた項目は各モデルの既定（list_generation_models の sampling の default）。受け取らない項目（sampling に無い）と、速さのモードがあるモデルの steps・cfg（sampling の locked が speed_mode）は警告 sampling_ignored で使わない（速さのモードが優先）。結果の sampling に使った値が残る"`
-	// Mask is the inpaint mask, in the same shape as a reference (white redraws, black keeps). With it, every model must support inpaint.
-	Mask *ReferenceInput `json:"mask,omitempty" jsonschema:"一部だけ描き直すときのマスク。references と同じ形式（source / id / project_id。role と strength は使わない）。白が描き直す部分、黒が残す部分。元画像は references に 1 枚だけ。supports_inpaint でないモデルは validation で拒否する"`
-	// Denoise is the redraw strength. Nil uses each model's denoise_default.
-	Denoise *float64 `json:"denoise,omitempty" jsonschema:"描き直しの強さ（0 より大きく 1 以下）。省くと各モデルの denoise_default。マスクが無いときは指定できない"`
+	// Mask is the inpaint mask (same shape as a reference; white redraws). Every model must support inpaint. Denoise nil uses denoise_default.
+	Mask    *ReferenceInput `json:"mask,omitempty" jsonschema:"一部だけ描き直すときのマスク。references と同じ形式（source / id / project_id。role と strength は使わない）。白が描き直す部分、黒が残す部分。元画像は references に 1 枚だけ。supports_inpaint でないモデルは validation で拒否する"`
+	Denoise *float64        `json:"denoise,omitempty" jsonschema:"描き直しの強さ（0 より大きく 1 以下）。省くと各モデルの denoise_default。マスクが無いときは指定できない"`
 	// TranslateToEnglish is a pointer: omitted means the default of the screen (on), false is a deliberate off.
 	TranslateToEnglish *bool `json:"translate_to_english,omitempty" jsonschema:"プロンプトとネガティブプロンプトを LLM（LLM の割り当ての Prompt Planner）で英語に訳してから送る。既定 true（画面と同じ）。すでに英語の文は訳さずそのまま。訳せなければ何も生成せずエラー（upstream）。見積りには訳す文の数が単価なしの行（model が translate）として入る。false でそのまま送る"`
 }

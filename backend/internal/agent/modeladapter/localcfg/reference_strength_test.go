@@ -26,3 +26,14 @@ func TestStrengthOrDefault(t *testing.T) {
 		assert.Equal(t, c.want, localcfg.RefOption{Strength: c.in}.StrengthOrDefault(), "%v", c.in)
 	}
 }
+
+// A face reference that names no strength stays longer than the whole picture does (#960); a strength that is named is the user's
+// for every role, and the other roles keep the default they had.
+func TestStrengthOrDefaultOfAFace(t *testing.T) {
+	assert.Equal(t, localcfg.DefaultFaceReferenceStrength, localcfg.RefOption{Role: localcfg.RoleFace}.StrengthOrDefault())
+	assert.Greater(t, localcfg.DefaultFaceReferenceStrength, localcfg.DefaultReferenceStrength)
+	assert.Equal(t, 0.4, localcfg.RefOption{Role: localcfg.RoleFace, Strength: 0.4}.StrengthOrDefault(), "a named strength is not raised")
+	for _, role := range []string{"", localcfg.RoleWhole, localcfg.RoleStyle, localcfg.RoleEdit} {
+		assert.Equal(t, localcfg.DefaultReferenceStrength, localcfg.RefOption{Role: role}.StrengthOrDefault(), role)
+	}
+}

@@ -39,9 +39,6 @@
    "name": "sdxl-base-img2img",
    "template": "img2img-sdxl"
   },
-  {
-   "name": "sdxl-base-inpaint",
-   "template": "inpaint-sdxl"
-  }
+  {"name": "sdxl-base-inpaint", "template": "inpaint-sdxl"}
  ]
 }

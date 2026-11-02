@@ -40,6 +40,8 @@ type ResultParams struct {
 	Sampling *sampling.Settings `json:"sampling,omitempty"`
 	// Inpaint is set when the result redrew part of a picture. Absent for every other result.
 	Inpaint *Inpaint `json:"inpaint,omitempty"`
+	// Upscale is the enlargement the result is (a result of "make it larger"): the source and the values (Upscale). Absent: a generated result.
+	Upscale *Upscale `json:"upscale,omitempty"`
 }
 
 // Inpaint is a partial redraw: the strength that was sent (nil: the template's own), where the source picture came from, and the

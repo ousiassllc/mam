@@ -28,7 +28,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 	v := view.Detail{
 		Card: cardOf(d.ResultView, false), SentPrompt: d.SentPrompt, Negative: d.NegativePrompt, NegMode: negativeModeText[d.NegativeMode],
 		English: d.TranslatedPrompt, EnglishNegative: d.TranslatedNegativePrompt,
-		Params: append(params(d), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
+		Params: append(append(params(d), upscaleKVs(d)...), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
 	}
 	if d.Media == gentest.MediaImage && d.HasFile {
 		ref := refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
@@ -55,6 +55,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 		}
 	}
 	v.Import = f
+	v.Upscale = h.upscaleForm(ctx, d, "")
 	if !d.HasFile {
 		v.Import.Projects = nil
 	}
@@ -63,7 +64,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 
 var roleNames = map[string]string{
 	gentest.RoleReference: "参照", gentest.RoleFirstFrame: "最初のフレーム", gentest.RoleLastFrame: "最後のフレーム",
-	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象", gentest.RoleMask: "マスク",
+	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象", gentest.RoleMask: "マスク", gentest.RolePose: "ポーズだけ",
 }
 
 // roleText is the role of an input with the strength it was given (none was when the default was used).
@@ -75,7 +76,7 @@ func roleText(in record.InputView) string {
 }
 
 var originText = map[string]string{
-	gentest.FromStaged: "アップロード", gentest.FromProjectAsset: "プロジェクトのアセット", gentest.FromReferenceItem: "プロジェクトの参照画像", gentest.FromHistory: "履歴",
+	gentest.FromStaged: "アップロード", gentest.FromProjectAsset: "プロジェクトのアセット", gentest.FromReferenceItem: "プロジェクトの参照画像", gentest.FromHistory: "履歴", gentest.FromPoseLibrary: "ポーズ集",
 }
 
 func (h Handlers) projectNames(ctx context.Context) map[string]string {

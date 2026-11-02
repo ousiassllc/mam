@@ -24,7 +24,9 @@ func TestCheckRole(t *testing.T) {
 		{"face", "image", "face", f64(0.5), "face", true},
 		{"edge strengths", "image", "style", f64(1), "style", true},
 		{"zero strength", "image", "edit", f64(0), "edit", true},
-		{"unknown", "image", "pose", nil, "pose", false},
+		{"pose", "image", "pose", f64(0.8), "pose", true},
+		{"unknown", "image", "mask", nil, "mask", false},
+		{"pose on video", "video", "pose", nil, "pose", false},
 		{"frame on image", "image", "first_frame", nil, "first_frame", false},
 		{"face on video", "video", "face", nil, "face", false},
 		{"video frame", "video", "last_frame", nil, "last_frame", true},
@@ -120,4 +122,19 @@ func TestDecide(t *testing.T) {
 	d = refs.Decide(edit, nil, false, true)
 	assert.False(t, d.AvoidPose, "no reference at all")
 	assert.Empty(t, d.Warnings)
+}
+
+// A pose chart is there to be copied: "do not copy the pose of the references" is about the other pictures, and it does not fire for
+// a model that reads a pose chart as a pose; a model that cannot read the role uses the chart as a whole picture, which it may avoid.
+func TestDecideDoesNotAskToAvoidThePoseOfAPoseReference(t *testing.T) {
+	edit := refs.Model{Label: "E", AcceptsReferences: true, Roles: refs.ImageRoles}
+	assert.True(t, refs.Decide(edit, []string{"reference", "pose"}, false, true).AvoidPose, "the character picture is a whole reference")
+	assert.False(t, refs.Decide(edit, []string{"pose"}, false, true).AvoidPose, "only a pose chart: nothing to avoid")
+	assert.True(t, refs.Decide(edit, []string{"face", "pose"}, false, true).AvoidPose)
+
+	plain := refs.Model{Label: "I", AcceptsReferences: true, Roles: []string{"reference"}}
+	d := refs.Decide(plain, []string{"pose"}, false, true)
+	assert.True(t, d.AvoidPose, "the chart is used as a whole picture here")
+	assert.Equal(t, refs.WarnRoleUnsupported, d.Warnings[0].Code)
+	assert.Contains(t, d.Warnings[0].Message, "ポーズ")
 }

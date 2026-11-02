@@ -8,10 +8,11 @@ type Model struct {
 	On, Pick          bool
 }
 
-// Page is the form.
+// Page is the form. MaxPrompt is the server's prompt limit (gentest.MaxPromptRunes), handed in by the handler.
 type Page struct {
 	Error, SourceURL, SourceRef, SourceLabel, Denoise string
 	Models                                            []Model
+	MaxPrompt                                         int
 	HasModel, Translate                               bool
 }
 

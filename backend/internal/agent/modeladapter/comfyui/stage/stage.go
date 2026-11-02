@@ -231,13 +231,19 @@ func promptFor(active []refUse, prompt string) string {
 	return strings.Join(lines, "\n")
 }
 
-// roleSentence tells the editing model what to take from <image n>; the whole picture and the one to edit need no sentence.
+// roleSentence tells the editing model what to take from <image n>; the whole picture and the one to edit need no sentence. A
+// face gets three sentences (#960): what to leave out, what the face is made of, and what not to do. One general sentence kept
+// the identity weakly (the likeness was 0.26 in the measurement of PR #953). How much stronger the longer text is is not measured.
 func roleSentence(role string, n int) string {
 	switch role {
 	case localcfg.RoleFace:
-		return fmt.Sprintf("Keep only the face and identity of <image%d>; its hair, clothes, pose and background do not matter: follow the description below for them.", n)
+		return fmt.Sprintf("Keep only the face and identity of <image%d>; its hair, clothes, pose and background do not matter: follow the description below for them. "+
+			"The person in the result must be the same person as in <image%d>: the same face shape, eyes, nose, mouth, eyebrows and skin tone, and the same apparent age. "+
+			"Do not draw a different or an idealized face, and do not take anything else from <image%d>.", n, n, n)
 	case localcfg.RoleStyle:
 		return fmt.Sprintf("Take only the art style, color grading and mood of <image%d>; its subject and composition do not matter.", n)
+	case localcfg.RolePose:
+		return fmt.Sprintf("Use <image%d> only as a pose reference: copy only the body pose and the camera angle of its figure; its drawing style, colors, face, hair, clothes and background do not matter: follow the description below for them.", n)
 	}
 	return ""
 }

@@ -72,12 +72,12 @@ func (s *Service) registerWorkflows(ctx context.Context, m catalog.Model) error 
 		return err
 	}
 	for _, w := range m.Workflows {
-		tpl, ok := localcfg.TemplateByID(w.Template)
-		if !ok {
-			return invalid("ワークフローのテンプレート %s がありません", w.Template)
+		model, err := w.Model(localcfg.TemplateByID)
+		if err != nil {
+			return invalid("ワークフロー %s を作れません: %v", w.Name, err)
 		}
-		in := localmodels.ModelInput{Endpoint: BundledEndpoint, Name: w.Name, Model: tpl.Model}
-		err := s.Models.CreateModel(ctx, in)
+		in := localmodels.ModelInput{Endpoint: BundledEndpoint, Name: w.Name, Model: model}
+		err = s.Models.CreateModel(ctx, in)
 		if errors.Is(err, localmodels.ErrExists) {
 			err = s.Models.UpdateModel(ctx, BundledEndpoint, w.Name, in)
 		}

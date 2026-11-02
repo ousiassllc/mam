@@ -1,0 +1,60 @@
+{
+ "id": "sdxl-controlnet-canny",
+ "name": "SDXL + ControlNet（canny）",
+ "kind": "image",
+ "tier": "standard",
+ "content_rating": "general",
+ "description": "用意したエッジ画像（canny。黒地に白い線）の形に沿って SDXL で描く ControlNet（xinsir 版、約 2.5 GB）。ComfyUI 標準のノードだけで動き、追加ノードは要らない。前処理（写真からエッジやポーズを取り出す処理）はしないので、制御画像は自分で用意する（生成テストの入力画像に渡す）。SDXL base 1.0 は導入済みの「Stable Diffusion XL base 1.0」と共有する。",
+ "files": [
+  {
+   "name": "sd_xl_base_1.0.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/462165984030d82259a11f4367a4eed129e94a7b/sd_xl_base_1.0.safetensors",
+   "sha256": "31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b",
+   "size": 6938078334
+  },
+  {
+   "name": "xinsir-controlnet-canny-sdxl-1.0.safetensors",
+   "folder": "controlnet",
+   "url": "https://huggingface.co/xinsir/controlnet-canny-sdxl-1.0/resolve/1271357eda52d54b857c650cacb5b51144643ccb/diffusion_pytorch_model.safetensors",
+   "sha256": "bf47cd757ceaf2572c53321329ef819ea38c09a6e3783588387913cd94dff47c",
+   "size": 2502139104
+  }
+ ],
+ "vram": {
+  "min_gb": 10,
+  "source": "SDXL base の見積もり（8 GB）に ControlNet の約 2.5 GB（fp16）を足した mam の見積もり（出典なし・実機未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "sdxl-controlnet-canny",
+  "version": "2026-11-03",
+  "name": "CreativeML Open RAIL++-M（SDXL）＋ Apache-2.0（ControlNet）",
+  "url": "https://huggingface.co/xinsir/controlnet-canny-sdxl-1.0/blob/1271357eda52d54b857c650cacb5b51144643ccb/README.md",
+  "summary": "ControlNet（xinsir/controlnet-canny-sdxl-1.0）はモデルカードの license: apache-2.0（README の Model Description も License: apache-2.0）で、商用を含めて使える。ベースの SDXL は CreativeML Open RAIL++-M で、商用を含めて使えるが違法・有害な用途を禁じる使用制限が付く。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Stable Diffusion XL base 1.0）",
+    "name": "CreativeML Open RAIL++-M License",
+    "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/462165984030d82259a11f4367a4eed129e94a7b/LICENSE.md",
+    "commercial": "yes"
+   },
+   {
+    "part": "ControlNet（xinsir/controlnet-canny-sdxl-1.0）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/xinsir/controlnet-canny-sdxl-1.0/blob/1271357eda52d54b857c650cacb5b51144643ccb/README.md",
+    "commercial": "yes"
+   }
+  ]
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "sdxl-controlnet-canny",
+   "template": "txt2img-sdxl-controlnet"
+  }
+ ]
+}

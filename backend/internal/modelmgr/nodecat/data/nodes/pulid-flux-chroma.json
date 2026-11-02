@@ -1,0 +1,52 @@
+{
+ "id": "pulid-flux-chroma",
+ "name": "ComfyUI-PuLID-Flux-Chroma（PuLID。顔の固定）",
+ "description": "FLUX・Chroma に参照画像の顔の identity を足す PuLID のノード。同梱の Python 環境にない insightface・facexlib・onnxruntime・timm・ftfy が要るため、今は導入できない（許可リストに載せて固定しているだけ）。InsightFace の学習済みの重み（antelopev2）は非商用の研究用途のみで、mam は同梱も自動の取得もしない。",
+ "repo": "https://github.com/PaoloC68/ComfyUI-PuLID-Flux-Chroma",
+ "commit": "52dc5068e0fc304e51273cfa5fbdd031e1ddb824",
+ "archive_url": "https://github.com/PaoloC68/ComfyUI-PuLID-Flux-Chroma/archive/52dc5068e0fc304e51273cfa5fbdd031e1ddb824.zip",
+ "archive_sha256": "48d93b515dd712635544da3db7203957716d32a78d61dd2a74bc0b4c31390b81",
+ "archive_size": 4490131,
+ "extracted_size": 4822332,
+ "folder": "ComfyUI-PuLID-Flux-Chroma",
+ "license": {
+  "id": "pulid-flux-chroma-license-unclear",
+  "version": "1",
+  "name": "LICENSE は Apache License 2.0 の全文、README は「元の MIT License を引き継ぐ」と書いていて食い違う（コード）",
+  "url": "https://github.com/PaoloC68/ComfyUI-PuLID-Flux-Chroma/blob/52dc5068e0fc304e51273cfa5fbdd031e1ddb824/LICENSE",
+  "summary": "コミット 52dc5068 の LICENSE は Apache License 2.0 の全文で、著作権者の欄が雛形（Copyright [yyyy] [name of copyright owner]）のまま。同じコミットの README の「License」の節は「This project inherits the original MIT License. See LICENSE for details.」と書き、LICENSE が Apache であることと合わない。GitHub の表示は Apache License 2.0。元のリポジトリ（balazik/ComfyUI-PuLID-Flux）のライセンスは確かめていない。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-03",
+  "notice": "ノードのコードのライセンスが、同じリポジトリの LICENSE（Apache-2.0）と README（MIT）で食い違い、著作権者の欄も空です。どちらでも商用利用に厳しい条件の付くライセンスではありませんが、どちらが正しいかは確かめられていません。そのうえ、このノードが動くのに要る InsightFace の学習済みの重み（antelopev2）は非商用の研究用途のみで、mam は同梱も自動の取得もしません。導入できる状態になっても、商用で使う前に、使う重みの配布元で確かめてください。"
+ },
+ "python_requires": [
+  "torch",
+  "torchvision",
+  "numpy",
+  "einops",
+  "tqdm",
+  "timm",
+  "ftfy",
+  "regex",
+  "facexlib",
+  "insightface",
+  "onnxruntime"
+ ],
+ "python_optional": [
+  "huggingface_hub"
+ ],
+ "install_blocked": "同梱の Python 環境に insightface・facexlib・onnxruntime・timm・ftfy・regex が無く、mam は pip を実行しません（requirements.txt は facexlib・insightface・onnxruntime・onnxruntime-gpu・ftfy・timm）。さらに、InsightFace の学習済みの重み（antelopev2）は非商用の研究用途のみのため、mam は同梱も自動の取得もしません。実行時には facexlib の顔解析の重み（GitHub のリリース）と EVA02-CLIP-L-14-336 の重み（Hugging Face）も、固定も検証もなしに取得されます。",
+ "model_folders": [
+  "pulid",
+  "insightface"
+ ],
+ "node_classes": [
+  "PulidFluxModelLoader",
+  "PulidFluxInsightFaceLoader",
+  "PulidFluxEvaClipLoader",
+  "ApplyPulidFlux"
+ ],
+ "limits": "動かすには、PuLID の重み（guozinan/PuLID の pulid_flux_v0.9.1.safetensors。カードは license: apache-2.0）を pulid フォルダに、InsightFace antelopev2 を insightface フォルダに置く必要がある。後者は非商用の研究用途のみで、mam は扱わない（FaceNet 系の代替は lldacing/ComfyUI_PuLID_Flux_ll にあるが未検証）。Chroma（Chroma1-HD）との組み合わせの動作は実機で確かめていない。",
+ "reviewed_at": "2026-11-03",
+ "review": "コミット 52dc5068 のソースを走査した（.py 約 40 ファイル・展開後 約 4.8 MB。eva_clip は OpenAI CLIP・open_clip・EVA の移植）。ノードのクラスは pulidflux.py の NODE_CLASS_MAPPINGS の 4 つ。import は torch・torchvision・numpy・einops・tqdm・timm・ftfy・regex・insightface・facexlib。ネットワーク: eva_clip/pretrained.py が urllib で重みを取得する関数を持ち、PulidFluxEvaClipLoader が EVA02-CLIP-L-14-336 の重みを Hugging Face から取得し、facexlib（init_parsing_model）が顔解析の重みを実行時に取得する（いずれも固定・検証なし）。subprocess・exec は無い。torch.load が eva_clip/factory.py と openai.py にある（pickle）。全文の精査はしていない。"
+}

@@ -55,7 +55,7 @@ openai-compat:lmstudio/flux-schnell
 |---|---|---|
 | `endpoints.<名>` | `kind`、`base_url`、`max_concurrency`、`timeout_seconds` | 同時実行 1（GPU は通常 1 ジョブ）。タイムアウトは ComfyUI 10800 秒（3 時間）・互換 900 秒（上限 24 時間）。設定画面・`create_local_endpoint` / `update_local_endpoint` で接続先ごとに変えられる。**ComfyUI では、ジョブが進まなくなってから打ち切るまでの時間**（実行の全体の長さではない。14B の動画モデルは 16GB のカードで 1 時間を超えるが、進んでいる間は延びる。下の「タイムアウト」）で、互換は 1 回の呼び出し全体。越えた呼び出しは打ち切り、ComfyUI のそのジョブも止める（下の「取り消し」）。`base_url` は http(s) のホストで、資格情報・クエリ・フラグメントを含まず、リンクローカル・未指定・マルチキャストの IP でない |
 | `local_models.<接続先>/<名>` | `media`（image/video）。接続先が存在すること。`comfyui` は `workflow`、`openai-compat` は `model`（サーバーに渡すモデル ID）が必要 | `openai-compat` の動画は拒否 |
-| `workflow` | `graph`（API 形式）、`assignments`、`output_node`、`fps`（既定 16）、`frames_step`（正なら総フレーム数を `n×step+1` にする。Wan は 4、LTX は 8）、`size_multiple`（既定 16）、画像の参照用に `reference_mode`・`no_reference`・`lora_model_node`（§4.2） | 割り当てが指すノード・入力が `graph` に無い、`output_node` が無い、プロンプトの割り当てが無い、は 422 |
+| `workflow` | `graph`（API 形式）、`assignments`、`output_node`、`fps`（既定 16）、`frames_step`（正なら総フレーム数を `n×step+1` にする。Wan は 4、LTX は 8）、`size_multiple`（既定 16）、画像の参照用に `reference_mode`・`no_reference`・`lora_model_node`（§4.2）、組み込みテンプレートが必要とする追加ノードの `requires_nodes`（許可リストの id。[model-manager/custom-nodes.md](model-manager/custom-nodes.md) §6。同梱エンジンのモデルは、そのノードが入るまで導入も選択もできない） | 割り当てが指すノード・入力が `graph` に無い、`output_node` が無い、プロンプトの割り当てが無い、は 422 |
 | `video` | `durations`（秒、昇順）、`resolutions`（短辺で `480p`・`720p`・`1080p` など）、`native_audio` | 動画モデルは必須。最初と最後のフレーム・参照画像の枚数は `assignments` から決まる |
 | 価格 | `cost_per_image_usd`、`cost_per_second_usd` | 既定 0（参考値。見積コストにのみ使う） |
 | 用途・Policy | `images.<purpose>`・`policies.<policy>` の `model` に識別子を書く（既存と同じ形式） | 参照先が `local_models` に無ければ起動時エラー。動画の対象は価格を要求しない |
@@ -77,7 +77,7 @@ openai-compat:lmstudio/flux-schnell
   - **決定: 全体の上限を残す**。進み続けて終わらないジョブ（進捗だけ出し続けるワークフローの暴走）や、いつまでも空かないキューで、mam の同時実行の枠を握り続けないための最後の歯止めとして、`MaxTimeoutSeconds`（24 時間。設定値の上限と同じ）を残す。設定項目にはしない（`timeout_seconds` の上限と一致するので、進みの止まった判定の方が必ず先に効く）。
   - **決定: 画像と動画で上限を分けない**。進み具合で打ち切る形では、動画の長い実行（進んでいる間は延びる）と画像の取りこぼし（進みが止まれば同じ時間で切れる）を、1 つの「進まない時間」で両方まかなえるため、メディアごとの設定は要らない。設定項目を増やすと画面・MCP・設定ファイルのすべてに入力と検証が増える割に得るものが無い。動画で読み込み・デコードなど進みの出ない処理が長いモデルは、接続先の `timeout_seconds` を延ばして足りる。
   - **既定を縮めない**: 既定は 10800 秒のまま。進みを報せないカスタムノードのワークフローや、進みの出ない長い処理（モデルの読み込み・VAE のデコード）では印が出ず、既定を縮めるとそれらを従来より早く打ち切ってしまうため。進みを報せる ComfyUI では、利用者が `timeout_seconds` を下げれば固まったジョブを早く見つけられる。
-- **組み込みテンプレート**: `localcfg/templates/image/*.json`・`localcfg/templates/video/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
+- **組み込みテンプレート**: `localcfg/templates/image/*.json`・`localcfg/templates/video/*.json`（コアノードだけ。**`requires_nodes` を宣言したテンプレートだけが、許可リストの追加ノードを使える**。それ以外のクラスが入るとテストが落ちる）。`txt2img-sdxl`、`img2img-sdxl`、`txt2img-sdxl-clipskip2`・`img2img-sdxl-clipskip2`（SDXL に `CLIPSetLastLayer` で clip skip 2 を足したもの。Pony 系のモデル用。#984）、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
 - **取り込み**: 利用者の「Save (API Format)」の JSON を取り込める。エディタ形式（`nodes`/`links`）は拒否してヒントを返す。ノードと入力の一覧を返すので、割り当てを利用者が決める。
 
 ### 4.3 サンプリングの割り当て（steps・cfg・sampler・scheduler。Issue #973）
@@ -96,15 +96,24 @@ openai-compat:lmstudio/flux-schnell
 - **断定しないもの**: Flux.1（T5-XXL + CLIP-L。ComfyUI は重みを読むが、文を読むのは T5 で、効きは確かめていない）・Chroma（T5）・Wan 2.2（UMT5）・LTX-Video 0.9.5（T5）は `weak`。GPU での効き方は未確認（実機の確認が要る）。ユーザー自作のワークフローと外部のモデルは `unknown`（警告は出さない。当て推量の警告は雑音になる）。
 - **効かないモデルへの案内**: 画面の「?」と、見積りの警告 `prompt_weight`（プロンプトに `(…)` があるときだけ）が、「強調したい語を文で言い換える（特に・とても・大きく、先頭に置く、具体的に書く）」を出す。
 
+### 4.5 画像を大きくするワークフロー（`upscale`。Issue #975）
+
+- **印**: ワークフローの `upscale`（`{label, native, mode, max_output_pixels}`。`localcfg/upscale.Spec`。印の型・倍率の計算（`Ratio`）・検証は `localcfg` の下位パッケージ `upscale` に置いた。`promptweight` と同じ分け方）は、そのワークフローが**画像を作るのではなく、渡した画像を大きくする**ことを表す。`native` はアップスケール用モデルの倍率（4 倍のモデルなら 4）、`mode` は `model`（`UpscaleModelLoader` → `ImageUpscaleWithModel` → `ImageScaleBy`）か `two_pass`（そのあと `VAEEncodeTiled` → 低い denoise の `KSampler` → `VAEDecodeTiled`）。画像のワークフロー（`media: image`）の印として持つので、接続先・保存・版の仕組みはそのまま使う。
+- **割り当て**: `reference_image`（大きくする画像。ちょうど 1 つ）と `upscale_ratio`（`ImageScaleBy` の `scale_by` に、依頼の倍率 ÷ `native` を入れる。ちょうど 1 つ。`two_pass` は加えて `prompt`・`negative_prompt`・`seed`・`steps`・`cfg`・`sampler`・`scheduler`）。印の無いワークフローに `upscale_ratio` は割り当てられない。印のあるワークフローはプロンプトの割り当てが要らない（`model` 方式）。グラフに `ImageUpscaleWithModel` が要る。`localcfg.validateUpscale` → `upscale.Validate`。
+- **一覧**: 印のあるワークフローは、プロンプトを渡すモデルではないので、`localcfg.IDs`（画像・動画のモデルの識別子）・生成テストのモデルの一覧・モデルマネージャーの試し生成には**出ない**。生成テストの `modelcatalog.Catalog.Upscalers` が専用の一覧を返し、「大きくする」（[gentest/gentest.md](gentest/gentest.md) §3.4）が使う。
+- **コアのノードだけ**: `ImageScaleBy`・`ImageUpscaleWithModel`・`UpscaleModelLoader`・`VAEEncodeTiled` をテストの `coreNodes`（テンプレートが使ってよいクラスの一覧）に足した。同梱エンジンは追加ノードなしで動く。
+
 ### 4.2 画像モデルの参照画像・強さ・役割・LoRA（#933）
-画面と MCP は、どのモデルでも同じ「強さ」（0〜1、既定 0.7）と「役割」を渡す。ワークフローの作りの違いは `localcfg`・`comfyui` が吸収する。`reference_mode` が方式を決める（`localcfg.Model.ReferenceCaps()` が方式・上限枚数・選べる役割を返し、画面と `accepts_references`・`max_reference_images` の元になる）。
+画面と MCP は、どのモデルでも同じ「強さ」（0〜1、既定 0.7。役割「顔だけ」は 0.9、§4.5）と「役割」を渡す。ワークフローの作りの違いは `localcfg`・`comfyui` が吸収する。`reference_mode` が方式を決める（`localcfg.Model.ReferenceCaps()` が方式・上限枚数・選べる役割を返し、画面と `accepts_references`・`max_reference_images` の元になる）。
 
 | `reference_mode` | モデル | 枚数 | 役割 | 強さ s の効き方 |
 |---|---|---|---|---|
 | `img2img` | `chroma1-hd`（`txt2img-chroma`）、`flux1-dev-nsfw-master`（`txt2img-flux-dev-lora`） | 1 | 全体のみ | 参照を VAE で潜在にして途中から生成する。`reference_denoise` の割り当てに `1 − (1 − floor)×s` を入れる（`floor` は `reference_denoise_min`。既定 0、`chroma1-hd` は 0.6。Chroma の schedule は denoise 0.6 未満では絵がほとんど変わらず 0.95 で参照が消えるため、強さの範囲を変化のある区間に広げる。下限は 0.02）。参照が無い実行は `no_reference`（空の潜在に戻す）を当てて参照のノードを外し、テキストから生成と同じになる |
-| `edit` | `noctq-v4-qwen-image21`（`txt2img-qwen-image21`） | 最大 10（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象 | 参照は `TextEncodeQwenImage21` の `image_1`〜に入る（プロンプトの `<image1>` が 1 枚目）。強さ s の参照は、サンプリングの最初の `round(s×steps)` ステップ（最低 1）だけ条件に入り、残りはプロンプトだけで仕上げる。強さが違う参照ごとにサンプリングを区切り（最大 6 区間。区切りが 5 つを超えるほど強さが散らばるときは、均等に選んだ 5 つを残し、ほかの参照の区切りは一番近い残した区切りへ寄せる。終わりまで残る参照にはならない）、各区間を別のエンコーダー・`SamplerCustomAdvanced` で回す。役割は文で伝え（顔だけ: 「顔と同一性だけを保つ」、画風だけ: 「画風・色・雰囲気だけ」）、顔・画風は VAE を渡さない（ビジョンだけで読む）。VAE はデコードのノード（`VAEDecode`）がつなぐ `VAELoader` |
-| `edit`（FLUX.2） | `flux2-klein-4b`（`txt2img-flux2-klein`。#931） | 最大 4（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象 | 参照は視覚モデルではなく潜在として入る: 画像ごとに `ImageScaleToTotalPixels`（約 1 メガピクセル）→ `VAEEncode` → `ReferenceLatent` を、肯定・否定の条件に順に重ねる（ComfyUI の公式の編集テンプレートと同じ。テンプレートは 4 枚分のスロットを持ち、使わない枚数は画像・縮小・VAEEncode・`ReferenceLatent` ごと外れ、`ReferenceLatent` は素通しに戻る）。強さの意味は Qwen の編集と同じ（最初の `round(s×steps)` ステップだけ参照が入る。蒸留版は 4 ステップなので 0.25 刻み。最大 3 つの区切りで、区間ごとに別のエンコーダー・否定の起点・`ReferenceLatent` の鎖・`CFGGuider`・`SamplerCustomAdvanced` で回す）。プロンプトの `<image1>` は klein の書き方の `image 1` に直す。顔・画風の役割は文でだけ伝える（視覚モデルがないので VAE の有無の違いはない）。出力の大きさは縦横比の指定に従い、1 枚目の参照の大きさにはしない |
-| `edit`（Qwen-Image-Edit） | `qwen-image-edit-2511`（`txt2img-qwen-image-edit-2511`。#971） | 最大 3（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象 | 参照は `TextEncodeQwenImageEditPlus` の `image1`〜`image3` に入る（`TextEncodeQwenImage21` と違い入力名が `imageN`。プロンプトの `<image1>` は `Picture 1` に直す）。このエンコーダーは**肯定と否定の 2 つのノード**なので、強さでサンプリングを区切るときは、各区間で両方を同じ参照で作り直す（否定のプロンプトは作り直さず元のまま）。それ以外（強さ s の意味・役割の文・顔と画風の参照に VAE を渡さないこと・LoRA）は `noctq-v4-qwen-image21` と同じ。`ModelSamplingAuraFlow`・`CFGNorm` を通すので、区間分けの `CFGGuider` のモデルもその出力を使う |
+| `edit` | `noctq-v4-qwen-image21`（`txt2img-qwen-image21`） | 最大 10（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象・ポーズだけ（`pose`。Issue #986） | 参照は `TextEncodeQwenImage21` の `image_1`〜に入る（プロンプトの `<image1>` が 1 枚目）。強さ s の参照は、サンプリングの最初の `round(s×steps)` ステップ（最低 1）だけ条件に入り、残りはプロンプトだけで仕上げる。強さが違う参照ごとにサンプリングを区切り（最大 6 区間。区切りが 5 つを超えるほど強さが散らばるときは、均等に選んだ 5 つを残し、ほかの参照の区切りは一番近い残した区切りへ寄せる。終わりまで残る参照にはならない）、各区間を別のエンコーダー・`SamplerCustomAdvanced` で回す。役割は文で伝え（顔だけ: 「顔と同一性だけを保つ」、画風だけ: 「画風・色・雰囲気だけ」）、顔・画風は VAE を渡さない（ビジョンだけで読む）。VAE はデコードのノード（`VAEDecode`）がつなぐ `VAELoader` |
+| `edit`（FLUX.2） | `flux2-klein-4b`（`txt2img-flux2-klein`。#931） | 最大 4（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象・ポーズだけ（`pose`。Issue #986） | 参照は視覚モデルではなく潜在として入る: 画像ごとに `ImageScaleToTotalPixels`（約 1 メガピクセル）→ `VAEEncode` → `ReferenceLatent` を、肯定・否定の条件に順に重ねる（ComfyUI の公式の編集テンプレートと同じ。テンプレートは 4 枚分のスロットを持ち、使わない枚数は画像・縮小・VAEEncode・`ReferenceLatent` ごと外れ、`ReferenceLatent` は素通しに戻る）。強さの意味は Qwen の編集と同じ（最初の `round(s×steps)` ステップだけ参照が入る。蒸留版は 4 ステップなので 0.25 刻み。最大 3 つの区切りで、区間ごとに別のエンコーダー・否定の起点・`ReferenceLatent` の鎖・`CFGGuider`・`SamplerCustomAdvanced` で回す）。プロンプトの `<image1>` は klein の書き方の `image 1` に直す。顔・画風の役割は文でだけ伝える（視覚モデルがないので VAE の有無の違いはない）。出力の大きさは縦横比の指定に従い、1 枚目の参照の大きさにはしない |
+| `edit`（Qwen-Image-Edit） | `qwen-image-edit-2511`（`txt2img-qwen-image-edit-2511`。#971） | 最大 3（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象・ポーズだけ（`pose`。Issue #986） | 参照は `TextEncodeQwenImageEditPlus` の `image1`〜`image3` に入る（`TextEncodeQwenImage21` と違い入力名が `imageN`。プロンプトの `<image1>` は `Picture 1` に直す）。このエンコーダーは**肯定と否定の 2 つのノード**なので、強さでサンプリングを区切るときは、各区間で両方を同じ参照で作り直す（否定のプロンプトは作り直さず元のまま）。それ以外（強さ s の意味・役割の文・顔と画風の参照に VAE を渡さないこと・LoRA）は `noctq-v4-qwen-image21` と同じ。`ModelSamplingAuraFlow`・`CFGNorm` を通すので、区間分けの `CFGGuider` のモデルもその出力を使う |
+| `controlnet`（Issue #976） | `sdxl-controlnet-canny`（`txt2img-sdxl-controlnet`） | ちょうど 1（参照が無い実行は「制御画像が要る」と拒否。`no_reference` と `optional` スロットは持てない） | 全体のみ | 参照は**制御画像**で、`LoadImage` → `ControlNetApplyAdvanced` に入る（コアのノード。追加ノードは要らない）。強さ s は `reference_strength` の割り当てで ControlNet の `strength` に入る（テンプレートの既定 0.7）。前処理（Canny など）は行わないので、線画にした画像を渡す |
+| `ipadapter`（Issue #976） | `sdxl-ipadapter-plus`（`txt2img-sdxl-ipadapter`。`requires_nodes: ["ipadapter-plus"]`） | ちょうど 1（参照が無い実行は「IP-Adapter の参照画像が要る」と拒否） | 全体のみ | 参照は IP-Adapter の画像で、`IPAdapterAdvanced`（追加ノード `ipadapter-plus`）の `weight` に強さ s が入る。ノードが無い間は生成テストの一覧に出ない（custom-nodes.md §6） |
 
 - **LoRA**: `lora_model_node`（モデルを出力するノード）がある画像ワークフローだけが受ける。リクエストの LoRA は、そのノードの出力 0 を使うノードの手前に `LoraLoaderModelOnly` を差し込む（強さ既定 0.4）。受けないモデルでは警告 `lora_unsupported` を出し、送らない。
 - **速さのモード（Issue #930）**: 動画ワークフローは `speed_modes`（`{id, label, overrides[]}` の配列。ID は小文字・数字・`-`）を持てる。**先頭がグラフそのまま（既定）**で `overrides` を持たず、2 つ目以降は `overrides`（`{node, input, value}`。値は JSON か `["<node>", <出力>]` のリンク）でグラフの値（ステップ数・cfg・shift・LoRA を外すリンクの付け替え）を書き換える。リクエストの `speed_mode` が空なら先頭、モードの名前なら その `overrides` を、割り当ての代入のあと・LoRA の挿入の前にグラフへ入れ、**出力ノードから辿れなくなったノード（外した LoRA）を送らない**（サーバーが使わないファイルを読まないため）。ワークフローに無いモードを名指しすると 422（生成テストは見積りの時点で警告 `speed_mode_unsupported` を出し、そのモデルは既定で作る）。検証（`ValidateModel`）は、動画だけ・ID の形と重複・ラベル・先頭に `overrides` が無いこと・各 `overrides` が存在するノードの入力と JSON の値（リンクは存在するノード）を指すことを確かめる。組み込みのテンプレートで持つのは `img2video-wan22-14b-lightx2v`（`fast` / `standard`）だけ。
@@ -115,6 +124,37 @@ openai-compat:lmstudio/flux-schnell
 - **ポーズ・構図を真似させない**: ネガティブに `same pose as reference, same composition as reference, studio portrait` を足す（参照を 1 枚でも使うモデルだけ。ネガティブ欄が無いモデルは `Avoid:` としてプロンプトに畳み込む）。
 - **実機の確認（2026-11-02、RTX 3080 Ti 12GB、ComfyUI 0.42.1、`noctq-v4-qwen-image21`、seed 固定、25 ステップ）**: 参照に生成した顔の画像を 1 枚渡し、出力の顔と参照の顔の類似度（insightface buffalo_l のコサイン類似度）を測った。役割 `edit`・「同じ顔のまま浜辺に立つ」のプロンプトで、参照なし −0.08、強さ 0.5 → 0.16、0.7 → 0.30、0.85 → 0.39、1.0 → 0.49（同一人物と見なせる水準は 0.4〜0.5 以上が目安）。役割 `face`（髪・服・ポーズはプロンプト優先）は同じ強さでも効きが弱く、強さ 1.0 で 0.26。参照なしからは上がるが、顔を固定しきるものではない。顔を確実に揃えるなら LoRA を併用する。img2img の 2 方式（`chroma1-hd`・`flux1-dev-nsfw-master`）はワークフローの構造のテストのみで、GPU では未実行。
   `chroma1-hd` の img2img（同条件、プロンプトは同じ人物の特徴を書いたもの）は、出力と参照の平均画素差（0〜255）が、参照なし 72、強さ 0.2 → 38、0.4 → 20、0.7 → 5.4、1.0 → 3.7 と単調に縮まる。`flux1-dev-nsfw-master` は重みを取得しておらず、LoRA の差し込みも実ファイルでは試していない（ワークフローの構造のテストと偽の ComfyUI でのテストのみ）。
+
+### 4.6 「顔だけ」の参照の固定（第 1 段。Issue #960）
+
+編集モデル（`noctq-v4-qwen-image21`・`qwen-image-edit-2511`。`comfyui/stage` を通る `edit` のテンプレート）の役割「顔だけ」（`face`）は、顔検出モデルなしでも指示文と強さだけで動く。そこに、**追加のダウンロードなし**で次の 3 つを足した。**どれも効果は未検証**（実機で顔の類似度を測っていない。PR #953 の測定は、役割 `face`・強さ 1.0 で buffalo_l のコサイン類似度 0.26）。
+
+| 手 | 中身 | 実装 |
+|---|---|---|
+| ① 参照を顔に切り出す | 役割 `face` の参照を、編集モデルに渡す前に、最も大きい顔のまわり（顔の枠の長辺の 2 倍の正方形。額・髪の生え際・耳・首を含み、服と背景は減る。額の分だけ中心を上へ 0.1 枠分ずらす）に切る。画像の端の顔は、正方形を画像の中へ寄せる（縮めない）。**切らない**場合（顔が無い・顔が 64 px 未満・正方形が画像の 85% 以上＝顔のアップ・検出器の失敗）は元の画像のまま渡し、失敗はログだけに残す。切るのは**役割 `face` を取るモデルへ渡す画像だけ**（全体の参照に落ちるモデルには元の画像のまま）。結果の履歴に残る入力画像は元のまま | `facesim.CropFace`（切り出し。`crop.go`）、`runner/facecrop.go`（`FaceCropFunc`。バッチの入力を読む時に 1 回だけ。モデルごとには切らない）、`app/gentest.go`（`faceCropper`） |
+| ② 指示文を強める | 役割 `face` のときだけ、指示文 `roleSentence` が 3 文になる: 顔と identity だけを取り髪・服・ポーズ・背景は記述に従う（従来の文）／同じ人物であること・顔の形・目・鼻・口・眉・肌の色・見かけの年齢／別の顔や理想化した顔を描かず、その画像から他を取らないこと。他の役割の文は変えない。EditPlus のエンコーダーでは `<imageN>` が `Picture N` になるのは従来どおり（番号付けは `promptFor` が数える） | `comfyui/stage/stage.go` の `roleSentence` |
+| ③ 既定の強さを上げる | 役割 `face` で強さを送らない参照の既定を 0.7 から **0.9** にする（`localcfg.DefaultFaceReferenceStrength`・`DefaultStrengthOf(role)`。サンプリングの最初の 90% に参照が入る）。利用者が指定した強さは変えない。他の役割は 0.7 のまま。画面のスライダーは役割が「顔だけ」のとき 0.9 から始まり（`facelock.DefaultStrengthOf`）、利用者がスライダーを動かすまでは役割の切り替えに追従する（`inputs.ts` の `data-touched`）。MCP は強さを省けばエンジン側の 0.9 になる | `localcfg/reference.go`、`organisms/gentest/refs_data.go`・`refrow.templ`、`static/src/components/gentest/inputs.ts` |
+
+- **顔検出器**: Judge の顔照合と同じ `facesim.Engine`（YuNet、MIT、OpenCV Zoo。[model-adapters.md](model-adapters.md) §10.1）を使う。InsightFace（antelopev2・buffalo_l など）の重みは**非商用**なので、この経路には使わない。モデルは同梱せず利用者が配置する既存の仕組み（`scripts/fetch-face-models.sh`。コミット固定・SHA-256 検証。`--face-model-dir`）のままで、**新しい重みは足していない**ので、カタログの `data/assets` には載せていない。モデルまたは ONNX Runtime が無いときは、①だけが働かず（元の画像のまま）、②③は働く。
+- **実モデルでの確認**（開発機、OpenCV のサンプル画像 `lena.jpg` 512×512）: 切り出しは 412×412 で、元の画像との SFace 類似度 0.93（`TestONNX_CropFaceKeepsTheFace`。環境変数は model-adapters.md §10.1 と同じ）。生成した画像での効果は測っていない。
+- **画面の説明**: 入力画像の「?」に、「顔だけ」を編集モデルで使うと指示文と強さで寄せる（顔検出モデルがあるときは切り出して渡す）が、同じ顔の固定は弱めで、Qwen-Image-Edit-2511 の方が向いているかもしれない、と書く（`organisms/gentest/facelock.Help`。画像だけ。効果を測っていないことも書く）。img2img のモデルで「顔だけ」が全体の参照に落ちることの案内は #959 の実行前のモーダルで、この Issue の範囲ではない。
+- **第 2 段**: `qwen-image-edit-2511`（Apache-2.0。#971）は上の ①〜③ がそのまま効く（`comfyui/facelocktest` が 2 つのテンプレートで確かめる）。PuLID-Flux-Chroma は**許可リスト（[custom-nodes.md](model-manager/custom-nodes.md) §2.1）に載せたが導入できない**（`install_blocked`）。理由は次の表。
+- **効果の測り方**（実機）: 同じ参照・同じ prompt・同じ seed で、参照なし／全体の参照／役割 `face`（切り出しなし・あり）を作り、`facesim` の SFace（Apache-2.0。重みは配布元がライセンスを明記しているが、学習データの権利は §8 のとおり確かめられていない）で参照と出力の顔の類似度を測る。PR #953 の buffalo_l の数値と**同じ画像セットで併記**するため、手動のテスト `TestONNX_FaceLockPairs`（`facesim/pairs_test.go`。`MAM_FACESIM_PAIRS` に `<name>.ref.png`・`<name>.out.png`・任意の `<name>.old`）が、全体の参照の類似度・切り出した参照の類似度・旧指標の値・「他のペアの出力との平均」（別人の水準）を 1 つの表に出す。閾値（合否）はこの表を見てから決める（今は置かない）。SFace と buffalo_l の相関は未測定。
+
+| 候補 | 採否 | 理由 |
+|---|---|---|
+| 顔検出: YuNet（既存の `facesim`） | **採用** | MIT。実装・配置・検証の仕組みが既にあり、新しい重みも配布物も増えない。Go から ONNX Runtime を `purego` で呼ぶので `CGO_ENABLED=0` のまま |
+| 顔検出: InsightFace（SCRFD・antelopev2） | 不採用 | 学習済みの重みが非商用の研究用途のみ（手動でも自動でも同じ文言） |
+| 顔検出: YOLO-Face | 不採用 | GPL-3.0 |
+| ワークフローの `ImageCrop`（中央寄りの切り出し） | 不採用 | 顔の位置を知らずに切るので、顔が中央に無い写真で顔を外す。検出器が使えるのでその必要がない |
+| UI で利用者が顔を囲む | 今回は見送り | 効果の見込みが立つ前に画面（トリミング UI）を作らない。自動の切り出しの効果を測ってから決める |
+| 切り出しをワークフロー（ComfyUI）の中で行う | 不採用 | 顔検出のノードが追加ノードになり、同梱の Python に依存が無い（controlnet-aux と同じ理由。custom-nodes.md §5）。mam の側で切れば、ノードも依存も要らない |
+| 切り出しをモデルごとに行う | 不採用 | 同じバッチの同じ画像を、モデルの数だけ検出し直す。バッチの入力を読む時に 1 回切って、役割 `face` を取るモデルへだけ渡す |
+| 既定の強さ 0.9 | 採用 | 強さ 1.0 は役割 `face` でも最後の 1 ステップまで参照が入り、プロンプトの服・背景の指示を弱める恐れがある。顔は後半（細部）で決まるので 0.7 の「最後の 30% に参照が無い」を縮める。0.9 の値は**測っていない選択**で、実測の表で見直す |
+| 強さの下限を設ける（`face` で 0.5 未満を引き上げる） | 不採用 | 利用者が選んだ強さを黙って変えない（0.1 を選んだ人に 0.5 を送ると意図に反する）。既定の引き上げだけにした |
+| PuLID-Flux-Chroma（`pulid-flux-chroma`） | **許可リストに載せるだけ**（`install_blocked`） | ノードの依存（insightface・facexlib・onnxruntime・timm・ftfy・regex）が同梱の Python（`python.json`）に無く、mam は pip を実行しない。InsightFace の antelopev2 は非商用で、mam は同梱も自動の取得もしない。実行時に facexlib（GitHub のリリース）と EVA02-CLIP（Hugging Face）の重みを固定も検証もなしに取得する。ノードのコードのライセンスは LICENSE（Apache-2.0）と README（MIT）が食い違い `commercial: unknown`。PuLID の重み（guozinan/PuLID）はカードが apache-2.0。テンプレートは作らない（Chroma の `time_in` の問題を直した fork だが、同梱の Chroma1-HD での動作は未確認） |
+| FaceNet 経路の PuLID（`lldacing/ComfyUI_PuLID_Flux_ll`） | 調べていない | InsightFace を避けられるが、同じく依存が同梱の Python に無く、重みの条件も未確認。導入できる見込みが立たない |
+| SFace を埋め込みに追加 | **既に入っている** | `facesim` の埋め込みは最初から SFace（Apache-2.0）。重みを足す必要はなく、足したのは旧指標との併記の手動テストだけ |
 
 ### 4.1 LTX-2.5（Lightricks。映像と音声を一緒に作る動画モデル）
 
@@ -133,7 +173,7 @@ openai-compat:lmstudio/flux-schnell
 
 **FLF2V・プロンプト拡張・DFR・NVFP4（Issue #968）**: 最初と最後のフレームの 2 枚から動画を作るテンプレート `flf2v-ltx-2-5`（ほかに `-nvfp4`・`-uncensored`。`first_frame` と `last_frame` の割り当て）、短いプロンプトを Gemma 4 E2B で書き換える `txt2video-ltx-2-5-enhanced`・`img2video-ltx-2-5-enhanced`・`flf2v-ltx-2-5-enhanced`、3 段の DFR `img2video-ltx-2-5-dfr`（時間方向の拡大・詳細化の IC-LoRA。IC-LoRA は別のゲートのリポジトリで、そのページでも同意とアクセスの承認が要る）、NVFP4 の拡散モデルの `*-ltx-2-5-nvfp4`（NVIDIA Blackwell 世代の GPU 向け）を足した。どれもコアのノードだけで、カスタムノードは使わない。カタログのモデル・ファイル・ライセンス・未計測の項目は [model-manager/model-manager.md](model-manager/model-manager.md) §4.2・§4.5・§11。
 
-### 4.5 一部だけ描き直す（`reference_mode: inpaint`。Issue #974）
+### 4.7 一部だけ描き直す（`reference_mode: inpaint`。Issue #974）
 
 `inpaint` は元画像 1 枚（`reference_image`）とマスク 1 枚（`mask_image`。白が描き直す、黒が残す）と `denoise`（0 より大きく 1 以下。テンプレートのリテラルが既定）を必須にする。組み込みは `inpaint-sdxl`（カタログ `sdxl-base` のワークフロー `sdxl-base-inpaint`）と `inpaint-flux-dev`（`flux1-dev` の `flux1-dev-inpaint`）。どちらもコアノードだけ（`LoadImage`・`ImageToMask` channel=red・`VAEEncode`・`SetLatentNoiseMask`・`KSampler`・`VAEDecode`・`ImageCompositeMasked`・`SaveImage`）。`ImageCompositeMasked` の `destination` は元画像、`source` はデコード結果、`mask` は `ImageToMask` なので、マスクの外は元の画素のまま残る（画素比較は GPU 未実施）。リクエストが `denoise` を省くとグラフの値を書き換えない。モデル情報の「インペイント対応」は `supports_inpaint`（この方式で denoise の既定が読めたとき）。起動時の更新（§4.2）は既存ワークフローの中身を揃えるだけで、新しいワークフロー名は足さない。インペイント用は、モデルを入れ直すと入る。
 

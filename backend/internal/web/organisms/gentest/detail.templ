@@ -3,6 +3,8 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inpaintlink"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -39,16 +41,12 @@ templ ResultDetail(d Detail) {
 			if d.MatchURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "画像から似せる", templ.SafeURL(d.MatchURL), templ.Attributes{"data-testid": "gt-match-link"})
 			}
-			if d.InpaintURL != "" {
-				@atoms.ButtonLink(atoms.TonePrimary, "一部だけ描き直す", templ.SafeURL(d.InpaintURL), templ.Attributes{"data-testid": "gt-inpaint"})
-			}
-			if d.RedrawFrom != "" {
-				@atoms.ButtonLink(atoms.ToneNeutral, "元の結果", templ.SafeURL(d.RedrawFrom), templ.Attributes{"data-testid": "gt-inpaint-source"})
-			}
+			@inpaintlink.Links(d.InpaintURL, d.RedrawFrom)
 			<form hx-delete={ paths.GenerationTestPart("results", d.Card.ID) } hx-confirm="この結果とファイルを削除しますか？" hx-target="body" hx-push-url="true">
 				@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"type": "submit", "data-testid": "gt-delete"})
 			</form>
 		</div>
+		@upscalebox.Box(d.Upscale)
 		if d.English != "" || d.EnglishNegative != "" {
 			<div class="flex flex-col gap-1" data-testid="gt-english">
 				<h3 class="text-xs text-neutral-400">英訳（送った英語）</h3>

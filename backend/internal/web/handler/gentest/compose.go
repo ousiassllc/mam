@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/posescreen"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/gin-gonic/gin"
@@ -66,6 +67,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 			c.Picked = append(c.Picked, row)
 		}
 	}
+	c.Poses = media != gentest.MediaVideo && h.Svc.Poses != nil
 	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.opts.AvoidPose, h.Svc.LoRAs(ctx, media)
 	if f.opts.LoRA != nil {
 		c.LoRA, c.LoRAStrength = f.opts.LoRA.Name, f.opts.LoRA.Strength
@@ -205,7 +207,11 @@ func (h Handlers) RefRow(c *gin.Context) {
 		return
 	}
 	ctx, media := c.Request.Context(), c.Query(view.FieldMedia)
-	row, ok := h.refRow(ctx, refform.Input(r, gentest.RoleReference, nil))
+	role := gentest.RoleReference
+	if r.Source == gentest.FromPoseLibrary { // a pose picture is a pose until the user says otherwise
+		role = gentest.RolePose
+	}
+	row, ok := h.refRow(ctx, refform.Input(r, role, nil))
 	if !ok {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
@@ -249,6 +255,11 @@ func (h Handlers) refRow(ctx context.Context, in gentest.RefInput) (view.Ref, bo
 			return row, false
 		}
 		row = historyRef(d.ResultView)
+	case gentest.FromPoseLibrary:
+		var ok bool
+		if row, ok = posescreen.RefOf(h.Svc, r.ID); !ok {
+			return row, false
+		}
 	case gentest.FromProjectAsset, gentest.FromReferenceItem:
 		images, err := h.Svc.ProjectImages(ctx, r.ProjectID)
 		if err != nil {
