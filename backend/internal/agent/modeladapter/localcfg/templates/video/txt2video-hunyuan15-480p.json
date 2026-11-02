@@ -6,6 +6,7 @@
  "model": {
   "media": "video",
   "workflow": {
+   "prompt_weight": "unsupported",
    "graph": {
     "11": {
      "class_type": "DualCLIPLoader",
@@ -210,6 +211,26 @@
      "param": "fps",
      "node": "101",
      "input": "fps"
+    },
+    {
+     "param": "steps",
+     "node": "128",
+     "input": "steps"
+    },
+    {
+     "param": "scheduler",
+     "node": "128",
+     "input": "scheduler"
+    },
+    {
+     "param": "cfg",
+     "node": "131",
+     "input": "cfg"
+    },
+    {
+     "param": "sampler",
+     "node": "130",
+     "input": "sampler_name"
     }
    ],
    "output_node": "102",

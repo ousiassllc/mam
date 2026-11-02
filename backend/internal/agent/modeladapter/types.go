@@ -54,8 +54,7 @@ func withSeed(body map[string]any, seed *int64) map[string]any {
 	return body
 }
 
-// ImageBackend calls one image model. apiModel is the vendor's model identifier from Config.
-// Failures of the vendor or the network MUST be *ProviderError so they can be classified.
+// ImageBackend calls one image model. apiModel is the vendor's model identifier from Config. Failures of the vendor or the network MUST be *ProviderError.
 type ImageBackend interface {
 	GenerateImage(ctx context.Context, apiModel string, req ImageRequest) (ImageResult, error)
 }
@@ -70,8 +69,9 @@ type VideoRequest struct {
 	FirstFrame      *Input
 	LastFrame       *Input
 	References      []Input
-	Seed            *int64 // for a model that takes one (SupportsSeed); nil lets the vendor choose
-	SpeedMode       string // one of the speed modes of a ComfyUI workflow (localcfg.SpeedMode), "" its default; other models ignore it
+	Seed            *int64                    // for a model that takes one (SupportsSeed); nil lets the vendor choose
+	SpeedMode       string                    // one of the speed modes of a ComfyUI workflow (localcfg.SpeedMode), "" its default; other models ignore it
+	Sampling        localcfg.SamplingSettings // steps, cfg, sampler, scheduler of a ComfyUI workflow that takes them (not steps and cfg under speed modes); others ignore it
 }
 
 // VideoResult is a generated video file. The caller owns File and MUST store or discard it.

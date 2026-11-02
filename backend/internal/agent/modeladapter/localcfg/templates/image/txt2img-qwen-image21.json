@@ -6,6 +6,7 @@
  "model": {
   "media": "image",
   "workflow": {
+   "prompt_weight": "unsupported",
    "graph": {
     "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "NoctQ_V4_int8_convrot.safetensors", "weight_dtype": "default"}},
     "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen3vl_8b_int8_convrot.safetensors", "type": "qwen_image", "device": "default"}},
@@ -41,7 +42,11 @@
     {"param": "reference_image", "node": "107", "input": "image", "index": 6, "optional": true},
     {"param": "reference_image", "node": "108", "input": "image", "index": 7, "optional": true},
     {"param": "reference_image", "node": "109", "input": "image", "index": 8, "optional": true},
-    {"param": "reference_image", "node": "110", "input": "image", "index": 9, "optional": true}
+    {"param": "reference_image", "node": "110", "input": "image", "index": 9, "optional": true},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
    ],
    "reference_mode": "edit",
    "lora_model_node": "37",

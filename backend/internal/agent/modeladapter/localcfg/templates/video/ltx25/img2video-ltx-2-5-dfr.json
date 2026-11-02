@@ -2,6 +2,7 @@
  "id": "img2video-ltx-2-5-dfr", "label": "LTX-2.5 DFR: 先頭フレームから動画（音声つき・3 段）", "media": "video",
  "description": "Lightricks の LTX-2.5（蒸留版 22B）の、先頭フレームから動画を音声つきで作る DFR（Diffusion Fidelity Rendering）のワークフロー。Comfy 公式のテンプレート（video_ltx2_5_dfr_i2v）を API 形式に展開したもので、ComfyUI 標準ノードだけを使う。半分の解像度で 1 段目（キーフレームも一緒に作る）→ 潜在空間で 2 倍に拡大して詳細化の IC-LoRA で 2 段目 → 時間方向に 2 倍にして 3 段目、の 3 段で作る。出力は 48fps（作ったフレーム数の 2 倍。長さは同じ）。24fps で数えるフレーム数は 8n+1、幅と高さは 64 の倍数。プロンプト拡張は使わず、プロンプトはそのまま渡す。Hugging Face の gated なリポジトリ Lightricks/LTX-2.5 と Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler の 2 つのリポジトリのファイル（トークンと承認が要る）を使う。GPU では未実行（構造のテストのみ）。",
  "model": {"media": "video", "video": {"durations": [3, 4, 5, 6], "resolutions": ["480p", "720p"], "native_audio": true}, "workflow": {
+  "prompt_weight": "unsupported",
   "graph": {
    "900": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
    "5729": {"class_type": "ResizeImageMaskNode", "inputs": {"resize_type": "scale by multiplier", "resize_type.multiplier": 0.25, "scale_method": "area", "input": ["5904", 0]}},

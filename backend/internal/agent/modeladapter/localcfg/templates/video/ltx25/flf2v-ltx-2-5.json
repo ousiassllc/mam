@@ -2,6 +2,7 @@
  "id": "flf2v-ltx-2-5", "label": "LTX-2.5: 最初と最後のフレームから動画（音声つき）", "media": "video",
  "description": "Lightricks の LTX-2.5（蒸留版 22B）の、先頭フレームと最後のフレームの 2 枚から、その間の動きを音声つきで作るワークフロー（FLF2V）。Comfy 公式のテンプレート（video_ltx2_5_flf2v）を API 形式に展開したもので、ComfyUI 標準ノードだけを使う。拡大モデルは使わず、指定した解像度のまま 1 段で作る（2 段のテンプレートより軽い）。2 枚の画像は同じ縦横比にする。24fps、フレーム数は 8n+1、幅と高さは 32 の倍数。Hugging Face の gated なリポジトリ Lightricks/LTX-2.5 のファイル（トークンと承認が要る）を使う。GPU では未実行（構造のテストのみ）。",
  "model": {"media": "video", "video": {"durations": [3, 4, 5, 6], "resolutions": ["480p", "720p"], "native_audio": true}, "workflow": {
+  "prompt_weight": "unsupported",
   "graph": {
    "195": {"class_type": "LTXVPreprocess", "inputs": {"img_compression": 18, "image": ["214", 0]}},
    "196": {"class_type": "RandomNoise", "inputs": {"noise_seed": 0}},

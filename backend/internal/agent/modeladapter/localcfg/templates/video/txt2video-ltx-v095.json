@@ -6,6 +6,7 @@
  "model": {
   "media": "video",
   "workflow": {
+   "prompt_weight": "weak",
    "graph": {
     "44": {
      "class_type": "CheckpointLoaderSimple",
@@ -192,6 +193,21 @@
      "param": "fps",
      "node": "69",
      "input": "frame_rate"
+    },
+    {
+     "param": "steps",
+     "node": "71",
+     "input": "steps"
+    },
+    {
+     "param": "cfg",
+     "node": "72",
+     "input": "cfg"
+    },
+    {
+     "param": "sampler",
+     "node": "73",
+     "input": "sampler_name"
     }
    ],
    "output_node": "79",

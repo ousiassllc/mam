@@ -124,11 +124,13 @@ func (o RefOption) StrengthOrDefault() float64 {
 	return o.Strength
 }
 
-// ImageOptions are the parts of an image request that only a workflow with reference images or a LoRA uses: Refs is one entry
+// ImageOptions are the parts of an image request that only a workflow with reference images, a LoRA or sampling values uses: Refs is one entry
 // for each input image of the request, in its order (a missing entry is the whole picture at the default strength).
 type ImageOptions struct {
 	Refs []RefOption
 	LoRA *LoRA
+	// Sampling overrides the steps, cfg, sampler and scheduler of a workflow that takes them.
+	Sampling SamplingSettings
 }
 
 // Ref is the option of the i-th input image.
