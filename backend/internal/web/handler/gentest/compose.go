@@ -45,7 +45,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	if media == gentest.MediaVideo {
 		c.Resolutions, c.Durations = videoChoices(models)
 		c.Resolution = pick(f.resol, c.Resolutions, "720p")
-		c.Duration = pick(f.duration, c.Durations, "5")
+		c.Duration, c.SpeedModes, c.SpeedMode = pick(f.duration, c.Durations, "5"), refform.SpeedChoices(models), f.opts.SpeedMode
 	}
 	if list, err := h.Svc.Prompts(ctx); err == nil {
 		for _, p := range list[:min(len(list), recentPrompts)] {
@@ -62,9 +62,9 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 			c.Picked = append(c.Picked, row)
 		}
 	}
-	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.avoidPose, h.Svc.LoRAs(ctx, media)
-	if f.lora != nil {
-		c.LoRA, c.LoRAStrength = f.lora.Name, f.lora.Strength
+	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.opts.AvoidPose, h.Svc.LoRAs(ctx, media)
+	if f.opts.LoRA != nil {
+		c.LoRA, c.LoRAStrength = f.opts.LoRA.Name, f.opts.LoRA.Strength
 	}
 	if s, err := h.Svc.Spend(ctx); err == nil {
 		c.Spend = spendText(s)

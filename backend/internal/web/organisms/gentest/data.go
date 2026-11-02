@@ -136,7 +136,14 @@ type Compose struct {
 	LoRAs        []string
 	LoRA         string
 	LoRAStrength *float64
+	// SpeedModes are the speed modes the video models offer (none: the choice is not drawn) and SpeedMode the one chosen ("" for each
+	// model's default).
+	SpeedModes []SpeedChoice
+	SpeedMode  string
 }
+
+// SpeedChoice is a speed mode of a video model (localcfg.SpeedMode): the ID the form posts and the label of its option.
+type SpeedChoice struct{ ID, Label string }
 
 // Hidden is a form value the confirmation carries back unchanged.
 type Hidden struct{ Name, Value string }

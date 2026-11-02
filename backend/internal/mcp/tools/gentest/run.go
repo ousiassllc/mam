@@ -85,6 +85,8 @@ type RequestInput struct {
 	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty" jsonschema:"画像だけ。参照画像のポーズ・構図を真似ないようにする（参照を使うモデルのネガティブプロンプトに「同じポーズ・構図」を足す。ネガティブの欄が無いモデルは Avoid: として書き足す。参照画像が無い・参照画像を使うモデルが無いときは何も起きず、警告も出ない）"`
 	// LoRA is applied together with the references to every model that supports it.
 	LoRA *LoRAInput `json:"lora,omitempty" jsonschema:"画像だけ。参照画像と一緒に使う LoRA。supports_lora でないモデルは警告 lora_unsupported で使わない"`
+	// SpeedMode picks how a video model samples (VideoCaps.SpeedModes).
+	SpeedMode string `json:"speed_mode,omitempty" jsonschema:"動画だけ。速さのモード（list_generation_models のモデルの video.speed_modes の id。例: Wan 2.2 14B + LightX2V の fast = 4 ステップ・cfg 1 / standard = 通常の 20 ステップ・cfg 3.5）。省くと各モデルの既定（speed_modes の default）。そのモードを持たないモデルは警告 speed_mode_unsupported で既定のまま作る"`
 	// TranslateToEnglish is a pointer: omitted means the default of the screen (on), false is a deliberate off.
 	TranslateToEnglish *bool `json:"translate_to_english,omitempty" jsonschema:"プロンプトとネガティブプロンプトを LLM（LLM の割り当ての Prompt Planner）で英語に訳してから送る。既定 true（画面と同じ）。すでに英語の文は訳さずそのまま。訳せなければ何も生成せずエラー（upstream）。見積りには訳す文の数が単価なしの行（model が translate）として入る。false でそのまま送る"`
 }
@@ -92,7 +94,7 @@ type RequestInput struct {
 func (in RequestInput) request() gentest.Request {
 	r := gentest.Request{
 		Media: in.Media, Models: in.Models, Count: in.Count, AspectRatio: in.AspectRatio, Resolution: in.Resolution,
-		DurationSeconds: in.DurationSeconds, TranslateToEnglish: gentest.DefaultTranslate, AvoidReferencePose: in.AvoidReferencePose,
+		DurationSeconds: in.DurationSeconds, TranslateToEnglish: gentest.DefaultTranslate, AvoidReferencePose: in.AvoidReferencePose, SpeedMode: in.SpeedMode,
 	}
 	if in.LoRA != nil {
 		r.LoRA = &gentest.LoRAInput{Name: in.LoRA.Name, Strength: in.LoRA.Strength}

@@ -1,5 +1,5 @@
 // Package refform reads and writes the input images of the generation test form: the chosen images with their role and
-// strength (ref, role_<ref>, strength_<ref>), the options that go with them (avoid_pose, lora, lora_strength) and the files
+// strength (ref, role_<ref>, strength_<ref>), the options that go with them (avoid_pose, lora, lora_strength, speed_mode) and the files
 // the browser sent (upload, upload_first, upload_last). The handlers of web/handler/gentest use it for the compose form, the
 // estimate and the hidden fields of the confirmation.
 package refform
@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
 
@@ -86,14 +87,37 @@ func strengthOf(v string) *float64 {
 	return &f
 }
 
-// Options reads the options of an image batch: whether the pose of the references is not to be copied, and the LoRA (nil for
-// none).
-func Options(v url.Values) (avoidPose bool, lora *gentest.LoRAInput) {
-	avoidPose = slices.Contains([]string{"on", "1", "true"}, v.Get(view.FieldAvoidPose))
+// Opts are the options of a batch besides its inputs: whether the pose of the references is not to be copied and the LoRA (nil
+// for none) of an image batch, the speed mode of a video batch ("" for each model's default).
+type Opts struct {
+	AvoidPose bool
+	LoRA      *gentest.LoRAInput
+	SpeedMode string
+}
+
+// Options reads the options of a batch.
+func Options(v url.Values) Opts {
+	o := Opts{AvoidPose: slices.Contains([]string{"on", "1", "true"}, v.Get(view.FieldAvoidPose)), SpeedMode: strings.TrimSpace(v.Get(view.FieldSpeedMode))}
 	if name := strings.TrimSpace(v.Get(view.FieldLoRA)); name != "" {
-		lora = &gentest.LoRAInput{Name: name, Strength: strengthOf(v.Get(view.FieldLoRAStrength))}
+		o.LoRA = &gentest.LoRAInput{Name: name, Strength: strengthOf(v.Get(view.FieldLoRAStrength))}
 	}
-	return avoidPose, lora
+	return o
+}
+
+// SpeedChoices are the speed modes the video models offer, without duplicates (the first label of an ID wins).
+func SpeedChoices(models []modelcatalog.Info) []view.SpeedChoice {
+	var out []view.SpeedChoice
+	for _, m := range models {
+		if m.Video == nil {
+			continue
+		}
+		for _, s := range m.Video.SpeedModes {
+			if !slices.ContainsFunc(out, func(c view.SpeedChoice) bool { return c.ID == s.ID }) {
+				out = append(out, view.SpeedChoice{ID: s.ID, Label: s.Label})
+			}
+		}
+	}
+	return out
 }
 
 // Hidden carries the images and the options of a request to the confirmation, so that "実行" runs the same request.
@@ -108,6 +132,9 @@ func Hidden(req gentest.Request) []view.Hidden {
 	}
 	if req.AvoidReferencePose {
 		h = append(h, view.Hidden{Name: view.FieldAvoidPose, Value: "on"})
+	}
+	if req.SpeedMode != "" {
+		h = append(h, view.Hidden{Name: view.FieldSpeedMode, Value: req.SpeedMode})
 	}
 	if l := req.LoRA; l != nil {
 		h = append(h, view.Hidden{Name: view.FieldLoRA, Value: l.Name})

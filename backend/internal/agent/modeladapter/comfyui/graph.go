@@ -27,6 +27,7 @@ type values struct {
 	first, last      *modeladapter.Input
 	opts             localcfg.ImageOptions
 	denoiseFloor     float64 // the workflow's ReferenceDenoiseMin
+	speedMode        string  // the request's VideoRequest.SpeedMode ("": the workflow's first)
 }
 
 // imageValues are the values of an image request. A workflow with a reference mode (a bundled img2img or editing model) takes
@@ -52,7 +53,7 @@ func videoValues(wf localcfg.Workflow, req modeladapter.VideoRequest) values {
 	return values{
 		prompt: req.Prompt, negative: req.NegativePrompt, seed: seedOr(req.Seed), width: w, height: h,
 		frames: wf.Frames(req.DurationSeconds), fps: wf.FPSOrDefault(),
-		references: req.References, first: req.FirstFrame, last: req.LastFrame,
+		references: req.References, first: req.FirstFrame, last: req.LastFrame, speedMode: req.SpeedMode,
 	}
 }
 
@@ -142,6 +143,9 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 			return nil, b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the %s value cannot be put into the workflow: %v", a.Param, err), nil)
 		}
 		g[a.Node].Inputs[a.Input] = raw
+	}
+	if err := applySpeedMode(g, *b.Model.Workflow, v.speedMode); err != nil {
+		return nil, b.Client.Error(http.StatusUnprocessableEntity, "the workflow is unusable: "+err.Error(), nil)
 	}
 	dropUnused(g, *b.Model.Workflow, v)
 	applyLoRA(g, b.Model.Workflow.LoraModelNode, v.opts.LoRA)

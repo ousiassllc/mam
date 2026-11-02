@@ -48,3 +48,25 @@ func WithReferenceModels(baseURL string) Option {
 		r.T.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
 	}
 }
+
+// SpeedModel is the local ComfyUI video model WithSpeedModel adds: a first-frame model with two speed modes, fast (the default) and standard
+// (Wan 2.2 14B with the LightX2V LoRA, Issue #930).
+var SpeedModel = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "wan"))
+
+// WithSpeedModel adds SpeedModel to the rig, with a fake backend, at the endpoint "bundled-comfyui" ("" is a closed port).
+func WithSpeedModel() Option {
+	return func(r *Rig, d *gentest.Deps) {
+		w := &localcfg.Workflow{
+			Assignments: []localcfg.Assignment{{Param: localcfg.ParamFirstFrame, Node: "1", Input: "image"}},
+			SpeedModes:  []localcfg.SpeedMode{{ID: "fast", Label: "4 ステップ（速い）"}, {ID: "standard", Label: "通常（20 ステップ）"}},
+		}
+		r.Config.Endpoints = map[string]localcfg.Endpoint{EndpointName: {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:1"}}
+		r.Config.LocalModels = map[string]localcfg.Model{
+			localcfg.Key(EndpointName, "wan"): {Media: localcfg.MediaVideo, Workflow: w, Video: &localcfg.VideoSettings{Durations: []float64{3, 5}, Resolutions: []string{"480p", "720p"}}},
+		}
+		r.extra = append(r.extra, SpeedModel)
+		d.BundledEndpoint = EndpointName
+		localbackends.Publish(r.Config)
+		r.T.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
+	}
+}

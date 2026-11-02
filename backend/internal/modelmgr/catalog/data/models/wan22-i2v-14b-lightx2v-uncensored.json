@@ -1,0 +1,91 @@
+{
+ "id": "wan22-i2v-14b-lightx2v-uncensored",
+ "name": "Wan 2.2 I2V 14B + LightX2V 4-step Uncensored LoRA",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "wan22-i2v-14b（ベースは共有）に、LightX2V の 4 ステップ蒸留に非検閲の学習を重ねた LoRA（高ノイズ用・低ノイズ用、各 1.2 GB。rzgar 作）を重ねる構成（成人向け）。4 ステップ・cfg 1 で速く作れる。この LoRA は高速化の部分を含むため、強さを下げるとブレて動きが崩れる（作者の注意）。強さは 1 のまま使う。ベースを導入済みなら、取得するのは LoRA の 2.5 GB だけ。16fps。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。",
+ "files": [
+  {
+   "name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+   "sha256": "6122e79d55e0f235698d11d657f3b196c5273c830da00b2b013c5a048d5e6a42",
+   "size": 14294742832
+  },
+  {
+   "name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+   "sha256": "5471a457b6ac404202a5fbe6c11595a3d5641fc766b00f38763f72303fffc21e",
+   "size": 14294742832
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  },
+  {
+   "name": "Wan2.2_LightX2V_high_n54vv.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/rzgar/Wan2.2_LightX2V_4Step_Uncensored/resolve/adc4ca92246994f55628e2aceef736f0a90443a8/Wan2.2_LightX2V_high_n54vv.safetensors",
+   "sha256": "13be3b91290212ada7f9097d7aa1c1354493004952a65794acafa0e9f66122ac",
+   "size": 1245752600,
+   "source_note": "Hugging Face の rzgar/Wan2.2_LightX2V_4Step_Uncensored（作者のリポジトリ。Civitai などの原本は無い）。SHA-256 とサイズは、2026-11-02 に Hugging Face の API とダウンロード URL の X-Linked-ETag で確かめた。"
+  },
+  {
+   "name": "Wan2.2_LightX2V_low_n54vv.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/rzgar/Wan2.2_LightX2V_4Step_Uncensored/resolve/adc4ca92246994f55628e2aceef736f0a90443a8/Wan2.2_LightX2V_low_n54vv.safetensors",
+   "sha256": "85fb420fdcd219c08fed2432f932179103546ac2c55a463feffecdce1c6a6f5d",
+   "size": 1245752600,
+   "source_note": "Hugging Face の rzgar/Wan2.2_LightX2V_4Step_Uncensored（作者のリポジトリ。Civitai などの原本は無い）。SHA-256 とサイズは、2026-11-02 に Hugging Face の API とダウンロード URL の X-Linked-ETag で確かめた。"
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "wan22-i2v-14b と同じ（fp8 の 14B ＋ LoRA）。Issue #930 の調査。mam の実機では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0-declared",
+  "version": "1",
+  "name": "Apache License 2.0（モデルカードの宣言だけ。本文なし）",
+  "url": "https://huggingface.co/rzgar/Wan2.2_LightX2V_4Step_Uncensored",
+  "summary": "ベースの Wan 2.2・LightX2V は Apache-2.0。この LoRA のモデルカードも license: apache-2.0 と宣言しているが、LICENSE の本文も、非検閲の学習に使ったデータの出所も無い。宣言だけでは商用で使ってよいか確かめられないので、商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。成人向けのモデルなので、利用条件への同意を取る。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル（Wan 2.2 I2V 14B）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   },
+   {
+    "part": "LoRA（rzgar の LightX2V 4Step Uncensored）",
+    "name": "Apache License 2.0（モデルカードの宣言だけ）",
+    "url": "https://huggingface.co/rzgar/Wan2.2_LightX2V_4Step_Uncensored",
+    "commercial": "unknown"
+   }
+  ],
+  "notice": "この mam のインストール先に取得するモデルです。この LoRA のライセンスはモデルカードの宣言（Apache-2.0）だけで、LICENSE の本文と学習データの出所を確認できていません。商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-i2v-14b-lightx2v-uncensored",
+   "template": "img2video-wan22-14b-lightx2v-uncensored"
+  }
+ ]
+}

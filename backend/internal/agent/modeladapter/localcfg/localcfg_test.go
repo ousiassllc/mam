@@ -128,7 +128,7 @@ var coreNodes = []string{
 	"LTXVScheduler", "LTXVSeparateAVLatent", "LatentUpscaleModelLoader", "LoadImage", "LoraLoaderModelOnly",
 	"ManualSigmas", "ModelSamplingAuraFlow", "ModelSamplingSD3", "PrimitiveInt", "RandomNoise", "SamplerCustom",
 	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "SplitSigmasDenoise", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
-	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo",
+	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo", "EmptyHunyuanLatentVideo", // the last one: Wan 2.2 Remix T2V (Issue #930)
 	"EmptyFlux2LatentImage", "Flux2Scheduler", "ImageScaleToTotalPixels", "ReferenceLatent", // FLUX.2 klein (Issue #931)
 }
 
@@ -136,7 +136,7 @@ var coreNodes = []string{
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 22)
+	require.Len(t, templates, 25)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -153,7 +153,7 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.Equal(t, tpl.ID, got.ID)
 	}
 	assert.Equal(t, 10, byMedia[localcfg.MediaImage])
-	assert.Equal(t, 12, byMedia[localcfg.MediaVideo])
+	assert.Equal(t, 15, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")
 	caps, ok := i2v.Model.VideoCaps()
