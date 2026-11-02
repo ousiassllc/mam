@@ -1,4 +1,4 @@
-package gentest_test
+package composetest_test
 
 import (
 	"net/http"
