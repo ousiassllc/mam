@@ -56,10 +56,11 @@ type Section struct {
 }
 
 // ModelFacts is what a model card hands to the script: which settings the model takes and how it reads prompt weights (supported / weak /
-// unsupported / unknown).
+// unsupported / unknown, and WeightText, the sentence that says it: the bar of the selected words shows it).
 type ModelFacts struct {
-	Use    SamplingUse
-	Weight string
+	Use        SamplingUse
+	Weight     string
+	WeightText string
 }
 
 // Advanced is the section "詳細設定".
@@ -92,7 +93,7 @@ func sliderValue(v string, def float64) string {
 }
 
 // weightHelpIntro is how to write a weight, the first paragraphs of the "?" of the prompts (the per-model lines follow).
-const weightHelpIntro = "語の強さを変える書き方です。(語:1.3) で 1.3 倍の強さ、(語:0.8) で弱く、(語) は 1.1 倍（((語)) は 1.21 倍）。かっこそのものを書くときは \\( \\) と書きます。\n英訳をオンにしても、かっこと数字はそのまま残し、中の語だけを訳します。英訳でウェイトが消えたときは、結果の詳細に出ます。\n[語] は ComfyUI では読まれません（ただの文字になります）。\n効き方はモデルによって違います（下）。"
+const weightHelpIntro = "語の強さを変える書き方です。(語:1.3) で 1.3 倍の強さ、(語:0.8) で弱く、(語) は 1.1 倍（((語)) は 1.21 倍）。かっこそのものを書くときは \\( \\) と書きます。\n書かなくても、プロンプトの語を選ぶと出る「強める +」「弱める −」で、0.1 刻みに 0.5〜1.5 の範囲で入れられます（Ctrl/⌘ + ↑ ↓ でも）。効かないモデルでは、ボタンは押せず、理由が出ます。\n英訳をオンにしても、かっこと数字はそのまま残し、中の語だけを訳します。英訳でウェイトが消えたときは、結果の詳細に出ます。\n[語] は ComfyUI では読まれません（ただの文字になります）。\n効き方はモデルによって違います（下）。"
 
 // WeightLine is one model of the help of the weights.
 type WeightLine struct {
