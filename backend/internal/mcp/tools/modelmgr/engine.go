@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/gpustate"
 )
 
 func registerEngine(r *mcpkit.Registrar, h handlers) {
@@ -19,6 +20,9 @@ func registerEngine(r *mcpkit.Registrar, h handlers) {
 	mcpkit.Read(r, "detect_gpu",
 		"この PC の GPU と、導入すべき ComfyUI のビルドの推奨（対応する GPU が無ければ variant は空で案内が付く）/ Detect the GPUs of this machine and the recommended ComfyUI build.",
 		h.detectGPU)
+	mcpkit.Read(r, "get_gpu_status",
+		"GPU の今の状態（読み取り専用）: GPU ごとの名前・VRAM の合計/使用中/空き・使用率・温度と、ComfyUI（同梱エンジンと外部の接続先）が持っている VRAM・実行中のジョブの進み具合（ステップ・%・残り時間の目安）・順番待ちのジョブの数と順番。ローカルの生成ジョブを投げる前に GPU が空いているか確かめるのに使う。取れない値は省かれ、unavailable に取れない理由が付く（エラーにはしない）。NVIDIA は nvidia-smi、Apple Silicon は ioreg / sysctl / vm_stat から読む（Apple Silicon はユニファイドメモリで、温度は取れない）/ Read-only live state of the GPUs and of the ComfyUI queue; a value that cannot be read is left out with its reason in `unavailable`.",
+		h.gpuStatus)
 	mcpkit.Read(r, "detect_comfyui",
 		"この PC で動いている既存の ComfyUI（127.0.0.1 の 8188・8000 番。ComfyUI Desktop を含む）を探す。見つかったものは外部の接続先として使い、mam は起動も停止もしない / Look for a ComfyUI that is already running here.",
 		h.detectComfy)
@@ -60,6 +64,19 @@ func (h handlers) detectGPU(ctx context.Context, _ Input) (GPUOutput, error) {
 		return GPUOutput{}, err
 	}
 	return GPUOutput{m.DetectGPU(ctx)}, nil
+}
+
+// GPUStatusOutput is the live state of the GPUs and of the ComfyUI queues.
+type GPUStatusOutput struct{ gpustate.View }
+
+func (h handlers) gpuStatus(ctx context.Context, _ Input) (GPUStatusOutput, error) {
+	m, err := h.mm()
+	if err != nil {
+		return GPUStatusOutput{}, err
+	}
+	return GPUStatusOutput{gpustate.Read(ctx, gpustate.Deps{
+		Live: m.GPULive, Adapter: m.Adapter, Keys: m.Keys, StagingDir: m.Backends.StagingDir, EngineDir: m.Layout.Root, Bundled: modelmanager.BundledEndpoint,
+	})}, nil
 }
 
 // ComfyOutput is the search for a ComfyUI that is already running.
