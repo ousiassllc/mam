@@ -35,16 +35,16 @@ func (s Settings) IsZero() bool {
 // still refuse one of them when the workflow runs.
 func (s Settings) Validate() error {
 	if s.Steps != nil && (*s.Steps < MinSteps || *s.Steps > MaxSteps) {
-		return fmt.Errorf("steps must be within %d-%d", MinSteps, MaxSteps)
+		return fmt.Errorf("ステップ数は %d〜%d にしてください", MinSteps, MaxSteps)
 	}
 	if s.CFG != nil && (!(*s.CFG >= MinCFG) || *s.CFG > MaxCFG) { // !(>=) also refuses NaN
-		return fmt.Errorf("cfg must be within %g-%g", MinCFG, MaxCFG)
+		return fmt.Errorf("CFG は %g〜%g にしてください", MinCFG, MaxCFG)
 	}
 	if s.Sampler != "" && !slices.Contains(Samplers, s.Sampler) {
-		return fmt.Errorf("unknown sampler %q", s.Sampler)
+		return fmt.Errorf("サンプラー %q は選べません", s.Sampler)
 	}
 	if s.Scheduler != "" && !slices.Contains(Schedulers, s.Scheduler) {
-		return fmt.Errorf("unknown scheduler %q", s.Scheduler)
+		return fmt.Errorf("スケジューラー %q は選べません", s.Scheduler)
 	}
 	return nil
 }

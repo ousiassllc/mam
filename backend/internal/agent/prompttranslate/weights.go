@@ -6,17 +6,16 @@ import (
 	"strings"
 )
 
-// Prompt weights: "(word:1.3)" scales the words by the number, "(word)" and "[word]" by the usual steps up and down (ComfyUI's
-// and AUTOMATIC1111's syntax; a backslash makes a bracket a plain character). Whether a model reads them depends on its text encoder
-// (localcfg/promptweight), but a translation must not lose them in any case: the user wrote them on purpose.
+// Prompt weights: "(word:1.3)" sets the weight of the words to the number and "(word)" multiplies it by 1.1 (nested, 1.1 each: "((word))"
+// is 1.21); a backslash makes a bracket a plain character. That is what ComfyUI reads (comfy/sd1_clip.py token_weights); it does not read
+// "[word]" (AUTOMATIC1111's 0.9), which stays plain text. Whether a model applies the weights depends on its text encoder
+// (localcfg/promptweight). A translation must not lose any of them, "[word]" included: the user wrote them on purpose.
 
 // weightNumber is the number of a "(…:1.3)" group: the last ":" and number before a closing parenthesis.
 var weightNumber = regexp.MustCompile(`:\s*([0-9]*\.?[0-9]+)\s*\)`)
 
-// HasWeights reports whether a text uses weight syntax: a "(…:number)" group, or a pair of "(…)" or "[…]" around some text.
-func HasWeights(text string) bool {
-	return len(weightNumber.FindAllString(text, -1)) > 0 || brackets(text, '(') > 0 || brackets(text, '[') > 0
-}
+// HasWeights reports whether a text uses the weight syntax ComfyUI reads: a pair of "(…)" around some text, "(…:number)" included.
+func HasWeights(text string) bool { return brackets(text, '(') > 0 }
 
 // brackets is how many times the opening bracket open is used as syntax: not escaped with a backslash and closed later in the text.
 func brackets(text string, open rune) int {

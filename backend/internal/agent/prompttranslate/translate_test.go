@@ -124,7 +124,7 @@ func TestEnglishPromptsWithWeightsAreNotTranslated(t *testing.T) {
 
 func TestHasWeights(t *testing.T) {
 	for text, want := range map[string]bool{
-		"(fox:1.3)": true, "a (fox) here": true, "[fox]": true, "((fox))": true, "(fox : 1.3)": true,
+		"(fox:1.3)": true, "a (fox) here": true, "((fox))": true, "(fox : 1.3)": true, "[fox]": false, // ComfyUI does not read [ ]
 		"a fox": false, "": false, `\(fox\)`: false, `\[fox\]`: false, "(unclosed": false, "closed)": false, "fox:1.3": false,
 		"(赤い狐:1.3)": true,
 	} {

@@ -94,6 +94,7 @@ func TestTheEstimateWarnsOfModelsThatDoNotReadPromptWeights(t *testing.T) {
 	assert.NotContains(t, got, string(gentesttest.SamplingModel), "SDXL reads them")
 	assert.Empty(t, warned("a red fox in a barn"))
 	assert.Empty(t, warned("a fox \\(not a weight\\)"))
+	assert.Empty(t, warned("a [blurry] fox"), "ComfyUI does not read [ ] as a weight")
 }
 
 func TestTheModelListSaysHowEachModelReadsWeights(t *testing.T) {

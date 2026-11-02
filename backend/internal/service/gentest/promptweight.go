@@ -9,7 +9,7 @@ import (
 // poorly): its picture does not show them (Issue #972).
 const WarnPromptWeight = "prompt_weight"
 
-// hasWeights says a prompt or a negative prompt of the request uses weight syntax.
+// hasWeights says a prompt or a negative prompt of the request uses the weight syntax ComfyUI reads, "(word)" or "(word:1.3)".
 func hasWeights(r Request) bool {
 	for _, p := range r.Prompts {
 		if prompttranslate.HasWeights(p.Prompt) || prompttranslate.HasWeights(p.Negative) {

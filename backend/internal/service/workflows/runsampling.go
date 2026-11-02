@@ -30,7 +30,7 @@ func settingsOf(saved localcfg.SavedWorkflow, in RunInput) (runSettings, error) 
 	asked := in.Sampling
 	asked.Sampler, asked.Scheduler = strings.TrimSpace(asked.Sampler), strings.TrimSpace(asked.Scheduler)
 	if err := asked.Validate(); err != nil {
-		return s, invalid("詳細設定が正しくありません: %v", err)
+		return s, invalid("%v", err)
 	}
 	switch {
 	case in.Seed == nil:

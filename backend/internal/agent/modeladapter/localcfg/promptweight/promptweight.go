@@ -1,5 +1,5 @@
-// Package promptweight says whether a model reads the weights of a prompt: "(word:1.3)", "(word)" and "[word]" (spec/architecture/
-// local-models.md §4.4). It follows from the text encoder of the workflow and from how ComfyUI tokenizes for it, so it is a property of the
+// Package promptweight says whether a model reads the weights of a prompt: "(word:1.3)" and "(word)" (spec/architecture/local-models.md
+// §4.4; ComfyUI does not read AUTOMATIC1111's "[word]"). It follows from the text encoder of the workflow and from how ComfyUI tokenizes for it, so it is a property of the
 // workflow the way its reference mode is: ComfyUI cuts the weights out of the text and scales the embeddings of those words only for the
 // tokenizers that do not disable weights (comfy/sd1_clip.py); the tokenizers of Qwen-Image, FLUX.2 klein, Hunyuan Video 1.5 and LTX-2.5
 // pass disable_weights=True, so the brackets and the number reach the language model as plain text.
