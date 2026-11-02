@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/repository/reciperepo"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
@@ -30,7 +31,7 @@ import (
 // World service, so its locks and kind checks apply.
 func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, logger *slog.Logger) *gentest.Service {
 	g := gentest.New(gentest.Deps{
-		Repo: gentestrepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
+		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
 		DataDir: cfg.DataDir, AssetsDir: cfg.AssetsDir(),
 		Projects: repository.NewProjectRepository(db), Assets: repository.NewAssetRepository(db), References: repository.NewReferenceRepository(db),
 		Assign: func(ctx context.Context, projectID string, target domain.WorldTarget, id, slot, referenceID string) error {

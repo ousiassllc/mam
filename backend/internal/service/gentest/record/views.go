@@ -57,6 +57,7 @@ type ResultView struct {
 	SpeedMode          string     `json:"speed_mode,omitempty" jsonschema:"動画: このモデルに頼んだ速さのモード（fast / standard など。無ければモデルの既定）"`
 	// Sampling is what the model ran with: with seed (above) and the other fields, enough to make the result again.
 	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"このモデルが使ったステップ数・CFG・サンプラー・スケジューラー（上書きしなかった項目はモデルの既定）。seed と合わせて同じ条件で作り直せる。受け取らないモデルは無い"`
+	Exposed  map[string]any     `json:"exposed,omitempty" jsonschema:"このモデルの画面に出す値（ComfyUI のノードの入力）が使った値（key は <ノード ID>.<入力名>。指定しなかった項目はグラフが持つ値）。リクエストの exposed に渡せば同じ条件で作り直せる"`
 	Inpaint  *Inpaint           `json:"inpaint,omitempty" jsonschema:"一部だけ描き直したとき。denoise は使った強さ、source_kind / source_id は元画像（history なら結果の ID）"`
 	// Upscale is set for a result of "make it larger": the result it enlarged and the scale, mode and model it used.
 	Upscale    *Upscale   `json:"upscale,omitempty" jsonschema:"アップスケール（大きくする）で作った結果のとき: 元の結果・倍率・使ったモデルと方式・元と出力の大きさ。普通に生成した結果には無い"`
@@ -74,7 +75,7 @@ func ViewOf(r gentestrepo.Result) ResultView {
 		AspectRatio: p.AspectRatio, Resolution: p.Resolution, DurationSeconds: p.DurationSeconds, Seed: r.Seed, SeedSent: r.SeedSent,
 		Status: r.Status, Error: r.Error, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "", MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
-		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Inpaint: p.Inpaint, Upscale: p.Upscale,
+		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, Inpaint: p.Inpaint, Upscale: p.Upscale,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}
 	if p.Translation != nil {

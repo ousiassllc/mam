@@ -27,9 +27,13 @@ type Restored struct {
 	Seed               string
 	Steps, CFG         string
 	Sampler, Scheduler string
-	Refs               []gentest.RefInput
-	AvoidPose          bool
-	LoRA               *gentest.LoRAInput
+	// Exposed are the values the model's exposed inputs ran with (by key; the form's text).
+	Exposed map[string]string
+	// RefStrength is the strength of a recipe's input images (nil: the recipe holds none).
+	RefStrength *float64
+	Refs        []gentest.RefInput
+	AvoidPose   bool
+	LoRA        *gentest.LoRAInput
 	// Notes say what could not be put back, and why.
 	Notes []string
 }
@@ -43,6 +47,12 @@ func Of(d record.ResultDetail, sameSeed bool) Restored {
 	if d.LoRA != nil {
 		s := d.LoRA.Strength
 		r.LoRA = &gentest.LoRAInput{Name: d.LoRA.Name, Strength: &s}
+	}
+	for k, v := range d.Exposed {
+		if r.Exposed == nil {
+			r.Exposed = map[string]string{}
+		}
+		r.Exposed[k] = fmt.Sprint(v)
 	}
 	if s := d.Sampling; s != nil {
 		if s.Steps != nil {

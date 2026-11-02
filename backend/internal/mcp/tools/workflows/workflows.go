@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -115,10 +116,12 @@ type Settings struct {
 	FramesStep   int                `json:"frames_step,omitempty" jsonschema:"動画: 総フレーム数を n×step+1 にする（Wan は 4、LTX は 8）"`
 	SizeMultiple int                `json:"size_multiple,omitempty" jsonschema:"幅・高さを丸める倍数（省略: 16）"`
 	Video        *VideoCapabilities `json:"video,omitempty" jsonschema:"動画: 長さと解像度。省略すると既定（3・4・5 秒、480p・720p）"`
+	// ExposedInputs are the inputs the generation test screen offers as fields of their own.
+	ExposedInputs []exposed.Input `json:"exposed_inputs,omitempty" jsonschema:"画像: 画面に出す値（ノードの入力。生成テストのこだわりに入力欄として出て、リクエストの exposed に key <ノード ID>.<入力名> で値を渡せる）。割り当てが使っている入力・ほかのノードがつないでいる入力は選べない"`
 }
 
 func settingsOf(s localcfg.WorkflowSpec) Settings {
-	out := Settings{Assignments: make([]Assignment, 0, len(s.Assignments)), OutputNode: s.OutputNode, FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple}
+	out := Settings{Assignments: make([]Assignment, 0, len(s.Assignments)), OutputNode: s.OutputNode, FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple, ExposedInputs: s.ExposedInputs}
 	for _, a := range s.Assignments {
 		out.Assignments = append(out.Assignments, Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index, Ratio: a.Ratio})
 	}
@@ -129,7 +132,7 @@ func settingsOf(s localcfg.WorkflowSpec) Settings {
 }
 
 func (s Settings) spec() localcfg.WorkflowSpec {
-	out := localcfg.WorkflowSpec{OutputNode: s.OutputNode, FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple}
+	out := localcfg.WorkflowSpec{OutputNode: s.OutputNode, FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple, ExposedInputs: s.ExposedInputs}
 	for _, a := range s.Assignments {
 		out.Assignments = append(out.Assignments, localcfg.Assignment{Param: localcfg.Param(a.Param), Node: a.Node, Input: a.Input, Index: a.Index, Ratio: a.Ratio})
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
@@ -55,6 +56,8 @@ type modelPlan struct {
 	speedMode string
 	// sampling is the steps, cfg, sampler and scheduler the model runs with (what it takes: the request's value, else its default); nil when it takes none.
 	sampling *sampling.Settings
+	// exposed are the values the model's exposed inputs run with (nil: it exposes none).
+	exposed map[string]any
 	// denoise is the redraw strength sent to an inpaint model (nil: the graph's own, or not an inpaint run).
 	denoise  *float64
 	warnings []Warning
@@ -75,6 +78,10 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 	}
 	planSampling(r, &p, warn)
 	planInpaint(r, &p, warn)
+	var ignored []string
+	if p.exposed, ignored = exposedreq.Plan(info, r.Exposed); len(ignored) > 0 {
+		warn(WarnExposedIgnored, "%s", exposedreq.Warning(info.Label, ignored))
+	}
 	planPromptWeight(r, &p, warn)
 	p.unit, p.basis = unitPrice(info, r.Media, p.resolution, p.seconds)
 	if r.Media == gentestrepo.MediaImage && p.basis == modelcatalog.BasisPriced {
@@ -190,7 +197,7 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 // resultParamsOf is what is recorded of the request for the result of one model.
 func resultParamsOf(r Request, mp modelPlan, translation *record.SentText, maskID string) record.ResultParams {
 	p := record.ResultParams{
-		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode, Sampling: mp.sampling,
+		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode, Sampling: mp.sampling, Exposed: mp.exposed,
 	}
 	if r.Mask != nil && len(r.References) == 1 {
 		p.Inpaint = &record.Inpaint{Denoise: mp.denoise, SourceKind: r.References[0].Source, SourceID: r.References[0].ID, MaskInput: maskID}

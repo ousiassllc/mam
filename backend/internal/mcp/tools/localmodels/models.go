@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 )
@@ -177,6 +178,7 @@ type Model struct {
 	SupportsLoRA      bool               `json:"supports_lora,omitempty" jsonschema:"ComfyUI の画像: 生成テストの LoRA を使える（ワークフローに LoRA を差し込むノードがある）"`
 	Assignments       []Assignment       `json:"assignments" jsonschema:"ComfyUI: 入力の割り当て"`
 	OutputNode        string             `json:"output_node,omitempty"`
+	ExposedInputs     []exposed.Input    `json:"exposed_inputs,omitempty" jsonschema:"ComfyUI の画像: 画面に出す値（生成テストのこだわりの入力欄）"`
 	FPS               int                `json:"fps,omitempty"`
 	FramesStep        int                `json:"frames_step,omitempty"`
 	SizeMultiple      int                `json:"size_multiple,omitempty"`
@@ -197,6 +199,7 @@ func modelOf(m localmodels.ModelView) Model {
 	}
 	if w := m.Workflow; w != nil {
 		out.OutputNode, out.FPS, out.FramesStep, out.SizeMultiple = w.OutputNode, w.FPS, w.FramesStep, w.SizeMultiple
+		out.ExposedInputs = w.ExposedInputs
 	}
 	if caps, ok := m.VideoCaps(); ok {
 		out.MaxReferences, out.FirstFrame, out.LastFrame = caps.MaxReferenceImages, caps.FirstFrame, caps.LastFrame

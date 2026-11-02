@@ -178,3 +178,35 @@ func TestCheckWorkflowWarnsAndListsTheServersWorkflows(t *testing.T) {
 	assert.True(t, imported.HasEditor)
 	assert.Contains(t, r.CallError("import_workflow_from_comfyui", map[string]any{"path": "../x.json"}), "validation")
 }
+
+// 画面に出す値（#977）: 保存・取得・設定の更新で省くと残る・空の配列で外す。割り当てが使っている入力・リンクは保存できない。
+func TestExposedInputsAreSavedKeptAndRefused(t *testing.T) {
+	r := newRig(t, true)
+	graph, settings := template(t, "txt2img-sdxl")
+	one, zero := 1.0, 0.0
+	inputs := []map[string]any{{"node": "3", "input": "denoise", "type": "float", "label": "ノイズ", "min": zero, "max": one}}
+	var w workflows.SavedOutput
+	r.CallOK("import_workflow_json", map[string]any{"name": "Exposed", "kind": "image", "api_json": graph, "settings": map[string]any{
+		"assignments": settings.Assignments, "output_node": settings.OutputNode, "exposed_inputs": inputs}}, &w)
+	assert.True(t, w.Ready, "%v", w.Problems)
+
+	var got workflows.GetOutput
+	r.CallOK("get_workflow", map[string]any{"workflow_id": w.ID}, &got)
+	require.Len(t, got.Settings.ExposedInputs, 1)
+	assert.Equal(t, "3.denoise", got.Settings.ExposedInputs[0].Key())
+
+	var kept workflows.SavedOutput // a settings update that does not name them leaves them
+	r.CallOK("update_workflow_assignment", map[string]any{"workflow_id": w.ID, "assignments": settings.Assignments, "output_node": settings.OutputNode}, &kept)
+	r.CallOK("get_workflow", map[string]any{"workflow_id": w.ID}, &got)
+	assert.Len(t, got.Settings.ExposedInputs, 1)
+
+	assert.Contains(t, r.CallError("update_workflow_assignment", map[string]any{"workflow_id": w.ID, "assignments": settings.Assignments, "output_node": settings.OutputNode,
+		"exposed_inputs": []map[string]any{{"node": "3", "input": "steps", "type": "int", "min": one, "max": 100.0}}}), "validation", "an input an assignment feeds")
+	assert.Contains(t, r.CallError("update_workflow_assignment", map[string]any{"workflow_id": w.ID, "assignments": settings.Assignments, "output_node": settings.OutputNode,
+		"exposed_inputs": []map[string]any{{"node": "3", "input": "model", "type": "string"}}}), "validation", "a link")
+
+	r.CallOK("update_workflow_assignment", map[string]any{"workflow_id": w.ID, "assignments": settings.Assignments, "output_node": settings.OutputNode, "exposed_inputs": []any{}}, &kept)
+	var cleared workflows.GetOutput
+	r.CallOK("get_workflow", map[string]any{"workflow_id": w.ID}, &cleared)
+	assert.Empty(t, cleared.Settings.ExposedInputs, "an empty list takes them out")
+}

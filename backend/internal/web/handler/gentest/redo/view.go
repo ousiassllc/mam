@@ -2,7 +2,9 @@ package redo
 
 import (
 	"fmt"
+	"maps"
 	"net/url"
+	"slices"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -68,6 +70,9 @@ func UsedOf(d record.ResultDetail) gentestresult.Used {
 	lora := "なし"
 	if d.LoRA != nil {
 		lora = fmt.Sprintf("%s（強さ %.2f）", d.LoRA.Name, d.LoRA.Strength)
+	}
+	for _, k := range slices.Sorted(maps.Keys(d.Exposed)) {
+		rows = append(rows, gentestresult.Line{Key: "画面に出した値 " + k, Value: fmt.Sprint(d.Exposed[k])})
 	}
 	return gentestresult.Used{Rows: append(rows, gentestresult.Line{Key: "シード", Value: seed}, gentestresult.Line{Key: "LoRA", Value: lora}, gentestresult.Line{Key: "サイズ", Value: SizeText(d.AspectRatio)})}
 }

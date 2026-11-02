@@ -166,6 +166,8 @@ type ImageOptions struct {
 	Sampling SamplingSettings
 	// UpscaleScale is the scale an upscale workflow (Workflow.Upscale) enlarges the picture by (0: the model's own factor).
 	UpscaleScale float64
+	// Exposed are the values of the workflow's exposed inputs (Workflow.ExposedInputs), by exposed.Input.Key; the others keep the graph's value.
+	Exposed map[string]any
 }
 
 // Ref is the option of the i-th input image.

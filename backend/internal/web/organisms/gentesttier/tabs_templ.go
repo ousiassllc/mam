@@ -224,7 +224,7 @@ func ComfyPanel() templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"flex flex-col gap-4 rounded-md border border-neutral-700 p-4\" aria-labelledby=\"gt-comfy-title\" data-testid=\"gt-comfy\"><h2 id=\"gt-comfy-title\" class=\"text-sm font-medium text-neutral-200\">ComfyUI で細かく作る</h2><p class=\"text-sm text-neutral-300\">ノードをつないで作るときは、次の画面を使います。ここ（生成テスト）の「かんたん」「こだわり」は、画像のモデルを選んで作る画面です。動画・音声はこれまでどおりです。</p><ul class=\"grid gap-3 sm:grid-cols-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"flex flex-col gap-4 rounded-md border border-neutral-700 p-4\" aria-labelledby=\"gt-comfy-title\" data-testid=\"gt-comfy\"><h2 id=\"gt-comfy-title\" class=\"text-sm font-medium text-neutral-200\">ComfyUI で細かく作る</h2><p class=\"text-sm text-neutral-300\">ノードをつないで作るときは、次の画面を使います。ここ（生成テスト）の「かんたん」「こだわり」は、画像のモデルを選んで作る画面です。動画・音声はこれまでどおりです。</p><p class=\"text-sm text-neutral-300\">今のかんたん・こだわりの設定をそのままグラフにして開くには、それぞれのフォームの「今の設定を ComfyUI で開く」を使います。</p><ul class=\"grid gap-3 sm:grid-cols-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -236,7 +236,7 @@ func ComfyPanel() templ.Component {
 			var templ_7745c5c3_Var14 templ.SafeURL
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(l.Href))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 33, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 34, Col: 91}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -249,7 +249,7 @@ func ComfyPanel() templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.TestID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 33, Col: 116}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 34, Col: 116}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -262,7 +262,7 @@ func ComfyPanel() templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 33, Col: 128}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 34, Col: 128}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -275,7 +275,7 @@ func ComfyPanel() templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(l.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 34, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 35, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -300,6 +300,7 @@ func comfyLinks() []comfyLink {
 	return []comfyLink{
 		{"ノード画面を開く", "ComfyUI のノードの画面です。つなぎ方を自由に変えられます。", paths.Nodes(), "gt-comfy-nodes"},
 		{"ワークフローを取り込む・直す", "API 形式のワークフローを取り込み、入力の割り当てを決めて、生成テストのモデルとして使います。", paths.Workflows(), "gt-comfy-workflows"},
+		{"画面に出す値を選ぶ", "モデルのワークフローのノードの入力（例 KSampler.steps・CLIPTextEncode.text）を選ぶと、こだわりの画面に入力欄として出ます。", ExposedPickerHref(""), "gt-comfy-exposed"},
 		{"モデルの設定", "ローカルのモデルとその ComfyUI のワークフローの設定（ステップ数・サンプラーなどの受け取り方）です。", paths.LocalModels(), "gt-comfy-local"},
 		{"モデルマネージャー", "同梱の ComfyUI と画像・動画のモデルを導入します。", paths.ModelManager(), "gt-comfy-models"},
 	}

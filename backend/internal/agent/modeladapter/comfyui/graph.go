@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/sampled"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/stage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
@@ -153,17 +154,17 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 	if u := b.Model.Workflow.Upscale; u != nil {
 		v.upscaleRatio = u.Ratio(v.opts.UpscaleScale)
 	}
-	v.sampling = applicableSampling(*b.Model.Workflow, v.sampling)
+	v.sampling = sampled.Applicable(*b.Model.Workflow, v.sampling)
 	if n := b.Model.Workflow.Count(localcfg.ParamReferenceImage); b.Model.Workflow.ReferenceMode != "" && len(v.references) > n {
 		v.references = v.references[:n] // the images beyond the slots were not uploaded
 	}
-	g, err := localcfg.ParseGraph(b.Model.Workflow.Graph)
+	g, err := b.Model.Workflow.GraphWith(v.opts.Exposed) // the values of the exposed inputs (Issue #977) go in first; the assignments below never touch those inputs
 	if err != nil {
 		return nil, b.Client.Error(http.StatusUnprocessableEntity, "the workflow is unusable: "+err.Error(), nil)
 	}
 	for i, a := range b.Model.Workflow.Assignments {
 		value := v.scalar(a.Param)
-		if sv, named, isSampling := samplingValue(v.sampling, a); isSampling {
+		if sv, named, isSampling := sampled.Value(a, v.sampling); isSampling {
 			if !named {
 				continue // the request names no value: the graph's own stays
 			}

@@ -8,7 +8,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest/intentinfo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/recipe"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
@@ -100,6 +102,9 @@ type RequestInput struct {
 	// Quality picks the steps and the cfg of every model from its preset (sampling.quality_presets); Intent leaves the choice of the model to mam.
 	Quality string `json:"quality,omitempty" jsonschema:"画像だけ。品質: fast（速い）/ standard（標準。省略と同じ: モデルの既定の値）/ high（きれい）。モデルの sampling.quality_presets にあるステップ数・CFG で作る（sampling に steps・cfg を書けばそちらが優先）。プリセットの無いモデルは警告 quality_ignored で標準の値で作る"`
 	Intent  string `json:"intent,omitempty" jsonschema:"画像だけ。やりたいこと: photo（人物写真）/ anime（アニメ）/ landscape（風景）/ face（同じ顔で。references に顔の写真が要る）。導入済みで使えるモデルを mam が選ぶ（models は省く。list_generation_models の intents に今選ばれるモデルが出る）。合うモデルが無いときは理由つきで validation"`
+	// Recipe takes the model and the settings of a saved recipe (list_generation_recipes); Exposed gives the values of the models' exposed inputs.
+	Recipe  string         `json:"recipe,omitempty" jsonschema:"画像だけ。保存したレシピの id（list_generation_recipes）。レシピのモデルと設定（ステップ数・CFG・サンプラー・スケジューラー・シード・ネガティブ・LoRA・入力画像の強さ・サイズ・品質・画面に出す値）で作る。models・intent とは同時に指定できない。このリクエストで名指しした項目（sampling・seed・exposed など）が勝つ。使えないレシピ（モデルの削除・未導入・成人ゲート・商用の絞り込み）は理由つきで validation"`
+	Exposed map[string]any `json:"exposed,omitempty" jsonschema:"画像だけ。モデルの画面に出す値（list_generation_models の exposed）の値。キーは <ノード ID>.<入力名>。型（int / float / string / enum）と範囲・選択肢の外は validation。どのモデルにも無いキーも validation。そのキーを持たないモデルは警告 exposed_ignored。結果の exposed に使った値が残る"`
 	// Mask is the inpaint mask (same shape as a reference; white redraws). Every model must support inpaint. Denoise nil uses denoise_default.
 	Mask    *ReferenceInput `json:"mask,omitempty" jsonschema:"一部だけ描き直すときのマスク。references と同じ形式（source / id / project_id。role と strength は使わない）。白が描き直す部分、黒が残す部分。元画像は references に 1 枚だけ。supports_inpaint でないモデルは validation で拒否する"`
 	Denoise *float64        `json:"denoise,omitempty" jsonschema:"描き直しの強さ（0 より大きく 1 以下）。省くと各モデルの denoise_default。マスクが無いときは指定できない"`
@@ -133,12 +138,20 @@ func (in RequestInput) request() gentest.Request {
 		r.Mask = &gentest.RefInput{Source: in.Mask.Source, ID: in.Mask.ID, ProjectID: in.Mask.ProjectID}
 	}
 	r.Denoise = in.Denoise
+	r.Exposed = in.Exposed
 	return r
 }
 
 // resolve is the request of the input, with the model the intent picks when it names one.
 func (h handlers) resolve(ctx context.Context, g *gentest.Service, in RequestInput) (gentest.Request, error) {
 	r := in.request()
+	if in.Recipe != "" {
+		if in.Intent != "" {
+			return r, mapError(gterr.Invalid("recipe と intent は同時に指定できません"))
+		}
+		r, _, err := recipe.New(g).Apply(ctx, r, in.Recipe)
+		return r, mapError(err)
+	}
 	if in.Intent == "" {
 		return r, nil
 	}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 )
@@ -94,6 +95,8 @@ type Workflow struct {
 	RequiresNodes []string `json:"requires_nodes,omitempty"`
 	// QualityPresets are the steps and cfg of the fast and the high quality of the screen's "品質" buttons (Issue #977); nil: the model has no quality to choose.
 	QualityPresets *sampling.Presets `json:"quality_presets,omitempty"`
+	// ExposedInputs are the inputs of the graph the screen offers as fields of their own (Issue #977; package exposed); empty: none.
+	ExposedInputs []exposed.Input `json:"exposed_inputs,omitempty"`
 }
 
 // DefaultFPS is the frame rate of a video workflow that names none.
@@ -271,6 +274,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 	errs = append(errs, validateSpeedModes(where, media, w, g)...)
 	errs = append(errs, validateRequiresNodes(where, w)...)
 	errs = append(errs, validateSampling(where, w, g)...)
+	errs = append(errs, validateExposed(where, w, g)...)
 	errs = append(errs, append(validatePromptWeight(where, w), validateUpscale(where, media, w, g)...)...)
 	if w.FPS < 0 || w.FPS > 240 || w.FramesStep < 0 || w.FramesStep > 64 || w.SizeMultiple < 0 || w.SizeMultiple > 128 {
 		errs = append(errs, fmt.Errorf("%s: fps must be within 0-240, frames_step within 0-64 and size_multiple within 0-128", where))

@@ -26,7 +26,7 @@ func TestMigration_GentestUpAndDown(t *testing.T) {
 	require.NoError(t, err)
 	tables := func() int {
 		var n int
-		require.NoError(t, db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name LIKE 'gentest_%'`).Scan(&n))
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name LIKE 'gentest_%' AND name <> 'gentest_recipe'`).Scan(&n)) // the recipes' table is another migration's (reciperepo)
 		return n
 	}
 

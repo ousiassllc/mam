@@ -6,6 +6,8 @@ import (
 	"maps"
 	"slices"
 	"sync/atomic"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 )
 
 // WorkflowSpec is what a saved workflow stores beside its graph (comfy_workflow.assignment_json): the table that
@@ -18,6 +20,8 @@ type WorkflowSpec struct {
 	FramesStep   int            `json:"frames_step,omitempty"`
 	SizeMultiple int            `json:"size_multiple,omitempty"`
 	Video        *VideoSettings `json:"video,omitempty"`
+	// ExposedInputs are the inputs offered as fields of their own on the generation test screen (Workflow.ExposedInputs).
+	ExposedInputs []exposed.Input `json:"exposed_inputs,omitempty"`
 }
 
 // DefaultVideoSettings are the lengths and sizes a video workflow gets until the user sets them (the Wan 2.2 5B range
@@ -44,7 +48,7 @@ func ParseSpec(raw []byte) (WorkflowSpec, error) {
 func (s WorkflowSpec) Model(media Media, graph json.RawMessage) Model {
 	m := Model{Media: media, Workflow: &Workflow{
 		Graph: graph, Assignments: slices.Clone(s.Assignments), OutputNode: s.OutputNode,
-		FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple,
+		FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple, ExposedInputs: slices.Clone(s.ExposedInputs),
 	}}
 	if media == MediaVideo {
 		v := DefaultVideoSettings()

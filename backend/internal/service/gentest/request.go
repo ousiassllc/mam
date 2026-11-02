@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
@@ -84,6 +85,8 @@ type Request struct {
 	// Quality is the screen's "品質" (fast / standard / high; "" is standard): where Sampling names no steps or cfg, a model takes the ones of its
 	// quality preset (modelcatalog.Info.Sampling.Presets). Standard is the model's own values, so a request without it runs as it always did.
 	Quality sampling.Quality `json:"quality,omitempty"`
+	// Exposed are the values of the models' exposed inputs (modelcatalog.Info.Exposed), by key "<node>.<input>"; a model without that input ignores it with a warning.
+	Exposed map[string]any `json:"exposed,omitempty"`
 	// Mask is the inpaint mask (white redraws, black keeps), in the same shape as a reference. Nil: not a partial redraw.
 	Mask *RefInput `json:"mask,omitempty"`
 	// Denoise is the redraw strength (above 0 through 1). Nil uses each model's template default (modelcatalog.Info.DenoiseDefault).
@@ -150,10 +153,7 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 	if err := refs.CheckAvoidPose(r.Media, r.AvoidReferencePose); err != nil {
 		return r, nil, err
 	}
-	if r.Sampling, err = checkSampling(r); err != nil {
-		return r, nil, err
-	}
-	if r.Quality, err = checkQuality(r.Quality); err != nil {
+	if r, err = withSettings(r, models); err != nil {
 		return r, nil, err
 	}
 	if err := checkInpaint(r, models); err != nil {
@@ -267,4 +267,17 @@ func checkSource(ref RefInput) error {
 		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library）", ref.Source)
 	}
 	return nil
+}
+
+// withSettings checks the sampling values, the quality and the values of the exposed inputs (against the models that are asked for).
+func withSettings(r Request, models []modelcatalog.Info) (Request, error) {
+	var err error
+	if r.Sampling, err = checkSampling(r); err != nil {
+		return r, err
+	}
+	if r.Quality, err = checkQuality(r.Quality); err != nil {
+		return r, err
+	}
+	r.Exposed, err = exposedreq.Check(models, r.Exposed)
+	return r, err
 }

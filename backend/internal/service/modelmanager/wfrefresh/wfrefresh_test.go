@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/wfrefresh"
@@ -274,4 +275,33 @@ func TestRunBringsAnOldCopyUpToTheQualityPresets(t *testing.T) {
 	f = &fakeModels{saved: []localmodels.ModelView{view(endpoint, "wf", editGraph(t, cur, "3", "steps", 40))}}
 	wfrefresh.Run(context.Background(), f, catalogOf(catalog.Workflow{Name: "wf", Template: "txt2img-sdxl"}), endpoint, (&warnings{}).warn)
 	assert.Empty(t, f.updates)
+}
+
+// The "画面に出す値" the user chose (#977) stay when an old copy is brought up to its template; one the template feeds with an assignment now (an old
+// copy had no steps assignment, so the steps could be exposed) is dropped: an input cannot be exposed and assigned both.
+func TestRunKeepsTheExposedInputsOfAnOldCopy(t *testing.T) {
+	cur := template(t, "txt2img-sdxl")
+	w := *cur.Workflow
+	w.PromptWeight, w.Assignments = "", nil
+	for _, a := range cur.Workflow.Assignments {
+		switch a.Param {
+		case localcfg.ParamSteps, localcfg.ParamCFG, localcfg.ParamSampler, localcfg.ParamScheduler:
+		default:
+			w.Assignments = append(w.Assignments, a)
+		}
+	}
+	zero, one, hundred := 0.0, 1.0, 100.0
+	w.ExposedInputs = []exposed.Input{
+		{Node: "3", Input: "denoise", Type: exposed.Float, Min: &zero, Max: &one},
+		{Node: "3", Input: "steps", Type: exposed.Int, Min: &one, Max: &hundred},
+	}
+	cur.Workflow = &w
+	f := &fakeModels{saved: []localmodels.ModelView{view(endpoint, "wf", cur)}}
+	wfrefresh.Run(context.Background(), f, catalogOf(catalog.Workflow{Name: "wf", Template: "txt2img-sdxl"}), endpoint, (&warnings{}).warn)
+
+	got, ok := f.updates[endpoint+"/wf"]
+	require.True(t, ok)
+	require.Len(t, got.Workflow.ExposedInputs, 1)
+	assert.Equal(t, "3.denoise", got.Workflow.ExposedInputs[0].Key())
+	assert.True(t, got.Workflow.Has(localcfg.ParamSteps))
 }

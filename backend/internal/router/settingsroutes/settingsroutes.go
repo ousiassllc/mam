@@ -31,6 +31,7 @@ import (
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/comfyscreen"
 	jobshandler "github.com/ousiassllc/mam/backend/internal/web/handler/jobs"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
 	onboardinghandler "github.com/ousiassllc/mam/backend/internal/web/handler/onboarding"
@@ -164,6 +165,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 	}
 	if s != nil && s.Gentest != nil {
 		gentesthandler.Register(engine, s.Gentest)
+		comfyscreen.Register(engine, s.Gentest, s.Workflows, s.LocalModels, gentesthandler.RequestOfForm(s.Gentest)) // #977: the ComfyUI tier
 	}
 	if s != nil && s.JobList != nil {
 		jobshandler.Register(engine, s.JobList)

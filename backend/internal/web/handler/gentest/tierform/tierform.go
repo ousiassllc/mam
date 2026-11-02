@@ -14,13 +14,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/intent"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/recipe"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // State is what the form says of the tiers. Tier is "" when it says none (the default is the easy tier). Intent and Quality merge the easy tier's
-// own fields with the ones the detail tier carries; FromEasy says the quality came from the easy tier's buttons just now (the switch to the
+// own fields with the ones the detail tier carries; FromEasy says the choices came from the easy tier's own fields just now (its quality buttons, or the choice of what to make: the switch to the
 // detail tier), not from what the detail tier carried.
 type State struct {
 	Tier, Intent, Quality string
@@ -35,7 +36,7 @@ func Read(v url.Values) State {
 	default:
 		st.Tier = ""
 	}
-	st.FromEasy = st.Quality != ""
+	st.FromEasy = st.Quality != "" || v.Get(gentesttier.FieldIntent) != ""
 	if st.Intent == "" {
 		st.Intent = v.Get(gentesttier.FieldKeepIntent)
 	}
@@ -47,6 +48,9 @@ func Read(v url.Values) State {
 
 // IntentID is the intent of the form: the one named when it is one of the choices, else the first.
 func (s State) IntentID() string {
+	if _, ok := RecipeOf(s.Intent); ok {
+		return s.Intent // a recipe the easy tier was given (a recipe that is gone is found out where it is used)
+	}
 	if _, ok := intent.Get(s.Intent); ok {
 		return s.Intent
 	}
@@ -88,9 +92,11 @@ func Apply(ctx context.Context, svc *gentest.Service, in In) Out {
 		return out
 	case gentesttier.TierDetail:
 		d.Carried = Carry(in, svc.Models(ctx, gentest.MediaImage))
+		d.Recipes = Recipes(ctx, svc, "", "")
 	default:
 		d.Tier = gentesttier.TierEasy
 		d.Easy, out.Models = easy(ctx, svc, in)
+		d.Easy.RecipeSizes = nil // the size of a recipe is offered to the part that follows a choice (Pick), not to the form that holds the size already
 	}
 	out.Data = d
 	return out
@@ -102,7 +108,11 @@ func Resolve(ctx context.Context, svc *gentest.Service, st State, req gentest.Re
 	if st.Tier != gentesttier.TierEasy {
 		return req, nil
 	}
-	req.Models = nil // the model is the intent's to choose; the hidden card of the form only shows it
+	req.Models = nil // the model is the intent's (or the recipe's) to choose; the hidden card of the form only shows it
+	if id, ok := RecipeOf(st.IntentID()); ok {
+		req, _, err := recipe.New(svc).Apply(ctx, req, id)
+		return req, err
+	}
 	req, _, err := svc.ApplyIntent(ctx, req, st.IntentID())
 	return req, err
 }
@@ -114,11 +124,19 @@ func Pick(ctx context.Context, svc *gentest.Service, st State, refs int) (gentes
 
 func easy(ctx context.Context, svc *gentest.Service, in In) (gentesttier.EasyData, []string) {
 	id := in.IntentID()
+	recipes, chosen, isRecipe := easyRecipes(ctx, svc, strings.TrimPrefix(id, recipe.IntentPrefix))
+	if _, named := RecipeOf(id); named && !isRecipe {
+		id = intent.All()[0].ID // the recipe is not among the choices (taken out, or deleted): the first of the intents
+	}
 	e := gentesttier.EasyData{
 		Prompts: in.Prompts, Translate: in.Translate, Count: in.Count, MaxPrompt: in.MaxPrompt, Sizes: sizes(in.Aspect), ModelsURL: paths.ModelManager(),
 	}
+	e.Recipes = recipes
 	for _, i := range intent.All() {
 		e.Intents = append(e.Intents, gentesttier.IntentChoice{ID: i.ID, Label: i.Label, Hint: i.Hint, Selected: i.ID == id})
+	}
+	if isRecipe {
+		return easyRecipe(e, chosen)
 	}
 	rec, err := svc.Recommend(ctx, id, in.Refs > 0)
 	if err != nil {

@@ -32,6 +32,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/repository/reciperepo"
 )
 
 // Limits of a request.
@@ -74,6 +75,8 @@ type Deps struct {
 	// PlatformWarning says a model is not for this PC: the OS / GPU generation columns of the model catalog (Issue #979) put it outside, so that
 	// the easy tier does not pick it for an intent ("" when it is fine). Nil: no model is ruled out.
 	PlatformWarning func(ctx context.Context, modelID string) string
+	// Recipes keeps the recipes of the image form (package recipe, Issue #977). Nil: none can be saved or used.
+	Recipes *reciperepo.Repository
 	// Poses is the pose library (Shisei), whose pictures can be given as references (FromPoseLibrary). Nil: no pose library; such a reference is refused.
 	Poses *poses.Library
 	// BundledEndpoint is the name of the registered endpoint of the bundled ComfyUI engine, whose LoRA files LoRAs lists ("": none).
