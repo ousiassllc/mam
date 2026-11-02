@@ -15,15 +15,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// engineHelp is the help of the engine section: what the card does not say (the modal it opens, the license, the autostart, the removal).
-const engineHelp = "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。\n" +
-	"カードをタップすると、版・待ち受け・導入先・出典・ライセンスが見られます。ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリースを実行時に取得し、SHA-256 を確かめてから使います。\n" +
-	"「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。削除すると導入先も一緒に消えます（導入したモデルのファイルは残ります）。導入は固定した版を取得し、SHA-256 が合わなければ破棄します。中断しても続きから再開できます。\n" +
-	"同梱の ComfyUI は Windows 版のデスクトップアプリだけで使えます。ブラウザ版・サーバー版では、別に動かしている ComfyUI の URL を設定の「ローカル・代替モデル」に登録してください。"
-
-	// Body is the screen without the page frame: the engine, the models, the trial generations, the Hugging Face token
-	// and the external ComfyUI, one section each (molecules.SettingsSection).
-
+// Body is the screen without the page frame: the engine, the models, the trial generations, the Hugging Face token
+// and the external ComfyUI, one section each (molecules.SettingsSection). engineHelp (data.go) is the help of the engine section.
 func Body(d Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -87,7 +80,7 @@ func Body(d Data) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(DetectID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 30, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 23, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -154,7 +147,7 @@ func Body(d Data) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(DialogID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 41, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 34, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {

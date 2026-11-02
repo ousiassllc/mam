@@ -142,3 +142,12 @@ func TestViewIsNilBeforeTheFirstStepAndSaysWhyThereIsNoETA(t *testing.T) {
 	assert.Equal(t, 8, *v.ETASeconds, "rounded to the second")
 	assert.Empty(t, v.ETAUnavailable)
 }
+
+// A node whose steps are all done has nothing left to wait for: no "not advanced yet" reason, even when no ETA could be told
+// (the node was first seen at its last step).
+func TestViewGivesNoReasonForMissingETAOfAFinishedNode(t *testing.T) {
+	v := live.Progress{Node: "KSampler", Step: 4, MaxStep: 4, Percent: 60}.View()
+	require.NotNil(t, v)
+	assert.Nil(t, v.ETASeconds)
+	assert.Empty(t, v.ETAUnavailable)
+}

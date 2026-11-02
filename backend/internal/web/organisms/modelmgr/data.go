@@ -170,3 +170,9 @@ type Detect struct {
 	DesktopHint bool
 	Recommended string
 }
+
+// engineHelp is the help of the engine section: what the card does not say (the modal it opens, the license, the autostart, the removal).
+const engineHelp = "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。\n" +
+	"カードをタップすると、版・待ち受け・導入先・出典・ライセンスが見られます。ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリースを実行時に取得し、SHA-256 を確かめてから使います。\n" +
+	"「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。削除すると導入先も一緒に消えます（導入したモデルのファイルは残ります）。導入は固定した版を取得し、SHA-256 が合わなければ破棄します。中断しても続きから再開できます。\n" +
+	"同梱の ComfyUI は Windows 版のデスクトップアプリだけで使えます。ブラウザ版・サーバー版では、別に動かしている ComfyUI の URL を設定の「ローカル・代替モデル」に登録してください。"

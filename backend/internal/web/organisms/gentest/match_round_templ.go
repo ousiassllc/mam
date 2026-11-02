@@ -206,9 +206,9 @@ func matchRound(r MatchRound, target int) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue("第 " + itoa(r.N) + " 回のプロンプトで生成テストの比較をする")
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue("第 " + itoa(r.N) + " 回のプロンプトで比べる")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match_round.templ`, Line: 37, Col: 178}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match_round.templ`, Line: 37, Col: 154}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {

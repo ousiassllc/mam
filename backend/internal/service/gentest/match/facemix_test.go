@@ -3,6 +3,7 @@ package match_test
 import (
 	"context"
 	"image"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,4 +64,32 @@ func TestWithTheFaceMixOffTheRoundHasNoBreakdown(t *testing.T) {
 	r := newRig(t, []int{90})
 	v := r.finished(r.start(r.request(match.ModeOnce)).BatchID)
 	assert.Nil(t, v.Rounds[0].Scoring)
+}
+
+// countingFaces is an engine that sees a face in every picture and counts how often it is asked.
+type countingFaces struct{ calls atomic.Int32 }
+
+func (f *countingFaces) Faces(context.Context, image.Image) ([]facesim.Face, error) {
+	f.calls.Add(1)
+	return []facesim.Face{{Embedding: facesim.Embedding{1, 0}}}, nil
+}
+
+// A face engine that is attached with a weight of 0 changes nothing: the same scores and rounds as without it, no breakdown, and
+// the engine is never asked (it would cost the time of two inferences a round for nothing).
+func TestAFaceEngineWithAWeightOfZeroLeavesTheMatchAsItWas(t *testing.T) {
+	scoresOf := []int{40, 55, 90}
+	plain := newRig(t, scoresOf)
+	want := plain.finished(plain.start(plain.request(match.ModeAuto)).BatchID)
+
+	engine := &countingFaces{}
+	r := faceRig(t, scoresOf, engine, 0)
+	got := r.finished(r.start(r.request(match.ModeAuto)).BatchID)
+
+	assert.Equal(t, scores(want), scores(got))
+	assert.Equal(t, want.Stop, got.Stop)
+	require.Len(t, got.Rounds, len(want.Rounds))
+	for i, round := range got.Rounds {
+		assert.Nil(t, round.Scoring, "round %d", i+1)
+	}
+	assert.Zero(t, engine.calls.Load(), "the face engine is not called")
 }

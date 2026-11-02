@@ -18,6 +18,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -41,9 +42,10 @@ func onePixelPNG() []byte {
 	return buf.Bytes()
 }
 
-// Call is one request a fake backend got.
+// Call is one request a fake backend got. Owner is the progress owner of the call's context (live.OwnerOf).
 type Call struct {
 	Model string
+	Owner string
 	Image *modeladapter.ImageRequest
 	Video *modeladapter.VideoRequest
 }
@@ -117,7 +119,7 @@ type imageBackend struct {
 }
 
 func (b imageBackend) GenerateImage(ctx context.Context, _ string, req modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
-	if err := b.f.enter(ctx, b.m, Call{Model: string(b.m), Image: &req}); err != nil {
+	if err := b.f.enter(ctx, b.m, Call{Model: string(b.m), Owner: live.OwnerOf(ctx), Image: &req}); err != nil {
 		return modeladapter.ImageResult{}, err
 	}
 	return modeladapter.ImageResult{Data: PNG, MimeType: "image/png"}, nil
@@ -129,7 +131,7 @@ type videoBackend struct {
 }
 
 func (b videoBackend) GenerateVideo(ctx context.Context, _ string, req modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
-	if err := b.f.enter(ctx, b.m, Call{Model: string(b.m), Video: &req}); err != nil {
+	if err := b.f.enter(ctx, b.m, Call{Model: string(b.m), Owner: live.OwnerOf(ctx), Video: &req}); err != nil {
 		return modeladapter.VideoResult{}, err
 	}
 	return modeladapter.VideoResult{File: modeladapter.BlobOf([]byte("MP4DATA")), MimeType: "video/mp4"}, nil
