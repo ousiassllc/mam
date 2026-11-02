@@ -14,6 +14,7 @@ import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast
 import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
+import { installCommercialFilter } from './components/commercial-filter/commercial-filter';
 import { initGentestInputs } from './components/gentest/inputs';
 import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
@@ -74,6 +75,9 @@ installModal();
 
 // The "コピー" button of a value that is shown once (an MCP token that was just issued).
 installCopy();
+
+// The filter of commercial use of the lists of models: 商用OKのみ / 条件つきまで / すべて.
+installCommercialFilter();
 
 // A scrolling box that a swap draws again (the grid of a running generation, which polls) keeps where it was scrolled to (#940).
 installKeepScroll();

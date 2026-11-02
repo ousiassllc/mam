@@ -4,13 +4,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr"
-	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
 )
@@ -49,9 +50,9 @@ func TestRuntimes_ListShowsStateSupportAndTheWeightsWithSourceAndLicense(t *test
 	assert.Equal(t, 1, v.Weights.Unclear)
 	w := v.Weights.Assets[0]
 	assert.Equal(t, "https://huggingface.co/org/repo", w.Source.URL)
-	assert.Equal(t, catalog.CommercialYes, w.License.CommercialUse)
+	assert.Equal(t, modellicense.Yes, w.License.Commercial)
 	x := v.Weights.Assets[1]
-	assert.Equal(t, catalog.CommercialUnclear, x.License.CommercialUse)
+	assert.Equal(t, modellicense.Unknown, x.License.Commercial)
 	assert.NotEmpty(t, x.License.Notice, "an unclear license carries what to watch for")
 	assert.Contains(t, x.Source.Note, "2026-11-01")
 

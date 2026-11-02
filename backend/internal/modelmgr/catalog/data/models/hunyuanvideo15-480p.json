@@ -46,8 +46,29 @@
   "name": "Tencent Hunyuan Community License Agreement (HunyuanVideo 1.5)",
   "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo-1.5/blob/master/LICENSE",
   "summary": "許諾の地域は EU・英国・韓国を除く全世界。この 3 地域では使えない。月間アクティブユーザーが 1 億を超える製品・サービスは Tencent の許諾が要る。生成物や結果を他の AI モデルの改良に使うことと、地域の外での利用は禁じられる。",
-  "commercial_use": true,
+  "commercial": "conditional",
   "commercial_condition": "月間アクティブユーザーが 1 億を超える場合は Tencent の許諾が要る",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル（HunyuanVideo 1.5）",
+    "name": "Tencent Hunyuan Community License Agreement",
+    "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo-1.5/blob/master/LICENSE",
+    "commercial": "conditional"
+   },
+   {
+    "part": "テキストエンコーダー（Qwen2.5-VL 7B）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct",
+    "commercial": "yes"
+   },
+   {
+    "part": "テキストエンコーダー（byT5 small）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/google/byt5-small",
+    "commercial": "yes"
+   }
+  ],
   "excluded_regions": [
    "EU",
    "GB",

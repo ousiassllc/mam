@@ -64,8 +64,23 @@
   "version": "1",
   "name": "ライセンスの記載なし（Wan 2.2 General NSFW LoRA）",
   "url": "https://civitai.com/models/1307155",
-  "summary": "ライセンスの記載が無い（HF に記載なし）。原本（Civitai）の表示は「RentCivit」だけで、Civitai の外での商用は認められないと読める。そのため、mam では商用不可として扱う。ベースの Wan 2.2 は Apache-2.0。",
-  "commercial_use": false,
+  "summary": "ライセンスの記載が無い（HF に記載なし）。原本（Civitai）の表示は「RentCivit」だけで、Civitai の外での商用は認められないと読める。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。ベースの Wan 2.2 は Apache-2.0。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル（Wan 2.2 I2V 14B）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   },
+   {
+    "part": "LoRA（Wan 2.2 General NSFW LoRA）",
+    "name": "ライセンスの記載なし",
+    "url": "https://civitai.com/models/1307155",
+    "commercial": "unknown"
+   }
+  ],
   "notice": "この mam のインストール先に取得するモデルです。ライセンスの記載が無いため、商用には使わないでください。"
  },
  "consent_required": true,

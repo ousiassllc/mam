@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 )
 
 // hfRepoURL matches the Hugging Face repository a pinned file URL lies in.
@@ -81,14 +83,14 @@ func validateResourceLicense(where string, l ResourceLicense) []error {
 	if l.ID == "" || l.Name == "" || strings.TrimSpace(l.Summary) == "" || !strings.HasPrefix(l.URL, "https://") {
 		errs = append(errs, fmt.Errorf("%s: id, name, an https url and a summary are required", lw))
 	}
-	switch l.CommercialUse {
-	case CommercialYes:
-	case CommercialNo, CommercialUnclear:
+	switch l.Commercial {
+	case modellicense.Yes:
+	case modellicense.Conditional, modellicense.No, modellicense.Unknown:
 		if strings.TrimSpace(l.Notice) == "" {
-			errs = append(errs, fmt.Errorf("%s: commercial_use %s needs a notice that says what to watch for", lw, l.CommercialUse))
+			errs = append(errs, fmt.Errorf("%s: commercial %s needs a notice that says what to watch for", lw, l.Commercial))
 		}
 	default:
-		errs = append(errs, fmt.Errorf("%s: commercial_use must be yes, no or unclear", lw))
+		errs = append(errs, fmt.Errorf("%s: commercial must be yes, conditional, no or unknown", lw))
 	}
 	return errs
 }

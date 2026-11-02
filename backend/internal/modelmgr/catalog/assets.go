@@ -3,29 +3,20 @@ package catalog
 import (
 	"cmp"
 	"slices"
-)
 
-// CommercialUse says whether a weight or a dependency may be used commercially. Unclear is a value of its own, not a "no": the
-// license does not say (or says something that mam could not confirm), and the screen shows it prominently.
-type CommercialUse string
-
-// The answers.
-const (
-	CommercialYes     CommercialUse = "yes"
-	CommercialNo      CommercialUse = "no"
-	CommercialUnclear CommercialUse = "unclear"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 )
 
 // ResourceLicense is the license of a weight or a dependency, as the screen and the docs show it. Notice is the sentence that says what
 // to watch for: it is required when the commercial use is not "yes" (a model card that says one thing and a training data set that
 // says another is exactly the case for it).
 type ResourceLicense struct {
-	ID            string        `json:"id"`
-	Name          string        `json:"name"`
-	URL           string        `json:"url"`
-	Summary       string        `json:"summary"`
-	CommercialUse CommercialUse `json:"commercial_use"`
-	Notice        string        `json:"notice,omitempty"`
+	ID         string                  `json:"id"`
+	Name       string                  `json:"name"`
+	URL        string                  `json:"url"`
+	Summary    string                  `json:"summary"`
+	Commercial modellicense.Commercial `json:"commercial"`
+	Notice     string                  `json:"notice,omitempty"`
 }
 
 // ResourceSource says where the original of an asset is: the repository or file page the vendor publishes it at. When mam downloads it
@@ -119,7 +110,7 @@ func (s ResourceSet) TotalSize() int64 {
 func (s ResourceSet) Unclear() []string {
 	var names []string
 	for _, a := range s.Assets {
-		if l, ok := s.License(a.License); ok && l.CommercialUse != CommercialYes {
+		if l, ok := s.License(a.License); ok && l.Commercial != modellicense.Yes {
 			names = append(names, a.Name)
 		}
 	}

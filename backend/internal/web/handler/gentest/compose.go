@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -30,7 +32,8 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	maxItems, maxCost := h.Svc.Limits()
 	c := view.Compose{
 		Media: media, Models: choicesOf(models, f.models), Prompts: f.prompts, Translate: f.translate,
-		Count: orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),
+		Filter: commercial.NewFilter("gt-commercial", "#gt-models", h.Svc.DefaultFilter()),
+		Count:  orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),
 		MaxPrompt: gentest.MaxPromptRunes, MaxCount: gentest.MaxCount, MaxItems: maxItems, MaxReferences: gentest.MaxReferences,
 	}
 	if maxCost > 0 {

@@ -13,11 +13,11 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// TakeTracePanel is the Generation Traceability of a Take (F-27, GET /takes/:id/trace): what led
-// to it, from the Source Shot Spec to the Judge results and the Repair history.
+// TakeTracePanel is the Generation Traceability of a Take (F-27, GET /takes/:id/trace): what led to it, from the Source Shot Spec to the Judge results and the Repair history.
 func TakeTracePanel(t domain.TakeTrace) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -83,9 +83,9 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(t.Take.ModelName)
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(commercial.OptionLabel(t.Take.ModelName, commercial.Of(t.Take.ModelName)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 21, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 21, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

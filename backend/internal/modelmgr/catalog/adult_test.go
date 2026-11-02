@@ -5,6 +5,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -131,14 +133,14 @@ func TestMirroredFilesNameTheirOriginAndUnlicensedModelsAreNotCommercial(t *test
 	for _, id := range []string{"wan22-remix-nsfw-i2v", "wan22-i2v-14b-nsfw-lora"} {
 		m, _ := c.Model(id)
 		assert.Equal(t, "unspecified", m.License.ID, id)
-		assert.False(t, m.License.CommercialUse, id)
+		assert.Equal(t, modellicense.Unknown, m.License.Commercial, id, "no text, so not known: shown as 不明 with the notice")
 		assert.Contains(t, m.License.Summary, "ライセンスの記載が無い", id)
 		assert.Contains(t, m.License.Summary, "Civitai", id)
 	}
 	noct, _ := c.Model("noctq-v4-qwen-image21")
-	assert.False(t, noct.License.CommercialUse)
+	assert.Equal(t, modellicense.No, noct.License.Commercial, "Qwen RESEARCH LICENSE: non-commercial")
 	chroma, _ := c.Model("chroma1-hd")
-	assert.True(t, chroma.License.CommercialUse, "Apache-2.0")
+	assert.Equal(t, modellicense.Yes, chroma.License.Commercial, "Apache-2.0")
 	assert.True(t, chroma.ConsentRequired, "but it is adult: the consent is required all the same")
 }
 
@@ -156,7 +158,7 @@ func TestValidateChecksTheContentRatingLorasAndSourceNotes(t *testing.T) {
 		"an unknown rating":       {func(c *catalog.Catalog) { find(c, "sdxl-base").ContentRating = "teen" }, "content_rating"},
 		"an adult standard model": {func(c *catalog.Catalog) { find(c, "sdxl-base").ContentRating = catalog.RatingAdult }, "adult model is an advanced model"},
 		"an unlicensed commercial model": {func(c *catalog.Catalog) {
-			find(c, "wan22-remix-nsfw-i2v").License.CommercialUse = true
+			find(c, "wan22-remix-nsfw-i2v").License.Commercial = modellicense.Yes
 		}, "not commercial use"},
 		"trigger words without a LoRA":          {func(c *catalog.Catalog) { find(c, "sdxl-base").TriggerWords = []string{"x"} }, "trigger_words belong to a model with a LoRA"},
 		"an empty trigger word":                 {func(c *catalog.Catalog) { find(c, "flux1-dev-nsfw-master").TriggerWords = []string{" "} }, "trigger word is empty"},

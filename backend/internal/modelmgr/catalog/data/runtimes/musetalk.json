@@ -79,8 +79,10 @@
   "name": "MIT License",
   "url": "https://github.com/TMElyralab/MuseTalk/blob/0a89dec45a0192b824e3cf4daf96c239440c5ed8/LICENSE",
   "summary": "MuseTalk は mam とは別のプログラムで、コードは MIT ライセンスで公開されている（README: 「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」）。mam は MuseTalk のバイトを配布せず、利用者の PC に GitHub のコミット固定のアーカイブから取得する。実行環境の Python（python.org）と約 80 の Python パッケージ（PyPI・PyTorch・OpenMMLab）も、それぞれの配布先から取得し、それぞれのライセンスに従う（THIRD_PARTY_NOTICES.md に一覧）。",
-  "commercial_use": true,
-  "commercial_condition": "MuseTalk のコードと学習済みモデルは、README に商用を含むどんな目的にも使えるとある。実行に必要な他のモデル（SyncNet・S3FD・face-parse-bisent・ResNet-18）には、商用利用がはっきりしないものがあり、重みの一覧に注記する。Python パッケージのライセンスは確認中のものがある（THIRD_PARTY_NOTICES.md）。"
+  "commercial": "conditional",
+  "checked_at": "2026-11-01",
+  "commercial_condition": "MuseTalk のコードと学習済みモデルは、README に商用を含むどんな目的にも使えるとある。実行に必要な他のモデル（SyncNet・S3FD・face-parse-bisent・ResNet-18）には、商用利用がはっきりしないものがあり、重みの一覧に注記する。Python パッケージのライセンスは確認中のものがある（THIRD_PARTY_NOTICES.md）。",
+  "notice": "同梱の重み・依存ファイルに、商用利用がはっきりしないものがあります。商用で使う前に、導入後の一覧（出典とライセンス）の注意書きを確認してください。"
  },
  "variants": {
   "nvidia": {

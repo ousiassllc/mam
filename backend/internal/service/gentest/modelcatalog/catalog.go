@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 )
@@ -78,6 +79,20 @@ type Info struct {
 	// as an "Avoid: ..." sentence.
 	NegativeField bool  `json:"negative_field"`
 	Price         Price `json:"price"`
+	// License is whether the model may be used commercially, with the license, the condition and the source (#928). A model whose
+	// license mam has not checked is "unknown".
+	License modellicense.Info `json:"license" jsonschema:"商用利用の可否（commercial: yes / conditional / no / unknown）・ライセンス名・条件・出典 URL・確認日。確認できていないモデルは unknown"`
+}
+
+// FilterByCommercial keeps the models whose answer the filter allows.
+func FilterByCommercial(models []Info, f modellicense.Filter) []Info {
+	out := make([]Info, 0, len(models))
+	for _, m := range models {
+		if f.Allows(m.License.Commercial) {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 // Catalog lists the models of the generation test.
@@ -127,6 +142,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	mi := Info{
 		ID: string(m), Label: modelreg.Label(string(m)), Media: media, Source: sourceOf(cfg, m),
 		SupportsSeed: direct.SupportsSeed(cfg, m), NegativeField: direct.NegativeField(cfg, m), Price: priceOf(cfg, m, media),
+		License: modellicense.Of(string(m)),
 	}
 	if reason := c.Adapter.Unavailable(m); reason != "" {
 		mi.Unavailable, mi.UnavailableMessage = reason, unavailableMessage(reason, mi.Source)

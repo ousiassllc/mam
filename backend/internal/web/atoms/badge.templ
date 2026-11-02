@@ -13,18 +13,22 @@ const (
 )
 
 func badgeClass(tone BadgeTone) string {
-	base := "inline-block rounded-full px-2 py-0.5 text-xs font-medium "
+	return "inline-block rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(tone)
+}
+
+// badgeColors are the colours of a tone: the background and the text (the palette of spec/components/color-rules.md).
+func badgeColors(tone BadgeTone) string {
 	switch tone {
 	case BadgeInfo:
-		return base + "bg-sky-500/20 text-sky-300"
+		return "bg-sky-500/20 text-sky-300"
 	case BadgeWarn:
-		return base + "bg-amber-500/20 text-amber-300"
+		return "bg-amber-500/20 text-amber-300"
 	case BadgeOK:
-		return base + "bg-emerald-500/20 text-emerald-300"
+		return "bg-emerald-500/20 text-emerald-300"
 	case BadgeError:
-		return base + "bg-red-500/20 text-red-300"
+		return "bg-red-500/20 text-red-300"
 	}
-	return base + "bg-neutral-700 text-neutral-300"
+	return "bg-neutral-700 text-neutral-300"
 }
 
 // Badge is a small status label.

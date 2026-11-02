@@ -60,6 +60,8 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	engine.GET(paths.ModelManagerPart("adult", "confirm"), h.AdultConfirm)
 	engine.PUT(paths.ModelManagerPart("adult"), h.SetAdult)
 
+	engine.PUT(paths.ModelManagerPart("commercial"), h.SetCommercial)
+
 	engine.GET(paths.ModelManagerPart("models"), h.Models)
 	engine.GET(paths.ModelManagerPart("models", ":id", "consent"), h.Consent)
 	engine.POST(paths.ModelManagerPart("models", ":id", "install"), h.InstallModel)

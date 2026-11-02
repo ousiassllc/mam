@@ -41,7 +41,7 @@ func TestCatalog_EachModelIsACardWithAnH3AndShrinkZeroActions(t *testing.T) {
 	s.rig.InstallEngine()
 	body := s.get(paths.ModelManagerPart("models")).Body.String()
 
-	assert.Regexp(t, `<ul role="list" class="[^"]*\bgrid\b[^"]*" data-testid="mm-models">`, body)
+	assert.Regexp(t, `<ul id="mm-models" role="list" class="[^"]*\bgrid\b[^"]*" data-testid="mm-models">`, body)
 	assert.Regexp(t, `<li class="[^"]*rounded-lg border border-neutral-800 bg-neutral-900[^"]*" data-testid="mm-model"`, body, "the surface of a card")
 	assert.NotContains(t, body, "divide-y", "the models are not a divided list of rows")
 

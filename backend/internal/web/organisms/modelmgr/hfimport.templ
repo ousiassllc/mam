@@ -2,6 +2,7 @@ package modelmgr
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -87,7 +88,9 @@ templ hfRepoView(r HFRepo) {
 				@atoms.BadgeWith(atoms.BadgeError, "NFAA（成人向け）", templ.Attributes{"data-testid": "mm-hfi-nfaa"})
 			}
 		</div>
-		<p class="text-sm" data-testid="mm-hfi-license">ライセンス: { r.License }</p>
+		<p class="flex flex-wrap items-center gap-2 text-sm" data-testid="mm-hfi-license">
+			ライセンス: { r.License } @commercial.Badge(r.Answer)
+		</p>
 		if r.LicenseWarn != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-hfi-license-warning">{ r.LicenseWarn }</p>
 		}
@@ -287,6 +290,9 @@ templ HFModelListView(l HFModelList) {
 						})
 					</div>
 					<p class="text-xs text-neutral-300"><code>{ m.Repo }</code>（コミット <code>{ m.Commit }</code>）・{ m.Size }・ライセンス: { m.License }・{ m.At }</p>
+					<p class="flex flex-wrap items-center gap-2">
+						@commercial.Badge(m.Answer)
+					</p>
 					if len(m.ModelIDs) > 0 {
 						<p class="text-xs text-neutral-400" data-testid="mm-hfi-model-ids">{ joinNames(m.ModelIDs) }</p>
 					}

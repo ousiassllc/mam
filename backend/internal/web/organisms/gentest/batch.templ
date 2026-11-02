@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -75,7 +76,12 @@ templ BatchBox(b Batch) {
 				<tbody>
 					for _, r := range b.Rows {
 						<tr class="border-t border-neutral-800" data-testid="gt-row">
-							<th class="p-2 text-left align-top text-xs font-medium text-neutral-200" scope="row">{ r.Model }</th>
+							<th class="p-2 text-left align-top text-xs font-medium text-neutral-200" scope="row">
+								<span class="flex flex-col items-start gap-1">
+									<span>{ r.Model }</span>
+									@commercial.Badge(r.Answer)
+								</span>
+							</th>
 							for _, cell := range r.Cells {
 								<td class="p-2 align-top" data-testid="gt-cell">
 									<div class="flex flex-wrap gap-2">
@@ -132,9 +138,12 @@ templ ResultCard(c Card) {
 		if c.Error != "" {
 			<p class="break-words text-red-300" data-testid="gt-card-error">{ c.Error }</p>
 		}
-		if c.Meta != "" {
-			<p class="break-words text-neutral-400">{ c.Meta }</p>
-		}
+		<p class="flex flex-wrap items-center gap-1 break-words text-neutral-400">
+			@commercial.Mark(c.Answer)
+			if c.Meta != "" {
+				<span>{ c.Meta }</span>
+			}
+		</p>
 		if c.Detail != "" {
 			<a id={ "gt-detail-" + c.ID } class="underline" href={ templ.SafeURL(c.Detail) } aria-label={ "結果の詳細: " + c.Model }>詳細</a>
 		}

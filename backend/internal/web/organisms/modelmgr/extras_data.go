@@ -1,5 +1,7 @@
 package modelmgr
 
+import "github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 // HFToken is the optional Hugging Face token: whether there is one (and its end), never its value.
 type HFToken struct {
 	Message
@@ -44,12 +46,16 @@ type TrialModel struct {
 	ID       string
 	Label    string
 	Selected bool
+	// Answer is whether the model may be used commercially (data-commercial of the option, which the filter reads).
+	Answer commercial.View
 }
 
 // TrialForm is the form that starts a trial generation, for the model that is chosen.
 type TrialForm struct {
 	Message
 	Models []TrialModel
+	// Filter is the commercial-use filter of the model select.
+	Filter commercial.FilterData
 	// Media is image or video ("" while no model is chosen).
 	Media            string
 	AcceptsReference bool
@@ -67,6 +73,7 @@ type TrialForm struct {
 type Trial struct {
 	ID         string
 	ModelID    string
+	Answer     commercial.View
 	Video      bool
 	Prompt     string
 	Detail     string

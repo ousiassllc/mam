@@ -27,6 +27,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/detect"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
@@ -137,8 +138,8 @@ var (
 )
 
 func testCatalog(h *fakeHost) *catalog.Catalog {
-	lic := func(id string, commercial bool) catalog.License {
-		return catalog.License{ID: id, Version: "1", Name: id, URL: "https://example.com/" + id, Summary: "s", CommercialUse: commercial}
+	lic := func(id string, commercial modellicense.Commercial) catalog.License {
+		return catalog.License{ID: id, Version: "1", Name: id, URL: "https://example.com/" + id, Summary: "s", Commercial: commercial, CheckedAt: "2026-11-02"}
 	}
 	cf := func(f file) catalog.File {
 		return catalog.File{Name: f.name, Folder: f.folder, URL: h.URL + "/" + f.folder + "/" + f.name, SHA256: f.sha(), Size: int64(len(f.body))}
@@ -154,11 +155,11 @@ func testCatalog(h *fakeHost) *catalog.Catalog {
 		},
 		Models: []catalog.Model{
 			{ID: "m-a", Name: "A", Kind: localcfg.MediaImage, Tier: catalog.TierStandard, Description: "d", Files: []catalog.File{cf(ckptA)}, VRAM: vram,
-				License: lic("apache-2.0", true), Workflows: []catalog.Workflow{{Name: "wf-a", Template: "txt2img-sdxl"}, {Name: "wf-a-i2i", Template: "img2img-sdxl"}}},
+				License: lic("apache-2.0", modellicense.Yes), Workflows: []catalog.Workflow{{Name: "wf-a", Template: "txt2img-sdxl"}, {Name: "wf-a-i2i", Template: "img2img-sdxl"}}},
 			{ID: "m-b", Name: "B", Kind: localcfg.MediaVideo, Tier: catalog.TierStandard, Description: "d", Files: []catalog.File{cf(unetB), cf(vaeBC)}, VRAM: vram,
-				License: lic("apache-2.0", true), Workflows: []catalog.Workflow{{Name: "wf-b", Template: "txt2video-wan22-5b"}}},
+				License: lic("apache-2.0", modellicense.Yes), Workflows: []catalog.Workflow{{Name: "wf-b", Template: "txt2video-wan22-5b"}}},
 			{ID: "m-c", Name: "C", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, Description: "d", Files: []catalog.File{cf(clipC), cf(vaeBC)}, VRAM: vram,
-				License: lic("non-commercial", false), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-c", Template: "txt2img-flux-schnell"}}},
+				License: lic("non-commercial", modellicense.No), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-c", Template: "txt2img-flux-schnell"}}},
 		},
 	}
 }

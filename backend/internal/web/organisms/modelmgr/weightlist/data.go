@@ -3,15 +3,8 @@
 // package is at its size limit).
 package weightlist
 
-// Commercial-use values of a license (catalog.CommercialUse as the screen uses it).
-const (
-	Yes     = "yes"
-	No      = "no"
-	Unclear = "unclear"
-)
-
-// License is the license of a weight or a dependency, as the card shows it. Commercial is one of the Yes / No / Unclear values;
-// Notice is what to watch for (always set when it is not "yes": the catalog requires it).
+// License is the license of a weight or a dependency, as the card shows it. Commercial is a modellicense.Commercial value (yes,
+// conditional, no or unknown); Notice is what to watch for (always set when it is not "yes": the catalog requires it).
 type License struct {
 	Name       string
 	URL        string

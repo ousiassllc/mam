@@ -5,11 +5,11 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// TakeTracePanel is the Generation Traceability of a Take (F-27, GET /takes/:id/trace): what led
-// to it, from the Source Shot Spec to the Judge results and the Repair history.
+// TakeTracePanel is the Generation Traceability of a Take (F-27, GET /takes/:id/trace): what led to it, from the Source Shot Spec to the Judge results and the Repair history.
 templ TakeTracePanel(t domain.TakeTrace) {
 	<section id={ "take-trace-" + t.Take.ID } aria-label="Generation Trace" class="flex flex-col gap-3 rounded-md border border-neutral-700 p-3 text-sm">
 		<dl class="grid gap-x-4 gap-y-1 md:grid-cols-[10rem_1fr]">
@@ -18,7 +18,7 @@ templ TakeTracePanel(t domain.TakeTrace) {
 			<dt class="text-xs text-neutral-400">World State version</dt>
 			<dd>{ worldVersionText(t.WorldStateVersion) }</dd>
 			<dt class="text-xs text-neutral-400">Model</dt>
-			<dd>{ t.Take.ModelName }</dd>
+			<dd>{ commercial.OptionLabel(t.Take.ModelName, commercial.Of(t.Take.ModelName)) }</dd>
 			<dt class="text-xs text-neutral-400">Output</dt>
 			<dd>
 				if t.Output == nil {

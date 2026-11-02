@@ -39,6 +39,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/instlog"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmlicense"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 
@@ -69,8 +70,7 @@ var (
 	ErrNoGPU = errors.New("modelmanager: no supported GPU was found")
 	// ErrPinned: the operator pinned the model setting file (--model-config): the managed endpoint cannot be written.
 	ErrPinned = modelsettings.ErrPinned
-	// ErrEndpointMoved: the engine started on another port than the endpoint knew; the setting was updated, and
-	// the call has to be made again.
+	// ErrEndpointMoved: the engine started on another port than the endpoint knew; the setting was updated, and the call has to be made again.
 	ErrEndpointMoved = errors.New("ComfyUI のポートが変わったため設定を更新しました。もう一度実行してください")
 )
 
@@ -108,8 +108,7 @@ type Deps struct {
 	Extract extract.Extractor
 	// Fetch are the options of the downloads (client, URL check); Progress is set per download.
 	Fetch fetch.Options
-	// HFBase is the Hugging Face site the import reads (default hf.DefaultBase; a test points it at a fake). The reads follow the
-	// rules of Fetch (client, URL check, token host).
+	// HFBase is the Hugging Face site the import reads (default hf.DefaultBase; a test points it at a fake), read by the rules of Fetch.
 	HFBase string
 	// FreeBytes reports the free disk space at a path (default fsutil.FreeBytes).
 	FreeBytes func(path string) (uint64, error)
@@ -129,6 +128,7 @@ type Deps struct {
 // Service is the model manager.
 type Service struct {
 	Deps
+	*mmlicense.Book
 	cat     *catalog.Catalog
 	state   *store.Store
 	engine  *engine.Installer
@@ -173,7 +173,7 @@ func New(d Deps) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{Deps: d, cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
+	s := &Service{Deps: d, Book: mmlicense.New(d.Catalog, st, BundledEndpoint), cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
 		active: map[string]string{}, activeDest: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
 	s.hf = hf.New(hf.Options{Base: d.HFBase, HTTP: d.Fetch.Client, CheckURL: d.Fetch.CheckURL, AuthHost: d.Fetch.AuthHost, Token: s.huggingFaceToken})
 	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now}
