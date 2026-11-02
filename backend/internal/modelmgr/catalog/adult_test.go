@@ -13,7 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 )
 
-var adultIDs = []string{"chroma1-hd", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v"}
+var adultIDs = []string{"chroma1-hd", "flux1-dev-nsfw-master", "ltx-2.5-22b-distilled-uncensored", "noctq-v4-qwen-image21", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v"}
 
 // The models of Issue #841 and which of them are for adults: the uncensored models and the LoRAs that make a model
 // uncensored. wan22-i2v-14b is the official base (no NFAA tag on Hugging Face), so it is a general standard model.

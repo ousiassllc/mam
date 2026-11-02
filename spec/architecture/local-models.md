@@ -102,6 +102,8 @@ openai-compat:lmstudio/flux-schnell
 
 **外部の ComfyUI**（macOS・ブラウザ版・サーバー版など、同梱エンジンを使わない環境）では、mam はモデルを入れない。上の 1〜2 のあと、ComfyUI 側で同じ名前のファイルを `diffusion_models/`・`text_encoders/`・`vae/`・`latent_upscale_models/` に置く（Comfy の公式ワークフローを開くと、ファイルの取得を案内される）。置いたあと、設定の「ローカル・代替モデル」にテンプレートからワークフローを登録する。ComfyUI は、必要なノード（`LTXV*`・`ComfyMathExpression`・Gemma 4 の `CLIPLoader type=ltxv`）を持つ新しい版にする（同梱エンジンの v0.42.1 は持つ）。GPU での生成は未確認（model-manager.md §11）。
 
+**非検閲のテキストエンコーダー・音声つきの出力・macOS（Issue #927）**: 標準のテキストエンコーダーの代わりに、コミュニティ製の非検閲版を使うテンプレートが `txt2video-ltx-2-5-uncensored`・`img2video-ltx-2-5-uncensored`（成人向け。カタログ `ltx-2.5-22b-distilled-uncensored`。違いは `CLIPLoader` の `clip_name` だけ。[model-manager.md](model-manager/model-manager.md) §4.2）。保存は `SaveVideo`（`format`・`codec` ともに `auto` = H.264 と AAC の mp4）で、音声トラックは 1 本の mp4 に入り、mam は再エンコードせずに保存・再生する。macOS の外部 ComfyUI（MPS）は、LTX-2.5 が黒い動画になる・保存に失敗する報告があり、**動く場合もあるが不安定で、mam では未確認**（同 §4.2「macOS」）。
+
 ## 5. 接続テスト
 
 ComfyUI は `GET /system_stats`（バージョンを返す）、OpenAI 互換は `GET /v1/models`（先頭 20 件のモデル ID を返す）。互換サーバーが 404/405 を返したら「到達できる。`/v1/models` は提供されていない」を注意付きの成功とする。

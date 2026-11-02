@@ -61,20 +61,24 @@ type TrialForm struct {
 	AcceptsReference bool
 	Resolutions      []string
 	Durations        []string
-	Prompt           string
-	Negative         string
-	Aspect           string
-	Resolution       string
-	MaxPrompt        int
-	Duration         string
+	// NativeAudio: the chosen video model makes the sound with the picture; the form says so.
+	NativeAudio bool
+	Prompt      string
+	Negative    string
+	Aspect      string
+	Resolution  string
+	MaxPrompt   int
+	Duration    string
 }
 
 // Trial is a trial generation of the list.
 type Trial struct {
-	ID         string
-	ModelID    string
-	Answer     commercial.View
-	Video      bool
+	ID      string
+	ModelID string
+	Answer  commercial.View
+	Video   bool
+	// Audio: the model of the result makes the sound with the picture, so the file has an audio track.
+	Audio      bool
 	Prompt     string
 	Detail     string
 	Reference  bool

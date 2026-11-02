@@ -27,12 +27,16 @@ type Model struct {
 	Size        string
 	Need        string
 	// LowDisk: what the install still has to download does not fit in the free space.
-	LowDisk  bool
-	VRAM     string
-	NoSource bool
-	License  License
-	Consent  bool
-	Accepted bool
+	LowDisk bool
+	VRAM    string
+	// VRAMFit is how the GPU of this PC stands to the guideline (catalog.Fit: short, limited, enough; "" when the memory is not known)
+	// and VRAMFitText says it in words, with the limits of a GPU that is below the recommendation.
+	VRAMFit     string
+	VRAMFitText string
+	NoSource    bool
+	License     License
+	Consent     bool
+	Accepted    bool
 	// NeedsToken is the badge 「HF トークンが必要」 (a model behind a Hugging Face login); TokenGuide is the guidance shown beside the
 	// install while no token is stored ("" when there is one, or the model needs none).
 	NeedsToken bool

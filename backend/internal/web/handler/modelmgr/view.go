@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
@@ -20,7 +21,7 @@ var (
 	bytesText  = jobview.BytesText
 	progressOf = jobview.Progress
 	ended      = jobview.Ended
-	vramText   = jobview.VRAMText
+	vramText   = jobview.ModelVRAMText
 )
 
 // engineData is the card of the engine. job is the install job the card reports on ("" for the running one);
@@ -130,14 +131,17 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 	return ""
 }
 
-func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free uint64, tokenMissing bool) view.Model {
+func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free, gpuVRAM uint64, tokenMissing bool) view.Model {
 	out := view.Model{
 		ID: m.ID, Name: m.Name, KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
 		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
-		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM.MinGB, m.VRAM.Source, m.VRAM.Estimate),
+		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM),
 		License: licenseOf(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
 		State: string(m.State), ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
 		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free,
+	}
+	if fit, ok := mmview.FitOf(m.VRAM, gpuVRAM); ok {
+		out.VRAMFit, out.VRAMFitText = string(fit.Fit), fit.Text
 	}
 	if m.RequiresHFToken && tokenMissing {
 		out.TokenGuide = hfguide.NoToken // the same words as the refusal of the install (service, MCP)
@@ -173,11 +177,12 @@ func kindLabel(kind string) string {
 // are shown once as a notice or an error.
 func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) view.Catalog {
 	free := svc.Engine().FreeBytes
+	gpuVRAM := mmview.GPUVRAM(ctx, svc)
 	hasToken, tokenErr := svc.HasHuggingFaceToken()
 	c := view.Catalog{Blocked: blockedText(ctx, svc)}
 	names := map[string]string{}
 	for _, m := range svc.Catalog() {
-		md := modelData(ctx, svc, m, free, tokenErr == nil && !hasToken)
+		md := modelData(ctx, svc, m, free, gpuVRAM, tokenErr == nil && !hasToken)
 		names[m.InstallJob] = "「" + m.Name + "」"
 		c.Models = append(c.Models, md)
 		if m.InstallJob != "" {

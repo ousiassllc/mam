@@ -55,6 +55,7 @@
 | `noctq-v4-qwen-image21` | **商用NG** | `LICENSE`（Qwen RESEARCH LICENSE AGREEMENT、2026-09-20）§2(a) は「非商用の目的に限る」、§2(b) は「別の商用ライセンス無しに商用目的で使わない」と書く。Noct Q の重みも、テキストエンコーダー・VAE（Comfy-Org の配布。カードは `license: other / qwen-research`）も同じ。Qwen/Qwen-Image-2.1 本体のカードも `qwen-research` |
 | `sd35-medium` | 条件つき | 年間売上 100 万米ドル未満 |
 | `ltx-2.5-22b-distilled` | 条件つき | 年間売上 1,000 万米ドル未満。テキストエンコーダーの Gemma 4 は Apache-2.0 |
+| `ltx-2.5-22b-distilled-uncensored` | **不明** | 拡散モデル・VAE は LTX-2.x Community（条件つき）、元の Gemma 4 と非検閲化した `llmfan46/gemma-4-12B-it-uncensored-heretic`（HF のタグ `apache-2.0`）は商用OK。LTX-2.5 用に変換した `DeepNeuralNerd/…LTX_2.5_ComfyUI` は `license: other` で本文が無く、「上流の Gemma 4 と LTX-2 のライセンスを参照」とだけ書く。厳しい方の「不明」（#927。2026-11-02） |
 | `hunyuanvideo15-480p` | 条件つき | 月間 1 億人超は許諾。EU・英国・韓国では使えない |
 | `wan22-i2v-14b-nsfw-lora`・`wan22-remix-nsfw-i2v` | **不明** | ベースの Wan 2.2 は Apache-2.0。LoRA・マージの側にライセンスの本文が無い（旧版は「商用不可」と扱っていた。確認できないものは断定せず不明にした） |
 | クラウド: `nano-banana`・`nano-banana-lite`・`gemini-omni-flash`（Gemini API。「Use of Generated Content」: Google は生成物の所有権を主張しない）、`flux-2`（BFL。生成物の所有権を主張しない）、`gpt-image-2`・ChatGPT サブスク（OpenAI。Output は利用者のもの）、`runway-gen-4.5`（Runway。入力と生成物の所有権を主張しない） | 商用OK | 各社の利用規約を 2026-11-02 に読み、生成物の所有権を主張しない・利用者に帰属させるとしている（出典 URL は `cloud.json`）。ChatGPT サブスクは mam が使う経路が非公式で、注意を付ける |
@@ -117,3 +118,4 @@
 | 版 | 日付 | 変更内容 | 理由 |
 |---|---|---|---|
 | 1.0 | 2026-11-02 | 新規。4 つの答え・データの置き場所・ベースと派生は厳しい方・バッジ／フィルター／設定・MCP・後続の追加手順 | Issue #928 |
+| 1.1 | 2026-11-02 | 非検閲のテキストエンコーダーの LTX-2.5（`ltx-2.5-22b-distilled-uncensored`）の答え（不明）を足した | Issue #927 |
