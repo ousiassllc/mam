@@ -70,6 +70,8 @@ type Request struct {
 	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty"`
 	// LoRA is applied to every image model that can take one (modelcatalog.Info.SupportsLoRA), together with the references.
 	LoRA *LoRAInput `json:"lora,omitempty"`
+	// SpeedMode is how a video model samples (modelcatalog.VideoCaps.SpeedModes: "fast", "standard"); "" is each model's default.
+	SpeedMode string `json:"speed_mode,omitempty"`
 	// TranslateToEnglish translates the prompts and the negative prompts that are not English with the Reasoning LLM before
 	// they are sent (once per run; English ones are left as they are). A failed translation stops the run. The zero value is
 	// off: DefaultTranslate is what the screen and the MCP tools ask for when the caller does not say.
@@ -125,6 +127,9 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 			return r, nil, err
 		}
 		r.LoRA = &LoRAInput{Name: l.Name, Strength: &l.Strength} // a copy: the caller's request stays as it was
+	}
+	if r.SpeedMode, err = refs.CheckSpeedMode(r.Media, r.SpeedMode); err != nil {
+		return r, nil, err
 	}
 	if err := refs.CheckAvoidPose(r.Media, r.AvoidReferencePose); err != nil {
 		return r, nil, err

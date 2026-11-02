@@ -1,4 +1,4 @@
-// Package failtext words the failures of the generation test that depend on where the call went.
+// Package failtext words the failures of the generation test that depend on where the call went (a local endpoint, the LLM that translates).
 package failtext
 
 import (
@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 )
 
 // LocalTimeout says what happened to a call to an endpoint the user registered that ran past its timeout, and what to do
@@ -29,4 +31,20 @@ func duration(d time.Duration) string {
 		return fmt.Sprintf("%d分", d/time.Minute)
 	}
 	return fmt.Sprintf("%d秒", int(d.Round(time.Second)/time.Second))
+}
+
+// Translate is what the user is told when the prompts could not be translated.
+func Translate(err error) string {
+	const tail = "。何も生成していません。もう一度試すか、英訳を OFF にしてください"
+	switch {
+	case errors.Is(err, llm.ErrNoAPIKey):
+		return "プロンプトを英語に訳せませんでした: LLM の API キーが登録されていません（設定の「LLM の割り当て」の Prompt Planner が使うプロバイダー）" + tail
+	case errors.Is(err, llm.ErrCircuitOpen):
+		return "プロンプトを英語に訳せませんでした: LLM が一時的に使えません" + tail
+	case errors.Is(err, llm.ErrTimeout):
+		return "プロンプトを英語に訳せませんでした: LLM の応答が時間内に返りませんでした" + tail
+	case errors.Is(err, prompttranslate.ErrNotTranslated), errors.Is(err, llm.ErrInvalidOutput):
+		return "プロンプトを英語に訳せませんでした: LLM の答えが翻訳になっていません" + tail
+	}
+	return "プロンプトを英語に訳せませんでした: LLM の呼び出しに失敗しました" + tail
 }

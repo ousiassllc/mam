@@ -1,0 +1,41 @@
+{
+ "id": "txt2video-wan22-14b-remix",
+ "label": "Wan2.2-Remix T2V v2.0: テキストから動画",
+ "media": "video",
+ "description": "Wan2.2-Remix NSFW T2V v2.0（fp8 の Wan2.2_Remix_NSFW_t2v_14b_high_lighting_v2.0.safetensors と Wan2.2_Remix_NSFW_t2v_14b_low_lighting_v2.0.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors）でテキストから動画を作る、標準ノードだけのワークフロー。Remix は Lightning 系の少ステップ版なので、作者の同梱ワークフロー（Wan2.2-Remix-comfy-t2v-workflow.json）の値に従う: 12 ステップ・euler/simple・cfg 1、10 ステップ目で高ノイズから低ノイズへ切り替え、ModelSamplingSD3 の shift は 5、空の潜在は EmptyHunyuanLatentVideo。作者の推奨は非検閲版のテキストエンコーダー（NSFW-Wan-UMT5-XXL）だが、mam は Wan 2.2 の標準の umt5_xxl_fp8_e4m3fn_scaled を使う（I2V の Remix と共有）。16fps、VAE は Wan 2.1 の wan_2.1_vae.safetensors。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},
+  "workflow": {
+   "graph": {
+    "95": {"class_type": "UNETLoader", "inputs": {"unet_name": "Wan2.2_Remix_NSFW_t2v_14b_high_lighting_v2.0.safetensors", "weight_dtype": "default"}},
+    "96": {"class_type": "UNETLoader", "inputs": {"unet_name": "Wan2.2_Remix_NSFW_t2v_14b_low_lighting_v2.0.safetensors", "weight_dtype": "default"}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+    "54": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 5, "model": ["95", 0]}},
+    "55": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 5, "model": ["96", 0]}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "59": {"class_type": "EmptyHunyuanLatentVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1}},
+    "3": {"class_type": "KSamplerAdvanced", "inputs": {"add_noise": "enable", "noise_seed": 0, "steps": 12, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 0, "end_at_step": 10, "return_with_leftover_noise": "enable", "model": ["54", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["59", 0]}},
+    "4": {"class_type": "KSamplerAdvanced", "inputs": {"add_noise": "disable", "noise_seed": 0, "steps": 12, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 10, "end_at_step": 10000, "return_with_leftover_noise": "disable", "model": ["55", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["3", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["4", 0], "vae": ["39", 0]}},
+    "58": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+    "60": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["58", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "noise_seed"},
+    {"param": "width", "node": "59", "input": "width"},
+    {"param": "height", "node": "59", "input": "height"},
+    {"param": "frames", "node": "59", "input": "length"},
+    {"param": "fps", "node": "58", "input": "fps"}
+   ],
+   "output_node": "60",
+   "fps": 16,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}

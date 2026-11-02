@@ -31,9 +31,8 @@ type formState struct {
 	// translate is the switch "英語に訳して送る": a checkbox, so a form that does not carry it has it off.
 	translate bool
 	refs      []gentest.RefInput
-	// avoidPose and lora are the options that go with the references of an image batch (refform.Options).
-	avoidPose bool
-	lora      *gentest.LoRAInput
+	// opts are the options of the batch besides its inputs (refform.Options).
+	opts refform.Opts
 }
 
 // readForm reads the compose form (a POST, multipart or not, or the query of a GET that includes the form). Input images that
@@ -60,7 +59,7 @@ func readForm(c *gin.Context, stage bool) (formState, error) {
 		f.prompts = append(f.prompts, p)
 	}
 	f.refs = refform.Refs(v, f.media)
-	f.avoidPose, f.lora = refform.Options(v)
+	f.opts = refform.Options(v)
 	return f, nil
 }
 
@@ -82,7 +81,7 @@ func (h Handlers) stage(fh *multipart.FileHeader) (string, error) {
 func (f formState) request() (gentest.Request, error) {
 	r := gentest.Request{
 		Media: f.media, Models: f.models, AspectRatio: f.aspect, Resolution: f.resol, References: f.refs, TranslateToEnglish: f.translate,
-		AvoidReferencePose: f.avoidPose, LoRA: f.lora,
+		AvoidReferencePose: f.opts.AvoidPose, LoRA: f.opts.LoRA, SpeedMode: f.opts.SpeedMode,
 	}
 	for _, p := range f.prompts {
 		if strings.TrimSpace(p.Text) == "" {

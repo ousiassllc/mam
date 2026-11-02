@@ -48,6 +48,9 @@ type VideoCaps struct {
 	FirstFrame         bool      `json:"first_frame"`
 	LastFrame          bool      `json:"last_frame"`
 	NativeAudio        bool      `json:"native_audio"`
+	// SpeedModes are the ways the model can sample, the default first (a ComfyUI workflow with localcfg.Workflow.SpeedModes); empty for
+	// a model with one way. A request's speed_mode names one of them.
+	SpeedModes []SpeedMode `json:"speed_modes,omitempty"`
 }
 
 // Info is a model the screen can choose, with what it can do and why it cannot be chosen now.
@@ -162,7 +165,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	if caps, ok := cfg.VideoCaps(m); ok {
 		mi.Video = &VideoCaps{
 			Durations: slices.Clone(caps.Durations), Resolutions: slices.Clone(caps.Resolutions), MaxReferenceImages: caps.MaxReferenceImages,
-			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio,
+			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio, SpeedModes: SpeedModesOf(cfg, m),
 		}
 	}
 	return mi

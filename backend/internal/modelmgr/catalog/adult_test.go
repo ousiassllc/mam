@@ -13,7 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 )
 
-var adultIDs = []string{"chroma1-hd", "flux1-dev-nsfw-master", "ltx-2.5-22b-distilled-uncensored", "noctq-v4-qwen-image21", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v"}
+var adultIDs = []string{"chroma1-hd", "flux1-dev-nsfw-master", "ltx-2.5-22b-distilled-uncensored", "noctq-v4-qwen-image21", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v"}
 
 // The models of Issue #841 and which of them are for adults: the uncensored models and the LoRAs that make a model
 // uncensored. wan22-i2v-14b is the official base (no NFAA tag on Hugging Face), so it is a general standard model.
@@ -94,10 +94,10 @@ func TestSharedFilesOfTheUncensoredModelsAreTheSameFile(t *testing.T) {
 	}
 	for path, want := range map[string][]string{
 		"models/checkpoints/flux1-dev-fp8.safetensors":                             {"flux1-dev", "flux1-dev-nsfw-master"},
-		"models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors":              {"wan22-i2v-14b", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-ti2v-5b"},
-		"models/vae/wan_2.1_vae.safetensors":                                       {"wan22-i2v-14b", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v"},
-		"models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors": {"wan22-i2v-14b", "wan22-i2v-14b-nsfw-lora"},
-		"models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors":  {"wan22-i2v-14b", "wan22-i2v-14b-nsfw-lora"},
+		"models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors":              {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v", "wan22-ti2v-5b"},
+		"models/vae/wan_2.1_vae.safetensors":                                       {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v"},
+		"models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors": {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora"},
+		"models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors":  {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora"},
 	} {
 		got := slices.Clone(users[path])
 		slices.Sort(got)
