@@ -3,14 +3,17 @@ package runtimecard
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// RuntimesSection is the cards of the local runtimes (voice and lip sync), side by side like the models. Each card swaps itself and polls
-// while it has an install or a start in progress.
+// RuntimesSection is the cards of the local runtimes (voice and lip sync), side by side like the models, with the refresh button that reads them
+// all again (#962). Each card swaps itself and polls while it has an install or a start in progress, so the button shows no time: the cards
+// are read at different times.
 templ RuntimesSection(r Runtimes) {
 	<div id={ RuntimesID } class="flex flex-col gap-3" data-testid="mm-runtimes">
+		@refresh.Bar(paths.ModelManagerPart("runtimes"), RuntimesID, "")
 		@view.Notice(r.Message, "mm-runtimes")
 		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 			for _, item := range r.Items {

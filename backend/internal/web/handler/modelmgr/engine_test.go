@@ -18,14 +18,16 @@ import (
 func TestPage_ShowsTheEngineCardGPUAndTheCatalogBeforeAnInstall(t *testing.T) {
 	s := newScreen(t)
 	body := s.page()
-	assert.Contains(t, body, `data-testid="mm-engine-missing"`)
+	assert.Contains(t, body, `data-engine="missing"`)
+	assert.Contains(t, body, "未導入")
 	assert.Contains(t, body, `hx-get="`+paths.ModelManagerPart("engine", "gpu")+`"`, "the GPU is detected on load")
 	assert.Contains(t, body, `data-testid="mm-catalog-blocked"`)
 	assert.Contains(t, body, "先に ComfyUI エンジンを導入してください")
 	for _, name := range []string{">A<", ">B<", ">C<"} {
 		assert.Contains(t, body, name)
 	}
-	assert.Contains(t, body, "GPL-3.0")
+	assert.Contains(t, body, "ComfyUI エンジンの説明", "the explanation is behind the ? of the section")
+	assert.Contains(t, body, `hx-get="`+paths.ModelManagerPart("engine", "detail")+`"`, "the card opens its modal")
 
 	gpuBody := s.get(paths.ModelManagerPart("engine", "gpu")).Body.String()
 	assert.Contains(t, gpuBody, `data-testid="mm-gpu-recommended"`)
@@ -81,8 +83,9 @@ func TestEngine_StartStopAutoStartAndRemove(t *testing.T) {
 		return strings.Contains(s.get(paths.ModelManagerPart("engine")).Body.String(), `data-state="running"`)
 	}, 20*time.Second, 50*time.Millisecond)
 	running := s.get(paths.ModelManagerPart("engine")).Body.String()
-	assert.Contains(t, running, "127.0.0.1:")
 	assert.Contains(t, running, "停止")
+	assert.NotContains(t, running, "127.0.0.1:", "the address is in the modal of the card")
+	assert.Contains(t, s.get(paths.ModelManagerPart("engine", "detail")).Body.String(), "127.0.0.1:")
 
 	rec = s.do(http.MethodPost, paths.ModelManagerPart("engine", "stop"), nil)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -100,15 +103,18 @@ func TestEngine_StartStopAutoStartAndRemove(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "ComfyUI エンジンを削除しました")
 	assert.False(t, s.rig.Svc.Engine().Installed)
-	assert.Contains(t, rec.Body.String(), `data-testid="mm-engine-missing"`)
+	assert.Contains(t, rec.Body.String(), `data-engine="missing"`)
 }
 
 func TestEngine_RefusalsOfTheOSAndTheState(t *testing.T) {
 	t.Run("not Windows: the card explains and every action is refused", func(t *testing.T) {
 		s := newScreen(t, mmtest.NotWindows())
 		body := s.page()
-		assert.Contains(t, body, `data-testid="mm-engine-unsupported"`)
-		assert.Contains(t, body, "外部の ComfyUI")
+		assert.Contains(t, body, `data-engine="unsupported"`)
+		assert.Contains(t, body, "この PC では使えません")
+		detail := s.get(paths.ModelManagerPart("engine", "detail")).Body.String()
+		assert.Contains(t, detail, `data-testid="mm-engine-unsupported"`)
+		assert.Contains(t, detail, "別に動かしている ComfyUI")
 		assert.NotContains(t, body, `data-testid="mm-gpu"`)
 		for _, rec := range []*http.Response{
 			s.do(http.MethodPost, paths.ModelManagerPart("engine", "install"), url.Values{"variant": {"nvidia"}}).Result(),

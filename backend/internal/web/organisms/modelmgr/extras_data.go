@@ -96,6 +96,8 @@ type Trial struct {
 type Trials struct {
 	Message
 	Items []Trial
+	// UpdatedAt is the time of day the list was read ("15:04:05"), beside its refresh button (#962).
+	UpdatedAt string
 }
 
 // Polling reports whether a trial waits or runs.

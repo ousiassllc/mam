@@ -36,9 +36,9 @@ func TestHistoryRefreshesItselfWhileAResultRunsAndStopsWhenItIsDone(t *testing.T
 	assert.Contains(t, refresh, "live=1")
 	assert.Contains(t, refresh, "model=flux-2", "the poll keeps the filter")
 	assert.Contains(t, refresh, "media=image")
-	assert.Contains(t, whole, `data-testid="gt-refresh"`)
+	assert.Contains(t, whole, `data-testid="refresh"`)
 	assert.Contains(t, whole, `aria-label="更新"`)
-	assert.Contains(t, whole, `data-testid="gt-updated"`)
+	assert.Contains(t, whole, `data-testid="refresh-updated"`)
 
 	part := s.get(refresh)
 	assert.NotContains(t, part, `data-testid="gt-filter"`, "a poll never swaps the filter the reader is using")
@@ -54,7 +54,7 @@ func TestHistoryRefreshesItselfWhileAResultRunsAndStopsWhenItIsDone(t *testing.T
 	assert.NotContains(t, done, `data-status="running"`)
 	assert.Contains(t, done, `data-active="false"`)
 	assert.NotContains(t, done, `hx-trigger`, "nothing runs any more, so it stops asking")
-	assert.Contains(t, done, `data-testid="gt-refresh"`, "the button stays for the reader")
+	assert.Contains(t, done, `data-testid="refresh"`, "the button stays for the reader")
 }
 
 // A cancelled result is not running: the part shows it as soon as the batch has ended and stops asking.
@@ -85,7 +85,7 @@ func TestHistoryRefreshKeepsTheOffsetOfTheNextPage(t *testing.T) {
 		s.settled(s.start(fluxForm("20")))
 	}
 	body := s.get(paths.GenerationTestHistory() + "?model=flux-2&offset=24")
-	button := regexp.MustCompile(`<button[^>]*hx-get="([^"]+)"[^>]*data-testid="gt-refresh"`).FindStringSubmatch(body)
+	button := regexp.MustCompile(`<button[^>]*hx-get="([^"]+)"[^>]*data-testid="refresh"`).FindStringSubmatch(body)
 	require.Len(t, button, 2)
 	assert.Equal(t, "/generation-test/history?live=1&amp;model=flux-2&amp;offset=24", button[1])
 	assert.Equal(t, 16, strings.Count(s.get(strings.ReplaceAll(button[1], "&amp;", "&")), `data-testid="gt-history-item"`))

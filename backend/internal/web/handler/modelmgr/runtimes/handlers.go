@@ -27,6 +27,7 @@ type Handlers struct {
 // Register adds the routes of the section to the engine.
 func Register(engine *gin.Engine, svc *localruntime.Service) {
 	h := Handlers{svc: svc}
+	engine.GET(paths.ModelManagerPart("runtimes"), h.Section)
 	engine.GET(paths.ModelManagerPart("runtimes", ":id"), h.Runtime)
 	engine.GET(paths.ModelManagerPart("runtimes", ":id", "detail"), h.RuntimeDetail)
 	engine.POST(paths.ModelManagerPart("runtimes", ":id", "install"), h.InstallRuntime)
@@ -77,6 +78,11 @@ func (h Handlers) runtimeCard(c *gin.Context, status int, id, job string, starti
 func (h Handlers) failed(c *gin.Context, id string, err error) {
 	status, msg := refuseRuntime(c, err)
 	h.runtimeCard(c, status, id, "", false, func(r *card.Runtime) { r.Error = msg })
+}
+
+// Section answers GET /model-manager/runtimes with every card read again: the refresh button of the section (#962).
+func (h Handlers) Section(c *gin.Context) {
+	render(c, http.StatusOK, card.RuntimesSection(card.Runtimes{Items: items(c.Request.Context(), h.svc)}))
 }
 
 // Runtime answers GET /model-manager/runtimes/:id, which the card polls while an install or a start is in progress. job is the

@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -129,7 +130,8 @@ func aspectPlaceholder(media string) string {
 	return "1:1"
 }
 
-// TrialList is the trials, newest first; while one runs it polls itself.
+// TrialList is the trials, newest first, with the refresh button (#962); while one runs it polls itself. The form is outside of it, so that a
+// refresh never takes what is being typed.
 templ TrialList(t Trials) {
 	<div
 		id={ TrialsID }
@@ -141,6 +143,7 @@ templ TrialList(t Trials) {
 			hx-swap="outerHTML"
 		}
 	>
+		@refresh.Bar(paths.ModelManagerPart("trials"), TrialsID, t.UpdatedAt)
 		@notice(t.Message, "mm-trials")
 		if len(t.Items) == 0 {
 			<p class="text-sm text-neutral-400" data-testid="mm-trials-empty">試し生成の結果はまだありません。</p>

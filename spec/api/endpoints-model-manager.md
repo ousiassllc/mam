@@ -12,6 +12,7 @@
 |--------|------|------|
 | GET | `/model-manager` | 画面（HTMX のリクエストには、ページの枠なしの本体 `#model-manager-body`） |
 | GET | `/model-manager/engine` | エンジンのカード（`#mm-engine`）。導入中・起動中は自分で取り直す。クエリ `job` は報告する導入ジョブで、終わったら結果（導入した／失敗の理由）を出し、モデルの一覧を `hx-swap-oob` で描き直す |
+| GET | `/model-manager/engine/detail` | エンジンのカードが開く詳細モーダルの本体（Issue #970）。説明・この PC で使えない理由（Windows 版だけ・書き込めない・ファイルが見つからない）・導入済みの版と build・待ち受け（起動中だけ）・導入先と空き・出典とライセンス。応答は `modal.Frame` で、ページに 1 つの `<dialog>` に入る |
 | GET | `/model-manager/engine/gpu` | GPU の検出結果と導入フォーム（`#mm-gpu`）。未導入のカードが読み込み時に取る |
 | POST | `/model-manager/engine/install` | エンジンの導入（ジョブ）。フォーム `variant`（省くと GPU の推奨）・`cpu=1`（GPU が無いときの明示的な CPU 実行）。202 |
 | POST | `/model-manager/engine/start` | 起動（ComfyUI が応答するまで待たずに 202。カードが起動中を取り直し、失敗はカードに理由とログの末尾を出す） |
@@ -32,6 +33,7 @@
 | DELETE | `/model-manager/hf-token` | トークンの削除（未設定でもエラーにならない） |
 | GET | `/model-manager/hf` | Hugging Face の検索と、リポジトリのファイルの一覧（`#mm-hfi-result`）。クエリ `q` が URL（`://` を含む）か `owner/repo` ならそのリポジトリをコミットに固定して一覧し（`Service.HFRepo`）、それ以外はキーワード検索（`Service.SearchHF`、`kind` で絞る）。`q` が空・形式が不正（`hf.co`・http・他のホスト・`datasets/`）は 422、NFAA（コミットのタグか、リポジトリの今の先頭のタグ）を年齢確認の前に開くと 409（古いコミットの URL でも同じ）、gated でトークン・アクセス権が無いのは 422、無いリポジトリは 422 |
 | POST | `/model-manager/hf/install` | ファイル 1 つの導入（ジョブ）。フォーム `repo`・`commit`・`path`・`folder`・`name`・`agree=1`・`terms_version`。202 で「追加したモデル」を返す（導入中の進捗つき）。拒否は `HX-Retarget: #mm-hfi-msg`・`HX-Reswap: innerHTML` でエラーの行に出す: terms の確認が無ければ 409、版違い・GGUF・pickle・名前の衝突（同じ宛先の別ファイル、別のフォルダ・名前で導入中の同じファイルを含む）・gated・フォルダ不明は 422、NFAA を年齢確認の前に導入しようとすると 409。SHA-256・サイズは送らない（Service が HF から読み直す） |
+| GET | `/model-manager/runtimes` | ローカルの実行環境の区画全体（`#mm-runtimes`）。区画の更新ボタン（Issue #962）が取り直す。各カードは自分のポーリングを持つので、時刻は出さない |
 | GET | `/model-manager/runtimes/:id` | ローカルの実行環境（GPT-SoVITS・MuseTalk）のカード（`#mm-runtime-<id>`。Issue #920）。導入中・起動中は自分で取り直す。未知の ID は 404 |
 | GET | `/model-manager/runtimes/:id/detail` | ランタイムのカードが開く詳細モーダルの本体（Issue #954）。説明・この PC で使えない理由とクラウドの案内・導入先・出典とライセンス・重み・依存ファイルごとの出典・ライセンス・商用利用・ファイルと SHA-256。未知の ID は 404（理由だけのモーダル） |
 | POST | `/model-manager/runtimes/:id/install` | 環境の導入・更新（ジョブ。Python 環境・本体・重みまで）。この PC で使えなければ 409（理由とクラウドの案内つき）。202 |
@@ -108,3 +110,4 @@
 | 1.6 | 2026-11-01 | ローカルの実行環境（GPT-SoVITS・MuseTalk）のルート（`/model-manager/runtimes/:id` と `install`・`weights`・`start`・`stop`・`autostart`）、エラーの対応（`ErrWeightsMissing`・`ErrSourceGone` ほか。`mmview.RefuseRuntime`）、区画「ローカル音声・口パク」（出典・ライセンス・商用利用の表示、使えない環境の理由とクラウドの案内）、テストを足した。`POST /model-manager/jobs/:job/cancel` が `target=runtime:<id>` のジョブも中断する | Issue #920。重み・依存ファイルの出典とライセンスの画面表示、未導入・重み不足の状態 |
 | 1.7 | 2026-11-01 | ローカルの実行環境のルートが MuseTalk 1.5（`musetalk`）でも同じ形で使えることを書いた（導入のジョブは部品 84 個の取得・展開と重みの取得。使えない PC の理由・案内は `Support.Code` に `compute_cap` が増えた）。ルート・フィールドは変えていない。意味は [local-runtime.md §13](../architecture/model-manager/local-runtime.md) | Issue #921 |
 | 1.8 | 2026-11-02 | カードが開く詳細モーダルのルート（`models/:id/detail`・`runtimes/:id/detail`・`hf/models/detail`・`external/detail`）を足した。一覧・カードの応答にモーダルは含まれない（ページに 1 つ）。見た目は [model-manager-screen.md](../components/model-manager-screen.md) の「カードと詳細モーダル（#954）」 | Issue #954 |
+| 1.9 | 2026-11-02 | 更新ボタン（`molecules/refresh.Bar`）を、エンジンのカード（`GET /model-manager/engine`）・モデルの一覧（`GET /model-manager/models`）・実行環境の区画（新しい `GET /model-manager/runtimes`）・試し生成の結果（`GET /model-manager/trials`）に足した。エンジンのカードが開く詳細モーダルのルート `GET /model-manager/engine/detail` を足した。見た目は [model-manager-screen.md](../components/model-manager-screen.md) の「更新ボタンとエンジンのカード（#962・#970）」 | Issue #962・#970 |
