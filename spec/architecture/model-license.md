@@ -44,7 +44,11 @@
 - 派生（LoRA・マージ）の作者がライセンスを示していないなら、その部品は `unknown`。ベースが商用OKでも、全体は `unknown`（ベースが商用NGなら `no`）。
 - 画面は、内訳の部品が 2 つ以上あるときも **全体の答え 1 つ**をバッジに出す。内訳は `components[]` と詳細（MCP・同意）に出る。
 
-### 2026-11-02 時点の答え（`checked_at` はすべてこの日。エンジンとローカル実行環境は 2026-11-01）
+### モデルごとの答えと確認日（`checked_at` はモデルごとの JSON が持つ。日付ごとの調査分は下）
+
+- **2026-11-01**: エンジン（`engine.json`）・ローカル実行環境（GPT-SoVITS・MuseTalk）。
+- **2026-11-02**: 下の表の、次に挙げる 2026-11-03 の分を除くローカルのモデル（`sdxl-base`・`flux1-*`・`wan22-*`・`ltx-*`・`chroma1-hd`・`sd35-medium`・`hunyuanvideo15-480p`・`noctq-v4-qwen-image21` など）と、クラウドのモデル（`cloud.json`）。
+- **2026-11-03**: `qwen-image-edit-2511`・`sdxl-controlnet-canny`・`sdxl-ipadapter-plus`・`upscale-*` の 3 つ、成人向けのモデル 14 件（#984。`realvisxl-v50` から `qwen-image-21-uncensored-int8` まで）。
 
 | モデル | 答え | 根拠（一次情報） |
 |---|---|---|
@@ -52,6 +56,8 @@
 | `flux1-schnell`・`qwen-image`・`wan22-*`（ベース）・`chroma1-hd` | 商用OK | Apache-2.0 |
 | `flux2-klein-4b` | 商用OK | Apache-2.0（モデルカード `black-forest-labs/FLUX.2-klein-4B`・`-4b-fp8` の `license: apache-2.0` と `LICENSE.md`）。テキストエンコーダー Qwen3 4B も Apache-2.0。VAE は FLUX.2 [dev]（非商用）の再配布ではなく、Apache-2.0 の klein のリポジトリ（`Comfy-Org/Flux-2-Klein-4B`）のファイルを使う。9B と dev は非商用のため入れない |
 | `qwen-image-edit-2511` | 商用OK | Apache-2.0（Qwen のモデルカード `Qwen/Qwen-Image-Edit-2511` の `license: apache-2.0` と「Qwen-Image is licensed under Apache 2.0.」。取得元の `Comfy-Org/Qwen-Image-Edit` のカードも `license: apache-2.0`。`checked_at` は 2026-11-03）。テキストエンコーダーとVAEは `qwen-image` と同じファイル。Qwen 2.1 の `noctq-v4-qwen-image21`（Qwen Research License・非商用）とは別のライセンス |
+| `sdxl-controlnet-canny` | 商用OK | ControlNet（`xinsir/controlnet-canny-sdxl-1.0`）はモデルカードの `license: apache-2.0`（README の Model Description も `License: apache-2.0`）。ベースの SDXL は CreativeML Open RAIL++-M で、使用制限つきで商用可。2 部品とも商用OK（#976。`checked_at` は 2026-11-03） |
+| `sdxl-ipadapter-plus` | 商用OK | IP-Adapter（`h94/IP-Adapter`）はモデルカードの `license: apache-2.0`。画像エンコーダー（OpenCLIP ViT-H/14 laion2B。元のカード `laion/CLIP-ViT-H-14-laion2B-s32B-b79K`）は `license: mit`。ベースの SDXL は CreativeML Open RAIL++-M。顔の IP-Adapter（FaceID 系）は InsightFace を使うが、ここの Plus（顔以外）は使わない。3 部品とも商用OK（#976。`checked_at` は 2026-11-03） |
 | `flux1-dev` | 商用NG | FLUX.1 [dev] Non-Commercial License v1.1.1 |
 | `flux1-dev-nsfw-master` | 商用NG | ベースが非商用。LoRA（NSFW MASTER）は HF が MIT でも原本の作者のライセンスを確認できず、内訳は不明 |
 | `noctq-v4-qwen-image21` | **商用NG** | `LICENSE`（Qwen RESEARCH LICENSE AGREEMENT、2026-09-20）§2(a) は「非商用の目的に限る」、§2(b) は「別の商用ライセンス無しに商用目的で使わない」と書く。Noct Q の重みも、テキストエンコーダー・VAE（Comfy-Org の配布。カードは `license: other / qwen-research`）も同じ。Qwen/Qwen-Image-2.1 本体のカードも `qwen-research` |
@@ -145,3 +151,4 @@
 | 1.7 | 2026-11-03 | §3 の答えの表に `qwen-image-edit-2511`（商用OK。Apache-2.0）を足した | Issue #971 |
 | 1.8 | 2026-11-03 | §3 の答えの表に、非検閲（成人向け）の実写中心 14 モデルを足した（商用OK 3・不明 7・商用NG 4）。ライセンスは一次情報（作者のモデルカード・Civitai のページの文言）だけを読み、Civitai の `allowCommercialUse` だけでは商用OKにしない | Issue #984 |
 | 1.9 | 2026-11-03 | §3 の答えの表にアップスケール用のモデル（`upscale-nomos-uni-span`＝商用OK・`upscale-nomos-webphoto-esrgan`＝不明（カードのメタデータと本文のライセンスが食い違う）・`upscale-2pass-sdxl-span`＝商用OK）を足した | Issue #975 |
+| 1.10 | 2026-11-03 | §3 の見出しの「`checked_at` はすべて 2026-11-02」を、日付（2026-11-01・02・03）ごとの調査分の書き方に直し、答えの表に `sdxl-controlnet-canny`・`sdxl-ipadapter-plus`（どちらも商用OK。カタログの `license` の根拠どおり）の行を足した | Issue #976 の統合レビュー（表に行が無く、見出しの日付が実際と違った） |
