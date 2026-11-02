@@ -10,9 +10,9 @@ import (
 
 // GPUVRAM is the dedicated video memory in bytes of the largest GPU of this PC (0 when none is known: no GPU was found, or the
 // detection failed). The screen and the MCP tools judge a model's VRAM guideline (vramfit.For) against it. The detection starts a child
-// process, so it is remembered for a few minutes (Service.GPUVRAM); what the GPU is doing now is never read through here.
+// process, so it is remembered for a few minutes (vramcache); what the GPU is doing now is never read through here.
 func GPUVRAM(ctx context.Context, s *modelmanager.Service) uint64 {
-	return s.GPUVRAM(ctx)
+	return s.VRAM.Get(ctx, s.Now(), s.GPU)
 }
 
 // ModelFit is how this PC's GPU stands to the VRAM guideline of one model of the catalog.
