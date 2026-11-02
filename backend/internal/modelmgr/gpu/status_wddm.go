@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // ---- Windows performance counters (AMD, Intel, and an NVIDIA whose nvidia-smi fails) ----
@@ -85,7 +87,31 @@ func wddmReason(set string, err error) string {
 	if errors.Is(err, errNoInstances) {
 		return "Windows のパフォーマンスカウンター（" + set + "）に値がありません（WDDM 2.0 以降のドライバーが要ります）"
 	}
-	return "Windows のパフォーマンスカウンター（" + set + "）を PowerShell の Get-CimInstance で読めませんでした: " + err.Error()
+	return "Windows のパフォーマンスカウンター（" + set + "）を PowerShell の Get-CimInstance で読めませんでした: " + withStderr(err)
+}
+
+// maxStderrBytes is how much of a failed command's standard error goes into a reason (PowerShell's messages are long).
+const maxStderrBytes = 300
+
+// withStderr is err's text, followed by the start of what the failed command printed to its standard error when err is
+// an exit error that has it ("exit status 1" alone does not say that the class does not exist).
+func withStderr(err error) string {
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) {
+		return err.Error()
+	}
+	msg := strings.Join(strings.Fields(strings.ToValidUTF8(string(exit.Stderr), "")), " ")
+	if msg == "" {
+		return err.Error()
+	}
+	if len(msg) > maxStderrBytes {
+		cut := maxStderrBytes
+		for !utf8.RuneStart(msg[cut]) {
+			cut--
+		}
+		msg = msg[:cut] + "…"
+	}
+	return err.Error() + ": " + msg
 }
 
 func (g *GPU) applyWDDMMemory(mem map[uint64]int64, luid uint64, why string) {

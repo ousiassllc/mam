@@ -3,9 +3,13 @@ package gpu_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,6 +83,27 @@ func TestStatusWindowsCountersFailOnTheirOwn(t *testing.T) {
 	assert.Contains(t, g.Unavailable["vram_free_bytes"], "GPU Adapter Memory")
 	assert.Equal(t, 71, *g.UtilizationPercent)
 	assert.Equal(t, "windows-counters", st.Source)
+}
+
+// A PowerShell that exits with 1 says why on its standard error (the class does not exist, ...): the reason has the start of it,
+// on one line and cut to a few hundred bytes without splitting a character.
+func TestStatusWindowsCountersReasonHasTheStartOfStderr(t *testing.T) {
+	stderr := "Get-CimInstance : Invalid class \r\nAt line:1 char:34\r\n" + strings.Repeat("あ", 200)
+	r := &fakeRunner{
+		out: map[string]string{psEngine: fixture(t, "wddm_engine.csv")},
+		err: map[string]error{psMemory: fmt.Errorf("run: %w", &exec.ExitError{Stderr: []byte(stderr)})},
+	}
+	st := gpu.ReadStatus(context.Background(), gpu.StatusOptions{GOOS: "windows", GOARCH: "amd64", Runner: r, Detector: windowsAdapters()})
+	why := st.GPUs[0].Unavailable["vram_used_bytes"]
+	assert.Contains(t, why, "Get-CimInstance : Invalid class At line:1 char:34 あ", "whitespace of the lines is one space")
+	assert.NotContains(t, why, "\n")
+	assert.True(t, utf8.ValidString(why), "no character is cut in two")
+	assert.Less(t, len(why), 600)
+	assert.True(t, strings.HasSuffix(why, "…"), "a long message is marked as cut")
+
+	r.err[psMemory] = errors.New("exit status 1")
+	st = gpu.ReadStatus(context.Background(), gpu.StatusOptions{GOOS: "windows", GOARCH: "amd64", Runner: r, Detector: windowsAdapters()})
+	assert.True(t, strings.HasSuffix(st.GPUs[0].Unavailable["vram_used_bytes"], ": exit status 1"), "an error without stderr is as it was")
 }
 
 func TestStatusWindowsCountersUnreadableLeavesTheReasons(t *testing.T) {
