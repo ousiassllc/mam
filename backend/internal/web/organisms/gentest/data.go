@@ -66,6 +66,12 @@ type ModelChoice struct {
 	// Reason is why the model cannot be chosen ("" when it can).
 	Reason   string
 	Selected bool
+	// Media is image or video. RefMode ("edit", "img2img" or "" when it does not say), RefRoles (empty: the model takes no input
+	// images) and CanLoRA are what the card's icon and the role, strength and LoRA controls follow.
+	Media    string
+	RefMode  string
+	RefRoles []string
+	CanLoRA  bool
 }
 
 // PromptText is a prompt and its negative prompt.
@@ -95,7 +101,8 @@ type Ref struct {
 	Label    string
 	ThumbURL string
 	Role     string
-	Checked  bool
+	// Strength is how strongly an image model shows the reference (0: the default).
+	Strength float64
 }
 
 // Compose is the form that starts a batch.
@@ -115,6 +122,14 @@ type Compose struct {
 	Projects                                     []ProjectChoice
 	Picked                                       []Ref
 	Spend                                        string
+	// MaxImageBytes is the largest input image; the browser checks it when an image is chosen.
+	MaxImageBytes int
+	// AvoidPose is the checkbox "do not copy the pose of the references". LoRAs are the LoRA files of the engine (none: the choice
+	// is not drawn), LoRA the one chosen ("" for none) and LoRAStrength its strength (0: the default).
+	AvoidPose    bool
+	LoRAs        []string
+	LoRA         string
+	LoRAStrength float64
 }
 
 // Hidden is a form value the confirmation carries back unchanged.
