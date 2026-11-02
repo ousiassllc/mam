@@ -4,7 +4,7 @@
  "kind": "video",
  "tier": "standard",
  "content_rating": "general",
- "description": "テキストからも先頭フレームからも動画を作れる、いちばん小さい Wan 2.2（拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 18 GB）。24fps。",
+ "description": "テキストからも先頭フレーム 1 枚からも動画を作れる、いちばん小さい Wan 2.2（T2V と I2V を 1 つの 5B でこなす。拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 18 GB）。720p・24fps。速さと軽さを優先するならこちら、動きの質と映像の作り込みを優先するなら wan22-i2v-14b（先頭フレームだけ・16fps・約 36 GB）を選ぶ。生成テストのモデルは 2 つで、wan22-ti2v-5b（テキストから）と wan22-ti2v-5b-i2v（先頭フレームから）。ComfyUI のネイティブ offload で VRAM 16 GB の GPU を想定。",
  "files": [
   {
    "name": "wan2.2_ti2v_5B_fp16.safetensors",
@@ -29,9 +29,9 @@
   }
  ],
  "vram": {
-  "min_gb": 24,
-  "source": "Wan-AI/Wan2.2-TI2V-5B の README（720p・24fps を RTX 4090 クラスの 1 枚で動かせる、参照実装は 24 GB 以上）",
-  "estimate": false
+  "min_gb": 16,
+  "source": "ComfyUI 公式ガイドは「ネイティブ offload で VRAM 8 GB でも収まる」、Wan 公式の参照実装は offload ありで 24 GB 以上と書く。mam は 16 GB（拡散モデル fp16 の約 10 GB が載る）を目安にした。mam の実機（16 GB）では未確認",
+  "estimate": true
  },
  "license": {
   "id": "apache-2.0",

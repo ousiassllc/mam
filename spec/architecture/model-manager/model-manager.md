@@ -109,7 +109,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | `sdxl-base` | 画像 | 標準 | 6.9 GB | 8 GB（推定） | CreativeML OpenRAIL++-M |
 | `flux1-schnell` | 画像 | 標準 | 17.2 GB | 16 GB（推定） | Apache-2.0 |
 | `qwen-image` | 画像 | 標準 | 30.1 GB | 24 GB（推定） | Apache-2.0 |
-| `wan22-ti2v-5b` | 動画 | 標準 | 18.1 GB | 24 GB（Wan2.2 の README: 4090 級で動作） | Apache-2.0 |
+| `wan22-ti2v-5b` | 動画 | 標準 | 18.1 GB | 16 GB（推定。ComfyUI のネイティブ offload） | Apache-2.0（可） |
 | `ltx-video-2b` | 動画 | 標準 | 11.2 GB | 12 GB（推定） | LTX-Video Open RAIL-M |
 | `ltx-2.5-22b-distilled` | 動画 | 同意（HF トークン必須） | 39.7 GB | 24 GB（推定） | LTX-2.x Community License（年間売上 1,000 万 US ドル未満は無償） |
 | `flux1-dev` | 画像 | 同意 | 17.2 GB | 16 GB（推定） | FLUX.1 \[dev\] Non-Commercial（商用不可） |
@@ -128,6 +128,15 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | `wan22-i2v-14b-nsfw-lora` | 動画 | 成人向け | 36.8 GB（導入済みの `wan22-i2v-14b` があれば LoRA の 1.2 GB だけ取得） | 16 GB（推定） | ライセンスの記載なし（`unspecified`。**不可扱い**） | `wan22-i2v-14b` のファイル（共有）＋ NSFW-22-H/L-e8（`loras`、ミラー）。トリガー語 `nsfwsks` |
 
 Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのファイル（NSFW MASTER・Remix・Wan NSFW LoRA）は、Hugging Face のミラーの SHA-256 が Civitai の原本と一致することを 2026-10-25 に確かめた（`source_note`）。Remix と Wan NSFW LoRA は HF にライセンスの本文が無く、Civitai の表示（販売まで可／Civitai 上の利用だけ）に頼らず、商用不可として入れる。除外したもの: LTX-2.3 Uncensored（テキストエンコーダーが GGUF で `ComfyUI-GGUF` が要る）・WAI-NSFW-Illustrious-SDXL（Civitai だけ）・abenzerps UC。
+
+**Wan 2.2 TI2V 5B（Issue #929）**。`wan22-ti2v-5b`（Wan-AI の `Wan2.2-TI2V-5B`。ComfyUI の公式の再配布 `Comfy-Org/Wan-2.2`）は、**テキストから動画（T2V）と先頭フレームから動画（I2V）を 1 つの 5B でこなす**軽い動画モデル。720p・24fps。生成テストのモデルは 2 つ（ワークフロー名）: `wan22-ti2v-5b`（テキストから。`txt2video-wan22-5b`）と `wan22-ti2v-5b-i2v`（先頭フレームから。`img2video-wan22-5b`）。同じファイルを使い、どちらを導入しても 2 つが出る。
+
+- **ライセンス**: モデルカードの `license: apache-2.0`（商用可）。カタログは `commercial = yes`。
+- **VRAM**: ComfyUI の公式ガイドは「ネイティブ offload なら 8 GB の VRAM に収まる」、Wan の公式の参照実装は offload ありで 24 GB 以上と書く（出典が食い違う）。mam の目安は `min_gb = 16`・`estimate = true`（拡散モデル fp16 の約 10 GB が載る大きさ。**mam の実機（16 GB）では未確認**）。既定の設定は ComfyUI の公式テンプレートと同じ（`UNETLoader` の `weight_dtype = default`、offload は ComfyUI の自動）で、量子化はしない。
+- **14B との使い分け**: 速さと軽さを優先するなら 5B（約 18 GB、24fps、T2V も可）、動きの質と映像の作り込みを優先するなら `wan22-i2v-14b`（約 36 GB、16fps、先頭フレームだけ）。モデルのカードの説明（`description`）が互いを名指しして使い分けを書く。
+- **生成時間**: mam の実機では未測定（開発ホストの GPU は 12 GB の RTX 3080 Ti で、対象の 16 GB ではなく、5B の重みも取得していない）。Issue の「約 8 GB・720p@24fps が現実的」は ComfyUI の公式ガイドとコミュニティの報告で、**実測値ではない**。
+- **macOS**: mam の同梱エンジンは Windows 向け（`EngineView.Supported=false`）。macOS（Apple Silicon）で動くかは、fp16 の重みと Wan 2.2 の VAE の MPS 対応を実機で確かめていないので **未確認**（Windows のみ対応と考える）。
+
 ワークフローは `localcfg/templates/image/`・`templates/video/` の **コアノード（ComfyUI 本体のノード）だけ**で書く。SDXL と Wan 2.2 は既存のテンプレートを使い、FLUX schnell/dev・SD3.5・Qwen-Image・LTX・HunyuanVideo のテンプレートを足した（`txt2img-flux-schnell` など 7 つ）。成人向けの追加で、`txt2img-qwen-image21`（`TextEncodeQwenImage21`、25 ステップ・euler/simple・cfg 3）・`txt2img-chroma`（`CLIPLoader type=chroma`、`T5TokenizerOptions`、`BetaSamplingScheduler`、`CFGGuider` cfg 3.8）・`txt2img-flux-dev-lora`（`LoraLoaderModelOnly`、強さ 0.8）・`img2video-wan22-14b`（高ノイズ→低ノイズの 2 段の `KSamplerAdvanced`、`WanImageToVideo`、16fps）・`img2video-wan22-14b-remix`（同じ形、12 ステップ・cfg 1）・`img2video-wan22-14b-lora`（高・低のそれぞれに `LoraLoaderModelOnly`、強さ 1）の 6 つを足した（合計 17）。`catalog.Validate` は、各テンプレートのローダーノード（`CheckpointLoaderSimple`・`UNETLoader`・`CLIPLoader`・`DualCLIPLoader`・`VAELoader`・`LoraLoaderModelOnly`）が、そのモデルのファイル名（と `loras` などのフォルダ）と一致することを確かめる。**テンプレートは構造テストだけで、GPU 実機では未検証**（画面にも「構造テストのみ・GPU 実機未検証」と出す。`ModelView.WorkflowCheck`）。
 
 **LTX-2.5（Issue #877）**。`ltx-2.5-22b-distilled`（Lightricks 公式の `Lightricks/LTX-2.5`。ComfyUI のネイティブワークフローが使う蒸留版の 22B）。映像と同期した音声を 1 回の生成で作る。旧 `ltx-video-2b`（LTX-Video 2B v0.9.5）は**残す**（別のモデル・別のテンプレートで、既存の割り当てを壊さない。VRAM が小さい経路として使い続けられる）。
@@ -311,7 +320,7 @@ func (*Service) DeleteUserModel(ctx, path string) error
 | Windows の Job Object・非表示ウィンドウでの子の起動 | 同上（Linux の `Pdeathsig` は子プロセスのテストで確認済み） |
 | 実物の ComfyUI の起動、実際の生成、ワークフロー（テンプレート）の出力 | **未検証**（テンプレートは構造と、ローダーとファイル名の一致だけ。HunyuanVideo のサンプラー設定は推定） |
 | 実物のエンジン（約 2 GB）・モデル（数十 GB）の取得と展開 | **未実施**。合成アーカイブと偽の GitHub・HF サーバー（`Range`・ハッシュ不一致・再開・空き容量不足）で確認。実アーカイブのヘッダーと BCJ2 のファイルは HTTP の `Range` で読めることを確かめた |
-| モデルの VRAM の目安 | Wan 2.2（README）と HunyuanVideo（文書）以外は MAM の推定（成人向けの 5 モデルと `wan22-i2v-14b` もすべて `estimate=true`） |
+| モデルの VRAM の目安 | HunyuanVideo（文書）以外は MAM の推定（成人向けの 5 モデルと `wan22-i2v-14b`・`wan22-ti2v-5b` もすべて `estimate=true`）。`wan22-ti2v-5b` は ComfyUI の公式ガイド（8 GB）と Wan の参照実装（24 GB）の間の 16 GB（§4.2） |
 | 成人向け・LoRA の 6 モデルのテンプレートの実行（`txt2img-qwen-image21`・`txt2img-chroma`・`txt2img-flux-dev-lora`・`img2video-wan22-14b`・`-remix`・`-lora`） | **GPU 実機で未検証**（構造テストと、ローダーとファイル名の一致だけ。サンプラーの値は作者の推奨と ComfyUI の公式手順に基づく） |
 | Wan 2.2 14B に `wan_2.1_vae` を使うこと、Chroma の `CLIPLoader type=chroma` ＋ fp8mixed の組み合わせ | **未検証**（ComfyUI の公式手順・作者のワークフローに基づく。実機で確かめる） |
 | NSFW MASTER の作者の原本のライセンス | **未確認**（HF のミラーのタグは MIT。Civitai の API はライセンス名を返さない。全体を非商用として扱う） |
