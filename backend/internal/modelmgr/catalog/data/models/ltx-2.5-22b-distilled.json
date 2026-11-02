@@ -4,7 +4,7 @@
  "kind": "video",
  "tier": "advanced",
  "content_rating": "general",
- "description": "Lightricks の動画モデル LTX-2.5（蒸留版 22B）。映像と同期した音声を 1 回の生成で作る。ComfyUI のネイティブワークフローで動き、テキストからも先頭フレームからも作れる。Hugging Face の gated なリポジトリ（Lightricks/LTX-2.5）から取得するため、先にモデルのページでライセンスに同意してアクセスを申請し、Hugging Face のトークンを保存しておく必要がある。合計約 40 GB。24fps。",
+ "description": "Lightricks の動画モデル LTX-2.5（蒸留版 22B）。映像と同期した音声を 1 回の生成で作る（保存は音声つきの mp4）。ComfyUI のネイティブワークフローで動き、テキストからも先頭フレームからも作れる。VRAM 16 GB の PC で動かせるよう、INT8（ConvRot）の拡散モデルとテキストエンコーダー・タイル VAE・ComfyUI のオフロードを既定にしているが、Lightricks の推奨は 32 GB 以上なので、16 GB では動くが制約がある（遅く、解像度と長さは控えめに）。Hugging Face の gated なリポジトリ（Lightricks/LTX-2.5）から取得するため、先にモデルのページでライセンスに同意してアクセスを申請し、Hugging Face のトークンを保存しておく必要がある。合計約 40 GB。24fps。同梱の ComfyUI は Windows 専用で、macOS は未対応（外部の ComfyUI での動作も未確認）。",
  "files": [
   {
    "name": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
@@ -43,8 +43,10 @@
   }
  ],
  "vram": {
-  "min_gb": 24,
-  "source": "mam の見積もり（Lightricks・ComfyUI は最小値を公表していない。実機未検証）",
+  "min_gb": 16,
+  "recommended_gb": 32,
+  "limits": "INT8（ConvRot）の拡散モデルとテキストエンコーダー・タイル VAE・ComfyUI のオフロード（重みを一時的にメインメモリへ退避）が前提で、生成は遅くなります。解像度は低め（480p〜720p）・長さは短めにしてください。メインメモリも多く使います。",
+  "source": "Lightricks の公式ドキュメント（docs.ltx.io の ComfyUI の前提条件。2026-11-02 に確認）の推奨は 32 GB 以上。最小の 16 GB は、INT8 ConvRot・タイル VAE・オフロードで動くというコミュニティの報告（Issue #927）。mam の実機（RTX 4070 Ti SUPER）では未検証",
   "estimate": true
  },
  "license": {

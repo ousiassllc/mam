@@ -62,7 +62,7 @@ func (h Handlers) trialForm(want string, prev view.TrialForm) view.TrialForm {
 	}
 	f.Media, f.AcceptsReference = string(chosen.Media), chosen.AcceptsReference
 	if string(chosen.Media) == mediaVideo {
-		f.Resolutions = chosen.Resolutions
+		f.Resolutions, f.NativeAudio = chosen.Resolutions, chosen.NativeAudio
 		for _, d := range chosen.Durations {
 			f.Durations = append(f.Durations, strconv.FormatFloat(d, 'f', -1, 64))
 		}
@@ -99,8 +99,10 @@ func (h Handlers) trials(ctx context.Context) view.Trials {
 		return view.Trials{}
 	}
 	ids := []string{}
+	audio := map[string]bool{} // the models that make the sound with the picture
 	for _, m := range mmview.TrialModels(h.Svc) {
 		ids = append(ids, m.ID)
+		audio[m.ID] = m.NativeAudio
 	}
 	if len(ids) == 0 {
 		return view.Trials{}
@@ -112,7 +114,7 @@ func (h Handlers) trials(ctx context.Context) view.Trials {
 	t := view.Trials{}
 	for _, r := range recs {
 		it := view.Trial{
-			ID: r.ID, ModelID: r.Model, Answer: commercial.Of(r.Model), Video: r.Media == gentest.MediaVideo, Prompt: r.Prompt, Reference: len(r.UsedInputs) > 0,
+			ID: r.ID, ModelID: r.Model, Answer: commercial.Of(r.Model), Video: r.Media == gentest.MediaVideo, Audio: audio[r.Model], Prompt: r.Prompt, Reference: len(r.UsedInputs) > 0,
 			Status: r.Status, Error: r.Error, CreatedAt: r.CreatedAt.Local().Format("2006-01-02 15:04"), Detail: trialDetail(r),
 			Deletable: r.Status != gentest.StatusQueued && r.Status != gentest.StatusRunning,
 		}

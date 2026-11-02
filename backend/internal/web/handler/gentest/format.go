@@ -99,6 +99,9 @@ func featuresText(m modelcatalog.Info) string {
 		if len(in) > 0 {
 			f = append(f, strings.Join(in, "・")+"を使える")
 		}
+		if v.NativeAudio {
+			f = append(f, "音声つき（映像と同期した音声を一緒に作る）")
+		}
 	}
 	return strings.Join(f, "・")
 }

@@ -107,10 +107,14 @@ func (f File) Path() string { return path.Join("models", f.Folder, f.Name) }
 
 // VRAM is the guideline of the video memory a model needs, in GB. It is a 目安: Source says where it comes
 // from, and Estimate is true when it is mam's own conservative figure with no source (not run on a GPU).
+// RecommendedGB is the memory the vendor recommends when it is above MinGB (0: MinGB is also the recommendation): a GPU between the
+// two runs the model with limits, and Limits says which (the quantized files, the tiled VAE, the offload, the speed).
 type VRAM struct {
-	MinGB    int    `json:"min_gb"`
-	Source   string `json:"source"`
-	Estimate bool   `json:"estimate"`
+	MinGB         int    `json:"min_gb"`
+	RecommendedGB int    `json:"recommended_gb,omitempty"`
+	Limits        string `json:"limits,omitempty"`
+	Source        string `json:"source"`
+	Estimate      bool   `json:"estimate"`
 }
 
 // Workflow is a #831 model created on the bundled endpoint when the model is installed: Name is its model

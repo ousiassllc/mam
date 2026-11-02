@@ -22,6 +22,8 @@ type TrialModel struct {
 	// Durations and Resolutions are what a video model offers (the first of each is the default).
 	Durations   []float64 `json:"durations,omitempty"`
 	Resolutions []string  `json:"resolutions,omitempty"`
+	// NativeAudio: the video model makes the sound with the picture (LTX-2.5): the result is a video with an audio track.
+	NativeAudio bool `json:"native_audio,omitempty"`
 }
 
 // TrialModels lists the models of the running setting (the models of the bundled engine, of an external ComfyUI and
@@ -45,7 +47,7 @@ func TrialModels(s *modelmanager.Service) []TrialModel {
 		}
 		if caps, ok := m.VideoCaps(); ok {
 			tm.AcceptsReference = caps.FirstFrame || caps.MaxReferenceImages > 0
-			tm.Durations, tm.Resolutions = caps.Durations, caps.Resolutions
+			tm.Durations, tm.Resolutions, tm.NativeAudio = caps.Durations, caps.Resolutions, caps.NativeAudio
 		}
 		out = append(out, tm)
 	}

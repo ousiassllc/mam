@@ -157,6 +157,9 @@ func validateModel(m Model, shared map[string]File) []error {
 	if m.VRAM.MinGB <= 0 || strings.TrimSpace(m.VRAM.Source) == "" {
 		errs = append(errs, fmt.Errorf("%s: vram needs min_gb and the source of the guideline", where))
 	}
+	if r, l := m.VRAM.RecommendedGB, strings.TrimSpace(m.VRAM.Limits); (r != 0 || l != "") && (r <= m.VRAM.MinGB || l == "") {
+		errs = append(errs, fmt.Errorf("%s: vram recommended_gb must be above min_gb and come with limits (what a GPU below the recommendation gives up)", where))
+	}
 	errs = append(errs, validateLicense(where, m.License)...)
 	restricted := m.License.Commercial != modellicense.Yes || m.License.CommercialCondition != "" || len(m.License.ExcludedRegions) > 0
 	if m.ConsentRequired != (m.Tier == TierAdvanced) || (restricted && !m.ConsentRequired) {

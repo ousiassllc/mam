@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
@@ -30,6 +31,16 @@ func VRAMText(minGB int, source string, estimate bool) string {
 		return fmt.Sprintf("%d GB 以上（mam の推定。GPU では未確認）", minGB)
 	}
 	return fmt.Sprintf("%d GB 以上（出典: %s）", minGB, source)
+}
+
+// ModelVRAMText is the guideline of the video memory of a catalog model: the minimum, and the vendor's recommendation above it when there is
+// one (a GPU between the two runs the model with limits), with where it comes from (the source of a model with a recommendation says what
+// is reported and what is measured, so it is shown whole, also for an estimate).
+func ModelVRAMText(v catalog.VRAM) string {
+	if v.RecommendedGB > v.MinGB {
+		return fmt.Sprintf("%d GB 以上（推奨 %d GB 以上）。出典: %s", v.MinGB, v.RecommendedGB, v.Source)
+	}
+	return VRAMText(v.MinGB, v.Source, v.Estimate)
 }
 
 // Progress is what a running job reports (a placeholder while its status cannot be read).
