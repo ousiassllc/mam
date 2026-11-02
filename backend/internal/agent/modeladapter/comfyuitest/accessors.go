@@ -98,3 +98,11 @@ func (f *Fake) Lock() { f.mu.Lock() }
 
 // Unlock ends Lock.
 func (f *Fake) Unlock() { f.mu.Unlock() }
+
+// Step sends the backend a progress message of the i-th submitted prompt (step value of max of its node "3"), as the
+// server does while the job runs.
+func (f *Fake) Step(i, value, max int) {
+	var client string
+	must(f.t, json.Unmarshal(f.Submitted()[i]["client_id"], &client))
+	f.send(client, "progress", map[string]any{"prompt_id": f.PromptID(i), "node": "3", "value": value, "max": max})
+}

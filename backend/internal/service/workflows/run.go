@@ -119,7 +119,7 @@ func (s *Service) StartRun(ctx context.Context, in RunInput) (RunRecord, error) 
 		return RunRecord{}, err
 	}
 	s.pruneRuns()
-	timeout := time.Duration(s.Adapter.Config().Endpoints[saved.Endpoint].Timeout()) * time.Second
+	timeout := time.Duration(s.Adapter.Config().Endpoints[saved.Endpoint].CallLimit()) * time.Second
 	go s.execute(context.WithoutCancel(ctx), rec, dir, saved, req, timeout)
 	return rec, nil
 }

@@ -42,9 +42,10 @@ const (
 	MediaVideo Media = "video"
 )
 
-// Defaults of an endpoint that leaves a number out. One GPU rarely runs two jobs at once, and a video
-// takes minutes to hours on a local GPU (a 14B video model at 720p on a 16 GB card passes one hour), so the
-// ComfyUI default is 3 hours. A call that runs past it is cancelled on the server too.
+// Defaults of an endpoint that leaves a number out. One GPU rarely runs two jobs at once. A ComfyUI job is cut off
+// only when it shows no progress for the timeout (see StallLimit), but a video model can sit a long while in a node that
+// reports none (loading a model, decoding), and a workflow of custom nodes may report none at all, so the ComfyUI
+// default stays 3 hours. A job that is cut off is cancelled on the server too.
 const (
 	DefaultConcurrency    = 1
 	DefaultTimeoutComfyUI = 3 * 3600
@@ -58,7 +59,8 @@ type Endpoint struct {
 	BaseURL string `json:"base_url"`
 	// MaxConcurrency is the most calls in flight at once (0: DefaultConcurrency).
 	MaxConcurrency int `json:"max_concurrency,omitempty"`
-	// TimeoutSeconds bounds one call (0: 10800 for ComfyUI, 900 for an OpenAI-compatible server).
+	// TimeoutSeconds bounds one call (0: 10800 for ComfyUI, 900 for an OpenAI-compatible server). For a ComfyUI
+	// endpoint it is how long a job may show no progress, not its whole run (see StallLimit and CallLimit).
 	TimeoutSeconds int `json:"timeout_seconds,omitempty"`
 }
 

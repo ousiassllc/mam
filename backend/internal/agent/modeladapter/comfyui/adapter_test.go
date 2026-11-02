@@ -57,7 +57,7 @@ func TestVideoModelThroughTheAdapter(t *testing.T) {
 	assert.NotEmpty(t, got.all())
 }
 
-// A local video that runs past the endpoint's timeout is not left running on the GPU: the job is cancelled on
+// A local video that shows no progress for the endpoint's timeout is not left running on the GPU: the job is cancelled on
 // the server by its own ID, the error says it was a local call (nothing is billed), and the slot of the endpoint
 // is free again, so the job behind it starts.
 func TestLocalVideoPastTheTimeoutIsCancelledOnTheServerAndFreesTheSlot(t *testing.T) {
@@ -83,6 +83,7 @@ func TestLocalVideoPastTheTimeoutIsCancelledOnTheServerAndFreesTheSlot(t *testin
 	var te *localcfg.TimeoutError
 	require.ErrorAs(t, err, &te)
 	assert.Equal(t, time.Second, te.After)
+	assert.True(t, te.Stalled, "the job showed no progress for the timeout")
 	require.Eventually(t, func() bool { return f.Count("POST /api/jobs/") == 1 }, 5*time.Second, 5*time.Millisecond)
 	assert.Equal(t, str(f.Submitted()[0]["prompt_id"]), f.Cancelled()[0], "the timed-out job is cancelled on the server")
 

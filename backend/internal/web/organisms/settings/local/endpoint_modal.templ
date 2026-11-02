@@ -79,7 +79,7 @@ templ EndpointModal(f EndpointForm, errMsg string) {
 					})
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-timeout">
-					<span>タイムアウト（秒。空: ComfyUI 10800・互換 900）</span>
+					<span>タイムアウト（秒。ComfyUI は進みが止まってから。空: ComfyUI 10800・互換 900）</span>
 					@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
 						"id": "local-endpoint-timeout", "name": FieldTimeout, "type": "number", "min": "1", "step": "1", "value": f.TimeoutSeconds,
 					})

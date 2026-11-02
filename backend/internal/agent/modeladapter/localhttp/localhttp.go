@@ -49,6 +49,10 @@ type Client struct {
 	Files    httpclient.Doer
 	// PollEvery is the wait between two status requests of a running job (0: 2 seconds).
 	PollEvery time.Duration
+	// Stall is how long a running ComfyUI job may show no sign of progress before it is given up (0: never; the
+	// endpoint's timeout, see localcfg.Endpoint.StallLimit). Now is the clock that measures it (nil: time.Now).
+	Stall time.Duration
+	Now   func() time.Time
 	// StagingDir is where downloaded videos are staged ("" selects the system temporary directory).
 	StagingDir string
 }
@@ -62,7 +66,7 @@ func New(name string, e localcfg.Endpoint, keys credential.Store, stagingDir str
 	requests := safefetch.NewEndpointClient()
 	return &Client{
 		Name: name, Base: strings.TrimRight(e.BaseURL, "/"), Keys: keys, Requests: requests, Sockets: requests,
-		Files: files, StagingDir: stagingDir,
+		Files: files, StagingDir: stagingDir, Stall: e.StallLimit(),
 	}, nil
 }
 
@@ -71,6 +75,14 @@ func (c *Client) Vendor() string { return localcfg.VendorKey(c.Name) }
 
 // Poll is PollEvery with the default applied.
 func (c *Client) Poll() time.Duration { return cmp.Or(c.PollEvery, 2*time.Second) }
+
+// Clock is the time of the clock that measures Stall.
+func (c *Client) Clock() time.Time {
+	if c.Now != nil {
+		return c.Now()
+	}
+	return time.Now()
+}
 
 // Key is the API key of the endpoint, "" when none is stored.
 func (c *Client) Key() (string, error) {
