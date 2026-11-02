@@ -203,12 +203,44 @@ func TestRunWithTheSwitchOffSendsThePromptAsTypedAndCallsNoLLM(t *testing.T) {
 	assert.Empty(t, st.Results[0].TranslatedPrompt)
 }
 
+// 50Ω resistor has a Greek letter, so it is sent to the LLM, which may well return it as it is. That is not a failure: the run
+// goes on and the model gets the prompt as it was typed (the Japanese negative prompt next to it is still translated).
+func TestRunGoesOnWithThePromptTheLLMReturnedUnchanged(t *testing.T) {
+	llmFake := &gentesttest.FakeLLM{Say: func(s string) string {
+		if s == "ぼやけ" {
+			return "blurry"
+		}
+		return s
+	}}
+	r := gentesttest.New(t, gentesttest.WithTranslator(llmFake))
+	req := gentest.Request{
+		Media: "image", Models: []string{"flux-2"}, TranslateToEnglish: true,
+		Prompts: []gentest.PromptInput{{Prompt: "50Ω resistor"}, {Prompt: "50Ω resistor on a board", Negative: "ぼやけ"}},
+	}
+	ref, err := r.Confirmed(req)
+	require.NoError(t, err, "no 502")
+	st := r.Wait(ref.BatchID)
+	require.Equal(t, gentest.StateSucceeded, st.State)
+
+	require.Len(t, llmFake.Asked(), 1)
+	assert.Equal(t, []string{"50Ω resistor", "50Ω resistor on a board", "ぼやけ"}, llmFake.Asked()[0].Texts)
+	byPrompt := map[string]gentest.ResultView{}
+	for _, res := range st.Results {
+		byPrompt[res.Prompt] = res
+	}
+	require.Len(t, byPrompt, 2)
+	assert.False(t, byPrompt["50Ω resistor"].Translated, "sent as typed, nothing recorded")
+	assert.Equal(t, "50Ω resistor", byPrompt["50Ω resistor"].SentPrompt)
+	assert.True(t, byPrompt["50Ω resistor on a board"].Translated)
+	assert.Equal(t, "blurry", byPrompt["50Ω resistor on a board"].TranslatedNegativePrompt)
+	assert.Len(t, r.Fake.Calls(), 2)
+}
+
 func TestRunStopsWithAnErrorWhenTheTranslationFailsAndSendsNothing(t *testing.T) {
 	for name, fake := range map[string]*gentesttest.FakeLLM{
 		"the LLM fails":      {Err: llm.ErrNoAPIKey},
 		"circuit open":       {Err: llm.ErrCircuitOpen},
 		"timeout":            {Err: llm.ErrTimeout},
-		"returns the same":   {Say: func(s string) string { return s }},
 		"returns an empty":   {Say: func(string) string { return "  " }},
 		"not the asked JSON": {Err: llm.ErrInvalidOutput},
 	} {
