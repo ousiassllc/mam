@@ -16,6 +16,7 @@
 | 〃 | `PromptHistory` | プロンプト履歴（再利用のリンク・削除） |
 | handler（`web/handler/gentest/`） | `Handlers` | ルート（`Register`）。`gentest.Service` を呼ぶ。`format.go` が価格・能力・状態を表示用の文字列に直し、`request.go` がフォームを要求に直し、`batch.go` が結果を比較表にする。organism はサービスを import しない |
 | 〃（`web/handler/gentest/matchscreen/`） | `Register`・`Page`・`Estimate`・`Run`・`Batch`・`Cancel`・`Adjust` | プロンプトマッチの画面のルート。`match.Service` を呼ぶ（ディレクトリの行数上限のため別パッケージ）。実行を始めた応答は、タイムライン・言葉の指示のフォーム（帯域外）・空にした確認を返す |
+| 〃（`web/handler/gentest/gtshare/`） | `USD`・`USDPtr`・`PriceText`・`StatusText`・`ConfirmLines`・`Render`・`Refuse` | 生成テストの画面とプロンプトマッチの画面が共有する、金額・単価・状態の言葉（単価は「無料（ローカル）」「単価なし（見積りの合計に入りません）」、秒単価の列挙）・確認の内訳の行・エラーへの応答。2 つの画面が写し合って文言がずれていたのを 1 か所にした（Issue #916 の統合レビュー） |
 | 〃（`web/handler/gentest/refform/`） | `Refs`・`Options`・`Hidden`・`Stage` | 入力画像のフォーム（`ref`・`role_<ref>`・`strength_<ref>`・`avoid_pose`・`lora`・`lora_strength`・ファイル `upload`）を `gentest.RefInput` / `LoRAInput` に読み、確認の hidden に書き戻し、ブラウザが選んだファイルを保存して `upload::#<n>` の位置に入れる（ディレクトリの行数上限のため別パッケージ） |
 | static（`static/src/components/gentest/`） | `match.ts`・`match-model.ts` | プロンプトマッチのフォームの動き（選んだ・ドロップした画像のプレビュー、進め方に合わせた目標と上限の出し入れ、スライダーの数字）。DOM を使わない規則は `match-model.ts`（vitest） |
 | 〃 | `inputs.ts`・`inputs-model.ts`・`inputs-models.ts` | 入力画像の動き（ブラウザで選んだ画像のサムネイル・並べ替え・拡大・モデルの選択に合わせた役割と強さの表示）。DOM を使わない規則は `inputs-model.ts`（vitest）、DOM は `inputs.wtest.ts`（実 Chrome） |
@@ -59,3 +60,4 @@
 | 1.9 | 2026-11-02 | 履歴に ZIP の書き出しバー（`exportbar.Bar`）を足した。ファイルのある結果のカードをタップで選ぶ（枠が光る・キーボード用のチェックボックス・件数。選択は自動更新で消えない）、絞り込みの新しい順 N 件。アイコン `check`・`download` を足した | Issue #932 |
 | 1.10 | 2026-11-02 | プロンプトマッチ（`match.templ`）のモデルの選択に商用利用のフィルター（`commercial.Filter`。対象は `#gt-match-model`、既定は設定「商用OKのモデルだけを使う」）を足した | 統合レビュー（#916 × #928）。通常の作成画面と同じやり方にそろえた |
 | 1.11 | 2026-11-02 | 履歴の書き出しバーを、先に調べてから（`HX-Request` で理由の断片か `HX-Redirect`）ダウンロードするものにした。書き出せない理由はバーの下の行に出し、画面を置き換えない | 統合レビュー（#932）。素の GET フォームだと、書き出せないときのプレーンテキストが画面全体を置き換え、戻る導線が無かった |
+| 1.12 | 2026-11-02 | 生成テストとプロンプトマッチの共有部分（金額・単価・状態の言葉、確認の内訳、エラーへの応答）を `handler/gentest/gtshare` に寄せた。プロンプトマッチのモデルの選択肢の単価の言葉が「無料（ローカル）」「単価なし（見積りの合計に入りません）」・秒単価の列挙になった。履歴のカードの枠は `pick.Glow` のクラスを使い、手書きの再掲をやめた（選ばれていないカードにも他のカードと同じ hover の枠がつく） | 統合レビュー（重複）。`matchscreen` が `handler/gentest` の関数を複製して文言がずれていた |

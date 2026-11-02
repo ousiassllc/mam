@@ -10,7 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
@@ -31,26 +31,15 @@ func (h Handlers) Estimate(c *gin.Context) {
 	}
 	if err != nil {
 		status, msg := refuse(c, err)
-		render(c, status, view.ConfirmFailed(msg))
+		gtshare.Render(c, status, view.ConfirmFailed(msg))
 		return
 	}
-	render(c, http.StatusOK, view.ConfirmBox(h.confirm(ctx, f, est)))
+	gtshare.Render(c, http.StatusOK, view.ConfirmBox(h.confirm(ctx, f, est)))
 }
 
 func (h Handlers) confirm(_ context.Context, f formState, est gentest.Estimate) view.Confirm {
-	c := view.Confirm{Items: est.TotalItems, Total: usd(est.TotalUSD), OverLimit: est.OverLimit}
-	for _, l := range est.Breakdown {
-		line := view.ConfirmLine{Label: l.Label, Items: l.Items}
-		switch l.Basis {
-		case modelcatalog.BasisFree:
-			line.Unit, line.Subtotal = "無料（ローカル）", usd(0)
-		case modelcatalog.BasisPriced:
-			line.Unit, line.Subtotal = usdPtr(l.UnitUSD), usdPtr(l.SubtotalUSD)
-		default:
-			line.Unit, line.Subtotal = "単価なし", "合計に入りません"
-		}
-		c.Lines = append(c.Lines, line)
-	}
+	c := view.Confirm{Items: est.TotalItems, Total: gtshare.USD(est.TotalUSD), OverLimit: est.OverLimit}
+	c.Lines = gtshare.ConfirmLines(est.Breakdown)
 	if est.UnknownItems > 0 {
 		c.Unknown = fmt.Sprintf("単価が分からないモデルの %d 件は合計に入っていません（実際の請求はモデルの提供元で確認してください）。", est.UnknownItems)
 	}
@@ -80,7 +69,7 @@ func (h Handlers) Run(c *gin.Context) {
 	}
 	if err != nil {
 		status, msg := refuse(c, err)
-		render(c, status, view.BatchBox(view.Batch{Message: view.Message{Error: msg}, StateText: "開始できません", StateTone: "failed", Finished: true}))
+		gtshare.Render(c, status, view.BatchBox(view.Batch{Message: view.Message{Error: msg}, StateText: "開始できません", StateTone: "failed", Finished: true}))
 		return
 	}
 	c.Header("HX-Push-Url", "false")
@@ -112,10 +101,10 @@ func (h Handlers) renderBatchWith(c *gin.Context, status int, id string, msg vie
 	b, err := h.Svc.Batch(c.Request.Context(), id, true)
 	if err != nil {
 		st, text := refuse(c, err)
-		render(c, st, view.BatchBox(view.Batch{Message: view.Message{Error: text}, StateText: "見つかりません", StateTone: "failed", Finished: true}))
+		gtshare.Render(c, st, view.BatchBox(view.Batch{Message: view.Message{Error: text}, StateText: "見つかりません", StateTone: "failed", Finished: true}))
 		return
 	}
 	v := batchView(b)
 	v.Message = msg
-	render(c, status, view.BatchBox(v))
+	gtshare.Render(c, status, view.BatchBox(v))
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
@@ -20,18 +20,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
-
-func usd(v float64) string { return fmt.Sprintf("$%.4f", v) }
-
-func priceText(p modelcatalog.Price) string {
-	switch {
-	case p.Basis == modelcatalog.BasisFree:
-		return "無料"
-	case p.Basis == modelcatalog.BasisPriced && p.PerImageUSD != nil:
-		return usd(*p.PerImageUSD) + " / 枚"
-	}
-	return "単価なし"
-}
 
 // compose is the form around what it holds now (f), which is empty for a fresh page.
 func (h Handlers) compose(ctx context.Context, f formState) view.MatchCompose {
@@ -43,11 +31,11 @@ func (h Handlers) compose(ctx context.Context, f formState) view.MatchCompose {
 		RefValue: f.ref, RefThumb: thumbOf(f.ref),
 	}
 	if maxCost > 0 {
-		c.MaxCostUSD = usd(maxCost)
+		c.MaxCostUSD = gtshare.USD(maxCost)
 	}
 	for _, m := range h.Svc.Models(ctx, gentest.MediaImage) {
 		if m.Available {
-			c.Models = append(c.Models, view.MatchModel{ID: m.ID, Label: m.Label, Price: priceText(m.Price), Selected: m.ID == f.model, Answer: commercial.Of(m.ID)})
+			c.Models = append(c.Models, view.MatchModel{ID: m.ID, Label: m.Label, Price: gtshare.PriceText(m.Price), Selected: m.ID == f.model, Answer: commercial.Of(m.ID)})
 		}
 	}
 	return c
@@ -84,7 +72,7 @@ func (h Handlers) Page(c *gin.Context) {
 	if _, ok := refform.Parse(f.ref); !ok {
 		f.ref = ""
 	}
-	render(c, http.StatusOK, pages.GenerationMatchPage(middleware.CSRFToken(c), h.compose(c.Request.Context(), f)))
+	gtshare.Render(c, http.StatusOK, pages.GenerationMatchPage(middleware.CSRFToken(c), h.compose(c.Request.Context(), f)))
 }
 
 // Estimate answers POST /generation-test/match/estimate (multipart: the form and the reference image): the image is stored and the
@@ -103,41 +91,23 @@ func (h Handlers) Estimate(c *gin.Context) {
 		}
 	}
 	if err != nil {
-		status, msg := refuse(c, err)
-		render(c, status, view.ConfirmFailed(msg))
+		status, msg := gtshare.Refuse(c, err)
+		gtshare.Render(c, status, view.ConfirmFailed(msg))
 		return
 	}
-	render(c, http.StatusOK, view.ConfirmBox(confirmOf(f, est)))
+	gtshare.Render(c, http.StatusOK, view.ConfirmBox(confirmOf(f, est)))
 }
 
 func confirmOf(f formState, est match.Estimate) view.Confirm {
 	c := view.Confirm{
-		Items: est.Rounds, Total: usd(est.TotalUSD), OverLimit: est.OverLimit, Match: true, RunPath: paths.GenerationTestPart("match", "run"),
+		Items: est.Rounds, Total: gtshare.USD(est.TotalUSD), OverLimit: est.OverLimit, Match: true, RunPath: paths.GenerationTestPart("match", "run"),
 		Hidden: f.hidden(est.ID, strconv.FormatFloat(est.TotalUSD, 'f', -1, 64)),
 	}
-	for _, l := range est.Breakdown {
-		line := view.ConfirmLine{Label: l.Label, Items: l.Items}
-		switch l.Basis {
-		case modelcatalog.BasisFree:
-			line.Unit, line.Subtotal = "無料（ローカル）", usd(0)
-		case modelcatalog.BasisPriced:
-			line.Unit, line.Subtotal = usdPtr(l.UnitUSD), usdPtr(l.SubtotalUSD)
-		default:
-			line.Unit, line.Subtotal = "単価なし", "合計に入りません"
-		}
-		c.Lines = append(c.Lines, line)
-	}
+	c.Lines = gtshare.ConfirmLines(est.Breakdown)
 	for _, w := range est.Warnings {
 		c.Warnings = append(c.Warnings, w.Message)
 	}
 	return c
-}
-
-func usdPtr(v *float64) string {
-	if v == nil {
-		return "—"
-	}
-	return usd(*v)
 }
 
 // Run answers POST /generation-test/match/run: the confirmation's form. The service prices the match again and refuses (409) when the
@@ -162,8 +132,8 @@ func (h Handlers) Run(c *gin.Context) {
 		}
 	}
 	if err != nil {
-		status, msg := refuse(c, err)
-		render(c, status, view.MatchBox(view.MatchBatch{Message: view.Message{Error: msg}, StateText: "開始できません", StateTone: "failed", Finished: true}))
+		status, msg := gtshare.Refuse(c, err)
+		gtshare.Render(c, status, view.MatchBox(view.MatchBatch{Message: view.Message{Error: msg}, StateText: "開始できません", StateTone: "failed", Finished: true}))
 		return
 	}
 	c.Header("HX-Push-Url", "false")
@@ -191,7 +161,7 @@ func (h Handlers) Cancel(c *gin.Context) {
 }
 
 func (h Handlers) errMessage(c *gin.Context, err error) (int, view.Message) {
-	status, text := refuse(c, err)
+	status, text := gtshare.Refuse(c, err)
 	return status, view.Message{Error: text}
 }
 
@@ -206,14 +176,14 @@ func (h Handlers) Adjust(c *gin.Context) {
 	ctx, id := c.Request.Context(), c.Param("id")
 	_, running, err := m.IsMatch(ctx, id)
 	if err != nil {
-		status, msg := refuse(c, err)
-		render(c, status, view.ConfirmFailed(msg))
+		status, msg := gtshare.Refuse(c, err)
+		gtshare.Render(c, status, view.ConfirmFailed(msg))
 		return
 	}
 	f, err := h.readForm(c)
 	if err == nil && running {
 		if err = m.Instruct(ctx, id, f.instruction); err == nil {
-			render(c, http.StatusOK, view.ConfirmNote("指示を足しました。次にプロンプトを直すときに入ります"))
+			gtshare.Render(c, http.StatusOK, view.ConfirmNote("指示を足しました。次にプロンプトを直すときに入ります"))
 			return
 		}
 	}
@@ -226,11 +196,11 @@ func (h Handlers) Adjust(c *gin.Context) {
 		}
 	}
 	if err != nil {
-		status, msg := refuse(c, err)
-		render(c, status, view.ConfirmFailed(msg))
+		status, msg := gtshare.Refuse(c, err)
+		gtshare.Render(c, status, view.ConfirmFailed(msg))
 		return
 	}
-	render(c, http.StatusOK, view.ConfirmBox(confirmOf(f, est)))
+	gtshare.Render(c, http.StatusOK, view.ConfirmBox(confirmOf(f, est)))
 }
 
 // renderMatch draws the match; withAdjust adds the words field out of band (a match that just started).
@@ -241,8 +211,8 @@ func (h Handlers) renderMatch(c *gin.Context, status int, id string, msg view.Me
 	}
 	v, err := m.View(c.Request.Context(), id)
 	if err != nil {
-		st, text := refuse(c, err)
-		render(c, st, view.MatchBox(view.MatchBatch{Message: view.Message{Error: text}, StateText: "見つかりません", StateTone: "failed", Finished: true}))
+		st, text := gtshare.Refuse(c, err)
+		gtshare.Render(c, st, view.MatchBox(view.MatchBatch{Message: view.Message{Error: text}, StateText: "見つかりません", StateTone: "failed", Finished: true}))
 		return
 	}
 	b := batchView(v)
@@ -251,5 +221,5 @@ func (h Handlers) renderMatch(c *gin.Context, status int, id string, msg view.Me
 	if withAdjust {
 		out = templ.Join(out, view.MatchConfirmCleared(), view.MatchWords(view.MatchWordsForm{BatchID: id, MaxInstruction: match.MaxInstructionRunes, OOB: true}))
 	}
-	render(c, status, out)
+	gtshare.Render(c, status, out)
 }

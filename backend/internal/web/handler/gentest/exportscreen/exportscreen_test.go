@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -179,6 +180,7 @@ func TestHistoryHasTheExportBarAndOffersOnlyResultsWithAFile(t *testing.T) {
 	all := s.get(paths.GenerationTestHistory()).Body.String()
 	assert.Equal(t, 3, strings.Count(all, `data-testid="gt-history-item"`))
 	assert.Equal(t, 2, strings.Count(all, `data-gt-pick="`), "the running result has no file, so it cannot be chosen")
+	assert.Equal(t, 3, strings.Count(all, `class="flex flex-col gap-1 rounded-lg border border-transparent p-1.5 `+pick.Glow+`"`), "the frame of every card (also the running one) takes the look of the cards that are chosen: the classes of pick.Glow, not a copy")
 	for _, r := range res {
 		assert.Contains(t, all, `data-gt-pick="`+r.ID+`"`)
 	}

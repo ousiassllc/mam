@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/gin-gonic/gin"
@@ -107,7 +108,7 @@ func params(d gentest.ResultDetail) []view.KV {
 	}
 	kv = append(kv, view.KV{Key: "入力したプロンプト", Value: d.Prompt}, view.KV{Key: "見積り", Value: costText(d)})
 	if d.ActualUSD != nil {
-		kv = append(kv, view.KV{Key: "実費（提供元の報告）", Value: usd(*d.ActualUSD)})
+		kv = append(kv, view.KV{Key: "実費（提供元の報告）", Value: gtshare.USD(*d.ActualUSD)})
 	}
 	return append(kv, view.KV{Key: "作成", Value: timeText(d.CreatedAt)})
 }
@@ -117,7 +118,7 @@ func costText(d gentest.ResultDetail) string {
 	case modelcatalog.BasisFree:
 		return "無料（ローカル）"
 	case modelcatalog.BasisPriced:
-		return usdPtr(d.EstimatedUSD)
+		return gtshare.USDPtr(d.EstimatedUSD)
 	}
 	return "単価なし"
 }
@@ -138,7 +139,7 @@ func (h Handlers) Import(c *gin.Context) {
 	d, derr := h.Svc.Result(ctx, c.Param("id"))
 	if derr != nil {
 		status, msg := refuse(c, derr)
-		render(c, status, view.ImportBox(view.ImportForm{Message: view.Message{Error: msg}}))
+		gtshare.Render(c, status, view.ImportBox(view.ImportForm{Message: view.Message{Error: msg}}))
 		return
 	}
 	f := view.ImportForm{}
@@ -148,7 +149,7 @@ func (h Handlers) Import(c *gin.Context) {
 	} else {
 		f.Done = importedText(out)
 	}
-	render(c, status, view.ImportBox(h.detail(ctx, d, f).Import))
+	gtshare.Render(c, status, view.ImportBox(h.detail(ctx, d, f).Import))
 }
 
 func importedText(o projectlink.ImportOutcome) string {

@@ -174,3 +174,14 @@ func TestAnUnknownMatchIsNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Body.String(), "見つかりません")
 }
+
+// The model choices say a unit price in the words of the form of the generation test (handler/gentest/gtshare): a local model is
+// 「無料（ローカル）」, not the shorter 「無料」 the copy of the match screen had.
+func TestTheModelChoicesSayAFreeModelTheSameWordsAsTheGenerationTestForm(t *testing.T) {
+	s := newScreen(t, nil, true, gentesttest.WithNoReferenceModel())
+
+	page := s.get(paths.GenerationTestMatch()).Body.String()
+
+	assert.Contains(t, page, "（無料（ローカル））")
+	assert.NotContains(t, page, "（無料）")
+}
