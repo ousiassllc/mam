@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/stage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
 )
@@ -144,7 +145,7 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 	}
 	dropUnused(g, *b.Model.Workflow, v)
 	applyLoRA(g, b.Model.Workflow.LoraModelNode, v.opts.LoRA)
-	if err := stage(g, *b.Model.Workflow, v); err != nil {
+	if err := stage.Apply(g, *b.Model.Workflow, len(v.references), v.opts, v.prompt); err != nil {
 		return nil, b.Client.Error(http.StatusUnprocessableEntity, "the workflow is unusable: "+err.Error(), nil)
 	}
 	return json.Marshal(g)

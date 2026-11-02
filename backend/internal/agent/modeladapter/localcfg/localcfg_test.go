@@ -129,13 +129,14 @@ var coreNodes = []string{
 	"ManualSigmas", "ModelSamplingAuraFlow", "ModelSamplingSD3", "PrimitiveInt", "RandomNoise", "SamplerCustom",
 	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "SplitSigmasDenoise", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
 	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo",
+	"EmptyFlux2LatentImage", "Flux2Scheduler", "ImageScaleToTotalPixels", "ReferenceLatent", // FLUX.2 klein (Issue #931)
 }
 
 // Every built-in template is a valid model: each assignment points to an existing, literal input of an
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 19)
+	require.Len(t, templates, 20)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -151,7 +152,7 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.True(t, found)
 		assert.Equal(t, tpl.ID, got.ID)
 	}
-	assert.Equal(t, 9, byMedia[localcfg.MediaImage])
+	assert.Equal(t, 10, byMedia[localcfg.MediaImage])
 	assert.Equal(t, 10, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")

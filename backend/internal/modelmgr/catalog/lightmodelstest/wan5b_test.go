@@ -1,4 +1,6 @@
-package catalog_test
+// Package lightmodelstest checks the catalog entries of the light models of Issue #929 (Wan 2.2 TI2V 5B) and #931 (FLUX.2 klein 4B):
+// their pins, licenses, workflows and cards. It is a package of its own because the directory of the catalog is at its line budget.
+package lightmodelstest_test
 
 import (
 	"testing"

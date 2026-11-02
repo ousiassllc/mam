@@ -11,3 +11,4 @@
 | 1.4 | 2026-11-02 | §4.2: 起動時の更新は**利用者が書き換えていない古い写しだけ**にした（リテラルの値が違えば編集とみなす）。画面・MCP での編集は、フォームに欄の無い `reference_mode` などを保存済みのワークフローのまま残し、参照画像の行を保存済みの枚数まで出す。`reference_mode` があるモデルは `Options.Refs` の無い `Inputs` を参照にしない。参照の区切りが多いときは近い区切りへ寄せる | Issue #933（refine の指摘） |
 
 | 1.5 | 2026-11-02 | §1・§3: ComfyUI のタイムアウトの既定を 3600 秒から 10800 秒（3 時間）にし、接続先ごとに変えられると明記。取り消しは `/api/jobs/<id>/cancel` が失敗（404・405）したら対象を指す割り込み／キュー削除に回る（405 を取りこぼして止まらなかった） | Issue #917 |
+| 1.6 | 2026-11-02 | §4.2 の表に FLUX.2 の `edit`（`flux2-klein-4b`・`txt2img-flux2-klein`）を足した。参照は `ReferenceLatent` の鎖で、最大 4 枚。強さは Qwen の編集と同じ意味で区間に分ける。`localcfg` のテンプレート（20 個）と `comfyui/stage` パッケージ（Qwen の編集の区間分けを `agent/modeladapter/comfyui` から移した）の `CLIPTextEncode` のとき（`stageReferenceLatent`）、`dropUnused` が使わないスロットの縮小・VAEEncode・`ReferenceLatent` を外す | Issue #931 |

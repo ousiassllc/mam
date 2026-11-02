@@ -1,0 +1,73 @@
+{
+ "id": "flux2-klein-4b",
+ "name": "FLUX.2 klein 4B (fp8)",
+ "kind": "image",
+ "tier": "standard",
+ "content_rating": "general",
+ "description": "FLUX.2 [klein] 4B の fp8 蒸留版。テキストから画像を作るほか、最大 4 枚の参照画像を使った編集（画風の変更・物の置き換え・複数の画像の合成）ができる。4 ステップで数秒。拡散モデル（fp8、約 4.1 GB）・テキストエンコーダー（Qwen3 4B、約 8.0 GB）・VAE の 3 ファイル、合計約 12.5 GB。公式は安全調整つきで検閲寄り（成人向けは flux1-dev-nsfw-master・noctq-v4-qwen-image21 に任せる）。同じ klein でも 9B と dev は非商用なので入れていない。macOS（Apple Silicon）は ComfyUI が fp8 を扱えない既知の問題があり、Windows のみの対応。",
+ "files": [
+  {
+   "name": "flux-2-klein-4b-fp8.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/resolve/5b4408e59397a4a37ccb46afe426d8ed86379441/flux-2-klein-4b-fp8.safetensors",
+   "sha256": "97ed34fe0567e436200f2faee3939b88f2b5d99f8af2a4dc16532c4245c0ccb6",
+   "size": 4070624520
+  },
+  {
+   "name": "qwen_3_4b.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Flux-2-Klein-4B/resolve/5b3abca5c0dc1ecd4eaf3340868d09063fc1c965/split_files/text_encoders/qwen_3_4b.safetensors",
+   "sha256": "6c671498573ac2f7a5501502ccce8d2b08ea6ca2f661c458e708f36b36edfc5a",
+   "size": 8044982048
+  },
+  {
+   "name": "flux2-vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Flux-2-Klein-4B/resolve/5b3abca5c0dc1ecd4eaf3340868d09063fc1c965/split_files/vae/flux2-vae.safetensors",
+   "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3",
+   "size": 336211292
+  }
+ ],
+ "vram": {
+  "min_gb": 12,
+  "source": "BFL のモデルカードは bf16 で約 13 GB、ComfyUI の公式ガイドは fp8 蒸留版で 8.4 GB（RTX 5090 での値）と書く。mam は fp8 とテキストエンコーダー（Qwen3 4B、約 8 GB）の分を見て 12 GB を目安にした。mam の実機（16 GB）では未確認",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/LICENSE.md",
+  "summary": "FLUX.2 [klein] 4B は Apache 2.0（BFL のモデルカードに「商用利用を含む」と明記）。著作権表示とライセンス文を保つ。生成物の権利は主張されない。モデルカードには、違法・児童の搾取・同意のない性的な画像・欺瞞的な内容などに使わない旨の使用範囲の制限が別に書かれる（ライセンス自体の条件ではなく、モデルカードの注記）。同じ FLUX.2 [klein] でも 9B は非商用のライセンスで、mam は入れない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "拡散モデル（FLUX.2 klein 4B fp8 蒸留版・BFL）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/LICENSE.md",
+    "commercial": "yes"
+   },
+   {
+    "part": "テキストエンコーダー（Qwen3 4B）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Qwen/Qwen3-4B/blob/main/LICENSE",
+    "commercial": "yes"
+   },
+   {
+    "part": "VAE（FLUX.2 の VAE。Comfy-Org の再配布）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Comfy-Org/Flux-2-Klein-4B",
+    "commercial": "yes"
+   }
+  ]
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "flux2-klein-4b",
+   "template": "txt2img-flux2-klein"
+  }
+ ]
+}

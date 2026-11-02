@@ -108,6 +108,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 |---|---|---|---|---|---|
 | `sdxl-base` | 画像 | 標準 | 6.9 GB | 8 GB（推定） | CreativeML OpenRAIL++-M |
 | `flux1-schnell` | 画像 | 標準 | 17.2 GB | 16 GB（推定） | Apache-2.0 |
+| `flux2-klein-4b` | 画像 | 標準 | 12.5 GB | 12 GB（推定。fp8 蒸留版） | Apache-2.0（可） |
 | `qwen-image` | 画像 | 標準 | 30.1 GB | 24 GB（推定） | Apache-2.0 |
 | `wan22-ti2v-5b` | 動画 | 標準 | 18.1 GB | 16 GB（推定。ComfyUI のネイティブ offload） | Apache-2.0（可） |
 | `ltx-video-2b` | 動画 | 標準 | 11.2 GB | 12 GB（推定） | LTX-Video Open RAIL-M |
@@ -136,6 +137,17 @@ Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのフ
 - **14B との使い分け**: 速さと軽さを優先するなら 5B（約 18 GB、24fps、T2V も可）、動きの質と映像の作り込みを優先するなら `wan22-i2v-14b`（約 36 GB、16fps、先頭フレームだけ）。モデルのカードの説明（`description`）が互いを名指しして使い分けを書く。
 - **生成時間**: mam の実機では未測定（開発ホストの GPU は 12 GB の RTX 3080 Ti で、対象の 16 GB ではなく、5B の重みも取得していない）。Issue の「約 8 GB・720p@24fps が現実的」は ComfyUI の公式ガイドとコミュニティの報告で、**実測値ではない**。
 - **macOS**: mam の同梱エンジンは Windows 向け（`EngineView.Supported=false`）。macOS（Apple Silicon）で動くかは、fp16 の重みと Wan 2.2 の VAE の MPS 対応を実機で確かめていないので **未確認**（Windows のみ対応と考える）。
+
+**FLUX.2 [klein] 4B（Issue #931）**。`flux2-klein-4b`（Black Forest Labs の FLUX.2 [klein] 4B を ComfyUI の公式ガイドの **fp8 蒸留版**で入れる）は、**テキストから画像と、最大 4 枚の参照画像を使った編集**を 1 つのモデルでこなす高速な画像モデル（蒸留版は 4 ステップで数秒）。ワークフローは 1 つ（名前 `flux2-klein-4b`、テンプレート `txt2img-flux2-klein`）で、参照画像が無い実行はテキストから画像、あれば編集になる。
+
+- **ファイル**（SHA-256・サイズは Hugging Face が返す LFS の oid・サイズ。2026-11-02 に取得）: 拡散モデル `diffusion_models/flux-2-klein-4b-fp8.safetensors`（BFL 公式の `black-forest-labs/FLUX.2-klein-4b-fp8`。ミラーではない・gated ではない。約 4.1 GB）、テキストエンコーダー `text_encoders/qwen_3_4b.safetensors`（Qwen3 4B。`Comfy-Org/Flux-2-Klein-4B`。約 8.0 GB）、VAE `vae/flux2-vae.safetensors`（同じ `Comfy-Org/Flux-2-Klein-4B`。約 0.3 GB）。公式のテンプレートは VAE を `Comfy-Org/flux2-dev` から取るが、そのリポジトリは FLUX.2 [dev]（非商用）の再配布で、klein の `flux2-vae.safetensors` は **Apache 2.0 の klein のリポジトリにもある**ので、そちらを使う（2 つはテンソルの名前・形式が違うファイルで、SHA-256 も別）。
+- **9B と dev は入れない**: FLUX.2 [klein] 9B と FLUX.2 [dev] は非商用のライセンスで、モデルカードも 9B を非商用と書く。
+- **ライセンス**: モデルカード（`black-forest-labs/FLUX.2-klein-4B` と `-4b-fp8`）の `license: apache-2.0`・本文は Apache License 2.0（`LICENSE.md`）。`commercial = yes`。内訳（`components[]`）は拡散モデル・テキストエンコーダー（Qwen3 4B、Apache-2.0）・VAE（klein のリポジトリの Apache-2.0）の 3 つで、すべて可。モデルカードは使用範囲の制限（違法・児童の搾取・同意のない性的な画像など）も別に書く（ライセンスの条件ではない）。
+- **検閲**: 公式は NSFW・児童の性的な画像を抑えるための安全調整と、推論コードのフィルターを持つ（モデルカードの Responsible AI Development）。成人向けは `flux1-dev-nsfw-master`・`noctq-v4-qwen-image21` に任せ、カードの説明にもそう書く。
+- **VRAM**: BFL のモデルカードは bf16 で約 13 GB、ComfyUI の公式ガイドは fp8 蒸留版で 8.4 GB（RTX 5090 での値）と書く。mam の目安は `min_gb = 12`・`estimate = true`（fp8 の 4.1 GB にテキストエンコーダーの 8 GB が載るかどうかを見た値）。**mam の実機（16 GB）では未確認**。既定は fp8 蒸留版のまま、ComfyUI の自動 offload に任せる。
+- **参照画像による編集**（local-models.md §4.2）: `reference_mode = edit`・最大 4 枚。参照は画像ごとに `ImageScaleToTotalPixels`（約 1 メガピクセル）→ `VAEEncode` → `ReferenceLatent` を肯定・否定の条件に順に重ねる（ComfyUI の公式テンプレート `image_flux2_klein_image_edit_4b_distilled` と同じ。公式は 2 枚の例）。生成テスト・MCP の参照の入力は #933 の参照画像の仕組みに乗る。出力の大きさは公式の編集テンプレートのように 1 枚目の参照の大きさではなく、縦横比から決まる（画面の縦横比の指定に従う）。
+- **生成時間**: mam の実機では未測定。公式ガイドの 1.2 秒（RTX 5090）はコミュニティ・公式の値で、mam の対象の RTX 4070 Ti SUPER の実測ではない。
+- **macOS**: mam の同梱エンジンは Windows 向け。macOS（Apple Silicon）は、ComfyUI の MPS が fp8（`float8_e4m3fn`）を扱えず `Trying to convert Float8_e4m3fn to the MPS backend` で止まる既知の問題がある（Comfy-Org/ComfyUI の Issue #10292・#9255・#11626。CPU への退避の PR #12378 は 2026-11-02 時点で未マージ）。fp8 蒸留版を既定にしているため、**macOS では動かない可能性が高く、Windows のみ対応と明記する**（bf16 の `flux-2-klein-4b.safetensors` なら動くかは未確認。実機で試していない）。
 
 ワークフローは `localcfg/templates/image/`・`templates/video/` の **コアノード（ComfyUI 本体のノード）だけ**で書く。SDXL と Wan 2.2 は既存のテンプレートを使い、FLUX schnell/dev・SD3.5・Qwen-Image・LTX・HunyuanVideo のテンプレートを足した（`txt2img-flux-schnell` など 7 つ）。成人向けの追加で、`txt2img-qwen-image21`（`TextEncodeQwenImage21`、25 ステップ・euler/simple・cfg 3）・`txt2img-chroma`（`CLIPLoader type=chroma`、`T5TokenizerOptions`、`BetaSamplingScheduler`、`CFGGuider` cfg 3.8）・`txt2img-flux-dev-lora`（`LoraLoaderModelOnly`、強さ 0.8）・`img2video-wan22-14b`（高ノイズ→低ノイズの 2 段の `KSamplerAdvanced`、`WanImageToVideo`、16fps）・`img2video-wan22-14b-remix`（同じ形、12 ステップ・cfg 1）・`img2video-wan22-14b-lora`（高・低のそれぞれに `LoraLoaderModelOnly`、強さ 1）の 6 つを足した（合計 17）。`catalog.Validate` は、各テンプレートのローダーノード（`CheckpointLoaderSimple`・`UNETLoader`・`CLIPLoader`・`DualCLIPLoader`・`VAELoader`・`LoraLoaderModelOnly`）が、そのモデルのファイル名（と `loras` などのフォルダ）と一致することを確かめる。**テンプレートは構造テストだけで、GPU 実機では未検証**（画面にも「構造テストのみ・GPU 実機未検証」と出す。`ModelView.WorkflowCheck`）。
 
@@ -321,6 +333,7 @@ func (*Service) DeleteUserModel(ctx, path string) error
 | 実物の ComfyUI の起動、実際の生成、ワークフロー（テンプレート）の出力 | **未検証**（テンプレートは構造と、ローダーとファイル名の一致だけ。HunyuanVideo のサンプラー設定は推定） |
 | 実物のエンジン（約 2 GB）・モデル（数十 GB）の取得と展開 | **未実施**。合成アーカイブと偽の GitHub・HF サーバー（`Range`・ハッシュ不一致・再開・空き容量不足）で確認。実アーカイブのヘッダーと BCJ2 のファイルは HTTP の `Range` で読めることを確かめた |
 | モデルの VRAM の目安 | HunyuanVideo（文書）以外は MAM の推定（成人向けの 5 モデルと `wan22-i2v-14b`・`wan22-ti2v-5b` もすべて `estimate=true`）。`wan22-ti2v-5b` は ComfyUI の公式ガイド（8 GB）と Wan の参照実装（24 GB）の間の 16 GB（§4.2） |
+| FLUX.2 klein 4B（`flux2-klein-4b`、Issue #931）の生成・参照画像つきの編集の実行と、`qwen_3_4b.safetensors`・`flux2-vae.safetensors` の取得 | **未確認**（構造テストと、偽の ComfyUI でのグラフの組み立てだけ。ノード `Flux2Scheduler`・`EmptyFlux2LatentImage`・`ReferenceLatent`・`ImageScaleToTotalPixels` と `CLIPLoader type=flux2` が v0.42.1 にあることはソースで確かめた。3 ファイルの SHA-256・サイズ・コミットは実物の Hugging Face の API・応答ヘッダーから読んだ。重みの本体は取っていない） |
 | 成人向け・LoRA の 6 モデルのテンプレートの実行（`txt2img-qwen-image21`・`txt2img-chroma`・`txt2img-flux-dev-lora`・`img2video-wan22-14b`・`-remix`・`-lora`） | **GPU 実機で未検証**（構造テストと、ローダーとファイル名の一致だけ。サンプラーの値は作者の推奨と ComfyUI の公式手順に基づく） |
 | Wan 2.2 14B に `wan_2.1_vae` を使うこと、Chroma の `CLIPLoader type=chroma` ＋ fp8mixed の組み合わせ | **未検証**（ComfyUI の公式手順・作者のワークフローに基づく。実機で確かめる） |
 | NSFW MASTER の作者の原本のライセンス | **未確認**（HF のミラーのタグは MIT。Civitai の API はライセンス名を返さない。全体を非商用として扱う） |

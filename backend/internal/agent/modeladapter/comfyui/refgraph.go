@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/stage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 )
 
@@ -12,30 +13,6 @@ const minDenoise = 0.02
 
 // loraNode is the ID of the node a LoRA of the request is inserted as.
 const loraNode = "mam_lora"
-
-// link is the JSON of a link to the output idx of the node id.
-func link(id string, idx int) json.RawMessage {
-	raw, _ := json.Marshal([]any{id, idx})
-	return raw
-}
-
-// linkOf reads a link value; ok is false for a literal.
-func linkOf(raw json.RawMessage) (id string, idx int, ok bool) {
-	var arr []json.RawMessage
-	if json.Unmarshal(raw, &arr) != nil || len(arr) != 2 {
-		return "", 0, false
-	}
-	if json.Unmarshal(arr[0], &id) != nil || json.Unmarshal(arr[1], &idx) != nil {
-		return "", 0, false
-	}
-	return id, idx, true
-}
-
-// literal is the JSON of a literal input value.
-func literal(v any) json.RawMessage {
-	raw, _ := json.Marshal(v)
-	return raw
-}
 
 // denoise is the denoise an img2img workflow runs with: the more strongly the reference shows, the less of it the sampler
 // replaces (1 - (1-floor)*strength, never below minDenoise). A run without a reference samples everything.
@@ -51,7 +28,7 @@ func dropNode(g localcfg.Graph, id string) {
 	delete(g, id)
 	for _, n := range g {
 		for name, raw := range n.Inputs {
-			if to, _, ok := linkOf(raw); ok && to == id {
+			if to, _, ok := stage.LinkOf(raw); ok && to == id {
 				delete(n.Inputs, name)
 			}
 		}
@@ -59,8 +36,8 @@ func dropNode(g localcfg.Graph, id string) {
 }
 
 // dropUnused takes out the nodes of the reference assignments the run has no image for: an optional slot goes alone (its
-// consumer keeps the other slots); with no reference at all the NoReference overrides are applied first and everything that
-// is fed by a reference node goes too (the VAEEncode of an img2img workflow).
+// consumer keeps the other slots) with the plumbing that only it fed (dropOrphans); with no reference at all the NoReference
+// overrides are applied first and everything that is fed by a reference node goes too (the VAEEncode of an img2img workflow).
 func dropUnused(g localcfg.Graph, wf localcfg.Workflow, v values) {
 	if len(v.references) == 0 {
 		for _, o := range wf.NoReference {
@@ -73,8 +50,44 @@ func dropUnused(g localcfg.Graph, wf localcfg.Workflow, v values) {
 		}
 		dropNode(g, a.Node)
 	}
+	dropOrphans(g)
 	if len(v.references) == 0 {
 		dropReferencePlumbing(g)
+	}
+}
+
+// dropOrphans removes what a dropped reference left without its input, again until nothing is left: an image scaler or a
+// VAEEncode that lost its image goes, and a ReferenceLatent that lost its latent is a pass-through, so the nodes that took it
+// take its conditioning (a FLUX.2 workflow chains one ReferenceLatent per reference slot).
+func dropOrphans(g localcfg.Graph) {
+	for changed := true; changed; {
+		changed = false
+		for id, n := range g {
+			switch {
+			case (n.ClassType == "ImageScale" || n.ClassType == "ImageScaleToTotalPixels") && n.Inputs["image"] == nil,
+				n.ClassType == "VAEEncode" && n.Inputs["pixels"] == nil:
+				dropNode(g, id)
+			case n.ClassType == "ReferenceLatent" && n.Inputs["latent"] == nil && n.Inputs["conditioning"] != nil:
+				bypass(g, id)
+			default:
+				continue
+			}
+			changed = true
+			break // the graph changed under the loop
+		}
+	}
+}
+
+// bypass removes a node with one pass-through input, "conditioning": what linked to the node now links to the node's source.
+func bypass(g localcfg.Graph, id string) {
+	src := g[id].Inputs["conditioning"]
+	delete(g, id)
+	for _, n := range g {
+		for name, raw := range n.Inputs {
+			if to, _, ok := stage.LinkOf(raw); ok && to == id {
+				n.Inputs[name] = src
+			}
+		}
 	}
 }
 
@@ -86,7 +99,7 @@ func dropReferencePlumbing(g localcfg.Graph) {
 		used := map[string]bool{}
 		for _, n := range g {
 			for _, raw := range n.Inputs {
-				if to, _, ok := linkOf(raw); ok {
+				if to, _, ok := stage.LinkOf(raw); ok {
 					used[to] = true
 				}
 			}
@@ -125,12 +138,12 @@ func applyLoRA(g localcfg.Graph, anchor string, l *localcfg.LoRA) {
 	}
 	for _, n := range g {
 		for name, raw := range n.Inputs {
-			if to, idx, ok := linkOf(raw); ok && to == anchor && idx == 0 {
-				n.Inputs[name] = link(loraNode, 0)
+			if to, idx, ok := stage.LinkOf(raw); ok && to == anchor && idx == 0 {
+				n.Inputs[name] = stage.Link(loraNode, 0)
 			}
 		}
 	}
 	g[loraNode] = localcfg.Node{ClassType: "LoraLoaderModelOnly", Inputs: map[string]json.RawMessage{
-		"lora_name": literal(l.Name), "strength_model": literal(strength), "model": link(anchor, 0),
+		"lora_name": stage.Literal(l.Name), "strength_model": stage.Literal(strength), "model": stage.Link(anchor, 0),
 	}}
 }
