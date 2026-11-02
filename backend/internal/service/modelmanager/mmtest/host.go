@@ -18,6 +18,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // pythonExe is the interpreter path of the upstream package; the directory name is spelled that way upstream.
@@ -99,23 +100,11 @@ func (h *Host) Requests() int {
 	return h.n
 }
 
-// archivePath is the synthetic 7z of the extract tests (LZMA2 + BCJ2 like the upstream package), found from the
-// module root above the test's working directory (runtime.Caller is a module path under -trimpath).
-func archivePath() string {
-	dir, _ := os.Getwd()
-	for ; dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			break
-		}
-	}
-	return filepath.Join(dir, "backend", "internal", "modelmgr", "extract", "testdata", "bcj2.7z")
-}
-
 func newHost(t *testing.T) *Host {
 	t.Helper()
 	h := &Host{files: map[string]File{}, holds: map[string]*Hold{}, drops: map[string]*drop{}}
 	var err error
-	h.archive, err = os.ReadFile(archivePath())
+	h.archive, err = os.ReadFile(filepath.Join(testenv.ModuleRoot(t), "backend", "internal", "modelmgr", "extract", "testdata", "bcj2.7z"))
 	require.NoError(t, err)
 	for _, f := range AllFile {
 		h.files["/"+f.Folder+"/"+f.Name] = f
