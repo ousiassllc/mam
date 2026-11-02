@@ -70,6 +70,13 @@ templ ComposeForm(c Compose) {
 			@parameterFields(c)
 			@gentestadv.Fields(c.Section)
 			@inputFields(c)
+			if c.Tier.IsDetail() {
+				@gentesttier.RecipeSection(c.Tier.Recipes)
+				<div class="flex flex-col gap-1">
+					@gentesttier.OpenInComfy()
+					@gentesttier.ComfyOpenResult("")
+				</div>
+			}
 			<div class="flex flex-wrap items-center gap-3">
 				@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate"})
 				<span class="text-xs text-neutral-400">実行はまだしません</span>

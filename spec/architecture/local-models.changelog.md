@@ -24,3 +24,4 @@
 | 1.15 | 2026-11-03 | §4.2: `edit` 方式の 3 モデルの役割に「ポーズだけ」（`pose`）を足した。役割の文（「`<imageN>` はポーズの参照としてだけ使う」）と、`face`・`style` と同じく VAE の潜在を作らない扱い（`stage.seenOnly`） | Issue #986 |
 | 1.16 | 2026-11-02 | §4.7 を新設: `reference_mode: inpaint` と割り当て `mask_image`・`denoise`。テンプレート `inpaint-sdxl`・`inpaint-flux-dev`（コアノード。`ImageCompositeMasked` でマスクの外を元画像のままにする。`prompt_weight` と steps・cfg・sampler・scheduler の割り当ても持つ）。`supports_inpaint`。起動時の更新は新しいワークフロー名を足さない | Issue #974 |
 | 1.17 | 2026-11-03 | §4.3 に、ワークフローの `quality_presets`（速い・きれいの steps・cfg。標準は書かない。速さのモードのワークフローには書けない）を足した | Issue #977 |
+| 1.18 | 2026-11-04 | §4.8 を新設: ワークフローの `exposed_inputs`（画面に出す値。ノード ID＋入力名＋型＋範囲・選択肢＋表示名の加算的な汎用入力）・検査・グラフへの適用・保存先 | Issue #977（ステージ 2） |

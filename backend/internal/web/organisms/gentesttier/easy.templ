@@ -32,6 +32,21 @@ templ Easy(e EasyData, card templ.Component) {
 				}
 			}
 		</div>
+		if len(e.Recipes) > 0 {
+			<span class="mt-1 text-xs text-neutral-400" id="gt-recipe-choices-title">保存したレシピ（選ぶと、そのモデルと設定で作ります）</span>
+			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-labelledby="gt-recipe-choices-title" data-testid="gt-recipe-choices">
+				for _, i := range e.Recipes {
+					@pick.Card(templ.Attributes{
+						"type": "radio", "name": FieldIntent, "value": i.ID, "checked": i.Selected,
+						"hx-get": paths.GenerationTestPart("easy-pick"), "hx-trigger": "change", "hx-target": "#" + PickID, "hx-swap": "outerHTML",
+						"hx-include": "#" + FormID + " [name=intent]," + "#" + FormID + " [name=ref]," + "#" + FormID + " [name=quality]:checked",
+					}, "flex flex-col gap-0.5 px-3 py-2 text-sm") {
+						<span class="font-medium text-neutral-100">{ i.Label }</span>
+						<span class="text-xs text-neutral-400">{ i.Hint }</span>
+					}
+				}
+			</div>
+		}
 	</fieldset>
 	@EasyPick(e, card)
 	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-prompts-title" data-testid="gt-prompt-fields">
@@ -54,17 +69,23 @@ templ Easy(e EasyData, card templ.Component) {
 		}
 		<input type="hidden" name={ FieldCount } value={ e.Count }/>
 	</fieldset>
-	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-size-title" data-testid="gt-sizes">
+	@Sizes(e.Sizes, false)
+	{ children... }
+}
+
+// Sizes are the buttons 縦 / 横 / 正方形. oob swaps them in place from the response of the part that follows the choice of what to make: a recipe holds a
+// size, and choosing it lights that one.
+templ Sizes(sizes []SizeChoice, oob bool) {
+	<fieldset id={ SizesID } class="flex flex-col gap-2" aria-labelledby="gt-size-title" data-testid="gt-sizes" hx-swap-oob?={ oob }>
 		<span id="gt-size-title" class="text-sm font-medium text-neutral-200">サイズ</span>
 		<div class="flex flex-wrap gap-2">
-			for _, s := range e.Sizes {
+			for _, s := range sizes {
 				@pick.Card(templ.Attributes{"type": "radio", "name": FieldAspect, "value": s.Value, "checked": s.Selected}, "px-4 py-1.5 text-center text-sm") {
 					{ s.Label }
 				}
 			}
 		</div>
 	</fieldset>
-	{ children... }
 }
 
 // EasyPick is the part of the easy tier that follows the choice of what to make: the model that was picked (a small line; the model's own
@@ -108,6 +129,9 @@ templ EasyPick(e EasyData, card templ.Component) {
 			}
 		</fieldset>
 	</div>
+	if len(e.RecipeSizes) > 0 {
+		@Sizes(e.RecipeSizes, true)
+	}
 }
 
 // EasyActions is the end of the easy tier: the estimate button (off while no model was picked) and the way to the detail tier.
@@ -116,5 +140,7 @@ templ EasyActions(canEstimate bool) {
 		@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate", "disabled": !canEstimate, "data-gt-easy-estimate": ""})
 		<span class="text-xs text-neutral-400">実行はまだしません</span>
 		<a class="text-sm text-neutral-300 underline" { SwitchAttrs(TierDetail)... } data-testid="gt-open-detail">詳細設定を開く</a>
+		@OpenInComfy()
 	</div>
+	@ComfyOpenResult("")
 }

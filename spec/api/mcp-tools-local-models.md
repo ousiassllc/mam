@@ -37,6 +37,10 @@
 | `update_local_model` | モデルの定義を変える。渡した項目だけが変わり、`workflow_json` を替えるときは `assignments` も渡す（`template_id` は使えない）。冪等 | `endpoint`, `name`, 以降は `create_local_model` と同じ | モデル | いいえ |
 | `delete_local_model` | モデルを削除する（使用中は `validation`） | `endpoint`, `name` | `name`（`<接続先>/<モデル>`） | いいえ（破壊的） |
 
+### 画面に出す値（`exposed_inputs`。Issue #977）
+
+`create_local_model`・`update_local_model` に `exposed_inputs[]`（`node`・`input`・`type`・`label?`・`min`/`max`・`options`。形と検査は [mcp-tools-workflows.md](mcp-tools-workflows.md) の同名の節）を足した。ComfyUI の画像モデルの、生成テストのこだわりに出す入力。`get_local_model`・`list_local_models` が返す。同梱の ComfyUI の導入モデルと、取り込んだワークフローが対象（同梱のテンプレートは持たない）。
+
 ### `param`（入力の割り当て）
 
 `prompt`（必須）・`negative_prompt`・`seed`（実行ごとに乱数）・`width`・`height`・`reference_image`（`index` で何枚目か。0 から抜けなし）、動画は加えて `frames`・`fps`・`first_frame`・`last_frame`（`last_frame` は `first_frame` と一緒）。`node` / `input` は `import_local_workflow` が返すグラフの、ほかのノードがつないでいない入力。
@@ -51,3 +55,4 @@
 | 1.3 | 2026-11-02 | `list_local_models` の `max_reference_images` を ComfyUI の画像モデルにも出し、`reference_mode`・`supports_lora` を足した（生成テストの `list_generation_models` と同じ値） | Issue #933 |
 | 1.4 | 2026-11-02 | `create_local_endpoint` の `timeout_seconds` の既定（ComfyUI）を 3600 から 10800 に変えた | Issue #917 |
 | 1.5 | 2026-11-02 | `create_local_endpoint` の `timeout_seconds` は、ComfyUI では進みが止まってから打ち切るまでの時間（既定は 10800 のまま）と書いた | Issue #961 |
+| 1.6 | 2026-11-04 | `create_local_model`・`update_local_model` と取得に `exposed_inputs`（画面に出す値）を足した | Issue #977（ステージ 2） |

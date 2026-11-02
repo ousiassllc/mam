@@ -27,6 +27,7 @@ templ ComfyPanel() {
 	<section class="flex flex-col gap-4 rounded-md border border-neutral-700 p-4" aria-labelledby="gt-comfy-title" data-testid="gt-comfy">
 		<h2 id="gt-comfy-title" class="text-sm font-medium text-neutral-200">ComfyUI で細かく作る</h2>
 		<p class="text-sm text-neutral-300">ノードをつないで作るときは、次の画面を使います。ここ（生成テスト）の「かんたん」「こだわり」は、画像のモデルを選んで作る画面です。動画・音声はこれまでどおりです。</p>
+		<p class="text-sm text-neutral-300">今のかんたん・こだわりの設定をそのままグラフにして開くには、それぞれのフォームの「今の設定を ComfyUI で開く」を使います。</p>
 		<ul class="grid gap-3 sm:grid-cols-2">
 			for _, l := range comfyLinks() {
 				<li class="flex flex-col gap-1 rounded-md border border-neutral-800 p-3">
@@ -44,6 +45,7 @@ func comfyLinks() []comfyLink {
 	return []comfyLink{
 		{"ノード画面を開く", "ComfyUI のノードの画面です。つなぎ方を自由に変えられます。", paths.Nodes(), "gt-comfy-nodes"},
 		{"ワークフローを取り込む・直す", "API 形式のワークフローを取り込み、入力の割り当てを決めて、生成テストのモデルとして使います。", paths.Workflows(), "gt-comfy-workflows"},
+		{"画面に出す値を選ぶ", "モデルのワークフローのノードの入力（例 KSampler.steps・CLIPTextEncode.text）を選ぶと、こだわりの画面に入力欄として出ます。", ExposedPickerHref(""), "gt-comfy-exposed"},
 		{"モデルの設定", "ローカルのモデルとその ComfyUI のワークフローの設定（ステップ数・サンプラーなどの受け取り方）です。", paths.LocalModels(), "gt-comfy-local"},
 		{"モデルマネージャー", "同梱の ComfyUI と画像・動画のモデルを導入します。", paths.ModelManager(), "gt-comfy-models"},
 	}

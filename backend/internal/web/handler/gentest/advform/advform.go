@@ -21,15 +21,19 @@ import (
 const FieldQuality = "quality"
 
 // Fields are the settings as the form holds them: trimmed, "" when not given. Quality is the easy tier's: the preset the models take their steps
-// and cfg from where the form names none.
-type Fields struct{ Seed, Steps, CFG, Sampler, Scheduler, Quality string }
+// and cfg from where the form names none. Exposed are the values of the exposed inputs of the ComfyUI workflows (Issue #977) by key
+// "<node>.<input>", as text (a value that is not given is left out).
+type Fields struct {
+	Seed, Steps, CFG, Sampler, Scheduler, Quality string
+	Exposed                                       map[string]string
+}
 
 // Read reads the fields of the form.
 func Read(v url.Values) Fields {
 	get := func(name string) string { return strings.TrimSpace(v.Get(name)) }
 	return Fields{
 		Seed: get(adv.FieldSeed), Steps: get(adv.FieldSteps), CFG: get(adv.FieldCFG),
-		Sampler: get(adv.FieldSampler), Scheduler: get(adv.FieldScheduler), Quality: get(FieldQuality),
+		Sampler: get(adv.FieldSampler), Scheduler: get(adv.FieldScheduler), Quality: get(FieldQuality), Exposed: readExposed(v),
 	}
 }
 
@@ -58,6 +62,12 @@ func (f Fields) Apply(r *gentest.Request) error {
 	}
 	r.Sampling.Sampler, r.Sampling.Scheduler = f.Sampler, f.Scheduler
 	r.Quality = gentest.Quality(f.Quality)
+	if len(f.Exposed) > 0 {
+		r.Exposed = make(map[string]any, len(f.Exposed))
+		for k, v := range f.Exposed {
+			r.Exposed[k] = v // the service reads the text as the number, or the text, the input takes
+		}
+	}
 	return nil
 }
 
@@ -82,7 +92,7 @@ func Hidden(r gentest.Request) []view.Hidden {
 	if r.Sampling.Scheduler != "" {
 		h = append(h, view.Hidden{Name: adv.FieldScheduler, Value: r.Sampling.Scheduler})
 	}
-	return h
+	return append(h, hiddenExposed(r.Exposed)...)
 }
 
 // FactsOf is what a model card says to the script: which of the settings the model takes and how it reads prompt weights.
@@ -100,10 +110,12 @@ func FactsOf(m modelcatalog.Info) adv.ModelFacts {
 	return adv.ModelFacts{Use: u, Weight: string(m.PromptWeight), WeightText: settingsview.WeightText(m)}
 }
 
-// SectionOf is the part of the form that these settings add, around the fields it holds, with the lines of the models it is offered for.
-func SectionOf(f Fields, models []modelcatalog.Info) adv.Section {
+// SectionOf is the part of the form that these settings add, around the fields it holds, with the lines of the models it is offered for; ticked are
+// the models that are chosen (the groups of exposed inputs of the others start hidden).
+func SectionOf(f Fields, models []modelcatalog.Info, ticked []string) adv.Section {
 	a := adv.Advanced{Seed: f.Seed, Steps: f.Steps, CFG: f.CFG, Sampler: f.Sampler, Scheduler: f.Scheduler, Samplers: settingsview.Samplers, Schedulers: settingsview.Schedulers}
-	s := adv.Section{Advanced: a}
+	s := adv.Section{Advanced: a, Exposed: exposedGroups(f, models, ticked)}
+	s.Advanced.Exposed = len(f.Exposed) > 0
 	for _, m := range models {
 		s.Lines = append(s.Lines, adv.AdvancedLine{Label: m.Label, Text: settingsview.LineText(m)})
 		s.WeightLines = append(s.WeightLines, adv.WeightLine{Label: m.Label, Level: string(m.PromptWeight), Text: settingsview.WeightText(m)})

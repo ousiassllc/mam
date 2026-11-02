@@ -104,6 +104,18 @@ func pickModel(ctx context.Context, src Source, in Intent, models []modelcatalog
 	return modelcatalog.Info{}, Candidate{}, false
 }
 
+// Excluded says why the settings keep a model out of the choices of an intent or a recipe: the commercial filter and this PC's OS and GPU ("" when it
+// may be used). The adult gate is not here: the model lists leave those models out.
+func Excluded(ctx context.Context, src Source, m modelcatalog.Info) string {
+	switch {
+	case !src.Filter.Allows(m.License.Commercial):
+		return "設定「商用OKのモデルだけを使う」の条件に合わないため選べません"
+	case src.PlatformWarning != nil && src.PlatformWarning(ctx, m.ID) != "":
+		return "この PC の OS・GPU では動かない可能性が高いため選べません"
+	}
+	return ""
+}
+
 // noModelReason says why nothing was picked and what to do.
 func noModelReason(in Intent, st pickStats) string {
 	if st.found == 0 {

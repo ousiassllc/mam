@@ -9,13 +9,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/intent"
 )
 
-func (s *Service) intentSource() intent.Source {
+// IntentSource is what the choice of a model by an intent or a recipe asks of the service (intent.Source).
+func (s *Service) IntentSource() intent.Source {
 	return intent.Source{Models: s.Models, Filter: s.DefaultFilter(), BundledEndpoint: s.BundledEndpoint, PlatformWarning: s.PlatformWarning}
 }
 
 // Recommend is the model an intent picks now (intent.Recommend).
 func (s *Service) Recommend(ctx context.Context, id string, hasReferences bool) (intent.Recommendation, error) {
-	return intent.Recommend(ctx, s.intentSource(), id, hasReferences)
+	return intent.Recommend(ctx, s.IntentSource(), id, hasReferences)
 }
 
 // ApplyIntent fills the models of r from the intent id: the model Recommend picks for r's input images. A request that names models as well
@@ -29,7 +30,7 @@ func (s *Service) ApplyIntent(ctx context.Context, r Request, id string) (Reques
 	if r.Media != "" && r.Media != MediaImage {
 		return r, intent.Recommendation{}, gterr.Invalid("intent は画像だけで指定できます")
 	}
-	rec, err := intent.Recommend(ctx, s.intentSource(), id, len(r.References) > 0)
+	rec, err := intent.Recommend(ctx, s.IntentSource(), id, len(r.References) > 0)
 	if err != nil {
 		return r, rec, err
 	}

@@ -58,7 +58,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 		c.Resolution = pick(f.resol, c.Resolutions, "720p")
 		c.Duration, c.SpeedModes, c.SpeedMode = pick(f.duration, c.Durations, "5"), refform.SpeedChoices(models), f.opts.SpeedMode
 	}
-	c.Section = advform.SectionOf(f.adv, models)
+	c.Section = advform.SectionOf(f.adv, models, f.models)
 	if list, err := h.Svc.Prompts(ctx); err == nil {
 		for _, p := range list[:min(len(list), recentPrompts)] {
 			c.Recent = append(c.Recent, view.RecentPrompt{ID: p.ID, Text: p.Prompt, Negative: p.NegativePrompt, Uses: p.UseCount})
@@ -128,6 +128,7 @@ func (h Handlers) Page(c *gin.Context) {
 		fromMatch = true
 	}
 	notice, again := h.restoreAgain(ctx, c, &f) // "似た感じでもう1枚" / "この設定でもう一度" (#977)
+	recipeNote := h.recipeNotice(ctx, c, &f)    // "使う" of a recipe (#977)
 	for _, raw := range c.QueryArray(view.FieldRef) {
 		if r, ok := refform.Parse(raw); ok {
 			f.refs = append(f.refs, refform.Input(r, refform.ImageRole(c.Query("ref_role")), nil)) // "この顔で作る" names the role face
@@ -152,6 +153,9 @@ func (h Handlers) Page(c *gin.Context) {
 	if again {
 		form.Notice = notice
 	}
+	if recipeNote != "" {
+		form.Notice = recipeNote
+	}
 	gtshare.Render(c, http.StatusOK, pages.GenerationTestPage(middleware.CSRFToken(c), form))
 }
 
@@ -169,7 +173,10 @@ func (h Handlers) Form(c *gin.Context) {
 	if f.tier.Tier == "" || f.media == gentest.MediaVideo { // a switch between the tiers of the image form keeps its models
 		f.models = nil // the models of one media are not the models of the other
 	}
-	gtshare.Render(c, http.StatusOK, view.ComposeForm(h.compose(c.Request.Context(), f)))
+	recipeNote := h.recipeNotice(c.Request.Context(), c, &f) // "使う" of a recipe, or the easy tier left with a recipe chosen (#977)
+	form := h.compose(c.Request.Context(), f)
+	form.Notice = recipeNote
+	gtshare.Render(c, http.StatusOK, view.ComposeForm(form))
 }
 
 // PromptRow answers GET /generation-test/prompt-row: one more prompt box, filled from the history with "?from=<id>".

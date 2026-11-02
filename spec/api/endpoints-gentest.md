@@ -9,6 +9,13 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | メソッド | パス | 内容 |
 |---|---|---|
 | GET | `/generation-test` | 画面（作成フォーム・確認・進捗）。クエリ `model`（そのモデルを選んで開く。動画モデルなら動画のフォーム）・`prompt`（プロンプト履歴の ID でプロンプトを入れる）・`ref`（`<source>:<project>:<id>` の入力画像を足す）・`from_result`（プロンプトマッチの回など、結果の ID。その結果のプロンプト・モデル・縦横比を入れて開き、「モデルを足して実行すると同じプロンプトで比べられます」の案内を出す。Issue #965）・`tier`（`easy`／`detail`／`comfy`。画像のフォームの段。無い・知らない値はかんたん。モデルを名指す入口（`model`・`from_result`・`again`）は `tier` が無ければこだわり。`comfy` はノード画面などへの入口だけの画面。Issue #977）・`again`（結果の ID。その結果の設定を入れてこだわりで開く。`same_seed=1` でシードも入れる。入れられない項目は理由を 1 行で出す）・`ref_role`（`ref` の入力画像の役割。「この顔で作る」は `face`）・`intent`・`quality`（かんたんで選んでおく値） |
+| POST | `/generation-test/recipes` | 今のフォームの設定をレシピとして保存（フォームの全項目＋`recipe_name`・`recipe_easy=1`。プロンプトの本文と入力画像は保存しない）。レシピの区画 `#gt-recipes` を返す（成功 200、名前の重複 409、検査の失敗 422 は理由つきで同じ区画） |
+| POST | `/generation-test/recipes/:id/rename` | 名前を変える（`recipe_rename`）。区画 `#gt-recipes` を返す |
+| POST | `/generation-test/recipes/:id/easy` | かんたんの選択肢に足す（`easy=1`）／外す（`easy=0`）。区画 `#gt-recipes` を返す |
+| DELETE | `/generation-test/recipes/:id` | レシピを削除する。区画 `#gt-recipes` を返す |
+| POST | `/generation-test/comfy/open` | 今のフォームの設定のグラフを ComfyUI のワークフロー（`workflows/mam/…`）に置き、`HX-Redirect: /nodes?opened=<ファイル>[&endpoint=<接続先>]` で 204。開けないときは 422 と理由の区画 `#gt-comfy-open` |
+| GET | `/generation-test/comfy/exposed` | 「画面に出す値を選ぶ」の画面（クエリ `model`: そのモデルのグラフの入力が表になる） |
+| POST | `/generation-test/comfy/exposed` | 選んだ入力（`model`・チェックした `row`＝`<ノード ID>.<入力名>`・`label.<key>`・`min.<key>`・`max.<key>`）をモデルの「画面に出す値」として保存し、画面を返す（検査の失敗は 422 で理由つき） |
 | GET | `/generation-test/easy-pick` | かんたんの「使うモデル」と品質のボタンの区画 `#gt-easy-pick` だけ（やりたいことの選択で取り直す。クエリ: `intent`・`quality`・`ref`（入力画像の数をみる）。ブラウザで選んだ入力ファイルを壊さないために、フォーム全体は返さない）。Issue #977 |
 
 | GET | `/generation-test/form` | フォームを画像／動画で切り替える（クエリ: 入力済みのフォームの値。プロンプト・本数・縦横比は保つ。モデルの選択は外す） |
@@ -80,6 +87,12 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 - **結果の「もう1枚」・「もう一度」**: `GET /generation-test?tier=detail&again=<結果の ID>[&same_seed=1]`。記録された `params` から、モデル・プロンプトとネガティブ・英訳・縦横比・steps・cfg・サンプラー・スケジューラー・LoRA・ポーズを真似させない設定・入力画像（履歴・プロジェクト・ポーズ集。役割と強さ）を入れる。`same_seed=1` はシードも入れる（シードを渡せなかったモデルは入れず、理由を出す）。アップロードした入力画像・消えた入力画像・使えなくなったモデルは理由を出す。画像の結果でファイルがあり、インペイント・アップスケールでない結果だけ。
 - 結果の詳細は、ボタン列（`data-testid="gt-next"`）と折りたたみの「使った設定」（`data-testid="gt-used"`）を返す（画像でファイルがある結果だけ）。
 
+## レシピ・ComfyUI の段（Issue #977 ステージ 2）
+
+- **フォームの項目**: `exposed.<ノード ID>.<入力名>`（モデルの「画面に出す値」。空欄はグラフの値のまま。見積りの確認の hidden にも入る）。`GET /generation-test` と `GET /generation-test/form` の `recipe=<id>` は、レシピの設定をこだわりのフォームに入れる（プロンプトと入力画像は今のまま）。かんたんの `intent` は `recipe:<id>`（選択肢のレシピ）も取り、見積りはそのレシピのモデルと設定で行う。
+- **結果**: 詳細の「使った設定」に「画面に出した値 <key>」の行が付く。「もう1枚」「もう一度」は入力欄に値を戻す。
+- 意味は [../components/gentest-tiers.md](../components/gentest-tiers.md) §9・§10。
+
 ## 画面
 
 区画は上から: **作成フォーム**（`#gt-compose`: 画像／動画・モデル・プロンプト・パラメーター・入力画像）・**確認**（`#gt-confirm`）・**進捗と比較表**（`#gt-batch`）。モデルはカード（タップで選ぶ。見えないチェックボックス `model` が値を送る）で無効なものも並べ、選べない理由はカードでなく「?」ヘルプと読み上げにある（Issue #906）。見積りの確認は、件数・モデルごとの内訳と合計・「単価なし」のモデルは合計に入らないという注記・警告・上限超過（実行ボタンを無効にする）を出す。結果のカードは完了なら画像（`<img>`）か動画（`<video controls>`）、失敗なら理由。
@@ -108,3 +121,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.13 | 2026-11-03 | ポーズ集の 4 ルート（`/generation-test/poses`・`/poses/results`・`/poses/image/:id`・`POST /poses/install`）と、`ref-row` の `pose_library::<ID>`、役割 `pose` | Issue #986 |
 | 1.14 | 2026-11-02 | `GET/POST /generation-test/inpaint`（見積り・実行）を足した。結果の詳細に「一部だけ描き直す」と、インペイント結果の「元の結果」 | Issue #974 |
 | 1.15 | 2026-11-03 | 画像のフォームの 3 段（`tier`・`intent`・`quality`・`easy_intent`・`easy_quality`）、`GET /generation-test/easy-pick`、`GET /generation-test` の `tier`・`again`・`same_seed`・`ref_role`、見積りの警告 `quality_ignored`、結果の「もう1枚」「もう一度」「この顔で作る」を足した | Issue #977（ステージ 1） |
+| 1.16 | 2026-11-04 | レシピの 4 ルート（`/generation-test/recipes`…）、`/generation-test/comfy/open`、`/generation-test/comfy/exposed`（GET・POST）、フォームの `exposed.<key>`・`recipe`、かんたんの `intent=recipe:<id>` | Issue #977（ステージ 2） |

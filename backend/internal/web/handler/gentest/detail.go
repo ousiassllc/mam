@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/settingstext"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/gin-gonic/gin"
@@ -117,7 +118,7 @@ func params(d record.ResultDetail) []view.KV {
 	} else {
 		kv = append(kv, view.KV{Key: "シード", Value: "送っていません（このモデルは受け付けません）"})
 	}
-	kv = append(kv, settingsKVs(d)...)
+	kv = append(kv, settingstext.KVs(d)...)
 	kv = append(kv, view.KV{Key: "入力したプロンプト", Value: d.Prompt}, view.KV{Key: "見積り", Value: costText(d)})
 	if d.ActualUSD != nil {
 		kv = append(kv, view.KV{Key: "実費（提供元の報告）", Value: gtshare.USD(*d.ActualUSD)})

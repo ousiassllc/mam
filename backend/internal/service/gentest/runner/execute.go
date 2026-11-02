@@ -85,6 +85,7 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	if p.Sampling != nil {
 		req.Options.Sampling = *p.Sampling
 	}
+	req.Options.Exposed = p.Exposed
 	if p.Inpaint != nil {
 		if in, ok := br.inputs[p.Inpaint.MaskInput]; ok {
 			req.Inpaint = &modeladapter.Inpaint{Mask: in.in, Denoise: p.Inpaint.Denoise}

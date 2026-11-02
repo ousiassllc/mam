@@ -178,6 +178,15 @@ openai-compat:lmstudio/flux-schnell
 
 `inpaint` は元画像 1 枚（`reference_image`）とマスク 1 枚（`mask_image`。白が描き直す、黒が残す）と `denoise`（0 より大きく 1 以下。テンプレートのリテラルが既定）を必須にする。組み込みは `inpaint-sdxl`（カタログ `sdxl-base` のワークフロー `sdxl-base-inpaint`）と `inpaint-flux-dev`（`flux1-dev` の `flux1-dev-inpaint`）。どちらもコアノードだけ（`LoadImage`・`ImageToMask` channel=red・`VAEEncode`・`SetLatentNoiseMask`・`KSampler`・`VAEDecode`・`ImageCompositeMasked`・`SaveImage`）。`ImageCompositeMasked` の `destination` は元画像、`source` はデコード結果、`mask` は `ImageToMask` なので、マスクの外は元の画素のまま残る（画素比較は GPU 未実施）。リクエストが `denoise` を省くとグラフの値を書き換えない。モデル情報の「インペイント対応」は `supports_inpaint`（この方式で denoise の既定が読めたとき）。起動時の更新（§4.2）は既存ワークフローの中身を揃えるだけで、新しいワークフロー名は足さない。インペイント用は、モデルを入れ直すと入る。
 
+### 4.8 画面に出す値（`exposed_inputs`。Issue #977）
+
+- **何か**: ワークフローの `exposed_inputs`（`localcfg/exposed.Input`）= グラフのノードの入力のうち、生成テストの「こだわり」が入力欄として出すもの。`{"node": "3", "input": "denoise", "type": "float", "label": "ノイズ", "min": 0, "max": 1}`。型は `int`・`float`・`string`・`enum`（`options`）だけ。**加算的**: `assignments`（mam の値の割り当て）は変えず、`exposed_inputs` が無いワークフロー（今のテンプレートの全部）は今と同じに動く。値の既定は、グラフが持つ値。
+- **検査**（`ValidateModel`・`ValidateSaved`。`validateExposed`）: ノードと入力がグラフにある・ほかのノードがつないでいない（リンクは選べない）・`assignments` が使っていない・値の型に合う型・int と float は `min` と `max` の両方があり、グラフの値がその中・enum は 1 つ以上の選択肢にグラフの値が入る・表示名は 60 文字以内の 1 行・同じ入力を 2 回出さない・30 件まで。
+- **グラフへの適用**（`Workflow.GraphWith`・`exposed.Apply`）: リクエストの値（`ImageOptions.Exposed`。キー `<node>.<input>`）を、型・範囲・選択肢で検査して、**割り当てを入れる前に**グラフへ入れる（`comfyui.Backend.build`）。範囲外・型違い・知らないキーは拒否。
+- **一覧**（`Workflow.ExposedCaps`）: `modelcatalog.Info.Exposed`・MCP の `list_generation_models` が、キー・名前・型・範囲・選択肢と、グラフの値（`default`）を返す。
+- **保存**: 保存したワークフローは `comfy_workflow.assignment_json` の `exposed_inputs`、接続先のモデルは `models.json` の `local_models[].workflow.exposed_inputs`。編集は ComfyUI の段の「画面に出す値を選ぶ」（`service/gentest/exposedpick`）、MCP の `exposed_inputs`、設定画面の保存（保存した値を変えない）。`workflows.Service.Update` は、`exposed_inputs` を持たない設定の保存では今の値を残す。`wfrefresh`（導入済みのコピーをテンプレートに合わせる更新）は、利用者が選んだ「画面に出す値」を残す（テンプレートが割り当てを足した入力は、割り当てと重ならないよう外す）。
+- テンプレートには付けない（利用者が選ぶ）。画像だけ（動画のワークフローの値は生成テストの画像のフォームに出ない）。
+
 ## 5. 接続テスト
 
 ComfyUI は `GET /system_stats`（バージョンを返す）、OpenAI 互換は `GET /v1/models`（先頭 20 件のモデル ID を返す）。互換サーバーが 404/405 を返したら「到達できる。`/v1/models` は提供されていない」を注意付きの成功とする。

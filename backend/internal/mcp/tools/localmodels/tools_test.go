@@ -309,3 +309,21 @@ func readFile(t *testing.T, path string) string {
 	require.NoError(t, err)
 	return strings.TrimSpace(string(data))
 }
+
+// 画面に出す値（#977）は、モデルの作成・更新で渡せ、取得で返る。更新で省くと今のまま。
+func TestModels_ExposedInputsAreCreatedUpdatedAndKept(t *testing.T) {
+	env := newEnv(t, newRig(t, false, ""))
+	env.CallOK("create_local_endpoint", map[string]any{"name": "box", "kind": "comfyui", "base_url": "http://127.0.0.1:8188"}, nil)
+	inputs := []map[string]any{{"node": "3", "input": "denoise", "type": "float", "min": 0.0, "max": 1.0}}
+	var m localmodels.Model
+	env.CallOK("create_local_model", map[string]any{"endpoint": "box", "name": "sdxl", "template_id": "txt2img-sdxl", "exposed_inputs": inputs}, &m)
+	require.Len(t, m.ExposedInputs, 1)
+	assert.Equal(t, "3.denoise", m.ExposedInputs[0].Key())
+
+	env.CallOK("update_local_model", map[string]any{"endpoint": "box", "name": "sdxl", "cost_per_image_usd": 0.02}, &m)
+	assert.Len(t, m.ExposedInputs, 1, "an update that does not name them leaves them")
+	assert.Contains(t, env.CallError("update_local_model", map[string]any{"endpoint": "box", "name": "sdxl", "exposed_inputs": []map[string]any{{"node": "3", "input": "steps", "type": "int", "min": 1.0, "max": 9.0}}}), "validation")
+	var cleared localmodels.Model
+	env.CallOK("update_local_model", map[string]any{"endpoint": "box", "name": "sdxl", "exposed_inputs": []any{}}, &cleared)
+	assert.Empty(t, cleared.ExposedInputs)
+}

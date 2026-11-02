@@ -15,6 +15,7 @@ const SeedMax = 1<<32 - 1
 const (
 	WarnSamplingIgnored = "sampling_ignored" // the model does not take (some of) the steps, cfg, sampler and scheduler asked for
 	WarnSeedIgnored     = "seed_ignored"     // the model takes no seed: the fixed seed is not sent
+	WarnExposedIgnored  = "exposed_ignored"  // the model has no such exposed input (a request's exposed): it is not sent
 	WarnQualityIgnored  = "quality_ignored"  // the model has no preset of the quality asked for: it is made at its own steps and cfg
 )
 

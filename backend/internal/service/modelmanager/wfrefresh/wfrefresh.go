@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 )
@@ -62,7 +63,20 @@ func refreshed(cur localcfg.Model, template string) (localcfg.Model, bool) {
 	}
 	next := tpl.Model
 	next.CostPerImage, next.CostPerSecond = cur.CostPerImage, cur.CostPerSecond
+	next.Workflow.ExposedInputs = keptExposed(cur.Workflow.ExposedInputs, next.Workflow.Assignments) // the user's "画面に出す値" (#977) stay
 	return next, true
+}
+
+// keptExposed are the exposed inputs of the old copy that the template does not feed with an assignment now (the template grew the steps and cfg
+// assignments an old copy lacked: an input cannot be exposed and assigned both).
+func keptExposed(inputs []exposed.Input, assignments []localcfg.Assignment) []exposed.Input {
+	var out []exposed.Input
+	for _, in := range inputs {
+		if !slices.ContainsFunc(assignments, func(a localcfg.Assignment) bool { return a.Node == in.Node && a.Input == in.Input }) {
+			out = append(out, in)
+		}
+	}
+	return out
 }
 
 // behind says the template has something the copy lacks: a reference mode, a prompt weight value, quality presets, or a sampling assignment.

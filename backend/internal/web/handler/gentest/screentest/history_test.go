@@ -1,4 +1,4 @@
-package gentest_test
+package screentest_test
 
 import (
 	"net/http"

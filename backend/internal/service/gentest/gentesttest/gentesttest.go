@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/repository/reciperepo"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 )
@@ -196,7 +197,7 @@ func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 	f := &Fake{err: map[domain.ModelName]error{}, block: map[domain.ModelName]chan struct{}{}, start: make(chan struct{}, 64)}
 	r := &Rig{T: t, Fake: f, DB: db, DataDir: t.TempDir(), AssetsDir: t.TempDir(), Config: modeladapter.DefaultConfig(), Assigned: new([]string), missing: map[domain.ModelName]bool{}}
 	deps := gentest.Deps{
-		Repo: gentestrepo.New(db), JobTable: repository.NewJobRepository(db), Projects: repository.NewProjectRepository(db),
+		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), JobTable: repository.NewJobRepository(db), Projects: repository.NewProjectRepository(db),
 		Assets: repository.NewAssetRepository(db), References: repository.NewReferenceRepository(db), DataDir: r.DataDir, AssetsDir: r.AssetsDir,
 		Assign: func(_ context.Context, project string, target domain.WorldTarget, id, slot, ref string) error {
 			*r.Assigned = append(*r.Assigned, project+"|"+string(target)+"|"+id+"|"+slot+"|"+ref)

@@ -1,4 +1,5 @@
-package gentest_test
+// Package screentest runs the generation test screen (estimate, run, history, the audio and the upscale of a result) through the router over a real service with fake model backends.
+package screentest_test
 
 import (
 	"bytes"

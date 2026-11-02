@@ -47,12 +47,50 @@ func (u SamplingUse) Names() string {
 	return strings.Join(n, " ")
 }
 
+// MaxExposedText is the longest value of a text input of a workflow (exposed.MaxStringRunes; a test pins that they agree).
+const MaxExposedText = 4000
+
+// FieldExposedPrefix starts the name of the form field of an exposed input (Issue #977): "exposed.<node>.<input>".
+const FieldExposedPrefix = "exposed."
+
+// ExposedField is an exposed input of a model's workflow as the form draws it: Type is int, float, string or enum; Value is what the form holds ("":
+// the graph's own, which Default shows); Min, Max and Options are what Type needs.
+type ExposedField struct {
+	Key, Label, Type, Value, Default, Min, Max string
+	Options                                    []string
+}
+
+// Name is the form field of the input.
+func (f ExposedField) Name() string { return FieldExposedPrefix + f.Key }
+
+// Long says a text input is drawn as a box of several lines (a prompt).
+func (f ExposedField) Long() bool {
+	return len([]rune(f.Default)) > 60 || strings.Contains(f.Default, "\n")
+}
+
+// Step is the step of a number input: whole for an int, any for a float.
+func (f ExposedField) Step() string {
+	if f.Type == "int" {
+		return "1"
+	}
+	return "any"
+}
+
+// ExposedGroup is the exposed inputs of one model: shown while the model is ticked, and posted only then.
+type ExposedGroup struct {
+	ModelID, Label string
+	Shown          bool
+	Fields         []ExposedField
+}
+
 // Section is the part of the compose form that these settings add (Compose embeds it): the values the form holds and what is offered. A
 // text field that is empty is not given (the model's own value); Steps and CFG are on only while their "上書きする" box is ticked.
 type Section struct {
 	Advanced
 	// WeightLines are the models' lines of the "?" of the prompts.
 	WeightLines []WeightLine
+	// Exposed are the exposed inputs of the models that have some, by model (Issue #977).
+	Exposed []ExposedGroup
 }
 
 // ModelFacts is what a model card hands to the script: which settings the model takes and how it reads prompt weights (supported / weak /
@@ -67,6 +105,8 @@ type ModelFacts struct {
 type Advanced struct {
 	Seed, Steps, CFG, Sampler, Scheduler string
 	Samplers, Schedulers                 []string
+	// Exposed says an exposed input was given a value (the section starts open).
+	Exposed bool
 	// Lines say, for each model of the form, what it takes (and why not): the content of the "?" of the section.
 	Lines []AdvancedLine
 }
@@ -76,7 +116,7 @@ type AdvancedLine struct{ Label, Text string }
 
 // Open says the section starts open: something in it was given (a form that comes back keeps what was typed in view).
 func (a Advanced) Open() bool {
-	return a.Seed != "" || a.Steps != "" || a.CFG != "" || a.Sampler != "" || a.Scheduler != ""
+	return a.Exposed || a.Seed != "" || a.Steps != "" || a.CFG != "" || a.Sampler != "" || a.Scheduler != ""
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }

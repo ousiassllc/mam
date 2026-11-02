@@ -21,6 +21,8 @@ import { initGentestMatch } from './components/gentest/match';
 import { initGentestAdvanced } from './components/gentest/advanced';
 import { initGentestRefine } from './components/gentest-tiers/refine';
 import { initGentestEasy } from './components/gentest-tiers/easy';
+import { initGentestExposed } from './components/gentest-tiers/exposed';
+import { initGentestRecipe } from './components/gentest-tiers/recipe';
 import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
 import { installExportPick } from './components/gentest/export-pick';
@@ -92,6 +94,8 @@ initGentestMatch();
 initGentestAdvanced();
 initGentestRefine();
 initGentestEasy();
+initGentestExposed();
+initGentestRecipe();
 // The filter of commercial use of the lists of models: 商用OKのみ / 条件つきまで / すべて.
 installCommercialFilter();
 

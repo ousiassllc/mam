@@ -1,0 +1,40 @@
+package gentestadv
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// exposedGroups are the inputs of the models' ComfyUI workflows that were chosen as "画面に出す値" (Issue #977): one group for each model that has some, shown
+// while that model is ticked. The script (static/src/components/gentest-tiers/exposed.ts) shows and hides the groups as the models are ticked and unticked,
+// and a field of a group that is hidden is disabled, so that it posts nothing. An empty field is the graph's own value, which it shows as its placeholder.
+templ exposedGroups(groups []ExposedGroup) {
+	for _, g := range groups {
+		<fieldset class="flex flex-col gap-2 rounded-md border border-neutral-800 p-2" hidden?={ !g.Shown } data-gt-exposed-model={ g.ModelID } data-testid="gt-exposed">
+			<legend class="px-1 text-xs text-neutral-300">{ g.Label } の「画面に出す値」</legend>
+			for _, f := range g.Fields {
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" data-gt-exposed-field={ f.Key }>
+					<span>{ f.Label }</span>
+					switch f.Type {
+						case "enum":
+							@atoms.Select(atoms.FieldMd, "max-w-72", templ.Attributes{"name": f.Name(), "disabled": !g.Shown, "data-testid": "gt-exposed-input"}) {
+								<option value="" selected?={ f.Value == "" }>モデルの既定（{ f.Default }）</option>
+								for _, o := range f.Options {
+									<option value={ o } selected?={ o == f.Value }>{ o }</option>
+								}
+							}
+						case "string":
+							if f.Long() {
+								@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{"name": f.Name(), "rows": "3", "maxlength": itoa(MaxExposedText), "placeholder": f.Default, "disabled": !g.Shown, "data-testid": "gt-exposed-input"}, f.Value)
+							} else {
+								@atoms.Input(atoms.FieldMd, "w-full max-w-96", templ.Attributes{"name": f.Name(), "type": "text", "maxlength": itoa(MaxExposedText), "value": f.Value, "placeholder": f.Default, "disabled": !g.Shown, "data-testid": "gt-exposed-input"})
+							}
+						default:
+							@atoms.Input(atoms.FieldMd, "w-40", templ.Attributes{
+								"name": f.Name(), "type": "number", "inputmode": "decimal", "min": f.Min, "max": f.Max, "step": f.Step(), "value": f.Value, "placeholder": f.Default,
+								"disabled": !g.Shown, "data-testid": "gt-exposed-input",
+							})
+							<span class="text-neutral-400">{ f.Min }〜{ f.Max }（空欄: モデルの既定 { f.Default }）</span>
+					}
+				</label>
+			}
+		</fieldset>
+	}
+}

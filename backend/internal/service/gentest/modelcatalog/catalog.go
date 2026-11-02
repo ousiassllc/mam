@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -92,6 +93,8 @@ type Info struct {
 	Sampling *sampling.Caps `json:"sampling,omitempty" jsonschema:"このモデルが受け取るステップ数・CFG・サンプラー・スケジューラーと既定値。無い項目は受け取らない（指定しても使わない）。steps / cfg の locked が speed_mode のものは、速さのモードが決めるので指定しても無視する"`
 	// PromptWeight is whether the model reads the weights of a prompt, "(word:1.3)": supported / weak / unsupported / unknown.
 	PromptWeight promptweight.Level `json:"prompt_weight" jsonschema:"プロンプトのウェイト（(word:1.3)）が効くか。supported（効く）/ weak（効くが弱いかもしれない）/ unsupported（効かない: 括弧と数字がそのまま文として読まれる）/ unknown（確かめていない）"`
+	// Exposed are the inputs of the model's workflow the screen offers as fields of their own (a request's exposed; Issue #977).
+	Exposed []exposed.Cap `json:"exposed,omitempty" jsonschema:"画面に出す値（ComfyUI のノードの入力）。リクエストの exposed に key で値を渡せる。type・min / max・options の範囲外は validation。default はワークフローのグラフが持つ値"`
 	// SupportsInpaint: the model redraws the white part of a mask and keeps the rest (reference_mode inpaint).
 	SupportsInpaint bool `json:"supports_inpaint,omitempty" jsonschema:"一部だけ描き直す（インペイント）に対応する。reference_mode が inpaint のとき true。対応しないモデルは選べない"`
 	// DenoiseDefault is the redraw strength the workflow uses when a request names none (the template's denoise).
@@ -195,6 +198,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	mi.PromptWeight = promptweight.Unknown
 	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
 		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
+		mi.Exposed = lm.Workflow.ExposedCaps()
 		if d, ok := denoiseDefault(lm.Workflow); ok {
 			mi.SupportsInpaint, mi.DenoiseDefault = true, &d
 		}

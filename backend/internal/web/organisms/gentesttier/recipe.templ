@@ -1,0 +1,99 @@
+package gentesttier
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+const recipeHelp = "今の設定（モデル・ステップ数・CFG・サンプラー・スケジューラー・シード・ネガティブ・LoRA と強さ・入力画像の強さ・サイズ・品質・画面に出した値）に名前を付けて残します。\nプロンプトの本文と入力画像は残しません。\n「使う」でその設定がこのフォームに入ります（プロンプトと入力画像は今のまま）。「かんたんに出す」にすると、かんたんの「やりたいこと」の選択肢に並び、選ぶだけでそのモデルと設定で作れます。\nモデルを削除した・導入していないなどで使えないレシピは、理由を出して残します（消しません）。"
+
+// RecipeSection is the recipes of the detail tier, at the end of the form: "今の設定をレシピとして保存", and the list of what was saved. It sits inside the compose
+// form, so the buttons ask the server with HTMX and the form's own values go with them; Enter in a name presses the button of its row
+// (static/src/components/gentest-tiers/recipe.ts), not the estimate.
+templ RecipeSection(d RecipeData) {
+	<section class="flex flex-col gap-3 rounded-md border border-neutral-800 p-3 text-sm" aria-labelledby="gt-recipes-title" data-testid="gt-recipe-section">
+		@help.Row(help.ID("レシピ"), "レシピ", help.Text(recipeHelp)) {
+			<h2 id="gt-recipes-title" class="text-sm font-medium text-neutral-200">レシピ</h2>
+		}
+		@RecipePanel(d)
+	</section>
+}
+
+// RecipePanel is the part of the recipes that is swapped when one is saved, renamed, put among the easy choices or deleted.
+templ RecipePanel(d RecipeData) {
+	<div id={ RecipesID } class="flex flex-col gap-3" data-testid="gt-recipes">
+		if d.Notice != "" {
+			<p class="text-sm text-emerald-300" role="status" data-testid="gt-recipes-notice">{ d.Notice }</p>
+		}
+		if d.Error != "" {
+			<p class="text-sm text-amber-300" role="alert" data-testid="gt-recipes-error">{ d.Error }</p>
+		}
+		if d.Unavailable {
+			<p class="text-xs text-neutral-400" data-testid="gt-recipes-unavailable">このアプリではレシピを保存できません</p>
+		} else {
+			<div class="flex flex-wrap items-end gap-3" data-gt-recipe-row>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-recipe-name">
+					<span>今の設定の名前</span>
+					@atoms.Input(atoms.FieldMd, "w-56", templ.Attributes{
+						"id": "gt-recipe-name", "name": FieldRecipeName, "type": "text", "maxlength": itoa(MaxRecipeName), "placeholder": "例: 人物写真・きれい", "data-gt-recipe-name": "", "data-testid": "gt-recipe-name",
+					})
+				</label>
+				<label class="flex items-center gap-1.5 text-xs text-neutral-300">
+					@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldRecipeEasy, "value": "1", "data-testid": "gt-recipe-easy"})
+					<span>かんたんの選択肢に足す</span>
+				</label>
+				@atoms.SmallButton(atoms.TonePrimary, "今の設定をレシピとして保存", recipeAct("post", paths.GenerationTestPart("recipes"), "#"+FormID, nil, "data-gt-recipe-act", "gt-recipe-save"))
+			</div>
+			<p class="text-xs text-neutral-400">プロンプトの本文と入力画像は保存しません。</p>
+			if len(d.Rows) == 0 {
+				<p class="text-xs text-neutral-400" data-testid="gt-recipes-empty">保存したレシピはまだありません。</p>
+			} else {
+				<ul class="flex flex-col gap-2" data-testid="gt-recipe-list">
+					for _, r := range d.Rows {
+						@recipeRow(r)
+					}
+				</ul>
+			}
+		}
+	</div>
+}
+
+func recipeAct(method, path, include string, vals map[string]string, extra, testID string) templ.Attributes {
+	a := RecipeAct(method, path, include, vals)
+	a["type"], a["data-testid"] = "button", testID
+	if extra != "" {
+		a[extra] = ""
+	}
+	return a
+}
+
+templ recipeRow(r RecipeRow) {
+	<li class="flex flex-col gap-1.5 rounded-md border border-neutral-800 p-2" data-gt-recipe-row data-testid="gt-recipe">
+		<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+			<span class="font-medium text-neutral-100" data-testid="gt-recipe-title">{ r.Name }</span>
+			<span class="text-xs text-neutral-400">{ r.ModelLabel }</span>
+			if r.Easy {
+				<span class="text-xs text-neutral-300" data-testid="gt-recipe-easy-mark">かんたんに出ています</span>
+			}
+		</div>
+		if !r.Usable {
+			<p class="text-xs text-amber-300" data-testid="gt-recipe-reason">使えません: { r.Reason }</p>
+		}
+		<div class="flex flex-wrap items-center gap-2">
+			if r.Usable {
+				<a class="text-sm text-neutral-100 underline" { RecipeUseAttrs(r.ID)... } data-testid="gt-recipe-use">使う</a>
+			}
+			@atoms.Input(atoms.FieldSm, "w-40", templ.Attributes{
+				"id": "gt-rename-" + r.ID, "name": FieldRecipeRename, "type": "text", "maxlength": itoa(MaxRecipeName), "value": r.Name, "aria-label": r.Name + " の新しい名前", "data-gt-recipe-name": "",
+			})
+			@atoms.SmallButton(atoms.ToneNeutral, "名前を変える", recipeAct("post", paths.GenerationTestPart("recipes", r.ID, "rename"), "#gt-rename-"+r.ID, nil, "data-gt-recipe-act", "gt-recipe-rename"))
+			if r.Easy {
+				@atoms.SmallButton(atoms.ToneNeutral, "かんたんから外す", recipeAct("post", paths.GenerationTestPart("recipes", r.ID, "easy"), "", map[string]string{"easy": "0"}, "", "gt-recipe-unease"))
+			} else {
+				@atoms.SmallButton(atoms.ToneNeutral, "かんたんに出す", recipeAct("post", paths.GenerationTestPart("recipes", r.ID, "easy"), "", map[string]string{"easy": "1"}, "", "gt-recipe-toease"))
+			}
+			@atoms.SmallButton(atoms.ToneDanger, "削除", templ.Attributes{"type": "button", "hx-delete": paths.GenerationTestPart("recipes", r.ID), "hx-confirm": "レシピ「" + r.Name + "」を削除します。よろしいですか？", "hx-target": "#" + RecipesID, "hx-swap": "outerHTML", "data-testid": "gt-recipe-delete"})
+		</div>
+	</li>
+}

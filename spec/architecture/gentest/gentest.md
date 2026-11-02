@@ -72,6 +72,14 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **やりたいこと**: `service/gentest/intent`（`intents.json`。埋め込み）が、選択肢（`photo`・`anime`・`landscape`・`face`）ごとに、モデルの候補（カタログのワークフロー名）を好みの順に持つ。`Service.Recommend(intent, hasReferences)` は、導入済みで呼べる（`Info.Available`。成人ゲートが閉じていれば成人向けは一覧に無い）・商用フィルター（`DefaultFilter`）に合う・この PC の OS／GPU の列の外でない（`Deps.PlatformWarning` = `mmview.PlatformWarning`。#979）・入力画像があれば画像を使える（顔の役割が要る選択肢は `face` を読める）最初の候補を選ぶ。選べなければ `Reason`（導入されていない／条件に合わない）。`Service.ApplyIntent(request, intent)` は `Models` を埋める（`models` と同時には指定できない。画像だけ。顔の写真が要る選択肢は入力画像が無ければ `validation`。「同じ顔で」は役割 `reference` の入力を `face` にする）。画面の見積りと MCP の `estimate_generation_test`・`run_generation_test` が使う。
 - **復元**（結果の「もう1枚」「もう一度」）: `record.ResultDetail`（`TranslateToEnglish` を足した）から、画面の `redo.Of` が入力に戻す。新しいサービスの呼び出しは無い（画面のハンドラだけ）。
 
+## 3.7 レシピと「画面に出す値」（Issue #977 ステージ 2）
+
+- **レシピ**（`service/gentest/recipe`）: モデル（識別子）と画像の設定（`Params`: steps・cfg・sampler・scheduler・固定のシード・ネガティブ・LoRA と強さ・入力画像の強さ・縦横比・品質・画面に出す値）に名前を付けて持つ。表は `gentest_recipe`（`repository/reciperepo`。[er-gentest.md](er-gentest.md)）で、`Service.Recipes`（`Deps.Recipes`）が持つ。プロンプトの本文と入力画像は持たない。`Save` は `paramsOf` が、リクエストと同じ検査（`sampling.Validate`・シードの範囲・`refs.CheckLoRA`・`exposedreq.Check`）を通す。`Apply` はレシピをリクエストに入れる（リクエストが名指しした項目が勝つ。`models`・`intent` と同時は 422。使えないレシピは理由つきで 422）。**使えるか**は `status`: `Service.Model`（成人ゲートで隠れた・未導入・削除）→ `Available` → `intent.Excluded`（商用フィルター・OS／GPU。かんたんのやりたいことと同じ関数）。使えなくてもレシピは消さない。
+- **画面に出す値**（`localcfg/exposed`・`service/gentest/exposedreq`）: モデルの `Info.Exposed`（`[]exposed.Cap`）がワークフローの `exposed_inputs` とグラフの現在値（`default`）を持つ。リクエストの `Exposed`（キー `<node>.<input>`）は `exposedreq.Check`（選んだモデルのどれかが持つキーだけ。型・範囲・選択肢）で検査し、`exposedreq.Plan` がモデルごとの値（指定した値、無ければグラフの値）を決める。持たないモデルには警告 `exposed_ignored`。値は `ResultParams.Exposed` に残り、実行は `ImageOptions.Exposed` → `comfyui` の `build` が**割り当てより先に**グラフへ入れる（`Workflow.GraphWith`）。
+- **今の設定を ComfyUI で開く**（`service/gentest/comfyopen`・`service/workflows/graphui`）: `comfyui.GraphFor`（実行と同じ `build`）が、リクエストの値を入れた API 形式のグラフを返す。`graphui.Convert` が、`GET /object_info` を使って画面の形式にし、`workflows.Service.OpenUI`（`OpenInComfyUI` と同じ置き方）が ComfyUI の `workflows/mam/` に置く。
+- **選ぶ側**（`service/gentest/exposedpick`）: グラフのノード・入力の一覧と選べない理由、保存（保存したワークフロー、または接続先のモデルに書く）。
+- テスト: `service/gentest/recipetest`（保存・復元・削除・未導入・exposed の範囲と警告・結果）、`exposedpick`・`comfyopen`・`graphui`・`localcfg/exposed`・`comfyui/exposedtest`、`repository/reciperepo`（マイグレーション）。
+
 ## 3.5 一部だけ描き直す（inpaint。Issue #974）
 
 元画像 1 枚とマスク（白＝描き直す、黒＝残す）で、マスクの内側だけを描き直す。リクエストの `mask`（参照と同じ `source` / `id` / `project_id`。役割ではない）と `denoise`（0 より大きく 1 以下。省くとモデルの `denoise_default`）。対応は `modelcatalog.Info.SupportsInpaint`（`reference_mode` が `inpaint` で、グラフに範囲内の `denoise` がある）。対応しないモデルを選ぶと見積りの時点で拒否する（警告ではない）。`denoise` を受け取らないモデルに強さを付けると警告 `denoise_ignored` でテンプレートの値のまま作る。マスクが真っ黒（白に近い画素が無い）・動画・マスク無しの `denoise` は拒否する。
@@ -174,6 +182,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | `export` / `refs` / `match` / `matchinfo` / `modelcatalog` / `projectlink` / `loras` / `failtext` / `gterr` | それぞれ ZIP エクスポート、入力画像と LoRA の判定、プロンプトマッチ、マッチの記録、モデルの一覧、プロジェクト側、LoRA の一覧、失敗の文言、拒否の型 |
 | `poses` / `posetest` | Shisei のポーズ集（導入・一覧・絞り込み・ファイルの解決。`posestest` は偽の GitHub で導入までを走らせる道具）と、ポーズの画像を入力にした実行のテスト（Issue #986） |
 | `intent` / `qualitytest` | やりたいこと（`intents.json`。埋め込みの選択肢と候補モデル・`Recommend` の選び方。Issue #977）と、品質のプリセット・やりたいことの選択・何も触らないときのグラフを走らせるテスト |
+| `recipe` / `exposedreq` / `exposedpick` / `comfyopen` / `recipetest` | レシピ（保存・一覧・使う・使えない理由）、リクエストの画面に出す値の検査と計画、画面に出す値を選ぶ側、今の設定を ComfyUI で開く、それらのテスト（Issue #977 ステージ 2。§3.7） |
 | `gentesttest` / `servicetest` / `localtest` / `speedtest` | テストの道具と、パッケージをまたぐテスト |
 
 `Service` は `projectlink.Link`・`runner.Runner`・`history.Store` を埋め込み、これらのメソッドを自分のものとして公開する。`Deps.Extra`（プロンプトマッチ）は `runner.Runner` のフィールドで、`match.New` が組み立てるときに入れる。

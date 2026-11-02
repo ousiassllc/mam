@@ -38,6 +38,8 @@ type ResultParams struct {
 	// Sampling is the steps, cfg, sampler and scheduler the model ran with (the request's value where it took one, else the model's
 	// default; not the steps and cfg of a speed mode). Absent: the model takes none, or the result is older than the setting.
 	Sampling *sampling.Settings `json:"sampling,omitempty"`
+	// Exposed are the values the model's exposed inputs ran with (by key "<node>.<input>"; the request's value, else the graph's own). Absent: it has none.
+	Exposed map[string]any `json:"exposed,omitempty"`
 	// Inpaint is set when the result redrew part of a picture. Absent for every other result.
 	Inpaint *Inpaint `json:"inpaint,omitempty"`
 	// Upscale is the enlargement the result is (a result of "make it larger"): the source and the values (Upscale). Absent: a generated result.
