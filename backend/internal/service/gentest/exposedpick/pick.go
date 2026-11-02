@@ -99,6 +99,7 @@ func (p Picker) Rows(ctx context.Context, modelID string) ([]Row, error) {
 		for _, in := range n.Inputs {
 			row := Row{Node: n.ID, Class: n.Class, Input: in.Name, Value: in.Value}
 			row.Reason = p.classify(&row, g[n.ID].Inputs[in.Name], info[n.Class].spec(in.Name), w, in.Link)
+			row.Options = p.withoutHidden(modelID, row, in.Value)
 			if i := slices.IndexFunc(w.ExposedInputs, func(e exposed.Input) bool { return e.Node == n.ID && e.Input == in.Name }); i >= 0 {
 				row.Chosen = &w.ExposedInputs[i]
 			}
@@ -106,6 +107,17 @@ func (p Picker) Rows(ctx context.Context, modelID string) ([]Row, error) {
 		}
 	}
 	return rows, nil
+}
+
+// withoutHidden is the choices of the row without the files only an adult model has while the age gate is closed (a value that would be refused
+// when a request gives it); the value the graph holds stays.
+func (p Picker) withoutHidden(modelID string, row Row, current string) []string {
+	if p.Gentest.HiddenWith == nil || len(row.Options) == 0 {
+		return row.Options
+	}
+	return slices.DeleteFunc(slices.Clone(row.Options), func(o string) bool {
+		return o != current && p.Gentest.HiddenWith(modelID, map[string]any{row.Key(): o})
+	})
 }
 
 // classify fills the type and the range of the row and returns why it cannot be chosen.

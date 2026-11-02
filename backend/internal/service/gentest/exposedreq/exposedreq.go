@@ -42,6 +42,21 @@ func Check(models []modelcatalog.Info, values map[string]any) (map[string]any, e
 	return out, nil
 }
 
+// Refuse refuses a request whose exposed values make a model read what its own graph does not: the age gate hides a model by the files of its graph
+// as it stands, and a value of a choice input (a LoRA, a checkpoint) puts another file in at run time. hidden says the model, run with the values,
+// is hidden (the Deps' HiddenWith); nil hides nothing.
+func Refuse(hidden func(modelID string, values map[string]any) bool, models []modelcatalog.Info, values map[string]any) error {
+	if hidden == nil || len(values) == 0 {
+		return nil
+	}
+	for _, m := range models {
+		if used, _ := Plan(m, values); len(used) > 0 && hidden(m.ID, used) {
+			return gterr.Invalid("%s: 画面に出す値が成人向けモデルのファイルを指しているため、年齢確認がオフの間は使えません。モデル管理で年齢確認をオンにするか、別の値を選んでください", m.Label)
+		}
+	}
+	return nil
+}
+
 // Plan is what one model runs with: the value of each of its exposed inputs (the request's, else the graph's own), nil when the model exposes none;
 // ignored lists the keys of the request the model does not have.
 func Plan(m modelcatalog.Info, values map[string]any) (used map[string]any, ignored []string) {

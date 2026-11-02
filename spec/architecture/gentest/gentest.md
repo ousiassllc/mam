@@ -59,7 +59,8 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **範囲**: シード 0〜4294967295、ステップ数 1〜150、CFG 0〜30、サンプラー・スケジューラーは ComfyUI の名前の一覧にあるもの。外れていれば、何も始めずに `validation`（画面 400）。
 - **シードを固定すると**: モデルごと・プロンプトごとの n 本目（0 から）に `seed + n` を使う（本数の最後も範囲内に収める）。同じシードでモデルを比べられ、本数が複数でも 1 本ずつ違う絵になる。シードを渡せないモデルには送らない（警告 `seed_ignored`）。空ならこれまでどおり 1 本ごとにランダム。結果の `seed` に使った値が残るので、同じ条件で作り直せる。
 - **モデルごとの扱い**: モデルが受け取る値は `modelcatalog.Info.Sampling`（`localcfg.Workflow.SamplingCaps()`。受け取る項目と既定。クラウドのモデルと、蒸留の LTX-2.5 は無し）。受け取らない値は**そのモデルには送らず**警告 `sampling_ignored`（「このモデルにはありません」）。**Speed mode（蒸留 LoRA）のあるモデルでは、`steps`・`cfg` を速さのモードが決める**ので、指定しても無視して警告 `sampling_ignored`（「速さのモードが決めます」。**Speed mode が優先**）。`sampler`・`scheduler` は上書きできる。
-- **履歴に残す**: 結果の `params.sampling`（`steps`・`cfg`・`sampler`・`scheduler`）に、そのモデルが**実際に使った値**（指定していない項目はモデルの既定）を残す。`ResultView.sampling` と結果の詳細の「サンプリング」の行、MCP の `get_generation_result` に出る。速さのモードのモデルは `speed_mode` が使った値を決める（`steps`・`cfg` は残さない）。
+- **シードの範囲の検査**: `seed + (本数 - 1)` が `SeedMax` を超える組み合わせは拒否する。比較は `seed > SeedMax - (本数 - 1)`（足し算にしない。int64 の最大値のシードで桁あふれして通らないように）。
+- **履歴に残す**: 結果の `params.sampling`（`steps`・`cfg`・`sampler`・`scheduler`）に、そのモデルが**実際に使った値**（指定していない項目はモデルの既定）を残す。`ResultView.sampling` と結果の詳細の「サンプリング」の行、MCP の `get_generation_result` に出る。記録が無い結果（#973 より前の履歴）は、モデルが今これらを受け取るなら「この結果には記録がありません（古い結果）」、受け取らないモデルなら「このモデルは受け取りません（モデルの既定）」と詳細の「使った設定」に出す。速さのモードのモデルは `speed_mode` が使った値を決める（`steps`・`cfg` は残さない）。
 - **見積り・ID**: 値は `Estimate.Request` に入り、見積りの ID に含まれる（確認した内容と違う値では実行できない）。単価は変わらない。
 - 実装は `service/gentest/sampling.go`（検証・`seedFor`・`planSampling`）と、`comfyui/sampling.go`（グラフへの書き込み）。
 
@@ -74,6 +75,8 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 3.7 レシピと「画面に出す値」（Issue #977 ステージ 2）
 
+**成人向けファイルを指す値（統合レビュー）**: `lora_name`・`ckpt_name` のようなファイル名を選ぶ入力を「画面に出す値」にして、リクエストの `exposed` で成人向けのファイルを渡すと、モデル自身のグラフは成人向けでなくても実行時にそのファイルを読む。`modelmanager.Service.HidesModelWith(モデル, 値)`（`gentest.Deps.HiddenWith`）が、値を入れた後のグラフ（`GraphWith`）を `adult.Files.Reads` で判定し、ゲートが閉じている間は `exposedreq.Refuse` が見積り・実行・ComfyUI で開く時に `validation` で断る。キューに積んだ後でゲートが閉じたときは、始まる時に `ReasonHidden` で失敗にする。選ぶ画面（`exposedpick`）の選択肢は、ゲートが閉じている間、成人向けのファイルを外す（グラフが今持っている値は残す）。
+
 - **レシピ**（`service/gentest/recipe`）: モデル（識別子）と画像の設定（`Params`: steps・cfg・sampler・scheduler・固定のシード・ネガティブ・LoRA と強さ・入力画像の強さ・縦横比・品質・画面に出す値）に名前を付けて持つ。表は `gentest_recipe`（`repository/reciperepo`。[er-gentest.md](er-gentest.md)）で、`Service.Recipes`（`Deps.Recipes`）が持つ。プロンプトの本文と入力画像は持たない。`Save` は `paramsOf` が、リクエストと同じ検査（`sampling.Validate`・シードの範囲・`refs.CheckLoRA`・`exposedreq.Check`）を通す。`Apply` はレシピをリクエストに入れる（リクエストが名指しした項目が勝つ。`models`・`intent` と同時は 422。使えないレシピは理由つきで 422）。**使えるか**は `status`: `Service.Model`（成人ゲートで隠れた・未導入・削除）→ `Available` → `intent.Excluded`（商用フィルター・OS／GPU。かんたんのやりたいことと同じ関数）。使えなくてもレシピは消さない。
 - **画面に出す値**（`localcfg/exposed`・`service/gentest/exposedreq`）: モデルの `Info.Exposed`（`[]exposed.Cap`）がワークフローの `exposed_inputs` とグラフの現在値（`default`）を持つ。リクエストの `Exposed`（キー `<node>.<input>`）は `exposedreq.Check`（選んだモデルのどれかが持つキーだけ。型・範囲・選択肢）で検査し、`exposedreq.Plan` がモデルごとの値（指定した値、無ければグラフの値）を決める。持たないモデルには警告 `exposed_ignored`。値は `ResultParams.Exposed` に残り、実行は `ImageOptions.Exposed` → `comfyui` の `build` が**割り当てより先に**グラフへ入れる（`Workflow.GraphWith`）。
 - **今の設定を ComfyUI で開く**（`service/gentest/comfyopen`・`service/workflows/graphui`）: `comfyui.GraphFor`（実行と同じ `build`）が、リクエストの値を入れた API 形式のグラフを返す。`graphui.Convert` が、`GET /object_info` を使って画面の形式にし、`workflows.Service.OpenUI`（`OpenInComfyUI` と同じ置き方）が ComfyUI の `workflows/mam/` に置く。
@@ -81,6 +84,8 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - テスト: `service/gentest/recipetest`（保存・復元・削除・未導入・exposed の範囲と警告・結果）、`exposedpick`・`comfyopen`・`graphui`・`localcfg/exposed`・`comfyui/exposedtest`、`repository/reciperepo`（マイグレーション）。
 
 ## 3.5 一部だけ描き直す（inpaint。Issue #974）
+
+**検査（統合レビュー）**: マスクは `image.DecodeConfig` で寸法だけ先に読み、幅 × 高さが `MaxMaskPixels`（8192 × 8192 画素）を超えれば全体を展開せずに `validation`（小さいファイルで巨大な寸法の PNG でメモリを使い切らせない）。白い画素の探索は型ごとの高速経路で、最初の 1 画素で打ち切る。`mask`・`denoise` のどちらも無いのにインペイント専用のモデル（`SupportsInpaint`）を選ぶと、見積りの時点で `validation`（「一部だけ描き直す専用のモデルです。mask を指定してください」。MCP・estimate も同じ）。
 
 元画像 1 枚とマスク（白＝描き直す、黒＝残す）で、マスクの内側だけを描き直す。リクエストの `mask`（参照と同じ `source` / `id` / `project_id`。役割ではない）と `denoise`（0 より大きく 1 以下。省くとモデルの `denoise_default`）。対応は `modelcatalog.Info.SupportsInpaint`（`reference_mode` が `inpaint` で、グラフに範囲内の `denoise` がある）。対応しないモデルを選ぶと見積りの時点で拒否する（警告ではない）。`denoise` を受け取らないモデルに強さを付けると警告 `denoise_ignored` でテンプレートの値のまま作る。マスクが真っ黒（白に近い画素が無い）・動画・マスク無しの `denoise` は拒否する。
 

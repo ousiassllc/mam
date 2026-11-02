@@ -21,10 +21,13 @@ type Repository struct{ db *repository.DB }
 func New(db *repository.DB) *Repository { return &Repository{db: db} }
 
 const query = `SELECT id, kind, payload, status, attempts, error, created_at, started_at, finished_at FROM job
-	WHERE status IN ('queued', 'running') OR id IN (SELECT id FROM job ORDER BY created_at DESC, id DESC LIMIT ?)
-	ORDER BY created_at DESC, id DESC`
+	WHERE status IN ('queued', 'running') OR id IN (SELECT id FROM job ORDER BY ` + newestFirst + ` LIMIT ?)
+	ORDER BY ` + newestFirst
 
-// ListRecent returns the newest `newest` jobs and, however old, every job that has not finished (queued or running), newest first.
+// newestFirst is the order of the list: the newest start first; a job that has not started is where it was queued (spec/components/jobs-screen.md).
+const newestFirst = `COALESCE(started_at, created_at) DESC, id DESC`
+
+// ListRecent returns the newest `newest` jobs and, however old, every job that has not finished (queued or running), newest start first.
 func (r *Repository) ListRecent(ctx context.Context, newest int) ([]domain.Job, error) {
 	rows, err := r.db.Reader().QueryContext(ctx, query, newest)
 	if err != nil {

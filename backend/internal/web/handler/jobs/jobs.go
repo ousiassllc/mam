@@ -43,7 +43,7 @@ func (h Handlers) List(c *gin.Context) {
 	render(c, view.Section(h.list(c)))
 }
 
-// list reads the jobs. A failure is answered as a 200 with the message in the list (the reader asks again with the refresh button),
+// list reads the jobs. A failure is answered as a 200 with the message in the list (the polling goes on, and so does the refresh button),
 // and goes to the log.
 func (h Handlers) list(c *gin.Context) view.List {
 	l := view.List{Refresh: paths.JobsList(), UpdatedAt: time.Now().Format(time.TimeOnly)}
@@ -51,6 +51,7 @@ func (h Handlers) list(c *gin.Context) view.List {
 	if err != nil {
 		_ = c.Error(err)
 		l.Error = readFailure
+		l.Active = true // a table that cannot be read now may be read in 2 seconds: the polling goes on, and the list comes back by itself
 		return l
 	}
 	for _, e := range entries {

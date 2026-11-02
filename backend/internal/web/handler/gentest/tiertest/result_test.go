@@ -1,6 +1,8 @@
 package tiertest_test
 
 import (
+	"context"
+	"database/sql"
 	"html"
 	"net/url"
 	"regexp"
@@ -62,6 +64,21 @@ func TestAnImageResultOffersTheButtonsAndTheSettingsItWasMadeWith(t *testing.T) 
 	for _, want := range []string{"bundled-comfyui/sdxl", ">30<", ">7<", "euler", "karras", ">42<", "なし", "縦（9:16）"} {
 		assert.Contains(t, used, want)
 	}
+}
+
+// 設定の記録が無い結果（#973 より前の履歴）は、モデルが受け取る項目でも「受け取りません」と言わず、記録が無いと言う。
+func TestAResultWithoutRecordedSamplingSaysItIsOldWhenTheModelTakesIt(t *testing.T) {
+	s := newScreen(t, gentesttest.WithTemplateModels())
+	id := s.made(sdxlRequest())
+	require.NoError(t, s.rig.DB.Write(t.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE gentest_result SET params = json_remove(params, '$.sampling') WHERE id = ?`, id)
+		return err
+	}))
+
+	used := testid(s.page(paths.GenerationTestPart("results", id)), "gt-used")
+
+	assert.Contains(t, used, "この結果には記録がありません（古い結果）")
+	assert.NotContains(t, used, "このモデルは受け取りません")
 }
 
 // inputTag is the first <input> of the page with the name.

@@ -127,5 +127,6 @@ func TestList_AnUnreadableTableIsAMessageInTheListAndNotAnErrorPage(t *testing.T
 		assert.NotContains(t, body, "database is locked", "the cause stays out of the page")
 		assert.NotContains(t, body, `data-testid="jobs-empty"`, "a list that could not be read is not an empty one")
 		assert.Contains(t, body, `id="jobs-list-refresh"`, path)
+		assert.Contains(t, body, `hx-trigger="every 2s"`, "the polling is kept, so the list comes back when the table can be read")
 	}
 }
