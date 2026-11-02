@@ -11,13 +11,20 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 )
 
-// LocalTimeout says what happened to a call to an endpoint the user registered that ran past its timeout, and what to do
-// next. It says nothing about billing: a local call costs nothing per call, and mam cancels the job on the server. ok is
-// false for any other error.
+// LocalTimeout says what happened to a call to an endpoint the user registered that ran past its limit, and what to do
+// next: a ComfyUI job that showed no progress for the endpoint's timeout, a call that ran past the ceiling a ComfyUI call
+// has (the timeout cannot be raised above it), or a call that ran past the endpoint's timeout. It says nothing about
+// billing: a local call costs nothing per call, and mam cancels the job on the server. ok is false for any other error.
 func LocalTimeout(err error) (msg string, ok bool) {
 	var te *localcfg.TimeoutError
 	if !errors.As(err, &te) {
 		return "", false
+	}
+	switch {
+	case te.Stalled:
+		return "ローカルの生成が" + duration(te.After) + "のあいだ進まなかったため打ち切りました。ComfyUI が止まっていないか確かめてください。重いモデルで進みの出ない処理が続く場合は、設定画面の接続先でタイムアウト（進みが止まってから打ち切るまでの時間）を延ばしてください", true
+	case te.After >= localcfg.MaxTimeoutSeconds*time.Second:
+		return "ローカルの生成が全体の上限（" + duration(te.After) + "）を超えたため打ち切りました。解像度や秒数を小さくして実行し直してください", true
 	}
 	return "ローカルの生成が接続先の待ち時間（" + duration(te.After) + "）を超えたため打ち切りました。設定画面の接続先でタイムアウトを延ばすか、解像度や秒数を小さくして実行し直してください", true
 }

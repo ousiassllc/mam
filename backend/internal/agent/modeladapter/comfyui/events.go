@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 
@@ -29,10 +30,12 @@ type tracker struct {
 	ctx      context.Context
 	changed  chan struct{} // receives a signal when the prompt ended or failed
 	job      *live.Job     // where the steps are recorded for the tools that show the GPU
+	now      func() time.Time
+	signed   time.Time // when the prompt last showed a sign of progress (see stall.go)
 }
 
-func newTracker(ctx context.Context, promptID string, graph localcfg.Graph, job *live.Job) *tracker {
-	t := &tracker{ctx: ctx, promptID: promptID, job: job, total: max(1, len(graph)), classes: map[string]string{}, changed: make(chan struct{}, 1)}
+func newTracker(ctx context.Context, promptID string, graph localcfg.Graph, job *live.Job, now func() time.Time) *tracker {
+	t := &tracker{ctx: ctx, promptID: promptID, job: job, now: now, signed: now(), total: max(1, len(graph)), classes: map[string]string{}, changed: make(chan struct{}, 1)}
 	for id, n := range graph {
 		t.classes[id] = n.ClassType
 	}
@@ -77,6 +80,7 @@ func (t *tracker) handle(raw []byte) {
 		t.mu.Unlock()
 		return // another client's job (the server broadcasts status to every socket)
 	}
+	t.signed = t.now() // any message of the prompt shows it is alive
 	update, ended := progress.Update{}, false
 	switch m.Type {
 	case "execution_cached":
