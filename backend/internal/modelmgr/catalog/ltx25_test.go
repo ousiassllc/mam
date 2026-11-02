@@ -40,8 +40,12 @@ func TestLTX25IsPinnedToTheGatedRepositoryAtOneCommit(t *testing.T) {
 		"vae/ltx-2.5-audio-vae-bf16.safetensors":                                            {"vae/ltx-2.5-audio-vae-bf16.safetensors", "c52733d37f6a7fb7949c3dc0fb468c6cb2169e4d836983a73babb9f0d54837a5", 364866540},
 		"latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors":     {"latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors", "eb5a71fe4068ee87ccdb1c3aa635e547ca76bd2d30ae20ae889f2c325c0677e8", 995778752},
 	}
-	require.Len(t, m.Files, len(want))
+	// The prompt enhancer (Gemma 4 E2B, Issue #968) is not in the gated repository: Comfy-Org's ungated copy, pinned to its own commit (see TestPromptEnhancerIsComfyOrgsUngatedCopy).
+	require.Len(t, m.Files, len(want)+1)
 	for _, f := range m.Files {
+		if f.Name == "gemma4_e2b_it_int8_convrot.safetensors" {
+			continue
+		}
 		p, ok := want[f.Folder+"/"+f.Name]
 		require.True(t, ok, f.Folder+"/"+f.Name)
 		assert.Equal(t, "https://huggingface.co/Lightricks/LTX-2.5/resolve/"+ltx25Commit+"/"+p.path, f.URL)
@@ -49,7 +53,7 @@ func TestLTX25IsPinnedToTheGatedRepositoryAtOneCommit(t *testing.T) {
 		assert.Equal(t, p.size, f.Size, f.Name)
 		assert.Empty(t, f.SourceNote, f.Name+": no third-party mirror")
 	}
-	assert.Equal(t, int64(39709872236), m.TotalSize())
+	assert.Equal(t, int64(39709872236+5199997904), m.TotalSize(), "the five files of the gated repository and the prompt enhancer")
 }
 
 // The old LTX-Video 0.9.5 stays next to LTX-2.5 (a separate model and template, nothing a user assigned is removed).
@@ -65,5 +69,5 @@ func TestTheOldLTXVideoStaysNextToLTX25(t *testing.T) {
 		templates = append(templates, w.Template)
 		assert.True(t, strings.HasPrefix(w.Name, "ltx-2-5-"), w.Name)
 	}
-	assert.Equal(t, []string{"txt2video-ltx-2-5", "img2video-ltx-2-5"}, templates)
+	assert.Equal(t, []string{"txt2video-ltx-2-5", "img2video-ltx-2-5", "flf2v-ltx-2-5", "txt2video-ltx-2-5-enhanced", "img2video-ltx-2-5-enhanced", "flf2v-ltx-2-5-enhanced"}, templates)
 }

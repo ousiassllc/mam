@@ -1,0 +1,93 @@
+{
+ "id": "ltx-2.5-22b-distilled-nvfp4",
+ "name": "LTX-2.5 22B Distilled NVFP4（音声つき・RTX 50 世代向け）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "general",
+ "description": "Lightricks の動画モデル LTX-2.5（蒸留版 22B）の、拡散モデルを NVFP4 に量子化した版（約 17.4 GiB。INT8 版は約 20.0 GiB）。映像と同期した音声を 1 回の生成で作り（保存は音声つきの mp4）、テキストから・先頭フレームから・最初と最後のフレームから作れる。NVFP4 は NVIDIA の Blackwell 世代（GeForce RTX 50 シリーズなど）の FP4 演算を前提にした形式で、Lightricks は FP4 対応の GPU 向けと書いている。RTX 40 以前などの GPU では動かない可能性が高く、mam の実機（RTX 4070 Ti SUPER）では動かせないので試していない（動作は未確認）。該当しない GPU では INT8 版の ltx-2.5-22b-distilled を選ぶ。テキストエンコーダー・VAE・拡大モデルは ltx-2.5-22b-distilled と同じファイルで、導入済みなら拡散モデルだけ取得する。Hugging Face の gated なリポジトリ（Lightricks/LTX-2.5）から取得するため、先にモデルのページでライセンスに同意してアクセスを申請し、Hugging Face のトークンを保存しておく必要がある。",
+ "files": [
+  {
+   "name": "ltx-2.5-22b-distilled-transformer-nvfp4.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors",
+   "sha256": "4b94231e734c1950f8f6826cb8bd8715d94be5b3e04f8256ee060c5bc3886c30",
+   "size": 18721548408
+  },
+  {
+   "name": "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+   "sha256": "6ce688a0aa98a5fa36a9f1e6c3f42152a498cc2b53ee8c15674c64244f91487f",
+   "size": 15372969374
+  },
+  {
+   "name": "ltx-2.5-video-vae-bf16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-video-vae-bf16.safetensors",
+   "sha256": "847e14ca7f3355debca0cea4eaa24ac0fbcdf0061da054ac89ca638a869ddba3",
+   "size": 1472223346
+  },
+  {
+   "name": "ltx-2.5-audio-vae-bf16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-audio-vae-bf16.safetensors",
+   "sha256": "c52733d37f6a7fb7949c3dc0fb468c6cb2169e4d836983a73babb9f0d54837a5",
+   "size": 364866540
+  },
+  {
+   "name": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "folder": "latent_upscale_models",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "sha256": "eb5a71fe4068ee87ccdb1c3aa635e547ca76bd2d30ae20ae889f2c325c0677e8",
+   "size": 995778752
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "recommended_gb": 32,
+  "limits": "NVIDIA Blackwell 世代（RTX 50 など。FP4 演算に対応した GPU）が前提です。それ以前の世代の GPU では動かない可能性が高く、その場合は INT8 版（ltx-2.5-22b-distilled）を使ってください。メモリが推奨に足りないときは、INT8 版と同じく生成が遅くなり、解像度と長さは控えめにする必要があります。",
+  "source": "Lightricks の文書（docs.ltx.io の ComfyUI のページ。2026-11-02 に確認）は、NVFP4 の拡散モデルを INT8 より小さい、FP4 対応の NVIDIA Blackwell GPU 向けと書く。ComfyUI v0.42.1 は compute capability が 10 未満の GPU では nvfp4 の演算を使わない（comfy/model_management.py の supports_nvfp4_compute）。メモリの目安（16 GB・推奨 32 GB）は INT8 版と同じ値をそのまま使った mam の推定で、NVFP4 版では測っていない（mam の実機は FP4 非対応）",
+  "estimate": true
+ },
+ "license": {
+  "id": "ltx-2x-community",
+  "version": "2026-08-11",
+  "name": "LTX-2.x Community License Agreement",
+  "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x",
+  "summary": "年間売上が 1,000 万米ドル未満の個人・組織は、商用を含めて無償で使える（売上は子会社・関連会社を合算して数える）。それ以上の組織は、個人の趣味・研究や非本番の評価のような非商用の目的を除き、Lightricks との有償の商用ライセンスが要る。違法・有害な用途を禁じる使用制限（Attachment A）が付き、AI 規制（EU AI Act など）の遵守と、モデルに組み込まれた透かし・開示の機能を外さないことが条件。生成物の権利は主張されない。",
+  "commercial": "conditional",
+  "commercial_condition": "年間売上が 1,000 万米ドル（子会社・関連会社を合算）未満の個人・組織に限る",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル・VAE（LTX-2.5）",
+    "name": "LTX-2.x Community License Agreement",
+    "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x",
+    "commercial": "conditional"
+   },
+   {
+    "part": "テキストエンコーダー（Gemma 4）",
+    "name": "Apache License 2.0",
+    "url": "https://ai.google.dev/gemma/docs/gemma_4_license",
+    "commercial": "yes"
+   }
+  ],
+  "notice": "年間売上が 1,000 万米ドル以上の組織が商用に使うには、Lightricks との別の契約（licensing@ltx.io）が必要です。Hugging Face のゲートでは、プライバシーポリシーへの同意と、案内・広告の受け取りへの同意（Agree and Access）を求められます。"
+ },
+ "consent_required": true,
+ "requires_hf_token": true,
+ "workflows": [
+  {
+   "name": "ltx-2-5-nvfp4-t2v",
+   "template": "txt2video-ltx-2-5-nvfp4"
+  },
+  {
+   "name": "ltx-2-5-nvfp4-i2v",
+   "template": "img2video-ltx-2-5-nvfp4"
+  },
+  {
+   "name": "ltx-2-5-nvfp4-flf2v",
+   "template": "flf2v-ltx-2-5-nvfp4"
+  }
+ ]
+}

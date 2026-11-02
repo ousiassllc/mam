@@ -9,10 +9,10 @@ import (
 	"slices"
 )
 
-//go:embed templates/image/*.json templates/video/*.json
+//go:embed templates/image/*.json templates/video/*.json templates/video/ltx25/*.json
 var templateFS embed.FS
 
-// Template is a ready workflow with its input assignments, shipped in the binary as data (templates/image/*.json, templates/video/*.json):
+// Template is a ready workflow with its input assignments, shipped in the binary as data (templates/image/*.json, templates/video/*.json, templates/video/ltx25/*.json; the LTX-2.5 ones added with FLF2V, DFR and the prompt enhancer are in the last, which keeps the directories under the line limit):
 // adding one needs no code. It uses core ComfyUI nodes only, so the server needs no custom nodes. Only the
 // model files (the checkpoint names inside the graph) have to be present on the server, and the names may
 // need changing to what the server has.
@@ -29,12 +29,15 @@ type Template struct {
 // (text to video, first frame to video), ordered by ID.
 func Templates() []Template {
 	var out []Template
-	for _, dir := range []string{"templates/image", "templates/video"} {
+	for _, dir := range []string{"templates/image", "templates/video", "templates/video/ltx25"} {
 		entries, err := fs.ReadDir(templateFS, dir)
 		if err != nil {
 			panic(err) // the directory is embedded: a build problem, not a run-time one
 		}
 		for _, e := range entries {
+			if e.IsDir() {
+				continue // templates/video/ltx25 is listed on its own
+			}
 			data, err := templateFS.ReadFile(dir + "/" + e.Name())
 			if err != nil {
 				panic(err)

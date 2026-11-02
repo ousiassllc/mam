@@ -1,0 +1,105 @@
+{
+ "id": "ltx-2.5-22b-distilled-dfr",
+ "name": "LTX-2.5 22B Distilled DFR（先頭フレームから・音声つき・3 段）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "general",
+ "description": "LTX-2.5（蒸留版 22B）を DFR（Diffusion Fidelity Rendering）の手順で動かす組み合わせ。先頭フレーム 1 枚から、映像と同期した音声つきの動画を作る。Comfy 公式のテンプレートと同じ 3 段で、半分の解像度でキーフレームごと作り、2 倍に拡大して詳細化の IC-LoRA で仕上げ、時間方向に 2 倍にして 48fps にする（長さは変わらない）。段が多いので、ltx-2.5-22b-distilled の 2 段の I2V より時間もメモリも多く要る見込みで、16 GB の PC では特に遅くなる（mam では測っていない）。拡散モデル・テキストエンコーダー・VAE・拡大モデルは ltx-2.5-22b-distilled と同じファイルで、導入済みなら時間方向の拡大モデルと IC-LoRA（約 0.5 GB）だけ取得する。IC-LoRA は別のリポジトリ（Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler）にあり、そのページでもライセンスに同意してアクセスの承認を受ける必要がある。プロンプト拡張は付けていない。Hugging Face のトークンも保存しておく必要がある。",
+ "files": [
+  {
+   "name": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+   "sha256": "c4279eeff115cbeaca494bd2183e7d768c38fe85a184dc6afbb7159157c44334",
+   "size": 21504034224
+  },
+  {
+   "name": "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+   "sha256": "6ce688a0aa98a5fa36a9f1e6c3f42152a498cc2b53ee8c15674c64244f91487f",
+   "size": 15372969374
+  },
+  {
+   "name": "ltx-2.5-video-vae-bf16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-video-vae-bf16.safetensors",
+   "sha256": "847e14ca7f3355debca0cea4eaa24ac0fbcdf0061da054ac89ca638a869ddba3",
+   "size": 1472223346
+  },
+  {
+   "name": "ltx-2.5-audio-vae-bf16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-audio-vae-bf16.safetensors",
+   "sha256": "c52733d37f6a7fb7949c3dc0fb468c6cb2169e4d836983a73babb9f0d54837a5",
+   "size": 364866540
+  },
+  {
+   "name": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "folder": "latent_upscale_models",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "sha256": "eb5a71fe4068ee87ccdb1c3aa635e547ca76bd2d30ae20ae889f2c325c0677e8",
+   "size": 995778752
+  },
+  {
+   "name": "ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+   "folder": "latent_upscale_models",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+   "sha256": "2bc3300f2b3c3c1834d72164fbf13a3b9fd73e5a741e8a2c3f4035f89a75c3fe",
+   "size": 261944000
+  },
+  {
+   "name": "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler/resolve/59f26f1e0c11af42f1affa924b4ef231e9e98b2a/ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+   "sha256": "984851b769ea2bcb4c9e0a239a7676239e42c6a6001ddc69943b41ff0b283c1d",
+   "size": 327322640
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "recommended_gb": 32,
+  "limits": "INT8（ConvRot）の拡散モデルとテキストエンコーダー・タイル VAE・ComfyUI のオフロードが前提で、3 段で作るため ltx-2.5-22b-distilled の I2V より遅くなります。解像度は低め（480p〜720p）・長さは短めにしてください。メインメモリも多く使います。",
+  "source": "ltx-2.5-22b-distilled と同じ値（Lightricks の公式ドキュメントの推奨は 32 GB 以上、16 GB は INT8・タイル VAE・オフロードで動くというコミュニティの報告。Issue #927）をそのまま使った mam の推定。DFR の 3 段（時間方向の拡大を含む）では測っておらず、mam の実機（RTX 4070 Ti SUPER）では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "ltx-2x-community",
+  "version": "2026-08-11",
+  "name": "LTX-2.x Community License Agreement",
+  "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x",
+  "summary": "年間売上が 1,000 万米ドル未満の個人・組織は、商用を含めて無償で使える（売上は子会社・関連会社を合算して数える）。それ以上の組織は、個人の趣味・研究や非本番の評価のような非商用の目的を除き、Lightricks との有償の商用ライセンスが要る。違法・有害な用途を禁じる使用制限（Attachment A）が付き、AI 規制（EU AI Act など）の遵守と、モデルに組み込まれた透かし・開示の機能を外さないことが条件。生成物の権利は主張されない。",
+  "commercial": "conditional",
+  "commercial_condition": "年間売上が 1,000 万米ドル（子会社・関連会社を合算）未満の個人・組織に限る",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル・VAE・拡大モデル（LTX-2.5）",
+    "name": "LTX-2.x Community License Agreement",
+    "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x",
+    "commercial": "conditional"
+   },
+   {
+    "part": "詳細化の IC-LoRA（LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler）",
+    "name": "LTX-2.x Community License Agreement（モデルカードの license_name: ltx-2.x-community-license）",
+    "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler",
+    "commercial": "conditional"
+   },
+   {
+    "part": "テキストエンコーダー（Gemma 4）",
+    "name": "Apache License 2.0",
+    "url": "https://ai.google.dev/gemma/docs/gemma_4_license",
+    "commercial": "yes"
+   }
+  ],
+  "notice": "年間売上が 1,000 万米ドル以上の組織が商用に使うには、Lightricks との別の契約（licensing@ltx.io）が必要です。Hugging Face のゲートでは、プライバシーポリシーへの同意と、案内・広告の受け取りへの同意（Agree and Access）を、Lightricks/LTX-2.5 と Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler の 2 つのページで求められます。"
+ },
+ "consent_required": true,
+ "requires_hf_token": true,
+ "workflows": [
+  {
+   "name": "ltx-2-5-dfr-i2v",
+   "template": "img2video-ltx-2-5-dfr"
+  }
+ ]
+}

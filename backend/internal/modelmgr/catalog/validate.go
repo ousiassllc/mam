@@ -65,12 +65,18 @@ func Validate(c *Catalog, template func(id string) (localcfg.Template, bool)) []
 		}
 		seenModel[m.ID] = true
 		errs = append(errs, validateModel(m, shared)...)
+		used := map[string]bool{} // the files some workflow of the model loads: a model may carry files only some of its workflows need (FLF2V does not load the upscaler)
 		for _, w := range m.Workflows {
 			if seenWorkflow[w.Name] {
 				errs = append(errs, fmt.Errorf("%s: workflow name %q is used twice", where, w.Name))
 			}
 			seenWorkflow[w.Name] = true
-			errs = append(errs, validateWorkflow(m, w, template)...)
+			errs = append(errs, validateWorkflow(m, w, template, used)...)
+		}
+		for _, f := range m.Files {
+			if len(m.Workflows) > 0 && !used[f.Folder+"/"+f.Name] {
+				errs = append(errs, fmt.Errorf("%s: the file %s/%s is not loaded by the workflow of the model", where, f.Folder, f.Name))
+			}
 		}
 	}
 	return errs
@@ -236,7 +242,8 @@ func validateFiles(where string, files []File, shared map[string]File) []error {
 	return errs
 }
 
-func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Template, bool)) []error {
+// validateWorkflow checks one workflow of a model; used collects, for the whole model, the files the workflows load.
+func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Template, bool), used map[string]bool) []error {
 	where := fmt.Sprintf("model %s workflow %s", m.ID, w.Name)
 	t, ok := template(w.Template)
 	switch {
@@ -256,7 +263,6 @@ func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Te
 	if err != nil {
 		return append(errs, fmt.Errorf("%s: %w", where, err))
 	}
-	used := map[string]bool{}
 	for id, n := range graph {
 		for input, folder := range loaderInputs[n.ClassType] {
 			var name string
@@ -268,11 +274,6 @@ func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Te
 				errs = append(errs, fmt.Errorf("%s: node %s loads %s/%s, which is not a file of the model", where, id, folder, name))
 			}
 			used[folder+"/"+name] = true
-		}
-	}
-	for _, f := range m.Files {
-		if !used[f.Folder+"/"+f.Name] {
-			errs = append(errs, fmt.Errorf("%s: the file %s/%s is not loaded by the workflow", where, f.Folder, f.Name))
 		}
 	}
 	return errs

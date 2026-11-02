@@ -106,6 +106,8 @@ openai-compat:lmstudio/flux-schnell
 
 **非検閲のテキストエンコーダー・音声つきの出力・macOS（Issue #927）**: 標準のテキストエンコーダーの代わりに、コミュニティ製の非検閲版を使うテンプレートが `txt2video-ltx-2-5-uncensored`・`img2video-ltx-2-5-uncensored`（成人向け。カタログ `ltx-2.5-22b-distilled-uncensored`。違いは `CLIPLoader` の `clip_name` だけ。[model-manager.md](model-manager/model-manager.md) §4.2）。保存は `SaveVideo`（`format`・`codec` ともに `auto` = H.264 と AAC の mp4）で、音声トラックは 1 本の mp4 に入り、mam は再エンコードせずに保存・再生する。macOS の外部 ComfyUI（MPS）は、LTX-2.5 が黒い動画になる・保存に失敗する報告があり、**動く場合もあるが不安定で、mam では未確認**（同 §4.2「macOS」）。
 
+**FLF2V・プロンプト拡張・DFR・NVFP4（Issue #968）**: 最初と最後のフレームの 2 枚から動画を作るテンプレート `flf2v-ltx-2-5`（ほかに `-nvfp4`・`-uncensored`。`first_frame` と `last_frame` の割り当て）、短いプロンプトを Gemma 4 E2B で書き換える `txt2video-ltx-2-5-enhanced`・`img2video-ltx-2-5-enhanced`・`flf2v-ltx-2-5-enhanced`、3 段の DFR `img2video-ltx-2-5-dfr`（時間方向の拡大・詳細化の IC-LoRA。IC-LoRA は別のゲートのリポジトリで、そのページでも同意とアクセスの承認が要る）、NVFP4 の拡散モデルの `*-ltx-2-5-nvfp4`（NVIDIA Blackwell 世代の GPU 向け）を足した。どれもコアのノードだけで、カスタムノードは使わない。カタログのモデル・ファイル・ライセンス・未計測の項目は [model-manager/model-manager.md](model-manager/model-manager.md) §4.2・§4.5・§11。
+
 ## 5. 接続テスト
 
 ComfyUI は `GET /system_stats`（バージョンを返す）、OpenAI 互換は `GET /v1/models`（先頭 20 件のモデル ID を返す）。互換サーバーが 404/405 を返したら「到達できる。`/v1/models` は提供されていない」を注意付きの成功とする。
