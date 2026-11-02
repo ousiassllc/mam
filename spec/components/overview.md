@@ -72,6 +72,8 @@ flowchart TB
 
 モデルマネージャー画面（`model_manager_page` と organisms の `modelmgr`）のコンポーネントは [model-manager-screen.md](model-manager-screen.md)。
 
+ジョブ一覧画面（`jobs_page` と organisms の `jobs`）のコンポーネントは [jobs-screen.md](jobs-screen.md)。
+
 生成テスト画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)。トップ画面のツールのカード（#846。実装済み）は [home-screen.md](home-screen.md)、カード・アイコンの部品は [shared-ui-parts.md](shared-ui-parts.md)。全体の設定画面のサブページ・モーダル（#847）の画面仕様案（実装前）は [settings-screen.md](settings-screen.md)。
 
 初回ガイド（ウォークスルー 3 ページと初期セットアップ。`pages` の `onboarding_page`、organisms の `onboarding`。#863。実装済み）は [onboarding-screen.md](onboarding-screen.md)。ルートは [../api/endpoints-onboarding.md](../api/endpoints-onboarding.md)。設定の保存は設定画面の部品とルートをそのまま使い、ガイド専用の保存経路は持たない。
@@ -317,3 +319,4 @@ export class MamComfyFrame extends LitElement {
 | 1.96 | 2026-11-01 | §3 の organisms に `voice_reference_form`（Character の参照音声のフォーム。Series ページと World State ページに置く）を足した | Issue #919（#912） |
 | 1.97 | 2026-11-02 | §3 の organisms の `settings/overview` の行に `SettingsLicensesBody` を足し、`settings/licenses`（`organisms/settings/licenses/`。全体の設定画面の分類「第三者のライセンス」）を足した | Issue #910。仕様は [settings-screen-licenses.md](settings-screen-licenses.md) |
 | 1.98 | 2026-11-03 | §3 の pages の `projects_page` から、ツールのカード（`tool_section`）を外した | Issue #978 |
+| 1.99 | 2026-11-03 | §3 の pages に `jobs_page`、organisms に `jobs`（`organisms/jobs/`）を足し、ジョブ一覧の画面の仕様 [jobs-screen.md](jobs-screen.md) へのリンクを足した | Issue #980 |

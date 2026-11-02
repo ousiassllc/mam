@@ -1,0 +1,135 @@
+// Package jobs is the list of the jobs of the job list screen (spec/components/jobs-screen.md): what runs now and what ended last, with
+// how far each is and a link to the screen the job is worked on in. It only shows: it has no button that changes a job.
+package jobs
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+)
+
+// ListID is the DOM id of the list: the part the refresh button swaps.
+const ListID = "jobs-list"
+
+// Polling is the hx-trigger of the list while a job has not ended: it asks for itself again, and stops when none is left.
+const Polling = "every 2s"
+
+// Progress is how far a running job is: Percent (0-100) and, when there is one, a line that says it in words.
+type Progress struct {
+	Percent int
+	Text    string
+}
+
+// Row is one job.
+type Row struct {
+	// Label is the kind of the job ("導入", "生成テスト") and Subject what it works on (a model, a Project); "" when unknown.
+	Label   string
+	Subject string
+	// StateText and Tone are the badge of the state.
+	StateText string
+	Tone      atoms.BadgeTone
+	// StartedAt is "2006-01-02 15:04", when the job started.
+	StartedAt string
+	Progress  *Progress
+	// Error is why the job failed.
+	Error string
+	// Href is the screen the job leads to, "" for none.
+	Href string
+}
+
+// List is what the list draws. Error is the failure to read the jobs (the rows are then empty).
+type List struct {
+	Rows []Row
+	// Active says a job has not ended: the list asks for itself again every 2 seconds.
+	Active bool
+	// Running is how many jobs are queued or running.
+	Running   int
+	Error     string
+	Refresh   string
+	UpdatedAt string
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+func boolText(b bool) string { return strconv.FormatBool(b) }
+
+// name is how a row is called by a screen reader: the kind, what it works on and when it started, so that two rows of the same
+// kind on the same subject are told apart (#793).
+func (r Row) name() string {
+	if r.Subject == "" {
+		return r.Label + "（" + r.StartedAt + "）"
+	}
+	return r.Label + " " + r.Subject + "（" + r.StartedAt + "）"
+}
+
+// Section is the list with when it was read and the refresh button. It polls itself while a job has not ended and ends the polling
+// with the answer that shows the last one ended; the button stays for the reader.
+templ Section(l List) {
+	<section
+		id={ ListID }
+		class="flex flex-col gap-4"
+		aria-label="ジョブ一覧"
+		data-testid="jobs-list"
+		data-active={ boolText(l.Active) }
+		if l.Active {
+			hx-get={ l.Refresh }
+			hx-trigger={ Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		<div class="flex items-center justify-between gap-3">
+			<p class="text-sm text-neutral-300" data-testid="jobs-summary">実行中 { itoa(l.Running) } 件</p>
+			@refresh.Bar(l.Refresh, ListID, l.UpdatedAt)
+		</div>
+		if l.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="jobs-error">{ l.Error }</p>
+		} else if len(l.Rows) == 0 {
+			<p class="text-sm text-neutral-400" data-testid="jobs-empty">ジョブはまだありません。モデルの導入や生成テスト、Shot の生成を始めると、ここに出ます。</p>
+		}
+		if len(l.Rows) > 0 {
+			<ul class="flex flex-col gap-3">
+				for _, r := range l.Rows {
+					<li class="flex flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-3" data-testid="jobs-item" data-state={ r.StateText }>
+						@row(r)
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}
+
+templ row(r Row) {
+	<div class="flex flex-wrap items-center gap-2">
+		<span class="text-sm font-medium text-neutral-100" data-testid="jobs-label">{ r.Label }</span>
+		@atoms.Badge(r.Tone, r.StateText)
+		<span class="ml-auto text-xs text-neutral-400" data-testid="jobs-started">{ r.StartedAt }</span>
+	</div>
+	if r.Subject != "" {
+		<p class="break-words text-sm text-neutral-300" data-testid="jobs-subject">{ r.Subject }</p>
+	}
+	if r.Progress != nil {
+		<div class="flex flex-col gap-1" data-testid="jobs-progress">
+			<progress class="h-2 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
+			<p class="text-xs text-neutral-300">{ itoa(r.Progress.Percent) }%<span class="text-neutral-400">{ progressText(r.Progress.Text) }</span></p>
+		</div>
+	}
+	if r.Error != "" {
+		<p class="break-words text-xs text-red-300" data-testid="jobs-failure">{ r.Error }</p>
+	}
+	if r.Href != "" {
+		<a
+			href={ templ.SafeURL(r.Href) }
+			class="self-start text-sm text-indigo-300 underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+			aria-label={ "開く: " + r.name() }
+			data-testid="jobs-open"
+		>開く</a>
+	}
+}
+
+func progressText(s string) string {
+	if s == "" {
+		return ""
+	}
+	return "・" + s
+}

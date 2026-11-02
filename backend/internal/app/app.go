@@ -23,7 +23,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/jobrecent"
 	"github.com/ousiassllc/mam/backend/internal/router"
+	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/version"
 	"github.com/ousiassllc/mam/static"
 )
@@ -113,6 +115,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 
 	gin.SetMode(gin.ReleaseMode)
 	settings := newSettings(cfg, services, gpt, ffmpegDL, logger)
+	settings.JobList = joblist.New(joblist.Deps{Table: jobrecent.New(db), Shots: repository.NewGenerationRepository(db), Projects: services.Projects, ModelManager: services.ModelManager, Gentest: services.Gentest})
 	if opts.Update != nil {
 		var stop func()
 		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)

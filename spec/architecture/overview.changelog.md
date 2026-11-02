@@ -94,3 +94,4 @@
 | 1.87 | 2026-11-02 | §5 のディレクトリ構成に `third_party/`（`onnxruntime-purego/`）を足した | Issue #949。ONNX Runtime のバインディングを、個人フォークへの `replace` から、リポジトリ内のコピーに改めた |
 | 1.88 | 2026-11-02 | §5 のディレクトリ構成に `static/src/components/scroll/`（`keep-scroll.ts`）と `poll/`（`poll-guard.ts`）を足した | Issue #940・#925 |
 | 1.89 | 2026-11-02 | §5 の `static/src/components/poll/` の説明に、更新ボタン（`molecules/refresh.Bar`）の要求は止めないことを足した | Issue #962 |
+| 1.90 | 2026-11-03 | §5 のディレクトリ構成に `service/joblist/`（ジョブ一覧の読み取り）と `repository/jobrecent/` を足した | Issue #980 |
