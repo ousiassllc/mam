@@ -128,17 +128,14 @@ func (m ModelChoice) RefHint() string {
 func strengthText(v float64) string { return strconv.FormatFloat(v, 'f', 2, 64) }
 
 // strengthValue is a strength as the slider's value attribute: the default when none was given.
-func strengthValue(v, def float64) string {
-	if v <= 0 {
-		v = def
-	}
-	return strconv.FormatFloat(v, 'f', -1, 64)
+func strengthValue(v *float64, def float64) string {
+	return strconv.FormatFloat(strengthOrDefault(v, def), 'f', -1, 64)
 }
 
-// strengthOrDefault is the value of a slider that was not moved.
-func strengthOrDefault(v, def float64) float64 {
-	if v <= 0 {
+// strengthOrDefault is the value of a slider: the strength the form holds (0 is one), or the default when it holds none.
+func strengthOrDefault(v *float64, def float64) float64 {
+	if v == nil {
 		return def
 	}
-	return v
+	return *v
 }

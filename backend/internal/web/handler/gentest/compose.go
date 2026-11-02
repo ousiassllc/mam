@@ -59,9 +59,9 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 			c.Picked = append(c.Picked, row)
 		}
 	}
-	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.avoidPose, h.Svc.LoRAs(ctx)
+	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.avoidPose, h.Svc.LoRAs(ctx, media)
 	if f.lora != nil {
-		c.LoRA, c.LoRAStrength = f.lora.Name, deref(f.lora.Strength)
+		c.LoRA, c.LoRAStrength = f.lora.Name, f.lora.Strength
 	}
 	if s, err := h.Svc.Spend(ctx); err == nil {
 		c.Spend = spendText(s)
@@ -156,7 +156,7 @@ func (h Handlers) Picker(c *gin.Context) {
 		list, err := h.Svc.Pickable(ctx, pickerSize)
 		if err != nil {
 			status, msg := refuse(c, err)
-			render(c, status, view.Picker(nil, "", msg))
+			render(c, status, view.Picker(nil, msg))
 			return
 		}
 		empty = "履歴に画像がありません"
@@ -167,7 +167,7 @@ func (h Handlers) Picker(c *gin.Context) {
 		list, err := h.Svc.ProjectImages(ctx, c.Query("project"))
 		if err != nil {
 			status, msg := refuse(c, err)
-			render(c, status, view.Picker(nil, "", msg))
+			render(c, status, view.Picker(nil, msg))
 			return
 		}
 		empty = "このプロジェクトに画像がありません"
@@ -175,7 +175,7 @@ func (h Handlers) Picker(c *gin.Context) {
 			rows = append(rows, projectRef(c.Query("project"), im))
 		}
 	}
-	render(c, http.StatusOK, view.Picker(rows, "", empty))
+	render(c, http.StatusOK, view.Picker(rows, empty))
 }
 
 // RefRow answers GET /generation-test/ref-row: the row of one chosen input image ("?ref=<source>:<project>:<id>").
@@ -245,16 +245,8 @@ func (h Handlers) refRow(ctx context.Context, in gentest.RefInput) (view.Ref, bo
 	default:
 		return row, false
 	}
-	row.Role, row.Strength = in.Role, deref(in.Strength)
+	row.Role, row.Strength = in.Role, in.Strength
 	return row, true
-}
-
-// deref is a strength the form holds (0 when it has none: the control's default).
-func deref(v *float64) float64 {
-	if v == nil {
-		return 0
-	}
-	return *v
 }
 
 func shorten(s string, n int) string {

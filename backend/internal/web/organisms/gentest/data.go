@@ -101,8 +101,8 @@ type Ref struct {
 	Label    string
 	ThumbURL string
 	Role     string
-	// Strength is how strongly an image model shows the reference (0: the default).
-	Strength float64
+	// Strength is how strongly an image model shows the reference (nil: not given, so the default; 0 is a strength).
+	Strength *float64
 }
 
 // Compose is the form that starts a batch.
@@ -125,11 +125,11 @@ type Compose struct {
 	// MaxImageBytes is the largest input image; the browser checks it when an image is chosen.
 	MaxImageBytes int
 	// AvoidPose is the checkbox "do not copy the pose of the references". LoRAs are the LoRA files of the engine (none: the choice
-	// is not drawn), LoRA the one chosen ("" for none) and LoRAStrength its strength (0: the default).
+	// is not drawn), LoRA the one chosen ("" for none) and LoRAStrength its strength (nil: not given, so the default).
 	AvoidPose    bool
 	LoRAs        []string
 	LoRA         string
-	LoRAStrength float64
+	LoRAStrength *float64
 }
 
 // Hidden is a form value the confirmation carries back unchanged.

@@ -91,10 +91,11 @@ func gentestRefsCompose() gentest.Compose {
 		{ID: "plain", Label: "FLUX.1 schnell", Source: "ローカル", Price: "無料（ローカル）", Media: "image"},
 	})
 	c.MaxImageBytes, c.LoRAs = 20<<20, []string{"face-a.safetensors", "style-b.safetensors"}
+	strength := func(v float64) *float64 { return &v }
 	c.Picked = []gentest.Ref{
-		{Value: "history::r1", Label: "FLUX・a red fox", ThumbURL: thumb("#c0392b"), Role: "reference", Strength: 0.7},
-		{Value: "history::r2", Label: "FLUX・a blue fox", ThumbURL: thumb("#2980b9"), Role: "face", Strength: 0.5},
-		{Value: "history::r3", Label: "FLUX・a green fox", ThumbURL: thumb("#27ae60"), Role: "style", Strength: 0.9},
+		{Value: "history::r1", Label: "FLUX・a red fox", ThumbURL: thumb("#c0392b"), Role: "reference", Strength: strength(0.7)},
+		{Value: "history::r2", Label: "FLUX・a blue fox", ThumbURL: thumb("#2980b9"), Role: "face", Strength: strength(0.5)},
+		{Value: "history::r3", Label: "FLUX・a green fox", ThumbURL: thumb("#27ae60"), Role: "style", Strength: strength(0.9)},
 	}
 	return c
 }

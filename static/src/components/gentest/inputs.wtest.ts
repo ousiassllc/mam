@@ -187,4 +187,93 @@ describe('the input images of the generation test (spec/components/gentest-scree
     q<HTMLButtonElement>('[data-gt-lightbox-close]').click();
     expect(q<HTMLDialogElement>('[data-gt-lightbox]').open).to.equal(false);
   });
+
+  it('keeps a file name with replacement patterns as it is in the labels of its thumbnail', () => {
+    choose(png('a$&b.png'));
+    const labels = [...rows()[3]!.querySelectorAll('[aria-label],[title]')].flatMap((el) => [
+      el.getAttribute('aria-label') ?? '',
+      el.getAttribute('title') ?? '',
+    ]);
+    expect(labels.some((l) => l.includes('a$&b.png'))).to.equal(true);
+    expect(labels.some((l) => l.includes('__NAME__'))).to.equal(false);
+  });
+
+  it('does not let the browser open an image dropped on the form, and adds one dropped on the thumbnails', () => {
+    const drop = (target: Element, type: string, files: File[]) => {
+      const dt = new DataTransfer();
+      for (const f of files) dt.items.add(f);
+      const e = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt });
+      target.dispatchEvent(e);
+      return e;
+    };
+    const prompt = q('textarea');
+    expect(drop(prompt, 'dragover', [png('p.png')]).defaultPrevented, 'the drop is allowed').to.equal(true);
+    expect(drop(prompt, 'drop', [png('p.png')]).defaultPrevented, 'the browser does not navigate').to.equal(true);
+    expect(rows(), 'a drop on the prompts adds nothing').to.have.length(3);
+
+    expect(drop(rows()[0]!, 'drop', [png('t.png')]).defaultPrevented).to.equal(true);
+    expect(rows(), 'a drop on the thumbnails adds the image').to.have.length(4);
+    expect(rows()[3]!.dataset.ref).to.equal('upload::#1');
+
+    const plain = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: new DataTransfer() });
+    prompt.dispatchEvent(plain);
+    expect(plain.defaultPrevented, 'a drag of text is left alone').to.equal(false);
+  });
+
+  it('keeps the drop highlight while the drag moves over what is inside the zone', () => {
+    const zone = q('[data-gt-dropzone]');
+    const dt = new DataTransfer();
+    dt.items.add(png('p.png'));
+    zone.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    expect(zone.classList.contains('bg-indigo-500/20')).to.equal(true);
+    const inner = zone.querySelector('button,label,span') ?? zone.firstElementChild!;
+    zone.dispatchEvent(new DragEvent('dragleave', { bubbles: true, relatedTarget: inner }));
+    expect(zone.classList.contains('bg-indigo-500/20'), 'moving onto a child is not leaving').to.equal(true);
+    zone.dispatchEvent(new DragEvent('dragleave', { bubbles: true, relatedTarget: document.body }));
+    expect(zone.classList.contains('bg-indigo-500/20')).to.equal(false);
+  });
+
+  it('gives the picker button back when its thumbnail is removed', () => {
+    const dialog = q('[data-gt-picker-dialog]');
+    dialog.insertAdjacentHTML(
+      'beforeend',
+      '<ul><li data-testid="gt-pick"><button type="button" data-ref="history::r1" disabled>追加済み</button></li></ul>',
+    );
+    const button = dialog.querySelector<HTMLButtonElement>('button[data-ref]')!;
+    rows()[1]!.querySelector<HTMLButtonElement>('[data-gt-remove]')!.click();
+    expect(button.disabled, 'r1 is still among the thumbnails').to.equal(true);
+    rows()[0]!.querySelector<HTMLButtonElement>('[data-gt-remove]')!.click();
+    expect(button.disabled).to.equal(false);
+    expect(button.textContent).to.equal('追加');
+  });
+
+  it('moves the focus to the neighbouring thumbnail, or to the file button, after a removal', () => {
+    rows()[1]!.querySelector<HTMLButtonElement>('[data-gt-remove]')!.click();
+    expect(document.activeElement).to.equal(rows()[1]!.querySelector('[data-gt-remove]'));
+    rows()[1]!.querySelector<HTMLButtonElement>('[data-gt-remove]')!.click();
+    expect(document.activeElement, 'the one before it when it was the last').to.equal(
+      rows()[0]!.querySelector('[data-gt-remove]'),
+    );
+    rows()[0]!.querySelector<HTMLButtonElement>('[data-gt-remove]')!.click();
+    expect(document.activeElement).to.equal(q('[data-gt-file]'));
+  });
+
+  it('lets go of the object URLs of the browser-chosen files when the form is swapped away', () => {
+    const revoked: string[] = [];
+    const original = URL.revokeObjectURL;
+    URL.revokeObjectURL = (u: string) => {
+      revoked.push(u);
+    };
+    try {
+      choose(png('a.png'), png('b.png'));
+      const urls = rows()
+        .slice(3)
+        .map((r) => r.querySelector('img')!.src);
+      expect(urls).to.have.length(2);
+      q('[data-gt-inputs]').dispatchEvent(new CustomEvent('htmx:beforeCleanupElement', { bubbles: true }));
+      expect(revoked).to.include.members(urls);
+    } finally {
+      URL.revokeObjectURL = original;
+    }
+  });
 });

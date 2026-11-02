@@ -121,3 +121,68 @@ func TestEstimateTakesTheFilesOfTheBrowserInTheirOrder(t *testing.T) {
 	assert.NotEqual(t, hidden["ref"][0], hidden["ref"][1])
 	assert.True(t, strings.HasPrefix(hidden["ref"][0], "upload:"), hidden["ref"][0])
 }
+
+// sliderValue is the value attribute of the slider of the field `name`.
+func sliderValue(t *testing.T, body, name string) string {
+	m := regexp.MustCompile(`name="` + regexp.QuoteMeta(name) + `"[^>]*value="([^"]*)"`).FindStringSubmatch(body)
+	require.Len(t, m, 2, name)
+	return m[1]
+}
+
+// A strength of 0 is a strength: the form drawn again (another media) keeps it, for an input image and for the LoRA, instead of
+// putting the default back; a strength that was not given is still the default.
+func TestFormKeepsAStrengthOfZero(t *testing.T) {
+	s := newScreen(t, gentesttest.WithReferenceModels(loras(t).URL))
+	ref := s.historyRef()
+	q := url.Values{"media": {"image"}, "ref": {ref}, "lora": {"face.safetensors"}, "lora_strength": {"0"}}
+	q.Set("role_"+ref, "face")
+	q.Set("strength_"+ref, "0")
+	body := s.fragment(paths.GenerationTestPart("form") + "?" + q.Encode())
+	assert.Equal(t, "0", sliderValue(t, body, "strength_"+ref))
+	assert.Equal(t, "0", sliderValue(t, body, "lora_strength"))
+	assert.Contains(t, body, `data-gt-strength-out>0.00<`)
+
+	q.Del("strength_" + ref)
+	q.Del("lora_strength")
+	body = s.fragment(paths.GenerationTestPart("form") + "?" + q.Encode())
+	assert.Equal(t, "0.7", sliderValue(t, body, "strength_"+ref), "none given: the default")
+	assert.Equal(t, "0.4", sliderValue(t, body, "lora_strength"), "none given: the default")
+}
+
+// The confirmation form (strength, LoRA and an image chosen in the browser, as the estimate carried them) is accepted by "実行":
+// the service prices the same request again and finds the id of the estimate step; nothing else is accepted.
+func TestRunAcceptsTheEstimateOfTheConfirmationWithReferences(t *testing.T) {
+	s := newScreen(t, gentesttest.WithReferenceModels(loras(t).URL))
+	ref := s.historyRef()
+	form := batchForm(string(gentesttest.EditModel))
+	form["ref"] = []string{"upload::#1", ref}
+	form.Set("role_upload::#1", "style")
+	form.Set("strength_upload::#1", "0")
+	form.Set("role_"+ref, "face")
+	form.Set("strength_"+ref, "0.35")
+	form.Set("lora", "face.safetensors")
+	form.Set("lora_strength", "0")
+	rec := s.estimate(form, gentesttest.PNG)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	confirmation := hiddenOf(t, rec.Body.String())
+	estimateID := confirmation.Get("estimate_id")
+	require.Len(t, confirmation["ref"], 2)
+	assert.Equal(t, "0", confirmation.Get("strength_"+confirmation["ref"][0]), "the strength of 0 is carried")
+	assert.Equal(t, "0", confirmation.Get("lora_strength"))
+
+	tampered := url.Values{}
+	for k, v := range confirmation {
+		tampered[k] = v
+	}
+	tampered.Set("strength_"+ref, "0.9")
+	assert.Equal(t, http.StatusConflict, s.run(tampered).Code, "a request that is not the estimated one is refused")
+	wrongID := url.Values{}
+	for k, v := range confirmation {
+		wrongID[k] = v
+	}
+	wrongID.Set("estimate_id", estimateID+"0")
+	assert.Equal(t, http.StatusConflict, s.run(wrongID).Code, "another id than the estimate step's is refused")
+
+	started := s.run(confirmation)
+	assert.Equal(t, http.StatusAccepted, started.Code, "the id of the estimate step is the one the service finds again: "+started.Body.String())
+}

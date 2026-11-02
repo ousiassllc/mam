@@ -298,7 +298,7 @@ func pickerDialog(c Compose) templ.Component {
 }
 
 // Picker lists images that can be added to the inputs: each has an "追加" button that appends its thumbnail to the grid.
-func Picker(rows []Ref, media, empty string) templ.Component {
+func Picker(rows []Ref, empty string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -397,7 +397,7 @@ func Picker(rows []Ref, media, empty string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "追加", r.Label, templ.Attributes{
-				"type": "button", "hx-get": paths.GenerationTestPart("ref-row") + "?ref=" + r.Value, "hx-target": "#" + RefsID, "hx-swap": "beforeend",
+				"type": "button", "data-ref": r.Value, "hx-get": paths.GenerationTestPart("ref-row") + "?ref=" + r.Value, "hx-target": "#" + RefsID, "hx-swap": "beforeend",
 				"hx-include": "#" + ComposeID + " [name=media], #" + ComposeID + " [name=model]", "hx-sync": "this",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {

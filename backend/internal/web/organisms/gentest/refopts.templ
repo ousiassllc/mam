@@ -67,7 +67,7 @@ templ pickerDialog(c Compose) {
 }
 
 // Picker lists images that can be added to the inputs: each has an "追加" button that appends its thumbnail to the grid.
-templ Picker(rows []Ref, media, empty string) {
+templ Picker(rows []Ref, empty string) {
 	if len(rows) == 0 {
 		<p class="text-xs text-neutral-400" data-testid="gt-picker-empty">{ empty }</p>
 	}
@@ -79,7 +79,7 @@ templ Picker(rows []Ref, media, empty string) {
 				}
 				<span class="break-words text-neutral-300">{ r.Label }</span>
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "追加", r.Label, templ.Attributes{
-					"type": "button", "hx-get": paths.GenerationTestPart("ref-row") + "?ref=" + r.Value, "hx-target": "#" + RefsID, "hx-swap": "beforeend",
+					"type": "button", "data-ref": r.Value, "hx-get": paths.GenerationTestPart("ref-row") + "?ref=" + r.Value, "hx-target": "#" + RefsID, "hx-swap": "beforeend",
 					"hx-include": "#" + ComposeID + " [name=media], #" + ComposeID + " [name=model]", "hx-sync": "this",
 				})
 			</li>

@@ -5,6 +5,7 @@
 package refform
 
 import (
+	"errors"
 	"math"
 	"mime/multipart"
 	"net/url"
@@ -74,10 +75,11 @@ func imageRole(v string) string {
 	return gentest.RoleReference
 }
 
-// strengthOf reads a slider's value: nil when it is not a number (the default is used), else within 0..1.
+// strengthOf reads a slider's value: nil when it is not a number (the default is used), else within 0..1. A number too large
+// for a float (1e999) or an infinity is clamped like any other out-of-range value, not taken for "not given".
 func strengthOf(v string) *float64 {
 	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
-	if err != nil || math.IsNaN(f) {
+	if err != nil && !errors.Is(err, strconv.ErrRange) || math.IsNaN(f) {
 		return nil
 	}
 	f = min(max(f, 0), 1)
@@ -118,15 +120,20 @@ func Hidden(req gentest.Request) []view.Hidden {
 
 // Stage stores the files that came with the form and puts them into refs. The browser names an image it holds as a file by
 // view.UploadPlaceholder and its number among the files of the field upload ("upload::#2" is the second): the file takes the
-// place, the role and the strength of that entry. A file that no entry names (a form without the browser's script) is added as a
-// free reference; the first and the last frame of a video follow.
+// place, the role and the strength of that entry. The numbers are positions among the files that arrived, so a file that is not
+// taken (empty) keeps its number: the entry that names it is dropped and the entries after it still get their own files. An entry
+// that names no usable file (out of range, not a number, a number already taken by an earlier entry) is dropped. A file that no
+// entry names (a form without the browser's script) is added as a free reference; the first and the last frame of a video
+// follow.
 func Stage(refs []gentest.RefInput, form *multipart.Form, stage func(*multipart.FileHeader) (string, error)) ([]gentest.RefInput, error) {
+	// staged is the id of each file of a field by position: "" for a file that is empty (not stored).
 	staged := func(field string) (ids []string, err error) {
 		if form == nil {
 			return nil, nil
 		}
 		for _, fh := range form.File[field] {
 			if fh.Size == 0 {
+				ids = append(ids, "")
 				continue
 			}
 			id, err := stage(fh)
@@ -152,9 +159,10 @@ func Stage(refs []gentest.RefInput, form *multipart.Form, stage func(*multipart.
 	used := make([]bool, len(uploads))
 	var out []gentest.RefInput
 	for _, r := range refs {
-		if n, ok := placeholder(r); ok {
-			if n < 1 || n > len(uploads) {
-				continue // its file did not arrive
+		if isPlaceholder(r) {
+			n, ok := placeholderNumber(r)
+			if !ok || n < 1 || n > len(uploads) || uploads[n-1] == "" || used[n-1] {
+				continue // its file did not arrive, or is empty, or is already in another entry
 			}
 			used[n-1] = true
 			r.ID = uploads[n-1]
@@ -162,24 +170,30 @@ func Stage(refs []gentest.RefInput, form *multipart.Form, stage func(*multipart.
 		out = append(out, r)
 	}
 	for i, id := range uploads {
-		if !used[i] {
+		if id != "" && !used[i] {
 			out = append(out, gentest.RefInput{Source: gentest.FromStaged, ID: id, Role: gentest.RoleReference})
 		}
 	}
-	for _, id := range first {
-		out = append(out, gentest.RefInput{Source: gentest.FromStaged, ID: id, Role: gentest.RoleFirstFrame})
-	}
-	for _, id := range last {
-		out = append(out, gentest.RefInput{Source: gentest.FromStaged, ID: id, Role: gentest.RoleLastFrame})
+	for _, ids := range []struct {
+		ids  []string
+		role string
+	}{{first, gentest.RoleFirstFrame}, {last, gentest.RoleLastFrame}} {
+		for _, id := range ids.ids {
+			if id != "" {
+				out = append(out, gentest.RefInput{Source: gentest.FromStaged, ID: id, Role: ids.role})
+			}
+		}
 	}
 	return out, nil
 }
 
-// placeholder is the number of the file an entry of the form stands for.
-func placeholder(r gentest.RefInput) (int, bool) {
-	if r.Source != gentest.FromStaged || !strings.HasPrefix(r.ID, "#") {
-		return 0, false
-	}
+// isPlaceholder says an entry of the form stands for a file of the field upload ("upload::#<n>").
+func isPlaceholder(r gentest.RefInput) bool {
+	return r.Source == gentest.FromStaged && strings.HasPrefix(r.ID, "#")
+}
+
+// placeholderNumber is the number of the file a placeholder stands for.
+func placeholderNumber(r gentest.RefInput) (int, bool) {
 	n, err := strconv.Atoi(r.ID[1:])
 	return n, err == nil
 }

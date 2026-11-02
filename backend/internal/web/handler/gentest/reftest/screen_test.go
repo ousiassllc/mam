@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -108,6 +109,28 @@ func (s *screen) confirmed(form url.Values) url.Values {
 	rec := s.estimate(form)
 	require.Equal(s.t, http.StatusOK, rec.Code, rec.Body.String())
 	return hiddenOf(s.t, rec.Body.String())
+}
+
+// run posts the form the confirmation holds to "実行".
+func (s *screen) run(form url.Values) *httptest.ResponseRecorder {
+	s.t.Helper()
+	req := httptest.NewRequest(http.MethodPost, paths.GenerationTestPart("run"), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	req.AddCookie(s.cookie)
+	req.Header.Set(middleware.CSRFHeaderName, s.token)
+	return s.send(req)
+}
+
+// fragment is the GET an HTMX request makes (the form again for another media, ...).
+func (s *screen) fragment(path string) string {
+	s.t.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req.Header.Set("HX-Request", "true")
+	req.AddCookie(s.cookie)
+	rec := s.send(req)
+	require.Equal(s.t, http.StatusOK, rec.Code, rec.Body.String())
+	return rec.Body.String()
 }
 
 func hiddenOf(t *testing.T, body string) url.Values {

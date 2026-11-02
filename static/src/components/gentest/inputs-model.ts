@@ -49,17 +49,20 @@ export interface Taken {
 }
 
 /**
- * The files to add: the images of an allowed type that are not too large and that fit in `room`. What was left out is said in one
- * line (the rules are not on the page until one is broken).
+ * The files to add: the images of an allowed type that are not empty, not too large and that fit in `room`. What was left out is
+ * said in one line (the rules are not on the page until one is broken). An empty file is left out here because the server does
+ * not take one (it would also have no thumbnail to show).
  */
 export function takeFiles(files: readonly File[], room: number, maxBytes: number, max: number): Taken {
   const images = files.filter((f) => IMAGE_TYPES.includes(f.type));
-  const sized = maxBytes > 0 ? images.filter((f) => f.size <= maxBytes) : images;
+  const filled = images.filter((f) => f.size > 0);
+  const sized = maxBytes > 0 ? filled.filter((f) => f.size <= maxBytes) : filled;
   const taken = sized.slice(0, Math.max(room, 0));
   let error = '';
   if (taken.length < sized.length) error = `最大 ${max} 枚です`;
-  else if (sized.length < images.length)
+  else if (sized.length < filled.length)
     error = `大きすぎる画像は除きました（1 枚 ${Math.floor(maxBytes / (1 << 20))} MiB まで）`;
+  else if (filled.length < images.length) error = '空の画像ファイルは除きました';
   else if (images.length < files.length) error = 'PNG・JPEG・WebP の画像だけ選べます';
   return { files: taken, error };
 }

@@ -436,7 +436,7 @@ func refControls(r Ref, media string, ui RefUI) templ.Component {
 }
 
 // strengthSlider is a 0..1 slider with its value beside it. marker is the data attribute the browser finds the slider by.
-func strengthSlider(name, label string, value, def float64, marker string, disabled bool) templ.Component {
+func strengthSlider(name, label string, value *float64, def float64, marker string, disabled bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

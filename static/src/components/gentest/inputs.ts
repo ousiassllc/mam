@@ -1,5 +1,6 @@
+import { highlight, markAdded, releasePicker, RowReorder } from './inputs-dom';
 import { applyModels } from './inputs-models';
-import { dropSide, isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';
+import { isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';
 
 /**
  * The input images of the generation test (spec/components/gentest-screen.md): one drop zone (drop or click, plus a dialog that
@@ -13,16 +14,9 @@ import { dropSide, isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-
 
 const inited = new WeakSet<HTMLElement>();
 
-// The drop highlights are classes of the colour table (spec/components/color-rules.md), swapped in by the script.
+// The drop highlight of the zone: classes of the colour table (spec/components/color-rules.md), swapped in by the script.
 const ZONE_REST = 'border-neutral-600';
 const ZONE_ACTIVE = ['border-indigo-400', 'bg-indigo-500/20'];
-const ROW_REST = 'border-neutral-700';
-const ROW_ACTIVE = 'border-indigo-400';
-
-function highlight(el: Element, on: boolean, rest: string, active: string[]): void {
-  el.classList.toggle(rest, !on);
-  for (const c of active) el.classList.toggle(c, on);
-}
 
 class Inputs {
   private readonly form: HTMLElement;
@@ -31,7 +25,8 @@ class Inputs {
   private readonly files = new Map<HTMLElement, { file: File; url: string }>();
   private readonly max: number;
   private readonly maxBytes: number;
-  private dragging: HTMLElement | null = null;
+  // The listeners put on the form, which can outlive this (a form that is not swapped as a whole): removed with it.
+  private readonly onForm = new AbortController();
 
   constructor(private readonly root: HTMLElement) {
     this.form = root.closest<HTMLElement>('form') ?? root;
@@ -64,13 +59,30 @@ class Inputs {
       e.preventDefault();
       highlight(zone, true, ZONE_REST, ZONE_ACTIVE);
     });
-    zone.addEventListener('dragleave', () => highlight(zone, false, ZONE_REST, ZONE_ACTIVE));
+    zone.addEventListener('dragleave', (e) => {
+      // Moving from the zone onto something inside it is not leaving it (the highlight would flicker).
+      if (e.relatedTarget instanceof Node && zone.contains(e.relatedTarget)) return;
+      highlight(zone, false, ZONE_REST, ZONE_ACTIVE);
+    });
     zone.addEventListener('drop', (e) => {
       highlight(zone, false, ZONE_REST, ZONE_ACTIVE);
       if (!hasFiles(e)) return;
       e.preventDefault();
       this.add([...(e.dataTransfer?.files ?? [])]);
     });
+    // An image dropped anywhere else on the form must not make the browser open it (the prompts would be lost): a drop that the
+    // zone did not take is taken here, and added when it is on the thumbnail grid, else ignored.
+    const { signal } = this.onForm;
+    this.form.addEventListener('dragover', (e) => hasFiles(e) && e.preventDefault(), { signal });
+    this.form.addEventListener(
+      'drop',
+      (e) => {
+        if (!hasFiles(e) || e.defaultPrevented) return;
+        e.preventDefault();
+        if (e.target instanceof Node && this.list.contains(e.target)) this.add([...(e.dataTransfer?.files ?? [])]);
+      },
+      { signal },
+    );
     this.root.addEventListener('click', (e) => this.onClick(e.target as Element));
     this.root.addEventListener('input', (e) => {
       const el = e.target as HTMLInputElement;
@@ -79,16 +91,25 @@ class Inputs {
         if (out) out.textContent = Number(el.value).toFixed(2);
       }
     });
-    this.list.addEventListener('dragstart', (e) => this.dragStart(e));
-    this.list.addEventListener('dragover', (e) => this.dragOver(e));
-    this.list.addEventListener('drop', (e) => this.dragDrop(e));
-    this.list.addEventListener('dragend', () => this.dragEnd());
+    new RowReorder(
+      this.list,
+      () => this.rows(),
+      () => this.sync(),
+    );
     new MutationObserver(() => this.sync()).observe(this.list, { childList: true });
     // The ticked models decide which controls are drawn.
-    this.form.addEventListener('change', (e) => {
-      if ((e.target as HTMLInputElement).name === 'model') this.sync();
+    this.form.addEventListener(
+      'change',
+      (e) => {
+        if ((e.target as HTMLInputElement).name === 'model') this.sync();
+      },
+      { signal },
+    );
+    this.q('[data-gt-picker-dialog]').addEventListener('htmx:afterRequest', markAdded);
+    // The form is swapped as a whole (another media): its files go with it, so their object URLs are let go of.
+    this.root.addEventListener('htmx:beforeCleanupElement', (e) => {
+      if (e.target === this.root) this.dispose();
     });
-    this.q('[data-gt-picker-dialog]').addEventListener('htmx:afterRequest', (e) => this.markAdded(e));
   }
 
   private isKept(file: File): boolean {
@@ -120,7 +141,11 @@ class Inputs {
       for (const el of li.querySelectorAll<HTMLElement>('[aria-label],[title]')) {
         for (const attr of ['aria-label', 'title']) {
           const v = el.getAttribute(attr);
-          if (v?.includes('__NAME__')) el.setAttribute(attr, v.replace('__NAME__', file.name));
+          if (v?.includes('__NAME__'))
+            el.setAttribute(
+              attr,
+              v.replaceAll('__NAME__', () => file.name),
+            );
         }
       }
       this.files.set(li, { file, url });
@@ -130,10 +155,20 @@ class Inputs {
   }
 
   private remove(row: HTMLElement): void {
+    const index = this.rows().indexOf(row);
     this.say('');
     this.forget(row);
     row.remove();
     this.sync();
+    // The focus stays in the grid (on the thumbnail that took its place, else the one before it), or goes to the file button.
+    const rest = this.rows();
+    const next = (rest[index] ?? rest[index - 1])?.querySelector<HTMLElement>('[data-gt-remove]');
+    (next ?? this.fileInput).focus();
+  }
+
+  private dispose(): void {
+    this.onForm.abort();
+    for (const row of [...this.files.keys()]) this.forget(row);
   }
 
   private forget(row: HTMLElement): void {
@@ -158,49 +193,6 @@ class Inputs {
     img.src = thumb?.src ?? '';
     img.alt = row.querySelector('[data-gt-zoom]')?.getAttribute('title') ?? '';
     dialog.showModal();
-  }
-
-  private dragStart(e: DragEvent): void {
-    const row = (e.target as Element).closest<HTMLElement>('[data-gt-ref]');
-    if (!row) return;
-    this.dragging = row;
-    row.toggleAttribute('data-dragging', true);
-    e.dataTransfer?.setData('text/plain', 'gt-ref');
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-  }
-
-  private dragOver(e: DragEvent): void {
-    const over = (e.target as Element).closest<HTMLElement>('[data-gt-ref]');
-    if (!this.dragging || !over || over === this.dragging) return;
-    e.preventDefault();
-    for (const r of this.rows()) highlight(r, false, ROW_REST, [ROW_ACTIVE]);
-    highlight(over, true, ROW_REST, [ROW_ACTIVE]);
-  }
-
-  private dragDrop(e: DragEvent): void {
-    const over = (e.target as Element).closest<HTMLElement>('[data-gt-ref]');
-    if (!this.dragging || !over || over === this.dragging) return;
-    e.preventDefault();
-    if (dropSide(over.getBoundingClientRect(), e.clientX) === 'before') over.before(this.dragging);
-    else over.after(this.dragging);
-    this.dragEnd();
-    this.sync();
-  }
-
-  private dragEnd(): void {
-    this.dragging?.removeAttribute('data-dragging');
-    this.dragging = null;
-    for (const r of this.rows()) highlight(r, false, ROW_REST, [ROW_ACTIVE]);
-  }
-
-  /** Marks the "追加" button of the picker whose image was added. */
-  private markAdded(e: Event): void {
-    const detail = (e as CustomEvent<{ elt?: HTMLElement; successful?: boolean }>).detail;
-    const button = detail.elt;
-    if (detail.successful && button?.tagName === 'BUTTON' && button.closest('[data-testid="gt-pick"]')) {
-      button.textContent = '追加済み';
-      button.setAttribute('disabled', '');
-    }
   }
 
   private say(text: string): void {
@@ -235,6 +227,7 @@ class Inputs {
     });
     for (const row of [...this.files.keys()]) if (!this.list.contains(row)) this.forget(row);
     this.setFiles(kept);
+    releasePicker(this.q('[data-gt-picker-dialog]'), new Set(this.rows().map((r) => r.dataset.ref ?? '')));
     this.q('[data-gt-count]').textContent = `${this.rows().length} / ${this.max}`;
     applyModels(this.root, this.form, this.rows().length);
   }

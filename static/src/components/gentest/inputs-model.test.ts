@@ -59,6 +59,11 @@ describe('the rules of the input images of the generation test', () => {
     expect(text.files.map((f) => f.name)).toEqual(['b.png']);
     expect(text.error).toContain('PNG・JPEG・WebP');
 
+    const empty = takeFiles([png('empty.png', 0), png('b.png')], 5, 100, 10);
+    expect(empty.files.map((f) => f.name)).toEqual(['b.png']);
+    expect(empty.error).toBe('空の画像ファイルは除きました');
+    expect(takeFiles([png('empty.png', 0)], 5, 0, 10).files, 'also when there is no size limit').toEqual([]);
+
     expect(takeFiles([png('a.png')], 0, 100, 10).files).toEqual([]);
   });
 });
