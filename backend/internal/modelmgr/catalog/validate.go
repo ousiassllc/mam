@@ -172,6 +172,7 @@ func validateModel(m Model, shared map[string]File) []error {
 		errs = append(errs, fmt.Errorf("%s: an advanced model, and a model whose license is not plain commercial use, requires consent (and only those)", where))
 	}
 	errs = append(errs, validateRating(where, m)...)
+	errs = append(errs, m.Validate(where)...)
 	if m.RequiresHFToken {
 		// The files of a login-only model stay at the Hugging Face repository that asks for the login: a mirror of a third
 		// party would be a way round the gate (and the install checks the access against that repository).

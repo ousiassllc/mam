@@ -19,6 +19,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/platform"
 )
 
 //go:embed data
@@ -154,7 +155,13 @@ type Model struct {
 	// refuses without a stored token and checks the access before it makes a job.
 	RequiresHFToken bool       `json:"requires_hf_token"`
 	Workflows       []Workflow `json:"workflows"`
+	// PlatformColumns are the optional GPU generation / OS columns (Issue #979: requires, unsupported): where the model is made for and where it is
+	// known not to run. They only warn (platform.Warning); nothing is refused.
+	PlatformColumns
 }
+
+// PlatformColumns is platform.Columns, which the model and its view embed.
+type PlatformColumns = platform.Columns
 
 // Adult reports whether the model is for adults only.
 func (m Model) Adult() bool { return m.ContentRating == RatingAdult }

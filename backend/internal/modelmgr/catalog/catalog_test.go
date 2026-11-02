@@ -64,8 +64,8 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		"wan22-i2v-14b-nsfw-lora":           {"unspecified", true, modellicense.Unknown, 6},
 		"wan22-ti2v-5b-fp8":                 {"apache-2.0", false, modellicense.Yes, 3},
 		"ltx-2.5-22b-distilled":             {"ltx-2x-community", true, modellicense.Conditional, 6},
-		"ltx-2.5-22b-distilled-nvfp4":       {"ltx-2x-community", true, modellicense.Conditional, 5},
-		"ltx-2.5-22b-distilled-dfr":         {"ltx-2x-community", true, modellicense.Conditional, 7},
+		"ltx-2.5-22b-distilled-nvfp4":       {"ltx-2x-community", true, modellicense.Conditional, 6},
+		"ltx-2.5-22b-distilled-dfr":         {"ltx-2x-community", true, modellicense.Conditional, 8},
 		"ltx-2.5-22b-distilled-uncensored":  {"ltx-2x-community-uncensored-te", true, modellicense.Unknown, 5},
 	} {
 		m, ok := c.Model(id)
