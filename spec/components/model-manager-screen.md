@@ -1,5 +1,7 @@
 # コンポーネント仕様: モデルマネージャー画面
 
+> **#915 の追記（2026-11-02）**: 全画面に左メニューが付き、戻るリンク（`BackLink`）はメニューに置き換わった。画面の枠（余白・h1・「?」）は `molecules/pagehead`。以下に「戻るリンク」とあるのは、このメニューに読み替える。詳細は [side-menu.md](side-menu.md)。
+
 [overview.md](overview.md) §3 のコンポーネントの階層に、モデルマネージャーの画面（Issue #833）を足す。ルートと挙動は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md)、ComfyUI エンジンとモデルの仕組みは [../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md)。
 
 | 区分 | コンポーネント | 責務 |

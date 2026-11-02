@@ -1,5 +1,7 @@
 # 画面仕様: 全体の設定画面（分類ごとのサブページ）
 
+> **#915 の追記（2026-11-02）**: 全画面に左メニューが付き、戻るリンク（`BackLink`）はメニューに置き換わった。画面の枠（余白・h1・「?」）は `molecules/pagehead`。以下に「戻るリンク」とあるのは、このメニューに読み替える。詳細は [side-menu.md](side-menu.md)。
+
 > **状態: 段階 ①・②-1〜②-6 実装済み（2026-10-25）。** Issue #847。オーナーは §11 を推奨する既定で決定した（2026-10-25）。分類ごとの一覧とモーダルは [settings-screen-categories.md](settings-screen-categories.md)、新しいルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、共通の部品（カード・アイコン・モーダル・一覧の行）は [shared-ui-parts.md](shared-ui-parts.md)。確認が要る点は §11。
 
 [overview.md](overview.md) §3 の `global_settings_page`・`global_settings_body`（`GET /settings`。API キー・ChatGPT・LLM・画像動画モデル・ローカル・MCP・バージョンが 1 ページに縦に並ぶ）を、**左のサイドナビ ＋ 分類ごとのサブページ**に分ける。プロジェクトの設定（`/projects/:id/settings`）・モデルマネージャーの作り直し・全画面共通のナビゲーションは範囲外。
@@ -95,7 +97,7 @@
 - **構造**: `<main class="mx-auto max-w-6xl p-8">` の中に、戻るリンク・`<h1>設定</h1>`・説明（「すべてのプロジェクトで共通の設定です。」の 1 行。動かさない）・`<div class="mt-6 flex flex-col gap-8 lg:flex-row">`（`nav` と `<div class="min-w-0 flex-1">`）。分類の見出しは `<h2>` で、その横に分類の説明を開く「?」ボタン（`settingsui.Category(title, explanation)`。説明は常時表示せず、ポップオーバーのヘルプに入る。[shared-ui-parts.md](shared-ui-parts.md) §9・§10）。同じ分類の中の区画の見出しは `<h3>`（`molecules.SettingsSection` に見出しのレベルを渡す。ステージ ① で、API キーの分類の「API キー」「ChatGPT でログイン」が `h3` になる。分類名と区画名が同じ分類（LLM・画像動画・MCP・バージョン）は、区画の見出しを出さず説明だけにする）。
 - **ナビ（`molecules/settingsui.SettingsNav`）**: `<nav aria-label="設定"><ul role="list">`。項目は `<a href class="block rounded-md px-3 py-2 text-sm …">`。**今の分類**は `aria-current="page"`・`bg-neutral-800 font-medium text-neutral-100`・左に `border-l-2 border-indigo-400`（色だけにせず、太さの変化と枠で示す）。ほかは `text-neutral-300 hover:bg-neutral-900 hover:text-neutral-100`。フォーカスは [shared-ui-parts.md](shared-ui-parts.md) §1 の輪。アイコンは付けない（文字を優先。§11 の質問 3）。
 - 状態のバッジをナビの項目に出さない（概要で見る）。
-- 戻るリンクは今のまま（`atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")`）。
+- 戻るリンクは持たない。左メニューの「プロジェクト」が戻り道（#915。`pagehead.Header`）。
 
 ## 5. 概要（`GET /settings`）のカード
 

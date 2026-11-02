@@ -64,6 +64,19 @@
 | `IconClose` | `x` | モーダルの閉じるボタン | #847 |
 | `IconCopy` | `copy` | MCP トークンのコピー | #847 |
 | `IconHelp` | `circle-question-mark`（Lucide v1.61.0。旧名 `circle-help`） | 「?」ヘルプのボタン（§9） | #866 |
+| `IconProjects` | `folder-kanban` | 左メニュー: プロジェクト（`atoms/icon_nav.templ`。行数の上限のため `icon.templ` から分けた） | #915 |
+| `IconChat` | `message-square` | 〃 Project のチャット | #915 |
+| `IconBrief` | `file-text` | 〃 Brief | #915 |
+| `IconEdit` | `scissors` | 〃 編集 / 書き出し | #915 |
+| `IconCost` | `sliders-horizontal` | 〃 設定 / コスト | #915 |
+| `IconBranch` | `git-branch` | 〃 Branch | #915 |
+| `IconWorld` | `globe` | 〃 World State | #915 |
+| `IconLibrary` | `library` | 〃 Reference Library | #915 |
+| `IconNotes` | `sticky-note` | 〃 Notes | #915 |
+| `IconSeries` | `users` | 〃 Series（`sidenav.Views` が SeriesID を持つとき） | #915 |
+| `IconPanelClose` | `panel-left-close` | 〃 たたむボタン | #915 |
+| `IconPanelOpen` | `panel-left-open` | 〃 開くボタン | #915 |
+| （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。
 - 上の Lucide の名前は、2026-10-25 に `lucide-icons/lucide` の `main` の `icons/<名前>.svg` が存在することを確かめた（HTTP 200）。コピーする版（タグ）は実装のときに決め、その版に同じ名前があることを確かめる。名前は Lucide の版で変わることがある。
