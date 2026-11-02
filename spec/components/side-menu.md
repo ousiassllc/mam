@@ -10,7 +10,7 @@
 |---|------|------|
 | 1 | メニューは `AppLayout` の中にあり、すべてのページが持つ。初回のガイド（`onboarding_page`）だけ持たない（`sidenav.Off()`） | 初回の流れを邪魔しない。ほかの画面から外へ出る道が常にある |
 | 2 | 項目は主な画面 8 つ（プロジェクト・生成テスト・モデルマネージャー・ワークフロー・ノード・レビュー・制作指標・設定）。Project の画面（チャット・Brief・Scene / Shot・編集 / 書き出し・設定 / コスト・制作指標・Branch・World State・Reference Library・Notes・レビュー・Series）では、その下に同じ形で Project の項目を足す | 「補助ビュー」のメニューをチャットから移した。`/projects/:id/references` が「リファレンス」 |
-| 3 | 項目のリンク先は `paths` の関数だけで作る（`organisms/sidenav/menu.go`）。存在しない画面へのリンクは作らない | `web/sidenav_test.go` が全項目を実際のルーターで GET し、200 とそのページの `aria-current="page"` を確かめる（Wails も同じルーターを使う） |
+| 3 | 項目のリンク先は `paths` の関数だけで作る（`organisms/sidenav/menu.go`）。存在しない画面へのリンクは作らない | `web/sidenavtest/sidenav_test.go` が全項目を実際のルーターで GET し、200 とそのページの `aria-current="page"` を確かめる（Wails も同じルーターを使う） |
 | 4 | たたむ状態は **cookie `mam_nav`**（`folded` / `open`）。サーバーが読み、最初のバイトからたたんだ形で描く | `localStorage` は Wails がループバックの別ポートで開くと共有されず、ページ描画の後に畳むと一瞬ちらつく。cookie は同じホストならポートを超えて共有される。HttpOnly にしない（`sidenav.ts` が書く）。`SameSite=Strict`、1 年 |
 | 5 | 幅 768 px 未満は、たたむ状態にかかわらずアイコンだけ（ボタンも出さない） | 狭い窓で本文を広く使う |
 | 6 | 色・文字サイズは既存のトークンだけ（新しい生の色を足さない） | #867 |
@@ -75,7 +75,7 @@ body
 
 | 試験 | 内容 |
 |------|------|
-| `web/sidenav_test.go` | 全項目が 200・自分の画面で `aria-current`・ランドマーク 1 つ・順序・エラーページ |
+| `web/sidenavtest/sidenav_test.go` | 全項目が 200・自分の画面で `aria-current`・ランドマーク 1 つ・順序・エラーページ |
 | `web/handler/workflows/sidenav_test.go` | ワークフローとノード（ワークフローのサービスがあるときだけ登録されるルート） |
 | `organisms/sidenav/nav_test.go`・`navstate/navstate_test.go`・`layout/app_layout_test.go` | 部品の形・cookie の読み取り・スキップリンクの順序 |
 | `static/src/components/sidenav/*` | cookie の形（vitest）・ボタンの動作（web-test-runner） |
