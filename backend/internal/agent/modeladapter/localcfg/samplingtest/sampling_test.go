@@ -174,3 +174,24 @@ func TestAnUnknownPromptWeightIsRefused(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(`{"graph":{},"assignments":[],"output_node":"1"}`), &back))
 	assert.Empty(t, back.PromptWeight)
 }
+
+// A workflow that hands the sampling over between two samplers (Wan 2.2) says so, and its steps start at 2: one step leaves the second stage nothing to do.
+func TestATwoStageWorkflowSaysItsStepsStartAtTwo(t *testing.T) {
+	one, two := 1, 2
+	for _, id := range []string{"img2video-wan22-14b", "img2video-wan22-14b-remix", "img2video-wan22-14b-lightx2v-uncensored"} {
+		c := template(t, id).Workflow.SamplingCaps()
+		require.NotNil(t, c, id)
+		assert.True(t, c.TwoStage, id)
+		assert.Equal(t, 2, c.MinSteps(), id)
+		assert.Error(t, sampling.Settings{Steps: &one}.ValidateFor(c), id)
+		assert.NoError(t, sampling.Settings{Steps: &two}.ValidateFor(c), id)
+		assert.NoError(t, sampling.Settings{}.ValidateFor(c), id)
+	}
+	// a single sampler, and a workflow whose speed modes own the steps (a request's are not taken), keep 1
+	for _, id := range []string{"txt2img-sdxl", "txt2video-wan22-5b", "img2video-wan22-14b-lightx2v"} {
+		c := template(t, id).Workflow.SamplingCaps()
+		assert.False(t, c.TwoStage, id)
+		assert.NoError(t, sampling.Settings{Steps: &one}.ValidateFor(c), id)
+	}
+	assert.Equal(t, 1, (*sampling.Caps)(nil).MinSteps())
+}

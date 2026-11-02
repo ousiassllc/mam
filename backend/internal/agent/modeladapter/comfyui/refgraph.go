@@ -38,6 +38,7 @@ func dropNode(g localcfg.Graph, id string) {
 // dropUnused takes out the nodes of the reference assignments the run has no image for: an optional slot goes alone (its
 // consumer keeps the other slots) with the plumbing that only it fed (dropOrphans); with no reference at all the NoReference
 // overrides are applied first and everything that is fed by a reference node goes too (the VAEEncode of an img2img workflow).
+// A slot the workflow cannot run without (required, no NoReference overrides) stays when the values keep the slots (GraphFor).
 func dropUnused(g localcfg.Graph, wf localcfg.Workflow, v values) {
 	if len(v.references) == 0 {
 		for _, o := range wf.NoReference {
@@ -45,7 +46,7 @@ func dropUnused(g localcfg.Graph, wf localcfg.Workflow, v values) {
 		}
 	}
 	for _, a := range wf.Assignments {
-		if a.Param != localcfg.ParamReferenceImage || a.Index < len(v.references) {
+		if a.Param != localcfg.ParamReferenceImage || a.Index < len(v.references) || (v.keepSlots && !a.Optional && len(wf.NoReference) == 0) {
 			continue
 		}
 		dropNode(g, a.Node)

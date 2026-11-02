@@ -37,7 +37,7 @@ func validatePresets(where string, w Workflow) []error {
 		if preset.CFG != nil && (caps == nil || caps.CFG == nil) {
 			errs = append(errs, fmt.Errorf("%s.%s: the workflow has no cfg assignment", at, name))
 		}
-		if err := preset.Settings().Validate(); err != nil {
+		if err := preset.Settings().ValidateFor(caps); err != nil {
 			errs = append(errs, fmt.Errorf("%s.%s: %w", at, name, err))
 		}
 		if s := preset.Steps; s != nil && caps != nil && caps.Steps != nil {

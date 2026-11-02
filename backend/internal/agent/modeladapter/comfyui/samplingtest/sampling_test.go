@@ -4,7 +4,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 )
 
@@ -50,8 +53,6 @@ func TestTheValuesOfARequestReachTheNodes(t *testing.T) {
 			}},
 		{"the handover of a remix keeps its place", "img2video-wan22-14b-remix", localcfg.SamplingSettings{Steps: ptr(24)},
 			map[string]string{"3.steps": "24", "4.steps": "24", "3.end_at_step": "20", "4.start_at_step": "20"}},
-		{"one step: the second stage still has a step to hand over at", "img2video-wan22-14b", localcfg.SamplingSettings{Steps: ptr(1)},
-			map[string]string{"3.steps": "1", "4.steps": "1", "3.end_at_step": "1", "4.start_at_step": "1"}},
 		{"two steps hand over after the first", "img2video-wan22-14b-lightx2v-uncensored", localcfg.SamplingSettings{Steps: ptr(2)},
 			map[string]string{"3.steps": "2", "4.steps": "2", "3.end_at_step": "1", "4.start_at_step": "1"}},
 		// the distilled LTX-2.5 runs on fixed sigmas: it takes none of them
@@ -103,4 +104,19 @@ func TestAReferenceEditSamplesTheStepsOfTheRequest(t *testing.T) {
 	got := run(t, tp, nil, localcfg.SamplingSettings{Steps: ptr(10), CFG: ptr(2.0)}, "")
 	assert.Equal(t, "10", got["3"]["steps"])
 	assert.Equal(t, "2", got["3"]["cfg"])
+}
+
+// A two-stage sampler (Wan 2.2) hands over after at least one step and the second stage needs one more: one step would leave the low noise
+// model nothing to do (a video of noise), so the run is refused before it is queued, and two steps run both stages.
+func TestATwoStageWorkflowRefusesOneStep(t *testing.T) {
+	tp := tpl(t, "img2video-wan22-14b")
+	_, err := comfyui.GraphFor(*tp.Model.Workflow, modeladapter.ImageRequest{Prompt: "x", Options: localcfg.ImageOptions{Sampling: localcfg.SamplingSettings{Steps: ptr(1)}}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "2")
+	raw, err := comfyui.GraphFor(*tp.Model.Workflow, modeladapter.ImageRequest{Prompt: "x", Options: localcfg.ImageOptions{Sampling: localcfg.SamplingSettings{Steps: ptr(2)}}})
+	require.NoError(t, err)
+	g, err := localcfg.ParseGraph(raw)
+	require.NoError(t, err)
+	assert.Equal(t, "1", string(g["3"].Inputs["end_at_step"]), "the first stage runs one step")
+	assert.Equal(t, "1", string(g["4"].Inputs["start_at_step"]), "the second stage runs the other")
 }

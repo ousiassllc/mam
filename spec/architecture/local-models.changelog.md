@@ -25,3 +25,4 @@
 | 1.16 | 2026-11-02 | §4.7 を新設: `reference_mode: inpaint` と割り当て `mask_image`・`denoise`。テンプレート `inpaint-sdxl`・`inpaint-flux-dev`（コアノード。`ImageCompositeMasked` でマスクの外を元画像のままにする。`prompt_weight` と steps・cfg・sampler・scheduler の割り当ても持つ）。`supports_inpaint`。起動時の更新は新しいワークフロー名を足さない | Issue #974 |
 | 1.17 | 2026-11-03 | §4.3 に、ワークフローの `quality_presets`（速い・きれいの steps・cfg。標準は書かない。速さのモードのワークフローには書けない）を足した | Issue #977 |
 | 1.18 | 2026-11-04 | §4.8 を新設: ワークフローの `exposed_inputs`（画面に出す値。ノード ID＋入力名＋型＋範囲・選択肢＋表示名の加算的な汎用入力）・検査・グラフへの適用・保存先 | Issue #977（ステージ 2） |
+| 1.19 | 2026-11-04 | §4.3: 2 段のサンプラー（`ratio` つきの `steps`）は `sampling.Caps.TwoStage` を立て、ステップ数の下限を 2 にした（検査と画面のスライダー） | 1 ステップだと後の段が何もせず、ノイズのままの動画になった（Issue #973 レビュー） |

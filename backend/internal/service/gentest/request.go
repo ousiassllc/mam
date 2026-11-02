@@ -275,6 +275,11 @@ func withSettings(r Request, models []modelcatalog.Info) (Request, error) {
 	if r.Sampling, err = checkSampling(r); err != nil {
 		return r, err
 	}
+	for _, m := range models {
+		if err := r.Sampling.ValidateFor(m.Sampling); err != nil {
+			return r, gterr.Invalid("%s の詳細設定が正しくありません: %v", m.Label, err)
+		}
+	}
 	if r.Quality, err = checkQuality(r.Quality); err != nil {
 		return r, err
 	}

@@ -97,7 +97,7 @@ func Hidden(r gentest.Request) []view.Hidden {
 
 // FactsOf is what a model card says to the script: which of the settings the model takes and how it reads prompt weights.
 func FactsOf(m modelcatalog.Info) adv.ModelFacts {
-	u := adv.SamplingUse{Seed: m.SupportsSeed}
+	u := adv.SamplingUse{Seed: m.SupportsSeed, StepsMin: m.Sampling.MinSteps()}
 	if c := m.Sampling; c != nil {
 		u.Steps, u.CFG, u.Sampler, u.Scheduler = c.Steps != nil, c.CFG != nil, c.Sampler != nil, c.Scheduler != nil
 		if c.Steps != nil {

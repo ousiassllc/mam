@@ -18,6 +18,14 @@ func Applicable(w localcfg.Workflow, req localcfg.SamplingSettings) localcfg.Sam
 	return w.SamplingCaps().Applicable(req)
 }
 
+// Check refuses the request's sampling when the workflow cannot run it: a two-stage workflow (Wan 2.2) needs at least two steps, one for each stage.
+func Check(w localcfg.Workflow, req localcfg.SamplingSettings) error {
+	if req.IsZero() {
+		return nil
+	}
+	return req.ValidateFor(w.SamplingCaps())
+}
+
 // Value is the value an assignment of a sampling parameter puts into its node; ok is false when the request names none (the graph's value
 // stays). isSampling is false for the other parameters.
 func Value(a localcfg.Assignment, s localcfg.SamplingSettings) (value any, ok, isSampling bool) {

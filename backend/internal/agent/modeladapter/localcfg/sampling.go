@@ -55,6 +55,9 @@ func (w Workflow) SamplingCaps() *sampling.Caps {
 	if c.None() {
 		return nil
 	}
+	for _, a := range w.Assignments {
+		c.TwoStage = c.TwoStage || (a.Param == ParamSteps && a.Ratio > 0 && c.Steps != nil && lock == "")
+	}
 	if lock == "" && !w.QualityPresets.None() {
 		c.Presets = w.QualityPresets // the steps and the cfg of a workflow under a speed mode are the mode's: no quality to choose
 	}
