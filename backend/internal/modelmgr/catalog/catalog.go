@@ -19,6 +19,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/mainfile"
 )
 
 //go:embed data
@@ -119,9 +120,24 @@ type VRAM struct {
 
 // Workflow is a #831 model created on the bundled endpoint when the model is installed: Name is its model
 // name (the identifier is comfyui:bundled-comfyui/<Name>), Template the localcfg workflow template it starts from.
+// ModelFile (optional) replaces the main file of the template (the CheckpointLoaderSimple checkpoint or the UNETLoader diffusion model;
+// package mainfile): the SDXL and Qwen-Image 2.1 templates are shared by many models, each with its own file.
 type Workflow struct {
-	Name     string `json:"name"`
-	Template string `json:"template"`
+	Name      string `json:"name"`
+	Template  string `json:"template"`
+	ModelFile string `json:"model_file,omitempty"`
+}
+
+// Model is the model the install saves for the workflow: the one of the template, with ModelFile in place of its main file.
+func (w Workflow) Model(template func(id string) (localcfg.Template, bool)) (localcfg.Model, error) {
+	tpl, ok := template(w.Template)
+	switch {
+	case !ok:
+		return localcfg.Model{}, fmt.Errorf("template %q does not exist", w.Template)
+	case w.ModelFile == "":
+		return tpl.Model, nil
+	}
+	return mainfile.Model(tpl, w.ModelFile)
 }
 
 // ContentRating says who a model is for. An adult model (an uncensored model, or a LoRA that adds that) is hidden
@@ -234,23 +250,27 @@ func Default() *Catalog {
 	return loaded
 }
 
-// Load reads data/engine.json, data/models/*.json, data/runtimes/*.json (optional) and data/assets/*.json (optional) of fsys, refusing
-// unknown fields.
+// Load reads data/engine.json, data/models/**/*.json (a sub directory keeps a group of models, such as the adult photoreal ones, out
+// of the one directory that the line limit counts), data/runtimes/*.json (optional) and data/assets/*.json (optional) of fsys,
+// refusing unknown fields.
 func Load(fsys fs.FS) (*Catalog, error) {
 	var c Catalog
 	if err := decode(fsys, "data/engine.json", &c.Engine); err != nil {
 		return nil, err
 	}
-	entries, err := fs.ReadDir(fsys, "data/models")
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range entries {
+	err := fs.WalkDir(fsys, "data/models", func(name string, e fs.DirEntry, err error) error {
+		if err != nil || e.IsDir() {
+			return err
+		}
 		var m Model
-		if err := decode(fsys, "data/models/"+e.Name(), &m); err != nil {
-			return nil, err
+		if err := decode(fsys, name, &m); err != nil {
+			return err
 		}
 		c.Models = append(c.Models, m)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	rts, err := fs.ReadDir(fsys, "data/runtimes")
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
