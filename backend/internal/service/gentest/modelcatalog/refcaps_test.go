@@ -30,7 +30,7 @@ func TestReferenceCapsAndLoRAOfAModel(t *testing.T) {
 	edit := modelcatalog.ReferenceCapsOf(cfg, "edit")
 	assert.Equal(t, localcfg.ModeEdit, edit.Mode)
 	assert.Equal(t, 3, edit.Max)
-	assert.Equal(t, []string{"reference", "face", "style", "edit"}, edit.Roles)
+	assert.Equal(t, []string{"reference", "face", "style", "edit", "pose"}, edit.Roles)
 	assert.True(t, modelcatalog.SupportsLoRA(cfg, "edit"))
 
 	i2i := modelcatalog.ReferenceCapsOf(cfg, "i2i")

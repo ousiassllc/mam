@@ -121,8 +121,8 @@ type Compose struct {
 	Filter commercial.FilterData
 	// Prompts has at least one entry.
 	Prompts []PromptText
-	// Translate is the switch "英語に訳して送る" (on for a fresh form).
-	Translate                                    bool
+	// Translate is the switch "英語に訳して送る" (on for a fresh form); Poses says the pose library is there: "ポーズを選ぶ" is offered (an image batch only).
+	Translate, Poses                             bool
 	Count, Aspect, Resolution, Duration          string
 	Resolutions, Durations                       []string
 	MaxPrompt, MaxCount, MaxItems, MaxReferences int

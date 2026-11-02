@@ -58,7 +58,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 
 var roleNames = map[string]string{
 	gentest.RoleReference: "参照", gentest.RoleFirstFrame: "最初のフレーム", gentest.RoleLastFrame: "最後のフレーム",
-	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象",
+	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象", gentest.RolePose: "ポーズだけ",
 }
 
 // roleText is the role of an input with the strength it was given (none was when the default was used).
@@ -70,7 +70,7 @@ func roleText(in record.InputView) string {
 }
 
 var originText = map[string]string{
-	gentest.FromStaged: "アップロード", gentest.FromProjectAsset: "プロジェクトのアセット", gentest.FromReferenceItem: "プロジェクトの参照画像", gentest.FromHistory: "履歴",
+	gentest.FromStaged: "アップロード", gentest.FromProjectAsset: "プロジェクトのアセット", gentest.FromReferenceItem: "プロジェクトの参照画像", gentest.FromHistory: "履歴", gentest.FromPoseLibrary: "ポーズ集",
 }
 
 func (h Handlers) projectNames(ctx context.Context) map[string]string {

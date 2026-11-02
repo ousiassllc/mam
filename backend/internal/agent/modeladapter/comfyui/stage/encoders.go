@@ -78,11 +78,17 @@ func keepSlots(n, src localcfg.Node, active []refUse, e encoders) {
 	}
 }
 
+// seenOnly says a reference of the role is only looked at by the vision tower: its pixels do not go into the latents.
+func seenOnly(role string) bool {
+	return role == localcfg.RoleFace || role == localcfg.RoleStyle || role == localcfg.RolePose
+}
+
 // setVAE gives the encoder the VAE when a reference is to be reproduced (the whole picture or the one to edit): the encoder
-// then also hands the picture's latents to the model. A face or a style is read with the vision tower alone. The VAE is the
+// then also hands the picture's latents to the model. A face, a style or a pose is read with the vision tower alone (its pixels are
+// not to appear in the result). The VAE is the
 // one the VAEDecode node takes (the lowest ID of them when there are several), else the VAELoader with the lowest ID.
 func setVAE(g localcfg.Graph, n localcfg.Node, active []refUse) {
-	if !slices.ContainsFunc(active, func(u refUse) bool { return u.role != localcfg.RoleFace && u.role != localcfg.RoleStyle }) {
+	if !slices.ContainsFunc(active, func(u refUse) bool { return !seenOnly(u.role) }) {
 		delete(n.Inputs, "vae")
 		return
 	}

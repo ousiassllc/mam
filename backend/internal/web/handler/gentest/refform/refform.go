@@ -70,7 +70,7 @@ func videoRole(v string) string {
 }
 
 func imageRole(v string) string {
-	if slices.Contains([]string{gentest.RoleFace, gentest.RoleStyle, gentest.RoleEdit}, v) {
+	if slices.Contains([]string{gentest.RoleFace, gentest.RoleStyle, gentest.RoleEdit, gentest.RolePose}, v) {
 		return v
 	}
 	return gentest.RoleReference

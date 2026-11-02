@@ -7,6 +7,7 @@ describe('the rules of the input images of the generation test', () => {
   it('lists the roles that at least one chosen model takes, in the order of the select', () => {
     expect(unionRoles([['style', 'reference'], ['reference']])).toEqual(['reference', 'style']);
     expect(unionRoles([['edit'], ['face', 'reference']])).toEqual(['reference', 'face', 'edit']);
+    expect(unionRoles([['pose', 'edit'], ['reference']])).toEqual(['reference', 'edit', 'pose']);
     expect(unionRoles([[], []])).toEqual([]);
     expect(unionRoles([])).toEqual([]);
   });

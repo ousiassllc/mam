@@ -1,6 +1,9 @@
-package catalog_test
+// Package assetstest checks the asset sets of the catalog (data/assets: the weights and dependencies of the local runtimes, and the pose
+// library of the generation test) and their validation. It is a package of its own because the directory of the catalog is at its line budget.
+package assetstest_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -9,9 +12,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 )
+
+// mutate returns the validation problems of the embedded catalog after edit changed a copy of it.
+func mutate(t *testing.T, edit func(c *catalog.Catalog)) []error {
+	t.Helper()
+	data, err := json.Marshal(catalog.Default())
+	require.NoError(t, err)
+	var c catalog.Catalog
+	require.NoError(t, json.Unmarshal(data, &c))
+	edit(&c)
+	return catalog.Validate(&c, localcfg.TemplateByID)
+}
 
 func setOf(t *testing.T, c *catalog.Catalog, runtime string) *catalog.ResourceSet {
 	t.Helper()
@@ -39,10 +54,14 @@ func assetNamed(t *testing.T, s catalog.ResourceSet, name string) catalog.Resour
 // license of the set; the files of an archive are pinned too.
 func TestEmbeddedAssetSetsArePinnedWithSourceAndLicense(t *testing.T) {
 	c := catalog.Default()
-	require.Len(t, c.ResourceSets, 2)
+	require.Len(t, c.ResourceSets, 3)
 	for _, s := range c.ResourceSets {
 		for _, a := range s.Assets {
-			assert.Regexp(t, `^https://huggingface\.co/[^/]+/[^/]+/resolve/[0-9a-f]{40}/`, a.URL, a.Name)
+			if s.Runtime == "shisei-poses" { // the pose library's files lie on GitHub: the release's zips, and a file at a commit
+				assert.Regexp(t, `^https://(github\.com/wquguru/shisei/releases/download/v0\.4\.1/|raw\.githubusercontent\.com/wquguru/shisei/[0-9a-f]{40}/)`, a.URL, a.Name)
+			} else {
+				assert.Regexp(t, `^https://huggingface\.co/[^/]+/[^/]+/resolve/[0-9a-f]{40}/`, a.URL, a.Name)
+			}
 			assert.Regexp(t, `^[0-9a-f]{64}$`, a.SHA256, a.Name)
 			assert.Positive(t, a.Size, a.Name)
 			assert.NotEmpty(t, a.Source.Name+a.Source.URL, a.Name)
@@ -199,8 +218,11 @@ func TestValidateRefusesAnAssetThatIsNotPinnedOrNotDescribed(t *testing.T) {
 			a := firstAsset(c)
 			a.URL = strings.Replace(a.URL, "huggingface.co", "example.com", 1)
 		}, "40-hex commit"},
-		"a GitHub release": {func(c *catalog.Catalog) {
-			firstAsset(c).URL = "https://github.com/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz"
+		"a GitHub branch": {func(c *catalog.Catalog) {
+			firstAsset(c).URL = "https://github.com/r9y9/open_jtalk/raw/master/open_jtalk_dic_utf_8-1.11.tar.gz"
+		}, "40-hex commit"},
+		"a GitHub file at a branch": {func(c *catalog.Catalog) {
+			firstAsset(c).URL = "https://raw.githubusercontent.com/r9y9/open_jtalk/master/dic.tar.gz"
 		}, "40-hex commit"},
 		"no sha256":            {func(c *catalog.Catalog) { firstAsset(c).SHA256 = "" }, "sha256"},
 		"a short sha256":       {func(c *catalog.Catalog) { firstAsset(c).SHA256 = firstAsset(c).SHA256[:63] }, "sha256"},

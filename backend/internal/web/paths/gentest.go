@@ -21,3 +21,10 @@ func GenerationTestMatch() string { return GenerationTestPart("match") }
 // GenerationTestExport is the ZIP export of results of the history, "/generation-test/export" (#932). GET answers the ZIP:
 // "?id=<result id>" (repeated) names results, "?latest=<n>" the newest n, with "&model=&media=&favorite=1&commercial=&batch=".
 func GenerationTestExport() string { return GenerationTestPart("export") }
+
+// GenerationTestPoses is the pose picker of the generation test, "/generation-test/poses" (#986): GET answers the body of its dialog (the
+// gallery, or the offer to install the pose library); "/results" the poses that match the filters, "/install" (POST) installs the library and
+// "/image/<picture id>" is one picture of it.
+func GenerationTestPoses(rest ...string) string {
+	return GenerationTestPart(append([]string{"poses"}, rest...)...)
+}

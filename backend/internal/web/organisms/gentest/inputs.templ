@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestposes"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -54,6 +55,9 @@ templ inputFields(c Compose) {
 					"type": "button", "data-gt-open-picker": "history", "hx-get": paths.GenerationTestPart("picker") + "?source=history",
 					"hx-target": "#" + PickerID, "hx-swap": "innerHTML",
 				})
+				if c.Poses {
+					@gentestposes.OpenButton(gentestposes.NewWire())
+				}
 			</div>
 		</div>
 		if c.Media == "video" {
@@ -83,6 +87,9 @@ templ inputFields(c Compose) {
 		</template>
 		@refOptions(c)
 		@pickerDialog(c)
+		if c.Poses {
+			@gentestposes.Dialog()
+		}
 		@lightbox()
 	</fieldset>
 }

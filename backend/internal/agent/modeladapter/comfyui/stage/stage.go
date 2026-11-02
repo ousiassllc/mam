@@ -238,6 +238,8 @@ func roleSentence(role string, n int) string {
 		return fmt.Sprintf("Keep only the face and identity of <image%d>; its hair, clothes, pose and background do not matter: follow the description below for them.", n)
 	case localcfg.RoleStyle:
 		return fmt.Sprintf("Take only the art style, color grading and mood of <image%d>; its subject and composition do not matter.", n)
+	case localcfg.RolePose:
+		return fmt.Sprintf("Use <image%d> only as a pose reference: copy only the body pose and the camera angle of its figure; its drawing style, colors, face, hair, clothes and background do not matter: follow the description below for them.", n)
 	}
 	return ""
 }

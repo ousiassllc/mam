@@ -93,7 +93,7 @@ func ViewsOf(list []gentestrepo.Result) []ResultView {
 // InputView is an input image of a batch.
 type InputView struct {
 	ID        string `json:"input_id"`
-	Role      string `json:"role" jsonschema:"reference / face / style / edit / first_frame / last_frame"`
+	Role      string `json:"role" jsonschema:"reference / face / style / edit / pose / first_frame / last_frame"`
 	MimeType  string `json:"mime_type"`
 	SizeBytes int64  `json:"size_bytes"`
 	// Strength is how strongly an image model was asked to show the reference; absent when the default was used.
@@ -103,7 +103,7 @@ type InputView struct {
 
 // InputOrigin is where an input image was taken from (the Source of the RefInput and its ID).
 type InputOrigin struct {
-	Kind      string `json:"kind" jsonschema:"upload / project_asset / reference_item / history"`
+	Kind      string `json:"kind" jsonschema:"upload / project_asset / reference_item / history / pose_library"`
 	ID        string `json:"id"`
 	ProjectID string `json:"project_id,omitempty"`
 }

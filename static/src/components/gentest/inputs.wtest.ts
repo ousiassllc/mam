@@ -92,7 +92,7 @@ describe('the input images of the generation test (spec/components/gentest-scree
   it('shows the roles that the chosen models take, and the strength beside each, from the model cards', () => {
     const select = rows()[0]!.querySelector<HTMLSelectElement>('[data-gt-role]')!;
     const offered = () => [...select.options].filter((o) => !o.disabled).map((o) => o.value);
-    expect(offered(), 'the editing model takes all four').to.deep.equal(['reference', 'face', 'style', 'edit']);
+    expect(offered(), 'the editing model takes all five').to.deep.equal(['reference', 'face', 'style', 'edit', 'pose']);
     expect(rows()[0]!.querySelector('input[type=range]')).to.not.equal(null);
 
     tick('edit', false);

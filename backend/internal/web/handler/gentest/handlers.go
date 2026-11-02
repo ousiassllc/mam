@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/exportscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/posescreen"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -44,6 +45,7 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.DELETE(paths.GenerationTestPart("results", ":id"), h.DeleteResult)
 	engine.GET(paths.GenerationTestPart("inputs", ":id", "file"), h.InputFile)
 
+	posescreen.Register(engine, svc)
 	matchscreen.Register(engine, svc)
 	exportscreen.Register(engine, svc)
 

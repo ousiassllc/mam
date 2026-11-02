@@ -2,7 +2,7 @@
 // chosen models take, which files are taken, and where a dragged image is dropped. inputs.ts draws them.
 
 /** The roles of an image reference, in the order the select lists them. */
-export const ROLE_ORDER = ['reference', 'face', 'style', 'edit'] as const;
+export const ROLE_ORDER = ['reference', 'face', 'style', 'edit', 'pose'] as const;
 
 /** The types of file the screen takes (the same as the service). */
 export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];

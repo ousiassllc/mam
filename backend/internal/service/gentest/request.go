@@ -24,6 +24,8 @@ const (
 	FromReferenceItem = "reference_item"
 	// FromHistory: the file of a succeeded image result of the history (the result's ID).
 	FromHistory = "history"
+	// FromPoseLibrary: a pose picture of the pose library (poses.Library; ID is the picture's ID, "std_P001_front"), no ProjectID.
+	FromPoseLibrary = "pose_library"
 )
 
 // PromptInput is a prompt with its optional negative prompt.
@@ -243,13 +245,13 @@ func checkSource(ref RefInput) error {
 		return gterr.Invalid("入力画像の ID がありません")
 	}
 	switch ref.Source {
-	case FromStaged, FromHistory:
+	case FromStaged, FromHistory, FromPoseLibrary:
 	case FromProjectAsset, FromReferenceItem:
 		if ref.ProjectID == "" {
 			return gterr.Invalid("プロジェクトの画像には project_id が要ります")
 		}
 	default:
-		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history）", ref.Source)
+		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library）", ref.Source)
 	}
 	return nil
 }

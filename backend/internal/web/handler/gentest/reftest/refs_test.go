@@ -36,7 +36,7 @@ func offered(t *testing.T, body string) []string {
 	row := regexp.MustCompile(`(?s)<li[^>]*data-gt-ref.*?</li>`).FindString(body)
 	require.NotEmpty(t, row, "an input image is drawn")
 	var out []string
-	for _, o := range regexp.MustCompile(`<option value="(reference|face|style|edit)"([^>]*)>`).FindAllStringSubmatch(row, -1) {
+	for _, o := range regexp.MustCompile(`<option value="(reference|face|style|edit|pose)"([^>]*)>`).FindAllStringSubmatch(row, -1) {
 		if !strings.Contains(o[2], "disabled") {
 			out = append(out, o[1])
 		}
@@ -54,7 +54,7 @@ func TestInputControlsFollowTheChosenModels(t *testing.T) {
 		roles       []string
 		lora        bool
 	}{
-		{string(gentesttest.EditModel), "編集", []string{"reference", "face", "style", "edit"}, true},
+		{string(gentesttest.EditModel), "編集", []string{"reference", "face", "style", "edit", "pose"}, true},
 		{string(gentesttest.Img2ImgModel), "画像から", []string{"reference"}, false},
 		{string(gentesttest.PlainModel), "", nil, false},
 	} {

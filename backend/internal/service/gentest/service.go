@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/loras"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 
@@ -70,6 +71,8 @@ type Deps struct {
 	// MissingNodes gives the reason a model of the bundled ComfyUI cannot be chosen because a custom node its workflow requires is not installed
 	// (modelnodes, nodegate.ForModels); empty when it can. Nil: no model is refused for its nodes.
 	MissingNodes func(modelID string, required []string) string
+	// Poses is the pose library (Shisei), whose pictures can be given as references (FromPoseLibrary). Nil: no pose library; such a reference is refused.
+	Poses *poses.Library
 	// BundledEndpoint is the name of the registered endpoint of the bundled ComfyUI engine, whose LoRA files LoRAs lists ("": none).
 	BundledEndpoint string
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).

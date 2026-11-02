@@ -50,7 +50,7 @@ func (m Model) ReferenceCaps() ReferenceCaps {
 	}
 	caps := ReferenceCaps{Mode: w.ReferenceMode, Max: w.Count(ParamReferenceImage), Roles: []string{RoleWhole}}
 	if caps.Mode == ModeEdit {
-		caps.Roles = []string{RoleWhole, RoleFace, RoleStyle, RoleEdit}
+		caps.Roles = []string{RoleWhole, RoleFace, RoleStyle, RoleEdit, RolePose}
 	}
 	return caps
 }
@@ -100,6 +100,7 @@ const (
 	RoleFace  = "face"      // the face (identity) only: hair, clothes and pose follow the prompt
 	RoleStyle = "style"     // the painting style and mood only: the content follows the prompt
 	RoleEdit  = "edit"      // the picture the prompt edits
+	RolePose  = "pose"      // the body pose and camera angle only (a mannequin or a pose chart): the look, clothes and background follow the prompt
 )
 
 // DefaultReferenceStrength is the strength of a reference that names none: strong enough to show, weak enough to leave the

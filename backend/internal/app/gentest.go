@@ -12,11 +12,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
@@ -42,11 +44,28 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		MissingNodes:    nodegate.ForModels(services.ModelManager.Nodes, modelmanager.BundledEndpoint), // a workflow whose custom node is not installed cannot be chosen
 		BundledEndpoint: modelmanager.BundledEndpoint,
 		Translator:      translator,
+		Poses:           newPoseLibrary(logger),
 		Logger:          logger,
 	})
 	g.Register()
 	match.New(match.Deps{Gentest: g, Matcher: matcher}) // the runner of the prompt match is found again with match.From
 	return g
+}
+
+// newPoseLibrary is the pose library (Shisei) of the generation test, below the localai directory next to the executable like the local
+// runtimes. nil when the directory cannot be found or the library cannot be opened: the generation test then has no "ポーズを選ぶ".
+func newPoseLibrary(logger *slog.Logger) *poses.Library {
+	exe, err := executablePath()
+	if err != nil {
+		logger.Warn("pose library: the executable was not found", "err", err)
+		return nil
+	}
+	lib, err := poses.New(poses.Deps{Root: store.LocalAIRoot(exe)})
+	if err != nil {
+		logger.Warn("pose library: open failed", "err", err)
+		return nil
+	}
+	return lib
 }
 
 // newTranslator is the translation of the generation test's prompts: it reasons through the route of the Prompt Planner in

@@ -43,6 +43,11 @@ class Inputs {
     return this.root.querySelector<T>(selector)!;
   }
 
+  /** The dialogs that list images to add: the picker, and the pose gallery when the app has the pose library. */
+  private pickers(): HTMLElement[] {
+    return [...this.root.querySelectorAll<HTMLElement>('[data-gt-picker-dialog],[data-gt-pose-dialog]')];
+  }
+
   private rows(): HTMLElement[] {
     return [...this.list.querySelectorAll<HTMLElement>(':scope > [data-gt-ref]')];
   }
@@ -108,7 +113,7 @@ class Inputs {
     );
     // The commercial filter hides (and disables) cards: what is ticked now changes without a change of the cards.
     this.root.addEventListener('commercial-filter-applied', () => this.sync(), { signal });
-    this.q('[data-gt-picker-dialog]').addEventListener('htmx:afterRequest', markAdded);
+    for (const dialog of this.pickers()) dialog.addEventListener('htmx:afterRequest', markAdded);
     // The form is swapped as a whole (another media): its files go with it, so their object URLs are let go of.
     this.root.addEventListener('htmx:beforeCleanupElement', (e) => {
       if (e.target === this.root) this.dispose();
@@ -121,15 +126,20 @@ class Inputs {
 
   private onClick(el: Element): void {
     const row = el.closest<HTMLElement>('[data-gt-ref]');
-    const picker = this.q<HTMLDialogElement>('[data-gt-picker-dialog]');
-    if (el.closest('[data-gt-open-picker]')) picker.showModal();
-    else if (el.closest('[data-gt-picker-close]')) picker.close();
+    const opener = el.closest<HTMLElement>('[data-gt-open-picker]');
+    if (opener) this.pickerFor(opener.dataset.gtOpenPicker).showModal();
+    else if (el.closest('[data-gt-picker-close]')) el.closest('dialog')?.close();
     else if (el.closest('[data-gt-lightbox-close]')) this.q<HTMLDialogElement>('[data-gt-lightbox]').close();
     else if (el === this.q('[data-gt-lightbox]')) this.q<HTMLDialogElement>('[data-gt-lightbox]').close();
     else if (row && el.closest('[data-gt-remove]')) this.remove(row);
     else if (row && el.closest('[data-gt-move]'))
       this.move(row, Number(el.closest<HTMLElement>('[data-gt-move]')!.dataset.gtMove), el);
     else if (row && el.closest('[data-gt-zoom]')) this.zoom(row);
+  }
+
+  /** The dialog an opener button opens: the pose gallery for "pose" (#986), else the picker of the Project's or the history's images. */
+  private pickerFor(kind: string | undefined): HTMLDialogElement {
+    return this.q<HTMLDialogElement>(kind === 'pose' ? '[data-gt-pose-dialog]' : '[data-gt-picker-dialog]');
   }
 
   /** Adds files chosen or dropped: the ones the rules take, with one line about what was left out. */
@@ -231,7 +241,8 @@ class Inputs {
     });
     for (const row of [...this.files.keys()]) if (!this.list.contains(row)) this.forget(row);
     this.setFiles(kept);
-    releasePicker(this.q('[data-gt-picker-dialog]'), new Set(this.rows().map((r) => r.dataset.ref ?? '')));
+    const chosen = new Set(this.rows().map((r) => r.dataset.ref ?? ''));
+    for (const dialog of this.pickers()) releasePicker(dialog, chosen);
     this.q('[data-gt-count]').textContent = `${this.rows().length} / ${this.max}`;
     applyModels(this.root, this.form, this.rows().length);
   }
