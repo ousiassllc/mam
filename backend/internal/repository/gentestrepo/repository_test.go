@@ -184,6 +184,8 @@ func TestListResultsFiltersNewestFirst(t *testing.T) {
 	assert.Equal(t, []string{"v1"}, ids(gentestrepo.Filter{Media: gentestrepo.MediaVideo}))
 	assert.Equal(t, []string{"r1"}, ids(gentestrepo.Filter{FavoriteOnly: true}))
 	assert.Equal(t, []string{"v1", "r1"}, ids(gentestrepo.Filter{SucceededOnly: true}))
+	assert.Equal(t, []string{"v1", "r2"}, ids(gentestrepo.Filter{IDs: []string{"r2", "v1", "missing"}}), "only the named results, newest first")
+	assert.Equal(t, []string{"v1"}, ids(gentestrepo.Filter{IDs: []string{"r2", "v1"}, SucceededOnly: true}), "and with the other conditions")
 	assert.Equal(t, []string{"r1", "r2"}, ids(gentestrepo.Filter{BatchID: "b1"}))
 	assert.Equal(t, []string{"v1"}, ids(gentestrepo.Filter{Limit: 1, Offset: 1}))
 	assert.Equal(t, []string{"r3", "r2"}, ids(gentestrepo.Filter{Status: gentestrepo.StatusQueued}))

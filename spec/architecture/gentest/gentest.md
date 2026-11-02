@@ -84,6 +84,17 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 成功した結果ならどれでも取り込める（お気に入りは目印にすぎない）。取り込み先: **参照**（Reference Library の項目。画像のみ。`source='generated'`、`source_shot_id` は NULL、`kind`・`name`・`tags`）か**アセット**（画像・動画）。ファイルはプロジェクトの assets ディレクトリへ複製する。続けて、参照を Character の face/body・Product・Location のスロットに割り当てられる（`WorldService.AssignReference`。スロットの種類と参照の種類が合わなければ入力の誤り、LOCK されていれば 409）。割り当てに失敗しても取り込みは残り、そのことを知らせる（`PartialImportError`）。取り込み先は `gentest_import` に残す（TEXT の ID のみ）。
 
+## 7.1 結果の ZIP エクスポート（`service/gentest/export`。Issue #932）
+
+履歴の結果を ZIP にまとめて持ち出す。ZIP は `photos/`（画像・動画。`01_20261101-173805_chroma1-hd_bce291.png` = 番号・作成時刻（JST）・モデル・結果 id の末尾 6 文字）と `prompts/prompts.csv`（`file`, `created_at`（JST）, `media`, `model`, `seed`, `prompt`, `sent_prompt`, `result_id`）の 2 フォルダ。番号は古い順の 1 から、ファイル名の番号と CSV の `file` 列が同じ。
+
+- **選ぶ処理は 1 か所**: `export.Selection`（結果の指定 `ResultIDs`・`BatchID`・`Latest`（新しい順の N 件。上限 500）・`FavoriteOnly`・`Models`・`Media`・`Commercial`）を `Exporter.Plan`（MCP の `export_generation_results`）と `Exporter.Archive`（画面の `GET /generation-test/export`）が同じ `resolve` で解く。条件は AND。成功してファイルが実在する結果だけが入る。何も言わなければ直近 40 件（`ResultIDs`・`BatchID` があれば全部）。`Commercial` は `all` / `ok` / `ok_or_conditional`（#928 と同じ `modellicense.Filter`）で、省略は `all`（設定の既定には従わない。書き出しは頼まれない限り絞らない）。指定の `id` が入らなかったときは `Plan.Skipped` に出す。
+- **ストリーム**: `Archive.Write` は CSV を 1 行ずつ書き、ファイルを `io.Copy` で 1 つずつ ZIP に流す（画像・動画は圧縮済みなので `Store`）。巨大な ZIP でもメモリに溜めない。途中で失敗したら中央ディレクトリを書かずに止め、壊れた ZIP は開けない。
+- **分割**: `Split{Items, Bytes}`。件数かファイル合計のバイト数を超える結果から次の ZIP にする（最大 `MaxParts` = 20）。番号は全体の通し番号。各 ZIP は `Ref`（`part/parts/first/total/id,id,…`）で結果を指し、MCP のダウンロードチケットのリソース ID になる（URL には載らない）。発行時に選ばれた結果を返し、後から履歴が増えても変わらない。
+- **CSV の安全**: UTF-8 BOM つき・`encoding/csv`（改行・カンマ・引用符は RFC 4180 でエスケープ）。モデル名・プロンプト・送った文が `=` `+` `-` `@`・タブ・復帰で始まるときは先頭に `'` を足す（CSV インジェクション。Excel・LibreOffice・Google スプレッドシートが数式として実行しない。プロンプトは MCP クライアントが外から読んだ文を書き込み得る自由な文）。数値のシードと mam が作る列は対象外。
+- **ファイル名**: 英数字・`.`・`_`・`-` 以外を `-` にし、`..` を 1 つの `.` にし、両端の `-` `.` を削る（最大 40 文字。空は `model`）。パスの区切りも `..` も残らない。拡張子は保存ファイルの拡張子（英小文字・数字 5 文字まで）、無ければ MIME から。
+- **認可**: MCP は MCP のトークンが要るツールが、既存のダウンロードチケット（15 分・発行したトークンの失効で 401）の URL を返す。画面はローカル限定のサーバーの GET。ZIP は結果 id の指定を検証して（`[0-9A-Za-z_-]{1,64}`）から SQL の `IN (?)` に渡す。
+
 ## 8. 画面（`/generation-test`）
 
 プロジェクト一覧の分析・設定の隣にリンク。画像／動画の切り替え、モデルのカード（タップで選ぶ。選べないものは「選べません」のバッジで、理由は「?」ヘルプと読み上げにある）、プロンプトの追加（複数）とネガティブ、本数・縦横比（動画は解像度・長さ）、入力画像（ドロップゾーン 1 つ＋プロジェクト・履歴のモーダル。サムネイルの格子で番号・外す・並べ替え・拡大。画像は役割（全体・顔だけ・画風だけ・編集対象）と強さを、選んだモデルが使えるときだけ出し、ポーズを真似させない設定と LoRA（名前・強さ）がつく。画像／動画を切り替えると、ブラウザで選んだファイルは外れる（画面ごと入れ替わるため）。モデルのカードに入力画像のアイコン。動画は最初／最後のフレーム・自由な参照の役割）、「見積りを見る」→ 確認（件数・モデルごとの内訳・合計・単価なしの注記・警告・上限超過）→ 「この内容で実行する」→ 進捗（2 秒ごと・取り消し）と比較表（行＝モデル、列＝プロンプト）。`/generation-test/history`（モデル・種類・お気に入りで絞り込み、詳細、削除、お気に入り、ファイルのダウンロード、合計コストの 1 行）、`/generation-test/prompts`（プロンプト履歴: 再利用・削除）。詳細は取り込みフォーム（参照／アセット・種類・名前・タグ・スロット）を持つ。ルートは [endpoints-gentest.md](../../api/endpoints-gentest.md)。英訳のスイッチ「英語に訳して送る」（既定 ON。説明は「?」。§3.1）があり、訳した英語は比較表の列と結果の詳細に出る（入力した文と送った英語の両方）。
@@ -92,7 +103,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 9. テスト
 
-見積り（3 状態・丸め・上限）・直接呼び出し（代替なし・プロンプトそのまま・シードは対応モデルだけ・ブレーカーと同時実行）・バッチのジョブ（全組み合わせ・取り消し・クラッシュ後の整理・Take・台帳が増えないこと）・履歴（絞り込み・お気に入り・プロンプトの重複排除・削除）・取り込み（参照・アセット・スロット・LOCK・ファイルの複製）・マイグレーションの up/down・画面（CSRF・流れ・HTMX の進捗）・MCP（見積り → 実行の 409・`get_job`・トークン URL）。英訳（ON/OFF・英語はそのまま LLM を呼ばない・1 回の実行で 1 回だけ・失敗でモデルを呼ばない・履歴に両方・見積りの単価なしの行・ネガティブの欄あり／なし。`servicetest/translate_test.go`、`agent/prompttranslate`）。偽のバックエンドは `service/gentest/gentesttest`、ローカルの ComfyUI を通した結果までは `service/gentest/localtest`。実際のベンダー API（シードの効き・価格）は実機で未確認。
+見積り（3 状態・丸め・上限）・直接呼び出し（代替なし・プロンプトそのまま・シードは対応モデルだけ・ブレーカーと同時実行）・バッチのジョブ（全組み合わせ・取り消し・クラッシュ後の整理・Take・台帳が増えないこと）・履歴（絞り込み・お気に入り・プロンプトの重複排除・削除）・取り込み（参照・アセット・スロット・LOCK・ファイルの複製）・マイグレーションの up/down・画面（CSRF・流れ・HTMX の進捗）・MCP（見積り → 実行の 409・`get_job`・トークン URL）。英訳（ON/OFF・英語はそのまま LLM を呼ばない・1 回の実行で 1 回だけ・失敗でモデルを呼ばない・履歴に両方・見積りの単価なしの行・ネガティブの欄あり／なし。`servicetest/translate_test.go`、`agent/prompttranslate`）。偽のバックエンドは `service/gentest/gentesttest`、ローカルの ComfyUI を通した結果までは `service/gentest/localtest`。実際のベンダー API（シードの効き・価格）は実機で未確認。 ZIP のエクスポート（`export`: `photos/` と `prompts/prompts.csv` の構造・BOM・`encoding/csv` での再読み込み・番号とファイル名の対応・直近 N 件／バッチ／指定／お気に入り／モデル／種類／商用利用の選び方・分割・数式で始まるセル・ファイル名の無害化・ストリームの失敗）と、画面の選択（`export-pick.wtest.ts`: タップで枠が光る・自動更新で選択が消えない・隠れたカードを送らない）。
 
 ## 改訂履歴
 

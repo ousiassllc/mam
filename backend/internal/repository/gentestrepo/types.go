@@ -160,7 +160,9 @@ type Settlement struct {
 type Filter struct {
 	Model string
 	// Models keeps the results of any of these models (with Model: both must match).
-	Models       []string
+	Models []string
+	// IDs keeps only these results (the explicit choice of an export); nil is no restriction.
+	IDs          []string
 	Media        string
 	FavoriteOnly bool
 	BatchID      string
