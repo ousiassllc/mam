@@ -2,7 +2,8 @@
 // list_custom_nodes, get_custom_node_status, accept_custom_node_license, install_custom_node and remove_custom_node
 // (spec/api/mcp-tools-model-manager.md, spec/architecture/model-manager/custom-nodes.md). It is a package of its own because the modelmgr
 // package is at its size limit. The tools call the same modelnodes.Service as the screen, so the same checks hold: only a node of the allowlist,
-// only with the acceptance of its license and of the security notice on record (the tools never accept on the user's behalf), only on the
+// only with the acceptance of its license and of the security notice on record (accept_custom_node_license records it, as accept_model_license does
+// for a model: the agent calls it only after the user confirmed, and the service refuses an install that has no record), only on the
 // machine with the bundled engine. An install is a job (get_job reads it through the Probe of modelmgr, which asks JobProbe).
 package nodetools
 

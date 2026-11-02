@@ -55,7 +55,7 @@ func TestListShowsThePinsTheLicenseAndWhyANodeIsNotInstalled(t *testing.T) {
 	assert.Contains(t, env.CallError("get_custom_node_status", map[string]any{"node_id": "nope"}), "not_found")
 }
 
-// The tools never accept on the user's behalf: an install without a record of the acceptance is refused, as is a record of another version; the node
+// An install without a record of the acceptance is refused, as is a record of another version; the node
 // is installed only after the acceptance, and get_job reads the job as one of a node.
 func TestInstallNeedsTheAcceptanceThenRunsAsAJobAndRemoveUndoesIt(t *testing.T) {
 	env, mm, nr := newEnv(t)

@@ -110,6 +110,16 @@ func TestInstallExtractsThePinnedArchiveAndOnlyThenTheFolderIsEnabled(t *testing
 	assert.Equal(t, []string{"other"}, r.m.Missing([]string{"pack", "other"}), "an ID that is not in the allowlist is never loaded")
 }
 
+func TestMissing_JudgesOnlyTheNodesAskedFor(t *testing.T) {
+	r := newRig(t, good)
+	require.NoError(t, r.m.Install(context.Background(), "pack", nil, nil))
+	assert.Empty(t, r.m.Missing(nil), "nothing asked: nothing is missing")
+	assert.Equal(t, []string{"pack"}, (*nodes.Manager)(nil).Missing([]string{"pack", "pack"}), "no manager: nothing is loaded")
+
+	require.NoError(t, os.WriteFile(filepath.Join(r.m.Folder(r.node), "__init__.py"), []byte("changed"), 0o600))
+	assert.Equal(t, []string{"pack"}, r.m.Missing([]string{"pack"}), "a modified folder is not loaded")
+}
+
 func TestAFailingPrepareLeavesNothingInstalled(t *testing.T) {
 	r := newRig(t, good)
 	require.ErrorContains(t, r.m.Install(context.Background(), "pack", nil, func() error { return os.ErrPermission }), "permission")

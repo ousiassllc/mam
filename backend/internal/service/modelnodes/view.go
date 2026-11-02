@@ -39,7 +39,8 @@ type View struct {
 	ArchiveSize int64  `json:"archive_size"`
 	// ExtractedSize is the room the extracted files take.
 	ExtractedSize int64 `json:"extracted_size"`
-	Folder        string
+	// Folder is the name of the folder under custom_nodes.
+	Folder string `json:"folder"`
 	// License is the license of the node's code (with the commercial-use answer the screens show).
 	License catalog.License `json:"license"`
 	// PythonRequires are the packages the node imports; PythonOptional the ones only some of its nodes import (they fail without).
