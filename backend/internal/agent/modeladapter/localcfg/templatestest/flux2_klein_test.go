@@ -1,4 +1,4 @@
-package localcfg_test
+package templatestest
 
 import (
 	"fmt"

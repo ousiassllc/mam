@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/platform"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
 )
@@ -21,30 +22,41 @@ const (
 	ErrTTL = 30 * time.Second
 )
 
-// Cache is the last detection and when it is stale. The zero value is ready.
-type Cache struct {
-	mu    sync.Mutex
-	bytes uint64
-	until time.Time
+// Profile is what a model is judged against: the video memory of the largest GPU in bytes (0 when none is known) and, for the OS / GPU generation
+// columns of the catalog (Issue #979), the OS and the generation of that GPU (platform.Host; "" when not known).
+type Profile struct {
+	VRAM uint64
+	Host platform.Host
 }
 
-// Get is the video memory in bytes of the largest GPU (0 when none is known): the remembered one while it is fresh at now, else the one
-// detect finds. A detection that a cancelled ctx cut short is not remembered. Callers that meet a detection in flight wait for it and
-// share its answer instead of starting their own.
+// Cache is the last detection and when it is stale. The zero value is ready.
+type Cache struct {
+	mu      sync.Mutex
+	profile Profile
+	until   time.Time
+}
+
+// Get is the video memory in bytes of the largest GPU (0 when none is known); see Profile.
 func (c *Cache) Get(ctx context.Context, now time.Time, detect func(context.Context) gpu.Report) uint64 {
+	return c.Profile(ctx, now, detect).VRAM
+}
+
+// Profile is the remembered detection while it is fresh at now, else the one detect finds. A detection that a cancelled ctx cut short is not
+// remembered. Callers that meet a detection in flight wait for it and share its answer instead of starting their own.
+func (c *Cache) Profile(ctx context.Context, now time.Time, detect func(context.Context) gpu.Report) Profile {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if now.Before(c.until) {
-		return c.bytes
+		return c.profile
 	}
 	rep := detect(ctx)
-	bytes := hfplan.VRAMOf(rep.Adapters)
+	p := Profile{VRAM: hfplan.VRAMOf(rep.Adapters), Host: platform.Host{OS: rep.OS, GPUArch: gpu.HostArch(rep)}}
 	switch {
 	case ctx.Err() != nil:
 	case rep.Error != "":
-		c.bytes, c.until = bytes, now.Add(ErrTTL)
+		c.profile, c.until = p, now.Add(ErrTTL)
 	default:
-		c.bytes, c.until = bytes, now.Add(TTL)
+		c.profile, c.until = p, now.Add(TTL)
 	}
-	return bytes
+	return p
 }

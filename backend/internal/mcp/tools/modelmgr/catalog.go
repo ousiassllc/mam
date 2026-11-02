@@ -36,6 +36,9 @@ type ListCatalogOutput struct {
 	Blocked          string `json:"blocked,omitempty" jsonschema:"導入できない理由（エンジン未導入・Windows 以外・設定ファイルの固定）。空なら導入できる"`
 	// VRAMFit is how this PC's GPU stands to each model's VRAM guideline (vram.min_gb / recommended_gb), by model id; absent while the GPU memory is not known.
 	VRAMFit map[string]mmview.ModelFit `json:"vram_fit,omitempty" jsonschema:"この PC の GPU から見た各モデルの VRAM の判定（モデル ID ごと）。fit が limited は「推奨には届かないが動くが制約あり」で、text に制約の中身が入る。GPU のメモリが分からないときは省かれる"`
+	// PlatformWarnings is what this PC's OS / GPU generation says about each model whose catalog columns (requires, unsupported) it is outside of, by
+	// model id (Issue #979). It only warns: install_model does not refuse for it.
+	PlatformWarnings map[string]string `json:"platform_warnings,omitempty" jsonschema:"この PC の OS・GPU の世代が、モデルの対象（requires）の外、または動かないと分かっている環境（unsupported）のとき、その警告（モデル ID ごと）。警告だけで install_model は拒否しない。対象外のモデルが無ければ省かれる"`
 }
 
 // ListCatalogInput narrows the catalog by commercial use.
@@ -63,6 +66,12 @@ func (h handlers) listCatalog(ctx context.Context, in ListCatalogInput) (ListCat
 			continue
 		}
 		out.Models = append(out.Models, v)
+		if w := mmview.PlatformWarning(ctx, m, v); w != "" {
+			if out.PlatformWarnings == nil {
+				out.PlatformWarnings = map[string]string{}
+			}
+			out.PlatformWarnings[v.ID] = w
+		}
 		if fit, ok := mmview.FitOf(v.VRAM, gpuVRAM); ok {
 			if out.VRAMFit == nil {
 				out.VRAMFit = map[string]mmview.ModelFit{}

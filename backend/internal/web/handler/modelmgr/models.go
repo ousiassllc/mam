@@ -55,11 +55,11 @@ func (h Handlers) Consent(c *gin.Context) {
 		render(c, status, view.ConsentDialog(view.Consent{Name: "モデル", Error: msg}))
 		return
 	}
-	render(c, http.StatusOK, view.ConsentDialog(consentOf(m, "")))
+	render(c, http.StatusOK, view.ConsentDialog(consentOf(c, h.Svc, m, "")))
 }
 
-func consentOf(m modelmanager.ModelView, errMsg string) view.Consent {
-	return view.Consent{ModelID: m.ID, Name: m.Name, License: licenseOf(m.License), AdultNotice: m.AdultNotice, Sources: sourcesOf(m), Error: errMsg}
+func consentOf(c *gin.Context, svc *modelmanager.Service, m modelmanager.ModelView, errMsg string) view.Consent {
+	return view.Consent{ModelID: m.ID, Name: m.Name, License: licenseOf(m.License), AdultNotice: m.AdultNotice, Sources: sourcesOf(m), PlatformWarning: mmview.PlatformWarning(c.Request.Context(), svc, m), Error: errMsg}
 }
 
 // InstallModel starts the install of a model as a job (POST /model-manager/models/:id/install). A model whose license
@@ -79,7 +79,7 @@ func (h Handlers) InstallModel(c *gin.Context) {
 			// the dialog stays (or opens) with the reason, in the place of the dialog
 			c.Header("HX-Retarget", "#"+view.DialogID)
 			c.Header("HX-Reswap", "innerHTML")
-			render(c, status, view.ConsentDialog(consentOf(m, msg)))
+			render(c, status, view.ConsentDialog(consentOf(c, h.Svc, m, msg)))
 			return
 		}
 		cat := catalogData(ctx, h.Svc, nil)

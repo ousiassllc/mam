@@ -19,7 +19,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
-	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/mainfile"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/platform"
 )
 
 //go:embed data
@@ -118,28 +118,6 @@ type VRAM struct {
 	Estimate      bool   `json:"estimate"`
 }
 
-// Workflow is a #831 model created on the bundled endpoint when the model is installed: Name is its model
-// name (the identifier is comfyui:bundled-comfyui/<Name>), Template the localcfg workflow template it starts from.
-// ModelFile (optional) replaces the main file of the template (the CheckpointLoaderSimple checkpoint or the UNETLoader diffusion model;
-// package mainfile): the SDXL and Qwen-Image 2.1 templates are shared by many models, each with its own file.
-type Workflow struct {
-	Name      string `json:"name"`
-	Template  string `json:"template"`
-	ModelFile string `json:"model_file,omitempty"`
-}
-
-// Model is the model the install saves for the workflow: the one of the template, with ModelFile in place of its main file.
-func (w Workflow) Model(template func(id string) (localcfg.Template, bool)) (localcfg.Model, error) {
-	tpl, ok := template(w.Template)
-	switch {
-	case !ok:
-		return localcfg.Model{}, fmt.Errorf("template %q does not exist", w.Template)
-	case w.ModelFile == "":
-		return tpl.Model, nil
-	}
-	return mainfile.Model(tpl, w.ModelFile)
-}
-
 // ContentRating says who a model is for. An adult model (an uncensored model, or a LoRA that adds that) is hidden
 // from the list, the install and the trial generation until the age confirmation is on record
 // (modelmanager.Service.SetAdultContent); the catalog rule is that it is an advanced model (consent required).
@@ -170,7 +148,13 @@ type Model struct {
 	// refuses without a stored token and checks the access before it makes a job.
 	RequiresHFToken bool       `json:"requires_hf_token"`
 	Workflows       []Workflow `json:"workflows"`
+	// PlatformColumns are the optional GPU generation / OS columns (Issue #979: requires, unsupported): where the model is made for and where it is
+	// known not to run. They only warn (platform.Warning); nothing is refused.
+	PlatformColumns
 }
+
+// PlatformColumns is platform.Columns, which the model and its view embed.
+type PlatformColumns = platform.Columns
 
 // Adult reports whether the model is for adults only.
 func (m Model) Adult() bool { return m.ContentRating == RatingAdult }

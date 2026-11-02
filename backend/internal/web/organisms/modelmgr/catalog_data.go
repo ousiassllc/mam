@@ -37,10 +37,12 @@ type Model struct {
 	// and VRAMFitText says it in words, with the limits of a GPU that is below the recommendation.
 	VRAMFit     string
 	VRAMFitText string
-	NoSource    bool
-	License     License
-	Consent     bool
-	Accepted    bool
+	// PlatformWarning: this PC's OS / GPU generation is outside the catalog's columns of the model (Issue #979; "" when inside). It only warns.
+	PlatformWarning string
+	NoSource        bool
+	License         License
+	Consent         bool
+	Accepted        bool
 	// NeedsToken is the badge 「HF トークンが必要」 (a model behind a Hugging Face login); TokenGuide is the guidance shown beside the
 	// install while no token is stored ("" when there is one, or the model needs none).
 	NeedsToken bool
@@ -91,9 +93,10 @@ type Consent struct {
 	License License
 	// AdultNotice is the notice for adult models, shown after the license summary ("" for a general model); Sources are the
 	// places of the originals of the mirrored files.
-	AdultNotice string
-	Sources     []string
-	Error       string
+	AdultNotice     string
+	Sources         []string
+	PlatformWarning string // the card's warning again, where the install is started
+	Error           string
 }
 
 // CommercialPanel is the setting "商用OKのモデルだけを使う" with the filter of the model list: the filter is drawn with the setting's

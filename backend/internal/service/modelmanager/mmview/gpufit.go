@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/platform"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/vramfit"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 )
@@ -27,4 +28,15 @@ type ModelFit struct {
 func FitOf(v catalog.VRAM, vramBytes uint64) (ModelFit, bool) {
 	fit := vramfit.For(v, vramBytes)
 	return ModelFit{Fit: fit, Text: vramfit.Text(v, vramBytes)}, fit != vramfit.Unknown && v.RecommendedGB > v.MinGB
+}
+
+// Host is the OS and the GPU generation of this PC, from the same remembered detection as GPUVRAM (Issue #979).
+func Host(ctx context.Context, s *modelmanager.Service) platform.Host {
+	return s.VRAM.Profile(ctx, s.Now(), s.GPU).Host
+}
+
+// PlatformWarning is what the screen and the MCP tools say when this PC is outside the OS / GPU generation columns of the model ("" when it
+// is inside, or the model has no such column). It only warns: an install is never refused for it.
+func PlatformWarning(ctx context.Context, s *modelmanager.Service, m modelmanager.ModelView) string {
+	return m.Warning(Host(ctx, s))
 }
