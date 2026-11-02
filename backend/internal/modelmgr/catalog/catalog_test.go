@@ -23,13 +23,13 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 16)
+	require.Len(t, c.Models, 17)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
 	}
 	assert.Equal(t, []string{
-		"flux1-schnell", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-ti2v-5b", // standard: images, then videos
+		"flux1-schnell", "flux2-klein-4b", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-ti2v-5b", // standard: images, then videos
 		"chroma1-hd", "flux1-dev", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "sd35-medium", // advanced: images, then videos
 		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v",
 	}, ids)
@@ -45,6 +45,7 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 	}{
 		"sdxl-base":                        {"creativeml-openrail++-m", false, modellicense.Yes, 1},
 		"flux1-schnell":                    {"apache-2.0", false, modellicense.Yes, 1},
+		"flux2-klein-4b":                   {"apache-2.0", false, modellicense.Yes, 3},
 		"qwen-image":                       {"apache-2.0", false, modellicense.Yes, 3},
 		"wan22-ti2v-5b":                    {"apache-2.0", false, modellicense.Yes, 3},
 		"wan22-i2v-14b":                    {"apache-2.0", false, modellicense.Yes, 4},

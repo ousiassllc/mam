@@ -1,4 +1,4 @@
-package comfyui
+package stage
 
 import (
 	"cmp"
@@ -36,32 +36,36 @@ type refUse struct {
 	steps int
 }
 
-// stage rewrites an editing workflow for the references of the run. It returns an error for a graph that is not the shape
-// the staging knows (a text encoder that takes the references and one KSampler fed by it).
-func stage(g localcfg.Graph, wf localcfg.Workflow, v values) error {
-	if wf.ReferenceMode != localcfg.ModeEdit || len(v.references) == 0 {
+// Apply rewrites an editing workflow for the references of the run. It returns an error for a graph that is not the shape
+// the staging knows: a text encoder that takes the references (TextEncodeQwenImage21) and one KSampler fed by it, or a
+// CLIPTextEncode whose conditioning the references join through ReferenceLatent nodes (FLUX.2, stageReferenceLatent).
+func Apply(g localcfg.Graph, wf localcfg.Workflow, count int, opts localcfg.ImageOptions, prompt string) error {
+	if wf.ReferenceMode != localcfg.ModeEdit || count == 0 {
 		return nil
 	}
 	enc, ok := nodeOf(g, wf, localcfg.ParamPrompt)
+	if ok && g[enc].ClassType == "CLIPTextEncode" {
+		return stageReferenceLatent(g, enc, count, opts, prompt)
+	}
 	if !ok || g[enc].ClassType != encodeClass {
-		return fmt.Errorf("the editing workflow's prompt is not in a %s node", encodeClass)
+		return fmt.Errorf("the editing workflow's prompt is not in a %s or CLIPTextEncode node", encodeClass)
 	}
 	sampler, ok := samplerOf(g, enc)
 	if !ok {
 		return fmt.Errorf("no KSampler takes the output of %s", enc)
 	}
 	total := intInput(g[sampler], "steps")
-	uses := make([]refUse, len(v.references))
-	for i := range v.references {
-		o := v.opts.Ref(i)
+	uses := make([]refUse, count)
+	for i := range count {
+		o := opts.Ref(i)
 		uses[i] = refUse{slot: i, role: o.Role, steps: stepsFor(o.StrengthOrDefault(), total)}
 	}
 	cuts := stageCuts(uses, total)
 	snapToCuts(uses, cuts, total)
 	if total <= 0 || len(cuts) == 0 {
-		return singleStage(g, enc, uses, v.prompt)
+		return singleStage(g, enc, uses, prompt)
 	}
-	return multiStage(g, enc, sampler, uses, cuts, v.prompt)
+	return multiStage(g, enc, sampler, uses, cuts, prompt)
 }
 
 // stepsFor is how many of the steps a reference of the strength stays in: the strength times the steps, so that 1 is the whole
@@ -118,7 +122,7 @@ func absInt(n int) int {
 // singleStage keeps the node: every reference is in the whole run.
 func singleStage(g localcfg.Graph, enc string, uses []refUse, prompt string) error {
 	n := g[enc]
-	n.Inputs["prompt"] = literal(promptFor(uses, prompt))
+	n.Inputs["prompt"] = Literal(promptFor(uses, prompt))
 	setVAE(g, n, uses)
 	return nil
 }
@@ -135,13 +139,13 @@ func multiStage(g localcfg.Graph, enc, sampler string, uses []refUse, cuts []int
 	g["mam_noise"] = localcfg.Node{ClassType: "RandomNoise", Inputs: map[string]json.RawMessage{"noise_seed": ks.Inputs["seed"]}}
 	g["mam_nonoise"] = localcfg.Node{ClassType: "DisableNoise", Inputs: map[string]json.RawMessage{}}
 
-	latent, rest, start := ks.Inputs["latent_image"], link(sigmas, 0), 0
+	latent, rest, start := ks.Inputs["latent_image"], Link(sigmas, 0), 0
 	bounds := append(slices.Clone(cuts), steps)
 	for k, end := range bounds {
 		active := activeAt(uses, start)
 		id := fmt.Sprintf("mam_enc_%d", k)
 		clone := cloneNode(g[enc])
-		clone.Inputs["prompt"] = literal(promptFor(active, prompt))
+		clone.Inputs["prompt"] = Literal(promptFor(active, prompt))
 		setVAE(g, clone, active)
 		keepSlots(clone, g[enc], active)
 		g[id] = clone
@@ -149,27 +153,27 @@ func multiStage(g localcfg.Graph, enc, sampler string, uses []refUse, cuts []int
 		part := rest
 		if k < len(bounds)-1 { // cut the sigmas here: the first part is this stage, the second the rest
 			split := fmt.Sprintf("mam_split_%d", k)
-			g[split] = localcfg.Node{ClassType: "SplitSigmas", Inputs: map[string]json.RawMessage{"sigmas": rest, "step": literal(end - start)}}
-			part, rest = link(split, 0), link(split, 1)
+			g[split] = localcfg.Node{ClassType: "SplitSigmas", Inputs: map[string]json.RawMessage{"sigmas": rest, "step": Literal(end - start)}}
+			part, rest = Link(split, 0), Link(split, 1)
 		}
 		guider, run := fmt.Sprintf("mam_guider_%d", k), fmt.Sprintf("mam_run_%d", k)
 		g[guider] = localcfg.Node{ClassType: "CFGGuider", Inputs: map[string]json.RawMessage{
-			"model": ks.Inputs["model"], "positive": link(id, 0), "negative": link(id, 1), "cfg": ks.Inputs["cfg"],
+			"model": ks.Inputs["model"], "positive": Link(id, 0), "negative": Link(id, 1), "cfg": ks.Inputs["cfg"],
 		}}
 		noise := "mam_noise"
 		if k > 0 {
 			noise = "mam_nonoise"
 		}
 		g[run] = localcfg.Node{ClassType: "SamplerCustomAdvanced", Inputs: map[string]json.RawMessage{
-			"noise": link(noise, 0), "guider": link(guider, 0), "sampler": link("mam_select", 0), "sigmas": part, "latent_image": latent,
+			"noise": Link(noise, 0), "guider": Link(guider, 0), "sampler": Link("mam_select", 0), "sigmas": part, "latent_image": latent,
 		}}
-		latent, start = link(run, 0), end
+		latent, start = Link(run, 0), end
 	}
-	last, _, _ := linkOf(latent)
+	last, _, _ := LinkOf(latent)
 	for _, n := range g {
 		for name, raw := range n.Inputs {
-			if to, idx, ok := linkOf(raw); ok && to == sampler && idx == 0 {
-				n.Inputs[name] = link(last, 0)
+			if to, idx, ok := LinkOf(raw); ok && to == sampler && idx == 0 {
+				n.Inputs[name] = Link(last, 0)
 			}
 		}
 	}
@@ -224,14 +228,14 @@ func setVAE(g localcfg.Graph, n localcfg.Node, active []refUse) {
 		if g[id].ClassType != "VAEDecode" {
 			continue
 		}
-		if to, _, ok := linkOf(g[id].Inputs["vae"]); ok && g[to].ClassType == "VAELoader" {
-			n.Inputs["vae"] = link(to, 0)
+		if to, _, ok := LinkOf(g[id].Inputs["vae"]); ok && g[to].ClassType == "VAELoader" {
+			n.Inputs["vae"] = Link(to, 0)
 			return
 		}
 	}
 	for _, id := range ids {
 		if g[id].ClassType == "VAELoader" {
-			n.Inputs["vae"] = link(id, 0)
+			n.Inputs["vae"] = Link(id, 0)
 			return
 		}
 	}
@@ -296,7 +300,7 @@ func samplerOf(g localcfg.Graph, enc string) (string, bool) {
 		if g[id].ClassType != "KSampler" {
 			continue
 		}
-		if to, idx, ok := linkOf(g[id].Inputs["positive"]); ok && to == enc && idx == 0 {
+		if to, idx, ok := LinkOf(g[id].Inputs["positive"]); ok && to == enc && idx == 0 {
 			return id, true
 		}
 	}

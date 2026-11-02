@@ -12,3 +12,4 @@
 
 | 1.5 | 2026-11-02 | §1・§3: ComfyUI のタイムアウトの既定を 3600 秒から 10800 秒（3 時間）にし、接続先ごとに変えられると明記。取り消しは `/api/jobs/<id>/cancel` が失敗（404・405）したら対象を指す割り込み／キュー削除に回る（405 を取りこぼして止まらなかった） | Issue #917 |
 | 1.6 | 2026-11-02 | §4.1: 非検閲のテキストエンコーダーのテンプレート 2 つ（`txt2video-ltx-2-5-uncensored`・`img2video-ltx-2-5-uncensored`）、音声つきの保存形式、macOS（外部 ComfyUI）が不安定で未確認であることを足した | Issue #927 |
+| 1.7 | 2026-11-02 | §4.2 の表に FLUX.2 の `edit`（`flux2-klein-4b`・`txt2img-flux2-klein`）を足した。参照は `ReferenceLatent` の鎖で、最大 4 枚。強さは Qwen の編集と同じ意味で区間に分ける。`localcfg` のテンプレート（20 個）と `comfyui/stage` パッケージ（Qwen の編集の区間分けを `agent/modeladapter/comfyui` から移した）の `CLIPTextEncode` のとき（`stageReferenceLatent`）、`dropUnused` が使わないスロットの縮小・VAEEncode・`ReferenceLatent` を外す | Issue #931 |
