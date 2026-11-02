@@ -77,7 +77,8 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p resultPar
 		req.Options.Refs = append(req.Options.Refs, localcfg.RefOption{Role: role, Strength: strength})
 	}
 	if p.LoRA != nil {
-		req.Options.LoRA = &localcfg.LoRA{Name: p.LoRA.Name, Strength: p.LoRA.Strength}
+		sent := p.LoRA.Sent()
+		req.Options.LoRA = &sent
 	}
 	out, err := direct.Image(ctx, br.s.Adapter, domain.ModelName(r.Model), req)
 	if err != nil {

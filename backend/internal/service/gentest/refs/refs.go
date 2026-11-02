@@ -7,20 +7,31 @@ package refs
 import (
 	"math"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 )
 
-// MinStrength is the least strength sent to a model: localcfg.RefOption treats 0 as "not given" (the default), so a strength
-// of 0 that the user chose is sent as this.
+// MinStrength is the least strength sent to a model: localcfg.RefOption and the ComfyUI LoRA treat 0 as "not given" (the
+// default), so a strength of 0 that the user chose is sent as this.
 const MinStrength = 0.01
+
+// MaxLoRANameRunes bounds the name of a LoRA (a file name of the loras folder, sub folders included).
+const MaxLoRANameRunes = 200
 
 // LoRA is the LoRA a result was made with (gentest_result.params "lora") and what a history view shows of it.
 type LoRA struct {
 	Name     string  `json:"name"`
 	Strength float64 `json:"strength"`
+}
+
+// Sent is the LoRA as the model is given it: a strength of 0 that the user chose is MinStrength, never the default the
+// engine puts in the place of 0.
+func (l LoRA) Sent() localcfg.LoRA {
+	return localcfg.LoRA{Name: l.Name, Strength: max(l.Strength, MinStrength)}
 }
 
 // ImageRoles are the roles a reference of an image model may have (the whole picture first).
@@ -61,7 +72,8 @@ func CheckRole(media, role string, strength *float64) (string, error) {
 func inUnit(v float64) bool { return v >= 0 && v <= 1 && !math.IsNaN(v) }
 
 // CheckLoRA checks the LoRA of a request (nil: none) and returns it with its name trimmed and its strength filled. A LoRA is
-// for image models only; the name must be given and the strength within 0..1.
+// for image models only; the name must be given (at most MaxLoRANameRunes, no control characters: it is a file name of the
+// loras folder, so '/' and '.' are fine) and the strength within 0..1.
 func CheckLoRA(media, name string, strength *float64) (LoRA, error) {
 	if media == gentestrepo.MediaVideo {
 		return LoRA{}, gterr.Invalid("LoRA は画像だけで使えます")
@@ -69,6 +81,12 @@ func CheckLoRA(media, name string, strength *float64) (LoRA, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return LoRA{}, gterr.Invalid("LoRA の名前を指定してください")
+	}
+	if utf8.RuneCountInString(name) > MaxLoRANameRunes {
+		return LoRA{}, gterr.Invalid("LoRA の名前は %d 文字以内にしてください", MaxLoRANameRunes)
+	}
+	if strings.ContainsFunc(name, unicode.IsControl) {
+		return LoRA{}, gterr.Invalid("LoRA の名前に制御文字は使えません")
 	}
 	s := localcfg.DefaultLoRAStrength
 	if strength != nil {

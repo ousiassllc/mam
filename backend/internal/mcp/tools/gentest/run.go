@@ -34,7 +34,7 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 		return ListModelsOutput{}, err
 	}
 	items, cost := g.Limits()
-	loras := g.LoRAs(ctx)
+	loras := g.LoRAs(ctx, in.Media)
 	if loras == nil {
 		loras = []string{}
 	}
@@ -48,7 +48,7 @@ type ReferenceInput struct {
 	ProjectID string `json:"project_id,omitempty" jsonschema:"project_asset / reference_item のとき"`
 	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）。動画: reference / first_frame / last_frame。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`
 	// Strength is a pointer: omitted means the default (0.7), 0 is a deliberate "barely".
-	Strength *float64 `json:"strength,omitempty" jsonschema:"画像モデルだけ。参照画像をどれだけ強く反映するか（0〜1、既定 0.7）。モデルごとの実現方法は隠す。動画では指定できない（validation）"`
+	Strength *float64 `json:"strength,omitempty" jsonschema:"画像モデルだけ。参照画像をどれだけ強く反映するか（0〜1、既定 0.7）。モデルごとの実現方法は隠す。動画では指定できない（validation）。強さを実現できるのは同梱 ComfyUI の参照対応モデルだけで、クラウドの画像モデルなどでは無視され、警告も出ない"`
 }
 
 // LoRAInput is a LoRA of the engine and its strength.
@@ -74,7 +74,7 @@ type RequestInput struct {
 	DurationSeconds float64          `json:"duration_seconds,omitempty" jsonschema:"動画だけ。省くと 5 秒。モデルが作れる長さに丸める"`
 	References      []ReferenceInput `json:"references,omitempty" jsonschema:"入力画像（画像モデルの参照画像・動画の最初／最後のフレーム）。各画像に role と strength を付けられる。モデルが使える枚数は max_reference_images、役割は reference_roles（list_generation_models）。超えた分は警告 too_many_refs で使わない"`
 	// AvoidReferencePose adds "same pose as reference, ..." to the negative prompt of every model that uses a reference.
-	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty" jsonschema:"画像だけ。参照画像のポーズ・構図を真似ないようにする（参照を使うモデルのネガティブプロンプトに「同じポーズ・構図」を足す。ネガティブの欄が無いモデルは Avoid: として書き足す）"`
+	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty" jsonschema:"画像だけ。参照画像のポーズ・構図を真似ないようにする（参照を使うモデルのネガティブプロンプトに「同じポーズ・構図」を足す。ネガティブの欄が無いモデルは Avoid: として書き足す。参照画像が無い・参照画像を使うモデルが無いときは何も起きず、警告も出ない）"`
 	// LoRA is applied together with the references to every model that supports it.
 	LoRA *LoRAInput `json:"lora,omitempty" jsonschema:"画像だけ。参照画像と一緒に使う LoRA。supports_lora でないモデルは警告 lora_unsupported で使わない"`
 	// TranslateToEnglish is a pointer: omitted means the default of the screen (on), false is a deliberate off.

@@ -2,6 +2,7 @@ package refs_test
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,6 +53,24 @@ func TestCheckLoRA(t *testing.T) {
 		_, err := refs.CheckLoRA(bad.media, bad.name, bad.s)
 		assert.Error(t, err, "%+v", bad)
 	}
+}
+
+func TestCheckLoRAAcceptsAFilePathAndRefusesALongNameOrControlCharacters(t *testing.T) {
+	for _, name := range []string{"sub/dir/face.v2.safetensors", "顔" + strings.Repeat("a", refs.MaxLoRANameRunes-1)} {
+		_, err := refs.CheckLoRA("image", name, nil)
+		assert.NoError(t, err, name)
+	}
+	for _, name := range []string{
+		strings.Repeat("a", refs.MaxLoRANameRunes+1), "a\nb.safetensors", "a\x00.safetensors", "a\tb", "a\x7f", "a\u0085b",
+	} {
+		_, err := refs.CheckLoRA("image", name, nil)
+		assert.Error(t, err, "%q", name)
+	}
+}
+
+func TestLoRASentIsNeverTheDefaultStrength(t *testing.T) {
+	assert.Equal(t, localcfg.LoRA{Name: "a", Strength: refs.MinStrength}, refs.LoRA{Name: "a"}.Sent(), "0 is read as the default by the engine")
+	assert.Equal(t, localcfg.LoRA{Name: "a", Strength: 0.55}, refs.LoRA{Name: "a", Strength: 0.55}.Sent())
 }
 
 func TestInputOfMapsTheRoleAndKeepsAZeroStrengthApart(t *testing.T) {
