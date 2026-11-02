@@ -10,3 +10,4 @@
 *.exe binary
 *.onnx binary
 *.7z binary
+*.webp binary
