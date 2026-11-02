@@ -1,21 +1,20 @@
 package pages
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/worldstate"
 )
 
 // WorldStatePage is GET /projects/:id/world-state: the current World State in an auxiliary view.
 templ WorldStatePage(csrfToken string, d worldstate.Data) {
-	@layout.AppLayout("World State: "+d.Project.Name, csrfToken) {
-		<main class="mx-auto max-w-5xl p-8">
-			@atoms.ChatBackLink(d.Project.ID)
-			<h1 class="mb-1 mt-3 text-xl font-semibold">World State</h1>
-			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
+	@layout.AppLayout("World State: "+d.Project.Name, csrfToken, sidenav.InProject(sidenav.WorldState, d.Project)) {
+		@pagehead.Main(pagehead.Wide) {
+			@pagehead.Header("World State", d.Project.Name, "")
 			@organisms.SeriesMembership(d.Project)
 			@worldstate.View(d)
-		</main>
+		}
 	}
 }

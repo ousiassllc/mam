@@ -1,0 +1,137 @@
+package sidenav
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/navstate"
+)
+
+const (
+	// ID is the id of the menu (the fold button controls it).
+	ID = "sidenav"
+	// LabelFold and LabelOpen name the fold button in each state; static/src/components/sidenav swaps them.
+	LabelFold = "メニューをたたむ"
+	LabelOpen = "メニューを開く"
+	// MenuLabel names the navigation landmark.
+	MenuLabel = "メニュー"
+
+	itemClass   = "flex items-center gap-3 rounded-md border-l-2 px-3 py-1.5 text-sm transition-colors hover:bg-neutral-800 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
+	idleClass   = " border-transparent text-neutral-300"
+	activeClass = " border-indigo-400 bg-neutral-800 font-medium text-neutral-100"
+	// labelClass hides the text of an entry visually, not from assistive technology, when the menu is folded and on a narrow
+	// window (icons only there; the fold button is hidden too).
+	labelClass = "truncate max-md:sr-only group-data-[folded=true]:sr-only"
+)
+
+func foldedText(folded bool) string {
+	if folded {
+		return "true"
+	}
+	return "false"
+}
+
+func foldLabel(folded bool) string {
+	if folded {
+		return LabelOpen
+	}
+	return LabelFold
+}
+
+// Nav is the menu: the screens of the app, then, on a Project's screens, the views of the Project. It is the first thing a
+// keyboard reaches on a page, so the layout puts a skip link before it. The fold state comes from the request (navstate);
+// the fold button, the cookie and the label are static/src/components/sidenav.
+templ Nav(s State) {
+	if !s.Hidden {
+		@menu(s, navstate.IsFolded(ctx))
+	}
+}
+
+templ menu(s State, folded bool) {
+	<nav
+		id={ ID }
+		aria-label={ MenuLabel }
+		data-testid="sidenav"
+		data-folded={ foldedText(folded) }
+		data-cookie={ navstate.CookieName }
+		data-cookie-folded={ navstate.Folded }
+		data-label-fold={ LabelFold }
+		data-label-open={ LabelOpen }
+		class="group sticky top-0 flex h-screen w-14 shrink-0 flex-col gap-4 border-r border-neutral-800 bg-neutral-950 px-2 py-4 md:data-[folded=false]:w-56"
+	>
+		<div class="flex items-center justify-between gap-2 px-1 group-data-[folded=true]:justify-center max-md:justify-center">
+			<span class="truncate text-base font-semibold text-neutral-100 max-md:sr-only group-data-[folded=true]:sr-only">mam</span>
+			<button
+				type="button"
+				data-sidenav-toggle
+				aria-controls={ ID }
+				aria-expanded={ boolText(!folded) }
+				aria-label={ foldLabel(folded) }
+				title={ foldLabel(folded) }
+				data-testid="sidenav-toggle"
+				class="rounded-md p-2 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 max-md:hidden motion-reduce:transition-none"
+			>
+				<span class="group-data-[folded=true]:hidden">
+					@atoms.Icon(atoms.IconPanelClose, "h-5 w-5")
+				</span>
+				<span class="hidden group-data-[folded=true]:inline">
+					@atoms.Icon(atoms.IconPanelOpen, "h-5 w-5")
+				</span>
+			</button>
+		</div>
+		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden">
+			@list(Screens(), s.Current, "sidenav-screens", "")
+			if s.Project != nil {
+				<div class="flex flex-col gap-1 border-t border-neutral-800 pt-3">
+					<p id="sidenav-project" class="truncate px-3 text-xs text-neutral-400 max-md:sr-only group-data-[folded=true]:sr-only" title={ s.Project.Name }>{ s.Project.Name }</p>
+					@list(Views(*s.Project), s.Current, "sidenav-views", "sidenav-project")
+				</div>
+			}
+		</div>
+	</nav>
+}
+
+// list is one list of entries; labelledBy names it by the heading above (empty for the first, which the landmark names).
+templ list(items []Item, current Key, id, labelledBy string) {
+	<ul
+		id={ id }
+		role="list"
+		class="flex flex-col gap-0.5"
+		if labelledBy != "" {
+			aria-labelledby={ labelledBy }
+		}
+	>
+		for _, it := range items {
+			<li>
+				@entry(it, it.Key == current)
+			</li>
+		}
+	</ul>
+}
+
+templ entry(it Item, current bool) {
+	<a
+		href={ templ.SafeURL(it.Href) }
+		title={ it.Label }
+		data-testid="sidenav-item"
+		data-key={ string(it.Key) }
+		if current {
+			aria-current="page"
+			class={ itemClass + activeClass }
+		} else {
+			class={ itemClass + idleClass }
+		}
+	>
+		<span class={ iconClass(current) }>
+			@atoms.Icon(it.Icon, "h-5 w-5")
+		</span>
+		<span class={ labelClass }>{ it.Label }</span>
+	</a>
+}
+
+func iconClass(current bool) string {
+	if current {
+		return "shrink-0 text-indigo-300"
+	}
+	return "shrink-0 text-neutral-400"
+}
+
+func boolText(b bool) string { return foldedText(b) }

@@ -17,7 +17,8 @@ func homePage(t *testing.T) string {
 	t.Helper()
 	var sb strings.Builder
 	require.NoError(t, pages.ProjectsPage("tok", nil, organisms.NewProjectFormData{}).Render(context.Background(), &sb))
-	return sb.String()
+	html := sb.String()
+	return html[strings.Index(html, `id="content"`):] // the side menu has its own links (sidenav tests)
 }
 
 // Each card of the home page is a link named by its title alone, so that a link list or a voice command ("click

@@ -1,19 +1,18 @@
 package pages
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // TakeComparisonPage is GET /shots/:id/takes: the Take comparison in an auxiliary view.
 templ TakeComparisonPage(csrfToken string, d organisms.TakeComparisonData) {
-	@layout.AppLayout("Take 比較: "+d.Project.Name, csrfToken) {
-		<main class="mx-auto max-w-5xl p-8">
-			@atoms.ChatBackLink(d.Project.ID)
-			<h1 class="mb-1 mt-3 text-xl font-semibold">Take 比較</h1>
-			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
+	@layout.AppLayout("Take 比較: "+d.Project.Name, csrfToken, sidenav.InProject(sidenav.SceneShot, d.Project)) {
+		@pagehead.Main(pagehead.Wide) {
+			@pagehead.Header("Take 比較", d.Project.Name, "")
 			@organisms.TakeComparison(d)
-		</main>
+		}
 	}
 }

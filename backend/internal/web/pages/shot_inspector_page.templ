@@ -3,19 +3,22 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ShotInspectorPage is GET /shots/:id: the Shot Inspector in an auxiliary view.
 templ ShotInspectorPage(csrfToken string, d shotinspector.Data) {
-	@layout.AppLayout("Shot Inspector: "+d.Project.Name, csrfToken) {
-		<main class="mx-auto max-w-4xl p-8">
-			@atoms.BackLink(shotInspectorBack(d))
-			<h1 class="mb-1 mt-3 text-xl font-semibold">Shot Inspector</h1>
-			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
+	@layout.AppLayout("Shot Inspector: "+d.Project.Name, csrfToken, sidenav.InProject(sidenav.SceneShot, d.Project)) {
+		@pagehead.Main(pagehead.Medium) {
+			<div class="flex flex-col gap-3">
+				@atoms.BackLink(shotInspectorBack(d))
+				@pagehead.Header("Shot Inspector", d.Project.Name, "")
+			</div>
 			@shotinspector.View(d)
-		</main>
+		}
 	}
 }
 

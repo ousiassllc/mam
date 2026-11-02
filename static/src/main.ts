@@ -14,6 +14,7 @@ import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast
 import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
+import { installSidenav } from './components/sidenav/sidenav';
 import { installCommercialFilter } from './components/commercial-filter/commercial-filter';
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
@@ -62,6 +63,9 @@ installSaveOnChangeRevert();
 // to Esc on the document and the one that runs first takes it (preventDefault), so the help, which floats above the page,
 // is what Esc closes first when a question of the model manager is open as well.
 installHelp();
+
+// The fold button of the side menu: folds it to its icons or opens it, and keeps the choice in a cookie that the server reads.
+installSidenav();
 
 // The model manager's questions in the page (age confirmation, license): the focus goes in, Esc closes, the focus goes back.
 // Before the focus restore: a focus that is back on a control is not touched by it.

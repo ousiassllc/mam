@@ -2,6 +2,7 @@ package layout
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -11,15 +12,18 @@ import (
 // out-of-band toasts of failed actions; #toast-template is the markup that toast.ts clones for
 // the toasts it raises itself, so the toast is defined only in atoms.Toast. The same goes for
 // #connection-notice-template (atoms.ConnectionNotice), cloned by connection-notice.ts.
-templ AppLayout(title string, csrfToken string) {
-	@AppLayoutAt(title, csrfToken, "") {
+//
+// The fixed menu on the left (organisms/sidenav) is part of the shell: nav says which entry is the current one and, on a
+// Project's screens, whose views to list. The page's own <main> is in #content, which the skip link before the menu leads to.
+templ AppLayout(title string, csrfToken string, nav sidenav.State) {
+	@AppLayoutAt(title, csrfToken, "", nav) {
 		{ children... }
 	}
 }
 
 // AppLayoutAt is AppLayout for a page that has another URL as its canonical one (a link rel="canonical" in the head;
 // canonical empty draws none): the page that several URLs show.
-templ AppLayoutAt(title, csrfToken, canonical string) {
+templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 	<!DOCTYPE html>
 	<html lang="ja" class="overscroll-none">
 		<head>
@@ -34,7 +38,9 @@ templ AppLayoutAt(title, csrfToken, canonical string) {
 			<script type="module" src={ paths.StaticApp }></script>
 		</head>
 		<body class="min-h-screen overscroll-none bg-neutral-950 text-neutral-100">
-			{ children... }
+			@Shell(nav) {
+				{ children... }
+			}
 			<div id="toast-region" class="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2" aria-live="assertive"></div>
 			<template id="toast-template">
 				@atoms.Toast("")
@@ -44,4 +50,18 @@ templ AppLayoutAt(title, csrfToken, canonical string) {
 			</template>
 		</body>
 	</html>
+}
+
+// Shell is what is inside <body> besides the toasts: the skip link, the side menu and the page in #content. A page that says
+// Off (the guide of the first start) has neither the link nor the menu.
+templ Shell(nav sidenav.State) {
+	if !nav.Hidden {
+		<a href="#content" class="sr-only rounded-md bg-neutral-800 px-3 py-2 text-sm text-neutral-100 focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400">本文へ</a>
+	}
+	<div class="flex min-h-screen">
+		@sidenav.Nav(nav)
+		<div id="content" class="min-w-0 flex-1">
+			{ children... }
+		</div>
+	</div>
 }

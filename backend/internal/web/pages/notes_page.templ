@@ -1,31 +1,44 @@
 package pages
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/notelist"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
-// NotesPageData is the header of the Notes page: whose notes they are and where to go back to.
+// NotesPageData is the header of the Notes page: whose notes they are.
 type NotesPageData struct {
 	// Title is the tab title and Owner the name of the Project or Series.
 	Title, Owner string
-	// BackHref and BackLabel are the link back to the chat or the Series page.
+	// Project is the Project of the notes (nil for the notes of a Series): the menu lists its views.
+	Project *domain.Project
+	// BackHref and BackLabel are the link back to the Series page (the notes of a Series only: a Project's views are in
+	// the side menu).
 	BackHref, BackLabel string
 	// Lead explains what the notes do in this scope.
 	Lead  string
 	Notes notelist.Data
 }
 
+func (d NotesPageData) nav() sidenav.State {
+	if d.Project != nil {
+		return sidenav.InProject(sidenav.Notes, *d.Project)
+	}
+	return sidenav.At(sidenav.Projects)
+}
+
 // NotesPage is GET /projects/:id/notes and GET /series/:id/notes: the notes in an auxiliary view.
 templ NotesPage(csrfToken string, d NotesPageData) {
-	@layout.AppLayout(d.Title+": "+d.Owner, csrfToken) {
-		<main class="mx-auto max-w-5xl p-8">
-			@atoms.BackLink(d.BackHref, d.BackLabel)
-			<h1 class="mb-1 mt-3 text-xl font-semibold">{ d.Title }</h1>
-			<p class="mb-2 text-sm text-neutral-400">{ d.Owner }</p>
-			<p class="mb-6 text-xs text-neutral-400">{ d.Lead }</p>
+	@layout.AppLayout(d.Title+": "+d.Owner, csrfToken, d.nav()) {
+		@pagehead.Main(pagehead.Wide) {
+			if d.BackHref != "" {
+				@atoms.BackLink(d.BackHref, d.BackLabel)
+			}
+			@pagehead.Header(d.Title, d.Owner, d.Lead)
 			@notelist.View(d.Notes)
-		</main>
+		}
 	}
 }

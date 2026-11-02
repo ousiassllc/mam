@@ -2,10 +2,10 @@ package pages
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
-	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // AnalyticsPageData is everything the analytics screen shows. Project is nil for the metrics of
@@ -15,25 +15,29 @@ type AnalyticsPageData struct {
 	Metrics domain.ProductionMetrics
 }
 
+// analyticsNav is the menu entry of the page: the Project's own view, or the app's screen for every Project.
+func analyticsNav(d AnalyticsPageData) sidenav.State {
+	if d.Project != nil {
+		return sidenav.InProject(sidenav.ProjectAnalytics, *d.Project)
+	}
+	return sidenav.At(sidenav.Analytics)
+}
+
+// analyticsOwner is the line under the title: the Project, or "すべてのプロジェクト".
+func analyticsOwner(d AnalyticsPageData) string {
+	if d.Project != nil {
+		return d.Project.Name
+	}
+	return "すべてのプロジェクト"
+}
+
 // AnalyticsPage is GET /projects/:id/analytics (one Project) and GET /analytics (every Project):
 // the MVP Success Metrics of spec/spec.md §28.
 templ AnalyticsPage(csrfToken string, d AnalyticsPageData) {
-	@layout.AppLayout("制作指標", csrfToken) {
-		<main class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-			<div>
-				if d.Project != nil {
-					@atoms.ChatBackLink(d.Project.ID)
-				} else {
-					@atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")
-				}
-				<h1 class="mb-1 mt-3 text-xl font-semibold">制作指標</h1>
-				if d.Project != nil {
-					<p class="text-sm text-neutral-400">{ d.Project.Name }</p>
-				} else {
-					<p class="text-sm text-neutral-400">すべてのプロジェクト</p>
-				}
-			</div>
+	@layout.AppLayout("制作指標", csrfToken, analyticsNav(d)) {
+		@pagehead.Main(pagehead.Medium) {
+			@pagehead.Header("制作指標", analyticsOwner(d), "")
 			@organisms.AnalyticsPanel(d.Metrics)
-		</main>
+		}
 	}
 }
