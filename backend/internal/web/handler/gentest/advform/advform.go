@@ -97,7 +97,7 @@ func FactsOf(m modelcatalog.Info) adv.ModelFacts {
 			u.CFGDefault = c.CFG.Default
 		}
 	}
-	return adv.ModelFacts{Use: u, Weight: string(m.PromptWeight)}
+	return adv.ModelFacts{Use: u, Weight: string(m.PromptWeight), WeightText: settingsview.WeightText(m)}
 }
 
 // SectionOf is the part of the form that these settings add, around the fields it holds, with the lines of the models it is offered for.

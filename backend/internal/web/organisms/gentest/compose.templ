@@ -117,6 +117,9 @@ templ promptFields(c Compose) {
 				@PromptRowFields(p, c.MaxPrompt)
 			}
 		</div>
+		if c.Tier.Has() {
+			@gentesttier.WeightBar()
+		}
 		<div class="flex flex-wrap items-center gap-3">
 			<label class="flex items-center gap-2 text-sm" data-testid="gt-translate">
 				@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldTranslate, "value": "1", "checked": c.Translate, "data-testid": "gt-translate-input"})

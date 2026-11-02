@@ -96,10 +96,17 @@ templ advancedSlider(kind, label, name, value, min, max, step string, def float6
 	</div>
 }
 
-// weightHelp is the explanation behind the "?" of the prompts: how to write a weight, and for each model of the form whether it reads
+// WeightIntro is how to write a weight and how to put one with the buttons of the selected words (static/src/components/prompt-weight). The
+// easy tier's "?" of the prompt is this alone: its model follows the choice of what to make, so what the model does with weights is said
+// by the bar of the selected words.
+templ WeightIntro() {
+	@help.Text(weightHelpIntro)
+}
+
+// WeightHelp is the explanation behind the "?" of the prompts: how to write a weight, and for each model of the form whether it reads
 // it and, when it does not, what to do instead.
 templ WeightHelp(lines []WeightLine) {
-	@help.Text(weightHelpIntro)
+	@WeightIntro()
 	<ul class="mt-2 flex flex-col gap-1.5" data-testid="gt-weight-help">
 		for _, l := range lines {
 			<li class="break-words" data-weight={ l.Level }><span class="text-neutral-100">{ l.Label }</span>: { l.Text }</li>

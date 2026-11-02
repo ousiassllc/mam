@@ -135,3 +135,4 @@ import './components/take-comparator/mam-take-comparator';
 import './components/timeline-editor/mam-timeline-editor';
 import './components/comfy-frame/mam-comfy-frame';
 import './components/mask-paint/mam-mask-paint';
+import './components/prompt-weight/mam-prompt-weight';
