@@ -2,7 +2,7 @@ package molecules
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -21,24 +21,12 @@ templ ModeControl(p domain.Project) {
 		<fieldset class="flex items-center gap-2">
 			<legend class="sr-only">MODE</legend>
 			<span>MODE</span>
-			<label class="flex items-center gap-1">
-				@atoms.Choice("", templ.Attributes{
-					"type":    "radio",
-					"name":    "mode",
-					"value":   "auto",
-					"checked": p.Mode == domain.ModeAuto,
-				})
+			@pick.Card(templ.Attributes{"type": "radio", "name": "mode", "value": "auto", "checked": p.Mode == domain.ModeAuto}, "px-3 py-1 text-xs") {
 				AUTO
-			</label>
-			<label class="flex items-center gap-1">
-				@atoms.Choice("", templ.Attributes{
-					"type":    "radio",
-					"name":    "mode",
-					"value":   "director",
-					"checked": p.Mode == domain.ModeDirector,
-				})
+			}
+			@pick.Card(templ.Attributes{"type": "radio", "name": "mode", "value": "director", "checked": p.Mode == domain.ModeDirector}, "px-3 py-1 text-xs") {
 				DIRECTOR
-			</label>
+			}
 		</fieldset>
 	</form>
 }

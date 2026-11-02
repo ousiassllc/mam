@@ -59,7 +59,7 @@ func TestValidateEndpointNamesTheFieldOfEachProblem(t *testing.T) {
 
 func TestEndpointDefaults(t *testing.T) {
 	assert.Equal(t, 1, localcfg.Endpoint{}.Concurrency())
-	assert.Equal(t, 3600, localcfg.Endpoint{Kind: localcfg.KindComfyUI}.Timeout())
+	assert.Equal(t, 10800, localcfg.Endpoint{Kind: localcfg.KindComfyUI}.Timeout())
 	assert.Equal(t, 900, localcfg.Endpoint{Kind: localcfg.KindOpenAICompat}.Timeout())
 	assert.Equal(t, 5, localcfg.Endpoint{MaxConcurrency: 5, TimeoutSeconds: 5}.Timeout()+localcfg.Endpoint{MaxConcurrency: 5}.Concurrency()-5)
 	assert.Empty(t, localcfg.ValidateEndpoint("a", localcfg.Endpoint{Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}))
@@ -128,14 +128,15 @@ var coreNodes = []string{
 	"LTXVScheduler", "LTXVSeparateAVLatent", "LatentUpscaleModelLoader", "LoadImage", "LoraLoaderModelOnly",
 	"ManualSigmas", "ModelSamplingAuraFlow", "ModelSamplingSD3", "PrimitiveInt", "RandomNoise", "SamplerCustom",
 	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "SplitSigmasDenoise", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
-	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo",
+	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo", "EmptyHunyuanLatentVideo", // the last one: Wan 2.2 Remix T2V (Issue #930)
+	"EmptyFlux2LatentImage", "Flux2Scheduler", "ImageScaleToTotalPixels", "ReferenceLatent", // FLUX.2 klein (Issue #931)
 }
 
 // Every built-in template is a valid model: each assignment points to an existing, literal input of an
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 19)
+	require.Len(t, templates, 25)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -151,8 +152,8 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.True(t, found)
 		assert.Equal(t, tpl.ID, got.ID)
 	}
-	assert.Equal(t, 9, byMedia[localcfg.MediaImage])
-	assert.Equal(t, 10, byMedia[localcfg.MediaVideo])
+	assert.Equal(t, 10, byMedia[localcfg.MediaImage])
+	assert.Equal(t, 15, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")
 	caps, ok := i2v.Model.VideoCaps()

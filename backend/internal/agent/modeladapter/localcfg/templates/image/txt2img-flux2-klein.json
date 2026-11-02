@@ -1,0 +1,60 @@
+{
+ "id": "txt2img-flux2-klein",
+ "label": "FLUX.2 klein 4B（fp8 蒸留）: テキスト・参照画像から画像",
+ "media": "image",
+ "description": "ComfyUI 標準ノードだけの FLUX.2 [klein] 4B（蒸留版の fp8 拡散モデル flux-2-klein-4b-fp8.safetensors、テキストエンコーダー qwen_3_4b.safetensors、VAE flux2-vae.safetensors）のワークフロー。ComfyUI の公式テンプレート（image_flux2_klein_text_to_image・image_flux2_klein_image_edit_4b_distilled）の値に従い、4 ステップ・euler・Flux2Scheduler・CFGGuider の cfg 1 で、ネガティブは ConditioningZeroOut（実質使わない）。GPU では未実行（構造のテストのみ。mam の対象 PC の 16 GB では未実行）。参照画像は最大 4 枚（BFL の API の上限に合わせた）で、画像ごとに ImageScaleToTotalPixels（約 1 メガピクセル）→ VAEEncode → ReferenceLatent を肯定・否定の条件へ順に重ねる（プロンプトの <image1> が 1 枚目。klein への文では image 1 になる）。参照が無い実行は 4 枚とも外れ、テキストから画像と同じになる。強さ s の参照は、サンプリングの最初の s の割合のステップだけ条件に入る（4 ステップなので 0.25 刻み）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "graph": {
+    "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "flux-2-klein-4b-fp8.safetensors", "weight_dtype": "default"}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_3_4b.safetensors", "type": "flux2", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "flux2-vae.safetensors"}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "7": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["6", 0]}},
+    "5": {"class_type": "EmptyFlux2LatentImage", "inputs": {"width": 1024, "height": 1024, "batch_size": 1}},
+    "62": {"class_type": "Flux2Scheduler", "inputs": {"steps": 4, "width": 1024, "height": 1024}},
+    "61": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
+    "73": {"class_type": "RandomNoise", "inputs": {"noise_seed": 0}},
+    "101": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "111": {"class_type": "ImageScaleToTotalPixels", "inputs": {"upscale_method": "nearest-exact", "megapixels": 1, "resolution_steps": 1, "image": ["101", 0]}},
+    "121": {"class_type": "VAEEncode", "inputs": {"pixels": ["111", 0], "vae": ["39", 0]}},
+    "131": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["6", 0], "latent": ["121", 0]}},
+    "141": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["7", 0], "latent": ["121", 0]}},
+    "102": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "112": {"class_type": "ImageScaleToTotalPixels", "inputs": {"upscale_method": "nearest-exact", "megapixels": 1, "resolution_steps": 1, "image": ["102", 0]}},
+    "122": {"class_type": "VAEEncode", "inputs": {"pixels": ["112", 0], "vae": ["39", 0]}},
+    "132": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["131", 0], "latent": ["122", 0]}},
+    "142": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["141", 0], "latent": ["122", 0]}},
+    "103": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "113": {"class_type": "ImageScaleToTotalPixels", "inputs": {"upscale_method": "nearest-exact", "megapixels": 1, "resolution_steps": 1, "image": ["103", 0]}},
+    "123": {"class_type": "VAEEncode", "inputs": {"pixels": ["113", 0], "vae": ["39", 0]}},
+    "133": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["132", 0], "latent": ["123", 0]}},
+    "143": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["142", 0], "latent": ["123", 0]}},
+    "104": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "114": {"class_type": "ImageScaleToTotalPixels", "inputs": {"upscale_method": "nearest-exact", "megapixels": 1, "resolution_steps": 1, "image": ["104", 0]}},
+    "124": {"class_type": "VAEEncode", "inputs": {"pixels": ["114", 0], "vae": ["39", 0]}},
+    "134": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["133", 0], "latent": ["124", 0]}},
+    "144": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["143", 0], "latent": ["124", 0]}},
+    "63": {"class_type": "CFGGuider", "inputs": {"cfg": 1, "model": ["37", 0], "positive": ["134", 0], "negative": ["144", 0]}},
+    "64": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["73", 0], "guider": ["63", 0], "sampler": ["61", 0], "sigmas": ["62", 0], "latent_image": ["5", 0]}},
+    "65": {"class_type": "VAEDecode", "inputs": {"samples": ["64", 0], "vae": ["39", 0]}},
+    "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "mam/image", "images": ["65", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "seed", "node": "73", "input": "noise_seed"},
+    {"param": "width", "node": "5", "input": "width"},
+    {"param": "height", "node": "5", "input": "height"},
+    {"param": "width", "node": "62", "input": "width"},
+    {"param": "height", "node": "62", "input": "height"},
+    {"param": "reference_image", "node": "101", "input": "image", "index": 0, "optional": true},
+    {"param": "reference_image", "node": "102", "input": "image", "index": 1, "optional": true},
+    {"param": "reference_image", "node": "103", "input": "image", "index": 2, "optional": true},
+    {"param": "reference_image", "node": "104", "input": "image", "index": 3, "optional": true}
+   ],
+   "reference_mode": "edit",
+   "output_node": "9"
+  }
+ }
+}

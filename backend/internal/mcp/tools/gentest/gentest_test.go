@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	mcpgentest "github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -200,4 +201,67 @@ func TestHistoryFavoritesDeletionAndPrompts(t *testing.T) {
 	assert.Contains(t, r.CallError("get_generation_result", map[string]any{"result_id": id}), "not_found")
 	assert.Contains(t, r.CallError("delete_generation_result", map[string]any{"result_id": id}), "not_found")
 	assert.Contains(t, r.CallError("set_generation_favorite", map[string]any{"result_id": id, "favorite": true}), "not_found")
+}
+
+// #928: every model carries whether it may be used commercially (with the license, the source and the day it was read), and the list
+// can be narrowed by it; the narrowed list is what the setting 商用OKのモデルだけを使う starts from.
+func TestListModelsSaysWhetherEachModelMayBeUsedCommercially(t *testing.T) {
+	r := newRig(t)
+	var out mcpgentest.ListModelsOutput
+	r.CallOK("list_generation_models", map[string]any{}, &out)
+
+	assert.Equal(t, "all", out.CommercialFilter)
+	by := map[string]modelcatalog.Info{}
+	for _, m := range out.Models {
+		assert.NoError(t, m.License.Check(), m.ID)
+		by[m.ID] = m
+	}
+	assert.Equal(t, modellicense.Yes, by["flux-2"].License.Commercial)
+	assert.Equal(t, modellicense.Conditional, by["luma-ray-3.2"].License.Commercial)
+	assert.NotEmpty(t, by["luma-ray-3.2"].License.Condition)
+	assert.Equal(t, modellicense.Unknown, by["kling-3.0"].License.Commercial)
+	assert.NotEmpty(t, by["kling-3.0"].License.Notice, "an unknown answer says what to do")
+	assert.Equal(t, "https://openai.com/policies/terms-of-use/", by["gpt-image-2"].License.SourceURL)
+}
+
+func TestListModelsNarrowsByTheCommercialArgument(t *testing.T) {
+	r := newRig(t)
+
+	var ok mcpgentest.ListModelsOutput
+	r.CallOK("list_generation_models", map[string]any{"media": "video", "commercial": "ok"}, &ok)
+	assert.Equal(t, "ok", ok.CommercialFilter)
+	require.NotEmpty(t, ok.Models)
+	for _, m := range ok.Models {
+		assert.Equal(t, modellicense.Yes, m.License.Commercial, m.ID)
+	}
+
+	var cond mcpgentest.ListModelsOutput
+	r.CallOK("list_generation_models", map[string]any{"media": "video", "commercial": "ok_or_conditional"}, &cond)
+	ids := map[string]bool{}
+	for _, m := range cond.Models {
+		ids[m.ID] = true
+		assert.NotEqual(t, modellicense.Unknown, m.License.Commercial, m.ID)
+	}
+	assert.True(t, ids["luma-ray-3.2"], "条件つき is in")
+	assert.False(t, ids["kling-3.0"], "不明 is out")
+
+	assert.Contains(t, r.CallError("list_generation_models", map[string]any{"commercial": "yes"}), "validation")
+}
+
+func TestListModelsStartsAtTheSettingWhenNoCommercialArgumentIsGiven(t *testing.T) {
+	filter := modellicense.FilterOK
+	modellicense.SetDefaultFilter(func() modellicense.Filter { return filter })
+	t.Cleanup(func() { modellicense.SetDefaultFilter(nil) })
+	r := newRig(t)
+
+	var out mcpgentest.ListModelsOutput
+	r.CallOK("list_generation_models", map[string]any{}, &out)
+	assert.Equal(t, "ok", out.CommercialFilter, "商用OKのモデルだけを使う is on")
+	for _, m := range out.Models {
+		assert.Equal(t, modellicense.Yes, m.License.Commercial, m.ID)
+	}
+
+	var widened mcpgentest.ListModelsOutput
+	r.CallOK("list_generation_models", map[string]any{"commercial": "all"}, &widened)
+	assert.Greater(t, len(widened.Models), len(out.Models), "an explicit commercial argument overrides the setting")
 }

@@ -22,7 +22,7 @@ func noteListData(v service.NotesView, only string, onPage ...string) notelist.D
 func notesPageData(v service.NotesView) pages.NotesPageData {
 	if v.Project.ID != "" {
 		return pages.NotesPageData{
-			Title: "Notes", Owner: v.Project.Name, BackHref: paths.Project(v.Project.ID), BackLabel: "← チャットに戻る",
+			Title: "Notes", Owner: v.Project.Name, Project: &v.Project,
 			Lead:  "自由記述の制作メモです。ピン留めしたメモは常に、それ以外は関連度の高い順に、脚本・Scene/Shot 計画・Shot Spec の作成に渡されます（アーカイブしたメモは渡されません）。構造化できる内容は、チャットの承認カードで World State への反映を提案します。",
 			Notes: noteListData(v, ""),
 		}

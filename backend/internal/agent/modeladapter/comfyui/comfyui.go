@@ -7,7 +7,6 @@ package comfyui
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"path"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
 )
@@ -92,7 +92,11 @@ func (b *Backend) run(ctx context.Context, v values, stage bool) (output, error)
 		return output{}, err
 	}
 	parsed, _ := localcfg.ParseGraph(graph)
-	track := newTracker(ctx, promptID, parsed)
+	// The job is known to the tools that show the GPU from the moment it is queued: the steps the server sends
+	// right after it accepts the prompt must find it.
+	job := live.Default.Start(b.Client.Name, promptID)
+	defer job.End()
+	track := newTracker(ctx, promptID, parsed, job)
 	stop := b.listen(ctx, clientID, track)
 	defer stop()
 
@@ -149,12 +153,6 @@ func (b *Backend) wait(ctx context.Context, promptID string, t *tracker) (histor
 		case <-tick.C:
 		}
 	}
-}
-
-// isNotFound reports whether err is a 404 answer.
-func isNotFound(err error) bool {
-	var pe *modeladapter.ProviderError
-	return errors.As(err, &pe) && pe.Status == http.StatusNotFound
 }
 
 // imageMime is the type of an output image: its Content-Type, else its extension, else sniffed.

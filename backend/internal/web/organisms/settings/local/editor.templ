@@ -2,6 +2,7 @@ package local
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -54,31 +55,27 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 		<fieldset class="flex flex-col gap-2">
 			<legend class="text-xs text-neutral-400">組み込みのテンプレートから始める（モデルのファイル名は、接続先にあるものに直してください）</legend>
 			for _, t := range templates {
-				<label class="flex items-start gap-2 text-sm">
-					@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID})
+				@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID}, "flex flex-col gap-0.5 p-3 text-sm") {
 					<span>
 						<span class="font-medium">{ t.Label }</span>
 						<span class="ml-1 text-xs text-neutral-400">（{ mediaLabel(t.Media) }）</span>
-						<span class="block text-xs text-neutral-400">{ t.Description }</span>
 					</span>
-				</label>
+					<span class="text-xs text-neutral-400">{ t.Description }</span>
+				}
 			}
-			<label class="flex items-start gap-2 text-sm">
-				@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""})
-				<span class="font-medium">自分のワークフローを取り込む（下の欄に JSON を貼り付け）</span>
-			</label>
+			@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""}, "p-3 text-sm font-medium") {
+				自分のワークフローを取り込む（下の欄に JSON を貼り付け）
+			}
 		</fieldset>
 		<fieldset class="flex flex-col gap-2">
 			<legend class="text-xs text-neutral-400">取り込むワークフローの種類（テンプレートを選んだときは無視されます）</legend>
-			<div class="flex items-center gap-4 text-sm">
-				<label class="flex items-center gap-1">
-					@atoms.Choice("", templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaImage, "checked": s.Media != MediaVideo})
+			<div class="flex items-center gap-2 text-sm">
+				@pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaImage, "checked": s.Media != MediaVideo}, "px-4 py-1.5 text-center") {
 					画像
-				</label>
-				<label class="flex items-center gap-1">
-					@atoms.Choice("", templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaVideo, "checked": s.Media == MediaVideo})
+				}
+				@pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaVideo, "checked": s.Media == MediaVideo}, "px-4 py-1.5 text-center") {
 					動画
-				</label>
+				}
 			</div>
 		</fieldset>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-workflow-json">

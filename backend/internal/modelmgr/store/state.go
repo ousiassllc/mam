@@ -103,6 +103,9 @@ type State struct {
 	Models   map[string]InstalledModel `json:"models,omitempty"`
 	// AdultContent is the age confirmation and the "show adult models" setting (nil: never confirmed, adult models hidden).
 	AdultContent *AdultContent `json:"adult_content,omitempty"`
+	// CommercialOnly is the setting "商用OKのモデルだけを使う": the lists of models start filtered to the models that may be used
+	// commercially (#928).
+	CommercialOnly bool `json:"commercial_only,omitempty"`
 	// UserModels are the files added from Hugging Face, by Path. HFConsents are the confirmations of the import terms, by
 	// "<repo>@<commit>".
 	UserModels map[string]UserModel `json:"user_models,omitempty"`

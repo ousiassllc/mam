@@ -3,13 +3,16 @@ package modelmgr
 import (
 	"context"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 )
 
 func registerCatalog(r *mcpkit.Registrar, h handlers) {
 	mcpkit.Read(r, "list_model_catalog",
-		"導入できるローカルの画像・動画モデルの一覧（種別・成人向けか（content_rating）・LoRA のトリガー語・大きさ・VRAM の目安・ライセンスと商用利用の可否・同意が要るか・導入済みか・導入中のジョブ）。成人向けモデルは、年齢確認（set_adult_content）が済むまで一覧に出ない / The catalog of local image and video models with the state of each. Adult models are listed only after the age confirmation.",
+		"導入できるローカルの画像・動画モデルの一覧（種別・成人向けか（content_rating）・LoRA のトリガー語・大きさ・VRAM の目安（vram.min_gb と推奨 recommended_gb。vram_fit がこの PC の GPU から見た判定で、limited は「動くが制約あり」）・ライセンス（license.commercial: yes 商用OK / conditional 条件つき / no 商用NG / unknown 不明、条件、出典 URL、確認日。部品ごとのライセンスが違うモデルは厳しい方）・同意が要るか・導入済みか・導入中のジョブ）。成人向けモデルは、年齢確認（set_adult_content）が済むまで一覧に出ない。commercial 引数（all / ok / ok_or_conditional）で商用利用により絞り込める（省くと設定「商用OKのモデルだけを使う」に従う） / The catalog of local image and video models with the state of each and its commercial-use license. Adult models are listed only after the age confirmation. The commercial argument filters by commercial use.",
 		h.listCatalog)
 	mcpkit.Read(r, "get_catalog_model",
 		"カタログのモデルを 1 件取得する（ファイルの一覧・共有ファイル・ミラーの原本の場所（source_note）・ライセンスの要約と URL・地域の制限・成人向けの注意書きを含む）。同意が要るモデルは、導入の前にこの内容をユーザーに見せる。成人向けモデルは、年齢確認の前は conflict / One catalog model with its files and license (show it to the user before accepting). An adult model is refused before the age confirmation.",
@@ -27,16 +30,46 @@ func registerCatalog(r *mcpkit.Registrar, h handlers) {
 
 // ListCatalogOutput is the catalog.
 type ListCatalogOutput struct {
-	Models  []modelmanager.ModelView `json:"models"`
-	Blocked string                   `json:"blocked,omitempty" jsonschema:"導入できない理由（エンジン未導入・Windows 以外・設定ファイルの固定）。空なら導入できる"`
+	Models []modelmanager.ModelView `json:"models"`
+	// CommercialFilter is the filter that narrowed Models: what commercial asked for, or the setting's default.
+	CommercialFilter string `json:"commercial_filter" jsonschema:"models に適用した商用利用の絞り込み（all / ok / ok_or_conditional）"`
+	Blocked          string `json:"blocked,omitempty" jsonschema:"導入できない理由（エンジン未導入・Windows 以外・設定ファイルの固定）。空なら導入できる"`
+	// VRAMFit is how this PC's GPU stands to each model's VRAM guideline (vram.min_gb / recommended_gb), by model id; absent while the GPU memory is not known.
+	VRAMFit map[string]mmview.ModelFit `json:"vram_fit,omitempty" jsonschema:"この PC の GPU から見た各モデルの VRAM の判定（モデル ID ごと）。fit が limited は「推奨には届かないが動くが制約あり」で、text に制約の中身が入る。GPU のメモリが分からないときは省かれる"`
 }
 
-func (h handlers) listCatalog(ctx context.Context, _ Input) (ListCatalogOutput, error) {
+// ListCatalogInput narrows the catalog by commercial use.
+type ListCatalogInput struct {
+	Commercial string `json:"commercial,omitempty" jsonschema:"商用利用で絞り込む。all（すべて）/ ok（商用OKだけ）/ ok_or_conditional（商用OKと条件つき）。省くと設定「商用OKのモデルだけを使う」に従う（オフなら all）"`
+}
+
+func (h handlers) listCatalog(ctx context.Context, in ListCatalogInput) (ListCatalogOutput, error) {
 	m, err := h.mm()
 	if err != nil {
 		return ListCatalogOutput{}, err
 	}
-	out := ListCatalogOutput{Models: m.Catalog()}
+	filter := m.DefaultFilter()
+	if in.Commercial != "" {
+		parsed, ok := modellicense.ParseFilter(in.Commercial)
+		if !ok {
+			return ListCatalogOutput{}, &service.ValidationError{Message: "commercial は all / ok / ok_or_conditional のどれかです"}
+		}
+		filter = parsed
+	}
+	out := ListCatalogOutput{Models: []modelmanager.ModelView{}, CommercialFilter: string(filter)}
+	gpuVRAM := mmview.GPUVRAM(ctx, m)
+	for _, v := range m.Catalog() {
+		if !filter.Allows(v.License.Commercial) {
+			continue
+		}
+		out.Models = append(out.Models, v)
+		if fit, ok := mmview.FitOf(v.VRAM, gpuVRAM); ok {
+			if out.VRAMFit == nil {
+				out.VRAMFit = map[string]mmview.ModelFit{}
+			}
+			out.VRAMFit[v.ID] = fit
+		}
+	}
 	st, err := m.Status(ctx)
 	if err != nil {
 		return out, MapError(err)

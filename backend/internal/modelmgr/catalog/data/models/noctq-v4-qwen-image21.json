@@ -39,7 +39,28 @@
   "name": "Qwen RESEARCH LICENSE AGREEMENT（2026-09-20）",
   "url": "https://huggingface.co/Noctaluna/Noct-Q-Uncensored-Qwen-Image-2.1/blob/a81b9af51120a78e285e57906f2250a2a02080e9/LICENSE",
   "summary": "研究・評価の目的に限る非商用のライセンス。商用には Qwen 側との別の商用ライセンスが要る。再配布するときは、ライセンスの写しと Qwen の帰属表示（Notice）を付ける。Noct Q は Qwen-Image-2.1 の重みを改変した派生物で、同じライセンスに従う。",
-  "commercial_use": false,
+  "commercial": "no",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル（Noct Q。Qwen-Image-2.1 の改変）",
+    "name": "Qwen RESEARCH LICENSE AGREEMENT",
+    "url": "https://huggingface.co/Noctaluna/Noct-Q-Uncensored-Qwen-Image-2.1/blob/a81b9af51120a78e285e57906f2250a2a02080e9/LICENSE",
+    "commercial": "no"
+   },
+   {
+    "part": "テキストエンコーダー（Qwen3-VL 8B）",
+    "name": "qwen-research（Comfy-Org の配布。Qwen/Qwen-Image-2.1 に従う）",
+    "url": "https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE",
+    "commercial": "no"
+   },
+   {
+    "part": "VAE",
+    "name": "qwen-research（Comfy-Org の配布。Qwen/Qwen-Image-2.1 に従う）",
+    "url": "https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE",
+    "commercial": "no"
+   }
+  ],
   "notice": "この mam のインストール先に取得するモデルのライセンスです。研究・評価などの非商用の用途にだけ使ってください。"
  },
  "consent_required": true,

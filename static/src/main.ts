@@ -14,7 +14,13 @@ import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast
 import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
+import { installSidenav } from './components/sidenav/sidenav';
+import { installCommercialFilter } from './components/commercial-filter/commercial-filter';
 import { initGentestInputs } from './components/gentest/inputs';
+import { initGentestMatch } from './components/gentest/match';
+import { installKeepScroll } from './components/scroll/keep-scroll';
+import { installPollGuard } from './components/poll/poll-guard';
+import { installExportPick } from './components/gentest/export-pick';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -58,6 +64,9 @@ installSaveOnChangeRevert();
 // is what Esc closes first when a question of the model manager is open as well.
 installHelp();
 
+// The fold button of the side menu: folds it to its icons or opens it, and keeps the choice in a cookie that the server reads.
+installSidenav();
+
 // The model manager's questions in the page (age confirmation, license): the focus goes in, Esc closes, the focus goes back.
 // Before the focus restore: a focus that is back on a control is not touched by it.
 installInlineDialog();
@@ -72,6 +81,21 @@ installModal();
 
 // The "コピー" button of a value that is shown once (an MCP token that was just issued).
 installCopy();
+
+// The prompt match form of the generation test: the chosen image, the fields of the way to go on, the slider's value.
+initGentestMatch();
+// The filter of commercial use of the lists of models: 商用OKのみ / 条件つきまで / すべて.
+installCommercialFilter();
+
+// A scrolling box that a swap draws again (the grid of a running generation, which polls) keeps where it was scrolled to (#940).
+installKeepScroll();
+
+// A poll waits while the tab is hidden or a video in the section plays, so that the swap does not cut it off (#925).
+installPollGuard();
+
+// The results of the history that are tapped to be saved as a ZIP (#932): the glowing frame, the count, and the choice that survives the
+// history's own refresh.
+installExportPick();
 
 lockDownHtmx(htmx.config);
 

@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -149,16 +150,14 @@ templ ReviewDecision(i domain.ReviewInbox) {
 				表示名（1〜50 文字）
 				@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{"id": "review-reviewer-name", "name": "reviewer_name", "type": "text", "maxlength": intText(domain.MaxReviewerNameRunes), "required": true, "value": i.ReviewerName})
 			</label>
-			<fieldset class="flex flex-wrap gap-4 text-sm">
+			<fieldset class="flex flex-wrap gap-2 text-sm">
 				<legend class="mb-1 text-xs text-neutral-400">判定</legend>
-				<label class="flex items-center gap-1">
-					@atoms.Choice("", templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved})
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-1.5 text-center") {
 					承認
-				</label>
-				<label class="flex items-center gap-1">
-					@atoms.Choice("", templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested})
+				}
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-1.5 text-center") {
 					修正依頼
-				</label>
+				}
 			</fieldset>
 			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-decision-comment">
 				全体コメント（任意）

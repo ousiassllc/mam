@@ -7,6 +7,9 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // DOM ids the handlers' HTMX targets name.
@@ -72,6 +75,8 @@ type ModelChoice struct {
 	RefMode  string
 	RefRoles []string
 	CanLoRA  bool
+	// Answer is whether the model may be used commercially (#928): the badge on the card, data-commercial for the filter.
+	Answer commercial.View
 }
 
 // PromptText is a prompt and its negative prompt.
@@ -110,6 +115,8 @@ type Compose struct {
 	Message
 	Media  string // image or video
 	Models []ModelChoice
+	// Filter is the commercial-use filter of the model cards, checked at the setting's default.
+	Filter commercial.FilterData
 	// Prompts has at least one entry.
 	Prompts []PromptText
 	// Translate is the switch "英語に訳して送る" (on for a fresh form).
@@ -130,7 +137,14 @@ type Compose struct {
 	LoRAs        []string
 	LoRA         string
 	LoRAStrength *float64
+	// SpeedModes are the speed modes the video models offer (none: the choice is not drawn) and SpeedMode the one chosen ("" for each
+	// model's default).
+	SpeedModes []SpeedChoice
+	SpeedMode  string
 }
+
+// SpeedChoice is a speed mode of a video model (localcfg.SpeedMode): the ID the form posts and the label of its option.
+type SpeedChoice struct{ ID, Label string }
 
 // Hidden is a form value the confirmation carries back unchanged.
 type Hidden struct{ Name, Value string }
@@ -155,6 +169,16 @@ type Confirm struct {
 	// OverLimit says why the batch cannot run ("" when it can); the confirm button is off then.
 	OverLimit string
 	Hidden    []Hidden
+	// Match says the estimate is of a prompt match (Items are its most rounds) and RunPath is where its confirmation is posted ("": the run of a batch).
+	Match   bool
+	RunPath string
+}
+
+func (c Confirm) runPath() string {
+	if c.RunPath != "" {
+		return c.RunPath
+	}
+	return paths.GenerationTestPart("run")
 }
 
 // Card is a result as a card of the grid, the history or the detail.
@@ -171,6 +195,8 @@ type Card struct {
 	Detail     string // the link to the detail
 	Meta       string // "seed 123 ・ 16:9 ・ 2.1 MiB"
 	CreatedAt  string
+	// Answer is whether the model that made the result may be used commercially (the mark on the card).
+	Answer commercial.View
 }
 
 // Col is a column of the comparison grid: one prompt, and the English it was sent as when it was translated.
@@ -184,8 +210,9 @@ type Col struct {
 
 // Row is a row of the comparison grid: one model with the results of every prompt.
 type Row struct {
-	Model string
-	Cells [][]Card
+	Model  string
+	Answer commercial.View
+	Cells  [][]Card
 }
 
 // Batch is the progress and the comparison grid of a batch.
@@ -209,6 +236,8 @@ type HistoryFilter struct {
 	Model    string
 	Media    string
 	Favorite bool
+	// Commercial is the commercial-use filter ("all", "ok", "ok_or_conditional"; "" for the default).
+	Commercial string
 }
 
 // History is the history list.
@@ -216,10 +245,21 @@ type History struct {
 	Message
 	Filter HistoryFilter
 	Models []string
-	Cards  []Card
-	Spend  string
+	// Commercial is the commercial-use filter of the cards and of the model choices; ModelAnswers are the answers of Models by id.
+	Commercial   commercial.FilterData
+	ModelAnswers map[string]string
+	Cards        []Card
+	Spend        string
 	// Next is the link to the next page ("" on the last).
 	Next string
+	// Refresh is the link to the list as it is now (the page, the filter) with "live=1": the part that the refresh button and the
+	// polling ask for. Active says a result of the page is waiting or running, so the part asks for itself again every 2 s.
+	// UpdatedAt is the time of day this was read ("15:04:05").
+	Refresh   string
+	Active    bool
+	UpdatedAt string
+	// Export is the bar that saves results as a ZIP.
+	Export exportbar.Data
 }
 
 // KV is a line of the settings of a result.
@@ -266,6 +306,9 @@ type Detail struct {
 	Imports         []ImportRow
 	Import          ImportForm
 	UseURL          string // compose with this result as an input ("" for a video)
+	MatchURL        string // the prompt match with this result as the reference ("" for a video)
+	// Answer is the license of the model that made the result: the detail says it in words (the note) as well as by the mark.
+	Answer commercial.View
 }
 
 // PromptRow is an entry of the prompt history.

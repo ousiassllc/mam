@@ -5,18 +5,25 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/a-h/templ"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	card "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/runtimecard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/weightlist"
 )
 
 var purposeLabels = map[catalog.Purpose]string{catalog.PurposeTTS: "声（音声合成）", catalog.PurposeLipSync: "口パク"}
+
+// purposeIcons are the pictures of the cards: the tile of what the runtime is for.
+var purposeIcons = map[catalog.Purpose]atoms.IconName{catalog.PurposeTTS: atoms.IconVoice, catalog.PurposeLipSync: atoms.IconLipSync}
 
 // Section is the section of the screen: a card for every runtime of the catalog. Nil (the section is left out) when there is no
 // service or no runtime.
@@ -51,7 +58,7 @@ func runtimeData(ctx context.Context, svc *localruntime.Service, id, job string,
 
 func runtimeCard(ctx context.Context, svc *localruntime.Service, v localruntime.View, job string, starting bool) card.Runtime {
 	r := card.Runtime{
-		ID: v.ID, Name: v.Name, Purpose: purposeLabels[v.Purpose], Description: v.Description, SourceURL: v.SourceURL,
+		ID: v.ID, Name: v.Name, Purpose: purposeLabels[v.Purpose], Icon: purposeIcons[v.Purpose], Description: v.Description, SourceURL: v.SourceURL,
 		Supported: v.Support.Supported, Reason: v.Support.Reason, Fallback: v.Support.Fallback, GPU: v.Support.GPU,
 		Writable: v.Writable, WritableError: v.WritableError, Dir: v.Dir, Free: jobview.BytesText(int64(min(v.FreeBytes, 1<<62))), //nolint:gosec // bounded above
 		VRAM:      jobview.VRAMText(v.VRAM.MinGB, v.VRAM.Source, v.VRAM.Estimate),
@@ -62,6 +69,7 @@ func runtimeCard(ctx context.Context, svc *localruntime.Service, v localruntime.
 	if v.License.CommercialCondition != "" {
 		r.LicenseCondition = v.License.CommercialCondition
 	}
+	r.Commercial = commercialOf(v)
 	// The build the card talks about: the installed one, else the one this GPU gets, else the first (a machine that cannot run it).
 	want := string(v.Support.Variant)
 	if v.Installed {
@@ -88,15 +96,31 @@ func runtimeCard(ctx context.Context, svc *localruntime.Service, v localruntime.
 	return r
 }
 
+// commercialOf is the answer the card carries as its icon: the strictest of the license of the program and of every weight and
+// dependency, so that one that is not clear is never hidden behind the others (the license text of the program stays the tooltip).
+func commercialOf(v localruntime.View) commercial.View {
+	levels := []modellicense.Commercial{v.License.Commercial}
+	for _, a := range v.Weights.Assets {
+		levels = append(levels, a.License.Commercial)
+	}
+	out := commercial.FromInfo(v.License.Info())
+	out.Level = modellicense.Strictest(levels...)
+	return out
+}
+
 func weightsOf(w localruntime.WeightsView) weightlist.Weights {
 	out := weightlist.Weights{State: string(w.State), Message: w.Message, NotReady: w.NotReady, Need: jobview.BytesText(w.NeedBytes), Total: jobview.BytesText(w.TotalBytes)}
 	for _, a := range w.Assets {
-		out.Assets = append(out.Assets, weightlist.Asset{
+		var files []weightlist.File
+		for _, f := range a.Files {
+			files = append(files, weightlist.File{Path: f.Dest, Size: jobview.BytesText(f.Size), SHA256: f.SHA256})
+		}
+		out.Assets = append(out.Assets, weightlist.Asset{Files: files,
 			Name: a.Name, Description: a.Description, Size: jobview.BytesText(a.Size), State: string(a.State), Required: a.Required,
 			SourceName: a.Source.Name, SourceURL: a.Source.URL, SourceNote: a.Source.Note,
-			License: weightlist.License{Name: a.License.Name, URL: a.License.URL, Summary: a.License.Summary, Commercial: string(a.License.CommercialUse), Notice: a.License.Notice},
+			License: weightlist.License{Name: a.License.Name, URL: a.License.URL, Summary: a.License.Summary, Commercial: string(a.License.Commercial), Notice: a.License.Notice},
 		})
-		if a.License.CommercialUse != catalog.CommercialYes {
+		if a.License.Commercial != modellicense.Yes {
 			out.Unclear = append(out.Unclear, a.Name)
 		}
 	}

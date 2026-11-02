@@ -24,7 +24,7 @@ func render(t *testing.T, c templ.Component) string {
 func TestHost_IsAClosedEmptyNativeDialogWithACloseButton(t *testing.T) {
 	html := render(t, modal.Host())
 
-	assert.Contains(t, html, `<dialog id="mam-modal" data-modal aria-labelledby="mam-modal-title"`)
+	assert.Contains(t, html, `<dialog id="mam-modal" data-modal aria-modal="true" aria-labelledby="mam-modal-title"`)
 	assert.NotContains(t, html, " open")
 	assert.Contains(t, html, `<div id="mam-modal-body"></div>`)
 	assert.Contains(t, html, `id="mam-modal-failure" role="alert"`)

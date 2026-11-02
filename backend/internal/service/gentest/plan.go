@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
-
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 )
 
 // Warning is something the confirmation tells the user before the batch runs: an input a model cannot use, a length that is
@@ -23,17 +22,18 @@ type Warning struct {
 
 // The codes of a Warning.
 const (
-	WarnInputsDropped    = refs.WarnInputsDropped   // an input image the model cannot use is left out for that model
-	WarnDurationSnapped  = "duration_snapped"       // the length is rounded to one the model makes
-	WarnResolution       = "resolution"             // the model does not make the resolution: its results fail
-	WarnAspect           = "aspect_ratio"           // the model refuses the aspect ratio: its results fail
-	WarnNoPrice          = "no_price"               // the price is unknown: the model is left out of the total
-	WarnNegativeFolded   = "negative_folded"        // the model has no negative prompt field: it is written into the prompt
-	WarnSeedUnsupported  = "seed_unsupported"       // the model takes no seed: the n results are the same call n times
-	WarnFramesOverFree   = "frames_over_refs"       // first / last frames and free references cannot be used together
-	WarnTooManyReference = refs.WarnTooMany         // more references than the model takes
-	WarnRoleUnsupported  = refs.WarnRoleUnsupported // the model does not take the role of a reference: it is used as a whole
-	WarnLoRAUnsupported  = refs.WarnLoRAUnsupported // the model cannot take a LoRA: it is not sent
+	WarnInputsDropped    = refs.WarnInputsDropped    // an input image the model cannot use is left out for that model
+	WarnDurationSnapped  = "duration_snapped"        // the length is rounded to one the model makes
+	WarnResolution       = "resolution"              // the model does not make the resolution: its results fail
+	WarnAspect           = "aspect_ratio"            // the model refuses the aspect ratio: its results fail
+	WarnNoPrice          = "no_price"                // the price is unknown: the model is left out of the total
+	WarnNegativeFolded   = "negative_folded"         // the model has no negative prompt field: it is written into the prompt
+	WarnSeedUnsupported  = "seed_unsupported"        // the model takes no seed: the n results are the same call n times
+	WarnFramesOverFree   = "frames_over_refs"        // first / last frames and free references cannot be used together
+	WarnTooManyReference = refs.WarnTooMany          // more references than the model takes
+	WarnRoleUnsupported  = refs.WarnRoleUnsupported  // the model does not take the role of a reference: it is used as a whole
+	WarnLoRAUnsupported  = refs.WarnLoRAUnsupported  // the model cannot take a LoRA: it is not sent
+	WarnSpeedUnsupported = refs.WarnSpeedUnsupported // the video model has no such speed mode: it runs its default
 )
 
 // modelPlan is how one model takes the request: the inputs it uses, the parameters it is called with and its unit price.
@@ -45,8 +45,10 @@ type modelPlan struct {
 	used []int
 	// lora says the request's LoRA is sent to the model, avoidPose that the pose negative is added to its negative prompt.
 	lora, avoidPose bool
-	warnings        []Warning
-	basis           string
+	// speedMode is the speed mode the video model is asked for ("" for its default).
+	speedMode string
+	warnings  []Warning
+	basis     string
 	// unit is the price of one result in USD (nil when the basis is unknown).
 	unit *float64
 }
@@ -143,6 +145,11 @@ func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, wa
 	})
 	p.used = append(p.used, free...)
 	slices.Sort(p.used)
+	if r.SpeedMode != "" && !p.info.Video.HasSpeedMode(r.SpeedMode) {
+		warn(WarnSpeedUnsupported, "%s には速さのモード %q がないため、このモデルの既定で作ります", p.info.Label, r.SpeedMode)
+	} else {
+		p.speedMode = r.SpeedMode
+	}
 	if msg := direct.AspectProblem(domain.ModelName(p.info.ID), r.AspectRatio, first); msg != "" {
 		warn(WarnAspect, "%s: 縦横比 %s は使えません（%s）。このモデルの結果は失敗します", p.info.Label, r.AspectRatio, msg)
 	}
@@ -165,4 +172,32 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 		}
 	}
 	return nil, modelcatalog.BasisUnknown
+}
+
+// resultParamsOf is what is recorded of the request for the result of one model.
+func resultParamsOf(r Request, mp modelPlan, translation *sentText) resultParams {
+	p := resultParams{
+		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode,
+	}
+	if mp.lora {
+		p.LoRA = &refs.LoRA{Name: r.LoRA.Name, Strength: *r.LoRA.Strength}
+	}
+	return p
+}
+
+// planImage decides which references, which LoRA and which pose option an image model takes of the request (refs.Decide).
+func (s *Service) planImage(r Request, p *modelPlan, warn func(code, format string, args ...any)) {
+	roles := make([]string, len(r.References))
+	for i, ref := range r.References {
+		roles[i] = ref.Role
+	}
+	info := p.info
+	d := refs.Decide(refs.Model{
+		Label: info.Label, AcceptsReferences: info.AcceptsReferences, MaxReferences: info.MaxReferenceImages, Roles: info.ReferenceRoles,
+		SupportsLoRA: info.SupportsLoRA,
+	}, roles, r.LoRA != nil, r.AvoidReferencePose)
+	p.used, p.lora, p.avoidPose = d.Used, d.LoRA, d.AvoidPose
+	for _, w := range d.Warnings {
+		warn(w.Code, "%s", w.Message)
+	}
 }

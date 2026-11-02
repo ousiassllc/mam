@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 )
 
 // HiddenField is a hidden input of a form.
@@ -76,7 +77,7 @@ templ LockToggle(d LockToggleData) {
 			@atoms.Select(atoms.FieldSm, "", templ.Attributes{"name": "value", "aria-label": "Video Model"}) {
 				<option value="" selected?={ d.Model == "" }>（現在のモデル）</option>
 				for _, m := range d.Models {
-					<option value={ string(m) } selected?={ d.Model == string(m) }>{ modelreg.Label(string(m)) }</option>
+					<option value={ string(m) } selected?={ d.Model == string(m) } data-commercial={ commercial.Of(string(m)).Answer() }>{ commercial.OptionLabel(modelreg.Label(string(m)), commercial.Of(string(m))) }</option>
 				}
 			}
 		}

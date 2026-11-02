@@ -13,20 +13,25 @@
 - **シード**: `supports_seed` のモデル（FLUX.2・Runway Gen-4.5・シードの割り当てがあるローカルの ComfyUI モデル）にはサーバーが結果ごとに別のシードを作って送り、送った値を `seed` に残す。ほかのモデルは同じ入力の n 回の呼び出しで、`seed` なし・`seed_sent` が false。
 - **課金・台帳に入らない**: Take・コスト台帳・アセットは作らない。合計コストは `list_generation_results` の `spend` だけ（解析・CostSummary には出ない）。
 - **長い操作は `job_id` を返す**: `run_generation_test`。`get_job` は種別 `gentest` の Probe で結果の件数から進捗を返す（下の「ジョブ」）。再起動後も読める。ジョブは再開しない（mam が落ちたとき、終わっていない結果は `failed`・理由「中断」。終わった結果は残る）。
-- **ファイルは URL で受け渡す**: 入力画像はアップロードの用途 `gentest_reference`、結果のファイルは `get_generation_result` の `file`（ダウンロードの種類 `gentest_file`。トークン付き・15 分。base64 は返さない、ZIP は無い）。
+- **ファイルは URL で受け渡す**: 入力画像はアップロードの用途 `gentest_reference`、結果のファイルは `get_generation_result` の `file`（ダウンロードの種類 `gentest_file`。トークン付き・15 分。base64 は返さない）。複数の結果は `export_generation_results` が ZIP にまとめる（ダウンロードの種類 `gentest_export`。Issue #932）。
 - **拒否**: 入力の誤り（モデル・プロンプト・本数・縦横比・解像度・長さ・入力画像・使えないモデル・英訳に使う LLM が無い）は `validation`、英訳に LLM が失敗した（API キー未登録・サーキットブレーカー・タイムアウト・訳になっていない答え）ときは `upstream`、見積りの不一致・上限超え・終わっていないものの削除・終わったバッチの取り消しは `conflict`、無いものは `not_found`。取り込みのスロットが LOCK されていれば `locked`（画像は取り込み済みで、メッセージに `asset_id`・`reference_id` を含む）。
 
 ## ツール
 
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
-| `list_generation_models` | 選べるモデル（組み込みのクラウドモデル・ローカル・外部 ComfyUI・保存したワークフロー・ChatGPT サブスク）。使えないものは理由つき | `media`（省略可） | `models[]`（`id`, `label`, `media`, `source`, `available`, `unavailable`, `unavailable_message`, `accepts_references`, `reference_mode`, `max_reference_images`, `reference_roles`, `supports_lora`, `video`（`durations`, `resolutions`, `max_reference_images`, `first_frame`, `last_frame`, `native_audio`）, `supports_seed`, `negative_field`, `price`（`basis`: priced / free / unknown, `per_image_usd`, `per_second_usd`））, `loras[]`（LoRA ファイル名。昇順）, `limits`（`max_items`, `max_cost_usd`） | はい |
-| `estimate_generation_test` | バッチ（モデル × プロンプト × 本数）の本数と見積り。実行しない | `media`, `models[]`, `prompts[]`（`prompt`, `negative_prompt`）, `count`, `aspect_ratio`, `resolution`, `duration_seconds`, `translate_to_english`（省略時 true）, `references[]`（`source`: upload / project_asset / reference_item / history, `id`, `project_id`, `role`: reference / face / style / edit（画像）・reference / first_frame / last_frame（動画）, `strength`: 0〜1（画像のみ））, `avoid_reference_pose`（画像のみ）, `lora`（`name`, `strength`。画像のみ） | `estimate_id`, `total_items`, `total_usd`, `breakdown[]`（`model`, `items`, `basis`, `unit_usd`, `subtotal_usd`）, `unknown_models`（英訳の行は `translate`）, `unknown_items`, `warnings[]`（`code`, `model`, `message`）, `over_limit`, `max_items`, `max_cost_usd`, `request` | はい |
+| `list_generation_models` | 選べるモデル（組み込みのクラウドモデル・ローカル・外部 ComfyUI・保存したワークフロー・ChatGPT サブスク）。使えないものは理由つき。各モデルの `license` に商用利用の可否（#928。[model-license.md](../architecture/model-license.md)） | `media`（省略可）, `commercial`（`all` / `ok` / `ok_or_conditional`。省くと設定「商用OKのモデルだけを使う」に従う。不正な値は `validation`） | `models[]`（`id`, `label`, `media`, `source`, `available`, `unavailable`, `unavailable_message`, `accepts_references`, `reference_mode`, `max_reference_images`, `reference_roles`, `supports_lora`, `video`（`durations`, `resolutions`, `max_reference_images`, `first_frame`, `last_frame`, `native_audio`）, `supports_seed`, `negative_field`, `price`（`basis`: priced / free / unknown, `per_image_usd`, `per_second_usd`）, `license`（`commercial`: `yes` / `conditional` / `no` / `unknown`, `license_name`, `condition`, `source_url`, `checked_at`, `notice`））, `commercial_filter`（適用した絞り込み）, `loras[]`（LoRA ファイル名。昇順）, `limits`（`max_items`, `max_cost_usd`） | はい |
+| `estimate_generation_test` | バッチ（モデル × プロンプト × 本数）の本数と見積り。実行しない | `media`, `models[]`, `prompts[]`（`prompt`, `negative_prompt`）, `count`, `aspect_ratio`, `resolution`, `duration_seconds`, `translate_to_english`（省略時 true）, `references[]`（`source`: upload / project_asset / reference_item / history, `id`, `project_id`, `role`: reference / face / style / edit（画像）・reference / first_frame / last_frame（動画）, `strength`: 0〜1（画像のみ））, `avoid_reference_pose`（画像のみ）, `lora`（`name`, `strength`。画像のみ）, `speed_mode`（動画のみ。モデルの `video.speed_modes` の `id`。省くと既定） | `estimate_id`, `total_items`, `total_usd`, `breakdown[]`（`model`, `items`, `basis`, `unit_usd`, `subtotal_usd`）, `unknown_models`（英訳の行は `translate`）, `unknown_items`, `warnings[]`（`code`, `model`, `message`）, `over_limit`, `max_items`, `max_cost_usd`, `request` | はい |
 | `run_generation_test` | 確認した見積りどおりに実行する（ジョブ） | 上と同じ + `estimate_id`, `confirmed_total_usd` | `job_id`, `state`, `batch_id`, `total_items` | いいえ（外部へ接続・課金あり） |
+| `estimate_prompt_match` | 参考の画像 1 枚から画像モデルで似た絵を出すプロンプトを作る「プロンプトマッチ」の見積り（Issue #916）。最大の回数 × モデルの単価（ローカルは無料）。LLM の分は単価なしの行（`model` が `match_llm`）で合計に入らない。上限超過は `over_limit` つき。実行しない | `reference`（`source`, `id`, `project_id`）, `model`, `mode`（`auto` 既定 / `once` / `adjust`）, `target_score`（1〜100、既定 80）, `max_rounds`（1〜10、既定 5）, `max_cost_usd`（この実行で使ってよい費用。見積りが超えるなら `over_limit`）, `aspect_ratio`, `instruction`、続きは `continue_batch_id` と `mode`・`instruction` | `estimate_id`, `request`, `rounds`, `breakdown[]`, `total_usd`, `warnings[]`, `max_cost_usd`, `over_limit` | はい |
+| `run_prompt_match` | 確認した見積りどおりに実行する（ジョブ。種別 `gentest`）。サーバーが見積りをやり直し、`estimate_id`・合計が違う、上限超過は `conflict`（LLM も呼ばず何も生成しない） | 上と同じ + `estimate_id`, `confirmed_total_usd` | `job_id`, `state`, `batch_id`, `total_items`（最大の回数） | いいえ（外部へ接続・課金あり） |
+| `get_prompt_match` | マッチの状態と全ての回 | `batch_id` | `finished`, `stop`（`reached` / `limit` / `cancelled` / `error`）, `error`, `target_score`, `best_round`, `best_score`, `best_prompt`（そのまま使える。生成テストの `prompts` に渡す）, `rounds[]`（`round`, `result_id`, `status`, `prompt`（英語）, `score`, `differences[]`, `based_on`, `base_prompt`（直す前）, `change`（直したところ）, `instruction`, `error`, `best`） | はい |
+| `instruct_prompt_match` | **実行中**のマッチに、言葉（日本語でよい）の指示を足す。次にプロンプトを直すときに取り込む。終わったマッチは `conflict` | `batch_id`, `instruction` | `status` | いいえ |
 | `get_generation_test` | バッチの進捗と全結果 | `batch_id` | `state`, `total`, `done`, `queued`, `running`, `succeeded`, `failed`, `cancelled`, `finished`, `estimate`, `results[]`（下の結果） | はい |
 | `cancel_generation_test` | バッチを取り消す。始めていない結果は取り消し、呼び出し中のものは終わるのを待つ | `batch_id` | `cancelled`, `running` | いいえ |
 | `list_generation_results` | 履歴（新しい順） | `model`, `media`, `favorite`, `limit`, `offset` | `results[]`, `spend`（`items`, `priced_usd`, `unknown_items`） | はい |
 | `get_generation_result` | 結果 1 件（入力画像・取り込み先・ファイルの URL） | `result_id` | 結果 + `inputs[]`（`input_id`, `role`, `strength`, `mime_type`, `size_bytes`, `origin`）, `imports[]`, `file`（`url`, `expires_at`） | はい |
+| `export_generation_results` | 結果を ZIP にまとめるダウンロード URL を発行する（Issue #932。15 分有効）。ZIP は `photos/`（画像・動画。`01_20261101-173805_chroma1-hd_bce291.png` = 番号 2 桁以上・作成時刻（JST）・モデル・結果 id の末尾 6 文字）と `prompts/prompts.csv`（列 `file`, `created_at`（JST）, `media`, `model`, `seed`, `prompt`, `sent_prompt`, `result_id`。UTF-8 BOM つき。`file` は `photos/` のファイル名と同じ）。選び方は `result_ids[]`（最大 500）/ `batch_id` / `latest`（新しい順の N 件、1〜500。`result_ids`・`batch_id` が無ければ省略時 40）のどれか（何も無ければ直近 40 件）に、`favorite`・`models[]`・`media`・`commercial`（`all` / `ok` / `ok_or_conditional`。省略時 `all`。設定「商用OKのモデルだけを使う」には従わない）が **AND** で重なる。成功してファイルのある結果だけが入り、番号は古い順の 1 から。大きいときは `split_items`（1 つの ZIP の最大件数）・`split_mb`（ファイル合計の上限 MB。超える結果から次の ZIP。1 件で超えるものはその 1 件で 1 つ）で分け、番号は全体の通し番号（2 つ目の ZIP は続きの番号から。最大 20 個） | `result_ids`, `batch_id`, `latest`, `favorite`, `models`, `media`, `commercial`, `split_items`, `split_mb` | `files[]`（`url`, `expires_at`, `file_name`, `part`, `items`, `first`, `last`, `bytes`）, `items[]`（`number`, `file`, `result_id`, `media`, `model`, `created_at`）, `skipped[]`（指定したが入らなかった `result_id`） | はい |
 | `delete_generation_result` | 結果とファイルを削除（生成中は `conflict`。バッチの最後の 1 件ならバッチも消える） | `result_id` | `id`, `deleted` | いいえ（破壊的） |
 | `set_generation_favorite` | お気に入りの付け外し（冪等） | `result_id`, `favorite` | `result_id`, `favorite` | いいえ |
 | `list_generation_prompts` | プロンプト履歴（同じ（プロンプト, ネガティブ）は 1 件。使用回数・最後に使った日時） | なし | `prompts[]` | はい |
@@ -41,12 +46,20 @@
 |------|------|------|
 | アップロードの用途 | `gentest_reference` | 入力画像（画像モデルの参照画像・動画モデルの最初／最後のフレーム・自由な参照）。`create_upload_ticket` で URL を取り、multipart で 1 回送る。上限 20 MiB、PNG・JPEG・WebP（中身を検査する）。結果 `{"reference_id","mime_type"}` の `reference_id` を `references[]` に `{source: "upload", id}` として渡す。使わないまま 24 時間たつと、mam の次の起動で消える |
 | ダウンロードの種類 | `gentest_file` | 成功した結果のファイル（リソース ID は `result_id`）。`get_generation_result` が URL にする |
+| ダウンロードの種類 | `gentest_export` | 結果の ZIP（リソース ID は、URL を発行したときに選ばれた結果の id の並びと番号の開始位置。サーバーだけが作れる文字列で、URL には載らない）。`export_generation_results` が URL にする。ZIP はダウンロードのたびにファイルを 1 つずつディスクから流して作る（メモリに溜めない）。URL を発行したあとに削除された結果は抜け、全部消えていれば 404 |
+
+### ZIP のエクスポート（`export_generation_results`。Issue #932）
+
+- **選ぶ処理は 1 つ**: 画面（`GET /generation-test/export`）と MCP は同じ `service/gentest/export`（`Selection` → `Exporter`）を呼ぶ。条件の意味は両方で同じ。
+- **認可**: URL は他のダウンロードと同じチケット（ランダム値・15 分・発行したトークンが失効すると 401。ローカル限定のリスナー）で、ツール自体は MCP のトークンが要る。チケットの URL は結果 id を含まず、チケットは発行時に選ばれた結果だけを返すので、チケットを持たない者は結果を落とせない。
+- **CSV**: UTF-8 BOM つき・RFC 4180（改行・カンマ・引用符を含む文も壊れない）。`=` `+` `-` `@`・タブ・復帰で始まるセル（モデル名・プロンプト・送った文）は先頭に `'` を足して表計算ソフトが数式として実行しないようにする（CSV インジェクション対策。履歴の原文は mam に残る）。
+- **ファイル名**: モデル名などは英数字・`.`・`_`・`-` 以外を `-` にし、`..`・`/`・`\` を残さない（パストラバーサルの対策。最大 40 文字）。
 
 ## ジョブ（`get_job`）
 
 | 種別（`kind`） | 開始するツール | `target` | `done` / `total` | `result` |
 |---------------|---------------|----------|------------------|----------|
-| `gentest` | `run_generation_test` | なし | 終わった結果の数 / 全結果の数 | `batch_id`, `succeeded`, `failed`, `cancelled`, `next` |
+| `gentest` | `run_generation_test`・`run_prompt_match` | なし | 終わった結果の数 / 全結果の数 | `batch_id`, `succeeded`, `failed`, `cancelled`, `next` |
 
 `state`: 結果に動いているものがあれば `running`（まだ何も始まっていなければ `queued`）、終わっていて 1 件でも成功なら `succeeded`、全部失敗なら `failed`（`error` はジョブの理由）、取り消された結果があれば `cancelled`。バッチが削除されると `cancelled`。モデルマネージャーの画面の試し生成も同じ種別のジョブなので、`get_job` で読める。
 
@@ -62,3 +75,6 @@
 | 1.1 | 2026-11-01 | `estimate_generation_test`・`run_generation_test` に `translate_to_english`（省略時 true）を足し、方針に英訳（単価なしの `translate` の行・訳せなければ `upstream`）、結果に `translated`・`translated_prompt`・`translated_negative_prompt`、拒否に `upstream` を足した | Issue #913 |
 | 1.2 | 2026-11-02 | 画像の `references[]` に `role`（face / style / edit を追加）と `strength`、リクエストに `avoid_reference_pose` と `lora`、`list_generation_models` に `reference_mode`・`max_reference_images`・`reference_roles`・`supports_lora`・`loras`、結果に `avoid_reference_pose`・`lora`、警告 `role_unsupported`・`lora_unsupported` を足した | Issue #933 |
 | 1.3 | 2026-11-02 | 参照の `strength`・`avoid_reference_pose` が効かないモデルでは警告なしに無視されること、LoRA の `name` の検査（1〜200 文字・制御文字なし）、強さ 0 の送り方、動画では `loras` が空（エンジンに問い合わせない）ことを明記した | Issue #933 のレビュー |
+| 1.4 | 2026-11-02 | プロンプトマッチの 4 ツール（`estimate_prompt_match`・`run_prompt_match`・`get_prompt_match`・`instruct_prompt_match`）を足した。見積り → 確認 → 実行の流れは `run_generation_test` と同じ。実行は種別 `gentest` のジョブで、`get_job` と `get_generation_test` は、最後の測定が終わるまで `running`。取り消しは `cancel_generation_test`、各回の画像は `get_generation_result` | Issue #916 |
+| 1.5 | 2026-11-02 | `export_generation_results` とダウンロードの種類 `gentest_export` を足した（結果を `photos/` と `prompts/prompts.csv` の ZIP にまとめる。直近 N 件・バッチ・指定・お気に入り・モデル・種類・商用利用で選び、大きいときは分割）。「ZIP は無い」を改めた | Issue #932 |
+| 1.6 | 2026-11-02 | `estimate_generation_test`・`run_generation_test` に動画の `speed_mode`（Wan 2.2 14B + LightX2V の `fast` = 4 ステップ / `standard` = 通常）、`list_generation_models` のモデルの `video.speed_modes`（`id`・`label`・`default`）、警告 `speed_mode_unsupported`、結果の `speed_mode` を足した | Issue #930 |

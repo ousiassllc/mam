@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,8 +26,8 @@ func TestView_ShowsWhereEachLocalProviderStandsAndWhyItCannotBeUsed(t *testing.T
 	voice.SourceURL = "https://github.com/RVC-Boss/GPT-SoVITS"
 	voice.License = catalog.License{Name: "MIT", URL: "https://example.test/mit"}
 	voice.Weights.Assets = []localruntime.AssetView{
-		{Name: "s2G.pth", License: catalog.ResourceLicense{CommercialUse: catalog.CommercialYes}},
-		{Name: "chinese-hubert-base", License: catalog.ResourceLicense{CommercialUse: catalog.CommercialUnclear}},
+		{Name: "s2G.pth", License: catalog.ResourceLicense{Commercial: modellicense.Yes}},
+		{Name: "chinese-hubert-base", License: catalog.ResourceLicense{Commercial: modellicense.Unknown}},
 	}
 	r.rt.views["gpt-sovits"] = voice
 	lip := r.rt.views["musetalk"]

@@ -19,6 +19,7 @@
 |--------|------|------|------|----------|
 | `get_model_engine_status` | 同梱の ComfyUI エンジンの状態と、ComfyUI の接続先の一覧 | なし | `engine`（`supported`, `installed`, `version`, `pinned_version`, `update_available`, `variant`, `cpu`, `broken`, `process`（`state`: stopped / starting / running / failed, `url`, `error`）, `auto_start`, `dir`, `writable`, `free_bytes`, `variants[]`, `install_job`, `license`）, `endpoints[]`, `pinned` | はい |
 | `detect_gpu` | この PC の GPU と、推奨する ComfyUI のビルド | なし | `os`, `adapters[]`, `recommendation`（`variant`（空なら対応する GPU なし）, `reason`, `guidance`, `cpu_available`） | はい |
+| `get_gpu_status` | GPU の**今の**状態（下の「GPU の今の状態」）。読み取り専用 | なし | `os`, `source`, `gpus[]`, `processes[]`, `unavailable`, `comfyui[]` | はい |
 | `detect_comfyui` | この PC で動いている既存の ComfyUI（127.0.0.1 の 8188・8000） | なし | `found[]`（`url`, `version`, `desktop`, `devices`）, `recommended_url` | はい |
 | `install_model_engine` | エンジンを取得して導入する（ジョブ） | `variant`（`nvidia` / `nvidia_cu126` / `amd` / `intel`。省略で GPU の推奨）, `cpu` | `job_id`, `state`, `existing`, `target`（`engine`） | いいえ |
 | `start_model_engine` | 同梱の ComfyUI を起動し、応答するまで待つ（冪等） | なし | `state`, `port`, `url`, `pid`, `error` | いいえ |
@@ -27,11 +28,29 @@
 | `set_model_engine_autostart` | mam の起動時に起動するか（冪等） | `on` | `auto_start` | いいえ |
 | `cancel_model_install` | 動いている導入を中断する。ジョブは `failed`（理由「導入を中断しました…」）で終わり、取得済みの分は残って再開できる | `job_id` | `job_id`, `cancelled` | いいえ |
 
+## GPU の今の状態（`get_gpu_status`、Issue #914）
+
+ローカルの生成ジョブ（Wan 2.2・Flux・Qwen-Image など）を投げる前に、GPU がどれくらい空いているか・いま何が動いているかを確かめる入口。`detect_gpu`（どの GPU があり、どのビルドを入れるか）とは別で、こちらは**今の値**を返す。読み取り専用で、コマンドの実行と ComfyUI への `GET` だけを行い、何も変えない。
+
+| 出力 | 内容 |
+|------|------|
+| `gpus[]` | `index`, `name`, `vendor`, `memory`（`dedicated` / `unified`）, `vram_total_bytes`, `vram_used_bytes`, `vram_free_bytes`, `utilization_percent`, `temperature_celsius`, `note`, `unavailable` |
+| `processes[]` | GPU で計算しているプロセス: `pid`, `name`, `gpu_index`, `owner`（`mam` / `mam_engine`（同梱エンジンのフォルダの下のプログラム）/ `other`）, `used_bytes`, `used_bytes_unavailable` |
+| `comfyui[]` | mam が知っている ComfyUI（同梱エンジンと外部の接続先）ごと: `endpoint`, `url`, `bundled`, `reachable`, `unreachable_reason`, `version`, `devices[]`（`vram_total_bytes`, `vram_free_bytes`, `torch_vram_*`, `comfyui_used_bytes` = ComfyUI が自分で持っている VRAM）, `running[]`・`pending[]`（ジョブ。`pending` は実行される順で `position` = 1 が次）, `unavailable` |
+| `running[].progress` | `node`, `step`・`max_step`（いま動いているノードのステップ。Wan 2.2 のようにサンプラーが複数あるとノードごとに数え直す）, `percent`（ワークフロー全体）, `eta_seconds`（そのノードの残りの目安。ジョブ全体の残りではない） |
+
+- **取れない値はエラーにせず、省いて理由を付ける**: 項目名（JSON 名）をキーにした `unavailable`（GPU ごと・全体・ComfyUI ごと）と、`unreachable_reason`・`progress_unavailable`・`eta_unavailable`・`used_bytes_unavailable` に理由を日本語で返す。値を `null` や 0 で埋めない。
+- **NVIDIA（Windows・Linux）**: `nvidia-smi --query-gpu=…`（名前・VRAM の合計/使用/空き・使用率・温度）と `--query-compute-apps=…`（プロセス）を CSV で読む。nvidia-smi が無い・失敗したときは、アダプターの一覧（Windows は DXGI）から名前と専用メモリの大きさだけ返し、他は理由付きで省く（AMD・Intel の使用量は取れない）。Windows の WDDM ドライバはプロセスごとのメモリを `[N/A]` で返すので、その理由を付ける（ComfyUI の使用量は `comfyui[].devices[].comfyui_used_bytes` で見る）。
+- **Apple Silicon（macOS）**: 管理者権限が要らない `ioreg -r -d 1 -w 0 -c IOAccelerator`（`Device Utilization %`・`In use system memory`）・`sysctl`（チップ名・メモリ全体）・`vm_stat`（空き = free + inactive + speculative のページ）から読む。ユニファイドメモリなので `memory` は `unified`、`vram_total_bytes` はメモリ全体、`vram_free_bytes` はシステム全体の空き。温度とプロセスごとの使用量は権限なしでは取れないため、理由を付けて省く。Intel の Mac は GPU の状態を取らない（`unavailable.gpus`）。
+- **ComfyUI**: `GET /system_stats`（VRAM。`comfyui_used_bytes` = `torch_vram_total` − `torch_vram_free`）と `GET /queue`（実行中・順番待ち）を、接続先ごとに 4 秒の期限で読む。応答しない接続先は `reachable=false` と理由で返す。
+- **ジョブの進み具合**: ComfyUI はステップの進みを、ジョブを投入したクライアントの WebSocket にしか送らない。そのため `progress` は**mam が投入した**ジョブ（生成テスト・ショットの生成）だけに付く（`backend/internal/agent/modeladapter/comfyui/live` に記録）。ComfyUI の画面など別のクライアントが投入したジョブ・mam の再起動前に始まったジョブは、実行中として列挙するが `progress_unavailable` に理由を付ける。`eta_seconds` はそのノードのここまでの速さでの見積もり。
+- コマンドは `gpu.Runner` を介して実行する（5 秒の期限・コンソールを出さない）。Linux のテストは fake で NVIDIA・Apple Silicon・取得不能を検証する。
+
 ## モデルのカタログ
 
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
-| `list_model_catalog` | カタログのモデルと、それぞれの状態。**成人向け（`content_rating=adult`）のモデルは、年齢確認が済むまで出ない** | なし | `models[]`（`id`, `name`, `kind`, `tier`, `content_rating`（`general` / `adult`）, `trigger_words[]`（LoRA のトリガー語）, `total_size`, `need_bytes`, `vram`（`min_gb`, `source`, `estimate`）, `license`（`id`, `version`, `name`, `url`, `summary`, `commercial_use`, `commercial_condition`, `excluded_regions`, `notice`）, `consent_required`, `accepted`, `state`（`not_installed` / `installing` / `installed` / `incomplete`）, `install_job`, `model_ids[]`）, `blocked`（導入できない理由。空なら導入できる） | はい |
+| `list_model_catalog` | カタログのモデルと、それぞれの状態。各モデルの `license` に商用利用の可否（`commercial`: `yes` 商用OK / `conditional` 条件つき / `no` 商用NG / `unknown` 不明。ベースと派生で違うときは厳しい方）・条件・出典 URL・確認日（#928）。入力 `commercial`（`all` / `ok` / `ok_or_conditional`。省くと設定に従う）で絞れ、出力 `commercial_filter` が適用した絞り込み。**成人向け（`content_rating=adult`）のモデルは、年齢確認が済むまで出ない** | なし | `models[]`（`id`, `name`, `kind`, `tier`, `content_rating`（`general` / `adult`）, `trigger_words[]`（LoRA のトリガー語）, `total_size`, `need_bytes`, `vram`（`min_gb`, `source`, `estimate`）, `license`（`id`, `version`, `name`, `url`, `summary`, `commercial`（`yes` / `conditional` / `no` / `unknown`）, `commercial_condition`, `checked_at`, `components[]`（`part`, `name`, `url`, `commercial`）, `excluded_regions`, `notice`）, `consent_required`, `accepted`, `state`（`not_installed` / `installing` / `installed` / `incomplete`）, `install_job`, `model_ids[]`）, `blocked`（導入できない理由。空なら導入できる） | はい 出力の `vram_fit`（モデル ID → `fit`・`text`）は、この PC の GPU から見た VRAM の判定（`short` 足りない / `limited` 動くが制約あり（`text` に `vram.limits` の内容）/ `enough`。GPU のメモリが分からないときは省く。導入は止めない）。モデルの `vram` は `min_gb`・`recommended_gb`・`limits`・`source`・`estimate`（Issue #927） |
 | `get_catalog_model` | 1 件（`files[]`・共有ファイル・ミラーの原本の場所 `source_note` を含む）。成人向けモデルは `adult_notice`（ライセンスの要約の後に見せる注意書き）も返し、年齢確認の前は `conflict` | `model_id` | `list_model_catalog` の要素 | はい |
 | `accept_model_license` | ライセンスに同意したことを記録する（冪等）。ユーザーが確認した後にだけ呼ぶ。成人向けモデルは年齢確認の前は `conflict`。成人向けモデルの同意は、そのモデルだけに効く（年齢確認とは別） | `model_id`, `license_id`, `license_version` | `model_id`, `accepted` | いいえ |
 | `install_model` | モデルを取得して導入する（ジョブ）。同意が要るモデルは記録が無ければ `conflict`。`requires_hf_token` のモデル（LTX-2.5）は、トークン未設定・無効・アクセス未承認なら、ジョブを作らず `validation` で案内（画面と同じ文言。model-manager.md §5.3） | `model_id`, `license_id`・`license_version`（同意をこの呼び出しで渡すとき） | `job_id`, `state`, `existing`, `target`（`model:<id>`） | いいえ |
@@ -40,6 +59,8 @@
 | `set_huggingface_token` | トークンを保存・置き換える（冪等。応答に含まれない） | `token` | 同上 | いいえ |
 | `clear_huggingface_token` | トークンを削除する（冪等） | なし | 同上 | いいえ（破壊的） |
 | `get_external_inventory` | 外部の ComfyUI（種類 ComfyUI の登録済み接続先）が持つモデルファイル（`checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras`）と、カタログのモデルに足りないファイル。読むだけ。成人向けのモデルは年齢確認が済むまで `models[]` に出ない | `endpoint` | `endpoint`, `version`, `folders`, `models[]`（`id`, `present`, `missing`, `complete`） | はい（外部へ接続する） |
+| `get_commercial_only` | 設定「商用OKのモデルだけを使う」の状態（Issue #928）。オンの間、`list_generation_models`・`list_model_catalog` は `commercial` を省くと商用OK（`yes`）だけを返し、画面の一覧は「商用OKのみ」で始まる。**生成そのものは止めない**。意味は [model-license.md](../architecture/model-license.md) §5 | なし | `commercial_only` | はい |
+| `set_commercial_only` | 同設定を切り替える（冪等）。ユーザーが求めたときだけ呼ぶ | `enabled` | `commercial_only` | いいえ |
 | `get_adult_content_status` | 成人向けモデルの表示（年齢確認のゲート）の状態と、いまの注意書き | なし | `enabled`（ゲートが開いている）, `confirmed`（現行の注意書きの版の確認が記録済み）, `confirmed_at`, `notice_version`, `notice` | はい |
 | `set_adult_content` | 成人向けモデルの表示を切り替える（冪等）。**オンにするのは、`notice` をユーザーに見せ、ユーザー自身が「18 歳以上（またはお住まいの地域で成年）」と注意書きへの同意を答えた後だけ**。エージェントが自分で確認したことにして呼ばない（`accept_model_license` と同じ扱い）。確認の日時と注意書きの版は `state.json` に記録される | `enabled`, `confirm_adult`（ユーザーが答えたとき true）, `notice_version`（`get_adult_content_status` の値）。一度確認すれば、オフ→オンでは `confirm_adult` を省ける | `get_adult_content_status` と同じ | いいえ |
 
@@ -70,7 +91,7 @@
 | `remove_local_runtime` | 環境と取得した重みを削除する（設定は残る。導入中は `conflict`） | `runtime_id` | `removed` | いいえ（破壊的） |
 | `set_local_runtime_autostart` | mam の起動時に起動するか（冪等） | `runtime_id`, `on` | `auto_start` | いいえ |
 
-`weights` は、`state`（`none`: 未導入 / `ready` / `missing`: **導入済みだが重みが不足** / `unverified`: 確認が済んでいない）・`message`・`need_bytes`・`total_bytes`・`unclear`（商用利用が `yes` でない重みの数）と、`assets[]`: `name`, `description`, `state`（`ok` / `missing` / `unverified`）, `required`, `size`, `source`（`name`, `url`, `source_note`）, `license`（`id`, `name`, `url`, `summary`, **`commercial_use`（`yes` / `no` / `unclear`）**, `notice`）。**`commercial_use` が `unclear` / `no` の重みは、ユーザーに `notice` を見せてから使う**（法的な助言ではなく、確認できた範囲の記載）。`cancel_model_install` は `runtime:<id>` のジョブも中断する。
+`weights` は、`state`（`none`: 未導入 / `ready` / `missing`: **導入済みだが重みが不足** / `unverified`: 確認が済んでいない）・`message`・`need_bytes`・`total_bytes`・`unclear`（商用利用が `yes` でない重みの数）と、`assets[]`: `name`, `description`, `state`（`ok` / `missing` / `unverified`）, `required`, `size`, `source`（`name`, `url`, `source_note`）, `license`（`id`, `name`, `url`, `summary`, **`commercial`（`yes` / `conditional` / `no` / `unknown`）**, `notice`）。**`commercial` が `yes` でない重みは、ユーザーに `notice` を見せてから使う**（法的な助言ではなく、確認できた範囲の記載）。`cancel_model_install` は `runtime:<id>` のジョブも中断する。
 
 ## 試し生成
 
@@ -100,3 +121,6 @@
 | 1.5 | 2026-10-29 | `install_model` が `requires_hf_token` のモデルでトークンとアクセスを確かめ、足りなければ `validation` で案内することを足した。`set_huggingface_token` の説明を、LTX-2.5 に使うものに改めた | Issue #877 |
 | 1.6 | 2026-11-01 | 「ローカルの実行環境」のツール 8 個（`list_local_runtimes`・`get_local_runtime_status`・`install_local_runtime`・`install_local_runtime_weights`・`start_local_runtime`・`stop_local_runtime`・`remove_local_runtime`・`set_local_runtime_autostart`）を足した。重みごとの出典・ライセンス・`commercial_use`（`unclear` を含む）・「導入済み（重みが不足）」を返し、必須の重みが足りない起動は `conflict`。`cancel_model_install` が `runtime:<id>` のジョブも中断し、`get_job` の `model_install` の `target` に `runtime:<id>` を足した | Issue #920。重み・依存ファイルの出典とライセンスを MCP でも見られるように |
 | 1.7 | 2026-11-01 | ローカルの実行環境のツールが MuseTalk 1.5 を扱うことを書いた（`support.fallback` が Sync Labs、macOS の理由、RTX 50 の `compute_cap`、導入のジョブの内容。意味は [local-runtime.md §13](../architecture/model-manager/local-runtime.md)）。ツールの名前・引数・応答の形は変えていない | Issue #921（MuseTalk のランタイム） |
+| 1.8 | 2026-11-02 | `get_gpu_status`（読み取り専用）を足した。GPU ごとの VRAM・使用率・温度、ComfyUI ごとの VRAM・実行中のジョブの進み具合・順番待ちの順番を返し、取れない値は理由付きで省く | Issue #914 |
+| 1.9 | 2026-11-02 | `get_commercial_only`・`set_commercial_only` を足した。`list_model_catalog` に入力 `commercial`・出力 `commercial_filter`、`license` の `commercial_use`（真偽値）を `commercial`（4 値）・`checked_at`・`components[]` に替えた。ローカル実行環境の重みの `commercial_use` / `unclear` も `commercial` / `unknown` に | Issue #928（商用利用の可否の表示と絞り込み） |
+| 1.10 | 2026-11-02 | `list_model_catalog` の出力に `vram_fit`、モデルの `vram` に `recommended_gb`・`limits` を足した | Issue #927（LTX-2.5。16 GB は動くが制約あり）|

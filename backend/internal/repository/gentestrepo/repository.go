@@ -207,6 +207,9 @@ func (r *Repository) ListResults(ctx context.Context, f Filter) ([]Result, error
 	if len(f.Models) > 0 {
 		add(`model IN (`+strings.TrimSuffix(strings.Repeat("?,", len(f.Models)), ",")+`)`, anySlice(f.Models)...)
 	}
+	if len(f.IDs) > 0 {
+		add(`id IN (`+strings.TrimSuffix(strings.Repeat("?,", len(f.IDs)), ",")+`)`, anySlice(f.IDs)...)
+	}
 	if f.Media != "" {
 		add(`media = ?`, f.Media)
 	}

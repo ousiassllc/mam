@@ -32,7 +32,22 @@
   "name": "Open RAIL-M License (LTX Video 2B 0.9.5)",
   "url": "https://huggingface.co/Lightricks/LTX-Video/blob/main/ltx-video-2b-v0.9.5.license.txt",
   "summary": "商用を含めて使える。ただし違法・有害な用途（未成年の搾取、なりすまし、偽情報の拡散など）を禁じる使用制限（Attachment A）が付き、機械生成であることを明示せずにコンテンツを広めることも制限される。生成物の権利は主張されない。",
-  "commercial_use": true
+  "commercial": "yes",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル（LTX-Video 2B）",
+    "name": "Open RAIL-M License",
+    "url": "https://huggingface.co/Lightricks/LTX-Video/blob/main/ltx-video-2b-v0.9.5.license.txt",
+    "commercial": "yes"
+   },
+   {
+    "part": "テキストエンコーダー（T5-XXL）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/comfyanonymous/flux_text_encoders",
+    "commercial": "yes"
+   }
+  ]
  },
  "consent_required": false,
  "requires_hf_token": false,

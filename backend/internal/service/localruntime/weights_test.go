@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -42,8 +44,8 @@ func withWeights() option {
 		c.ResourceSets = []catalog.ResourceSet{{
 			Runtime: "gpt-sovits",
 			Licenses: []catalog.ResourceLicense{
-				{ID: "mit", Name: "MIT", URL: "https://example.com/mit", Summary: "商用可", CommercialUse: catalog.CommercialYes},
-				{ID: "odd", Name: "不明", URL: "https://example.com/odd", Summary: "表示なし", CommercialUse: catalog.CommercialUnclear, Notice: "商用で使う前に確認してください"},
+				{ID: "mit", Name: "MIT", URL: "https://example.com/mit", Summary: "商用可", Commercial: modellicense.Yes},
+				{ID: "odd", Name: "不明", URL: "https://example.com/odd", Summary: "表示なし", Commercial: modellicense.Unknown, Notice: "商用で使う前に確認してください"},
 			},
 			Assets: []catalog.Resource{
 				{
@@ -105,7 +107,7 @@ func TestAnInstallFetchesTheWeightsAfterThePackageAndStartWaitsForThem(t *testin
 		assert.Equal(t, rtm.AssetOK, a.State, a.Name)
 	}
 	assert.Equal(t, "odd", v.Weights.Assets[1].License.ID)
-	assert.Equal(t, catalog.CommercialUnclear, v.Weights.Assets[1].License.CommercialUse)
+	assert.Equal(t, modellicense.Unknown, v.Weights.Assets[1].License.Commercial)
 	assert.Equal(t, "https://huggingface.co/org/repo", v.Weights.Assets[0].Source.URL)
 
 	st, err := r.svc.Start(ctx(), "gpt-sovits")

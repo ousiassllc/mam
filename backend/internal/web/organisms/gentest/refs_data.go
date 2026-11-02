@@ -29,6 +29,7 @@ const (
 	FieldAvoidPose      = "avoid_pose"
 	FieldLoRA           = "lora"
 	FieldLoRAStrength   = "lora_strength"
+	FieldSpeedMode      = "speed_mode"
 )
 
 // UploadPlaceholder is the value of the ref field of an image that was chosen in the browser: its file travels in the field

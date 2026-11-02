@@ -5,13 +5,15 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 )
 
-var adultIDs = []string{"chroma1-hd", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v"}
+var adultIDs = []string{"chroma1-hd", "flux1-dev-nsfw-master", "ltx-2.5-22b-distilled-uncensored", "noctq-v4-qwen-image21", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v"}
 
 // The models of Issue #841 and which of them are for adults: the uncensored models and the LoRAs that make a model
 // uncensored. wan22-i2v-14b is the official base (no NFAA tag on Hugging Face), so it is a general standard model.
@@ -92,10 +94,10 @@ func TestSharedFilesOfTheUncensoredModelsAreTheSameFile(t *testing.T) {
 	}
 	for path, want := range map[string][]string{
 		"models/checkpoints/flux1-dev-fp8.safetensors":                             {"flux1-dev", "flux1-dev-nsfw-master"},
-		"models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors":              {"wan22-i2v-14b", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-ti2v-5b"},
-		"models/vae/wan_2.1_vae.safetensors":                                       {"wan22-i2v-14b", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v"},
-		"models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors": {"wan22-i2v-14b", "wan22-i2v-14b-nsfw-lora"},
-		"models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors":  {"wan22-i2v-14b", "wan22-i2v-14b-nsfw-lora"},
+		"models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors":              {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v", "wan22-ti2v-5b"},
+		"models/vae/wan_2.1_vae.safetensors":                                       {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v"},
+		"models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors": {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora"},
+		"models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors":  {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora"},
 	} {
 		got := slices.Clone(users[path])
 		slices.Sort(got)
@@ -131,14 +133,14 @@ func TestMirroredFilesNameTheirOriginAndUnlicensedModelsAreNotCommercial(t *test
 	for _, id := range []string{"wan22-remix-nsfw-i2v", "wan22-i2v-14b-nsfw-lora"} {
 		m, _ := c.Model(id)
 		assert.Equal(t, "unspecified", m.License.ID, id)
-		assert.False(t, m.License.CommercialUse, id)
+		assert.Equal(t, modellicense.Unknown, m.License.Commercial, id, "no text, so not known: shown as 不明 with the notice")
 		assert.Contains(t, m.License.Summary, "ライセンスの記載が無い", id)
 		assert.Contains(t, m.License.Summary, "Civitai", id)
 	}
 	noct, _ := c.Model("noctq-v4-qwen-image21")
-	assert.False(t, noct.License.CommercialUse)
+	assert.Equal(t, modellicense.No, noct.License.Commercial, "Qwen RESEARCH LICENSE: non-commercial")
 	chroma, _ := c.Model("chroma1-hd")
-	assert.True(t, chroma.License.CommercialUse, "Apache-2.0")
+	assert.Equal(t, modellicense.Yes, chroma.License.Commercial, "Apache-2.0")
 	assert.True(t, chroma.ConsentRequired, "but it is adult: the consent is required all the same")
 }
 
@@ -156,7 +158,7 @@ func TestValidateChecksTheContentRatingLorasAndSourceNotes(t *testing.T) {
 		"an unknown rating":       {func(c *catalog.Catalog) { find(c, "sdxl-base").ContentRating = "teen" }, "content_rating"},
 		"an adult standard model": {func(c *catalog.Catalog) { find(c, "sdxl-base").ContentRating = catalog.RatingAdult }, "adult model is an advanced model"},
 		"an unlicensed commercial model": {func(c *catalog.Catalog) {
-			find(c, "wan22-remix-nsfw-i2v").License.CommercialUse = true
+			find(c, "wan22-remix-nsfw-i2v").License.Commercial = modellicense.Yes
 		}, "not commercial use"},
 		"trigger words without a LoRA":          {func(c *catalog.Catalog) { find(c, "sdxl-base").TriggerWords = []string{"x"} }, "trigger_words belong to a model with a LoRA"},
 		"an empty trigger word":                 {func(c *catalog.Catalog) { find(c, "flux1-dev-nsfw-master").TriggerWords = []string{" "} }, "trigger word is empty"},

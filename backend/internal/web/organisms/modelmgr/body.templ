@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -21,12 +22,13 @@ templ Body(d Data) {
 			</div>
 		}
 		if d.Runtimes != nil {
-			@molecules.SettingsSection("ローカル音声・口パク", "声（GPT-SoVITS）と口パク（MuseTalk）をこの PC で作る実行環境を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。重みと依存ファイルの出典・ライセンスは、各カードの一覧にあります。この PC で使えないときは、クラウド（ElevenLabs・Sync Labs）を選べます。") {
+			@molecules.SettingsSection("ローカル音声・口パク", "声（GPT-SoVITS）と口パク（MuseTalk）をこの PC で作る実行環境を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。カードをタップすると、重みと依存ファイルの出典・ライセンス・ファイル一覧・SHA-256 が見られます。実行環境は mam とは別のプログラムで、公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。アンインストールすると、導入先も一緒に消えます。この PC で使えないときは、クラウド（ElevenLabs・Sync Labs）を選べます。") {
 				@d.Runtimes
 			}
 		}
-		@molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。") {
+		@molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。カードをタップすると、出典・ライセンス・ファイル一覧・SHA-256 が見られます。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。導入先の空きが足りないときや、GPU のメモリが足りない見込みのときは、カードにそう出ます。成人向けモデル（非検閲のモデル・LoRA）は、18 歳以上の確認と注意書きへの同意の後に、一覧・導入・試し生成に出ます。") {
 			@AdultCard(d.Adult)
+			@CommercialCard(d.Commercial)
 			<div id={ DialogID } data-testid="mm-dialog"></div>
 			@CatalogList(d.Catalog)
 		}
@@ -42,5 +44,6 @@ templ Body(d Data) {
 		@molecules.SettingsSection("外部の ComfyUI", "別のマシン（tailnet を含む）や ComfyUI Desktop など、mam が起動していない ComfyUI にあるモデルを確かめます。") {
 			@ExternalCard(d.External)
 		}
+		@modal.Host()
 	</div>
 }

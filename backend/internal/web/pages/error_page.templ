@@ -4,13 +4,14 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ErrorPage is shown for failed page loads (for example, an unknown Project).
 templ ErrorPage(csrfToken string, status int, message string) {
-	@layout.AppLayout(strconv.Itoa(status), csrfToken) {
-		<main class="mx-auto max-w-xl p-8 text-center">
+	@layout.AppLayout(strconv.Itoa(status), csrfToken, sidenav.At(sidenav.None)) {
+		<main class="mx-auto max-w-xl p-4 text-center md:p-8">
 			<h1 class="text-2xl font-semibold">{ strconv.Itoa(status) }</h1>
 			<p class="mt-2 text-neutral-400">{ message }</p>
 			<a href={ templ.SafeURL(paths.Projects()) } class="mt-6 inline-block text-indigo-300 underline">プロジェクト一覧へ</a>

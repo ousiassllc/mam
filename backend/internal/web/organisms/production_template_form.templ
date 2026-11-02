@@ -2,7 +2,7 @@ package organisms
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -31,27 +31,19 @@ templ ProductionTemplateForm(d PolicyFormData) {
 		<fieldset class="flex flex-col gap-3">
 			<legend class="sr-only">Production Template</legend>
 			for _, t := range domain.ProductionTemplates() {
-				<label class="flex cursor-pointer gap-3 rounded-md border border-neutral-700 p-3 has-[:checked]:border-indigo-400">
-					@atoms.Choice("mt-1", templ.Attributes{
-						"type":    "radio",
-						"name":    "production_template",
-						"value":   string(t),
-						"checked": t == d.Policy.Template,
-					})
-					<span class="flex flex-col gap-1">
-						<span class="text-sm font-medium">{ t.Label() }</span>
-						<ol class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-400">
-							for i, a := range t.Axes() {
-								<li>
-									{ a.Label() } <span class="text-neutral-400">{ axisWeightPercent(t, a) }</span>
-									if i < len(t.Axes())-1 {
-										<span aria-hidden="true">›</span>
-									}
-								</li>
-							}
-						</ol>
-					</span>
-				</label>
+				@pick.Card(templ.Attributes{"type": "radio", "name": "production_template", "value": string(t), "checked": t == d.Policy.Template}, "flex flex-col gap-1 p-3") {
+					<span class="text-sm font-medium">{ t.Label() }</span>
+					<ol class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-400">
+						for i, a := range t.Axes() {
+							<li>
+								{ a.Label() } <span class="text-neutral-400">{ axisWeightPercent(t, a) }</span>
+								if i < len(t.Axes())-1 {
+									<span aria-hidden="true">›</span>
+								}
+							</li>
+						}
+					</ol>
+				}
 			}
 		</fieldset>
 		if msg := d.Errors["production_template"]; msg != "" {

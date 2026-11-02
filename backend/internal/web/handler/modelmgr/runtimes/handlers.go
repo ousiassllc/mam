@@ -13,6 +13,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	card "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/runtimecard"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -27,6 +28,7 @@ type Handlers struct {
 func Register(engine *gin.Engine, svc *localruntime.Service) {
 	h := Handlers{svc: svc}
 	engine.GET(paths.ModelManagerPart("runtimes", ":id"), h.Runtime)
+	engine.GET(paths.ModelManagerPart("runtimes", ":id", "detail"), h.RuntimeDetail)
 	engine.POST(paths.ModelManagerPart("runtimes", ":id", "install"), h.InstallRuntime)
 	engine.POST(paths.ModelManagerPart("runtimes", ":id", "weights"), h.InstallRuntimeWeights)
 	engine.POST(paths.ModelManagerPart("runtimes", ":id", "start"), h.StartRuntime)
@@ -81,6 +83,19 @@ func (h Handlers) failed(c *gin.Context, id string, err error) {
 // install it reports on: once that ended, the card says how.
 func (h Handlers) Runtime(c *gin.Context) {
 	h.runtimeCard(c, http.StatusOK, c.Param("id"), c.Query("job"), false, nil)
+}
+
+// RuntimeDetail answers GET /model-manager/runtimes/:id/detail with the modal of the card: what it is, why it cannot run here, the sources
+// and licenses of its weights and dependencies, their files and SHA-256 (the card shows none of it). A runtime that is not there is the
+// reason in the modal (404).
+func (h Handlers) RuntimeDetail(c *gin.Context) {
+	r, err := runtimeData(c.Request.Context(), h.svc, c.Param("id"), "", false)
+	if err != nil {
+		status, msg := refuseRuntime(c, err)
+		render(c, status, modal.Notice("導入するもの", msg))
+		return
+	}
+	render(c, http.StatusOK, card.RuntimeDetail(r))
 }
 
 // InstallRuntime starts the download of the runtime's package and weights as a job (POST /model-manager/runtimes/:id/install) and

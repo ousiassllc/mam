@@ -37,7 +37,7 @@ func toolGroups() []toolGroup {
 // as its h3. Each group is a <ul role="list"> named by its heading.
 templ ToolSection() {
 	<section aria-labelledby="tools-heading">
-		<h2 id="tools-heading" class="mt-8 text-sm font-medium text-neutral-300">ツール</h2>
+		<h2 id="tools-heading" class="text-sm font-medium text-neutral-300">ツール</h2>
 		for _, g := range toolGroups() {
 			<div class="mt-6 first-of-type:mt-3">
 				<h3 id={ "tool-group-" + g.ID } class="text-sm font-medium text-neutral-300">{ g.Title }</h3>

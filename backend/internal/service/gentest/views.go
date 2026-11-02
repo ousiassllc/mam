@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
-
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 )
 
 // The media of a result (ResultView.Media), the status of a result (ResultView.Status) and the role of an input image.
@@ -69,6 +68,7 @@ type ResultView struct {
 	// AvoidReferencePose says the negative prompt got "do not copy the reference's pose and composition"; LoRA is the LoRA the model was given.
 	AvoidReferencePose bool       `json:"avoid_reference_pose,omitempty"`
 	LoRA               *refs.LoRA `json:"lora,omitempty" jsonschema:"このモデルに渡した LoRA（名前と強さ）"`
+	SpeedMode          string     `json:"speed_mode,omitempty" jsonschema:"動画: このモデルに頼んだ速さのモード（fast / standard など。無ければモデルの既定）"`
 	CreatedAt          time.Time  `json:"created_at"`
 	FinishedAt         *time.Time `json:"finished_at,omitempty"`
 }
@@ -82,7 +82,7 @@ func viewOf(r gentestrepo.Result) ResultView {
 		AspectRatio: p.AspectRatio, Resolution: p.Resolution, DurationSeconds: p.DurationSeconds, Seed: r.Seed, SeedSent: r.SeedSent,
 		Status: r.Status, Error: r.Error, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "", MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
-		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA,
+		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}
 	if p.Translation != nil {

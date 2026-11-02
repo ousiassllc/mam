@@ -2,6 +2,8 @@ package modelmgr
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -24,7 +26,7 @@ templ CatalogList(c Catalog) {
 		if c.Blocked != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-catalog-blocked">{ c.Blocked }</p>
 		}
-		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="mm-models">
+		<ul id={ ModelsID } role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-models">
 			for _, m := range c.Models {
 				@modelCard(m, c.Blocked != "")
 			}
@@ -32,7 +34,8 @@ templ CatalogList(c Catalog) {
 	</div>
 }
 
-func stateTone(state string) (atoms.BadgeTone, string) {
+// StateTone is the badge of the install state of a model (also the one of its detail modal).
+func StateTone(state string) (atoms.BadgeTone, string) {
 	switch state {
 	case "installed":
 		return atoms.BadgeOK, "導入済み"
@@ -44,99 +47,70 @@ func stateTone(state string) (atoms.BadgeTone, string) {
 	return atoms.BadgeNeutral, "未導入"
 }
 
-// showsTokenGuide says whether the card carries the guidance for the missing token (beside the install button: the actions of such a
-// card sit under the name and the description, so that the guidance has the width of the card and wraps under the button when it is narrow).
-func showsTokenGuide(m Model) bool {
+// ShowsTokenGuide says whether the detail carries the guidance for the missing token (the card has the badge 「HF トークンが必要」).
+func ShowsTokenGuide(m Model) bool {
 	return m.TokenGuide != "" && m.State != "installed" && m.State != "installing"
 }
 
-// modelCard is one model as a card (the surface of settingsui.CardItem: shared-ui-parts.md §5). The name is its h3; the
-// state is a Badge with words; the buttons sit at the top right (shrink-0) next to the name and the description, so a long
-// description does not push them out, and drop under them when the card is narrow. While the token a model needs is missing, the
-// buttons sit under the name and the description instead, with the guidance beside the install button (showsTokenGuide).
-templ modelCard(m Model, blocked bool) {
-	{{ tone, label := stateTone(m.State) }}
-	{{ guided := showsTokenGuide(m) }}
-	<li class="@container flex min-w-0 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm" data-testid="mm-model" data-model={ m.ID } data-state={ m.State }>
-		<div class="flex flex-col gap-3 @min-[22rem]:flex-row @min-[22rem]:items-start @min-[22rem]:justify-between">
-			<div class="flex min-w-0 flex-1 flex-col gap-2">
-				<h3 class="break-words text-sm font-semibold text-neutral-100">{ m.Name }</h3>
-				<span class="flex flex-wrap items-center gap-2">
-					@atoms.Badge(atoms.BadgeInfo, m.KindLabel)
-					if m.Adult {
-						@atoms.BadgeWith(atoms.BadgeError, "成人向け", templ.Attributes{"data-testid": "mm-adult-badge"})
-					}
-					if m.Advanced {
-						@atoms.Badge(atoms.BadgeWarn, "ライセンスの同意が必要")
-					}
-					if m.NeedsToken {
-						@atoms.BadgeWith(atoms.BadgeWarn, "HF トークンが必要", templ.Attributes{"data-testid": "mm-token-badge"})
-					}
-					@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-model-state"})
-				</span>
-				<p class="break-words text-xs text-neutral-400">{ m.Description }</p>
-			</div>
-			if !guided {
-				<div class="flex shrink-0 flex-wrap items-center gap-2 @min-[22rem]:justify-end">
-					@modelActions(m, blocked)
-				</div>
-			}
-		</div>
-		if guided {
-			<div class="flex flex-wrap items-center gap-2">
-				@modelActions(m, blocked)
-			</div>
-		}
-		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-neutral-300" data-testid="mm-model-meta">
-			<div><dt class="text-neutral-400">大きさ</dt><dd>{ m.Size }</dd></div>
-			<div><dt class="text-neutral-400">VRAM の目安</dt><dd data-testid="mm-vram">{ m.VRAM }</dd></div>
-			<div class="min-w-0">
-				<dt class="text-neutral-400">ライセンス</dt>
-				<dd class="break-words"><a class="underline" href={ templ.SafeURL(m.License.URL) } target="_blank" rel="noopener noreferrer">{ m.License.Name }</a></dd>
-			</div>
-			<div><dt class="text-neutral-400">商用利用</dt><dd data-testid="mm-commercial">{ m.License.Commercial }</dd></div>
-			if len(m.TriggerWords) > 0 {
-				<div class="col-span-2"><dt class="text-neutral-400">トリガー語（プロンプトに入れる）</dt><dd class="break-words" data-testid="mm-trigger-words">{ joinNames(m.TriggerWords) }</dd></div>
-			}
-			if len(m.Sources) > 0 {
-				<div class="col-span-2"><dt class="text-neutral-400">原本の場所</dt><dd class="break-words" data-testid="mm-sources">{ joinNames(m.Sources) }</dd></div>
-			}
-		</dl>
-		if m.State == "installing" && m.Install != nil {
-			@progressBar(*m.Install, m.Name+" の導入の進み具合")
-		} else if m.State != "installed" {
-			<p class={ "text-xs " + needClass(m.LowDisk) } data-testid="mm-need">
-				必要な空き容量: { m.Need }
-				if m.LowDisk {
-					（空きが足りません。導入できません）
-				}
-			</p>
-		}
-		<details class="text-xs text-neutral-300">
-			<summary class="cursor-pointer text-neutral-400">ファイル（{ itoa(len(m.Files)) }）と導入されるモデル</summary>
-			<ul class="mt-1 flex flex-col gap-0.5 break-words" data-testid="mm-files">
-				for _, f := range m.Files {
-					<li>
-						<code>{ f.Path }</code> { f.Size }
-						if f.Present {
-							<span class="text-emerald-300">あり</span>
-						}
-						if len(f.Shared) > 0 {
-							<span class="text-neutral-400">（{ joinNames(f.Shared) } と共有。使うモデルが残る間は消えません）</span>
-						}
-					</li>
-				}
-			</ul>
-			<p class="mt-1 text-neutral-400">{ joinNames(m.ModelIDs) }／{ m.WorkflowCheck }</p>
-		</details>
-	</li>
+// ModelIcon is the picture of the card of a model: the tile of its kind (no image is fetched from the net).
+func ModelIcon(m Model) atoms.IconName {
+	if m.Kind == "video" {
+		return atoms.IconVideo
+	}
+	return atoms.IconImage
 }
 
-func needClass(low bool) string {
-	if low {
-		return "text-red-300"
+// ModelDetailURL is what the card of a model opens: the modal with its sources, license, files and SHA-256.
+func ModelDetailURL(id string) string { return paths.ModelManagerPart("models", id, "detail") }
+
+// ModelCardID is the id of the card of a model (the element a swap of the list draws again with the same id).
+func ModelCardID(id string) string { return "mm-model-" + id }
+
+// modelBadges are the labels beside the state that must not be missed: an adult model, the login a model needs, a disk that is too full to
+// install it, and a GPU that is below what the model needs.
+func modelBadges(m Model) []modelcard.Badge {
+	var out []modelcard.Badge
+	if m.Adult {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "成人向け", Attrs: templ.Attributes{"data-testid": "mm-adult-badge"}})
 	}
-	return "text-neutral-300"
+	if m.NeedsToken {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "HF トークンが必要", Attrs: templ.Attributes{"data-testid": "mm-token-badge"}})
+	}
+	if m.LowDisk && m.State != "installed" && m.State != "installing" {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-low-disk"}})
+	}
+	switch m.VRAMFit {
+	case "short":
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "VRAM が足りない見込み", Attrs: templ.Attributes{"data-testid": "mm-vram-fit", "data-fit": m.VRAMFit}})
+	case "limited":
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "VRAM に余裕なし", Attrs: templ.Attributes{"data-testid": "mm-vram-fit", "data-fit": m.VRAMFit}})
+	}
+	return out
+}
+
+func modelCardData(m Model) modelcard.Card {
+	tone, label := StateTone(m.State)
+	return modelcard.Card{
+		ID: ModelCardID(m.ID), Name: m.Name, Icon: ModelIcon(m), Meta: m.KindLabel + "・" + m.Size, DetailURL: ModelDetailURL(m.ID),
+		State:      modelcard.Badge{Tone: tone, Label: label, Attrs: templ.Attributes{"data-testid": "mm-model-state"}},
+		Badges:     modelBadges(m),
+		Commercial: &m.License.Answer,
+		Attrs:      templ.Attributes{"data-testid": "mm-model", "data-model": m.ID, "data-state": m.State, "data-commercial": m.License.Answer.Answer()},
+	}
+}
+
+// modelCard is one model as a card (modelcard.Item: the same card as the runtimes and the files added from Hugging Face): its picture, name,
+// kind and size, state and commercial-use icon, and the buttons. While an install runs the progress bar is on the card; the
+// source, license, files and SHA-256 are in the modal that the card opens (modeldetail.Detail).
+templ modelCard(m Model, blocked bool) {
+	@modelcard.Item(modelCardData(m)) {
+		if m.State == "installing" && m.Install != nil {
+			@progressBar(*m.Install, m.Name+" の導入の進み具合")
+		}
+		@modelcard.Actions() {
+			@modelActions(m, blocked)
+		}
+	}
 }
 
 templ modelActions(m Model, blocked bool) {
@@ -157,9 +131,6 @@ templ modelActions(m Model, blocked bool) {
 			})
 		default:
 			@installButton(m, blocked)
-			if showsTokenGuide(m) {
-				<p class="max-w-xs break-words text-xs text-amber-300" data-testid="mm-token-guide">{ m.TokenGuide } <a class="underline" href={ "#" + HFID }>トークンの区画へ</a></p>
-			}
 	}
 }
 
@@ -212,7 +183,9 @@ templ ConsentDialog(c Consent) {
 		if len(c.Sources) > 0 {
 			<p class="text-xs text-neutral-300" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>
 		}
-		<p class="text-sm" data-testid="mm-consent-commercial">商用利用: { c.License.Commercial }</p>
+		<p class="flex flex-wrap items-center gap-2 text-sm" data-testid="mm-consent-commercial">
+			商用利用: { c.License.Commercial } @commercial.Badge(c.License.Answer)
+		</p>
 		if c.License.Regions != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-consent-regions">{ c.License.Regions }</p>
 		}

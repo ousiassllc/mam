@@ -24,6 +24,10 @@
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
 | カードの枠 | `border-neutral-800` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
 
+### 商用利用の可否（Issue #928）
+
+モデルの商用利用の可否は `Badge` の手書きではなく、`atoms.CommercialBadge`（アイコン + 語）・`atoms.CommercialMark`（アイコンだけ）と、それを包む `molecules/commercial`（`Badge`・`Mark`・`Note`・`Filter`）で出す。色は商用OK＝`BadgeOK`、条件つき＝`BadgeWarn`、商用NG＝`BadgeError`、不明＝`BadgeWarn` に枠を足したもの。詳細は [../architecture/model-license.md](../architecture/model-license.md) §4・§5。
+
 ### 状態の種類と `Badge` の対応（両 Issue で共通）
 
 | 意味 | `Badge` | 文言の例 | 決まり |
@@ -60,6 +64,19 @@
 | `IconClose` | `x` | モーダルの閉じるボタン | #847 |
 | `IconCopy` | `copy` | MCP トークンのコピー | #847 |
 | `IconHelp` | `circle-question-mark`（Lucide v1.61.0。旧名 `circle-help`） | 「?」ヘルプのボタン（§9） | #866 |
+| `IconProjects` | `folder-kanban` | 左メニュー: プロジェクト（`atoms/icon_nav.templ`。行数の上限のため `icon.templ` から分けた） | #915 |
+| `IconChat` | `message-square` | 〃 Project のチャット | #915 |
+| `IconBrief` | `file-text` | 〃 Brief | #915 |
+| `IconEdit` | `scissors` | 〃 編集 / 書き出し | #915 |
+| `IconCost` | `sliders-horizontal` | 〃 設定 / コスト | #915 |
+| `IconBranch` | `git-branch` | 〃 Branch | #915 |
+| `IconWorld` | `globe` | 〃 World State | #915 |
+| `IconLibrary` | `library` | 〃 Reference Library | #915 |
+| `IconNotes` | `sticky-note` | 〃 Notes | #915 |
+| `IconSeries` | `users` | 〃 Series（`sidenav.Views` が SeriesID を持つとき） | #915 |
+| `IconPanelClose` | `panel-left-close` | 〃 たたむボタン | #915 |
+| `IconPanelOpen` | `panel-left-open` | 〃 開くボタン | #915 |
+| （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。
 - 上の Lucide の名前は、2026-10-25 に `lucide-icons/lucide` の `main` の `icons/<名前>.svg` が存在することを確かめた（HTTP 200）。コピーする版（タグ）は実装のときに決め、その版に同じ名前があることを確かめる。名前は Lucide の版で変わることがある。
@@ -150,7 +167,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - 説明・要約は `text-neutral-400`、折り返しを許す（`break-words`）。切り詰め（`truncate`）で情報を隠さない。
 - 実装（`settingsui/table.templ`）: `SettingsTable(bodyID, caption, []Column)`（`<tbody id=bodyID>` が一覧。新しい行の OOB は `beforeend:#<bodyID>`。広い表はその箱の中で横にスクロールし、ページを広げない）・`TableRowItem(TableRow{ID, TestID, Attrs, OOB})`（`SettingsTableRow` の実体）・`RowHead`（`<th scope="row">`）・`Cell`。`Column.Class` を `<th>` と同じ列の `Cell` に付けて、狭い窓で列を隠す（`hidden lg:table-cell`）。**OOB の `<tr>` は応答の先頭に置く**（HTML のパーサーは先頭の `<tr>` だけを行として読む）。
 - 置き場所: `molecules/settingsui/`（`card.templ`・`table.templ`・`nav.templ`）。`molecules/` の直下に置くと上限（2,000 行）に近づくため、サブパッケージにする（§8 の質問 3）。サイドナビ `SettingsNav` は [settings-screen.md](settings-screen.md) §4。
-- **モデルマネージャーのモデルのカード**（Issue #865）: `SettingsCard` と同じ面（`rounded-lg border border-neutral-800 bg-neutral-900 p-4`・見出しは `<h3>`・状態は文字の `Badge`・`ul role="list"` の `grid`）を使うが、複数のバッジ・メタの表・進捗・`<details>` と、右上の操作（`shrink-0`）が要るため、`CardItem` ではなく `organisms/modelmgr` の `modelCard` として持つ。見た目と構造は [model-manager-screen.md](model-manager-screen.md) の「モデルの一覧はカード」。`ToolCard` はリンクのカードで、使わない。
+- **モデルマネージャーのモデルのカード**（Issue #865）: `SettingsCard` と同じ面（`rounded-lg border border-neutral-800 bg-neutral-900 p-4`・見出しは `<h3>`・状態は文字の `Badge`・`ul role="list"` の `grid`）を使うが、複数のバッジ・メタの表・進捗・`<details>` と、右上の操作（`shrink-0`）が要るため、`CardItem` ではなく `organisms/modelmgr` の `modelCard` として持つ。**#954 で、モデルを並べる所はすべて `molecules/modelcard` の 1 つのカード（名前・アイコン・大きさ・状態・商用利用のアイコン・ボタンだけ。細かい情報はタップで開く詳細モーダル）になった**（`pick.OpenFrame` の枠）。見た目と構造は [model-manager-screen.md](model-manager-screen.md) の「カードと詳細モーダル（#954）」。`ToolCard` はリンクのカードで、使わない。
 
 ## 6. 2 つの Issue の取り合い
 
@@ -261,7 +278,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 
 | 画面 | ヘルプへ移した説明（常時表示から） | 本体に残すもの |
 |------|-------------------------------|---------------|
-| モデルマネージャー（[model-manager-screen.md](model-manager-screen.md)） | 各区画（ComfyUI エンジン・モデル・試し生成・Hugging Face から導入・Hugging Face のトークン・外部の ComfyUI）の説明。**h1 の下の説明は動かさない**（h1 に「?」は付けない。オーナーの決定） | h1・h1 の下の説明・各区画の h2・操作・状態・結果・エラー |
+| モデルマネージャー（[model-manager-screen.md](model-manager-screen.md)） | 各区画（ComfyUI エンジン・モデル・試し生成・Hugging Face から導入・Hugging Face のトークン・外部の ComfyUI）の説明。ローカル音声・口パクとモデルの区画の「?」には、カードをタップすると詳細（出典・ライセンス・ファイル一覧・SHA-256）が見られること・実行環境の扱い・自動起動の意味も入る（#954）。**h1 の下の説明は動かさない**（h1 に「?」は付けない。オーナーの決定） | h1・h1 の下の説明・各区画の h2・操作・状態・結果・エラー |
 | 設定: API キーとログイン（[settings-screen-categories.md](settings-screen-categories.md)） | 「API キー」「ChatGPT でログイン」の説明、ChatGPT の公式・Codex・画像のカードの説明 | h3・カードの名前・状態・要約・操作 |
 | 設定: テキスト生成（LLM） | 分類の説明、再起動の補足（次の起動から使われる）、ChatGPT プランの長文（`llm-chatgpt-note`） | 「反映にはアプリの再起動が必要です」（操作の前提）・固定・エラー・結果・表 |
 | 設定: 画像・動画モデル | 分類の説明（`models.json` の保存先を含む）、「画像モデル（用途ごと）」「動画モデル（Quality Policy ごと）」の説明 | h2・h3・表 |

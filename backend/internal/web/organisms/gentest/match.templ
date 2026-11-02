@@ -1,0 +1,326 @@
+package gentest
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// matchHelp, modeHelp and adjustHelp are what the screen explains (behind its "?").
+const (
+	matchHelp  = "参考の画像を 1 枚渡すと、AI がそれを読んで英語のプロンプトを作り、選んだモデルで生成します。\n生成した絵と参考の画像を AI が見比べて「似てる度」（0〜100）を付け、違いをもとにプロンプトを直して、もう一度生成します。\n参考の画像はモデルには渡しません（プロンプトだけで似せます）。使うのは設定の「LLM の割り当て」の Prompt Planner（プロンプト）と AI Video Judge（比較）です。"
+	modeHelp   = "おまかせは、目標の似てる度に届くか上限の回数になるまで、自動で直して生成し直します。上限の費用を入れると、見積り（最大の回数 × 単価）がそれを超えるときは始めません。\n1回だけは、プロンプトを作って 1 回だけ生成します。\n調整は 1 回ずつです。結果を見て、言葉で指示を足して直せます。\n見積りは「最大の回数 × モデルの単価」です（ローカルは無料）。LLM の分は単価が分からないため合計に入りません。"
+	adjustHelp = "「もう少し明るく」「背景は海に」のような日本語の指示で、プロンプトを直して生成し直せます。指示は英語のプロンプトに反映します。\n実行中は、足した指示が次にプロンプトを直すときに入ります。終わったあとは、見積りを確認してから続けます（1回直す・自動で続ける）。"
+)
+
+// MatchForm is the form of a prompt match: one reference image, the model, how to go on and the limits. "見積りを見る" prices it
+// without running anything. static/src/components/gentest/match.ts shows the chosen image and the fields of the mode.
+templ MatchForm(c MatchCompose) {
+	<form
+		id={ ComposeID }
+		class="flex flex-col gap-5 rounded-lg border border-neutral-800 bg-neutral-900 p-5"
+		hx-post={ paths.GenerationTestPart("match", "estimate") }
+		hx-encoding="multipart/form-data"
+		hx-target={ "#" + ConfirmID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		autocomplete="off"
+		data-testid="gt-match-form"
+		data-gt-match
+		data-max-bytes={ itoa(c.MaxImageBytes) }
+	>
+		@notice(c.Message, "gt-match-form")
+		<fieldset class="flex flex-col gap-2" aria-labelledby="gt-match-ref-title">
+			@sectionTitle("gt-match-ref-title", "参考の画像", help.Text(matchHelp))
+			<div class="relative">
+				<input id="gt-match-file" type="file" name={ FieldUpload } accept="image/png,image/jpeg,image/webp" class="peer sr-only" data-gt-match-file data-testid="gt-match-file"/>
+				<label
+					for="gt-match-file"
+					class="flex min-h-48 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-600 p-4 text-center text-sm text-neutral-300 transition-colors hover:border-neutral-600 hover:bg-neutral-800/60 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 motion-reduce:transition-none"
+					data-gt-match-zone
+				>
+					<img
+						alt="参考の画像"
+						class="max-h-64 max-w-full rounded-md bg-black object-contain"
+						data-gt-match-preview
+						data-testid="gt-match-preview"
+						if c.RefThumb != "" {
+							src={ c.RefThumb }
+						} else {
+							hidden
+						}
+					/>
+					<span data-gt-match-hint hidden?={ c.RefThumb != "" }>画像をドロップ、またはクリック</span>
+				</label>
+				<input type="hidden" name={ FieldRef } value={ c.RefValue } data-gt-match-ref/>
+			</div>
+			<p class="text-xs text-red-300" role="alert" data-gt-match-error data-testid="gt-match-error" hidden></p>
+		</fieldset>
+		<div class="grid gap-5 sm:grid-cols-2">
+			<div class="flex flex-col gap-1 text-sm">
+				<label class="font-medium text-neutral-200" for="gt-match-model">モデル</label>
+				@commercial.Filter(c.Filter)
+				@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{"id": "gt-match-model", "name": FieldModel, "required": true, "data-testid": "gt-match-model"}) {
+					for _, m := range c.Models {
+						<option value={ m.ID } selected?={ m.Selected } data-commercial={ m.Answer.Answer() }>{ commercial.OptionLabel(m.Label+"（"+m.Price+"）", m.Answer) }</option>
+					}
+				}
+			</div>
+			<fieldset class="flex flex-col gap-1" aria-labelledby="gt-match-mode-title">
+				@sectionTitle("gt-match-mode-title", "進め方", help.Text(modeHelp))
+				<div class="grid grid-cols-3 gap-2">
+					for _, m := range MatchModes {
+						<label class="relative block cursor-pointer" title={ m.Hint }>
+							<input type="radio" name={ FieldMatchMode } value={ m.Value } checked?={ c.Mode == m.Value } class="peer sr-only" data-gt-match-mode data-testid={ "gt-match-mode-" + m.Value }/>
+							<span class={ "block rounded-md border border-neutral-800 px-2 py-2 text-center text-sm", pick.Glow }>{ m.Label }</span>
+						</label>
+					}
+				</div>
+			</fieldset>
+		</div>
+		<div class="grid gap-5 sm:grid-cols-2" data-gt-match-auto hidden?={ c.Mode != MatchAuto }>
+			<label class="flex flex-col gap-1 text-sm" for="gt-match-target">
+				<span class="flex items-baseline justify-between font-medium text-neutral-200">
+					<span>目標の似てる度</span>
+					<output class="text-2xl font-semibold tabular-nums text-neutral-100" for="gt-match-target" data-gt-match-target-output data-testid="gt-match-target-output">{ c.Target }%</output>
+				</span>
+				<input id="gt-match-target" type="range" name={ FieldMatchTarget } min="50" max="100" step="1" value={ c.Target } class="w-full" data-gt-match-target data-testid="gt-match-target"/>
+			</label>
+			<div class="flex flex-wrap items-end gap-4">
+				<label class="flex flex-col gap-1 text-sm" for="gt-match-rounds">
+					<span class="font-medium text-neutral-200">上限の回数</span>
+					@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{
+						"id": "gt-match-rounds", "name": FieldMatchRounds, "type": "number", "min": "1", "max": itoa(c.MaxRounds), "value": c.Rounds, "data-testid": "gt-match-rounds",
+					})
+				</label>
+				<label class="flex flex-col gap-1 text-sm" for="gt-match-max-cost">
+					<span class="font-medium text-neutral-200">上限の費用（USD）</span>
+					@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{
+						"id": "gt-match-max-cost", "name": FieldMatchMaxCost, "type": "number", "min": "0", "step": "0.01", "value": c.MaxCost, "placeholder": "なし", "data-testid": "gt-match-max-cost",
+					})
+				</label>
+			</div>
+		</div>
+		<label class="flex flex-col gap-1 text-sm" for="gt-match-instruction">
+			<span class="font-medium text-neutral-200">言葉の指示（省略可）</span>
+			@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{
+				"id": "gt-match-instruction", "name": FieldMatchInstruction, "rows": "2", "maxlength": itoa(c.MaxInstruction),
+				"placeholder": "例: 背景は海に、表情をやわらかく", "data-testid": "gt-match-instruction",
+			}, c.Instruction)
+		</label>
+		<div class="flex flex-wrap items-center gap-3">
+			@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-match-estimate"})
+			<span class="text-xs text-neutral-400">実行はまだしません</span>
+			if c.MaxCostUSD != "" {
+				@help.Toggle(help.ID("費用の上限"), "費用の上限")
+				@help.Panel(help.ID("費用の上限"), "費用の上限") {
+					<p>見積りが { c.MaxCostUSD } を超えるときは実行できません。</p>
+				}
+			}
+		</div>
+	</form>
+}
+
+// MatchEmpty is the placeholder the match is drawn into.
+templ MatchEmpty() {
+	<div id={ BatchID } data-testid="gt-match-empty"></div>
+	<div id={ AdjustID } data-testid="gt-match-adjust-empty"></div>
+}
+
+// MatchConfirmCleared empties the confirmation, out of band, when its match has started: the button that started it must not be pressed twice.
+templ MatchConfirmCleared() {
+	<div id={ ConfirmID } hx-swap-oob="true" data-testid="gt-confirm-empty"></div>
+}
+
+// MatchBox is a prompt match: the reference, the best similarity so far against the target, and a timeline of the rounds. While it
+// runs it asks for itself again every 2 seconds.
+templ MatchBox(b MatchBatch) {
+	<section
+		id={ BatchID }
+		class="flex flex-col gap-5 rounded-lg border border-neutral-800 bg-neutral-900 p-5"
+		data-testid="gt-match"
+		data-state={ b.StateTone }
+		if !b.Finished {
+			hx-get={ b.pollURL() }
+			hx-trigger={ Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		@notice(b.Message, "gt-match")
+		<div class="flex flex-wrap items-center gap-4">
+			if b.Reference != "" {
+				<img src={ b.Reference } alt="参考の画像" class="h-20 w-20 rounded-md bg-black object-contain" data-testid="gt-match-reference"/>
+			}
+			<div class="flex flex-col">
+				<span class="text-xs text-neutral-400">いちばん似ている</span>
+				<span class="text-4xl font-semibold tabular-nums text-neutral-100" data-testid="gt-match-best">
+					if b.Best != "" {
+						{ b.Best }
+					} else {
+						—
+					}
+				</span>
+			</div>
+			<span class="text-sm text-neutral-300">目標 { itoa(b.Target) }%</span>
+			if b.Model != "" {
+				<span class="flex flex-col items-start gap-1 text-xs text-neutral-300" data-testid="gt-match-model-label">
+					<span>{ b.Model }</span>
+					@commercial.Badge(b.Answer)
+				</span>
+			}
+			@atoms.BadgeWith(batchTone(b.StateTone), b.StateText, templ.Attributes{"data-testid": "gt-match-state"})
+			<span class="text-xs text-neutral-400" data-testid="gt-match-progress">{ itoa(b.Done) } / { itoa(b.Total) } 回</span>
+			if b.Estimate != "" {
+				<span class="text-xs text-neutral-400">見積り { b.Estimate }</span>
+			}
+			if !b.Finished {
+				<form
+					class="ml-auto"
+					hx-post={ paths.GenerationTestPart("match", "batches", b.ID, "cancel") }
+					hx-target={ "#" + BatchID }
+					hx-swap="outerHTML"
+					hx-sync="this:drop"
+					hx-disabled-elt="find button[type=submit]"
+					hx-confirm="まだ始めていない回を取り消しますか？（作っている途中の絵は終わるまで待ちます）"
+				>
+					@atoms.SmallButtonFor(atoms.ToneDanger, "取り消す", "プロンプトマッチ", templ.Attributes{"type": "submit", "data-testid": "gt-match-cancel"})
+				</form>
+			}
+		</div>
+		if b.StopText != "" {
+			<p class="text-sm text-neutral-200" data-testid="gt-match-stop">{ b.StopText }</p>
+		}
+		if !b.Finished {
+			<progress class="h-2 w-full" max="100" value={ itoa(b.Percent) } aria-label="進み具合" data-testid="gt-match-progressbar"></progress>
+		}
+		if b.BestPrompt != "" {
+			@matchBestPrompt(b)
+		}
+		<ol class="flex flex-col gap-3" data-testid="gt-match-rounds-list">
+			for _, r := range b.Rounds {
+				@matchRound(r, b.Target)
+			}
+		</ol>
+	</section>
+}
+
+// matchBestPrompt is the prompt of the best round: it is the one to use, so it can be copied, or taken back into the generation test.
+templ matchBestPrompt(b MatchBatch) {
+	<div class="flex flex-col gap-2 rounded-lg border border-emerald-500/60 bg-emerald-500/10 p-3" data-testid="gt-match-best-prompt">
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<span class="text-sm font-medium text-emerald-300">ベストのプロンプト（{ b.Best }）</span>
+			<div class="flex flex-wrap items-center gap-2">
+				<span id="gt-match-copy-status" class="text-xs text-neutral-300" role="status"></span>
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "コピー", "ベストのプロンプト", templ.Attributes{
+					"type": "button", "data-copy-source": "gt-match-best-text", "data-copy-status": "gt-match-copy-status", "data-testid": "gt-match-copy",
+				})
+				if b.BestUseURL != "" {
+					@atoms.ButtonLink(atoms.ToneNeutral, "生成テストで使う", templ.SafeURL(b.BestUseURL), templ.Attributes{"data-testid": "gt-match-use"})
+				}
+			</div>
+		</div>
+		<textarea id="gt-match-best-text" readonly rows="3" class="w-full resize-y rounded-md border border-neutral-700 bg-neutral-900 p-2 text-sm text-neutral-100" data-testid="gt-match-best-text">{ b.BestPrompt }</textarea>
+	</div>
+}
+
+// matchRound is one round: the picture, how much it looks like the reference, what was fixed to get it, and what still differs.
+templ matchRound(r MatchRound, target int) {
+	<li
+		class={ "grid gap-3 rounded-lg border p-3 sm:grid-cols-[10rem_1fr]", templ.KV("border-emerald-500/60 bg-emerald-500/10", r.Best), templ.KV("border-neutral-800", !r.Best) }
+		data-testid="gt-match-round"
+		data-round={ itoa(r.N) }
+		data-status={ r.Status }
+		data-best={ boolText(r.Best) }
+	>
+		<div class="flex h-40 w-full items-center justify-center rounded-md bg-black sm:w-40">
+			if r.ImageURL != "" {
+				<img src={ r.ImageURL } alt={ "第 " + itoa(r.N) + " 回の生成結果" } class="h-full w-full rounded-md object-contain" loading="lazy"/>
+			} else {
+				@atoms.BadgeWith(resultTone(r.Status), r.StatusText, templ.Attributes{"data-testid": "gt-match-round-status"})
+			}
+		</div>
+		<div class="flex min-w-0 flex-col gap-2">
+			<div class="flex flex-wrap items-center gap-3">
+				<span class="text-xs text-neutral-400">第 { itoa(r.N) } 回</span>
+				if r.Score != "" {
+					<span class="text-3xl font-semibold tabular-nums text-neutral-100" data-testid="gt-match-score">{ r.Score }</span>
+					if r.Reached {
+						@atoms.Badge(atoms.BadgeOK, "目標に届きました")
+					}
+				} else if r.Active {
+					@atoms.Badge(atoms.BadgeInfo, r.StatusText)
+				}
+				if r.Best {
+					@atoms.Badge(atoms.BadgeOK, "ベスト")
+				}
+				if r.DetailURL != "" {
+					<a class="ml-auto text-xs text-indigo-300 underline" href={ templ.SafeURL(r.DetailURL) } aria-label={ "第 " + itoa(r.N) + " 回の詳細" }>詳細</a>
+				}
+			</div>
+			if r.Score != "" {
+				<progress
+					class={ "h-1.5 w-full", templ.KV("accent-emerald-400", r.Reached), templ.KV("accent-amber-400", !r.Reached) }
+					max="100"
+					value={ itoa(r.Percent) }
+					aria-label={ "似てる度 " + r.Score }
+				></progress>
+			}
+			if r.Error != "" {
+				<p class="break-words text-sm text-red-300" data-testid="gt-match-round-error">{ r.Error }</p>
+			}
+			if r.Instruction != "" {
+				<p class="break-words text-sm text-neutral-200" data-testid="gt-match-instruction-used"><span class="text-xs text-neutral-400">指示</span> { r.Instruction }</p>
+			}
+			if r.Change != "" {
+				<p class="break-words text-sm text-neutral-200" data-testid="gt-match-change"><span class="text-xs text-neutral-400">直したところ</span> { r.Change }</p>
+			}
+			if len(r.Differences) > 0 {
+				<ul class="list-disc pl-5 text-xs text-neutral-300" data-testid="gt-match-differences">
+					for _, d := range r.Differences {
+						<li class="break-words">{ d }</li>
+					}
+				</ul>
+			}
+			if r.Prompt != "" {
+				<details class="text-xs" data-testid="gt-match-prompt">
+					<summary class="cursor-pointer text-neutral-400">プロンプト</summary>
+					<p class="mt-1 whitespace-pre-wrap break-words rounded-md border border-neutral-800 p-2 text-neutral-200" data-testid="gt-match-prompt-text">{ r.Prompt }</p>
+					if r.BasePrompt != "" {
+						<p class="mt-2 text-neutral-400">直す前（第 { itoa(r.BasedOn) } 回）</p>
+						<p class="mt-1 whitespace-pre-wrap break-words rounded-md border border-neutral-800 p-2 text-neutral-300" data-testid="gt-match-base-prompt">{ r.BasePrompt }</p>
+					}
+				</details>
+			}
+		</div>
+	</li>
+}
+
+// MatchWords is the words field below the match. It is not inside the box that asks for itself: the box is drawn again every 2
+// seconds, and a field in it would lose what is typed.
+templ MatchWords(f MatchWordsForm) {
+	<div id={ AdjustID } data-testid="gt-match-adjust" hx-swap-oob?={ f.OOB }>
+		if f.BatchID != "" {
+			<form
+				class="flex flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-5"
+				hx-post={ paths.GenerationTestPart("match", "batches", f.BatchID, "adjust") }
+				hx-target={ "#" + ConfirmID }
+				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
+			>
+				@sectionTitle("gt-match-adjust-title", "言葉で直す", help.Text(adjustHelp))
+				@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{
+					"name": FieldMatchInstruction, "rows": "2", "maxlength": itoa(f.MaxInstruction),
+					"aria-label": "言葉の指示", "placeholder": "例: もう少し明るく", "data-testid": "gt-match-adjust-text",
+				}, "")
+				<div class="flex flex-wrap items-center gap-3">
+					@atoms.Button(atoms.TonePrimary, "1回直す", templ.Attributes{"type": "submit", "name": FieldMatchMode, "value": MatchAdjust, "data-testid": "gt-match-adjust-submit"})
+					@atoms.Button(atoms.ToneNeutral, "自動で続ける", templ.Attributes{"type": "submit", "name": FieldMatchMode, "value": MatchAuto, "data-testid": "gt-match-continue-submit"})
+				</div>
+			</form>
+		}
+	</div>
+}

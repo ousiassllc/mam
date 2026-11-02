@@ -16,50 +16,6 @@ import (
 
 func installURL(id string) string { return paths.ModelManagerPart("models", id, "install") }
 
-func TestCatalog_ShowsKindSizeVRAMLicenseCommercialAndState(t *testing.T) {
-	s := newScreen(t)
-	s.rig.InstallEngine()
-	body := s.get(paths.ModelManagerPart("models")).Body.String()
-	assert.Contains(t, body, `data-model="m-a"`)
-	assert.Contains(t, body, "画像")
-	assert.Contains(t, body, "動画")
-	assert.Contains(t, body, "195 KiB", "the size of a.safetensors")
-	assert.Contains(t, body, "8 GB 以上（mam の推定。GPU では未確認）")
-	assert.Contains(t, body, `data-testid="mm-commercial"`)
-	assert.Contains(t, body, "不可（非商用）", "the commercial flag of m-c")
-	assert.Contains(t, body, "ライセンスの同意が必要")
-	assert.Contains(t, body, "構造テストのみ・GPU 実機未検証")
-	assert.Contains(t, body, "ライセンスを確認して導入", "a model that needs consent opens the dialog, it does not install")
-	assert.NotContains(t, body, `hx-post="`+installURL("m-c")+`"`)
-}
-
-// A model is a card in a grid, not a row of a divided list (model-manager-screen.md "モデルの一覧のカード"): the list is a
-// <ul role="list">, each card is an <li> with the name as its h3, the state as a Badge with words, the buttons in a
-// shrink-0 box next to the name and the description, then the meta, and the file list.
-func TestCatalog_EachModelIsACardWithAnH3AndShrinkZeroActions(t *testing.T) {
-	s := newScreen(t)
-	s.rig.InstallEngine()
-	body := s.get(paths.ModelManagerPart("models")).Body.String()
-
-	assert.Regexp(t, `<ul role="list" class="[^"]*\bgrid\b[^"]*" data-testid="mm-models">`, body)
-	assert.Regexp(t, `<li class="[^"]*rounded-lg border border-neutral-800 bg-neutral-900[^"]*" data-testid="mm-model"`, body, "the surface of a card")
-	assert.NotContains(t, body, "divide-y", "the models are not a divided list of rows")
-
-	cards := strings.Split(body, `data-testid="mm-model" data-model="`)[1:]
-	require.GreaterOrEqual(t, len(cards), 2, "several models are drawn")
-	for _, card := range cards {
-		id := card[:strings.Index(card, `"`)]
-		assert.Regexp(t, `<h3 class="[^"]*">[^<]+</h3>`, card, "%s: the name is the heading of the card", id)
-		assert.Contains(t, card, `data-testid="mm-model-state"`, id)
-		assert.Regexp(t, `(?s)<div class="flex shrink-0 [^"]*">\s*<button`, card, "%s: the buttons stay in a shrink-0 box", id)
-		for _, testID := range []string{"mm-model-meta", "mm-vram", "mm-commercial", "mm-files"} {
-			assert.Contains(t, card, `data-testid="`+testID+`"`, "%s: the card keeps %s", id, testID)
-		}
-		assert.Contains(t, card, "<details", id)
-		assert.NotContains(t, card, `data-testid="mm-model"`, id)
-	}
-}
-
 func TestInstallModel_RunsAsAJobWithProgressAndThenIsInstalled(t *testing.T) {
 	s := newScreen(t)
 	s.rig.InstallEngine()
@@ -107,7 +63,9 @@ func TestInstallModel_RefusalsBeforeAnythingIsDownloaded(t *testing.T) {
 		assert.Equal(t, http.StatusConflict, rec.Code)
 		assert.Contains(t, rec.Body.String(), "空き容量が足りません")
 		list := s.get(paths.ModelManagerPart("models")).Body.String()
-		assert.Contains(t, list, "空きが足りません。導入できません")
+		assert.Contains(t, list, `data-testid="mm-low-disk"`, "the card says so")
+		assert.Contains(t, list, "空きが足りません")
+		assert.Contains(t, s.get(paths.ModelManagerPart("models", "m-a", "detail")).Body.String(), "空きが足りません。導入できません")
 	})
 	t.Run("pinned model file", func(t *testing.T) {
 		s := newScreen(t, mmtest.Pinned())
@@ -172,8 +130,8 @@ func TestDeleteModel_SharedFilesStayWhileAnotherModelUsesThem(t *testing.T) {
 	require.Equal(t, "succeeded", string(s.rig.InstallModel("m-b").State))
 	require.Equal(t, "succeeded", string(s.rig.InstallModel("m-c").State))
 
-	list := s.get(paths.ModelManagerPart("models")).Body.String()
-	assert.Contains(t, list, "使うモデルが残る間は消えません", "the shared VAE is marked")
+	detail := s.get(paths.ModelManagerPart("models", "m-b", "detail")).Body.String()
+	assert.Contains(t, detail, "使うモデルが残る間は消えません", "the shared VAE is marked in the modal")
 
 	rec := s.do(http.MethodDelete, paths.ModelManagerPart("models", "m-b"), nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())

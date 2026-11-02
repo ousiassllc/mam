@@ -62,16 +62,16 @@ type ImageBackend interface {
 
 // VideoRequest is one video generation for one model.
 type VideoRequest struct {
-	Prompt         string
-	NegativePrompt string
-	// DurationSeconds is a length the model supports (Capabilities.Durations).
-	DurationSeconds float64
-	Resolution      string // "480p", "720p", "1080p"
+	Prompt          string
+	NegativePrompt  string
+	DurationSeconds float64 // a length the model supports (Capabilities.Durations)
+	Resolution      string  // "480p", "720p", "1080p"
 	AspectRatio     string
 	FirstFrame      *Input
 	LastFrame       *Input
 	References      []Input
 	Seed            *int64 // for a model that takes one (SupportsSeed); nil lets the vendor choose
+	SpeedMode       string // one of the speed modes of a ComfyUI workflow (localcfg.SpeedMode), "" its default; other models ignore it
 }
 
 // VideoResult is a generated video file. The caller owns File and MUST store or discard it.

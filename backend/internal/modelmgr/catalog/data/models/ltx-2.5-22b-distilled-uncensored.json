@@ -1,0 +1,100 @@
+{
+ "id": "ltx-2.5-22b-distilled-uncensored",
+ "name": "LTX-2.5 22B Distilled ＋ 非検閲テキストエンコーダー（音声つき・成人向け）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "LTX-2.5（蒸留版 22B）の、テキストエンコーダーだけをコミュニティ製の非検閲版（Gemma 4 12B の abliterated 派生）に差し替えた組み合わせ（成人向け）。拡散モデル・VAE・拡大モデルは ltx-2.5-22b-distilled と同じファイルで、導入済みならテキストエンコーダー（約 12.3 GiB）だけ取得する。標準のテキストエンコーダーが断る・弱める指示にも従いやすくする目的のもので、作者自身が、テキストエンコーダーを替えても映像モデルの出力そのものが非検閲になるわけではなく、通常のプロンプトの取りこぼしを減らすのが狙いだと書いている（作者は「保証しない」とも書いている。mam では動作を未確認）。映像と同期した音声を 1 回の生成で作り、保存は音声つきの mp4。Lightricks の gated なリポジトリ（Lightricks/LTX-2.5）から取得するため、先にライセンスに同意してアクセスを申請し、Hugging Face のトークンを保存しておく必要がある。VRAM は標準と同じで、推奨は 32 GB 以上、16 GB では動くが制約がある。24fps。同梱の ComfyUI は Windows 専用で、macOS は未対応（外部の ComfyUI での動作も未確認）。",
+ "files": [
+  {
+   "name": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+   "sha256": "c4279eeff115cbeaca494bd2183e7d768c38fe85a184dc6afbb7159157c44334",
+   "size": 21504034224
+  },
+  {
+   "name": "gemma4-12b-uncensored-heretic-deepneuralnerd-ltx-2.5-int8-convrot.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/DeepNeuralNerd/Gemma-4-12B-it-uncensored-heretic-DeepNeuralNerd-LTX_2.5_ComfyUI/resolve/f8aad43bc2032b833dd39321d44dcc5137cbf935/Gemma-4-12B-it-uncensored-heretic%20-%20DeepNeuralNerd%20-LTX%202.5-ComfyUI-int8convrot.safetensors",
+   "sha256": "5da6d41ccfba4a706cc3a422521cdfcf9f6907772e631777ea0348be1932a2e7",
+   "size": 13167724346
+  },
+  {
+   "name": "ltx-2.5-video-vae-bf16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-video-vae-bf16.safetensors",
+   "sha256": "847e14ca7f3355debca0cea4eaa24ac0fbcdf0061da054ac89ca638a869ddba3",
+   "size": 1472223346
+  },
+  {
+   "name": "ltx-2.5-audio-vae-bf16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-audio-vae-bf16.safetensors",
+   "sha256": "c52733d37f6a7fb7949c3dc0fb468c6cb2169e4d836983a73babb9f0d54837a5",
+   "size": 364866540
+  },
+  {
+   "name": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "folder": "latent_upscale_models",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "sha256": "eb5a71fe4068ee87ccdb1c3aa635e547ca76bd2d30ae20ae889f2c325c0677e8",
+   "size": 995778752
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "recommended_gb": 32,
+  "limits": "INT8（ConvRot）の拡散モデルとテキストエンコーダー・タイル VAE・ComfyUI のオフロード（重みを一時的にメインメモリへ退避）が前提で、生成は遅くなります。解像度は低め（480p〜720p）・長さは短めにしてください。メインメモリも多く使います。",
+  "source": "Lightricks の公式ドキュメント（docs.ltx.io の ComfyUI の前提条件。2026-11-02 に確認）の推奨は 32 GB 以上。最小の 16 GB は、INT8 ConvRot・タイル VAE・オフロードで動くというコミュニティの報告（Issue #927）。mam の実機（RTX 4070 Ti SUPER）では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "ltx-2x-community-uncensored-te",
+  "version": "2026-08-11",
+  "name": "LTX-2.x Community License Agreement（非検閲テキストエンコーダーは本文なし）",
+  "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x",
+  "summary": "拡散モデル・VAE・拡大モデルは LTX-2.x Community License Agreement（年間売上が 1,000 万米ドル未満は商用を含め無償。それ以上は非商用の目的を除き Lightricks との有償ライセンス。Attachment A の使用制限・AI 規制の遵守・透かしや開示の機能を外さないこと）。テキストエンコーダーは、Google の Gemma 4（Apache License 2.0）を abliterate した llmfan46/gemma-4-12B-it-uncensored-heretic（Apache-2.0 と表示）を、DeepNeuralNerd が LTX-2.5 用に変換したもの。変換した repo は license: other で本文が無く、モデルカードは「上流の Gemma 4 と LTX-2 のライセンスを参照」とだけ書いている。LTX-2.5 の投影の重みを含むので LTX-2.x の条件も及ぶ可能性があるが、はっきりしないため、全体は厳しい方の「不明」とする。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル・VAE・拡大モデル（LTX-2.5）",
+    "name": "LTX-2.x Community License Agreement",
+    "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x",
+    "commercial": "conditional"
+   },
+   {
+    "part": "テキストエンコーダーの元（Gemma 4）",
+    "name": "Apache License 2.0",
+    "url": "https://ai.google.dev/gemma/docs/gemma_4_license",
+    "commercial": "yes"
+   },
+   {
+    "part": "非検閲化した派生（llmfan46 の heretic）",
+    "name": "Apache License 2.0（Hugging Face のタグ）",
+    "url": "https://huggingface.co/llmfan46/gemma-4-12B-it-uncensored-heretic",
+    "commercial": "yes"
+   },
+   {
+    "part": "LTX-2.5 用の変換（DeepNeuralNerd）",
+    "name": "ライセンスの本文なし（license: other。上流の Gemma 4 と LTX-2 の条件を参照とだけ記載）",
+    "url": "https://huggingface.co/DeepNeuralNerd/Gemma-4-12B-it-uncensored-heretic-DeepNeuralNerd-LTX_2.5_ComfyUI",
+    "commercial": "unknown"
+   }
+  ],
+  "notice": "非検閲テキストエンコーダーの変換版にライセンスの本文が無いため、商用の可否は「不明」です。確認できるまで商用には使わないでください。なお拡散モデル自体は LTX-2.x Community License で、年間売上が 1,000 万米ドル以上の組織の商用利用には Lightricks との別の契約（licensing@ltx.io）が必要です。Hugging Face のゲートでは、プライバシーポリシーへの同意と、案内・広告の受け取りへの同意（Agree and Access）を求められます。"
+ },
+ "consent_required": true,
+ "requires_hf_token": true,
+ "workflows": [
+  {
+   "name": "ltx-2-5-uncensored-t2v",
+   "template": "txt2video-ltx-2-5-uncensored"
+  },
+  {
+   "name": "ltx-2-5-uncensored-i2v",
+   "template": "img2video-ltx-2-5-uncensored"
+  }
+ ]
+}

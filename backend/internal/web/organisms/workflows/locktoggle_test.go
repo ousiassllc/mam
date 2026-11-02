@@ -27,9 +27,9 @@ func TestShotVideoModelPickListsSavedWorkflows(t *testing.T) {
 	var b strings.Builder
 	assert.NoError(t, molecules.LockToggle(organisms.LockToggleFor("s1", domain.ParamVideoModel, locks)).Render(context.Background(), &b))
 	html := b.String()
-	assert.Contains(t, html, `<option value="`+v1+`" selected>Clip (v1)</option>`)
-	assert.Contains(t, html, `<option value="`+v2+`">Clip (v2)</option>`)
-	assert.Contains(t, html, `<option value="kling-3.0">kling-3.0</option>`, "the built-in models are still there")
+	assert.Contains(t, html, `<option value="`+v1+`" selected data-commercial="unknown">Clip (v1)（不明）</option>`)
+	assert.Contains(t, html, `<option value="`+v2+`" data-commercial="unknown">Clip (v2)（不明）</option>`)
+	assert.Contains(t, html, `<option value="kling-3.0" data-commercial="unknown">kling-3.0（不明）</option>`, "the built-in models are still there")
 }
 
 // A ComfyUI that refuses to be framed is not drawn: the page says why, how to allow it, and keeps the link that opens

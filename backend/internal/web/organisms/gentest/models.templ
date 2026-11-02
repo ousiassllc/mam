@@ -5,7 +5,9 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 )
 
 // sectionTitle is the title of a section of the form with its "?" help (spec/components/shared-ui-parts.md §9): the
@@ -20,11 +22,12 @@ templ sectionTitle(id, title string, explanation templ.Component) {
 // modelChoices are the models as cards: tapping a card ticks or unticks it (more than one can be chosen). Every one that can
 // be called now can be chosen; the others are dimmed and say so, and why is behind the "?" (one calm line says how many).
 templ modelChoices(c Compose) {
-	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-models-title" data-testid="gt-models">
+	<fieldset id="gt-models" class="flex flex-col gap-2" aria-labelledby="gt-models-title" data-testid="gt-models">
 		@sectionTitle("gt-models-title", "モデル", modelsHelp(c))
 		if n := unavailableCount(c.Models); n > 0 {
 			<p class="text-xs text-neutral-400" data-testid="gt-models-unavailable">{ strconv.Itoa(n) } 件は今は選べません（理由は「?」に）</p>
 		}
+		@commercial.Filter(c.Filter)
 		<ul class="grid gap-2 sm:grid-cols-2">
 			for _, m := range c.Models {
 				@modelCard(m)
@@ -46,6 +49,7 @@ templ modelCard(m ModelChoice) {
 		data-reference-mode={ m.RefMode }
 		data-reference-roles={ strings.Join(m.RefRoles, " ") }
 		data-supports-lora={ boolText(m.CanLoRA) }
+		data-commercial={ m.Answer.Answer() }
 	>
 		<label class="relative block cursor-pointer has-[:disabled]:cursor-not-allowed">
 			<input
@@ -59,17 +63,21 @@ templ modelCard(m ModelChoice) {
 					aria-describedby={ "gt-reason-" + m.ID }
 				}
 			/>
-			<span class="flex flex-col gap-1 rounded-md border border-neutral-800 p-3 pr-8 text-sm transition-shadow hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-checked:shadow-[0_0_12px_1px] peer-checked:shadow-indigo-400/40 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none">
+			<span class={ "flex flex-col gap-1 rounded-md border border-neutral-800 p-3 pr-8 text-sm", pick.Glow }>
 				<span class="break-words font-medium text-neutral-100">{ m.Label }</span>
 				<span class="break-words text-xs text-neutral-400">{ m.Source } ・ { m.Price }</span>
 				<span class="flex flex-wrap items-center gap-1.5" data-testid="gt-model-badges">
 					if m.Media != "video" {
 						@refIcon(m)
 					}
+					@commercial.Badge(m.Answer)
 					if m.Reason != "" {
 						@atoms.Badge(atoms.BadgeNeutral, "選べません")
 					}
 				</span>
+				if m.Answer.ShortNote() != "" {
+					<span class="break-words text-xs text-amber-300" data-testid="gt-model-commercial-note">{ m.Answer.ShortNote() }</span>
+				}
 			</span>
 			<span class="pointer-events-none absolute right-3 top-3 hidden text-indigo-300 peer-checked:block" aria-hidden="true" data-gt-model-mark>✓</span>
 		</label>
@@ -113,7 +121,10 @@ templ modelsHelp(c Compose) {
 	<p>複数選べます。代替のモデルへは切り替えません。</p>
 	<ul class="mt-2 flex flex-col gap-1.5" data-testid="gt-models-help">
 		for _, m := range c.Models {
-			<li class="break-words"><span class="text-neutral-100">{ m.Label }</span>: { modelNote(m) }</li>
+			<li class="break-words">
+				<span class="text-neutral-100">{ m.Label }</span>: { modelNote(m) }
+				<span class="block text-neutral-400" data-testid="gt-models-help-license">商用利用: { m.Answer.Level.Label() } ／ { m.Answer.Detail() }</span>
+			</li>
 		}
 	</ul>
 }

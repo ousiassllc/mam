@@ -52,6 +52,8 @@ type resultParams struct {
 	// AvoidPose says the negative prompt got refs.WithAvoidPose; LoRA is the LoRA the model was given (image models only).
 	AvoidPose bool       `json:"avoid_pose,omitempty"`
 	LoRA      *refs.LoRA `json:"lora,omitempty"`
+	// SpeedMode is the speed mode the video model was asked for (absent: its default).
+	SpeedMode string `json:"speed_mode,omitempty"`
 }
 
 // randomSeed is a seed for FLUX.2 and Runway Gen-4.5: an unsigned 32-bit number (Runway takes 0 to 4294967295).
@@ -79,9 +81,9 @@ func (s *Service) Run(ctx context.Context, r Request, c Confirmation) (RunRef, e
 		return RunRef{}, err
 	}
 	r = est.Request
-	sources := make([]source, len(r.References))
+	sources := make([]Source, len(r.References))
 	for i, ref := range r.References {
-		if sources[i], err = s.resolve(ctx, ref); err != nil {
+		if sources[i], err = s.ResolveInput(ctx, ref); err != nil {
 			return RunRef{}, err
 		}
 	}
@@ -116,7 +118,7 @@ func (s *Service) Run(ctx context.Context, r Request, c Confirmation) (RunRef, e
 
 // newBatch copies the inputs into the batch's directory and plans every result: the models in the order given, each with
 // every prompt (sent as tr says: translated, or as typed), each Count times, every result with its own seed when the model takes one.
-func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources []source, tr translated) (gentestrepo.NewBatch, error) {
+func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources []Source, tr translated) (gentestrepo.NewBatch, error) {
 	cfg := s.Adapter.Config()
 	now := s.Now().UTC()
 	id := domain.NewID()
@@ -138,13 +140,13 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 	inputIDs := make([]string, len(sources))
 	for i, src := range sources {
 		inputIDs[i] = domain.NewID()
-		name := "in-" + inputIDs[i] + inputTypes[src.mime]
-		if err := fsutil.CopyFile(src.path, filepath.Join(dir, name)); err != nil {
+		name := "in-" + inputIDs[i] + inputTypes[src.Mime]
+		if err := fsutil.CopyFile(src.Path, filepath.Join(dir, name)); err != nil {
 			return fail(fmt.Errorf("copy input image: %w", err))
 		}
 		nb.Inputs = append(nb.Inputs, gentestrepo.Input{
-			ID: inputIDs[i], BatchID: id, Role: r.References[i].Role, FilePath: path.Join(id, name), MimeType: src.mime, SizeBytes: src.size,
-			Origin: src.origin, Position: i, Strength: r.References[i].Strength,
+			ID: inputIDs[i], BatchID: id, Role: r.References[i].Role, FilePath: path.Join(id, name), MimeType: src.Mime, SizeBytes: src.Size,
+			Origin: src.Origin, Position: i, Strength: r.References[i].Strength,
 		})
 	}
 	for _, p := range r.Prompts {

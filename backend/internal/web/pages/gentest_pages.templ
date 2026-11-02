@@ -1,25 +1,26 @@
 package pages
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	gentest "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// generationNav is the links between the pages of the generation test.
+// generationNav is the links between the pages of the generation test: tabs, the current one lit.
 templ generationNav(current string) {
-	<nav class="flex flex-wrap gap-4 text-sm" aria-label="生成テスト">
+	<nav class="flex flex-wrap gap-1 border-b border-neutral-800 pb-2 text-sm" aria-label="生成テスト">
 		for _, l := range []struct{ Key, Label, Href string }{
 			{"new", "生成する", paths.GenerationTest()},
+			{"match", "画像から似せる", paths.GenerationTestMatch()},
 			{"history", "履歴", paths.GenerationTestHistory()},
 			{"prompts", "プロンプト履歴", paths.GenerationTestPrompts()},
 		} {
 			if l.Key == current {
-				<span class="font-medium text-neutral-100" aria-current="page">{ l.Label }</span>
+				<span class="rounded-md bg-neutral-800 px-3 py-1.5 font-medium text-neutral-100" aria-current="page">{ l.Label }</span>
 			} else {
-				<a class="text-neutral-400 underline hover:text-neutral-100" href={ templ.SafeURL(l.Href) }>{ l.Label }</a>
+				<a class="rounded-md px-3 py-1.5 text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 motion-reduce:transition-none" href={ templ.SafeURL(l.Href) }>{ l.Label }</a>
 			}
 		}
 	</nav>
@@ -28,19 +29,12 @@ templ generationNav(current string) {
 // generationShell is the frame of every page of the generation test: it belongs to no Project. The lead (what the page is
 // for) is behind the "?" beside the title.
 templ generationShell(title, csrfToken, current, lead string) {
-	@layout.AppLayout(title, csrfToken) {
-		<main class="mx-auto flex max-w-5xl flex-col gap-6 p-8">
-			<div>
-				@atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")
-				<div class="mt-3">
-					@help.Row(help.ID(title), title, help.Text(lead)) {
-						<h1 class="text-xl font-semibold">{ title }</h1>
-					}
-				</div>
-			</div>
+	@layout.AppLayout(title, csrfToken, sidenav.At(sidenav.GenerationTest)) {
+		@pagehead.Main(pagehead.Wide) {
+			@pagehead.Header(title, "", lead)
 			@generationNav(current)
 			{ children... }
-		</main>
+		}
 	}
 }
 
@@ -50,6 +44,15 @@ templ GenerationTestPage(csrfToken string, c gentest.Compose) {
 		@gentest.ComposeForm(c)
 		@gentest.ConfirmEmpty()
 		@gentest.BatchEmpty()
+	}
+}
+
+// GenerationMatchPage is GET /generation-test/match: from one reference image the AI writes a prompt and fixes it until the generated image looks like it.
+templ GenerationMatchPage(csrfToken string, c gentest.MatchCompose) {
+	@generationShell("画像から似せる", csrfToken, "match", "参考の画像から英語のプロンプトを作り、似るまで直して生成し直します。作ったプロンプトと各回の結果は履歴に残り、いちばん似ていた回のプロンプトをそのまま使えます。") {
+		@gentest.MatchForm(c)
+		@gentest.ConfirmEmpty()
+		@gentest.MatchEmpty()
 	}
 }
 

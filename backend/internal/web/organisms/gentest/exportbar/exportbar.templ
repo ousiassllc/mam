@@ -1,0 +1,71 @@
+package exportbar
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// Bar saves results as a ZIP (#932): the icon button with the number saves the results the reader tapped (the cards of the
+// list; static/src/components/gentest/export-pick.ts keeps the choice and fills the hidden ids), the other saves the newest N of
+// the list's filter. It sits outside of the part of the history that polls (organisms/gentest HistoryLive), so that a poll never swaps it away.
+//
+// Both are GET forms that the server answers with the ZIP; with htmx they ask first (hx-get to the same URL): a choice that cannot be
+// saved (nothing to save, a filter that matches nothing) is said in StatusID beside the buttons instead of the browser replacing the
+// whole screen with the plain-text answer (the desktop window has no back button), and one that can is loaded as a download by the
+// HX-Redirect of the answer, so the page stays where it is.
+templ Bar(d Data) {
+	<div class="flex flex-wrap items-center gap-3" data-testid="gt-export" data-gt-export-bar>
+		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-1" data-testid="gt-export-selected" data-gt-export-selected hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
+			<button
+				type="submit"
+				class="inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-600 px-2 text-sm text-neutral-200 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+				aria-label="選んだ結果を ZIP で保存"
+				title="選んだ結果を ZIP で保存（カードをタップで選ぶ）"
+				disabled
+				data-gt-export-submit
+				data-testid="gt-export-selected-submit"
+			>
+				@atoms.Icon(atoms.IconDownload, "h-4 w-4 shrink-0")
+				<span data-gt-selected-count data-testid="gt-selected-count">0</span>
+			</button>
+			<button
+				type="button"
+				class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-700 text-neutral-300 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400"
+				aria-label="選択を解除"
+				title="選択を解除"
+				hidden
+				data-gt-select-clear
+				data-testid="gt-select-clear"
+			>
+				@atoms.Icon(atoms.IconClose, "h-4 w-4")
+			</button>
+		</form>
+		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-1" data-testid="gt-export-latest" hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
+			if d.Model != "" {
+				<input type="hidden" name="model" value={ d.Model }/>
+			}
+			if d.Media != "" {
+				<input type="hidden" name="media" value={ d.Media }/>
+			}
+			if d.Favorite {
+				<input type="hidden" name="favorite" value="1"/>
+			}
+			<input type="hidden" name="commercial" value={ d.Commercial } data-gt-export-commercial/>
+			<label class="sr-only" for="gt-export-latest">新しい順に書き出す件数</label>
+			@atoms.Input(atoms.FieldMd, "w-20", templ.Attributes{"id": "gt-export-latest", "type": "number", "name": "latest", "min": "1", "max": "500", "value": "40", "inputmode": "numeric", "title": "新しい順に書き出す件数"})
+			<button
+				type="submit"
+				class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-600 text-neutral-200 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400"
+				aria-label="この絞り込みの新しい順 N 件を ZIP で保存"
+				title="この絞り込みの新しい順 N 件を ZIP で保存"
+				data-testid="gt-export-latest-submit"
+			>
+				@atoms.Icon(atoms.IconDownload, "h-4 w-4")
+			</button>
+		</form>
+		<div id={ StatusID } class="basis-full" aria-live="polite" data-testid="gt-export-status" data-gt-export-status></div>
+	</div>
+}
+
+// Problem is why a choice cannot be saved, drawn into StatusID in place of the answer of the server (a status of an error, which
+// main.ts swaps in as it does the toasts and the forms with errors).
+templ Problem(message string) {
+	<p class="text-sm text-red-300" role="alert" data-testid="gt-export-error">{ message }</p>
+}

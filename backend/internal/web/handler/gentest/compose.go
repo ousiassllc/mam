@@ -6,6 +6,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -30,11 +33,12 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	maxItems, maxCost := h.Svc.Limits()
 	c := view.Compose{
 		Media: media, Models: choicesOf(models, f.models), Prompts: f.prompts, Translate: f.translate,
-		Count: orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),
+		Filter: commercial.NewFilter("gt-commercial", "#gt-models", h.Svc.DefaultFilter()),
+		Count:  orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),
 		MaxPrompt: gentest.MaxPromptRunes, MaxCount: gentest.MaxCount, MaxItems: maxItems, MaxReferences: gentest.MaxReferences,
 	}
 	if maxCost > 0 {
-		c.MaxCostUSD = usd(maxCost)
+		c.MaxCostUSD = gtshare.USD(maxCost)
 	}
 	if len(c.Prompts) == 0 {
 		c.Prompts = []view.PromptText{{}}
@@ -42,7 +46,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	if media == gentest.MediaVideo {
 		c.Resolutions, c.Durations = videoChoices(models)
 		c.Resolution = pick(f.resol, c.Resolutions, "720p")
-		c.Duration = pick(f.duration, c.Durations, "5")
+		c.Duration, c.SpeedModes, c.SpeedMode = pick(f.duration, c.Durations, "5"), refform.SpeedChoices(models), f.opts.SpeedMode
 	}
 	if list, err := h.Svc.Prompts(ctx); err == nil {
 		for _, p := range list[:min(len(list), recentPrompts)] {
@@ -59,9 +63,9 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 			c.Picked = append(c.Picked, row)
 		}
 	}
-	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.avoidPose, h.Svc.LoRAs(ctx, media)
-	if f.lora != nil {
-		c.LoRA, c.LoRAStrength = f.lora.Name, f.lora.Strength
+	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.opts.AvoidPose, h.Svc.LoRAs(ctx, media)
+	if f.opts.LoRA != nil {
+		c.LoRA, c.LoRAStrength = f.opts.LoRA.Name, f.opts.LoRA.Strength
 	}
 	if s, err := h.Svc.Spend(ctx); err == nil {
 		c.Spend = spendText(s)
@@ -106,6 +110,9 @@ func (h Handlers) Page(c *gin.Context) {
 			f.prompts = []view.PromptText{{Text: p.Prompt, Negative: p.NegativePrompt}}
 		}
 	}
+	if d, err := h.Svc.Result(ctx, c.Query("from_result")); err == nil { // a round of a prompt match: its prompt, with its model and shape
+		f.prompts, f.models, f.aspect = []view.PromptText{{Text: d.SentPrompt}}, []string{d.Model}, d.AspectRatio
+	}
 	for _, raw := range c.QueryArray(view.FieldRef) {
 		if r, ok := refform.Parse(raw); ok {
 			f.refs = append(f.refs, refform.Input(r, gentest.RoleReference, nil))
@@ -116,7 +123,7 @@ func (h Handlers) Page(c *gin.Context) {
 			f.media = gentest.MediaVideo
 		}
 	}
-	render(c, http.StatusOK, pages.GenerationTestPage(middleware.CSRFToken(c), h.compose(ctx, f)))
+	gtshare.Render(c, http.StatusOK, pages.GenerationTestPage(middleware.CSRFToken(c), h.compose(ctx, f)))
 }
 
 // Form answers GET /generation-test/form: the form again for another media, keeping what was typed and chosen.
@@ -124,11 +131,11 @@ func (h Handlers) Form(c *gin.Context) {
 	f, err := readForm(c, false)
 	if err != nil {
 		status, msg := refuse(c, err)
-		render(c, status, view.ComposeForm(view.Compose{Message: view.Message{Error: msg}, Media: gentest.MediaImage}))
+		gtshare.Render(c, status, view.ComposeForm(view.Compose{Message: view.Message{Error: msg}, Media: gentest.MediaImage}))
 		return
 	}
 	f.models = nil // the models of one media are not the models of the other
-	render(c, http.StatusOK, view.ComposeForm(h.compose(c.Request.Context(), f)))
+	gtshare.Render(c, http.StatusOK, view.ComposeForm(h.compose(c.Request.Context(), f)))
 }
 
 // PromptRow answers GET /generation-test/prompt-row: one more prompt box, filled from the history with "?from=<id>".
@@ -139,7 +146,7 @@ func (h Handlers) PromptRow(c *gin.Context) {
 			p = view.PromptText{Text: got.Prompt, Negative: got.NegativePrompt}
 		}
 	}
-	render(c, http.StatusOK, view.PromptRowFields(p, gentest.MaxPromptRunes))
+	gtshare.Render(c, http.StatusOK, view.PromptRowFields(p, gentest.MaxPromptRunes))
 }
 
 // pickerSize is how many images a picker lists.
@@ -156,7 +163,7 @@ func (h Handlers) Picker(c *gin.Context) {
 		list, err := h.Svc.Pickable(ctx, pickerSize)
 		if err != nil {
 			status, msg := refuse(c, err)
-			render(c, status, view.Picker(nil, msg))
+			gtshare.Render(c, status, view.Picker(nil, msg))
 			return
 		}
 		empty = "履歴に画像がありません"
@@ -167,7 +174,7 @@ func (h Handlers) Picker(c *gin.Context) {
 		list, err := h.Svc.ProjectImages(ctx, c.Query("project"))
 		if err != nil {
 			status, msg := refuse(c, err)
-			render(c, status, view.Picker(nil, msg))
+			gtshare.Render(c, status, view.Picker(nil, msg))
 			return
 		}
 		empty = "このプロジェクトに画像がありません"
@@ -175,7 +182,7 @@ func (h Handlers) Picker(c *gin.Context) {
 			rows = append(rows, projectRef(c.Query("project"), im))
 		}
 	}
-	render(c, http.StatusOK, view.Picker(rows, empty))
+	gtshare.Render(c, http.StatusOK, view.Picker(rows, empty))
 }
 
 // RefRow answers GET /generation-test/ref-row: the row of one chosen input image ("?ref=<source>:<project>:<id>").
@@ -195,7 +202,7 @@ func (h Handlers) RefRow(c *gin.Context) {
 	if media != gentest.MediaVideo { // the controls follow the models that are ticked now
 		ui = view.RefUIOf(choicesOf(h.Svc.Models(ctx, gentest.MediaImage), c.QueryArray(view.FieldModel)))
 	}
-	render(c, http.StatusOK, view.RefRow(row, media, ui))
+	gtshare.Render(c, http.StatusOK, view.RefRow(row, media, ui))
 }
 
 func historyRef(r gentest.ResultView) view.Ref {

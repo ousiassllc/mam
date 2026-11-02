@@ -2,11 +2,10 @@ package gentest
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/failtext"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 
@@ -85,7 +84,7 @@ func (s *Service) translate(ctx context.Context, r Request) (translated, error) 
 	english, err := s.Translator.Translate(ctx, texts)
 	if err != nil {
 		s.Logger.Warn("translate generation test prompts failed", "err", err)
-		return nil, &gterr.UpstreamError{Message: translateFailure(err), Err: err}
+		return nil, &gterr.UpstreamError{Message: failtext.Translate(err), Err: err}
 	}
 	en := make(map[string]string, len(texts))
 	for i, t := range texts {
@@ -106,22 +105,6 @@ func orSame(m map[string]string, s string) string {
 		return v
 	}
 	return s
-}
-
-// translateFailure is what the user is told when the prompts could not be translated.
-func translateFailure(err error) string {
-	const tail = "。何も生成していません。もう一度試すか、英訳を OFF にしてください"
-	switch {
-	case errors.Is(err, llm.ErrNoAPIKey):
-		return "プロンプトを英語に訳せませんでした: LLM の API キーが登録されていません（設定の「LLM の割り当て」の Prompt Planner が使うプロバイダー）" + tail
-	case errors.Is(err, llm.ErrCircuitOpen):
-		return "プロンプトを英語に訳せませんでした: LLM が一時的に使えません" + tail
-	case errors.Is(err, llm.ErrTimeout):
-		return "プロンプトを英語に訳せませんでした: LLM の応答が時間内に返りませんでした" + tail
-	case errors.Is(err, prompttranslate.ErrNotTranslated), errors.Is(err, llm.ErrInvalidOutput):
-		return "プロンプトを英語に訳せませんでした: LLM の答えが翻訳になっていません" + tail
-	}
-	return "プロンプトを英語に訳せませんでした: LLM の呼び出しに失敗しました" + tail
 }
 
 // record is what a result of the prompt p keeps of its translation (nil when p was sent as typed).

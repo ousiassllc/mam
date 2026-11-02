@@ -1,19 +1,18 @@
 package pages
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // BriefPage is GET /projects/:id/brief: the Creative Brief in an auxiliary view.
 templ BriefPage(csrfToken string, d organisms.BriefFormData) {
-	@layout.AppLayout("Brief: "+d.Project.Name, csrfToken) {
-		<main class="mx-auto max-w-2xl p-8">
-			@atoms.ChatBackLink(d.Project.ID)
-			<h1 class="mb-1 mt-3 text-xl font-semibold">Creative Brief</h1>
-			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
+	@layout.AppLayout("Brief: "+d.Project.Name, csrfToken, sidenav.InProject(sidenav.Brief, d.Project)) {
+		@pagehead.Main(pagehead.Narrow) {
+			@pagehead.Header("Creative Brief", d.Project.Name, "")
 			@organisms.BriefForm(d)
-		</main>
+		}
 	}
 }

@@ -1,0 +1,45 @@
+package atoms
+
+// Icons of the model kinds on the cards of the model manager (Lucide v1.61.0, copied as in icon.templ; the file is split from
+// icon_nav.templ to stay under the line limit). They are the pictures of the cards: no image is fetched from the net, so there is
+// nothing to license or to load. iconNav hands every name it does not know to iconModel.
+
+// Icons of the model kinds: a video model, a voice (speech synthesis) runtime and a lip-sync runtime. An image model is IconImage.
+const (
+	IconVideo   IconName = "video"
+	IconVoice   IconName = "voice"
+	IconLipSync IconName = "lip-sync"
+)
+
+// iconModel draws the icons of the model kinds; an unknown name draws nothing.
+templ iconModel(name IconName, class string) {
+	switch name {
+		case IconVideo:
+			// video
+			@iconSVG(class) {
+				<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"></path>
+				<rect x="2" y="6" width="14" height="12" rx="2"></rect>
+			}
+		case IconVoice:
+			// audio-lines
+			@iconSVG(class) {
+				<path d="M2 10v3"></path>
+				<path d="M6 6v11"></path>
+				<path d="M10 3v18"></path>
+				<path d="M14 8v7"></path>
+				<path d="M18 5v13"></path>
+				<path d="M22 10v3"></path>
+			}
+		case IconLipSync:
+			// scan-face
+			@iconSVG(class) {
+				<path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+				<path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+				<path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+				<path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+				<path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+				<path d="M9 9h.01"></path>
+				<path d="M15 9h.01"></path>
+			}
+	}
+}

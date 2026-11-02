@@ -36,7 +36,7 @@ openai-compat:lmstudio/flux-schnell
 ```json
 {
   "endpoints": {
-    "gpu-box": {"kind": "comfyui", "base_url": "http://100.101.102.103:8188", "max_concurrency": 1, "timeout_seconds": 3600},
+    "gpu-box": {"kind": "comfyui", "base_url": "http://100.101.102.103:8188", "max_concurrency": 1, "timeout_seconds": 10800},
     "lmstudio": {"kind": "openai-compat", "base_url": "http://127.0.0.1:1234"}
   },
   "local_models": {
@@ -53,7 +53,7 @@ openai-compat:lmstudio/flux-schnell
 
 | 項目 | 内容 | 既定・検査 |
 |---|---|---|
-| `endpoints.<名>` | `kind`、`base_url`、`max_concurrency`、`timeout_seconds` | 同時実行 1（GPU は通常 1 ジョブ）。タイムアウトは ComfyUI 3600 秒・互換 900 秒（上限 24 時間）。`base_url` は http(s) のホストで、資格情報・クエリ・フラグメントを含まず、リンクローカル・未指定・マルチキャストの IP でない |
+| `endpoints.<名>` | `kind`、`base_url`、`max_concurrency`、`timeout_seconds` | 同時実行 1（GPU は通常 1 ジョブ）。タイムアウトは ComfyUI 10800 秒（3 時間。14B の動画モデルは 16GB のカードで 1 時間を超える）・互換 900 秒（上限 24 時間）。設定画面・`create_local_endpoint` / `update_local_endpoint` で接続先ごとに変えられる。越えた呼び出しは打ち切り、ComfyUI のそのジョブも止める（下の「取り消し」）。`base_url` は http(s) のホストで、資格情報・クエリ・フラグメントを含まず、リンクローカル・未指定・マルチキャストの IP でない |
 | `local_models.<接続先>/<名>` | `media`（image/video）。接続先が存在すること。`comfyui` は `workflow`、`openai-compat` は `model`（サーバーに渡すモデル ID）が必要 | `openai-compat` の動画は拒否 |
 | `workflow` | `graph`（API 形式）、`assignments`、`output_node`、`fps`（既定 16）、`frames_step`（正なら総フレーム数を `n×step+1` にする。Wan は 4、LTX は 8）、`size_multiple`（既定 16）、画像の参照用に `reference_mode`・`no_reference`・`lora_model_node`（§4.2） | 割り当てが指すノード・入力が `graph` に無い、`output_node` が無い、プロンプトの割り当てが無い、は 422 |
 | `video` | `durations`（秒、昇順）、`resolutions`（短辺で `480p`・`720p`・`1080p` など）、`native_audio` | 動画モデルは必須。最初と最後のフレーム・参照画像の枚数は `assignments` から決まる |
@@ -68,7 +68,7 @@ openai-compat:lmstudio/flux-schnell
 - **入力画像**: 参照画像・最初／最後のフレームは `POST /upload/image` に**元の拡張子のまま**アップロードし、返った名前を入力に入れる。
 - **実行**: `/ws?clientId=…` を開いてから `POST /prompt`（`prompt_id` と `client_id` は mam が決める）。`/ws` の `progress`・`executing` から割合を求め、`/history/<id>` を確認して完了を待つ。結果は `GET /view` で取る（動画は `.mp4`・`.m4v`・`.webm`・`.mov` のみ。それ以外は投入後のエラー）。
 - **進捗**: 割合は Shot の進捗（`/ws/shots/:id`、チャットの進捗カード、Take カード）のメッセージに「動画を生成しています（42%）」の形で入る。モデル呼び出しの文脈に進捗の関数を持たせ（`modeladapter/progress`）、`generation/relay` が Orchestrator の通知（Take 数など）のメッセージに割合を足して配信する（`Progress` の型は変えない）。
-- **取り消し**: Take の生成を止めたときは、**自分の `prompt_id` だけ**を止める。まず `POST /api/jobs/<id>/cancel`、404 なら `GET /queue` で見て、実行中なら `POST /interrupt {"prompt_id"}`、待機中なら `POST /queue {"delete":[id]}`。対象を指さない割り込み・キューの全消しはしない。接続テストは ComfyUI が 0.3.57 未満だと「取り消しが他のジョブを止めうる」と注意を出す。
+- **取り消し**: Take の生成を止めたときは、**自分の `prompt_id` だけ**を止める。まず `POST /api/jobs/<id>/cancel`、失敗（ルートが無い 404、画面の静的ファイルが先に答える 405 など）なら `GET /queue` で見て、実行中なら `POST /interrupt {"prompt_id"}`、待機中なら `POST /queue {"delete":[id]}`。対象を指さない割り込み・キューの全消しはしない。呼び出しがタイムアウトで打ち切られたときも同じ手順で ComfyUI 側のジョブを止め、後ろで待つジョブが始まる。接続テストは ComfyUI が 0.3.57 未満だと「取り消しが他のジョブを止めうる」と注意を出す。
 - **組み込みテンプレート**: `localcfg/templates/image/*.json`・`localcfg/templates/video/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
 - **取り込み**: 利用者の「Save (API Format)」の JSON を取り込める。エディタ形式（`nodes`/`links`）は拒否してヒントを返す。ノードと入力の一覧を返すので、割り当てを利用者が決める。
 
@@ -79,8 +79,10 @@ openai-compat:lmstudio/flux-schnell
 |---|---|---|---|---|
 | `img2img` | `chroma1-hd`（`txt2img-chroma`）、`flux1-dev-nsfw-master`（`txt2img-flux-dev-lora`） | 1 | 全体のみ | 参照を VAE で潜在にして途中から生成する。`reference_denoise` の割り当てに `1 − (1 − floor)×s` を入れる（`floor` は `reference_denoise_min`。既定 0、`chroma1-hd` は 0.6。Chroma の schedule は denoise 0.6 未満では絵がほとんど変わらず 0.95 で参照が消えるため、強さの範囲を変化のある区間に広げる。下限は 0.02）。参照が無い実行は `no_reference`（空の潜在に戻す）を当てて参照のノードを外し、テキストから生成と同じになる |
 | `edit` | `noctq-v4-qwen-image21`（`txt2img-qwen-image21`） | 最大 10（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象 | 参照は `TextEncodeQwenImage21` の `image_1`〜に入る（プロンプトの `<image1>` が 1 枚目）。強さ s の参照は、サンプリングの最初の `round(s×steps)` ステップ（最低 1）だけ条件に入り、残りはプロンプトだけで仕上げる。強さが違う参照ごとにサンプリングを区切り（最大 6 区間。区切りが 5 つを超えるほど強さが散らばるときは、均等に選んだ 5 つを残し、ほかの参照の区切りは一番近い残した区切りへ寄せる。終わりまで残る参照にはならない）、各区間を別のエンコーダー・`SamplerCustomAdvanced` で回す。役割は文で伝え（顔だけ: 「顔と同一性だけを保つ」、画風だけ: 「画風・色・雰囲気だけ」）、顔・画風は VAE を渡さない（ビジョンだけで読む）。VAE はデコードのノード（`VAEDecode`）がつなぐ `VAELoader` |
+| `edit`（FLUX.2） | `flux2-klein-4b`（`txt2img-flux2-klein`。#931） | 最大 4（`reference_image` の `optional` スロット） | 全体・顔だけ・画風だけ・編集対象 | 参照は視覚モデルではなく潜在として入る: 画像ごとに `ImageScaleToTotalPixels`（約 1 メガピクセル）→ `VAEEncode` → `ReferenceLatent` を、肯定・否定の条件に順に重ねる（ComfyUI の公式の編集テンプレートと同じ。テンプレートは 4 枚分のスロットを持ち、使わない枚数は画像・縮小・VAEEncode・`ReferenceLatent` ごと外れ、`ReferenceLatent` は素通しに戻る）。強さの意味は Qwen の編集と同じ（最初の `round(s×steps)` ステップだけ参照が入る。蒸留版は 4 ステップなので 0.25 刻み。最大 3 つの区切りで、区間ごとに別のエンコーダー・否定の起点・`ReferenceLatent` の鎖・`CFGGuider`・`SamplerCustomAdvanced` で回す）。プロンプトの `<image1>` は klein の書き方の `image 1` に直す。顔・画風の役割は文でだけ伝える（視覚モデルがないので VAE の有無の違いはない）。出力の大きさは縦横比の指定に従い、1 枚目の参照の大きさにはしない |
 
 - **LoRA**: `lora_model_node`（モデルを出力するノード）がある画像ワークフローだけが受ける。リクエストの LoRA は、そのノードの出力 0 を使うノードの手前に `LoraLoaderModelOnly` を差し込む（強さ既定 0.4）。受けないモデルでは警告 `lora_unsupported` を出し、送らない。
+- **速さのモード（Issue #930）**: 動画ワークフローは `speed_modes`（`{id, label, overrides[]}` の配列。ID は小文字・数字・`-`）を持てる。**先頭がグラフそのまま（既定）**で `overrides` を持たず、2 つ目以降は `overrides`（`{node, input, value}`。値は JSON か `["<node>", <出力>]` のリンク）でグラフの値（ステップ数・cfg・shift・LoRA を外すリンクの付け替え）を書き換える。リクエストの `speed_mode` が空なら先頭、モードの名前なら その `overrides` を、割り当ての代入のあと・LoRA の挿入の前にグラフへ入れ、**出力ノードから辿れなくなったノード（外した LoRA）を送らない**（サーバーが使わないファイルを読まないため）。ワークフローに無いモードを名指しすると 422（生成テストは見積りの時点で警告 `speed_mode_unsupported` を出し、そのモデルは既定で作る）。検証（`ValidateModel`）は、動画だけ・ID の形と重複・ラベル・先頭に `overrides` が無いこと・各 `overrides` が存在するノードの入力と JSON の値（リンクは存在するノード）を指すことを確かめる。組み込みのテンプレートで持つのは `img2video-wan22-14b-lightx2v`（`fast` / `standard`）だけ。
 - **インストール済みのモデルの更新**: モデルマネージャーはモデルの導入時にだけテンプレートを `local_models` へ写す。この対応より前に導入したモデルは参照を使えない古い写しのままなので、mam の起動時（`app` が `wfrefresh.Run` を呼ぶ。接続先の登録のあと）に、カタログのワークフロー名と同じ名前の保存済みモデルで、`reference_mode` が無く、テンプレートには有り、**利用者が書き換えていない古い写し**であるものを、テンプレートの内容に置き換える（利用者が付けた価格は残す）。「書き換えていない古い写し」は、保存済みのグラフのすべてのノードがテンプレートにも同じ `class_type` で有り、保存済みの各ノードの各入力が、値がリテラルならテンプレートに同じ値で有り（モデルファイル `unet_name`・`ckpt_name`、`steps`、`cfg`、`lora_name` などが違えば利用者の編集とみなす）、リンクならテンプレートでは別のリンクでもよい（参照画像のためにつなぎ替えた）こと、割り当てがすべてテンプレートにも有り、出力ノードが同じことで決める。テンプレートに増えたノード・入力・割り当ては差し支えない。利用者が書き換えたモデル、`--model-config` で固定したファイル、テンプレートが参照に対応しないモデル、すでに最新のモデルは変えない。
 - **画面・MCP での編集**: 保存済みのモデルを画面（`PUT .../models/:model`）や `update_local_model` で編集しても、フォームに欄の無い `reference_mode`・`reference_denoise_min`・`no_reference`・`lora_model_node`・`reference_image` の `optional`、フォームが 1 行に出す値の 2 つ目以降の割り当て（Chroma の参照の縮小ノードの `width`・`height`）は、保存済みのワークフローのまま残る。画面は保存済みのワークフローを土台に、グラフ・割り当ての表の行・出力ノード・fps などだけを置き換える（テンプレートから作る新規のモデルも、隠しフィールド `template` のテンプレートを土台にする）。参照画像の行は、保存済みのワークフローが持つ枚数（Qwen-Image 2.1 は 10）まで出す（最低 4）。MCP の `assignments` の `optional` を省くと、保存済みの同じ（`param`・`index`・`node`・`input`）の割り当ての値を引き継ぐ。
 - **参照なしの入力**: `reference_mode` があるモデルは、`ImageRequest.Options.Refs` が無いとき（キャラクターシートや Workflow のステップが `Inputs` だけを渡す経路）、`Inputs` を参照として扱わない（アップロードせず、参照のノードも使わない。テキストからの生成になる）。`reference_mode` が空のワークフロー（`img2img-sdxl` など利用者のもの）は、これまでどおり `Inputs` を取る。
@@ -101,6 +103,8 @@ openai-compat:lmstudio/flux-schnell
 4. **導入**: カタログの `ltx-2.5-22b-distilled`（「HF トークンが必要」のバッジ）の導入を押し、mam のライセンスの確認にも同意する。トークンが無い・無効・承認前のときは、ジョブを作る前に、状況に合う案内（model-manager.md §5.3 の文言 A・B・C）で止まる。
 
 **外部の ComfyUI**（macOS・ブラウザ版・サーバー版など、同梱エンジンを使わない環境）では、mam はモデルを入れない。上の 1〜2 のあと、ComfyUI 側で同じ名前のファイルを `diffusion_models/`・`text_encoders/`・`vae/`・`latent_upscale_models/` に置く（Comfy の公式ワークフローを開くと、ファイルの取得を案内される）。置いたあと、設定の「ローカル・代替モデル」にテンプレートからワークフローを登録する。ComfyUI は、必要なノード（`LTXV*`・`ComfyMathExpression`・Gemma 4 の `CLIPLoader type=ltxv`）を持つ新しい版にする（同梱エンジンの v0.42.1 は持つ）。GPU での生成は未確認（model-manager.md §11）。
+
+**非検閲のテキストエンコーダー・音声つきの出力・macOS（Issue #927）**: 標準のテキストエンコーダーの代わりに、コミュニティ製の非検閲版を使うテンプレートが `txt2video-ltx-2-5-uncensored`・`img2video-ltx-2-5-uncensored`（成人向け。カタログ `ltx-2.5-22b-distilled-uncensored`。違いは `CLIPLoader` の `clip_name` だけ。[model-manager.md](model-manager/model-manager.md) §4.2）。保存は `SaveVideo`（`format`・`codec` ともに `auto` = H.264 と AAC の mp4）で、音声トラックは 1 本の mp4 に入り、mam は再エンコードせずに保存・再生する。macOS の外部 ComfyUI（MPS）は、LTX-2.5 が黒い動画になる・保存に失敗する報告があり、**動く場合もあるが不安定で、mam では未確認**（同 §4.2「macOS」）。
 
 ## 5. 接続テスト
 

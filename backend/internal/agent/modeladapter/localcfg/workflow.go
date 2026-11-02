@@ -81,6 +81,8 @@ type Workflow struct {
 	ReferenceDenoiseMin float64 `json:"reference_denoise_min,omitempty"`
 	// LoraModelNode is the node whose output 0 is the model: a LoRA of a request is inserted behind it. Empty: no LoRA.
 	LoraModelNode string `json:"lora_model_node,omitempty"`
+	// SpeedModes are the ways a video workflow can sample (SpeedMode); the first is the graph as it stands and the default. Empty: one way.
+	SpeedModes []SpeedMode `json:"speed_modes,omitempty"`
 }
 
 // DefaultFPS is the frame rate of a video workflow that names none.
@@ -308,6 +310,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 	}
 	errs = append(errs, validateReferences(where, media, w)...)
 	errs = append(errs, validateReferenceMode(where, w, g)...)
+	errs = append(errs, validateSpeedModes(where, media, w, g)...)
 	if w.FPS < 0 || w.FPS > 240 || w.FramesStep < 0 || w.FramesStep > 64 || w.SizeMultiple < 0 || w.SizeMultiple > 128 {
 		errs = append(errs, fmt.Errorf("%s: fps must be within 0-240, frames_step within 0-64 and size_multiple within 0-128", where))
 	}

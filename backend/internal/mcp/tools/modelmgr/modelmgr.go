@@ -36,6 +36,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	registerEngine(r, h)
 	registerCatalog(r, h)
 	registerAdult(r, h)
+	registerCommercial(r, h)
 	registerExtras(r, h)
 	registerHF(r, h)
 	registerRuntimes(r, h)

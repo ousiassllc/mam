@@ -2,17 +2,22 @@ package gentest
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // HistoryID is the DOM id of the history list.
 const HistoryID = "gt-history"
 
-// HistoryList is the history (newest first) with its filter, the total spend and a button for the next page.
+// HistoryLiveID is the DOM id of the part of the history that changes while something runs: the spend, the refresh button
+// and the results. The filter is outside of it, so that a polling swap never takes a choice the reader is making.
+const HistoryLiveID = "gt-history-live"
+
+// HistoryList is the history (newest first) with its filter, the total spend, a refresh button and a button for the next page.
 templ HistoryList(h History) {
 	<section id={ HistoryID } class="flex flex-col gap-4" data-testid="gt-history">
-		@notice(h.Message, "gt-history")
-		<p class="text-sm text-neutral-300" data-testid="gt-spend">{ h.Spend }</p>
 		<form
 			class="flex flex-wrap items-end gap-3"
 			hx-get={ paths.GenerationTestHistory() }
@@ -26,7 +31,7 @@ templ HistoryList(h History) {
 				@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{"id": "gt-filter-model", "name": FieldModel}) {
 					<option value="">すべて</option>
 					for _, m := range h.Models {
-						<option value={ m } selected?={ m == h.Filter.Model }>{ m }</option>
+						<option value={ m } selected?={ m == h.Filter.Model } data-commercial={ h.ModelAnswers[m] }>{ m }</option>
 					}
 				}
 			</label>
@@ -42,14 +47,40 @@ templ HistoryList(h History) {
 				<input type="checkbox" name="favorite" value="1" checked?={ h.Filter.Favorite }/>
 				<span>お気に入りだけ</span>
 			</label>
+			@commercial.Filter(h.Commercial)
 			@atoms.Button(atoms.ToneNeutral, "絞り込む", templ.Attributes{"type": "submit"})
 		</form>
+		@exportbar.Bar(h.Export)
+		@HistoryLive(h)
+	</section>
+}
+
+// HistoryLive is the part of the history that refreshes: the spend, when it was read and the refresh button, then the results
+// and the button for the next page. While a result waits or runs it asks for itself again every 2 seconds, and stops when
+// none does (the answer that shows the last one finished has no polling).
+templ HistoryLive(h History) {
+	<div
+		id={ HistoryLiveID }
+		class="flex flex-col gap-4"
+		data-testid="gt-history-live"
+		data-active={ boolText(h.Active) }
+		if h.Active {
+			hx-get={ h.Refresh }
+			hx-trigger={ Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		@notice(h.Message, "gt-history")
+		<div class="flex items-center justify-between gap-3">
+			<p class="text-sm text-neutral-300" data-testid="gt-spend">{ h.Spend }</p>
+			@RefreshBar(h.Refresh, HistoryLiveID, h.UpdatedAt)
+		</div>
 		if len(h.Cards) == 0 {
 			<p class="text-sm text-neutral-400" data-testid="gt-history-empty">条件に合う結果はありません。</p>
 		}
 		<ul class="flex flex-wrap gap-3">
 			for _, c := range h.Cards {
-				<li data-testid="gt-history-item">
+				<li data-testid="gt-history-item" data-commercial={ c.Answer.Answer() }>
 					@HistoryCard(c)
 				</li>
 			}
@@ -61,18 +92,36 @@ templ HistoryList(h History) {
 				})
 			</div>
 		}
-	</section>
+	</div>
 }
 
-// HistoryCard is a result with its favorite toggle (the heart) and its prompt.
+// HistoryCard is a result with its favorite toggle (the heart) and its prompt. A result that made a file can be chosen for the ZIP
+// export (#932), as the model cards of the form are chosen (#906): the card is the choice. Tap it and its frame glows; a checkbox that
+// is only there for the keyboard and a screen reader (sr-only, the peer of the frame) holds the state, static/src/components/gentest/
+// export-pick.ts keeps it over the refresh of the list. A card without a file is not offered.
 templ HistoryCard(c Card) {
-	<div class="flex w-44 flex-col gap-1">
-		@ResultCard(c)
-		<p class="line-clamp-2 break-words text-xs text-neutral-300">{ c.Prompt }</p>
-		<div class="flex items-center justify-between text-xs text-neutral-400">
-			<span>{ c.CreatedAt }</span>
-			@FavoriteButton(c.ID, c.Favorite)
+	<div
+		class="relative w-47"
+		if c.FileURL != "" {
+			data-gt-pick={ c.ID }
+		}
+	>
+		if c.FileURL != "" {
+			<input type="checkbox" class="peer sr-only" aria-label="書き出しに選ぶ" data-gt-pick-input data-testid="gt-pick"/>
+		}
+		<div class={ "flex flex-col gap-1 rounded-lg border border-transparent p-1.5", pick.Glow }>
+			@ResultCard(c)
+			<p class="line-clamp-2 break-words text-xs text-neutral-300">{ c.Prompt }</p>
+			<div class="flex items-center justify-between text-xs text-neutral-400">
+				<span>{ c.CreatedAt }</span>
+				@FavoriteButton(c.ID, c.Favorite)
+			</div>
 		</div>
+		if c.FileURL != "" {
+			<span class="pointer-events-none absolute left-3 top-3 hidden text-indigo-300 peer-checked:block" aria-hidden="true">
+				@atoms.Icon(atoms.IconCheck, "h-5 w-5")
+			</span>
+		}
 	</div>
 }
 
@@ -80,6 +129,7 @@ templ HistoryCard(c Card) {
 templ FavoriteButton(id string, on bool) {
 	<button
 		type="button"
+		id={ "gt-favorite-" + id }
 		class="rounded px-1 text-base leading-none hover:bg-neutral-800"
 		hx-post={ paths.GenerationTestPart("results", id, "favorite") }
 		hx-vals={ favoriteVals(!on) }

@@ -2,6 +2,7 @@ package modelmgr
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -39,6 +40,7 @@ templ TrialFormView(f TrialForm) {
 		data-testid="mm-trial-form"
 	>
 		@notice(f.Message, "mm-trial")
+		@commercial.Filter(f.Filter)
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-model">
 			<span>モデル（導入済み・登録済みのもの）</span>
 			@atoms.Select(atoms.FieldMd, "w-full max-w-xl", templ.Attributes{
@@ -47,10 +49,13 @@ templ TrialFormView(f TrialForm) {
 				"hx-include": "[name=" + FieldPrompt + "],[name=" + FieldNegative + "],[name=" + FieldAspect + "]",
 			}) {
 				for _, m := range f.Models {
-					<option value={ m.ID } selected?={ m.Selected }>{ m.Label }</option>
+					<option value={ m.ID } selected?={ m.Selected } data-commercial={ m.Answer.Answer() }>{ m.Label }</option>
 				}
 			}
 		</label>
+		if f.NativeAudio {
+			<p class="text-xs text-neutral-300" data-testid="mm-trial-audio-note">このモデルは映像と同期した音声も作ります。結果は音声つきの mp4 で、下のプレーヤーで音が出ます（ブラウザーとパソコンの音量・ミュートを確かめてください）。</p>
+		}
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-prompt">
 			<span>プロンプト</span>
 			@atoms.Textarea(atoms.FieldMd, "w-full max-w-2xl", templ.Attributes{
@@ -153,7 +158,11 @@ templ trialItem(t Trial) {
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<span class="flex flex-wrap items-center gap-2">
 				<code class="text-xs">{ t.ModelID }</code>
+				@commercial.Mark(t.Answer)
 				@atoms.Badge(trialTone(t.Status), t.StatusText)
+				if t.Audio {
+					@atoms.BadgeWith(atoms.BadgeInfo, "音声つき", templ.Attributes{"data-testid": "mm-trial-audio-badge"})
+				}
 				<span class="text-xs text-neutral-400">{ t.CreatedAt }</span>
 			</span>
 			if t.Deletable {
@@ -178,7 +187,7 @@ templ trialItem(t Trial) {
 		}
 		if t.Status == "succeeded" && t.FileURL != "" {
 			if t.Video {
-				<video class="max-h-80 max-w-full rounded" controls preload="metadata" src={ t.FileURL }></video>
+				<video class="max-h-80 max-w-full rounded" controls preload="metadata" src={ t.FileURL } aria-label={ trialVideoLabel(t) } data-audio?={ t.Audio }></video>
 			} else {
 				<img class="max-h-80 max-w-full rounded" src={ t.FileURL } alt={ "試し生成の結果: " + t.Prompt }/>
 			}
@@ -188,6 +197,14 @@ templ trialItem(t Trial) {
 			</p>
 		}
 	</li>
+}
+
+// trialVideoLabel names the player; one with a sound track says so, since the video itself does not tell a screen reader.
+func trialVideoLabel(t Trial) string {
+	if t.Audio {
+		return "試し生成の結果（音声つきの動画）: " + t.Prompt
+	}
+	return "試し生成の結果（動画）: " + t.Prompt
 }
 
 func trialTone(status string) atoms.BadgeTone {

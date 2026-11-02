@@ -39,6 +39,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/instlog"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmlicense"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/vramcache"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 
@@ -57,10 +59,9 @@ var (
 	ErrNotFound = errors.New("modelmanager: not found")
 	// ErrEngineNotInstalled: the engine is not installed (a model needs it).
 	ErrEngineNotInstalled = errors.New("modelmanager: the engine is not installed")
-	// ErrAlreadyInstalled: the model is installed.
+	// ErrAlreadyInstalled: the model is installed. ErrNotInstalled: it is not.
 	ErrAlreadyInstalled = errors.New("modelmanager: already installed")
-	// ErrNotInstalled: the model is not installed.
-	ErrNotInstalled = errors.New("modelmanager: not installed")
+	ErrNotInstalled     = errors.New("modelmanager: not installed")
 	// ErrConsentRequired: the license of the model has to be accepted first.
 	ErrConsentRequired = errors.New("modelmanager: the license has to be accepted before the install")
 	// ErrBusy: an install of the model is running.
@@ -69,8 +70,7 @@ var (
 	ErrNoGPU = errors.New("modelmanager: no supported GPU was found")
 	// ErrPinned: the operator pinned the model setting file (--model-config): the managed endpoint cannot be written.
 	ErrPinned = modelsettings.ErrPinned
-	// ErrEndpointMoved: the engine started on another port than the endpoint knew; the setting was updated, and
-	// the call has to be made again.
+	// ErrEndpointMoved: the engine started on another port than the endpoint knew; the setting was updated, and the call has to be made again.
 	ErrEndpointMoved = errors.New("ComfyUI のポートが変わったため設定を更新しました。もう一度実行してください")
 )
 
@@ -108,8 +108,7 @@ type Deps struct {
 	Extract extract.Extractor
 	// Fetch are the options of the downloads (client, URL check); Progress is set per download.
 	Fetch fetch.Options
-	// HFBase is the Hugging Face site the import reads (default hf.DefaultBase; a test points it at a fake). The reads follow the
-	// rules of Fetch (client, URL check, token host).
+	// HFBase is the Hugging Face site the import reads (default hf.DefaultBase; a test points it at a fake), read by the rules of Fetch.
 	HFBase string
 	// FreeBytes reports the free disk space at a path (default fsutil.FreeBytes).
 	FreeBytes func(path string) (uint64, error)
@@ -119,7 +118,8 @@ type Deps struct {
 	StartTimeout time.Duration
 	PollEvery    time.Duration
 	// GPU lists the adapters and recommends a build (default gpu.DetectSystem).
-	GPU func(ctx context.Context) gpu.Report
+	GPU     func(ctx context.Context) gpu.Report
+	GPULive func(ctx context.Context, mamPID int, engineDir string) gpu.Status // get_gpu_status's reader (nil: gpu.StatusSystem)
 	// Comfy looks for a ComfyUI that is already there (default detect.Detect over the user's config directory).
 	Comfy func(ctx context.Context) detect.Report
 	Now   func() time.Time
@@ -128,20 +128,21 @@ type Deps struct {
 // Service is the model manager.
 type Service struct {
 	Deps
+	*mmlicense.Book
 	cat     *catalog.Catalog
 	state   *store.Store
 	engine  *engine.Installer
 	proc    *proc.Manager
 	tracker *track.Tracker
 	bundled bool
-
-	mu     sync.Mutex
-	active map[string]string // target -> job id of the queued or running job
+	mu      sync.Mutex
+	active  map[string]string // target -> job id of the queued or running job
 	// activeDest is where an import job writes (models/<folder>/<name>), by target.
 	activeDest map[string]string
 	targets    map[string]*sync.Mutex
 	cancels    map[string]context.CancelCauseFunc // job id -> cancel of a running install
 	hf         *hf.Client
+	VRAM       vramcache.Cache // the memory of the GPU for the judgement of a model (mmview.GPUVRAM)
 }
 
 // New returns the Service. It reads the record (a broken one is an error).
@@ -172,7 +173,7 @@ func New(d Deps) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{Deps: d, cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
+	s := &Service{Deps: d, Book: mmlicense.New(d.Catalog, st, BundledEndpoint), cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
 		active: map[string]string{}, activeDest: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
 	s.hf = hf.New(hf.Options{Base: d.HFBase, HTTP: d.Fetch.Client, CheckURL: d.Fetch.CheckURL, AuthHost: d.Fetch.AuthHost, Token: s.huggingFaceToken})
 	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now}

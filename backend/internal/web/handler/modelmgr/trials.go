@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -49,15 +50,19 @@ func (h Handlers) trialForm(want string, prev view.TrialForm) view.TrialForm {
 			}
 		}
 	}
+	f.Filter = commercial.NewFilter("mm-trial-commercial", "#mm-trial-model", h.Svc.DefaultFilter())
 	for _, m := range models {
-		f.Models = append(f.Models, view.TrialModel{ID: m.ID, Label: m.ID + "（" + kindLabel(string(m.Media)) + "）", Selected: chosen != nil && m.ID == chosen.ID})
+		ans := commercial.Of(m.ID)
+		f.Models = append(f.Models, view.TrialModel{
+			ID: m.ID, Label: commercial.OptionLabel(m.ID+"（"+kindLabel(string(m.Media))+"）", ans), Selected: chosen != nil && m.ID == chosen.ID, Answer: ans,
+		})
 	}
 	if chosen == nil {
 		return f
 	}
 	f.Media, f.AcceptsReference = string(chosen.Media), chosen.AcceptsReference
 	if string(chosen.Media) == mediaVideo {
-		f.Resolutions = chosen.Resolutions
+		f.Resolutions, f.NativeAudio = chosen.Resolutions, chosen.NativeAudio
 		for _, d := range chosen.Durations {
 			f.Durations = append(f.Durations, strconv.FormatFloat(d, 'f', -1, 64))
 		}
@@ -94,8 +99,10 @@ func (h Handlers) trials(ctx context.Context) view.Trials {
 		return view.Trials{}
 	}
 	ids := []string{}
+	audio := map[string]bool{} // the models that make the sound with the picture
 	for _, m := range mmview.TrialModels(h.Svc) {
 		ids = append(ids, m.ID)
+		audio[m.ID] = m.NativeAudio
 	}
 	if len(ids) == 0 {
 		return view.Trials{}
@@ -107,7 +114,7 @@ func (h Handlers) trials(ctx context.Context) view.Trials {
 	t := view.Trials{}
 	for _, r := range recs {
 		it := view.Trial{
-			ID: r.ID, ModelID: r.Model, Video: r.Media == gentest.MediaVideo, Prompt: r.Prompt, Reference: len(r.UsedInputs) > 0,
+			ID: r.ID, ModelID: r.Model, Answer: commercial.Of(r.Model), Video: r.Media == gentest.MediaVideo, Audio: audio[r.Model], Prompt: r.Prompt, Reference: len(r.UsedInputs) > 0,
 			Status: r.Status, Error: r.Error, CreatedAt: r.CreatedAt.Local().Format("2006-01-02 15:04"), Detail: trialDetail(r),
 			Deletable: r.Status != gentest.StatusQueued && r.Status != gentest.StatusRunning,
 		}
@@ -144,7 +151,7 @@ func trialDetail(r gentest.ResultView) string {
 func (h Handlers) data(c *gin.Context) view.Data {
 	ctx := c.Request.Context()
 	d := view.Data{
-		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Catalog: catalogData(ctx, h.Svc, nil),
+		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Commercial: commercialData(h.Svc), Catalog: catalogData(ctx, h.Svc, nil),
 		HF: hfimport.TokenData(h.Svc), HFImport: hfimport.Panel(ctx, h.Svc),
 		External: view.External{Endpoints: h.externalEndpoints(c)},
 		Trial:    h.trialPanel(ctx, view.TrialForm{}, "", ""),

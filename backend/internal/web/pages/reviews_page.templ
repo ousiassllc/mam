@@ -4,47 +4,43 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/reviewlist"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ReviewsPage is GET /projects/:id/reviews: the owner's review screen in an auxiliary view.
 templ ReviewsPage(csrfToken string, project domain.Project, d reviewlist.Data) {
-	@layout.AppLayout("レビュー: "+project.Name, csrfToken) {
-		<main class="mx-auto max-w-4xl p-8">
-			@atoms.ChatBackLink(project.ID)
-			<h1 class="mb-1 mt-3 text-xl font-semibold">レビュー</h1>
-			<p class="mb-2 text-sm text-neutral-400">{ project.Name }</p>
-			<p class="mb-6 text-xs text-neutral-400">
-				完成した動画をメンバーに見てもらい、コメントと承認をもらいます。やり取りはファイルの受け渡しだけで、アカウントもサーバーも使いません。レビュアーは自分の mam に Review Package を読み込み、応答ファイルを返します。
-			</p>
+	@layout.AppLayout("レビュー: "+project.Name, csrfToken, sidenav.InProject(sidenav.ProjectReviews, project)) {
+		@pagehead.Main(pagehead.Medium) {
+			@pagehead.Header("レビュー", project.Name, "完成した動画をメンバーに見てもらい、コメントと承認をもらいます。やり取りはファイルの受け渡しだけで、アカウントもサーバーも使いません。レビュアーは自分の mam に Review Package を読み込み、応答ファイルを返します。")
 			@reviewlist.List(d)
-		</main>
+		}
 	}
 }
 
 // ReviewInboxPage is GET /reviews: the reviewer's entrance. A reviewer has no Project, only the
 // Review Packages they imported.
 templ ReviewInboxPage(csrfToken string, d organisms.ReviewInboxData) {
-	@layout.AppLayout("レビュー", csrfToken) {
-		<main class="mx-auto max-w-3xl p-8">
-			@atoms.BackLink(paths.Home(), "← プロジェクト一覧")
-			<h1 class="mb-1 mt-3 text-xl font-semibold">レビュー</h1>
-			<p class="mb-6 text-xs text-neutral-400">受け取った Review Package を読み込み、動画を見てコメントと判定を書き、応答ファイルをオーナーに返します。</p>
+	@layout.AppLayout("レビュー", csrfToken, sidenav.At(sidenav.Reviews)) {
+		@pagehead.Main(pagehead.Narrow) {
+			@pagehead.Header("レビュー", "", "受け取った Review Package を読み込み、動画を見てコメントと判定を書き、応答ファイルをオーナーに返します。")
 			@organisms.ReviewInboxList(d)
-		</main>
+		}
 	}
 }
 
 // ReviewPage is GET /reviews/:id: the review screen of one imported package.
 templ ReviewPage(csrfToken string, i domain.ReviewInbox) {
-	@layout.AppLayout("レビュー: "+i.ProjectName, csrfToken) {
-		<main class="mx-auto max-w-3xl p-8">
-			@atoms.BackLink(paths.Reviews(), "← レビュー一覧")
-			<h1 class="mb-1 mt-3 text-xl font-semibold">{ i.ProjectName }</h1>
-			<p class="mb-6 text-xs text-neutral-400">{ i.Video.Resolution } / { i.Video.AspectRatio } / { i.Video.Codec }</p>
+	@layout.AppLayout("レビュー: "+i.ProjectName, csrfToken, sidenav.At(sidenav.Reviews)) {
+		@pagehead.Main(pagehead.Narrow) {
+			<div class="flex flex-col gap-3">
+				@atoms.BackLink(paths.Reviews(), "← レビュー一覧")
+				@pagehead.Header(i.ProjectName, i.Video.Resolution+" / "+i.Video.AspectRatio+" / "+i.Video.Codec, "")
+			</div>
 			@organisms.ReviewWorkspace(i)
-		</main>
+		}
 	}
 }

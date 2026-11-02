@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -95,6 +96,8 @@ type HFRepo struct {
 	NFAA        bool
 	License     string
 	LicenseWarn string
+	// Answer is whether the repository's license (its card's tag) allows commercial use (#928).
+	Answer commercial.View
 	// Terms and TermsVersion are what the user confirms before an install; Consented says that was done for this commit.
 	Terms        string
 	TermsVersion string
@@ -120,13 +123,16 @@ type HFJob struct {
 
 // HFModel is a file the user added from Hugging Face.
 type HFModel struct {
-	Path     string
-	Name     string
-	Folder   string
-	Repo     string
-	Commit   string
-	Size     string
+	Path   string
+	Name   string
+	Folder string
+	Repo   string
+	Commit string
+	Size   string
+	// SHA256 is the digest the file was checked against at the import.
+	SHA256   string
 	License  string
+	Answer   commercial.View
 	Gated    bool
 	NFAA     bool
 	Family   string

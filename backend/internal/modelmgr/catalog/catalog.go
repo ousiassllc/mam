@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 )
 
 //go:embed data
@@ -46,20 +47,45 @@ const (
 
 // License is the license of model weights (or of the engine) as it is shown before an installation. ID and
 // Version identify what the user accepts: a new Version asks for a new acceptance.
+//
+// To add a model, fill in every field (the validation and the tests of the model list fail otherwise): Commercial is the answer for the whole
+// model; when the parts of the model have different licenses (a base model, a LoRA, a merge, a text encoder), list them in
+// Components and give the strictest answer (modellicense.Strictest) as Commercial. URL is the license original, CheckedAt the
+// date it was read.
 type License struct {
 	ID      string `json:"id"`
 	Version string `json:"version"`
 	Name    string `json:"name"`
 	URL     string `json:"url"`
 	Summary string `json:"summary"`
-	// CommercialUse says commercial use is allowed (CommercialCondition says on what condition, if any).
-	CommercialUse       bool   `json:"commercial_use"`
-	CommercialCondition string `json:"commercial_condition,omitempty"`
+	// Commercial says whether commercial use is allowed (yes, conditional, no or unknown); CommercialCondition says on what condition
+	// a conditional model may be used (and what limits a model that is "yes" only partly).
+	Commercial          modellicense.Commercial `json:"commercial"`
+	CommercialCondition string                  `json:"commercial_condition,omitempty"`
+	// CheckedAt is the date (YYYY-MM-DD) the license original was read.
+	CheckedAt string `json:"checked_at"`
+	// Components are the licenses of the parts of the model when they differ; Commercial is the strictest of them.
+	Components []LicenseComponent `json:"components,omitempty"`
 	// ExcludedRegions are the regions (EU, GB, KR) where the license does not apply: the model must not be
 	// used there.
 	ExcludedRegions []string `json:"excluded_regions,omitempty"`
 	// Notice is the sentence the consent text ends with.
 	Notice string `json:"notice,omitempty"`
+}
+
+// LicenseComponent is the license of one part of a model (the base model, a LoRA, a merge, the text encoder, the VAE).
+type LicenseComponent struct {
+	Part       string                  `json:"part"`
+	Name       string                  `json:"name"`
+	URL        string                  `json:"url"`
+	Commercial modellicense.Commercial `json:"commercial"`
+}
+
+// Info is the license as the screens and the MCP tools say it.
+func (l License) Info() modellicense.Info {
+	return modellicense.Info{
+		Commercial: l.Commercial, LicenseName: l.Name, Condition: l.CommercialCondition, SourceURL: l.URL, CheckedAt: l.CheckedAt, Notice: l.Notice,
+	}
 }
 
 // File is one file of a model, pinned. Folder is the ComfyUI model folder it goes to (checkpoints,
@@ -81,10 +107,14 @@ func (f File) Path() string { return path.Join("models", f.Folder, f.Name) }
 
 // VRAM is the guideline of the video memory a model needs, in GB. It is a 目安: Source says where it comes
 // from, and Estimate is true when it is mam's own conservative figure with no source (not run on a GPU).
+// RecommendedGB is the memory the vendor recommends when it is above MinGB (0: MinGB is also the recommendation): a GPU between the
+// two runs the model with limits, and Limits says which (the quantized files, the tiled VAE, the offload, the speed).
 type VRAM struct {
-	MinGB    int    `json:"min_gb"`
-	Source   string `json:"source"`
-	Estimate bool   `json:"estimate"`
+	MinGB         int    `json:"min_gb"`
+	RecommendedGB int    `json:"recommended_gb,omitempty"`
+	Limits        string `json:"limits,omitempty"`
+	Source        string `json:"source"`
+	Estimate      bool   `json:"estimate"`
 }
 
 // Workflow is a #831 model created on the bundled endpoint when the model is installed: Name is its model

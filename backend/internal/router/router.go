@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/navstate"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -37,12 +38,9 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	engine := gin.New()
 	handler.RouteErrors(engine)
 	engine.Use(
-		middleware.Recovery(logger),
-		middleware.Logger(logger),
-		middleware.LoopbackOnly(),
-		middleware.SecurityHeaders(),
-		middleware.CSRF(),
-		middleware.MaxBody(),
+		middleware.Recovery(logger), middleware.Logger(logger),
+		middleware.LoopbackOnly(), middleware.SecurityHeaders(), middleware.CSRF(), middleware.MaxBody(),
+		navstate.Middleware(), // the side menu's folded state, read from its cookie
 	)
 
 	registerStatic(engine, opts.Static)

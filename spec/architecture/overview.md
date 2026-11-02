@@ -202,6 +202,8 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │   ├── take-comparator/      # mam-take-comparator
         │   ├── save-on-change/       # 変更でその場保存するコントロール（`hx-trigger="change"` の MODE・Production Template・Quality・Confirmation Level）が保存に失敗したとき、値を保存済みの値へ戻す。`main.ts` が `htmx:afterRequest` で組み込む（Lit ではない）
         │   ├── focus-restore/        # 利用者の操作で始まった htmx の swap（`HX-Trigger` 起点の再読込・`hx-swap-oob` を含む）が、フォーカス中のコントロールを消した、または `hx-disabled-elt` で `disabled` にしたとき、差し替え後の同じコントロールへフォーカスを戻す（`htmx:beforeRequest` / `beforeSwap` / `afterSwap` / `afterRequest`。`main.ts` が組み込む。Lit ではない。詳細は [components/overview.md](../components/overview.md) §5.2）。Lit コンポーネント（`take-comparator/`・`timeline-editor/timeline-focus.ts`）向けの `lit-focus.ts`（`focusAfterUpdate()`・`focusFirst()`）と、テスト用の `focus-assert.ts` も置く
+        │   ├── scroll/               # 取り直しで描き直された `data-keep-scroll` の箱（生成テストの比較表）を、読んでいた位置へ戻す（`keep-scroll.ts`。Issue #940。`main.ts` が `installKeepScroll()` で組み込む。Lit ではない）
+        │   ├── poll/                 # `hx-trigger="every …"` の要求を、タブが隠れているあいだと区画の動画・音声が再生中のあいだは出さない（`poll-guard.ts`。Issue #925。`main.ts` が `installPollGuard()` で組み込む）
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
         │       ├── ajax.ts / errors.ts / toast.ts / connection-notice.ts # フラグメント再取得・エラー表示

@@ -3,26 +3,18 @@ package gentest
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
-
-// usd writes an amount the way the confirmation shows it.
-func usd(v float64) string { return fmt.Sprintf("$%.4f", v) }
-
-func usdPtr(v *float64) string {
-	if v == nil {
-		return "—"
-	}
-	return usd(*v)
-}
 
 func seconds(d float64) string { return strconv.FormatFloat(d, 'f', -1, 64) }
 
@@ -43,29 +35,6 @@ var sourceLabel = map[string]string{
 	modelcatalog.SourceChatGPT:  "ChatGPT サブスク",
 	modelcatalog.SourceLocal:    "ローカル",
 	modelcatalog.SourceWorkflow: "保存したワークフロー",
-}
-
-// priceText is the unit price of a model as the model list shows it.
-func priceText(p modelcatalog.Price) string {
-	switch p.Basis {
-	case modelcatalog.BasisFree:
-		return "無料（ローカル）"
-	case modelcatalog.BasisPriced:
-		if p.PerImageUSD != nil {
-			return usd(*p.PerImageUSD) + " / 枚"
-		}
-		res := make([]string, 0, len(p.PerSecondUSD))
-		for r := range p.PerSecondUSD {
-			res = append(res, r)
-		}
-		sort.Strings(res)
-		parts := make([]string, len(res))
-		for i, r := range res {
-			parts[i] = r + " " + usd(p.PerSecondUSD[r]) + " / 秒"
-		}
-		return strings.Join(parts, "・")
-	}
-	return "単価なし（見積りの合計に入りません）"
 }
 
 func featuresText(m modelcatalog.Info) string {
@@ -97,6 +66,9 @@ func featuresText(m modelcatalog.Info) string {
 		if len(in) > 0 {
 			f = append(f, strings.Join(in, "・")+"を使える")
 		}
+		if v.NativeAudio {
+			f = append(f, "音声つき（映像と同期した音声を一緒に作る）")
+		}
 	}
 	return strings.Join(f, "・")
 }
@@ -105,8 +77,9 @@ func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice
 	out := make([]view.ModelChoice, len(models))
 	for i, m := range models {
 		out[i] = view.ModelChoice{
-			ID: m.ID, Label: m.Label, Source: sourceLabel[m.Source], Price: priceText(m.Price), Features: featuresText(m),
+			ID: m.ID, Label: m.Label, Source: sourceLabel[m.Source], Price: gtshare.PriceText(m.Price), Features: featuresText(m),
 			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA,
+			Answer: commercial.FromInfo(m.License),
 		}
 		if !m.Available {
 			out[i].Reason = m.UnavailableMessage
@@ -143,8 +116,8 @@ func videoChoices(models []modelcatalog.Info) (resolutions, durations []string) 
 // cardOf is a result as a card; withDetail adds the link to its page.
 func cardOf(r gentest.ResultView, withDetail bool) view.Card {
 	c := view.Card{
-		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: statusText[r.Status], Error: r.Error,
-		Video: r.Media == gentest.MediaVideo, Favorite: r.Favorite, CreatedAt: timeText(r.CreatedAt),
+		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: gtshare.StatusText[r.Status], Error: r.Error,
+		Video: r.Media == gentest.MediaVideo, Favorite: r.Favorite, CreatedAt: timeText(r.CreatedAt), Answer: commercial.Of(r.Model),
 	}
 	if r.HasFile {
 		c.FileURL = paths.GenerationTestPart("results", r.ID, "file")
@@ -159,13 +132,8 @@ func cardOf(r gentest.ResultView, withDetail bool) view.Card {
 	return c
 }
 
-var statusText = map[string]string{
-	gentest.StatusQueued: "待機中", gentest.StatusRunning: "生成中", gentest.StatusSucceeded: "完了",
-	gentest.StatusFailed: "失敗", gentest.StatusCancelled: "取り消し",
-}
-
 func spendText(s gentest.Spend) string {
-	t := fmt.Sprintf("これまでの生成テストの合計: %s（%d 件", usd(s.PricedUSD), s.Items)
+	t := fmt.Sprintf("これまでの生成テストの合計: %s（%d 件", gtshare.USD(s.PricedUSD), s.Items)
 	if s.UnknownItems > 0 {
 		t += fmt.Sprintf("、うち単価が分からない %d 件は含みません", s.UnknownItems)
 	}

@@ -7,7 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
 )
 
 // externalEndpoints are the registered ComfyUI endpoints other than the bundled one.
@@ -56,4 +58,29 @@ func (h Handlers) External(c *gin.Context) {
 	}
 	x.Result = res
 	render(c, status, view.ExternalCard(x))
+}
+
+// ExternalDetail answers GET /model-manager/external/detail (query endpoint, name) with the modal of the card of a model on an external
+// ComfyUI: the files it has there and the ones it lacks. It asks the ComfyUI again (nothing is kept of the last check); one that cannot be
+// reached, or a model that is not in its answer, is the reason in the modal.
+func (h Handlers) ExternalDetail(c *gin.Context) {
+	endpoint, name := strings.TrimSpace(c.Query(view.FieldEndpoint)), c.Query(view.FieldName)
+	inv, err := h.Svc.ExternalInventory(c.Request.Context(), endpoint)
+	if err != nil {
+		status, msg := http.StatusBadGateway, "ComfyUI に接続できませんでした。URL・起動の状態・API キーを確かめてください"
+		if kind, _ := mmview.Refuse(err); kind != mmview.RefusalNone {
+			status, msg = refuse(c, err)
+		} else {
+			_ = c.Error(err)
+		}
+		render(c, status, modal.Notice("外部の ComfyUI のモデル", msg))
+		return
+	}
+	for _, m := range inv.Models {
+		if m.Name == name {
+			render(c, http.StatusOK, modeldetail.ExternalDetail(inv.Endpoint, view.ExternalModel{Name: m.Name, Complete: m.Complete, Present: m.Present, Missing: m.Missing}))
+			return
+		}
+	}
+	render(c, http.StatusNotFound, modal.Notice("外部の ComfyUI のモデル", "対象が見つかりません。画面を読み込み直してください"))
 }

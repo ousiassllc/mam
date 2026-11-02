@@ -2,15 +2,18 @@ package servicetest_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -129,6 +132,25 @@ func TestFailureOfTheChatGPTImageWithoutACodexModelIsExplained(t *testing.T) {
 	assert.Equal(t, chatgpt.ImageModelUnavailableMessage, st.Results[0].Error)
 	assert.NotContains(t, st.Results[0].Error, "ベンダーがリクエストを拒否しました")
 	assert.NotContains(t, st.Results[0].Error, "gpt-5.5")
+}
+
+// A local call that ran past the endpoint's timeout says what happened and what to do, without a word about
+// billing; the cloud's timeout keeps its note that the vendor may go on generating (#917).
+func TestTimeoutMessageOfALocalCallHasNothingAboutBilling(t *testing.T) {
+	r := gentesttest.New(t)
+	r.Fake.FailWith(domain.ModelFlux2, &localcfg.TimeoutError{After: time.Hour, Err: fmt.Errorf("%w after 1h0m0s: %w", modeladapter.ErrTimeout, context.DeadlineExceeded)})
+	r.Fake.FailWith(domain.ModelNanoBanana, fmt.Errorf("%w after 3m0s: %w", modeladapter.ErrTimeout, context.DeadlineExceeded))
+	ref, err := r.Confirmed(imageReq("flux-2", "nano-banana"))
+	require.NoError(t, err)
+	st := r.Wait(ref.BatchID)
+
+	require.Len(t, st.Results, 2)
+	local, cloud := st.Results[0].Error, st.Results[1].Error
+	assert.Contains(t, local, "ローカルの生成が接続先の待ち時間（1時間）を超えたため打ち切りました")
+	assert.Contains(t, local, "タイムアウトを延ばす")
+	assert.NotContains(t, local, "課金")
+	assert.NotContains(t, local, "ベンダー")
+	assert.Contains(t, cloud, "課金される場合があります")
 }
 
 func TestSeedIsGeneratedPerResultAndRecordedOnlyWhereItIsSent(t *testing.T) {

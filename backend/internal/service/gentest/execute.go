@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/failtext"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 	"github.com/ousiassllc/mam/backend/internal/textutil"
@@ -93,7 +94,7 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p resultPar
 
 func (br *batchRun) video(ctx context.Context, r gentestrepo.Result, p resultParams) (file, mime string, size int64, cost *float64, err error) {
 	req := modeladapter.VideoRequest{
-		Prompt: r.SentPrompt, DurationSeconds: p.DurationSeconds, Resolution: p.Resolution, AspectRatio: p.AspectRatio, Seed: seedOf(r),
+		Prompt: r.SentPrompt, DurationSeconds: p.DurationSeconds, Resolution: p.Resolution, AspectRatio: p.AspectRatio, Seed: seedOf(r), SpeedMode: p.SpeedMode,
 	}
 	if r.NegativeMode == gentestrepo.NegativeField {
 		req.NegativePrompt = sentNegative(r, p)
@@ -155,6 +156,7 @@ func (s *Service) failureText(ctx context.Context, err error) string {
 	if s.Explain != nil {
 		explained = s.Explain(err)
 	}
+	localTimeoutMsg, isLocalTimeout := failtext.LocalTimeout(err)
 	switch {
 	case ctx.Err() != nil:
 		msg = ReasonInterrupted
@@ -164,6 +166,8 @@ func (s *Service) failureText(ctx context.Context, err error) string {
 		msg = "このモデルのベンダーで失敗が続いているため、呼び出しを止めています。しばらく待ってから実行し直してください"
 	case errors.Is(err, modeladapter.ErrNoAPIKey):
 		msg = "API キーが登録されていません"
+	case isLocalTimeout:
+		msg = localTimeoutMsg
 	case errors.Is(err, modeladapter.ErrTimeout):
 		msg = "ベンダーの応答が時間内に返りませんでした（ベンダー側では生成が続き、課金される場合があります）: " + err.Error()
 	case errors.Is(err, direct.ErrInputsUnsupported), errors.Is(err, direct.ErrInputsConflict), errors.Is(err, direct.ErrResolution):

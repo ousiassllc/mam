@@ -10,17 +10,19 @@ import "github.com/a-h/templ"
 
 // IDs of the elements the actions swap.
 const (
-	EngineID   = "mm-engine"
-	GPUID      = "mm-gpu"
-	DetectID   = "mm-detect"
-	CatalogID  = "mm-catalog"
-	DialogID   = "mm-dialog"
-	HFID       = "mm-hf"
-	ExternalID = "mm-external"
-	TrialID    = "mm-trial"
-	AdultID    = "mm-adult"
-	TrialFmID  = "mm-trial-form"
-	TrialsID   = "mm-trials"
+	EngineID     = "mm-engine"
+	GPUID        = "mm-gpu"
+	DetectID     = "mm-detect"
+	CatalogID    = "mm-catalog"
+	DialogID     = "mm-dialog"
+	HFID         = "mm-hf"
+	ExternalID   = "mm-external"
+	TrialID      = "mm-trial"
+	AdultID      = "mm-adult"
+	CommercialID = "mm-commercial"
+	ModelsID     = "mm-models"
+	TrialFmID    = "mm-trial-form"
+	TrialsID     = "mm-trials"
 )
 
 // Names of the form fields (the handler reads the same names).
@@ -54,13 +56,15 @@ const Polling = "every 2s"
 
 // Data is the whole screen.
 type Data struct {
-	Engine   Engine
-	Adult    Adult
-	Catalog  Catalog
-	HF       HFToken
-	External External
-	Trial    TrialPanel
-	HFImport HFImport
+	Engine Engine
+	Adult  Adult
+	// Commercial is the setting "商用OKのモデルだけを使う" with the filter of the model list (#928).
+	Commercial CommercialPanel
+	Catalog    Catalog
+	HF         HFToken
+	External   External
+	Trial      TrialPanel
+	HFImport   HFImport
 	// Runtimes is the section of the local voice and lip-sync runtimes (runtimecard.RuntimesSection); nil leaves the section out.
 	Runtimes templ.Component
 }

@@ -1,24 +1,19 @@
 package pages
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
-	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // SettingsPage is GET /projects/:id/settings: Production Template, Quality/Cost Policy, budget, the
 // cost of the Project and its disk usage.
 templ SettingsPage(csrfToken string, d organisms.SettingsBodyData) {
-	@layout.AppLayout("設定: "+d.Policy.Project.Name, csrfToken) {
-		<main class="mx-auto flex max-w-3xl flex-col gap-8 p-8">
-			<div>
-				@atoms.ChatBackLink(d.Policy.Project.ID)
-				<h1 class="mb-1 mt-3 text-xl font-semibold">設定</h1>
-				<p class="text-sm text-neutral-400">{ d.Policy.Project.Name }</p>
-				<p class="mt-2 text-sm"><a href={ templ.SafeURL(paths.Settings()) } class="text-neutral-400 underline hover:text-neutral-100">API キーとモデルの設定は全体の設定へ</a></p>
-			</div>
+	@layout.AppLayout("設定: "+d.Policy.Project.Name, csrfToken, sidenav.InProject(sidenav.ProjectSettings, d.Policy.Project)) {
+		@pagehead.Main(pagehead.Narrow) {
+			@pagehead.Header("設定", d.Policy.Project.Name, "API キーとモデルの設定は、左メニューの設定にあります。")
 			@organisms.SettingsBody(d)
-		</main>
+		}
 	}
 }

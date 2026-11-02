@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
-	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 )
@@ -131,7 +132,7 @@ func (s *Service) local(ctx context.Context, role localvoice.Role) (*Local, erro
 		l.SupportReason = v.Support.Message()
 	}
 	for _, a := range v.Weights.Assets {
-		if a.License.CommercialUse != catalog.CommercialYes {
+		if a.License.Commercial != modellicense.Yes {
 			l.Unclear = append(l.Unclear, a.Name)
 		}
 	}

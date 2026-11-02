@@ -3,6 +3,7 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -32,23 +33,22 @@ templ ComposeForm(c Compose) {
 		data-testid="gt-form"
 	>
 		@notice(c.Message, "gt-form")
-		<fieldset class="flex flex-wrap items-center gap-4 text-sm">
+		<fieldset class="flex flex-wrap items-center gap-2 text-sm">
 			<legend class="sr-only">作るもの</legend>
 			for _, m := range []string{"image", "video"} {
-				<label class="flex items-center gap-1">
-					<input
-						type="radio"
-						name={ FieldMedia }
-						value={ m }
-						checked?={ c.Media == m }
-						hx-get={ paths.GenerationTestPart("form") }
-						hx-trigger="change"
-						hx-target={ "#" + ComposeID }
-						hx-swap="outerHTML"
-						hx-include={ "#" + ComposeID }
-					/>
-					<span>{ mediaLabel(m) }</span>
-				</label>
+				@pick.Card(templ.Attributes{
+					"type":       "radio",
+					"name":       FieldMedia,
+					"value":      m,
+					"checked":    c.Media == m,
+					"hx-get":     paths.GenerationTestPart("form"),
+					"hx-trigger": "change",
+					"hx-target":  "#" + ComposeID,
+					"hx-swap":    "outerHTML",
+					"hx-include": "#" + ComposeID,
+				}, "px-4 py-1.5 text-center") {
+					{ mediaLabel(m) }
+				}
 			}
 		</fieldset>
 		@modelChoices(c)
@@ -176,6 +176,17 @@ templ parameterFields(c Compose) {
 					}
 				}
 			</label>
+			if len(c.SpeedModes) > 0 {
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-speed-mode">
+					<span>速さ（対応するモデルだけ）</span>
+					@atoms.Select(atoms.FieldMd, "max-w-64", templ.Attributes{"id": "gt-speed-mode", "name": FieldSpeedMode, "data-testid": "gt-speed-mode"}) {
+						<option value="" selected?={ c.SpeedMode == "" }>モデルの既定</option>
+						for _, s := range c.SpeedModes {
+							<option value={ s.ID } selected?={ s.ID == c.SpeedMode }>{ s.Label }</option>
+						}
+					}
+				</label>
+			}
 		}
 		@help.Toggle(help.ID("生成の設定"), "生成の設定")
 		@help.Panel(help.ID("生成の設定"), "生成の設定") {
@@ -188,7 +199,7 @@ templ parameterFields(c Compose) {
 func parametersHelp(media string) string {
 	t := "本数は、モデルとプロンプトの 1 組あたりの数です。縦横比は 16:9 のように入れます。"
 	if media == "video" {
-		t += "\n長さ（秒）は、モデルが作れる長さに丸めます。"
+		t += "\n長さ（秒）は、モデルが作れる長さに丸めます。速さは、4 ステップの蒸留 LoRA（LightX2V）を使う Wan 2.2 14B のように、速さのモードを持つモデルだけに効きます（ほかのモデルは既定のまま作ります）。"
 	}
 	return t
 }

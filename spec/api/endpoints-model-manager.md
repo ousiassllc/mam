@@ -21,6 +21,7 @@
 | POST | `/model-manager/engine/detect` | 既存の ComfyUI の検出（127.0.0.1 の 8188・8000）。結果（`#mm-detect`）だけを返す。見つかったものは設定の「ローカル・代替モデル」に接続先として登録して使う（mam は起動も停止もしない） |
 | POST | `/model-manager/jobs/:job/cancel` | 動いている導入の中断（エンジンのカードか一覧を返す）。ジョブは失敗で終わり、ダウンロード済みの分は残って再開できる。動いていないジョブは 404 |
 | GET | `/model-manager/models` | モデルの一覧（`#mm-catalog`）。導入中は自分で取り直す。クエリ `jobs`（カンマ区切り）は報告するジョブ。終わったら「導入しました」／失敗の理由を出し、試し生成の区画を `hx-swap-oob` で描き直す |
+| GET | `/model-manager/models/:id/detail` | カードが開く詳細モーダルの本体（`modal.Frame`。ページに 1 つの `<dialog id="mam-modal">` の本体に入れる。Issue #954）。説明・状態・商用利用の注意・ライセンス・VRAM・原本の場所・ファイルごとの大きさと SHA-256。未知の ID は 404、年齢確認前の成人向けは 409（どちらも理由だけのモーダル。隠しているモデルの中身は出さない） |
 | GET | `/model-manager/models/:id/consent` | ライセンスの確認ダイアログ（`#mm-dialog` に差し込む）。同意が要らないモデルは 404 |
 | GET | `/model-manager/adult/confirm` | 成人向けモデルの年齢確認と注意書きのダイアログ（`#mm-dialog` に差し込む） |
 | PUT | `/model-manager/adult` | 設定「成人向けモデルを表示する」（既定オフ）。フォーム `on`（`1` / `0`）。**オンにする最初の 1 回**は、ダイアログの `notice_version`（`Service.AdultContent().NoticeVersion`）と `agree=1`（18 歳以上の確認と注意書きへの同意）が要る。確認の記録（日時・注意書きの版）が `state.json` に残り、以後のオン／オフは `on` だけでよい。確認の記録が無く `notice_version` も無いオンは 409、`agree` が無い・版が違うのは 422（ダイアログに理由を出し、ゲートは開かない）。200 でカード（`#mm-adult`）を返し、モデルの一覧・試し生成の区画を `hx-swap-oob` で描き直し、ダイアログを閉じる。**確認が無い間は、一覧（`GET /model-manager/models`）に成人向けのモデルが出ず、試し生成のフォームにも導入済みの成人向けモデルが出ず、名指しの要求は 404** |
@@ -32,6 +33,7 @@
 | GET | `/model-manager/hf` | Hugging Face の検索と、リポジトリのファイルの一覧（`#mm-hfi-result`）。クエリ `q` が URL（`://` を含む）か `owner/repo` ならそのリポジトリをコミットに固定して一覧し（`Service.HFRepo`）、それ以外はキーワード検索（`Service.SearchHF`、`kind` で絞る）。`q` が空・形式が不正（`hf.co`・http・他のホスト・`datasets/`）は 422、NFAA（コミットのタグか、リポジトリの今の先頭のタグ）を年齢確認の前に開くと 409（古いコミットの URL でも同じ）、gated でトークン・アクセス権が無いのは 422、無いリポジトリは 422 |
 | POST | `/model-manager/hf/install` | ファイル 1 つの導入（ジョブ）。フォーム `repo`・`commit`・`path`・`folder`・`name`・`agree=1`・`terms_version`。202 で「追加したモデル」を返す（導入中の進捗つき）。拒否は `HX-Retarget: #mm-hfi-msg`・`HX-Reswap: innerHTML` でエラーの行に出す: terms の確認が無ければ 409、版違い・GGUF・pickle・名前の衝突（同じ宛先の別ファイル、別のフォルダ・名前で導入中の同じファイルを含む）・gated・フォルダ不明は 422、NFAA を年齢確認の前に導入しようとすると 409。SHA-256・サイズは送らない（Service が HF から読み直す） |
 | GET | `/model-manager/runtimes/:id` | ローカルの実行環境（GPT-SoVITS・MuseTalk）のカード（`#mm-runtime-<id>`。Issue #920）。導入中・起動中は自分で取り直す。未知の ID は 404 |
+| GET | `/model-manager/runtimes/:id/detail` | ランタイムのカードが開く詳細モーダルの本体（Issue #954）。説明・この PC で使えない理由とクラウドの案内・導入先・出典とライセンス・重み・依存ファイルごとの出典・ライセンス・商用利用・ファイルと SHA-256。未知の ID は 404（理由だけのモーダル） |
 | POST | `/model-manager/runtimes/:id/install` | 環境の導入・更新（ジョブ。Python 環境・本体・重みまで）。この PC で使えなければ 409（理由とクラウドの案内つき）。202 |
 | POST | `/model-manager/runtimes/:id/weights` | **重み・依存ファイルだけ**の確認と取得（ジョブ。足りない・壊れたファイルだけを取り直す）。未導入は 409。202 |
 | POST | `/model-manager/runtimes/:id/start` | 起動。必須の重みが足りなければ 409「…の重みが不足しています（<名前>）。「重みを導入」を実行してください」（起動しない） |
@@ -39,9 +41,11 @@
 | PUT | `/model-manager/runtimes/:id/autostart` | 自動起動。フォーム `on`（`1` / `0`） |
 | DELETE | `/model-manager/runtimes/:id` | 環境と取得した重みの削除（設定は残る）。導入中は 409。`hx-confirm` つき |
 | GET | `/model-manager/hf/models` | 「追加したモデル」（`#mm-hfi-models`）。導入中は自分で取り直す。クエリ `jobs`（カンマ区切り）は報告するジョブで、終わったら結果を 1 度出し、試し生成の区画を `hx-swap-oob` で描き直す |
+| GET | `/model-manager/hf/models/detail` | 追加したファイルのカードが開く詳細モーダルの本体（Issue #954）。クエリ `path`。リポジトリとコミット・ライセンス・SHA-256・作ったモデル。記録に無い `path` は 404（理由だけのモーダル） |
 | POST | `/model-manager/hf/jobs/:job/cancel` | 動いている導入の中断（「追加したモデル」を返す。ダウンロード済みの分は残り、導入し直すと続きから再開する） |
 | DELETE | `/model-manager/hf/models` | 追加したファイルの削除。クエリ `path`（`models/<folder>/<name>`）。作ったモデルも消える。使用中は 422、導入中・記録に無いのは 409。カタログのモデルと共有するファイルは、そのモデルが残る間は残る。試し生成の区画を描き直す |
 | GET | `/model-manager/external` | 外部の ComfyUI の確認（`#mm-external`）。クエリ `endpoint`（種類 ComfyUI の接続先の名前）を渡すと、その ComfyUI が持つモデルファイルと、カタログのモデルに足りないファイルを出す（読むだけ。導入の操作は無い）。同梱の `bundled-comfyui` は 422、未登録は 404、到達できないときは 502 |
+| GET | `/model-manager/external/detail` | 外部の ComfyUI のモデルのカードが開く詳細モーダルの本体（Issue #954）。クエリ `endpoint`・`name`。ComfyUI に聞き直して、あるファイルと足りないファイルを出す。接続できなければ 502、接続先が不正なら 422、`name` が無ければ 404（理由だけのモーダル） |
 | GET | `/model-manager/trials` | 試し生成の一覧（`#mm-trials`）。生成テストの履歴のうち、この画面のローカルのモデルの結果を新しい順に 20 件。待機中・生成中のものがあれば自分で取り直す |
 | GET | `/model-manager/trials/form` | 選んだモデル向けの試し生成フォーム（動画モデルは解像度・長さ・ネガティブプロンプト、参照画像を使えるモデルだけ画像の欄）。入力済みのプロンプトは保ったまま差し替える |
 | POST | `/model-manager/trials` | 試し生成の開始（生成テストの 1 件のバッチ。見積り（ローカルは 0 USD）を確認したものとして実行する）。multipart: `model_id`・`prompt`・`negative_prompt`・`aspect_ratio`・`resolution`・`duration_seconds`・`reference`（任意のファイル。PNG・JPEG・WebP、20 MiB まで）。モデルの検査（プロンプトの長さ・動画の長さと解像度・参照画像の可否・縦横比・画像の種類）に通らなければ 422 でジョブを作らない。202 |
@@ -103,3 +107,4 @@
 | 1.5 | 2026-10-29 | `POST /model-manager/models/:id/install` が、`requires_hf_token` のモデルでトークンとアクセスを確かめ、足りなければジョブを作らず 422 で案内することを足した | Issue #877 |
 | 1.6 | 2026-11-01 | ローカルの実行環境（GPT-SoVITS・MuseTalk）のルート（`/model-manager/runtimes/:id` と `install`・`weights`・`start`・`stop`・`autostart`）、エラーの対応（`ErrWeightsMissing`・`ErrSourceGone` ほか。`mmview.RefuseRuntime`）、区画「ローカル音声・口パク」（出典・ライセンス・商用利用の表示、使えない環境の理由とクラウドの案内）、テストを足した。`POST /model-manager/jobs/:job/cancel` が `target=runtime:<id>` のジョブも中断する | Issue #920。重み・依存ファイルの出典とライセンスの画面表示、未導入・重み不足の状態 |
 | 1.7 | 2026-11-01 | ローカルの実行環境のルートが MuseTalk 1.5（`musetalk`）でも同じ形で使えることを書いた（導入のジョブは部品 84 個の取得・展開と重みの取得。使えない PC の理由・案内は `Support.Code` に `compute_cap` が増えた）。ルート・フィールドは変えていない。意味は [local-runtime.md §13](../architecture/model-manager/local-runtime.md) | Issue #921 |
+| 1.8 | 2026-11-02 | カードが開く詳細モーダルのルート（`models/:id/detail`・`runtimes/:id/detail`・`hf/models/detail`・`external/detail`）を足した。一覧・カードの応答にモーダルは含まれない（ページに 1 つ）。見た目は [model-manager-screen.md](../components/model-manager-screen.md) の「カードと詳細モーダル（#954）」 | Issue #954 |

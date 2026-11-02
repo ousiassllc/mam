@@ -3,21 +3,21 @@
 // package is at its size limit).
 package weightlist
 
-// Commercial-use values of a license (catalog.CommercialUse as the screen uses it).
-const (
-	Yes     = "yes"
-	No      = "no"
-	Unclear = "unclear"
-)
-
-// License is the license of a weight or a dependency, as the card shows it. Commercial is one of the Yes / No / Unclear values;
-// Notice is what to watch for (always set when it is not "yes": the catalog requires it).
+// License is the license of a weight or a dependency, as the card shows it. Commercial is a modellicense.Commercial value (yes,
+// conditional, no or unknown); Notice is what to watch for (always set when it is not "yes": the catalog requires it).
 type License struct {
 	Name       string
 	URL        string
 	Summary    string
 	Commercial string
 	Notice     string
+}
+
+// File is a file an asset puts in the environment of the runtime, with the SHA-256 it is checked against.
+type File struct {
+	Path   string
+	Size   string
+	SHA256 string
 }
 
 // Asset is one weight or dependency of a runtime: what it is, whether it is there, where it comes from and its license.
@@ -33,6 +33,8 @@ type Asset struct {
 	SourceURL  string
 	SourceNote string
 	License    License
+	// Files are where the asset's files go (one for a single file, one per member of an archive).
+	Files []File
 }
 
 // Weights is the weights and dependencies of a runtime.

@@ -1,0 +1,27 @@
+// Package pick is the choice that is a card: tap it and its frame glows (#906, #915). It replaces the radio button or
+// checkbox with its label wherever the user picks one thing or several out of a short list; a switch-like setting
+// (on/off, an agreement that has to be ticked) stays a checkbox. The control underneath is a real radio or checkbox that is only
+// hidden (sr-only, the peer of the frame), so the keyboard (arrows, Space), the form, a screen reader ("radio button, checked")
+// and the tests work as with a bare input; the selection is the border, the glow and the fill, not colour alone (the
+// frames that have room add a mark), and the keyboard focus is a ring.
+package pick
+
+// Glow is the look of the frame that is the card: the border, glow and fill of the chosen one, the ring of the focused
+// one and the dimmed look of a disabled one. The layout of the card (padding, direction) is the caller's.
+const Glow = "transition-shadow hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-checked:shadow-[0_0_12px_1px] peer-checked:shadow-indigo-400/40 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none"
+
+// OpenFrame is the look of the frame of a card that opens something (a detail) instead of being chosen: on hover the border and glow of the card
+// that is chosen (the same tokens as Glow), and the ring of the keyboard focus when the control that opens the card (data-card-open, the
+// name in modelcard.Item) has it. The layout of the card is the caller's.
+const OpenFrame = "transition-shadow hover:border-indigo-400 hover:shadow-[0_0_12px_1px] hover:shadow-indigo-400/40 has-[[data-card-open]:focus-visible]:ring-2 has-[[data-card-open]:focus-visible]:ring-indigo-400 motion-reduce:transition-none"
+
+// Card is a label around the hidden control (attrs: type, name, value, checked, disabled, data-*, hx-*) and the frame
+// that holds the children. layout is the classes of the frame for its content (padding, flex direction, text size).
+templ Card(attrs templ.Attributes, layout string) {
+	<label class="relative block cursor-pointer has-[:disabled]:cursor-not-allowed">
+		<input class="peer sr-only" { attrs... }/>
+		<span class={ "block rounded-md border border-neutral-800", Glow, layout }>
+			{ children... }
+		</span>
+	</label>
+}

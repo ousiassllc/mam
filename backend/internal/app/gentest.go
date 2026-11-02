@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
@@ -14,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 )
@@ -21,7 +23,7 @@ import (
 // newGentest builds the generation test service and registers its job handler on jobs (before the queue starts and
 // before Recover, which fails the jobs of a kind without handler). A slot assignment of an import goes through the
 // World service, so its locks and kind checks apply.
-func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, logger *slog.Logger) *gentest.Service {
+func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, logger *slog.Logger) *gentest.Service {
 	g := gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
 		DataDir: cfg.DataDir, AssetsDir: cfg.AssetsDir(),
@@ -40,6 +42,7 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		Logger:          logger,
 	})
 	g.Register()
+	match.New(match.Deps{Gentest: g, Matcher: matcher}) // the runner of the prompt match is found again with match.From
 	return g
 }
 
@@ -51,4 +54,18 @@ func newTranslator(c llm.Completer, cfg llm.Config) *prompttranslate.Translator 
 		return nil
 	}
 	return prompttranslate.New(c, route.Primary)
+}
+
+// newMatcher is the LLM work of the prompt match: it writes and fixes the prompts through the route of the Prompt Planner and
+// compares the pictures through the route of the AI Video Judge. nil when the settings have no such route.
+func newMatcher(c llm.Completer, cfg llm.Config) *imagematch.Matcher {
+	create, err := cfg.RouteFor(imagematch.PromptAgent)
+	if err != nil {
+		return nil
+	}
+	judge, err := cfg.RouteFor(imagematch.JudgeAgent)
+	if err != nil {
+		return nil
+	}
+	return imagematch.New(c, create.Primary, judge.Primary)
 }

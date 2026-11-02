@@ -1,9 +1,13 @@
 package modelmgr
 
+import "github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 // File is a file of a model.
 type File struct {
-	Path    string
-	Size    string
+	Path string
+	Size string
+	// SHA256 is the digest the file is checked against at the install.
+	SHA256  string
 	Present bool
 	Shared  []string
 	// SourceNote is where the original of a third party's mirror lies ("" for a file of the original repository).
@@ -12,8 +16,10 @@ type File struct {
 
 // Model is a model of the catalog.
 type Model struct {
-	ID        string
-	Name      string
+	ID   string
+	Name string
+	// Kind is image or video (the picture of the card); KindLabel says it in words.
+	Kind      string
 	KindLabel string
 	Advanced  bool
 	// Adult is the badge 成人向け; TriggerWords are the words a LoRA of the model needs in the prompt.
@@ -25,12 +31,16 @@ type Model struct {
 	Size        string
 	Need        string
 	// LowDisk: what the install still has to download does not fit in the free space.
-	LowDisk  bool
-	VRAM     string
-	NoSource bool
-	License  License
-	Consent  bool
-	Accepted bool
+	LowDisk bool
+	VRAM    string
+	// VRAMFit is how the GPU of this PC stands to the guideline (catalog.Fit: short, limited, enough; "" when the memory is not known)
+	// and VRAMFitText says it in words, with the limits of a GPU that is below the recommendation.
+	VRAMFit     string
+	VRAMFitText string
+	NoSource    bool
+	License     License
+	Consent     bool
+	Accepted    bool
 	// NeedsToken is the badge 「HF トークンが必要」 (a model behind a Hugging Face login); TokenGuide is the guidance shown beside the
 	// install while no token is stored ("" when there is one, or the model needs none).
 	NeedsToken bool
@@ -51,8 +61,10 @@ type License struct {
 	URL        string
 	Summary    string
 	Commercial string
-	Regions    string
-	Notice     string
+	// Answer is the commercial-use answer as the shared badge, note and filter draw it (#928).
+	Answer  commercial.View
+	Regions string
+	Notice  string
 }
 
 // Catalog is the list of models with the state of each.
@@ -80,6 +92,17 @@ type Consent struct {
 	AdultNotice string
 	Sources     []string
 	Error       string
+}
+
+// CommercialPanel is the setting "商用OKのモデルだけを使う" with the filter of the model list: the filter is drawn with the setting's
+// answer checked, and the list keeps showing everything the filter lets through.
+type CommercialPanel struct {
+	Message
+	// Only is the setting: the lists start at "商用OKのみ".
+	Only   bool
+	Filter commercial.FilterData
+	// OOB draws the card out of band (the answer of another section's action).
+	OOB bool
 }
 
 // Adult is the setting "成人向けモデルを表示する".

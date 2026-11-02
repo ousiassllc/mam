@@ -50,6 +50,10 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **履歴には両方残す**: 結果の `prompt`・`negative_prompt` は入力した文のまま、訳した英語は結果の `params.translation`（`prompt`・`negative_prompt`）に残し、`ResultView` の `translated`・`translated_prompt`・`translated_negative_prompt` として出す。`sent_prompt` は実際に送った文（英語。ネガティブの欄が無いモデルは英語のネガティブを「Avoid: …」として書き足したもの）、ネガティブの欄があるモデルへは英語のネガティブを送る。バッチの `params` に `translate_to_english` を残す。プロンプト履歴（`gentest_prompt`）は入力した文で重複排除する。
 - モデルマネージャーの試し生成（1 モデル・1 プロンプト）は英訳しない（OFF。ローカルのモデルを入力のまま試す用途）。
 
+## 3.2 プロンプトマッチ（Issue #916）
+
+参考の画像 1 枚から、AI が英語のプロンプトを作り、生成して、似ているかを測り、違いをもとに直して生成し直す（おまかせ・1回だけ・調整。言葉の指示で直せる）。生成テストのバッチとして動き、各回は結果として履歴に残る。設計は [prompt-match.md](prompt-match.md)。
+
 ## 4. バッチとジョブ
 
 `Run` の手順: 入力画像を解決して履歴の側へ複製 → `gentest_batch`・`gentest_input`・全結果の行（`queued`）・プロンプト履歴を 1 つのトランザクションで作る → ジョブ（種別 `gentest`、`payload` は `{"batch_id": ...}`）を投入。`resumable=false`。
@@ -62,7 +66,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 5. 失敗・中断の扱い
 
-- 1 件の失敗（キー未登録・ブレーカー開・タイムアウト・ベンダーの拒否・入力を受け付けない）はその結果を `failed`・理由つきにし、他の結果は続ける。理由は日本語に直す（`Explain`: モデルマネージャーの拒否の文言。ベンダーのタイムアウトは「ベンダー側では生成が続き、課金される場合があります」を添える）。**再試行して別モデルへ回すことはしない**。
+- 1 件の失敗（キー未登録・ブレーカー開・タイムアウト・ベンダーの拒否・入力を受け付けない）はその結果を `failed`・理由つきにし、他の結果は続ける。理由は日本語に直す（`Explain`: モデルマネージャーの拒否の文言。ベンダーのタイムアウトは「ベンダー側では生成が続き、課金される場合があります」を添える。ローカル（登録した接続先）のタイムアウトは `localcfg.TimeoutError`（接続先のベンダー `endpoint:<名>` への呼び出しのタイムアウトを `modeladapter.call` が包む。`ErrTimeout` のままでもある）で見分け（文言は `gentest/failtext`）、課金には触れず「接続先の待ち時間（N 時間）を超えたため打ち切りました。設定画面の接続先でタイムアウトを延ばすか、解像度や秒数を小さくして実行し直してください」と出す）。**再試行して別モデルへ回すことはしない**。
 - **mam の異常終了**: ジョブは再開しない（生成は課金されるため）。起動時（`jobqueue.Recover` のあと）に `OnStartup` が、`queued`・`running` のまま残った結果を `failed`（理由「mam が停止したため中断されました（課金される生成は再開しません）」）にする。完了済みの結果は残る。24 時間以上前の入力のステージング（`_staging/`）も消す。
 - ジョブ自体が失敗するのは、バッチを始められないとき（入力画像のファイルが読めない等）だけ。その場合は未着手の結果をすべて `failed` にする。
 
@@ -72,6 +76,8 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 動画の役割は `reference`（自由な参照）/ `first_frame` / `last_frame`。モデルの能力（`Capabilities`）で、使えない役割は**そのモデルからだけ外して警告**する。
 
+**動画の速さのモード（Issue #930）**: 動画のリクエストの `speed_mode`（`fast` / `standard` など。省くと各モデルの既定）は、ComfyUI のワークフローが `speed_modes`（[local-models.md](../local-models.md) §3）を持つモデルだけに効く（Wan 2.2 14B + LightX2V: `fast` = 4 ステップ・cfg 1、`standard` = LoRA なしの通常 20 ステップ・cfg 3.5）。モードは `modelcatalog.Info.video.speed_modes`（`id`・`label`・`default`）にあり、画面は動画のフォームに「速さ」の選択（`data-testid="gt-speed-mode"`。どれかのモデルが持つときだけ描く。選択肢は「モデルの既定」とモードのラベル）を、MCP は `list_generation_models` の `video.speed_modes` と `estimate_generation_test`・`run_generation_test` の `speed_mode` を出す。そのモードを持たないモデルは **警告 `speed_mode_unsupported`（拒否ではない）で既定のまま**作り、画像のリクエストに付けるか、名前が `^[a-z0-9][a-z0-9-]{0,39}$` でなければ 400（`invalid`）。選んだモードは見積りの確認（hidden の `speed_mode`）を通って結果の `params.speed_mode` に残り、`get_generation_test` の結果の `speed_mode` に出る。見積りの ID（`estimate_id`）はリクエスト全体の要約なので、モードを変えると別の見積りになる。
+
 **画像モデルの参照（Issue #933）**: 画像の入力は、役割 `reference`（全体。既定）/ `face`（顔だけ）/ `style`（画風・雰囲気だけ）/ `edit`（編集する元の画像）と、強さ `strength`（0〜1。省くと `localcfg.DefaultReferenceStrength` = 0.7）を持つ。強さの実現方法（img2img の denoise、編集モデルへの指示の強さ、アダプタの重み）はモデルごとに違い、**画面と MCP は同じ「強さ」の 1 つの値だけを出す**。範囲外の強さ・存在しない役割・動画への強さ・LoRA・ポーズ設定は入力の誤り。リクエスト全体に、`avoid_reference_pose`（参照を使うモデルのネガティブプロンプトに `localcfg.AvoidPoseNegative` を足す。ネガティブの欄が無いモデルは既存の畳み込み（`Avoid: …`、警告 `negative_folded`）。参照を使わないモデルは何もしない）と `lora`（名前・強さ 0〜1、既定 `localcfg.DefaultLoRAStrength` = 0.4。画像だけ）がある。名前は 1〜200 文字で制御文字を含まない（サブフォルダの `/` と `.` は可）。強さを実現できるのは同梱 ComfyUI の参照対応モデルだけで、クラウドの画像モデルなどでは無視される（警告は出さない）。**強さの保存値は入口で違う**: 画面のフォームは常に明示の強さを送る（省いた欄は 0.7 として保存）が、MCP は省くと保存しない（`gentest_input.strength` は NULL で、モデルが既定を使う）。
 
 モデルごとの扱いは `modelcatalog.Info` の `reference_mode`（`edit`＝編集モデル: 複数枚・役割あり / `img2img`＝1 枚から始める）・`max_reference_images`・`reference_roles`・`supports_lora`（どれもワークフローの割り当て・`reference_mode`・`lora_model_node` から `modelcatalog.ReferenceCapsOf`（`localcfg.Model.ReferenceCaps`）と `modelcatalog.SupportsLoRA` が決める。クラウドの画像モデルは参照を使えても枚数・役割は不明で、役割は `reference` だけ）で決まる。**対応しない分は拒否せず、そのモデルからだけ外して警告する**: 参照を使えないモデル `inputs_dropped`、枚数超過 `too_many_refs`（先頭から `max_reference_images` 枚。img2img のモデルは**先頭の 1 枚だけ**を使い、残りは `too_many_refs` の警告になる）、そのモデルが取らない役割 `role_unsupported`（画像は全体の参照として使う）、LoRA に対応しないモデル `lora_unsupported`（LoRA は送らない）。結果の行には各入力の `role`・`strength`（`gentest_input`）と、使った `avoid_pose`・`lora`（`params`）を残し、`direct.Image` へは `modeladapter.Input.Role` / `Strength` と `ImageRequest.LoRA` として渡す（強さ 0 は「既定」と区別するため、参照も LoRA も `refs.MinStrength` = 0.01 にして送る。履歴には選んだ 0 を残す）。LoRA の名前の一覧は同梱 ComfyUI エンジンの `GET /object_info/LoraLoaderModelOnly`（`lora_name` の選択肢）から `Service.LoRAs(ctx, media)` が数秒の間だけ覚えて返す（エンジンが止まっていれば空。失敗も同じ間覚え、取得中の呼び出しは 1 回の取得を共有するので、応答しないエンジンでも待つのは 1 回だけ。動画では LoRA を使えないのでエンジンに問い合わせない）。
@@ -79,6 +85,17 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 ## 7. プロジェクトへの取り込み（`projectlink`）
 
 成功した結果ならどれでも取り込める（お気に入りは目印にすぎない）。取り込み先: **参照**（Reference Library の項目。画像のみ。`source='generated'`、`source_shot_id` は NULL、`kind`・`name`・`tags`）か**アセット**（画像・動画）。ファイルはプロジェクトの assets ディレクトリへ複製する。続けて、参照を Character の face/body・Product・Location のスロットに割り当てられる（`WorldService.AssignReference`。スロットの種類と参照の種類が合わなければ入力の誤り、LOCK されていれば 409）。割り当てに失敗しても取り込みは残り、そのことを知らせる（`PartialImportError`）。取り込み先は `gentest_import` に残す（TEXT の ID のみ）。
+
+## 7.1 結果の ZIP エクスポート（`service/gentest/export`。Issue #932）
+
+履歴の結果を ZIP にまとめて持ち出す。ZIP は `photos/`（画像・動画。`01_20261101-173805_chroma1-hd_bce291.png` = 番号・作成時刻（JST）・モデル・結果 id の末尾 6 文字）と `prompts/prompts.csv`（`file`, `created_at`（JST）, `media`, `model`, `seed`, `prompt`, `sent_prompt`, `result_id`）の 2 フォルダ。番号は古い順の 1 から、ファイル名の番号と CSV の `file` 列が同じ。
+
+- **選ぶ処理は 1 か所**: `export.Selection`（結果の指定 `ResultIDs`・`BatchID`・`Latest`（新しい順の N 件。上限 500）・`FavoriteOnly`・`Models`・`Media`・`Commercial`）を `Exporter.Plan`（MCP の `export_generation_results`）と `Exporter.Archive`（画面の `GET /generation-test/export`）が同じ `resolve` で解く。条件は AND。成功してファイルが実在する結果だけが入る。何も言わなければ直近 40 件（`ResultIDs`・`BatchID` があれば全部）。`Commercial` は `all` / `ok` / `ok_or_conditional`（#928 と同じ `modellicense.Filter`）で、省略は `all`（設定の既定には従わない。書き出しは頼まれない限り絞らない）。指定の `id` が入らなかったときは `Plan.Skipped` に出す。
+- **ストリーム**: `Archive.Write` は CSV を 1 行ずつ書き、ファイルを `io.Copy` で 1 つずつ ZIP に流す（画像・動画は圧縮済みなので `Store`）。巨大な ZIP でもメモリに溜めない。途中で失敗したら中央ディレクトリを書かずに止め、壊れた ZIP は開けない。
+- **分割**: `Split{Items, Bytes}`。件数かファイル合計のバイト数を超える結果から次の ZIP にする（最大 `MaxParts` = 20）。番号は全体の通し番号。各 ZIP は `Ref`（`part/parts/first/total/id,id,…`）で結果を指し、MCP のダウンロードチケットのリソース ID になる（URL には載らない）。発行時に選ばれた結果を返し、後から履歴が増えても変わらない。
+- **CSV の安全**: UTF-8 BOM つき・`encoding/csv`（改行・カンマ・引用符は RFC 4180 でエスケープ）。モデル名・プロンプト・送った文が `=` `+` `-` `@`・タブ・復帰で始まるときは先頭に `'` を足す（CSV インジェクション。Excel・LibreOffice・Google スプレッドシートが数式として実行しない。プロンプトは MCP クライアントが外から読んだ文を書き込み得る自由な文）。数値のシードと mam が作る列は対象外。
+- **ファイル名**: 英数字・`.`・`_`・`-` 以外を `-` にし、`..` を 1 つの `.` にし、両端の `-` `.` を削る（最大 40 文字。空は `model`）。パスの区切りも `..` も残らない。拡張子は保存ファイルの拡張子（英小文字・数字 5 文字まで）、無ければ MIME から。
+- **認可**: MCP は MCP のトークンが要るツールが、既存のダウンロードチケット（15 分・発行したトークンの失効で 401）の URL を返す。画面はローカル限定のサーバーの GET。ZIP は結果 id の指定を検証して（`[0-9A-Za-z_-]{1,64}`）から SQL の `IN (?)` に渡す。
 
 ## 8. 画面（`/generation-test`）
 
@@ -88,7 +105,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 9. テスト
 
-見積り（3 状態・丸め・上限）・直接呼び出し（代替なし・プロンプトそのまま・シードは対応モデルだけ・ブレーカーと同時実行）・バッチのジョブ（全組み合わせ・取り消し・クラッシュ後の整理・Take・台帳が増えないこと）・履歴（絞り込み・お気に入り・プロンプトの重複排除・削除）・取り込み（参照・アセット・スロット・LOCK・ファイルの複製）・マイグレーションの up/down・画面（CSRF・流れ・HTMX の進捗）・MCP（見積り → 実行の 409・`get_job`・トークン URL）。英訳（ON/OFF・英語はそのまま LLM を呼ばない・1 回の実行で 1 回だけ・失敗でモデルを呼ばない・履歴に両方・見積りの単価なしの行・ネガティブの欄あり／なし。`servicetest/translate_test.go`、`agent/prompttranslate`）。偽のバックエンドは `service/gentest/gentesttest`、ローカルの ComfyUI を通した結果までは `service/gentest/localtest`。実際のベンダー API（シードの効き・価格）は実機で未確認。
+見積り（3 状態・丸め・上限）・直接呼び出し（代替なし・プロンプトそのまま・シードは対応モデルだけ・ブレーカーと同時実行）・バッチのジョブ（全組み合わせ・取り消し・クラッシュ後の整理・Take・台帳が増えないこと）・履歴（絞り込み・お気に入り・プロンプトの重複排除・削除）・取り込み（参照・アセット・スロット・LOCK・ファイルの複製）・マイグレーションの up/down・画面（CSRF・流れ・HTMX の進捗）・MCP（見積り → 実行の 409・`get_job`・トークン URL）。英訳（ON/OFF・英語はそのまま LLM を呼ばない・1 回の実行で 1 回だけ・失敗でモデルを呼ばない・履歴に両方・見積りの単価なしの行・ネガティブの欄あり／なし。`servicetest/translate_test.go`、`agent/prompttranslate`）。偽のバックエンドは `service/gentest/gentesttest`、ローカルの ComfyUI を通した結果までは `service/gentest/localtest`。実際のベンダー API（シードの効き・価格）は実機で未確認。 ZIP のエクスポート（`export`: `photos/` と `prompts/prompts.csv` の構造・BOM・`encoding/csv` での再読み込み・番号とファイル名の対応・直近 N 件／バッチ／指定／お気に入り／モデル／種類／商用利用の選び方・分割・数式で始まるセル・ファイル名の無害化・ストリームの失敗）と、画面の選択（`export-pick.wtest.ts`: タップで枠が光る・自動更新で選択が消えない・隠れたカードを送らない）。
 
 ## 改訂履歴
 

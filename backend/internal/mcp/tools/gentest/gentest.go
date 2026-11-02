@@ -48,10 +48,10 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	})
 
 	mcpkit.Read(r, "list_generation_models",
-		"生成テストで選べるモデル（組み込みのクラウドモデルと、ローカル・登録した外部 ComfyUI・保存したワークフロー・ChatGPT サブスクのモデル）。能力・単価（priced / free / unknown）・使えない理由を含む。画像モデルは参照画像の使い方（reference_mode: edit / img2img、max_reference_images、reference_roles）と LoRA 対応（supports_lora）を持つ。loras は同梱 ComfyUI エンジンの LoRA 名の一覧 / Models a generation test can use, with capabilities, reference image support, LoRA support (loras lists the files), unit prices and why one is unavailable.",
+		"生成テストで選べるモデル（組み込みのクラウドモデルと、ローカル・登録した外部 ComfyUI・保存したワークフロー・ChatGPT サブスクのモデル）。能力・単価（priced / free / unknown）・使えない理由を含む。各モデルの license に商用利用の可否（commercial: yes 商用OK / conditional 条件つき / no 商用NG / unknown 不明）・ライセンス名・条件・出典 URL・確認日がある。commercial 引数（all / ok / ok_or_conditional）で絞り込める（省くと設定「商用OKのモデルだけを使う」に従う）。画像モデルは参照画像の使い方（reference_mode: edit / img2img、max_reference_images、reference_roles）と LoRA 対応（supports_lora）を持つ。loras は同梱 ComfyUI エンジンの LoRA 名の一覧。動画モデルは、速さのモードがあれば video.speed_modes（id・label・default）を持ち、estimate / run の speed_mode で選べる（Wan 2.2 14B + LightX2V の fast = 4 ステップ・cfg 1、standard = 通常の 20 ステップ） / Models a generation test can use, with capabilities, reference image support, LoRA support (loras lists the files), video speed modes (video.speed_modes; pass speed_mode to estimate / run), unit prices, why one is unavailable, and each model's license (commercial use yes / conditional / no / unknown, name, condition, source, checked date); the commercial argument filters them.",
 		h.listModels)
 	mcpkit.Read(r, "estimate_generation_test",
-		"生成テスト（モデル × プロンプト × 本数の全組み合わせ）の本数と見積りを返す。モデルごとの内訳・警告・上限を含む。画像は references の role / strength、avoid_reference_pose、lora を付けられる（モデルが使えない分は警告）。run_generation_test に estimate_id と total_usd をそのまま渡す。単価が分からないモデル（unknown）は合計に入らない。translate_to_english（既定 true）のとき、日本語などの文を英語に訳す行（model が translate）が単価なしで入る / Price a batch without running it; the translation of non-English prompts is a line without a price.",
+		"生成テスト（モデル × プロンプト × 本数の全組み合わせ）の本数と見積りを返す。モデルごとの内訳・警告・上限を含む。画像は references の role / strength、avoid_reference_pose、lora を付けられる（モデルが使えない分は警告）。動画は speed_mode（fast / standard。モデルの video.speed_modes）を付けられる。run_generation_test に estimate_id と total_usd をそのまま渡す。単価が分からないモデル（unknown）は合計に入らない。translate_to_english（既定 true）のとき、日本語などの文を英語に訳す行（model が translate）が単価なしで入る / Price a batch without running it; the translation of non-English prompts is a line without a price.",
 		h.estimate)
 	mcpkit.Write(r, "run_generation_test",
 		"生成テストを実行する。estimate_generation_test と同じ条件に、その estimate_id と confirmed_total_usd（= total_usd）を付ける。サーバーが見積りをやり直し、変わっていたり上限（gentest.max_cost_usd / max_items）を超えたら conflict で拒否する。translate_to_english（既定 true。画面と同じ）なら、日本語などのプロンプトを LLM で英語に訳してから送る（訳せなければ何も生成せず upstream）。job_id と batch_id を返す。Take・コスト台帳には入らない / Run a confirmed batch as a job; prompts that are not English are translated first unless translate_to_english is false.",
@@ -83,6 +83,8 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	mcpkit.Write(r, "import_generation_result",
 		"生成テストの結果（成功したもの）をプロジェクトに取り込む。参照（Reference Library。画像のみ。source=generated）かアセットとして、ファイルをプロジェクトの assets に複製する。参照にはさらに assign で Character の face/body・Product・Location のスロットへ割り当てられる / Import a succeeded result into a Project as a reference or an asset.",
 		h.importResult)
+	registerMatch(r, h)
+	registerExport(r, h)
 }
 
 type handlers struct {
@@ -144,6 +146,9 @@ func (h handlers) probe(ctx context.Context, job mcpkit.JobInfo) (mcpkit.Progres
 	}
 	if err != nil {
 		return mcpkit.Progress{}, mapError(err)
+	}
+	if h.running(ctx, g, b.BatchID) {
+		b.State, b.Finished = gentest.StateRunning, false
 	}
 	return mcpkit.Progress{
 		State: jobState(b.State), Done: b.Done, Total: b.Total, Error: b.Error,

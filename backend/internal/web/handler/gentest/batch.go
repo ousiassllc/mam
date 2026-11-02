@@ -3,6 +3,9 @@ package gentest
 import (
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
@@ -26,7 +29,7 @@ func batchView(b gentest.BatchStatus) view.Batch {
 		v.Error = b.Error
 	}
 	if b.EstimatedUSD > 0 {
-		v.Estimate = usd(b.EstimatedUSD)
+		v.Estimate = gtshare.USD(b.EstimatedUSD)
 	}
 	type key struct{ prompt, negative string }
 	col := map[key]int{}
@@ -39,7 +42,7 @@ func batchView(b gentest.BatchStatus) view.Batch {
 		}
 		if _, ok := row[r.Model]; !ok {
 			row[r.Model] = len(v.Rows)
-			v.Rows = append(v.Rows, view.Row{Model: r.ModelLabel})
+			v.Rows = append(v.Rows, view.Row{Model: r.ModelLabel, Answer: commercial.Of(r.Model)})
 		}
 	}
 	for i := range v.Rows {

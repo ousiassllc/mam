@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
@@ -47,7 +50,7 @@ func fileName(target string) string {
 func RepoOf(v modelmanager.HFRepoView) view.HFRepo {
 	r := view.HFRepo{
 		ID: v.Repo.ID, Commit: v.Repo.Commit, Page: v.Page, Gated: v.Repo.Gated, NFAA: v.Repo.NFAA,
-		License: licenseText(v.Repo.License), LicenseWarn: v.LicenseWarning, Terms: v.Terms, TermsVersion: v.TermsVersion,
+		License: licenseText(v.Repo.License), Answer: commercial.FromInfo(modellicense.FromHF(v.Repo.License.ID, v.Repo.License.Name, v.Repo.License.Link)), LicenseWarn: v.LicenseWarning, Terms: v.Terms, TermsVersion: v.TermsVersion,
 		Consented: v.Consented, NoToken: !v.TokenConfigured, Truncated: v.Truncated, Folders: hfplan.Folders,
 	}
 	groups := map[string]int{}
@@ -126,8 +129,8 @@ func ListData(ctx context.Context, svc *modelmanager.Service, jobs []string) vie
 
 func modelOf(um modelmanager.UserModelView) view.HFModel {
 	return view.HFModel{
-		Path: um.Path, Name: um.Name, Folder: um.Folder, Repo: um.Repo, Commit: shortCommit(um.Commit), Size: jobview.BytesText(um.Size),
-		License: licenseText(hf.License{ID: um.License.ID, Name: um.License.Name}), Gated: um.Gated, NFAA: um.NFAA, Family: um.Family,
+		Path: um.Path, Name: um.Name, Folder: um.Folder, Repo: um.Repo, Commit: shortCommit(um.Commit), Size: jobview.BytesText(um.Size), SHA256: um.SHA256,
+		License: licenseText(hf.License{ID: um.License.ID, Name: um.License.Name}), Answer: commercial.FromInfo(modellicense.FromHF(um.License.ID, um.License.Name, um.License.Link)), Gated: um.Gated, NFAA: um.NFAA, Family: um.Family,
 		ModelIDs: um.ModelIDs, Shared: slices.Clone(um.SharedWith), Missing: !um.Present, At: um.InstalledAt.Local().Format(time.DateTime),
 	}
 }

@@ -1,19 +1,18 @@
 package pages
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // ReferenceLibraryPage is GET /projects/:id/references: the Reference Library in an auxiliary view.
 templ ReferenceLibraryPage(csrfToken string, d organisms.ReferenceLibraryData) {
-	@layout.AppLayout("Reference Library: "+d.Project.Name, csrfToken) {
-		<main class="mx-auto max-w-5xl p-8">
-			@atoms.ChatBackLink(d.Project.ID)
-			<h1 class="mb-1 mt-3 text-xl font-semibold">Reference Library</h1>
-			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
+	@layout.AppLayout("Reference Library: "+d.Project.Name, csrfToken, sidenav.InProject(sidenav.References, d.Project)) {
+		@pagehead.Main(pagehead.Wide) {
+			@pagehead.Header("Reference Library", d.Project.Name, "")
 			@organisms.ReferenceLibrary(d)
-		</main>
+		}
 	}
 }

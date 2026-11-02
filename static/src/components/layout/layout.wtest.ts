@@ -8,6 +8,15 @@ import { setViewport } from '@web/test-runner-commands';
 // markup.
 const TESTDATA = '/src/components/testdata/';
 
+/** The side menu (the fixture) and a page beside it, as layout.Shell puts them; appended to the body. */
+async function menuBesidePage(): Promise<HTMLElement> {
+  const nav = await (await fetch(TESTDATA + 'layout-sidenav.html')).text();
+  const host = document.createElement('div');
+  host.innerHTML = `<div class="flex min-h-screen">${nav}<div id="content" class="min-w-0 flex-1"><main data-testid="page" class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-8"><h1 class="text-xl font-semibold">Brief</h1><p class="break-words">長い文章が続きます。</p></main></div></div>`;
+  document.body.append(host);
+  return host;
+}
+
 describe('a phone-width window (375 px)', () => {
   let host: HTMLElement;
   let stylesheet: HTMLLinkElement;
@@ -77,6 +86,69 @@ describe('a phone-width window (375 px)', () => {
         );
       }
       expect(overflowOf(), 'the page scrolls sideways').to.be.at.most(0);
+    });
+  }
+
+  it('shows the side menu as icons only beside the page, which keeps the rest of the width (#915)', async () => {
+    host = await menuBesidePage();
+
+    const nav = host.querySelector<HTMLElement>('nav')!;
+    const page_ = host.querySelector<HTMLElement>('[data-testid=page]')!;
+    expect(nav.getBoundingClientRect().width, 'a narrow window folds the menu to its icons').to.be.at.most(64);
+    expect(page_.getBoundingClientRect().right, 'the page is cut by the edge of the window').to.be.at.most(
+      page().clientWidth,
+    );
+    expect(overflowOf(), 'the page scrolls sideways').to.be.at.most(0);
+    const label = host.querySelector<HTMLElement>('[data-key=brief] span:last-child')!;
+    expect(
+      label.getBoundingClientRect().width,
+      'the label is not drawn but is still there for a screen reader',
+    ).to.be.at.most(1);
+    expect(label.textContent).to.equal('Brief');
+  });
+});
+
+describe('a desktop window (1280 px and 1440 px) (#915)', () => {
+  let host: HTMLElement;
+  let stylesheet: HTMLLinkElement;
+
+  beforeEach(async function () {
+    this.timeout(60_000);
+    stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = '/__tailwind.css';
+    const loaded = new Promise<void>((resolve, reject) => {
+      stylesheet.onload = () => resolve();
+      stylesheet.onerror = () => reject(new Error('the Tailwind CSS could not be built'));
+    });
+    document.head.append(stylesheet);
+    await loaded;
+    host = await menuBesidePage();
+  });
+
+  afterEach(() => {
+    host.remove();
+    stylesheet.remove();
+  });
+
+  for (const width of [1280, 1440]) {
+    it(`draws the open menu at 14 rem and folds it to 3.5 rem at ${width} px, the page taking the rest`, async () => {
+      await setViewport({ width, height: 800 });
+      const nav = host.querySelector<HTMLElement>('nav')!;
+      const page_ = host.querySelector<HTMLElement>('[data-testid=page]')!;
+      const label = host.querySelector<HTMLElement>('[data-key=brief] span:last-child')!;
+
+      expect(nav.getBoundingClientRect().width).to.equal(224);
+      expect(label.getBoundingClientRect().width, 'the open menu draws the label').to.be.greaterThan(8);
+      expect(page_.getBoundingClientRect().right).to.be.at.most(width);
+
+      nav.dataset.folded = 'true';
+      expect(nav.getBoundingClientRect().width).to.equal(56);
+      expect(label.getBoundingClientRect().width, 'the folded menu keeps only the icon').to.be.at.most(1);
+      expect(host.querySelector<HTMLElement>('#content')!.getBoundingClientRect().width).to.be.greaterThan(
+        width - 56 - 1,
+      );
+      expect(document.documentElement.scrollWidth - document.documentElement.clientWidth).to.be.at.most(0);
     });
   }
 });

@@ -25,8 +25,9 @@
   "name": "Stability AI Community License Agreement",
   "url": "https://stability.ai/community-license-agreement",
   "summary": "研究・非商用と、年間売上が 100 万米ドル未満の個人・組織による商用利用は無償。売上がそれ以上の組織は Stability AI のエンタープライズライセンスが要る。",
-  "commercial_use": true,
+  "commercial": "conditional",
   "commercial_condition": "年間売上が 100 万米ドル（または相当額）未満の個人・組織に限る",
+  "checked_at": "2026-11-02",
   "notice": "年間売上が 100 万米ドルを超える組織が商用に使うには、Stability AI との別の契約が必要です。"
  },
  "consent_required": true,

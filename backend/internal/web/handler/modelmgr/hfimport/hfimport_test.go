@@ -1,6 +1,8 @@
 package hfimport_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"net/url"
 	"testing"
@@ -152,6 +154,23 @@ func TestInstallingAFileShowsProgressThenTheModelAndDeletingItRemovesIt(t *testi
 	assert.Contains(t, body, `data-testid="mm-trial"`, "the trial choices are drawn again with the new model")
 	assert.NotContains(t, body, `hx-trigger="every 2s"`)
 	assert.Contains(t, s.Page(), `data-path="models/checkpoints/pony.safetensors"`)
+
+	// The card is the card of the catalog's models (#954): the name, folder, size, state and the delete button; the repository, commit, license and
+	// SHA-256 are in the modal it opens.
+	assert.Contains(t, body, `data-testid="mm-hfi-model-state"`)
+	assert.Contains(t, body, `data-card-open`)
+	assert.NotContains(t, body, "コミット", "the commit is in the modal")
+	assert.NotContains(t, body, `data-testid="mm-sha256"`)
+	detailPath := paths.ModelManagerPart("hf", "models", "detail") + "?path=" + url.QueryEscape("models/checkpoints/pony.safetensors")
+	assert.Contains(t, body, `hx-get="`+detailPath, "the card opens its modal")
+	detail := s.Get(detailPath)
+	require.Equal(t, http.StatusOK, detail.Code, detail.Body.String())
+	digest := sha256.Sum256(sdxlBody)
+	assert.Contains(t, detail.Body.String(), `data-testid="mm-sha256">`+hex.EncodeToString(digest[:])+"</code>", "the digest the file was checked against")
+	assert.Contains(t, detail.Body.String(), "<code>o/m</code>")
+	assert.Contains(t, detail.Body.String(), commit[:12])
+	assert.Contains(t, detail.Body.String(), "openrail++")
+	assert.Equal(t, http.StatusNotFound, s.Get(paths.ModelManagerPart("hf", "models", "detail")+"?path=nope").Code)
 
 	// a second terms confirmation is not asked for the same repository and commit
 	repoBody := s.Get(hfURL("o/m")).Body.String()

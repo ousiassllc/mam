@@ -15,7 +15,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -35,6 +37,7 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, trial func(ctx cont
 	engine.GET(paths.ModelManagerPart("hf"), h.Search)
 	engine.POST(paths.ModelManagerPart("hf", "install"), h.Install)
 	engine.GET(paths.ModelManagerPart("hf", "models"), h.Models)
+	engine.GET(paths.ModelManagerPart("hf", "models", "detail"), h.ModelDetail)
 	engine.DELETE(paths.ModelManagerPart("hf", "models"), h.DeleteModel)
 	engine.POST(paths.ModelManagerPart("hf", "jobs", ":job", "cancel"), h.CancelJob)
 	engine.PUT(paths.ModelManagerPart("hf-token"), h.SetToken)
@@ -148,6 +151,19 @@ func (h Handlers) Models(c *gin.Context) {
 		return
 	}
 	render(c, http.StatusOK, view.HFModelListView(l))
+}
+
+// ModelDetail answers GET /model-manager/hf/models/detail?path= with the modal of the card of a file the user added: the repository and
+// commit, the license, the size and the SHA-256. A file that is not in the list is the reason in the modal (404).
+func (h Handlers) ModelDetail(c *gin.Context) {
+	path := c.Query(view.FieldPath)
+	for _, um := range h.svc.UserModels() {
+		if um.Path == path {
+			render(c, http.StatusOK, modeldetail.HFDetail(modelOf(um)))
+			return
+		}
+	}
+	render(c, http.StatusNotFound, modal.Notice("追加したモデル", "対象が見つかりません。画面を読み込み直してください"))
 }
 
 // CancelJob answers POST /model-manager/hf/jobs/:job/cancel.

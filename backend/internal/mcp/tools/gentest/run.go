@@ -11,11 +11,15 @@ import (
 // ListModelsInput narrows the models.
 type ListModelsInput struct {
 	Media string `json:"media,omitempty" jsonschema:"image / video。省くと両方"`
+	// Commercial narrows the models by whether they may be used commercially (#928).
+	Commercial string `json:"commercial,omitempty" jsonschema:"商用利用で絞り込む。all（すべて）/ ok（商用OKだけ）/ ok_or_conditional（商用OKと条件つき）。省くと設定「商用OKのモデルだけを使う」に従う（オフなら all）"`
 }
 
 // ListModelsOutput is the models.
 type ListModelsOutput struct {
 	Models []modelcatalog.Info `json:"models"`
+	// CommercialFilter is the filter that narrowed Models: what commercial asked for, or the setting's default.
+	CommercialFilter string `json:"commercial_filter" jsonschema:"models に適用した商用利用の絞り込み（all / ok / ok_or_conditional）"`
 	// LoRAs are the LoRA files of the bundled ComfyUI engine (lora.name of a request; only for models with supports_lora). Empty
 	// when the engine is not running or has none.
 	LoRAs  []string `json:"loras" jsonschema:"同梱 ComfyUI エンジンにある LoRA ファイル名（昇順）。リクエストの lora.name に使う。supports_lora のモデルだけが使う。エンジンが止まっている・無いときは空"`
@@ -38,7 +42,11 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 	if loras == nil {
 		loras = []string{}
 	}
-	return ListModelsOutput{Models: g.Models(ctx, in.Media), LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}}, nil
+	models, filter, err := g.ModelsFor(ctx, in.Media, in.Commercial)
+	if err != nil {
+		return ListModelsOutput{}, mapError(err)
+	}
+	return ListModelsOutput{Models: models, CommercialFilter: string(filter), LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}}, nil
 }
 
 // ReferenceInput is an input image of a batch.
@@ -77,6 +85,8 @@ type RequestInput struct {
 	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty" jsonschema:"画像だけ。参照画像のポーズ・構図を真似ないようにする（参照を使うモデルのネガティブプロンプトに「同じポーズ・構図」を足す。ネガティブの欄が無いモデルは Avoid: として書き足す。参照画像が無い・参照画像を使うモデルが無いときは何も起きず、警告も出ない）"`
 	// LoRA is applied together with the references to every model that supports it.
 	LoRA *LoRAInput `json:"lora,omitempty" jsonschema:"画像だけ。参照画像と一緒に使う LoRA。supports_lora でないモデルは警告 lora_unsupported で使わない"`
+	// SpeedMode picks how a video model samples (VideoCaps.SpeedModes).
+	SpeedMode string `json:"speed_mode,omitempty" jsonschema:"動画だけ。速さのモード（list_generation_models のモデルの video.speed_modes の id。例: Wan 2.2 14B + LightX2V の fast = 4 ステップ・cfg 1 / standard = 通常の 20 ステップ・cfg 3.5）。省くと各モデルの既定（speed_modes の default）。そのモードを持たないモデルは警告 speed_mode_unsupported で既定のまま作る"`
 	// TranslateToEnglish is a pointer: omitted means the default of the screen (on), false is a deliberate off.
 	TranslateToEnglish *bool `json:"translate_to_english,omitempty" jsonschema:"プロンプトとネガティブプロンプトを LLM（LLM の割り当ての Prompt Planner）で英語に訳してから送る。既定 true（画面と同じ）。すでに英語の文は訳さずそのまま。訳せなければ何も生成せずエラー（upstream）。見積りには訳す文の数が単価なしの行（model が translate）として入る。false でそのまま送る"`
 }
@@ -84,7 +94,7 @@ type RequestInput struct {
 func (in RequestInput) request() gentest.Request {
 	r := gentest.Request{
 		Media: in.Media, Models: in.Models, Count: in.Count, AspectRatio: in.AspectRatio, Resolution: in.Resolution,
-		DurationSeconds: in.DurationSeconds, TranslateToEnglish: gentest.DefaultTranslate, AvoidReferencePose: in.AvoidReferencePose,
+		DurationSeconds: in.DurationSeconds, TranslateToEnglish: gentest.DefaultTranslate, AvoidReferencePose: in.AvoidReferencePose, SpeedMode: in.SpeedMode,
 	}
 	if in.LoRA != nil {
 		r.LoRA = &gentest.LoRAInput{Name: in.LoRA.Name, Strength: in.LoRA.Strength}
@@ -149,6 +159,9 @@ func (h handlers) get(ctx context.Context, in BatchInput) (gentest.BatchStatus, 
 		return gentest.BatchStatus{}, err
 	}
 	b, err := g.Batch(ctx, in.BatchID, true)
+	if err == nil && h.running(ctx, g, in.BatchID) {
+		b.State, b.Finished = gentest.StateRunning, false
+	}
 	return b, mapError(err)
 }
 
