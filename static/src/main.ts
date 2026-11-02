@@ -19,6 +19,7 @@ import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
 import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
+import { installExportPick } from './components/gentest/export-pick';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -87,6 +88,10 @@ installKeepScroll();
 
 // A poll waits while the tab is hidden or a video in the section plays, so that the swap does not cut it off (#925).
 installPollGuard();
+
+// The results of the history that are tapped to be saved as a ZIP (#932): the glowing frame, the count, and the choice that survives the
+// history's own refresh.
+installExportPick();
 
 lockDownHtmx(htmx.config);
 

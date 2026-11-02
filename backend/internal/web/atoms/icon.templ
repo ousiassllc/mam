@@ -36,6 +36,8 @@ const (
 	IconBadgeHelp    IconName = "badge-help"
 	IconBan          IconName = "ban"
 	IconFilter       IconName = "filter"
+	IconCheck        IconName = "check"
+	IconDownload     IconName = "download"
 )
 
 // iconDefaultClass is the size of an icon whose class is empty.
@@ -238,6 +240,18 @@ templ Icon(name IconName, class string) {
 			// funnel
 			@iconSVG(class) {
 				<path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"></path>
+			}
+		case IconCheck:
+			// check
+			@iconSVG(class) {
+				<path d="M20 6 9 17l-5-5"></path>
+			}
+		case IconDownload:
+			// download
+			@iconSVG(class) {
+				<path d="M12 15V3"></path>
+				<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+				<path d="m7 10 5 5 5-5"></path>
 			}
 	}
 }
