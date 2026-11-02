@@ -1,0 +1,77 @@
+{
+ "id": "wan22-ti2v-5b-fp8",
+ "name": "Wan 2.2 TI2V 5B (fp8)",
+ "kind": "video",
+ "tier": "standard",
+ "content_rating": "general",
+ "description": "wan22-ti2v-5b の拡散モデルを fp8（e4m3fn のスケール付き）にした軽い版。テキストからも先頭フレーム 1 枚からも動画を作れる（拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 13.4 GB。fp16 版は約 18.1 GB）。拡散モデルの重みが約 10.0 GB から約 5.3 GB になるので、VRAM 16 GB の PC で fp16 版より余裕を持って載り、ダウンロードも小さい。720p・24fps。fp8 のファイルは Kijai（コミュニティ）が Wan-AI の Wan2.2-TI2V-5B を変換して公開しているもので、ComfyUI 標準の UNETLoader（weight_dtype は default）がそのまま読む形式。画質が fp16 版からどれだけ落ちるかと、生成の時間・VRAM は mam では測っていない。生成テストのモデルは 2 つで、wan22-ti2v-5b-fp8（テキストから）と wan22-ti2v-5b-fp8-i2v（先頭フレームから）。テキストエンコーダーと VAE は wan22-ti2v-5b と同じファイルで共有する。macOS（Apple Silicon）は ComfyUI の MPS が fp8 を扱えない既知の問題があり、Windows のみの対応。",
+ "files": [
+  {
+   "name": "Wan2_2-TI2V-5B_fp8_e4m3fn_scaled_KJ.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/033a4e487f60220b3d6e469599a6aebc46e13cee/TI2V/Wan2_2-TI2V-5B_fp8_e4m3fn_scaled_KJ.safetensors",
+   "sha256": "a83f54a2450d5471e5721e59ab556afa2d8793e30280713e3796b254c5286b48",
+   "size": 5277255650
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan2.2_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan2.2_vae.safetensors",
+   "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156",
+   "size": 1409400960
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "estimate": true,
+  "source": "wan22-ti2v-5b（fp16）の 16 GB の目安（ComfyUI 公式ガイドは「ネイティブ offload で 8 GB でも収まる」、Wan 公式の参照実装は offload ありで 24 GB 以上）を、そのまま下限にした mam の推定。fp8 は拡散モデルの重みが約 10.0 GB から約 5.3 GB に減るので、16 GB では fp16 版より余裕を持って載るはずだが、これより低い値は測っていないので決めていない。mam の実機（16 GB）では未確認"
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://www.apache.org/licenses/LICENSE-2.0",
+  "summary": "商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。元の Wan 2.2 TI2V 5B（Wan-AI）は Apache-2.0。fp8 のファイルは Kijai の変換で、モデルカードも Apache-2.0 と表示している（モデルカードの base_model は古い Wan 2.1 のままだが、ファイルのメタデータの model_type は TI2V-5B）。",
+  "commercial": "yes",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "拡散モデル（Wan2.2 TI2V 5B の fp8 変換・Kijai）",
+    "name": "Apache License 2.0（モデルカードの表示。元の Wan-AI/Wan2.2-TI2V-5B も Apache-2.0）",
+    "url": "https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled",
+    "commercial": "yes"
+   },
+   {
+    "part": "テキストエンコーダー（UMT5-XXL fp8。Comfy-Org の再配布）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Comfy-Org/Wan-2.2",
+    "commercial": "yes"
+   },
+   {
+    "part": "VAE（Wan 2.2 の VAE。Comfy-Org の再配布）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Comfy-Org/Wan-2.2",
+    "commercial": "yes"
+   }
+  ]
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-ti2v-5b-fp8",
+   "template": "txt2video-wan22-5b-fp8"
+  },
+  {
+   "name": "wan22-ti2v-5b-fp8-i2v",
+   "template": "img2video-wan22-5b-fp8"
+  }
+ ]
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -57,8 +58,9 @@ func newTranslator(c llm.Completer, cfg llm.Config) *prompttranslate.Translator 
 }
 
 // newMatcher is the LLM work of the prompt match: it writes and fixes the prompts through the route of the Prompt Planner and
-// compares the pictures through the route of the AI Video Judge. nil when the settings have no such route.
-func newMatcher(c llm.Completer, cfg llm.Config) *imagematch.Matcher {
+// compares the pictures through the route of the AI Video Judge. nil when the settings have no such route. faces and mix say whether
+// and how the face of the generated image is mixed into the similarity (the "match_face" of the Judge setting, off by default).
+func newMatcher(c llm.Completer, cfg llm.Config, faces facesim.Engine, mix imagematch.FaceMix) *imagematch.Matcher {
 	create, err := cfg.RouteFor(imagematch.PromptAgent)
 	if err != nil {
 		return nil
@@ -67,5 +69,5 @@ func newMatcher(c llm.Completer, cfg llm.Config) *imagematch.Matcher {
 	if err != nil {
 		return nil
 	}
-	return imagematch.New(c, create.Primary, judge.Primary)
+	return imagematch.New(c, create.Primary, judge.Primary).UseFaces(faces, mix)
 }

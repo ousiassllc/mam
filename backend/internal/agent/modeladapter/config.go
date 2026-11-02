@@ -238,7 +238,7 @@ func LoadConfig(path string) (Config, error) {
 	return cfg, nil
 }
 
-// VendorSettings are the built-in vendors and the registered endpoints (vendors named by localcfg.VendorKey).
+// VendorSettings are the built-in vendors and the registered endpoints (named by localcfg.VendorKey; their timeout is localcfg.Endpoint.CallLimit).
 func (c Config) VendorSettings() map[Vendor]VendorConfig {
 	out := maps.Clone(c.Vendors)
 	if out == nil {
@@ -246,7 +246,7 @@ func (c Config) VendorSettings() map[Vendor]VendorConfig {
 	}
 	out[Vendor(chatgptid.Vendor)] = VendorConfig{BaseURL: chatgptid.BaseURL, MaxConcurrency: 1, TimeoutSeconds: chatgptid.TimeoutSeconds}
 	for name, e := range c.Endpoints {
-		out[Vendor(localcfg.VendorKey(name))] = VendorConfig{BaseURL: e.BaseURL, MaxConcurrency: e.Concurrency(), TimeoutSeconds: e.Timeout()}
+		out[Vendor(localcfg.VendorKey(name))] = VendorConfig{BaseURL: e.BaseURL, MaxConcurrency: e.Concurrency(), TimeoutSeconds: e.CallLimit()}
 	}
 	return out
 }

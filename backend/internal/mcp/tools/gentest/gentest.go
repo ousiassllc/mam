@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -151,13 +152,25 @@ func (h handlers) probe(ctx context.Context, job mcpkit.JobInfo) (mcpkit.Progres
 		b.State, b.Finished = gentest.StateRunning, false
 	}
 	return mcpkit.Progress{
-		State: jobState(b.State), Done: b.Done, Total: b.Total, Error: b.Error,
+		State: jobState(b.State), Done: b.Done, Total: b.Total, Steps: stepsOf(b), Error: b.Error,
 		Message: progressMessage(b),
 		Result: map[string]any{
 			"batch_id": b.BatchID, "succeeded": b.Succeeded, "failed": b.Failed, "cancelled": b.Cancelled,
 			"next": "get_generation_test で全結果を見る",
 		},
 	}, nil
+}
+
+// stepsOf is the step of the ComfyUI call that runs for the batch (the Probe and the model manager's tracker record it under the id
+// of the queue job), nil when the batch is not running or no step is known: a cloud model, the model still loading, or mam restarted.
+func stepsOf(b gentest.BatchStatus) *live.View {
+	if b.State != gentest.StateRunning {
+		return nil
+	}
+	if p, ok := live.Default.ByOwner(b.JobID); ok {
+		return p.View()
+	}
+	return nil
 }
 
 func jobState(state string) mcpkit.JobState {

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
@@ -15,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
 func TestListModelsOffersEveryBuiltInModelWithItsCapabilities(t *testing.T) {
@@ -154,15 +156,53 @@ func TestCancelStopsWhatHasNotStarted(t *testing.T) {
 	out, _ := r.run(args)
 	<-r.GT.Fake.Started()
 
-	var res gentest.CancelResult
+	var res runner.CancelResult
 	r.CallOK("cancel_generation_test", map[string]any{"batch_id": out.BatchID}, &res)
-	assert.Equal(t, gentest.CancelResult{Cancelled: 2, Running: 1}, res)
+	assert.Equal(t, runner.CancelResult{Cancelled: 2, Running: 1}, res)
 	release <- struct{}{}
 	st := r.job(out.JobID)
 	assert.Equal(t, mcpkit.JobCancelled, st.State)
 	assert.Equal(t, 3, st.Done)
 	assert.Contains(t, r.CallError("cancel_generation_test", map[string]any{"batch_id": out.BatchID}), "conflict", "a finished batch")
 	assert.Contains(t, r.CallError("cancel_generation_test", map[string]any{"batch_id": "nope"}), "not_found")
+}
+
+func TestARunningBatchShowsTheStepsOfItsComfyUICallInBothTools(t *testing.T) {
+	r := newRig(t)
+	release := r.GT.Fake.Hold(domain.ModelFlux2)
+	args := map[string]any{"media": "image", "models": []string{"flux-2"}, "count": 1, "prompts": []map[string]any{{"prompt": "fox"}}}
+	out, _ := r.run(args)
+	<-r.GT.Fake.Started()
+
+	var b mcpgentest.BatchOutput
+	r.CallOK("get_generation_test", map[string]any{"batch_id": out.BatchID}, &b)
+	assert.Nil(t, b.Progress, "a cloud model has no step: the field is left out")
+	var st mcpkit.JobStatus
+	r.CallOK("get_job", map[string]any{"job_id": out.JobID}, &st)
+	assert.Nil(t, st.Steps)
+
+	call := live.Default.Start("test-ep", "prompt-"+out.JobID)
+	defer call.End()
+	call.Own(out.JobID)
+	call.Step("3", "KSampler", 8, 20, 40)
+
+	r.CallOK("get_generation_test", map[string]any{"batch_id": out.BatchID}, &b)
+	require.NotNil(t, b.Progress)
+	assert.Equal(t, 8, b.Progress.Step)
+	assert.Equal(t, 20, b.Progress.MaxStep)
+	assert.Equal(t, 40, b.Progress.Percent)
+	r.CallOK("get_job", map[string]any{"job_id": out.JobID}, &st)
+	require.NotNil(t, st.Steps)
+	assert.Equal(t, 40, st.Steps.Percent)
+
+	call.End()
+	release <- struct{}{}
+	st = r.job(out.JobID)
+	assert.Equal(t, mcpkit.JobSucceeded, st.State)
+	assert.Nil(t, st.Steps, "a finished batch has no step")
+	var done mcpgentest.BatchOutput
+	r.CallOK("get_generation_test", map[string]any{"batch_id": out.BatchID}, &done)
+	assert.Nil(t, done.Progress)
 }
 
 func TestHistoryFavoritesDeletionAndPrompts(t *testing.T) {

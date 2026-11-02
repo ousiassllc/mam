@@ -1,6 +1,7 @@
 import { html, nothing } from 'lit';
 import { describeProgress, progressFraction, type ShotProgress } from '../lib/shot';
 import { formatTimecode, issueRange, type JudgeIssue, type TimeRange } from '../lib/video';
+import { sliderStyle } from '../slider/slider-model';
 
 /** An Issue as the time bar draws it. */
 export interface Marker {
@@ -61,6 +62,7 @@ export function renderTransport(v: TransportView) {
       <input
         type="range"
         class="w-full"
+        style=${sliderStyle({ value: String(v.currentTime), min: '0', max: String(max) })}
         aria-label="再生位置"
         min="0"
         max=${max}

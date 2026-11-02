@@ -95,6 +95,10 @@
   {
    "name": "ltx-2-5-uncensored-i2v",
    "template": "img2video-ltx-2-5-uncensored"
+  },
+  {
+   "name": "ltx-2-5-uncensored-flf2v",
+   "template": "flf2v-ltx-2-5-uncensored"
   }
  ]
 }

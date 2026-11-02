@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
 func TestCancelStopsDispatchingAndLetsInFlightCallsFinish(t *testing.T) {
@@ -35,7 +36,7 @@ func TestCancelStopsDispatchingAndLetsInFlightCallsFinish(t *testing.T) {
 
 	res, err := r.Svc.Cancel(context.Background(), ref.BatchID)
 	require.NoError(t, err)
-	assert.Equal(t, gentest.CancelResult{Cancelled: 2, Running: 1}, res, "the call that is in flight is not cut off")
+	assert.Equal(t, runner.CancelResult{Cancelled: 2, Running: 1}, res, "the call that is in flight is not cut off")
 	release <- struct{}{}
 	st := r.Wait(ref.BatchID)
 
@@ -44,7 +45,7 @@ func TestCancelStopsDispatchingAndLetsInFlightCallsFinish(t *testing.T) {
 	assert.Equal(t, 2, st.Cancelled)
 	for _, x := range st.Results {
 		if x.Status == gentestrepo.StatusCancelled {
-			assert.Equal(t, gentest.ReasonCancelled, x.Error)
+			assert.Equal(t, runner.ReasonCancelled, x.Error)
 			assert.False(t, x.HasFile)
 		}
 	}
@@ -85,7 +86,7 @@ func TestAQueuedResultOfAModelHiddenInTheMeantimeIsNotCalled(t *testing.T) {
 	assert.Equal(t, 2, st.Failed)
 	for _, x := range st.Results {
 		if x.Status == gentestrepo.StatusFailed {
-			assert.Equal(t, gentest.ReasonHidden, x.Error)
+			assert.Equal(t, runner.ReasonHidden, x.Error)
 		}
 	}
 	assert.Len(t, r.Fake.CallsOf(domain.ModelFlux2), 1, "no call was made for the hidden model after it was hidden")
@@ -144,7 +145,7 @@ func TestOnStartupFailsWhatTheCrashLeftAndKeepsWhatFinished(t *testing.T) {
 		got[x.ID] = x.Status
 	}
 	assert.Equal(t, map[string]string{"done": "succeeded", "running": "failed", "queued": "failed"}, got)
-	assert.Equal(t, gentest.ReasonInterrupted, st.Results[1].Error)
+	assert.Equal(t, runner.ReasonInterrupted, st.Results[1].Error)
 	assert.True(t, st.Finished)
 	assert.Equal(t, gentest.StateSucceeded, st.State)
 	assert.Zero(t, len(r.Fake.Calls()), "nothing is resumed: a generation is paid for")

@@ -21,6 +21,7 @@ import { initGentestMatch } from './components/gentest/match';
 import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
 import { installExportPick } from './components/gentest/export-pick';
+import { installSlider } from './components/slider/slider';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -96,6 +97,9 @@ installPollGuard();
 // The results of the history that are tapped to be saved as a ZIP (#932): the glowing frame, the count, and the choice that survives the
 // history's own refresh.
 installExportPick();
+
+// The sliders (every input[type=range]): the rail's fill follows the value (static/src/css/slider.css, #955).
+installSlider();
 
 lockDownHtmx(htmx.config);
 

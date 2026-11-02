@@ -76,12 +76,14 @@ type MatchRound struct {
 	// Status is the status of the picture; StatusText its words.
 	Status     string
 	StatusText string
-	// Score is the similarity in words ("72%"; "" while it is not measured), Percent the same as a number for the bar.
-	Score   string
-	Percent int
-	Reached bool
-	Best    bool
-	Active  bool
+	// Score is the similarity in words ("72%"; "" while it is not measured), Percent the same as a number for the bar. ScoreNote says
+	// how it came about when the face is mixed in (#964; "" when it is not).
+	Score     string
+	ScoreNote string
+	Percent   int
+	Reached   bool
+	Best      bool
+	Active    bool
 	// Change, Instruction and Differences are what the round learned and what was fixed; Prompt is the English prompt of the round
 	// and BasePrompt the one it was fixed from.
 	Change      string
@@ -91,6 +93,8 @@ type MatchRound struct {
 	BasePrompt  string
 	Error       string
 	BasedOn     int
+	// UseURL opens the generation test with the prompt of this round (the comparison of models, #965; "" for a round without a picture).
+	UseURL string
 }
 
 // MatchBatch is a prompt match as the screen shows it.

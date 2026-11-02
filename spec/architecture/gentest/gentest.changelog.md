@@ -19,3 +19,7 @@
 | 1.12 | 2026-11-02 | §3.2 を新設: プロンプトマッチ（参考の画像から英語のプロンプトを作り、似るまで直して生成し直す）。詳細は [prompt-match.md](prompt-match.md) | Issue #916 |
 | 1.13 | 2026-11-02 | §7.1 を新設: 結果の ZIP エクスポート（`photos/` と `prompts/prompts.csv`。選び方は `export.Selection` 1 か所を画面と MCP で共有・ストリーム・分割・CSV インジェクション対策・ファイル名の無害化）。`gentestrepo.Filter.IDs` を足した | Issue #932 |
 | 1.14 | 2026-11-02 | §6: 動画の速さのモード（`speed_mode`。LightX2V の 4 ステップ / 通常 20 ステップ）、モデルの `video.speed_modes`、警告 `speed_mode_unsupported`、画面の「速さ」の選択、結果への記録を足した | Issue #930 |
+| 1.15 | 2026-11-02 | §10 を新設: `service/gentest` を責務ごとに `runner`・`history`・`record` へ分けたパッケージ構成と依存の向き（振る舞いは変えない） | Issue #963 |
+| 1.16 | 2026-11-02 | §5: ローカルのタイムアウトの文言を 3 通りに分けた（ComfyUI のジョブが進まなくなった・全体の上限 24 時間・互換の接続先の待ち時間） | Issue #961 |
+| 1.17 | 2026-11-02 | §6: 警告 `role_unsupported` に、使わない参照の役割 `roles` を付けた（画面が実行前のモーダルでモデルごとに伝えるための源。警告と `refs.RoleFor` の置き換えは変えない） | Issue #959 |
+| 1.18 | 2026-11-02 | §3 の上限に `models.json` の `gentest.match_face` を足した（プロンプトマッチの顔の混ぜ方。既定は混ぜない）。プロンプトマッチは [prompt-match.md](prompt-match.md) の 1.1 で、似てる度への顔の混ぜ込み（#964）と、見積りへの LLM のトークン単価の算入・各回から比較への導線（#965）を足した | Issue #964・#965 |

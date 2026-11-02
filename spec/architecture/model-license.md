@@ -56,6 +56,8 @@
 | `noctq-v4-qwen-image21` | **商用NG** | `LICENSE`（Qwen RESEARCH LICENSE AGREEMENT、2026-09-20）§2(a) は「非商用の目的に限る」、§2(b) は「別の商用ライセンス無しに商用目的で使わない」と書く。Noct Q の重みも、テキストエンコーダー・VAE（Comfy-Org の配布。カードは `license: other / qwen-research`）も同じ。Qwen/Qwen-Image-2.1 本体のカードも `qwen-research` |
 | `sd35-medium` | 条件つき | 年間売上 100 万米ドル未満 |
 | `ltx-2.5-22b-distilled` | 条件つき | 年間売上 1,000 万米ドル未満。テキストエンコーダーの Gemma 4 は Apache-2.0 |
+| `ltx-2.5-22b-distilled-nvfp4`・`ltx-2.5-22b-distilled-dfr` | 条件つき | `ltx-2.5-22b-distilled` と同じ（LTX-2.x Community。年間売上 1,000 万米ドル未満）。DFR の詳細化の IC-LoRA（`Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler`）もモデルカードが `license_name: ltx-2.x-community-license`（同じ条件）。標準モデルが足したプロンプト拡張の Gemma 4 E2B（`Comfy-Org/gemma-4`）は `license: apache-2.0`。#968 |
+| `wan22-ti2v-5b-fp8` | 商用OK | Apache-2.0。fp8 のファイルは Kijai（`Kijai/WanVideo_comfy_fp8_scaled`）の変換で、モデルカードも `license: apache-2.0`、元の `Wan-AI/Wan2.2-TI2V-5B` も Apache-2.0。#967 |
 | `ltx-2.5-22b-distilled-uncensored` | **不明** | 拡散モデル・VAE は LTX-2.x Community（条件つき）、元の Gemma 4 と非検閲化した `llmfan46/gemma-4-12B-it-uncensored-heretic`（HF のタグ `apache-2.0`）は商用OK。LTX-2.5 用に変換した `DeepNeuralNerd/…LTX_2.5_ComfyUI` は `license: other` で本文が無く、「上流の Gemma 4 と LTX-2 のライセンスを参照」とだけ書く。厳しい方の「不明」（#927。2026-11-02） |
 | `hunyuanvideo15-480p` | 条件つき | 月間 1 億人超は許諾。EU・英国・韓国では使えない |
 | `wan22-i2v-14b-lightx2v` | 商用OK | ベースの Wan 2.2 も LightX2V の 4 ステップ LoRA（`lightx2v/Wan2.2-Distill-Loras`）も Apache-2.0（LoRA はモデルカードの `license: apache-2.0`。LICENSE のファイルは無く、カードの宣言に従う）。#930 |
@@ -127,3 +129,4 @@
 | 1.3 | 2026-11-02 | §3 の答えの表に `wan22-i2v-14b-lightx2v`（商用OK）・`wan22-i2v-14b-lightx2v-uncensored`（不明。宣言だけ）・`wan22-remix-nsfw-t2v`（不明。I2V と同じ）を足した | Issue #930 |
 | 1.4 | 2026-11-02 | §4・§5 にプロンプトマッチの画面（モデルの選択のフィルターと既定）を足した | 統合レビュー。#916 のモデルの選択だけフィルターと設定の既定が無かった |
 | 1.5 | 2026-11-02 | §2: HF のカードの `license_link` は https のものだけをリンクにする | 統合レビュー。検証なしに `SourceURL` へ入れ、`templ.SafeURL` で href にしていた（`javascript:` が通る）。HF の `license` タグだけで商用OKにする点は変えていない（方針は人が決める） |
+| 1.6 | 2026-11-02 | §3 の答えの表に `ltx-2.5-22b-distilled-nvfp4`・`-dfr`（条件つき）・`wan22-ti2v-5b-fp8`（商用OK）を足した | Issue #967・#968 |

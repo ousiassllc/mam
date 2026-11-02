@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
@@ -116,4 +117,34 @@ func TestGetJob_UnknownIdIsNotFound(t *testing.T) {
 	env := newEnv(t)
 	assert.Contains(t, env.CallError("get_job", map[string]any{"job_id": "job_nope"}), "not_found:")
 	assert.True(t, env.Call("get_job", map[string]any{}).IsError, "job_id is required")
+}
+
+func TestGetJob_ShowsTheStepsOfTheComfyUICallOfARunningShotOnly(t *testing.T) {
+	env := newEnv(t)
+	seedShot(t, env)
+	ref, err := env.Registrar.Jobs.Run(context.Background(), jobs.KindGenerateShot, "sh1", func(context.Context) (string, error) {
+		exec(t, env, `UPDATE shot SET state = 'GENERATING' WHERE id = 'sh1'`)
+		return "", nil
+	})
+	require.NoError(t, err)
+	assert.Nil(t, getJob(t, env, ref.JobID).Steps, "no step is known: no field, not a made-up zero")
+
+	call := live.Default.Start("test-ep", "prompt-sh1")
+	defer call.End()
+	call.Own("sh1")
+	assert.Nil(t, getJob(t, env, ref.JobID).Steps, "the server has not reported a step yet")
+
+	call.Step("3", "KSampler", 5, 20, 30)
+	st := getJob(t, env, ref.JobID)
+	require.NotNil(t, st.Steps)
+	assert.Equal(t, live.View{Node: "KSampler", Step: 5, MaxStep: 20, Percent: 30, ETAUnavailable: st.Steps.ETAUnavailable}, *st.Steps)
+
+	other := live.Default.Start("test-ep", "prompt-other")
+	defer other.End()
+	other.Own("sh2")
+	other.Step("3", "KSampler", 19, 20, 95)
+	assert.Equal(t, 5, getJob(t, env, ref.JobID).Steps.Step, "another Shot's call is not this job's")
+
+	exec(t, env, `UPDATE shot SET state = 'JUDGING' WHERE id = 'sh1'`)
+	assert.Nil(t, getJob(t, env, ref.JobID).Steps, "judging is not a model call on the GPU")
 }

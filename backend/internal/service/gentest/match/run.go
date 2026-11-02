@@ -15,15 +15,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/matchinfo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 )
 
 // inputTypes are the stored extensions of the image types a reference can have (gentest.StageReference makes them).
 var inputTypes = map[string]string{"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
-
-// payload is the payload of the job of the generation test: the batch it runs.
-type payload struct {
-	BatchID string `json:"batch_id"`
-}
 
 // Run starts a match as a job, if the confirmation is the one of what the request costs now: the service prices the request again
 // and refuses (gterr.ConflictError) when the estimate id or the total differs from the confirmed ones or the cost is over the limit.
@@ -51,7 +47,7 @@ func (s *Service) Run(ctx context.Context, r Request, c gentest.Confirmation) (g
 		}
 		return gentest.RunRef{}, err
 	}
-	job, err := s.g.Jobs.Enqueue(ctx, domain.JobGentest, payload{BatchID: batchID})
+	job, err := s.g.Jobs.Enqueue(ctx, domain.JobGentest, record.Payload{BatchID: batchID})
 	if err == nil {
 		err = s.g.Repo.SetBatchJob(ctx, batchID, job.ID)
 	}

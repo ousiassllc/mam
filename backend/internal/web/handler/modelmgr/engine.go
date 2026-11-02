@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
 )
 
 // engineWithCatalog answers an action of the engine: the card, and the model list out of band (what can be
@@ -32,6 +33,12 @@ func (h Handlers) Engine(c *gin.Context) {
 		return
 	}
 	render(c, http.StatusOK, view.EngineCard(e))
+}
+
+// EngineDetail answers GET /model-manager/engine/detail with the modal of the card: what the engine is, where it comes from, its license, and why it
+// cannot run here (the card says none of it).
+func (h Handlers) EngineDetail(c *gin.Context) {
+	render(c, http.StatusOK, modeldetail.EngineDetail(engineData(c.Request.Context(), h.Svc, "", false)))
 }
 
 // GPU answers GET /model-manager/engine/gpu with the detection result and the form that installs the engine.

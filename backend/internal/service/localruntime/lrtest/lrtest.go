@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,6 +36,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // The weights of the test catalog and where they go below the environment directory.
@@ -219,8 +219,7 @@ func sum(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:
 
 func newHost(t *testing.T) *Host {
 	t.Helper()
-	_, here, _, _ := runtime.Caller(0)
-	body, err := os.ReadFile(filepath.Join(filepath.Dir(here), "..", "..", "..", "modelmgr", "extract", "testdata", "bcj2.7z"))
+	body, err := os.ReadFile(filepath.Join(testenv.ModuleRoot(t), "backend", "internal", "modelmgr", "extract", "testdata", "bcj2.7z"))
 	require.NoError(t, err)
 	h := &Host{body: body, Files: map[string][]byte{weightPath: WeightBytes, extraPath: ExtraBytes, "/pkg.7z": body}, Gone: map[string]bool{}, hold: map[string]chan struct{}{}, reached: make(chan struct{}, 8)}
 	h.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

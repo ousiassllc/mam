@@ -44,6 +44,7 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	engine.GET(paths.ModelManagerPart("dialog"), h.CloseDialog)
 
 	engine.GET(paths.ModelManagerPart("engine"), h.Engine)
+	engine.GET(paths.ModelManagerPart("engine", "detail"), h.EngineDetail)
 	engine.GET(paths.ModelManagerPart("engine", "gpu"), h.GPU)
 	engine.POST(paths.ModelManagerPart("engine", "install"), h.InstallEngine)
 	engine.POST(paths.ModelManagerPart("engine", "start"), h.StartEngine)

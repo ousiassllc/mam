@@ -8,11 +8,13 @@ import (
 )
 
 // Body is the screen without the page frame: the engine, the models, the trial generations, the Hugging Face token
-// and the external ComfyUI, one section each (molecules.SettingsSection).
+// and the external ComfyUI, one section each (molecules.SettingsSection). engineHelp (data.go) is the help of the engine section.
 templ Body(d Data) {
 	<div id="model-manager-body" class="flex flex-col gap-8" data-testid="model-manager">
-		@molecules.SettingsSection("ComfyUI エンジン", "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。") {
-			@EngineCard(d.Engine)
+		@molecules.SettingsSection("ComfyUI エンジン", engineHelp) {
+			<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+				@EngineCard(d.Engine)
+			</ul>
 			<div class="flex flex-col gap-2">
 				@atoms.Button(atoms.ToneNeutral, "すでに動いている ComfyUI を検出", templ.Attributes{
 					"type": "button", "hx-post": paths.ModelManagerPart("engine", "detect"), "hx-target": "#" + DetectID, "hx-swap": "outerHTML",

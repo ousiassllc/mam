@@ -10,7 +10,8 @@ import (
 
 // The live state of the GPUs (get_gpu_status). Detect says which GPU there is and which build to install; this says
 // how busy it is now. Every command goes through a Runner, so that the parsing and the choice of source are
-// tested on Linux with fakes: nvidia-smi for NVIDIA (Windows, Linux), ioreg + sysctl + vm_stat for Apple Silicon
+// tested on Linux with fakes: nvidia-smi for NVIDIA (Windows, Linux), the Windows performance counters (PowerShell,
+// Get-CimInstance) for the other GPUs of Windows (status_wddm.go), ioreg + sysctl + vm_stat for Apple Silicon
 // (no administrator rights needed, unlike powermetrics). A value that cannot be read is never an error and never
 // null: it is left out and its reason is in Unavailable (by the JSON name of the field).
 
@@ -69,8 +70,8 @@ type Process struct {
 // Status is the state of the GPUs of this machine now.
 type Status struct {
 	OS string `json:"os"`
-	// Source is where the numbers came from: nvidia-smi, ioreg (Apple Silicon), adapters (the adapter list
-	// only) or none.
+	// Source is where the numbers came from: nvidia-smi, ioreg (Apple Silicon), windows-counters (the Windows
+	// performance counters of AMD and Intel GPUs), adapters (the adapter list only) or none.
 	Source    string    `json:"source"`
 	GPUs      []GPU     `json:"gpus"`
 	Processes []Process `json:"processes"`

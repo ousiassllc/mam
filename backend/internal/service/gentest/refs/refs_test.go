@@ -104,6 +104,13 @@ func TestDecide(t *testing.T) {
 		codes = append(codes, w.Code)
 	}
 	assert.ElementsMatch(t, []string{refs.WarnTooMany, refs.WarnRoleUnsupported, refs.WarnLoRAUnsupported}, codes)
+	for _, w := range d.Warnings {
+		if w.Code == refs.WarnRoleUnsupported {
+			assert.Equal(t, []string{"face"}, w.Roles, "only the used reference: the style one is over the limit")
+		} else {
+			assert.Empty(t, w.Roles)
+		}
+	}
 
 	d = refs.Decide(refs.Model{Label: "P"}, []string{"reference"}, false, true)
 	assert.Empty(t, d.Used)

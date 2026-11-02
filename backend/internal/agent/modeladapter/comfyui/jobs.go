@@ -145,15 +145,8 @@ func (b *Backend) cancel(promptID string) {
 	if _, err := b.Client.Request(ctx, http.MethodPost, "/api/jobs/"+url.PathEscape(promptID)+"/cancel", jsonHeader, []byte("{}"), localhttp.MaxJSONBytes); err == nil {
 		return
 	}
-	data, err := b.Client.Request(ctx, http.MethodGet, "/queue", nil, nil, localhttp.MaxJSONBytes)
+	q, err := b.queue(ctx)
 	if err != nil {
-		return
-	}
-	var q struct {
-		Running [][]json.RawMessage `json:"queue_running"`
-		Pending [][]json.RawMessage `json:"queue_pending"`
-	}
-	if json.Unmarshal(data, &q) != nil {
 		return
 	}
 	switch {
@@ -164,6 +157,25 @@ func (b *Backend) cancel(promptID string) {
 		body, _ := json.Marshal(map[string][]string{"delete": {promptID}})
 		_, _ = b.Client.Request(ctx, http.MethodPost, "/queue", jsonHeader, body, localhttp.MaxJSONBytes)
 	}
+}
+
+// queue is what GET /queue lists: the entries ([number, prompt_id, ...]) the server runs and holds back.
+type queue struct {
+	Running [][]json.RawMessage `json:"queue_running"`
+	Pending [][]json.RawMessage `json:"queue_pending"`
+}
+
+// queue reads GET /queue.
+func (b *Backend) queue(ctx context.Context) (queue, error) {
+	data, err := b.Client.Request(ctx, http.MethodGet, "/queue", nil, nil, localhttp.MaxJSONBytes)
+	if err != nil {
+		return queue{}, err
+	}
+	var q queue
+	if err := json.Unmarshal(data, &q); err != nil {
+		return queue{}, err
+	}
+	return q, nil
 }
 
 // inQueue reports whether a queue entry ([number, prompt_id, ...]) is the prompt.

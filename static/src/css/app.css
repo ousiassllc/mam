@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* The common look of every <input type="range"> (#955): the pseudo-elements of a slider cannot be written as utilities. It is in the
+   components layer, so that a utility class on a slider (w-full, ...) still wins over it. */
+@import "./slider.css" layer(components);
+
 /* Tailwind must see class names used in Templ templates. */
 @source "../../../backend/internal/web";
 

@@ -1,0 +1,40 @@
+package rolenotice
+
+import (
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Frame is the body of the modal (molecules/modal): which models use a reference as a whole picture because they do not take its
+// role ("顔だけ"), the composition and the clothes following it too. Two choices: "このまま実行" runs the batch (the confirmation's
+// form again, from fields; its answer closes the modal), "戻る" closes the modal and runs nothing.
+templ Frame(notes []Note, fields []Field) {
+	@modal.Frame("参照画像が全体の参照になるモデルがあります", "実行すると、次のように参照画像が使われます。") {
+		<div class={ "flex flex-col gap-2", modal.StartClass } tabindex="-1" autofocus data-testid="gt-role-notice">
+			<ul class="list-disc space-y-1 pl-5 text-sm" data-testid="gt-role-notes">
+				for _, note := range notes {
+					<li data-testid="gt-role-note"><strong>{ note.Model }</strong> は「{ strings.Join(note.Roles, "」「") }」に対応していないので、全体の参照として使います。構図や服も寄ります</li>
+				}
+			</ul>
+		</div>
+		<form
+			class="contents"
+			hx-post={ paths.GenerationTestPart("run") }
+			hx-target="#gt-batch"
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+		>
+			for _, f := range fields {
+				<input type="hidden" name={ f.Name } value={ f.Value }/>
+			}
+			@modal.Actions() {
+				@modal.Cancel("戻る")
+				@atoms.Button(atoms.TonePrimary, "このまま実行", templ.Attributes{"type": "submit", "data-testid": "gt-run-anyway"})
+			}
+		</form>
+	}
+}

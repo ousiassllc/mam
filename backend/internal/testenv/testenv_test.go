@@ -3,6 +3,7 @@ package testenv_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -78,4 +79,10 @@ func TestCountGets_CountsOnlyTheGetRequestsAndServesThemWithTheHandler(t *testin
 	}
 
 	assert.EqualValues(t, 2, gets.Load())
+}
+
+func TestModuleRoot_IsTheDirectoryOfGoModAboveThePackageDirectory(t *testing.T) {
+	root := testenv.ModuleRoot(t)
+	assert.FileExists(t, filepath.Join(root, "go.mod"))
+	assert.FileExists(t, filepath.Join(root, "backend", "internal", "testenv", "moduleroot.go"))
 }

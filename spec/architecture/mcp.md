@@ -50,7 +50,7 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 
 ## 6. 長い操作（ジョブ）
 
-生成・Judge・Repair などはすぐ **`job_id`** を返し（`mcpkit.JobRef`）、`get_job` で状態（`queued` / `running` / `succeeded` / `failed` / `cancelled`）・進捗（`message`・`done` / `total`）・結果（`result`。例: `take_ids`）・失敗の理由（`error`）を取る。何度でも問い合わせられ、終わったあとも同じ答えを返す。
+生成・Judge・Repair などはすぐ **`job_id`** を返し（`mcpkit.JobRef`）、`get_job` で状態（`queued` / `running` / `succeeded` / `failed` / `cancelled`）・進捗（`message`・`done` / `total`・ローカルの ComfyUI が動いている間の `progress`（ステップ・%・残りの見積り。`live` の記録を Probe が読み、無ければ省く。Issue #966））・結果（`result`。例: `take_ids`）・失敗の理由（`error`）を取る。何度でも問い合わせられ、終わったあとも同じ答えを返す。
 
 - `job_id` は `(kind, target)` の組（例: `generate_shot`, `shot_id`）に対応する。サービスが永続ジョブ（`job` テーブル）の ID を返せるときはそれを `job_id` にする（再起動後も使える）。返せないときは `job_<UUIDv7>` を割り当てる。どちらも履歴（下の「履歴」）に残るので、再起動後も `get_job` で引ける。
 - 状態は 2 か所から決める。`job` テーブルの行（`queued` / `running` / `failed` とその理由）と、種別ごとの **Probe**（永続化済みの状態、たとえば Shot の状態と開始後に作られた Take から進捗と結果を導く。副作用なし）。行が `queued` / `running` / `failed` なら行が勝ち、`succeeded` のときは Probe が見ている仕事が続いていれば Probe に従う。
@@ -97,3 +97,4 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 | 1.2 | 2026-10-31 | §6 に、`job_id` を返した全種別の履歴（`mcp_job_history`）・再起動をまたぐ `get_job`・保存期間 30 日と 10,000 行を足し、メモリ上・24 時間・4096 件の記述を改めた。`get_job` の状態の決め方（`job` テーブルの行と Probe）は変えない | Issue #890（親 #889）。メモリ上の `job_id` が再起動で消え、エージェントが失敗をたどれなかった |
 | 1.3 | 2026-10-31 | §2 に、ログを読む `get_app_logs`（`logging.Reader`・`mcp/tools/logs`）を足した | Issue #891（親 #889）。エージェントが `internal` エラーの原因をログからたどれるようにする |
 | 1.4 | 2026-10-31 | §6 に、`internal` の失敗の相関 ID（`error_id`。ログの行・エラーの文面・履歴・`get_job` / `list_jobs`）と、履歴の一覧 `list_jobs` を足した | Issue #892（親 #889）。`internal` の失敗から原因のログ行をたどれるようにし、最近の失敗を探せるようにする |
+| 1.5 | 2026-11-02 | §6 の `get_job` の進捗に、ローカルの ComfyUI が動いている間の `progress`（ステップ・%・残りの見積り）を足した | Issue #966 |

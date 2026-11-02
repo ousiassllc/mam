@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -36,14 +37,14 @@ type BatchStatus struct {
 	Failed    int `json:"failed"`
 	Cancelled int `json:"cancelled"`
 	// Finished says no result can change any more.
-	Finished     bool         `json:"finished"`
-	Error        string       `json:"error,omitempty"`
-	EstimatedUSD float64      `json:"estimated_usd"`
-	AspectRatio  string       `json:"aspect_ratio"`
-	Estimate     *Estimate    `json:"estimate,omitempty"`
-	Results      []ResultView `json:"results,omitempty"`
-	CreatedAt    time.Time    `json:"created_at"`
-	FinishedAt   *time.Time   `json:"finished_at,omitempty"`
+	Finished     bool                `json:"finished"`
+	Error        string              `json:"error,omitempty"`
+	EstimatedUSD float64             `json:"estimated_usd"`
+	AspectRatio  string              `json:"aspect_ratio"`
+	Estimate     *Estimate           `json:"estimate,omitempty"`
+	Results      []record.ResultView `json:"results,omitempty"`
+	CreatedAt    time.Time           `json:"created_at"`
+	FinishedAt   *time.Time          `json:"finished_at,omitempty"`
 }
 
 // Batch returns a batch with its progress and, with results true, every result in the order they were planned (gterr.ErrNotFound).
@@ -87,7 +88,7 @@ func (s *Service) status(ctx context.Context, b gentestrepo.Batch, results bool)
 	if err != nil {
 		return BatchStatus{}, err
 	}
-	var p batchParams
+	var p record.BatchParams
 	_ = json.Unmarshal(b.Params, &p)
 	st := BatchStatus{
 		BatchID: b.ID, JobID: b.JobID, Media: b.Media, Total: c.Total(), Done: c.Done(), Queued: c.Queued, Running: c.Running,
@@ -107,7 +108,7 @@ func (s *Service) status(ctx context.Context, b gentestrepo.Batch, results bool)
 		if err != nil {
 			return BatchStatus{}, err
 		}
-		st.Results = viewsOf(list)
+		st.Results = record.ViewsOf(list)
 	}
 	return st, nil
 }

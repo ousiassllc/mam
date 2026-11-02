@@ -5,9 +5,21 @@ import (
 	"context"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+)
+
+// Scoring is how the similarity of a round came about when the face is mixed in (#964), and the reasons the face can be left out.
+type Scoring = imagematch.Scoring
+
+// Why the face was left out of a score that was to have it (Scoring.Skipped).
+const (
+	SkipUnavailable     = imagematch.SkipUnavailable
+	SkipReferenceNoFace = imagematch.SkipReferenceNoFace
+	SkipGeneratedNoFace = imagematch.SkipGeneratedNoFace
+	SkipError           = imagematch.SkipError
 )
 
 // Round is a round of a match as the screen and the MCP tools show it: what the round learned and the result that made the picture.
@@ -19,7 +31,10 @@ type Round struct {
 	Prompt  string `json:"prompt"`
 	HasFile bool   `json:"has_file"`
 	// Score is the similarity to the reference, 0 to 100 (absent until it is measured).
-	Score       *int     `json:"score,omitempty"`
+	Score *int `json:"score,omitempty"`
+	// Scoring is how Score came about when the face is mixed in (#964): the LLM's points, the face's points and its weight, or why the
+	// face was left out. Absent when the face is not mixed in.
+	Scoring     *Scoring `json:"scoring,omitempty" jsonschema:"点の内訳（顔を混ぜているとき。llm = LLM の点、face = 顔の点・一致度・重み、face_skipped = 顔を使わなかった理由）"`
 	Differences []string `json:"differences,omitempty" jsonschema:"まだ違うところ（日本語。重要な順）"`
 	// BasedOn is the round whose prompt this one fixed (absent for the prompt written from the reference), BasePrompt that prompt.
 	BasedOn     int    `json:"based_on,omitempty"`
@@ -101,7 +116,7 @@ func (s *Service) View(ctx context.Context, batchID string) (View, error) {
 		}
 		v.Rounds = append(v.Rounds, Round{
 			Round: info.Round, ResultID: r.ID, Status: r.Status, Prompt: r.SentPrompt, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "",
-			Score: info.Score, Differences: info.Differences, BasedOn: info.BasedOn, BasePrompt: info.BasePrompt, Change: info.Change,
+			Score: info.Score, Scoring: info.Scoring, Differences: info.Differences, BasedOn: info.BasedOn, BasePrompt: info.BasePrompt, Change: info.Change,
 			Instruction: info.Instruction, Error: cmp.Or(r.Error, info.Error),
 		})
 		over := r.Status == gentestrepo.StatusFailed || r.Status == gentestrepo.StatusCancelled || (info.Score != nil || info.Error != "")

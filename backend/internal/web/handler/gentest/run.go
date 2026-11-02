@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
 
@@ -38,7 +39,7 @@ func (h Handlers) Estimate(c *gin.Context) {
 }
 
 func (h Handlers) confirm(_ context.Context, f formState, est gentest.Estimate) view.Confirm {
-	c := view.Confirm{Items: est.TotalItems, Total: gtshare.USD(est.TotalUSD), OverLimit: est.OverLimit}
+	c := view.Confirm{Items: est.TotalItems, Total: gtshare.USD(est.TotalUSD), OverLimit: est.OverLimit, RoleNotes: roleNotes(est)}
 	c.Lines = gtshare.ConfirmLines(est.Breakdown)
 	if est.UnknownItems > 0 {
 		c.Unknown = fmt.Sprintf("単価が分からないモデルの %d 件は合計に入っていません（実際の請求はモデルの提供元で確認してください）。", est.UnknownItems)
@@ -53,6 +54,7 @@ func (h Handlers) confirm(_ context.Context, f formState, est gentest.Estimate) 
 // Run answers POST /generation-test/run: the confirmation's form. The service prices the batch again and refuses (409) when the
 // estimate is not the confirmed one or is over the limits; otherwise the batch is queued and the progress is shown.
 func (h Handlers) Run(c *gin.Context) {
+	c.Header("HX-Trigger-After-Swap", modal.CloseEvent) // a run from the role notice (#959) closes it; with none open this does nothing
 	ctx := c.Request.Context()
 	f, err := readForm(c, false)
 	var ref gentest.RunRef

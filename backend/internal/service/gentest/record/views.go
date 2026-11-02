@@ -1,4 +1,4 @@
-package gentest
+package record
 
 import (
 	"encoding/json"
@@ -8,23 +8,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
-)
-
-// The media of a result (ResultView.Media), the status of a result (ResultView.Status) and the role of an input image.
-const (
-	MediaImage      = gentestrepo.MediaImage
-	MediaVideo      = gentestrepo.MediaVideo
-	StatusQueued    = gentestrepo.StatusQueued
-	StatusRunning   = gentestrepo.StatusRunning
-	StatusSucceeded = gentestrepo.StatusSucceeded
-	StatusFailed    = gentestrepo.StatusFailed
-	StatusCancelled = gentestrepo.StatusCancelled
-	RoleReference   = gentestrepo.RoleReference
-	RoleFirstFrame  = gentestrepo.RoleFirstFrame
-	RoleLastFrame   = gentestrepo.RoleLastFrame
-	RoleFace        = gentestrepo.RoleFace
-	RoleStyle       = gentestrepo.RoleStyle
-	RoleEdit        = gentestrepo.RoleEdit
 )
 
 // ResultView is one result as the screen and the MCP tools show it.
@@ -73,8 +56,9 @@ type ResultView struct {
 	FinishedAt         *time.Time `json:"finished_at,omitempty"`
 }
 
-func viewOf(r gentestrepo.Result) ResultView {
-	var p resultParams
+// ViewOf is the view of a stored result.
+func ViewOf(r gentestrepo.Result) ResultView {
+	var p ResultParams
 	_ = json.Unmarshal(r.Params, &p)
 	v := ResultView{
 		ID: r.ID, BatchID: r.BatchID, Position: r.Position, Media: r.Media, Model: r.Model, ModelLabel: modelreg.Label(r.Model), APIModel: r.APIModel,
@@ -91,10 +75,11 @@ func viewOf(r gentestrepo.Result) ResultView {
 	return v
 }
 
-func viewsOf(list []gentestrepo.Result) []ResultView {
+// ViewsOf is the views of stored results, in the order given.
+func ViewsOf(list []gentestrepo.Result) []ResultView {
 	out := make([]ResultView, len(list))
 	for i, r := range list {
-		out[i] = viewOf(r)
+		out[i] = ViewOf(r)
 	}
 	return out
 }

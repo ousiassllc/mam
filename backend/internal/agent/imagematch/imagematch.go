@@ -7,9 +7,11 @@
 // English. A Japanese instruction of the user is reflected in the English prompt by Revise, so no separate translation is needed.
 // The comparison reasons through the route of the AI Video Judge, the Agent that already looks at pictures.
 //
-// The similarity is a score of 0 to 100 given by the LLM that sees both images (not an embedding distance and not a face score): it
-// says what differs in words, which is what the fix needs, and it works for pictures without a face. Every answer is checked: a
-// score outside 0..100, an empty prompt, or a "fix" that returns the prompt it was given is an error, never a silent default.
+// The similarity is a score of 0 to 100 given by the LLM that sees both images (not an embedding distance): it says what differs in
+// words, which is what the fix needs, and it works for pictures without a face. When the operator turns it on (FaceMix, #964) the
+// face of the generated image is mixed in with a weight, for the pictures that have a face on both sides; the others keep the score of
+// the LLM alone, and the score says which it is (Scoring). Every answer is checked: a score outside 0..100, an empty prompt, or a
+// "fix" that returns the prompt it was given is an error, never a silent default.
 package imagematch
 
 import (
@@ -21,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/facesim"
 )
 
 // The Agents whose routes the calls follow.
@@ -45,20 +48,19 @@ var ErrNotRevised = errors.New("imagematch: the prompt was not changed")
 // Image is a picture shown to the LLM.
 type Image = llm.Image
 
-// Matcher is the LLM work of a prompt match. Create and Judge are the primary targets of the two routes, for the estimate to name
-// (the calls follow the routes, with their fail-over).
+// Matcher is the LLM work of a prompt match. Create and Judge are the primary targets of the two routes, for the estimate to name and
+// to price (Plan; the calls follow the routes, with their fail-over).
 type Matcher struct {
 	llm           llm.Completer
 	create, judge llm.Target
+	faces         facesim.Engine
+	mix           FaceMix
 }
 
 // New returns a Matcher that reasons through c.
 func New(c llm.Completer, create, judge llm.Target) *Matcher {
 	return &Matcher{llm: c, create: create, judge: judge}
 }
-
-// Targets are the primary targets of the prompt writing and of the comparison.
-func (m *Matcher) Targets() (create, judge llm.Target) { return m.create, m.judge }
 
 const describeSystem = `You write a text-to-image prompt that makes an image generation model reproduce the reference image as closely as possible.
 You get the reference image and a JSON object {"note": "..."}; the note may be empty and may be in Japanese.
@@ -104,12 +106,14 @@ func (m *Matcher) Describe(ctx context.Context, reference Image, note string) (s
 }
 
 // Judgement is how much a generated image looks like the reference: Score is 0 to 100, Differences are what differs, in Japanese.
+// Scoring says how Score came about when the face is to be mixed in (nil when FaceMix is off).
 type Judgement struct {
 	Score       int      `json:"score"`
 	Differences []string `json:"differences"`
+	Scoring     *Scoring `json:"scoring,omitempty"`
 }
 
-// Compare measures how much generated looks like reference.
+// Compare measures how much generated looks like reference: the LLM's score, mixed with the face's when that is on (FaceMix).
 func (m *Matcher) Compare(ctx context.Context, reference, generated Image) (Judgement, error) {
 	ans, err := llm.CompleteJSON[struct {
 		Score       *float64 `json:"score"`
@@ -124,7 +128,8 @@ func (m *Matcher) Compare(ctx context.Context, reference, generated Image) (Judg
 	if ans.Score == nil || *ans.Score < 0 || *ans.Score > 100 {
 		return Judgement{}, fmt.Errorf("%w: the score is missing or outside 0..100", llm.ErrInvalidOutput)
 	}
-	j := Judgement{Score: int(*ans.Score + 0.5), Differences: []string{}}
+	j := Judgement{Differences: []string{}}
+	j.Score, j.Scoring = m.score(ctx, reference, generated, int(*ans.Score+0.5))
 	for _, d := range ans.Differences {
 		if d = strings.TrimSpace(d); d != "" && len(j.Differences) < MaxDifferences {
 			j.Differences = append(j.Differences, d)

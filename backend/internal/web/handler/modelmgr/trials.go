@@ -7,11 +7,14 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
@@ -95,6 +98,13 @@ const trialListSize = 20
 // trials lists the latest results of the models of this screen, newest first (the generation test's history: a trial is a
 // batch of one). A result that waits or runs shows that, and the list asks for itself again.
 func (h Handlers) trials(ctx context.Context) view.Trials {
+	t := h.trialList(ctx)
+	t.UpdatedAt = time.Now().Format(time.TimeOnly)
+	return t
+}
+
+// trialList is trials without the time it was read.
+func (h Handlers) trialList(ctx context.Context) view.Trials {
 	if h.Gentest == nil {
 		return view.Trials{}
 	}
@@ -107,7 +117,7 @@ func (h Handlers) trials(ctx context.Context) view.Trials {
 	if len(ids) == 0 {
 		return view.Trials{}
 	}
-	recs, err := h.Gentest.History(ctx, gentest.HistoryFilter{Models: ids, Limit: trialListSize})
+	recs, err := h.Gentest.History(ctx, history.Filter{Models: ids, Limit: trialListSize})
 	if err != nil {
 		return view.Trials{Message: view.Message{Error: "試し生成の一覧を読み込めませんでした。mam のログを確認してください"}}
 	}
@@ -136,7 +146,7 @@ func (h Handlers) trials(ctx context.Context) view.Trials {
 	return t
 }
 
-func trialDetail(r gentest.ResultView) string {
+func trialDetail(r record.ResultView) string {
 	parts := []string{kindLabel(r.Media), "縦横比 " + r.AspectRatio}
 	if r.Resolution != "" {
 		parts = append(parts, r.Resolution)

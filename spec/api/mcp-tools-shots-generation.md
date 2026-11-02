@@ -48,7 +48,7 @@
 
 | 種別（`get_job` の `kind`） | 始めるツール | `target` | 結果（`result`） |
 |----------------------------|-------------|----------|-----------------|
-| `generate_shot` | `generate_shot`, `generate_shot_candidates`, `send_director_command`（再生成）, `confirm_continue` | Shot ID（`confirm_continue` は新しい Shot） | `shot_id`, `shot_state`, `take_ids`（開始後に作られた Take）。Shot が止まって新しい Take が無ければ `failed` |
+| `generate_shot` | `generate_shot`, `generate_shot_candidates`, `send_director_command`（再生成）, `confirm_continue` | Shot ID（`confirm_continue` は新しい Shot） | `shot_id`, `shot_state`, `take_ids`（開始後に作られた Take）。Shot が GENERATING・REPAIRING でローカルの ComfyUI が動いている間は、`get_job` の `progress`（`step` / `max_step`・`percent`・`eta_seconds`。[mcp-tools.md](mcp-tools.md)）が付く（Issue #966）。Shot が止まって新しい Take が無ければ `failed` |
 | `build_reference_pack` | `build_reference_pack` | Shot ID | `shot_id`, `reference_count` |
 | `judge_take` | `judge_take` | Take ID | `take_id`, `verdict`, `overall_confidence`。結果が作られずに止まれば `failed` |
 | `repair_take` | `repair_take` | Take ID | `take_id`, `action`, `new_take_id`。新しい Take を作らない Repair（Edit-Level Repair）は `new_take_id` が空で `succeeded`、作るはずが作れなければ `failed`。Retry Policy の上限で止まったときも `failed` |
@@ -112,3 +112,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。Scene / Shot・Director・生成・Continue・Judge・Repair・Take のツール 27 個、ジョブ種別 `build_reference_pack`・`judge_take`・`repair_take`、ダウンロード種別 `take_video`・`take_thumbnail` | Issue #830。画面の全操作を MCP ツールにする（Scene / Shot / 生成 / Take の担当分） |
+| 1.1 | 2026-11-02 | `generate_shot` のジョブで、ローカルの ComfyUI が動いている間は `get_job` に `progress`（ステップ・%・残りの見積り）が付くことを書いた | Issue #966 |

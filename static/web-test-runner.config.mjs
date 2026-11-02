@@ -55,6 +55,8 @@ const modelManagerAnswers = {
   'GET /model-manager/models/model-8/consent': ['scroll-mm-consent.html', 200],
   'GET /model-manager/dialog': ['', 200], // what "閉じる" swaps in: nothing (handlers.CloseDialog)
   'GET /model-manager/models': ['scroll-mm-poll-done.html', 200],
+  // The engine card (test: poll/model-manager-refresh): its poll and its refresh button get the card of the finished install, and the list out of band.
+  'GET /model-manager/engine': ['mm-engine-done.html', 200],
 };
 
 async function modelManagerAnswerMiddleware(ctx, next) {

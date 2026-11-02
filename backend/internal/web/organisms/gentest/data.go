@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -170,8 +171,9 @@ type Confirm struct {
 	OverLimit string
 	Hidden    []Hidden
 	// Match says the estimate is of a prompt match (Items are its most rounds) and RunPath is where its confirmation is posted ("": the run of a batch).
-	Match   bool
-	RunPath string
+	Match     bool
+	RunPath   string
+	RoleNotes []rolenotice.Note // models that use a reference as a whole picture (#959); the run button then opens their modal first.
 }
 
 func (c Confirm) runPath() string {

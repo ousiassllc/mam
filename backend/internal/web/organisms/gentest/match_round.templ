@@ -1,0 +1,83 @@
+package gentest
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// matchRound is one round: the picture, how much it looks like the reference, what was fixed to get it, and what still differs.
+templ matchRound(r MatchRound, target int) {
+	<li
+		class={ "grid gap-3 rounded-lg border p-3 sm:grid-cols-[10rem_1fr]", templ.KV("border-emerald-500/60 bg-emerald-500/10", r.Best), templ.KV("border-neutral-800", !r.Best) }
+		data-testid="gt-match-round"
+		data-round={ itoa(r.N) }
+		data-status={ r.Status }
+		data-best={ boolText(r.Best) }
+	>
+		<div class="flex h-40 w-full items-center justify-center rounded-md bg-black sm:w-40">
+			if r.ImageURL != "" {
+				<img src={ r.ImageURL } alt={ "第 " + itoa(r.N) + " 回の生成結果" } class="h-full w-full rounded-md object-contain" loading="lazy"/>
+			} else {
+				@atoms.BadgeWith(resultTone(r.Status), r.StatusText, templ.Attributes{"data-testid": "gt-match-round-status"})
+			}
+		</div>
+		<div class="flex min-w-0 flex-col gap-2">
+			<div class="flex flex-wrap items-center gap-3">
+				<span class="text-xs text-neutral-400">第 { itoa(r.N) } 回</span>
+				if r.Score != "" {
+					<span class="text-3xl font-semibold tabular-nums text-neutral-100" data-testid="gt-match-score">{ r.Score }</span>
+					if r.Reached {
+						@atoms.Badge(atoms.BadgeOK, "目標に届きました")
+					}
+				} else if r.Active {
+					@atoms.Badge(atoms.BadgeInfo, r.StatusText)
+				}
+				if r.Best {
+					@atoms.Badge(atoms.BadgeOK, "ベスト")
+				}
+				<span class="ml-auto flex items-center gap-3">
+					if r.UseURL != "" {
+						<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(r.UseURL) } aria-label={ "第 " + itoa(r.N) + " 回のプロンプトで比べる" } data-testid="gt-match-round-use">プロンプトで比べる</a>
+					}
+					if r.DetailURL != "" {
+						<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(r.DetailURL) } aria-label={ "第 " + itoa(r.N) + " 回の詳細" }>詳細</a>
+					}
+				</span>
+			</div>
+			if r.ScoreNote != "" {
+				<p class="break-words text-xs text-neutral-300" data-testid="gt-match-scoring">{ r.ScoreNote }</p>
+			}
+			if r.Score != "" {
+				<progress
+					class={ "h-1.5 w-full", templ.KV("accent-emerald-400", r.Reached), templ.KV("accent-amber-400", !r.Reached) }
+					max="100"
+					value={ itoa(r.Percent) }
+					aria-label={ "似てる度 " + r.Score }
+				></progress>
+			}
+			if r.Error != "" {
+				<p class="break-words text-sm text-red-300" data-testid="gt-match-round-error">{ r.Error }</p>
+			}
+			if r.Instruction != "" {
+				<p class="break-words text-sm text-neutral-200" data-testid="gt-match-instruction-used"><span class="text-xs text-neutral-400">指示</span> { r.Instruction }</p>
+			}
+			if r.Change != "" {
+				<p class="break-words text-sm text-neutral-200" data-testid="gt-match-change"><span class="text-xs text-neutral-400">直したところ</span> { r.Change }</p>
+			}
+			if len(r.Differences) > 0 {
+				<ul class="list-disc pl-5 text-xs text-neutral-300" data-testid="gt-match-differences">
+					for _, d := range r.Differences {
+						<li class="break-words">{ d }</li>
+					}
+				</ul>
+			}
+			if r.Prompt != "" {
+				<details class="text-xs" data-testid="gt-match-prompt">
+					<summary class="cursor-pointer text-neutral-400">プロンプト</summary>
+					<p class="mt-1 whitespace-pre-wrap break-words rounded-md border border-neutral-800 p-2 text-neutral-200" data-testid="gt-match-prompt-text">{ r.Prompt }</p>
+					if r.BasePrompt != "" {
+						<p class="mt-2 text-neutral-400">直す前（第 { itoa(r.BasedOn) } 回）</p>
+						<p class="mt-1 whitespace-pre-wrap break-words rounded-md border border-neutral-800 p-2 text-neutral-300" data-testid="gt-match-base-prompt">{ r.BasePrompt }</p>
+					}
+				</details>
+			}
+		</div>
+	</li>
+}

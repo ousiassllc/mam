@@ -3,7 +3,6 @@ package gpustate
 import (
 	"encoding/json"
 	"slices"
-	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 )
@@ -95,13 +94,7 @@ func runningJob(endpoint, id string, reg *live.Registry) QueueJob {
 	case p.MaxStep == 0:
 		j.ProgressUnavailable = "ComfyUI がまだステップを報告していません（モデルの読み込みなどの準備中）"
 	default:
-		pr := &JobProgress{Node: p.Node, Step: p.Step, MaxStep: p.MaxStep, Percent: p.Percent}
-		if p.HasETA {
-			pr.ETASeconds = new(int(p.ETA.Round(time.Second) / time.Second))
-		} else {
-			pr.ETAUnavailable = "このノードのステップがまだ進んでいないため、残り時間を見積もれません"
-		}
-		j.Progress = pr
+		j.Progress = p.View()
 	}
 	return j
 }

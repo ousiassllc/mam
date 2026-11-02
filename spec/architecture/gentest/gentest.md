@@ -1,6 +1,6 @@
 # 生成テスト（プロジェクトに属さない画像・動画の比較生成）
 
-Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)）、Model Adapter の直接呼び出し（[gentest-adapter.md](gentest-adapter.md)）、テーブル（[er-gentest.md](er-gentest.md)）、ルート（[../../api/endpoints-gentest.md](../../api/endpoints-gentest.md)）の全体の設計。実装は `backend/internal/service/gentest`（サービス。下位に `gterr`・`modelcatalog`・`projectlink`・`gentesttest`）・`backend/internal/repository/gentestrepo`・`web/handler/gentest`・`web/organisms/gentest`・`mcp/tools/gentest`。
+Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)）、Model Adapter の直接呼び出し（[gentest-adapter.md](gentest-adapter.md)）、テーブル（[er-gentest.md](er-gentest.md)）、ルート（[../../api/endpoints-gentest.md](../../api/endpoints-gentest.md)）の全体の設計。実装は `backend/internal/service/gentest`（サービス。下位に `gterr`・`modelcatalog`・`projectlink`・`history`・`record`・`runner`・`gentesttest` ほか。下の「パッケージの構成」）・`backend/internal/repository/gentestrepo`・`web/handler/gentest`・`web/organisms/gentest`・`mcp/tools/gentest`。
 
 目的: モデルとプロンプトを組み合わせて、**プロジェクトを作らずに**画像・動画を生成して見比べ、気に入った結果だけをプロジェクトに取り込む。生成は Take・コスト台帳・アセットを作らず、結果は履歴（`gentest_*` のテーブルと `<data-dir>/gentest/`）にだけ残る。
 
@@ -34,7 +34,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 警告（`warnings`）: モデルが使えない入力画像は外して知らせる（`inputs_dropped`）、長さの丸め（`duration_snapped`）、モデルが作らない解像度・縦横比（失敗する）、単価なし、ネガティブをプロンプトに書き足す（`negative_folded`）、シード非対応（同じ入力を本数ぶん呼ぶ）、最初／最後のフレームと自由な参照の併用、参照が多すぎる。Runway で 1:1 かつ最初のフレームなしは、実行前に警告する（ベンダーが受け付けない組み合わせ）。
 
-**上限**（`models.json` の `gentest`。`gentestcfg`）: `max_items`（既定 50）・`max_cost_usd`（既定 20。0 は上限なし）。見積りの時点で `over_limit`（確認の画面は実行ボタンを無効にする）、`Run` でサーバー側でも拒否する（`max_items` は入力の誤り、コストは 409）。`models.json` が固定されているとき（`MAM_MODELS_PINNED`）は他の項目と同じく画面から変えられない。
+**上限**（`models.json` の `gentest`。`gentestcfg`）: `max_items`（既定 50）・`max_cost_usd`（既定 20。0 は上限なし）・`match_face`（プロンプトマッチの似てる度に顔を混ぜる `weight`（既定 0 = 混ぜない）・`floor`・`ceil`。[prompt-match.md](prompt-match.md)）。見積りの時点で `over_limit`（確認の画面は実行ボタンを無効にする）、`Run` でサーバー側でも拒否する（`max_items` は入力の誤り、コストは 409）。`models.json` が固定されているとき（`MAM_MODELS_PINNED`）は他の項目と同じく画面から変えられない。
 
 **確認の取り決め**: `estimate_id` は、正規化した要求・モデルごとの内訳・合計の SHA-256。プロンプトとネガティブの改行（CRLF・CR）は LF にそろえてから数える（ブラウザは textarea を CRLF で送り、確認の hidden は LF で戻るため。モデルへ送る文は書き換えない）。単価なし（`unknown`）のモデルは内訳に `unit_usd`・`subtotal_usd` なしで入り、合計には入らないが、`estimate_id` の対象には含む。`Run` は同じ入力で見積りをやり直し、`estimate_id` か合計が違う（単価・設定・入力・可用性が変わった）、または上限を超えるときは `*ConflictError`（HTTP 409 / MCP `conflict`）で拒否し、バッチもジョブも作らない。
 
@@ -60,13 +60,13 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ジョブ（`handle`）: ベンダーごとにワーカーを置き（数は `Adapter.ConcurrencyLimit(vendor)`）、ベンダー同士は並行して動かす。1 件ごとに `running` → 呼び出し → `succeeded`/`failed` を、`context.WithoutCancel` でその都度記録する（mam が終了中でも、完了済みの結果は残る）。結果ファイルは `<data-dir>/gentest/<バッチ ID>/<結果 ID>.<拡張子>` に原子的に書く。
 
-- **進捗**はテーブルの件数（状態ごとの `COUNT`）から求める。画面は 2 秒ごとに取り直し（HTMX）、MCP は `get_job`・`get_generation_test`。メモリ上の進捗の記録は持たない。
+- **進捗**はテーブルの件数（状態ごとの `COUNT`）から求める。画面は 2 秒ごとに取り直し（HTMX）、MCP は `get_job`・`get_generation_test`。件数のほかに、ローカルの ComfyUI が動いている間だけ、ステップの進み（`progress`: ステップ・%・残りの見積り）を、メモリ上の記録（`agent/modeladapter/comfyui/live`。ジョブキューのジョブ ID（`BatchStatus.job_id`）を持ち主にして、ComfyUI のバックエンドが書く。get_gpu_status と共通）から読む。永続化せず、無ければ省く（Issue #966）。
 - **取り消し**（`Cancel`）: まだ始めていない結果を `cancelled`（理由「キャンセルされました」）にし、新しい呼び出しを始めない。**呼び出し中のものは終わるのを待ち**、その結果は残す（ベンダー側では生成が続き課金されうるため）。終わったバッチの取り消しは 409。取り消しの登録はメモリ上（`runs`）。
 - **削除**: 結果の削除は行とファイルを消し、バッチの最後の 1 件を消すとバッチ・入力・ディレクトリも消す。終わっていない結果は 409。バッチが先に消されたジョブは何もせず終わる。
 
 ## 5. 失敗・中断の扱い
 
-- 1 件の失敗（キー未登録・ブレーカー開・タイムアウト・ベンダーの拒否・入力を受け付けない）はその結果を `failed`・理由つきにし、他の結果は続ける。理由は日本語に直す（`Explain`: モデルマネージャーの拒否の文言。ベンダーのタイムアウトは「ベンダー側では生成が続き、課金される場合があります」を添える。ローカル（登録した接続先）のタイムアウトは `localcfg.TimeoutError`（接続先のベンダー `endpoint:<名>` への呼び出しのタイムアウトを `modeladapter.call` が包む。`ErrTimeout` のままでもある）で見分け（文言は `gentest/failtext`）、課金には触れず「接続先の待ち時間（N 時間）を超えたため打ち切りました。設定画面の接続先でタイムアウトを延ばすか、解像度や秒数を小さくして実行し直してください」と出す）。**再試行して別モデルへ回すことはしない**。
+- 1 件の失敗（キー未登録・ブレーカー開・タイムアウト・ベンダーの拒否・入力を受け付けない）はその結果を `failed`・理由つきにし、他の結果は続ける。理由は日本語に直す（`Explain`: モデルマネージャーの拒否の文言。ベンダーのタイムアウトは「ベンダー側では生成が続き、課金される場合があります」を添える。ローカル（登録した接続先）のタイムアウトは `localcfg.TimeoutError`（接続先のベンダー `endpoint:<名>` への呼び出しのタイムアウトを `modeladapter.call` が包む。`ErrTimeout` のままでもある）で見分け（文言は `gentest/failtext`）、課金には触れず、ComfyUI のジョブが止まったとき（`TimeoutError.Stalled`）は「N のあいだ進まなかったため打ち切りました。ComfyUI が止まっていないか確かめてください…タイムアウト（進みが止まってから打ち切るまでの時間）を延ばしてください」、全体の上限（24 時間）に達したときは「全体の上限（24時間）を超えたため…解像度や秒数を小さくして実行し直してください」、互換の接続先は「接続先の待ち時間（N 時間）を超えたため打ち切りました。設定画面の接続先でタイムアウトを延ばすか、解像度や秒数を小さくして実行し直してください」と出す）。**再試行して別モデルへ回すことはしない**。
 - **mam の異常終了**: ジョブは再開しない（生成は課金されるため）。起動時（`jobqueue.Recover` のあと）に `OnStartup` が、`queued`・`running` のまま残った結果を `failed`（理由「mam が停止したため中断されました（課金される生成は再開しません）」）にする。完了済みの結果は残る。24 時間以上前の入力のステージング（`_staging/`）も消す。
 - ジョブ自体が失敗するのは、バッチを始められないとき（入力画像のファイルが読めない等）だけ。その場合は未着手の結果をすべて `failed` にする。
 
@@ -80,7 +80,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 **画像モデルの参照（Issue #933）**: 画像の入力は、役割 `reference`（全体。既定）/ `face`（顔だけ）/ `style`（画風・雰囲気だけ）/ `edit`（編集する元の画像）と、強さ `strength`（0〜1。省くと `localcfg.DefaultReferenceStrength` = 0.7）を持つ。強さの実現方法（img2img の denoise、編集モデルへの指示の強さ、アダプタの重み）はモデルごとに違い、**画面と MCP は同じ「強さ」の 1 つの値だけを出す**。範囲外の強さ・存在しない役割・動画への強さ・LoRA・ポーズ設定は入力の誤り。リクエスト全体に、`avoid_reference_pose`（参照を使うモデルのネガティブプロンプトに `localcfg.AvoidPoseNegative` を足す。ネガティブの欄が無いモデルは既存の畳み込み（`Avoid: …`、警告 `negative_folded`）。参照を使わないモデルは何もしない）と `lora`（名前・強さ 0〜1、既定 `localcfg.DefaultLoRAStrength` = 0.4。画像だけ）がある。名前は 1〜200 文字で制御文字を含まない（サブフォルダの `/` と `.` は可）。強さを実現できるのは同梱 ComfyUI の参照対応モデルだけで、クラウドの画像モデルなどでは無視される（警告は出さない）。**強さの保存値は入口で違う**: 画面のフォームは常に明示の強さを送る（省いた欄は 0.7 として保存）が、MCP は省くと保存しない（`gentest_input.strength` は NULL で、モデルが既定を使う）。
 
-モデルごとの扱いは `modelcatalog.Info` の `reference_mode`（`edit`＝編集モデル: 複数枚・役割あり / `img2img`＝1 枚から始める）・`max_reference_images`・`reference_roles`・`supports_lora`（どれもワークフローの割り当て・`reference_mode`・`lora_model_node` から `modelcatalog.ReferenceCapsOf`（`localcfg.Model.ReferenceCaps`）と `modelcatalog.SupportsLoRA` が決める。クラウドの画像モデルは参照を使えても枚数・役割は不明で、役割は `reference` だけ）で決まる。**対応しない分は拒否せず、そのモデルからだけ外して警告する**: 参照を使えないモデル `inputs_dropped`、枚数超過 `too_many_refs`（先頭から `max_reference_images` 枚。img2img のモデルは**先頭の 1 枚だけ**を使い、残りは `too_many_refs` の警告になる）、そのモデルが取らない役割 `role_unsupported`（画像は全体の参照として使う）、LoRA に対応しないモデル `lora_unsupported`（LoRA は送らない）。結果の行には各入力の `role`・`strength`（`gentest_input`）と、使った `avoid_pose`・`lora`（`params`）を残し、`direct.Image` へは `modeladapter.Input.Role` / `Strength` と `ImageRequest.LoRA` として渡す（強さ 0 は「既定」と区別するため、参照も LoRA も `refs.MinStrength` = 0.01 にして送る。履歴には選んだ 0 を残す）。LoRA の名前の一覧は同梱 ComfyUI エンジンの `GET /object_info/LoraLoaderModelOnly`（`lora_name` の選択肢）から `Service.LoRAs(ctx, media)` が数秒の間だけ覚えて返す（エンジンが止まっていれば空。失敗も同じ間覚え、取得中の呼び出しは 1 回の取得を共有するので、応答しないエンジンでも待つのは 1 回だけ。動画では LoRA を使えないのでエンジンに問い合わせない）。
+モデルごとの扱いは `modelcatalog.Info` の `reference_mode`（`edit`＝編集モデル: 複数枚・役割あり / `img2img`＝1 枚から始める）・`max_reference_images`・`reference_roles`・`supports_lora`（どれもワークフローの割り当て・`reference_mode`・`lora_model_node` から `modelcatalog.ReferenceCapsOf`（`localcfg.Model.ReferenceCaps`）と `modelcatalog.SupportsLoRA` が決める。クラウドの画像モデルは参照を使えても枚数・役割は不明で、役割は `reference` だけ）で決まる。**対応しない分は拒否せず、そのモデルからだけ外して警告する**: 参照を使えないモデル `inputs_dropped`、枚数超過 `too_many_refs`（先頭から `max_reference_images` 枚。img2img のモデルは**先頭の 1 枚だけ**を使い、残りは `too_many_refs` の警告になる）、そのモデルが取らない役割 `role_unsupported`（画像は全体の参照として使う）、LoRA に対応しないモデル `lora_unsupported`（LoRA は送らない）。結果の行には各入力の `role`・`strength`（`gentest_input`）と、使った `avoid_pose`・`lora`（`params`）を残し、`direct.Image` へは `modeladapter.Input.Role` / `Strength` と `ImageRequest.LoRA` として渡す（強さ 0 は「既定」と区別するため、参照も LoRA も `refs.MinStrength` = 0.01 にして送る。履歴には選んだ 0 を残す）。LoRA の名前の一覧は同梱 ComfyUI エンジンの `GET /object_info/LoraLoaderModelOnly`（`lora_name` の選択肢）から `Service.LoRAs(ctx, media)` が数秒の間だけ覚えて返す（エンジンが止まっていれば空。失敗も同じ間覚え、取得中の呼び出しは 1 回の取得を共有するので、応答しないエンジンでも待つのは 1 回だけ。動画では LoRA を使えないのでエンジンに問い合わせない）。 警告 `role_unsupported` には、そのモデルが使わない（全体の参照に落とす）参照の役割 `roles`（`face` / `style` / `edit`。実際に使う参照だけ・重複なし・参照の並び順）が付く（`gentest.Warning.Roles`、`refs.Warning.Roles`）。画面は、これを源にして実行の前に「◯◯は「顔だけ」に対応していないので、全体の参照として使います。構図や服も寄ります」というモーダルをモデルごとに出す（Issue #959。[../../components/gentest-screen.md](../../components/gentest-screen.md)）。警告と全体への置き換え（`refs.RoleFor`）は変えない
 
 ## 7. プロジェクトへの取り込み（`projectlink`）
 
@@ -106,6 +106,21 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 ## 9. テスト
 
 見積り（3 状態・丸め・上限）・直接呼び出し（代替なし・プロンプトそのまま・シードは対応モデルだけ・ブレーカーと同時実行）・バッチのジョブ（全組み合わせ・取り消し・クラッシュ後の整理・Take・台帳が増えないこと）・履歴（絞り込み・お気に入り・プロンプトの重複排除・削除）・取り込み（参照・アセット・スロット・LOCK・ファイルの複製）・マイグレーションの up/down・画面（CSRF・流れ・HTMX の進捗）・MCP（見積り → 実行の 409・`get_job`・トークン URL）。英訳（ON/OFF・英語はそのまま LLM を呼ばない・1 回の実行で 1 回だけ・失敗でモデルを呼ばない・履歴に両方・見積りの単価なしの行・ネガティブの欄あり／なし。`servicetest/translate_test.go`、`agent/prompttranslate`）。偽のバックエンドは `service/gentest/gentesttest`、ローカルの ComfyUI を通した結果までは `service/gentest/localtest`。実際のベンダー API（シードの効き・価格）は実機で未確認。 ZIP のエクスポート（`export`: `photos/` と `prompts/prompts.csv` の構造・BOM・`encoding/csv` での再読み込み・番号とファイル名の対応・直近 N 件／バッチ／指定／お気に入り／モデル／種類／商用利用の選び方・分割・数式で始まるセル・ファイル名の無害化・ストリームの失敗）と、画面の選択（`export-pick.wtest.ts`: タップで枠が光る・自動更新で選択が消えない・隠れたカードを送らない）。
+
+## 10. パッケージの構成（Issue #963）
+
+`service/gentest` は 1 ディレクトリ 行数上限（linterly。ディレクトリ 2000 行）に収めるため、責務ごとにサブパッケージへ分けてある。依存は一方向（下から上）で、サブパッケージは `service/gentest` を import しない（`service` も import しない。拒否は `gterr`）。
+
+| 置き場所 | 責務 |
+|---|---|
+| `service/gentest`（直下） | `Service`・`Deps`（下のサブパッケージを束ねて公開の窓口にする）、リクエスト（`Request`・検査）、見積り（`Estimate`・`Confirmation`・`planModel`）、バッチの作成と実行の開始（`Run`）、入力画像の置き場と解決（`StageReference`・`ResolveInput`）、バッチの状態（`BatchStatus`）、英訳、モデルの一覧 |
+| `runner` | ジョブ `domain.JobGentest` のハンドラ（`RunJob`）、結果 1 件の生成と確定（`execute`・`settle`）、`Generate`・`Cancel`、失敗の理由（`Reason*`・日本語への直し） |
+| `history` | 履歴（一覧・詳細・ファイル・お気に入り・削除・プロンプト履歴・累計）。`Store` |
+| `record` | 履歴の JSON 列（`BatchParams`・`ResultParams`・`SentText`）、ジョブのペイロード、結果・入力・取り込み・プロンプトのビュー（`ResultView` ほか）。`runner`・`history`・直下が共有する型 |
+| `export` / `refs` / `match` / `matchinfo` / `modelcatalog` / `projectlink` / `loras` / `failtext` / `gterr` | それぞれ ZIP エクスポート、入力画像と LoRA の判定、プロンプトマッチ、マッチの記録、モデルの一覧、プロジェクト側、LoRA の一覧、失敗の文言、拒否の型 |
+| `gentesttest` / `servicetest` / `localtest` / `speedtest` | テストの道具と、パッケージをまたぐテスト |
+
+`Service` は `projectlink.Link`・`runner.Runner`・`history.Store` を埋め込み、これらのメソッドを自分のものとして公開する。`Deps.Extra`（プロンプトマッチ）は `runner.Runner` のフィールドで、`match.New` が組み立てるときに入れる。
 
 ## 改訂履歴
 

@@ -7,6 +7,7 @@ package comfyui
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"path"
 	"strings"
@@ -95,8 +96,9 @@ func (b *Backend) run(ctx context.Context, v values, stage bool) (output, error)
 	// The job is known to the tools that show the GPU from the moment it is queued: the steps the server sends
 	// right after it accepts the prompt must find it.
 	job := live.Default.Start(b.Client.Name, promptID)
+	job.Own(live.OwnerOf(ctx))
 	defer job.End()
-	track := newTracker(ctx, promptID, parsed, job)
+	track := newTracker(ctx, promptID, parsed, job, b.Client.Clock)
 	stop := b.listen(ctx, clientID, track)
 	defer stop()
 
@@ -112,7 +114,7 @@ func (b *Backend) run(ctx context.Context, v values, stage bool) (output, error)
 	track.setPrompt(id)
 	h, err := b.wait(ctx, id, track)
 	if err != nil {
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || errors.Is(err, modeladapter.ErrTimeout) { // the call ended, or the job stalled
 			b.cancel(id)
 		}
 		return output{}, modeladapter.AfterSubmit(err)
@@ -129,7 +131,7 @@ func (b *Backend) run(ctx context.Context, v values, stage bool) (output, error)
 }
 
 // wait polls the history until the prompt has ended, as the socket's messages say it did or the poll interval
-// passes. It returns the history entry of a prompt that succeeded.
+// passes. It returns the history entry of a prompt that succeeded, or the timeout error of one that stalled (stall.go).
 func (b *Backend) wait(ctx context.Context, promptID string, t *tracker) (history, error) {
 	tick := time.NewTicker(b.Client.Poll())
 	defer tick.Stop()
@@ -145,6 +147,9 @@ func (b *Backend) wait(ctx context.Context, promptID string, t *tracker) (histor
 		}
 		if msg := t.failed(); msg != "" {
 			return history{}, b.Client.Failed(msg)
+		}
+		if err := b.stalled(ctx, promptID, t); err != nil {
+			return history{}, err
 		}
 		select {
 		case <-ctx.Done():

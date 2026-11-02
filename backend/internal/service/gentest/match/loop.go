@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/matchinfo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
 // played is a round that has a measured similarity.
@@ -55,7 +56,7 @@ func (s *Service) loop(ctx context.Context, batch gentestrepo.Batch) (err error)
 	defer func() {
 		bg := context.WithoutCancel(ctx)
 		if ctx.Err() != nil {
-			_, _ = g.Repo.FailQueued(bg, batch.ID, gentest.ReasonInterrupted, g.Now().UTC())
+			_, _ = g.Repo.FailQueued(bg, batch.ID, runner.ReasonInterrupted, g.Now().UTC())
 		} else if err != nil {
 			_, _ = g.Repo.FailQueued(bg, batch.ID, "マッチを始められませんでした: "+err.Error(), g.Now().UTC())
 		} else {
@@ -144,7 +145,7 @@ func (s *Service) round(ctx context.Context, st *state, q gentestrepo.Result) (s
 		s.record(ctx, q.ID, aspect, info)
 		return true
 	}
-	info.Score, info.Differences = &j.Score, j.Differences
+	info.Score, info.Differences, info.Scoring = &j.Score, j.Differences, j.Scoring
 	s.record(ctx, q.ID, aspect, info)
 	st.played = append(st.played, played{made, info})
 	return j.Score >= cmp.Or(info.Target, DefaultTarget)
@@ -184,7 +185,7 @@ func (s *Service) failRound(ctx context.Context, q gentestrepo.Result, err error
 	s.g.Logger.Warn("prompt match: round failed", "result_id", q.ID, "err", err)
 	st := gentestrepo.Settlement{Status: gentestrepo.StatusFailed, Error: failure(err), At: s.g.Now().UTC()}
 	if ctx.Err() != nil {
-		st.Error = gentest.ReasonInterrupted
+		st.Error = runner.ReasonInterrupted
 	}
 	if err := s.g.Repo.Settle(context.WithoutCancel(ctx), q.ID, st); err != nil {
 		s.g.Logger.Error("prompt match: settle the round failed", "result_id", q.ID, "err", err)

@@ -127,7 +127,7 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 - 各プロバイダーのSDKバージョン・具体的なエンドポイント・レート制限値は実装フェーズで確定する
 - コスト実測値（$/秒、$/画像等）は市場変動が大きいため、`non-functional.md` §6「コスト可視化」機能で継続的に検証し、本書の数値は参考値として扱う
 - 動画/画像/LLM市場は数ヶ月単位でモデル改廃が発生するため、本書は半期ごとに見直しレビューを行う（次回レビュー目安: 2027-03）
-- Face Identity Similarity の顔検出・埋め込みモデルと推論ランタイム（ONNX Runtime）は M1 で検証済み（§10.1）。残る確認事項は、SFace の学習データの権利関係（配布元リポジトリは重みのライセンス（Apache-2.0）のみを明記し、学習データセットを明記していない）で、商用配布前に法務確認が必要（本アプリはモデルファイルを同梱しない）。閾値は実測で決定する（仕様では固定しない）
+- Face Identity Similarity の顔検出・埋め込みモデルと推論ランタイム（ONNX Runtime）は M1 で検証済み（§10.1）。残る確認事項は、SFace の学習データの権利関係（配布元リポジトリは重みのライセンス（Apache-2.0）のみを明記し、学習データセットを明記していない）で、商用配布前に法務確認が必要（本アプリはモデルファイルを同梱しない）。2026-11-02 に一次情報（OpenCV Zoo `models/face_recognition_sface` の README・LICENSE、元のリポジトリ `zhongyy/SFace` の README）を再確認し、重み = Apache-2.0・YuNet = MIT・ONNX の学習データは明記なし、という結論は変わらない。商用可否が確かめられていないので、プロンプトマッチの似てる度に顔を混ぜる機能（`gentest.match_face`。[gentest/prompt-match.md](gentest/prompt-match.md)）は既定で OFF にしている。商用可能な顔の埋め込みへの差し替えは別 Issue（#960）で扱い、混ぜ方の数字は `imagematch.FaceMix` の 1 か所にある閾値は実測で決定する（仕様では固定しない）
 - Jev の外部 API 利用は、シャドー実行の結果（一致率・confidence・遅延・コスト）で採否を判断する。`spec/requirements/non-functional.md` §5 の外部送信方針との整合を導入時に確認する
 
 ## 2.1 実装（`internal/agent/llm`）
@@ -163,7 +163,7 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 | `models.<正規識別子>` | `model`（API のモデル ID）、`fast_model`、`cost_per_image_usd`、`cost_per_second_usd`（解像度別）、`quality`（`gpt-image-2` だけ。`low` / `medium` / `high`。品質プロファイル。下の「GPT Image 2 の品質プロファイルと価格」）。価格は参考値（§8）で見積コストにのみ使う（GPT Image 2 の `actual_cost` は応答の `usage` から計算する） | §3 / §4 の割り当て。`quality` は `medium` |
 | `images.<purpose>` | `primary` / `fallback`（`model` と `fast`） | §3 の表 |
 | `policies.<fast\|balanced\|max_quality>` | `primary` / `fallback`（`model` と `resolution`）、`takes`（Take 数） | FAST: Kling 3.0 720p → Seedance 2.0 480p、2 Take。BALANCED: Seedance 2.0 720p → Kling 3.0 720p、3 Take。MAX QUALITY: Runway Gen-4.5 720p → Kling 3.0 1080p、4 Take |
-| `endpoints.<名>` / `local_models.<接続先>/<名>` | 登録した接続先（`kind`・`base_url`・`max_concurrency`・`timeout_seconds`）とそのモデル（ワークフロー・割り当て表・動画の長さと解像度・価格）。`images`・`policies` の `model` には `<kind>:<接続先>/<名>` を書ける。接続先の API キーは `credential.Store` の `endpoint:<名>`（任意）に置く。スキーマは [local-models.md](local-models.md) §3 | 空（価格 0、同時実行 1、タイムアウト ComfyUI 10800 秒（3 時間。`localcfg.DefaultTimeoutComfyUI`。接続先ごとに変えられる。越えた呼び出しは打ち切り、ComfyUI のそのジョブも止める）・互換 900 秒） |
+| `endpoints.<名>` / `local_models.<接続先>/<名>` | 登録した接続先（`kind`・`base_url`・`max_concurrency`・`timeout_seconds`）とそのモデル（ワークフロー・割り当て表・動画の長さと解像度・価格）。`images`・`policies` の `model` には `<kind>:<接続先>/<名>` を書ける。接続先の API キーは `credential.Store` の `endpoint:<名>`（任意）に置く。スキーマは [local-models.md](local-models.md) §3 | 空（価格 0、同時実行 1、タイムアウト ComfyUI 10800 秒（3 時間。`localcfg.DefaultTimeoutComfyUI`。接続先ごとに変えられる。ComfyUI では進まなくなってから打ち切るまでの時間で、呼び出しの全体は 24 時間が上限。越えた呼び出しは打ち切り、ComfyUI のそのジョブも止める。[local-models.md](local-models.md) §3「タイムアウト」）・互換 900 秒） |
 | `prefer_openai` | トップレベルの真偽値。`true` で新規参照（`new_reference`）を `unified_openai` へ回す（§3） | `false` |
 | `retry` / `breaker` | §2.1 と同じ形式・同じ既定値 | 3 回 / 1000ms〜16000ms、5 回失敗で 30 秒 OPEN |
 

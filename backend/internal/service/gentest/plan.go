@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 )
 
@@ -18,6 +19,8 @@ type Warning struct {
 	Model   string `json:"model,omitempty"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// Roles are the roles of the references the model does not take, for WarnRoleUnsupported only: they are used as a whole picture.
+	Roles []string `json:"roles,omitempty"`
 }
 
 // The codes of a Warning.
@@ -59,7 +62,7 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 		p.warnings = append(p.warnings, Warning{Model: info.ID, Code: code, Message: fmt.Sprintf(format, args...)})
 	}
 	if r.Media == gentestrepo.MediaImage {
-		s.planImage(r, &p, warn)
+		s.planImage(r, &p)
 	} else {
 		s.planVideo(cfg, r, &p, warn)
 	}
@@ -175,8 +178,8 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 }
 
 // resultParamsOf is what is recorded of the request for the result of one model.
-func resultParamsOf(r Request, mp modelPlan, translation *sentText) resultParams {
-	p := resultParams{
+func resultParamsOf(r Request, mp modelPlan, translation *record.SentText) record.ResultParams {
+	p := record.ResultParams{
 		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode,
 	}
 	if mp.lora {
@@ -186,7 +189,7 @@ func resultParamsOf(r Request, mp modelPlan, translation *sentText) resultParams
 }
 
 // planImage decides which references, which LoRA and which pose option an image model takes of the request (refs.Decide).
-func (s *Service) planImage(r Request, p *modelPlan, warn func(code, format string, args ...any)) {
+func (s *Service) planImage(r Request, p *modelPlan) {
 	roles := make([]string, len(r.References))
 	for i, ref := range r.References {
 		roles[i] = ref.Role
@@ -198,6 +201,6 @@ func (s *Service) planImage(r Request, p *modelPlan, warn func(code, format stri
 	}, roles, r.LoRA != nil, r.AvoidReferencePose)
 	p.used, p.lora, p.avoidPose = d.Used, d.LoRA, d.AvoidPose
 	for _, w := range d.Warnings {
-		warn(w.Code, "%s", w.Message)
+		p.warnings = append(p.warnings, Warning{Model: info.ID, Code: w.Code, Message: w.Message, Roles: w.Roles})
 	}
 }

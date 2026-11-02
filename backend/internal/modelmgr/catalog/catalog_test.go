@@ -23,15 +23,15 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 20)
+	require.Len(t, c.Models, 23)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
 	}
 	assert.Equal(t, []string{
-		"flux1-schnell", "flux2-klein-4b", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", // standard: images, then videos
+		"flux1-schnell", "flux2-klein-4b", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
 		"chroma1-hd", "flux1-dev", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "sd35-medium", // advanced: images, then videos
-		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v",
+		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-dfr", "ltx-2.5-22b-distilled-nvfp4", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v",
 	}, ids)
 }
 
@@ -61,7 +61,10 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		"wan22-remix-nsfw-t2v":              {"unspecified", true, modellicense.Unknown, 4},
 		"wan22-i2v-14b-lightx2v-uncensored": {"apache-2.0-declared", true, modellicense.Unknown, 6},
 		"wan22-i2v-14b-nsfw-lora":           {"unspecified", true, modellicense.Unknown, 6},
-		"ltx-2.5-22b-distilled":             {"ltx-2x-community", true, modellicense.Conditional, 5},
+		"wan22-ti2v-5b-fp8":                 {"apache-2.0", false, modellicense.Yes, 3},
+		"ltx-2.5-22b-distilled":             {"ltx-2x-community", true, modellicense.Conditional, 6},
+		"ltx-2.5-22b-distilled-nvfp4":       {"ltx-2x-community", true, modellicense.Conditional, 5},
+		"ltx-2.5-22b-distilled-dfr":         {"ltx-2x-community", true, modellicense.Conditional, 7},
 		"ltx-2.5-22b-distilled-uncensored":  {"ltx-2x-community-uncensored-te", true, modellicense.Unknown, 5},
 	} {
 		m, ok := c.Model(id)

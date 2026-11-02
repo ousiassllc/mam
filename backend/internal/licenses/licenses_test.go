@@ -3,7 +3,6 @@ package licenses_test
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam"
 	"github.com/ousiassllc/mam/backend/internal/licenses"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // The shape of the generated file, in small: a preamble, the table of all components (left out), a component with two license
@@ -74,9 +74,7 @@ func TestNew_GroupsEntriesByFirstAppearanceAndNumbersThem(t *testing.T) {
 // rootNotices is THIRD_PARTY_NOTICES.md of the repository root, read from disk.
 func rootNotices(t *testing.T) string {
 	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	b, err := os.ReadFile(filepath.Join(filepath.Dir(file), "..", "..", "..", "THIRD_PARTY_NOTICES.md"))
+	b, err := os.ReadFile(filepath.Join(testenv.ModuleRoot(t), "THIRD_PARTY_NOTICES.md"))
 	require.NoError(t, err)
 	return string(b)
 }

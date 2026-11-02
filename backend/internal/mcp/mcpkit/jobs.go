@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
@@ -45,6 +46,7 @@ type JobStatus struct {
 	Message    string         `json:"message,omitempty" jsonschema:"いま何をしているか / what it is doing now"`
 	Done       int            `json:"done,omitempty" jsonschema:"終わった数（Take など）/ items finished"`
 	Total      int            `json:"total,omitempty" jsonschema:"全体の数 / items in all"`
+	Steps      *live.View     `json:"progress,omitempty" jsonschema:"動いているローカル ComfyUI の生成の進み具合（step / max_step / percent / eta_seconds）。取れないとき（クラウドのモデル・準備中・終わった後）は省略 / step, percent and time left of the local ComfyUI call that is running; left out when unknown"`
 	Result     map[string]any `json:"result,omitempty" jsonschema:"成功したときの結果（take_id など）/ result when it succeeded (e.g. take_ids)"`
 	Error      string         `json:"error,omitempty" jsonschema:"失敗の理由 / why it failed"`
 	ErrorID    string         `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID。get_app_logs の attrs に {\"error_id\": …} で渡すと原因のログ行が見つかる / correlation id of an internal failure: find its cause with get_app_logs (attrs error_id)"`
@@ -69,8 +71,10 @@ type Progress struct {
 	Message string
 	Done    int
 	Total   int
-	Result  map[string]any
-	Error   string
+	// Steps is how far the model call that runs is, nil when no step is known.
+	Steps  *live.View
+	Result map[string]any
+	Error  string
 	// ErrorID is the correlation id of an internal failure (ReportError); "" for any other state.
 	ErrorID string
 }
@@ -239,7 +243,7 @@ func (j *Jobs) live(ctx context.Context, e *entry) (_ JobStatus, gone bool, _ er
 		if err != nil {
 			return JobStatus{}, false, err
 		}
-		st.State, st.Message, st.Done, st.Total, st.Result, st.Error, st.ErrorID = p.State, p.Message, p.Done, p.Total, p.Result, p.Error, p.ErrorID
+		st.State, st.Message, st.Done, st.Total, st.Steps, st.Result, st.Error, st.ErrorID = p.State, p.Message, p.Done, p.Total, p.Steps, p.Result, p.Error, p.ErrorID
 	}
 	if e.queueJobID != "" {
 		row, err := j.row(ctx, e.queueJobID)

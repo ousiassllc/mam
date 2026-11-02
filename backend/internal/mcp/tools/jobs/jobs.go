@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -46,11 +47,11 @@ func shotProbe(gen *service.GenerationService) mcpkit.Probe {
 		p := mcpkit.Progress{Done: len(fresh), Result: map[string]any{"shot_id": job.Target, "shot_state": string(frag.State), "take_ids": fresh}}
 		switch frag.State {
 		case domain.ShotGenerating:
-			p.State, p.Message = mcpkit.JobRunning, "Take を生成しています"
+			p.State, p.Message, p.Steps = mcpkit.JobRunning, "Take を生成しています", runningSteps(job.Target)
 		case domain.ShotJudging:
 			p.State, p.Message = mcpkit.JobRunning, "AI Video Judge が判定しています"
 		case domain.ShotRepairing:
-			p.State, p.Message = mcpkit.JobRunning, "Repair しています"
+			p.State, p.Message, p.Steps = mcpkit.JobRunning, "Repair しています", runningSteps(job.Target)
 		case domain.ShotPlanning, domain.ShotEditing:
 			if len(fresh) > 0 {
 				p.State = mcpkit.JobSucceeded
@@ -60,4 +61,13 @@ func shotProbe(gen *service.GenerationService) mcpkit.Probe {
 		}
 		return p, nil
 	}
+}
+
+// runningSteps is the step of the local ComfyUI call that generates for the Shot (the Relay records it under the Shot's id),
+// nil when none is known: a cloud model, the model still loading, or mam restarted.
+func runningSteps(shotID string) *live.View {
+	if p, ok := live.Default.ByOwner(shotID); ok {
+		return p.View()
+	}
+	return nil
 }
