@@ -48,7 +48,7 @@ func TestUncensoredLTX25ReplacesOnlyTheTextEncoder(t *testing.T) {
 		replaced = append(replaced, f)
 	}
 	require.Len(t, replaced, 1)
-	require.Len(t, shared, 1, "the standard text encoder is the only file the uncensored model does not use")
+	require.Len(t, shared, 2, "the standard text encoder and the prompt enhancer (Issue #968: a censored model, not offered with the uncensored encoder) are the files the uncensored model does not use")
 	for _, left := range shared {
 		assert.Equal(t, "text_encoders", left.Folder)
 	}
@@ -79,7 +79,7 @@ func TestUncensoredLTX25ShowsTheStricterLicenseOfItsParts(t *testing.T) {
 	assert.Equal(t, modellicense.Unknown, modellicense.Strictest(m.License.Components[0].Commercial, m.License.Components[1].Commercial, m.License.Components[2].Commercial, m.License.Components[3].Commercial))
 }
 
-// The uncensored model has its own two workflows, whose templates read the uncensored text encoder (and nothing of the standard one).
+// The uncensored model has its own workflows (text to video, first frame, first and last frames), whose templates read the uncensored text encoder (and nothing of the standard one).
 func TestUncensoredLTX25WorkflowsReadItsTextEncoder(t *testing.T) {
 	m, _ := catalog.Default().Model("ltx-2.5-22b-distilled-uncensored")
 	var names, templates []string
@@ -87,8 +87,8 @@ func TestUncensoredLTX25WorkflowsReadItsTextEncoder(t *testing.T) {
 		names = append(names, w.Name)
 		templates = append(templates, w.Template)
 	}
-	assert.Equal(t, []string{"ltx-2-5-uncensored-t2v", "ltx-2-5-uncensored-i2v"}, names)
-	assert.Equal(t, []string{"txt2video-ltx-2-5-uncensored", "img2video-ltx-2-5-uncensored"}, templates)
+	assert.Equal(t, []string{"ltx-2-5-uncensored-t2v", "ltx-2-5-uncensored-i2v", "ltx-2-5-uncensored-flf2v"}, names)
+	assert.Equal(t, []string{"txt2video-ltx-2-5-uncensored", "img2video-ltx-2-5-uncensored", "flf2v-ltx-2-5-uncensored"}, templates)
 	for _, id := range templates {
 		tpl, ok := localcfg.TemplateByID(id)
 		require.True(t, ok, id)
