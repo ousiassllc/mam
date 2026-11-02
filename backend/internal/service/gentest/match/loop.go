@@ -146,6 +146,7 @@ func (s *Service) round(ctx context.Context, st *state, q gentestrepo.Result) (s
 		return true
 	}
 	info.Score, info.Differences, info.Scoring = &j.Score, j.Differences, j.Scoring
+	info.LLM = append(info.LLM, j.Call)
 	s.record(ctx, q.ID, aspect, info)
 	st.played = append(st.played, played{made, info})
 	return j.Score >= cmp.Or(info.Target, DefaultTarget)
@@ -156,7 +157,11 @@ func (s *Service) round(ctx context.Context, st *state, q gentestrepo.Result) (s
 func (s *Service) write(ctx context.Context, st *state, info *matchinfo.Round) (string, error) {
 	base := st.base(info.Instruction != "")
 	if base == nil {
-		return s.m.Describe(ctx, st.ref, info.Instruction)
+		prompt, call, err := s.m.Describe(ctx, st.ref, info.Instruction)
+		if err == nil {
+			info.LLM = append(info.LLM, call)
+		}
+		return prompt, err
 	}
 	img, err := s.picture(base.result.FilePath)
 	if err != nil {
@@ -169,6 +174,7 @@ func (s *Service) write(ctx context.Context, st *state, info *matchinfo.Round) (
 		return "", err
 	}
 	info.BasedOn, info.BasePrompt, info.Change = base.info.Round, base.result.SentPrompt, rev.Change
+	info.LLM = append(info.LLM, rev.Call)
 	return rev.Prompt, nil
 }
 

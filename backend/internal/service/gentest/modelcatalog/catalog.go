@@ -131,11 +131,23 @@ func (c Catalog) Models(media string) []Info {
 
 func (c Catalog) hidden(m domain.ModelName) bool { return c.Hidden != nil && c.Hidden(string(m)) }
 
-// Model returns one model of the media; false when there is none.
+// Model returns one model of the media; false when there is none. Only that model is described (its backend asked, its price and
+// capabilities read) and only it goes through the Hidden predicate: describing every model of the list to pick one out cost a key
+// lookup in the OS secure storage (a call that can wait for its time limit) and a read of the workflow graph for each of them, on
+// every estimate of a match or a batch (#981).
 func (c Catalog) Model(media, id string) (Info, bool) {
-	for _, m := range c.Models(media) {
-		if m.ID == id {
-			return m, true
+	cfg := c.Adapter.Config()
+	for _, kind := range []struct {
+		media  string
+		models []domain.ModelName
+	}{{gentestrepo.MediaImage, domain.ImageModels()}, {gentestrepo.MediaVideo, domain.VideoModels()}} {
+		if media != "" && media != kind.media {
+			continue
+		}
+		for _, m := range kind.models {
+			if string(m) == id && !c.hidden(m) {
+				return c.info(cfg, m, kind.media), true
+			}
 		}
 	}
 	return Info{}, false

@@ -2,9 +2,10 @@ package imagematch
 
 import "github.com/ousiassllc/mam/backend/internal/agent/llm"
 
-// The tokens a call is expected to use, for the estimate. They are an assumption on the safe side, not a measurement (the answer of a
-// call does not say how many tokens it used): the picture is the 1024 px picture of Prepare, and the answer has room for the prompt
-// of MaxPromptRunes characters and for the reasoning of a model that thinks first. The price per token is the provider's.
+// The tokens a call is expected to use, for the estimate (and for a call whose answer does not say how many it used). They are an
+// assumption on the safe side, not a measurement: the picture is the 1024 px picture of Prepare, and the answer has room for the
+// prompt of MaxPromptRunes characters and for the reasoning of a model that thinks first. The price per token is the provider's. A
+// call that is made is measured instead (Call): the providers report the tokens they used (llm.Response.Usage).
 const (
 	// pictureTokens is a picture of up to 1024 px on its long side: Anthropic's rule (width x height / 750) gives about 1400 tokens
 	// for a square one, the others are in the same range.
@@ -19,6 +20,44 @@ var (
 	// reviseUsage: the system prompt, the prompt that is fixed, its differences and the words, two pictures; the whole fixed prompt.
 	reviseUsage = llm.Usage{InputTokens: 2*pictureTokens + 2500, OutputTokens: 2500}
 )
+
+// The kinds of LLM call of a match (Call.Kind).
+const (
+	CallDescribe = "describe"
+	CallRevise   = "revise"
+	CallCompare  = "compare"
+)
+
+// Call is what one LLM call of a match used and cost, as the history keeps it (the params of the round). The provider and the model are
+// the ones that answered, which is not the primary of the route when the alternative took over.
+type Call struct {
+	Kind     string       `json:"kind"`
+	Provider llm.Provider `json:"provider"`
+	Model    string       `json:"model"`
+	// InputTokens and OutputTokens are what the provider said the call used when Measured; else the assumption of the estimate for
+	// this kind of call (the provider did not report them).
+	InputTokens  int  `json:"input_tokens"`
+	OutputTokens int  `json:"output_tokens"`
+	Measured     bool `json:"measured"`
+	// USD is the price of the tokens at the price of the model; absent when the app has no checked price for it (a ChatGPT plan, a
+	// model that is not in the table): such a call is never given a price that was made up.
+	USD *float64 `json:"usd,omitempty"`
+}
+
+// callOf is the Call of an answer: its measured tokens, or the assumed ones of its kind when the answer has none.
+func callOf(kind string, res llm.Response, assumed llm.Usage) Call {
+	c := Call{Kind: kind, Provider: res.Provider, Model: res.Model, InputTokens: assumed.InputTokens, OutputTokens: assumed.OutputTokens}
+	used := assumed
+	if res.Usage != nil {
+		used, c.Measured = *res.Usage, true
+		c.InputTokens, c.OutputTokens = used.InputTokens, used.OutputTokens
+	}
+	if price, ok := llm.PriceOf(llm.Target{Provider: res.Provider, Model: res.Model}); ok {
+		usd := price.Cost(used)
+		c.USD = &usd
+	}
+	return c
+}
 
 // Work is the LLM work of one kind in a run, for the estimate: which target does it, how many calls at most, and what a call is
 // estimated to cost (nil when the app has no price for the target: the ChatGPT plans, and any model that has not been checked).

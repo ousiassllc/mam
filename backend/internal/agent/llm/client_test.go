@@ -13,25 +13,25 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 )
 
-// scripted is a Backend that answers from a script: each call takes the next result
-// (the last one repeats).
+// scripted is a Backend that answers from a script: each call takes the next result (the last one repeats).
 type scripted struct {
 	mu      sync.Mutex
 	results []error // nil = success
 	calls   int
 	models  []string
+	usage   *llm.Usage // what every answer reports (nil: unknown)
 }
 
-func (s *scripted) Complete(_ context.Context, model string, _ llm.Request) (string, error) {
+func (s *scripted) Complete(_ context.Context, model string, _ llm.Request) (llm.Completion, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.models = append(s.models, model)
 	i := min(s.calls, len(s.results)-1)
 	s.calls++
 	if err := s.results[i]; err != nil {
-		return "", err
+		return llm.Completion{}, err
 	}
-	return "ok from " + model, nil
+	return llm.Completion{Text: "ok from " + model, Usage: s.usage}, nil
 }
 
 func (s *scripted) callCount() int {
@@ -262,9 +262,9 @@ func TestClient_PerCallTimeoutIsRetriedAsTimeout(t *testing.T) {
 	cfg := llm.DefaultConfig()
 	cfg.TimeoutSeconds = 1
 	cfg.Retry = llm.RetryConfig{MaxAttempts: 2, BaseDelayMillis: 1, MaxDelayMillis: 1}
-	slow := backendFunc(func(ctx context.Context, _ string, _ llm.Request) (string, error) {
+	slow := backendFunc(func(ctx context.Context, _ string, _ llm.Request) (llm.Completion, error) {
 		<-ctx.Done()
-		return "", ctx.Err()
+		return llm.Completion{}, ctx.Err()
 	})
 	fast := &scripted{results: []error{nil}}
 	client := llm.NewClient(cfg, map[llm.Provider]llm.Backend{llm.ProviderOpenAI: slow, llm.ProviderAnthropic: fast, llm.ProviderGoogle: fast})
@@ -276,9 +276,9 @@ func TestClient_PerCallTimeoutIsRetriedAsTimeout(t *testing.T) {
 	assert.GreaterOrEqual(t, time.Since(start), 2*time.Second)
 }
 
-type backendFunc func(ctx context.Context, model string, req llm.Request) (string, error)
+type backendFunc func(ctx context.Context, model string, req llm.Request) (llm.Completion, error)
 
-func (f backendFunc) Complete(ctx context.Context, model string, req llm.Request) (string, error) {
+func (f backendFunc) Complete(ctx context.Context, model string, req llm.Request) (llm.Completion, error) {
 	return f(ctx, model, req)
 }
 

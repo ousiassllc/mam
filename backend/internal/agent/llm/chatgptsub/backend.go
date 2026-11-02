@@ -65,39 +65,39 @@ const (
 )
 
 // Complete implements llm.Backend.
-func (b *Backend) Complete(ctx context.Context, model string, req llm.Request) (string, error) {
+func (b *Backend) Complete(ctx context.Context, model string, req llm.Request) (llm.Completion, error) {
 	body, err := json.Marshal(requestBody(model, req))
 	if err != nil {
-		return "", fmt.Errorf("marshal %s request: %w", provider, err)
+		return llm.Completion{}, fmt.Errorf("marshal %s request: %w", provider, err)
 	}
 	refreshed := false
 	for {
 		creds, err := b.tokens.Credentials(ctx)
 		if err != nil {
-			return "", signInError(err)
+			return llm.Completion{}, signInError(err)
 		}
 		res, err := b.send(ctx, creds, body)
 		if err != nil {
-			return "", err
+			return llm.Completion{}, err
 		}
 		if res.StatusCode == http.StatusUnauthorized && !refreshed {
 			// The access token was refused: confirm through a refresh whether the sign-in is still alive.
 			_ = res.Body.Close()
 			refreshed = true
 			if _, err := b.tokens.Refresh(ctx); err != nil {
-				return "", signInError(err)
+				return llm.Completion{}, signInError(err)
 			}
 			continue
 		}
 		defer func() { _ = res.Body.Close() }()
 		if res.StatusCode/100 != 2 {
-			return "", b.advise(httpError(res))
+			return llm.Completion{}, b.advise(httpError(res))
 		}
-		text, err := readStream(io.LimitReader(res.Body, maxStreamBytes))
+		done, err := readStream(io.LimitReader(res.Body, maxStreamBytes))
 		if err != nil {
-			return "", b.advise(err)
+			return llm.Completion{}, b.advise(err)
 		}
-		return text, nil
+		return done, nil
 	}
 }
 

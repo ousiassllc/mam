@@ -81,7 +81,8 @@ func sse(w http.ResponseWriter, events ...string) {
 }
 
 func complete(srv *responses, src chatgptsub.TokenSource, req llm.Request) (string, error) {
-	return chatgptsub.New(srv.URL, src, nil).Complete(context.Background(), "some-model", req)
+	done, err := chatgptsub.New(srv.URL, src, nil).Complete(context.Background(), "some-model", req)
+	return done.Text, err
 }
 
 func TestComplete_SendsTheOfficialPreviewShapeAndReturnsTheStreamedText(t *testing.T) {
@@ -267,3 +268,21 @@ func TestComplete_ANetworkFailureHasNoURL(t *testing.T) {
 }
 
 func errNotSignedIn() error { return chatgpt.ErrNotSignedIn }
+
+func TestComplete_ReportsTheUsageOfTheCompletedResponseAndUnknownWhenItHasNone(t *testing.T) {
+	withUsage := newResponses(t, func(w http.ResponseWriter, _ int) {
+		sse(w, `{"type":"response.output_text.delta","delta":"hi"}`,
+			`{"type":"response.completed","response":{"output":[],"usage":{"input_tokens":812,"output_tokens":64,"total_tokens":876}}}`)
+	})
+	done, err := chatgptsub.New(withUsage.URL, &tokens{}, nil).Complete(context.Background(), "m", llm.Request{User: "x"})
+	require.NoError(t, err)
+	require.NotNil(t, done.Usage)
+	assert.Equal(t, llm.Usage{InputTokens: 812, OutputTokens: 64}, *done.Usage)
+
+	without := newResponses(t, func(w http.ResponseWriter, _ int) {
+		sse(w, `{"type":"response.output_text.delta","delta":"hi"}`, `{"type":"response.completed","response":{"output":[]}}`)
+	})
+	done, err = chatgptsub.New(without.URL, &tokens{}, nil).Complete(context.Background(), "m", llm.Request{User: "x"})
+	require.NoError(t, err)
+	assert.Nil(t, done.Usage)
+}

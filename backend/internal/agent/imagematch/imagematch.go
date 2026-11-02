@@ -91,31 +91,34 @@ type promptAnswer struct {
 	Prompt string `json:"prompt"`
 }
 
-// Describe writes the English prompt for the reference image. note is what the user asked for in words ("" for nothing).
-func (m *Matcher) Describe(ctx context.Context, reference Image, note string) (string, error) {
+// Describe writes the English prompt for the reference image. note is what the user asked for in words ("" for nothing). The Call is
+// what the LLM call cost.
+func (m *Matcher) Describe(ctx context.Context, reference Image, note string) (string, Call, error) {
 	user, _ := json.Marshal(struct {
 		Note string `json:"note"`
 	}{note})
-	ans, err := llm.CompleteJSON[promptAnswer](ctx, m.llm, PromptAgent, llm.Request{
+	ans, res, err := llm.CompleteJSONResponse[promptAnswer](ctx, m.llm, PromptAgent, llm.Request{
 		System: describeSystem, User: string(user), Images: []Image{captioned(reference, "reference image")},
 	})
 	if err != nil {
-		return "", fmt.Errorf("write the prompt of the reference: %w", err)
+		return "", Call{}, fmt.Errorf("write the prompt of the reference: %w", err)
 	}
-	return checkedPrompt(ans.Prompt)
+	prompt, err := checkedPrompt(ans.Prompt)
+	return prompt, callOf(CallDescribe, res, describeUsage), err
 }
 
 // Judgement is how much a generated image looks like the reference: Score is 0 to 100, Differences are what differs, in Japanese.
-// Scoring says how Score came about when the face is to be mixed in (nil when FaceMix is off).
+// Scoring says how Score came about when the face is to be mixed in (nil when FaceMix is off). Call is what the LLM call cost.
 type Judgement struct {
 	Score       int      `json:"score"`
 	Differences []string `json:"differences"`
 	Scoring     *Scoring `json:"scoring,omitempty"`
+	Call        Call     `json:"-"`
 }
 
 // Compare measures how much generated looks like reference: the LLM's score, mixed with the face's when that is on (FaceMix).
 func (m *Matcher) Compare(ctx context.Context, reference, generated Image) (Judgement, error) {
-	ans, err := llm.CompleteJSON[struct {
+	ans, res, err := llm.CompleteJSONResponse[struct {
 		Score       *float64 `json:"score"`
 		Differences []string `json:"differences"`
 	}](ctx, m.llm, JudgeAgent, llm.Request{
@@ -128,7 +131,7 @@ func (m *Matcher) Compare(ctx context.Context, reference, generated Image) (Judg
 	if ans.Score == nil || *ans.Score < 0 || *ans.Score > 100 {
 		return Judgement{}, fmt.Errorf("%w: the score is missing or outside 0..100", llm.ErrInvalidOutput)
 	}
-	j := Judgement{Differences: []string{}}
+	j := Judgement{Differences: []string{}, Call: callOf(CallCompare, res, compareUsage)}
 	j.Score, j.Scoring = m.score(ctx, reference, generated, int(*ans.Score+0.5))
 	for _, d := range ans.Differences {
 		if d = strings.TrimSpace(d); d != "" && len(j.Differences) < MaxDifferences {
@@ -138,10 +141,11 @@ func (m *Matcher) Compare(ctx context.Context, reference, generated Image) (Judg
 	return j, nil
 }
 
-// Revision is the fixed prompt and what was changed, in Japanese.
+// Revision is the fixed prompt and what was changed, in Japanese. Call is what the LLM call cost.
 type Revision struct {
 	Prompt string
 	Change string
+	Call   Call
 }
 
 // ReviseInput is what a fix looks at: the pictures, the prompt that made Generated, what differs and the user's words.
@@ -160,7 +164,7 @@ func (m *Matcher) Revise(ctx context.Context, in ReviseInput) (Revision, error) 
 		Differences []string `json:"differences"`
 		Instruction string   `json:"instruction"`
 	}{in.Prompt, append([]string{}, in.Differences...), in.Instruction})
-	ans, err := llm.CompleteJSON[struct {
+	ans, res, err := llm.CompleteJSONResponse[struct {
 		Prompt string `json:"prompt"`
 		Change string `json:"change"`
 	}](ctx, m.llm, PromptAgent, llm.Request{
@@ -177,7 +181,7 @@ func (m *Matcher) Revise(ctx context.Context, in ReviseInput) (Revision, error) 
 	if fixed == strings.TrimSpace(in.Prompt) {
 		return Revision{}, ErrNotRevised
 	}
-	return Revision{Prompt: fixed, Change: strings.TrimSpace(ans.Change)}, nil
+	return Revision{Prompt: fixed, Change: strings.TrimSpace(ans.Change), Call: callOf(CallRevise, res, reviseUsage)}, nil
 }
 
 func captioned(img Image, caption string) Image {

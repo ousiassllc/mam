@@ -39,17 +39,18 @@ func Add(backends map[llm.Provider]llm.Backend, cfg llm.Config, c Completer) {
 	}
 }
 
-// Complete implements llm.Backend.
-func (b *Backend) Complete(ctx context.Context, model string, req llm.Request) (string, error) {
+// Complete implements llm.Backend. The answer's Usage is unknown (nil): the plan is not billed per token and the text the Codex
+// login returns carries no count.
+func (b *Backend) Complete(ctx context.Context, model string, req llm.Request) (llm.Completion, error) {
 	r := codex.Request{Model: model, System: req.System, User: req.User, JSON: req.JSON}
 	for _, img := range req.Images {
 		r.Images = append(r.Images, codex.Image{MimeType: img.MimeType, Data: img.Data, Caption: img.Caption})
 	}
 	text, err := b.c.Complete(ctx, r)
 	if err != nil {
-		return "", mapError(err)
+		return llm.Completion{}, mapError(err)
 	}
-	return text, nil
+	return llm.Completion{Text: text}, nil
 }
 
 // mapError turns a failure of the Codex login into an llm.APIError. The end of the context is returned as it is: the

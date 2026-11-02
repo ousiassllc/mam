@@ -84,14 +84,14 @@ func TestLLMSettings_TheModalOfAnAgentHoldsItsTwoTargetsAndTheirDefaults(t *test
 func TestLLMSettings_ASavedAgentIsWhatTheNextStartLoadsAndTheAnswerIsItsRow(t *testing.T) {
 	s := newLLMScreen(t, false)
 
-	rec := s.requestTo(http.MethodPut, paths.LLMAgent("director"), agentForm("google", " gemini-3.1-pro ", "openai", "gpt-x"))
+	rec := s.requestTo(http.MethodPut, paths.LLMAgent("director"), agentForm("google", " gemini-x ", "openai", "gpt-x"))
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	body := rec.Body.String()
 	assert.Equal(t, "modal-close", rec.Header().Get("HX-Trigger-After-Swap"))
 	assert.True(t, strings.HasPrefix(body, `<tr id="llm-row-director"`), "a <tr> is read as a row only at the head of the answer: %s", body)
 	assert.Contains(t, body, `hx-swap-oob="true"`)
-	assert.Contains(t, body, "google / gemini-3.1-pro")
+	assert.Contains(t, body, "google / gemini-x")
 	assert.Contains(t, body, "変更あり")
 	assert.Contains(t, body, "再起動で反映")
 	assert.Contains(t, body, savedNoticeFor("Director（Scene / Shot の計画）"))
@@ -101,14 +101,14 @@ func TestLLMSettings_ASavedAgentIsWhatTheNextStartLoadsAndTheAnswerIsItsRow(t *t
 	require.NoError(t, err)
 	director, err := cfg.RouteFor(llm.AgentDirector)
 	require.NoError(t, err)
-	assert.Equal(t, llm.Target{Provider: llm.ProviderGoogle, Model: "gemini-3.1-pro"}, director.Primary)
+	assert.Equal(t, llm.Target{Provider: llm.ProviderGoogle, Model: "gemini-x"}, director.Primary)
 	writer, err := cfg.RouteFor(llm.AgentWriter)
 	require.NoError(t, err)
 	assert.Equal(t, llm.DefaultConfig().Routes[llm.AgentWriter], writer)
 
 	// A reload shows it saved, without the restart mark (the service does not know what runs).
 	row := regexp.MustCompile(`(?s)<tr id="llm-row-director".*?</tr>`).FindString(s.page())
-	assert.Contains(t, row, "google / gemini-3.1-pro")
+	assert.Contains(t, row, "google / gemini-x")
 	assert.Contains(t, row, "変更あり")
 	assert.NotContains(t, row, "再起動で反映")
 
@@ -178,7 +178,7 @@ func TestLLMSettings_TheWholeSaveAndResetStay(t *testing.T) {
 	s := newLLMScreen(t, false)
 	form := defaultForm()
 	form.Set("director.primary.provider", "google")
-	form.Set("director.primary.model", " gemini-3.1-pro ")
+	form.Set("director.primary.model", " gemini-x ")
 	form.Set("orchestrator.fallback.model", "claude-sonnet-x")
 
 	rec := s.request(http.MethodPut, form)
@@ -191,11 +191,11 @@ func TestLLMSettings_TheWholeSaveAndResetStay(t *testing.T) {
 	require.NoError(t, err)
 	director, err := cfg.RouteFor(llm.AgentDirector)
 	require.NoError(t, err)
-	assert.Equal(t, llm.Target{Provider: llm.ProviderGoogle, Model: "gemini-3.1-pro"}, director.Primary)
+	assert.Equal(t, llm.Target{Provider: llm.ProviderGoogle, Model: "gemini-x"}, director.Primary)
 	orchestrator, err := cfg.RouteFor(llm.AgentOrchestrator)
 	require.NoError(t, err)
 	assert.Equal(t, "claude-sonnet-x", orchestrator.Fallback.Model)
-	assert.Contains(t, s.page(), "google / gemini-3.1-pro", "a reload shows the saved one")
+	assert.Contains(t, s.page(), "google / gemini-x", "a reload shows the saved one")
 
 	rec = s.request(http.MethodDelete, nil)
 
