@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
@@ -33,7 +34,7 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 		}
 	})
 	settings.ChatGPT = gpt
-	models := llmmodels.Options{Keys: settings.Keys, Logger: logger}
+	models := llmmodels.Options{Keys: settings.Keys, BaseURLs: llmBaseURLs(cfg, logger), Logger: logger}
 	if gpt != nil {
 		models.ChatGPT = llmmodels.FromChatGPT(gpt)
 	}
@@ -45,4 +46,23 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	settings.Gentest = services.Gentest
 	settings.Onboarding = onboarding.New(filepath.Join(cfg.DataDir, onboarding.FileName), onboarding.WithLookPath(ffmpeg.Find))
 	return settings
+}
+
+// llmBaseURLs is the base_url of each provider as llm.json sets it: the API key of the model list is sent to the origin
+// the Agents' calls go to, not to the vendor's own when the user changed it. A file that cannot be read gives none (the
+// defaults), as buildServices has refused to start with one at startup.
+func llmBaseURLs(cfg config.Config, logger *slog.Logger) map[llm.Provider]string {
+	file, err := settingsFileToLoad(cfg.LLMSettingsFile())
+	if err == nil {
+		var loaded llm.Config
+		if loaded, err = llm.LoadConfig(file); err == nil {
+			urls := make(map[llm.Provider]string, len(loaded.Providers))
+			for p, pc := range loaded.Providers {
+				urls[p] = pc.BaseURL
+			}
+			return urls
+		}
+	}
+	logger.Warn("llm.json is not read for the base_url of the model lists; the vendors' own are used", "err", err)
+	return nil
 }
