@@ -71,7 +71,9 @@ func (s *Service) addTranslation(est *Estimate, r Request) error {
 }
 
 // translate translates the prompts of the request once, for every model and every result of the batch. Nothing of the batch
-// exists yet: a failure is a *gterr.UpstreamError, and the prompts are never sent in the language they were typed in.
+// exists yet: a failure is a *gterr.UpstreamError, and a prompt is never sent in the language it was typed in because the
+// translation failed. A text the LLM returned unchanged (50Ω resistor) is no failure: its prompt is sent as typed and is not
+// in the returned map.
 func (s *Service) translate(ctx context.Context, r Request) (translated, error) {
 	texts := textsToTranslate(r)
 	if len(texts) == 0 {
