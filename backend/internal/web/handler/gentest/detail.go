@@ -60,11 +60,17 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f importbox
 	}
 	v.Import = f
 	v.Upscale = h.upscaleForm(ctx, d, "")
-	v.Actions, v.Used = redo.ActionsOf(d, inpaintURL, redrawFrom, v.Upscale.Show), redo.UsedOf(d)
+	v.Actions, v.Used = redo.ActionsOf(d, inpaintURL, redrawFrom, v.Upscale.Show), redo.UsedOf(d, h.takesSampling(ctx, d))
 	if !d.HasFile {
 		v.Import.Projects = nil
 	}
 	return v
+}
+
+// takesSampling is whether the model of the result takes steps, cfg, a sampler and a scheduler now (false when the model is gone).
+func (h Handlers) takesSampling(ctx context.Context, d record.ResultDetail) bool {
+	m, err := h.Svc.Model(ctx, d.Media, d.Model)
+	return err == nil && m.Sampling != nil
 }
 
 var roleNames = map[string]string{

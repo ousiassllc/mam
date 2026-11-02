@@ -50,6 +50,8 @@ type Deps struct {
 	Explain func(err error) string
 	// Hidden says a model is left out of the model lists and refused as unknown (the age gate). May be nil.
 	Hidden func(modelID string) bool
+	// HiddenWith is Hidden for the values of the exposed inputs the result runs with (the age gate). May be nil.
+	HiddenWith func(modelID string, exposed map[string]any) bool
 	// Extra runs the batches that are not this runner's (nil: every batch is). The prompt match sets it once it is built, before the job queue starts.
 	Extra Extra
 	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See

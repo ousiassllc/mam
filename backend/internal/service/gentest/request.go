@@ -156,6 +156,9 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 	if r, err = withSettings(r, models); err != nil {
 		return r, nil, err
 	}
+	if err := exposedreq.Refuse(s.HiddenWith, models, r.Exposed); err != nil {
+		return r, nil, err
+	}
 	if err := checkInpaint(r, models); err != nil {
 		return r, nil, err
 	}

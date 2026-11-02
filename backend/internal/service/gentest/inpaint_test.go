@@ -1,6 +1,9 @@
 package gentest_test
 
 import (
+	"bytes"
+	"encoding/binary"
+	"hash/crc32"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,6 +50,47 @@ func TestInpaintRefusesWhatTheModelCannotDo(t *testing.T) {
 	video.Media = gentest.MediaVideo
 	_, err = rig.Svc.Estimate(ctx, video)
 	require.Error(t, err)
+}
+
+// hugePNGHeader is a PNG that is only a signature and a header of 100000 × 100000: DecodeConfig reads it, a full decode would need 10 GB.
+func hugePNGHeader() []byte {
+	ihdr := make([]byte, 13)
+	binary.BigEndian.PutUint32(ihdr[0:], 100000)
+	binary.BigEndian.PutUint32(ihdr[4:], 100000)
+	ihdr[8], ihdr[9] = 8, 0 // 8 bit, gray
+	var b bytes.Buffer
+	b.WriteString("\x89PNG\r\n\x1a\n")
+	_ = binary.Write(&b, binary.BigEndian, uint32(len(ihdr)))
+	chunk := append([]byte("IHDR"), ihdr...)
+	b.Write(chunk)
+	_ = binary.Write(&b, binary.BigEndian, crc32.ChecksumIEEE(chunk))
+	return b.Bytes()
+}
+
+func TestInpaintRefusesAMaskOfHugeSizeWithoutDecodingIt(t *testing.T) {
+	rig := gentesttest.New(t, gentesttest.WithInpaintModel())
+	src := stage(t, rig, gentesttest.PNG)
+	huge := stage(t, rig, hugePNGHeader())
+	_, err := rig.Svc.Estimate(t.Context(), gentest.Request{
+		Media: gentest.MediaImage, Models: []string{string(gentesttest.InpaintModel)}, Count: 1,
+		Prompts:    []gentest.PromptInput{{Prompt: "a fox"}},
+		References: []gentest.RefInput{{Source: gentest.FromStaged, ID: src, Role: gentest.RoleReference}},
+		Mask:       &gentest.RefInput{Source: gentest.FromStaged, ID: huge}, Denoise: f64(0.5),
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "大きすぎ")
+}
+
+func TestInpaintOnlyModelNeedsAMask(t *testing.T) {
+	rig := gentesttest.New(t, gentesttest.WithInpaintModel())
+	src := stage(t, rig, gentesttest.PNG)
+	_, err := rig.Svc.Estimate(t.Context(), gentest.Request{
+		Media: gentest.MediaImage, Models: []string{string(gentesttest.InpaintModel)}, Count: 1,
+		Prompts:    []gentest.PromptInput{{Prompt: "a fox"}},
+		References: []gentest.RefInput{{Source: gentest.FromStaged, ID: src, Role: gentest.RoleReference}},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mask を指定してください")
 }
 
 func TestInpaintRunSendsTheMaskAndTheDenoise(t *testing.T) {

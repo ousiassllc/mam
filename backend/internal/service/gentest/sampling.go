@@ -39,7 +39,7 @@ func checkSampling(r Request) (sampling.Settings, error) {
 		return s, gterr.Invalid("詳細設定が正しくありません: %v", err)
 	}
 	if r.Seed != nil {
-		if *r.Seed < 0 || *r.Seed+int64(max(r.Count, 1)-1) > SeedMax {
+		if *r.Seed < 0 || *r.Seed > SeedMax-int64(max(r.Count, 1)-1) {
 			return s, gterr.Invalid("seed は 0〜%d にしてください（本数が n 本のとき、n 本目は seed + n − 1 を使うので、seed + 本数 − 1 もこの範囲に収めます）", SeedMax)
 		}
 	}

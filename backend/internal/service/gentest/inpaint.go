@@ -1,16 +1,12 @@
 package gentest
 
 import (
-	"bytes"
-	"image"
-	_ "image/jpeg"
-	_ "image/png"
 	"math"
 	"os"
-
-	_ "golang.org/x/image/webp"
+	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/maskcheck"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 )
 
@@ -18,9 +14,12 @@ import (
 const WarnDenoiseIgnored = "denoise_ignored"
 
 // checkInpaint refuses a partial redraw the models cannot do, and a denoise out of range. A request with neither a mask nor a
-// denoise is not a partial redraw.
+// denoise is not a partial redraw, so it is refused when a model can only do partial redraws (SupportsInpaint).
 func checkInpaint(r Request, models []modelcatalog.Info) error {
 	if r.Mask == nil && r.Denoise == nil {
+		if slices.ContainsFunc(models, func(m modelcatalog.Info) bool { return m.SupportsInpaint }) {
+			return gterr.Invalid("一部だけ描き直す専用のモデルです。mask を指定してください")
+		}
 		return nil
 	}
 	if r.Media != MediaImage {
@@ -48,28 +47,10 @@ func checkInpaint(r Request, models []modelcatalog.Info) error {
 
 func denoiseOK(v float64) bool { return v > 0 && v <= 1 && !math.IsNaN(v) }
 
-// maskPaints reports whether the mask has a near-white pixel (the part that is redrawn).
-func maskPaints(data []byte) error {
-	img, _, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		return gterr.Invalid("マスクは PNG・JPEG・WebP の画像にしてください")
-	}
-	b := img.Bounds()
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			r, g, bl, _ := img.At(x, y).RGBA()
-			if r > 0xC000 && g > 0xC000 && bl > 0xC000 {
-				return nil
-			}
-		}
-	}
-	return gterr.Invalid("マスクが真っ黒です。描き直す部分を白く塗ってください")
-}
-
 func maskPaintsFile(path string) error {
 	data, err := os.ReadFile(path) //nolint:gosec // path comes from ResolveInput, under the gentest or project directory
 	if err != nil {
 		return gterr.Invalid("マスク画像のファイルが見つかりません")
 	}
-	return maskPaints(data)
+	return maskcheck.Paints(data)
 }

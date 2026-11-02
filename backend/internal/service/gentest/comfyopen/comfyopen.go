@@ -58,6 +58,9 @@ func (o Opener) Graph(ctx context.Context, req gentest.Request) (graph json.RawM
 	if err != nil {
 		return nil, "", "", nil, err
 	}
+	if err := exposedreq.Refuse(o.Gentest.HiddenWith, []modelcatalog.Info{m}, values); err != nil {
+		return nil, "", "", nil, err
+	}
 	img := modeladapter.ImageRequest{AspectRatio: req.AspectRatio, Seed: req.Seed}
 	if len(req.Prompts) > 0 {
 		img.Prompt, img.NegativePrompt = req.Prompts[0].Prompt, req.Prompts[0].Negative

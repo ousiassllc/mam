@@ -105,16 +105,18 @@ func (s *Service) HidesModel(id string) bool {
 	if s.AdultContentEnabled() {
 		return false
 	}
-	st := s.state.Get()
-	if kind, endpoint, name, ok := localcfg.ParseID(id); ok && kind == localcfg.KindComfyUI && endpoint == BundledEndpoint && adult.Workflows(s.cat, st)[name] {
+	if kind, endpoint, name, ok := localcfg.ParseID(id); ok && kind == localcfg.KindComfyUI && endpoint == BundledEndpoint && adult.Workflows(s.cat, s.state.Get())[name] {
 		return true
 	}
 	if s.Adapter == nil {
 		return false
 	}
 	m, _, ok := s.Adapter.Config().LocalModel(domain.ModelName(id))
-	return ok && m.Workflow != nil && adult.FilesOf(s.cat, st).Reads(m.Workflow.Graph)
+	return ok && m.Workflow != nil && s.AdultFiles().Reads(m.Workflow.Graph)
 }
+
+// AdultFiles is the files only adult models have (what HidesModel judges the graphs against).
+func (s *Service) AdultFiles() adult.Files { return adult.FilesOf(s.cat, s.state.Get()) }
 
 // consentKey is the key of the license acceptance in state.json: the license ID, so that one acceptance covers the models
 // that share a license. An adult model is accepted on its own (key "adult:<model id>"): its consent also carries the notice

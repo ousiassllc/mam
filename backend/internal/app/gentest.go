@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/exposedgate"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 )
@@ -43,6 +44,7 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 			return msg
 		},
 		Hidden:          services.ModelManager.HidesModel,
+		HiddenWith:      exposedgate.Hides(services.ModelManager),
 		MissingNodes:    nodegate.ForModels(services.ModelManager.Nodes, modelmanager.BundledEndpoint), // a workflow whose custom node is not installed cannot be chosen
 		PlatformWarning: platformWarning(services.ModelManager),
 		BundledEndpoint: modelmanager.BundledEndpoint,

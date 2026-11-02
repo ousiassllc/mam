@@ -3,6 +3,7 @@ package exposedpick_test
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,18 +42,33 @@ type rig struct {
 	gentest *gentest.Service
 }
 
-func newRig(t *testing.T) rig {
+func newRig(t *testing.T) rig { return newRigWith(t, objectInfo) }
+
+func newRigWith(t *testing.T, info string) rig {
 	t.Helper()
 	db := testdb.Open(t)
 	r := mmtest.New(t, mmtest.WithDB(db))
 	f := comfyuitest.New(t)
-	f.ObjectInfo = json.RawMessage(objectInfo)
+	f.ObjectInfo = json.RawMessage(info)
 	require.NoError(t, r.Models.CreateEndpoint(ctx(), localmodels.EndpointInput{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: f.URL()}))
 	tp, ok := localcfg.TemplateByID("txt2img-sdxl")
 	require.True(t, ok)
 	require.NoError(t, r.Models.CreateModel(ctx(), localmodels.ModelInput{Endpoint: "box", Name: "sdxl", Model: tp.Model}))
 	wf := workflows.New(workflows.Deps{Repo: comfywf.New(db), Models: r.Models, Adapter: r.Adapter, Keys: r.Keys, StagingDir: t.TempDir(), RunsDir: t.TempDir()})
 	return rig{picker: exposedpick.Picker{Gentest: r.Gentest, Workflows: wf, Local: r.Models}, models: r.Models, gentest: r.Gentest}
+}
+
+// While the age gate is closed, the choices of a file-choosing input leave out the files the gate would refuse (the value the graph holds stays).
+func TestChoicesLeaveOutTheFilesTheClosedGateRefuses(t *testing.T) {
+	r := newRigWith(t, strings.Replace(objectInfo, `[["sd_xl_base_1.0.safetensors"]]`, `[["sd_xl_base_1.0.safetensors", "adult.safetensors", "other.safetensors"]]`, 1))
+	rows, err := r.picker.Rows(ctx(), sdxl)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"sd_xl_base_1.0.safetensors", "adult.safetensors", "other.safetensors"}, rowOf(t, rows, "4.ckpt_name").Options, "the gate is open")
+
+	r.gentest.HiddenWith = func(_ string, values map[string]any) bool { return values["4.ckpt_name"] == "adult.safetensors" }
+	rows, err = r.picker.Rows(ctx(), sdxl)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"sd_xl_base_1.0.safetensors", "other.safetensors"}, rowOf(t, rows, "4.ckpt_name").Options)
 }
 
 func ptr[T any](v T) *T { return &v }

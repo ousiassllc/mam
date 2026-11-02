@@ -69,6 +69,9 @@ type Deps struct {
 	// Hidden says a model is left out of the model lists and refused as unknown: the adult models of the model manager while
 	// the age gate is closed (modelmanager.Service.HidesModel). May be nil.
 	Hidden func(modelID string) bool
+	// HiddenWith is Hidden for a run with the values of the exposed inputs put in: they can name a file only an adult model has
+	// (modelmanager.Service.HidesModelWith). May be nil.
+	HiddenWith func(modelID string, exposed map[string]any) bool
 	// MissingNodes gives the reason a model of the bundled ComfyUI cannot be chosen because a custom node its workflow requires is not installed
 	// (modelnodes, nodegate.ForModels); empty when it can. Nil: no model is refused for its nodes.
 	MissingNodes func(modelID string, required []string) string
@@ -121,7 +124,7 @@ func New(d Deps) *Service {
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
 	run := runner.New(runner.Deps{
-		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, FaceCrop: d.FaceCrop, Now: d.Now, Logger: d.Logger,
+		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, FaceCrop: d.FaceCrop, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
 		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, MissingNodes: d.MissingNodes},

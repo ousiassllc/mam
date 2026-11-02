@@ -41,8 +41,9 @@ func againURL(id string, sameSeed bool) string {
 }
 
 // UsedOf are the settings the result was made with, for the folded panel: the model, the steps, the cfg, the sampler, the scheduler, the seed, the
-// LoRA and the size (the values the sampling kept are those the model ran with, defaults included). A video result has no panel.
-func UsedOf(d record.ResultDetail) gentestresult.Used {
+// LoRA and the size (the values the sampling kept are those the model ran with, defaults included). A video result has no panel. takesSampling says
+// the model takes steps, cfg, a sampler and a scheduler now: a result without them that it takes is one made before they were recorded.
+func UsedOf(d record.ResultDetail, takesSampling bool) gentestresult.Used {
 	if d.Media != gentest.MediaImage {
 		return gentestresult.Used{}
 	}
@@ -60,6 +61,8 @@ func UsedOf(d record.ResultDetail) gentestresult.Used {
 		if s.Scheduler != "" {
 			rows = append(rows, gentestresult.Line{Key: "スケジューラー", Value: s.Scheduler})
 		}
+	} else if takesSampling {
+		rows = append(rows, gentestresult.Line{Key: "ステップ数・CFG・サンプラー", Value: "この結果には記録がありません（古い結果）"})
 	} else {
 		rows = append(rows, gentestresult.Line{Key: "ステップ数・CFG・サンプラー", Value: "このモデルは受け取りません（モデルの既定）"})
 	}

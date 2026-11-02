@@ -28,6 +28,10 @@ func (br *batchRun) execute(ctx context.Context, r gentestrepo.Result) {
 	s := br.s
 	var p record.ResultParams
 	_ = json.Unmarshal(r.Params, &p)
+	if s.HiddenWith != nil && s.HiddenWith(r.Model, p.Exposed) { // the values name a file of an adult model and the gate is closed
+		s.settle(ctx, r.ID, gentestrepo.StatusFailed, ReasonHidden, nil)
+		return
+	}
 	var (
 		file, mime string
 		size       int64

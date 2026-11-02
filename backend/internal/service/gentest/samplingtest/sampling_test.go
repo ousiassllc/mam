@@ -5,6 +5,7 @@ package samplingtest_test
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"testing"
 	"time"
 
@@ -151,6 +152,7 @@ func TestValuesOutOfRangeAreRefusedBeforeAnythingRuns(t *testing.T) {
 		"negative seed":        func(q *gentest.Request) { q.Seed = ptr(int64(-1)) },
 		"seed over 32 bits":    func(q *gentest.Request) { q.Seed = ptr(over + 1) },
 		"seed + count over it": func(q *gentest.Request) { q.Seed, q.Count = ptr(over), 2 },
+		"max int64 seed":       func(q *gentest.Request) { q.Seed, q.Count = ptr(int64(math.MaxInt64)), 2 },
 	}
 	for name, edit := range cases {
 		t.Run(name, func(t *testing.T) {
