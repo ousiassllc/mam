@@ -5,16 +5,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/toolstatus"
 )
 
-// registerTools adds the status routes of the tool cards of the home page (spec/api/endpoints-home.md). The screens
-// behind the cards come from s (the services that give them their routes), so a card without its screen has no status.
-func registerTools(engine *gin.Engine, services *service.Services, s *Services, logger *slog.Logger) {
-	t := toolstatus.Services{Review: services.Review, Credentials: services.Credentials}
+// registerTools adds the status route of the model manager card of the settings screen (spec/api/endpoints-home.md).
+// The screen behind the card comes from s (the service that gives it its routes), so a card without its screen has no
+// status.
+func registerTools(engine *gin.Engine, s *Services, logger *slog.Logger) {
+	t := toolstatus.Services{}
 	if s != nil {
-		t.ModelManager, t.Workflows, t.ChatGPT = s.ModelManager, s.Workflows, s.ChatGPT
+		t.ModelManager = s.ModelManager
 	}
 	toolstatus.Register(engine, toolstatus.Handlers{Sources: t.Sources(), Logger: logger})
 }

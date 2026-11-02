@@ -85,7 +85,7 @@
 
 ## 3. `molecules.ToolCard`（カード）
 
-2 つの画面で使う、リンクとしてのカード。**カードの中にボタンもリンクも入れない**（カード全体が 1 つの `<a>`）。
+設定画面（概要・「ローカル・代替モデル」）で使う、リンクとしてのカード（トップ画面のツールのカードは #978 で外した）。**カードの中にボタンもリンクも入れない**（カード全体が 1 つの `<a>`）。
 
 テンプレートは `ToolCardItem(c ToolCard)`（`<li>`）、状態の断片は `ToolStatus([]StatusLine)`。
 
@@ -97,7 +97,7 @@ type ToolCard struct {
     Title       string        // リンクの名前になる
     Description string        // 1 行の説明（2 行までに折り返す）
     CTA         string        // 既定 "開く"。見た目だけ（aria-hidden）
-    StatusURL   string        // 空でなければ、状態を hx-get で後から読む（トップ画面）
+    StatusURL   string        // 空でなければ、状態を hx-get で後から読む（モデルマネージャーのカード）
     // Status []StatusLine は #847 が足す（StatusURL が空のときの、サーバーで組み立てた状態。設定の概要）。#846 は StatusURL だけ
 }
 type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge の文字（状態を言葉で言う）。実装は #846

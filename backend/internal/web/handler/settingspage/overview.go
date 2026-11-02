@@ -79,10 +79,9 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 	return card
 }
 
-// keysStatus is the API keys and the ChatGPT sign-in, as the card of the home page says them.
+// keysStatus is the API keys and the ChatGPT sign-in, as the card of the overview says them.
 func (s Services) keysStatus(c *gin.Context) []molecules.StatusLine {
-	src := toolstatus.Services{Credentials: s.Keys, ChatGPT: s.ChatGPT}.Sources()[paths.ToolSettings]
-	lines, err := src(c.Request.Context())
+	lines, err := toolstatus.Services{Credentials: s.Keys, ChatGPT: s.ChatGPT}.Settings(c.Request.Context())
 	if err != nil {
 		return nil
 	}
