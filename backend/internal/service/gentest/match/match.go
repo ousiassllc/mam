@@ -8,7 +8,8 @@
 // (the job kind of the generation test, taken over by Handle) writes the prompt of a round when the round starts and removes the rounds
 // it did not need. What a round learned (score, differences, what was fixed) is in the params of its result (package matchinfo).
 //
-// Like a batch it is estimated first (Estimate: the most rounds times the price of one picture; the LLM has no price), and
+// Like a batch it is estimated first (Estimate: the most rounds times the price of one picture, plus the calls of the LLM that have a
+// price per token), and
 // run only with the estimate the caller confirmed (Run), and a match that is over can go on (Request.ContinueBatchID): one more
 // round with words of the user ("もう少し明るく"), or more rounds on its own. The pictures are made from the prompt alone: the
 // reference image is shown to the LLM only, never given to the model, or the match would measure nothing.
@@ -45,8 +46,10 @@ const (
 	MaxRounds = 10
 	// MaxInstructionRunes is the longest instruction of the user.
 	MaxInstructionRunes = 1000
-	// LLMLine is the Model of the line of the estimate that is the work of the LLM (a line has no model of generation).
-	LLMLine = "match_llm"
+	// LLMLine is the Model of the line of the estimate that is the LLM writing and fixing the prompts, CompareLine the one that is the
+	// LLM comparing the pictures (a line has no model of generation).
+	LLMLine     = "match_llm"
+	CompareLine = "match_llm_compare"
 )
 
 // Why a match that is over stopped (View.Stop).

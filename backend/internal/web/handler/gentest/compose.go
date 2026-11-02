@@ -111,8 +111,10 @@ func (h Handlers) Page(c *gin.Context) {
 			f.prompts = []view.PromptText{{Text: p.Prompt, Negative: p.NegativePrompt}}
 		}
 	}
+	fromMatch := false
 	if d, err := h.Svc.Result(ctx, c.Query("from_result")); err == nil { // a round of a prompt match: its prompt, with its model and shape
 		f.prompts, f.models, f.aspect = []view.PromptText{{Text: d.SentPrompt}}, []string{d.Model}, d.AspectRatio
+		fromMatch = true
 	}
 	for _, raw := range c.QueryArray(view.FieldRef) {
 		if r, ok := refform.Parse(raw); ok {
@@ -124,8 +126,15 @@ func (h Handlers) Page(c *gin.Context) {
 			f.media = gentest.MediaVideo
 		}
 	}
-	gtshare.Render(c, http.StatusOK, pages.GenerationTestPage(middleware.CSRFToken(c), h.compose(ctx, f)))
+	form := h.compose(ctx, f)
+	if fromMatch { // #965: the prompt of a round is the one to compare models with, so say how
+		form.Notice = fromMatchNotice
+	}
+	gtshare.Render(c, http.StatusOK, pages.GenerationTestPage(middleware.CSRFToken(c), form))
 }
+
+// fromMatchNotice is shown above the form that a round of a prompt match opened (?from_result=).
+const fromMatchNotice = "プロンプトマッチの回のプロンプトとモデルを入れました。モデルを足して実行すると、同じプロンプトで比べられます（見積りを確認してから実行します）"
 
 // Form answers GET /generation-test/form: the form again for another media, keeping what was typed and chosen.
 func (h Handlers) Form(c *gin.Context) {

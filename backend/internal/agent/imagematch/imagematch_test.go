@@ -126,12 +126,6 @@ func TestReviseRefusesAPromptThatCameBackUnchangedOrEmpty(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestTargetsAreThoseOfTheTwoRoutes(t *testing.T) {
-	create, judge := imagematch.New(&answer{}, llm.Target{Model: "a"}, llm.Target{Model: "b"}).Targets()
-	assert.Equal(t, "a", create.Model)
-	assert.Equal(t, "b", judge.Model)
-}
-
 func pngOf(w, h int) []byte {
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	for x := range w {

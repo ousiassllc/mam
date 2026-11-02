@@ -127,7 +127,7 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 - 各プロバイダーのSDKバージョン・具体的なエンドポイント・レート制限値は実装フェーズで確定する
 - コスト実測値（$/秒、$/画像等）は市場変動が大きいため、`non-functional.md` §6「コスト可視化」機能で継続的に検証し、本書の数値は参考値として扱う
 - 動画/画像/LLM市場は数ヶ月単位でモデル改廃が発生するため、本書は半期ごとに見直しレビューを行う（次回レビュー目安: 2027-03）
-- Face Identity Similarity の顔検出・埋め込みモデルと推論ランタイム（ONNX Runtime）は M1 で検証済み（§10.1）。残る確認事項は、SFace の学習データの権利関係（配布元リポジトリは重みのライセンス（Apache-2.0）のみを明記し、学習データセットを明記していない）で、商用配布前に法務確認が必要（本アプリはモデルファイルを同梱しない）。閾値は実測で決定する（仕様では固定しない）
+- Face Identity Similarity の顔検出・埋め込みモデルと推論ランタイム（ONNX Runtime）は M1 で検証済み（§10.1）。残る確認事項は、SFace の学習データの権利関係（配布元リポジトリは重みのライセンス（Apache-2.0）のみを明記し、学習データセットを明記していない）で、商用配布前に法務確認が必要（本アプリはモデルファイルを同梱しない）。2026-11-02 に一次情報（OpenCV Zoo `models/face_recognition_sface` の README・LICENSE、元のリポジトリ `zhongyy/SFace` の README）を再確認し、重み = Apache-2.0・YuNet = MIT・ONNX の学習データは明記なし、という結論は変わらない。商用可否が確かめられていないので、プロンプトマッチの似てる度に顔を混ぜる機能（`gentest.match_face`。[gentest/prompt-match.md](gentest/prompt-match.md)）は既定で OFF にしている。商用可能な顔の埋め込みへの差し替えは別 Issue（#960）で扱い、混ぜ方の数字は `imagematch.FaceMix` の 1 か所にある閾値は実測で決定する（仕様では固定しない）
 - Jev の外部 API 利用は、シャドー実行の結果（一致率・confidence・遅延・コスト）で採否を判断する。`spec/requirements/non-functional.md` §5 の外部送信方針との整合を導入時に確認する
 
 ## 2.1 実装（`internal/agent/llm`）

@@ -145,7 +145,7 @@ func (s *Service) round(ctx context.Context, st *state, q gentestrepo.Result) (s
 		s.record(ctx, q.ID, aspect, info)
 		return true
 	}
-	info.Score, info.Differences = &j.Score, j.Differences
+	info.Score, info.Differences, info.Scoring = &j.Score, j.Differences, j.Scoring
 	s.record(ctx, q.ID, aspect, info)
 	st.played = append(st.played, played{made, info})
 	return j.Score >= cmp.Or(info.Target, DefaultTarget)

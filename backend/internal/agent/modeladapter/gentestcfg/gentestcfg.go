@@ -1,10 +1,13 @@
-// Package gentestcfg holds the limits of one batch of the generation test screen (models.json, key "gentest";
-// spec/architecture/gentest/gentest.md). It is a package of its own because modeladapter is over its line limit.
+// Package gentestcfg holds the settings of the generation test screen (models.json, key "gentest"): the limits of one batch and
+// how the face is mixed into the similarity of the prompt match (spec/architecture/gentest/gentest.md, prompt-match.md). It is a
+// package of its own because modeladapter is over its line limit.
 package gentestcfg
 
 import (
 	"errors"
 	"math"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 )
 
 // Defaults of the limits.
@@ -14,12 +17,23 @@ const (
 )
 
 // Limits bound one batch: the number of results (every model x prompt x count) and the estimated cost. A key that the file
-// leaves out keeps its default.
+// leaves out keeps its default. MatchFace is how the face of the generated image is mixed into the similarity of the prompt match
+// (#964; the one place for the weight and the mapping, which #960 changes with the face model).
 type Limits struct {
 	// MaxItems is the most results of one batch (default 50).
 	MaxItems *int `json:"max_items,omitempty"`
 	// MaxCostUSD is the most the priced results of a batch may be estimated to cost (default 20). 0 is no limit.
 	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`
+	// MatchFace is the weight and the mapping of the face points of the prompt match (default: the face is not mixed in).
+	MatchFace *imagematch.FaceMix `json:"match_face,omitempty"`
+}
+
+// Face is how the face is mixed into the similarity of the prompt match.
+func (l Limits) Face() imagematch.FaceMix {
+	if l.MatchFace == nil {
+		return imagematch.DefaultFaceMix()
+	}
+	return *l.MatchFace
 }
 
 // Items is the limit of results in a batch.
@@ -46,6 +60,9 @@ func (l Limits) Validate() []error {
 	}
 	if c := l.CostUSD(); c < 0 || math.IsNaN(c) || math.IsInf(c, 0) {
 		errs = append(errs, errors.New("gentest.max_cost_usd must be 0 (no limit) or positive"))
+	}
+	if err := l.Face().Validate(); err != nil {
+		errs = append(errs, errors.New("gentest.match_face: "+err.Error()))
 	}
 	return errs
 }

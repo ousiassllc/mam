@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gentestcfg"
@@ -39,6 +40,32 @@ func TestLimitsThatCannotWorkAreRefusedByTheConfigCheck(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte(`{"gentest":{"max_itmes":3}}`), 0o600))
 	_, err := configcheck.Load(path)
 	assert.Error(t, err, "a typo in the key is an error, as everywhere in models.json")
+}
+
+func TestMatchFaceIsOffByDefaultAndTheFileTurnsItOnOverTheDefaultMapping(t *testing.T) {
+	assert.False(t, load(t, `{}`).Gentest.Face().Enabled(), "the face is mixed in only when the operator asks for it")
+
+	face := load(t, `{"gentest":{"match_face":{"weight":0.3}}}`).Gentest.Face()
+	assert.True(t, face.Enabled())
+	assert.InDelta(t, 0.3, face.Weight, 1e-9)
+	assert.Equal(t, imagematch.DefaultFaceMix().Floor, face.Floor, "a key the file leaves out keeps its default")
+	assert.Equal(t, imagematch.DefaultFaceMix().Ceil, face.Ceil)
+
+	face = load(t, `{"gentest":{"match_face":{"weight":1,"floor":0.1,"ceil":0.9}}}`).Gentest.Face()
+	assert.Equal(t, imagematch.FaceMix{Weight: 1, Floor: 0.1, Ceil: 0.9}, face)
+}
+
+func TestMatchFaceThatCannotWorkIsRefusedByTheConfigCheck(t *testing.T) {
+	for _, body := range []string{
+		`{"gentest":{"match_face":{"weight":1.5}}}`, `{"gentest":{"match_face":{"weight":-0.1}}}`,
+		`{"gentest":{"match_face":{"floor":0.7,"ceil":0.2}}}`, `{"gentest":{"match_face":{"ceil":1.5}}}`,
+		`{"gentest":{"match_face":{"wieght":0.3}}}`,
+	} {
+		path := filepath.Join(t.TempDir(), "models.json")
+		require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
+		_, err := configcheck.Load(path)
+		assert.Error(t, err, body)
+	}
 }
 
 func TestZeroValueIsTheDefault(t *testing.T) {
