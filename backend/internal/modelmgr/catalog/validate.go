@@ -255,11 +255,15 @@ func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Te
 		return []error{fmt.Errorf("%s: template %s makes %s, the model is %s", where, t.ID, t.Media, m.Kind)}
 	}
 	endpoints := map[string]localcfg.Endpoint{"bundled-comfyui": {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}}
+	model, err := w.Model(template)
+	if err != nil {
+		return []error{fmt.Errorf("%s: %w", where, err)}
+	}
 	var errs []error
-	for _, e := range localcfg.ValidateModel("bundled-comfyui/"+w.Name, t.Model, endpoints) {
+	for _, e := range localcfg.ValidateModel("bundled-comfyui/"+w.Name, model, endpoints) {
 		errs = append(errs, fmt.Errorf("%s: %w", where, e))
 	}
-	graph, err := localcfg.ParseGraph(t.Model.Workflow.Graph)
+	graph, err := localcfg.ParseGraph(model.Workflow.Graph)
 	if err != nil {
 		return append(errs, fmt.Errorf("%s: %w", where, err))
 	}

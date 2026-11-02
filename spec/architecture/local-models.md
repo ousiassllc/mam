@@ -77,7 +77,7 @@ openai-compat:lmstudio/flux-schnell
   - **決定: 全体の上限を残す**。進み続けて終わらないジョブ（進捗だけ出し続けるワークフローの暴走）や、いつまでも空かないキューで、mam の同時実行の枠を握り続けないための最後の歯止めとして、`MaxTimeoutSeconds`（24 時間。設定値の上限と同じ）を残す。設定項目にはしない（`timeout_seconds` の上限と一致するので、進みの止まった判定の方が必ず先に効く）。
   - **決定: 画像と動画で上限を分けない**。進み具合で打ち切る形では、動画の長い実行（進んでいる間は延びる）と画像の取りこぼし（進みが止まれば同じ時間で切れる）を、1 つの「進まない時間」で両方まかなえるため、メディアごとの設定は要らない。設定項目を増やすと画面・MCP・設定ファイルのすべてに入力と検証が増える割に得るものが無い。動画で読み込み・デコードなど進みの出ない処理が長いモデルは、接続先の `timeout_seconds` を延ばして足りる。
   - **既定を縮めない**: 既定は 10800 秒のまま。進みを報せないカスタムノードのワークフローや、進みの出ない長い処理（モデルの読み込み・VAE のデコード）では印が出ず、既定を縮めるとそれらを従来より早く打ち切ってしまうため。進みを報せる ComfyUI では、利用者が `timeout_seconds` を下げれば固まったジョブを早く見つけられる。
-- **組み込みテンプレート**: `localcfg/templates/image/*.json`・`localcfg/templates/video/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
+- **組み込みテンプレート**: `localcfg/templates/image/*.json`・`localcfg/templates/video/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2img-sdxl-clipskip2`・`img2img-sdxl-clipskip2`（SDXL に `CLIPSetLastLayer` で clip skip 2 を足したもの。Pony 系のモデル用。#984）、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
 - **取り込み**: 利用者の「Save (API Format)」の JSON を取り込める。エディタ形式（`nodes`/`links`）は拒否してヒントを返す。ノードと入力の一覧を返すので、割り当てを利用者が決める。
 
 ### 4.3 サンプリングの割り当て（steps・cfg・sampler・scheduler。Issue #973）

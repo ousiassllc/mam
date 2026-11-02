@@ -1,0 +1,60 @@
+{
+ "id": "cyberrealistic-xl-v10",
+ "name": "CyberRealistic XL v10（実写・SDXL）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け）。ポートレート・ファッション・写真風の場面が得意で、VAE 入りの fp16（約 6.9 GB）。作者のカードの推奨は 25〜30 ステップ・cfg 7〜8。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "files": [
+  {
+   "name": "CyberRealisticXLPlay_V10.0_FP16.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/cyberdelia/CyberRealisticXL/resolve/c04ae13b465d19763561a834d625a3d504a4f315/CyberRealisticXLPlay_V10.0_FP16.safetensors",
+   "sha256": "fd5e870b5bbce4bddeb64f4bb8e49c57f84ab793c0262a503f0123be435e667d",
+   "size": 6938041288,
+   "source_note": "作者の Hugging Face リポジトリ（cyberdelia/CyberRealisticXL）。原本は Civitai の CyberRealistic XL v10.0 FP16（model 312530、version 2840768、cyberrealisticXL_v100_2727591.safetensors）で、SHA-256 が一致することを 2026-11-03 に確かめた。"
+  }
+ ],
+ "vram": {
+  "min_gb": 8,
+  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "creativeml-openrail++-m",
+  "version": "2023-07-26",
+  "name": "CreativeML Open RAIL++-M License（作者 Cyberdelia のモデルカードの本文。license タグは creativeml-openrail-m。リンク先は CompVis の CreativeML Open RAIL-M の本文）",
+  "url": "https://huggingface.co/cyberdelia/CyberRealisticXL/blob/c04ae13b465d19763561a834d625a3d504a4f315/README.md",
+  "summary": "商用を含めて使える。ただし違法・有害な用途（未成年の搾取、なりすまし、偽情報の拡散など）を禁じる使用制限（Attachment A）が付き、モデルを再配布するときは同じ制限を引き継ぐ。ベースの SDXL 1.0 も同じライセンスで、このモデルはそれに作者が手を加えたもの（マージ・追加学習）。元にしたほかのモデルのライセンスは作者のカードに書かれていない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Stable Diffusion XL 1.0）",
+    "name": "CreativeML Open RAIL++-M License",
+    "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/462165984030d82259a11f4367a4eed129e94a7b/LICENSE.md",
+    "commercial": "yes"
+   },
+   {
+    "part": "CyberRealistic XL v10（Cyberdelia のマージ・追加学習）",
+    "name": "CreativeML Open RAIL++-M License（作者 Cyberdelia のモデルカードの記載。リンク先は CompVis の CreativeML Open RAIL-M の本文）",
+    "url": "https://huggingface.co/cyberdelia/CyberRealisticXL/blob/c04ae13b465d19763561a834d625a3d504a4f315/README.md",
+    "commercial": "yes"
+   }
+  ]
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "cyberrealistic-xl-v10",
+   "template": "txt2img-sdxl",
+   "model_file": "CyberRealisticXLPlay_V10.0_FP16.safetensors"
+  },
+  {
+   "name": "cyberrealistic-xl-v10-img2img",
+   "template": "img2img-sdxl",
+   "model_file": "CyberRealisticXLPlay_V10.0_FP16.safetensors"
+  }
+ ]
+}
