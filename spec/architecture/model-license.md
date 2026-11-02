@@ -51,6 +51,7 @@
 | `sdxl-base`・`ltx-video-2b` | 商用OK | OpenRAIL(++)-M。使用制限（Attachment A）つき |
 | `flux1-schnell`・`qwen-image`・`wan22-*`（ベース）・`chroma1-hd` | 商用OK | Apache-2.0 |
 | `flux2-klein-4b` | 商用OK | Apache-2.0（モデルカード `black-forest-labs/FLUX.2-klein-4B`・`-4b-fp8` の `license: apache-2.0` と `LICENSE.md`）。テキストエンコーダー Qwen3 4B も Apache-2.0。VAE は FLUX.2 [dev]（非商用）の再配布ではなく、Apache-2.0 の klein のリポジトリ（`Comfy-Org/Flux-2-Klein-4B`）のファイルを使う。9B と dev は非商用のため入れない |
+| `qwen-image-edit-2511` | 商用OK | Apache-2.0（Qwen のモデルカード `Qwen/Qwen-Image-Edit-2511` の `license: apache-2.0` と「Qwen-Image is licensed under Apache 2.0.」。取得元の `Comfy-Org/Qwen-Image-Edit` のカードも `license: apache-2.0`。`checked_at` は 2026-11-03）。テキストエンコーダーとVAEは `qwen-image` と同じファイル。Qwen 2.1 の `noctq-v4-qwen-image21`（Qwen Research License・非商用）とは別のライセンス |
 | `flux1-dev` | 商用NG | FLUX.1 [dev] Non-Commercial License v1.1.1 |
 | `flux1-dev-nsfw-master` | 商用NG | ベースが非商用。LoRA（NSFW MASTER）は HF が MIT でも原本の作者のライセンスを確認できず、内訳は不明 |
 | `noctq-v4-qwen-image21` | **商用NG** | `LICENSE`（Qwen RESEARCH LICENSE AGREEMENT、2026-09-20）§2(a) は「非商用の目的に限る」、§2(b) は「別の商用ライセンス無しに商用目的で使わない」と書く。Noct Q の重みも、テキストエンコーダー・VAE（Comfy-Org の配布。カードは `license: other / qwen-research`）も同じ。Qwen/Qwen-Image-2.1 本体のカードも `qwen-research` |
@@ -130,3 +131,4 @@
 | 1.4 | 2026-11-02 | §4・§5 にプロンプトマッチの画面（モデルの選択のフィルターと既定）を足した | 統合レビュー。#916 のモデルの選択だけフィルターと設定の既定が無かった |
 | 1.5 | 2026-11-02 | §2: HF のカードの `license_link` は https のものだけをリンクにする | 統合レビュー。検証なしに `SourceURL` へ入れ、`templ.SafeURL` で href にしていた（`javascript:` が通る）。HF の `license` タグだけで商用OKにする点は変えていない（方針は人が決める） |
 | 1.6 | 2026-11-02 | §3 の答えの表に `ltx-2.5-22b-distilled-nvfp4`・`-dfr`（条件つき）・`wan22-ti2v-5b-fp8`（商用OK）を足した | Issue #967・#968 |
+| 1.7 | 2026-11-03 | §3 の答えの表に `qwen-image-edit-2511`（商用OK。Apache-2.0）を足した | Issue #971 |
