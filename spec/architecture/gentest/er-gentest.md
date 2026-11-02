@@ -39,6 +39,10 @@
 
 `id`・`prompt`・`negative_prompt`（`UNIQUE (prompt, negative_prompt)` で重複排除）・`use_count`（バッチで使うたびに +1）・`created_at`・`last_used_at`。**結果へのリンクを持たない**: 結果を消してもプロンプトは残り、プロンプトを消しても結果は残る（明示の削除だけで消える）。
 
+## gentest_recipe（レシピ。Issue #977）
+
+`id`・`name`（`NOT NULL COLLATE NOCASE UNIQUE`・空でない。大文字小文字を区別せず一意）・`params`（JSON。`service/gentest/recipe.Params`: モデルの識別子・steps・cfg・sampler・scheduler・固定のシード・ネガティブ・LoRA・入力画像の強さ・縦横比・品質・画面に出す値。**プロンプトの本文と入力画像は持たない**）・`easy`（0/1。かんたんの選択肢に出す）・`created_at`・`updated_at`。**外部キーなし**（モデルは識別子で名指しし、削除・未導入でもレシピは残る）。マイグレーション `20261104100000_gentest_recipe.sql`、`repository/reciperepo`。プロジェクトのバンドルには含めない（`unbundledTables`）。結果の `gentest_result.params` に `exposed`（使った画面に出す値）が足された（JSON の項目。列は変わらない）。
+
 ## gentest_import（プロジェクトへの取り込みの記録）
 
 `result_id`（FK → `gentest_result`、カスケード）・`project_id`・`asset_id`・`reference_item_id`（NULL 可）は **TEXT で外部キーなし**（プロジェクトが消えても記録は残る）・`target`（JSON: `as` = `reference` / `asset`、`kind`・`name`・`tags`、割り当てたスロットの `assign`: `target`・`id`・`slot`）・`created_at`。

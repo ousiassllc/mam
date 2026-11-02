@@ -1,6 +1,6 @@
 # コンポーネント仕様: 画像生成の 3 段（かんたん / こだわり / ComfyUI）
 
-> **状態: ステージ 1 を実装済み。** Issue #977（親 Issue。関連 #972 #973 #974 #975 #976 #960 #955）。ステージ 2（レシピの保存・一覧・削除・かんたんへの追加、語を選んでウェイトを付ける +/−、ComfyUI の段の「今の設定をグラフで開く」「画面に出す値」の保存）は別の担当で、ここにはまだ無い。
+> **状態: ステージ 1 を実装済み。** Issue #977（親 Issue。関連 #972 #973 #974 #975 #976 #960 #955）。ステージ 2 のうち、レシピ（§9）と ComfyUI の段の「今の設定をグラフで開く」「画面に出す値」（§10）を実装済み。語を選んでウェイトを付ける +/− は別の担当。
 
 [gentest-screen.md](gentest-screen.md)（生成テスト画面の全体）の作成フォームのうち、**画像のフォームだけ**を 3 段にする。動画・音声は今のまま（段は無い）。ルートは [../api/endpoints-gentest.md](../api/endpoints-gentest.md)、仕組みは [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.6、MCP は [../api/mcp-tools-generation-test.md](../api/mcp-tools-generation-test.md)。
 
@@ -57,7 +57,7 @@
 - **こだわりからかんたんに戻る**と、かんたんで選んだやりたいこと・品質が見つかる（`easy_intent`・`easy_quality`。リクエストは読まない。読むと、こだわりのスライダーの値を上書きしてしまうため）。
 - **変えた項目に印**: 段が始まったときの値（かんたんで入れた値）と今の値が違う項目に「● 変えた」の印（`data-gt-mark`、`data-gt-changed`）が付く。対象: シード・ステップ数・CFG・サンプラー・スケジューラー・ネガティブ（プロンプトごと）・LoRA と強さ・参照画像の強さ（入力画像ごと。役割に追従する既定は、利用者が動かすまで「変えた」に数えない #960）。印は色だけにしない（文字つき）。
 - **元に戻す**: 項目ごと（「◯◯を元に戻す」の小さなボタン）と全体（「全部を元に戻す」）。戻る先は、**段が始まったときの値**（かんたんで入れた値。無ければモデルの既定）。変えた項目の一覧（`data-testid="gt-refine-list"`、`aria-live="polite"`）が「ステップ数: 30（元は 15）」のように言う。変えた項目が無いときは「変えた項目はまだありません」と出す。規則は `refine-model.ts`（vitest）、DOM は `refine.ts`（web-test-runner）。
-- 「プロンプトの語を選ぶと +/− が出る」と「レシピとして保存」は**第 2 段**（ここには無い）。
+- 「レシピとして保存」は §9、「画面に出す値」の入力欄は §10。「プロンプトの語を選ぶと +/− が出る」は別の担当。
 
 ## 5. 結果の画面
 
@@ -85,8 +85,41 @@
 - Go: プリセットの解決と、何も触らないときのグラフが今と同じこと（`service/gentest/qualitytest`）、おすすめモデルの選択・成人ゲート・商用フィルター・OS／GPU・入力画像（同 `intent_test.go`）、テンプレートのプリセットの検査（`localcfg/samplingtest/quality_test.go`）、`wfrefresh`、MCP（`mcp/tools/gentest/settingstest/quality_test.go`）、画面（`web/handler/gentest/tiertest`: 初期表示・おすすめモデルと品質・導入されていない理由と案内・成人ゲート・何も触らない見積り・こだわりへの持ち越し・ComfyUI のリンク・動画に段が無いこと・結果のボタンと使った設定・復元と復元できない理由・この顔で作る）。
 - Lit（web-test-runner）: `refine.wtest.ts`（印・項目ごと／全体の元に戻す）、`easy.wtest.ts`（見積りのボタンとモデルの追従）。DOM を使わない規則は `refine-model.test.ts`（vitest）。
 
+## 9. レシピ（Issue #977 ステージ 2）
+
+**レシピ＝「今の設定」に付けた名前。** 画像のこだわり（`tier=detail`）の末尾に「レシピ」の区画（`data-testid="gt-recipe-section"`。`organisms/gentesttier/recipe.templ`）があり、保存・一覧・名前の変更・かんたんへの足し外し・削除ができる。保存先は SQLite の表 `gentest_recipe`（マイグレーション `20261104100000_gentest_recipe.sql`。[../architecture/gentest/er-gentest.md](../architecture/gentest/er-gentest.md)）、サービスは `service/gentest/recipe`、画面のルートは `web/handler/gentest/recipescreen`。
+
+- **何を保存するか**: モデル（ワークフロー名＝モデル ID）・ステップ数・CFG・サンプラー・スケジューラー・シード（**固定しているときだけ**値）・ネガティブ・LoRA と強さ・参照画像の強さ・縦横比（サイズ）・品質・「画面に出す値」（§10）。**プロンプトの本文と入力画像は保存しない**（保存するのは入力画像に付けた強さだけ）。保存はモデル 1 つのフォームだけ（複数のモデルのときは理由つきで拒否）。値の検査は生成のリクエストと同じ（範囲外は 422）。
+- **名前**: 1〜60 文字の 1 行、大文字小文字を区別せず一意（重複は 409）。件数は 200 件まで。
+- **一覧**（`data-testid="gt-recipe-list"`）: 名前・モデル名・「かんたんに出ています」の印と、「使う」「名前を変える」「かんたんに出す / かんたんから外す」「削除」（確認つき）。操作は区画 `#gt-recipes` だけを差し替える（`POST /generation-test/recipes` ほか。[../api/endpoints-gentest.md](../api/endpoints-gentest.md)）。
+- **「使う」**: `GET /generation-test?tier=detail&recipe=<id>`（フォームの差し替えは `GET /generation-test/form` に同じクエリ）。モデルを選び、詳細設定・LoRA・縦横比・画面に出す値を入れる。**今のプロンプト・入力画像は変えない**。ネガティブは、空のプロンプトにだけ入れ、強さは、強さを持たない入力画像にだけ入れる。レシピが品質（速い／きれい）を持ち、ステップ数・CFG が無いときは、そのモデルのプリセットの値を詳細設定に入れる（かんたん → こだわりと同じ `tierform.Carry`）。
+- **かんたんの選択肢**: 「かんたんに出す」にしたレシピは、かんたんの「やりたいこと」の下に「保存したレシピ」として並ぶ（`data-testid="gt-recipe-choices"`。選択肢の値は `recipe:<id>`、見た目は `molecules/pick` で、やりたいことと同じ）。選ぶと、`easy-pick` の区画が**そのモデル**と「レシピの設定で作ります」の行に変わり（品質のボタンは出さない: レシピが steps・cfg を持つ）、サイズのボタンは**レシピのサイズ**に変わる（`hx-swap-oob`）。見積りは、モデルと設定をレシピから決める（`tierform.Resolve` → `recipe.Service.Apply`）ので、確認の hidden にレシピの値が入り、実行は同じリクエストを走らせる。かんたんからこだわりへ移るときも、選んだレシピの設定が入る。
+- **使えないレシピ**: モデルが削除された・導入されていない・今は呼べない・成人ゲートが閉じている・設定「商用OKのモデルだけを使う」や OS・GPU の条件に合わないときは、**消さずに**、一覧に「使えません: 理由」（`data-testid="gt-recipe-reason"`）を出し、「使う」を出さない。かんたんの選択肢には理由つきで残り、選ぶと「レシピ「…」は使えません: …」を出して見積りを押せなくする。成人ゲート・商用の絞り込み・OS／GPU の判定は、かんたんのやりたいことと**同じ関数**（`Service.Model` と `intent.Excluded`）を使う。
+- **MCP**: `list_generation_recipes`・`save_generation_recipe`・`update_generation_recipe`・`delete_generation_recipe`、`estimate_generation_test`・`run_generation_test` の `recipe`（[../api/mcp-tools-generation-test.md](../api/mcp-tools-generation-test.md)）。
+
+## 10. ComfyUI の段（Issue #977 ステージ 2）
+
+### 10.1 今の設定を ComfyUI で開く
+
+- **ボタン**: 「今の設定を ComfyUI で開く」（`data-testid="gt-comfy-open-button"`）が、かんたんの下端とこだわりのレシピの下にある。フォームの値（モデル・プロンプト・縦横比・シード・ステップ数などの詳細設定・LoRA・画面に出す値。かんたんならやりたいことから決めたモデルと品質）で**そのモデルのグラフを組み**（`comfyui.GraphFor`。実行と同じ組み立て: 割り当て・LoRA・画面に出す値を適用）、ノード画面で開く。`POST /generation-test/comfy/open`。
+- **渡し方**: ノード画面にグラフを直接渡す口は無い（ComfyUI のフロントエンドは、サーバーの `workflows` フォルダのファイルを開く）。そこで、既存の「ワークフローをノード画面で開く」（[../architecture/comfy/comfy-workflows.md](../architecture/comfy/comfy-workflows.md) §3）と同じ流れで、グラフを**画面の形式**（ノードの位置・ウィジェットの値の並び・リンクの表。`service/workflows/graphui` が、API 形式と `GET /object_info` から組む。独自のグラフエディタではない）に直し、ComfyUI のユーザーデータ `workflows/mam/今の設定 <モデル名>.json` へ置いて（`Service.OpenUI`。同名は上書き）、`HX-Redirect` でノード画面（`/nodes?opened=…`）へ移る。ノード画面が置いたファイルの場所を案内する（左の「ワークフロー」から開く）。mam のワークフローとしては**保存しない**（保存は「ワークフローを取り込む」で）。
+- **入らないもの**: 入力画像（読み込みのノードのファイルはワークフローのまま）と、英訳（プロンプトは入力したまま）。ボタンの隣の結果欄ではなく、移った先の案内にも、この 2 点を出す。
+- **開けないとき**: モデルが 1 つでない・ComfyUI のワークフローでない（クラウドのモデル）・ComfyUI が止まっていて起動できない・ノードの情報が取れない、など。理由を `#gt-comfy-open`（`aria-live="polite"`）に出し、フォームは壊さない。
+- 動画のフォームには出さない。
+
+### 10.2 画面に出す値（`exposed_inputs`）
+
+- **何か**: ワークフロー（テンプレート・取り込んだワークフロー・保存したワークフロー）に持たせる「**加算的な汎用入力**」（`localcfg/exposed`。[../architecture/local-models.md](../architecture/local-models.md) §4.8）。ノード ID＋入力名＋型（`int`/`float`/`string`/`enum`）＋範囲（int・float は `min`・`max`）または選択肢（enum）＋表示名。**今の割り当て（`assignments`）は変えない**。`exposed_inputs` が無いワークフローは今と同じに動く。入力の現在値（グラフが持つ値）が既定値。
+- **選べない入力**: ほかのノードがつないでいる入力（リンク）・割り当てが使っている入力（プロンプト・シード・サイズ・ステップ数など。こだわりの詳細設定にある）・真偽値・リストは選べない（保存時に拒否し、選ぶ画面では理由を出す）。
+- **選ぶ画面**: ComfyUI の段の「画面に出す値を選ぶ」（`GET /generation-test/comfy/exposed`。`data-testid="gt-comfy-exposed"`）。モデル（ComfyUI のワークフロー）を選ぶと、そのグラフのノード・入力が表になり、チェックを入れて名前と範囲を決めて保存する（`POST /generation-test/comfy/exposed`。`service/gentest/exposedpick`）。型・範囲・選択肢は、ComfyUI が答えれば `GET /object_info` から、答えなければグラフの値から決める（止まっている同梱の ComfyUI は、ここでは起動しない）。選べない入力は表の下の「選べない入力と、その理由」に出る。グラフエディタは作らない。保存先は、モデルの置き場所に応じて、保存したワークフロー（`comfy_workflow`）か、接続先のモデル（`models.json` の `local_models`。同梱の ComfyUI の導入モデルと、取り込んだワークフロー）。設定ファイルが固定されている（`--model-config`）ときは、保存できない旨を出す。
+- **MCP からの設定**: `import_workflow_json`・`update_workflow_assignment`（`settings.exposed_inputs`）、`create_local_model`・`update_local_model`・`get_local_model`（`exposed_inputs`）。`update_workflow_assignment` が `exposed_inputs` を省くと、今の値のまま。
+- **こだわりの入力欄**: そのモデルを選ぶと、詳細設定の中に「◯◯ の「画面に出す値」」の組（`data-gt-exposed-model`。モデルを選んでいるときだけ表示し、選んでいないモデルの欄は無効にして何も送らない。`static/src/components/gentest-tiers/exposed.ts`）として、型に合う入力欄が出る: int・float は数値（`min`〜`max`）、enum は選択、string は 1 行か複数行。**空欄＝グラフの値のまま**（プレースホルダーに既定値）。フォームの名前は `exposed.<ノード ID>.<入力名>`。
+- **生成**: リクエストの `exposed`（キー `<ノード ID>.<入力名>`）は、モデルの `exposed`（`list_generation_models`。`default` はグラフの値）に照らして**型・範囲・選択肢を検査**し（範囲外・どのモデルにも無いキーは 422）、そのキーを持たないモデルには警告 `exposed_ignored` を出して使わない。実行は、グラフを作るとき**最初に**値を入れる（割り当ての前。割り当てと重ならない）。使った値（指定しない項目はグラフの値）は結果の `params.exposed` に残り、結果の「使った設定」・詳細の表に出て、「この設定でもう一度」「似た感じでもう1枚」で入力欄に戻る。
+- 画像だけ。実機の ComfyUI と GPU では確かめていない（偽の ComfyUI で、グラフに値が入るところまで）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-11-03 | 新規作成。画像のフォームの 3 段（かんたん・こだわり・ComfyUI）、やりたいことと候補モデルのデータ、品質のプリセット、こだわりの印と元に戻す、結果のボタン列と「使った設定」、再現（もう1枚・もう一度・この顔で作る） | Issue #977（ステージ 1） |
+|1.1|2026-11-04|§9（レシピ: 保存・一覧・名前の変更・かんたんへの足し外し・削除・使う・使えない理由）と §10（ComfyUI の段: 今の設定を ComfyUI で開く・画面に出す値）を追記。状態の見出し・§1 の ComfyUI の行を更新|Issue #977（ステージ 2）|

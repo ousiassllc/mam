@@ -97,6 +97,22 @@
 - `list_generation_models` には**アップスケールのワークフローは出ない**（プロンプトを渡すモデルではない）。一覧は `list_generation_upscalers`。
 - ジョブの `result` は `batch_id`・`succeeded`・`failed`・`cancelled`（既存と同じ）。取り消しは `cancel_generation_test`。
 
+## レシピと「画面に出す値」（Issue #977 ステージ 2）
+
+画面の「レシピ」（[../components/gentest-tiers.md](../components/gentest-tiers.md) §9）と同じものを、4 つのツールで扱う。実装は `backend/internal/mcp/tools/gentestrecipe`（`tools/gentest` は行数の上限まで来ているため別パッケージ）。サービスは `service/gentest/recipe`。アプリが生成テストを持たないとき（`Gentest` が nil）は `unavailable`。
+
+| ツール | 内容 | 入力 | 出力 |
+|---|---|---|---|
+| `list_generation_recipes` | レシピの一覧（名前順） | なし | `recipes[]`: `id`・`name`・`model`・`model_label`・`easy`（かんたんの選択肢に出ているか）・`usable`・`reason`（使えない理由）・保存した設定（`sampling`・`quality`・`seed`・`negative_prompt`・`lora`・`reference_strength`・`aspect_ratio`・`exposed`）・`created_at`・`updated_at` |
+| `save_generation_recipe` | 設定をレシピとして保存する（モデル 1 つ。プロンプトの本文と入力画像は保存しない） | `name`（1〜60 文字の 1 行。大文字小文字を区別せず一意: 重複は `conflict`）・`model`・`easy?`・上の設定の各項目 | 保存したレシピ |
+| `update_generation_recipe` | 名前を変える・かんたんの選択肢に足す／外す（冪等） | `id`・`name?`・`easy?`（どちらも無ければ `validation`） | 変えたレシピ |
+| `delete_generation_recipe` | レシピを削除する（破壊的）。生成の結果は残る | `id` | `deleted` |
+
+- **`recipe`**（`estimate_generation_test`・`run_generation_test` の引数。画像だけ）: レシピのモデルと設定で作る。**リクエストが名指しした項目（`sampling`・`seed`・`quality`・`aspect_ratio`・`lora`・`exposed`・プロンプトごとの `negative_prompt`・入力画像の `strength`）が勝つ**。`models`・`intent` とは同時に指定できない（`validation`）。レシピが無い／消えたものは `not_found`。使えないレシピ（モデルの削除・未導入・成人ゲート・「商用OKのモデルだけを使う」・OS／GPU）は、理由つきの `validation`（レシピは消えない）。見積りの `request.models` にレシピのモデルが入る。
+- **`exposed`**（同。画像だけ）: モデルの「画面に出す値」（`list_generation_models` の各モデルの `exposed[]`: `key`＝`<ノード ID>.<入力名>`・`label`・`type`（int / float / string / enum）・`min`・`max`・`options`・`default`＝ワークフローのグラフが持つ値）の値を `{"<key>": 値}` で渡す。型・範囲・選択肢の外、どのモデルにも無いキーは `validation`。そのキーを持たないモデルには警告 `exposed_ignored` を出して使わない。結果の `exposed`（`get_generation_result` ほか）に使った値が残り、そのまま次のリクエストの `exposed` に渡せば同じ条件で作り直せる。
+- 「画面に出す値」を決める側（ワークフローの `exposed_inputs`）は [mcp-tools-workflows.md](mcp-tools-workflows.md)・[mcp-tools-local-models.md](mcp-tools-local-models.md)。
+- テストは `mcp/tools/gentestrecipe/recipes_test.go`（保存 → 一覧 → レシピ指定の見積り・実行で同じ設定になる → 名前の変更・外す → 削除）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -115,3 +131,4 @@
 | 1.11 | 2026-11-03 | `references[]` の `role` に `pose`、`source` に `pose_library` を足した（`list_generation_models` の `reference_roles` にも `pose`） | Issue #986 |
 | 1.12 | 2026-11-02 | `estimate_generation_test`・`run_generation_test` に `mask`・`denoise`、`list_generation_models` に `supports_inpaint`・`denoise_default`、結果に `inpaint`、警告 `denoise_ignored` を足した。対応しないモデルは `validation` | Issue #974 |
 | 1.13 | 2026-11-03 | `estimate_generation_test`・`run_generation_test` に `quality`（fast / standard / high）と `intent`（photo / anime / landscape / face）、`list_generation_models` に `intents[]` とモデルの `sampling.quality_presets`、警告 `quality_ignored` を足した。既存の引数は変えない | Issue #977（ステージ 1） |
+| 1.14 | 2026-11-04 | `list_generation_recipes`・`save_generation_recipe`・`update_generation_recipe`・`delete_generation_recipe`、`estimate_generation_test`・`run_generation_test` に `recipe` と `exposed`、`list_generation_models` の各モデルに `exposed[]`、結果に `exposed`、警告 `exposed_ignored` を足した | Issue #977（ステージ 2） |
