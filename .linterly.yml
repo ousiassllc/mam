@@ -9,7 +9,7 @@ count_mode: all # 変更しない
 default_excludes: true
 language: ja
 
-# 除外は生成物・ロックファイル・ライセンス全文（LICENSE、THIRD_PARTY_NOTICES.md）と、ドキュメント（Markdown）のみ。手書きのソースコードは除外しない。
+# 除外は生成物・ロックファイル・ライセンス全文（LICENSE、THIRD_PARTY_NOTICES.md）・取り込んだ外部コード（third_party/）と、ドキュメント（Markdown）のみ。手書きのソースコードは除外しない。
 ignore:
   - "**/*_templ.go"
   - "static/src/dist/**"
@@ -20,3 +20,5 @@ ignore:
   - "THIRD_PARTY_NOTICES.md"
   # ドキュメント（Markdown）は行数チェックの対象外（#850 の判断）
   - "**/*.md"
+  # third_party/ は上流のコードをそのまま写した外部コードで手書きのソースではない（行数のために手を入れると上流との差が見えなくなる。#949）
+  - "third_party/**"

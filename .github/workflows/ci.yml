@@ -244,6 +244,16 @@ jobs:
           echo "MAM_FACESIM_RUNTIME_LIB=$dir/onnxruntime/onnxruntime.dll" >> "$GITHUB_ENV"
           echo "MAM_FACESIM_MODEL_DIR=$dir/models" >> "$GITHUB_ENV"
 
+      # `go test` exits 0 when a test skips, and these tests skip when MAM_FACESIM_MODEL_DIR / MAM_FACESIM_RUNTIME_LIB did not get
+      # through, which would leave this job green without ever loading the DLL or a model (Issue #950). So the tests that need the
+      # real DLL and models must be PASS lines of the output (scripts/require-tests-passed.sh). The photo tests (MAM_FACESIM_PHOTOS)
+      # are not in the list: they skip here on purpose, no photos are downloaded.
       - name: Test facesim on Windows
         shell: bash
-        run: go test -count=1 -v ./backend/internal/facesim/...
+        run: |
+          go test -count=1 -v ./backend/internal/facesim/... | tee "$RUNNER_TEMP/facesim-test.txt"
+          bash scripts/require-tests-passed.sh "$RUNNER_TEMP/facesim-test.txt" \
+            TestONNX_SyntheticImageRunsOnTheRealRuntime \
+            TestONNX_NonASCIIModelPathLoads \
+            TestONNX_EmbedRunsOnTheRealRuntime \
+            TestNewONNX_LoadsTheDLLNextToTheExecutableOnWindows
