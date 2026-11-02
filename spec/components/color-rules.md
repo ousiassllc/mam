@@ -6,7 +6,7 @@
 
 ## 1. 方針
 
-- **新しいデザイントークンは作らない。** CSS カスタムプロパティ・`DESIGN.md`・`tailwind.config` は置かない。`static/src/css/app.css` は `@import "tailwindcss"` と `@source` だけのままにし、Tailwind 4 の既存のパレットから選ぶ。
+- **新しいデザイントークンは作らない。** CSS カスタムプロパティ・`DESIGN.md`・`tailwind.config` は置かない。`static/src/css/app.css` は `@import "tailwindcss"`・スライダーの CSS（`@import "./slider.css"`。§4.1）と `@source` だけのままにし、Tailwind 4 の既存のパレットから選ぶ。
 - 色相は **neutral / indigo / red / amber / emerald / sky**（＋ `white` / `black`）だけ。意味は色相で決める: **危険 = red・警告 = amber・成功 = emerald・情報／進行中 = sky・主アクション／リンク／選択 = indigo・それ以外 = neutral**。意味のある色を neutral に潰さない。
 - **同じ意味に新しいシェードや `/opacity` を足さない。** 文字は `-300`、枠は `-500/60`、薄い面は `/10`（弱い）か `/20`（バッジのような塗り）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
 - 色だけで意味を伝えない（[shared-ui-parts.md](shared-ui-parts.md) §1「状態」。#790・#795）。文字・`Badge` の文言を添える。
@@ -100,6 +100,23 @@
 
 <!-- color-exceptions:end -->
 
+### 4.1 スライダー（`input[type=range]`。Issue #955）
+
+`::-webkit-slider-*` / `::-moz-range-*` は Tailwind のクラスで書けないので、スライダーだけは CSS（`static/src/css/slider.css`）で描く。**色は Tailwind のパレットの変数（`var(--color-indigo-500)` など）で、表（§3・§4）にある色相・シェードだけを使う**（hex・`rgb(` の直書きは §2 のテストが落とす）。`--thumb`・`--rail`・`--fill` などのカスタムプロパティは、部品の中の大きさ・塗りの割合で、デザイントークンではない。
+
+| 部位・状態 | 色（パレットの変数） | 表の根拠 |
+|-----------|--------------------|---------|
+| 塗り（選んだ値までのレール） | `indigo-500` | 選択・主アクションの indigo（`bg-indigo-500`） |
+| 残りのレール | `neutral-600` | 弱い操作（`border-neutral-600`） |
+| つまみ | 面 `white`・縁 `indigo-500` | 主ボタンの文字 `text-white`・`bg-indigo-500` |
+| ホバー | 縁 `indigo-400`・外側に `indigo-400/40` の光る縁取り | `hover:border-indigo-400`・`hover:shadow-indigo-400/40`（選ぶカードと同じ） |
+| ドラッグ中（`:active`） | つまみの面と縁が `indigo-400`・光る縁取りが太くなる | 〃 |
+| キーボードのフォーカス（`:focus-visible`） | つまみの外側に `neutral-950` の隙間 2px と `indigo-400` の輪 2px | フォーカス輪（`ring-indigo-400`・`ring-offset-neutral-950`） |
+| 無効（`:disabled`） | 塗り `neutral-600`・残り `neutral-700`・つまみ `neutral-600`（縁 `neutral-700`）。ホバー・ドラッグの変化なし | 無効・弱い操作 |
+| Windows のハイコントラスト（`forced-colors`） | システムの色（`Highlight`・`GrayText`・`ButtonFace`・`ButtonText`） | `outline-hidden` と同じ考え方（§1 の `shared-ui-parts.md`） |
+
+**WebKit（macOS の WKWebView）には、塗りの部分を指す疑似要素が無い**ので、レールは `linear-gradient(to right, 塗り var(--stop), 残り var(--stop))` で描く。`--fill`（0〜1）は値から `static/src/components/slider/slider.ts` が書く（読み込み・HTMX の差し替え・`input` のたび）。Lit が描くスライダーは `sliderStyle()`（`slider-model.ts`）で `style` に書く。`appearance: none` でブラウザの標準の見た目に頼らないので、Chromium（Windows の WebView2）と WebKit で同じ形になる。値・範囲・刻み・矢印キー・ドラッグは `<input type=range>` のままで、変えない。値の表示は各画面の `<output>`（スライダーの横か上）が持つ。
+
 ## 5. #865・#866 の UI もこの表に従う
 
 #865（モデルマネージャーのモデルのカード。`organisms/modelmgr/catalog.templ`・`settingsui.Card`）と #866（「?」ヘルプ。`molecules/help`・ポップオーバーのパネル・`atoms.IconHelp`・`SettingsSection` のヘルプ）で足した UI は、この表に従う。カードの面は `bg-neutral-900 border-neutral-800`、状態は `Badge`、同意の注意は `text-amber-300`、「?」ボタンは `border-neutral-700 text-neutral-300`・ホバー `hover:border-neutral-600 hover:text-neutral-100`・フォーカス輪 `ring-indigo-400`。**これから足す画面・部品も同じ**（表に無い色が要るなら §1 の方針に従って表を変える）。
@@ -111,3 +128,4 @@
 | 1.0 | 2026-10-28 | 新規作成。用途 → 許可クラスの表（§3。Issue の案をオーナーが 2026-10-28 に確認してそのまま確定）、意味の色の枠・薄い面（§3.1）、旧クラスの寄せ先（§3.2）、例外（§4）、#865・#866 も従うこと（§5）、検査の範囲（§2）を決めた。UI のクラスをこの表に寄せ、`a11y/color_allowlist_test.go` で許可リスト外を落とすようにした | Issue #867 |
 | 1.1 | 2026-11-01 | §4 の「選択」の行に、生成テストのモデルのカードが使う `peer-checked:border-indigo-400`・`peer-checked:bg-indigo-500/20`・`peer-checked:shadow-indigo-400/40` を足した（チェックボックスを見えなくして、カード全体を選択の枠と光る縁取りで示す） | Issue #906 |
 | 1.2 | 2026-11-02 | §3 のフォーカス輪に `has-[[data-card-open]:focus-visible]:ring-indigo-400`、§4 の「選択」の行に `hover:border-indigo-400`・`hover:shadow-indigo-400/40` を足した（モデルマネージャーのカードは、タップするとモーダルが開く「開くカード」。ホバーとキーボードのフォーカスで、選ぶカードと同じ枠・光る縁取り・輪を使う。新しい色は足していない） | Issue #954 |
+| 1.3 | 2026-11-02 | §4.1 を足した（スライダーの色・状態。`static/src/css/slider.css`）。§1 の `app.css` の書き方に `slider.css` の import を足した。新しい色相・シェードは足していない（表の indigo・neutral・white だけ） | Issue #955 |

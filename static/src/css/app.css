@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* The common look of every <input type="range"> (#955): the pseudo-elements of a slider cannot be written as utilities. */
+@import "./slider.css";
+
 /* Tailwind must see class names used in Templ templates. */
 @source "../../../backend/internal/web";
 
