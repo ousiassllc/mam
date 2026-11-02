@@ -51,6 +51,8 @@ type MatchModel struct {
 type MatchCompose struct {
 	Message
 	Models []MatchModel
+	// Filter is the commercial-use filter of the model choices (#928), checked at the setting's default.
+	Filter commercial.FilterData
 	Mode   string
 	// Target and Rounds are the numbers of the fields; MaxRounds is the most the service takes.
 	Target, Rounds string

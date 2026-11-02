@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -59,6 +60,8 @@ type Rig struct {
 	Free func(string) (uint64, error)
 	// GPUReport is what the GPU detection answers.
 	GPUReport gpu.Report
+	// GPUDetections counts the GPU detections the Service ran (the memory of the GPU is remembered, so a test can tell).
+	GPUDetections atomic.Int32
 	// GPULive is what the live GPU state answers.
 	GPULive  gpu.Status
 	started  bool
@@ -91,6 +94,11 @@ func HFBase(base string) Option { return func(_ *modelmanager.Deps, r *Rig) { r.
 
 // FetchRetry sets how a download resumes after a lost connection (the default of the rig waits a few milliseconds, at most six transfers).
 func FetchRetry(rt fetch.Retry) Option { return func(_ *modelmanager.Deps, r *Rig) { r.retry = rt } }
+
+// WithClock gives the Service the clock a test moves (what a remembered answer is aged by).
+func WithClock(now func() time.Time) Option {
+	return func(d *modelmanager.Deps, _ *Rig) { d.Now = now }
+}
 
 // NotWindows makes the Service one of an OS without the bundled engine.
 func NotWindows() Option { return func(d *modelmanager.Deps, _ *Rig) { d.Platform = "linux" } }
@@ -146,7 +154,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 	anyURL := func(*url.URL) error { return nil }
 	d.Jobs, d.JobTable, d.Models, d.Adapter, d.Backends = r.Queue, r.Table, r.Models, r.Adapter, bo
 	d.FreeBytes = func(p string) (uint64, error) { return r.Free(p) }
-	d.GPU = func(context.Context) gpu.Report { return r.GPUReport }
+	d.GPU = func(context.Context) gpu.Report { r.GPUDetections.Add(1); return r.GPUReport }
 	d.GPULive = func(context.Context, int, string) gpu.Status { return r.GPULive }
 	d.Fetch = fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, r.authHost)}
 	d.Fetch.AuthHost = r.authHost

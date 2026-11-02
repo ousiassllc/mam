@@ -7,13 +7,12 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/exportscreen"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -51,50 +50,18 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.DELETE(paths.GenerationTestPart("prompts", ":id"), h.DeletePrompt)
 }
 
-func render(c *gin.Context, status int, component templ.Component) {
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	c.Status(status)
-	if err := component.Render(c.Request.Context(), c.Writer); err != nil {
-		_ = c.Error(err)
-		if !c.Writer.Written() {
-			c.AbortWithStatus(http.StatusInternalServerError)
-		}
-	}
-}
-
 // htmxFragment says the request wants the part of the page, not the page (a history restore wants the page).
 func htmxFragment(c *gin.Context) bool {
 	c.Writer.Header().Add("Vary", "HX-Request, HX-History-Restore-Request")
 	return c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true"
 }
 
-// refuse is the status and message of an error of the service: 422 for an input that cannot be taken, 409 when the state does
-// not allow it (a changed estimate, a locked slot), 404 for something that is not there; anything else is a fault (500, logged,
-// with a generic message: the cause stays out of the page).
+// refuse is the status and message of an error of the service (gtshare.Refuse), and the one only this screen has: an import that
+// put the image into the Project but not into the slot (409).
 func refuse(c *gin.Context, err error) (status int, msg string) {
-	var (
-		invalid  *gterr.InvalidError
-		conflict *gterr.ConflictError
-		upstream *gterr.UpstreamError
-		partial  *projectlink.PartialImportError
-		tooBig   *http.MaxBytesError
-	)
-	switch {
-	case errors.As(err, &tooBig):
-		return http.StatusRequestEntityTooLarge, "送った画像が大きすぎます"
-	case errors.As(err, &invalid):
-		return http.StatusUnprocessableEntity, invalid.Message
-	case errors.As(err, &conflict):
-		return http.StatusConflict, conflict.Message
-	case errors.As(err, &upstream):
-		return http.StatusBadGateway, upstream.Message
-	case errors.As(err, &partial):
+	var partial *projectlink.PartialImportError
+	if errors.As(err, &partial) {
 		return http.StatusConflict, "画像は取り込みましたが、スロットには割り当てられませんでした（LOCK されているか、対象が見つかりません）"
-	case errors.Is(err, gterr.ErrNotFound):
-		return http.StatusNotFound, "対象が見つかりません。画面を読み込み直してください"
-	case errors.Is(err, gterr.ErrUnavailable):
-		return http.StatusServiceUnavailable, "生成テストはこのアプリでは使えません"
 	}
-	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+	return gtshare.Refuse(c, err)
 }

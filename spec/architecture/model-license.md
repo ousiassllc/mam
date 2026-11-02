@@ -24,7 +24,7 @@
 |---|---|---|
 | ローカルのカタログのモデル | `backend/internal/modelmgr/catalog/data/models/<id>.json` の `license` | カタログ ID → 導入で作るワークフロー名（`comfyui:bundled-comfyui/<name>`） |
 | クラウド・サブスクの組み込みモデル | `backend/internal/domain/modellicense/data/cloud.json`（ID をキーにした 1 つの表） | 生成テストのモデル ID（`kling-3.0`、`gpt-image-2:chatgpt-subscription`） |
-| Hugging Face から足したファイル | 導入のときにモデルカードの `license` タグを記録（`state.json`）。`modellicense.FromHF` が読む | 作ったモデルの ID |
+| Hugging Face から足したファイル | 導入のときにモデルカードの `license` タグを記録（`state.json`）。`modellicense.FromHF` が読む。カードの `license_link` は **https の URL だけ**を原文のリンク（`SourceURL`）にし、相対パス・http・`javascript:`・`file:` などは空にする（href に入るため。カタログの `Info.Validate` と同じ規則） | 作ったモデルの ID |
 | 利用者が登録した外部エンドポイントのモデル・保存したワークフロー | **持たない** | `unknown`（注意: 「mam は確認できていません」） |
 
 ローカルのカタログの `license`（`catalog.License`）は、同意に使う `id`・`version`・`name`・`url`・`summary`・`notice`・`excluded_regions` に加えて次を持つ。
@@ -82,6 +82,7 @@
 |---|---|
 | 生成テスト: モデルのカード | カードにバッジ。条件つき・不明は 1 行の短い注記。「?」ヘルプにモデルごとのライセンス名と条件 |
 | 生成テスト: 比較の表 | 行の見出し（モデル名）の下にバッジ。各結果のカードにマーク |
+| 生成テスト: プロンプトマッチ（#916） | モデルの選択肢の語（`OptionLabel`）とフィルター（既定は設定に従う）、結果のモデル名にバッジ |
 | 生成テスト: 履歴・結果の詳細 | 履歴の各カードにマーク。詳細にノート |
 | モデルマネージャー: モデルの一覧・同意ダイアログ | 一覧の各カードにバッジとノート。同意ダイアログは「商用利用」の行にバッジ |
 | モデルマネージャー: 試し生成 | モデルの選択肢の語と、各結果にマーク |
@@ -93,7 +94,7 @@
 ## 5. フィルターと設定
 
 - **フィルター（`molecules/commercial.Filter` と `static/src/components/commercial-filter`）**: すべて / 商用OKのみ / 条件つきまで。ラジオの並びで、`data-commercial-filter-target` が絞る一覧の CSS セレクターを持つ。一覧の中の `data-commercial="<値>"` を持つ要素（カード・行・`<option>`）を、選んだ答えが許さなければ隠し（`hidden`）、フォームの部品は無効にして送らない。広げるとスクリプトが無効にしたものだけ戻す（サーバーが無効にしたもの＝選べないモデルは戻さない）。選択中の `<option>` は隠さない（保存済みの割り当てを勝手に変えない）。隠した件数は「N 件を隠しています」と読み上げる。絞り込んだあとに `commercial-filter-applied` を投げ、生成テストは選択中のモデルの数えなおしに使う。
-- **フィルターを置く画面**: 生成テストのモデルのカードと履歴（`commercial` をクエリに持ち、ページ送りで保つ）、モデルマネージャーのモデルの一覧と試し生成のモデルの選択、設定の画像・動画モデルのモーダル。
+- **フィルターを置く画面**: 生成テストのモデルのカード・プロンプトマッチ（「画像から似せる」）のモデルの選択（`#gt-match-model`）・履歴（`commercial` をクエリに持ち、ページ送りで保つ）、モデルマネージャーのモデルの一覧と試し生成のモデルの選択、設定の画像・動画モデルのモーダル。
 - **設定「商用OKのモデルだけを使う」**（既定はオフ。`state.json` の `commercial_only`）: オンの間、上のフィルターは「商用OKのみ」から始まり、MCP の `list_generation_models`・`list_model_catalog` は `commercial` 引数を省くと商用OKだけを返す（`modellicense.DefaultFilter`）。**一覧を絞るだけで、生成そのものは止めない**（ほかの答えのモデルを画面で広げて選べる。名指しの生成も断らない。代替のモデルへは切り替えない）。画面はモデルマネージャーの「商用利用で絞り込む」の区画のスイッチ（`PUT /model-manager/commercial`）、MCP は `get_commercial_only` / `set_commercial_only`。
 
 ## 6. MCP
@@ -124,3 +125,5 @@
 | 1.1 | 2026-11-02 | 非検閲のテキストエンコーダーの LTX-2.5（`ltx-2.5-22b-distilled-uncensored`）の答え（不明）を足した | Issue #927 |
 | 1.2 | 2026-11-02 | §3 の答えの表に `flux2-klein-4b`（商用OK）を足した。VAE を FLUX.2 [dev] の再配布から取らず klein のリポジトリのものにした理由を書いた | Issue #931 |
 | 1.3 | 2026-11-02 | §3 の答えの表に `wan22-i2v-14b-lightx2v`（商用OK）・`wan22-i2v-14b-lightx2v-uncensored`（不明。宣言だけ）・`wan22-remix-nsfw-t2v`（不明。I2V と同じ）を足した | Issue #930 |
+| 1.4 | 2026-11-02 | §4・§5 にプロンプトマッチの画面（モデルの選択のフィルターと既定）を足した | 統合レビュー。#916 のモデルの選択だけフィルターと設定の既定が無かった |
+| 1.5 | 2026-11-02 | §2: HF のカードの `license_link` は https のものだけをリンクにする | 統合レビュー。検証なしに `SourceURL` へ入れ、`templ.SafeURL` で href にしていた（`javascript:` が通る）。HF の `license` タグだけで商用OKにする点は変えていない（方針は人が決める） |

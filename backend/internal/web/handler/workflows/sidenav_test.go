@@ -14,7 +14,7 @@ import (
 )
 
 // The node screen and the workflow screen are in the side menu and mark their own entry as the current one (#915). They
-// are the two entries that the route test of the menu (web/sidenav_test.go) cannot reach: they exist only with the workflows service.
+// are the two entries that the route test of the menu (web/sidenavtest/sidenav_test.go) cannot reach: they exist only with the workflows service.
 func TestSideMenuEntriesOfTheNodeAndWorkflowScreens(t *testing.T) {
 	s := newScreen(t)
 	for _, tc := range []struct {

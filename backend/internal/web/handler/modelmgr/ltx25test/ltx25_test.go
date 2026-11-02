@@ -147,9 +147,11 @@ func withLTXLikeMemory() mmtest.Option {
 // higher recommendation, gets the plain line; no known GPU memory says nothing. #954: the card carries a badge for the two warnings and the
 // sentence is in the modal that the card opens.
 func TestCatalog_ACardSaysHowTheGPUStandsToTheModelsVRAM(t *testing.T) {
-	s := newScreen(t, withLTXLikeMemory())
+	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	s := newScreen(t, withLTXLikeMemory(), mmtest.WithClock(func() time.Time { return now }))
 	vram := func(mib uint64) string {
 		s.rig.GPUReport.Adapters = []gpu.Adapter{{Name: "NVIDIA GeForce RTX", VRAMBytes: mib << 20}}
+		now = now.Add(time.Hour) // the memory of the GPU is remembered for a few minutes (mmview.GPUVRAM): a new one is read after that
 		return s.get(paths.ModelManagerPart("models")).Body.String()
 	}
 	detail := func(id string) string { return s.get(paths.ModelManagerPart("models", id, "detail")).Body.String() }
@@ -167,6 +169,8 @@ func TestCatalog_ACardSaysHowTheGPUStandsToTheModelsVRAM(t *testing.T) {
 	assert.Contains(t, bd, "INT8・タイル VAE・オフロードが前提で遅い")
 	assert.Contains(t, bd, "text-amber-300")
 	assert.Contains(t, bd, "推奨 32 GB 以上", "the recommendation is in the guideline of the modal")
+	s.rig.GPUReport.Adapters = []gpu.Adapter{{Name: "NVIDIA GeForce RTX", VRAMBytes: 12288 << 20}}
+	assert.Contains(t, card(t, s.get(paths.ModelManagerPart("models")).Body.String(), "m-b"), `data-fit="limited"`, "the list does not run the detection again at every draw")
 	assert.Contains(t, card(t, vram(12288), "m-b"), `data-fit="short"`)
 	assert.Contains(t, detail("m-b"), `data-fit="short"`)
 	assert.NotContains(t, card(t, vram(32607), "m-b"), `data-testid="mm-vram-fit"`, "a GPU that meets the recommendation is not warned")

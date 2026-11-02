@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/gin-gonic/gin"
@@ -101,13 +102,13 @@ func (h Handlers) History(c *gin.Context) {
 	}
 	if htmxFragment(c) {
 		if c.Query(liveParam) == "1" {
-			render(c, status, view.HistoryLive(v))
+			gtshare.Render(c, status, view.HistoryLive(v))
 			return
 		}
-		render(c, status, view.HistoryList(v))
+		gtshare.Render(c, status, view.HistoryList(v))
 		return
 	}
-	render(c, status, pages.GenerationHistoryPage(middleware.CSRFToken(c), v))
+	gtshare.Render(c, status, pages.GenerationHistoryPage(middleware.CSRFToken(c), v))
 }
 
 // Detail answers GET /generation-test/results/:id: the settings, the inputs, the imports and the import form.
@@ -116,10 +117,10 @@ func (h Handlers) Detail(c *gin.Context) {
 	d, err := h.Svc.Result(ctx, c.Param("id"))
 	if err != nil {
 		status, msg := refuse(c, err)
-		render(c, status, pages.GenerationResultPage(middleware.CSRFToken(c), view.Detail{Message: view.Message{Error: msg}}))
+		gtshare.Render(c, status, pages.GenerationResultPage(middleware.CSRFToken(c), view.Detail{Message: view.Message{Error: msg}}))
 		return
 	}
-	render(c, http.StatusOK, pages.GenerationResultPage(middleware.CSRFToken(c), h.detail(ctx, d, view.ImportForm{})))
+	gtshare.Render(c, http.StatusOK, pages.GenerationResultPage(middleware.CSRFToken(c), h.detail(ctx, d, view.ImportForm{})))
 }
 
 // serveFile answers with a stored file as the media routes do: the stored type, inside a sandbox so that the file cannot run
@@ -168,7 +169,7 @@ func (h Handlers) Favorite(c *gin.Context) {
 		c.AbortWithStatus(status)
 		return
 	}
-	render(c, http.StatusOK, view.FavoriteButton(c.Param("id"), on))
+	gtshare.Render(c, http.StatusOK, view.FavoriteButton(c.Param("id"), on))
 }
 
 // DeleteResult answers DELETE /generation-test/results/:id: the result and its file go; the history is shown again. A result
@@ -178,7 +179,7 @@ func (h Handlers) DeleteResult(c *gin.Context) {
 		status, msg := refuse(c, err)
 		c.Header("HX-Retarget", "#"+view.DetailID)
 		c.Header("HX-Reswap", "outerHTML")
-		render(c, status, view.ResultDetail(view.Detail{Message: view.Message{Error: msg}}))
+		gtshare.Render(c, status, view.ResultDetail(view.Detail{Message: view.Message{Error: msg}}))
 		return
 	}
 	c.Header("HX-Redirect", paths.GenerationTestHistory())
@@ -187,7 +188,7 @@ func (h Handlers) DeleteResult(c *gin.Context) {
 
 // Prompts answers GET /generation-test/prompts: the prompt history.
 func (h Handlers) Prompts(c *gin.Context) {
-	render(c, http.StatusOK, pages.GenerationPromptsPage(middleware.CSRFToken(c), h.prompts(c.Request.Context(), view.Message{})))
+	gtshare.Render(c, http.StatusOK, pages.GenerationPromptsPage(middleware.CSRFToken(c), h.prompts(c.Request.Context(), view.Message{})))
 }
 
 func (h Handlers) prompts(ctx context.Context, m view.Message) view.Prompts {
@@ -215,5 +216,5 @@ func (h Handlers) DeletePrompt(c *gin.Context) {
 		status, m.Error = refuse(c, err)
 		m.Notice = ""
 	}
-	render(c, status, view.PromptHistory(h.prompts(c.Request.Context(), m)))
+	gtshare.Render(c, status, view.PromptHistory(h.prompts(c.Request.Context(), m)))
 }

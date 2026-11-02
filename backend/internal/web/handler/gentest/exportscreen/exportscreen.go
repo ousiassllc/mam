@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/export"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -47,16 +48,26 @@ func selection(c *gin.Context) (export.Selection, error) {
 	return sel, nil
 }
 
-// Export answers GET /generation-test/export with the ZIP, streamed (the files are copied from the disk one by one). A choice that
-// cannot be exported is answered as plain text with the reason (the browser shows it where the download would have been).
+// Export answers GET /generation-test/export with the ZIP, streamed (the files are copied from the disk one by one).
+//
+// The bar of the history asks through htmx first (HX-Request): a choice that cannot be exported is then answered with a fragment that
+// says why, drawn beside the buttons, and one that can is answered with HX-Redirect to the very same URL, which the browser (or the
+// desktop window) loads as a download without leaving the page. A plain request (no script, a copied link) that cannot be exported is
+// answered as plain text with the reason, in place of the download.
 func (h Handlers) Export(c *gin.Context) {
 	sel, err := selection(c)
 	var arc export.Archive
 	if err == nil {
 		arc, err = export.New(h.Svc).Archive(c.Request.Context(), sel)
 	}
-	if err != nil {
-		refuse(c, err)
+	asked := c.GetHeader("HX-Request") == "true"
+	switch {
+	case err != nil:
+		refuse(c, err, asked)
+		return
+	case asked:
+		c.Header("HX-Redirect", c.Request.URL.RequestURI())
+		c.Status(http.StatusNoContent)
 		return
 	}
 	c.Header("Content-Type", export.ContentType)
@@ -69,15 +80,24 @@ func (h Handlers) Export(c *gin.Context) {
 	}
 }
 
-func refuse(c *gin.Context, err error) {
+// refuse answers a selection that cannot be exported: the reason as a fragment for htmx (the bar draws it, swapped in although it is an
+// error status: main.ts), as plain text otherwise.
+func refuse(c *gin.Context, err error, asked bool) {
 	var invalid *gterr.InvalidError
+	status, msg := http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
 	switch {
 	case errors.As(err, &invalid):
-		c.String(http.StatusUnprocessableEntity, invalid.Message)
+		status, msg = http.StatusUnprocessableEntity, invalid.Message
 	case errors.Is(err, gterr.ErrNotFound):
-		c.String(http.StatusNotFound, "対象が見つかりません")
+		status, msg = http.StatusNotFound, "対象が見つかりません"
 	default:
 		_ = c.Error(err)
-		c.String(http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください")
 	}
+	if !asked {
+		c.String(status, msg)
+		return
+	}
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Status(status)
+	_ = exportbar.Problem(msg).Render(c.Request.Context(), c.Writer)
 }

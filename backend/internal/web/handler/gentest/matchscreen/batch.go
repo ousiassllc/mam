@@ -7,15 +7,11 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
-
-var statusText = map[string]string{
-	gentest.StatusQueued: "待機中", gentest.StatusRunning: "生成中", gentest.StatusSucceeded: "完了",
-	gentest.StatusFailed: "失敗", gentest.StatusCancelled: "取り消し",
-}
 
 // stopText says why a match that is over stopped.
 func stopText(v match.View) (text, tone string) {
@@ -45,7 +41,7 @@ func batchView(v match.View) view.MatchBatch {
 		b.Reference = paths.GenerationTestPart("inputs", v.ReferenceID, "file")
 	}
 	if v.EstimatedUSD > 0 {
-		b.Estimate = usd(v.EstimatedUSD)
+		b.Estimate = gtshare.USD(v.EstimatedUSD)
 	}
 	if v.BestScore != nil {
 		b.Best = percentText(*v.BestScore)
@@ -60,7 +56,7 @@ func batchView(v match.View) view.MatchBatch {
 	}
 	for _, r := range v.Rounds {
 		round := view.MatchRound{
-			N: r.Round, ID: r.ResultID, Status: r.Status, StatusText: statusText[r.Status], Best: r.Best, Change: r.Change, Instruction: r.Instruction,
+			N: r.Round, ID: r.ResultID, Status: r.Status, StatusText: gtshare.StatusText[r.Status], Best: r.Best, Change: r.Change, Instruction: r.Instruction,
 			Differences: r.Differences, Prompt: r.Prompt, BasePrompt: r.BasePrompt, BasedOn: r.BasedOn, Error: r.Error,
 			Active:    !v.Finished && (r.Status == gentest.StatusRunning || r.Status == gentest.StatusQueued || (r.HasFile && r.Score == nil && r.Error == "")),
 			DetailURL: paths.GenerationTestPart("results", r.ResultID),

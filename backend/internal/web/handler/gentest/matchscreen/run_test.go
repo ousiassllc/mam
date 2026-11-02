@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -65,6 +66,22 @@ func TestTheLicenseOfTheModelIsOnTheFormAndOnTheMatch(t *testing.T) {
 	done := s.settled(s.batchID())
 	assert.Contains(t, done, `data-testid="gt-match-model-label"`)
 	assert.Contains(t, done, `data-testid="commercial-badge"`)
+}
+
+// The model of the form is filtered like every other model choice (#928): the filter narrows the select, and the setting
+// "商用OKのモデルだけを使う" decides which choice is checked when the page is drawn.
+func TestTheModelOfTheFormHasTheCommercialFilterAtTheSettingsDefault(t *testing.T) {
+	s := newScreen(t, nil, true)
+	page := s.get(paths.GenerationTestMatch()).Body.String()
+	assert.Contains(t, page, `data-commercial-filter-target="#gt-match-model"`)
+	assert.Contains(t, page, `id="gt-match-model"`, "the filter narrows the select of the form")
+	assert.Regexp(t, `value="all"\s+checked`, page, "すべて is checked while the setting is off")
+
+	modellicense.SetDefaultFilter(func() modellicense.Filter { return modellicense.FilterOK })
+	t.Cleanup(func() { modellicense.SetDefaultFilter(nil) })
+	page = s.get(paths.GenerationTestMatch()).Body.String()
+	assert.Regexp(t, `value="ok"\s+checked`, page)
+	assert.NotRegexp(t, `value="all"\s+checked`, page)
 }
 
 func TestRunRefusesAChangedEstimateAndAnOverLimitOne(t *testing.T) {
@@ -156,4 +173,15 @@ func TestAnUnknownMatchIsNotFound(t *testing.T) {
 	rec := s.get(paths.GenerationTestPart("match", "batches", "nope"))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Body.String(), "見つかりません")
+}
+
+// The model choices say a unit price in the words of the form of the generation test (handler/gentest/gtshare): a local model is
+// 「無料（ローカル）」, not the shorter 「無料」 the copy of the match screen had.
+func TestTheModelChoicesSayAFreeModelTheSameWordsAsTheGenerationTestForm(t *testing.T) {
+	s := newScreen(t, nil, true, gentesttest.WithNoReferenceModel())
+
+	page := s.get(paths.GenerationTestMatch()).Body.String()
+
+	assert.Contains(t, page, "（無料（ローカル））")
+	assert.NotContains(t, page, "（無料）")
 }

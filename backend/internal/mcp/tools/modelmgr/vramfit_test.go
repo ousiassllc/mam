@@ -2,6 +2,7 @@ package modelmgr_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,13 +29,15 @@ func withRecommendation() mmtest.Option {
 // list_model_catalog tells the AI how this PC's GPU stands to each model: 16 GB for a 32 GB recommendation is "limited" (動くが制約あり) with the
 // limits in words, and nothing is said while the GPU memory is not known.
 func TestCatalog_ReportsHowTheGPUStandsToEachModelsVRAM(t *testing.T) {
-	env, rig := newEnv(t, withRecommendation())
+	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	env, rig := newEnv(t, withRecommendation(), mmtest.WithClock(func() time.Time { return now }))
 
 	var unknown modelmgr.ListCatalogOutput
 	env.CallOK("list_model_catalog", map[string]any{}, &unknown)
 	assert.Empty(t, unknown.VRAMFit, "no GPU memory is known")
 
 	rig.GPUReport.Adapters = []gpu.Adapter{{Name: "NVIDIA GeForce RTX 4070 Ti SUPER", VRAMBytes: 16376 << 20}}
+	now = now.Add(time.Hour) // the memory of the GPU is remembered for a few minutes: a new one is read after that
 	var list modelmgr.ListCatalogOutput
 	env.CallOK("list_model_catalog", map[string]any{}, &list)
 	require.Contains(t, list.VRAMFit, "m-b")

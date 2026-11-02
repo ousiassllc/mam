@@ -5,14 +5,11 @@
 package matchscreen
 
 import (
-	"errors"
 	"net/http"
 
-	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -40,43 +37,4 @@ func (h Handlers) matcher(c *gin.Context) (*match.Service, bool) {
 		c.AbortWithStatus(http.StatusServiceUnavailable)
 	}
 	return m, m != nil
-}
-
-func render(c *gin.Context, status int, component templ.Component) {
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	c.Status(status)
-	if err := component.Render(c.Request.Context(), c.Writer); err != nil {
-		_ = c.Error(err)
-		if !c.Writer.Written() {
-			c.AbortWithStatus(http.StatusInternalServerError)
-		}
-	}
-}
-
-// refuse is the status and message of an error of the service: 422 for an input that cannot be taken, 409 when the state does not
-// allow it, 502 when the LLM failed, 404 for something that is not there; anything else is a fault (500, logged, with a generic
-// message: the cause stays out of the page).
-func refuse(c *gin.Context, err error) (status int, msg string) {
-	var (
-		invalid  *gterr.InvalidError
-		conflict *gterr.ConflictError
-		upstream *gterr.UpstreamError
-		tooBig   *http.MaxBytesError
-	)
-	switch {
-	case errors.As(err, &tooBig):
-		return http.StatusRequestEntityTooLarge, "送った画像が大きすぎます"
-	case errors.As(err, &invalid):
-		return http.StatusUnprocessableEntity, invalid.Message
-	case errors.As(err, &conflict):
-		return http.StatusConflict, conflict.Message
-	case errors.As(err, &upstream):
-		return http.StatusBadGateway, upstream.Message
-	case errors.Is(err, gterr.ErrNotFound):
-		return http.StatusNotFound, "対象が見つかりません。画面を読み込み直してください"
-	case errors.Is(err, gterr.ErrUnavailable):
-		return http.StatusServiceUnavailable, "生成テストはこのアプリでは使えません"
-	}
-	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
 }

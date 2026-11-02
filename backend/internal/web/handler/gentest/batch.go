@@ -3,6 +3,7 @@ package gentest
 import (
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -28,7 +29,7 @@ func batchView(b gentest.BatchStatus) view.Batch {
 		v.Error = b.Error
 	}
 	if b.EstimatedUSD > 0 {
-		v.Estimate = usd(b.EstimatedUSD)
+		v.Estimate = gtshare.USD(b.EstimatedUSD)
 	}
 	type key struct{ prompt, negative string }
 	col := map[key]int{}

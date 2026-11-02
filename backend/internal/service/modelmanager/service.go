@@ -40,6 +40,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/instlog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmlicense"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/vramcache"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 
@@ -58,10 +59,9 @@ var (
 	ErrNotFound = errors.New("modelmanager: not found")
 	// ErrEngineNotInstalled: the engine is not installed (a model needs it).
 	ErrEngineNotInstalled = errors.New("modelmanager: the engine is not installed")
-	// ErrAlreadyInstalled: the model is installed.
+	// ErrAlreadyInstalled: the model is installed. ErrNotInstalled: it is not.
 	ErrAlreadyInstalled = errors.New("modelmanager: already installed")
-	// ErrNotInstalled: the model is not installed.
-	ErrNotInstalled = errors.New("modelmanager: not installed")
+	ErrNotInstalled     = errors.New("modelmanager: not installed")
 	// ErrConsentRequired: the license of the model has to be accepted first.
 	ErrConsentRequired = errors.New("modelmanager: the license has to be accepted before the install")
 	// ErrBusy: an install of the model is running.
@@ -135,14 +135,14 @@ type Service struct {
 	proc    *proc.Manager
 	tracker *track.Tracker
 	bundled bool
-
-	mu     sync.Mutex
-	active map[string]string // target -> job id of the queued or running job
+	mu      sync.Mutex
+	active  map[string]string // target -> job id of the queued or running job
 	// activeDest is where an import job writes (models/<folder>/<name>), by target.
 	activeDest map[string]string
 	targets    map[string]*sync.Mutex
 	cancels    map[string]context.CancelCauseFunc // job id -> cancel of a running install
 	hf         *hf.Client
+	VRAM       vramcache.Cache // the memory of the GPU for the judgement of a model (mmview.GPUVRAM)
 }
 
 // New returns the Service. It reads the record (a broken one is an error).

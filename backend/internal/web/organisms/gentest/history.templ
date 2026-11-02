@@ -3,6 +3,7 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -108,7 +109,7 @@ templ HistoryCard(c Card) {
 		if c.FileURL != "" {
 			<input type="checkbox" class="peer sr-only" aria-label="書き出しに選ぶ" data-gt-pick-input data-testid="gt-pick"/>
 		}
-		<div class="flex flex-col gap-1 rounded-lg border border-transparent p-1.5 transition-shadow peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-checked:shadow-[0_0_12px_1px] peer-checked:shadow-indigo-400/40 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 motion-reduce:transition-none">
+		<div class={ "flex flex-col gap-1 rounded-lg border border-transparent p-1.5", pick.Glow }>
 			@ResultCard(c)
 			<p class="line-clamp-2 break-words text-xs text-neutral-300">{ c.Prompt }</p>
 			<div class="flex items-center justify-between text-xs text-neutral-400">
