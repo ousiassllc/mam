@@ -118,6 +118,8 @@ type Catalog struct {
 	// Hidden says a model is left out of the lists and cannot be chosen (the adult models of the model manager while the age
 	// gate is closed). Nil hides nothing.
 	Hidden func(id string) bool
+	// HideChoices leaves the choices of a choice input that only an adult model has out of Info.Exposed while the gate is closed. Nil hides none.
+	HideChoices func(options []string, keep string) []string
 	// MissingNodes gives the reason a local model cannot be chosen because the custom nodes its workflow requires (localcfg.Workflow.RequiresNodes) are
 	// not installed; empty when it can. Nil asks for none.
 	MissingNodes func(id string, required []string) string
@@ -156,6 +158,22 @@ func (c Catalog) missingNodes(cfg modeladapter.Config, m domain.ModelName) strin
 		return ""
 	}
 	return c.MissingNodes(string(m), lm.Workflow.RequiresNodes)
+}
+
+// exposedCaps are the exposed inputs of the workflow, with the choices the closed age gate hides left out (the value the graph holds stays).
+func (c Catalog) exposedCaps(w localcfg.Workflow) []exposed.Cap {
+	caps := w.ExposedCaps()
+	if c.HideChoices == nil {
+		return caps
+	}
+	for i, cp := range caps {
+		if len(cp.Options) == 0 {
+			continue
+		}
+		d, _ := cp.Default.(string)
+		caps[i].Options = c.HideChoices(cp.Options, d)
+	}
+	return caps
 }
 
 func (c Catalog) hidden(m domain.ModelName) bool { return c.Hidden != nil && c.Hidden(string(m)) }
@@ -198,7 +216,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	mi.PromptWeight = promptweight.Unknown
 	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
 		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
-		mi.Exposed = lm.Workflow.ExposedCaps()
+		mi.Exposed = c.exposedCaps(*lm.Workflow)
 		if d, ok := denoiseDefault(lm.Workflow); ok {
 			mi.SupportsInpaint, mi.DenoiseDefault = true, &d
 		}

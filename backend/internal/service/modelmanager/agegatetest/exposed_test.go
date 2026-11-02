@@ -53,3 +53,25 @@ func TestAnExposedValueThatNamesAnAdultFileIsRefusedWhileTheGateIsOff(t *testing
 	_, err = r.Gentest.Estimate(ctx(), request("other2.safetensors"))
 	assert.NoError(t, err, "a general file is still chosen")
 }
+
+// The choices of a LoRA input the model offers (modelcatalog.Info.Exposed, what the screen and list_generation_models show) leave out the adult
+// file while the gate is closed, and come back when it opens; the file the graph holds stays.
+func TestTheChoicesAModelOffersLeaveOutAdultFilesWhileTheGateIsOff(t *testing.T) {
+	r := adultRig(t)
+	m, _ := graphReading(t, "other.safetensors", mmtest.CkptA.Name)
+	wf := *m.Workflow
+	wf.ExposedInputs = []exposed.Input{{Node: "12", Input: "lora_name", Type: exposed.Enum, Label: "LoRA", Options: []string{"other.safetensors", mmtest.LoraD.Name}}}
+	m.Workflow = &wf
+	require.NoError(t, r.Models.CreateModel(ctx(), localmodels.ModelInput{Endpoint: modelmanager.BundledEndpoint, Name: "offers-lora", Model: m}))
+	id := localcfg.ID(localcfg.KindComfyUI, modelmanager.BundledEndpoint, "offers-lora")
+	options := func() []string {
+		info, err := r.Gentest.Model(ctx(), gentest.MediaImage, id)
+		require.NoError(t, err)
+		require.Len(t, info.Exposed, 1)
+		return info.Exposed[0].Options
+	}
+	assert.Equal(t, []string{"other.safetensors", mmtest.LoraD.Name}, options(), "the gate is open")
+
+	require.NoError(t, r.Svc.SetAdultContent(false, nil))
+	assert.Equal(t, []string{"other.safetensors"}, options())
+}

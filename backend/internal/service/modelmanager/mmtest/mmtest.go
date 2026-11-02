@@ -173,7 +173,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 	r.Gentest = gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(r.db), Jobs: r.Queue, JobTable: r.Table, Adapter: r.Adapter, DataDir: r.DataDir, AssetsDir: t.TempDir(),
 		Projects: repository.NewProjectRepository(r.db), Assets: repository.NewAssetRepository(r.db), References: repository.NewReferenceRepository(r.db),
-		Hidden: r.Svc.HidesModel, HiddenWith: exposedgate.Hides(r.Svc),
+		Hidden: r.Svc.HidesModel, HiddenWith: exposedgate.Hides(r.Svc), HideChoices: exposedgate.Choices(r.Svc),
 	})
 	r.Gentest.Register()
 	t.Cleanup(func() { r.Queue.Stop(); r.Svc.Close() })

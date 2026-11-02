@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedpick"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
@@ -40,6 +41,9 @@ type rig struct {
 	picker  exposedpick.Picker
 	models  *localmodels.Service
 	gentest *gentest.Service
+	svc     *modelmanager.Service
+	// confirmAdult opens the age gate.
+	confirmAdult func()
 }
 
 func newRig(t *testing.T) rig { return newRigWith(t, objectInfo) }
@@ -55,17 +59,23 @@ func newRigWith(t *testing.T, info string) rig {
 	require.True(t, ok)
 	require.NoError(t, r.Models.CreateModel(ctx(), localmodels.ModelInput{Endpoint: "box", Name: "sdxl", Model: tp.Model}))
 	wf := workflows.New(workflows.Deps{Repo: comfywf.New(db), Models: r.Models, Adapter: r.Adapter, Keys: r.Keys, StagingDir: t.TempDir(), RunsDir: t.TempDir()})
-	return rig{picker: exposedpick.Picker{Gentest: r.Gentest, Workflows: wf, Local: r.Models}, models: r.Models, gentest: r.Gentest}
+	return rig{picker: exposedpick.Picker{Gentest: r.Gentest, Workflows: wf, Local: r.Models}, models: r.Models, gentest: r.Gentest, svc: r.Svc, confirmAdult: r.ConfirmAdult}
 }
 
-// While the age gate is closed, the choices of a file-choosing input leave out the files the gate would refuse (the value the graph holds stays).
-func TestChoicesLeaveOutTheFilesTheClosedGateRefuses(t *testing.T) {
-	r := newRigWith(t, strings.Replace(objectInfo, `[["sd_xl_base_1.0.safetensors"]]`, `[["sd_xl_base_1.0.safetensors", "adult.safetensors", "other.safetensors"]]`, 1))
+// While the age gate is closed, the choices of a file-choosing input that is not exposed yet leave out the files only an adult model has (the real
+// gate, not a stub); open, they stay, and the file the graph holds stays either way.
+func TestChoicesLeaveOutAdultFilesWhileTheGateIsClosed(t *testing.T) {
+	adult := mmtest.LoraD.Name
+	all := []string{"sd_xl_base_1.0.safetensors", adult, "other.safetensors"}
+	r := newRigWith(t, strings.Replace(objectInfo, `[["sd_xl_base_1.0.safetensors"]]`, `[["`+strings.Join(all, `", "`)+`"]]`, 1))
+	r.confirmAdult()
 	rows, err := r.picker.Rows(ctx(), sdxl)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"sd_xl_base_1.0.safetensors", "adult.safetensors", "other.safetensors"}, rowOf(t, rows, "4.ckpt_name").Options, "the gate is open")
+	row := rowOf(t, rows, "4.ckpt_name")
+	require.Nil(t, row.Chosen, "not chosen yet")
+	assert.Equal(t, all, row.Options, "the gate is open")
 
-	r.gentest.HiddenWith = func(_ string, values map[string]any) bool { return values["4.ckpt_name"] == "adult.safetensors" }
+	require.NoError(t, r.svc.SetAdultContent(false, nil))
 	rows, err = r.picker.Rows(ctx(), sdxl)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"sd_xl_base_1.0.safetensors", "other.safetensors"}, rowOf(t, rows, "4.ckpt_name").Options)
