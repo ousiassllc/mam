@@ -90,4 +90,6 @@
 | 1.83 | 2026-11-01 | §5 の構成図の `testenv/` に `Starvation`（負荷で時計がどれだけ引き伸ばされているか。Linux 以外は 1）を足し、`CPUTime` の説明に「上限は CPU 時間だけでなく時計にも掛ける」旨を添えた | Issue #905。初期表示の速さの検査を CPU 時間だけにすると、ロック待ち・I/O 待ち・別ゴルーチンに逃がした遅延では落ちなくなる。そこで CPU 時間の上限（3 秒）に加え、時計の上限（3 秒 × `Starvation`）も残した |
 | 1.84 | 2026-11-01 | §5 のディレクトリ構成に `scripts/fetch-onnxruntime.sh`・`scripts/fetch-onnxruntime_test.sh`・`build/windows/onnxruntime/` を足し、`third-party-notices.sh` の説明に同梱する ONNX Runtime のライセンスを足した。§6 の `--onnxruntime-lib` の既定（Windows は `mam.exe` の隣の `onnxruntime.dll`）を足した | Issue #910。Windows のインストーラーが ONNX Runtime の DLL を同梱する |
 | 1.85 | 2026-11-02 | `SecurityHeaders` の CSP の `img-src` に `blob:` を足した（生成テストの入力画像の、ブラウザで選んだファイルのサムネイルを `URL.createObjectURL` で出すため） | Issue #933 |
-| 1.86 | 2026-11-02 | §5 のディレクトリ構成に `static/src/components/scroll/`（`keep-scroll.ts`）と `poll/`（`poll-guard.ts`）を足した | Issue #940・#925 |
+| 1.86 | 2026-11-02 | §5 のディレクトリ構成に `scripts/require-tests-passed.sh`（と `require-tests-passed_test.sh`）を足した | Issue #950。CI の `windows` ジョブで、実モデルのテストが全部 Skip されても緑になるのを防ぐ |
+| 1.87 | 2026-11-02 | §5 のディレクトリ構成に `third_party/`（`onnxruntime-purego/`）を足した | Issue #949。ONNX Runtime のバインディングを、個人フォークへの `replace` から、リポジトリ内のコピーに改めた |
+| 1.88 | 2026-11-02 | §5 のディレクトリ構成に `static/src/components/scroll/`（`keep-scroll.ts`）と `poll/`（`poll-guard.ts`）を足した | Issue #940・#925 |
