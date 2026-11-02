@@ -41,6 +41,7 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.GET(paths.GenerationTestPart("results", ":id", "file"), h.ResultFile)
 	engine.POST(paths.GenerationTestPart("results", ":id", "favorite"), h.Favorite)
 	engine.POST(paths.GenerationTestPart("results", ":id", "import"), h.Import)
+	engine.POST(paths.GenerationTestPart("results", ":id", "upscale"), h.Upscale)
 	engine.DELETE(paths.GenerationTestPart("results", ":id"), h.DeleteResult)
 	engine.GET(paths.GenerationTestPart("inputs", ":id", "file"), h.InputFile)
 

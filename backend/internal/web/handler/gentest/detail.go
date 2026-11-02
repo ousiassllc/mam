@@ -28,7 +28,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 	v := view.Detail{
 		Card: cardOf(d.ResultView, false), SentPrompt: d.SentPrompt, Negative: d.NegativePrompt, NegMode: negativeModeText[d.NegativeMode],
 		English: d.TranslatedPrompt, EnglishNegative: d.TranslatedNegativePrompt,
-		Params: append(params(d), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
+		Params: append(append(params(d), upscaleKVs(d)...), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
 	}
 	if d.Media == gentest.MediaImage && d.HasFile {
 		v.UseURL = paths.GenerationTest() + "?ref=" + refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
@@ -50,6 +50,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 		}
 	}
 	v.Import = f
+	v.Upscale = h.upscaleForm(ctx, d, "")
 	if !d.HasFile {
 		v.Import.Projects = nil
 	}

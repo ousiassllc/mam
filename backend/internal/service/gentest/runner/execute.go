@@ -85,6 +85,9 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	if p.Sampling != nil {
 		req.Options.Sampling = *p.Sampling
 	}
+	if p.Upscale != nil {
+		req.Options.UpscaleScale = float64(p.Upscale.Scale)
+	}
 	out, err := direct.Image(ctx, br.s.Adapter, domain.ModelName(r.Model), req)
 	if err != nil {
 		return "", "", 0, nil, err

@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -297,8 +298,7 @@ type Detail struct {
 	Message
 	Card       Card
 	SentPrompt string
-	// English and EnglishNegative are what the prompt and the negative prompt were translated to before they were sent ("" when they
-	// were sent as typed); the originals are the "入力したプロンプト" of Params.
+	// English and EnglishNegative are what the prompt and negative prompt were translated to before sending ("" if sent as typed).
 	English         string
 	EnglishNegative string
 	Negative        string
@@ -307,10 +307,10 @@ type Detail struct {
 	Inputs          []InputCard
 	Imports         []ImportRow
 	Import          ImportForm
-	UseURL          string // compose with this result as an input ("" for a video)
-	MatchURL        string // the prompt match with this result as the reference ("" for a video)
-	// Answer is the license of the model that made the result: the detail says it in words (the note) as well as by the mark.
-	Answer commercial.View
+	UseURL          string          // compose with this result as an input ("" for a video)
+	MatchURL        string          // the prompt match with this result as the reference ("" for a video)
+	Upscale         upscalebox.Form // "make it larger", and where an enlargement came from
+	Answer          commercial.View // the license of the model that made the result, in words (the note) as well as by the mark
 }
 
 // PromptRow is an entry of the prompt history.

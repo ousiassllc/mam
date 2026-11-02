@@ -38,6 +38,8 @@ type ResultParams struct {
 	// Sampling is the steps, cfg, sampler and scheduler the model ran with (the request's value where it took one, else the model's
 	// default; not the steps and cfg of a speed mode). Absent: the model takes none, or the result is older than the setting.
 	Sampling *sampling.Settings `json:"sampling,omitempty"`
+	// Upscale is the enlargement the result is (a result of "make it larger"): the source and the values (Upscale). Absent: a generated result.
+	Upscale *Upscale `json:"upscale,omitempty"`
 }
 
 // SentText is the English a result's prompt and negative prompt were translated to (gentest_result.params "translation").
