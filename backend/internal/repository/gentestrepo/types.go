@@ -24,6 +24,8 @@ const (
 	RoleFace  = "face"
 	RoleStyle = "style"
 	RoleEdit  = "edit"
+	// RoleMask is the inpaint mask (white redraws). It is not a reference role.
+	RoleMask = "mask"
 )
 
 // Status of a result. queued -> running -> succeeded | failed; a queued result can also be cancelled.

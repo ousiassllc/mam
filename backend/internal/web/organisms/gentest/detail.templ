@@ -39,6 +39,12 @@ templ ResultDetail(d Detail) {
 			if d.MatchURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "画像から似せる", templ.SafeURL(d.MatchURL), templ.Attributes{"data-testid": "gt-match-link"})
 			}
+			if d.InpaintURL != "" {
+				@atoms.ButtonLink(atoms.TonePrimary, "一部だけ描き直す", templ.SafeURL(d.InpaintURL), templ.Attributes{"data-testid": "gt-inpaint"})
+			}
+			if d.RedrawFrom != "" {
+				@atoms.ButtonLink(atoms.ToneNeutral, "元の結果", templ.SafeURL(d.RedrawFrom), templ.Attributes{"data-testid": "gt-inpaint-source"})
+			}
 			<form hx-delete={ paths.GenerationTestPart("results", d.Card.ID) } hx-confirm="この結果とファイルを削除しますか？" hx-target="body" hx-push-url="true">
 				@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"type": "submit", "data-testid": "gt-delete"})
 			</form>

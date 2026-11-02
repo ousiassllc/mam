@@ -133,6 +133,10 @@ openai-compat:lmstudio/flux-schnell
 
 **FLF2V・プロンプト拡張・DFR・NVFP4（Issue #968）**: 最初と最後のフレームの 2 枚から動画を作るテンプレート `flf2v-ltx-2-5`（ほかに `-nvfp4`・`-uncensored`。`first_frame` と `last_frame` の割り当て）、短いプロンプトを Gemma 4 E2B で書き換える `txt2video-ltx-2-5-enhanced`・`img2video-ltx-2-5-enhanced`・`flf2v-ltx-2-5-enhanced`、3 段の DFR `img2video-ltx-2-5-dfr`（時間方向の拡大・詳細化の IC-LoRA。IC-LoRA は別のゲートのリポジトリで、そのページでも同意とアクセスの承認が要る）、NVFP4 の拡散モデルの `*-ltx-2-5-nvfp4`（NVIDIA Blackwell 世代の GPU 向け）を足した。どれもコアのノードだけで、カスタムノードは使わない。カタログのモデル・ファイル・ライセンス・未計測の項目は [model-manager/model-manager.md](model-manager/model-manager.md) §4.2・§4.5・§11。
 
+### 4.5 一部だけ描き直す（`reference_mode: inpaint`。Issue #974）
+
+`inpaint` は元画像 1 枚（`reference_image`）とマスク 1 枚（`mask_image`。白が描き直す、黒が残す）と `denoise`（0 より大きく 1 以下。テンプレートのリテラルが既定）を必須にする。組み込みは `inpaint-sdxl`（カタログ `sdxl-base` のワークフロー `sdxl-base-inpaint`）と `inpaint-flux-dev`（`flux1-dev` の `flux1-dev-inpaint`）。どちらもコアノードだけ（`LoadImage`・`ImageToMask` channel=red・`VAEEncode`・`SetLatentNoiseMask`・`KSampler`・`VAEDecode`・`ImageCompositeMasked`・`SaveImage`）。`ImageCompositeMasked` の `destination` は元画像、`source` はデコード結果、`mask` は `ImageToMask` なので、マスクの外は元の画素のまま残る（画素比較は GPU 未実施）。リクエストが `denoise` を省くとグラフの値を書き換えない。モデル情報の「インペイント対応」は `supports_inpaint`（この方式で denoise の既定が読めたとき）。起動時の更新（§4.2）は既存ワークフローの中身を揃えるだけで、新しいワークフロー名は足さない。インペイント用は、モデルを入れ直すと入る。
+
 ## 5. 接続テスト
 
 ComfyUI は `GET /system_stats`（バージョンを返す）、OpenAI 互換は `GET /v1/models`（先頭 20 件のモデル ID を返す）。互換サーバーが 404/405 を返したら「到達できる。`/v1/models` は提供されていない」を注意付きの成功とする。

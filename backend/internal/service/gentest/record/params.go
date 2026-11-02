@@ -38,6 +38,17 @@ type ResultParams struct {
 	// Sampling is the steps, cfg, sampler and scheduler the model ran with (the request's value where it took one, else the model's
 	// default; not the steps and cfg of a speed mode). Absent: the model takes none, or the result is older than the setting.
 	Sampling *sampling.Settings `json:"sampling,omitempty"`
+	// Inpaint is set when the result redrew part of a picture. Absent for every other result.
+	Inpaint *Inpaint `json:"inpaint,omitempty"`
+}
+
+// Inpaint is a partial redraw: the strength that was sent (nil: the template's own), where the source picture came from, and the
+// id of the mask input of the batch.
+type Inpaint struct {
+	Denoise    *float64 `json:"denoise,omitempty"`
+	SourceKind string   `json:"source_kind,omitempty"`
+	SourceID   string   `json:"source_id,omitempty"`
+	MaskInput  string   `json:"mask_input,omitempty"`
 }
 
 // SentText is the English a result's prompt and negative prompt were translated to (gentest_result.params "translation").

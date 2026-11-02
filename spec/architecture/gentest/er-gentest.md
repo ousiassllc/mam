@@ -16,7 +16,7 @@
 
 ## gentest_input（バッチに渡した入力画像）
 
-`batch_id`（FK → `gentest_batch`、削除でカスケード）・`role`（`reference` / `face` / `style` / `edit` / `first_frame` / `last_frame`。画像モデルの参照は前の 4 つ、動画は `reference` / `first_frame` / `last_frame`）・`file_path`（`<バッチ ID>/` 以下の相対パス。**入力は履歴の側へ複製**するので、元のプロジェクトや結果を消しても残る）・`mime_type`・`size_bytes`・`origin`（JSON: `kind` = `upload` / `project_asset` / `reference_item` / `history`、`id`、`project_id`）・`position`・`strength`（REAL、NULL 許容、CHECK 0〜1。画像モデルの参照を**どれだけ強く反映するか**。NULL は既定（0.7）と、強さのないフレーム）。
+`batch_id`（FK → `gentest_batch`、削除でカスケード）・`role`（`reference` / `face` / `style` / `edit` / `first_frame` / `last_frame` / `mask`。画像モデルの参照は前の 4 つ、動画は `reference` / `first_frame` / `last_frame`、`mask` は一部だけ描き直すマスクで参照ではない）・`file_path`（`<バッチ ID>/` 以下の相対パス。**入力は履歴の側へ複製**するので、元のプロジェクトや結果を消しても残る）・`mime_type`・`size_bytes`・`origin`（JSON: `kind` = `upload` / `project_asset` / `reference_item` / `history`、`id`、`project_id`）・`position`・`strength`（REAL、NULL 許容、CHECK 0〜1。画像モデルの参照を**どれだけ強く反映するか**。NULL は既定（0.7）と、強さのないフレーム）。
 
 ## gentest_result（1 件の生成）
 

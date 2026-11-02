@@ -26,6 +26,8 @@ type values struct {
 	references       []modeladapter.Input
 	first, last      *modeladapter.Input
 	opts             localcfg.ImageOptions
+	mask             *modeladapter.Input       // the inpaint mask (nil: none)
+	redraw           *float64                  // the inpaint strength (nil: the graph's own denoise)
 	denoiseFloor     float64                   // the workflow's ReferenceDenoiseMin
 	speedMode        string                    // the request's VideoRequest.SpeedMode ("": the workflow's first)
 	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
@@ -43,6 +45,10 @@ func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 		negative = req.NegativePrompt
 	}
 	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options, sampling: req.Options.Sampling}
+	if req.Inpaint != nil {
+		mask := req.Inpaint.Mask
+		v.mask, v.redraw = &mask, req.Inpaint.Denoise
+	}
 	if wf := b.Model.Workflow; wf != nil && wf.ReferenceMode != "" && len(req.Options.Refs) == 0 {
 		v.references = nil
 	}
@@ -81,6 +87,8 @@ func (v values) input(a localcfg.Assignment) (in *modeladapter.Input, isImage bo
 		return v.first, true
 	case localcfg.ParamLastFrame:
 		return v.last, true
+	case localcfg.ParamMaskImage:
+		return v.mask, true
 	}
 	return nil, false
 }
@@ -104,6 +112,11 @@ func (v values) scalar(p localcfg.Param) any {
 		return v.fps
 	case localcfg.ParamReferenceDenoise:
 		return v.denoise()
+	case localcfg.ParamDenoise:
+		if v.redraw == nil {
+			return nil
+		}
+		return *v.redraw
 	}
 	return nil
 }
@@ -143,8 +156,8 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 		name, isFile := files[i]
 		if isFile {
 			value = name
-		} else if a.Param == localcfg.ParamReferenceImage {
-			continue // a slot the run has no image for: dropUnused takes its node out
+		} else if a.Param == localcfg.ParamReferenceImage || (a.Param == localcfg.ParamDenoise && v.redraw == nil) {
+			continue // a slot the run has no image for, or a denoise the request leaves at the graph's value
 		}
 		raw, err := json.Marshal(value)
 		if err != nil {

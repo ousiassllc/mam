@@ -299,16 +299,15 @@ type Detail struct {
 	SentPrompt string
 	// English and EnglishNegative are what the prompt and the negative prompt were translated to before they were sent ("" when they
 	// were sent as typed); the originals are the "入力したプロンプト" of Params.
-	English         string
-	EnglishNegative string
-	Negative        string
-	NegMode         string
-	Params          []KV
-	Inputs          []InputCard
-	Imports         []ImportRow
-	Import          ImportForm
-	UseURL          string // compose with this result as an input ("" for a video)
-	MatchURL        string // the prompt match with this result as the reference ("" for a video)
+	English                                  string
+	EnglishNegative                          string
+	Negative                                 string
+	NegMode                                  string
+	Params                                   []KV
+	Inputs                                   []InputCard
+	Imports                                  []ImportRow
+	Import                                   ImportForm
+	UseURL, MatchURL, InpaintURL, RedrawFrom string // set for an image that has a file; RedrawFrom links to the picture this one redrew
 	// Answer is the license of the model that made the result: the detail says it in words (the note) as well as by the mark.
 	Answer commercial.View
 }

@@ -19,6 +19,7 @@
 | 〃（`web/handler/gentest/gtshare/`） | `USD`・`USDPtr`・`PriceText`・`StatusText`・`ConfirmLines`・`Render`・`Refuse` | 生成テストの画面とプロンプトマッチの画面が共有する、金額・単価・状態の言葉（単価は「無料（ローカル）」「単価なし（見積りの合計に入りません）」、秒単価の列挙）・確認の内訳の行・エラーへの応答。2 つの画面が写し合って文言がずれていたのを 1 か所にした（Issue #916 の統合レビュー） |
 | 〃（`web/handler/gentest/refform/`） | `Refs`・`Options`・`Hidden`・`Stage` | 入力画像のフォーム（`ref`・`role_<ref>`・`strength_<ref>`・`avoid_pose`・`lora`・`lora_strength`・ファイル `upload`）を `gentest.RefInput` / `LoRAInput` に読み、確認の hidden に書き戻し、ブラウザが選んだファイルを保存して `upload::#<n>` の位置に入れる（ディレクトリの行数上限のため別パッケージ） |
 | 〃（`web/handler/gentest/advform/`） | `Read`・`Fields.Apply`・`Hidden`・`ViewOf`・`WeightLines` | 詳細設定のフォーム（`seed`・`steps`・`cfg`・`sampler`・`scheduler`）を `gentest.Request` に読み、確認の hidden に書き、モデルごとの「受け取る値」と「ウェイトの効き方」の行を作る |
+| static（`static/src/components/mask-paint/`） | `mam-mask-paint.ts` | 一部だけ描き直すマスク（`<mam-mask-paint>`。筆・消しゴム・太さ・全部消す。白が描き直す。キーボード B/E・`[` `]`・矢印。フォーム送信で `input[name=mask]` に PNG。`mam-mask-paint.wtest.ts`） |
 | static（`static/src/components/gentest/`） | `advanced.ts`・`advanced-model.ts` | 詳細設定の動き（選んだモデルが受け取る項目だけを出す・スライダーの「上書きする」・受け取らないモデルの注）。DOM を使わない規則は `advanced-model.ts`（vitest）、DOM は `advanced.ts`（web-test-runner） |
 | static（`static/src/components/gentest/`） | `match.ts`・`match-model.ts` | プロンプトマッチのフォームの動き（選んだ・ドロップした画像のプレビュー、進め方に合わせた目標と上限の出し入れ、スライダーの数字）。DOM を使わない規則は `match-model.ts`（vitest） |
 | 〃 | `inputs.ts`・`inputs-model.ts`・`inputs-models.ts` | 入力画像の動き（ブラウザで選んだ画像のサムネイル・並べ替え・拡大・モデルの選択に合わせた役割と強さの表示）。DOM を使わない規則は `inputs-model.ts`（vitest）、DOM は `inputs.wtest.ts`（実 Chrome） |
@@ -71,3 +72,4 @@
 | 1.15 | 2026-11-02 | 履歴の更新ボタンを `organisms/gentest` の `RefreshBar` から、モデルマネージャーと共用する `molecules/refresh.Bar` に移した（`data-testid` は `refresh`・`refresh-updated`）。見た目と挙動は変わらない | Issue #962 |
 | 1.16 | 2026-11-02 | ベストのプロンプトのボタンの名前を「生成テストで使う」から実装どおりの「生成テストで比べる」に直し（§ 一覧・§ 画面）、各回のリンクの `aria-label` を `第 N 回のプロンプトで比べる`（見える文字列を含む）にした。点の内訳の「LLM ×％ ＋ 顔 ×％」は顔の側を `100 − LLM 側` で出し、四捨五入で 101％ にならないようにした | #983 の統合レビュー指摘 |
 | 1.17 | 2026-11-03 | 作成フォームに折りたたみの「詳細設定」（シード・ステップ数・CFG のスライダー・サンプラー・スケジューラー。受け取らないモデルでは欄を出さず、Speed mode のモデルは steps・cfg の理由を出す）と、プロンプトの「ウェイト (語:1.3)」の「?」（書き方とモデルごとの効き方）を足した | Issue #973・#972 |
+| 1.18 | 2026-11-02 | ナビとページ `GenerationInpaintPage`（`organisms/gentestinpaint`・`handler/gentest/inpaintscreen`）と、マスク部品 `<mam-mask-paint>` を足した。結果の詳細に「一部だけ描き直す」（`data-testid=gt-inpaint`）と、インペイント結果の「元の結果」。作成フォームではインペイント専用モデルを理由つきで選べなくした | Issue #974 |

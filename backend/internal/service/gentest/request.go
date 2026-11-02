@@ -79,6 +79,10 @@ type Request struct {
 	// Sampling overrides the steps, cfg, sampler and scheduler of the models that take them (modelcatalog.Info.Sampling); the
 	// others, and the steps and cfg of a model whose speed mode owns them, ignore it with a warning. The zero value overrides nothing.
 	Sampling sampling.Settings `json:"sampling,omitzero"`
+	// Mask is the inpaint mask (white redraws, black keeps), in the same shape as a reference. Nil: not a partial redraw.
+	Mask *RefInput `json:"mask,omitempty"`
+	// Denoise is the redraw strength (above 0 through 1). Nil uses each model's template default (modelcatalog.Info.DenoiseDefault).
+	Denoise *float64 `json:"denoise,omitempty"`
 	// TranslateToEnglish translates the prompts and the negative prompts that are not English with the Reasoning LLM before
 	// they are sent (once per run; English ones are left as they are). A failed translation stops the run. The zero value is
 	// off: DefaultTranslate is what the screen and the MCP tools ask for when the caller does not say.
@@ -142,6 +146,9 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 		return r, nil, err
 	}
 	if r.Sampling, err = checkSampling(r); err != nil {
+		return r, nil, err
+	}
+	if err := checkInpaint(r, models); err != nil {
 		return r, nil, err
 	}
 	if n := len(models) * len(r.Prompts) * r.Count; n > s.maxItems() {

@@ -51,6 +51,9 @@ func featuresText(m modelcatalog.Info) string {
 	} else {
 		f = append(f, "ネガティブはプロンプトに書き足す")
 	}
+	if m.SupportsInpaint {
+		f = append(f, "一部だけ描き直す")
+	}
 	if m.Media == gentest.MediaImage && m.AcceptsReferences {
 		f = append(f, "参照画像あり")
 	}
@@ -85,6 +88,8 @@ func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice
 		}
 		if !m.Available {
 			out[i].Reason = m.UnavailableMessage
+		} else if m.SupportsInpaint {
+			out[i].Reason = "一部だけ描き直す画面から使います"
 		}
 	}
 	return out

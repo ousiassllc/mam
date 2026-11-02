@@ -47,4 +47,4 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 
 ## 7. 検証できていないこと
 
-実機の ComfyUI と GPU では実行していない（偽の ComfyUI `comfyuitest` が `/object_info`・`/userdata`・`/history`・`/models/<folder>` と実行を再現する）。`/history` の記録の形（`prompt` タプルと `extra_data.extra_pnginfo.workflow`）は ComfyUI のソースから読んだもので、実機での確認が残っている。
+実機の ComfyUI と GPU では実行していない（偽の ComfyUI `comfyuitest` が `/object_info`・`/userdata`・`/history`・`/models/<folder>` と実行を再現する）。一部だけ描き直す（#974。`inpaint-sdxl`・`inpaint-flux-dev`）も同じで、マスクの外が元の画素のままかはグラフの `ImageCompositeMasked` のリンクまでを確かめ、画素の比較はしていない。`/history` の記録の形（`prompt` タプルと `extra_data.extra_pnginfo.workflow`）は ComfyUI のソースから読んだもので、実機での確認が残っている。

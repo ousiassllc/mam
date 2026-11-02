@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
@@ -14,6 +15,9 @@ func settingsKVs(d record.ResultDetail) []view.KV {
 	var kv []view.KV
 	if t := samplingText(d.ResultView); t != "" {
 		kv = append(kv, view.KV{Key: "サンプリング", Value: t})
+	}
+	if d.Inpaint != nil && d.Inpaint.Denoise != nil {
+		kv = append(kv, view.KV{Key: "描き直しの強さ", Value: strconv.FormatFloat(*d.Inpaint.Denoise, 'f', -1, 64)})
 	}
 	if d.SpeedMode != "" {
 		kv = append(kv, view.KV{Key: "速さのモード", Value: d.SpeedMode})

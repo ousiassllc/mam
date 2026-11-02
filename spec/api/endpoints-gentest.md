@@ -34,6 +34,9 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | POST | `/generation-test/match/batches/:id/cancel` | 取り消し。始めていない回は取り消し、次の回は始まらない（作っている途中の絵は終わるのを待つ） |
 | POST | `/generation-test/match/batches/:id/adjust` | 言葉の指示（`instruction`）と `mode`（`adjust` = 1 回直す・`auto` = 自動で続ける）。**実行中**は次の直しに取り込む（確認の区画に 1 行の通知）。**終わっていれば**続きの見積りを確認の区画に返す（実行は `/match/run` に `continue_batch_id` つきで） |
 | DELETE | `/generation-test/prompts/:id` | プロンプト履歴の削除（結果は残る）。一覧の区画を返す |
+| GET | `/generation-test/inpaint` | 一部だけ描き直す（Issue #974）。クエリ `ref`（`<source>:<project>:<id>` の元画像）・`model`（対応するモデルを選ぶ。対応しない `model` は最初の対応モデル）。マスクを塗る部品・プロンプト・描き直しの強さ・対応モデルだけが選べる。対応しないモデルは「一部だけ描き直すに対応していません」で無効 |
+| POST | `/generation-test/inpaint/estimate` | 見積り（multipart: `model`・`prompt`・`negative`・`denoise`（0 より大きく 1 以下）・`translate`（`1` で英訳）・`ref` またはファイル `source`・ファイル `mask`（白が描き直す PNG））。200 で確認の区画（`#gt-inpaint-out`。hidden にステージした `ref` と `mask`、`estimate_id`、`confirmed_total_usd`）。対応しないモデル・真っ黒なマスク・範囲外の強さは 422 |
+| POST | `/generation-test/inpaint/run` | 確認の hidden を送る。見積りが違えば 409、入力の誤りは 422。200 で「始めました」（結果は履歴の別ファイル。進捗の比較表は出さない） |
 
 `POST /generation-test/estimate` は `middleware.MaxBody` のアップロード用ルートの一覧に載せ、入力画像のために本文の上限を広げている（読み取りはハンドラが `MaxBytesReader` で制限する）。
 
@@ -86,3 +89,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.9 | 2026-11-02 | `POST /generation-test/run-notice` を足した（未対応の役割のモーダルの本文）。`POST /generation-test/run` の応答に `HX-Trigger-After-Swap: modal-close` を付けた（モーダルから実行したときに閉じる） | Issue #959 |
 | 1.10 | 2026-11-02 | プロンプトマッチ: 確認の区画の LLM の行を、単価の分かるものは合計に入れる 2 行に（Issue #965）。タイムラインに点の内訳（顔を混ぜているとき。Issue #964）と、各回の「プロンプトで比べる」（`GET /generation-test?from_result=<結果の id>`。その回のプロンプト・モデル・縦横比で開き、モデルを足して比較する案内を出す） | Issue #964・#965 |
 | 1.11 | 2026-11-03 | 見積り・実行に詳細設定のフィールド `seed`・`steps`・`cfg`・`sampler`・`scheduler` を足した（範囲・警告 `sampling_ignored`・`seed_ignored`・`prompt_weight`） | Issue #973・#972 |
+| 1.12 | 2026-11-02 | `GET/POST /generation-test/inpaint`（見積り・実行）を足した。結果の詳細に「一部だけ描き直す」と、インペイント結果の「元の結果」 | Issue #974 |

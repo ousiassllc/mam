@@ -31,8 +31,13 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 		Params: append(params(d), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
 	}
 	if d.Media == gentest.MediaImage && d.HasFile {
-		v.UseURL = paths.GenerationTest() + "?ref=" + refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
-		v.MatchURL = paths.GenerationTestMatch() + "?ref=" + refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
+		ref := refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
+		v.UseURL = paths.GenerationTest() + "?ref=" + ref
+		v.MatchURL = paths.GenerationTestMatch() + "?ref=" + ref
+		v.InpaintURL = paths.GenerationTestInpaint() + "?ref=" + ref + "&model=" + d.Model
+	}
+	if d.Inpaint != nil && d.Inpaint.SourceKind == gentest.FromHistory && d.Inpaint.SourceID != "" {
+		v.RedrawFrom = paths.GenerationTestPart("results", d.Inpaint.SourceID)
 	}
 	for _, in := range d.Inputs {
 		v.Inputs = append(v.Inputs, view.InputCard{Role: roleText(in), Origin: originText[in.Origin.Kind], URL: paths.GenerationTestPart("inputs", in.ID, "file")})
@@ -58,7 +63,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.Impo
 
 var roleNames = map[string]string{
 	gentest.RoleReference: "参照", gentest.RoleFirstFrame: "最初のフレーム", gentest.RoleLastFrame: "最後のフレーム",
-	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象",
+	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象", gentest.RoleMask: "マスク",
 }
 
 // roleText is the role of an input with the strength it was given (none was when the default was used).

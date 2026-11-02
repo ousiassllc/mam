@@ -172,7 +172,8 @@ type Model struct {
 	Media             string             `json:"media" jsonschema:"image or video"`
 	ModelID           string             `json:"model_id,omitempty" jsonschema:"OpenAI 互換: サーバーに渡すモデル ID"`
 	AcceptsReferences bool               `json:"accepts_references" jsonschema:"参照画像を受け取れる"`
-	ReferenceMode     string             `json:"reference_mode,omitempty" jsonschema:"ComfyUI の画像: 参照画像の使い方。edit（編集モデル。複数枚・顔 / スタイル / 編集の役割あり）/ img2img（1 枚から始める）。ワークフローが示さなければ空"`
+	ReferenceMode     string             `json:"reference_mode,omitempty" jsonschema:"ComfyUI の画像: 参照画像の使い方。edit / img2img / inpaint（マスクで一部だけ描き直す）。ワークフローが示さなければ空"`
+	SupportsInpaint   bool               `json:"supports_inpaint,omitempty" jsonschema:"一部だけ描き直すに対応する（reference_mode が inpaint）"`
 	SupportsLoRA      bool               `json:"supports_lora,omitempty" jsonschema:"ComfyUI の画像: 生成テストの LoRA を使える（ワークフローに LoRA を差し込むノードがある）"`
 	Assignments       []Assignment       `json:"assignments" jsonschema:"ComfyUI: 入力の割り当て"`
 	OutputNode        string             `json:"output_node,omitempty"`
@@ -202,6 +203,7 @@ func modelOf(m localmodels.ModelView) Model {
 	}
 	if caps := m.ReferenceCaps(); caps.Max > 0 {
 		out.MaxReferences, out.ReferenceMode = caps.Max, string(caps.Mode)
+		out.SupportsInpaint = caps.Mode == localcfg.ModeInpaint
 	}
 	out.SupportsLoRA = m.SupportsLoRA() && m.Media == localcfg.MediaImage
 	return out

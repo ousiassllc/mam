@@ -4,7 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "general",
- "description": "FLUX.1 の高品質版。非商用ライセンス。CLIP・T5・VAE を含む 1 ファイルのチェックポイント（約 17 GB）。",
+ "description": "FLUX.1 の高品質版。非商用ライセンス。CLIP・T5・VAE を含む 1 ファイルのチェックポイント（約 17 GB）。マスクで一部だけ描き直す（インペイント）にも使える。",
  "files": [
   {
    "name": "flux1-dev-fp8.safetensors",
@@ -35,6 +35,10 @@
   {
    "name": "flux1-dev",
    "template": "txt2img-flux-dev"
+  },
+  {
+   "name": "flux1-dev-inpaint",
+   "template": "inpaint-flux-dev"
   }
  ]
 }

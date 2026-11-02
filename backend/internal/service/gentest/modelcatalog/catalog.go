@@ -68,8 +68,8 @@ type Info struct {
 	UnavailableMessage string `json:"unavailable_message,omitempty"`
 	// AcceptsReferences: an image model uses reference images.
 	AcceptsReferences bool `json:"accepts_references"`
-	// ReferenceMode is how an image model uses references: "edit" (an editing model: several images, roles) or "img2img" (one
-	// image the sampling starts from); empty for a model that takes none (and for a cloud model that does).
+	// ReferenceMode is how an image model uses references: "edit", "img2img", or "inpaint" (a mask redraws part of one image);
+	// empty for a model that takes none (and for a cloud model that does).
 	ReferenceMode string `json:"reference_mode,omitempty"`
 	// MaxReferenceImages is how many reference images an image model takes (0: not known or none).
 	MaxReferenceImages int `json:"max_reference_images,omitempty"`
@@ -92,6 +92,10 @@ type Info struct {
 	Sampling *sampling.Caps `json:"sampling,omitempty" jsonschema:"このモデルが受け取るステップ数・CFG・サンプラー・スケジューラーと既定値。無い項目は受け取らない（指定しても使わない）。steps / cfg の locked が speed_mode のものは、速さのモードが決めるので指定しても無視する"`
 	// PromptWeight is whether the model reads the weights of a prompt, "(word:1.3)": supported / weak / unsupported / unknown.
 	PromptWeight promptweight.Level `json:"prompt_weight" jsonschema:"プロンプトのウェイト（(word:1.3)）が効くか。supported（効く）/ weak（効くが弱いかもしれない）/ unsupported（効かない: 括弧と数字がそのまま文として読まれる）/ unknown（確かめていない）"`
+	// SupportsInpaint: the model redraws the white part of a mask and keeps the rest (reference_mode inpaint).
+	SupportsInpaint bool `json:"supports_inpaint,omitempty" jsonschema:"一部だけ描き直す（インペイント）に対応する。reference_mode が inpaint のとき true。対応しないモデルは選べない"`
+	// DenoiseDefault is the redraw strength the workflow uses when a request names none (the template's denoise).
+	DenoiseDefault *float64 `json:"denoise_default,omitempty" jsonschema:"一部だけ描き直すときの描き直しの強さの既定（0 より大きく 1 以下）。supports_inpaint のモデルだけ"`
 }
 
 // FilterByCommercial keeps the models whose answer the filter allows.
@@ -174,6 +178,9 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	mi.PromptWeight = promptweight.Unknown
 	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
 		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
+		if d, ok := denoiseDefault(lm.Workflow); ok {
+			mi.SupportsInpaint, mi.DenoiseDefault = true, &d
+		}
 	}
 	if media == gentestrepo.MediaImage {
 		mi.AcceptsReferences = cfg.AcceptsImages(m)

@@ -94,6 +94,10 @@ type RequestInput struct {
 	Seed *int64 `json:"seed,omitempty" jsonschema:"シードを固定する（0〜4294967295）。n 本目は seed + n − 1 を使う（本数が多いときは seed + 本数 − 1 もこの範囲）。モデルごとに同じ seed で比べられ、結果の seed からいつでも作り直せる。省くと結果ごとにランダム。シードを渡せないモデルは警告 seed_ignored で使わない"`
 	// Sampling overrides the steps, cfg, sampler and scheduler of the models that take them.
 	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"詳細設定: steps（1〜150）・cfg（0〜30）・sampler・scheduler。省いた項目は各モデルの既定（list_generation_models の sampling の default）。受け取らない項目（sampling に無い）と、速さのモードがあるモデルの steps・cfg（sampling の locked が speed_mode）は警告 sampling_ignored で使わない（速さのモードが優先）。結果の sampling に使った値が残る"`
+	// Mask is the inpaint mask, in the same shape as a reference (white redraws, black keeps). With it, every model must support inpaint.
+	Mask *ReferenceInput `json:"mask,omitempty" jsonschema:"一部だけ描き直すときのマスク。references と同じ形式（source / id / project_id。role と strength は使わない）。白が描き直す部分、黒が残す部分。元画像は references に 1 枚だけ。supports_inpaint でないモデルは validation で拒否する"`
+	// Denoise is the redraw strength. Nil uses each model's denoise_default.
+	Denoise *float64 `json:"denoise,omitempty" jsonschema:"描き直しの強さ（0 より大きく 1 以下）。省くと各モデルの denoise_default。マスクが無いときは指定できない"`
 	// TranslateToEnglish is a pointer: omitted means the default of the screen (on), false is a deliberate off.
 	TranslateToEnglish *bool `json:"translate_to_english,omitempty" jsonschema:"プロンプトとネガティブプロンプトを LLM（LLM の割り当ての Prompt Planner）で英語に訳してから送る。既定 true（画面と同じ）。すでに英語の文は訳さずそのまま。訳せなければ何も生成せずエラー（upstream）。見積りには訳す文の数が単価なしの行（model が translate）として入る。false でそのまま送る"`
 }
@@ -119,6 +123,10 @@ func (in RequestInput) request() gentest.Request {
 	for _, ref := range in.References {
 		r.References = append(r.References, gentest.RefInput{Source: ref.Source, ID: ref.ID, ProjectID: ref.ProjectID, Role: ref.Role, Strength: ref.Strength})
 	}
+	if in.Mask != nil {
+		r.Mask = &gentest.RefInput{Source: in.Mask.Source, ID: in.Mask.ID, ProjectID: in.Mask.ProjectID}
+	}
+	r.Denoise = in.Denoise
 	return r
 }
 

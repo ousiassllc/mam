@@ -128,7 +128,7 @@ var coreNodes = []string{
 	"LTXVScheduler", "LTXVSeparateAVLatent", "LatentUpscaleModelLoader", "LoadImage", "LoraLoaderModelOnly",
 	"ManualSigmas", "ModelSamplingAuraFlow", "ModelSamplingSD3", "PrimitiveInt", "RandomNoise", "SamplerCustom",
 	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "SplitSigmasDenoise", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
-	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo", "EmptyHunyuanLatentVideo", // the last one: Wan 2.2 Remix T2V (Issue #930)
+	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo", "EmptyHunyuanLatentVideo", // Wan 2.2 Remix T2V (#930). Inpaint (#974, v0.42.1 nodes.py / nodes_mask.py): ImageToMask, SetLatentNoiseMask, ImageCompositeMasked
 	"TextEncodeQwenImageEditPlus", "CFGNorm", "EmptyFlux2LatentImage", "Flux2Scheduler", "ImageScaleToTotalPixels", "ReferenceLatent", "ComfySwitchNode", "GetImageSize", "LTXVAddGeneratedKeyframes", "LTXVAddGuide", "LTXVAddLatentGuide", "LTXVCropGuides", "LTXVFreezeLatent", "LTXVGeneratedKeyframesToGuides", "LTXVSeparateGeneratedKeyframes", "PrimitiveBoolean", "PrimitiveFloat", "ResizeImageMaskNode", "SamplerEulerAncestral", "TextGenerateLTX2Prompt", // FLUX.2 klein (Issue #931) and the LTX-2.5 FLF2V, DFR and prompt enhancer (Issue #968)
 }
 
@@ -136,7 +136,7 @@ var coreNodes = []string{
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 37)
+	require.Len(t, templates, 39)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -152,7 +152,7 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.True(t, found)
 		assert.Equal(t, tpl.ID, got.ID)
 	}
-	assert.Equal(t, 11, byMedia[localcfg.MediaImage])
+	assert.Equal(t, 13, byMedia[localcfg.MediaImage])
 	assert.Equal(t, 26, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")

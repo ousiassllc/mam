@@ -55,9 +55,12 @@ func (m Model) SupportsLoRA() bool { return m.Workflow != nil && m.Workflow.Lora
 func validateReferenceMode(where string, w Workflow, g Graph) []error {
 	var errs []error
 	switch w.ReferenceMode {
-	case "", ModeEdit, ModeImg2Img:
+	case "", ModeEdit, ModeImg2Img, ModeInpaint:
 	default:
-		errs = append(errs, fmt.Errorf("%s: reference_mode must be edit or img2img", where))
+		errs = append(errs, fmt.Errorf("%s: reference_mode must be edit, img2img or inpaint", where))
+	}
+	if w.ReferenceMode == ModeInpaint {
+		errs = append(errs, inpaintErrs(where, w, g)...)
 	}
 	if w.ReferenceMode != "" && !w.Has(ParamReferenceImage) {
 		errs = append(errs, fmt.Errorf("%s: reference_mode needs a reference_image assignment", where))
