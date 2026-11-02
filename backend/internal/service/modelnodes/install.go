@@ -216,8 +216,10 @@ func (s *Service) stopEngine() error {
 }
 
 // restart starts the engine again after a change of the nodes when it was running; a failure is logged and shows on the engine's card.
+// It does not look at ctx: an install the user stopped (or a request that ended) while the engine was down for the swap must still bring the
+// engine back, so the start is made on a context that cannot be cancelled.
 func (s *Service) restart(ctx context.Context, wasRunning bool) {
-	if !wasRunning || ctx.Err() != nil {
+	if !wasRunning {
 		return
 	}
 	if _, err := s.Engine.StartEngine(context.WithoutCancel(ctx)); err != nil {

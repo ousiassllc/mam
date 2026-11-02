@@ -3,9 +3,9 @@
 // the saved API key, the models of the ChatGPT sign-in), else from the candidates mam ships (agent/llm/data/models.json,
 // updated with the releases). Every answer says which of the two it is, so that a screen can tell the user.
 //
-// An answer is kept for ten minutes per provider and per account (the email of a sign-in, the fingerprint of an API key), so a
-// sign-out, another account or another key is never answered with the list of the one before. No token or key is returned,
-// logged or put in an error.
+// An answer is kept for ten minutes per provider and per account (the email of a sign-in, the fingerprint of an API key; a
+// sign-in with no email is not kept), so a sign-out, another account or another key is never answered with the list of the
+// one before. No token or key is returned, logged or put in an error.
 package llmmodels
 
 import (
@@ -87,9 +87,9 @@ var ErrUnknownProvider = errors.New("llmmodels: unknown provider")
 // ChatGPT is what the two ChatGPT providers need of the sign-ins: who is signed in and the models they can use. A
 // token never crosses this interface.
 type ChatGPT interface {
-	// Account identifies the signed-in account of the provider ("" when nobody is signed in): a change of it drops the
-	// kept list.
-	Account(provider llm.Provider) string
+	// Account identifies the signed-in account of the provider: a change of id drops the kept list. signedIn is false when
+	// nobody is signed in; id is empty when somebody is but cannot be told from another account (then nothing is kept).
+	Account(provider llm.Provider) (id string, signedIn bool)
 	// Models are the models the account of the provider can use, in the server's order.
 	Models(ctx context.Context, provider llm.Provider) ([]Model, error)
 }
@@ -101,7 +101,8 @@ type Options struct {
 	ChatGPT ChatGPT
 	// HTTP is the client of the vendors' model lists; nil selects httpclient.New().
 	HTTP httpclient.Doer
-	// BaseURLs replaces the API origin of a provider (default: llm.DefaultConfig()); tests only.
+	// BaseURLs replaces the API origin of a provider (default: llm.DefaultConfig()): the app gives the base_url of llm.json,
+	// which is where the calls of the Agents go too, so an API key is never sent to another origin than the one the user set.
 	BaseURLs map[llm.Provider]string
 	// Logger receives why a list could not be read (never a token or a key); nil discards it.
 	Logger *slog.Logger
@@ -159,40 +160,45 @@ func (s *Service) List(ctx context.Context, provider string) (List, error) {
 	if fallback != FallbackNone {
 		return s.defaults(p, fallback), nil
 	}
-	s.mu.Lock()
-	if e, ok := s.cached[p]; ok && e.account == account && s.o.Now().Sub(e.at) < e.ttl {
+	// An empty account is a sign-in that cannot be told from another one (no email): its list is never kept.
+	keep := account != ""
+	if keep {
+		s.mu.Lock()
+		if e, ok := s.cached[p]; ok && e.account == account && s.o.Now().Sub(e.at) < e.ttl {
+			s.mu.Unlock()
+			return cloneList(e.list), nil
+		}
 		s.mu.Unlock()
-		return cloneList(e.list), nil
 	}
-	s.mu.Unlock()
 
 	list, err := s.fetch(ctx, p)
 	e := entry{account: account, at: s.o.Now(), ttl: TTL, list: list}
 	if err != nil {
+		if ctx.Err() != nil {
+			// The caller gave up (the picker was switched and htmx aborted the request): the provider did not fail, so
+			// nothing is kept and the next opening reads the list again.
+			return s.defaults(p, FallbackFailed), nil
+		}
 		s.o.Logger.Warn("llm model list unavailable; showing the candidates of mam", "provider", p, "error", err)
 		e.ttl, e.list = failureTTL, s.defaults(p, FallbackFailed)
 	}
-	s.mu.Lock()
-	s.cached[p] = e
-	s.mu.Unlock()
+	if keep {
+		s.mu.Lock()
+		s.cached[p] = e
+		s.mu.Unlock()
+	}
 	return cloneList(e.list), nil
 }
 
-// Invalidate drops the kept list of provider, so that the next List reads it again.
-func (s *Service) Invalidate(provider string) {
-	s.mu.Lock()
-	delete(s.cached, llm.Provider(provider))
-	s.mu.Unlock()
-}
-
-// account is who the list of p is for: the fingerprint of the saved API key, the signed-in ChatGPT account. When there is
-// none (no key, not signed in) it says why the candidates are shown.
+// account is who the list of p is for: the fingerprint of the saved API key, the signed-in ChatGPT account (empty when a
+// signed-in account cannot be told from another one). When there is none (no key, not signed in) it says why the
+// candidates are shown.
 func (s *Service) account(p llm.Provider) (string, Fallback) {
 	switch p {
 	case llm.ProviderChatGPTSubscription, llm.ProviderChatGPTCodex:
 		if s.o.ChatGPT != nil {
-			if a := s.o.ChatGPT.Account(p); a != "" {
-				return a, FallbackNone
+			if id, signedIn := s.o.ChatGPT.Account(p); signedIn {
+				return id, FallbackNone
 			}
 		}
 		return "", FallbackNotSignedIn

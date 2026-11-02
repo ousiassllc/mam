@@ -15,20 +15,29 @@ func FromChatGPT(svc *chatgpt.Service) ChatGPT { return chatgptAccounts{svc} }
 
 type chatgptAccounts struct{ svc *chatgpt.Service }
 
-func (s chatgptAccounts) Account(p llm.Provider) string {
+// Account is the email of the signed-in account: empty (signed in, but not told from another account, so nothing is kept)
+// when the sign-in has none.
+func (s chatgptAccounts) Account(p llm.Provider) (string, bool) {
 	switch p {
 	case llm.ProviderChatGPTSubscription:
 		ov, err := s.svc.Overview()
 		if err != nil || !ov.Official.SignedIn || ov.Official.NeedsRelogin {
-			return ""
+			return "", false
 		}
-		return "official:" + ov.Official.Email
+		return accountID("official", ov.Official.Email), true
 	case llm.ProviderChatGPTCodex:
 		if a := s.svc.Codex().Status().Account; a.SignedIn {
-			return "codex:" + a.Email
+			return accountID("codex", a.Email), true
 		}
 	}
-	return ""
+	return "", false
+}
+
+func accountID(kind, email string) string {
+	if email == "" {
+		return ""
+	}
+	return kind + ":" + email
 }
 
 func (s chatgptAccounts) Models(ctx context.Context, p llm.Provider) ([]Model, error) {

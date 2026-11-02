@@ -168,11 +168,16 @@ func TestList_UnknownProvider(t *testing.T) {
 
 type signin struct {
 	account string
+	// noEmail is a signed-in account with no email: it cannot be told from another one.
+	noEmail bool
 	err     error
 	asks    atomic.Int32
 }
 
-func (s *signin) Account(llm.Provider) string { return s.account }
+func (s *signin) Account(llm.Provider) (string, bool) {
+	return s.account, s.account != "" || s.noEmail
+}
+
 func (s *signin) Models(context.Context, llm.Provider) ([]llmmodels.Model, error) {
 	s.asks.Add(1)
 	return []llmmodels.Model{{ID: "gpt-plan", Name: "Plan model"}}, s.err
@@ -214,11 +219,28 @@ func TestList_ChatGPTFailureShowsTheCandidates(t *testing.T) {
 	assert.Equal(t, llmmodels.FallbackNotSignedIn, got.Fallback, "no ChatGPT service at all")
 }
 
-func TestInvalidate_ReadsAgain(t *testing.T) {
-	in := &signin{account: "a"}
+func TestList_ACanceledAskIsNotKeptAsAFailure(t *testing.T) {
+	v := newVendor(t)
+	svc := llmmodels.New(llmmodels.Options{Keys: keys(t, "openai", secret), HTTP: v.Client(), BaseURLs: map[llm.Provider]string{llm.ProviderOpenAI: v.URL}})
+
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel() // the picker was switched and htmx aborted the request
+	got, err := svc.List(canceled, "openai")
+	require.NoError(t, err)
+	assert.Equal(t, llmmodels.FallbackFailed, got.Fallback)
+
+	got, err = svc.List(context.Background(), "openai")
+	require.NoError(t, err)
+	assert.Equal(t, llmmodels.SourceAPI, got.Source, "the next opening reads the list: the abort is not kept for a minute")
+	assert.EqualValues(t, 1, v.asks.Load())
+}
+
+func TestList_ASignInWithNoEmailIsNeverKept(t *testing.T) {
+	in := &signin{noEmail: true}
 	svc := llmmodels.New(llmmodels.Options{ChatGPT: in})
-	_, _ = svc.List(context.Background(), "chatgpt-codex")
-	svc.Invalidate("chatgpt-codex")
-	_, _ = svc.List(context.Background(), "chatgpt-codex")
-	assert.EqualValues(t, 2, in.asks.Load())
+
+	got, _ := svc.List(context.Background(), "chatgpt-subscription")
+	assert.Equal(t, llmmodels.SourceAPI, got.Source, "signed in: the list is read")
+	_, _ = svc.List(context.Background(), "chatgpt-subscription")
+	assert.EqualValues(t, 2, in.asks.Load(), "no email: another account may have signed in, so each opening asks again")
 }

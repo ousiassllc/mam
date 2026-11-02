@@ -186,18 +186,23 @@ func (m *Manager) Enabled() []string {
 }
 
 // Missing is the IDs of nodes that the engine does not load now (not installed, outdated, modified, blocked or unknown), in the order given.
+// Only the nodes asked for are judged (a judgment hashes the folder), so no ID costs nothing.
 func (m *Manager) Missing(ids []string) []string {
 	var out []string
-	enabled := map[string]bool{}
+	var rec Record
 	if m != nil {
-		for _, st := range m.List() {
-			enabled[st.Node.ID] = st.State == StateInstalled
-		}
+		rec = m.record()
 	}
 	for _, id := range ids {
-		if !enabled[id] && !slices.Contains(out, id) {
-			out = append(out, id)
+		if slices.Contains(out, id) {
+			continue
 		}
+		if m != nil {
+			if n, ok := m.catalog().Node(id); ok && m.status(n, rec).State == StateInstalled {
+				continue
+			}
+		}
+		out = append(out, id)
 	}
 	return out
 }
