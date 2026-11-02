@@ -16,6 +16,13 @@ const (
 	ModeEdit ReferenceMode = "edit"
 	// ModeImg2Img is a model that starts the sampling from one reference image: the denoise tells how far the result leaves it.
 	ModeImg2Img ReferenceMode = "img2img"
+	// ModeControlNet is a ControlNet workflow: the one reference image is the control image (a canny edge map, an OpenPose skeleton, a depth
+	// map: made by the user, mam runs no preprocessor), and the strength of the reference is the ControlNet's strength. The workflow
+	// cannot run without it.
+	ModeControlNet ReferenceMode = "controlnet"
+	// ModeIPAdapter is an IP-Adapter workflow (a custom node: Workflow.RequiresNodes): the one reference image shows the look, the style or the
+	// person to carry over, and the strength of the reference is the adapter's weight. It cannot run without it.
+	ModeIPAdapter ReferenceMode = "ipadapter"
 )
 
 // Override sets one input of one node of the graph: Value is a JSON literal or a link ["<node id>", <output index>].
@@ -55,15 +62,20 @@ func (m Model) SupportsLoRA() bool { return m.Workflow != nil && m.Workflow.Lora
 func validateReferenceMode(where string, w Workflow, g Graph) []error {
 	var errs []error
 	switch w.ReferenceMode {
-	case "", ModeEdit, ModeImg2Img:
+	case "", ModeEdit, ModeImg2Img, ModeControlNet, ModeIPAdapter:
 	default:
-		errs = append(errs, fmt.Errorf("%s: reference_mode must be edit or img2img", where))
+		errs = append(errs, fmt.Errorf("%s: reference_mode must be edit, img2img, controlnet or ipadapter", where))
 	}
 	if w.ReferenceMode != "" && !w.Has(ParamReferenceImage) {
 		errs = append(errs, fmt.Errorf("%s: reference_mode needs a reference_image assignment", where))
 	}
-	if w.ReferenceMode == ModeImg2Img && w.Count(ParamReferenceImage) != 1 {
-		errs = append(errs, fmt.Errorf("%s: an img2img workflow takes exactly one reference image", where))
+	if single := w.ReferenceMode == ModeImg2Img || w.ReferenceMode == ModeControlNet || w.ReferenceMode == ModeIPAdapter; single && w.Count(ParamReferenceImage) != 1 {
+		errs = append(errs, fmt.Errorf("%s: a %s workflow takes exactly one reference image", where, w.ReferenceMode))
+	}
+	if w.ReferenceMode == ModeControlNet || w.ReferenceMode == ModeIPAdapter {
+		if len(w.NoReference) > 0 || slices.ContainsFunc(w.Assignments, func(a Assignment) bool { return a.Optional }) {
+			errs = append(errs, fmt.Errorf("%s: a %s workflow cannot run without its reference image (no no_reference, no optional)", where, w.ReferenceMode))
+		}
 	}
 	if w.ReferenceDenoiseMin < 0 || w.ReferenceDenoiseMin >= 1 {
 		errs = append(errs, fmt.Errorf("%s: reference_denoise_min must be within 0 and below 1", where))

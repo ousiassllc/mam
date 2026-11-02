@@ -36,8 +36,9 @@ func hasCheckDate(note string) bool {
 const unspecifiedLicense = "unspecified"
 
 // modelFolders are the ComfyUI model folders a catalog file goes to. latent_upscale_models is the folder of the spatial upscaler
-// the LTX-2.5 workflow loads (LatentUpscaleModelLoader).
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models"}
+// the LTX-2.5 workflow loads (LatentUpscaleModelLoader). controlnet is the core ControlNetLoader's; ipadapter (IPAdapterModelLoader of the node
+// ipadapter-plus, modelmgr/nodecat) and clip_vision (CLIPVisionLoader) are the folders of an IP-Adapter and its image encoder.
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter"}
 
 // loaderInputs are the inputs of the core loader nodes that name a model file, with the folder the file is in.
 var loaderInputs = map[string]map[string]string{
@@ -48,6 +49,9 @@ var loaderInputs = map[string]map[string]string{
 	"VAELoader":                {"vae_name": "vae"},
 	"LoraLoaderModelOnly":      {"lora_name": "loras"},
 	"LatentUpscaleModelLoader": {"model_name": "latent_upscale_models"},
+	"ControlNetLoader":         {"control_net_name": "controlnet"},
+	"CLIPVisionLoader":         {"clip_name": "clip_vision"},
+	"IPAdapterModelLoader":     {"ipadapter_file": "ipadapter"},
 }
 
 // Validate checks the catalog: the pins (https URL at a commit or tag, SHA-256, size), the licenses, the

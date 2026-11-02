@@ -1,0 +1,52 @@
+{
+ "id": "controlnet-aux",
+ "name": "comfyui_controlnet_aux（ControlNet の前処理）",
+ "description": "写真からポーズ（OpenPose・DWPose）・深度・線画・エッジなどの制御画像を作る、ControlNet の前処理のノード集。同梱の Python 環境にない多数のパッケージ（OpenCV・scikit-image・mediapipe・onnxruntime ほか）が要るため、今は導入できない。制御画像を自分で用意するなら、導入せずに ControlNet のモデルだけで使える。",
+ "repo": "https://github.com/Fannovel16/comfyui_controlnet_aux",
+ "commit": "a587a4c1594524c1d2de5cd1a86cd868ff448e1c",
+ "archive_url": "https://github.com/Fannovel16/comfyui_controlnet_aux/archive/a587a4c1594524c1d2de5cd1a86cd868ff448e1c.zip",
+ "archive_sha256": "3d717b853303c3c030effbb5ee23fd461ba427917b161b9340a01ea3c0341868",
+ "archive_size": 39937384,
+ "extracted_size": 48899668,
+ "folder": "comfyui_controlnet_aux",
+ "license": {
+  "id": "apache-2.0-controlnet-aux",
+  "version": "2.0",
+  "name": "Apache License 2.0（コード）。前処理モデルの重みは別のライセンス",
+  "url": "https://github.com/Fannovel16/comfyui_controlnet_aux/blob/a587a4c1594524c1d2de5cd1a86cd868ff448e1c/LICENSE.txt",
+  "summary": "リポジトリの LICENSE.txt は Apache License 2.0 の全文。ただし各前処理（OpenPose・DWPose・Depth Anything・MiDaS など）は、実行時にそれぞれの配布元から重みを取得して使い、重みのライセンスは前処理ごとに違う。ソースが取得先として指す Hugging Face のカードは、lllyasviel/Annotators が license: other（本文なし）、depth-anything/Depth-Anything-V2-Large が license: cc-by-nc-4.0（非商用）、yzd-v/DWPose が license: apache-2.0（2026-11-03 に API で確認）。mam は重みの取得を固定・検証できず、前処理ごとの商用可否は確かめられていない。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-03",
+  "notice": "コードは Apache-2.0 ですが、前処理ごとに実行時に取得される重みのライセンスは前処理で違い、非商用のもの（Depth Anything V2 Large は cc-by-nc-4.0）や本文のないもの（lllyasviel/Annotators は license: other）を含みます。導入できる状態になっても、商用で使う前に、使う前処理の重みの配布元で確かめてください。"
+ },
+ "python_requires": [
+  "torch",
+  "torchvision",
+  "numpy",
+  "pil",
+  "einops",
+  "scipy",
+  "cv2",
+  "skimage",
+  "mediapipe",
+  "onnxruntime",
+  "matplotlib",
+  "albumentations",
+  "timm",
+  "huggingface_hub",
+  "yacs",
+  "omegaconf",
+  "addict",
+  "trimesh"
+ ],
+ "install_blocked": "同梱の Python 環境に OpenCV（cv2）・scikit-image・mediapipe・onnxruntime・matplotlib・albumentations・timm・huggingface_hub・yacs・omegaconf・addict・trimesh などが無く、mam は pip を実行しません。さらに前処理ごとに、実行時に Hugging Face などから重みを取得します（mam の「固定して SHA-256 を検証する」方針に合わない）。",
+ "node_classes": [
+  "CannyEdgePreprocessor",
+  "DWPreprocessor",
+  "OpenposePreprocessor",
+  "DepthAnythingV2Preprocessor",
+  "LineArtPreprocessor"
+ ],
+ "reviewed_at": "2026-11-03",
+ "review": "コミット a587a4c1 のソースを走査した。要件（requirements.txt）は上の python_requires のとおりで、同梱の環境にないものが多い。実行時に huggingface_hub・requests で重みを取得するコードがあり、subprocess を使うファイルもある（893 ファイル・展開後 約 48 MB で、全文の精査はしていない）。導入可能にするには、必要なパッケージを同梱の環境に足す経路と、前処理ごとの重みの固定・検証が要る。"
+}

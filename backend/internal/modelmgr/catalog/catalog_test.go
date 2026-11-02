@@ -23,13 +23,13 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 23)
+	require.Len(t, c.Models, 25)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
 	}
 	assert.Equal(t, []string{
-		"flux1-schnell", "flux2-klein-4b", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
+		"flux1-schnell", "flux2-klein-4b", "qwen-image", "sdxl-base", "sdxl-controlnet-canny", "sdxl-ipadapter-plus", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
 		"chroma1-hd", "flux1-dev", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "sd35-medium", // advanced: images, then videos
 		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-dfr", "ltx-2.5-22b-distilled-nvfp4", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v",
 	}, ids)
