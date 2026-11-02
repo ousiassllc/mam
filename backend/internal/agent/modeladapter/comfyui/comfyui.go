@@ -7,7 +7,6 @@ package comfyui
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"path"
 	"strings"
@@ -149,12 +148,6 @@ func (b *Backend) wait(ctx context.Context, promptID string, t *tracker) (histor
 		case <-tick.C:
 		}
 	}
-}
-
-// isNotFound reports whether err is a 404 answer.
-func isNotFound(err error) bool {
-	var pe *modeladapter.ProviderError
-	return errors.As(err, &pe) && pe.Status == http.StatusNotFound
 }
 
 // imageMime is the type of an output image: its Content-Type, else its extension, else sniffed.

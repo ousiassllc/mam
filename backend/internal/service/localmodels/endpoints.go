@@ -19,7 +19,7 @@ type EndpointInput struct {
 	Kind localcfg.Kind
 	// BaseURL is the server's address: http://127.0.0.1:8188, a LAN address, or a tailnet address.
 	BaseURL string
-	// MaxConcurrency (0: 1) and TimeoutSeconds (0: 3600 for ComfyUI, 900 for OpenAI-compatible) default as in
+	// MaxConcurrency (0: 1) and TimeoutSeconds (0: 10800 for ComfyUI, 900 for OpenAI-compatible) default as in
 	// localcfg.Endpoint.
 	MaxConcurrency int
 	TimeoutSeconds int
