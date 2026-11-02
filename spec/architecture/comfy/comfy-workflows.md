@@ -30,7 +30,7 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 |再取り込み（`replace`）|既存のワークフローのグラフと画面の形式を入れ替える。変わっていれば版が上がる|
 |ノード画面で開く（画面 `POST /workflows/:id/open`）|画面の形式を ComfyUI のユーザーデータ（`workflows/mam/<名前>.json`）へ書き、ノード画面へ移る（左の「ワークフロー」から開く）。API 形式だけで取り込んだものは開けない（理由を表示）|
 
-カスタムノードやフロントエンドの拡張は入れない（`postMessage` で渡す方式は採らない。ComfyUI のフロントエンドにその口が無く、同梱版は `--disable-all-custom-nodes` のため）。
+カスタムノードやフロントエンドの拡張は入れない（`postMessage` で渡す方式は採らない。ComfyUI のフロントエンドにその口が無く、同梱版は `--disable-all-custom-nodes` のため。許可リストの追加ノードだけは `--whitelist-custom-nodes` で読み込める: [../model-manager/custom-nodes.md](../model-manager/custom-nodes.md)）。
 
 ## 4. 割り当ての編集と警告
 
