@@ -16,8 +16,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
-// ProjectsPage is the landing page: start a new Project from a first message, or open an existing one, and the tool
-// cards (ToolSection) under the Project list. The whole page is one column of max-w-5xl (spec/components/home-screen.md §2).
+// ProjectsPage is the landing page: start a new Project from a first message, or open an existing one. The other screens
+// are reached from the side menu. The whole page is one column of max-w-5xl (spec/components/home-screen.md §2).
 func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.NewProjectFormData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -80,10 +80,6 @@ func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.Ne
 					return templ_7745c5c3_Err
 				}
 				templ_7745c5c3_Err = organisms.ProjectList(projects).Render(ctx, templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = ToolSection().Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

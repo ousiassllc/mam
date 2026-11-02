@@ -91,8 +91,7 @@ func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Se
 // the version page with the version only, and the other categories of the services there are) and, when s is not nil, the
 // LLM and model sections with their PUT / DELETE routes and, when s.Update is set, POST paths.UpdateCheck() and, when s.MCP
 // is set, the MCP server section with its PUT / POST / DELETE routes. Without s the screen has no such sections and the
-// routes do not exist. It also adds the status routes of the tool cards of the home page (registerTools), which read the
-// services of both.
+// routes do not exist. It also adds the status route of the model manager card of the settings screen (registerTools).
 func Register(engine *gin.Engine, services *service.Services, s *Services, logger *slog.Logger) {
 	pages := pageServices(services, s)
 	update := pages.Update
@@ -159,7 +158,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		registerOnboarding(engine, services, s, pages)
 	}
 	settingspage.Register(engine, pages)
-	registerTools(engine, services, s, logger)
+	registerTools(engine, s, logger)
 }
 
 // pageServices are the services the pages of the settings screen are built from (the ones s does not have stay nil).
