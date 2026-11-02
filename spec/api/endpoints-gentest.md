@@ -29,6 +29,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/inputs/:id/file` | バッチの入力画像のファイル（同じ扱い） |
 | POST | `/generation-test/results/:id/favorite` | お気に入りの付け外し（`favorite=1`/`0`）。ボタンを返す |
 | POST | `/generation-test/results/:id/import` | プロジェクトへの取り込み（`project_id`・`as`=`reference`/`asset`・`kind`・`name`・`tags`・`assign_target`/`assign_id`/`assign_slot`）。取り込みフォームの区画を返す |
+| POST | `/generation-test/results/:id/upscale` | 結果を 2 倍・4 倍に大きくする（Issue #975。[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.4）。フォーム `scale`（`2`/`4`）・`upscale_model`（方式のモデル識別子。省くとプロンプトの要らない最初のもの）。見積り・確認は要らない（ローカルのモデルで無料）。成功は HTMX なら `204` と `HX-Redirect: /generation-test/history`（そうでなければ `303`）で、新しい結果は別のバッチ・別のファイルの結果として履歴に出る。倍率が 2・4 以外・アップスケール用のモデルが入っていない・名指しのモデルが使えない・出力が上限（64 Mpx。2 パスは 16 Mpx）を超える・元が画像として使えない、は `422` で、箱（`#gt-upscale`）を理由つきで返す。結果が無ければ 404 |
 | DELETE | `/generation-test/results/:id` | 結果とファイルの削除。成功は `HX-Redirect: /generation-test/history`。生成中は 409、無ければ 404 |
 | GET | `/generation-test/prompts` | プロンプト履歴（再利用のリンク・削除） |
 | GET | `/generation-test/match` | プロンプトマッチの画面（Issue #916。[../architecture/gentest/prompt-match.md](../architecture/gentest/prompt-match.md)）。参考の画像 1 枚・モデル・進め方（おまかせ / 1回だけ / 調整）・目標の似てる度・上限の回数・言葉の指示。クエリ `ref`（`<source>:<project>:<id>` の画像を参考にして開く）・`model`。プロンプトマッチが無いアプリは 503 |
@@ -90,4 +91,5 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.9 | 2026-11-02 | `POST /generation-test/run-notice` を足した（未対応の役割のモーダルの本文）。`POST /generation-test/run` の応答に `HX-Trigger-After-Swap: modal-close` を付けた（モーダルから実行したときに閉じる） | Issue #959 |
 | 1.10 | 2026-11-02 | プロンプトマッチ: 確認の区画の LLM の行を、単価の分かるものは合計に入れる 2 行に（Issue #965）。タイムラインに点の内訳（顔を混ぜているとき。Issue #964）と、各回の「プロンプトで比べる」（`GET /generation-test?from_result=<結果の id>`。その回のプロンプト・モデル・縦横比で開き、モデルを足して比較する案内を出す） | Issue #964・#965 |
 | 1.11 | 2026-11-03 | 見積り・実行に詳細設定のフィールド `seed`・`steps`・`cfg`・`sampler`・`scheduler` を足した（範囲・警告 `sampling_ignored`・`seed_ignored`・`prompt_weight`） | Issue #973・#972 |
-| 1.12 | 2026-11-03 | ポーズ集の 4 ルート（`/generation-test/poses`・`/poses/results`・`/poses/image/:id`・`POST /poses/install`）と、`ref-row` の `pose_library::<ID>`、役割 `pose` | Issue #986 |
+| 1.12 | 2026-11-03 | `POST /generation-test/results/:id/upscale`（結果を 2 倍・4 倍に大きくする。成功は履歴への `HX-Redirect`・断りは箱を 422 で返す）を足した。結果の詳細に「大きくする」の箱 | Issue #975 |
+| 1.13 | 2026-11-03 | ポーズ集の 4 ルート（`/generation-test/poses`・`/poses/results`・`/poses/image/:id`・`POST /poses/install`）と、`ref-row` の `pose_library::<ID>`、役割 `pose` | Issue #986 |

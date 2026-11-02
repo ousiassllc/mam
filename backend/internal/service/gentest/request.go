@@ -36,7 +36,7 @@ type PromptInput struct {
 
 // RefInput is an input image of a batch and the role it plays. Role is reference (the whole picture: a reference image of an
 // image model, a free reference of a video model), face, style or edit (image models that take them, see
-// modelcatalog.Info.ReferenceRoles), first_frame or last_frame (video). Strength (0..1, nil: localcfg.DefaultReferenceStrength)
+// modelcatalog.Info.ReferenceRoles), first_frame or last_frame (video). Strength (0..1, nil: localcfg.DefaultStrengthOf(role))
 // is how strongly an image model shows the reference.
 type RefInput struct {
 	Source    string   `json:"source"`

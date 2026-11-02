@@ -38,6 +38,8 @@
 | `list_generation_prompts` | プロンプト履歴（同じ（プロンプト, ネガティブ）は 1 件。使用回数・最後に使った日時） | なし | `prompts[]` | はい |
 | `delete_generation_prompt` | プロンプト履歴を 1 件削除（結果の履歴には影響しない） | `prompt_id` | `id`, `deleted` | いいえ（破壊的） |
 | `import_generation_result` | 成功した結果を Project に取り込む（お気に入りでなくてよい）。`as=reference` は Reference Library（画像のみ・`source=generated`・`kind`, `name`, `tags`）、`as=asset` はアセット。ファイルは Project の assets に複製する。`assign` で Character の face/body・Product・Location のスロットへ割り当てられる（種類が合わなければ `validation`） | `result_id`, `project_id`, `as`, `kind`, `name`, `tags`, `assign`（`target`, `id`, `slot`） | `import_id`, `asset_id`, `reference_id`, `assigned` | いいえ |
+| `list_generation_upscalers` | 結果を大きくするワークフロー（アップスケール）の一覧（Issue #975）。モデルマネージャーで入れたアップスケール用モデルのものだけが出る（無ければ空配列）。各要素: `id`（`upscale_generation_result` の `model`）, `label`, `mode`（`model` = アップスケール用モデルだけ / `two_pass` = そのあと低い denoise でもう一度サンプリングして仕上げる。元のプロンプトとシードを引き継ぐ）, `native`（モデルの倍率）, `takes_prompt`, `max_output_pixels`, `available`・`unavailable`・`unavailable_message`, `license`（商用利用の可否 `commercial`: yes / conditional / no / unknown・ライセンス名・条件・出典 URL・確認日。確かめられないものは unknown）。ほかに `scales`（`[2, 4]`）と `max_output_pixels`（64 Mpx） | なし | `upscalers[]`, `scales`, `max_output_pixels` | はい |
+| `upscale_generation_result` | 成功した画像の結果を 2 倍か 4 倍に大きくする（Issue #975。[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.4）。結果は元とは別の結果（別のバッチ・別のファイル）として履歴に残り、`get_generation_result` の `upscale`（`source_result_id`・`scale`・`model`・`mode`・`native`・元と出力の大きさ）に元と使った値が入る。ローカルのモデルなので**見積り・確認は無く、すぐ始まる**（無料）。`model` を省くと、入っているもののうちプロンプトの要らない `mode=model` の最初。2 パス（`two_pass`）は元の結果のプロンプト・ネガティブ・シードを引き継ぐ。倍率が 2・4 以外・元が画像として使えない・アップスケール用のモデルが入っていない・名指しのモデルが入っていないか今は使えない・出力が上限（`max_output_pixels`）を超える、は `validation`。元の結果が無ければ `not_found`。16GB の GPU での 4 倍の動作は実機で未確認 | `result_id`, `scale`（2 / 4）, `model` | `job_id`, `state`, `batch_id`, `result_id` | いいえ（ローカルの ComfyUI を動かす） |
 
 結果（`results[]`）: `result_id`, `batch_id`, `position`, `media`, `model`, `model_label`, `api_model`, `prompt`, `sent_prompt`, `translated`, `translated_prompt`, `translated_negative_prompt`, `negative_prompt`, `negative_mode`, `aspect_ratio`, `resolution`, `duration_seconds`, `seed`, `seed_sent`, `status`（queued / running / succeeded / failed / cancelled）, `error`, `has_file`, `mime_type`, `size_bytes`, `cost_basis`, `estimated_cost_usd`, `actual_cost_usd`（ベンダーが返したときだけ）, `favorite`, `used_inputs`, `avoid_reference_pose`, `lora`（`name`, `strength`。使ったときだけ）, `created_at`, `finished_at`。
 
@@ -78,6 +80,13 @@
 - **結果**（`get_generation_result`・`get_generation_test` の `results[]`）: `sampling`（実際に使った `steps`・`cfg`・`sampler`・`scheduler`）と `seed` が残るので、同じ条件で作り直せる。英訳でウェイト（重みの数字・括弧）が消えたときは `lost_weights[]`。
 - 英訳は `(token:weight)`・`(word)`・`[word]` をそのまま残す指示で行う（[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.1）。
 
+## 大きくする（アップスケール。Issue #975）
+
+- 画面の「大きくする」と同じ `gentest.Service.Upscale` を呼ぶ（`mcp/tools/gentest/upscale.go`）。実行は種別 `gentest` のジョブ（`get_job`・`get_generation_test`）で、進み具合は `progress` に出る。
+- 結果は `result_id`（`get_generation_result` で読む）。`upscale` を持つ結果は大きくした結果で、元は `source_result_id`。大きくした結果をもう一度大きくしてもよい。
+- `list_generation_models` には**アップスケールのワークフローは出ない**（プロンプトを渡すモデルではない）。一覧は `list_generation_upscalers`。
+- ジョブの `result` は `batch_id`・`succeeded`・`failed`・`cancelled`（既存と同じ）。取り消しは `cancel_generation_test`。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -92,4 +101,5 @@
 | 1.7 | 2026-11-02 | `get_job`（種別 `gentest`）と `get_generation_test` に、動いているローカル ComfyUI の生成の `progress`（ステップ・%・残りの見積り。取れないときは省く）を足した | Issue #966 |
 | 1.8 | 2026-11-02 | `estimate_prompt_match` の見積りに LLM の呼び出し 2 行（`match_llm`・`match_llm_compare`）を足し、単価の確かめられたモデルは合計に入れ、確かめられない行だけ `no_price` にした。`get_prompt_match` の回に `scoring`（顔を混ぜているときの点の内訳）を足した | Issue #964・#965 |
 | 1.9 | 2026-11-03 | `estimate_generation_test`・`run_generation_test` に `seed`・`sampling`、`list_generation_models` に `sampling`・`prompt_weight`、結果に `sampling`・`lost_weights`、警告 `sampling_ignored`・`seed_ignored`・`prompt_weight` を足した | Issue #973・#972 |
-| 1.10 | 2026-11-03 | `references[]` の `role` に `pose`、`source` に `pose_library` を足した（`list_generation_models` の `reference_roles` にも `pose`） | Issue #986 |
+| 1.10 | 2026-11-03 | `list_generation_upscalers`・`upscale_generation_result`（結果 ID＋倍率 2 / 4 で大きくする。別の結果として残り、結果の `upscale` に元と使った値）を足した。`list_generation_models` にはアップスケールのワークフローは出さない | Issue #975 |
+| 1.11 | 2026-11-03 | `references[]` の `role` に `pose`、`source` に `pose_library` を足した（`list_generation_models` の `reference_roles` にも `pose`） | Issue #986 |

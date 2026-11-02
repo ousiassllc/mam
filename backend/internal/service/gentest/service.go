@@ -75,6 +75,8 @@ type Deps struct {
 	Poses *poses.Library
 	// BundledEndpoint is the name of the registered endpoint of the bundled ComfyUI engine, whose LoRA files LoRAs lists ("": none).
 	BundledEndpoint string
+	// FaceCrop cuts the face out of a reference of the role "face" before an editing model reads it (nil: the picture goes as it is).
+	FaceCrop runner.FaceCropFunc
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
 	Translator *prompttranslate.Translator
 	Logger     *slog.Logger
@@ -113,7 +115,7 @@ func New(d Deps) *Service {
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
 	run := runner.New(runner.Deps{
-		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, Now: d.Now, Logger: d.Logger,
+		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, FaceCrop: d.FaceCrop, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
 		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, MissingNodes: d.MissingNodes},

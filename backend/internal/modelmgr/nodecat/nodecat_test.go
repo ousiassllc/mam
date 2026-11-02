@@ -20,7 +20,7 @@ func TestTheEmbeddedAllowlistIsValid(t *testing.T) {
 // The pins and the answers of the first entries, as read from the repositories (2026-11-03).
 func TestTheAllowlistHoldsTheDecidedNodes(t *testing.T) {
 	c := nodecat.Default()
-	require.Len(t, c.Nodes, 3) // ipadapter-plus, controlnet-aux and vnccs-utils (vnccs_utils_test.go)
+	require.Len(t, c.Nodes, 4) // ipadapter-plus, controlnet-aux, pulid-flux-chroma (#960) and vnccs-utils (vnccs_utils_test.go)
 
 	ip, ok := c.Node("ipadapter-plus")
 	require.True(t, ok)
@@ -37,6 +37,16 @@ func TestTheAllowlistHoldsTheDecidedNodes(t *testing.T) {
 	assert.False(t, aux.Installable(), "it needs OpenCV, mediapipe, onnxruntime...: not in the bundled environment, and mam runs no pip")
 	assert.Equal(t, modellicense.Unknown, aux.License.Commercial, "the licenses of the weights it fetches at run time are not confirmed")
 	assert.Contains(t, aux.InstallBlocked, "pip")
+
+	// PuLID (#960) is on the list so that its pin and the answers about it are recorded; it cannot be installed here.
+	pulid, ok := c.Node("pulid-flux-chroma")
+	require.True(t, ok)
+	assert.Equal(t, "52dc5068e0fc304e51273cfa5fbdd031e1ddb824", pulid.Commit)
+	assert.Equal(t, "48d93b515dd712635544da3db7203957716d32a78d61dd2a74bc0b4c31390b81", pulid.ArchiveSHA256)
+	assert.False(t, pulid.Installable(), "insightface, facexlib, onnxruntime, timm and ftfy are not in the bundled environment, and mam runs no pip")
+	assert.Equal(t, modellicense.Unknown, pulid.License.Commercial, "its LICENSE (Apache-2.0) and its README (MIT) disagree")
+	assert.Contains(t, pulid.InstallBlocked, "antelopev2", "the InsightFace weights are non-commercial: mam does not bundle or fetch them")
+	assert.Contains(t, pulid.NodeClasses, "ApplyPulidFlux")
 
 	by, ok := c.ByFolder("ComfyUI_IPAdapter_plus")
 	require.True(t, ok)

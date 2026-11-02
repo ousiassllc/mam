@@ -1,6 +1,6 @@
 import { highlight, markAdded, releasePicker, RowReorder } from './inputs-dom';
 import { applyModels } from './inputs-models';
-import { isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';
+import { defaultStrength, isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';
 import { syncSliders } from '../slider/slider';
 
 /**
@@ -93,9 +93,23 @@ class Inputs {
     this.root.addEventListener('input', (e) => {
       const el = e.target as HTMLInputElement;
       if (el.type === 'range') {
+        el.dataset.touched = ''; // the user chose this strength: a change of role leaves it
         const out = el.closest('label')?.querySelector('output');
         if (out) out.textContent = Number(el.value).toFixed(2);
       }
+    });
+    // A strength that the user did not choose follows the role: the default of a face is higher than the others (#960).
+    this.root.addEventListener('change', (e) => {
+      const select = e.target as HTMLElement;
+      if (!(select instanceof HTMLSelectElement) || !select.matches('[data-gt-role]')) return;
+      const slider = select
+        .closest<HTMLElement>('[data-gt-ref]')
+        ?.querySelector<HTMLInputElement>('[data-gt-strength]');
+      if (!slider || slider.dataset.touched !== undefined) return;
+      slider.value = String(defaultStrength(select.value));
+      const out = slider.closest('label')?.querySelector('output');
+      if (out) out.textContent = Number(slider.value).toFixed(2);
+      syncSliders(slider);
     });
     new RowReorder(
       this.list,

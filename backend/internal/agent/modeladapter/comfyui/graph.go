@@ -29,6 +29,7 @@ type values struct {
 	denoiseFloor     float64                   // the workflow's ReferenceDenoiseMin
 	speedMode        string                    // the request's VideoRequest.SpeedMode ("": the workflow's first)
 	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
+	upscaleRatio     float64                   // the workflow's Upscale.Ratio of the request's UpscaleScale (build sets it)
 }
 
 // imageValues are the values of an image request. A workflow with a reference mode (a bundled img2img or editing model) takes
@@ -104,6 +105,8 @@ func (v values) scalar(p localcfg.Param) any {
 		return v.fps
 	case localcfg.ParamReferenceDenoise:
 		return v.denoise()
+	case localcfg.ParamUpscaleRatio:
+		return v.upscaleRatio
 	case localcfg.ParamReferenceStrength:
 		return v.opts.Ref(0).StrengthOrDefault()
 	}
@@ -137,6 +140,9 @@ func (b *Backend) referenceRole() string {
 // as, by assignment index.
 func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error) {
 	v.denoiseFloor = b.Model.Workflow.ReferenceDenoiseMin
+	if u := b.Model.Workflow.Upscale; u != nil {
+		v.upscaleRatio = u.Ratio(v.opts.UpscaleScale)
+	}
 	v.sampling = applicableSampling(*b.Model.Workflow, v.sampling)
 	if n := b.Model.Workflow.Count(localcfg.ParamReferenceImage); b.Model.Workflow.ReferenceMode != "" && len(v.references) > n {
 		v.references = v.references[:n] // the images beyond the slots were not uploaded

@@ -1,0 +1,80 @@
+{
+ "id": "upscale-nomos-webphoto-esrgan",
+ "label": "アップスケール: 4xNomosWebPhoto ESRGAN（写真向け）",
+ "media": "image",
+ "description": "モデル型アップスケール（UpscaleModelLoader と ImageUpscaleWithModel）で絵を大きくする。標準ノードだけ。倍率は ImageScaleBy が 4 倍から合わせる（2 倍は半分に縮める）。ImageUpscaleWithModel は内部でタイルに分けて処理する。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "prompt_weight": "unknown",
+   "graph": {
+    "1": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "example.png"
+     }
+    },
+    "2": {
+     "class_type": "UpscaleModelLoader",
+     "inputs": {
+      "model_name": "4xNomosWebPhoto_esrgan.safetensors"
+     }
+    },
+    "3": {
+     "class_type": "ImageUpscaleWithModel",
+     "inputs": {
+      "upscale_model": [
+       "2",
+       0
+      ],
+      "image": [
+       "1",
+       0
+      ]
+     }
+    },
+    "4": {
+     "class_type": "ImageScaleBy",
+     "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": 1,
+      "image": [
+       "3",
+       0
+      ]
+     }
+    },
+    "5": {
+     "class_type": "SaveImage",
+     "inputs": {
+      "filename_prefix": "mam/upscale",
+      "images": [
+       "4",
+       0
+      ]
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "reference_image",
+     "node": "1",
+     "input": "image",
+     "index": 0
+    },
+    {
+     "param": "upscale_ratio",
+     "node": "4",
+     "input": "scale_by"
+    }
+   ],
+   "output_node": "5",
+   "upscale": {
+    "label": "4xNomosWebPhoto ESRGAN（写真向け）",
+    "native": 4,
+    "mode": "model",
+    "max_output_pixels": 67108864
+   }
+  }
+ }
+}

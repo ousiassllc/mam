@@ -1,6 +1,7 @@
 package modelmgr
 
 import (
+	"cmp"
 	"context"
 	"slices"
 	"strings"
@@ -171,10 +172,7 @@ func sourcesOf(m modelmanager.ModelView) []string {
 }
 
 func kindLabel(kind string) string {
-	if kind == "video" {
-		return "動画"
-	}
-	return "画像"
+	return cmp.Or(map[string]string{"video": "動画", "upscale": "アップスケール"}[kind], "画像")
 }
 
 // catalogData is the model list. jobs are the install jobs it reports on besides the running ones: those that ended

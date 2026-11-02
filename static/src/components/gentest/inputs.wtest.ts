@@ -89,6 +89,29 @@ describe('the input images of the generation test (spec/components/gentest-scree
     expect(badges()).to.deep.equal(['1', '2', '3']);
   });
 
+  it('moves the strength with the role until the user has chosen one (#960)', () => {
+    const row = rows()[0]!;
+    const select = row.querySelector<HTMLSelectElement>('[data-gt-role]')!;
+    const slider = row.querySelector<HTMLInputElement>('[data-gt-strength]')!;
+    const out = row.querySelector('[data-gt-strength-out]')!;
+    const pick = (role: string) => {
+      select.value = role;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    delete slider.dataset.touched; // the fixture's rows carry a strength they were drawn with: this one is as drawn without
+
+    pick('face');
+    expect(slider.value).to.equal('0.9');
+    expect(out.textContent).to.equal('0.90');
+    pick('style');
+    expect(slider.value, 'back to the default of the other roles').to.equal('0.7');
+
+    slider.value = '0.4';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+    pick('face');
+    expect(slider.value, 'a strength the user chose stays').to.equal('0.4');
+  });
+
   it('shows the roles that the chosen models take, and the strength beside each, from the model cards', () => {
     const select = rows()[0]!.querySelector<HTMLSelectElement>('[data-gt-role]')!;
     const offered = () => [...select.options].filter((o) => !o.disabled).map((o) => o.value);

@@ -13,9 +13,18 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// beforeInputPose is the migration of the strength, the last one this migration's table is built on in every order the sweep's migrations
-// land in (the inpaint mask migration of 20261102120000 is between the two when it is there).
+// beforeInputPose is the migration of the strength, the last one the pose migration's table is built on; the inpaint mask migration
+// (20261102120000_gentest_input_mask.sql, #974), when it is on the branch, is between the two.
 const beforeInputPose = 20261101140000
+
+// hasMaskMigration says whether the branch has the inpaint mask migration. Then the roles of the table after the pose migration
+// must include "mask" as well as "pose": the pose migration rebuilds the table, and would drop the mask role if its list did not have it.
+func hasMaskMigration(t *testing.T) bool {
+	t.Helper()
+	found, err := filepath.Glob("../migrations/*_gentest_input_mask.sql")
+	require.NoError(t, err)
+	return len(found) > 0
+}
 
 // #986: a pose reference is a role of gentest_input. The rebuilt table keeps what it had (rows, strength, the index, the cascade).
 func TestMigration_GentestInputRolePose(t *testing.T) {
@@ -45,11 +54,17 @@ func TestMigration_GentestInputRolePose(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, insert("pose1", "pose"))
 	assert.Error(t, insert("bad", "middle"), "the role is still checked")
-	assert.NoError(t, insert("mask1", "mask"), "the mask of the inpaint migration is allowed too")
+	if hasMaskMigration(t) {
+		assert.NoError(t, insert("mask1", "mask"), "the inpaint mask role must stay allowed: add 'mask' to both role lists of the pose migration")
+	}
 	var strength float64
 	require.NoError(t, db.QueryRowContext(ctx, `SELECT strength FROM gentest_input WHERE id = 'pose1'`).Scan(&strength))
 	assert.InDelta(t, 0.6, strength, 1e-9)
-	assert.Equal(t, 3, count(), "the rows of the old table are copied")
+	wantRows := 2
+	if hasMaskMigration(t) {
+		wantRows = 3
+	}
+	assert.Equal(t, wantRows, count(), "the rows of the old table are copied")
 	var idx int
 	require.NoError(t, db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_gentest_input_batch'`).Scan(&idx))
 	assert.Equal(t, 1, idx)

@@ -72,6 +72,9 @@
 | `cyberrealistic-pony-v18` | **商用NG** | 作者のカードは `creativeml-openrail-m` だが、ベースの Pony Diffusion V6（上の行）の制限が及ぶので内訳の厳しい方（#984） |
 | `noobai-xl-v11` | **商用NG** | 作者 Laxhar のカード（`Laxhar/noobai-XL-1.1`）が fair-ai-public-license-1.0-sd を継承し、追加条項「II. Commercial Prohibition: モデル・派生モデル・生成物の収益化・商用利用を含むあらゆる商業化を禁じる」を書く（#984） |
 | `qwen-image-21-uncensored-int8` | **商用NG** | 配布元（`abenzerps/Qwen-Image-2.1-Uncensored-Quantized`）のカードが `license: other / license_name: qwen-research` で、Qwen/Qwen-Image-2.1 の量子化と書く。本文は Qwen RESEARCH LICENSE AGREEMENT（`noctq-v4-qwen-image21` と同じ。テキストエンコーダー・VAE も同じ）（#984） |
+| `upscale-nomos-uni-span` | 商用OK | 4xNomosUni_span_multijpg のモデルカード（メタデータ `license: cc-by-4.0`・本文 `License: CC BY 4.0`）。作者（Philip Hofmann）の表示が条件。学習データの条件は未確認（#975） |
+| `upscale-nomos-webphoto-esrgan` | **不明** | 4xNomosWebPhoto_esrgan のモデルカードは、メタデータが `license: cc-by-4.0` で本文が `License: CC-BY-0.4`（存在しない版）と食い違い、作者の GitHub リリースも `CC-BY-0.4`。LICENSE ファイルは無い。確かめられないので不明（#975） |
+| `upscale-2pass-sdxl-span` | 商用OK | SDXL base（CreativeML Open RAIL++-M）と SPAN（CC BY 4.0）の 2 部品で、どちらも商用OK |
 | クラウド: `nano-banana`・`nano-banana-lite`・`gemini-omni-flash`（Gemini API。「Use of Generated Content」: Google は生成物の所有権を主張しない）、`flux-2`（BFL。生成物の所有権を主張しない）、`gpt-image-2`・ChatGPT サブスク（OpenAI。Output は利用者のもの）、`runway-gen-4.5`（Runway。入力と生成物の所有権を主張しない） | 商用OK | 各社の利用規約を 2026-11-02 に読み、生成物の所有権を主張しない・利用者に帰属させるとしている（出典 URL は `cloud.json`）。ChatGPT サブスクは mam が使う経路が非公式で、注意を付ける |
 | クラウド: `luma-ray-3.2` | 条件つき | 規約 §4: 商用利用を認めるサブスクリプションに限る |
 | クラウド: `kling-3.0`・`kling-4.0`・`minimax-h3`・`minimax-h3-max`・`wan-3.0`・`seedance-2.0`・`seedance-2.5`（BytePlus） | **不明** | 規約の本文を読めなかった、または商用利用を許す文を見つけられなかった（公開ページが JS 描画・地域制限・契約で非公開）。商用の前に契約を確認する |
@@ -141,3 +144,4 @@
 | 1.6 | 2026-11-02 | §3 の答えの表に `ltx-2.5-22b-distilled-nvfp4`・`-dfr`（条件つき）・`wan22-ti2v-5b-fp8`（商用OK）を足した | Issue #967・#968 |
 | 1.7 | 2026-11-03 | §3 の答えの表に `qwen-image-edit-2511`（商用OK。Apache-2.0）を足した | Issue #971 |
 | 1.8 | 2026-11-03 | §3 の答えの表に、非検閲（成人向け）の実写中心 14 モデルを足した（商用OK 3・不明 7・商用NG 4）。ライセンスは一次情報（作者のモデルカード・Civitai のページの文言）だけを読み、Civitai の `allowCommercialUse` だけでは商用OKにしない | Issue #984 |
+| 1.9 | 2026-11-03 | §3 の答えの表にアップスケール用のモデル（`upscale-nomos-uni-span`＝商用OK・`upscale-nomos-webphoto-esrgan`＝不明（カードのメタデータと本文のライセンスが食い違う）・`upscale-2pass-sdxl-span`＝商用OK）を足した | Issue #975 |
