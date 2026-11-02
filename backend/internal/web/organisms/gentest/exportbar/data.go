@@ -2,6 +2,9 @@
 // the line limit of organisms/gentest; the tap-to-choose behaviour of the cards it belongs to is static/src/components/gentest/export-pick.ts.
 package exportbar
 
+// StatusID is the DOM id of the line beside the buttons that says why a choice cannot be saved.
+const StatusID = "gt-export-status"
+
 // Data is what the bar needs: where the ZIP is asked for and the filter of the history that the "newest N" form carries along.
 type Data struct {
 	// URL is paths.GenerationTestExport.

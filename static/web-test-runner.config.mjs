@@ -82,6 +82,35 @@ async function gentestAnswerMiddleware(ctx, next) {
   ctx.body = await readFile(new URL(`./src/components/testdata/${file}`, import.meta.url));
 }
 
+// The answers of the ZIP export of the history (test: gentest/export-pick): the bar asks through htmx first. A choice with
+// "latest=7" cannot be saved (the fragment of exportbar.Problem, 422); any other is answered with HX-Redirect to a download,
+// which the browser loads without leaving the page. What was downloaded is told by /__export-downloads.
+const exportDownloads = [];
+
+async function exportAnswerMiddleware(ctx, next) {
+  if (ctx.path === '/__export-downloads') {
+    ctx.type = 'application/json';
+    ctx.body = JSON.stringify(exportDownloads);
+    return;
+  }
+  if (ctx.path !== '/generation-test/export') return next();
+  if (ctx.get('HX-Request') !== 'true') {
+    exportDownloads.push(ctx.url);
+    ctx.set('Content-Disposition', 'attachment; filename=results.zip');
+    ctx.type = 'application/zip';
+    ctx.body = 'PK';
+    return;
+  }
+  if (ctx.query.latest === '7') {
+    ctx.status = 422;
+    ctx.type = 'text/html';
+    ctx.body = await readFile(new URL('./src/components/testdata/gentest-export-refused.html', import.meta.url));
+    return;
+  }
+  ctx.set('HX-Redirect', ctx.url);
+  ctx.status = 204;
+}
+
 // The real Tailwind CSS of the app (src/css/app.css, which scans the Templ templates and the components), for the tests
 // that measure a layout (components/layout). It is built once, by the installed @tailwindcss/cli, while the browser
 // starts, and served as /__tailwind.css.
@@ -132,6 +161,7 @@ export default {
     modalAnswerMiddleware,
     modelManagerAnswerMiddleware,
     gentestAnswerMiddleware,
+    exportAnswerMiddleware,
     tailwindCssMiddleware,
   ],
   plugins: [esbuildPlugin({ ts: true, tsconfig: './tsconfig.json' })],

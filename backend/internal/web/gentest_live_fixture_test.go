@@ -73,6 +73,7 @@ func TestGentestLiveFixtures_AreWhatTheComponentsRender(t *testing.T) {
 		"gentest-history-running.html":   gentest.HistoryList(liveHistory(1, "10:00:00")),
 		"gentest-history-idle.html":      gentest.HistoryList(liveHistory(0, "10:00:00")),
 		"gentest-history-live-done.html": gentest.HistoryLive(liveHistory(0, "10:00:05")),
+		"gentest-export-refused.html":    exportbar.Problem("書き出せる結果がありません（条件に合う、成功してファイルのある結果がありません）"),
 		"gentest-batch-running.html":     gentest.BatchBox(liveBatch(2)),
 		"gentest-batch-progress.html":    gentest.BatchBox(liveBatch(5)),
 	})

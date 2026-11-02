@@ -124,6 +124,45 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
     expect(hiddenIds(), 'the choice is back with the card').to.deep.equal(['r0']);
   });
 
+  describe('the bar asks the server first, and a choice that cannot be saved is said beside the buttons (#932)', () => {
+    const status = () => byTestId('gt-export-status');
+    const downloads = async (): Promise<string[]> => (await fetch('/__export-downloads')).json();
+    // The form is a plain GET form that htmx takes over: its submit event is what the reader's tap makes.
+    const submit = (testId: string) => byTestId(testId).closest('form')!.requestSubmit();
+
+    it('draws the reason in the line of the bar, keeps the page and downloads nothing', async () => {
+      await show('gentest-history-idle.html');
+      const before = (await downloads()).length;
+      (host.querySelector('#gt-export-latest') as HTMLInputElement).value = '7'; // what the answer of the stub refuses
+
+      submit('gt-export-latest-submit');
+      await waitUntil(() => status().textContent!.includes('書き出せる結果がありません'), 'the reason was not drawn');
+
+      expect(status().querySelector('[role="alert"]'), 'the reason is an alert').not.to.equal(null);
+      expect(byTestId('gt-history'), 'the screen was replaced').not.to.equal(null);
+      expect(byTestId('gt-export-latest-submit'), 'the bar is still there').not.to.equal(null);
+      expect(await downloads()).to.have.length(before);
+    });
+
+    it('clears the reason when the next ask starts and downloads the choice that can be saved', async () => {
+      await show('gentest-history-idle.html');
+      const before = (await downloads()).length;
+      (host.querySelector('#gt-export-latest') as HTMLInputElement).value = '7';
+      submit('gt-export-latest-submit');
+      await waitUntil(() => status().textContent!.includes('書き出せる'), 'the reason was not drawn');
+
+      card('r1').querySelector<HTMLElement>('p')!.click();
+      submit('gt-export-selected-submit');
+      await waitUntil(() => status().textContent === '', 'the old reason stayed');
+      await waitUntil(async () => (await downloads()).length === before + 1, 'the browser did not load the download');
+
+      const url = (await downloads())[before];
+      expect(url).to.contain('/generation-test/export?');
+      expect(url).to.contain('id=r1');
+      expect(byTestId('gt-history'), 'the page stays').not.to.equal(null);
+    });
+  });
+
   it('lights the frame of a chosen card with the real CSS and puts it out when it is let go', async function () {
     this.timeout(60_000); // the first request waits for the build of the CSS
     const stylesheet = document.createElement('link');

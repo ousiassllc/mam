@@ -13,6 +13,9 @@
  * shown (the commercial-use filter hides cards; what is hidden is not saved).
  * The second form of the bar (the newest N of the filter) learns the commercial-use choice of the filter, which is only applied in
  * the page: its hidden field `commercial` follows the radio.
+ *
+ * The bar asks the server through htmx before it downloads: a choice that cannot be saved is said in the line of the bar
+ * (`[data-gt-export-status]`) and the page stays. The reason of the last refusal is cleared when the next ask starts.
  */
 
 const ROOT = '#gt-history';
@@ -117,6 +120,12 @@ export function installExportPick(doc: Document = document): void {
     if (input.checked) set.add(id);
     else set.delete(id);
     renderChoice(root);
+  });
+  doc.addEventListener('htmx:beforeRequest', (event) => {
+    const status = (event.target as Element | null)
+      ?.closest('[data-gt-export-bar]')
+      ?.querySelector('[data-gt-export-status]');
+    status?.replaceChildren();
   });
   doc.addEventListener('htmx:afterSwap', renderAll);
   doc.addEventListener('htmx:load', renderAll);

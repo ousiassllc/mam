@@ -188,3 +188,60 @@ func TestHistoryHasTheExportBarAndOffersOnlyResultsWithAFile(t *testing.T) {
 	assert.NotContains(t, live, `data-testid="gt-export"`, "the poll never swaps the export bar the reader is using")
 	assert.Contains(t, live, `data-gt-pick="`+res[0].ID+`"`, "but its cards are chosen again after the swap")
 }
+
+// The bar asks through htmx before it downloads. A choice that cannot be saved is a fragment beside the buttons (an error status that
+// main.ts swaps in), never the plain text that would replace the whole screen, where the desktop window has no back button.
+func TestExportThroughHtmxSaysWhyItCannotBeSavedInAFragment(t *testing.T) {
+	s := newScreen(t)
+	s.images("flux-2", "fox")
+	for name, tc := range map[string]struct {
+		path   string
+		status int
+		text   string
+	}{
+		"no result of the filter": {ask("media", "video", "latest", "40"), http.StatusUnprocessableEntity, "書き出せる結果がありません"},
+		"nothing exists":          {ask("id", "does-not-exist"), http.StatusUnprocessableEntity, "書き出せる結果がありません"},
+		"bad number":              {ask("latest", "many"), http.StatusUnprocessableEntity, "件数は数字で指定してください"},
+		"too many":                {ask("latest", "501"), http.StatusUnprocessableEntity, "1〜"},
+	} {
+		rec := s.get(tc.path, "HX-Request", "true")
+		assert.Equal(t, tc.status, rec.Code, name)
+		assert.Contains(t, rec.Header().Get("Content-Type"), "text/html", name)
+		assert.Empty(t, rec.Header().Get("HX-Redirect"), name+": nothing to download")
+		body := rec.Body.String()
+		assert.Contains(t, body, `data-testid="gt-export-error"`, name)
+		assert.Contains(t, body, `role="alert"`, name)
+		assert.Contains(t, body, tc.text, name)
+		assert.NotContains(t, body, "<html", name, "a fragment, not a page")
+	}
+}
+
+// One that can be saved is answered with a redirect to the very same URL, which the browser loads as the download without leaving the
+// page; the ZIP itself is only the answer of that second request.
+func TestExportThroughHtmxRedirectsToTheDownloadOfTheSameChoice(t *testing.T) {
+	s := newScreen(t)
+	res := s.images("flux-2", "fox", "cat")
+	path := ask("id", res[1].ID)
+
+	rec := s.get(path, "HX-Request", "true")
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, path, rec.Header().Get("HX-Redirect"))
+	assert.Empty(t, rec.Body.String(), "no ZIP in the htmx answer")
+	assert.Empty(t, rec.Header().Get("Content-Disposition"))
+	rows, _ := sheet(t, s.get(rec.Header().Get("HX-Redirect")))
+	require.Len(t, rows, 1)
+	assert.Equal(t, res[1].ID, rows[0][7])
+}
+
+func TestHistoryBarAsksThroughHtmxAndHasALineForTheReason(t *testing.T) {
+	s := newScreen(t)
+	s.images("flux-2", "fox")
+
+	body := s.get(paths.GenerationTestHistory()).Body.String()
+
+	assert.Equal(t, 2, strings.Count(body, `hx-get="/generation-test/export"`), "both forms ask first")
+	assert.Equal(t, 2, strings.Count(body, `hx-target="#gt-export-status"`))
+	assert.Equal(t, 2, strings.Count(body, `action="/generation-test/export"`), "and still work as plain forms without the script")
+	assert.Contains(t, body, `id="gt-export-status"`)
+}
