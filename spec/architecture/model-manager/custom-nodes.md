@@ -34,6 +34,7 @@
 |---|---|---|---|---|---|
 | `ipadapter-plus`（cubiq/ComfyUI_IPAdapter_plus） | 導入できる | `a0f451a5…`（アーカイブ SHA-256 `c6c49c82…`、306,422 B、展開後 734,885 B） | GPL-3.0 | 可 | import は torch・torchvision・einops・PIL・comfy だけ。ネットワーク・サブプロセス・`exec` は 5 つの `.py` に無い（`IPAdapterLoadEmbeds` の `torch.load` が 1 つ）。FaceID 系は insightface を遅延 import するので、そのノードだけ動かない（`limits`）。GPL-3.0 は ComfyUI と同じ別プログラムとして実行時に取得するので mam（AGPL-3.0）へは混ざらない |
 | `controlnet-aux`（Fannovel16/comfyui_controlnet_aux） | **導入しない**（`install_blocked`） | `a587a4c1…` | Apache-2.0 | 不明 | opencv・scikit-image・mediapipe・onnxruntime などが同梱の Python に無く、mam は pip を実行しない。さらに、実行時に Hugging Face から前処理のモデルを取得し、その重みのライセンスが `lllyasviel/Annotators` は `other`、Depth-Anything-V2-Large は CC-BY-NC-4.0 で、商用利用の可否が確かめられない（`commercial: unknown`） |
+| `pulid-flux-chroma`（PaoloC68/ComfyUI-PuLID-Flux-Chroma。#960） | **導入しない**（`install_blocked`） | `52dc5068…`（アーカイブ SHA-256 `48d93b51…`、4,490,131 B、展開後 4,822,332 B） | LICENSE は Apache-2.0 の全文（著作権者の欄は雛形のまま）、README は「元の MIT License を引き継ぐ」で食い違う | 不明 | 4 クラス（`PulidFluxModelLoader`・`PulidFluxInsightFaceLoader`・`PulidFluxEvaClipLoader`・`ApplyPulidFlux`）。insightface・facexlib・onnxruntime・timm・ftfy・regex が同梱の Python に無く、mam は pip を実行しない。InsightFace antelopev2 の重みは非商用の研究用途のみで、同梱も自動の取得もしない。実行時に facexlib・EVA02-CLIP の重みを固定・検証なしで取得する。FLUX・Chroma に参照の顔の identity を足すが、**テンプレートは作らない**（同梱の Chroma1-HD での動作は未確認）。許可リストに固定を残して、依存を足す経路（別の Issue）が決まったときに導入できるようにしておく |
 
 数値の出典（2026-11-03 に GitHub・Hugging Face で取得）: アーカイブの SHA-256 は github.com と codeload.github.com の両方で同じ値を確かめた。
 
