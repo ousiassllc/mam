@@ -24,7 +24,7 @@
 |---|---|---|
 | ローカルのカタログのモデル | `backend/internal/modelmgr/catalog/data/models/<id>.json` の `license` | カタログ ID → 導入で作るワークフロー名（`comfyui:bundled-comfyui/<name>`） |
 | クラウド・サブスクの組み込みモデル | `backend/internal/domain/modellicense/data/cloud.json`（ID をキーにした 1 つの表） | 生成テストのモデル ID（`kling-3.0`、`gpt-image-2:chatgpt-subscription`） |
-| Hugging Face から足したファイル | 導入のときにモデルカードの `license` タグを記録（`state.json`）。`modellicense.FromHF` が読む | 作ったモデルの ID |
+| Hugging Face から足したファイル | 導入のときにモデルカードの `license` タグを記録（`state.json`）。`modellicense.FromHF` が読む。カードの `license_link` は **https の URL だけ**を原文のリンク（`SourceURL`）にし、相対パス・http・`javascript:`・`file:` などは空にする（href に入るため。カタログの `Info.Validate` と同じ規則） | 作ったモデルの ID |
 | 利用者が登録した外部エンドポイントのモデル・保存したワークフロー | **持たない** | `unknown`（注意: 「mam は確認できていません」） |
 
 ローカルのカタログの `license`（`catalog.License`）は、同意に使う `id`・`version`・`name`・`url`・`summary`・`notice`・`excluded_regions` に加えて次を持つ。
@@ -126,3 +126,4 @@
 | 1.2 | 2026-11-02 | §3 の答えの表に `flux2-klein-4b`（商用OK）を足した。VAE を FLUX.2 [dev] の再配布から取らず klein のリポジトリのものにした理由を書いた | Issue #931 |
 | 1.3 | 2026-11-02 | §3 の答えの表に `wan22-i2v-14b-lightx2v`（商用OK）・`wan22-i2v-14b-lightx2v-uncensored`（不明。宣言だけ）・`wan22-remix-nsfw-t2v`（不明。I2V と同じ）を足した | Issue #930 |
 | 1.4 | 2026-11-02 | §4・§5 にプロンプトマッチの画面（モデルの選択のフィルターと既定）を足した | 統合レビュー。#916 のモデルの選択だけフィルターと設定の既定が無かった |
+| 1.5 | 2026-11-02 | §2: HF のカードの `license_link` は https のものだけをリンクにする | 統合レビュー。検証なしに `SourceURL` へ入れ、`templ.SafeURL` で href にしていた（`javascript:` が通る）。HF の `license` タグだけで商用OKにする点は変えていない（方針は人が決める） |

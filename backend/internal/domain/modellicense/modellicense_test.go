@@ -145,3 +145,25 @@ func TestFromHF_ReadsTheCardsLicenseTag(t *testing.T) {
 		}
 	}
 }
+
+// The link is the card's own text: only an https URL becomes the source link of the badge (which is drawn as an href).
+func TestFromHF_KeepsOnlyAnHTTPSLicenseLink(t *testing.T) {
+	cases := map[string]string{
+		"https://huggingface.co/o/m/blob/main/LICENSE": "https://huggingface.co/o/m/blob/main/LICENSE",
+		"HTTPS://example.com/license":                  "HTTPS://example.com/license",
+		"http://example.com/license":                   "",
+		"javascript:alert(1)":                          "",
+		"JavaScript:alert(1)//https://x.y":             "",
+		"file:///etc/passwd":                           "",
+		"data:text/html,<script>1</script>":            "",
+		"//example.com/license":                        "",
+		"https:///no-host":                             "",
+		"LICENSE.md":                                   "",
+		"":                                             "",
+	}
+	for link, want := range cases {
+		got := modellicense.FromHF("apache-2.0", "", link)
+		assert.Equal(t, want, got.SourceURL, link)
+		assert.Equal(t, modellicense.Yes, got.Commercial, "the link does not change the answer: "+link)
+	}
+}
