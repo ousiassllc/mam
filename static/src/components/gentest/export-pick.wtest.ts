@@ -194,6 +194,7 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
       expect(mark().backgroundColor, 'the mark in the corner is not filled').not.to.equal(unlit);
 
       tapMark('r0');
+      input('r0').blur(); // the ring of the keyboard focus (peer-focus-visible) is another shadow of the frame: whether the label tap leaves the focus-visible look depends on the browser's last input, and this test is about the glow of the choice
       expect(lit().boxShadow).to.equal('none');
     } finally {
       stylesheet.remove();
