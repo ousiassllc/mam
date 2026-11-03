@@ -14,7 +14,10 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
@@ -32,7 +35,6 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	target := llm.Target{Provider: "anthropic", Model: "claude-sonnet-4-5-20250929"}
 	fixtures := map[string]templ.Component{
 		"layout-llm-section.html": llm.Section(llm.Data{
-			Providers: []string{"anthropic", "openai"},
 			Rows: []llm.Row{
 				{Agent: "producer", Label: "Producer", Purpose: "企画の取りまとめ", Primary: target, Fallback: target, DefaultPrimary: target, DefaultFallback: target},
 				{Agent: "director", Label: "Director", Purpose: "カットの演出", Primary: target, Fallback: llm.Target{Provider: "openai", Model: "gpt-5"}, DefaultPrimary: target, DefaultFallback: target},
@@ -44,16 +46,16 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 		// #906: the model cards of the generation test, in both modes (the long unit prices of the video models are what
 		// pushes a card wide).
 		"layout-gentest-image.html": gentest.ComposeForm(gentestCompose("image", []gentest.ModelChoice{
-			{ID: "nano-banana", Label: "nano-banana", Source: "クラウド", Price: "$0.0336 / 枚", Features: "シード非対応（同じ入力を本数ぶん呼ぶ）", Selected: true, Answer: yesAnswer},
-			{ID: "nano-banana-lite", Label: "nano-banana-lite", Source: "クラウド", Price: "$0.0336 / 枚", Reason: "API キーが登録されていません（設定の「API キー」）", Answer: yesAnswer},
-			{ID: "gpt-image-2", Label: "gpt-image-2", Source: "クラウド", Price: "$0.0530 / 枚", Answer: unknownAnswer},
+			{ID: "nano-banana", Label: "nano-banana", Source: "クラウド", Price: "$0.0336 / 枚", Features: "シード非対応（同じ入力を本数ぶん呼ぶ）", Selected: true, Answer: yesAnswer, Card: fixtureCard("nano-banana", "クラウド ・ $0.0336 / 枚", yesAnswer)},
+			{ID: "nano-banana-lite", Label: "nano-banana-lite", Source: "クラウド", Price: "$0.0336 / 枚", Reason: "API キーが登録されていません（設定の「API キー」）", Answer: yesAnswer, Card: fixtureCard("nano-banana-lite", "クラウド ・ $0.0336 / 枚", yesAnswer)},
+			{ID: "gpt-image-2", Label: "gpt-image-2", Source: "クラウド", Price: "$0.0530 / 枚", Answer: unknownAnswer, Card: fixtureCard("gpt-image-2", "クラウド ・ $0.0530 / 枚", unknownAnswer)},
 		})),
 		// #933: the input images of an image model that takes references: three thumbnails with their roles and strengths, the
 		// options of the references, a LoRA, and a model that takes none (the notice).
 		"layout-gentest-refs.html": gentest.ComposeForm(gentestRefsCompose()),
 		"layout-gentest-video.html": gentest.ComposeForm(gentestCompose("video", []gentest.ModelChoice{
-			{ID: "luma-ray-3.2", Label: "luma-ray-3.2", Source: "クラウド", Price: "1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", Selected: true, Answer: conditionalAnswer},
-			{ID: "runway-gen-4.5", Label: "runway-gen-4.5", Source: "クラウド", Price: "720p $0.1200 / 秒", Answer: noAnswer},
+			{ID: "luma-ray-3.2", Label: "luma-ray-3.2", Source: "クラウド", Price: "1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", Selected: true, Answer: conditionalAnswer, Card: fixtureCard("luma-ray-3.2", "クラウド ・ 1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", conditionalAnswer)},
+			{ID: "runway-gen-4.5", Label: "runway-gen-4.5", Source: "クラウド", Price: "720p $0.1200 / 秒", Answer: noAnswer, Card: fixtureCard("runway-gen-4.5", "クラウド ・ 720p $0.1200 / 秒", noAnswer)},
 		})),
 	}
 
@@ -87,9 +89,14 @@ var (
 	unknownAnswer     = commercial.FromInfo(modellicense.UnknownInfo(modellicense.NotChecked))
 )
 
+// fixtureCard is the card of a model as the handler makes it (handler/modelcards.FromInfo): the name, the line of the kind and the price, and the commercial-use answer.
+func fixtureCard(name, meta string, answer commercial.View) modelcard.Card {
+	return modelcard.Card{Name: name, Meta: meta, Icon: atoms.IconImage, Commercial: &answer}
+}
+
 func gentestCompose(media string, models []gentest.ModelChoice) gentest.Compose {
 	return gentest.Compose{
-		Media: media, Models: models, Filter: commercial.NewFilter("gt-commercial", "#gt-models", modellicense.FilterAll), Prompts: []gentest.PromptText{{}}, Count: "1", Aspect: "16:9",
+		Media: media, Models: models, Filter: modelpick.Filter{ID: "gt-model-bar", Key: "gentest-image", Action: "/generation-test/models", Target: "#gt-model-results", Facets: modelpick.Facets{Adult: true, Commercial: true, Available: true}}, Prompts: []gentest.PromptText{{}}, Count: "1", Aspect: "16:9",
 		Resolutions: []string{"720p", "1080p"}, Durations: []string{"5", "10"}, Resolution: "720p", Duration: "5",
 		MaxPrompt: 4000, MaxCount: 20, MaxItems: 50, MaxReferences: 10, MaxCostUSD: "$5.00", Translate: true, // #913: the switch is drawn on
 	}

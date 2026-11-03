@@ -1,11 +1,13 @@
 package llmsettingstest_test
 
 import (
+	"encoding/json"
+	htmlpkg "html"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -23,14 +25,27 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// optionIDs are the values of the options of the <select> named name.
-func optionIDs(t *testing.T, html, name string) []string {
+// pickerModels are the models the picker lists as cards (provider/model, in order): each card carries what choosing it sets in the field.
+func pickerModels(t *testing.T, html string) []string {
 	t.Helper()
-	sel := regexp.MustCompile(`(?s)<select[^>]*name="` + regexp.QuoteMeta(name) + `"[^>]*>.*?</select>`).FindString(html)
-	require.NotEmpty(t, sel, name)
 	var out []string
-	for _, m := range regexp.MustCompile(`<option value="([^"]*)"`).FindAllStringSubmatch(sel, -1) {
-		out = append(out, m[1])
+	for _, m := range regexp.MustCompile(`data-mp-values="([^"]*)"`).FindAllStringSubmatch(html, -1) {
+		var v map[string]string
+		require.NoError(t, json.Unmarshal([]byte(htmlpkg.UnescapeString(m[1])), &v))
+		out = append(out, v["provider"]+"/"+v["model"])
+	}
+	return out
+}
+
+// shownProviders are the providers with at least one model card.
+func shownProviders(t *testing.T, html string) []string {
+	t.Helper()
+	var out []string
+	for _, m := range pickerModels(t, html) {
+		p, _, _ := strings.Cut(m, "/")
+		if !slices.Contains(out, p) {
+			out = append(out, p)
+		}
 	}
 	return out
 }
@@ -56,22 +71,48 @@ func llmScreenWithModels(t *testing.T, base string) *llmScreen {
 	return s
 }
 
-// With no API key and nobody signed in, every provider's pull-down offers the candidates of mam, says so, and says why.
-func TestLLMSettings_WithoutKeysThePullDownOffersMamsCandidatesAndSaysSo(t *testing.T) {
+const pickerURL = "/model-picker/settings-llm"
+
+// With no API key and nobody signed in, the picker starts at "選べるものだけ": no provider has a model to choose, it says how many cannot be chosen now, and "使えないものも表示"
+// lists them with why (#1013) and where it is fixed.
+func TestLLMSettings_WithoutKeysThePickerHidesTheModelsAndShowsThemWithTheReasonOnRequest(t *testing.T) {
+	s := newLLMScreen(t, false)
+
+	body := s.requestTo(http.MethodGet, pickerURL, nil).Body.String()
+	assert.Empty(t, pickerModels(t, body), "no key, no sign-in: nothing can be chosen now")
+	assert.Contains(t, body, "件は今は選べません")
+	assert.NotContains(t, body, "sk-")
+
+	body = s.requestTo(http.MethodGet, pickerURL+"?mf=1&available_only=0", nil).Body.String()
+	def := llm.DefaultConfig().Routes[llm.AgentDirector]
+	assert.Contains(t, pickerModels(t, body), string(def.Primary.Provider)+"/"+def.Primary.Model, "the shipped default is listed, but not usable")
+	assert.Contains(t, body, "API キーが登録されていません")
+	assert.Contains(t, body, `href="/settings/api-keys"`, "the way to the setting that fixes it")
+	assert.Contains(t, body, "選べません")
+}
+
+// The modal of an Agent is the two model fields, each posting the provider and the model it holds; a provider without a key says so, with the way to the setting.
+func TestLLMSettings_TheModalSaysWhichSavedProviderCannotBeUsed(t *testing.T) {
 	s := newLLMScreen(t, false)
 	body := s.requestTo(http.MethodGet, paths.LLMAgentEdit("director"), nil).Body.String()
 	def := llm.DefaultConfig().Routes[llm.AgentDirector]
 
-	assert.Equal(t, llm.CandidateModels(def.Primary.Provider), optionIDs(t, body, "primary.model"))
-	assert.Contains(t, body, "出所: mam の既定候補（API キーが登録されていません）")
-	assert.Contains(t, body, `<optgroup label="mam の既定候補">`)
-	assert.NotContains(t, body, "使えないかもしれません", "the shipped default is in the list")
-	assert.Regexp(t, `<select[^>]*id="llm-primary-model"[^>]*>`, body)
-	assert.NotRegexp(t, `<input[^>]*name="primary.model"`, body, "no free text box under the model name")
-	provider := regexp.MustCompile(`<select[^>]*name="primary.provider"[^>]*>`).FindString(body)
-	assert.Contains(t, provider, `hx-get="`+paths.LLMModelField("director", "primary")+`"`, "a change of the provider asks for its models")
-	assert.Contains(t, provider, `hx-target="#llm-primary-model-field"`)
-	assert.Contains(t, body, `hx-disabled-elt="#llm-save"`, "the save waits for the models of the new provider")
+	assert.Equal(t, string(def.Primary.Provider), hiddenValue(t, body, "primary.provider"))
+	assert.Equal(t, def.Primary.Model, hiddenValue(t, body, "primary.model"))
+	assert.Equal(t, 2, strings.Count(body, `hx-get="`+pickerURL+`"`))
+	assert.Contains(t, body, `data-testid="llm-primary-unusable"`)
+	assert.Contains(t, body, `href="/settings/api-keys"`)
+	assert.Contains(t, body, "（保存はできます）")
+}
+
+// The assignment screen warns of a saved route whose provider cannot be used; the route stays (#1013).
+func TestLLMSettings_TheScreenWarnsOfASavedRouteThatCannotBeUsed(t *testing.T) {
+	s := newLLMScreen(t, false)
+	body := s.page()
+
+	assert.Contains(t, body, `data-testid="llm-warnings"`)
+	assert.Contains(t, body, "使えません")
+	assert.Contains(t, body, `href="/settings/api-keys"`)
 }
 
 // A model that is saved but not in the list stays chosen, with a warning, and the save is not refused.
@@ -80,17 +121,13 @@ func TestLLMSettings_ASavedModelTheListLacksIsWarnedAndStillSaves(t *testing.T) 
 	require.Equal(t, http.StatusOK, s.requestTo(http.MethodPut, paths.LLMAgent("director"), agentForm("openai", "gpt-from-the-future", "google", "gemini-x")).Code)
 
 	body := s.requestTo(http.MethodGet, paths.LLMAgentEdit("director"), nil).Body.String()
-	assert.Equal(t, "gpt-from-the-future", selectedValue(t, body, "primary.model"))
-	assert.Contains(t, body, `<optgroup label="保存済み（一覧にありません）">`)
+	assert.Equal(t, "gpt-from-the-future", hiddenValue(t, body, "primary.model"))
 	assert.Regexp(t, `data-testid="llm-primary-model-unlisted"[^>]*>「gpt-from-the-future」は openai の一覧にありません。使えないかもしれません`, body)
 	assert.Contains(t, body, `data-testid="llm-fallback-model-unlisted"`, "gemini-x too")
-
-	// The listed models are still offered next to it.
-	assert.Subset(t, optionIDs(t, body, "primary.model"), llm.CandidateModels(llm.ProviderOpenAI))
 }
 
-// The name typed under "一覧にないモデル名" wins over the pull-down's, so a model that no list has can still be used.
-func TestLLMSettings_ATypedNameWinsOverThePullDown(t *testing.T) {
+// The name typed under "一覧にないモデル名" wins over the picker's, so a model that no list has can still be used.
+func TestLLMSettings_ATypedNameWinsOverThePicker(t *testing.T) {
 	s := newLLMScreen(t, false)
 	form := agentForm("openai", llm.CandidateModels(llm.ProviderOpenAI)[0], "google", llm.CandidateModels(llm.ProviderGoogle)[0])
 	form.Set("primary.model_custom", "  gpt-typed  ")
@@ -102,61 +139,25 @@ func TestLLMSettings_ATypedNameWinsOverThePullDown(t *testing.T) {
 	assert.Equal(t, llm.CandidateModels(llm.ProviderGoogle)[0], cfg.Routes[llm.AgentDirector].Fallback.Model)
 }
 
-// A change of provider answers the model box of the new provider alone: the saved model stays chosen only for the provider it
-// was saved for, else the default's (when it is that provider's) or the first model.
-func TestLLMSettings_ChangingTheProviderAnswersTheModelBoxOfTheNewOne(t *testing.T) {
-	s := newLLMScreen(t, false)
-	def := llm.DefaultConfig().Routes[llm.AgentDirector]
-	require.Equal(t, http.StatusOK, s.requestTo(http.MethodPut, paths.LLMAgent("director"), agentForm("openai", "gpt-saved", string(def.Fallback.Provider), def.Fallback.Model)).Code)
-
-	ask := func(role, provider string) (int, string) {
-		rec := s.requestTo(http.MethodGet, paths.LLMModelField("director", role)+"?"+url.Values{role + ".provider": {provider}}.Encode(), nil)
-		return rec.Code, rec.Body.String()
-	}
-
-	code, body := ask("primary", "openai")
-	assert.Equal(t, http.StatusOK, code)
-	assert.Equal(t, "gpt-saved", selectedValue(t, body, "primary.model"), "the provider it was saved for")
-	assert.NotContains(t, body, "<html")
-
-	code, body = ask("primary", "anthropic")
-	assert.Equal(t, http.StatusOK, code)
-	assert.Equal(t, llm.CandidateModels(llm.ProviderAnthropic), optionIDs(t, body, "primary.model"))
-	assert.Equal(t, def.Primary.Model, selectedValue(t, body, "primary.model"), "the default's model is that provider's")
-	assert.NotContains(t, body, "gpt-saved")
-
-	code, body = ask("primary", "google")
-	assert.Equal(t, http.StatusOK, code)
-	assert.Equal(t, llm.CandidateModels(llm.ProviderGoogle)[0], selectedValue(t, body, "primary.model"))
-
-	code, _ = ask("primary", "nobody")
-	assert.Equal(t, http.StatusUnprocessableEntity, code)
-	code, _ = ask("middle", "openai")
-	assert.Equal(t, http.StatusNotFound, code)
-	rec := s.requestTo(http.MethodGet, paths.LLMModelField("nobody", "primary")+"?primary.provider=openai", nil)
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-// With a key the models come from the provider, marked as such; a saved model that the provider does not list is warned.
-func TestLLMSettings_WithAKeyThePullDownOffersTheProvidersListAndNeverShowsTheKey(t *testing.T) {
+// With a key the picker lists the models of that provider only, from the provider's own list, and never shows the key; the other providers have no models to choose.
+func TestLLMSettings_WithAKeyThePickerOffersTheProvidersListAndNeverShowsTheKey(t *testing.T) {
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "Bearer sk-test", r.Header.Get("Authorization"))
 		_, _ = w.Write([]byte(`{"data":[{"id":"gpt-live-b","created":1},{"id":"gpt-live-a","created":2}]}`))
 	}))
 	t.Cleanup(api.Close)
 	s := llmScreenWithModels(t, api.URL)
-	def := llm.DefaultConfig().Routes[llm.AgentDirector]
-	require.Equal(t, http.StatusOK, s.requestTo(http.MethodPut, paths.LLMAgent("director"), agentForm("openai", "gpt-live-a", string(def.Fallback.Provider), def.Fallback.Model)).Code)
 
-	body := s.requestTo(http.MethodGet, paths.LLMAgentEdit("director"), nil).Body.String()
-	assert.Equal(t, []string{"gpt-live-a", "gpt-live-b"}, optionIDs(t, body, "primary.model"))
-	assert.Equal(t, "gpt-live-a", selectedValue(t, body, "primary.model"))
-	assert.Contains(t, body, "出所: プロバイダーの API の一覧")
+	body := s.requestTo(http.MethodGet, pickerURL, nil).Body.String()
+	assert.Equal(t, []string{"openai/gpt-live-a", "openai/gpt-live-b"}, pickerModels(t, body))
+	assert.Equal(t, []string{"openai"}, shownProviders(t, body), "the providers without a key are hidden")
 	assert.NotContains(t, body, "sk-test")
-	assert.NotContains(t, strings.Join(optionIDs(t, body, "primary.model"), ","), "gpt-5")
 
+	// A saved model the provider's list lacks stays chosen, with a warning.
+	def := llm.DefaultConfig().Routes[llm.AgentDirector]
 	require.Equal(t, http.StatusOK, s.requestTo(http.MethodPut, paths.LLMAgent("director"), agentForm("openai", "gpt-5", string(def.Fallback.Provider), def.Fallback.Model)).Code)
 	body = s.requestTo(http.MethodGet, paths.LLMAgentEdit("director"), nil).Body.String()
-	assert.Equal(t, "gpt-5", selectedValue(t, body, "primary.model"))
+	assert.Equal(t, "gpt-5", hiddenValue(t, body, "primary.model"))
 	assert.Contains(t, body, `data-testid="llm-primary-model-unlisted"`, "gpt-5 is not in this account's list")
+	assert.NotContains(t, body, `data-testid="llm-primary-unusable"`, "openai has a key")
 }

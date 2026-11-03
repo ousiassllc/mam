@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/installbtn"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -29,12 +30,19 @@ templ CatalogList(c Catalog) {
 		if c.Blocked != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-catalog-blocked">{ c.Blocked }</p>
 		}
+		@modelpick.Summary(c.Filter)
 		<ul id={ ModelsID } role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-models">
 			for _, m := range c.Models {
 				@modelCard(m, c.Blocked != "")
 			}
 		</ul>
 	</div>
+}
+
+// CatalogWithBar is the answer to the filter bar: the list and, out of band, the number on the funnel (and the panel, for a chip).
+templ CatalogWithBar(c Catalog) {
+	@CatalogList(c)
+	@modelpick.Oob(c.Filter)
 }
 
 // StateTone is the badge of the install state of a model (also the one of its detail modal).
@@ -72,10 +80,7 @@ func ModelCardID(id string) string { return "mm-model-" + id }
 // modelBadges are the labels beside the state that must not be missed: an adult model, the login a model needs, a disk that is too full to
 // install it, a GPU below what the model needs, and an OS / GPU generation it is not made for.
 func modelBadges(m Model) []modelcard.Badge {
-	var out []modelcard.Badge
-	if m.Adult {
-		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "成人向け", Attrs: templ.Attributes{"data-testid": "mm-adult-badge"}})
-	}
+	out := modelcard.Facts{Adult: m.Adult, ParamsLabel: m.ParamsLabel, VRAMMinGB: m.VRAMMinGB}.Badges() // the badges every model card shares (成人向け, parameters, VRAM)
 	if m.NeedsToken {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "HF トークンが必要", Attrs: templ.Attributes{"data-testid": "mm-token-badge"}})
 	}

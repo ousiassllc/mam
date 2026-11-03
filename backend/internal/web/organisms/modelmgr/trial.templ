@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -41,19 +42,17 @@ templ TrialFormView(f TrialForm) {
 		data-testid="mm-trial-form"
 	>
 		@notice(f.Message, "mm-trial")
-		@commercial.Filter(f.Filter)
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-model">
-			<span>モデル（導入済み・登録済みのもの）</span>
-			@atoms.Select(atoms.FieldMd, "w-full max-w-xl", templ.Attributes{
-				"id": "mm-trial-model", "name": FieldModelID, "hx-get": paths.ModelManagerPart("trials", "form"),
-				"hx-trigger": "change", "hx-target": "#" + TrialFmID, "hx-swap": "outerHTML",
-				"hx-include": "[name=" + FieldPrompt + "],[name=" + FieldNegative + "],[name=" + FieldAspect + "]",
-			}) {
-				for _, m := range f.Models {
-					<option value={ m.ID } selected?={ m.Selected } data-commercial={ m.Answer.Answer() }>{ m.Label }</option>
-				}
-			}
-		</label>
+		<div
+			class="flex flex-col gap-1 text-xs text-neutral-400"
+			hx-get={ paths.ModelManagerPart("trials", "form") }
+			hx-trigger="change"
+			hx-target={ "#" + TrialFmID }
+			hx-swap="outerHTML"
+			hx-include={ "[name=" + FieldPrompt + "],[name=" + FieldNegative + "],[name=" + FieldAspect + "]" }
+		>
+			<span id="mm-trial-model-label">モデル（導入済み・登録済みのもの）</span>
+			@modelpick.Field(f.Model)
+		</div>
 		if f.NativeAudio {
 			<p class="text-xs text-neutral-300" data-testid="mm-trial-audio-note">このモデルは映像と同期した音声も作ります。結果は音声つきの mp4 で、下のプレーヤーで音が出ます（ブラウザーとパソコンの音量・ミュートを確かめてください）。</p>
 		}

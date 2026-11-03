@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -37,6 +38,7 @@ templ Body(d Data) {
 			@AdultCard(d.Adult)
 			@CommercialCard(d.Commercial)
 			<div id={ DialogID } data-testid="mm-dialog"></div>
+			@modelpick.Bar(d.Catalog.Filter)
 			@CatalogList(d.Catalog)
 		}
 		@molecules.SettingsSection("試し生成", "導入したモデル（登録済みの外部の ComfyUI のモデルも）で、プロジェクトの外で 1 枚・1 本だけ試します。") {

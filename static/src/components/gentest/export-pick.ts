@@ -10,9 +10,7 @@
  * a result runs is swapped every 2 seconds and its cards are drawn again, so after every swap the choice is put on the new cards
  * (and a result that is gone from the list is dropped). The export bar (`[data-gt-export-selected]`) lies outside of that part: its
  * button shows how many are chosen, is off while none is, and its hidden fields `id` carry the chosen results of the cards that are
- * shown (the commercial-use filter hides cards; what is hidden is not saved).
- * The second form of the bar (the newest N of the filter) learns the commercial-use choice of the filter, which is only applied in
- * the page: its hidden field `commercial` follows the radio.
+ * shown (a card that a list hides is not saved).
  *
  * The bar asks the server through htmx before it downloads: a choice that cannot be saved is said in the line of the bar
  * (`[data-gt-export-status]`) and the page stays. The reason of the last refusal is cleared when the next ask starts.
@@ -74,14 +72,6 @@ export function renderChoice(root: Element): void {
     const clear = form.querySelector<HTMLElement>('[data-gt-select-clear]');
     if (clear) clear.hidden = ids.length === 0;
   }
-  const commercial = root.querySelector<HTMLInputElement>(
-    '[data-commercial-filter] input[type="radio"]:checked',
-  )?.value;
-  if (commercial) {
-    for (const input of root.querySelectorAll<HTMLInputElement>('input[data-gt-export-commercial]')) {
-      input.value = commercial;
-    }
-  }
 }
 
 function renderAll(): void {
@@ -92,7 +82,7 @@ const installed = new WeakSet<Document>();
 
 /**
  * Installs the choice. Call it once (main.ts): the check boxes work for the history of any page and swap, and the choice is put on again after
- * every swap and after the commercial-use filter changed what is shown.
+ * every swap and after a filter changed what is shown.
  */
 export function installExportPick(doc: Document = document): void {
   if (installed.has(doc)) return;
@@ -132,6 +122,6 @@ export function installExportPick(doc: Document = document): void {
   });
   doc.addEventListener('htmx:afterSwap', renderAll);
   doc.addEventListener('htmx:load', renderAll);
-  doc.addEventListener('commercial-filter-applied', renderAll);
+  doc.addEventListener('model-pick-applied', renderAll);
   doc.addEventListener('DOMContentLoaded', renderAll);
 }

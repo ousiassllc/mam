@@ -1,6 +1,9 @@
 package modelmgr
 
-import "github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+)
 
 // HFToken is the optional Hugging Face token: whether there is one (and its end), never its value.
 type HFToken struct {
@@ -41,21 +44,14 @@ type External struct {
 	Result    *ExternalResult
 }
 
-// TrialModel is a choice of the model select.
-type TrialModel struct {
-	ID       string
-	Label    string
-	Selected bool
-	// Answer is whether the model may be used commercially (data-commercial of the option, which the filter reads).
-	Answer commercial.View
-}
-
 // TrialForm is the form that starts a trial generation, for the model that is chosen.
 type TrialForm struct {
 	Message
-	Models []TrialModel
-	// Filter is the commercial-use filter of the model select.
-	Filter commercial.FilterData
+	// Model is the field that chooses the model: the model picker (#1011), the same cards and filter as everywhere. ModelID is the model chosen ("" while there is none) and
+	// HasModels says there is some to choose from.
+	Model     modelpick.FieldData
+	ModelID   string
+	HasModels bool
 	// Media is image or video ("" while no model is chosen).
 	Media            string
 	AcceptsReference bool

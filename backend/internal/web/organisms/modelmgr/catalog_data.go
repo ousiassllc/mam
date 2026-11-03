@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -29,7 +30,10 @@ type Model struct {
 	KindLabel string
 	Advanced  bool
 	// Adult is the badge 成人向け; TriggerWords are the words a LoRA of the model needs in the prompt.
-	Adult        bool
+	Adult bool
+	// ParamsLabel is the parameter count ("14B"; "" when it is not known) and VRAMMinGB the least VRAM of the guideline (0: none): badges every model card shares.
+	ParamsLabel  string
+	VRAMMinGB    int
 	TriggerWords []string
 	// Sources are the places of the originals of the mirrored files (each once).
 	Sources     []string
@@ -89,6 +93,9 @@ type Catalog struct {
 	Blocked string
 	// UpdatedAt is the time of day it was read ("15:04:05"), beside the refresh button (#962).
 	UpdatedAt string
+	// Filter is the filter of the list (#1011): its chips and the numbers above the list are drawn from it; the bar and the panel are above the list, outside it, so that
+	// a list that is drawn again while an install runs keeps the panel open.
+	Filter modelpick.Filter
 }
 
 // Polling reports whether an install is running (or has not been seen to end yet).
@@ -107,13 +114,11 @@ type Consent struct {
 	Error           string
 }
 
-// CommercialPanel is the setting "商用OKのモデルだけを使う" with the filter of the model list: the filter is drawn with the setting's
-// answer checked, and the list keeps showing everything the filter lets through.
+// CommercialPanel is the setting "商用OKのモデルだけを使う": what the commercial-use choice of every model filter starts at.
 type CommercialPanel struct {
 	Message
 	// Only is the setting: the lists start at "商用OKのみ".
-	Only   bool
-	Filter commercial.FilterData
+	Only bool
 	// OOB draws the card out of band (the answer of another section's action).
 	OOB bool
 }

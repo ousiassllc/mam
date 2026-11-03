@@ -114,9 +114,9 @@
 
 ## 5. フィルターと設定
 
-- **フィルター（`molecules/commercial.Filter` と `static/src/components/commercial-filter`）**: すべて / 商用OKのみ / 条件つきまで。ラジオの並びで、`data-commercial-filter-target` が絞る一覧の CSS セレクターを持つ。一覧の中の `data-commercial="<値>"` を持つ要素（カード・行・`<option>`）を、選んだ答えが許さなければ隠し（`hidden`）、フォームの部品は無効にして送らない。広げるとスクリプトが無効にしたものだけ戻す（サーバーが無効にしたもの＝選べないモデルは戻さない）。選択中の `<option>` は隠さない（保存済みの割り当てを勝手に変えない）。隠した件数は「N 件を隠しています」と読み上げる。絞り込んだあとに `commercial-filter-applied` を投げ、生成テストは選択中のモデルの数えなおしに使う。
-- **フィルターを置く画面**: 生成テストのモデルのカード・プロンプトマッチ（「画像から似せる」）のモデルの選択（`#gt-match-model`）・履歴（`commercial` をクエリに持ち、ページ送りで保つ）、モデルマネージャーのモデルの一覧と試し生成のモデルの選択、設定の画像・動画モデルのモーダル。
-- **設定「商用OKのモデルだけを使う」**（既定はオフ。`state.json` の `commercial_only`）: オンの間、上のフィルターは「商用OKのみ」から始まり、MCP の `list_generation_models`・`list_model_catalog` は `commercial` 引数を省くと商用OKだけを返す（`modellicense.DefaultFilter`）。**一覧を絞るだけで、生成そのものは止めない**（ほかの答えのモデルを画面で広げて選べる。名指しの生成も断らない。代替のモデルへは切り替えない）。画面はモデルマネージャーの「商用利用で絞り込む」の区画のスイッチ（`PUT /model-manager/commercial`）、MCP は `get_commercial_only` / `set_commercial_only`。
+- **フィルター（Issue #1011 で変更）**: 商用利用の絞り込みは、**共通のモデルのフィルターバーの詳細パネルの 1 項目**（すべて / 商用OKのみ / 条件つきまで。`commercial` キー。[model-manager/model-filter.md](model-manager/model-filter.md) §2・§8）。絞るのはサーバー（`modelfilter`）で、スクリプトの `data-commercial` の隠しはなくなった（`static/src/components/commercial-filter` は削除）。履歴（結果は作ったモデルの答えを持つ）は、`molecules/commercial.Choice`（3 択のラジオ。`commercial` をクエリに持ち、ページ送りで保つ）の答えが許すモデルの結果だけを、サーバーが `history.Filter.Models` で絞って返す。選んだモデルは、カード・バッジ（アイコン）で答えを言う。
+- **フィルターを置く画面**: 生成テストのモデルの一覧・プロンプトマッチ・描き直し・試し生成・設定の画像・動画モデルの欄（モデル選択のモーダル）、モデルマネージャーのモデルの一覧、履歴。
+- **設定「商用OKのモデルだけを使う」**（既定はオフ。`state.json` の `commercial_only`）: オンの間、どの画面のフィルターも商用利用の選択だけ「商用OKのみ」から始まり、MCP の `list_generation_models`・`list_model_catalog` は `commercial` 引数を省くと商用OKだけを返す（`modellicense.DefaultFilter`）。**一覧を絞るだけで、生成そのものは止めない**（ほかの答えのモデルを画面で広げて選べる。名指しの生成も断らない。代替のモデルへは切り替えない）。画面はモデルマネージャーの「商用利用で絞り込む」の区画のスイッチ（`PUT /model-manager/commercial`）、MCP は `get_commercial_only` / `set_commercial_only`。
 
 ## 6. MCP
 
@@ -156,3 +156,4 @@
 | 1.10 | 2026-11-03 | §3 の見出しの「`checked_at` はすべて 2026-11-02」を、日付（2026-11-01・02・03）ごとの調査分の書き方に直し、答えの表に `sdxl-controlnet-canny`・`sdxl-ipadapter-plus`（どちらも商用OK。カタログの `license` の根拠どおり）の行を足した | Issue #976 の統合レビュー（表に行が無く、見出しの日付が実際と違った） |
 | 1.11 | 2026-11-03 | §6: `commercial` が共通のフィルターの 1 項目になり、4 語のカンマ区切りを足したことを書いた（既存の 3 語は互換） | Issue #1011 |
 | 1.12 | 2026-11-03 | §3 の答えの表に `sdxl-controlnet-depth`・`sdxl-controlnet-normal`（どちらも商用OK。ControlNet は Apache-2.0、ベースは OpenRAIL++-M）を足した | Issue #1020 |
+| 1.13 | 2026-11-04 | §5: 商用利用のフィルターを共通のモデルのフィルターバーの 1 項目にし、`commercial-filter` のスクリプトと `data-commercial` による隠しをやめた（絞るのはサーバー）。履歴は 3 択のラジオ（`commercial.Choice`）の答えで、サーバーが結果を絞る | Issue #1011 |

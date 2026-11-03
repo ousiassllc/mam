@@ -62,8 +62,8 @@ func TestRunStartsTheMatchAndTheTimelineShowsTheRoundsTheBestPromptAndTheWordsFi
 // The answer of #928 (may the model be used commercially?) is on the model of the form and on the model the rounds were made with.
 func TestTheLicenseOfTheModelIsOnTheFormAndOnTheMatch(t *testing.T) {
 	s := newScreen(t, []int{90}, true)
-	want := commercial.OptionLabel("flux-2（$0.0300 / 枚）", commercial.Of("flux-2"))
-	assert.Contains(t, s.get(paths.GenerationTestMatch()).Body.String(), want, "the option of the model says it in words")
+	assert.Contains(t, s.get(paths.GenerationTestMatch()).Body.String(), `data-commercial-badge=`, "the model of the form says it by its icon")
+	assert.Contains(t, s.get(paths.ModelPickerSource("match")).Body.String(), commercial.Of("flux-2").Level.Label(), "and the card of the picker says it in words")
 
 	_, body := s.estimate(matchForm("auto"))
 	require.Equal(t, http.StatusAccepted, s.post(paths.GenerationTestPart("match", "run"), hiddenOf(t, body)).Code)
@@ -72,20 +72,22 @@ func TestTheLicenseOfTheModelIsOnTheFormAndOnTheMatch(t *testing.T) {
 	assert.Contains(t, done, `data-testid="commercial-badge"`)
 }
 
-// The model of the form is filtered like every other model choice (#928): the filter narrows the select, and the setting
-// "商用OKのモデルだけを使う" decides which choice is checked when the page is drawn.
+// The model of the form is chosen in the picker like every other model (#928, #1011): its filter bar has the commercial-use choice, and the setting
+// "商用OKのモデルだけを使う" decides which choice is the start.
 func TestTheModelOfTheFormHasTheCommercialFilterAtTheSettingsDefault(t *testing.T) {
 	s := newScreen(t, nil, true)
 	page := s.get(paths.GenerationTestMatch()).Body.String()
-	assert.Contains(t, page, `data-commercial-filter-target="#gt-match-model"`)
-	assert.Contains(t, page, `id="gt-match-model"`, "the filter narrows the select of the form")
-	assert.Regexp(t, `value="all"\s+checked`, page, "すべて is checked while the setting is off")
+	assert.Contains(t, page, `id="gt-match-model"`, "the model is a picker field")
+	assert.Contains(t, page, `hx-get="`+paths.ModelPickerSource("match")+`"`)
+	picker := s.get(paths.ModelPickerSource("match")).Body.String()
+	assert.NotContains(t, picker, `name="commercial" value="all"`, "すべて is the setting's while it is off: the picker follows the setting")
+	assert.Contains(t, picker, `name="commercial" value="ok"`)
 
 	modellicense.SetDefaultFilter(func() modellicense.Filter { return modellicense.FilterOK })
 	t.Cleanup(func() { modellicense.SetDefaultFilter(nil) })
-	page = s.get(paths.GenerationTestMatch()).Body.String()
-	assert.Regexp(t, `value="ok"\s+checked`, page)
-	assert.NotRegexp(t, `value="all"\s+checked`, page)
+	picker = s.get(paths.ModelPickerSource("match")).Body.String()
+	assert.NotContains(t, picker, `name="commercial" value="ok"`, "商用OKのみ is the setting's now")
+	assert.Contains(t, picker, `name="commercial" value="all"`)
 }
 
 func TestRunRefusesAChangedEstimateAndAnOverLimitOne(t *testing.T) {
@@ -184,10 +186,10 @@ func TestAnUnknownMatchIsNotFound(t *testing.T) {
 func TestTheModelChoicesSayAFreeModelTheSameWordsAsTheGenerationTestForm(t *testing.T) {
 	s := newScreen(t, nil, true, gentesttest.WithNoReferenceModel())
 
-	page := s.get(paths.GenerationTestMatch()).Body.String()
+	page := s.get(paths.ModelPickerSource("match")).Body.String()
 
-	assert.Contains(t, page, "（無料（ローカル））")
-	assert.NotContains(t, page, "（無料）")
+	assert.Contains(t, page, "無料（ローカル）")
+	assert.NotContains(t, page, "・ 無料<")
 }
 
 // sameFace finds the same face in every picture: the cosine similarity of the reference and of the generated image is 1.

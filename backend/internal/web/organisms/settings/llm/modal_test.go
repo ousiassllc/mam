@@ -9,6 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 )
 
@@ -16,11 +19,18 @@ func form(blame, message string) llm.Form {
 	def := llm.Target{Provider: "google", Model: "gemini-x"}
 	fallback := llm.Target{Provider: "openai", Model: "gpt-x"}
 	field := func(role string, t llm.Target) llm.ModelField {
-		return llm.ModelField{Agent: "director", Role: role, Provider: t.Provider, Selected: t.Model, Default: def, Options: []llm.ModelOption{{ID: t.Model}, {ID: "other-model", Name: "Other"}}}
+		f := modelpick.FieldData{
+			ID: llm.FieldID(role), Label: "モデル", URL: "/model-picker/settings-llm",
+			Inputs:  []modelpick.Input{{Name: role + ".provider", Key: "provider", Value: t.Provider}, {Name: role + ".model", Key: "model", Value: t.Model}},
+			Current: modelcard.Card{Name: t.Model, Icon: atoms.IconText},
+		}
+		f.Invalid = blame == role+".provider" || blame == role+".model"
+		f.Autofocus = f.Invalid || (blame == "" && message == "" && role == "primary")
+		return llm.ModelField{Role: role, Provider: t.Provider, Selected: t.Model, Default: def, Field: f}
 	}
 	return llm.Form{
-		Row:       llm.Row{Agent: "director", Label: "Director", Purpose: "構成を計画する", Primary: def, Fallback: fallback, DefaultPrimary: def, DefaultFallback: def},
-		Providers: []string{"anthropic", "google", "openai"}, MaxModelLength: 128, Error: message, Blame: blame,
+		Row:            llm.Row{Agent: "director", Label: "Director", Purpose: "構成を計画する", Primary: def, Fallback: fallback, DefaultPrimary: def, DefaultFallback: def},
+		MaxModelLength: 128, Error: message, Blame: blame,
 		Primary: field("primary", def), Fallback: field("fallback", fallback),
 	}
 }
@@ -46,19 +56,21 @@ func TestModal_ResetButtonSendsNoFormValuesAndSharesTheFormSync(t *testing.T) {
 	assert.Regexp(t, `<form[^>]*method="post"`, html, "a form sent by the browser itself would still not put a value in the URL")
 }
 
-// Every field is named by a label that says its role (primary / fallback) and what it is, and the fieldset names the role.
-func TestModal_EveryFieldHasALabelAndTheFirstOneStartsFocused(t *testing.T) {
+// The provider and the model of a target are one field, the model picker (the same filter bar, panel and cards as every list of models): its button shows the model
+// and opens the picker, and the choice is posted as the two hidden inputs the form always had. The fieldset names the role, and the first field starts focused.
+func TestModal_TheTargetsAreModelPickerFieldsThatPostTheProviderAndTheModel(t *testing.T) {
 	html := render(t, form("", ""))
 
-	for _, id := range []string{"llm-primary-provider", "llm-primary-model", "llm-fallback-provider", "llm-fallback-model"} {
-		assert.Contains(t, html, `id="`+id+`"`)
-		assert.Contains(t, html, `for="`+id+`"`)
-	}
+	assert.NotContains(t, html, "<select", "no pull-down: the picker is the way to choose")
 	assert.Contains(t, html, `<legend class="mb-1 text-sm font-medium">プライマリ</legend>`)
 	assert.Contains(t, html, `<legend class="mb-1 text-sm font-medium">代替</legend>`)
+	assert.Contains(t, html, `<input type="hidden" name="primary.provider" value="google" data-mp-from="provider">`)
+	assert.Contains(t, html, `<input type="hidden" name="primary.model" value="gemini-x" data-mp-from="model">`)
+	assert.Contains(t, html, `<input type="hidden" name="fallback.provider" value="openai" data-mp-from="provider">`)
+	assert.Equal(t, 2, strings.Count(html, `hx-get="/model-picker/settings-llm"`))
 	assert.Equal(t, 1, strings.Count(html, "autofocus"))
-	assert.Regexp(t, `<select[^>]*autofocus[^>]*name="primary.provider"|<select[^>]*name="primary.provider"[^>]*autofocus`, html)
-	assert.Regexp(t, `<option value="openai" selected`, html)
+	assert.Regexp(t, `<button[^>]*id="llm-primary-model-button"[^>]*autofocus|<button[^>]*autofocus[^>]*id="llm-primary-model-button"`, html)
+	assert.Contains(t, html, `既定: google / gemini-x`)
 	assert.NotContains(t, html, `aria-invalid`)
 	assert.NotContains(t, html, `id="mam-modal-error"`)
 }
@@ -69,32 +81,25 @@ func TestModal_ARefusalNamesTheFieldToBlame(t *testing.T) {
 
 	assert.Regexp(t, `<p id="mam-modal-error" role="alert"[^>]*>Director の代替`, html)
 	assert.Equal(t, 1, strings.Count(html, `aria-invalid="true"`))
-	assert.Regexp(t, `<select[^>]*aria-invalid="true"[^>]*name="fallback.model"|<select[^>]*name="fallback.model"[^>]*aria-invalid="true"`, html)
+	assert.Regexp(t, `<button[^>]*id="llm-fallback-model-button"[^>]*aria-invalid="true"|<button[^>]*aria-invalid="true"[^>]*id="llm-fallback-model-button"`, html)
 	assert.Equal(t, 1, strings.Count(html, "autofocus"))
 
 	// A refusal that blames no field leaves the focus to the alert (the script moves it there).
 	assert.NotContains(t, render(t, form("", "設定ファイルを読み込めません")), "autofocus")
 }
 
-// The model is a labelled pull-down; where its models come from is said next to it and tied to it (aria-describedby), and a
-// saved model the list lacks is kept as a choice with a warning.
-func TestModal_TheModelPullDownSaysWhereTheModelsComeFromAndWarnsOfAnUnlistedOne(t *testing.T) {
+// A saved model the provider does not list stays, with a warning, and the save is not refused; a provider that cannot be used says why and where it is fixed.
+func TestModal_AnUnlistedModelAndAnUnusableProviderAreWarnedAndStillSave(t *testing.T) {
 	f := form("", "")
-	f.Primary.FromAPI = true
-	f.Fallback.Reason, f.Fallback.Selected, f.Fallback.Unlisted = "API キーが登録されていません", "gpt-old", true
+	f.Fallback.Unlisted, f.Fallback.Selected = true, "gpt-old"
+	f.Fallback.Unusable, f.Fallback.Route = "API キーが登録されていません", "/settings/api-keys"
 	html := render(t, f)
 
-	assert.Contains(t, html, `<optgroup label="プロバイダーの API の一覧">`)
-	assert.Contains(t, html, "出所: プロバイダーの API の一覧")
-	assert.Contains(t, html, `<optgroup label="mam の既定候補">`)
-	assert.Contains(t, html, "出所: mam の既定候補（API キーが登録されていません）")
-	assert.Regexp(t, `<select[^>]*aria-describedby="llm-primary-model-note"`, html)
-	assert.Contains(t, html, `id="llm-primary-model-note"`)
-	assert.Contains(t, html, `<option value="other-model">Other（other-model）</option>`)
-	assert.Contains(t, html, `<option value="gpt-old" selected>gpt-old</option>`)
 	assert.Contains(t, html, "「gpt-old」は openai の一覧にありません。使えないかもしれません（保存はできます）")
 	assert.Equal(t, 1, strings.Count(html, `data-testid="llm-fallback-model-unlisted"`))
 	assert.NotContains(t, html, `data-testid="llm-primary-model-unlisted"`)
+	assert.Regexp(t, `data-testid="llm-fallback-unusable"[^>]*>\s*openai は今は使えません: API キーが登録されていません（保存はできます）`, html)
+	assert.Regexp(t, `<a[^>]*href="/settings/api-keys"[^>]*data-testid="llm-fallback-route"`, html, "the way to the setting")
+	assert.NotContains(t, html, `data-testid="llm-primary-unusable"`)
 	assert.Regexp(t, `<label[^>]*for="llm-fallback-model-custom"`, html)
-	assert.Regexp(t, `<button[^>]*id="llm-save"`, html)
 }

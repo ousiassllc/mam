@@ -7,7 +7,7 @@ package media
 import (
 	"slices"
 
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 )
 
 // The two models of a route.
@@ -16,14 +16,17 @@ const (
 	SlotFallback = "fallback"
 )
 
-// ImageModelField is the name of the model <select> of an image purpose's slot.
+// Warning is a saved route that names a model that cannot be used now: the sentence and the screen that fixes it (Route; "" when none helps).
+type Warning struct{ Message, Route string }
+
+// ImageModelField is the name of the model field of an image purpose's slot (the hidden input of its model picker).
 func ImageModelField(purpose, slot string) string { return "image_" + purpose + "_" + slot + "_model" }
 
 // ImageFastField is the name of the "fast variant" checkbox of an image purpose's slot.
 func ImageFastField(purpose, slot string) string { return "image_" + purpose + "_" + slot + "_fast" }
 
-// PolicyTargetField is the name of the <select> of a Quality Policy's slot: its options carry a model and
-// a resolution together (see VideoChoice), so that only a resolution the model supports can be picked.
+// PolicyTargetField is the name of the model field of a Quality Policy's slot: its value carries a model and
+// a resolution together ("<model>@<resolution>"), so that only a resolution the model supports can be picked.
 func PolicyTargetField(policy, slot string) string { return "policy_" + policy + "_" + slot }
 
 // PolicyTakesField is the name of the number of Takes of a Quality Policy.
@@ -58,8 +61,6 @@ type ImageModel struct {
 	Name              string
 	Fast              bool
 	AcceptsReferences bool
-	// Answer is whether the model may be used commercially: the option says it in its text and the filter reads it (#928).
-	Answer commercial.View
 }
 
 // ImageTarget is the saved choice of one slot of an image purpose. Unusable: the model is not among the choices (an adult
@@ -78,15 +79,6 @@ type ImageRow struct {
 	Primary       ImageTarget
 	Fallback      ImageTarget
 	ReferenceNote string
-}
-
-// VideoChoice is one option of a video slot: a model at a resolution it supports (Value is
-// "<model>@<resolution>").
-type VideoChoice struct {
-	Value string
-	Label string
-	// Answer is whether the model may be used commercially (data-commercial of the option).
-	Answer commercial.View
 }
 
 // PolicyRow is one Quality Policy: the video models (a VideoChoice.Value each), whether each is unusable, and the number
@@ -115,8 +107,11 @@ type Data struct {
 	Problem    string
 	// GatedNote, when set, says the saved assignment names adult models that are not offered while the age confirmation is off.
 	GatedNote string
-	Images    []ImageRow
-	Policies  []PolicyRow
+	// Warnings say which saved routes name a model that cannot be used now (no API key, not signed in, not installed...), each with where it is fixed (#1013). The
+	// routes stay; the warning only says so.
+	Warnings []Warning
+	Images   []ImageRow
+	Policies []PolicyRow
 }
 
 // ImageForm is what the modal of an image purpose is drawn from: the row (after a refusal, what was typed), the models that
@@ -124,20 +119,19 @@ type Data struct {
 type ImageForm struct {
 	Row    ImageRow
 	Models []ImageModel
-	// Filter is the commercial-use filter of the model selects (it narrows the options; the saved choice is always kept).
-	Filter commercial.FilterData
-	Error  string
+	// Primary and Fallback are the fields that choose the two models: the model picker (#1011), the same filter and cards as everywhere.
+	Primary, Fallback modelpick.FieldData
+	Error             string
 	// Blame is the slot (SlotPrimary, SlotFallback) the refusal is about, "" when it is about none.
 	Blame string
 }
 
 // PolicyForm is what the modal of a Quality Policy is drawn from.
 type PolicyForm struct {
-	Row     PolicyRow
-	Choices []VideoChoice
-	// Filter is the commercial-use filter of the model selects.
-	Filter commercial.FilterData
-	Error  string
+	Row PolicyRow
+	// Primary and Fallback are the fields that choose the two video models (each a model at a resolution it supports; the value is "<model>@<resolution>").
+	Primary, Fallback modelpick.FieldData
+	Error             string
 	// Blame is the slot (SlotPrimary, SlotFallback) or BlameTakes the refusal is about, "" when it is about none.
 	Blame string
 }
@@ -145,9 +139,9 @@ type PolicyForm struct {
 // BlameTakes is PolicyForm.Blame for a refusal about the number of Takes.
 const BlameTakes = "takes"
 
-// unusableSuffix marks the option of a saved model that is not among the choices (an adult model while the age confirmation
+// UnusableSuffix marks the saved model that is not among the choices (an adult model while the age confirmation
 // is off), so that the select shows the saved assignment instead of silently showing another model.
-const unusableSuffix = "（現在は使えません）"
+const UnusableSuffix = "（現在は使えません）"
 
 // showFast reports whether a slot offers the "fast variant" checkbox: only when a model has a fast variant
 // (models.<id>.fast_model; no built-in model has one) or the saved route already asks for it.

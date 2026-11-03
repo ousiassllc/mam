@@ -138,3 +138,19 @@ func (c Catalog) availability(cfg modeladapter.Config, m domain.ModelName, sourc
 	}
 	return modelfilter.Unusable(code, msg, modelfilter.RouteOf(code, source))
 }
+
+// Item is the upscale workflow as the filter sees it (an upscale model on this PC: local, installed).
+func (u Upscaler) Item() modelfilter.Item {
+	return modelfilter.Item{
+		ID: u.ID, Name: u.Label, Kinds: []modelfilter.Kind{modelfilter.KindUpscale}, Commercial: u.License.Commercial, Installed: true,
+		Origin: modelfilter.OriginLocal, Provider: string(modelfilter.OriginLocal), Tags: []string{"upscale", u.Mode}, Available: u.Available, Reason: u.UnavailableMessage,
+	}
+}
+
+// Availability is whether the upscale workflow can be chosen now, in the shape every picker shares.
+func (u Upscaler) Availability() modelfilter.Availability {
+	if u.Available {
+		return modelfilter.Usable()
+	}
+	return modelfilter.Unusable(modelfilter.Reason(u.Unavailable), u.UnavailableMessage, "")
+}

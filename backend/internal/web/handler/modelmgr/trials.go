@@ -17,10 +17,15 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -36,8 +41,8 @@ func formValue(c *gin.Context, name string) string { return strings.TrimSpace(c.
 
 // trialForm is the form for a chosen model: the choices of the model select and what the model offers. want is the
 // model to select ("" takes the first one that is on the bundled engine, else the first).
-func (h Handlers) trialForm(want string, prev view.TrialForm) view.TrialForm {
-	f := view.TrialForm{Models: []view.TrialModel{}, MaxPrompt: gentest.MaxPromptRunes, Prompt: prev.Prompt, Negative: prev.Negative, Aspect: prev.Aspect}
+func (h Handlers) trialForm(ctx context.Context, want string, prev view.TrialForm) view.TrialForm {
+	f := view.TrialForm{MaxPrompt: gentest.MaxPromptRunes, Prompt: prev.Prompt, Negative: prev.Negative, Aspect: prev.Aspect}
 	models := mmview.TrialModels(h.Svc)
 	var chosen *mmview.TrialModel
 	for i := range models {
@@ -54,13 +59,13 @@ func (h Handlers) trialForm(want string, prev view.TrialForm) view.TrialForm {
 			}
 		}
 	}
-	f.Filter = commercial.NewFilter("mm-trial-commercial", "#mm-trial-model", h.Svc.DefaultFilter())
-	for _, m := range models {
-		ans := commercial.Of(m.ID)
-		f.Models = append(f.Models, view.TrialModel{
-			ID: m.ID, Label: commercial.OptionLabel(m.ID+"（"+kindLabel(string(m.Media))+"）", ans), Selected: chosen != nil && m.ID == chosen.ID, Answer: ans,
-		})
+	f.HasModels = len(models) > 0
+	current, id := modelcard.Card{}, ""
+	if chosen != nil {
+		id, current = chosen.ID, h.modelCard(ctx, string(chosen.Media), chosen.ID)
 	}
+	f.ModelID = id
+	f.Model = modelpicker.FieldFor(modelpicker.SourceTrial, "mm-trial-model", "試すモデル", nil, []modelpick.Input{{Name: view.FieldModelID, Key: "value", Value: id}}, current)
 	if chosen == nil {
 		return f
 	}
@@ -76,21 +81,22 @@ func (h Handlers) trialForm(want string, prev view.TrialForm) view.TrialForm {
 
 // trialPanel is the form and the list. notice and failure are the message of the form.
 func (h Handlers) trialPanel(ctx context.Context, prev view.TrialForm, notice, failure string) view.TrialPanel {
-	p := view.TrialPanel{Form: h.trialForm(prevModel(prev), prev), Trials: h.trials(ctx)}
+	p := view.TrialPanel{Form: h.trialForm(ctx, prev.ModelID, prev), Trials: h.trials(ctx)}
 	p.Form.Notice, p.Form.Error = notice, failure
-	if len(p.Form.Models) == 0 {
+	if !p.Form.HasModels {
 		p.Unavailable = "試せるモデルがありません。ComfyUI エンジンとモデルを導入するか、設定の「ローカル・代替モデル」に接続先とモデルを登録してください。"
 	}
 	return p
 }
 
-func prevModel(prev view.TrialForm) string {
-	for _, m := range prev.Models {
-		if m.Selected {
-			return m.ID
+// modelCard is the card of a model the trial form shows as chosen: the generation test's description of it (without the service, its name).
+func (h Handlers) modelCard(ctx context.Context, media, id string) modelcard.Card {
+	if h.Gentest != nil {
+		if info, err := h.Gentest.Model(ctx, media, id); err == nil {
+			return modelcards.FromInfo(info)
 		}
 	}
-	return ""
+	return modelcard.Card{Name: id, Icon: atoms.IconImage}
 }
 
 // trialListSize is how many results the list shows.
@@ -162,7 +168,7 @@ func trialDetail(r record.ResultView) string {
 func (h Handlers) data(c *gin.Context) view.Data {
 	ctx := c.Request.Context()
 	d := view.Data{
-		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Commercial: commercialData(h.Svc), Catalog: catalogData(ctx, h.Svc, nil),
+		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Commercial: commercialData(h.Svc), Catalog: catalogData(c, h.Svc, nil),
 		HF: hfimport.TokenData(h.Svc), HFImport: hfimport.Panel(ctx, h.Svc),
 		External: view.External{Endpoints: h.externalEndpoints(c)},
 		Trial:    h.trialPanel(ctx, view.TrialForm{}, "", ""),
@@ -180,7 +186,7 @@ func (h Handlers) Trials(c *gin.Context) {
 // another model, keeping what was typed.
 func (h Handlers) TrialForm(c *gin.Context) {
 	prev := view.TrialForm{Prompt: c.Query(view.FieldPrompt), Negative: c.Query(view.FieldNegative), Aspect: strings.TrimSpace(c.Query(view.FieldAspect))}
-	render(c, http.StatusOK, view.TrialFormView(h.trialForm(c.Query(view.FieldModelID), prev)))
+	render(c, http.StatusOK, view.TrialFormView(h.trialForm(c.Request.Context(), c.Query(view.FieldModelID), prev)))
 }
 
 // StartTrial starts a trial generation (POST /model-manager/trials, multipart: model_id, prompt, negative_prompt,
@@ -253,7 +259,7 @@ func (h Handlers) readTrial(c *gin.Context) (trialInput, view.TrialForm, error) 
 		modelID: formValue(c, view.FieldModelID), prompt: c.PostForm(view.FieldPrompt), negative: c.PostForm(view.FieldNegative),
 		aspect: formValue(c, view.FieldAspect), resolution: formValue(c, view.FieldResol),
 	}
-	prev := view.TrialForm{Prompt: in.prompt, Negative: in.negative, Aspect: in.aspect, Models: []view.TrialModel{{ID: in.modelID, Selected: true}}}
+	prev := view.TrialForm{Prompt: in.prompt, Negative: in.negative, Aspect: in.aspect, ModelID: in.modelID}
 	for _, m := range mmview.TrialModels(h.Svc) {
 		if m.ID == in.modelID {
 			in.media = string(m.Media)

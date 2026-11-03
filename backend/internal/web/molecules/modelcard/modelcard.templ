@@ -38,10 +38,10 @@ templ Item(c Card) {
 				</span>
 			}
 		</div>
-		<div class="flex flex-wrap items-center gap-2">
-			@atoms.BadgeWith(c.State.Tone, c.State.Label, c.State.Attrs)
+		<div class="flex flex-wrap items-center gap-2" data-testid="model-badges">
+			@BadgeOf(c.State)
 			for _, b := range c.Badges {
-				@atoms.BadgeWith(b.Tone, b.Label, b.Attrs)
+				@BadgeOf(b)
 			}
 		</div>
 		{ children... }

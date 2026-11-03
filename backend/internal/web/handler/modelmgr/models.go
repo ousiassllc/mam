@@ -17,14 +17,17 @@ import (
 // (query jobs, comma separated) are reported once they ended; the choices of the trial form are drawn again then.
 func (h Handlers) Models(c *gin.Context) {
 	ids := splitIDs(c.Query("jobs"))
-	cat := catalogData(c.Request.Context(), h.Svc, ids)
+	cat := catalogData(c, h.Svc, ids)
+	if cond, _ := catalogScreen(h.Svc).Read(c); true {
+		catalogScreen(h.Svc).Remember(c, cond) // a request of the filter bar states the condition: the screen opens with it next time
+	}
 	if !cat.Polling() && len(ids) > 0 {
 		trial := h.trialPanel(c.Request.Context(), view.TrialForm{}, "", "")
 		trial.OOB = true
 		render(c, http.StatusOK, view.CatalogWithTrial(cat, trial))
 		return
 	}
-	render(c, http.StatusOK, view.CatalogList(cat))
+	render(c, http.StatusOK, view.CatalogWithBar(cat))
 }
 
 // ModelDetail answers GET /model-manager/models/:id/detail with the modal of the card: the license, the sources, the memory and the
@@ -39,7 +42,7 @@ func (h Handlers) ModelDetail(c *gin.Context) {
 		return
 	}
 	hasToken, tokenErr := h.Svc.HasHuggingFaceToken()
-	md := modelData(ctx, h.Svc, m, h.Svc.Engine().FreeBytes, mmview.GPUVRAM(ctx, h.Svc), tokenErr == nil && !hasToken)
+	md := modelData(ctx, h.Svc, mmview.EntryOf(h.Svc, m), h.Svc.Engine().FreeBytes, mmview.GPUVRAM(ctx, h.Svc), tokenErr == nil && !hasToken)
 	render(c, http.StatusOK, modeldetail.Detail(md))
 }
 
@@ -82,12 +85,12 @@ func (h Handlers) InstallModel(c *gin.Context) {
 			render(c, status, view.ConsentDialog(consentOf(c, h.Svc, m, msg)))
 			return
 		}
-		cat := catalogData(ctx, h.Svc, nil)
+		cat := catalogData(c, h.Svc, nil)
 		cat.Error = msg
 		render(c, status, view.CatalogList(cat))
 		return
 	}
-	cat := catalogData(ctx, h.Svc, []string{ref.JobID})
+	cat := catalogData(c, h.Svc, []string{ref.JobID})
 	cat.Notice = "導入を始めました。この画面を閉じても続きます"
 	if ref.Existing {
 		cat.Notice = "このモデルは、すでに導入中です"
@@ -100,7 +103,7 @@ func (h Handlers) InstallModel(c *gin.Context) {
 func (h Handlers) DeleteModel(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := h.Svc.DeleteModel(ctx, c.Param("id"))
-	cat := catalogData(ctx, h.Svc, nil)
+	cat := catalogData(c, h.Svc, nil)
 	if err != nil {
 		status, msg := refuse(c, err)
 		cat.Error = msg

@@ -1,6 +1,7 @@
 package local_test
 
 import (
+	"encoding/json"
 	"html"
 	"net/http"
 	"net/http/httptest"
@@ -249,6 +250,29 @@ func options(body, name string) []string {
 	var out []string
 	for _, m := range regexp.MustCompile(`<option value="([^"]*)"`).FindAllStringSubmatch(sel[1], -1) {
 		out = append(out, html.UnescapeString(m[1]))
+	}
+	return out
+}
+
+// choices are the models the model picker lists for the model field named name of the modal of an assignment ("image_<purpose>_<slot>_model", "policy_<policy>_<slot>"):
+// the models the field may be set to, whether or not they can be chosen now.
+func (s *screen) choices(name string) []string {
+	s.t.Helper()
+	source := "settings-image"
+	if strings.HasPrefix(name, "policy_") {
+		source = "settings-video"
+	}
+	return pickerValues(s.t, s.get(paths.ModelPickerSource(source)+"?mf=1&available_only=0"))
+}
+
+// pickerValues are the values the cards of a picker's answer set in the field ("value").
+func pickerValues(t *testing.T, body string) []string {
+	t.Helper()
+	var out []string
+	for _, m := range regexp.MustCompile(`data-mp-values="([^"]*)"`).FindAllStringSubmatch(body, -1) {
+		var v map[string]string
+		require.NoError(t, json.Unmarshal([]byte(html.UnescapeString(m[1])), &v))
+		out = append(out, v["value"])
 	}
 	return out
 }

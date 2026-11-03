@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -32,13 +33,6 @@ func sizeText(n int64) string {
 }
 
 func timeText(t time.Time) string { return t.Local().Format("2006-01-02 15:04") }
-
-var sourceLabel = map[string]string{
-	modelcatalog.SourceBuiltin:  "クラウド",
-	modelcatalog.SourceChatGPT:  "ChatGPT サブスク",
-	modelcatalog.SourceLocal:    "ローカル",
-	modelcatalog.SourceWorkflow: "保存したワークフロー",
-}
 
 func featuresText(m modelcatalog.Info) string {
 	var f []string
@@ -83,9 +77,9 @@ func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice
 	out := make([]view.ModelChoice, len(models))
 	for i, m := range models {
 		out[i] = view.ModelChoice{
-			ID: m.ID, Label: m.Label, Source: sourceLabel[m.Source], Price: gtshare.PriceText(m.Price), Features: featuresText(m),
+			ID: m.ID, Label: m.Label, Source: modelcards.SourceLabel[m.Source], Price: gtshare.PriceText(m.Price), Features: featuresText(m),
 			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA,
-			Answer: commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m),
+			Answer: commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m), Card: modelcards.FromInfo(m),
 		}
 		if !m.Available {
 			out[i].Reason = m.UnavailableMessage

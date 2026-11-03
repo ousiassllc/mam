@@ -62,16 +62,14 @@ func TestModel_TemplateFormSubmitsAsItIsAndTheModelAppearsInTheAssignments(t *te
 	assert.Contains(t, body, `id="local-endpoint-box"`, "the summary of the endpoint counts it")
 	assert.NotContains(t, body, "model-assignment")
 	for _, purpose := range []string{"new_reference", "edit_reference", "preview", "unified_openai"} {
-		modal := s.imageModal(purpose)
 		for _, slot := range []string{"primary", "fallback"} {
-			assert.Contains(t, options(modal, "image_"+purpose+"_"+slot+"_model"), "comfyui:box/sdxl", purpose+" "+slot)
-			assert.NotContains(t, options(modal, "image_"+purpose+"_"+slot+"_model"), "comfyui:box/wan", "a video model is not an image choice")
+			assert.Contains(t, s.choices("image_"+purpose+"_"+slot+"_model"), "comfyui:box/sdxl", purpose+" "+slot)
+			assert.NotContains(t, s.choices("image_"+purpose+"_"+slot+"_model"), "comfyui:box/wan", "a video model is not an image choice")
 		}
 	}
 	for _, policy := range []string{"fast", "balanced", "max_quality"} {
-		modal := s.policyModal(policy)
 		for _, slot := range []string{"primary", "fallback"} {
-			assert.Contains(t, options(modal, "policy_"+policy+"_"+slot), "comfyui:box/wan@480p", policy+" "+slot)
+			assert.Contains(t, s.choices("policy_"+policy+"_"+slot), "comfyui:box/wan@480p", policy+" "+slot)
 		}
 	}
 
@@ -201,7 +199,7 @@ func TestModel_OpenAICompatibleFormHasModelIDAndNoWorkflow(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `data-model-id="openai-compat:lm/flux"`)
 	assert.Contains(t, rec.Body.String(), "モデル ID: flux-schnell")
 	assert.Contains(t, rec.Body.String(), "参照画像を使える")
-	assert.Contains(t, options(s.imageModal("preview"), "image_preview_primary_model"), "openai-compat:lm/flux", "an OpenAI-compatible endpoint serves images only, whatever the form says")
+	assert.Contains(t, s.choices("image_preview_primary_model"), "openai-compat:lm/flux", "an OpenAI-compatible endpoint serves images only, whatever the form says")
 
 	missing := s.do(http.MethodPost, paths.LocalEndpoint("lm", "models"), url.Values{"name": {"empty"}, "media": {"image"}, "model_id": {""}})
 	assert.Equal(t, http.StatusUnprocessableEntity, missing.Code)

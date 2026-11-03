@@ -71,7 +71,7 @@ func TestAdult_TheConfirmationDialogAndTheSetting(t *testing.T) {
 	body := rec.Body.String()
 	assert.Contains(t, body, `data-testid="mm-adult-off"`, "the card shows the setting is on")
 	assert.Contains(t, body, `data-model="m-d"`, "the model list is drawn again with the adult model")
-	assert.Contains(t, body, `data-testid="mm-adult-badge"`)
+	assert.Contains(t, body, `data-testid="model-badge-adult"`)
 	assert.Contains(t, body, "成人向け")
 	detail := s.get(paths.ModelManagerPart("models", "m-d", "detail")).Body.String()
 	assert.Contains(t, detail, `data-testid="mm-trigger-words"`, "the trigger words are in the modal of the card")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/a-h/templ"
@@ -12,10 +13,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -25,20 +30,39 @@ import (
 func (h Handlers) compose(ctx context.Context, f formState) view.MatchCompose {
 	_, maxCost := h.Svc.Limits()
 	c := view.MatchCompose{
-		Filter: commercial.NewFilter("gt-match-commercial", "#gt-match-model", h.Svc.DefaultFilter()),
-		Mode:   orDefault(f.mode, view.MatchAuto), Target: orDefault(f.target, strconv.Itoa(match.DefaultTarget)), Rounds: orDefault(f.rounds, strconv.Itoa(match.DefaultRounds)), MaxCost: f.maxCost,
+		Mode: orDefault(f.mode, view.MatchAuto), Target: orDefault(f.target, strconv.Itoa(match.DefaultTarget)), Rounds: orDefault(f.rounds, strconv.Itoa(match.DefaultRounds)), MaxCost: f.maxCost,
 		MaxRounds: match.MaxRounds, Instruction: f.instruction, MaxImageBytes: gentest.MaxImageBytes, MaxInstruction: match.MaxInstructionRunes,
 		RefValue: f.ref, RefThumb: thumbOf(f.ref),
 	}
 	if maxCost > 0 {
 		c.MaxCostUSD = gtshare.USD(maxCost)
 	}
-	for _, m := range h.Svc.Models(ctx, gentest.MediaImage) {
-		if m.Available {
-			c.Models = append(c.Models, view.MatchModel{ID: m.ID, Label: m.Label, Price: gtshare.PriceText(m.Price), Selected: m.ID == f.model, Answer: commercial.Of(m.ID)})
+	c.Model = h.modelField(ctx, f.model)
+	return c
+}
+
+// modelField is the field that chooses the model: the model picker, with what is chosen now. A model that is not chosen, or cannot be chosen now, is replaced by
+// the first one that can (the form always has a model to run).
+func (h Handlers) modelField(ctx context.Context, want string) modelpick.FieldData {
+	var chosen *modelcatalog.Info
+	models := h.Svc.Models(ctx, gentest.MediaImage)
+	for _, pass := range []func(modelcatalog.Info) bool{
+		func(m modelcatalog.Info) bool { return m.ID == want && m.Available },
+		func(m modelcatalog.Info) bool { return m.Available },
+	} {
+		if i := slices.IndexFunc(models, pass); i >= 0 {
+			chosen = &models[i]
+			break
 		}
 	}
-	return c
+	current, id := modelcard.Card{}, ""
+	if chosen != nil {
+		current, id = modelcards.FromInfo(*chosen), chosen.ID
+	}
+	field := modelpicker.FieldFor(modelpicker.SourceMatch, "gt-match-model", "モデル", nil,
+		[]modelpick.Input{{Name: view.FieldModel, Key: "value", Value: id}}, current)
+	field.TestID = "gt-match-model"
+	return field
 }
 
 func orDefault(v, def string) string {

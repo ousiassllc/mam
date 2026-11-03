@@ -13,10 +13,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 )
 
-// Badge is a small label of a card (a state, "成人向け").
+// Badge is a small label of a card (a state, "成人向け"). Icon, when set, is drawn before the label (the way a model uses input images).
 type Badge struct {
 	Tone  atoms.BadgeTone
 	Label string
+	Icon  atoms.IconName
 	Attrs templ.Attributes
 }
 
@@ -37,6 +38,11 @@ type Card struct {
 	Badges []Badge
 	// Commercial is the commercial-use answer as an icon (nil: the card has none).
 	Commercial *commercial.View
+	// Pick, when set, makes the card a choice (PickItem). Reason says why it cannot be chosen now (the card is then dimmed and cannot be chosen). Note is the one
+	// line in the warning colour under the badges (what a reader must know before choosing: a commercial condition).
+	Pick   *Pick
+	Reason *Reason
+	Note   string
 	// Attrs are the attributes of the <li> (data-testid, data-state and the keys a script reads).
 	Attrs templ.Attributes
 }

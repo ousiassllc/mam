@@ -17,12 +17,12 @@ import (
 
 func TestPageListsEveryModelAndSaysWhyOneCannotBeChosen(t *testing.T) {
 	s := newScreen(t, gentesttest.WithoutBackend(domain.ModelNanoBananaLite))
-	body := s.page(paths.GenerationTest() + "?tier=detail")
+	body := s.page(paths.GenerationTest() + "?tier=detail&mf=1&available_only=0") // "選べるものだけ" off: the model that cannot be called is listed with why
 	assert.Contains(t, body, `data-testid="gt-form"`)
 	assert.Contains(t, body, `value="flux-2"`)
 	assert.Contains(t, body, `value="nano-banana"`)
 	assert.Contains(t, body, "$0.0300 / 枚", "the unit price is shown")
-	disabled := regexp.MustCompile(`(?s)data-model="nano-banana-lite" data-available="false".*?gt-model-reason">([^<]+)<`).FindStringSubmatch(body)
+	disabled := regexp.MustCompile(`(?s)data-model="nano-banana-lite".*?data-testid="model-reason"[^>]*><span class="break-words">([^<]+)<`).FindStringSubmatch(body)
 	require.Len(t, disabled, 2, "an unavailable model is listed, with its reason")
 	assert.Contains(t, disabled[1], "API キー")
 	assert.Contains(t, body, `name="prompt"`)
@@ -34,10 +34,10 @@ func TestPageListsEveryModelAndSaysWhyOneCannotBeChosen(t *testing.T) {
 // one cannot be chosen are in the "?" help, not on every card.
 func TestModelCardsAreSelectableAndTheirNotesAreInTheHelp(t *testing.T) {
 	s := newScreen(t, gentesttest.WithoutBackend(domain.ModelNanoBananaLite))
-	body := s.page(paths.GenerationTest() + "?model=nano-banana")
+	body := s.page(paths.GenerationTest() + "?model=nano-banana&mf=1&available_only=0")
 
 	card := func(id string) string {
-		m := regexp.MustCompile(`(?s)<li data-testid="gt-model" data-model="` + id + `".*?</li>`).FindString(body)
+		m := regexp.MustCompile(`(?s)<li [^>]*data-model="` + id + `"[^>]*>.*?</li>`).FindString(body)
 		require.NotEmpty(t, m, id)
 		return m
 	}
@@ -55,14 +55,16 @@ func TestModelCardsAreSelectableAndTheirNotesAreInTheHelp(t *testing.T) {
 	assert.Regexp(t, `name="model" value="nano-banana" checked`, on, "a model in the link is selected")
 	assert.NotContains(t, off, `" checked`, "a model that is not selected is not checked")
 	assert.Contains(t, disabled, ` disabled`)
-	assert.Contains(t, disabled, `aria-describedby="gt-reason-nano-banana-lite"`, "a screen reader hears why")
+	assert.Contains(t, disabled, `aria-describedby="gt-model-nano-banana-lite-reason"`, "a screen reader hears why")
 
 	models := regexp.MustCompile(`(?s)<fieldset[^>]*data-testid="gt-models".*?</fieldset>`).FindString(body)
 	panel := regexp.MustCompile(`(?s)data-testid="gt-models-help">.*?</ul>`).FindString(models)
 	require.NotEmpty(t, panel)
 	assert.Contains(t, panel, "シード非対応", "what each model takes is in the help")
 	assert.Contains(t, panel, "API キーが登録されていません", "so is why one cannot be chosen")
-	assert.Contains(t, models, "1 件は今は選べません", "and one calm line says how many cannot be chosen")
+	start := s.page(paths.GenerationTest() + "?tier=detail")
+	assert.Contains(t, start, "1 件は今は選べません", "the list starts at the models that can be chosen, and one calm line says how many cannot be")
+	assert.NotContains(t, start, `data-model="nano-banana-lite"`)
 	assert.NotContains(t, strings.ReplaceAll(models, panel, ""), "text-amber-300")
 }
 

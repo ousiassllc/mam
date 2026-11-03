@@ -29,7 +29,7 @@ func loras(t *testing.T) *httptest.Server {
 }
 
 func card(t *testing.T, body, id string) string {
-	m := regexp.MustCompile(`(?s)<li data-testid="gt-model" data-model="` + regexp.QuoteMeta(id) + `".*?</li>`).FindString(body)
+	m := regexp.MustCompile(`(?s)<li [^>]*data-model="` + regexp.QuoteMeta(id) + `"[^>]*>.*?</li>`).FindString(body)
 	require.NotEmpty(t, m, id)
 	return m
 }

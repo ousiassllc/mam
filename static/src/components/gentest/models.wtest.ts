@@ -12,7 +12,7 @@ describe('the model cards of the generation test (spec/components/gentest-screen
   const input = (id: string) => host.querySelector<HTMLInputElement>(`[data-model="${id}"] input`)!;
   const label = (id: string) => host.querySelector<HTMLLabelElement>(`[data-model="${id}"] label`)!;
   const face = (id: string) => label(id).querySelector<HTMLElement>('span')!;
-  const mark = (id: string) => label(id).querySelector<HTMLElement>('[data-gt-model-mark]')!;
+  const mark = (id: string) => label(id).querySelector<HTMLElement>('[data-card-mark]')!;
 
   beforeEach(async function () {
     this.timeout(60_000);
@@ -77,7 +77,7 @@ describe('the model cards of the generation test (spec/components/gentest-screen
     expect(getComputedStyle(face('gpt-image-2')).boxShadow).to.not.equal('none');
   });
 
-  it('cannot select a model that cannot be called, and says so to a screen reader without a yellow line', () => {
+  it('cannot select a model that cannot be called, and says why under the card, without a yellow line', () => {
     const lite = input('nano-banana-lite');
     expect(lite.disabled).to.equal(true);
     label('nano-banana-lite').click();
@@ -85,6 +85,7 @@ describe('the model cards of the generation test (spec/components/gentest-screen
 
     const reason = host.querySelector<HTMLElement>(`#${lite.getAttribute('aria-describedby')}`)!;
     expect(reason.textContent).to.contain('API キー');
-    expect(reason.getBoundingClientRect().width, 'the reason is not drawn on the card').to.be.at.most(1);
+    expect(reason.className, 'a calm line under the card, not a yellow one').to.not.contain('amber');
+    expect(reason.getBoundingClientRect().width, 'the reason is drawn under the card').to.be.greaterThan(1);
   });
 });

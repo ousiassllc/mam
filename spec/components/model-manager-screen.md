@@ -11,7 +11,7 @@
 | pages | `model_manager_page`（`ModelManagerPage`） | `GET /model-manager` の全ページ。戻るリンク・見出し・説明（Issue #866 でも動かさない。h1 に「?」は付けない）と `modelmgr.Body` |
 | organisms（`organisms/modelmgr/`） | `Body` | 区画を `molecules.SettingsSection` で包んで縦に並べる。各区画の説明は、見出しの横の「?」ヘルプ（ポップオーバー）の中（Issue #866。契約は [shared-ui-parts.md](shared-ui-parts.md) §9）。区画の本体には操作・状態・結果・エラーだけを残す |
 | 〃 | `EngineCard`・`GPUBlock`・`DetectBlock`（詳細モーダルは `modeldetail.EngineDetail`） | エンジンのカード（#970: `modelcard.Item` のカード。導入の進捗・起動の状態・起動の失敗の理由・自動起動・更新・削除・更新ボタン）、GPU の検出結果と導入フォーム、既存の ComfyUI の検出結果 |
-| 〃 | `CommercialCard`（設定「商用OKのモデルだけを使う」と、モデルの一覧のフィルター。#928） | 一覧の上の区画。スイッチ（`PUT /model-manager/commercial`）と、`molecules/commercial.Filter`（すべて／商用OKのみ／条件つきまで）。試し生成の選択肢も同じ既定に描き直す |
+| 〃 | `CommercialCard`（設定「商用OKのモデルだけを使う」と、モデルの一覧のフィルター。#928） | 一覧の上の区画。スイッチ（`PUT /model-manager/commercial`）と、モデルの一覧のフィルターバー（`molecules/modelpick`。商用利用の 3 択は詳細パネルの 1 項目）は一覧の見出しの下にある。スイッチを切り替えると、一覧とバーを同じ既定で描き直す（out-of-band）。試し生成のモデルの欄も同じ既定になる |
 | 〃 | `CatalogList`・`ConsentDialog`・`DialogClear` | モデルの一覧（1 つのモデルが 1 枚のカード `modelCard` = `molecules/modelcard.Item`。アイコン・名前・種類と大きさ・状態・商用利用のアイコン・成人向け／HF トークン／空き不足／VRAM 不足のバッジ・導入の進捗とボタン）と、同意が要るモデルのライセンスのダイアログ（成人向けは注意書きも）。ライセンス・ファイル・SHA-256 などは `modeldetail.Detail`（カードが開くモーダル） |
 | 〃 | `AdultCard`・`AdultDialog` | 設定「成人向けモデルを表示する」（既定オフ）と、初めてオンにするときの年齢確認・注意書きのダイアログ |
 | 〃 | `TrialSection`・`TrialFormView`・`TrialList` | 試し生成のフォームと結果（動いているものは進捗、完了は画像・動画、失敗は理由） |
@@ -94,3 +94,4 @@
 | 1.16 | 2026-11-03 | 区画「追加ノード」（`#mm-nodes`。`nodecard`）と、必要なノードが無いモデルのカードの「追加ノードが必要」のバッジ・導入ボタンの無効化を足した | Issue #976 |
 | 1.17 | 2026-11-03 | 長いファイル名・モデル名が、カード・行・一覧からはみ出さないようにした（「長い名前は折り返す」の項）。長い名前の fixture（`layout-long-names-*.html`）を 375 px と 1280 px で測る wtest（`layout/long-names.wtest.ts`）を足した。Hugging Face から追加したファイルの一覧に更新ボタンを足した。スクロール位置の回帰テストを、スクロール・アンカーなしでも走らせるようにした | Issue #1003・#962・#908 |
 | 1.18 | 2026-11-03 | エンジンの詳細モーダルとヘルプの「Windows 版だけ」を「Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけ」にした | 統合後レビューの指摘（macOS 版の同梱エンジン #854） |
+| 1.19 | 2026-11-04 | モデルの一覧に共通のフィルターバー（`molecules/modelpick`。種類・入力・成人向け・非検閲・パラメータ数・VRAM・商用利用・導入済み・提供元・音声・速度・品質・検索。サーバーが絞る）を付け、商用利用の 3 択は詳細パネルの 1 項目にした。選んだ条件は画面ごとに覚える。試し生成のモデルはモデル選択の欄にした | Issue #1011 |

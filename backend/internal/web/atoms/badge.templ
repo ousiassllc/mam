@@ -40,3 +40,11 @@ templ Badge(tone BadgeTone, text string) {
 templ BadgeWith(tone BadgeTone, text string, attrs templ.Attributes) {
 	<span class={ badgeClass(tone) } { attrs... }>{ text }</span>
 }
+
+// BadgeIcon is a Badge with an icon before the text (the way a model uses input images): the icon is decoration, the words say it.
+templ BadgeIcon(tone BadgeTone, icon IconName, text string, attrs templ.Attributes) {
+	<span class={ "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(tone) } { attrs... }>
+		@Icon(icon, "h-3.5 w-3.5 shrink-0")
+		<span>{ text }</span>
+	</span>
+}

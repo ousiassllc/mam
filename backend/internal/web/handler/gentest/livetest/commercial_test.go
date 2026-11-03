@@ -27,10 +27,8 @@ func TestAResultAndTheBatchGridSayWhetherTheModelThatMadeItMayBeUsedCommercially
 
 	history := s.get(paths.GenerationTestHistory())
 	assert.Equal(t, 8, strings.Count(history, `data-testid="gt-history-item"`))
-	assert.Equal(t, 8, strings.Count(history, `data-testid="gt-history-item" data-commercial="yes"`), "each result's item carries the answer of its model")
-	assert.Contains(t, history, `<option value="flux-2" data-commercial="yes"`, "so does the model choice of the filter")
 	assert.NotContains(t, history, `data-commercial-badge=`, "the tile is the picture only (#1004): the mark is in its detail")
-	assert.Contains(t, history, `data-commercial-filter-target="#`, "the history can be filtered too")
+	assert.Contains(t, history, `data-testid="commercial-choice"`, "the history can be filtered too")
 	assert.Contains(t, history, `name="commercial"`, "the choice is a field of the history form, so it survives the paging")
 
 	b, err := s.rig.Svc.Batch(t.Context(), id, true)

@@ -1,0 +1,112 @@
+package modelcard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
+)
+
+// BadgeOf draws one badge: the label, with its icon when it has one.
+templ BadgeOf(b Badge) {
+	if b.Icon != "" {
+		@atoms.BadgeIcon(b.Tone, b.Icon, b.Label, b.Attrs)
+	} else {
+		@atoms.BadgeWith(b.Tone, b.Label, b.Attrs)
+	}
+}
+
+// Summary is what a card says of a model: the picture, the name, the line of the kind and the price or size, the commercial-use icon, the badges and the one line
+// to watch for. Every card that is chosen (PickItem: the generation test's list, the model picker) says it this way, in the colours of the model manager's cards.
+templ Summary(c Card) {
+	<span class="flex items-start gap-3" data-mp-summary>
+		@Tile(c.Icon)
+		<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+			<span class="break-words text-sm font-semibold text-neutral-100" data-mp-name>{ c.Name }</span>
+			<span class="break-words text-xs text-neutral-400" data-testid="model-meta">{ c.Meta }</span>
+		</span>
+		if c.Commercial != nil {
+			<span class="shrink-0">
+				@commercial.Mark(*c.Commercial)
+			</span>
+		}
+	</span>
+	<span class="flex flex-wrap items-center gap-1.5" data-testid="model-badges">
+		if c.State.Label != "" {
+			@BadgeOf(c.State)
+		}
+		for _, b := range c.Badges {
+			@BadgeOf(b)
+		}
+		if c.Reason != nil {
+			@BadgeOf(UnavailableBadge())
+		}
+	</span>
+	if c.Note != "" {
+		<span class="break-words text-xs text-amber-300" data-testid="model-note">{ c.Note }</span>
+	}
+}
+
+// PickItem is a card that is chosen. With PickMany it is a label around a checkbox that is hidden but still the control (keyboard: Space; a screen reader says
+// "checkbox, checked"; it is what the form posts): the choice is shown by the border, the glow and a mark, so not by colour alone, and the keyboard focus by a
+// ring. With PickOne it is a button that sets the field of the model picker. A model that cannot be chosen now is dimmed, cannot be chosen, and says why and where
+// to fix it under the card.
+templ PickItem(c Card) {
+	<li id={ c.ID } class="relative flex min-w-0 flex-col gap-1.5" data-card data-available={ boolText(c.Reason == nil) } { c.Attrs... }>
+		if c.Pick.Mode == PickMany {
+			<label class="relative block cursor-pointer has-[:disabled]:cursor-not-allowed">
+				<input
+					type="checkbox"
+					name={ c.Pick.Name }
+					value={ c.Pick.Value }
+					checked?={ c.Pick.Checked && c.Reason == nil }
+					disabled?={ c.Reason != nil }
+					class="peer sr-only"
+					if c.Reason != nil {
+						aria-describedby={ c.reasonID() }
+					}
+				/>
+				<span class={ "flex flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-3 pr-8 text-sm", pick.Glow }>
+					@Summary(c)
+				</span>
+				<span class="pointer-events-none absolute right-3 top-3 hidden text-indigo-300 peer-checked:block" aria-hidden="true" data-card-mark>✓</span>
+			</label>
+		} else {
+			<button
+				type="button"
+				class={ "flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-shadow hover:border-indigo-400 hover:shadow-[0_0_12px_1px] hover:shadow-indigo-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none", chooseState(c) }
+				aria-pressed={ boolText(c.Pick.Current) }
+				disabled?={ c.Reason != nil }
+				data-mp-choose
+				data-mp-values={ c.Pick.valuesJSON() }
+				if c.Reason != nil {
+					aria-describedby={ c.reasonID() }
+				}
+			>
+				@Summary(c)
+			</button>
+		}
+		if c.Reason != nil {
+			<p id={ c.reasonID() } class="flex flex-wrap items-center gap-x-2 px-1 text-xs text-neutral-400" data-testid="model-reason">
+				<span class="break-words">{ c.Reason.Text }</span>
+				if c.Reason.Route != "" {
+					<a class="underline hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" href={ templ.SafeURL(c.Reason.Route) } data-testid="model-reason-route">{ c.Reason.RouteLabel() }</a>
+				}
+			</p>
+		}
+	</li>
+}
+
+func boolText(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+// reasonID is the id of the line that says why the card cannot be chosen (what the control is described by).
+func (c Card) reasonID() string {
+	if c.ID == "" {
+		return ""
+	}
+	return c.ID + "-reason"
+}

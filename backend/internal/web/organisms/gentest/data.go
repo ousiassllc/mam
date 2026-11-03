@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
@@ -77,12 +79,15 @@ type ModelChoice struct {
 	Selected bool
 	// Media is image or video. RefMode ("edit", "img2img" or "" when it does not say), RefRoles (empty: the model takes no input
 	// images) and CanLoRA are what the card's icon and the role, strength and LoRA controls follow.
-	Media                 string
-	RefMode               string
-	RefRoles              []string
-	CanLoRA               bool
-	Answer                commercial.View // whether the model may be used commercially (#928): the badge, data-commercial for the filter
-	gentestadv.ModelFacts                 // the detailed settings the model takes and how it reads prompt weights (the card's data attributes)
+	Media    string
+	RefMode  string
+	RefRoles []string
+	CanLoRA  bool
+	Answer   commercial.View // whether the model may be used commercially (#928): the card's icon and note
+	// Card is what every list of models says of the model the same way (#1011: handler/modelcards): the name, price, icon, badges and the reason it cannot be chosen.
+	// Reason, above, is the one the form acts on (the model is not offered while it is set); the card's reason also carries where to fix it.
+	Card                  modelcard.Card
+	gentestadv.ModelFacts // the detailed settings the model takes and how it reads prompt weights (the card's data attributes)
 }
 
 // PromptText is a prompt and its negative prompt.
@@ -118,8 +123,8 @@ type Compose struct {
 	Message
 	Media  string // image or video
 	Models []ModelChoice
-	// Filter is the commercial-use filter of the model cards, checked at the setting's default.
-	Filter commercial.FilterData
+	// Filter is the filter of the model cards: the bar, the panel and the chips (#1011).
+	Filter modelpick.Filter
 	// Prompts has at least one entry.
 	Prompts []PromptText
 	// Translate is the switch "英語に訳して送る" (on for a fresh form); Poses says the pose library is there: "ポーズを選ぶ" is offered (an image batch only).
@@ -231,11 +236,10 @@ type History struct {
 	Message
 	Filter HistoryFilter
 	Models []string
-	// Commercial is the commercial-use filter of the cards and of the model choices; ModelAnswers are the answers of Models by id.
-	Commercial   commercial.FilterData
-	ModelAnswers map[string]string
-	Cards        []resulttile.Card
-	Spend        string
+	// Commercial is the commercial-use choice of the form (the server narrows the results by it).
+	Commercial commercial.ChoiceData
+	Cards      []resulttile.Card
+	Spend      string
 	// Next is the link to the next page ("" on the last).
 	Next string
 	// Refresh is the link to the list as it is now (the page, the filter) with "live=1": the part that the refresh button and the

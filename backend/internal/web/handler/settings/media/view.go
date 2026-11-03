@@ -11,11 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
-
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 )
 
@@ -50,6 +48,9 @@ func Data(v modelsettings.View) media.Data {
 	if len(v.Gated) > 0 {
 		d.GatedNote = gatedNote(v.Gated)
 	}
+	for _, u := range v.Unusable {
+		d.Warnings = append(d.Warnings, media.Warning{Message: unusableNote(u), Route: u.Availability.Route})
+	}
 	for _, p := range modelsettings.ImagePurposes() {
 		d.Images = append(d.Images, imageRow(v, p, v.Images[p]))
 	}
@@ -62,17 +63,7 @@ func Data(v modelsettings.View) media.Data {
 func imageModels(v modelsettings.View) []media.ImageModel {
 	var out []media.ImageModel
 	for _, m := range v.ImageModels {
-		out = append(out, media.ImageModel{Name: string(m.Model), Fast: m.Fast, AcceptsReferences: m.AcceptsReferences, Answer: commercial.Of(string(m.Model))})
-	}
-	return out
-}
-
-func videoChoices(v modelsettings.View) []media.VideoChoice {
-	var out []media.VideoChoice
-	for _, m := range v.VideoModels {
-		for _, res := range m.Resolutions {
-			out = append(out, media.VideoChoice{Value: choiceValue(m.Model, res), Label: string(m.Model) + " / " + res, Answer: commercial.Of(string(m.Model))})
-		}
+		out = append(out, media.ImageModel{Name: string(m.Model), Fast: m.Fast, AcceptsReferences: m.AcceptsReferences})
 	}
 	return out
 }
@@ -104,6 +95,23 @@ func policyRow(v modelsettings.View, q domain.QualityPolicy, r modelsettings.Pol
 	}
 }
 
+// unusableNote says which saved route names a model that cannot be used now, and why.
+func unusableNote(u modelsettings.UnusableRoute) string {
+	slot := map[string]string{"primary": "主モデル", "fallback": "代替モデル"}[u.Role]
+	what := "画像モデル"
+	key := u.Key
+	if u.Media == "video" {
+		what, key = "動画モデル", domain.QualityPolicy(u.Key).Label()
+	} else {
+		for _, p := range modelsettings.ImagePurposes() {
+			if string(p) == u.Key {
+				key = purposes[p].label
+			}
+		}
+	}
+	return key + " の" + what + "（" + slot + "）は " + string(u.Model) + " を指していますが、使えません: " + u.Availability.Message
+}
+
 // gatedNote says that the saved assignment names adult models that are not offered while the age confirmation is off.
 func gatedNote(models []domain.ModelName) string {
 	names := make([]string, len(models))
@@ -132,7 +140,9 @@ func referenceNote(r modelsettings.ImageRoute, models []modelsettings.ImageOptio
 	return strings.Join(names, "、") + " は参照画像を使えません。このモデルで生成するときは、参照画像なしで Prompt だけから作ります"
 }
 
-func choiceValue(m domain.ModelName, resolution string) string { return string(m) + "@" + resolution }
+func choiceValue(m domain.ModelName, resolution string) string {
+	return modelpicker.ChoiceValue(string(m), resolution)
+}
 
 // ParseInput is the assignment the submitted form stands for. A field that is missing or unreadable
 // becomes the zero value, which modelsettings.Service.Save refuses with a reason.
@@ -175,10 +185,4 @@ func parsePolicy(form url.Values, q domain.QualityPolicy) modelsettings.PolicyRo
 func videoTarget(value string) modelsettings.VideoTarget {
 	model, resolution, _ := strings.Cut(value, "@")
 	return modelsettings.VideoTarget{Model: domain.ModelName(model), Resolution: resolution}
-}
-
-// commercialFilter is the commercial-use filter of a model modal's selects, at the setting's default. The saved choice stays in the
-// select whatever the filter says, so a narrowing never changes the assignment behind the user's back.
-func commercialFilter(id, target string) commercial.FilterData {
-	return commercial.NewFilter(id, target, modellicense.DefaultFilter())
 }

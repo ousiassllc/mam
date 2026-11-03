@@ -55,7 +55,7 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 		card.Status = s.keysStatus(c)
 	case paths.SettingsLLM:
 		card.Icon, card.Description = atoms.IconText, "Agent ごとに、使う LLM とその代替を選ぶ。"
-		card.Status = llmStatus(llmhandler.SectionData(s.LLM))
+		card.Status = llmStatus(llmhandler.SectionData(s.LLM, nil))
 	case paths.SettingsModels:
 		card.Icon, card.Description = atoms.IconMedia, "画像の用途・動画の Quality Policy ごとに、使うモデルを選ぶ。"
 		card.Status = modelsStatus(mediahandler.SectionData(s.Models))
