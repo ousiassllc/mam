@@ -1,0 +1,57 @@
+// Package errorbox is the one look of a failure on every screen (#1010): the cause and the remedy in words first, the screens that help
+// as links, and the detail the machine gave folded under "詳細を見る" with a button that copies it. The data is an apperr.View (what a
+// service or errmap made of the failure); the words of the box itself come from the same catalog (apperr.Text, "ui.*"), so that an
+// English screen reads English.
+package errorbox
+
+import "github.com/ousiassllc/mam/backend/internal/apperr"
+
+// Props is what the box draws.
+type Props struct {
+	View apperr.View
+	Lang apperr.Lang
+	// ID is unique on the page: it names the field the copy button reads and the line that says it was copied. When the page can hold
+	// more than one box, give each its own (the id of the result it belongs to).
+	ID string
+}
+
+// Box is the error box. role="alert": a box that is swapped in is read out at once. The detail is a readonly field, so that it can be
+// selected by hand when the clipboard is refused (static/src/components/copy).
+templ Box(p Props) {
+	<div class="flex flex-col gap-2 rounded-md border border-red-500/60 bg-red-500/10 p-3 text-sm text-neutral-100" role="alert" data-testid="error-box" data-error-code={ string(p.View.Code) }>
+		<p class="font-medium text-red-300">{ apperr.Text(p.Lang, "ui.title", nil) }</p>
+		<p data-testid="error-cause"><span class="mr-2 text-xs text-neutral-400">{ apperr.Text(p.Lang, "ui.cause", nil) }</span>{ p.View.Cause }</p>
+		if p.View.Remedy != "" {
+			<p data-testid="error-remedy"><span class="mr-2 text-xs text-neutral-400">{ apperr.Text(p.Lang, "ui.remedy", nil) }</span>{ p.View.Remedy }</p>
+		}
+		if len(p.View.Settings) > 0 {
+			<ul class="flex flex-wrap gap-x-4 gap-y-1" aria-label={ apperr.Text(p.Lang, "ui.settings", nil) } data-testid="error-links">
+				for _, l := range p.View.Settings {
+					<li><a class="text-indigo-300 underline hover:text-indigo-200" href={ templ.SafeURL(l.Path) }>{ l.Label }</a></li>
+				}
+			</ul>
+		}
+		<details class="text-xs text-neutral-300" data-testid="error-detail">
+			<summary class="cursor-pointer text-neutral-400">{ apperr.Text(p.Lang, "ui.detail", nil) }</summary>
+			<textarea id={ fieldID(p) } readonly rows="4" class="mt-2 w-full resize-y rounded-md border border-neutral-700 bg-neutral-900 p-2 font-mono text-xs text-neutral-100" aria-label={ apperr.Text(p.Lang, "ui.detail", nil) }>{ p.View.Report(p.Lang) }</textarea>
+		</details>
+		<div class="flex items-center gap-2">
+			<button
+				type="button"
+				class="inline-flex items-center justify-center rounded-md border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800"
+				data-copy-source={ fieldID(p) }
+				data-copy-status={ statusID(p) }
+				data-copy-done={ apperr.Text(p.Lang, "ui.copied", nil) }
+				data-testid="error-copy"
+			>{ apperr.Text(p.Lang, "ui.copy", nil) }</button>
+			<span id={ statusID(p) } class="text-xs text-neutral-300" role="status"></span>
+		</div>
+		if p.View.ErrorID != "" {
+			<p class="text-xs text-neutral-400" data-testid="error-id">{ apperr.Text(p.Lang, "ui.error_id", nil) }: <code>{ p.View.ErrorID }</code></p>
+		}
+	</div>
+}
+
+func fieldID(p Props) string { return "error-detail-" + p.ID }
+
+func statusID(p Props) string { return "error-copy-status-" + p.ID }

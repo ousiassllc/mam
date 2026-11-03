@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
+	"github.com/ousiassllc/mam/backend/internal/logging"
 )
 
 // Error is a failure in the shape a person reads. It is an error: the text of Error() is for a log (the code and the detail), the
@@ -38,9 +40,9 @@ func (e *Error) With(name, value string) *Error {
 	return e
 }
 
-// WithDetail sets the detail and returns e.
+// WithDetail sets the detail (a secret in it is hidden, logging.Redact) and returns e.
 func (e *Error) WithDetail(detail string) *Error {
-	e.Detail = detail
+	e.Detail = logging.Redact(detail)
 	return e
 }
 
@@ -54,7 +56,7 @@ func (e *Error) WithCause(cause string) *Error {
 func (e *Error) Wrap(err error) *Error {
 	e.Err = err
 	if e.Detail == "" && err != nil {
-		e.Detail = err.Error()
+		e.Detail = logging.Redact(err.Error())
 	}
 	return e
 }
@@ -153,4 +155,43 @@ func Unmarshal(s string) (e *Error, ok bool) {
 		return nil, false
 	}
 	return &Error{Code: r.Code, Args: r.Args, Cause: r.Cause, Detail: r.Detail, ID: r.ID}, true
+}
+
+// Report is the text the copy button of the error box puts on the clipboard, for a bug report: the code, the cause, the remedy,
+// the detail and the error ID, one per line.
+func (v View) Report(lang Lang) string {
+	var b strings.Builder
+	b.WriteString(string(v.Code))
+	for _, s := range []string{v.Cause, v.Remedy} {
+		if s != "" {
+			b.WriteString("\n" + s)
+		}
+	}
+	if v.ErrorID != "" {
+		b.WriteString("\n" + Text(lang, "ui.error_id", nil) + ": " + v.ErrorID)
+	}
+	if v.Detail != "" {
+		b.WriteString("\n\n" + v.Detail)
+	}
+	return b.String()
+}
+
+// maxLineDetailRunes bounds the detail in Line.
+const maxLineDetailRunes = 200
+
+// Line is the failure as one line of text, for a place that keeps or shows a sentence only (the history column "error", a chat message, the
+// text of a tool error): the cause and the remedy, then the start of the detail in brackets.
+func (v View) Line(lang Lang) string {
+	line := v.Sentence(lang)
+	if v.Detail == "" {
+		return line
+	}
+	d := []rune(strings.Join(strings.Fields(v.Detail), " "))
+	if len(d) > maxLineDetailRunes {
+		d = append(d[:maxLineDetailRunes], '…')
+	}
+	if lang == LangEn {
+		return line + " (detail: " + string(d) + ")"
+	}
+	return line + "（詳細: " + string(d) + "）"
 }

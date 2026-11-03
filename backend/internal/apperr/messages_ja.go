@@ -79,8 +79,8 @@ var messagesJa = map[string]string{
 	"no_gpu.cause":  "対応する GPU が見つかりません。",
 	"no_gpu.remedy": "外部の ComfyUI の URL を設定するか、CPU 実行を明示的に選んでください。",
 
-	"image_unavailable.cause":  "ChatGPT のアカウントで、画像生成を載せられるモデルが使えませんでした。",
-	"image_unavailable.remedy": "ChatGPT のプランとログインを確かめ、設定の「ChatGPT でログイン」からやり直してください。",
+	"image_unavailable.cause":  "ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。",
+	"image_unavailable.remedy": "mam を最新版に更新して、もう一度実行してください。直らない場合は、設定で ChatGPT 画像生成を OFF にして、API キーで使える画像モデルに切り替えてください。",
 
 	"save_failed.cause":  "設定やデータを保存できませんでした。",
 	"save_failed.remedy": "ディスクの空き容量とフォルダの権限を確かめてから、もう一度保存してください。続くときは mam のログを確認してください。",

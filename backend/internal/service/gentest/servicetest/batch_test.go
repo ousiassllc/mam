@@ -14,6 +14,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -110,7 +111,10 @@ func TestBatchNeverFallsBackToAnotherModel(t *testing.T) {
 
 	require.Len(t, st.Results, 2)
 	assert.Equal(t, gentestrepo.StatusFailed, st.Results[0].Status)
-	assert.Contains(t, st.Results[0].Error, "refused")
+	assert.Contains(t, st.Results[0].Error, "refused", "the vendor's reason stays in the line")
+	require.NotNil(t, st.Results[0].Failure)
+	assert.Equal(t, apperr.CodeRequestRejected, st.Results[0].Failure.Code)
+	assert.Equal(t, "modeladapter: flux returned HTTP 422: refused", st.Results[0].Failure.Detail)
 	assert.Equal(t, gentestrepo.StatusSucceeded, st.Results[1].Status, "the other model is unaffected")
 	assert.Len(t, r.Fake.CallsOf(domain.ModelFlux2), 1, "a 422 is not retried")
 	assert.Len(t, r.Fake.CallsOf(domain.ModelNanoBanana), 1, "Nano Banana is not the stand-in for FLUX.2: it was asked for its own result only")
@@ -129,9 +133,12 @@ func TestFailureOfTheChatGPTImageWithoutACodexModelIsExplained(t *testing.T) {
 
 	require.Len(t, st.Results, 1)
 	assert.Equal(t, gentestrepo.StatusFailed, st.Results[0].Status)
-	assert.Equal(t, chatgpt.ImageModelUnavailableMessage, st.Results[0].Error)
+	require.NotNil(t, st.Results[0].Failure)
+	assert.Equal(t, apperr.CodeImageUnavailable, st.Results[0].Failure.Code)
+	assert.Contains(t, st.Results[0].Error, "mam を最新版に更新して、もう一度実行してください")
 	assert.NotContains(t, st.Results[0].Error, "ベンダーがリクエストを拒否しました")
-	assert.NotContains(t, st.Results[0].Error, "gpt-5.5")
+	assert.NotContains(t, st.Results[0].Failure.Cause+st.Results[0].Failure.Remedy, "gpt-5.5", "the vendor's 400 is the symptom: it is in the detail only")
+	assert.Contains(t, st.Results[0].Failure.Detail, "gpt-5.5")
 }
 
 // A local call that ran past the endpoint's timeout says what happened and what to do, without a word about

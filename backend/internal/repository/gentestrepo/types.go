@@ -101,10 +101,12 @@ type Result struct {
 	// UsedInputs are the ids of the batch's inputs this model was given.
 	UsedInputs []string
 	// Seed is nil for a model that takes none; SeedSent says it went to the vendor.
-	Seed          *int64
-	SeedSent      bool
-	Status        string
-	Error         string
+	Seed     *int64
+	SeedSent bool
+	Status   string
+	Error    string
+	// ErrorInfo is the failure as the common error (apperr.Error.Marshal); "" for a result that has none.
+	ErrorInfo     string
 	FilePath      string
 	MimeType      string
 	SizeBytes     int64
@@ -155,6 +157,7 @@ type NewBatch struct {
 type Settlement struct {
 	Status     string // succeeded | failed | cancelled
 	Error      string
+	ErrorInfo  string // apperr.Error.Marshal of the failure; "" for none
 	FilePath   string
 	MimeType   string
 	SizeBytes  int64

@@ -1,8 +1,10 @@
 package gentest
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
@@ -50,7 +52,11 @@ templ DetailSection(d Detail, inModal bool) {
 				<span class="text-xs text-neutral-400">{ d.Card.Meta }</span>
 			}
 		</div>
-		if d.Card.Error != "" {
+		if d.Card.Failure != nil {
+			<div data-testid="gt-card-error">
+				@errorbox.Box(errorbox.Props{View: *d.Card.Failure, Lang: apperr.LangJa, ID: d.Card.ID})
+			</div>
+		} else if d.Card.Error != "" {
 			<p class="break-words text-sm text-red-300" data-testid="gt-card-error">{ d.Card.Error }</p>
 		}
 		<div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

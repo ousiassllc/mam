@@ -77,8 +77,8 @@ var messagesEn = map[string]string{
 	"no_gpu.cause":  "No supported GPU was found.",
 	"no_gpu.remedy": "Set the URL of an external ComfyUI, or choose CPU execution explicitly.",
 
-	"image_unavailable.cause":  "The ChatGPT account has no model that can host the image generation.",
-	"image_unavailable.remedy": "Check the plan and the sign-in of ChatGPT and sign in again from Settings > ChatGPT sign-in.",
+	"image_unavailable.cause":  "No Codex model that can host the image generation was found for the ChatGPT subscription (OpenAI may have changed the models a ChatGPT sign-in can use).",
+	"image_unavailable.remedy": "Update mam to the latest version and run it again. If it does not help, turn the ChatGPT image generation OFF in Settings and switch to an image model that works with an API key.",
 
 	"save_failed.cause":  "The setting or the data could not be saved.",
 	"save_failed.remedy": "Check the free disk space and the permissions of the folder and save again. If it continues, check the log of mam.",

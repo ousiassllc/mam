@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -41,7 +43,7 @@ func (j *Jobs) statusOf(ctx context.Context, h jobhistory.Entry) (JobStatus, err
 			return statusFrom(h), nil
 		}
 		st := statusFrom(h)
-		st.State, st.Error, st.ErrorCode, st.ErrorID = JobFailed, lostMessage, "", ""
+		st.State, st.Error, st.ErrorCode, st.ErrorID, st.Failure = JobFailed, lostMessage, "", "", nil
 		j.record(ctx, h, &st, k)
 		return st, nil
 	}
@@ -108,7 +110,7 @@ func (j *Jobs) record(ctx context.Context, h jobhistory.Entry, st *JobStatus, k 
 	}
 	n := h
 	n.State, n.Message, n.Done, n.Total = string(st.State), st.Message, st.Done, st.Total
-	n.ErrorCode, n.ErrorMessage, n.ErrorID = st.ErrorCode, st.Error, st.ErrorID
+	n.ErrorCode, n.ErrorMessage, n.ErrorID, n.ErrorInfo = st.ErrorCode, st.Error, st.ErrorID, infoOf(st.Failure)
 	n.FinishedAt, n.EndedAt = st.FinishedAt, st.EndedAt
 	n.Result = nil
 	if k.inMemory && len(st.Result) > 0 { // nothing else can produce the result again
@@ -124,6 +126,27 @@ func (j *Jobs) record(ctx context.Context, h jobhistory.Entry, st *JobStatus, k 
 	}
 }
 
+// infoOf is the failure as the history keeps it: the JSON of the view in words (the history is read by the tools only, in Japanese), "" for none.
+func infoOf(v *apperr.View) string {
+	if v == nil {
+		return ""
+	}
+	b, err := json.Marshal(v)
+	if err != nil { // cannot happen: strings only
+		return ""
+	}
+	return string(b)
+}
+
+// viewOf reads what infoOf kept; nil for "" and for text that is not a view.
+func viewOf(info string) *apperr.View {
+	var v apperr.View
+	if info == "" || json.Unmarshal([]byte(info), &v) != nil || v.Code == "" {
+		return nil
+	}
+	return &v
+}
+
 // endedAt is the end of a final job: the time the job queue recorded, else the first time it was seen over.
 func endedAt(h jobhistory.Entry, st *JobStatus, now time.Time) *time.Time {
 	switch {
@@ -137,7 +160,7 @@ func endedAt(h jobhistory.Entry, st *JobStatus, now time.Time) *time.Time {
 
 func sameState(a, b jobhistory.Entry) bool {
 	return a.State == b.State && a.Message == b.Message && a.Done == b.Done && a.Total == b.Total &&
-		a.ErrorCode == b.ErrorCode && a.ErrorMessage == b.ErrorMessage && a.ErrorID == b.ErrorID &&
+		a.ErrorCode == b.ErrorCode && a.ErrorMessage == b.ErrorMessage && a.ErrorID == b.ErrorID && a.ErrorInfo == b.ErrorInfo &&
 		string(a.Result) == string(b.Result) && sameTime(a.FinishedAt, b.FinishedAt) && sameTime(a.EndedAt, b.EndedAt)
 }
 
@@ -154,6 +177,7 @@ func statusFrom(h jobhistory.Entry) JobStatus {
 		JobID: h.ID, Kind: h.Kind, Target: h.Target, State: JobState(h.State), Message: h.Message, Done: h.Done, Total: h.Total,
 		Error: h.ErrorMessage, ErrorCode: h.ErrorCode, ErrorID: h.ErrorID, ProjectID: h.ProjectID, StartedAt: h.StartedAt, FinishedAt: h.FinishedAt, EndedAt: h.EndedAt,
 	}
+	st.Failure = viewOf(h.ErrorInfo)
 	if len(h.Result) > 0 {
 		_ = json.Unmarshal(h.Result, &st.Result) // a result that does not read back is left out
 	}

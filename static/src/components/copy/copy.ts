@@ -3,6 +3,9 @@
  * spec/components/settings-screen-categories.md §4): a button with `data-copy-source="<id of the field>"` copies the
  * value of that field to the clipboard and says so in the element named by `data-copy-status` (a `role="status"` line).
  *
+ * The error box (#1010) copies a readonly textarea the same way and may name its own "copied" text in `data-copy-done`
+ * (the page language); a button without it says the Japanese one.
+ *
  * The clipboard is not always there (an insecure origin, a refused permission). Then the field is selected, so that the
  * value can be copied by hand, and the line says to do so. The value is never kept anywhere but the field.
  */
@@ -15,12 +18,15 @@ function say(status: HTMLElement | null, text: string): void {
 }
 
 async function copy(button: HTMLElement): Promise<void> {
-  const field = document.getElementById(button.getAttribute('data-copy-source') ?? '') as HTMLInputElement | null;
+  const field = document.getElementById(button.getAttribute('data-copy-source') ?? '') as
+    | HTMLInputElement
+    | HTMLTextAreaElement
+    | null;
   const status = document.getElementById(button.getAttribute('data-copy-status') ?? '');
   if (!field) return;
   try {
     await navigator.clipboard.writeText(field.value);
-    say(status, COPIED);
+    say(status, button.getAttribute('data-copy-done') || COPIED);
   } catch {
     field.focus();
     field.select();

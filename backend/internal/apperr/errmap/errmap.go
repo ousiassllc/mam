@@ -28,6 +28,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
+	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
@@ -83,8 +84,9 @@ func Report(logger *slog.Logger, msg string, err error, attrs ...any) *apperr.Er
 	return e
 }
 
+// detailOf is the text of err for the detail: a secret that got into it (a URL with a key, a header dump) is hidden, and it is cut.
 func detailOf(err error) string {
-	d := strings.TrimSpace(err.Error())
+	d := strings.TrimSpace(logging.Redact(err.Error()))
 	if utf8.RuneCountInString(d) > maxDetailRunes {
 		d = string([]rune(d)[:maxDetailRunes]) + "…"
 	}

@@ -29,6 +29,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -63,9 +64,9 @@ type Deps struct {
 	References *repository.ReferenceRepository
 	// Assign is the optional second step of an import (nil: an import with a slot is refused).
 	Assign projectlink.AssignFunc
-	// Explain says in words for the user why a call failed, when the failure is one of the app's own refusals (the bundled
-	// engine is not installed, ...); "" leaves the failure as it is. May be nil.
-	Explain func(err error) string
+	// Explain is the common error of a call that failed, when the failure is one of the app's own refusals (the bundled
+	// engine is not installed, ...); nil leaves the failure to errmap. May be nil.
+	Explain func(err error) *apperr.Error
 	// Hidden says a model is left out of the model lists and refused as unknown: the adult models of the model manager while
 	// the age gate is closed (modelmanager.Service.HidesModel). May be nil.
 	Hidden func(modelID string) bool
