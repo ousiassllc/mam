@@ -17,7 +17,7 @@ func TestRuntimeLayoutIsOneDirectoryPerRuntimeBelowLocalaiNextToTheExecutable(t 
 	assert.Equal(t, filepath.Join("install", "MAM", "localai"), root)
 	l := store.ForRuntime(root, "gpt-sovits")
 	assert.Equal(t, filepath.Join(root, "gpt-sovits"), l.Root)
-	for _, p := range []string{l.EnvDir(), l.EnvNewDir(), l.EnvOldDir(), l.DownloadsDir(), l.CacheDir(), l.TempDir(), l.LogPath(), l.StatePath()} {
+	for _, p := range []string{l.EnvDir(), l.EnvNewDir(), l.EnvOldDir(), l.DownloadsDir(), l.CacheDir(), l.TempDir(), l.LogPath(), l.StatePath(), l.PIDPath()} {
 		rel, err := filepath.Rel(l.Root, p)
 		require.NoError(t, err)
 		assert.NotContains(t, rel, "..", p+" is below the runtime's root: removing the root removes everything")

@@ -14,9 +14,14 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/app"
 	"github.com/ousiassllc/mam/backend/internal/config"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 )
 
 func main() {
+	// The guard that ends a child of mam when mam is killed (macOS) is this binary started again: nothing else may start first.
+	if proc.RunGuardIfRequested() {
+		return
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

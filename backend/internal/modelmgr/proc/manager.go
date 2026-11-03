@@ -1,7 +1,7 @@
 // Package proc runs the bundled ComfyUI (and the local runtimes, spec/architecture/model-manager/local-runtime.md §5) as a child process of mam (spec/architecture/model-manager/model-manager.md §3.4): on
 // 127.0.0.1 and a free port, without a console window, in a group that the operating system kills when mam ends or
-// crashes (a Windows Job Object with KILL_ON_JOB_CLOSE; a process group and Pdeathsig on Linux; on macOS the process group, which
-// Stop and Close signal, but no kernel hook for a crash of mam), so that the files of the engine can be deleted by the uninstaller. Its state is a Status the screen and the chat read, and a start
+// crashes (a Windows Job Object with KILL_ON_JOB_CLOSE; a process group and Pdeathsig on Linux; on macOS the process group plus a guard
+// process that waits for mam with kqueue, and a pid file that the next start reads), so that the files of the engine can be deleted by the uninstaller. Its state is a Status the screen and the chat read, and a start
 // that fails or a crash is reported through Watch.
 package proc
 
@@ -54,6 +54,8 @@ type Spec struct {
 	LogPath string
 	// Name is the child's name in the log (default "comfyui"); Manager sets it from Config.Name.
 	Name string
+	// PIDFile is where the run notes its pid ("" for none); Manager sets it from Config.PIDFile.
+	PIDFile string
 }
 
 // Config of a Manager.
@@ -67,6 +69,9 @@ type Config struct {
 	Ready func(ctx context.Context, url string) error
 	// Name is what the messages call the child (default "ComfyUI"), for a runtime that is not ComfyUI.
 	Name string
+	// PIDFile is the pid file of the child ("" for none: no leftover is looked for). The next Start ends a child that a mam which is gone
+	// left behind (only the very process mam started: model-manager.md §3.4).
+	PIDFile string
 	// StartTimeout bounds the wait for Ready (default 3 minutes: the first start of the portable build loads
 	// PyTorch). StopTimeout bounds the wait after the polite stop (default 10 seconds).
 	StartTimeout time.Duration
@@ -183,6 +188,7 @@ func (m *Manager) finishStart() {
 
 func (m *Manager) startLocked(ctx context.Context) (Status, error) {
 	defer m.finishStart()
+	reclaimLeftover(m.cfg)
 	preferred := 0
 	if m.cfg.PreferredPort != nil {
 		preferred = m.cfg.PreferredPort()
@@ -195,7 +201,7 @@ func (m *Manager) startLocked(ctx context.Context) (Status, error) {
 	if err != nil {
 		return m.fail(Status{Port: port}, err), err
 	}
-	spec.Name = strings.ToLower(m.cfg.Name)
+	spec.Name, spec.PIDFile = strings.ToLower(m.cfg.Name), m.cfg.PIDFile
 	url := "http://127.0.0.1:" + strconv.Itoa(port)
 	m.set(Status{State: StateStarting, Port: port, URL: url})
 	r, err := launch(spec, m.cfg.Logger, nil)

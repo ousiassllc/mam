@@ -30,6 +30,8 @@ type run struct {
 	done chan struct{}
 	code atomic.Int32
 	stop atomic.Bool
+	// forget undoes what guardAndNote left behind (nil when nothing): finish calls it.
+	forget func()
 }
 
 func (r *run) pid() int {
@@ -90,6 +92,8 @@ func launch(spec Spec, logger *slog.Logger, pipes *childPipes) (*run, error) {
 			err = grp.add(cmd.Process)
 			if err != nil {
 				_ = cmd.Process.Kill()
+			} else {
+				r.guardAndNote(spec.PIDFile, logger)
 			}
 		}
 		pipes.closeChildEnds() // the child has its own copies now (or never started)
@@ -120,6 +124,9 @@ func launch(spec Spec, logger *slog.Logger, pipes *childPipes) (*run, error) {
 func (r *run) finish(code int) {
 	r.code.Store(int32(code)) //nolint:gosec // an exit code
 	r.grp.kill()              // anything the child left behind
+	if r.forget != nil {
+		r.forget()
+	}
 	r.grp.close()
 	r.closeLog()
 	close(r.done)

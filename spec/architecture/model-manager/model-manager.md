@@ -20,6 +20,7 @@
   downloads\     *.part と取得したアーカイブ（再開用）。完了・失敗で片づける
   logs\          engine.log（起動の失敗で末尾を表示する）
   state.json     導入状態（§7）
+  comfyui.pid    起動中のエンジンの PID・起動時刻・コマンドライン（Linux・macOS。終了で消える。前回の mam が残した子を次回起動で片付ける。§3.4）
 ```
 
 - ジョブの結果（試し生成）は MAM のデータディレクトリ（`<data-dir>/gentest/<バッチ ID>/`）に置く。`comfyui` の中ではない（アンインストールでもデータは残す、という既存の方針）。
@@ -73,8 +74,21 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | ポート | 前回のポート（`state.json` の `LastPort`）を優先し、塞がっていれば空きを選ぶ |
 | 起動 | 既定は**遅延**（そのエンジンのモデルを初めて呼ぶとき、`Prepare`）。設定 `AutoStart` で MAM の起動時に開始（`OnStartup`）。待つのは `/system_stats` が応答するまで（タイムアウトあり） |
 | ウィンドウ | Windows ではコンソールを出さない（`HideWindow`＋`CREATE_NO_WINDOW`、`internal/media/run_windows.go` と同じ方法） |
-| 終了 | MAM の終了で止める（`Close`）。MAM が異常終了しても子が残らないよう、Windows は Job Object（`KILL_ON_JOB_CLOSE`）、Linux はプロセスグループと `Pdeathsig`。**macOS には `Pdeathsig` が無い**ので、`Stop`・`Close` がプロセスグループへ SIGTERM（`StopTimeout` の 10 秒待って SIGKILL）を送る。mam が `Close` を通らずに落ちる（SIGKILL・クラッシュ）と、ComfyUI が残る（次の起動はポートが塞がっていれば別のポートを選ぶ。残ったプロセスは手で終了する）。実機で未確認（§11） |
+| 終了 | MAM の終了で止める（`Close`）。MAM が異常終了しても子が残らないよう、Windows は Job Object（`KILL_ON_JOB_CLOSE`）、Linux はプロセスグループと `Pdeathsig`、**macOS は見張りプロセス（下の「macOS の異常終了」）**。`Stop`・`Close` は全 OS でプロセスグループへ SIGTERM（`StopTimeout` の 10 秒待って SIGKILL。Windows は Job Object の終了）を送る。Linux・macOS では、前回の mam が子を残したままなくなっていたら、**次の `Start` が子を片付ける**（下の「残った子の片付け」）。macOS の実機では未確認（§11） |
 | 状態 | `stopped` / `starting` / `running` / `failed`。起動の失敗・異常終了は `failed` とログの末尾（エラー文）で表し、`Watch` のイベントで通知する（画面・チャットへの出力は別作業） |
+
+#### macOS の異常終了（Issue #1017）と残った子の片付け
+
+**見張りプロセス（macOS）**: macOS には `Pdeathsig` も Job Object も無く、mam が `Close` を通らずに落ちる（SIGKILL・クラッシュ）と、親が死んだことを子へ知らせるカーネルの仕組みが無い。mam が死んでいては mam 側の goroutine は動けないので、**mam と別のプロセス**が見張る。`proc` は子を起動した直後に、**mam 自身の実行ファイルを `--mam-proc-guard <mam の PID> <子の PID>` で再実行**する（`guard_darwin.go`。見張りは自分のプロセスグループに置き、端末の Ctrl-C が mam より先に見張りを止めない）。見張りは kqueue の `EVFILT_PROC`／`NOTE_EXIT` で mam の終了を待ち（ポーリングしない）、終わったら子のプロセスグループへ SIGTERM、5 秒待って SIGKILL を送る。子が先に終わったら何もしない（子の PID・グループ ID が別のプロセスのものになっているかもしれないため。送る前にも、その PID がグループの先頭であることを確かめる）。`main`（`cmd/server`・`cmd/wails`）が最初に `proc.RunGuardIfRequested()` を呼び、見張りとして起動されたときだけここで終わる。
+- **この形にした理由**: (a) 見張りは自分のバイナリなので、**任意の実行ファイルを指定できる仕組みにならない**（引数は 2 つの PID だけで、PID でないものは拒む。環境変数も渡さない）。(b) ComfyUI（Python）側に親の PID の監視を足す案は、同梱の ComfyUI のソースを変えることになり（コミット固定・SHA-256 の検証と合わない）、ローカルランタイムの子（GPT-SoVITS・MuseTalk）にも効かない。(c) 子を包むラッパーが子の親になる案は、`Stop` の SIGTERM・終了コード・パイプの扱いがラッパー越しになり変わってしまう。見張りは子の親にならないので、`launch` の他の部分は変わらない。
+- **全子に効く**: ComfyUI も、ローカルランタイム（`service/localruntime`）も、Codex の app-server（`proc.StartPiped`）も、同じ `launch` を通るので同じ保護が付く。
+- **OS 非依存の部分と darwin だけの部分**: 見張りの判断（親が消えたら子のグループへ止める信号を送る・子が先に消えたら送らない・TERM に応じなければ猶予の後に KILL）は `guard.go` の `guard(parent, child, watch, signal, grace)`（`watch` と `signal` を注入）で、Linux の CI でも単体テストする。darwin だけなのは kqueue の呼び出し（`kqueueExit`）と再実行（`startGuard`）。見張りが起動できなくても子は起動する（警告をログに出す）。
+
+**残った子の片付け（Linux・macOS）**: 見張りが効かなかった場合（見張りも一緒に SIGKILL された・見張りの起動に失敗した・Linux で `Pdeathsig` の前に落ちた）の 2 本目の網。`Config.PIDFile`（ComfyUI は `comfyui/comfyui.pid`、ローカルランタイムは `<runtime>/runtime.pid`）に、起動した子と mam 自身の「PID・起動時刻・コマンドライン」を JSON で書き、子が終わると消す。次の `Start` は、子を起動する**前**（ポートを選ぶ前なので、前回のポートがまた空く）にこのファイルを読み、次の**すべて**が満たされたときだけ、子のプロセスグループへ SIGTERM（`StopTimeout` の後に SIGKILL）を送る。
+1. ファイルを書いた mam が**もういない**（PID の起動時刻・コマンドラインが書いたものと同じプロセスが無い。同じ場所を使う 2 つの mam の一方が、もう一方の子を殺さない）。
+2. 子の PID が、書いたものと**起動時刻とコマンドラインの両方で一致する**（PID の再利用で無関係なプロセスを殺さない。起動時刻は Linux が `/proc/<pid>/stat` の 22 番目、macOS が `sysctl kern.proc.pid` の `p_starttime`。コマンドラインは `/proc/<pid>/cmdline`、`sysctl kern.procargs2`）。
+どれかが外れたら何も送らず、古いファイルを消すだけ（読めないファイルも同じ）。**引き継ぎ（残った ComfyUI を再利用する）はしない**: 残った子は前の mam のトークン・環境・状態を引いており、新しい mam が子の出力（ログ・パイプ）を持てないため、終わらせて起動し直す方が単純で安全。Windows は Job Object が確実に終わらせるので PID ファイルを書かない（プロセスの識別手段も入れない）。
+
 
 ### 3.5 管理される接続先 `bundled-comfyui`
 
@@ -538,6 +552,7 @@ func (*Service) DeleteUserModel(ctx, path string) error
 |---|---|
 | Windows の DXGI による GPU 検出（`dxgi_windows.go`） | ビルドと vet のみ。**Linux の開発ホストでは実行できず未検証** |
 | Windows の Job Object・非表示ウィンドウでの子の起動 | 同上（Linux の `Pdeathsig` は子プロセスのテストで確認済み） |
+| **macOS で mam を `kill -9` しても同梱エンジン（ComfyUI）が残らないこと**（Issue #1017。§3.4 の見張りプロセス・残った子の片付け） | **未確認（macOS の実機が要る。Linux の CI では確かめられない）**。確かめたのは、(1) 見張りの判断（`proc/guard_test.go`: 親を SIGKILL すると子が消える・子が先に終わっていれば何も送らない・TERM に応じない子は猶予の後に KILL・見張りを置けないときはエラー）を、kqueue の代わりに OS へ問い合わせる `watch` で Linux 上の本物のプロセスに対して、(2) 残った子の片付け（`proc/pidfile_test.go`: 前回の mam がいなくなっていれば片付ける・TERM に応じない子は KILL・**PID が再利用されていれば〔起動時刻かコマンドラインが違えば〕殺さない**・書いた mam がまだ動いていれば触らない・壊れたファイルは消すだけ・実プロセスの残りを `Start` が子の起動前に終わらせる）、(3) `GOOS=darwin GOARCH=arm64` のビルド・vet・lint。**実機でしか分からないこと**: kqueue の `NOTE_EXIT` で見張りが mam の終了を受け取り子を止めるか（`MAM.app` の中の実行ファイルの再実行・Gatekeeper・署名を含む）／`sysctl kern.proc.pid`・`kern.procargs2` が PID の識別に足りるか（`parseProcArgs2` は組んだバッファでのテストだけ）／Wails の `main` の最初で見張りとして終わること／ポートと GPU メモリが解放されること |
 | **macOS（Apple Silicon）のエンジンの実機での導入・起動・MPS での生成**（Issue #854） | **未確認（macOS の実機が要る。この開発環境は Linux）**。確かめたのは、(1) **固定した 86 個の部品を実物で取得し、SHA-256 とサイズを照合し、`extract.TarGz`・`Zip`・`Wheel` で組み立てた**こと（衝突なし・展開量が `extracted_size` と一致・起動コマンドの組み立て）、(2) 偽の取得元（Python の tar.gz・ソースの zip・wheel）で、取得・再開・SHA-256 不一致・展開量の上限・上書きの拒否・空き容量・入れ替え・既存のエンジンが残ること（`engine/apple_test.go`）、(3) GPU の検出と選択（`gpu/detect_apple_test.go`。`sysctl` の偽の出力）、(4) 対応の判定・置き場所・build の出し分け・導入・起動・停止（`service/modelmanager/mactest`。macOS 相当の設定を与えた Service）、(5) カタログの検証（`catalog/applebuildtest`）。**実機でしか分からないこと**: Python 本体・wheel の拡張モジュールが Apple Silicon で署名・Gatekeeper に止められずに動くか／`import torch` と `torch.backends.mps.is_available()` が真か／ComfyUI が MPS で起動し画像を生成できるか（`PYTORCH_ENABLE_MPS_FALLBACK=1` の効果と速さ）／fp8 以外のモデルの MPS での動作（§4.2）／ユニファイドメモリの判定（§3.2）が実際の GPU の上限に対して甘すぎないか／macOS 14 未満が本当に起動できないか（wheel のタグからの推定）／macOS で mam が落ちたときに ComfyUI が残ること（`Pdeathsig` が無い。§3.4） |
 | macOS の部品の URL（python-build-standalone・PyPI・GitHub のソース）が将来も残ること | 保証できない。変わったら導入は SHA-256 の不一致・404 で失敗する（カタログの更新が要る）。PyPI の wheel は取り下げられることがある |
 | macOS の部品の依存パッケージ（Python 本体・PyTorch・NumPy・transformers ほか 84 個）のライセンスの原文との突き合わせ | **未確認**（`THIRD_PARTY_NOTICES.md`。mam はこれらを配布せず、利用者の Mac に公式の配布先から取得する） |

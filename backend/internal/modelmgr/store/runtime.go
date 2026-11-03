@@ -47,6 +47,9 @@ func (l RuntimeLayout) CacheDir() string { return filepath.Join(l.Root, "cache")
 // TempDir is where the program writes temporary files (TEMP, TMP, TMPDIR), below Root for the same reason.
 func (l RuntimeLayout) TempDir() string { return filepath.Join(l.Root, "tmp") }
 
+// PIDPath is the pid file of the runtime process (see Layout.PIDPath).
+func (l RuntimeLayout) PIDPath() string { return filepath.Join(l.Root, "runtime.pid") }
+
 // LogPath is the log of the runtime process.
 func (l RuntimeLayout) LogPath() string { return filepath.Join(l.Root, "logs", "runtime.log") }
 
