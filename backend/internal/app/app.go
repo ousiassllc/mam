@@ -27,6 +27,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/version"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 	"github.com/ousiassllc/mam/static"
 )
 
@@ -120,7 +121,12 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	gin.SetMode(gin.ReleaseMode)
 	settings := newSettings(cfg, services, gpt, ffmpegDL, opts.Restart, repository.NewJobRepository(db), logger)
 	defer settings.Restart.Close()
-	settings.JobList = joblist.New(joblist.Deps{Table: jobrecent.New(db), Shots: repository.NewGenerationRepository(db), Projects: services.Projects, ModelManager: services.ModelManager, Gentest: services.Gentest})
+	// The works that have no row in the job table (the export, the audio stage and the Editor Judge, workflow runs, the installs of Codex
+	// and ffmpeg) are kept in memory by their owners; the list reads them from there.
+	settings.JobList = joblist.New(joblist.Deps{
+		Table: jobrecent.New(db), Shots: repository.NewGenerationRepository(db), Projects: services.Projects, ModelManager: services.ModelManager, Gentest: services.Gentest,
+		Works: []worktrack.Source{services.Editor, services.Workflows, gpt.Codex(), ffmpegDL}, Hidden: services.ModelManager.HidesModel,
+	})
 	if opts.Update != nil {
 		var stop func()
 		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)

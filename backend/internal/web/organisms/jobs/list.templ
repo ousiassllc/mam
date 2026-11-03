@@ -15,11 +15,15 @@ const ListID = "jobs-list"
 // Polling is the hx-trigger of the list while a job has not ended: it asks for itself again, and stops when none is left.
 const Polling = "every 2s"
 
-// Progress is how far a running job is: Percent (0-100) and, when there is one, a line that says it in words.
+// Progress is how far a running job is: Percent (0-100, or negative when the job cannot say: the row then shows the words and no bar)
+// and, when there is one, a line that says it in words.
 type Progress struct {
 	Percent int
 	Text    string
 }
+
+// Known says Percent is a percentage (a bar is drawn).
+func (p Progress) Known() bool { return p.Percent >= 0 }
 
 // Row is one job.
 type Row struct {
@@ -113,8 +117,12 @@ templ row(r Row) {
 	}
 	if r.Progress != nil {
 		<div class="flex flex-col gap-1" data-testid="jobs-progress">
-			<progress class="h-2 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
-			<p class="break-words text-xs text-neutral-300">{ itoa(r.Progress.Percent) }%<span class="text-neutral-400">{ progressText(r.Progress.Text) }</span></p>
+			if r.Progress.Known() {
+				<progress class="h-2 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
+				<p class="break-words text-xs text-neutral-300">{ itoa(r.Progress.Percent) }%<span class="text-neutral-400">{ progressText(r.Progress.Text) }</span></p>
+			} else {
+				<p class="break-words text-xs text-neutral-300">{ r.Progress.Text }</p>
+			}
 		</div>
 	}
 	if r.Error != "" {

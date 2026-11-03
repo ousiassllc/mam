@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // ErrStageBusy means another editing stage (Rough Cut, judge, audio, Final QC, export) of the
@@ -75,6 +76,8 @@ type EditorService struct {
 	// found the stage busy, so the release of the stage wakes the worker again.
 	resume *bgwork.Worker
 	missed sync.Map // project ID -> struct{}
+	// works is the record of the export, audio and judge runs for the job list (memory only; Works).
+	works worktrack.Tracker
 }
 
 // acquire claims the Project's editing stage; ErrStageBusy when another one runs.
