@@ -31,13 +31,13 @@ func refreshOf(t *testing.T, body, target string) string {
 	return strings.ReplaceAll(m[1], "&amp;", "&")
 }
 
-// The engine, the model list and the trial results have a refresh button that reads just its own part again, with when it was read.
+// The engine, the model list, the files added from Hugging Face and the trial results have a refresh button that reads just its own part again, with when it was read.
 // What the reader types (the trial form) and the modal that is open are outside of the parts the button swaps.
 func TestRefresh_EveryPartThatChangesByItselfHasAButtonThatReadsItAgain(t *testing.T) {
 	s := screentest.New(t)
 	s.Rig.InstallEngine()
 	page := s.Page()
-	for _, target := range []string{"mm-engine", "mm-catalog", "mm-trials"} {
+	for _, target := range []string{"mm-engine", "mm-catalog", "mm-trials", "mm-hfi-models"} {
 		url := refreshOf(t, page, target)
 		rec := s.Get(url)
 		require.Equal(t, http.StatusOK, rec.Code, target)

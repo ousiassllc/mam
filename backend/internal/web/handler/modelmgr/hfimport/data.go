@@ -90,7 +90,7 @@ func HitsOf(hits []hf.SearchHit) []view.HFHit {
 // ListData is the files the user added and the imports that run. jobs are the ones a poll reports on: one that ended is
 // said once, one the queue has not recorded the end of yet keeps the list polling.
 func ListData(ctx context.Context, svc *modelmanager.Service, jobs []string) view.HFModelList {
-	var l view.HFModelList
+	l := view.HFModelList{UpdatedAt: time.Now().Format(time.TimeOnly)}
 	active := svc.ActiveHFJobs()
 	targets := make([]string, 0, len(active))
 	for t := range active {
