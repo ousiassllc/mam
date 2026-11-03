@@ -115,6 +115,9 @@ type fakeRuntime struct {
 	specs  atomic.Int32
 	steps  []string
 	assets []string
+	// gate, when set, holds BeginTool until it is closed; entered says (one value) that BeginTool is waiting there.
+	gate    chan struct{}
+	entered chan struct{}
 }
 
 func (r *fakeRuntime) BeginTool(_ context.Context, id string, assets ...string) (voicetrain.Held, error) {
@@ -122,6 +125,10 @@ func (r *fakeRuntime) BeginTool(_ context.Context, id string, assets ...string) 
 	r.mu.Lock()
 	r.assets = assets
 	r.mu.Unlock()
+	if r.gate != nil {
+		r.entered <- struct{}{}
+		<-r.gate
+	}
 	if id != voicetrain.RuntimeID {
 		return nil, fmt.Errorf("an unexpected runtime %q", id)
 	}

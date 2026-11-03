@@ -64,18 +64,22 @@ func (s *Service) Start(ctx context.Context, o voicerefsvc.Owner, characterID st
 		return Status{}, invalidf("%s", p[0])
 	}
 
-	r := &run{id: newID(), key: keyOf(o, characterID), owner: o, done: make(chan struct{})}
 	s.mu.Lock()
 	if s.cur != nil {
 		s.mu.Unlock()
 		return Status{}, conflictf("ほかの登場人物の声を学習しています。GPU は 1 つなので、終わってから（または中止してから）始めてください")
 	}
+	// The run is cancellable from the moment it is published as s.cur (Cancel, Close), not only once the training has started.
+	runCtx, cancel := context.WithCancelCause(context.Background())
+	r := &run{id: newID(), key: keyOf(o, characterID), owner: o, done: make(chan struct{}), cancel: cancel}
 	s.cur = r
 	s.mu.Unlock()
 	started := false
 	defer func() {
 		if !started {
+			cancel(nil)
 			s.release(r)
+			close(r.done) // a Cancel that came while Start was refusing does not wait for a training that never ran
 		}
 	}()
 
@@ -114,8 +118,6 @@ func (s *Service) Start(ctx context.Context, o voicerefsvc.Owner, characterID st
 		rec.ProjectID = o.ID()
 	}
 	r.work = s.works.Begin(rec, "学習を始めています")
-	runCtx, cancel := context.WithCancelCause(context.Background())
-	r.cancel = cancel
 	r.status = Status{ID: r.id, State: worktrack.Running, CharacterID: characterID, Character: name, Epochs: opt, StartedAt: now}
 	r.stageAt = now
 	s.remember(r)
