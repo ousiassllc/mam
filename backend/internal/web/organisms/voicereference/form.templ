@@ -59,6 +59,7 @@ templ Form(d Data) {
 				"maxlength": strconv.Itoa(voiceref.MaxTextRunes),
 			})
 		</label>
+		<p class="text-xs text-amber-300" role="note" data-testid="voice-ref-consent-notice">声の持ち主本人の同意を得た音声だけを使ってください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりすることは、Irodori-TTS のモデルカードで禁じられています。</p>
 		<p class="text-xs text-neutral-400">ファイルを選ばずに保存すると、いまの音声のまま書き起こしと言語だけ変わります。</p>
 		<div class="flex flex-wrap gap-2">
 			@atoms.ButtonFor(atoms.TonePrimary, "参照音声を保存", d.Name, templ.Attributes{"type": "submit"})

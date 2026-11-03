@@ -78,11 +78,20 @@ func (i *Installer) assetState(a catalog.Resource, stamps map[string]store.FileS
 	return state
 }
 
+// ActiveSet is the weights and dependencies of the model in force: the set without the assets of the models the user did not choose
+// (store.RuntimeState.Choice; the catalog's default model before a choice). A runtime without choices has all of them.
+func (i *Installer) ActiveSet() catalog.ResourceSet {
+	s := i.AssetSet
+	s.Assets = s.Active(i.Store.Get().Choice)
+	return s
+}
+
 // Assets lists the weights and dependencies of the runtime with what the disk says of each (a stat per file; nothing is hashed).
 func (i *Installer) Assets() []AssetStatus {
 	stamps := i.Store.Get().Files
-	out := make([]AssetStatus, 0, len(i.AssetSet.Assets))
-	for _, a := range i.AssetSet.Assets {
+	active := i.ActiveSet().Assets
+	out := make([]AssetStatus, 0, len(active))
+	for _, a := range active {
 		out = append(out, AssetStatus{Name: a.Name, State: i.assetState(a, stamps), Required: a.Required})
 	}
 	return out
@@ -106,7 +115,7 @@ func (i *Installer) NotReady() []AssetStatus {
 func (i *Installer) AssetNeedBytes() int64 {
 	stamps := i.Store.Get().Files
 	var need int64
-	for _, a := range i.AssetSet.Assets {
+	for _, a := range i.ActiveSet().Assets {
 		if i.assetState(a, stamps) != AssetMissing {
 			continue
 		}
@@ -168,7 +177,7 @@ func (i *Installer) EnsureAssets(ctx context.Context, progress AssetProgress) er
 	}
 	var work []todo
 	var total int64
-	for _, a := range i.AssetSet.Assets {
+	for _, a := range i.ActiveSet().Assets {
 		if st := i.assetState(a, stamps); st != AssetOK {
 			work = append(work, todo{a, st})
 			total += a.Size

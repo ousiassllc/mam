@@ -157,7 +157,7 @@ func (c *Client) post(ctx context.Context, url, token string, body []byte) ([]by
 	if res.StatusCode/100 != 2 {
 		return nil, answerError(res.StatusCode, data)
 	}
-	if len(data) == 0 || len(data) > maxSpeechBytes || !isWav(data) {
+	if len(data) == 0 || len(data) > maxSpeechBytes || !localvoice.IsWav(data) {
 		return nil, &audiodirector.ProviderError{Vendor: localvoice.Vendor, Status: res.StatusCode, Message: "the answer is empty, too large or not a wav"}
 	}
 	return data, nil
@@ -184,9 +184,4 @@ func answerError(status int, body []byte) error {
 		return &localvoice.UnavailableError{Kind: localvoice.KindGPUMemory, Detail: detail, Err: &audiodirector.ProviderError{Vendor: localvoice.Vendor, Status: status, Message: detail}}
 	}
 	return &audiodirector.ProviderError{Vendor: localvoice.Vendor, Status: status, Message: detail}
-}
-
-// isWav reports whether data starts like a RIFF / WAVE file, which is what api_v2 answers with for media_type wav.
-func isWav(data []byte) bool {
-	return len(data) > 12 && string(data[:4]) == "RIFF" && string(data[8:12]) == "WAVE"
 }

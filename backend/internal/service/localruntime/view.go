@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	rtm "github.com/ousiassllc/mam/backend/internal/modelmgr/runtime"
 )
@@ -50,6 +51,8 @@ type View struct {
 	InstallJob string `json:"install_job,omitempty"`
 	// Weights are the weights and dependencies the runtime needs, with where each comes from and its license.
 	Weights WeightsView `json:"weights"`
+	// Choice is the model in force, whose weights Weights are (nil for a runtime without choices).
+	Choice *choice.Choice `json:"choice,omitempty"`
 }
 
 // List describes every runtime of the catalog.
@@ -85,6 +88,7 @@ func (s *Service) view(ctx context.Context, inst *instance) View {
 		}
 	}
 	v.Weights = weightsView(inst, v.Installed)
+	v.Choice = inst.chosen()
 	v.FreeBytes = s.free(inst.layout.Root)
 	for _, name := range rt.VariantList() {
 		a := rt.Variants[name]

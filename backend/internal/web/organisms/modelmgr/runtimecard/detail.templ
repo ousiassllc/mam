@@ -42,6 +42,7 @@ templ RuntimeDetail(r Runtime) {
 		if r.LicenseCondition != "" {
 			<p class="text-xs text-amber-300" data-testid="mm-runtime-license-note">{ r.LicenseCondition }</p>
 		}
+		@RuntimeModels(r)
 		@weightlist.List(r.Weights)
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})

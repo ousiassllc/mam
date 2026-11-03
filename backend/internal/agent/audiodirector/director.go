@@ -46,7 +46,7 @@ type Input struct {
 	// Voices maps a speaker name to the cloned voice that speaks their lines.
 	Voices map[string]string
 	// VoiceProvider is who speaks the lines ("" selects ElevenLabs). LocalVoices maps a speaker name (localvoice.SpeakerOf) to the
-	// reference voice the local provider speaks their lines with; it is read for localvoice.Local only.
+	// reference voice the local provider speaks their lines with; it is read for a local provider only (Provider.IsLocal).
 	VoiceProvider localvoice.Provider
 	LocalVoices   map[string]localvoice.Voice
 	// LipSyncProvider is who redoes the mouths of MAX QUALITY ("" selects Sync Labs).
@@ -158,7 +158,7 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 	for _, sc := range in.Scenes {
 		for _, entry := range sc.Lines {
 			if line, ok := domain.ParseVoiceLine(entry); ok {
-				if line.Kind == domain.VoiceDialogue && in.VoiceProvider != localvoice.Local {
+				if line.Kind == domain.VoiceDialogue && !in.VoiceProvider.IsLocal() {
 					line.VoiceID = in.Voices[line.Speaker]
 				}
 				sceneOfLine[len(lines)] = sc

@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
  "description": "法線マップ（面の向きを色にした画像。平らな面が青紫）の立体の形に沿って SDXL で描く ControlNet（xinsir の ControlNet Union、約 2.5 GB。1 つの重みが depth・canny・normal など 10 種以上の制御を受け、SetUnionControlNetType で normal を選ぶ）。ComfyUI 標準のノードだけで動き、追加ノードは要らない。参照画像は法線マップそのものを渡す（mam は法線を推定しない）。生成テストの「ポーズを選ぶ」で「法線」を選ぶと、ポーズ集（Shisei）の法線マップを参照画像に入れられる。SDXL base 1.0 は導入済みの「Stable Diffusion XL base 1.0」と共有する。",
  "files": [
   {

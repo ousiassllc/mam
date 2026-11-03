@@ -52,7 +52,7 @@ type WeightsView struct {
 }
 
 func weightsView(inst *instance, installed bool) WeightsView {
-	set := inst.install.AssetSet
+	set := inst.install.ActiveSet()
 	w := WeightsView{State: WeightsNone, Assets: []AssetView{}, TotalBytes: set.TotalSize()}
 	states := map[string]rtm.AssetStatus{}
 	for _, st := range inst.install.Assets() {

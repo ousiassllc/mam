@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/settings"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
 	rtm "github.com/ousiassllc/mam/backend/internal/modelmgr/runtime"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
@@ -45,9 +46,10 @@ func machine(supported bool) runtimes {
 		}
 		return v
 	}
-	r := runtimes{views: map[string]localruntime.View{"gpt-sovits": view("gpt-sovits", "GPT-SoVITS"), "musetalk": view("musetalk", "MuseTalk 1.5")}, refuse: map[string]error{}}
+	r := runtimes{views: map[string]localruntime.View{"gpt-sovits": view("gpt-sovits", "GPT-SoVITS"), "irodori-tts": view("irodori-tts", "Irodori-TTS"), "musetalk": view("musetalk", "MuseTalk 1.5")}, refuse: map[string]error{}}
 	if !supported {
 		r.refuse["gpt-sovits"] = &localruntime.SupportError{Runtime: "gpt-sovits", Support: r.views["gpt-sovits"].Support}
+		r.refuse["irodori-tts"] = &localruntime.SupportError{Runtime: "irodori-tts", Support: r.views["irodori-tts"].Support}
 		r.refuse["musetalk"] = &localruntime.SupportError{Runtime: "musetalk", Support: r.views["musetalk"].Support}
 	}
 	return r
@@ -166,4 +168,38 @@ func TestAudioProviders_WithoutTheLocalRuntimesTheyAreNotAvailable(t *testing.T)
 	assert.False(t, got.LipSync.Available)
 	assert.Equal(t, "elevenlabs", got.Voice.CloudProvider)
 	assert.Contains(t, env.CallError("set_audio_providers", map[string]any{"voice_provider": "local"}), "このアプリでは使えません")
+}
+
+func TestAudioProviders_IrodoriIsASecondLocalVoiceWithItsModelAndTheCautionsOfIt(t *testing.T) {
+	rt := machine(true)
+	v := rt.views["irodori-tts"]
+	v.Choice = &choice.Choice{ID: "v4-large", Name: "Irodori-TTS v4-Large", Cautions: []string{"本人の同意なく声をコピーしない"}}
+	rt.views["irodori-tts"] = v
+	env, _ := audioEnv(t, rt, keys{"elevenlabs": true})
+
+	var got settings.AudioProvidersSection
+	env.CallOK("set_audio_providers", map[string]any{"voice_provider": "irodori"}, &got)
+
+	assert.Equal(t, "irodori", got.VoiceProvider)
+	assert.Equal(t, "Irodori-TTS", got.Irodori.Name)
+	assert.Equal(t, "irodori-tts", got.Irodori.RuntimeID)
+	assert.True(t, got.Irodori.Usable)
+	assert.Equal(t, "Irodori-TTS v4-Large", got.Irodori.Model)
+	assert.Equal(t, []string{"本人の同意なく声をコピーしない"}, got.Irodori.Cautions)
+	assert.Equal(t, "elevenlabs", got.Irodori.CloudProvider)
+	assert.Equal(t, "GPT-SoVITS", got.Voice.Name, "GPT-SoVITS is still its own provider")
+	assert.Empty(t, got.Voice.Model)
+}
+
+func TestAudioProviders_IrodoriThisMachineCannotRunIsAValidationErrorWithItsReason(t *testing.T) {
+	env, path := audioEnv(t, machine(false), nil)
+
+	msg := env.CallError("set_audio_providers", map[string]any{"voice_provider": "irodori"})
+
+	assert.Contains(t, msg, "validation:")
+	assert.Contains(t, msg, "macOS では公式の PyTorch 版が使えません")
+	assert.NoFileExists(t, path)
+	var got settings.AudioProvidersSection
+	env.CallOK("get_audio_providers", map[string]any{}, &got)
+	assert.Contains(t, got.Irodori.Reason, "この PC ではローカルの声（Irodori-TTS）を使えません")
 }

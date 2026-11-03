@@ -13,6 +13,9 @@ import (
 // ErrNotInstalled means the runtime is not installed (or its files are gone).
 var ErrNotInstalled = errors.New("runtime: not installed")
 
+// ChoiceEnv is the variable that names the model in force of a runtime with choices, for the launcher (catalog.ResourceSet.Choices).
+const ChoiceEnv = "MAM_RUNTIME_CHOICE"
+
 // foreignEnv are the variables of mam's own environment that would point the vendor's interpreter at another Python.
 var foreignEnv = []string{"PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP", "VIRTUAL_ENV"}
 
@@ -58,6 +61,14 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 		"MODELSCOPE_CACHE=" + filepath.Join(cache, "modelscope"), "XDG_CACHE_HOME=" + cache,
 		"TEMP=" + tmp, "TMP=" + tmp, "TMPDIR=" + tmp,
 	}, l.Env...)
+	if id := i.AssetSet.Chosen(i.Store.Get().Choice); id != "" { // the model in force: its folder is named by MAM_RUNTIME_CHOICE, its settings are its env
+		env = append(env, ChoiceEnv+"="+id)
+		for _, c := range i.AssetSet.Choices {
+			if c.ID == id {
+				env = append(env, c.Env...)
+			}
+		}
+	}
 	return proc.Spec{
 		Command: i.PythonPath(), Args: args, Dir: i.Layout.EnvDir(), LogPath: i.Layout.LogPath(), Env: env, DropEnv: foreignEnv,
 	}, nil
