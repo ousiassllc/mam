@@ -8,12 +8,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
-// MarkRunning moves a queued result to running and reports whether it did: a result that was cancelled meanwhile stays
-// cancelled and must not be started.
-func (r *Repository) MarkRunning(ctx context.Context, id string) (bool, error) {
+// MarkRunning moves a queued result to running at the time at (the start of its duration, see RunDurations) and reports whether
+// it did: a result that was cancelled meanwhile stays cancelled and must not be started.
+func (r *Repository) MarkRunning(ctx context.Context, id string, at time.Time) (bool, error) {
 	started := false
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE gentest_result SET status = 'running' WHERE id = ? AND status = 'queued'`, id)
+		res, err := tx.ExecContext(ctx, `UPDATE gentest_result SET status = 'running', started_at = ? WHERE id = ? AND status = 'queued'`, ts(at), id)
 		if err != nil {
 			return err
 		}

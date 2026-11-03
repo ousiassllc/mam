@@ -36,7 +36,7 @@ func TestContinueBatchReopensAFinishedBatchAndAddsQueuedRounds(t *testing.T) {
 func TestDeleteQueuedRemovesOnlyTheRoundsThatNeverStarted(t *testing.T) {
 	r, ctx := setup(t)
 	require.NoError(t, r.CreateBatch(ctx, newBatch("b1", base, result("r1", 0, "flux-2", ""), result("r2", 1, "flux-2", ""), result("r3", 2, "flux-2", ""))))
-	started, err := r.MarkRunning(ctx, "r1")
+	started, err := r.MarkRunning(ctx, "r1", base)
 	require.NoError(t, err)
 	require.True(t, started)
 

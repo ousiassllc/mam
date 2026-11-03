@@ -91,11 +91,12 @@ func (r *reader) gentest(ctx context.Context, e *Entry, p payload) error {
 	if b.Total == 0 {
 		return nil
 	}
-	percent := b.Done * 100
+	percent, text := b.Done*100, fmt.Sprintf("%d / %d 件", b.Done, b.Total)
 	if v, ok := liveView(e.ID); ok && e.State == Running {
 		percent += v.Percent
+		text += "・" + liveText(v)
 	}
-	e.Progress = &Progress{Percent: percent / b.Total, Text: fmt.Sprintf("%d / %d 件", b.Done, b.Total)}
+	e.Progress = &Progress{Percent: percent / b.Total, Text: text}
 	return nil
 }
 
@@ -140,7 +141,7 @@ func (r *reader) shot(ctx context.Context, e *Entry, shotID string) error {
 		return err
 	}
 	if v, ok := liveView(shotID); ok && e.State == Running {
-		e.Progress = &Progress{Percent: v.Percent, Text: fmt.Sprintf("ステップ %d / %d", v.Step, v.MaxStep)}
+		e.Progress = &Progress{Percent: v.Percent, Text: liveText(v)}
 	}
 	return nil
 }

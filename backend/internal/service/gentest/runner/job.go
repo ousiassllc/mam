@@ -223,7 +223,7 @@ func (br *batchRun) start(ctx context.Context, r gentestrepo.Result) {
 		s.settle(ctx, r.ID, gentestrepo.StatusFailed, ReasonInterrupted, nil)
 		return
 	}
-	started, err := s.Repo.MarkRunning(ctx, r.ID)
+	started, err := s.Repo.MarkRunning(ctx, r.ID, s.Now().UTC())
 	if err != nil {
 		s.Logger.Error("mark generation test result running failed", "result_id", r.ID, "err", err)
 		return

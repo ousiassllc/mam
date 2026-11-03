@@ -31,7 +31,7 @@
 | `file_path`・`mime_type`・`size_bytes` | 結果のファイル（成功したときだけ） |
 | `cost_basis`・`estimated_cost`・`actual_cost` | `priced` / `free` / `unknown`・見積り USD（unknown は NULL）・ベンダーが返したときの実費 |
 | `favorite` | お気に入り（取り込みの目印にすぎない） |
-| `created_at`・`finished_at` | 日時 |
+| `created_at`・`started_at`・`finished_at` | 日時。`started_at` は `queued` → `running` にした時刻（実行時間 = `finished_at − started_at`。`estimate_generation_test` のローカルモデルの所要時間の根拠。キューの待ち時間を含まない。マイグレーション `20261105090000_gentest_result_started_at.sql` より前の結果と、まだ動いていない結果は NULL）。実行していない結果（取り消し）も NULL |
 
 索引: `created_at DESC`（履歴）・`batch_id, position`・`model`・`favorite`（部分）・`status`。
 

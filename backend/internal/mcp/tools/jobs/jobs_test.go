@@ -137,7 +137,8 @@ func TestGetJob_ShowsTheStepsOfTheComfyUICallOfARunningShotOnly(t *testing.T) {
 	call.Step("3", "KSampler", 5, 20, 30)
 	st := getJob(t, env, ref.JobID)
 	require.NotNil(t, st.Steps)
-	assert.Equal(t, live.View{Node: "KSampler", Step: 5, MaxStep: 20, Percent: 30, ETAUnavailable: st.Steps.ETAUnavailable}, *st.Steps)
+	assert.Equal(t, live.View{Node: "KSampler", Step: 5, MaxStep: 20, Percent: 30, ElapsedSeconds: st.Steps.ElapsedSeconds, ETAUnavailable: st.Steps.ETAUnavailable}, *st.Steps)
+	assert.GreaterOrEqual(t, st.Steps.ElapsedSeconds, 0, "the time since the call was queued")
 
 	other := live.Default.Start("test-ep", "prompt-other")
 	defer other.End()
