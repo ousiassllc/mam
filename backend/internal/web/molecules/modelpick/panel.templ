@@ -1,0 +1,143 @@
+package modelpick
+
+import (
+	"slices"
+
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
+)
+
+// Panel is the panel of detailed filters that the funnel opens: a group of choices for each thing a model can be told apart by (the sections the screen's Facets
+// offer). There is no "easy" and "detailed" mode: it is one panel. Every choice is a field of the bar, so a change asks the server for the list again. oob draws it
+// out of band (the answer to a chip, which changed the condition without the panel).
+templ Panel(b Filter, oob bool) {
+	<div
+		id={ b.panelID() }
+		class="z-20 flex max-h-[70vh] flex-col gap-4 overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-4 shadow-xl"
+		role="group"
+		aria-label="詳細フィルター"
+		hidden
+		data-mp-panel
+		data-testid="model-pick-panel"
+		if oob {
+			hx-swap-oob="outerHTML"
+		}
+	>
+		<div class="grid gap-4 sm:grid-cols-2">
+			if len(b.Facets.Kinds) > 0 {
+				@checks("種類", "kinds", kindOptions(b.Facets.Kinds), kindWords(b.Cond.Kinds))
+			}
+			if len(b.Facets.Inputs) > 0 {
+				@checks("入力", "inputs", inputOptions(b.Facets.Inputs), inputWords(b.Cond.Inputs))
+			}
+			if b.Facets.Adult {
+				@radios("成人向け", "adult", adultOptions(), orWord(string(b.Cond.Adult), string(modelfilter.AdultAll)))
+			}
+			if b.Facets.Uncensored {
+				@radios("非検閲", "uncensored", uncensoredOptions(), orWord(string(b.Cond.Uncensored), string(modelfilter.UncensoredAll)))
+			}
+			if b.Facets.Params {
+				@checks("パラメータ数", "params", bandOptions(), bandWords(b.Cond.Params))
+			}
+			if b.Facets.Commercial {
+				@radios("商用利用", "commercial", b.commercialOptions(), b.commercialCurrent())
+			}
+			if b.Facets.Origins || len(b.Facets.Providers) > 0 {
+				@sourceSection(b)
+			}
+			if b.Facets.Installed {
+				@radios("導入済み", "installed", installedOptions(), orWord(string(b.Cond.Installed), string(modelfilter.InstalledAll)))
+			}
+			if b.Facets.Speed {
+				@checks("速度の目安", "speeds", levelOptions(true), levelWords(b.Cond.Speeds))
+			}
+			if b.Facets.Quality {
+				@checks("品質の目安", "qualities", levelOptions(false), levelWords(b.Cond.Qualities))
+			}
+			if b.Facets.VRAM || b.Facets.Audio || b.Facets.Available {
+				@switchSection(b)
+			}
+		</div>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<p class="text-xs text-neutral-400">条件を選ぶと、その場で一覧が絞り込まれます。</p>
+			<button
+				type="button"
+				class="cursor-pointer rounded-md border border-neutral-600 px-2.5 py-1 text-xs text-neutral-200 hover:border-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+				hx-get={ b.URL(b.ClearAll()) }
+				hx-include={ b.clearInclude() }
+				hx-target={ b.Target }
+				hx-swap="outerHTML"
+				data-testid="model-pick-clear"
+			>すべてクリア</button>
+		</div>
+	</div>
+}
+
+// checks is a group of choices of which any can be chosen (a chip each).
+templ checks(legend, name string, opts []Option, chosen []string) {
+	<fieldset class="flex min-w-0 flex-col gap-1.5">
+		<legend class="mb-1 text-xs font-medium text-neutral-300">{ legend }</legend>
+		<div class="flex flex-wrap gap-1.5">
+			for _, o := range opts {
+				@choice("checkbox", name, o.Value, o.Label, slices.Contains(chosen, o.Value))
+			}
+		</div>
+	</fieldset>
+}
+
+// radios is a group of choices of which one is chosen.
+templ radios(legend, name string, opts []Option, current string) {
+	<fieldset class="flex min-w-0 flex-col gap-1.5">
+		<legend class="mb-1 text-xs font-medium text-neutral-300">{ legend }</legend>
+		<div class="flex flex-wrap gap-1.5">
+			for _, o := range opts {
+				@choice("radio", name, o.Value, o.Label, o.Value == current)
+			}
+		</div>
+	</fieldset>
+}
+
+// choice is one chip of a group: a checkbox or a radio that is hidden but still the control, so the keyboard and a screen reader work as with a bare input.
+templ choice(kind, name, value, label string, checked bool) {
+	<label class="relative cursor-pointer">
+		<input type={ kind } class="peer sr-only" name={ name } value={ value } form={ FormNone } checked?={ checked }/>
+		<span class={ chipClass }>{ label }</span>
+	</label>
+}
+
+// sourceSection is where the models come from: local or cloud, and the providers the screen names.
+templ sourceSection(b Filter) {
+	<fieldset class="flex min-w-0 flex-col gap-1.5">
+		<legend class="mb-1 text-xs font-medium text-neutral-300">提供元</legend>
+		<div class="flex flex-wrap gap-1.5">
+			if b.Facets.Origins {
+				for _, o := range modelfilter.Origins() {
+					@choice("checkbox", "origins", string(o), OriginLabel(o), slices.Contains(b.Cond.Origins, o))
+				}
+			}
+			for _, p := range b.Facets.Providers {
+				@choice("checkbox", "providers", p.Value, p.Label, slices.Contains(b.Cond.Providers, p.Value))
+			}
+		</div>
+	</fieldset>
+}
+
+// switchSection is the yes-or-no filters: it runs on a 16 GB GPU, makes sound, and the switch that hides what cannot be chosen now.
+templ switchSection(b Filter) {
+	<fieldset class="flex min-w-0 flex-col gap-1.5">
+		<legend class="mb-1 text-xs font-medium text-neutral-300">その他</legend>
+		<div class="flex flex-wrap gap-1.5">
+			if b.Facets.VRAM {
+				@choice("checkbox", "vram_fit", "1", "16GB の VRAM で動く", b.Cond.VRAMFit)
+			}
+			if b.Facets.Audio {
+				@choice("checkbox", "audio", "1", "音声つき", b.Cond.Audio)
+			}
+			if b.Facets.Available {
+				@choice("checkbox", "available_only", "1", "選べるものだけ", b.Cond.AvailableOnly)
+				if b.Start.AvailableOnly {
+					<input type="hidden" name="available_only" value="0" form={ FormNone }/>
+				}
+			}
+		</div>
+	</fieldset>
+}

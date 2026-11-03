@@ -33,7 +33,6 @@ func TestCredentialModalPaths_EscapeTheProvider(t *testing.T) {
 func TestRowModalPaths_AreUnderTheirCategoryAndEscapeTheKey(t *testing.T) {
 	assert.Equal(t, "/settings/llm/agents/writer", paths.LLMAgent("writer"))
 	assert.Equal(t, "/settings/llm/agents/a%2Fb/edit", paths.LLMAgentEdit("a/b"))
-	assert.Equal(t, "/settings/llm/agents/writer/models/primary", paths.LLMModelField("writer", "primary"))
 	assert.Equal(t, "/settings/models/images/preview", paths.ModelImage("preview"))
 	assert.Equal(t, "/settings/models/images/preview/edit", paths.ModelImageEdit("preview"))
 	assert.Equal(t, "/settings/models/policies/max_quality", paths.ModelPolicy("max_quality"))

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -15,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/pickfilter"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
@@ -135,8 +138,10 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 	return ""
 }
 
-func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free, gpuVRAM uint64, tokenMissing bool) view.Model {
+func modelData(ctx context.Context, svc *modelmanager.Service, e mmview.Entry, free, gpuVRAM uint64, tokenMissing bool) view.Model {
+	m := e.ModelView
 	out := view.Model{
+		ParamsLabel: e.Traits.ParamsLabel, VRAMMinGB: e.VRAM.MinGB,
 		ID: m.ID, Name: m.Name, Kind: string(m.Kind), KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
 		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM),
@@ -177,20 +182,25 @@ func kindLabel(kind string) string {
 
 // catalogData is the model list. jobs are the install jobs it reports on besides the running ones: those that ended
 // are shown once as a notice or an error.
-func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) view.Catalog {
+func catalogData(c *gin.Context, svc *modelmanager.Service, jobs []string) view.Catalog {
+	ctx := c.Request.Context()
 	free := svc.Engine().FreeBytes
 	gpuVRAM := mmview.GPUVRAM(ctx, svc)
 	hasToken, tokenErr := svc.HasHuggingFaceToken()
-	c := view.Catalog{Blocked: blockedText(ctx, svc), UpdatedAt: time.Now().Format(time.TimeOnly)}
+	cat := view.Catalog{Blocked: blockedText(ctx, svc), UpdatedAt: time.Now().Format(time.TimeOnly)}
 	names := map[string]string{}
-	for _, m := range svc.Catalog() {
-		md := modelData(ctx, svc, m, free, gpuVRAM, tokenErr == nil && !hasToken)
+	for _, m := range svc.Catalog() { // every install that runs is reported, whatever the filter hides
 		names[m.InstallJob] = "「" + m.Name + "」"
-		c.Models = append(c.Models, md)
 		if m.InstallJob != "" {
-			c.Jobs = append(c.Jobs, m.InstallJob)
+			cat.Jobs = append(cat.Jobs, m.InstallJob)
 		}
 	}
+	screen, all := catalogScreen(svc), mmview.Entries(svc)
+	cond, problem := screen.Read(c)
+	for _, e := range mmview.Where(svc, pickfilter.Resolve(cond)) {
+		cat.Models = append(cat.Models, modelData(ctx, svc, e, free, gpuVRAM, tokenErr == nil && !hasToken))
+	}
+	cat.Filter = pickfilter.Sync(screen.Filter(cond, problem, pickfilter.CountOf(pickfilter.Resolve(cond), all, mmview.Entry.Item)), c)
 	var notices, failures []string
 	for _, id := range jobs {
 		if _, running := names[id]; running {
@@ -201,7 +211,7 @@ func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) 
 			continue
 		}
 		if st.State == domain.JobQueued || st.State == domain.JobRunning {
-			c.Jobs = append(c.Jobs, id) // the end is not recorded yet: ask again
+			cat.Jobs = append(cat.Jobs, id) // the end is not recorded yet: ask again
 			continue
 		}
 		name := targetName(svc, st)
@@ -211,8 +221,8 @@ func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) 
 			failures = append(failures, f)
 		}
 	}
-	c.Notice, c.Error = strings.Join(notices, "。"), strings.Join(failures, "\n")
-	return c
+	cat.Notice, cat.Error = strings.Join(notices, "。"), strings.Join(failures, "\n")
+	return cat
 }
 
 // targetName is "「<model name>」" for the job of a model install.

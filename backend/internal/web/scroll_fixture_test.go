@@ -53,7 +53,7 @@ func scrollCatalog(installing int, jobs []string) modelmgr.Catalog {
 }
 
 func scrollTrial(oob bool) modelmgr.TrialPanel {
-	p := modelmgr.TrialPanel{OOB: oob, Form: modelmgr.TrialForm{Media: "image", MaxPrompt: 2000, Aspect: "16:9", Models: []modelmgr.TrialModel{{ID: "model-1", Label: "モデル 1", Selected: true}}}}
+	p := modelmgr.TrialPanel{OOB: oob, Form: modelmgr.TrialForm{Media: "image", MaxPrompt: 2000, Aspect: "16:9", ModelID: "model-1", HasModels: true}}
 	for i := 1; i <= 3; i++ {
 		p.Trials.Items = append(p.Trials.Items, modelmgr.Trial{ID: "t" + strconv.Itoa(i), ModelID: "model-1", Prompt: "試し生成 " + strconv.Itoa(i), Status: "succeeded", StatusText: "完了", CreatedAt: "2026-11-01 10:00", Deletable: true})
 	}

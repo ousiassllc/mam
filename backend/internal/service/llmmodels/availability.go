@@ -23,6 +23,15 @@ func (f Fallback) availability() modelfilter.Availability {
 	return modelfilter.Usable()
 }
 
+// ProviderNames are the providers the assignment can name, in the order the screens list them (llm.Providers()).
+func ProviderNames() []string {
+	out := make([]string, 0, len(llm.Providers()))
+	for _, p := range llm.Providers() {
+		out = append(out, string(p))
+	}
+	return out
+}
+
 // Availability is whether the provider can be used now: an API key is saved, or the subscription is signed in. It reads the key store and the sign-in only (no
 // network), so it is cheap enough for every render of the assignment screen. ErrUnknownProvider for a provider that is not one of llm.Providers().
 //

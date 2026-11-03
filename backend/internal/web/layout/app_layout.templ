@@ -2,6 +2,7 @@ package layout
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -41,6 +42,7 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 			@Shell(nav) {
 				{ children... }
 			}
+			@modelpick.Host()
 			<div id="toast-region" class="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2" aria-live="assertive"></div>
 			<template id="toast-template">
 				@atoms.Toast("")

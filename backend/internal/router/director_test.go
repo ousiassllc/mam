@@ -101,7 +101,7 @@ func TestShotLocks_PutSetsTheModeAndReturnsTheSwitchInItsNewState(t *testing.T) 
 
 	rec = g.form(http.MethodPut, "/shots/"+g.shotID+"/locks", url.Values{"parameter": {"video_model"}, "mode": {"manual"}, "value": {"kling-3.0"}})
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `<option value="kling-3.0" selected data-commercial="unknown">`)
+	assert.Contains(t, rec.Body.String(), `<input type="hidden" name="value" value="kling-3.0" data-mp-from="value">`)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, g.form(http.MethodPut, "/shots/"+g.shotID+"/locks", url.Values{"parameter": {"story"}, "mode": {"lock"}}).Code)
 	assert.Equal(t, http.StatusUnprocessableEntity, g.form(http.MethodPut, "/shots/"+g.shotID+"/locks", url.Values{"parameter": {"camera"}, "mode": {"x"}}).Code)

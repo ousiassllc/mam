@@ -35,7 +35,7 @@ func TestThePromptsOfTheTiersHaveTheWeightBarAndTheVideoFormDoesNot(t *testing.T
 func TestTheCardsCarryTheSentenceOfTheWeightsForTheBar(t *testing.T) {
 	s := newScreen(t, gentesttest.WithTemplateModels())
 	body := html.UnescapeString(s.page(paths.GenerationTest() + "?tier=detail"))
-	card := regexp.MustCompile(`(?s)<li data-testid="gt-model" data-model="` + string(gentesttest.NoWeightModel) + `"[^>]*>`).FindString(body)
+	card := regexp.MustCompile(`(?s)<li [^>]*data-model="` + string(gentesttest.NoWeightModel) + `"[^>]*>`).FindString(body)
 	require.NotEmpty(t, card)
 	assert.Contains(t, card, `data-prompt-weight="unsupported"`)
 	assert.Contains(t, card, `data-prompt-weight-text="効きません`)

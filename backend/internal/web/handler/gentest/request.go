@@ -38,6 +38,8 @@ type formState struct {
 	adv  advform.Fields
 	// tier is the tier of the image form (tierform): the easy tier picks the model from its intent when it is estimated.
 	tier tierform.State
+	// pick is the filter of the model list the form is drawn with (nil: the screen's start): the page reads it from the request's query and the cookie of the screen.
+	pick *pickState
 }
 
 // readForm reads the compose form (a POST, multipart or not, or the query of a GET that includes the form). Input images that

@@ -59,17 +59,16 @@ func TestLLMSettings_TheModalOfAnAgentHoldsItsTwoTargetsAndTheirDefaults(t *test
 	def := llm.DefaultConfig().Routes[llm.AgentDirector]
 	assert.Contains(t, body, `id="mam-modal-title"`)
 	assert.Contains(t, body, "Director（Scene / Shot の計画） の LLM")
-	assert.Equal(t, def.Primary.Model, selectedValue(t, body, "primary.model"), "the model is a pull-down")
-	assert.Equal(t, def.Fallback.Model, selectedValue(t, body, "fallback.model"))
+	assert.Equal(t, def.Primary.Model, hiddenValue(t, body, "primary.model"), "the model is a field of the model picker")
+	assert.Equal(t, def.Fallback.Model, hiddenValue(t, body, "fallback.model"))
 	assert.Contains(t, body, "既定: "+string(def.Primary.Provider)+" / "+def.Primary.Model)
 	assert.Contains(t, body, `maxlength="128"`)
-	assert.Regexp(t, `<option value="`+string(def.Primary.Provider)+`" selected`, body)
+	assert.Equal(t, string(def.Primary.Provider), hiddenValue(t, body, "primary.provider"))
 	assert.Equal(t, 1, strings.Count(body, "autofocus"), "one control to start with")
 	assert.Contains(t, body, `hx-put="`+paths.LLMAgent("director")+`"`)
 	assert.Contains(t, body, `hx-delete="`+paths.LLMAgent("director")+`"`)
-	for _, id := range []string{"llm-primary-provider", "llm-primary-model", "llm-fallback-provider", "llm-fallback-model"} {
-		assert.Contains(t, body, `for="`+id+`"`)
-		assert.Contains(t, body, `id="`+id+`"`)
+	for _, id := range []string{"llm-primary-model", "llm-fallback-model"} {
+		assert.Contains(t, body, `id="`+id+`-button"`)
 	}
 
 	// An unknown Agent is 404 with a modal that says so; not through HTMX the category page answers.
@@ -159,16 +158,16 @@ func TestLLMSettings_ARefusedAgentSaveSaysWhyKeepsWhatWasTypedAndWritesNothing(t
 		form  url.Values
 		blame string
 	}{
-		"unknown provider": {agentForm("nobody", "m", "openai", "gpt-typed"), "llm-primary-provider"},
-		"empty model":      {agentForm("google", "  ", "openai", "gpt-typed"), "llm-primary-model"},
-		"missing fields":   {url.Values{"primary.provider": {"google"}, "primary.model": {"m"}, "fallback.model": {"gpt-typed"}}, "llm-fallback-provider"},
+		"unknown provider": {agentForm("nobody", "m", "openai", "gpt-typed"), "llm-primary-model-button"},
+		"empty model":      {agentForm("google", "  ", "openai", "gpt-typed"), "llm-primary-model-button"},
+		"missing fields":   {url.Values{"primary.provider": {"google"}, "primary.model": {"m"}, "fallback.model": {"gpt-typed"}}, "llm-fallback-model-button"},
 	} {
 		rec := s.requestTo(http.MethodPut, paths.LLMAgent("director"), c.form)
 
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, name)
 		body := rec.Body.String()
 		assert.Regexp(t, `<p id="mam-modal-error" role="alert"[^>]*>Director`, body, name)
-		assert.Equal(t, "gpt-typed", selectedValue(t, body, "fallback.model"), name)
+		assert.Equal(t, "gpt-typed", hiddenValue(t, body, "fallback.model"), name)
 		assert.Regexp(t, `id="`+c.blame+`"[^>]*aria-invalid="true"[^>]*aria-describedby="mam-modal-error"|aria-invalid="true"[^>]*id="`+c.blame+`"`, body, name)
 		assert.Equal(t, 1, strings.Count(body, "autofocus"), name)
 		assert.NoFileExists(t, s.file, name)

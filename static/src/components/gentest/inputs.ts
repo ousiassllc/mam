@@ -131,8 +131,8 @@ class Inputs {
       },
       { signal },
     );
-    // The commercial filter hides (and disables) cards: what is ticked now changes without a change of the cards.
-    this.root.addEventListener('commercial-filter-applied', () => this.sync(), { signal });
+    // The list of models is drawn again (a filter changed): what is ticked now changes without a change of a card.
+    this.root.addEventListener('model-pick-applied', () => this.sync(), { signal });
     for (const dialog of this.pickers()) dialog.addEventListener('htmx:afterRequest', markAdded);
     // The form is swapped as a whole (another media): its files go with it, so their object URLs are let go of.
     this.root.addEventListener('htmx:beforeCleanupElement', (e) => {

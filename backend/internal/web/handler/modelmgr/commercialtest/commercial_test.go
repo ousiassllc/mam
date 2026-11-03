@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyuitest"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
@@ -47,6 +48,8 @@ func newScreen(t *testing.T) *screen {
 	t.Helper()
 	rig := mmtest.New(t)
 	rig.InstallEngine()
+	modellicense.SetDefaultFilter(rig.Svc.DefaultFilter) // what the app wires: every list of models starts at the setting
+	t.Cleanup(func() { modellicense.SetDefaultFilter(nil) })
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
 	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "m.json"), false)
 	settings.ModelManager, settings.Gentest = rig.Svc, rig.Gentest
@@ -148,20 +151,23 @@ func TestConsentDialogShowsTheBadgeNextToTheCommercialUse(t *testing.T) {
 	assert.Regexp(t, `(?s)data-testid="mm-consent-commercial".*data-commercial-badge="no"`, dlg)
 }
 
-func TestPageHasTheSettingAndTheFilterOfTheModelList(t *testing.T) {
+func TestPageHasTheSettingAndTheFilterBarOfTheModelList(t *testing.T) {
 	s := newScreen(t)
 
 	page := s.page()
 
 	assert.Contains(t, page, `data-testid="mm-commercial-setting"`)
-	assert.Contains(t, page, `data-commercial-filter-target="#mm-models"`)
 	assert.Contains(t, page, `aria-pressed="false"`)
-	assert.Regexp(t, `value="all"\s+checked`, page)
-	assert.Contains(t, page, `id="mm-models"`, "the filter names the list it narrows")
+	assert.Contains(t, page, `data-testid="model-pick-bar"`, "the same filter bar as every list of models")
+	assert.Contains(t, page, `hx-get="/model-manager/models"`, "the server narrows the list: the bar asks for it")
+	assert.Contains(t, page, `hx-target="#mm-catalog"`)
+	assert.NotContains(t, page, `name="commercial" value="all"`, "the panel's choice that is the setting's (すべて while it is off) is sent as the empty word: the screen follows the setting")
+	assert.Contains(t, page, `name="commercial" value="ok"`)
+	assert.Contains(t, page, `id="mm-models"`)
 }
 
-// The setting is kept in state.json; turning it on makes the filter start at 商用OKのみ here and in the trial's model choice.
-func TestSetCommercialOnlyKeepsTheSettingAndDrawsTheFilterAtItsDefault(t *testing.T) {
+// The setting is kept in state.json; turning it on makes the commercial-use choice of the filter start at 商用OKのみ, for the list here and for the trial's model choice.
+func TestSetCommercialOnlyKeepsTheSettingAndTheListStartsAtItsDefault(t *testing.T) {
 	s := newScreen(t)
 	require.False(t, s.rig.Svc.CommercialOnly())
 
@@ -169,26 +175,42 @@ func TestSetCommercialOnlyKeepsTheSettingAndDrawsTheFilterAtItsDefault(t *testin
 
 	require.Equal(t, http.StatusOK, on.Code, on.Body.String())
 	assert.True(t, s.rig.Svc.CommercialOnly())
-	assert.Regexp(t, `value="ok"\s+checked`, on.Body.String())
 	assert.Contains(t, on.Body.String(), `aria-pressed="true"`)
-	assert.Contains(t, on.Body.String(), `hx-swap-oob`, "the trial's model choice is drawn again at the new default")
-	assert.Regexp(t, `value="ok"\s+checked`, s.page(), "the page starts at 商用OKのみ")
+	assert.Contains(t, on.Body.String(), `hx-swap-oob`, "the model list (with its filter) and the trial's model choice are drawn again at the new default")
+	assert.Contains(t, on.Body.String(), `name="commercial" value="all"`, "the filter of the list starts at 商用OKのみ: すべて is now a choice of its own")
+	assert.NotContains(t, on.Body.String(), `name="commercial" value="ok"`, "商用OKのみ is the setting's: sent as the empty word")
+	assert.NotContains(t, s.page(), `name="commercial" value="ok"`, "the page starts at 商用OKのみ")
 
 	off := s.do(http.MethodPut, commercialURL(), url.Values{"on": {"0"}})
 
 	require.Equal(t, http.StatusOK, off.Code)
 	assert.False(t, s.rig.Svc.CommercialOnly())
-	assert.Regexp(t, `value="all"\s+checked`, off.Body.String())
+	assert.NotContains(t, off.Body.String(), `name="commercial" value="all"`)
+	assert.Contains(t, off.Body.String(), `name="commercial" value="ok"`)
 }
 
-// A model of the trial's choice is a catalog model the user installed, and a model of an endpoint the user registered: the first says
-// its license, the second is 不明 until someone checks it, and the option's text says so (only text fits in a <select>).
-func TestTrialModelChoiceCarriesTheAnswerOfEachModel(t *testing.T) {
+// The model list is narrowed by the server: a request of the filter bar with the commercial-use choice returns the models whose answer it allows, with a chip that says so.
+func TestTheListIsNarrowedByTheServerByTheCommercialChoice(t *testing.T) {
+	s := newScreen(t)
+
+	all := s.get(paths.ModelManagerPart("models") + "?mf=1&commercial=all").Body.String()
+	assert.Contains(t, all, `data-model="m-a"`)
+	assert.Contains(t, all, `data-model="m-c"`, "商用NG is listed while nothing narrows")
+
+	ok := s.get(paths.ModelManagerPart("models") + "?mf=1&commercial=ok").Body.String()
+	assert.Contains(t, ok, `data-model="m-a"`)
+	assert.NotContains(t, ok, `data-model="m-c"`, "商用NG is not 商用OK")
+	assert.Contains(t, ok, `data-testid="model-pick-chip"`)
+	assert.Contains(t, ok, "商用OKのみ")
+}
+
+// The trial's model is a field of the model picker: a model of an endpoint the user registered is in the picker, 不明 until someone checks it.
+func TestTrialModelIsAFieldOfTheModelPickerAndTheLicenseIsOnTheCard(t *testing.T) {
 	s := newScreen(t)
 	s.externalBox()
 
 	form := s.get(paths.ModelManagerPart("trials", "form")).Body.String()
-
-	assert.Contains(t, form, `data-commercial-filter-target="#mm-trial-model"`)
-	assert.Regexp(t, `<option value="comfyui:box/t2i"[^>]*data-commercial="unknown"[^>]*>[^<]*（不明）`, form)
+	assert.Contains(t, form, `hx-get="/model-picker/model-trial"`)
+	assert.NotContains(t, form, "<select")
+	assert.Contains(t, form, `name="model_id"`)
 }

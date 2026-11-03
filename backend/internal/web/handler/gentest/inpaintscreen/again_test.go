@@ -54,7 +54,7 @@ func TestARedoOfARedrawOpensTheScreenWithThePictureTheMaskAndTheSettings(t *test
 	assert.Contains(t, page, `name="negative"`)
 	assert.Contains(t, page, `value="blurry"`)
 	assert.Contains(t, page, `value="0.4"`, "the strength of the redraw")
-	assert.Contains(t, page, `name="model" value="`+string(gentesttest.InpaintModel)+`" checked`)
+	assert.Contains(t, page, `<input type="hidden" name="model" value="`+string(gentesttest.InpaintModel)+`" data-mp-from="value">`)
 	source := attr(t, page, "mam-mask-paint", "src")
 	mask := attr(t, page, "mam-mask-paint", "mask-src")
 	assert.Regexp(t, `^/generation-test/inputs/[^/]+/file$`, source, "the picture is the copy the batch kept")

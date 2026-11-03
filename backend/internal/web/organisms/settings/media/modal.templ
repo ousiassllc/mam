@@ -1,12 +1,11 @@
 package media
 
 import (
-	"slices"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -31,9 +30,8 @@ templ ImageModal(f ImageForm) {
 			autocomplete="off"
 			id="media-image-form"
 		>
-			@commercial.Filter(f.Filter)
-			@imageSlot(f, SlotPrimary, "主モデル", f.Row.Primary, f.Error == "")
-			@imageSlot(f, SlotFallback, "代替モデル", f.Row.Fallback, false)
+			@imageSlot(f, SlotPrimary, "主モデル", f.Primary, f.Row.Primary)
+			@imageSlot(f, SlotFallback, "代替モデル", f.Fallback, f.Row.Fallback)
 			@modal.Actions() {
 				@modal.Cancel("キャンセル")
 				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
@@ -42,19 +40,14 @@ templ ImageModal(f ImageForm) {
 	}
 }
 
-templ imageSlot(f ImageForm, slot, slotLabel string, t ImageTarget, first bool) {
-	<div class="flex flex-wrap items-center gap-3">
-		<label for={ ImageModelField(f.Row.Purpose, slot) } class="w-24 text-sm font-medium">{ slotLabel }</label>
-		@atoms.Select(atoms.FieldMd, "", selectAttrs(ImageModelField(f.Row.Purpose, slot), first, f.Blame == slot)) {
-			for _, m := range f.Models {
-				<option value={ m.Name } selected?={ m.Name == t.Model } data-commercial={ m.Answer.Answer() }>{ optionText(m.Name, m.Answer) }</option>
-			}
-			if t.Model != "" && !slices.ContainsFunc(f.Models, func(m ImageModel) bool { return m.Name == t.Model }) {
-				<option value={ t.Model } selected data-commercial={ commercial.Of(t.Model).Answer() }>{ t.Model }{ unusableSuffix }</option>
-			}
-		}
+templ imageSlot(f ImageForm, slot, slotLabel string, field modelpick.FieldData, t ImageTarget) {
+	<div class="flex flex-wrap items-start gap-3">
+		<span id={ field.ID + "-label" } class="w-24 pt-2 text-sm font-medium">{ slotLabel }</span>
+		<div class="min-w-0 flex-1">
+			@modelpick.Field(field)
+		</div>
 		if showFast(t, f.Models) {
-			<label class="flex items-center gap-1 text-xs">
+			<label class="flex items-center gap-1 pt-2 text-xs">
 				@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": ImageFastField(f.Row.Purpose, slot), "value": "1", "checked": t.Fast})
 				高速版<span class="sr-only">（{ slotLabel }）</span>
 			</label>
@@ -81,9 +74,8 @@ templ PolicyModal(f PolicyForm) {
 			autocomplete="off"
 			id="media-policy-form"
 		>
-			@commercial.Filter(f.Filter)
-			@policySlot(f, SlotPrimary, "主モデル", f.Row.Primary, f.Error == "")
-			@policySlot(f, SlotFallback, "代替モデル", f.Row.Fallback, false)
+			@policySlot(SlotPrimary, "主モデル", f.Primary)
+			@policySlot(SlotFallback, "代替モデル", f.Fallback)
 			<div class="flex flex-wrap items-center gap-3">
 				<label for={ PolicyTakesField(f.Row.Policy) } class="w-24 text-sm font-medium">テイク数</label>
 				@atoms.Input(atoms.FieldMd, "w-20", blamed(templ.Attributes{
@@ -103,28 +95,13 @@ templ PolicyModal(f PolicyForm) {
 	}
 }
 
-templ policySlot(f PolicyForm, slot, slotLabel, selected string, first bool) {
-	<div class="flex flex-wrap items-center gap-3">
-		<label for={ PolicyTargetField(f.Row.Policy, slot) } class="w-24 text-sm font-medium">{ slotLabel }</label>
-		@atoms.Select(atoms.FieldMd, "", selectAttrs(PolicyTargetField(f.Row.Policy, slot), first, f.Blame == slot)) {
-			for _, c := range f.Choices {
-				<option value={ c.Value } selected?={ c.Value == selected } data-commercial={ c.Answer.Answer() }>{ optionText(c.Label, c.Answer) }</option>
-			}
-			if selected != "" && !slices.ContainsFunc(f.Choices, func(c VideoChoice) bool { return c.Value == selected }) {
-				<option value={ selected } selected>{ selected }{ unusableSuffix }</option>
-			}
-		}
+templ policySlot(slot, slotLabel string, field modelpick.FieldData) {
+	<div class="flex flex-wrap items-start gap-3">
+		<span id={ field.ID + "-label" } class="w-24 pt-2 text-sm font-medium">{ slotLabel }</span>
+		<div class="min-w-0 flex-1">
+			@modelpick.Field(field)
+		</div>
 	</div>
-}
-
-// selectAttrs are the attributes of a model <select>: the first one of the modal is the one to start with, unless a refusal
-// is to be read first; the one a refusal is about (blame) is marked and is the one to start with.
-func selectAttrs(name string, first, blame bool) templ.Attributes {
-	a := templ.Attributes{"id": name, "name": name}
-	if first {
-		a["autofocus"] = true
-	}
-	return blamed(a, blame)
 }
 
 // blamed marks the field a refusal is about: what says so (aria-invalid, the reason as its description) and the focus.

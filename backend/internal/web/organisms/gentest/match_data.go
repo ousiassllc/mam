@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -38,22 +39,12 @@ var MatchModes = []MatchMode{
 	{MatchAdjust, "調整", "1 回ずつ、結果を見ながら直します"},
 }
 
-// MatchModel is an image model the match form offers.
-type MatchModel struct {
-	Answer   commercial.View // the license of the model (#928)
-	ID       string
-	Label    string
-	Price    string
-	Selected bool
-}
-
 // MatchCompose is the form that starts a prompt match.
 type MatchCompose struct {
 	Message
-	Models []MatchModel
-	// Filter is the commercial-use filter of the model choices (#928), checked at the setting's default.
-	Filter commercial.FilterData
-	Mode   string
+	// Model is the field that chooses the image model: the model picker (#1011) with the filter of the models.
+	Model modelpick.FieldData
+	Mode  string
 	// Target and Rounds are the numbers of the fields; MaxRounds is the most the service takes.
 	Target, Rounds string
 	// MaxCost is the field "上限の費用" ("" for none).

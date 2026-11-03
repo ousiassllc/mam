@@ -41,7 +41,7 @@ export function initGentestExposed(root: Document = document): void {
       if (form) syncExposed(form);
     }
   });
-  root.addEventListener('commercial-filter-applied', () => {
+  root.addEventListener('model-pick-applied', () => {
     for (const group of root.querySelectorAll(GROUP)) {
       const form = formOf(group);
       if (form) syncExposed(form);

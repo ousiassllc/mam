@@ -10,7 +10,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/posescreen"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/gin-gonic/gin"
 
@@ -45,10 +44,13 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 		Translate: f.translate, Count: orDefault(f.count, "1"), MaxPrompt: gentest.MaxPromptRunes, Adv: &f.adv,
 	})
 	f.models = tiers.Models
+	shown, bar := h.shown(ctx, media, models, f.pick, f.refs)
+	if tiers.Data.IsEasy() {
+		shown = models // the easy tier has no list: the model it picked is posted by its hidden card, whatever the list's filter says
+	}
 	c := view.Compose{
-		Media: media, Models: choicesOf(models, f.models), Prompts: f.prompts, Translate: f.translate, Tier: tiers.Data,
-		Filter: commercial.NewFilter("gt-commercial", "#gt-models", h.Svc.DefaultFilter()),
-		Count:  orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),
+		Media: media, Models: choicesOf(shown, f.models), Prompts: f.prompts, Translate: f.translate, Tier: tiers.Data, Filter: bar,
+		Count: orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),
 		MaxPrompt: gentest.MaxPromptRunes, MaxCount: gentest.MaxCount, MaxItems: maxItems, MaxReferences: gentest.MaxReferences,
 	}
 	if maxCost > 0 {
@@ -155,6 +157,7 @@ func (h Handlers) Page(c *gin.Context) {
 			f.media = gentest.MediaVideo
 		}
 	}
+	f.pick = h.readPick(c, orDefault(f.media, gentest.MediaImage))
 	form := h.compose(ctx, f)
 	if fromMatch { // #965: the prompt of a round is the one to compare models with, so say how
 		form.Notice = fromMatchNotice
@@ -183,6 +186,7 @@ func (h Handlers) Form(c *gin.Context) {
 		f.models = nil // the models of one media are not the models of the other
 	}
 	recipeNote := h.recipeNotice(c.Request.Context(), c, &f) // "使う" of a recipe, or the easy tier left with a recipe chosen (#977)
+	f.pick = h.readPick(c, orDefault(f.media, gentest.MediaImage))
 	form := h.compose(c.Request.Context(), f)
 	form.Notice = cmp.Or(recipeNote, f.tier.DroppedNotice()) // the switch to the easy tier says what it lost (#1000)
 	gtshare.Render(c, http.StatusOK, view.ComposeForm(form))

@@ -3,6 +3,7 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
@@ -240,7 +241,7 @@ func parametersHelp(media string) string {
 templ EasyCard(models []ModelChoice) {
 	<ul hidden aria-hidden="true" data-testid="gt-easy-card">
 		for _, m := range models {
-			@modelCard(m)
+			@modelcard.PickItem(modelCardOf(m))
 		}
 	</ul>
 }

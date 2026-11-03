@@ -33,7 +33,7 @@ templ HistoryList(h History) {
 				@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{"id": "gt-filter-model", "name": FieldModel}) {
 					<option value="">すべて</option>
 					for _, m := range h.Models {
-						<option value={ m } selected?={ m == h.Filter.Model } data-commercial={ h.ModelAnswers[m] }>{ m }</option>
+						<option value={ m } selected?={ m == h.Filter.Model }>{ m }</option>
 					}
 				}
 			</label>
@@ -49,7 +49,7 @@ templ HistoryList(h History) {
 				<input type="checkbox" name="favorite" value="1" checked?={ h.Filter.Favorite }/>
 				<span>お気に入りだけ</span>
 			</label>
-			@commercial.Filter(h.Commercial)
+			@commercial.Choice(h.Commercial)
 			@atoms.Button(atoms.ToneNeutral, "絞り込む", templ.Attributes{"type": "submit"})
 		</form>
 		@exportbar.Bar(h.Export)
@@ -82,7 +82,7 @@ templ HistoryLive(h History) {
 		}
 		<ul class="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-3">
 			for _, c := range h.Cards {
-				<li id={ resulttile.ID(c.ID) } class="contents" data-testid="gt-history-item" data-commercial={ c.Answer.Answer() }>
+				<li id={ resulttile.ID(c.ID) } class="contents" data-testid="gt-history-item">
 					@HistoryCard(c)
 				</li>
 			}

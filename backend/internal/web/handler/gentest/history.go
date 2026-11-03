@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/redo"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
@@ -69,13 +70,22 @@ func (h Handlers) history(ctx context.Context, q url.Values) (view.History, erro
 	live := historyQuery(f, offset)
 	live.Set(liveParam, "1")
 	out := view.History{
-		Filter: f, Commercial: commercial.NewFilter("gt-history-commercial", "#"+view.HistoryID, chosen).WithField(fieldCommercial),
+		Filter: f, Commercial: commercial.NewChoice("gt-history-commercial", fieldCommercial, chosen),
 		Refresh: paths.GenerationTestHistory() + "?" + live.Encode(), UpdatedAt: time.Now().Format(time.TimeOnly),
 	}
 	out.Export = exportbar.Data{URL: paths.GenerationTestExport(), Model: f.Model, Media: f.Media, Favorite: f.Favorite, Commercial: string(chosen)}
-	list, err := h.Svc.History(ctx, history.Filter{Model: f.Model, Media: f.Media, FavoriteOnly: f.Favorite, Limit: historyPage + 1, Offset: offset})
-	if err != nil {
+	var err error
+	if out.Models, err = h.Svc.HistoryModels(ctx); err != nil {
 		return out, err
+	}
+	// The commercial choice narrows by the models whose answer it allows (a result carries the answer of the model that made it).
+	allowed, narrowed := commercialModels(out.Models, chosen)
+	var list []record.ResultView
+	if !narrowed || len(allowed) > 0 {
+		list, err = h.Svc.History(ctx, history.Filter{Model: f.Model, Models: allowed, Media: f.Media, FavoriteOnly: f.Favorite, Limit: historyPage + 1, Offset: offset})
+		if err != nil {
+			return out, err
+		}
 	}
 	if len(list) > historyPage {
 		list = list[:historyPage]
@@ -85,16 +95,23 @@ func (h Handlers) history(ctx context.Context, q url.Values) (view.History, erro
 		out.Cards = append(out.Cards, cardOf(r, true))
 		out.Active = out.Active || r.Status == gentest.StatusQueued || r.Status == gentest.StatusRunning
 	}
-	if out.Models, err = h.Svc.HistoryModels(ctx); err != nil {
-		return out, err
-	}
-	out.ModelAnswers = make(map[string]string, len(out.Models))
-	for _, m := range out.Models {
-		out.ModelAnswers[m] = commercial.Of(m).Answer()
-	}
 	s, err := h.Svc.Spend(ctx)
 	out.Spend = spendText(s)
 	return out, err
+}
+
+// commercialModels are the models of the history whose answer the filter allows; narrowed says the filter leaves some out (so that no model at all allowed is
+// an empty history, not an unfiltered one).
+func commercialModels(models []string, f modellicense.Filter) (allowed []string, narrowed bool) {
+	if f == modellicense.FilterAll {
+		return nil, false
+	}
+	for _, m := range models {
+		if f.Allows(commercial.Of(m).Level) {
+			allowed = append(allowed, m)
+		}
+	}
+	return allowed, true
 }
 
 // History answers GET /generation-test/history (the page, or the list alone for an HTMX request): newest first, filtered by
@@ -133,7 +150,9 @@ func (h Handlers) Detail(c *gin.Context) {
 	}
 	v := h.detail(ctx, d, importbox.Form{})
 	v.Upscale.Scale, _ = strconv.Atoi(c.Query(redo.ParamUpscaleScale)) // "同じ倍率でもう一度大きくする" of an enlargement
-	v.Upscale.Model = c.Query(redo.ParamUpscaleModel)
+	if v.Upscale.Show {
+		v.Upscale.HasModel, v.Upscale.Model = h.upscaleModel(ctx, c.Query(redo.ParamUpscaleModel))
+	}
 	if inModal {
 		v.CanPick = c.Query("pick") == "1"
 		gtshare.Render(c, http.StatusOK, view.ResultDetailModal(v))

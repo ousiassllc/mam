@@ -117,12 +117,12 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
     expect(hiddenIds()).to.deep.equal(['r0']);
 
     card('r0').closest('li')!.hidden = true; // what the filter does to a card it does not allow
-    host.querySelector('#gt-history')!.dispatchEvent(new CustomEvent('commercial-filter-applied', { bubbles: true }));
+    host.querySelector('#gt-history')!.dispatchEvent(new CustomEvent('model-pick-applied', { bubbles: true }));
     expect(hiddenIds(), 'a hidden card was saved').to.deep.equal([]);
     expect(count()).to.equal('0');
 
     card('r0').closest('li')!.hidden = false;
-    host.querySelector('#gt-history')!.dispatchEvent(new CustomEvent('commercial-filter-applied', { bubbles: true }));
+    host.querySelector('#gt-history')!.dispatchEvent(new CustomEvent('model-pick-applied', { bubbles: true }));
     expect(hiddenIds(), 'the choice is back with the card').to.deep.equal(['r0']);
   });
 

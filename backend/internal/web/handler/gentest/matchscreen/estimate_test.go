@@ -38,7 +38,7 @@ func TestThePageHasTheFormAndTheNavLinkAndNothingElseYet(t *testing.T) {
 	} {
 		assert.Contains(t, body, hook)
 	}
-	assert.Contains(t, body, "flux-2", "an image model that can be called is offered")
+	assert.Regexp(t, `<input type="hidden" name="model" value="[^"]+" data-mp-from="value">`, body, "an image model that can be called is in the field")
 	assert.NotContains(t, body, `data-testid="gt-match-adjust-submit"`, "the words field comes with a match")
 	assert.Regexp(t, `data-gt-match-auto\s*>`, body, "the target and the rounds are shown for the default way (auto)")
 }

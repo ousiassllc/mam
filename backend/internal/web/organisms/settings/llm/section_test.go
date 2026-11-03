@@ -22,10 +22,9 @@ func renderSection(t *testing.T, d llm.Data) string {
 // was refused (an alert), each under its own test id.
 func TestSection_ShowsTheNoticeTheErrorAndTheProblemEachWithItsRole(t *testing.T) {
 	d := llm.Data{
-		Providers: []string{"anthropic"},
-		Notice:    "既定に戻しました。次の呼び出しからすぐ使われます（再起動は要りません）",
-		Error:     "Director のモデル名を入力してください",
-		Problem:   "unknown field",
+		Notice:  "既定に戻しました。次の呼び出しからすぐ使われます（再起動は要りません）",
+		Error:   "Director のモデル名を入力してください",
+		Problem: "unknown field",
 	}
 
 	html := renderSection(t, d)
@@ -36,7 +35,7 @@ func TestSection_ShowsTheNoticeTheErrorAndTheProblemEachWithItsRole(t *testing.T
 }
 
 func TestSection_SaysNothingWhenThereIsNothingToSay(t *testing.T) {
-	html := renderSection(t, llm.Data{Providers: []string{"anthropic"}})
+	html := renderSection(t, llm.Data{})
 
 	for _, id := range []string{"llm-notice", "llm-error", "llm-problem"} {
 		assert.NotContains(t, html, `data-testid="`+id+`"`)
@@ -49,7 +48,7 @@ func TestSection_SaysNothingWhenThereIsNothingToSay(t *testing.T) {
 // assignment is used, the ChatGPT plan) is only in the help beside it, and the pinned notice and the errors stay visible
 // without opening it.
 func TestSection_KeepsTheApplyNoticeVisibleAndPutsTheLongTextInTheHelp(t *testing.T) {
-	html := renderSection(t, llm.Data{Providers: []string{"anthropic"}, Pinned: true, Error: "失敗"})
+	html := renderSection(t, llm.Data{Pinned: true, Error: "失敗"})
 
 	panelAt := strings.Index(html, "data-help-panel")
 	require.GreaterOrEqual(t, panelAt, 0)

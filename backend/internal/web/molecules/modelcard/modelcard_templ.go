@@ -176,16 +176,16 @@ func Item(c Card) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div><div class=\"flex flex-wrap items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div><div class=\"flex flex-wrap items-center gap-2\" data-testid=\"model-badges\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.BadgeWith(c.State.Tone, c.State.Label, c.State.Attrs).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = BadgeOf(c.State).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, b := range c.Badges {
-			templ_7745c5c3_Err = atoms.BadgeWith(b.Tone, b.Label, b.Attrs).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = BadgeOf(b).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

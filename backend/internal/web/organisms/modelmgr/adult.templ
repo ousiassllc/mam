@@ -2,7 +2,6 @@ package modelmgr
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -89,9 +88,8 @@ templ AdultWithCatalog(a Adult, c Catalog, t TrialPanel) {
 	@DialogClear()
 }
 
-// CommercialCard is the setting "商用OKのモデルだけを使う" with the filter of the model list (#928). Turning the setting on makes every list of
-// models start at "商用OKのみ" (this screen, the generation test, the MCP lists); it narrows the lists and does not stop a generation. The
-// filter sits outside the model list, so a list that is drawn again while an install runs keeps the choice.
+// CommercialCard is the setting "商用OKのモデルだけを使う" (#928). Turning the setting on makes the commercial-use choice of every model filter start at "商用OKのみ" (this
+// screen, the generation test, the MCP lists); it narrows the lists and does not stop a generation. The choice itself is in the panel of the filter bar above the list.
 templ CommercialCard(c CommercialPanel) {
 	<div
 		id={ CommercialID }
@@ -103,14 +101,13 @@ templ CommercialCard(c CommercialPanel) {
 	>
 		@notice(c.Message, "mm-commercial-setting")
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<p class="text-sm text-neutral-200">商用利用で絞り込む</p>
+			<p class="text-sm text-neutral-200">商用利用で絞り込む（一覧の絞り込みの初めの状態）</p>
 			@atoms.Button(atoms.ToneNeutral, commercialToggleLabel(c.Only), templ.Attributes{
 				"type": "button", "hx-put": paths.ModelManagerPart("commercial"), "hx-vals": atoms.HxVals(map[string]string{FieldOn: commercialToggleValue(c.Only)}),
 				"hx-target": "#" + CommercialID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
 				"aria-pressed": commercialPressed(c.Only), "data-testid": "mm-commercial-only",
 			})
 		</div>
-		@commercial.Filter(c.Filter)
 	</div>
 }
 
@@ -135,8 +132,10 @@ func commercialPressed(only bool) string {
 	return "false"
 }
 
-// CommercialWithTrial is the card with the trial section out of band: the setting changed the filter the trial's model choice starts at.
-templ CommercialWithTrial(c CommercialPanel, t TrialPanel) {
+// CommercialWithList is the card with the model list and the trial section out of band: the setting changed what the commercial-use choice of their filters starts at
+// (the list's own bar and panel come with it, drawn at the new start).
+templ CommercialWithList(c CommercialPanel, l Catalog, t TrialPanel) {
 	@CommercialCard(c)
+	@CatalogWithBar(l)
 	@TrialSection(t)
 }

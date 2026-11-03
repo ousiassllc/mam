@@ -37,6 +37,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/comfyscreen"
 	jobshandler "github.com/ousiassllc/mam/backend/internal/web/handler/jobs"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
 	onboardinghandler "github.com/ousiassllc/mam/backend/internal/web/handler/onboarding"
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
@@ -167,7 +168,8 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 			engine.PUT(paths.LLMLocal(), llmlocalhandler.Save(s.LLMLocal))
 			engine.POST(paths.LLMLocalTest(), llmlocalhandler.Test(s.LLMLocal))
 		}
-		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
+		mediahandler.Register(engine, s.Models, mediahandler.Cards{Gentest: s.Gentest}, pages.Page(paths.SettingsModels))
+		modelpicker.Register(engine, modelpicker.Services{Gentest: s.Gentest, Settings: s.Models, LLM: s.LLMModels, ModelManager: s.ModelManager})
 	}
 	if s != nil && s.Audio != nil {
 		engine.GET(paths.AudioDetail(":choice", ":provider"), audiohandler.Detail(s.Audio, pages.Page(paths.SettingsAudio)))
@@ -224,7 +226,7 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 		if s.Keys != nil {
 			p.Tester = probe.NewTester(s.Keys)
 		}
-		p.ChatGPT, p.LLM, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
+		p.ChatGPT, p.LLM, p.LLMModels, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.LLMModels, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
 		p.Audio, p.LLMLocal = s.Audio, s.LLMLocal
 		p.Restart = s.Restart
 		p.FFmpegDownload = s.FFmpegDownload
@@ -266,7 +268,7 @@ func OnboardingHome(s *Services, home gin.HandlerFunc) gin.HandlerFunc {
 // registerOnboarding adds the routes of the first-run guide (spec/api/endpoints-onboarding.md).
 func registerOnboarding(engine *gin.Engine, services *service.Services, s *Services, pages settingspage.Services) {
 	h := onboardinghandler.Handlers{
-		Guide: s.Onboarding, Keys: services.Credentials, Tester: pages.Tester, ChatGPT: s.ChatGPT, LLM: s.LLM, Models: s.Models,
+		Guide: s.Onboarding, Keys: services.Credentials, Tester: pages.Tester, ChatGPT: s.ChatGPT, LLM: s.LLM, LLMModels: s.LLMModels, Models: s.Models,
 		FFmpeg: ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload},
 	}
 	engine.GET(paths.Onboarding(), h.Start)

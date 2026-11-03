@@ -31,6 +31,7 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	h := Handlers{Svc: svc}
 	engine.GET(paths.GenerationTest(), h.Page)
 	engine.GET(paths.GenerationTestPart("form"), h.Form)
+	engine.GET(paths.GenerationTestPart("models"), h.Models)
 	engine.GET(paths.GenerationTestPart("easy-pick"), h.EasyPick)
 	engine.GET(paths.GenerationTestPart("prompt-row"), h.PromptRow)
 	engine.GET(paths.GenerationTestPart("picker"), h.Picker)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -12,21 +13,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
-
-// upscaleModeText says how an upscale workflow enlarges, in the box's chooser and the detail's "拡大" row ("" for a mode it does not know).
-func upscaleModeText(mode string) string {
-	switch mode {
-	case modelcatalog.ModeModel:
-		return "アップスケール用モデルだけ"
-	case modelcatalog.ModeTwoPass:
-		return "そのあと低い denoise でもう一度サンプリングして仕上げる。元のプロンプトを引き継ぐ"
-	}
-	return ""
-}
 
 // upscaleForm is the "make it larger" box of the result d: the workflows installed when d is a picture that can be enlarged, and the link to
 // the source when d is an enlargement.
@@ -40,14 +33,24 @@ func (h Handlers) upscaleForm(ctx context.Context, d record.ResultDetail, errMsg
 		return f
 	}
 	f.Show = true
-	for _, u := range h.Svc.Upscalers(ctx) {
-		c := upscalebox.Choice{ID: u.ID, Label: u.Label, Detail: upscaleModeText(u.Mode)}
-		if !u.Available {
-			c.Disabled = "（今は使えません: " + u.UnavailableMessage + "）"
-		}
-		f.Choices = append(f.Choices, c)
-	}
+	f.HasModel, f.Model = h.upscaleModel(ctx, "")
 	return f
+}
+
+// upscaleModel is the field that chooses the upscale workflow: the model picker, with the workflow asked for when it can run, else the first that can (else the first). false
+// when none is installed.
+func (h Handlers) upscaleModel(ctx context.Context, want string) (bool, modelpick.FieldData) {
+	all := h.Svc.Upscalers(ctx)
+	if len(all) == 0 {
+		return false, modelpick.FieldData{}
+	}
+	chosen := slices.IndexFunc(all, func(u modelcatalog.Upscaler) bool { return u.ID == want && u.Available })
+	if chosen < 0 {
+		chosen = slices.IndexFunc(all, func(u modelcatalog.Upscaler) bool { return u.Available })
+	}
+	chosen = max(chosen, 0)
+	return true, modelpicker.FieldFor(modelpicker.SourceUpscale, "gt-upscale-model", "方式（モデル）", nil,
+		[]modelpick.Input{{Name: upscalebox.FieldModel, Key: "value", Value: all[chosen].ID}}, modelcards.FromUpscaler(all[chosen]))
 }
 
 // upscaleKVs are the rows of the detail of an enlargement: the scale, the way, the sizes and the result it came from.
@@ -56,7 +59,7 @@ func upscaleKVs(d record.ResultDetail) []view.KV {
 	if u == nil {
 		return nil
 	}
-	way := upscaleModeText(u.Mode)
+	way := modelcards.UpscaleModeText(u.Mode)
 	if way == "" {
 		way = u.Mode
 	}

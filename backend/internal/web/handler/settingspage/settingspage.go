@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -58,8 +59,9 @@ type Services struct {
 	Tester  *probe.Tester
 	ChatGPT *chatgpt.Service
 	// LLM and Models are the assignments of the models: both or neither (the router was built with settings or without).
-	LLM    *llmassign.Service
-	Models *modelsettings.Service
+	LLM       *llmassign.Service
+	LLMModels *llmmodels.Service
+	Models    *modelsettings.Service
 	// LLMLocal is the card of the local LLM server in the LLM category; nil leaves the card out.
 	LLMLocal    *llmlocal.Service
 	LocalModels *localmodels.Service
@@ -123,7 +125,7 @@ func init() {
 		{paths.SettingsOverview, "概要", always, overviewBody},
 		{paths.SettingsAPIKeys, "API キーとログイン", always, apiKeysBody},
 		{paths.SettingsLLM, "テキスト生成（LLM）", func(s Services) bool { return s.LLM != nil }, func(_ *gin.Context, s Services) templ.Component {
-			return pages.SettingsLLMBody(llmhandler.SectionData(s.LLM), s.localLLM())
+			return pages.SettingsLLMBody(llmhandler.SectionData(s.LLM, s.LLMModels), s.localLLM())
 		}},
 		{paths.SettingsModels, "画像・動画モデル", func(s Services) bool { return s.Models != nil }, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsModelsBody(mediahandler.SectionData(s.Models))
