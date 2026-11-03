@@ -305,7 +305,7 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 - **取り出すのは全年齢向け（`rating: general`）で線画のあるポーズだけ**: 96 ポーズ・414 枚（展開後 約 10.85 MB、取得 約 19.7 MiB）。成人向けのシリーズ（`sexy`・`duo`）と、成人向けと分類されたポーズは、Zip に入っていても**取り出さない**（メンバーに挙げない。成人向けの扱いは Issue #986 の範囲外で、必要なら年齢確認の仕組み〔`agegate`〕に載せて別に足す）。粘土風・深度・法線・写真は取らない（取得は最小で 36.5 MB の線画の Zip に近い 2 つだけ）。
 - **ライセンス**: 画像は CC0 1.0（`commercial: yes`）。出典は Shisei の `NOTICE`・`LICENSE-images`（コミット `26522a70…`）と `docs/LICENSING.md` の「AI が作る画像の権利」の規則。コードは Apache-2.0（取得しない）。**分類表（ポーズの選び方・番号・名前・分類）は ai-pose-gallery（ギア〔@giaaibusi〕）に従い、NOTICE が「credited, not licensed」と書くので、`commercial: unknown`**（画面は注意書きを出す）。
 - **確かめたこと（2026-11-03、GitHub API とダウンロード）**: タグ `v0.4.1` のコミットは `26522a70…`、メイン（`8f61ceab…`）は先に進んでいる。分類表は 288 件で画像のあるものは 280、アングルごとの線画の数は diag 263・side 257・front 251・above 228・below 213（README の「250 ポーズ × 5 アングル」とは一致しない）。Zip のバイト列は SHA-256 を記録した。**実物の Windows での導入・GitHub からの実取得は未確認**（テストは偽の GitHub サーバーで、`posestest` が同じ手順を走らせる）。
-- 画面は同意のチェック（`pose_accept`）が無いと導入を断り、取得元・サイズ・ライセンスを先に見せる。進捗の表示と、導入したポーズ集の削除の画面は無い（ファイルを消せば未導入に戻る）。
+- 画面は同意のチェック（`pose_accept`）が無いと導入を断り、取得元・サイズ・ライセンスを先に見せる。導入中は、案内が `GET /generation-test/poses/progress` を 1 秒ごとに取り直して「ダウンロード中: x / y（n%）」を出す（`Library.Progress`。`EnsureAssets` の進み具合）。一覧の下の「ポーズ集を削除」（確認つき）と MCP の `remove_pose_library` は `Library.Remove`（`Installer.Remove` と同じ。画像・目録・ダウンロード・記録を消して未導入に戻す。導入中は conflict）。MCP からの導入は `install_pose_library`（`accepted: true` が同意に当たる。[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)。Issue #994）。
 
 ## 13. MuseTalk 1.5 のランタイム（Issue #921）
 

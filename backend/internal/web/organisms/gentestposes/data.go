@@ -32,7 +32,7 @@ const (
 // Wire is the routes the dialog asks and what it sends along: the media and the ticked models of the compose form (so that the dialog can say
 // which models read a pose and whether they are for commercial use) and its own filters.
 type Wire struct {
-	PanelURL, ResultsURL, InstallURL, RowURL string
+	PanelURL, ResultsURL, InstallURL, RemoveURL, ProgressURL, RowURL string
 	// IncludeForm picks the media and the models out of the compose form; IncludeFilters the controls of the dialog's filters.
 	IncludeForm, IncludeFilters string
 }
@@ -41,6 +41,7 @@ type Wire struct {
 func NewWire() Wire {
 	return Wire{
 		PanelURL: paths.GenerationTestPoses(), ResultsURL: paths.GenerationTestPoses("results"), InstallURL: paths.GenerationTestPoses("install"),
+		RemoveURL: paths.GenerationTestPoses("remove"), ProgressURL: paths.GenerationTestPoses("progress"),
 		RowURL:         paths.GenerationTestPart("ref-row"),
 		IncludeForm:    "#gt-compose [name=media], #gt-compose [name=model]",
 		IncludeFilters: "[data-gt-pose-filters] [name^=pose_]",

@@ -42,3 +42,4 @@
 | 1.35 | 2026-11-03 | §4.6・§11: `unsupported.os = [darwin]` を、報告のある Wan 2.2 の 8 モデル（`umt5_xxl_fp8_e4m3fn_scaled` を読むもの）だけにした。FLUX・Qwen-Image・Chroma・HunyuanVideo・SD3.5・LTX-Video 2B の 10 モデルは、同じ dtype の制約からの推定で個別の報告を見ていないので欄を外した（カタログの JSON・`platform_test.go` も同じ） | Issue #979 の統合レビュー。出典の Issue #10292・#9255・#11626 が報告するのは Wan 2.2 だけで、推定を警告として出すのは「一次情報で確かめたことだけ」というカタログの趣旨に反する |
 | 1.36 | 2026-11-03 | custom-nodes.md §3: ツリーのダイジェストが `__pycache__` も数えるようにし、エンジンを `PYTHONDONTWRITEBYTECODE=1` で起動する。§4: 取得のあと zip をメモリに読んで照合し直し、そのバイト列から展開する（`extract.ZipFrom`。検証と展開のあいだのすり替えを防ぐ） | Issue #994 (a)(b) |
 | 1.37 | 2026-11-03 | §4.1 の `workflows[]` に `sampling`（モデルの作者が推奨する steps・cfg・sampler・scheduler）を足し、`noobai-xl-v11`・`wai-illustrious-sdxl-v17`・`realvisxl-v50`・`cyberrealistic-pony-v18` に作者の推奨を入れた（説明文も更新） | Issue #994 (f) |
+| 1.38 | 2026-11-03 | [local-runtime.md](local-runtime.md) §12.9: ポーズ集の導入の進み具合・削除・MCP からの導入を足した | Issue #994 (e) |

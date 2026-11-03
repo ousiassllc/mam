@@ -112,6 +112,7 @@ templ InstallPanel(w Wire, in Install) {
 				<span class="hidden group-[.htmx-request]:inline" role="status">ダウンロードしています…</span>
 			</button>
 		</div>
+		<div hx-get={ w.ProgressURL } hx-trigger="every 1s" hx-swap="innerHTML" class="text-xs text-neutral-300" role="status" aria-live="polite" data-testid="gt-pose-progress"></div>
 	</div>
 }
 
@@ -172,7 +173,18 @@ templ GalleryPanel(w Wire, g Gallery) {
 			</fieldset>
 		</div>
 		@ResultsList(w, g.Results)
+		<div class="flex justify-end border-t border-neutral-800 pt-2">
+			@atoms.SmallButton(atoms.ToneDanger, "ポーズ集を削除", templ.Attributes{
+				"type": "button", "hx-post": w.RemoveURL, "hx-target": "#" + BodyID, "hx-swap": "innerHTML", "hx-include": w.IncludeForm,
+				"hx-confirm": "ダウンロードしたポーズ集（画像と目録）を削除します。もう一度使うときは、改めて導入します。よろしいですか？", "data-testid": "gt-pose-remove",
+			})
+		</div>
 	</div>
+}
+
+// ProgressText is what the install panel shows while the library downloads: "" (nothing) when no install is running. The panel polls it.
+templ ProgressText(text string) {
+	{ text }
 }
 
 // Results are the poses that match the filters, as cards. The element is swapped as a whole when a filter changes (its status line is
