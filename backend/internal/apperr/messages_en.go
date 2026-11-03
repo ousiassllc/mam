@@ -74,6 +74,9 @@ var messagesEn = map[string]string{
 	"llm_invalid_output.cause":  "The LLM's answer was not in the requested form.",
 	"llm_invalid_output.remedy": "Run it again. If it continues, change the model of that Agent in Settings > text generation (LLM).",
 
+	"local_llm_unreachable.cause":  "Cannot connect to the local server. The local LLM server (Ollama, LM Studio, llama.cpp server, ...) did not answer.",
+	"local_llm_unreachable.remedy": "Check that the server is running and that the base URL under \"Local LLM server\" in Settings > text generation (LLM) is right (Ollama: http://localhost:11434, LM Studio: http://localhost:1234). LM Studio needs its local server started (Start Server).",
+
 	"generation_time_limit.cause":  "The generation ran past the time limit (Max generation time).",
 	"generation_time_limit.remedy": "Raise the time limit in Settings or review the Policy.",
 

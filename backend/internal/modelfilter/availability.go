@@ -23,6 +23,8 @@ const (
 	SourceChatGPT  = "chatgpt"
 	SourceLocal    = "local"
 	SourceWorkflow = "workflow"
+	// SourceLocalLLM is the local OpenAI-compatible LLM server (the LLM provider "local", #1008).
+	SourceLocalLLM = "local_llm"
 )
 
 // ProviderChatGPT is the provider of the ChatGPT subscription's models (the LLM provider "chatgpt-subscription" and the image model made with it).
@@ -58,6 +60,9 @@ func RouteOf(reason Reason, source string) string {
 	case ReasonAgeGate, ReasonNotInstalled, ReasonMissingNode:
 		return paths.ModelManager()
 	case ReasonEndpoint:
+		if source == SourceLocalLLM {
+			return paths.SettingsCategory(paths.SettingsLLM)
+		}
 		return paths.SettingsCategory(paths.SettingsLocalModels)
 	case ReasonNotSignedIn:
 		return paths.SettingsCategory(paths.SettingsAPIKeys)

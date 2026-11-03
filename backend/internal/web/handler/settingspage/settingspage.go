@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -35,6 +36,7 @@ import (
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	licenseshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/licenses"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
+	llmlocalhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llmlocal"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
@@ -42,6 +44,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	llmlocalview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -55,8 +58,10 @@ type Services struct {
 	Tester  *probe.Tester
 	ChatGPT *chatgpt.Service
 	// LLM and Models are the assignments of the models: both or neither (the router was built with settings or without).
-	LLM         *llmassign.Service
-	Models      *modelsettings.Service
+	LLM    *llmassign.Service
+	Models *modelsettings.Service
+	// LLMLocal is the card of the local LLM server in the LLM category; nil leaves the card out.
+	LLMLocal    *llmlocal.Service
 	LocalModels *localmodels.Service
 	// Audio is the choice of the voice and lip-sync providers (the "音声・口パク" category).
 	Audio  *audiosettings.Service
@@ -81,6 +86,15 @@ func (s Services) catalog() *licenses.Catalog {
 		return s.Licenses
 	}
 	return licenses.Default()
+}
+
+// localLLM is the card of the local LLM server, nil without its service.
+func (s Services) localLLM() *llmlocalview.Data {
+	if s.LLMLocal == nil {
+		return nil
+	}
+	d := llmlocalhandler.CardData(s.LLMLocal)
+	return &d
 }
 
 // ffmpeg is what the ffmpeg category reads.
@@ -109,7 +123,7 @@ func init() {
 		{paths.SettingsOverview, "概要", always, overviewBody},
 		{paths.SettingsAPIKeys, "API キーとログイン", always, apiKeysBody},
 		{paths.SettingsLLM, "テキスト生成（LLM）", func(s Services) bool { return s.LLM != nil }, func(_ *gin.Context, s Services) templ.Component {
-			return pages.SettingsLLMBody(llmhandler.SectionData(s.LLM))
+			return pages.SettingsLLMBody(llmhandler.SectionData(s.LLM), s.localLLM())
 		}},
 		{paths.SettingsModels, "画像・動画モデル", func(s Services) bool { return s.Models != nil }, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsModelsBody(mediahandler.SectionData(s.Models))

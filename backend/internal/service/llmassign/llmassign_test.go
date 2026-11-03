@@ -272,3 +272,38 @@ func TestSave_ARefusedAssignmentIsNotHandedToTheApplier(t *testing.T) {
 	require.Error(t, err)
 	assert.False(t, called)
 }
+
+// #1008: every Agent can be assigned to the local server, as the primary and as the fallback; the saved routes load again.
+func TestSave_EveryAgentCanUseTheLocalServerAsPrimaryAndFallback(t *testing.T) {
+	path := settingsPath(t)
+	svc := llmassign.New(path, false)
+	local := llmassign.Target{Provider: string(llm.ProviderLocal), Model: "qwen3.8:27b"}
+	routes := map[string]llmassign.Route{}
+	for _, a := range llm.Agents() {
+		routes[string(a)] = llmassign.Route{Primary: local, Fallback: llmassign.Target{Provider: string(llm.ProviderLocal), Model: "gemma-4-12b"}}
+	}
+
+	require.NoError(t, svc.Save(routes))
+
+	v := llmassign.New(path, false).View()
+	assert.Empty(t, v.Problem)
+	for _, a := range llm.Agents() {
+		e := entry(t, v, a)
+		assert.Equal(t, routes[string(a)], e.Route, a)
+	}
+	cfg, err := llm.LoadConfig(path)
+	require.NoError(t, err, "the file is one that the next start loads")
+	assert.Equal(t, llm.Target{Provider: llm.ProviderLocal, Model: "qwen3.8:27b"}, cfg.Routes[llm.AgentWriter].Primary)
+}
+
+func TestSave_ALocalModelNameIsCheckedLikeAnyOther(t *testing.T) {
+	svc := llmassign.New(settingsPath(t), false)
+	for name, model := range map[string]string{"empty": "", "space": "qwen 3", "newline": "a\nb"} {
+		err := svc.Save(map[string]llmassign.Route{"writer": {
+			Primary: llmassign.Target{Provider: "local", Model: model}, Fallback: llmassign.Target{Provider: "openai", Model: "gpt-x"},
+		}})
+		var invalid *llmassign.InvalidError
+		require.ErrorAs(t, err, &invalid, name)
+		assert.Equal(t, "primary", invalid.Role, name)
+	}
+}

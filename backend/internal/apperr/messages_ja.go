@@ -76,6 +76,9 @@ var messagesJa = map[string]string{
 	"llm_invalid_output.cause":  "LLM の答えが、求めた形式になっていませんでした。",
 	"llm_invalid_output.remedy": "もう一度実行してください。続くときは、設定画面の「テキスト生成（LLM）」で、その Agent のモデルを変えてみてください。",
 
+	"local_llm_unreachable.cause":  "ローカルサーバーに接続できません。ローカルの LLM サーバー（Ollama・LM Studio・llama.cpp server など）が応答しませんでした。",
+	"local_llm_unreachable.remedy": "サーバーが起動しているか、設定画面の「テキスト生成（LLM）」の「ローカル LLM サーバー」のベース URL（Ollama は http://localhost:11434、LM Studio は http://localhost:1234）が合っているかを確かめてください。LM Studio はローカルサーバーを起動（Start Server）する必要があります。",
+
 	"generation_time_limit.cause":  "生成が制限時間（Max generation time）を超えました。",
 	"generation_time_limit.remedy": "設定画面で制限時間を延ばすか、ポリシーを見直してください。",
 

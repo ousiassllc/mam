@@ -42,6 +42,7 @@ const (
 	CodeEngineMissing    Code = "engine_not_installed"  // the bundled ComfyUI engine is not installed
 	CodeNodeMissing      Code = "node_missing"          // a custom node of the workflow is missing from ComfyUI
 	CodeLLMInvalidOutput Code = "llm_invalid_output"    // the LLM answered something that is not the requested form
+	CodeLocalLLMDown     Code = "local_llm_unreachable" // the local OpenAI-compatible LLM server (Ollama, LM Studio, llama.cpp server) did not answer
 	CodeGenTimeLimit     Code = "generation_time_limit" // the Max generation time of the Policy ran out
 	CodeMediaTimeout     Code = "media_timeout"         // ffmpeg / ffprobe ran past its limit
 	CodeDownloadCorrupt  Code = "download_corrupt"      // the downloaded file does not match its checksum or size
@@ -132,6 +133,7 @@ var specs = map[Code]spec{
 	CodeEngineMissing:    {ClassUnavailable, []Place{PlaceModelMgr, PlaceLocalModels}},
 	CodeNodeMissing:      {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeLLMInvalidOutput: {ClassUpstream, []Place{PlaceLLM}},
+	CodeLocalLLMDown:     {ClassUpstream, []Place{PlaceLLM}},
 	CodeGenTimeLimit:     {ClassUpstream, []Place{PlaceSettings}},
 	CodeMediaTimeout:     {ClassUpstream, nil},
 	CodeDownloadCorrupt:  {ClassUpstream, []Place{PlaceModelMgr}},

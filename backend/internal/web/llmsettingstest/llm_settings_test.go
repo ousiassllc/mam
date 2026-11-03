@@ -24,7 +24,8 @@ func TestLLMSettings_TheScreenIsATableWithARowForEveryAgentAndKeepsTheUnusedOnes
 	assert.Contains(t, html, `hx-delete="`+paths.LLMSettings()+`"`, "the whole reset stays")
 	assert.Contains(t, html, "次の呼び出しからすぐ使われます（再起動は要りません）", "the notice that a save is in effect at once is always there")
 	assert.NotContains(t, html, "再起動で反映", "no row waits for a restart")
-	assert.NotContains(t, html, "<input", "the fields are in the modal of a row")
+	table, _, _ := strings.Cut(html, `data-testid="llm-local-section"`) // the card of the local server below the table has its own fields
+	assert.NotContains(t, table, "<input", "the fields are in the modal of a row")
 	for _, a := range llm.Agents() {
 		assert.Contains(t, html, `id="llm-row-`+string(a)+`"`, a)
 		assert.Contains(t, html, `hx-get="`+paths.LLMAgentEdit(string(a))+`"`, a)
