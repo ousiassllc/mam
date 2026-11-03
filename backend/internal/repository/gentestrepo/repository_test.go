@@ -2,6 +2,7 @@ package gentestrepo_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"testing"
 	"time"
@@ -77,10 +78,10 @@ func TestBatchRoundTripAndProgress(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, gentestrepo.Counts{Queued: 2}, c)
 
-	started, err := r.MarkRunning(ctx, "r1")
+	started, err := r.MarkRunning(ctx, "r1", base)
 	require.NoError(t, err)
 	assert.True(t, started)
-	started, err = r.MarkRunning(ctx, "r1")
+	started, err = r.MarkRunning(ctx, "r1", base)
 	require.NoError(t, err)
 	assert.False(t, started, "a result that runs already is not started twice")
 	require.NoError(t, r.Settle(ctx, "r1", gentestrepo.Settlement{Status: gentestrepo.StatusSucceeded, FilePath: "b1/r1.png", MimeType: "image/png", SizeBytes: 9, ActualCost: ptr(0.05), At: base.Add(time.Minute)}))
@@ -95,6 +96,10 @@ func TestBatchRoundTripAndProgress(t *testing.T) {
 	require.NotNil(t, r1.ActualCost)
 	assert.InDelta(t, 0.05, *r1.ActualCost, 1e-9)
 	require.NotNil(t, r1.FinishedAt)
+	require.NotNil(t, r1.StartedAt, "MarkRunning records when the result began")
+	assert.True(t, r1.StartedAt.Equal(base))
+	res, _ = r.Results(ctx, "b1")
+	assert.Nil(t, res[1].StartedAt, "a queued result has not begun")
 
 	err = r.Settle(ctx, "r1", gentestrepo.Settlement{Status: gentestrepo.StatusFailed, Error: "late", At: base})
 	assert.ErrorIs(t, err, repository.ErrNotFound, "a result that is over is not settled again")
@@ -105,7 +110,7 @@ func TestBatchRoundTripAndProgress(t *testing.T) {
 func TestCancelQueuedLeavesRunningAlone(t *testing.T) {
 	r, ctx := setup(t)
 	require.NoError(t, r.CreateBatch(ctx, newBatch("b1", base, result("r1", 0, "m", "p"), result("r2", 1, "m", "p"), result("r3", 2, "m", "p"))))
-	_, err := r.MarkRunning(ctx, "r1")
+	_, err := r.MarkRunning(ctx, "r1", base)
 	require.NoError(t, err)
 
 	n, err := r.CancelQueued(ctx, "b1", "cancelled by the user", base.Add(time.Second))
@@ -116,7 +121,7 @@ func TestCancelQueuedLeavesRunningAlone(t *testing.T) {
 	r2, _ := r.GetResult(ctx, "r2")
 	assert.Equal(t, "cancelled by the user", r2.Error)
 
-	started, err := r.MarkRunning(ctx, "r2")
+	started, err := r.MarkRunning(ctx, "r2", base)
 	require.NoError(t, err)
 	assert.False(t, started, "a cancelled result is never started")
 	require.NoError(t, r.Settle(ctx, "r1", gentestrepo.Settlement{Status: gentestrepo.StatusSucceeded, FilePath: "f", At: base}))
@@ -126,8 +131,8 @@ func TestFailUnfinishedSettlesWhatTheCrashLeft(t *testing.T) {
 	r, ctx := setup(t)
 	require.NoError(t, r.CreateBatch(ctx, newBatch("b1", base, result("r1", 0, "m", "p"), result("r2", 1, "m", "p"), result("r3", 2, "m", "p"), result("r4", 3, "m", "p"))))
 	require.NoError(t, r.CreateBatch(ctx, newBatch("b2", base.Add(time.Hour), result("r5", 0, "m", "p"))))
-	_, _ = r.MarkRunning(ctx, "r1")
-	_, _ = r.MarkRunning(ctx, "r2")
+	_, _ = r.MarkRunning(ctx, "r1", base)
+	_, _ = r.MarkRunning(ctx, "r2", base)
 	require.NoError(t, r.Settle(ctx, "r2", gentestrepo.Settlement{Status: gentestrepo.StatusSucceeded, FilePath: "kept", At: base}))
 	require.NoError(t, r.Settle(ctx, "r4", gentestrepo.Settlement{Status: gentestrepo.StatusFailed, Error: "vendor said no", At: base}))
 	require.NoError(t, r.FinishBatch(ctx, "b2", base.Add(2*time.Hour)))
@@ -292,4 +297,34 @@ func TestImportRecordsPlainIdsAndNeedsTheResult(t *testing.T) {
 	require.Len(t, list, 1)
 	assert.Equal(t, "item-1", list[0].ReferenceItemID)
 	assert.JSONEq(t, `{"as":"reference","kind":"character"}`, string(list[0].Target))
+}
+
+func TestRunDurationsListsTheSucceededResultsOfTheModelThatHaveAStart(t *testing.T) {
+	db, ctx := testdb.Open(t), context.Background()
+	r := gentestrepo.New(db)
+	require.NoError(t, r.CreateBatch(ctx, newBatch("b1", base, result("ok", 0, "m", "p"), result("failed", 1, "m", "p"), result("other", 2, "x", "p"), result("old", 3, "m", "p"))))
+	for _, id := range []string{"ok", "failed", "other"} {
+		started, err := r.MarkRunning(ctx, id, base)
+		require.NoError(t, err)
+		require.True(t, started)
+	}
+	settle := func(id, status string, took time.Duration) {
+		require.NoError(t, r.Settle(ctx, id, gentestrepo.Settlement{Status: status, At: base.Add(took)}))
+	}
+	settle("ok", gentestrepo.StatusSucceeded, 90*time.Second)
+	settle("failed", gentestrepo.StatusFailed, time.Second)
+	settle("other", gentestrepo.StatusSucceeded, time.Second)
+	_, err := r.MarkRunning(ctx, "old", base)
+	require.NoError(t, err)
+	require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error { // as a result that ran before the column existed
+		_, err := tx.ExecContext(ctx, `UPDATE gentest_result SET started_at = NULL WHERE id = 'old'`)
+		return err
+	}))
+	settle("old", gentestrepo.StatusSucceeded, time.Hour)
+
+	got, err := r.RunDurations(ctx, "m", "image", 10)
+	require.NoError(t, err)
+	require.Len(t, got, 1, "only a succeeded result of this model that has a start")
+	assert.Equal(t, 90*time.Second, got[0].Took)
+	assert.JSONEq(t, `{}`, string(got[0].Params))
 }

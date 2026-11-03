@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobrecent"
@@ -81,4 +82,35 @@ func TestRecent_ABatchDoesNotNameAHiddenModel(t *testing.T) {
 	require.Len(t, closed, 1)
 	assert.NotContains(t, closed[0].Subject, labels["flux-2"])
 	assert.Equal(t, labels["nano-banana"], closed[0].Subject)
+}
+
+// A batch whose ComfyUI call reports a step shows the node, the step and the time since the call was queued next to the count, and
+// the percentage counts the step (Issue #1002).
+func TestRecent_ARunningBatchShowsTheStepOfItsComfyUICall(t *testing.T) {
+	rig := gentesttest.New(t)
+	svc := servicetest.New(t, service.Deps{DB: rig.DB, Credentials: credentialtest.New()})
+	list := joblist.New(joblist.Deps{
+		Table: jobrecent.New(rig.DB), Shots: repository.NewGenerationRepository(rig.DB), Projects: svc.Projects, Gentest: rig.Svc,
+	})
+	release := rig.Fake.Hold("flux-2")
+	ref, err := rig.Confirmed(gentest.Request{Media: "image", Models: []string{"flux-2"}, Prompts: []gentest.PromptInput{{Prompt: "a fox"}, {Prompt: "a cat"}}})
+	require.NoError(t, err)
+	<-rig.Fake.Started()
+
+	call := live.Default.Start("test-ep", "prompt-"+ref.JobID)
+	defer call.End()
+	call.Own(ref.JobID)
+	call.Step("3", "KSampler", 5, 20, 50)
+
+	running, err := list.Recent(t.Context())
+	require.NoError(t, err)
+	require.Len(t, running, 1)
+	require.NotNil(t, running[0].Progress)
+	assert.Equal(t, 25, running[0].Progress.Percent, "0 of 2 done and the running one half way")
+	assert.Contains(t, running[0].Progress.Text, "0 / 2 件・KSampler ステップ 5 / 20・経過 ")
+
+	call.End()
+	release <- struct{}{}
+	release <- struct{}{}
+	rig.Wait(ref.BatchID)
 }

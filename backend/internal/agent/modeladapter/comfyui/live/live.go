@@ -26,6 +26,8 @@ type Progress struct {
 	// Percent is how far the whole workflow is, as the nodes done and the steps of the current one tell (0-99).
 	Percent   int
 	StartedAt time.Time
+	// Elapsed is the time since the call was queued (Registry.Start) up to the time the snapshot was taken.
+	Elapsed time.Duration
 	// ETA is the time the rest of the current node needs at the speed it has had so far; ok is false before it
 	// can be told (the node has not advanced yet). It is not the time the whole workflow needs.
 	ETA    time.Duration
@@ -39,6 +41,8 @@ type View struct {
 	Step    int    `json:"step" jsonschema:"いまのノードのステップ / step of the current node"`
 	MaxStep int    `json:"max_step" jsonschema:"いまのノードのステップの総数 / steps of the current node"`
 	Percent int    `json:"percent" jsonschema:"ワークフロー全体の進み具合（0-99 %）/ how far the whole workflow is"`
+	// ElapsedSeconds is the time since the call was queued on ComfyUI, the model loading included: it grows even when no step moves.
+	ElapsedSeconds int `json:"elapsed_seconds" jsonschema:"ComfyUI に渡してからの経過秒（モデルの読み込みを含む）。ステップが進まなくても増え続ける / seconds since the call was queued on ComfyUI, model loading included"`
 	// ETASeconds is the time the rest of the current node needs at the speed it has had; not the time of the whole job.
 	ETASeconds     *int   `json:"eta_seconds,omitempty" jsonschema:"いまのノードの残りステップがこれまでの速さで終わるまでの秒数。ワークフロー全体の残り時間ではない / seconds the rest of the current node needs; not the time of the whole job"`
 	ETAUnavailable string `json:"eta_unavailable,omitempty" jsonschema:"eta_seconds が無い理由 / why eta_seconds is missing"`
@@ -50,7 +54,7 @@ func (p Progress) View() *View {
 	if p.MaxStep == 0 {
 		return nil
 	}
-	v := &View{Node: p.Node, Step: p.Step, MaxStep: p.MaxStep, Percent: p.Percent}
+	v := &View{Node: p.Node, Step: p.Step, MaxStep: p.MaxStep, Percent: p.Percent, ElapsedSeconds: int(p.Elapsed.Round(time.Second) / time.Second)}
 	switch {
 	case p.HasETA:
 		secs := int(p.ETA.Round(time.Second) / time.Second)
@@ -223,6 +227,7 @@ func (j *Job) snapshot() Progress {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	p := j.p
+	p.Elapsed = max(0, j.r.now().Sub(p.StartedAt))
 	if done, elapsed := p.Step-j.nodeFrom, j.updated.Sub(j.nodeStart); done > 0 && elapsed > 0 && p.MaxStep > p.Step {
 		p.ETA, p.HasETA = elapsed*time.Duration(p.MaxStep-p.Step)/time.Duration(done), true
 	}

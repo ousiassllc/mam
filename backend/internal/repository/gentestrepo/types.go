@@ -113,7 +113,9 @@ type Result struct {
 	ActualCost    *float64
 	Favorite      bool
 	CreatedAt     time.Time
-	FinishedAt    *time.Time
+	// StartedAt is when the result began to run; nil while it is queued, and for a result that ran before the column existed.
+	StartedAt  *time.Time
+	FinishedAt *time.Time
 }
 
 // Prompt is a prompt that was used, once per (prompt, negative prompt).

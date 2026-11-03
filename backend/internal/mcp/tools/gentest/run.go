@@ -212,7 +212,7 @@ type BatchInput struct {
 // BatchOutput is the batch with, while it runs, how far the ComfyUI call that makes its results is (Issue #966).
 type BatchOutput struct {
 	gentest.BatchStatus
-	Progress *live.View `json:"progress,omitempty" jsonschema:"いま動いているローカル ComfyUI の生成の進み具合（ステップ・%・残り時間）。取れないとき（クラウドのモデル・準備中・終わったバッチ）は省略 / step, percent and time left of the local ComfyUI call that is running; left out when unknown"`
+	Progress *live.View `json:"progress,omitempty" jsonschema:"いま動いているローカル ComfyUI の生成の進み具合（ノード・ステップ・%・経過・残り時間）。取れないとき（クラウドのモデル・準備中・終わったバッチ）は省略 / step, percent and time left of the local ComfyUI call that is running; left out when unknown"`
 }
 
 func (h handlers) get(ctx context.Context, in BatchInput) (BatchOutput, error) {

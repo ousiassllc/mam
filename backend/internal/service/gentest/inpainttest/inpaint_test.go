@@ -1,4 +1,4 @@
-package gentest_test
+package inpainttest
 
 import (
 	"bytes"

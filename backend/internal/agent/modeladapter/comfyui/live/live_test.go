@@ -51,6 +51,7 @@ func TestStepGivesTheProgressAndAnEstimateOfTheRestOfTheNode(t *testing.T) {
 	assert.Equal(t, 20, p.MaxStep)
 	assert.Equal(t, 55, p.Percent)
 	assert.Equal(t, 16*time.Second, p.ETA, "10 steps took 20 s: 8 steps left take 16 s")
+	assert.Equal(t, 20*time.Second, p.Elapsed, "the time since the call was queued")
 
 	// the next sampling node starts its own count and its own speed
 	c.t = c.t.Add(time.Second)
@@ -58,6 +59,25 @@ func TestStepGivesTheProgressAndAnEstimateOfTheRestOfTheNode(t *testing.T) {
 	p, _ = r.Lookup("ep", "p1")
 	assert.False(t, p.HasETA)
 	assert.Equal(t, 10, p.MaxStep)
+}
+
+func TestElapsedGrowsWithoutAStep(t *testing.T) {
+	c := &clock{t: time.Unix(1000, 0)}
+	r := live.New(c.now)
+	job := r.Start("ep", "p1")
+	defer job.End()
+
+	c.t = c.t.Add(95 * time.Second)
+	p, ok := r.Lookup("ep", "p1")
+	require.True(t, ok)
+	assert.Equal(t, 95*time.Second, p.Elapsed, "the model may still be loading: no step, but the time runs")
+	assert.Nil(t, p.View(), "no step is known: no view")
+
+	job.Step("7", "KSampler", 3, 20, 10)
+	c.t = c.t.Add(5 * time.Second)
+	p, _ = r.Lookup("ep", "p1")
+	require.NotNil(t, p.View())
+	assert.Equal(t, 100, p.View().ElapsedSeconds)
 }
 
 func TestANilJobIgnoresEverything(_ *testing.T) {

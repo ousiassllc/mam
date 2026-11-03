@@ -46,7 +46,7 @@ type JobStatus struct {
 	Message    string         `json:"message,omitempty" jsonschema:"いま何をしているか / what it is doing now"`
 	Done       int            `json:"done,omitempty" jsonschema:"終わった数（Take など）/ items finished"`
 	Total      int            `json:"total,omitempty" jsonschema:"全体の数 / items in all"`
-	Steps      *live.View     `json:"progress,omitempty" jsonschema:"動いているローカル ComfyUI の生成の進み具合（step / max_step / percent / eta_seconds）。取れないとき（クラウドのモデル・準備中・終わった後）は省略 / step, percent and time left of the local ComfyUI call that is running; left out when unknown"`
+	Steps      *live.View     `json:"progress,omitempty" jsonschema:"動いているローカル ComfyUI の生成の進み具合（node / step / max_step / percent / elapsed_seconds / eta_seconds）。取れないとき（クラウドのモデル・準備中・終わった後）は省略 / step, percent and time left of the local ComfyUI call that is running; left out when unknown"`
 	Result     map[string]any `json:"result,omitempty" jsonschema:"成功したときの結果（take_id など）/ result when it succeeded (e.g. take_ids)"`
 	Error      string         `json:"error,omitempty" jsonschema:"失敗の理由 / why it failed"`
 	ErrorID    string         `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID。get_app_logs の attrs に {\"error_id\": …} で渡すと原因のログ行が見つかる / correlation id of an internal failure: find its cause with get_app_logs (attrs error_id)"`

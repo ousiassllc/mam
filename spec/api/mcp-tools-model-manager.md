@@ -37,7 +37,7 @@
 | `gpus[]` | `index`, `name`, `vendor`, `memory`（`dedicated` / `unified`）, `vram_total_bytes`, `vram_used_bytes`, `vram_free_bytes`, `utilization_percent`, `temperature_celsius`, `note`, `unavailable` |
 | `processes[]` | GPU で計算しているプロセス: `pid`, `name`, `gpu_index`, `owner`（`mam` / `mam_engine`（同梱エンジンのフォルダの下のプログラム）/ `other`）, `used_bytes`, `used_bytes_unavailable` |
 | `comfyui[]` | mam が知っている ComfyUI（同梱エンジンと外部の接続先）ごと: `endpoint`, `url`, `bundled`, `reachable`, `unreachable_reason`, `version`, `devices[]`（`vram_total_bytes`, `vram_free_bytes`, `torch_vram_*`, `comfyui_used_bytes` = ComfyUI が自分で持っている VRAM）, `running[]`・`pending[]`（ジョブ。`pending` は実行される順で `position` = 1 が次）, `unavailable` |
-| `running[].progress` | `node`, `step`・`max_step`（いま動いているノードのステップ。Wan 2.2 のようにサンプラーが複数あるとノードごとに数え直す）, `percent`（ワークフロー全体）, `eta_seconds`（そのノードの残りの目安。ジョブ全体の残りではない） |
+| `running[].progress` | `node`, `step`・`max_step`（いま動いているノードのステップ。Wan 2.2 のようにサンプラーが複数あるとノードごとに数え直す）, `percent`（ワークフロー全体）, `elapsed_seconds`（ComfyUI に渡してからの経過秒）, `eta_seconds`（そのノードの残りの目安。ジョブ全体の残りではない） |
 
 - **取れない値はエラーにせず、省いて理由を付ける**: 項目名（JSON 名）をキーにした `unavailable`（GPU ごと・全体・ComfyUI ごと）と、`unreachable_reason`・`progress_unavailable`・`eta_unavailable`・`used_bytes_unavailable` に理由を日本語で返す。値を `null` や 0 で埋めない。
 - **NVIDIA（Windows・Linux）**: `nvidia-smi --query-gpu=…`（名前・VRAM の合計/使用/空き・使用率・温度）と `--query-compute-apps=…`（プロセス）を CSV で読む。nvidia-smi が無い・失敗したときは、アダプターの一覧（Windows は DXGI）から名前と専用メモリの大きさだけ返し、他は理由付きで省く。AMD・Intel（と nvidia-smi が失敗した NVIDIA）の Windows での使用量は、下の「Windows の AMD・Intel」で取る。Windows の WDDM ドライバはプロセスごとのメモリを `[N/A]` で返すので、その理由を付ける（ComfyUI の使用量は `comfyui[].devices[].comfyui_used_bytes` で見る）。
