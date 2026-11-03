@@ -91,7 +91,7 @@ func TestEngine_RefusalsAreToolErrors(t *testing.T) {
 		for _, tool := range []string{"install_model_engine", "start_model_engine"} {
 			msg := env.CallError(tool, map[string]any{})
 			assert.Contains(t, msg, "conflict", tool)
-			assert.Contains(t, msg, "Windows 版だけ", tool)
+			assert.Contains(t, msg, "Apple Silicon の Mac", tool)
 		}
 	})
 	t.Run("unknown build", func(t *testing.T) {

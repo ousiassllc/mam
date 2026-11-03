@@ -36,14 +36,13 @@ type VariantView struct {
 
 // EngineView is the bundled engine: what is installed against what is pinned, the process, and the builds.
 type EngineView struct {
-	// Supported: the bundled engine exists on this OS (Windows); elsewhere only an external ComfyUI.
+	// Supported: the bundled engine exists on this PC (Windows; a Mac with Apple silicon and macOS 14 or later); elsewhere only an external ComfyUI.
 	Supported bool `json:"supported"`
 	engine.Status
 	Process   proc.Status `json:"process"`
 	AutoStart bool        `json:"auto_start"`
 	Endpoint  string      `json:"endpoint"`
-	// Dir is the directory next to mam.exe that holds the engine and the models; Writable is false (with
-	// WritableError) when mam.exe is in a place the user cannot write to: use an external ComfyUI then.
+	// Dir holds the engine and the models (next to mam.exe on Windows, in the data directory on macOS); Writable is false (with WritableError) when it cannot be written to: use an external ComfyUI then.
 	Dir           string `json:"dir"`
 	Writable      bool   `json:"writable"`
 	WritableError string `json:"writable_error,omitempty"`
@@ -69,8 +68,8 @@ func (s *Service) Engine() EngineView {
 		v.Writable = true
 	}
 	v.FreeBytes = s.free(s.Layout.Root)
-	for _, name := range s.cat.Engine.VariantList() {
-		a, ok := s.cat.Engine.Variants[name]
+	for _, name := range engine.VariantList(s.cat.Engine, s.Platform) {
+		a, ok := engine.AssetOf(s.cat.Engine, name)
 		if !ok {
 			continue
 		}
@@ -112,7 +111,7 @@ type EngineInstallInput struct {
 }
 
 // InstallEngine downloads the pinned engine of the build and installs it, as a job (JobStatus). It refuses at once
-// when the directory next to mam.exe cannot be written to (store.ErrNotWritable: offer an external URL) or the
+// when the directory of the engine cannot be written to (store.ErrNotWritable: offer an external URL) or the
 // disk lacks the room (*fetch.NoSpaceError). Installing again with a newer pinned version is the update.
 func (s *Service) InstallEngine(ctx context.Context, in EngineInstallInput) (JobRef, error) {
 	if !s.bundled {
@@ -134,9 +133,9 @@ func (s *Service) InstallEngine(ctx context.Context, in EngineInstallInput) (Job
 func (s *Service) chooseVariant(ctx context.Context, in EngineInstallInput) (catalog.Variant, error) {
 	switch {
 	case in.CPU:
-		return catalog.VariantNVIDIA, nil // the package with run_cpu.bat; launched with --cpu
+		return engine.VariantList(s.cat.Engine, s.Platform)[0], nil // the NVIDIA package with run_cpu.bat on Windows, the one macOS build elsewhere; launched with --cpu
 	case in.Variant != "":
-		if _, ok := s.cat.Engine.Variants[in.Variant]; !ok {
+		if !engine.Installable(s.cat.Engine, s.Platform, in.Variant) {
 			return "", engine.ErrVariant
 		}
 		return in.Variant, nil

@@ -55,7 +55,7 @@ func (c ComfyUI) ModelManagerLines() []molecules.StatusLine {
 		return l
 	}
 	if !c.Supported {
-		return line(atoms.BadgeNeutral, "同梱の ComfyUI は Windows 版のみ")
+		return line(atoms.BadgeNeutral, "同梱の ComfyUI は Windows 版と Apple Silicon の Mac 版のみ")
 	}
 	return line(atoms.BadgeNeutral, "ComfyUI: 未導入")
 }

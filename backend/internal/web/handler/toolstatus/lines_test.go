@@ -35,7 +35,7 @@ func TestComfyUI_ModelManagerLines(t *testing.T) {
 		{"not installed, one external", toolstatus.ComfyUI{Supported: true, External: 1}, one(atoms.BadgeNeutral, "外部の ComfyUI: 1 件")},
 		{"not installed, none", toolstatus.ComfyUI{Supported: true}, one(atoms.BadgeNeutral, "ComfyUI: 未導入")},
 		{"unsupported OS, externals", toolstatus.ComfyUI{External: 3}, one(atoms.BadgeNeutral, "外部の ComfyUI: 3 件")},
-		{"unsupported OS, none", toolstatus.ComfyUI{}, one(atoms.BadgeNeutral, "同梱の ComfyUI は Windows 版のみ")},
+		{"unsupported OS, none", toolstatus.ComfyUI{}, one(atoms.BadgeNeutral, "同梱の ComfyUI は Windows 版と Apple Silicon の Mac 版のみ")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

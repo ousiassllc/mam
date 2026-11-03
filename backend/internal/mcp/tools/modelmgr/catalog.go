@@ -91,11 +91,11 @@ func (h handlers) listCatalog(ctx context.Context, in ListCatalogInput) (ListCat
 func Blocked(st modelmanager.Status) string {
 	switch {
 	case !st.Engine.Supported:
-		return "同梱の ComfyUI は Windows 版だけで使えます。外部の ComfyUI の URL を設定してください"
+		return "同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけで使えます。外部の ComfyUI の URL を設定してください"
 	case st.Pinned:
 		return "起動オプション（--model-config）で設定ファイルが固定されているため、導入と削除はできません"
 	case !st.Engine.Writable:
-		return "mam.exe のあるフォルダに書き込めません"
+		return "導入先のフォルダ（Windows は mam.exe のあるフォルダ、macOS は mam のデータフォルダ）に書き込めません"
 	case !st.Engine.Installed || st.Engine.Broken:
 		return "先に ComfyUI エンジンを導入してください（install_model_engine）"
 	}

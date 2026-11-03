@@ -15,6 +15,8 @@ import (
 const (
 	// KindZip is a zip archive extracted into a directory below the environment (Dest), without its single top directory (Strip).
 	KindZip = "zip"
+	// KindTarGz is a gzip-compressed tar archive extracted like a KindZip (the relocatable Python of python-build-standalone for macOS).
+	KindTarGz = "tar.gz"
 	// KindWheel is a Python wheel (a zip with the layout of a package), put into the site-packages directory of Build.
 	KindWheel = "wheel"
 )
@@ -61,6 +63,8 @@ var urlPatterns = []*regexp.Regexp{
 	// PyTorch's wheels of one CUDA build, and OpenMMLab's wheels of the mmcv build for that PyTorch.
 	regexp.MustCompile(`^https://download\.pytorch\.org/whl/cu[0-9]+/[A-Za-z0-9][A-Za-z0-9._%+-]*\.whl$`),
 	regexp.MustCompile(`^https://download\.openmmlab\.com/mmcv/dist/cu[0-9]+/torch[0-9.]+/[A-Za-z0-9][A-Za-z0-9._-]*\.whl$`),
+	// The relocatable CPython of python-build-standalone for Apple silicon (the "install_only" archive of a dated release).
+	regexp.MustCompile(`^https://github\.com/astral-sh/python-build-standalone/releases/download/[0-9]{8}/cpython-[0-9]+\.[0-9]+\.[0-9]+%2B[0-9]{8}-aarch64-apple-darwin-install_only\.tar\.gz$`),
 	// The vendor's source at a commit of a GitHub repository.
 	regexp.MustCompile(`^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/archive/[0-9a-f]{40}\.zip$`),
 }
@@ -104,7 +108,7 @@ func Check(where string, ps []Part) (size, extracted int64, errs []error) {
 
 func checkKind(pw string, p Part) []error {
 	switch p.Kind {
-	case KindZip:
+	case KindZip, KindTarGz:
 		if (p.Dest != "" && !relativeSlashPath(p.Dest)) || (p.Strip != "" && !relativeSlashPath(p.Strip)) {
 			return []error{fmt.Errorf("%s: dest and strip must be relative slash paths", pw)}
 		}
@@ -113,7 +117,7 @@ func checkKind(pw string, p Part) []error {
 			return []error{fmt.Errorf("%s: a wheel has a .whl url and no dest or strip", pw)}
 		}
 	default:
-		return []error{fmt.Errorf("%s: kind must be zip or wheel", pw)}
+		return []error{fmt.Errorf("%s: kind must be zip, tar.gz or wheel", pw)}
 	}
 	return nil
 }

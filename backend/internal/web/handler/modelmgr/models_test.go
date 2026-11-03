@@ -80,7 +80,7 @@ func TestInstallModel_RefusalsBeforeAnythingIsDownloaded(t *testing.T) {
 		s := newScreen(t, mmtest.NotWindows())
 		rec := s.do(http.MethodPost, installURL("m-a"), nil)
 		assert.Equal(t, http.StatusConflict, rec.Code)
-		assert.Contains(t, rec.Body.String(), "Windows 版だけ")
+		assert.Contains(t, rec.Body.String(), "Apple Silicon の Mac")
 	})
 }
 

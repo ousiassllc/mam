@@ -16,7 +16,7 @@ import (
 
 func registerEngine(r *mcpkit.Registrar, h handlers) {
 	mcpkit.Read(r, "get_model_engine_status",
-		"同梱の ComfyUI エンジンの状態（導入済みの版と固定版・ビルド・起動中か停止か異常終了の理由・自動起動・導入先と空き容量・ライセンス）と、ComfyUI の接続先の一覧 / State of the bundled ComfyUI engine and the ComfyUI endpoints. Windows 版だけが同梱エンジンを持つ（supported=false なら外部の ComfyUI の URL を使う）。",
+		"同梱の ComfyUI エンジンの状態（導入済みの版と固定版・ビルド・起動中か停止か異常終了の理由・自動起動・導入先と空き容量・ライセンス）と、ComfyUI の接続先の一覧 / State of the bundled ComfyUI engine and the ComfyUI endpoints. 同梱エンジンを持つのは Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけ（supported=false なら外部の ComfyUI の URL を使う）。",
 		h.engineStatus)
 	mcpkit.Read(r, "detect_gpu",
 		"この PC の GPU と、導入すべき ComfyUI のビルドの推奨（対応する GPU が無ければ variant は空で案内が付く）/ Detect the GPUs of this machine and the recommended ComfyUI build.",

@@ -4,18 +4,18 @@
 
 ## 1. 方針（変えない前提）
 
-- **ComfyUI はインストーラーにも Release にも同梱しない**（サイズと自動更新の上限のため）。MAM が、GPU に合う公式のポータブル版（7z）を実行時に取得する。ComfyUI は GPL-3.0 の別プログラムで、MAM は配布しない（`THIRD_PARTY_NOTICES.md`）。
-- **置き場所は `<mam.exe のあるディレクトリ>\comfyui` だけ**（§2）。インストール版ならアンインストーラーがインストール先ごと消し、ポータブル版は exe の隣に残る。それ以外に永続する場所を作らない。書けない場所なら明確なエラーで、外部 URL の利用を案内する。
+- **ComfyUI はインストーラーにも Release にも同梱しない**（サイズと自動更新の上限のため）。MAM が、Windows では GPU に合う公式のポータブル版（7z）を、macOS（Apple Silicon）では固定した部品（Python・ComfyUI のソース・PyTorch ほかの wheel。§3.7）を、実行時に取得する。ComfyUI は GPL-3.0 の別プログラムで、MAM は配布しない（`THIRD_PARTY_NOTICES.md`）。
+- **置き場所は 1 つのディレクトリ `comfyui` だけ**（§2）。Windows は `<mam.exe のあるディレクトリ>\comfyui`（インストール版ならアンインストーラーがインストール先ごと消し、ポータブル版は exe の隣に残る）、macOS は **mam のデータディレクトリの中の `comfyui`**（`MAM.app` の外。自動更新が `.app` を丸ごと入れ替えても、エンジンとモデルが消えない。アプリを消してもデータは残る）。それ以外に永続する場所を作らない。書けない場所なら明確なエラーで、外部 URL の利用を案内する。
 - **取得物は固定（ピン留め）して SHA-256 を検証する**: エンジンもモデルも、コミットまたはタグ・SHA-256・サイズをカタログ（埋め込みの JSON）に持つ。ハッシュが合わないものは使わず、消す。
-- **Windows 版だけが同梱エンジンを持つ**。ブラウザ版・サーバー版（非 Windows）では同梱エンジンは使えず（`ErrUnsupported`）、外部の ComfyUI を接続先 URL（local-models.md）で使う。
+- **同梱エンジンを持つのは Windows 版と、Apple Silicon（arm64）で macOS 14 以降の Mac 版だけ**（Issue #854。判定は `engine.Supported`）。ブラウザ版・サーバー版（Linux など）・Intel Mac・macOS 13 以前では同梱エンジンは使えず（`ErrUnsupported`）、外部の ComfyUI を接続先 URL（local-models.md）で使う。
 - **外部の ComfyUI は読むだけ**: インストール済みモデルの一覧（`GET /models/{folder}`。`checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras`）と、カタログと照らした「足りない」表示までで、リモートへの導入はしない（ComfyUI にモデルを置く API が無い）。年齢確認が済むまで、成人向けのモデルは照合の結果に出ない（§6.1）。
 - 起動した ComfyUI 以外（ComfyUI Desktop など）は **起動も停止もしない**。
 
 ## 2. ディレクトリ
 
 ```
-<mam.exe のディレクトリ>\comfyui\
-  engine\        ComfyUI ポータブル版を展開したもの（python_embeded\ と ComfyUI\）。更新はこのディレクトリごと入れ替える
+<mam.exe のディレクトリ>\comfyui\           （macOS は <データディレクトリ>/comfyui/。下の注）
+  engine\        ComfyUI ポータブル版を展開したもの（python_embeded\ と ComfyUI\。macOS は python/ と ComfyUI/。§3.7）。更新はこのディレクトリごと入れ替える
   data\          ComfyUI の --base-directory（models\・output\・user\ 等）。エンジンの更新で消えない
   downloads\     *.part と取得したアーカイブ（再開用）。完了・失敗で片づける
   logs\          engine.log（起動の失敗で末尾を表示する）
@@ -24,19 +24,20 @@
 
 - ジョブの結果（試し生成）は MAM のデータディレクトリ（`<data-dir>/gentest/<バッチ ID>/`）に置く。`comfyui` の中ではない（アンインストールでもデータは残す、という既存の方針）。
 - `store.Layout.CheckWritable` が作成と書き込みを試し、できなければ `ErrNotWritable`（`EngineView.Writable=false`）。
-- `store.ForExecutable(exe)` が exe の実体（シンボリックリンクは解決）から `Layout` を作る。
+- `store.For(goos, exe, dataDir)`（`store.ForSystem`）が `Layout` を作る。Windows などは exe の実体（シンボリックリンクは解決）の隣、**macOS はデータディレクトリの中**（`exeinstall.Root`。Codex のエンジン・ffmpeg と同じ規則。exe は `MAM.app` の中にあり、自動更新が `.app` を丸ごと入れ替えるので、そこに置いたものは更新で消える）。macOS でデータディレクトリが空なら `Layout` は空で、同梱エンジンは使えない（`engine.Supported` が偽）。
 
 ## 3. エンジン
 
 ### 3.1 カタログ（`catalog/data/engine.json`）
 
-ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portable_nvidia.7z`＝cu130、`..._nvidia_cu126.7z`、`..._amd.7z`、`..._intel.7z`）の URL・SHA-256（GitHub Releases API の `digest`）・サイズ・展開後サイズ（実測）。起動は `python_embeded\python.exe -s ComfyUI\main.py ...`。
+ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portable_nvidia.7z`＝cu130、`..._nvidia_cu126.7z`、`..._amd.7z`、`..._intel.7z`）の URL・SHA-256（GitHub Releases API の `digest`）・サイズ・展開後サイズ（実測）。起動は `python_embeded\python.exe -s ComfyUI\main.py ...`。macOS の build（`apple`）は `data/engine_apple.json`（§3.7）。
 
 ### 3.2 GPU の判定（`modelmgr/gpu`）
 
 | 項目 | 内容 |
 |---|---|
-| 取得 | Windows は `dxgi.dll` を純 Go（syscall）で呼び、アダプター名・ベンダー ID（10DE=NVIDIA、1002=AMD、8086=Intel）・`DedicatedVideoMemory` を得る。他の OS は空（`Detector` インターフェース＋ビルドタグ。単体テストは偽物） |
+| 取得 | Windows は `dxgi.dll` を純 Go（syscall）で呼び、アダプター名・ベンダー ID（10DE=NVIDIA、1002=AMD、8086=Intel）・`DedicatedVideoMemory` を得る。**macOS は `sysctl -n machdep.cpu.brand_string`（「Apple M2 Pro」）と `sysctl -n hw.memsize` を `gpu.Runner` 経由で読み**（`gpu.Apple`）、ベンダー ID `0x106B`（Apple）のアダプター 1 つ（メモリはユニファイドメモリ全体）を返す。brand string が `Apple ` で始まらない（Intel Mac）ときは空。他の OS は空（`Detector` インターフェース＋ビルドタグ。単体テストは偽物） |
+| Apple | ベンダー `0x106B` は VRAM が 4 GiB 以上（M シリーズは 8 GB 以上）で `apple`（GPU は Metal〔MPS〕）。GPU が使えるのは本体メモリの一部（Metal の推奨ワーキングセット）なので、**メモリの判定（§4.4）は甘めになる**（実機で未確認） |
 | NVIDIA | `nvidia-smi --query-gpu=compute_cap` があればそれで、無ければアダプター名で世代を推定。compute capability 7.5 未満は `nvidia_cu126`、それ以上は `nvidia`（cu130）。名前が不明なら低い確度で `nvidia` |
 | AMD | VRAM 4 GiB 以上で `amd` |
 | Intel | 名前に「Arc」を含むものだけ `intel`（内蔵 GPU は対象外） |
@@ -59,20 +60,20 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 - 上限まで切れ続けたときの失敗は `*fetch.ConnectionLostError` で、`.part` は残る。モデルマネージャーのジョブは「通信が切れました。もう一度導入すると続きから再開します」で失敗する（原因の詳細は `userError` の裏側に残り、ログに出る）。
 - 再開は WARN（`download interrupted, resuming from the part file`。`job_id`・`target`・`attempt`・`max_attempts`・`retry_in`・`err`）、導入ジョブの結末は成功が INFO（`install succeeded`）、利用者の中断が INFO（`install cancelled by the user`）、シャットダウンでの中断が WARN（`install interrupted`）、失敗が ERROR（`install failed`。原因の `err` つき）で、いずれも `job_id` と対象（`target` = `engine`・`model:<id>`・`hf:…`）を持つ。
 
-取得できるホストは `huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com` だけで、リダイレクト先も同じ規則で調べる（`fetch.AllowedURL`。エンジンのアーカイブとカタログのモデルの取得）。**Hugging Face の導入経路（`hf` のクライアントと導入したファイルの取得）は `huggingface.co` と `*.hf.co` だけ**（`fetch.HFAllowedURL`。GitHub へのリダイレクトは断る。[model-manager-hf.md](model-manager-hf.md) §2）。`Authorization` は最初の要求の宛先ホストにだけ付け、ホストが変わると外す（§5.3）。
+取得できるホストは `huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com` だけで、リダイレクト先も同じ規則で調べる（`fetch.AllowedURL`。Windows のエンジンのアーカイブとカタログのモデルの取得）。**macOS のエンジンの部品だけ**は、これに `python.org`・`pythonhosted.org`・`pytorch.org`・`openmmlab.com` を足した `fetch.PackageURL` を使う（PyTorch ほかの wheel は `files.pythonhosted.org`。ローカルランタイムの MuseTalk と同じ。§3.7）。**Hugging Face の導入経路（`hf` のクライアントと導入したファイルの取得）は `huggingface.co` と `*.hf.co` だけ**（`fetch.HFAllowedURL`。GitHub へのリダイレクトは断る。[model-manager-hf.md](model-manager-hf.md) §2）。`Authorization` は最初の要求の宛先ホストにだけ付け、ホストが変わると外す（§5.3）。
 
 **7z の方式**: 公式パッケージは LZMA2＋BCJ2（`-m0=lzma2 -mf=BCJ2 -md=768m`）。`bodgit/sevenzip` v1.6.0 が同じ方式で作った合成アーカイブ（`extract/testdata/bcj2.7z`、1.5 GB のものでも）を読めることを確かめた。展開時の最大メモリは 1.5 GB のアーカイブで約 1.6 GB。実物の約 2 GB を丸ごと取得・展開した検証は未実施（§11）。
 
 ### 3.4 プロセス（`modelmgr/proc`）
 
-起動引数: `--listen 127.0.0.1 --port <空きポート> --disable-auto-launch --disable-all-custom-nodes [--whitelist-custom-nodes <フォルダ…>] --base-directory <data>`（`--cpu` は CPU を選んだときだけ。`--whitelist-custom-nodes` は、mam が導入して固定の内容のままの追加ノードがあるときだけ、そのフォルダ名を渡す。許可リストにないフォルダは読み込まれない。[custom-nodes.md](custom-nodes.md) §3）。`--windows-standalone-build` は付けない（v0.42.1 ではブラウザを開き assets API を有効にするだけのため）。
+起動引数: `--listen 127.0.0.1 --port <空きポート> --disable-auto-launch --disable-all-custom-nodes [--whitelist-custom-nodes <フォルダ…>] --base-directory <data>`（`--cpu` は CPU を選んだときだけ。`--whitelist-custom-nodes` は、mam が導入して固定の内容のままの追加ノードがあるときだけ、そのフォルダ名を渡す。許可リストにないフォルダは読み込まれない。[custom-nodes.md](custom-nodes.md) §3）。`--windows-standalone-build` は付けない（v0.42.1 ではブラウザを開き assets API を有効にするだけのため）。macOS の build は同じ引数で、環境に `PYTORCH_ENABLE_MPS_FALLBACK=1` を足す（§3.7）。
 
 | 項目 | 内容 |
 |---|---|
 | ポート | 前回のポート（`state.json` の `LastPort`）を優先し、塞がっていれば空きを選ぶ |
 | 起動 | 既定は**遅延**（そのエンジンのモデルを初めて呼ぶとき、`Prepare`）。設定 `AutoStart` で MAM の起動時に開始（`OnStartup`）。待つのは `/system_stats` が応答するまで（タイムアウトあり） |
 | ウィンドウ | Windows ではコンソールを出さない（`HideWindow`＋`CREATE_NO_WINDOW`、`internal/media/run_windows.go` と同じ方法） |
-| 終了 | MAM の終了で止める（`Close`）。MAM が異常終了しても子が残らないよう、Windows は Job Object（`KILL_ON_JOB_CLOSE`）、Unix はプロセスグループと `Pdeathsig` |
+| 終了 | MAM の終了で止める（`Close`）。MAM が異常終了しても子が残らないよう、Windows は Job Object（`KILL_ON_JOB_CLOSE`）、Linux はプロセスグループと `Pdeathsig`。**macOS には `Pdeathsig` が無い**ので、`Stop`・`Close` がプロセスグループへ SIGTERM（`StopTimeout` の 10 秒待って SIGKILL）を送る。mam が `Close` を通らずに落ちる（SIGKILL・クラッシュ）と、ComfyUI が残る（次の起動はポートが塞がっていれば別のポートを選ぶ。残ったプロセスは手で終了する）。実機で未確認（§11） |
 | 状態 | `stopped` / `starting` / `running` / `failed`。起動の失敗・異常終了は `failed` とログの末尾（エラー文）で表し、`Watch` のイベントで通知する（画面・チャットへの出力は別作業） |
 
 ### 3.5 管理される接続先 `bundled-comfyui`
@@ -85,6 +86,32 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 ### 3.6 既存の ComfyUI の検出（`modelmgr/detect`）
 
 `127.0.0.1:8188`・`:8000` の `/system_stats`（`system.comfyui_version` を持つ JSON）を調べる。`%APPDATA%\ComfyUI\config.json`（ComfyUI Desktop）は**ヒントにだけ**使う。ポート 8000 で見つかったものは ComfyUI Desktop として**外部 URL**に使い、MAM は起動も停止もしない。`Report{Found, Desktop, Recommended}`。
+
+### 3.7 macOS（Apple Silicon）のエンジン（Issue #854）
+
+**対象**: Apple Silicon（arm64）で macOS 14 以降。Intel Mac・macOS 13 以前は対象外（`engine.Supported` が偽。外部の ComfyUI を使う）。macOS 14 の下限は、固定した wheel の `macosx_14_0_arm64` タグ（PyTorch 2.15.0・NumPy 2.5.4・SciPy 1.18.1・PyAV 19.0.2。`min_macos` とカタログの検証が同じ値を見る）から来る。
+
+**なぜポータブル版ではないか**: ComfyUI の公式リリース（v0.42.1）のアセットは Windows のポータブル版（7z）だけで、macOS 向けの配布物が無い。ComfyUI の公式の macOS 向けの手順（README の「Apple Mac silicon」）は、利用者が Python を入れて `pip install -r requirements.txt` を実行するもの。**mam は `pip` を実行しない**（ローカルランタイムの MuseTalk と同じ方針。[local-runtime.md §13](local-runtime.md)）ので、MuseTalk と同じく**固定した部品を mam が自分で取得・展開して組み立てる**。`pip` の依存解決・sdist のビルド・`setup.py`・任意のコードの実行は無く、エンジンは起動時に何も取りに行かない。方針に沿う。
+
+**部品**（`data/engine_apple.json`。計 86 個、取得 847,774,106 バイト（約 808 MiB）、展開後 1,728,595,866 バイト（約 1.6 GiB））。すべて URL・SHA-256・サイズ・展開後サイズを持ち、取得時に SHA-256 とサイズを検証する（`fetch.Download`）:
+
+| 部品 | 個数 | 取得先 | 置き場所（`engine/` の下） |
+|---|---|---|---|
+| CPython 3.13.18 の再配置可能版（python-build-standalone の `install_only` の tar.gz） | 1 | `https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18%2B20261026-aarch64-apple-darwin-install_only.tar.gz`（SHA-256 `e5af2fde…acbac`。GitHub Releases API の `digest` と、取得した実物の `sha256sum` が一致。2026-11-03 確認） | `python/`（`python/bin/python3.13`） |
+| ComfyUI v0.42.1 のソース | 1 | `https://github.com/Comfy-Org/ComfyUI/archive/63be2f9b82ad0dac88a7ceaa28a9cf3154125a18.zip`（コミット `63be2f9b…5a18` は GitHub の `git/ref/tags/v0.42.1` が指す。SHA-256 `e0b4b5ea…b747`。取得を 2 回行って同じ値） | `ComfyUI/`（`ComfyUI/main.py`） |
+| Python の wheel（ComfyUI の `requirements.txt`〔そのコミット〕の全項目と、その依存。PyTorch 2.15.0〔Metal（MPS）の backend を持つ macOS 版は PyPI の wheel〕・torchvision・NumPy・SciPy・transformers・aiohttp・PyAV ほか） | 84 | PyPI（`files.pythonhosted.org`）。SHA-256・サイズは PyPI の索引 | `python/lib/python3.13/site-packages/` |
+
+- **wheel の閉包の決め方**: `uv pip compile`（`--python-platform aarch64-apple-darwin --python-version 3.13`、`MACOSX_DEPLOYMENT_TARGET=14.0`、`--only-binary :all:`）で、ComfyUI の `requirements.txt` から解いた。各 wheel は Apple Silicon・Python 3.13（`cp313`・`abi3`・`py3-none-any`）で動くものを pip と同じ優先順位で選んだ。`catalog.Validate` が、各 wheel のタグ（Python の版・`macosx_<N>_<M>_arm64`／`universal2`／`any`）と `min_macos`、ソースのコミットと URL、合計の大きさを検査する。
+- **展開**（`extract.TarGz`・`extract.Zip`・`extract.Wheel`。MuseTalk と同じ道具）: `..`・絶対パス・ドライブ指定・ハードリンク・デバイスは拒否し、ほかの部品が書いたファイルは上書きしない（`ErrExists`）。展開した量は部品ごとの `extracted_size` を超えられない（`ErrTooLarge`。tar は見出しを足しながら調べ、超える項目は書かない）。**tar のシンボリックリンクは作らず、エラーにもしない**（python-build-standalone のものは `python` → `python3.13` や man のような別名だけで、起動は `python/bin/python3.13` を名指しする）。**所有者の実行ビットは保つ**（インタープリターと wheel の補助プログラムに要る。`extract` の zip・tar の共通の書き込み。Windows の zip は実行ビットを持たないので変わらない）。wheel の `*.data/scripts`・`headers`・`data` は展開しない（MuseTalk と同じ）。86 個の全部を実物で組み立てて、衝突なく展開できること（展開量が `extracted_size` と一致）を確かめた。
+- **進捗**: ダウンロードは全部品の合計、展開は全部品の展開後サイズの合計で `download`（70 %）・`extract`（30 %）。中断しても、取得済みの部品はそのまま残り（検証し直して使う）、途中の `.part` は続きから再開する。空き容量は「未取得の分＋展開後サイズ」。
+
+**起動**: Windows と同じ引数（§3.4）で、`engine/python/bin/python3.13 -s ComfyUI/main.py --listen 127.0.0.1 --port <ポート> --disable-auto-launch --disable-all-custom-nodes … --base-directory <comfyui/data>`（作業ディレクトリは `engine/`）。環境は `PYTHONUNBUFFERED=1`・`PYTHONIOENCODING=utf-8`・`PYTHONNOUSERSITE=1` に加えて **`PYTORCH_ENABLE_MPS_FALLBACK=1`**（PyTorch の文書: 「`1` なら、MPS が対応しない演算を CPU に退避する」。MPS に無い演算で落ちずに遅くなる方を取る。fp8 の dtype〔`float8_e4m3fn`〕は演算ではなく型の変換なので、これでは救えない。§4.2）。`--cpu` は CPU を選んだときだけ（Mac の build は 1 つなので、CPU を選んでも同じ build に `--cpu` を付けて起動する）。
+
+**GPU（MPS）の扱い**: ComfyUI は `torch.backends.mps.is_available()` が真なら自分で MPS を選ぶ（`comfy/model_management.py` の `CPUState.MPS`）。mam は GPU を選ぶ引数を付けない。GPU の検出（§3.2）は「どの build を入れるか」と「メモリの判定」にだけ使う。ユニファイドメモリなので、`get_gpu_status`（[../../api/mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）の総量はメモリ全体（`status_apple.go`）。
+
+**置き場所**: §2。`comfyui/data/`（モデル・出力・`user/`・`custom_nodes/`）は `MAM.app` の外で、エンジンの更新（`engine/` ごとの入れ替え）でも、`.app` の自動更新でも消えない。
+
+**Gatekeeper・署名**: Gatekeeper の隔離属性（`com.apple.quarantine`）は、mam の HTTP クライアントが付けないので取得したファイルには付かない（`exeinstall.ClearQuarantine` は Codex・ffmpeg の第二の守りで、エンジンでは呼ばない）。mam は部品のバイトを変えずに置く（wheel の拡張モジュール・Python 本体の署名はそのまま）。Apple Silicon で署名の無い Mach-O が動かない点は、配布元が署名したバイトのままであることに頼っている。**実機で確かめていない**（§11）。
 
 ## 4. モデルのカタログ（`catalog/data/models/**/*.json`）
 
@@ -152,7 +179,7 @@ Wan 2.2 14B のベース（`wan22-i2v-14b`）は I2V のみ（決定 4）。Remi
 - **ライセンス**: `wan22-i2v-14b-lightx2v` は Apache-2.0（ベースも LoRA も。商用可・同意不要）。非検閲の LoRA は上のとおり不明。Remix の 2 つは HF が `license: other`（本文なし）、Civitai は「販売・マージの販売まで可」と表示するが、HF 側の本文が無いので**不明**（#928 の扱いのまま。画面は「不明」の注記）。表示は #928 の `components[]`・バッジ・同意の `notice` に乗る。
 - **成人向け・年齢確認**: 3 つの新モデルのうち Remix T2V と非検閲 LoRA は `content_rating = adult`（`advanced`・同意必須）で、既存の成人向けの仕組み（§6.1・§6.2）に乗る。年齢確認が済むまで一覧・導入・生成テストに出ず、導入済みでもワークフロー（`wan22-remix-nsfw-t2v`・`wan22-i2v-14b-lightx2v-uncensored`）は使えない。非検閲 LoRA のファイル名（`Wan2.2_LightX2V_*_n54vv`）は成人向けだけが持つため、別名のワークフローでもグラフがそれを読めば成人向けとして断られる。一般向けの `wan22-i2v-14b-lightx2v` は成人向けにならない（テストで確認）。
 - **VRAM と速さ**: `min_gb = 16`・`estimate = true`（Wan 14B fp8 と同じ。LoRA はほぼ増やさない）。「RTX 4070（16 GB）で Remix I2V 576×864・81 フレームが約 326 秒、GGUF（Q5/Q8）でも動く」は Issue のコミュニティ報告で、**mam の実測ではない**（実機が無く、生成時間は書かない）。ComfyUI の自動 offload が 14B fp8 を高・低の順に入れ替える前提。**4 ステップが通常より何倍速いかも未測定**。画面の「VRAM の目安」判定（§4.4）は `recommended_gb` を持たないので、このモデルでは出ない。
-- **macOS**: 同梱エンジンは Windows 向けで、mam では macOS に入れられない。外部の ComfyUI（Apple Silicon）では、MPS が fp8（`float8_e4m3fn`）を扱えない既知の問題（§4.2 の FLUX.2 klein と同じ）があり、Remix の fp8・Wan 14B の fp8 とも**動かない可能性が高い**ので、各カードの説明に「Windows（NVIDIA）のみ対応」と書く（実機では未確認）。
+- **macOS**: 同梱エンジンは macOS（Apple Silicon）にも入る（§3.7）が、MPS が fp8（`float8_e4m3fn`）を扱えない既知の問題（§4.2 の FLUX.2 klein と同じ）があり、Remix の fp8・Wan 14B の fp8 とも**動かない可能性が高い**ので、各カードの説明に「Windows（NVIDIA）のみ対応」と書く（実機では未確認）。
 
 **Wan 2.2 TI2V 5B（Issue #929）**。`wan22-ti2v-5b`（Wan-AI の `Wan2.2-TI2V-5B`。ComfyUI の公式の再配布 `Comfy-Org/Wan-2.2`）は、**テキストから動画（T2V）と先頭フレームから動画（I2V）を 1 つの 5B でこなす**軽い動画モデル。720p・24fps。生成テストのモデルは 2 つ（ワークフロー名）: `wan22-ti2v-5b`（テキストから。`txt2video-wan22-5b`）と `wan22-ti2v-5b-i2v`（先頭フレームから。`img2video-wan22-5b`）。同じファイルを使い、どちらを導入しても 2 つが出る。
 
@@ -160,7 +187,7 @@ Wan 2.2 14B のベース（`wan22-i2v-14b`）は I2V のみ（決定 4）。Remi
 - **VRAM**: ComfyUI の公式ガイドは「ネイティブ offload なら 8 GB の VRAM に収まる」、Wan の公式の参照実装は offload ありで 24 GB 以上と書く（出典が食い違う）。mam の目安は `min_gb = 16`・`estimate = true`（拡散モデル fp16 の約 10 GB が載る大きさ。**mam の実機（16 GB）では未確認**）。既定の設定は ComfyUI の公式テンプレートと同じ（`UNETLoader` の `weight_dtype = default`、offload は ComfyUI の自動）で、量子化はしない。
 - **14B との使い分け**: 速さと軽さを優先するなら 5B（約 18 GB、24fps、T2V も可）、動きの質と映像の作り込みを優先するなら `wan22-i2v-14b`（約 36 GB、16fps、先頭フレームだけ）。モデルのカードの説明（`description`）が互いを名指しして使い分けを書く。
 - **生成時間**: mam の実機では未測定（開発ホストの GPU は 12 GB の RTX 3080 Ti で、対象の 16 GB ではなく、5B の重みも取得していない）。Issue の「約 8 GB・720p@24fps が現実的」は ComfyUI の公式ガイドとコミュニティの報告で、**実測値ではない**。
-- **macOS**: mam の同梱エンジンは Windows 向け（`EngineView.Supported=false`）。macOS（Apple Silicon）で動くかは、fp16 の重みと Wan 2.2 の VAE の MPS 対応を実機で確かめていないので **未確認**（Windows のみ対応と考える）。
+- **macOS**: 同梱エンジンは macOS（Apple Silicon）にも入る（§3.7）。macOS で動くかは、fp16 の重みと Wan 2.2 の VAE の MPS 対応を実機で確かめていないので **未確認**（Windows のみ対応と考える）。
 
 **Wan 2.2 TI2V 5B の fp8 版（Issue #967）**。`wan22-ti2v-5b-fp8`（ワークフロー名 `wan22-ti2v-5b-fp8`＝テキストから・`wan22-ti2v-5b-fp8-i2v`＝先頭フレームから。テンプレート `txt2video-wan22-5b-fp8`・`img2video-wan22-5b-fp8`）は、`wan22-ti2v-5b`（fp16）の**拡散モデルだけを fp8 にした**版。テキストエンコーダー（`umt5_xxl_fp8_e4m3fn_scaled`）と VAE（`wan2.2_vae`）は fp16 版と同じファイルで、導入済みなら共有する（取得は拡散モデルの約 5.3 GB だけ）。
 
@@ -180,8 +207,8 @@ Wan 2.2 14B のベース（`wan22-i2v-14b`）は I2V のみ（決定 4）。Remi
 - **VRAM**: BFL のモデルカードは bf16 で約 13 GB、ComfyUI の公式ガイドは fp8 蒸留版で 8.4 GB（RTX 5090 での値）と書く。mam の目安は `min_gb = 12`・`estimate = true`（fp8 の 4.1 GB にテキストエンコーダーの 8 GB が載るかどうかを見た値）。**mam の実機（16 GB）では未確認**。既定は fp8 蒸留版のまま、ComfyUI の自動 offload に任せる。
 - **参照画像による編集**（local-models.md §4.2）: `reference_mode = edit`・最大 4 枚。参照は画像ごとに `ImageScaleToTotalPixels`（約 1 メガピクセル）→ `VAEEncode` → `ReferenceLatent` を肯定・否定の条件に順に重ねる（ComfyUI の公式テンプレート `image_flux2_klein_image_edit_4b_distilled` と同じ。公式は 2 枚の例）。生成テスト・MCP の参照の入力は #933 の参照画像の仕組みに乗る。出力の大きさは公式の編集テンプレートのように 1 枚目の参照の大きさではなく、縦横比から決まる（画面の縦横比の指定に従う）。
 - **生成時間**: mam の実機では未測定。公式ガイドの 1.2 秒（RTX 5090）はコミュニティ・公式の値で、mam の対象の RTX 4070 Ti SUPER の実測ではない。
-- **macOS**: mam の同梱エンジンは Windows 向け。macOS（Apple Silicon）は、ComfyUI の MPS が fp8（`float8_e4m3fn`）を扱えず `Trying to convert Float8_e4m3fn to the MPS backend` で止まる既知の問題がある（Comfy-Org/ComfyUI の Issue #10292・#9255・#11626。CPU への退避の PR #12378 は 2026-11-02 時点で未マージ）。fp8 蒸留版を既定にしているため、**macOS では動かない可能性が高く、Windows のみ対応と明記する**（bf16 の `flux-2-klein-4b.safetensors` なら動くかは未確認。実機で試していない）。
-- **bf16 版（macOS 用）は追加しない（Issue #967 の検討結果）**。理由: (1) **モデルマネージャーが macOS に ComfyUI を入れられない**（§3.1 のエンジンはすべて Windows のポータブル版、`EngineView.Supported=false`）。macOS 専用のエントリを足しても導入できない。（カタログの OS の欄 `unsupported`・`requires` は #979 で入った〔§4.6〕が、警告だけで、導入の経路を作るものではない。）(2) Windows では fp8 版が使える（bf16 を足しても、ファイルが大きくなる以外の利点が無い）。(3) macOS（MPS）で bf16 の klein が動くことは、実機が無く未確認。足す条件は、macOS にエンジンを入れる経路ができること（§3）。そのときは `Comfy-Org/Flux-2-Klein-4B` のコミット `5b3abca5c0dc1ecd4eaf3340868d09063fc1c965` の `split_files/diffusion_models/flux-2-klein-4b.safetensors`（7,751,105,712 バイト、SHA-256 `ec3d4e733a771f61c052fb4856c48b336c55eaf2c65487c2a1faeb9bbda7a343`。Apache-2.0。2026-11-02 に HF の API で確認）を、テキストエンコーダー・VAE は今のファイルと共有して `flux2-klein-4b-bf16` として足す。テスト（`lightmodelstest`）が「カタログに bf16 の klein が無いこと」と「エンジンが Windows のビルドだけであること」を押さえる。
+- **macOS**: 同梱エンジンは macOS（Apple Silicon）にも入る（§3.7）が、ComfyUI の MPS が fp8（`float8_e4m3fn`）を扱えず `Trying to convert Float8_e4m3fn to the MPS backend` で止まる既知の問題がある（Comfy-Org/ComfyUI の Issue #10292・#9255・#11626。CPU への退避の PR #12378 は 2026-11-02 時点で未マージ）。fp8 蒸留版を既定にしているため、**macOS では動かない可能性が高く、Windows のみ対応と明記する**（bf16 の `flux-2-klein-4b.safetensors` なら動くかは未確認。実機で試していない）。
+- **bf16 版（macOS 用）は追加しない（Issue #967 の検討結果）**。理由: (1) **（#967 の時点では）モデルマネージャーが macOS に ComfyUI を入れられなかった**（§3.1 のエンジンはすべて Windows のポータブル版、`EngineView.Supported=false`）。**この理由は Issue #854 で解消した**（macOS の build を入れられる。§3.7）が、残る (2)(3) のため、bf16 版は追加していない（足すかどうかは、実機で MPS の bf16 の klein が動くことを確かめてから別 Issue で決める）。（カタログの OS の欄 `unsupported`・`requires` は #979 で入った〔§4.6〕が、警告だけで、導入の経路を作るものではない。）(2) Windows では fp8 版が使える（bf16 を足しても、ファイルが大きくなる以外の利点が無い）。(3) macOS（MPS）で bf16 の klein が動くことは、実機が無く未確認。足す条件は、macOS にエンジンを入れる経路ができること（§3）。そのときは `Comfy-Org/Flux-2-Klein-4B` のコミット `5b3abca5c0dc1ecd4eaf3340868d09063fc1c965` の `split_files/diffusion_models/flux-2-klein-4b.safetensors`（7,751,105,712 バイト、SHA-256 `ec3d4e733a771f61c052fb4856c48b336c55eaf2c65487c2a1faeb9bbda7a343`。Apache-2.0。2026-11-02 に HF の API で確認）を、テキストエンコーダー・VAE は今のファイルと共有して `flux2-klein-4b-bf16` として足す。テスト（`lightmodelstest`）が「カタログに bf16 の klein が無いこと」と「Windows の 4 つの build が Windows のポータブル版であること」を押さえる。
 
 **Qwen-Image-Edit 2511（Issue #971）**。`qwen-image-edit-2511`（Qwen 公式の Qwen-Image-Edit-2511 を、Comfy-Org の分割ファイル `Comfy-Org/Qwen-Image-Edit` の **fp8mixed** で入れる。標準の区分）は、参照画像（最大 3 枚）を使った編集（同じ顔のまま別のシーン・画風だけを写す・1 枚の画像を指示どおり直す）と、参照なしのテキストから画像の両方に使える。成人向けではなく、Apache-2.0（商用可）なので同意は要らない。
 
@@ -208,7 +235,7 @@ Wan 2.2 14B のベース（`wan22-i2v-14b`）は I2V のみ（決定 4）。Remi
 - **非検閲のテキストエンコーダー（Issue #927）**: `ltx-2.5-22b-distilled-uncensored`（成人向け・同意必須・年齢確認が要る）。標準の `gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot` だけを、`DeepNeuralNerd/Gemma-4-12B-it-uncensored-heretic-DeepNeuralNerd-LTX_2.5_ComfyUI`（`llmfan46/gemma-4-12B-it-uncensored-heretic` を LTX-2.5 の投影の重みを保ったまま ComfyUI の 1 ファイルに変換したもの）の INT8 ConvRot 版（13.2 GB、コミット `f8aad43b…`、SHA-256 `5da6d41c…`、HF が返す LFS の oid とサイズ）に替える。残りの 4 ファイル（拡散モデル・VAE 2 つ・拡大モデル）は標準と同じファイルで、共有される（導入済みなら再取得しない）。ワークフローは別（`ltx-2-5-uncensored-t2v`・`ltx-2-5-uncensored-i2v`。テンプレート `txt2video-ltx-2-5-uncensored`・`img2video-ltx-2-5-uncensored` は標準の複製で `CLIPLoader` の `clip_name` だけが違う）。元のファイル名は空白を含むので、ディスク上の名前は `gemma4-12b-uncensored-heretic-deepneuralnerd-ltx-2.5-int8-convrot.safetensors` に改め、URL は空白を `%20` に符号化する。この名前は成人向けのモデルだけが持つファイルなので、§6.1 の判定（名前・読むファイル）がそのまま働く（標準のテンプレートは成人向けとは判定されない）。作者自身が「テキストエンコーダーを替えても映像モデルの出力が非検閲になるわけではない（通常のプロンプトの取りこぼしを減らす狙い）」「保証しない」と書いており、mam は動作を確かめていない（§11）。
 - **ライセンス（非検閲版）**: 部品ごとに書き、厳しい方を全体の答えにする（[../model-license.md](../model-license.md) §2）。拡散モデル・VAE は LTX-2.x Community（条件つき）、テキストエンコーダーの元の Gemma 4（Google の Apache License 2.0）と非検閲化した `llmfan46/gemma-4-12B-it-uncensored-heretic`（HF のタグ `apache-2.0`）は商用OK、LTX-2.5 用に変換した DeepNeuralNerd のリポジトリは `license: other` で本文が無く「上流の Gemma 4 と LTX-2 のライセンスを参照」とだけ書いてある（LTX-2.5 の投影の重みを含むので LTX-2.x の条件も及びうる）ため**不明**。全体は **不明**（2026-11-02 に確認）。通知には LTX-2.x の売上の条件（licensing@ltx.io）も残す。
 - **音声つきの出力（Issue #927）**: 保存は `SaveVideo`（`format` / `codec` ともに `auto`）で、ComfyUI v0.42.1 の `comfy_api/latest/_input_impl/video_types.py` では `auto` は MP4（H.264 の映像と AAC の音声。WebM を選んだときだけ Opus）。`CreateVideo` が `LTXVAudioVAEDecode` の音声と映像を 1 本にまとめるので、保存されるのは**音声トラックつきの 1 本の mp4**。mam のバックエンド（`comfyui`）は `SaveVideo` が保存したファイルをそのまま（再エンコードせず）取り出して `video/mp4` で保存・配信する（`take`・Take の再生と生成テストの結果は同じ）。画面の `<video controls>`（試し生成・生成テストのカードと詳細）は音声を消さないので、再生すると音が出る。画面は、音声つきのモデル（`native_audio`）を、試し生成のフォームの注記・結果の「音声つき」バッジ・プレーヤーの名前（`aria-label`）・生成テストのモデルのヘルプで示す。**実際に音が入っていること、音声と映像のずれは、実機で未確認**（§11）。
-- **macOS（Issue #927）**: **対応しない（Windows の NVIDIA のみ）**。同梱の ComfyUI は Windows 版だけで（§3）、macOS ではモデルマネージャーでの導入ができない。外部の ComfyUI（Apple Silicon の MPS）で LTX-2.5 を動かす報告は割れている: `Lightricks/LTX-2.5` の discussion #58 では、公式テンプレートが PyAV の `avcodec_send_frame() returned 22` で失敗し（NaN の潜在変数が原因）、KJNodes のローダーで回避した報告と、M4 Max（36 GB）で標準のワークフローがそのまま動いた報告がある。ComfyUI の Issue #15804（open）は、MPS で bf16 の LTX-2.x が 26 回中 19 回、全面が黒い動画になると報告している（アテンションの未初期化メモリが原因とされ、修正は未マージ）。Lightricks 自身の Mac 向けの案内は、ComfyUI ではなく LTX Desktop（MLX）。INT8 ConvRot が MPS で動くかは確認できる情報が無い。このため mam は macOS を対応外とし、外部の ComfyUI での利用は「動く場合もあるが不安定。mam では未確認」とする。
+- **macOS（Issue #927）**: **対応しない（Windows の NVIDIA のみ）**。同梱エンジンは macOS にも入る（§3.7）が、LTX-2.5 は MPS で動くかが割れている（下）ので動くとは言わない。外部の ComfyUI（Apple Silicon の MPS）で LTX-2.5 を動かす報告は割れている: `Lightricks/LTX-2.5` の discussion #58 では、公式テンプレートが PyAV の `avcodec_send_frame() returned 22` で失敗し（NaN の潜在変数が原因）、KJNodes のローダーで回避した報告と、M4 Max（36 GB）で標準のワークフローがそのまま動いた報告がある。ComfyUI の Issue #15804（open）は、MPS で bf16 の LTX-2.x が 26 回中 19 回、全面が黒い動画になると報告している（アテンションの未初期化メモリが原因とされ、修正は未マージ）。Lightricks 自身の Mac 向けの案内は、ComfyUI ではなく LTX Desktop（MLX）。INT8 ConvRot が MPS で動くかは確認できる情報が無い。このため mam は macOS を対応外とし、外部の ComfyUI での利用は「動く場合もあるが不安定。mam では未確認」とする。
 - **ComfyUI-LTXVideo（Lightricks のカスタムノード）は入れない（Issue #927・#968）**: LTX-2 は ComfyUI の本体に組み込まれており（`ComfyUI-LTXVideo` の README: "LTX-2 is built into ComfyUI core"）、Comfy 公式のテンプレート `video_ltx2_5_t2v` が使うノードはすべて `comfy-core`（同テンプレートの JSON の `cnr_id` で確認）。ComfyUI-LTXVideo は追加の機能（プロンプト拡張・マルチショットの補助など）のノード集で、このテンプレートには要らない。同梱エンジンはカスタムノードを読まない（`--disable-all-custom-nodes`。任意のコードを実行するため。§3.4）ので、自動導入の仕組みは作らない。**#968 の FLF2V・DFR・プロンプト拡張も、コアのノードだけで組めた**（下の「カスタムノードの自動導入（Issue #968）」）。ネイティブのマルチショット（1 回の生成で複数のカットを作る。Comfy の文書の紹介）は、mam では専用のテンプレート・画面を作らない（mam のショットは 1 カット 1 生成）。ComfyUI の文書にそのためのノードの案内は見当たらなかったが、動作は未確認。
 - **テンプレート**（`localcfg/templates/video/`。ほかと同じく ComfyUI 本体のコアノードだけ）: `txt2video-ltx-2-5`（ワークフロー名 `ltx-2-5-t2v`）と `img2video-ltx-2-5`（`ltx-2-5-i2v`）。Comfy 公式の `video_ltx2_5_t2v`・`video_ltx2_5_i2v`（Comfy-Org/workflow_templates）のサブグラフを API 形式に展開し、mam の割り当てに接続した。24 fps、フレーム数は 8n+1（`frames_step` 8）。1 段目は最終の解像度の半分（`ComfyMathExpression` の `a/2`）で、`LTXVLatentUpsampler` で 2 倍にして 2 段目で仕上げる（このため最終の幅・高さは 64 の倍数 = `size_multiple` 64）。割り当て: `prompt`・`negative_prompt`・`seed`（1 段目の `RandomNoise`）・`width`・`height`・`frames`・`fps`、I2V は `first_frame`。サンプラー・シグマ・ガイダンスは公式の値（`euler_ancestral`、蒸留版の `ManualSigmas`、`LTXVDualCFGGuider` の映像・音声とも 1）。`native_audio` は true。この 2 つのテンプレートは、公式のプロンプト拡張（`TextGenerateLTX2Prompt`。公式は ON/OFF のスイッチ）を入れない（拡張つきは別名のワークフローとして #968 で足した。下）。画像の長辺 1536 への縮小（`ResizeImageMaskNode`。`LTXVImgToVideoInplace` が潜在空間の大きさへ合わせる）も入れない。マルチショットのテンプレートは範囲外。FLF2V・DFR は #968 で足した（下）。
 - **同梱エンジン（ComfyUI v0.42.1）が必要なコアノードを持つか**: このテンプレートが使うノード（`LTXVConcatAVLatent`・`LTXVSeparateAVLatent`・`LTXVLatentUpsampler`・`LTXVAudioVAEDecode`・`LTXVEmptyLatentAudio`・`LTXVDualCFGGuider`・`LTXVImgToVideoInplace`・`LTXVPreprocess`・`LTXVConditioning`・`EmptyLTXVLatentVideo`・`LatentUpscaleModelLoader`・`ComfyMathExpression`・`CreateVideo`・`SaveVideo`・`SamplerCustomAdvanced` ほか）は、v0.42.1 のソース（`comfy_extras/*.py`・`nodes.py`）に実装がある。`CLIPLoader type=ltxv` の Gemma 4 12B の検出（`comfy/sd.py` の `TEModel.GEMMA_4_12B`）も v0.42.1 にある。**実際の読み込み・実行は未確認**（§11）。
@@ -503,7 +530,7 @@ func (*Service) DeleteUserModel(ctx, path string) error
 
 - **エンジンの更新**: MAM の更新とは独立。サイレントインストーラーはエンジンを取り直さない。`Engine()` の導入版と固定版（カタログ）が違えば更新できる状態で、`InstallEngine` が新しい固定版を入れる（`engine\` を入れ替え、`data\` は残る）。
 - **進捗**: ジョブは `JobStatus.Progress`（割合・メッセージ・バイト）を持つ。メモリ上（`track`、最新 128 件）で、再起動後は DB の状態だけになる。`get_job` 相当の問い合わせは `JobStatus` を使う。
-- **画面の注意**: 外部 ComfyUI の `ExternalModel.Missing` は表示だけで、導入の操作は出さない。`EngineView.Supported=false`（非 Windows）では導入のボタンを出さず、外部 URL の設定を案内する。`Writable=false` のときも同じ。
+- **画面の注意**: 外部 ComfyUI の `ExternalModel.Missing` は表示だけで、導入の操作は出さない。`EngineView.Supported=false`（Windows でも Apple Silicon の Mac〔macOS 14 以降〕でもない）では導入のボタンを出さず、外部 URL の設定を案内する。画面の文言は「同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけで使えます」（`mmview.Refuse`・`handler/modelmgr`・MCP・`toolstatus`・ワークフロー画面で同じ）。`Writable=false` のときも同じ。
 
 ## 11. 未確認・テストの範囲
 
@@ -511,6 +538,9 @@ func (*Service) DeleteUserModel(ctx, path string) error
 |---|---|
 | Windows の DXGI による GPU 検出（`dxgi_windows.go`） | ビルドと vet のみ。**Linux の開発ホストでは実行できず未検証** |
 | Windows の Job Object・非表示ウィンドウでの子の起動 | 同上（Linux の `Pdeathsig` は子プロセスのテストで確認済み） |
+| **macOS（Apple Silicon）のエンジンの実機での導入・起動・MPS での生成**（Issue #854） | **未確認（macOS の実機が要る。この開発環境は Linux）**。確かめたのは、(1) **固定した 86 個の部品を実物で取得し、SHA-256 とサイズを照合し、`extract.TarGz`・`Zip`・`Wheel` で組み立てた**こと（衝突なし・展開量が `extracted_size` と一致・起動コマンドの組み立て）、(2) 偽の取得元（Python の tar.gz・ソースの zip・wheel）で、取得・再開・SHA-256 不一致・展開量の上限・上書きの拒否・空き容量・入れ替え・既存のエンジンが残ること（`engine/apple_test.go`）、(3) GPU の検出と選択（`gpu/detect_apple_test.go`。`sysctl` の偽の出力）、(4) 対応の判定・置き場所・build の出し分け・導入・起動・停止（`service/modelmanager/mactest`。macOS 相当の設定を与えた Service）、(5) カタログの検証（`catalog/applebuildtest`）。**実機でしか分からないこと**: Python 本体・wheel の拡張モジュールが Apple Silicon で署名・Gatekeeper に止められずに動くか／`import torch` と `torch.backends.mps.is_available()` が真か／ComfyUI が MPS で起動し画像を生成できるか（`PYTORCH_ENABLE_MPS_FALLBACK=1` の効果と速さ）／fp8 以外のモデルの MPS での動作（§4.2）／ユニファイドメモリの判定（§3.2）が実際の GPU の上限に対して甘すぎないか／macOS 14 未満が本当に起動できないか（wheel のタグからの推定）／macOS で mam が落ちたときに ComfyUI が残ること（`Pdeathsig` が無い。§3.4） |
+| macOS の部品の URL（python-build-standalone・PyPI・GitHub のソース）が将来も残ること | 保証できない。変わったら導入は SHA-256 の不一致・404 で失敗する（カタログの更新が要る）。PyPI の wheel は取り下げられることがある |
+| macOS の部品の依存パッケージ（Python 本体・PyTorch・NumPy・transformers ほか 84 個）のライセンスの原文との突き合わせ | **未確認**（`THIRD_PARTY_NOTICES.md`。mam はこれらを配布せず、利用者の Mac に公式の配布先から取得する） |
 | 実物の ComfyUI の起動、実際の生成、ワークフロー（テンプレート）の出力 | **未検証**（テンプレートは構造と、ローダーとファイル名の一致だけ。HunyuanVideo のサンプラー設定は推定） |
 | 実物のエンジン（約 2 GB）・モデル（数十 GB）の取得と展開 | **未実施**。合成アーカイブと偽の GitHub・HF サーバー（`Range`・ハッシュ不一致・再開・空き容量不足）で確認。実アーカイブのヘッダーと BCJ2 のファイルは HTTP の `Range` で読めることを確かめた |
 | モデルの VRAM の目安 | HunyuanVideo（文書）以外は MAM の推定（成人向けの 5 モデルと `wan22-i2v-14b`・`wan22-ti2v-5b` もすべて `estimate=true`）。`wan22-ti2v-5b` は ComfyUI の公式ガイド（8 GB）と Wan の参照実装（24 GB）の間の 16 GB（§4.2） |

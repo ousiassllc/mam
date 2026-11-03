@@ -170,7 +170,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	jobTable := repository.NewJobRepository(db)
 	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger})
 	// The model manager and the local runtimes are built before the services: the Audio Director speaks with GPT-SoVITS through them.
-	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, logger)
+	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, cfg.DataDir, logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}

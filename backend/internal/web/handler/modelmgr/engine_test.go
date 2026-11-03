@@ -123,7 +123,7 @@ func TestEngine_RefusalsOfTheOSAndTheState(t *testing.T) {
 			assert.Equal(t, http.StatusConflict, rec.StatusCode)
 		}
 		rec := s.do(http.MethodPost, paths.ModelManagerPart("engine", "start"), nil)
-		assert.Contains(t, rec.Body.String(), "Windows 版だけ")
+		assert.Contains(t, rec.Body.String(), "Apple Silicon の Mac")
 	})
 	t.Run("start without an engine", func(t *testing.T) {
 		s := newScreen(t)

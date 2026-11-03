@@ -10,7 +10,7 @@
 - **年齢確認もサービスが強制する**: 成人向けのモデル（`content_rating=adult`）は、年齢確認と注意書きへの同意が `state.json` に記録されるまで、`list_model_catalog` に出ず、`get_catalog_model`・`accept_model_license`・`install_model` は `conflict`（ダウンロードもジョブも始めない）。確認を記録できるのは `set_adult_content` だけで、**ユーザーが `get_adult_content_status` の注意書きを見て自分で答えた後にだけ**呼ぶ。エージェントが年齢や同意を代わりに答えてはならず、確認を自動で済ませる仕組みは無い。モデルごとのライセンスの同意（上）は、年齢確認とは別に取る（成人向けのモデルは `tier=advanced` で、同意が必須）。他の機能（#842 の Hugging Face の取り込みなど）が「確認は済んだか」を知るには `get_adult_content_status` の `enabled`（サービスでは `AdultContentEnabled()`）を見る。
 - **長い操作は `job_id` を返す**: `install_model_engine`・`install_model`。`get_job` が状態・進捗・結果・失敗の理由を返す（下の「ジョブ」）。同じ対象の導入がすでに動いていれば新しいジョブは作らず、それを返す（`existing: true`）。導入のジョブは再開できる（`job_id` はジョブキューの行の ID なので、再起動後も `get_job` で読める）。
 - **拒否は画面と同じ文面**（`mmview.Refuse`）: 入力の誤り・GPU が無い（CPU は `cpu=true` の明示）は `validation`、同意が無い・エンジン未導入・導入中・設定ファイルの固定（`--model-config`）・Windows 以外・空き容量不足は `conflict`、無いものは `not_found`。空き容量・GPU・同意の検査は、ダウンロードを始める前に行う。
-- **同梱エンジンは Windows 版だけ**: `get_model_engine_status` の `engine.supported` が `false` のときは、`install_model_engine`・`start_model_engine`・`install_model` は `conflict`（外部の ComfyUI の URL を [`create_local_endpoint`](mcp-tools-local-models.md) で登録して使う）。
+- **同梱エンジンは Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけ**: `get_model_engine_status` の `engine.supported` が `false` のときは、`install_model_engine`・`start_model_engine`・`install_model` は `conflict`（外部の ComfyUI の URL を [`create_local_endpoint`](mcp-tools-local-models.md) で登録して使う）。
 - **Hugging Face のトークンは返さない**: 状態（設定済みか・末尾数文字）だけ。
 
 ## エンジン

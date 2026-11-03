@@ -145,7 +145,7 @@ Issue #853。Windows 版と同じ `cmd/wails`（サーバーを維持し、ウ�
 - ウィンドウ（`Title`・既定サイズ・最小サイズ・背景色）・単一インスタンス（`UniqueID: com.ousiassllc.mam`）・終了（`OnShutdown` でサーバーを止める）・更新の有効化（`main.go` の `updateOptions`。`desktop.CheckCanInstall` が通るときだけ `Update` を渡す）は Windows と同じコード（`main.go`）。違いは `platform_darwin.go`（ナビゲーション完了のイベントは `events.Mac.WebViewDidFinishNavigation`、`Mac.ApplicationShouldTerminateAfterLastWindowClosed = true`）と `dialog_darwin.go`（起動エラーのダイアログは `osascript` の `display alert`。Wails のダイアログはイベントループが要るため使わない。タイトルと本文は引数で渡す）
 - データディレクトリの既定は `os.UserConfigDir()` 配下の `mam`、つまり `~/Library/Application Support/mam`。API キーなどは macOS のキーチェーンに保存する
 - macOS 版で動く Codex 本体の取得（Issue #855）: 設定画面の「Codex 経由」から取得でき、置き場所は `.app` の外のデータディレクトリ（`~/Library/Application Support/mam/codex/`）なので、自動更新（§7.3）で `MAM.app` を入れ替えても消えない（`architecture/chatgpt-codex/codex-login.md` §2 の 1）
-- macOS 版で動かない・制限がある機能（別 Issue）: 同梱の ComfyUI エンジン（#854）。顔同一性の定量評価（ONNX Runtime）は、`libonnxruntime.dylib` とモデルを自分で用意したときだけ動く（Windows のインストーラーと違い DLL に当たるものを同梱していない）
+- macOS 版で動かない・制限がある機能（別 Issue）: 同梱の ComfyUI エンジンは Apple Silicon で導入・起動できる（Issue #854。[model-manager/model-manager.md §3.7](model-manager/model-manager.md)。実機での導入・起動・MPS での生成は未確認）。顔同一性の定量評価（ONNX Runtime）は、`libonnxruntime.dylib` とモデルを自分で用意したときだけ動く（Windows のインストーラーと違い DLL に当たるものを同梱していない）
 - 実機でしか確かめられない項目（WKWebView でのダウンロード・`target="_blank"`・WebSocket、単一インスタンス、⌘Q での終了、Gatekeeper の手順、実際の `open` での再起動、2 つの実際のリリースをまたぐ更新、App Translocation の挙動）は未確認で、#857 で行う。`cmd/wails` の darwin でのコンパイルと、dmg の作成・入れ替えスクリプトの本物の `hdiutil`・`ditto` での実行は、`ci.yml` の `macos` ジョブが確かめる（§7.5）
 
 ### 7.5 テストできること・できないこと

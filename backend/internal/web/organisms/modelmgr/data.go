@@ -95,11 +95,11 @@ type Progress struct {
 // Engine is the card of the bundled ComfyUI engine.
 type Engine struct {
 	Message
-	// Supported is false off Windows: the engine does not exist there (use an external ComfyUI).
+	// Supported is false off Windows and Apple silicon Macs: the engine does not exist there (use an external ComfyUI).
 	Supported     bool
 	Writable      bool
 	WritableError string
-	// Dir is where the engine and the models are (next to mam.exe); Free is the free space there.
+	// Dir is where the engine and the models are (next to mam.exe on Windows, in the data directory on macOS); Free is the free space there.
 	Dir  string
 	Free string
 
@@ -181,9 +181,9 @@ type Detect struct {
 
 // engineHelp is the help of the engine section: what the card does not say (the modal it opens, the license, the autostart, the removal).
 const engineHelp = "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。\n" +
-	"カードをタップすると、版・待ち受け・導入先・出典・ライセンスが見られます。ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリースを実行時に取得し、SHA-256 を確かめてから使います。\n" +
+	"カードをタップすると、版・待ち受け・導入先・出典・ライセンスが見られます。ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース（Mac 版は、ソースと Python・PyTorch などの各パッケージを個別に）を実行時に取得し、SHA-256 を確かめてから使います。\n" +
 	"「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。削除すると導入先も一緒に消えます（導入したモデルのファイルは残ります）。導入は固定した版を取得し、SHA-256 が合わなければ破棄します。中断しても続きから再開できます。\n" +
-	"同梱の ComfyUI は Windows 版のデスクトップアプリだけで使えます。ブラウザ版・サーバー版では、別に動かしている ComfyUI の URL を設定の「ローカル・代替モデル」に登録してください。"
+	"同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。ブラウザ版・サーバー版や Intel Mac では、別に動かしている ComfyUI の URL を設定の「ローカル・代替モデル」に登録してください。"
 
 // EngineName is the name of the engine card (the title of its modal and the subject of its buttons).
 const EngineName = "ComfyUI エンジン"

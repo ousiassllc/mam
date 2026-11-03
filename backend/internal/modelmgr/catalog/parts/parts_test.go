@@ -34,6 +34,33 @@ func TestCheckSumsAGoodSetOfParts(t *testing.T) {
 	assert.Equal(t, int64(50), extracted)
 }
 
+const pbsURL = "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18%2B20261026-aarch64-apple-darwin-install_only.tar.gz"
+
+// The Python of an Apple silicon engine is the install_only archive of python-build-standalone, and nothing else of that repository.
+func TestCheckAcceptsTheApplePythonAndNoOtherBuild(t *testing.T) {
+	py := parts.Part{Name: "python", Kind: parts.KindTarGz, SHA256: sha, Size: 5, ExtractedSize: 9, URL: pbsURL}
+	_, _, errs := parts.Check("v", []parts.Part{py})
+	require.Empty(t, errs)
+	for name, url := range map[string]string{
+		"an x86_64 build":      strings.Replace(pbsURL, "aarch64", "x86_64", 1),
+		"a Windows build":      strings.Replace(pbsURL, "aarch64-apple-darwin", "x86_64-pc-windows-msvc", 1),
+		"the full archive":     strings.Replace(pbsURL, "install_only", "full", 1),
+		"a branch":             "https://github.com/astral-sh/python-build-standalone/archive/main.tar.gz",
+		"another repository":   strings.Replace(pbsURL, "astral-sh/python-build-standalone", "someone/python", 1),
+		"a mirror":             strings.Replace(pbsURL, "github.com", "example.com", 1),
+		"an undated release":   strings.Replace(pbsURL, "download/20261026", "download/latest", 1),
+		"a query on the asset": pbsURL + "?x=1",
+	} {
+		t.Run(name, func(t *testing.T) {
+			bad := py
+			bad.URL = url
+			_, _, errs := parts.Check("v", []parts.Part{bad})
+			require.NotEmpty(t, errs)
+			assert.Contains(t, errs[0].Error(), "not one of the places")
+		})
+	}
+}
+
 func TestCheckRefusesWhatIsNotPinnedOrNotWhereAPartMayCome(t *testing.T) {
 	for name, tc := range map[string]struct {
 		edit func(p *parts.Part)
@@ -47,7 +74,7 @@ func TestCheckRefusesWhatIsNotPinnedOrNotWhereAPartMayCome(t *testing.T) {
 		"no size":               {func(p *parts.Part) { p.Size = 0 }, "size and extracted_size"},
 		"no extracted size":     {func(p *parts.Part) { p.ExtractedSize = 0 }, "size and extracted_size"},
 		"no name":               {func(p *parts.Part) { p.Name = "" }, "a name"},
-		"a kind of its own":     {func(p *parts.Part) { p.Kind = "tar" }, "zip or wheel"},
+		"a kind of its own":     {func(p *parts.Part) { p.Kind = "tar" }, "tar.gz or wheel"},
 		"a wheel with a dest":   {func(p *parts.Part) { p.Dest = "x" }, "no dest or strip"},
 		"a wheel with a strip":  {func(p *parts.Part) { p.Strip = "x" }, "no dest or strip"},
 	} {
