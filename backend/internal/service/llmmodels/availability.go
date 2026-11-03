@@ -15,6 +15,8 @@ func (f Fallback) availability() modelfilter.Availability {
 	switch f {
 	case FallbackNoKey:
 		return modelfilter.Unusable(modelfilter.ReasonNoKey, f.Message()+"（設定の「API キー」で登録します）", modelfilter.RouteOf(modelfilter.ReasonNoKey, modelfilter.SourceBuiltin))
+	case FallbackLocalDown:
+		return modelfilter.Unusable(modelfilter.ReasonEndpoint, f.Message()+"（設定の「テキスト生成（LLM）」の「ローカル LLM サーバー」で確かめます）", modelfilter.RouteOf(modelfilter.ReasonEndpoint, modelfilter.SourceLocalLLM))
 	case FallbackNotSignedIn:
 		return modelfilter.Unusable(modelfilter.ReasonNotSignedIn, f.Message()+"（設定の「ChatGPT でログイン」からログインします）", modelfilter.RouteOf(modelfilter.ReasonNotSignedIn, modelfilter.SourceChatGPT))
 	}
@@ -23,12 +25,23 @@ func (f Fallback) availability() modelfilter.Availability {
 
 // Availability is whether the provider can be used now: an API key is saved, or the subscription is signed in. It reads the key store and the sign-in only (no
 // network), so it is cheap enough for every render of the assignment screen. ErrUnknownProvider for a provider that is not one of llm.Providers().
+//
+// The local server (llm.ProviderLocal) is usable when it was read: it answers from the list kept by List (a failed read, kept for a minute, makes it
+// unusable). Before any read it is taken as usable, the same as a provider whose key is there: its models are asked for when a picker opens.
 func (s *Service) Availability(provider string) (modelfilter.Availability, error) {
 	p := llm.Provider(provider)
 	if !slices.Contains(llm.Providers(), p) {
 		return modelfilter.Availability{}, fmt.Errorf("%w: %q", ErrUnknownProvider, provider)
 	}
-	_, fallback := s.account(p)
+	account, fallback := s.account(p)
+	if p == llm.ProviderLocal {
+		s.mu.Lock()
+		e, ok := s.cached[p]
+		s.mu.Unlock()
+		if ok && e.account == account && s.o.Now().Sub(e.at) < e.ttl {
+			return e.list.Fallback.availability(), nil
+		}
+	}
 	return fallback.availability(), nil
 }
 
@@ -42,14 +55,19 @@ type Candidate struct {
 	Availability modelfilter.Availability
 }
 
-// Item is the model as the filter reads it (modelfilter.Condition.Match): an LLM, served by its provider through an API key or a subscription.
+// Item is the model as the filter reads it (modelfilter.Condition.Match): an LLM, served by its provider through an API key or a subscription, or by the
+// local server (llm.ProviderLocal: on this PC or the LAN, so its origin is local and it is installed when the server lists it).
 func (c Candidate) Item() modelfilter.Item {
 	name := c.Model.Name
 	if name == "" {
 		name = c.Model.ID
 	}
+	origin := modelfilter.OriginAPI
+	if c.Provider == string(llm.ProviderLocal) {
+		origin = modelfilter.OriginLocal
+	}
 	return c.Availability.Item(modelfilter.Item{
-		ID: c.Model.ID, Name: name, Kinds: []modelfilter.Kind{modelfilter.KindLLM}, Installed: true, Origin: modelfilter.OriginAPI, Provider: c.Provider,
+		ID: c.Model.ID, Name: name, Kinds: []modelfilter.Kind{modelfilter.KindLLM}, Installed: true, Origin: origin, Provider: c.Provider,
 	})
 }
 

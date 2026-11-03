@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/licenses"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llmlocal"
 	local "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
@@ -38,10 +39,15 @@ templ SettingsAPIKeysBody(keys credentials.Data, login *chatgpt.Data) {
 	}
 }
 
-// SettingsLLMBody is "テキスト生成（LLM）".
-templ SettingsLLMBody(d llm.Data) {
+// SettingsLLMBody is "テキスト生成（LLM）": the table of the assignment and, under it, the card of the local LLM server (nil: the service is not there).
+templ SettingsLLMBody(d llm.Data, local *llmlocal.Data) {
 	@settingsui.Category("テキスト生成（LLM）", help.Text("Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。")) {
 		@llm.Section(d)
+		if local != nil {
+			<div class="mt-6" data-testid="llm-local-section">
+				@llmlocal.Card(*local)
+			</div>
+		}
 	}
 }
 

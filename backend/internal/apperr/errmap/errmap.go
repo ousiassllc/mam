@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/localllm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
@@ -108,6 +109,8 @@ func classify(err error) *apperr.Error {
 		return apperr.New(apperr.CodeKeyMissing)
 	case errors.Is(err, audiodirector.ErrNoAPIKey):
 		return apperr.New(apperr.CodeKeyMissing).With("service", "ElevenLabs の ")
+	case localllm.IsUnreachable(err):
+		return apperr.New(apperr.CodeLocalLLMDown)
 	case errors.As(err, &te):
 		return localTimeout(te)
 	case errors.Is(err, modeladapter.ErrTimeLimit):

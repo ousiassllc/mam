@@ -98,6 +98,7 @@ templ Box(p Props)
 | `key_missing` | `unavailable` | API キーが設定されていません。 | /settings/api-keys |
 | `license_not_accepted` | `conflict` | このモデルのライセンスに、まだ同意していません。 | /model-manager |
 | `llm_invalid_output` | `upstream` | LLM の答えが、求めた形式になっていませんでした。 | /settings/llm |
+| `local_llm_unreachable` | `upstream` | ローカルサーバーに接続できません。ローカルの LLM サーバー（Ollama・LM Studio・llama.cpp server など）が応答しませんでした。 | /settings/llm |
 | `llm_key_missing` | `unavailable` | LLM の API キーが設定されていません。 | /settings/api-keys<br>/settings/llm |
 | `locked` | `locked` | LOCK されている項目は変更できません。 |  |
 | `media_timeout` | `upstream` | 動画・音声の処理（ffmpeg）が制限時間を超えました。 |  |
@@ -134,6 +135,7 @@ templ Box(p Props)
 | `chatgpt.ErrNoImageModel` | `image_unavailable`（ベンダーの 400 は症状なので、詳細にだけ残す） |
 | `direct.ErrInputsUnsupported` / `ErrInputsConflict` / `ErrResolution` | `input_unsupported` |
 | `llm.ErrInvalidOutput` | `llm_invalid_output` |
+| `localllm.IsUnreachable`（プロバイダー `local` の `APIError`: status 0・原因あり・タイムアウトでもキャンセルでもない） | `local_llm_unreachable`（`net.Error` より先） |
 | `fetch.ErrChecksum` / `ErrSize` | `download_corrupt` |
 | `store.ErrNotWritable`、`fs.ErrPermission` | `not_writable` |
 | `*fetch.NoSpaceError`、`syscall.ENOSPC` | `disk_full`（場所を原因に入れる） |
@@ -208,3 +210,4 @@ templ Box(p Props)
 | 版 | 日付 | 変更 | 理由 |
 |---|---|---|---|
 | 1.0 | 2026-11-03 | 新規。共通のエラー型・変換層・画面部品・MCP のフィールド・i18n・載せ替え状況 | Issue #1010 |
+| 1.1 | 2026-11-03 | コード `local_llm_unreachable` を足した（ローカルの OpenAI 互換 LLM サーバーに接続できない。`errmap` は `localllm.IsUnreachable` で見分ける）。設計は `local-llm.md` | Issue #1008 |

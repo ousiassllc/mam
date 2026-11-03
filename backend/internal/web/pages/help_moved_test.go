@@ -50,7 +50,7 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 		{"api keys and login", pages.SettingsAPIKeysBody(credentials.Data{}, &chatgpt.Data{}),
 			[]string{"保存したキーは再起動なしで次の呼び出しから使われます", "個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT"},
 			[]string{"API キー", "ChatGPT でログイン"}},
-		{"llm", pages.SettingsLLMBody(llm.Data{}),
+		{"llm", pages.SettingsLLMBody(llm.Data{}, nil),
 			[]string{"Agent ごとに、最初に呼ぶ LLM", "実行中の呼び出しは、始めたときの割り当てのまま終わります", "chatgpt-subscription"},
 			[]string{"テキスト生成（LLM）", "保存した割り当ては、次の呼び出しからすぐ使われます（再起動は要りません）"}},
 		{"media", pages.SettingsModelsBody(media.Data{}),

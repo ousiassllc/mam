@@ -1,4 +1,4 @@
-package llm_test
+package apicheck_test
 
 import (
 	"testing"

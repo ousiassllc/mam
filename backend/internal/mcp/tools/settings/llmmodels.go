@@ -131,6 +131,9 @@ func (h handlers) unlistedWarnings(ctx context.Context, routes []RouteInput) []M
 }
 
 func unlistedMessage(model string, l llmmodels.List) string {
+	if l.Fallback == llmmodels.FallbackLocalDown {
+		return fmt.Sprintf("%q を確かめられません（%s）。保存はしました。サーバーを起動してから list_llm_models（provider: local）で選べる名前を確かめてください", model, l.Fallback.Message())
+	}
 	if l.Source == llmmodels.SourceAPI {
 		return fmt.Sprintf("%q は %s の一覧にありません。使えないかもしれません（保存はしました）。list_llm_models で選べる名前を確かめられます", model, l.Provider)
 	}

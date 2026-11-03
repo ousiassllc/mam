@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptcodex"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptsub"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/localllm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
@@ -38,6 +39,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/locallipsync"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
@@ -106,7 +108,10 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		return nil, nil, nil, err
 	}
 	keys := credential.NewKeyring()
+	llmPath, llmPinned := cfg.LLMSettingsFile()
+	llmLocal := llmlocal.New(llmPath, llmPinned, keys, nil)
 	llmBackends := llm.NewBackends(llmCfg, keys, nil)
+	localllm.Add(llmBackends, keys, nil, llmLocal.BaseURL)   // the local OpenAI-compatible server (#1008); its address applies at once
 	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
 	chatgptcodex.Add(llmBackends, llmCfg, gpt.Codex())       // the same plan through the Codex app-server (workspace accounts)
 	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
@@ -131,6 +136,9 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		StagingDir:   filepath.Join(cfg.AssetsDir(), ".staging"),
 		ChatGPTImage: chatgptimage.New(gpt, chatgptimage.Options{}), ChatGPTImageEnabled: gpt.ImageEnabled,
 		Prepare: func(ctx context.Context, endpoint string) error {
+			if err := llmLocal.BeforeGeneration(ctx); err != nil {
+				logger.Warn("unloading the local LLM failed; generating anyway", "err", err) // best effort: it only frees GPU memory
+			}
 			if m := manager.Load(); m != nil {
 				return m.Prepare(ctx, endpoint)
 			}
@@ -202,7 +210,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		AudioSettings: newAudioSettings(cfg, rts, keys), // read at every run
 	})
 	services.LocalModels = localModels
-	services.LLMClient = reasoning
+	services.LLMClient, services.LLMLocal = reasoning, llmLocal
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
 	services.ModelManager = mgr
 	services.LocalRuntimes = rts

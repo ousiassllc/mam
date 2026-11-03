@@ -63,7 +63,7 @@ func TestList_CarriesTheAvailabilityOfItsProvider(t *testing.T) {
 // The picker of the LLM assignment starts with the providers that cannot be used left out, and "使えないものも表示" lists them with the reason.
 func TestCandidates_HideWhatCannotBeUsedUntilAsked(t *testing.T) {
 	v := newVendor(t)
-	svc := llmmodels.New(llmmodels.Options{Keys: keys(t, "openai", secret), BaseURLs: map[llm.Provider]string{llm.ProviderOpenAI: v.URL}})
+	svc := llmmodels.New(llmmodels.Options{Keys: keys(t, "openai", secret), BaseURLs: map[llm.Provider]string{llm.ProviderOpenAI: v.URL}, LocalBaseURL: closedURL(t)})
 
 	shown, err := svc.Candidates(context.Background(), modelfilter.Default())
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestCandidates_HideWhatCannotBeUsedUntilAsked(t *testing.T) {
 			assert.Equal(t, c.Availability.Message, c.Item().Reason)
 		}
 	}
-	assert.Len(t, providers, len(llm.Providers()), "every provider is listed when the unusable ones are asked for")
+	assert.Len(t, providers, len(llm.Providers())-1, "every provider is listed when the unusable ones are asked for, but a local server that is down: it has no model to list")
 	assert.EqualValues(t, 1, v.asks.Load(), "the one provider with a key is asked once; the others use mam's candidates")
 
 	anthropic, err := svc.Candidates(context.Background(), modelfilter.Condition{Providers: []string{"anthropic"}, Text: "claude"})

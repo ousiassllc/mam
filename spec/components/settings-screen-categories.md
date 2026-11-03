@@ -92,6 +92,7 @@
 - 使われていない Agent（`Unused`: Orchestrator・Final QC）は、今と同じく折りたたみ（`<details>`「現在は使われません」）に入れ、表の下に置く。折りたたみの中の表も同じ列・同じ編集。
 - 14 行で、1440×900 では 1 画面に収まらず main がスクロールする。「用途」列は `xl:`（1280 px）以上でだけ出し、狭いときは行見出しの下に 1 行で出す（実装で変更: 当初は `lg:` の案だったが、サイドナビで表が約 700 px に狭まる 1024×700 の実画面で、`lg:` ではモデル名が割れて読みにくかった。2026-10-25 に両方を撮って比べた）。
 - 実装（2026-10-25）: 全体の「既定に戻す」は「すべて既定に戻す」（`hx-confirm`。`DELETE /settings/llm`）。モーダルの 422 は `llmassign.InvalidError` の `Role`・`Field` で問題の欄に `aria-invalid`・`autofocus`。「再起動で反映」の印（`Badge` warn）は保存した直後の行だけ。『この Agent を既定に戻す』の確認なしは `destructive_confirm_test` の例外に理由つきで足した。用途の 1 行（§7 の質問 2）は `model-adapters.md` §2 の選定理由から要約した（`handler/settings/llm/purposes.go`）。`PUT /settings/llm`（全体）は MCP のツールとテストのために残し、応答は表の区画（`#llm-assignment-panel`）。
+- ローカル LLM サーバー（#1008）: 表の下に、カード（`organisms/settings/llmlocal`、`settingsui.CardItem`）「ローカル LLM サーバー（OpenAI 互換）」を置く。欄はベース URL・API キー（任意・`type=password`・値は出さない）・「保存したキーを削除する」・スイッチ「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」、ボタン「保存」（`PUT /settings/llm/local`）「接続テスト」（`POST /settings/llm/local/test`。結果は共通のエラー表示）。「API キーとログイン」のカードは変えない。詳細は `spec/architecture/local-llm.md` §5
 
 モーダル（`GET /settings/llm/agents/:agent/edit`。`:agent` は `llmassign.Agents()` の名前。未知は 404）:
 
@@ -209,3 +210,4 @@
 | 0.14 | 2026-11-01 | §9（音声・口パク）を足した。声と口パクのプロバイダーの選択、ローカルの状態・この PC で動かせない理由・出典とライセンス・商用利用がはっきりしない依存の注記、クラウドの API キーの有無、「ローカルが使えないときはクラウドに切り替える」（既定オフ）。`PUT /settings/audio` | Issue #924（#912 声と口パクのローカル化） |
 | 0.15 | 2026-11-03 | §2 のモーダルのモデル名を、プロバイダーごとの候補のプルダウンにした（API の一覧、取れなければ mam の既定候補。出所の表示、一覧にない保存済みモデルの警告、一覧にない名前の入力欄） | Issue #988 |
 | 0.16 | 2026-11-03 | §1.3（ChatGPT でログイン）と §9（音声・口パク）を、API キーと同じカード（2 列。名前・説明・状態の `Badge`・印・主なボタン）にそろえた。長い説明・注意・トークンの期限・リスク・商用利用の条件・出典とライセンスは「詳細」のモーダルへ移した。「非公式」「商用注意」の印をカードに常に出す。音声・口パクはプロバイダーごとのカードを選ぶ形（選択中は枠と文字）。`GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider` を足した | Issue #1005 |
+| 0.17 | 2026-11-03 | §2 に、ローカル LLM サーバーのカードを足した | Issue #1008 |
