@@ -60,6 +60,9 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	settings.Audio = newAudioSettings(cfg, services.LocalRuntimes, settings.Keys)
 	settings.Models.SetHidden(services.ModelManager.HidesModel)
 	settings.Gentest = services.Gentest
+	if services.Gentest != nil { // the choices of the assignment say which models cannot be used now (#1013), by the judgement the generation test lists them with
+		settings.Models.SetAvailability(services.Gentest.Availability)
+	}
 	settings.Onboarding = onboarding.New(filepath.Join(cfg.DataDir, onboarding.FileName), onboarding.WithLookPath(ffmpeg.Find))
 	return settings
 }

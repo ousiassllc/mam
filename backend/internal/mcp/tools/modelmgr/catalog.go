@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
@@ -12,7 +13,7 @@ import (
 
 func registerCatalog(r *mcpkit.Registrar, h handlers) {
 	mcpkit.Read(r, "list_model_catalog",
-		"導入できるローカルの画像・動画モデルの一覧（種別・成人向けか（content_rating）・LoRA のトリガー語・大きさ・VRAM の目安（vram.min_gb と推奨 recommended_gb。vram_fit がこの PC の GPU から見た判定で、limited は「動くが制約あり」）・ライセンス（license.commercial: yes 商用OK / conditional 条件つき / no 商用NG / unknown 不明、条件、出典 URL、確認日。部品ごとのライセンスが違うモデルは厳しい方）・同意が要るか・導入済みか・導入中のジョブ）。成人向けモデルは、年齢確認（set_adult_content）が済むまで一覧に出ない。commercial 引数（all / ok / ok_or_conditional）で商用利用により絞り込める（省くと設定「商用OKのモデルだけを使う」に従う） / The catalog of local image and video models with the state of each and its commercial-use license. Adult models are listed only after the age confirmation. The commercial argument filters by commercial use.",
+		"導入できるローカルの画像・動画モデルの一覧（種別・成人向けか（content_rating）・LoRA のトリガー語・大きさ・VRAM の目安（vram.min_gb と推奨 recommended_gb。vram_fit がこの PC の GPU から見た判定で、limited は「動くが制約あり」）・ライセンス（license.commercial: yes 商用OK / conditional 条件つき / no 商用NG / unknown 不明、条件、出典 URL、確認日。部品ごとのライセンスが違うモデルは厳しい方）・同意が要るか・導入済みか・導入中のジョブ）。成人向けモデルは、年齢確認（set_adult_content）が済むまで一覧に出ない。各モデルに、構造化した traits（params_b・params_label＝パラメータ数〔十億単位と表示〕、uncensored＝非検閲〔成人向けとは別。非検閲なら必ず成人向け〕、speed・quality の目安、languages）・inputs（t2i / i2i / inpaint / edit / t2v / i2v / first_frame / last_frame / reference_whole / reference_face / reference_style / reference_pose / reference_control。ワークフローから導く）・audio（音声つき動画）・available（導入済みか）・unavailable_message・settings_route が付く。引数で絞り込める（すべて省略可。組み合わせはすべて満たすもの）: kinds（image / video / image_edit / upscale）・inputs（指定をすべて持つ）・adult（all / general_only / adult_only）・uncensored（all / censored_only / uncensored_only）・params（small 5B 以下 / medium 5B 超〜14B 未満 / large 14B 以上）・vram_fit（VRAM 16GB で動く）・commercial（all / ok / ok_or_conditional、または ok, conditional, unknown, ng のカンマ区切り。省くと設定「商用OKのモデルだけを使う」に従う）・installed（all / installed_only / not_installed_only）・origins・providers・audio・speeds・qualities・available_only・q（名前・ID・タグの検索） / The catalog of local image and video models with the state of each, its structured traits (params_b, uncensored, speed, quality), inputs and its commercial-use license. Adult models are listed only after the age confirmation. Every argument is optional and the conditions combine (same condition as the filter panel of the screens): kinds, inputs, adult, uncensored, params, vram_fit, commercial, installed, origins, providers, audio, speeds, qualities, available_only, q.",
 		h.listCatalog)
 	mcpkit.Read(r, "get_catalog_model",
 		"カタログのモデルを 1 件取得する（ファイルの一覧・共有ファイル・ミラーの原本の場所（source_note）・ライセンスの要約と URL・地域の制限・成人向けの注意書きを含む）。同意が要るモデルは、導入の前にこの内容をユーザーに見せる。成人向けモデルは、年齢確認の前は conflict / One catalog model with its files and license (show it to the user before accepting). An adult model is refused before the age confirmation.",
@@ -30,9 +31,9 @@ func registerCatalog(r *mcpkit.Registrar, h handlers) {
 
 // ListCatalogOutput is the catalog.
 type ListCatalogOutput struct {
-	Models []modelmanager.ModelView `json:"models"`
+	Models []mmview.Entry `json:"models"`
 	// CommercialFilter is the filter that narrowed Models: what commercial asked for, or the setting's default.
-	CommercialFilter string `json:"commercial_filter" jsonschema:"models に適用した商用利用の絞り込み（all / ok / ok_or_conditional）"`
+	CommercialFilter string `json:"commercial_filter" jsonschema:"models に適用した商用利用の絞り込み（all / ok / ok_or_conditional。ok, conditional, unknown, ng のうち複数を指定したときはその一覧）"`
 	Blocked          string `json:"blocked,omitempty" jsonschema:"導入できない理由（エンジン未導入・Windows 以外・設定ファイルの固定）。空なら導入できる"`
 	// VRAMFit is how this PC's GPU stands to each model's VRAM guideline (vram.min_gb / recommended_gb), by model id; absent while the GPU memory is not known.
 	VRAMFit map[string]mmview.ModelFit `json:"vram_fit,omitempty" jsonschema:"この PC の GPU から見た各モデルの VRAM の判定（モデル ID ごと）。fit が limited は「推奨には届かないが動くが制約あり」で、text に制約の中身が入る。GPU のメモリが分からないときは省かれる"`
@@ -41,9 +42,11 @@ type ListCatalogOutput struct {
 	PlatformWarnings map[string]string `json:"platform_warnings,omitempty" jsonschema:"この PC の OS・GPU の世代が、モデルの対象（requires）の外、または動かないと分かっている環境（unsupported）のとき、その警告（モデル ID ごと）。警告だけで install_model は拒否しない。対象外のモデルが無ければ省かれる"`
 }
 
-// ListCatalogInput narrows the catalog by commercial use.
+// ListCatalogInput narrows the catalog by the conditions every model picker has (modelfilter.Condition, #1011): kinds, inputs, adult, uncensored,
+// params, vram_fit, commercial (all / ok / ok_or_conditional as before, or a list of ok, conditional, unknown, ng), installed, origins, providers,
+// audio, speeds, qualities, available_only and q.
 type ListCatalogInput struct {
-	Commercial string `json:"commercial,omitempty" jsonschema:"商用利用で絞り込む。all（すべて）/ ok（商用OKだけ）/ ok_or_conditional（商用OKと条件つき）。省くと設定「商用OKのモデルだけを使う」に従う（オフなら all）"`
+	modelfilter.Condition
 }
 
 func (h handlers) listCatalog(ctx context.Context, in ListCatalogInput) (ListCatalogOutput, error) {
@@ -51,22 +54,23 @@ func (h handlers) listCatalog(ctx context.Context, in ListCatalogInput) (ListCat
 	if err != nil {
 		return ListCatalogOutput{}, err
 	}
-	filter := m.DefaultFilter()
-	if in.Commercial != "" {
-		parsed, ok := modellicense.ParseFilter(in.Commercial)
-		if !ok {
-			return ListCatalogOutput{}, &service.ValidationError{Message: "commercial は all / ok / ok_or_conditional のどれかです"}
-		}
-		filter = parsed
+	cond := in.Normalize()
+	if err := cond.Validate(); err != nil {
+		return ListCatalogOutput{}, &service.ValidationError{Message: err.Error()}
 	}
-	out := ListCatalogOutput{Models: []modelmanager.ModelView{}, CommercialFilter: string(filter)}
+	if cond.Commercial == "" { // without it the setting "商用OKのモデルだけを使う" decides, as before
+		cond.Commercial = string(m.DefaultFilter())
+		cond = cond.Normalize()
+	}
+	applied := cond.Commercial
+	if applied == "" {
+		applied = string(modellicense.FilterAll)
+	}
+	out := ListCatalogOutput{Models: []mmview.Entry{}, CommercialFilter: applied}
 	gpuVRAM := mmview.GPUVRAM(ctx, m)
-	for _, v := range m.Catalog() {
-		if !filter.Allows(v.License.Commercial) {
-			continue
-		}
+	for _, v := range mmview.Where(m, cond) {
 		out.Models = append(out.Models, v)
-		if w := mmview.PlatformWarning(ctx, m, v); w != "" {
+		if w := mmview.PlatformWarning(ctx, m, v.ModelView); w != "" {
 			if out.PlatformWarnings == nil {
 				out.PlatformWarnings = map[string]string{}
 			}
@@ -107,13 +111,16 @@ type ModelInput struct {
 	ModelID string `json:"model_id" jsonschema:"list_model_catalog の id"`
 }
 
-func (h handlers) getCatalogModel(_ context.Context, in ModelInput) (modelmanager.ModelView, error) {
+func (h handlers) getCatalogModel(_ context.Context, in ModelInput) (mmview.Entry, error) {
 	m, err := h.mm()
 	if err != nil {
-		return modelmanager.ModelView{}, err
+		return mmview.Entry{}, err
 	}
 	v, err := m.Model(in.ModelID)
-	return v, MapError(err)
+	if err != nil {
+		return mmview.Entry{}, MapError(err)
+	}
+	return mmview.EntryOf(m, v), nil
 }
 
 // AcceptInput is the license the user accepted.

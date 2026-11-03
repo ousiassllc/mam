@@ -20,10 +20,10 @@ import (
 func Register(r *mcpkit.Registrar, _ *service.Services) {
 	h := handlers{r: r}
 	mcpkit.Read(r, "get_global_settings",
-		"全体設定画面の内容（LLM の割り当て・画像／動画モデルの割り当て・バージョンとアップデート）。API キーは list_credentials。保存した LLM の割り当てと画像・動画モデルは、すぐに反映される（llm.restart_pending は再起動で反映される設定。restart_app）/ The global settings screen without secrets.",
+		"全体設定画面の内容（LLM の割り当て・画像／動画モデルの割り当て・バージョンとアップデート）。LLM のプロバイダーごとに今使えるか（llm.provider_states: API キー登録済みかサブスクでログイン済みなら available）と、今の割り当てが使えないプロバイダーを指しているときの警告（llm.route_warnings）、画像・動画モデルの選択肢ごとの available・unavailable_message・settings_route と、使えないモデルを指している割り当て（models.unusable_routes）を含む。API キーは list_credentials。保存した LLM の割り当てと画像・動画モデルは、すぐに反映される（llm.restart_pending は再起動で反映される設定。restart_app）/ The global settings screen without secrets.",
 		h.overview)
 	mcpkit.Read(r, "list_llm_models",
-		"LLM の割り当てで選べるモデルの一覧（プロバイダー指定。省略で全部）。source=api はそのアカウント・API キーで使えるモデル（chatgpt-subscription はサインイン済みのアカウントの一覧、chatgpt-codex は Codex の一覧）、default は取得できないとき（キーなし・未ログイン・失敗）の mam の既定候補。トークン・キーは返さない。10 分ほどキャッシュする / The models to choose for an LLM assignment, from the provider's API when it can be read, else mam's defaults.",
+		"LLM の割り当てで選べるモデルの一覧（プロバイダー指定。省略で全部）。各プロバイダーに available（API キー登録済み・ログイン済みか）・unavailable_message・settings_route が付く（available_only: true で使えるプロバイダーだけ）。source=api はそのアカウント・API キーで使えるモデル（chatgpt-subscription はサインイン済みのアカウントの一覧、chatgpt-codex は Codex の一覧）、default は取得できないとき（キーなし・未ログイン・失敗）の mam の既定候補。トークン・キーは返さない。10 分ほどキャッシュする / The models to choose for an LLM assignment, from the provider's API when it can be read, else mam's defaults.",
 		h.listModels, mcpkit.OpenWorld())
 	mcpkit.Write(r, "set_llm_assignment",
 		"Agent ごとの LLM（主・代替）の割り当てを保存する。指定した Agent だけ変わる。保存すると次の LLM 呼び出しからすぐ反映される（再起動は要らない）。モデル名が list_llm_models の一覧にないときは拒否せず保存し、warnings で知らせる / Save the LLM routes of some Agents (effective at once, no restart). A model that is not in the provider's list is saved with a warning.",
@@ -81,7 +81,7 @@ func (h handlers) overview(_ context.Context, _ Input) (Overview, error) {
 	s := h.r.Settings
 	out := Overview{LLM: LLMSection{Available: s.LLM != nil}, Models: ModelsSection{Available: s.Models != nil}}
 	if s.LLM != nil {
-		out.LLM = llmSection(s.LLM)
+		out.LLM = llmSection(s.LLM, s.LLMModels)
 	}
 	if s.Models != nil {
 		out.Models = modelsSection(s.Models)

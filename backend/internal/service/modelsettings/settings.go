@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/settingsfile"
 )
 
@@ -81,6 +82,8 @@ type Input struct {
 type VideoOption struct {
 	Model       domain.ModelName
 	Resolutions []string
+	// Availability is whether the model can be used now (#1013; SetAvailability).
+	Availability modelfilter.Availability
 }
 
 // ImageOption is an image model. Fast: it has a fast variant. AcceptsReferences: it uses reference
@@ -89,6 +92,8 @@ type ImageOption struct {
 	Model             domain.ModelName
 	Fast              bool
 	AcceptsReferences bool
+	// Availability is whether the model can be used now (#1013; SetAvailability).
+	Availability modelfilter.Availability
 }
 
 // View is the saved assignment and what it may be set to.
@@ -104,6 +109,8 @@ type View struct {
 	// Gated are the adult models the saved routes still name while the age confirmation is off: they are not among
 	// ImageModels / VideoModels, generation with them is refused, and Save refuses a route that names one.
 	Gated []domain.ModelName
+	// Unusable are the saved routes that name a model that cannot be used now (no API key, not signed in...): the screen warns about them (#1013).
+	Unusable []UnusableRoute
 }
 
 // Service edits the image / video part of one Model Adapter setting file.
@@ -114,6 +121,8 @@ type Service struct {
 	onChange func()
 	// hidden, when set, says which models are adult models while the age confirmation is off (SetHidden).
 	hidden func(modelID string) bool
+	// availability, when set, says whether a model can be used now (SetAvailability).
+	availability func(modelID string) (modelfilter.Availability, bool)
 }
 
 // SetOnChange registers f to run after Save or Reset wrote the file: the app applies the saved assignment
@@ -140,7 +149,7 @@ func (s *Service) View() (View, error) {
 		return View{}, err
 	}
 	def := modeladapter.DefaultConfig()
-	return View{
+	v := View{
 		Pinned:      s.pinned,
 		Customized:  !maps.Equal(cfg.Images, def.Images) || !maps.Equal(cfg.Policies, def.Policies),
 		Images:      cfg.Images,
@@ -148,7 +157,10 @@ func (s *Service) View() (View, error) {
 		ImageModels: imageOptions(cfg, s.gated),
 		VideoModels: videoOptions(cfg, s.gated),
 		Gated:       s.gatedRoutes(cfg),
-	}, nil
+		Unusable:    s.unusableRoutes(cfg),
+	}
+	s.withAvailability(v.ImageModels, v.VideoModels)
+	return v, nil
 }
 
 // Save stores the assignment: only the routes that differ from the defaults are written, the other keys

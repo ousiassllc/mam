@@ -121,6 +121,7 @@
 
 - `list_generation_models`: 各モデルに `license`（`commercial`・`license_name`・`condition`・`source_url`・`checked_at`・`notice`）。入力 `commercial`（`all` / `ok` / `ok_or_conditional`。省くと設定に従う）で絞る。出力の `commercial_filter` は適用した絞り込み。不正な値は `validation`。
 - `list_model_catalog`: `models[].license` に同じ項目（`commercial` は 4 値、`components[]`）。入力 `commercial`、出力 `commercial_filter` は同じ。
+- 入力 `commercial` は、モデルを探す・選ぶ画面と MCP の共通のフィルター（[model-manager/model-filter.md](model-manager/model-filter.md)）の 1 項目になった。`all` / `ok` / `ok_or_conditional` は今まで通りで、`ok`・`conditional`・`unknown`・`ng` のカンマ区切りで「商用OK と 不明」のような組み合わせも言える（Issue #1011）。
 - `get_commercial_only` / `set_commercial_only`（§5）。
 - 詳細は [../api/mcp-tools-generation-test.md](../api/mcp-tools-generation-test.md)・[../api/mcp-tools-model-manager.md](../api/mcp-tools-model-manager.md)。
 
@@ -152,3 +153,4 @@
 | 1.8 | 2026-11-03 | §3 の答えの表に、非検閲（成人向け）の実写中心 14 モデルを足した（商用OK 3・不明 7・商用NG 4）。ライセンスは一次情報（作者のモデルカード・Civitai のページの文言）だけを読み、Civitai の `allowCommercialUse` だけでは商用OKにしない | Issue #984 |
 | 1.9 | 2026-11-03 | §3 の答えの表にアップスケール用のモデル（`upscale-nomos-uni-span`＝商用OK・`upscale-nomos-webphoto-esrgan`＝不明（カードのメタデータと本文のライセンスが食い違う）・`upscale-2pass-sdxl-span`＝商用OK）を足した | Issue #975 |
 | 1.10 | 2026-11-03 | §3 の見出しの「`checked_at` はすべて 2026-11-02」を、日付（2026-11-01・02・03）ごとの調査分の書き方に直し、答えの表に `sdxl-controlnet-canny`・`sdxl-ipadapter-plus`（どちらも商用OK。カタログの `license` の根拠どおり）の行を足した | Issue #976 の統合レビュー（表に行が無く、見出しの日付が実際と違った） |
+| 1.11 | 2026-11-03 | §6: `commercial` が共通のフィルターの 1 項目になり、4 語のカンマ区切りを足したことを書いた（既存の 3 語は互換） | Issue #1011 |

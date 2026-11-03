@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 )
@@ -45,6 +46,26 @@ func (s *Service) ModelsFor(ctx context.Context, media, commercial string) ([]mo
 		f = parsed
 	}
 	return modelcatalog.FilterByCommercial(s.Models(ctx, media), f), f, nil
+}
+
+// ModelsWhere lists the models of the media that pass the condition (modelfilter, #1011), each with whether it can be chosen now and why not (#1013;
+// modelcatalog.Info.Availability). A condition with no commercial part starts at DefaultFilter, as ModelsFor does; the condition it applied is
+// returned. A condition that is not valid is refused (gterr.Invalid).
+func (s *Service) ModelsWhere(ctx context.Context, media string, cond modelfilter.Condition) ([]modelcatalog.Info, modelfilter.Condition, error) {
+	cond = cond.Normalize()
+	if err := cond.Validate(); err != nil {
+		return nil, cond, gterr.Invalid("%s", err.Error())
+	}
+	if cond.Commercial == "" {
+		cond.Commercial = string(s.DefaultFilter())
+		cond = cond.Normalize()
+	}
+	return modelcatalog.Filter(s.Models(ctx, media), cond), cond, nil
+}
+
+// Availability is whether one model of the generation test can be chosen now and why not (#1013); false when there is no such model (or it is hidden by the age gate).
+func (s *Service) Availability(modelID string) (modelfilter.Availability, bool) {
+	return s.catalog.Availability(modelID)
 }
 
 // LoRAs lists the LoRA files of the bundled ComfyUI engine, sorted: the names a request's LoRA may take

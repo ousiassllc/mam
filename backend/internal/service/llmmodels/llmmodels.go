@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 )
 
 // Source says where a list comes from.
@@ -74,6 +75,9 @@ type List struct {
 	// Fallback is why Source is SourceDefault.
 	Fallback Fallback
 	Models   []Model
+	// Availability is whether the provider can be used now: false without an API key or a sign-in (#1013), true otherwise (also when the list could not be
+	// read: the key is there). A picker hides the models of a provider that cannot be used unless the user asks for them.
+	Availability modelfilter.Availability
 }
 
 // Has is whether model is one of the listed models.
@@ -152,6 +156,12 @@ func New(o Options) *Service {
 // List is the models to offer for provider. It never fails because a provider could not be read: the candidates of mam
 // answer then (List.Fallback says why). Only an unknown provider is an error (ErrUnknownProvider).
 func (s *Service) List(ctx context.Context, provider string) (List, error) {
+	l, err := s.list(ctx, provider)
+	l.Availability = l.Fallback.availability()
+	return l, err
+}
+
+func (s *Service) list(ctx context.Context, provider string) (List, error) {
 	p := llm.Provider(provider)
 	if !slices.Contains(llm.Providers(), p) {
 		return List{}, fmt.Errorf("%w: %q", ErrUnknownProvider, provider)
