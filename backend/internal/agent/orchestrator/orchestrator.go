@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -233,13 +234,22 @@ func (o *Orchestrator) report(ctx context.Context, projectID string, err error) 
 	if errors.Is(err, repository.ErrNotFound) {
 		return err // the Project is gone
 	}
-	o.logger.Error("planning pipeline failed", "project_id", projectID, "err", err)
-	reason := failureReason(err)
+	fail := failure(err)
+	attrs := []any{"project_id", projectID, "err", err}
+	if fail.Code == apperr.CodeUnknown {
+		fail.ID = apperr.NewID() // the notice says it, the log line has it
+		attrs = append(attrs, "error_id", fail.ID)
+	}
+	o.logger.Error("planning pipeline failed", attrs...)
+	reason := failureReason(fail)
+	if fail.ID != "" {
+		reason += "（" + apperr.Text(apperr.LangJa, "ui.error_id", nil) + ": " + fail.ID + "）"
+	}
 	notice := failmsg.Notice(err, "制作を続けられませんでした: "+reason+"\n対処したら、何かメッセージを送ると続きから再開します。") // a missing key links to the LLM assignment
 	if aerr := o.chat.Announce(context.WithoutCancel(ctx), projectID, notice); aerr != nil {
 		o.logger.Error("post failure notice failed", "project_id", projectID, "err", aerr)
 	}
-	return errors.New(reason)
+	return apperr.WithText(reason, fail)
 }
 
 func assistantText(content string) domain.ChatMessage {

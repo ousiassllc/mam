@@ -39,15 +39,13 @@ func JobStatuses() []JobStatus { return []JobStatus{JobQueued, JobRunning, JobSu
 
 // Job is a persisted background job: unfinished work is found after an abnormal termination and resumed or failed.
 type Job struct {
-	ID       string
-	Kind     JobKind
-	Payload  json.RawMessage
-	Status   JobStatus
-	Attempts int
-	Error    string
-	// ErrorInfo is the failure as the common error (apperr.Error.Marshal), "" when the job has none (it did not fail, or failed before it was kept).
-	ErrorInfo  string
-	CreatedAt  time.Time
-	StartedAt  *time.Time
-	FinishedAt *time.Time
+	ID               string
+	Kind             JobKind
+	Payload          json.RawMessage
+	Status           JobStatus
+	Attempts         int
+	Error, ErrorInfo string // ErrorInfo is the failure as the common error (apperr.Error.Marshal); "" for none
+	CreatedAt        time.Time
+	StartedAt        *time.Time
+	FinishedAt       *time.Time
 }

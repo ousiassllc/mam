@@ -3,6 +3,7 @@ package apperr
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
@@ -74,6 +75,23 @@ func (e *Error) Unwrap() error { return e.Err }
 
 // Class is the coarse class of the code (ClassValidation, ...). A code that is not in the catalog is ClassInternal.
 func (e *Error) Class() string { return specs[e.Code].class }
+
+// statusOfClass is the HTTP status of a class: what the screens and the file endpoint of the MCP answer with for the failure.
+var statusOfClass = map[string]int{
+	ClassValidation: http.StatusUnprocessableEntity, ClassNotFound: http.StatusNotFound, ClassConflict: http.StatusConflict,
+	ClassLocked: http.StatusLocked, ClassForbidden: http.StatusForbidden, ClassBudget: http.StatusPaymentRequired,
+	ClassRateLimited: http.StatusTooManyRequests, ClassUnavailable: http.StatusServiceUnavailable,
+	ClassUpstream: http.StatusBadGateway, ClassInternal: http.StatusInternalServerError,
+}
+
+// Status is the HTTP status of the failure, by its class (spec/api/errors.md): 422 for an input, 502 for an outside service, 503 for a feature that is not set up, 500 for an
+// unknown failure.
+func (e *Error) Status() int {
+	if st, ok := statusOfClass[e.Class()]; ok {
+		return st
+	}
+	return http.StatusInternalServerError
+}
 
 // As finds the *Error in the chain of err.
 func As(err error) (*Error, bool) {
@@ -195,3 +213,16 @@ func (v View) Line(lang Lang) string {
 	}
 	return line + "（詳細: " + string(d) + "）"
 }
+
+// reasoned is the error of a job that failed: its text is the sentence the user was told, and the *Error behind it is what errors.As finds,
+// so that the job queue keeps the code with the sentence.
+type reasoned struct {
+	text string
+	err  *Error
+}
+
+func (r *reasoned) Error() string { return r.text }
+func (r *reasoned) Unwrap() error { return r.err }
+
+// WithText is an error whose text is text and whose failure is e (errors.As finds e): the error a job returns, with the sentence it told the user.
+func WithText(text string, e *Error) error { return &reasoned{text: text, err: e} }

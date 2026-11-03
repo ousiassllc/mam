@@ -18,33 +18,37 @@ type Code string
 // The codes. Every code has a Japanese and an English text in the catalog (messages_ja.go, messages_en.go) and a class and the
 // settings places in specs below; TestEveryCodeHasItsTexts pins that.
 const (
-	CodeUnknown          Code = "unknown"              // a failure none of the others fits: the cause is not known, the detail and the log have it
-	CodeKeyMissing       Code = "key_missing"          // no API key is stored for the service
-	CodeLLMKeyMissing    Code = "llm_key_missing"      // no API key for any provider an Agent of the Reasoning LLM may use
-	CodeAuthFailed       Code = "auth_failed"          // 401 / 403
-	CodeRemoteNotFound   Code = "remote_not_found"     // 404 from the service or the endpoint
-	CodeTimeout          Code = "timeout"              // 408, or no answer within the time (a cloud call)
-	CodeStalled          Code = "stalled"              // a local job showed no progress for the endpoint's timeout
-	CodeTimeLimit        Code = "time_limit"           // a local call ran past the ceiling of a ComfyUI call
-	CodeEndpointTimeout  Code = "endpoint_timeout"     // a local call ran past the timeout of its endpoint
-	CodeRequestRejected  Code = "request_rejected"     // 4xx (422 and others): the request itself was refused
-	CodeInputMissing     Code = "input_missing"        // an input the model needs was not sent ("needs first_frame")
-	CodeInputUnsupported Code = "input_unsupported"    // an input image or resolution the model does not take
-	CodeRateLimited      Code = "rate_limited"         // 429
-	CodeServerError      Code = "server_error"         // 5xx
-	CodeConnectionFailed Code = "connection_failed"    // the endpoint could not be reached
-	CodeCircuitOpen      Code = "circuit_open"         // calls to the vendor are paused after repeated failures
-	CodeVRAM             Code = "vram_oom"             // the GPU ran out of memory (CUDA OOM)
-	CodeDiskFull         Code = "disk_full"            // no free disk space
-	CodeModelMissing     Code = "model_not_installed"  // the model (a file of it) is not installed
-	CodeLicense          Code = "license_not_accepted" // the license of the model was not accepted
-	CodeEngineMissing    Code = "engine_not_installed" // the bundled ComfyUI engine is not installed
-	CodeNodeMissing      Code = "node_missing"         // a custom node of the workflow is missing from ComfyUI
-	CodeLLMInvalidOutput Code = "llm_invalid_output"   // the LLM answered something that is not the requested form
-	CodeNotWritable      Code = "not_writable"         // the folder cannot be written
-	CodeNoGPU            Code = "no_gpu"               // no supported GPU
-	CodeImageUnavailable Code = "image_unavailable"    // the ChatGPT account hosts no model for the image generation
-	CodeSaveFailed       Code = "save_failed"          // a setting or a file could not be saved
+	CodeUnknown          Code = "unknown"               // a failure none of the others fits: the cause is not known, the detail and the log have it
+	CodeKeyMissing       Code = "key_missing"           // no API key is stored for the service
+	CodeLLMKeyMissing    Code = "llm_key_missing"       // no API key for any provider an Agent of the Reasoning LLM may use
+	CodeAuthFailed       Code = "auth_failed"           // 401 / 403
+	CodeRemoteNotFound   Code = "remote_not_found"      // 404 from the service or the endpoint
+	CodeTimeout          Code = "timeout"               // 408, or no answer within the time (a cloud call)
+	CodeStalled          Code = "stalled"               // a local job showed no progress for the endpoint's timeout
+	CodeTimeLimit        Code = "time_limit"            // a local call ran past the ceiling of a ComfyUI call
+	CodeEndpointTimeout  Code = "endpoint_timeout"      // a local call ran past the timeout of its endpoint
+	CodeRequestRejected  Code = "request_rejected"      // 4xx (422 and others): the request itself was refused
+	CodeInputMissing     Code = "input_missing"         // an input the model needs was not sent ("needs first_frame")
+	CodeInputUnsupported Code = "input_unsupported"     // an input image or resolution the model does not take
+	CodeRateLimited      Code = "rate_limited"          // 429
+	CodeServerError      Code = "server_error"          // 5xx
+	CodeConnectionFailed Code = "connection_failed"     // the endpoint could not be reached
+	CodeCircuitOpen      Code = "circuit_open"          // calls to the vendor are paused after repeated failures
+	CodeVRAM             Code = "vram_oom"              // the GPU ran out of memory (CUDA OOM)
+	CodeDiskFull         Code = "disk_full"             // no free disk space
+	CodeModelMissing     Code = "model_not_installed"   // the model (a file of it) is not installed
+	CodeLicense          Code = "license_not_accepted"  // the license of the model was not accepted
+	CodeEngineMissing    Code = "engine_not_installed"  // the bundled ComfyUI engine is not installed
+	CodeNodeMissing      Code = "node_missing"          // a custom node of the workflow is missing from ComfyUI
+	CodeLLMInvalidOutput Code = "llm_invalid_output"    // the LLM answered something that is not the requested form
+	CodeGenTimeLimit     Code = "generation_time_limit" // the Max generation time of the Policy ran out
+	CodeMediaTimeout     Code = "media_timeout"         // ffmpeg / ffprobe ran past its limit
+	CodeDownloadCorrupt  Code = "download_corrupt"      // the downloaded file does not match its checksum or size
+	CodeInstallFailed    Code = "install_failed"        // an install of a model, a node or a runtime stopped for a reason the installer worded
+	CodeNotWritable      Code = "not_writable"          // the folder cannot be written
+	CodeNoGPU            Code = "no_gpu"                // no supported GPU
+	CodeImageUnavailable Code = "image_unavailable"     // the ChatGPT account hosts no model for the image generation
+	CodeSaveFailed       Code = "save_failed"           // a setting or a file could not be saved
 
 	// The codes of the classes below are for a failure that a service already worded (Error.Cause): the screen and the tool keep that
 	// sentence and add the generic remedy.
@@ -126,6 +130,10 @@ var specs = map[Code]spec{
 	CodeEngineMissing:    {ClassUnavailable, []Place{PlaceModelMgr, PlaceLocalModels}},
 	CodeNodeMissing:      {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeLLMInvalidOutput: {ClassUpstream, []Place{PlaceLLM}},
+	CodeGenTimeLimit:     {ClassUpstream, []Place{PlaceSettings}},
+	CodeMediaTimeout:     {ClassUpstream, nil},
+	CodeDownloadCorrupt:  {ClassUpstream, []Place{PlaceModelMgr}},
+	CodeInstallFailed:    {ClassUpstream, []Place{PlaceModelMgr}},
 	CodeNotWritable:      {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeNoGPU:            {ClassUnavailable, []Place{PlaceModelMgr, PlaceLocalModels}},
 	CodeImageUnavailable: {ClassUnavailable, []Place{PlaceChatGPT}},

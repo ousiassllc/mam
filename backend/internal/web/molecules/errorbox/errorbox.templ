@@ -27,7 +27,7 @@ templ Box(p Props) {
 		if len(p.View.Settings) > 0 {
 			<ul class="flex flex-wrap gap-x-4 gap-y-1" aria-label={ apperr.Text(p.Lang, "ui.settings", nil) } data-testid="error-links">
 				for _, l := range p.View.Settings {
-					<li><a class="text-indigo-300 underline hover:text-indigo-200" href={ templ.SafeURL(l.Path) }>{ l.Label }</a></li>
+					<li><a class="text-indigo-300 underline" href={ templ.SafeURL(l.Path) }>{ l.Label }</a></li>
 				}
 			</ul>
 		}

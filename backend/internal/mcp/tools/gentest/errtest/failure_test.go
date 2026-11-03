@@ -1,4 +1,4 @@
-package gentest_test
+package errtest_test
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"net"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,9 +15,45 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/files"
 	mcpgentest "github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/jobs"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 )
+
+// rig is the MCP environment with the generation test and its tools.
+type rig struct {
+	*mcptest.Env
+	GT *gentesttest.Rig
+}
+
+func newRig(t *testing.T) *rig {
+	t.Helper()
+	r := &rig{}
+	r.Env = mcptest.New(t, func(env *mcptest.Env, reg *mcpkit.Registrar) {
+		r.GT = gentesttest.NewOn(t, env.DB)
+		env.Services.Gentest = r.GT.Svc
+		jobs.Register(reg, env.Services)
+		files.Register(reg, env.Services)
+		mcpgentest.Register(reg, env.Services)
+	})
+	return r
+}
+
+// run estimates a batch of one image and runs it with the figures it was shown.
+func (r *rig) run(model string) mcpgentest.RunOutput {
+	r.T.Helper()
+	args := map[string]any{"media": "image", "models": []string{model}, "count": 1, "prompts": []map[string]any{{"prompt": "a red fox"}}}
+	var est gentest.Estimate
+	r.CallOK("estimate_generation_test", args, &est)
+	args["estimate_id"], args["confirmed_total_usd"] = est.ID, est.TotalUSD
+	var out mcpgentest.RunOutput
+	r.CallOK("run_generation_test", args, &out)
+	return out
+}
 
 func comfyFailure(status int, msg string) error {
 	return &modeladapter.ProviderError{Vendor: "endpoint:bundled-comfyui", Status: status, Message: msg}
@@ -42,8 +79,8 @@ func TestGetGenerationResultTellsAFailureWithCauseRemedyAndDetail(t *testing.T) 
 		t.Run(name, func(t *testing.T) {
 			r := newRig(t)
 			r.GT.Fake.FailWith(domain.ModelFlux2, tc.err)
-			out, _ := r.run(batch("flux-2"))
-			r.job(out.JobID) // the job ends; the results say which failed
+			out := r.run("flux-2")
+			r.WaitJob(out.JobID, 20*time.Second, 10*time.Millisecond) // the job ends; the results say which failed
 
 			var b gentest.BatchStatus
 			r.CallOK("get_generation_test", map[string]any{"batch_id": out.BatchID}, &b)

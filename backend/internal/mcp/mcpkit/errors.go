@@ -100,11 +100,11 @@ func MapError(err error) *ToolError {
 		return &ToolError{Code: CodeLocked, Message: strings.Join(names, " / ") + " は LOCK されているため変更できません。LOCK を解除してから指示してください", Status: http.StatusLocked}
 	case errors.Is(err, service.ErrRateLimited):
 		if errors.As(err, &ai) {
-			return &ToolError{Code: CodeRateLimited, Message: ai.Reason, Status: http.StatusTooManyRequests}
+			return &ToolError{Code: CodeRateLimited, Message: ai.Reason, Status: http.StatusTooManyRequests, Failure: viewOfFailure(ai.Err)}
 		}
 		return &ToolError{Code: CodeRateLimited, Message: "外部の生成モデル API のレート制限に達しました。しばらく待ってから再実行してください", Status: http.StatusTooManyRequests}
 	case errors.As(err, &ai):
-		return &ToolError{Code: CodeUpstream, Message: ai.Reason, Status: http.StatusBadGateway}
+		return &ToolError{Code: CodeUpstream, Message: ai.Reason, Status: http.StatusBadGateway, Failure: viewOfFailure(ai.Err)}
 	case errors.As(err, &invalid):
 		return &ToolError{Code: CodeValidation, Message: invalid.Error(), Status: http.StatusUnprocessableEntity}
 	case errors.As(err, &store):
@@ -121,18 +121,21 @@ func MapError(err error) *ToolError {
 	return &ToolError{Code: CodeInternal, Message: "予期しないエラーです。mam のログを確認してください", Status: http.StatusInternalServerError}
 }
 
+// viewOfFailure is the common error of the failure behind an AIError (the cause and remedy in Japanese, the screens that help, the detail), nil when
+// errmap does not know it: the tool keeps its code and message and adds the structure (#1010).
+func viewOfFailure(err error) *apperr.View {
+	e, ok := errmap.Known(err)
+	if !ok {
+		return nil
+	}
+	v := e.View(apperr.LangJa)
+	return &v
+}
+
 // isFailure reports whether err is a failure told as the common error (an *apperr.Error in its chain).
 func isFailure(err error) bool {
 	_, ok := apperr.As(err)
 	return ok
-}
-
-// statusOfClass is the HTTP status the file endpoint answers with for a class of the common error.
-var statusOfClass = map[string]int{
-	apperr.ClassValidation: http.StatusUnprocessableEntity, apperr.ClassNotFound: http.StatusNotFound, apperr.ClassConflict: http.StatusConflict,
-	apperr.ClassLocked: http.StatusLocked, apperr.ClassForbidden: http.StatusForbidden, apperr.ClassBudget: http.StatusPaymentRequired,
-	apperr.ClassRateLimited: http.StatusTooManyRequests, apperr.ClassUnavailable: http.StatusServiceUnavailable,
-	apperr.ClassUpstream: http.StatusBadGateway, apperr.ClassInternal: http.StatusInternalServerError,
 }
 
 // fromFailure is the tool error of a failure told as the common error: the code is its class (the code a tool error always had), the
@@ -141,10 +144,7 @@ var statusOfClass = map[string]int{
 func fromFailure(err error) *ToolError {
 	e, _ := apperr.As(err)
 	v := e.View(apperr.LangJa)
-	te := &ToolError{Code: v.Class, Message: v.Sentence(apperr.LangJa), Status: statusOfClass[v.Class], Failure: &v}
-	if te.Status == 0 {
-		te.Status = http.StatusInternalServerError
-	}
+	te := &ToolError{Code: v.Class, Message: v.Sentence(apperr.LangJa), Status: e.Status(), Failure: &v}
 	if e.Code == apperr.CodeUnknown { // nobody knows it: the id leads to the log
 		te.Code = CodeInternal
 	}

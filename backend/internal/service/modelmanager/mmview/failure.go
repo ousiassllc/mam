@@ -30,9 +30,14 @@ func Failure(err error) *apperr.Error {
 			return known // a disk, a folder or a vendor failure: errmap words it
 		}
 		kind, msg := Refuse(err)
-		switch kind {
-		case RefusalNone:
+		var worded interface{ UserMessage() string }
+		switch {
+		case kind == RefusalNone && errors.As(err, &worded):
+			return apperr.New(apperr.CodeInstallFailed).WithCause(worded.UserMessage()).Wrap(err) // an install that the installer worded itself
+		case kind == RefusalNone:
 			return nil
+		}
+		switch kind {
 		case RefusalInvalid:
 			e = apperr.New(apperr.CodeInvalidInput)
 		case RefusalNotFound:

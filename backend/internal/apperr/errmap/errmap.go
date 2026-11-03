@@ -107,11 +107,13 @@ func classify(err error) *apperr.Error {
 	case errors.Is(err, modeladapter.ErrNoAPIKey):
 		return apperr.New(apperr.CodeKeyMissing)
 	case errors.Is(err, audiodirector.ErrNoAPIKey):
-		return apperr.New(apperr.CodeKeyMissing)
+		return apperr.New(apperr.CodeKeyMissing).With("service", "ElevenLabs の ")
 	case errors.As(err, &te):
 		return localTimeout(te)
 	case errors.Is(err, modeladapter.ErrTimeLimit):
 		return apperr.New(apperr.CodeTimeout)
+	case modeladapter.RateLimited(err): // before the breaker: the 429 that opened it is the cause the user can act on
+		return apperr.New(apperr.CodeRateLimited)
 	case errors.Is(err, modeladapter.ErrCircuitOpen), errors.Is(err, llm.ErrCircuitOpen):
 		return apperr.New(apperr.CodeCircuitOpen)
 	case errors.Is(err, chatgpt.ErrNoImageModel):
@@ -120,10 +122,12 @@ func classify(err error) *apperr.Error {
 		return apperr.New(apperr.CodeInputUnsupported)
 	case errors.Is(err, llm.ErrInvalidOutput):
 		return apperr.New(apperr.CodeLLMInvalidOutput)
+	case errors.Is(err, fetch.ErrChecksum), errors.Is(err, fetch.ErrSize):
+		return apperr.New(apperr.CodeDownloadCorrupt)
 	case errors.Is(err, store.ErrNotWritable):
 		return apperr.New(apperr.CodeNotWritable)
 	case errors.Is(err, media.ErrTimeout):
-		return apperr.New(apperr.CodeTimeout)
+		return apperr.New(apperr.CodeMediaTimeout)
 	case errors.As(err, &fetchNoSpace):
 		return apperr.New(apperr.CodeDiskFull).With("where", "{{where.path}}").With("path", fetchNoSpace.Path)
 	case errors.Is(err, syscall.ENOSPC):
@@ -139,6 +143,12 @@ func classify(err error) *apperr.Error {
 			return e
 		}
 	}
+	return byKind(err)
+}
+
+// byKind is the failures that have no message and no status to tell more: a timeout, the folder, the network, a refusal without a status, the
+// provider's own words.
+func byKind(err error) *apperr.Error {
 	switch {
 	case errors.Is(err, modeladapter.ErrTimeout), errors.Is(err, llm.ErrTimeout), errors.Is(err, context.DeadlineExceeded):
 		return apperr.New(apperr.CodeTimeout)
@@ -146,15 +156,17 @@ func classify(err error) *apperr.Error {
 		return apperr.New(apperr.CodeNotWritable)
 	case isNetwork(err):
 		return apperr.New(apperr.CodeConnectionFailed)
+	case errors.Is(err, modeladapter.ErrRejected): // the sentinel alone: no status to tell more
+		return apperr.New(apperr.CodeRequestRejected)
 	}
 	var (
 		pe  *modeladapter.ProviderError
 		api *llm.APIError
 	)
-	if errors.As(err, &api) && api.Notice != "" { // the provider's own words (a usage limit, a sign-in to repeat)
+	switch {
+	case errors.As(err, &api) && api.Notice != "": // the provider's own words (a usage limit, a sign-in to repeat)
 		return apperr.New(apperr.CodeUpstream).WithCause(api.Notice)
-	}
-	if errors.As(err, &pe) && pe.Status == 0 { // no answer, and not a network error we know
+	case errors.As(err, &pe) && pe.Status == 0: // no answer, and not a network error we know
 		return apperr.New(apperr.CodeConnectionFailed)
 	}
 	return nil

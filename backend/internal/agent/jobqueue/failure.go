@@ -15,7 +15,13 @@ func (q *Queue) fail(ctx context.Context, job domain.Job, reason string) {
 // failWith fails the job with err: the reason is its text, and the failure is kept as the common error (#1010) so that get_job and the
 // screens can say the cause and the remedy in words. A failure nobody knows gets a correlation id, which the log line carries too.
 func (q *Queue) failWith(ctx context.Context, job domain.Job, err error) {
-	e := errmap.Explain(err)
+	var e *apperr.Error
+	if q.explain != nil {
+		e = q.explain(err)
+	}
+	if e == nil {
+		e = errmap.Explain(err)
+	}
 	if e.Code == apperr.CodeUnknown && e.ID == "" {
 		e.ID = apperr.NewID()
 	}

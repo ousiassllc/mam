@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -49,6 +50,9 @@ type Options struct {
 	Workers     int
 	MaxAttempts int
 	Logger      *slog.Logger
+	// Explain is the common error of a failure the app words itself (a refusal of a service), nil for one it does not know: the queue then
+	// asks errmap. May be nil.
+	Explain func(error) *apperr.Error
 }
 
 type registration struct {
@@ -62,6 +66,7 @@ type Queue struct {
 	logger      *slog.Logger
 	workers     int
 	maxAttempts int
+	explain     func(error) *apperr.Error
 
 	// claim and claimBackoff are fields so tests can inject a failing claim and a short backoff.
 	claim        func(ctx context.Context) (domain.Job, error)
@@ -93,6 +98,7 @@ func New(repo *repository.JobRepository, opts Options) *Queue {
 		logger:       opts.Logger,
 		workers:      opts.Workers,
 		maxAttempts:  opts.MaxAttempts,
+		explain:      opts.Explain,
 		claim:        repo.ClaimNext,
 		claimBackoff: claimBackoffMin,
 		handlers:     make(map[domain.JobKind]registration),

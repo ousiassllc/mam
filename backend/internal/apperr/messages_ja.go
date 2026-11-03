@@ -7,7 +7,7 @@ var messagesJa = map[string]string{
 	"unknown.cause":  "原因がわかりませんでした。想定していない失敗です。",
 	"unknown.remedy": "もう一度試してください。直らないときは、詳細（とエラー ID）を添えて報告してください。mam のログにも同じ ID で残しています。",
 
-	"key_missing.cause":  "API キーが設定されていません。",
+	"key_missing.cause":  "{service}API キーが設定されていません。",
 	"key_missing.remedy": "設定画面の「API キーとログイン」で、使うサービスの API キーを登録してください。",
 
 	"llm_key_missing.cause":  "LLM の API キーが設定されていません。{route}",
@@ -31,7 +31,7 @@ var messagesJa = map[string]string{
 	"endpoint_timeout.cause":  "ローカルの生成が接続先の待ち時間（{after}）を超えたため打ち切りました。",
 	"endpoint_timeout.remedy": "設定画面の接続先でタイムアウトを延ばすか、解像度や秒数を小さくして実行し直してください。",
 
-	"request_rejected.cause":  "相手がリクエストを受け付けませんでした{http}。入力か設定が、そのモデルに合っていません。",
+	"request_rejected.cause":  "相手がリクエストを拒否しました{http}。コンテンツポリシーに当たったか、入力や設定がそのモデルに合っていません。",
 	"request_rejected.remedy": "詳細に、相手の返した理由があります。プロンプトの長さや内容、解像度・秒数・入力画像などの設定を見直してください。",
 
 	"input_missing.cause":  "このモデルが必ず使う入力（{param}）が渡されていません。",
@@ -49,7 +49,7 @@ var messagesJa = map[string]string{
 	"connection_failed.cause":  "接続先につながりませんでした。",
 	"connection_failed.remedy": "接続先が起動しているか、URL とネットワーク（プロキシ・VPN・ファイアウォール）を確かめてください。同梱の ComfyUI は、モデル管理でエンジンが動いているかを確かめてください。",
 
-	"circuit_open.cause":  "このモデルのベンダーで失敗が続いているため、呼び出しを止めています。",
+	"circuit_open.cause":  "このモデルのベンダーで失敗が続いているため、呼び出しを止めています（一時的に利用できません）。",
 	"circuit_open.remedy": "しばらく待ってから実行し直してください。",
 
 	"vram_oom.cause":  "GPU のメモリ（VRAM）が足りませんでした。",
@@ -72,6 +72,18 @@ var messagesJa = map[string]string{
 
 	"llm_invalid_output.cause":  "LLM の答えが、求めた形式になっていませんでした。",
 	"llm_invalid_output.remedy": "もう一度実行してください。続くときは、設定画面の「テキスト生成（LLM）」で、その Agent のモデルを変えてみてください。",
+
+	"generation_time_limit.cause":  "生成が制限時間（Max generation time）を超えました。",
+	"generation_time_limit.remedy": "設定画面で制限時間を延ばすか、ポリシーを見直してください。",
+
+	"media_timeout.cause":  "動画・音声の処理（ffmpeg）が制限時間を超えました。",
+	"media_timeout.remedy": "素材ファイルが壊れていないか、大きすぎないかを確かめて、もう一度実行してください。",
+
+	"download_corrupt.cause":  "ダウンロードしたファイルが、固定した SHA-256 または大きさと一致しませんでした。破棄しました（取得元の改ざんか、転送の破損の可能性があります）。",
+	"download_corrupt.remedy": "もう一度導入してください。続くときは、mam を更新してから試してください。",
+
+	"install_failed.cause":  "導入を完了できませんでした。",
+	"install_failed.remedy": "原因は詳細にあります。モデル管理の画面から、もう一度導入してください。",
 
 	"not_writable.cause":  "保存先のフォルダに書き込めません。",
 	"not_writable.remedy": "書き込める場所に移すか、フォルダの権限を確かめてください。外部の ComfyUI の URL を使う方法もあります。",

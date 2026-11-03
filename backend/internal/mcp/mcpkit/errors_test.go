@@ -47,7 +47,8 @@ func TestMapError_GivesTheScreensStatusAndAMessageThatKeepsNoInternals(t *testin
 		assert.Equal(t, tc.code, te.Code, name)
 		assert.Equal(t, tc.status, te.Status, name)
 		assert.Contains(t, te.Message, tc.text, name)
-		assert.Equal(t, tc.code+": "+te.Message, te.Error(), name)
+		first, _, _ := strings.Cut(te.Error(), "\n") // a failure the app knows has its structure as the second line (#1010)
+		assert.Equal(t, tc.code+": "+te.Message, first, name)
 	}
 	te := mcpkit.MapError(errors.New(`open /home/me/.mam/assets/x.mp4: permission denied`))
 	assert.NotContains(t, te.Message, "/home/me", "an unknown error shows none of its text")

@@ -1,4 +1,4 @@
-package servicetest_test
+package errtest_test
 
 import (
 	"bytes"
@@ -29,7 +29,7 @@ func failedResult(t *testing.T, opts []gentesttest.Option, model domain.ModelNam
 	t.Helper()
 	r := gentesttest.New(t, opts...)
 	r.Fake.FailWith(model, err)
-	ref, runErr := r.Confirmed(imageReq(string(model)))
+	ref, runErr := r.Confirmed(gentest.Request{Media: "image", Models: []string{string(model)}, Prompts: []gentest.PromptInput{{Prompt: "a fox"}}})
 	require.NoError(t, runErr)
 	st := r.Wait(ref.BatchID)
 	require.Len(t, st.Results, 1)
@@ -61,7 +61,7 @@ func TestFailedResultCarriesTheCommonError(t *testing.T) {
 		"401":            {comfy(http.StatusUnauthorized, "bad key"), apperr.CodeAuthFailed, "認証を拒否", "キーを確かめて", "/settings/api-keys"},
 		"429":            {comfy(http.StatusTooManyRequests, "slow down"), apperr.CodeRateLimited, "429", "しばらく待って", ""},
 		"500":            {comfy(http.StatusBadGateway, "oops"), apperr.CodeServerError, "障害", "しばらく待って", ""},
-		"422 other text": {comfy(http.StatusUnprocessableEntity, "prompt too long"), apperr.CodeRequestRejected, "受け付けませんでした", "見直して", ""},
+		"422 other text": {comfy(http.StatusUnprocessableEntity, "prompt too long"), apperr.CodeRequestRejected, "拒否しました", "見直して", ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, res := failedResult(t, nil, domain.ModelFlux2, tc.err)

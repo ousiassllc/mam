@@ -5,7 +5,7 @@ var messagesEn = map[string]string{
 	"unknown.cause":  "The cause is not known. This is a failure mam did not expect.",
 	"unknown.remedy": "Try again. If it keeps failing, report it with the detail and the error ID; the log of mam has the same ID.",
 
-	"key_missing.cause":  "No API key is set.",
+	"key_missing.cause":  "No {service}API key is set.",
 	"key_missing.remedy": "Register the API key of the service in Settings > API keys and sign-in.",
 
 	"llm_key_missing.cause":  "No API key is set for the LLM. {route}",
@@ -29,7 +29,7 @@ var messagesEn = map[string]string{
 	"endpoint_timeout.cause":  "The local generation ran past the waiting time of its endpoint ({after}) and was stopped.",
 	"endpoint_timeout.remedy": "Raise the timeout of the endpoint in Settings, or make the resolution or the duration smaller and run it again.",
 
-	"request_rejected.cause":  "The other side refused the request{http}. The input or a setting does not fit the model.",
+	"request_rejected.cause":  "The other side refused the request{http}. It hit a content policy, or the input or a setting does not fit the model.",
 	"request_rejected.remedy": "The detail has the reason the other side gave. Review the prompt, the resolution, the duration and the input images.",
 
 	"input_missing.cause":  "An input the model always uses was not sent ({param}).",
@@ -70,6 +70,18 @@ var messagesEn = map[string]string{
 
 	"llm_invalid_output.cause":  "The LLM's answer was not in the requested form.",
 	"llm_invalid_output.remedy": "Run it again. If it continues, change the model of that Agent in Settings > text generation (LLM).",
+
+	"generation_time_limit.cause":  "The generation ran past the time limit (Max generation time).",
+	"generation_time_limit.remedy": "Raise the time limit in Settings or review the Policy.",
+
+	"media_timeout.cause":  "The video / audio processing (ffmpeg) ran past its time limit.",
+	"media_timeout.remedy": "Check that the source file is not broken or too large and run it again.",
+
+	"download_corrupt.cause":  "The downloaded file did not match its fixed SHA-256 or size and was discarded (the source may have been tampered with, or the transfer was corrupted).",
+	"download_corrupt.remedy": "Install it again. If it continues, update mam and try again.",
+
+	"install_failed.cause":  "The install could not be completed.",
+	"install_failed.remedy": "The reason is in the detail. Install it again from the model manager.",
 
 	"not_writable.cause":  "The folder cannot be written.",
 	"not_writable.remedy": "Move it to a place that can be written or check the permissions of the folder. Using the URL of an external ComfyUI is another way.",

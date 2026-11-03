@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
@@ -37,16 +38,16 @@ func TestFailureReason(t *testing.T) {
 		{"time limit", fmt.Errorf("%w (1s)", generation.ErrGenerationTimeLimit), "制限時間"},
 		{"rate limit", &modeladapter.ProviderError{Status: 429}, "レート制限"},
 		{"circuit open", fmt.Errorf("x: %w", modeladapter.ErrCircuitOpen), "一時的に利用できません"},
-		{"llm circuit open", fmt.Errorf("x: %w", llm.ErrCircuitOpen), "AI サービスが一時的に利用できません"},
+		{"llm circuit open", fmt.Errorf("x: %w", llm.ErrCircuitOpen), "一時的に利用できません"},
 		{"rejected", modeladapter.ErrRejected, "拒否"},
 		{"no chatgpt image model", fmt.Errorf("x: %w", &modeladapter.ProviderError{Status: 400, Err: chatgpt.ErrNoImageModel}), "Codex のモデル"},
-		{"model timeout", modeladapter.ErrTimeout, "タイムアウト"},
-		{"llm timeout", llm.ErrTimeout, "タイムアウト"},
+		{"model timeout", modeladapter.ErrTimeout, "時間内に返りませんでした"},
+		{"llm timeout", llm.ErrTimeout, "時間内に返りませんでした"},
 		{"ffmpeg timeout", fmt.Errorf("%w after 30s", media.ErrTimeout), "ffmpeg"},
-		{"bad llm output", llm.ErrInvalidOutput, "AI の出力"},
-		{"provider error", &modeladapter.ProviderError{Status: 502}, "生成モデルの呼び出しに失敗"},
-		{"llm api error", &llm.APIError{Status: 500}, "AI サービスの呼び出しに失敗"},
-		{"unknown", errors.New("sql: database is locked"), "内部エラー"},
+		{"bad llm output", llm.ErrInvalidOutput, "求めた形式"},
+		{"provider error", &modeladapter.ProviderError{Status: 502}, "障害が起きています"},
+		{"llm api error", &llm.APIError{Status: 500}, "障害が起きています"},
+		{"unknown", errors.New("sql: database is locked"), "原因がわかりませんでした"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -91,7 +92,34 @@ func TestFailureNotice_OnlyAMissingLLMKeyLinksToTheLLMAssignment(t *testing.T) {
 	assert.Equal(t, domain.RefGlobalSettings, n.RefType)
 	assert.Equal(t, "llm", n.RefID)
 	assert.Equal(t, domain.KindText, n.Kind)
-	assert.Equal(t, "生成モデルの API キーが設定されていません（設定画面で、そのモデルのプロバイダーのキーを登録してください）", generation.FailureReason(modeladapter.ErrNoAPIKey))
+	assert.Contains(t, generation.FailureReason(modeladapter.ErrNoAPIKey), "API キーとログイン")
 	assert.Empty(t, failmsg.Notice(modeladapter.ErrNoAPIKey, "text").RefType)
 	assert.Empty(t, failmsg.Notice(llm.ErrTimeout, "text").RefType)
+}
+
+// The failure of the pipeline is the common error (#1010): the code is what a screen and a tool branch on; the reason is its cause and remedy in Japanese.
+func TestFailure_IsTheCommonErrorWithItsCodeAndRemedy(t *testing.T) {
+	for name, tc := range map[string]struct {
+		err    error
+		code   apperr.Code
+		remedy string
+	}{
+		"no model key":      {fmt.Errorf("x: %w", modeladapter.ErrNoAPIKey), apperr.CodeKeyMissing, "API キーとログイン"},
+		"no LLM key":        {llm.ErrNoAPIKey, apperr.CodeLLMKeyMissing, "API キーとログイン"},
+		"budget":            {generation.ErrBudgetExceeded, apperr.CodeBudget, "予算の上限"},
+		"time limit":        {fmt.Errorf("%w (1s)", generation.ErrGenerationTimeLimit), apperr.CodeGenTimeLimit, "制限時間を延ばす"},
+		"VRAM":              {&modeladapter.ProviderError{Status: 422, Message: "CUDA out of memory"}, apperr.CodeVRAM, "解像度や秒数を小さく"},
+		"not connected":     {&modeladapter.ProviderError{Vendor: "endpoint:bundled-comfyui"}, apperr.CodeConnectionFailed, "起動しているか"},
+		"needs first_frame": {&modeladapter.ProviderError{Status: 422, Message: "the workflow needs first_frame (12), the request has none"}, apperr.CodeInputMissing, "first_frame"},
+		"ffmpeg":            {fmt.Errorf("%w after 30s", media.ErrTimeout), apperr.CodeMediaTimeout, "素材ファイル"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := generation.Failure(tc.err)
+			assert.Equal(t, tc.code, e.Code)
+			assert.Contains(t, generation.FailureReason(tc.err), tc.remedy)
+			assert.ErrorIs(t, e, tc.err, "the failure behind stays reachable for the log")
+		})
+	}
+	unknown := generation.FailureReason(errors.New("sql: database is locked"))
+	assert.NotContains(t, unknown, "sql:", "what the machine said is never in the reason of the chat")
 }
