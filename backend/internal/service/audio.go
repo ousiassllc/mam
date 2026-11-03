@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/http"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
@@ -218,16 +217,12 @@ func audioError(err error) error {
 		return &AIError{Reason: reason, Err: err}
 	case errors.Is(err, voicerefsvc.ErrNotFound):
 		return ErrNotFound
-	case errors.Is(err, audiodirector.ErrNoAPIKey):
-		return &AIError{Reason: "ElevenLabs の API キーが設定されていません（設定画面で elevenlabs のキーを登録してください）", Err: err}
 	case errors.As(err, &be):
 		return conflict("セリフの音声合成に約 $%.2f かかりますが、残りの予算が $%.2f です。予算上限を引き上げてから再実行してください", be.Needed, be.Remaining)
-	case errors.As(err, &pe) && pe.Status == http.StatusTooManyRequests:
-		return &AIError{Reason: "ElevenLabs のレート制限に達しました。しばらく待ってから再実行してください", Err: err}
-	case errors.As(err, &pe):
-		return &AIError{Reason: "ElevenLabs の呼び出しに失敗しました", Err: err}
 	case errors.Is(err, media.ErrUnavailable):
 		return ErrUnavailable
+	case errors.Is(err, audiodirector.ErrNoAPIKey), errors.As(err, &pe), isKnownFailure(err):
+		return aiError(err) // the voice vendor, or any failure errmap knows: its cause and remedy (#1010)
 	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrNoAPIKey), errors.Is(err, llm.ErrTimeout), errors.Is(err, llm.ErrCircuitOpen), errors.As(err, &api):
 		return aiError(err) // the Audio Director's planner
 	}

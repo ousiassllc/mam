@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -34,9 +35,8 @@ func isHTMX(c *gin.Context) bool {
 	return c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true"
 }
 
-// statusOf maps a service error to an HTTP status and the message shown to the user.
-// Unexpected errors are attached to the context (logged by the logging middleware)
-// and shown as a generic message.
+// statusOf maps a service error to an HTTP status and the message shown to the user. Unexpected errors are attached to the context
+// (logged by the logging middleware); the message is the cause and remedy of a failure the app knows, else a generic one (failure.Fallback).
 func statusOf(c *gin.Context, err error) (int, string) {
 	var invalid *service.ValidationError
 	var locked *service.LockedError
@@ -92,7 +92,7 @@ func statusOf(c *gin.Context, err error) (int, string) {
 		return http.StatusServiceUnavailable, "生成機能が有効になっていません（API キーと設定を確認してください）"
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "内部エラーが発生しました"
+	return failure.Fallback(err)
 }
 
 // toast answers an action with an out-of-band toast and leaves the swap target untouched

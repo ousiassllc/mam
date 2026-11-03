@@ -32,9 +32,9 @@ func (r *Repository) Settle(ctx context.Context, id string, s Settlement) error 
 	}
 	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx,
-			`UPDATE gentest_result SET status = ?, error = ?, file_path = ?, mime_type = ?, size_bytes = ?, actual_cost = ?, finished_at = ?
+			`UPDATE gentest_result SET status = ?, error = ?, error_info = ?, file_path = ?, mime_type = ?, size_bytes = ?, actual_cost = ?, finished_at = ?
 			 WHERE id = ? AND status IN ('queued', 'running')`,
-			s.Status, s.Error, s.FilePath, s.MimeType, s.SizeBytes, actual, ts(s.At), id)
+			s.Status, s.Error, s.ErrorInfo, s.FilePath, s.MimeType, s.SizeBytes, actual, ts(s.At), id)
 		if err != nil {
 			return err
 		}

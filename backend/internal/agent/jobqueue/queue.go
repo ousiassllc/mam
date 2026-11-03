@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -49,6 +50,9 @@ type Options struct {
 	Workers     int
 	MaxAttempts int
 	Logger      *slog.Logger
+	// Explain is the common error of a failure the app words itself (a refusal of a service), nil for one it does not know: the queue then
+	// asks errmap. May be nil.
+	Explain func(error) *apperr.Error
 }
 
 type registration struct {
@@ -62,6 +66,7 @@ type Queue struct {
 	logger      *slog.Logger
 	workers     int
 	maxAttempts int
+	explain     func(error) *apperr.Error
 
 	// claim and claimBackoff are fields so tests can inject a failing claim and a short backoff.
 	claim        func(ctx context.Context) (domain.Job, error)
@@ -93,6 +98,7 @@ func New(repo *repository.JobRepository, opts Options) *Queue {
 		logger:       opts.Logger,
 		workers:      opts.Workers,
 		maxAttempts:  opts.MaxAttempts,
+		explain:      opts.Explain,
 		claim:        repo.ClaimNext,
 		claimBackoff: claimBackoffMin,
 		handlers:     make(map[domain.JobKind]registration),
@@ -142,56 +148,6 @@ func (q *Queue) Enqueue(ctx context.Context, kind domain.JobKind, payload any) (
 	q.signal()
 	q.changed(job.ID)
 	return job, nil
-}
-
-// Recover resolves jobs left in the running state by an abnormal termination:
-// resumable ones (below MaxAttempts) are queued again, all others are failed. A queued job whose kind
-// has no handler is failed too (it would be when a worker claimed it), so that the work its Shot waits
-// for is known to be over before Start. It returns the number of resumed and failed jobs. Call it
-// before Start.
-func (q *Queue) Recover(ctx context.Context) (resumed, failed int, err error) {
-	jobs, err := q.repo.ListByStatus(ctx, domain.JobRunning)
-	if err != nil {
-		return 0, 0, err
-	}
-	for _, job := range jobs {
-		q.mu.Lock()
-		reg, ok := q.handlers[job.Kind]
-		q.mu.Unlock()
-
-		switch {
-		case ok && reg.resumable && job.Attempts < q.maxAttempts:
-			if err := q.repo.Requeue(ctx, job.ID); err != nil {
-				return resumed, failed, err
-			}
-			resumed++
-			q.logger.Warn("resuming interrupted job", "job_id", job.ID, "kind", job.Kind, "attempts", job.Attempts)
-		default:
-			if err := q.repo.MarkFailed(ctx, job.ID, InterruptedReason); err != nil {
-				return resumed, failed, err
-			}
-			failed++
-			q.logger.Warn("failed interrupted job", "job_id", job.ID, "kind", job.Kind, "attempts", job.Attempts)
-		}
-	}
-	queued, err := q.repo.ListByStatus(ctx, domain.JobQueued)
-	if err != nil {
-		return resumed, failed, err
-	}
-	for _, job := range queued {
-		q.mu.Lock()
-		_, ok := q.handlers[job.Kind]
-		q.mu.Unlock()
-		if ok {
-			continue
-		}
-		if err := q.repo.MarkFailed(ctx, job.ID, fmt.Sprintf("no handler registered for %q", job.Kind)); err != nil {
-			return resumed, failed, err
-		}
-		failed++
-		q.logger.Warn("failed queued job without handler", "job_id", job.ID, "kind", job.Kind)
-	}
-	return resumed, failed, nil
 }
 
 // Start launches the workers. Jobs already queued (including those resumed by Recover) are picked up.
@@ -300,7 +256,7 @@ func (q *Queue) run(ctx context.Context, job domain.Job) {
 			q.logger.Error("requeue interrupted job failed", "job_id", job.ID, "err", err)
 		}
 	default:
-		q.fail(settle, job, err.Error())
+		q.failWith(settle, job, err)
 	}
 }
 
@@ -312,11 +268,4 @@ func (q *Queue) invoke(ctx context.Context, handle Handler, job domain.Job) (err
 		}
 	}()
 	return handle(ctx, job)
-}
-
-func (q *Queue) fail(ctx context.Context, job domain.Job, reason string) {
-	q.logger.Error("job failed", "job_id", job.ID, "kind", job.Kind, "reason", reason)
-	if err := q.repo.MarkFailed(ctx, job.ID, reason); err != nil {
-		q.logger.Error("mark job failed failed", "job_id", job.ID, "err", err)
-	}
 }

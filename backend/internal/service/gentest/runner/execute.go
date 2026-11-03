@@ -3,7 +3,6 @@ package runner
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -12,11 +11,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
-	"github.com/ousiassllc/mam/backend/internal/chatgpt"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/failtext"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
@@ -55,7 +54,7 @@ func (br *batchRun) execute(ctx context.Context, r gentestrepo.Result) {
 		s.settle(ctx, r.ID, gentestrepo.StatusFailed, ReasonInterrupted, nil)
 	default:
 		s.Logger.Warn("generation test result failed", "result_id", r.ID, "model", r.Model, "err", err)
-		s.settle(ctx, r.ID, gentestrepo.StatusFailed, s.failureText(ctx, err), nil)
+		s.failureSettle(ctx, r, s.failure(r, err))
 	}
 }
 
@@ -170,40 +169,25 @@ func extensionFor(mime string) string {
 	return ".png"
 }
 
-// maxErrorRunes bounds the text of a failure kept in the history.
-const maxErrorRunes = 400
+// maxErrorRunes bounds the sentence of a failure kept in the history.
+const maxErrorRunes = 600
 
-// failureText is what the history says about a failed result: a known failure in words, any other as the error says it.
-func (s *Runner) failureText(ctx context.Context, err error) string {
-	var msg string
-	explained := ""
+// failure is the failure of a call as the common error (#1010): what the app itself refused (Explain), else what errmap knows of the
+// outside services; any other is unknown, and is logged with the correlation id the error carries.
+func (s *Runner) failure(r gentestrepo.Result, err error) *apperr.Error {
 	if s.Explain != nil {
-		explained = s.Explain(err)
+		if e := s.Explain(err); e != nil {
+			return e
+		}
 	}
-	localTimeoutMsg, isLocalTimeout := failtext.LocalTimeout(err)
-	switch {
-	case ctx.Err() != nil:
-		msg = ReasonInterrupted
-	case explained != "":
-		msg = explained
-	case errors.Is(err, modeladapter.ErrCircuitOpen):
-		msg = "このモデルのベンダーで失敗が続いているため、呼び出しを止めています。しばらく待ってから実行し直してください"
-	case errors.Is(err, modeladapter.ErrNoAPIKey):
-		msg = "API キーが登録されていません"
-	case isLocalTimeout:
-		msg = localTimeoutMsg
-	case errors.Is(err, modeladapter.ErrTimeout):
-		msg = "ベンダーの応答が時間内に返りませんでした（ベンダー側では生成が続き、課金される場合があります）: " + err.Error()
-	case errors.Is(err, direct.ErrInputsUnsupported), errors.Is(err, direct.ErrInputsConflict), errors.Is(err, direct.ErrResolution):
-		msg = "このモデルはその入力・解像度を受け付けません: " + err.Error()
-	case errors.Is(err, chatgpt.ErrNoImageModel): // before ErrRejected: the vendor's 400 is the symptom, not what to tell
-		msg = chatgpt.ImageModelUnavailableMessage
-	case errors.Is(err, modeladapter.ErrRejected):
-		msg = "ベンダーがリクエストを拒否しました: " + err.Error()
-	default:
-		msg = err.Error()
-	}
-	return textutil.TruncateRunes(msg, maxErrorRunes)
+	return errmap.Report(s.Logger, "generation test result failed with an unknown error", err, "result_id", r.ID, "model", r.Model)
+}
+
+// failureSettle settles r as failed with e: the sentence of it in Japanese (the column the history lines show) and the common error (what
+// the detail and the tools read).
+func (s *Runner) failureSettle(ctx context.Context, r gentestrepo.Result, e *apperr.Error) {
+	line := textutil.TruncateRunes(e.View(apperr.LangJa).Line(apperr.LangJa), maxErrorRunes)
+	s.settle(ctx, r.ID, gentestrepo.StatusFailed, line, func(st *gentestrepo.Settlement) { st.ErrorInfo = e.Marshal() })
 }
 
 // sentNegative is the negative prompt a result sends in the model's own field: the English one when it was translated.

@@ -43,6 +43,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/wfrefresh"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
@@ -170,7 +171,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	}
 
 	jobTable := repository.NewJobRepository(db)
-	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger})
+	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger, Explain: mmview.Failure})
 	// The model manager and the local runtimes are built before the services: the Audio Director speaks with GPT-SoVITS through them.
 	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, cfg.DataDir, logger)
 	if err != nil {

@@ -124,7 +124,7 @@ func videoChoices(models []modelcatalog.Info) (resolutions, durations []string) 
 // cardOf is a result as a card; withDetail adds the link to its page.
 func cardOf(r record.ResultView, withDetail bool) resulttile.Card {
 	c := resulttile.Card{
-		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: gtshare.StatusText[r.Status], Error: r.Error,
+		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: gtshare.StatusText[r.Status], Error: r.Error, Failure: r.Failure,
 		Video: r.Media == gentest.MediaVideo, Favorite: r.Favorite, CreatedAt: timeText(r.CreatedAt), Answer: commercial.Of(r.Model),
 	}
 	if r.HasFile {

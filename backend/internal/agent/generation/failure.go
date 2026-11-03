@@ -4,15 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 
-	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
-	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
-	"github.com/ousiassllc/mam/backend/internal/chatgpt"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -22,8 +19,17 @@ func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Actio
 	if ctx.Err() != nil || errors.Is(err, repository.ErrNotFound) {
 		return err // shutting down (nobody is told) or the Shot is gone
 	}
-	o.logger.Error("generation failed", "shot_id", ref.Shot.ID, "action", a, "err", err)
-	reason := FailureReason(err)
+	failure := Failure(err)
+	attrs := []any{"shot_id", ref.Shot.ID, "action", a, "err", err}
+	if failure.Code == apperr.CodeUnknown {
+		failure.ID = apperr.NewID() // the notice says it, the log line has it: a person who reports the failure and the log meet
+		attrs = append(attrs, "error_id", failure.ID)
+	}
+	o.logger.Error("generation failed", attrs...)
+	reason := failure.View(apperr.LangJa).Sentence(apperr.LangJa)
+	if failure.ID != "" {
+		reason += "（" + apperr.Text(apperr.LangJa, "ui.error_id", nil) + ": " + failure.ID + "）"
+	}
 	what := "生成"
 	if a == ActionReferencePack {
 		what = "Reference Pack の作成"
@@ -33,57 +39,37 @@ func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Actio
 		o.logger.Error("post failure notice failed", "shot_id", ref.Shot.ID, "err", aerr)
 	}
 	o.notify(Progress{ShotID: ref.Shot.ID, Action: a, Stage: StageFailed, Message: reason})
-	return errors.New(reason)
+	return apperr.WithText(reason, failure)
 }
 
-// FailureReason is the user-facing cause of a failure. Details stay in the log.
+// FailureReason is the user-facing cause of a failure and what to do: the cause and the remedy of Failure in Japanese. Details stay in
+// the log (the reason never carries what the vendor said: a path or a response can be in it).
 func FailureReason(err error) string {
+	return Failure(err).View(apperr.LangJa).Sentence(apperr.LangJa)
+}
+
+// Failure is err as the common error (#1010): what the generation pipeline refuses itself (the budget, a Brand violation, the age gate, the
+// time limit, an AI that gave nothing usable) has its own sentence as the cause; the failures of the models, the LLM, ffmpeg and the network
+// are errmap's. The catalog adds the remedy.
+func Failure(err error) *apperr.Error {
+	own := func(code apperr.Code, cause string) *apperr.Error { return apperr.New(code).WithCause(cause).Wrap(err) }
 	switch {
-	case errors.Is(err, llm.ErrNoAPIKey):
-		return failmsg.NoKeyMessage(err)
-	case errors.Is(err, modeladapter.ErrNoAPIKey):
-		return "生成モデルの API キーが設定されていません（設定画面で、そのモデルのプロバイダーのキーを登録してください）"
 	case errors.Is(err, agegate.ErrRefused):
-		return agegate.Reason(err)
+		return own(apperr.CodeForbidden, agegate.Reason(err))
 	case errors.Is(err, ErrBudgetExceeded):
-		return "予算上限を超えるため生成できません"
+		return own(apperr.CodeBudget, "予算上限を超えるため生成できません。")
 	case errors.Is(err, domain.ErrBrandViolation):
 		msg := "Brand / Safety Constraint に違反するため生成できません"
 		if bv := new(domain.BrandViolationError); errors.As(err, &bv) {
 			msg += "（" + bv.Message() + "）"
 		}
-		return msg
+		return own(apperr.CodeForbidden, msg+"。")
 	case errors.Is(err, ErrJudgeUnavailable):
-		return "AI Video Judge が利用できないため、候補から最良の Take を選べません"
+		return own(apperr.CodeUnavailable, "AI Video Judge が利用できないため、候補から最良の Take を選べません。")
 	case errors.Is(err, ErrGenerationTimeLimit):
-		return "生成が制限時間（Max generation time）を超えました。設定画面で制限時間を延ばすか、ポリシーを見直してください"
-	case modeladapter.RateLimited(err):
-		return "生成モデルのレート制限に達しました。しばらく待ってから再実行してください"
-	case errors.Is(err, modeladapter.ErrCircuitOpen):
-		return "生成モデルが一時的に利用できません。しばらく待ってから再実行してください"
-	case errors.Is(err, llm.ErrCircuitOpen):
-		return "AI サービスが一時的に利用できません。しばらく待ってから再実行してください"
-	case errors.Is(err, chatgpt.ErrNoImageModel): // before ErrRejected: the vendor's 400 is the symptom, not the cause
-		return chatgpt.ImageModelUnavailableMessage
-	case errors.Is(err, modeladapter.ErrRejected):
-		return "生成モデルがリクエストを拒否しました（コンテンツポリシー等）。指示を変えて再実行してください"
-	case errors.Is(err, modeladapter.ErrTimeout), errors.Is(err, llm.ErrTimeout):
-		return "生成モデルの応答がタイムアウトしました"
-	case errors.Is(err, media.ErrTimeout):
-		return "動画・音声の処理（ffmpeg）が制限時間を超えました。素材ファイルを確認して再実行してください"
-	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, errInvalidPlan):
-		return "AI の出力を制作に使える形で受け取れませんでした"
+		return apperr.New(apperr.CodeGenTimeLimit).Wrap(err)
+	case errors.Is(err, errInvalidPlan):
+		return apperr.New(apperr.CodeLLMInvalidOutput).Wrap(err)
 	}
-	var pe *modeladapter.ProviderError
-	if errors.As(err, &pe) {
-		return "生成モデルの呼び出しに失敗しました"
-	}
-	var api *llm.APIError
-	if errors.As(err, &api) {
-		if api.Status == http.StatusTooManyRequests {
-			return "AI サービスのレート制限に達しました。しばらく待ってから再実行してください"
-		}
-		return "AI サービスの呼び出しに失敗しました"
-	}
-	return "内部エラーが発生しました"
+	return errmap.Explain(err)
 }

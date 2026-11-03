@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -45,9 +46,9 @@ type Deps struct {
 	Adapter *modeladapter.Adapter
 	// Dir is the directory of the history's files (<data-dir>/gentest).
 	Dir string
-	// Explain says in words for the user why a call failed, when the failure is one of the app's own refusals; "" leaves the failure
-	// as it is. May be nil.
-	Explain func(err error) string
+	// Explain is the common error of a call that failed when the failure is one of the app's own refusals (a model that is not installed, a
+	// license that was not accepted); nil leaves the failure to errmap. May be nil.
+	Explain func(err error) *apperr.Error
 	// Hidden says a model is left out of the model lists and refused as unknown (the age gate). May be nil.
 	Hidden func(modelID string) bool
 	// HiddenWith is Hidden for the values of the exposed inputs the result runs with (the age gate). May be nil.

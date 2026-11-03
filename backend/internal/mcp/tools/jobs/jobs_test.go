@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
@@ -148,4 +149,43 @@ func TestGetJob_ShowsTheStepsOfTheComfyUICallOfARunningShotOnly(t *testing.T) {
 
 	exec(t, env, `UPDATE shot SET state = 'JUDGING' WHERE id = 'sh1'`)
 	assert.Nil(t, getJob(t, env, ref.JobID).Steps, "judging is not a model call on the GPU")
+}
+
+// A queue job that failed with a failure the app knows (#1010) answers with the common error next to the reason: get_job and list_jobs say the
+// kind of failure, the cause and the remedy in Japanese, the screens that help and the detail, also after a restart (the history keeps it).
+func TestGetJob_AFailedQueueJobTellsTheCauseAndTheRemedy(t *testing.T) {
+	env := newEnv(t)
+	seedShot(t, env)
+	ctx := context.Background()
+	table := repository.NewJobRepository(env.DB)
+	row, err := table.Create(ctx, domain.JobGenerate, nil)
+	require.NoError(t, err)
+	_, err = env.Registrar.Jobs.Run(ctx, jobs.KindGenerateShot, "sh1", func(context.Context) (string, error) { return row.ID, nil })
+	require.NoError(t, err)
+	info := apperr.New(apperr.CodeLLMKeyMissing).WithDetail("llm: every provider failed for agent producer: openai: llm: API key is not configured").Marshal()
+	require.NoError(t, table.MarkFailedWithInfo(ctx, row.ID, "llm: every provider failed", info))
+
+	check := func(t *testing.T, f *apperr.View) {
+		t.Helper()
+		require.NotNil(t, f)
+		assert.Equal(t, apperr.CodeLLMKeyMissing, f.Code)
+		assert.Equal(t, "unavailable", f.Class)
+		assert.Contains(t, f.Cause, "API キーが設定されていません")
+		assert.Contains(t, f.Remedy, "API キーとログイン")
+		require.NotEmpty(t, f.Settings)
+		assert.Equal(t, "/settings/api-keys", f.Settings[0].Path)
+		assert.Contains(t, f.Detail, "API key is not configured")
+	}
+	st := getJob(t, env, row.ID)
+	assert.Equal(t, "llm: every provider failed", st.Error, "the reason is what it was")
+	check(t, st.Failure)
+
+	after := env.Restart(register)
+	var got mcpkit.JobStatus
+	after.CallOK("get_job", map[string]any{"job_id": row.ID}, &got)
+	check(t, got.Failure)
+
+	listed := list(t, after, map[string]any{"state": "failed"})
+	require.Len(t, listed.Jobs, 1)
+	check(t, listed.Jobs[0].Failure)
 }

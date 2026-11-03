@@ -243,7 +243,7 @@ func TestChat_DirectorModeAFailedModelCallIsAMessage(t *testing.T) {
 	f.llm.interpreterErr = fmt.Errorf("interpret: %w", llm.ErrCircuitOpen)
 
 	ws := f.say(t, "カメラを寄せて", "")
-	assert.Contains(t, lastMessage(t, ws.Messages).Content, "指示を読み取れませんでした: AI サービスが一時的に利用できません")
+	assert.Contains(t, lastMessage(t, ws.Messages).Content, "指示を読み取れませんでした: このモデルのベンダーで失敗が続いているため、呼び出しを止めています")
 }
 
 func TestDirectorCommand_PinsTheVideoModelToRunwayAndAsksForAnyModelWithoutAName(t *testing.T) {

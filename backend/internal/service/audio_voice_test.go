@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,4 +53,26 @@ func TestAudioError_AnOpenLLMCircuitBreakerIsAnAIErrorWithItsReason(t *testing.T
 	require.ErrorAs(t, err, &ai)
 	assert.Contains(t, ai.Reason, "一時的に利用できません")
 	assert.NotContains(t, ai.Reason, "ミキシング")
+}
+
+// The failures of the voice vendor and of the machine are the common error (#1010): the user reads the cause and the remedy, not what the vendor said.
+func TestAudioError_TellsTheCauseAndTheRemedyOfAKnownFailure(t *testing.T) {
+	for name, tc := range map[string]struct {
+		err  error
+		want []string
+	}{
+		"no ElevenLabs key": {fmt.Errorf("speak: %w", audiodirector.ErrNoAPIKey), []string{"ElevenLabs の API キーが設定されていません", "API キーとログイン"}},
+		"rate limit":        {&audiodirector.ProviderError{Status: 429, Message: "too many"}, []string{"レート制限", "しばらく待って"}},
+		"vendor down":       {&audiodirector.ProviderError{Status: 503, Message: "<html>oops</html>"}, []string{"障害が起きています"}},
+		"disk full":         {fmt.Errorf("mix: %w", syscall.ENOSPC), []string{"ディスクの空き容量が足りません", "空きを作って"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var ai *service.AIError
+			require.ErrorAs(t, service.AudioError(tc.err), &ai)
+			for _, w := range tc.want {
+				assert.Contains(t, ai.Reason, w)
+			}
+			assert.NotContains(t, ai.Reason, "<html>", "what the vendor said is not in the reason")
+		})
+	}
 }

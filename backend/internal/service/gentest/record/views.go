@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
@@ -40,9 +41,11 @@ type ResultView struct {
 	Seed     *int64 `json:"seed,omitempty"`
 	SeedSent bool   `json:"seed_sent"`
 	Status   string `json:"status" jsonschema:"queued / running / succeeded / failed / cancelled"`
-	Error    string `json:"error,omitempty"`
-	HasFile  bool   `json:"has_file"`
-	MimeType string `json:"mime_type,omitempty"`
+	Error    string `json:"error,omitempty" jsonschema:"失敗の理由を 1 行にしたもの（原因・直し方・詳細の先頭）。構造化したものは failure"`
+	// Failure is the failure as the common error (apperr.View): the code, the cause and the remedy in Japanese, the screens that help and the detail.
+	Failure  *apperr.View `json:"failure,omitempty" jsonschema:"失敗した結果のとき: code（失敗の種類。input_missing・vram_oom・llm_key_missing・connection_failed・model_not_installed など）・cause（日本語の原因）・remedy（日本語の直し方）・settings（直すのに開く画面のパス）・detail（元のメッセージ。英語のことがある）・error_id。古い履歴や、キャンセル・中断の結果には無い（error だけ）"`
+	HasFile  bool         `json:"has_file"`
+	MimeType string       `json:"mime_type,omitempty"`
 	// SizeBytes is the size of the file.
 	SizeBytes int64  `json:"size_bytes,omitempty"`
 	CostBasis string `json:"cost_basis" jsonschema:"priced / free / unknown"`
@@ -82,6 +85,10 @@ func ViewOf(r gentestrepo.Result) ResultView {
 		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, Inpaint: p.Inpaint, Upscale: p.Upscale,
 		FaceSwap: p.FaceSwap, FaceSimilarity: p.FaceSimilarity,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
+	}
+	if e, ok := apperr.Unmarshal(r.ErrorInfo); ok {
+		f := e.View(apperr.LangJa)
+		v.Failure = &f
 	}
 	if p.Translation != nil {
 		v.Translated, v.TranslatedPrompt, v.TranslatedNegativePrompt = true, p.Translation.Prompt, p.Translation.Negative

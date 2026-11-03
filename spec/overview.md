@@ -85,6 +85,7 @@ flowchart TB
 | API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）のエンドポイント仕様（§0〜§2） |
 | API 仕様（API ルートと WebSocket） | `spec/api/endpoints-api.md` | `/api/v1` JSON API（Huma/OpenAPI）と WebSocket のエンドポイント仕様（§3・§4。`endpoints.md` の続き） |
 | MCP ツール一覧 | `spec/api/mcp-tools.md` | MCP ツールの規約と基盤のツール（`get_job`・`list_credentials`・`create_upload_ticket` など）。ドメイン別は `mcp-tools-<ドメイン>.md` |
+| 共通のエラー（原因・直し方・詳細・コード一覧・載せ替え状況） | `spec/architecture/errors.md` | 画面と MCP が同じ形で失敗を伝える仕組み（`apperr`・`errmap`・`errorbox`）と、i18n |
 | API 共通エラーコード | `spec/api/errors.md` | HTTP ステータスの意味（全ルート共通。各ルートの行にはそのルート固有の条件だけを書く） |
 | コンポーネント設計 | `spec/components/overview.md` | Agent 群（Producer/Director/Editor 等）とHALT側コンポーネント（atoms/molecules/organisms/Lit）の責務分割 |
 | Model Adapter 選定 | `spec/architecture/model-adapters.md` | エージェント推論LLM・画像/動画生成モデル・音声プロバイダーの具体的な選定とルーティング表（Claude/GPT-5/Gemini、GPT Image 2/Nano Banana/Nano Banana Lite/FLUX.2、Kling/Seedance/Runway、ElevenLabs/Sync Labs） |

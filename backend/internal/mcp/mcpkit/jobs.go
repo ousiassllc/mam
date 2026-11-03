@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -52,6 +53,7 @@ type JobStatus struct {
 	Error      string         `json:"error,omitempty" jsonschema:"失敗の理由 / why it failed"`
 	ErrorID    string         `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID。get_app_logs の attrs に {\"error_id\": …} で渡すと原因のログ行が見つかる / correlation id of an internal failure: find its cause with get_app_logs (attrs error_id)"`
 	ErrorCode  string         `json:"error_code,omitempty" jsonschema:"失敗のコード（error の <code>: <message> の <code>。validation・conflict・budget_exceeded・upstream・internal など）/ code of the failure"`
+	Failure    *apperr.View   `json:"failure,omitempty" jsonschema:"失敗したジョブのとき: code（失敗の種類。vram_oom・input_missing・llm_key_missing・connection_failed・model_not_installed・unknown など）・class・cause（日本語の原因）・remedy（日本語の直し方）・settings（直すのに開く画面のパス）・detail（元のメッセージ。英語のことがある）・error_id。error は従来どおり。古いジョブや、種類が分からない失敗には無い / the failure as the common error: code, cause, remedy, settings, detail"`
 	NextSteps  string         `json:"next_steps,omitempty" jsonschema:"失敗した企画（plan）のジョブが LLM の API キー未設定のときだけ: 続けるためにすること（鍵を入れて再開する、または create_character で登場人物を直接作る）/ what to do to go on when the planning job stopped for want of an LLM API key"`
 	ProjectID  string         `json:"project_id,omitempty" jsonschema:"対象が属する Project の ID（無ければ省略）/ Project of the target, when it has one"`
 	StartedAt  time.Time      `json:"started_at"`
@@ -79,6 +81,8 @@ type Progress struct {
 	Error  string
 	// ErrorID is the correlation id of an internal failure (ReportError); "" for any other state.
 	ErrorID string
+	// Failure is the failure as the common error, when the Probe knows it (the failure of the work, not of the queue).
+	Failure *apperr.View
 }
 
 // Probe derives the Progress of one kind of job from the state the service layer persisted (a Shot's
@@ -258,7 +262,7 @@ func (j *Jobs) live(ctx context.Context, e *entry) (_ JobStatus, gone bool, _ er
 		if err != nil {
 			return JobStatus{}, false, err
 		}
-		st.State, st.Message, st.Done, st.Total, st.Steps, st.Result, st.Error, st.ErrorID = p.State, p.Message, p.Done, p.Total, p.Steps, p.Result, p.Error, p.ErrorID
+		st.State, st.Message, st.Done, st.Total, st.Steps, st.Result, st.Error, st.ErrorID, st.Failure = p.State, p.Message, p.Done, p.Total, p.Steps, p.Result, p.Error, p.ErrorID, p.Failure
 	}
 	if e.queueJobID != "" {
 		row, err := j.row(ctx, e.queueJobID)
@@ -275,6 +279,16 @@ func (j *Jobs) live(ctx context.Context, e *entry) (_ JobStatus, gone bool, _ er
 
 // applyRow lets the job table override the probe where it knows better: a queued, running or failed
 // row decides (a failed row has the reason), a succeeded row decides only when no Probe reads the work.
+// failureOf is the common error a failed job row kept (apperr.Error.Marshal), nil when it kept none.
+func failureOf(info string) *apperr.View {
+	e, ok := apperr.Unmarshal(info)
+	if !ok {
+		return nil
+	}
+	v := e.View(apperr.LangJa)
+	return &v
+}
+
 func applyRow(st *JobStatus, row domain.Job, probed bool) {
 	switch row.Status {
 	case domain.JobQueued:
@@ -283,6 +297,7 @@ func applyRow(st *JobStatus, row domain.Job, probed bool) {
 		st.State = JobRunning
 	case domain.JobFailed:
 		st.State, st.Error, st.ErrorID = JobFailed, row.Error, ""
+		st.Failure = failureOf(row.ErrorInfo)
 	case domain.JobSucceeded:
 		if !probed {
 			st.State = JobSucceeded

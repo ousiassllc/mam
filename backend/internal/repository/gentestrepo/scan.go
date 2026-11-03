@@ -77,7 +77,7 @@ func scanInput(row scanner) (Input, error) {
 }
 
 const resultColumns = `id, batch_id, position, media, model, api_model, prompt, negative_prompt, sent_prompt, negative_mode, params, used_inputs,
-	seed, seed_sent, status, error, file_path, mime_type, size_bytes, cost_basis, estimated_cost, actual_cost, favorite, created_at, finished_at, started_at`
+	seed, seed_sent, status, error, error_info, file_path, mime_type, size_bytes, cost_basis, estimated_cost, actual_cost, favorite, created_at, finished_at, started_at`
 
 func scanResult(row scanner) (Result, error) {
 	var (
@@ -90,7 +90,7 @@ func scanResult(row scanner) (Result, error) {
 		finished, started  sql.NullString
 	)
 	err := row.Scan(&r.ID, &r.BatchID, &r.Position, &r.Media, &r.Model, &r.APIModel, &r.Prompt, &r.NegativePrompt, &r.SentPrompt, &r.NegativeMode,
-		&params, &used, &seed, &seedSent, &r.Status, &r.Error, &r.FilePath, &r.MimeType, &r.SizeBytes, &r.CostBasis, &est, &actual, &favorite, &created, &finished, &started)
+		&params, &used, &seed, &seedSent, &r.Status, &r.Error, &r.ErrorInfo, &r.FilePath, &r.MimeType, &r.SizeBytes, &r.CostBasis, &est, &actual, &favorite, &created, &finished, &started)
 	if err != nil {
 		return Result{}, err
 	}
