@@ -28,7 +28,7 @@ func TestQwenImageEdit2511IsPinnedAndCommercialUseIsAllowed(t *testing.T) {
 	assert.Equal(t, "apache-2.0", m.License.ID)
 	assert.Equal(t, "2026-11-03", m.License.CheckedAt)
 
-	require.Len(t, m.Files, 3)
+	require.Len(t, m.Files, 5)
 	edit := m.Files[0]
 	assert.Equal(t, "models/diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors", edit.Path())
 	assert.Equal(t, "https://huggingface.co/Comfy-Org/Qwen-Image-Edit/resolve/f68ace85e60b4a02a323e394253731947657b7d2/split_files/diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors", edit.URL)
@@ -40,6 +40,33 @@ func TestQwenImageEdit2511IsPinnedAndCommercialUseIsAllowed(t *testing.T) {
 	qwen, _ := c.Model("qwen-image")
 	assert.Equal(t, qwen.Files[1], m.Files[1])
 	assert.Equal(t, qwen.Files[2], m.Files[2])
+}
+
+// The two Lightning LoRAs of the speed modes (Issue #991) are pinned to the commit of lightx2v/Qwen-Image-Edit-2511-Lightning with the
+// LFS SHA-256 and size Hugging Face returned on 2026-11-03 (the bf16 ones: the card is Apache-2.0 and the repository is not gated), and
+// they are the files the LoraLoaderModelOnly nodes of the template load.
+func TestQwenImageEdit2511HasTheLightningLoRAsPinned(t *testing.T) {
+	m, _ := catalog.Default().Model("qwen-image-edit-2511")
+	const commit = "107d238d68b8387e32843d0b4a2e24ceb0d3ad86"
+	for i, want := range []struct {
+		name, sha string
+	}{
+		{"Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors", "22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f"},
+		{"Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors", "a9e81a58a78f260f67b337a6f615e8fa4cd3bc79847c77b7d61a581b789b1ba8"},
+	} {
+		f := m.Files[3+i]
+		assert.Equal(t, "models/loras/"+want.name, f.Path())
+		assert.Equal(t, "https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolve/"+commit+"/"+want.name, f.URL)
+		assert.Equal(t, want.sha, f.SHA256)
+		assert.Equal(t, int64(849608296), f.Size)
+		assert.Empty(t, f.SourceNote, "no third-party mirror")
+	}
+	tpl, ok := localcfg.TemplateByID("txt2img-qwen-image-edit-2511")
+	require.True(t, ok)
+	g, err := tpl.Model.Workflow.GraphWith(nil)
+	require.NoError(t, err)
+	assert.JSONEq(t, `"`+m.Files[3].Name+`"`, string(g["90"].Inputs["lora_name"]), "the 4 step LoRA")
+	assert.JSONEq(t, `"`+m.Files[4].Name+`"`, string(g["91"].Inputs["lora_name"]), "the 8 step LoRA")
 }
 
 // The workflow is the editing one with up to three references (the EditPlus encoder's image1..image3), and the license of the

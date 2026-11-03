@@ -4,7 +4,7 @@
  "kind": "image",
  "tier": "standard",
  "content_rating": "general",
- "description": "公式の Qwen-Image-Edit-2511（Apache-2.0・商用可）。参照画像（最大 3 枚）を使った編集ができる: 同じ人物の顔のまま別のシーンにする、画風だけを写す、1 枚の画像を指示どおり直す。参照なしならテキストから画像も作れる。拡散モデル（fp8mixed、約 20.5 GB）・テキストエンコーダー・VAE の 3 ファイル、合計約 30.2 GB（テキストエンコーダーと VAE は qwen-image と同じファイルなので、導入済みなら拡散モデルの約 20.5 GB だけ取得する）。公式のモデルで、成人向けの画像を想定した調整はない。成人向けの画像を編集したときの崩れ方（服が足される・体が崩れるなど）は mam の実機では未確認。成人向けの生成は noctq-v4-qwen-image21（非商用）を使う。16 GB の GPU では重みがメモリに収まらないため ComfyUI のオフロードが前提で、遅くなる（実測は未確認。vram の項を参照）。",
+ "description": "公式の Qwen-Image-Edit-2511（Apache-2.0・商用可）。参照画像（最大 3 枚）を使った編集ができる: 同じ人物の顔のまま別のシーンにする、画風だけを写す、1 枚の画像を指示どおり直す。参照なしならテキストから画像も作れる。拡散モデル（fp8mixed、約 20.5 GB）・テキストエンコーダー・VAE の 3 ファイルに、速さのモード用の Lightning LoRA 2 つ（4 ステップと 8 ステップ。各約 0.85 GB）を足して、合計約 31.9 GB（テキストエンコーダーと VAE は qwen-image と同じファイルなので、導入済みなら拡散モデルと LoRA の約 22.2 GB だけ取得する）。速さのモード（生成テスト・MCP の speed_mode）は standard（既定。20 ステップ）・lightning-8・lightning-4（lightx2v/Qwen-Image-Edit-2511-Lightning の蒸留 LoRA。cfg 1 で 8・4 ステップ）から選べ、Lightning は速い代わりに standard と画質が変わりうる（mam の実機では画質・時間とも未測定）。公式のモデルで、成人向けの画像を想定した調整はない。成人向けの画像を編集したときの崩れ方（服が足される・体が崩れるなど）は mam の実機では未確認。成人向けの生成は noctq-v4-qwen-image21（非商用）を使う。16 GB の GPU では重みがメモリに収まらないため ComfyUI のオフロードが前提で、遅くなる（実測は未確認。vram の項を参照）。",
  "files": [
   {
    "name": "qwen_image_edit_2511_fp8mixed.safetensors",
@@ -26,6 +26,20 @@
    "url": "https://huggingface.co/Comfy-Org/Qwen-Image/resolve/1f12b17be14c89b026c51a91d67c32f84bb047bc/split_files/vae/qwen_image_vae.safetensors",
    "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f",
    "size": 253806246
+  },
+  {
+   "name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolve/107d238d68b8387e32843d0b4a2e24ceb0d3ad86/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+   "sha256": "22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f",
+   "size": 849608296
+  },
+  {
+   "name": "Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolve/107d238d68b8387e32843d0b4a2e24ceb0d3ad86/Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
+   "sha256": "a9e81a58a78f260f67b337a6f615e8fa4cd3bc79847c77b7d61a581b789b1ba8",
+   "size": 849608296
   }
  ],
  "vram": {
@@ -40,7 +54,7 @@
   "version": "2.0",
   "name": "Apache License 2.0",
   "url": "https://huggingface.co/Qwen/Qwen-Image-Edit-2511/blob/main/README.md",
-  "summary": "Qwen-Image-Edit-2511 は Apache 2.0（Qwen のモデルカードの license: apache-2.0 と「Qwen-Image is licensed under Apache 2.0.」の記載。mam が取得する Comfy-Org の再配布のカードも apache-2.0。gated ではない）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。同じ Qwen-Image 系でも noctq-v4-qwen-image21（Qwen 2.1・Qwen Research License）は非商用で、このモデルとは別のライセンス。",
+  "summary": "Qwen-Image-Edit-2511 は Apache 2.0（Qwen のモデルカードの license: apache-2.0 と「Qwen-Image is licensed under Apache 2.0.」の記載。mam が取得する Comfy-Org の再配布のカードも apache-2.0。gated ではない。速さのモード用の LoRA lightx2v/Qwen-Image-Edit-2511-Lightning のカードも license: apache-2.0・gated ではない。2026-11-03 に確認）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。同じ Qwen-Image 系でも noctq-v4-qwen-image21（Qwen 2.1・Qwen Research License）は非商用で、このモデルとは別のライセンス。",
   "commercial": "yes",
   "checked_at": "2026-11-03"
  },

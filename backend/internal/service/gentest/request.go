@@ -77,7 +77,7 @@ type Request struct {
 	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty"`
 	// LoRA is applied to every image model that can take one (modelcatalog.Info.SupportsLoRA), together with the references.
 	LoRA *LoRAInput `json:"lora,omitempty"`
-	// SpeedMode is how a video model samples (modelcatalog.VideoCaps.SpeedModes: "fast", "standard"); "" is each model's default.
+	// SpeedMode is how a model samples (modelcatalog.Info.SpeedModes: "fast", "standard", "lightning-4"); "" is each model's default.
 	SpeedMode string `json:"speed_mode,omitempty"`
 	// Seed fixes the seed (0..SeedMax): the n-th result of every model and prompt takes Seed+n-1, so that the results of the models can
 	// be compared and any one can be made again. Nil takes a new random seed for every result. A model without a seed ignores it.
@@ -150,7 +150,7 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 		}
 		r.LoRA = &LoRAInput{Name: l.Name, Strength: &l.Strength} // a copy: the caller's request stays as it was
 	}
-	if r.SpeedMode, err = refs.CheckSpeedMode(r.Media, r.SpeedMode); err != nil {
+	if r.SpeedMode, err = refs.CheckSpeedMode(r.SpeedMode); err != nil {
 		return r, nil, err
 	}
 	if err := refs.CheckAvoidPose(r.Media, r.AvoidReferencePose); err != nil {

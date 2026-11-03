@@ -33,7 +33,7 @@ type ResultParams struct {
 	// AvoidPose says the negative prompt got refs.WithAvoidPose; LoRA is the LoRA the model was given (image models only).
 	AvoidPose bool       `json:"avoid_pose,omitempty"`
 	LoRA      *refs.LoRA `json:"lora,omitempty"`
-	// SpeedMode is the speed mode the video model was asked for (absent: its default).
+	// SpeedMode is the speed mode the model was asked for (absent: its default).
 	SpeedMode string `json:"speed_mode,omitempty"`
 	// Sampling is the steps, cfg, sampler and scheduler the model ran with (the request's value where it took one, else the model's
 	// default; not the steps and cfg of a speed mode). Absent: the model takes none, or the result is older than the setting.

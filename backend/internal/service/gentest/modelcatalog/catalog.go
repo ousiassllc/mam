@@ -51,9 +51,6 @@ type VideoCaps struct {
 	FirstFrame         bool      `json:"first_frame"`
 	LastFrame          bool      `json:"last_frame"`
 	NativeAudio        bool      `json:"native_audio"`
-	// SpeedModes are the ways the model can sample, the default first (a ComfyUI workflow with localcfg.Workflow.SpeedModes); empty for
-	// a model with one way. A request's speed_mode names one of them.
-	SpeedModes []SpeedMode `json:"speed_modes,omitempty"`
 }
 
 // Info is a model the screen can choose, with what it can do and why it cannot be chosen now.
@@ -79,6 +76,9 @@ type Info struct {
 	// SupportsLoRA: a LoRA can be applied to the model.
 	SupportsLoRA bool       `json:"supports_lora,omitempty"`
 	Video        *VideoCaps `json:"video,omitempty"`
+	// SpeedModes are the ways the model can sample, the default first (a ComfyUI workflow with localcfg.Workflow.SpeedModes: the distilled
+	// LoRA of Wan 2.2 14B or Qwen-Image-Edit 2511); empty for a model with one way. A request's speed_mode names one of them.
+	SpeedModes []SpeedMode `json:"speed_modes,omitempty" jsonschema:"速さのモード（蒸留 LoRA など）。先頭が既定（default: true）。リクエストの speed_mode に id を渡せる。持たないモデルは警告 speed_mode_unsupported で既定のまま作る。モードがあるモデルのステップ数・cfg はモードが決める（sampling の locked が speed_mode）"`
 	// SupportsSeed: the seed is sent to the model. Without it the n results of a combination are n calls with the same input.
 	SupportsSeed bool `json:"supports_seed"`
 	// NegativeField: the model has a negative prompt field. Without it the negative prompt is written into the prompt
@@ -216,7 +216,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	mi.PromptWeight = promptweight.Unknown
 	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
 		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
-		mi.Exposed = c.exposedCaps(*lm.Workflow)
+		mi.Exposed, mi.SpeedModes = c.exposedCaps(*lm.Workflow), SpeedModesOf(*lm.Workflow)
 		if d, ok := denoiseDefault(lm.Workflow); ok {
 			mi.SupportsInpaint, mi.DenoiseDefault = true, &d
 		}
@@ -234,7 +234,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	if caps, ok := cfg.VideoCaps(m); ok {
 		mi.Video = &VideoCaps{
 			Durations: slices.Clone(caps.Durations), Resolutions: slices.Clone(caps.Resolutions), MaxReferenceImages: caps.MaxReferenceImages,
-			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio, SpeedModes: SpeedModesOf(cfg, m),
+			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio,
 		}
 	}
 	return mi

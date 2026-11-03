@@ -44,3 +44,4 @@
 | 1.37 | 2026-11-03 | custom-nodes.md §3: ツリーのダイジェストが `__pycache__` も数えるようにし、エンジンを `PYTHONDONTWRITEBYTECODE=1` で起動する。§4: 取得のあと zip をメモリに読んで照合し直し、そのバイト列から展開する（`extract.ZipFrom`。検証と展開のあいだのすり替えを防ぐ） | Issue #994 (a)(b) |
 | 1.38 | 2026-11-03 | §4.1 の `workflows[]` に `sampling`（モデルの作者が推奨する steps・cfg・sampler・scheduler）を足し、`noobai-xl-v11`・`wai-illustrious-sdxl-v17`・`realvisxl-v50`・`cyberrealistic-pony-v18` に作者の推奨を入れた（説明文も更新） | Issue #994 (f) |
 | 1.39 | 2026-11-03 | [local-runtime.md](local-runtime.md) §12.9: ポーズ集の導入の進み具合・削除・MCP からの導入を足した | Issue #994 (e) |
+| 1.40 | 2026-11-04 | §4.2: `qwen-image-edit-2511` に速さのモード（Lightning 4・8 ステップ LoRA。`lightx2v/Qwen-Image-Edit-2511-Lightning` のコミット `107d238d…` の bf16 2 つを `files` へ固定、Apache-2.0）を足した。`quality_presets` は外した（速さのモードが steps・cfg を決める） | Issue #991（#971 の任意項目） |

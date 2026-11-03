@@ -157,7 +157,7 @@ func (o RefOption) StrengthOrDefault() float64 {
 	return o.Strength
 }
 
-// ImageOptions are the parts of an image request that only a workflow with reference images, a LoRA or sampling values uses: Refs is one entry
+// ImageOptions are the parts of an image request that only a workflow with reference images, a LoRA, sampling values or speed modes uses: Refs is one entry
 // for each input image of the request, in its order (a missing entry is the whole picture at the default strength).
 type ImageOptions struct {
 	Refs []RefOption
@@ -167,7 +167,8 @@ type ImageOptions struct {
 	// UpscaleScale is the scale an upscale workflow (Workflow.Upscale) enlarges the picture by (0: the model's own factor).
 	UpscaleScale float64
 	// Exposed are the values of the workflow's exposed inputs (Workflow.ExposedInputs), by exposed.Input.Key; the others keep the graph's value.
-	Exposed map[string]any
+	Exposed   map[string]any
+	SpeedMode string // the speed mode (Workflow.SpeedModes) the request names; "": the workflow's first
 }
 
 // Ref is the option of the i-th input image.

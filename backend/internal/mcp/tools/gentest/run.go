@@ -93,8 +93,8 @@ type RequestInput struct {
 	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty" jsonschema:"画像だけ。参照画像のポーズ・構図を真似ないようにする（参照を使うモデルのネガティブプロンプトに「同じポーズ・構図」を足す。ネガティブの欄が無いモデルは Avoid: として書き足す。参照画像が無い・参照画像を使うモデルが無いときは何も起きず、警告も出ない）"`
 	// LoRA is applied together with the references to every model that supports it.
 	LoRA *LoRAInput `json:"lora,omitempty" jsonschema:"画像だけ。参照画像と一緒に使う LoRA。supports_lora でないモデルは警告 lora_unsupported で使わない"`
-	// SpeedMode picks how a video model samples (VideoCaps.SpeedModes).
-	SpeedMode string `json:"speed_mode,omitempty" jsonschema:"動画だけ。速さのモード（list_generation_models のモデルの video.speed_modes の id。例: Wan 2.2 14B + LightX2V の fast = 4 ステップ・cfg 1 / standard = 通常の 20 ステップ・cfg 3.5）。省くと各モデルの既定（speed_modes の default）。そのモードを持たないモデルは警告 speed_mode_unsupported で既定のまま作る"`
+	// SpeedMode picks how a model samples (Info.SpeedModes).
+	SpeedMode string `json:"speed_mode,omitempty" jsonschema:"速さのモード（蒸留 LoRA。list_generation_models のモデルの speed_modes の id。例: 動画の Wan 2.2 14B + LightX2V の fast = 4 ステップ・cfg 1 / standard = 通常の 20 ステップ・cfg 3.5、画像の Qwen-Image-Edit 2511 の standard = 20 ステップ・cfg 4 / lightning-8 = 8 ステップ・cfg 1 / lightning-4 = 4 ステップ・cfg 1）。モードがあるモデルのステップ数と cfg はモードが決める（sampling の steps・cfg は使わない）。省くと各モデルの既定（speed_modes の default）。そのモードを持たないモデルは警告 speed_mode_unsupported で既定のまま作る"`
 	// Seed fixes the seed of every result (the n-th result of each model and prompt gets seed + n - 1).
 	Seed *int64 `json:"seed,omitempty" jsonschema:"シードを固定する（0〜4294967295）。n 本目は seed + n − 1 を使う（本数が多いときは seed + 本数 − 1 もこの範囲）。モデルごとに同じ seed で比べられ、結果の seed からいつでも作り直せる。省くと結果ごとにランダム。シードを渡せないモデルは警告 seed_ignored で使わない"`
 	// Sampling overrides the steps, cfg, sampler and scheduler of the models that take them.
