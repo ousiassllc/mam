@@ -57,6 +57,9 @@ func (l Layout) DownloadsDir() string { return filepath.Join(l.Root, "downloads"
 // LogPath is the log of the engine process.
 func (l Layout) LogPath() string { return filepath.Join(l.Root, "logs", "comfyui.log") }
 
+// PIDPath is the pid file of the engine process: the next start of mam ends an engine that the previous mam left running.
+func (l Layout) PIDPath() string { return filepath.Join(l.Root, "comfyui.pid") }
+
 // StatePath is the record file.
 func (l Layout) StatePath() string { return filepath.Join(l.Root, "state.json") }
 

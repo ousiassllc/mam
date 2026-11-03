@@ -4,6 +4,6 @@ package proc
 
 import "syscall"
 
-// parentDeath: only Linux has Pdeathsig; elsewhere (macOS) the child ends with Stop or Close, which signal its process group. A mam that is
-// killed without running Close leaves the engine running on macOS (spec/architecture/model-manager/model-manager.md §3.7).
+// parentDeath: only Linux has Pdeathsig. On macOS the child ends with Stop or Close (they signal its process group), and when mam is killed
+// without Close the guard process (guard.go) ends it; the pid file (pidfile.go) is the second net.
 func parentDeath(*syscall.SysProcAttr) {}

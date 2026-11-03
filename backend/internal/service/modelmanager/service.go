@@ -185,8 +185,12 @@ func New(d Deps) (*Service, error) {
 	if build == nil {
 		build = s.engine.Command
 	}
+	pidFile := ""
+	if d.Layout.Root != "" { // an engine that mam left running after a crash is ended by the next Start (model-manager.md §3.4)
+		pidFile = d.Layout.PIDPath()
+	}
 	s.proc = proc.New(proc.Config{
-		Build: build, PreferredPort: func() int { return s.state.Get().LastPort },
+		Build: build, PreferredPort: func() int { return s.state.Get().LastPort }, PIDFile: pidFile,
 		StartTimeout: d.StartTimeout, PollEvery: d.PollEvery, Logger: d.Logger,
 	})
 	return s, nil

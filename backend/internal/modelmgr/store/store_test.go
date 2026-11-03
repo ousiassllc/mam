@@ -32,7 +32,7 @@ func TestLayoutIsInTheDataDirectoryOnMacOSAndNextToTheExecutableElsewhere(t *tes
 func TestLayoutIsOneDirectoryNextToTheExecutable(t *testing.T) {
 	l := store.For("windows", filepath.Join("install", "MAM", "mam.exe"), "")
 	assert.Equal(t, filepath.Join("install", "MAM", "comfyui"), l.Root)
-	for _, p := range []string{l.EngineDir(), l.EngineNewDir(), l.EngineOldDir(), l.DataDir(), l.DownloadsDir(), l.LogPath(), l.StatePath(), l.ModelPath("models/vae/x.safetensors")} {
+	for _, p := range []string{l.EngineDir(), l.EngineNewDir(), l.EngineOldDir(), l.DataDir(), l.DownloadsDir(), l.LogPath(), l.StatePath(), l.PIDPath(), l.ModelPath("models/vae/x.safetensors")} {
 		rel, err := filepath.Rel(l.Root, p)
 		require.NoError(t, err)
 		assert.NotContains(t, rel, "..", p+" is below the root: removing the root removes everything")

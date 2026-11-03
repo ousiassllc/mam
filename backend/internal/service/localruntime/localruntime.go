@@ -219,7 +219,7 @@ func (s *Service) newInstance(rt catalog.Runtime) (*instance, error) {
 	}
 	inst.proc = proc.New(proc.Config{
 		Name: rt.Name, Build: build, Ready: ready, StartTimeout: timeout, PollEvery: s.PollEvery, Logger: s.Logger,
-		PreferredPort: func() int { return st.Get().LastPort },
+		PreferredPort: func() int { return st.Get().LastPort }, PIDFile: layout.PIDPath(),
 	})
 	return inst, nil
 }

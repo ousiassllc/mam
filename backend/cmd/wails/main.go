@@ -17,6 +17,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/app"
 	"github.com/ousiassllc/mam/backend/internal/desktop"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 )
 
 const (
@@ -29,6 +30,10 @@ const (
 )
 
 func main() {
+	// The guard that ends a child of mam when mam is killed (macOS) is this binary started again: nothing else may start first.
+	if proc.RunGuardIfRequested() {
+		return
+	}
 	// A process that a restart started waits here for the one it replaces to end (before anything takes the single-instance
 	// lock or the data directory).
 	desktop.WaitForPredecessor()
