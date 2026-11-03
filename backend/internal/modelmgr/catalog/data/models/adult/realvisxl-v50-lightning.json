@@ -1,0 +1,60 @@
+{
+ "id": "realvisxl-v50-lightning",
+ "name": "RealVisXL V5.0 Lightning（実写・SDXL・少ない手数）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "【実写】RealVisXL V5.0 の Lightning 版（成人向け。VAE 入りの fp16 の 1 ファイルで約 6.9 GB）。蒸留で少ない手数（4〜8 ステップ）で描ける。作者の推奨は 5 ステップ・cfg 1〜2・DPM++ SDE Karras で、専用テンプレート（SDXL Lightning）の既定をそれに合わせた（通常版の 25 ステップ・cfg 7 では崩れる）。参照画像からの画像（img2img）にも使える。通常版の realvisxl-v50 とは別のファイル。",
+ "files": [
+  {
+   "name": "RealVisXL_V5.0_Lightning_fp16.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/SG161222/RealVisXL_V5.0_Lightning/resolve/f4454158cedaab9f0688c199561d6c92525f3a85/RealVisXL_V5.0_Lightning_fp16.safetensors",
+   "sha256": "fabcadd9330dcc4f9702063428d40b9d4d07168d8acefc819b8d1d9db466b3ec",
+   "size": 6938065512,
+   "source_note": "作者の Hugging Face リポジトリ（SG161222/RealVisXL_V5.0_Lightning）。原本は Civitai の RealVisXL V5.0 V5.0 Lightning (BakedVAE) fp16（model 139562、version 798204、realvisxlV50_v50LightningBakedvae_711904.safetensors）で、SHA-256 が一致することを 2026-11-03 に確かめた。"
+  }
+ ],
+ "vram": {
+  "min_gb": 8,
+  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "creativeml-openrail++-m",
+  "version": "2023-07-26",
+  "name": "openrail++（Hugging Face のモデルカードの license タグ。作者 SG161222 の公式リポジトリ）",
+  "url": "https://huggingface.co/SG161222/RealVisXL_V5.0_Lightning/blob/f4454158cedaab9f0688c199561d6c92525f3a85/README.md",
+  "summary": "商用を含めて使える。ただし違法・有害な用途（未成年の搾取、なりすまし、偽情報の拡散など）を禁じる使用制限（Attachment A）が付き、モデルを再配布するときは同じ制限を引き継ぐ。ベースの SDXL 1.0 も同じライセンスで、このモデルはそれに作者が手を加えたもの（マージ・追加学習・Lightning 蒸留）。元にしたほかのモデルのライセンスは作者のカードに書かれていない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Stable Diffusion XL 1.0）",
+    "name": "CreativeML Open RAIL++-M License",
+    "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/462165984030d82259a11f4367a4eed129e94a7b/LICENSE.md",
+    "commercial": "yes"
+   },
+   {
+    "part": "RealVisXL V5.0 Lightning（SG161222 のマージ・追加学習・Lightning 蒸留）",
+    "name": "openrail++（Hugging Face のモデルカードの license タグ。作者 SG161222 の公式リポジトリ）",
+    "url": "https://huggingface.co/SG161222/RealVisXL_V5.0_Lightning/blob/f4454158cedaab9f0688c199561d6c92525f3a85/README.md",
+    "commercial": "yes"
+   }
+  ]
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "realvisxl-v50-lightning",
+   "template": "txt2img-sdxl-lightning",
+   "model_file": "RealVisXL_V5.0_Lightning_fp16.safetensors"
+  },
+  {
+   "name": "realvisxl-v50-lightning-img2img",
+   "template": "img2img-sdxl-lightning",
+   "model_file": "RealVisXL_V5.0_Lightning_fp16.safetensors"
+  }
+ ]
+}

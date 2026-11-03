@@ -1,0 +1,58 @@
+{
+ "id": "txt2img-qwen-image21-vnccs-pose",
+ "label": "Qwen-Image 2.1（公式）+ VNCCS PoseStudio LoRA: ポーズを写して編集",
+ "media": "image",
+ "description": "ComfyUI 標準ノードだけの Qwen-Image 2.1 の公式の拡散モデル（qwen_image_2.1_int8_convrot.safetensors）に、VNCCS PoseStudio の LoRA（VNCCS_QI2_PoseStudioV1.1.safetensors。強さ 1.0）を重ねたワークフロー。LoRA の作者の公開ワークフロー（MIUProject/VNCCS_PoseStudio_QI2.1 の VNCCS_PoseStudio_QI2.1.json）と、それを使う手順（Arekejoker/qwen21-nsfw-pose-skill の路線③）に従う: 1 枚目の参照に 3D の人形（ポーズ）の画像、2 枚目に人物の画像を渡し、「replace the pose of <image 2> with the pose of <image 1>. keep the character of <image 2>」のように指示し、25 ステップ・euler/simple・cfg 1 で描く。LoRA が無いと人形の画像は無視される。人形の画像は 3D のポーズの画像（人形の描画。照片やイラストは不可）を使う。人形の画像を作る PoseStudio のノード（ComfyUI_VNCCS_Utils、ブラウザの画面が要る）は使わない。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "prompt_weight": "unsupported",
+   "quality_presets": {"fast": {"steps": 15}, "high": {"steps": 40}},
+   "graph": {
+    "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "qwen_image_2.1_int8_convrot.safetensors", "weight_dtype": "default"}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen3vl_8b_int8_convrot.safetensors", "type": "qwen_image", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "qwen_image_2.1_vae_bf16.safetensors"}},
+    "6": {"class_type": "TextEncodeQwenImage21", "inputs": {"prompt": "", "negative_prompt": "", "resolution": 1024, "clip": ["38", 0], "images.image_1": ["101", 0], "images.image_2": ["102", 0], "images.image_3": ["103", 0], "images.image_4": ["104", 0], "images.image_5": ["105", 0], "images.image_6": ["106", 0], "images.image_7": ["107", 0], "images.image_8": ["108", 0], "images.image_9": ["109", 0], "images.image_10": ["110", 0]}},
+    "5": {"class_type": "EmptyLatentImage", "inputs": {"width": 1024, "height": 1536, "batch_size": 1}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 25, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 1, "model": ["50", 0], "positive": ["6", 0], "negative": ["6", 1], "latent_image": ["5", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["39", 0]}},
+    "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "mam/image", "images": ["8", 0]}},
+    "101": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "102": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "103": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "104": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "105": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "106": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "107": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "108": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "109": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "110": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "50": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "VNCCS_QI2_PoseStudioV1.1.safetensors", "strength_model": 1.0, "model": ["37", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "prompt"},
+    {"param": "negative_prompt", "node": "6", "input": "negative_prompt"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "5", "input": "width"},
+    {"param": "height", "node": "5", "input": "height"},
+    {"param": "reference_image", "node": "101", "input": "image", "index": 0, "optional": true},
+    {"param": "reference_image", "node": "102", "input": "image", "index": 1, "optional": true},
+    {"param": "reference_image", "node": "103", "input": "image", "index": 2, "optional": true},
+    {"param": "reference_image", "node": "104", "input": "image", "index": 3, "optional": true},
+    {"param": "reference_image", "node": "105", "input": "image", "index": 4, "optional": true},
+    {"param": "reference_image", "node": "106", "input": "image", "index": 5, "optional": true},
+    {"param": "reference_image", "node": "107", "input": "image", "index": 6, "optional": true},
+    {"param": "reference_image", "node": "108", "input": "image", "index": 7, "optional": true},
+    {"param": "reference_image", "node": "109", "input": "image", "index": 8, "optional": true},
+    {"param": "reference_image", "node": "110", "input": "image", "index": 9, "optional": true},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "reference_mode": "edit",
+   "lora_model_node": "50",
+   "output_node": "9"
+  }
+ }
+}
