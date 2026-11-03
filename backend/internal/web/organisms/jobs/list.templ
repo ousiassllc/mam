@@ -34,8 +34,9 @@ type Row struct {
 	// StartedAt is "2006-01-02 15:04", when the job started.
 	StartedAt string
 	Progress  *Progress
-	// Error is why the job failed.
-	Error string
+	// Error is why the job failed and NextSteps what to do to go on ("" when the failure has no advice).
+	Error     string
+	NextSteps string
 	// Href is the screen the job leads to, "" for none.
 	Href string
 }
@@ -118,6 +119,9 @@ templ row(r Row) {
 	}
 	if r.Error != "" {
 		<p class="break-words text-xs text-red-300" data-testid="jobs-failure">{ r.Error }</p>
+	}
+	if r.NextSteps != "" {
+		<p class="break-words text-xs text-neutral-300" data-testid="jobs-next-steps">{ r.NextSteps }</p>
 	}
 	if r.Href != "" {
 		<a

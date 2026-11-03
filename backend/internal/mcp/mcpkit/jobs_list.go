@@ -25,6 +25,7 @@ type JobSummary struct {
 	Error      string     `json:"error,omitempty"`
 	ErrorCode  string     `json:"error_code,omitempty"`
 	ErrorID    string     `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID（get_app_logs の attrs error_id でログ行をたどる）"`
+	NextSteps  string     `json:"next_steps,omitempty" jsonschema:"失敗した企画（plan）のジョブが LLM の API キー未設定のときだけ: 続けるためにすること"`
 	StartedAt  time.Time  `json:"started_at"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
 	EndedAt    *time.Time `json:"ended_at,omitempty"`
@@ -72,7 +73,7 @@ func (j *Jobs) List(ctx context.Context, q JobQuery) (JobPage, error) {
 		st := statusFrom(e)
 		out.Jobs[i] = JobSummary{
 			JobID: st.JobID, Kind: st.Kind, Target: st.Target, ProjectID: st.ProjectID, State: st.State, Message: logging.Redact(st.Message),
-			Done: st.Done, Total: st.Total, Error: logging.Redact(st.Error), ErrorCode: st.ErrorCode, ErrorID: st.ErrorID,
+			Done: st.Done, Total: st.Total, Error: logging.Redact(st.Error), ErrorCode: st.ErrorCode, ErrorID: st.ErrorID, NextSteps: nextSteps(st.Kind, st.State, st.Error),
 			StartedAt: st.StartedAt, FinishedAt: st.FinishedAt, EndedAt: st.EndedAt,
 		}
 	}

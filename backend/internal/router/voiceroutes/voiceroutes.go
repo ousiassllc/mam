@@ -6,6 +6,7 @@ package voiceroutes
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/router/characterroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/voicehandler"
 )
@@ -20,4 +21,5 @@ func Register(engine *gin.Engine, svc *service.Services) {
 	engine.GET(project, voicehandler.AudioProject(svc))
 	engine.PUT(project, voicehandler.SetProject(svc))
 	engine.DELETE(project, voicehandler.RemoveProject(svc))
+	characterroutes.Register(engine, svc) // making a Character by hand (the screens' "登場人物を追加")
 }

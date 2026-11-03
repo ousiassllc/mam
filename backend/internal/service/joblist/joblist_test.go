@@ -180,6 +180,28 @@ func TestRecent_AShotJobLeadsToTheProjectAndAFailureSaysWhy(t *testing.T) {
 	assert.Equal(t, joblist.Dest{Screen: joblist.ScreenProjectChat, ProjectID: p.ID}, byID[plan.ID].Dest)
 }
 
+// A planning job that stopped for want of an LLM key carries what to do to go on, in the words of the screen; one that stopped
+// for another reason, and a job of another kind, carry none.
+func TestRecent_AFailedPlanForWantOfAKeyHasNextSteps(t *testing.T) {
+	w := newWorld(t)
+	p, err := w.svc.Projects.Create(t.Context(), service.CreateProjectInput{Content: "コーヒー店の動画を作りたい"})
+	require.NoError(t, err)
+	noKey := w.create(domain.JobPlan, map[string]string{"project_id": p.ID})
+	require.NoError(t, w.rig.Table.MarkFailed(t.Context(), noKey.ID, "LLM の API キーが設定されていません。失敗した Agent は Producer（コンセプト）です。"))
+	timeout := w.create(domain.JobPlan, map[string]string{"project_id": p.ID})
+	require.NoError(t, w.rig.Table.MarkFailed(t.Context(), timeout.ID, "AI の応答がタイムアウトしました"))
+	queued := w.create(domain.JobPlan, map[string]string{"project_id": p.ID})
+
+	byID := map[string]joblist.Entry{}
+	for _, e := range w.recent() {
+		byID[e.ID] = e
+	}
+	assert.Contains(t, byID[noKey.ID].NextSteps, "登場人物を追加")
+	assert.Contains(t, byID[noKey.ID].Error, "API キー", "the failure text stays as it was written")
+	assert.Empty(t, byID[timeout.ID].NextSteps)
+	assert.Empty(t, byID[queued.ID].NextSteps)
+}
+
 // A batch of the generation test leads to the generation test; its state and its failure are the batch's.
 func TestRecent_ABatchOfTheGenerationTestLeadsToTheGenerationTest(t *testing.T) {
 	w := newWorld(t)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -28,6 +29,15 @@ func seriesCharacterValues(c domain.WorldCharacter) map[string]string {
 	return map[string]string{"hairstyle": c.Hairstyle, "wardrobe": c.Wardrobe, "voice": c.Voice, "personality": c.Personality}
 }
 
+// seriesCharacterCreate is the form that makes a canonical Character. A Series has no Reference Library, so the form has no image
+// selects: the face and the body are given from a Project's World State, or by create_character of the MCP.
+func seriesCharacterCreate(d Data) molecules.CharacterCreateData {
+	return molecules.CharacterCreateData{
+		DOMID: "series-create-character", URL: paths.Series(d.Series.ID, "characters"),
+		Note: "顔・全身の参照画像は、Series には Reference Library が無いため、ここでは選べません。Project の World State の登場人物に割り当てるか、MCP の create_character（reference_project_id）で渡してください。",
+	}
+}
+
 func episodeLabel(p domain.Project) string {
 	return "第" + strconv.Itoa(p.EpisodeNumber) + "話"
 }
@@ -48,16 +58,23 @@ templ View(d Data) {
 		</section>
 		<section aria-label="Characters" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Characters</h2>
-			if len(d.Canon.Characters) == 0 {
-				<p class="text-sm text-neutral-400">登録された Character はありません。</p>
-			}
-			<p class="text-xs text-neutral-400">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
-			for _, c := range d.Canon.Characters {
-				<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
-					@seriesCharacterForm(d, c)
-					@seriesVoiceForm(d, c)
+			<p id="series-characters-empty" class="text-sm text-neutral-400">
+				if len(d.Canon.Characters) == 0 {
+					登録された Character はありません。
+				}
+			</p>
+			<details class="text-sm" id="series-add-character">
+				<summary class="cursor-pointer text-xs text-neutral-300">登場人物を追加（AI の企画を待たずに、正本へ直接登録する。次の Episode から使われます）</summary>
+				<div class="mt-2">
+					@molecules.CharacterCreate(seriesCharacterCreate(d))
 				</div>
-			}
+			</details>
+			<p class="text-xs text-neutral-400">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
+			<div id="series-characters" class="flex flex-col gap-2">
+				for _, c := range d.Canon.Characters {
+					@seriesCharacterBlock(d, c)
+				}
+			</div>
 		</section>
 		<section aria-label="Products and Locations" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Products / Locations</h2>
@@ -168,6 +185,30 @@ templ VoiceSaved(d Data, characterID string) {
 			@seriesVoiceForm(d, c)
 		}
 	}
+	@seriesCanonSaved(d)
+}
+
+// seriesCharacterBlock is the card of one canonical Character: its attribute form and its reference voice.
+templ seriesCharacterBlock(d Data, c domain.WorldCharacter) {
+	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+		@seriesCharacterForm(d, c)
+		@seriesVoiceForm(d, c)
+	</div>
+}
+
+// CharacterCreated answers the making of a canonical Character (POST /series/:id/characters): an empty form (it replaces the one
+// that was sent), the card of the new Character added to the list, the "登録された Character はありません" line emptied and the new
+// version carried along.
+templ CharacterCreated(d Data, characterID string) {
+	@molecules.CharacterCreate(seriesCharacterCreate(d))
+	for _, c := range d.Canon.Characters {
+		if c.ID == characterID {
+			<div hx-swap-oob="beforeend:#series-characters">
+				@seriesCharacterBlock(d, c)
+			</div>
+		}
+	}
+	<p id="series-characters-empty" class="text-sm text-neutral-400" hx-swap-oob="true"></p>
 	@seriesCanonSaved(d)
 }
 

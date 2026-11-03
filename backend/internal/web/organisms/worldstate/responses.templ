@@ -72,6 +72,20 @@ templ EntitySaved(d Data, target domain.WorldTarget, id string) {
 	}
 }
 
+// CharacterCreated answers the making of a Character (POST /projects/:id/characters): an empty form of the same kind
+// (it replaces the one that was sent), the forms of the new Character added to the list and the new version carried along.
+// The "まだ登録されていません" line is emptied: the World State has an entity now.
+templ CharacterCreated(d Data, id string) {
+	@molecules.CharacterCreate(d.characterCreate())
+	if e, ok := d.entity(domain.TargetCharacter, id); ok {
+		<div hx-swap-oob="beforeend:#ws-characters">
+			@entityForm(d, e)
+		</div>
+	}
+	<p id="world-state-empty" class="text-sm text-neutral-400" hx-swap-oob="true"></p>
+	@versionInfo(d, true)
+}
+
 // ReferenceAssigned answers an assignment of a reference image (PUT /projects/:id/{plural}/:id/reference):
 // the form of that slot only, with the new version carried along.
 templ ReferenceAssigned(d Data, target domain.WorldTarget, id, slot string) {
