@@ -28,7 +28,8 @@ func BaseURLProblem(err error) string {
 	return "ベース URL は http://localhost:11434 のような形で入力してください。"
 }
 
-// TestInput is a server to test, saved or not. An empty BaseURL tests the saved address; an empty APIKey uses the stored key.
+// TestInput is a server to test, saved or not. An empty BaseURL tests the saved address; an empty APIKey uses the stored key, but only for the saved
+// address (a key is never sent to another server than the one it was set for).
 type TestInput struct {
 	BaseURL string
 	APIKey  string
@@ -52,7 +53,8 @@ func (s *Service) Test(ctx context.Context, in TestInput) (TestResult, error) {
 		return s.testManaged(ctx), nil // the address and key of the form are not what the calls use now
 	}
 	baseURL := strings.TrimSpace(in.BaseURL)
-	if baseURL == "" {
+	explicit := baseURL != ""
+	if !explicit {
 		baseURL = s.BaseURL()
 	}
 	baseURL, err := localllm.NormalizeBaseURL(baseURL)
@@ -60,7 +62,8 @@ func (s *Service) Test(ctx context.Context, in TestInput) (TestResult, error) {
 		return TestResult{}, &InvalidError{Message: BaseURLProblem(err), Field: "base_url"}
 	}
 	key := strings.TrimSpace(in.APIKey)
-	if key == "" && s.keys != nil {
+	if key == "" && s.keys != nil && (!explicit || s.isSavedAddress(baseURL)) {
+		// The stored key goes only to the address it was set for: a form or an MCP call that names another server must not be able to read it out.
 		if stored, err := s.keys.Get(provider); err == nil {
 			key = stored
 		}
@@ -78,6 +81,12 @@ func (s *Service) Test(ctx context.Context, in TestInput) (TestResult, error) {
 		res.Message = fmt.Sprintf("ローカルサーバーに接続できました（モデル %d 件）", len(ids))
 	}
 	return res, nil
+}
+
+// isSavedAddress says whether the normalized address is the one saved in the settings (the address the stored key belongs to).
+func (s *Service) isSavedAddress(baseURL string) bool {
+	saved, err := localllm.NormalizeBaseURL(s.BaseURL())
+	return err == nil && saved == baseURL
 }
 
 // testManaged is the test while the calls go to the llama.cpp server of mam: it says where the server stands, and never starts it (loading a model

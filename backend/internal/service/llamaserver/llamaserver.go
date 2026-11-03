@@ -59,7 +59,10 @@ func (e *UnavailableError) Error() string {
 func (e *UnavailableError) Unwrap() error { return e.Err }
 
 // Endpoint starts the server when it is stopped and returns its address and the key of this start. The model in force is the one the model manager's
-// choice names (localruntime / runtimechoices); changing it stops the server, so the next call loads the other one.
+// choice names (localruntime / runtimechoices); changing it stops the server, so the next call loads the other one. The start does not belong to the
+// call: loading a model takes minutes (start_timeout_sec of the runtime bounds it), longer than the timeout of one call, and a start that the call's
+// context ended would kill the half-loaded server and begin again at the next call. The call only waits; when its context ends first the start goes on,
+// and the next call joins it.
 func (s Server) Endpoint(ctx context.Context) (string, string, error) {
 	if s.MakeRoom != nil {
 		if v, err := s.Runtime.Status(ctx, RuntimeID); err == nil && v.Process.State != proc.StateRunning {
@@ -68,7 +71,7 @@ func (s Server) Endpoint(ctx context.Context) (string, string, error) {
 			}
 		}
 	}
-	if err := s.Runtime.Prepare(ctx, RuntimeID); err != nil {
+	if err := s.prepare(ctx); err != nil {
 		return "", "", s.unavailable(ctx, err)
 	}
 	v, err := s.Runtime.Status(ctx, RuntimeID)
@@ -87,6 +90,20 @@ func (s Server) Endpoint(ctx context.Context) (string, string, error) {
 		return "", "", &UnavailableError{Detail: "llama.cpp の合言葉を取得できませんでした"}
 	}
 	return v.Process.URL, key, nil
+}
+
+// prepare starts the server (Runtime.Prepare) under a context of its own, not the call's: the call waits for the result, or for its own context to end,
+// whichever is first. Runtime.Prepare joins a start already in progress, so a call after an abandoned one waits for the same start, never begins another.
+func (s Server) prepare(ctx context.Context) error {
+	done := make(chan error, 1)
+	startCtx := context.WithoutCancel(ctx)
+	go func() { done <- s.Runtime.Prepare(startCtx, RuntimeID) }()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // room waits while the bundled ComfyUI is generating, up to MaxWait (the context of the call may end it sooner); a ComfyUI that is idle is asked

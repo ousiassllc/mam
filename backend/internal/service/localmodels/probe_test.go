@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -93,4 +94,38 @@ func TestConnectionTest(t *testing.T) {
 	assert.True(t, res.OK)
 	_, err = r.svc.TestEndpoint(ctx, "missing")
 	assert.ErrorIs(t, err, localmodels.ErrNotFound)
+}
+
+// The saved key of an endpoint is sent only to the address it was saved for: a draft of the same name with another address (the form, or an MCP call)
+// is tested without it.
+func TestConnectionTestDoesNotSendTheSavedKeyToAnotherAddress(t *testing.T) {
+	ctx := context.Background()
+	r := newRig(t, false, "")
+	var mu sync.Mutex
+	seen := map[string][]string{}
+	serve := func(name string) *httptest.Server {
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			mu.Lock()
+			seen[name] = append(seen[name], req.Header.Get("Authorization"))
+			mu.Unlock()
+			_, _ = w.Write([]byte(`{"data":[{"id":"m"}]}`))
+		}))
+		t.Cleanup(s.Close)
+		return s
+	}
+	saved, other := serve("saved"), serve("other")
+	require.NoError(t, r.svc.CreateEndpoint(ctx, localmodels.EndpointInput{Name: "oa", Kind: localcfg.KindOpenAICompat, BaseURL: saved.URL}))
+	require.NoError(t, r.svc.SetEndpointKey("oa", "saved-key"))
+
+	_, err := r.svc.Test(ctx, localmodels.TestInput{Name: "oa", Kind: localcfg.KindOpenAICompat, BaseURL: other.URL})
+	require.NoError(t, err)
+	_, err = r.svc.Test(ctx, localmodels.TestInput{Name: "oa", Kind: localcfg.KindOpenAICompat, BaseURL: saved.URL + "/"})
+	require.NoError(t, err)
+	_, err = r.svc.Test(ctx, localmodels.TestInput{Kind: localcfg.KindOpenAICompat, BaseURL: other.URL})
+	require.NoError(t, err)
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, []string{"", ""}, seen["other"], "the saved key does not go to another address")
+	assert.Equal(t, []string{"Bearer saved-key"}, seen["saved"], "the saved address keeps its key")
 }

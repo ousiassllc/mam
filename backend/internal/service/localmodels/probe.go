@@ -25,7 +25,7 @@ const probeTimeout = 10 * time.Second
 var minSafeCancel = [3]int{0, 3, 57}
 
 // TestInput is an endpoint to test, saved or not. With Name only, the saved endpoint is tested with its saved
-// key. With Kind and BaseURL the draft is tested; APIKey is its key (empty: the saved key of Name, if any).
+// key. With Kind and BaseURL the draft is tested; APIKey is its key (empty: the saved key of Name, only when BaseURL is the saved address).
 type TestInput struct {
 	Name    string
 	Kind    localcfg.Kind
@@ -68,8 +68,15 @@ func (s *Service) Test(ctx context.Context, in TestInput) (TestResult, error) {
 		return TestResult{}, err
 	}
 	keys := s.Keys
-	if in.APIKey != "" {
+	switch {
+	case in.APIKey != "":
 		keys = draftKey{vendor: localcfg.VendorKey(cmpName(name)), key: strings.TrimSpace(in.APIKey)}
+	case in.Kind != "" || in.BaseURL != "":
+		// A draft is sent the saved key of Name only when it is the address that key was set for: an address typed in the form (or given by an
+		// MCP call) must not be able to read the key out.
+		if saved, ok := cfg.Endpoints[name]; !ok || strings.TrimRight(saved.BaseURL, "/") != strings.TrimRight(e.BaseURL, "/") {
+			keys = draftKey{}
+		}
 	}
 	c, err := localhttp.New(cmpName(name), e, keys, "")
 	if err != nil {
