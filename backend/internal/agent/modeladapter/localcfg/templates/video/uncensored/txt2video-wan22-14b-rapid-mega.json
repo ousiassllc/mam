@@ -1,0 +1,42 @@
+{
+ "id": "txt2video-wan22-14b-rapid-mega",
+ "label": "Wan2.2 Rapid AllInOne Mega NSFW v12.2: テキストから動画",
+ "media": "video",
+ "description": "Phr00t の WAN2.2 Rapid AllInOne の Mega NSFW v12.2（モデル・テキストエンコーダー・VAE を 1 つにまとめた fp8 のチェックポイント wan2.2-rapid-mega-aio-nsfw-v12.2.safetensors）でテキストから動画を作る標準ノードだけのワークフロー。Mega は VACE を含むので、作者の説明どおり WanVaceToVideo の strength を 0 にして制御映像なしの T2V として使う（作者のチェックポイントに埋め込まれたワークフローの生成部分と同じ: CheckpointLoaderSimple → ModelSamplingSD3 の shift 8 → KSampler 4 ステップ・dpmpp_sde・beta・cfg 1、WanVaceToVideo の trim_latent を TrimVideoLatent に渡してから VAEDecode）。先頭フレーム・最終フレームの指定に使う作者の WanVideoVACEStartToEndFrame はカスタムノードなので使わず、T2V だけを載せる。16fps・フレーム数は 4n+1。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},
+  "workflow": {
+   "prompt_weight": "weak",
+   "graph": {
+    "26": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "wan2.2-rapid-mega-aio-nsfw-v12.2.safetensors"}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["26", 1]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["26", 1]}},
+    "28": {"class_type": "WanVaceToVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1, "strength": 0, "positive": ["6", 0], "negative": ["7", 0], "vae": ["26", 2]}},
+    "32": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["26", 0]}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 4, "cfg": 1, "sampler_name": "dpmpp_sde", "scheduler": "beta", "denoise": 1, "model": ["32", 0], "positive": ["28", 0], "negative": ["28", 1], "latent_image": ["28", 2]}},
+    "29": {"class_type": "TrimVideoLatent", "inputs": {"samples": ["3", 0], "trim_amount": ["28", 3]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["29", 0], "vae": ["26", 2]}},
+    "57": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+    "58": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["57", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "28", "input": "width"},
+    {"param": "height", "node": "28", "input": "height"},
+    {"param": "frames", "node": "28", "input": "length"},
+    {"param": "fps", "node": "57", "input": "fps"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "58",
+   "fps": 16,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}
