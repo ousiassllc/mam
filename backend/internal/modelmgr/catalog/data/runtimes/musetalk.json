@@ -61,7 +61,7 @@
   "os": "windows",
   "arch": "amd64",
   "os_reasons": {
-   "darwin": "macOS では MuseTalk 1.5 を自動導入できません。公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4）は mam の自動導入の対象にしていません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
+   "darwin": "macOS では MuseTalk 1.5 を自動導入できません。公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず（公式の手順は CUDA 前提で、使う mmcv 2.0.1 の Apple Silicon 向けの事前ビルドもありません）、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4。MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無いため、mam の自動導入の対象にしていません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
    "linux": "Linux では MuseTalk 1.5 の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
    "default": "この OS では MuseTalk 1.5 の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。"
   },

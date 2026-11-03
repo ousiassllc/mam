@@ -88,7 +88,7 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 
 macOS 版でまだ使えないもの:
 
-- **ローカルの声（GPT-SoVITS・Irodori-TTS）とローカルの口パク（MuseTalk 1.5）**。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。macOS では、声（GPT-SoVITS・Irodori-TTS）は公式が macOS の MPS / CPU での推論に対応しているものの mam は自動導入せず、口パクは公式の PyTorch 版が macOS（Apple Silicon）の GPU に対応していません（第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4` は mam の対象外です）。設定の「音声・口パク」では、macOS だとローカルを選べず、その理由が出ます。**クラウドの ElevenLabs（声）と Sync Labs（口パク）は macOS でもそのまま使えます**（設定の「API キーとログイン」で `elevenlabs`・`synclabs` のキーを登録します。何も選ばないときの既定はクラウドです）。
+- **ローカルの声（GPT-SoVITS・Irodori-TTS）とローカルの口パク（MuseTalk 1.5）**。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。macOS では、声（GPT-SoVITS・Irodori-TTS）は公式が macOS の MPS / CPU での推論に対応しているものの mam は自動導入せず（GPT-SoVITS は、Apple Silicon 向けの部品だけでは起動に必須の `pyopenjtalk`・`jieba_fast`・`jieba` が揃わないためです）、口パクは公式の PyTorch 版が macOS（Apple Silicon）の GPU に対応していません（第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4`（MIT）は、顔の検出・貼り戻しを含む起動できるサーバーが無いため、mam の対象外です）。どちらも実機の Mac では確かめていません（調べた内容は `spec/architecture/model-manager/local-runtime.md` §16）。設定の「音声・口パク」では、macOS だとローカルを選べず、その理由が出ます。**クラウドの ElevenLabs（声）と Sync Labs（口パク）は macOS でもそのまま使えます**（設定の「API キーとログイン」で `elevenlabs`・`synclabs` のキーを登録します。何も選ばないときの既定はクラウドです）。
 
 ffmpeg は同梱していません（次の節）。
 
