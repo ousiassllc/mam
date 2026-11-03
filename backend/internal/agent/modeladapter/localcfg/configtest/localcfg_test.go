@@ -1,4 +1,4 @@
-package localcfg_test
+package configtest
 
 import (
 	"encoding/json"
