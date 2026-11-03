@@ -67,7 +67,12 @@ func videoChoices(ctx context.Context, svc Services, _ url.Values, cond modelfil
 		}
 		return cards, pickfilter.CountOf(cond, view.VideoModels, modelsettings.VideoOption.Item), nil
 	}
-	models := svc.Gentest.Models(ctx, gentest.MediaVideo)
+	var models []modelcatalog.Info // the models of the cards (not every video model of the generation test): the line above the list counts these
+	for _, m := range svc.Gentest.Models(ctx, gentest.MediaVideo) {
+		if slices.ContainsFunc(view.VideoModels, func(o modelsettings.VideoOption) bool { return string(o.Model) == m.ID }) {
+			models = append(models, m)
+		}
+	}
 	passing := modelfilter.Filter(cond, models, modelcatalog.Info.Item)
 	var cards []modelcard.Card
 	for _, m := range passing {

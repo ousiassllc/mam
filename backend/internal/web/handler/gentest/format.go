@@ -73,6 +73,18 @@ func featuresText(m modelcatalog.Info) string {
 	return strings.Join(f, "・")
 }
 
+// withSelected is the listed models plus those of all that the form holds ticked (?model=, "もう一度", a recipe, a prompt match) and the condition hides: a card
+// that is not drawn is not posted, so a model chosen before the condition was must not drop out of the form.
+func withSelected(listed, all []modelcatalog.Info, selected []string) []modelcatalog.Info {
+	out := listed
+	for _, m := range all {
+		if slices.Contains(selected, m.ID) && !slices.ContainsFunc(listed, func(l modelcatalog.Info) bool { return l.ID == m.ID }) {
+			out = append(slices.Clip(out), m)
+		}
+	}
+	return out
+}
+
 func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice {
 	out := make([]view.ModelChoice, len(models))
 	for i, m := range models {

@@ -44,10 +44,19 @@ type screen struct {
 
 func newScreen(t *testing.T, opts ...gentesttest.Option) *screen {
 	t.Helper()
+	return newScreenWith(t, nil, opts...)
+}
+
+// newScreenWith is newScreen with the settings (the model assignment) set up by tune before the router is built (nil: as they are).
+func newScreenWith(t *testing.T, tune func(*settingsroutes.Services), opts ...gentesttest.Option) *screen {
+	t.Helper()
 	rig := gentesttest.New(t, opts...)
 	svc := servicetest.New(t, service.Deps{DB: rig.DB, Credentials: credentialtest.New()})
 	settings := settingsroutes.New(t.TempDir()+"/llm.json", false, t.TempDir()+"/m.json", false)
 	settings.Gentest = rig.Svc
+	if tune != nil {
+		tune(settings)
+	}
 	s := &screen{t: t, rig: rig, engine: router.New(svc, router.Options{Settings: settings})}
 
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.GenerationTest(), nil))
