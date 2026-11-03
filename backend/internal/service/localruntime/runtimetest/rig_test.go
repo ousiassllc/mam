@@ -1,4 +1,4 @@
-package localruntime_test
+package runtimetest_test
 
 import (
 	"context"
@@ -35,7 +35,7 @@ import (
 // The synthetic package is the 7z of the extract tests (LZMA2 + BCJ2): ComfyUI_windows_portable/{<python dir>/python.exe,
 // ComfyUI/main.py}. It stands in for the vendor's package; the process that is started is this test binary, not that python.exe.
 const (
-	archiveFile = "../../modelmgr/extract/testdata/bcj2.7z"
+	archiveFile = "../../../modelmgr/extract/testdata/bcj2.7z"
 	archiveRoot = "ComfyUI_windows_portable"
 	pythonRel   = "python_embeded/python.exe" //nolint:misspell // the directory name of the upstream package
 	entryRel    = "ComfyUI/main.py"

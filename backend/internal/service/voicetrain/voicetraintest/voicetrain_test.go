@@ -1,4 +1,6 @@
-package voicetrain_test
+// Package voicetraintest tests voicetrain.Service over fakes: the dataset of a voice, the refusals before a training starts, the run and the voice that comes out.
+// It is a package of its own because the directory of the service is at its line budget (linterly); the test of the internals (progress) stays in voicetrain.
+package voicetraintest_test
 
 import (
 	"context"

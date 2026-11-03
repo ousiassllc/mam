@@ -1,4 +1,7 @@
-package localruntime_test
+// Package runtimetest tests localruntime.Service over fakes (a fake package host, a fake GPU and a fake runtime server that is this test binary): install,
+// start and stop, the weights, the training tool hold and which machines are refused. It is a package of its own because the directory of the service
+// is at its line budget (linterly).
+package runtimetest_test
 
 import (
 	"context"

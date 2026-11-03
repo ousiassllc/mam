@@ -1,4 +1,6 @@
-package runtime_test
+// Package supporttest checks which machines a local runtime supports (rtm.Evaluate: the OS, the GPU and its memory) for GPT-SoVITS and MuseTalk. It is a package of
+// its own because the directory of the installer is at its line budget.
+package supporttest_test
 
 import (
 	"testing"

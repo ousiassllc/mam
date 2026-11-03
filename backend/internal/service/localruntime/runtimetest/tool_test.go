@@ -1,4 +1,4 @@
-package localruntime_test
+package runtimetest_test
 
 import (
 	"io"

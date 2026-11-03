@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicetrainpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -101,7 +102,7 @@ templ View(d Data) {
 		<section aria-label="Story / Music" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Story / Music</h2>
 			for _, p := range domain.ProjectLockParameters() {
-				@molecules.LockToggle(organisms.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
+				@molecules.LockToggle(locktoggles.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
 			}
 		</section>
 		<p id="world-state-empty" class="text-sm text-neutral-400">

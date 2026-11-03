@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/diskfile"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 )
@@ -145,8 +146,8 @@ func (s *Service) checkModelSpace(m catalog.Model) error {
 	var need int64
 	for _, f := range m.Files {
 		dest := s.Layout.ModelPath(f.Path())
-		if !fileIsThere(dest, f.Size) {
-			need += f.Size - partSize(dest, f.Size)
+		if !diskfile.IsThere(dest, f.Size) {
+			need += f.Size - diskfile.PartSize(dest, f.Size)
 		}
 	}
 	if have := s.free(s.Layout.DataDir()); need > 0 && uint64(need) > have {
@@ -245,7 +246,7 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 // fetchFile makes dest the pinned file. A file that another installed model recorded with the same SHA-256 and
 // that has the right size is trusted without hashing it again (a shared text encoder is several GB).
 func (s *Service) fetchFile(ctx context.Context, dest string, f catalog.File, opts fetch.Options) error {
-	if s.recordedGood(f) && fileIsThere(dest, f.Size) {
+	if s.recordedGood(f) && diskfile.IsThere(dest, f.Size) {
 		if opts.Progress != nil {
 			opts.Progress(f.Size, f.Size)
 		}

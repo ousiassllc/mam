@@ -1,7 +1,10 @@
-package router
+// Package editorapi is the Huma operation of the Edit Timeline (GET /api/v1/projects/{id}/edit-timeline) for mam-timeline-editor. It lives outside router so that
+// router stays inside its line limit; router registers it with the other operations of the JSON API.
+package editorapi
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -75,16 +78,16 @@ func newEditTimelineBody(v service.TimelineView) editTimelineBody {
 	return b
 }
 
-// registerEditorAPI registers GET /api/v1/projects/{id}/edit-timeline: the latest Edit Timeline
+// Register registers GET /api/v1/projects/{id}/edit-timeline: the latest Edit Timeline
 // for mam-timeline-editor. The editor saves through PUT /edit-timelines/:id (an action route).
-func registerEditorAPI(api huma.API, services *service.Services) {
+func Register(api huma.API, services *service.Services) {
 	type output struct {
 		Body editTimelineBody
 	}
 	huma.Register(api, huma.Operation{
 		OperationID: "get-edit-timeline",
 		Method:      "GET",
-		Path:        APIPrefix + "/projects/{id}/edit-timeline",
+		Path:        paths.APIPrefix + "/projects/{id}/edit-timeline",
 		Summary:     "Latest Edit Timeline of a Project (Shot order, Cut Points, Transitions)",
 		Tags:        []string{"editor"},
 		Errors:      []int{404},
@@ -94,7 +97,7 @@ func registerEditorAPI(api huma.API, services *service.Services) {
 	}) (*output, error) {
 		v, err := services.Editor.Timeline(ctx, in.ID, in.BranchID)
 		if err != nil {
-			if isNotFound(err) {
+			if errors.Is(err, service.ErrNotFound) {
 				return nil, huma.Error404NotFound("Edit Timeline がありません。Rough Cut を作成してください")
 			}
 			return nil, err

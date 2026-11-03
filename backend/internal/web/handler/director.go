@@ -9,7 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
@@ -46,7 +46,7 @@ func SetProjectLock(svc *service.DirectorService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, molecules.LockToggle(organisms.ProjectLockToggle(c.Param("id"), p, locks)))
+		render(c, http.StatusOK, molecules.LockToggle(locktoggles.ProjectLockToggle(c.Param("id"), p, locks)))
 	}
 }
 
@@ -59,7 +59,7 @@ func SetShotLock(svc *service.DirectorService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, molecules.LockToggle(organisms.LockToggleFor(c.Param("id"), p, locks)))
+		render(c, http.StatusOK, molecules.LockToggle(locktoggles.LockToggleFor(c.Param("id"), p, locks)))
 	}
 }
 

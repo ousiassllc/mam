@@ -1,14 +1,13 @@
 package modelmanager
 
 import (
-	"os"
 	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
-	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/diskfile"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 )
 
@@ -120,14 +119,14 @@ func (s *Service) view(m catalog.Model, st store.State) ModelView {
 	}
 	present := 0
 	for _, f := range m.Files {
-		ok := fileIsThere(s.Layout.ModelPath(f.Path()), f.Size)
+		ok := diskfile.IsThere(s.Layout.ModelPath(f.Path()), f.Size)
 		if ok {
 			present++
 		}
 		fv := FileView{Name: f.Name, Folder: f.Folder, Size: f.Size, SHA256: f.SHA256, Present: ok, SourceNote: f.SourceNote, SharedWith: s.sharedWith(st, m.ID, f.Path())}
 		v.Files = append(v.Files, fv)
 		if !ok {
-			v.NeedBytes += f.Size - partSize(s.Layout.ModelPath(f.Path()), f.Size)
+			v.NeedBytes += f.Size - diskfile.PartSize(s.Layout.ModelPath(f.Path()), f.Size)
 		}
 	}
 	for _, w := range m.Workflows {
@@ -164,16 +163,4 @@ func (s *Service) sharedWith(st store.State, self, path string) []string {
 	}
 	slices.Sort(ids)
 	return ids
-}
-
-func fileIsThere(path string, size int64) bool {
-	st, err := os.Stat(path)
-	return err == nil && st.Mode().IsRegular() && st.Size() == size
-}
-
-func partSize(dest string, total int64) int64 {
-	if st, err := os.Stat(fetch.PartPath(dest)); err == nil {
-		return min(st.Size(), total)
-	}
-	return 0
 }

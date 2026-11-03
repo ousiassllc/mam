@@ -79,15 +79,6 @@ templ AdultDialog(d AdultConfirm) {
 	</section>
 }
 
-// AdultWithCatalog is the answer of turning the setting on or off: the card, and what it changes out of band (the model list,
-// the choices of the trial generation, the closed dialog).
-templ AdultWithCatalog(a Adult, c Catalog, t TrialPanel) {
-	@AdultCard(a)
-	@CatalogList(c)
-	@TrialSection(t)
-	@DialogClear()
-}
-
 // CommercialCard is the setting "商用OKのモデルだけを使う" (#928). Turning the setting on makes the commercial-use choice of every model filter start at "商用OKのみ" (this
 // screen, the generation test, the MCP lists); it narrows the lists and does not stop a generation. The choice itself is in the panel of the filter bar above the list.
 templ CommercialCard(c CommercialPanel) {
@@ -130,12 +121,4 @@ func commercialPressed(only bool) string {
 		return "true"
 	}
 	return "false"
-}
-
-// CommercialWithList is the card with the model list and the trial section out of band: the setting changed what the commercial-use choice of their filters starts at
-// (the list's own bar and panel come with it, drawn at the new start).
-templ CommercialWithList(c CommercialPanel, l Catalog, t TrialPanel) {
-	@CommercialCard(c)
-	@CatalogWithBar(l)
-	@TrialSection(t)
 }
