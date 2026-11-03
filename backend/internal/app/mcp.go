@@ -30,7 +30,7 @@ func startMCP(cfg config.Config, services *service.Services, settings *settingsr
 	}
 	srv := server.New(server.Options{
 		Services:   services,
-		Settings:   mcpkit.Settings{LLM: settings.LLM, LLMModels: settings.LLMModels, Models: settings.Models, Update: settings.Update, ChatGPT: settings.ChatGPT, Audio: settings.Audio, Restart: settings.Restart},
+		Settings:   mcpkit.Settings{LLM: settings.LLM, LLMModels: settings.LLMModels, Models: settings.Models, Update: settings.Update, ChatGPT: settings.ChatGPT, Audio: settings.Audio, Restart: settings.Restart, FaceFusion: settings.FaceFusion},
 		Tokens:     tokens,
 		JobTable:   repository.NewJobRepository(db),
 		JobHistory: history,

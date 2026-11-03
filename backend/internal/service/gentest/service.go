@@ -89,6 +89,12 @@ type Deps struct {
 	BundledEndpoint string
 	// FaceCrop cuts the face out of a reference of the role "face" before an editing model reads it (nil: the picture goes as it is).
 	FaceCrop runner.FaceCropFunc
+	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number; the face models are not installed).
+	FaceScore runner.FaceScoreFunc
+	// FaceFusion runs FaceFusion for "swap the face" (nil: the feature is off). FaceFusionCheck says why it cannot run now (FaceFusion is not
+	// found) or nil; nil: always ready.
+	FaceFusion      runner.FaceSwapFunc
+	FaceFusionCheck func() error
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
 	Translator *prompttranslate.Translator
 	Logger     *slog.Logger
@@ -127,7 +133,8 @@ func New(d Deps) *Service {
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
 	run := runner.New(runner.Deps{
-		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, FaceCrop: d.FaceCrop, Now: d.Now, Logger: d.Logger,
+		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, FaceCrop: d.FaceCrop,
+		FaceScore: d.FaceScore, FaceSwap: d.FaceFusion, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
 		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes},

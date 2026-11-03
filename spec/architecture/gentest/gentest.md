@@ -111,6 +111,12 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **16GB の GPU（未測定）**: ComfyUI のタイル処理（`ImageUpscaleWithModel`・`VAEEncodeTiled`・`VAEDecodeTiled`）で、全体を一度に GPU に載せない作りにした。**16GB の GPU で 4 倍が落ちないことは、実機で測っていない（未測定。実機で確認が要る）**。VRAM の目安（カタログの `vram`）も mam の見積もりで、`estimate: true`。
 - テストは `service/gentest/localtest/upscale_test.go`（ComfyUI の偽のサーバーを通して、別ファイルの結果・元の記録・倍率の比・2 パスのプロンプトとシード・拒否・上限・モデルの一覧から外れること）、`web/handler/gentest/upscale_test.go`（画面）、`mcp/tools/gentest/upscale_test.go`（MCP）。
 
+## 3.8 顔の入れ替え（外部ツール FaceFusion。Issue #995）と顔の類似度（Issue #998）
+
+結果の詳細から、成功した画像の顔を別の画像の顔に入れ替える。入れ替えは mam に同梱しない外部ツール **FaceFusion**（ffmpeg と同じ扱い）を別プロセスで呼ぶ（`facefusion.py headless-run`）。アップスケールと同じく、**独立したバッチ（結果 1 件・入力 2 枚）**として実行し、結果は履歴とジョブ一覧に通常の結果と同じに並ぶ（モデル識別子は `facefusion`）。非商用・研究用・商用不明のモデルは警告つきで選べ、成人向けの画像には使えない旨を画面に出す。設定（Python とフォルダ）・実行の引数・モデルのライセンス表（FaceFusion の公式一覧が一次情報）・画面・MCP は [face-swap.md](face-swap.md)。
+
+役割 `face` の入力があった結果には、**参照の顔と出力の顔の類似度（SFace のコサイン類似度）**を結果ごとに自動で測って `params.face_similarity` に残す（測れない理由も残し、結果は成功のまま）。計測の定義・目安の閾値・モデルの配布・ライセンスの一次情報・#960 の監査は [../local-models.md](../local-models.md) §4.9。
+
 ## 3.2 プロンプトマッチ（Issue #916）
 
 参考の画像 1 枚から、AI が英語のプロンプトを作り、生成して、似ているかを測り、違いをもとに直して生成し直す（おまかせ・1回だけ・調整。言葉の指示で直せる）。生成テストのバッチとして動き、各回は結果として履歴に残る。設計は [prompt-match.md](prompt-match.md)。
@@ -192,6 +198,8 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | `poses` / `posetest` | Shisei のポーズ集（導入・一覧・絞り込み・ファイルの解決。`posestest` は偽の GitHub で導入までを走らせる道具）と、ポーズの画像を入力にした実行のテスト（Issue #986） |
 | `intent` / `qualitytest` | やりたいこと（`intents.json`。埋め込みの選択肢と候補モデル・`Recommend` の選び方。Issue #977）と、品質のプリセット・やりたいことの選択・何も触らないときのグラフを走らせるテスト |
 | `recipe` / `exposedreq` / `exposedpick` / `comfyopen` / `recipetest` | レシピ（保存・一覧・使う・使えない理由）、リクエストの画面に出す値の検査と計画、画面に出す値を選ぶ側、今の設定を ComfyUI で開く、それらのテスト（Issue #977 ステージ 2。§3.7） |
+| `facefusion`（`internal/facefusion`。サービスの外） | FaceFusion の検出・モデルの表とライセンスの級・`headless-run` の起動（[face-swap.md](face-swap.md)）。`runner/faceswap.go`・`runner/facescore.go` が呼ぶ |
+| `face`（`internal/service/gentest/face`） | 顔の入れ替え（`Swap`・`Available`）と、アプリがサービスに渡す顔のモデルの口（`Crop`・`Score`・`Swapper`）。`service/gentest` の行数の上限のため別パッケージ。テストもここ |
 | `gentesttest` / `servicetest` / `localtest` / `speedtest` | テストの道具と、パッケージをまたぐテスト |
 
 `Service` は `projectlink.Link`・`runner.Runner`・`history.Store` を埋め込み、これらのメソッドを自分のものとして公開する。`Deps.Extra`（プロンプトマッチ）は `runner.Runner` のフィールドで、`match.New` が組み立てるときに入れる。

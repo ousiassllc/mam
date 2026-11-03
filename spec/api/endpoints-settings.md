@@ -18,6 +18,7 @@
 | `/settings/local-models/endpoints/:name` | 接続先のサブページ（接続先のカードと、そのモデルの表。モデルの追加・編集のフォームはこのページの中に開く）。タイトルは「設定: ローカル・代替モデル: <名前>」、ナビの現在の分類は「ローカル・代替モデル」。無い接続先は 404。名前が `new` の接続先（古い設定ファイルにだけある）は、追加フォームの URL に隠れるのでページが無い（一覧のカードがそう書く） | 同上 |
 | `/settings/audio` | 音声・口パク（声と口パクのプロバイダー・ローカルの状態・この PC で動かせない理由・出典とライセンス・フォールバックのチェック。§5.3） | `audiosettings.Service` があるとき |
 | `/settings/mcp` | MCP サーバー（今の区画をそのまま） | `app` が MCP サーバーを起動したとき |
+| `/settings/facefusion` | FaceFusion（Python とフォルダのパス・探した結果・モデルのライセンス。§5.2.2） | `facefusionsettings.Service` があるとき |
 | `/settings/ffmpeg` | ffmpeg（ffmpeg と ffprobe のパスの欄と、探した結果。§5.2） | `ffmpegsettings.Service` があるとき |
 | `/settings/update` | バージョンとアップデート（今の区画をそのまま） | 常に |
 | `/settings/licenses` | 第三者のライセンス（`THIRD_PARTY_NOTICES.md` を埋め込んだ文字列を項目に分けた、グループごとの `<details>` の一覧。全文はページに入れない。§5.4） | 常に |
@@ -147,6 +148,15 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 取得の失敗は、部品の `role="alert"`（`data-testid=ffmpeg-download-install-error`）に出る: SHA-256・サイズの不一致（**ファイルは削除し、使わない**）、アーカイブの中身の不一致、実行できない、配布元が 404（mam を更新する）・そのほかの HTTP エラー、通信の失敗。取得に失敗しても、前に入れた版はそのまま残る。CSRF の対象（`POST`・`DELETE`）。
 
+## 5.2.2 FaceFusion の保存（Issue #995）
+
+| 操作 | 成功の本文 | 失敗 |
+|------|-----------|------|
+| `GET /settings/facefusion` | 分類の本文（Python とフォルダの欄・探した結果・版と自己申告のライセンス・モデルの表（ライセンスの級つき）・標準の注意・ライセンスの出典のリンク） | — |
+| `PUT /settings/facefusion`（フォーム `python`・`path`。空は指定なし） | **200**。分類の本文（`#facefusion-panel`。`hx-swap="outerHTML"`）に `role="status"` の結果（「保存しました。次の顔の入れ替えから使われます」「パスの指定を解除しました…」） | 絶対パスでない・実行ファイルでない・`facefusion.py` が無い・FaceFusion のフォルダでない: **422**、`role="alert"` の理由と、入力した値を欄に残す。何も書かない。設定ファイル（`facefusion.json`）が壊れているときは分類に `facefusion-problem`。書き込めないときは 500 |
+
+ルートは `Services.FaceFusion`（`facefusionsettings.Service`）があるときだけ登録する（ない構成では 404）。ffmpeg と違い、保存したパスは**次の入れ替えからすぐ**使われる（起動時に組み立てるツールが無いため）。方針・引数・モデルの表は [../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md) §2。
+
 ## 5.3 音声・口パクの保存（Issue #924）
 
 | 操作 | 成功の本文 | 失敗 |
@@ -189,3 +199,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.8 | 2026-11-01 | §1 の表に `GET /settings/audio` を、§5.3 に `PUT /settings/audio`（声・口パクのプロバイダーとフォールバックの保存）を足した | Issue #924 |
 | 1.9 | 2026-11-02 | §1 の表に `GET /settings/licenses` を、§5.4 に `GET /settings/licenses/:id`（項目の全文の断片）を足した | Issue #910 |
 | 1.10 | 2026-11-03 | LLM のモーダルのモデル名を、プロバイダーごとの候補のプルダウンにした。`GET /settings/llm/agents/:agent/models/:role` を足し、`PUT /settings/llm/agents/:agent` に `*.model_custom` を足した | Issue #988 |
+| 1.11 | 2026-11-03 | §5.2.2 に `PUT /settings/facefusion`（FaceFusion の Python とフォルダのパス）を足した | Issue #995 |

@@ -16,10 +16,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/repository/reciperepo"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/face"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/exposedgate"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
@@ -30,6 +31,7 @@ import (
 // before Recover, which fails the jobs of a kind without handler). A slot assignment of an import goes through the
 // World service, so its locks and kind checks apply.
 func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, logger *slog.Logger) *gentest.Service {
+	swap, swapCheck := face.Swapper(facefusionsettings.Default(cfg.DataDir)) // FaceFusion, the external face swapper (#995)
 	g := gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
 		DataDir: cfg.DataDir, AssetsDir: cfg.AssetsDir(),
@@ -49,8 +51,10 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		BundledEndpoint: modelmanager.BundledEndpoint,
 		Translator:      translator,
 		Poses:           newPoseLibrary(logger),
-		FaceCrop:        faceCropper(faces),
-		Logger:          logger,
+		FaceCrop:        face.Crop(faces),
+		FaceScore:       face.Score(faces),
+		FaceFusion:      swap, FaceFusionCheck: swapCheck,
+		Logger: logger,
 	})
 	g.Register()
 	match.New(match.Deps{Gentest: g, Matcher: matcher}) // the runner of the prompt match is found again with match.From
@@ -71,15 +75,4 @@ func newPoseLibrary(logger *slog.Logger) *poses.Library {
 		return nil
 	}
 	return lib
-}
-
-// faceCropper is the cut of the face reference of the generation test to the face (#960): it uses the face detector of the Judge, so
-// it works when the face models and the ONNX Runtime library are there, and is nil (the picture goes whole) when they are not.
-func faceCropper(faces facesim.Engine) runner.FaceCropFunc {
-	if faces == nil {
-		return nil
-	}
-	return func(ctx context.Context, image []byte) ([]byte, bool, error) {
-		return facesim.CropFace(ctx, faces, image)
-	}
 }

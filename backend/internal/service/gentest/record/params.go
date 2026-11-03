@@ -44,6 +44,10 @@ type ResultParams struct {
 	Inpaint *Inpaint `json:"inpaint,omitempty"`
 	// Upscale is the enlargement the result is (a result of "make it larger"): the source and the values (Upscale). Absent: a generated result.
 	Upscale *Upscale `json:"upscale,omitempty"`
+	// FaceSwap is set for a result of "swap the face" (FaceFusion, an external tool): the picture it swapped into and the models. Absent: a generated result.
+	FaceSwap *FaceSwap `json:"face_swap,omitempty"`
+	// FaceSimilarity is how much the face of the result is the face of the batch's reference of the role "face" (measured when it was made).
+	FaceSimilarity *FaceSimilarity `json:"face_similarity,omitempty"`
 }
 
 // Inpaint is a partial redraw: the strength that was sent (nil: the template's own), where the source picture came from, and the

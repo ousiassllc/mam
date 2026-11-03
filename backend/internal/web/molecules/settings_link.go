@@ -11,6 +11,7 @@ var globalSettingsLabels = map[string]string{
 	paths.SettingsLocalModels: "ローカル・代替モデルの設定を開く",
 	paths.SettingsMCP:         "MCP サーバーの設定を開く",
 	paths.SettingsFFmpeg:      "ffmpeg の設定を開く",
+	paths.SettingsFaceFusion:  "FaceFusion の設定を開く",
 	paths.SettingsUpdate:      "バージョンとアップデートを開く",
 }
 

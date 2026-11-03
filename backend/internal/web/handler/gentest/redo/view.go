@@ -26,6 +26,7 @@ func ActionsOf(d record.ResultDetail, inpaintURL, redrawFrom string, upscale boo
 	switch {
 	case d.Inpaint != nil:
 		a.SimilarURL, a.ReplayURL = inpaintAgainURL(d.ID, false), inpaintAgainURL(d.ID, true)
+	case d.FaceSwap != nil: // a swap has no sampling to repeat: its inputs are the picture and the face
 	case d.Upscale != nil:
 		a.UpscaleAgainURL = upscaleAgainURL(d.Upscale)
 	default:

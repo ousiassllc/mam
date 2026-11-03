@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/exportscreen"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/faceswapscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/inpaintscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
@@ -54,6 +55,7 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	matchscreen.Register(engine, svc)
 	inpaintscreen.Register(engine, svc)
 	exportscreen.Register(engine, svc)
+	faceswapscreen.Register(engine, svc) // #995
 
 	engine.GET(paths.GenerationTestPrompts(), h.Prompts)
 	engine.DELETE(paths.GenerationTestPart("prompts", ":id"), h.DeletePrompt)
