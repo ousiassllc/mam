@@ -1,0 +1,91 @@
+{
+ "id": "nsfw-anime-wan22-5b",
+ "name": "NSFW-Anime-wan-5B 3.0Pro（Wan 2.2 TI2V 5B・アニメ・テキスト／先頭フレームから動画）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "traits": {
+  "params_b": 5,
+  "params_label": "5B",
+  "uncensored": true,
+  "speed": "standard"
+ },
+ "description": "【小（〜5B）・T2V と I2V・音声なし】Wan 2.2 TI2V 5B をアニメ動画で微調整した NSFW-Anime-wan-5B の最終版 3.0Pro（成人向け。作者は「成人向け（NSFW）の内容への偏りがあり、普通のプロンプトでも全年齢向けでない内容が出うる」と書く）。アニメ調の動画に向く、小ティアの非検閲 TI2V（拡散モデル fp16 約 10.0 GB・テキストエンコーダー・VAE を合わせて約 18 GB）。テキストからも先頭フレーム 1 枚からも作れる。720p・24fps・フレーム数は 4n+1。サンプラーは作者の既存ワークフローの値（40 ステップ・cfg 5・UniPC）。16 GB の GPU に収まる。注意: 作者は戦闘・高速な動きの強化は未検証と書き、リポジトリは一度削除されて履歴から復元されたもので、端から端までの GPU 推論は作者も再検証待ちと書く。学習データの権利も未確認のため、ライセンス本文は Apache-2.0 だが商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は fp8 のテキストエンコーダーを含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
+ "files": [
+  {
+   "name": "nsfw_anime_wan_5b_3.0pro.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/yaleiyaleichiling/NSFW-Anime-wan-5B/resolve/99b77d1705e88bfe02c80e88c349f5c1d89ce93b/3.0Pro.safetensors",
+   "sha256": "69299be08b667a6a8b6d1a02727afd8e31a87a47daf508e1addec6b6dab83acf",
+   "size": 9999658848
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan2.2_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan2.2_vae.safetensors",
+   "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156",
+   "size": 1409400960
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "wan22-ti2v-5b（fp16）と同じ構造・同じ大きさ（拡散モデルのテンソルは FP16 の 825 個・約 50 億個で、ファイルは 9,999,658,848 バイト。safetensors のヘッダーで確認、2026-11-03）。wan22-ti2v-5b の 16 GB の目安（ComfyUI 公式ガイドは「ネイティブ offload で 8 GB でも収まる」）をそのまま使った mam の推定。作者のカードは VRAM を書かない。mam の実機（16 GB）では未確認",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0（作者のリポジトリの LICENSE。学習データの権利は未確認）",
+  "url": "https://huggingface.co/yaleiyaleichiling/NSFW-Anime-wan-5B/blob/99b77d1705e88bfe02c80e88c349f5c1d89ce93b/LICENSE",
+  "summary": "リポジトリに Apache-2.0 の LICENSE 本文があり、カードも license: apache-2.0 と宣言し、ベースの Wan 2.2 TI2V 5B（Wan-AI）も Apache-2.0。ただしカードは、リポジトリが一度削除されて残っていたファイルと履歴から復元されたこと、学習に使ったアニメ動画の授権の状況が記録されていないこと、「使用と再配布は適用されるライセンスと第三者の権利に従うこと」を書く。学習データの権利が確かめられないので、商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Wan 2.2 TI2V 5B・Wan-AI）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   },
+   {
+    "part": "微調整の重み（NSFW-Anime-wan-5B 3.0Pro）",
+    "name": "Apache License 2.0（LICENSE 本文あり。アニメ動画の学習データの授権は未確認）",
+    "url": "https://huggingface.co/yaleiyaleichiling/NSFW-Anime-wan-5B",
+    "commercial": "unknown"
+   },
+   {
+    "part": "テキストエンコーダー・VAE（Comfy-Org の再配布）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   }
+  ],
+  "notice": "この mam のインストール先に取得するモデルです。LICENSE 本文は Apache-2.0 ですが、アニメ動画の学習データの授権が記録されておらず、リポジトリは復元されたものです。商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "nsfw-anime-wan22-5b",
+   "template": "txt2video-wan22-5b-nsfw-anime"
+  },
+  {
+   "name": "nsfw-anime-wan22-5b-i2v",
+   "template": "img2video-wan22-5b-nsfw-anime"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つファイルを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-03 に確認。このモデルのファイルに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（2026-11-03）。Mac の実機では未確認"
+ }
+}

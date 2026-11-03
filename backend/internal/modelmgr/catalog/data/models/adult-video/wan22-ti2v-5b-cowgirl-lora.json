@@ -1,0 +1,97 @@
+{
+ "id": "wan22-ti2v-5b-cowgirl-lora",
+ "name": "Wan 2.2 TI2V 5B + 騎乗位・背面騎乗位 LoRA（C0WG1RL + REV3RSE）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "traits": {
+  "params_b": 5,
+  "params_label": "5B",
+  "uncensored": true,
+  "speed": "standard"
+ },
+ "description": "【小（〜5B）・T2V と I2V・音声なし】wan22-ti2v-5b-fp8（ベースは共有）に、騎乗位・背面騎乗位に特化した LoRA「C0WG1RL + REV3RSE」の TI2V-5B v2（約 0.16 GB）を重ねる構成（成人向け）。汎用の非検閲モデルではなく、その姿勢の動画に絞った LoRA で、他の成人向けの表現は足さない。ベースを導入済みなら取得するのは LoRA だけ。テキストからも先頭フレーム 1 枚からも作れる。720p・24fps・20 ステップ・uni_pc・cfg 5。LoRA の強さは 1.0。トリガーは背面騎乗位が r3v3rs3_c0wg1rl、騎乗位が c0wg1rl（作者は r3v3rs3_c0wg1rl が両方に使えて最も効くと書く）。16 GB の GPU に収まる。注意: LoRA は Civitai の原本の第三者のミラーで、ライセンスの記載が無く（Civitai の原本の表示は RentCivit・生成物の販売のみ）、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は fp8 を含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
+ "trigger_words": [
+  "r3v3rs3_c0wg1rl",
+  "c0wg1rl"
+ ],
+ "files": [
+  {
+   "name": "Wan2_2-TI2V-5B_fp8_e4m3fn_scaled_KJ.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/033a4e487f60220b3d6e469599a6aebc46e13cee/TI2V/Wan2_2-TI2V-5B_fp8_e4m3fn_scaled_KJ.safetensors",
+   "sha256": "a83f54a2450d5471e5721e59ab556afa2d8793e30280713e3796b254c5286b48",
+   "size": 5277255650
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan2.2_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan2.2_vae.safetensors",
+   "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156",
+   "size": 1409400960
+  },
+  {
+   "name": "c0wg1rl_reverse_c0wg1rl_wan22_5b_ti2v_e380.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/UnifiedHorusRA/WAN_C0WG1RL_REV3RSE_C0WG1RL_-_T2V_I2V_LoRa/resolve/d0ecbc742146d8c23aba9c040ec06d301ecd53ec/c0wg1rl.3_wan22-5b-ti2v%20-%20e380.safetensors",
+   "sha256": "65275f02cd8c0aaee184a583d1e64264c0dba2725d759647cd3e03f578796c94",
+   "size": 161292752,
+   "source_note": "第三者のミラー（UnifiedHorusRA）。原本は Civitai の WAN COWGIRL + REVERSE COWGIRL LoRA（model 1428098 の version 2127795「wan2.2 - TI2V-5B v2」）で、SHA-256 が一致することを 2026-11-03 に確かめた（Civitai の API の hashes と HF の LFS の oid、ダウンロードしたファイルの sha256sum）。"
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "wan22-ti2v-5b-fp8 と同じ（LoRA は約 0.16 GB 増えるだけ）。16 GB の目安は wan22-ti2v-5b-fp8 の mam の推定（ComfyUI 公式ガイドは「ネイティブ offload で 8 GB でも収まる」）。mam の実機（16 GB）では未確認",
+  "estimate": true
+ },
+ "license": {
+  "id": "unspecified",
+  "version": "1",
+  "name": "ライセンスの記載なし（C0WG1RL + REV3RSE C0WG1RL LoRA・ERA5ER）",
+  "url": "https://civitai.com/models/1428098",
+  "summary": "ライセンスの記載が無い（ミラーの HF リポジトリは license を持たず、タグは art だけ）。原本（Civitai の model 1428098）の表示は、商用の用途として RentCivit（Civitai 上の生成サービス）と生成物の販売だけを認め、Civitai の外での商用は認められないと読める。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。ベースの Wan 2.2 TI2V 5B は Apache-2.0。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Wan 2.2 TI2V 5B。fp8 は Kijai の変換）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   },
+   {
+    "part": "LoRA（C0WG1RL + REV3RSE C0WG1RL・ERA5ER）",
+    "name": "ライセンスの記載なし",
+    "url": "https://civitai.com/models/1428098",
+    "commercial": "unknown"
+   }
+  ],
+  "notice": "この mam のインストール先に取得するモデルです。LoRA のライセンスの記載が無いため、商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-ti2v-5b-cowgirl-lora",
+   "template": "txt2video-wan22-5b-lora"
+  },
+  {
+   "name": "wan22-ti2v-5b-cowgirl-lora-i2v",
+   "template": "img2video-wan22-5b-lora"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つファイルを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-03 に確認。このモデルのファイルに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（2026-11-03）。Mac の実機では未確認"
+ }
+}
