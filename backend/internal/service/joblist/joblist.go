@@ -13,6 +13,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/logging"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -128,6 +129,8 @@ type payload struct {
 	ProjectID string `json:"project_id"`
 	BatchID   string `json:"batch_id"`
 	Target    string `json:"target"`
+	// HF is the pin of an install from Hugging Face (the job of the model manager keeps it next to its target).
+	HF *hfplan.Payload `json:"hf"`
 }
 
 func (r *reader) entry(ctx context.Context, row domain.Job) (Entry, error) {

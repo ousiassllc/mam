@@ -109,6 +109,7 @@
 - **「使う」**: `GET /generation-test?tier=detail&recipe=<id>`（フォームの差し替えは `GET /generation-test/form` に同じクエリ）。モデルを選び、詳細設定・LoRA・縦横比・画面に出す値を入れる。**今のプロンプト・入力画像は変えない**。ネガティブは、空のプロンプトにだけ入れ、強さは、強さを持たない入力画像にだけ入れる。レシピが品質（速い／きれい）を持ち、ステップ数・CFG が無いときは、そのモデルのプリセットの値を詳細設定に入れる（かんたん → こだわりと同じ `tierform.Carry`）。
 - **かんたんの選択肢**: 「かんたんに出す」にしたレシピは、かんたんの「やりたいこと」の下に「保存したレシピ」として並ぶ（`data-testid="gt-recipe-choices"`。選択肢の値は `recipe:<id>`、見た目は `molecules/pick` で、やりたいことと同じ）。選ぶと、`easy-pick` の区画が**そのモデル**と「レシピの設定で作ります」の行に変わり（品質のボタンは出さない: レシピが steps・cfg を持つ）、サイズのボタンは**レシピのサイズ**に変わる（`hx-swap-oob`）。見積りは、モデルと設定をレシピから決める（`tierform.Resolve` → `recipe.Service.Apply`）ので、確認の hidden にレシピの値が入り、実行は同じリクエストを走らせる。かんたんからこだわりへ移るときも、選んだレシピの設定が入る。
 - **使えないレシピ**: モデルが削除された・導入されていない・今は呼べない・成人ゲートが閉じている・設定「商用OKのモデルだけを使う」や OS・GPU の条件に合わないときは、**消さずに**、一覧に「使えません: 理由」（`data-testid="gt-recipe-reason"`）を出し、「使う」を出さない。かんたんの選択肢には理由つきで残り、選ぶと「レシピ「…」は使えません: …」を出して見積りを押せなくする。成人ゲート・商用の絞り込み・OS／GPU の判定は、かんたんのやりたいことと**同じ関数**（`Service.Model` と `intent.Excluded`）を使う。
+- **成人ゲートが閉じているとき（Issue #992）**: 成人向けモデルのレシピは、一覧・かんたんの選択肢・MCP の一覧のどれにも、モデルの名前や設定（ネガティブ・LoRA・画面に出す値など）を出さない。モデル名の欄は「成人向けのモデル」、理由は上の「成人ゲートが閉じている」の文言で、レシピの名前・「かんたんに出ています」の印・削除はそのまま使える。「使う」は出さず、かんたんで選んでも設定は入らない。ゲートを開くと元の表示に戻る（保存した設定は消えていない）。
 - **MCP**: `list_generation_recipes`・`save_generation_recipe`・`update_generation_recipe`・`delete_generation_recipe`、`estimate_generation_test`・`run_generation_test` の `recipe`（[../api/mcp-tools-generation-test.md](../api/mcp-tools-generation-test.md)）。
 
 ## 10. ComfyUI の段（Issue #977 ステージ 2）

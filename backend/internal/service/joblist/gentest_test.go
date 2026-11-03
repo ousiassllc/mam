@@ -48,3 +48,37 @@ func TestRecent_ABatchNamesItsModelsAndCountsItsResults(t *testing.T) {
 	assert.Equal(t, joblist.Succeeded, done[0].State)
 	assert.NotNil(t, done[0].FinishedAt)
 }
+
+// The age gate closed (Issue #992): a batch of the generation test does not name a model that is hidden (as the install of a catalog model does not);
+// the models that are not hidden stay in its subject.
+func TestRecent_ABatchDoesNotNameAHiddenModel(t *testing.T) {
+	hidden := false
+	rig := gentesttest.New(t, gentesttest.WithHidden(func(id string) bool { return hidden && id == "flux-2" }))
+	svc := servicetest.New(t, service.Deps{DB: rig.DB, Credentials: credentialtest.New()})
+	list := joblist.New(joblist.Deps{
+		Table: jobrecent.New(rig.DB), Shots: repository.NewGenerationRepository(rig.DB), Projects: svc.Projects, Gentest: rig.Svc,
+	})
+	ref, err := rig.Confirmed(gentest.Request{Media: "image", Models: []string{"flux-2", "nano-banana"}, Prompts: []gentest.PromptInput{{Prompt: "a fox"}}})
+	require.NoError(t, err)
+	batch := rig.Wait(ref.BatchID)
+	require.Len(t, batch.Results, 2)
+	labels := map[string]string{}
+	for _, res := range batch.Results {
+		labels[res.Model] = res.ModelLabel
+	}
+	require.NotEmpty(t, labels["flux-2"])
+	require.NotEmpty(t, labels["nano-banana"])
+
+	open, err := list.Recent(t.Context())
+	require.NoError(t, err)
+	require.Len(t, open, 1)
+	assert.Contains(t, open[0].Subject, labels["flux-2"], "the gate is open: both models are named")
+	assert.Contains(t, open[0].Subject, labels["nano-banana"])
+
+	hidden = true
+	closed, err := list.Recent(t.Context())
+	require.NoError(t, err)
+	require.Len(t, closed, 1)
+	assert.NotContains(t, closed[0].Subject, labels["flux-2"])
+	assert.Equal(t, labels["nano-banana"], closed[0].Subject)
+}
