@@ -113,6 +113,8 @@ func UnavailableFor(ctx context.Context, vendor string, err error) error {
 		return un(localvoice.KindConsent, "")
 	case errors.Is(err, localruntime.ErrBusy):
 		return un(localvoice.KindNotInstalled, "導入の最中です。終わってからもう一度実行してください")
+	case errors.Is(err, localruntime.ErrTraining):
+		return un(localvoice.KindProcess, "声の学習が動いています。終わってからもう一度実行してください")
 	case errors.Is(err, localruntime.ErrNotInstalled), errors.Is(err, localruntime.ErrNotFound):
 		return un(localvoice.KindNotInstalled, "")
 	case errors.As(err, &weights):

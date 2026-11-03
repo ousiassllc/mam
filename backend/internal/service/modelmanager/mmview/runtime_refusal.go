@@ -28,6 +28,8 @@ func RefuseRuntime(err error) (RefusalKind, string) {
 		return RefusalConflict, "導入されていません。先に導入してください"
 	case errors.Is(err, localruntime.ErrBusy):
 		return RefusalConflict, "導入が実行中です。終わってから、または中断してからやり直してください"
+	case errors.Is(err, localruntime.ErrTraining):
+		return RefusalConflict, "声の学習が動いています。終わってから、または中止してからやり直してください"
 	case errors.Is(err, store.ErrNotWritable):
 		return RefusalConflict, "mam.exe のあるフォルダに書き込めません。書き込める場所に置いてください"
 	}
