@@ -24,10 +24,10 @@ Issue #1006・#1007。設定を保存しても動いているアプリに反映�
 
 画面のボタンか MCP の `restart_app` が呼ぶ。**頼まれたときだけ**動く（自動では再起動しない。MCP は `confirm: true` が無ければ動かない（必須の引数: 省略はスキーマで拒否、`false` は `validation`））。
 
-- 動いている作業を `Deps.Busy` で調べる（`internal/app/restart.go`）: `jobs`（ジョブキューの `running` / `queued`。モデル等の導入を除く）・`editing`（編集の工程・AUTO の連鎖）・`media`（ffmpeg）・`workflow_run`（保存したワークフローの実行＝同梱 ComfyUI が生成中）・`download`（モデル・エンジン・ノード・ローカルランタイムの導入ジョブと ffmpeg のダウンロード）・`check_failed`（調べられなかった。何も無いとは見なさない）。自動更新の安全ゲート（desktop.md §6.2）と同じ情報源に、ダウンロードとワークフロー実行を足したもの。
+- 動いている作業を `Deps.Busy` で調べる（`internal/app/restart.go`）: `jobs`（ジョブキューの `running` / `queued`。モデル等の導入を除く）・`editing`（編集の工程・AUTO の連鎖）・`media`（ffmpeg）・`workflow_run`（保存したワークフローの実行＝同梱 ComfyUI が生成中）・`download`（モデル・エンジン・ノード・ローカルランタイムの導入ジョブと ffmpeg のダウンロード、ポーズ集の導入、Codex エンジンの導入）・`check_failed`（調べられなかった。何も無いとは見なさない）。自動更新の安全ゲート（desktop.md §6.2）と同じ情報源に、ダウンロードとワークフロー実行を足したもの。
 - 何も動いていなければ、すぐに前面（`Options.Restart`）へ終了と再起動を頼む。動いているとき、`when_busy`:
   - `refuse`（既定）: 再起動せず、動いている作業を `conflict`（画面は 409 と一覧）で返す。何も変えない。
-  - `wait`: すぐ `state: "waiting"` を返し、5 秒ごとに見て、何も動かなくなったら再起動する。上限（既定 30 分・最大 24 時間）を過ぎたら再起動せずにやめる。待っている間は `get_health` の `restart_waiting` が `true`。
+  - `wait`: すぐ `state: "waiting"` を返し、5 秒ごとに見て、何も動かなくなったら再起動する。上限（既定 30 分・最大 24 時間）を過ぎたら再起動せずにやめる。待っている間は `get_health` の `restart_waiting` が `true`。待っている間に別の要求が先に再起動を始めたときは、待ちは何もせずに終わる（前面へ頼むのは 1 回だけ）。
   - `stop`（MCP だけ。画面には出さない）: 中断して今すぐ再起動する。生成などのジョブは `interrupted by shutdown` で失敗し（再開できるジョブは再起動後に続く）、編集・ワークフロー実行は中断される。**`download` が動いていれば `stop` でも `conflict`**: 数十 GB の途中のファイルを、誰も待たない再起動で残さないため。止めたいなら導入をキャンセルするか、`wait` で待つ。
 - **ローカル ComfyUI を壊さない**: 再起動は自動更新と同じ穏やかな終了（`Server.Stop` → サービスの `Close`: ジョブキューの停止・同梱 ComfyUI の子プロセスの停止・ダウンロードの中止（ffmpeg は途中のファイルを残し、次の導入が続きから再開））を通る。プロセスを強制終了しない。
 - ブラウザ版（`cmd/server`。自分のプロセスを再起動する前面が無い）は `Options.Restart` が無く、`restart_app` は `unavailable`、画面は「アプリを終了して、起動し直してください」と出す。
@@ -48,7 +48,7 @@ Issue #1006・#1007。設定を保存しても動いているアプリに反映�
 
 ## 6. テストできること・できないこと
 
-- 単体テスト: `Request` の 3 つの扱い・`stop` が `download` を断ること・`wait` の待ちと打ち切り・再起動できない版・`RelaunchCommand`（Windows・macOS のコマンドの組み立て）・`Restarter`（終了の要求と、サーバーが止まってからの起動の順序・起動の失敗）・`WaitForPredecessor`（実際の子プロセスの終了）・`Client.Apply`・`llmassign` の適用・MCP `restart_app`（`confirm` なしは動かない・refuse の conflict・wait・stop・unavailable）・画面の欄。**再起動の実行部分は差し替え（`Deps.Restart`・`Restarter.start`）で検証し、実プロセスは再起動しない。**
+- 単体テスト: `Request` の 3 つの扱い・`stop` が `download` を断ること・`wait` の待ちと打ち切り・待ちの間に別の要求が先に再起動したときに前面へ 2 度頼まないこと・再起動できない版・`RelaunchCommand`（Windows・macOS のコマンドの組み立て）・`Restarter`（終了の要求と、サーバーが止まってからの起動の順序・起動の失敗）・`WaitForPredecessor`（実際の子プロセスの終了）・`Client.Apply`・`llmassign` の適用・MCP `restart_app`（`confirm` なしは動かない・refuse の conflict・wait・stop・unavailable）・画面の欄。**再起動の実行部分は差し替え（`Deps.Restart`・`Restarter.start`）で検証し、実プロセスは再起動しない。**
 - **未確認（実機が要る）**: Windows で本物の `Quit()` → 新しいプロセスの起動 → 旧プロセスの終了待ち → ウィンドウが開くこと（切り離したプロセスが親の終了後も生き残ること、単一インスタンスのロックの解放）、macOS で本物の `open` による再起動と Dock・ウィンドウ、同梱 ComfyUI が再起動の前後で止まって起動し直すこと、ダウンロード中の `refuse` / `stop` の実機の挙動、WebView2 / WKWebView での欄の表示と保存後の読み直し。
 
 ## 改訂履歴
@@ -56,3 +56,4 @@ Issue #1006・#1007。設定を保存しても動いているアプリに反映�
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-11-03 | 新規作成。LLM の割り当ての即時反映、再起動が要る設定、再起動の要求（`refuse` / `wait` / `stop`）、画面の欄、再起動の実行 | Issue #1006・#1007 |
+| 1.1 | 2026-11-03 | §2: `Busy` の `download` に、ポーズ集の導入と Codex エンジンの導入を足した。§3: `wait` の待ちは、待っている間に別の要求が先に再起動を始めていたら、前面へ再起動を重ねて頼まない | 統合後レビューの指摘（再起動の確認が、ポーズ集と Codex の導入を数えず、待ちが再起動を 2 度頼んだ） |

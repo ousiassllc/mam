@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,12 +16,19 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/app/restartwork"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/apprestart"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses/posestest"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/restartpending"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
@@ -84,7 +94,7 @@ func TestBusy_ReadsTheJobTable(t *testing.T) {
 	db := testdb.Open(t)
 	services := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
 	jobs := repository.NewJobRepository(db)
-	busy := restartwork.Busy(services, jobs, ffmpegdl.New(ffmpegdl.Options{Logger: slog.New(slog.DiscardHandler)}))
+	busy := restartwork.Busy(services, jobs, ffmpegdl.New(ffmpegdl.Options{Logger: slog.New(slog.DiscardHandler)}), nil)
 	assert.Empty(t, busy(context.Background()), "an idle app")
 
 	_, err := jobs.Create(context.Background(), domain.JobGenerate, json.RawMessage(`{}`))
@@ -101,4 +111,70 @@ func TestBusy_ReadsTheJobTable(t *testing.T) {
 		kinds = append(kinds, b.Kind)
 	}
 	assert.Equal(t, []string{"jobs", "download"}, kinds, "a model install is a download: 'stop' does not cut it")
+}
+
+func downloadMessages(busy []apprestart.Busy) []string {
+	var out []string
+	for _, b := range busy {
+		if b.Kind == apprestart.KindDownload {
+			out = append(out, b.Message)
+		}
+	}
+	return out
+}
+
+// An install of the pose library is a download that a restart would cut: it is listed while it runs (and so is refused under "stop").
+func TestBusy_APoseLibraryInstallIsADownload(t *testing.T) {
+	db := testdb.Open(t)
+	services := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
+	rig := posestest.New(t)
+	services.Gentest = &gentest.Service{Deps: gentest.Deps{Poses: rig.Lib}}
+	busy := restartwork.Busy(services, repository.NewJobRepository(db), ffmpegdl.New(ffmpegdl.Options{Logger: slog.New(slog.DiscardHandler)}), nil)
+	assert.Empty(t, busy(context.Background()), "an idle library")
+
+	var during []string
+	require.NoError(t, rig.Lib.Install(context.Background(), true, func(int64, int64) { during = downloadMessages(busy(context.Background())) }))
+
+	assert.Equal(t, []string{"ポーズ集の導入"}, during)
+	assert.Empty(t, busy(context.Background()), "an install that ended is not running")
+}
+
+// The download of the Codex engine is a download too: the server of the asset holds the request, so the install is running while it is looked at.
+func TestBusy_ACodexEngineInstallIsADownload(t *testing.T) {
+	release := make(chan struct{})
+	entered := make(chan struct{}, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+		http.Error(w, "gone", http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+	cat := catalog.Default()
+	cat.Assets = map[string]catalog.Asset{catalog.Key("windows", "amd64"): {
+		URL: srv.URL + "/codex.zip", Format: catalog.FormatZip, SHA256: "00", Size: 10, Exe: "codex.exe", ExeSHA256: "00", ExeSize: 10,
+	}}
+	svc := codex.New(codex.Options{
+		DataDir: t.TempDir(), Platform: "windows", Arch: "amd64", Catalog: cat, Layout: engine.Layout{Root: filepath.Join(t.TempDir(), "codex")},
+		Fetch:     fetch.Options{Client: srv.Client(), CheckURL: func(*url.URL) error { return nil }},
+		FreeBytes: func(string) (uint64, error) { return 1 << 40, nil },
+		Logger:    slog.New(slog.DiscardHandler),
+	})
+	db := testdb.Open(t)
+	services := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
+	busy := restartwork.Busy(services, repository.NewJobRepository(db), ffmpegdl.New(ffmpegdl.Options{Logger: slog.New(slog.DiscardHandler)}), svc)
+	assert.Empty(t, busy(context.Background()), "no install yet")
+
+	started, err := svc.StartInstall()
+	require.NoError(t, err)
+	require.True(t, started)
+	<-entered
+	t.Cleanup(func() { close(release); svc.CancelInstall(); svc.WaitInstall() })
+
+	assert.Equal(t, []string{"Codex エンジンの導入"}, downloadMessages(busy(context.Background())))
 }
