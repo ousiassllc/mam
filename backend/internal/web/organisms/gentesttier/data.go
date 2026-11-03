@@ -41,6 +41,9 @@ const (
 	FieldRecipeRename = "recipe_rename"
 	FieldKeepIntent   = "easy_intent"
 	FieldKeepQuality  = "easy_quality"
+	// FieldDropped is what the way from the detail tier to the easy one adds to its request (static/src/components/gentest-tiers/refine.ts): the keys of the detailed
+	// settings the reader had changed, which the easy tier does not hold (Issue #1000: the form says that they are gone). Nothing reads it but the notice.
+	FieldDropped = "dropped"
 )
 
 // IDs of the parts the handlers swap.
@@ -136,7 +139,7 @@ func Href(tier string) string { return paths.GenerationTest() + "?" + FieldTier 
 func SwitchAttrs(tier string) templ.Attributes {
 	vals, _ := json.Marshal(map[string]string{FieldTier: tier})
 	return templ.Attributes{
-		"href": templ.SafeURL(Href(tier)), "hx-get": paths.GenerationTestPart("form"), "hx-include": "#" + FormID, "hx-vals": string(vals),
+		"data-gt-tier-switch": tier, "href": Href(tier), "hx-get": paths.GenerationTestPart("form"), "hx-include": "#" + FormID, "hx-vals": string(vals),
 		"hx-target": "#" + FormID, "hx-swap": "outerHTML", "hx-push-url": Href(tier),
 	}
 }
@@ -160,7 +163,7 @@ func RecipeUseAttrs(id string) templ.Attributes {
 	vals, _ := json.Marshal(map[string]string{FieldTier: TierDetail, FieldRecipe: id})
 	href := Href(TierDetail) + "&" + FieldRecipe + "=" + url.QueryEscape(id)
 	return templ.Attributes{
-		"href": templ.SafeURL(href), "hx-get": paths.GenerationTestPart("form"), "hx-include": "#" + FormID, "hx-vals": string(vals),
+		"href": href, "hx-get": paths.GenerationTestPart("form"), "hx-include": "#" + FormID, "hx-vals": string(vals),
 		"hx-target": "#" + FormID, "hx-swap": "outerHTML", "hx-push-url": href,
 	}
 }

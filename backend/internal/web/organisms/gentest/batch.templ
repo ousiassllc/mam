@@ -3,6 +3,7 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -86,7 +87,9 @@ templ BatchBox(b Batch) {
 								<td class="p-2 align-top" data-testid="gt-cell">
 									<div class="flex flex-wrap gap-2">
 										for _, card := range cell {
-											@ResultCard(card)
+											<div id={ resulttile.ID(card.ID) } class="w-32">
+												@resulttile.Tile(card, false)
+											</div>
 										}
 									</div>
 								</td>
@@ -109,43 +112,4 @@ func batchTone(tone string) atoms.BadgeTone {
 		return atoms.BadgeInfo
 	}
 	return atoms.BadgeNeutral
-}
-
-func resultTone(status string) atoms.BadgeTone {
-	switch status {
-	case "succeeded":
-		return atoms.BadgeOK
-	case "failed", "cancelled":
-		return atoms.BadgeError
-	case "running":
-		return atoms.BadgeInfo
-	}
-	return atoms.BadgeNeutral
-}
-
-// ResultCard is a result: the file (an image or a video) or its status, the settings in short and a link to the detail.
-templ ResultCard(c Card) {
-	<article class="flex w-44 flex-col gap-1 rounded-md border border-neutral-800 p-2 text-xs" data-testid="gt-card" data-status={ c.Status } data-result={ c.ID }>
-		if c.FileURL != "" && c.Video {
-			<video class="h-28 w-full rounded bg-black object-contain" src={ c.FileURL } controls preload="metadata"></video>
-		} else if c.FileURL != "" {
-			<img class="h-28 w-full rounded bg-black object-contain" src={ c.FileURL } alt={ c.Prompt } loading="lazy"/>
-		} else {
-			<div class="flex h-28 items-center justify-center rounded bg-neutral-900 text-neutral-400">
-				@atoms.BadgeWith(resultTone(c.Status), c.StatusText, templ.Attributes{"data-testid": "gt-card-status"})
-			</div>
-		}
-		if c.Error != "" {
-			<p class="break-words text-red-300" data-testid="gt-card-error">{ c.Error }</p>
-		}
-		<p class="flex flex-wrap items-center gap-1 break-words text-neutral-400">
-			@commercial.Mark(c.Answer)
-			if c.Meta != "" {
-				<span>{ c.Meta }</span>
-			}
-		</p>
-		if c.Detail != "" {
-			<a id={ "gt-detail-" + c.ID } class="underline" href={ templ.SafeURL(c.Detail) } aria-label={ "結果の詳細: " + c.Model }>詳細</a>
-		}
-	</article>
 }

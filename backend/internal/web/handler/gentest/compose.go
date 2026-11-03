@@ -1,6 +1,7 @@
 package gentest
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 	"slices"
@@ -175,7 +176,7 @@ func (h Handlers) Form(c *gin.Context) {
 	}
 	recipeNote := h.recipeNotice(c.Request.Context(), c, &f) // "使う" of a recipe, or the easy tier left with a recipe chosen (#977)
 	form := h.compose(c.Request.Context(), f)
-	form.Notice = recipeNote
+	form.Notice = cmp.Or(recipeNote, f.tier.DroppedNotice()) // the switch to the easy tier says what it lost (#1000)
 	gtshare.Render(c, http.StatusOK, view.ComposeForm(form))
 }
 
@@ -282,6 +283,11 @@ func (h Handlers) refRow(ctx context.Context, in gentest.RefInput) (view.Ref, bo
 			return row, false
 		}
 		row = historyRef(d.ResultView)
+	case gentest.FromBatchInput:
+		if _, err := h.Svc.InputFile(ctx, r.ID); err != nil {
+			return row, false
+		}
+		row = view.Ref{Value: r.String(), Label: "アップロードした画像（前の生成の入力）", ThumbURL: paths.GenerationTestPart("inputs", r.ID, "file")}
 	case gentest.FromPoseLibrary:
 		var ok bool
 		if row, ok = posescreen.RefOf(h.Svc, r.ID); !ok {

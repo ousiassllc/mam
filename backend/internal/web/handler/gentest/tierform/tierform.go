@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,8 @@ import (
 type State struct {
 	Tier, Intent, Quality string
 	FromEasy              bool
+	// Dropped are the keys of the detailed settings that were changed in the detail tier and are lost by the switch to the easy tier (DroppedNotice).
+	Dropped []string
 }
 
 // Read reads the tier fields of a form.
@@ -36,6 +39,7 @@ func Read(v url.Values) State {
 	default:
 		st.Tier = ""
 	}
+	st.Dropped = v[gentesttier.FieldDropped]
 	st.FromEasy = st.Quality != "" || v.Get(gentesttier.FieldIntent) != ""
 	if st.Intent == "" {
 		st.Intent = v.Get(gentesttier.FieldKeepIntent)
@@ -44,6 +48,30 @@ func Read(v url.Values) State {
 		st.Quality = v.Get(gentesttier.FieldKeepQuality)
 	}
 	return st
+}
+
+// droppedLabels are the words for the keys the detail tier names in FieldDropped, in the order the notice lists them.
+var droppedLabels = []struct{ Key, Label string }{
+	{"seed", "シード"}, {"steps", "ステップ数"}, {"cfg", "CFG"}, {"sampler", "サンプラー"}, {"scheduler", "スケジューラー"}, {"exposed", "画面に出した値"},
+}
+
+// DroppedNotice is the line the easy tier opens with after a switch from the detail tier that lost settings (Issue #1000), "" when nothing was lost (or the
+// form is not the easy tier). The easy tier keeps the prompts, the negative prompts, the LoRA and the strengths of the input images, so those are not said. Keys
+// it does not know are left out: the field is the browser's, and it only chooses words.
+func (s State) DroppedNotice() string {
+	if s.Tier != gentesttier.TierEasy {
+		return ""
+	}
+	var lost []string
+	for _, l := range droppedLabels {
+		if slices.Contains(s.Dropped, l.Key) {
+			lost = append(lost, l.Label)
+		}
+	}
+	if len(lost) == 0 {
+		return ""
+	}
+	return "こだわりで変えた詳細設定（" + strings.Join(lost, "・") + "）は、かんたんでは使わないため消えました。こだわりへ戻っても元には戻りません"
 }
 
 // IntentID is the intent of the form: the one named when it is one of the choices, else the first.

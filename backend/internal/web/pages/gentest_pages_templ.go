@@ -455,6 +455,10 @@ func GenerationHistoryPage(csrfToken string, h gentest.History) templ.Component 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			templ_7745c5c3_Err = modal.Host().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			return nil
 		})
 		templ_7745c5c3_Err = generationShell("生成テストの履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)

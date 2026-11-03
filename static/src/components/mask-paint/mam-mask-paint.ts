@@ -1,6 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { sliderStyle } from '../slider/slider-model';
+import { canvasSize } from './mask-size';
 
 type Point = { x: number; y: number };
 
@@ -19,6 +20,10 @@ const MAX_SIZE = 128;
  * then released: the form is sent once, with the mask (the submit itself is never cancelled and re-sent, which htmx
  * would answer twice).
  *
+ * Memory (#999): the two canvases are the picture's size, or scaled down to `MAX_EDGE` on the longer side (mask-size.ts) when the
+ * picture is bigger; the server and ComfyUI take a mask of another size (the nodes stretch it to the picture). `mask-src` is a mask to
+ * start from (the black/white picture of an earlier redraw, "この設定でもう一度"): it is drawn on the canvases once the picture is.
+ *
  * A drag draws a round-capped line from the previous position, so a fast drag leaves no gaps.
  * Keyboard: B brush, E eraser, [ ] thickness, arrows draw a line one thickness long from the cursor (kept inside
  * the picture). The canvas is in the tab order. It renders into the light DOM so the page's Tailwind classes apply.
@@ -27,6 +32,7 @@ const MAX_SIZE = 128;
 export class MamMaskPaint extends LitElement {
   @property({ type: String }) src = '';
   @property({ type: String, attribute: 'source-input' }) sourceInput = '';
+  @property({ type: String, attribute: 'mask-src' }) maskSrc = '';
   @property({ type: Number }) width = 64;
   @property({ type: Number }) height = 64;
 
@@ -80,9 +86,35 @@ export class MamMaskPaint extends LitElement {
     const img = new Image();
     img.onload = () => {
       if (this.src !== src) return;
-      this.resize(img.naturalWidth || this.width, img.naturalHeight || this.height, src);
+      const size = canvasSize(img.naturalWidth || this.width, img.naturalHeight || this.height);
+      this.resize(size.width, size.height, src);
+      this.applyMask(src);
     };
     img.src = src;
+  }
+
+  /** Draws the mask to start from on the canvases: white (what the picture says is redrawn) becomes red on the view. */
+  private applyMask(src: string): void {
+    if (!this.maskSrc) return;
+    const img = new Image();
+    img.onload = () => {
+      if (this.src !== src || !this.view || !this.mask) return;
+      const { width: w, height: h } = this.mask;
+      const g = this.mask.getContext('2d');
+      const v = this.view.getContext('2d');
+      if (!g || !v) return;
+      g.drawImage(img, 0, 0, w, h);
+      const mask = g.getImageData(0, 0, w, h).data;
+      const red = v.createImageData(w, h);
+      for (let i = 0; i < mask.length; i += 4) {
+        red.data[i] = 0xff;
+        red.data[i + 1] = 0x33;
+        red.data[i + 2] = 0x33;
+        red.data[i + 3] = mask[i] ?? 0;
+      }
+      v.putImageData(red, 0, 0);
+    };
+    img.src = this.maskSrc;
   }
 
   private resize(w: number, h: number, key: string): void {

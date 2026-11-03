@@ -107,7 +107,7 @@ type InputView struct {
 
 // InputOrigin is where an input image was taken from (the Source of the RefInput and its ID).
 type InputOrigin struct {
-	Kind      string `json:"kind" jsonschema:"upload / project_asset / reference_item / history / pose_library"`
+	Kind      string `json:"kind" jsonschema:"upload / project_asset / reference_item / history / pose_library / batch_input"`
 	ID        string `json:"id"`
 	ProjectID string `json:"project_id,omitempty"`
 }

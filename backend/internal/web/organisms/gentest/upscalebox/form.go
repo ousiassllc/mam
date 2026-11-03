@@ -33,6 +33,9 @@ type Form struct {
 	Show    bool
 	Scales  []int
 	Choices []Choice
+	// Scale and Model are what the form opens with (0 and "": the first of each). "同じ倍率でもう一度大きくする" of an enlargement opens its source with these.
+	Scale int
+	Model string
 	// SourceURL and SourceText link a result of "make it larger" to the result it enlarged ("" for any other).
 	SourceURL  string
 	SourceText string

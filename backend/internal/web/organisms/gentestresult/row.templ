@@ -15,6 +15,9 @@ templ Row(a Actions) {
 			if a.Upscale {
 				@atoms.ButtonLink(atoms.ToneNeutral, "大きくする", templ.SafeURL(UpscaleAnchor), templ.Attributes{"data-testid": "gt-next-upscale"})
 			}
+			if a.UpscaleAgainURL != "" {
+				@atoms.ButtonLink(atoms.ToneNeutral, "同じ倍率でもう一度大きくする", templ.SafeURL(a.UpscaleAgainURL), templ.Attributes{"data-testid": "gt-next-upscale-again"})
+			}
 			if a.SimilarURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "似た感じでもう1枚", templ.SafeURL(a.SimilarURL), templ.Attributes{"data-testid": "gt-next-similar"})
 			}

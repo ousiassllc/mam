@@ -87,7 +87,7 @@ func roleText(in record.InputView) string {
 }
 
 var originText = map[string]string{
-	gentest.FromStaged: "アップロード", gentest.FromProjectAsset: "プロジェクトのアセット", gentest.FromReferenceItem: "プロジェクトの参照画像", gentest.FromHistory: "履歴", gentest.FromPoseLibrary: "ポーズ集",
+	gentest.FromStaged: "アップロード", gentest.FromProjectAsset: "プロジェクトのアセット", gentest.FromReferenceItem: "プロジェクトの参照画像", gentest.FromHistory: "履歴", gentest.FromPoseLibrary: "ポーズ集", gentest.FromBatchInput: "前の生成の入力",
 }
 
 func (h Handlers) projectNames(ctx context.Context) map[string]string {

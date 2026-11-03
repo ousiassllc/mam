@@ -1,6 +1,9 @@
 package gentest
 
-import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
+)
 
 // matchRound is one round: the picture, how much it looks like the reference, what was fixed to get it, and what still differs.
 templ matchRound(r MatchRound, target int) {
@@ -15,7 +18,7 @@ templ matchRound(r MatchRound, target int) {
 			if r.ImageURL != "" {
 				<img src={ r.ImageURL } alt={ "第 " + itoa(r.N) + " 回の生成結果" } class="h-full w-full rounded-md object-contain" loading="lazy"/>
 			} else {
-				@atoms.BadgeWith(resultTone(r.Status), r.StatusText, templ.Attributes{"data-testid": "gt-match-round-status"})
+				@atoms.BadgeWith(resulttile.Tone(r.Status), r.StatusText, templ.Attributes{"data-testid": "gt-match-round-status"})
 			}
 		</div>
 		<div class="flex min-w-0 flex-col gap-2">

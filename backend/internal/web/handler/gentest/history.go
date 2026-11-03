@@ -17,10 +17,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/redo"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -113,16 +116,37 @@ func (h Handlers) History(c *gin.Context) {
 	gtshare.Render(c, status, pages.GenerationHistoryPage(middleware.CSRFToken(c), v))
 }
 
-// Detail answers GET /generation-test/results/:id: the settings, the inputs, the imports and the import form.
+// Detail answers GET /generation-test/results/:id: the settings, the inputs, the imports and the import form. A tile of a grid asks for it into the modal
+// (HX-Target: the body of the dialog; Issue #1004) and gets the same detail as the body of the modal; anything else gets the page.
 func (h Handlers) Detail(c *gin.Context) {
 	ctx := c.Request.Context()
+	inModal := forModal(c)
 	d, err := h.Svc.Result(ctx, c.Param("id"))
 	if err != nil {
 		status, msg := refuse(c, err)
+		if inModal {
+			gtshare.Render(c, status, modal.Notice("生成結果", msg))
+			return
+		}
 		gtshare.Render(c, status, pages.GenerationResultPage(middleware.CSRFToken(c), view.Detail{Message: view.Message{Error: msg}}))
 		return
 	}
-	gtshare.Render(c, http.StatusOK, pages.GenerationResultPage(middleware.CSRFToken(c), h.detail(ctx, d, importbox.Form{})))
+	v := h.detail(ctx, d, importbox.Form{})
+	v.Upscale.Scale, _ = strconv.Atoi(c.Query(redo.ParamUpscaleScale)) // "同じ倍率でもう一度大きくする" of an enlargement
+	v.Upscale.Model = c.Query(redo.ParamUpscaleModel)
+	if inModal {
+		v.CanPick = c.Query("pick") == "1"
+		gtshare.Render(c, http.StatusOK, view.ResultDetailModal(v))
+		return
+	}
+	gtshare.Render(c, http.StatusOK, pages.GenerationResultPage(middleware.CSRFToken(c), v))
+}
+
+// forModal says the request is from a control that opens the modal: its answer goes into the body of the dialog. The answer differs by what asked, so the
+// cache is told.
+func forModal(c *gin.Context) bool {
+	c.Writer.Header().Add("Vary", "HX-Request, HX-Target")
+	return c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-Target") == modal.BodyID
 }
 
 // serveFile answers with a stored file as the media routes do: the stored type, inside a sandbox so that the file cannot run
@@ -171,17 +195,30 @@ func (h Handlers) Favorite(c *gin.Context) {
 		c.AbortWithStatus(status)
 		return
 	}
-	gtshare.Render(c, http.StatusOK, view.FavoriteButton(c.Param("id"), on))
+	gtshare.Render(c, http.StatusOK, resulttile.Reply(c.Param("id"), on))
 }
 
 // DeleteResult answers DELETE /generation-test/results/:id: the result and its file go; the history is shown again. A result
-// that has not finished is 409.
+// that has not finished is 409 (the detail is drawn again with the reason). Asked from the modal, the answer takes the result out of the grid behind
+// it and closes the modal; asked from the page of the result, it goes to the history.
 func (h Handlers) DeleteResult(c *gin.Context) {
-	if err := h.Svc.DeleteResult(c.Request.Context(), c.Param("id")); err != nil {
+	ctx := c.Request.Context()
+	inModal := forModal(c)
+	if err := h.Svc.DeleteResult(ctx, c.Param("id")); err != nil {
 		status, msg := refuse(c, err)
+		v := view.Detail{}
+		if d, derr := h.Svc.Result(ctx, c.Param("id")); derr == nil {
+			v = h.detail(ctx, d, importbox.Form{}) // the reason on top of the detail: it is not wiped
+		}
+		v.Message = view.Message{Error: msg}
 		c.Header("HX-Retarget", "#"+view.DetailID)
 		c.Header("HX-Reswap", "outerHTML")
-		gtshare.Render(c, status, view.ResultDetail(view.Detail{Message: view.Message{Error: msg}}))
+		gtshare.Render(c, status, view.DetailSection(v, inModal))
+		return
+	}
+	if inModal {
+		c.Header("HX-Trigger-After-Swap", modal.CloseEvent)
+		gtshare.Render(c, http.StatusOK, resulttile.Gone(c.Param("id")))
 		return
 	}
 	c.Header("HX-Redirect", paths.GenerationTestHistory())

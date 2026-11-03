@@ -72,6 +72,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **プリセットの検査**: 読み込み時（`localcfg.ValidateModel`、`localcfg/quality.go`）に、プリセットが受け取る値（steps・cfg の割り当て）にだけ書かれ、速さのモードが無く、範囲内で、速いはワークフローの steps より少なく・きれいは多いことを確かめる。導入済みのコピーは `wfrefresh` が、テンプレートから steps を変えていないものだけ更新する。
 - **やりたいこと**: `service/gentest/intent`（`intents.json`。埋め込み）が、選択肢（`photo`・`anime`・`landscape`・`face`）ごとに、モデルの候補（カタログのワークフロー名）を好みの順に持つ。`Service.Recommend(intent, hasReferences)` は、導入済みで呼べる（`Info.Available`。成人ゲートが閉じていれば成人向けは一覧に無い）・商用フィルター（`DefaultFilter`）に合う・この PC の OS／GPU の列の外でない（`Deps.PlatformWarning` = `mmview.PlatformWarning`。#979）・入力画像があれば画像を使える（顔の役割が要る選択肢は `face` を読める）最初の候補を選ぶ。選べなければ `Reason`（導入されていない／条件に合わない）。`Service.ApplyIntent(request, intent)` は `Models` を埋める（`models` と同時には指定できない。画像だけ。顔の写真が要る選択肢は入力画像が無ければ `validation`。「同じ顔で」は役割 `reference` の入力を `face` にする）。画面の見積りと MCP の `estimate_generation_test`・`run_generation_test` が使う。
 - **復元**（結果の「もう1枚」「もう一度」）: `record.ResultDetail`（`TranslateToEnglish` を足した）から、画面の `redo.Of` が入力に戻す。新しいサービスの呼び出しは無い（画面のハンドラだけ）。
+- **前のバッチの入力（Issue #977 の残り）**: 入力の出どころに `batch_input`（`gentest.FromBatchInput`。`RefInput.id` は結果の詳細の `inputs[].input_id`）を足した。アップロードした画像はバッチの入力として保存されている（`gentest_input`。`GET /generation-test/inputs/:id/file`）ので、それを別のバッチの入力にできる（`ResolveInput` が `Repo.GetInput` のファイルを返し、その結果の入力は出どころ `batch_input` で残る）。これで、アップロードした画像を使った結果も「この設定でもう一度」で入力ごと戻せる（`redo.RefOf`）。コピーはバッチのディレクトリにあり、その結果をすべて削除すると消える（消えたあとは `validation`「過去の入力画像は残っていません」）。MCP の `references[].source` も同じ値を取る。描き直し・アップスケールの結果の「もう一度」は画面のハンドラだけ（[../../components/gentest-tiers.md](../../components/gentest-tiers.md) §5）。
 
 ## 3.7 レシピと「画面に出す値」（Issue #977 ステージ 2）
 
@@ -90,6 +91,8 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 元画像 1 枚とマスク（白＝描き直す、黒＝残す）で、マスクの内側だけを描き直す。リクエストの `mask`（参照と同じ `source` / `id` / `project_id`。役割ではない）と `denoise`（0 より大きく 1 以下。省くとモデルの `denoise_default`）。対応は `modelcatalog.Info.SupportsInpaint`（`reference_mode` が `inpaint` で、グラフに範囲内の `denoise` がある）。対応しないモデルを選ぶと見積りの時点で拒否する（警告ではない）。`denoise` を受け取らないモデルに強さを付けると警告 `denoise_ignored` でテンプレートの値のまま作る。マスクが真っ黒（白に近い画素が無い）・動画・マスク無しの `denoise` は拒否する。
 
 グラフはコアノードだけ: 元画像とマスクを `LoadImage`、マスクは `ImageToMask`（`channel=red`）、`VAEEncode` → `SetLatentNoiseMask` → `KSampler` → `VAEDecode`、その結果を `ImageCompositeMasked` で元画像の上に戻す（`destination` が元画像、`source` がデコード、`mask` が `ImageToMask`）。外側の画素が元のままであることの確認は、このリンクのテストまで。画素の比較は GPU が要る（未実施）。テンプレートは `inpaint-sdxl` と `inpaint-flux-dev`（既定の denoise は 0.75）。既存のテンプレートのグラフは変えない。
+
+**画面側のメモリ（Issue #999）**: 描き直しの画面のマスク部品（`<mam-mask-paint>`）は、マスクと赤い表示の 2 枚のキャンバスを持つ（4 バイト × 画素）。8192 × 8192 の画像では 256 MiB × 2 になるので、**長辺が 2048 を超える画像は、形を保って長辺 2048 に縮めたキャンバスに塗る**（`static/src/components/mask-paint/mask-size.ts` の `canvasSize`。2048² なら 16 MiB × 2。iOS の Safari のキャンバスの上限（約 1600 万画素）の内にも入る）。書き出すマスクもその大きさになる。サーバーは寸法の下限を見ず、ComfyUI の `SetLatentNoiseMask` と `ImageCompositeMasked` はマスクを画像の大きさに（双一次で）引き伸ばして使う（コアノードの実装による。**この引き伸ばしでの外側の画素の一致は GPU・実ブラウザでの確認が要る = 未実施**）。元画像の `<img>` はブラウザがデコードするので、その分のメモリは部品の外で、実機での測定（Chrome・Safari の巨大画像でのタブのメモリ）は未実施。
 
 結果は別ファイル。`params.inpaint`（使った `denoise`、元画像の `source_kind` / `source_id`、マスク入力の id）に残し、元が履歴の結果なら詳細からその結果へ戻れる。マスクはバッチの入力 `role=mask` で、参照としては送らない。作成フォームではインペイント専用のモデルを選べない（「一部だけ描き直す画面から使います」）。画面は `/generation-test/inpaint`。導入済みの SDXL / FLUX.1 dev は、起動時の更新が新しいワークフロー名を足さないので、インペイント用のワークフローは入れ直すまで一覧に出ない。
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 )
 
 var stateText = map[string]string{
@@ -46,7 +47,7 @@ func batchView(b gentest.BatchStatus) view.Batch {
 		}
 	}
 	for i := range v.Rows {
-		v.Rows[i].Cells = make([][]view.Card, len(v.Cols))
+		v.Rows[i].Cells = make([][]resulttile.Card, len(v.Cols))
 	}
 	for _, r := range b.Results {
 		ri, ci := row[r.Model], col[key{r.Prompt, r.NegativePrompt}]

@@ -41,7 +41,7 @@ templ Box(f Form) {
 							<span>倍率</span>
 							@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-upscale-scale", "name": FieldScale}) {
 								for _, n := range f.Scales {
-									<option value={ itoa(n) }>{ itoa(n) }倍</option>
+									<option value={ itoa(n) } selected?={ n == f.Scale }>{ itoa(n) }倍</option>
 								}
 							}
 						</label>
@@ -49,7 +49,7 @@ templ Box(f Form) {
 							<span>方式（モデル）</span>
 							@atoms.Select(atoms.FieldMd, "max-w-md", templ.Attributes{"id": "gt-upscale-model", "name": FieldModel}) {
 								for _, c := range f.Choices {
-									<option value={ c.ID } disabled?={ c.Disabled != "" }>{ c.Label }（{ c.Detail }）{ c.Disabled }</option>
+									<option value={ c.ID } disabled?={ c.Disabled != "" } selected?={ c.ID == f.Model && c.Disabled == "" }>{ c.Label }（{ c.Detail }）{ c.Disabled }</option>
 								}
 							}
 						</label>

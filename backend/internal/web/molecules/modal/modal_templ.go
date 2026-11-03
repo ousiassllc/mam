@@ -26,6 +26,9 @@ const (
 	ErrorID = "mam-modal-error"
 	// CloseEvent is the HX-Trigger-After-Swap event that closes the modal after a save.
 	CloseEvent = "modal-close"
+	// WideAttr is the attribute a body puts on its first block to have the dialog wide (a result's picture and settings side by side): the dialog is as wide
+	// as the body asks for while it holds it. The width is in Host's classes (has-[[data-modal-wide]]).
+	WideAttr = "data-modal-wide"
 )
 
 // Host is the <dialog> of the page, closed and empty: the request of OpenAttrs fills BodyID and the script opens it. A
@@ -52,14 +55,14 @@ func Host() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"mam-modal\" data-modal aria-modal=\"true\" aria-labelledby=\"mam-modal-title\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70\"><div id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"mam-modal\" data-modal aria-modal=\"true\" aria-labelledby=\"mam-modal-title\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70\"><div id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(BodyID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 30, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 33, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -100,6 +103,15 @@ func OpenAttrs(url, focusKey string) templ.Attributes {
 	}
 }
 
+// OpenLinkAttrs are OpenAttrs for a link: the address is the page of the same content, which a browser without the script (or a click that opens a tab)
+// goes to, and a plain click asks for the body. The link is not a button, so no `type`.
+func OpenLinkAttrs(url, focusKey string) templ.Attributes {
+	attrs := OpenAttrs(url, focusKey)
+	delete(attrs, "type")
+	attrs["href"] = url // a string: templ writes a spread attribute only of a string, a bool or a pointer to one (a templ.SafeURL is dropped)
+	return attrs
+}
+
 // Frame is the body of the modal: its name (the h2 the dialog is labelled by), what it is for and the content. Put
 // autofocus on the control to start with.
 func Frame(title, description string) templ.Component {
@@ -130,7 +142,7 @@ func Frame(title, description string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 66, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 78, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -148,7 +160,7 @@ func Frame(title, description string) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 68, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 80, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -200,7 +212,7 @@ func Error(message string) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 76, Col: 234}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 88, Col: 234}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
