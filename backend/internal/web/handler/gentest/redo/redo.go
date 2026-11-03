@@ -67,6 +67,12 @@ func Of(d record.ResultDetail, sameSeed bool) Restored {
 	case !sameSeed:
 	case d.SeedSent && d.Seed != nil:
 		r.Seed = strconv.FormatInt(*d.Seed, 10)
+		if d.Translated && d.TranslatedPrompt != "" {
+			// The same seed makes the same picture only from the same words: a translation done again may come out differently. The English
+			// that was sent goes into the form as it is, and the translation is off for this run.
+			r.Prompt, r.Negative, r.Translate = d.TranslatedPrompt, d.TranslatedNegativePrompt, false
+			r.Notes = append(r.Notes, "同じ絵にするため、前回送った英訳をそのまま入れました（英訳はやり直しません。元の文は結果の詳細にあります）")
+		}
 	default:
 		r.Notes = append(r.Notes, "このモデルはシードを受け取らないため、同じ絵は再現できません（同じ設定で作り直します）")
 	}

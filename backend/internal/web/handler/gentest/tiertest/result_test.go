@@ -105,6 +105,33 @@ func TestReplayKeepsTheSeedAndSimilarLeavesItToChance(t *testing.T) {
 	assert.Contains(t, inputTag(similar, "steps"), `value="30"`)
 }
 
+// 英訳つきの結果の「この設定でもう一度」: 前回送った英訳をそのまま入れ、英訳はやり直さない（やり直すと同じシードでも別の絵になりうる）。
+// 「似た感じでもう1枚」は元の文のまま英訳をつける。
+func TestReplayOfATranslatedResultSendsTheEnglishThatWentOutAndDoesNotTranslateAgain(t *testing.T) {
+	f := &gentesttest.FakeLLM{}
+	s := newScreen(t, gentesttest.WithTemplateModels(), gentesttest.WithTranslator(f))
+	req := sdxlRequest()
+	req.Prompts = []gentest.PromptInput{{Prompt: "赤い狐", Negative: "ぼやけ"}}
+	req.TranslateToEnglish = true
+	id := s.made(req)
+	detail, err := s.rig.Svc.Result(t.Context(), id)
+	require.NoError(t, err)
+	require.True(t, detail.Translated)
+	require.Equal(t, "EN: 赤い狐", detail.TranslatedPrompt)
+
+	same := s.page(paths.GenerationTest() + "?" + url.Values{"tier": {"detail"}, "again": {id}, "same_seed": {"1"}}.Encode())
+	assert.Contains(t, same, `>EN: 赤い狐</textarea>`, "the English that was sent")
+	assert.Contains(t, same, `>EN: ぼやけ</textarea>`)
+	assert.NotContains(t, same, `>赤い狐</textarea>`)
+	assert.Contains(t, testid(same, "gt-form"), "前回送った英訳をそのまま入れました")
+	assert.NotContains(t, inputTag(same, "translate"), "checked", "no new translation")
+
+	similar := s.page(paths.GenerationTest() + "?" + url.Values{"tier": {"detail"}, "again": {id}}.Encode())
+	assert.Contains(t, similar, `>赤い狐</textarea>`, "a similar one starts from the words that were typed")
+	assert.Contains(t, inputTag(similar, "translate"), "checked")
+	assert.NotContains(t, testid(similar, "gt-form"), "前回送った英訳")
+}
+
 // 復元できない項目（アップロードした参照画像が残っていない・元の履歴の画像が消えた）は、黙って捨てずに理由を出す。
 func TestWhatCannotBePutBackIsSaid(t *testing.T) {
 	s := newScreen(t, gentesttest.WithReferenceModels(""))

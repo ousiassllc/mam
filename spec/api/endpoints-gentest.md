@@ -84,7 +84,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 - **段**: 画像のフォームは `tier`（`easy`・`detail`・`comfy`）。かんたん（`easy`）のフォームは `model` を持たず、`intent`（`photo`・`anime`・`landscape`・`face`）と `quality`（`fast`・`standard`・`high`）と `aspect_ratio`（`9:16`・`16:9`・`1:1`）を送る。`POST /generation-test/estimate` は `intent` から、導入済みで使えるモデルを選び（`gentest.Service.ApplyIntent`）、確認の hidden に `model` を入れて返す（`/run` は見積りと同じ入力を走らせる）。合うモデルが無い・顔の写真が無い（`face`）ときは 422 で理由（モデルマネージャーでの導入の案内を含む）。
 - **品質**: `quality` は `Request.Quality`。`fast`・`high` は、**リクエストが `steps`・`cfg` を名指ししていない項目だけ**に、モデルのプリセット（`list_generation_models` の `sampling.quality_presets`）の値を入れる。`standard`・無しは何も上書きしない（テンプレートの値のまま）。`quality` の値が違えば 422（`validation`）。プリセットの無いモデル（クラウド・蒸留・速さのモード）への `quality` は、見積りの警告 `quality_ignored`（標準の値で作る）。確認の hidden は `quality`（標準以外）を持つ。
 - **こだわり**: 詳細設定のフィールド（上の節）に加え、かんたんから移るときは `easy_intent`・`easy_quality`（フォームが持ち回るだけ。リクエストは読まない）。
-- **結果の「もう1枚」・「もう一度」**: `GET /generation-test?tier=detail&again=<結果の ID>[&same_seed=1]`。記録された `params` から、モデル・プロンプトとネガティブ・英訳・縦横比・steps・cfg・サンプラー・スケジューラー・LoRA・ポーズを真似させない設定・入力画像（履歴・プロジェクト・ポーズ集。役割と強さ）を入れる。`same_seed=1` はシードも入れる（シードを渡せなかったモデルは入れず、理由を出す）。アップロードした入力画像・消えた入力画像・使えなくなったモデルは理由を出す。画像の結果でファイルがあり、インペイント・アップスケールでない結果だけ。
+- **結果の「もう1枚」・「もう一度」**: `GET /generation-test?tier=detail&again=<結果の ID>[&same_seed=1]`。記録された `params` から、モデル・プロンプトとネガティブ・英訳・縦横比・steps・cfg・サンプラー・スケジューラー・LoRA・ポーズを真似させない設定・入力画像（履歴・プロジェクト・ポーズ集。役割と強さ）を入れる。`same_seed=1` はシードも入れる（シードを渡せなかったモデルは入れず、理由を出す）。結果が英訳つきなら、`same_seed=1` は**前回送った英訳（`translated_prompt`・`translated_negative_prompt`）をプロンプト欄にそのまま入れ、英訳のスイッチは切る**（英訳を LLM にやり直させると、同じシードでも別の絵になりうるため。理由は画面に出す。`same_seed` なしは入力した元の文と英訳のスイッチを戻す）。アップロードした入力画像・消えた入力画像・使えなくなったモデルは理由を出す。画像の結果でファイルがあり、インペイント・アップスケールでない結果だけ。
 - 結果の詳細は、ボタン列（`data-testid="gt-next"`）と折りたたみの「使った設定」（`data-testid="gt-used"`）を返す（画像でファイルがある結果だけ）。
 
 ## レシピ・ComfyUI の段（Issue #977 ステージ 2）
@@ -122,3 +122,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.14 | 2026-11-02 | `GET/POST /generation-test/inpaint`（見積り・実行）を足した。結果の詳細に「一部だけ描き直す」と、インペイント結果の「元の結果」 | Issue #974 |
 | 1.15 | 2026-11-03 | 画像のフォームの 3 段（`tier`・`intent`・`quality`・`easy_intent`・`easy_quality`）、`GET /generation-test/easy-pick`、`GET /generation-test` の `tier`・`again`・`same_seed`・`ref_role`、見積りの警告 `quality_ignored`、結果の「もう1枚」「もう一度」「この顔で作る」を足した | Issue #977（ステージ 1） |
 | 1.16 | 2026-11-04 | レシピの 4 ルート（`/generation-test/recipes`…）、`/generation-test/comfy/open`、`/generation-test/comfy/exposed`（GET・POST）、フォームの `exposed.<key>`・`recipe`、かんたんの `intent=recipe:<id>` | Issue #977（ステージ 2） |
+| 1.17 | 2026-11-03 | 「この設定でもう一度」（`same_seed=1`）: 英訳つきの結果は、前回送った英訳をそのまま入れて英訳を切る（英訳のやり直しで同じシードでも別の絵になるのを防ぐ） | Issue #994 (d) |
