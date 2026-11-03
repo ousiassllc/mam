@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/mainfile"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/samplefile"
 )
 
 // Workflow is a #831 model created on the bundled endpoint when the model is installed: Name is its model
@@ -37,7 +38,7 @@ func (w Workflow) Model(template func(id string) (localcfg.Template, bool)) (loc
 	if w.Sampling == nil {
 		return m, nil
 	}
-	m, err := m.WithSampling(*w.Sampling)
+	m, err := samplefile.Model(m, *w.Sampling)
 	if err != nil {
 		return localcfg.Model{}, fmt.Errorf("sampling: %w", err)
 	}
