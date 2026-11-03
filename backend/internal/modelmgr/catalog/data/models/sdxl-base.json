@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
  "description": "定番の画像モデル。いちばん小さく動く（約 7 GB）。参照画像からの画像（img2img）と、マスクで一部だけ描き直す（インペイント）にも使える。",
  "files": [
   {

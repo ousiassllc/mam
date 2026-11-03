@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 12, "params_label": "12B", "uncensored": true, "speed": "standard"},
  "description": "FLUX.1 dev（fp8 のチェックポイント。flux1-dev と共有）に、成人向けの表現を足す LoRA「NSFW MASTER」（約 0.17 GB）を重ねる構成（成人向け）。LoRA の強さは 0.8。flux1-dev を導入済みなら、取得するのは LoRA だけ。",
  "trigger_words": [
   "NSFW",

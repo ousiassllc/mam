@@ -4,6 +4,7 @@
  "kind": "video",
  "tier": "advanced",
  "content_rating": "general",
+ "traits": {"params_b": 8.3, "params_label": "8.3B", "uncensored": false, "speed": "slow"},
  "description": "HunyuanVideo 1.5 のテキストから動画（480p、cfg 蒸留版の fp8）。拡散モデル・テキストエンコーダー 2 つ・VAE の 4 ファイル、合計約 21 GB。24fps。",
  "files": [
   {

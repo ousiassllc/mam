@@ -4,6 +4,7 @@
  "kind": "upscale",
  "tier": "advanced",
  "content_rating": "general",
+ "traits": {"uncensored": false},
  "description": "写真向けに学習したアップスケール用モデル（ESRGAN。約 33 MB）。実写の画像を JPEG・WebP の劣化やノイズごと直しながら 4 倍まで大きくする。生成テストの結果の「大きくする」で使う（2 倍・4 倍）。ライセンスの表記が配布元で食い違い、商用の可否は不明。",
  "files": [
   {

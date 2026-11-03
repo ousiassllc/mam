@@ -4,6 +4,7 @@
  "kind": "video",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"params_b": 14, "params_label": "14B", "uncensored": false, "speed": "slow", "quality": "high"},
  "description": "先頭フレーム 1 枚から動画を作る Wan 2.2 の 14B（公式のベース）。高ノイズ用と低ノイズ用の 2 つの拡散モデル（fp8、各約 14.3 GB）を順に使う。テキストエンコーダー（wan22-ti2v-5b と共有）と Wan 2.1 の VAE を含め、合計約 35.6 GB。16fps。動きの質と映像の作り込みを優先するときに選ぶ。速さと軽さを優先するなら、テキストからも作れる wan22-ti2v-5b（約 18 GB・720p・24fps）。同じベースを 4 ステップで速く動かす LightX2V の LoRA 版は wan22-i2v-14b-lightx2v。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。",
  "files": [
   {

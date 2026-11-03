@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"params_b": 20, "params_label": "20B", "uncensored": false, "speed": "standard"},
  "description": "公式の Qwen-Image-Edit-2511（Apache-2.0・商用可）。参照画像（最大 3 枚）を使った編集ができる: 同じ人物の顔のまま別のシーンにする、画風だけを写す、1 枚の画像を指示どおり直す。参照なしならテキストから画像も作れる。拡散モデル（fp8mixed、約 20.5 GB）・テキストエンコーダー・VAE の 3 ファイルに、速さのモード用の Lightning LoRA 2 つ（4 ステップと 8 ステップ。各約 0.85 GB）を足して、合計約 31.9 GB（テキストエンコーダーと VAE は qwen-image と同じファイルなので、導入済みなら拡散モデルと LoRA の約 22.2 GB だけ取得する）。速さのモード（生成テスト・MCP の speed_mode）は standard（既定。20 ステップ）・lightning-8・lightning-4（lightx2v/Qwen-Image-Edit-2511-Lightning の蒸留 LoRA。cfg 1 で 8・4 ステップ）から選べ、Lightning は速い代わりに standard と画質が変わりうる（mam の実機では画質・時間とも未測定）。公式のモデルで、成人向けの画像を想定した調整はない。成人向けの画像を編集したときの崩れ方（服が足される・体が崩れるなど）は mam の実機では未確認。成人向けの生成は noctq-v4-qwen-image21（非商用）を使う。16 GB の GPU では重みがメモリに収まらないため ComfyUI のオフロードが前提で、遅くなる（実測は未確認。vram の項を参照）。",
  "files": [
   {

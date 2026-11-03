@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 20, "params_label": "20B", "uncensored": true, "speed": "fast"},
  "description": "【実写寄り・編集】Phr00t の Qwen-Image-Edit-Rapid-AIO の NSFW 版 v23（成人向け。約 28.4 GB の 1 ファイル）。Qwen-Image-Edit-2511 に加速 LoRA・NSFW の LoRA・肌や実写の質感の LoRA を混ぜ、VAE とテキストエンコーダーも 1 つの checkpoint にまとめた fp8 のモデルで、4 ステップ・cfg 1 で動く。参照画像（最大 3 枚）の編集とテキストから画像の両方に使える（参照なしならテキストから画像）。作者のカードは v19 が編集の一貫性、v23 がプロンプトへの従いやすさに向くと書き、v23 は実写寄りの仕上がり（平面的なアニメだけなら v19・v20 のほうが向くという注記が v21 にある）。別の追加ファイル（テキストエンコーダー・VAE）は要らない。",
  "files": [
   {

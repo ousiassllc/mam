@@ -4,6 +4,7 @@
  "kind": "video",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"params_b": 2, "params_label": "2B", "uncensored": false, "speed": "fast"},
  "description": "軽量で速い動画モデル。チェックポイントと T5 テキストエンコーダー（fp8）の 2 ファイル、合計約 11 GB。24fps。",
  "files": [
   {

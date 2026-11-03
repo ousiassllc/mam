@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
  "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け。作者のカードは「ヌードなどの成人向けも作れる」と注意書きを付ける）。VAE を fp32 で持つ fp16 の 1 ファイル（約 7.1 GB）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
  "files": [
   {

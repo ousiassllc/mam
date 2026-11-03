@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
  "description": "【実写】フォトリアル向けの SDXL チェックポイント（約 6.9 GB、fp16）。成人向けの画像も作れるため成人向けに分類する（作者は成人向けに特化したとは書いていない）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
  "files": [
   {
