@@ -4,7 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
- "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け）。作者のカードは「SFW も NSFW も作れる」と書く。VAE 入りの fp16 の 1 ファイル（約 6.9 GB）。作者の推奨はネガティブプロンプトありで、DPM++ SDE Karras なら 30 ステップ以上（DPM++ 2M Karras なら 50 以上）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。Lightning 版ではなく通常版。",
+ "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け）。作者のカードは「SFW も NSFW も作れる」と書く。VAE 入りの fp16 の 1 ファイル（約 6.9 GB）。作者の推奨はネガティブプロンプトありで、DPM++ SDE Karras なら 30 ステップ以上（DPM++ 2M Karras なら 50 以上）。テンプレートは SDXL 標準だが、作者の推奨に合わせて DPM++ SDE Karras（dpmpp_sde/karras）・30 ステップで動かす（cfg 7 のまま。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。Lightning 版ではなく通常版。",
  "files": [
   {
    "name": "RealVisXL_V5.0_fp16.safetensors",
@@ -49,12 +49,20 @@
   {
    "name": "realvisxl-v50",
    "template": "txt2img-sdxl",
-   "model_file": "RealVisXL_V5.0_fp16.safetensors"
+   "model_file": "RealVisXL_V5.0_fp16.safetensors",
+   "sampling": {
+    "steps": 30,
+    "sampler": "dpmpp_sde"
+   }
   },
   {
    "name": "realvisxl-v50-img2img",
    "template": "img2img-sdxl",
-   "model_file": "RealVisXL_V5.0_fp16.safetensors"
+   "model_file": "RealVisXL_V5.0_fp16.safetensors",
+   "sampling": {
+    "steps": 30,
+    "sampler": "dpmpp_sde"
+   }
   }
  ]
 }

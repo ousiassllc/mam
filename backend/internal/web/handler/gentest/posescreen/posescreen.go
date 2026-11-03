@@ -6,6 +6,7 @@ package posescreen
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -38,6 +39,8 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.GET(paths.GenerationTestPoses(), h.Panel)
 	engine.GET(paths.GenerationTestPoses("results"), h.Results)
 	engine.POST(paths.GenerationTestPoses("install"), h.Install)
+	engine.POST(paths.GenerationTestPoses("remove"), h.Remove)
+	engine.GET(paths.GenerationTestPoses("progress"), h.Progress)
 	engine.GET(paths.GenerationTestPoses("image", ":id"), h.Image)
 }
 
@@ -166,6 +169,37 @@ func (h Handlers) Install(c *gin.Context) {
 		return
 	}
 	h.render(c, lib, http.StatusOK, h.notesPost(c), "")
+}
+
+// Remove answers POST /generation-test/poses/remove: the pictures and the catalog are deleted and the body of the dialog comes back as the
+// offer to install (a library that is already gone is the same answer; a running install is refused: 409 and its message).
+func (h Handlers) Remove(c *gin.Context) {
+	lib, ok := h.library(c)
+	if !ok {
+		return
+	}
+	if err := lib.Remove(); err != nil {
+		status, msg := refuse(c, err) // the gallery stays as it is: the message is the answer, as for the filters
+		c.String(status, msg)
+		return
+	}
+	h.render(c, lib, http.StatusOK, h.notesPost(c), "")
+}
+
+// Progress answers GET /generation-test/poses/progress: how far the install is, as the line the install panel polls ("" when none runs).
+func (h Handlers) Progress(c *gin.Context) {
+	lib, ok := h.library(c)
+	if !ok {
+		return
+	}
+	p := lib.Progress()
+	text := ""
+	if p.Running && p.Total > 0 {
+		text = fmt.Sprintf("ダウンロード中: %s / %s（%d%%）", fetch.HumanBytes(uint64(max(p.Done, 0))), fetch.HumanBytes(uint64(p.Total)), min(100, p.Done*100/p.Total)) //nolint:gosec // non-negative
+	} else if p.Running {
+		text = "ダウンロードの準備をしています…"
+	}
+	gtshare.Render(c, http.StatusOK, gentestposes.ProgressText(text))
 }
 
 // refuse is the status and message of a failed install (gtshare.Refuse; a library that is not installed is the user's to fix: 422).

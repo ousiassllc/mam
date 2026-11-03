@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/editorstage"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/files"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentestposes"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentestrecipe"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/health"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/jobs"
@@ -64,6 +65,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	modelmgr.Register(r, svc)
 	gentest.Register(r, svc)
 	gentestrecipe.Register(r, svc)
+	gentestposes.Register(r, svc)
 	chatgptauth.Register(r, svc)
 	workflows.Register(r, svc)
 

@@ -2,9 +2,11 @@ package extract_test
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,6 +57,21 @@ func TestZipExtractsBelowTheStrippedRoot(t *testing.T) {
 	assert.Equal(t, "x = 2", read(t, filepath.Join(dest, "musetalk", "utils.py")))
 	assert.Equal(t, size, done)
 	assert.Equal(t, size, total)
+}
+
+func TestZipFromExtractsTheBytesItWasGivenAndRefusesWhatIsNotAZip(t *testing.T) {
+	archive, size := makeZip(t, map[string]string{"R-abc/": "", "R-abc/a.py": "x = 1"}, []string{"R-abc/", "R-abc/a.py"})
+	held, err := os.ReadFile(archive)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(archive, []byte("replaced afterwards"), 0o600)) // the held bytes are what is extracted
+
+	dest := filepath.Join(t.TempDir(), "env")
+	require.NoError(t, extract.ZipFrom(context.Background(), bytes.NewReader(held), int64(len(held)), dest, "R-abc", size, nil))
+	assert.Equal(t, "x = 1", read(t, filepath.Join(dest, "a.py")))
+
+	err = extract.ZipFrom(context.Background(), bytes.NewReader(held), int64(len(held)), filepath.Join(t.TempDir(), "small"), "R-abc", size-1, nil)
+	assert.ErrorIs(t, err, extract.ErrTooLarge)
+	assert.Error(t, extract.ZipFrom(context.Background(), strings.NewReader("not a zip"), 9, filepath.Join(t.TempDir(), "bad"), "", size, nil))
 }
 
 func TestZipWithoutAStripKeepsTheNames(t *testing.T) {

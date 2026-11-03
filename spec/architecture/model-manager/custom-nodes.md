@@ -46,11 +46,11 @@
 - `--whitelist-custom-nodes` は `nargs='+'` のフォルダ名の一覧で、`main.py` と `nodes.py` が `--disable-all-custom-nodes` と一緒に読み、一覧にあるフォルダだけを読み込む（`possible_module in args.whitelist_custom_nodes`）。
 - prestartup のスクリプトも、一覧のフォルダだけが実行される。
 
-`Enabled` が返す条件: ①記録（`nodes.json`）が許可リストの今のコミット・アーカイブ SHA-256 と一致する、②フォルダの**ツリーのダイジェスト**（ファイル名と内容の SHA-256。`__pycache__` は除く）が導入時に封をした値のまま。どちらかが崩れたノードは `outdated`（mam を更新して固定が変わった）・`modified`（ファイルが書き換わった）として画面に出し、**読み込まない**（導入し直しで直る）。
+`Enabled` が返す条件: ①記録（`nodes.json`）が許可リストの今のコミット・アーカイブ SHA-256 と一致する、②フォルダの**ツリーのダイジェスト**（ファイル名と内容の SHA-256。`__pycache__` も数える）が導入時に封をした値のまま。どちらかが崩れたノードは `outdated`（mam を更新して固定が変わった）・`modified`（ファイルが書き換わった）として画面に出し、**読み込まない**（導入し直しで直る）。エンジンは `PYTHONDONTWRITEBYTECODE=1` で起動する（`engine.Installer.Command` の `Env`）ので、Python 自身が `.pyc` を書くことはなく、`__pycache__` に置かれた `.pyc`（元のソースの代わりに実行される）はダイジェストを変えて `modified` になる。
 
 ## 4. 導入・削除（`modelnodes.Service`）
 
-- **取得**: 固定のコミットの GitHub アーカイブを `fetch.Download`（許可ホスト・リダイレクト先の再検査・`.part` の再開・SHA-256 とサイズの検証。エンジン・モデルと同じ部品）で取る。展開は `extract.Zip`（`..`・絶対パス・シンボリックリンクを拒否し、`extracted_size` を超える展開を断る）。git・pip・スクリプトの実行は無い。GitHub のアーカイブは、まれに圧縮方式の更新でバイト列が変わる。その場合は SHA-256 の不一致で導入が失敗し（安全側）、許可リストのピンを更新して対処する（MuseTalk のランタイムのアーカイブと同じ前例）。
+- **取得**: 固定のコミットの GitHub アーカイブを `fetch.Download`（許可ホスト・リダイレクト先の再検査・`.part` の再開・SHA-256 とサイズの検証。エンジン・モデルと同じ部品）で取る。取得のあと、zip を**一度だけメモリに読み込んでサイズと SHA-256 をもう一度照合し**（`readPinned`。ノードの zip は最大でも数十 MB）、展開はそのバイト列から行う（`extract.ZipFrom`。パスから開き直さない）。検証のあと展開の前に zip をすり替えられても（データディレクトリに書ける者）、展開には届かない。照合が崩れていれば `ErrArchiveChanged` で失敗し、zip を消す。展開は `..`・絶対パス・シンボリックリンクを拒否し、`extracted_size` を超える展開を断る。git・pip・スクリプトの実行は無い。GitHub のアーカイブは、まれに圧縮方式の更新でバイト列が変わる。その場合は SHA-256 の不一致で導入が失敗し（安全側）、許可リストのピンを更新して対処する（MuseTalk のランタイムのアーカイブと同じ前例）。
 - **同意が先**: `Install` は、ライセンスの ID・版と注意事項の版（`NoticeVersion`）の同意が記録されていなければ、何も取得せずに拒否する（画面の同意フォームも MCP の `accept_custom_node_license` も記録するだけで、強制するのはサービス）。文面か版が変わると、改めて同意が要る。
 - **ジョブ**: ジョブの種類は既存の `model_install`、`target` は `node:<id>`（[model-manager.md](model-manager.md) §5.1）。ハンドラーは `Service.Handler(next)` で包み、`node:` 以外は次のハンドラー（モデルマネージャー → ローカルランタイムの順に包む。`app/services.go`）に渡す。進み具合は、取得 50%・展開 30%・再起動と確認で 100%。中断は `POST /model-manager/nodes/:id/cancel`（MCP: `cancel_model_install`）で、ダウンロード済みの分は残る。
 - **入れ替え**: 動いている ComfyUI は止め、展開と封印を済ませたフォルダを入れ替えて、記録を書き、**動いていたなら再起動して、`/object_info/<class>` で `node_classes` が読み込まれたことを確かめる**。読み込まれなければ、ノードを削除して失敗にする（動かないノードを「導入済み」にしない）。止まっていた ComfyUI は起動しない（次の起動で読み込まれる）。

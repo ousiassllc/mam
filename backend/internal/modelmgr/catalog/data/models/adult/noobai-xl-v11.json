@@ -4,7 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
- "description": "【アニメ・イラスト】実写ではない。Illustrious-xl を Danbooru・e621 の画像で追加学習した SDXL チェックポイント（成人向け。約 7.1 GB、epsilon 予測の 1.1）。タグでプロンプトを書く。作者の推奨は cfg 5〜6・25〜30 ステップ・Euler a・解像度は約 1024×1024 の面積（832×1216 など）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "description": "【アニメ・イラスト】実写ではない。Illustrious-xl を Danbooru・e621 の画像で追加学習した SDXL チェックポイント（成人向け。約 7.1 GB、epsilon 予測の 1.1）。タグでプロンプトを書く。作者の推奨は cfg 5〜6・25〜30 ステップ・Euler a・解像度は約 1024×1024 の面積（832×1216 など）。テンプレートは SDXL 標準だが、作者の推奨に合わせて cfg 5.5・Euler a（euler_ancestral）で動かす（ステップ数は標準の 25、スケジューラーは karras のまま。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
  "files": [
   {
    "name": "NoobAI-XL-v1.1.safetensors",
@@ -36,12 +36,20 @@
   {
    "name": "noobai-xl-v11",
    "template": "txt2img-sdxl",
-   "model_file": "NoobAI-XL-v1.1.safetensors"
+   "model_file": "NoobAI-XL-v1.1.safetensors",
+   "sampling": {
+    "cfg": 5.5,
+    "sampler": "euler_ancestral"
+   }
   },
   {
    "name": "noobai-xl-v11-img2img",
    "template": "img2img-sdxl",
-   "model_file": "NoobAI-XL-v1.1.safetensors"
+   "model_file": "NoobAI-XL-v1.1.safetensors",
+   "sampling": {
+    "cfg": 5.5,
+    "sampler": "euler_ancestral"
+   }
   }
  ]
 }

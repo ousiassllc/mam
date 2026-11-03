@@ -174,3 +174,34 @@ func TestThePoseChartTravelsInTheFormToTheRun(t *testing.T) {
 	rec := s.run(hidden)
 	assert.Less(t, rec.Code, 400, rec.Body.String())
 }
+
+// #994: the gallery has a button that deletes the library (and the offer comes back); the install panel polls how far the download is.
+func TestThePoseLibraryCanBeDeletedFromTheGalleryAndTheInstallPanelPollsTheProgress(t *testing.T) {
+	s, lib := posesScreen(t, true)
+	gallery := s.get(paths.GenerationTestPoses()).Body.String()
+	assert.Contains(t, gallery, `data-testid="gt-pose-remove"`)
+	assert.Contains(t, gallery, "hx-confirm=", "a deletion is confirmed")
+	assert.Contains(t, gallery, `hx-post="`+paths.GenerationTestPoses("remove")+`"`)
+
+	removed := s.post(paths.GenerationTestPoses("remove"), url.Values{})
+	require.Equal(t, http.StatusOK, removed.Code, removed.Body.String())
+	assert.Contains(t, removed.Body.String(), `data-testid="gt-pose-install"`, "the offer to install comes back")
+	assert.NotContains(t, removed.Body.String(), "gt-pose-gallery")
+	assert.False(t, lib.Lib.Status().Installed)
+	assert.Equal(t, http.StatusNotFound, s.get(paths.GenerationTestPoses("image", "std_P001_front")).Code, "the pictures are gone")
+	assert.Equal(t, http.StatusOK, s.post(paths.GenerationTestPoses("remove"), url.Values{}).Code, "a library that is gone is removed again without an error")
+
+	offer := s.get(paths.GenerationTestPoses()).Body.String()
+	assert.Contains(t, offer, `data-testid="gt-pose-progress"`)
+	assert.Contains(t, offer, `hx-get="`+paths.GenerationTestPoses("progress")+`"`)
+	idle := s.get(paths.GenerationTestPoses("progress"))
+	require.Equal(t, http.StatusOK, idle.Code)
+	assert.Empty(t, strings.TrimSpace(idle.Body.String()), "nothing runs: nothing is said")
+
+	var said []string
+	require.NoError(t, lib.Lib.Install(t.Context(), true, func(_, _ int64) {
+		said = append(said, strings.TrimSpace(s.get(paths.GenerationTestPoses("progress")).Body.String()))
+	}))
+	require.NotEmpty(t, said)
+	assert.Regexp(t, `^ダウンロード中: .+ / .+（\d+%）$`, said[len(said)-1], "the line the panel polls while the install runs")
+}

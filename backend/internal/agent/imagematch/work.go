@@ -44,6 +44,18 @@ type Call struct {
 	USD *float64 `json:"usd,omitempty"`
 }
 
+// Made reports whether the LLM answered, so the call was paid for (the zero Call is the call that never got an answer).
+func (c Call) Made() bool { return c.Kind != "" }
+
+// callOfAnswer is the Call of the answer res of a call that may have failed: the zero Call when there was no answer (the Response of a failed
+// call is empty), else callOf. An answer that cannot be read as JSON, or is not what was asked for, is paid for all the same.
+func callOfAnswer(kind string, res llm.Response, assumed llm.Usage) Call {
+	if res.Provider == "" && res.Text == "" && res.Usage == nil {
+		return Call{}
+	}
+	return callOf(kind, res, assumed)
+}
+
 // callOf is the Call of an answer: its measured tokens, or the assumed ones of its kind when the answer has none.
 func callOf(kind string, res llm.Response, assumed llm.Usage) Call {
 	c := Call{Kind: kind, Provider: res.Provider, Model: res.Model, InputTokens: assumed.InputTokens, OutputTokens: assumed.OutputTokens}

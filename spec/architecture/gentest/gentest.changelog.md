@@ -37,3 +37,4 @@
 | 1.30 | 2026-11-03 | §3.7: 成人ゲートが閉じているとき、`Hidden` に当たるモデルのレシピは保存を残したまま、`View` にモデルの名前・識別子・設定を出さない（`ModelLabel` は「成人向けのモデル」、`Params` は空。理由つきで `Usable=false`）。名前の変更・かんたんの出し入れは保存した設定を書き戻す（`load`） | Issue #992。レシピの一覧・かんたんの選択肢・MCP に成人向けモデルの名前・ネガティブ・LoRA が出ていた。ジョブ一覧は [jobs-screen.md](../../components/jobs-screen.md) 1.4 |
 | 1.31 | 2026-11-03 | §3.6 の復元に `batch_input`（前のバッチの入力画像。`FromBatchInput`・`ResolveInput`・`redo.RefOf`）を足した。アップロードした画像を使った結果も「この設定でもう一度」で入力ごと戻せる。コピーはその結果をすべて削除すると消える | Issue #977（既知の制限の解消） |
 | 1.32 | 2026-11-03 | §3.5 に、マスク部品のキャンバスの上限（長辺 2048。画面側のメモリ）と、実測が未実施であることを足した | Issue #999 |
+| 1.33 | 2026-11-03 | §6: ポーズ集の削除（画面のボタン・MCP）・導入中の進み具合・MCP からの導入（`get_pose_library`・`install_pose_library`・`remove_pose_library`）。`poses.Library` に `Progress`・`Remove` | Issue #994 (e) |
