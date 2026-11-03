@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // Run statuses.
@@ -138,7 +139,8 @@ func (s *Service) StartRun(ctx context.Context, in RunInput) (RunRecord, error) 
 	}
 	s.pruneRuns()
 	timeout := time.Duration(s.Adapter.Config().Endpoints[saved.Endpoint].CallLimit()) * time.Second
-	go s.execute(context.WithoutCancel(ctx), rec, dir, saved, req, timeout)
+	work := s.works.Begin(worktrack.Record{ID: id, Kind: worktrack.KindWorkflowRun, Subject: wf.Name, ModelID: modelID}, "ComfyUI を準備しています")
+	go s.execute(context.WithoutCancel(ctx), rec, dir, saved, req, timeout, work)
 	return rec, nil
 }
 
@@ -240,11 +242,14 @@ func (s *Service) loadAll(ctx context.Context, refs []AssetRef) ([]modeladapter.
 
 // execute runs the workflow and writes the record. It is not resumable: a restart leaves the record running and
 // Run then reports it failed.
-func (s *Service) execute(ctx context.Context, rec RunRecord, dir string, saved localcfg.SavedWorkflow, req request, timeout time.Duration) {
+func (s *Service) execute(ctx context.Context, rec RunRecord, dir string, saved localcfg.SavedWorkflow, req request, timeout time.Duration, work *worktrack.Run) {
 	defer s.runs.drop(rec.ID)
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	ctx = progress.With(ctx, func(u progress.Update) { s.runs.set(rec.ID, u) })
+	ctx = progress.With(ctx, func(u progress.Update) {
+		s.runs.set(rec.ID, u)
+		work.Progress(u.Percent, u.Message)
+	})
 	s.runs.set(rec.ID, progress.Update{Message: "ComfyUI を準備しています"})
 	file, mime, size, err := s.generate(ctx, dir, saved, req)
 	now := s.Now().UTC()
@@ -252,13 +257,19 @@ func (s *Service) execute(ctx context.Context, rec RunRecord, dir string, saved 
 	if err != nil {
 		rec.Status, rec.Error = RunFailed, reasonOf(err)
 		s.Logger.Warn("a workflow run failed", "workflow", rec.WorkflowID, "model", rec.ModelID, "err", err)
+		work.Fail(rec.Error)
 	} else {
 		rec.Status, rec.File, rec.MimeType, rec.SizeBytes = RunSucceeded, file, mime, size
+		work.Succeed()
 	}
 	if err := writeRun(dir, rec); err != nil {
 		s.Logger.Error("write the record of a workflow run failed", "run", rec.ID, "err", err)
 	}
 }
+
+// Works is the runs of this process, for the job list (worktrack.Source): the ones that run and the latest that ended. It is memory
+// only: a restart forgets them (the record of a run on disk, Run, is the other one).
+func (s *Service) Works() []worktrack.Record { return s.works.Works() }
 
 func (s *Service) generate(ctx context.Context, dir string, saved localcfg.SavedWorkflow, req request) (file, mime string, size int64, err error) {
 	c, err := s.client(ctx, saved.Endpoint, true)

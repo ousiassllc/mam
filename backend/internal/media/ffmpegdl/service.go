@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // ErrUnsupported means ffmpeg is not downloaded for this platform (only Windows x64 and macOS on Apple silicon). The user installs
@@ -66,6 +67,9 @@ type Service struct {
 	installer *Installer
 	supported bool
 	logger    *slog.Logger
+
+	// works is the record of the installs for the job list (worktrack: memory only; Works).
+	works worktrack.Tracker
 
 	mu      sync.Mutex
 	install InstallStatus
@@ -195,7 +199,7 @@ func (s *Service) StartInstall() (started bool, err error) {
 	if err := s.installer.CheckSpace(); err != nil {
 		return abort(err)
 	}
-	go s.run(ctx)
+	go s.run(ctx, s.works.Begin(worktrack.Record{Kind: worktrack.KindFFmpegInstall, Subject: "ffmpeg"}, phaseMessage[PhaseDownload]))
 	return true, nil
 }
 
@@ -208,7 +212,7 @@ var phaseMessage = map[Phase]string{
 	PhaseCheck:    "ffmpeg が動くか確かめています",
 }
 
-func (s *Service) run(ctx context.Context) {
+func (s *Service) run(ctx context.Context, work *worktrack.Run) {
 	defer s.wg.Done()
 	err := s.installer.Install(ctx, func(p Phase, done, total int64) {
 		share := phaseShare[p]
@@ -219,6 +223,7 @@ func (s *Service) run(ctx context.Context) {
 		s.mu.Lock()
 		s.install = InstallStatus{State: InstallRunning, Phase: p, Percent: pct, Done: done, Total: total, Message: phaseMessage[p]}
 		s.mu.Unlock()
+		work.Progress(pct, phaseMessage[p])
 	})
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -226,13 +231,20 @@ func (s *Service) run(ctx context.Context) {
 	switch {
 	case err == nil:
 		s.install = InstallStatus{State: InstallSucceeded, Percent: 100, Message: "ffmpeg を入れました"}
+		work.Succeed()
 	case errors.Is(err, context.Canceled):
 		s.install = InstallStatus{State: InstallFailed, Cancelled: true}
+		work.Cancel()
 	default:
 		s.logger.Warn("ffmpeg download failed", "err", err)
 		s.install = InstallStatus{State: InstallFailed, Error: Explain(err)}
+		work.Fail(s.install.Error)
 	}
 }
+
+// Works is the installs of this process, for the job list (worktrack.Source): the one that runs and the latest that ended. It is
+// memory only: a restart forgets them.
+func (s *Service) Works() []worktrack.Record { return s.works.Works() }
 
 // Explain is why an install failed, in words for the user.
 func Explain(err error) string {

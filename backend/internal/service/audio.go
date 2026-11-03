@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/audiosummary"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // GenerateAudio makes the Audio Timeline of the latest Edit Timeline of the trunk (branchID "") or of a Branch (POST /projects/:id/audio/generate):
@@ -35,7 +36,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 type AudioOptions = audiosettings.Settings
 
 // GenerateAudioWith is GenerateAudio with the choices of the run.
-func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branchID string, opts AudioOptions) (EditorView, error) {
+func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branchID string, opts AudioOptions) (_ EditorView, err error) {
 	if field := localvoice.InvalidProvider(opts.VoiceProvider, opts.LipSyncProvider); field != "" {
 		return EditorView{}, invalid(field, "声のプロバイダー（voice_provider）は elevenlabs か local、口パクのプロバイダー（lip_sync_provider）は synclabs か local を指定してください")
 	}
@@ -55,6 +56,8 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 	if project.State != domain.StateAudio {
 		return EditorView{}, conflict("音声を作れるのは Editor Judge に合格した後（AUDIO）です（現在: %s）", project.State)
 	}
+	run := s.track(worktrack.KindAudio, projectID, "音声（声・BGM・効果音・ミックス）を作っています")
+	defer func() { run.End(err) }()
 	ver, err := s.editors.LatestEditTimeline(ctx, projectID, branchID)
 	if err != nil {
 		return EditorView{}, notFound(err)
@@ -105,6 +108,7 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 		_ = s.audio.DiscardRun(in)
 		return EditorView{}, notFound(err)
 	}
+	run.Succeed() // what is left (the chat message, the view) is not the stage
 	s.announce(ctx, projectID, assistantText(audiosummary.Of(tl, branchID != "", notes...)))
 	v, err := s.View(ctx, projectID, branchID)
 	v.ProviderNotes = notes

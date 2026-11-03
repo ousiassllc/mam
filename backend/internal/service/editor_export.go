@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // rough returns the rendered Rough Cut of the Edit Timeline (a draft with the sound of the Takes),
@@ -125,14 +126,18 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 	if err != nil {
 		return EditorView{}, err
 	}
+	run := s.track(worktrack.KindExport, projectID, fmt.Sprintf("動画を書き出しています（%s / %s / %s）", opts.AspectRatio, opts.Resolution, opts.Codec))
 	rec, err := s.renderExport(ctx, projectID, in.BranchID, opts)
 	if err != nil {
+		run.End(err)
 		return EditorView{}, err
 	}
 	if _, err := s.editors.CreateExport(context.WithoutCancel(ctx), rec); err != nil {
 		_ = os.Remove(s.assetPath(rec.FilePath))
+		run.End(err)
 		return EditorView{}, notFound(err)
 	}
+	run.Succeed()
 	if project.State == domain.StateReady {
 		if err := s.projects.Transition(ctx, projectID, domain.StateExported); err != nil {
 			return EditorView{}, err

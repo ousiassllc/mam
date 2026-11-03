@@ -29,6 +29,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // NodeCommitForTest is the commit the node "pack" of NewWithNodes is pinned to.
@@ -43,7 +44,9 @@ type Screen struct {
 	// Rts are the local runtimes (NewWithRuntimes); nil for a screen without them.
 	Rts *lrtest.Rig
 	// Nodes are the custom nodes (NewWithNodes); nil for a screen without them.
-	Nodes  *nodetest.Rig
+	Nodes *nodetest.Rig
+	// Works are the works that have no row in the job table (worktrack), which the job list reads next to the table.
+	Works  *worktrack.Tracker
 	engine http.Handler
 	cookie *http.Cookie
 	token  string
@@ -79,8 +82,10 @@ func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *
 	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "m.json"), false)
 	settings.ModelManager, settings.Gentest = rig.Svc, rig.Gentest
 	// The jobs of the model manager and of the generation test are in the rig's table; the Projects and Shots in the services'.
+	works := &worktrack.Tracker{}
 	settings.JobList = joblist.New(joblist.Deps{
 		Table: jobrecent.New(rig.DB()), Shots: repository.NewGenerationRepository(db), Projects: svc.Projects, ModelManager: rig.Svc, Gentest: rig.Gentest,
+		Works: []worktrack.Source{works},
 	})
 	if rts != nil {
 		settings.LocalRuntimes = rts.Svc
@@ -88,7 +93,7 @@ func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *
 	if nodes != nil {
 		settings.ModelNodes = nodes.Svc
 	}
-	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, engine: router.New(svc, router.Options{Settings: settings})}
+	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, Works: works, engine: router.New(svc, router.Options{Settings: settings})}
 
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)

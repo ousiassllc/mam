@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/protocol"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // InstructionMode says where the system prompt of an Agent goes.
@@ -92,7 +93,8 @@ type Service struct {
 	rateWindows []Window
 	models      modelCache
 	install     installState
-	credsStore  string // keyring or auto, decided on the first start
+	works       worktrack.Tracker // the installs, for the job list (Works)
+	credsStore  string            // keyring or auto, decided on the first start
 
 	closed bool
 	// removing: Logout is deleting the engine and mam's files; StartInstall refuses (ErrEngineRemoving).
