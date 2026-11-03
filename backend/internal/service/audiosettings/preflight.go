@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/irodori"
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 )
@@ -44,17 +45,18 @@ func (s *Service) Preflight(ctx context.Context, r Run) (Plan, error) {
 	if !r.Fallback {
 		return plan, nil
 	}
-	if r.Voice == localvoice.Local && len(r.Voices) > 0 {
-		cause, err := s.voiceProblem(ctx, r.Voices)
+	if r.Voice.IsLocal() && len(r.Voices) > 0 {
+		role := r.Voice.Role()
+		cause, err := s.voiceProblem(ctx, role, r.Voices)
 		if err != nil {
 			return Plan{}, err
 		}
 		if cause != "" {
-			if err := s.requireKey(localvoice.RoleVoice, cause); err != nil {
+			if err := s.requireKey(role, cause); err != nil {
 				return Plan{}, err
 			}
 			plan.Voice = localvoice.ElevenLabs
-			plan.Notes = append(plan.Notes, localvoice.Switched(localvoice.RoleVoice, cause))
+			plan.Notes = append(plan.Notes, localvoice.Switched(role, cause))
 		}
 	}
 	if r.LipSync == localvoice.LipSyncLocal && r.NeedLipSync {
@@ -73,9 +75,9 @@ func (s *Service) Preflight(ctx context.Context, r Run) (Plan, error) {
 	return plan, nil
 }
 
-// voiceProblem is why the local voice cannot speak the script ("" when it can): a speaker without a reference voice, else the
+// voiceProblem is why the local voice of role cannot speak the script ("" when it can): a speaker without a reference voice, else the
 // runtime's own refusal. A non-nil error is a failure to look (the caller's cancellation).
-func (s *Service) voiceProblem(ctx context.Context, voices map[string]localvoice.Voice) (string, error) {
+func (s *Service) voiceProblem(ctx context.Context, role localvoice.Role, voices map[string]localvoice.Voice) (string, error) {
 	var missing []localvoice.MissingSpeaker
 	for name, v := range voices {
 		if !v.Usable() {
@@ -84,10 +86,16 @@ func (s *Service) voiceProblem(ctx context.Context, voices map[string]localvoice
 	}
 	if len(missing) > 0 {
 		slices.SortFunc(missing, func(a, b localvoice.MissingSpeaker) int { return strings.Compare(a.Name, b.Name) })
-		text, _ := localspeech.Reason(&localvoice.MissingVoiceError{Speakers: missing})
+		text, _ := localspeech.Reason(&localvoice.MissingVoiceError{Speakers: missing, Vendor: vendorOf(role)})
 		return text, nil
 	}
-	return s.problem(ctx, localvoice.RoleVoice)
+	if role == localvoice.RoleVoiceIrodori { // a recording Irodori-TTS cannot be given (empty, another format, too long) is known before the run
+		if err := irodori.CheckAll(voices); err != nil {
+			text, _ := localspeech.Reason(err)
+			return text, nil
+		}
+	}
+	return s.problem(ctx, role)
 }
 
 // problem is the sentence of why the local provider of role cannot be used now ("" when it can), by the runtime manager's own checks
@@ -124,8 +132,11 @@ func (s *Service) requireKey(role localvoice.Role, cause string) error {
 }
 
 func vendorOf(role localvoice.Role) string {
-	if role == localvoice.RoleLipSync {
+	switch role {
+	case localvoice.RoleLipSync:
 		return localvoice.VendorMuseTalk
+	case localvoice.RoleVoiceIrodori:
+		return localvoice.VendorIrodori
 	}
 	return ""
 }
@@ -135,7 +146,7 @@ func vendorOf(role localvoice.Role) string {
 // the plan, and returns the notes to tell the user of the providers that went to the cloud (empty when none did). Call it once the run's
 // scenes and clips are in in.
 func (s *Service) Settle(ctx context.Context, in *audiodirector.Input, voices localspeech.Lookup, branchID string, fallback bool) ([]string, error) {
-	if in.VoiceProvider == localvoice.Local {
+	if in.VoiceProvider.IsLocal() {
 		var err error
 		if in.LocalVoices, err = localspeech.Voices(ctx, voices, in.ProjectID, branchID, in.Scenes); err != nil {
 			return nil, err

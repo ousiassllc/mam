@@ -16,8 +16,8 @@ type speaker struct {
 	say   func(ctx context.Context, line domain.VoiceLine) (Speech, error)
 }
 
-// speakerFor chooses who speaks the lines of the run, and makes sure they can be spoken before anything is paid for: for ElevenLabs a
-// stored API key; for the local voice a reference voice for every speaker (never another voice for one without) and a server that runs.
+// speakerFor chooses who speaks the lines of the run and makes sure they can be spoken before anything is paid for: for ElevenLabs a stored
+// API key; for a local voice a usable reference voice for every speaker (never another voice for one without) and a server that runs.
 func (d *Director) speakerFor(ctx context.Context, in Input, lines []domain.VoiceLine) (speaker, error) {
 	switch in.VoiceProvider {
 	case "", localvoice.ElevenLabs:
@@ -33,12 +33,12 @@ func (d *Director) speakerFor(ctx context.Context, in Input, lines []domain.Voic
 		return speaker{domain.ModelElevenLabsTTS, d.Prices.TTS, func(ctx context.Context, l domain.VoiceLine) (Speech, error) {
 			return d.Providers.Speech.Synthesize(ctx, l)
 		}}, nil
-	case localvoice.Local:
-		local := d.Providers.LocalSpeech
-		if err := localvoice.Check(lines, in.LocalVoices, local != nil, func() error { return local.Prepare(ctx) }); err != nil {
+	case localvoice.Local, localvoice.Irodori:
+		local := map[localvoice.Provider]LocalSynthesizer{localvoice.Local: d.Providers.LocalSpeech, localvoice.Irodori: d.Providers.LocalIrodori}[in.VoiceProvider]
+		if err := localvoice.CheckFor(in.VoiceProvider.Vendor(), lines, in.LocalVoices, local != nil, func() error { return localvoice.Prepare(ctx, local, in.LocalVoices) }); err != nil {
 			return speaker{}, err
 		}
-		return speaker{domain.ModelGPTSoVITSTTS, func(string) float64 { return 0 }, func(ctx context.Context, l domain.VoiceLine) (Speech, error) {
+		return speaker{in.VoiceProvider.Model(), func(string) float64 { return 0 }, func(ctx context.Context, l domain.VoiceLine) (Speech, error) {
 			return local.Synthesize(ctx, l, in.LocalVoices[localvoice.SpeakerOf(l)])
 		}}, nil
 	}

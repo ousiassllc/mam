@@ -64,7 +64,7 @@ type rig struct {
 func newRig(t *testing.T, keys fakeKeys) *rig {
 	t.Helper()
 	rt := &fakeRuntimes{
-		views:  map[string]localruntime.View{"gpt-sovits": usable("gpt-sovits", "GPT-SoVITS"), "musetalk": usable("musetalk", "MuseTalk 1.5")},
+		views:  map[string]localruntime.View{"gpt-sovits": usable("gpt-sovits", "GPT-SoVITS"), "irodori-tts": usable("irodori-tts", "Irodori-TTS"), "musetalk": usable("musetalk", "MuseTalk 1.5")},
 		refuse: map[string]error{},
 	}
 	path := filepath.Join(t.TempDir(), audiosettings.FileName)
@@ -111,6 +111,7 @@ func TestSave_ALocalProviderThatThisMachineCannotRunIsRefusedWithItsReason(t *te
 		want   string
 	}{
 		"voice":    {audiosettings.Update{VoiceProvider: new(localvoice.Local)}, "gpt-sovits", "voice_provider", "ローカルの声（GPT-SoVITS）を選べません"},
+		"irodori":  {audiosettings.Update{VoiceProvider: new(localvoice.Irodori)}, "irodori-tts", "voice_provider", "ローカルの声（Irodori-TTS）を選べません"},
 		"lip sync": {audiosettings.Update{LipSyncProvider: new(localvoice.LipSyncLocal)}, "musetalk", "lip_sync_provider", "ローカルの口パク（MuseTalk 1.5）を選べません"},
 	} {
 		t.Run(name, func(t *testing.T) {

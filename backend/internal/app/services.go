@@ -42,6 +42,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
+	"github.com/ousiassllc/mam/backend/internal/service/localspeech/irodoriwire"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/wfrefresh"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -197,7 +198,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		Judge:         judging.config,
 		Jev:           shadow,
 		Media:         previews,
-		Audio:         audioProviders(keys, rts, previews),
+		Audio:         audioProviders(keys, rts, mgr, previews),
 		AudioSettings: newAudioSettings(cfg, rts, keys), // read at every run
 	})
 	services.LocalModels = localModels
@@ -261,13 +262,14 @@ func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue
 }
 
 // audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects; API key "elevenlabs"),
-// Sync Labs (Lip Sync; API key "synclabs") and the local voice and lip sync, GPT-SoVITS and MuseTalk 1.5 of the local runtime manager,
-// which a run may choose instead of ElevenLabs' TTS and Sync Labs. A runtime need not be installed: the local provider reports that when
+// Sync Labs (Lip Sync; API key "synclabs") and the local voices and lip sync, GPT-SoVITS, Irodori-TTS and MuseTalk 1.5 of the local runtime
+// manager, which a run may choose instead of ElevenLabs' TTS and Sync Labs. A runtime need not be installed: the local provider reports that when
 // a run chooses it. The lip sync is told the ffmpeg of tools, the one the Director runs (nil: none; the Director is not available then either).
-func audioProviders(keys credential.Store, rts *localruntime.Service, tools *media.Tools) audiodirector.Providers {
+func audioProviders(keys credential.Store, rts *localruntime.Service, mgr *modelmanager.Service, tools *media.Tools) audiodirector.Providers {
 	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
 	p.LipSync = synclabs.New(synclabs.Config{}, keys, nil)
 	p.LocalSpeech = gptsovits.New(localspeech.Server{Runtime: rts}, gptsovits.Config{}, nil)
+	p.LocalIrodori = irodoriwire.Voice(rts, mgr)
 	lip := musetalk.Config{}
 	if tools != nil {
 		lip.FFmpegPath = tools.FFmpegPath()
