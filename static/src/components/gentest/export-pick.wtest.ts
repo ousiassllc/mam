@@ -189,7 +189,8 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
       expect(mark().backgroundColor, 'the mark in the corner is not filled').not.to.equal(unlit);
 
       tapMark('r0');
-      expect(lit().boxShadow).to.equal('none');
+      // The frame fades out (transition-shadow): the value is `none` only when the fade has ended, so it is waited for (with a limit), not read at once.
+      await waitUntil(() => lit().boxShadow === 'none', 'the frame of a result that was let go kept its glow');
     } finally {
       stylesheet.remove();
     }
