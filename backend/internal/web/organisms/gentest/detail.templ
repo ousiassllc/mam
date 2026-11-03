@@ -3,6 +3,7 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
@@ -46,6 +47,7 @@ templ ResultDetail(d Detail) {
 			</form>
 		</div>
 		@upscalebox.Box(d.Upscale)
+		@faceswapbox.Box(d.FaceSwap)
 		if d.English != "" || d.EnglishNegative != "" {
 			<div class="flex flex-col gap-1" data-testid="gt-english">
 				<h3 class="text-xs text-neutral-400">英訳（送った英語）</h3>

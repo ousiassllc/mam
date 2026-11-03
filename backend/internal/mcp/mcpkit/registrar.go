@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
+	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -40,6 +41,8 @@ type Settings struct {
 	ChatGPT *chatgpt.Service
 	// Audio is the choice of the voice and lip-sync providers (audio.json).
 	Audio *audiosettings.Service
+	// FaceFusion is the paths of the external face swapper (facefusion.json; get_facefusion_status, set_facefusion_paths).
+	FaceFusion *facefusionsettings.Service
 }
 
 // Kit is what the server shares with the tool packages besides service.Services.

@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/onboarding"
 )
@@ -25,7 +26,8 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	settings.LocalModels = services.LocalModels
 	ffmpeg := newFFmpegSettings(cfg, ffmpegDL)
 	settings.FFmpeg, settings.FFmpegDownload = ffmpeg, ffmpegDL
-	settings.Keys = credential.NewKeyring() // the OS secure storage: the connection test of an API key reads a saved key from it
+	settings.FaceFusion = facefusionsettings.Default(cfg.DataDir) // the external face swapper (#995); the generation test reads the same file
+	settings.Keys = credential.NewKeyring()                       // the OS secure storage: the connection test of an API key reads a saved key from it
 	settings.Workflows = services.Workflows
 	// A saved image / video assignment applies at once, as a saved endpoint or model does.
 	settings.Models.SetOnChange(func() {

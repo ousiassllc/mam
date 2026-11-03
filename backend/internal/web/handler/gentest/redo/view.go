@@ -23,7 +23,7 @@ func ActionsOf(d record.ResultDetail, inpaintURL, redrawFrom string, upscale boo
 	if d.Media != gentest.MediaImage || !d.HasFile {
 		return gentestresult.Actions{}
 	}
-	if d.Inpaint == nil && d.Upscale == nil {
+	if d.Inpaint == nil && d.Upscale == nil && d.FaceSwap == nil {
 		a.SimilarURL = againURL(d.ID, false)
 		a.ReplayURL = againURL(d.ID, true)
 	}

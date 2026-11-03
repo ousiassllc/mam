@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
@@ -300,6 +301,7 @@ type Detail struct {
 	Actions          gentestresult.Actions // the buttons under the picture (#977)
 	Used             gentestresult.Used    // the settings it was made with, folded
 	Upscale          upscalebox.Form       // "make it larger", and where an enlargement came from
+	FaceSwap         faceswapbox.Form      // "swap the face" (FaceFusion), and where a swap came from
 	Answer           commercial.View
 }
 

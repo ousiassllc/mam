@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
+	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
@@ -29,6 +30,7 @@ import (
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
+	facefusionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/facefusion"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	licenseshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/licenses"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
@@ -60,7 +62,9 @@ type Services struct {
 	FFmpeg *ffmpegsettings.Service
 	// FFmpegDownload is the download of ffmpeg shown in the ffmpeg category; nil leaves the download out.
 	FFmpegDownload *ffmpegdl.Service
-	Update         *appupdate.Service
+	// FaceFusion is the "FaceFusion" category (the paths of the external face swapper). Nil leaves the category out.
+	FaceFusion *facefusionsettings.Service
+	Update     *appupdate.Service
 	// Licenses is the entries of the "第三者のライセンス" category; nil is licenses.Default() (the embedded THIRD_PARTY_NOTICES.md).
 	Licenses *licenses.Catalog
 	// Guide is whether the first-run guide exists (the overview links to it).
@@ -117,6 +121,9 @@ func init() {
 		}},
 		{paths.SettingsFFmpeg, "ffmpeg", func(s Services) bool { return s.FFmpeg != nil }, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsFFmpegBody(ffmpeghandler.SectionData(s.ffmpeg()))
+		}},
+		{paths.SettingsFaceFusion, "FaceFusion", func(s Services) bool { return s.FaceFusion != nil }, func(_ *gin.Context, s Services) templ.Component {
+			return pages.SettingsFaceFusionBody(facefusionhandler.SectionData(s.FaceFusion))
 		}},
 		{paths.SettingsUpdate, "バージョンとアップデート", always, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsUpdateBody(updatehandler.SectionData(s.Update))

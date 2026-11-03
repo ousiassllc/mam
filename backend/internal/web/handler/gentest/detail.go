@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/facefusion"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/faceswapscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/settingstext"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
@@ -31,7 +33,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f importbox
 	v := view.Detail{
 		Card: cardOf(d.ResultView, false), SentPrompt: d.SentPrompt, Negative: d.NegativePrompt, NegMode: negativeModeText[d.NegativeMode],
 		English: d.TranslatedPrompt, EnglishNegative: d.TranslatedNegativePrompt,
-		Params: append(append(params(d), upscaleKVs(d)...), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
+		Params: append(append(append(params(d), upscaleKVs(d)...), faceKVs(d)...), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
 	}
 	inpaintURL, redrawFrom := "", ""
 	if d.Media == gentest.MediaImage && d.HasFile {
@@ -60,6 +62,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f importbox
 	}
 	v.Import = f
 	v.Upscale = h.upscaleForm(ctx, d, "")
+	v.FaceSwap = faceswapscreen.FormFor(h.Svc, d, facefusion.Selection{})
 	v.Actions, v.Used = redo.ActionsOf(d, inpaintURL, redrawFrom, v.Upscale.Show), redo.UsedOf(d, h.takesSampling(ctx, d))
 	if !d.HasFile {
 		v.Import.Projects = nil
