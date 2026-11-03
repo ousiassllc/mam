@@ -1,6 +1,6 @@
 # 追加ノード（ComfyUI のカスタムノードの許可リスト）
 
-[model-manager.md](model-manager.md) の同梱 ComfyUI に、**mam が確認して固定したカスタムノードだけを導入し、読み込ませる**仕組み（Issue #976）。ControlNet・IP-Adapter を使えるようにする土台で、PuLID（#960）・VNCCS PoseStudio（#985）も許可リストに載せたが、導入しない（§5.1〜5.4。Issue #993・#997 で決めた）。ノードを足す手順は §8。実装は `backend/internal/modelmgr/nodecat`（許可リスト）・`modelmgr/nodes`（導入・検証）・`service/modelnodes`（導入ジョブ・同意・再起動）・`service/modelmanager/nodegate`（ノードの無いモデルを止める）。前処理の Canny は `backend/internal/imgprep`（§5.2）。
+[model-manager.md](model-manager.md) の同梱 ComfyUI に、**mam が確認して固定したカスタムノードだけを導入し、読み込ませる**仕組み（Issue #976）。ControlNet・IP-Adapter を使えるようにする土台で、PuLID（#960）・VNCCS PoseStudio（#985）・ComfyUI-GGUF（#1016）も許可リストに載せたが、導入しない（§5.1〜5.5。Issue #993・#997・#1016 で決めた）。ノードを足す手順は §8。実装は `backend/internal/modelmgr/nodecat`（許可リスト）・`modelmgr/nodes`（導入・検証）・`service/modelnodes`（導入ジョブ・同意・再起動）・`service/modelmanager/nodegate`（ノードの無いモデルを止める）。前処理の Canny は `backend/internal/imgprep`（§5.2）。
 
 ## 1. 方針
 
@@ -36,6 +36,7 @@
 | `controlnet-aux`（Fannovel16/comfyui_controlnet_aux） | **導入しない**（`install_blocked`） | `a587a4c1…` | Apache-2.0 | 不明 | opencv・scikit-image・mediapipe・onnxruntime などが同梱の Python に無く、mam は pip を実行しない（§5.1）。さらに、実行時に Hugging Face から前処理のモデルを取得し、その重みのライセンスが `lllyasviel/Annotators` は `other`、Depth-Anything-V2-Large は CC-BY-NC-4.0 で、商用利用の可否が確かめられない（`commercial: unknown`）。**Canny は mam の中で作る**（§5.2）ので、導入しなくても写真から制御画像を作れる。ポーズ（OpenPose・DWPose）・深度は重みが要り、非商用／不明のため作らない |
 | `pulid-flux-chroma`（PaoloC68/ComfyUI-PuLID-Flux-Chroma。#960） | **導入しない**（`install_blocked`。理由は §5.3） | `52dc5068…`（アーカイブ SHA-256 `48d93b51…`、4,490,131 B、展開後 4,822,332 B） | LICENSE は Apache-2.0 の全文（著作権者の欄は雛形のまま）、README は「元の MIT License を引き継ぐ」で食い違う | 不明 | 4 クラス（`PulidFluxModelLoader`・`PulidFluxInsightFaceLoader`・`PulidFluxEvaClipLoader`・`ApplyPulidFlux`）。insightface・facexlib・onnxruntime・timm・ftfy・regex が同梱の Python に無く、mam は pip を実行しない（§5.1）。InsightFace antelopev2 の重みは非商用の研究用途のみで、同梱も自動の取得もしない（§5.3）。実行時に facexlib・EVA02-CLIP の重みを固定・検証なしで取得する。FLUX・Chroma に参照の顔の identity を足すが、**テンプレートは作らない**（同梱の Chroma1-HD での動作は未確認）。顔の identity は、Qwen-Image の編集モデルの `face` の役割（#960）で足りる |
 | `vnccs-utils`（AHEKOT/ComfyUI_VNCCS_Utils） | **導入しない**（`install_blocked`。理由は §5.4） | `334eee54…`（アーカイブ SHA-256 `cc5567fc…`、61,515,840 B、展開後 79,266,802 B、832 ファイル） | MIT（`LICENSE`。取り込んだ ComfyUI-Krea2Edit は Apache-2.0） | 不明 | PoseStudio（`VNCCS_PoseStudio`）はブラウザの画面が `vnccs_req_pose_sync` でポーズを返すのを最長 150 秒待つ作りで、API だけで流す mam のグラフでは動かない（`pose_data` は画面のウィジェットが書く JSON）。`pose_image` を渡す経路（SAM 3D）も画面の取り込みを待つ（§5.4）。さらに、実行時に `huggingface_hub` で Hugging Face からポーズ集（`MIUProject/VNCCS_PoseLibrary_Main`・`Totemistyk/General_Poses_PoseStudio`。画面からの要求で自動更新）・モデルを取得し、`revision` を固定していない箇所がある（mam の固定・SHA-256 検証の方針に合わない）。同梱の Python に cv2・huggingface_hub・omegaconf・yacs・roma・timm・pytorch_lightning・color_matcher・dynamicprompts が無く、mam は pip を実行しない（import 時に要るのは torch・numpy・PIL と ComfyUI 本体だけ）。画面は esm.sh から three・ag-psd を読む。実機の `/object_info` は未確認（入出力は `__init__.py` の `INPUT_TYPES` から読んだ: 必須 `pose_data`、省略可 `pose_image`・`camera_prompt`・`animation_image_batch`、出力 `images`・`lighting_prompt`）。**テンプレートは作らない**。Qwen-Image 2.1 のポーズは、ポーズ集（Shisei）の画像を `pose` の役割の参照として渡し、LoRA（`qwen-image-21-vnccs-pose`）を重ねる方法で足りる（[../gentest/gentest.md](../gentest/gentest.md) §6） |
+| `comfyui-gguf`（leejet/ComfyUI-GGUF。city96/ComfyUI-GGUF の fork。#1016） | **導入しない**（`install_blocked`。理由は §5.5） | `373048b8…`（アーカイブ SHA-256 `692c3670…7169`、38,557 B、展開後 122,247 B） | Apache-2.0 | 可（コードだけ。読み込む GGUF の重みは別のライセンス） | 6 クラス（`UnetLoaderGGUF`・`UnetLoaderGGUFAdvanced`・`CLIPLoaderGGUF` ほか）。import 時に要る `gguf` が同梱の Python に無く、mam は pip を実行しない（§5.1）。ネットワーク・subprocess・`exec`・pickle の読み込みは無い。Qwen-Image 2.1・Krea 2 の GGUF を読めるのは fork だけ（本家は architecture を持たない）。**GGUF のモデルはカタログに載せない**（導入できないノードを要るテンプレートは検証が拒否する。候補の確認結果は §5.5） |
 
 数値の出典（2026-11-03 に GitHub・Hugging Face で取得）: アーカイブの SHA-256 は github.com と codeload.github.com の両方で同じ値を確かめた。
 
@@ -115,6 +116,26 @@ PuLID-Flux-Chroma を mam から導入できる経路は、**作らない**。�
 - **ルート④（PoseStudio で人形を自分で動かす）**: ブラウザの画面が要るため、mam からは提供しない。ComfyUI の画面で PoseStudio を使って作った画像を、生成テストの参照画像（`pose` の役割）として渡す運用は、今のまま可能。
 - **実行時の自動取得の revision・SHA-256 の固定**: ノードのソースを読んだ範囲では、ポーズ集の取得（`api.repo_info`・`hf_hub_download`）に `revision` が無く、manifest の `json_sha256`・`preview_sha256` は取得元のリポジトリが持つ値で、mam が固定した値ではない（`factory3d`・SAM 3D の重みだけが `revision` を固定している）。ノードのコードを書き換えて固定すると、封印したツリーのダイジェスト（§3）が変わり、許可リストの固定（コミット・SHA-256）と合わなくなる。導入しないので、この固定は行わない。将来導入するときの前提は、①画面なしでポーズを渡す公式の経路がノードに入ること、②ポーズ集の取得を `HF_HUB_OFFLINE=1` で止め、mam がポーズ集のファイルを固定して置くこと。
 
+### 5.5 ComfyUI-GGUF を導入できず、GGUF のモデルを載せない理由（Issue #1016）
+
+`nodecat/data/nodes/comfyui-gguf.json` に ComfyUI-GGUF を載せたが、**`install_blocked`**（導入しない）。ソースを取得して読んだ事実（2026-11-03）と判断:
+
+1. **固定したのは fork**（`leejet/ComfyUI-GGUF` のコミット `373048b8…`。アーカイブ SHA-256 `692c3670…7169`〔github.com と codeload の両方で一致〕、38,557 B、展開後 122,247 B、18 ファイル、Apache-2.0）。本家 `city96/ComfyUI-GGUF`（`6ea2651e…`）との差は `loader.py`・`tools/convert.py` だけで、`IMG_ARCH_LIST` に `krea2`・`ideogram4`・`minimax`・`qwen_image21` を足し、Qwen3-VL の mmproj・量子化された 1 次元テンソルの扱いを足したもの。Qwen-Image-2.1-Uncensored の GGUF の `general.architecture` は `qwen_image21`（HF のファイルの先頭 4 MB を `Range` で取って読んだ）で、本家の `loader.py` は `Unexpected architecture type in GGUF file` で拒否する。配布元（`abenzerps`）のモデルカードも、本家では `Unknown model architecture!` になるので `leejet` の fork を使うよう書く。本家を固定しても、載せたい GGUF は読めない。
+2. **依存の `gguf` が無い**: `loader.py`・`ops.py`・`dequant.py` が先頭で `import gguf` する（ノードの読み込みで失敗する。`requirements.txt` は `gguf>=0.13.0`・`sentencepiece`・`protobuf`）。同梱の Python は ComfyUI 公式のポータブル版で、v0.42.1 の `requirements.txt` に `gguf` は無く、リリースのワークフロー（`.github/workflows/windows_release_dependencies.yml`）が入れるのは `requirements.txt`・torch 系（torch・torchvision・torchaudio・xformers〔既定は空〕）・`pygit2` だけ（`extra_dependencies` の既定は空）。mam は pip を実行せず、同梱の環境に足さない（§5.1）ので、`python_requires` の `gguf` が `python.json` に無く、`nodecat.Validate` が `install_blocked` を要求する。`protobuf`（tokenizer の再構築だけ）・`packaging`（ops.py の関数の中）は `python_optional`。
+3. **実行時の取得は無い**: 全 `.py` にネットワーク通信・subprocess・`exec`・`eval`・pickle の読み込みは無い（`tools/convert.py` の `torch.load` は `weights_only=True` の変換ツール）。ノード本体はファイルを書かない。導入できる状態になれば、重みの自動取得の問題（§5.3・§5.4）は無い。
+4. **GGUF のモデルは載せない**: `nodecat.Validate` は、`requires_nodes` が導入できないノードを指すテンプレート（`UnetLoaderGGUF` を使う GGUF のテンプレート）を拒否する（`TestAGGUFTemplateCannotRequireTheBlockedNode`）。ノードが入らないうちにカタログへ載せると、画面に出るだけで**絶対に導入も選択もできないモデル**になるので、載せない。したがってカタログの検証（`.gguf` の拡張子・`unet` フォルダ・`UnetLoaderGGUF` のローダー）、`mainfile`（`UnetLoaderGGUF` の `unet_name`）、HF 導入（`hfplan`。GGUF を拒否したまま。理由の文言は上の 2 を言うように改めた）も、使い道が無いので変えない。
+
+**GGUF の候補で確かめられたこと**（ノードが入るようになったとき、そのまま足せる材料）:
+
+| 候補 | 確認 | 判断 |
+|---|---|---|
+| Qwen-Image-2.1-Uncensored の GGUF | `abenzerps/Qwen-Image-2.1-Uncensored-Quantized` のコミット `7959e658915f52274897fb573ffeda49de8dc16b`（HF の API。`library_name: gguf`・`license: other`〔`qwen-research`〕・`base_model_relation: quantized`）。`qwen-image-2.1-UC-Q4_K_M.gguf`（4,604,558,112 B、SHA-256 `e79c8a00…1b41`。作者の推奨）、`-Q4_0.gguf`（4,151,573,280 B、`13f59f20…c5b9`）、`-Q5_K_M.gguf`（5,221,284,640 B）、`-Q6_K.gguf`（5,876,556,576 B）、`-Q8_0.gguf`（7,591,557,920 B、`cde456c7…ffa8`）、`-BF16.gguf`（14,230,272,800 B）。テキストエンコーダー・VAE は既存の `qwen-image-21-uncensored-int8` と同じファイル | ノードが入らないので**載せない**。足すときは、ライセンスは既存の int8 版と同じ（Qwen Research License・商用不可）。テンプレートは `txt2img-qwen-image21` の `UNETLoader` を `UnetLoaderGGUF`（入力名 `unet_name`、`requires_nodes: ["comfyui-gguf"]`）に替えたもの |
+| LUSTIFY! v10（Krea 2）の GGUF（Q2・Q4） | Civitai の LUSTIFY!（model 573152）の version 3112728 に、`lustifyNSFWCheckpoint_v10Krea2_3001078.gguf`（`Q2_K`。4,902,904 KiB、SHA-256 `25656f59…e5b1`）と `lustifyNSFWCheckpoint_v10Krea2_3002352.gguf`（`Q4_0`。8,116,372 KiB、SHA-256 `29de9543…376d`）がある（Civitai の API）。**Hugging Face には同じファイルのミラーが無い**（検索: `lustify`・`lustify krea`・`lustify gguf`・`lustifyNSFWCheckpoint_v10Krea2`・`v10Krea2`、作者 `ogkgm`・`dukintt`・`kkkkk26` のリポジトリ。見つかったのは SDXL の LUSTIFY の GGUF と、Krea 2 の fp8・bf16 の safetensors、LUSTIFY ではない Krea 2 の GGUF だけ） | 重みの取得はコミット固定の Hugging Face だけ（Civitai は取得元にしない）なので、**載せられない**。HF に SHA-256 の一致するミラーが現れ、かつノードが入るようになったら足す（ライセンスは `lustify-v10-krea2-turbo-fp8` と同じ: 商用は不明） |
+
+**ノードを導入できるようにするには**（別の Issue で決める。§5.1 の将来の設計）: `gguf` は純 Python の小さな wheel だが、固定した wheel を許可リストの項目として持ち（URL・SHA-256・サイズ）、ノードの外の隔離した置き場所へ展開して `PYTHONPATH` に渡し、実機（Windows）で `/object_info` まで確かめる、という経路が要る。今は作らない。
+
+**カタログのスキーマの変更との関係**: 別の作業がカタログのモデルに絞り込み用のフィールドを足している。この Issue のモデルは足していないので、そのフィールドは使っていない（GGUF のモデルを足すときに合わせる）。
+
 ## 6. ノードを必要とするモデル（`requires_nodes`）
 
 - テンプレートの `model.workflow.requires_nodes`（`localcfg.Workflow.RequiresNodes`）に、必要な許可リストの id を書く。テンプレートの全クラスは、コアのノードか、その `requires_nodes` のノードの `node_classes` でなければならない（`localcfg_test.go`）。
@@ -154,3 +175,4 @@ PuLID-Flux-Chroma を mam から導入できる経路は、**作らない**。�
 - Windows の実機での、ノードの導入・ComfyUI の停止と再起動・`/object_info` での読み込みの確認。
 - 実際の GitHub のアーカイブのダウンロード（SHA-256 は 2026-11-03 に取得した値）。
 - IP-Adapter のノードが `ipadapter` フォルダ・CLIP Vision のフォルダのファイルを読むこと（ノードの `model_folders` の登録はソースで確認、読み込みは未実行）。
+- ComfyUI-GGUF で GGUF の拡散モデル（Qwen-Image-2.1-Uncensored の Q4_K_M など）を実際に読み込めること（§5.5）。ノードは導入できず（`gguf` が同梱の Python に無い）、GGUF のモデルはカタログに載せていないので、**読み込みは一度も実行していない**。確かめたのは、ソース（`loader.py` が `general.architecture` を `IMG_ARCH_LIST` で検査する）と、GGUF のヘッダー（Qwen の Q4_K_M の先頭 4 MB。`general.architecture = qwen_image21`・テンソル 297 個）まで。ComfyUI v0.42.1 がこのテンソルの並びを `load_diffusion_model_state_dict` で組み立てられるかも未確認。
