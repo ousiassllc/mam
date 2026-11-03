@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -162,7 +161,7 @@ func TestStart_ACancelStopsTheProcessesAndLeavesNothingBehind(t *testing.T) {
 	cur, _ := f.svc.Status(st.ID)
 	assert.Equal(t, worktrack.Cancelled, cur.State, "a stop by the user is not a failure")
 	assert.Empty(t, cur.Error)
-	require.Error(t, syscall.Kill(pid, 0), "the process of the step is gone")
+	assert.True(t, processGone(pid), "the process of the step is gone")
 	assert.Empty(t, f.files(f.rt.work), "the working directory is removed")
 	assert.Empty(t, f.weightDirs(), "no weights are kept")
 	assert.Nil(t, f.reference0().Finetune, "the Character has no trained voice")
