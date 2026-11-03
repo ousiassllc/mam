@@ -42,6 +42,20 @@
 | `PUT /projects/:id/characters/:characterId/voice-reference` | `create_upload_ticket`（基盤。`purpose=character_voice_reference`）, `update_character_voice_reference` |
 | `DELETE /projects/:id/characters/:characterId/voice-reference` | `delete_character_voice_reference` |
 | `GET /projects/:id/characters/:characterId/voice-reference` | `get_character_voice_reference_url` |
+| `GET /series/:id/characters/:characterId/voice-training` | `get_character_voice_training` |
+| `POST /series/:id/characters/:characterId/voice-training` | `start_character_voice_training` |
+| `POST /series/:id/characters/:characterId/voice-training/cancel` | `cancel_character_voice_training` |
+| `POST /series/:id/characters/:characterId/voice-training/clips` | `create_upload_ticket`（基盤。`purpose=character_voice_training_clip`） |
+| `DELETE /series/:id/characters/:characterId/voice-training/clips` | `delete_character_voice_training_clips` |
+| `DELETE /series/:id/characters/:characterId/voice-training/clips/:clipId` | `delete_character_voice_training_clips` |
+| `DELETE /series/:id/characters/:characterId/voice-training/voice` | `delete_character_trained_voice` |
+| `GET /projects/:id/characters/:characterId/voice-training` | `get_character_voice_training` |
+| `POST /projects/:id/characters/:characterId/voice-training` | `start_character_voice_training` |
+| `POST /projects/:id/characters/:characterId/voice-training/cancel` | `cancel_character_voice_training` |
+| `POST /projects/:id/characters/:characterId/voice-training/clips` | `create_upload_ticket`（基盤。`purpose=character_voice_training_clip`） |
+| `DELETE /projects/:id/characters/:characterId/voice-training/clips` | `delete_character_voice_training_clips` |
+| `DELETE /projects/:id/characters/:characterId/voice-training/clips/:clipId` | `delete_character_voice_training_clips` |
+| `DELETE /projects/:id/characters/:characterId/voice-training/voice` | `delete_character_trained_voice` |
 | `GET /projects/:id/notes` | `list_project_notes` |
 | `GET /series/:id/notes` | `list_series_notes` |
 | `POST /projects/:id/notes` | `create_project_note` |

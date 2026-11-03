@@ -84,6 +84,7 @@ M3 Issue #25 の仕様。§5 の全機能（TTS・音声クローン / Music / S
 |------|------|------|------|
 | Dialogue / Narration（TTS） | `elevenlabs-tts` | `POST /v1/text-to-speech/{voice_id}`（モデル `eleven_multilingual_v2`） | `elevenlabs`（ヘッダー `xi-api-key`） |
 | Dialogue / Narration（TTS、ローカル） | `gpt-sovits-tts`（API 費用 0 円。台帳には 0 円で記録する） | mam が導入・起動する GPT-SoVITS の `api_v2.py`（[local-runtime.md](model-manager/local-runtime.md)）への `POST /tts`（§14.8）。実行ごとに `elevenlabs`（既定）と選ぶ | なし（`127.0.0.1` のみ。キーは使わない） |
+| Dialogue / Narration（TTS、ローカル。日本語専用） | `irodori-tts`（API 費用 0 円。台帳には 0 円で記録する） | mam が導入・起動する Irodori-TTS の API サーバー（番人つき。[local-runtime.md §14](model-manager/local-runtime.md)）への `POST /v1/audio/speech`（§14.11）。実行ごとに `elevenlabs`（既定）と選ぶ | なし（`127.0.0.1` のみ。キーは使わない） |
 | 音声クローン | （生成物ではなくコストなし。音声 ID は `voice_clone` に保存） | `POST /v1/voices/add`（multipart。`name` と `files`）。応答の `voice_id` を保存する | `elevenlabs` |
 | BGM（Music v2） | `elevenlabs-music` | `POST /v1/music`（`prompt`・`music_length_ms`・`model_id: music_v2`・`force_instrumental: true`）。長さは 3〜600 秒 | `elevenlabs` |
 | SE / Foley / Ambience | `elevenlabs-sfx` | `POST /v1/sound-generation`（`text`・`duration_seconds`・`loop`・`model_id: eleven_text_to_sound_v2`）。長さは 0.5〜30 秒 | `elevenlabs` |
@@ -145,6 +146,7 @@ Dialogue / Narration を、クラウドの ElevenLabs の代わりに、この P
 - **事前の検査（課金・起動の前）**: ローカルの実行は、Planner の LLM 呼び出し・予算の予約・ランタイムの起動より前に、(1) 行のある話者**全員**に使える参照音声があること（無い話者は `*localvoice.MissingVoiceError` に、話者名と理由（`voicerefsvc.ErrNoCharacter` / `ErrNoReference` / `ErrAmbiguous` / `ErrFileMissing`）をすべて並べて返す。黙って別の声にしない）、(2) プロバイダーがあること、(3) ランタイムが動くこと（`Prepare`: 停止中なら `localruntime.Service.Prepare` で起動して応答を待つ）を確かめる。行が 1 つも無い脚本はどれも要らない
 - **`POST /tts` の呼び方**（GPT-SoVITS 公式タグ `20250606v2pro` の `api_v2.py` と `TTS_infer_pack/TTS.py` のソースを読んで確かめた）: 1 行ごとに JSON で `text`（行の本文）、`text_lang`（既定 `ja`）、`ref_audio_path`（参照音声の**絶対パス**。サーバーは別のプロセスで作業ディレクトリが違い、同じ PC のファイルを自分で読むので、クライアントが `filepath.Abs` で絶対にしてから送る。データディレクトリを相対パスで指定していても 400 にならない）、`prompt_text`（参照音声の書き起こし `reference_text`）、`prompt_lang`（参照音声の言語。空は `ja`）、`text_split_method: cut5`、`media_type: wav`、`streaming_mode: false` を送り、wav を `Speech{Ext: "wav"}` で受ける
 - **トークン（すべての `POST /tts` に付ける）**: サーバーは公式の `api_v2.py` そのままではなく、mam の起動用スクリプト（`mam_gptsovits_server.py`）経由で起動し、起動のたびに作るトークンを `X-Mam-Token` に要求する（[local-runtime.md §5.2](model-manager/local-runtime.md)。Web ページはトークンを知らないので、ブラウザから `127.0.0.1` を叩かれてもサーバーは答えない）。`localvoice.Server.Ensure` は `(baseURL, token, err)` を返し（`localspeech.Server` が `localruntime.Service.Token` から取る。トークンが空なら、空のヘッダーで要求を送って 403 になる前に、種類 `process` のエラーで断る）、`gptsovits.Client` は**呼び出しごとに** `Ensure` が返したトークンをヘッダー `X-Mam-Token` に付ける（再起動で変わるので保存しない。口パクの `lipsync.Client.Token` と同じ作り）。使うのは `POST /tts` と起動確認の `GET /openapi.json` だけで、`/control`・`/set_gpt_weights`・`/set_sovits_weights` は起動用スクリプトが（トークンがあっても）404 で断る
+- **学習した声（Issue #936）**: Character に学習した声（[local-runtime.md §18](model-manager/local-runtime.md)）があれば、`localspeech.Voices` が `localvoice.Voice.Trained`（重みの ID）を載せ、`gptsovits.Client` は**サーバーに読み込まれている声と違うときだけ**、`POST /mam/voice`（トークンつき。ゼロショットの話者は `""`）で重みを切り替えてから `POST /tts` する（話者ごとの切り替えで、同じ話者の連続した行では読み直さない）。重みが無い・壊れている・サーバーが読み込めないときは、ゼロショットの声に黙って替えず、その話者を使えない話者として実行の前に断る（`localvoice.ErrTrainedVoice`）。
 - **書き起こしが空のとき**: `api_v2.py` の `prompt_text` は省略可で、空だと `TTS.run` が「プロンプトテキスト無し」の経路（参照音声の意味トークンを使わずに合成する）に入る。mam が入れる既定の設定は v2（`custom`: `version: v2`）で、この経路を受け付ける（v3 / v4 系は `NO_PROMPT_ERROR` で失敗するが、mam は使わない）。そこで**空のまま `prompt_text: ""` を送って合成する**（`prompt_lang` は `api_v2.py` が必須とするので参照音声の言語を送る）。声の再現度は書き起こしがあるより下がりうるので、Character の画面で書き起こしを入れることを勧める（#919 の表示）。「書き起こしが無いと合成しない」とはしない。参照音声の長さは 3〜10 秒（`api_v2` の範囲外エラーは HTTP 400 として返る）
 - **上限・失敗**: 1 行の時間上限は 3 分（超えると種類 `timeout`）。応答は 32 MiB まで（ElevenLabs と同じ）。空の応答、wav（`RIFF…WAVE`）でない応答、HTTP 400 などの 2xx 以外は失敗（`audiodirector.ProviderError{Vendor: "gpt-sovits"}`）。HTTP エラーの本文（`{"message": "tts failed", "Exception": "…"}`）の先頭は Status とともに残す。サーバーは GPU を 1 つ使うので、行は直列に作る（`speak` は元から直列で、`Client` も同時に 1 行までしか送らない）
 - **種類つきのエラー**（`*localvoice.UnavailableError{Kind, Detail, Err}`。画面・MCP・チャット・ジョブの失敗理由は、この `Kind` から **同じ文**（`localvoice.Reason`。§14.10）を作る）:
@@ -195,7 +197,7 @@ Lip Sync を、クラウドの Sync Labs の代わりに、この PC の MuseTal
 
 | キー | 値 | 既定（ファイルが無い・キーが無い） |
 |------|----|----------------------------------|
-| `voice_provider` | `elevenlabs` / `local`（GPT-SoVITS） | `elevenlabs` |
+| `voice_provider` | `elevenlabs` / `local`（GPT-SoVITS）/ `irodori`（Irodori-TTS。#1015） | `elevenlabs` |
 | `lip_sync_provider` | `synclabs` / `local`（MuseTalk 1.5） | `synclabs` |
 | `fallback_to_cloud` | `true` / `false` | `false`（オフ） |
 
@@ -250,7 +252,7 @@ Lip Sync を、クラウドの Sync Labs の代わりに、この PC の MuseTal
 | 3 | 1 行・1 クリップあたりの時間（時間上限は見積） | §14.8・§14.9 |
 | 4 | ビデオメモリの下限（声 4 GB は mam の推定、口パク 4 GB は公式の README の例）と、CUDA の `out of memory` の実際のメッセージ文字列（`gpu_memory` の判定は文字列に頼る） | [local-runtime.md](model-manager/local-runtime.md) §11・§13.8 |
 | 5 | 依存の重み（whisper-tiny・sd-vae-ft-mse・DWPose・face-parse-bisent・syncnet など）の**商用利用の可否**。はっきりしないものは画面で目立つ注記を出す。face-parse-bisent は Google Drive 配布で、固定 URL＋SHA-256 に載せる方法は #921 の方針（§13.4）に従う | [local-runtime.md](model-manager/local-runtime.md) §12.8・§13.4・§13.6 |
-| 6 | macOS の第三者の MLX 版（`mlx-community/MuseTalk-1.5-q4`）は mam の自動導入の対象外（macOS ではクラウドを使う） | local-runtime.md §13 |
+| 6 | macOS（Apple Silicon）の自動導入（GPT-SoVITS・MuseTalk。第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4` を含む）は、確かな一次情報だけでは組み立てられないので対象外（#935 で調査。macOS ではランタイムごとの理由を出し、クラウドを使う）。**実機の Mac での導入・起動・生成は未確認** | local-runtime.md §13・§16 |
 | 7 | このフォールバックを実物のランタイムが使えない PC（Windows の NVIDIA 無し・導入前・重み無し）で通しで確かめたこと | §14.10（偽のランタイムでのテストだけ） |
 
 #### #912「やってほしいこと」との対応
@@ -264,3 +266,80 @@ Lip Sync を、クラウドの Sync Labs の代わりに、この PC の MuseTal
 | macOS で動かせないものは理由を画面で見せ、クラウドにフォールバック | #918・#921（理由）・#924（画面・フォールバック） | §14.10・settings-screen-categories.md §9 |
 | 使えないとき（GPU 不足・未ダウンロード）のエラーをわかりやすく | #924 | §14.10 |
 | テスト | 各 Issue | 各節の「テスト」 |
+
+### 14.11 ローカルの声（Irodori-TTS）（Issue #1015）
+
+Dialogue / Narration を、GPT-SoVITS（§14.8）に並ぶもう 1 つのローカルの声として、この PC の **Irodori-TTS**（日本語専用。Aratako 氏）で作る。導入・起動・停止・モデルの選択・同意は [local-runtime.md §14](model-manager/local-runtime.md)。**選択の保存・フォールバック・利用者向けの文は §14.10 の仕組みをそのまま使う**（役割 `voice_irodori`・ベンダー `irodori` を足しただけ）。
+
+- **選択**: プロバイダー値 `irodori`（`localvoice.Irodori`）。GPT-SoVITS の `local` はそのまま（保存済みの `audio.json` の意味は変わらない）。`audiodirector.Providers.LocalIrodori`（`LocalSynthesizer`）が実装で、`app` が `irodori.Client` を配線する（`service/localspeech.IrodoriServer`）。台帳とクリップのモデルは `irodori-tts`（`localvoice.ModelIrodori`）。知らない値は `ValidationError`（`voice_provider`）。
+- **フォールバックは「クラウドへ」**: GPT-SoVITS と同じ（§14.10）。既定はオフ。オンのときだけ、**実行の開始前の検査**でローカルが使えないと分かれば、その実行の全体を ElevenLabs で作る（途中で声が混ざらない）。ローカルの失敗を別のローカルに切り替えることはしない。Irodori が使えない理由は `localvoice.Reason`（Vendor `irodori`）の同じ形の文で、画面・チャット・MCP・ジョブの失敗理由に同じ文が出る。
+- **`POST /v1/audio/speech` の呼び方**（公式サーバーのソースと README を読んで確かめた。コミット `61012c76…`）: 1 行ごとに JSON で `model: "irodori-tts"`、`input`（行の本文。下の絵文字への置き換え後）、`response_format: "wav"`、`irodori: {ref_wav, caption}`。ヘッダー `X-Mam-Token` に、その起動のトークン（番人が要求する。[local-runtime.md §14.3](model-manager/local-runtime.md)）。応答は 48 kHz の wav。応答は 64 MiB まで、空・wav（`RIFF…WAVE`）でない・2xx 以外は失敗（`audiodirector.ProviderError{Vendor: "irodori"}`）。1 行の時間上限は 5 分（超えると種類 `timeout`）。サーバーは GPU を 1 つ使うので、行は直列に作る。
+- **参照音声（声のコピー）**: Character の参照音声（#919。3〜10 秒の 1 本）を、`irodori.ref_wav` に**絶対パス**で渡す（サーバーは別プロセスで、同じ PC のファイルを自分で読む。番人はこの `ref_wav` を読む要求だけを通す）。モデルは参照音声を**合計 120 秒まで**受け付ける（モデルカード）ので、`irodori.MaxReferenceDuration` = 120 秒。送る前に（`irodori.CheckReferences`。実行の開始前に全話者分を `CheckAll` で）次を断る: 参照音声が無い／ファイルを開けない／**空のファイル**／**形式が拡張子と合わない**（`voiceref.FormatOf` ＋ ファイルの先頭の署名。サーバーは読めないと 500 を返すので、mam が先に断る）／**合計の長さが 120 秒を超える**（長さは参照音声を設定したときに測った値〔`Voice.Duration`〕、無ければ wav のヘッダー。分からない形式は通す）。どれも `*localvoice.ReferenceError{Speaker, Problem, Vendor}`（`service/localspeech.Reason` が「ローカルの声（Irodori-TTS）が使えません: 「話者」の参照音声…」の文にする。フォールバックがオンならクラウドへ）。
+- **キャプション（Voice Design）**: `irodori.caption` に、Character の設定と Scene Emotion から作った短い日本語の文（200 文字まで）を入れる（`irodori.Caption`）。Scene Emotion は Planner が読んだ Scene の感情で、Director が行ごとにコンテキストで渡す（`localvoice.WithEmotion`）。**参照音声があるときは、性格と感情だけ**を入れる（モデルカードは、参照音声と一緒に声質の説明を入れると、参照音声と食い違って不安定になりうるとしている。声質〔Character の `voice`〕は参照音声が決める）。参照音声が無い純粋な Voice Design では声質も入れる（mam の実行は参照音声を必須とするので、この経路は今は使わない）。性格は「性格は…。」、感情は次の表で話し方に直し、表に無い感情は「場面の感情は「…」。それに合った話し方。」と、そのまま言う。
+
+| Scene Emotion に含まれる語 | キャプションの文 |
+|---|---|
+| 安心 | 温かく穏やかで、安心させるような話し方。 |
+| 緊張 | 緊張して、声が少し張り詰めた話し方。 |
+| 不安 | 不安げで、声が少し揺れる話し方。 |
+| 悲 | 悲しげで、沈んだ声の話し方。 |
+| 切な | 切なげで、静かな話し方。 |
+| 怒 | 怒りを抑えながら、強い調子で話す。 |
+| 高揚 | 気持ちが高ぶって、弾んだ話し方。 |
+| 興奮 | 興奮して、勢いのある話し方。 |
+| 喜 | 嬉しそうで、明るく弾んだ話し方。 |
+| 楽し | 楽しそうで、明るい話し方。 |
+| 温かい | 温かく優しい話し方。 |
+| 穏や | 穏やかで落ち着いた話し方。 |
+| 静か | 静かで落ち着いた話し方。 |
+| 驚 | 驚いた様子で、声が上ずる話し方。 |
+| 恐 | 怯えて、声をひそめた話し方。 |
+| 希望 | 前向きで、はっきりとした話し方。 |
+- **絵文字（台本の指示 → 感情・音）**: モデルは文中の絵文字で笑い・ため息・咳などの音や間を出せる（モデルのリポジトリの `EMOJI_ANNOTATIONS.md` の対応）。台本の「そうなんだ（笑）」のような**演技指示**を、`irodori.Emojify` が絵文字に直してから送る。括弧は全角・半角の丸括弧、角括弧、隅付き括弧で、中が**表にある語のときだけ**置き換え（それ以外の括弧は声に出す文として残す。「東京（とうきょう）」の読みなど）。絵文字を重ねると強調になる（大笑いは 2 つ）。
+
+| 台本の指示（括弧の中の語） | 絵文字 |
+|---|---|
+| 大笑い・爆笑・高笑い | 😆😆 |
+| 苦笑い・苦笑・含み笑い・くすくす・笑い・笑 | 🤭 |
+| ため息・ため息をつく・溜息・溜め息・吐息・深呼吸 | 😮‍💨 |
+| 咳払い・咳き込む・咳・せき・くしゃみ・鼻をすする | 🤧 |
+| ささやく・囁く・囁き・ささやき・小声 | 👂 |
+| 沈黙・無言・間 | ⏸️ |
+| すすり泣き・泣き声・泣く・泣き・嗚咽 | 😭 |
+| 悲鳴・絶叫・叫ぶ・叫び | 😱 |
+| 息をのむ・息を呑む | 😮 |
+| 驚く・驚き・感嘆 | 😲 |
+| あくび・欠伸 | 🥱 |
+| 舌打ち | 😒 |
+| 照れる・照れ・恥ずかしそうに | 🫣 |
+| 呆れ・呆れる・呆れて | 🙄 |
+| 怒って・怒り・不満げに | 😠 |
+| 心配そうに・心配 | 😟 |
+| 慌てて・動揺・どもる | 😰 |
+| 安堵・ほっとして | 😌 |
+| 鼻歌・ハミング | 🎵 |
+| 電話越し・電話口 | 📞 |
+| ゆっくり・ゆっくりと | 🐢 |
+| 早口・急いで | ⏩ |
+| 懇願・懇願して | 🙏 |
+| 優しく | 🫶 |
+| 疑問・首をかしげて | 🤔 |
+- **透かしと倫理**: Irodori-TTS は、生成した音声に **SilentCipher の見えない透かし**を自動で入れる（切れない。[local-runtime.md §14.3・§14.4](model-manager/local-runtime.md)）。モデルカードは、**本人の同意なしに実在の人（声優・有名人など）の声をコピーしたりなりすましに使ったりすること、人をだます合成音声・ディープフェイクに使うこと**を禁じている。mam は次で利用者に伝える（実装済み）: (1) 設定の「音声・口パク」の声のカード（`CloneNotice`。琥珀色の注記と、Irodori-TTS の詳細の「使うときの制限」）、(2) Character の参照音声のフォーム（`voicereference` の注記）、(3) モデルの選択（モデルごとの `cautions`）、(4) README、(5) MCP の `get_audio_providers`（`irodori.cautions`）・`list_local_runtime_models`。**mam が本人の同意を確かめることはできない**（確認の責任は利用者）。
+- **同意（Gemma Terms）**: v4-Large 系のモデルを選んだときは、同意するまで使えない（種類 `consent_required`＝`localvoice.KindConsent`。`Systemic`。文は「選んだモデルのライセンスに同意していないため、ローカルの声（Irodori-TTS）を使えません。モデルマネージャーでモデルのライセンスを読んで同意するか、既定のモデルに戻してください」）。mam が自動で同意することはない（[local-runtime.md §14.6](model-manager/local-runtime.md)）。
+- **テスト**: `agent/audiodirector/irodori`（偽のサーバーで、本文・絵文字・参照音声・キャプション・トークン・エラーの種類・時間切れ・キャンセル。`Caption`・`Emojify`・`CheckReferences` の表）、`irodori/directortest`（Director を通して、行ごとの参照音声と Scene Emotion、台帳のモデル名、参照の拒否で何も起動しないこと、クラウドを呼ばないこと）、`localvoice`、`service/localspeech`（番人つきの起動、GPU の準備、Reason）、`service/audiosettings`（保存・表示・フォールバックのオン・オフ・キー無し）、`mcp/tools/settings`、`web/handler/settings/audio`。
+- **未確認（実機）**: 実物の Irodori-TTS・Windows + NVIDIA での合成、日本語の質（ElevenLabs・GPT-SoVITS との聞き比べ）、1 行あたりの時間、MF（4 ステップ）の質、透かしが実際に入ること、絵文字の効き方、キャプションの効き方、CUDA の `out of memory` の実際の文字列（判定は文字列に頼る）、ComfyUI の `/free`・`/queue` の実機での動作は**未確認**（この開発環境は Linux で、公式サーバーの読み取りと `httptest` の偽のサーバーでの確認だけをした）。詳しくは [local-runtime.md §14.9](model-manager/local-runtime.md)。
+
+### 14.12 GPU（VRAM）の扱い（Issue #1015）
+
+ビデオメモリが 16 GB の GPU で、**同梱の ComfyUI（画像・動画の生成）と Irodori-TTS を同時に動かさない**。ComfyUI は直前の生成のモデルをメモリに残す（高品質の動画モデルは十数 GB）ので、残ったままだと声のサーバーが `out of memory` になり、声の側も生成を巻き込んで遅くする。方針（決定。**オーナーの確認が要る**）:
+
+| 状況 | 動き |
+|---|---|
+| 同梱の ComfyUI が止まっている | 何もしない（止まったエンジンはビデオメモリを持たない） |
+| ComfyUI が**生成中・順番待ちがある**（`GET /queue` の `queue_running`・`queue_pending`） | **声のサーバーを起動しない**。`gpu_memory` の理由つきエラー（「同梱の ComfyUI が画像・動画を生成している最中です。生成が終わってから、もう一度実行してください」）。ComfyUI の生成は止めない。フォールバックがオンでも、これは実行の途中の失敗なのでクラウドには切り替えない（§14.10） |
+| ComfyUI が起動していて**空いている** | 声のサーバーを起動する前に `POST /free`（`{"unload_models": true, "free_memory": true}`。ComfyUI 自身の「モデルを降ろす」と同じ）でモデルをメモリから降ろす。応答が失敗・接続できないときは、声を止めずに起動する（足りなければ声が自分の文で `out of memory` を言う） |
+| 声のサーバーが**すでに動いている** | この処理を繰り返さない（`localspeech.Server.Before` はプロセスが動いていないときだけ） |
+
+- 実装: `service/localspeech/gpufree.Guard`。`app` が `bundledComfyUI`（同梱のエンジンのアドレス。動いていなければ空）を渡して配線する（`service/localspeech/irodoriwire`）。音声は動画の生成のあとの段階で作るので、通常の流れでは重ならない。
+- **モデルごとの目安**（`vram_min_gb`/`vram_recommended_gb`。**すべて mam の推定**。重みの大きさ＋コーデック約 0.4 GB＋作業領域。公式は数値を示していない。画面は「mam の推定です。実機では確かめていません」と言い、この PC の GPU との比較〔`vram_fit`〕を出す）: v4.1-Small・MF 6〜8 GB、v4-Large（fp32／bf16。重み約 13 GB）10〜12 GB（**16 GB の GPU では ComfyUI と同時に動かせない。ComfyUI を止めるか、量子化版を使う**）、int8 6〜8 GB、int4 5〜6 GB、fp8 6〜8 GB。16 GB の GPU には v4.1-Small か Large の量子化版を勧める。
+- 量子化版の GPU 世代の条件（int4: RTX 30 世代以降、fp8: RTX 40 世代以降。モデルカード）は、注意書き（`cautions`）に書くだけで、選択は制限しない（**オーナーの判断待ち**）。

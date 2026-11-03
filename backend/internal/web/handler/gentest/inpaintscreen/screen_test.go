@@ -34,8 +34,10 @@ func TestInpaintScreen(t *testing.T) {
 	s := newScreen(t)
 	page := s.page(paths.GenerationTestInpaint())
 	require.Contains(t, page, "mam-mask-paint")
-	require.Contains(t, page, "一部だけ描き直すに対応していません")
-	require.Contains(t, page, string(gentesttest.InpaintModel))
+	require.Contains(t, page, `<input type="hidden" name="model" value="`+string(gentesttest.InpaintModel)+`" data-mp-from="value">`, "the model that can redraw is in the field")
+	picker := s.page(paths.ModelPickerSource("inpaint") + "?mf=1&available_only=0")
+	require.Contains(t, picker, "一部だけ描き直すに対応していません", "a model that cannot is listed with why")
+	require.Contains(t, picker, string(gentesttest.InpaintModel))
 
 	model := string(gentesttest.InpaintModel)
 	form := url.Values{"model": {model}, "prompt": {"a fox"}, "denoise": {"0.4"}}

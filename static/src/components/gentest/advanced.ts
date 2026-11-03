@@ -120,7 +120,7 @@ export function initGentestAdvanced(root: Document = document): void {
     if (!section || !el?.matches('[data-gt-adv-range]')) return;
     writeOutput(el.closest<HTMLElement>('[data-gt-adv-field]')!);
   });
-  root.addEventListener('commercial-filter-applied', () => syncAll(root));
+  root.addEventListener('model-pick-applied', () => syncAll(root));
   root.addEventListener('htmx:load', (event) => syncAll(event.target as ParentNode));
   root.addEventListener('DOMContentLoaded', () => syncAll(root));
 }

@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "fast"},
  "description": "【実写】RealVisXL V5.0 の Lightning 版（成人向け。VAE 入りの fp16 の 1 ファイルで約 6.9 GB）。蒸留で少ない手数（4〜8 ステップ）で描ける。作者の推奨は 5 ステップ・cfg 1〜2・DPM++ SDE Karras で、専用テンプレート（SDXL Lightning）の既定をそれに合わせた（通常版の 25 ステップ・cfg 7 では崩れる）。参照画像からの画像（img2img）にも使える。通常版の realvisxl-v50 とは別のファイル。",
  "files": [
   {

@@ -94,8 +94,13 @@ func (s *Service) estimate(ctx context.Context, r Request) (Estimate, []modelPla
 	}
 	plans := make([]modelPlan, 0, len(models))
 	for _, m := range models {
-		p := s.planModel(cfg, r, m)
-		plans = append(plans, p)
+		plans = append(plans, s.planModel(cfg, r, m))
+	}
+	if e := checkInputs(r, plans); e != nil { // before anything is priced: a request that cannot use its input images is stopped, not sent
+		return Estimate{}, nil, e
+	}
+	for i, m := range models {
+		p := plans[i]
 		line := ModelEstimate{Model: m.ID, Label: m.Label, Items: perModel, Basis: p.basis, UnitUSD: p.unit}
 		if r.Media == gentestrepo.MediaVideo {
 			line.Resolution, line.Seconds = p.resolution, p.seconds

@@ -41,6 +41,17 @@ describe('copy button (spec/components/settings-screen-categories.md §4)', () =
     expect(copied).to.deep.equal(['mam_mcp_fake-value']);
   });
 
+  it('says "copied" in the language the button names (the error box, #1010)', async () => {
+    const restore = useClipboard(async () => {});
+    try {
+      button().setAttribute('data-copy-done', 'Copied');
+      button().click();
+      await waitUntil(() => status().textContent === 'Copied', 'the line did not say it in English');
+    } finally {
+      restore();
+    }
+  });
+
   it('selects the field and asks for a copy by hand when the clipboard refuses', async () => {
     const restore = useClipboard(() => Promise.reject(new DOMException('denied', 'NotAllowedError')));
     try {

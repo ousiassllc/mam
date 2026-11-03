@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
 )
 
 // adultData is the setting "成人向けモデルを表示する".
@@ -58,27 +58,20 @@ func (h Handlers) SetAdult(c *gin.Context) {
 	if on {
 		a.Notice = "成人向けモデルを表示します。モデルごとのライセンスへの同意は、導入のときに取ります"
 	}
-	cat := catalogData(ctx, h.Svc, nil)
+	cat := catalogData(c, h.Svc, nil)
 	cat.OOB = true
 	trial := h.trialPanel(ctx, view.TrialForm{}, "", "")
 	trial.OOB = true
-	render(c, http.StatusOK, view.AdultWithCatalog(a, cat, trial))
+	render(c, http.StatusOK, oob.AdultWithCatalog(a, cat, trial))
 }
 
-// CommercialFilterID is the id of the filter of the model list; the list is view.ModelsID.
-const CommercialFilterID = "mm-commercial-filter"
-
-// commercialData is the setting "商用OKのモデルだけを使う" with the filter of the model list, checked at the setting's answer.
+// commercialData is the setting "商用OKのモデルだけを使う": what the commercial-use choice of the filters starts at.
 func commercialData(svc *modelmanager.Service) view.CommercialPanel {
-	return view.CommercialPanel{
-		Only:   svc.CommercialOnly(),
-		Filter: commercial.NewFilter(CommercialFilterID, "#"+view.ModelsID, svc.DefaultFilter()),
-	}
+	return view.CommercialPanel{Only: svc.CommercialOnly()}
 }
 
-// SetCommercial turns "商用OKのモデルだけを使う" on or off (PUT /model-manager/commercial; field on = 1 or 0). The answer is the card: the filter
-// is drawn at the new default, which the filter's script applies to the list. The trial choices are drawn again out of band, so that their
-// filter starts at the new default too.
+// SetCommercial turns "商用OKのモデルだけを使う" on or off (PUT /model-manager/commercial; field on = 1 or 0). The answer is the card, and out of band the model list
+// (with its bar and panel, whose commercial-use choice starts at the new default) and the trial section.
 func (h Handlers) SetCommercial(c *gin.Context) {
 	ctx := c.Request.Context()
 	on := c.PostForm(view.FieldOn) == "1"
@@ -94,7 +87,9 @@ func (h Handlers) SetCommercial(c *gin.Context) {
 	if on {
 		p.Notice = "モデルの一覧は、商用OKのモデルだけから始めます（画面のフィルターで広げられます）"
 	}
+	cat := catalogData(c, h.Svc, nil)
+	cat.OOB, cat.Filter.Sync = true, true
 	trial := h.trialPanel(ctx, view.TrialForm{}, "", "")
 	trial.OOB = true
-	render(c, http.StatusOK, view.CommercialWithTrial(p, trial))
+	render(c, http.StatusOK, oob.CommercialWithList(p, cat, trial))
 }

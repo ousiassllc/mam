@@ -8,7 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 )
 
 func TestLockToggle_MarksTheCurrentModeAndPutsToTheURL(t *testing.T) {
@@ -30,15 +33,17 @@ func TestLockToggle_OffersTheVideoModelOfManualAndLockInTheSharedFieldLook(t *te
 	for _, mode := range []domain.LockMode{domain.LockManual, domain.LockLocked} {
 		html := render(t, molecules.LockToggle(molecules.LockToggleData{
 			DOMID: "lock-s1-video_model", URL: "/shots/s1/locks", Parameter: domain.ParamVideoModel, Mode: mode,
-			Models: []domain.ModelName{"kling-3.0", "seedance-2.0"}, Model: "seedance-2.0",
+			Model: modelpick.FieldData{
+				ID: "lock-model-s1", Label: "Video Model", URL: "/model-picker/shot-video",
+				Inputs:  []modelpick.Input{{Name: "value", Key: "value", Value: "seedance-2.0"}},
+				Current: modelcard.Card{Name: "seedance-2.0", Icon: atoms.IconVideo},
+			},
 		}))
 
-		assert.Contains(t, html, `aria-label="Video Model"`, mode)
-		assert.Contains(t, html, `name="value"`, mode)
-		assert.Contains(t, html, "text-neutral-100", mode) // the look of atoms.Select, not a hand-written one
-		assert.Contains(t, html, `<option value="kling-3.0" data-commercial="unknown">kling-3.0（不明）</option>`, mode, "the option says whether the model may be used commercially")
-		assert.Contains(t, html, `<option value="seedance-2.0" selected data-commercial="unknown">seedance-2.0（不明）</option>`, mode)
-		assert.Contains(t, html, `<option value="">（現在のモデル）</option>`, mode)
+		assert.Contains(t, html, `aria-label="Video Modelを選ぶ"`, mode)
+		assert.Contains(t, html, `<input type="hidden" name="value" value="seedance-2.0" data-mp-from="value">`, mode, "the model is posted as `value`, as the pull-down did")
+		assert.Contains(t, html, `hx-get="/model-picker/shot-video"`, mode, "the model picker, not a pull-down")
+		assert.NotContains(t, html, "<select", mode)
 	}
 }
 

@@ -22,8 +22,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/characterdraft"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/keylock"
+	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -41,6 +44,11 @@ type Jobs interface {
 	Enqueue(ctx context.Context, kind domain.JobKind, payload any) (domain.Job, error)
 }
 
+// Drafts makes the draft Characters of a Project from the images attached to its Brief, without an LLM (*characterdraft.Maker implements it).
+type Drafts interface {
+	Make(ctx context.Context, projectID string) (characterdraft.Result, error)
+}
+
 // Deps are the collaborators of an Orchestrator.
 type Deps struct {
 	Projects *repository.ProjectRepository
@@ -52,7 +60,9 @@ type Deps struct {
 	LLM llm.Completer
 	// Notes are the production notes of the Project; the Writer and Director are given the relevant
 	// ones (spec/spec.md §9.4). Nil: no notes.
-	Notes  *repository.NoteRepository
+	Notes *repository.NoteRepository
+	// Drafts is asked for the draft Characters when the pipeline stops for want of an LLM API key (#1022). Nil: none are made.
+	Drafts Drafts
 	Logger *slog.Logger
 }
 
@@ -62,6 +72,7 @@ type Orchestrator struct {
 	plans    *repository.PlanRepository
 	chatRepo *repository.ChatRepository
 	notes    *repository.NoteRepository
+	drafts   Drafts
 	chat     Chat
 	jobs     Jobs
 	logger   *slog.Logger
@@ -84,7 +95,7 @@ func New(d Deps) *Orchestrator {
 		logger = slog.New(slog.DiscardHandler)
 	}
 	return &Orchestrator{
-		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, chat: d.Chat, jobs: d.Jobs, logger: logger,
+		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, drafts: d.Drafts, chat: d.Chat, jobs: d.Jobs, logger: logger,
 		producer:     planning.NewProducer(d.LLM),
 		writer:       planning.NewWriter(d.LLM),
 		director:     planning.NewDirector(d.LLM),
@@ -233,13 +244,43 @@ func (o *Orchestrator) report(ctx context.Context, projectID string, err error) 
 	if errors.Is(err, repository.ErrNotFound) {
 		return err // the Project is gone
 	}
-	o.logger.Error("planning pipeline failed", "project_id", projectID, "err", err)
-	reason := failureReason(err)
+	fail := failure(err)
+	attrs := []any{"project_id", projectID, "err", err}
+	if fail.Code == apperr.CodeUnknown {
+		fail.ID = apperr.NewID() // the notice says it, the log line has it
+		attrs = append(attrs, "error_id", fail.ID)
+	}
+	o.logger.Error("planning pipeline failed", attrs...)
+	reason := failureReason(fail)
+	if errors.Is(err, llm.ErrNoAPIKey) {
+		reason += o.draftNote(ctx, projectID)
+	}
+	if fail.ID != "" {
+		reason += "（" + apperr.Text(apperr.LangJa, "ui.error_id", nil) + ": " + fail.ID + "）"
+	}
 	notice := failmsg.Notice(err, "制作を続けられませんでした: "+reason+"\n対処したら、何かメッセージを送ると続きから再開します。") // a missing key links to the LLM assignment
 	if aerr := o.chat.Announce(context.WithoutCancel(ctx), projectID, notice); aerr != nil {
 		o.logger.Error("post failure notice failed", "project_id", projectID, "err", aerr)
 	}
-	return errors.New(reason)
+	return apperr.WithText(reason, fail)
+}
+
+// draftNote makes the draft Characters from the images attached to the Brief of a Project whose planning stopped for want of an LLM API
+// key (a Project with no Characters has nothing to go on with, and the images would be unused) and returns the sentence that tells it
+// for the failure reason ("" when there is no draft). A failure to make them is logged and never hides the failure of the planning.
+func (o *Orchestrator) draftNote(ctx context.Context, projectID string) string {
+	if o.drafts == nil {
+		return ""
+	}
+	res, err := o.drafts.Make(context.WithoutCancel(ctx), projectID)
+	if err != nil {
+		o.logger.Error("make character drafts failed", "project_id", projectID, "err", err)
+		return ""
+	}
+	if res.Drafts == 0 {
+		return ""
+	}
+	return "\n" + planadvice.DraftNote(res.Drafts)
 }
 
 func assistantText(content string) domain.ChatMessage {

@@ -62,7 +62,7 @@ func JobsPage(csrfToken string, l jobs.List) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = pagehead.Header("ジョブ", "", "いま動いている作業と、さいごに終わった作業の一覧です。モデルの導入・生成テスト・Shot の生成や判定など、裏で動く作業が対象です。見るだけで、ここから止めることはできません。「開く」で、その作業をした画面に移ります。").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pagehead.Header("ジョブ", "", "いま動いている作業と、さいごに終わった作業の一覧です。モデルの導入・生成テスト・Shot の生成や判定のほか、動画の書き出し・音声の作成・Editor の判定・ワークフローの実行・Codex の導入・ffmpeg のダウンロードなど、裏で動く作業が対象です。書き出しなどは mam を再起動すると一覧から消えます。見るだけで、ここから止めることはできません。「開く」で、その作業をした画面に移ります。").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

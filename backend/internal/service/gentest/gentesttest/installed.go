@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 )
 
@@ -46,4 +47,9 @@ func WithHidden(hidden func(modelID string) bool) Option {
 // WithPlatformWarning gives the service the warning of a model for this PC (the OS / GPU columns of the catalog).
 func WithPlatformWarning(f func(ctx context.Context, modelID string) string) Option {
 	return func(_ *Rig, d *gentest.Deps) { d.PlatformWarning = f }
+}
+
+// WithCatalogInfo gives the service what the model manager's catalog knows of a model (adult, the traits, the VRAM guideline), for the filter of the model list.
+func WithCatalogInfo(f func(modelID string) (modelfilter.CatalogInfo, bool)) Option {
+	return func(_ *Rig, d *gentest.Deps) { d.CatalogInfo = f }
 }

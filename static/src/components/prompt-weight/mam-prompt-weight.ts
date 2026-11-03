@@ -45,7 +45,7 @@ export class MamPromptWeight extends LitElement {
     this.area?.addEventListener('keydown', this.onKey as EventListener);
     this.area?.addEventListener('focusout', this.onFocusOut as EventListener);
     this.form?.addEventListener('change', this.onModels);
-    document.addEventListener('commercial-filter-applied', this.onModels);
+    document.addEventListener('model-pick-applied', this.onModels);
   }
 
   override disconnectedCallback(): void {
@@ -54,7 +54,7 @@ export class MamPromptWeight extends LitElement {
     this.area?.removeEventListener('keydown', this.onKey as EventListener);
     this.area?.removeEventListener('focusout', this.onFocusOut as EventListener);
     this.form?.removeEventListener('change', this.onModels);
-    document.removeEventListener('commercial-filter-applied', this.onModels);
+    document.removeEventListener('model-pick-applied', this.onModels);
     super.disconnectedCallback();
   }
 

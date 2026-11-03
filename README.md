@@ -10,14 +10,32 @@ AI Video Production Agent。企画・脚本・演出・撮影・品質判定・�
 
 | 用途 | ローカルのモデル | 入手元 | ライセンス |
 |---|---|---|---|
-| 声（TTS・参照音声からの声の再現） | GPT-SoVITS | [RVC-Boss/GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（重みは [lj1995/GPT-SoVITS](https://huggingface.co/lj1995/GPT-SoVITS)） | コード・重みとも MIT |
-| 口パク | MuseTalk 1.5 | [TMElyralab/MuseTalk](https://github.com/TMElyralab/MuseTalk)（重みは [TMElyralab/MuseTalk](https://huggingface.co/TMElyralab/MuseTalk)） | コード MIT。モデルは商用を含む利用が可と README にあります |
+| 声（TTS・参照音声からの声の再現） | GPT-SoVITS | [RVC-Boss/GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（重みは [lj1995/GPT-SoVITS](https://huggingface.co/lj1995/GPT-SoVITS)） | コード・重みとも MIT。ただし依存の一部（g2pW など）は商用利用がはっきりしません |
+| 声（日本語専用。参照音声からの声の再現・キャプションでの声質や感情の指定） | Irodori-TTS | [Aratako/Irodori-TTS-Server](https://github.com/Aratako/Irodori-TTS-Server)・[Aratako/Irodori-TTS](https://github.com/Aratako/Irodori-TTS)（重みは [Aratako の Hugging Face](https://huggingface.co/Aratako)） | コードは MIT。モデルは v4.1-Small・v4.1-Small-MF が MIT、v4-Large 系が Gemma Terms of Use（商用可。禁止用途ポリシーに従う。選ぶときに同意が要る） |
+| 口パク | MuseTalk 1.5 | [TMElyralab/MuseTalk](https://github.com/TMElyralab/MuseTalk)（重みは [TMElyralab/MuseTalk](https://huggingface.co/TMElyralab/MuseTalk)） | コード MIT。モデルは商用を含む利用が可と README にあります。ただし依存の重みの一部は商用利用がはっきりしません。RTX 50 シリーズは非対応です |
 
 - 実行環境（Python 環境）と重みは**インストーラーに含まれません**。モデルマネージャー（`/model-manager`）の「ローカル音声・口パク」から、mam が取得して導入・起動・停止します（固定した URL と SHA-256 を確かめます）。重み・依存ファイル（whisper・sd-vae・DWPose・face-parse-bisent など）の出典とライセンスは、そこと、設定の「音声・口パク」に出ます。**商用利用がはっきりしないものは、画面に目立つ注記が出ます。商用の動画に使う前に確認してください。**
 - 設定の「音声・口パク」（`/settings/audio`）で、声と口パクをそれぞれクラウドかローカルかで選びます（MCP の `get_audio_providers`・`set_audio_providers` でも同じです）。**選ばないときはクラウド**です。保存した選択は、次の音声作成から使われます。
-- 声は、Character（Series のキャラは正本）に設定した**参照音声**（約 3〜10 秒）で話すので、毎回同じ声になります。
+- 声は、Character（Series のキャラは正本）に設定した**参照音声**（約 3〜10 秒）で話すので、毎回同じ声になります。Irodori-TTS は参照音声が合計 120 秒までで、Character の性格とシーンの感情から声の調子を指定し、台本の「（笑）」「（ため息）」などを絵文字に直して感情を出します。生成した音声には SilentCipher の見えない透かしが自動で入ります。**声のコピーには、声の持ち主本人の同意を得た音声だけを使ってください。**本人の同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声・ディープフェイクに使ったりすることは、Irodori-TTS のモデルカードで禁じられています。
+- Irodori-TTS は、使うモデル（v4.1-Small が既定。v4-Large 系は大きいので、ビデオメモリが 16 GB の GPU では ComfyUI と同時に動かせず、量子化版〔int8・int4・fp8〕を勧めます）をモデルマネージャーの「ローカル音声・口パク」で選びます。v4-Large 系は Gemma Terms of Use に同意するまで選べません。Irodori-TTS と同梱の ComfyUI は同時には動かしません（ComfyUI が生成中なら声は待たされ、止まっていれば ComfyUI のモデルをビデオメモリから降ろしてから起動します）。
 - この PC で動かせないとき（macOS・NVIDIA の GPU が無い・ビデオメモリが足りない）と、未導入・重みが未取得のときは、理由と直し方が画面・チャット・MCP に同じ文で出ます。「ローカルが使えないときはクラウドに切り替える」（既定はオフ）をオンにすると、実行を始める前の検査で使えないと分かったときだけ、その実行の全体をクラウドで作ります（API 費用が出ます。キーが無ければ、キーの登録の案内が出ます）。オフのときは、クラウドを使わずに止まります。
 - **未確認**: 実機での導入・起動、日本語の質（ElevenLabs・Sync Labs との聞き比べ）、生成にかかる時間は、まだ実機で確かめていません（[`spec/architecture/model-adapters-m3.md`](spec/architecture/model-adapters-m3.md) §14.10 の表）。
+
+### ローカル LLM（llama.cpp）
+
+LLM（企画・脚本・Shot 計画など）も、この PC のローカルモデルで動かせます（API キー不要・オフライン）。**Windows + NVIDIA の GPU** の PC では、モデルマネージャー（`/model-manager`）の「ローカル音声・口パク・LLM」の llama.cpp（[ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)。MIT）から、`llama-server` と GGUF の重みを mam が取得して導入・起動・停止します（固定した URL と SHA-256 を確かめます。インストーラーには含まれません）。起動の引数は mam が決める固定の組み合わせだけで、利用者がコマンドラインを指定することはできません（`127.0.0.1` だけで待ち受け、起動のたびの合言葉つき）。
+
+| 系統 | 純正 | 非検閲（abliterated。成人向け相当） | ライセンス |
+|---|---|---|---|
+| Gemma 4 12B（約 7 GiB。ComfyUI と同居しやすい。標準） | [google/gemma-4-12B-it](https://huggingface.co/google/gemma-4-12B-it) の GGUF（Q4_K_M） | [huihui-ai/Huihui-gemma-4-12B-it-abliterated](https://huggingface.co/huihui-ai/Huihui-gemma-4-12B-it-abliterated) の GGUF | Apache-2.0（商用可） |
+| Qwen3.8-27B（IQ4_XS 14.36 GiB が標準、Q3_K_M 12.57 GiB が軽量版。16 GB の GPU でも ComfyUI とは同居できません） | [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) の GGUF | [huihui-ai/Huihui-Qwen3.8-27B-abliterated](https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated) の GGUF | Apache-2.0（商用可） |
+| DeepSeek-R1-Distill-Qwen-14B（約 8.4 GiB。常に考える過程が出るので、mam が取り除いて読みます） | [deepseek-ai/DeepSeek-R1-Distill-Qwen-14B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) の GGUF | [huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2](https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2) の GGUF | 純正は MIT（商用可）。**非検閲版は派生側にライセンスの表示が無く、商用不明**です |
+
+- GGUF は [mradermacher](https://huggingface.co/mradermacher) が変換したもの（コミット固定。2026-11-03 に Hugging Face の API で確認。gated ではなく、利用規約への同意は要りません）。使うモデルは、モデルマネージャーの llama.cpp のカードの「使うモデルの選択」で 1 つ選びます（選んだものだけ取得します。非検閲のモデルには「成人向け相当」の注記が出ます）。
+- 設定の「テキスト生成（LLM）」の「ローカル LLM サーバー」で「この PC の llama.cpp を使う」を選ぶと、導入した llama.cpp が自動でその LLM プロバイダー `local` になります（起動中はそのポートを自動で使います。モデルの id〔例 `gemma-4-12b-it`〕を「LLM の割り当て」の model に指定します）。Ollama・LM Studio など別のサーバーにも、ベース URL で接続できます。
+- ComfyUI と同じ GPU で動かすときは、画像・動画を作る前に llama.cpp を止めて VRAM を空け、LLM を起動するときに ComfyUI が生成中なら待ちます（15 分使わないと llama-server がモデルを降ろします）。
+- この PC で動かせないとき（macOS〔Apple Silicon は対応外〕・NVIDIA の GPU が無い・ビデオメモリが足りない）は、理由と代わりの案内（Ollama・LM Studio に接続する、またはクラウドの LLM）が出ます。
+- **未確認**: 実機（Windows + NVIDIA）での導入・起動・推論、ComfyUI との同居、各モデルの質は、まだ確かめていません（[`spec/architecture/model-manager/local-runtime.md`](spec/architecture/model-manager/local-runtime.md) §17.7）。
 
 ## Windows でインストールする
 
@@ -86,7 +104,8 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 
 macOS 版でまだ使えないもの:
 
-- **ローカルの声（GPT-SoVITS）とローカルの口パク（MuseTalk 1.5）**。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。macOS では、声は公式が macOS の MPS / CPU での推論に対応しているものの mam は自動導入せず、口パクは公式の PyTorch 版が macOS（Apple Silicon）の GPU に対応していません（第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4` は mam の対象外です）。設定の「音声・口パク」では、macOS だとローカルを選べず、その理由が出ます。**クラウドの ElevenLabs（声）と Sync Labs（口パク）は macOS でもそのまま使えます**（設定の「API キーとログイン」で `elevenlabs`・`synclabs` のキーを登録します。何も選ばないときの既定はクラウドです）。
+- **ローカルの声（GPT-SoVITS・Irodori-TTS）とローカルの口パク（MuseTalk 1.5）**。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。macOS では、声（GPT-SoVITS・Irodori-TTS）は公式が macOS の MPS / CPU での推論に対応しているものの mam は自動導入せず（GPT-SoVITS は、Apple Silicon 向けの部品だけでは起動に必須の `pyopenjtalk`・`jieba_fast`・`jieba` が揃わないためです）、口パクは公式の PyTorch 版が macOS（Apple Silicon）の GPU に対応していません（第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4`（MIT）は、顔の検出・貼り戻しを含む起動できるサーバーが無いため、mam の対象外です）。どちらも実機の Mac では確かめていません（調べた内容は `spec/architecture/model-manager/local-runtime.md` §16）。設定の「音声・口パク」では、macOS だとローカルを選べず、その理由が出ます。**クラウドの ElevenLabs（声）と Sync Labs（口パク）は macOS でもそのまま使えます**（設定の「API キーとログイン」で `elevenlabs`・`synclabs` のキーを登録します。何も選ばないときの既定はクラウドです）。
+  - **声の学習（fine-tune。GPT-SoVITS のみ・Windows + NVIDIA）**: 登場人物の参照音声の欄の下で、書き起こしつきの録音（合計 1〜30 分）から声を学習し、その登場人物の声の合成に使えます。数十分かかり、学習中は GPU を使います。声のコピーには声の持ち主本人の同意が必要です（実在の人の声を同意なしに学習したり、なりすましに使ったりしないでください）。学習した声は書き出し（プロジェクトバンドル）には入りません。実物の GPU・重みでの動作は未確認です（[仕様](spec/architecture/model-manager/local-runtime.md) §18）。
 
 ffmpeg は同梱していません（次の節）。
 

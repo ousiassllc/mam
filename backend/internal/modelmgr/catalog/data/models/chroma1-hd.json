@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 8.9, "params_label": "8.9B", "uncensored": true, "speed": "standard"},
  "description": "FLUX.1 schnell 系の 8.9B を非検閲に学習した Chroma の最終版（成人向け）。ComfyUI 用の fp8mixed（約 9.2 GB）・T5-XXL fp8 のテキストエンコーダー（約 5.2 GB）・FLUX の VAE の 3 ファイル、合計約 14.7 GB。ネガティブプロンプトを使う（cfg）。",
  "files": [
   {

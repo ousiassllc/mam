@@ -5,8 +5,10 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest/intentinfo"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
@@ -14,18 +16,19 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
-// ListModelsInput narrows the models.
+// ListModelsInput narrows the models. The conditions are the ones every model picker has (modelfilter.Condition, #1011): kinds, inputs, adult,
+// uncensored, params, vram_fit, commercial (as before: all / ok / ok_or_conditional, and a list of ok, conditional, unknown, ng), installed, origins,
+// providers, audio, speeds, qualities, available_only and q.
 type ListModelsInput struct {
 	Media string `json:"media,omitempty" jsonschema:"image / video。省くと両方"`
-	// Commercial narrows the models by whether they may be used commercially (#928).
-	Commercial string `json:"commercial,omitempty" jsonschema:"商用利用で絞り込む。all（すべて）/ ok（商用OKだけ）/ ok_or_conditional（商用OKと条件つき）。省くと設定「商用OKのモデルだけを使う」に従う（オフなら all）"`
+	modelfilter.Condition
 }
 
 // ListModelsOutput is the models.
 type ListModelsOutput struct {
 	Models []modelcatalog.Info `json:"models"`
 	// CommercialFilter is the filter that narrowed Models: what commercial asked for, or the setting's default.
-	CommercialFilter string `json:"commercial_filter" jsonschema:"models に適用した商用利用の絞り込み（all / ok / ok_or_conditional）"`
+	CommercialFilter string `json:"commercial_filter" jsonschema:"models に適用した商用利用の絞り込み（all / ok / ok_or_conditional。ok, conditional, unknown, ng のうち複数を指定したときはその一覧）"`
 	// LoRAs are the LoRA files of the bundled ComfyUI engine (lora.name of a request; only for models with supports_lora). Empty
 	// when the engine is not running or has none.
 	LoRAs  []string `json:"loras" jsonschema:"同梱 ComfyUI エンジンにある LoRA ファイル名（昇順）。リクエストの lora.name に使う。supports_lora のモデルだけが使う。エンジンが止まっている・無いときは空"`
@@ -50,11 +53,15 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 	if loras == nil {
 		loras = []string{}
 	}
-	models, filter, err := g.ModelsFor(ctx, in.Media, in.Commercial)
+	models, applied, err := g.ModelsWhere(ctx, in.Media, in.Condition)
 	if err != nil {
 		return ListModelsOutput{}, mapError(err)
 	}
-	return ListModelsOutput{Models: models, CommercialFilter: string(filter), LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}, Intents: intentinfo.List(ctx, g)}, nil
+	filter := applied.Commercial
+	if filter == "" {
+		filter = string(modellicense.FilterAll)
+	}
+	return ListModelsOutput{Models: models, CommercialFilter: filter, LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}, Intents: intentinfo.List(ctx, g)}, nil
 }
 
 // ReferenceInput is an input image of a batch.

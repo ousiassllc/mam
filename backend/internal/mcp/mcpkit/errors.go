@@ -1,6 +1,7 @@
 package mcpkit
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,6 +9,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -45,9 +48,24 @@ type ToolError struct {
 	Status int
 	// ErrorID is the correlation id of an internal error (see ReportError); "" for any other.
 	ErrorID string
+	// Failure is the failure as the common error (#1010): the code of its kind, the cause and the remedy in Japanese, the screens that help
+	// and the detail. nil for an error that is not told that way.
+	Failure *apperr.View
 }
 
-func (e *ToolError) Error() string { return e.Code + ": " + e.Message }
+// Error is "<code>: <message>"; for a failure told as the common error, a second line has it as one JSON object (the apperr.View: code,
+// class, cause, remedy, settings, detail, error_id), which an agent reads to branch on the kind of failure (failure.code), without parsing the sentence.
+func (e *ToolError) Error() string {
+	text := e.Code + ": " + e.Message
+	if e.Failure == nil {
+		return text
+	}
+	b, err := json.Marshal(e.Failure)
+	if err != nil { // cannot happen: strings only
+		return text
+	}
+	return text + "\n" + string(b)
+}
 
 // MapError turns an error of the service layer into a *ToolError, with the messages and statuses the
 // screens use (web/handler.statusOf), so that a tool and a screen refuse the same request the same way.
@@ -66,6 +84,8 @@ func MapError(err error) *ToolError {
 	switch {
 	case errors.As(err, &te):
 		return te
+	case isFailure(err):
+		return fromFailure(err)
 	case errors.As(err, &brand):
 		return &ToolError{Code: CodeForbidden, Message: "Brand / Safety Constraint に違反しています: " + brand.Message(), Status: http.StatusForbidden}
 	case errors.Is(err, service.ErrBrandViolation):
@@ -80,11 +100,11 @@ func MapError(err error) *ToolError {
 		return &ToolError{Code: CodeLocked, Message: strings.Join(names, " / ") + " は LOCK されているため変更できません。LOCK を解除してから指示してください", Status: http.StatusLocked}
 	case errors.Is(err, service.ErrRateLimited):
 		if errors.As(err, &ai) {
-			return &ToolError{Code: CodeRateLimited, Message: ai.Reason, Status: http.StatusTooManyRequests}
+			return &ToolError{Code: CodeRateLimited, Message: ai.Reason, Status: http.StatusTooManyRequests, Failure: viewOfFailure(ai.Err)}
 		}
 		return &ToolError{Code: CodeRateLimited, Message: "外部の生成モデル API のレート制限に達しました。しばらく待ってから再実行してください", Status: http.StatusTooManyRequests}
 	case errors.As(err, &ai):
-		return &ToolError{Code: CodeUpstream, Message: ai.Reason, Status: http.StatusBadGateway}
+		return &ToolError{Code: CodeUpstream, Message: ai.Reason, Status: http.StatusBadGateway, Failure: viewOfFailure(ai.Err)}
 	case errors.As(err, &invalid):
 		return &ToolError{Code: CodeValidation, Message: invalid.Error(), Status: http.StatusUnprocessableEntity}
 	case errors.As(err, &store):
@@ -95,7 +115,40 @@ func MapError(err error) *ToolError {
 			return &ToolError{Code: m.code, Message: m.message, Status: m.status}
 		}
 	}
+	if e, ok := errmap.Known(err); ok && e.Code != apperr.CodeUnknown { // an outside failure no service worded: the table of errmap
+		return fromFailure(e)
+	}
 	return &ToolError{Code: CodeInternal, Message: "予期しないエラーです。mam のログを確認してください", Status: http.StatusInternalServerError}
+}
+
+// viewOfFailure is the common error of the failure behind an AIError (the cause and remedy in Japanese, the screens that help, the detail), nil when
+// errmap does not know it: the tool keeps its code and message and adds the structure (#1010).
+func viewOfFailure(err error) *apperr.View {
+	e, ok := errmap.Known(err)
+	if !ok {
+		return nil
+	}
+	v := e.View(apperr.LangJa)
+	return &v
+}
+
+// isFailure reports whether err is a failure told as the common error (an *apperr.Error in its chain).
+func isFailure(err error) bool {
+	_, ok := apperr.As(err)
+	return ok
+}
+
+// fromFailure is the tool error of a failure told as the common error: the code is its class (the code a tool error always had), the
+// message is the cause and the remedy in Japanese, and Failure has the rest. The language of the message is Japanese: a tool answers an agent
+// and the person behind it, not a screen with a language.
+func fromFailure(err error) *ToolError {
+	e, _ := apperr.As(err)
+	v := e.View(apperr.LangJa)
+	te := &ToolError{Code: v.Class, Message: v.Sentence(apperr.LangJa), Status: e.Status(), Failure: &v}
+	if e.Code == apperr.CodeUnknown { // nobody knows it: the id leads to the log
+		te.Code = CodeInternal
+	}
+	return te
 }
 
 // ErrorIDKey is the attribute of the log line that holds the correlation id of an internal error.
@@ -125,6 +178,11 @@ func ReportError(logger *slog.Logger, msg string, err error, attrs ...any) *Tool
 func (e *ToolError) WithErrorID(id string) *ToolError {
 	c := *e
 	c.ErrorID = id
+	if e.Failure != nil {
+		v := *e.Failure
+		v.ErrorID = id
+		c.Failure = &v
+	}
 	c.Message = fmt.Sprintf("%s（%s: %s）", e.Message, ErrorIDKey, id)
 	return &c
 }

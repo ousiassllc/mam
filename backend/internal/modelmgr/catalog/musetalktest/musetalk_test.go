@@ -231,7 +231,8 @@ func TestPartURLAllowed(t *testing.T) {
 		"https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip":                    true,
 		"https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe":                          false,
 		"https://files.pythonhosted.org/packages/ab/cd/ef0123/numpy-1.23.5-cp310-win_amd64.whl":       true,
-		"https://files.pythonhosted.org/packages/ab/cd/ef0123/numpy-1.23.5.tar.gz":                    false,
+		"https://files.pythonhosted.org/packages/ab/cd/ef0123/numpy-1.23.5.tar.gz":                    true, // a pure-Python package without a wheel: extracted, never built
+		"https://files.pythonhosted.org/packages/ab/cd/ef0123/numpy-1.23.5.zip":                       false,
 		"http://files.pythonhosted.org/packages/ab/cd/x.whl":                                          false,
 		"https://download.pytorch.org/whl/cu118/torch-2.0.1%2Bcu118-cp310-cp310-win_amd64.whl":        true,
 		"https://download.pytorch.org/whl/nightly/cu118/torch.whl":                                    false,

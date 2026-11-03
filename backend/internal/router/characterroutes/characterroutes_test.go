@@ -2,6 +2,8 @@ package characterroutes_test
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -28,6 +31,7 @@ import (
 // app is the whole app over a database and an assets directory (a Library image is a file).
 type app struct {
 	t      *testing.T
+	db     *repository.DB
 	svc    *service.Services
 	engine http.Handler
 	cookie *http.Cookie
@@ -37,8 +41,9 @@ type app struct {
 func newApp(t *testing.T) *app {
 	t.Helper()
 	testenv.Parallel(t)
-	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New(), AssetsDir: filepath.Join(t.TempDir(), "assets")})
-	a := &app{t: t, svc: svc, engine: router.New(svc, router.Options{})}
+	db := testdb.Open(t)
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New(), AssetsDir: filepath.Join(t.TempDir(), "assets")})
+	a := &app{t: t, db: db, svc: svc, engine: router.New(svc, router.Options{})}
 	rec := a.send(httptest.NewRequest(http.MethodGet, "/", nil))
 	require.Equal(t, http.StatusOK, rec.Code)
 	for _, c := range rec.Result().Cookies() {
@@ -172,9 +177,10 @@ func TestSeries_AddCharacterToTheCanonAndTheNextEpisodeGetsIt(t *testing.T) {
 	page := s.page(path)
 	assert.Contains(t, page, `hx-post="`+path+`/characters"`, "the page has the form")
 	assert.Contains(t, page, "登録された Character はありません")
-	assert.NotContains(t, page, `name="face_reference_id"`, "a Series has no Library to pick an image from")
+	assert.NotContains(t, page, `name="face_reference_id"`, "no Episode has an image to pick")
+	assert.Contains(t, page, "Episode の Reference Library に「キャラクター」の画像を登録すると選べます")
 
-	rec := s.post(path+"/characters", url.Values{"name": {"Kana"}, "hairstyle": {"bob"}, "face_reference_id": {"ignored"}})
+	rec := s.post(path+"/characters", url.Values{"name": {"Kana"}, "hairstyle": {"bob"}})
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
 	body := rec.Body.String()
 	assert.Contains(t, body, `id="series-create-character"`)
@@ -195,4 +201,77 @@ func TestSeries_AddCharacterToTheCanonAndTheNextEpisodeGetsIt(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, w.World.Characters, 1)
 	assert.Equal(t, "Kana", w.World.Characters[0].Name)
+}
+
+// The create form of a Series offers the Library images (kind character) of its Episodes, labelled with their Episode, as the face and the body of
+// a canonical Character (#1001): the canon keeps them, and the next Episode gets them. Images of two Episodes are refused.
+func TestSeries_AddCharacterTakesTheFaceAndTheBodyFromAnEpisodeLibrary(t *testing.T) {
+	s := newApp(t)
+	first := newProject(t, s)
+	series, err := s.svc.Series.Create(t.Context(), "仮AIインフルエンサー", first)
+	require.NoError(t, err)
+	path := "/series/" + series.ID
+	face := uploadImage(t, s, first, "character", "Kana 正面")
+	body := uploadImage(t, s, first, "character", "Kana 全身")
+	style := uploadImage(t, s, first, "style", "Noir")
+	second, err := s.svc.Series.CreateEpisode(t.Context(), series.ID, "", "")
+	require.NoError(t, err)
+	other := uploadImage(t, s, second.ID, "character", "Ren 正面")
+
+	page := s.page(path)
+	form := regexp.MustCompile(`id="series-create-character".*?</form>`).FindString(strings.ReplaceAll(page, "\n", " "))
+	require.NotEmpty(t, form)
+	assert.Contains(t, form, `name="face_reference_id"`)
+	assert.Contains(t, form, `name="body_reference_id"`)
+	assert.Regexp(t, `<option value="`+first+"/"+face+`">第1話[^<]*/ Kana 正面</option>`, form, "an image is labelled with its Episode")
+	assert.Regexp(t, `<option value="`+second.ID+"/"+other+`">第2話[^<]*/ Ren 正面</option>`, form)
+	assert.NotContains(t, form, "/"+style+`"`, "a Style image is not offered")
+
+	for name, in := range map[string]url.Values{
+		"images of two Episodes": {"name": {"Kana"}, "face_reference_id": {first + "/" + face}, "body_reference_id": {second.ID + "/" + other}},
+		"a value of no option":   {"name": {"Kana"}, "face_reference_id": {"ignored"}},
+		"a Style image":          {"name": {"Kana"}, "face_reference_id": {first + "/" + style}},
+	} {
+		assert.Equal(t, http.StatusUnprocessableEntity, s.post(path+"/characters", in).Code, name)
+	}
+	assert.Equal(t, http.StatusNotFound, s.post(path+"/characters", url.Values{"name": {"Kana"}, "face_reference_id": {first + "/nope"}}).Code)
+
+	rec := s.post(path+"/characters", url.Values{"name": {"Kana"}, "face_reference_id": {first + "/" + face}, "body_reference_id": {first + "/" + body}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `name="face_reference_id"`, "the empty form that replaces the sent one keeps its selects")
+	view, err := s.svc.Series.View(t.Context(), series.ID)
+	require.NoError(t, err)
+	require.Len(t, view.Canon.Characters, 1)
+	assert.NotEmpty(t, view.Canon.Characters[0].FaceReferenceAssetID)
+	assert.NotEmpty(t, view.Canon.Characters[0].BodyReferenceAssetID)
+	assert.NotEqual(t, view.Canon.Characters[0].FaceReferenceAssetID, view.Canon.Characters[0].BodyReferenceAssetID)
+}
+
+func (a *app) exec(q string, args ...any) {
+	a.t.Helper()
+	require.NoError(a.t, a.db.Write(a.t.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, q, args...)
+		return err
+	}))
+}
+
+// A draft Character (#1022) wears the mark "下書き" on the World State until the user saves an edit of it.
+func TestProject_ADraftCharacterShowsItsMarkUntilItIsEdited(t *testing.T) {
+	s := newApp(t)
+	id := newProject(t, s)
+	s.exec(`INSERT INTO character (id, project_id, name, draft) VALUES ('d1', ?, '登場人物 1', 1), ('c1', ?, 'Mio', 0)`, id, id)
+
+	page := s.page("/projects/" + id + "/world-state")
+	assert.Equal(t, 1, strings.Count(page, `data-testid="character-draft"`), "only the draft is marked")
+	assert.Contains(t, page, "下書き")
+
+	req := httptest.NewRequest(http.MethodPut, "/projects/"+id+"/characters/d1", strings.NewReader(url.Values{"hairstyle": {"bob"}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	req.AddCookie(s.cookie)
+	req.Header.Set(middleware.CSRFHeaderName, s.token)
+	rec := s.send(req)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.NotContains(t, rec.Body.String(), `data-testid="character-draft"`, "the form that answers the save has no mark")
+	assert.NotContains(t, s.page("/projects/"+id+"/world-state"), `data-testid="character-draft"`)
 }

@@ -34,6 +34,17 @@
    "license": "mit-gpt-sovits"
   },
   {
+   "name": "GPT-SoVITS v2 の SoVITS 判別器（学習用）",
+   "description": "SoVITS の学習（ファインチューン）だけが読む、判別器の学習済みの重み（v2）。声を作る（推論）には使わないので、無くても起動できる。学習を始めるときは、これがそろっていることを確かめる。",
+   "dest": "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2D2333k.pth",
+   "url": "https://huggingface.co/lj1995/GPT-SoVITS/resolve/8f8857563c040d542de108a2c18b0425abd6c9c5/gsv-v2final-pretrained/s2D2333k.pth",
+   "sha256": "8ae7fe8dd8c8f2e718de359e00edac88b0c71ab2fd10b07ad4cc45070eb8a836",
+   "size": 93534164,
+   "required": false,
+   "source": {"name": "lj1995/GPT-SoVITS（Hugging Face）", "url": "https://huggingface.co/lj1995/GPT-SoVITS"},
+   "license": "mit-gpt-sovits"
+  },
+  {
    "name": "chinese-hubert-base の設定",
    "description": "参照音声から声の特徴を取り出す HuBERT（設定）。",
    "dest": "GPT_SoVITS/pretrained_models/chinese-hubert-base/config.json",

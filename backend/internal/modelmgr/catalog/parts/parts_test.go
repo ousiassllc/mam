@@ -66,17 +66,17 @@ func TestCheckRefusesWhatIsNotPinnedOrNotWhereAPartMayCome(t *testing.T) {
 		edit func(p *parts.Part)
 		want string
 	}{
-		"another host":          {func(p *parts.Part) { p.URL = "https://example.com/x.whl" }, "not one of the places"},
-		"http":                  {func(p *parts.Part) { p.URL = strings.Replace(p.URL, "https", "http", 1) }, "not one of the places"},
-		"a source distribution": {func(p *parts.Part) { p.URL = "https://files.pythonhosted.org/packages/ab/cd/x-1.0.tar.gz" }, "not one of the places"},
-		"no digest":             {func(p *parts.Part) { p.SHA256 = "" }, "sha256"},
-		"an upper-case digest":  {func(p *parts.Part) { p.SHA256 = strings.ToUpper(sha) }, "sha256"},
-		"no size":               {func(p *parts.Part) { p.Size = 0 }, "size and extracted_size"},
-		"no extracted size":     {func(p *parts.Part) { p.ExtractedSize = 0 }, "size and extracted_size"},
-		"no name":               {func(p *parts.Part) { p.Name = "" }, "a name"},
-		"a kind of its own":     {func(p *parts.Part) { p.Kind = "tar" }, "tar.gz or wheel"},
-		"a wheel with a dest":   {func(p *parts.Part) { p.Dest = "x" }, "no dest or strip"},
-		"a wheel with a strip":  {func(p *parts.Part) { p.Strip = "x" }, "no dest or strip"},
+		"another host":                     {func(p *parts.Part) { p.URL = "https://example.com/x.whl" }, "not one of the places"},
+		"http":                             {func(p *parts.Part) { p.URL = strings.Replace(p.URL, "https", "http", 1) }, "not one of the places"},
+		"a source distribution as a wheel": {func(p *parts.Part) { p.URL = "https://files.pythonhosted.org/packages/ab/cd/x-1.0.tar.gz" }, "a .whl url"},
+		"no digest":                        {func(p *parts.Part) { p.SHA256 = "" }, "sha256"},
+		"an upper-case digest":             {func(p *parts.Part) { p.SHA256 = strings.ToUpper(sha) }, "sha256"},
+		"no size":                          {func(p *parts.Part) { p.Size = 0 }, "size and extracted_size"},
+		"no extracted size":                {func(p *parts.Part) { p.ExtractedSize = 0 }, "size and extracted_size"},
+		"no name":                          {func(p *parts.Part) { p.Name = "" }, "a name"},
+		"a kind of its own":                {func(p *parts.Part) { p.Kind = "tar" }, "tar.gz or wheel"},
+		"a wheel with a dest":              {func(p *parts.Part) { p.Dest = "x" }, "no dest or strip"},
+		"a wheel with a strip":             {func(p *parts.Part) { p.Strip = "x" }, "no dest or strip"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := wheel("numpy")
@@ -113,7 +113,6 @@ func TestCheckBuild(t *testing.T) {
 		want string
 	}{
 		"site-packages outside":  {&parts.Build{SitePackages: "../site"}, "site_packages"},
-		"no site-packages":       {&parts.Build{}, "site_packages"},
 		"a file outside":         {&parts.Build{SitePackages: "s", Files: []parts.File{{Dest: "../x", Lines: []string{"a"}}}}, "relative slash path"},
 		"a file with both":       {&parts.Build{SitePackages: "s", Files: []parts.File{{Dest: "x", Lines: []string{"a"}, Overlay: "server.py"}}}, "an overlay or lines"},
 		"a file with neither":    {&parts.Build{SitePackages: "s", Files: []parts.File{{Dest: "x"}}}, "an overlay or lines"},
@@ -125,4 +124,42 @@ func TestCheckBuild(t *testing.T) {
 			assert.Contains(t, errs[0].Error(), tc.want)
 		})
 	}
+}
+
+const llamaURL = "https://github.com/ggml-org/llama.cpp/releases/download/b11960/llama-b11960-bin-win-cuda-12.4-x64.zip"
+
+// The llama.cpp build of a runtime is the prebuilt Windows CUDA zip of the repository's release and the CUDA runtime DLLs that go with it, and
+// nothing else of that repository (not the source, not another platform's build, not a mirror).
+func TestCheckAcceptsTheLlamaCppWindowsCUDABuildAndNoOtherDownload(t *testing.T) {
+	zip := parts.Part{Name: "llama", Kind: parts.KindZip, SHA256: sha, Size: 5, ExtractedSize: 9, URL: llamaURL}
+	_, _, errs := parts.Check("v", []parts.Part{zip})
+	require.Empty(t, errs)
+	cudart := zip
+	cudart.URL = "https://github.com/ggml-org/llama.cpp/releases/download/b11960/cudart-llama-bin-win-cuda-13.4-x64.zip"
+	_, _, errs = parts.Check("v", []parts.Part{cudart})
+	require.Empty(t, errs)
+	for name, url := range map[string]string{
+		"the Vulkan build":                     strings.Replace(llamaURL, "cuda-12.4", "vulkan", 1),
+		"the macOS build":                      strings.Replace(llamaURL, "win-cuda-12.4-x64.zip", "macos-arm64.zip", 1),
+		"the source":                           "https://github.com/ggml-org/llama.cpp/archive/b11960.zip",
+		"another repository":                   strings.Replace(llamaURL, "ggml-org/llama.cpp", "someone/llama.cpp", 1),
+		"a mirror":                             strings.Replace(llamaURL, "github.com", "example.com", 1),
+		"a release that is not a build number": strings.Replace(llamaURL, "download/b11960", "download/latest", 1),
+		"a query on the asset":                 llamaURL + "?x=1",
+	} {
+		t.Run(name, func(t *testing.T) {
+			bad := zip
+			bad.URL = url
+			_, _, errs := parts.Check("v", []parts.Part{bad})
+			require.NotEmpty(t, errs)
+			assert.Contains(t, errs[0].Error(), "not one of the places")
+		})
+	}
+}
+
+// A build without wheels (llama.cpp is two zips) has no site-packages directory; HasWheels is what says a build needs one.
+func TestCheckBuildAcceptsABuildWithoutSitePackagesAndHasWheelsSaysWhenItIsNeeded(t *testing.T) {
+	assert.Empty(t, parts.CheckBuild("r", &parts.Build{}, nil))
+	assert.False(t, parts.HasWheels([]parts.Part{{Kind: parts.KindZip}}))
+	assert.True(t, parts.HasWheels([]parts.Part{{Kind: parts.KindZip}, {Kind: parts.KindWheel}}))
 }

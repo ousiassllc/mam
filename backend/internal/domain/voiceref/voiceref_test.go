@@ -77,6 +77,21 @@ func TestFormatOf_TheContentMustMatchTheExtension(t *testing.T) {
 	assert.Equal(t, []string{".wav", ".mp3", ".flac", ".ogg", ".m4a"}, voiceref.Extensions())
 }
 
+func TestReferenceValidateHoldsAReferenceToWhatTheUploadEnforces(t *testing.T) {
+	ok := voiceref.Reference{FilePath: "p/voice.WAV", MimeType: "audio/wav", Language: "en", Text: "hello"}
+	assert.NoError(t, ok.Validate())
+	assert.NoError(t, voiceref.Reference{FilePath: "p/v.flac", MimeType: "audio/flac"}.Validate(), "an empty language is the default one")
+
+	for name, r := range map[string]voiceref.Reference{
+		"language": {FilePath: "p/v.wav", MimeType: "audio/wav", Language: "xx"},
+		"text":     {FilePath: "p/v.wav", MimeType: "audio/wav", Text: strings.Repeat("あ", voiceref.MaxTextRunes+1)},
+		"ext":      {FilePath: "p/v.exe", MimeType: "audio/wav"},
+		"mime":     {FilePath: "p/v.wav", MimeType: "text/html"},
+	} {
+		assert.Error(t, r.Validate(), name)
+	}
+}
+
 func TestNormalizeLanguageAndText(t *testing.T) {
 	for in, want := range map[string]string{"": "ja", " JA ": "ja", "en": "en", "yue": "yue"} {
 		got, err := voiceref.NormalizeLanguage(in)

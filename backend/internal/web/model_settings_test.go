@@ -40,7 +40,7 @@ func TestModelSettings_TheScreenListsEveryPurposeAndPolicyAsARowAndTheirModalsOf
 		modal := s.imageModal(string(p))
 		name := media.ImageModelField(string(p), media.SlotPrimary)
 		assert.Equal(t, string(def.Images[p].Primary.Model), selectedOption(t, modal, name), p)
-		assert.ElementsMatch(t, []string{"nano-banana", "nano-banana-lite", "flux-2", "gpt-image-2"}, optionValues(t, modal, name), "the models that have an image backend")
+		assert.ElementsMatch(t, []string{"nano-banana", "nano-banana-lite", "flux-2", "gpt-image-2"}, s.choices(name), "the models that have an image backend")
 		for _, slot := range []string{media.SlotPrimary, media.SlotFallback} {
 			assert.NotContains(t, modal, `name="`+media.ImageFastField(string(p), slot)+`"`, "no model has a fast variant by default: the checkbox is not offered: %s %s", p, slot)
 		}
@@ -56,7 +56,7 @@ func TestModelSettings_TheScreenListsEveryPurposeAndPolicyAsARowAndTheirModalsOf
 		assert.Equal(t, strconv.Itoa(route.Takes), numberValue(t, modal, media.PolicyTakesField(string(q))), q)
 
 		// A model is offered only at the resolutions it can make: Kling has no 480p, Runway only 720p.
-		options := optionValues(t, modal, primary)
+		options := s.choices(primary)
 		assert.Contains(t, options, "kling-3.0@1080p")
 		assert.NotContains(t, options, "kling-3.0@480p")
 		assert.Contains(t, options, "runway-gen-4.5@720p")
@@ -124,7 +124,7 @@ func TestModelSettings_AModelsFileThatStillNamesImagen4IsShownAsNanoBanana(t *te
 	assert.Equal(t, "nano-banana", selectedOption(t, modal, media.ImageModelField("new_reference", media.SlotPrimary)))
 	assert.Equal(t, "nano-banana-lite", selectedOption(t, modal, media.ImageModelField("new_reference", media.SlotFallback)))
 	assert.NotContains(t, modal, `name="`+media.ImageFastField("new_reference", media.SlotFallback)+`"`, "the fast flag is dropped")
-	assert.NotContains(t, optionValues(t, modal, media.ImageModelField("new_reference", media.SlotPrimary)), "imagen-4")
+	assert.NotContains(t, s.choices(media.ImageModelField("new_reference", media.SlotPrimary)), "imagen-4")
 	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	assert.JSONEq(t, legacy, string(data), "the file is read, not rewritten")
@@ -171,6 +171,9 @@ func startTag(t *testing.T, html, id string) string {
 func assertFieldBlamed(t *testing.T, html, id string) {
 	t.Helper()
 	tag := startTag(t, html, id)
+	if strings.Contains(tag, "data-model-pick-field") { // a model field: the button that opens the picker is the control
+		tag = startTag(t, html, id+"-button")
+	}
 	assert.Contains(t, tag, "autofocus", id)
 	assert.Contains(t, tag, `aria-invalid="true"`, id)
 	assert.Contains(t, tag, `aria-describedby="mam-modal-error"`, id)
@@ -197,7 +200,7 @@ func TestModelSettings_AnAdultModelOfTheSavedAssignmentIsShownAsUnusableWhileThe
 	assert.Contains(t, html, `data-testid="model-assignment-gated"`)
 	assert.Contains(t, html, "年齢確認をオンにするか")
 	modal := s.imageModal("new_reference")
-	assert.NotContains(t, optionValues(t, s.imageModal("preview"), media.ImageModelField("preview", media.SlotPrimary)), noRefLocalModel, "not a choice")
+	assert.NotContains(t, s.choices(media.ImageModelField("preview", media.SlotPrimary)), noRefLocalModel, "not a choice")
 	assert.Equal(t, noRefLocalModel, selectedOption(t, modal, primary), "the saved model is what the select shows")
 	assert.Contains(t, modal, noRefLocalModel+"（現在は使えません）")
 
@@ -222,6 +225,6 @@ func TestModelSettings_AnAdultModelOfTheSavedAssignmentIsShownAsUnusableWhileThe
 	assert.NotContains(t, rec.Body.String(), "（現在は使えません）")
 
 	closed = false
-	assert.Contains(t, optionValues(t, s.imageModal("preview"), media.ImageModelField("preview", media.SlotPrimary)), noRefLocalModel, "a choice again")
+	assert.Contains(t, s.choices(media.ImageModelField("preview", media.SlotPrimary)), noRefLocalModel, "a choice again")
 	assert.NotContains(t, s.page(), `data-testid="model-assignment-gated"`)
 }

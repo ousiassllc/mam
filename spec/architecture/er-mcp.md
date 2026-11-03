@@ -41,6 +41,7 @@ erDiagram
         text error_code "失敗のコード（なければ空）"
         text error_message "失敗の理由"
         text error_id "internal の相関 ID（NULL 可）"
+        text error_info "失敗を共通のエラー（apperr.View）にした JSON（空: なし）"
         text started_at
         text finished_at "job テーブルが記録した終了"
         text ended_at "終わったと分かった時刻"
@@ -53,4 +54,4 @@ MCP が `job_id` を返す全種別（`job` テーブルの行を持たないも
 |---------|------|
 | `mcp_job_history` | `id` PK は `get_job` に渡す `job_id`。`queue_job_id` があれば `job.id` と同じ。`kind` は空でない（CHECK）。`state` は `mcpkit.JobState` の 5 値（CHECK）。`project_id` は開始時に `target`（Project・Shot・Take・Edit Timeline の ID）から引く。`message`・`done`・`total`・`state`・失敗の列は `get_job` / `list_jobs` が状態を確かめるたびに書き戻す（状態の決め方は `job` テーブルの行と Probe のまま）。`result` は Probe がメモリだけを読む種別の結果の JSON（`json_valid`）で、他の種別は NULL（Probe が永続化済みの状態から導き直す）。`error_code` は失敗の `<code>: <message>` の `<code>`、`error_message` は理由、`error_id` は `internal` の失敗の相関 ID（ログの `error_id` と同じ値。[mcp.md](mcp.md) §6）。`started_at`・`finished_at`・`ended_at` は UTC のミリ秒 ISO 8601。**保存期間 30 日・10,000 行**で、超えたぶんは `started_at` の古い順に、行の追加と mam の起動時に消す。索引: `idx_mcp_job_history_started (started_at DESC, id DESC)`（一覧・削除）、`idx_mcp_job_history_open (started_at) WHERE state IN ('queued','running')`（終わっていないものの再確認） |
 
-マイグレーション: `20261031120000_mcp_job_history.sql`（up で作成、down で索引とテーブルを削除）。
+マイグレーション: `20261031120000_mcp_job_history.sql`（up で作成、down で索引とテーブルを削除）、`20261110100300_mcp_job_history_error_info.sql`（`error_info` を足す。Issue #1010、[共通のエラー](errors.md)）。

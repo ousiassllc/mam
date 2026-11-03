@@ -53,8 +53,11 @@ func (m Model) ReferenceCaps() ReferenceCaps {
 		return ReferenceCaps{}
 	}
 	caps := ReferenceCaps{Mode: w.ReferenceMode, Max: w.Count(ParamReferenceImage), Roles: []string{RoleWhole}}
-	if caps.Mode == ModeEdit {
+	switch caps.Mode {
+	case ModeEdit:
 		caps.Roles = []string{RoleWhole, RoleFace, RoleStyle, RoleEdit, RolePose}
+	case ModeControlNet: // the control image is as often a pose picture (a line, depth or normal map of the pose library; Issue #1020) as any other
+		caps.Roles = []string{RoleWhole, RolePose}
 	}
 	return caps
 }

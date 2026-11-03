@@ -4,15 +4,21 @@ package inpaintscreen
 import (
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestinpaint"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -46,40 +52,21 @@ func (h Handlers) page(c *gin.Context) gentestinpaint.Page {
 	if model := h.restore(c, &p); model != "" {
 		want = model
 	}
-	for _, m := range h.Svc.Models(c.Request.Context(), gentest.MediaImage) {
-		row := gentestinpaint.Model{ID: m.ID, Label: m.Label, On: m.Available && m.SupportsInpaint}
-		switch {
-		case !m.Available:
-			row.Reason = m.UnavailableMessage
-		case !m.SupportsInpaint:
-			row.Reason = "一部だけ描き直すに対応していません"
-		default:
-			p.HasModel = true
-			if m.DenoiseDefault != nil {
-				row.Denoise = *m.DenoiseDefault
-			}
-			row.Pick = m.ID == want
-		}
-		p.Models = append(p.Models, row)
+	models := h.Svc.Models(c.Request.Context(), gentest.MediaImage)
+	canRedraw := func(m modelcatalog.Info) bool { return m.Available && m.SupportsInpaint }
+	p.HasModel = slices.ContainsFunc(models, canRedraw)
+	// The model asked for is chosen when it can redraw, else the first that can.
+	chosen := slices.IndexFunc(models, func(m modelcatalog.Info) bool { return m.ID == want && canRedraw(m) })
+	if chosen < 0 {
+		chosen = slices.IndexFunc(models, canRedraw)
 	}
-	if want == "" || !picked(p.Models) {
-		for i := range p.Models {
-			if p.Models[i].On {
-				p.Models[i].Pick = true
-				break
-			}
-		}
+	current, id := modelcard.Card{}, ""
+	if chosen >= 0 {
+		current, id = modelcards.FromInfo(models[chosen]), models[chosen].ID
 	}
+	p.Model = modelpicker.FieldFor(modelpicker.SourceInpaint, "gt-inpaint-model", "描き直すモデル", nil,
+		[]modelpick.Input{{Name: "model", Key: "value", Value: id}}, current)
 	return p
-}
-
-func picked(ms []gentestinpaint.Model) bool {
-	for _, m := range ms {
-		if m.Pick {
-			return true
-		}
-	}
-	return false
 }
 
 func thumb(v refform.Value) string {

@@ -36,7 +36,7 @@ const (
 // Local is the local provider of a role: what it is, where it stands and why it cannot be used.
 type Local struct {
 	Role localvoice.Role
-	// Name is the model ("GPT-SoVITS", "MuseTalk 1.5") and RuntimeID the runtime of the model manager that holds it.
+	// Name is the model ("GPT-SoVITS", "Irodori-TTS", "MuseTalk 1.5") and RuntimeID the runtime of the model manager that holds it.
 	Name, RuntimeID string
 	State           State
 	// Usable: a run can use it now (installed, weights verified, this machine can run it). Reason is, when it is not, the sentence a run
@@ -58,6 +58,10 @@ type Local struct {
 	LicenseURL  string
 	Condition   string
 	Unclear     []string
+	// Model and Cautions are the model of a runtime with several (Irodori-TTS) that is in force and the restrictions of its use (nil for a
+	// runtime without choices).
+	Model    string
+	Cautions []string
 }
 
 // View is the section as the screen and the MCP tools show it.
@@ -65,8 +69,8 @@ type View struct {
 	Settings Settings
 	// Problem is why the settings file cannot be read ("" when it can); Settings are then the defaults and a run is refused.
 	Problem string
-	// Voice and LipSync are the local providers; nil when the app has no local runtimes.
-	Voice, LipSync *Local
+	// Voice (GPT-SoVITS), Irodori (Irodori-TTS) and LipSync are the local providers; nil when the app has no local runtimes.
+	Voice, Irodori, LipSync *Local
 	// VoiceKeySet and LipSyncKeySet say whether the API key of the cloud provider (elevenlabs, synclabs) is stored. The key is never read.
 	VoiceKeySet, LipSyncKeySet bool
 }
@@ -85,6 +89,9 @@ func (s *Service) View(ctx context.Context) (View, error) {
 	}
 	if s.runtimes != nil {
 		if v.Voice, err = s.local(ctx, localvoice.RoleVoice); err != nil {
+			return View{}, err
+		}
+		if v.Irodori, err = s.local(ctx, localvoice.RoleVoiceIrodori); err != nil {
 			return View{}, err
 		}
 		if v.LipSync, err = s.local(ctx, localvoice.RoleLipSync); err != nil {
@@ -130,6 +137,9 @@ func (s *Service) local(ctx context.Context, role localvoice.Role) (*Local, erro
 	}
 	if !v.Support.Supported {
 		l.SupportReason = v.Support.Message()
+	}
+	if v.Choice != nil {
+		l.Model, l.Cautions = v.Choice.Name, v.Choice.Cautions
 	}
 	for _, a := range v.Weights.Assets {
 		if a.License.Commercial != modellicense.Yes {

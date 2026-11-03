@@ -3,6 +3,7 @@ package mmview
 import (
 	"errors"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 )
@@ -19,10 +20,16 @@ func RefuseRuntime(err error) (RefusalKind, string) {
 		return RefusalNotFound, "対象が見つかりません。画面を読み込み直してください"
 	case errors.Is(err, localruntime.ErrUnsupported), errors.Is(err, localruntime.ErrWeightsMissing), errors.Is(err, localruntime.ErrSourceGone):
 		return RefusalConflict, err.Error()
+	case errors.Is(err, choice.ErrConsentRequired):
+		return RefusalConflict, "このモデルのライセンスに同意してから使ってください（モデルの選択の欄で、規約を読んで同意します）"
+	case errors.Is(err, choice.ErrUnknown):
+		return RefusalInvalid, "そのモデルは選べません。画面を読み込み直してください"
 	case errors.Is(err, localruntime.ErrNotInstalled):
 		return RefusalConflict, "導入されていません。先に導入してください"
 	case errors.Is(err, localruntime.ErrBusy):
 		return RefusalConflict, "導入が実行中です。終わってから、または中断してからやり直してください"
+	case errors.Is(err, localruntime.ErrTraining):
+		return RefusalConflict, "声の学習が動いています。終わってから、または中止してからやり直してください"
 	case errors.Is(err, store.ErrNotWritable):
 		return RefusalConflict, "mam.exe のあるフォルダに書き込めません。書き込める場所に置いてください"
 	}

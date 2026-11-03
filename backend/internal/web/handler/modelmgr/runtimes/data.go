@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
+	"github.com/ousiassllc/mam/backend/internal/service/runtimechoices"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
@@ -20,10 +21,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/weightlist"
 )
 
-var purposeLabels = map[catalog.Purpose]string{catalog.PurposeTTS: "声（音声合成）", catalog.PurposeLipSync: "口パク"}
+var purposeLabels = map[catalog.Purpose]string{catalog.PurposeTTS: "声（音声合成）", catalog.PurposeLipSync: "口パク", catalog.PurposeLLM: "文章（LLM）"}
 
 // purposeIcons are the pictures of the cards: the tile of what the runtime is for.
-var purposeIcons = map[catalog.Purpose]atoms.IconName{catalog.PurposeTTS: atoms.IconVoice, catalog.PurposeLipSync: atoms.IconLipSync}
+var purposeIcons = map[catalog.Purpose]atoms.IconName{catalog.PurposeTTS: atoms.IconVoice, catalog.PurposeLipSync: atoms.IconLipSync, catalog.PurposeLLM: atoms.IconText}
 
 // Section is the section of the screen: a card for every runtime of the catalog. Nil (the section is left out) when there is no
 // service or no runtime.
@@ -64,10 +65,8 @@ func runtimeCard(ctx context.Context, svc *localruntime.Service, v localruntime.
 		VRAM:      jobview.VRAMText(v.VRAM.MinGB, v.VRAM.Source, v.VRAM.Estimate),
 		Installed: v.Installed, Broken: v.Broken, Version: v.Version, PinnedVersion: v.PinnedVersion, UpdateAvailable: v.UpdateAvailable,
 		State: string(v.Process.State), URL: v.Process.URL, ProcessError: v.Process.Error, AutoStart: v.AutoStart,
-		LicenseName: v.License.Name, LicenseURL: v.License.URL, Weights: weightsOf(v.Weights),
-	}
-	if v.License.CommercialCondition != "" {
-		r.LicenseCondition = v.License.CommercialCondition
+		LicenseName: v.License.Name, LicenseURL: v.License.URL, LicenseCondition: v.License.CommercialCondition, Weights: weightsOf(v.Weights),
+		Models: modelsOf(ctx, runtimechoices.Service{Runtimes: svc}, v.ID),
 	}
 	r.Commercial = commercialOf(v)
 	// The build the card talks about: the installed one, else the one this GPU gets, else the first (a machine that cannot run it).

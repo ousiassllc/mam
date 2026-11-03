@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -61,13 +62,8 @@ templ MatchForm(c MatchCompose) {
 		</fieldset>
 		<div class="grid gap-5 sm:grid-cols-2">
 			<div class="flex flex-col gap-1 text-sm">
-				<label class="font-medium text-neutral-200" for="gt-match-model">モデル</label>
-				@commercial.Filter(c.Filter)
-				@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{"id": "gt-match-model", "name": FieldModel, "required": true, "data-testid": "gt-match-model"}) {
-					for _, m := range c.Models {
-						<option value={ m.ID } selected?={ m.Selected } data-commercial={ m.Answer.Answer() }>{ commercial.OptionLabel(m.Label+"（"+m.Price+"）", m.Answer) }</option>
-					}
-				}
+				<span class="font-medium text-neutral-200" id="gt-match-model-label">モデル</span>
+				@modelpick.Field(c.Model)
 			</div>
 			<fieldset class="flex flex-col gap-1" aria-labelledby="gt-match-mode-title">
 				@sectionTitle("gt-match-mode-title", "進め方", help.Text(modeHelp))

@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/broker"
 )
 
 func shotReader(state domain.ShotState, during func()) func(context.Context, string) (repository.ShotRef, error) {
@@ -35,7 +36,7 @@ func drain(ch <-chan generation.Progress) []generation.Stage {
 }
 
 func TestSubscribeShot_AMessagePublishedWhileTheStateIsReadIsNotLost(t *testing.T) {
-	s := &GenerationService{progress: newBroker[generation.Progress]()}
+	s := &GenerationService{progress: broker.New[generation.Progress]()}
 	// The Shot reads as GENERATING, but its work ends before the read returns.
 	read := shotReader(domain.ShotGenerating, func() {
 		s.progress.Publish("s1", generation.Progress{ShotID: "s1", Stage: generation.StageDone})
@@ -49,7 +50,7 @@ func TestSubscribeShot_AMessagePublishedWhileTheStateIsReadIsNotLost(t *testing.
 }
 
 func TestSubscribeShot_AShotThatStoppedWhileTheStateIsReadEndsWithIdle(t *testing.T) {
-	s := &GenerationService{progress: newBroker[generation.Progress]()}
+	s := &GenerationService{progress: broker.New[generation.Progress]()}
 	read := shotReader(domain.ShotEditing, func() {
 		s.progress.Publish("s1", generation.Progress{ShotID: "s1", Stage: generation.StageGenerating})
 	})
@@ -69,7 +70,7 @@ func TestSubscribeShot_TheFirstMessageIsTheCurrentStage(t *testing.T) {
 		domain.ShotPlanning:   {ShotID: "s1", Stage: generation.StageIdle},
 		domain.ShotEditing:    {ShotID: "s1", Stage: generation.StageIdle},
 	} {
-		s := &GenerationService{progress: newBroker[generation.Progress]()}
+		s := &GenerationService{progress: broker.New[generation.Progress]()}
 		ch, cancel, err := s.subscribeShot(context.Background(), "s1", shotReader(state, nil))
 		require.NoError(t, err)
 		select {

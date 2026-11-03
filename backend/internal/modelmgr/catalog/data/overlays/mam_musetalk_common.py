@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 
 MAX_FRAME_BYTES = 6 << 30  # the frames of the input video are held in memory (as MuseTalk does): refuse a video that would not fit
+FFMPEG_TIMEOUT_SEC = 3600  # one ffmpeg call (splitting the video, converting the audio, encoding): a hung ffmpeg would hold the server's busy lock forever
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
 
 # code -> HTTP status. The Go client (backend/internal/modelmgr/lipsync) knows the same codes.
@@ -38,8 +39,10 @@ def run_ffmpeg(ffmpeg: str, *args: str) -> None:
     try:
         proc = subprocess.run(
             [ffmpeg, "-nostdin", "-y", "-v", "error", *args],
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=False,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=False, timeout=FFMPEG_TIMEOUT_SEC,
         )
+    except subprocess.TimeoutExpired as err:  # subprocess.run has killed it
+        raise LipSyncError("ffmpeg_failed", f"ffmpeg が {FFMPEG_TIMEOUT_SEC} 秒で終わらなかったので止めました") from err
     except OSError as err:
         raise LipSyncError("ffmpeg_failed", f"ffmpeg を起動できません: {err}") from err
     if proc.returncode != 0:

@@ -182,6 +182,48 @@ func TestBundleRepository_ImportRejectsColumnsTheReadersCannotDecode(t *testing.
 	}
 }
 
+// A reference voice of a bundle is held to what the upload enforces: it would otherwise reach api_v2 as prompt_lang / prompt_text, or be
+// served with the MIME type the bundle chose.
+func TestBundleRepository_ImportRejectsAReferenceVoiceTheUploadWouldRefuse(t *testing.T) {
+	voice := func(path, mime, lang, text string) string {
+		raw, err := json.Marshal(map[string]any{"file_path": path, "mime_type": mime, "size_bytes": 1, "language": lang, "text": text})
+		require.NoError(t, err)
+		return string(raw)
+	}
+	cases := map[string]string{
+		"an unknown language":                   voice("a/v.wav", "audio/wav", "xx", ""),
+		"a file that is not an audio format":    voice("a/v.exe", "application/x-msdownload", "ja", ""),
+		"a MIME type that is not its extension": voice("a/v.wav", "text/html", "ja", ""),
+		"a transcript of any length":            voice("a/v.wav", "audio/wav", "ja", strings.Repeat("あ", 501)),
+	}
+	for name, value := range cases {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			src := openTestDB(t)
+			seedDeepProject(t, src, "a")
+			require.NoError(t, exec(t, src, `INSERT INTO character (id, project_id, name) VALUES ('a-ch', 'a', 'Mio')`))
+			data, err := bundle.New(src).Export(ctx, "a")
+			require.NoError(t, err)
+			setBundleField(t, data, "character", "voice_reference", value)
+
+			dst := openTestDB(t)
+			assert.ErrorIs(t, bundle.New(dst).Import(ctx, data), bundle.ErrInvalid)
+			assert.Equal(t, 0, countRows(t, dst, "project")["project"], "nothing is written")
+		})
+	}
+}
+
+func TestBundleRepository_ImportKeepsAValidReferenceVoice(t *testing.T) {
+	ctx := context.Background()
+	src := openTestDB(t)
+	seedDeepProject(t, src, "a")
+	require.NoError(t, exec(t, src, `INSERT INTO character (id, project_id, name, voice_reference) VALUES ('a-ch', 'a', 'Mio', '{"file_path":"a/v.wav","mime_type":"audio/wav","size_bytes":1,"language":"en","text":"hi"}')`))
+	data, err := bundle.New(src).Export(ctx, "a")
+	require.NoError(t, err)
+
+	assert.NoError(t, bundle.New(openTestDB(t)).Import(ctx, data))
+}
+
 func TestBundleRepository_ImportKeepsCustomCheckpoints(t *testing.T) {
 	ctx := context.Background()
 	src := openTestDB(t)

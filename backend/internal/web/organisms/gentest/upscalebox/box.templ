@@ -2,6 +2,7 @@ package upscalebox
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -23,7 +24,7 @@ templ Box(f Form) {
 				if f.Error != "" {
 					<p class="text-sm text-red-300" role="alert" data-testid="gt-upscale-error">{ f.Error }</p>
 				}
-				if len(f.Choices) == 0 {
+				if !f.HasModel {
 					<p class="text-sm text-neutral-400" data-testid="gt-upscale-none">
 						アップスケール用のモデルが入っていません。
 						<a class="underline" href={ templ.SafeURL(f.ModelsURL) }>モデルマネージャー</a>で入れてください。
@@ -45,14 +46,10 @@ templ Box(f Form) {
 								}
 							}
 						</label>
-						<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-upscale-model">
+						<div class="flex min-w-48 max-w-md flex-1 flex-col gap-1 text-xs text-neutral-400">
 							<span>方式（モデル）</span>
-							@atoms.Select(atoms.FieldMd, "max-w-md", templ.Attributes{"id": "gt-upscale-model", "name": FieldModel}) {
-								for _, c := range f.Choices {
-									<option value={ c.ID } disabled?={ c.Disabled != "" } selected?={ c.ID == f.Model && c.Disabled == "" }>{ c.Label }（{ c.Detail }）{ c.Disabled }</option>
-								}
-							}
-						</label>
+							@modelpick.Field(f.Model)
+						</div>
 						@atoms.Button(atoms.TonePrimary, "大きくする", templ.Attributes{"type": "submit", "data-testid": "gt-upscale-submit"})
 					</form>
 				}

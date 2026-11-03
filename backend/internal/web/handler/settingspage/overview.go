@@ -55,7 +55,7 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 		card.Status = s.keysStatus(c)
 	case paths.SettingsLLM:
 		card.Icon, card.Description = atoms.IconText, "Agent ごとに、使う LLM とその代替を選ぶ。"
-		card.Status = llmStatus(llmhandler.SectionData(s.LLM))
+		card.Status = llmStatus(llmhandler.SectionData(s.LLM, nil))
 	case paths.SettingsModels:
 		card.Icon, card.Description = atoms.IconMedia, "画像の用途・動画の Quality Policy ごとに、使うモデルを選ぶ。"
 		card.Status = modelsStatus(mediahandler.SectionData(s.Models))
@@ -163,8 +163,10 @@ func audioStatus(d audioview.Data) []molecules.StatusLine {
 
 // providerName is the provider a card has chosen, as the overview says it: a saved local provider this PC cannot run is not the one used.
 func providerName(p audioview.Provider) string {
-	if p.Selected == audioview.LocalValue && p.Local != nil && p.Local.Supported {
-		return p.Local.Name + "（この PC）"
+	for _, which := range []string{audioview.WhichLocal, audioview.WhichIrodori} {
+		if l := p.As(which); l.ChosenLocal() {
+			return l.Local.Name + "（この PC）"
+		}
 	}
 	return p.CloudLabel
 }

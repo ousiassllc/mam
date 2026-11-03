@@ -59,7 +59,7 @@ func machine(supported bool) runtimes {
 		}
 		return v
 	}
-	r := runtimes{views: map[string]localruntime.View{"gpt-sovits": view("gpt-sovits", "GPT-SoVITS"), "musetalk": view("musetalk", "MuseTalk 1.5")}, refuse: map[string]error{}}
+	r := runtimes{views: map[string]localruntime.View{"gpt-sovits": view("gpt-sovits", "GPT-SoVITS"), "irodori-tts": view("irodori-tts", "Irodori-TTS"), "musetalk": view("musetalk", "MuseTalk 1.5")}, refuse: map[string]error{}}
 	if !supported {
 		for id, v := range r.views {
 			r.refuse[id] = &localruntime.SupportError{Runtime: id, Support: v.Support}
@@ -152,7 +152,7 @@ func TestAudioPage_DefaultsToTheCloudWithTheLocalStateAndTheSource(t *testing.T)
 	assert.Contains(t, html, `<title>設定: 音声・口パク | mam</title>`)
 	assert.Contains(t, html, "声（セリフ・ナレーション）")
 	assert.Contains(t, html, "口パク")
-	assert.Equal(t, 4, strings.Count(html, `data-testid="audio-card"`), "a card for each provider: two clouds and two locals")
+	assert.Equal(t, 5, strings.Count(html, `data-testid="audio-card"`), "a card for each provider: two clouds and three locals")
 	assert.Contains(t, radio(t, html, "audio-voice_provider-cloud"), "checked", "nothing saved: the cloud")
 	assert.NotContains(t, radio(t, html, "audio-voice_provider-local"), "checked")
 	assert.NotContains(t, radio(t, html, "audio-voice_provider-local"), "disabled", "this PC can run it")
@@ -166,7 +166,7 @@ func TestAudioPage_DefaultsToTheCloudWithTheLocalStateAndTheSource(t *testing.T)
 	assert.Contains(t, html, paths.SettingsCategory(paths.SettingsAPIKeys), "unset keys link to where they are stored")
 	assert.Contains(t, html, `href="`+paths.ModelManager()+`"`, "the way to the model manager")
 	assert.Contains(t, html, "商用注意", "the risk of the commercial use is a mark on the card")
-	assert.Contains(t, html, "商用利用がはっきりしない重み・依存ファイルが 1 件あります", "and a line of it")
+	assert.Contains(t, html, "商用利用が確認できていない（不可・不明）重み・依存ファイルが 1 件あります", "and a line of it")
 	assert.NotContains(t, html, "https://example.test/gpt-sovits", "the source is in the detail, not on the card")
 	assert.NotContains(t, html, "必要なビデオメモリ", "the memory is in the detail")
 	assert.NotContains(t, radio(t, html, "audio-fallback-input"), "checked", "the fallback is off")
@@ -180,7 +180,7 @@ func TestAudioPage_DefaultsToTheCloudWithTheLocalStateAndTheSource(t *testing.T)
 	assert.Contains(t, local, "https://example.test/gpt-sovits", "the source of the program")
 	assert.Contains(t, local, "ライセンス:")
 	assert.Contains(t, local, "必要なビデオメモリ: 4 GB 以上（mam の推定です。実機では確かめていません）")
-	assert.Contains(t, local, "商用利用がはっきりしない重み・依存ファイルが 1 件あります", "shown prominently")
+	assert.Contains(t, local, "商用利用が確認できていない（不可・不明）重み・依存ファイルが 1 件あります", "shown prominently")
 	assert.Contains(t, local, "「whisper-tiny」")
 	assert.Contains(t, local, "導入済み")
 	assert.Contains(t, local, `href="`+paths.ModelManager()+`"`)

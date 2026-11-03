@@ -20,7 +20,7 @@ GOVULNCHECK_VERSION ?= v1.8.0
 GOLANGCI_LINT_CACHE_ROOT ?= $(or $(XDG_CACHE_HOME),$(HOME)/.cache)/golangci-lint/worktrees
 export GOLANGCI_LINT_CACHE := $(GOLANGCI_LINT_CACHE_ROOT)/$(notdir $(CURDIR))-$(shell printf '%s' '$(CURDIR)' | cksum | cut -d' ' -f1)
 
-.PHONY: help dev build build-all generate assets test test-go test-static test-scripts stress lint lint-go lint-static lint-lines linterly-baseline check-notices vuln fmt fmt-check tools clean
+.PHONY: help dev build build-all generate assets test test-go test-static test-scripts stress lint lint-go lint-static lint-lines linterly-baseline check-notices vuln upstream-check fmt fmt-check tools clean
 
 help: ## show targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -92,6 +92,9 @@ check-notices: static/node_modules ## fail when THIRD_PARTY_NOTICES.md (embedded
 vuln: ## govulncheck: fail on a known vulnerability reachable from the code (Go standard library + modules), for the Linux host and the Windows target (cmd/wails)
 	govulncheck ./...
 	GOOS=windows CGO_ENABLED=0 govulncheck ./...
+
+upstream-check: ## ask the upstream of every URL the model catalog pins whether it is still there with the pinned size / SHA-256 (network; HF_TOKEN adds the gated files; UPSTREAM_CHECK_FLAGS e.g. "-only musetalk -v")
+	go run ./backend/cmd/upstreamcheck $(UPSTREAM_CHECK_FLAGS)
 
 linterly-baseline: ## rewrite .linterly-baseline from the current linterly result (after splitting files)
 	./scripts/linterly-baseline.sh update

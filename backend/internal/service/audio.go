@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/http"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
@@ -17,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/audiosummary"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // GenerateAudio makes the Audio Timeline of the latest Edit Timeline of the trunk (branchID "") or of a Branch (POST /projects/:id/audio/generate):
@@ -35,7 +35,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 type AudioOptions = audiosettings.Settings
 
 // GenerateAudioWith is GenerateAudio with the choices of the run.
-func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branchID string, opts AudioOptions) (EditorView, error) {
+func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branchID string, opts AudioOptions) (_ EditorView, err error) {
 	if field := localvoice.InvalidProvider(opts.VoiceProvider, opts.LipSyncProvider); field != "" {
 		return EditorView{}, invalid(field, "声のプロバイダー（voice_provider）は elevenlabs か local、口パクのプロバイダー（lip_sync_provider）は synclabs か local を指定してください")
 	}
@@ -55,6 +55,8 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 	if project.State != domain.StateAudio {
 		return EditorView{}, conflict("音声を作れるのは Editor Judge に合格した後（AUDIO）です（現在: %s）", project.State)
 	}
+	run := s.track(worktrack.KindAudio, projectID, "音声（声・BGM・効果音・ミックス）を作っています")
+	defer func() { run.End(err) }()
 	ver, err := s.editors.LatestEditTimeline(ctx, projectID, branchID)
 	if err != nil {
 		return EditorView{}, notFound(err)
@@ -105,6 +107,7 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 		_ = s.audio.DiscardRun(in)
 		return EditorView{}, notFound(err)
 	}
+	run.Succeed() // what is left (the chat message, the view) is not the stage
 	s.announce(ctx, projectID, assistantText(audiosummary.Of(tl, branchID != "", notes...)))
 	v, err := s.View(ctx, projectID, branchID)
 	v.ProviderNotes = notes
@@ -214,16 +217,12 @@ func audioError(err error) error {
 		return &AIError{Reason: reason, Err: err}
 	case errors.Is(err, voicerefsvc.ErrNotFound):
 		return ErrNotFound
-	case errors.Is(err, audiodirector.ErrNoAPIKey):
-		return &AIError{Reason: "ElevenLabs の API キーが設定されていません（設定画面で elevenlabs のキーを登録してください）", Err: err}
 	case errors.As(err, &be):
 		return conflict("セリフの音声合成に約 $%.2f かかりますが、残りの予算が $%.2f です。予算上限を引き上げてから再実行してください", be.Needed, be.Remaining)
-	case errors.As(err, &pe) && pe.Status == http.StatusTooManyRequests:
-		return &AIError{Reason: "ElevenLabs のレート制限に達しました。しばらく待ってから再実行してください", Err: err}
-	case errors.As(err, &pe):
-		return &AIError{Reason: "ElevenLabs の呼び出しに失敗しました", Err: err}
 	case errors.Is(err, media.ErrUnavailable):
 		return ErrUnavailable
+	case errors.Is(err, audiodirector.ErrNoAPIKey), errors.As(err, &pe), isKnownFailure(err):
+		return aiError(err) // the voice vendor, or any failure errmap knows: its cause and remedy (#1010)
 	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrNoAPIKey), errors.Is(err, llm.ErrTimeout), errors.Is(err, llm.ErrCircuitOpen), errors.As(err, &api):
 		return aiError(err) // the Audio Director's planner
 	}

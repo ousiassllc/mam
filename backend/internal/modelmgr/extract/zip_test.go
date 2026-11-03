@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,6 +73,67 @@ func TestZipFromExtractsTheBytesItWasGivenAndRefusesWhatIsNotAZip(t *testing.T) 
 	err = extract.ZipFrom(context.Background(), bytes.NewReader(held), int64(len(held)), filepath.Join(t.TempDir(), "small"), "R-abc", size-1, nil)
 	assert.ErrorIs(t, err, extract.ErrTooLarge)
 	assert.Error(t, extract.ZipFrom(context.Background(), strings.NewReader("not a zip"), 9, filepath.Join(t.TempDir(), "bad"), "", size, nil))
+}
+
+// makeRawZip returns the path of a zip with the one entry that header describes (name, mode, declared size) and body as its content.
+func makeRawZip(t *testing.T, header zip.FileHeader, body string, declared uint64) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "raw.zip")
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	w := zip.NewWriter(f)
+	h, err := w.CreateHeader(&header)
+	require.NoError(t, err)
+	_, err = h.Write([]byte(body))
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+	require.NoError(t, f.Close())
+	if declared > 0 { // the writer fixes the sizes up when it closes: write the lie into the central directory afterwards
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		raw = lieAboutSize(t, raw, uint32(len(body)), uint32(declared))
+		require.NoError(t, os.WriteFile(path, raw, 0o600))
+	}
+	return path
+}
+
+// lieAboutSize replaces the uncompressed size of the single entry (in its local header, its data descriptor and the central directory).
+func lieAboutSize(t *testing.T, raw []byte, real, fake uint32) []byte {
+	t.Helper()
+	want := []byte{byte(real), byte(real >> 8), byte(real >> 16), byte(real >> 24)}
+	put := []byte{byte(fake), byte(fake >> 8), byte(fake >> 16), byte(fake >> 24)}
+	// The central directory header (PK\x01\x02) holds the uncompressed size at offset 24.
+	i := bytes.Index(raw, []byte("PK\x01\x02"))
+	require.GreaterOrEqual(t, i, 0)
+	require.Equal(t, want, raw[i+24:i+28])
+	copy(raw[i+24:i+28], put)
+	return raw
+}
+
+func TestZipRefusesASymlinkAndWritesNothingForIt(t *testing.T) {
+	h := zip.FileHeader{Name: "R-abc/link", Method: zip.Store}
+	h.SetMode(os.ModeSymlink | 0o777)
+	archive := makeRawZip(t, h, "/etc/passwd", 0)
+	dest := filepath.Join(t.TempDir(), "env")
+
+	err := extract.Zip(context.Background(), archive, dest, "R-abc", 1<<20, nil)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a regular file or directory")
+	assert.NoFileExists(t, filepath.Join(dest, "link"))
+}
+
+// The standard library's reader already stops an entry that is longer than its header (zip.ErrFormat); writeEntry's own bound (ErrTooLarge,
+// which the tar reader needs) is the second line, so either error is the refusal.
+func TestZipRefusesAnEntryThatIsLargerThanItsHeaderSays(t *testing.T) {
+	archive := makeRawZip(t, zip.FileHeader{Name: "R-abc/big.bin", Method: zip.Store}, strings.Repeat("x", 4096), 10)
+	dest := filepath.Join(t.TempDir(), "env")
+
+	err := extract.Zip(context.Background(), archive, dest, "R-abc", 1<<20, nil)
+
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, extract.ErrTooLarge) || errors.Is(err, zip.ErrFormat), "got %v", err)
+	assert.Contains(t, err.Error(), "big.bin")
 }
 
 func TestZipWithoutAStripKeepsTheNames(t *testing.T) {

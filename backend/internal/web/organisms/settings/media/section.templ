@@ -56,6 +56,18 @@ templ Status(d Data, oob bool) {
 		if d.Pinned {
 			<p class="text-sm text-amber-300" role="status" data-testid="model-assignment-pinned">{ d.PinnedNote }</p>
 		}
+		if len(d.Warnings) > 0 {
+			<ul class="flex flex-col gap-1 text-sm text-amber-300" data-testid="model-assignment-warnings">
+				for _, w := range d.Warnings {
+					<li data-testid="model-assignment-warning">
+						{ w.Message }
+						if w.Route != "" {
+							<a class="underline" href={ templ.SafeURL(w.Route) }>設定を開く</a>
+						}
+					</li>
+				}
+			</ul>
+		}
 		if d.GatedNote != "" {
 			<p class="text-sm text-amber-300" role="status" data-testid="model-assignment-gated">{ d.GatedNote }</p>
 		}
@@ -139,7 +151,7 @@ templ imageTarget(t ImageTarget) {
 		<span class="text-xs text-neutral-400">（高速版）</span>
 	}
 	if t.Unusable {
-		<span class="text-xs text-amber-300">{ unusableSuffix }</span>
+		<span class="text-xs text-amber-300">{ UnusableSuffix }</span>
 	}
 }
 
@@ -168,6 +180,6 @@ templ policyRow(r PolicyRow, pinned, oob bool) {
 templ policyTarget(value string, unusable bool) {
 	{ value }
 	if unusable {
-		<span class="text-xs text-amber-300">{ unusableSuffix }</span>
+		<span class="text-xs text-amber-300">{ UnusableSuffix }</span>
 	}
 }

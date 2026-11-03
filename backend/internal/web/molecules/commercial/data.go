@@ -1,7 +1,7 @@
-// Package commercial is how mam says whether a model may be used commercially (#928): the badge, the note that says what to watch
-// for, and the filter. Every screen that lists or names a model uses these three, so that the answer looks and filters the same on
-// all of them. The handlers build a View from modellicense.Info; nothing here calls a service. The filter's behaviour is
-// static/src/components/commercial-filter. It is a package of its own so that molecules stays inside its line limit.
+// Package commercial is how mam says whether a model may be used commercially (#928): the badge, the note that says what to watch for, and the choice of the
+// history of the generation test (the lists of models narrow by it in the panel of molecules/modelpick). Every screen that lists or names a model uses
+// these, so that the answer looks the same on all of them. The handlers build a View from modellicense.Info; nothing here calls a service. It is a package of
+// its own so that molecules stays inside its line limit.
 package commercial
 
 import (
@@ -59,21 +59,13 @@ func OptionLabel(name string, v View) string {
 	return name + "（" + v.Level.Label() + "）"
 }
 
-// FilterData is the filter of a list.
-type FilterData struct {
-	// ID is the id of the group, which names its radio buttons; Target is the selector of the list it narrows (#id).
-	ID, Target string
-	// Current is the filter that is checked when the page is drawn (the setting "商用OKのモデルだけを使う" decides it).
+// ChoiceData is the choice 「すべて / 商用OKのみ / 条件つきまで」 of the history of the generation test, a field of the history's form (the history lists results, not
+// models, so it has no model filter panel: modelpick). The server narrows the results by it.
+type ChoiceData struct {
+	// ID is the id of the group; Field is the name its radio buttons post under, so that the form around the choice carries it across its pages.
+	ID, Field string
+	// Current is the choice that is checked when the page is drawn (the setting "商用OKのモデルだけを使う" decides it when none was asked for).
 	Current modellicense.Filter
-	// Field, when it is not empty, is the name the radio buttons post under, so that the form around the filter carries the choice (the
-	// history list keeps it across its pages). Empty: the filter posts nothing.
-	Field string
-}
-
-// WithField returns the filter whose radio buttons post under field.
-func (f FilterData) WithField(field string) FilterData {
-	f.Field = field
-	return f
 }
 
 // ShortNote is the one line a small card says in words: the condition of a conditional answer, or that an answer is unknown ("" for
@@ -88,17 +80,10 @@ func (v View) ShortNote() string {
 	return "ライセンスを確認できていません"
 }
 
-// NewFilter is the filter of the list Target, checked at current ("" for all).
-func NewFilter(id, target string, current modellicense.Filter) FilterData {
+// NewChoice is the choice of the field, checked at current ("" for all).
+func NewChoice(id, field string, current modellicense.Filter) ChoiceData {
 	if _, ok := modellicense.ParseFilter(string(current)); !ok || current == "" {
 		current = modellicense.FilterAll
 	}
-	return FilterData{ID: id, Target: target, Current: current}
-}
-
-func (f FilterData) radioName() string {
-	if f.Field != "" {
-		return f.Field
-	}
-	return f.ID + "-choice"
+	return ChoiceData{ID: id, Field: field, Current: current}
 }

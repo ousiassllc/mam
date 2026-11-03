@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -126,7 +127,7 @@ templ View(d Data) {
 			<h3 class="text-sm font-semibold">Locks</h3>
 			<p class="text-xs text-neutral-400">AUTO は AI が決定、MANUAL はあなたの指定、LOCK は現在値を固定して AI の変更を禁止します。</p>
 			for _, p := range domain.ShotLockParameters() {
-				@molecules.LockToggle(organisms.LockToggleFor(d.Shot.ID, p, d.Locks))
+				@molecules.LockToggle(locktoggles.LockToggleFor(d.Shot.ID, p, d.Locks))
 			}
 		</section>
 		@SpecSection(d)

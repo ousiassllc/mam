@@ -1,0 +1,94 @@
+{
+ "id": "hunyuanvideo15-720p-t2v",
+ "name": "HunyuanVideo 1.5 720p T2V (fp16)",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "general",
+ "consent_required": true,
+ "requires_hf_token": false,
+ "traits": {
+  "params_b": 8.3,
+  "params_label": "8.3B",
+  "uncensored": false,
+  "speed": "slow",
+  "quality": "high"
+ },
+ "description": "【中ティア・非検閲ではない標準モデル】HunyuanVideo 1.5（8.3B）の 720p のテキストから動画（hunyuanvideo15-480p の上位）。拡散モデル（fp16、約 16.7 GB。720p の T2V は fp16 しか配布されていない）・テキストエンコーダー 2 つ・VAE（この 3 つは hunyuanvideo15-480p と共有）で合計約 29 GB（480p を導入済みなら取得は約 16.7 GB だけ）。24fps・音声なし・1280×720 の 121 フレーム（約 5 秒）。得意: 高解像度で品質の高いテキストからの動画。注意: fp16 の拡散モデルが 16 GB を超えるため ComfyUI の offload が前提で、遅い（公式の 20 ステップ・cfg 6）。VRAM は ComfyUI の公式ガイドの 24 GB を目安にした。先頭フレームから作るのは hunyuanvideo15-720p-i2v。ライセンス: Tencent Hunyuan Community License。EU・英国・韓国では使えない（導入しない）。月間アクティブユーザーが 1 億を超える製品は Tencent の許諾が要る。生成物を他の AI モデルの改良に使うことは禁止。macOS（Apple Silicon）は未確認で、Windows（NVIDIA）のみ。同意が要る（導入時に確認）。",
+ "files": [
+  {
+   "name": "hunyuanvideo1.5_720p_t2v_fp16.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/diffusion_models/hunyuanvideo1.5_720p_t2v_fp16.safetensors",
+   "sha256": "4f05e2a31b51b7ddee3ef336d234e0932001cbdc85887da15451069fda3e1d05",
+   "size": 16653368128
+  },
+  {
+   "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4",
+   "size": 9384670680
+  },
+  {
+   "name": "byt5_small_glyphxl_fp16.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors",
+   "sha256": "516910bb4c9b225370290e40585d1b0e6c8cd3583690f7eec2f7fb593990fb48",
+   "size": 438643184
+  },
+  {
+   "name": "hunyuanvideo15_vae_fp16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/vae/hunyuanvideo15_vae_fp16.safetensors",
+   "sha256": "e7c3091949c27e2d55ae6d5df917b99dadfebbf308e5a50d0ade0d16c90297ae",
+   "size": 2521292758
+  }
+ ],
+ "vram": {
+  "min_gb": 24,
+  "source": "docs.comfy.org の HunyuanVideo 1.5 のページ（24 GB VRAM の消費者向け GPU）。720p の T2V の拡散モデルは fp16（約 16.7 GB）で、16 GB の GPU では ComfyUI の自動の offload が前提。mam の実機では未検証",
+  "estimate": false
+ },
+ "license": {
+  "id": "tencent-hunyuan-community",
+  "version": "2025-11-21",
+  "name": "Tencent Hunyuan Community License Agreement (HunyuanVideo 1.5)",
+  "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo-1.5/blob/master/LICENSE",
+  "summary": "許諾の地域は EU・英国・韓国を除く全世界。この 3 地域では使えない。月間アクティブユーザーが 1 億を超える製品・サービスは Tencent の許諾が要る。生成物や結果を他の AI モデルの改良に使うことと、地域の外での利用は禁じられる。（Tencent の LICENSE 本文を 2026-11-03 に確認。HF のモデルカードは license: other・license_name: tencent-hunyuan-community・extra_gated_eu_disallowed: true。ログインは要らない gated なしのリポジトリ）",
+  "commercial": "conditional",
+  "commercial_condition": "月間アクティブユーザーが 1 億を超える場合は Tencent の許諾が要る",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（HunyuanVideo 1.5）",
+    "name": "Tencent Hunyuan Community License Agreement",
+    "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo-1.5/blob/master/LICENSE",
+    "commercial": "conditional"
+   },
+   {
+    "part": "テキストエンコーダー（Qwen2.5-VL 7B）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct",
+    "commercial": "yes"
+   },
+   {
+    "part": "テキストエンコーダー（byT5 small）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/google/byt5-small",
+    "commercial": "yes"
+   }
+  ],
+  "excluded_regions": [
+   "EU",
+   "GB",
+   "KR"
+  ],
+  "notice": "このライセンスは EU・英国・韓国では適用されません（使えません）。これらの地域では導入しないでください。"
+ },
+ "workflows": [
+  {
+   "name": "hunyuanvideo15-720p-t2v",
+   "template": "txt2video-hunyuan15-720p"
+  }
+ ]
+}

@@ -34,3 +34,16 @@ func (g *group) signal(sig syscall.Signal) {
 }
 
 func (g *group) close() {}
+
+// signalLeftover signals the process group led by pid (a child that was started with Setpgid): SIGTERM, or SIGKILL when force. A pid that
+// leads no group of its own is left alone, so that a pid that is somebody else's by now never reaches another group (mam's, the shell's).
+func signalLeftover(pid int, force bool) {
+	if pgid, err := syscall.Getpgid(pid); err != nil || pgid != pid || pid <= 1 {
+		return
+	}
+	if force {
+		_ = syscall.Kill(-pid, syscall.SIGKILL)
+		return
+	}
+	_ = syscall.Kill(-pid, syscall.SIGTERM)
+}

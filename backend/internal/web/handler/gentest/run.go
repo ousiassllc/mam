@@ -34,8 +34,7 @@ func (h Handlers) Estimate(c *gin.Context) {
 		}
 	}
 	if err != nil {
-		status, msg := refuse(c, err)
-		gtshare.Render(c, status, view.ConfirmFailed(msg))
+		gtshare.ConfirmFailure(c, err)
 		return
 	}
 	gtshare.Render(c, http.StatusOK, view.ConfirmBox(h.confirm(ctx, f, est)))
@@ -48,6 +47,10 @@ func (h Handlers) confirm(_ context.Context, f formState, est gentest.Estimate) 
 		c.Unknown = fmt.Sprintf("単価が分からないモデルの %d 件は合計に入っていません（実際の請求はモデルの提供元で確認してください）。", est.UnknownItems)
 	}
 	for _, w := range est.Warnings {
+		if w.AboutInputs() {
+			c.InputWarnings = append(c.InputWarnings, w.Message)
+			continue
+		}
 		c.Warnings = append(c.Warnings, w.Message)
 	}
 	c.Hidden = hidden(f, est.Request, est.ID, strconv.FormatFloat(est.TotalUSD, 'f', -1, 64))

@@ -37,7 +37,10 @@ func TestOneActionEnlargesTheResultIntoAResultOfItsOwnThatLinksBackToTheSource(t
 	assert.Contains(t, detail, `data-testid="gt-upscale-submit"`)
 	assert.Contains(t, detail, `value="2"`)
 	assert.Contains(t, detail, `value="4"`)
-	assert.Contains(t, detail, string(gentesttest.UpscaleModel))
+	assert.Regexp(t, `<input type="hidden" name="upscale_model" value="[^"]+" data-mp-from="value">`, detail, "the way is a model picker field: the first workflow that can run is in it")
+	picker := s.page(paths.ModelPickerSource("upscale") + "?mf=1&available_only=0")
+	assert.Contains(t, picker, string(gentesttest.UpscaleModel), "every installed workflow is a card of the picker")
+	assert.Contains(t, picker, string(gentesttest.FinishModel))
 
 	before := len(s.batches())
 	rec := s.do(http.MethodPost, paths.GenerationTestPart("results", src, "upscale"), url.Values{"scale": {"4"}, "upscale_model": {string(gentesttest.UpscaleModel)}})
@@ -114,7 +117,8 @@ func TestAnEnlargementOffersToEnlargeItsSourceAgainWithTheScaleAndTheWayChosen(t
 
 	again := s.page(strings.TrimSuffix(link, "#gt-upscale"))
 	assert.Regexp(t, `<option value="4" selected>`, again, "the scale it used")
-	assert.Regexp(t, `<option value="`+regexp.QuoteMeta(string(gentesttest.UpscaleModel))+`" selected>`, again, "the way it used")
+	assert.Contains(t, again, `<input type="hidden" name="upscale_model" value="`+string(gentesttest.UpscaleModel)+`" data-mp-from="value">`, "the way it used")
 	plain := s.page(paths.GenerationTestPart("results", src))
-	assert.NotContains(t, plain, ` selected>`, "a page opened without them picks nothing")
+	assert.NotContains(t, plain, ` selected>`, "a page opened without them picks no scale")
+	assert.NotContains(t, plain, `name="upscale_model" value="`+string(gentesttest.UpscaleModel)+`"`, "and the way is the first that can run")
 }

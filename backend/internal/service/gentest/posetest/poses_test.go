@@ -79,6 +79,37 @@ func TestAPosePictureIsGivenToAnEditModelWithTheRolePose(t *testing.T) {
 	assert.Equal(t, "std_P001_front", d.Inputs[1].Origin.ID)
 }
 
+// #1020: the depth map and the normal map of a pose go to the model the same way (the library's file of that kind, the role pose, the ID
+// of the map in the record), and a map that Shisei did not make is refused like any picture the library does not have.
+func TestADepthAndANormalMapOfAPoseAreGivenAsPoseReferencesAndOthersAreRefused(t *testing.T) {
+	lib := posestest.New(t)
+	lib.Install(t)
+	r := gentesttest.New(t, gentesttest.WithReferenceModels(""), gentesttest.WithPoseLibrary(lib.Lib))
+	req := imageReq(string(gentesttest.EditModel))
+	req.References = []gentest.RefInput{poseRef("std_P001_front.depth"), poseRef("std_P001_diag.normal")}
+
+	ref, err := r.Confirmed(req)
+	require.NoError(t, err)
+	st := r.Wait(ref.BatchID)
+	require.Equal(t, gentest.StateSucceeded, st.State, "%+v", st.Results)
+	call := r.Fake.CallsOf(gentesttest.EditModel)[0].Image
+	require.Len(t, call.Inputs, 2)
+	assert.Equal(t, posestest.MapPicture("depth", "std_P001_front"), call.Inputs[0].Data)
+	assert.Equal(t, posestest.MapPicture("normal", "std_P001_diag"), call.Inputs[1].Data)
+	d, err := r.Svc.Result(context.Background(), st.Results[0].ID)
+	require.NoError(t, err)
+	assert.Equal(t, "std_P001_front.depth", d.Inputs[0].Origin.ID)
+
+	for _, id := range []string{"std_P001_diag.depth", "upper_U001_front.depth", "std_P003_front.normal"} {
+		bad := imageReq(string(gentesttest.EditModel))
+		bad.References = []gentest.RefInput{poseRef(id)}
+		_, err := r.Svc.Estimate(context.Background(), bad)
+		var invalid *gterr.InvalidError
+		require.ErrorAs(t, err, &invalid, id)
+		assert.Contains(t, err.Error(), "ポーズ集にありません", id)
+	}
+}
+
 // A model that does not take the role uses the chart as a whole picture, and the estimate says so; the pose option "do not copy" then
 // concerns it as much as any other reference.
 func TestAModelWithoutTheRolePoseUsesThePoseChartAsAWholePicture(t *testing.T) {

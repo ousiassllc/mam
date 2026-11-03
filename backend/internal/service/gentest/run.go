@@ -159,7 +159,7 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 		}
 		for _, p := range r.Prompts {
 			send := tr.sendOf(p)
-			rp, _ := json.Marshal(resultParamsOf(r, mp, tr.record(p), maskID))
+			rp, _ := json.Marshal(resultParamsOf(r, mp, tr.record(p), maskID, inputIDs))
 			for n := range r.Count {
 				res := gentestrepo.Result{
 					ID: domain.NewID(), BatchID: id, Position: pos, Media: r.Media, Model: mp.info.ID, APIModel: cfg.ModelSettings(domain.ModelName(mp.info.ID)).Model,

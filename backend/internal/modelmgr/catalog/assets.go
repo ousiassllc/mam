@@ -5,6 +5,8 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/launchargs"
 )
 
 // ResourceLicense is the license of a weight or a dependency, as the screen and the docs show it. Notice is the sentence that says what
@@ -58,10 +60,14 @@ type Resource struct {
 	URL     string           `json:"url"`
 	SHA256  string           `json:"sha256"`
 	Size    int64            `json:"size"`
-	// Required: the runtime needs the asset to start.
-	Required bool           `json:"required"`
-	Source   ResourceSource `json:"source"`
-	License  string         `json:"license"`
+	// Required: the runtime needs the asset to start. Choice names the model (ResourceSet.Choices) the asset belongs to: it is fetched and
+	// checked only while that model is chosen ("" for an asset every model needs).
+	Required bool   `json:"required"`
+	Choice   string `json:"choice,omitempty"`
+	// Role is "model" for the file the server loads ("{model}" of the launch args, package launchargs); "" for any other asset.
+	Role    string         `json:"role,omitempty"`
+	Source  ResourceSource `json:"source"`
+	License string         `json:"license"`
 }
 
 // Files lists where the resource's files go (relative to the environment directory) with the size and SHA-256 each must have.
@@ -82,6 +88,49 @@ type ResourceSet struct {
 	Runtime  string            `json:"runtime"`
 	Licenses []ResourceLicense `json:"licenses"`
 	Assets   []Resource        `json:"assets"`
+	// Choices are the models the runtime can run with (none for a runtime with one set of weights): see package choice.
+	Choices []choice.Choice `json:"choices,omitempty"`
+}
+
+// Chosen is the id of the model in force: chosen when it is one of the Choices, else the default one ("" for a set without choices).
+func (s ResourceSet) Chosen(chosen string) string {
+	if slices.ContainsFunc(s.Choices, func(c choice.Choice) bool { return c.ID == chosen }) {
+		return chosen
+	}
+	return choice.Default(s.Choices)
+}
+
+// Active is the assets of the model in force (Chosen): those of no choice, and those of the model.
+func (s ResourceSet) Active(chosen string) []Resource {
+	chosen = s.Chosen(chosen)
+	var out []Resource
+	for _, a := range s.Assets {
+		if a.Choice == "" || a.Choice == chosen {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// modelAssets is how many assets of the model have the role "model" (the file the server loads).
+func (s ResourceSet) modelAssets(choiceID string) int {
+	n := 0
+	for _, a := range s.Active(choiceID) {
+		if a.Role == launchargs.RoleModel {
+			n++
+		}
+	}
+	return n
+}
+
+// ModelFile is the file the server loads for the model in force (Chosen), relative to the environment directory ("" when the runtime has none).
+func (s ResourceSet) ModelFile(chosen string) string {
+	for _, a := range s.Active(chosen) {
+		if a.Role == launchargs.RoleModel {
+			return a.Dest
+		}
+	}
+	return ""
 }
 
 // License returns the license with the id.

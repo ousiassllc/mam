@@ -4,6 +4,7 @@
  "kind": "upscale",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"uncensored": false},
  "description": "生成した絵を 4 倍まで大きくするアップスケール用モデル（SPAN。約 4.5 MB で軽く速い）。生成テストの結果の「大きくする」で使う（2 倍・4 倍）。プロンプトを渡す画像モデルではない。",
  "files": [
   {

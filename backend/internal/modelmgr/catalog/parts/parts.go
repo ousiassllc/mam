@@ -48,8 +48,9 @@ type File struct {
 // Build says how the parts become an environment: where the wheels go, and the files written at the end (the path file of the
 // embeddable Python, mam's own server scripts).
 type Build struct {
-	// SitePackages is the directory (relative to the environment) the wheels are extracted into.
-	SitePackages string `json:"site_packages"`
+	// SitePackages is the directory (relative to the environment) the wheels are extracted into ("" for a build without wheels: llama.cpp is
+	// two zips of executables and DLLs).
+	SitePackages string `json:"site_packages,omitempty"`
 	Files        []File `json:"files"`
 }
 
@@ -60,11 +61,17 @@ var urlPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^https://www\.python\.org/ftp/python/[0-9]+\.[0-9]+\.[0-9]+/python-[0-9]+\.[0-9]+\.[0-9]+-embed-amd64\.zip$`),
 	// A wheel of PyPI (files.pythonhosted.org/packages/<hash path>/<file>).
 	regexp.MustCompile(`^https://files\.pythonhosted\.org/packages/[0-9a-f/]+/[A-Za-z0-9][A-Za-z0-9._+-]*\.whl$`),
+	// The source distribution of a PyPI package that has no wheel (a pure-Python package; a KindTarGz). It is extracted as a source tree and
+	// put on the path: nothing of it is built or run at install.
+	regexp.MustCompile(`^https://files\.pythonhosted\.org/packages/[0-9a-f/]+/[A-Za-z0-9][A-Za-z0-9._+-]*\.tar\.gz$`),
 	// PyTorch's wheels of one CUDA build, and OpenMMLab's wheels of the mmcv build for that PyTorch.
 	regexp.MustCompile(`^https://download\.pytorch\.org/whl/cu[0-9]+/[A-Za-z0-9][A-Za-z0-9._%+-]*\.whl$`),
 	regexp.MustCompile(`^https://download\.openmmlab\.com/mmcv/dist/cu[0-9]+/torch[0-9.]+/[A-Za-z0-9][A-Za-z0-9._-]*\.whl$`),
 	// The relocatable CPython of python-build-standalone for Apple silicon (the "install_only" archive of a dated release).
 	regexp.MustCompile(`^https://github\.com/astral-sh/python-build-standalone/releases/download/[0-9]{8}/cpython-[0-9]+\.[0-9]+\.[0-9]+%2B[0-9]{8}-aarch64-apple-darwin-install_only\.tar\.gz$`),
+	// llama.cpp's prebuilt Windows CUDA build and the CUDA runtime DLLs that go with it (release assets of ggml-org/llama.cpp; the tag can be
+	// moved, so the SHA-256 is the pin). Nothing else of that repository is fetched as a part.
+	regexp.MustCompile(`^https://github\.com/ggml-org/llama\.cpp/releases/download/b[0-9]+/(llama-b[0-9]+-bin-win-cuda-[0-9]+\.[0-9]+-x64|cudart-llama-bin-win-cuda-[0-9]+\.[0-9]+-x64)\.zip$`),
 	// The vendor's source at a commit of a GitHub repository.
 	regexp.MustCompile(`^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/archive/[0-9a-f]{40}\.zip$`),
 }
@@ -122,11 +129,16 @@ func checkKind(pw string, p Part) []error {
 	return nil
 }
 
+// HasWheels reports whether one of the parts is a Python wheel (the build then needs a site_packages directory to put them in).
+func HasWheels(ps []Part) bool {
+	return slices.ContainsFunc(ps, func(p Part) bool { return p.Kind == KindWheel })
+}
+
 // CheckBuild validates the build of the runtime named where: the wheels go to a place inside the environment, and each file written at
 // the end is inside the environment and is either an embedded script (one of overlays) or lines.
 func CheckBuild(where string, b *Build, overlays map[string][]byte) []error {
 	var errs []error
-	if !relativeSlashPath(b.SitePackages) {
+	if b.SitePackages != "" && !relativeSlashPath(b.SitePackages) {
 		errs = append(errs, fmt.Errorf("%s: build site_packages must be a relative slash path", where))
 	}
 	return append(errs, CheckFiles(where, b.Files, overlays)...)

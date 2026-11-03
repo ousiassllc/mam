@@ -41,8 +41,7 @@ func userFacing(ctx context.Context, err error) error {
 // AdultGateMessage is what a refusal of an adult model without the age confirmation tells the user.
 const AdultGateMessage = "成人向けモデルです。年齢の確認と注意書きへの同意を済ませ、「成人向けモデルを表示する」をオンにしてください"
 
-// ErrSourceGone means a file of a model answered 404 or 410 at its pinned URL: the repository or the file was deleted. It is the
-// failure of a mirror of a third party that went away, which is the case the catalog expects (File.SourceNote).
+// ErrSourceGone means a file of a model answered 404 or 410 at its pinned URL: the repository or the file was deleted (File.SourceNote).
 var ErrSourceGone = errors.New("modelmanager: the source of the file is gone")
 
 // sourceGone is the failure of f when its pinned URL no longer exists. The message names the file and, for a mirror, where
@@ -61,5 +60,6 @@ type userError struct {
 	err error
 }
 
-func (e *userError) Error() string { return e.msg }
-func (e *userError) Unwrap() error { return e.err }
+func (e *userError) Error() string       { return e.msg }
+func (e *userError) UserMessage() string { return e.msg } // mmview.Failure words the failure with it
+func (e *userError) Unwrap() error       { return e.err }

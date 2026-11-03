@@ -303,7 +303,7 @@ func Form(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</label><p class=\"text-xs text-neutral-400\">ファイルを選ばずに保存すると、いまの音声のまま書き起こしと言語だけ変わります。</p><div class=\"flex flex-wrap gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</label><p class=\"text-xs text-amber-300\" role=\"note\" data-testid=\"voice-ref-consent-notice\">声の持ち主本人の同意を得た音声だけを使ってください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりすることは、Irodori-TTS のモデルカードで禁じられています。</p><p class=\"text-xs text-neutral-400\">ファイルを選ばずに保存すると、いまの音声のまま書き起こしと言語だけ変わります。</p><div class=\"flex flex-wrap gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -7,15 +7,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/catalogfilter"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/licenseview"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/pickfilter"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
 
@@ -81,39 +84,6 @@ func gpuData(ctx context.Context, svc *modelmanager.Service) view.GPU {
 	return g
 }
 
-var regionNames = map[string]string{"EU": "EU", "GB": "英国", "KR": "韓国"}
-
-func licenseOf(l catalog.License) view.License {
-	out := view.License{ID: l.ID, Version: l.Version, Name: l.Name, URL: l.URL, Summary: l.Summary, Notice: l.Notice, Answer: commercial.FromInfo(l.Info())}
-	switch {
-	case l.Commercial == modellicense.Conditional && l.CommercialCondition != "":
-		out.Commercial = "条件つきで可（" + l.CommercialCondition + "）"
-	case l.Commercial == modellicense.Conditional:
-		out.Commercial = "条件つきで可"
-	case l.Commercial == modellicense.Yes && l.CommercialCondition != "":
-		out.Commercial = "可（" + l.CommercialCondition + "）"
-	case l.Commercial == modellicense.Yes:
-		out.Commercial = "可"
-	case l.Commercial == modellicense.Unknown:
-		out.Commercial = "不明（確認できていません）"
-	case l.CommercialCondition != "":
-		out.Commercial = "不可（" + l.CommercialCondition + "）"
-	default:
-		out.Commercial = "不可（非商用）"
-	}
-	if len(l.ExcludedRegions) > 0 {
-		names := make([]string, len(l.ExcludedRegions))
-		for i, r := range l.ExcludedRegions {
-			names[i] = regionNames[r]
-			if names[i] == "" {
-				names[i] = r
-			}
-		}
-		out.Regions = "次の地域では、このライセンスは適用されず、このモデルを使えません: " + strings.Join(names, "・")
-	}
-	return out
-}
-
 // blockedText says why no model can be installed now, or "".
 func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 	st, err := svc.Status(ctx)
@@ -135,12 +105,14 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 	return ""
 }
 
-func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free, gpuVRAM uint64, tokenMissing bool) view.Model {
+func modelData(ctx context.Context, svc *modelmanager.Service, e mmview.Entry, free, gpuVRAM uint64, tokenMissing bool) view.Model {
+	m := e.ModelView
 	out := view.Model{
+		ParamsLabel: e.Traits.ParamsLabel, VRAMMinGB: e.VRAM.MinGB,
 		ID: m.ID, Name: m.Name, Kind: string(m.Kind), KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
 		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM),
-		License: licenseOf(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
+		License: licenseview.Of(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
 		State: string(m.State), ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
 		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free, PlatformWarning: mmview.PlatformWarning(ctx, svc, m),
 	}
@@ -177,20 +149,25 @@ func kindLabel(kind string) string {
 
 // catalogData is the model list. jobs are the install jobs it reports on besides the running ones: those that ended
 // are shown once as a notice or an error.
-func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) view.Catalog {
+func catalogData(c *gin.Context, svc *modelmanager.Service, jobs []string) view.Catalog {
+	ctx := c.Request.Context()
 	free := svc.Engine().FreeBytes
 	gpuVRAM := mmview.GPUVRAM(ctx, svc)
 	hasToken, tokenErr := svc.HasHuggingFaceToken()
-	c := view.Catalog{Blocked: blockedText(ctx, svc), UpdatedAt: time.Now().Format(time.TimeOnly)}
+	cat := view.Catalog{Blocked: blockedText(ctx, svc), UpdatedAt: time.Now().Format(time.TimeOnly)}
 	names := map[string]string{}
-	for _, m := range svc.Catalog() {
-		md := modelData(ctx, svc, m, free, gpuVRAM, tokenErr == nil && !hasToken)
+	for _, m := range svc.Catalog() { // every install that runs is reported, whatever the filter hides
 		names[m.InstallJob] = "「" + m.Name + "」"
-		c.Models = append(c.Models, md)
 		if m.InstallJob != "" {
-			c.Jobs = append(c.Jobs, m.InstallJob)
+			cat.Jobs = append(cat.Jobs, m.InstallJob)
 		}
 	}
+	screen, all := catalogfilter.Screen(), mmview.Entries(svc)
+	cond, problem := screen.Read(c)
+	for _, e := range mmview.Where(svc, pickfilter.Resolve(cond)) {
+		cat.Models = append(cat.Models, modelData(ctx, svc, e, free, gpuVRAM, tokenErr == nil && !hasToken))
+	}
+	cat.Filter = pickfilter.Sync(screen.Filter(cond, problem, pickfilter.CountOf(pickfilter.Resolve(cond), all, mmview.Entry.Item)), c)
 	var notices, failures []string
 	for _, id := range jobs {
 		if _, running := names[id]; running {
@@ -201,7 +178,7 @@ func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) 
 			continue
 		}
 		if st.State == domain.JobQueued || st.State == domain.JobRunning {
-			c.Jobs = append(c.Jobs, id) // the end is not recorded yet: ask again
+			cat.Jobs = append(cat.Jobs, id) // the end is not recorded yet: ask again
 			continue
 		}
 		name := targetName(svc, st)
@@ -211,8 +188,8 @@ func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) 
 			failures = append(failures, f)
 		}
 	}
-	c.Notice, c.Error = strings.Join(notices, "。"), strings.Join(failures, "\n")
-	return c
+	cat.Notice, cat.Error = strings.Join(notices, "。"), strings.Join(failures, "\n")
+	return cat
 }
 
 // targetName is "「<model name>」" for the job of a model install.

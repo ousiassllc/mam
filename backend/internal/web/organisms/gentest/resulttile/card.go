@@ -3,7 +3,12 @@
 // a tap on the tile opens.
 package resulttile
 
-import "github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+)
 
 // Card is a result: the tile of a grid (the history, the cells of a batch) and the head of its detail.
 type Card struct {
@@ -13,12 +18,19 @@ type Card struct {
 	Status     string
 	StatusText string
 	Error      string
-	FileURL    string
-	Video      bool
-	Favorite   bool
-	Detail     string // the link to the detail
-	Meta       string // "seed 123 ・ 16:9 ・ 2.1 MiB"
-	CreatedAt  string
+	// Failure is the failure as the common error (the detail draws it with the error box); nil for a result with only the line Error says.
+	Failure   *apperr.View
+	FileURL   string
+	Video     bool
+	Favorite  bool
+	Detail    string // the link to the detail
+	Meta      string // "seed 123 ・ 16:9 ・ 2.1 MiB"
+	CreatedAt string
+	// Unused is how many of the input images the model was not given (#1009) and UnusedText the words for the tile's hover ("" when it used every one).
+	Unused     int
+	UnusedText string
 	// Answer is whether the model that made the result may be used commercially (the mark on the card).
 	Answer commercial.View
 }
+
+func itoa(n int) string { return strconv.Itoa(n) }

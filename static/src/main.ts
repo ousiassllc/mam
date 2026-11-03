@@ -15,7 +15,7 @@ import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
 import { installSidenav } from './components/sidenav/sidenav';
-import { installCommercialFilter } from './components/commercial-filter/commercial-filter';
+import { installModelPick } from './components/model-pick/model-pick';
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
 import { initGentestAdvanced } from './components/gentest/advanced';
@@ -97,8 +97,8 @@ initGentestRefine();
 initGentestEasy();
 initGentestExposed();
 initGentestRecipe();
-// The filter of commercial use of the lists of models: 商用OKのみ / 条件つきまで / すべて.
-installCommercialFilter();
+// The filter panel of the lists of models and the model picker (#1011): the funnel opens the panel, a card of the picker fills its field.
+installModelPick();
 
 // A scrolling box that a swap draws again (the grid of a running generation, which polls) keeps where it was scrolled to (#940).
 installKeepScroll();

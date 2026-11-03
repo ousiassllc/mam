@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/launchargs"
 )
 
 // hfRepoURL matches the Hugging Face repository a pinned file URL lies in.
@@ -46,6 +48,8 @@ func validateResourceSets(c *Catalog) []error {
 		if !seen[r.ID] {
 			errs = append(errs, fmt.Errorf("runtime %s: no weights and dependencies (data/assets/%s.json)", r.ID, r.ID))
 		}
+		set, _ := c.ResourceSet(r.ID)
+		errs = append(errs, launchargs.Check("runtime "+r.ID, r.Launch.Args, set.Choices, set.modelAssets)...)
 	}
 	return errs
 }
@@ -63,9 +67,10 @@ func validateResourceSet(where string, s ResourceSet) []error {
 		licenses[l.ID] = true
 		errs = append(errs, validateResourceLicense(where, l)...)
 	}
-	names, dests := map[string]bool{}, map[string]string{}
+	names, dests, used := map[string]bool{}, map[string]string{}, map[string]bool{}
 	required := false
 	for _, a := range s.Assets {
+		used[a.Choice] = true
 		aw := where + " asset " + a.Name
 		if names[a.Name] {
 			errs = append(errs, fmt.Errorf("%s: listed twice", aw))
@@ -86,7 +91,7 @@ func validateResourceSet(where string, s ResourceSet) []error {
 	if len(s.Assets) > 0 && !required {
 		errs = append(errs, fmt.Errorf("%s: at least one asset must be required", where))
 	}
-	return errs
+	return append(errs, choice.Check(where, s.Choices, licenses, used)...)
 }
 
 func validateResourceLicense(where string, l ResourceLicense) []error {
@@ -118,6 +123,8 @@ func validateResource(aw string, a Resource) []error {
 		errs = append(errs, fmt.Errorf("%s: sha256 must be 64 lower-case hex digits", aw))
 	case a.Size <= 0:
 		errs = append(errs, fmt.Errorf("%s: size is required", aw))
+	case a.Role != "" && (a.Role != launchargs.RoleModel || a.IsArchive()):
+		errs = append(errs, fmt.Errorf("%s: role must be %q, on a file", aw, launchargs.RoleModel))
 	}
 	src := a.Source
 	switch {

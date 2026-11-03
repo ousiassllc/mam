@@ -14,11 +14,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/jobs"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 	"github.com/ousiassllc/mam/backend/internal/web/screentest"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 func TestMain(m *testing.M) {
@@ -143,4 +145,52 @@ func TestList_AnUnreadableTableIsAMessageInTheListAndNotAnErrorPage(t *testing.T
 		assert.Contains(t, body, `id="jobs-list-refresh"`, path)
 		assert.Contains(t, body, `hx-trigger="every 2s"`, "the polling is kept, so the list comes back when the table can be read")
 	}
+}
+
+// The works that have no row in the job table are rows of the same list: the same row (kind, state, start, subject, a link to where it is
+// worked on, "開く" with a name), the same polling while one runs and the same stop when all ended. One that cannot say how far it is shows
+// its words and the time it has run and no bar; one with a percentage has the bar; a long name wraps like the others.
+func TestList_ATrackedWorkIsARowThatPollsWhileItRunsAndStopsWhenItEnds(t *testing.T) {
+	s := screentest.New(t)
+	p, err := s.Svc.Projects.Create(t.Context(), service.CreateProjectInput{Content: "コーヒー店の動画を作りたい"})
+	require.NoError(t, err)
+	render := s.Works.Begin(worktrack.Record{Kind: worktrack.KindExport, ProjectID: p.ID}, "動画を書き出しています")
+	long := strings.Repeat("とても長い名前の", 20)
+	run := s.Works.Begin(worktrack.Record{Kind: worktrack.KindWorkflowRun, Subject: long}, "ComfyUI を準備しています")
+	run.Progress(30, "KSampler")
+
+	page := s.Visit(paths.Jobs()).Body.String()
+	assert.Equal(t, 2, strings.Count(page, `data-testid="jobs-item"`))
+	assert.Contains(t, page, "動画の書き出し")
+	assert.Contains(t, page, "ワークフローの実行")
+	assert.Contains(t, page, "実行中 2 件")
+	assert.Contains(t, page, `hx-trigger="every 2s"`)
+	assert.Regexp(t, `<p class="break-words[^"]*" data-testid="jobs-subject">`+long+`<`, page, "a long name wraps")
+	assert.Regexp(t, `href="`+paths.Project(p.ID, "edit")+`"[^>]*aria-label="開く: 動画の書き出し `+p.Name+`（`, page)
+	assert.Regexp(t, `href="`+paths.Workflows()+`"[^>]*aria-label="開く: ワークフローの実行 `, page)
+	assert.Regexp(t, `動画を書き出しています・経過 \d+秒`, page, "no bar for a render: its words and the time it has run")
+	assert.Equal(t, 1, strings.Count(page, "<progress"), "only the work that knows its percentage has a bar")
+	assert.Regexp(t, `<progress[^>]*value="30"[^>]*aria-label="ワークフローの実行 `, page)
+
+	render.Succeed()
+	run.Fail("out of memory")
+	done := s.Get(paths.JobsList()).Body.String()
+	assert.Contains(t, done, "完了")
+	assert.Contains(t, done, `data-testid="jobs-failure">out of memory<`)
+	assert.NotContains(t, done, `data-testid="jobs-progress"`)
+	assert.Contains(t, done, `data-active="false"`)
+	assert.NotContains(t, done, "hx-trigger", "all ended: the list stops asking")
+}
+
+// The training of a Character's voice leads to the screen where the voice is set: the World State of the Project or the Series page.
+func TestList_AVoiceTrainingLeadsToTheScreenOfTheCharacter(t *testing.T) {
+	s := screentest.New(t)
+	s.Works.Begin(worktrack.Record{Kind: worktrack.KindVoiceTrain, ProjectID: "p1", Subject: "ユイ"}, "SoVITS の学習 エポック 1 / 8")
+	s.Works.Begin(worktrack.Record{Kind: worktrack.KindVoiceTrain, SeriesID: "s1", Subject: "ハル"}, "GPT の学習 エポック 2 / 15")
+
+	page := s.Visit(paths.Jobs()).Body.String()
+
+	assert.Contains(t, page, "声の学習")
+	assert.Regexp(t, `href="`+paths.Project("p1", "world-state")+`"[^>]*aria-label="開く: 声の学習 ユイ`, page)
+	assert.Regexp(t, `href="`+paths.Series("s1")+`"[^>]*aria-label="開く: 声の学習 ハル`, page)
 }

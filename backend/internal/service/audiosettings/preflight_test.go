@@ -38,6 +38,7 @@ func TestPreflight_ALocalProviderThatCannotBeUsedGoesToTheCloudForTheWholeRun(t 
 		"macOS":             {macOSRefusal("x"), "公式の PyTorch 版が使えません"},
 		"not installed":     {localruntime.ErrNotInstalled, "導入されていません"},
 		"an install runs":   {localruntime.ErrBusy, "導入の最中です"},
+		"a training runs":   {localruntime.ErrTraining, "声の学習が動いています"},
 		"weights missing":   {&localruntime.WeightsError{Runtime: "x", Name: "X", Assets: []rtm.AssetStatus{{Name: "s2G.pth", State: rtm.AssetMissing}}}, "s2G.pth"},
 		"too little memory": {&localruntime.SupportError{Runtime: "x", Support: rtm.Support{Code: rtm.CodeLowVRAM, Reason: "GPU のビデオメモリは 2.0 GB で、必要な 4 GB に足りません。"}}, "必要な 4 GB に足りません"},
 	} {

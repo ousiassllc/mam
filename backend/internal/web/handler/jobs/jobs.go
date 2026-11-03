@@ -106,6 +106,18 @@ func href(d joblist.Dest) string {
 		return paths.Project(d.ProjectID, "scenes")
 	case joblist.ScreenProjectChat:
 		return paths.Project(d.ProjectID)
+	case joblist.ScreenProjectEditor:
+		return paths.Project(d.ProjectID, "edit")
+	case joblist.ScreenWorkflows:
+		return paths.Workflows()
+	case joblist.ScreenProjectWorld:
+		return paths.Project(d.ProjectID, "world-state")
+	case joblist.ScreenSeries:
+		return paths.Series(d.SeriesID)
+	case joblist.ScreenFFmpeg:
+		return paths.FFmpegSettings()
+	case joblist.ScreenChatGPT:
+		return paths.SettingsCategory(paths.SettingsAPIKeys) // the "ChatGPT でログイン" section lives on the API keys page
 	}
 	return ""
 }

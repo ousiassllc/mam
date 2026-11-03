@@ -94,10 +94,10 @@ func (s *Service) check(ctx context.Context, abs string, ref *voiceref.Reference
 	return nil
 }
 
-// discard removes the file of old once no Character refers to it (it is shared by the copies): it is no
-// longer the voice of any row. keep is the reference that was just set; its file stays. A failure is logged:
-// the voice is set either way.
+// discard removes what old had that no Character refers to any more (it is shared by the copies): its recording and its trained voice.
+// keep is the reference that was just set; what it still uses stays. A failure is logged: the voice is set either way.
 func (s *Service) discard(ctx context.Context, old, keep *voiceref.Reference) {
+	s.discardWeights(ctx, old, keep)
 	if old == nil || (keep != nil && old.FilePath == keep.FilePath) {
 		return
 	}

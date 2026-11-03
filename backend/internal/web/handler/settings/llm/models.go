@@ -2,83 +2,59 @@ package llm
 
 import (
 	"context"
-	"net/http"
-	"slices"
+	"net/url"
 
-	"github.com/gin-gonic/gin"
-
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
-	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 )
 
-// form is the modal of an Agent drawn from the row held in e (typed: the model names are what the modal's form held, which
-// a refusal draws again; the saved row otherwise). The model pull-downs list the models of each target's provider.
-func form(ctx context.Context, models *llmmodels.Service, v llmassign.View, e llmassign.Entry) view.Form {
+// form is the modal of an Agent drawn from the row held in e (typed: the model names are what the modal's form held, which a refusal draws again; the saved row
+// otherwise). Each target's provider and model are one field, the model picker.
+func form(ctx context.Context, models *llmmodels.Service, e llmassign.Entry, blame string) view.Form {
 	row := rowOf(e)
 	return view.Form{
-		Row: row, Providers: v.Providers, MaxModelLength: llmassign.MaxModelBytes,
-		Primary:  modelField(ctx, models, e.Agent, "primary", row.Primary.Provider, row.Primary.Model, row.DefaultPrimary),
-		Fallback: modelField(ctx, models, e.Agent, "fallback", row.Fallback.Provider, row.Fallback.Model, row.DefaultFallback),
+		Row: row, MaxModelLength: llmassign.MaxModelBytes, Blame: blame,
+		Primary:  modelField(ctx, models, "primary", row.Primary, row.DefaultPrimary, blame),
+		Fallback: modelField(ctx, models, "fallback", row.Fallback, row.DefaultFallback, blame),
 	}
 }
 
-// modelField is the model pull-down of a target: the models of provider, with selected chosen (the first model, or the
-// default's when the provider is the default's, when selected is empty). A selected model the provider does not list is
-// kept as a choice and marked unlisted.
-func modelField(ctx context.Context, models *llmmodels.Service, agent, role, provider, selected string, def view.Target) view.ModelField {
-	f := view.ModelField{Agent: agent, Role: role, Provider: provider, Default: def, Selected: selected}
-	list, err := models.List(ctx, provider)
-	if err != nil { // a provider the form did not offer: nothing to choose from
-		f.Reason, f.Unlisted = "このプロバイダーのモデルを一覧にできません", selected != ""
-		return f
+// modelField is the field of a target: the card of the model it holds (the provider's display name of it when it lists it), whether the provider lists the model at all and
+// whether the provider can be used now (#1013).
+func modelField(ctx context.Context, models *llmmodels.Service, role string, t, def view.Target, blame string) view.ModelField {
+	f := view.ModelField{Role: role, Provider: t.Provider, Selected: t.Model, Default: def}
+	name, listed, avail := "", false, modelfilter.Usable()
+	if models != nil {
+		if list, err := models.List(ctx, t.Provider); err == nil {
+			listed = list.Has(t.Model)
+			for _, m := range list.Models {
+				if m.ID == t.Model {
+					name = m.Name
+				}
+			}
+			if avail = list.Availability; !avail.Available {
+				f.Unusable, f.Route = avail.Message, avail.Route
+			}
+		}
 	}
-	f.FromAPI, f.Reason = list.Source == llmmodels.SourceAPI, list.Fallback.Message()
-	for _, m := range list.Models {
-		f.Options = append(f.Options, view.ModelOption{ID: m.ID, Name: m.Name})
+	f.Unlisted = t.Model != "" && !listed
+	card := modelcard.Card{}
+	if t.Model != "" {
+		card = modelpicker.LLMCard(t.Provider, t.Model, name, avail)
 	}
-	switch {
-	case f.Selected == "" && def.Provider == provider && list.Has(def.Model):
-		f.Selected = def.Model
-	case f.Selected == "" && len(f.Options) > 0:
-		f.Selected = f.Options[0].ID
+	f.Field = modelpicker.FieldFor(modelpicker.SourceLLM, view.FieldID(role), "モデル（"+roleWord[role]+"）", url.Values{},
+		[]modelpick.Input{{Name: role + ".provider", Key: "provider", Value: t.Provider}, {Name: role + ".model", Key: "model", Value: t.Model}}, card)
+	f.Field.Invalid = blame == role+".provider" || blame == role+".model"
+	f.Field.Autofocus = f.Field.Invalid || (blame == "" && role == "primary")
+	if f.Field.Invalid {
+		f.Field.DescribedBy = "mam-modal-error"
 	}
-	f.Unlisted = f.Selected != "" && !list.Has(f.Selected)
 	return f
 }
 
-// ModelField answers the model pull-down of one target of the Agent :agent for the provider the form just chose (GET
-// /settings/llm/agents/:agent/models/:role, "<role>.provider"): the inside of the model box, which replaces the old one. The
-// model saved for the Agent stays chosen while it is the same provider; for another provider the default's model, else
-// the first. A request that is not HTMX gets page.
-func ModelField(svc *llmassign.Service, models *llmmodels.Service, page gin.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if !settingshttp.IsHTMX(c) {
-			page(c)
-			return
-		}
-		role := c.Param("role")
-		e, ok := find(svc.View(), c.Param("agent"))
-		if !ok || (role != "primary" && role != "fallback") {
-			c.String(http.StatusNotFound, notFound)
-			return
-		}
-		provider := c.Query(role + ".provider")
-		if !slices.Contains(svc.View().Providers, provider) {
-			c.String(http.StatusUnprocessableEntity, "未対応のプロバイダーです")
-			return
-		}
-		saved, def := target(e.Route.Primary), target(e.Default.Primary)
-		if role == "fallback" {
-			saved, def = target(e.Route.Fallback), target(e.Default.Fallback)
-		}
-		selected := ""
-		if saved.Provider == provider {
-			selected = saved.Model
-		}
-		c.Header("Cache-Control", "no-store")
-		f := view.Form{MaxModelLength: llmassign.MaxModelBytes}
-		settingshttp.Render(c, http.StatusOK, view.ModelFieldBody(f, modelField(c.Request.Context(), models, e.Agent, role, provider, selected, def)))
-	}
-}
+var roleWord = map[string]string{"primary": "プライマリ", "fallback": "代替"}

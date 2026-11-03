@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": true, "speed": "standard"},
  "description": "【アニメ・イラスト】実写ではない。Pony 系の元になった SDXL チェックポイント（成人向け。約 6.9 GB）。プロンプトは score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, 描きたいこと、の形で書き、ネガティブはほとんど要らない（作者の説明）。作者は clip skip 2 で読み込むよう求めるため、clip skip 2 のテンプレートを使う。参照画像からの画像（img2img）にも使える。",
  "files": [
   {

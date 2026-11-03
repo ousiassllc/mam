@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -14,21 +15,22 @@ import (
 // message and the failure pass through logging.Redact: the listing is for searching, and is not to carry a secret
 // that a service put into a reason.
 type JobSummary struct {
-	JobID      string     `json:"job_id"`
-	Kind       string     `json:"kind"`
-	Target     string     `json:"target,omitempty"`
-	ProjectID  string     `json:"project_id,omitempty"`
-	State      JobState   `json:"state"`
-	Message    string     `json:"message,omitempty"`
-	Done       int        `json:"done,omitempty"`
-	Total      int        `json:"total,omitempty"`
-	Error      string     `json:"error,omitempty"`
-	ErrorCode  string     `json:"error_code,omitempty"`
-	ErrorID    string     `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID（get_app_logs の attrs error_id でログ行をたどる）"`
-	NextSteps  string     `json:"next_steps,omitempty" jsonschema:"失敗した企画（plan）のジョブが LLM の API キー未設定のときだけ: 続けるためにすること"`
-	StartedAt  time.Time  `json:"started_at"`
-	FinishedAt *time.Time `json:"finished_at,omitempty"`
-	EndedAt    *time.Time `json:"ended_at,omitempty"`
+	JobID      string       `json:"job_id"`
+	Kind       string       `json:"kind"`
+	Target     string       `json:"target,omitempty"`
+	ProjectID  string       `json:"project_id,omitempty"`
+	State      JobState     `json:"state"`
+	Message    string       `json:"message,omitempty"`
+	Done       int          `json:"done,omitempty"`
+	Total      int          `json:"total,omitempty"`
+	Error      string       `json:"error,omitempty"`
+	ErrorCode  string       `json:"error_code,omitempty"`
+	ErrorID    string       `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID（get_app_logs の attrs error_id でログ行をたどる）"`
+	Failure    *apperr.View `json:"failure,omitempty" jsonschema:"失敗したジョブのとき: code・class・cause（日本語の原因）・remedy（日本語の直し方）・settings・detail。get_job の failure と同じ。無いこともある"`
+	NextSteps  string       `json:"next_steps,omitempty" jsonschema:"失敗した企画（plan）のジョブが LLM の API キー未設定のときだけ: 続けるためにすること"`
+	StartedAt  time.Time    `json:"started_at"`
+	FinishedAt *time.Time   `json:"finished_at,omitempty"`
+	EndedAt    *time.Time   `json:"ended_at,omitempty"`
 }
 
 // JobQuery selects the jobs of a listing. Every field is optional.
@@ -73,9 +75,19 @@ func (j *Jobs) List(ctx context.Context, q JobQuery) (JobPage, error) {
 		st := statusFrom(e)
 		out.Jobs[i] = JobSummary{
 			JobID: st.JobID, Kind: st.Kind, Target: st.Target, ProjectID: st.ProjectID, State: st.State, Message: logging.Redact(st.Message),
-			Done: st.Done, Total: st.Total, Error: logging.Redact(st.Error), ErrorCode: st.ErrorCode, ErrorID: st.ErrorID, NextSteps: nextSteps(st.Kind, st.State, st.Error),
+			Done: st.Done, Total: st.Total, Error: logging.Redact(st.Error), ErrorCode: st.ErrorCode, ErrorID: st.ErrorID, Failure: redacted(st.Failure), NextSteps: nextSteps(st.Kind, st.State, st.Error),
 			StartedAt: st.StartedAt, FinishedAt: st.FinishedAt, EndedAt: st.EndedAt,
 		}
 	}
 	return out, nil
+}
+
+// redacted is the failure of a listing: its detail passes through logging.Redact as the failure text does (a detail the history kept was hidden already).
+func redacted(v *apperr.View) *apperr.View {
+	if v == nil {
+		return nil
+	}
+	c := *v
+	c.Detail = logging.Redact(c.Detail)
+	return &c
 }

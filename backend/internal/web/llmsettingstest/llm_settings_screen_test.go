@@ -101,14 +101,10 @@ func agentForm(primaryProvider, primaryModel, fallbackProvider, fallbackModel st
 	}
 }
 
-// selectedValue is the option the <select> named name shows as chosen ("" when none is).
-func selectedValue(t *testing.T, html, name string) string {
+// hiddenValue is the value of the hidden input named name (a model field posts its choice that way).
+func hiddenValue(t *testing.T, html, name string) string {
 	t.Helper()
-	m := regexp.MustCompile(`(?s)<select[^>]*name="` + regexp.QuoteMeta(name) + `"[^>]*>.*?</select>`).FindString(html)
-	require.NotEmpty(t, m, name)
-	v := regexp.MustCompile(`<option value="([^"]*)" selected`).FindStringSubmatch(m)
-	if v == nil {
-		return ""
-	}
-	return v[1]
+	m := regexp.MustCompile(`<input type="hidden" name="` + regexp.QuoteMeta(name) + `" value="([^"]*)"`).FindStringSubmatch(html)
+	require.NotNil(t, m, name)
+	return m[1]
 }

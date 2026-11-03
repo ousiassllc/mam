@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"uncensored": true, "speed": "standard"},
  "description": "【実写もイラストも】Qwen-Image 2.1 を「検閲なし」として配るモデル（成人向け）。配布元は公式 Qwen/Qwen-Image-2.1 の重みを量子化したものとしており、非検閲化の追加学習をしたとは書いていない（公式のローカル用の重みにはもともと検閲のフィルターが無い、という説明）。標準ノードだけで動く int8_convrot 版で、拡散モデル（約 7.3 GB）・Qwen3-VL 8B のテキストエンコーダー（約 9.4 GB）・VAE は noctq-v4-qwen-image21 と同じファイルで、導入済みなら取得するのは拡散モデルだけ。GGUF 版は追加ノードが要るため入れていない。本格的に非検閲化した派生が要るなら noctq-v4-qwen-image21。テンプレートは Noct Q V4 と同じ（25 ステップ・euler/simple・cfg 3・ネガティブプロンプトあり・参照画像を最大 10 枚）。",
  "files": [
   {

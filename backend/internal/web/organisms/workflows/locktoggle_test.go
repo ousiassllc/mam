@@ -10,26 +10,27 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/workflows"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
-// Wherever the Video Model of a Shot is picked, the saved video workflows that are published are listed by their name
-// and version, next to the built-in models; the one the Shot is pinned to is the selected choice.
-func TestShotVideoModelPickListsSavedWorkflows(t *testing.T) {
-	v1, v2 := modelreg.WorkflowID("0199d7a0-1111-7222-8333-444455556666", 1), modelreg.WorkflowID("0199d7a0-1111-7222-8333-444455556666", 2)
-	modelreg.Set(nil, []string{v1, v2})
-	modelreg.SetLabels(map[string]string{v1: "Clip (v1)", v2: "Clip (v2)"})
+// Wherever the Video Model of a Shot is picked, the model picker is the choice (the saved video workflows that are published are among its cards); the one the Shot is
+// pinned to is what the field holds and shows by its name and version.
+func TestShotVideoModelFieldShowsTheSavedWorkflowTheShotIsPinnedTo(t *testing.T) {
+	v1 := modelreg.WorkflowID("0199d7a0-1111-7222-8333-444455556666", 1)
+	modelreg.Set(nil, []string{v1})
+	modelreg.SetLabels(map[string]string{v1: "Clip (v1)"})
 	t.Cleanup(func() { modelreg.Set(nil, nil); modelreg.SetLabels(nil) })
 
 	locks := domain.ParameterLocks{domain.ParamVideoModel: {Mode: domain.LockLocked, Value: []byte(`"` + v1 + `"`)}}
 	var b strings.Builder
-	assert.NoError(t, molecules.LockToggle(organisms.LockToggleFor("s1", domain.ParamVideoModel, locks)).Render(context.Background(), &b))
+	assert.NoError(t, molecules.LockToggle(locktoggles.LockToggleFor("s1", domain.ParamVideoModel, locks)).Render(context.Background(), &b))
 	html := b.String()
-	assert.Contains(t, html, `<option value="`+v1+`" selected data-commercial="unknown">Clip (v1)（不明）</option>`)
-	assert.Contains(t, html, `<option value="`+v2+`" data-commercial="unknown">Clip (v2)（不明）</option>`)
-	assert.Contains(t, html, `<option value="kling-3.0" data-commercial="unknown">kling-3.0（不明）</option>`, "the built-in models are still there")
+	assert.Contains(t, html, `<input type="hidden" name="value" value="`+v1+`" data-mp-from="value">`)
+	assert.Contains(t, html, "Clip (v1)", "the field shows the model by its name and version")
+	assert.Contains(t, html, `hx-get="/model-picker/shot-video"`, "the choices are the picker's")
+	assert.NotContains(t, html, "<select")
 }
 
 // A ComfyUI that refuses to be framed is not drawn: the page says why, how to allow it, and keeps the link that opens

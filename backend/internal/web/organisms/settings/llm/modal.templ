@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -40,89 +41,41 @@ templ Modal(f Form) {
 					"hx-params":       "none",
 				})
 				@modal.Cancel("キャンセル")
-				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit", "id": SaveButtonID})
+				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
 			}
 		</form>
 	}
 }
 
-// targetFields is the provider and the model of one target. The names are "<role>.provider" and "<role>.model" (and
-// "<role>.model_custom", a name typed for a model the pull-down does not have, which wins when it is filled). A change of the
-// provider asks for the models of the new one and replaces the model box; until they come, the save is locked, so that a
-// model of another provider is never saved by a quick click.
+// targetFields is the provider and the model of one target, chosen together in the model picker (the same filter bar, panel and cards as every list of models): the field posts
+// "<role>.provider" and "<role>.model" (hidden inputs the picker sets), and "<role>.model_custom", a name typed for a model no list has, which wins when it is filled.
 templ targetFields(f Form, role, roleLabel string, t Target, m ModelField) {
-	<fieldset class="flex flex-wrap items-start gap-3">
+	<fieldset class="flex min-w-0 flex-col gap-2">
 		<legend class="mb-1 text-sm font-medium">{ roleLabel }</legend>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ fieldID(role, "provider") }>
-			<span>プロバイダー</span>
-			@atoms.Select(atoms.FieldMd, "", fieldAttrs(f, role, "provider", templ.Attributes{
-				"hx-get":          paths.LLMModelField(f.Row.Agent, role),
-				"hx-trigger":      "change",
-				"hx-target":       "#" + ModelFieldID(role),
-				"hx-swap":         "innerHTML",
-				"hx-sync":         "this:replace", // the last choice wins; the form's drop would ignore it
-				"hx-disabled-elt": "#" + SaveButtonID,
-			})) {
-				for _, p := range f.Providers {
-					<option value={ p } selected?={ p == t.Provider }>{ p }</option>
+		@modelpick.Field(m.Field)
+		<p class="text-xs text-neutral-400" data-testid={ "llm-" + m.Role + "-default" }>既定: { m.Default.Summary() }</p>
+		if m.Unusable != "" {
+			<p class="text-xs text-amber-300" data-testid={ "llm-" + m.Role + "-unusable" }>
+				{ m.Provider } は今は使えません: { m.Unusable }（保存はできます）
+				if m.Route != "" {
+					<a class="underline" href={ templ.SafeURL(m.Route) } data-testid={ "llm-" + m.Role + "-route" }>設定を開く</a>
 				}
-			}
-		</label>
-		<div id={ ModelFieldID(role) } class="flex min-w-0 flex-1 flex-col gap-1" aria-live="polite">
-			@ModelFieldBody(f, m)
-		</div>
-	</fieldset>
-}
-
-// ModelFieldBody is the inside of the model box: the pull-down (the models of the provider, grouped by where they come from),
-// where they come from, the warning for a model the provider does not list, and the box for a name that is in no list. The
-// provider's change answers it alone.
-templ ModelFieldBody(f Form, m ModelField) {
-	<label class="flex min-w-0 flex-col gap-1 text-xs text-neutral-400" for={ fieldID(m.Role, "model") }>
-		<span>モデル（既定: { m.Default.Summary() }）</span>
-		@atoms.Select(atoms.FieldMd, "min-w-0", fieldAttrs(f, m.Role, "model", templ.Attributes{
-			"required":         true,
-			"aria-describedby": fieldID(m.Role, "model-note"),
-		})) {
-			if m.Unlisted {
-				<optgroup label="保存済み（一覧にありません）">
-					<option value={ m.Selected } selected>{ m.Selected }</option>
-				</optgroup>
-			}
-			<optgroup label={ groupLabel(m) }>
-				for _, o := range m.Options {
-					<option value={ o.ID } selected?={ !m.Unlisted && o.ID == m.Selected }>{ o.Label() }</option>
-				}
-			</optgroup>
+			</p>
 		}
-	</label>
-	<p id={ fieldID(m.Role, "model-note") } class="text-xs text-neutral-400" data-testid={ "llm-" + m.Role + "-model-source" }>{ sourceNote(m) }</p>
-	if m.Unlisted {
-		<p class="text-xs text-amber-300" data-testid={ "llm-" + m.Role + "-model-unlisted" }>「{ m.Selected }」は { m.Provider } の一覧にありません。使えないかもしれません（保存はできます）。</p>
-	}
-	<label class="flex min-w-0 flex-col gap-1 text-xs text-neutral-400" for={ fieldID(m.Role, "model-custom") }>
-		<span>一覧にないモデル名を使うときだけ入力（入れると上の選択より優先）</span>
-		@atoms.Input(atoms.FieldMd, "min-w-0", templ.Attributes{
-			"id":           fieldID(m.Role, "model-custom"),
-			"name":         m.Role + ".model_custom",
-			"type":         "text",
-			"maxlength":    strconv.Itoa(f.MaxModelLength),
-			"autocomplete": "off",
-			"spellcheck":   "false",
-			"placeholder":  m.Default.Model,
-		})
-	</label>
-}
-
-// fieldAttrs are the attributes of the field of a target: its id and name, and, for the field the refusal is about, what
-// says so (aria-invalid) and the focus. With nothing to blame, the first field is the one to start with.
-func fieldAttrs(f Form, role, field string, attrs templ.Attributes) templ.Attributes {
-	attrs["id"], attrs["name"] = fieldID(role, field), role+"."+field
-	switch {
-	case f.Blame == role+"."+field:
-		attrs["aria-invalid"], attrs["aria-describedby"], attrs["autofocus"] = "true", modal.ErrorID, true
-	case f.Blame == "" && f.Error == "" && role == "primary" && field == "provider":
-		attrs["autofocus"] = true
-	}
-	return attrs
+		if m.Unlisted {
+			<p class="text-xs text-amber-300" data-testid={ "llm-" + m.Role + "-model-unlisted" }>「{ m.Selected }」は { m.Provider } の一覧にありません。使えないかもしれません（保存はできます）。</p>
+		}
+		<label class="flex min-w-0 flex-col gap-1 text-xs text-neutral-400" for={ fieldID(m.Role, "model-custom") }>
+			<span>一覧にないモデル名を使うときだけ入力（入れると上の選択より優先）</span>
+			@atoms.Input(atoms.FieldMd, "min-w-0", templ.Attributes{
+				"id":           fieldID(m.Role, "model-custom"),
+				"name":         m.Role + ".model_custom",
+				"type":         "text",
+				"maxlength":    strconv.Itoa(f.MaxModelLength),
+				"autocomplete": "off",
+				"spellcheck":   "false",
+				"placeholder":  m.Default.Model,
+			})
+		</label>
+	</fieldset>
 }

@@ -43,6 +43,7 @@ type Entry struct {
 	ErrorCode    string
 	ErrorMessage string
 	ErrorID      string // the correlation id of an internal failure
+	ErrorInfo    string // the failure as the common error (apperr.Error.Marshal); "" for none
 	FinishedAt   *time.Time
 	EndedAt      *time.Time
 }
@@ -78,7 +79,7 @@ func (r *Repository) WithClock(now func() time.Time) *Repository {
 }
 
 const columns = `id, kind, target, project_id, queue_job_id, state, message, done, total, result,
-	error_code, error_message, error_id, started_at, finished_at, ended_at`
+	error_code, error_message, error_id, error_info, started_at, finished_at, ended_at`
 
 // projectOf finds the Project a target belongs to. A target is the id of a Project, a Shot, a Take or an
 // Edit Timeline version (every id is a UUID, so the tables cannot collide); anything else (a model, a
@@ -101,7 +102,7 @@ func (r *Repository) Insert(ctx context.Context, e Entry) error {
 				return fmt.Errorf("find project of job target: %w", err)
 			}
 		}
-		_, err := tx.ExecContext(ctx, `INSERT INTO mcp_job_history (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		_, err := tx.ExecContext(ctx, `INSERT INTO mcp_job_history (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT (id) DO NOTHING`, args(e)...)
 		if err != nil {
 			return fmt.Errorf("insert job history: %w", err)
@@ -115,8 +116,8 @@ func (r *Repository) Insert(ctx context.Context, e Entry) error {
 func (r *Repository) Settle(ctx context.Context, e Entry) error {
 	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx, `UPDATE mcp_job_history SET state = ?, message = ?, done = ?, total = ?, result = ?,
-			error_code = ?, error_message = ?, error_id = ?, finished_at = ?, ended_at = ? WHERE id = ?`,
-			e.State, e.Message, e.Done, e.Total, nullJSON(e.Result), e.ErrorCode, e.ErrorMessage, nullString(e.ErrorID),
+			error_code = ?, error_message = ?, error_id = ?, error_info = ?, finished_at = ?, ended_at = ? WHERE id = ?`,
+			e.State, e.Message, e.Done, e.Total, nullJSON(e.Result), e.ErrorCode, e.ErrorMessage, nullString(e.ErrorID), e.ErrorInfo,
 			nullTime(e.FinishedAt), nullTime(e.EndedAt), e.ID)
 		if err != nil {
 			return fmt.Errorf("settle job history: %w", err)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/editor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // JudgeTimeline runs the Editor Judge on the latest Edit Timeline (POST /edit-timelines/:id/judge).
@@ -30,7 +31,9 @@ func (s *EditorService) JudgeTimeline(ctx context.Context, id string) (EditorVie
 	if project, err = s.readyToJudge(ctx, project, ver); err != nil {
 		return EditorView{}, err
 	}
+	run := s.track(worktrack.KindEditorJudge, project.ID, "Editor が Edit Timeline を判定しています")
 	res, err := s.runJudge(ctx, project, ver)
+	run.End(err)
 	if err != nil {
 		return EditorView{}, err
 	}

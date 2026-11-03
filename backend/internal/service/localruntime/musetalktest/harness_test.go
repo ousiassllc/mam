@@ -48,7 +48,7 @@ func ctx() context.Context { return context.Background() }
 func sum256(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
 
 // serveFakeMuseTalk is the lip-sync server of these tests (the test binary started with MAM_FAKE_RUNTIME): the contract of
-// musetalk_server.py (spec §13.3) with a canned engine that answers by the name of the video.
+// mam_musetalk_server.py (spec §13.3) with a canned engine that answers by the name of the video.
 func serveFakeMuseTalk() {
 	l, err := net.Listen("tcp", "127.0.0.1:"+os.Getenv("FAKE_PORT"))
 	if err != nil {

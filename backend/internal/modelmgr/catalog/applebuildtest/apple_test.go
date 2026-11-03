@@ -117,7 +117,7 @@ func TestValidateRefusesAnAppleBuildThatIsNotPinnedOrDoesNotRun(t *testing.T) {
 		"a stable ABI above 3.13": {replaceWheel("numpy-2.5.4-cp314-abi3-macosx_14_0_arm64"), "does not run on Python 3.13"},
 		"a wheel that needs 15":   {replaceWheel("numpy-2.5.4-cp313-cp313-macosx_15_0_arm64"), "needs macOS 15, min_macos is 14"},
 		"not a wheel":             {replaceWheel("numpy-2.5.4"), "not a wheel file name"},
-		"a source distribution":   {func(a *catalog.AppleEngine) { a.Parts[3].URL = strings.TrimSuffix(a.Parts[3].URL, ".whl") + ".tar.gz" }, "not one of the places"},
+		"a source distribution":   {func(a *catalog.AppleEngine) { a.Parts[3].URL = strings.TrimSuffix(a.Parts[3].URL, ".whl") + ".tar.gz" }, "a .whl url"},
 		"another source commit": {func(a *catalog.AppleEngine) {
 			a.Parts[1].URL = strings.Replace(a.Parts[1].URL, comfyCommit, strings.Repeat("a", 40), 1)
 		}, "the source part must be"},

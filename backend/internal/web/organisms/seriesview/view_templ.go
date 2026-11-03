@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicetrainpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -27,6 +28,8 @@ type Data struct {
 	Episodes []domain.Project
 	// Templates are the Brand Templates a new Episode can start from.
 	Templates []domain.BrandTemplate
+	// Images are the Library images of the Episodes that a new Character can take as its face or body.
+	Images []molecules.CharacterImageOption
 }
 
 var seriesFieldLabels = map[string]string{
@@ -37,13 +40,14 @@ func seriesCharacterValues(c domain.WorldCharacter) map[string]string {
 	return map[string]string{"hairstyle": c.Hairstyle, "wardrobe": c.Wardrobe, "voice": c.Voice, "personality": c.Personality}
 }
 
-// seriesCharacterCreate is the form that makes a canonical Character. A Series has no Reference Library, so the form has no image
-// selects: the face and the body are given from a Project's World State, or by create_character of the MCP.
+// seriesCharacterCreate is the form that makes a canonical Character. A Series has no Reference Library: the face and the body are chosen from
+// the Library images of its Episodes (both from the same Episode), or given later by create_character of the MCP.
 func seriesCharacterCreate(d Data) molecules.CharacterCreateData {
-	return molecules.CharacterCreateData{
-		DOMID: "series-create-character", URL: paths.Series(d.Series.ID, "characters"),
-		Note: "顔・全身の参照画像は、Series には Reference Library が無いため、ここでは選べません。Project の World State の登場人物に割り当てるか、MCP の create_character（reference_project_id）で渡してください。",
+	form := molecules.CharacterCreateData{DOMID: "series-create-character", URL: paths.Series(d.Series.ID, "characters"), Images: d.Images}
+	if len(d.Images) == 0 {
+		form.Note = "顔・全身の参照画像は、Episode の Reference Library に「キャラクター」の画像を登録すると選べます（Series には Reference Library が無く、Episode の画像から選びます）。"
 	}
+	return form
 }
 
 func episodeLabel(p domain.Project) string {
@@ -137,7 +141,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 83, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 87, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -156,7 +160,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(l.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 86, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 90, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -174,7 +178,7 @@ func View(d Data) templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Series(d.Series.ID, "notes")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 92, Col: 104}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 96, Col: 104}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -192,7 +196,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var5 templ.SafeURL
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Project(p.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 99, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -205,7 +209,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(episodeLabel(p))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 99, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -218,7 +222,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 99, Col: 116}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 116}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -236,7 +240,7 @@ func View(d Data) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Series(d.Series.ID, "episodes"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 107, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -270,7 +274,7 @@ func View(d Data) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 112, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 116, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 				if templ_7745c5c3_Err != nil {
@@ -283,7 +287,7 @@ func View(d Data) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(episodeLabel(p))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 112, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 116, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -369,7 +373,7 @@ func seriesVersionLine(d Data, oob bool) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(d.Series.Version))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 132, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 136, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -426,7 +430,7 @@ func seriesHistory(d Data, oob bool) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Number))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 148, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 152, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -439,7 +443,7 @@ func seriesHistory(d Data, oob bool) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(v.CreatedAt.Local().Format("2006-01-02 15:04"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 148, Col: 102}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 152, Col: 102}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -641,6 +645,10 @@ func seriesCharacterBlock(d Data, c domain.WorldCharacter) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + c.ID, URL: paths.Series(d.Series.ID, "characters", c.ID, "voice-training")}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -764,7 +772,7 @@ func seriesStyleForm(d Data) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Series(d.Series.ID, "style"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 225, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 230, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 		if templ_7745c5c3_Err != nil {
@@ -828,7 +836,7 @@ func seriesCharacterForm(d Data, c domain.WorldCharacter) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue("series-character-" + c.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 245, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 250, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
@@ -841,7 +849,7 @@ func seriesCharacterForm(d Data, c domain.WorldCharacter) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Series(d.Series.ID, "characters", c.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 247, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 252, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
@@ -854,7 +862,7 @@ func seriesCharacterForm(d Data, c domain.WorldCharacter) templ.Component {
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 251, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 256, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
@@ -872,7 +880,7 @@ func seriesCharacterForm(d Data, c domain.WorldCharacter) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue("series-" + c.ID + "-" + name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 254, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 259, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 			if templ_7745c5c3_Err != nil {
@@ -885,7 +893,7 @@ func seriesCharacterForm(d Data, c domain.WorldCharacter) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(seriesFieldLabels[name])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 255, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 260, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {

@@ -13,7 +13,7 @@ type rowScanner interface{ Scan(dest ...any) error }
 func args(e Entry) []any {
 	return []any{
 		e.ID, e.Kind, e.Target, nullString(e.ProjectID), nullString(e.QueueJobID), e.State, e.Message, e.Done, e.Total, nullJSON(e.Result),
-		e.ErrorCode, e.ErrorMessage, nullString(e.ErrorID), repository.FormatTime(e.StartedAt), nullTime(e.FinishedAt), nullTime(e.EndedAt),
+		e.ErrorCode, e.ErrorMessage, nullString(e.ErrorID), e.ErrorInfo, repository.FormatTime(e.StartedAt), nullTime(e.FinishedAt), nullTime(e.EndedAt),
 	}
 }
 
@@ -25,7 +25,7 @@ func scan(s rowScanner) (Entry, error) {
 		finished, ended                 sql.NullString
 	)
 	err := s.Scan(&e.ID, &e.Kind, &e.Target, &project, &queue, &e.State, &e.Message, &e.Done, &e.Total, &result,
-		&e.ErrorCode, &e.ErrorMessage, &errorID, &started, &finished, &ended)
+		&e.ErrorCode, &e.ErrorMessage, &errorID, &e.ErrorInfo, &started, &finished, &ended)
 	if err != nil {
 		return Entry{}, err
 	}

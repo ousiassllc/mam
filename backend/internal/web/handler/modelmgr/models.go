@@ -8,23 +8,29 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/catalogfilter"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/licenseview"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
 )
 
 // Models answers GET /model-manager/models, which the list polls while an install runs. The jobs it asks about
 // (query jobs, comma separated) are reported once they ended; the choices of the trial form are drawn again then.
 func (h Handlers) Models(c *gin.Context) {
 	ids := splitIDs(c.Query("jobs"))
-	cat := catalogData(c.Request.Context(), h.Svc, ids)
+	cat := catalogData(c, h.Svc, ids)
+	if cond, _ := catalogfilter.Screen().Read(c); true {
+		catalogfilter.Screen().Remember(c, cond) // a request of the filter bar states the condition: the screen opens with it next time
+	}
 	if !cat.Polling() && len(ids) > 0 {
 		trial := h.trialPanel(c.Request.Context(), view.TrialForm{}, "", "")
 		trial.OOB = true
-		render(c, http.StatusOK, view.CatalogWithTrial(cat, trial))
+		render(c, http.StatusOK, oob.CatalogWithTrial(cat, trial))
 		return
 	}
-	render(c, http.StatusOK, view.CatalogList(cat))
+	render(c, http.StatusOK, view.CatalogWithBar(cat))
 }
 
 // ModelDetail answers GET /model-manager/models/:id/detail with the modal of the card: the license, the sources, the memory and the
@@ -39,7 +45,7 @@ func (h Handlers) ModelDetail(c *gin.Context) {
 		return
 	}
 	hasToken, tokenErr := h.Svc.HasHuggingFaceToken()
-	md := modelData(ctx, h.Svc, m, h.Svc.Engine().FreeBytes, mmview.GPUVRAM(ctx, h.Svc), tokenErr == nil && !hasToken)
+	md := modelData(ctx, h.Svc, mmview.EntryOf(h.Svc, m), h.Svc.Engine().FreeBytes, mmview.GPUVRAM(ctx, h.Svc), tokenErr == nil && !hasToken)
 	render(c, http.StatusOK, modeldetail.Detail(md))
 }
 
@@ -59,7 +65,7 @@ func (h Handlers) Consent(c *gin.Context) {
 }
 
 func consentOf(c *gin.Context, svc *modelmanager.Service, m modelmanager.ModelView, errMsg string) view.Consent {
-	return view.Consent{ModelID: m.ID, Name: m.Name, License: licenseOf(m.License), AdultNotice: m.AdultNotice, Sources: sourcesOf(m), PlatformWarning: mmview.PlatformWarning(c.Request.Context(), svc, m), Error: errMsg}
+	return view.Consent{ModelID: m.ID, Name: m.Name, License: licenseview.Of(m.License), AdultNotice: m.AdultNotice, Sources: sourcesOf(m), PlatformWarning: mmview.PlatformWarning(c.Request.Context(), svc, m), Error: errMsg}
 }
 
 // InstallModel starts the install of a model as a job (POST /model-manager/models/:id/install). A model whose license
@@ -82,17 +88,17 @@ func (h Handlers) InstallModel(c *gin.Context) {
 			render(c, status, view.ConsentDialog(consentOf(c, h.Svc, m, msg)))
 			return
 		}
-		cat := catalogData(ctx, h.Svc, nil)
+		cat := catalogData(c, h.Svc, nil)
 		cat.Error = msg
 		render(c, status, view.CatalogList(cat))
 		return
 	}
-	cat := catalogData(ctx, h.Svc, []string{ref.JobID})
+	cat := catalogData(c, h.Svc, []string{ref.JobID})
 	cat.Notice = "導入を始めました。この画面を閉じても続きます"
 	if ref.Existing {
 		cat.Notice = "このモデルは、すでに導入中です"
 	}
-	render(c, http.StatusAccepted, view.CatalogWithDialogClear(cat))
+	render(c, http.StatusAccepted, oob.CatalogWithDialogClear(cat))
 }
 
 // DeleteModel removes an installed model (DELETE /model-manager/models/:id). A model that an image purpose or a Quality
@@ -100,7 +106,7 @@ func (h Handlers) InstallModel(c *gin.Context) {
 func (h Handlers) DeleteModel(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := h.Svc.DeleteModel(ctx, c.Param("id"))
-	cat := catalogData(ctx, h.Svc, nil)
+	cat := catalogData(c, h.Svc, nil)
 	if err != nil {
 		status, msg := refuse(c, err)
 		cat.Error = msg
@@ -110,7 +116,7 @@ func (h Handlers) DeleteModel(c *gin.Context) {
 	cat.Notice = "モデルを削除しました。他のモデルと共有しているファイルは、使うモデルが残る間は残ります"
 	trial := h.trialPanel(ctx, view.TrialForm{}, "", "")
 	trial.OOB = true
-	render(c, http.StatusOK, view.CatalogWithTrial(cat, trial))
+	render(c, http.StatusOK, oob.CatalogWithTrial(cat, trial))
 }
 
 // splitIDs is the job ids of a comma separated query value.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -32,13 +33,6 @@ func sizeText(n int64) string {
 }
 
 func timeText(t time.Time) string { return t.Local().Format("2006-01-02 15:04") }
-
-var sourceLabel = map[string]string{
-	modelcatalog.SourceBuiltin:  "クラウド",
-	modelcatalog.SourceChatGPT:  "ChatGPT サブスク",
-	modelcatalog.SourceLocal:    "ローカル",
-	modelcatalog.SourceWorkflow: "保存したワークフロー",
-}
 
 func featuresText(m modelcatalog.Info) string {
 	var f []string
@@ -79,13 +73,26 @@ func featuresText(m modelcatalog.Info) string {
 	return strings.Join(f, "・")
 }
 
+// withSelected is the listed models plus those of all that the form holds ticked (?model=, "もう一度", a recipe, a prompt match) and the condition hides: a card
+// that is not drawn is not posted, so a model chosen before the condition was must not drop out of the form.
+func withSelected(listed, all []modelcatalog.Info, selected []string) []modelcatalog.Info {
+	out := listed
+	for _, m := range all {
+		if slices.Contains(selected, m.ID) && !slices.ContainsFunc(listed, func(l modelcatalog.Info) bool { return l.ID == m.ID }) {
+			out = append(slices.Clip(out), m)
+		}
+	}
+	return out
+}
+
 func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice {
 	out := make([]view.ModelChoice, len(models))
 	for i, m := range models {
 		out[i] = view.ModelChoice{
-			ID: m.ID, Label: m.Label, Source: sourceLabel[m.Source], Price: gtshare.PriceText(m.Price), Features: featuresText(m),
+			ID: m.ID, Label: m.Label, Source: modelcards.SourceLabel[m.Source], Price: gtshare.PriceText(m.Price), Features: featuresText(m),
 			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA,
-			Answer: commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m),
+			RequiresFirstFrame: slices.Contains(m.RequiresInputs, gentest.RoleFirstFrame),
+			Answer:             commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m), Card: modelcards.FromInfo(m),
 		}
 		if !m.Available {
 			out[i].Reason = m.UnavailableMessage
@@ -124,8 +131,11 @@ func videoChoices(models []modelcatalog.Info) (resolutions, durations []string) 
 // cardOf is a result as a card; withDetail adds the link to its page.
 func cardOf(r record.ResultView, withDetail bool) resulttile.Card {
 	c := resulttile.Card{
-		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: gtshare.StatusText[r.Status], Error: r.Error,
+		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: gtshare.StatusText[r.Status], Error: r.Error, Failure: r.Failure,
 		Video: r.Media == gentest.MediaVideo, Favorite: r.Favorite, CreatedAt: timeText(r.CreatedAt), Answer: commercial.Of(r.Model),
+	}
+	if n := len(r.UnusedInputs); n > 0 {
+		c.Unused, c.UnusedText = n, unusedText(r.UnusedInputs)
 	}
 	if r.HasFile {
 		c.FileURL = paths.GenerationTestPart("results", r.ID, "file")
@@ -138,6 +148,15 @@ func cardOf(r record.ResultView, withDetail bool) resulttile.Card {
 		c.Detail = paths.GenerationTestPart("results", r.ID)
 	}
 	return c
+}
+
+// unusedText is the hover of the "未使用" mark of a tile: each image the model was not given, with the reason.
+func unusedText(list []record.UnusedInput) string {
+	lines := make([]string, len(list))
+	for i, u := range list {
+		lines[i] = roleNames[u.Role] + ": " + u.Reason
+	}
+	return strings.Join(lines, "\n")
 }
 
 func spendText(s record.Spend) string {

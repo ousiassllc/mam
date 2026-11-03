@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "general",
+ "traits": {"uncensored": false, "speed": "standard"},
  "description": "公式の Qwen-Image 2.1（int8_convrot）に、VNCCS PoseStudio の LoRA（MIUProject。約 0.16 GB）を重ねた構成で、3D の人形（ポーズの画像）でポーズだけを指定して別の人物の画像を描き直す。参照画像の 1 枚目に人形の画像、2 枚目に人物の画像を渡し、「replace the pose of <image 2> with the pose of <image 1>. keep the character of <image 2>」のように指示する（LoRA が無いと人形の画像は無視される）。拡散モデル（約 7.3 GB）・Qwen3-VL 8B のテキストエンコーダー（約 9.4 GB）・VAE・LoRA の 4 ファイル、合計約 17.5 GB（テキストエンコーダーと VAE は noctq-v4-qwen-image21 と同じファイルなので、導入済みなら取得しない）。人形の画像を作る PoseStudio のノード（ComfyUI_VNCCS_Utils。ブラウザの画面が要る）は使わず、手元にある 3D のポーズの画像を渡す。ベースの Qwen-Image 2.1 は非商用（Qwen Research）で、LoRA のライセンスは記載がなく不明。",
  "files": [
   {

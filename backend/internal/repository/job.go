@@ -109,8 +109,7 @@ func (r *JobRepository) ClaimNext(ctx context.Context) (domain.Job, error) {
 			return err
 		}
 		started := r.now().UTC()
-		if _, err := tx.ExecContext(ctx,
-			`UPDATE job SET status = 'running', attempts = attempts + 1, started_at = ?, finished_at = NULL, error = '' WHERE id = ?`,
+		if _, err := tx.ExecContext(ctx, `UPDATE job SET status = 'running', attempts = attempts + 1, started_at = ?, finished_at = NULL, error = '', error_info = '' WHERE id = ?`,
 			FormatTime(started), j.ID); err != nil {
 			return err
 		}
@@ -135,28 +134,29 @@ func (r *JobRepository) ClaimNext(ctx context.Context) (domain.Job, error) {
 // It returns ErrNotFound if the job is not queued (e.g. already claimed).
 func (r *JobRepository) MarkRunning(ctx context.Context, id string) error {
 	return r.transition(ctx, id,
-		`UPDATE job SET status = 'running', attempts = attempts + 1, started_at = ?, finished_at = NULL, error = ''
+		`UPDATE job SET status = 'running', attempts = attempts + 1, started_at = ?, finished_at = NULL, error = '', error_info = ''
 		 WHERE id = ? AND status = 'queued'`, FormatTime(r.now()), id)
 }
 
 // MarkSucceeded moves a running job to succeeded.
 func (r *JobRepository) MarkSucceeded(ctx context.Context, id string) error {
-	return r.transition(ctx, id,
-		`UPDATE job SET status = 'succeeded', finished_at = ? WHERE id = ? AND status = 'running'`,
-		FormatTime(r.now()), id)
+	return r.transition(ctx, id, `UPDATE job SET status = 'succeeded', finished_at = ? WHERE id = ? AND status = 'running'`, FormatTime(r.now()), id)
 }
 
 // MarkFailed moves a queued or running job to failed and records the reason.
 func (r *JobRepository) MarkFailed(ctx context.Context, id, reason string) error {
-	return r.transition(ctx, id,
-		`UPDATE job SET status = 'failed', error = ?, finished_at = ? WHERE id = ? AND status IN ('queued', 'running')`,
-		reason, FormatTime(r.now()), id)
+	return r.MarkFailedWithInfo(ctx, id, reason, "")
+}
+
+// MarkFailedWithInfo is MarkFailed that also records the failure as the common error (info is apperr.Error.Marshal).
+func (r *JobRepository) MarkFailedWithInfo(ctx context.Context, id, reason, info string) error {
+	return r.transition(ctx, id, `UPDATE job SET status = 'failed', error = ?, error_info = ?, finished_at = ? WHERE id = ? AND status IN ('queued', 'running')`,
+		reason, info, FormatTime(r.now()), id)
 }
 
 // Requeue moves a running job back to queued so it is executed again.
 func (r *JobRepository) Requeue(ctx context.Context, id string) error {
-	return r.transition(ctx, id,
-		`UPDATE job SET status = 'queued', finished_at = NULL WHERE id = ? AND status = 'running'`, id)
+	return r.transition(ctx, id, `UPDATE job SET status = 'queued', finished_at = NULL WHERE id = ? AND status = 'running'`, id)
 }
 
 func (r *JobRepository) transition(ctx context.Context, id, query string, args ...any) error {
@@ -174,7 +174,7 @@ func (r *JobRepository) transition(ctx context.Context, id, query string, args .
 	})
 }
 
-const jobSelect = `SELECT id, kind, payload, status, attempts, error, created_at, started_at, finished_at FROM job`
+const jobSelect = `SELECT id, kind, payload, status, attempts, error, error_info, created_at, started_at, finished_at FROM job`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
@@ -184,7 +184,7 @@ func scanJob(s rowScanner) (domain.Job, error) {
 		payload, created  string
 		started, finished sql.NullString
 	)
-	if err := s.Scan(&job.ID, &job.Kind, &payload, &job.Status, &job.Attempts, &job.Error,
+	if err := s.Scan(&job.ID, &job.Kind, &payload, &job.Status, &job.Attempts, &job.Error, &job.ErrorInfo,
 		&created, &started, &finished); err != nil {
 		return domain.Job{}, err
 	}

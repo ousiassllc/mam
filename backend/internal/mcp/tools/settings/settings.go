@@ -20,10 +20,10 @@ import (
 func Register(r *mcpkit.Registrar, _ *service.Services) {
 	h := handlers{r: r}
 	mcpkit.Read(r, "get_global_settings",
-		"全体設定画面の内容（LLM の割り当て・画像／動画モデルの割り当て・バージョンとアップデート）。API キーは list_credentials。保存した LLM の割り当てと画像・動画モデルは、すぐに反映される（llm.restart_pending は再起動で反映される設定。restart_app）/ The global settings screen without secrets.",
+		"全体設定画面の内容（LLM の割り当て・画像／動画モデルの割り当て・バージョンとアップデート）。LLM のプロバイダーごとに今使えるか（llm.provider_states: API キー登録済みかサブスクでログイン済みなら available）と、今の割り当てが使えないプロバイダーを指しているときの警告（llm.route_warnings）、画像・動画モデルの選択肢ごとの available・unavailable_message・settings_route と、使えないモデルを指している割り当て（models.unusable_routes）を含む。API キーは list_credentials。保存した LLM の割り当てと画像・動画モデルは、すぐに反映される（llm.restart_pending は再起動で反映される設定。restart_app）/ The global settings screen without secrets.",
 		h.overview)
 	mcpkit.Read(r, "list_llm_models",
-		"LLM の割り当てで選べるモデルの一覧（プロバイダー指定。省略で全部）。source=api はそのアカウント・API キーで使えるモデル（chatgpt-subscription はサインイン済みのアカウントの一覧、chatgpt-codex は Codex の一覧）、default は取得できないとき（キーなし・未ログイン・失敗）の mam の既定候補。トークン・キーは返さない。10 分ほどキャッシュする / The models to choose for an LLM assignment, from the provider's API when it can be read, else mam's defaults.",
+		"LLM の割り当てで選べるモデルの一覧（プロバイダー指定。省略で全部）。各プロバイダーに available（API キー登録済み・ログイン済みか）・unavailable_message・settings_route が付く（available_only: true で使えるプロバイダーだけ）。source=api はそのアカウント・API キーで使えるモデル（chatgpt-subscription はサインイン済みのアカウントの一覧、chatgpt-codex は Codex の一覧）、default は取得できないとき（キーなし・未ログイン・失敗）の mam の既定候補。トークン・キーは返さない。10 分ほどキャッシュする / The models to choose for an LLM assignment, from the provider's API when it can be read, else mam's defaults.",
 		h.listModels, mcpkit.OpenWorld())
 	mcpkit.Write(r, "set_llm_assignment",
 		"Agent ごとの LLM（主・代替）の割り当てを保存する。指定した Agent だけ変わる。保存すると次の LLM 呼び出しからすぐ反映される（再起動は要らない）。モデル名が list_llm_models の一覧にないときは拒否せず保存し、warnings で知らせる / Save the LLM routes of some Agents (effective at once, no restart). A model that is not in the provider's list is saved with a warning.",
@@ -31,6 +31,12 @@ func Register(r *mcpkit.Registrar, _ *service.Services) {
 	mcpkit.Destroy(r, "reset_llm_assignment",
 		"LLM の割り当てを既定に戻す（保存した上書きをすべて消す）。次の LLM 呼び出しからすぐ反映される / Drop every saved LLM route override (effective at once).",
 		h.resetLLM, mcpkit.Idempotent())
+	mcpkit.Write(r, "set_local_llm_server",
+		"ローカルの OpenAI 互換 LLM サーバー（Ollama・LM Studio・llama.cpp server。プロバイダー local）の設定を保存する。base_url（アドレス。Ollama は http://localhost:11434、LM Studio は http://localhost:1234）、api_key（サーバーが求めるときだけ。値は返さない）、clear_api_key、unload_before_generation（画像・動画を作る前に Ollama のモデルを降ろす）、use_managed_runtime（true で「この PC の llama.cpp を使う」: mam が導入・起動する llama.cpp にアドレスなしで向かう。画像・動画を作る前に止まる。導入とモデルは list_local_runtimes・select_local_runtime_model）。指定した項目だけ変わり、次の LLM 呼び出しからすぐ効く。モデルは list_llm_models の local から選んで set_llm_assignment で Agent に割り当てる。リンクローカルのアドレスは validation / Save the address, the optional API key and the unload switch of the local OpenAI-compatible LLM server (provider local). Effective at once.",
+		h.setLocalServer, mcpkit.Idempotent())
+	mcpkit.Read(r, "test_local_llm_server",
+		"ローカル LLM サーバーに接続できるかを確かめる（GET /v1/models）。base_url・api_key を省略すると保存した設定で試す。接続できないときは ok=false と failure（原因 local_llm_unreachable・直し方）を返す / Try the local LLM server (GET /v1/models); an unreachable server is ok=false with the common error.",
+		h.testLocalServer, mcpkit.OpenWorld())
 	mcpkit.Write(r, "set_model_assignment",
 		"画像・動画モデルの割り当てを保存する。指定した用途・Quality Policy だけ変わる。model には組み込みの名前のほか、ローカル・代替モデルの識別子（comfyui:<接続先>/<名前>）も使える。すぐに反映される / Save image / video model routes, including local models (effective at once).",
 		h.setModels, mcpkit.Idempotent())
@@ -81,7 +87,7 @@ func (h handlers) overview(_ context.Context, _ Input) (Overview, error) {
 	s := h.r.Settings
 	out := Overview{LLM: LLMSection{Available: s.LLM != nil}, Models: ModelsSection{Available: s.Models != nil}}
 	if s.LLM != nil {
-		out.LLM = llmSection(s.LLM)
+		out.LLM = llmSection(s.LLM, s.LLMModels, s.LLMLocal)
 	}
 	if s.Models != nil {
 		out.Models = modelsSection(s.Models)

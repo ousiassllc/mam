@@ -59,7 +59,7 @@ templ localState(p Provider) {
 		} else if p.Local.Reason != "" {
 			<p class="text-amber-300" role="status" data-testid={ "audio-reason-" + p.Field }>{ p.Local.Reason }</p>
 		}
-		if p.Selected == LocalValue && !p.Local.Supported {
+		if p.Selected == p.value() && !p.Local.Supported {
 			<p class="text-amber-300" role="status">保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
 		}
 		if p.Local.ProcessError != "" {
@@ -78,12 +78,25 @@ templ localState(p Provider) {
 			}
 			。重みと依存ファイルの出典・ライセンスは、モデルマネージャーの一覧にあります。
 		</p>
+		if p.Local.Model != "" {
+			<p data-testid={ "audio-model-" + p.Field }>使うモデル: { p.Local.Model }（変えるにはモデルマネージャーの「モデルの選択」）</p>
+		}
+		if len(p.Local.Cautions) > 0 {
+			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-cautions-" + p.Field }>
+				<p class="font-semibold">使うときの制限（モデルカードより）</p>
+				<ul class="list-disc pl-5">
+					for _, c := range p.Local.Cautions {
+						<li class="break-words">{ c }</li>
+					}
+				</ul>
+			</div>
+		}
 		if p.Local.Condition != "" {
 			<p class="text-amber-300" data-testid={ "audio-condition-" + p.Field }>{ p.Local.Condition }</p>
 		}
 		if len(p.Local.Unclear) > 0 {
 			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-unclear-" + p.Field }>
-				<p class="font-semibold">商用利用がはっきりしない重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
+				<p class="font-semibold">商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
 				<p class="break-words">{ join(p.Local.Unclear) }</p>
 				<p>商用の動画に使う前に、モデルマネージャーの一覧で出典とライセンスを確認してください。</p>
 			</div>

@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -44,8 +45,8 @@ func validateRuntime(c *Catalog, r Runtime) []error {
 	switch {
 	case !runtimeIDPattern.MatchString(r.ID) || r.Name == "" || strings.TrimSpace(r.Description) == "":
 		errs = append(errs, fmt.Errorf("%s: id (slug), name and description are required", where))
-	case r.Purpose != PurposeTTS && r.Purpose != PurposeLipSync:
-		errs = append(errs, fmt.Errorf("%s: purpose must be tts or lip_sync", where))
+	case r.Purpose != PurposeTTS && r.Purpose != PurposeLipSync && r.Purpose != PurposeLLM:
+		errs = append(errs, fmt.Errorf("%s: purpose must be tts, lip_sync or llm", where))
 	case r.Version == "" || !runtimeSourcePattern.MatchString(r.SourceURL):
 		errs = append(errs, fmt.Errorf("%s: version and a source_url at a GitHub tag or commit are required", where))
 	case r.Build == nil && !relativeSlashPath(r.ArchiveRoot):
@@ -61,20 +62,31 @@ func validateRuntime(c *Catalog, r Runtime) []error {
 	if r.Build != nil {
 		errs = append(errs, parts.CheckBuild(where, r.Build, c.Overlays)...)
 	}
+	if r.Build != nil && r.Build.SitePackages == "" && slices.ContainsFunc(slices.Collect(maps.Values(r.Variants)), func(v RuntimeVariant) bool { return parts.HasWheels(v.Parts) }) {
+		errs = append(errs, fmt.Errorf("%s: a build with wheels needs its site_packages", where))
+	}
 	if r.Build != nil && len(r.ExtraFiles) > 0 {
 		errs = append(errs, fmt.Errorf("%s: an assembled runtime writes its files by build.files, not extra_files", where))
 	}
 	errs = append(errs, parts.CheckFiles(where+" extra_files", r.ExtraFiles, c.Overlays)...)
+	if r.Build != nil && len(r.ToolFiles) > 0 {
+		errs = append(errs, fmt.Errorf("%s: an assembled runtime has no tool_files", where))
+	}
+	errs = append(errs, parts.CheckFiles(where+" tool_files", r.ToolFiles, c.Overlays)...)
 	return append(errs, validateRuntimeVariants(where, r)...)
 }
 
 func validateLaunch(where string, l RuntimeLaunch) []error {
 	var errs []error
-	if !relativeSlashPath(l.Entry) || !slices.Contains(l.Args, l.Entry) {
-		errs = append(errs, fmt.Errorf("%s: launch entry must be a relative slash path that args run", where))
+	if l.Program != "" { // a native server: no interpreter and no script
+		if l.Python != "" || l.Entry != "" || !relativeSlashPath(l.Program) {
+			errs = append(errs, fmt.Errorf("%s: launch program must be a relative slash path, without python and entry", where))
+		}
+	} else if !relativeSlashPath(l.Entry) || !slices.Contains(l.Args, l.Entry) || !relativeSlashPath(l.Python) {
+		errs = append(errs, fmt.Errorf("%s: launch entry must be a relative slash path that args run, and python a relative slash path (or program, for a native server)", where))
 	}
-	if !relativeSlashPath(l.Python) || !strings.HasPrefix(l.ReadyPath, "/") || strings.ContainsAny(l.ReadyPath, "?# ") {
-		errs = append(errs, fmt.Errorf("%s: launch python must be a relative slash path and ready_path an absolute URL path", where))
+	if !strings.HasPrefix(l.ReadyPath, "/") || strings.ContainsAny(l.ReadyPath, "?# ") {
+		errs = append(errs, fmt.Errorf("%s: launch ready_path must be an absolute URL path", where))
 	}
 	if slices.ContainsFunc(l.PathDirs, func(d string) bool { return !relativeSlashPath(d) }) {
 		errs = append(errs, fmt.Errorf("%s: launch path_dirs must be relative slash paths", where))

@@ -1,14 +1,17 @@
 // Package joblist reads the jobs of mam for the job list screen (spec/components/jobs-screen.md): the ones that run now and the
-// latest that ended, what each works on and how far it is. It only reads. The jobs themselves are kept by the job table (the
-// background queue: model installs, generation test batches, Shot generation, Judge, Repair and the planning of a Project), and what a
-// job works on and its progress are asked of the service that owns that kind of job; this package changes none of them. Work that does
-// not go through the job table (the export of a video, the audio mix, the editor's Judge) has no row here.
+// latest that ended, what each works on and how far it is. It only reads. Two things are listed. The jobs of the job table (the
+// background queue: model installs, generation test batches, Shot generation, Judge, Repair and the planning of a Project): what a
+// job works on and its progress are asked of the service that owns that kind of job. And the works that have no row in the table
+// and are tracked in memory only (worktrack: the export of a video, the audio stage, the Editor Judge, the run of a workflow, the
+// install of Codex, the download of ffmpeg): they are read from their owners as they are, and a restart of mam ends them. This
+// package changes none of them.
 package joblist
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -19,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // Newest is how many of the newest jobs the list reads (the jobs that have not finished are listed on top of that, however old).
@@ -39,32 +43,45 @@ const (
 // Screen is the screen a job leads back to (the web layer turns it into a path).
 type Screen string
 
-// The screens a job leads to. ProjectScenes and ProjectChat carry the Project (Dest.ProjectID).
+// The screens a job leads to. ProjectScenes, ProjectChat and ProjectEditor carry the Project (Dest.ProjectID).
 const (
 	ScreenNone           Screen = ""
 	ScreenModelManager   Screen = "model-manager"
 	ScreenGenerationTest Screen = "generation-test"
 	ScreenProjectScenes  Screen = "project-scenes"
 	ScreenProjectChat    Screen = "project-chat"
+	ScreenProjectEditor  Screen = "project-editor"
+	ScreenWorkflows      Screen = "workflows"
+	ScreenFFmpeg         Screen = "ffmpeg-settings"
+	ScreenChatGPT        Screen = "chatgpt-settings" // the API keys page, which holds the "ChatGPT でログイン" section
+	ScreenProjectWorld   Screen = "project-world"    // the World State of a Project, where the Characters' voices are (Dest.ProjectID)
+	ScreenSeries         Screen = "series"           // the Series page, where the canon's Characters' voices are (Dest.SeriesID)
 )
 
 // Dest is where the job is worked on: the screen, and the Project when it is a screen of a Project.
 type Dest struct {
 	Screen    Screen
 	ProjectID string
+	// SeriesID is the Series of a ScreenSeries.
+	SeriesID string
 }
 
-// Progress is how far a running job is. Percent is 0-100; Text says it in words ("2 / 4 件", the file that is being downloaded).
+// Progress is how far a running job is. Percent is 0-100, or NoPercent when the job cannot say (the line then has its words only, no
+// bar); Text says it in words ("2 / 4 件", the file that is being downloaded).
 type Progress struct {
 	Percent int
 	Text    string
 }
 
+// NoPercent is the Percent of a Progress that has no percentage (worktrack.NoPercent).
+const NoPercent = worktrack.NoPercent
+
 // Entry is one job of the list.
 type Entry struct {
 	ID string
-	// Kind is the kind of the job table (domain.JobKind) and Label what the screen calls it.
-	Kind  domain.JobKind
+	// Kind is the kind of the job table (domain.JobKind) or, of a work that is tracked in memory only, a worktrack.Kind; Label is
+	// what the screen calls it.
+	Kind  string
 	Label string
 	State State
 	// StartedAt is when the job started; of a job that has not started yet, when it was queued.
@@ -100,6 +117,12 @@ type Deps struct {
 	Projects     *service.ProjectService
 	ModelManager *modelmanager.Service
 	Gentest      *gentest.Service
+	// Works are the owners of the works tracked in memory (the editor, the workflows, Codex, the ffmpeg download). Hidden says a
+	// model is hidden (an adult model while the age confirmation is off): a work on it has no subject. Both may be nil.
+	Works  []worktrack.Source
+	Hidden func(modelID string) bool
+	// Now is the clock of the time a work has run (nil: time.Now). Tests set it.
+	Now func() time.Time
 }
 
 // Service lists the jobs.
@@ -108,7 +131,8 @@ type Service struct{ Deps }
 // New returns the list over the job table and the services that know what a job works on.
 func New(d Deps) *Service { return &Service{d} }
 
-// Recent lists the jobs that have not finished and the latest that have, the newest start first.
+// Recent lists the jobs that have not finished and the latest that have, the newest start first: the jobs of the table and the
+// works tracked in memory, in one list.
 func (s *Service) Recent(ctx context.Context) ([]Entry, error) {
 	rows, err := s.Table.ListRecent(ctx, Newest)
 	if err != nil {
@@ -122,6 +146,14 @@ func (s *Service) Recent(ctx context.Context) ([]Entry, error) {
 			return nil, err
 		}
 		entries = append(entries, e)
+	}
+	tracked, err := r.tracked(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(tracked) > 0 {
+		entries = append(entries, tracked...)
+		slices.SortStableFunc(entries, func(a, b Entry) int { return b.StartedAt.Compare(a.StartedAt) })
 	}
 	return entries, nil
 }
@@ -140,7 +172,7 @@ func (r *reader) entry(ctx context.Context, row domain.Job) (Entry, error) {
 	var p payload
 	_ = json.Unmarshal(row.Payload, &p)
 	e := Entry{
-		ID: row.ID, Kind: row.Kind, Label: label(row.Kind), State: State(row.Status), StartedAt: row.CreatedAt, FinishedAt: row.FinishedAt,
+		ID: row.ID, Kind: string(row.Kind), Label: label(row.Kind), State: State(row.Status), StartedAt: row.CreatedAt, FinishedAt: row.FinishedAt,
 		Error: logging.Redact(row.Error), NextSteps: planadvice.For(row, false),
 	}
 	if row.StartedAt != nil {

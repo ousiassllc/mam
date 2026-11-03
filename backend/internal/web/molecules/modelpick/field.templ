@@ -1,0 +1,110 @@
+package modelpick
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+)
+
+// Field is the control that chooses one model (see FieldData). It is a button that shows the model chosen as its card does and says 「変更」; pressing it asks for
+// the picker and the script opens the dialog (Host). The choice is held in hidden inputs.
+templ Field(f FieldData) {
+	<div id={ f.ID } class="flex min-w-0 flex-col gap-1" data-model-pick-field data-testid={ f.TestID }>
+		for _, in := range f.Inputs {
+			<input type="hidden" name={ in.Name } value={ in.Value } data-mp-from={ in.Key }/>
+		}
+		<button
+			type="button"
+			id={ f.buttonID() }
+			class={ "flex w-full cursor-pointer items-center gap-3 rounded-md border bg-neutral-950 px-3 py-2 text-left text-sm text-neutral-100 hover:border-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400", fieldBorder(f.Invalid) }
+			aria-haspopup="dialog"
+			aria-label={ f.Label + "を選ぶ" }
+			hx-get={ f.URL }
+			hx-target={ "#" + BodyID }
+			hx-swap="innerHTML"
+			hx-sync="this:drop"
+			hx-include="unset"
+			data-mp-open
+			data-testid="model-pick-open"
+			if f.Autofocus {
+				autofocus
+			}
+			if f.Invalid {
+				aria-invalid="true"
+			}
+			if f.DescribedBy != "" {
+				aria-describedby={ f.DescribedBy }
+			}
+		>
+			<span class="flex min-w-0 flex-1 flex-col gap-1.5" data-mp-current>
+				@Current(f.Current)
+			</span>
+			<span class="shrink-0 text-xs text-indigo-300" aria-hidden="true">変更</span>
+		</button>
+		if f.Note != "" {
+			<p class="text-xs text-amber-300" data-testid="model-pick-note">{ f.Note }</p>
+		}
+	</div>
+}
+
+// Current is what a field shows of the model in it: the summary of its card, or the invitation to choose when there is none.
+templ Current(c modelcard.Card) {
+	if c.Name == "" {
+		<span class="text-neutral-400" data-testid="model-pick-empty-choice">モデルを選ぶ</span>
+	} else {
+		@modelcard.Summary(c)
+	}
+}
+
+// Host is the dialog of the model picker: one per page that has a Field, closed and empty. The request of the field's button fills BodyID and the script opens it
+// (static/src/components/model-pick). It lies above the modal of the settings screen when the field is in one. A click on the backdrop does not close it; Esc and
+// the close button do.
+templ Host() {
+	<dialog
+		id={ DialogID }
+		data-model-pick-dialog
+		aria-modal="true"
+		aria-labelledby={ TitleID }
+		class="m-auto max-h-[calc(100vh-4rem)] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70"
+	>
+		<div id={ BodyID }></div>
+		<p id={ FailureID } role="alert" class="px-5 pb-4 text-sm text-red-300" hidden></p>
+		<button
+			type="button"
+			data-mp-close
+			aria-label="閉じる"
+			class="absolute right-3 top-3 rounded-md p-1 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900"
+		>
+			@atoms.Icon(atoms.IconClose, "h-5 w-5")
+		</button>
+	</dialog>
+}
+
+// PickerBody is the body of the dialog for a field: the title, the bar and the results. The bar's answers replace the results (PickerResults).
+templ PickerBody(p Picker) {
+	<div class="flex flex-col gap-4 p-5" data-mp-picker data-testid="model-pick-picker">
+		<h2 id={ TitleID } class="pr-8 text-lg font-semibold">{ p.Title }</h2>
+		@Bar(p.Bar)
+		@PickerResults(p)
+	</div>
+}
+
+// PickerResults are the chips and the cards of the picker: what a changed condition draws again.
+templ PickerResults(p Picker) {
+	<div id={ p.ResultsID } class="flex flex-col gap-3" data-testid="model-pick-results">
+		@Summary(p.Bar)
+		if len(p.Cards) == 0 {
+			<p class="text-sm text-neutral-300" data-testid="model-pick-none">{ p.Empty }</p>
+		}
+		<ul role="list" class="grid gap-3 sm:grid-cols-2" data-mp-cards>
+			for _, c := range p.Cards {
+				@modelcard.PickItem(c)
+			}
+		</ul>
+	</div>
+}
+
+// PickerAnswer is the answer to a request of the bar of the picker: the results, and out of band the count and (for a chip) the panel.
+templ PickerAnswer(p Picker) {
+	@PickerResults(p)
+	@Oob(p.Bar)
+}

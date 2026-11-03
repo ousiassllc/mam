@@ -180,6 +180,15 @@ func TestCheckRefusesWhatTheServerWouldRefuse(t *testing.T) {
 	require.NoError(t, r.Check(), "the extension is not case sensitive")
 }
 
+// With several bad fields the message always names the first of them (it used to depend on a map's order).
+func TestCheckNamesTheFirstBadFieldEveryTime(t *testing.T) {
+	r := goodRequest()
+	r.VideoPath, r.AudioPath, r.FFmpegPath = "in.mp4", "in.wav", "ffmpeg"
+	for range 50 {
+		require.ErrorContains(t, r.Check(), "video_path")
+	}
+}
+
 func TestHealth(t *testing.T) {
 	f := serve(t, 200, `{"status":"ok"}`)
 	require.NoError(t, lipsync.Client{BaseURL: f.URL, Token: "t"}.Health(context.Background()))

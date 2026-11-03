@@ -20,8 +20,10 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/localllm"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 )
 
 // Source says where a list comes from.
@@ -46,6 +48,9 @@ const (
 	FallbackNotSignedIn Fallback = "not_signed_in"
 	// FallbackFailed means the provider did not answer, or answered something unusable.
 	FallbackFailed Fallback = "failed"
+	// FallbackLocalDown means the local server (llm.ProviderLocal) could not be read: it is not running, the base URL is wrong, or it refused the
+	// request. Unlike a vendor's failure it makes the provider unusable (#1008): a local server that does not answer has no models.
+	FallbackLocalDown Fallback = "local_unreachable"
 )
 
 // Message is why the candidates of mam are shown, as a short phrase for the user (empty for FallbackNone).
@@ -57,6 +62,8 @@ func (f Fallback) Message() string {
 		return "ChatGPT にログインしていません"
 	case FallbackFailed:
 		return "プロバイダーからモデルの一覧を取得できませんでした"
+	case FallbackLocalDown:
+		return "ローカルサーバーに接続できません"
 	}
 	return ""
 }
@@ -74,6 +81,9 @@ type List struct {
 	// Fallback is why Source is SourceDefault.
 	Fallback Fallback
 	Models   []Model
+	// Availability is whether the provider can be used now: false without an API key or a sign-in (#1013), true otherwise (also when the list could not be
+	// read: the key is there). A picker hides the models of a provider that cannot be used unless the user asks for them.
+	Availability modelfilter.Availability
 }
 
 // Has is whether model is one of the listed models.
@@ -104,6 +114,11 @@ type Options struct {
 	// BaseURLs replaces the API origin of a provider (default: llm.DefaultConfig()): the app gives the base_url of llm.json,
 	// which is where the calls of the Agents go too, so an API key is never sent to another origin than the one the user set.
 	BaseURLs map[llm.Provider]string
+	// LocalBaseURL is the address of the local server (llm.ProviderLocal) now: the settings screen can change it while the app runs, so it is asked
+	// at every read. Nil: BaseURLs, else the default.
+	LocalBaseURL func() string
+	// LocalManaged is the model of mam's own llama.cpp while the user has chosen it (managed true; see managed.go). Nil: never managed.
+	LocalManaged func(ctx context.Context) (models []string, managed bool)
 	// Logger receives why a list could not be read (never a token or a key); nil discards it.
 	Logger *slog.Logger
 	// Now replaces the clock (tests).
@@ -129,14 +144,17 @@ type entry struct {
 
 // Service lists the models of the providers.
 type Service struct {
-	o      Options
-	cfg    llm.Config
-	mu     sync.Mutex
-	cached map[llm.Provider]entry
+	o Options
+	// localHTTP is the client of the local server's list: the one the caller gave, else (nil) the one of every registered endpoint.
+	localHTTP httpclient.Doer
+	cfg       llm.Config
+	mu        sync.Mutex
+	cached    map[llm.Provider]entry
 }
 
 // New builds the Service.
 func New(o Options) *Service {
+	localHTTP := o.HTTP
 	if o.HTTP == nil {
 		o.HTTP = httpclient.New()
 	}
@@ -146,12 +164,18 @@ func New(o Options) *Service {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
-	return &Service{o: o, cfg: llm.DefaultConfig(), cached: map[llm.Provider]entry{}}
+	return &Service{o: o, localHTTP: localHTTP, cfg: llm.DefaultConfig(), cached: map[llm.Provider]entry{}}
 }
 
 // List is the models to offer for provider. It never fails because a provider could not be read: the candidates of mam
 // answer then (List.Fallback says why). Only an unknown provider is an error (ErrUnknownProvider).
 func (s *Service) List(ctx context.Context, provider string) (List, error) {
+	l, err := s.list(ctx, provider)
+	l.Availability = l.Fallback.availability()
+	return l, err
+}
+
+func (s *Service) list(ctx context.Context, provider string) (List, error) {
 	p := llm.Provider(provider)
 	if !slices.Contains(llm.Providers(), p) {
 		return List{}, fmt.Errorf("%w: %q", ErrUnknownProvider, provider)
@@ -177,10 +201,10 @@ func (s *Service) List(ctx context.Context, provider string) (List, error) {
 		if ctx.Err() != nil {
 			// The caller gave up (the picker was switched and htmx aborted the request): the provider did not fail, so
 			// nothing is kept and the next opening reads the list again.
-			return s.defaults(p, FallbackFailed), nil
+			return s.defaults(p, failedFallback(p)), nil
 		}
 		s.o.Logger.Warn("llm model list unavailable; showing the candidates of mam", "provider", p, "error", err)
-		e.ttl, e.list = failureTTL, s.defaults(p, FallbackFailed)
+		e.ttl, e.list = failureTTL, s.defaults(p, failedFallback(p))
 	}
 	if keep {
 		s.mu.Lock()
@@ -203,12 +227,27 @@ func (s *Service) account(p llm.Provider) (string, Fallback) {
 		}
 		return "", FallbackNotSignedIn
 	}
+	if p == llm.ProviderLocal {
+		// The key is optional and the address is a setting: a change of either is another account, so a list is never answered with the one
+		// of the server before.
+		key, _ := s.key(p)
+		sum := sha256.Sum256([]byte(s.baseURL(p) + "\x00" + key + "\x00" + s.managedKey()))
+		return hex.EncodeToString(sum[:8]), FallbackNone
+	}
 	key, ok := s.key(p)
 	if !ok {
 		return "", FallbackNoKey
 	}
 	sum := sha256.Sum256([]byte(key)) // the key itself is not kept
 	return hex.EncodeToString(sum[:8]), FallbackNone
+}
+
+// failedFallback is why the candidates of mam are shown when the list of p could not be read.
+func failedFallback(p llm.Provider) Fallback {
+	if p == llm.ProviderLocal {
+		return FallbackLocalDown
+	}
+	return FallbackFailed
 }
 
 func (s *Service) key(p llm.Provider) (string, bool) {
@@ -224,6 +263,9 @@ func (s *Service) fetch(ctx context.Context, p llm.Provider) (List, error) {
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 	var models []Model
+	if l, ok := s.managedList(ctx, p); ok {
+		return l, nil
+	}
 	switch p {
 	case llm.ProviderChatGPTSubscription, llm.ProviderChatGPTCodex:
 		m, err := s.o.ChatGPT.Models(ctx, p)
@@ -233,10 +275,10 @@ func (s *Service) fetch(ctx context.Context, p llm.Provider) (List, error) {
 		models = m
 	default:
 		key, ok := s.key(p)
-		if !ok {
+		if !ok && p != llm.ProviderLocal { // a local server needs no key
 			return List{}, credential.ErrNotFound
 		}
-		ids, err := llm.ListModels(ctx, s.o.HTTP, p, s.baseURL(p), key)
+		ids, err := s.fetchIDs(ctx, p, key)
 		if err != nil {
 			return List{}, err
 		}
@@ -244,13 +286,27 @@ func (s *Service) fetch(ctx context.Context, p llm.Provider) (List, error) {
 			models = append(models, Model{ID: id})
 		}
 	}
-	if len(models) == 0 {
+	if len(models) == 0 && p != llm.ProviderLocal { // a local server with no model pulled yet is connected: the list is empty, not failed
 		return List{}, errors.New("llmmodels: the provider listed no model")
 	}
 	return List{Provider: string(p), Source: SourceAPI, Models: models}, nil
 }
 
+// fetchIDs reads the ids of the models of an API-key provider, or of the local server (which has the client of every registered endpoint, not the
+// vendors' one, unless the caller gave one).
+func (s *Service) fetchIDs(ctx context.Context, p llm.Provider, key string) ([]string, error) {
+	if p == llm.ProviderLocal {
+		return localllm.ListModels(ctx, s.localHTTP, s.baseURL(p), key)
+	}
+	return llm.ListModels(ctx, s.o.HTTP, p, s.baseURL(p), key)
+}
+
 func (s *Service) baseURL(p llm.Provider) string {
+	if p == llm.ProviderLocal && s.o.LocalBaseURL != nil {
+		if u := s.o.LocalBaseURL(); u != "" {
+			return u
+		}
+	}
 	if u := s.o.BaseURLs[p]; u != "" {
 		return u
 	}

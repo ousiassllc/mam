@@ -10,21 +10,21 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
-	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/gptsovits"
-	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/musetalk"
-	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/synclabs"
 	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptcodex"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptsub"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/localllm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
+	"github.com/ousiassllc/mam/backend/internal/app/audiowire"
+	"github.com/ousiassllc/mam/backend/internal/app/nodewire"
+	"github.com/ousiassllc/mam/backend/internal/app/recoverwork"
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
@@ -38,12 +38,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/service/locallipsync"
+	"github.com/ousiassllc/mam/backend/internal/service/llamaserver"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
-	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
-	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
+	"github.com/ousiassllc/mam/backend/internal/service/localspeech/irodoriwire"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/wfrefresh"
+	"github.com/ousiassllc/mam/backend/internal/service/voicetrain/voicetrainwire"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
@@ -105,9 +107,12 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		return nil, nil, nil, err
 	}
 	keys := credential.NewKeyring()
+	llmPath, llmPinned := cfg.LLMSettingsFile()
+	llmLocal := llmlocal.New(llmPath, llmPinned, keys, nil)
 	llmBackends := llm.NewBackends(llmCfg, keys, nil)
-	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
-	chatgptcodex.Add(llmBackends, llmCfg, gpt.Codex())       // the same plan through the Codex app-server (workspace accounts)
+	localllm.Add(llmBackends, keys, nil, llmLocal.BaseURL, localllm.WithManaged(llmLocal)) // the local OpenAI-compatible server (#1008); its address applies at once; or mam's own llama.cpp
+	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil)                               // the ChatGPT plan provider; its sign-in is not an API key
+	chatgptcodex.Add(llmBackends, llmCfg, gpt.Codex())                                     // the same plan through the Codex app-server (workspace accounts)
 	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
 
 	// The saved ComfyUI workflows are models of the settings: the routes of models.json may name them.
@@ -130,6 +135,9 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		StagingDir:   filepath.Join(cfg.AssetsDir(), ".staging"),
 		ChatGPTImage: chatgptimage.New(gpt, chatgptimage.Options{}), ChatGPTImageEnabled: gpt.ImageEnabled,
 		Prepare: func(ctx context.Context, endpoint string) error {
+			if err := llmLocal.BeforeGeneration(ctx); err != nil {
+				logger.Warn("unloading the local LLM failed; generating anyway", "err", err) // best effort: it only frees GPU memory
+			}
 			if m := manager.Load(); m != nil {
 				return m.Prepare(ctx, endpoint)
 			}
@@ -170,18 +178,25 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	}
 
 	jobTable := repository.NewJobRepository(db)
-	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger})
+	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger, Explain: mmview.Failure})
 	// The model manager and the local runtimes are built before the services: the Audio Director speaks with GPT-SoVITS through them.
 	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, cfg.DataDir, logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	manager.Store(mgr)
-	nodeSvc, installNext := newModelNodes(jobs, jobTable, mgr, logger) // the custom nodes' jobs first, the runtimes' wrap them
-	rts, err := newLocalRuntimes(jobs, jobTable, installNext, logger)
+	nodeSvc, installNext := nodewire.New(jobs, jobTable, mgr, logger) // the custom nodes' jobs first, the runtimes' wrap them
+	var voiceRoot atomic.Pointer[string]                              // the directory of the trained voices, known once the services are built
+	rts, err := newLocalRuntimes(jobs, jobTable, installNext, voicetrainwire.Env(func() string {
+		if p := voiceRoot.Load(); p != nil {
+			return *p
+		}
+		return ""
+	}), logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	llmLocal.SetManaged(llamaserver.Server{Runtime: rts, MakeRoom: irodoriwire.Guard(mgr).MakeRoom}) // "この PC の llama.cpp を使う" (#1008)
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
 	services := service.New(service.Deps{
@@ -197,14 +212,18 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		Judge:         judging.config,
 		Jev:           shadow,
 		Media:         previews,
-		Audio:         audioProviders(keys, rts, previews),
+		Audio:         audiowire.Providers(keys, rts, mgr, previews),
 		AudioSettings: newAudioSettings(cfg, rts, keys), // read at every run
 	})
 	services.LocalModels = localModels
-	services.LLMClient = reasoning
+	services.LLMClient, services.LLMLocal = reasoning, llmLocal
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
 	services.ModelManager = mgr
 	services.LocalRuntimes = rts
+	root := services.VoiceRef.WeightsRoot()
+	voiceRoot.Store(&root)
+	services.VoiceTrain = voicetrainwire.New(rts, mgr, services.VoiceRef, previews, cfg.AssetsDir(), logger)
+	closers = append(closers, services.VoiceTrain.Close) // a training in flight is cancelled and its files removed; before the runtimes close
 	services.ModelNodes = nodeSvc
 	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
 	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
@@ -214,7 +233,10 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	services.Gentest = newGentest(cfg, db, jobs, models, services, prompttranslate.FromClient(reasoning), imagematch.FromClient(reasoning, judging.engine(), models.Config().Gentest.Face()), judging.engine(), logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
-	if err := recoverWork(ctx, services, jobs, logger); err != nil {
+	// Before any job runs: a runtime install that the queue resumes is using the directories this cleans.
+	rts.CleanLeftovers()
+	services.VoiceRef.CleanFinetunes(ctx) // the weights a stop in the middle of a keep left, before any training can start
+	if err := recoverwork.Run(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err
 	}
 	services.Gentest.OnStartup(ctx) // after the queue failed the interrupted jobs: settles the results they left
@@ -225,55 +247,6 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	wfrefresh.Refresh(ctx, localModels, mgr, catalog.Default(), modelmanager.BundledEndpoint, logger.Warn) // after the endpoint is registered: the workflows the catalog got after an install (#990), then the old copies
 	rts.OnStartup(ctx)
 	return services, db, release, nil
-}
-
-// recoverWork cleans up after an abnormal termination: Shots left GENERATING / REPAIRING are released
-// before their jobs are failed, the Shots whose job the queue then failed (a judge job out of attempts,
-// a job without handler) are released after it, and the editing follow-ups that the stop left undone are
-// woken.
-func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue.Queue, logger *slog.Logger) error {
-	released, err := services.Recover(ctx)
-	if err != nil {
-		return fmt.Errorf("recover shots: %w", err)
-	}
-	if released > 0 {
-		logger.Warn("released shots interrupted while generating", "count", released)
-	}
-	resumed, failed, err := jobs.Recover(ctx)
-	if err != nil {
-		return fmt.Errorf("recover jobs: %w", err)
-	}
-	// A job the queue failed will never run its handler, which is what releases its Shot.
-	released, err = services.Recover(ctx)
-	if err != nil {
-		return fmt.Errorf("recover shots of failed jobs: %w", err)
-	}
-	if released > 0 {
-		logger.Warn("released shots whose job failed at recovery", "count", released)
-	}
-	if resumed+failed > 0 {
-		logger.Warn("recovered unfinished jobs after abnormal termination", "resumed", resumed, "failed", failed)
-	}
-	// A Reshoot round that was ready, or an AUTO Project that waits for its editing stage, when the
-	// process stopped has no job change or Take selection left to wake the worker.
-	services.Editor.ResumeEditing()
-	return nil
-}
-
-// audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects; API key "elevenlabs"),
-// Sync Labs (Lip Sync; API key "synclabs") and the local voice and lip sync, GPT-SoVITS and MuseTalk 1.5 of the local runtime manager,
-// which a run may choose instead of ElevenLabs' TTS and Sync Labs. A runtime need not be installed: the local provider reports that when
-// a run chooses it. The lip sync is told the ffmpeg of tools, the one the Director runs (nil: none; the Director is not available then either).
-func audioProviders(keys credential.Store, rts *localruntime.Service, tools *media.Tools) audiodirector.Providers {
-	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
-	p.LipSync = synclabs.New(synclabs.Config{}, keys, nil)
-	p.LocalSpeech = gptsovits.New(localspeech.Server{Runtime: rts}, gptsovits.Config{}, nil)
-	lip := musetalk.Config{}
-	if tools != nil {
-		lip.FFmpegPath = tools.FFmpegPath()
-	}
-	p.LocalLipSync = musetalk.New(locallipsync.Runner{Runtime: rts}, lip)
-	return p
 }
 
 // settingsFileToLoad is the path to hand to llm.LoadConfig / configcheck.Load: a pinned file (the

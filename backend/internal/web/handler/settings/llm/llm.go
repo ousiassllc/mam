@@ -33,9 +33,9 @@ const (
 
 // SectionData is the saved assignment as the category shows it (the page handler of the settings screen calls it). It is
 // what the next start runs with, not what runs now.
-func SectionData(svc *llmassign.Service) view.Data {
+func SectionData(svc *llmassign.Service, models *llmmodels.Service) view.Data {
 	v := svc.View()
-	d := view.Data{Providers: v.Providers, Pinned: v.Pinned, Problem: v.Problem, MaxModelLength: llmassign.MaxModelBytes}
+	d := view.Data{Pinned: v.Pinned, Problem: v.Problem, MaxModelLength: llmassign.MaxModelBytes}
 	for _, e := range v.Entries {
 		if e.Unused {
 			d.Unused = append(d.Unused, rowOf(e))
@@ -43,7 +43,30 @@ func SectionData(svc *llmassign.Service) view.Data {
 			d.Rows = append(d.Rows, rowOf(e))
 		}
 	}
+	d.Warnings = warnings(v, models)
 	return d
+}
+
+// warnings are the saved routes that name a provider that cannot be used now (no API key, not signed in): llmmodels.Service.Warnings, with the screen that fixes each (#1013).
+// A route that is saved stays; the warning only says so.
+func warnings(v llmassign.View, models *llmmodels.Service) []view.Warning {
+	if models == nil {
+		return nil
+	}
+	var targets []llmmodels.Target
+	for _, e := range v.Entries {
+		if e.Unused {
+			continue
+		}
+		targets = append(targets,
+			llmmodels.Target{Agent: e.Label, Role: "primary", Provider: e.Route.Primary.Provider, Model: e.Route.Primary.Model},
+			llmmodels.Target{Agent: e.Label, Role: "fallback", Provider: e.Route.Fallback.Provider, Model: e.Route.Fallback.Model})
+	}
+	var out []view.Warning
+	for _, w := range models.Warnings(targets) {
+		out = append(out, view.Warning{Message: w.Message, Route: w.Availability.Route})
+	}
+	return out
 }
 
 func rowOf(e llmassign.Entry) view.Row {
@@ -82,7 +105,7 @@ func Edit(svc *llmassign.Service, models *llmmodels.Service, page gin.HandlerFun
 		case v.Pinned:
 			settingshttp.Render(c, http.StatusConflict, modal.Notice(e.Label+" の LLM", pinnedReason))
 		default:
-			settingshttp.Render(c, http.StatusOK, view.Modal(form(c.Request.Context(), models, v, e)))
+			settingshttp.Render(c, http.StatusOK, view.Modal(form(c.Request.Context(), models, e, "")))
 		}
 	}
 }
@@ -132,14 +155,15 @@ func change(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, r
 	if typed != nil { // the refused modal is drawn again with what was typed
 		e.Route = *typed
 	}
-	f := form(c.Request.Context(), models, v, e)
+	f := form(c.Request.Context(), models, e, "")
 	var invalid *llmassign.InvalidError
 	status := http.StatusUnprocessableEntity
 	switch {
 	case errors.As(err, &invalid):
 		f.Error = invalid.Message
 		if invalid.Role != "" {
-			f.Blame = invalid.Role + "." + invalid.Field
+			f = form(c.Request.Context(), models, e, invalid.Role+"."+invalid.Field)
+			f.Error = invalid.Message
 		}
 	case errors.Is(err, llmassign.ErrPinned): // pinned between the view and the save
 		settingshttp.Render(c, http.StatusConflict, modal.Notice(e.Label+" の LLM", pinnedReason))
@@ -147,6 +171,9 @@ func change(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, r
 	default:
 		_ = c.Error(err)
 		status, f.Error = http.StatusInternalServerError, writeFailed
+	}
+	if f.Error != "" && f.Blame == "" { // a refusal that blames no field leaves the focus to the alert
+		f.Primary.Field.Autofocus = false
 	}
 	settingshttp.Render(c, status, view.Modal(f))
 }
@@ -165,27 +192,27 @@ func formTarget(c *gin.Context, role string) llmassign.Target {
 // "<agent>.primary.model", "<agent>.fallback.provider", "<agent>.fallback.model") and answers with the category's table:
 // 200 with the notice, or 422 with the reason when it cannot be saved (the file is then untouched). The screen itself saves
 // one Agent at a time (SaveAgent); this is for the MCP tools' and the tests' whole saves.
-func Save(svc *llmassign.Service) gin.HandlerFunc {
+func Save(svc *llmassign.Service, models *llmmodels.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		routes := map[string]llmassign.Route{}
 		for _, a := range llmassign.Agents() {
 			routes[a] = llmassign.Route{Primary: formTarget(c, a+".primary"), Fallback: formTarget(c, a+".fallback")}
 		}
-		answer(c, svc, svc.Save(routes), "保存しました。"+appliedNow)
+		answer(c, svc, models, svc.Save(routes), "保存しました。"+appliedNow)
 	}
 }
 
 // Reset drops the saved assignment (DELETE /settings/llm), so that the defaults apply from the next start, and answers with
 // the table.
-func Reset(svc *llmassign.Service) gin.HandlerFunc {
+func Reset(svc *llmassign.Service, models *llmmodels.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		answer(c, svc, svc.Reset(), "既定に戻しました。"+appliedNow)
+		answer(c, svc, models, svc.Reset(), "既定に戻しました。"+appliedNow)
 	}
 }
 
 // answer renders the table after an operation on the whole assignment.
-func answer(c *gin.Context, svc *llmassign.Service, err error, notice string) {
-	d := SectionData(svc)
+func answer(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, err error, notice string) {
+	d := SectionData(svc, models)
 	status := http.StatusOK
 	var invalid *llmassign.InvalidError
 	switch {
@@ -207,9 +234,8 @@ func answer(c *gin.Context, svc *llmassign.Service, err error, notice string) {
 // request that is not HTMX.
 func Register(engine *gin.Engine, svc *llmassign.Service, models *llmmodels.Service, page gin.HandlerFunc) {
 	engine.GET(paths.LLMAgentEdit(":agent"), Edit(svc, models, page))
-	engine.GET(paths.LLMModelField(":agent", ":role"), ModelField(svc, models, page))
 	engine.PUT(paths.LLMAgent(":agent"), SaveAgent(svc, models))
 	engine.DELETE(paths.LLMAgent(":agent"), ResetAgent(svc, models))
-	engine.PUT(paths.LLMSettings(), Save(svc))
-	engine.DELETE(paths.LLMSettings(), Reset(svc))
+	engine.PUT(paths.LLMSettings(), Save(svc, models))
+	engine.DELETE(paths.LLMSettings(), Reset(svc, models))
 }

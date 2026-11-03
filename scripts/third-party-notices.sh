@@ -11,6 +11,8 @@
 #     pinned release, committed in build/windows/onnxruntime/ (scripts/fetch-onnxruntime.sh pins the version and refuses
 #     a zip whose two files differ from the committed ones)
 #   - scripts/third-party-notices-musetalk.md: the MuseTalk section (text that is written by hand)
+#   - scripts/third-party-notices-irodori.md: the Irodori-TTS section and its weights (text that is written by hand, with the Python packages)
+#   - scripts/third-party-notices-llamacpp.md: the llama.cpp section and the weights of the local LLMs (text that is written by hand)
 #   - scripts/third-party-notices-poses.md: the Shisei pose library and VNCCS_Utils sections (text that is written by hand)
 # Usage: scripts/third-party-notices.sh [OUTPUT]      OUTPUT defaults to THIRD_PARTY_NOTICES.md in the repository root
 # Needs: go, node, and `npm ci --prefix static` done. Run it again when go.mod or static/package-lock.json changes.
@@ -155,7 +157,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 - インストーラーが `mam.exe` の隣に置く ONNX Runtime の DLL（`onnxruntime.dll`・`onnxruntime_providers_shared.dll`。MIT、Microsoft）: 顔の同一性の数値評価に使います。取り込んだ版の `LICENSE` と、Microsoft が付ける第三者の通知 `ThirdPartyNotices.txt` の全文を載せています（`build/windows/onnxruntime/` にある写しで、`scripts/fetch-onnxruntime.sh` が固定した版のリリースと同じ内容であることを確かめます）。ONNX Runtime を Go から呼ぶバインディング（`github.com/shota3506/onnxruntime-purego`、MIT）と、その下の `github.com/ebitengine/purego`（Apache-2.0）は、上の Go モジュールに入っています。バインディングは、Windows 対応の修正（DLL の読み込みとモデルのパスの UTF-16 化）の 1 コミットだけを足した `github.com/aubs3993/onnxruntime-purego` のコミットに `go.mod` の `replace` で差し替えています（上の「版」は元のモジュールのもので、`LICENSE` は同じ MIT です）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
-開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
+開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Irodori-TTS・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
 
 ## 一覧
 
@@ -207,11 +209,15 @@ MAM のモデルマネージャーは、利用者の操作で ComfyUI のポー�
 MAM のローカルランタイム管理（Issue #918）は、利用者の操作で GPT-SoVITS（声のクローン・音声合成。公式の Windows 統合パッケージ `GPT-SoVITS-v2pro-20250604`、コードのタグ `20250606v2pro`）を公式の配布先（Hugging Face の `lj1995/GPT-SoVITS-windows-package`、コミット固定）から取得し、MAM の実行ファイルと同じ場所の `localai\gpt-sovits` ディレクトリに展開して、別のプロセス（公式の `api_v2.py` を MAM 自身の起動用スクリプト経由で読み込み、起動のたびに作る合言葉を付けた要求だけに答える形で、`127.0.0.1` だけで待ち受け）として起動します。GPT-SoVITS のコードは MIT ライセンスで、**MAM のインストーラー・ポータブル版・リリースには GPT-SoVITS のバイトを一切含めません**。MAM は GPT-SoVITS のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。対応するのは Windows（x64）と NVIDIA の GPU だけで、それ以外の環境では導入せず、理由を表示します。
 
 - GPT-SoVITS のライセンス（MIT）とソースコード: <https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro>（ライセンス文は <https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE>。取得するパッケージは <https://huggingface.co/lj1995/GPT-SoVITS-windows-package> のファイルで、SHA-256 と大きさを MAM のカタログに固定して検証します）。
-- 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**それぞれのライセンスと商用利用の可否は、一覧を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。重みごとの出典とライセンスは、次の節に載せ、モデルマネージャーの画面にも表示します。
+- 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**カタログに固定した重み・依存ファイルのライセンスは、下の「GPT-SoVITS と MuseTalk の重み・依存ファイル」の節の表に載せ、モデルマネージャーの画面にも表示します。パッケージに入っているそれ以外のもの（v3・v4 の重み、BigVGAN、v2Pro・sv のモデル、Python のパッケージ）は、ライセンスと商用利用の可否を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。
 
 EOF
   # The MuseTalk section is a file of its own: it lists the Python packages of the environment mam assembles (a long table).
   cat scripts/third-party-notices-musetalk.md
+  # The Irodori-TTS section is a file of its own too (the Python packages of the environment mam assembles, and its weights).
+  cat scripts/third-party-notices-irodori.md
+  # The llama.cpp section (the local LLM runtime and its GGUF weights) is a file of its own too.
+  cat scripts/third-party-notices-llamacpp.md
   cat <<'EOF'
 ## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
 
@@ -231,7 +237,7 @@ MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS 
 | chinese-roberta-wwm-ext-large の設定 | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
 | chinese-roberta-wwm-ext-large のトークナイザー | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
 | chinese-roberta-wwm-ext-large の重み | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
-| fastText の言語判定モデル（lid.176） | <https://fasttext.cc/docs/en/language-identification.html> | [CC BY-SA 3.0（fastText の言語判定モデル）](https://fasttext.cc/docs/en/language-identification.html) | 可 |
+| fastText の言語判定モデル（lid.176） | <https://fasttext.cc/docs/en/language-identification.html> | [CC BY-SA 3.0（fastText の言語判定モデル）](https://fasttext.cc/docs/en/language-identification.html) | 可（CC BY-SA 3.0: 出典の表示と、同じ条件での共有が条件） |
 | NLTK の cmudict（英語の発音辞書） | <https://github.com/nltk/nltk_data> | [CMU Pronouncing Dictionary の利用条件](https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/index.xml) | 可 |
 | NLTK の Averaged Perceptron Tagger（英語の品詞推定） | <https://github.com/nltk/nltk_data> | [MIT License（Averaged Perceptron Tagger）](https://github.com/sloria/textblob-aptagger) | 可 |
 | Open JTalk の辞書（日本語の読みと音の並び） | <https://github.com/r9y9/pyopenjtalk> | [BSD 3-Clause（Open JTalk の辞書）](https://github.com/r9y9/pyopenjtalk/blob/master/LICENSE.md) | 可 |

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // InstallState is where the engine download stands.
@@ -96,11 +97,11 @@ func (s *Service) StartInstall() (started bool, err error) {
 		return abort(err)
 	}
 	s.srv.Stop() // the files are replaced: the engine must not be running
-	go s.runInstall(ctx)
+	go s.runInstall(ctx, s.works.Begin(worktrack.Record{Kind: worktrack.KindCodexInstall, Subject: "Codex"}, "Codex をダウンロードしています"))
 	return true, nil
 }
 
-func (s *Service) runInstall(ctx context.Context) {
+func (s *Service) runInstall(ctx context.Context, work *worktrack.Run) {
 	defer s.install.wg.Done()
 	err := s.installer.Install(ctx, func(p engine.Phase, done, total int64) {
 		pct := 0
@@ -117,6 +118,7 @@ func (s *Service) runInstall(ctx context.Context) {
 		s.mu.Lock()
 		s.install.InstallStatus = InstallStatus{State: InstallRunning, Phase: string(p), Percent: pct, Done: done, Total: total, Message: msg}
 		s.mu.Unlock()
+		work.Progress(pct, msg)
 	})
 	// Starts are refused while the state is running: this clears the failed status those refusals left.
 	s.srv.Stop()
@@ -126,13 +128,20 @@ func (s *Service) runInstall(ctx context.Context) {
 	switch {
 	case err == nil:
 		s.install.InstallStatus = InstallStatus{State: InstallSucceeded, Percent: 100, Message: "導入しました"}
+		work.Succeed()
 	case errors.Is(err, context.Canceled):
 		s.install.InstallStatus = InstallStatus{State: InstallFailed, Error: "中断しました。もう一度導入すると、ダウンロード済みの分から再開します"}
+		work.Cancel()
 	default:
 		s.opts.Logger.Warn("codex engine install failed", "err", sanitize(err.Error()))
 		s.install.InstallStatus = InstallStatus{State: InstallFailed, Error: fmt.Sprintf("Codex を導入できませんでした: %s", sanitize(err.Error()))}
+		work.Fail(s.install.Error)
 	}
 }
+
+// Works is the installs of this process, for the job list (worktrack.Source): the one that runs and the latest that ended. It is
+// memory only: a restart forgets them.
+func (s *Service) Works() []worktrack.Record { return s.works.Works() }
 
 // CancelInstall stops an install in progress; the part file stays, so that installing again resumes.
 func (s *Service) CancelInstall() {

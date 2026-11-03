@@ -18,6 +18,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
@@ -157,20 +158,20 @@ func testCatalog(h *Host) *catalog.Catalog {
 		},
 		Models: []catalog.Model{
 			{
-				ID: "m-a", Name: "A", Kind: localcfg.MediaImage, Tier: catalog.TierStandard, Description: "d", Files: []catalog.File{cf(CkptA)}, VRAM: vram,
+				ID: "m-a", Name: "A", Kind: localcfg.MediaImage, Tier: catalog.TierStandard, Description: "d", Traits: traits.Traits{ParamsB: 2.6, ParamsLabel: "2.6B（UNet）", Speed: traits.Standard}, Files: []catalog.File{cf(CkptA)}, VRAM: vram,
 				License: lic("apache-2.0", modellicense.Yes), Workflows: []catalog.Workflow{{Name: "wf-a", Template: "txt2img-sdxl"}, {Name: "wf-a-i2i", Template: "img2img-sdxl"}},
 			},
 			{
-				ID: "m-b", Name: "B", Kind: localcfg.MediaVideo, Tier: catalog.TierStandard, Description: "d", Files: []catalog.File{cf(UnetB), cf(VaeBC)}, VRAM: vram,
+				ID: "m-b", Name: "B", Kind: localcfg.MediaVideo, Tier: catalog.TierStandard, Description: "d", Traits: traits.Traits{ParamsB: 5, ParamsLabel: "5B", Speed: traits.Standard}, Files: []catalog.File{cf(UnetB), cf(VaeBC)}, VRAM: vram,
 				License: lic("apache-2.0", modellicense.Yes), Workflows: []catalog.Workflow{{Name: "wf-b", Template: "txt2video-wan22-5b"}},
 			},
 			{
-				ID: "m-c", Name: "C", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, Description: "d", Files: []catalog.File{cf(ClipC), cf(VaeBC)}, VRAM: vram,
+				ID: "m-c", Name: "C", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, Description: "d", Traits: traits.Traits{ParamsB: 12, ParamsLabel: "12B", Speed: traits.Fast}, Files: []catalog.File{cf(ClipC), cf(VaeBC)}, VRAM: vram,
 				License: lic("non-commercial", modellicense.No), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-c", Template: "txt2img-flux-schnell"}},
 			},
 			{
 				// an adult LoRA model: hidden until the age is confirmed; its base file is shared with m-a
-				ID: "m-d", Name: "D", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, ContentRating: catalog.RatingAdult, Description: "d",
+				ID: "m-d", Name: "D", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, ContentRating: catalog.RatingAdult, Description: "d", Traits: traits.Traits{ParamsB: 14, ParamsLabel: "14B", Uncensored: true, Speed: traits.Slow},
 				TriggerWords: []string{"nsfwsks"}, Files: []catalog.File{cf(CkptA), mirror}, VRAM: vram,
 				License: lic("unspecified", modellicense.Unknown), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-d", Template: "txt2img-flux-dev-lora"}},
 			},

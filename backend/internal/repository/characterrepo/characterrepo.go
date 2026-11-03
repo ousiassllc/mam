@@ -79,18 +79,52 @@ func refuseUsedName(ctx context.Context, tx *sql.Tx, name, query string, args ..
 	return rows.Err()
 }
 
+// DraftsInWorld adds the Characters to the World State of the trunk of the Project in one step, as one new version, but only when the
+// trunk has no Character at all (a Character the planning made, one made by hand, or a draft made before): it reports whether it
+// added them. This is what makes the drafts of the attached images (#1022) not grow when the planning stops again. The caller marks the
+// rows (Draft) and chooses their IDs and names. repository.ErrNotFound when the Project does not exist.
+func DraftsInWorld(ctx context.Context, world *repository.WorldRepository, projectID string, cs []domain.WorldCharacter) (bool, error) {
+	added := false
+	err := world.EditWorld(ctx, projectID, "", func(ctx context.Context, tx *sql.Tx) error {
+		if err := mustExist(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
+			return err
+		}
+		var n int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM character WHERE project_id = ? AND branch_id IS NULL`, projectID).Scan(&n); err != nil {
+			return err
+		}
+		if n > 0 || len(cs) == 0 {
+			return errNothingToAdd
+		}
+		for _, c := range cs {
+			if err := insert(ctx, tx, insertInWorld, c, projectID, nil); err != nil {
+				return err
+			}
+		}
+		added = true
+		return nil
+	})
+	if errors.Is(err, errNothingToAdd) {
+		return false, nil
+	}
+	return added, err
+}
+
+// errNothingToAdd stops EditWorld before it appends a version: the rollback of its transaction is the way out of it.
+var errNothingToAdd = errors.New("characterrepo: nothing to add")
+
 // The two INSERTs differ in the columns that say whose the row is (the Project and its Branch, or the Series).
 const (
-	insertInWorld = `INSERT INTO character (project_id, branch_id, id, name, hairstyle, wardrobe, voice, personality, face_reference_asset_id, body_reference_asset_id)
+	insertInWorld = `INSERT INTO character (project_id, branch_id, id, name, hairstyle, wardrobe, voice, personality, face_reference_asset_id, body_reference_asset_id, draft)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	insertInCanon = `INSERT INTO character (series_id, id, name, hairstyle, wardrobe, voice, personality, face_reference_asset_id, body_reference_asset_id, draft)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	insertInCanon = `INSERT INTO character (series_id, id, name, hairstyle, wardrobe, voice, personality, face_reference_asset_id, body_reference_asset_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 )
 
 // insert writes the row with the query; ownerArgs are the values of its first columns.
 func insert(ctx context.Context, tx *sql.Tx, query string, c domain.WorldCharacter, ownerArgs ...any) error {
 	args := append(ownerArgs, c.ID, c.Name, nullIfEmpty(c.Hairstyle), nullIfEmpty(c.Wardrobe), nullIfEmpty(c.Voice), nullIfEmpty(c.Personality),
-		nullIfEmpty(c.FaceReferenceAssetID), nullIfEmpty(c.BodyReferenceAssetID))
+		nullIfEmpty(c.FaceReferenceAssetID), nullIfEmpty(c.BodyReferenceAssetID), c.Draft)
 	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("insert character: %w", err)
 	}

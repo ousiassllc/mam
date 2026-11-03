@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicetrainpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -19,6 +20,8 @@ type Data struct {
 	Episodes []domain.Project
 	// Templates are the Brand Templates a new Episode can start from.
 	Templates []domain.BrandTemplate
+	// Images are the Library images of the Episodes that a new Character can take as its face or body.
+	Images []molecules.CharacterImageOption
 }
 
 var seriesFieldLabels = map[string]string{
@@ -29,13 +32,14 @@ func seriesCharacterValues(c domain.WorldCharacter) map[string]string {
 	return map[string]string{"hairstyle": c.Hairstyle, "wardrobe": c.Wardrobe, "voice": c.Voice, "personality": c.Personality}
 }
 
-// seriesCharacterCreate is the form that makes a canonical Character. A Series has no Reference Library, so the form has no image
-// selects: the face and the body are given from a Project's World State, or by create_character of the MCP.
+// seriesCharacterCreate is the form that makes a canonical Character. A Series has no Reference Library: the face and the body are chosen from
+// the Library images of its Episodes (both from the same Episode), or given later by create_character of the MCP.
 func seriesCharacterCreate(d Data) molecules.CharacterCreateData {
-	return molecules.CharacterCreateData{
-		DOMID: "series-create-character", URL: paths.Series(d.Series.ID, "characters"),
-		Note: "顔・全身の参照画像は、Series には Reference Library が無いため、ここでは選べません。Project の World State の登場人物に割り当てるか、MCP の create_character（reference_project_id）で渡してください。",
+	form := molecules.CharacterCreateData{DOMID: "series-create-character", URL: paths.Series(d.Series.ID, "characters"), Images: d.Images}
+	if len(d.Images) == 0 {
+		form.Note = "顔・全身の参照画像は、Episode の Reference Library に「キャラクター」の画像を登録すると選べます（Series には Reference Library が無く、Episode の画像から選びます）。"
 	}
+	return form
 }
 
 func episodeLabel(p domain.Project) string {
@@ -193,6 +197,7 @@ templ seriesCharacterBlock(d Data, c domain.WorldCharacter) {
 	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 		@seriesCharacterForm(d, c)
 		@seriesVoiceForm(d, c)
+		@voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + c.ID, URL: paths.Series(d.Series.ID, "characters", c.ID, "voice-training")})
 	</div>
 }
 

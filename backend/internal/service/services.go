@@ -19,11 +19,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
+	"github.com/ousiassllc/mam/backend/internal/service/voicetrain"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
@@ -91,6 +93,8 @@ type Services struct {
 	Gentest       *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
 	Workflows     *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
 	VoiceRef      *voicerefsvc.Service  // the reference voice of a Character (F-20, F-29) and the speaker -> voice lookup
+	VoiceTrain    *voicetrain.Service   // the fine-tuning of a Character's voice (#936): its clips, its trainings; the app sets it
+	LLMLocal      *llmlocal.Service     // the local OpenAI-compatible LLM server's address and key (#1008); the app sets it
 	LLMClient     *llm.Client           // the Reasoning LLM Adapter the Agents call; the app sets it (a saved LLM assignment is applied to it at once)
 }
 

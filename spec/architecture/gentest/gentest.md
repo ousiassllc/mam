@@ -32,7 +32,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | `free` | ローカルのモデル（#831・#833・#834）。0 USD。「無料（ローカル）」と出す | 0 として入る |
 | `unknown` | ChatGPT サブスクと、単価を持たないクラウドモデル | **入れない**（件数・モデルを `unknown_items`・`unknown_models` と注記で知らせる） |
 
-警告（`warnings`）: モデルが使えない入力画像は外して知らせる（`inputs_dropped`）、長さの丸め（`duration_snapped`）、モデルが作らない解像度・縦横比（失敗する）、単価なし、ネガティブをプロンプトに書き足す（`negative_folded`）、シード非対応（同じ入力を本数ぶん呼ぶ）、最初／最後のフレームと自由な参照の併用、参照が多すぎる。Runway で 1:1 かつ最初のフレームなしは、実行前に警告する（ベンダーが受け付けない組み合わせ）。
+警告（`warnings`）: モデルが使えない入力画像は外して知らせる（`inputs_dropped`。全部が使われないときは止める。§5.1）、長さの丸め（`duration_snapped`）、モデルが作らない解像度・縦横比（失敗する）、単価なし、ネガティブをプロンプトに書き足す（`negative_folded`）、シード非対応（同じ入力を本数ぶん呼ぶ）、最初／最後のフレームと自由な参照の併用、参照が多すぎる。Runway で 1:1 かつ最初のフレームなしは、実行前に警告する（ベンダーが受け付けない組み合わせ）。
 
 **上限**（`models.json` の `gentest`。`gentestcfg`）: `max_items`（既定 50）・`max_cost_usd`（既定 20。0 は上限なし）・`match_face`（プロンプトマッチの似てる度に顔を混ぜる `weight`（既定 0 = 混ぜない）・`floor`・`ceil`。[prompt-match.md](prompt-match.md)）。見積りの時点で `over_limit`（確認の画面は実行ボタンを無効にする）、`Run` でサーバー側でも拒否する（`max_items` は入力の誤り、コストは 409）。`models.json` が固定されているとき（`MAM_MODELS_PINNED`）は他の項目と同じく画面から変えられない。
 
@@ -137,11 +137,29 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **mam の異常終了**: ジョブは再開しない（生成は課金されるため）。起動時（`jobqueue.Recover` のあと）に `OnStartup` が、`queued`・`running` のまま残った結果を `failed`（理由「mam が停止したため中断されました（課金される生成は再開しません）」）にする。完了済みの結果は残る。24 時間以上前の入力のステージング（`_staging/`）も消す。
 - ジョブ自体が失敗するのは、バッチを始められないとき（入力画像のファイルが読めない等）だけ。その場合は未着手の結果をすべて `failed` にする。
 
+## 5.1 入力画像の検査（preflight。Issue #1009）
+
+方針: **モデルが受け付けない入力は、黙って捨てない。送る前に止めるか、はっきり警告する。** 検査は `service/gentest/inputs.go` の 1 組の関数で、`estimate`（`Estimate` と `Run` の両方が通る）が走らせる。画面の見積り、`estimate_generation_test`、`run_generation_test` は同じ `Service.Estimate` / `Run` を呼ぶので、**同じ検査・同じ文**になる（MCP と画面で別のチェックは持たない）。画面の入力欄の通知（動画）は同じ関数を `Service.CheckInputs(Request)` で、画像の中身を見ずに（フォーム入力中の、プロンプトやアップロードが未確定の状態で）呼ぶ。
+
+| 状態 | 扱い | コード（`apperr`） |
+|---|---|---|
+| **モデルが必ず使う入力がリクエストに無い**（`modelcatalog.Info.requires_inputs`: I2V のワークフローは `first_frame`。ワークフローの割り当てが `optional` でないもの。`localcfg.Workflow.RequiredImages`）。画像が 1 枚も無い／添えた画像の役割が違う（`reference` のまま） | **止める**（送らない。見積り・実行とも 422 / MCP `validation`） | `input_missing`（`param`: `first_frame` など）。原因は「「<モデル>」は最初のフレームの画像が必要です。添えた画像が「参照」になっています。「最初のフレーム」に変えてください。」（画像が無いときは「画像を添えて、役割を「最初のフレーム」にしてください。」）、直し方は `input_missing.remedy` |
+| **添えた画像が、選んだどのモデルにも 1 枚も使われない**（T2V に `first_frame`、参照画像 0 枚のモデル・自由参照 0 枚のモデルに参照画像、など） | **止める** | `input_unused`。原因は T2V なら「「<モデル>」は文章だけから作るモデルなので、添えた画像は使われません。」、直し方は「画像から作るなら、I2V（画像から動画）や参照画像に対応したモデルを選んでください。画像を使わずに作るなら、画像を外してから実行してください。」 |
+| **一部の画像だけ、あるモデルに使われない**（最後のフレームを使えないモデルに first + last、枚数超過、フレームと自由参照の併用、あるモデルだけ参照を使えない比較バッチ） | **警告のまま実行を許す**（`warnings` の `inputs_dropped` / `too_many_refs` / `frames_over_refs`。画面は確認の上に琥珀色の枠「使われない入力画像があります」、動画の入力欄の通知にも出す）。結果にそのモデルの**使われなかった入力**を記録する | — |
+
+境界の理由: 添えた画像が 1 枚も使われないバッチは、ほぼ確実に選び間違い（モデルかの役割）で、成功扱いの結果を作ると「画像が効いていない」と誤解される（#1009 の追記）ので止める。複数モデルの比較や、フレーム 2 枚のうち 1 枚だけ使えないモデルは、意図した使い方がありうるので警告に留め、結果ごとに何が使われなかったかを残す。画像モデルは、選んだモデルのうち 1 つでも使えば実行を許す（使えないモデルは `inputs_dropped` の警告と結果の記録）。
+
+**自動で役割を書き換えない**。`reference` 1 枚だけ `first_frame` しか受けないモデルへ回す処理は無い（止めて「「最初のフレーム」に変えてください」と言う）。変えてよいのは**初期値だけ**で、I2V（`requires_inputs` に `first_frame` があるモデル）を選んでいるあいだ、画面で行・ファイルを足したときの役割の初期値を `first_frame` にする（`Service.DefaultInputRole`。最初の 1 枚だけ。役割の select は見えており、利用者が選んだ役割は動かさない）。
+
+**使われなかった入力の記録**: `gentest_result.params`（JSON）の `unused_inputs[]`（`input_id`・`role`・`reason`）。列は足していない（マイグレーションなし）。`record.ResultView.unused_inputs` として `get_generation_test` / `get_generation_result` / `list_generation_results` に出る。結果の詳細に「使われなかった画像」の枠（画像・役割・理由）、結果のタイルに「画像 n 枚が未使用」のマーク。`used_inputs` は従来どおり渡した入力の ID。
+
+**入力に合わせたモデルの並べ替え**: `modelfilter.InputsOfRoles` / `modelfilter.PreferForInputs`（[../model-manager/model-filter.md](../model-manager/model-filter.md) §4。画像を添えたとき、使えるモデルを先に並べる安定ソート）。バックエンドの関数だけで、選択 UI は #1011 の画面が使う。
+
 ## 6. 入力画像
 
 入力は、アップロード（画面は見積り時に、MCP は `gentest_reference` で `_staging/` に置く）、プロジェクトのアセット・Reference Library の項目（`project_asset` / `reference_item`）、履歴の成功した画像結果（`history`）。選んだ画像は**バッチの `gentest_input` に複製**する（`origin` に元を記録）ので、元のプロジェクトや結果を後で消しても履歴は読める。画像は PNG・JPEG・WebP を中身で検査し、1 枚 20 MiB まで・1 バッチ 10 枚まで。
 
-動画の役割は `reference`（自由な参照）/ `first_frame` / `last_frame`。モデルの能力（`Capabilities`）で、使えない役割は**そのモデルからだけ外して警告**する。
+動画の役割は `reference`（自由な参照）/ `first_frame` / `last_frame`。モデルの能力（`Capabilities`）で、使えない役割は**そのモデルからだけ外して警告**する。ただし必須の入力が無い、または添えた画像が選んだどのモデルにも使われないときは、外さずに**送る前に止める**（§5.1）。
 
 **速さのモード（Issue #930・#991）**: リクエストの `speed_mode`（動画も画像も）（`fast` / `standard` など。省くと各モデルの既定）は、ComfyUI のワークフローが `speed_modes`（[local-models.md](../local-models.md) §3）を持つモデルだけに効く（動画の Wan 2.2 14B + LightX2V: `fast` = 4 ステップ・cfg 1、`standard` = LoRA なしの通常 20 ステップ・cfg 3.5。画像の Qwen-Image-Edit 2511 + Lightning: `standard` = 20 ステップ・cfg 4、`lightning-8` = 8 ステップ・cfg 1、`lightning-4` = 4 ステップ・cfg 1）。モードは `modelcatalog.Info.speed_modes`（`id`・`label`・`default`。#991 で動画の `video.speed_modes` から画像と共通のモデル直下へ移した）にあり、**steps・cfg はモードが決める**（#973 の決定。`sampling.steps`・`sampling.cfg` の `locked` が `speed_mode`。リクエストの steps・cfg・かんたんの品質は警告 `sampling_ignored` で使わず、画面は詳細設定のステップ数・CFG の欄を出さずに「速さのモードが決めるため、指定は使いません」と理由を出し、かんたんの品質の欄は「このモデルは速さのモードがステップ数・CFG を決めるため、品質は選べません」と言う）。画面は動画・画像どちらのフォームにも「速さ」の選択（`data-testid="gt-speed-mode"`。どれかのモデルが持つときだけ描く。選択肢は「モデルの既定」とモードのラベル）を、MCP は `list_generation_models` の `speed_modes` と `estimate_generation_test`・`run_generation_test` の `speed_mode` を出す。そのモードを持たないモデルは **警告 `speed_mode_unsupported`（拒否ではない）で既定のまま**作り、名前が `^[a-z0-9][a-z0-9-]{0,39}$` でなければ 400（`invalid`）。画像のフォームの選択肢は画像のモデルのモードだけ（動画のモードは出ない）。選んだモードは見積りの確認（hidden の `speed_mode`）を通って結果の `params.speed_mode` に残り、`get_generation_test` の結果の `speed_mode` に出る。見積りの ID（`estimate_id`）はリクエスト全体の要約なので、モードを変えると別の見積りになる。
 
@@ -155,7 +173,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 **ポーズの参照（Issue #985・#986）**: 画像の参照の役割に `pose`（ポーズだけ。画像のみ・動画には使えない）を足した。参照画像の体のポーズとカメラの角度だけを写し、絵柄・色・顔・髪・服・背景は写さない役割で、`edit` 方式のモデル（Qwen-Image 2.1 の `txt2img-qwen-image21`〔TextEncodeQwenImage21〕・Qwen-Image-Edit-2511〔EditPlus〕）が持つ（`localcfg` の `ModeEdit` の役割）。エンコーダーが画像に付ける番号を指す 1 文（「`<imageN>` はポーズの参照としてだけ使う: …」。`comfyui/stage.roleSentence`）をプロンプトに足し、ポーズの画像は `face`・`style` と同じく視覚の入力にだけ渡し、VAE を渡さない段では VAE の潜在（latent）を作らない（絵に写させないため。`stage.seenOnly`）。ただし**「全体」「編集対象」の画像が 1 枚でも同じ段にあると、エンコーダー全体に VAE を渡すため、顔・画風・ポーズの画像の画素も参照の潜在として入ることがある**（`TextEncodeQwenImage21`・`TextEncodeQwenImageEditPlus` は `vae` があると全ての画像を潜在にする。ComfyUI v0.42.1 の `nodes_qwen.py` を読んだ範囲。この混在の段の実際の挙動は GPU で確かめていない: `needs_real_device`）。役割を持たないモデルは、ほかの役割と同じく**全体の参照として使い、警告 `role_unsupported`（「ポーズ」と名指し）**を出す。「参照画像のポーズ・構図を真似させない」（`avoid_reference_pose`）は、`pose` の参照を持つ画像モデルでは、その参照を除いて数える（ポーズを写すのが目的の参照のため）。
 
-入力の出どころに `pose_library`（ポーズ集。`RefInput.source`、`ref` の値は `pose_library::<画像 ID>`、画像 ID は `std_P001_front` の形）を足した。ポーズ集は **Shisei**（`wquguru/shisei`。マネキンの線画。コードは Apache-2.0、画像は CC0 1.0）を、利用者が同意して導入したときだけ取得して使う（[model-manager/local-runtime.md](../model-manager/local-runtime.md) §12.9。mam は同梱しない）。`service/gentest/poses`（`Library`）が導入・一覧・絞り込み（文字・分類・アングル）・ファイルの解決を持ち、全年齢向け（`rating: general`）で線画のあるポーズだけを出す。未導入・ポーズ集が無い・ポーズ集にない画像は、入力の誤りとして理由と手順を日本語で拒否する。選んだ画像は他の出どころと同じく**バッチへ複製**し（`origin` は `{kind: "pose_library", id}`）、ポーズ集を消しても履歴の入力は読める。ポーズ集は画面（一覧の下の削除ボタン・導入中の進み具合）と MCP（`get_pose_library`・`install_pose_library`・`remove_pose_library`。実装は `mcp/tools/gentestposes`）から導入・状態・削除できる（Issue #994）。画面は入力画像の区画の「ポーズを選ぶ」から、導入の案内（出典・ライセンス・同意）か絞り込み付きの一覧を出す（[../../components/gentest-screen.md](../../components/gentest-screen.md)）。**ポーズの画面にも、選んでいるモデルの商用利用の可否（モデルカードと同じバッジと注意書き）を出す**（Qwen-Image 2.1・Noct Q は Qwen RESEARCH LICENSE で非商用）。
+入力の出どころに `pose_library`（ポーズ集。`RefInput.source`、`ref` の値は `pose_library::<画像 ID>`、画像 ID は `std_P001_front` の形。深度・法線マップは後ろに `.depth`・`.normal` を付けた `std_P001_front.depth` の形〔Issue #1020〕）を足した。ポーズ集は **Shisei**（`wquguru/shisei`。マネキンの線画と、ControlNet 用の深度・法線マップ。コードは Apache-2.0、画像は CC0 1.0）を、利用者が同意して導入したときだけ取得して使う（[model-manager/local-runtime.md](../model-manager/local-runtime.md) §12.9。mam は同梱しない）。`service/gentest/poses`（`Library`）が導入・一覧・絞り込み（文字・分類・アングル）・ファイルの解決を持ち、全年齢向け（`rating: general`）で線画のあるポーズだけを出す。未導入・ポーズ集が無い・ポーズ集にない画像は、入力の誤りとして理由と手順を日本語で拒否する。選んだ画像は他の出どころと同じく**バッチへ複製**し（`origin` は `{kind: "pose_library", id}`）、ポーズ集を消しても履歴の入力は読める。ポーズ集は画面（一覧の下の削除ボタン・導入中の進み具合）と MCP（`get_pose_library`・`install_pose_library`・`remove_pose_library`。実装は `mcp/tools/gentestposes`）から導入・状態・削除できる（Issue #994）。画面は入力画像の区画の「ポーズを選ぶ」から、導入の案内（出典・ライセンス・同意）か絞り込み付きの一覧を出す（[../../components/gentest-screen.md](../../components/gentest-screen.md)）。**ポーズの画面にも、選んでいるモデルの商用利用の可否（モデルカードと同じバッジと注意書き）を出す**（Qwen-Image 2.1・Noct Q は Qwen RESEARCH LICENSE で非商用）。
 
 **VNCCS PoseStudio（Issue #985・#993）**: ルート ①（T2I + LoRA）と ②（Edit）は、コアのノードだけの既存テンプレート（`txt2img-qwen-image21`・`txt2img-qwen-image-edit-2511`）と LoRA の差し込み（`lora_model_node`）で動く。ルート ③（3D 人形の画像でポーズを写す）は、**ノード無し**で、Shisei のポーズ集（`pose_library`。人形の画像）を 1 枚目の参照に、人物の画像を 2 枚目の参照に渡し、LoRA `MIUProject/VNCCS_PoseStudio_QI2.1`（V2。約 159 MB。ライセンスの記載なし）を重ねたモデル `qwen-image-21-vnccs-pose`（テンプレート `txt2img-qwen-image21-vnccs-pose`。作者のワークフローのプロンプト「replace the pose of <image 2> with the pose of <image 1>. keep the character of <image 2>」、強さ 1.0）で動く。Shisei の線画の人形との組み合わせの出来は実機で未確認。ルート ④（`VNCCS_PoseStudio` のノードで人形を動かす）は、追加ノード `vnccs-utils`（[model-manager/custom-nodes.md](../model-manager/custom-nodes.md) §2.1）が要るが、ノードがブラウザの画面でポーズを取り込むのを待つ作りで（`pose_image` の経路も画面が要る）、画面なしでポーズを渡す経路が無く、実行時の自動取得も固定できないため、**mam は提供しない**（導入できず、テンプレートも作らない。理由は custom-nodes.md §5.4）。ComfyUI の画面で作った人形の画像は、`pose` の役割の参照として渡せる。
 

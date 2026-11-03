@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -80,7 +81,7 @@ func Body(d Data) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(DetectID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 23, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 24, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -115,7 +116,7 @@ func Body(d Data) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = molecules.SettingsSection("ローカル音声・口パク", "声（GPT-SoVITS）と口パク（MuseTalk）をこの PC で作る実行環境を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。カードをタップすると、重みと依存ファイルの出典・ライセンス・ファイル一覧・SHA-256 が見られます。実行環境は mam とは別のプログラムで、公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。アンインストールすると、導入先も一緒に消えます。この PC で使えないときは、クラウド（ElevenLabs・Sync Labs）を選べます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = molecules.SettingsSection("ローカル音声・口パク・LLM", "声（GPT-SoVITS・Irodori-TTS）と口パク（MuseTalk）と文章（llama.cpp の LLM）をこの PC で作る実行環境を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。カードをタップすると、重みと依存ファイルの出典・ライセンス・ファイル一覧・SHA-256 が見られます。実行環境は mam とは別のプログラムで、公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。アンインストールすると、導入先も一緒に消えます。この PC で使えないときは、クラウド（ElevenLabs・Sync Labs）を選べます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -171,13 +172,17 @@ func Body(d Data) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(DialogID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 39, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 40, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" data-testid=\"mm-dialog\"></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = modelpick.Bar(d.Catalog.Filter).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

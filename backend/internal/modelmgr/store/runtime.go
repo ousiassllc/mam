@@ -47,6 +47,9 @@ func (l RuntimeLayout) CacheDir() string { return filepath.Join(l.Root, "cache")
 // TempDir is where the program writes temporary files (TEMP, TMP, TMPDIR), below Root for the same reason.
 func (l RuntimeLayout) TempDir() string { return filepath.Join(l.Root, "tmp") }
 
+// PIDPath is the pid file of the runtime process (see Layout.PIDPath).
+func (l RuntimeLayout) PIDPath() string { return filepath.Join(l.Root, "runtime.pid") }
+
 // LogPath is the log of the runtime process.
 func (l RuntimeLayout) LogPath() string { return filepath.Join(l.Root, "logs", "runtime.log") }
 
@@ -73,6 +76,10 @@ type RuntimeState struct {
 	// Files are the files of the runtime's weights and dependencies (the catalog's assets) whose SHA-256 mam checked, by their path
 	// below the environment directory: a file whose size and modification time still are these is not hashed again.
 	Files map[string]FileStamp `json:"files,omitempty"`
+	// Choice is the model of a runtime with choices that the user chose ("": the default one). Consents are the licenses of its models the user
+	// accepted, by the id of the license (the consent record of the model manager: the version that was shown and when).
+	Choice   string             `json:"choice,omitempty"`
+	Consents map[string]Consent `json:"consents,omitempty"`
 }
 
 // FileStamp is what a verified file looked like when it was verified.
@@ -87,6 +94,7 @@ func (s RuntimeState) clone() RuntimeState {
 		s.Installed = &r
 	}
 	s.Files = maps.Clone(s.Files)
+	s.Consents = maps.Clone(s.Consents)
 	return s
 }
 

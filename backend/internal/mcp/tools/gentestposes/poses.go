@@ -21,7 +21,7 @@ import (
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc}
 	mcpkit.Read(r, "get_pose_library",
-		"生成テストのポーズ集（Shisei。マネキンの線画）の状態と、導入済みならポーズの検索結果。installed=false のときは、取得元・ダウンロードの大きさ・ライセンス（商用利用の可否つき）を返す。導入済みなら query（名前・分類・番号 P001・英語。すべての語を含むもの）・series（std / upper）・class（分類名）で絞った poses[] を返す。画像 ID（images の値。std_P001_front の形）を run_generation_test の references に {source: pose_library, id, role: pose} として渡す / The state of the pose library and, when installed, its poses.",
+		"生成テストのポーズ集（Shisei。マネキンの線画と、ControlNet 用の深度・法線マップ）の状態と、導入済みならポーズの検索結果。installed=false のときは、取得元・ダウンロードの大きさ・ライセンス（商用利用の可否つき）を返す。導入済みなら query（名前・分類・番号 P001・英語。すべての語を含むもの）・series（std / upper）・class（分類名）で絞った poses[] を返す。画像 ID（images の値。std_P001_front の形）を run_generation_test の references に {source: pose_library, id, role: pose} として渡す。ControlNet（深度・法線のモデル）には depth_images・normal_images の値（std_P001_front.depth の形）を渡す。ある角度だけ載る / The state of the pose library and, when installed, its poses.",
 		h.get)
 	mcpkit.Write(r, "install_pose_library",
 		"ポーズ集（Shisei）をダウンロードして導入する。accepted は、get_pose_library が返したライセンス（画像は CC0 1.0）と取得元を利用者が確認して同意したときだけ true にする（false だと何も取得せず拒否する。画面の同意チェックと同じ）。固定したリリースをファイルごとに SHA-256 で検証する。終わるまで応答しない（約 20 MB）。導入済みなら何もしない / Download and install the pose library; accepted must be true once the user agreed to the licenses and the source.",
@@ -75,7 +75,10 @@ type Pose struct {
 	Class  string            `json:"class"`
 	Name   string            `json:"name"`
 	NameEN string            `json:"name_en"`
-	Images map[string]string `json:"images" jsonschema:"アングル（front / diag / side / above / below）→ 画像 ID。references の id に渡す"`
+	Images map[string]string `json:"images" jsonschema:"アングル（front / diag / side / above / below）→ 画像 ID（線画）。references の id に渡す"`
+	// DepthImages and NormalImages are the ControlNet control images of the same pose; only the angles that have one are listed.
+	DepthImages  map[string]string `json:"depth_images,omitempty" jsonschema:"アングル → 深度マップの画像 ID（ControlNet 深度用。ある角度だけ。std_P001_front.depth の形）。references の id に渡す"`
+	NormalImages map[string]string `json:"normal_images,omitempty" jsonschema:"アングル → 法線マップの画像 ID（ControlNet 法線用。ある角度だけ。std_P001_front.normal の形）。references の id に渡す"`
 }
 
 // Library is the state of the library.
@@ -114,13 +117,24 @@ func libraryOf(l *poses.Library, in Input) (Library, error) {
 		return Library{}, err
 	}
 	for _, p := range poses.Filter(all, poses.Query{Text: strings.TrimSpace(in.Query), Series: in.Series, Class: in.Class}) {
-		views := map[string]string{}
-		for a, id := range p.Views {
-			views[string(a)] = id
-		}
-		out.Poses = append(out.Poses, Pose{ID: p.ID, Series: p.Series, Class: p.Class, Name: p.Name, NameEN: p.NameEN, Images: views})
+		out.Poses = append(out.Poses, Pose{
+			ID: p.ID, Series: p.Series, Class: p.Class, Name: p.Name, NameEN: p.NameEN,
+			Images: byAngle(p.Views), DepthImages: byAngle(p.Maps[poses.Depth]), NormalImages: byAngle(p.Maps[poses.Normal]),
+		})
 	}
 	return out, nil
+}
+
+// byAngle is the pictures with the angles as strings (nil for none, so that the field is left out).
+func byAngle(m map[poses.Angle]string) map[string]string {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(m))
+	for a, id := range m {
+		out[string(a)] = id
+	}
+	return out
 }
 
 func (h handlers) get(_ context.Context, in Input) (Library, error) {

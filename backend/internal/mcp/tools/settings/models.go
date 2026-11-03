@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 
@@ -42,25 +43,49 @@ type ImageOption struct {
 	Model             string `json:"model"`
 	Fast              bool   `json:"fast" jsonschema:"高速版がある"`
 	AcceptsReferences bool   `json:"accepts_references" jsonschema:"参照画像を使う。false のモデルでは参照画像が捨てられる"`
+	ModelAvailability
+}
+
+// ModelAvailability is whether a model of the assignment can be used now (#1013), with the reason and the screen that fixes it.
+type ModelAvailability struct {
+	Available          bool   `json:"available" jsonschema:"このモデルを今使えるか。API キー未登録・未ログイン・ベンダーの停止中・成人向けのゲートなら false（割り当てはできるが、その生成は断られる）"`
+	UnavailableMessage string `json:"unavailable_message,omitempty" jsonschema:"使えない理由"`
+	SettingsRoute      string `json:"settings_route,omitempty" jsonschema:"直す画面の道すじ（例 /settings/api-keys）"`
+}
+
+func modelAvailabilityOf(a modelfilter.Availability) ModelAvailability {
+	return ModelAvailability{Available: a.Available, UnavailableMessage: a.Message, SettingsRoute: a.Route}
+}
+
+// UnusableRoute is a saved route that names a model that cannot be used now.
+type UnusableRoute struct {
+	Media         string `json:"media" jsonschema:"image / video"`
+	Key           string `json:"key" jsonschema:"画像の用途（new_reference など）か Quality Policy（fast など）"`
+	Role          string `json:"role" jsonschema:"primary または fallback"`
+	Model         string `json:"model"`
+	Message       string `json:"message" jsonschema:"使えない理由"`
+	SettingsRoute string `json:"settings_route,omitempty" jsonschema:"直す画面の道すじ"`
 }
 
 // VideoOption is a video model that can be chosen with the resolutions it may be assigned.
 type VideoOption struct {
 	Model       string   `json:"model"`
 	Resolutions []string `json:"resolutions"`
+	ModelAvailability
 }
 
 // ModelsSection is the "画像・動画モデル" section.
 type ModelsSection struct {
-	Available   bool          `json:"available" jsonschema:"false ならこのアプリにはモデルの割り当てがない"`
-	Pinned      bool          `json:"pinned" jsonschema:"起動オプションで設定ファイルが固定されていて、変更できない"`
-	Customized  bool          `json:"customized" jsonschema:"既定から変えた用途・Quality Policy がある"`
-	Problem     string        `json:"problem,omitempty" jsonschema:"設定ファイルを読めない理由。あるときは割り当てを示せない"`
-	Images      []ImageRoute  `json:"images"`
-	Policies    []PolicyRoute `json:"policies"`
-	ImageModels []ImageOption `json:"image_models"`
-	VideoModels []VideoOption `json:"video_models"`
-	GatedModels []string      `json:"gated_models" jsonschema:"年齢確認がオフのため使えない成人向けモデルで、割り当てがまだ指しているもの。選べず、生成は断られる。年齢確認をオンにするか、別のモデルに割り当て直す"`
+	Available   bool            `json:"available" jsonschema:"false ならこのアプリにはモデルの割り当てがない"`
+	Pinned      bool            `json:"pinned" jsonschema:"起動オプションで設定ファイルが固定されていて、変更できない"`
+	Customized  bool            `json:"customized" jsonschema:"既定から変えた用途・Quality Policy がある"`
+	Problem     string          `json:"problem,omitempty" jsonschema:"設定ファイルを読めない理由。あるときは割り当てを示せない"`
+	Images      []ImageRoute    `json:"images"`
+	Policies    []PolicyRoute   `json:"policies"`
+	ImageModels []ImageOption   `json:"image_models"`
+	VideoModels []VideoOption   `json:"video_models"`
+	Unusable    []UnusableRoute `json:"unusable_routes" jsonschema:"今の割り当てが、使えないモデル（API キー未登録・未ログインなど）を指しているもの。保存はできるが、その生成は断られる（#1013）"`
+	GatedModels []string        `json:"gated_models" jsonschema:"年齢確認がオフのため使えない成人向けモデルで、割り当てがまだ指しているもの。選べず、生成は断られる。年齢確認をオンにするか、別のモデルに割り当て直す"`
 }
 
 func modelsSection(svc *modelsettings.Service) ModelsSection {
@@ -79,7 +104,7 @@ func modelsSection(svc *modelsettings.Service) ModelsSection {
 func sectionOf(v modelsettings.View) ModelsSection {
 	out := ModelsSection{
 		Available: true, Pinned: v.Pinned, Customized: v.Customized,
-		Images: []ImageRoute{}, Policies: []PolicyRoute{}, ImageModels: []ImageOption{}, VideoModels: []VideoOption{}, GatedModels: []string{},
+		Images: []ImageRoute{}, Policies: []PolicyRoute{}, ImageModels: []ImageOption{}, VideoModels: []VideoOption{}, GatedModels: []string{}, Unusable: []UnusableRoute{},
 	}
 	for _, m := range v.Gated {
 		out.GatedModels = append(out.GatedModels, string(m))
@@ -95,10 +120,13 @@ func sectionOf(v modelsettings.View) ModelsSection {
 		})
 	}
 	for _, o := range v.ImageModels {
-		out.ImageModels = append(out.ImageModels, ImageOption{Model: string(o.Model), Fast: o.Fast, AcceptsReferences: o.AcceptsReferences})
+		out.ImageModels = append(out.ImageModels, ImageOption{Model: string(o.Model), Fast: o.Fast, AcceptsReferences: o.AcceptsReferences, ModelAvailability: modelAvailabilityOf(o.Availability)})
 	}
 	for _, o := range v.VideoModels {
-		out.VideoModels = append(out.VideoModels, VideoOption{Model: string(o.Model), Resolutions: append([]string{}, o.Resolutions...)})
+		out.VideoModels = append(out.VideoModels, VideoOption{Model: string(o.Model), Resolutions: append([]string{}, o.Resolutions...), ModelAvailability: modelAvailabilityOf(o.Availability)})
+	}
+	for _, u := range v.Unusable {
+		out.Unusable = append(out.Unusable, UnusableRoute{Media: u.Media, Key: u.Key, Role: u.Role, Model: string(u.Model), Message: u.Availability.Message, SettingsRoute: u.Availability.Route})
 	}
 	return out
 }

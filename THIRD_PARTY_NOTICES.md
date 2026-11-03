@@ -12,7 +12,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 - インストーラーが `mam.exe` の隣に置く ONNX Runtime の DLL（`onnxruntime.dll`・`onnxruntime_providers_shared.dll`。MIT、Microsoft）: 顔の同一性の数値評価に使います。取り込んだ版の `LICENSE` と、Microsoft が付ける第三者の通知 `ThirdPartyNotices.txt` の全文を載せています（`build/windows/onnxruntime/` にある写しで、`scripts/fetch-onnxruntime.sh` が固定した版のリリースと同じ内容であることを確かめます）。ONNX Runtime を Go から呼ぶバインディング（`github.com/shota3506/onnxruntime-purego`、MIT）と、その下の `github.com/ebitengine/purego`（Apache-2.0）は、上の Go モジュールに入っています。バインディングは、Windows 対応の修正（DLL の読み込みとモデルのパスの UTF-16 化）の 1 コミットだけを足した `github.com/aubs3993/onnxruntime-purego` のコミットに `go.mod` の `replace` で差し替えています（上の「版」は元のモジュールのもので、`LICENSE` は同じ MIT です）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
-開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
+開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Irodori-TTS・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
 
 ## 一覧
 
@@ -12985,13 +12985,13 @@ MAM のモデルマネージャーは、利用者の操作で ComfyUI のポー�
 MAM のローカルランタイム管理（Issue #918）は、利用者の操作で GPT-SoVITS（声のクローン・音声合成。公式の Windows 統合パッケージ `GPT-SoVITS-v2pro-20250604`、コードのタグ `20250606v2pro`）を公式の配布先（Hugging Face の `lj1995/GPT-SoVITS-windows-package`、コミット固定）から取得し、MAM の実行ファイルと同じ場所の `localai\gpt-sovits` ディレクトリに展開して、別のプロセス（公式の `api_v2.py` を MAM 自身の起動用スクリプト経由で読み込み、起動のたびに作る合言葉を付けた要求だけに答える形で、`127.0.0.1` だけで待ち受け）として起動します。GPT-SoVITS のコードは MIT ライセンスで、**MAM のインストーラー・ポータブル版・リリースには GPT-SoVITS のバイトを一切含めません**。MAM は GPT-SoVITS のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。対応するのは Windows（x64）と NVIDIA の GPU だけで、それ以外の環境では導入せず、理由を表示します。
 
 - GPT-SoVITS のライセンス（MIT）とソースコード: <https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro>（ライセンス文は <https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE>。取得するパッケージは <https://huggingface.co/lj1995/GPT-SoVITS-windows-package> のファイルで、SHA-256 と大きさを MAM のカタログに固定して検証します）。
-- 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**それぞれのライセンスと商用利用の可否は、一覧を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。重みごとの出典とライセンスは、次の節に載せ、モデルマネージャーの画面にも表示します。
+- 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**カタログに固定した重み・依存ファイルのライセンスは、下の「GPT-SoVITS と MuseTalk の重み・依存ファイル」の節の表に載せ、モデルマネージャーの画面にも表示します。パッケージに入っているそれ以外のもの（v3・v4 の重み、BigVGAN、v2Pro・sv のモデル、Python のパッケージ）は、ライセンスと商用利用の可否を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。
 
 ## MuseTalk 1.5（利用者が取得する別プログラム）
 
 MAM のローカルランタイム管理（Issue #921）は、利用者の操作で MuseTalk 1.5（既存の動画と音声から口元を合わせた動画を作る。コードは GitHub の `TMElyralab/MuseTalk` のコミット `0a89dec45a0192b824e3cf4daf96c239440c5ed8`）の実行環境を、MAM の実行ファイルと同じ場所の `localai\musetalk` ディレクトリに組み立て、別のプロセス（MAM が同梱する薄い HTTP ラッパー `mam_musetalk_server.py`、`127.0.0.1` だけで待ち受け）として起動します。MuseTalk のコードは MIT ライセンスで、README に「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」「The trained model are available for any purpose, even commercially.」とあります。**MAM のインストーラー・ポータブル版・リリースには MuseTalk・Python・下の Python パッケージ・PyTorch のバイトを一切含めません**。MuseTalk は Windows 向けの配布物を出していないため、MAM は公式の手順（Python 3.10・PyTorch 2.0.1 + CUDA 11.8・mmcv 2.0.1・mmdet 3.1.0・mmpose 1.1.0 ほか）と同じ版を、次の公式の配布先から固定の URL と SHA-256 で取得して組み立てます（`pip` も `setup.py` も実行しません）。対応するのは Windows の x64 と NVIDIA の GPU（RTX 40 シリーズまで）だけです。
 
-- MuseTalk のライセンス（MIT）とソースコード: <https://github.com/TMElyralab/MuseTalk/tree/0a89dec45a0192b824e3cf4daf96c239440c5ed8>（ライセンス文は <https://github.com/TMElyralab/MuseTalk/blob/0a89dec45a0192b824e3cf4daf96c239440c5ed8/LICENSE>）。MAM が同梱するラッパー（`backend/internal/modelmgr/catalog/data/overlays/musetalk_server.py`）の口パクの生成の手順は、MuseTalk の `scripts/inference.py`（MIT、Copyright (c) 2024 Tencent Music Entertainment Group）に従っています。
+- MuseTalk のライセンス（MIT）とソースコード: <https://github.com/TMElyralab/MuseTalk/tree/0a89dec45a0192b824e3cf4daf96c239440c5ed8>（ライセンス文は <https://github.com/TMElyralab/MuseTalk/blob/0a89dec45a0192b824e3cf4daf96c239440c5ed8/LICENSE>）。MAM が同梱するラッパー（`backend/internal/modelmgr/catalog/data/overlays/mam_musetalk_server.py`）の口パクの生成の手順は、MuseTalk の `scripts/inference.py`（MIT、Copyright (c) 2024 Tencent Music Entertainment Group）に従っています。
 - Python 3.10.11 の Windows 用の組み込み版（<https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip>。Python Software Foundation License。zip の中の `LICENSE.txt`）。
 - Python パッケージの wheel 82 個。PyTorch（`torch`・`torchvision`）は <https://download.pytorch.org/whl/cu118/>、mmcv は <https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/>、その他は PyPI（`files.pythonhosted.org`）から取得します。ライセンスは各 wheel のメタデータの表記です（**原文との突き合わせはしていません（未確認）**）。各 wheel の中の `*.dist-info` に、それぞれのライセンス文が入っています。
 - **注意が要るもの**: `torch` の CUDA 版の wheel は NVIDIA の CUDA ランタイムと cuDNN の DLL を含み、NVIDIA のライセンスに従います（**条件は確認していません（未確認）**）。`opencv-python` の wheel は LGPL の FFmpeg の DLL、`soundfile` の wheel は LGPL の libsndfile、`soxr` は LGPL-2.1-or-later の libsoxr を含みます（MAM は再配布せず、利用者の PC に取得します）。`certifi`・`tqdm` は MPL-2.0 です。
@@ -13081,6 +13081,218 @@ MAM のローカルランタイム管理（Issue #921）は、利用者の操作
 | yapf | 0.43.0 | Apache-2.0 |
 | zipp | 4.1.2 | MIT |
 
+## Irodori-TTS（利用者が取得する別プログラム）
+
+MAM のローカルランタイム管理（Issue #1015）は、利用者の操作で Irodori-TTS（日本語専用の音声合成。Aratako 氏）の実行環境を、MAM の実行ファイルと同じ場所の `localai\irodori-tts` ディレクトリに組み立て、別のプロセス（MAM が同梱する起動用スクリプト `mam_irodori_server.py` が、公式の API サーバー Irodori-TTS-Server の FastAPI アプリの前に番人を置いて起動する。起動のたびに作る合言葉を付けた `POST /v1/audio/speech` だけに答え、`127.0.0.1` だけで待ち受け）として起動します。**公式は Windows 向けの配布物を出していないため、MAM が部品をカタログに固定して取得し、組み立てます**（MuseTalk と同じ作り）。MAM はこれらを同梱せず再配布しません。
+
+- Irodori-TTS-Server（API サーバー。MIT）: <https://github.com/Aratako/Irodori-TTS-Server/tree/61012c760f22f7b4a6c21c5c5f8f9e148120b6f9>（ライセンス文は同じコミットの `LICENSE`）。
+- Irodori-TTS（推論のコード。MIT）: <https://github.com/Aratako/Irodori-TTS/tree/89f9d8fbd4d51ea019867ee1197725ede1df13c5>。
+- DACVAE（音声コーデックのコード。MIT）: <https://github.com/facebookresearch/dacvae/tree/414c20785fc3a28373073ea8ef7a1316eeeaca6e>。
+- SilentCipher（見えない透かしのコード。MIT）: <https://github.com/SesameAILabs/silentcipher/tree/d46d7d0893a583d8968ab3a6626e2289faec9152>。Irodori-TTS は生成した音声に**必ずこの透かしを入れます（切れません）**。
+- Python 3.10.11 の Windows 用の組み込み版（<https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip>。Python Software Foundation License。zip の中の `LICENSE.txt`）。
+- argbind・julius・randomname（wheel が無い純 Python のパッケージ）は、PyPI の配布物（sdist。`.tar.gz`）をそのまま展開して Python の検索パスに置きます（ビルドも実行もしません）。
+- Python パッケージの wheel 155 個の版は、公式サーバーの `uv.lock`（コミット `61012c76…`）の Windows・Python 3.10・CUDA 12.8 の分を、そのまま SHA-256 つきで固定しました。PyTorch（`torch`・`torchaudio`）は <https://download.pytorch.org/whl/cu128/>、その他は PyPI（`files.pythonhosted.org`）です。
+- **注意が要るもの**: `torch` の CUDA 版の wheel は NVIDIA の CUDA ランタイムと cuDNN の DLL を含み、NVIDIA のライセンスに従います（**条件は確認していません（未確認）**）。`soxr`（libsoxr を含む）は LGPL-2.1 以降、`certifi` は MPL-2.0 です。`torchcodec` は FFmpeg の DLL を必要とします（**Windows での動作は未確認**）。
+- 取得したものを再配布するときは、各パッケージのライセンス文（wheel の `*.dist-info` にあります）を添えてください。**一覧の突き合わせは、メタデータの表記を写したもので、原文との突き合わせはしていません（未確認）**。
+
+| パッケージ | 版 | ライセンス（wheel・sdist のメタデータの表記） |
+|---|---|---|
+| absl-py | 2.4.0 | Apache-2.0 |
+| accelerate | 1.13.0 | Apache |
+| aiohappyeyeballs | 2.6.1 | PSF-2.0 |
+| aiohttp | 3.13.5 | Apache-2.0 AND MIT |
+| aiosignal | 1.4.0 | Apache 2.0 |
+| annotated-doc | 0.0.4 | MIT |
+| annotated-types | 0.7.0 | MIT License |
+| anyio | 4.13.0 | MIT |
+| asttokens | 3.0.1 | Apache 2.0 |
+| async-timeout | 5.0.1 | Apache 2 |
+| attrs | 26.1.0 | MIT |
+| audioread | 3.1.0 | MIT |
+| blinker | 1.9.0 | MIT License |
+| brotli | 1.2.0 | MIT |
+| certifi | 2026.4.22 | MPL-2.0 |
+| cffi | 2.0.0 | MIT |
+| charset-normalizer | 3.4.7 | MIT |
+| click | 8.4.2 | BSD-3-Clause |
+| colorama | 0.4.6 | BSD License |
+| contourpy | 1.3.2 | BSD License |
+| cycler | 0.12.1 | BSD License |
+| datasets | 4.8.5 | Apache 2.0 |
+| decorator | 5.2.1 | BSD-2-Clause |
+| descript-audiotools | 0.7.2 | MIT |
+| dill | 0.4.1 | BSD-3-Clause |
+| docstring-parser | 0.18.0 | MIT |
+| einops | 0.8.2 | MIT |
+| exceptiongroup | 1.3.1 | MIT License |
+| executing | 2.2.1 | MIT |
+| fastapi | 0.136.1 | MIT |
+| ffmpy | 1.0.0 | MIT |
+| filelock | 3.29.0 | MIT |
+| fire | 0.7.1 | Apache-2.0 |
+| flask | 3.1.3 | BSD-3-Clause |
+| flatten-dict | 0.5.0 | MIT |
+| fonttools | 4.62.1 | MIT |
+| frozenlist | 1.8.0 | Apache-2.0 |
+| fsspec | 2026.2.0 | BSD-3-Clause |
+| gitdb | 4.0.12 | BSD License |
+| gitpython | 3.1.50 | BSD-3-Clause |
+| gradio | 6.14.0 | Apache-2.0 |
+| gradio-client | 2.5.0 | Apache-2.0 |
+| groovy | 0.1.2 | MIT License |
+| grpcio | 1.80.0 | Apache-2.0 |
+| h11 | 0.16.0 | MIT |
+| hf-gradio | 0.4.1 | MIT |
+| hf-xet | 1.5.2 | Apache-2.0 |
+| httpcore | 1.0.9 | BSD-3-Clause |
+| httptools | 0.7.1 | MIT |
+| httpx | 0.28.1 | BSD-3-Clause |
+| huggingface-hub | 1.26.0 | Apache-2.0 |
+| idna | 3.15 | BSD-3-Clause |
+| importlib-resources | 7.1.0 | Apache-2.0 |
+| ipython | 8.39.0 | BSD-3-Clause |
+| itsdangerous | 2.2.0 | BSD License |
+| jedi | 0.20.0 | MIT |
+| jinja2 | 3.1.6 | BSD License |
+| joblib | 1.5.3 | BSD-3-Clause |
+| kiwisolver | 1.5.0 | BSD License |
+| lazy-loader | 0.5 | BSD-3-Clause |
+| librosa | 0.11.0 | ISC |
+| llvmlite | 0.47.0 | BSD-2-Clause（wheel のメタデータに表記がなく、同梱の LICENSE から読んだ） |
+| markdown | 3.10.2 | BSD-3-Clause |
+| markdown-it-py | 4.2.0 | MIT License |
+| markdown2 | 2.5.5 | MIT |
+| markupsafe | 3.0.3 | BSD-3-Clause |
+| matplotlib | 3.10.9 | PSF 系の matplotlib License（Classifier: Python Software Foundation License） |
+| matplotlib-inline | 0.2.2 | BSD-3-Clause |
+| mdurl | 0.1.2 | MIT License |
+| mpmath | 1.3.0 | BSD |
+| msgpack | 1.1.2 | Apache-2.0 |
+| multidict | 6.7.1 | Apache License 2.0 |
+| multiprocess | 0.70.19 | BSD-3-Clause |
+| networkx | 3.4.2 | BSD License |
+| numba | 0.65.1 | BSD |
+| numpy | 2.2.6 | BSD License |
+| orjson | 3.11.9 | MPL-2.0 AND (Apache-2.0 OR MIT) |
+| packaging | 26.2 | Apache-2.0 OR BSD-2-Clause |
+| pandas | 2.3.3 | BSD License |
+| parso | 0.8.7 | MIT |
+| peft | 0.19.1 | Apache |
+| pillow | 12.2.0 | MIT-CMU |
+| platformdirs | 4.9.6 | MIT |
+| pooch | 1.9.0 | BSD-3-Clause |
+| prompt-toolkit | 3.0.52 | BSD License |
+| propcache | 0.5.2 | Apache-2.0 |
+| protobuf | 3.19.6 | 3-Clause BSD License |
+| psutil | 7.2.2 | BSD-3-Clause |
+| pure-eval | 0.2.3 | MIT |
+| pyaml | 26.2.1 | WTFPL |
+| pyarrow | 24.0.0 | Apache-2.0 |
+| pycparser | 3.0 | BSD-3-Clause |
+| pydantic | 2.13.4 | MIT |
+| pydantic-core | 2.46.4 | MIT |
+| pydantic-settings | 2.14.1 | MIT |
+| pydub | 0.25.1 | MIT |
+| pygments | 2.20.0 | BSD-2-Clause |
+| pyloudnorm | 0.2.0 | MIT |
+| pyparsing | 3.3.2 | MIT |
+| pystoi | 0.4.1 | MIT |
+| python-dateutil | 2.9.0.post0 | Dual License |
+| python-dotenv | 1.2.2 | BSD-3-Clause |
+| python-multipart | 0.0.28 | Apache-2.0 |
+| pytz | 2026.2 | MIT |
+| pyyaml | 6.0.3 | MIT |
+| regex | 2026.5.9 | Apache-2.0 AND CNRI-Python |
+| requests | 2.34.0 | Apache-2.0 |
+| rich | 15.0.0 | MIT |
+| safehttpx | 0.1.7 | MIT License |
+| safetensors | 0.7.0 | Apache Software License |
+| scikit-learn | 1.7.2 | BSD-3-Clause |
+| scipy | 1.15.3 | BSD License |
+| semantic-version | 2.10.0 | BSD |
+| sentencepiece | 0.1.99 | Apache |
+| sentry-sdk | 2.60.0 | MIT |
+| setuptools | 81.0.0 | MIT |
+| shellingham | 1.5.4 | ISC License |
+| six | 1.17.0 | MIT |
+| smmap | 5.0.3 | BSD-3-Clause |
+| soundfile | 0.13.1 | BSD 3-Clause License |
+| soxr | 1.1.0 | LGPL-2.1-or-later |
+| stack-data | 0.6.3 | MIT |
+| starlette | 1.0.0 | BSD-3-Clause |
+| sympy | 1.14.0 | BSD |
+| tensorboard | 2.20.0 | Apache 2.0 |
+| tensorboard-data-server | 0.7.2 | Apache 2.0 |
+| termcolor | 3.3.0 | MIT |
+| threadpoolctl | 3.6.0 | BSD-3-Clause |
+| tokenizers | 0.22.2 | Apache Software License |
+| tomlkit | 0.14.0 | MIT |
+| torch | 2.10.0+cu128 | BSD-3-Clause |
+| torch-stoi | 0.2.3 | MIT |
+| torchao | 0.16.0 | BSD-3-Clause（メタデータに表記がなく、同梱の LICENSE から読んだ） |
+| torchaudio | 2.10.0+cu128 | BSD License |
+| torchcodec | 0.10.0 | BSD-3-Clause |
+| torchdata | 0.11.0 | BSD |
+| tqdm | 4.67.3 | MPL-2.0 AND MIT |
+| traitlets | 5.15.0 | BSD License |
+| transformers | 5.12.1 | Apache 2.0 License |
+| typer | 0.25.1 | MIT |
+| typing-extensions | 4.15.0 | PSF-2.0 |
+| typing-inspection | 0.4.2 | MIT |
+| tzdata | 2026.2 | Apache-2.0 |
+| urllib3 | 2.7.0 | MIT |
+| uvicorn | 0.46.0 | BSD-3-Clause |
+| wandb | 0.25.0 | MIT License |
+| watchfiles | 1.1.1 | MIT |
+| wcwidth | 0.7.0 | MIT |
+| websockets | 16.0 | BSD-3-Clause |
+| werkzeug | 3.1.8 | BSD-3-Clause |
+| xxhash | 3.7.0 | BSD |
+| yarl | 1.23.0 | Apache-2.0 |
+| argbind | 0.3.9 | MIT License |
+| julius | 0.2.7 | MIT License |
+| randomname | 0.2.1 | MIT License |
+
+- 上の表の `llvmlite`・`torchao` は wheel のメタデータにライセンスの表記がなく、同梱の `LICENSE` を読んで記録しました。`matplotlib` は matplotlib 自身のライセンス（PSF 系）です。
+
+### Irodori-TTS の重みと依存ファイル
+
+MAM のローカルランタイム管理は、Irodori-TTS のモデルの重み・音声コーデックの重み・SilentCipher の透かしの重みを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM は再配布せず**、利用者の操作で取得元から取得します。モデルは利用者がモデルマネージャーで選び（既定は v4.1-Small）、選んだモデルの重みだけを取得します。出典・ライセンス・商用利用の可否・使うときの制限は、モデルマネージャーの画面と MCP（`list_local_runtime_models`）にも表示します。
+
+| 名前 | 出典 | ライセンス | 商用利用 |
+|---|---|---|---|
+| Irodori-TTS v4.1-Small・v4.1-Small-MF の重みとトークナイザー | <https://huggingface.co/Aratako/Irodori-TTS-v4.1-Small>・<https://huggingface.co/Aratako/Irodori-TTS-v4.1-Small-MF> | [MIT License](https://huggingface.co/Aratako/Irodori-TTS-v4.1-Small)（モデルカードの `license: mit`） | 可 |
+| Irodori-TTS v4-Large（fp32）・v4-Large-Quantized（int8・int4・fp8）の重みとトークナイザー | <https://huggingface.co/Aratako/Irodori-TTS-v4-Large>・<https://huggingface.co/Aratako/Irodori-TTS-v4-Large-Quantized> | [Gemma Terms of Use](https://ai.google.dev/gemma/terms) と[禁止用途ポリシー](https://ai.google.dev/gemma/prohibited_use_policy)（モデルカードの `license: gemma`） | **条件つき**（規約と禁止用途ポリシーに従う。選ぶときに利用者の同意が要る） |
+| Semantic-DACVAE-Japanese-32dim の重み（音声コーデック） | <https://huggingface.co/Aratako/Semantic-DACVAE-Japanese-32dim> | [MIT License](https://huggingface.co/Aratako/Semantic-DACVAE-Japanese-32dim)（元の `facebook/dacvae-watermarked` は Apache-2.0） | 可 |
+| SilentCipher（44.1 kHz）の重み 4 ファイル（見えない透かし） | <https://huggingface.co/sony/silentcipher> | **ライセンスの表示を確認できていない**（コードは MIT。配布元に表示がない） | **はっきりしない**（Irodori-TTS は必ずこの透かしを入れるので省けない。商用で使う前に配布元（Sony Research）に確認してください） |
+
+- 取得先のコミットは、v4.1-Small `2b28324d…`、v4.1-Small-MF `ccc78f5d…`、v4-Large `2e0c5542…`、v4-Large-Quantized `bdef9592…`、Semantic-DACVAE `47376ee2…`、sony/silentcipher `a1c4d021…`。
+- 各ライセンスは、モデルカードの表記を読んで記録したもので、**原文との突き合わせや学習データのライセンスの確認はしていません（未確認）**。
+- **声のコピー（参照音声）の使い方の制限**: モデルカードは、本人の同意なしに実在の人（声優・有名人など）の声をコピーしたりなりすましに使ったりすること、人をだます合成音声・ディープフェイクに使うことを禁じています。MAM は画面・MCP でこの制限を伝えますが、守る責任は利用者にあります。
+
+## llama.cpp とローカル LLM の重み（利用者が取得する別プログラム）
+
+MAM のローカルランタイム管理（Issue #1008）は、利用者の操作で llama.cpp の `llama-server`（ローカルの LLM サーバー。ggml-org/llama.cpp）と、LLM の重み（GGUF）を、MAM の実行ファイルと同じ場所の `localai\llama-cpp` ディレクトリに取得して展開します。**MAM のインストーラー・リリースには含まれません**（MAM は llama.cpp のバイトを配布しません）。`llama-server.exe` は MAM が決めた固定の引数だけで起動し、`127.0.0.1` だけで待ち受けます（利用者が引数を指定することはできません）。
+
+- llama.cpp のライセンス（MIT）とソースコード: <https://github.com/ggml-org/llama.cpp/tree/b11960>（ライセンス文は <https://github.com/ggml-org/llama.cpp/blob/b11960/LICENSE>）。取得するのは公式の GitHub リリース `b11960`（<https://github.com/ggml-org/llama.cpp/releases/tag/b11960>）の Windows x64 のビルド済みバイナリ `llama-b11960-bin-win-cuda-12.4-x64.zip`（RTX 50 シリーズは `…cuda-13.4-x64.zip`）と、CUDA ランタイムの DLL の `cudart-llama-bin-win-cuda-12.4-x64.zip`（同 `13.4`）で、SHA-256 を MAM のカタログに固定して検証します（4 つの SHA-256 は spec/architecture/model-manager/local-runtime.md §17.1）。ビルドには OpenMP のランタイムのライセンス（`LICENSE-LLVM-OpenMP`）が含まれます。
+- **注意が要るもの**: CUDA ランタイムの DLL（`cudart`・`cublas`・`cublasLt`）は NVIDIA のライセンス（CUDA Toolkit の使用許諾）に従います（**再配布の条件は確認していません（未確認）**）。
+- 取得したものを再配布するときは、取得した zip に入っているライセンス文を添えてください。
+
+### ローカル LLM の重み（GGUF）
+
+どの重みも、`mradermacher/<名前>-GGUF`（Hugging Face）のコミット固定の URL から、固定した SHA-256 とサイズを検証して取得します（2026-11-03 に Hugging Face の API で確認。どのリポジトリも gated ではありません）。選んだモデル 1 つだけを取得します。ライセンスは、元の重みと GGUF の変換元のモデルカードの `license` の表記で、**法的な保証ではありません**（商用で使う前にライセンス全文を確認してください）。**商用利用がはっきりしないもの（`unknown`）は、DeepSeek-R1-Distill-Qwen-14B の非検閲版（huihui-ai の abliterated-v2。派生側のカードにライセンスの表示がありません。元の DeepSeek-R1-Distill-Qwen-14B は MIT）です**。非検閲（abliterated）の 4 つは、安全のための拒否を取り除いた派生で、成人向け相当の内容を出力しうるため、画面に注記が出ます。
+
+| 名前 | 出典（変換元） | コミット | サイズ（バイト） | ライセンス | 商用利用 |
+|---|---|---|---|---|---|
+| Gemma 4 12B-it（純正・Q4_K_M） | <https://huggingface.co/mradermacher/gemma-4-12B-it-GGUF> | `bd28046d` | 7,381,382,592 | [Apache License 2.0（Gemma 4 12B-it）](https://huggingface.co/google/gemma-4-12B-it) | 可 |
+| Gemma 4 12B-it 非検閲（Huihui abliterated・Q4_K_M）（非検閲・成人向け相当） | <https://huggingface.co/mradermacher/Huihui-gemma-4-12B-it-abliterated-GGUF> | `f28c4a14` | 7,381,382,720 | [Apache License 2.0（Huihui-gemma-4-12B-it-abliterated）](https://huggingface.co/huihui-ai/Huihui-gemma-4-12B-it-abliterated) | 可 |
+| Qwen3.8-27B（純正・IQ4_XS） | <https://huggingface.co/mradermacher/Qwen3.8-27B-GGUF> | `860659a5` | 15,420,450,528 | [Apache License 2.0（Qwen3.8-27B）](https://huggingface.co/Qwen/Qwen3.8-27B) | 可 |
+| Qwen3.8-27B（純正・Q3_K_M 軽量版） | <https://huggingface.co/mradermacher/Qwen3.8-27B-GGUF> | `860659a5` | 13,500,737,248 | [Apache License 2.0（Qwen3.8-27B）](https://huggingface.co/Qwen/Qwen3.8-27B) | 可 |
+| Qwen3.8-27B 非検閲（Huihui abliterated・IQ4_XS）（非検閲・成人向け相当） | <https://huggingface.co/mradermacher/Huihui-Qwen3.8-27B-abliterated-GGUF> | `c5f7e0aa` | 15,420,450,976 | [Apache License 2.0（Huihui-Qwen3.8-27B-abliterated）](https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated) | 可 |
+| Qwen3.8-27B 非検閲（Huihui abliterated・Q3_K_M 軽量版）（非検閲・成人向け相当） | <https://huggingface.co/mradermacher/Huihui-Qwen3.8-27B-abliterated-GGUF> | `c5f7e0aa` | 13,500,737,696 | [Apache License 2.0（Huihui-Qwen3.8-27B-abliterated）](https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated) | 可 |
+| DeepSeek-R1-Distill-Qwen-14B（純正・Q4_K_M） | <https://huggingface.co/mradermacher/DeepSeek-R1-Distill-Qwen-14B-GGUF> | `f5a17506` | 8,988,110,432 | [MIT License（DeepSeek-R1-Distill-Qwen-14B）](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) | 可 |
+| DeepSeek-R1-Distill-Qwen-14B 非検閲（Huihui abliterated-v2・Q4_K_M）（非検閲・成人向け相当） | <https://huggingface.co/mradermacher/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2-GGUF> | `39e97fd1` | 8,988,110,912 | [ライセンスの表示なし（DeepSeek-R1-Distill-Qwen-14B-abliterated-v2）](https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2) | **はっきりしない（商用不明）** |
+
 ## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
 
 MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS の統合パッケージに入っている重みと依存ファイル、および MuseTalk 1.5 が使う重みと依存ファイルを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM はこれらを同梱せず再配布しません**。足りない・壊れたファイルだけを、利用者の操作で取得元から取得します。出典・ライセンス・商用利用の可否はモデルマネージャーの画面（「ローカル音声・口パク」）と MCP（`list_local_runtimes`）にも表示します。固定の一覧はソースの `backend/internal/modelmgr/catalog/data/assets/` にあり、意味は `spec/architecture/model-manager/local-runtime.md` の §12 です。**法的な助言ではありません**。再配布や商用利用の前に、配布元の条件を確認してください。
@@ -13099,7 +13311,7 @@ MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS 
 | chinese-roberta-wwm-ext-large の設定 | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
 | chinese-roberta-wwm-ext-large のトークナイザー | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
 | chinese-roberta-wwm-ext-large の重み | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
-| fastText の言語判定モデル（lid.176） | <https://fasttext.cc/docs/en/language-identification.html> | [CC BY-SA 3.0（fastText の言語判定モデル）](https://fasttext.cc/docs/en/language-identification.html) | 可 |
+| fastText の言語判定モデル（lid.176） | <https://fasttext.cc/docs/en/language-identification.html> | [CC BY-SA 3.0（fastText の言語判定モデル）](https://fasttext.cc/docs/en/language-identification.html) | 可（CC BY-SA 3.0: 出典の表示と、同じ条件での共有が条件） |
 | NLTK の cmudict（英語の発音辞書） | <https://github.com/nltk/nltk_data> | [CMU Pronouncing Dictionary の利用条件](https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/index.xml) | 可 |
 | NLTK の Averaged Perceptron Tagger（英語の品詞推定） | <https://github.com/nltk/nltk_data> | [MIT License（Averaged Perceptron Tagger）](https://github.com/sloria/textblob-aptagger) | 可 |
 | Open JTalk の辞書（日本語の読みと音の並び） | <https://github.com/r9y9/pyopenjtalk> | [BSD 3-Clause（Open JTalk の辞書）](https://github.com/r9y9/pyopenjtalk/blob/master/LICENSE.md) | 可 |
@@ -13142,11 +13354,12 @@ MAM の「ChatGPT でログイン」の Codex 経由の方式（Business / Enter
 
 ## Shisei のポーズ集（利用者が取得するもの）
 
-MAM の生成テストの「ポーズを選ぶ」（Issue #986）は、利用者が同意して「導入する」を押したときだけ、ポーズの参照画像（マネキンの線画。Qwen-Image 2.1 などの参照画像に「ポーズだけ」の役割で渡す）を GitHub の `wquguru/shisei` のリリース `v0.4.1` から取得し、MAM の実行ファイルと同じ場所の `localai\shisei-poses` ディレクトリに展開します。**MAM はこれらを同梱せず再配布しません**。取得する Zip 2 つと分類表（`data/catalog.json`。コミット `26522a708c77088eda4631327b15d8d05f6281c0` に固定）は、SHA-256 と大きさを MAM のカタログ（`backend/internal/modelmgr/catalog/data/assets/shisei-poses.json`）に固定して検証します。取り出すのは、全年齢向けと分類されたポーズの線画（96 ポーズ・414 枚）だけです。成人向けのポーズ（`sexy`・`duo`）は取得しません。
+MAM の生成テストの「ポーズを選ぶ」（Issue #986）は、利用者が同意して「導入する」を押したときだけ、ポーズの参照画像（マネキンの線画と、ControlNet 用の深度・法線マップ〔Issue #1020〕。Qwen-Image 2.1 などの参照画像に「ポーズだけ」の役割で渡す）を GitHub の `wquguru/shisei` のリリース `v0.4.1` から取得し、MAM の実行ファイルと同じ場所の `localai\shisei-poses` ディレクトリに展開します。**MAM はこれらを同梱せず再配布しません**。取得する Zip 4 つ（線画 2・深度 1・法線 1）と分類表（`data/catalog.json`。コミット `26522a708c77088eda4631327b15d8d05f6281c0` に固定）は、SHA-256 と大きさを MAM のカタログ（`backend/internal/modelmgr/catalog/data/assets/shisei-poses.json`）に固定して検証します。取り出すのは、全年齢向けと分類されたポーズの線画（96 ポーズ・414 枚）だけです。成人向けのポーズ（`sexy`・`duo`）は取得しません。
 
 - Shisei のコードとドキュメントは Apache License 2.0、画像（Release の Zip を含む）と Shisei 自身のデータは CC0 1.0 Universal（パブリックドメインへの供与。帰属表示は不要）です。出典・ライセンス文: <https://github.com/wquguru/shisei/blob/26522a708c77088eda4631327b15d8d05f6281c0/NOTICE>、<https://github.com/wquguru/shisei/blob/26522a708c77088eda4631327b15d8d05f6281c0/LICENSE-images>。AI が作る画像の権利についての考え方は <https://github.com/wquguru/shisei/blob/26522a708c77088eda4631327b15d8d05f6281c0/docs/LICENSING.md> にあります。
 - **ポーズの選び方・番号・名前・分類は、ギア（@giaaibusi）の ai-pose-gallery（<https://ai-pose-gallery.pages.dev/>）に従っています。Shisei の NOTICE は、その部分を「credited, not licensed」（出典を示すが、ライセンスは与えない）と書いており、どちらのライセンスも及びません。** MAM は分類表をポーズ名の表示に使うため、画面ではこの分類表の商用利用の可否を「不明」としています。画像（CC0）の商用利用は可です。
 - Shisei の画像は、マネキンまたは AI が作った成人の姿で、実在の人物を写したものではありません。
+- 深度・法線マップ（2026-10-31 に作成）は、Shisei が線画から Depth Anything V2 Small（Apache-2.0）と Marigold Normals v1-1（CreativeML OpenRAIL++-M）で作ったものです。docs/LICENSING.md の規則 3 のとおり、その使用制限はモデルの使い方に掛かり、出力の再配布には掛からず、出力は CC0 です。MAM は線画と同じ姿勢の分だけを取り出し、成人向けのシリーズ（`sexy`・`duo`）は Zip に入っていても取り出しません。
 - ポーズの参照画像で作った画像の権利と、選んだ生成モデルのライセンス（Qwen-Image 2.1 を含む Qwen RESEARCH LICENSE のモデルは非商用）は別です。画面では、選んだモデルの商用利用の可否をポーズの選択画面にも表示します。
 
 ## ComfyUI_VNCCS_Utils（PoseStudio。許可リストに載せているが、今は導入できない）

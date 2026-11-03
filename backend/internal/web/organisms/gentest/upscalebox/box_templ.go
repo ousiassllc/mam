@@ -10,6 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -44,7 +45,7 @@ func Box(f Form) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 12, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 13, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 			if templ_7745c5c3_Err != nil {
@@ -62,7 +63,7 @@ func Box(f Form) templ.Component {
 				var templ_7745c5c3_Var3 templ.SafeURL
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.SourceURL))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 15, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 16, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -75,7 +76,7 @@ func Box(f Form) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(f.SourceText)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 15, Col: 76}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 16, Col: 76}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -99,7 +100,7 @@ func Box(f Form) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(f.Notice)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 21, Col: 97}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 22, Col: 97}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -122,7 +123,7 @@ func Box(f Form) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(f.Error)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 24, Col: 90}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 25, Col: 90}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -137,7 +138,7 @@ func Box(f Form) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				if len(f.Choices) == 0 {
+				if !f.HasModel {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-sm text-neutral-400\" data-testid=\"gt-upscale-none\">アップスケール用のモデルが入っていません。 <a class=\"underline\" href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
@@ -145,7 +146,7 @@ func Box(f Form) templ.Component {
 					var templ_7745c5c3_Var7 templ.SafeURL
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.ModelsURL))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 29, Col: 60}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 30, Col: 60}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -163,7 +164,7 @@ func Box(f Form) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.GenerationTestPart("results", f.ResultID, "upscale"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 34, Col: 74}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 35, Col: 74}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 					if templ_7745c5c3_Err != nil {
@@ -176,7 +177,7 @@ func Box(f Form) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + ID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 35, Col: 26}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 36, Col: 26}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 					if templ_7745c5c3_Err != nil {
@@ -206,7 +207,7 @@ func Box(f Form) templ.Component {
 							var templ_7745c5c3_Var11 string
 							templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(n))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 44, Col: 32}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 45, Col: 32}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 							if templ_7745c5c3_Err != nil {
@@ -229,7 +230,7 @@ func Box(f Form) templ.Component {
 							var templ_7745c5c3_Var12 string
 							templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(n))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 44, Col: 71}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 45, Col: 71}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 							if templ_7745c5c3_Err != nil {
@@ -246,103 +247,15 @@ func Box(f Form) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-upscale-model\"><span>方式（モデル）</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</label><div class=\"flex min-w-48 max-w-md flex-1 flex-col gap-1 text-xs text-neutral-400\"><span>方式（モデル）</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Var13 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-						if !templ_7745c5c3_IsBuffer {
-							defer func() {
-								templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err == nil {
-									templ_7745c5c3_Err = templ_7745c5c3_BufErr
-								}
-							}()
-						}
-						ctx = templ.InitializeContext(ctx)
-						for _, c := range f.Choices {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<option value=\"")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							var templ_7745c5c3_Var14 string
-							templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.ID)
-							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 52, Col: 29}
-							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							if c.Disabled != "" {
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " disabled")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-							}
-							if c.ID == f.Model && c.Disabled == "" {
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " selected")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, ">")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							var templ_7745c5c3_Var15 string
-							templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(c.Label)
-							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 52, Col: 122}
-							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "（")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							var templ_7745c5c3_Var16 string
-							templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(c.Detail)
-							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 52, Col: 137}
-							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "）")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							var templ_7745c5c3_Var17 string
-							templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(c.Disabled)
-							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/upscalebox/box.templ`, Line: 52, Col: 154}
-							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</option>")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-						}
-						return nil
-					})
-					templ_7745c5c3_Err = atoms.Select(atoms.FieldMd, "max-w-md", templ.Attributes{"id": "gt-upscale-model", "name": FieldModel}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = modelpick.Field(f.Model).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</label>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -350,13 +263,13 @@ func Box(f Form) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</form>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</form>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

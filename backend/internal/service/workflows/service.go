@@ -29,6 +29,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
+	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // Errors of the service.
@@ -81,6 +82,7 @@ type Service struct {
 	mu     sync.Mutex // serializes the writes (and the publication that follows each)
 	bootID string     // tells a run record of this process from one an earlier process left running
 	runs   runTracker
+	works  worktrack.Tracker // the runs, for the job list (Works)
 }
 
 // New returns the Service. Call Load (or Publish before the settings are read) so the saved workflows are known.

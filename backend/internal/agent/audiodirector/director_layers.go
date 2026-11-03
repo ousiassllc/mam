@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -13,7 +14,7 @@ func (r *run) speak(ctx context.Context, lines []domain.VoiceLine, sceneOfLine m
 	cursor := 0.0
 	for i, line := range lines {
 		cursor = max(cursor, sceneOfLine[i].Start)
-		speech, err := r.speech.say(ctx, line)
+		speech, err := r.speech.say(localvoice.WithEmotion(ctx, r.plan[sceneOfLine[i].Index].Emotion), line)
 		if err != nil {
 			return err
 		}

@@ -14,6 +14,8 @@ import (
 	"os"
 	"slices"
 	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 )
 
 // Agent names an Agent that reasons with an LLM. The set follows the table of
@@ -65,11 +67,18 @@ const (
 	// accounts that the official route does not accept (Business / Enterprise / Edu workspaces). Text generation only.
 	// It has no API key: the Codex login of package chatgpt/codex takes its place.
 	ProviderChatGPTCodex Provider = "chatgpt-codex"
+	// ProviderLocal is a server on this PC or the LAN that speaks the OpenAI Chat Completions API (Ollama, LM Studio, llama.cpp server). Its
+	// base_url is the address of the server; its API key is optional (the key store holds it under "local"). No model is built in: the models
+	// are those the server lists (GET /v1/models).
+	ProviderLocal Provider = "local"
 )
+
+// LocalDefaultBaseURL is the base_url of ProviderLocal until the user sets another: Ollama's default address.
+const LocalDefaultBaseURL = "http://localhost:11434"
 
 // Providers lists every supported provider.
 func Providers() []Provider {
-	return []Provider{ProviderAnthropic, ProviderOpenAI, ProviderGoogle, ProviderChatGPTSubscription, ProviderChatGPTCodex}
+	return []Provider{ProviderAnthropic, ProviderOpenAI, ProviderGoogle, ProviderChatGPTSubscription, ProviderChatGPTCodex, ProviderLocal}
 }
 
 // Target is one provider and the model to call on it.
@@ -87,8 +96,15 @@ type Route struct {
 
 // ProviderConfig holds the connection settings of a provider.
 type ProviderConfig struct {
-	// BaseURL is the API origin, e.g. "https://api.anthropic.com".
+	// BaseURL is the API origin, e.g. "https://api.anthropic.com". For ProviderLocal it is the address of the server without "/v1"
+	// (localllm.NormalizeBaseURL); it may be plain http and name this PC, the LAN or a tailnet.
 	BaseURL string `json:"base_url"`
+	// UnloadBeforeGeneration is for ProviderLocal only: when true, mam asks an Ollama server to unload its models before a local image or
+	// video generation starts, so that they do not share the GPU memory (spec/architecture/local-llm.md §5).
+	UnloadBeforeGeneration bool `json:"unload_before_generation,omitempty"`
+	// UseManagedRuntime is for ProviderLocal only: when true, the calls go to the llama.cpp server that mam installs and starts itself (the local
+	// runtime "llama-cpp"), whatever BaseURL says (spec/architecture/local-llm.md §10).
+	UseManagedRuntime bool `json:"use_managed_runtime,omitempty"`
 }
 
 // RetryConfig is the exponential backoff of one target: a failed attempt is repeated after
@@ -193,6 +209,8 @@ func DefaultConfig() Config {
 			ProviderChatGPTSubscription: {BaseURL: "https://api.openai.com"},
 			// The Codex app-server is a child process, not a host: the value only names it (the field must not be empty).
 			ProviderChatGPTCodex: {BaseURL: CodexBaseURL},
+			// A local server: Ollama's default address, until the settings screen names another.
+			ProviderLocal: {BaseURL: LocalDefaultBaseURL},
 		},
 		TimeoutSeconds: 120,
 		Retry:          RetryConfig{MaxAttempts: 3, BaseDelayMillis: 1000, MaxDelayMillis: 16000},
@@ -256,8 +274,13 @@ func (c Config) Validate() error {
 		if !slices.Contains(Providers(), p) {
 			errs = append(errs, fmt.Errorf("providers: %q is not a provider", p))
 		}
-		if pc.BaseURL == "" {
+		switch {
+		case pc.BaseURL == "":
 			errs = append(errs, fmt.Errorf("provider %s: base_url is empty", p))
+		case p == ProviderLocal: // the rules of a registered endpoint (spec/architecture/local-llm.md §1)
+			if err := localcfg.CheckBaseURL(pc.BaseURL); err != nil {
+				errs = append(errs, fmt.Errorf("provider %s: base_url: %w", p, err))
+			}
 		}
 	}
 	if c.TimeoutSeconds <= 0 || c.Retry.MaxAttempts <= 0 || c.Retry.BaseDelayMillis <= 0 ||

@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -64,22 +65,8 @@ templ Form(p Page) {
 			if !p.HasModel {
 				<p class="text-sm text-neutral-400" data-testid="gt-inpaint-none">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>
 			}
-			for _, m := range p.Models {
-				<label class="flex items-start gap-2 text-sm" data-testid="gt-inpaint-model">
-					if m.On {
-						<input type="radio" name="model" value={ m.ID } checked?={ m.Pick } required/>
-					} else {
-						<input type="radio" name="model" value={ m.ID } disabled/>
-					}
-					<span>
-						{ m.Label }
-						if !m.On {
-							<span class="text-xs text-neutral-400">（{ m.Reason }）</span>
-						} else {
-							<span class="text-xs text-neutral-400">（既定 { strconv.FormatFloat(m.Denoise, 'f', -1, 64) }）</span>
-						}
-					</span>
-				</label>
+			if p.HasModel {
+				@modelpick.Field(p.Model)
 			}
 		</fieldset>
 		<label class="flex items-center gap-2 text-sm" data-testid="gt-inpaint-translate">

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 )
 
@@ -25,6 +26,17 @@ func TestProgressCard_AFailedPlanForWantOfAKeyHasNextSteps(t *testing.T) {
 	assert.Contains(t, html, `data-testid="progress-next-steps"`)
 	assert.Contains(t, html, "登場人物を追加")
 	assert.Contains(t, html, "API キーとログイン")
+}
+
+// A plan that stopped after drafting Characters from the attached images tells it, and says what to do with the drafts (#1022).
+func TestProgressCard_ADraftedPlanFailureTellsWhatToDoWithTheDrafts(t *testing.T) {
+	reason := "LLM の API キーが設定されていません。\n" + planadvice.DraftNote(2)
+	html := render(t, molecules.ProgressCard(progress(domain.Job{ID: "j1", Kind: domain.JobPlan, Status: domain.JobFailed, Error: reason})))
+
+	assert.Contains(t, html, "登場人物の下書き", "the card says the drafts were made")
+	assert.Contains(t, html, `data-testid="progress-next-steps"`)
+	assert.Contains(t, html, "「下書き」の印")
+	assert.Contains(t, html, "チャットに何かメッセージを送ると", "and the way with an LLM")
 }
 
 func TestProgressCard_OtherJobsAndFailuresHaveNoNextSteps(t *testing.T) {

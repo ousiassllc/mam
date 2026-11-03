@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -133,7 +134,7 @@ func (h Handlers) Install(c *gin.Context) {
 	if ref.Existing {
 		l.Notice = "このファイルは、すでに導入中です"
 	}
-	render(c, http.StatusAccepted, view.HFModelsWithMsgClear(l))
+	render(c, http.StatusAccepted, oob.HFModelsWithMsgClear(l))
 }
 
 // Models answers GET /model-manager/hf/models, which the list polls while an import runs (query jobs: the ids it reports on).
@@ -147,7 +148,7 @@ func (h Handlers) Models(c *gin.Context) {
 	if !l.Polling() && len(ids) > 0 {
 		trial := h.trial(ctx)
 		trial.OOB = true
-		render(c, http.StatusOK, view.HFModelsWithTrial(l, trial))
+		render(c, http.StatusOK, oob.HFModelsWithTrial(l, trial))
 		return
 	}
 	render(c, http.StatusOK, view.HFModelListView(l))
@@ -195,7 +196,7 @@ func (h Handlers) DeleteModel(c *gin.Context) {
 	l.Notice = "削除しました。カタログのモデルと共有しているファイルは、そのモデルが残る間は残ります"
 	trial := h.trial(ctx)
 	trial.OOB = true
-	render(c, http.StatusOK, view.HFModelsWithTrial(l, trial))
+	render(c, http.StatusOK, oob.HFModelsWithTrial(l, trial))
 }
 
 // TokenData is the state of the Hugging Face token: whether it is set and its last characters, never the token.

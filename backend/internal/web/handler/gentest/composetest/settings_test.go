@@ -34,13 +34,13 @@ func TestTheFormHasTheDetailedSettingsAndTheCardsSayWhoTakesThem(t *testing.T) {
 	assert.Contains(t, section, "dpmpp_2m")
 	assert.Contains(t, section, "karras")
 
-	card := regexp.MustCompile(`(?s)<li data-testid="gt-model" data-model="` + string(gentesttest.SamplingModel) + `".*?</li>`).FindString(body)
+	card := regexp.MustCompile(`(?s)<li [^>]*data-model="` + string(gentesttest.SamplingModel) + `"[^>]*>.*?</li>`).FindString(body)
 	require.NotEmpty(t, card)
 	assert.Contains(t, card, `data-sampling="steps cfg sampler scheduler"`)
 	assert.Contains(t, card, `data-supports-seed="true"`)
 	assert.Contains(t, card, `data-default-steps="25"`)
 	assert.Contains(t, card, `data-default-cfg="7"`)
-	cloud := regexp.MustCompile(`(?s)<li data-testid="gt-model" data-model="nano-banana".*?</li>`).FindString(body)
+	cloud := regexp.MustCompile(`(?s)<li [^>]*data-model="nano-banana"[^>]*>.*?</li>`).FindString(body)
 	assert.Contains(t, cloud, `data-sampling=""`, "a cloud model takes none")
 
 	help := regexp.MustCompile(`(?s)data-testid="gt-advanced-help".*?</ul>`).FindString(body)
@@ -110,5 +110,5 @@ func TestThePromptHelpSaysHowEachModelReadsTheWeights(t *testing.T) {
 	assert.Contains(t, line("unsupported"), "効きません")
 	assert.Contains(t, line("unsupported"), "文で", "Qwen-Image: what to do instead")
 	assert.Contains(t, line("unknown"), "確かめていません")
-	assert.Contains(t, regexp.MustCompile(`(?s)<li data-testid="gt-model" data-model="`+string(gentesttest.NoWeightModel)+`".*?</li>`).FindString(body), `data-prompt-weight="unsupported"`)
+	assert.Contains(t, regexp.MustCompile(`(?s)<li [^>]*data-model="`+string(gentesttest.NoWeightModel)+`"[^>]*>.*?</li>`).FindString(body), `data-prompt-weight="unsupported"`)
 }

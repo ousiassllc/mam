@@ -9,6 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/router/editorapi"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/health"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -75,5 +76,5 @@ func registerAPIRoutes(api huma.API, services *service.Services) {
 	registerRepairAPI(api, services)
 	registerShotAPI(api, services)
 	registerTakeAPI(api, services)
-	registerEditorAPI(api, services)
+	editorapi.Register(api, services)
 }

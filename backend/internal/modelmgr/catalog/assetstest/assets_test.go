@@ -54,7 +54,7 @@ func assetNamed(t *testing.T, s catalog.ResourceSet, name string) catalog.Resour
 // license of the set; the files of an archive are pinned too.
 func TestEmbeddedAssetSetsArePinnedWithSourceAndLicense(t *testing.T) {
 	c := catalog.Default()
-	require.Len(t, c.ResourceSets, 3)
+	require.Len(t, c.ResourceSets, 5)
 	for _, s := range c.ResourceSets {
 		for _, a := range s.Assets {
 			if s.Runtime == "shisei-poses" { // the pose library's files lie on GitHub: the release's zips, and a file at a commit
@@ -82,11 +82,13 @@ func TestGPTSoVITSAssetsHoldTheWeightsAndEveryDependencyThePackageNeeds(t *testi
 
 	dests := map[string]catalog.Resource{}
 	for _, a := range s.Assets {
-		assert.True(t, a.Required, a.Name)
+		// Every asset is needed to speak but the discriminator of the fine-tuning (Issue #936), which only the training reads.
+		assert.Equal(t, !strings.Contains(a.Name, "（学習用）"), a.Required, a.Name)
 		for _, f := range a.Files() {
 			dests[f.Dest] = a
 		}
 	}
+	assert.Contains(t, dests, "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2D2333k.pth", "the training's pretrained discriminator is pinned")
 	// The files that the package's configuration (custom, v2) loads: the weights.
 	for _, d := range []string{
 		"GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt",

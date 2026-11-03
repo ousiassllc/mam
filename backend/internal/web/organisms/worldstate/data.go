@@ -74,6 +74,8 @@ type entityView struct {
 	Slots map[string]string
 	// VoiceRef is the reference voice of a Character (nil for none and for the other entities).
 	VoiceRef *voiceref.Reference
+	// Draft marks a Character made from an attached image when the planning could not run (#1022); it is shown until the user edits it.
+	Draft bool
 }
 
 // formID is the id of the attribute form of the entity; a save replaces that form only.
@@ -93,7 +95,7 @@ func characterView(d Data, c domain.WorldCharacter) entityView {
 	return entityView{
 		Target: domain.TargetCharacter, Plural: "characters", ID: c.ID, Name: c.Name,
 		Fields: entityFields(d, domain.TargetCharacter, c.ID, values),
-		Slots:  map[string]string{"face": c.FaceReferenceAssetID, "body": c.BodyReferenceAssetID}, VoiceRef: c.VoiceReference,
+		Slots:  map[string]string{"face": c.FaceReferenceAssetID, "body": c.BodyReferenceAssetID}, VoiceRef: c.VoiceReference, Draft: c.Draft,
 	}
 }
 
@@ -115,14 +117,15 @@ func locationView(d Data, l domain.WorldLocation) entityView {
 
 // characterCreate is the form that makes a Character (POST /projects/:id/characters) with the Library images that can be its face or body.
 func (d Data) characterCreate() molecules.CharacterCreateData {
-	images := []domain.ReferenceItem{}
+	var options []molecules.CharacterImageOption
 	for _, it := range d.Library {
 		if it.Kind == domain.RefCharacter {
-			images = append(images, it)
+			options = append(options, molecules.CharacterImageOption{Value: it.ID, Label: it.Name})
 		}
 	}
-	form := molecules.CharacterCreateData{DOMID: "ws-create-character", URL: paths.WithBranch(paths.Project(d.Project.ID, "characters"), d.branchID()), Images: images}
-	if len(images) == 0 {
+	form := molecules.CharacterCreateData{DOMID: "ws-create-character", URL: paths.WithBranch(paths.Project(d.Project.ID, "characters"), d.branchID()),
+		Images: options}
+	if len(options) == 0 {
 		form.Note = "顔・全身の参照画像は、Reference Library に「キャラクター」の画像を登録すると選べます。追加したあとでも、下の各登場人物から割り当てられます。"
 	}
 	return form

@@ -26,6 +26,7 @@ const (
 	FieldQuery  = "pose_q"
 	FieldClass  = "pose_class"
 	FieldAngle  = "pose_angle"
+	FieldKind   = "pose_kind"
 	FieldAccept = "pose_accept"
 )
 
@@ -102,7 +103,7 @@ type Card struct {
 	Class  string
 	Image  string // the URL of the picture
 	Angle  string // the label of the angle shown
-	Value  string // the value of the input image the card adds ("pose_library::<picture id>")
+	Value  string // the value of the input image the card adds ("pose_library::<picture id>"; the picture id ends in ".depth" or ".normal" for a map)
 	// Other: the pose has no picture at the angle that was asked for, and this is another angle.
 	Other bool
 }
@@ -120,6 +121,7 @@ type Gallery struct {
 	All     Option // the option "すべて" of the select of categories
 	Classes []ClassGroup
 	Angles  []Option
+	Kinds   []Option // the kind of picture the cards show: the line art, or the depth or normal map for a ControlNet
 	Results Results
 }
 

@@ -12,6 +12,10 @@ import (
 func TestCandidateModels_EveryProviderHasSome(t *testing.T) {
 	for _, p := range llm.Providers() {
 		ids := llm.CandidateModels(p)
+		if p == llm.ProviderLocal {
+			assert.Empty(t, ids, "the models of a local server are the ones it lists: mam ships none")
+			continue
+		}
 		require.NotEmpty(t, ids, p)
 		assert.Len(t, ids, len(uniq(ids)), "%s: an id is listed once", p)
 	}

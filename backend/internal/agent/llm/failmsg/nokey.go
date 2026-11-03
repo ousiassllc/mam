@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -16,10 +17,6 @@ var providerNames = map[llm.Provider]string{
 	llm.ProviderOpenAI:    "OpenAI",
 	llm.ProviderGoogle:    "Google",
 }
-
-// SubscriptionAdvice is the sentence that says how to run the Agents on a ChatGPT plan instead of an API key. The settings
-// screen (/settings/llm) is where the provider is chosen; the failure notice of the chat links to it.
-const SubscriptionAdvice = "ChatGPT のサブスクで動かすなら、先に「API キーとログイン」で ChatGPT にログインし、「テキスト生成（LLM）」でこの Agent のプロバイダーを chatgpt-subscription（組織のアカウントは chatgpt-codex）にしてください"
 
 // SettingsSlug is the category of the settings screen that holds the LLM assignment (paths.SettingsLLM): the ref_id of the chat notice
 // that links to it. The chat builds the address from the slug; it is never written into the message.
@@ -47,39 +44,43 @@ func RefID(err error) string {
 	return ""
 }
 
-// NoKeyMessage is what the user reads when err is a failure for want of an API key (errors.Is(err, llm.ErrNoAPIKey)): which Agent
-// failed and with which provider and model, which keys are missing, how to run on a ChatGPT plan instead, and a saved setting
-// that waits for a restart. The log keeps the raw error.
-func NoKeyMessage(err error) string {
+// NoKeyError is the failure for want of an API key (errors.Is(err, llm.ErrNoAPIKey)) as the common error (#1010): which Agent failed
+// and with which provider and model, which keys are missing, how to run on a ChatGPT plan instead (in the remedy), and a saved
+// setting that waits for a restart. Its detail is the raw error, which the log keeps too.
+func NoKeyError(err error) *apperr.Error {
+	e := apperr.New(apperr.CodeLLMKeyMissing).Wrap(err).With("who", "{{llm_key_missing.any}}")
 	var route *llm.RouteError
 	if !errors.As(err, &route) {
-		return "API キーが設定されていません（設定画面の「API キーとログイン」で、使うプロバイダーのキー（LLM は Anthropic / OpenAI / Google）を登録してください。LLM は、" + SubscriptionAdvice + "）"
+		return e
 	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "LLM の API キーが設定されていません。失敗した Agent は %s です。", Label(route.Agent))
 	var tried, missing []string
 	for _, f := range route.Tried {
-		why := "呼び出しに失敗"
+		why := "{{why.failed}}"
 		switch {
 		case errors.Is(f.Err, llm.ErrNoAPIKey):
-			why = "API キー未設定"
+			why = "{{why.no_key}}"
 			if name := providerName(f.Target.Provider); !slices.Contains(missing, name) {
 				missing = append(missing, name)
 			}
 		case errors.Is(f.Err, llm.ErrCircuitOpen):
-			why = "一時的に利用不可"
+			why = "{{why.circuit_open}}"
 		}
-		tried = append(tried, fmt.Sprintf("%s / %s（%s）", f.Target.Provider, f.Target.Model, why))
+		tried = append(tried, fmt.Sprintf("%s / %s%s", f.Target.Provider, f.Target.Model, why))
 	}
-	fmt.Fprintf(&b, "試したプロバイダーとモデル: %s。", strings.Join(tried, "、"))
+	e = e.With("route", "{{llm_key_missing.route}}").With("agent", Label(route.Agent)).With("tried", strings.Join(tried, "、"))
 	if len(missing) > 0 {
-		fmt.Fprintf(&b, "\n対処: 設定画面の「API キーとログイン」で %s の API キーを登録してください。", strings.Join(missing, "・"))
+		e = e.With("who", "{{llm_key_missing.named}}").With("providers", strings.Join(missing, "・"))
 	}
-	fmt.Fprintf(&b, "\n%s。", SubscriptionAdvice)
 	if len(route.RestartPending) > 0 {
-		fmt.Fprintf(&b, "\n保存した設定のうち、%s は再起動すると反映されます（設定画面の「再起動して反映」）。", strings.Join(route.RestartPending, "・"))
+		e = e.With("restart", "{{restart.pending}}").With("items", strings.Join(route.RestartPending, "・"))
 	}
-	return b.String()
+	return e
+}
+
+// NoKeyMessage is what the user reads when err is a failure for want of an API key: the cause and the remedy of NoKeyError in
+// Japanese. The log keeps the raw error.
+func NoKeyMessage(err error) string {
+	return NoKeyError(err).View(apperr.LangJa).Sentence(apperr.LangJa)
 }
 
 func providerName(p llm.Provider) string {

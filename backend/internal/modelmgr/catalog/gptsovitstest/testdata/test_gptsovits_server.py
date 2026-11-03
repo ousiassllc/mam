@@ -6,6 +6,7 @@ import asyncio
 import importlib.util
 import os
 import sys
+import tempfile
 import types
 import unittest
 
@@ -30,7 +31,7 @@ class FakeApp:
         await send({"type": "http.response.body", "body": b"vendor"})
 
 
-def call(guard, method, path, host=f"127.0.0.1:{PORT}", token=None, extra=()):
+def call(guard, method, path, host=f"127.0.0.1:{PORT}", token=None, extra=(), body=b""):
     """Sends one request through the guard and returns (status, body)."""
     headers = [] if host is None else [(b"host", host.encode("latin-1"))]
     if token is not None:
@@ -39,7 +40,7 @@ def call(guard, method, path, host=f"127.0.0.1:{PORT}", token=None, extra=()):
     sent = []
 
     async def receive():
-        return {"type": "http.request", "body": b"", "more_body": False}
+        return {"type": "http.request", "body": body, "more_body": False}
 
     async def send(message):
         sent.append(message)
@@ -120,15 +121,122 @@ class GuardTest(unittest.TestCase):
         self.assertEqual([], self.app.calls)
 
 
+class VoiceTest(unittest.TestCase):
+    """POST /mam/voice switches the weights of the pipeline to a trained voice below the one directory mam named, and only to that."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.root, ignore_errors=True))
+        self.good = "0190c7f0-0000-7000-8000-000000000001"
+        os.makedirs(os.path.join(self.root, self.good))
+        for name in gs.VOICE_FILES:
+            with open(os.path.join(self.root, self.good, name), "wb") as f:
+                f.write(b"weights")
+        self.app, self.loaded = FakeApp(), []
+        self.guard = gs.Guard(self.app, PORT, TOKEN, self.loaded.append, self.root)
+
+    def voice(self, voice, token=TOKEN):
+        return call(self.guard, "POST", "/mam/voice", token=token, body=('{"voice": %s}' % voice).encode())
+
+    def test_a_trained_voice_is_loaded_by_its_id_and_the_base_by_an_empty_one(self):
+        self.assertEqual(200, self.voice('"%s"' % self.good)[0])
+        self.assertEqual(200, self.voice('""')[0])
+        gpt, sovits = self.loaded[0]
+        self.assertEqual((os.path.join(os.path.realpath(self.root), self.good, "gpt.ckpt"), os.path.join(os.path.realpath(self.root), self.good, "sovits.pth")), (gpt, sovits))
+        self.assertIsNone(self.loaded[1])
+        self.assertEqual([], self.app.calls, "the vendor's app never sees this request")
+
+    def test_it_needs_the_token(self):
+        for token in (None, "wrong"):
+            self.assertEqual(403, self.voice('"%s"' % self.good, token=token)[0])
+        self.assertEqual([], self.loaded)
+
+    def test_an_id_that_is_not_a_name_below_the_root_is_not_found(self):
+        os.makedirs(os.path.join(self.root, "..", "outside"), exist_ok=True)
+        for voice in ("../outside", "/etc", "a/b", "..", ".", "x" * 65, "a b", "unknown-voice", self.good + "/../" + self.good):
+            self.assertIn(self.voice(json_string(voice))[0], (404, 400), voice)
+        self.assertEqual([], self.loaded)
+
+    def test_a_voice_whose_file_is_missing_is_not_found(self):
+        os.remove(os.path.join(self.root, self.good, "sovits.pth"))
+        self.assertEqual(404, self.voice('"%s"' % self.good)[0])
+        self.assertEqual([], self.loaded)
+
+    def test_a_symlink_out_of_the_root_is_not_followed(self):
+        outside = tempfile.mkdtemp()
+        self.addCleanup(lambda: __import__("shutil").rmtree(outside, ignore_errors=True))
+        for name in gs.VOICE_FILES:
+            with open(os.path.join(outside, name), "wb") as f:
+                f.write(b"x")
+        link = "0190c7f0-0000-7000-8000-000000000002"
+        try:
+            os.symlink(outside, os.path.join(self.root, link))
+        except (OSError, NotImplementedError):
+            self.skipTest("no symlinks here")
+        self.assertEqual(404, self.voice('"%s"' % link)[0])
+
+    def test_a_body_that_is_not_a_voice_is_refused(self):
+        for body in (b"", b"[]", b"{}", b'{"voice": 1}', b'{"voice": null}', b"x" * 5000):
+            status, _ = call(self.guard, "POST", "/mam/voice", token=TOKEN, body=body)
+            self.assertIn(status, (400, 413), body[:10])
+        self.assertEqual([], self.loaded)
+
+    def test_a_weight_file_that_does_not_load_is_a_server_error_not_a_silent_fallback(self):
+        def broken(weights):
+            raise RuntimeError("invalid load key")
+
+        guard = gs.Guard(self.app, PORT, TOKEN, broken, self.root)
+        status, body = call(guard, "POST", "/mam/voice", token=TOKEN, body=('{"voice": "%s"}' % self.good).encode())
+        self.assertEqual(500, status)
+        self.assertIn("invalid load key", body.decode())
+
+    def test_without_a_switch_the_path_is_not_found(self):
+        guard = gs.Guard(self.app, PORT, TOKEN)
+        self.assertEqual(404, call(guard, "POST", "/mam/voice", token=TOKEN, body=b'{"voice": ""}')[0])
+
+    def test_other_methods_of_the_path_are_not_found(self):
+        self.assertEqual(404, call(self.guard, "GET", "/mam/voice", token=TOKEN)[0])
+
+
+def json_string(value):
+    import json
+
+    return json.dumps(value)
+
+
+class SwitcherTest(unittest.TestCase):
+    def test_it_loads_the_given_weights_or_the_ones_the_server_started_with(self):
+        calls = []
+        pipeline = types.SimpleNamespace(
+            configs=types.SimpleNamespace(t2s_weights_path="base-gpt", vits_weights_path="base-sovits"),
+            init_vits_weights=lambda p: calls.append(("vits", p)),
+            init_t2s_weights=lambda p: calls.append(("t2s", p)),
+        )
+        switch = gs.switcher(types.SimpleNamespace(tts_pipeline=pipeline))
+        pipeline.configs.t2s_weights_path = "changed-by-init"  # init_t2s_weights writes the loaded path back into the config
+        switch(("g.ckpt", "s.pth"))
+        switch(None)
+        self.assertEqual([("vits", "s.pth"), ("t2s", "g.ckpt"), ("vits", "base-sovits"), ("t2s", "base-gpt")], calls)
+
+
 class MainTest(unittest.TestCase):
     """main() starts the vendor's server behind the guard, or refuses to start."""
 
     def setUp(self):
         self.runs = []
-        self.vendor = types.SimpleNamespace(APP=FakeApp(), host="127.0.0.1", port=PORT)
+        self.vendor = types.SimpleNamespace(
+            APP=FakeApp(), host="127.0.0.1", port=PORT,
+            tts_pipeline=types.SimpleNamespace(configs=types.SimpleNamespace(t2s_weights_path="g", vits_weights_path="s")),
+        )
+        self.workdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.workdir, ignore_errors=True))
+        os.makedirs(os.path.join(self.workdir, "GPT_SoVITS", "configs"))
+        with open(os.path.join(self.workdir, "GPT_SoVITS", "configs", "tts_infer.yaml"), "w") as f:
+            f.write("custom: {}\n")
         uvicorn = types.SimpleNamespace(run=lambda **kw: self.runs.append(kw))
-        saved = (sys.argv, dict(os.environ), list(sys.path))
+        saved = (sys.argv, dict(os.environ), list(sys.path), os.getcwd())
         self.addCleanup(self.restore, saved)
+        os.chdir(self.workdir)
         sys.modules["api_v2"], sys.modules["uvicorn"] = self.vendor, uvicorn
         self.addCleanup(lambda: [sys.modules.pop(n, None) for n in ("api_v2", "uvicorn")])
         os.environ[gs.TOKEN_ENV] = TOKEN
@@ -140,6 +248,7 @@ class MainTest(unittest.TestCase):
         os.environ.clear()
         os.environ.update(saved[1])
         sys.path[:] = saved[2]
+        os.chdir(saved[3])
 
     def test_it_runs_the_vendor_app_behind_the_guard_on_the_given_address(self):
         self.assertEqual(0, gs.main())
@@ -148,6 +257,22 @@ class MainTest(unittest.TestCase):
         self.assertIsInstance(run["app"], gs.Guard)
         self.assertIs(self.vendor.APP, run["app"].app, "the guard stands in front of the vendor's app, not another one")
         self.assertEqual(403, call(run["app"], "POST", "/tts")[0])
+
+    def test_api_v2_reads_a_copy_of_its_config_so_a_trained_voice_never_becomes_the_base(self):
+        original = os.path.join(self.workdir, "GPT_SoVITS", "configs", "tts_infer.yaml")
+        self.assertEqual(0, gs.main())
+        used = sys.argv[sys.argv.index("-c") + 1]
+        self.assertEqual(os.path.join(self.workdir, "TEMP", "mam_tts_infer.yaml"), used)
+        self.assertNotEqual(original, used)
+        with open(original) as a, open(used) as b:
+            self.assertEqual(a.read(), b.read())
+
+    def test_it_gives_the_guard_the_voice_directory_mam_named(self):
+        os.environ[gs.VOICE_ROOT_ENV] = self.workdir
+        self.assertEqual(0, gs.main())
+        guard = self.runs[0]["app"]
+        self.assertEqual(self.workdir, guard.root)
+        self.assertIsNotNone(guard.switch)
 
     def test_it_refuses_an_address_that_is_not_the_loopback(self):
         for addr in ("0.0.0.0", "::", "None", "localhost"):

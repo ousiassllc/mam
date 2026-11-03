@@ -35,6 +35,10 @@ class Inputs {
     this.fileInput = this.q<HTMLInputElement>('[data-gt-file]');
     this.max = Number(root.dataset.max) || 10;
     this.maxBytes = Number(root.dataset.maxBytes) || 0;
+    // A role the form came with (a batch restored with "もう一度", a picture the page was opened with) is a choice: the first frame is only the starting
+    // role of a picture that has none (#1009).
+    for (const s of this.root.querySelectorAll<HTMLSelectElement>('[data-gt-role]'))
+      if (s.value !== 'reference') s.dataset.roleTouched = '';
     this.listen();
     this.sync();
   }
@@ -102,6 +106,8 @@ class Inputs {
     this.root.addEventListener('change', (e) => {
       const select = e.target as HTMLElement;
       if (!(select instanceof HTMLSelectElement) || !select.matches('[data-gt-role]')) return;
+      select.dataset.roleTouched = ''; // the user chose this role: the model that is ticked next leaves it (#1009)
+      if (this.root.dataset.media === 'video') this.sync(); // the notice reads the roles
       const slider = select
         .closest<HTMLElement>('[data-gt-ref]')
         ?.querySelector<HTMLInputElement>('[data-gt-strength]');
@@ -125,8 +131,8 @@ class Inputs {
       },
       { signal },
     );
-    // The commercial filter hides (and disables) cards: what is ticked now changes without a change of the cards.
-    this.root.addEventListener('commercial-filter-applied', () => this.sync(), { signal });
+    // The list of models is drawn again (a filter changed): what is ticked now changes without a change of a card.
+    this.root.addEventListener('model-pick-applied', () => this.sync(), { signal });
     for (const dialog of this.pickers()) dialog.addEventListener('htmx:afterRequest', markAdded);
     // The form is swapped as a whole (another media): its files go with it, so their object URLs are let go of.
     this.root.addEventListener('htmx:beforeCleanupElement', (e) => {

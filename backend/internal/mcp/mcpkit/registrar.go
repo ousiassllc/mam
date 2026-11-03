@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
@@ -36,8 +37,11 @@ type Settings struct {
 	// LLMModels lists the models of a provider (list_llm_models) and tells set_llm_assignment which names are unknown. Nil:
 	// no list tool, and no warning.
 	LLMModels *llmmodels.Service
-	Models    *modelsettings.Service
-	Update    *appupdate.Service
+	// LLMLocal is the address and key of the local OpenAI-compatible LLM server (set_local_llm_server, test_local_llm_server). Nil: those tools are
+	// "unavailable".
+	LLMLocal *llmlocal.Service
+	Models   *modelsettings.Service
+	Update   *appupdate.Service
 	// ChatGPT is the ChatGPT sign-in (login, logout, status and the image generation switch).
 	ChatGPT *chatgpt.Service
 	// Restart restarts the app on request (restart_app) and knows the saved settings that wait for a restart (get_health). Nil:

@@ -49,13 +49,13 @@ type VoiceCloner interface {
 	Clone(ctx context.Context, name string, sample Sample) (voiceID string, err error)
 }
 
-// Providers are the vendors the Audio Director calls. Nil members are left out: without Speech
-// there is no audio production; without Music / Sounds / LipSync the layers they make are
-// skipped and reported. LocalSpeech is the local voice (GPT-SoVITS) and LocalLipSync the local lip sync (MuseTalk 1.5) that a run may
-// choose instead of Speech and LipSync.
+// Providers are the vendors the Audio Director calls. Nil members are left out: without Speech there is no audio production; the layers of a
+// missing Music / Sounds / LipSync are skipped and reported. LocalSpeech (GPT-SoVITS), LocalIrodori (Irodori-TTS) and LocalLipSync (MuseTalk 1.5) are
+// the local providers a run may choose instead of Speech and LipSync.
 type Providers struct {
 	Speech       Synthesizer
 	LocalSpeech  LocalSynthesizer
+	LocalIrodori LocalSynthesizer
 	Music        Composer
 	Sounds       SoundMaker
 	Cloner       VoiceCloner
@@ -68,10 +68,9 @@ func ElevenLabsProviders(e *ElevenLabs) Providers {
 	return Providers{Speech: e, Music: e, Sounds: e, Cloner: e}
 }
 
-// LocalSynthesizer speaks a line on this machine in the voice of a reference recording (*gptsovits.Client).
+// LocalSynthesizer speaks a line on this machine in the voice of a reference recording (*gptsovits.Client, *irodori.Client).
 type LocalSynthesizer interface {
-	// Prepare starts the local server when it is stopped and waits until it answers: a server that cannot be used is an
-	// *localvoice.UnavailableError, known before anything is paid for.
+	// Prepare starts the local server when it is stopped and waits until it answers (an *localvoice.UnavailableError when it cannot be used).
 	Prepare(ctx context.Context) error
 	Synthesize(ctx context.Context, line domain.VoiceLine, voice localvoice.Voice) (Speech, error)
 }

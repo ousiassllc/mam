@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
  "description": "【実写】フォトリアル向けの定番 SDXL チェックポイント epiCRealism XL の VXVI「LastFAME（Realism++）」（成人向け。約 6.9 GB）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。最新の Pure_fix は同じ SHA-256 のミラーが見つからず入れていない。",
  "files": [
   {

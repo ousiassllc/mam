@@ -1,4 +1,4 @@
-"""Tests of the HTTP layer of mam's MuseTalk server (data/overlays/musetalk_server.py): the contract the Go client
+"""Tests of the HTTP layer of mam's MuseTalk server (data/overlays/mam_musetalk_server.py): the contract the Go client
 (modelmgr/lipsync) relies on. The engine is a fake, so neither torch nor MuseTalk is needed; run by the Go test
 TestMuseTalkServerHonoursTheClientContract (python3 testdata/test_musetalk_server.py <path of the server script>)."""
 
@@ -7,10 +7,12 @@ import importlib.util
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 SERVER = sys.argv.pop(1)
 spec = importlib.util.spec_from_file_location("musetalk_server", SERVER)
@@ -222,6 +224,33 @@ class FFmpegTest(unittest.TestCase):
             common.run_ffmpeg(launcher, "-i", "x")
         self.assertEqual("ffmpeg_failed", cm.exception.code)
         self.assertIn("Invalid data found", cm.exception.message)
+
+
+class FFmpegTimeoutTest(unittest.TestCase):
+    def test_a_hung_ffmpeg_is_stopped_and_reported_so_the_server_is_not_held_busy_forever(self):
+        def hung(*args, **kwargs):
+            self.assertEqual(common.FFMPEG_TIMEOUT_SEC, kwargs["timeout"])
+            raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+        with mock.patch.object(subprocess, "run", hung), self.assertRaises(common.LipSyncError) as cm:
+            common.run_ffmpeg("ffmpeg", "-i", "x")
+        self.assertEqual("ffmpeg_failed", cm.exception.code)
+        self.assertIn(str(common.FFMPEG_TIMEOUT_SEC), cm.exception.message)
+
+
+class OutputIsNotAnInputTest(unittest.TestCase):
+    def test_a_link_to_the_input_is_the_input(self):
+        if sys.platform == "win32":
+            self.skipTest("a symbolic link needs a privilege on Windows")
+        with tempfile.TemporaryDirectory() as d:
+            video, audio, link = (os.path.join(d, n) for n in ("v.mp4", "a.wav", "out.mp4"))
+            for path in (video, audio):
+                open(path, "wb").close()
+            os.symlink(video, link)
+            body = {"video_path": video, "audio_path": audio, "output_path": link, "ffmpeg_path": sys.executable}
+            with self.assertRaises(common.LipSyncError) as cm:
+                ms.validate_request(body)
+            self.assertEqual("bad_request", cm.exception.code)
 
 
 class MainTest(unittest.TestCase):

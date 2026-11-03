@@ -1,0 +1,45 @@
+{
+ "id": "img2video-wan22-5b-nsfw-anime",
+ "label": "NSFW-Anime-wan-5B（Wan 2.2 TI2V 5B のアニメ微調整）: 先頭フレームから動画",
+ "media": "video",
+ "description": "NSFW-Anime-wan-5B 3.0Pro（Wan 2.2 TI2V 5B のアニメ向けの非検閲フル微調整。fp16 の nsfw_anime_wan_5b_3.0pro.safetensors）で先頭フレームから動画を作る、標準ノードだけのワークフロー。サンプラーは作者のリポジトリが書く既存ワークフローの値（40 ステップ・cfg 5・UniPC。scheduler は simple、ModelSamplingSD3 の shift は 8）。24fps・フレーム数は 4n+1。テキストエンコーダー（umt5_xxl_fp8_e4m3fn_scaled）と VAE（wan2.2_vae）は Wan 2.2 TI2V 5B と同じファイル（作者は fp16 のテキストエンコーダーと書くが、同じ UMT5-XXL の fp8 版で足りる想定）。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},
+  "workflow": {
+   "prompt_weight": "weak",
+   "graph": {
+    "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "nsfw_anime_wan_5b_3.0pro.safetensors", "weight_dtype": "default"}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "wan2.2_vae.safetensors"}},
+    "48": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["37", 0]}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "55": {"class_type": "Wan22ImageToVideoLatent", "inputs": {"width": 1280, "height": 704, "length": 121, "batch_size": 1, "vae": ["39", 0], "start_image": ["56", 0]}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 40, "cfg": 5, "sampler_name": "uni_pc", "scheduler": "simple", "denoise": 1, "model": ["48", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["55", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["39", 0]}},
+    "57": {"class_type": "CreateVideo", "inputs": {"fps": 24, "images": ["8", 0]}},
+    "58": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["57", 0]}},
+    "56": {"class_type": "LoadImage", "inputs": {"image": "example.png"}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "55", "input": "width"},
+    {"param": "height", "node": "55", "input": "height"},
+    {"param": "frames", "node": "55", "input": "length"},
+    {"param": "fps", "node": "57", "input": "fps"},
+    {"param": "first_frame", "node": "56", "input": "image"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "58",
+   "fps": 24,
+   "frames_step": 4,
+   "size_multiple": 32
+  }
+ }
+}

@@ -1,0 +1,78 @@
+// Package inputnotice draws what the generation test says about the input images the chosen models leave out (#1009): the notice of the input
+// images of a video form, the box of the confirmation, and the images a result was not given.
+package inputnotice
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Check is how the chosen models take the input images attached now: the stop as the common error (nil: the request can be sent) and the warnings
+// about what a model leaves out.
+type Check struct {
+	Block    *apperr.View
+	Warnings []string
+}
+
+// Unused is an input image the model of a result was not given: its role in words, why, and the picture.
+type Unused struct {
+	Role   string
+	Reason string
+	URL    string
+}
+
+// CheckBox is the notice of the input images of a video form: what the ticked models do with the images attached now, drawn by the server with the
+// same check as the estimate (Service.CheckInputs). A model that cannot run without a first frame, or that uses none of the images, shows the error
+// box (cause and fix); an image a model leaves out is an amber box that names the model. The browser asks for it again, through HTMX, when the models,
+// the images or their roles change (inputs.ts sends gt-inputs-changed); it is swapped in as a whole, so that it keeps asking.
+templ CheckBox(c Check) {
+	<div
+		id="gt-input-check"
+		class="flex flex-col gap-2"
+		data-gt-input-check
+		data-testid="gt-input-check"
+		hx-post={ paths.GenerationTestPart("input-check") }
+		hx-trigger="gt-inputs-changed from:closest form delay:200ms"
+		hx-target="this"
+		hx-swap="outerHTML"
+		hx-sync="this:replace"
+		hx-encoding="application/x-www-form-urlencoded"
+		hx-disabled-elt="unset"
+	>
+		if c.Block != nil {
+			@errorbox.Box(errorbox.Props{View: *c.Block, Lang: apperr.LangJa, ID: "gt-input-check"})
+		}
+		if len(c.Warnings) > 0 {
+			@Warnings(c.Warnings, "gt-input-warnings")
+		}
+	</div>
+}
+
+// Warnings is the box of the models that leave an input image out: amber, with a heading, so that it is not read as a footnote.
+templ Warnings(list []string, testid string) {
+	<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm" role="status" data-testid={ testid }>
+		<p class="font-medium text-amber-300">使われない入力画像があります</p>
+		<ul class="list-disc pl-5 text-amber-300">
+			for _, w := range list {
+				<li>{ w }</li>
+			}
+		</ul>
+		<p class="text-xs text-neutral-400">このまま実行すると、使われなかった画像は結果に記録されます。</p>
+	</div>
+}
+
+// UnusedBox is the images of the batch that the model of a result was not given, with why (the detail of a result).
+templ UnusedBox(list []Unused) {
+	<div class="flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm" role="status" data-testid="gt-unused">
+		<p class="font-medium text-amber-300">添えた画像のうち、このモデルに渡さなかった（使われなかった）ものがあります</p>
+		<ul class="flex flex-col gap-2">
+			for _, u := range list {
+				<li class="flex items-center gap-3" data-testid="gt-unused-item">
+					<img class="h-12 w-12 shrink-0 rounded object-cover" src={ u.URL } alt={ u.Role } loading="lazy"/>
+					<span><span class="mr-2 text-xs text-neutral-400">{ u.Role }</span>{ u.Reason }</span>
+				</li>
+			}
+		</ul>
+	</div>
+}

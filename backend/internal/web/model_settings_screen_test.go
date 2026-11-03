@@ -1,6 +1,8 @@
 package web_test
 
 import (
+	"encoding/json"
+	htmlpkg "html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -123,25 +125,31 @@ func modelDefaultForm() url.Values {
 	return form
 }
 
-// selectedOption is the value of the selected <option> of the <select> named name.
+// selectedOption is the value the model field named name holds (a model picker posts its choice as a hidden input).
 func selectedOption(t *testing.T, html, name string) string {
 	t.Helper()
-	sel := regexp.MustCompile(`(?s)<select[^>]*name="` + regexp.QuoteMeta(name) + `"[^>]*>(.*?)</select>`).FindStringSubmatch(html)
-	require.Len(t, sel, 2, name)
-	opt := regexp.MustCompile(`<option value="([^"]*)"[^>]*\sselected`).FindStringSubmatch(sel[1])
-	require.Len(t, opt, 2, name)
-	return opt[1]
+	m := regexp.MustCompile(`<input type="hidden" name="` + regexp.QuoteMeta(name) + `" value="([^"]*)"`).FindStringSubmatch(html)
+	require.Len(t, m, 2, name)
+	return m[1]
 }
 
-func optionValues(t *testing.T, html, name string) []string {
-	t.Helper()
-	sel := regexp.MustCompile(`(?s)<select[^>]*name="` + regexp.QuoteMeta(name) + `"[^>]*>(.*?)</select>`).FindStringSubmatch(html)
-	require.Len(t, sel, 2, name)
-	var values []string
-	for _, m := range regexp.MustCompile(`<option value="([^"]*)"`).FindAllStringSubmatch(sel[1], -1) {
-		values = append(values, m[1])
+// choices are the models the model picker lists for the model field named name ("image_<purpose>_<slot>_model", "policy_<policy>_<slot>"): what the field may be set
+// to, whether or not it can be chosen now (the picker's "使えないものも表示").
+func (s *modelScreen) choices(name string) []string {
+	s.t.Helper()
+	source := "settings-image"
+	if strings.HasPrefix(name, "policy_") {
+		source = "settings-video"
 	}
-	return values
+	rec := s.requestTo(http.MethodGet, paths.ModelPickerSource(source)+"?mf=1&available_only=0", nil)
+	require.Equal(s.t, http.StatusOK, rec.Code)
+	var out []string
+	for _, m := range regexp.MustCompile(`data-mp-values="([^"]*)"`).FindAllStringSubmatch(rec.Body.String(), -1) {
+		var v map[string]string
+		require.NoError(s.t, json.Unmarshal([]byte(htmlpkg.UnescapeString(m[1])), &v))
+		out = append(out, v["value"])
+	}
+	return out
 }
 
 func numberValue(t *testing.T, html, name string) string {

@@ -81,11 +81,11 @@ func readWorld(ctx context.Context, q queryer, projectID, branchID string) (doma
 	w.Characters, err = queryAll(ctx, q, func(row rowScanner) (domain.WorldCharacter, error) {
 		var c domain.WorldCharacter
 		return c, row.Scan(&c.ID, &c.Name, &c.Hairstyle, &c.Wardrobe, &c.Voice, &c.Personality,
-			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID, &c.SeriesFaceReferenceAssetID, &c.VoiceReference)
+			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID, &c.SeriesFaceReferenceAssetID, &c.VoiceReference, &c.Draft)
 	}, `SELECT c.id, c.name, COALESCE(c.hairstyle, ''), COALESCE(c.wardrobe, ''), COALESCE(c.voice, ''), COALESCE(c.personality, ''),
 		        COALESCE(c.emotion, ''), COALESCE(c.position, ''), COALESCE(c.current_action, ''),
 		        COALESCE(c.face_reference_asset_id, ''), COALESCE(c.body_reference_asset_id, ''),
-		        COALESCE(o.face_reference_asset_id, ''), c.voice_reference
+		        COALESCE(o.face_reference_asset_id, ''), c.voice_reference, c.draft
 		 FROM character c LEFT JOIN character o ON o.id = c.origin_id
 		 WHERE c.project_id = ? AND c.branch_id IS ? ORDER BY c.name, c.id`, projectID, nullIfEmpty(branchID))
 	if err != nil {
@@ -164,11 +164,10 @@ func (r *WorldRepository) EditWorld(ctx context.Context, projectID, branchID str
 	})
 }
 
-// UpdateEntity sets fields of a Character, Product or Location of the Project (F-09) and appends
-// the resulting World State as a new version of the trunk, or of the Branch when branchID is set.
-// fields maps an editable field name (domain.EditableFields) to its new text; all of them are
-// written or none. It returns ErrNotFound when the entity is not in that trunk or Branch and
-// ErrLocked when any of the fields is LOCKed.
+// UpdateEntity sets fields of a Character, Product or Location of the Project (F-09) and appends the resulting World State as a new version of
+// the trunk, or of the Branch when branchID is set. fields maps an editable field name (domain.EditableFields) to its new text; all of them are
+// written or none. It returns ErrNotFound when the entity is not in that trunk or Branch and ErrLocked when any of the fields is LOCKed.
+// A Character that was a draft (#1022) is not one any more once it is edited.
 func (r *WorldRepository) UpdateEntity(ctx context.Context, projectID, branchID string, target domain.WorldTarget, id string, fields map[string]string) error {
 	table, ok := worldTables[target]
 	if !ok {
@@ -197,7 +196,8 @@ func (r *WorldRepository) UpdateEntity(ctx context.Context, projectID, branchID 
 				return err
 			}
 		}
-		return nil
+		_, err = tx.ExecContext(ctx, `UPDATE character SET draft = 0 WHERE id = ?`, id) // the user has edited it: no longer a draft (a no-op for a Product or Location id)
+		return err
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLocked) {
 		return err

@@ -23,16 +23,16 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 47)
+	require.Len(t, c.Models, 61)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
 	}
 	assert.Equal(t, []string{
-		"flux1-schnell", "flux2-klein-4b", "qwen-image", "qwen-image-edit-2511", "sdxl-base", "sdxl-controlnet-canny", "sdxl-ipadapter-plus", "upscale-2pass-sdxl-span", "upscale-nomos-uni-span", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
+		"flux1-schnell", "flux2-klein-4b", "qwen-image", "qwen-image-edit-2511", "sdxl-base", "sdxl-controlnet-canny", "sdxl-controlnet-depth", "sdxl-controlnet-normal", "sdxl-ipadapter-plus", "upscale-2pass-sdxl-span", "upscale-nomos-uni-span", "ltx-video-2b", "wan21-flf2v-14b-720p", "wan21-t2v-1-3b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-t2v-14b", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
 		"big-lust-v16", "bigasp-v2", "chroma1-hd", "cyberrealistic-pony-v18", "cyberrealistic-xl-v10", "epicrealism-xl-lastfame", "flux1-dev", "flux1-dev-nsfw-master", "juggernaut-xl-ragnarok", "lustify-sdxl-zenith-v9", "lustify-v10-krea2-turbo-fp8", "noctq-v4-qwen-image21", // advanced: images, then videos
 		"noobai-xl-v11", "pony-diffusion-v6-xl", "qwen-image-21-uncensored-int8", "qwen-image-21-vnccs-pose", "qwen-image-edit-rapid-aio-nsfw-v23", "realism-sdxl-stable-yogi-v8", "realvisxl-v50", "realvisxl-v50-lightning", "sd35-medium", "thisisreal-sdxl-v3", "wai-illustrious-sdxl-v17", "upscale-nomos-webphoto-esrgan",
-		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-dfr", "ltx-2.5-22b-distilled-nvfp4", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v",
+		"hunyuanvideo-t2v-nsfw-lora", "hunyuanvideo15-480p", "hunyuanvideo15-720p-i2v", "hunyuanvideo15-720p-t2v", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-dfr", "ltx-2.5-22b-distilled-nvfp4", "ltx-2.5-22b-distilled-uncensored", "nsfw-anime-wan22-5b", "nsfw-wan21-1b3-t2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-i2v-r1-v2-uncensored", "wan22-rapid-mega-nsfw-t2v", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v", "wan22-t2v-14b-mystic-xxx-lora", "wan22-ti2v-5b-cowgirl-lora",
 	}, ids)
 }
 
@@ -54,6 +54,8 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		"wan22-i2v-14b-lightx2v":            {"apache-2.0", false, modellicense.Yes, 6},
 		"ltx-video-2b":                      {"ltx-video-open-rail-m", false, modellicense.Yes, 2},
 		"flux1-dev":                         {"flux-1-dev-non-commercial", true, modellicense.No, 1},
+		"sdxl-controlnet-depth":             {"sdxl-controlnet-depth", false, modellicense.Yes, 2},
+		"sdxl-controlnet-normal":            {"sdxl-controlnet-normal", false, modellicense.Yes, 2},
 		"sd35-medium":                       {"stabilityai-ai-community", true, modellicense.Conditional, 1},
 		"hunyuanvideo15-480p":               {"tencent-hunyuan-community", true, modellicense.Conditional, 4},
 		"noctq-v4-qwen-image21":             {"qwen-research", true, modellicense.No, 3},

@@ -1,5 +1,5 @@
 // Package audiosettings is the "音声・口パク" section of the settings screen and the Audio Director's choice of providers
-// (spec/architecture/model-adapters-m3.md §14.8): who speaks the lines (ElevenLabs, or the local GPT-SoVITS), who redoes the mouths
+// (spec/architecture/model-adapters-m3.md §14.8, §14.11): who speaks the lines (ElevenLabs, or the local GPT-SoVITS or Irodori-TTS), who redoes the mouths
 // (Sync Labs, or the local MuseTalk 1.5) and whether a run whose local provider cannot be used goes to the cloud instead. The choices
 // are kept in audio.json of the data directory, like ffmpeg.json and mcp.json, and read on every run, so a saved choice applies to
 // the next run without a restart. Without the file every run uses the cloud providers, as it did before the local ones existed.
@@ -114,7 +114,7 @@ func (s *Service) Load() (Settings, error) {
 		}
 	}
 	if out.VoiceProvider == "" || !out.VoiceProvider.Valid() {
-		return Settings{}, fmt.Errorf("%w: %s: %q must be elevenlabs or local", ErrUnreadable, s.path, keyVoice)
+		return Settings{}, fmt.Errorf("%w: %s: %q must be elevenlabs, local or irodori", ErrUnreadable, s.path, keyVoice)
 	}
 	if out.LipSyncProvider == "" || !out.LipSyncProvider.Valid() {
 		return Settings{}, fmt.Errorf("%w: %s: %q must be synclabs or local", ErrUnreadable, s.path, keyLipSync)
@@ -161,10 +161,10 @@ func (s *Service) Save(ctx context.Context, u Update) error {
 func (s *Service) check(ctx context.Context, u Update) error {
 	if p := u.VoiceProvider; p != nil {
 		if *p == "" || !p.Valid() {
-			return &InvalidError{Field: keyVoice, Message: "声のプロバイダー（voice_provider）は elevenlabs か local を指定してください"}
+			return &InvalidError{Field: keyVoice, Message: "声のプロバイダー（voice_provider）は elevenlabs・local（GPT-SoVITS）・irodori（Irodori-TTS）のどれかを指定してください"}
 		}
-		if *p == localvoice.Local {
-			if err := s.supported(ctx, localvoice.RoleVoice, keyVoice); err != nil {
+		if p.IsLocal() {
+			if err := s.supported(ctx, p.Role(), keyVoice); err != nil {
 				return err
 			}
 		}
@@ -200,8 +200,11 @@ func (s *Service) supported(ctx context.Context, role localvoice.Role, field str
 
 // runtimeID is the runtime of the local provider of role.
 func runtimeID(role localvoice.Role) string {
-	if role == localvoice.RoleLipSync {
+	switch role {
+	case localvoice.RoleLipSync:
 		return localruntime.MuseTalkID
+	case localvoice.RoleVoiceIrodori:
+		return localspeech.IrodoriRuntimeID
 	}
 	return localspeech.RuntimeID
 }

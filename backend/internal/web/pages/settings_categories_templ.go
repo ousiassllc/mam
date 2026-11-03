@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/licenses"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llmlocal"
 	local "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
@@ -134,8 +135,8 @@ func SettingsAPIKeysBody(keys credentials.Data, login *chatgpt.Data) templ.Compo
 	})
 }
 
-// SettingsLLMBody is "テキスト生成（LLM）".
-func SettingsLLMBody(d llm.Data) templ.Component {
+// SettingsLLMBody is "テキスト生成（LLM）": the table of the assignment and, under it, the card of the local LLM server (nil: the service is not there).
+func SettingsLLMBody(d llm.Data, local *llmlocal.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -171,6 +172,20 @@ func SettingsLLMBody(d llm.Data) templ.Component {
 			templ_7745c5c3_Err = llm.Section(d).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
+			}
+			if local != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mt-6\" data-testid=\"llm-local-section\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = llmlocal.Card(*local).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 			return nil
 		})

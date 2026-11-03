@@ -51,11 +51,12 @@ func TestTheImageFormOffersTheSpeedModesOfTheImageModels(t *testing.T) {
 // The mode chosen travels through the estimate to the confirmation (a hidden field the run posts back) and into the batch.
 func TestTheChosenSpeedModeReachesTheConfirmationAndTheBatch(t *testing.T) {
 	s := newScreen(t, gentesttest.WithSpeedModel())
-	form := url.Values{"media": {"video"}, "model": {string(gentesttest.SpeedModel)}, "prompt": {"waves"}, "speed_mode": {"standard"}}
+	// the model is an image-to-video one: it needs its first frame (#1009)
+	form := url.Values{"media": {"video"}, "model": {string(gentesttest.SpeedModel)}, "prompt": {"waves"}, "speed_mode": {"standard"}, "ref": {"upload::#1"}, "role_upload::#1": {"first_frame"}}
 
-	hidden := s.confirmed(form)
+	hidden := s.confirmed(form, gentesttest.PNG)
 	assert.Equal(t, "standard", hidden.Get("speed_mode"))
 
 	form.Del("speed_mode")
-	assert.Empty(t, s.confirmed(form).Get("speed_mode"), "no mode chosen: nothing is carried (each model's default)")
+	assert.Empty(t, s.confirmed(form, gentesttest.PNG).Get("speed_mode"), "no mode chosen: nothing is carried (each model's default)")
 }

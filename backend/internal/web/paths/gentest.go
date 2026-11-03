@@ -31,3 +31,11 @@ func GenerationTestExport() string { return GenerationTestPart("export") }
 func GenerationTestPoses(rest ...string) string {
 	return GenerationTestPart(append([]string{"poses"}, rest...)...)
 }
+
+// ModelPicker is the model picker, "/model-picker": the list of models a field chooses one from, with the filter of the models (#1011). ModelPickerSource is
+// "/model-picker/<source>": the picker of one kind of field (the match form's model, a Shot's video model, the LLM of an Agent...). GET answers the dialog's body;
+// with "part=results" it answers the cards alone, for a changed filter.
+func ModelPicker() string { return "/model-picker" }
+
+// ModelPickerSource is "/model-picker/<source>".
+func ModelPickerSource(source string) string { return join(ModelPicker(), source) }

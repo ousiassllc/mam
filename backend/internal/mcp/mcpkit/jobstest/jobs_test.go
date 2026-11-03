@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
@@ -172,6 +173,24 @@ func TestJobs_ANoKeyPlanFailureSaysHowToGoOn(t *testing.T) {
 	st, err = j.Get(ctx, "plan-other")
 	require.NoError(t, err)
 	assert.Empty(t, st.NextSteps)
+}
+
+// When the plan stopped after Characters were drafted from the attached images, get_job says so and says what to do with the drafts (#1022).
+func TestJobs_ADraftedPlanFailureTellsWhatToDoWithTheDrafts(t *testing.T) {
+	started := time.Date(2026, 11, 3, 11, 0, 0, 0, time.UTC)
+	done := started.Add(time.Minute)
+	reason := "LLM の API キーが設定されていません。失敗した Agent は Producer です。\n" + planadvice.DraftNote(2)
+	j, _ := newJobs(t, fakeTable{
+		"plan-draft": {ID: "plan-draft", Kind: domain.JobPlan, Status: domain.JobFailed, CreatedAt: started, FinishedAt: &done, Error: reason},
+	})
+
+	st, err := j.Get(context.Background(), "plan-draft")
+
+	require.NoError(t, err)
+	assert.Contains(t, st.Error, "登場人物の下書き", "the failure tells the drafts were made")
+	assert.Contains(t, st.NextSteps, "draft", "next_steps names the field of the draft")
+	assert.Contains(t, st.NextSteps, "update_character")
+	assert.Contains(t, st.NextSteps, "post_chat_message", "and the way with an LLM")
 }
 
 func TestJobs_RunRefusesWhatCannotBeFollowed(t *testing.T) {

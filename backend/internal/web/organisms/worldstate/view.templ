@@ -5,7 +5,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicetrainpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -21,6 +23,7 @@ templ entityForm(d Data, e entityView) {
 		}
 		if e.Target == domain.TargetCharacter {
 			@voiceForm(d, e)
+			@voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + e.ID, URL: paths.Project(d.Project.ID, "characters", e.ID, "voice-training")})
 		}
 		<details class="text-sm">
 			<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
@@ -42,7 +45,12 @@ templ entityAttributeForm(d Data, e entityView) {
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
-		<p class="text-sm font-medium">{ e.Name }</p>
+		<p class="flex items-center gap-2 text-sm font-medium">
+			{ e.Name }
+			if e.Draft {
+				@atoms.BadgeWith(atoms.BadgeWarn, "下書き", templ.Attributes{"data-testid": "character-draft", "title": "Brief の添付画像から作った下書きです。髪型・衣装などを書き足して保存すると、この印は消えます（名前は仮のままです）"})
+			}
+		</p>
 		<div class="grid gap-2 sm:grid-cols-2">
 			for _, f := range e.Fields {
 				@molecules.WorldStateField(f)
@@ -94,7 +102,7 @@ templ View(d Data) {
 		<section aria-label="Story / Music" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Story / Music</h2>
 			for _, p := range domain.ProjectLockParameters() {
-				@molecules.LockToggle(organisms.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
+				@molecules.LockToggle(locktoggles.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
 			}
 		</section>
 		<p id="world-state-empty" class="text-sm text-neutral-400">

@@ -120,7 +120,7 @@ func qualityPolicy(c *gin.Context) (domain.QualityPolicy, bool) {
 // EditImage answers the modal that edits the image purpose :purpose (GET /settings/models/images/:purpose/edit), with the
 // models that may be chosen now. An unknown purpose is 404 and a pinned file 409, each with a modal that says so. A request
 // that is not HTMX (the address typed in, a reload) gets page, the category page.
-func EditImage(svc *modelsettings.Service, page gin.HandlerFunc) gin.HandlerFunc {
+func EditImage(svc *modelsettings.Service, k Cards, page gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !settingshttp.IsHTMX(c) {
 			page(c)
@@ -131,12 +131,12 @@ func EditImage(svc *modelsettings.Service, page gin.HandlerFunc) gin.HandlerFunc
 		if !ok {
 			return
 		}
-		settingshttp.Render(c, http.StatusOK, media.ImageModal(media.ImageForm{Row: imageRow(v, p, v.Images[p]), Models: imageModels(v), Filter: commercialFilter("media-image-commercial", "#media-image-form")}))
+		settingshttp.Render(c, http.StatusOK, media.ImageModal(k.imageForm(c.Request.Context(), v, p, v.Images[p], "", "")))
 	}
 }
 
 // EditPolicy is EditImage for the Quality Policy :policy (GET /settings/models/policies/:policy/edit).
-func EditPolicy(svc *modelsettings.Service, page gin.HandlerFunc) gin.HandlerFunc {
+func EditPolicy(svc *modelsettings.Service, k Cards, page gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !settingshttp.IsHTMX(c) {
 			page(c)
@@ -147,7 +147,7 @@ func EditPolicy(svc *modelsettings.Service, page gin.HandlerFunc) gin.HandlerFun
 		if !ok {
 			return
 		}
-		settingshttp.Render(c, http.StatusOK, media.PolicyModal(media.PolicyForm{Row: policyRow(v, q, v.Policies[q]), Choices: videoChoices(v), Filter: commercialFilter("media-policy-commercial", "#media-policy-form")}))
+		settingshttp.Render(c, http.StatusOK, media.PolicyModal(k.policyForm(c.Request.Context(), v, q, v.Policies[q], "", "")))
 	}
 }
 
@@ -155,7 +155,7 @@ func EditPolicy(svc *modelsettings.Service, page gin.HandlerFunc) gin.HandlerFun
 // purpose) for the modal that sent it. The row is checked on its own: the others stay as saved. The answer is the row
 // replaced out of band, the notes and the reset (which a save may change), a toast and the event that closes the modal; 422
 // is the modal again with why and what was typed (the file is then untouched), 409 a pinned file, 404 an unknown purpose.
-func SaveImage(svc *modelsettings.Service) gin.HandlerFunc {
+func SaveImage(svc *modelsettings.Service, k Cards) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		p, known := imagePurpose(c)
 		if _, ok := rowRequest(c, svc, known, imageTitle); !ok {
@@ -171,7 +171,7 @@ func SaveImage(svc *modelsettings.Service) gin.HandlerFunc {
 		}
 		if err != nil {
 			refuse(c, err, func(msg, field string) templ.Component {
-				return media.ImageModal(media.ImageForm{Row: imageRow(v, p, route), Models: imageModels(v), Filter: commercialFilter("media-image-commercial", "#media-image-form"), Error: msg, Blame: field})
+				return media.ImageModal(k.imageForm(c.Request.Context(), v, p, route, msg, field))
 			})
 			return
 		}
@@ -181,7 +181,7 @@ func SaveImage(svc *modelsettings.Service) gin.HandlerFunc {
 }
 
 // SavePolicy is SaveImage for the Quality Policy :policy (PUT /settings/models/policies/:policy).
-func SavePolicy(svc *modelsettings.Service) gin.HandlerFunc {
+func SavePolicy(svc *modelsettings.Service, k Cards) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		q, known := qualityPolicy(c)
 		if _, ok := rowRequest(c, svc, known, policyTitle); !ok {
@@ -197,7 +197,7 @@ func SavePolicy(svc *modelsettings.Service) gin.HandlerFunc {
 		}
 		if err != nil {
 			refuse(c, err, func(msg, field string) templ.Component {
-				return media.PolicyModal(media.PolicyForm{Row: policyRow(v, q, route), Choices: videoChoices(v), Filter: commercialFilter("media-policy-commercial", "#media-policy-form"), Error: msg, Blame: field})
+				return media.PolicyModal(k.policyForm(c.Request.Context(), v, q, route, msg, field))
 			})
 			return
 		}
@@ -237,11 +237,11 @@ func refuse(c *gin.Context, err error, draw func(message, field string) templ.Co
 // Register adds the routes of the category: the modals (GET paths.ModelImageEdit, paths.ModelPolicyEdit), the saves of the
 // rows (PUT paths.ModelImage, paths.ModelPolicy) and the save and reset of the whole assignment (PUT / DELETE
 // paths.ModelSettings). page answers a modal route for a request that is not HTMX.
-func Register(engine *gin.Engine, svc *modelsettings.Service, page gin.HandlerFunc) {
-	engine.GET(paths.ModelImageEdit(":purpose"), EditImage(svc, page))
-	engine.GET(paths.ModelPolicyEdit(":policy"), EditPolicy(svc, page))
-	engine.PUT(paths.ModelImage(":purpose"), SaveImage(svc))
-	engine.PUT(paths.ModelPolicy(":policy"), SavePolicy(svc))
+func Register(engine *gin.Engine, svc *modelsettings.Service, k Cards, page gin.HandlerFunc) {
+	engine.GET(paths.ModelImageEdit(":purpose"), EditImage(svc, k, page))
+	engine.GET(paths.ModelPolicyEdit(":policy"), EditPolicy(svc, k, page))
+	engine.PUT(paths.ModelImage(":purpose"), SaveImage(svc, k))
+	engine.PUT(paths.ModelPolicy(":policy"), SavePolicy(svc, k))
 	engine.PUT(paths.ModelSettings(), Save(svc))
 	engine.DELETE(paths.ModelSettings(), Reset(svc))
 }

@@ -68,6 +68,64 @@ func TestInstalledLibraryListsOnlyGeneralPosesThatHavePictures(t *testing.T) {
 	assert.False(t, ok)
 }
 
+// The depth and normal maps are pictures of the same poses (Issue #1020): the ID of a map is the line picture's ID and ".depth" or ".normal",
+// and only the angles Shisei made a map for have one. A pose with line art only is still listed.
+func TestADepthAndANormalMapAreFoundByTheirOwnIDAndOnlyWhereShiseiMadeOne(t *testing.T) {
+	r := posestest.New(t)
+	r.Install(t)
+
+	p1, ok := r.Lib.Pose("P001")
+	require.True(t, ok)
+	assert.Equal(t, "std_P001_front.depth", p1.ImageOf(poses.Depth, poses.Front))
+	assert.Equal(t, "", p1.ImageOf(poses.Depth, poses.Diag), "a depth map exists for the front only")
+	assert.Equal(t, "std_P001_diag.normal", p1.ImageOf(poses.Normal, poses.Diag))
+	assert.Equal(t, "std_P001_diag", p1.ImageOf(poses.Line, poses.Diag))
+	assert.Equal(t, poses.Front, p1.FirstAngleOf(poses.Depth, poses.Diag), "the angle of the maps that stands in")
+	p2, _ := r.Lib.Pose("P002")
+	assert.Empty(t, p2.Maps[poses.Normal], "no normal map for P002: it is not shown among the normal maps")
+	u1, _ := r.Lib.Pose("U001")
+	assert.Equal(t, "upper_U001_front", u1.Image(poses.Front), "a pose with line art only is listed")
+
+	for id, want := range map[string]struct {
+		file string // below the directory of the library
+		body []byte
+		kind poses.Kind
+	}{
+		"std_P001_front.depth": {"depth/std_P001_front.webp", posestest.MapPicture("depth", "std_P001_front"), poses.Depth},
+		"std_P001_diag.normal": {"normal/std_P001_diag.webp", posestest.MapPicture("normal", "std_P001_diag"), poses.Normal},
+		"std_P002_side.depth":  {"depth/std_P002_side.webp", posestest.MapPicture("depth", "std_P002_side"), poses.Depth},
+		"std_P001_front":       {"poses/std_P001_front.webp", posestest.Picture("std_P001_front"), poses.Line},
+	} {
+		path, err := r.Lib.File(id)
+		require.NoError(t, err, id)
+		assert.Equal(t, filepath.Join(r.Dir, filepath.FromSlash(want.file)), path, id)
+		got, err := os.ReadFile(path)
+		require.NoError(t, err)
+		assert.Equal(t, want.body, got, id)
+		_, _, kind, ok := r.Lib.ImageOwner(id)
+		assert.True(t, ok, id)
+		assert.Equal(t, want.kind, kind, id)
+	}
+	for _, bad := range []string{"std_P001_diag.depth", "std_P002_front.normal", "std_P001_front.depth.depth", "std_P001_front.clay", "../depth/std_P001_front.depth", "std_P003_front.depth", "std_P009_front.normal"} {
+		_, err := r.Lib.File(bad)
+		var invalid *gterr.InvalidError
+		assert.ErrorAs(t, err, &invalid, bad+": a map that does not exist, or an ID that is none")
+	}
+}
+
+// A depth or normal map that is missing or replaced takes the library out until it is installed again, like a line picture does: the maps are
+// required files of the asset set.
+func TestAMissingDepthMapTakesTheLibraryOutUntilItIsInstalledAgain(t *testing.T) {
+	r := posestest.New(t)
+	r.Install(t)
+	require.NoError(t, os.Remove(filepath.Join(r.Dir, "depth", "std_P001_front.webp")))
+	_, err := r.Lib.Poses()
+	assert.ErrorIs(t, err, poses.ErrNotInstalled)
+	r.Install(t)
+	_, err = r.Lib.File("std_P001_front.depth")
+	assert.NoError(t, err)
+}
+
 func TestFileIsOnlyAPictureOfAnInstalledPose(t *testing.T) {
 	r := posestest.New(t)
 	_, err := r.Lib.File("std_P001_front")
@@ -169,9 +227,9 @@ func TestTheEmbeddedPoseLibraryIsPinnedAndHoldsNoSuggestivePose(t *testing.T) {
 	assert.False(t, st.Installed)
 	assert.Equal(t, set.TotalSize(), st.DownloadBytes)
 	assert.Equal(t, 96, st.Poses, "the poses of Shisei v0.4.1 that are rated general and have a picture: 69 full-body and 27 upper-body")
-	assert.Equal(t, 414, st.Images)
+	assert.Equal(t, 414+335+335, st.Images, "the line art of the 96 poses, and the depth and the normal maps Shisei made for 335 of those views")
 	assert.Equal(t, "https://github.com/wquguru/shisei", st.Source)
-	assert.Less(t, st.DownloadBytes, int64(25<<20), "20 MB, not the 150 MB of the originals")
+	assert.Less(t, st.DownloadBytes, int64(50<<20), "the line art, depth and normal zips (about 43 MB), not the 150 MB of the originals")
 	for _, l := range st.Licenses {
 		assert.NotEmpty(t, l.Summary)
 	}

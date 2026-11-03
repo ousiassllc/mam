@@ -29,7 +29,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/repository/reciperepo"
@@ -63,9 +65,9 @@ type Deps struct {
 	References *repository.ReferenceRepository
 	// Assign is the optional second step of an import (nil: an import with a slot is refused).
 	Assign projectlink.AssignFunc
-	// Explain says in words for the user why a call failed, when the failure is one of the app's own refusals (the bundled
-	// engine is not installed, ...); "" leaves the failure as it is. May be nil.
-	Explain func(err error) string
+	// Explain is the common error of a call that failed, when the failure is one of the app's own refusals (the bundled
+	// engine is not installed, ...); nil leaves the failure to errmap. May be nil.
+	Explain func(err error) *apperr.Error
 	// Hidden says a model is left out of the model lists and refused as unknown: the adult models of the model manager while
 	// the age gate is closed (modelmanager.Service.HidesModel). May be nil.
 	Hidden func(modelID string) bool
@@ -78,6 +80,9 @@ type Deps struct {
 	// MissingNodes gives the reason a model of the bundled ComfyUI cannot be chosen because a custom node its workflow requires is not installed
 	// (modelnodes, nodegate.ForModels); empty when it can. Nil: no model is refused for its nodes.
 	MissingNodes func(modelID string, required []string) string
+	// CatalogInfo says what the model manager's catalog knows of a model by its identifier: adult, the traits and the VRAM guideline (modelmanager.Service.InfoOf),
+	// for the filter of the model list (#1011). Nil: the list says none of it.
+	CatalogInfo func(modelID string) (modelfilter.CatalogInfo, bool)
 	// PlatformWarning says a model is not for this PC: the OS / GPU generation columns of the model catalog (Issue #979) put it outside, so that
 	// the easy tier does not pick it for an intent ("" when it is fine). Nil: no model is ruled out.
 	PlatformWarning func(ctx context.Context, modelID string) string
@@ -137,7 +142,7 @@ func New(d Deps) *Service {
 		FaceScore: d.FaceScore, FaceSwap: d.FaceFusion, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
-		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes},
+		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes, CatalogInfo: d.CatalogInfo},
 	}
 }
 

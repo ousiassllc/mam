@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	svc "github.com/ousiassllc/mam/backend/internal/service/onboarding"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
@@ -41,6 +42,8 @@ type Handlers struct {
 	// LLM and Models are the assignments of the models step: both or neither.
 	LLM    *llmassign.Service
 	Models *modelsettings.Service
+	// LLMModels are the models the LLM field lists and the warning of a route that names a provider that cannot be used (nil: no warning).
+	LLMModels *llmmodels.Service
 	// FFmpeg is the download of ffmpeg shown in the ffmpeg step when a tool is missing (the same routes as the settings
 	// screen's). Its Download is nil when the app has none: the step then only explains how to install it.
 	FFmpeg ffmpeghandler.Services
@@ -82,7 +85,7 @@ func (h Handlers) credentialsBody(c *gin.Context) templ.Component {
 }
 
 func (h Handlers) modelsBody(*gin.Context) templ.Component {
-	return view.ModelsBody(llmhandler.SectionData(h.LLM), mediahandler.SectionData(h.Models))
+	return view.ModelsBody(llmhandler.SectionData(h.LLM, h.LLMModels), mediahandler.SectionData(h.Models))
 }
 
 func (h Handlers) ffmpegBody(*gin.Context) templ.Component {

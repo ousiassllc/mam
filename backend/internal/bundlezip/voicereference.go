@@ -65,6 +65,24 @@ func voiceReferencePaths(data domain.BundleData) ([]string, error) {
 	return out, err
 }
 
+// dropTrainedVoices takes the trained voice (voiceref.Finetune) out of every reference voice of the data: the bundle carries the
+// recording that the voice is cloned from but not the trained weights (a large file of a voice the exporter may not be free to hand on,
+// that only the PC it was trained on can load), so an imported Character speaks with the zero-shot clone of its recording.
+func dropTrainedVoices(data domain.BundleData) error {
+	return voiceRows(data, func(row domain.BundleRow, ref voiceref.Reference) error {
+		if ref.Finetune == nil {
+			return nil
+		}
+		ref.Finetune = nil
+		raw, err := json.Marshal(ref)
+		if err != nil {
+			return err
+		}
+		row["voice_reference"] = string(raw)
+		return nil
+	})
+}
+
 // relocateSharedVoices gives the reference voices whose file lives in another directory (the Series' directory,
 // or the Project an Episode copied the canon from) a path of the exported Project: <project>/<character id>-voice<ext>.
 // One file that several rows share is moved once. It adds the new path to the original one in sources.

@@ -16,6 +16,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 )
 
@@ -64,6 +66,9 @@ type Info struct {
 	Available          bool   `json:"available"`
 	Unavailable        string `json:"unavailable,omitempty"`
 	UnavailableMessage string `json:"unavailable_message,omitempty"`
+	// SettingsRoute is the screen that fixes the reason ("/settings/api-keys", "/settings/local-models", "/model-manager"); empty while Available and for a reason
+	// that fixes itself (the circuit breaker). A screen links it from "選べません" (#1013).
+	SettingsRoute string `json:"settings_route,omitempty"`
 	// AcceptsReferences: an image model uses reference images.
 	AcceptsReferences bool `json:"accepts_references"`
 	// ReferenceMode is how an image model uses references: "edit", "img2img", or "inpaint" (a mask redraws part of one image);
@@ -99,6 +104,17 @@ type Info struct {
 	SupportsInpaint bool `json:"supports_inpaint,omitempty" jsonschema:"一部だけ描き直す（インペイント）に対応する。reference_mode が inpaint のとき true。対応しないモデルは選べない"`
 	// DenoiseDefault is the redraw strength the workflow uses when a request names none (the template's denoise).
 	DenoiseDefault *float64 `json:"denoise_default,omitempty" jsonschema:"一部だけ描き直すときの描き直しの強さの既定（0 より大きく 1 以下）。supports_inpaint のモデルだけ"`
+	// RequiresInputs are the input images the model cannot run without (first_frame / last_frame / reference): a request without one is stopped before it is sent.
+	RequiresInputs []string `json:"requires_inputs,omitempty" jsonschema:"このモデルが必ず使う入力画像（first_frame / last_frame / reference）。I2V のワークフローは first_frame。リクエストに無い（役割が違う）と、送らずに input_missing で止める。無いモデルは省略"`
+	// Provider is who serves the model: the vendor of a cloud model ("google", "openai", "kling"...), "chatgpt-subscription" for the ChatGPT subscription's image
+	// model, "local" for a ComfyUI / OpenAI-compatible endpoint model or a saved workflow. Origin is "local" or "api". Both are the words of the filter (modelfilter).
+	Provider string `json:"provider" jsonschema:"提供元（クラウドはベンダー、local はローカル。絞り込みの providers に使う）"`
+	Origin   string `json:"origin" jsonschema:"local（この PC・登録した接続先）/ api（クラウド・サブスク）"`
+	// Inputs are what the model takes as input (traits.Input: t2i, i2i, t2v, i2v, first_frame, reference_face...), derived from the same capabilities as
+	// reference_mode, reference_roles and video, so the two never disagree.
+	Inputs []traits.Input `json:"inputs" jsonschema:"入力の種類（t2i / i2i / inpaint / edit / t2v / i2v / first_frame / last_frame / reference_whole / reference_face / reference_style / reference_pose / reference_control）。参照の使い方・動画の能力と同じ元から導く"`
+	// Catalog is what the model manager's catalog says of a model it installed (adult, the traits, the VRAM guideline); nil for any other model.
+	Catalog *CatalogTraits `json:"catalog,omitempty" jsonschema:"モデルマネージャーのカタログのモデルだけ。成人向けか・非検閲か・パラメータ数・速度と品質の目安・VRAM の目安"`
 }
 
 // FilterByCommercial keeps the models whose answer the filter allows.
@@ -123,6 +139,8 @@ type Catalog struct {
 	// MissingNodes gives the reason a local model cannot be chosen because the custom nodes its workflow requires (localcfg.Workflow.RequiresNodes) are
 	// not installed; empty when it can. Nil asks for none.
 	MissingNodes func(id string, required []string) string
+	// CatalogInfo says what the model manager's catalog knows of a local model by its identifier (modelmanager.Service.InfoOf); nil knows none.
+	CatalogInfo func(id string) (modelfilter.CatalogInfo, bool)
 }
 
 // Models lists the models of the media ("" for both): every built-in cloud model, the models of the registered endpoints,
@@ -206,17 +224,18 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 		SupportsSeed: direct.SupportsSeed(cfg, m), NegativeField: direct.NegativeField(cfg, m), Price: priceOf(cfg, m, media),
 		License: modellicense.Of(string(m)),
 	}
-	if reason := c.Adapter.Unavailable(m); reason != "" {
-		mi.Unavailable, mi.UnavailableMessage = reason, unavailableMessage(reason, mi.Source)
-	} else if msg := c.missingNodes(cfg, m); msg != "" {
-		mi.Unavailable, mi.UnavailableMessage = ExcludedMissingNode, msg
-	} else {
-		mi.Available = true
+	a := c.availability(cfg, m, mi.Source)
+	mi.Available, mi.Unavailable, mi.UnavailableMessage = a.Available, string(a.Reason), a.Message
+	mi.SettingsRoute = a.Route
+	mi.Provider, mi.Origin = providerOf(m, mi.Source), originOf(mi.Source)
+	if info, ok := c.catalogInfo(string(m)); ok {
+		mi.Catalog = &CatalogTraits{Adult: info.Adult, Traits: info.Traits, VRAMMinGB: info.VRAMMinGB}
 	}
 	mi.PromptWeight = promptweight.Unknown
 	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
 		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
 		mi.Exposed, mi.SpeedModes = c.exposedCaps(*lm.Workflow), SpeedModesOf(*lm.Workflow)
+		mi.RequiresInputs = lm.Workflow.RequiredImages()
 		if d, ok := denoiseDefault(lm.Workflow); ok {
 			mi.SupportsInpaint, mi.DenoiseDefault = true, &d
 		}
@@ -229,6 +248,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 		} else if mi.AcceptsReferences {
 			mi.ReferenceRoles = []string{localcfg.RoleWhole} // a model whose references are not described: the whole picture
 		}
+		mi.Inputs = inputsOf(mi)
 		return mi
 	}
 	if caps, ok := cfg.VideoCaps(m); ok {
@@ -237,6 +257,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio,
 		}
 	}
+	mi.Inputs = inputsOf(mi)
 	return mi
 }
 

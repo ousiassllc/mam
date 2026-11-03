@@ -291,3 +291,6 @@ type userError struct {
 
 func (e *userError) Error() string { return e.msg }
 func (e *userError) Unwrap() error { return e.err }
+
+// UserMessage is the sentence for the user (mmview.Failure reads it).
+func (e *userError) UserMessage() string { return e.msg }

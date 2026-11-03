@@ -146,3 +146,39 @@ func TestCreateCharacter_InTheCanonRefusesWhatCannotBeKept(t *testing.T) {
 	assert.Contains(t, env.CallError("create_character", map[string]any{"series_id": "nope", "name": "Y"}), "not_found")
 	assert.Equal(t, 1, worldtest.Count(t, env, `SELECT COUNT(*) FROM character WHERE series_id = ?`, made.SeriesID))
 }
+
+// A draft (made from an attached image when the planning could not run, #1022) is told as such by get_world_state and stays one until the
+// user edits it with update_character; a Character made by hand carries no draft mark.
+func TestCreateCharacter_TheDraftMarkIsShownByTheWorldStateAndClearedByAnEdit(t *testing.T) {
+	env, p := newEnv(t)
+	worldtest.Exec(t, env, `INSERT INTO character (id, project_id, name, draft) VALUES ('d1', ?, '登場人物 1', 1)`, p.ID)
+	var made character.Output
+	env.CallOK("create_character", map[string]any{"project_id": p.ID, "name": "Ren"}, &made)
+	assert.False(t, made.Character.Draft, "a Character made by hand is no draft")
+
+	drafts := func() map[string]bool {
+		var ws worldstate.View
+		env.CallOK("get_world_state", map[string]any{"project_id": p.ID}, &ws)
+		out := map[string]bool{}
+		for _, c := range ws.Characters {
+			out[c.ID] = c.Draft
+		}
+		return out
+	}
+	assert.Equal(t, map[string]bool{"c1": false, "d1": true, made.CharacterID: false}, drafts())
+
+	env.CallOK("update_character", map[string]any{"project_id": p.ID, "character_id": "d1", "hairstyle": "bob"}, nil)
+
+	assert.Equal(t, map[string]bool{"c1": false, "d1": false, made.CharacterID: false}, drafts(), "the edit clears the mark")
+}
+
+func TestCreateCharacter_TheBranchRefusalSaysBranchIsForAProject(t *testing.T) {
+	env, _ := newEnv(t)
+	var made series.CreateOutput
+	env.CallOK("create_series", map[string]any{"name": "S"}, &made)
+
+	msg := env.CallError("create_character", map[string]any{"series_id": made.SeriesID, "name": "Y", "branch_id": "b"})
+
+	assert.Contains(t, msg, "branch_id は project_id のときだけ")
+	assert.NotContains(t, msg, "series_id のときだけ")
+}

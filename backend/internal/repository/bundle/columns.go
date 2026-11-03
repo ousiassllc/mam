@@ -31,6 +31,15 @@ func shapeOf[T any]() jsonShape {
 	}
 }
 
+// voiceReferenceShape is a reference voice that the upload would have accepted (voiceref.Reference.Validate); a JSON null is no voice.
+func voiceReferenceShape(raw string) error {
+	var r *voiceref.Reference
+	if err := json.Unmarshal([]byte(raw), &r); err != nil || r == nil {
+		return err
+	}
+	return r.Validate()
+}
+
 // checkpointsShape is a list of known checkpoints: an unknown one would never be asked for.
 func checkpointsShape(raw string) error {
 	var cps []domain.Checkpoint
@@ -60,7 +69,7 @@ var bundleJSONColumns = map[string]map[string]jsonShape{
 	"edit_timeline_version":  {"timeline": shapeOf[domain.EditTimeline]()},
 	"editor_judge_result":    {"findings": shapeOf[[]domain.EditorFinding]()},
 	"audio_timeline_version": {"timeline": shapeOf[domain.AudioTimeline]()},
-	"character":              {"voice_reference": shapeOf[voiceref.Reference]()},
+	"character":              {"voice_reference": voiceReferenceShape},
 	"final_qc_result":        {"findings": shapeOf[[]domain.QCFinding]()},
 	"reference_item":         {"tags": shapeOf[[]string]()},
 	"brand_constraint":       {"value": shapeOf[repository.BrandValue]()},

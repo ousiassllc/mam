@@ -3,6 +3,7 @@ package modelmgr_test
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 
@@ -32,7 +33,7 @@ func pollJob(t *testing.T, env *mcptest.Env, id string) mcpkit.JobStatus {
 	require.Eventually(t, func() bool {
 		env.CallOK("get_job", map[string]any{"job_id": id}, &st)
 		return st.State.Final()
-	}, 30e9, 20e6)
+	}, 30*time.Second, 20*time.Millisecond)
 	return st
 }
 
