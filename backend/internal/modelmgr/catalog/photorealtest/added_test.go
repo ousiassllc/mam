@@ -80,7 +80,7 @@ func TestAddedModelsLicensesAreOnlyWhatTheSourcesSay(t *testing.T) {
 	}{
 		"realvisxl-v50-lightning":            {"creativeml-openrail++-m", modellicense.Yes, "huggingface.co/SG161222/RealVisXL_V5.0_Lightning/blob/", nil},
 		"lustify-v10-krea2-turbo-fp8":        {"krea-2-community", modellicense.Unknown, "huggingface.co/Comfy-Org/Krea-2/blob/588feaf955b08b9ac4723eeb751752ab045dba71/LICENSE.pdf", map[string]modellicense.Commercial{"Krea 2": modellicense.Conditional, "ライセンスの記載なし": modellicense.Unknown}},
-		"qwen-image-edit-rapid-aio-nsfw-v23": {"apache-2.0", modellicense.Yes, "huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/blob/", nil},
+		"qwen-image-edit-rapid-aio-nsfw-v23": {"apache-2.0", modellicense.Unknown, "huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/blob/", map[string]modellicense.Commercial{"Apache License 2.0（Hugging Face": modellicense.Unknown}},
 		"qwen-image-21-vnccs-pose":           {"qwen-research", modellicense.No, "huggingface.co/Qwen/Qwen-Image-2.1/blob/", map[string]modellicense.Commercial{"ライセンスの記載なし": modellicense.Unknown}},
 	} {
 		m, ok := c.Model(id)
@@ -90,7 +90,7 @@ func TestAddedModelsLicensesAreOnlyWhatTheSourcesSay(t *testing.T) {
 		assert.Equal(t, want.answer, l.Commercial, id)
 		assert.Contains(t, l.URL, want.source, id)
 		assert.Equal(t, "2026-11-03", l.CheckedAt, id)
-		if l.Commercial != modellicense.Yes || id == "qwen-image-edit-rapid-aio-nsfw-v23" {
+		if l.Commercial != modellicense.Yes {
 			assert.NotEmpty(t, l.Notice, id)
 		}
 		for start, answer := range want.part {
