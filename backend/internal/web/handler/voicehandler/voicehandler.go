@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicetrainpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/worldstate"
 )
 
@@ -57,6 +58,7 @@ func answerSeries(c *gin.Context, svc *service.Services, err error) {
 		return
 	}
 	data := seriesview.Data{Series: v.Series, Canon: v.Canon, Versions: v.Versions, Episodes: v.Episodes, Templates: v.Templates}
+	c.Header("HX-Trigger", voicetrainpanel.ChangedEvent) // the training panel of the Character loads itself again
 	settingshttp.Render(c, http.StatusOK, seriesview.VoiceSaved(data, c.Param("characterId")))
 }
 
@@ -90,6 +92,7 @@ func answerProject(c *gin.Context, svc *service.Services, err error) {
 		return
 	}
 	data := worldstate.Data{Project: v.Project, Branch: v.Branch, World: v.World, Locks: v.Locks, ProjectLocks: v.ProjectLocks, Library: v.Library, Versions: v.Versions}
+	c.Header("HX-Trigger", voicetrainpanel.ChangedEvent) // the training panel of the Character loads itself again
 	settingshttp.Render(c, http.StatusOK, worldstate.VoiceSaved(data, c.Param("characterId")))
 }
 

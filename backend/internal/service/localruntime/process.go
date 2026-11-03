@@ -23,6 +23,9 @@ func (s *Service) CheckStart(ctx context.Context, id string) error {
 	if !inst.install.Status().Installed {
 		return ErrNotInstalled
 	}
+	if inst.tool.Load() {
+		return ErrTraining
+	}
 	if s.activeJob(TargetPrefix+id) != "" {
 		return ErrBusy
 	}

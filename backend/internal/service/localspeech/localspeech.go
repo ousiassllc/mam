@@ -153,6 +153,13 @@ func Voices(ctx context.Context, lookup Lookup, projectID, branchID string, scen
 					Path: v.Path, Text: v.Reference.Text, Language: v.Reference.Language, Duration: v.Reference.Duration(),
 					Profile: localvoice.Profile{Voice: v.Character.Voice, Personality: v.Character.Personality},
 				}
+				if v.Trained != nil {
+					lv := voices[name]
+					lv.Trained = v.Trained.ID
+					voices[name] = lv
+				}
+			case errors.Is(err, voicerefsvc.ErrNoWeights):
+				voices[name] = localvoice.Voice{Cause: fmt.Errorf("%w: %w", localvoice.ErrTrainedVoice, err)}
 			case errors.Is(err, voicerefsvc.ErrNoCharacter), errors.Is(err, voicerefsvc.ErrNoReference),
 				errors.Is(err, voicerefsvc.ErrAmbiguous), errors.Is(err, voicerefsvc.ErrFileMissing):
 				voices[name] = localvoice.Voice{Cause: err}
@@ -175,6 +182,14 @@ func Reason(err error) (string, bool) {
 		um interface{ UserMessage() string } // an error that carries its own sentence (audiosettings.ErrUnreadable)
 	)
 	switch {
+	case errors.As(err, &mv) && len(brokenTrained(mv)) > 0:
+		broken := brokenTrained(mv)
+		text := mv.Role().LocalName() + "で話せません。学習した声のファイルが無いか壊れている話者がいます: " + joinNames(broken) +
+			"。Character の「学習した声」を削除してゼロショットの声に戻すか、学習し直してください（別の声に黙って替えることはしません）"
+		if len(broken) < len(mv.Speakers) {
+			text += "。参照音声が無い話者もいます: " + joinNames(withoutTrained(mv))
+		}
+		return text, true
 	case errors.As(err, &mv):
 		return mv.Role().LocalName() + "で話せません。参照音声が無い話者がいます: " + joinNames(mv.Names()) +
 			"。Character に参照音声を設定するか、声のプロバイダーを ElevenLabs に切り替えてください", true
@@ -191,6 +206,21 @@ func Reason(err error) (string, bool) {
 		return "口パクのプロバイダーが正しくありません（synclabs か local を指定してください）", true
 	}
 	return localvoice.UnavailableReason(err)
+}
+
+// brokenTrained are the speakers whose trained voice is gone or damaged; withoutTrained the other speakers that have no voice.
+func brokenTrained(mv *localvoice.MissingVoiceError) []string { return namesWhere(mv, true) }
+
+func withoutTrained(mv *localvoice.MissingVoiceError) []string { return namesWhere(mv, false) }
+
+func namesWhere(mv *localvoice.MissingVoiceError, broken bool) []string {
+	var names []string
+	for _, s := range mv.Speakers {
+		if errors.Is(s.Cause, localvoice.ErrTrainedVoice) == broken {
+			names = append(names, s.Name)
+		}
+	}
+	return names
 }
 
 func joinAssets(assets []rtm.AssetStatus) string {

@@ -30,6 +30,8 @@ const (
 	// DefaultTextLanguage is the language of the lines. The script of a Project is Japanese (GPT-SoVITS "ja" also reads the
 	// English words in it).
 	DefaultTextLanguage = "ja"
+	// voiceLoadTimeout bounds the loading of the weights of a trained voice (about 250 MB from disk to the GPU).
+	voiceLoadTimeout = 2 * time.Minute
 	// maxSpeechBytes bounds one generated audio file: the same limit as the ElevenLabs answers.
 	maxSpeechBytes = 32 << 20
 	// splitMethod is the text_split_method of api_v2: "cut5" splits the line at every punctuation mark.
@@ -53,6 +55,9 @@ type Client struct {
 	server localvoice.Server
 	doer   httpclient.Doer
 	gpu    chan struct{}
+	// loaded is the trained voice the server has loaded since its current start (token identifies the start: a restart forgets the weights);
+	// it is read and written only while the one slot of gpu is held.
+	loaded struct{ token, voice string }
 }
 
 // New returns a Client of the server. A nil doer selects a plain HTTP client.
@@ -128,11 +133,56 @@ func (c *Client) Synthesize(ctx context.Context, line domain.VoiceLine, voice lo
 	if err != nil {
 		return audiodirector.Speech{}, err
 	}
-	data, err := c.post(ctx, strings.TrimRight(base, "/")+"/tts", token, body)
+	base = strings.TrimRight(base, "/")
+	if err := c.loadVoice(ctx, base, token, voice.Trained); err != nil {
+		return audiodirector.Speech{}, err
+	}
+	data, err := c.post(ctx, base+"/tts", token, body)
 	if err != nil {
 		return audiodirector.Speech{}, err
 	}
 	return audiodirector.Speech{Data: data, Ext: "wav"}, nil
+}
+
+// loadVoice makes the server speak with the trained voice (Issue #936): "" is the base weights, the zero-shot clone. It asks only when the server
+// has another one loaded (the lines of a run are mostly of few speakers; the weights are read from disk on every switch). The server loads
+// the weights of that name from the one directory mam gave it, never a path from here. A refusal means the weights are not usable: the line is
+// not spoken with the base voice instead.
+func (c *Client) loadVoice(ctx context.Context, base, token, voice string) error {
+	if c.loaded.token != token {
+		c.loaded.token, c.loaded.voice = token, ""
+	}
+	if c.loaded.voice == voice {
+		return nil
+	}
+	body, err := json.Marshal(map[string]string{"voice": voice})
+	if err != nil {
+		return fmt.Errorf("marshal request: %w", err)
+	}
+	callCtx, cancel := context.WithTimeout(ctx, voiceLoadTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(callCtx, http.MethodPost, base+"/mam/voice", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(tokenHeader, token)
+	res, err := c.doer.Do(req)
+	if err != nil {
+		c.loaded.voice = "?" // unknown: the next line asks again
+		return c.transportError(ctx, callCtx, err)
+	}
+	defer func() { _ = res.Body.Close() }()
+	data, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
+	if res.StatusCode/100 != 2 {
+		c.loaded.voice = "?"
+		return &localvoice.UnavailableError{
+			Kind: localvoice.KindProcess, Detail: "学習した声の重みを読み込めませんでした: " + httpclient.Snippet(data),
+			Err: &audiodirector.ProviderError{Vendor: localvoice.Vendor, Status: res.StatusCode, Message: httpclient.Snippet(data)},
+		}
+	}
+	c.loaded.voice = voice
+	return nil
 }
 
 // post sends the request and returns the wav of the answer.

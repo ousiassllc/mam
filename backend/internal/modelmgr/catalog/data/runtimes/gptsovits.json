@@ -9,6 +9,10 @@
  "extra_files": [
   {"dest": "mam_gptsovits_server.py", "overlay": "mam_gptsovits_server.py"}
  ],
+ "tool_files": [
+  {"dest": "mam_gptsovits_train.py", "overlay": "mam_gptsovits_train.py"},
+  {"dest": "mam_gptsovits_train_job.py", "overlay": "mam_gptsovits_train_job.py"}
+ ],
  "launch": {
   "python": "runtime/python.exe",
   "path_dirs": ["runtime"],

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	rtm "github.com/ousiassllc/mam/backend/internal/modelmgr/runtime"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -74,4 +76,32 @@ func TestInstallRefusesAnExtraFileWhoseOverlayIsNotThereAndKeepsTheInstalledEnvi
 	require.ErrorContains(t, err, `no overlay "nope.py"`)
 	assert.NoDirExists(t, r.Layout.EnvNewDir())
 	assert.FileExists(t, r.PythonPath())
+}
+
+// A tool script runs with the interpreter of the runtime, with all the tool files of this mam written first (one may import another); a name that is
+// not a tool file is refused, and nothing is written for it.
+func TestToolWritesTheToolFilesAndRefusesWhatIsNotOne(t *testing.T) {
+	r := newRig(t, "1")
+	r.Runtime.ToolFiles = []parts.File{{Dest: "driver.py", Overlay: "driver.py"}, {Dest: "driver_job.py", Overlay: "driver_job.py"}}
+	r.Overlays = map[string][]byte{"driver.py": []byte("# driver\n"), "driver_job.py": []byte("# job\n")}
+
+	_, err := r.Tool("driver.py", []string{"text"}, nil)
+	require.ErrorIs(t, err, rtm.ErrNotInstalled, "an environment that is not installed has nothing to run it in")
+
+	require.NoError(t, r.Install(context.Background(), catalog.VariantNVIDIA, nil))
+	spec, err := r.Tool("driver.py", []string{"text", "/work/job.json"}, []string{"A=1"})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"-I", "-u", "-X", "utf8", "driver.py", "text", "/work/job.json"}, spec.Args)
+	assert.Contains(t, spec.Env, "A=1")
+	for name, want := range map[string]string{"driver.py": "# driver\n", "driver_job.py": "# job\n"} {
+		got, err := os.ReadFile(filepath.Join(r.Layout.EnvDir(), name))
+		require.NoError(t, err)
+		assert.Equal(t, want, string(got))
+	}
+
+	for _, script := range []string{"../evil.py", "ComfyUI/main.py", "driver.py ", ""} {
+		_, err := r.Tool(script, nil, nil)
+		assert.ErrorIs(t, err, rtm.ErrNotATool, script)
+	}
 }

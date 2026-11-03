@@ -82,6 +82,21 @@
 | `delete_character_voice_reference` | 参照音声を削除する（ほかの Episode や正本に複製された音声は残る。未設定なら何もしない） | `series_id?` / `project_id?`, `character_id` | 同上（`voice_reference` は `null`） | いいえ |
 | `get_character_voice_reference_url` | 録音のダウンロード URL（15 分有効。試聴用）。未設定なら `not_found` | `series_id?` / `project_id?`, `character_id` | `url`, `expires_at`, `file_name` | はい |
 
+## 声の学習（`/series/:id/characters/:characterId/voice-training`・`/projects/:id/characters/:characterId/voice-training`。Issue #936）
+
+登場人物の声を、手持ちの録音（合計 1 分〜30 分）から GPT-SoVITS で学習（fine-tune）し、できた声を声の合成に使う。Windows ＋ NVIDIA の GPU の PC だけ（macOS は対象外）。意味・段階・決定（再開しない・壊れたときはゼロショットに黙って戻さず止める・バンドルに重みを入れない）は [local-runtime.md §18](../architecture/model-manager/local-runtime.md)。`series_id` と `project_id` はどちらか一方（両方・どちらも無しは `validation`）。**どのツールも、パス・コマンド・スクリプト・重みのファイル名を受けない**。**声のコピーには声の持ち主本人の同意が要る**（実在の人の声を同意なしに学習しない・なりすましに使わない）。mam は同意を確かめず、エージェントが本人の同意を代わりに確認したことにしてはならない（各ツールの説明に同じ注意を入れてある）。
+
+|ツール|説明|入力|出力|readOnly|
+|---|---|---|---|---|
+| （アップロード `purpose=character_voice_training_clip`） | 学習用の音声を 1 つ足す。`create_upload_ticket` の URL に multipart で送る（[mcp-tools.md](mcp-tools.md) の表）。形式・署名・10 MB は参照音声と同じ、長さは 2〜30 秒（ffprobe が無いと受け付けない）、書き起こしは必須で 500 文字以内、合計 30 分・200 個まで。不正は `validation` | `params`: `series_id` か `project_id`, `character_id`, `text` | `{id, name, text, duration_ms, seconds}` | いいえ |
+| `get_character_voice_training` | 状態: 音声の一覧（`clips`）と合計の秒数、いま始められない理由（`problems`。日本語）、限度（`limits`）、エポック数の既定（8 / 15）と上限（25 / 50）、学習済みの声（`trained`）、いまの学習（`current`）、別の登場人物の学習が GPU を使っているか（`gpu_busy`）、同意の注意（`consent`）。**見込み時間は学習の前には出ない**（最初のエポックの後に `get_job` の `progress` に出る） | `series_id?` / `project_id?`, `character_id` | 左のとおり | はい |
+| `start_character_voice_training` | 学習のジョブを始める。`job_id` を返す（`get_job` で段階・エポック n/m・経過・残り時間を見る。mam を再起動した後は無い）。参照音声・音声の量・ランタイム（未導入・非対応・重みなし・導入中）・空き容量・同梱の ComfyUI が生成中でないことを**始める前に**確かめ、足りなければ理由つきで断る（`validation` / `conflict` / `disk_full`、ランタイムの断りは共通のエラー）。学習は 1 つずつ。mam を再起動すると途中から再開せずやり直しになる | `series_id?` / `project_id?`, `character_id`, `epochs_sovits?`, `epochs_gpt?` | `{job_id, character}`（`get_job` の `job_id`。学習する登場人物の名前） | いいえ |
+| `cancel_character_voice_training` | 動いている学習を中止する（部分的な結果は残さない）。動いていなければ `conflict` | `series_id?` / `project_id?`, `character_id` | `{cancelled}` | いいえ |
+| `delete_character_voice_training_clips` | 学習用の音声を 1 つ（`clip_id`）または全部消す（学習済みの声は残る） | `series_id?` / `project_id?`, `character_id`, `clip_id?` | `get_character_voice_training` と同じ形 | いいえ |
+| `delete_character_trained_voice` | 学習済みの声を取り除き、参照音声のゼロショットに戻す（重みのファイルも消える。無くても消せる。何も無ければ何もしない） | `series_id?` / `project_id?`, `character_id` | 同上 | いいえ |
+
+学習の `get_job` の種類は `train_character_voice`（メモリ上の追跡。再起動をまたがない）。
+
 ## メモ（`/projects/:id/notes`・`/series/:id/notes`）
 
 Project のメモと Series の正本メモは同じ形。Series のメモは Episode の開始時に Project へコピーされる（アーカイブ済みは除く）。アーカイブしたメモは一覧に残るが、どの AI にも渡らない。題は 100 文字以内、本文は 1〜4000 文字、`category` は `character` / `product` / `location` / `world` / `tone` / `other`。
@@ -104,3 +119,4 @@ Project のメモと Series の正本メモは同じ形。Series のメモは Ep
 | 1.1 | 2026-11-01 | 「参照音声」の節を足した（アップロード `character_voice_reference`、`update_character_voice_reference`・`delete_character_voice_reference`・`get_character_voice_reference_url`。`get_series`・`get_world_state` の登場人物に `voice_reference`） | Issue #919（#912） |
 | 1.2 | 2026-11-03 | World State の表に `create_character`（Project の World State か Series の正本に、名前・髪型・衣装・性格・声と顔・全身の参照画像を渡して登場人物を直接作る。`character_id` を返す）を足した | Issue #1001。登場人物は LLM の企画だけが作っていたため、LLM が止まるとシリーズの正本も空のままで、`assign_character_reference` に渡す `entity_id` も無かった |
 | 1.3 | 2026-11-03 | `get_world_state` の `characters[]` に、下書き（Brief の添付画像から LLM なしで作ったもの）だけ付く `draft` を足し、`create_character` の説明に作った登場人物は `draft=false` であることを足した。`create_character` の `branch_id` の拒否文を、実際の規則（`project_id` のときだけ使える）に直した | Issue #1022 |
+| 1.4 | 2026-11-04 | 「声の学習」の節（`get_character_voice_training`・`start_character_voice_training`・`cancel_character_voice_training`・`delete_character_voice_training_clips`・`delete_character_trained_voice`、アップロード `character_voice_training_clip`）を足した | Issue #936。GPT-SoVITS の fine-tune の MCP の入口 |

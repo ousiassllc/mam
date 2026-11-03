@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicetrainpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -58,6 +59,10 @@ func entityForm(d Data, e entityView) templ.Component {
 		}
 		if e.Target == domain.TargetCharacter {
 			templ_7745c5c3_Err = voiceForm(d, e).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + e.ID, URL: paths.Project(d.Project.ID, "characters", e.ID, "voice-training")}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -109,7 +114,7 @@ func entityAttributeForm(d Data, e entityView) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.formID())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 39, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 41, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -122,7 +127,7 @@ func entityAttributeForm(d Data, e entityView) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.WithBranch(d.entityURL(e.Plural, e.ID), d.branchID()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 41, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 43, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -135,7 +140,7 @@ func entityAttributeForm(d Data, e entityView) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(e.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 46, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 48, Col: 11}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -207,7 +212,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.slotFormID(sf.Slot.Name))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 64, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 66, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -220,7 +225,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.WithBranch(d.entityURL(e.Plural, e.ID)+"/reference", d.branchID()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 66, Col: 83}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 68, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -233,7 +238,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(sf.Slot.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 70, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 72, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -246,7 +251,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue("slot-" + e.ID + "-" + sf.Slot.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 71, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 73, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
@@ -259,7 +264,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(slotLabels[sf.Slot.Name])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 71, Col: 126}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 73, Col: 126}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -293,7 +298,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(it.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 78, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 80, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 				if templ_7745c5c3_Err != nil {
@@ -316,7 +321,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(it.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 78, Col: 76}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 80, Col: 76}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -344,7 +349,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 			var templ_7745c5c3_Var15 templ.SafeURL
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 82, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 84, Col: 119}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -402,7 +407,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(d.Branch.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 94, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 96, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -415,7 +420,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var18 templ.SafeURL
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Branch(d.Branch.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 95, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 97, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {

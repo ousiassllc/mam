@@ -149,7 +149,7 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 
 ## 10. 先送りしたこと（決めたことの記録）
 
-- **ファインチューン（学習）はしない**。参照音声（約 5 秒）のゼロショットだけ（学習は VRAM と時間がかかり、macOS 非推奨）。
+- ~~**ファインチューン（学習）はしない**。参照音声（約 5 秒）のゼロショットだけ~~ → **Issue #936 で、Windows ＋ NVIDIA の GPU の PC だけで学習に対応した（§18）**。参照音声のゼロショットは、学習していないキャラクターの既定のまま残る。macOS では学習しない（ランタイムが対応しない。§16）。
 - **クラウドへのフォールバックは利用者が設定で選ぶ**。黙って切り替えない。設定の追加と Audio Director のプロバイダーは #912 の別の子。
 - **Apple Silicon での自動導入**はしない（公式は MPS / CPU の推論に対応するが、パッケージと検証が別に要る）。オーナーの判断で別 Issue。
 - 重みの取得・ライセンス表示・画面・MCP は #920 で実装した（§12）。MuseTalk のランタイムのパッケージと起動は #921（§13）。
@@ -578,3 +578,98 @@ PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だっ
 | GPT-SoVITS と MuseTalk の VRAM を合算せず、片方の常駐のまま他方を起動する | **仕様として記録**。`vram.min_gb` はランタイムごとの目安で、MAX QUALITY で両方を使うには両方の合計が要る。実機（Windows ＋ NVIDIA）で確かめていないので、アイドルのランタイムを止める仕組みは入れない。§11 の未確認に含む |
 | 新しい録音を置くとき、書き起こしの欄を触らないと、保存済みと同じ書き起こしは「送られていない」扱いで消える | **見送り**。サーバーは「触っていない」と「同じ文を入れ直した」を区別できない。画面は新しい録音を選んだときに書き起こしを入れ直すよう案内している（`spec/api/endpoints.md` §2.9）。クライアント側で欄を空にする変更は別 Issue |
 | ある版のカノン（`series_version` のスナップショット）が参照する旧い参照音声のファイルは、カノンの声を置き換えて Episode がコピーしていなければ、消える | **仕様として記録**。履歴の版は読み取り専用の記録で、再生できなくなる。ファイルを残すにはスナップショットの参照も `InUse` で数える必要があり、容量が増える。必要になったら `InUse` の対象を広げる |
+
+## 18. GPT-SoVITS の fine-tune（学習。Issue #936）
+
+手持ちの音声（1 分ほど）から、キャラクターの声を GPT-SoVITS で学習し、**画面と MCP から学習を始めて、できた声を声の合成に使う**。ゼロショット（参照音声だけ）はそのまま残り、学習した声があるキャラクターだけが重みを切り替える。実装は `backend/internal/service/voicetrain`（学習のサービス）、`service/voicerefsvc/finetune.go`（結び付け）、`modelmgr/catalog/data/overlays/mam_gptsovits_train.py`（学習の駆動スクリプト）、`mam_gptsovits_server.py`（重みの切り替え）、`modelmgr/runtime`（`Installer.Tool`）、`service/localruntime`（`BeginTool`）。
+
+### 18.1 一次情報の調査（GPT-SoVITS のタグ `20250606v2pro`。2026-11-04 に実際に取得して読んだ）
+
+固定した統合パッケージ（§3）が使うコードのタグの `webui.py`・`config.py`・各スクリプト・`README.md`・`api_v2.py` と、統合パッケージの 7z のヘッダー（`Range` で読んだ一覧。58,007 ファイル）を読んで確かめた。**実行はしていない**。
+
+| 項目 | 読んで分かったこと |
+|---|---|
+| 公式の手順 | `webui.py` の「1A・1B・1C のデータ整形」→「1Aa SoVITS（S2）の学習」→「1Ab GPT（S1）の学習」。データの整形の前に、音声の分割（`tools/slice_audio.py`）・ノイズ除去・文字起こし（ASR。`tools/asr/*`）がある。README は「約 1 分の学習データで声の近さが上がる（Few-shot TTS）」とだけ書く |
+| データ整形 | 入力は**リストファイル**（1 行 `ファイル名\|話者名\|言語\|書き起こし`）と音声のフォルダ。`1-get-text.py`（音素と、中国語だけの BERT 特徴 → `2-name2text.txt`）、`2-get-hubert-wav32k.py`（32 kHz の音声と SSL 特徴）、`3-get-semantic.py`（事前学習の S2G の重みでセマンティックトークン → `6-name2semantic.tsv`）。**設定は環境変数**（`inp_text`・`inp_wav_dir`・`exp_name`・`opt_dir`・`bert_pretrained_dir`・`cnhubert_base_dir`・`pretrained_s2G`・`s2config_path`・`is_half`・`_CUDA_VISIBLE_DEVICES`・`i_part`・`all_parts`）。v2Pro だけ `2-get-sv.py` が足される（mam が学習するのは v2。§18.3） |
+| 学習 | S2 は `s2.json` を読んで `batch_size`・`epochs`・`text_low_lr_rate`・`pretrained_s2G`・**`pretrained_s2D`（判別器。学習だけが読む）**・`save_weight_dir`・`exp_dir` などを書いた一時の設定ファイルで `s2_train.py --config` を起動する。S1 は `s1longer-v2.yaml` に `batch_size`・`epochs`・`pretrained_s1`・`half_weights_save_dir`・`train_semantic_path`・`train_phoneme_path`・`output_dir` を書いて `s1_train.py --config_file` を起動する。fp16 が使えない GPU は、精度を 32 にしてバッチを半分にする |
+| 既定値・上限 | SoVITS は既定 8 エポック（上限 25）、GPT は既定 15（上限 50）、バッチは「GPU のビデオメモリ（GB）の半分」（GPU が無ければメモリの 1/4）。クリップは 0.6〜54 秒だけが学習に入る（`data_utils.py`） |
+| VRAM・所要時間 | **公式は数値を示していない**（README にも `webui.py` にも無い）。バッチの既定が VRAM の GB の半分、という手がかりだけ。mam は数値を出さない（§18.9） |
+| 出力される重み | S2: `SoVITS_weights_v2/<名前>_e<エポック>_s<ステップ>.pth`、S1: `GPT_weights_v2/<名前>-e<エポック>.ckpt`（半精度に変換した推論用の重み。`process_ckpt.savee`・`s1_train.py`）。チェックポイントは `logs/<名前>/` に別に残る |
+| 進み具合 | S2 は `logs/<名前>/train.log`（Python の `logging`）に `====> Epoch: N` を書き、標準出力には `start training from epoch` と `training done` だけ。S1 は PyTorch Lightning のログ（進捗バー）で、エポックの行の形は固定されていない → **mam は公式の出力を読まず、駆動スクリプトが 2 秒ごとに数える**（§18.3） |
+| 重みの切り替え（`api_v2.py`） | `GET /set_gpt_weights?weights_path=…`・`GET /set_sovits_weights?weights_path=…`。**任意のパスを読み込ませる**ので、mam の起動用スクリプトは許可しない（§5.2 は変えない）。代わりに起動用スクリプトが `POST /mam/voice` を自分で答える（§18.5）。`TTS.init_*_weights` は読み込んだパスを設定ファイルへ書き戻すので、起動用スクリプトは設定ファイルの**コピー**を使う |
+| 文字起こし（ASR）と分割 | 統合パッケージには `tools/asr/models/` の**空のフォルダ**（FunASR）しか無く、`fasterwhisper_asr.py` は `HF_ENDPOINT=https://hf-mirror.com`（第三者のミラー）から実行時に重みを取る。mam の「実行中に取得しない」方針（§1・§5.2）に合わないので、**mam は ASR も自動分割もしない**。利用者が書き起こしつきの短い録音（クリップ）を用意する（§18.2） |
+
+### 18.2 学習に使うデータ（クリップ）
+
+- 1 つのクリップは、**話している人が 1 人だけの録音と、その書き起こし**。`.wav/.mp3/.flac/.ogg/.m4a`（参照音声と同じ形式・署名の検査）、10 MB まで、**2〜30 秒**（ffprobe で測る。ffprobe が無いときはクリップを受け付けない: 長さを検査できない）。書き起こしは 1〜500 文字（`|`・制御文字を含められない: リストファイルの区切りだから）。言語は参照音声の言語。
+- 合計は **60 秒以上（下限。公式 README の「約 1 分」）・30 分まで（上限）・200 個まで**。上限は mam の決めた値で、公式の制限ではない（公式のスクリプトは 0.6〜54 秒のクリップを読むだけ）。足りない・多すぎるときは、**学習を送らずに**理由（`problems`）を画面と MCP に出し、始めようとすると `invalid_input`（#1010 の共通エラー）で断る。
+- 置き場所: `<assets>/voicetrain/_draft/<project-|series-><id>/<character id>/`（クリップのファイルと `index.json`）。`_draft` は学習済みの声の ID の形ではないので、合成のサーバーが読むことも、不要な重みの掃除の対象になることも無い。学習が始まると、クリップは**作業ディレクトリへコピー**する（学習の最中にクリップを消しても、学習は変わらない）。
+- 前提: そのキャラクターに**参照音声がある**こと（合成は学習した声でも、参照音声を読む。§18.6）。
+
+### 18.3 学習のジョブ
+
+| 項目 | 内容 |
+|---|---|
+| 学習する版 | **v2 だけ**（`GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/` の事前学習。§12.6 の重みと同じ）。v2Pro・v3・v4 は学習しない（mam が起動する既定が v2 で、合成側も v2 の重みを前提にしているため。ほかの版は実機で確かめてから） |
+| 呼び方 | **任意のコマンド・スクリプト・パスを外から指定できない固定の組み立て**。`Installer.Tool(script, args, env)` は、カタログ（`runtimes/gptsovits.json`）の **`tool_files`**（mam が同梱する `mam_gptsovits_train.py` だけ）の `dest` 以外を `ErrNotATool` で断り、サーバーと同じ `python -I -u -X utf8 <script> <step> <job.json>`（作業ディレクトリは `env\`）、同じオフライン設定・キャッシュ・一時ファイルの場所で起動する。`<step>` は `text`・`hubert`・`semantic`・`sovits`・`gpt` の 5 つだけで、駆動スクリプトの表（`SCRIPTS`）が公式の 5 つのスクリプトに対応づける（それ以外は起動しない）。`job.json` は mam が書く（パスは作業ディレクトリの中だけ。`..`・シンボリックリンクで外へ出るパス・`exp_name` の不正・範囲外のエポック数は駆動スクリプトが終了コード 3 で断る）。MCP・画面の入力はキャラクターの ID・エポック数・クリップだけ |
+| 駆動スクリプト | `mam_gptsovits_train.py`（job.json の検査・5 つのステップの表・環境変数と設定ファイルは、行数の上限のため同じ `tool_files` の `mam_gptsovits_train_job.py` に分けた。`Installer.Tool` は起動のたびに**すべての** tool file を書き直し、起動できるのは tool file の `dest` だけ）。標準ライブラリだけ。GPT の設定の読み書きだけ PyYAML を使う: パッケージにある）。公式の `webui.py` と同じ環境変数・一時設定を作って公式のスクリプトを起動し、**2 秒ごとに**進み具合を数えて標準出力に `MAM_TRAIN {"step","done","total"}` の行を出す（hubert: 作った特徴ファイルの数、sovits: `train.log` の `====> Epoch: N` の最大の N、gpt: 保存された重みの最大のエポック）。公式の出力は標準エラーへ。`tool_files` は `extra_files` と違い `Status` が検査しない（学習が入る前に導入した環境が `broken` にならない）。起動のたびに書き直す |
+| 段階と進み具合 | 5 つの段階（text 0〜5 %・hubert 5〜15 %・semantic 15〜20 %・sovits 20〜60 %・gpt 60〜98 %。割合は**見た目だけの mam の値**で、時間の割合ではない）。**エポック n/m・経過・残り時間**を、ジョブ一覧（`Progress.Text`: 「SoVITS の学習 エポック 3 / 8（4 / 5 段階）・経過 15分0秒・この段階の残り約 20分0秒」）と `get_job` の `progress`（`live.View`: `node`＝段階、`step`/`max_step`＝エポック、`percent`、`elapsed_seconds`、`eta_seconds`。#1002 と同じ形）に出す。**残り時間はその段階のエポックの平均から**で、最初のエポックが終わるまでは出さず、`eta_unavailable` に理由を書く。次の段階の時間は分からないので、残りは「この段階の」だけ（全体の残りは言わない） |
+| ジョブの種類 | **メモリ上の追跡（`internal/worktrack`。新しい種類 `voice_train`）**。理由: ①`job` テーブルのジョブはキューの再試行・再開（`attempts`）の仕組みに乗るが、学習は**再起動をまたいで再開しない**ので、再開の無い仕組みが要る（#1019 の動画の書き出し・音声の作成と同じ判断）、②テーブルに種類を足すと、CHECK 制約のマイグレーションと全画面の一覧が要るが、得るものが無い、③進み具合は子プロセスと同じ寿命の記録で足りる。ジョブ一覧には `ScreenProjectWorld`（Project の World State）・`ScreenSeries`（Series のページ）への「開く」つきで出る。MCP の `get_job` は `train_character_voice` の種類（`InMemory`: mam を再起動すると、その後は履歴の終わりだけで答える） |
+| **再開しない（決定）** | 学習は数十分かかるが、**mam の再起動・異常終了をまたいだ、チェックポイントからの再開はしない**。公式の `s1_train.py` は `logs/` の最新のチェックポイントから再開する作りだが、①mam は作業ディレクトリごと消して、**部分的な出力を残さない**方針、②再起動後に「どの学習がどこまで進んだか」を信頼して引き継ぐには、データ・設定の同一性の確認と再開の UI が要る、③mam の再起動は稀、のため。再起動後に残った作業ディレクトリは、次の学習の前の掃除（`voicerefsvc.CleanFinetunes` は学習済みの声と `.tmp-` の途中のコピー、作業ディレクトリは `localai\<id>\train\` ごと）で消える |
+| 中止 | `Cancel(owner, characterID)`（画面「学習を中止」・MCP `cancel_character_voice_training`）。動いている段階のプロセスのグループを、まず穏やかに、次に強制で止め（`proc.Piped.Stop`。Windows は Job Object、Linux はプロセスグループ）、作業ディレクトリと、書きかけの重み（`.tmp-<id>/`）を消す。**部分的な出力は残らず、学習済みの声は付かない**。状態は `cancelled`。mam の終了（`Close`）も同じに止めて片付けを待つ |
+| 失敗 | 段階のプロセスが 0 以外で終わると、標準エラーの末尾から `training_failed`（#1010 の共通エラー）にする。`out of memory` は原因の文「学習中に GPU のメモリが足りなくなりました」、`No space left` は `disk_full` にする。作業ディレクトリは消し、重みは残さない |
+| 同時実行 | 学習は 1 つずつ（GPU は 1 つ）。別のキャラクターの学習が動いていれば `conflict`。学習の間、ランタイムは `BeginTool` が確保し、**合成のサーバーは止められ**、導入・重みの導入・起動は `ErrTraining`（学習のファイルを入れ替えない）。学習が終わる・中止・失敗で `End` が返す |
+| **VRAM（ComfyUI）** | **学習を始めるとき**、`gpufree.Guard`（#1015。声のサーバーが起動する前に使う）に通す: 同梱の ComfyUI が**生成中なら始めない**（`conflict`。「同梱の ComfyUI が生成中で、GPU が空いていません」）、動いていても生成していなければモデルを解放（`POST /free`）させてから始める。**逆向き（学習の最中に ComfyUI が生成を始める）は、この Issue では止めていない**（§18.9。Irodori-TTS の声と同じ範囲） |
+| 学習の前の検査 | データ量（§18.2）、参照音声、ランタイム（`BeginTool` が対応環境・導入済み・導入中でない・重みがそろう〔学習だけが読む判別器 `s2D2333k.pth` も。§18.4〕を確かめ、理由つきで断る）、**空き容量**: 作業ディレクトリのあるディスクに「6 GiB ＋ 録音 1 秒あたり 200 KiB ＋ クリップのサイズ」（mam の控えめな見積もり。チェックポイントは判別器・オプティマイザを含み大きい。**実測していない**）、重みを残すディスクに 512 MiB。足りなければ**何も送らず**、`disk_full`（「学習に約 X 必要で、空きは Y です。場所: …」）で断る。エポック数が範囲外なら `invalid_input` |
+| バッチ | `GPU のビデオメモリ（GB）の半分`（1〜32）。S2・S1 とも。公式の既定と同じ考え方（`webui.py`）。fp16 が使えない GPU は、駆動スクリプトが公式と同じに半分にする |
+
+### 18.4 重み（判別器）
+
+学習の S2 は、事前学習の**判別器** `s2D2333k.pth` を読む（推論は読まない）。固定カタログ（`data/assets/gpt-sovits.json`）に、`lj1995/GPT-SoVITS` のコミット `8f885756…`（既存の v2 の重みと同じ）の `gsv-v2final-pretrained/s2D2333k.pth` を **`required: false`** で足した。サイズ 93,534,164 B・SHA-256 `8ae7fe8dd8c8f2e718de359e00edac88b0c71ab2fd10b07ad4cc45070eb8a836` は、Hugging Face の API の `lfs.oid` と、**実際にダウンロードしたバイトの SHA-256** の一致で確かめた（統合パッケージの 7z の一覧にも同じファイルがある）。ライセンスは既存の `mit-gpt-sovits`。`required: false` なので**声を作る側（サーバーの起動）は今まで通り要らず**、学習を始めるときだけ `NotReadyNamed` がそろっていることを確かめる（無い・壊れているなら、`*WeightsError`＝「重みを導入してください」）。取得は既存の「重みの導入」と同じ（固定 URL・SHA-256 検証・再開可）。
+
+### 18.5 学習した声の結び付けと合成（`voiceref` の拡張）
+
+| 項目 | 内容 |
+|---|---|
+| 保存 | `character.voice_reference`（JSON。**DB の列・マイグレーションは足さない**）に `finetune`（`voiceref.Finetune`: `id`・2 つの重みのサイズ・`version`・エポック数・クリップ数・データの秒数・`trained_at`）を足した。重みは**ユーザーデータ側**（`<assets>/voicetrain/<id>/gpt.ckpt`・`sovits.pth`）に置く。`id` は `domain.NewID` で、ディレクトリ名として安全な形だけが通る（`ValidFinetuneID`） |
+| 書き込み | 学習が終わると、重みを `.tmp-<id>/` に置いてから `voicetrain/<id>/` へ移し（2 つとも揃うまで本来の名前では存在しない）、`voicerefsvc.BindFinetune` がキャラクターの行に付ける。**Series の正本**に付けると正本に新しいバージョンができる（参照音声と同じ）。以前の学習済みの声は、ほかの行が使っていなければ重みごと消える。**新しい参照音声を置いても、学習した声は残る**（同じ話者の別の録音）。参照音声を消すと学習した声も消える |
+| 継承 | **正本→Episode は参照音声と同じコピー**: `POST /series/:id/episodes`・`POST /series` は `voice_reference` の JSON をそのままコピーするので、**以後に作る Episode は学習した声を引き継ぐ**。作成済みの Episode は変わらない（参照音声と同じ）。Episode のコピー・Branch のコピーは**同じ重みのファイルを共有**し、最後の行が外れるまで重みは消えない（`voicerefrepo.FinetuneInUse`） |
+| 合成 | `voicerefsvc.ForSpeaker` が `Voice.Trained`（重みの `id`）を返し、`localspeech.Voices` が `localvoice.Voice.Trained` に載せる。`gptsovits.Client` は、**サーバーに読み込まれている声と違うときだけ**、`POST /mam/voice {"voice": "<id>"}`（トークンつき。ゼロショットの話者は `""`）を送ってから `POST /tts` する（話者が替わるたびに重みを読み直す。同じ話者の連続した行では読み込まない。サーバーの再起動はトークンが変わるので検知して読み直す）。**学習した重みがあるキャラクターは、必ずその重みで話す** |
+| 起動用スクリプト | `mam_gptsovits_server.py` の許可する要求に **`POST /mam/voice`**（トークン必須）を足した。`voice` は `^[A-Za-z0-9-]{1,64}$` で、環境変数 `MAM_VOICE_WEIGHTS_DIR`（mam が起動時に渡す `<assets>/voicetrain`。`localruntime.Deps.Env`）の直下のディレクトリの `gpt.ckpt`・`sovits.pth`（`realpath` がそのディレクトリの中であること）だけを読む。**リクエストはパスを持てない**。`""` は起動時の重みに戻す。`/set_gpt_weights`・`/set_sovits_weights`・`/control` は引き続き 404。読み込みの失敗（壊れたファイル）は 500、ファイル無しは 404 |
+| **壊れている・無いとき（決定）** | **ゼロショットに黙って戻さず、止める**。重みのファイルが無い・サイズが書いたときと違うキャラクターは `voicerefsvc.ErrNoWeights` → その話者は**声が使えない話者**として実行の前に断る（`localvoice.ErrTrainedVoice`。文: 「学習した声のファイルが無いか壊れている話者がいます: 「ユイ」。Character の「学習した声」を削除してゼロショットの声に戻すか、学習し直してください（別の声に黙って替えることはしません）」）。理由: 学習した声を期待している利用者に、別の声（ゼロショット）で作った声を黙って渡すと、シリーズの途中で声が変わる事故になる。**戻す手段は明示**: 「学習した声を削除」（画面・`delete_character_trained_voice`。ファイルが無くても削除できる）。サーバーが重みを読み込めなかった場合（`/mam/voice` の失敗）も、その行を別の声で作らず `UnavailableError`（理由つき）で止める |
+| バンドル | **学習した重みは書き出し（プロジェクトバンドル）に入れない**。書き出し（`bundlezip.dropTrainedVoices`）は `finetune` をデータから外し、参照音声の録音だけを入れる。取り込み（`voiceref.Reference.Validate`）は `finetune` を持つ行を拒否する。理由: ①重みは約 250 MB の大きなファイルで、声の持ち主の同意の範囲を超えて渡る恐れがある、②重みはこの PC の GPT-SoVITS の版（v2）に結び付き、取り込む先で動く保証が無い、③バンドルの検証（相対パス・サイズ）の枠に入らない。取り込んだ先では、参照音声のゼロショットの声になる（学習し直せる） |
+| バックアップ | 重みはデータディレクトリ（`<assets>/voicetrain/`）にあり、データの移行はアセットのフォルダごとコピーすれば付いていく（`character.voice_reference` の JSON と同じ場所） |
+
+### 18.6 画面と MCP
+
+- **画面**: Character の参照音声のフォーム（Series 正本の Character の欄・World State の Character の欄）の下に「声の学習（fine-tune）」の欄（`web/organisms/voicetrainpanel`）を足した。ページ読み込み時に `hx-trigger="load"` で自分を読み、参照音声を保存・削除すると（`HX-Trigger: voice-reference-changed`）読み直す。中身: 状態のバッジ（学習中／学習済み／未学習）、**声のコピーには本人の同意が要るという注意書き**（`data-testid="voice-train-consent-notice"`。参照音声のフォームと同じ趣旨。mam は同意を確かめない）、学習に使う音声の一覧（長さ・書き起こし・削除）と合計・限度・足りない理由、音声の追加（ファイル＋書き起こし）、エポック数と「学習を始める」（確認ダイアログで、時間・GPU・再起動でやり直し・本人の同意を言う）、実行中は `<progress>` と段階・エポック・経過・残り時間（3 秒ごとに自分を読み直す）と「学習を中止」、失敗は共通のエラーの箱（`errorbox`）、学習済みの声の情報と「学習した声を削除（ゼロショットに戻す）」。**見込み時間は、始める前には出せない**（実機で測っていない）と画面に書き、最初のエポックが終わったあとから残り時間を出す。
+- ルート（Series 正本は `/series/:id/characters/:characterId/voice-training`、Project は `/projects/:id/characters/:characterId/voice-training`。どちらも同じ形）: `GET`（欄）、`POST`（開始。`epochs_sovits`・`epochs_gpt`）、`POST /cancel`、`POST /clips`（multipart `file`・`text`。アップロードのルート）、`DELETE /clips`・`DELETE /clips/:clipId`、`DELETE /voice`。応答はどれも欄だけ。
+- **MCP**（[mcp-tools-world-notes.md](../../api/mcp-tools-world-notes.md)）: `get_character_voice_training`（状態・データ・限度・学習済み・いまの学習）、`start_character_voice_training`（`job_id` を返す。`get_job` で進み具合）、`cancel_character_voice_training`、`delete_character_voice_training_clips`、`delete_character_trained_voice`、アップロードの `purpose=character_voice_training_clip`。**任意のパス・コマンド・重みのファイル名を受けない**（入力はキャラクターの ID・エポック数・`clip_id`・クリップのファイル）。説明に同意の注意を入れた（エージェントが同意を代わりに確認したことにしてはならない）。
+
+### 18.7 配線
+
+`app/services.go` が `voicetrainwire.New`（`service/voicetrain/voicetrainwire`）で学習のサービスを作り、`Services.VoiceTrain` に置く。`localruntime.Deps.Env` が `MAM_VOICE_WEIGHTS_DIR` を GPT-SoVITS の起動に足す。ジョブ一覧は `worktrack.Source` に学習のサービスを加える。起動時に `voicerefsvc.CleanFinetunes`（どの行も使わない重みと、途中のコピーを消す）を呼び、終了時に学習を止めて片付けを待つ（ランタイムを閉じる前）。
+
+### 18.8 テスト
+
+- `service/voicetrain`: 偽の学習プロセス（テストバイナリ自身が、駆動スクリプトの代わりに進捗行と重みを書く）で、遷移（running→succeeded）・進捗（エポック・時間・割合）・**中止**（子プロセスが止まり、作業ディレクトリ・重みが残らない）・**失敗**（OOM・ディスク不足の文）・**ディスク不足の前検査**・データ量の下限・上限・参照音声が無い・同時実行・ComfyUI の生成中・ランタイムの断り（未導入・非対応・重みなし・導入中）、`-race`。
+- `service/voicerefsvc`: 結び付け（サイズ・ID の検査）・継承（Episode のコピー）・**重みが壊れている・無いときに止まる**・削除・置き換えで古い重みが消える・掃除・**バンドル（書き出しは重みを外し、取り込んだ先はゼロショット）**。
+- `agent/audiodirector/gptsovits`（偽の `api_v2`＋守り）: 学習した声を 1 度だけ読み込む・話者の切り替え・サーバーの再起動で読み直す・読み込めないときは行を止める。`service/localspeech`（学習した声の選択・壊れたときの文）。
+- `modelmgr/catalog/gptsovitstest`: 起動用スクリプトと駆動スクリプトの Python のテスト（偽のパッケージ。`/mam/voice` が許可した 1 つのディレクトリの直下だけを読むこと・パスや `..`・シンボリックリンク・不正な ID の拒否、駆動スクリプトが 5 つの固定のスクリプトだけを起動し、範囲外のパス・名前・数を断ること）、`tool_files` の検査。`modelmgr/runtime`（`Installer.Tool`）、`service/localruntime`（`BeginTool`・`Env`）、`service/joblist`・`web/handler/jobs`（ジョブ一覧の行と「開く」）、`mcp/tools/voicetraining`（`get_job` の遷移・進捗・中止・失敗）、`router/voiceroutes`（画面のルート）。
+
+### 18.9 未確認・実装しなかったこと
+
+| 項目 | 状態 |
+|---|---|
+| **実際の学習**（実物の GPT-SoVITS・GPU・実重みでの 5 つの段階の完走）、**学習した声の質**（ゼロショットより声が近くなるか。日本語の聞き比べ） | **未確認**（`device_only`）。この開発環境は Linux で GPU が無く、実物の統合パッケージ（約 14 GB）も展開していない。偽のプロセス・偽のサーバー・偽のパッケージ（Python のテスト）まで |
+| 公式のスクリプトが、駆動スクリプトの作る環境変数・一時設定で動くこと、進み具合の数え方（S2 の `train.log` の `====> Epoch: N`、S1 の保存される重みのエポック）が実物で合うこと、重みの保存先（駆動スクリプトが `save_weight_dir`・`half_weights_save_dir` を作業ディレクトリへ向ける）が効くこと | **未確認**。ソース（タグ `20250606v2pro`）を読んで合わせた。`if_save_every_weights`・`save_every_epoch` の効き方を含む |
+| **学習の VRAM・所要時間・ディスクの使用量**（空き容量の見積もり 6 GiB ＋ 録音 1 秒あたり 200 KiB は mam の控えめな見積もり。バッチ＝VRAM の GB の半分は公式の既定の考え方） | **未確認**。公式に数値が無く、実測していない。画面は「見込み時間は、始める前には出せません」と言い、最初のエポックの後に残り時間を出す |
+| 12 GB 以下の GPU で、バッチ・学習が収まるか。fp16 が使えない GPU の挙動 | **未確認** |
+| `POST /mam/voice` の `init_vits_weights`／`init_t2s_weights` の実物での切り替え（学習した重みの読み込みと、`None` で起動時の重みに戻ること。設定ファイルのコピーを使うこと） | **未確認**（偽の `api_v2`・Python のテスト）。`TTS.py`（タグ `20250606v2pro`）を読んで書いた |
+| 学習を始めた後の ComfyUI の生成（**逆向きの排他**） | **実装していない**。`gpufree.Guard` は「声（学習）が始まる前に ComfyUI の生成中を断る・空きを作る」だけで、学習の最中に ComfyUI が生成を始めるのは止めない（Irodori-TTS の声と同じ範囲）。止めるには、ComfyUI 側の生成の入口に学習中を断るフックが要る（別 Issue の候補） |
+| 音声の自動分割・ノイズ除去・自動の文字起こし（ASR） | **実装していない**。統合パッケージに ASR の重みが無く、公式の ASR スクリプトは実行時に第三者のミラーから取得する（§18.1）。利用者が書き起こしつきのクリップを用意する |
+| v2Pro・v3・v4 の学習、複数 GPU、チェックポイントからの再開、複数キャラクターの同時学習 | **しない**（§18.3 の決定） |
+| 学習した重みのバンドルへの同梱・他の PC への移行 | **しない**（§18.5。同意の範囲・版の結び付き） |
+| Windows の Job Object・非表示ウィンドウでの学習プロセスの起動と、キャンセルで孫プロセスまで止まること | **未確認**（Linux のプロセスグループでは偽のプロセスで確認。Windows は §5.2 と同じ未確認） |
+| macOS | **対象外**（ランタイムが macOS に対応しない。§16） |
+

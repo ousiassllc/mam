@@ -32,6 +32,9 @@ type Export struct {
 // it refuses to export it rather than leave the file out without a word.
 func NewExport(data domain.BundleData, root string, now time.Time) (Export, error) {
 	sources := relocateSharedAssets(&data)
+	if err := dropTrainedVoices(data); err != nil {
+		return Export{}, err
+	}
 	if err := relocateSharedVoices(&data, sources); err != nil {
 		return Export{}, err
 	}

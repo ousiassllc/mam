@@ -97,6 +97,26 @@ func (r *Repository) InUse(ctx context.Context, filePath string) (bool, error) {
 	return n > 0, wrap(err)
 }
 
+// Name is the name of the Character of the owner (ownerColumn is "project_id" or "series_id"); repository.ErrNotFound when the owner has no such row.
+func (r *Repository) Name(ctx context.Context, ownerColumn, owner, characterID string) (string, error) {
+	var name string
+	if ownerColumn != "project_id" && ownerColumn != "series_id" {
+		return "", fmt.Errorf("voice reference: unknown owner column %q", ownerColumn)
+	}
+	err := r.db.Reader().QueryRowContext(ctx, `SELECT name FROM character WHERE id = ? AND `+ownerColumn+` = ?`, characterID, owner).Scan(&name) //nolint:gosec // ownerColumn is checked above
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", repository.ErrNotFound
+	}
+	return name, wrap(err)
+}
+
+// FinetuneInUse reports whether a character row refers to the trained voice: weights that nothing refers to any more can be removed.
+func (r *Repository) FinetuneInUse(ctx context.Context, id string) (bool, error) {
+	var n int
+	err := r.db.Reader().QueryRowContext(ctx, `SELECT count(*) FROM character WHERE json_extract(voice_reference, '$.finetune.id') = ?`, id).Scan(&n)
+	return n > 0, wrap(err)
+}
+
 func wrap(err error) error {
 	if err == nil || errors.Is(err, repository.ErrNotFound) {
 		return err

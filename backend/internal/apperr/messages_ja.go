@@ -91,6 +91,9 @@ var messagesJa = map[string]string{
 	"install_failed.cause":  "導入を完了できませんでした。",
 	"install_failed.remedy": "原因は詳細にあります。モデル管理の画面から、もう一度導入してください。",
 
+	"training_failed.cause":  "声の学習を完了できませんでした。",
+	"training_failed.remedy": "ほかに GPU を使うアプリ（同梱の ComfyUI の生成など）を閉じて、もう一度学習してください。続くときは、詳細（学習のログの末尾）を確かめるか、モデル管理で GPT-SoVITS の状態を確かめてください。途中までの結果は残していません。",
+
 	"not_writable.cause":  "保存先のフォルダに書き込めません。",
 	"not_writable.remedy": "書き込める場所に移すか、フォルダの権限を確かめてください。外部の ComfyUI の URL を使う方法もあります。",
 

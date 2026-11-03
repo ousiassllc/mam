@@ -110,6 +110,24 @@ func (i *Installer) NotReady() []AssetStatus {
 	return out
 }
 
+// NotReadyNamed lists the assets with the names that are not verified, required or not (the weights that only one job needs, such as the
+// discriminator of the fine-tuning, are not required to start the server). A name the catalog does not have is listed as missing.
+func (i *Installer) NotReadyNamed(names ...string) []AssetStatus {
+	have := map[string]AssetStatus{}
+	for _, s := range i.Assets() {
+		have[s.Name] = s
+	}
+	var out []AssetStatus
+	for _, n := range names {
+		if s, ok := have[n]; !ok {
+			out = append(out, AssetStatus{Name: n, State: AssetMissing})
+		} else if s.State != AssetOK {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 // AssetNeedBytes is the free space EnsureAssets needs for the assets whose files are not there: what is not downloaded yet, and for
 // an archive its files as well. A file that is there is checked in place and needs nothing.
 func (i *Installer) AssetNeedBytes() int64 {

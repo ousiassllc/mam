@@ -27,6 +27,7 @@ const (
 	KindWorkflowRun   Kind = "workflow_run"   // one run of a saved ComfyUI workflow
 	KindCodexInstall  Kind = "codex_install"  // the download of the Codex app-server
 	KindFFmpegInstall Kind = "ffmpeg_install" // the download of ffmpeg and ffprobe
+	KindVoiceTrain    Kind = "voice_train"    // the fine-tuning of a Character's voice (GPT-SoVITS; Issue #936)
 )
 
 // State is where a work stands. A tracked work starts running at once: nothing here waits in a queue.
@@ -50,6 +51,8 @@ type Record struct {
 	Kind Kind
 	// ProjectID is the Project a work of the editing half is on (the list names it and leads to its editor); "" for the others.
 	ProjectID string
+	// SeriesID is the Series a work on a canonical Character is on (KindVoiceTrain: the screen of the canon); "" for the others.
+	SeriesID string
 	// Subject is what the work is on when the owner knows its name (the workflow of a run, "ffmpeg"). ModelID is the model whose
 	// adult-ness hides the Subject while the age confirmation is off (a workflow run); "" when none.
 	Subject string

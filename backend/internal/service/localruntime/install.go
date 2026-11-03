@@ -43,6 +43,9 @@ func (s *Service) Install(ctx context.Context, id string) (JobRef, error) {
 	if err != nil {
 		return JobRef{}, err
 	}
+	if inst.tool.Load() {
+		return JobRef{}, ErrTraining
+	}
 	sup, err := s.refuse(ctx, inst)
 	if err != nil {
 		return JobRef{}, err
@@ -75,6 +78,9 @@ func (s *Service) InstallWeights(ctx context.Context, id string) (JobRef, error)
 	inst, err := s.instance(id)
 	if err != nil {
 		return JobRef{}, err
+	}
+	if inst.tool.Load() {
+		return JobRef{}, ErrTraining
 	}
 	if _, err := s.refuse(ctx, inst); err != nil {
 		return JobRef{}, err
@@ -237,6 +243,9 @@ func (s *Service) Remove(_ context.Context, id string) error {
 	inst, err := s.instance(id)
 	if err != nil {
 		return err
+	}
+	if inst.tool.Load() {
+		return ErrTraining
 	}
 	if s.activeJob(TargetPrefix+id) != "" {
 		return ErrBusy

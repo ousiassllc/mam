@@ -7,6 +7,7 @@ package localvoice
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -77,10 +78,17 @@ type Voice struct {
 	// Irodori-TTS builds its Voice Design caption from it and from the Scene Emotion of the line (WithEmotion).
 	Duration time.Duration
 	Profile  Profile
+	// Trained names the trained voice the Character was fine-tuned to (Issue #936; "" for none: the zero-shot clone of the recording). Only
+	// GPT-SoVITS has trained voices: the server loads the weights of that name from the one directory mam gave it.
+	Trained string
 	// Cause says why the speaker has no reference voice (Path is then empty): the error of the lookup, such as
 	// voicerefsvc.ErrNoReference. A voice with a Cause makes the run stop before anything is paid or started.
 	Cause error
 }
+
+// ErrTrainedVoice is the cause of a speaker whose trained voice cannot be spoken with (its weight files are gone or damaged): the voice is not
+// replaced by the zero-shot clone behind the user's back, the run is refused and the user chooses (remove the trained voice, or train again).
+var ErrTrainedVoice = errors.New("localvoice: the trained voice cannot be used")
 
 // Profile is the part of a Character's settings that says how the speaker talks: the note on the voice and the personality.
 type Profile struct{ Voice, Personality string }

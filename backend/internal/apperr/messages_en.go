@@ -89,6 +89,9 @@ var messagesEn = map[string]string{
 	"install_failed.cause":  "The install could not be completed.",
 	"install_failed.remedy": "The reason is in the detail. Install it again from the model manager.",
 
+	"training_failed.cause":  "The voice training could not be completed.",
+	"training_failed.remedy": "Close the other apps that use the GPU (such as a generation of the bundled ComfyUI) and train again. If it keeps failing, read the detail (the end of the training log) or check GPT-SoVITS in the model manager. Nothing of the unfinished run is kept.",
+
 	"not_writable.cause":  "The folder cannot be written.",
 	"not_writable.remedy": "Move it to a place that can be written or check the permissions of the folder. Using the URL of an external ComfyUI is another way.",
 

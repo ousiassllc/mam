@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicetrainpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -196,6 +197,7 @@ templ seriesCharacterBlock(d Data, c domain.WorldCharacter) {
 	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 		@seriesCharacterForm(d, c)
 		@seriesVoiceForm(d, c)
+		@voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + c.ID, URL: paths.Series(d.Series.ID, "characters", c.ID, "voice-training")})
 	</div>
 }
 

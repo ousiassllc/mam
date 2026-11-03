@@ -194,3 +194,4 @@
 | 1.187 | 2026-11-03 | [endpoints-settings.md](endpoints-settings.md)（1.12）に、`GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider`（設定のカードの「詳細」のモーダル）と、詳細から送った ChatGPT の操作の答えを足した | Issue #1005 |
 | 1.188 | 2026-11-03 | `POST /series/:id/characters` の画面のフォームが、Series の Episode の Reference Library の `kind=character` の画像を顔・全身に選べるようにした（値は `<project_id>/<画像の ID>`、顔と全身は同じ Episode）。`POST /projects/:id/characters` の説明に、下書きの Character の「下書き」バッジを足した | Issue #1022（#1001 の「シリーズの正本にも face 参照の割り当て」を画面でも完了） |
 | 1.189 | 2026-11-03 | §1 の `/settings` 概要の分類に「音声・口パク」を足し、`/settings/audio/…` の行を足した（1.171・1.187 は endpoints-settings.md のみに書いていた） | Issue #938 |
+| 1.190 | 2026-11-04 | Series 正本・Project の Character の声の学習（GPT-SoVITS の fine-tune）のルート `/series/:id/characters/:characterId/voice-training`・`/projects/:id/characters/:characterId/voice-training`（欄の表示・開始・中止・音声の追加と削除・学習済みの声の削除）を足した | Issue #936 |
