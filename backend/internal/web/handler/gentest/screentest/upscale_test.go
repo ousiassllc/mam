@@ -1,8 +1,10 @@
 package screentest_test
 
 import (
+	"html"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -84,4 +86,35 @@ func TestAFailedResultHasNoEnlargeButton(t *testing.T) {
 	body := s.page(paths.GenerationTestPart("results", failed))
 	assert.NotContains(t, body, "大きくする（アップスケール）")
 	assert.False(t, strings.Contains(body, `data-testid="gt-upscale-submit"`))
+}
+
+// 拡大した結果には「もう1枚/もう一度」の代わりに「同じ倍率でもう一度大きくする」が出る。元の結果が開き、箱に倍率と方式が入った状態になる（実行は押してから）。
+func TestAnEnlargementOffersToEnlargeItsSourceAgainWithTheScaleAndTheWayChosen(t *testing.T) {
+	s := newScreen(t, gentesttest.WithUpscaleModels())
+	src := s.anImage()
+	rec := s.do(http.MethodPost, paths.GenerationTestPart("results", src, "upscale"), url.Values{"scale": {"4"}, "upscale_model": {string(gentesttest.UpscaleModel)}})
+	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+	var made string
+	for _, b := range s.batches() {
+		if rs := s.results(b.BatchID); len(rs) == 1 && rs[0].Model == string(gentesttest.UpscaleModel) {
+			s.rig.Wait(b.BatchID)
+			made = rs[0].ID
+		}
+	}
+	require.NotEmpty(t, made)
+
+	body := s.page(paths.GenerationTestPart("results", made))
+	assert.Contains(t, body, `data-testid="gt-next-upscale-again"`)
+	assert.NotContains(t, body, `data-testid="gt-next-similar"`, "an enlargement has no new picture with a new seed")
+	assert.NotContains(t, body, `data-testid="gt-next-replay"`)
+	href := regexp.MustCompile(`href="([^"]*)"[^>]*data-testid="gt-next-upscale-again"`).FindStringSubmatch(body)
+	require.Len(t, href, 2)
+	link := html.UnescapeString(href[1])
+	assert.Equal(t, paths.GenerationTestPart("results", src)+"?upscale_model="+url.QueryEscape(string(gentesttest.UpscaleModel))+"&upscale_scale=4#gt-upscale", link)
+
+	again := s.page(strings.TrimSuffix(link, "#gt-upscale"))
+	assert.Regexp(t, `<option value="4" selected>`, again, "the scale it used")
+	assert.Regexp(t, `<option value="`+regexp.QuoteMeta(string(gentesttest.UpscaleModel))+`" selected>`, again, "the way it used")
+	plain := s.page(paths.GenerationTestPart("results", src))
+	assert.NotContains(t, plain, ` selected>`, "a page opened without them picks nothing")
 }

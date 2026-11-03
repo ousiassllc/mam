@@ -1,4 +1,5 @@
 import { expect } from '@open-wc/testing';
+import htmx from 'htmx.org';
 import { initGentestAdvanced } from '../gentest/advanced';
 import { initGentestRefine } from './refine';
 
@@ -119,6 +120,59 @@ describe('the こだわり tier marks what was changed and puts it back (spec/co
     expect(q('[data-gt-refine-item="adv:steps"]')).to.equal(li);
     expect(q('[data-gt-reset="adv:steps"]')).to.equal(button);
     expect(li.textContent).to.contain('45');
+  });
+
+  describe('the switch to the easy tier says which detailed settings it loses (#1000)', () => {
+    // The tab is inside the form, as in gentesttier/tabs.templ; the request goes to a file of the test data, and what was asked is read before it is sent.
+    function addTab(): HTMLAnchorElement {
+      const tab = document.createElement('a');
+      tab.href = '/src/components/testdata/modal-notice.html';
+      tab.setAttribute('data-gt-tier-switch', 'easy');
+      tab.setAttribute('hx-get', '/src/components/testdata/modal-notice.html');
+      tab.setAttribute('hx-swap', 'none');
+      q('form').prepend(tab);
+      htmx.process(tab);
+      return tab;
+    }
+
+    /** The address htmx asks for when the tab is tapped. */
+    async function asked(tab: HTMLElement): Promise<string> {
+      const path = new Promise<string>((resolve) =>
+        document.addEventListener(
+          'htmx:beforeSend',
+          (event) =>
+            resolve(
+              (event as CustomEvent<{ pathInfo: { finalRequestPath: string } }>).detail.pathInfo.finalRequestPath,
+            ),
+          { once: true },
+        ),
+      );
+      tab.click();
+      return path;
+    }
+
+    it('adds the keys of the settings that were changed to the request of the easy tab', async () => {
+      type(q<HTMLInputElement>('[data-gt-adv-range]'), '40');
+      type(q<HTMLInputElement>('input[name="seed"]'), '123');
+      type(q<HTMLTextAreaElement>('textarea[name="negative"]'), 'blurry'); // kept by the easy tier: not said
+      const params = new URL(await asked(addTab()), location.origin).searchParams;
+      expect(params.getAll('dropped')).to.deep.equal(['seed', 'steps']);
+    });
+
+    it('adds nothing when nothing that the easy tier loses was changed', async () => {
+      type(q<HTMLTextAreaElement>('textarea[name="negative"]'), 'blurry');
+      const params = new URL(await asked(addTab()), location.origin).searchParams;
+      expect(params.has('dropped')).to.equal(false);
+    });
+
+    it('counts a value of an exposed input that is set', async () => {
+      const field = document.createElement('input');
+      field.name = 'exposed.KSampler.denoise';
+      field.value = '0.5';
+      q('form').append(field);
+      const params = new URL(await asked(addTab()), location.origin).searchParams;
+      expect(params.getAll('dropped')).to.deep.equal(['exposed']);
+    });
   });
 
   describe('the focus after a reset', () => {

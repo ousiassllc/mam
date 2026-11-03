@@ -96,6 +96,100 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
     expect((await pixel(blob, 3, 16)).r).to.be.greaterThan(200);
   });
 
+  describe('the size of the canvases (#999)', () => {
+    /** A flat picture of `w` × `h` as a PNG data URL: its natural size is what the painter reads. */
+    function picture(w: number, h: number, draw?: (g: CanvasRenderingContext2D) => void): string {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const g = c.getContext('2d')!;
+      g.fillStyle = '#336699';
+      g.fillRect(0, 0, w, h);
+      draw?.(g);
+      return c.toDataURL('image/png');
+    }
+
+    it('paints a picture within the limit on canvases of its own size', async () => {
+      const el = await fixture<MamMaskPaint>(html`<mam-mask-paint src=${picture(320, 200)}></mam-mask-paint>`);
+      await waitUntil(() => el.querySelector('canvas')!.width === 320, 'the picture was not read');
+      expect(el.querySelector('canvas')!.height).to.equal(200);
+      const bmp = await createImageBitmap(await el.maskPNG());
+      expect([bmp.width, bmp.height], 'the mask is the size of the picture').to.deep.equal([320, 200]);
+    });
+
+    it('scales a picture over the limit down to the limit on the longer side, and exports a mask of that size', async () => {
+      const el = await fixture<MamMaskPaint>(html`<mam-mask-paint src=${picture(4200, 1050)}></mam-mask-paint>`);
+      await waitUntil(() => el.querySelector('canvas')!.width === 2048, 'the picture was not read');
+      const view = el.querySelector('canvas')!;
+      expect([view.width, view.height], 'the view is scaled').to.deep.equal([2048, 512]);
+      const bmp = await createImageBitmap(await el.maskPNG());
+      expect([bmp.width, bmp.height], 'the mask is scaled').to.deep.equal([2048, 512]);
+    });
+
+    it('still paints where the pointer is on a scaled canvas', async () => {
+      const el = await fixture<MamMaskPaint>(html`<mam-mask-paint src=${picture(4096, 4096)}></mam-mask-paint>`);
+      await waitUntil(() => el.querySelector('canvas')!.width === 2048, 'the picture was not read');
+      const canvas = el.querySelector('canvas')!;
+      const r = canvas.getBoundingClientRect();
+      const at = (type: string, fx: number, fy: number) =>
+        canvas.dispatchEvent(
+          new PointerEvent(type, {
+            clientX: r.left + r.width * fx,
+            clientY: r.top + r.height * fy,
+            pointerId: 3,
+            bubbles: true,
+          }),
+        );
+      at('pointerdown', 0.5, 0.5);
+      at('pointerup', 0.5, 0.5);
+      const blob = await el.maskPNG();
+      expect((await pixel(blob, 1024, 1024)).r, 'the middle was painted').to.be.greaterThan(200);
+      expect((await pixel(blob, 100, 100)).r).to.equal(0);
+    });
+  });
+
+  describe('a mask to start from (mask-src, "この設定でもう一度")', () => {
+    /** A picture of 64 × 64 that is white on its left half and black on the right. */
+    function halfMask(): string {
+      const c = document.createElement('canvas');
+      c.width = 64;
+      c.height = 64;
+      const g = c.getContext('2d')!;
+      g.fillStyle = '#000';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#fff';
+      g.fillRect(0, 0, 32, 64);
+      return c.toDataURL('image/png');
+    }
+    const source = (): string => {
+      const c = document.createElement('canvas');
+      c.width = 64;
+      c.height = 64;
+      return c.toDataURL('image/png');
+    };
+
+    it('draws it on the mask and shows its white part in red over the picture', async () => {
+      const el = await fixture<MamMaskPaint>(
+        html`<mam-mask-paint src=${source()} mask-src=${halfMask()}></mam-mask-paint>`,
+      );
+      await waitUntil(async () => (await pixel(await el.maskPNG(), 8, 32)).r > 200, 'the mask was not drawn');
+      const blob = await el.maskPNG();
+      expect((await pixel(blob, 56, 32)).r, 'black stays black').to.equal(0);
+      const view = el.querySelector('canvas')!.getContext('2d')!;
+      expect(view.getImageData(8, 32, 1, 1).data[3], 'the white part is red').to.be.greaterThan(200);
+      expect(view.getImageData(56, 32, 1, 1).data[3], 'the black part is clear').to.equal(0);
+    });
+
+    it('is cleared by 全部消す like a mask that was painted', async () => {
+      const el = await fixture<MamMaskPaint>(
+        html`<mam-mask-paint src=${source()} mask-src=${halfMask()}></mam-mask-paint>`,
+      );
+      await waitUntil(async () => (await pixel(await el.maskPNG(), 8, 32)).r > 200, 'the mask was not drawn');
+      [...el.querySelectorAll('button')].find((b) => b.textContent === '全部消す')!.click();
+      expect((await pixel(await el.maskPNG(), 8, 32)).r).to.equal(0);
+    });
+  });
+
   it('shows the chosen tool as a pressed button', async () => {
     const el = await paint();
     const [brush, eraser] = [...el.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')];

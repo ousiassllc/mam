@@ -125,6 +125,15 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 			return Source{}, err
 		}
 		path, mime = filepath.Join(s.dir(), res.FilePath), res.MimeType
+	case FromBatchInput:
+		in, err := s.Repo.GetInput(ctx, ref.ID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return Source{}, gterr.Invalid("過去の入力画像 %q は残っていません（その結果をすべて削除すると、入力画像も消えます）", ref.ID)
+		}
+		if err != nil {
+			return Source{}, err
+		}
+		path, mime = filepath.Join(s.dir(), filepath.FromSlash(in.FilePath)), in.MimeType
 	}
 	info, err := os.Stat(path)
 	if err != nil {

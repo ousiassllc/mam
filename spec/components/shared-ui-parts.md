@@ -153,6 +153,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - **失敗（422）**: 応答の本文はモーダルの断片（`#mam-modal-body` に入り直す）。理由は `#mam-modal-error`、入力は**残す**（`value` を描き戻す）。`aria-invalid="true"` と `aria-describedby="mam-modal-error"` を、問題の欄に付ける。差し替え後は、問題の欄（無ければ `#mam-modal-error`）にフォーカス（`autofocus` を付け直す）。**秘密の値（API キー・トークン）は 422 でも描き戻さない**（入力し直す）。 理由の `#mam-modal-error` を取り除く答え（接続先のモーダルの接続テストの `DraftTestResult`）が入ったときは、同じ入れ替えのうちに、その理由を指していた欄の `aria-invalid` と `aria-describedby` を外す（`modal.ts`。宙に浮いた参照を残さない）。
 - **トーストは見えない**: `#toast-region` は `<body>` の子で、モーダルは最前面の層（top layer）に出るため、モーダルが開いている間のトーストはモーダルの背後に隠れる。そのためモーダル内の失敗は、断片の `role="alert"` に出す。HTML でない失敗（通信断・タイムアウト・5xx の非 HTML）は `htmx:responseError` / `sendError` / `timeout` を `modal/` が聞き、`#mam-modal-failure` に `requestFailureMessage` の文言を出す（トーストは出さない）。
 - **二重送信**: モーダルのフォームは `hx-sync="this:drop"` と `hx-disabled-elt="find button[type=submit]"` を持つ（`double_submit_test`）。削除などの危険な操作は `hx-confirm`（#847 決定事項 8(a)。`destructive_confirm_test`）。
+- **リンクから開く・広いダイアログ**（Issue #1004）: `modal.OpenLinkAttrs(url, focusKey)` は `OpenAttrs` の `<a>` 版（`type` が無く `href` が同じ内容のページ。スクリプトが無い・新しいタブで開く操作はそのページへ行き、ふつうのクリックは本文を求める）。本文の最初のブロックに `data-modal-wide`（`modal.WideAttr`）を付けると、ダイアログがその間だけ広くなる（`has-[[data-modal-wide]]:w-[min(64rem,…)]`。生成テストの結果の詳細が、画像と設定を並べるのに使う）。同じ URL がページとモーダルの本文の両方を返すときは、`HX-Target` が `mam-modal-body` かどうかで分け、`Vary: HX-Request, HX-Target` を付ける。
 - **置き場所**: `molecules/modal/`（`Host`・`Frame`・`Error`・`Actions`・`Cancel`・`Notice`・`OpenAttrs`）と `static/src/components/modal/`（`modal.ts`・`modal.wtest.ts`。Lit ではなく `focus-restore` と同じ `installModal()`。`main.ts` が呼ぶ）。テストは wtr: 開くとフォーカスが `autofocus` へ・`Esc` で閉じて開いたボタンへ戻る・行が差し替わっても戻る・成功で閉じる・422 で開いたまま入力が残る・閉じると本文が空・履歴の保存で空になる。
 
 ## 5. 一覧の行（`SettingsCard`・`SettingsTable`・`SettingsTableRow`）
@@ -213,6 +214,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.15 | 2026-11-01 | §10 の生成テストの行に、作成フォームの区画の説明・モデルごとの性質と選べない理由・パラメーター・見積り・実行の補足を足した | Issue #906 |
 | 0.16 | 2026-11-02 | §1 の表に、スライダーの共通の見た目（`slider.css`・`--fill`・`components/slider/`）を足した。`app.css` の説明に `slider.css` の import を足した | Issue #955 |
 | 0.17 | 2026-11-03 | §10 の生成テストの行に、かんたんのプロンプトの見出しに足した「プロンプトのウェイト」の「?」（`help.Row`。`gentestadv.WeightIntro`）を足した | Issue #977（ステージ 2） |
+| 0.18 | 2026-11-03 | §4 に `modal.OpenLinkAttrs`（リンク版の開く属性）と `data-modal-wide`（本文が広いダイアログを求める）を足した | Issue #1004（生成テストの結果の詳細を、一覧のタイルからモーダルで開く） |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

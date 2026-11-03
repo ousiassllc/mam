@@ -52,6 +52,12 @@ func Row(a Actions) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
+			if a.UpscaleAgainURL != "" {
+				templ_7745c5c3_Err = atoms.ButtonLink(atoms.ToneNeutral, "同じ倍率でもう一度大きくする", templ.SafeURL(a.UpscaleAgainURL), templ.Attributes{"data-testid": "gt-next-upscale-again"}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
 			if a.SimilarURL != "" {
 				templ_7745c5c3_Err = atoms.ButtonLink(atoms.ToneNeutral, "似た感じでもう1枚", templ.SafeURL(a.SimilarURL), templ.Attributes{"data-testid": "gt-next-similar"}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
@@ -115,7 +121,7 @@ func Panel(u Used) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(r.Key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestresult/row.templ`, Line: 39, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestresult/row.templ`, Line: 42, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -128,7 +134,7 @@ func Panel(u Used) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestresult/row.templ`, Line: 40, Col: 66}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestresult/row.templ`, Line: 43, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {

@@ -27,6 +27,9 @@ const (
 	FromHistory = "history"
 	// FromPoseLibrary: a pose picture of the pose library (poses.Library; ID is the picture's ID, "std_P001_front"), no ProjectID.
 	FromPoseLibrary = "pose_library"
+	// FromBatchInput: the stored input image of an earlier batch (its input ID, the input_id of the detail of a result). It is how "この設定でもう一度" and
+	// the redo of a partial redraw put an uploaded image back: the file stays with the batch until the batch's last result is deleted.
+	FromBatchInput = "batch_input"
 )
 
 // PromptInput is a prompt with its optional negative prompt.
@@ -261,13 +264,13 @@ func checkSource(ref RefInput) error {
 		return gterr.Invalid("入力画像の ID がありません")
 	}
 	switch ref.Source {
-	case FromStaged, FromHistory, FromPoseLibrary:
+	case FromStaged, FromHistory, FromPoseLibrary, FromBatchInput:
 	case FromProjectAsset, FromReferenceItem:
 		if ref.ProjectID == "" {
 			return gterr.Invalid("プロジェクトの画像には project_id が要ります")
 		}
 	default:
-		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library）", ref.Source)
+		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library / batch_input）", ref.Source)
 	}
 	return nil
 }

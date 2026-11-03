@@ -181,11 +181,13 @@ func TestHistoryHasTheExportBarAndOffersOnlyResultsWithAFile(t *testing.T) {
 	all := s.get(paths.GenerationTestHistory()).Body.String()
 	assert.Equal(t, 3, strings.Count(all, `data-testid="gt-history-item"`))
 	assert.Equal(t, 2, strings.Count(all, `data-gt-pick="`), "the running result has no file, so it cannot be chosen")
-	assert.Equal(t, 3, strings.Count(all, `class="flex flex-col gap-1 rounded-lg border border-transparent p-1.5 `+pick.Glow+`"`), "the frame of every card (also the running one) takes the look of the cards that are chosen: the classes of pick.Glow, not a copy")
+	assert.Equal(t, 3, strings.Count(all, `class="overflow-hidden rounded-lg border border-neutral-800 `+pick.Glow+`"`), "the frame of every tile (also the running one) takes the look of the tiles that are chosen: the classes of pick.Glow, not a copy")
 	for _, r := range res {
 		assert.Contains(t, all, `data-gt-pick="`+r.ID+`"`)
 	}
 	assert.Equal(t, 2, strings.Count(all, `data-gt-pick-input`), "a checkbox for the keyboard and a screen reader on each")
+	assert.Equal(t, 2, strings.Count(all, `data-testid="gt-pick-mark"`), "and the mark in the corner of the tile that the mouse taps (a tap on the tile opens the detail)")
+	assert.Equal(t, 3, strings.Count(all, `hx-vals="{&#34;pick&#34;:&#34;1&#34;}"`), "every tile asks for the detail with the choice for the export")
 
 	live := s.get(paths.GenerationTestHistory()+"?live=1", "HX-Request", "true").Body.String()
 	assert.NotContains(t, live, `data-testid="gt-export"`, "the poll never swaps the export bar the reader is using")

@@ -1,6 +1,6 @@
 // Package redo puts the settings a result was made with back into the terms of the form (Issue #977): "似た感じでもう1枚" (the same settings, a
-// new seed) and "この設定でもう一度" (the same settings and the same seed) open the compose form with them. What cannot be put back (an image that
-// was uploaded and is not kept as an input, a model that is gone, a seed the model never took) is said, not skipped.
+// new seed) and "この設定でもう一度" (the same settings and the same seed) open the compose form with them. An image that was uploaded is put back from the
+// copy the batch kept (gentest.FromBatchInput). What cannot be put back (a model that is gone, a seed the model never took) is said, not skipped.
 package redo
 
 import (
@@ -71,20 +71,19 @@ func Of(d record.ResultDetail, sameSeed bool) Restored {
 		r.Notes = append(r.Notes, "このモデルはシードを受け取らないため、同じ絵は再現できません（同じ設定で作り直します）")
 	}
 	for _, in := range d.Inputs {
-		if in.Origin.Kind == gentest.FromStaged {
-			r.Notes = append(r.Notes, fmt.Sprintf("アップロードした入力画像（%s）は残っていないため入れていません。入れ直してください", roleName(in.Role)))
-			continue
-		}
-		r.Refs = append(r.Refs, gentest.RefInput{Source: in.Origin.Kind, ID: in.Origin.ID, ProjectID: in.Origin.ProjectID, Role: in.Role, Strength: in.Strength})
+		r.Refs = append(r.Refs, RefOf(in))
 	}
 	return r
 }
 
-func roleName(role string) string {
-	if role == gentest.RoleReference || role == "" {
-		return "参照"
+// RefOf is the input image of the form that puts the input in of a result back. An image that was uploaded (or was itself put back from an earlier batch) is
+// taken from the copy this batch kept (FromBatchInput); an image of the history, a Project or the pose library from where it came from.
+func RefOf(in record.InputView) gentest.RefInput {
+	switch in.Origin.Kind {
+	case gentest.FromStaged, gentest.FromBatchInput:
+		return gentest.RefInput{Source: gentest.FromBatchInput, ID: in.ID, Role: in.Role, Strength: in.Strength}
 	}
-	return role
+	return gentest.RefInput{Source: in.Origin.Kind, ID: in.Origin.ID, ProjectID: in.Origin.ProjectID, Role: in.Role, Strength: in.Strength}
 }
 
 // Missing is the note of an input image that the form can no longer offer (its source is gone).

@@ -2,11 +2,11 @@
  * The "こだわり" tier of the generation test form (Issue #977): the values that came from the easy tier (or the model's own) are in the
  * controls from the start; a control that differs from where the tier began is marked "変えた" and listed in the panel with a way back for
  * itself, and one for all. The controls are the detailed settings (seed, steps, cfg, sampler, scheduler: advanced.ts), the negative prompts, the
- * LoRA and its strength and the strengths of the input images. Nothing is posted from here: the controls post as they always did.
+ * LoRA and its strength and the strengths of the input images. Nothing is posted from here: the controls post as they always did (but the tab of the easy tier adds `dropped`, #1000).
  * The rules are in refine-model.ts. The listeners are on the document: the form may arrive in a swapped body.
  */
 
-import { changed, changedItems, line, resetLabel, type Item } from './refine-model';
+import { changed, changedItems, droppedKeys, line, resetLabel, type Item } from './refine-model';
 
 const ROOT = '[data-gt-refine]';
 
@@ -224,6 +224,13 @@ function renderAll(root: ParentNode = document): void {
   for (const section of sections(root)) render(section);
 }
 
+/** The detailed settings the reader changed in the form that the easy tier does not hold (the keys of refine-model's droppedKeys); none outside the detail tier. */
+function droppedOnEasy(form: HTMLElement): string[] {
+  if (!form.querySelector(ROOT)) return [];
+  const exposed = [...form.querySelectorAll<Field>('[name^="exposed."]:not(:disabled)')].some((el) => el.value !== '');
+  return droppedKeys(changedItems(all(form).map((t) => t.item)), exposed);
+}
+
 /** Installs the marks and the way back. Call it once (main.ts). */
 export function initGentestRefine(root: Document = document): void {
   const refresh = (event: Event) => {
@@ -242,6 +249,15 @@ export function initGentestRefine(root: Document = document): void {
       ?.nextElementSibling?.getAttribute('data-gt-refine-item');
     reset(section, el.matches('[data-gt-reset-all]') ? null : (el.dataset.gtReset ?? null));
     refocus(section, el, nextKey ?? undefined);
+  });
+  // The tab of the easy tier asks for the form again: the detailed settings that were changed are not held by it, so the request says which (Issue #1000), and the form
+  // that answers says they are gone.
+  root.addEventListener('htmx:configRequest', (event) => {
+    const { elt, parameters } = (event as CustomEvent<{ elt: Element; parameters: Record<string, unknown> }>).detail;
+    if (elt.getAttribute('data-gt-tier-switch') !== 'easy') return;
+    const form = elt.closest<HTMLElement>('form');
+    const keys = form ? droppedOnEasy(form) : [];
+    if (keys.length > 0) parameters.dropped = keys;
   });
   // a row of an input image, or the models that decide which settings are shown, arrive after the first look
   const later = () => window.setTimeout(() => renderAll(root), 0);

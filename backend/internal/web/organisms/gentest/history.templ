@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -79,9 +80,9 @@ templ HistoryLive(h History) {
 		if len(h.Cards) == 0 {
 			<p class="text-sm text-neutral-400" data-testid="gt-history-empty">条件に合う結果はありません。</p>
 		}
-		<ul class="flex flex-wrap gap-3">
+		<ul class="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-3">
 			for _, c := range h.Cards {
-				<li data-testid="gt-history-item" data-commercial={ c.Answer.Answer() }>
+				<li id={ resulttile.ID(c.ID) } class="contents" data-testid="gt-history-item" data-commercial={ c.Answer.Answer() }>
 					@HistoryCard(c)
 				</li>
 			}
@@ -96,68 +97,32 @@ templ HistoryLive(h History) {
 	</div>
 }
 
-// HistoryCard is a result with its favorite toggle (the heart) and its prompt. A result that made a file can be chosen for the ZIP
-// export (#932), as the model cards of the form are chosen (#906): the card is the choice. Tap it and its frame glows; a checkbox that
-// is only there for the keyboard and a screen reader (sr-only, the peer of the frame) holds the state, static/src/components/gentest/
-// export-pick.ts keeps it over the refresh of the list. A card without a file is not offered.
-templ HistoryCard(c Card) {
+// HistoryCard is a result of the history: its tile (the picture, a badge of its state, the heart; a tap opens the detail in the modal, Issue #1004). A
+// result that made a file can be chosen for the ZIP export (#932), as the model cards of the form are chosen (#906): a check box in the corner of the
+// tile (a real checkbox, the peer of the frame, so the keyboard and a screen reader have it) lights the frame and holds the state, static/src/components/
+// gentest/export-pick.ts keeps it over the refresh of the list; the detail offers the same choice. A card without a file is not offered.
+templ HistoryCard(c resulttile.Card) {
 	<div
-		class="relative w-47"
+		class="relative"
 		if c.FileURL != "" {
 			data-gt-pick={ c.ID }
 		}
 	>
 		if c.FileURL != "" {
-			<input type="checkbox" class="peer sr-only" aria-label="書き出しに選ぶ" data-gt-pick-input data-testid="gt-pick"/>
+			<input type="checkbox" id={ "gt-pick-" + c.ID } class="peer sr-only" aria-label="書き出しに選ぶ" data-gt-pick-input data-testid="gt-pick"/>
 		}
-		<div class={ "flex flex-col gap-1 rounded-lg border border-transparent p-1.5", pick.Glow }>
-			@ResultCard(c)
-			<p class="line-clamp-2 break-words text-xs text-neutral-300">{ c.Prompt }</p>
-			<div class="flex items-center justify-between text-xs text-neutral-400">
-				<span>{ c.CreatedAt }</span>
-				@FavoriteButton(c.ID, c.Favorite)
-			</div>
+		<div class={ "overflow-hidden rounded-lg border border-neutral-800", pick.Glow }>
+			@resulttile.Tile(c, true)
 		</div>
 		if c.FileURL != "" {
-			<span class="pointer-events-none absolute left-3 top-3 hidden text-indigo-300 peer-checked:block" aria-hidden="true">
-				@atoms.Icon(atoms.IconCheck, "h-5 w-5")
-			</span>
+			<label
+				for={ "gt-pick-" + c.ID }
+				class="absolute left-1.5 top-1.5 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-neutral-600 bg-neutral-900 text-indigo-300 hover:border-indigo-400 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100"
+				aria-hidden="true"
+				data-testid="gt-pick-mark"
+			>
+				@atoms.Icon(atoms.IconCheck, "h-4 w-4")
+			</label>
 		}
 	</div>
-}
-
-// FavoriteButton toggles the favorite mark; it replaces itself.
-templ FavoriteButton(id string, on bool) {
-	<button
-		type="button"
-		id={ "gt-favorite-" + id }
-		class="rounded px-1 text-base leading-none hover:bg-neutral-800"
-		hx-post={ paths.GenerationTestPart("results", id, "favorite") }
-		hx-vals={ favoriteVals(!on) }
-		hx-swap="outerHTML"
-		aria-pressed={ boolText(on) }
-		aria-label={ favoriteLabel(on) }
-		data-testid="gt-favorite"
-		data-on={ boolText(on) }
-	>
-		if on {
-			<span aria-hidden="true">★</span>
-		} else {
-			<span aria-hidden="true">☆</span>
-		}
-	</button>
-}
-
-func favoriteVals(next bool) string {
-	if next {
-		return `{"favorite":"1"}`
-	}
-	return `{"favorite":"0"}`
-}
-
-func favoriteLabel(on bool) string {
-	if on {
-		return "お気に入りを外す"
-	}
-	return "お気に入りにする"
 }

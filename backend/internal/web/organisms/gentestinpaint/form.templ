@@ -25,6 +25,12 @@ templ Form(p Page) {
 		if p.Error != "" {
 			<p class="text-sm text-red-300" role="alert" data-testid="gt-inpaint-error">{ p.Error }</p>
 		}
+		if p.Notice != "" {
+			<p class="text-sm text-neutral-200" role="status" data-testid="gt-inpaint-notice">{ p.Notice }</p>
+		}
+		if p.Seed != "" {
+			<input type="hidden" name="seed" value={ p.Seed } data-testid="gt-inpaint-seed"/>
+		}
 		<div class="flex flex-col gap-2">
 			<h2 class="text-sm font-medium">元画像</h2>
 			if p.SourceRef != "" {
@@ -38,16 +44,16 @@ templ Form(p Page) {
 					<input id="gt-inpaint-source" class="text-sm text-neutral-200" type="file" name="source" accept="image/png,image/jpeg,image/webp"/>
 				</label>
 			}
-			<mam-mask-paint src={ p.SourceURL } source-input="gt-inpaint-source" data-testid="gt-mask"></mam-mask-paint>
+			<mam-mask-paint src={ p.SourceURL } mask-src={ p.MaskURL } source-input="gt-inpaint-source" data-testid="gt-mask"></mam-mask-paint>
 			<input type="file" name="mask" accept="image/png" hidden data-testid="gt-inpaint-mask"/>
 		</div>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-inpaint-prompt">
 			<span>プロンプト（描き直した部分の内容）</span>
-			@atoms.Textarea(atoms.FieldMd, "min-h-20", templ.Attributes{"id": "gt-inpaint-prompt", "name": "prompt", "required": true, "maxlength": strconv.Itoa(p.MaxPrompt)}, "")
+			@atoms.Textarea(atoms.FieldMd, "min-h-20", templ.Attributes{"id": "gt-inpaint-prompt", "name": "prompt", "required": true, "maxlength": strconv.Itoa(p.MaxPrompt)}, p.Prompt)
 		</label>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-inpaint-negative">
 			<span>ネガティブ（省略可）</span>
-			@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-inpaint-negative", "name": "negative", "type": "text", "maxlength": strconv.Itoa(p.MaxPrompt)})
+			@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-inpaint-negative", "name": "negative", "type": "text", "maxlength": strconv.Itoa(p.MaxPrompt), "value": p.Negative})
 		</label>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-inpaint-denoise">
 			<span>描き直しの強さ（{ p.Denoise }。空にするとモデルの既定）</span>
