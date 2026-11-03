@@ -80,7 +80,7 @@ func create(svc *service.Services) mcpkit.Handler[Input, Output] {
 
 func createInSeries(ctx context.Context, svc *service.Services, in Input, c voicerefsvc.NewCharacter) (Output, error) {
 	if in.BranchID != "" {
-		return Output{}, invalid("branch_id", "branch_id は series_id のときだけ使います")
+		return Output{}, invalid("branch_id", "branch_id は project_id のときだけ使います（Series の正本に Branch はありません）")
 	}
 	id, err := svc.VoiceRef.CreateForSeries(ctx, in.SeriesID, in.RefProject, c)
 	if err != nil {

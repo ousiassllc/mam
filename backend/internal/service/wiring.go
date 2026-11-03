@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/bgwork"
+	"github.com/ousiassllc/mam/backend/internal/characterdraft"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/previewcache"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -59,9 +60,8 @@ func newRepos(db *repository.DB) repos {
 	}
 }
 
-// wiring holds what New has built so far. The wire* methods run in the order New calls them: each
-// reads only what the ones before it set, and the job queue's OnChange callback is installed last
-// (watchJobs), when every agent it calls exists.
+// wiring holds what New has built so far. The wire* methods run in the order New calls them: each reads only what the ones before it set, and the
+// job queue's OnChange callback is installed last (watchJobs), when every agent it calls exists.
 type wiring struct {
 	deps   Deps
 	logger *slog.Logger
@@ -142,7 +142,7 @@ func (w *wiring) wirePlan() {
 	d := w.deps
 	w.c.pipeline = orchestrator.New(orchestrator.Deps{
 		Projects: w.c.projects, Plans: w.c.plans, ChatRepo: w.c.chat, Chat: w.chat, Jobs: d.Jobs,
-		LLM: d.LLM, Notes: w.r.notes, Logger: w.logger,
+		LLM: d.LLM, Notes: w.r.notes, Drafts: characterdraft.New(w.c.projects, w.c.assets, w.r.world, w.logger), Logger: w.logger,
 	})
 	d.Jobs.Register(domain.JobPlan, w.c.pipeline.Handle, true)
 }

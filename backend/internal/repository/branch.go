@@ -164,11 +164,11 @@ func copyWorldInto(ctx context.Context, tx *sql.Tx, projectID, branchID string, 
 	for _, c := range w.Characters {
 		newID := domain.NewID()
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO character (id, project_id, branch_id, origin_id, name, face_reference_asset_id, body_reference_asset_id, hairstyle, wardrobe, voice, personality, emotion, position, current_action, voice_reference)
-			 VALUES (?, ?, ?, (SELECT origin_id FROM character WHERE id = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT voice_reference FROM character WHERE id = ?))`,
+			`INSERT INTO character (id, project_id, branch_id, origin_id, name, face_reference_asset_id, body_reference_asset_id, hairstyle, wardrobe, voice, personality, emotion, position, current_action, voice_reference, draft)
+			 VALUES (?, ?, ?, (SELECT origin_id FROM character WHERE id = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT voice_reference FROM character WHERE id = ?), ?)`,
 			newID, projectID, branchID, c.ID, c.Name, nullIfEmpty(c.FaceReferenceAssetID), nullIfEmpty(c.BodyReferenceAssetID),
 			nullIfEmpty(c.Hairstyle), nullIfEmpty(c.Wardrobe), nullIfEmpty(c.Voice), nullIfEmpty(c.Personality),
-			nullIfEmpty(c.Emotion), nullIfEmpty(c.Position), nullIfEmpty(c.CurrentAction), c.ID); err != nil {
+			nullIfEmpty(c.Emotion), nullIfEmpty(c.Position), nullIfEmpty(c.CurrentAction), c.ID, c.Draft); err != nil {
 			return err
 		}
 		if err := copyLocks(domain.TargetCharacter, c.ID, newID); err != nil {

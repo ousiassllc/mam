@@ -41,3 +41,23 @@ func TestFor_IsEmptyForAnyOtherJobOrFailure(t *testing.T) {
 		assert.Empty(t, planadvice.For(j, true), name)
 	}
 }
+
+func TestFor_SaysWhatToDoWithTheDraftsWhenTheReasonTellsThem(t *testing.T) {
+	drafted := plan(domain.JobFailed, noKeyReason+"\n"+planadvice.DraftNote(2))
+
+	screen := planadvice.For(drafted, false)
+	assert.Contains(t, screen, "下書き", "the screen names the mark")
+	assert.Contains(t, screen, "API キーとログイン", "the way with an LLM is still told")
+	assert.Contains(t, screen, "チャットに何かメッセージを送ると")
+	assert.NotContains(t, screen, "update_character")
+
+	mcp := planadvice.For(drafted, true)
+	assert.Contains(t, mcp, "get_world_state", "the MCP names where to see the drafts")
+	assert.Contains(t, mcp, "draft")
+	assert.Contains(t, mcp, "update_character")
+	assert.Contains(t, mcp, "post_chat_message")
+	assert.NotContains(t, mcp, "下書きの印")
+
+	assert.Contains(t, planadvice.DraftNote(3), "3 件", "the note carries the number")
+	assert.NotContains(t, planadvice.For(plan(domain.JobFailed, noKeyReason), true), "draft", "no draft: the plain advice")
+}

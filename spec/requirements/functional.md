@@ -131,7 +131,7 @@
 | F-06 | Prompt | Prompt Autopilot | 自然言語指示 → Canonical Shot Spec（YAML）への変換 | M1 |
 | F-07 | Prompt | Model Adapter | Canonical Shot Spec をモデル固有プロンプトへ変換。モデル非依存のプロジェクト構造を維持。採用プロバイダー・ルーティングは `spec/architecture/model-adapters.md` 参照 | M1 |
 | F-08 | Prompt | Prompt Candidate Generation | Stability First/Acting First/Dynamic Camera 等の複数撮影戦略生成（Quality/Balanced/Economy Mode。Shot カードの「生成」・Continue・Branch・追加撮影・Director の再生成はこれで起動し、Judge 未構成または Prompt が LOCK のときだけ単発生成） | M2 |
-| F-09 | State | World State 管理 | characters/products/location/camera/story を構造化保持。M2 で Location State（time/lighting_state/weather）の自動更新と、項目単位の LOCK（`spec/spec.md` §9.3） | M1（Basic）/ M2（Lock/Continue拡張） |
+| F-09 | State | World State 管理 | characters/products/location/camera/story を構造化保持。M2 で Location State（time/lighting_state/weather）の自動更新と、項目単位の LOCK（`spec/spec.md` §9.3）。Character は企画（LLM）のほか、画面の「登場人物を追加」・MCP `create_character` で手で作れる（Issue #1001）。企画が LLM の API キー未設定で止まったときは、LLM を使わず Brief の添付画像 1 枚につき下書きの Character（仮の名前・その画像が face 参照・`draft` の印）を作り、再実行しても増やさず、すでに Character がいる Project には作らない。下書きは画面のバッジ・MCP の `draft` で分かり、編集すると印が消える（Issue #1022） | M1（Basic）/ M2（Lock/Continue拡張） |
 | F-10 | State | State Update（差分抽出） | Shot完了後に State Extractor が差分をWorld Stateへ反映。LOCK項目は自動更新禁止 | M1 |
 | F-11 | Keyframe | Keyframe / Reference Pack 生成 | Character/Product/Location/Style/Lighting Reference と Keyframe の生成。M2 で Reference Library（Project 内の参照画像の登録・検索・再利用、`spec/spec.md` §10.1） | M1（Reference Pack）/ M2（Reference Library） |
 | F-12 | Generation | Video Generation Orchestration | Shot Spec/World State/References/Cost/Model能力から生成戦略決定、複数Take出力 | M1 |
@@ -290,3 +290,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.30 | 2026-11-01 | F-29 に Character の参照音声の継承、F-20 にその入力としての扱いを足した | Issue #919（#912 声と口パクのローカル化）。ローカルの声が同じキャラに同じ声を作る入力が要件になかったため |
 | 1.31 | 2026-11-01 | F-20 と §3.8 に、Dialogue / Narration のローカル TTS（GPT-SoVITS。実行ごとの選択、API 費用 0 円、参照音声の無い話者・使えないときの種類つきエラー）を足した | Issue #922（#912 声と口パクのローカル化）。ローカルの声が要件になかったため |
 | 1.32 | 2026-11-01 | F-20 と §3.8 に、声・口パクのプロバイダーの選択（設定画面・MCP。既定はクラウド）、使えない理由の統一した文、ローカルが使えないときのクラウドへの切り替え（利用者が選んだときだけ。実行の開始前の検査で、その実行の全体）を足した。F-20 の「#924」への参照を、保存の説明に置き換えた | Issue #924（#912 声と口パクのローカル化）。ローカルの声・口パクを利用者が選べ、使えないときにクラウドへ切り替えられることが要件になかったため |
+| 1.33 | 2026-11-03 | F-09 に、Character を手で作る手段と、企画が LLM 未設定で止まったときの Brief の添付画像からの下書きを足した（Issue #1001・#1022） |

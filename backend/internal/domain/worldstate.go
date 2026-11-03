@@ -71,9 +71,9 @@ type WorldCharacter struct {
 	// SeriesFaceReferenceAssetID is the face_reference of the Series canon row this Character was copied from ("" outside a
 	// Series): the Face Identity Similarity is measured against it, so the face stays the same across Episodes (F-29). Not in the snapshot.
 	SeriesFaceReferenceAssetID string `json:"-"`
-	// VoiceReference is the reference voice a local voice provider clones (F-20, F-29); nil = none. The canon row keeps
-	// one; an Episode's copy and a Branch's copy share the file.
+	// VoiceReference is the reference voice a local voice provider clones (F-20, F-29); nil = none. The canon row keeps one; an Episode's copy and a Branch's copy share the file.
 	VoiceReference *voiceref.Reference `json:"voice_reference,omitempty"`
+	Draft          bool                `json:"draft,omitempty"` // made from an image attached to the Brief when the planning could not run (#1022); cleared when the user edits it
 }
 
 // WorldProduct is a row of product.

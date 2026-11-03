@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/characterhandler"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -19,18 +20,18 @@ func seriesData(v service.SeriesView) seriesview.Data {
 }
 
 // SeriesPage renders a Series (GET /series/:id): the full page, or the view fragment for HTMX.
-func SeriesPage(svc *service.SeriesService) gin.HandlerFunc {
+func SeriesPage(svc *service.Services) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		view, err := svc.View(c.Request.Context(), c.Param("id"))
+		data, err := characterhandler.SeriesData(c.Request.Context(), svc, c.Param("id"))
 		if err != nil {
 			pageError(c, err)
 			return
 		}
 		if isHTMX(c) {
-			render(c, http.StatusOK, seriesview.View(seriesData(view)))
+			render(c, http.StatusOK, seriesview.View(data))
 			return
 		}
-		render(c, http.StatusOK, pages.SeriesPage(middleware.CSRFToken(c), seriesData(view)))
+		render(c, http.StatusOK, pages.SeriesPage(middleware.CSRFToken(c), data))
 	}
 }
 
@@ -62,9 +63,8 @@ func CreateEpisode(svc *service.SeriesService) gin.HandlerFunc {
 	}
 }
 
-// UpdateSeriesCharacter sets the canonical attributes named in the form
-// (PUT /series/:id/characters/:characterId) and answers with the form of that Character, with the new
-// version carried along (the other forms are not part of it). Existing Episodes are not changed.
+// UpdateSeriesCharacter sets the canonical attributes named in the form (PUT /series/:id/characters/:characterId) and answers with the
+// form of that Character, with the new version carried along (the other forms are not part of it). Existing Episodes are not changed.
 func UpdateSeriesCharacter(svc *service.SeriesService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fields := map[string]string{}

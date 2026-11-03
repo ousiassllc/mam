@@ -33,7 +33,7 @@
 - `error_code` は、失敗の理由が `<code>: <message>`（ツールのエラーと同じ形）のときの `<code>`。`job` テーブルの行が持つ理由（ジョブキューがワーカーの `error` をそのまま書いたもの。例: `interrupted by shutdown`）や Probe の理由には `<code>` が無く、`error_code` は空（`state: failed` では絞れる）。その失敗の原因は、ジョブキューが `job_id` と理由を付けて書く ERROR 行（`job failed`）を `get_app_logs` の `attrs: {"job_id": …}` で引く。
 - `error_id` は、`internal` の失敗（編集ステージの Editor Judge・音声・書き出しが予期しないエラーで終わったときなど、mam がエラーを作った時点で原因をログに書いたもの）にだけ付く。`get_job` も同じ値を返す。
 - `message`・`error` は、`get_job` と同じ文面から、既知の形の秘密を `[redacted]` にしたもの。
-- `next_steps`（Issue #1001）は、**企画（`kind=plan`。`post_chat_message` などで始まる Project の企画）のジョブが、LLM の API キー未設定で失敗したときだけ**付く、続けるためにすることの文章。(1) `set_credential` / `start_chatgpt_login` / `set_llm_assignment` で LLM を使えるようにし、`post_chat_message` で何かメッセージを送って企画を続きから再開する、(2) LLM なしで進めるなら `create_character` で登場人物を直接作る、の 2 つを書く。失敗の文面（`error`）は書き換えず、その下に足す。同じ文は `list_chat_messages` の `progress` のメッセージの `job.next_steps` にも付く。ほかの失敗・ほかの種類のジョブには付かない（省略）。
+- `next_steps`（Issue #1001）は、**企画（`kind=plan`。`post_chat_message` などで始まる Project の企画）のジョブが、LLM の API キー未設定で失敗したときだけ**付く、続けるためにすることの文章。(1) `set_credential` / `start_chatgpt_login` / `set_llm_assignment` で LLM を使えるようにし、`post_chat_message` で何かメッセージを送って企画を続きから再開する、(2) LLM なしで進めるなら `create_character` で登場人物を直接作る、の 2 つを書く。失敗の文面（`error`）は書き換えず、その下に足す。企画の失敗理由に「登場人物の下書き」の文（Issue #1022。Brief の添付画像から下書きの Character を作ったとき、`planadvice.DraftNote`）が付いているときは、(2) が「下書きを直す」になる: `get_world_state` の `characters` で `draft` が `true` のものを `update_character` で書き足す（保存すると `draft` は `false` になる）、`assign_character_reference` で顔・全身の画像を変える、足りない登場人物は `create_character` で作る。下書きは企画が LLM 未設定で止まった時点（`agent/orchestrator`）で、LLM を使わず Brief の添付画像 1 枚につき 1 件（名前は仮の「登場人物 1」から連番、その画像が face 参照）を、World State の本線に Character が 1 つも無いときだけ作る。再実行しても増えず、画像でない添付・20 MB を超える画像は飛ばす。同じ文は `list_chat_messages` の `progress` のメッセージの `job.next_steps` にも付く。ほかの失敗・ほかの種類のジョブには付かない（省略）。
 
 ### `get_app_logs` の補足
 
@@ -110,3 +110,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.14 | 2026-11-02 | `get_job` の `progress` に、ノードのステップが終わっていて残りが無いときは `eta_unavailable`（ステップがまだ進んでいない）を付けないことを書いた | #983 の統合レビュー指摘。完了したノードに「まだ進んでいない」と出る誤りを直した |
 | 1.15 | 2026-11-03 | `get_job` の `progress` に `elapsed_seconds`（ComfyUI に渡してからの経過秒。モデルの読み込み中も増える）を足した。`eta_seconds` はいま動いているノードだけの残りで、ジョブ全体の残りではないことを書いた | Issue #1002 |
 | 1.16 | 2026-11-03 | `get_job` と `list_jobs` の出力に `next_steps`（企画のジョブが LLM の API キー未設定で失敗したときだけ、続けるためにすること）を足した | Issue #1001。LLM が止まった Project で、何をすれば続けられるかが画面にも MCP にも出ていなかった |
+| 1.17 | 2026-11-03 | `get_job` / `list_jobs` の `next_steps` が、企画の失敗理由に登場人物の下書き（Brief の添付画像から作ったもの）の文があるときは「下書きを直す」案内になる。`error` にその文が足される | Issue #1022（#1001 の残り） |
