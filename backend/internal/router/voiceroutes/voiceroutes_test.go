@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/service/voicetrain"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
@@ -40,7 +41,10 @@ func newApp(t *testing.T) *app {
 	t.Helper()
 	testenv.Parallel(t)
 	db := testdb.Open(t)
-	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New(), AssetsDir: filepath.Join(t.TempDir(), "assets")})
+	assets := filepath.Join(t.TempDir(), "assets")
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New(), AssetsDir: assets})
+	svc.VoiceTrain = voicetrain.New(voicetrain.Deps{Voices: svc.VoiceRef, Runtime: &refusingRuntime{}, Probe: seconds10{}, AssetsDir: assets})
+	t.Cleanup(svc.VoiceTrain.Close)
 	a := &app{t: t, db: db, engine: router.New(svc, router.Options{})}
 	rec := a.do(httptest.NewRequest(http.MethodGet, "/", nil))
 	require.Equal(t, http.StatusOK, rec.Code)

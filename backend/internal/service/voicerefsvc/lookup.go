@@ -23,12 +23,33 @@ var (
 	ErrFileMissing = errors.New("voicerefsvc: the reference voice file is missing")
 )
 
+// sameVoice reports whether two references are one voice: the same recording and the same trained voice.
+func sameVoice(a, b *voiceref.Reference) bool {
+	return a.FilePath == b.FilePath && trainedID(a) == trainedID(b)
+}
+
+func trainedID(r *voiceref.Reference) string {
+	if r.Finetune == nil {
+		return ""
+	}
+	return r.Finetune.ID
+}
+
 // Voice is the reference voice of the Character a speaker stands for.
 type Voice struct {
 	Character domain.WorldCharacter
 	Reference voiceref.Reference
 	// Path is the absolute path of the recording.
 	Path string
+	// Trained is the trained voice of the Character (nil: none, the voice is the zero-shot clone of the recording). Its files are
+	// there at the size they were written with: a Character whose weights are gone is ErrNoWeights, never given another voice.
+	Trained *Trained
+}
+
+// Trained is the trained voice (voiceref.Finetune) of a Character a speaker stands for: the name the synthesis server loads it by.
+type Trained struct {
+	// ID is the name of the directory of the weights below the server's weights root (WeightsRoot).
+	ID string
 }
 
 // ForSpeaker finds the reference voice of the speaker of a line of the script: the Character of the Project
@@ -73,15 +94,22 @@ func (s *Service) resolve(characters []domain.WorldCharacter, speaker string) (V
 		return Voice{}, fmt.Errorf("%w: %q", ErrNoReference, speaker)
 	}
 	for _, c := range withVoice[1:] {
-		if c.VoiceReference.FilePath != withVoice[0].VoiceReference.FilePath {
+		if !sameVoice(c.VoiceReference, withVoice[0].VoiceReference) {
 			return Voice{}, fmt.Errorf("%w: %q", ErrAmbiguous, speaker)
 		}
 	}
 	v := Voice{Character: withVoice[0], Reference: *withVoice[0].VoiceReference}
-	if v.Path = s.path(v.Reference.FilePath); v.Path != "" {
-		if _, err := os.Stat(v.Path); err == nil {
-			return v, nil
-		}
+	if v.Path = s.path(v.Reference.FilePath); v.Path == "" {
+		return Voice{}, fmt.Errorf("%w: %q", ErrFileMissing, speaker)
 	}
-	return Voice{}, fmt.Errorf("%w: %q", ErrFileMissing, speaker)
+	if _, err := os.Stat(v.Path); err != nil {
+		return Voice{}, fmt.Errorf("%w: %q", ErrFileMissing, speaker)
+	}
+	if ft := v.Reference.Finetune; ft != nil {
+		if err := s.checkWeights(*ft); err != nil {
+			return Voice{}, fmt.Errorf("%w: %q", err, speaker)
+		}
+		v.Trained = &Trained{ID: ft.ID}
+	}
+	return v, nil
 }

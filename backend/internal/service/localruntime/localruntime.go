@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -46,6 +47,8 @@ var (
 	ErrNotInstalled = errors.New("localruntime: the runtime is not installed")
 	// ErrBusy: an install of the runtime is queued or running.
 	ErrBusy = errors.New("localruntime: an install is running")
+	// ErrTraining: a fine-tuning (BeginTool) holds the runtime: it is not installed, updated, removed or started for the server meanwhile.
+	ErrTraining = errors.New("localruntime: a fine-tuning is running")
 	// ErrWeightsMissing: the runtime is installed but a weight or dependency it needs is not there or not verified (a
 	// *WeightsError names them; errors.Is reaches this). Start refuses before the server would fail in a way no one can read.
 	ErrWeightsMissing = errors.New("localruntime: the weights of the runtime are missing")
@@ -117,6 +120,9 @@ type Deps struct {
 	FreeBytes func(path string) (uint64, error)
 	// Command builds the launch of a runtime for a port (default: the installed runtime, see rtm.Installer.Command).
 	Command func(id string, port int) (proc.Spec, error)
+	// Env adds environment variables to the start of a runtime's server (nil: none): the app names the directory of the trained voices
+	// of GPT-SoVITS (MAM_VOICE_WEIGHTS_DIR), which lies below the assets directory and not in the runtime's own.
+	Env func(id string) []string
 	// HTTP sends the requests to a runtime's server (nil: a client without a timeout and without a proxy).
 	HTTP httpclient.Doer
 	// Ready probes the server at a url (default: GET of the runtime's ready_path answers 200).
@@ -148,6 +154,8 @@ type instance struct {
 	// token is the token of the server's current start ("" for a runtime without one); see tokenFor.
 	tokenMu sync.Mutex
 	token   string
+	// tool is set while a script of mam's own holds the runtime (BeginTool).
+	tool atomic.Bool
 }
 
 // Service is the manager of the local runtimes.
@@ -207,6 +215,14 @@ func (s *Service) newInstance(rt catalog.Runtime) (*instance, error) {
 	build := inst.install.Command
 	if s.Command != nil {
 		build = func(port int) (proc.Spec, error) { return s.Command(rt.ID, port) }
+	}
+	if s.Env != nil {
+		inner := build
+		build = func(port int) (proc.Spec, error) {
+			spec, err := inner(port)
+			spec.Env = append(spec.Env, s.Env(rt.ID)...)
+			return spec, err
+		}
 	}
 	build = inst.withToken(build)
 	ready := s.Ready

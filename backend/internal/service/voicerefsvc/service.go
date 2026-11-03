@@ -185,6 +185,9 @@ func (s *Service) set(ctx context.Context, o owner, characterID string, in Input
 		return voiceref.Reference{}, invalid("file", "参照音声のファイルを選んでください（%s）", strings.Join(voiceref.Extensions(), " "))
 	}
 	ref.Text, ref.Language = text, lang
+	if have != nil {
+		ref.Finetune = have.Finetune // a new recording does not take the trained voice away: it is the same speaker's voice
+	}
 	previous, err := s.write(ctx, o, characterID, &ref)
 	if err != nil {
 		s.discard(ctx, &ref, have) // the file just stored is the orphan; the old one is still the voice of the row

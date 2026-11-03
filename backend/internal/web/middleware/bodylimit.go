@@ -18,19 +18,21 @@ const tooLargeMessage = "送信内容が大きすぎます"
 // same kind of limit themselves) for a multipart/form-data body and therefore apply their own, larger MaxBytesReader
 // to it. Any other body on these routes (a urlencoded form, JSON) is not read that way and keeps MaxBodyBytes.
 var uploadRoutes = map[string]struct{}{
-	"POST /projects":                                            {},
-	"POST /projects/:id/messages":                               {},
-	"POST /projects/import":                                     {},
-	"POST /projects/:id/references":                             {},
-	"POST /projects/:id/audio/voices":                           {},
-	"PUT /series/:id/characters/:characterId/voice-reference":   {},
-	"PUT /projects/:id/characters/:characterId/voice-reference": {},
-	"POST /projects/:id/reviews/feedback":                       {},
-	"POST /reviews/import":                                      {},
-	"POST /workflows/import":                                    {},
-	"POST /model-manager/trials":                                {},
-	"POST /generation-test/estimate":                            {},
-	"POST /generation-test/match/estimate":                      {},
+	"POST /projects":                                                  {},
+	"POST /projects/:id/messages":                                     {},
+	"POST /projects/import":                                           {},
+	"POST /projects/:id/references":                                   {},
+	"POST /projects/:id/audio/voices":                                 {},
+	"PUT /series/:id/characters/:characterId/voice-reference":         {},
+	"PUT /projects/:id/characters/:characterId/voice-reference":       {},
+	"POST /series/:id/characters/:characterId/voice-training/clips":   {},
+	"POST /projects/:id/characters/:characterId/voice-training/clips": {},
+	"POST /projects/:id/reviews/feedback":                             {},
+	"POST /reviews/import":                                            {},
+	"POST /workflows/import":                                          {},
+	"POST /model-manager/trials":                                      {},
+	"POST /generation-test/estimate":                                  {},
+	"POST /generation-test/match/estimate":                            {},
 }
 
 func isUploadRoute(c *gin.Context) bool {

@@ -107,6 +107,10 @@ type Runtime struct {
 	// launcher script next to the vendor's server, which the install writes after every extraction and Installer.Command writes again before every start
 	// (the current one of this mam, without a new download of the package).
 	ExtraFiles []parts.File `json:"extra_files,omitempty"`
+	// ToolFiles are the scripts of mam's own that a job other than the server runs in the environment (the fine-tuning driver of GPT-SoVITS):
+	// Installer.Tool writes them before it starts one. They are not checked by Status, so an environment installed before a script was added
+	// is not "broken" for want of it.
+	ToolFiles []parts.File `json:"tool_files,omitempty"`
 	// Variants are the pinned builds by the GPU generation they are for.
 	Variants map[Variant]RuntimeVariant `json:"variants"`
 }

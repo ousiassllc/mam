@@ -125,7 +125,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	// and ffmpeg) are kept in memory by their owners; the list reads them from there.
 	settings.JobList = joblist.New(joblist.Deps{
 		Table: jobrecent.New(db), Shots: repository.NewGenerationRepository(db), Projects: services.Projects, ModelManager: services.ModelManager, Gentest: services.Gentest,
-		Works: []worktrack.Source{services.Editor, services.Workflows, gpt.Codex(), ffmpegDL}, Hidden: services.ModelManager.HidesModel,
+		Works: []worktrack.Source{services.Editor, services.Workflows, gpt.Codex(), ffmpegDL, services.VoiceTrain}, Hidden: services.ModelManager.HidesModel,
 	})
 	if opts.Update != nil {
 		var stop func()

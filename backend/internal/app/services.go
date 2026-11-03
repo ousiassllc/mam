@@ -49,6 +49,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/wfrefresh"
+	"github.com/ousiassllc/mam/backend/internal/service/voicetrain/voicetrainwire"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
@@ -189,7 +190,13 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	}
 	manager.Store(mgr)
 	nodeSvc, installNext := newModelNodes(jobs, jobTable, mgr, logger) // the custom nodes' jobs first, the runtimes' wrap them
-	rts, err := newLocalRuntimes(jobs, jobTable, installNext, logger)
+	var voiceRoot atomic.Pointer[string]                               // the directory of the trained voices, known once the services are built
+	rts, err := newLocalRuntimes(jobs, jobTable, installNext, voicetrainwire.Env(func() string {
+		if p := voiceRoot.Load(); p != nil {
+			return *p
+		}
+		return ""
+	}), logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -217,6 +224,10 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
 	services.ModelManager = mgr
 	services.LocalRuntimes = rts
+	root := services.VoiceRef.WeightsRoot()
+	voiceRoot.Store(&root)
+	services.VoiceTrain = voicetrainwire.New(rts, mgr, services.VoiceRef, previews, cfg.AssetsDir(), logger)
+	closers = append(closers, services.VoiceTrain.Close) // a training in flight is cancelled and its files removed; before the runtimes close
 	services.ModelNodes = nodeSvc
 	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
 	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
@@ -228,6 +239,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
 	// Before any job runs: a runtime install that the queue resumes is using the directories this cleans.
 	rts.CleanLeftovers()
+	services.VoiceRef.CleanFinetunes(ctx) // the weights a stop in the middle of a keep left, before any training can start
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err
 	}

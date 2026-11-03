@@ -116,6 +116,7 @@ templ Box(p Props)
 | `stalled` | `upstream` | ローカルの生成がのあいだ進まなかったため打ち切りました。 | /settings/local-models |
 | `time_limit` | `upstream` | ローカルの生成が全体の上限（）を超えたため打ち切りました。 |  |
 | `timeout` | `upstream` | 相手の応答が時間内に返りませんでした。 |  |
+| `training_failed` | `upstream` | 声の学習を完了できませんでした。 | /model-manager |
 | `unavailable` | `unavailable` | この機能はいま使えません（API キーや設定が足りません）。 | /settings |
 | `unknown` | `internal` | 原因がわかりませんでした。想定していない失敗です。 |  |
 | `upstream_failed` | `upstream` | 外部のモデルやサービスが、使える答えを返しませんでした。 |  |

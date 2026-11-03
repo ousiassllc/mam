@@ -236,6 +236,13 @@ Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で
 | GET | `/projects/:id/world-state` | 現在の World State（Character/Product/Location/Camera/Story）フラグメント取得。クエリ `branch_id`（省略時=主系列トランク）で対象Branchの派生World Stateを取得 | F-09, F-10 |
 | PUT | `/projects/:id/characters/:characterId/voice-reference` | Project の Character（Episode のものを含む）の参照音声の設定。Body・検証・エラーは `PUT /series/:id/characters/:characterId/voice-reference` と同じ。クエリ `branch_id` は応答のフォームを出す Branch の画面（Branch のコピーの行を指すときだけ）。応答は当該 Character の参照音声のフォーム（`#ws-voice-<id>`）だけ（200）。Episode は継承した声をこの Episode だけ差し替えられる（正本と他の Episode は変わらない）。Series に属さない Project の Character にも付けられる。World State のバージョンは追記しない（LOCK の対象でもない） | F-20, F-09 |
 | DELETE | `/projects/:id/characters/:characterId/voice-reference` | Project の Character の参照音声の削除（ほかの行が同じ録音を指していれば、ファイルは残る）。未設定なら何もしない | F-20 |
+| GET | `/projects/:id/characters/:characterId/voice-training` | Project のCharacter の声の学習の欄（音声の一覧・量と足りない理由・エポック数・実行中の進み具合・学習済みの声。参照音声の保存・削除で読み直し、実行中は 3 秒ごとに読み直す）。応答は欄（`#voice-train-<id>`）だけ | F-20 |
+| POST | `/projects/:id/characters/:characterId/voice-training` | 学習を始める。Body `epochs_sovits`・`epochs_gpt`（省略は 8 / 15、1〜25 / 1〜50 は範囲外が 422）。参照音声が無い・音声の量が足りない・ランタイムが使えない・同梱の ComfyUI が生成中・別の学習が動いている・空き容量が足りないは始める前に断る（共通のエラーの箱）。応答は欄。意味は [local-runtime.md §18](../architecture/model-manager/local-runtime.md) | F-20 |
+| POST | `/projects/:id/characters/:characterId/voice-training/cancel` | 動いている学習を中止する（部分的な結果は残さない）。動いていなければ 409。応答は欄 | F-20 |
+| POST | `/projects/:id/characters/:characterId/voice-training/clips` | 学習用の音声を 1 つ足す。`multipart/form-data`: `file`（`.wav/.mp3/.flac/.ogg/.m4a`、10 MB まで、2〜30 秒）、`text`（書き起こし、500 文字以内）。合計 30 分・200 個まで。応答は欄 | F-20 |
+| DELETE | `/projects/:id/characters/:characterId/voice-training/clips` | 学習用の音声を全部消す。応答は欄 | F-20 |
+| DELETE | `/projects/:id/characters/:characterId/voice-training/clips/:clipId` | 学習用の音声を 1 つ消す。応答は欄 | F-20 |
+| DELETE | `/projects/:id/characters/:characterId/voice-training/voice` | 学習済みの声を取り除き、参照音声のゼロショットの声に戻す（重みのファイルが無くても消せる）。応答は欄 | F-20 |
 
 M1 の入出力契約（Issue #8）:
 
@@ -260,6 +267,13 @@ M2 の入出力契約（Issue #15）:
 | PUT | `/series/:id/style` | Series の Style 正本（テキスト、500 文字以内）の更新。Body `style`。応答は Style のフォーム（`#series-style-form`）だけ（200。画面全体は返さない）で、版数表示と正本の更新履歴を `hx-swap-oob` で添える。新しい `series_version` を追記する。既存 Episode には自動伝播しない | F-29 |
 | PUT | `/series/:id/characters/:characterId/voice-reference` | Series 正本の Character の参照音声（ローカルの声のクローン用の録音、F-20・F-29）の設定。Body は `multipart/form-data`: `file`（`.wav/.mp3/.flac/.ogg/.m4a`、10 MB まで、3〜10 秒。拡張子と先頭の署名が合わないものは 422）、`text`（書き起こし、500 文字以内）、`language`（`ja`（既定）/`en`/`zh`/`ko`/`yue`）。`file` を付けずに送ると、いまの録音のまま `text`・`language` だけを変える（送らなかった項目はそのまま。新しい録音を置くと古い書き起こしは消える。画面のフォームは書き起こし欄にいまの書き起こしを入れて送るため、新しい録音と一緒に届いた `text` がいまの書き起こしと同じ（欄を触っていない）ときも送られなかったものとして扱い、古い書き起こしは消える。書き換えた `text` は新しい録音の書き起こしになる）。応答は更新した Character の参照音声のフォーム（`#series-voice-<id>`）だけ（200）で、版数表示（`#series-version`）と正本の更新履歴（`#series-history`）を `hx-swap-oob` で添える。新しい `series_version` を追記し、既存 Episode には自動伝播しない（次の Episode から）。ffprobe があるときだけ長さを測り、範囲外は 422（ffprobe が無ければ長さは検証せず、画面に「長さを確認できていません」と出す）。ファイルが無く録音も未設定・大きさ 0・上限超（413）・種類違い・言語が不明・書き起こしが長すぎるは 422、Series・Character が無ければ 404 | F-20, F-29 |
 | DELETE | `/series/:id/characters/:characterId/voice-reference` | 正本の参照音声の削除（新しい `series_version`。Episode が複製した音声は残る）。未設定なら何もしない。応答は PUT と同じ | F-29 |
+| GET | `/series/:id/characters/:characterId/voice-training` | 正本のCharacter の声の学習の欄（音声の一覧・量と足りない理由・エポック数・実行中の進み具合・学習済みの声。参照音声の保存・削除で読み直し、実行中は 3 秒ごとに読み直す）。応答は欄（`#voice-train-<id>`）だけ | F-20 |
+| POST | `/series/:id/characters/:characterId/voice-training` | 学習を始める。Body `epochs_sovits`・`epochs_gpt`（省略は 8 / 15、1〜25 / 1〜50 は範囲外が 422）。参照音声が無い・音声の量が足りない・ランタイムが使えない・同梱の ComfyUI が生成中・別の学習が動いている・空き容量が足りないは始める前に断る（共通のエラーの箱）。応答は欄。意味は [local-runtime.md §18](../architecture/model-manager/local-runtime.md) | F-20 |
+| POST | `/series/:id/characters/:characterId/voice-training/cancel` | 動いている学習を中止する（部分的な結果は残さない）。動いていなければ 409。応答は欄 | F-20 |
+| POST | `/series/:id/characters/:characterId/voice-training/clips` | 学習用の音声を 1 つ足す。`multipart/form-data`: `file`（`.wav/.mp3/.flac/.ogg/.m4a`、10 MB まで、2〜30 秒）、`text`（書き起こし、500 文字以内）。合計 30 分・200 個まで。応答は欄 | F-20 |
+| DELETE | `/series/:id/characters/:characterId/voice-training/clips` | 学習用の音声を全部消す。応答は欄 | F-20 |
+| DELETE | `/series/:id/characters/:characterId/voice-training/clips/:clipId` | 学習用の音声を 1 つ消す。応答は欄 | F-20 |
+| DELETE | `/series/:id/characters/:characterId/voice-training/voice` | 学習済みの声を取り除き、参照音声のゼロショットの声に戻す（重みのファイルが無くても消せる）。応答は欄 | F-20 |
 
 ### 2.10 Notes（M2）
 

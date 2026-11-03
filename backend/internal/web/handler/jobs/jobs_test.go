@@ -181,3 +181,16 @@ func TestList_ATrackedWorkIsARowThatPollsWhileItRunsAndStopsWhenItEnds(t *testin
 	assert.Contains(t, done, `data-active="false"`)
 	assert.NotContains(t, done, "hx-trigger", "all ended: the list stops asking")
 }
+
+// The training of a Character's voice leads to the screen where the voice is set: the World State of the Project or the Series page.
+func TestList_AVoiceTrainingLeadsToTheScreenOfTheCharacter(t *testing.T) {
+	s := screentest.New(t)
+	s.Works.Begin(worktrack.Record{Kind: worktrack.KindVoiceTrain, ProjectID: "p1", Subject: "ユイ"}, "SoVITS の学習 エポック 1 / 8")
+	s.Works.Begin(worktrack.Record{Kind: worktrack.KindVoiceTrain, SeriesID: "s1", Subject: "ハル"}, "GPT の学習 エポック 2 / 15")
+
+	page := s.Visit(paths.Jobs()).Body.String()
+
+	assert.Contains(t, page, "声の学習")
+	assert.Regexp(t, `href="`+paths.Project("p1", "world-state")+`"[^>]*aria-label="開く: 声の学習 ユイ`, page)
+	assert.Regexp(t, `href="`+paths.Series("s1")+`"[^>]*aria-label="開く: 声の学習 ハル`, page)
+}

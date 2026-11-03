@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicetrainpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -21,6 +22,7 @@ templ entityForm(d Data, e entityView) {
 		}
 		if e.Target == domain.TargetCharacter {
 			@voiceForm(d, e)
+			@voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + e.ID, URL: paths.Project(d.Project.ID, "characters", e.ID, "voice-training")})
 		}
 		<details class="text-sm">
 			<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>

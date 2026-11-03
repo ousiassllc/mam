@@ -42,6 +42,14 @@ func (r *reader) work(ctx context.Context, w worktrack.Record) (Entry, error) {
 		if r.Hidden == nil || w.ModelID == "" || !r.Hidden(w.ModelID) {
 			e.Subject = w.Subject
 		}
+	case worktrack.KindVoiceTrain:
+		// The subject is the Character that is trained; the Project or Series it belongs to is only where the screen is.
+		e.Subject = w.Subject
+		if w.SeriesID != "" {
+			e.Dest = Dest{Screen: ScreenSeries, SeriesID: w.SeriesID}
+		} else if w.ProjectID != "" {
+			e.Dest = Dest{Screen: ScreenProjectWorld, ProjectID: w.ProjectID}
+		}
 	case worktrack.KindCodexInstall:
 		e.Subject, e.Dest = w.Subject, Dest{Screen: ScreenChatGPT}
 	case worktrack.KindFFmpegInstall:
@@ -87,6 +95,8 @@ func workLabel(k worktrack.Kind) string {
 		return "Codex の導入"
 	case worktrack.KindFFmpegInstall:
 		return "ffmpeg のダウンロード"
+	case worktrack.KindVoiceTrain:
+		return "声の学習"
 	}
 	return string(k)
 }

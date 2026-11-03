@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/parts"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
@@ -57,6 +58,9 @@ func TestMain(m *testing.M) {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/openapi.json", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{}`)) })
+	mux.HandleFunc("/env", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(os.Getenv(r.URL.Query().Get("name"))))
+	})
 	_ = (&http.Server{Handler: mux, ReadHeaderTimeout: time.Minute}).Serve(l)
 }
 
@@ -155,6 +159,7 @@ func testCatalog(h *host) *catalog.Catalog {
 	real, _ := catalog.Default().Runtime("gpt-sovits")
 	rt := real                                                        // the real support rules and texts; the package, the files and the launch are the test's
 	rt.ArchiveRoot, rt.Version, rt.ExtraFiles = archiveRoot, "1", nil // the test's package has no launcher of mam's to write
+	rt.ToolFiles = []parts.File{{Dest: "mam_gptsovits_train.py", Lines: []string{"# the driver of the test"}}}
 	rt.Launch = catalog.RuntimeLaunch{
 		Python: pythonRel, Entry: entryRel, Args: []string{entryRel, "-a", "127.0.0.1", "-p", "{port}"}, ReadyPath: "/openapi.json",
 		Env: []string{"HF_HUB_OFFLINE=1"}, StartTimeoutSec: 20,

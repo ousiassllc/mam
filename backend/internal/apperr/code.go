@@ -51,6 +51,7 @@ const (
 	CodeNoGPU            Code = "no_gpu"                // no supported GPU
 	CodeImageUnavailable Code = "image_unavailable"     // the ChatGPT account hosts no model for the image generation
 	CodeSaveFailed       Code = "save_failed"           // a setting or a file could not be saved
+	CodeTrainFailed      Code = "training_failed"       // the fine-tuning of a Character's voice stopped for a reason the trainer worded (#936)
 
 	// The codes of the classes below are for a failure that a service already worded (Error.Cause): the screen and the tool keep that
 	// sentence and add the generic remedy.
@@ -138,6 +139,7 @@ var specs = map[Code]spec{
 	CodeMediaTimeout:     {ClassUpstream, nil},
 	CodeDownloadCorrupt:  {ClassUpstream, []Place{PlaceModelMgr}},
 	CodeInstallFailed:    {ClassUpstream, []Place{PlaceModelMgr}},
+	CodeTrainFailed:      {ClassUpstream, []Place{PlaceModelMgr}},
 	CodeNotWritable:      {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeNoGPU:            {ClassUnavailable, []Place{PlaceModelMgr, PlaceLocalModels}},
 	CodeImageUnavailable: {ClassUnavailable, []Place{PlaceChatGPT}},

@@ -52,6 +52,7 @@
 | `import_bundle` | なし | 8 GiB（`service.MaxBundleBytes`） | `{"project_id"}`（バンドルから新しい Project を作る。同じ ID があれば `conflict`） |
 | `reference_image` | `project_id`（必須）, `kind`（必須: character / product / location / style / lighting）, `name`（必須）, `tags`（カンマ区切り） | 画像 20 MB | `{"reference_id", "asset_id"}`（Reference Library に登録） |
 | `character_voice_reference` | `series_id`（Series の正本の登場人物のとき）か `project_id`（Project の登場人物のとき）のどちらか一方, `character_id`（必須）, `text`（書き起こし、500 文字以内）, `language`（`ja` 既定 / `en` / `zh` / `ko` / `yue`） | 音声 10 MB（`.wav/.mp3/.flac/.ogg/.m4a`、3〜10 秒。長さは ffprobe があるときだけ検証） | `{"series_id"?, "project_id"?, "character_id", "voice_reference"}`（登場人物の参照音声を置き換える。[mcp-tools-world-notes.md](mcp-tools-world-notes.md)「参照音声」） |
+| `character_voice_training_clip` | `series_id`（Series の正本の登場人物のとき）か `project_id`（Project の登場人物のとき）のどちらか一方, `character_id`（必須）, `text`（書き起こし、500 文字以内。必須） | 音声 10 MB（`.wav/.mp3/.flac/.ogg/.m4a`、2〜30 秒。長さは ffprobe が要る。合計 60 秒〜30 分・200 個まで） | `{"id", "name", "text", "duration_ms", "seconds"}`（声の学習に使う音声を 1 つ足す。[mcp-tools-world-notes.md](mcp-tools-world-notes.md)「声の学習」） |
 
 用途は各ドメインのパッケージが `Files.RegisterUpload` で足す（チャットの添付・音声サンプルなど）。足したら、この表かドメイン別のファイルに書く。
 
@@ -111,3 +112,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.15 | 2026-11-03 | `get_job` の `progress` に `elapsed_seconds`（ComfyUI に渡してからの経過秒。モデルの読み込み中も増える）を足した。`eta_seconds` はいま動いているノードだけの残りで、ジョブ全体の残りではないことを書いた | Issue #1002 |
 | 1.16 | 2026-11-03 | `get_job` と `list_jobs` の出力に `next_steps`（企画のジョブが LLM の API キー未設定で失敗したときだけ、続けるためにすること）を足した | Issue #1001。LLM が止まった Project で、何をすれば続けられるかが画面にも MCP にも出ていなかった |
 | 1.17 | 2026-11-03 | `get_job` / `list_jobs` の `next_steps` が、企画の失敗理由に登場人物の下書き（Brief の添付画像から作ったもの）の文があるときは「下書きを直す」案内になる。`error` にその文が足される | Issue #1022（#1001 の残り） |
+| 1.18 | 2026-11-04 | アップロードの用途の表に `character_voice_training_clip`（登場人物の声の学習に使う音声）を足した | Issue #936。GPT-SoVITS の fine-tune の MCP の入口 |

@@ -110,6 +110,10 @@ func href(d joblist.Dest) string {
 		return paths.Project(d.ProjectID, "edit")
 	case joblist.ScreenWorkflows:
 		return paths.Workflows()
+	case joblist.ScreenProjectWorld:
+		return paths.Project(d.ProjectID, "world-state")
+	case joblist.ScreenSeries:
+		return paths.Series(d.SeriesID)
 	case joblist.ScreenFFmpeg:
 		return paths.FFmpegSettings()
 	case joblist.ScreenChatGPT:

@@ -19,7 +19,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/parts"
 )
 
-const launcher = "mam_gptsovits_server.py"
+const (
+	launcher = "mam_gptsovits_server.py"
+	trainer  = "mam_gptsovits_train.py"
+	trainJob = "mam_gptsovits_train_job.py" // the part of the driver that holds the job file and the environment
+)
 
 // mutate returns the validation problems of the embedded catalog after edit changed a copy of it.
 func mutate(t *testing.T, edit func(rt *catalog.Runtime)) []error {
@@ -96,16 +100,56 @@ func TestTheLauncherMatchesWhatMamSends(t *testing.T) {
 // The launcher's own tests, with fakes for api_v2 and uvicorn, run here when Python is installed (CI has it; without it the test is
 // skipped, as a machine without Python has nothing to run it with).
 func TestGPTSoVITSLauncherGuardsTheVendorServer(t *testing.T) {
-	py, err := exec.LookPath("python3")
-	if err != nil {
-		if py, err = exec.LookPath("python"); err != nil {
-			t.Skip("no Python on this machine")
-		}
-	}
+	py := python(t)
 	script, err := filepath.Abs("../data/overlays/" + launcher)
 	require.NoError(t, err)
 	cmd := exec.CommandContext(t.Context(), py, "testdata/test_gptsovits_server.py", script)
 	cmd.Env = append(os.Environ(), "PYTHONDONTWRITEBYTECODE=1") // no __pycache__ next to the embedded scripts
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
+}
+
+// The fine-tuning driver is a tool file of the runtime: written before a training starts, not checked by Status (an environment installed before
+// it existed is not "broken"), and it is never the entry that the server starts.
+func TestGPTSoVITSTrainingDriverIsAToolFileNotAnExtraFile(t *testing.T) {
+	rt := gptSoVITS(t)
+
+	assert.Equal(t, []parts.File{{Dest: trainer, Overlay: trainer}, {Dest: trainJob, Overlay: trainJob}}, rt.ToolFiles)
+	assert.NotContains(t, rt.ExtraFiles, parts.File{Dest: trainer, Overlay: trainer})
+	assert.NotContains(t, rt.Launch.Args, trainer)
+	assert.NotEmpty(t, catalog.Default().Overlays[trainer])
+	assert.NotEmpty(t, catalog.Default().Overlays[trainJob])
+	assert.Empty(t, mutate(t, func(*catalog.Runtime) {}))
+	assert.NotEmpty(t, mutate(t, func(rt *catalog.Runtime) { rt.ToolFiles = []parts.File{{Dest: "../x.py", Overlay: trainer}} }), "a tool file stays inside the environment")
+	assert.NotEmpty(t, mutate(t, func(rt *catalog.Runtime) { rt.ToolFiles = []parts.File{{Dest: "x.py", Overlay: "missing.py"}} }), "an overlay that does not exist")
+}
+
+// The driver runs one fixed script of the package per step, and nothing in a job names another command (the Python tests, with a fake package).
+func TestGPTSoVITSTrainingDriver(t *testing.T) {
+	py := python(t)
+	script, err := filepath.Abs("../data/overlays/" + trainer)
+	require.NoError(t, err)
+	cmd := exec.CommandContext(t.Context(), py, "testdata/test_gptsovits_train.py", script)
+	cmd.Env = append(os.Environ(), "PYTHONDONTWRITEBYTECODE=1")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+}
+
+func python(t *testing.T) string {
+	t.Helper()
+	py, err := exec.LookPath("python3")
+	if err != nil {
+		if py, err = exec.LookPath("python"); err != nil {
+			t.Skip("no Python on this machine")
+		}
+	}
+	return py
+}
+
+// The allow-list of the launcher has the one request that switches to a trained voice, and it needs the token.
+func TestGPTSoVITSLauncherAnswersTheVoiceSwitchItself(t *testing.T) {
+	src := string(catalog.Default().Overlays[launcher])
+	assert.Contains(t, src, `("POST", "/mam/voice"): True`, "the switch needs the token")
+	assert.Contains(t, src, "MAM_VOICE_WEIGHTS_DIR")
+	assert.NotContains(t, src, `"/set_gpt_weights"`)
 }

@@ -54,12 +54,16 @@ const (
 	ScreenWorkflows      Screen = "workflows"
 	ScreenFFmpeg         Screen = "ffmpeg-settings"
 	ScreenChatGPT        Screen = "chatgpt-settings" // the API keys page, which holds the "ChatGPT でログイン" section
+	ScreenProjectWorld   Screen = "project-world"    // the World State of a Project, where the Characters' voices are (Dest.ProjectID)
+	ScreenSeries         Screen = "series"           // the Series page, where the canon's Characters' voices are (Dest.SeriesID)
 )
 
 // Dest is where the job is worked on: the screen, and the Project when it is a screen of a Project.
 type Dest struct {
 	Screen    Screen
 	ProjectID string
+	// SeriesID is the Series of a ScreenSeries.
+	SeriesID string
 }
 
 // Progress is how far a running job is. Percent is 0-100, or NoPercent when the job cannot say (the line then has its words only, no

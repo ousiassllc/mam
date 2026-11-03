@@ -52,6 +52,7 @@
 | `workflow_run` | ワークフローの実行 | `workflows.Service.StartRun`（画面・MCP とも同じ）。ID は実行の記録（`run.json`）と同じ | ワークフローの名前（モデルが年齢確認でオフの成人向けなら出さない） | ComfyUI の `progress`（`Percent`・`Message`）。準備中は 0 % | `/workflows` |
 | `codex_install` | Codex の導入 | `codex.Service.StartInstall` | `Codex` | ダウンロード 0〜70 %・展開 70〜100 %（設定の導入カードと同じ値）・いまの段階の文 | `/settings/api-keys`（「ChatGPT でログイン」のカード） |
 | `ffmpeg_install` | ffmpeg のダウンロード | `ffmpegdl.Service.StartInstall` | `ffmpeg` | ダウンロード 0〜85 %・展開 85〜98 %・確認 98〜99 %（設定の導入カードと同じ値）・いまの段階の文 | `/settings/ffmpeg` |
+| `voice_train` | 声の学習 | `voicetrain.Service.Start` | 登場人物の名前 | 段階 0〜98 %（text 0〜5・hubert 5〜15・semantic 15〜20・sovits 20〜60・gpt 60〜98。見た目だけの値）・いまの段階の文（エポック n/m・経過・その段階の残り時間） | Project の登場人物は `/projects/:id/world-state`、Series の正本の登場人物は `/series/:id`（[local-runtime.md §18](../architecture/model-manager/local-runtime.md)） |
 
 - 状態は `実行中`・`完了`・`失敗`・`中止`（`待機中` は無い: 記録は動き出してから始まる）。`中止` は Codex・ffmpeg の「中断する」と、書き出し・音声・判定で要求が取り消されたとき（ワークフローの実行は要求から切り離して動くので、時間切れは失敗）。ほかの失敗は持ち主が使う人向けに書いた文（`Explain`・`audioError`・`aiError`・`workflows.reasonOf`）のまま `Entry.Error` に入れ、`logging.Redact` で鍵を伏せる（共通のエラー表示は別の Issue #1010。ここでは変えない）。
 - `%` を言えない作業（書き出し・音声・判定は ffmpeg や LLM の 1 回の呼び出しで、数える段が無い）は、`<progress>` の棒を出さず、いま何をしているかの文と**動き出してからの経過時間**（`経過 3分20秒`）を出す。2 秒ごとの取り直しで時間が進むので、長い作業が止まっていないと分かる。値は作らない（`Progress.Percent` が負 = 不明。organism の `Progress.Known()`）。
@@ -133,3 +134,4 @@
 | 1.6 | 2026-11-03 | 企画のジョブが LLM の API キー未設定で失敗したときだけ、失敗の理由の下に「続けるには」の案内を出す（§2 の「種類ごとの表示」の失敗の行） | Issue #1001 |
 | 1.7 | 2026-11-03 | 企画の失敗の理由に登場人物の下書きの文があるときは、「続けるには」の (2) を「下書きを直す」案内にする（§2 の失敗の行） | Issue #1022 |
 | 1.8 | 2026-11-03 | 動画の書き出し・音声の作成・Editor の判定・ワークフローの実行・Codex の導入・ffmpeg のダウンロードを一覧に出す（決定 2 の変更）。`job` テーブルには書かず、持ち主のメモリ上の記録（`internal/worktrack`）を `joblist.Deps.Works` が読み、テーブルの行と混ぜる。`%` を言えない作業は棒を出さず、いまの作業と経過時間を出す（`Progress.Percent` が負）。再起動で消えることを明記 | Issue #1019 |
+| 1.9 | 2026-11-04 | 声の学習（`voice_train`）を、メモリ上の追跡の種類に足した（Issue #936）。再起動をまたがず、ジョブ一覧から開くと登場人物の画面へ行く | GPT-SoVITS の fine-tune |

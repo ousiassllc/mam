@@ -105,6 +105,7 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 macOS 版でまだ使えないもの:
 
 - **ローカルの声（GPT-SoVITS・Irodori-TTS）とローカルの口パク（MuseTalk 1.5）**。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。macOS では、声（GPT-SoVITS・Irodori-TTS）は公式が macOS の MPS / CPU での推論に対応しているものの mam は自動導入せず（GPT-SoVITS は、Apple Silicon 向けの部品だけでは起動に必須の `pyopenjtalk`・`jieba_fast`・`jieba` が揃わないためです）、口パクは公式の PyTorch 版が macOS（Apple Silicon）の GPU に対応していません（第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4`（MIT）は、顔の検出・貼り戻しを含む起動できるサーバーが無いため、mam の対象外です）。どちらも実機の Mac では確かめていません（調べた内容は `spec/architecture/model-manager/local-runtime.md` §16）。設定の「音声・口パク」では、macOS だとローカルを選べず、その理由が出ます。**クラウドの ElevenLabs（声）と Sync Labs（口パク）は macOS でもそのまま使えます**（設定の「API キーとログイン」で `elevenlabs`・`synclabs` のキーを登録します。何も選ばないときの既定はクラウドです）。
+  - **声の学習（fine-tune。GPT-SoVITS のみ・Windows + NVIDIA）**: 登場人物の参照音声の欄の下で、書き起こしつきの録音（合計 1〜30 分）から声を学習し、その登場人物の声の合成に使えます。数十分かかり、学習中は GPU を使います。声のコピーには声の持ち主本人の同意が必要です（実在の人の声を同意なしに学習したり、なりすましに使ったりしないでください）。学習した声は書き出し（プロジェクトバンドル）には入りません。実物の GPU・重みでの動作は未確認です（[仕様](spec/architecture/model-manager/local-runtime.md) §18）。
 
 ffmpeg は同梱していません（次の節）。
 

@@ -91,3 +91,4 @@
 | 1.84 | 2026-11-03 | `gentest_input.role` に `pose`（ポーズだけ）を足し（CHECK を作り直し）、`origin.kind` に `pose_library` を足した（[gentest/er-gentest.md](gentest/er-gentest.md)。マイグレーション `20261103200000_gentest_input_role_pose.sql`） | Issue #986 |
 | 1.85 | 2026-11-03 | `gentest_result` に `started_at`（`running` にした時刻。NULL 許容）を足した（[gentest/er-gentest.md](gentest/er-gentest.md)。マイグレーション `20261105090000_gentest_result_started_at.sql`） | Issue #1002。ローカルモデルの所要時間の見積りの根拠（実行時間）が残っていなかった |
 | 1.86 | 2026-11-03 | `character` に `draft`（INTEGER NOT NULL DEFAULT 0。1=企画が LLM の API キー未設定で止まったとき、Brief の添付画像から LLM なしで作った下書き。編集で 0 に戻る）を足した（マイグレーション `20261106100000_character_draft.sql`） | Issue #1022（#1001 の残り） |
+| 1.87 | 2026-11-04 | `character.voice_reference`（JSON）に `finetune`（GPT-SoVITS の学習した声。重みはユーザーデータ側のファイル）を足した。列・マイグレーションは足さない。バンドルは書き出さず取り込みは拒否する | Issue #936 |

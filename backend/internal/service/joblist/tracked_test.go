@@ -89,6 +89,31 @@ func TestRecent_TrackedWorksNameWhatTheyAreOnAndLeadToTheirScreen(t *testing.T) 
 	assert.Equal(t, joblist.Dest{}, gone.Dest)
 }
 
+// A training of a Character's voice is named by the Character and leads to the screen of its owner: the Project's World State or the Series page.
+func TestRecent_AVoiceTrainingIsNamedByTheCharacterAndLeadsToItsOwner(t *testing.T) {
+	tr := newTracked(t)
+	tr.works.Begin(worktrack.Record{Kind: worktrack.KindVoiceTrain, ProjectID: "p-1", Subject: "ユイ"}, "SoVITS の学習 エポック 3 / 8")
+	tr.now = tr.now.Add(time.Minute)
+	tr.works.Begin(worktrack.Record{Kind: worktrack.KindVoiceTrain, SeriesID: "s-1", Subject: "ハル"}, "音声の特徴（SSL） 12 / 30 件")
+
+	var got []joblist.Entry
+	for _, e := range tr.recent() {
+		if e.Kind == "voice_train" {
+			got = append(got, e)
+		}
+	}
+
+	require.Len(t, got, 2)
+	assert.Equal(t, "声の学習", got[0].Label)
+	assert.Equal(t, "ハル", got[0].Subject, "the newest first")
+	assert.Equal(t, joblist.Dest{Screen: joblist.ScreenSeries, SeriesID: "s-1"}, got[0].Dest)
+	assert.Equal(t, "ユイ", got[1].Subject)
+	assert.Equal(t, joblist.Dest{Screen: joblist.ScreenProjectWorld, ProjectID: "p-1"}, got[1].Dest)
+	assert.Equal(t, joblist.Running, got[1].State)
+	require.NotNil(t, got[1].Progress)
+	assert.Contains(t, got[1].Progress.Text, "SoVITS の学習 エポック 3 / 8")
+}
+
 // A work goes from running to its end like a row of the table does: while it runs it says what it does (and how far it is when it knows,
 // otherwise how long it has run, so that a long render is seen to be going on); when it ends the progress is gone, and a failure carries
 // its reason with the secrets hidden.
