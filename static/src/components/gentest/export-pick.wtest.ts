@@ -175,6 +175,11 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
       stylesheet.onerror = () => reject(new Error('the Tailwind CSS could not be built'));
       document.head.append(stylesheet);
     });
+    // The frame fades in and out (transition-shadow), and a background tab of a headless browser may not advance a transition at all: this test is about the end states, so
+    // it is measured without the fade (waiting for it would depend on the frames the browser draws).
+    const noFade = document.createElement('style');
+    noFade.textContent = '*, *::before, *::after { transition: none !important; }';
+    document.head.append(noFade);
     try {
       await show('gentest-history-idle.html');
       const frame = () => card('r0').querySelector<HTMLElement>('input + div')!;
@@ -189,10 +194,10 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
       expect(mark().backgroundColor, 'the mark in the corner is not filled').not.to.equal(unlit);
 
       tapMark('r0');
-      // The frame fades out (transition-shadow): the value is `none` only when the fade has ended, so it is waited for (with a limit), not read at once.
-      await waitUntil(() => lit().boxShadow === 'none', 'the frame of a result that was let go kept its glow');
+      expect(lit().boxShadow).to.equal('none');
     } finally {
       stylesheet.remove();
+      noFade.remove();
     }
   });
 });
