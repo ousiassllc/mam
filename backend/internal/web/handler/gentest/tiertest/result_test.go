@@ -105,6 +105,36 @@ func TestReplayKeepsTheSeedAndSimilarLeavesItToChance(t *testing.T) {
 	assert.Contains(t, inputTag(similar, "steps"), `value="30"`)
 }
 
+// 速さのモード（Qwen-Image-Edit 2511 の lightning-4 など）で作った結果の「この設定でもう一度」「似た感じでもう1枚」: 速さのモードを戻す
+// （戻さないと既定の standard = 20 ステップで作り直してしまう）。確認画面にも同じモードが渡る。
+func TestReplayAndSimilarPutTheSpeedModeBack(t *testing.T) {
+	s := newScreen(t, gentesttest.WithSpeedModel())
+	id := s.made(gentest.Request{
+		Media: gentest.MediaImage, Models: []string{string(gentesttest.ImageSpeedModel)}, Prompts: []gentest.PromptInput{{Prompt: "a cat"}}, SpeedMode: "lightning-4",
+	})
+	for _, q := range []url.Values{{"tier": {"detail"}, "again": {id}, "same_seed": {"1"}}, {"tier": {"detail"}, "again": {id}}} {
+		page := s.page(paths.GenerationTest() + "?" + q.Encode())
+		assert.Contains(t, page, `<option value="lightning-4" selected>`, q.Encode())
+		assert.NotContains(t, testid(page, "gt-form"), "速さのモード", "nothing to say: the model has the mode")
+	}
+}
+
+// 結果の速さのモードが今のモデルに無いとき（ワークフローを編集した後など）は、既定で作ることを言う（モードは戻さない）。
+func TestReplayOfASpeedModeTheModelNoLongerHasSaysSoAndUsesTheDefault(t *testing.T) {
+	s := newScreen(t, gentesttest.WithSpeedModel())
+	id := s.made(gentest.Request{
+		Media: gentest.MediaImage, Models: []string{string(gentesttest.ImageSpeedModel)}, Prompts: []gentest.PromptInput{{Prompt: "a cat"}}, SpeedMode: "lightning-4",
+	})
+	require.NoError(t, s.rig.DB.Write(t.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE gentest_result SET params = json_set(params, '$.speed_mode', 'lightning-2') WHERE id = ?`, id)
+		return err
+	}))
+
+	page := s.page(paths.GenerationTest() + "?" + url.Values{"tier": {"detail"}, "again": {id}}.Encode())
+	assert.Contains(t, testid(page, "gt-form"), "速さのモード lightning-2 はこのモデルにないため既定で作ります")
+	assert.NotRegexp(t, `<option value="[^"]+" selected>[^<]*Lightning`, page)
+}
+
 // 英訳つきの結果の「この設定でもう一度」: 前回送った英訳をそのまま入れ、英訳はやり直さない（やり直すと同じシードでも別の絵になりうる）。
 // 「似た感じでもう1枚」は元の文のまま英訳をつける。
 func TestReplayOfATranslatedResultSendsTheEnglishThatWentOutAndDoesNotTranslateAgain(t *testing.T) {

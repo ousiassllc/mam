@@ -113,6 +113,27 @@ func TestRecipeRefusals(t *testing.T) {
 	assert.Contains(t, r.CallError("estimate_generation_test", args), "validation")
 }
 
+// 速さのモード: save_generation_recipe の speed_mode はレシピに残り（一覧に出る）、レシピを指定した見積りのリクエストに入る。モデルに無いモードは validation。
+func TestARecipeKeepsTheSpeedModeAndARequestThatNamesItGetsIt(t *testing.T) {
+	r := newRig(t, gentesttest.WithSpeedModel())
+	speed := string(gentesttest.ImageSpeedModel)
+	var saved gentestrecipe.Recipe
+	r.CallOK("save_generation_recipe", map[string]any{"name": "Quick", "model": speed, "speed_mode": "lightning-4"}, &saved)
+	assert.Equal(t, "lightning-4", saved.SpeedMode)
+
+	var list gentestrecipe.ListOutput
+	r.CallOK("list_generation_recipes", map[string]any{}, &list)
+	require.Len(t, list.Recipes, 1)
+	assert.Equal(t, "lightning-4", list.Recipes[0].SpeedMode)
+
+	var est gentest.Estimate
+	r.CallOK("estimate_generation_test", map[string]any{"media": "image", "recipe": saved.ID, "prompts": []map[string]any{{"prompt": "a red fox"}}}, &est)
+	assert.Equal(t, "lightning-4", est.Request.SpeedMode)
+
+	assert.Contains(t, r.CallError("save_generation_recipe", map[string]any{"name": "x", "model": speed, "speed_mode": "lightning-2"}), "validation")
+	assert.Contains(t, r.CallError("save_generation_recipe", map[string]any{"name": "y", "model": model, "speed_mode": "lightning-4"}), "validation", "a model without modes")
+}
+
 // 年齢確認がオフ（Issue #992）: 成人向けモデルのレシピは、一覧にも更新の返り値にも、モデルの名前や設定を出さない（レシピは残り、開くと元に戻る）。
 func TestARecipeOfAHiddenModelShowsNeitherTheModelNorItsSettings(t *testing.T) {
 	hidden := false

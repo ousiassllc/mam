@@ -82,9 +82,9 @@ type screen struct {
 	token  string
 }
 
-func newScreen(t *testing.T) *screen {
+func newScreen(t *testing.T, opts ...gentesttest.Option) *screen {
 	t.Helper()
-	rig := gentesttest.New(t, gentesttest.WithInpaintModel())
+	rig := gentesttest.New(t, append([]gentesttest.Option{gentesttest.WithInpaintModel()}, opts...)...)
 	svc := servicetest.New(t, service.Deps{DB: rig.DB, Credentials: credentialtest.New()})
 	settings := settingsroutes.New(t.TempDir()+"/llm.json", false, t.TempDir()+"/m.json", false)
 	settings.Gentest = rig.Svc

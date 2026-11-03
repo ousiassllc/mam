@@ -25,7 +25,7 @@ func (h Handlers) restoreAgain(ctx context.Context, c *gin.Context, f *formState
 	f.media, f.models, f.translate, f.aspect = gentest.MediaImage, []string{r.Model}, r.Translate, r.Aspect
 	f.prompts = []view.PromptText{{Text: r.Prompt, Negative: r.Negative}}
 	f.adv = advform.Fields{Seed: r.Seed, Steps: r.Steps, CFG: r.CFG, Sampler: r.Sampler, Scheduler: r.Scheduler, Exposed: r.Exposed}
-	f.opts = refform.Opts{AvoidPose: r.AvoidPose, LoRA: r.LoRA}
+	f.opts = refform.Opts{AvoidPose: r.AvoidPose, LoRA: r.LoRA, SpeedMode: r.SpeedMode}
 	notes := r.Notes
 	for _, in := range r.Refs {
 		if _, ok := h.refRow(ctx, in); ok {
@@ -34,8 +34,13 @@ func (h Handlers) restoreAgain(ctx context.Context, c *gin.Context, f *formState
 			notes = append(notes, redo.Missing(in))
 		}
 	}
-	if m, err := h.Svc.Model(ctx, gentest.MediaImage, r.Model); err != nil || !m.Available {
+	m, err := h.Svc.Model(ctx, gentest.MediaImage, r.Model)
+	if err != nil || !m.Available {
 		notes = append(notes, "モデル「"+d.ModelLabel+"」は今は使えないため、選んでいません。こだわりでモデルを選んでください")
+	}
+	if err == nil && r.SpeedMode != "" && !m.HasSpeedMode(r.SpeedMode) {
+		f.opts.SpeedMode = ""
+		notes = append(notes, redo.SpeedGone(r.SpeedMode))
 	}
 	return redo.Notice(same, notes), true
 }

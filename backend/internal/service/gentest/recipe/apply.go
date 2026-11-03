@@ -11,7 +11,7 @@ import (
 )
 
 // Apply fills the request from the recipe: the model, and every setting the request does not name itself (a value the request names wins: the steps,
-// the cfg, the sampler, the scheduler, the seed, the quality, the size, the LoRA, the exposed values, the negative prompt of a prompt that has none and
+// the cfg, the sampler, the scheduler, the seed, the quality, the size, the speed mode, the LoRA, the exposed values, the negative prompt of a prompt that has none and
 // the strength of an input image that has none). A request that names models as well is refused, as one with an intent is; so is a recipe whose model
 // cannot be used now (the reason is the message). r is returned changed, not modified.
 func (s *Service) Apply(ctx context.Context, r gentest.Request, id string) (gentest.Request, View, error) {
@@ -32,8 +32,12 @@ func (s *Service) Apply(ctx context.Context, r gentest.Request, id string) (gent
 	return Fill(r, withCurrentExposed(v.Params, m)), v, nil
 }
 
-// withCurrentExposed drops the exposed values the model's workflow no longer has, or no longer accepts (it was edited since): a recipe stays usable.
+// withCurrentExposed drops the exposed values the model's workflow no longer has, or no longer accepts, and the speed mode it no longer offers (it was
+// edited since): a recipe stays usable.
 func withCurrentExposed(p Params, m modelcatalog.Info) Params {
+	if !m.HasSpeedMode(p.SpeedMode) {
+		p.SpeedMode = ""
+	}
 	kept := map[string]any{}
 	for _, c := range m.Exposed {
 		if v, ok := p.Exposed[c.Key]; ok {
@@ -73,6 +77,9 @@ func Fill(r gentest.Request, p Params) gentest.Request {
 	}
 	if r.LoRA == nil {
 		r.LoRA = p.LoRA
+	}
+	if r.SpeedMode == "" {
+		r.SpeedMode = p.SpeedMode
 	}
 	r.Prompts = slices.Clone(r.Prompts)
 	for i := range r.Prompts {

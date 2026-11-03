@@ -9,7 +9,7 @@ import (
 // OfRecipe reads the settings of a recipe in the terms of the form (Issue #977: "使う" puts a recipe into the detail tier). A text field is "" when the
 // recipe does not hold the value; RefStrength is the strength the input images that have none take.
 func OfRecipe(p recipe.Params) Restored {
-	r := Restored{Model: p.Model, Negative: p.Negative, Aspect: p.AspectRatio, LoRA: p.LoRA, Sampler: p.Sampling.Sampler, Scheduler: p.Sampling.Scheduler}
+	r := Restored{Model: p.Model, Negative: p.Negative, Aspect: p.AspectRatio, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampler: p.Sampling.Sampler, Scheduler: p.Sampling.Scheduler}
 	if p.Seed != nil {
 		r.Seed = strconv.FormatInt(*p.Seed, 10)
 	}
