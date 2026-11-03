@@ -29,7 +29,7 @@ func TestSpeedModeIsInTheSchemaOfEstimateAndRun(t *testing.T) {
 			} `json:"properties"`
 		}
 		require.NoError(t, json.Unmarshal(raw, &schema))
-		assert.Contains(t, schema.Props["speed_mode"].Description, "video.speed_modes", tool.Name)
+		assert.Contains(t, schema.Props["speed_mode"].Description, "speed_modes", tool.Name)
 		assert.Contains(t, schema.Props["speed_mode"].Description, "speed_mode_unsupported", tool.Name)
 		seen++
 	}
@@ -48,5 +48,13 @@ func TestAModelWithoutTheSpeedModeGetsTheWarning(t *testing.T) {
 	assert.True(t, warned, "%+v", est.Warnings)
 
 	image := map[string]any{"media": "image", "models": []string{"flux-2"}, "prompts": []map[string]any{{"prompt": "x"}}, "speed_mode": "fast"}
-	assert.Contains(t, r.CallError("estimate_generation_test", image), "validation", "speed modes are for video")
+	r.CallOK("estimate_generation_test", image, &est)
+	warned = false
+	for _, w := range est.Warnings {
+		warned = warned || (w.Code == gentest.WarnSpeedUnsupported && w.Model == "flux-2")
+	}
+	assert.True(t, warned, "an image model without the mode warns too (Issue #991): %+v", est.Warnings)
+
+	invalid := map[string]any{"media": "image", "models": []string{"flux-2"}, "prompts": []map[string]any{{"prompt": "x"}}, "speed_mode": "Turbo!"}
+	assert.Contains(t, r.CallError("estimate_generation_test", invalid), "validation", "a speed mode must look like an ID")
 }

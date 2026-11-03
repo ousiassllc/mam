@@ -1,5 +1,6 @@
-// Package speedtest runs the speed modes of the generation test (Issue #930: Wan 2.2 14B + LightX2V, 4 steps or the usual 20) over the
-// fake ComfyUI server of the Model Adapter: from the request to the graph the server received.
+// Package speedtest runs the speed modes of the generation test (Issue #930: Wan 2.2 14B + LightX2V, 4 steps or the usual 20; Issue #991:
+// Qwen-Image-Edit 2511 + Lightning, 4 or 8 steps) over the fake ComfyUI server of the Model Adapter: from the request to the graph the
+// server received.
 package speedtest_test
 
 import (
@@ -73,20 +74,19 @@ func steps(t *testing.T, f *comfyuitest.Fake) (float64, float64) {
 	return steps, cfg
 }
 
-// The model list says which video models have speed modes and which is the default, so the screen and the MCP tool can offer them.
+// The model list says which models have speed modes and which is the default, so the screen and the MCP tool can offer them.
 func TestTheModelListShowsTheSpeedModesAndTheDefault(t *testing.T) {
 	r := mmtest.New(t)
 	box(t, r)
 	for _, m := range r.Gentest.Models(ctx(), "video") {
 		switch m.ID {
 		case fast:
-			require.NotNil(t, m.Video)
-			assert.Equal(t, "fast", m.Video.SpeedModes[0].ID)
-			assert.True(t, m.Video.SpeedModes[0].Default)
-			assert.True(t, m.Video.HasSpeedMode("standard"))
-			assert.False(t, m.Video.SpeedModes[1].Default)
+			assert.Equal(t, "fast", m.SpeedModes[0].ID)
+			assert.True(t, m.SpeedModes[0].Default)
+			assert.True(t, m.HasSpeedMode("standard"))
+			assert.False(t, m.SpeedModes[1].Default)
 		case plain:
-			assert.Empty(t, m.Video.SpeedModes)
+			assert.Empty(t, m.SpeedModes)
 		}
 	}
 }
@@ -138,8 +138,86 @@ func TestASpeedModeIsCheckedBeforeItIsQueued(t *testing.T) {
 	var invalid *gterr.InvalidError
 	_, err := r.Gentest.Estimate(ctx(), request(staged, "Turbo!", fast))
 	assert.ErrorAs(t, err, &invalid, "not a name")
-	image := gentest.Request{Media: "image", Models: []string{fast}, Prompts: []gentest.PromptInput{{Prompt: "x"}}, SpeedMode: "fast"}
-	_, err = r.Gentest.Estimate(ctx(), image)
-	assert.ErrorAs(t, err, &invalid, "speed modes are for video")
+	assert.Zero(t, f.Count("POST /prompt"))
+}
+
+const edit = "comfyui:pic/edit"
+
+// pic registers Qwen-Image-Edit 2511 (an image model with the Lightning speed modes) and SDXL (an image model with none) at a fake server.
+func pic(t *testing.T, r *mmtest.Rig) *comfyuitest.Fake {
+	t.Helper()
+	f := comfyuitest.New(t)
+	f.OutputNode, f.OutputFile, f.OutputBody = "9", "out.png", comfyuitest.PNG
+	require.NoError(t, r.Models.CreateEndpoint(ctx(), localmodels.EndpointInput{Name: "pic", Kind: localcfg.KindComfyUI, BaseURL: f.URL()}))
+	for name, tpl := range map[string]string{"edit": "txt2img-qwen-image-edit-2511", "sdxl": "txt2img-sdxl"} {
+		tm, ok := localcfg.TemplateByID(tpl)
+		require.True(t, ok)
+		require.NoError(t, r.Models.CreateModel(ctx(), localmodels.ModelInput{Endpoint: "pic", Name: name, Model: tm.Model}))
+	}
+	return f
+}
+
+func imageRequest(mode string, models ...string) gentest.Request {
+	return gentest.Request{Media: "image", Models: models, Prompts: []gentest.PromptInput{{Prompt: "a cat"}}, SpeedMode: mode}
+}
+
+// An image model lists its speed modes too (Issue #991), the standard one first and marked as the default.
+func TestAnImageModelListsItsSpeedModes(t *testing.T) {
+	r := mmtest.New(t)
+	pic(t, r)
+	seen := false
+	for _, m := range r.Gentest.Models(ctx(), "image") {
+		switch m.ID {
+		case edit:
+			seen = true
+			require.Len(t, m.SpeedModes, 3)
+			assert.Equal(t, "standard", m.SpeedModes[0].ID)
+			assert.True(t, m.SpeedModes[0].Default)
+			assert.True(t, m.HasSpeedMode("lightning-4"))
+			assert.True(t, m.HasSpeedMode("lightning-8"))
+			assert.Equal(t, "speed_mode", m.Sampling.Steps.Locked, "the screen disables the steps and the cfg and says why")
+		case "comfyui:pic/sdxl":
+			assert.Empty(t, m.SpeedModes)
+		}
+	}
+	assert.True(t, seen)
+}
+
+// The mode of an image request reaches the graph, and the result remembers it.
+func TestAnImageRunTakesTheLightningMode(t *testing.T) {
+	r := mmtest.New(t)
+	f := pic(t, r)
+	st := run(t, r, imageRequest("lightning-4", edit))
+	require.Equal(t, gentest.StateSucceeded, st.State, st.Results[0].Error)
+	assert.Equal(t, "lightning-4", st.Results[0].SpeedMode)
+	s, cfg := steps(t, f)
+	assert.Equal(t, [2]float64{4, 1}, [2]float64{s, cfg})
+	assert.Contains(t, string(f.Graph()["90"].Inputs["lora_name"]), "Lightning-4steps")
+	assert.NotContains(t, f.Graph(), "91")
+
+	st = run(t, r, imageRequest("", edit))
+	require.Equal(t, gentest.StateSucceeded, st.State, st.Results[0].Error)
+	s, cfg = steps(t, f)
+	assert.Equal(t, [2]float64{20, 4}, [2]float64{s, cfg}, "no mode asked: the model's default, with no LoRA")
+	assert.NotContains(t, f.Graph(), "90")
+}
+
+// A model without the mode warns (the same warning as for video) and runs its default; a mode that is not a name is refused.
+func TestAnImageModelWithoutTheModeWarnsAndANameThatIsNoneIsRefused(t *testing.T) {
+	r := mmtest.New(t)
+	f := pic(t, r)
+	est, err := r.Gentest.Estimate(ctx(), imageRequest("lightning-4", edit, "comfyui:pic/sdxl"))
+	require.NoError(t, err)
+	var warned []string
+	for _, w := range est.Warnings {
+		if w.Code == gentest.WarnSpeedUnsupported {
+			warned = append(warned, w.Model)
+		}
+	}
+	assert.Equal(t, []string{"comfyui:pic/sdxl"}, warned)
+
+	var invalid *gterr.InvalidError
+	_, err = r.Gentest.Estimate(ctx(), imageRequest("Turbo!", edit))
+	assert.ErrorAs(t, err, &invalid)
 	assert.Zero(t, f.Count("POST /prompt"))
 }

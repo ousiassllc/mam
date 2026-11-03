@@ -54,7 +54,7 @@ type ResultView struct {
 	// AvoidReferencePose says the negative prompt got "do not copy the reference's pose and composition"; LoRA is the LoRA the model was given.
 	AvoidReferencePose bool       `json:"avoid_reference_pose,omitempty"`
 	LoRA               *refs.LoRA `json:"lora,omitempty" jsonschema:"このモデルに渡した LoRA（名前と強さ）"`
-	SpeedMode          string     `json:"speed_mode,omitempty" jsonschema:"動画: このモデルに頼んだ速さのモード（fast / standard など。無ければモデルの既定）"`
+	SpeedMode          string     `json:"speed_mode,omitempty" jsonschema:"このモデルに頼んだ速さのモード（fast / standard / lightning-4 など。無ければモデルの既定）"`
 	// Sampling is what the model ran with: with seed (above) and the other fields, enough to make the result again.
 	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"このモデルが使ったステップ数・CFG・サンプラー・スケジューラー（上書きしなかった項目はモデルの既定）。seed と合わせて同じ条件で作り直せる。受け取らないモデルは無い"`
 	Exposed  map[string]any     `json:"exposed,omitempty" jsonschema:"このモデルの画面に出す値（ComfyUI のノードの入力）が使った値（key は <ノード ID>.<入力名>。指定しなかった項目はグラフが持つ値）。リクエストの exposed に渡せば同じ条件で作り直せる"`

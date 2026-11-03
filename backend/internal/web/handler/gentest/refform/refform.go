@@ -91,7 +91,7 @@ func strengthOf(v string) *float64 {
 }
 
 // Opts are the options of a batch besides its inputs: whether the pose of the references is not to be copied and the LoRA (nil
-// for none) of an image batch, the speed mode of a video batch ("" for each model's default).
+// for none) of an image batch, the speed mode of a batch ("" for each model's default).
 type Opts struct {
 	AvoidPose bool
 	LoRA      *gentest.LoRAInput
@@ -107,14 +107,11 @@ func Options(v url.Values) Opts {
 	return o
 }
 
-// SpeedChoices are the speed modes the video models offer, without duplicates (the first label of an ID wins).
+// SpeedChoices are the speed modes the models offer, without duplicates (the first label of an ID wins).
 func SpeedChoices(models []modelcatalog.Info) []view.SpeedChoice {
 	var out []view.SpeedChoice
 	for _, m := range models {
-		if m.Video == nil {
-			continue
-		}
-		for _, s := range m.Video.SpeedModes {
+		for _, s := range m.SpeedModes {
 			if !slices.ContainsFunc(out, func(c view.SpeedChoice) bool { return c.ID == s.ID }) {
 				out = append(out, view.SpeedChoice{ID: s.ID, Label: s.Label})
 			}

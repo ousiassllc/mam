@@ -48,7 +48,7 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		"flux1-schnell":                     {"apache-2.0", false, modellicense.Yes, 1},
 		"flux2-klein-4b":                    {"apache-2.0", false, modellicense.Yes, 3},
 		"qwen-image":                        {"apache-2.0", false, modellicense.Yes, 3},
-		"qwen-image-edit-2511":              {"apache-2.0", false, modellicense.Yes, 3},
+		"qwen-image-edit-2511":              {"apache-2.0", false, modellicense.Yes, 5},
 		"wan22-ti2v-5b":                     {"apache-2.0", false, modellicense.Yes, 3},
 		"wan22-i2v-14b":                     {"apache-2.0", false, modellicense.Yes, 4},
 		"wan22-i2v-14b-lightx2v":            {"apache-2.0", false, modellicense.Yes, 6},

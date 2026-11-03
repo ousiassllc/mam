@@ -88,7 +88,7 @@ type Workflow struct {
 	LoraModelNode string `json:"lora_model_node,omitempty"`
 	// PromptWeight says whether the model reads the weights of a prompt, "(word:1.3)" (package promptweight); empty: not said (unknown).
 	PromptWeight promptweight.Level `json:"prompt_weight,omitempty"`
-	// SpeedModes are the ways a video workflow can sample (SpeedMode); the first is the graph as it stands and the default. Empty: one way.
+	// SpeedModes are the ways a workflow can sample (SpeedMode); the first is the graph as it stands and the default. Empty: one way.
 	SpeedModes []SpeedMode `json:"speed_modes,omitempty"`
 	Upscale    *Upscale    `json:"upscale,omitempty"` // marks a workflow that enlarges a picture; nil: one that makes pictures
 	// RequiresNodes are the IDs of the custom nodes (the allowlist, modelmgr/nodecat) the graph uses besides the core nodes. Empty: core only.
@@ -271,7 +271,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 	}
 	errs = append(errs, validateReferences(where, media, w)...)
 	errs = append(errs, validateReferenceMode(where, w, g)...)
-	errs = append(errs, validateSpeedModes(where, media, w, g)...)
+	errs = append(errs, validateSpeedModes(where, w, g)...)
 	errs = append(errs, validateRequiresNodes(where, w)...)
 	errs = append(errs, validateSampling(where, w, g)...)
 	errs = append(errs, validateExposed(where, w, g)...)

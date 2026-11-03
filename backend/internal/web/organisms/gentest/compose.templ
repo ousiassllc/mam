@@ -207,17 +207,17 @@ templ parameterFields(c Compose) {
 					}
 				}
 			</label>
-			if len(c.SpeedModes) > 0 {
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-speed-mode">
-					<span>速さ（対応するモデルだけ）</span>
-					@atoms.Select(atoms.FieldMd, "max-w-64", templ.Attributes{"id": "gt-speed-mode", "name": FieldSpeedMode, "data-testid": "gt-speed-mode"}) {
-						<option value="" selected?={ c.SpeedMode == "" }>モデルの既定</option>
-						for _, s := range c.SpeedModes {
-							<option value={ s.ID } selected?={ s.ID == c.SpeedMode }>{ s.Label }</option>
-						}
+		}
+		if len(c.SpeedModes) > 0 {
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-speed-mode">
+				<span>速さ（対応するモデルだけ）</span>
+				@atoms.Select(atoms.FieldMd, "max-w-64", templ.Attributes{"id": "gt-speed-mode", "name": FieldSpeedMode, "data-testid": "gt-speed-mode"}) {
+					<option value="" selected?={ c.SpeedMode == "" }>モデルの既定</option>
+					for _, s := range c.SpeedModes {
+						<option value={ s.ID } selected?={ s.ID == c.SpeedMode }>{ s.Label }</option>
 					}
-				</label>
-			}
+				}
+			</label>
 		}
 		@help.Toggle(help.ID("生成の設定"), "生成の設定")
 		@help.Panel(help.ID("生成の設定"), "生成の設定") {
@@ -230,9 +230,9 @@ templ parameterFields(c Compose) {
 func parametersHelp(media string) string {
 	t := "本数は、モデルとプロンプトの 1 組あたりの数です。縦横比は 16:9 のように入れます。"
 	if media == "video" {
-		t += "\n長さ（秒）は、モデルが作れる長さに丸めます。速さは、4 ステップの蒸留 LoRA（LightX2V）を使う Wan 2.2 14B のように、速さのモードを持つモデルだけに効きます（ほかのモデルは既定のまま作ります）。"
+		t += "\n長さ（秒）は、モデルが作れる長さに丸めます。"
 	}
-	return t
+	return t + "\n速さは、蒸留 LoRA で 4〜8 ステップにする Wan 2.2 14B（LightX2V）や Qwen-Image-Edit 2511（Lightning）のように、速さのモードを持つモデルだけに効きます（ほかのモデルは既定のまま作ります）。速さのモードを持つモデルは、モードがステップ数と CFG を決めるため、詳細設定のステップ数・CFG は使えません。"
 }
 
 // EasyCard is the card of the model the easy tier picked, hidden: the form posts it (the same checkbox the cards of the other tier are) and the

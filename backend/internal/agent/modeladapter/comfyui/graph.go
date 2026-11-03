@@ -30,7 +30,7 @@ type values struct {
 	mask             *modeladapter.Input // inpaint mask (nil: none); redraw is its strength (nil: the graph's denoise)
 	redraw           *float64
 	denoiseFloor     float64                   // the workflow's ReferenceDenoiseMin
-	speedMode        string                    // the request's VideoRequest.SpeedMode ("": the workflow's first)
+	speedMode        string                    // the request's speed mode ("": the workflow's first)
 	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
 	upscaleRatio     float64                   // the workflow's Upscale.Ratio of the request's UpscaleScale (build sets it)
 	keepSlots        bool                      // no image is uploaded (GraphFor): the image nodes a workflow cannot run without keep the file the workflow holds
@@ -44,7 +44,7 @@ func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 	if req.NegativePrompt != "" {
 		negative = req.NegativePrompt
 	}
-	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options, sampling: req.Options.Sampling}
+	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options, sampling: req.Options.Sampling, speedMode: req.Options.SpeedMode}
 	if in := req.Inpaint; in != nil {
 		mask := in.Mask
 		v.mask, v.redraw = &mask, in.Denoise

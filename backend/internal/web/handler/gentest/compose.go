@@ -56,8 +56,9 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	if media == gentest.MediaVideo {
 		c.Resolutions, c.Durations = videoChoices(models)
 		c.Resolution = pick(f.resol, c.Resolutions, "720p")
-		c.Duration, c.SpeedModes, c.SpeedMode = pick(f.duration, c.Durations, "5"), refform.SpeedChoices(models), f.opts.SpeedMode
+		c.Duration = pick(f.duration, c.Durations, "5")
 	}
+	c.SpeedModes, c.SpeedMode = refform.SpeedChoices(models), f.opts.SpeedMode
 	c.Section = advform.SectionOf(f.adv, models, f.models)
 	if list, err := h.Svc.Prompts(ctx); err == nil {
 		for _, p := range list[:min(len(list), recentPrompts)] {

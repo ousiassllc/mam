@@ -7,9 +7,10 @@ import (
 	"slices"
 )
 
-// SpeedMode is one way a video workflow can sample (Wan 2.2 with the LightX2V LoRA: 4 steps at cfg 1, or the usual 20 steps at cfg 3.5
-// without the LoRA). The graph of the workflow holds the values of its first mode; the other modes list what they change in it. A
-// request names the mode it wants (VideoRequest.SpeedMode); without one the first mode runs.
+// SpeedMode is one way a workflow can sample (Wan 2.2 with the LightX2V LoRA: 4 steps at cfg 1, or the usual 20 steps at cfg 3.5
+// without the LoRA; Qwen-Image-Edit 2511 with the Lightning LoRA: 4 or 8 steps at cfg 1, or the usual 20 steps at cfg 4). The graph of
+// the workflow holds the values of its first mode; the other modes list what they change in it. A request names the mode it wants
+// (VideoRequest.SpeedMode, ImageRequest.Options.SpeedMode); without one the first mode runs.
 type SpeedMode struct {
 	// ID is what a request names: lower-case letters, digits and "-" ("fast", "standard").
 	ID string `json:"id"`
@@ -37,17 +38,13 @@ func (w Workflow) SpeedMode(id string) (SpeedMode, bool) {
 	return w.SpeedModes[i], true
 }
 
-// validateSpeedModes checks the modes against the graph: video only, each with a distinct ID and a label, the first one without
-// overrides (it is the graph itself), and every override naming an input of a node of the workflow with a JSON value or a link to
-// a node of the workflow.
-func validateSpeedModes(where string, media Media, w Workflow, g Graph) []error {
+// validateSpeedModes checks the modes against the graph: each with a distinct ID and a label, the first one without overrides (it is
+// the graph itself), and every override naming an input of a node of the workflow with a JSON value or a link to a node of the workflow.
+func validateSpeedModes(where string, w Workflow, g Graph) []error {
 	if len(w.SpeedModes) == 0 {
 		return nil
 	}
 	var errs []error
-	if media != MediaVideo {
-		errs = append(errs, fmt.Errorf("%s: speed_modes belong to a video workflow", where))
-	}
 	seen := map[string]bool{}
 	for i, m := range w.SpeedModes {
 		at := fmt.Sprintf("%s: speed_modes[%d]", where, i)
