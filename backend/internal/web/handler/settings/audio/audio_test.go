@@ -59,7 +59,7 @@ func machine(supported bool) runtimes {
 		}
 		return v
 	}
-	r := runtimes{views: map[string]localruntime.View{"gpt-sovits": view("gpt-sovits", "GPT-SoVITS"), "musetalk": view("musetalk", "MuseTalk 1.5")}, refuse: map[string]error{}}
+	r := runtimes{views: map[string]localruntime.View{"gpt-sovits": view("gpt-sovits", "GPT-SoVITS"), "irodori-tts": view("irodori-tts", "Irodori-TTS"), "musetalk": view("musetalk", "MuseTalk 1.5")}, refuse: map[string]error{}}
 	if !supported {
 		for id, v := range r.views {
 			r.refuse[id] = &localruntime.SupportError{Runtime: id, Support: v.Support}
@@ -152,7 +152,7 @@ func TestAudioPage_DefaultsToTheCloudWithTheLocalStateAndTheSource(t *testing.T)
 	assert.Contains(t, html, `<title>設定: 音声・口パク | mam</title>`)
 	assert.Contains(t, html, "声（セリフ・ナレーション）")
 	assert.Contains(t, html, "口パク")
-	assert.Equal(t, 4, strings.Count(html, `data-testid="audio-card"`), "a card for each provider: two clouds and two locals")
+	assert.Equal(t, 5, strings.Count(html, `data-testid="audio-card"`), "a card for each provider: two clouds and three locals")
 	assert.Contains(t, radio(t, html, "audio-voice_provider-cloud"), "checked", "nothing saved: the cloud")
 	assert.NotContains(t, radio(t, html, "audio-voice_provider-local"), "checked")
 	assert.NotContains(t, radio(t, html, "audio-voice_provider-local"), "disabled", "this PC can run it")

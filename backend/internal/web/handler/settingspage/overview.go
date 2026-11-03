@@ -163,8 +163,10 @@ func audioStatus(d audioview.Data) []molecules.StatusLine {
 
 // providerName is the provider a card has chosen, as the overview says it: a saved local provider this PC cannot run is not the one used.
 func providerName(p audioview.Provider) string {
-	if p.Selected == audioview.LocalValue && p.Local != nil && p.Local.Supported {
-		return p.Local.Name + "（この PC）"
+	for _, which := range []string{audioview.WhichLocal, audioview.WhichIrodori} {
+		if l := p.As(which); l.ChosenLocal() {
+			return l.Local.Name + "（この PC）"
+		}
 	}
 	return p.CloudLabel
 }

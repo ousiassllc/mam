@@ -54,6 +54,8 @@ type ResultView struct {
 	ActualUSD    *float64 `json:"actual_cost_usd,omitempty"`
 	Favorite     bool     `json:"favorite"`
 	UsedInputs   []string `json:"used_inputs,omitempty" jsonschema:"このモデルに渡した入力画像（get_generation_result の inputs の id）"`
+	// UnusedInputs are the input images of the batch this model was not given, and why (a first frame for a text-to-video model, a reference over the limit).
+	UnusedInputs []UnusedInput `json:"unused_inputs,omitempty" jsonschema:"このモデルに渡さなかった（使われなかった）入力画像と、その理由。画像を添えたのに結果に反映されていないときはここを見る。全部使ったときは省略"`
 	// AvoidReferencePose says the negative prompt got "do not copy the reference's pose and composition"; LoRA is the LoRA the model was given.
 	AvoidReferencePose bool       `json:"avoid_reference_pose,omitempty"`
 	LoRA               *refs.LoRA `json:"lora,omitempty" jsonschema:"このモデルに渡した LoRA（名前と強さ）"`
@@ -83,7 +85,7 @@ func ViewOf(r gentestrepo.Result) ResultView {
 		Status: r.Status, Error: r.Error, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "", MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
 		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, Inpaint: p.Inpaint, Upscale: p.Upscale,
-		FaceSwap: p.FaceSwap, FaceSimilarity: p.FaceSimilarity,
+		FaceSwap: p.FaceSwap, FaceSimilarity: p.FaceSimilarity, UnusedInputs: p.UnusedInputs,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}
 	if e, ok := apperr.Unmarshal(r.ErrorInfo); ok {

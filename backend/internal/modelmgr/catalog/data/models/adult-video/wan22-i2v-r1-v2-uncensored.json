@@ -1,0 +1,94 @@
+{
+ "id": "wan22-i2v-r1-v2-uncensored",
+ "name": "Wan2.2 I2V R1 base v2（rzgar・非検閲マージ・先頭フレームから動画）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "traits": {
+  "params_b": 14,
+  "params_label": "14B",
+  "uncensored": true,
+  "speed": "fast"
+ },
+ "description": "【中（〜14B）・I2V・音声なし】rzgar の Wan2.2_I2V_R1_base_v2（成人向け）。Wan 2.2 I2V 14B に非検閲の学習と、このモデル用に調整した LightX2V を 20% の強さで焼き込んだ高ノイズ用・低ノイズ用の 2 つの拡散モデル（comfy_quant 形式の fp8、各約 14.8 GB。テキストエンコーダー・VAE と合わせて約 37 GB）。LightX2V が入っているので 5 ステップ・cfg 1 の速い設定（高ノイズ 2＋低ノイズ 3）。作者は「明示的なプロンプトの体の動きをほぼ理解している」と書き、他の Wan 2.2 の LoRA を強さ 0.5〜0.65 で重ねられるという。先頭フレーム 1 枚から作る（空白の画像を先頭フレームにすればテキストから動画に近い使い方もできる、と作者は書く）。既存の wan22-i2v-14b-lightx2v-uncensored（LoRA 単体を公式のベースに重ねる構成）とは別系統の、焼き込み済みマージ。16fps。16 GB の GPU では fp8 とオフロードが前提。注意: 作者が勧める拡張語彙のテキストエンコーダー（NSFW-Wan-UMT5-XXL-V2）は、専用のカスタムノード（ComfyUI-UMT5-Extended）が要るため使わず、標準の UMT5-XXL fp8 を使う。ライセンスはカードが Apache-2.0 と宣言するだけで本文が無いため、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は fp8 を含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
+ "files": [
+  {
+   "name": "Wan2.2_I2V_High_R1_n54w_v2.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/rzgar/Wan2.2_I2V_R1_base_v2/resolve/2118ff4037ab196834f6d36185a197ef3a7a3754/Wan2.2_I2V_High_R1_n54w_v2.safetensors",
+   "sha256": "2e048f2e0977dce05098886ca1d171569c622897e94fc549b433f64ed98a13f4",
+   "size": 14803879958
+  },
+  {
+   "name": "Wan2.2_I2V_Low_R1_n54w_v2.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/rzgar/Wan2.2_I2V_R1_base_v2/resolve/2118ff4037ab196834f6d36185a197ef3a7a3754/Wan2.2_I2V_Low_R1_n54w_v2.safetensors",
+   "sha256": "08fe6e276550d80928f9d016a7a9c67f3aa6444aff4d92a52d1879fefe586e7c",
+   "size": 14803879958
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "wan22-i2v-14b（fp8、高・低ノイズを順に使う）と同じ構成で、拡散モデルは各約 14.8 GB。16 GB は fp8 と ComfyUI のオフロードが前提という mam の推定（Issue #1012 の調査メモも同じ）。作者のカードは VRAM を書かない。mam の実機（16 GB）では未確認",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0-declared",
+  "version": "1",
+  "name": "Apache License 2.0（モデルカードの宣言だけ。本文なし）",
+  "url": "https://huggingface.co/rzgar/Wan2.2_I2V_R1_base_v2",
+  "summary": "ベースの Wan 2.2 I2V 14B は Apache-2.0。このマージのモデルカードも license: apache-2.0 と宣言しているが、LICENSE の本文も、焼き込んだ非検閲の LoRA の学習データの出所も無い。宣言だけでは商用で使ってよいか確かめられないので、商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Wan 2.2 I2V 14B・Wan-AI）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   },
+   {
+    "part": "マージの重み（Wan2.2_I2V_R1_base_v2・rzgar）",
+    "name": "Apache License 2.0（モデルカードの宣言だけ。焼き込んだ LoRA の出所は未確認）",
+    "url": "https://huggingface.co/rzgar/Wan2.2_I2V_R1_base_v2",
+    "commercial": "unknown"
+   },
+   {
+    "part": "テキストエンコーダー・VAE（Comfy-Org の再配布）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   }
+  ],
+  "notice": "この mam のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（Apache-2.0）だけで、LICENSE の本文と焼き込んだ LoRA の出所を確認できていません。商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-i2v-r1-v2-uncensored",
+   "template": "img2video-wan22-14b-rzgar-r1"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つファイルを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-03 に確認。このモデルのファイルに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（2026-11-03）。Mac の実機では未確認"
+ }
+}

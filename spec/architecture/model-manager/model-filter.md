@@ -171,7 +171,7 @@
 | 画面 | 一覧のリクエスト | 欄 |
 |---|---|---|
 | モデルマネージャー（カタログ・導入済み） | `GET /model-manager/models`（`mmview.Where`。ジョブ中の導入は条件に関わらず報告する） | — |
-| 生成テスト | `GET /generation-test/models?media=image\|video`（`gentest.Service.ModelsWhere`。添えた入力画像を受け付けるモデルを先に並べる） | モデルは一覧のカード（複数選択）。かんたんは一覧を持たず、選んだ 1 つを隠しカードで送る |
+| 生成テスト | `GET /generation-test/models?media=image\|video`（`gentest.Service.ModelsWhere`。添えた入力画像を受け付けるモデルを先に並べる） | モデルは一覧のカード（複数選択）。カードの `<li>` は `data-requires-first-frame`（最初のフレームが無いと動かない I2V。#1009）ほか、入力欄・詳細設定のスクリプトが読む `data-*` を持つ。動画の入力欄の通知 `#gt-input-check`（#1009）は、一覧を描き直しても残る。かんたんは一覧を持たず、選んだ 1 つを隠しカードで送る |
 | 生成テスト「履歴」 | `GET /generation-test/history`（商用利用の 3 択を `commercial` で送り、サーバーが答えのモデルで絞る） | モデルの `<select>` は履歴にあるモデルの名前の絞り込みで残す（モデルを**選ぶ**のではない） |
 | 設定の画像・動画モデル・LLM、Shot の Video Model、「画像から似せる」・「一部だけ描き直す」・試し生成・「大きくする」 | §8.3 | §8.3 |
 

@@ -323,3 +323,4 @@ export class MamComfyFrame extends LitElement {
 | 1.100 | 2026-11-03 | §3 に、生成テストの画像のフォームの 3 段（`organisms/gentesttier`・`gentestresult`。[gentest-tiers.md](gentest-tiers.md)）を足した | Issue #977 |
 | 1.101 | 2026-11-03 | §3 の molecules に `character_create`（登場人物を手で作るフォーム）と `progress_card` の「続けるには」の案内を足した | Issue #1001 |
 | 1.102 | 2026-11-03 | §3 の molecules `character_create` の Series の画像の欄（Episode ごとの選択肢）と、`progress_card` の下書きの案内を足した。World State の Character の名前の横に、下書きの「下書き」バッジ（`data-testid="character-draft"`）を出す | Issue #1022 |
+| 1.103 | 2026-11-03 | `voice_reference_form` に、声のコピーには声の持ち主本人の同意を得た音声だけを使う注記（`voice-ref-consent-notice`）を足した | Issue #1015 |

@@ -28,6 +28,8 @@ func switchTail(w words) string {
 
 var voiceWords = words{local: "ローカルの声（GPT-SoVITS）", cloud: "クラウドの声（ElevenLabs）", setting: "声のプロバイダーに ElevenLabs"}
 
+var irodoriWords = words{local: "ローカルの声（Irodori-TTS）", cloud: "クラウドの声（ElevenLabs）", setting: "声のプロバイダーに ElevenLabs"}
+
 var lipSyncWords = words{local: "ローカルの口パク（MuseTalk 1.5）", cloud: "クラウドの口パク（Sync Labs）", setting: "口パクのプロバイダーに Sync Labs"}
 
 func (w words) text(kind Kind) kindText {
@@ -37,6 +39,8 @@ func (w words) text(kind Kind) kindText {
 		return kindText{w.local + "が導入されていません", managerSection + "から導入してください。" + sw}
 	case KindWeightsMissing:
 		return kindText{w.local + "の重みが取得されていません", managerSection + "で「重みを導入」を実行してください。" + sw}
+	case KindConsent:
+		return kindText{"選んだモデルのライセンスに同意していないため、" + w.local + "を使えません", managerSection + "でモデルのライセンスを読んで同意するか、既定のモデルに戻してください。" + sw}
 	case KindUnsupported:
 		return kindText{"この PC では" + w.local + "を使えません", sw}
 	case KindGPUMemory:
@@ -58,8 +62,11 @@ func (w words) text(kind Kind) kindText {
 // provider instead. A provider that has a reason of its own for a clip (no face in the video) says only that.
 func Reason(un *UnavailableError) string {
 	w := voiceWords
-	if un.Vendor == VendorMuseTalk {
+	switch un.Vendor {
+	case VendorMuseTalk:
 		w = lipSyncWords
+	case VendorIrodori:
+		w = irodoriWords
 	}
 	t := w.text(un.Kind)
 	out := t.head
@@ -72,13 +79,14 @@ func Reason(un *UnavailableError) string {
 	return out
 }
 
-// Role is what a provider does in a run: "voice" or "lip_sync".
+// Role is what a local provider does in a run: the voice (GPT-SoVITS "voice", Irodori-TTS "voice_irodori") or the lip sync "lip_sync".
 type Role string
 
-// The two roles a run chooses a provider for.
+// The roles a run chooses a local provider for. Both voices have the same cloud provider (ElevenLabs).
 const (
-	RoleVoice   Role = "voice"
-	RoleLipSync Role = "lip_sync"
+	RoleVoice        Role = "voice"
+	RoleVoiceIrodori Role = "voice_irodori"
+	RoleLipSync      Role = "lip_sync"
 )
 
 // CloudName is the sentence's name of the cloud provider that takes the place of the local one ("クラウドの声（ElevenLabs）").
@@ -99,8 +107,11 @@ func (p Role) CloudKeyID() string {
 
 // LocalName is the sentence's name of the local provider of p.
 func (p Role) LocalName() string {
-	if p == RoleLipSync {
+	switch p {
+	case RoleLipSync:
 		return lipSyncWords.local
+	case RoleVoiceIrodori:
+		return irodoriWords.local
 	}
 	return voiceWords.local
 }

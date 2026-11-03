@@ -33,7 +33,10 @@ var messagesEn = map[string]string{
 	"request_rejected.remedy": "The detail has the reason the other side gave. Review the prompt, the resolution, the duration and the input images.",
 
 	"input_missing.cause":  "An input the model always uses was not sent ({param}).",
-	"input_missing.remedy": "Give the picture for {param} and run it again. A model that makes a video from a picture needs the first frame (first_frame).",
+	"input_missing.remedy": "Give the picture for {param}, or change the role of the picture you attached, and run it again. A model that makes a video from a picture needs the first frame (first_frame); if the picture is a \"reference\", change it to \"first frame\".",
+
+	"input_unused.cause":  "The input images you attached are not used by the chosen models.",
+	"input_unused.remedy": "To make something from the picture, choose an I2V (image to video) or a reference-image model. To make it without the picture, take the picture off and run it again.",
 
 	"input_unsupported.cause":  "The model does not take this combination of input images or this resolution.",
 	"input_unsupported.remedy": "Change how the input images are used (first frame, last frame, reference) or the resolution to what the model supports. The model list shows what each model takes.",
@@ -70,6 +73,9 @@ var messagesEn = map[string]string{
 
 	"llm_invalid_output.cause":  "The LLM's answer was not in the requested form.",
 	"llm_invalid_output.remedy": "Run it again. If it continues, change the model of that Agent in Settings > text generation (LLM).",
+
+	"local_llm_unreachable.cause":  "Cannot connect to the local server. The local LLM server (Ollama, LM Studio, llama.cpp server, ...) did not answer.",
+	"local_llm_unreachable.remedy": "Check that the server is running and that the base URL under \"Local LLM server\" in Settings > text generation (LLM) is right (Ollama: http://localhost:11434, LM Studio: http://localhost:1234). LM Studio needs its local server started (Start Server).",
 
 	"generation_time_limit.cause":  "The generation ran past the time limit (Max generation time).",
 	"generation_time_limit.remedy": "Raise the time limit in Settings or review the Policy.",

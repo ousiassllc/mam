@@ -57,16 +57,16 @@ templ cloudKey(p Provider) {
 // condition, the radio that chooses it (disabled when this PC cannot run it) and the way to the model manager.
 templ localCard(p Provider) {
 	@settingsui.CardItem(localCardOf(p)) {
-		@chooser(p, LocalValue, p.LocalLabel, p.Selected == LocalValue && p.Local.Supported, !p.Local.Supported, "audio-"+p.Field+"-local")
-		@atoms.SmallButtonFor(atoms.ToneNeutral, "詳細", p.LocalLabel, detailAttrs(p, WhichLocal))
-		@atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデルマネージャーを開く", p.LocalLabel, templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field})
+		@chooser(p, p.value(), p.LocalLabel, p.ChosenLocal(), !p.Local.Supported, "audio-"+p.Field+"-"+p.slug())
+		@atoms.SmallButtonFor(atoms.ToneNeutral, "詳細", p.LocalLabel, detailAttrs(p, p.slug()))
+		@atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデルマネージャーを開く", p.LocalLabel, templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field + localSuffix(p)})
 	}
 }
 
 func localCardOf(p Provider) settingsui.Card {
 	c := settingsui.Card{
-		ID: cardID(p, WhichLocal), TestID: "audio-card", TitleLevel: 4, Title: p.LocalLabel,
-		Attrs:       templ.Attributes{"data-field": p.Field, "data-which": WhichLocal},
+		ID: cardID(p, p.slug()), TestID: "audio-card", TitleLevel: 4, Title: p.LocalLabel,
+		Attrs:       templ.Attributes{"data-field": p.Field, "data-which": p.slug()},
 		Description: "この PC で作ります。API 費用は出ません。", Class: chosenClass, Tone: p.Local.Tone, State: p.Local.State, Details: localBrief(p),
 	}
 	if p.Local.NeedsCommercialNote() {
@@ -77,11 +77,11 @@ func localCardOf(p Provider) settingsui.Card {
 
 // localBrief is the one line a card says of a local provider that is chosen but cannot run here; the rest is in its detail.
 templ localBrief(p Provider) {
-	if p.Selected == LocalValue && !p.Local.Supported {
-		<p class="break-words text-xs text-amber-300" role="status" data-testid={ "audio-saved-local-" + p.Field }>保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
+	if p.Selected == p.value() && !p.Local.Supported {
+		<p class="break-words text-xs text-amber-300" role="status" data-testid={ "audio-saved-local-" + p.Field + localSuffix(p) }>保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
 	}
 	if len(p.Local.Unclear) > 0 {
-		<p class="break-words text-xs text-amber-300" data-testid={ "audio-unclear-line-" + p.Field }>商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります（詳細を見てください）。</p>
+		<p class="break-words text-xs text-amber-300" data-testid={ "audio-unclear-line-" + p.Field + localSuffix(p) }>商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります（詳細を見てください）。</p>
 	}
 }
 

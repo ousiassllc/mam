@@ -189,6 +189,7 @@ func (s *Service) update(edit func(routes map[string]json.RawMessage) error) err
 	if s.pinned {
 		return ErrPinned
 	}
+	defer settingsfile.Lock(s.path)() // llm.json is edited by the card of the local server too (service/llmlocal)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	obj, err := settingsfile.Read(s.path)

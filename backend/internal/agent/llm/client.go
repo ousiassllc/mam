@@ -176,7 +176,10 @@ func NewClient(cfg Config, backends map[Provider]Backend, opts ...Option) *Clien
 // the retry policy, the circuit breakers) and that therefore wait for a restart. Nil when there are none. The same list is told by
 // the failures of Complete (RouteError.RestartPending) until the next Apply.
 func (c *Client) Apply(cfg Config) (restart []string) {
-	if !maps.Equal(cfg.Providers, c.cfg.Providers) {
+	was, now := maps.Clone(c.cfg.Providers), maps.Clone(cfg.Providers)
+	delete(was, ProviderLocal) // the address of the local server is read at every call (localllm.Add), so it never waits for a restart
+	delete(now, ProviderLocal)
+	if !maps.Equal(now, was) {
 		restart = append(restart, "プロバイダーの base_url")
 	}
 	if cfg.TimeoutSeconds != c.cfg.TimeoutSeconds || cfg.Retry != c.cfg.Retry || cfg.Breaker != c.cfg.Breaker {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 )
 
@@ -28,10 +29,12 @@ type AgentRoute struct {
 
 // LLMSection is the "LLM の割り当て" section.
 type LLMSection struct {
-	Available      bool         `json:"available" jsonschema:"false ならこのアプリには LLM の割り当てがない"`
-	Pinned         bool         `json:"pinned" jsonschema:"起動オプションで設定ファイルが固定されていて、変更できない"`
-	Problem        string       `json:"problem,omitempty" jsonschema:"設定ファイルを読めない理由。あるときは既定を示し、保存はできない"`
-	Providers      []string     `json:"providers"`
+	Available bool     `json:"available" jsonschema:"false ならこのアプリには LLM の割り当てがない"`
+	Pinned    bool     `json:"pinned" jsonschema:"起動オプションで設定ファイルが固定されていて、変更できない"`
+	Problem   string   `json:"problem,omitempty" jsonschema:"設定ファイルを読めない理由。あるときは既定を示し、保存はできない"`
+	Providers []string `json:"providers"`
+	// LocalServer is the setting of the provider "local" (the local OpenAI-compatible LLM server); set_local_llm_server changes it.
+	LocalServer    LocalServer  `json:"local_server" jsonschema:"プロバイダー local（Ollama・LM Studio・llama.cpp server）のアドレスと状態。set_local_llm_server で変える"`
 	MaxModelLength int          `json:"max_model_length"`
 	Agents         []AgentRoute `json:"agents"`
 	// ProviderStates say, for each of Providers, whether it can be used now (#1013): an API key is saved, or the subscription is signed in.
@@ -61,12 +64,12 @@ type RouteWarning struct {
 func targetOf(t llmassign.Target) Target { return Target(t) }
 
 // llmSection is the section; models may be nil (the service is not there): the states and warnings are then left empty.
-func llmSection(svc *llmassign.Service, models *llmmodels.Service) LLMSection {
+func llmSection(svc *llmassign.Service, models *llmmodels.Service, local *llmlocal.Service) LLMSection {
 	v := svc.View()
 	out := LLMSection{
 		Available: true, Pinned: v.Pinned, Problem: v.Problem, Providers: v.Providers,
 		MaxModelLength: llmassign.MaxModelBytes, Agents: make([]AgentRoute, 0, len(v.Entries)),
-		AppliesAtOnce: v.Live, RestartPending: append([]string{}, v.Pending...), ProviderStates: []ProviderState{}, RouteWarnings: []RouteWarning{},
+		LocalServer: localServerOf(local), AppliesAtOnce: v.Live, RestartPending: append([]string{}, v.Pending...), ProviderStates: []ProviderState{}, RouteWarnings: []RouteWarning{},
 	}
 	if models != nil {
 		for _, p := range v.Providers {
@@ -131,7 +134,7 @@ func (h handlers) setLLM(ctx context.Context, in SetLLMInput) (SetLLMOutput, err
 	if err := svc.Save(routes); err != nil {
 		return SetLLMOutput{}, mapSaveError(err, llmInvalid, llmassign.ErrPinned)
 	}
-	return SetLLMOutput{LLMSection: llmSection(svc, h.r.Settings.LLMModels), Warnings: h.unlistedWarnings(ctx, in.Routes)}, nil
+	return SetLLMOutput{LLMSection: llmSection(svc, h.r.Settings.LLMModels, h.r.Settings.LLMLocal), Warnings: h.unlistedWarnings(ctx, in.Routes)}, nil
 }
 
 // modelTrimmed is the target as the screen's form reads it: the model name without surrounding space.
@@ -147,5 +150,5 @@ func (h handlers) resetLLM(_ context.Context, _ Input) (LLMSection, error) {
 	if err := svc.Reset(); err != nil {
 		return LLMSection{}, mapSaveError(err, llmInvalid, llmassign.ErrPinned)
 	}
-	return llmSection(svc, h.r.Settings.LLMModels), nil
+	return llmSection(svc, h.r.Settings.LLMModels, h.r.Settings.LLMLocal), nil
 }

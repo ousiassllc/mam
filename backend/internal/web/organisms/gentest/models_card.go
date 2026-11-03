@@ -22,21 +22,22 @@ func modelCardOf(m ModelChoice) modelcard.Card {
 		card.Reason = &modelcard.Reason{Text: m.Reason} // a model that is only used from another screen (the partial redraw)
 	}
 	card.Attrs = templ.Attributes{
-		"data-testid":             "gt-model",
-		"data-model":              m.ID,
-		"data-label":              m.Label,
-		"data-accepts-references": boolText(len(m.RefRoles) > 0),
-		"data-reference-mode":     m.RefMode,
-		"data-reference-roles":    strings.Join(m.RefRoles, " "),
-		"data-supports-lora":      boolText(m.CanLoRA),
-		"data-sampling":           m.Use.Names(),
-		"data-sampling-locked":    boolText(m.Use.Locked),
-		"data-supports-seed":      boolText(m.Use.Seed),
-		"data-default-steps":      strconv.FormatFloat(m.Use.StepsDefault, 'f', -1, 64),
-		"data-min-steps":          strconv.Itoa(max(m.Use.StepsMin, 1)),
-		"data-default-cfg":        strconv.FormatFloat(m.Use.CFGDefault, 'f', -1, 64),
-		"data-prompt-weight":      m.Weight,
-		"data-prompt-weight-text": m.WeightText,
+		"data-testid":               "gt-model",
+		"data-model":                m.ID,
+		"data-label":                m.Label,
+		"data-accepts-references":   boolText(len(m.RefRoles) > 0),
+		"data-reference-mode":       m.RefMode,
+		"data-reference-roles":      strings.Join(m.RefRoles, " "),
+		"data-supports-lora":        boolText(m.CanLoRA),
+		"data-requires-first-frame": boolText(m.RequiresFirstFrame),
+		"data-sampling":             m.Use.Names(),
+		"data-sampling-locked":      boolText(m.Use.Locked),
+		"data-supports-seed":        boolText(m.Use.Seed),
+		"data-default-steps":        strconv.FormatFloat(m.Use.StepsDefault, 'f', -1, 64),
+		"data-min-steps":            strconv.Itoa(max(m.Use.StepsMin, 1)),
+		"data-default-cfg":          strconv.FormatFloat(m.Use.CFGDefault, 'f', -1, 64),
+		"data-prompt-weight":        m.Weight,
+		"data-prompt-weight-text":   m.WeightText,
 	}
 	return card
 }

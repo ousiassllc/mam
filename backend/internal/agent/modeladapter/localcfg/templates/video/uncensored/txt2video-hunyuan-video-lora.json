@@ -1,0 +1,47 @@
+{
+ "id": "txt2video-hunyuan-video-lora",
+ "label": "HunyuanVideo + NSFW LoRA: テキストから動画",
+ "media": "video",
+ "description": "HunyuanVideo（hunyuan_video_t2v_720p_bf16.safetensors。13B 級）に LoraLoaderModelOnly で成人向けの LoRA（BigStationW の nsfw-e7。hunyuan_video_nsfw_e7.safetensors、強さ 1、トリガー nsfwsks）を重ねて、テキストから動画を作る標準ノードだけのワークフロー。ComfyUI 公式の HunyuanVideo T2V の例（comfyanonymous/ComfyUI_examples の hunyuan_video_text_to_video.json）と同じ組み立て: DualCLIPLoader（clip_l と llava_llama3_fp8_scaled、type hunyuan_video）・ModelSamplingSD3 の shift 7・FluxGuidance 6（mam の cfg はこの値）・BasicGuider・BasicScheduler 20 ステップ（simple）・euler・EmptyHunyuanLatentVideo・VAEDecodeTiled。拡散モデルの weight_dtype は、公式の注記「メモリが足りないなら fp8 を選ぶ」に従い fp8_e4m3fn（bf16 のファイルをその場で fp8 にして VRAM 16 GB に収める）。848×480・24fps・フレーム数は 4n+1 で、短尺（数秒）が前提。ネガティブプロンプトは使わない。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [2, 3], "resolutions": ["480p"]},
+  "workflow": {
+   "prompt_weight": "unsupported",
+   "graph": {
+    "12": {"class_type": "UNETLoader", "inputs": {"unet_name": "hunyuan_video_t2v_720p_bf16.safetensors", "weight_dtype": "fp8_e4m3fn"}},
+    "20": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "hunyuan_video_nsfw_e7.safetensors", "strength_model": 1, "model": ["12", 0]}},
+    "11": {"class_type": "DualCLIPLoader", "inputs": {"clip_name1": "clip_l.safetensors", "clip_name2": "llava_llama3_fp8_scaled.safetensors", "type": "hunyuan_video", "device": "default"}},
+    "10": {"class_type": "VAELoader", "inputs": {"vae_name": "hunyuan_video_vae_bf16.safetensors"}},
+    "67": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 7, "model": ["20", 0]}},
+    "44": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["11", 0]}},
+    "26": {"class_type": "FluxGuidance", "inputs": {"guidance": 6, "conditioning": ["44", 0]}},
+    "22": {"class_type": "BasicGuider", "inputs": {"model": ["67", 0], "conditioning": ["26", 0]}},
+    "25": {"class_type": "RandomNoise", "inputs": {"noise_seed": 0}},
+    "16": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
+    "17": {"class_type": "BasicScheduler", "inputs": {"scheduler": "simple", "steps": 20, "denoise": 1, "model": ["12", 0]}},
+    "45": {"class_type": "EmptyHunyuanLatentVideo", "inputs": {"width": 848, "height": 480, "length": 73, "batch_size": 1}},
+    "13": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["25", 0], "guider": ["22", 0], "sampler": ["16", 0], "sigmas": ["17", 0], "latent_image": ["45", 0]}},
+    "73": {"class_type": "VAEDecodeTiled", "inputs": {"tile_size": 256, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8, "samples": ["13", 0], "vae": ["10", 0]}},
+    "101": {"class_type": "CreateVideo", "inputs": {"fps": 24, "images": ["73", 0]}},
+    "102": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["101", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "44", "input": "text"},
+    {"param": "seed", "node": "25", "input": "noise_seed"},
+    {"param": "width", "node": "45", "input": "width"},
+    {"param": "height", "node": "45", "input": "height"},
+    {"param": "frames", "node": "45", "input": "length"},
+    {"param": "fps", "node": "101", "input": "fps"},
+    {"param": "steps", "node": "17", "input": "steps"},
+    {"param": "scheduler", "node": "17", "input": "scheduler"},
+    {"param": "cfg", "node": "26", "input": "guidance"},
+    {"param": "sampler", "node": "16", "input": "sampler_name"}
+   ],
+   "output_node": "102",
+   "fps": 24,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}

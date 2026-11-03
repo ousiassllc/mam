@@ -35,7 +35,10 @@ var messagesJa = map[string]string{
 	"request_rejected.remedy": "詳細に、相手の返した理由があります。プロンプトの長さや内容、解像度・秒数・入力画像などの設定を見直してください。",
 
 	"input_missing.cause":  "このモデルが必ず使う入力（{param}）が渡されていません。",
-	"input_missing.remedy": "{param} に使う画像を指定してから実行してください。画像から動画を作るモデルは、最初のフレーム（first_frame）の画像が要ります。",
+	"input_missing.remedy": "{param} に使う画像を添えるか、添えた画像の役割を変えてから実行してください。画像から動画を作るモデルは、最初のフレーム（first_frame）の画像が要ります。添えた画像が「参照」になっているときは、「最初のフレーム」に変えてください。",
+
+	"input_unused.cause":  "添えた入力画像は、選んだモデルでは使われません。",
+	"input_unused.remedy": "画像から作るなら、I2V（画像から動画）や参照画像に対応したモデルを選んでください。画像を使わずに作るなら、画像を外してから実行してください。",
 
 	"input_unsupported.cause":  "このモデルは、渡された入力画像や解像度の組み合わせを受け付けません。",
 	"input_unsupported.remedy": "入力画像の使い方（最初のフレーム・最後のフレーム・参照画像）や解像度を、そのモデルが対応するものに変えてください。モデルの対応はモデル一覧で確かめられます。",
@@ -72,6 +75,9 @@ var messagesJa = map[string]string{
 
 	"llm_invalid_output.cause":  "LLM の答えが、求めた形式になっていませんでした。",
 	"llm_invalid_output.remedy": "もう一度実行してください。続くときは、設定画面の「テキスト生成（LLM）」で、その Agent のモデルを変えてみてください。",
+
+	"local_llm_unreachable.cause":  "ローカルサーバーに接続できません。ローカルの LLM サーバー（Ollama・LM Studio・llama.cpp server など）が応答しませんでした。",
+	"local_llm_unreachable.remedy": "サーバーが起動しているか、設定画面の「テキスト生成（LLM）」の「ローカル LLM サーバー」のベース URL（Ollama は http://localhost:11434、LM Studio は http://localhost:1234）が合っているかを確かめてください。LM Studio はローカルサーバーを起動（Start Server）する必要があります。",
 
 	"generation_time_limit.cause":  "生成が制限時間（Max generation time）を超えました。",
 	"generation_time_limit.remedy": "設定画面で制限時間を延ばすか、ポリシーを見直してください。",

@@ -30,6 +30,7 @@ const (
 	CodeRequestRejected  Code = "request_rejected"      // 4xx (422 and others): the request itself was refused
 	CodeInputMissing     Code = "input_missing"         // an input the model needs was not sent ("needs first_frame")
 	CodeInputUnsupported Code = "input_unsupported"     // an input image or resolution the model does not take
+	CodeInputUnused      Code = "input_unused"          // every input image attached is one the chosen models cannot use: stopped before the call (#1009)
 	CodeRateLimited      Code = "rate_limited"          // 429
 	CodeServerError      Code = "server_error"          // 5xx
 	CodeConnectionFailed Code = "connection_failed"     // the endpoint could not be reached
@@ -41,6 +42,7 @@ const (
 	CodeEngineMissing    Code = "engine_not_installed"  // the bundled ComfyUI engine is not installed
 	CodeNodeMissing      Code = "node_missing"          // a custom node of the workflow is missing from ComfyUI
 	CodeLLMInvalidOutput Code = "llm_invalid_output"    // the LLM answered something that is not the requested form
+	CodeLocalLLMDown     Code = "local_llm_unreachable" // the local OpenAI-compatible LLM server (Ollama, LM Studio, llama.cpp server) did not answer
 	CodeGenTimeLimit     Code = "generation_time_limit" // the Max generation time of the Policy ran out
 	CodeMediaTimeout     Code = "media_timeout"         // ffmpeg / ffprobe ran past its limit
 	CodeDownloadCorrupt  Code = "download_corrupt"      // the downloaded file does not match its checksum or size
@@ -119,6 +121,7 @@ var specs = map[Code]spec{
 	CodeRequestRejected:  {ClassUpstream, nil},
 	CodeInputMissing:     {ClassValidation, nil},
 	CodeInputUnsupported: {ClassValidation, nil},
+	CodeInputUnused:      {ClassValidation, nil},
 	CodeRateLimited:      {ClassRateLimited, nil},
 	CodeServerError:      {ClassUpstream, nil},
 	CodeConnectionFailed: {ClassUpstream, []Place{PlaceModelMgr, PlaceLocalModels}},
@@ -130,6 +133,7 @@ var specs = map[Code]spec{
 	CodeEngineMissing:    {ClassUnavailable, []Place{PlaceModelMgr, PlaceLocalModels}},
 	CodeNodeMissing:      {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeLLMInvalidOutput: {ClassUpstream, []Place{PlaceLLM}},
+	CodeLocalLLMDown:     {ClassUpstream, []Place{PlaceLLM}},
 	CodeGenTimeLimit:     {ClassUpstream, []Place{PlaceSettings}},
 	CodeMediaTimeout:     {ClassUpstream, nil},
 	CodeDownloadCorrupt:  {ClassUpstream, []Place{PlaceModelMgr}},

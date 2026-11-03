@@ -1,0 +1,96 @@
+package runtimecard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// RuntimeModels is the choice of the model of a runtime that has several (Irodori-TTS), in the detail modal of its card: every model with
+// its size, the video memory it wants against this GPU, its license and the restrictions of its use. A model whose license has to be accepted
+// (the Gemma Terms) has the text and a checkbox; the server refuses the choice without the acceptance, the checkbox is only how the user gives it.
+templ RuntimeModels(r Runtime) {
+	if len(r.Models) > 0 {
+		<form
+			id={ ModelsID(r.ID) }
+			class="flex flex-col gap-3"
+			hx-put={ paths.ModelManagerPart("runtimes", r.ID, "model") }
+			hx-target={ "#" + ModelsID(r.ID) }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			data-testid="mm-runtime-models"
+		>
+			<h3 class="text-sm font-semibold">使うモデルの選択</h3>
+			@view.Notice(r.ModelsMessage, ModelsID(r.ID))
+			<ul role="list" class="flex flex-col gap-3">
+				for _, m := range r.Models {
+					@runtimeModel(r, m)
+				}
+			</ul>
+			<p class="text-xs text-neutral-400">選ぶとサーバーを止めます。次に起動するときから、選んだモデルで動きます。そのモデルの重みは、カードの「重みを導入」で取得してください。</p>
+			<div class="flex gap-2">
+				@atoms.Button(atoms.TonePrimary, "このモデルにする", templ.Attributes{"type": "submit", "data-testid": "mm-runtime-model-submit"})
+			</div>
+		</form>
+	}
+}
+
+templ runtimeModel(r Runtime, m Model) {
+	<li class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" data-testid="mm-runtime-model" data-model={ m.ID } data-active={ boolText(m.Active) }>
+		<label class="flex items-start gap-2 text-sm">
+			@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldModel, "value": m.ID, "checked": m.Active})
+			<span class="flex flex-col gap-1">
+				<span class="font-semibold">
+					{ m.Name }
+					if m.Active {
+						@atoms.Badge(atoms.BadgeInfo, "使用中")
+					}
+					if m.Default {
+						@atoms.Badge(atoms.BadgeNeutral, "標準")
+					}
+				</span>
+				<span class="text-xs text-neutral-300">{ m.Description }</span>
+			</span>
+		</label>
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-neutral-300">
+			<div><dt class="text-neutral-400">ダウンロード</dt><dd>{ m.Size }</dd></div>
+			<div><dt class="text-neutral-400">言語</dt><dd>{ m.Languages }</dd></div>
+			<div class="col-span-2"><dt class="text-neutral-400">VRAM の目安</dt><dd data-testid="mm-runtime-model-vram">{ m.VRAM }</dd></div>
+			if m.VRAMFit != "" {
+				<div class="col-span-2 text-amber-300"><dt>この PC の GPU</dt><dd>{ m.VRAMFit }</dd></div>
+			}
+			<div class="col-span-2">
+				<dt class="text-neutral-400">ライセンス</dt>
+				<dd>
+					if m.LicenseURL != "" {
+						<a class="underline" href={ templ.SafeURL(m.LicenseURL) } target="_blank" rel="noopener noreferrer">{ m.License }</a>
+					} else {
+						{ m.License }
+					}
+					・商用利用: { m.Commercial }
+				</dd>
+			</div>
+		</dl>
+		if len(m.Cautions) > 0 {
+			<ul class="list-disc pl-5 text-xs text-amber-300" data-testid="mm-runtime-model-cautions">
+				for _, c := range m.Cautions {
+					<li class="break-words">{ c }</li>
+				}
+			</ul>
+		}
+		if m.Consent != nil {
+			<div class="flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-xs" data-testid="mm-runtime-model-consent">
+				<p class="text-neutral-200">{ m.Consent.Text }</p>
+				if m.Consent.Accepted {
+					<p class="text-neutral-300">同意済みです（{ m.Consent.Version }）</p>
+				} else {
+					<label class="flex items-start gap-2 text-sm">
+						@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAcceptPrefix + m.ID, "value": m.Consent.Version, "data-testid": "mm-runtime-model-agree"})
+						<span>上の内容を確認し、同意します</span>
+					</label>
+				}
+			</div>
+		}
+	</li>
+}

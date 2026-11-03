@@ -228,15 +228,15 @@ func localCard(p Provider) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = chooser(p, LocalValue, p.LocalLabel, p.Selected == LocalValue && p.Local.Supported, !p.Local.Supported, "audio-"+p.Field+"-local").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = chooser(p, p.value(), p.LocalLabel, p.ChosenLocal(), !p.Local.Supported, "audio-"+p.Field+"-"+p.slug()).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "詳細", p.LocalLabel, detailAttrs(p, WhichLocal)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "詳細", p.LocalLabel, detailAttrs(p, p.slug())).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデルマネージャーを開く", p.LocalLabel, templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデルマネージャーを開く", p.LocalLabel, templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field + localSuffix(p)}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -252,8 +252,8 @@ func localCard(p Provider) templ.Component {
 
 func localCardOf(p Provider) settingsui.Card {
 	c := settingsui.Card{
-		ID: cardID(p, WhichLocal), TestID: "audio-card", TitleLevel: 4, Title: p.LocalLabel,
-		Attrs:       templ.Attributes{"data-field": p.Field, "data-which": WhichLocal},
+		ID: cardID(p, p.slug()), TestID: "audio-card", TitleLevel: 4, Title: p.LocalLabel,
+		Attrs:       templ.Attributes{"data-field": p.Field, "data-which": p.slug()},
 		Description: "この PC で作ります。API 費用は出ません。", Class: chosenClass, Tone: p.Local.Tone, State: p.Local.State, Details: localBrief(p),
 	}
 	if p.Local.NeedsCommercialNote() {
@@ -284,15 +284,15 @@ func localBrief(p Provider) templ.Component {
 			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		if p.Selected == LocalValue && !p.Local.Supported {
+		if p.Selected == p.value() && !p.Local.Supported {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"break-words text-xs text-amber-300\" role=\"status\" data-testid=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("audio-saved-local-" + p.Field)
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("audio-saved-local-" + p.Field + localSuffix(p))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/card.templ`, Line: 81, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/card.templ`, Line: 81, Col: 123}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -309,9 +309,9 @@ func localBrief(p Provider) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue("audio-unclear-line-" + p.Field)
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue("audio-unclear-line-" + p.Field + localSuffix(p))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/card.templ`, Line: 84, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/card.templ`, Line: 84, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
@@ -324,7 +324,7 @@ func localBrief(p Provider) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(len(p.Local.Unclear)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/card.templ`, Line: 84, Col: 215}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/card.templ`, Line: 84, Col: 232}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {

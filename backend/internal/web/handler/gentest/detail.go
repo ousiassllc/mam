@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -47,6 +48,9 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f importbox
 	}
 	for _, in := range d.Inputs {
 		v.Inputs = append(v.Inputs, view.InputCard{Role: roleText(in), Origin: originText[in.Origin.Kind], URL: paths.GenerationTestPart("inputs", in.ID, "file")})
+	}
+	for _, u := range d.UnusedInputs {
+		v.Unused = append(v.Unused, inputnotice.Unused{Role: roleNames[u.Role], Reason: u.Reason, URL: paths.GenerationTestPart("inputs", u.InputID, "file")})
 	}
 	names := h.projectNames(ctx)
 	for _, im := range d.Imports {

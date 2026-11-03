@@ -78,6 +78,9 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 			c.Picked = append(c.Picked, row)
 		}
 	}
+	if media == gentest.MediaVideo {
+		c.InputCheck = inputCheckOf(h.Svc.CheckInputs(gentest.Request{Media: media, Models: f.models, References: f.refs}))
+	}
 	c.Poses = media != gentest.MediaVideo && h.Svc.Poses != nil
 	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.opts.AvoidPose, h.Svc.LoRAs(ctx, media)
 	if f.opts.LoRA != nil {
@@ -135,7 +138,11 @@ func (h Handlers) Page(c *gin.Context) {
 	recipeNote := h.recipeNotice(ctx, c, &f)    // "使う" of a recipe (#977)
 	for _, raw := range c.QueryArray(view.FieldRef) {
 		if r, ok := refform.Parse(raw); ok {
-			f.refs = append(f.refs, refform.Input(r, refform.ImageRole(c.Query("ref_role")), nil)) // "この顔で作る" names the role face
+			role := refform.ImageRole(c.Query("ref_role")) // "この顔で作る" names the role face
+			if f.media == gentest.MediaVideo {
+				role = h.Svc.DefaultInputRole(f.media, f.models, f.refs) // the first frame while a chosen model needs one (#1009)
+			}
+			f.refs = append(f.refs, refform.Input(r, role, nil))
 		}
 	}
 	if f.tier.Tier == "" && (len(f.models) > 0 || fromMatch || again) {
@@ -230,30 +237,6 @@ func (h Handlers) Picker(c *gin.Context) {
 		}
 	}
 	gtshare.Render(c, http.StatusOK, view.Picker(rows, empty))
-}
-
-// RefRow answers GET /generation-test/ref-row: the row of one chosen input image ("?ref=<source>:<project>:<id>").
-func (h Handlers) RefRow(c *gin.Context) {
-	r, ok := refform.Parse(c.Query(view.FieldRef))
-	if !ok {
-		c.AbortWithStatus(http.StatusNotFound)
-		return
-	}
-	ctx, media := c.Request.Context(), c.Query(view.FieldMedia)
-	role := gentest.RoleReference
-	if r.Source == gentest.FromPoseLibrary { // a pose picture is a pose until the user says otherwise
-		role = gentest.RolePose
-	}
-	row, ok := h.refRow(ctx, refform.Input(r, role, nil))
-	if !ok {
-		c.AbortWithStatus(http.StatusNotFound)
-		return
-	}
-	var ui view.RefUI
-	if media != gentest.MediaVideo { // the controls follow the models that are ticked now
-		ui = view.RefUIOf(choicesOf(h.Svc.Models(ctx, gentest.MediaImage), c.QueryArray(view.FieldModel)))
-	}
-	gtshare.Render(c, http.StatusOK, view.RefRow(row, media, ui))
 }
 
 func historyRef(r record.ResultView) view.Ref {

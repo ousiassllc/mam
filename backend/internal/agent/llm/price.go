@@ -43,8 +43,12 @@ var prices = map[Target]Price{
 	{ProviderGoogle, "gemini-3.5-flash-lite"}:  {0.30, 2.50},
 }
 
-// PriceOf is the price of a target; false when the app has no checked price for it.
+// PriceOf is the price of a target; false when the app has no checked price for it. A model of the local server (ProviderLocal) runs on the user's
+// own PC and is billed by nobody: its price is zero, whatever its name, so an estimate does not warn that it has none.
 func PriceOf(t Target) (Price, bool) {
+	if t.Provider == ProviderLocal {
+		return Price{}, true
+	}
 	p, ok := prices[t]
 	return p, ok
 }

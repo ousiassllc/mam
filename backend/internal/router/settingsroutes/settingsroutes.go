@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
@@ -43,6 +44,7 @@ import (
 	facefusionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/facefusion"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
+	llmlocalhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llmlocal"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
@@ -57,7 +59,10 @@ type Services struct {
 	// LLMModels are the models the LLM pull-downs offer for each provider (the API's list, else the candidates of mam). New
 	// builds one that knows no key and no sign-in (the candidates only); the app replaces it.
 	LLMModels *llmmodels.Service
-	Models    *modelsettings.Service
+	// LLMLocal is the card "ローカル LLM サーバー" (the address and key of the local OpenAI-compatible LLM server, #1008). New builds one that has no key
+	// store (the key cannot be kept); the app replaces it.
+	LLMLocal *llmlocal.Service
+	Models   *modelsettings.Service
 	// Update checks for a newer version. Nil in the headless server, which cannot update itself: the
 	// version section then shows the version only and has no check route.
 	Update *appupdate.Service
@@ -106,7 +111,10 @@ type Services struct {
 // New builds the services over the settings files (llm.json / models.json, or the files the operator pinned
 // by a start option, which the screen shows and does not write).
 func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Services {
-	return &Services{LLM: llmassign.New(llmFile, llmPinned), LLMModels: llmmodels.New(llmmodels.Options{}), Models: modelsettings.New(modelFile, modelPinned)}
+	return &Services{
+		LLM: llmassign.New(llmFile, llmPinned), LLMModels: llmmodels.New(llmmodels.Options{}), LLMLocal: llmlocal.New(llmFile, llmPinned, nil, nil),
+		Models: modelsettings.New(modelFile, modelPinned),
+	}
 }
 
 // registerRestart adds the routes of the "再起動して反映" panel when the app has a restart service.
@@ -156,6 +164,10 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 	}
 	if s != nil {
 		llmhandler.Register(engine, s.LLM, s.LLMModels, pages.Page(paths.SettingsLLM))
+		if s.LLMLocal != nil {
+			engine.PUT(paths.LLMLocal(), llmlocalhandler.Save(s.LLMLocal))
+			engine.POST(paths.LLMLocalTest(), llmlocalhandler.Test(s.LLMLocal))
+		}
 		mediahandler.Register(engine, s.Models, mediahandler.Cards{Gentest: s.Gentest}, pages.Page(paths.SettingsModels))
 		modelpicker.Register(engine, modelpicker.Services{Gentest: s.Gentest, Settings: s.Models, LLM: s.LLMModels, ModelManager: s.ModelManager})
 	}
@@ -215,7 +227,7 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 			p.Tester = probe.NewTester(s.Keys)
 		}
 		p.ChatGPT, p.LLM, p.LLMModels, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.LLMModels, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
-		p.Audio = s.Audio
+		p.Audio, p.LLMLocal = s.Audio, s.LLMLocal
 		p.Restart = s.Restart
 		p.FFmpegDownload = s.FFmpegDownload
 		p.FaceFusion = s.FaceFusion

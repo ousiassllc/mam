@@ -36,6 +36,7 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.GET(paths.GenerationTestPart("prompt-row"), h.PromptRow)
 	engine.GET(paths.GenerationTestPart("picker"), h.Picker)
 	engine.GET(paths.GenerationTestPart("ref-row"), h.RefRow)
+	engine.POST(paths.GenerationTestPart("input-check"), h.InputCheck)
 	engine.POST(paths.GenerationTestPart("estimate"), h.Estimate)
 	engine.POST(paths.GenerationTestPart("run"), h.Run)
 	engine.POST(paths.GenerationTestPart("run-notice"), h.RunNotice)

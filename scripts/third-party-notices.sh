@@ -11,6 +11,7 @@
 #     pinned release, committed in build/windows/onnxruntime/ (scripts/fetch-onnxruntime.sh pins the version and refuses
 #     a zip whose two files differ from the committed ones)
 #   - scripts/third-party-notices-musetalk.md: the MuseTalk section (text that is written by hand)
+#   - scripts/third-party-notices-irodori.md: the Irodori-TTS section and its weights (text that is written by hand, with the Python packages)
 #   - scripts/third-party-notices-poses.md: the Shisei pose library and VNCCS_Utils sections (text that is written by hand)
 # Usage: scripts/third-party-notices.sh [OUTPUT]      OUTPUT defaults to THIRD_PARTY_NOTICES.md in the repository root
 # Needs: go, node, and `npm ci --prefix static` done. Run it again when go.mod or static/package-lock.json changes.
@@ -155,7 +156,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 - インストーラーが `mam.exe` の隣に置く ONNX Runtime の DLL（`onnxruntime.dll`・`onnxruntime_providers_shared.dll`。MIT、Microsoft）: 顔の同一性の数値評価に使います。取り込んだ版の `LICENSE` と、Microsoft が付ける第三者の通知 `ThirdPartyNotices.txt` の全文を載せています（`build/windows/onnxruntime/` にある写しで、`scripts/fetch-onnxruntime.sh` が固定した版のリリースと同じ内容であることを確かめます）。ONNX Runtime を Go から呼ぶバインディング（`github.com/shota3506/onnxruntime-purego`、MIT）と、その下の `github.com/ebitengine/purego`（Apache-2.0）は、上の Go モジュールに入っています。バインディングは、Windows 対応の修正（DLL の読み込みとモデルのパスの UTF-16 化）の 1 コミットだけを足した `github.com/aubs3993/onnxruntime-purego` のコミットに `go.mod` の `replace` で差し替えています（上の「版」は元のモジュールのもので、`LICENSE` は同じ MIT です）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
-開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
+開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Irodori-TTS・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
 
 ## 一覧
 
@@ -212,6 +213,8 @@ MAM のローカルランタイム管理（Issue #918）は、利用者の操作
 EOF
   # The MuseTalk section is a file of its own: it lists the Python packages of the environment mam assembles (a long table).
   cat scripts/third-party-notices-musetalk.md
+  # The Irodori-TTS section is a file of its own too (the Python packages of the environment mam assembles, and its weights).
+  cat scripts/third-party-notices-irodori.md
   cat <<'EOF'
 ## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
 

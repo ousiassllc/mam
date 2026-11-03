@@ -53,6 +53,8 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 		// #933: the input images of an image model that takes references: three thumbnails with their roles and strengths, the
 		// options of the references, a LoRA, and a model that takes none (the notice).
 		"layout-gentest-refs.html": gentest.ComposeForm(gentestRefsCompose()),
+		// #1009: a video form with an image-to-video model (it needs a first frame), a text-to-video one, and two pictures that start as references.
+		"layout-gentest-video-inputs.html": gentest.ComposeForm(gentestVideoInputsCompose()),
 		"layout-gentest-video.html": gentest.ComposeForm(gentestCompose("video", []gentest.ModelChoice{
 			{ID: "luma-ray-3.2", Label: "luma-ray-3.2", Source: "クラウド", Price: "1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", Selected: true, Answer: conditionalAnswer, Card: fixtureCard("luma-ray-3.2", "クラウド ・ 1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", conditionalAnswer)},
 			{ID: "runway-gen-4.5", Label: "runway-gen-4.5", Source: "クラウド", Price: "720p $0.1200 / 秒", Answer: noAnswer, Card: fixtureCard("runway-gen-4.5", "クラウド ・ 720p $0.1200 / 秒", noAnswer)},
@@ -100,6 +102,19 @@ func gentestCompose(media string, models []gentest.ModelChoice) gentest.Compose 
 		Resolutions: []string{"720p", "1080p"}, Durations: []string{"5", "10"}, Resolution: "720p", Duration: "5",
 		MaxPrompt: 4000, MaxCount: 20, MaxItems: 50, MaxReferences: 10, MaxCostUSD: "$5.00", Translate: true, // #913: the switch is drawn on
 	}
+}
+
+func gentestVideoInputsCompose() gentest.Compose {
+	c := gentestCompose("video", []gentest.ModelChoice{
+		{ID: "i2v", Label: "Wan 2.2 I2V", Source: "ローカル", Price: "無料（ローカル）", Media: "video", RequiresFirstFrame: true},
+		{ID: "t2v", Label: "Wan 2.2 T2V", Source: "ローカル", Price: "無料（ローカル）", Media: "video"},
+	})
+	c.MaxImageBytes = 20 << 20
+	c.Picked = []gentest.Ref{
+		{Value: "history::r1", Label: "FLUX・a red fox", Role: "reference"},
+		{Value: "history::r2", Label: "FLUX・a blue fox", Role: "reference"},
+	}
+	return c
 }
 
 func gentestRefsCompose() gentest.Compose {

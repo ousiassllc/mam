@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/facelock"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestposes"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -77,6 +78,9 @@ templ inputFields(c Compose) {
 		}
 		<p class="text-xs text-red-300" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>
 		<p class="text-xs text-amber-300" role="status" data-gt-noref data-testid="gt-noref" hidden?={ c.NoRefNotice() == "" }>{ c.NoRefNotice() }</p>
+		if c.Media == "video" {
+			@inputnotice.CheckBox(c.InputCheck)
+		}
 		<div class="flex items-center justify-between text-xs text-neutral-400">
 			<span data-gt-count data-testid="gt-count" aria-live="polite">{ itoa(len(c.Picked)) } / { itoa(c.MaxReferences) }</span>
 		</div>

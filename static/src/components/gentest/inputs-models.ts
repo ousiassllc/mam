@@ -1,4 +1,5 @@
 import { noRefNotice, unionRoles } from './inputs-model';
+import { applyVideoInputs } from './roles/video-inputs';
 
 // What the model cards say about input images, and what the controls of the images, the options and the notice do about it.
 // The cards carry data-accepts-references / data-reference-roles / data-supports-lora (models.templ); the controls are the ones
@@ -8,6 +9,8 @@ interface Chosen {
   label: string;
   roles: string[];
   lora: boolean;
+  /** An I2V model: it cannot run without a first frame (#1009). */
+  needsFirstFrame: boolean;
 }
 
 /** The models that are ticked in the form (one that the commercial filter hid is disabled and does not count). */
@@ -19,6 +22,7 @@ export function chosenModels(form: HTMLElement): Chosen[] {
         label: card.dataset.label ?? card.dataset.model ?? '',
         roles: (card.dataset.referenceRoles ?? '').split(' ').filter(Boolean),
         lora: card.dataset.supportsLora === 'true',
+        needsFirstFrame: card.dataset.requiresFirstFrame === 'true',
       };
     },
   );
@@ -44,8 +48,16 @@ function offerRoles(select: HTMLSelectElement, roles: readonly string[]): void {
 
 /** Draws the controls for the models that are ticked now. */
 export function applyModels(fieldset: HTMLElement, form: HTMLElement, refCount: number): void {
-  if (fieldset.dataset.media === 'video') return;
   const chosen = chosenModels(form);
+  if (fieldset.dataset.media === 'video') {
+    applyVideoInputs(
+      fieldset,
+      form,
+      chosen.map((m) => m.label),
+      chosen.some((m) => m.needsFirstFrame),
+    );
+    return;
+  }
   const roles = unionRoles(chosen.map((m) => m.roles));
   for (const controls of fieldset.querySelectorAll<HTMLElement>('[data-gt-ref-controls]')) {
     toggle(controls, roles.length > 0);

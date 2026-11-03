@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/inputcheck"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
@@ -27,18 +28,18 @@ type Warning struct {
 
 // The codes of a Warning.
 const (
-	WarnInputsDropped    = refs.WarnInputsDropped    // an input image the model cannot use is left out for that model
-	WarnDurationSnapped  = "duration_snapped"        // the length is rounded to one the model makes
-	WarnResolution       = "resolution"              // the model does not make the resolution: its results fail
-	WarnAspect           = "aspect_ratio"            // the model refuses the aspect ratio: its results fail
-	WarnNoPrice          = "no_price"                // the price is unknown: the model is left out of the total
-	WarnNegativeFolded   = "negative_folded"         // the model has no negative prompt field: it is written into the prompt
-	WarnSeedUnsupported  = "seed_unsupported"        // the model takes no seed: the n results are the same call n times
-	WarnFramesOverFree   = "frames_over_refs"        // first / last frames and free references cannot be used together
-	WarnTooManyReference = refs.WarnTooMany          // more references than the model takes
-	WarnRoleUnsupported  = refs.WarnRoleUnsupported  // the model does not take the role of a reference: it is used as a whole
-	WarnLoRAUnsupported  = refs.WarnLoRAUnsupported  // the model cannot take a LoRA: it is not sent
-	WarnSpeedUnsupported = refs.WarnSpeedUnsupported // the model has no such speed mode: it runs its default
+	WarnInputsDropped    = refs.WarnInputsDropped        // an input image the model cannot use is left out for that model
+	WarnDurationSnapped  = "duration_snapped"            // the length is rounded to one the model makes
+	WarnResolution       = "resolution"                  // the model does not make the resolution: its results fail
+	WarnAspect           = "aspect_ratio"                // the model refuses the aspect ratio: its results fail
+	WarnNoPrice          = "no_price"                    // the price is unknown: the model is left out of the total
+	WarnNegativeFolded   = "negative_folded"             // the model has no negative prompt field: it is written into the prompt
+	WarnSeedUnsupported  = "seed_unsupported"            // the model takes no seed: the n results are the same call n times
+	WarnFramesOverFree   = inputcheck.WarnFramesOverFree // first / last frames and free references cannot be used together
+	WarnTooManyReference = refs.WarnTooMany              // more references than the model takes
+	WarnRoleUnsupported  = refs.WarnRoleUnsupported      // the model does not take the role of a reference: it is used as a whole
+	WarnLoRAUnsupported  = refs.WarnLoRAUnsupported      // the model cannot take a LoRA: it is not sent
+	WarnSpeedUnsupported = refs.WarnSpeedUnsupported     // the model has no such speed mode: it runs its default
 	// WarnSamplingIgnored and WarnSeedIgnored (sampling.go): the model does not take the steps, cfg, sampler, scheduler or seed asked for.
 	// WarnPromptWeight (promptweight.go): the prompt has weights and the model does not read them (or reads them poorly).
 )
@@ -59,7 +60,9 @@ type modelPlan struct {
 	// exposed are the values the model's exposed inputs run with (nil: it exposes none).
 	exposed map[string]any
 	// denoise is the redraw strength sent to an inpaint model (nil: the graph's own, or not an inpaint run).
-	denoise  *float64
+	denoise *float64
+	// unused are the input images of the request this model is not given, with why (a result records them: record.UnusedInput).
+	unused   []inputcheck.Unused
 	warnings []Warning
 	basis    string
 	// unit is the price of one result in USD (nil when the basis is unknown).
@@ -106,16 +109,6 @@ func hasNegative(r Request) bool {
 	return slices.ContainsFunc(r.Prompts, func(p PromptInput) bool { return p.Negative != "" })
 }
 
-func indexesWhere(list []RefInput, keep func(RefInput) bool) []int {
-	var out []int
-	for i, ref := range list {
-		if keep(ref) {
-			out = append(out, i)
-		}
-	}
-	return out
-}
-
 // planVideo decides the resolution, the length and the inputs of a video model.
 func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, warn func(code, format string, args ...any)) {
 	caps, _ := cfg.VideoCaps(domain.ModelName(p.info.ID))
@@ -132,41 +125,9 @@ func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, wa
 	if p.seconds != r.DurationSeconds {
 		warn(WarnDurationSnapped, "%s の長さは %g 秒から %g 秒に丸められます", p.info.Label, r.DurationSeconds, p.seconds)
 	}
-	has := func(role string) bool {
-		return slices.ContainsFunc(r.References, func(x RefInput) bool { return x.Role == role })
-	}
-	first, last := caps.FirstFrame && has(gentestrepo.RoleFirstFrame), caps.LastFrame && has(gentestrepo.RoleLastFrame) && caps.FirstFrame && has(gentestrepo.RoleFirstFrame)
-	free := indexesWhere(r.References, func(x RefInput) bool { return x.Role == gentestrepo.RoleReference })
-	if len(free) > 0 && caps.MaxReferenceImages == 0 {
-		warn(WarnInputsDropped, "%s は自由参照の画像を使えないため、使いません", p.info.Label)
-		free = nil
-	}
-	if len(free) > caps.MaxReferenceImages && caps.MaxReferenceImages > 0 {
-		warn(WarnTooManyReference, "%s の自由参照は %d 枚までのため、先頭の %d 枚だけ使います", p.info.Label, caps.MaxReferenceImages, caps.MaxReferenceImages)
-		free = free[:caps.MaxReferenceImages]
-	}
-	if (first || last) && len(free) > 0 {
-		warn(WarnFramesOverFree, "%s は最初・最後のフレームと自由参照を同時に使えないため、フレームを使います", p.info.Label)
-		free = nil
-	}
-	if has(gentestrepo.RoleFirstFrame) && !caps.FirstFrame {
-		warn(WarnInputsDropped, "%s は最初のフレームを使えないため、使いません", p.info.Label)
-	}
-	if has(gentestrepo.RoleLastFrame) && !last {
-		warn(WarnInputsDropped, "%s は最後のフレームを使えない（または最初のフレームが無い）ため、使いません", p.info.Label)
-	}
-	p.used = indexesWhere(r.References, func(x RefInput) bool {
-		switch x.Role {
-		case gentestrepo.RoleFirstFrame:
-			return first
-		case gentestrepo.RoleLastFrame:
-			return last
-		}
-		return false
-	})
-	p.used = append(p.used, free...)
-	slices.Sort(p.used)
-	if msg := direct.AspectProblem(domain.ModelName(p.info.ID), r.AspectRatio, first); msg != "" {
+	in := inputcheck.Video(caps, p.info.Label, rolesOf(r))
+	p.applyInputs(in)
+	if msg := direct.AspectProblem(domain.ModelName(p.info.ID), r.AspectRatio, in.FirstFrame); msg != "" {
 		warn(WarnAspect, "%s: 縦横比 %s は使えません（%s）。このモデルの結果は失敗します", p.info.Label, r.AspectRatio, msg)
 	}
 }
@@ -202,7 +163,7 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 }
 
 // resultParamsOf is what is recorded of the request for the result of one model.
-func resultParamsOf(r Request, mp modelPlan, translation *record.SentText, maskID string) record.ResultParams {
+func resultParamsOf(r Request, mp modelPlan, translation *record.SentText, maskID string, inputIDs []string) record.ResultParams {
 	p := record.ResultParams{
 		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode, Sampling: mp.sampling, Exposed: mp.exposed,
 	}
@@ -211,6 +172,9 @@ func resultParamsOf(r Request, mp modelPlan, translation *record.SentText, maskI
 	}
 	if mp.lora {
 		p.LoRA = &refs.LoRA{Name: r.LoRA.Name, Strength: *r.LoRA.Strength}
+	}
+	for _, u := range mp.unused {
+		p.UnusedInputs = append(p.UnusedInputs, record.UnusedInput{InputID: inputIDs[u.Index], Role: r.References[u.Index].Role, Reason: u.Reason})
 	}
 	return p
 }
@@ -246,4 +210,5 @@ func (s *Service) planImage(r Request, p *modelPlan) {
 	for _, w := range d.Warnings {
 		p.warnings = append(p.warnings, Warning{Model: info.ID, Code: w.Code, Message: w.Message, Roles: w.Roles})
 	}
+	p.unused = inputcheck.ImageUnused(len(r.References), p.used, info.AcceptsReferences, info.MaxReferenceImages)
 }

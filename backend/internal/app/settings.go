@@ -36,8 +36,13 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	}
 	settings.Restart, pending = restartwork.New(restart, services, jobs, ffmpegDL, codexSvc, logger)
 	if services.LLMClient != nil { // a saved LLM assignment applies at once (restartwork.LLMApplier)
-		settings.LLM.SetApplier(restartwork.LLMApplier(services.LLMClient, pending))
+		apply := restartwork.LLMApplier(services.LLMClient, pending)
+		settings.LLM.SetApplier(apply)
+		if services.LLMLocal != nil {
+			services.LLMLocal.SetApplier(apply) // so does the address of the local server
+		}
 	}
+	settings.LLMLocal = services.LLMLocal
 	ffmpeg := newFFmpegSettings(cfg, ffmpegDL, ffmpegsettings.WithOnSet(restartwork.FFmpegPaths(pending)))
 	settings.FFmpeg, settings.FFmpegDownload = ffmpeg, ffmpegDL
 	settings.FaceFusion = facefusionsettings.Default(cfg.DataDir) // the external face swapper (#995); the generation test reads the same file
@@ -51,6 +56,9 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	})
 	settings.ChatGPT = gpt
 	models := llmmodels.Options{Keys: settings.Keys, BaseURLs: llmBaseURLs(cfg, logger), Logger: logger}
+	if services.LLMLocal != nil {
+		models.LocalBaseURL = services.LLMLocal.BaseURL // the address can change while the app runs
+	}
 	if gpt != nil {
 		models.ChatGPT = llmmodels.FromChatGPT(gpt)
 	}

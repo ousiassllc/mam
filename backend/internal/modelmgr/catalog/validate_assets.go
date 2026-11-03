@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
 )
 
 // hfRepoURL matches the Hugging Face repository a pinned file URL lies in.
@@ -63,9 +64,10 @@ func validateResourceSet(where string, s ResourceSet) []error {
 		licenses[l.ID] = true
 		errs = append(errs, validateResourceLicense(where, l)...)
 	}
-	names, dests := map[string]bool{}, map[string]string{}
+	names, dests, used := map[string]bool{}, map[string]string{}, map[string]bool{}
 	required := false
 	for _, a := range s.Assets {
+		used[a.Choice] = true
 		aw := where + " asset " + a.Name
 		if names[a.Name] {
 			errs = append(errs, fmt.Errorf("%s: listed twice", aw))
@@ -86,7 +88,7 @@ func validateResourceSet(where string, s ResourceSet) []error {
 	if len(s.Assets) > 0 && !required {
 		errs = append(errs, fmt.Errorf("%s: at least one asset must be required", where))
 	}
-	return errs
+	return append(errs, choice.Check(where, s.Choices, licenses, used)...)
 }
 
 func validateResourceLicense(where string, l ResourceLicense) []error {
