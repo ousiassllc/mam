@@ -74,7 +74,7 @@ templ ModelNotes(n Notes) {
 templ InstallPanel(w Wire, in Install) {
 	<div class="flex flex-col gap-3" data-testid="gt-pose-install">
 		<p class="text-sm text-neutral-200">
-			ポーズ集（Shisei）は、顔のない人形の線画で描いたポーズの見本です（{ strconv.Itoa(in.Poses) } 種類・{ strconv.Itoa(in.Images) } 枚。アングルは正面・斜め・横・上から・下から）。
+			ポーズ集（Shisei）は、顔のない人形の線画で描いたポーズの見本です（{ strconv.Itoa(in.Poses) } 種類・線画と、ControlNet 用の深度・法線マップを合わせて { strconv.Itoa(in.Images) } 枚。アングルは正面・斜め・横・上から・下から）。
 			MAM には同梱せず、初回だけ { in.Source } から { in.Download } をダウンロードします（リリースを固定し、ファイルごとに SHA-256 を検証します）。
 		</p>
 		<ul class="flex flex-col gap-2 text-xs" data-testid="gt-pose-licenses">
@@ -171,7 +171,34 @@ templ GalleryPanel(w Wire, g Gallery) {
 					}
 				</div>
 			</fieldset>
+			<fieldset class="flex flex-col gap-1 text-xs text-neutral-400" data-testid="gt-pose-kinds">
+				<legend class="mb-1">画像の種類</legend>
+				<div class="flex flex-wrap gap-1">
+					for _, k := range g.Kinds {
+						<label class="relative cursor-pointer">
+							<input
+								type="radio"
+								class="peer sr-only"
+								name={ FieldKind }
+								form={ noForm }
+								value={ k.Value }
+								checked?={ k.Selected }
+								hx-get={ w.ResultsURL }
+								hx-trigger="change"
+								hx-target={ "#" + ResultsID }
+								hx-swap="outerHTML"
+								hx-include={ w.IncludeFilters }
+							/>
+							<span class="inline-block rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400">{ k.Label }</span>
+						</label>
+					}
+				</div>
+			</fieldset>
 		</div>
+		<p class="text-xs text-neutral-400" data-testid="gt-pose-kinds-note">
+			線画は編集モデル（「ポーズだけ」の参照）向けです。深度・法線は、ControlNet のモデル（深度・法線）に制御画像として渡すマップです。
+			ControlNet のモデルは受け取った画像をそのまま制御画像にするので、モデルに合わせた種類を選んでください（深度のモデルには「深度」、法線のモデルには「法線」）。
+		</p>
 		@ResultsList(w, g.Results)
 		<div class="flex justify-end border-t border-neutral-800 pt-2">
 			@atoms.SmallButton(atoms.ToneDanger, "ポーズ集を削除", templ.Attributes{

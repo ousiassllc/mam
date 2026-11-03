@@ -105,6 +105,55 @@ func TestTheGalleryListsTheGeneralPosesAndFiltersThem(t *testing.T) {
 	assert.Contains(t, full, `data-testid="gt-pose-angles"`)
 }
 
+// #1020: the kind of picture chosen in the dialog (line art, depth, normal) lists the poses that have a map of it, at the angle asked for or
+// the one the pose has, with the ID of the map; a pose without any map of the kind is not listed, and nothing reaches the suggestive poses.
+func TestTheGalleryListsTheDepthAndNormalMapsOfThePosesThatHaveOne(t *testing.T) {
+	s, _ := posesScreen(t, true)
+	cards := func(q url.Values) []string {
+		body := s.get(paths.GenerationTestPoses("results") + "?" + q.Encode()).Body.String()
+		var out []string
+		for _, m := range regexp.MustCompile(`data-ref="([^"]+)"`).FindAllStringSubmatch(body, -1) {
+			out = append(out, m[1])
+		}
+		return out
+	}
+	assert.ElementsMatch(t, []string{"pose_library::std_P001_front.depth", "pose_library::std_P002_front.depth"}, cards(url.Values{"pose_kind": {"depth"}}),
+		"no depth map for the upper pose")
+	assert.ElementsMatch(t, []string{"pose_library::std_P001_front.depth", "pose_library::std_P002_side.depth"}, cards(url.Values{"pose_kind": {"depth"}, "pose_angle": {"side"}}))
+	assert.Equal(t, []string{"pose_library::std_P001_diag.normal"}, cards(url.Values{"pose_kind": {"normal"}, "pose_angle": {"diag"}}), "only P001 has a normal map")
+	assert.Len(t, cards(url.Values{"pose_kind": {"clay"}}), 3, "what is not understood is the line art")
+
+	full := s.get(paths.GenerationTestPoses()).Body.String()
+	assert.Contains(t, full, `data-testid="gt-pose-kinds"`)
+	assert.Regexp(t, `name="pose_kind"[^>]*value="line"[^>]*checked`, full, "the line art is the default")
+	assert.Contains(t, full, `value="depth"`)
+	assert.Contains(t, full, `value="normal"`)
+}
+
+// #1020: a map is served like a line picture, and is the reference of the role pose with its own label and thumbnail.
+func TestADepthMapIsServedAndAddedAsAPoseReference(t *testing.T) {
+	s, _ := posesScreen(t, true)
+	ok := s.get(paths.GenerationTestPoses("image", "std_P001_front.depth"))
+	require.Equal(t, http.StatusOK, ok.Code)
+	assert.Equal(t, posestest.MapPicture("depth", "std_P001_front"), ok.Body.Bytes())
+	assert.Equal(t, posestest.MapPicture("normal", "std_P001_diag"), s.get(paths.GenerationTestPoses("image", "std_P001_diag.normal")).Body.Bytes())
+	for _, id := range []string{"std_P001_diag.depth", "upper_U001_front.depth", "std_P003_front.depth", "std_P001_front.clay"} {
+		assert.Equal(t, http.StatusNotFound, s.get(paths.GenerationTestPoses("image", id)).Code, id+": no such map")
+	}
+
+	body := s.fragment(paths.GenerationTestPart("ref-row") + "?ref=" + url.QueryEscape("pose_library::std_P001_front.depth") + "&model=" + url.QueryEscape(string(gentesttest.EditModel)))
+	assert.Contains(t, body, `value="pose_library::std_P001_front.depth"`)
+	assert.Contains(t, body, paths.GenerationTestPoses("image", "std_P001_front.depth"))
+	assert.Contains(t, body, "深度マップ")
+	assert.Regexp(t, `<option value="pose"[^>]*selected`, body)
+
+	form := batchForm(string(gentesttest.EditModel))
+	form["ref"] = []string{"pose_library::std_P001_front.depth"}
+	form.Set("role_pose_library::std_P001_front.depth", "pose")
+	rec := s.run(s.confirmed(form))
+	assert.Less(t, rec.Code, 400, rec.Body.String())
+}
+
 func TestThePictureOfAPoseIsServedAndNothingElse(t *testing.T) {
 	s, _ := posesScreen(t, true)
 	ok := s.get(paths.GenerationTestPoses("image", "std_P001_front"))

@@ -145,6 +145,7 @@ PuLID-Flux-Chroma を mam から導入できる経路は、**作らない**。�
 ### 6.1 コアのノードだけの ControlNet と IP-Adapter
 
 - ControlNet（コアのノード）: モデル `sdxl-controlnet-canny`（`xinsir/controlnet-canny-sdxl-1.0`、Apache-2.0）。テンプレート `txt2img-sdxl-controlnet`（`LoadImage` → `ControlNetApplyAdvanced`）。**追加ノードは要らない**。参照画像は**写真でも絵でもよい**: テンプレートの `reference_preprocess: "canny"` で、mam が Go で Canny のエッジ画像を作ってから渡す（§5.2。すでにエッジ画像ならそのまま使う）。
+- ControlNet の深度・法線（Issue #1020）: モデル `sdxl-controlnet-depth`（`xinsir/controlnet-depth-sdxl-1.0`）・`sdxl-controlnet-normal`（`xinsir/controlnet-union-sdxl-1.0`。Apache-2.0）。テンプレート `txt2img-sdxl-controlnet-depth`・`-normal`（`reference_preprocess` なし。法線は `ControlNetLoader` → `SetUnionControlNetType`〔コアのノード〕→ `ControlNetApplyAdvanced`）。追加ノードは要らない。ポーズ集（Shisei）の深度・法線マップを参照画像に渡す。
 - IP-Adapter: モデル `sdxl-ipadapter-plus`（`h94/IP-Adapter` の `ip-adapter-plus_sdxl_vit-h` と CLIP ViT-H の画像エンコーダー）。テンプレート `txt2img-sdxl-ipadapter`（`requires_nodes: ["ipadapter-plus"]`）。
 - 参照画像のモード `controlnet`・`ipadapter`（`localcfg.ModeControlNet`・`ModeIPAdapter`）: 参照画像をちょうど 1 枚要求し（ない実行は、制御画像／IP-Adapter の参照画像が要ると言って拒否）、参照の強さ（`reference_strength`、既定 0.7）がノードの強さに入る。生成テストの参照画像の経路（[../gentest/gentest.md](../gentest/gentest.md)）をそのまま使う。
 

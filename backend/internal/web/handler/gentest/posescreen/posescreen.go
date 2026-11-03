@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -53,13 +52,30 @@ func RefOf(svc *gentest.Service, pictureID string) (view.Ref, bool) {
 	if svc.Poses == nil {
 		return view.Ref{}, false
 	}
-	p, angle, ok := svc.Poses.ImageOwner(pictureID)
+	p, angle, kind, ok := svc.Poses.ImageOwner(pictureID)
 	if !ok {
 		return view.Ref{}, false
 	}
 	return view.Ref{
-		Value: ValuePrefix + pictureID, Label: "ポーズ " + p.Name + "（" + angleLabel(angle) + "）", Role: gentest.RolePose, ThumbURL: ImageURL(pictureID),
+		Value: ValuePrefix + pictureID, Label: "ポーズ " + p.Name + "（" + angleLabel(angle) + kindNote(kind) + "）", Role: gentest.RolePose, ThumbURL: ImageURL(pictureID),
 	}, true
+}
+
+// kindNote is what the label of a picture says after its angle when it is a map for a ControlNet ("" for the line art).
+func kindNote(k poses.Kind) string {
+	if k == poses.Line {
+		return ""
+	}
+	return "・" + kindLabel(k) + "マップ"
+}
+
+func kindLabel(k poses.Kind) string {
+	for _, c := range poses.Kinds {
+		if c.Kind == k {
+			return c.Label
+		}
+	}
+	return string(k)
 }
 
 func angleLabel(a poses.Angle) string {
@@ -240,67 +256,4 @@ func (h Handlers) Image(c *gin.Context) {
 	c.Header("Cache-Control", "private, max-age=3600")
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.File(path)
-}
-
-// filters are what the gallery is filtered by.
-type filters struct {
-	text, series, class string
-	angle               poses.Angle
-}
-
-// classValue is the value of an option of the select of categories: "<series>/" for a whole series, "<series>/<category>" for one.
-func classValue(series, class string) string { return series + "/" + class }
-
-// queryOf reads the filters of the request; what is not understood is "no filter" (the first angle is the front).
-func queryOf(c *gin.Context) filters {
-	f := filters{text: strings.TrimSpace(c.Query(gentestposes.FieldQuery)), angle: poses.Front}
-	if series, class, ok := strings.Cut(c.Query(gentestposes.FieldClass), "/"); ok {
-		for _, s := range poses.Series {
-			if s.ID == series {
-				f.series, f.class = series, class
-			}
-		}
-	}
-	for _, a := range poses.Angles {
-		if string(a.Angle) == c.Query(gentestposes.FieldAngle) {
-			f.angle = a.Angle
-		}
-	}
-	return f
-}
-
-func galleryOf(all []poses.Pose, f filters, notes gentestposes.Notes) gentestposes.Gallery {
-	g := gentestposes.Gallery{Notes: notes, Query: f.text, All: gentestposes.Option{Value: "", Label: "すべて", Selected: f.series == ""}, Results: resultsOf(all, f)}
-	for _, s := range poses.Series {
-		classes := poses.Classes(all, s.ID)
-		if len(classes) == 0 {
-			continue
-		}
-		grp := gentestposes.ClassGroup{Label: s.Label, Options: []gentestposes.Option{
-			{Value: classValue(s.ID, ""), Label: s.Label + "（すべて）", Selected: f.series == s.ID && f.class == ""},
-		}}
-		for _, cl := range classes {
-			grp.Options = append(grp.Options, gentestposes.Option{Value: classValue(s.ID, cl), Label: cl, Selected: f.series == s.ID && f.class == cl})
-		}
-		g.Classes = append(g.Classes, grp)
-	}
-	for _, a := range poses.Angles {
-		g.Angles = append(g.Angles, gentestposes.Option{Value: string(a.Angle), Label: a.Label, Selected: a.Angle == f.angle})
-	}
-	return g
-}
-
-func resultsOf(all []poses.Pose, f filters) gentestposes.Results {
-	r := gentestposes.Results{Total: len(all)}
-	for _, p := range poses.Filter(all, poses.Query{Text: f.text, Series: f.series, Class: f.class}) {
-		angle := p.FirstAngle(f.angle)
-		pic := p.Image(angle)
-		if pic == "" {
-			continue
-		}
-		r.Cards = append(r.Cards, gentestposes.Card{
-			Name: p.Name, NameEN: p.NameEN, Class: p.Class, Image: ImageURL(pic), Angle: angleLabel(angle), Value: ValuePrefix + pic, Other: angle != f.angle,
-		})
-	}
-	return r
 }

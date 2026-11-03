@@ -121,11 +121,11 @@
 
 | ツール | 内容 | 入力 | 出力 |
 |---|---|---|---|
-| `get_pose_library` | ポーズ集の状態と、導入済みならポーズの検索結果（読み取り） | `query?`（名前・分類・番号 P001・英語の語。すべての語を含むもの）・`series?`（`std` / `upper`）・`class?` | `installed`・`source`（取得元）・`pose_count`・`image_count`・`download`（導入でダウンロードする大きさ）・`licenses[]`（`name`・`url`・`summary`・`commercial`・`notice`）・導入済みなら `poses[]`（`id`・`series`・`class`・`name`・`name_en`・`images`＝アングル→画像 ID） |
+| `get_pose_library` | ポーズ集の状態と、導入済みならポーズの検索結果（読み取り） | `query?`（名前・分類・番号 P001・英語の語。すべての語を含むもの）・`series?`（`std` / `upper`）・`class?` | `installed`・`source`（取得元）・`pose_count`・`image_count`・`download`（導入でダウンロードする大きさ）・`licenses[]`（`name`・`url`・`summary`・`commercial`・`notice`）・導入済みなら `poses[]`（`id`・`series`・`class`・`name`・`name_en`・`images`＝アングル→画像 ID〔線画〕・`depth_images`・`normal_images`＝同じポーズの ControlNet 用の深度・法線マップ〔`std_P001_front.depth` の形。マップのあるアングルだけ。#1020〕） |
 | `install_pose_library` | ダウンロードして導入する（冪等。終わるまで応答しない） | `accepted`（利用者がライセンスと取得元を確認して同意したときだけ true。false は何も取得せず `validation`。画面の同意チェックと同じで、強制するのは Library） | 導入後の状態（`get_pose_library` と同じ） |
 | `remove_pose_library` | 導入したポーズ集（画像と目録）を削除する（破壊的。冪等）。導入中は `conflict`。履歴の結果は残る | なし | 削除後の状態 |
 
-画像 ID は `run_generation_test` の `references` に `{source: pose_library, id, role: pose}` として渡す。画面の削除ボタン・導入の進み具合は [endpoints-gentest.md](endpoints-gentest.md)。
+画像 ID は `run_generation_test` の `references` に `{source: pose_library, id, role: pose}` として渡す（ControlNet の深度・法線のモデルには `depth_images`・`normal_images` の ID を渡す。#1020）。画面の削除ボタン・導入の進み具合は [endpoints-gentest.md](endpoints-gentest.md)。
 
 ## レシピと「画面に出す値」（Issue #977 ステージ 2）
 
@@ -171,3 +171,4 @@
 | 1.20 | 2026-11-03 | `set_facefusion_paths` を外した（FaceFusion のパスの設定は設定画面だけ。MCP のクライアントが、後で起動される実行ファイルを決められないように。`get_facefusion_status`・`swap_generation_face` は残す）。1.19 の記述もそれに合わせた | 統合後レビューの指摘（[mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) の方針） |
 | 1.21 | 2026-11-03 | `save_generation_recipe` が `speed_mode` を保存するようにした（そのモデルが持つモードだけ。無いモードは `validation`）。`list_generation_recipes` の返すレシピに `speed_mode` が出て、レシピを指定したリクエストに入る | Issue #977・#991 |
 | 1.22 | 2026-11-03 | `list_generation_models` に、画面のフィルターと同じ条件の入力と、各モデルの `settings_route`・`inputs[]`・`provider`・`origin`・`catalog` を足した。`available_only` で使えないモデルを除ける | Issue #1011・#1013 |
+| 1.23 | 2026-11-03 | `get_pose_library` の `poses[]` に `depth_images`・`normal_images`（ポーズ集の深度・法線マップ）を足した | Issue #1020 |

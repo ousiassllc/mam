@@ -23,8 +23,8 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/picker` | 入力画像の選択肢。`?project=<ID>`（そのプロジェクトのアセット・参照項目。無い ID は 404）または `?source=history`（履歴の成功した画像） |
 | GET | `/generation-test/ref-row` | 選んだ入力画像の 1 行（`?ref=<source>:<project>:<id>`（ポーズ集の画像は `pose_library::<画像 ID>`。役割は `pose` で出す）、`?media=`、`?model=`（選んでいるモデル。役割の選択肢をそれに合わせる）。サムネイル・番号・外す・並べ替えのボタン・役割と強さ（画像は役割 5 種（`reference`・`face`・`style`・`edit`・`pose`）と強さ、動画は 3 種）つき。無ければ 404） |
 | GET | `/generation-test/poses` | ポーズ集のモーダルの中身（Issue #986）。未導入なら導入の案内（出典・ライセンス・商用利用の可否・取得するサイズ・同意のチェックボックス `pose_accept`）、導入済みなら絞り込み（`pose_q` 文字・`pose_class` 分類・`pose_angle` アングル）つきの一覧。`?model=`（選んでいるモデル。複数可）で、そのモデルがポーズの役割を読めるかと商用利用の可否を添える。ポーズ集が無い構成は 404 |
-| GET | `/generation-test/poses/results` | 一覧の部分だけ（絞り込みの変更で取り直す。クエリは `pose_q`・`pose_class`・`pose_angle`。解釈できない値は絞り込みなし） |
-| GET | `/generation-test/poses/image/:id` | ポーズの画像（`image/webp`。ID は `std_P001_front` の形。ポーズ集にない ID・成人向けのポーズは 404） |
+| GET | `/generation-test/poses/results` | 一覧の部分だけ（絞り込みの変更で取り直す。クエリは `pose_q`・`pose_class`・`pose_angle`・`pose_kind`〔`line` 線画 / `depth` 深度 / `normal` 法線。既定は線画。Issue #1020〕。解釈できない値は絞り込みなし） |
+| GET | `/generation-test/poses/image/:id` | ポーズの画像（`image/webp`。ID は `std_P001_front` の形、深度・法線マップは `std_P001_front.depth`・`.normal`。ポーズ集にない ID・成人向けのポーズ・マップの無いアングルは 404） |
 | POST | `/generation-test/poses/install` | ポーズ集の導入（`pose_accept=on` が要る。無ければ 400 で理由を返し、案内を残す）。成功は一覧を返す。取得に失敗した理由は日本語で出す |
 | POST | `/generation-test/poses/remove` | ポーズ集の削除（Issue #994。画像と目録を消す。導入していなくても成功）。成功は導入の案内を返す。導入中は 409 と理由の文 |
 | GET | `/generation-test/poses/progress` | 導入のダウンロードの進み具合の 1 行（導入の案内が 1 秒ごとに取り直す。「ダウンロード中: x / y（n%）」。導入していないときは空） |
@@ -130,3 +130,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.18 | 2026-11-03 | 「この設定でもう一度」（`same_seed=1`）: 英訳つきの結果は、前回送った英訳をそのまま入れて英訳を切る（英訳のやり直しで同じシードでも別の絵になるのを防ぐ） | Issue #994 (d) |
 | 1.19 | 2026-11-03 | ポーズ集の削除 `POST /generation-test/poses/remove` と進み具合 `GET /generation-test/poses/progress` | Issue #994 (e) |
 | 1.20 | 2026-11-03 | `POST /generation-test/results/:id/face-swap`（顔の入れ替え）と `GET …/face-swap/warnings`（選んだモデルのライセンスの警告）を足した。結果の詳細に「顔の類似度」の行（役割 `face` の参照があった結果。SFace）が出る | Issue #995・#998 |
+| 1.21 | 2026-11-03 | `GET /generation-test/poses/results` に `pose_kind`（`line` / `depth` / `normal`。既定は線画）、`poses/image/:id` と `ref-row` の画像 ID に `.depth`・`.normal`（深度・法線マップ） | Issue #1020 |

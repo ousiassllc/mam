@@ -43,3 +43,4 @@
 | 1.36 | 2026-11-03 | `gentest_result.started_at` を足し、`estimate_generation_test` がローカルモデルの所要時間を過去の実績（同じモデル・縦横比・解像度・長さ・速さのモードの中央値）から出すようにした。実績が無ければ「不明」（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)） | Issue #1002 |
 | 1.37 | 2026-11-03 | §3.8 を新設: 顔の入れ替え（外部ツール FaceFusion。[face-swap.md](face-swap.md) を新設）と、結果ごとの顔の類似度の自動計測（SFace）。§10 のパッケージの表に `facefusion` を足した。[er-gentest.md](er-gentest.md) の `params` に `face_swap`・`face_similarity` を足した | Issue #995・#998 |
 | 1.38 | 2026-11-03 | §3.6 の復元に `speed_mode`（`redo.Restored.SpeedMode`。モデルが今は持たないモードは既定で作ると言う）、描き直しの結果の「この設定でもう一度」の英訳固定を足した。§3.7 のレシピ `Params` に `speed_mode` を足した（保存は `Info.HasSpeedMode` を満たすときだけ、`Apply` で復元） | Issue #977・#991（統合後レビュー） |
+| 1.39 | 2026-11-03 | ポーズ集（§6）に深度・法線マップを足した（画像 ID の `.depth`・`.normal`、画面の「画像の種類」、MCP の `depth_images`・`normal_images`）。ControlNet のワークフローが役割 `pose` を受けるようにした（深度・法線の ControlNet にポーズ集のマップを制御画像として渡す）。成人向けシリーズの年齢確認ゲートは製品判断待ちで見送り | Issue #1020 |

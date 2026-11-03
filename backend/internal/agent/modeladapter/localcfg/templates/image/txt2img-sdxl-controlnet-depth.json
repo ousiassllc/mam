@@ -1,0 +1,199 @@
+{
+ "id": "txt2img-sdxl-controlnet-depth",
+ "label": "SDXL: ControlNet（深度マップから画像）",
+ "media": "image",
+ "description": "ControlNetLoader と ControlNetApplyAdvanced（ComfyUI 標準ノードだけ）で、深度マップ（手前が白・奥が黒の灰色画像）の奥行きの形に沿って SDXL で描く（xinsir の depth 用 ControlNet）。参照画像の 1 枚目が制御画像で、参照の強さが ControlNet の強さ（既定 0.7）。制御画像が無い実行は断る。mam は制御画像を作らない（前処理なし）: 渡した画像をそのまま使うので、深度マップを渡すこと（生成テストの「ポーズを選ぶ」で「深度」を選ぶと、Shisei のポーズ集の深度マップを参照画像に入れられる）。写真や線画を渡しても深度には変換されず、期待した形にならない。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "graph": {
+    "4": {
+     "class_type": "CheckpointLoaderSimple",
+     "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+     }
+    },
+    "6": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "4",
+       1
+      ]
+     }
+    },
+    "7": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "4",
+       1
+      ]
+     }
+    },
+    "8": {
+     "class_type": "VAEDecode",
+     "inputs": {
+      "samples": [
+       "3",
+       0
+      ],
+      "vae": [
+       "4",
+       2
+      ]
+     }
+    },
+    "9": {
+     "class_type": "SaveImage",
+     "inputs": {
+      "filename_prefix": "mam/image",
+      "images": [
+       "8",
+       0
+      ]
+     }
+    },
+    "5": {
+     "class_type": "EmptyLatentImage",
+     "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+     }
+    },
+    "3": {
+     "class_type": "KSampler",
+     "inputs": {
+      "seed": 0,
+      "steps": 25,
+      "cfg": 7,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+       "4",
+       0
+      ],
+      "positive": [
+       "13",
+       0
+      ],
+      "negative": [
+       "13",
+       1
+      ],
+      "latent_image": [
+       "5",
+       0
+      ]
+     }
+    },
+    "10": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "example.png"
+     }
+    },
+    "12": {
+     "class_type": "ControlNetLoader",
+     "inputs": {
+      "control_net_name": "xinsir-controlnet-depth-sdxl-1.0.safetensors"
+     }
+    },
+    "13": {
+     "class_type": "ControlNetApplyAdvanced",
+     "inputs": {
+      "positive": [
+       "6",
+       0
+      ],
+      "negative": [
+       "7",
+       0
+      ],
+      "control_net": [
+       "12",
+       0
+      ],
+      "image": [
+       "10",
+       0
+      ],
+      "vae": [
+       "4",
+       2
+      ],
+      "strength": 0.7,
+      "start_percent": 0.0,
+      "end_percent": 1.0
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "prompt",
+     "node": "6",
+     "input": "text"
+    },
+    {
+     "param": "negative_prompt",
+     "node": "7",
+     "input": "text"
+    },
+    {
+     "param": "seed",
+     "node": "3",
+     "input": "seed"
+    },
+    {
+     "param": "width",
+     "node": "5",
+     "input": "width"
+    },
+    {
+     "param": "height",
+     "node": "5",
+     "input": "height"
+    },
+    {
+     "param": "reference_image",
+     "node": "10",
+     "input": "image",
+     "index": 0
+    },
+    {
+     "param": "steps",
+     "node": "3",
+     "input": "steps"
+    },
+    {
+     "param": "cfg",
+     "node": "3",
+     "input": "cfg"
+    },
+    {
+     "param": "sampler",
+     "node": "3",
+     "input": "sampler_name"
+    },
+    {
+     "param": "scheduler",
+     "node": "3",
+     "input": "scheduler"
+    },
+    {
+     "param": "reference_strength",
+     "node": "13",
+     "input": "strength"
+    }
+   ],
+   "output_node": "9",
+   "prompt_weight": "supported",
+   "quality_presets": {"fast": {"steps": 15}, "high": {"steps": 40}},
+   "reference_mode": "controlnet"
+  }
+ }
+}
