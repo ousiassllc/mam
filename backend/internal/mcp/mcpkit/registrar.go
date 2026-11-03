@@ -45,7 +45,7 @@ type Settings struct {
 	Restart *apprestart.Service
 	// Audio is the choice of the voice and lip-sync providers (audio.json).
 	Audio *audiosettings.Service
-	// FaceFusion is the paths of the external face swapper (facefusion.json; get_facefusion_status, set_facefusion_paths).
+	// FaceFusion is the paths of the external face swapper (facefusion.json; get_facefusion_status reads it. There is no tool that sets the paths: an agent must not choose the program that is started later).
 	FaceFusion *facefusionsettings.Service
 }
 

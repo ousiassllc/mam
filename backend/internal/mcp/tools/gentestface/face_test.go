@@ -94,9 +94,9 @@ func newFaceFusionRig(t *testing.T) (*rig, *facefusionsettings.Service) {
 	return r, ff
 }
 
-func TestFaceFusionStatusAndPathsAreSetThroughTheTools(t *testing.T) {
+func TestFaceFusionStatusIsReadThroughTheTool(t *testing.T) {
 	dir, python := ffInstall(t)
-	r, _ := newFaceFusionRig(t)
+	r, ff := newFaceFusionRig(t)
 
 	var st gentestface.FaceFusionStatus
 	r.CallOK("get_facefusion_status", map[string]any{}, &st)
@@ -115,15 +115,30 @@ func TestFaceFusionStatusAndPathsAreSetThroughTheTools(t *testing.T) {
 	}
 	assert.Equal(t, facefusion.ClassNonCommercial, inswapper.Class)
 
-	r.CallOK("set_facefusion_paths", map[string]any{"python": python, "path": dir}, &st)
+	require.NoError(t, ff.Set(facefusion.Config{Python: python, Path: dir})) // the paths are saved on the settings screen
+	r.CallOK("get_facefusion_status", map[string]any{}, &st)
 	assert.True(t, st.Ready)
 	assert.Equal(t, "3.9.2", st.Version)
 	assert.Equal(t, "OpenRAIL-AS", st.License)
 	assert.Equal(t, python, st.Python.Configured)
+}
 
-	assert.Contains(t, r.CallError("set_facefusion_paths", map[string]any{"python": python, "path": filepath.Join(dir, "gone")}), "validation")
-	r.CallOK("get_facefusion_status", map[string]any{}, &st)
-	assert.True(t, st.Ready, "a refused save wrote nothing")
+// The paths of FaceFusion choose a program that is started later, so an MCP client (an agent that may have been prompted by what it read)
+// does not set them: there is no tool for it (spec/api/mcp-tools-settings-policy.md, as for the paths of ffmpeg).
+func TestNoToolSetsTheFaceFusionPaths(t *testing.T) {
+	r, _ := newFaceFusionRig(t)
+
+	listed, err := r.Client.ListTools(t.Context(), nil)
+	require.NoError(t, err)
+	var names []string
+	for _, tool := range listed.Tools {
+		names = append(names, tool.Name)
+	}
+	assert.Contains(t, names, "get_facefusion_status")
+	assert.Contains(t, names, "swap_generation_face")
+	for _, name := range names {
+		assert.NotContains(t, name, "facefusion_path", "a tool that sets the paths of FaceFusion")
+	}
 }
 
 func TestSwapToolPutsTheFaceIntoAResultAndWarnsForANonCommercialModel(t *testing.T) {

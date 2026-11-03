@@ -1,5 +1,6 @@
-// Package gentestface holds the MCP tools of the faces of the generation test (Issue #995, spec/api/mcp-tools-generation-test.md): the state and the
-// paths of FaceFusion (an external tool the user installed, as ffmpeg is) and "swap the face" of a result. The face similarity of a result is
+// Package gentestface holds the MCP tools of the faces of the generation test (Issue #995, spec/api/mcp-tools-generation-test.md): the state of
+// FaceFusion (an external tool the user installed, as ffmpeg is; its paths are set on the settings screen only, as the paths of ffmpeg are: an agent does not
+// choose the program that is started later) and "swap the face" of a result. The face similarity of a result is
 // not a tool: it is the field face_similarity of get_generation_result. It is a package of its own because tools/gentest is at its line limit.
 package gentestface
 
@@ -18,16 +19,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 )
 
-// Register adds the tools: FaceFusion, an external tool the user installed, is looked up and set as ffmpeg is, and a swap is started like an
+// Register adds the tools: FaceFusion, an external tool the user installed, is looked up as ffmpeg is, and a swap is started like an
 // upscale: as a result of its own in the history. They answer "unavailable" when the app has no generation test or no FaceFusion settings.
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc, registrar: r}
 	mcpkit.Read(r, "get_facefusion_status",
 		"顔の入れ替え（FaceFusion。mam には同梱しない別ソフト）の状態。見つかったか（Python とフォルダ）・保存したパス・FaceFusion のバージョンと自己申告のライセンス・探した場所、選べるモデル（入れ替え・顔検出・復元）とそれぞれのライセンス（class: open 商用の制限なし / conditional 条件つき / noncommercial 商用NG / research 研究用のみ / unknown 商用不明）と既定、すべての入れ替えに付く注意（notes。ArcFace が非商用・成人向けの画像は断られる・本体は OpenRAIL-AS・モデルは FaceFusion が自分で取得する）、ライセンスの一次情報の URL。ready が true なら swap_generation_face を呼べる / The state of FaceFusion, the external face swapper, its models and their licenses.",
 		h.facefusionStatus)
-	mcpkit.Write(r, "set_facefusion_paths",
-		"FaceFusion の Python（FaceFusion の環境のもの）とフォルダ（facefusion.py があるところ）のパスを保存する。空文字でそのパスの指定を外し、自動で探す（フォルダは ~/facefusion など、Python は conda 環境 facefusion の python か PATH）。使えないパス（絶対パスでない・実行ファイルでない・facefusion.py が無い）は validation で拒否し、何も書かない。保存したパスは次の入れ替えからすぐ使われる / Save the Python and the folder of FaceFusion; an empty string clears one.",
-		h.setFaceFusionPaths, mcpkit.Idempotent())
 	mcpkit.Write(r, "swap_generation_face",
 		"画像の顔を、別の画像の顔に入れ替える（FaceFusion の `facefusion.py headless-run`。別プロセスで起動する）。target は顔を入れ替えられる側の画像（生成テストの成功した画像の結果 {source: history, id: result_id} など）、face は入れ替える顔の画像（アップロードした {source: upload, id: reference_id} など。いちばん大きい顔 1 つが使われる）。モデルを省くと既定（入れ替え ghost_2_256・顔検出 yunet・復元 gfpgan_1.4）。復元を使わないなら enhancer に none。結果は元とは別の結果（model が facefusion）として履歴に残り、get_generation_result の face_swap に元の result_id・モデル・ライセンスの注意、face_similarity に顔の類似度（SFace）が入る。ローカルの処理なので見積り・確認は要らず、すぐ始まる。非商用・研究用・商用不明のモデルを選ぶと warnings に注意が返る（実行はする）。FaceFusion は成人向け・ヌードの画像を断る（無効にできない）ので、mam の成人向けモデルの結果には使えない。FaceFusion が見つからないときは validation（get_facefusion_status の ready が false）。16GB VRAM の実機での動作は未確認。job_id・batch_id・result_id を返す。進みは get_job / Swap the face of one picture into another with FaceFusion as a result of its own.",
 		h.swapFace)
@@ -132,27 +130,6 @@ func facefusionStatusOf(s *facefusionsettings.Service) (FaceFusionStatus, error)
 		Notes: []string{facefusion.LicenseNote, facefusion.ArcFaceNote, facefusion.AdultNote, facefusion.FirstRunNote}, ArcFace: facefusion.ArcFaceNote,
 		LicensesURL: facefusion.LicensesURL, DisclaimerURL: facefusion.DisclaimerURL,
 	}, nil
-}
-
-// FaceFusionPathsInput are the two paths; an empty one clears it.
-type FaceFusionPathsInput struct {
-	Python string `json:"python" jsonschema:"Python 実行ファイルの絶対パス（FaceFusion の環境のもの）。空文字で指定を外す"`
-	Path   string `json:"path" jsonschema:"FaceFusion のフォルダ（facefusion.py があるところ。facefusion.py のパスでもよい）の絶対パス。空文字で指定を外す"`
-}
-
-func (h handlers) setFaceFusionPaths(_ context.Context, in FaceFusionPathsInput) (FaceFusionStatus, error) {
-	s, err := h.faceFusion()
-	if err != nil {
-		return FaceFusionStatus{}, err
-	}
-	if err := s.Set(facefusion.Config{Python: in.Python, Path: in.Path}); err != nil {
-		var ce *facefusion.ConfigError
-		if errors.As(err, &ce) {
-			return FaceFusionStatus{}, &service.ValidationError{Field: ce.Field, Message: err.Error()}
-		}
-		return FaceFusionStatus{}, err
-	}
-	return facefusionStatusOf(s)
 }
 
 // SwapFaceInput is one swap.
