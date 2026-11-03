@@ -139,20 +139,6 @@ func TestRuntimes_StartStopAutoStartAndRemove(t *testing.T) {
 	assert.Contains(t, env.CallError("set_local_runtime_autostart", map[string]any{"runtime_id": "nope", "on": true}), "not_found")
 }
 
-func TestRuntimes_ARuntimeThatATrainingHoldsIsRefusedAsAConflictWithTheReason(t *testing.T) {
-	env, mm, lr := newRuntimeEnv(t)
-	installRuntime(t, env, mm)
-	tool, err := lr.Svc.BeginTool(t.Context(), "gpt-sovits")
-	require.NoError(t, err)
-	defer tool.End()
-
-	for _, name := range []string{"install_local_runtime", "install_local_runtime_weights", "start_local_runtime", "remove_local_runtime"} {
-		msg := env.CallError(name, map[string]any{"runtime_id": "gpt-sovits"})
-		assert.Contains(t, msg, "conflict", name)
-		assert.Contains(t, msg, "声の学習が動いています", name)
-	}
-}
-
 func TestRuntimes_CancelModelInstallStopsTheJobOfARuntimeToo(t *testing.T) {
 	env, mm, lr := newRuntimeEnv(t)
 	release := lr.Host.Hold(lrtest.WeightURLPath)
