@@ -48,6 +48,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	if tiers.Data.IsEasy() {
 		shown = models // the easy tier has no list: the model it picked is posted by its hidden card, whatever the list's filter says
 	}
+	shown = withSelected(shown, models, f.models)
 	c := view.Compose{
 		Media: media, Models: choicesOf(shown, f.models), Prompts: f.prompts, Translate: f.translate, Tier: tiers.Data, Filter: bar,
 		Count: orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),

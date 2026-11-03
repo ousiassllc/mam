@@ -57,6 +57,27 @@ func TestTest_UsesTheSavedAddressAndKeyWhenGivenNone(t *testing.T) {
 	assert.Equal(t, []string{"Bearer saved-key"}, *auth)
 }
 
+// The stored key belongs to the saved address: a test of another address (the form, or test_local_llm_server of MCP) must not send it there.
+func TestTest_TheStoredKeyIsNotSentToAnotherAddress(t *testing.T) {
+	saved, savedAuth := server(t, 200, `{"data":[{"id":"m"}]}`)
+	other, otherAuth := server(t, 200, `{"data":[{"id":"m"}]}`)
+	svc, _ := newService(t, settingsPath(t), false)
+	require.NoError(t, svc.Save(llmlocal.SaveInput{BaseURL: saved.URL, APIKey: "saved-key"}))
+
+	res, err := svc.Test(context.Background(), llmlocal.TestInput{BaseURL: other.URL})
+	require.NoError(t, err)
+	assert.True(t, res.OK)
+	assert.Equal(t, []string{""}, *otherAuth, "no stored key goes to an address that is not the saved one")
+
+	_, err = svc.Test(context.Background(), llmlocal.TestInput{BaseURL: other.URL, APIKey: "typed-key"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"", "Bearer typed-key"}, *otherAuth, "a key typed with the address is still tried")
+
+	_, err = svc.Test(context.Background(), llmlocal.TestInput{BaseURL: saved.URL + "/v1/"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Bearer saved-key"}, *savedAuth, "the saved address, written another way, still has its key")
+}
+
 func TestTest_ANoModelServerIsConnectedWithAHint(t *testing.T) {
 	s, _ := server(t, 200, `{"data":[]}`)
 	svc, _ := newService(t, settingsPath(t), false)

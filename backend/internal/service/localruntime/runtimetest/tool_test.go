@@ -91,6 +91,56 @@ func TestBeginToolWantsTheWeightsThatOnlyTheJobReads(t *testing.T) {
 	tool.End()
 }
 
+func TestBeginToolRemovesWhatAnEndedMamLeftInTheWorkDirButNothingOutsideIt(t *testing.T) {
+	r := newRig(t)
+	r.install()
+	train := filepath.Join(r.layout.Root, "train")
+	stale := filepath.Join(train, "old-run")
+	require.NoError(t, os.MkdirAll(filepath.Join(stale, "exp"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(stale, "exp", "big.bin"), []byte("x"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(train, "loose.log"), []byte("x"), 0o600))
+	outside := filepath.Join(t.TempDir(), "keep")
+	require.NoError(t, os.MkdirAll(outside, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "file"), []byte("x"), 0o600))
+	if err := os.Symlink(outside, filepath.Join(train, "link")); err != nil {
+		t.Skipf("no symbolic link here: %v", err)
+	}
+
+	tool, err := r.svc.BeginTool(ctx(), "gpt-sovits")
+
+	require.NoError(t, err)
+	assert.NoDirExists(t, stale)
+	assert.NoFileExists(t, filepath.Join(train, "loose.log"))
+	assert.NoDirExists(t, filepath.Join(train, "link"), "the link is gone")
+	assert.FileExists(t, filepath.Join(outside, "file"), "what the link pointed at is not followed")
+	assert.DirExists(t, r.layout.EnvDir(), "nothing but the contents of the work directory goes")
+
+	// The directory of a job that runs is not the leftover of one: a second job is refused before it cleans.
+	live := filepath.Join(tool.Dir, "live")
+	require.NoError(t, os.MkdirAll(live, 0o755))
+	_, err = r.svc.BeginTool(ctx(), "gpt-sovits")
+	assert.ErrorIs(t, err, localruntime.ErrTraining)
+	assert.DirExists(t, live)
+	tool.End()
+}
+
+func TestBeginToolDoesNotFollowAWorkDirThatIsALink(t *testing.T) {
+	r := newRig(t)
+	r.install()
+	outside := filepath.Join(t.TempDir(), "keep")
+	require.NoError(t, os.MkdirAll(outside, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "file"), []byte("x"), 0o600))
+	if err := os.Symlink(outside, filepath.Join(r.layout.Root, "train")); err != nil {
+		t.Skipf("no symbolic link here: %v", err)
+	}
+
+	tool, err := r.svc.BeginTool(ctx(), "gpt-sovits")
+
+	require.NoError(t, err)
+	defer tool.End()
+	assert.FileExists(t, filepath.Join(outside, "file"), "the contents of the target are not removed")
+}
+
 func TestToolSpecLaunchesOnlyAToolFileInTheEnvironmentOfTheRuntime(t *testing.T) {
 	r := newRig(t)
 	r.install()
