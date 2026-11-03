@@ -42,7 +42,12 @@ templ entityAttributeForm(d Data, e entityView) {
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
-		<p class="text-sm font-medium">{ e.Name }</p>
+		<p class="flex items-center gap-2 text-sm font-medium">
+			{ e.Name }
+			if e.Draft {
+				@atoms.BadgeWith(atoms.BadgeWarn, "下書き", templ.Attributes{"data-testid": "character-draft", "title": "Brief の添付画像から作った下書きです。髪型・衣装などを書き足して保存すると、この印は消えます（名前は仮のままです）"})
+			}
+		</p>
 		<div class="grid gap-2 sm:grid-cols-2">
 			for _, f := range e.Fields {
 				@molecules.WorldStateField(f)

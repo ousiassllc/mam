@@ -14,12 +14,15 @@ type CharacterCreateData struct {
 	DOMID string
 	// URL is where the form is posted.
 	URL string
-	// Images are the Library images that can be the face or the body (kind character). Nil leaves the two selects out: a Series has
-	// no Library of its own.
-	Images []domain.ReferenceItem
+	// Images are the Library images that can be the face or the body (kind character; a Series has no Library of its own: it offers the
+	// images of its Episodes). Nil leaves the two selects out.
+	Images []CharacterImageOption
 	// Note is a line under the fields (what to do for an image when there is no select for it); "" for none.
 	Note string
 }
+
+// CharacterImageOption is one image: the Value the form sends and the Label the select shows.
+type CharacterImageOption struct{ Value, Label string }
 
 // characterNameMax is voicerefsvc.MaxCharacterNameRunes (the web layers do not import service; the handler test holds the two together).
 const characterNameMax = "100"
@@ -81,8 +84,8 @@ templ characterImageSelect(d CharacterCreateData, name, label string) {
 		{ label }
 		@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": d.DOMID + "-" + name, "name": name}) {
 			<option value="">（なし）</option>
-			for _, it := range d.Images {
-				<option value={ it.ID }>{ it.Name }</option>
+			for _, o := range d.Images {
+				<option value={ o.Value }>{ o.Label }</option>
 			}
 		}
 	</label>

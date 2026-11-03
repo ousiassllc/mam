@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobrecent"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
@@ -200,6 +201,26 @@ func TestRecent_AFailedPlanForWantOfAKeyHasNextSteps(t *testing.T) {
 	assert.Contains(t, byID[noKey.ID].Error, "API キー", "the failure text stays as it was written")
 	assert.Empty(t, byID[timeout.ID].NextSteps)
 	assert.Empty(t, byID[queued.ID].NextSteps)
+}
+
+// A plan that stopped after drafting Characters from the attached images tells, in the list of jobs, what to do with the drafts (#1022).
+func TestRecent_ADraftedPlanFailureTellsWhatToDoWithTheDrafts(t *testing.T) {
+	w := newWorld(t)
+	p, err := w.svc.Projects.Create(t.Context(), service.CreateProjectInput{Content: "コーヒー店の動画を作りたい"})
+	require.NoError(t, err)
+	job := w.create(domain.JobPlan, map[string]string{"project_id": p.ID})
+	require.NoError(t, w.rig.Table.MarkFailed(t.Context(), job.ID, "LLM の API キーが設定されていません。\n"+planadvice.DraftNote(1)))
+
+	var entry joblist.Entry
+	for _, e := range w.recent() {
+		if e.ID == job.ID {
+			entry = e
+		}
+	}
+
+	assert.Contains(t, entry.Error, "登場人物の下書き")
+	assert.Contains(t, entry.NextSteps, "「下書き」の印")
+	assert.Contains(t, entry.NextSteps, "チャットに何かメッセージを送ると")
 }
 
 // A batch of the generation test leads to the generation test; its state and its failure are the batch's.
