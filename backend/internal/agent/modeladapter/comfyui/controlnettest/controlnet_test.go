@@ -4,8 +4,12 @@
 package controlnettest
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/png"
 	"testing"
 	"time"
 
@@ -36,10 +40,32 @@ func ctx(t *testing.T) context.Context {
 	return c
 }
 
-func refs(prompt string, strength float64) modeladapter.ImageRequest {
+// photo is a readable picture with one contour (a dark disc on gray): a ControlNet workflow makes its edge map from the reference (Issue #993).
+func photo(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewGray(image.Rect(0, 0, 96, 96))
+	for y := range 96 {
+		for x := range 96 {
+			v := uint8(170)
+			if (x-48)*(x-48)+(y-48)*(y-48) <= 30*30 {
+				v = 40
+			}
+			img.SetGray(x, y, color.Gray{v})
+		}
+	}
+	var b bytes.Buffer
+	require.NoError(t, png.Encode(&b, img))
+	return b.Bytes()
+}
+
+func refs(t *testing.T, prompt string, strength float64) modeladapter.ImageRequest {
+	return refsOf(prompt, strength, photo(t))
+}
+
+func refsOf(prompt string, strength float64, data []byte) modeladapter.ImageRequest {
 	return modeladapter.ImageRequest{
 		Prompt: prompt, AspectRatio: "1:1", Options: localcfg.ImageOptions{Refs: []localcfg.RefOption{{Strength: strength}}},
-		Inputs: []modeladapter.Input{{Data: comfyuitest.PNG, MimeType: "image/png"}},
+		Inputs: []modeladapter.Input{{Data: data, MimeType: "image/png"}},
 	}
 }
 
@@ -62,7 +88,7 @@ func TestControlNetWorkflowTakesTheReferenceAsTheControlImageAndItsStrength(t *t
 	f := comfyuitest.New(t)
 	b := backend(t, f, "txt2img-sdxl-controlnet")
 
-	_, err := b.GenerateImage(ctx(t), "", refs("a cat", 0.35))
+	_, err := b.GenerateImage(ctx(t), "", refs(t, "a cat", 0.35))
 	require.NoError(t, err)
 
 	g := f.Graph()
@@ -81,7 +107,7 @@ func TestControlNetStrengthDefaultsAndIsKeptWithinZeroAndOne(t *testing.T) {
 	for strength, want := range map[float64]float64{0: 0.7, 0.9: 0.9, 5: 1} {
 		f := comfyuitest.New(t)
 		b := backend(t, f, "txt2img-sdxl-controlnet")
-		_, err := b.GenerateImage(ctx(t), "", refs("x", strength))
+		_, err := b.GenerateImage(ctx(t), "", refs(t, "x", strength))
 		require.NoError(t, err)
 		assert.InDelta(t, want, num(f.Graph()["13"].Inputs["strength"]), 1e-9, "strength %v", strength)
 	}
@@ -108,11 +134,63 @@ func TestControlNetAndIPAdapterWorkflowsRefuseARunWithoutTheirImage(t *testing.T
 func TestIPAdapterWorkflowTakesTheReferenceAsTheStyleImageAndItsWeight(t *testing.T) {
 	f := comfyuitest.New(t)
 	b := backend(t, f, "txt2img-sdxl-ipadapter")
-	_, err := b.GenerateImage(ctx(t), "", refs("a cat", 0.5))
+	_, err := b.GenerateImage(ctx(t), "", refs(t, "a cat", 0.5))
 	require.NoError(t, err)
 	g := f.Graph()
 	assert.InDelta(t, 0.5, num(g["13"].Inputs["weight"]), 1e-9)
 	assert.Equal(t, `"10"/0`, linkTo(g["13"].Inputs["image"]))
 	assert.Equal(t, `"13"/0`, linkTo(g["3"].Inputs["model"]))
 	assert.Equal(t, 1, f.Count("POST /upload/image"))
+}
+
+// #993: the ControlNet workflow is given a photograph and uploads its Canny edge map, drawn by mam (no preprocessor node, no Python package).
+func TestControlNetWorkflowUploadsTheEdgeMapOfThePhotograph(t *testing.T) {
+	f := comfyuitest.New(t)
+	b := backend(t, f, "txt2img-sdxl-controlnet")
+	_, err := b.GenerateImage(ctx(t), "", refs(t, "a cat", 0.7))
+	require.NoError(t, err)
+
+	require.Len(t, f.UploadBodies(), 1)
+	assert.NotEqual(t, photo(t), f.UploadBodies()[0], "the photograph itself is not the control image")
+	edges, err := png.Decode(bytes.NewReader(f.UploadBodies()[0]))
+	require.NoError(t, err)
+	onRing := func(x, y int) bool { r, _, _, _ := edges.At(x, y).RGBA(); return r > 0x8000 }
+	assert.True(t, onRing(48+30, 48) || onRing(48+29, 48) || onRing(48+31, 48), "the contour of the disc is a white line")
+	assert.False(t, onRing(48, 48), "the inside of the disc is black")
+	assert.False(t, onRing(2, 2), "so is the flat background")
+	assert.Regexp(t, `\.png$`, f.Uploads()[0])
+}
+
+// A user who prepared the edge map gives it as before: the same bytes are uploaded.
+func TestControlNetWorkflowUploadsAnEdgeMapTheUserMadeAsItIs(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 64, 64))
+	for x := 10; x < 54; x++ {
+		img.SetGray(x, 20, color.Gray{255})
+	}
+	var edgeMap bytes.Buffer
+	require.NoError(t, png.Encode(&edgeMap, img))
+
+	f := comfyuitest.New(t)
+	b := backend(t, f, "txt2img-sdxl-controlnet")
+	_, err := b.GenerateImage(ctx(t), "", refsOf("x", 0.7, edgeMap.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, [][]byte{edgeMap.Bytes()}, f.UploadBodies())
+}
+
+func TestControlNetWorkflowRefusesAReferenceThatIsNotAPicture(t *testing.T) {
+	f := comfyuitest.New(t)
+	b := backend(t, f, "txt2img-sdxl-controlnet")
+	_, err := b.GenerateImage(ctx(t), "", refsOf("x", 0.7, []byte("not a picture")))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "control image")
+	assert.Zero(t, f.Count("POST /prompt"))
+}
+
+// The IP-Adapter takes the picture as it is: no preprocessing.
+func TestIPAdapterWorkflowUploadsThePictureAsItIs(t *testing.T) {
+	f := comfyuitest.New(t)
+	b := backend(t, f, "txt2img-sdxl-ipadapter")
+	_, err := b.GenerateImage(ctx(t), "", refs(t, "x", 0.5))
+	require.NoError(t, err)
+	assert.Equal(t, [][]byte{photo(t)}, f.UploadBodies())
 }

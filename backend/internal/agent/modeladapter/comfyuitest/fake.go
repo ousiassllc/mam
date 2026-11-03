@@ -15,8 +15,9 @@ import (
 	"github.com/coder/websocket"
 )
 
-// PNG is a minimal PNG (the 8-byte signature plus a little more is enough for sniffing).
-var PNG = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89")
+// PNG is a real 1x1 PNG (one opaque black pixel): it is sniffed as a PNG and decodes, which a ControlNet workflow (it makes the edge map of the
+// reference, Issue #993) needs.
+var PNG = []byte("\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0d\x49\x44\x41\x54\x78\x9c\x63\x60\x60\x60\xf8\x0f\x00\x01\x04\x01\x00\x5f\xe5\xc3\x4b\x00\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82")
 
 // Fake is a ComfyUI server: it queues what POST /prompt gets, reports progress over its WebSocket,
 // answers /history and /view, and records every request the backend makes.
@@ -28,6 +29,7 @@ type Fake struct {
 	sockets   map[string]*websocket.Conn // client id -> socket
 	submitted []map[string]json.RawMessage
 	uploads   []string // file names uploaded
+	bodies    [][]byte // the bytes of those files
 	requests  []string // "METHOD path" of every request
 	auths     []string // Authorization header of every request
 	cancelled []string
@@ -84,10 +86,13 @@ func (f *Fake) serve(w http.ResponseWriter, r *http.Request) {
 		f.socket(w, r)
 	case r.URL.Path == "/upload/image" && r.Method == http.MethodPost:
 		must(f.t, r.ParseMultipartForm(32<<20)) //nolint:gosec // a test server; the client is ours
-		_, hdr, err := r.FormFile("image")
+		file, hdr, err := r.FormFile("image")
+		must(f.t, err)
+		body, err := io.ReadAll(file)
 		must(f.t, err)
 		f.mu.Lock()
 		f.uploads = append(f.uploads, hdr.Filename)
+		f.bodies = append(f.bodies, body)
 		f.mu.Unlock()
 		_ = json.NewEncoder(w).Encode(map[string]string{"name": hdr.Filename, "subfolder": "", "type": "input"})
 	case r.URL.Path == "/prompt" && r.Method == http.MethodPost:

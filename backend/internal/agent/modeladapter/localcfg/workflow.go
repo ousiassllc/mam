@@ -77,6 +77,9 @@ type Workflow struct {
 	SizeMultiple int `json:"size_multiple,omitempty"`
 	// ReferenceMode says how the workflow uses reference images (ReferenceMode); empty when it uses none or does not say.
 	ReferenceMode ReferenceMode `json:"reference_mode,omitempty"`
+	// ReferencePreprocess (controlnet only; imgprep.Kinds) makes the control image from the reference picture inside mam before it is uploaded, so that a
+	// photograph can be given (Issue #993): "canny" draws the edge map in Go, with no custom node. Empty: the picture is the control image as it is.
+	ReferencePreprocess string `json:"reference_preprocess,omitempty"`
 	// NoReference is what a run without any reference image changes in the graph (an img2img workflow samples from an empty
 	// latent then).
 	NoReference []Override `json:"no_reference,omitempty"`

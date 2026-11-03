@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"slices"
+
+	"github.com/ousiassllc/mam/backend/internal/imgprep"
 )
 
 // ReferenceMode is how a workflow uses the reference images of an image generation.
@@ -17,7 +19,7 @@ const (
 	// ModeImg2Img is a model that starts the sampling from one reference image: the denoise tells how far the result leaves it.
 	ModeImg2Img ReferenceMode = "img2img"
 	// ModeControlNet is a ControlNet workflow: the one reference image is the control image (a canny edge map, an OpenPose skeleton, a depth
-	// map: made by the user, mam runs no preprocessor), and the strength of the reference is the ControlNet's strength. The workflow
+	// map: made by the user, or drawn by mam for ReferencePreprocess "canny"), and the strength of the reference is the ControlNet's strength. The workflow
 	// cannot run without it.
 	ModeControlNet ReferenceMode = "controlnet"
 	// ModeIPAdapter is an IP-Adapter workflow (a custom node: Workflow.RequiresNodes): the one reference image shows the look, the style or the
@@ -81,6 +83,9 @@ func validateReferenceMode(where string, w Workflow, g Graph) []error {
 		if len(w.NoReference) > 0 || slices.ContainsFunc(w.Assignments, func(a Assignment) bool { return a.Optional }) {
 			errs = append(errs, fmt.Errorf("%s: a %s workflow cannot run without its reference image (no no_reference, no optional)", where, w.ReferenceMode))
 		}
+	}
+	if w.ReferencePreprocess != "" && (w.ReferenceMode != ModeControlNet || !slices.Contains(imgprep.Kinds, w.ReferencePreprocess)) {
+		errs = append(errs, fmt.Errorf("%s: reference_preprocess is one of %v and applies to a controlnet workflow only", where, imgprep.Kinds))
 	}
 	if w.ReferenceDenoiseMin < 0 || w.ReferenceDenoiseMin >= 1 {
 		errs = append(errs, fmt.Errorf("%s: reference_denoise_min must be within 0 and below 1", where))
