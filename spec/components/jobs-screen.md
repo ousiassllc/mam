@@ -103,3 +103,4 @@
 | 1.0 | 2026-11-03 | 新規作成（実装済み） | Issue #980。オーナーの決定「作る」。`refresh.Bar` を置く画面としてのジョブ一覧 |
 | 1.1 | 2026-11-03 | 各行の「開く」に安定した id（`jobs-open-<ジョブ ID>`。`organisms/jobs.Row.ID`）を付けた。2 秒ごとの一覧の差し替えでも、htmx が同じ id の要素へフォーカスを戻す（`focus-restore-request.wtest.ts`） | Issue #980 の統合レビュー指摘。「開く」のフォーカスが 2 秒以内に失われていた |
 | 1.2 | 2026-11-03 | 読めなかった応答にもポーリングを残す。`job` の並びを `COALESCE(started_at, created_at) DESC, id DESC`（LIMIT の副問い合わせも同じ）に揃える | 統合レビュー指摘（#980）。読めない 1 回でポーリングが止まり復帰しなかった。並びが積んだ順で、仕様の「開始が新しい順」と食い違っていた |
+| 1.3 | 2026-11-03 | 進み具合の行（`%` と説明）を、長いファイル名でも行の幅で折り返す（`break-words`）。測るのは `layout/long-names.wtest.ts`（[model-manager-screen.md](model-manager-screen.md) の「長い名前は折り返す」） | Issue #1003 |

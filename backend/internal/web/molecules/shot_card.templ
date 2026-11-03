@@ -138,7 +138,7 @@ templ ShotActions(shotID, subject string, canContinue bool, candidates bool) {
 templ TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable bool) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
 		<span class="flex min-w-0 items-center gap-1">
-			<span class="truncate">{ t.ModelName }</span>
+			<span class="truncate" title={ t.ModelName }>{ t.ModelName }</span>
 			@commercial.Mark(commercial.Of(t.ModelName))
 		</span>
 		<span class="flex shrink-0 items-center gap-2">

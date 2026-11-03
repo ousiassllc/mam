@@ -24,7 +24,7 @@ templ notice(m Message, id string) {
 templ progressBar(p Progress, label string) {
 	<div class="flex flex-col gap-1" role="status" aria-live="polite" data-testid="mm-progress" data-job={ p.JobID }>
 		<progress class="w-full" max="100" value={ itoa(p.Percent) } aria-label={ label }></progress>
-		<p class="text-xs text-neutral-300">
+		<p class="break-words text-xs text-neutral-300">
 			{ p.Message }（{ itoa(p.Percent) }%）
 			if p.Bytes != "" {
 				<span class="text-neutral-400">{ p.Bytes }</span>

@@ -160,7 +160,7 @@ templ trialItem(t Trial) {
 	<li class="flex flex-col gap-2 rounded-md border border-neutral-800 p-3 text-sm" data-testid="mm-trial-item" data-trial={ t.ID } data-status={ t.Status }>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<span class="flex flex-wrap items-center gap-2">
-				<code class="text-xs">{ t.ModelID }</code>
+				<code class="break-all text-xs">{ t.ModelID }</code>
 				@commercial.Mark(t.Answer)
 				@atoms.Badge(trialTone(t.Status), t.StatusText)
 				if t.Audio {
