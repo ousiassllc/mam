@@ -60,6 +60,9 @@ var urlPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^https://www\.python\.org/ftp/python/[0-9]+\.[0-9]+\.[0-9]+/python-[0-9]+\.[0-9]+\.[0-9]+-embed-amd64\.zip$`),
 	// A wheel of PyPI (files.pythonhosted.org/packages/<hash path>/<file>).
 	regexp.MustCompile(`^https://files\.pythonhosted\.org/packages/[0-9a-f/]+/[A-Za-z0-9][A-Za-z0-9._+-]*\.whl$`),
+	// The source distribution of a PyPI package that has no wheel (a pure-Python package; a KindTarGz). It is extracted as a source tree and
+	// put on the path: nothing of it is built or run at install.
+	regexp.MustCompile(`^https://files\.pythonhosted\.org/packages/[0-9a-f/]+/[A-Za-z0-9][A-Za-z0-9._+-]*\.tar\.gz$`),
 	// PyTorch's wheels of one CUDA build, and OpenMMLab's wheels of the mmcv build for that PyTorch.
 	regexp.MustCompile(`^https://download\.pytorch\.org/whl/cu[0-9]+/[A-Za-z0-9][A-Za-z0-9._%+-]*\.whl$`),
 	regexp.MustCompile(`^https://download\.openmmlab\.com/mmcv/dist/cu[0-9]+/torch[0-9.]+/[A-Za-z0-9][A-Za-z0-9._-]*\.whl$`),

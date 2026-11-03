@@ -54,7 +54,7 @@ func assetNamed(t *testing.T, s catalog.ResourceSet, name string) catalog.Resour
 // license of the set; the files of an archive are pinned too.
 func TestEmbeddedAssetSetsArePinnedWithSourceAndLicense(t *testing.T) {
 	c := catalog.Default()
-	require.Len(t, c.ResourceSets, 3)
+	require.Len(t, c.ResourceSets, 4)
 	for _, s := range c.ResourceSets {
 		for _, a := range s.Assets {
 			if s.Runtime == "shisei-poses" { // the pose library's files lie on GitHub: the release's zips, and a file at a commit

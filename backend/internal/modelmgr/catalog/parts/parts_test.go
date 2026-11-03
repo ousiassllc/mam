@@ -66,17 +66,17 @@ func TestCheckRefusesWhatIsNotPinnedOrNotWhereAPartMayCome(t *testing.T) {
 		edit func(p *parts.Part)
 		want string
 	}{
-		"another host":          {func(p *parts.Part) { p.URL = "https://example.com/x.whl" }, "not one of the places"},
-		"http":                  {func(p *parts.Part) { p.URL = strings.Replace(p.URL, "https", "http", 1) }, "not one of the places"},
-		"a source distribution": {func(p *parts.Part) { p.URL = "https://files.pythonhosted.org/packages/ab/cd/x-1.0.tar.gz" }, "not one of the places"},
-		"no digest":             {func(p *parts.Part) { p.SHA256 = "" }, "sha256"},
-		"an upper-case digest":  {func(p *parts.Part) { p.SHA256 = strings.ToUpper(sha) }, "sha256"},
-		"no size":               {func(p *parts.Part) { p.Size = 0 }, "size and extracted_size"},
-		"no extracted size":     {func(p *parts.Part) { p.ExtractedSize = 0 }, "size and extracted_size"},
-		"no name":               {func(p *parts.Part) { p.Name = "" }, "a name"},
-		"a kind of its own":     {func(p *parts.Part) { p.Kind = "tar" }, "tar.gz or wheel"},
-		"a wheel with a dest":   {func(p *parts.Part) { p.Dest = "x" }, "no dest or strip"},
-		"a wheel with a strip":  {func(p *parts.Part) { p.Strip = "x" }, "no dest or strip"},
+		"another host":                     {func(p *parts.Part) { p.URL = "https://example.com/x.whl" }, "not one of the places"},
+		"http":                             {func(p *parts.Part) { p.URL = strings.Replace(p.URL, "https", "http", 1) }, "not one of the places"},
+		"a source distribution as a wheel": {func(p *parts.Part) { p.URL = "https://files.pythonhosted.org/packages/ab/cd/x-1.0.tar.gz" }, "a .whl url"},
+		"no digest":                        {func(p *parts.Part) { p.SHA256 = "" }, "sha256"},
+		"an upper-case digest":             {func(p *parts.Part) { p.SHA256 = strings.ToUpper(sha) }, "sha256"},
+		"no size":                          {func(p *parts.Part) { p.Size = 0 }, "size and extracted_size"},
+		"no extracted size":                {func(p *parts.Part) { p.ExtractedSize = 0 }, "size and extracted_size"},
+		"no name":                          {func(p *parts.Part) { p.Name = "" }, "a name"},
+		"a kind of its own":                {func(p *parts.Part) { p.Kind = "tar" }, "tar.gz or wheel"},
+		"a wheel with a dest":              {func(p *parts.Part) { p.Dest = "x" }, "no dest or strip"},
+		"a wheel with a strip":             {func(p *parts.Part) { p.Strip = "x" }, "no dest or strip"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := wheel("numpy")

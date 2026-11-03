@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
 )
 
 // ResourceLicense is the license of a weight or a dependency, as the screen and the docs show it. Notice is the sentence that says what
@@ -58,8 +59,10 @@ type Resource struct {
 	URL     string           `json:"url"`
 	SHA256  string           `json:"sha256"`
 	Size    int64            `json:"size"`
-	// Required: the runtime needs the asset to start.
+	// Required: the runtime needs the asset to start. Choice names the model (ResourceSet.Choices) the asset belongs to: it is fetched and
+	// checked only while that model is chosen ("" for an asset every model needs).
 	Required bool           `json:"required"`
+	Choice   string         `json:"choice,omitempty"`
 	Source   ResourceSource `json:"source"`
 	License  string         `json:"license"`
 }
@@ -82,6 +85,28 @@ type ResourceSet struct {
 	Runtime  string            `json:"runtime"`
 	Licenses []ResourceLicense `json:"licenses"`
 	Assets   []Resource        `json:"assets"`
+	// Choices are the models the runtime can run with (none for a runtime with one set of weights): see package choice.
+	Choices []choice.Choice `json:"choices,omitempty"`
+}
+
+// Chosen is the id of the model in force: chosen when it is one of the Choices, else the default one ("" for a set without choices).
+func (s ResourceSet) Chosen(chosen string) string {
+	if slices.ContainsFunc(s.Choices, func(c choice.Choice) bool { return c.ID == chosen }) {
+		return chosen
+	}
+	return choice.Default(s.Choices)
+}
+
+// Active is the assets of the model in force (Chosen): those of no choice, and those of the model.
+func (s ResourceSet) Active(chosen string) []Resource {
+	chosen = s.Chosen(chosen)
+	var out []Resource
+	for _, a := range s.Assets {
+		if a.Choice == "" || a.Choice == chosen {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 // License returns the license with the id.

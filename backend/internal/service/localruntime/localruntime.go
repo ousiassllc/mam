@@ -299,11 +299,11 @@ func (s *Service) support(ctx context.Context, inst *instance, fresh bool) rtm.S
 	return rtm.Evaluate(inst.rt, s.Platform, rep)
 }
 
-// refuse is the *SupportError of an unsupported machine, nil when the runtime can run here.
+// refuse is the *SupportError of an unsupported machine, ErrConsentRequired for a model whose license is not accepted, else nil.
 func (s *Service) refuse(ctx context.Context, inst *instance) (rtm.Support, error) {
 	sup := s.support(ctx, inst, true)
 	if !sup.Supported {
 		return sup, &SupportError{Runtime: inst.rt.ID, Support: sup}
 	}
-	return sup, nil
+	return sup, inst.needConsent() // a model whose license was not accepted is not installed or started either
 }
