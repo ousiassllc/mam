@@ -1,4 +1,4 @@
-# ローカルランタイム（GPT-SoVITS・MuseTalk）
+# ローカルランタイム（GPT-SoVITS・Irodori-TTS・MuseTalk）
 
 [model-manager.md](model-manager.md)（同梱の ComfyUI エンジン）と同じ作りで、**声（GPT-SoVITS）と口パク（MuseTalk 1.5）をローカルで動かす実行環境を、MAM が自動で導入・起動・停止・状態表示まで管理する**ための基盤。親 Issue は #912（決定事項: 実行方式 B「ComfyUI の同梱エンジンと同じ感じで、mam が自動で入れて起動まで管理する」）。この文書は基盤と GPT-SoVITS の環境導入（Issue #918）、重み・依存ファイルの固定カタログと取得・検証・出典とライセンスの表示・画面と MCP（Issue #920。§12）、MuseTalk 1.5 の環境の組み立て・起動・口パクの入口（Issue #921。§13）を定める。実装は `backend/internal/modelmgr/runtime`（導入・判定・起動コマンド・重みの検証と取得）、`backend/internal/modelmgr/catalog`（カタログ）と `backend/internal/service/localruntime`（Service）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
 
@@ -7,6 +7,8 @@
 | ランタイム管理の基盤、GPT-SoVITS の環境の導入・起動・停止・状態 | **#918（この文書）** |
 | 重み・依存ファイルの固定カタログ（固定 URL＋SHA-256、再開可）、出典とライセンスの画面表示、画面・MCP | **#920（§12）** |
 | MuseTalk 1.5 のランタイム（環境の組み立て・起動・口パクの入口） | **#921（§13）** |
+| Irodori-TTS のランタイム（環境の組み立て・起動）、モデルの選択、Gemma Terms の同意 | **#1015（§14）** |
+| Irodori-TTS の声のプロバイダー（Audio Director。参照音声・キャプション・絵文字・GPU の扱い） | **#1015**（[model-adapters-m3.md §14.11・§14.12](../model-adapters-m3.md)。この文書の範囲外） |
 | MuseTalk の口パクプロバイダー（Audio Director。実行ごとの選択の入口まで） | **#923**（[model-adapters-m3.md §14.9](../model-adapters-m3.md)。この文書の範囲外） |
 | プロバイダーの選択の保存・クラウドへのフォールバック・利用者向けの文言 | #924（この文書の範囲外） |
 
@@ -431,3 +433,107 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 | GitHub の zip アーカイブのバイト列が将来も同じであること（§13.1）、PyPI・PyTorch・OpenMMLab・python.org の URL が将来も残ること | 保証できない。変わったら導入は SHA-256 の不一致・404 で失敗する（`ErrSourceGone` と同様に、旧い URL を差し替える更新が要る） |
 | 82 個の Python パッケージ・Python 本体・NVIDIA の DLL のライセンスの原文との突き合わせ | **未確認**（`THIRD_PARTY_NOTICES.md`） |
 | `ffmpeg` の libx264・aac を持つビルド（mam が導入する ffmpeg は GPL ビルドで持つが、利用者が設定で指す ffmpeg は未確認） | 出力の書き込みに失敗したら `ffmpeg_failed`（ffmpeg の末尾のメッセージつき） |
+
+## 14. Irodori-TTS のランタイムと、モデルの選択（Issue #1015）
+
+日本語専用の音声合成 Irodori-TTS（Aratako 氏）を、GPT-SoVITS・MuseTalk と同じ基盤（§3〜§8・§12・§13）で導入・起動・停止する。**この節の範囲は、ランタイムの組み立て・重みの固定・モデルの選択・同意まで**。Audio Director のプロバイダー（参照音声・キャプション・絵文字・GPU の扱い）は [model-adapters-m3.md §14.11・§14.12](../model-adapters-m3.md)。
+
+### 14.1 全体
+
+| 項目 | 内容 |
+|---|---|
+| ランタイム ID | `irodori-tts`（`data/runtimes/irodori-tts.json`。用途 `tts`）。声のプロバイダー値は `irodori`（GPT-SoVITS の `local` は変えない） |
+| 対応環境 | Windows x64 ＋ NVIDIA の GPU だけ（§4 の判定。GPT-SoVITS と同じ規則）。macOS・Linux・非 x64・NVIDIA 無しは `unsupported`（理由と ElevenLabs の案内は、カタログの文。macOS の文は「公式のサーバーは Apple silicon（MPS）での推論に対応していますが、mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです」） |
+| 入口 | 公式の API サーバー Irodori-TTS-Server（OpenAI 互換の `POST /v1/audio/speech`）。mam は公式の起動（`python -m irodori_openai_tts`）を**使わず**、mam の起動用スクリプト `mam_irodori_server.py`（`data/overlays`）が公式のアプリを読み込み、前に番人を置いて起動する（§14.3） |
+| 重み | 同梱しない。モデルの重み・音声コーデック・SilentCipher の透かしの重みを、固定の URL（コミット固定）と SHA-256 で取得（§14.4）。モデルは利用者が選ぶ（§14.5） |
+| 参照 | Issue #1015。親は #912（ローカルの声・口パクの基盤）。モデル一覧の絞り込みの項目は #1011（§14.8） |
+
+### 14.2 実行環境の作り方（決定と理由）
+
+公式は Windows 向けの配布物（統合パッケージ）を出していない。そこで MuseTalk（§13.1）と同じく、mam が**部品をカタログに固定して取得し、組み立てる**（`catalog.RuntimeVariant.Parts`・`catalog.Runtime.Build`）。部品は 160 個、取得は 3,156,040,034 B、展開後 5,382,468,374 B（**どの部品も実物のファイルで SHA-256 と大きさを測った**。wheel は公式サーバーの `uv.lock` のコミット `61012c76…` の Windows・Python 3.10・CUDA 12.8（`torch 2.10.0+cu128`）の分で、ロックの SHA-256 と一致することを確かめた）。
+
+| 部品 | 数 | 置き場所（環境の下） |
+|---|---|---|
+| Python 3.10.11 の組み込み版（MuseTalk と同じ部品。`python.org`） | 1 | `python/` |
+| Python の wheel（PyPI と `download.pytorch.org/whl/cu128`。torch・torchaudio の URL はロックの `download-r2.pytorch.org` を `download.pytorch.org` に直した） | 155 | `Lib/site-packages` |
+| GitHub の zip（コミット固定）: Irodori-TTS-Server `61012c76…`・Irodori-TTS `89f9d8fb…`・DACVAE `414c2078…`・SilentCipher `d46d7d08…` | 4 | `irodori-tts-server/`・`irodori-tts/`・`dacvae-src/`・`silentcipher-src/` |
+| PyPI の sdist（`.tar.gz`。wheel が無い純 Python の argbind 0.3.9・julius 0.2.7・randomname 0.2.1） | 3 | `vendor/<名前>/`（ビルドも実行もせず、検索パスに置く） |
+
+- **PyPI の sdist を許す**: `parts.URLAllowed` に、`files.pythonhosted.org/packages/…/<名前>.tar.gz` を足した（`KindTarGz` の部品だけ。wheel の種類の部品は引き続き `.whl` だけ。ホストは変わらない）。展開は既存の `extract.TarGz`（`extracted_size` で打ち切り、環境の外へ書かない）。
+- `python310._pth` は、`../irodori-tts-server/src`・`../irodori-tts`・`../dacvae-src`・`../silentcipher-src/src`・`../vendor/*` を足す（`-I` で起動しても効く。§13.1 と同じ）。
+- 起動: `python -I -u -X utf8 mam_irodori_server.py --host 127.0.0.1 --port {port}`。準備の確認は `GET /health`（`ready_path`）。起動の待ちは 600 秒（モデルの読み込みを待つ）。トークンは環境変数 `MAM_RUNTIME_TOKEN`（§5.2）。ネットワークは `HF_HUB_OFFLINE=1`・`TRANSFORMERS_OFFLINE=1` で止める（トークナイザーは各モデルに同梱し、テキストエンコーダーの設定は safetensors のメタデータにあるので、実行中に Hugging Face へ取りに行かない）。
+- ライセンス: コード（サーバー・推論・DACVAE・SilentCipher）は MIT。`commercial: yes`。重みは §14.4（`unknown` が 1 件）。
+
+### 14.3 番人（`mam_irodori_server.py`）
+
+公式のサーバーは、(1) Host の検査が無い、(2) `irodori.ref_wav` でこの PC の任意の音声ファイルを読む、(3) `irodori.lora_adapter` で任意のディレクトリの LoRA を読み込む、(4) `/v1/audio/voices` で誰でも声のファイルを足したり消したりできる、(5) `IRODORI_API_KEY` が無ければ認証が無い。ブラウザのページから `127.0.0.1` へ要求を送れるので、公式の起動のままでは危ない。そこで番人（標準ライブラリだけ。`torch`・`fastapi` 無しでテストできる）が、次だけに答える（GPT-SoVITS の番人 §5.2 と同じ考え方）。
+
+| 要求 | 条件 |
+|---|---|
+| `POST /v1/audio/speech` | ヘッダー `X-Mam-Token`（その起動のトークン。`hmac.compare_digest`）が要る |
+| `GET /health` | トークン不要（mam の準備確認） |
+
+- Host が `127.0.0.1:<port>`・`localhost:<port>` 以外なら 403（DNS rebinding）。上の 2 つ以外の要求（声のアップロード・削除、`/v1/models`、ドキュメントの画面など）は、トークンがあっても 404。`lora_adapter` は mam が送らない。
+- 使うモデルは `MAM_RUNTIME_CHOICE`（§14.5）の名前のフォルダ（`models/<選択>/model.safetensors`）。コーデックは `models/codec/weights.pth`、透かしは `models/silentcipher/44_1_khz/73999_iteration/`（mam が取得して検証したもの）。`IRODORI_*` の設定（ホスト・ポート・チェックポイント・コーデック・声のフォルダ・先読み・参照無しの許可）は番人が決めて、公式のアプリを読み込む前に環境変数に入れる。
+- SilentCipher の読み込み（`silentcipher.get_model`）は、公式では Hugging Face から取りに行くので、番人が**取得済みのファイルを読む形に差し替える**。差し替えは番人のテスト（偽の `silentcipher`）で確かめた。**実物の動作は未確認**。
+
+### 14.4 重みと依存ファイル（`data/assets/irodori-tts.json`）
+
+どれも `huggingface.co/<repo>/resolve/<コミット>/…` で固定し、実物のファイルで SHA-256 と大きさを測った（2026-11-03）。**どのモデルも、実行中の取得は無い**。
+
+| 名前 | 取得元（コミット） | 大きさ | 置き場所 | ライセンス |
+|---|---|---|---|---|
+| コーデック（Semantic-DACVAE-Japanese-32dim） | `Aratako/Semantic-DACVAE-Japanese-32dim`（`47376ee2…`） | 429,620,065 B | `models/codec/weights.pth` | MIT（`yes`） |
+| 透かし（SilentCipher 44.1 kHz。4 ファイル） | `sony/silentcipher`（`a1c4d021…`） | 計 11,749,851 B（`dec_c` 2,008,794・`dec_m_0` 9,554,818・`enc_c` 184,765・`hparams.yaml` 1,474） | `models/silentcipher/44_1_khz/73999_iteration/` | **確認できていない（`unknown`）** |
+| v4.1-Small | `Aratako/Irodori-TTS-v4.1-Small`（`2b28324d…`） | 3,064,295,596 B ＋ トークナイザー 6,719,163 B | `models/v4.1-small/` | MIT（`yes`） |
+| v4.1-Small-MF | `Aratako/Irodori-TTS-v4.1-Small-MF`（`ccc78f5d…`） | 3,093,131,788 B ＋ 同 | `models/v4.1-small-mf/` | MIT（`yes`） |
+| v4-Large（fp32） | `Aratako/Irodori-TTS-v4-Large`（`2e0c5542…`） | 13,152,893,348 B ＋ 33,385,189 B | `models/v4-large/` | Gemma Terms（`conditional`） |
+| v4-Large int8 / int4 / fp8 | `Aratako/Irodori-TTS-v4-Large-Quantized`（`bdef9592…`） | 3,839,580,074 / 2,955,004,714 / 3,842,708,698 B ＋ 33,385,189 B | `models/v4-large-int8/` ほか | Gemma Terms（`conditional`） |
+
+- 各モデルを選んだときの取得量（共通の部分〔コーデック・透かし 計 441,369,916 B〕を足した値）は、v4.1-Small 3.27 GiB、v4.1-Small-MF 3.30 GiB、v4-Large 12.69 GiB、int8 4.02 GiB、int4 3.19 GiB、fp8 4.02 GiB（画面と `list_local_runtime_models` の `size_bytes`）。
+- **ライセンスの根拠**（モデルカードの `license:` を読んだ）: v4.1-Small・v4.1-Small-MF は `mit`、v4-Large・v4-Large-Quantized は `gemma`、Semantic-DACVAE は `mit`（元の `facebook/dacvae-watermarked` は Apache-2.0）。いずれもゲート（利用申請）は無い。**SilentCipher の重み（`sony/silentcipher`）は、リポジトリにもモデルカードにもライセンスの表示が無い**ので `unknown`。コードは MIT。Irodori-TTS は生成した音声に必ずこの透かしを入れる（切れない）ので、重みを省けない。画面に琥珀色の注記を出し、商用で使う前に配布元（Sony Research）に確認するよう言う。**法的な助言ではない**。
+- 参照音声なしでキャプションだけで作る声（Voice Design）の注意と、声のコピーの倫理上の制限は、モデルごとの `cautions` に入れた（§14.6）。
+
+### 14.5 モデルの選択（`ResourceSet.Choices`・`Resource.Choice`）
+
+1 つのランタイムが複数のモデルを持つ仕組みを足した（**`catalog.go` の `Model` 構造体には触れない**。ランタイム側の資産セットに足した）。
+
+- **カタログ**: `ResourceSet.Choices[]`（`catalog/choice.Choice`）と、`Resource.Choice`（その資産が属するモデル。空は全モデル共通）。`Choice` は `id`（slug）・`name`・`description`・`default`（ちょうど 1 つ）・`kind`（`tts`）・`languages`（`["ja"]`）・`license`（セットのライセンスの id）・`consent{version,text}`（同意が要るモデルだけ）・`cautions[]`・`vram_min_gb`/`vram_recommended_gb`/`vram_limits`/`vram_note`/`vram_estimate`・`env[]`（そのモデルで起動するときに足す環境変数）。検証は `choice.Check`（スキーマの項目・ライセンスの id・`vram_recommended_gb > vram_min_gb` なら `vram_limits`・モデルごとに資産が 1 つ以上・`default` がちょうど 1 つ・資産が名指すモデルが存在すること）。
+- **選択の保存**: `localai/<id>/state.json` の `choice`（空は既定）。`Installer.ActiveSet()` が「選択中のモデルの資産＋共通の資産」を返し、`Assets`・`AssetNeedBytes`・`EnsureAssets` がそれだけを数える・取得する。**選ばれていないモデルの重みは取得しない**。カタログに無い選択（古い記録）は既定に戻る。
+- **起動**: `Installer.Command` が、環境変数 `MAM_RUNTIME_CHOICE=<選択の id>` と、そのモデルの `env`（Large 系は `IRODORI_MODEL_PRECISION=bf16`）を足す。番人（§14.3）は `models/<MAM_RUNTIME_CHOICE>/model.safetensors` を読む。選択の無いランタイム（GPT-SoVITS・MuseTalk）には何も足さない。
+- **`runtimechoices.Service`**（`service/runtimechoices`。`localruntime` の行数の上限のため別パッケージ）: `Views(ctx, runtimeID)`（モデルごとの `active`・`size_bytes`・ライセンス・`consent_needed`/`accepted`・`vram_fit`〔この PC の GPU との比較。推奨が最小より大きく `vram_limits` があるモデルだけ〕）と、`Select(ctx, runtimeID, choiceID, accept)`。`Select` は、導入の最中は `ErrBusy`、知らないモデルは `choice.ErrUnknown`、同意が要るのに `accept.Version` が一致しなければ `choice.ErrConsentRequired`（何も記録しない）。通れば `choice` を保存し（同意があれば §14.6 の記録も）、サーバーを**止める**（次の起動から新しいモデル。重みは取得しない。足りなければ「重みを導入」が要る）。
+- **MCP**: `list_local_runtime_models(runtime_id)`・`select_local_runtime_model(runtime_id, model_id, accept_license_version?)`（[mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）。
+- **画面**: モデルマネージャーのランタイムのカードの詳細（`GET /model-manager/runtimes/:id/detail`）に「使うモデルの選択」（ラジオ。名前・説明・取得量・言語・VRAM の目安と、この PC の GPU との比較・ライセンス・商用・使うときの制限・同意のテキストとチェックボックス）。`PUT /model-manager/runtimes/:id/model`（`model`、同意のチェックは `accept_<モデル>`＝表示したテキストの版）。選んだことと「重みを導入」の案内を、同じ領域に出す。
+- 選択を変えると、使う重みが変わる。`localruntime.View.Choice`（選択中のモデル）と `weights` はそのモデルの分。
+
+### 14.6 同意（Gemma Terms of Use）
+
+- v4-Large 系（`v4-large`・`-int8`・`-int4`・`-fp8`）は Gemma Terms of Use と禁止用途ポリシーの下にある。**同意するまで、選ぶ・重みを取得する・起動することはできない**（`localruntime.refuse` が `choice.ErrConsentRequired` を返す。導入・重み・起動のすべての入口）。
+- 同意は、`Select` に**利用者自身の操作が渡す版**（画面のチェックボックスの値、MCP の `accept_license_version`）だけが記録する（`RuntimeState.Consents[ライセンスの id] = {version, accepted_at}`。モデルマネージャーの同意の記録 `store.Consent` と同じ形）。mam のコードは、同意を自動で行わない・代わりに渡さない（MCP の説明にも「エージェントが代わりに渡してはならない」と書いた）。テキストの版が変われば、もう一度同意を求める。版: `gemma-terms-2026-04-01+prohibited-use-2024-02-21`。**この版の文字列と、同意のテキストの文言は、オーナーの確認が要る**。
+- 声のコピーの倫理上の制限（モデルカードより）は、全モデルの `cautions` に入れ、モデルの選択・設定の「音声・口パク」・Character の参照音声のフォームに同じ趣旨の文で出す: 本人の同意なしに実在の人の声をコピーしたりなりすましに使ったりしない／人をだます合成音声・ディープフェイクに使わない／参照音声なしの声が偶然実在の人に似ることがある／透かしが自動で入る（切れない）。
+
+### 14.7 テスト
+
+- `catalog/irodoritest`: 番人で起動すること、トークン・許可する要求だけ、ピン止め（部品の SHA-256・GitHub は 40 桁のコミット・重みの URL はコミット固定）、モデルごとの制限・ライセンス・同意、重みの置き場所。番人の Python のテスト（`testdata/test_irodori_server.py`。偽の公式アプリ・偽の `silentcipher`）を Python があれば実行する。
+- `catalog/choice`（スキーマの検証）、`modelmgr/runtime/choicetest`（選択中のモデルの重みだけを数え・取得すること、起動の環境変数）、`service/runtimechoices`（同意の流れ。版が違う・無い・知らないモデルは何も記録しない）、`mcp/tools/runtimemodels`、`web/handler/modelmgr/runtimes`（モデルの選択の画面）。
+- 実物の Windows ＋ NVIDIA での導入・起動・合成は、この開発環境（Linux・GPU 無し）では確かめられない（§14.9）。
+
+### 14.8 #1011 との関係
+
+モデル一覧の絞り込み（パラメーター数・成人向け・入力・言語など。Issue #1011）は、別の作業で `catalog.go` の `Model` に項目を足している。この節の `choice.Choice` には、そのフィルターが読む `kind`・`languages` だけを持たせた。**フィルター用の項目は #1011 の作業と統合時に合わせる**（`Model` に足された項目の名前・値の語彙に、`Choice` の項目を合わせる。統合の作業で調整する）。
+
+### 14.9 未確認
+
+| 項目 | 状態 |
+|---|---|
+| **実物の Windows ＋ NVIDIA での導入（部品 約 3.2 GB の取得と約 5.4 GB の展開）・起動・合成** | **未確認**。この開発環境は Linux で GPU が無い。部品の SHA-256 と大きさは実物のファイルで測ったが、Windows で実行していない。Go 側の偽のホスト・偽のプロセスと、番人の Python のテストだけ |
+| 組み込み Python（`python310._pth`）で、`-I` ＋ 作業ディレクトリ ＋ `.pth` が期待どおりに効くこと、`import torch` が CUDA の DLL を見つけること | **未確認**（§13.8 と同じ。Visual C++ 再頒布可能パッケージが要る） |
+| **`torchcodec` と FFmpeg の DLL**（wheel が FFmpeg の共有ライブラリを必要とする。Windows で見つかるか） | **未確認**。音声の読み込みが `torchaudio`・`soundfile` で足りるか、公式のコードが `torchcodec` を呼ぶかは実機で確かめる |
+| 番人の SilentCipher の差し替え（取得済みのファイルを読む）が、実物の `silentcipher` でそのまま動くこと | **未確認** |
+| 生成した音声に実際に透かしが入ること | **未確認** |
+| **VRAM の数値**（v4.1-Small 6〜8 GB、v4-Large 10〜12 GB、int8 6〜8 GB、int4 5〜6 GB、fp8 6〜8 GB） | **mam の推定**で、実機では未確認（公式は推論に必要な数値を示していない。重みの大きさ＋コーデック約 0.4 GB＋作業領域）。`vram_estimate: true`。画面は「mam の推定です。実機では確かめていません」と言う |
+| 合成の質・速さ（日本語の聞き比べ）、MF（MeanFlow・4 ステップ）の質 | **未確認**。数値は出さない |
+| 量子化版の GPU 世代の条件（int4 は RTX 30 世代〔Ampere〕以降、fp8 は RTX 40 世代〔Ada〕以降。モデルカード） | 画面は注意書きを出すだけで、**GPU 世代で選択を制限しない**（オーナーの判断待ち） |
+| bf16（Large 系の `IRODORI_MODEL_PRECISION=bf16`）の質 | **未確認** |
+| SilentCipher の重みの商用利用の可否 | **確認できていない**（`unknown`。§14.4） |
+| 部品の URL が将来も残ること | 保証できない。変われば SHA-256 の不一致・404 で失敗する |

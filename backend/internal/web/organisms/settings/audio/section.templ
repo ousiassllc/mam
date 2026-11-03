@@ -47,6 +47,12 @@ templ choice(p Provider) {
 			if p.Local != nil {
 				@localCard(p)
 			}
+			if p.Irodori != nil {
+				@localCard(p.As(WhichIrodori))
+			}
 		</ul>
+		if p.CloneNotice != "" {
+			<p class="mt-3 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-clone-notice-" + p.Field }>{ p.CloneNotice }</p>
+		}
 	}
 }

@@ -9,11 +9,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 )
 
-// LocalProvider is one local provider (GPT-SoVITS for the voice, MuseTalk 1.5 for the lip sync): where it stands and, when it cannot be used,
+// LocalProvider is one local provider (GPT-SoVITS or Irodori-TTS for the voice, MuseTalk 1.5 for the lip sync): where it stands and, when it cannot be used,
 // the sentence the screen and a failed run say.
 type LocalProvider struct {
 	Available     bool   `json:"available" jsonschema:"false ならこのアプリにはローカルの実行環境がない。ほかの項目は空"`
-	Name          string `json:"name,omitempty" jsonschema:"モデルの名前（GPT-SoVITS, MuseTalk 1.5）"`
+	Name          string `json:"name,omitempty" jsonschema:"モデルの名前（GPT-SoVITS, Irodori-TTS, MuseTalk 1.5）"`
 	RuntimeID     string `json:"runtime_id,omitempty" jsonschema:"モデルマネージャーの実行環境の id。導入・起動は model-manager のツールで行う"`
 	State         string `json:"state,omitempty" jsonschema:"unsupported（この PC では動かせない）, installing, not_installed, weights_missing, ready, starting, running or failed"`
 	Usable        bool   `json:"usable" jsonschema:"今すぐ使える（導入済み・重みを確認済み・この PC で動かせる）"`
@@ -28,6 +28,8 @@ type LocalProvider struct {
 	Condition     string `json:"commercial_condition,omitempty" jsonschema:"商用利用の条件の注記（あれば）"`
 	// UnclearCommercialUse are the weights and dependencies whose commercial use is not clear; the list with sources is in the model manager.
 	UnclearCommercialUse []string `json:"unclear_commercial_use,omitempty" jsonschema:"商用利用がはっきりしない重み・依存ファイルの名前（出典とライセンスは list_local_runtimes）"`
+	Model                string   `json:"model,omitempty" jsonschema:"使うモデル（複数あるランタイムだけ。Irodori-TTS の v4.1-Small など）"`
+	Cautions             []string `json:"cautions,omitempty" jsonschema:"そのモデルを使うときの制限（モデルカードの倫理上の制限）。声のコピーは本人の同意を得た音声だけ"`
 	CloudProvider        string   `json:"cloud_provider" jsonschema:"代わりに使うクラウドのプロバイダー（API キーの provider 名）: elevenlabs か synclabs"`
 	CloudKeySet          bool     `json:"cloud_key_set" jsonschema:"そのクラウドの API キーが設定済みか（値は返さない）"`
 }
@@ -36,10 +38,11 @@ type LocalProvider struct {
 type AudioProvidersSection struct {
 	Available       bool          `json:"available" jsonschema:"false ならこのアプリには音声・口パクの設定がない"`
 	Problem         string        `json:"problem,omitempty" jsonschema:"設定ファイル（audio.json）を読めない理由。あるときは既定を示し、実行は止まる"`
-	VoiceProvider   string        `json:"voice_provider" jsonschema:"声: elevenlabs（既定）か local（GPT-SoVITS）"`
+	VoiceProvider   string        `json:"voice_provider" jsonschema:"声: elevenlabs（既定）、local（GPT-SoVITS）か irodori（Irodori-TTS。日本語専用）"`
 	LipSyncProvider string        `json:"lip_sync_provider" jsonschema:"口パク: synclabs（既定）か local（MuseTalk 1.5）"`
 	FallbackToCloud bool          `json:"fallback_to_cloud" jsonschema:"ローカルが使えないとき、実行の開始前の検査でクラウドに切り替える（既定はオフ）。切り替えるとクラウドの費用が出る"`
-	Voice           LocalProvider `json:"voice"`
+	Voice           LocalProvider `json:"voice" jsonschema:"ローカルの声 GPT-SoVITS（voice_provider=local）"`
+	Irodori         LocalProvider `json:"irodori" jsonschema:"ローカルの声 Irodori-TTS（voice_provider=irodori）。声のコピー（参照音声）のときは、本人の同意を確認すること。使うモデルの選択は select_local_runtime_model（list_local_runtime_models で一覧）"`
 	LipSync         LocalProvider `json:"lip_sync"`
 }
 
@@ -51,6 +54,7 @@ func localProvider(l *audiosettings.Local, role localvoice.Role, keySet bool) Lo
 	out.Available, out.Name, out.RuntimeID, out.State, out.Usable, out.Reason = true, l.Name, l.RuntimeID, string(l.State), l.Usable, l.Reason
 	out.SupportReason, out.ProcessError, out.VRAMMinGB, out.VRAMEstimate = l.SupportReason, l.ProcessError, l.VRAMMinGB, l.VRAMEstimate
 	out.SourceURL, out.License, out.LicenseURL, out.Condition, out.UnclearCommercialUse = l.SourceURL, l.LicenseName, l.LicenseURL, l.Condition, l.Unclear
+	out.Model, out.Cautions = l.Model, l.Cautions
 	return out
 }
 
@@ -67,6 +71,7 @@ func (h handlers) audioSection(ctx context.Context) (AudioProvidersSection, erro
 		Available: true, Problem: v.Problem, VoiceProvider: string(v.Settings.VoiceProvider), LipSyncProvider: string(v.Settings.LipSyncProvider),
 		FallbackToCloud: v.Settings.FallbackToCloud,
 		Voice:           localProvider(v.Voice, localvoice.RoleVoice, v.VoiceKeySet),
+		Irodori:         localProvider(v.Irodori, localvoice.RoleVoiceIrodori, v.VoiceKeySet),
 		LipSync:         localProvider(v.LipSync, localvoice.RoleLipSync, v.LipSyncKeySet),
 	}, nil
 }
@@ -77,7 +82,7 @@ func (h handlers) getAudio(ctx context.Context, _ Input) (AudioProvidersSection,
 
 // SetAudioInput lists the choices to change. A choice that is not given keeps what is saved.
 type SetAudioInput struct {
-	VoiceProvider   *string `json:"voice_provider,omitempty" jsonschema:"声のプロバイダー: elevenlabs か local。この PC で動かせないときに local を選ぶと validation（理由つき）"`
+	VoiceProvider   *string `json:"voice_provider,omitempty" jsonschema:"声のプロバイダー: elevenlabs・local（GPT-SoVITS）・irodori（Irodori-TTS）。この PC で動かせないときにローカルを選ぶと validation（理由つき）"`
 	LipSyncProvider *string `json:"lip_sync_provider,omitempty" jsonschema:"口パクのプロバイダー: synclabs か local。この PC で動かせないときに local を選ぶと validation（理由つき）"`
 	FallbackToCloud *bool   `json:"fallback_to_cloud,omitempty" jsonschema:"ローカルが使えないとき、実行の開始前の検査でその実行全体をクラウドで作る。オンにするとクラウドの API 費用が出ることがある"`
 }

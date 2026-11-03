@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 
@@ -43,9 +44,11 @@ func Data(v audiosettings.View) view.Data {
 		CloudLabel:  "ElevenLabs（クラウド）",
 		LocalLabel:  "GPT-SoVITS（この PC）",
 		Local:       localOf(v.Voice),
+		Irodori:     localOf(v.Irodori), IrodoriLabel: "Irodori-TTS（この PC。日本語専用）",
 		CloudKey:    audiosettings.VoiceKeyID,
 		CloudKeySet: v.VoiceKeySet,
-		Note:        "ローカルの声は、Character に設定した参照音声で話します。プロジェクトの「声のサンプルから ElevenLabs でクローン」は ElevenLabs の声で、ローカルの声には使われません。",
+		Note:        "ローカルの声は、Character に設定した参照音声で話します。プロジェクトの「声のサンプルから ElevenLabs でクローン」は ElevenLabs の声で、ローカルの声には使われません。Irodori-TTS は日本語だけで、使うモデル（v4.1-Small・v4-Large など）はモデルマネージャーで選びます。生成した音声には、SilentCipher の見えない透かしが自動で入ります。",
+		CloneNotice: CloneNotice,
 	}
 	d.LipSync = view.Provider{
 		ID: "audio-lip-sync", Title: "口パク", Field: view.FieldLipSync, Slug: view.SlugLipSync,
@@ -61,6 +64,11 @@ func Data(v audiosettings.View) view.Data {
 	return d
 }
 
+// CloneNotice is what the screens say wherever a voice is copied from a reference recording (this category and the reference voice of a
+// Character): the model cards of Irodori-TTS forbid cloning or impersonating a real person's voice without their consent and using the
+// synthetic speech to deceive.
+const CloneNotice = "声のコピー（参照音声）には、声の持ち主本人の同意を得た音声だけを使ってください。本人の同意なしに実在の人（声優・有名人など）の声をコピーしたりなりすましに使ったりすること、人をだます合成音声・ディープフェイクに使うことは、Irodori-TTS のモデルカードで禁じられています。"
+
 // localOf is the local provider of a card (nil for an app without the local runtimes).
 func localOf(l *audiosettings.Local) *view.Local {
 	if l == nil {
@@ -69,6 +77,7 @@ func localOf(l *audiosettings.Local) *view.Local {
 	out := &view.Local{
 		Name: l.Name, Supported: l.Supported, SupportReason: l.SupportReason, Reason: l.Reason, ProcessError: l.ProcessError,
 		SourceURL: l.SourceURL, License: l.LicenseName, LicenseURL: l.LicenseURL, Condition: l.Condition, Unclear: l.Unclear,
+		Model: l.Model, Cautions: l.Cautions,
 	}
 	out.State, out.Tone = stateText(l.State)
 	switch {
@@ -115,7 +124,7 @@ func Detail(svc *audiosettings.Service, page gin.HandlerFunc) gin.HandlerFunc {
 		d := SectionData(c.Request.Context(), svc)
 		p, ok := d.Choice(c.Param("choice"))
 		which := c.Param("provider")
-		if d.Problem != "" || !ok || (which != view.WhichCloud && (which != view.WhichLocal || p.Local == nil)) {
+		if p = p.As(which); d.Problem != "" || !ok || (which != view.WhichCloud && (!slices.Contains([]string{view.WhichLocal, view.WhichIrodori}, which) || p.Local == nil)) {
 			settingshttp.Render(c, http.StatusNotFound, modal.Notice("音声・口パク", "対象が見つかりません"))
 			return
 		}

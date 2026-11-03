@@ -35,6 +35,7 @@ func Register(engine *gin.Engine, svc *localruntime.Service) {
 	engine.POST(paths.ModelManagerPart("runtimes", ":id", "start"), h.StartRuntime)
 	engine.POST(paths.ModelManagerPart("runtimes", ":id", "stop"), h.StopRuntime)
 	engine.PUT(paths.ModelManagerPart("runtimes", ":id", "autostart"), h.SetRuntimeAutoStart)
+	engine.PUT(paths.ModelManagerPart("runtimes", ":id", "model"), h.SetRuntimeModel)
 	engine.DELETE(paths.ModelManagerPart("runtimes", ":id"), h.RemoveRuntime)
 }
 

@@ -17,7 +17,7 @@ const (
 )
 
 // Description is what the category says under its title.
-const Description = "声（セリフ・ナレーション）と口パクを、クラウド（ElevenLabs・Sync Labs）で作るか、この PC のローカルモデル（GPT-SoVITS・MuseTalk 1.5）で作るかを選びます。何も選ばないときはクラウドです。ローカルは Windows + NVIDIA の GPU だけで動かせます（mam が自動で導入・起動します）。保存した内容は、次の音声作成から使われます。"
+const Description = "声（セリフ・ナレーション）と口パクを、クラウド（ElevenLabs・Sync Labs）で作るか、この PC のローカルモデル（GPT-SoVITS・Irodori-TTS・MuseTalk 1.5）で作るかを選びます。何も選ばないときはクラウドです。ローカルは Windows + NVIDIA の GPU だけで動かせます（mam が自動で導入・起動します）。保存した内容は、次の音声作成から使われます。"
 
 // Local is the local provider of a card: where it stands and why it cannot be used.
 type Local struct {
@@ -41,6 +41,9 @@ type Local struct {
 	LicenseURL string
 	Condition  string
 	Unclear    []string
+	// Model is the model in force of a runtime with several ("" for none) and Cautions are the restrictions of its use, said with it.
+	Model    string
+	Cautions []string
 }
 
 // The slugs of the two choices in the paths of their details, and of the two providers of each.
@@ -49,6 +52,8 @@ const (
 	SlugLipSync = "lip-sync"
 	WhichCloud  = "cloud"
 	WhichLocal  = "local"
+	// WhichIrodori is the card of the second local voice (the value of its radio is IrodoriValue).
+	WhichIrodori = "irodori"
 )
 
 // Provider is one choice (the voice or the lip sync): a heading over the cards of its providers, the cloud one and the local one.
@@ -64,17 +69,56 @@ type Provider struct {
 	CloudValue, CloudLabel string
 	// LocalLabel is the label of the local radio.
 	LocalLabel string
-	// Local is nil in an app without the local runtimes (the local radio is then left out).
-	Local *Local
+	// Local is nil in an app without the local runtimes (the local radio is then left out). Irodori is the second local provider of the voice
+	// (nil for the others and in an app without the runtimes); As shapes the provider as the card of one of them.
+	Local        *Local
+	Irodori      *Local
+	IrodoriLabel string
+	localValue   string
 	// CloudKey is the name of the API key of the cloud provider ("elevenlabs") and CloudKeySet whether it is stored.
 	CloudKey    string
 	CloudKeySet bool
 	// Note is one more line under the card (what the choice does not change).
 	Note string
+	// CloneNotice is the notice under the cards of a choice that copies a voice from a recording ("" for none): the recording must be of a
+	// voice the user may copy (the person's own consent).
+	CloneNotice string
 }
 
-// LocalValue is the value of the local radio.
-const LocalValue = "local"
+// LocalValue is the value of the local radio, IrodoriValue the value of the radio of the second local voice.
+const (
+	LocalValue   = "local"
+	IrodoriValue = "irodori"
+)
+
+// As is the provider as the card of its local provider which (WhichLocal or WhichIrodori) shows it: the card draws p.Local, so the second local
+// provider is put in its place, with its own radio value.
+func (p Provider) As(which string) Provider {
+	if which == WhichIrodori {
+		p.Local, p.LocalLabel, p.localValue = p.Irodori, p.IrodoriLabel, IrodoriValue
+	}
+	return p
+}
+
+// value is the value of the radio of the local provider the card draws, and slug its name in ids and in the path of its detail.
+func (p Provider) value() string {
+	if p.localValue != "" {
+		return p.localValue
+	}
+	return LocalValue
+}
+
+func (p Provider) slug() string {
+	if p.localValue == IrodoriValue {
+		return WhichIrodori
+	}
+	return WhichLocal
+}
+
+// ChosenLocal reports whether the saved provider is a local one that this PC can run (the radio is then on); the cloud radio is on otherwise.
+func (p Provider) ChosenLocal() bool {
+	return p.Selected == p.value() && p.Local != nil && p.Local.Supported
+}
 
 // Choice is the choice the slug names, or false when there is none.
 func (d Data) Choice(slug string) (Provider, bool) {

@@ -27,6 +27,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/projectcore"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/projects"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/review"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/runtimemodels"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/serverinfo"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/settings"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotgen"
@@ -64,6 +65,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	settings.Register(r, svc)
 	localmodels.Register(r, svc)
 	modelmgr.Register(r, svc)
+	runtimemodels.Register(r, svc)
 	gentest.Register(r, svc)
 	gentestface.Register(r, svc)
 	gentestrecipe.Register(r, svc)

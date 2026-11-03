@@ -65,6 +65,9 @@ type Runtime struct {
 	LicenseURL       string
 	LicenseCondition string
 	Weights          weightlist.Weights
+	// Models are the models of a runtime that has several (empty for one that has not); ModelsMessage is the answer to the last choice.
+	Models        []Model
+	ModelsMessage view.Message
 	// Commercial is the strictest answer of the weights and dependencies: the icon of the card (the list is in its detail).
 	Commercial commercial.View
 }
