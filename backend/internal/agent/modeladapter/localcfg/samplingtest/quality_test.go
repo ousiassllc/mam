@@ -32,8 +32,8 @@ func TestShippedPresetsLieOnEachSideOfTheTemplatesOwnSteps(t *testing.T) {
 		assert.Empty(t, localcfg.ValidateModel("test/"+tpl.ID, tpl.Model, map[string]localcfg.Endpoint{"test": {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:1"}}), tpl.ID)
 	}
 	assert.Positive(t, withPresets)
-	for _, id := range []string{"txt2img-flux-schnell", "txt2img-flux2-klein"} {
-		assert.Nil(t, template(t, id).Workflow.SamplingCaps().Presets, id+": 4 steps are what it is made for")
+	for _, id := range []string{"txt2img-flux-schnell", "txt2img-flux2-klein", "txt2img-sdxl-lightning", "img2img-sdxl-lightning", "txt2img-krea2-turbo", "txt2img-qwen-image-edit-rapid-aio"} {
+		assert.Nil(t, template(t, id).Workflow.SamplingCaps().Presets, id+": 4 to 8 steps are what it is made for")
 	}
 }
 

@@ -9,10 +9,10 @@ import (
 	"slices"
 )
 
-//go:embed templates/image/*.json templates/video/*.json templates/video/ltx25/*.json templates/upscale/*.json
+//go:embed templates/image/*.json templates/image/extra/*.json templates/video/*.json templates/video/ltx25/*.json templates/upscale/*.json
 var templateFS embed.FS
 
-// Template is a ready workflow with its input assignments, shipped in the binary as data (templates/image/*.json, templates/video/*.json, templates/video/ltx25/*.json; the LTX-2.5 ones added with FLF2V, DFR and the prompt enhancer are in the last, which keeps the directories under the line limit; the workflows that enlarge a picture (Workflow.Upscale) are in templates/upscale/*.json):
+// Template is a ready workflow with its input assignments, shipped in the binary as data (templates/image/*.json, templates/image/extra/*.json, templates/video/*.json, templates/video/ltx25/*.json; the few-step and pose templates added for the uncensored catalog models (SDXL Lightning, Krea 2 Turbo, Rapid-AIO, VNCCS PoseStudio) are in templates/image/extra, which keeps that directory under the line limit; the LTX-2.5 ones added with FLF2V, DFR and the prompt enhancer are in the last, which keeps the directories under the line limit; the workflows that enlarge a picture (Workflow.Upscale) are in templates/upscale/*.json):
 // adding one needs no code. It uses core ComfyUI nodes only, so the server needs no custom nodes. Only the
 // model files (the checkpoint names inside the graph) have to be present on the server, and the names may
 // need changing to what the server has.
@@ -29,14 +29,14 @@ type Template struct {
 // (text to video, first frame to video), ordered by ID.
 func Templates() []Template {
 	var out []Template
-	for _, dir := range []string{"templates/image", "templates/video", "templates/video/ltx25", "templates/upscale"} {
+	for _, dir := range []string{"templates/image", "templates/image/extra", "templates/video", "templates/video/ltx25", "templates/upscale"} {
 		entries, err := fs.ReadDir(templateFS, dir)
 		if err != nil {
 			panic(err) // the directory is embedded: a build problem, not a run-time one
 		}
 		for _, e := range entries {
 			if e.IsDir() {
-				continue // templates/video/ltx25 is listed on its own
+				continue // templates/image/extra and templates/video/ltx25 are listed on their own
 			}
 			data, err := templateFS.ReadFile(dir + "/" + e.Name())
 			if err != nil {

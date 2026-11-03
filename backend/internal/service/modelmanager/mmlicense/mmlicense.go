@@ -1,9 +1,12 @@
 // Package mmlicense is what the model manager says of commercial use (#928): the license of a model of the bundled endpoint, and the
 // setting "商用OKのモデルだけを使う". It is a package of its own because the directory of the model manager is full (linterly); the
-// Service embeds a Book, so the methods are the Service's.
+// Service embeds a Book, so the methods are the Service's. The Book also reads and appends to the install record of the models
+// (InstalledModels, AddWorkflows), which wfrefresh.AddMissing uses (#990).
 package mmlicense
 
 import (
+	"slices"
+
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -69,4 +72,24 @@ func (b *Book) DefaultFilter() modellicense.Filter {
 		return modellicense.FilterOK
 	}
 	return modellicense.FilterAll
+}
+
+// InstalledModels is a copy of the install record of the catalog models, by model ID (wfrefresh.Record).
+func (b *Book) InstalledModels() map[string]store.InstalledModel { return b.state.Get().Models }
+
+// AddWorkflows records names as workflows of the installed model id (the ones the catalog got after the install; wfrefresh.AddMissing made
+// them), so that a delete removes them and the age gate judges them like the others. A name that is recorded already is not added again.
+func (b *Book) AddWorkflows(id string, names []string) error {
+	return b.state.Update(func(st *store.State) {
+		inst, ok := st.Models[id]
+		if !ok {
+			return
+		}
+		for _, n := range names {
+			if !slices.Contains(inst.Workflows, n) {
+				inst.Workflows = append(slices.Clip(inst.Workflows), n)
+			}
+		}
+		st.Models[id] = inst
+	})
 }

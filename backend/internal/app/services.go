@@ -219,7 +219,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	closers = append(closers, jobs.Stop)
 	nodeSvc.OnStartup() // before the engine starts: it removes what an interrupted install left in custom_nodes
 	mgr.OnStartup(ctx)
-	wfrefresh.Run(ctx, localModels, catalog.Default(), modelmanager.BundledEndpoint, logger.Warn) // after the endpoint is registered
+	wfrefresh.Refresh(ctx, localModels, mgr, catalog.Default(), modelmanager.BundledEndpoint, logger.Warn) // after the endpoint is registered: the workflows the catalog got after an install (#990), then the old copies
 	rts.OnStartup(ctx)
 	return services, db, release, nil
 }
