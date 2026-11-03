@@ -48,7 +48,7 @@
 
 - **2026-11-01**: エンジン（`engine.json`）・ローカル実行環境（GPT-SoVITS・MuseTalk）。
 - **2026-11-02**: 下の表の、次に挙げる 2026-11-03 の分を除くローカルのモデル（`sdxl-base`・`flux1-*`・`wan22-*`・`ltx-*`・`chroma1-hd`・`sd35-medium`・`hunyuanvideo15-480p`・`noctq-v4-qwen-image21` など）と、クラウドのモデル（`cloud.json`）。
-- **2026-11-03**: `qwen-image-edit-2511`・`sdxl-controlnet-canny`・`sdxl-ipadapter-plus`・`upscale-*` の 3 つ、成人向けのモデル 14 件（#984。`realvisxl-v50` から `qwen-image-21-uncensored-int8` まで）。
+- **2026-11-03**: `qwen-image-edit-2511`・`sdxl-controlnet-canny`・`sdxl-ipadapter-plus`・`upscale-*` の 3 つ、成人向けのモデル 14 件（#984。`realvisxl-v50` から `qwen-image-21-uncensored-int8` まで）、非検閲の動画 7 件（#1012。`nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b`・`wan22-ti2v-5b-cowgirl-lora`・`wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v`・`wan22-t2v-14b-mystic-xxx-lora`・`hunyuanvideo-t2v-nsfw-lora`。上の `wan22-*` の 2026-11-02 の分には含まない）。
 
 | モデル | 答え | 根拠（一次情報） |
 |---|---|---|
@@ -70,6 +70,12 @@
 | `wan22-i2v-14b-lightx2v` | 商用OK | ベースの Wan 2.2 も LightX2V の 4 ステップ LoRA（`lightx2v/Wan2.2-Distill-Loras`）も Apache-2.0（LoRA はモデルカードの `license: apache-2.0`。LICENSE のファイルは無く、カードの宣言に従う）。#930 |
 | `wan22-i2v-14b-lightx2v-uncensored` | **不明** | ベースは Apache-2.0（商用OK）。非検閲の LoRA（`rzgar/Wan2.2_LightX2V_4Step_Uncensored`）はカードが `license: apache-2.0` と宣言するだけで、LICENSE の本文も、非検閲の学習に使ったデータの出所も無い。宣言だけでは確かめられないので、厳しい方の「不明」（`license.id = apache-2.0-declared`）。成人向けなので同意必須。#930 |
 | `wan22-i2v-14b-nsfw-lora`・`wan22-remix-nsfw-i2v`・`wan22-remix-nsfw-t2v` | **不明** | ベースの Wan 2.2 は Apache-2.0。LoRA・マージの側にライセンスの本文が無い（旧版は「商用不可」と扱っていた。確認できないものは断定せず不明にした） |
+| `nsfw-wan21-1b3-t2v` | **不明** | ベースの Wan 2.1 T2V 1.3B は Apache-2.0。微調整（NSFW-API）のカードは `license: creativeml-openrail-m` と宣言するだけで本文が無く、学習データ（Reddit の成人向けの投稿の上位）の出所・権利も確かめられない。#1012 |
+| `nsfw-anime-wan22-5b` | **不明** | リポジトリに Apache-2.0 の LICENSE 本文があり、ベースの Wan 2.2 TI2V 5B も Apache-2.0。ただしカードは、リポジトリが一度削除されて復元されたことと、学習したアニメ動画の授権が記録されていないことを書く。#1012 |
+| `wan22-ti2v-5b-cowgirl-lora` | **不明** | ベースの Wan 2.2 TI2V 5B は Apache-2.0。LoRA（C0WG1RL + REV3RSE。ミラー）は HF にライセンスの記載が無く、原本（Civitai の model 1428098）の表示は RentCivit と生成物の販売だけ。#1012 |
+| `wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v` | **不明** | どちらもカードは `license: apache-2.0` と宣言するだけで本文が無く、焼き込んだ・混ぜた成人向けの LoRA の出所が確かめられない（Phr00t はメンテ終了・非推奨）。#1012 |
+| `wan22-t2v-14b-mystic-xxx-lora` | **不明** | ベースの Wan 2.2 T2V 14B は Apache-2.0。LoRA（Mystic XXX v1。ミラー）は HF に本文が無く、原本（Civitai の model 1295758）の表示は販売まで可でも本文の根拠にしない。#1012 |
+| `hunyuanvideo-t2v-nsfw-lora` | **不明** | ベースは Tencent Hunyuan Community License（EU・英国・韓国では適用外、月間 1 億人超は許諾。条件つき）。LoRA（nsfw-e7）はカードが `license: unknown`。厳しい方の不明。#1012 |
 | `realvisxl-v50` | 商用OK | 作者 SG161222 のモデルカード（`SG161222/RealVisXL_V5.0`）の `license: openrail++`。ベースの SDXL も同じ OpenRAIL++-M。成人向けなので同意必須（#984） |
 | `cyberrealistic-xl-v10` | 商用OK | 作者 Cyberdelia のモデルカード（`cyberdelia/CyberRealisticXL`）が「CreativeML Open RAIL++-M License」と書き、`license: creativeml-openrail-m`（#984） |
 | `juggernaut-xl-ragnarok` | 商用OK | 作者 KandooAI のモデルカード（`Kandoo/Juggernaut-XL-Ragnarok`）の `license: creativeml-openrail-m` と本文「モデルも生成物も商用で使える。使用制限に挙げた目的には使えない」。法人向けの商用ライセンスの相談先は別に載る（#984） |
@@ -154,3 +160,4 @@
 | 1.9 | 2026-11-03 | §3 の答えの表にアップスケール用のモデル（`upscale-nomos-uni-span`＝商用OK・`upscale-nomos-webphoto-esrgan`＝不明（カードのメタデータと本文のライセンスが食い違う）・`upscale-2pass-sdxl-span`＝商用OK）を足した | Issue #975 |
 | 1.10 | 2026-11-03 | §3 の見出しの「`checked_at` はすべて 2026-11-02」を、日付（2026-11-01・02・03）ごとの調査分の書き方に直し、答えの表に `sdxl-controlnet-canny`・`sdxl-ipadapter-plus`（どちらも商用OK。カタログの `license` の根拠どおり）の行を足した | Issue #976 の統合レビュー（表に行が無く、見出しの日付が実際と違った） |
 | 1.11 | 2026-11-03 | §6: `commercial` が共通のフィルターの 1 項目になり、4 語のカンマ区切りを足したことを書いた（既存の 3 語は互換） | Issue #1011 |
+| 1.12 | 2026-11-03 | §3 の答えの表に、非検閲の動画 7 つ（`nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b`・`wan22-ti2v-5b-cowgirl-lora`・`wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v`・`wan22-t2v-14b-mystic-xxx-lora`・`hunyuanvideo-t2v-nsfw-lora`。すべて不明）を足した | Issue #1012 |
