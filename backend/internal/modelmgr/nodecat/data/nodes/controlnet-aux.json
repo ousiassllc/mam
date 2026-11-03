@@ -1,7 +1,7 @@
 {
  "id": "controlnet-aux",
  "name": "comfyui_controlnet_aux（ControlNet の前処理）",
- "description": "写真からポーズ（OpenPose・DWPose）・深度・線画・エッジなどの制御画像を作る、ControlNet の前処理のノード集。同梱の Python 環境にない多数のパッケージ（OpenCV・scikit-image・mediapipe・onnxruntime ほか）が要るため、今は導入できない。制御画像を自分で用意するなら、導入せずに ControlNet のモデルだけで使える。",
+ "description": "写真からポーズ（OpenPose・DWPose）・深度・線画・エッジなどの制御画像を作る、ControlNet の前処理のノード集。同梱の Python 環境にない多数のパッケージ（OpenCV・scikit-image・mediapipe・onnxruntime ほか）が要るため、今は導入できない。Canny の制御画像は、導入しなくても mam が写真から作る（ControlNet のテンプレートの reference_preprocess: canny）。ポーズ・深度の前処理は、重みが非商用か不明のため作らない。",
  "repo": "https://github.com/Fannovel16/comfyui_controlnet_aux",
  "commit": "a587a4c1594524c1d2de5cd1a86cd868ff448e1c",
  "archive_url": "https://github.com/Fannovel16/comfyui_controlnet_aux/archive/a587a4c1594524c1d2de5cd1a86cd868ff448e1c.zip",
@@ -39,7 +39,7 @@
   "addict",
   "trimesh"
  ],
- "install_blocked": "同梱の Python 環境に OpenCV（cv2）・scikit-image・mediapipe・onnxruntime・matplotlib・albumentations・timm・huggingface_hub・yacs・omegaconf・addict・trimesh などが無く、mam は pip を実行しません。さらに前処理ごとに、実行時に Hugging Face などから重みを取得します（mam の「固定して SHA-256 を検証する」方針に合わない）。",
+ "install_blocked": "同梱の Python 環境に OpenCV（cv2）・scikit-image・mediapipe・onnxruntime・matplotlib・albumentations・timm・huggingface_hub・yacs・omegaconf・addict・trimesh などが無く、mam は pip を実行しません。さらに前処理ごとに、実行時に Hugging Face などから重みを取得します（mam の「固定して SHA-256 を検証する」方針に合わない）。Canny は重みが要らないので mam の中（Go。backend/internal/imgprep）で作り、このノードは導入しません。",
  "node_classes": [
   "CannyEdgePreprocessor",
   "DWPreprocessor",

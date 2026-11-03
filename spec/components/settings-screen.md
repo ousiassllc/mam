@@ -34,8 +34,9 @@
 | 5 | 音声・口パク | `/settings/audio` | 声（ElevenLabs / GPT-SoVITS）と口パク（Sync Labs / MuseTalk 1.5）のプロバイダーの選択、ローカルの状態（未導入・導入済み・起動中・**この PC では使えない理由**）、出典とライセンス、クラウドの API キーの有無、「ローカルが使えないときはクラウドに切り替える」（`organisms/settings/audio`。[categories](settings-screen-categories.md) §9。#924） | `Services.Audio` がある |
 | 6 | MCP サーバー | `/settings/mcp` | 待ち受け先・トークン（`organisms/settings/mcp`） | `Services.MCP` がある |
 | 7 | ffmpeg | `/settings/ffmpeg` | ffmpeg と ffprobe のパス（`organisms/settings/ffmpeg`。[categories](settings-screen-categories.md) §8）と、探した結果、ダウンロードして入れる部品（Windows x64・macOS arm64。#900。[../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)） | `Services.FFmpeg` がある |
-| 8 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
-| 9 | 第三者のライセンス | `/settings/licenses` | 同梱・利用するサードパーティのソフトウェアのライセンス文（`THIRD_PARTY_NOTICES.md` の埋め込み。グループごとの `<details>`、全文は開いたときに読む。#910。[settings-screen-licenses.md](settings-screen-licenses.md)） | 常に |
+| 8 | FaceFusion | `/settings/facefusion` | FaceFusion（顔の入れ替えの外部ツール）の Python とフォルダのパス、探した結果、モデルのライセンスと標準の注意（`organisms/settings/facefusion`。[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md) §2） | `Services.FaceFusion` がある |
+| 9 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
+| 10 | 第三者のライセンス | `/settings/licenses` | 同梱・利用するサードパーティのソフトウェアのライセンス文（`THIRD_PARTY_NOTICES.md` の埋め込み。グループごとの `<details>`、全文は開いたときに読む。#910。[settings-screen-licenses.md](settings-screen-licenses.md)） | 常に |
 
 - スラッグは、今の**書き込みのルートの接頭辞と同じ**にする（`PUT /settings/llm`・`/settings/models`・`/settings/mcp/…`・`/settings/update/check`）。同じパスに GET（ページ）と PUT・DELETE（操作）が並ぶ。API キーの分類だけ新しい接頭辞（`api-keys`）で、書き込みは今の `PUT /credentials/:provider` のまま。
 - 出さない分類は、ナビに無く、その URL は 404（`GET /settings` だけは今も `Settings` サービスの有無にかかわらず開ける）。
@@ -112,11 +113,12 @@
 | 音声・口パク | 「声: ElevenLabs（クラウド）」「口パク: Sync Labs（クラウド）」（保存した選択。ローカルを選んでいてもこの PC で動かせないときはクラウドと表示する）。「ローカルが使えないときはクラウド」がオンのときはその行（info）。`audio.json` が読めないときは warn ・ 設定ファイルを読めません（`audiosettings.Service.View`。[categories](settings-screen-categories.md) §9） | `/settings/audio` |
 | MCP サーバー | 待ち受け先（`mcpsettings.Service.View` の `Addr`）、有効なトークン n 件（失効済みを除く） | `/settings/mcp` |
 | ffmpeg | 「ffmpeg・ffprobe を使えます」（ok）／「ffmpeg が見つかりません」などの警告（warn）／「設定ファイルを読めません」（`ffmpegsettings.Service` の探した結果。[categories](settings-screen-categories.md) §8） | `/settings/ffmpeg` |
+| FaceFusion | 「FaceFusion を使えます」（ok）／「未設定（使うときだけ入れます）」（neutral）／「設定ファイルを読めません」（warn）（`facefusionsettings.Service` の探した結果。#995） | `/settings/facefusion` |
 | バージョンとアップデート | 版（`updatepanel.Data.Version`）と状態（最後の確認の結果。`Tone` をそのまま使う） | `/settings/update` |
 | 第三者のライセンス | 項目の数「n 件」（neutral。`licenses.Catalog.Len`）。説明は 1 行「MAM が使っているソフトウェアのライセンス文。」（#910。[settings-screen-licenses.md](settings-screen-licenses.md) §4） | `/settings/licenses` |
 | モデルマネージャー（決定事項 6(a)） | ComfyUI の状態（[home-screen.md](home-screen.md) §5。`hx-get="/tools/model-manager/status"` を使う）。説明は「別の画面を開きます」を含める | `paths.ModelManager()` |
 
-- 10 枚（#856 で ffmpeg、#924 で音声・口パク、#910 で第三者のライセンスを足した）で、並びはナビと同じ順にモデルマネージャーを最後に置く。`Settings` サービスが無い構成では LLM・画像動画のカードを出さない（ナビと同じ条件）。
+- 11 枚（#995 で FaceFusion、#856 で ffmpeg、#924 で音声・口パク、#910 で第三者のライセンスを足した）で、並びはナビと同じ順にモデルマネージャーを最後に置く。`Settings` サービスが無い構成では LLM・画像動画のカードを出さない（ナビと同じ条件）。
 - 「接続の状態」を概要に出すかは §11 の質問 5（既定は上の案）。
 - カードの下に「初期セットアップの案内」の区画（`h3`）を置き、「案内をもう一度開く」のリンク（`/onboarding`）を出す（#863。[onboarding-screen.md](onboarding-screen.md) §7）。初回ガイドを出さない構成（`Services.Onboarding` が無い）では区画ごと無い。
 
@@ -163,7 +165,7 @@
 | `pages/settings_pages.templ`（約 60 行） | 枠（戻る・h1・nav・分類の h2） | `pages/global_settings_page.templ` を置き換え |
 | `organisms/settings/overview/` | 概要のカード | 新規（`global_settings_body.templ` を置き換え） |
 | `organisms/settings/credentials/` | API キーのカード・モーダルの断片 | `organisms/credentialpanel/`（111 行）を作り直して消す |
-| `organisms/settings/chatgpt/` | ログインのカード・ログイン中のモーダル・モデル一覧のモーダル | `organisms/chatgptpanel/`（`panel.templ` 274 行・Codex 経由の `codex.templ` 218 行。1 ファイルの上限に近いのでカード・モーダル・データに分ける） |
+| `organisms/settings/chatgpt/` | ログインのカード・ログイン中のモーダル・モデル一覧のモーダル・「詳細」のモーダル（`detail.templ`。#1005） | `organisms/chatgptpanel/`（`panel.templ` 274 行・Codex 経由の `codex.templ` 218 行。1 ファイルの上限に近いのでカード・モーダル・データに分ける） |
 | `organisms/settings/llm/`・`media/`・`local/`・`mcp/` | 各分類 | `llmassign/`・`modelassignment/`・`localmodels/`（②-5 で `settings/local/` に移した）・`mcppanel/`（②-6 で `settings/mcp/` に移した）。バージョンとアップデートは `organisms/updatepanel/` のまま動かしていない（`GET /settings/update` もこれを使う） |
 | `handler/settingspage/`・`handler/settings/<分類>/` | ページ・モーダルの断片・保存。`handler/` は基準値 2,895 行で上限を超え、増やせない | `handler/credential.go` の保存・削除は `handler/settings/credentials/` に移す |
 | `molecules/settingsui/`・`molecules/modal/` | ナビ・カード・表・モーダル | 新規 |
@@ -216,3 +218,5 @@
 | 0.12 | 2026-11-01 | §5 の概要のカードの表に「ffmpeg」を足し（7 枚 → 8 枚）、版の番号の重複（0.10 が 2 行）を直し、2 行目（#856 の ffmpeg の追加）を 0.11 にした。決定事項 3 の「7 つの分類」の数え方（概要を含めた決定時の数と、いまの数）を書いた | PR #911 のレビューの指摘 |
 | 0.13 | 2026-11-01 | §2 の分類の表に「音声・口パク」（`/settings/audio`。MCP サーバーの前）を足して順を 1 つずつ後ろにし、§5 の概要のカードの表に「音声・口パク」を足した（8 枚 → 9 枚） | Issue #924（#912 声と口パクのローカル化）。ローカルの声・口パクを選ぶ場所が要る |
 | 0.14 | 2026-11-02 | §2 の分類の表に「第三者のライセンス」（`/settings/licenses`。バージョンのあと）を足し、§5 の概要のカードの表に「第三者のライセンス」を足した（9 枚 → 10 枚）。分類の仕様は [settings-screen-licenses.md](settings-screen-licenses.md)（新規） | Issue #910（オーナー決定: ONNX Runtime の DLL を同梱するので、ライセンス表記をアプリの中にも出す） |
+| 0.15 | 2026-11-03 | §2 の分類の表に「FaceFusion」（`/settings/facefusion`。ffmpeg の次、バージョンの前）を足して順を 1 つずつ後ろにし、§5 の概要のカードの表に「FaceFusion」を足した（10 枚 → 11 枚） | Issue #995。顔の入れ替えの外部ツールの場所を設定する分類 |
+| 0.16 | 2026-11-03 | §9 の部品の表に、ChatGPT のログインの「詳細」のモーダル（`organisms/settings/chatgpt/detail.templ`）を足した。「API キーとログイン」の ChatGPT と「音声・口パク」のカード化の詳細は [settings-screen-categories.md](settings-screen-categories.md) §1.3・§9 | Issue #1005 |

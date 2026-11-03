@@ -8,9 +8,9 @@ import (
 )
 
 // applySpeedMode puts the overrides of the speed mode the request names into the graph (the empty id is the workflow's first mode,
-// which is the graph itself), then drops the nodes that no output reaches any more (the LoRA a mode leaves out): the server is not
-// asked to load a file the run does not use. A workflow without modes ignores the id; a request for a mode the workflow does not
-// have is refused, as the generation test already told the user.
+// which is the graph itself), then drops the nodes that no output reaches any more (the LoRA a mode leaves out, and the LoRAs of the
+// other modes while the first runs): the server is not asked to load a file the run does not use. A workflow without modes ignores
+// the id; a request for a mode the workflow does not have is refused, as the generation test already told the user.
 func applySpeedMode(g localcfg.Graph, wf localcfg.Workflow, id string) error {
 	if len(wf.SpeedModes) == 0 {
 		return nil
@@ -18,9 +18,6 @@ func applySpeedMode(g localcfg.Graph, wf localcfg.Workflow, id string) error {
 	mode, ok := wf.SpeedMode(id)
 	if !ok {
 		return fmt.Errorf("the workflow has no speed mode %q", id)
-	}
-	if len(mode.Overrides) == 0 {
-		return nil
 	}
 	for _, o := range mode.Overrides {
 		g[o.Node].Inputs[o.Input] = o.Value

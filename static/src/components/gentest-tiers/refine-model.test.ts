@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changed, changedItems, line, resetLabel, type Item } from './refine-model';
+import { changed, changedItems, droppedKeys, line, resetLabel, type Item } from './refine-model';
 
 const item = (over: Partial<Item>): Item => ({
   key: 'steps',
@@ -28,5 +28,23 @@ describe('the marks of the こだわり tier', () => {
     expect(line(item({ initial: '', current: '30' }))).toBe('ステップ数: 30（元は 既定）');
     expect(line(item({ initial: '20', current: '' }))).toBe('ステップ数: 既定（元は 20）');
     expect(resetLabel(item({}))).toBe('ステップ数を元に戻す');
+  });
+});
+
+describe('what the switch to the easy tier loses (#1000)', () => {
+  it('names the detailed settings that were changed, in the order of the form, and the exposed values that are set', () => {
+    const items = [
+      item({ key: 'adv:seed', current: '1' }),
+      item({ key: 'adv:steps', current: '30' }),
+      item({ key: 'adv:cfg' }),
+    ];
+    expect(droppedKeys(items.filter(changed), false)).toEqual(['seed', 'steps']);
+    expect(droppedKeys(items.filter(changed), true)).toEqual(['seed', 'steps', 'exposed']);
+    expect(droppedKeys([], true)).toEqual(['exposed']);
+  });
+
+  it('leaves out what the easy tier keeps: the negative prompts, the LoRA and the strengths of the input images', () => {
+    const kept = ['negative:0', 'lora', 'lora:strength', 'ref:0'].map((key) => item({ key, current: 'x' }));
+    expect(droppedKeys(kept, false)).toEqual([]);
   });
 });

@@ -197,9 +197,10 @@ jobs:
 
       # The native darwin tests: the update code (asset selection for darwin/arm64, the bundle and install helpers) and the
       # install of a downloaded executable (Codex app-server, ffmpeg: extraction with the exec bit, the quarantine attribute,
-      # running the file, and the lookup of the installed copy with the machine's real ffmpeg).
+      # running the file, and the lookup of the installed copy with the machine's real ffmpeg), and the extraction of the ComfyUI engine's parts
+      # (the tar.gz of the Python and the wheels, with the exec bit; Issue #854).
       - name: Test the update code and the executable install on macOS
-        run: go test -count=1 ./backend/internal/desktop/... ./backend/internal/service/updater/... ./backend/internal/service/appupdate/... ./backend/internal/chatgpt/codex/engine/... ./backend/internal/exeinstall/... ./backend/internal/media/ffmpegdl/...
+        run: go test -count=1 ./backend/internal/desktop/... ./backend/internal/service/updater/... ./backend/internal/service/appupdate/... ./backend/internal/chatgpt/codex/engine/... ./backend/internal/exeinstall/... ./backend/internal/media/ffmpegdl/... ./backend/internal/modelmgr/extract/...
 
       # The helper that applies an update, against the dmg just built: real hdiutil / ditto / xattr, the new bundle must
       # pass codesign and start (--detect-gpu), and nothing may stay mounted or on disk.

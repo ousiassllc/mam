@@ -54,15 +54,19 @@ type ResultView struct {
 	// AvoidReferencePose says the negative prompt got "do not copy the reference's pose and composition"; LoRA is the LoRA the model was given.
 	AvoidReferencePose bool       `json:"avoid_reference_pose,omitempty"`
 	LoRA               *refs.LoRA `json:"lora,omitempty" jsonschema:"このモデルに渡した LoRA（名前と強さ）"`
-	SpeedMode          string     `json:"speed_mode,omitempty" jsonschema:"動画: このモデルに頼んだ速さのモード（fast / standard など。無ければモデルの既定）"`
+	SpeedMode          string     `json:"speed_mode,omitempty" jsonschema:"このモデルに頼んだ速さのモード（fast / standard / lightning-4 など。無ければモデルの既定）"`
 	// Sampling is what the model ran with: with seed (above) and the other fields, enough to make the result again.
 	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"このモデルが使ったステップ数・CFG・サンプラー・スケジューラー（上書きしなかった項目はモデルの既定）。seed と合わせて同じ条件で作り直せる。受け取らないモデルは無い"`
 	Exposed  map[string]any     `json:"exposed,omitempty" jsonschema:"このモデルの画面に出す値（ComfyUI のノードの入力）が使った値（key は <ノード ID>.<入力名>。指定しなかった項目はグラフが持つ値）。リクエストの exposed に渡せば同じ条件で作り直せる"`
 	Inpaint  *Inpaint           `json:"inpaint,omitempty" jsonschema:"一部だけ描き直したとき。denoise は使った強さ、source_kind / source_id は元画像（history なら結果の ID）"`
 	// Upscale is set for a result of "make it larger": the result it enlarged and the scale, mode and model it used.
-	Upscale    *Upscale   `json:"upscale,omitempty" jsonschema:"アップスケール（大きくする）で作った結果のとき: 元の結果・倍率・使ったモデルと方式・元と出力の大きさ。普通に生成した結果には無い"`
-	CreatedAt  time.Time  `json:"created_at"`
-	FinishedAt *time.Time `json:"finished_at,omitempty"`
+	Upscale *Upscale `json:"upscale,omitempty" jsonschema:"アップスケール（大きくする）で作った結果のとき: 元の結果・倍率・使ったモデルと方式・元と出力の大きさ。普通に生成した結果には無い"`
+	// FaceSwap is set for a result of "swap the face" (FaceFusion): the result it swapped into and the models it ran with.
+	FaceSwap *FaceSwap `json:"face_swap,omitempty" jsonschema:"顔の入れ替え（FaceFusion）で作った結果のとき: 元の結果・使ったモデル・ライセンス上の注意。普通に生成した結果には無い"`
+	// FaceSimilarity is the face similarity of the result to the reference of the role "face" (absent: not measured).
+	FaceSimilarity *FaceSimilarity `json:"face_similarity,omitempty" jsonschema:"役割 face の参照画像があった結果の、参照の顔と出力の顔の類似度（SFace。顔のモデルが無い・参照が無いと省略）"`
+	CreatedAt      time.Time       `json:"created_at"`
+	FinishedAt     *time.Time      `json:"finished_at,omitempty"`
 }
 
 // ViewOf is the view of a stored result.
@@ -76,6 +80,7 @@ func ViewOf(r gentestrepo.Result) ResultView {
 		Status: r.Status, Error: r.Error, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "", MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
 		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, Inpaint: p.Inpaint, Upscale: p.Upscale,
+		FaceSwap: p.FaceSwap, FaceSimilarity: p.FaceSimilarity,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}
 	if p.Translation != nil {
@@ -107,7 +112,7 @@ type InputView struct {
 
 // InputOrigin is where an input image was taken from (the Source of the RefInput and its ID).
 type InputOrigin struct {
-	Kind      string `json:"kind" jsonschema:"upload / project_asset / reference_item / history / pose_library"`
+	Kind      string `json:"kind" jsonschema:"upload / project_asset / reference_item / history / pose_library / batch_input"`
 	ID        string `json:"id"`
 	ProjectID string `json:"project_id,omitempty"`
 }

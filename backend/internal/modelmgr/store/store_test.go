@@ -12,8 +12,25 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 )
 
+// On macOS the executable is inside MAM.app, which the auto-update replaces as a whole: the engine and the models go to the data
+// directory, where the update and the app's removal leave them alone. On Windows nothing changes.
+func TestLayoutIsInTheDataDirectoryOnMacOSAndNextToTheExecutableElsewhere(t *testing.T) {
+	exe := filepath.Join("Applications", "MAM.app", "Contents", "MacOS", "mam")
+	data := t.TempDir()
+	mac := store.For("darwin", exe, data)
+	assert.Equal(t, filepath.Join(data, "comfyui"), mac.Root)
+	assert.NotContains(t, mac.EngineDir(), "MAM.app")
+	assert.NotContains(t, mac.DataDir(), "MAM.app")
+	assert.Equal(t, filepath.Join(data, "comfyui", "data", "models", "vae", "x.safetensors"), mac.ModelPath("models/vae/x.safetensors"))
+	assert.Empty(t, store.For("darwin", exe, "").Root, "no data directory, no place to install to")
+
+	win := filepath.Join("install", "MAM", "mam.exe")
+	assert.Equal(t, filepath.Join("install", "MAM", "comfyui"), store.For("windows", win, data).Root, "the data directory is not used")
+	assert.Equal(t, filepath.Join("install", "MAM", "comfyui"), store.For("linux", win, data).Root)
+}
+
 func TestLayoutIsOneDirectoryNextToTheExecutable(t *testing.T) {
-	l := store.ForExecutable(filepath.Join("install", "MAM", "mam.exe"))
+	l := store.For("windows", filepath.Join("install", "MAM", "mam.exe"), "")
 	assert.Equal(t, filepath.Join("install", "MAM", "comfyui"), l.Root)
 	for _, p := range []string{l.EngineDir(), l.EngineNewDir(), l.EngineOldDir(), l.DataDir(), l.DownloadsDir(), l.LogPath(), l.StatePath(), l.ModelPath("models/vae/x.safetensors")} {
 		rel, err := filepath.Rel(l.Root, p)

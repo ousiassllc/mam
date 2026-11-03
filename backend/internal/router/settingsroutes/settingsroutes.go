@@ -13,8 +13,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/apprestart"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
+	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
@@ -37,11 +39,13 @@ import (
 	onboardinghandler "github.com/ousiassllc/mam/backend/internal/web/handler/onboarding"
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
+	facefusionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/facefusion"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
+	restarthandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/restart"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settingspage"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -56,6 +60,9 @@ type Services struct {
 	// Update checks for a newer version. Nil in the headless server, which cannot update itself: the
 	// version section then shows the version only and has no check route.
 	Update *appupdate.Service
+	// Restart is the "再起動して反映" panel: the settings that wait for a restart and the button (POST paths.Restart()). Nil leaves
+	// the panel and its route out.
+	Restart *apprestart.Service
 	// MCP is the MCP server section (address, bind address, tokens). Nil when the MCP server is not running
 	// (a router built without the app, as the tests do): the section and its routes are then absent.
 	MCP *mcpsettings.Service
@@ -86,6 +93,8 @@ type Services struct {
 	// FFmpegDownload is the download of ffmpeg and ffprobe (the button of the ffmpeg section and of the first-run guide). Nil
 	// leaves the download and its routes out.
 	FFmpegDownload *ffmpegdl.Service
+	// FaceFusion is the "FaceFusion" section (the paths of the external face swapper). Nil leaves the section and its route out.
+	FaceFusion *facefusionsettings.Service
 	// Gentest is the generation test screen (paths.GenerationTest) and the trial generations of the model manager screen
 	// (service.Services.Gentest). Nil leaves the screen out and the trial panel without a form.
 	Gentest *gentest.Service
@@ -97,6 +106,14 @@ type Services struct {
 // by a start option, which the screen shows and does not write).
 func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Services {
 	return &Services{LLM: llmassign.New(llmFile, llmPinned), LLMModels: llmmodels.New(llmmodels.Options{}), Models: modelsettings.New(modelFile, modelPinned)}
+}
+
+// registerRestart adds the routes of the "再起動して反映" panel when the app has a restart service.
+func registerRestart(engine *gin.Engine, s *Services) {
+	if s != nil && s.Restart != nil {
+		engine.GET(paths.Restart(), restarthandler.Show(s.Restart))
+		engine.POST(paths.Restart(), restarthandler.Restart(s.Restart))
+	}
 }
 
 // Register adds the pages of the settings screen (settingspage.Register: the overview and "API キーとログイン" always,
@@ -111,6 +128,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 	if update != nil {
 		engine.POST(paths.UpdateCheck(), updatehandler.Check(update))
 	}
+	registerRestart(engine, s)
 	if s != nil && s.MCP != nil {
 		h := mcphandler.Handlers{Svc: s.MCP, Page: pages.Page(paths.SettingsMCP)}
 		engine.GET(paths.MCPBindEdit(), h.EditBind)
@@ -124,6 +142,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.GET(paths.ChatGPTSettings(), chatgpthandler.Panel(s.ChatGPT, apiKeys))
 		engine.GET(paths.ChatGPTModels(), chatgpthandler.Models(s.ChatGPT, apiKeys))
 		engine.GET(paths.ChatGPTLogin(":kind"), chatgpthandler.LoginModal(s.ChatGPT, apiKeys))
+		engine.GET(paths.ChatGPTDetail(":kind"), chatgpthandler.Detail(s.ChatGPT, apiKeys))
 		engine.PUT(paths.ChatGPTImageEnabled(), chatgpthandler.SetImageEnabled(s.ChatGPT))
 		engine.POST(paths.ChatGPTLogin(":kind"), chatgpthandler.StartLogin(s.ChatGPT))
 		engine.POST(paths.ChatGPTLoginCancel(":kind"), chatgpthandler.CancelLogin(s.ChatGPT))
@@ -139,8 +158,10 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
 	if s != nil && s.Audio != nil {
+		engine.GET(paths.AudioDetail(":choice", ":provider"), audiohandler.Detail(s.Audio, pages.Page(paths.SettingsAudio)))
 		engine.PUT(paths.AudioSettings(), audiohandler.Save(s.Audio))
 	}
+	registerFaceFusion(engine, s)
 	if s != nil && s.FFmpeg != nil {
 		f := ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload}
 		engine.PUT(paths.FFmpegSettings(), ffmpeghandler.Save(f))
@@ -178,6 +199,13 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 }
 
 // pageServices are the services the pages of the settings screen are built from (the ones s does not have stay nil).
+// registerFaceFusion adds the PUT of the "FaceFusion" section when there is a service for it (a function of its own to keep Register simple).
+func registerFaceFusion(engine *gin.Engine, s *Services) {
+	if s != nil && s.FaceFusion != nil {
+		engine.PUT(paths.FaceFusionSettings(), facefusionhandler.Save(s.FaceFusion))
+	}
+}
+
 func pageServices(services *service.Services, s *Services) settingspage.Services {
 	p := settingspage.Services{Keys: services.Credentials}
 	if s != nil {
@@ -186,7 +214,9 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 		}
 		p.ChatGPT, p.LLM, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
 		p.Audio = s.Audio
+		p.Restart = s.Restart
 		p.FFmpegDownload = s.FFmpegDownload
+		p.FaceFusion = s.FaceFusion
 		p.Guide = s.Onboarding != nil
 	}
 	return p

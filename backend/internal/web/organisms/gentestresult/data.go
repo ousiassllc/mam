@@ -12,16 +12,18 @@ type Actions struct {
 	InpaintURL, RedrawFrom string
 	// Upscale says the box of the enlargement is on the page.
 	Upscale bool
-	// SimilarURL and ReplayURL open the compose form with this result's settings: with a new seed, and with the same seed. They are not offered
-	// for a result that is a redraw or an enlargement (its settings are not those of a plain generation).
+	// SimilarURL and ReplayURL open the compose form with this result's settings: with a new seed, and with the same seed. For a result that is a
+	// redraw they open the redraw screen instead (its settings are not those of a plain generation); an enlargement has neither (UpscaleAgainURL).
 	SimilarURL, ReplayURL string
 	// FaceURL opens the easy tier with this picture as the face to keep.
 	FaceURL string
+	// UpscaleAgainURL opens the result an enlargement came from, with the scale and the workflow of this one already chosen in the box.
+	UpscaleAgainURL string
 }
 
 // Show says there is a button to draw.
 func (a Actions) Show() bool {
-	return a.InpaintURL != "" || a.RedrawFrom != "" || a.Upscale || a.SimilarURL != "" || a.ReplayURL != "" || a.FaceURL != ""
+	return a.InpaintURL != "" || a.RedrawFrom != "" || a.Upscale || a.SimilarURL != "" || a.ReplayURL != "" || a.FaceURL != "" || a.UpscaleAgainURL != ""
 }
 
 // Line is a line of the settings panel.

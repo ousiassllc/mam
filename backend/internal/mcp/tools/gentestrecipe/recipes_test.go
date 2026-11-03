@@ -21,11 +21,11 @@ type rig struct {
 	GT *gentesttest.Rig
 }
 
-func newRig(t *testing.T) *rig {
+func newRig(t *testing.T, opts ...gentesttest.Option) *rig {
 	t.Helper()
 	r := &rig{}
 	r.Env = mcptest.New(t, func(env *mcptest.Env, reg *mcpkit.Registrar) {
-		r.GT = gentesttest.NewOn(t, env.DB, gentesttest.WithTemplateModels(), gentesttest.WithExposedModel())
+		r.GT = gentesttest.NewOn(t, env.DB, append([]gentesttest.Option{gentesttest.WithTemplateModels(), gentesttest.WithExposedModel()}, opts...)...)
 		env.Services.Gentest = r.GT.Svc
 		jobs.Register(reg, env.Services)
 		mcpgentest.Register(reg, env.Services)
@@ -111,4 +111,60 @@ func TestRecipeRefusals(t *testing.T) {
 	delete(args, "models")
 	args["intent"] = "photo"
 	assert.Contains(t, r.CallError("estimate_generation_test", args), "validation")
+}
+
+// 速さのモード: save_generation_recipe の speed_mode はレシピに残り（一覧に出る）、レシピを指定した見積りのリクエストに入る。モデルに無いモードは validation。
+func TestARecipeKeepsTheSpeedModeAndARequestThatNamesItGetsIt(t *testing.T) {
+	r := newRig(t, gentesttest.WithSpeedModel())
+	speed := string(gentesttest.ImageSpeedModel)
+	var saved gentestrecipe.Recipe
+	r.CallOK("save_generation_recipe", map[string]any{"name": "Quick", "model": speed, "speed_mode": "lightning-4"}, &saved)
+	assert.Equal(t, "lightning-4", saved.SpeedMode)
+
+	var list gentestrecipe.ListOutput
+	r.CallOK("list_generation_recipes", map[string]any{}, &list)
+	require.Len(t, list.Recipes, 1)
+	assert.Equal(t, "lightning-4", list.Recipes[0].SpeedMode)
+
+	var est gentest.Estimate
+	r.CallOK("estimate_generation_test", map[string]any{"media": "image", "recipe": saved.ID, "prompts": []map[string]any{{"prompt": "a red fox"}}}, &est)
+	assert.Equal(t, "lightning-4", est.Request.SpeedMode)
+
+	assert.Contains(t, r.CallError("save_generation_recipe", map[string]any{"name": "x", "model": speed, "speed_mode": "lightning-2"}), "validation")
+	assert.Contains(t, r.CallError("save_generation_recipe", map[string]any{"name": "y", "model": model, "speed_mode": "lightning-4"}), "validation", "a model without modes")
+}
+
+// 年齢確認がオフ（Issue #992）: 成人向けモデルのレシピは、一覧にも更新の返り値にも、モデルの名前や設定を出さない（レシピは残り、開くと元に戻る）。
+func TestARecipeOfAHiddenModelShowsNeitherTheModelNorItsSettings(t *testing.T) {
+	hidden := false
+	r := newRig(t, gentesttest.WithHidden(func(id string) bool { return hidden && id == model }))
+	saved := save(r, "Fox look", nil)
+	require.NotEmpty(t, saved.ModelLabel)
+
+	hidden = true
+	var list gentestrecipe.ListOutput
+	r.CallOK("list_generation_recipes", map[string]any{}, &list)
+	require.Len(t, list.Recipes, 1)
+	var renamed gentestrecipe.Recipe
+	r.CallOK("update_generation_recipe", map[string]any{"id": saved.ID, "name": "Fox 2"}, &renamed)
+	for _, got := range []gentestrecipe.Recipe{list.Recipes[0], renamed} {
+		assert.False(t, got.Usable)
+		assert.Contains(t, got.Reason, "成人向け")
+		assert.Empty(t, got.Model)
+		assert.NotContains(t, got.ModelLabel, saved.ModelLabel)
+		assert.Empty(t, got.NegativePrompt)
+		assert.Nil(t, got.Sampling)
+		assert.Nil(t, got.Seed)
+		assert.Empty(t, got.AspectRatio)
+		assert.Empty(t, got.Exposed)
+	}
+	assert.Contains(t, r.CallError("estimate_generation_test", map[string]any{"media": "image", "recipe": saved.ID, "prompts": []map[string]any{{"prompt": "a"}}}), "validation")
+
+	hidden = false
+	r.CallOK("list_generation_recipes", map[string]any{}, &list)
+	require.Len(t, list.Recipes, 1)
+	assert.True(t, list.Recipes[0].Usable)
+	assert.Equal(t, model, list.Recipes[0].Model)
+	assert.Equal(t, "blurry", list.Recipes[0].NegativePrompt)
+	assert.Equal(t, "Fox 2", list.Recipes[0].Name)
 }

@@ -13,6 +13,7 @@
 | `update_product` | 商品の属性（`material`, `orientation`, `condition`）を更新 | `project_id`, `branch_id?`, `product_id`, 各属性 | 同上 | いいえ |
 | `update_location` | 場所の属性（`time`, `lighting_state`, `weather`）を更新 | `project_id`, `branch_id?`, `location_id`, 各属性 | 同上 | いいえ |
 | `set_world_field_lock` | 項目を AUTO / LOCK で切り替える（冪等）。LOCK した項目は State Extractor が更新せず、編集もできない | `project_id`, `branch_id?`, `target_type`（`character` / `product` / `location` / `camera` / `story`）, `target_id?`（camera・story は不要）, `parameter`, `mode`（`auto` / `lock`） | 同上 | いいえ |
+| `create_character` | 登場人物を直接作る（LLM の企画を待たない。企画が LLM 未設定で止まった Project や、空の Series の正本に登場人物を足す。#1001）。`project_id` ならその Project の World State（`branch_id` で Branch）に、`series_id` なら Series の正本に作る（どちらか一方。両方・どちらも無しは `validation`）。名前は前後の空白を除いて 1〜100 文字、同じ World State / 正本の中で重複できない（大文字小文字・全半角を区別しない。重複は `validation`）。`hairstyle` / `wardrobe` / `personality` / `voice` は各 200 文字以内。顔・全身の参照画像は作成時に `face_reference_id` / `body_reference_id`（Reference Library の画像の `id`。`kind=character` でなければ `validation`、無い ID は `not_found`）で渡せ、あとから `assign_character_reference` でも付け替えられる。Series には Reference Library が無いので、Series に作るときの参照画像は、その画像を登録した Project を `reference_project_id` で指す（参照画像を渡すのに無ければ `validation`。正本は画像を自分のものとして持つ）。Project に作るとき World State に新しいバージョンが、Series に作るとき正本に新しいバージョンができる（作成済みの Episode は変わらず、次の Episode から使われる）。LOCK の対象にはまだならない（作った直後は AUTO） | `project_id?`, `series_id?`, `branch_id?`（`project_id` のとき）, `name`, `hairstyle?`, `wardrobe?`, `personality?`, `voice?`, `face_reference_id?`, `body_reference_id?`, `reference_project_id?`（`series_id` のとき） | `project_id` / `series_id`, `character_id`（`assign_character_reference` の `entity_id`、`update_series_character`・`update_character_voice_reference` の `character_id`）, `character`（`id`, `name`, `hairstyle?`, `wardrobe?`, `voice?`, `personality?`, `face_reference?`, `body_reference?`）, `version`（作ったあとの World State / 正本の最新バージョン番号） | いいえ |
 | `assign_character_reference` | 登場人物の参照枠（`face` / `body`）に Reference Library の画像を割り当てる。`reference_id` を空にすると枠を空にする。枠の LOCK（`identity`）中は `locked`。種別が枠に合わない画像は `validation` | `project_id`, `branch_id?`, `entity_id`, `slot`, `reference_id?` | 同上 | いいえ |
 | `assign_product_reference` | 商品の参照枠（`geometry` / `label`）。LOCK は `geometry` / `label` | 同上 | 同上 | いいえ |
 | `assign_location_reference` | 場所の参照枠（`layout`）。LOCK は `layout_reference` | 同上 | 同上 | いいえ |
@@ -68,6 +69,8 @@
 | `update_series_character` | 正本の登場人物の `hairstyle` / `wardrobe` / `voice` / `personality` を、渡した項目だけ更新（各 200 文字以内）。正本に新しいバージョンができる | `series_id`, `character_id`, 各属性 | `get_series` と同じ | いいえ |
 | `update_series_style` | 正本の Style を更新する（500 文字以内。空にもできる） | `series_id`, `style` | `get_series` と同じ | いいえ |
 
+正本に登場人物を足すのは「World State」の節の `create_character`（`series_id` を渡す。#1001）。LLM の企画を待たずに、空の正本へ直接作れる。
+
 ## 参照音声（`/series/:id/characters/:characterId/voice-reference`・`/projects/:id/characters/:characterId/voice-reference`）
 
 登場人物の参照音声（F-20・F-29）。ローカルの声（GPT-SoVITS）が同じキャラに同じ声を毎回作るための、3〜10 秒の録音と、その書き起こし・言語。Series の正本の登場人物（`series_id` と `get_series` の `canon.characters[].id`）にも、Project の登場人物（`project_id` と `get_world_state` の `characters[].id`）にも付けられる。`series_id` と `project_id` はどちらか一方（両方・どちらも無しは `validation`）。正本に付けると正本に新しいバージョンができ、作成済みの Episode は変わらない（次の Episode から）。Episode の登場人物の音声は、その Episode だけ差し替えられる。`get_series`・`get_world_state` の登場人物に `voice_reference`（`file_path`（アセットディレクトリ内の保存先。参照しない・ダウンロードは `get_character_voice_reference_url`）, `mime_type`, `size_bytes`, `duration_ms`, `text?`, `language`。無ければ省略）が付く。
@@ -99,3 +102,4 @@ Project のメモと Series の正本メモは同じ形。Series のメモは Ep
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。World State（8）・Reference Library（3）・Branch（4）・バージョン履歴（7）・Series（5）・メモ（7）の 34 ツールと、ジョブ `create_branch` | Issue #830。画面の全操作を MCP ツールにする |
 | 1.1 | 2026-11-01 | 「参照音声」の節を足した（アップロード `character_voice_reference`、`update_character_voice_reference`・`delete_character_voice_reference`・`get_character_voice_reference_url`。`get_series`・`get_world_state` の登場人物に `voice_reference`） | Issue #919（#912） |
+| 1.2 | 2026-11-03 | World State の表に `create_character`（Project の World State か Series の正本に、名前・髪型・衣装・性格・声と顔・全身の参照画像を渡して登場人物を直接作る。`character_id` を返す）を足した | Issue #1001。登場人物は LLM の企画だけが作っていたため、LLM が止まるとシリーズの正本も空のままで、`assign_character_reference` に渡す `entity_id` も無かった |

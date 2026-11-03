@@ -96,7 +96,7 @@ func EngineDetail(e view.Engine) templ.Component {
 			}
 			switch view.EnginePhase(e) {
 			case "unsupported":
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300\" role=\"note\" data-testid=\"mm-engine-unsupported\">同梱の ComfyUI は Windows 版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版）では、別に動かしている ComfyUI の URL を <a class=\"underline\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300\" role=\"note\" data-testid=\"mm-engine-unsupported\">同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版・Intel Mac など）では、別に動かしている ComfyUI の URL を <a class=\"underline\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -114,20 +114,20 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			case "readonly":
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300\" role=\"alert\" data-testid=\"mm-engine-readonly\"><p>mam.exe のあるフォルダ（")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300\" role=\"alert\" data-testid=\"mm-engine-readonly\"><p>導入先のフォルダ（")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(e.Dir)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/modeldetail/engine.templ`, Line: 26, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/modeldetail/engine.templ`, Line: 26, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "）に書き込めません。書き込める場所に置き直すか、外部の ComfyUI の URL を設定してください。</p><p class=\"text-xs\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。</p><p class=\"text-xs\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -306,7 +306,7 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "を実行時に取得し、SHA-256 を確かめてから使います。 ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "を実行時に取得し（Mac 版は、ソースと Python・PyTorch などの各パッケージを個別に取得し）、SHA-256 を確かめてから使います。 ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

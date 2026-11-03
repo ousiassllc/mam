@@ -4,9 +4,11 @@ package failtext
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 )
@@ -45,7 +47,7 @@ func Translate(err error) string {
 	const tail = "。何も生成していません。もう一度試すか、英訳を OFF にしてください"
 	switch {
 	case errors.Is(err, llm.ErrNoAPIKey):
-		return "プロンプトを英語に訳せませんでした: LLM の API キーが登録されていません（設定の「LLM の割り当て」の Prompt Planner が使うプロバイダー）" + tail
+		return "プロンプトを英語に訳せませんでした: " + strings.TrimSuffix(failmsg.NoKeyMessage(err), "。") + tail
 	case errors.Is(err, llm.ErrCircuitOpen):
 		return "プロンプトを英語に訳せませんでした: LLM が一時的に使えません" + tail
 	case errors.Is(err, llm.ErrTimeout):

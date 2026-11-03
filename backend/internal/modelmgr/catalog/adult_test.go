@@ -13,7 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 )
 
-var adultIDs = []string{"big-lust-v16", "bigasp-v2", "chroma1-hd", "cyberrealistic-pony-v18", "cyberrealistic-xl-v10", "epicrealism-xl-lastfame", "flux1-dev-nsfw-master", "juggernaut-xl-ragnarok", "ltx-2.5-22b-distilled-uncensored", "lustify-sdxl-zenith-v9", "noctq-v4-qwen-image21", "noobai-xl-v11", "pony-diffusion-v6-xl", "qwen-image-21-uncensored-int8", "realism-sdxl-stable-yogi-v8", "realvisxl-v50", "thisisreal-sdxl-v3", "wai-illustrious-sdxl-v17", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v"}
+var adultIDs = []string{"big-lust-v16", "bigasp-v2", "chroma1-hd", "cyberrealistic-pony-v18", "cyberrealistic-xl-v10", "epicrealism-xl-lastfame", "flux1-dev-nsfw-master", "juggernaut-xl-ragnarok", "ltx-2.5-22b-distilled-uncensored", "lustify-sdxl-zenith-v9", "lustify-v10-krea2-turbo-fp8", "noctq-v4-qwen-image21", "noobai-xl-v11", "pony-diffusion-v6-xl", "qwen-image-21-uncensored-int8", "qwen-image-edit-rapid-aio-nsfw-v23", "realism-sdxl-stable-yogi-v8", "realvisxl-v50", "realvisxl-v50-lightning", "thisisreal-sdxl-v3", "wai-illustrious-sdxl-v17", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v"}
 
 // The models of Issue #841 and which of them are for adults: the uncensored models and the LoRAs that make a model
 // uncensored. wan22-i2v-14b is the official base (no NFAA tag on Hugging Face), so it is a general standard model.

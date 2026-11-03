@@ -29,6 +29,9 @@ const (
 )
 
 func main() {
+	// A process that a restart started waits here for the one it replaces to end (before anything takes the single-instance
+	// lock or the data directory).
+	desktop.WaitForPredecessor()
 	// --detect-gpu / --detect-comfyui (the installer calls them) print a report and exit: no window, no
 	// single-instance check, no data directory.
 	if handled, err := app.RunDetect(context.Background(), os.Args[1:], os.Stdout); handled {
@@ -62,6 +65,9 @@ func run(args []string, getenv func(string) string) int {
 	// (macOS) once the server stopped.
 	var wails *application.App
 	updater := desktop.NewUpdater(func() { wails.Quit() })
+	// A restart that was asked for (the settings screen's "再起動して反映", the MCP tool restart_app) quits the same way and,
+	// once the server stopped, starts the application again (spec/architecture/restart.md).
+	restarter := desktop.NewRestarter(func() { wails.Quit() })
 
 	options := application.Options{
 		Name:        appName,
@@ -82,8 +88,12 @@ func run(args []string, getenv func(string) string) int {
 			if s := server.Load(); s != nil {
 				_ = s.Stop() // a failed shutdown is already in the log file
 			}
-			if err := updater.RunPending(); err != nil {
-				showError("アップデートのインストーラーを起動できませんでした。アプリを起動し直してください。\n" + err.Error())
+			if updater.Pending() { // the installer restarts the application itself: a second copy must not start beside it
+				if err := updater.RunPending(); err != nil {
+					showError("アップデートのインストーラーを起動できませんでした。アプリを起動し直してください。\n" + err.Error())
+				}
+			} else if err := restarter.RunPending(); err != nil {
+				showError("アプリを再起動できませんでした。アプリを起動し直してください。\n" + err.Error())
 			}
 		},
 	}
@@ -116,6 +126,7 @@ func run(args []string, getenv func(string) string) int {
 		Getenv:  getenv,
 		OnReady: nav.SetURL,
 		Update:  updateOptions(updater),
+		Restart: restarter.Restart,
 		// The ChatGPT login opens the default browser, not the webview: the login page must not run inside the app window.
 		OpenBrowser: func(url string) error { return wails.Browser.OpenURL(url) },
 	}, func(err error) {

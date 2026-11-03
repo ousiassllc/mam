@@ -87,3 +87,41 @@ func TestACallOfAModelWithoutAPriceIsRecordedWithTokensAndNoCost(t *testing.T) {
 	}
 	assert.Zero(t, v.LLMUSD, "a call without a price is not in the total")
 }
+
+// A call that was answered with something the match cannot use (not JSON, a prompt that did not change) was paid for: it is in the
+// calls of the round and in the total, with the round that failed because of it (#994).
+func TestAPaidCallWhoseAnswerCannotBeUsedStaysInTheCostOfTheMatch(t *testing.T) {
+	answered := llm.Target{Provider: llm.ProviderAnthropic, Model: "claude-opus-4-5"}
+	one := llm.Usage{InputTokens: 1000, OutputTokens: 100}
+	usd := (1000*5 + 100*25) / 1e6
+	for name, tc := range map[string]struct {
+		kind, text string
+		calls      []string // the kinds recorded in the round that failed
+		rounds     int
+	}{
+		"the prompt is not JSON":     {gentesttest.CallDescribe, "no JSON here", []string{imagematch.CallDescribe}, 1},
+		"the comparison is not JSON": {gentesttest.CallCompare, "no JSON here", []string{imagematch.CallDescribe, imagematch.CallCompare}, 1},
+		"the fix is not JSON":        {gentesttest.CallRevise, "no JSON here", []string{imagematch.CallRevise}, 2},
+		"the fix did not change":     {gentesttest.CallRevise, `{"prompt": "prompt 1"}`, []string{imagematch.CallRevise}, 2},
+		"the score is out of 0..100": {gentesttest.CallCompare, `{"score": 500}`, []string{imagematch.CallDescribe, imagematch.CallCompare}, 1},
+	} {
+		r := newPricedRig(t, opus, gptMin)
+		r.LLM.Scores = []int{40, 90}
+		r.LLM.Answered = answered
+		r.LLM.Usage = map[string]llm.Usage{gentesttest.CallDescribe: one, gentesttest.CallCompare: one, gentesttest.CallRevise: one}
+		r.LLM.Text = map[string]string{tc.kind: tc.text}
+		v := r.finished(r.start(r.request(match.ModeAuto)).BatchID)
+		require.Equal(t, match.StopError, v.Stop, name)
+		require.Len(t, v.Rounds, tc.rounds, name)
+		var kinds []string
+		for _, c := range v.Rounds[len(v.Rounds)-1].LLM {
+			kinds = append(kinds, c.Kind)
+		}
+		assert.Equal(t, tc.calls, kinds, name)
+		var calls int
+		for _, rd := range v.Rounds {
+			calls += len(rd.LLM)
+		}
+		assert.InDelta(t, float64(calls)*usd, v.LLMUSD, 1e-12, "every call that was answered is in the total: %s", name)
+	}
+}

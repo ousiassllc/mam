@@ -17,7 +17,7 @@
   "summary": "コミット 52dc5068 の LICENSE は Apache License 2.0 の全文で、著作権者の欄が雛形（Copyright [yyyy] [name of copyright owner]）のまま。同じコミットの README の「License」の節は「This project inherits the original MIT License. See LICENSE for details.」と書き、LICENSE が Apache であることと合わない。GitHub の表示は Apache License 2.0。元のリポジトリ（balazik/ComfyUI-PuLID-Flux）のライセンスは確かめていない。",
   "commercial": "unknown",
   "checked_at": "2026-11-03",
-  "notice": "ノードのコードのライセンスが、同じリポジトリの LICENSE（Apache-2.0）と README（MIT）で食い違い、著作権者の欄も空です。どちらでも商用利用に厳しい条件の付くライセンスではありませんが、どちらが正しいかは確かめられていません。そのうえ、このノードが動くのに要る InsightFace の学習済みの重み（antelopev2）は非商用の研究用途のみで、mam は同梱も自動の取得もしません。導入できる状態になっても、商用で使う前に、使う重みの配布元で確かめてください。"
+  "notice": "ノードのコードのライセンスが、同じリポジトリの LICENSE（Apache-2.0）と README（MIT）で食い違い、著作権者の欄も空です。どちらでも商用利用に厳しい条件の付くライセンスではありませんが、どちらが正しいかは確かめられていません。そのうえ、このノードが動くのに要る InsightFace の学習済みの重み（antelopev2）は非商用の研究用途のみで、mam は同梱も自動の取得もしません（deepinsight/insightface の README・model_zoo/README.md・python-package/README.md が、モデルは手で取っても自動で取っても非商用の研究用途のみと明記しています。2026-11-03 に確認）。導入できる状態になっても、商用で使う前に、使う重みの配布元で確かめてください。"
  },
  "python_requires": [
   "torch",

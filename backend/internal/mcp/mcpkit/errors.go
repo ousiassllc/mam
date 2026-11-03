@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
@@ -59,6 +60,7 @@ func MapError(err error) *ToolError {
 		locked     *service.LockedError
 		ai         *service.AIError
 		conflicted *service.ConflictError
+		store      *credential.StoreError
 		brand      *domain.BrandViolationError
 	)
 	switch {
@@ -85,6 +87,8 @@ func MapError(err error) *ToolError {
 		return &ToolError{Code: CodeUpstream, Message: ai.Reason, Status: http.StatusBadGateway}
 	case errors.As(err, &invalid):
 		return &ToolError{Code: CodeValidation, Message: invalid.Error(), Status: http.StatusUnprocessableEntity}
+	case errors.As(err, &store):
+		return &ToolError{Code: CodeUnavailable, Message: store.Message, Status: http.StatusServiceUnavailable}
 	}
 	for _, m := range sentinels {
 		if errors.Is(err, m.err) {

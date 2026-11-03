@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -26,6 +27,10 @@ func TestFailureReason(t *testing.T) {
 	}{
 		{"no model key", fmt.Errorf("x: %w", modeladapter.ErrNoAPIKey), "API キー"},
 		{"no llm key", llm.ErrNoAPIKey, "API キー"},
+		{"no llm key names the agent and the providers", &llm.RouteError{Agent: llm.AgentPromptPlanner, Tried: []llm.TargetFailure{
+			{Target: llm.Target{Provider: llm.ProviderAnthropic, Model: "claude-x"}, Err: llm.ErrNoAPIKey},
+			{Target: llm.Target{Provider: llm.ProviderGoogle, Model: "gemini-x"}, Err: llm.ErrNoAPIKey},
+		}}, "Prompt Planner（Shot Spec）"},
 		{"budget", fmt.Errorf("x: %w", generation.ErrBudgetExceeded), "予算上限"},
 		{"brand", domain.ErrBrandViolation, "Brand"},
 		{"judge off", generation.ErrJudgeUnavailable, "AI Video Judge"},
@@ -78,4 +83,15 @@ func TestFailureReason_NamesTheAlternativesRejectionWhenThePrimaryIsSkippedByIts
 	require.Error(t, err)
 	assert.Contains(t, generation.FailureReason(err), "拒否")
 	assert.NotContains(t, generation.FailureReason(err), "一時的に利用できません")
+}
+
+// The notice of a Shot that failed for want of an LLM key links to the LLM assignment; a model's missing key and other causes do not (#1006).
+func TestFailureNotice_OnlyAMissingLLMKeyLinksToTheLLMAssignment(t *testing.T) {
+	n := failmsg.Notice(&llm.RouteError{Agent: llm.AgentWriter, Tried: []llm.TargetFailure{{Err: llm.ErrNoAPIKey}}}, "text")
+	assert.Equal(t, domain.RefGlobalSettings, n.RefType)
+	assert.Equal(t, "llm", n.RefID)
+	assert.Equal(t, domain.KindText, n.Kind)
+	assert.Equal(t, "生成モデルの API キーが設定されていません（設定画面で、そのモデルのプロバイダーのキーを登録してください）", generation.FailureReason(modeladapter.ErrNoAPIKey))
+	assert.Empty(t, failmsg.Notice(modeladapter.ErrNoAPIKey, "text").RefType)
+	assert.Empty(t, failmsg.Notice(llm.ErrTimeout, "text").RefType)
 }

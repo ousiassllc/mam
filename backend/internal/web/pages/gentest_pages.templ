@@ -86,6 +86,7 @@ templ GenerationMatchPage(csrfToken string, c gentest.MatchCompose) {
 templ GenerationHistoryPage(csrfToken string, h gentest.History) {
 	@generationShell("生成テストの履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。") {
 		@gentest.HistoryList(h)
+		@modal.Host()
 	}
 }
 

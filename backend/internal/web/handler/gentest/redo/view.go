@@ -16,20 +16,50 @@ import (
 )
 
 // ActionsOf are the buttons under the picture of an image result that has a file. inpaintURL is the screen that redraws part of it; upscale says
-// the box of the enlargement is on the page. A result that is itself a redraw or an enlargement has no "again": its settings are not those of a
-// plain generation (its source picture and mask are not part of the form).
+// the box of the enlargement is on the page. A result that is itself a redraw has its "again" in the redraw screen (its picture and mask are not
+// part of the compose form), and one that is an enlargement opens the result it enlarged with the scale and the workflow chosen.
 func ActionsOf(d record.ResultDetail, inpaintURL, redrawFrom string, upscale bool) gentestresult.Actions {
 	a := gentestresult.Actions{InpaintURL: inpaintURL, RedrawFrom: redrawFrom, Upscale: upscale}
 	if d.Media != gentest.MediaImage || !d.HasFile {
 		return gentestresult.Actions{}
 	}
-	if d.Inpaint == nil && d.Upscale == nil {
+	switch {
+	case d.Inpaint != nil:
+		a.SimilarURL, a.ReplayURL = inpaintAgainURL(d.ID, false), inpaintAgainURL(d.ID, true)
+	case d.FaceSwap != nil: // a swap has no sampling to repeat: its inputs are the picture and the face
+	case d.Upscale != nil:
+		a.UpscaleAgainURL = upscaleAgainURL(d.Upscale)
+	default:
 		a.SimilarURL = againURL(d.ID, false)
 		a.ReplayURL = againURL(d.ID, true)
 	}
 	face := url.Values{gentesttier.FieldTier: {gentesttier.TierEasy}, gentesttier.FieldIntent: {"face"}, "ref": {refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()}, "ref_role": {gentest.RoleFace}}
 	a.FaceURL = paths.GenerationTest() + "?" + face.Encode()
 	return a
+}
+
+// inpaintAgainURL opens the redraw screen with the redraw id made (the seed kept when sameSeed).
+func inpaintAgainURL(id string, sameSeed bool) string {
+	q := url.Values{ParamAgain: {id}}
+	if sameSeed {
+		q.Set(ParamSameSeed, "1")
+	}
+	return paths.GenerationTestInpaint() + "?" + q.Encode()
+}
+
+// Query names of the result page that opens the box of the enlargement with a scale and a workflow already chosen.
+const (
+	ParamUpscaleScale = "upscale_scale"
+	ParamUpscaleModel = "upscale_model"
+)
+
+// upscaleAgainURL is the result the enlargement u came from, with the box of "大きくする" set to what u used. "" when the source is not known.
+func upscaleAgainURL(u *record.Upscale) string {
+	if u.SourceResultID == "" {
+		return ""
+	}
+	q := url.Values{ParamUpscaleScale: {strconv.Itoa(u.Scale)}, ParamUpscaleModel: {u.Model}}
+	return paths.GenerationTestPart("results", u.SourceResultID) + "?" + q.Encode() + gentestresult.UpscaleAnchor
 }
 
 func againURL(id string, sameSeed bool) string {

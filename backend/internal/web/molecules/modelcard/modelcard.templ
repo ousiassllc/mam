@@ -24,13 +24,13 @@ templ Item(c Card) {
 			<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 				<h3 class="text-sm font-semibold text-neutral-100">
 					<button
-						class="cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none"
+						class="max-w-full cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none"
 						aria-haspopup="dialog"
 						data-card-open
 						{ modal.OpenAttrs(c.DetailURL, c.FocusKey())... }
 					>{ c.Name }</button>
 				</h3>
-				<p class="text-xs text-neutral-400" data-testid="model-meta">{ c.Meta }</p>
+				<p class="break-words text-xs text-neutral-400" data-testid="model-meta">{ c.Meta }</p>
 			</div>
 			if c.Commercial != nil {
 				<span class="relative z-10 shrink-0">

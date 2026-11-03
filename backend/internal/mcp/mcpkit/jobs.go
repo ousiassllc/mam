@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -46,11 +47,12 @@ type JobStatus struct {
 	Message    string         `json:"message,omitempty" jsonschema:"いま何をしているか / what it is doing now"`
 	Done       int            `json:"done,omitempty" jsonschema:"終わった数（Take など）/ items finished"`
 	Total      int            `json:"total,omitempty" jsonschema:"全体の数 / items in all"`
-	Steps      *live.View     `json:"progress,omitempty" jsonschema:"動いているローカル ComfyUI の生成の進み具合（step / max_step / percent / eta_seconds）。取れないとき（クラウドのモデル・準備中・終わった後）は省略 / step, percent and time left of the local ComfyUI call that is running; left out when unknown"`
+	Steps      *live.View     `json:"progress,omitempty" jsonschema:"動いているローカル ComfyUI の生成の進み具合（node / step / max_step / percent / elapsed_seconds / eta_seconds）。取れないとき（クラウドのモデル・準備中・終わった後）は省略 / step, percent and time left of the local ComfyUI call that is running; left out when unknown"`
 	Result     map[string]any `json:"result,omitempty" jsonschema:"成功したときの結果（take_id など）/ result when it succeeded (e.g. take_ids)"`
 	Error      string         `json:"error,omitempty" jsonschema:"失敗の理由 / why it failed"`
 	ErrorID    string         `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID。get_app_logs の attrs に {\"error_id\": …} で渡すと原因のログ行が見つかる / correlation id of an internal failure: find its cause with get_app_logs (attrs error_id)"`
 	ErrorCode  string         `json:"error_code,omitempty" jsonschema:"失敗のコード（error の <code>: <message> の <code>。validation・conflict・budget_exceeded・upstream・internal など）/ code of the failure"`
+	NextSteps  string         `json:"next_steps,omitempty" jsonschema:"失敗した企画（plan）のジョブが LLM の API キー未設定のときだけ: 続けるためにすること（鍵を入れて再開する、または create_character で登場人物を直接作る）/ what to do to go on when the planning job stopped for want of an LLM API key"`
 	ProjectID  string         `json:"project_id,omitempty" jsonschema:"対象が属する Project の ID（無ければ省略）/ Project of the target, when it has one"`
 	StartedAt  time.Time      `json:"started_at"`
 	FinishedAt *time.Time     `json:"finished_at,omitempty" jsonschema:"ジョブキューが終了を記録した時刻 / when the job queue recorded the end"`
@@ -206,6 +208,19 @@ func (j *Jobs) RunResolved(ctx context.Context, name string, start func(ctx cont
 // Get returns the status of a job: a job_id Run returned (also after a restart), or the id of a job table
 // row. It is service.ErrNotFound for any other id.
 func (j *Jobs) Get(ctx context.Context, id string) (JobStatus, error) {
+	st, err := j.get(ctx, id)
+	if err == nil {
+		st.NextSteps = nextSteps(st.Kind, st.State, st.Error)
+	}
+	return st, err
+}
+
+// nextSteps is the advice of a planning job that failed for want of an LLM API key, "" for any other job (planadvice.For).
+func nextSteps(kind string, state JobState, failure string) string {
+	return planadvice.For(domain.Job{Kind: domain.JobKind(kind), Status: domain.JobStatus(state), Error: failure}, true)
+}
+
+func (j *Jobs) get(ctx context.Context, id string) (JobStatus, error) {
 	h, err := j.history.Get(ctx, id)
 	if errors.Is(err, repository.ErrNotFound) {
 		row, err := j.row(ctx, id)

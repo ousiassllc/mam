@@ -52,13 +52,19 @@ type Image = llm.Image
 // to price (Plan; the calls follow the routes, with their fail-over).
 type Matcher struct {
 	llm           llm.Completer
-	create, judge llm.Target
+	create, judge func() llm.Target
 	faces         facesim.Engine
 	mix           FaceMix
 }
 
-// New returns a Matcher that reasons through c.
+// New returns a Matcher that reasons through c and names create and judge in the estimate.
 func New(c llm.Completer, create, judge llm.Target) *Matcher {
+	return NewFollowing(c, func() llm.Target { return create }, func() llm.Target { return judge })
+}
+
+// NewFollowing is New for routes that can change while the app runs (a saved "LLM の割り当て" applies at once): the estimate
+// names what create and judge say at the time it is made.
+func NewFollowing(c llm.Completer, create, judge func() llm.Target) *Matcher {
 	return &Matcher{llm: c, create: create, judge: judge}
 }
 
@@ -92,7 +98,8 @@ type promptAnswer struct {
 }
 
 // Describe writes the English prompt for the reference image. note is what the user asked for in words ("" for nothing). The Call is
-// what the LLM call cost.
+// what the LLM call cost: with an error too when the LLM answered and the answer was not usable (the call was paid for), else the zero Call
+// (Call.Made is false).
 func (m *Matcher) Describe(ctx context.Context, reference Image, note string) (string, Call, error) {
 	user, _ := json.Marshal(struct {
 		Note string `json:"note"`
@@ -100,11 +107,12 @@ func (m *Matcher) Describe(ctx context.Context, reference Image, note string) (s
 	ans, res, err := llm.CompleteJSONResponse[promptAnswer](ctx, m.llm, PromptAgent, llm.Request{
 		System: describeSystem, User: string(user), Images: []Image{captioned(reference, "reference image")},
 	})
+	call := callOfAnswer(CallDescribe, res, describeUsage)
 	if err != nil {
-		return "", Call{}, fmt.Errorf("write the prompt of the reference: %w", err)
+		return "", call, fmt.Errorf("write the prompt of the reference: %w", err)
 	}
 	prompt, err := checkedPrompt(ans.Prompt)
-	return prompt, callOf(CallDescribe, res, describeUsage), err
+	return prompt, call, err
 }
 
 // Judgement is how much a generated image looks like the reference: Score is 0 to 100, Differences are what differs, in Japanese.
@@ -125,13 +133,14 @@ func (m *Matcher) Compare(ctx context.Context, reference, generated Image) (Judg
 		System: compareSystem, User: "Compare the two images.",
 		Images: []Image{captioned(reference, "reference image"), captioned(generated, "generated image")},
 	})
+	call := callOfAnswer(CallCompare, res, compareUsage)
 	if err != nil {
-		return Judgement{}, fmt.Errorf("compare the images: %w", err)
+		return Judgement{Call: call}, fmt.Errorf("compare the images: %w", err)
 	}
 	if ans.Score == nil || *ans.Score < 0 || *ans.Score > 100 {
-		return Judgement{}, fmt.Errorf("%w: the score is missing or outside 0..100", llm.ErrInvalidOutput)
+		return Judgement{Call: call}, fmt.Errorf("%w: the score is missing or outside 0..100", llm.ErrInvalidOutput)
 	}
-	j := Judgement{Differences: []string{}, Call: callOf(CallCompare, res, compareUsage)}
+	j := Judgement{Differences: []string{}, Call: call}
 	j.Score, j.Scoring = m.score(ctx, reference, generated, int(*ans.Score+0.5))
 	for _, d := range ans.Differences {
 		if d = strings.TrimSpace(d); d != "" && len(j.Differences) < MaxDifferences {
@@ -171,17 +180,18 @@ func (m *Matcher) Revise(ctx context.Context, in ReviseInput) (Revision, error) 
 		System: reviseSystem, User: string(user),
 		Images: []Image{captioned(in.Reference, "reference image"), captioned(in.Generated, "generated image")},
 	})
+	call := callOfAnswer(CallRevise, res, reviseUsage)
 	if err != nil {
-		return Revision{}, fmt.Errorf("fix the prompt: %w", err)
+		return Revision{Call: call}, fmt.Errorf("fix the prompt: %w", err)
 	}
 	fixed, err := checkedPrompt(ans.Prompt)
 	if err != nil {
-		return Revision{}, err
+		return Revision{Call: call}, err
 	}
 	if fixed == strings.TrimSpace(in.Prompt) {
-		return Revision{}, ErrNotRevised
+		return Revision{Call: call}, ErrNotRevised
 	}
-	return Revision{Prompt: fixed, Change: strings.TrimSpace(ans.Change), Call: callOf(CallRevise, res, reviseUsage)}, nil
+	return Revision{Prompt: fixed, Change: strings.TrimSpace(ans.Change), Call: call}, nil
 }
 
 func captioned(img Image, caption string) Image {

@@ -124,7 +124,7 @@ func Item(c Card) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex min-w-0 flex-1 flex-col gap-0.5\"><h3 class=\"text-sm font-semibold text-neutral-100\"><button class=\"cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none\" aria-haspopup=\"dialog\" data-card-open")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex min-w-0 flex-1 flex-col gap-0.5\"><h3 class=\"text-sm font-semibold text-neutral-100\"><button class=\"max-w-full cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none\" aria-haspopup=\"dialog\" data-card-open")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -145,14 +145,14 @@ func Item(c Card) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button></h3><p class=\"text-xs text-neutral-400\" data-testid=\"model-meta\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button></h3><p class=\"break-words text-xs text-neutral-400\" data-testid=\"model-meta\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(c.Meta)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/modelcard.templ`, Line: 33, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/modelcard.templ`, Line: 33, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {

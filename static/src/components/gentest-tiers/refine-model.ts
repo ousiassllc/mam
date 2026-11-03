@@ -36,3 +36,13 @@ export function line(item: Item): string {
 export function resetLabel(item: Item): string {
   return `${item.label}を元に戻す`;
 }
+
+/**
+ * The detailed settings that the easy tier does not hold, and that the reader changed in the detail tier: the keys ("seed", "steps", "cfg", "sampler",
+ * "scheduler", and "exposed" for the values of the exposed inputs) that go with the switch to the easy tier, so that the form says they are gone (Issue #1000).
+ * The negative prompts, the LoRA and the strengths of the input images are kept by the easy tier and are not listed.
+ */
+export function droppedKeys(changed: readonly Item[], exposedSet: boolean): string[] {
+  const keys = changed.filter((item) => item.key.startsWith('adv:')).map((item) => item.key.slice('adv:'.length));
+  return exposedSet ? [...keys, 'exposed'] : keys;
+}

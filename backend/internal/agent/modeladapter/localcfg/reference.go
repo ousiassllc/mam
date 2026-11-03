@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"slices"
+
+	"github.com/ousiassllc/mam/backend/internal/imgprep"
 )
 
 // ReferenceMode is how a workflow uses the reference images of an image generation.
@@ -17,7 +19,7 @@ const (
 	// ModeImg2Img is a model that starts the sampling from one reference image: the denoise tells how far the result leaves it.
 	ModeImg2Img ReferenceMode = "img2img"
 	// ModeControlNet is a ControlNet workflow: the one reference image is the control image (a canny edge map, an OpenPose skeleton, a depth
-	// map: made by the user, mam runs no preprocessor), and the strength of the reference is the ControlNet's strength. The workflow
+	// map: made by the user, or drawn by mam for ReferencePreprocess "canny"), and the strength of the reference is the ControlNet's strength. The workflow
 	// cannot run without it.
 	ModeControlNet ReferenceMode = "controlnet"
 	// ModeIPAdapter is an IP-Adapter workflow (a custom node: Workflow.RequiresNodes): the one reference image shows the look, the style or the
@@ -81,6 +83,9 @@ func validateReferenceMode(where string, w Workflow, g Graph) []error {
 		if len(w.NoReference) > 0 || slices.ContainsFunc(w.Assignments, func(a Assignment) bool { return a.Optional }) {
 			errs = append(errs, fmt.Errorf("%s: a %s workflow cannot run without its reference image (no no_reference, no optional)", where, w.ReferenceMode))
 		}
+	}
+	if w.ReferencePreprocess != "" && (w.ReferenceMode != ModeControlNet || !slices.Contains(imgprep.Kinds, w.ReferencePreprocess)) {
+		errs = append(errs, fmt.Errorf("%s: reference_preprocess is one of %v and applies to a controlnet workflow only", where, imgprep.Kinds))
 	}
 	if w.ReferenceDenoiseMin < 0 || w.ReferenceDenoiseMin >= 1 {
 		errs = append(errs, fmt.Errorf("%s: reference_denoise_min must be within 0 and below 1", where))
@@ -157,7 +162,7 @@ func (o RefOption) StrengthOrDefault() float64 {
 	return o.Strength
 }
 
-// ImageOptions are the parts of an image request that only a workflow with reference images, a LoRA or sampling values uses: Refs is one entry
+// ImageOptions are the parts of an image request that only a workflow with reference images, a LoRA, sampling values or speed modes uses: Refs is one entry
 // for each input image of the request, in its order (a missing entry is the whole picture at the default strength).
 type ImageOptions struct {
 	Refs []RefOption
@@ -167,7 +172,8 @@ type ImageOptions struct {
 	// UpscaleScale is the scale an upscale workflow (Workflow.Upscale) enlarges the picture by (0: the model's own factor).
 	UpscaleScale float64
 	// Exposed are the values of the workflow's exposed inputs (Workflow.ExposedInputs), by exposed.Input.Key; the others keep the graph's value.
-	Exposed map[string]any
+	Exposed   map[string]any
+	SpeedMode string // the speed mode (Workflow.SpeedModes) the request names; "": the workflow's first
 }
 
 // Ref is the option of the i-th input image.

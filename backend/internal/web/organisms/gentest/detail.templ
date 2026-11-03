@@ -3,7 +3,10 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -12,15 +15,47 @@ import (
 // DetailID is the DOM id of the result detail.
 const DetailID = "gt-detail"
 
-// ResultDetail is one result: the file, the settings that made it, the inputs, where it was imported to and the import form.
+// ResultDetail is one result as a page: the file, the settings that made it, the inputs, where it was imported to and the import form.
 templ ResultDetail(d Detail) {
-	<section id={ DetailID } class="flex flex-col gap-4" data-testid="gt-detail">
+	@DetailSection(d, false)
+}
+
+// ResultDetailModal is the same detail in the modal that a tile of a grid opens (Issue #1004): everything a card of the grid showed or could do is here.
+templ ResultDetailModal(d Detail) {
+	@modal.Frame(d.Card.Model, "") {
+		@DetailSection(d, true)
+	}
+}
+
+// DetailSection is the detail. In the modal it asks for the wide dialog and takes the focus at its top, a delete is answered into the modal (the tile goes
+// out of the grid and the modal closes), and, when the grid has the choice for the ZIP export, it offers the choice (d.CanPick).
+templ DetailSection(d Detail, inModal bool) {
+	<section
+		id={ DetailID }
+		class={ "flex flex-col gap-4", modal.StartClass }
+		tabindex="-1"
+		autofocus?={ inModal }
+		data-modal-wide?={ inModal }
+		data-testid="gt-detail"
+	>
 		@notice(d.Message, "gt-detail")
-		<div class="flex flex-wrap gap-4">
-			<div class="w-full max-w-md">
-				@ResultCard(d.Card)
-			</div>
-			<dl class="grid flex-1 grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm" data-testid="gt-params">
+		if !inModal {
+			<h2 class="text-base font-semibold">{ d.Card.Model }</h2>
+		}
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="gt-detail-head">
+			@atoms.BadgeWith(resulttile.Tone(d.Card.Status), d.Card.StatusText, templ.Attributes{"data-testid": "gt-card-status"})
+			<span class="text-xs text-neutral-400" data-testid="gt-detail-time">{ d.Card.CreatedAt }</span>
+			@commercial.Mark(d.Card.Answer)
+			if d.Card.Meta != "" {
+				<span class="text-xs text-neutral-400">{ d.Card.Meta }</span>
+			}
+		</div>
+		if d.Card.Error != "" {
+			<p class="break-words text-sm text-red-300" data-testid="gt-card-error">{ d.Card.Error }</p>
+		}
+		<div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+			@detailMedia(d.Card)
+			<dl class="grid grid-cols-[max-content_1fr] content-start gap-x-4 gap-y-1 text-sm" data-testid="gt-params">
 				for _, kv := range d.Params {
 					<dt class="text-xs text-neutral-400">{ kv.Key }</dt>
 					<dd class="break-words">{ kv.Value }</dd>
@@ -31,7 +66,7 @@ templ ResultDetail(d Detail) {
 		@gentestresult.Panel(d.Used)
 		@commercial.Note(d.Answer)
 		<div class="flex flex-wrap items-center gap-3">
-			@FavoriteButton(d.Card.ID, d.Card.Favorite)
+			@resulttile.FavoriteButton(d.Card.ID, d.Card.Favorite)
 			if d.Card.FileURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "ファイルをダウンロード", templ.SafeURL(d.Card.FileURL+"?download=1"), templ.Attributes{"data-testid": "gt-download"})
 			}
@@ -41,11 +76,28 @@ templ ResultDetail(d Detail) {
 			if d.MatchURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "画像から似せる", templ.SafeURL(d.MatchURL), templ.Attributes{"data-testid": "gt-match-link"})
 			}
-			<form hx-delete={ paths.GenerationTestPart("results", d.Card.ID) } hx-confirm="この結果とファイルを削除しますか？" hx-target="body" hx-push-url="true">
+			if inModal && d.CanPick && d.Card.FileURL != "" {
+				<label class="flex items-center gap-2 text-sm">
+					<input type="checkbox" data-gt-modal-pick={ d.Card.ID } data-testid="gt-modal-pick"/>
+					書き出しに選ぶ
+				</label>
+			}
+			<form
+				hx-delete={ paths.GenerationTestPart("results", d.Card.ID) }
+				hx-confirm="この結果とファイルを削除しますか？"
+				if inModal {
+					hx-target={ "#" + modal.BodyID }
+					hx-swap="innerHTML"
+				} else {
+					hx-target="body"
+					hx-push-url="true"
+				}
+			>
 				@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"type": "submit", "data-testid": "gt-delete"})
 			</form>
 		</div>
 		@upscalebox.Box(d.Upscale)
+		@faceswapbox.Box(d.FaceSwap)
 		if d.English != "" || d.EnglishNegative != "" {
 			<div class="flex flex-col gap-1" data-testid="gt-english">
 				<h3 class="text-xs text-neutral-400">英訳（送った英語）</h3>
@@ -90,4 +142,15 @@ templ ResultDetail(d Detail) {
 		}
 		@importbox.Box(d.Import)
 	</section>
+}
+
+// detailMedia is the large picture of a result (a video plays), or that there is no file.
+templ detailMedia(c resulttile.Card) {
+	if c.FileURL != "" && c.Video {
+		<video class="max-h-[70vh] w-full rounded bg-black object-contain" src={ c.FileURL } controls preload="metadata"></video>
+	} else if c.FileURL != "" {
+		<img class="max-h-[70vh] w-full rounded bg-black object-contain" src={ c.FileURL } alt={ c.Prompt }/>
+	} else {
+		<p class="flex h-40 items-center justify-center rounded bg-neutral-900 text-sm text-neutral-400" data-testid="gt-no-file">ファイルはありません</p>
+	}
 }

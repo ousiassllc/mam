@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/matchinfo"
@@ -118,6 +119,9 @@ func (s *Service) round(ctx context.Context, st *state, q gentestrepo.Result) (s
 	info.Instruction = joinWords(info.Instruction, s.takePending(st.batch.ID))
 	prompt, err := s.write(ctx, st, &info)
 	if err != nil {
+		if len(info.LLM) > 0 {
+			s.record(ctx, q.ID, aspect, info) // the call that was paid for stays in the cost of the match
+		}
 		s.failRound(ctx, q, err)
 		return true
 	}
@@ -142,6 +146,7 @@ func (s *Service) round(ctx context.Context, st *state, q gentestrepo.Result) (s
 	if err != nil {
 		g.Logger.Warn("prompt match: measure the similarity failed", "result_id", q.ID, "err", err)
 		info.Error = "似てる度を測れませんでした: " + failure(err)
+		info.LLM = appendMade(info.LLM, j.Call)
 		s.record(ctx, q.ID, aspect, info)
 		return true
 	}
@@ -158,9 +163,7 @@ func (s *Service) write(ctx context.Context, st *state, info *matchinfo.Round) (
 	base := st.base(info.Instruction != "")
 	if base == nil {
 		prompt, call, err := s.m.Describe(ctx, st.ref, info.Instruction)
-		if err == nil {
-			info.LLM = append(info.LLM, call)
-		}
+		info.LLM = appendMade(info.LLM, call)
 		return prompt, err
 	}
 	img, err := s.picture(base.result.FilePath)
@@ -170,12 +173,20 @@ func (s *Service) write(ctx context.Context, st *state, info *matchinfo.Round) (
 	rev, err := s.m.Revise(ctx, imagematch.ReviseInput{
 		Reference: st.ref, Generated: img, Prompt: base.result.SentPrompt, Differences: base.info.Differences, Instruction: info.Instruction,
 	})
+	info.LLM = appendMade(info.LLM, rev.Call)
 	if err != nil {
 		return "", err
 	}
 	info.BasedOn, info.BasePrompt, info.Change = base.info.Round, base.result.SentPrompt, rev.Change
-	info.LLM = append(info.LLM, rev.Call)
 	return rev.Prompt, nil
+}
+
+// appendMade adds the call to the record of the round when the LLM answered it: an answer that could not be used was paid for all the same.
+func appendMade(calls []imagematch.Call, c imagematch.Call) []imagematch.Call {
+	if !c.Made() {
+		return calls
+	}
+	return append(calls, c)
 }
 
 // record writes what a round learned into the params of its result.
@@ -200,10 +211,9 @@ func (s *Service) failRound(ctx context.Context, q gentestrepo.Result, err error
 
 // failure says in words why the LLM could not do its part.
 func failure(err error) string {
-	const keys = "設定の「LLM の割り当て」の Prompt Planner と AI Video Judge が使うプロバイダー"
 	switch {
 	case errors.Is(err, llm.ErrNoAPIKey):
-		return "LLM の API キーが登録されていません（" + keys + "）"
+		return failmsg.NoKeyMessage(err)
 	case errors.Is(err, llm.ErrCircuitOpen):
 		return "LLM が一時的に使えません。しばらく待ってからもう一度試してください"
 	case errors.Is(err, llm.ErrTimeout):

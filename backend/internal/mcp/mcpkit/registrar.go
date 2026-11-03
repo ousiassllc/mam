@@ -19,8 +19,10 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/service/apprestart"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
+	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -38,8 +40,13 @@ type Settings struct {
 	Update    *appupdate.Service
 	// ChatGPT is the ChatGPT sign-in (login, logout, status and the image generation switch).
 	ChatGPT *chatgpt.Service
+	// Restart restarts the app on request (restart_app) and knows the saved settings that wait for a restart (get_health). Nil:
+	// the build cannot restart itself (the browser build); restart_app is "unavailable".
+	Restart *apprestart.Service
 	// Audio is the choice of the voice and lip-sync providers (audio.json).
 	Audio *audiosettings.Service
+	// FaceFusion is the paths of the external face swapper (facefusion.json; get_facefusion_status reads it. There is no tool that sets the paths: an agent must not choose the program that is started later).
+	FaceFusion *facefusionsettings.Service
 }
 
 // Kit is what the server shares with the tool packages besides service.Services.

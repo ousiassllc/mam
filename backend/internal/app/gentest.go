@@ -6,7 +6,6 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
-	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 	"github.com/ousiassllc/mam/backend/internal/config"
@@ -17,10 +16,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/repository/reciperepo"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/face"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/exposedgate"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
@@ -31,6 +31,7 @@ import (
 // before Recover, which fails the jobs of a kind without handler). A slot assignment of an import goes through the
 // World service, so its locks and kind checks apply.
 func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, logger *slog.Logger) *gentest.Service {
+	swap, swapCheck := face.Swapper(facefusionsettings.Default(cfg.DataDir)) // FaceFusion, the external face swapper (#995)
 	g := gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
 		DataDir: cfg.DataDir, AssetsDir: cfg.AssetsDir(),
@@ -50,8 +51,10 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		BundledEndpoint: modelmanager.BundledEndpoint,
 		Translator:      translator,
 		Poses:           newPoseLibrary(logger),
-		FaceCrop:        faceCropper(faces),
-		Logger:          logger,
+		FaceCrop:        face.Crop(faces),
+		FaceScore:       face.Score(faces),
+		FaceFusion:      swap, FaceFusionCheck: swapCheck,
+		Logger: logger,
 	})
 	g.Register()
 	match.New(match.Deps{Gentest: g, Matcher: matcher}) // the runner of the prompt match is found again with match.From
@@ -72,40 +75,4 @@ func newPoseLibrary(logger *slog.Logger) *poses.Library {
 		return nil
 	}
 	return lib
-}
-
-// faceCropper is the cut of the face reference of the generation test to the face (#960): it uses the face detector of the Judge, so
-// it works when the face models and the ONNX Runtime library are there, and is nil (the picture goes whole) when they are not.
-func faceCropper(faces facesim.Engine) runner.FaceCropFunc {
-	if faces == nil {
-		return nil
-	}
-	return func(ctx context.Context, image []byte) ([]byte, bool, error) {
-		return facesim.CropFace(ctx, faces, image)
-	}
-}
-
-// newTranslator is the translation of the generation test's prompts: it reasons through the route of the Prompt Planner in
-// the "LLM の割り当て" (llm.json), and names its primary target in the estimate. nil when the settings have no such route.
-func newTranslator(c llm.Completer, cfg llm.Config) *prompttranslate.Translator {
-	route, err := cfg.RouteFor(prompttranslate.Agent)
-	if err != nil {
-		return nil
-	}
-	return prompttranslate.New(c, route.Primary)
-}
-
-// newMatcher is the LLM work of the prompt match: it writes and fixes the prompts through the route of the Prompt Planner and
-// compares the pictures through the route of the AI Video Judge. nil when the settings have no such route. faces and mix say whether
-// and how the face of the generated image is mixed into the similarity (the "match_face" of the Judge setting, off by default).
-func newMatcher(c llm.Completer, cfg llm.Config, faces facesim.Engine, mix imagematch.FaceMix) *imagematch.Matcher {
-	create, err := cfg.RouteFor(imagematch.PromptAgent)
-	if err != nil {
-		return nil
-	}
-	judge, err := cfg.RouteFor(imagematch.JudgeAgent)
-	if err != nil {
-		return nil
-	}
-	return imagematch.New(c, create.Primary, judge.Primary).UseFaces(faces, mix)
 }

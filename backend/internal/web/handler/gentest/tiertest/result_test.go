@@ -105,8 +105,65 @@ func TestReplayKeepsTheSeedAndSimilarLeavesItToChance(t *testing.T) {
 	assert.Contains(t, inputTag(similar, "steps"), `value="30"`)
 }
 
-// 復元できない項目（アップロードした参照画像が残っていない・元の履歴の画像が消えた）は、黙って捨てずに理由を出す。
-func TestWhatCannotBePutBackIsSaid(t *testing.T) {
+// 速さのモード（Qwen-Image-Edit 2511 の lightning-4 など）で作った結果の「この設定でもう一度」「似た感じでもう1枚」: 速さのモードを戻す
+// （戻さないと既定の standard = 20 ステップで作り直してしまう）。確認画面にも同じモードが渡る。
+func TestReplayAndSimilarPutTheSpeedModeBack(t *testing.T) {
+	s := newScreen(t, gentesttest.WithSpeedModel())
+	id := s.made(gentest.Request{
+		Media: gentest.MediaImage, Models: []string{string(gentesttest.ImageSpeedModel)}, Prompts: []gentest.PromptInput{{Prompt: "a cat"}}, SpeedMode: "lightning-4",
+	})
+	for _, q := range []url.Values{{"tier": {"detail"}, "again": {id}, "same_seed": {"1"}}, {"tier": {"detail"}, "again": {id}}} {
+		page := s.page(paths.GenerationTest() + "?" + q.Encode())
+		assert.Contains(t, page, `<option value="lightning-4" selected>`, q.Encode())
+		assert.NotContains(t, testid(page, "gt-form"), "速さのモード", "nothing to say: the model has the mode")
+	}
+}
+
+// 結果の速さのモードが今のモデルに無いとき（ワークフローを編集した後など）は、既定で作ることを言う（モードは戻さない）。
+func TestReplayOfASpeedModeTheModelNoLongerHasSaysSoAndUsesTheDefault(t *testing.T) {
+	s := newScreen(t, gentesttest.WithSpeedModel())
+	id := s.made(gentest.Request{
+		Media: gentest.MediaImage, Models: []string{string(gentesttest.ImageSpeedModel)}, Prompts: []gentest.PromptInput{{Prompt: "a cat"}}, SpeedMode: "lightning-4",
+	})
+	require.NoError(t, s.rig.DB.Write(t.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE gentest_result SET params = json_set(params, '$.speed_mode', 'lightning-2') WHERE id = ?`, id)
+		return err
+	}))
+
+	page := s.page(paths.GenerationTest() + "?" + url.Values{"tier": {"detail"}, "again": {id}}.Encode())
+	assert.Contains(t, testid(page, "gt-form"), "速さのモード lightning-2 はこのモデルにないため既定で作ります")
+	assert.NotRegexp(t, `<option value="[^"]+" selected>[^<]*Lightning`, page)
+}
+
+// 英訳つきの結果の「この設定でもう一度」: 前回送った英訳をそのまま入れ、英訳はやり直さない（やり直すと同じシードでも別の絵になりうる）。
+// 「似た感じでもう1枚」は元の文のまま英訳をつける。
+func TestReplayOfATranslatedResultSendsTheEnglishThatWentOutAndDoesNotTranslateAgain(t *testing.T) {
+	f := &gentesttest.FakeLLM{}
+	s := newScreen(t, gentesttest.WithTemplateModels(), gentesttest.WithTranslator(f))
+	req := sdxlRequest()
+	req.Prompts = []gentest.PromptInput{{Prompt: "赤い狐", Negative: "ぼやけ"}}
+	req.TranslateToEnglish = true
+	id := s.made(req)
+	detail, err := s.rig.Svc.Result(t.Context(), id)
+	require.NoError(t, err)
+	require.True(t, detail.Translated)
+	require.Equal(t, "EN: 赤い狐", detail.TranslatedPrompt)
+
+	same := s.page(paths.GenerationTest() + "?" + url.Values{"tier": {"detail"}, "again": {id}, "same_seed": {"1"}}.Encode())
+	assert.Contains(t, same, `>EN: 赤い狐</textarea>`, "the English that was sent")
+	assert.Contains(t, same, `>EN: ぼやけ</textarea>`)
+	assert.NotContains(t, same, `>赤い狐</textarea>`)
+	assert.Contains(t, testid(same, "gt-form"), "前回送った英訳をそのまま入れました")
+	assert.NotContains(t, inputTag(same, "translate"), "checked", "no new translation")
+
+	similar := s.page(paths.GenerationTest() + "?" + url.Values{"tier": {"detail"}, "again": {id}}.Encode())
+	assert.Contains(t, similar, `>赤い狐</textarea>`, "a similar one starts from the words that were typed")
+	assert.Contains(t, inputTag(similar, "translate"), "checked")
+	assert.NotContains(t, testid(similar, "gt-form"), "前回送った英訳")
+}
+
+// アップロードした入力画像はバッチが残した写しから戻る（FromBatchInput）。元の履歴の画像が消えたものだけ、黙って捨てずに理由を出す。
+func TestAnUploadedInputIsPutBackFromTheBatchCopyAndWhatIsGoneIsSaid(t *testing.T) {
 	s := newScreen(t, gentesttest.WithReferenceModels(""))
 	edit := string(gentesttest.EditModel)
 	source := s.made(gentest.Request{Media: gentest.MediaImage, Models: []string{edit}, Prompts: []gentest.PromptInput{{Prompt: "a fox"}}})
@@ -120,15 +177,39 @@ func TestWhatCannotBePutBackIsSaid(t *testing.T) {
 		},
 	})
 	again := paths.GenerationTest() + "?" + url.Values{"tier": {"detail"}, "again": {made}}.Encode()
+	detail, err := s.rig.Svc.Result(t.Context(), made)
+	require.NoError(t, err)
+	var uploaded string
+	for _, in := range detail.Inputs {
+		if in.Origin.Kind == gentest.FromStaged {
+			uploaded = in.ID
+		}
+	}
+	require.NotEmpty(t, uploaded)
 
 	whole := s.page(again)
-	assert.Contains(t, testid(whole, "gt-form"), "アップロードした入力画像", "an upload is not kept as an input")
+	assert.NotContains(t, testid(whole, "gt-form"), "アップロードした入力画像", "an upload is not lost any more")
+	assert.Contains(t, whole, `value="batch_input::`+uploaded+`"`, "the uploaded picture is put back from the copy of its batch")
+	assert.Contains(t, whole, `src="`+paths.GenerationTestPart("inputs", uploaded, "file")+`"`, "and shown")
 	assert.Contains(t, whole, `value="history::`+source+`"`, "the picture of the history is put back")
+
+	again2 := s.made(gentest.Request{
+		Media: gentest.MediaImage, Models: []string{edit}, Prompts: []gentest.PromptInput{{Prompt: "the fox, at dawn"}},
+		References: []gentest.RefInput{{Source: gentest.FromBatchInput, ID: uploaded, Role: gentest.RoleReference}},
+	})
+	d2, err := s.rig.Svc.Result(t.Context(), again2)
+	require.NoError(t, err)
+	require.Len(t, d2.Inputs, 1)
+	assert.Equal(t, gentest.FromBatchInput, d2.Inputs[0].Origin.Kind, "the new result says where its picture came from")
+	redo := s.page(paths.GenerationTest() + "?" + url.Values{"tier": {"detail"}, "again": {again2}}.Encode())
+	assert.Contains(t, redo, `value="batch_input::`+d2.Inputs[0].ID+`"`, "and can be put back again, from its own copy")
 
 	require.NoError(t, s.rig.Svc.DeleteResult(t.Context(), source))
 	gone := s.page(again)
 	assert.Contains(t, testid(gone, "gt-form"), "見つからないため入れていません")
 	assert.NotContains(t, gone, `value="history::`+source+`"`)
+	assert.Contains(t, gone, `value="batch_input::`+uploaded+`"`, "the upload does not depend on it")
+
 }
 
 // 何も触らずに作った結果と、品質を決めた結果: 標準は上書きなしなので、ボタンの「使った設定」にテンプレートの値が出る。

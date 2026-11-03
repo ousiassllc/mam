@@ -2,16 +2,17 @@
  "id": "txt2img-qwen-image-edit-2511",
  "label": "Qwen-Image-Edit 2511（fp8mixed）: テキスト・参照画像から画像（編集）",
  "media": "image",
- "description": "ComfyUI 標準ノードだけの公式 Qwen-Image-Edit-2511（Apache-2.0。fp8mixed の拡散モデル qwen_image_edit_2511_fp8mixed.safetensors、テキストエンコーダー qwen_2.5_vl_7b_fp8_scaled.safetensors、VAE qwen_image_vae.safetensors。テキストエンコーダーと VAE は qwen-image と同じファイル）のワークフロー。同梱の ComfyUI（v0.42.1）の公式ブループリント「Image Edit (Qwen 2511)」に従い、UNETLoader → ModelSamplingAuraFlow（shift 3.1）→ CFGNorm → KSampler、肯定・否定とも TextEncodeQwenImageEditPlus、公式の目安の 20 ステップ・cfg 4・euler/simple（Qwen の既定は 40 ステップ）。参照画像は最大 3 枚（TextEncodeQwenImageEditPlus の image1〜image3）で、プロンプトの <image1> は「Picture 1」としてエンコーダーに渡る。参照がないときは同じワークフローがテキストから画像になる（潜在は幅・高さの空の潜在。公式のブループリントは 1 枚目の画像を VAEEncode した潜在から始めるが、mam は幅・高さを指定する）。強さ s の参照は、サンプリングの最初の s の割合のステップだけ条件に入り、その後はプロンプトだけで仕上げる（参照ごとに強さを持つので、強さの境目でサンプリングを区切って各区間を別々にエンコードする）。役割（顔だけ・画風だけ）はエンコーダーに渡す文で伝え、顔・画風の参照は VAE の潜在を渡さず視覚エンコーダーだけで読ませる。LoRA は LoraLoaderModelOnly を UNETLoader の後ろに差し込む。GPU では未実行（構造のテストのみ。mam の対象 PC の 16 GB では未実行）。",
+ "description": "ComfyUI 標準ノードだけの公式 Qwen-Image-Edit-2511（Apache-2.0。fp8mixed の拡散モデル qwen_image_edit_2511_fp8mixed.safetensors、テキストエンコーダー qwen_2.5_vl_7b_fp8_scaled.safetensors、VAE qwen_image_vae.safetensors。テキストエンコーダーと VAE は qwen-image と同じファイル）のワークフロー。同梱の ComfyUI（v0.42.1）の公式ブループリント「Image Edit (Qwen 2511)」に従い、UNETLoader → ModelSamplingAuraFlow（shift 3.1）→ CFGNorm → KSampler、肯定・否定とも TextEncodeQwenImageEditPlus、公式の目安の 20 ステップ・cfg 4・euler/simple（Qwen の既定は 40 ステップ）。速さのモード（生成テストと MCP の speed_mode）を 3 つ持つ。standard（既定）はこの 20 ステップ・cfg 4 で LoRA なし、lightning-8 と lightning-4 は lightx2v/Qwen-Image-Edit-2511-Lightning（Apache-2.0）の 8・4 ステップ蒸留 LoRA（bf16。強さ 1）を UNETLoader の後ろに重ね、cfg 1 で 8・4 ステップにする（LoRA が効くステップ数と cfg が決まっているので、速さのモードがステップ数と cfg を決め、リクエストの steps・cfg と品質のプリセットは使わない）。選ばなかった LoRA のノードはサーバーへ送らない。参照画像は最大 3 枚（TextEncodeQwenImageEditPlus の image1〜image3）で、プロンプトの <image1> は「Picture 1」としてエンコーダーに渡る。参照がないときは同じワークフローがテキストから画像になる（潜在は幅・高さの空の潜在。公式のブループリントは 1 枚目の画像を VAEEncode した潜在から始めるが、mam は幅・高さを指定する）。強さ s の参照は、サンプリングの最初の s の割合のステップだけ条件に入り、その後はプロンプトだけで仕上げる（参照ごとに強さを持つので、強さの境目でサンプリングを区切って各区間を別々にエンコードする）。役割（顔だけ・画風だけ）はエンコーダーに渡す文で伝え、顔・画風の参照は VAE の潜在を渡さず視覚エンコーダーだけで読ませる。LoRA は LoraLoaderModelOnly を UNETLoader の後ろに差し込む。GPU では未実行（構造のテストのみ。mam の対象 PC の 16 GB では未実行）。",
  "model": {
   "media": "image",
   "workflow": {
    "prompt_weight": "unsupported",
-   "quality_presets": {"fast": {"steps": 12}, "high": {"steps": 30}},
    "graph": {
     "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "qwen_image_edit_2511_fp8mixed.safetensors", "weight_dtype": "default"}},
     "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors", "type": "qwen_image", "device": "default"}},
     "39": {"class_type": "VAELoader", "inputs": {"vae_name": "qwen_image_vae.safetensors"}},
+    "90": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors", "strength_model": 1, "model": ["37", 0]}},
+    "91": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors", "strength_model": 1, "model": ["37", 0]}},
     "66": {"class_type": "ModelSamplingAuraFlow", "inputs": {"shift": 3.1, "model": ["37", 0]}},
     "75": {"class_type": "CFGNorm", "inputs": {"strength": 1, "model": ["66", 0]}},
     "101": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
@@ -37,6 +38,19 @@
     {"param": "cfg", "node": "3", "input": "cfg"},
     {"param": "sampler", "node": "3", "input": "sampler_name"},
     {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "speed_modes": [
+    {"id": "standard", "label": "通常（20 ステップ・cfg 4）"},
+    {"id": "lightning-8", "label": "8 ステップ（Lightning・速い）", "overrides": [
+     {"node": "66", "input": "model", "value": ["91", 0]},
+     {"node": "3", "input": "steps", "value": 8},
+     {"node": "3", "input": "cfg", "value": 1}
+    ]},
+    {"id": "lightning-4", "label": "4 ステップ（Lightning・最速）", "overrides": [
+     {"node": "66", "input": "model", "value": ["90", 0]},
+     {"node": "3", "input": "steps", "value": 4},
+     {"node": "3", "input": "cfg", "value": 1}
+    ]}
    ],
    "reference_mode": "edit",
    "lora_model_node": "37",

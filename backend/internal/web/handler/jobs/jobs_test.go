@@ -105,6 +105,20 @@ func TestList_AFailedJobShowsItsReasonAndOffersNoAction(t *testing.T) {
 	}
 }
 
+// A planning job that stopped for want of an LLM key says, under its reason, what to do to go on (the reason itself is not rewritten).
+func TestList_AFailedPlanForWantOfAKeyShowsWhatToDoNext(t *testing.T) {
+	s := screentest.New(t)
+	job, err := s.Rig.Table.Create(t.Context(), domain.JobPlan, []byte(`{"project_id":"gone"}`))
+	require.NoError(t, err)
+	require.NoError(t, s.Rig.Table.MarkFailed(t.Context(), job.ID, "LLM の API キーが設定されていません。失敗した Agent は Producer です。"))
+
+	body := s.Get(paths.JobsList()).Body.String()
+
+	assert.Contains(t, body, `data-testid="jobs-failure">LLM の API キーが設定されていません。失敗した Agent は Producer です。<`)
+	assert.Contains(t, body, `data-testid="jobs-next-steps"`)
+	assert.Contains(t, body, "登場人物を追加")
+}
+
 type failingTable struct{}
 
 func (failingTable) ListRecent(context.Context, int) ([]domain.Job, error) {

@@ -24,9 +24,6 @@ type Row struct {
 	Fallback        Target
 	DefaultPrimary  Target
 	DefaultFallback Target
-	// Restart: the row was saved just now. What runs is not what is saved until the app restarts, which the row says. It is
-	// gone when the page is read again (the service does not know what runs).
-	Restart bool
 }
 
 // Customized is whether the row differs from the default.

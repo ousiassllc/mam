@@ -117,6 +117,36 @@ func TestRecent_TheEngineHasANameAndAnUnknownModelHasNone(t *testing.T) {
 	assert.Empty(t, subjects[blank.ID])
 }
 
+// The age gate closed (Issue #992): an import from Hugging Face of a repository for adults (NFAA) does not name the repository, as a catalog model
+// for adults has no name here; the name comes back when the gate opens, and an import of a general repository is named either way.
+func TestRecent_AnHFImportOfAnAdultRepositoryHasNoNameWhileTheGateIsClosed(t *testing.T) {
+	w := newWorld(t)
+	pin := func(repo string, nfaa bool) map[string]any {
+		return map[string]any{
+			"target": "hf:" + repo + "@abc/x.safetensors",
+			"hf":     map[string]any{"repo": repo, "commit": "abc", "path": "x.safetensors", "folder": "checkpoints", "name": "x-" + repo + ".safetensors", "nfaa": nfaa},
+		}
+	}
+	adult := w.create(domain.JobModelInstall, pin("o/adult", true))
+	general := w.create(domain.JobModelInstall, pin("o/general", false))
+	subjects := func() map[string]string {
+		out := map[string]string{}
+		for _, e := range w.recent() {
+			out[e.ID] = e.Subject
+		}
+		return out
+	}
+
+	closed := subjects()
+	assert.Empty(t, closed[adult.ID], "the repository of an adult model is not named while the gate is closed")
+	assert.Equal(t, "o/general", closed[general.ID])
+
+	w.rig.ConfirmAdult()
+	open := subjects()
+	assert.Equal(t, "o/adult", open[adult.ID])
+	assert.Equal(t, "o/general", open[general.ID])
+}
+
 // The work on a Shot leads to the Scene / Shot screen of its Project and names the Project; a failure is shown with its reason (secrets
 // hidden). A Shot or a Project that is gone is not a fault of the list.
 func TestRecent_AShotJobLeadsToTheProjectAndAFailureSaysWhy(t *testing.T) {
@@ -148,6 +178,28 @@ func TestRecent_AShotJobLeadsToTheProjectAndAFailureSaysWhy(t *testing.T) {
 	assert.Empty(t, byID[orphan.ID].Subject)
 	assert.Equal(t, "企画・脚本の作成", byID[plan.ID].Label)
 	assert.Equal(t, joblist.Dest{Screen: joblist.ScreenProjectChat, ProjectID: p.ID}, byID[plan.ID].Dest)
+}
+
+// A planning job that stopped for want of an LLM key carries what to do to go on, in the words of the screen; one that stopped
+// for another reason, and a job of another kind, carry none.
+func TestRecent_AFailedPlanForWantOfAKeyHasNextSteps(t *testing.T) {
+	w := newWorld(t)
+	p, err := w.svc.Projects.Create(t.Context(), service.CreateProjectInput{Content: "コーヒー店の動画を作りたい"})
+	require.NoError(t, err)
+	noKey := w.create(domain.JobPlan, map[string]string{"project_id": p.ID})
+	require.NoError(t, w.rig.Table.MarkFailed(t.Context(), noKey.ID, "LLM の API キーが設定されていません。失敗した Agent は Producer（コンセプト）です。"))
+	timeout := w.create(domain.JobPlan, map[string]string{"project_id": p.ID})
+	require.NoError(t, w.rig.Table.MarkFailed(t.Context(), timeout.ID, "AI の応答がタイムアウトしました"))
+	queued := w.create(domain.JobPlan, map[string]string{"project_id": p.ID})
+
+	byID := map[string]joblist.Entry{}
+	for _, e := range w.recent() {
+		byID[e.ID] = e
+	}
+	assert.Contains(t, byID[noKey.ID].NextSteps, "登場人物を追加")
+	assert.Contains(t, byID[noKey.ID].Error, "API キー", "the failure text stays as it was written")
+	assert.Empty(t, byID[timeout.ID].NextSteps)
+	assert.Empty(t, byID[queued.ID].NextSteps)
 }
 
 // A batch of the generation test leads to the generation test; its state and its failure are the batch's.

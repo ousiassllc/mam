@@ -18,12 +18,12 @@ templ EngineDetail(e view.Engine) {
 		switch view.EnginePhase(e) {
 			case "unsupported":
 				<p class="rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid="mm-engine-unsupported">
-					同梱の ComfyUI は Windows 版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版）では、別に動かしている ComfyUI の URL を
+					同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版・Intel Mac など）では、別に動かしている ComfyUI の URL を
 					<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」に登録して使ってください（モデルの導入は、その ComfyUI の側で行います）。
 				</p>
 			case "readonly":
 				<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="alert" data-testid="mm-engine-readonly">
-					<p>mam.exe のあるフォルダ（{ e.Dir }）に書き込めません。書き込める場所に置き直すか、外部の ComfyUI の URL を設定してください。</p>
+					<p>導入先のフォルダ（{ e.Dir }）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。</p>
 					<p class="text-xs">{ e.WritableError }</p>
 				</div>
 			case "broken":
@@ -60,7 +60,7 @@ templ EngineDetail(e view.Engine) {
 			if e.PinnedVersion != "" {
 				（{ e.PinnedVersion }）
 			}
-			を実行時に取得し、SHA-256 を確かめてから使います。
+			を実行時に取得し（Mac 版は、ソースと Python・PyTorch などの各パッケージを個別に取得し）、SHA-256 を確かめてから使います。
 			if e.SourceURL != "" {
 				<a class="underline" href={ templ.SafeURL(e.SourceURL) } target="_blank" rel="noopener noreferrer">ソース</a>
 			}

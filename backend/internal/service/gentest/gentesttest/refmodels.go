@@ -1,6 +1,8 @@
 package gentesttest
 
 import (
+	"encoding/json"
+
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
@@ -51,21 +53,31 @@ func WithReferenceModels(baseURL string) Option {
 }
 
 // SpeedModel is the local ComfyUI video model WithSpeedModel adds: a first-frame model with two speed modes, fast (the default) and standard
-// (Wan 2.2 14B with the LightX2V LoRA, Issue #930).
-var SpeedModel = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "wan"))
+// (Wan 2.2 14B with the LightX2V LoRA, Issue #930). ImageSpeedModel is the image model it adds with it: three modes, standard (the default),
+// lightning-8 and lightning-4 (Qwen-Image-Edit 2511 with the Lightning LoRAs, Issue #991).
+var (
+	SpeedModel      = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "wan"))
+	ImageSpeedModel = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "lightning"))
+)
 
-// WithSpeedModel adds SpeedModel to the rig, with a fake backend, at the endpoint "bundled-comfyui" ("" is a closed port).
+// WithSpeedModel adds SpeedModel and ImageSpeedModel to the rig, with a fake backend, at the endpoint "bundled-comfyui" ("" is a closed port).
 func WithSpeedModel() Option {
 	return func(r *Rig, d *gentest.Deps) {
 		w := &localcfg.Workflow{
 			Assignments: []localcfg.Assignment{{Param: localcfg.ParamFirstFrame, Node: "1", Input: "image"}},
 			SpeedModes:  []localcfg.SpeedMode{{ID: "fast", Label: "4 ステップ（速い）"}, {ID: "standard", Label: "通常（20 ステップ）"}},
 		}
+		image := &localcfg.Workflow{
+			Graph:       json.RawMessage(`{"1": {"class_type": "KSampler", "inputs": {"steps": 20, "cfg": 4}}}`),
+			Assignments: []localcfg.Assignment{{Param: localcfg.ParamSteps, Node: "1", Input: "steps"}, {Param: localcfg.ParamCFG, Node: "1", Input: "cfg"}},
+			SpeedModes:  []localcfg.SpeedMode{{ID: "standard", Label: "通常（20 ステップ）"}, {ID: "lightning-8", Label: "8 ステップ（Lightning）"}, {ID: "lightning-4", Label: "4 ステップ（Lightning）"}},
+		}
 		r.Config.Endpoints = map[string]localcfg.Endpoint{EndpointName: {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:1"}}
 		r.Config.LocalModels = map[string]localcfg.Model{
-			localcfg.Key(EndpointName, "wan"): {Media: localcfg.MediaVideo, Workflow: w, Video: &localcfg.VideoSettings{Durations: []float64{3, 5}, Resolutions: []string{"480p", "720p"}}},
+			localcfg.Key(EndpointName, "wan"):       {Media: localcfg.MediaVideo, Workflow: w, Video: &localcfg.VideoSettings{Durations: []float64{3, 5}, Resolutions: []string{"480p", "720p"}}},
+			localcfg.Key(EndpointName, "lightning"): {Media: localcfg.MediaImage, Workflow: image},
 		}
-		r.extra = append(r.extra, SpeedModel)
+		r.extra = append(r.extra, SpeedModel, ImageSpeedModel)
 		d.BundledEndpoint = EndpointName
 		localbackends.Publish(r.Config)
 		r.T.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })

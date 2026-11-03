@@ -57,6 +57,10 @@ type Deps struct {
 	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See
 	// FaceCropFunc.
 	FaceCrop FaceCropFunc
+	// FaceScore measures the face of a result against the reference of the role "face" (nil: no number; the face models are not installed). See FaceScoreFunc.
+	FaceScore FaceScoreFunc
+	// FaceSwap runs FaceFusion for a result of "swap the face" (nil: such a result fails). See FaceSwapFunc.
+	FaceSwap FaceSwapFunc
 	Now      func() time.Time
 	Logger   *slog.Logger
 }
@@ -223,7 +227,7 @@ func (br *batchRun) start(ctx context.Context, r gentestrepo.Result) {
 		s.settle(ctx, r.ID, gentestrepo.StatusFailed, ReasonInterrupted, nil)
 		return
 	}
-	started, err := s.Repo.MarkRunning(ctx, r.ID)
+	started, err := s.Repo.MarkRunning(ctx, r.ID, s.Now().UTC())
 	if err != nil {
 		s.Logger.Error("mark generation test result running failed", "result_id", r.ID, "err", err)
 		return

@@ -105,7 +105,7 @@ func TestComfyUIStatus_Running(t *testing.T) {
 func TestComfyUIStatus_NotWindowsHasNoBundledEngine(t *testing.T) {
 	a := newApp(t, appOpts{rig: []mmtest.Option{mmtest.NotWindows()}})
 
-	assert.Contains(t, a.body(paths.ToolModelManager), "同梱の ComfyUI は Windows 版のみ")
+	assert.Contains(t, a.body(paths.ToolModelManager), "同梱の ComfyUI は Windows 版と Apple Silicon の Mac 版のみ")
 }
 
 func TestComfyUIStatus_AnExternalComfyUIIsCountedAndNotCalled(t *testing.T) {

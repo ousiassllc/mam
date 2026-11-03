@@ -52,6 +52,7 @@ type Library struct {
 	install *rtm.Installer
 	mu      sync.Mutex // one install at a time; also guards the cached index
 	index   []Pose
+	prog    progress // read by Progress without mu: the install holds mu until it is done
 }
 
 // New opens the library below d.Root. It reads the state file of the asset set, and fails when the catalog has no set shisei-poses.
@@ -134,7 +135,10 @@ func (l *Library) Install(ctx context.Context, accepted bool, progress func(done
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.index = nil
+	l.prog.start()
+	defer l.prog.stop()
 	err := l.install.EnsureAssets(ctx, func(_ rtm.Phase, _ string, done, total int64) {
+		l.prog.set(done, total)
 		if progress != nil {
 			progress(done, total)
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
+	facefusionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/facefusion"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
@@ -19,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/toolstatus"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	audioview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/audio"
+	facefusionview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/facefusion"
 	ffmpegview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	llmview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
@@ -69,6 +71,9 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 	case paths.SettingsFFmpeg:
 		card.Icon, card.Description = atoms.IconMedia, "プレビュー・部分採用・品質判定に使う ffmpeg と ffprobe の場所。"
 		card.Status = ffmpegStatus(ffmpeghandler.SectionData(s.ffmpeg()))
+	case paths.SettingsFaceFusion:
+		card.Icon, card.Description = atoms.IconMedia, "顔の入れ替えに使う、別ソフトの FaceFusion の場所。"
+		card.Status = faceFusionStatus(facefusionhandler.SectionData(s.FaceFusion))
 	case paths.SettingsUpdate:
 		card.Icon, card.Description = atoms.IconUpdate, "いまの版と、新しい版の確認。"
 		card.Status = updateStatus(updatehandler.SectionData(s.Update))
@@ -226,4 +231,15 @@ func updateTone(t updateview.Tone) atoms.BadgeTone {
 		return atoms.BadgeError
 	}
 	return atoms.BadgeNeutral
+}
+
+// faceFusionStatus is whether FaceFusion is found.
+func faceFusionStatus(d facefusionview.Data) []molecules.StatusLine {
+	switch {
+	case d.Problem != "":
+		return []molecules.StatusLine{line(atoms.BadgeWarn, "設定ファイルを読めません")}
+	case d.Ready:
+		return []molecules.StatusLine{line(atoms.BadgeOK, "FaceFusion を使えます")}
+	}
+	return []molecules.StatusLine{line(atoms.BadgeNeutral, "未設定（使うときだけ入れます）")}
 }

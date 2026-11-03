@@ -12,7 +12,7 @@
 |--------|------|------|
 | GET | `/model-manager` | 画面（HTMX のリクエストには、ページの枠なしの本体 `#model-manager-body`） |
 | GET | `/model-manager/engine` | エンジンのカード（`#mm-engine`）。導入中・起動中は自分で取り直す。クエリ `job` は報告する導入ジョブで、終わったら結果（導入した／失敗の理由）を出し、モデルの一覧を `hx-swap-oob` で描き直す |
-| GET | `/model-manager/engine/detail` | エンジンのカードが開く詳細モーダルの本体（Issue #970）。説明・この PC で使えない理由（Windows 版だけ・書き込めない・ファイルが見つからない）・導入済みの版と build・待ち受け（起動中だけ）・導入先と空き・出典とライセンス。応答は `modal.Frame` で、ページに 1 つの `<dialog>` に入る |
+| GET | `/model-manager/engine/detail` | エンジンのカードが開く詳細モーダルの本体（Issue #970）。説明・この PC で使えない理由（Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけ・書き込めない・ファイルが見つからない）・導入済みの版と build・待ち受け（起動中だけ）・導入先と空き・出典とライセンス。応答は `modal.Frame` で、ページに 1 つの `<dialog>` に入る |
 | GET | `/model-manager/engine/gpu` | GPU の検出結果と導入フォーム（`#mm-gpu`）。未導入のカードが読み込み時に取る |
 | POST | `/model-manager/engine/install` | エンジンの導入（ジョブ）。フォーム `variant`（省くと GPU の推奨）・`cpu=1`（GPU が無いときの明示的な CPU 実行）。202 |
 | POST | `/model-manager/engine/start` | 起動（ComfyUI が応答するまで待たずに 202。カードが起動中を取り直し、失敗はカードに理由とログの末尾を出す） |
@@ -74,7 +74,7 @@
 | `ErrAdultNotConfirmed` | 409 | `conflict` | 「成人向けモデルです。年齢の確認と注意書きへの同意を済ませ、「成人向けモデルを表示する」をオンにしてください」（導入・同意・読み取りのどれも、何も記録せず何もダウンロードしない） |
 | `ErrBusy` | 409 | `conflict` | 導入・試し生成が実行中 |
 | `ErrPinned` | 409 | `conflict` | `--model-config` で固定されているため、導入・削除できない |
-| `ErrUnsupported` | 409 | `conflict` | 同梱の ComfyUI は Windows 版だけ。外部の ComfyUI の URL を使う |
+| `ErrUnsupported` | 409 | `conflict` | 同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけ。外部の ComfyUI の URL を使う |
 | `ErrEngineNotInstalled`・`ErrAlreadyInstalled`・`ErrNotInstalled`・`ErrEndpointMoved`・`fetch.NoSpaceError`（空き容量不足）・`store.ErrNotWritable`・`engine.ErrBusyRunning` | 409 | `conflict` | それぞれの理由（空き容量は必要量・空き・場所） |
 | `localruntime.ErrWeightsMissing`（`*WeightsError`）・`ErrSourceGone`・`ErrNotInstalled`・`ErrUnsupported`（`*SupportError`）・`ErrBusy` | 409 | `conflict` | ローカルの実行環境（`mmview.RefuseRuntime`。`mmview.Refuse` の上に載せた）。重みの不足は不足している名前と「重みを導入」の案内、取得元が消えたときは取得元の名前・HTTP の状態・原本の場所、使えない PC は理由とクラウドの案内 |
 | `ErrNotFound` | 404 | `not_found` | 対象が見つかりません |

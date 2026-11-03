@@ -100,7 +100,7 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 						/>
 						<div class="flex items-center gap-2">
 							@atoms.Badge(atoms.BadgeNeutral, it.Kind.Label())
-							<span class="text-sm font-medium">{ it.Name }</span>
+							<span class="min-w-0 break-words text-sm font-medium">{ it.Name }</span>
 						</div>
 						<p class="text-xs text-neutral-400">
 							{ sourceLabel(it.Source) }

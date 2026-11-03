@@ -33,7 +33,7 @@ type ResultParams struct {
 	// AvoidPose says the negative prompt got refs.WithAvoidPose; LoRA is the LoRA the model was given (image models only).
 	AvoidPose bool       `json:"avoid_pose,omitempty"`
 	LoRA      *refs.LoRA `json:"lora,omitempty"`
-	// SpeedMode is the speed mode the video model was asked for (absent: its default).
+	// SpeedMode is the speed mode the model was asked for (absent: its default).
 	SpeedMode string `json:"speed_mode,omitempty"`
 	// Sampling is the steps, cfg, sampler and scheduler the model ran with (the request's value where it took one, else the model's
 	// default; not the steps and cfg of a speed mode). Absent: the model takes none, or the result is older than the setting.
@@ -44,6 +44,10 @@ type ResultParams struct {
 	Inpaint *Inpaint `json:"inpaint,omitempty"`
 	// Upscale is the enlargement the result is (a result of "make it larger"): the source and the values (Upscale). Absent: a generated result.
 	Upscale *Upscale `json:"upscale,omitempty"`
+	// FaceSwap is set for a result of "swap the face" (FaceFusion, an external tool): the picture it swapped into and the models. Absent: a generated result.
+	FaceSwap *FaceSwap `json:"face_swap,omitempty"`
+	// FaceSimilarity is how much the face of the result is the face of the batch's reference of the role "face" (measured when it was made).
+	FaceSimilarity *FaceSimilarity `json:"face_similarity,omitempty"`
 }
 
 // Inpaint is a partial redraw: the strength that was sent (nil: the template's own), where the source picture came from, and the

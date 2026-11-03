@@ -32,6 +32,8 @@ type Service struct {
 	// managed are the directories of the ffmpeg mam downloaded (nil: none); read on every lookup and searched after the
 	// others (locate.SearchDirs), so that an ffmpeg the user installed always wins over the managed copy.
 	managed func() []string
+	// onSet is called after the paths were written: they apply from the next start (nil: nobody is told).
+	onSet func()
 }
 
 // Option replaces what the service reads from the machine (the tests).
@@ -43,6 +45,10 @@ func WithFinder(f locate.Finder) Option { return func(s *Service) { s.finder = f
 // WithManagedDirs sets where the ffmpeg that mam downloaded lies (ffmpegdl.Service.Dirs). The function is called on every lookup,
 // so a download that finishes is found by the next one.
 func WithManagedDirs(dirs func() []string) Option { return func(s *Service) { s.managed = dirs } }
+
+// WithOnSet sets what is called after Set wrote the paths. The tools the app built at startup keep the ffmpeg they found, so
+// the saved paths wait for a restart: the app wires this to the list of the settings that wait for one (restartpending).
+func WithOnSet(f func()) Option { return func(s *Service) { s.onSet = f } }
 
 // New is the service over the file at path (FileName in the data directory).
 func New(path string, opts ...Option) *Service {
@@ -109,7 +115,13 @@ func (s *Service) Set(cfg locate.Config) error {
 		}
 		obj[key] = raw
 	}
-	return settingsfile.Write(s.path, obj)
+	if err := settingsfile.Write(s.path, obj); err != nil {
+		return err
+	}
+	if s.onSet != nil {
+		s.onSet()
+	}
+	return nil
 }
 
 // Look finds ffmpeg and ffprobe with the saved paths (media.LookIn). The error wraps media.ErrUnavailable; for a path that

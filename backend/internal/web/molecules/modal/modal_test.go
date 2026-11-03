@@ -46,6 +46,23 @@ func TestOpenAttrs_FillTheBodyAndCarryTheFocusKey(t *testing.T) {
 	assert.Contains(t, attrs, "data-modal-open")
 }
 
+// A link that opens the modal keeps its address (the page of the same content) and asks for the body like the button does.
+func TestOpenLinkAttrs_KeepTheAddressAndAskForTheBody(t *testing.T) {
+	attrs := modal.OpenLinkAttrs("/generation-test/results/r1", "gt-result-r1")
+
+	assert.Equal(t, "/generation-test/results/r1", attrs["href"], "a string: a spread attribute that is a templ.SafeURL is not written at all")
+	assert.Equal(t, "/generation-test/results/r1", attrs["hx-get"])
+	assert.Equal(t, "#mam-modal-body", attrs["hx-target"])
+	assert.Equal(t, "gt-result-r1", attrs["data-focus-key"])
+	assert.Contains(t, attrs, "data-modal-open")
+	assert.NotContains(t, attrs, "type", "a link is not a button")
+}
+
+// The host is as wide as a body that asks for it (the result of the generation test: the picture and its settings side by side).
+func TestHost_IsWideWhileTheBodyAsksForIt(t *testing.T) {
+	assert.Contains(t, render(t, modal.Host()), "has-[["+modal.WideAttr+"]]:w-[min(64rem")
+}
+
 // The frame names the dialog (an h2 with the id the dialog is labelled by) and describes it only when asked to.
 func TestFrame_IsNamedByItsHeadingAndDescribedOnlyWhenItHasADescription(t *testing.T) {
 	ctx := templ.WithChildren(context.Background(), templ.Raw("<form>F</form>"))

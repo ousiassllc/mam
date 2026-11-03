@@ -32,7 +32,8 @@ type MatchCall struct {
 // of Scores (the last one again when they run out) and fixes a prompt by writing ", fix <n>" after it. Err fails the calls of a
 // kind; Before runs at the start of every call (a test holds a call there). Usage is what the answer of a kind says it used (a kind
 // that is not in it reports nothing: the tokens are unknown); Answered is the target the answers come from (anthropic / fake-llm,
-// which has no price, when it is empty).
+// which has no price, when it is empty). Text answers a kind with that text instead of the JSON (a call that was paid for and whose answer
+// cannot be used).
 type FakeMatchLLM struct {
 	mu       sync.Mutex
 	calls    []MatchCall
@@ -43,6 +44,7 @@ type FakeMatchLLM struct {
 	Before   func(kind string)
 	Usage    map[string]llm.Usage
 	Answered llm.Target
+	Text     map[string]string
 }
 
 // Calls returns the calls so far.
@@ -100,6 +102,9 @@ func (f *FakeMatchLLM) Complete(_ context.Context, agent llm.Agent, req llm.Requ
 		return llm.Response{}, err
 	}
 	raw, _ := json.Marshal(text)
+	if t, ok := f.Text[kind]; ok {
+		raw = []byte(t)
+	}
 	res := llm.Response{Text: string(raw), Provider: llm.ProviderAnthropic, Model: "fake-llm"}
 	if f.Answered != (llm.Target{}) {
 		res.Provider, res.Model = f.Answered.Provider, f.Answered.Model

@@ -132,9 +132,9 @@ func TestOnStartupFailsWhatTheCrashLeftAndKeepsWhatFinished(t *testing.T) {
 			NegativeMode: "none", CostBasis: "priced", CreatedAt: time.Now().UTC()})
 	}
 	require.NoError(t, r.Repo.CreateBatch(ctx, nb))
-	_, _ = r.Repo.MarkRunning(ctx, "done")
+	_, _ = r.Repo.MarkRunning(ctx, "done", time.Now())
 	require.NoError(t, r.Repo.Settle(ctx, "done", gentestrepo.Settlement{Status: gentestrepo.StatusSucceeded, FilePath: "crashed/done.png", At: time.Now()}))
-	_, _ = r.Repo.MarkRunning(ctx, "running")
+	_, _ = r.Repo.MarkRunning(ctx, "running", time.Now())
 
 	r.Svc.OnStartup(ctx)
 

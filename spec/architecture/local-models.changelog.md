@@ -26,3 +26,6 @@
 | 1.17 | 2026-11-03 | §4.3 に、ワークフローの `quality_presets`（速い・きれいの steps・cfg。標準は書かない。速さのモードのワークフローには書けない）を足した | Issue #977 |
 | 1.18 | 2026-11-04 | §4.8 を新設: ワークフローの `exposed_inputs`（画面に出す値。ノード ID＋入力名＋型＋範囲・選択肢＋表示名の加算的な汎用入力）・検査・グラフへの適用・保存先 | Issue #977（ステージ 2） |
 | 1.19 | 2026-11-04 | §4.3: 2 段のサンプラー（`ratio` つきの `steps`）は `sampling.Caps.TwoStage` を立て、ステップ数の下限を 2 にした（検査と画面のスライダー） | 1 ステップだと後の段が何もせず、ノイズのままの動画になった（Issue #973 レビュー） |
+| 1.20 | 2026-11-03 | §4.2: 導入したあとにカタログが足したワークフロー名を起動時に足す `wfrefresh.AddMissing` を足した（利用者のコピーは上書きしない。[model-manager/model-manager.md](model-manager/model-manager.md) §5.2） | Issue #990 |
+| 1.21 | 2026-11-03 | §3: `speed_modes` を画像のワークフローにも広げた（`ValidateModel` が画像を断らない。`ImageRequest.Options.SpeedMode`。先頭のモードでも使わない LoRA のノードを送らない）。`txt2img-qwen-image-edit-2511` が `standard`・`lightning-8`・`lightning-4`（lightx2v の Lightning LoRA）を持ち、`quality_presets` を外した | Issue #991（#971 の任意項目。#973 の決定「速さのモードが steps・cfg を決める」に従う） |
+| 1.22 | 2026-11-03 | §4.9 を新設: 生成テストの結果ごとの顔の類似度の自動計測（SFace。`params.face_similarity`・目安の閾値 0.363・モデルの配布は YuNet の先例のまま・ライセンスの一次情報）と、#960 の監査（第 1 段以外の項目の状態・実機が必要な項目） | Issue #998・#960 |

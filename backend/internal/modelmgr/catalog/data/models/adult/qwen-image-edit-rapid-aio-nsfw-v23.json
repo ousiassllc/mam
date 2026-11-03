@@ -1,0 +1,57 @@
+{
+ "id": "qwen-image-edit-rapid-aio-nsfw-v23",
+ "name": "Qwen-Image-Edit Rapid-AIO NSFW v23（実写寄り・編集・4 ステップ）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "【実写寄り・編集】Phr00t の Qwen-Image-Edit-Rapid-AIO の NSFW 版 v23（成人向け。約 28.4 GB の 1 ファイル）。Qwen-Image-Edit-2511 に加速 LoRA・NSFW の LoRA・肌や実写の質感の LoRA を混ぜ、VAE とテキストエンコーダーも 1 つの checkpoint にまとめた fp8 のモデルで、4 ステップ・cfg 1 で動く。参照画像（最大 3 枚）の編集とテキストから画像の両方に使える（参照なしならテキストから画像）。作者のカードは v19 が編集の一貫性、v23 がプロンプトへの従いやすさに向くと書き、v23 は実写寄りの仕上がり（平面的なアニメだけなら v19・v20 のほうが向くという注記が v21 にある）。別の追加ファイル（テキストエンコーダー・VAE）は要らない。",
+ "files": [
+  {
+   "name": "Qwen-Rapid-AIO-NSFW-v23.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/resolve/691024f438640508f8aa86414863fc15edfb8a84/v23/Qwen-Rapid-AIO-NSFW-v23.safetensors",
+   "sha256": "fdb919fc81bea63f13759967fc92c9118142e5c70d4e6795199233a35eefa233",
+   "size": 28431840023,
+   "source_note": "作者の Hugging Face リポジトリ（Phr00t/Qwen-Image-Edit-Rapid-AIO）のコミット固定。SHA-256 とサイズは HF の LFS の oid とサイズ（2026-11-03 に API で確認。ファイルの本体は取っていない）。Civitai の原本は無い。"
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "recommended_gb": 24,
+  "limits": "fp8 の 1 ファイルが約 28.4 GB（拡散モデル・テキストエンコーダー・VAE の込み）で、16 GB の GPU には同時に収まらないため、ComfyUI のオフロード（重みを一時的にメインメモリへ退避）が前提で、生成は遅くなります。メインメモリも多く使います（32 GB 以上を推奨）。参照画像は枚数が多いほど遅く、メモリも増えます。",
+  "source": "mam の見積もり（実機未検証）。標準の Qwen-Image-Edit 2511（拡散モデル 20.5 GB ＋ テキストエンコーダー 9.4 GB）と同じ規模なので同じ下限にした。作者のカードに VRAM の目安は無い。mam の実機（RTX 4070 Ti SUPER 16 GB）では時間もピーク VRAM も測っていない",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0（Hugging Face のモデルカードの license。作者 Phr00t のリポジトリ）",
+  "url": "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/blob/691024f438640508f8aa86414863fc15edfb8a84/README.md",
+  "summary": "作者のカードのメタデータは license: apache-2.0（base_model は Qwen/Qwen-Image-Edit-2511。ゲートなし）。ベースの Qwen-Image-Edit-2511 も Apache 2.0 で、商用を含めて使える（著作権表示とライセンス文を保つ）。ただし、このモデルは加速 LoRA・NSFW の LoRA・肌の質感の LoRA など、ほかの人の LoRA を多数混ぜたマージで、作者のカードは混ぜた LoRA の名前を一部書くだけで、それぞれのライセンスは書いていない。混ぜた LoRA の条件が確かめられないため、商用の可否は不明（作者の宣言は Apache 2.0 だが、混ぜた LoRA の条件までは保証されない）。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Qwen-Image-Edit-2511）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Qwen/Qwen-Image-Edit-2511/blob/main/README.md",
+    "commercial": "yes"
+   },
+   {
+    "part": "Qwen-Image-Edit-Rapid-AIO NSFW v23（Phr00t のマージ。混ぜた LoRA のライセンスは作者のカードに無い）",
+    "name": "Apache License 2.0（Hugging Face のモデルカードの license。作者 Phr00t のリポジトリ）",
+    "url": "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/blob/691024f438640508f8aa86414863fc15edfb8a84/README.md",
+    "commercial": "unknown"
+   }
+  ],
+  "notice": "成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。混ぜ込まれた LoRA のライセンスは作者のカードに書かれていません。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "qwen-image-edit-rapid-aio-nsfw-v23",
+   "template": "txt2img-qwen-image-edit-rapid-aio"
+  }
+ ]
+}

@@ -8,14 +8,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// Section is the category: the restart notice, the notes of the file (pinned, unreadable) and of the plan sign-in, the
+// Section is the category: the notice that a saved assignment applies at once, the notes of the file (pinned, unreadable) and of the plan sign-in, the
 // button that puts the whole table back to the defaults, and the table of the Agents that run with those that do not
 // folded below it. The whole table's answers (a reset, PUT /settings/llm) replace it by PanelID. A pinned file is a table
 // to read: no button edits or resets it.
 templ Section(d Data) {
 	<section id={ PanelID } class="flex flex-col gap-3">
 		@help.Row(help.ID(helpSubject), helpSubject, planHelp()) {
-			<p class="text-sm text-neutral-300" data-testid="llm-restart-note">反映にはアプリの再起動が必要です。</p>
+			<p class="text-sm text-neutral-300" data-testid="llm-apply-note">保存した割り当ては、次の呼び出しからすぐ使われます（再起動は要りません）。</p>
 		}
 		if d.Pinned {
 			<p class="text-sm text-neutral-300" data-testid="llm-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で固定されています。この画面では変更できません。</p>
@@ -59,7 +59,7 @@ const helpSubject = "テキスト生成の割り当て"
 
 // planHelp is behind the "?" of the restart notice: when a saved assignment is used and how to use a ChatGPT plan.
 templ planHelp() {
-	<p>保存した割り当ては、次の起動から使われます。</p>
+	<p>保存した割り当ては、次の呼び出しからすぐ使われます。実行中の呼び出しは、始めたときの割り当てのまま終わります。llm.json を手で書き換えた base_url・タイムアウト・リトライ・サーキットブレーカーだけは、再起動すると反映されます（その設定があるときは、画面の上に「再起動して反映」が出ます）。</p>
 	<p class="mt-2" data-testid="llm-chatgpt-note">
 		プロバイダー「chatgpt-subscription」を選ぶと、ChatGPT のプランを使います（Using ChatGPT plan）。組織（Business / Enterprise / Edu）のアカウントは、「API キーとログイン」の Codex 経由でログインして、プロバイダー「chatgpt-codex」を選びます（テキスト生成だけ）。モデル名は、ログインしたあと、「API キーとログイン」の ChatGPT の欄で確認できます。
 		<a class="underline" href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>
@@ -119,9 +119,6 @@ templ row(r Row, pinned, oob bool) {
 					@atoms.Badge(atoms.BadgeInfo, "変更あり")
 				} else {
 					@atoms.Badge(atoms.BadgeNeutral, "既定")
-				}
-				if r.Restart {
-					@atoms.Badge(atoms.BadgeWarn, "再起動で反映")
 				}
 			</span>
 		}

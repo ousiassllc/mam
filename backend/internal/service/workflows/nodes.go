@@ -87,7 +87,7 @@ func (s *Service) bundledTarget(requestHost string, t NodeTarget) NodeTarget {
 	t.Installed = e.Installed
 	switch {
 	case !e.Supported:
-		t.State, t.Reason = NodeUnsupported, "同梱の ComfyUI は Windows 版だけで使えます。外部の ComfyUI を接続先に登録して選んでください"
+		t.State, t.Reason = NodeUnsupported, "同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけで使えます。外部の ComfyUI を接続先に登録して選んでください"
 	case !e.Installed:
 		t.State, t.Reason = NodeNotInstalled, "同梱の ComfyUI がまだ入っていません。モデルマネージャーで入れてください"
 	case e.Process.State == proc.StateRunning:

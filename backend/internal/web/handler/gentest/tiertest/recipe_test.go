@@ -94,6 +94,31 @@ func TestUsingARecipePutsItsSettingsIntoTheDetailForm(t *testing.T) {
 	assert.Regexp(t, `checked[^>]*name="model"[^>]*value="`+string(gentesttest.ExposedModel)+`"|value="`+string(gentesttest.ExposedModel)+`"[^>]*checked`, body)
 }
 
+// レシピは速さのモードも保存する: 画面で保存 → 「使う」でそのモードが選ばれ、かんたんで選んだ見積りにも渡る。モデルに無いモードは保存を拒否する。
+func TestARecipeKeepsTheSpeedModeAndUsingItSelectsIt(t *testing.T) {
+	s := newScreen(t, gentesttest.WithTemplateModels(), gentesttest.WithSpeedModel())
+	form := url.Values{
+		"tier": {"detail"}, "media": {"image"}, "model": {string(gentesttest.ImageSpeedModel)}, "prompt": {"a fox"}, "aspect_ratio": {"1:1"}, "count": {"1"},
+		"speed_mode": {"lightning-4"}, "recipe_name": {"Quick"}, "recipe_easy": {"1"},
+	}
+	id := idOfRecipe(t, s.htmx(http.MethodPost, paths.GenerationTestPart("recipes"), form).Body.String())
+
+	rec := s.htmx(http.MethodGet, paths.GenerationTestPart("form")+"?"+url.Values{"tier": {"detail"}, "recipe": {id}, "media": {"image"}, "prompt": {"keep me"}}.Encode(), nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `<option value="lightning-4" selected>`)
+	assert.NotContains(t, rec.Body.String(), "このモデルにないため")
+
+	estimate := s.htmx(http.MethodPost, paths.GenerationTestPart("estimate"), url.Values{
+		"tier": {"easy"}, "intent": {"recipe:" + id}, "media": {"image"}, "prompt": {"a red fox"}, "aspect_ratio": {"1:1"}, "count": {"1"},
+	})
+	require.Equal(t, http.StatusOK, estimate.Code, estimate.Body.String())
+	assert.Contains(t, estimate.Body.String(), `name="speed_mode" value="lightning-4"`)
+
+	form.Set("speed_mode", "lightning-2")
+	form.Set("recipe_name", "Bad")
+	assert.Equal(t, http.StatusUnprocessableEntity, s.htmx(http.MethodPost, paths.GenerationTestPart("recipes"), form).Code)
+}
+
 // 同じ名前・名前の空・モデルが 2 つのときは拒否され、理由が出る（保存しない）。
 func TestARecipeSaveIsRefusedWithAReason(t *testing.T) {
 	s := newScreen(t, gentesttest.WithTemplateModels(), gentesttest.WithExposedModel())
@@ -168,4 +193,30 @@ func TestOpenInComfyUISaysWhyItCannotBeDone(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "no node screen in this app")
 	assert.Contains(t, testid(rec.Body.String(), "gt-comfy-open-result"), "ノード画面")
 	assert.Contains(t, s.page(paths.GenerationTest()+"?tier=detail&model="+url.QueryEscape(string(gentesttest.ExposedModel))), `data-testid="gt-comfy-open-button"`)
+}
+
+// 年齢確認がオフ（Issue #992）: 成人向けモデルのレシピは、こだわりの一覧にも、かんたんの選択肢にも、選んだあとの表示にも、モデルの名前を出さない（使えない理由は出る）。
+func TestARecipeOfAHiddenModelNamesNoModelOnTheScreens(t *testing.T) {
+	hidden := false
+	s := newScreen(t, gentesttest.WithTemplateModels(), gentesttest.WithExposedModel(),
+		gentesttest.WithHidden(func(id string) bool { return hidden && id == string(gentesttest.ExposedModel) }))
+	id := idOfRecipe(t, s.htmx(http.MethodPost, paths.GenerationTestPart("recipes"), recipeForm("Fox look", true)).Body.String())
+	open := testid(s.page(paths.GenerationTest()+"?tier=easy"), "gt-recipe-choices")
+	require.Contains(t, open, "sdxl-exposed", "the gate is open: the choice says its model")
+
+	hidden = true
+	easy := s.page(paths.GenerationTest() + "?tier=easy")
+	choices := testid(easy, "gt-recipe-choices")
+	assert.Contains(t, choices, "Fox look")
+	assert.Contains(t, choices, "成人向けのモデル")
+	assert.NotContains(t, choices, "sdxl-exposed")
+	pick := s.htmx(http.MethodGet, paths.GenerationTestPart("easy-pick")+"?"+url.Values{"intent": {"recipe:" + id}}.Encode(), nil)
+	require.Equal(t, http.StatusOK, pick.Code)
+	assert.NotContains(t, pick.Body.String(), "sdxl-exposed")
+	assert.Contains(t, pick.Body.String(), "成人向け")
+
+	list := testid(s.page(paths.GenerationTest()+"?tier=detail"), "gt-recipe-list")
+	assert.Contains(t, list, "Fox look")
+	assert.Contains(t, list, "成人向けのモデル")
+	assert.NotContains(t, list, "sdxl-exposed")
 }

@@ -8,7 +8,9 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
@@ -137,14 +139,14 @@ type Compose struct {
 	LoRAs        []string
 	LoRA         string
 	LoRAStrength *float64
-	// SpeedModes are the speed modes the video models offer (none: not drawn), SpeedMode the one chosen ("" for each model's default).
+	// SpeedModes are the speed modes the models offer (none: not drawn), SpeedMode the one chosen ("" for each model's default).
 	SpeedModes         []SpeedChoice
 	SpeedMode          string
 	gentestadv.Section                  // the "詳細設定" and the "?" of the prompt weights
 	Tier               gentesttier.Data // the tiers of an image form (かんたん / こだわり / ComfyUI; Issue #977)
 }
 
-// SpeedChoice is a speed mode of a video model (localcfg.SpeedMode): the ID the form posts and the label of its option.
+// SpeedChoice is a speed mode of a model (localcfg.SpeedMode): the ID the form posts and the label of its option.
 type SpeedChoice struct{ ID, Label string }
 
 // Hidden is a form value the confirmation carries back unchanged.
@@ -183,24 +185,6 @@ func (c Confirm) runPath() string {
 	return paths.GenerationTestPart("run")
 }
 
-// Card is a result as a card of the grid, the history or the detail.
-type Card struct {
-	ID         string
-	Model      string
-	Prompt     string
-	Status     string
-	StatusText string
-	Error      string
-	FileURL    string
-	Video      bool
-	Favorite   bool
-	Detail     string // the link to the detail
-	Meta       string // "seed 123 ・ 16:9 ・ 2.1 MiB"
-	CreatedAt  string
-	// Answer is whether the model that made the result may be used commercially (the mark on the card).
-	Answer commercial.View
-}
-
 // Col is a column of the comparison grid: one prompt, and the English it was sent as when it was translated.
 type Col struct {
 	Text     string
@@ -214,7 +198,7 @@ type Col struct {
 type Row struct {
 	Model  string
 	Answer commercial.View
-	Cells  [][]Card
+	Cells  [][]resulttile.Card
 }
 
 // Batch is the progress and the comparison grid of a batch.
@@ -250,7 +234,7 @@ type History struct {
 	// Commercial is the commercial-use filter of the cards and of the model choices; ModelAnswers are the answers of Models by id.
 	Commercial   commercial.FilterData
 	ModelAnswers map[string]string
-	Cards        []Card
+	Cards        []resulttile.Card
 	Spend        string
 	// Next is the link to the next page ("" on the last).
 	Next string
@@ -285,7 +269,7 @@ type ImportRow struct {
 // Detail is one result with everything about it.
 type Detail struct {
 	Message
-	Card       Card
+	Card       resulttile.Card
 	SentPrompt string
 	// English and EnglishNegative are the translation that was sent ("" when the text was sent as typed).
 	English          string
@@ -300,7 +284,10 @@ type Detail struct {
 	Actions          gentestresult.Actions // the buttons under the picture (#977)
 	Used             gentestresult.Used    // the settings it was made with, folded
 	Upscale          upscalebox.Form       // "make it larger", and where an enlargement came from
+	FaceSwap         faceswapbox.Form      // "swap the face" (FaceFusion), and where a swap came from
 	Answer           commercial.View
+	// CanPick says the detail was opened from a grid that has the choice for the ZIP export (the history, #932), so the modal offers it too.
+	CanPick bool
 }
 
 // PromptRow is an entry of the prompt history.

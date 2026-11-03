@@ -185,7 +185,7 @@ func TestValidateRefusesABrokenAssembledRuntime(t *testing.T) {
 		"a part of an unknown kind": {func(c *catalog.Catalog) {
 			v := museTalk(t, c).Variants[catalog.VariantNVIDIA]
 			v.Parts[3].Kind = "tar"
-		}, "zip or wheel"},
+		}, "tar.gz or wheel"},
 		"a wheel that lands somewhere": {func(c *catalog.Catalog) {
 			v := museTalk(t, c).Variants[catalog.VariantNVIDIA]
 			v.Parts[3].Dest = "elsewhere"

@@ -213,6 +213,33 @@ func TestTheDetailTierStartsWithTheValuesTheEasyTierChose(t *testing.T) {
 	assert.Contains(t, body, `>a red fox</textarea>`, "what was typed stays")
 }
 
+// こだわり → かんたん: こだわりで変えた詳細設定（かんたんが持たないもの）は消える。消えることを、戻った画面の冒頭に出す（#1000）。
+func TestSwitchingBackToTheEasyTierSaysWhichDetailedSettingsAreGone(t *testing.T) {
+	s := newScreen(t, installed("sdxl-base"))
+	ask := func(extra url.Values) string {
+		q := url.Values{"tier": {"easy"}, "media": {"image"}, "intent": {"photo"}, "prompt": {"a red fox"}, "negative": {"blurry"}}
+		for k, v := range extra {
+			q[k] = v
+		}
+		rec := s.htmx(http.MethodGet, paths.GenerationTestPart("form")+"?"+q.Encode(), nil)
+		require.Equal(t, http.StatusOK, rec.Code)
+		return rec.Body.String()
+	}
+
+	body := ask(url.Values{"dropped": {"seed", "steps", "exposed"}, "seed": {"123"}, "steps": {"40"}})
+	assert.Contains(t, body, "こだわりで変えた詳細設定（シード・ステップ数・画面に出した値）は、かんたんでは使わないため消えました")
+	assert.Contains(t, body, "こだわりへ戻っても元には戻りません")
+	assert.Contains(t, body, `>a red fox</textarea>`+"", "the prompt stays")
+	assert.NotContains(t, body, `name="seed"`, "and the value really is not in the easy form")
+	assert.NotContains(t, body, `name="steps"`)
+	assert.Contains(t, body, `value="blurry"`, "the negative prompt is kept, so it is not said")
+
+	assert.NotContains(t, ask(nil), "は、かんたんでは使わないため消えました", "nothing was lost: nothing is said")
+	assert.NotContains(t, ask(url.Values{"dropped": {"bogus"}}), "は、かんたんでは使わないため消えました", "a key it does not know says nothing")
+	detail := ask(url.Values{"tier": {"detail"}, "dropped": {"seed"}, "model": {gentesttest.InstalledID("sdxl-base")}})
+	assert.NotContains(t, detail, "は、かんたんでは使わないため消えました", "only a form of the easy tier says it")
+}
+
 // ComfyUI の段は、偽の UI を作らず、今ある画面（ノード・ワークフロー・モデルマネージャー）へのリンクだけを出す。
 func TestTheComfyTierLinksToTheScreensThatExist(t *testing.T) {
 	s := newScreen(t)

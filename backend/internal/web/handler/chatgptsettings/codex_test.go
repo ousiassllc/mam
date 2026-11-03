@@ -54,10 +54,15 @@ func TestChatGPTCodex_TheCodexCardShowsTheTermsAndTheEngineAmongTheOtherCards(t 
 	assert.True(t, 0 < official && official < image && image < codexCard, "official, image generation, Codex")
 
 	body := s.panel()
-	assert.Contains(t, body, "商用・ホスティング")
-	assert.Contains(t, body, `data-testid="chatgpt-codex-engine"`)
+	assert.Contains(t, body, "商用注意", "the mark is on the card, whatever its state")
+	assert.Contains(t, body, "商用・ホスティング", "and a line of the terms")
+	assert.NotContains(t, body, `data-testid="chatgpt-codex-terms"`, "the terms in full are in the detail")
 	assert.Contains(t, body, `data-testid="chatgpt-codex-unsupported"`, "no download on this platform; here only a path")
-	assert.Contains(t, body, `data-testid="chatgpt-codex-path"`)
+	detail := s.detail("codex")
+	assert.Contains(t, detail, `data-testid="chatgpt-codex-terms"`)
+	assert.Contains(t, detail, "商用・ホスティング")
+	assert.Contains(t, detail, `data-testid="chatgpt-codex-engine"`)
+	assert.Contains(t, detail, `data-testid="chatgpt-codex-path"`)
 	assert.NotContains(t, body, `data-testid="chatgpt-codex-install-button"`)
 	assert.NotContains(t, body, `data-testid="chatgpt-login-codex"`, "no login before there is an engine")
 	assert.Contains(t, body, "エンジン未取得")
@@ -123,7 +128,7 @@ func TestChatGPTCodex_ThePathNeedsAFileAndCanBeCleared(t *testing.T) {
 	rec = s.act(http.MethodPut, paths.ChatGPTCodexPath(), url.Values{"path": {exe}})
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "パスを設定しました")
-	assert.Contains(t, s.panel(), "準備済み", "an engine is there, so the Codex block is the one shown")
+	assert.Contains(t, s.detail("codex"), "準備済み", "an engine is there, so the Codex block is the one shown")
 
 	rec = s.act(http.MethodPut, paths.ChatGPTCodexPath(), url.Values{"path": {""}})
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -169,6 +174,41 @@ func TestChatGPTCodex_LoginRefreshModelsAndLogout(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "ログアウトしました")
 	assert.NotContains(t, rec.Body.String(), "user@example.invalid")
 	assert.Len(t, fake.CallsOf(protocol.MethodLogout), 1)
+}
+
+// The actions of the Codex detail answer in the modal: a refusal is said there, and what worked closes it with the cards replaced.
+func TestChatGPTCodex_TheActionsOfTheDetailAnswerInTheModal(t *testing.T) {
+	s := newScreen(t, true)
+	rec := s.actFromModal(http.MethodPut, paths.ChatGPTCodexPath(), url.Values{"path": {"relative/codex"}})
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), `id="mam-modal-error"`)
+	assert.Contains(t, rec.Body.String(), "絶対パス")
+	assert.Contains(t, rec.Body.String(), `data-testid="chatgpt-codex-path"`, "the form stays for another try")
+
+	exe := filepath.Join(t.TempDir(), "codex.exe")
+	require.NoError(t, os.WriteFile(exe, []byte("x"), 0o700))
+	rec = s.actFromModal(http.MethodPut, paths.ChatGPTCodexPath(), url.Values{"path": {exe}})
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "modal-close", rec.Header().Get("HX-Trigger-After-Swap"))
+	assert.Contains(t, rec.Body.String(), "パスを設定しました")
+	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`)
+}
+
+func TestChatGPTCodex_TheDetailOffersTheLogoutThatAlsoRemovesTheEngineOnlyWhenSignedIn(t *testing.T) {
+	s, fake := codexScreen(t)
+	assert.NotContains(t, s.detail("codex"), `data-testid="chatgpt-logout-codex-remove"`)
+
+	s.act(http.MethodPost, paths.ChatGPTLogin("codex"), url.Values{"method": {"browser"}})
+	l, ok := s.svc.Codex().CurrentLogin()
+	require.True(t, ok)
+	fake.Notify(protocol.NotifLoginCompleted, map[string]any{"success": true, "loginId": l.ID})
+	s.waitFor(`data-testid="chatgpt-codex-assign-hint"`)
+
+	assert.Contains(t, s.detail("codex"), `data-testid="chatgpt-logout-codex-remove"`)
+	rec := s.actFromModal(http.MethodDelete, paths.ChatGPTCodex()+"?remove=true", nil) // htmx sends the fields of a DELETE in the query
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "modal-close", rec.Header().Get("HX-Trigger-After-Swap"))
+	assert.Contains(t, rec.Body.String(), "ログアウトして、取得した Codex 本体と mam 専用の CODEX_HOME を削除しました")
 }
 
 func TestChatGPTCodex_LoginWithoutAnEngineAsksForOne(t *testing.T) {

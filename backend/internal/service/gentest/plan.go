@@ -38,7 +38,7 @@ const (
 	WarnTooManyReference = refs.WarnTooMany          // more references than the model takes
 	WarnRoleUnsupported  = refs.WarnRoleUnsupported  // the model does not take the role of a reference: it is used as a whole
 	WarnLoRAUnsupported  = refs.WarnLoRAUnsupported  // the model cannot take a LoRA: it is not sent
-	WarnSpeedUnsupported = refs.WarnSpeedUnsupported // the video model has no such speed mode: it runs its default
+	WarnSpeedUnsupported = refs.WarnSpeedUnsupported // the model has no such speed mode: it runs its default
 	// WarnSamplingIgnored and WarnSeedIgnored (sampling.go): the model does not take the steps, cfg, sampler, scheduler or seed asked for.
 	// WarnPromptWeight (promptweight.go): the prompt has weights and the model does not read them (or reads them poorly).
 )
@@ -52,7 +52,7 @@ type modelPlan struct {
 	used []int
 	// lora says the request's LoRA is sent to the model, avoidPose that the pose negative is added to its negative prompt.
 	lora, avoidPose bool
-	// speedMode is the speed mode the video model is asked for ("" for its default).
+	// speedMode is the speed mode the model is asked for ("" for its default).
 	speedMode string
 	// sampling is the steps, cfg, sampler and scheduler the model runs with (what it takes: the request's value, else its default); nil when it takes none.
 	sampling *sampling.Settings
@@ -76,6 +76,7 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 	} else {
 		s.planVideo(cfg, r, &p, warn)
 	}
+	planSpeedMode(r, &p, warn)
 	planSampling(r, &p, warn)
 	planInpaint(r, &p, warn)
 	var ignored []string
@@ -165,13 +166,19 @@ func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, wa
 	})
 	p.used = append(p.used, free...)
 	slices.Sort(p.used)
-	if r.SpeedMode != "" && !p.info.Video.HasSpeedMode(r.SpeedMode) {
-		warn(WarnSpeedUnsupported, "%s には速さのモード %q がないため、このモデルの既定で作ります", p.info.Label, r.SpeedMode)
-	} else {
-		p.speedMode = r.SpeedMode
-	}
 	if msg := direct.AspectProblem(domain.ModelName(p.info.ID), r.AspectRatio, first); msg != "" {
 		warn(WarnAspect, "%s: 縦横比 %s は使えません（%s）。このモデルの結果は失敗します", p.info.Label, r.AspectRatio, msg)
+	}
+}
+
+// planSpeedMode decides the speed mode the model is asked for: the one of the request when the model has it, else its default (with a warning).
+func planSpeedMode(r Request, p *modelPlan, warn func(code, format string, args ...any)) {
+	switch {
+	case r.SpeedMode == "":
+	case p.info.HasSpeedMode(r.SpeedMode):
+		p.speedMode = r.SpeedMode
+	default:
+		warn(WarnSpeedUnsupported, "%s には速さのモード %q がないため、このモデルの既定で作ります", p.info.Label, r.SpeedMode)
 	}
 }
 

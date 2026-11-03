@@ -1,7 +1,7 @@
 // Package proc runs the bundled ComfyUI (and the local runtimes, spec/architecture/model-manager/local-runtime.md §5) as a child process of mam (spec/architecture/model-manager/model-manager.md §3.4): on
 // 127.0.0.1 and a free port, without a console window, in a group that the operating system kills when mam ends or
-// crashes (a Windows Job Object with KILL_ON_JOB_CLOSE; a process group and Pdeathsig on Linux), so that the files of
-// the engine can be deleted by the uninstaller. Its state is a Status the screen and the chat read, and a start
+// crashes (a Windows Job Object with KILL_ON_JOB_CLOSE; a process group and Pdeathsig on Linux; on macOS the process group, which
+// Stop and Close signal, but no kernel hook for a crash of mam), so that the files of the engine can be deleted by the uninstaller. Its state is a Status the screen and the chat read, and a start
 // that fails or a crash is reported through Watch.
 package proc
 

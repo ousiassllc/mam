@@ -27,6 +27,7 @@ import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
 import { installExportPick } from './components/gentest/export-pick';
 import { installSlider } from './components/slider/slider';
+import { installRestartRefresh } from './components/restart/refresh';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -111,6 +112,9 @@ installExportPick();
 
 // The sliders (every input[type=range]): the rail's fill follows the value (static/src/css/slider.css, #955).
 installSlider();
+
+// The "再起動して反映" panel of the settings screen is read again after a save (#1006, #1007).
+installRestartRefresh();
 
 lockDownHtmx(htmx.config);
 

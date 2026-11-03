@@ -278,7 +278,7 @@ func userFacing(ctx context.Context, err error) error {
 	case instlog.IsLost(err):
 		return &userError{instlog.ConnectionLostMessage, err}
 	case errors.Is(err, store.ErrNotWritable):
-		return &userError{"mam.exe のあるフォルダに書き込めません。書き込める場所に置いてください", err}
+		return &userError{"導入先のフォルダ（Windows は mam.exe のあるフォルダ、macOS は mam のデータフォルダ）に書き込めません。書き込める場所に置いてください", err}
 	}
 	return err
 }

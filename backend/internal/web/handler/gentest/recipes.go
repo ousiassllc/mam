@@ -45,6 +45,14 @@ func (h Handlers) applyRecipe(ctx context.Context, f *formState, id string) stri
 	if r.LoRA != nil {
 		f.opts.LoRA = r.LoRA
 	}
+	notes := ""
+	if r.SpeedMode != "" {
+		if m, err := h.Svc.Model(ctx, gentest.MediaImage, r.Model); err == nil && m.HasSpeedMode(r.SpeedMode) {
+			f.opts.SpeedMode = r.SpeedMode
+		} else {
+			notes = "。" + redo.SpeedGone(r.SpeedMode)
+		}
+	}
 	for i := range f.prompts {
 		if f.prompts[i].Negative == "" {
 			f.prompts[i].Negative = r.Negative
@@ -59,7 +67,7 @@ func (h Handlers) applyRecipe(ctx context.Context, f *formState, id string) stri
 		models := h.Svc.Models(ctx, gentest.MediaImage)
 		tierform.Carry(tierform.In{State: tierform.State{Quality: string(q), FromEasy: true}, Models: f.models, Adv: &f.adv}, models)
 	}
-	return "レシピ「" + v.Name + "」の設定を入れました（プロンプトと入力画像は今のままです）。見積りを確認してから実行します"
+	return "レシピ「" + v.Name + "」の設定を入れました（プロンプトと入力画像は今のままです）。見積りを確認してから実行します" + notes
 }
 
 // recipeNotice puts the recipe the request names into the form; the line to say, "" when none was named.

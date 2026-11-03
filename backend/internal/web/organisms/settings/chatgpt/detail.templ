@@ -1,0 +1,47 @@
+package chatgpt
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+)
+
+// DetailForm is what the detail modal of a card is drawn from: the section (the card's state and the lists), the login system
+// and, when the last action in the modal was refused, why.
+type DetailForm struct {
+	Kind  string
+	Data  Data
+	Error string
+}
+
+// detailTitle is the name of a card, which names its detail.
+func detailTitle(kind string) string {
+	switch kind {
+	case imageKind:
+		return imageTitle
+	case codexKind:
+		return codexTitle
+	}
+	return officialTitle
+}
+
+// DetailModal is the body of the modal of a card: what is too long for the card (what the login system is, its risks and its
+// terms, the engine, the path of an own codex) and the actions that need them (turning the image generation on after the
+// risks are read, the path of the codex). An action of the modal that works closes it and the cards say what happened.
+templ DetailModal(f DetailForm) {
+	@modal.Frame(detailTitle(f.Kind), "") {
+		if f.Error != "" {
+			@modal.Error(f.Error)
+		}
+		switch f.Kind {
+			case imageKind:
+				@imageDetail(f.Data)
+			case codexKind:
+				@codexDetail(f.Data)
+			default:
+				@officialDetail(f.Data)
+		}
+		@modal.Actions() {
+			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true, "autofocus": true})
+		}
+	}
+}

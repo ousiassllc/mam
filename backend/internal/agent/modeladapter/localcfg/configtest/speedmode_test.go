@@ -1,4 +1,4 @@
-package localcfg_test
+package configtest
 
 import (
 	"encoding/json"
@@ -50,10 +50,32 @@ func TestTheLightX2VTemplateHasTheFastAndTheStandardMode(t *testing.T) {
 	assert.Equal(t, string(plain["95"].Inputs["unet_name"]), string(g["95"].Inputs["unet_name"]))
 }
 
-func TestOnlyTheLightX2VTemplateHasSpeedModes(t *testing.T) {
+func TestOnlyTheDistilledLoRATemplatesHaveSpeedModes(t *testing.T) {
+	has := map[string]bool{"img2video-wan22-14b-lightx2v": true, "txt2img-qwen-image-edit-2511": true}
 	for _, tpl := range localcfg.Templates() {
-		assert.Equal(t, tpl.ID == "img2video-wan22-14b-lightx2v", len(tpl.Model.Workflow.SpeedModes) > 0, tpl.ID)
+		assert.Equal(t, has[tpl.ID], len(tpl.Model.Workflow.SpeedModes) > 0, tpl.ID)
 	}
+}
+
+// Qwen-Image-Edit 2511 with the Lightning LoRAs (Issue #991): an image workflow has speed modes; the first (the default) is the graph
+// itself, the other two put in the LoRA of their step count with cfg 1.
+func TestQwenImageEdit2511HasTheStandardAndTheTwoLightningModes(t *testing.T) {
+	tpl, ok := localcfg.TemplateByID("txt2img-qwen-image-edit-2511")
+	require.True(t, ok)
+	w := tpl.Model.Workflow
+	var ids []string
+	for _, m := range w.SpeedModes {
+		ids = append(ids, m.ID)
+	}
+	assert.Equal(t, []string{"standard", "lightning-8", "lightning-4"}, ids)
+	assert.Empty(t, w.SpeedModes[0].Overrides, "the default is the graph itself: 20 steps, cfg 4, no LoRA")
+	first, ok := w.SpeedMode("")
+	require.True(t, ok)
+	assert.Equal(t, "standard", first.ID)
+	assert.Empty(t, w.QualityPresets, "the mode owns the steps and the cfg")
+	assert.Equal(t, "speed_mode", w.SamplingCaps().Steps.Locked)
+	assert.Equal(t, "speed_mode", w.SamplingCaps().CFG.Locked)
+	assert.Empty(t, localcfg.ValidateModel("box/x", tpl.Model, comfy()))
 }
 
 func TestValidateRefusesBrokenSpeedModes(t *testing.T) {
@@ -77,8 +99,14 @@ func TestValidateRefusesBrokenSpeedModes(t *testing.T) {
 		m := withModes(t, "img2video-wan22-14b-lightx2v", modes)
 		assert.NotEmpty(t, localcfg.ValidateModel("box/x", m, comfy()), name)
 	}
-	image := withModes(t, "txt2img-sdxl", []localcfg.SpeedMode{mode("fast")})
-	assert.NotEmpty(t, localcfg.ValidateModel("box/x", image, comfy()), "speed modes belong to a video workflow")
+	for name, modes := range map[string][]localcfg.SpeedMode{
+		"an image workflow's override of a missing node": {mode("standard"), mode("fast", set("999", "steps", "4"))},
+		"an image workflow's override on the first mode": {mode("standard", set("3", "steps", "4"))},
+	} {
+		assert.NotEmpty(t, localcfg.ValidateModel("box/x", withModes(t, "txt2img-qwen-image-edit-2511", modes), comfy()), name)
+	}
+	image := withModes(t, "txt2img-qwen-image-edit-2511", []localcfg.SpeedMode{mode("standard"), mode("fast", set("3", "steps", "4"))})
+	assert.Empty(t, localcfg.ValidateModel("box/x", image, comfy()), "an image workflow may have speed modes")
 }
 
 // withModes is the model of a template with its speed modes replaced (a copy: the template stays as it was).

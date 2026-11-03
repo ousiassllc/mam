@@ -1,0 +1,137 @@
+package resulttile
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// ID is the DOM id of the outermost element of a result in a grid (the history's item, the cell of a batch): the answer of a delete that was
+// made in the modal takes that element out of the page (Gone).
+func ID(id string) string { return "gt-result-" + id }
+
+// tileOpenAttrs are the attributes of the link of a tile: it asks for the detail in the modal (the link works without the script too: it is the page of the
+// result). pick says the grid has the choice for the ZIP export (#932), so the detail offers it as well (?pick=1).
+func tileOpenAttrs(c Card, pick bool) templ.Attributes {
+	attrs := modal.OpenLinkAttrs(c.Detail, ID(c.ID))
+	if pick {
+		attrs["hx-vals"] = `{"pick":"1"}`
+	}
+	return attrs
+}
+
+// Tile is a result as a picture of a grid, and nothing else (Issue #1004): an image or the first frame of a video, or, for a result that has no file
+// (waiting, running, failed, cancelled), a badge of its state; a heart when it is a favorite. A tap opens the detail in the modal: the model, the state, the
+// time, the whole prompt, the settings, the large picture (a video plays there), and what can be done with it. The title is the prompt, for a hover.
+templ Tile(c Card, pick bool) {
+	<article class="relative aspect-square overflow-hidden rounded-lg bg-neutral-900" data-testid="gt-card" data-status={ c.Status } data-result={ c.ID }>
+		<a
+			class="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400"
+			title={ c.Prompt }
+			aria-label={ c.Model + "・" + c.StatusText + "・詳細を開く" }
+			aria-haspopup="dialog"
+			data-testid="gt-open"
+			{ tileOpenAttrs(c, pick)... }
+		>
+			if c.FileURL != "" && c.Video {
+				<video class="h-full w-full object-cover" src={ c.FileURL } preload="metadata" muted playsinline tabindex="-1" aria-hidden="true"></video>
+				<span class="absolute bottom-1.5 right-1.5 rounded-md bg-neutral-900 p-1 text-neutral-100" aria-hidden="true" data-testid="gt-tile-video">
+					@atoms.Icon(atoms.IconVideo, "h-4 w-4")
+				</span>
+			} else if c.FileURL != "" {
+				<img class="h-full w-full object-cover" src={ c.FileURL } alt="" loading="lazy"/>
+			} else {
+				<span class="flex h-full w-full items-center justify-center">
+					@atoms.BadgeWith(Tone(c.Status), c.StatusText, templ.Attributes{"data-testid": "gt-card-status"})
+				</span>
+			}
+		</a>
+		@favoriteMark(c.ID, c.Favorite, false)
+	</article>
+}
+
+// favoriteMark is the heart on a tile (empty while the result is not a favorite). oob draws it as the part that the answer of the favorite button replaces
+// out of band, so that a favorite set in the modal shows on the grid behind it.
+templ favoriteMark(id string, on bool, oob bool) {
+	<span
+		id={ "gt-fav-mark-" + id }
+		class="pointer-events-none absolute right-1.5 top-1.5 text-base leading-none text-amber-300 drop-shadow"
+		hidden?={ !on }
+		data-testid="gt-fav-mark"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		if on {
+			<span class="sr-only">お気に入り</span>
+			<span aria-hidden="true">★</span>
+		}
+	</span>
+}
+
+// Reply is the answer of the favorite button: the button as it is now, and the heart of the tile.
+templ Reply(id string, on bool) {
+	@FavoriteButton(id, on)
+	@favoriteMark(id, on, true)
+}
+
+// Gone is the answer of a delete made in the modal: the result's element is taken out of the grid (out of band) and the modal closes.
+templ Gone(id string) {
+	<div id={ ID(id) } hx-swap-oob="delete"></div>
+}
+
+// FavoriteButton toggles the favorite mark; it replaces itself.
+templ FavoriteButton(id string, on bool) {
+	<button
+		type="button"
+		id={ "gt-favorite-" + id }
+		class="rounded px-1 text-base leading-none hover:bg-neutral-800"
+		hx-post={ paths.GenerationTestPart("results", id, "favorite") }
+		hx-vals={ favoriteVals(!on) }
+		hx-swap="outerHTML"
+		aria-pressed={ boolText(on) }
+		aria-label={ favoriteLabel(on) }
+		data-testid="gt-favorite"
+		data-on={ boolText(on) }
+	>
+		if on {
+			<span aria-hidden="true">★</span>
+		} else {
+			<span aria-hidden="true">☆</span>
+		}
+	</button>
+}
+
+func favoriteVals(next bool) string {
+	if next {
+		return `{"favorite":"1"}`
+	}
+	return `{"favorite":"0"}`
+}
+
+func favoriteLabel(on bool) string {
+	if on {
+		return "お気に入りを外す"
+	}
+	return "お気に入りにする"
+}
+
+// Tone is the color of the badge of a result's state.
+func Tone(status string) atoms.BadgeTone {
+	switch status {
+	case "succeeded":
+		return atoms.BadgeOK
+	case "failed", "cancelled":
+		return atoms.BadgeError
+	case "running":
+		return atoms.BadgeInfo
+	}
+	return atoms.BadgeNeutral
+}
+
+func boolText(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}

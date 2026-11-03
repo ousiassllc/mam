@@ -25,13 +25,13 @@
 | `id`・`batch_id`・`position` | PK・FK（カスケード）・バッチ内の計画順（モデル → プロンプト → 本数） |
 | `media`・`model`・`api_model` | 種類・**正規のモデル識別子（代替しないので実際に使ったモデル）**・ベンダーの識別子 |
 | `prompt`・`negative_prompt`・`sent_prompt`・`negative_mode` | 入力・実際に送った文・`none` / `field`（モデルの欄）/ `folded`（「Avoid: …」としてプロンプトに書き足した） |
-| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・`avoid_pose`（参照を使うモデルのネガティブに「ポーズ・構図を真似ない」を足したとき true）・`lora`（`name`・`strength`。使ったときだけ）・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
+| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・顔の入れ替え（[face-swap.md](face-swap.md)）の結果は `face_swap`（元の結果・モデル・ライセンスの警告）を、役割 `face` の入力があった結果は `face_similarity`（SFace の顔の類似度。[../local-models.md](../local-models.md) §4.9）を持つ。`avoid_pose`（参照を使うモデルのネガティブに「ポーズ・構図を真似ない」を足したとき true）・`lora`（`name`・`strength`。使ったときだけ）・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
 | `seed`・`seed_sent` | 送ったシード（対応しないモデルは NULL・0）。実際に送った値を保存する |
 | `status`・`error` | `queued` / `running` / `succeeded` / `failed` / `cancelled`・失敗の理由 |
 | `file_path`・`mime_type`・`size_bytes` | 結果のファイル（成功したときだけ） |
 | `cost_basis`・`estimated_cost`・`actual_cost` | `priced` / `free` / `unknown`・見積り USD（unknown は NULL）・ベンダーが返したときの実費 |
 | `favorite` | お気に入り（取り込みの目印にすぎない） |
-| `created_at`・`finished_at` | 日時 |
+| `created_at`・`started_at`・`finished_at` | 日時。`started_at` は `queued` → `running` にした時刻（実行時間 = `finished_at − started_at`。`estimate_generation_test` のローカルモデルの所要時間の根拠。キューの待ち時間を含まない。マイグレーション `20261105090000_gentest_result_started_at.sql` より前の結果と、まだ動いていない結果は NULL）。実行していない結果（取り消し）も NULL |
 
 索引: `created_at DESC`（履歴）・`batch_id, position`・`model`・`favorite`（部分）・`status`。
 
@@ -41,7 +41,7 @@
 
 ## gentest_recipe（レシピ。Issue #977）
 
-`id`・`name`（`NOT NULL COLLATE NOCASE UNIQUE`・空でない。大文字小文字を区別せず一意）・`params`（JSON。`service/gentest/recipe.Params`: モデルの識別子・steps・cfg・sampler・scheduler・固定のシード・ネガティブ・LoRA・入力画像の強さ・縦横比・品質・画面に出す値。**プロンプトの本文と入力画像は持たない**）・`easy`（0/1。かんたんの選択肢に出す）・`created_at`・`updated_at`。**外部キーなし**（モデルは識別子で名指しし、削除・未導入でもレシピは残る）。マイグレーション `20261104100000_gentest_recipe.sql`、`repository/reciperepo`。プロジェクトのバンドルには含めない（`unbundledTables`）。結果の `gentest_result.params` に `exposed`（使った画面に出す値）が足された（JSON の項目。列は変わらない）。
+`id`・`name`（`NOT NULL COLLATE NOCASE UNIQUE`・空でない。大文字小文字を区別せず一意）・`params`（JSON。`service/gentest/recipe.Params`: モデルの識別子・steps・cfg・sampler・scheduler・固定のシード・ネガティブ・LoRA・入力画像の強さ・縦横比・品質・速さのモード・画面に出す値。**プロンプトの本文と入力画像は持たない**）・`easy`（0/1。かんたんの選択肢に出す）・`created_at`・`updated_at`。**外部キーなし**（モデルは識別子で名指しし、削除・未導入でもレシピは残る）。マイグレーション `20261104100000_gentest_recipe.sql`、`repository/reciperepo`。プロジェクトのバンドルには含めない（`unbundledTables`）。結果の `gentest_result.params` に `exposed`（使った画面に出す値）が足された（JSON の項目。列は変わらない）。
 
 ## gentest_import（プロジェクトへの取り込みの記録）
 

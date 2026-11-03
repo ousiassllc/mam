@@ -151,7 +151,8 @@ type HFModelList struct {
 	// Jobs are the import jobs the list reports on (running, or just ended).
 	Jobs []string
 	// OOB draws the list out of band (a polled list that ended an install also redraws the trial choices).
-	OOB bool
+	OOB       bool
+	UpdatedAt string // the time of day it was read ("15:04:05"), beside the refresh button (#962)
 }
 
 // Polling reports whether an import is running (or has not been seen to end yet).

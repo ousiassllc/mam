@@ -26,23 +26,42 @@ var ErrExists = errors.New("extract: the archive writes a file that is there alr
 // is never overwritten (ErrExists). Entries outside dest (".." and absolute paths) and links are refused. The caller removes a
 // partial dest.
 func Zip(ctx context.Context, archive, dest, strip string, limit int64, progress Progress) error {
-	return unzip(ctx, archive, dest, limit, progress, func(name string) (string, bool, error) {
-		clean, err := cleanEntry(name)
-		if err != nil {
-			return "", false, err
-		}
-		if strip == "" {
-			return clean, true, nil
-		}
-		if clean == strip {
-			return "", false, nil
-		}
-		rel, ok := strings.CutPrefix(clean, strip+"/")
-		if !ok {
-			return "", false, fmt.Errorf("extract: %q is not inside %q", name, strip)
-		}
-		return rel, true, nil
-	})
+	return unzip(ctx, archive, dest, limit, progress, stripRoot(strip))
+}
+
+// ZipFrom is Zip for an archive that is held already (r of size bytes, as a caller that checked the bytes it will extract keeps them): the
+// archive is not read from a path, so nothing can replace it between the check and the extraction.
+func ZipFrom(ctx context.Context, r io.ReaderAt, size int64, dest, strip string, limit int64, progress Progress) error {
+	zr, err := zip.NewReader(r, size)
+	if err != nil {
+		return fmt.Errorf("extract: open the archive: %w", err)
+	}
+	return unzipFiles(ctx, zr.File, "the archive", dest, limit, progress, stripRoot(strip))
+}
+
+// stripRoot places the entries below the single top directory strip ("" for none; an entry outside it is an error).
+func stripRoot(strip string) func(name string) (string, bool, error) {
+	return func(name string) (string, bool, error) { return stripEntry(name, strip) }
+}
+
+// stripEntry is where the archive entry name goes below the destination: its clean slash path without the single top directory strip
+// ("" for none; an entry outside it is an error; the directory itself gives ok false).
+func stripEntry(name, strip string) (rel string, ok bool, err error) {
+	clean, err := cleanEntry(name)
+	if err != nil {
+		return "", false, err
+	}
+	if strip == "" {
+		return clean, true, nil
+	}
+	if clean == strip {
+		return "", false, nil
+	}
+	rel, ok = strings.CutPrefix(clean, strip+"/")
+	if !ok {
+		return "", false, fmt.Errorf("extract: %q is not inside %q", name, strip)
+	}
+	return rel, true, nil
 }
 
 // Wheel extracts a Python wheel into siteDir, the way an installer does for a package that has no scripts: the files of the archive
@@ -84,18 +103,23 @@ func unzip(ctx context.Context, archive, dest string, limit int64, progress Prog
 		return fmt.Errorf("extract: open %s: %w", filepath.Base(archive), err)
 	}
 	defer func() { _ = r.Close() }()
+	return unzipFiles(ctx, r.File, filepath.Base(archive), dest, limit, progress, place)
+}
+
+// unzipFiles is unzip for the entries of an opened archive; name is what the errors call it.
+func unzipFiles(ctx context.Context, files []*zip.File, name, dest string, limit int64, progress Progress, place func(name string) (rel string, ok bool, err error)) error {
 	var total uint64
-	for _, f := range r.File {
+	for _, f := range files {
 		total += f.UncompressedSize64
 	}
 	if limit <= 0 || total > uint64(limit) {
-		return fmt.Errorf("%w: %s holds %d bytes, the catalog pins %d", ErrTooLarge, filepath.Base(archive), total, limit)
+		return fmt.Errorf("%w: %s holds %d bytes, the catalog pins %d", ErrTooLarge, name, total, limit)
 	}
 	if err := os.MkdirAll(dest, 0o750); err != nil {
 		return fmt.Errorf("extract: %w", err)
 	}
 	var done int64
-	for _, f := range r.File {
+	for _, f := range files {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -131,39 +155,49 @@ func unzip(ctx context.Context, archive, dest string, limit int64, progress Prog
 	return nil
 }
 
-func writeZipFile(ctx context.Context, f *zip.File, target string, add func(int64)) (err error) {
-	if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
-		return fmt.Errorf("extract: %w", err)
-	}
+func writeZipFile(ctx context.Context, f *zip.File, target string, add func(int64)) error {
 	rc, err := f.Open()
 	if err != nil {
 		return fmt.Errorf("extract: read %s: %w", f.Name, err)
 	}
 	defer func() { _ = rc.Close() }()
-	out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640) //nolint:gosec // target is below dest (cleanEntry); an extracted tree must stay readable by the runtime
+	return writeEntry(ctx, rc, f.Name, target, int64(f.UncompressedSize64), f.Mode(), add) //nolint:gosec // bounded by the limit of the whole archive
+}
+
+// writeEntry writes the content of one archive entry to target, which must not exist (ErrExists). An entry may not hold more than its
+// header says (declared): the header is what the limit was counted from. The file is readable by the runtime, and executable by its
+// owner when the archive says so (the interpreter and the helper programs of a macOS or Linux package need the bit; a Windows archive
+// has none).
+func writeEntry(ctx context.Context, r io.Reader, name, target string, declared int64, mode fs.FileMode, add func(int64)) (err error) {
+	if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+		return fmt.Errorf("extract: %w", err)
+	}
+	perm := fs.FileMode(0o640)
+	if mode&0o100 != 0 {
+		perm = 0o750
+	}
+	out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm) //nolint:gosec // target is below dest (cleanEntry); an extracted tree must stay readable by the runtime
 	if errors.Is(err, fs.ErrExist) {
-		return fmt.Errorf("%w: %s", ErrExists, f.Name)
+		return fmt.Errorf("%w: %s", ErrExists, name)
 	}
 	if err != nil {
-		return fmt.Errorf("extract: create %s: %w", f.Name, err)
+		return fmt.Errorf("extract: create %s: %w", name, err)
 	}
 	defer func() { err = errors.Join(err, out.Close()) }()
-	// An entry may not hold more than its header says: the header is what the limit was counted from.
-	declared := int64(f.UncompressedSize64) //nolint:gosec // bounded by the limit of the whole archive
 	buf := make([]byte, chunk)
 	var written int64
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		n, rerr := rc.Read(buf)
+		n, rerr := r.Read(buf)
 		if n > 0 {
 			written += int64(n)
 			if written > declared {
-				return fmt.Errorf("%w: %s is larger than its header says", ErrTooLarge, f.Name)
+				return fmt.Errorf("%w: %s is larger than its header says", ErrTooLarge, name)
 			}
 			if _, werr := out.Write(buf[:n]); werr != nil {
-				return fmt.Errorf("extract: write %s: %w", f.Name, werr)
+				return fmt.Errorf("extract: write %s: %w", name, werr)
 			}
 			add(int64(n))
 		}
@@ -171,7 +205,7 @@ func writeZipFile(ctx context.Context, f *zip.File, target string, add func(int6
 			return nil
 		}
 		if rerr != nil {
-			return fmt.Errorf("extract: read %s: %w", f.Name, rerr)
+			return fmt.Errorf("extract: read %s: %w", name, rerr)
 		}
 	}
 }

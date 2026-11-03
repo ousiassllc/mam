@@ -43,10 +43,19 @@ type Local struct {
 	Unclear    []string
 }
 
-// Provider is the card of one choice (the voice or the lip sync).
+// The slugs of the two choices in the paths of their details, and of the two providers of each.
+const (
+	SlugVoice   = "voice"
+	SlugLipSync = "lip-sync"
+	WhichCloud  = "cloud"
+	WhichLocal  = "local"
+)
+
+// Provider is one choice (the voice or the lip sync): a heading over the cards of its providers, the cloud one and the local one.
 type Provider struct {
-	// ID is the id of the card; Title its heading; Field the name of its radio group.
-	ID, Title, Field string
+	// ID is the id of the choice (the cards' ids start with it); Title its heading; Field the name of its radio group; Slug names it in the
+	// path of the detail of a card.
+	ID, Title, Field, Slug string
 	// Description is what the choice is for.
 	Description string
 	// Selected is the saved provider ("elevenlabs"/"local" or "synclabs"/"local").
@@ -66,6 +75,17 @@ type Provider struct {
 
 // LocalValue is the value of the local radio.
 const LocalValue = "local"
+
+// Choice is the choice the slug names, or false when there is none.
+func (d Data) Choice(slug string) (Provider, bool) {
+	switch slug {
+	case SlugVoice:
+		return d.Voice, true
+	case SlugLipSync:
+		return d.LipSync, true
+	}
+	return Provider{}, false
+}
 
 // Data is the category. Problem is why the settings file cannot be read (the rest is then not shown). Notice and Error are the result of
 // the last save.

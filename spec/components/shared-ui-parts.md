@@ -153,6 +153,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - **失敗（422）**: 応答の本文はモーダルの断片（`#mam-modal-body` に入り直す）。理由は `#mam-modal-error`、入力は**残す**（`value` を描き戻す）。`aria-invalid="true"` と `aria-describedby="mam-modal-error"` を、問題の欄に付ける。差し替え後は、問題の欄（無ければ `#mam-modal-error`）にフォーカス（`autofocus` を付け直す）。**秘密の値（API キー・トークン）は 422 でも描き戻さない**（入力し直す）。 理由の `#mam-modal-error` を取り除く答え（接続先のモーダルの接続テストの `DraftTestResult`）が入ったときは、同じ入れ替えのうちに、その理由を指していた欄の `aria-invalid` と `aria-describedby` を外す（`modal.ts`。宙に浮いた参照を残さない）。
 - **トーストは見えない**: `#toast-region` は `<body>` の子で、モーダルは最前面の層（top layer）に出るため、モーダルが開いている間のトーストはモーダルの背後に隠れる。そのためモーダル内の失敗は、断片の `role="alert"` に出す。HTML でない失敗（通信断・タイムアウト・5xx の非 HTML）は `htmx:responseError` / `sendError` / `timeout` を `modal/` が聞き、`#mam-modal-failure` に `requestFailureMessage` の文言を出す（トーストは出さない）。
 - **二重送信**: モーダルのフォームは `hx-sync="this:drop"` と `hx-disabled-elt="find button[type=submit]"` を持つ（`double_submit_test`）。削除などの危険な操作は `hx-confirm`（#847 決定事項 8(a)。`destructive_confirm_test`）。
+- **リンクから開く・広いダイアログ**（Issue #1004）: `modal.OpenLinkAttrs(url, focusKey)` は `OpenAttrs` の `<a>` 版（`type` が無く `href` が同じ内容のページ。スクリプトが無い・新しいタブで開く操作はそのページへ行き、ふつうのクリックは本文を求める）。本文の最初のブロックに `data-modal-wide`（`modal.WideAttr`）を付けると、ダイアログがその間だけ広くなる（`has-[[data-modal-wide]]:w-[min(64rem,…)]`。生成テストの結果の詳細が、画像と設定を並べるのに使う）。同じ URL がページとモーダルの本文の両方を返すときは、`HX-Target` が `mam-modal-body` かどうかで分け、`Vary: HX-Request, HX-Target` を付ける。
 - **置き場所**: `molecules/modal/`（`Host`・`Frame`・`Error`・`Actions`・`Cancel`・`Notice`・`OpenAttrs`）と `static/src/components/modal/`（`modal.ts`・`modal.wtest.ts`。Lit ではなく `focus-restore` と同じ `installModal()`。`main.ts` が呼ぶ）。テストは wtr: 開くとフォーカスが `autofocus` へ・`Esc` で閉じて開いたボタンへ戻る・行が差し替わっても戻る・成功で閉じる・422 で開いたまま入力が残る・閉じると本文が空・履歴の保存で空になる。
 
 ## 5. 一覧の行（`SettingsCard`・`SettingsTable`・`SettingsTableRow`）
@@ -161,7 +162,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 
 | 形 | 使う所 | 構造 |
 |----|-------|------|
-| `SettingsCard` | API キー・ChatGPT のログイン・ローカルの接続先・MCP の待ち受け先 | `<li id="<種類>-row-<キー>" data-testid="settings-card">`。名前（`<h3>`）・状態の `Badge`・1 行の説明・要約・ボタンの行。`ul role="list"`、`grid-cols-2`（1024 px でも 2 列） |
+| `SettingsCard` | API キー・ChatGPT のログイン・ローカルの接続先・MCP の待ち受け先 | `<li id="<種類>-row-<キー>" data-testid="settings-card">`。名前（`<h3>`。`<h4>` も可）・状態の `Badge`・**リスクの印（`Card.Marks`。「非公式」「商用注意」。状態の前に並べる文字のバッジ）**・1 行の説明・要約・ボタンの行。`ul role="list"`、`grid-cols-2`（1024 px でも 2 列）。`Card.Class` は `<li>` に足す class（音声・口パクの選択中の枠 `has-[:checked]:border-indigo-400`）。**長い説明・注意書き・ライセンスはカードに出さず、「詳細」ボタンで開くモーダルへ置く（#1005。ChatGPT のログインと音声・口パクのカード。API キーと同じ形）**。名前・バッジは長くても折り返す（`break-words`。`Badge` は `max-w-full`） |
 | `SettingsTable` ＋ `SettingsTableRow` | LLM の割り当て・画像・動画モデル・MCP のトークン | `<table class="w-full text-sm">`、`<caption class="sr-only">`、`<th scope="col">`、行の見出し `<th scope="row">`、`<tr id="<種類>-row-<キー>">`。1 つの行に要約と「編集」 |
 
 - 行のボタンは **`atoms.SmallButtonFor(tone, "編集", 行の名前, attrs)`**（見える文言は「編集」のまま、`aria-label` が「編集: <行の名前>」。#783・#793。`a11y/row_names_*` の検査に足す）。モーダルを開くボタンは `ModalOpen` の属性を持つ。
@@ -213,6 +214,8 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.15 | 2026-11-01 | §10 の生成テストの行に、作成フォームの区画の説明・モデルごとの性質と選べない理由・パラメーター・見積り・実行の補足を足した | Issue #906 |
 | 0.16 | 2026-11-02 | §1 の表に、スライダーの共通の見た目（`slider.css`・`--fill`・`components/slider/`）を足した。`app.css` の説明に `slider.css` の import を足した | Issue #955 |
 | 0.17 | 2026-11-03 | §10 の生成テストの行に、かんたんのプロンプトの見出しに足した「プロンプトのウェイト」の「?」（`help.Row`。`gentestadv.WeightIntro`）を足した | Issue #977（ステージ 2） |
+| 0.18 | 2026-11-03 | §4 に `modal.OpenLinkAttrs`（リンク版の開く属性）と `data-modal-wide`（本文が広いダイアログを求める）を足した | Issue #1004（生成テストの結果の詳細を、一覧のタイルからモーダルで開く） |
+| 0.19 | 2026-11-03 | §5 の `SettingsCard` に、リスクの印（`Card.Marks`）・`Card.Class`・折り返し、長い説明は「詳細」のモーダルへ置く決まりを足した。§9.2 の `Card.Help` の行を、ChatGPT のカードが「?」をやめたことに合わせた | Issue #1005 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
@@ -259,7 +262,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | `molecules.SettingsSection(title, explanation)`・`SettingsSectionH3(title, explanation)` | 見出し（h2 / h3）の横にボタン、下に `explanation`（文字列。改行で段落）のパネル。`explanation` が空ならボタンも出さない。`SettingsSectionHelp(level, title, component)` は説明が段落でないとき（リンク・複数の要素） |
 | `molecules.SettingsSectionAt(level, title, description)` | **状態を言う 1 行**（バージョンとアップデートの「現在のバージョン…」）だけ。説明には使わない |
 | `settingsui.Category(title, explanation)` | 分類の h2 の横にボタン。`explanation` は `templ.Component`（`help.Text(...)`・`nil` でボタン無し） |
-| `settingsui.Card.Help` | カードのタイトルの横にボタン、その直後にパネル（`SettingsCard`。§5）。パネルの id は `help.ID(カードの ID)`。`HelpPanelElsewhere` を立てると、ボタンだけを描く（パネルは呼び出し側が同じ id で、差し替えの範囲の外に描く。§9.1 の例外。ChatGPT のカード） |
+| `settingsui.Card.Help` | カードのタイトルの横にボタン、その直後にパネル（`SettingsCard`。§5）。パネルの id は `help.ID(カードの ID)`。`HelpPanelElsewhere` を立てると、ボタンだけを描く（パネルは呼び出し側が同じ id で、差し替えの範囲の外に描く。§9.1 の例外。#1005 で ChatGPT のカードは「?」をやめて「詳細」のモーダルにしたので、今これを使うカードは無い） |
 | `help.Row(id, subject, explanation)` | 上の部品を使わない見出し（生成テストのページの h1 など）。子が見出し。ボタンの直後にパネルを置く（`Tab` の順） |
 
 - パネルの id は主題（見出しの文字・カードの ID）から決まる（`help.ID`。同じ入力は同じ id）。1 ページの主題は重複させない。
@@ -283,8 +286,8 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 画面 | ヘルプへ移した説明（常時表示から） | 本体に残すもの |
 |------|-------------------------------|---------------|
 | モデルマネージャー（[model-manager-screen.md](model-manager-screen.md)） | 各区画（ComfyUI エンジン・モデル・試し生成・Hugging Face から導入・Hugging Face のトークン・外部の ComfyUI）の説明。ローカル音声・口パクとモデルの区画の「?」には、カードをタップすると詳細（出典・ライセンス・ファイル一覧・SHA-256）が見られること・実行環境の扱い・自動起動の意味も入る（#954）。**h1 の下の説明は動かさない**（h1 に「?」は付けない。オーナーの決定） | h1・h1 の下の説明・各区画の h2・操作・状態・結果・エラー |
-| 設定: API キーとログイン（[settings-screen-categories.md](settings-screen-categories.md)） | 「API キー」「ChatGPT でログイン」の説明、ChatGPT の公式・Codex・画像のカードの説明 | h3・カードの名前・状態・要約・操作 |
-| 設定: テキスト生成（LLM） | 分類の説明、再起動の補足（次の起動から使われる）、ChatGPT プランの長文（`llm-chatgpt-note`） | 「反映にはアプリの再起動が必要です」（操作の前提）・固定・エラー・結果・表 |
+| 設定: API キーとログイン（[settings-screen-categories.md](settings-screen-categories.md)） | 「API キー」「ChatGPT でログイン」の説明（ChatGPT の公式・Codex・画像のカードの長い説明は、#1005 から「?」ではなくカードの「詳細」のモーダル） | h3・カードの名前・状態・要約・操作 |
+| 設定: テキスト生成（LLM） | 分類の説明、反映の補足（次の呼び出しから使われる・再起動で反映される設定）、ChatGPT プランの長文（`llm-chatgpt-note`） | 「保存した割り当ては、次の呼び出しからすぐ使われます」（操作の前提。`llm-apply-note`）・固定・エラー・結果・表 |
 | 設定: 画像・動画モデル | 分類の説明（`models.json` の保存先を含む）、「画像モデル（用途ごと）」「動画モデル（Quality Policy ごと）」の説明 | h2・h3・表 |
 | 設定: ローカル・代替モデル | 分類の説明（`local.Description`） | h2・固定の注意・接続先のカード・エラー |
 | 設定: MCP サーバー | 分類の説明（`mcp.Description`） | h2・待ち受け先・トークンの表・エラー |

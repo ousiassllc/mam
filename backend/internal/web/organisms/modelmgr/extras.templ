@@ -113,7 +113,7 @@ templ externalResult(r ExternalResult) {
 		<details class="text-xs text-neutral-300">
 			<summary class="cursor-pointer text-neutral-400">フォルダごとのファイル</summary>
 			for _, f := range r.Folders {
-				<p class="mt-1"><code>{ f.Name }</code>（{ itoa(len(f.Files)) }）</p>
+				<p class="mt-1 break-all"><code>{ f.Name }</code>（{ itoa(len(f.Files)) }）</p>
 				if len(f.Files) > 0 {
 					<ul class="ml-3 list-disc">
 						for _, name := range f.Files {

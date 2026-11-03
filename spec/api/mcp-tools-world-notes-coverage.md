@@ -7,6 +7,7 @@
 | ルート | ツール |
 |--------|--------|
 | `GET /projects/:id/world-state` | `get_world_state`, `list_world_state_versions`（クエリ `branch_id` は引数） |
+| `POST /projects/:id/characters` | `create_character`（`project_id`） |
 | `PUT /projects/:id/characters/:characterId` | `update_character` |
 | `PUT /projects/:id/products/:productId` | `update_product` |
 | `PUT /projects/:id/locations/:locationId` | `update_location` |
@@ -32,6 +33,7 @@
 | `GET /series/:id` | `get_series` |
 | `POST /series` | `create_series` |
 | `POST /series/:id/episodes` | `create_episode` |
+| `POST /series/:id/characters` | `create_character`（`series_id`） |
 | `PUT /series/:id/characters/:characterId` | `update_series_character` |
 | `PUT /series/:id/style` | `update_series_style` |
 | `PUT /series/:id/characters/:characterId/voice-reference` | `create_upload_ticket`（基盤。`purpose=character_voice_reference`）, `update_character_voice_reference` |
@@ -62,3 +64,4 @@
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。ルートとツールの対応表 | Issue #830。画面の全操作を MCP ツールにする |
 | 1.1 | 2026-11-01 | 参照音声のルート 6 行を足した（`PUT`・`DELETE`・`GET` の Series と Project） | Issue #919（#912） |
+| 1.2 | 2026-11-03 | `POST /projects/:id/characters`・`POST /series/:id/characters`（`create_character`）の行を足した | Issue #1001 |

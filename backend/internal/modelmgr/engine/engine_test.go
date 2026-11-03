@@ -110,6 +110,7 @@ func TestCommandIsLoopbackOnlyWithoutCustomNodesAndKeepsEverythingInTheDataDirec
 		"--base-directory", r.inst.Layout.DataDir(),
 	}, spec.Args)
 	assert.Equal(t, r.inst.Layout.LogPath(), spec.LogPath)
+	assert.Contains(t, spec.Env, "PYTHONDONTWRITEBYTECODE=1", "no .pyc of Python's own: the digest of an installed node counts every file")
 	assert.NotContains(t, spec.Args, "--cpu")
 	assert.NotContains(t, spec.Args, "--windows-standalone-build")
 	assert.DirExists(t, r.inst.Layout.DataDir())

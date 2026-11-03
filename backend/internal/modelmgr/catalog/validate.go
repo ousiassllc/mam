@@ -147,7 +147,7 @@ func validateEngine(e Engine) []error {
 	if len(e.Variants) != len(e.VariantList()) {
 		errs = append(errs, fmt.Errorf("engine: unknown variants"))
 	}
-	return errs
+	return append(errs, validateApple(e)...)
 }
 
 func validateModel(m Model, shared map[string]File) []error {

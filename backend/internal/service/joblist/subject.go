@@ -30,7 +30,7 @@ func (r *reader) install(ctx context.Context, e *Entry, p payload) error {
 	if mm == nil {
 		return nil
 	}
-	e.Subject = installSubject(mm, p.Target)
+	e.Subject = installSubject(mm, p)
 	if e.State != Running {
 		return nil
 	}
@@ -46,18 +46,22 @@ func (r *reader) install(ctx context.Context, e *Entry, p payload) error {
 }
 
 // installSubject is the name of what an install works on: "engine", "model:<catalog id>" or "hf:<repo>@<commit>/<path>". A model
-// that is hidden (adult, while the age confirmation is off) or not in the catalog has no name here.
-func installSubject(mm *modelmanager.Service, target string) string {
-	if target == "engine" {
+// that is hidden (adult, while the age confirmation is off: the catalog's model, a Hugging Face file of an NFAA repository, which the install
+// itself refuses on the same flag: hfplan.Payload.NFAA) or not in the catalog has no name here.
+func installSubject(mm *modelmanager.Service, p payload) string {
+	if p.Target == "engine" {
 		return "ComfyUI エンジン"
 	}
-	if id, ok := strings.CutPrefix(target, "model:"); ok {
+	if id, ok := strings.CutPrefix(p.Target, "model:"); ok {
 		if m, err := mm.Model(id); err == nil {
 			return m.Name
 		}
 		return ""
 	}
-	if rest, ok := strings.CutPrefix(target, "hf:"); ok {
+	if rest, ok := strings.CutPrefix(p.Target, "hf:"); ok {
+		if p.HF != nil && p.HF.NFAA && !mm.AdultContentEnabled() {
+			return ""
+		}
 		repo, _, _ := strings.Cut(rest, "@")
 		return repo
 	}
@@ -79,7 +83,7 @@ func (r *reader) gentest(ctx context.Context, e *Entry, p payload) error {
 	if err != nil {
 		return err
 	}
-	e.Subject = modelNames(b.Results)
+	e.Subject = modelNames(b.Results, g.Hidden)
 	e.State = State(b.State)
 	if b.Error != "" {
 		e.Error = logging.Redact(b.Error)
@@ -87,19 +91,24 @@ func (r *reader) gentest(ctx context.Context, e *Entry, p payload) error {
 	if b.Total == 0 {
 		return nil
 	}
-	percent := b.Done * 100
+	percent, text := b.Done*100, fmt.Sprintf("%d / %d 件", b.Done, b.Total)
 	if v, ok := liveView(e.ID); ok && e.State == Running {
 		percent += v.Percent
+		text += "・" + liveText(v)
 	}
-	e.Progress = &Progress{Percent: percent / b.Total, Text: fmt.Sprintf("%d / %d 件", b.Done, b.Total)}
+	e.Progress = &Progress{Percent: percent / b.Total, Text: text}
 	return nil
 }
 
-// modelNames lists the models of the results of a batch in the order they were planned, each once.
-func modelNames(results []record.ResultView) string {
+// modelNames lists the models of the results of a batch in the order they were planned, each once. A model that hidden says is hidden (the
+// adult models while the age gate is closed; nil hides none) has no name here.
+func modelNames(results []record.ResultView, hidden func(modelID string) bool) string {
 	var names []string
 	seen := map[string]bool{}
 	for _, res := range results {
+		if hidden != nil && hidden(res.Model) {
+			continue
+		}
 		name := res.ModelLabel
 		if name == "" {
 			name = res.Model
@@ -132,7 +141,7 @@ func (r *reader) shot(ctx context.Context, e *Entry, shotID string) error {
 		return err
 	}
 	if v, ok := liveView(shotID); ok && e.State == Running {
-		e.Progress = &Progress{Percent: v.Percent, Text: fmt.Sprintf("ステップ %d / %d", v.Step, v.MaxStep)}
+		e.Progress = &Progress{Percent: v.Percent, Text: liveText(v)}
 	}
 	return nil
 }

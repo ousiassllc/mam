@@ -18,6 +18,7 @@
 | `/settings/local-models/endpoints/:name` | 接続先のサブページ（接続先のカードと、そのモデルの表。モデルの追加・編集のフォームはこのページの中に開く）。タイトルは「設定: ローカル・代替モデル: <名前>」、ナビの現在の分類は「ローカル・代替モデル」。無い接続先は 404。名前が `new` の接続先（古い設定ファイルにだけある）は、追加フォームの URL に隠れるのでページが無い（一覧のカードがそう書く） | 同上 |
 | `/settings/audio` | 音声・口パク（声と口パクのプロバイダー・ローカルの状態・この PC で動かせない理由・出典とライセンス・フォールバックのチェック。§5.3） | `audiosettings.Service` があるとき |
 | `/settings/mcp` | MCP サーバー（今の区画をそのまま） | `app` が MCP サーバーを起動したとき |
+| `/settings/facefusion` | FaceFusion（Python とフォルダのパス・探した結果・モデルのライセンス。§5.2.2） | `facefusionsettings.Service` があるとき |
 | `/settings/ffmpeg` | ffmpeg（ffmpeg と ffprobe のパスの欄と、探した結果。§5.2） | `ffmpegsettings.Service` があるとき |
 | `/settings/update` | バージョンとアップデート（今の区画をそのまま） | 常に |
 | `/settings/licenses` | 第三者のライセンス（`THIRD_PARTY_NOTICES.md` を埋め込んだ文字列を項目に分けた、グループごとの `<details>` の一覧。全文はページに入れない。§5.4） | 常に |
@@ -44,6 +45,8 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | GET | `/settings/mcp/bind/edit` | MCP の待ち受け先のモーダル（候補つきの 1 欄。保存済みのアドレスが入る） |
 | GET | `/settings/mcp/tokens/new` | MCP トークンの発行のモーダル（名前の欄 1 つ） |
 | GET | `/settings/chatgpt/models`・`/settings/chatgpt/codex/models` | 利用できるモデルの一覧のモーダル（読み取りだけ）。読めないときはその理由 |
+| GET | `/settings/chatgpt/:kind/detail` | **#1005**。ChatGPT のカードの「詳細」のモーダル（読み取りと、その場の操作）。`:kind` は `official` / `image` / `codex`（他は 404 のモーダル「対象が見つかりません」）。HTMX でなければ `/settings/api-keys` のページ全体。本文: 公式は説明・トークンの期限・「Manage usage」、画像はリスクの一覧と（OFF の間）確認のチェックと「オンにする」、Codex は商用・ホスティングに使えない条件の全文・エンジンの詳細・パスの欄・「ログアウトして Codex 本体と CODEX_HOME も削除」 |
+| GET | `/settings/audio/:choice/:provider` | **#1005**。音声・口パクのカードの「詳細」のモーダル（読み取りだけ）。`:choice` は `voice` / `lip-sync`、`:provider` は `cloud` / `local`。知らない値・ローカルのランタイムが無い `local`・読めない `audio.json` は 404 のモーダル。HTMX でなければ `/settings/audio` のページ全体。ローカルは状態・使えない理由・ビデオメモリ・出典とライセンス・商用利用の条件・はっきりしない依存 |
 
 ## 3. 保存・操作の応答の決まり（モーダルを使う操作）
 
@@ -66,7 +69,9 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | Method | Path | 内容 |
 |--------|------|------|
 | GET | `/settings/llm/agents/:agent/models/:role` | モデルのプルダウンの中身だけ（`:role` は `primary` / `fallback`。クエリ `<role>.provider` の新しいプロバイダーのモデル）。プロバイダーの `<select>` の `change` で `hx-get`、`#llm-<role>-model-field` の中身を差し替える（`hx-sync="this:replace"`。取得中は保存ボタン `#llm-save` を `hx-disabled-elt` で無効にし、別のプロバイダーのモデルを保存しない）。選択は、保存済みのプロバイダーと同じならその保存済みのモデル、違えば既定のモデル（そのプロバイダーのものなら）か先頭。一覧は `llmmodels.Service`（API の一覧、取れなければ mam の既定候補。10 分キャッシュ）。HTMX でない要求は分類のページ、未知の Agent・`:role` は 404、未対応のプロバイダーは 422。`Cache-Control: no-store`。トークン・API キーは載せない |
-| PUT | `/settings/llm/agents/:agent` | 1 つの Agent の保存。フォーム `primary.provider`・`primary.model`・`primary.model_custom`・`fallback.provider`・`fallback.model`・`fallback.model_custom`（`*.model_custom` が空でなければ `*.model` より優先。前後の空白は落とす）。**保存済みの他の Agent と合わせて**検証して書く（`llmassign.Service.Save` に 1 件だけの `map`）。成功は 200、行（`<tr id="llm-row-<agent>" hx-swap-oob="true">`。**応答の先頭**。HTML のパーサーは先頭の `<tr>` だけを行として読む）・成功のトースト・`HX-Trigger-After-Swap: modal-close`。行には `再起動で反映` の印（保存した直後の行だけ）。422 は `InvalidError.Message`（例「Writer（脚本） のプライマリ: モデル名を入力してください」）をモーダルの `role="alert"` に出し、入力を残し、問題の欄に `aria-invalid` と `autofocus`。固定は 409、未知の Agent は 404、書き込みの失敗は 500 |
+| POST | `/settings/restart` | 「再起動して反映」。フォーム `when_busy`（`refuse`（既定）/ `wait`。`stop` は MCP の `restart_app` だけ）。CSRF 必須。動いている作業が無ければアプリが終了して起動し直す（200 で欄 `#restart-panel`。応答が届かないことがある）。動いているとき `refuse` は **409** で作業の一覧つきの欄、`wait` は 200 で「作業が終わったら再起動します」。再起動できない版は 503、`when_busy` が不正なら 422。実行は [../architecture/restart.md](../architecture/restart.md) |
+| GET | `/settings/restart` | 欄 `#restart-panel`（再起動で反映される設定の一覧とボタン）だけを返す。保存のあとに、本文の上の `#restart-slot` が読み直す。待っている設定が無く、答える内容も無いときは空 |
+| PUT | `/settings/llm/agents/:agent` | 1 つの Agent の保存。フォーム `primary.provider`・`primary.model`・`primary.model_custom`・`fallback.provider`・`fallback.model`・`fallback.model_custom`（`*.model_custom` が空でなければ `*.model` より優先。前後の空白は落とす）。**保存済みの他の Agent と合わせて**検証して書く（`llmassign.Service.Save` に 1 件だけの `map`）。成功は 200、行（`<tr id="llm-row-<agent>" hx-swap-oob="true">`。**応答の先頭**。HTML のパーサーは先頭の `<tr>` だけを行として読む）・成功のトースト・`HX-Trigger-After-Swap: modal-close`。行に「再起動で反映」の印は出さない（#1006: 保存した割り当てはすぐ反映される）。422 は `InvalidError.Message`（例「Writer（脚本） のプライマリ: モデル名を入力してください」）をモーダルの `role="alert"` に出し、入力を残し、問題の欄に `aria-invalid` と `autofocus`。固定は 409、未知の Agent は 404、書き込みの失敗は 500 |
 | DELETE | `/settings/llm/agents/:agent` | その Agent を既定に戻す（`Save` に既定の route を渡す。既定と同じ route は設定ファイルから消える）。`hx-confirm` は付けない（モーダルの中の操作で、いつでもやり直せる。オーナー決定）。応答は PUT と同じ |
 | PUT | `/settings/models/images/:purpose` | 1 つの画像の用途の保存。フォームは全体の保存と同じ欄の名前（`image_<用途>_<primary\|fallback>_model`・`…_fast`）。**その行だけ**検査して書く（`modelsettings.Service.SaveImage`。他の行は保存済みのまま。他の行が年齢確認で使えないモデルを指していても、この行の保存は止まらない）。成功は 200、行（`media-image-<purpose>`）・`#model-status`（注意とすべて既定に戻すの置き場。保存で変わるので同じ応答で OOB）・トースト・`modal-close`。**すぐに反映される**（再起動は要らない）。422・409・404・500 は上と同じ形（422 は選択を残す） |
 | PUT | `/settings/models/policies/:policy` | 1 つの Quality Policy の保存（`policy_<…>_<primary\|fallback>`・`policy_<…>_takes`。`SavePolicy`）。応答は上と同じ（行は `media-policy-<policy>`） |
@@ -83,7 +88,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | DELETE | `/credentials/:provider` | 成功の本文が**カードだけ**（`hx-swap="outerHTML"`）＋成功のトースト。未設定でも 200。未知の `provider` は 422（トースト）、キーストアの拒否は 503（トースト） |
 | POST | `/settings/chatgpt/:kind/login` | 本文が**モーダルの断片**（ブラウザ: 開いたことと認可 URL、デバイスコード: 確認 URL・コード・期限、どちらも 2 秒ごとの取り直しつき）＋区画の OOB。公式のデバイスコードは 422、画像が OFF は 409、エンジンが無い `codex` は 409（モーダルの断片に理由） |
 | POST | `/settings/chatgpt/:kind/login/cancel` | ログインの中止。モーダルを閉じ（`HX-Trigger-After-Swap: modal-close`）、カードを OOB で差し替える |
-| DELETE・PUT・POST | `/settings/chatgpt/…`（ログアウト・画像の ON/OFF・Codex の取得・中断・パス・更新） | 本文は今のまま区画（`#chatgpt-panel`、`hx-swap="outerHTML"`）。区画の中身がカードの一覧になった |
+| DELETE・PUT・POST | `/settings/chatgpt/…`（ログアウト・画像の ON/OFF・Codex の取得・中断・パス・更新） | 本文は今のまま区画（`#chatgpt-panel`、`hx-swap="outerHTML"`）。区画の中身がカードの一覧になった。**詳細のモーダルから送った操作**（画像の「オンにする」・Codex のパス・「ログアウトして…も削除」。リクエストの `HX-Target` が `mam-modal-body`）: 成功は 200 と `HX-Trigger-After-Swap: modal-close`、本文は区画の OOB（`hx-swap-oob="true"`）。失敗（422 など）は、モーダルの本文に `#mam-modal-error`（`role="alert"`）つきの詳細と、区画の OOB |
 | GET | `/settings/local-models` | HTMX でなければ分類のページ全体、HTMX は本体だけ（上の §1）。今の断片（`#local-models-panel` の区画）はもう返さない |
 
 ## 4. API キーの接続テスト
@@ -145,6 +150,15 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 取得の失敗は、部品の `role="alert"`（`data-testid=ffmpeg-download-install-error`）に出る: SHA-256・サイズの不一致（**ファイルは削除し、使わない**）、アーカイブの中身の不一致、実行できない、配布元が 404（mam を更新する）・そのほかの HTTP エラー、通信の失敗。取得に失敗しても、前に入れた版はそのまま残る。CSRF の対象（`POST`・`DELETE`）。
 
+## 5.2.2 FaceFusion の保存（Issue #995）
+
+| 操作 | 成功の本文 | 失敗 |
+|------|-----------|------|
+| `GET /settings/facefusion` | 分類の本文（Python とフォルダの欄・探した結果・版と自己申告のライセンス・モデルの表（ライセンスの級つき）・標準の注意・ライセンスの出典のリンク） | — |
+| `PUT /settings/facefusion`（フォーム `python`・`path`。空は指定なし） | **200**。分類の本文（`#facefusion-panel`。`hx-swap="outerHTML"`）に `role="status"` の結果（「保存しました。次の顔の入れ替えから使われます」「パスの指定を解除しました…」） | 絶対パスでない・実行ファイルでない・`facefusion.py` が無い・FaceFusion のフォルダでない: **422**、`role="alert"` の理由と、入力した値を欄に残す。何も書かない。設定ファイル（`facefusion.json`）が壊れているときは分類に `facefusion-problem`。書き込めないときは 500 |
+
+ルートは `Services.FaceFusion`（`facefusionsettings.Service`）があるときだけ登録する（ない構成では 404）。ffmpeg と違い、保存したパスは**次の入れ替えからすぐ**使われる（起動時に組み立てるツールが無いため）。方針・引数・モデルの表は [../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md) §2。
+
 ## 5.3 音声・口パクの保存（Issue #924）
 
 | 操作 | 成功の本文 | 失敗 |
@@ -170,7 +184,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 - 「LLM の割り当て」は Agent ごとの主・代替の Provider / モデル、「画像・動画モデル」は画像の用途（`new_reference` / `edit_reference` / `preview` / `unified_openai`）ごとの主・代替モデルと「高速版」、Quality Policy ごとの主・代替の動画モデル（そのモデルが対応する解像度との組み合わせで選ぶ）とテイク数。どちらも保存済みの割り当て（データディレクトリの `llm.json` / `models.json`。無ければ既定値）を表示し、実行中のものではない。`--llm-config` / `--model-config`（`MAM_LLM_CONFIG` / `MAM_MODEL_CONFIG`）で固定されている区画は読み取り専用で、その旨を表示する。設定ファイルが読めない区画は、その理由だけを表示する（画面は 200）。
 - 年齢確認がオフの間は、導入済みの成人向けモデルを画像・動画モデルの選択肢に出さず、それを指す保存済みの割り当ては「（現在は使えません）」を付けて選択済みのまま見せ、区画の上に注意（`model-assignment-gated`）を出す。保存は、その割り当てが残っていれば 422（[../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md) §6.1。Issue #848）。
 - 「バージョンとアップデート」（`updatepanel`）は実行中の版（開発ビルドは「開発版」）と、最後の確認の時刻・結果（最新・新版あり（取得中）・作業が動いているため待機中・エラーの種類・リリースなし・開発版）を表示し、自動更新に対応する Wails 版では「今すぐ確認」ボタンも出す（ヘッドレスの `cmd/server` は版だけ）。
-- ランディングページ（`GET /`）の「設定」カードと `GET /projects/:id/settings` のリンクから開き、「← プロジェクト一覧に戻る」で戻る。キーの保存・削除は `PUT` / `DELETE /credentials/:provider`。LLM の割り当ては `PUT` / `DELETE /settings/llm`（Form `<agent>.<primary\|fallback>.<provider\|model>`。14 Agent すべて）、画像・動画モデルは `PUT` / `DELETE /settings/models`（Form `image_<用途>_<primary\|fallback>_model`・`image_<用途>_<primary\|fallback>_fast`・`policy_<fast\|balanced\|max_quality>_<primary\|fallback>`（値は `<モデル>@<解像度>`）・`policy_<…>_takes`）。PUT は既定と違う割り当てだけを設定ファイルへ書き（既定と同じものは書かないので、後で既定が変わればそれに従う。ほかのキー — `providers`・`retry`・`models`・`routing` など — は手書きのままそのまま残し、残るものが無ければファイルを消す）、DELETE はその区画の上書きだけを消す。書く前に起動時と同じ検査（`llm.LoadConfig` / `configcheck.Load`）を通し、画像・動画モデルは、そのモデルが対応しない解像度・動画モデルでないモデル・テイク数 0 以下・高速版を持たないモデルの「高速版」を 422 で断る。応答はどちらも区画（`#model-assignment` など）の HTML で、200 は、LLM が「保存しました。反映にはアプリの再起動が必要です」（LLM のクライアントは起動時に 1 度だけ作るため、反映は再起動後）、画像・動画モデルが「保存しました。すぐに反映されます」（保存で Model Adapter を作り直す。#831）を添える（DELETE は「既定に戻しました。…」）。422 は理由と入力値付きで区画を返しファイルは変えない。固定された区画は 409、書き込みの失敗は 500。画像の用途で参照画像を使えないモデル（`modeladapter.AcceptsImageInputs` が偽。組み込みにはなく、参照画像を受け取れない登録モデルだけ）を選ぶと、そのモデルで作るときは参照画像を渡さず Prompt だけから作る（ログに警告。画面はその旨の注意を出す）。保存済みの `models.json` が終了した Imagen 4（`imagen-4`）を指していれば、読み込み時に Nano Banana（高速版は Nano Banana Lite）として表示・検査する（`spec/architecture/model-adapters.md` §6）
+- ランディングページ（`GET /`）の「設定」カードと `GET /projects/:id/settings` のリンクから開き、「← プロジェクト一覧に戻る」で戻る。キーの保存・削除は `PUT` / `DELETE /credentials/:provider`。LLM の割り当ては `PUT` / `DELETE /settings/llm`（Form `<agent>.<primary\|fallback>.<provider\|model>`。14 Agent すべて）、画像・動画モデルは `PUT` / `DELETE /settings/models`（Form `image_<用途>_<primary\|fallback>_model`・`image_<用途>_<primary\|fallback>_fast`・`policy_<fast\|balanced\|max_quality>_<primary\|fallback>`（値は `<モデル>@<解像度>`）・`policy_<…>_takes`）。PUT は既定と違う割り当てだけを設定ファイルへ書き（既定と同じものは書かないので、後で既定が変わればそれに従う。ほかのキー — `providers`・`retry`・`models`・`routing` など — は手書きのままそのまま残し、残るものが無ければファイルを消す）、DELETE はその区画の上書きだけを消す。書く前に起動時と同じ検査（`llm.LoadConfig` / `configcheck.Load`）を通し、画像・動画モデルは、そのモデルが対応しない解像度・動画モデルでないモデル・テイク数 0 以下・高速版を持たないモデルの「高速版」を 422 で断る。応答はどちらも区画（`#model-assignment` など）の HTML で、200 は、LLM が「保存しました。次の呼び出しからすぐ使われます（再起動は要りません）」（保存した割り当てを実行中のクライアントに渡す。`llm.Client.Apply`。#1006。[restart.md](../architecture/restart.md) §1）、画像・動画モデルが「保存しました。すぐに反映されます」（保存で Model Adapter を作り直す。#831）を添える（DELETE は「既定に戻しました。…」）。422 は理由と入力値付きで区画を返しファイルは変えない。固定された区画は 409、書き込みの失敗は 500。画像の用途で参照画像を使えないモデル（`modeladapter.AcceptsImageInputs` が偽。組み込みにはなく、参照画像を受け取れない登録モデルだけ）を選ぶと、そのモデルで作るときは参照画像を渡さず Prompt だけから作る（ログに警告。画面はその旨の注意を出す）。保存済みの `models.json` が終了した Imagen 4（`imagen-4`）を指していれば、読み込み時に Nano Banana（高速版は Nano Banana Lite）として表示・検査する（`spec/architecture/model-adapters.md` §6）
 
 ## 改訂履歴
 
@@ -187,3 +201,5 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.8 | 2026-11-01 | §1 の表に `GET /settings/audio` を、§5.3 に `PUT /settings/audio`（声・口パクのプロバイダーとフォールバックの保存）を足した | Issue #924 |
 | 1.9 | 2026-11-02 | §1 の表に `GET /settings/licenses` を、§5.4 に `GET /settings/licenses/:id`（項目の全文の断片）を足した | Issue #910 |
 | 1.10 | 2026-11-03 | LLM のモーダルのモデル名を、プロバイダーごとの候補のプルダウンにした。`GET /settings/llm/agents/:agent/models/:role` を足し、`PUT /settings/llm/agents/:agent` に `*.model_custom` を足した | Issue #988 |
+| 1.11 | 2026-11-03 | §5.2.2 に `PUT /settings/facefusion`（FaceFusion の Python とフォルダのパス）を足した | Issue #995 |
+| 1.12 | 2026-11-03 | §5.2 に `GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider`（カードの「詳細」のモーダル）を足し、ChatGPT の操作を詳細のモーダルから送ったときの答え（`HX-Target` が `mam-modal-body`）を足した | Issue #1005 |

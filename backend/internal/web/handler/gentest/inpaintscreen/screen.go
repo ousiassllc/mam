@@ -37,12 +37,15 @@ func (h Handlers) Page(c *gin.Context) {
 
 func (h Handlers) page(c *gin.Context) gentestinpaint.Page {
 	p := gentestinpaint.Page{Denoise: "0.75", Translate: true, MaxPrompt: gentest.MaxPromptRunes}
+	want := c.Query("model")
 	if v, ok := refform.Parse(c.Query("ref")); ok {
 		p.SourceRef = v.String()
 		p.SourceURL = thumb(v)
 		p.SourceLabel = "選んだ画像"
 	}
-	want := c.Query("model")
+	if model := h.restore(c, &p); model != "" {
+		want = model
+	}
 	for _, m := range h.Svc.Models(c.Request.Context(), gentest.MediaImage) {
 		row := gentestinpaint.Model{ID: m.ID, Label: m.Label, On: m.Available && m.SupportsInpaint}
 		switch {
@@ -87,6 +90,8 @@ func thumb(v refform.Value) string {
 		if v.ProjectID != "" {
 			return paths.Project(v.ProjectID, "assets", v.ID)
 		}
+	case gentest.FromBatchInput:
+		return paths.GenerationTestPart("inputs", v.ID, "file")
 	}
 	return ""
 }
@@ -135,6 +140,7 @@ func boxOf(c *gin.Context, req gentest.Request, est gentest.Estimate) gentestinp
 		{Name: "prompt", Value: c.PostForm("prompt")},
 		{Name: "negative", Value: c.PostForm("negative")},
 		{Name: "denoise", Value: c.PostForm("denoise")},
+		{Name: "seed", Value: c.PostForm("seed")},
 		{Name: "ref", Value: refform.ValueOf(req.References[0])},
 		{Name: "mask", Value: refform.ValueOf(*req.Mask)},
 		{Name: view.FieldEstimateID, Value: est.ID},
@@ -160,11 +166,19 @@ func (h Handlers) read(c *gin.Context, upload bool) (gentest.Request, error) {
 	if err != nil {
 		return gentest.Request{}, gterr.Invalid("描き直しの強さは 0 より大きく 1 以下にしてください")
 	}
-	return gentest.Request{
+	req := gentest.Request{
 		Media: gentest.MediaImage, Models: []string{c.PostForm("model")}, Count: 1, AspectRatio: "1:1",
 		Prompts:    []gentest.PromptInput{{Prompt: c.PostForm("prompt"), Negative: c.PostForm("negative")}},
 		References: []gentest.RefInput{src}, Mask: &mask, Denoise: &d, TranslateToEnglish: c.PostForm("translate") == "1",
-	}, nil
+	}
+	if seed := c.PostForm("seed"); seed != "" { // only a redo with "この設定でもう一度" carries one
+		n, err := strconv.ParseInt(seed, 10, 64)
+		if err != nil {
+			return gentest.Request{}, gterr.Invalid("シードは整数で指定してください")
+		}
+		req.Seed = &n
+	}
+	return req, nil
 }
 
 func (h Handlers) source(c *gin.Context, upload bool) (gentest.RefInput, error) {

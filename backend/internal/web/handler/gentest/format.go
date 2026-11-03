@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -121,8 +122,8 @@ func videoChoices(models []modelcatalog.Info) (resolutions, durations []string) 
 }
 
 // cardOf is a result as a card; withDetail adds the link to its page.
-func cardOf(r record.ResultView, withDetail bool) view.Card {
-	c := view.Card{
+func cardOf(r record.ResultView, withDetail bool) resulttile.Card {
+	c := resulttile.Card{
 		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: gtshare.StatusText[r.Status], Error: r.Error,
 		Video: r.Media == gentest.MediaVideo, Favorite: r.Favorite, CreatedAt: timeText(r.CreatedAt), Answer: commercial.Of(r.Model),
 	}

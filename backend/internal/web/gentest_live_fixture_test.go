@@ -7,8 +7,10 @@ import (
 
 	"github.com/a-h/templ"
 
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 )
 
 // The wtests static/src/components/scroll/gentest-live.wtest.ts (#940 the grid of a running batch keeps the place the reader
@@ -26,10 +28,11 @@ func liveSVG(color string) string {
 }
 
 // liveCard is result n of a batch of which `done` results have finished (in order): the others run.
-func liveCard(n, done int) gentest.Card {
-	c := gentest.Card{ID: "r" + strconv.Itoa(n), Model: "モデル", Prompt: "プロンプト", Status: "running", StatusText: "生成中"}
+func liveCard(n, done int) resulttile.Card {
+	c := resulttile.Card{ID: "r" + strconv.Itoa(n), Model: "モデル", Prompt: "プロンプト", Status: "running", StatusText: "生成中"}
+	c.Detail = "/generation-test/results/" + c.ID
 	if n < done {
-		c.Status, c.StatusText, c.FileURL, c.Detail = "succeeded", "完了", liveSVG("#4f46e5"), "/generation-test/results/"+c.ID
+		c.Status, c.StatusText, c.FileURL = "succeeded", "完了", liveSVG("#4f46e5")
 	}
 	return c
 }
@@ -47,7 +50,7 @@ func liveBatch(done int) gentest.Batch {
 	for r := range liveBatchModels {
 		row := gentest.Row{Model: "モデル " + strconv.Itoa(r+1)}
 		for c := range liveBatchPrompts {
-			row.Cells = append(row.Cells, []gentest.Card{liveCard(r*liveBatchPrompts+c, done)})
+			row.Cells = append(row.Cells, []resulttile.Card{liveCard(r*liveBatchPrompts+c, done)})
 		}
 		b.Rows = append(b.Rows, row)
 	}
@@ -68,6 +71,15 @@ func liveHistory(running int, at string) gentest.History {
 	return h
 }
 
+// liveDetail is the detail of result r0 as the modal that a tile of the history opens shows it.
+func liveDetail() gentest.Detail {
+	c := liveCard(0, 3)
+	c.Model, c.Prompt, c.CreatedAt, c.Meta = "FLUX.2", "a fox 0", "2026-11-02 10:00", "seed 42 ・ 1.2 MiB"
+	return gentest.Detail{
+		Card: c, SentPrompt: "a fox 0", CanPick: true, Params: []gentest.KV{{Key: "モデル", Value: "FLUX.2"}, {Key: "縦横比", Value: "1:1"}, {Key: "作成", Value: c.CreatedAt}},
+	}
+}
+
 func TestGentestLiveFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	checkFixtures(t, map[string]templ.Component{
 		"gentest-history-running.html":   gentest.HistoryList(liveHistory(1, "10:00:00")),
@@ -76,5 +88,9 @@ func TestGentestLiveFixtures_AreWhatTheComponentsRender(t *testing.T) {
 		"gentest-export-refused.html":    exportbar.Problem("書き出せる結果がありません（条件に合う、成功してファイルのある結果がありません）"),
 		"gentest-batch-running.html":     gentest.BatchBox(liveBatch(2)),
 		"gentest-batch-progress.html":    gentest.BatchBox(liveBatch(5)),
+		"gentest-detail-modal.html":      gentest.ResultDetailModal(liveDetail()),
+		"gentest-modal-host.html":        modal.Host(),
+		"gentest-favorite-reply.html":    resulttile.Reply("r0", true),
+		"gentest-result-gone.html":       resulttile.Gone("r0"),
 	})
 }

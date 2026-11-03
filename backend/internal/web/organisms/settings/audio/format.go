@@ -15,3 +15,7 @@ func join(names []string) string { return "「" + strings.Join(names, "」、「
 func cloudChecked(p Provider) bool {
 	return p.Selected != LocalValue || p.Local == nil || !p.Local.Supported
 }
+
+// NeedsCommercialNote is whether the card says "商用注意": the provider has a condition on its commercial use, or weights or
+// dependencies whose commercial use is not clear.
+func (l *Local) NeedsCommercialNote() bool { return l.Condition != "" || len(l.Unclear) > 0 }

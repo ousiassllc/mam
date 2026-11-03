@@ -99,6 +99,33 @@ func TestONNX_ImageWithoutFaceHasNoFaces(t *testing.T) {
 	assert.Empty(t, fs)
 }
 
+// Compare is what the generation test runs on every result of a "face only" reference (spec/architecture/local-models.md §4.9): the real
+// models say the same face at another size is above the SFace threshold and another person is below it, and a picture without a face is
+// named. The numbers of the photos are the ones of TestONNX_SamePersonIsCloserThanAnotherPerson.
+func TestONNX_CompareOfFilesSeparatesTheSamePersonFromAnotherAndNamesNoFace(t *testing.T) {
+	e, photos := engineFromEnv(t)
+	read := func(name string) []byte {
+		data, err := os.ReadFile(filepath.Join(photos, name)) // #nosec G304 -- test fixture path from the environment
+		require.NoError(t, err)
+		return data
+	}
+	ctx := context.Background()
+
+	same, err := facesim.Compare(ctx, e, read("a.jpg"), read("a_small.jpg"))
+	require.NoError(t, err)
+	other, err := facesim.Compare(ctx, e, read("a.jpg"), read("b.jpg"))
+	require.NoError(t, err)
+	none, err := facesim.Compare(ctx, e, read("a.jpg"), read("none.jpg"))
+	require.NoError(t, err)
+
+	t.Logf("same=%.4f other=%.4f threshold=%.3f", same.Cosine, other.Cosine, facesim.SameFaceThreshold)
+	assert.Equal(t, facesim.BothHaveFaces, same.Missing)
+	assert.Greater(t, same.Cosine, facesim.SameFaceThreshold)
+	assert.Equal(t, facesim.BothHaveFaces, other.Missing)
+	assert.Less(t, other.Cosine, facesim.SameFaceThreshold)
+	assert.Equal(t, facesim.SecondHasNoFace, none.Missing)
+}
+
 func TestNewONNX_MissingModelsIsUnavailable(t *testing.T) {
 	_, err := facesim.NewONNX(facesim.ONNXConfig{ModelDir: t.TempDir()})
 	assert.ErrorIs(t, err, facesim.ErrUnavailable)

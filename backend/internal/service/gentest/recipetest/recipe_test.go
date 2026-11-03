@@ -215,6 +215,49 @@ func TestARecipeWhoseModelCannotBeUsedIsKeptWithTheReason(t *testing.T) {
 	assert.Equal(t, "Fox", list[0].Name)
 }
 
+// The age gate closed (Issue #992): the list, the easy tier's choices and a single read name neither the model nor a setting of a recipe of a hidden model;
+// the recipe is kept as it was (a rename or a change of the easy choice while the gate is closed does not blank it) and comes back when the gate opens.
+func TestARecipeOfAHiddenModelShowsNeitherTheModelNorItsSettings(t *testing.T) {
+	hidden := false
+	r := gentesttest.New(t, gentesttest.WithTemplateModels(), gentesttest.WithExposedModel(),
+		gentesttest.WithHidden(func(id string) bool { return hidden && id == exposedModel }))
+	svc := recipe.New(r.Svc)
+	saved, err := svc.Save(ctx(), "Fox", full(), true)
+	require.NoError(t, err)
+	require.NotEmpty(t, saved.ModelLabel)
+
+	hidden = true
+	list, err := svc.List(ctx())
+	require.NoError(t, err)
+	choices, err := svc.EasyChoices(ctx())
+	require.NoError(t, err)
+	one, err := svc.Get(ctx(), saved.ID)
+	require.NoError(t, err)
+	renamed, err := svc.Rename(ctx(), saved.ID, "Fox 2")
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Len(t, choices, 1, "the recipe stays among the easy choices, with the reason it cannot be used")
+	for name, v := range map[string]recipe.View{"List": list[0], "EasyChoices": choices[0], "Get": one, "Rename": renamed} {
+		assert.Equal(t, recipe.Params{}, v.Params, name)
+		assert.Equal(t, "成人向けのモデル", v.ModelLabel, name)
+		assert.NotContains(t, v.ModelLabel, saved.ModelLabel, name)
+		assert.False(t, v.Usable, name)
+		assert.Contains(t, v.Reason, "成人向け", name)
+		assert.NotContains(t, v.Reason, saved.ModelLabel, name)
+	}
+	assert.Equal(t, "Fox 2", renamed.Name)
+	_, err = svc.SetEasy(ctx(), saved.ID, false)
+	require.NoError(t, err)
+
+	hidden = false
+	back, err := svc.Get(ctx(), saved.ID)
+	require.NoError(t, err)
+	assert.Equal(t, saved.Params, back.Params, "the settings were kept while the gate was closed")
+	assert.Equal(t, "Fox 2", back.Name)
+	assert.False(t, back.Easy)
+	assert.True(t, back.Usable, back.Reason)
+}
+
 // The settings that keep a model out of the easy tier's choices keep it out of a recipe as well (the same check).
 func TestARecipeFollowsThePlatformCheckOfTheEasyTier(t *testing.T) {
 	warn := ""

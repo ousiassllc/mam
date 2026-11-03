@@ -1,6 +1,8 @@
 package livetest_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
@@ -27,7 +29,7 @@ func TestAResultAndTheBatchGridSayWhetherTheModelThatMadeItMayBeUsedCommercially
 	assert.Equal(t, 8, strings.Count(history, `data-testid="gt-history-item"`))
 	assert.Equal(t, 8, strings.Count(history, `data-testid="gt-history-item" data-commercial="yes"`), "each result's item carries the answer of its model")
 	assert.Contains(t, history, `<option value="flux-2" data-commercial="yes"`, "so does the model choice of the filter")
-	assert.Contains(t, history, `data-commercial-badge="yes"`, "the mark on the card")
+	assert.NotContains(t, history, `data-commercial-badge=`, "the tile is the picture only (#1004): the mark is in its detail")
 	assert.Contains(t, history, `data-commercial-filter-target="#`, "the history can be filtered too")
 	assert.Contains(t, history, `name="commercial"`, "the choice is a field of the history form, so it survives the paging")
 
@@ -35,6 +37,9 @@ func TestAResultAndTheBatchGridSayWhetherTheModelThatMadeItMayBeUsedCommercially
 	require.NoError(t, err)
 	require.NotEmpty(t, b.Results)
 	assert.Contains(t, s.get(paths.GenerationTestPart("results", b.Results[0].ID)), `data-commercial-badge="yes"`)
+	req := httptest.NewRequest(http.MethodGet, paths.GenerationTestPart("results", b.Results[0].ID), nil)
+	req.Header.Set("HX-Target", "mam-modal-body")
+	assert.Contains(t, s.htmx(req).Body.String(), `data-commercial-badge="yes"`, "and in the modal that a tile opens")
 }
 
 func TestTheHistoryKeepsTheCommercialFilterInTheNextLink(t *testing.T) {

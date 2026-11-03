@@ -52,7 +52,7 @@ func Refuse(err error) (RefusalKind, string) {
 	case errors.Is(err, modelmanager.ErrPinned):
 		return RefusalConflict, "起動オプション（--model-config）でモデルの設定ファイルが固定されているため、導入と削除はできません"
 	case errors.Is(err, modelmanager.ErrUnsupported):
-		return RefusalConflict, "同梱の ComfyUI は Windows 版だけで使えます。この環境では、設定の「ローカル・代替モデル」に外部の ComfyUI の URL を登録して使ってください"
+		return RefusalConflict, "同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけで使えます。この環境では、設定の「ローカル・代替モデル」に外部の ComfyUI の URL を登録して使ってください"
 	case errors.Is(err, modelmanager.ErrEngineNotInstalled):
 		return RefusalConflict, "先に ComfyUI エンジンを導入してください"
 	case errors.Is(err, modelmanager.ErrAlreadyInstalled):
@@ -64,7 +64,7 @@ func Refuse(err error) (RefusalKind, string) {
 	case errors.As(err, &noSpace):
 		return RefusalConflict, "空き容量が足りません（必要 " + fetch.HumanBytes(noSpace.Need) + "、空き " + fetch.HumanBytes(noSpace.Free) + "、場所 " + noSpace.Path + "）。空けてからやり直してください"
 	case errors.Is(err, store.ErrNotWritable):
-		return RefusalConflict, "mam.exe のあるフォルダに書き込めません。書き込める場所に置くか、外部の ComfyUI の URL を使ってください"
+		return RefusalConflict, "導入先のフォルダ（Windows は mam.exe のあるフォルダ、macOS は mam のデータフォルダ）に書き込めません。書き込める場所に置くか、外部の ComfyUI の URL を使ってください"
 	case errors.Is(err, engine.ErrVariant):
 		return RefusalInvalid, "その GPU 向けのビルドは用意していません"
 	case errors.Is(err, engine.ErrBusyRunning):

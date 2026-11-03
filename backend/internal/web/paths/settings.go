@@ -11,6 +11,7 @@ const (
 	SettingsAudio       = "audio"
 	SettingsMCP         = "mcp"
 	SettingsFFmpeg      = "ffmpeg"
+	SettingsFaceFusion  = "facefusion"
 	SettingsUpdate      = "update"
 	SettingsLicenses    = "licenses"
 )

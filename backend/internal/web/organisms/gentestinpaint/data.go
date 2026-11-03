@@ -11,9 +11,12 @@ type Model struct {
 // Page is the form. MaxPrompt is the server's prompt limit (gentest.MaxPromptRunes), handed in by the handler.
 type Page struct {
 	Error, SourceURL, SourceRef, SourceLabel, Denoise string
-	Models                                            []Model
-	MaxPrompt                                         int
-	HasModel, Translate                               bool
+	// Notice is the line a redo opens with ("この設定でもう一度"). Prompt, Negative, MaskURL and Seed are the settings of the result it takes (MaskURL is the mask
+	// the painter starts from; Seed is "" unless the seed is kept).
+	Notice, Prompt, Negative, MaskURL, Seed string
+	Models                                  []Model
+	MaxPrompt                               int
+	HasModel, Translate                     bool
 }
 
 // Field is a hidden value the confirmation posts back.

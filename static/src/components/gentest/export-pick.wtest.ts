@@ -2,8 +2,8 @@ import { expect, waitUntil } from '@open-wc/testing';
 import htmx from 'htmx.org';
 import '../../main';
 
-// #932: a card of the history is chosen for the ZIP export by a tap (its checkbox, the peer of its glowing frame), and the choice survives the refresh of the
-// history, which draws the cards again every 2 s while a result runs (#925). The pages are what the handler renders
+// #932: a tile of the history is chosen for the ZIP export by the check box in its corner (the peer of its glowing frame; a tap on the tile itself opens the
+// detail in the modal, #1004), and the choice survives the refresh of the history, which draws the tiles again every 2 s while a result runs (#925). The pages are what the handler renders
 // (backend/internal/web/gentest_live_fixture_test.go): three results r0 r1 r2, of which r2 runs in the "running" page and has
 // finished in the answer of the poll.
 const TESTDATA = '/src/components/testdata/';
@@ -14,6 +14,8 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
   const byTestId = (id: string) => host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!;
   const card = (id: string) => host.querySelector<HTMLElement>(`[data-gt-pick="${id}"]`)!;
   const input = (id: string) => card(id).querySelector<HTMLInputElement>('[data-gt-pick-input]')!;
+  /** The tap of the mouse on the mark in the corner of a tile (the label of its checkbox). */
+  const tapMark = (id: string) => card(id).querySelector<HTMLElement>('[data-testid="gt-pick-mark"]')!.click();
   const count = () => byTestId('gt-selected-count').textContent;
   const hiddenIds = () =>
     [...host.querySelectorAll<HTMLInputElement>('[data-gt-export-selected] input[name="id"]')].map((i) => i.value);
@@ -23,7 +25,7 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
   async function show(fixture: string): Promise<void> {
     host = document.createElement('div');
     host.innerHTML = await (await fetch(`${TESTDATA}${fixture}`)).text();
-    // A tap on the detail link must not leave the test page.
+    // A tap on the tile (a link to the detail) must not leave the test page.
     host.addEventListener('click', (event) => {
       if ((event.target as Element).closest('a')) event.preventDefault();
     });
@@ -39,18 +41,18 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
     expect(count()).to.equal('0');
     expect((byTestId('gt-export-selected-submit') as HTMLButtonElement).disabled, 'nothing is chosen').to.equal(true);
 
-    card('r1').querySelector<HTMLElement>('p')!.click(); // the prompt of the card
+    tapMark('r1');
     expect(input('r1').checked, 'the tapped card is chosen').to.equal(true);
     expect(input('r0').checked).to.equal(false);
     expect(count()).to.equal('1');
     expect(hiddenIds()).to.deep.equal(['r1']);
     expect((byTestId('gt-export-selected-submit') as HTMLButtonElement).disabled).to.equal(false);
 
-    card('r0').querySelector<HTMLElement>('img')!.click();
+    tapMark('r0');
     expect(hiddenIds().sort()).to.deep.equal(['r0', 'r1']);
     expect(count()).to.equal('2');
 
-    card('r1').querySelector<HTMLElement>('p')!.click();
+    tapMark('r1');
     expect(input('r1').checked).to.equal(false);
     expect(hiddenIds()).to.deep.equal(['r0']);
   });
@@ -72,10 +74,10 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
     expect(byTestId('gt-select-clear').hidden, 'nothing to clear').to.equal(true);
   });
 
-  it('leaves a tap on the detail link and on the heart to them', async () => {
+  it('leaves a tap on the tile itself to the detail: it does not choose the result', async () => {
     await show('gentest-history-idle.html');
-    card('r0').querySelector<HTMLElement>('a')!.click();
-    card('r0').querySelector<HTMLElement>('[data-testid="gt-favorite"]')!.click();
+    card('r0').querySelector<HTMLElement>('[data-testid="gt-open"]')!.click();
+    card('r0').querySelector<HTMLElement>('img')!.click();
     expect(input('r0').checked).to.equal(false);
     expect(count()).to.equal('0');
   });
@@ -90,7 +92,7 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
   it('keeps the choice when the history refreshes itself and draws the cards again', async function () {
     this.timeout(20_000);
     await show('gentest-history-running.html');
-    card('r0').querySelector<HTMLElement>('p')!.click();
+    tapMark('r0');
     const before = card('r0');
     expect(count()).to.equal('1');
 
@@ -105,13 +107,13 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
     expect(hiddenIds()).to.deep.equal(['r0']);
     expect((byTestId('gt-export-selected-submit') as HTMLButtonElement).disabled).to.equal(false);
 
-    card('r2').querySelector<HTMLElement>('p')!.click(); // and a card of the new draw can be chosen too
+    tapMark('r2'); // and a tile of the new draw can be chosen too
     expect(hiddenIds().sort()).to.deep.equal(['r0', 'r2']);
   });
 
   it('does not save a chosen result that the commercial-use filter hides, and the other form follows the filter', async () => {
     await show('gentest-history-idle.html');
-    card('r0').querySelector<HTMLElement>('p')!.click();
+    tapMark('r0');
     expect(hiddenIds()).to.deep.equal(['r0']);
 
     card('r0').closest('li')!.hidden = true; // what the filter does to a card it does not allow
@@ -151,7 +153,7 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
       submit('gt-export-latest-submit');
       await waitUntil(() => status().textContent!.includes('書き出せる'), 'the reason was not drawn');
 
-      card('r1').querySelector<HTMLElement>('p')!.click();
+      tapMark('r1');
       submit('gt-export-selected-submit');
       await waitUntil(() => status().textContent === '', 'the old reason stayed');
       await waitUntil(async () => (await downloads()).length === before + 1, 'the browser did not load the download');
@@ -173,21 +175,30 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
       stylesheet.onerror = () => reject(new Error('the Tailwind CSS could not be built'));
       document.head.append(stylesheet);
     });
+    // The frame fades in and out (transition-shadow), and a background tab of a headless browser may not advance a transition at all: this test is about the end states, so
+    // it is measured without the fade (waiting for it would depend on the frames the browser draws).
+    const noFade = document.createElement('style');
+    noFade.textContent = '*, *::before, *::after { transition: none !important; }';
+    document.head.append(noFade);
     try {
       await show('gentest-history-idle.html');
       const frame = () => card('r0').querySelector<HTMLElement>('input + div')!;
+      const mark = () => getComputedStyle(card('r0').querySelector('[data-testid="gt-pick-mark"]')!);
+      const unlit = mark().backgroundColor;
       const lit = () => getComputedStyle(frame());
       expect(lit().boxShadow, 'a card that is not chosen glows').to.equal('none');
 
-      card('r0').querySelector<HTMLElement>('p')!.click();
+      tapMark('r0');
       expect(lit().boxShadow, 'the chosen card does not glow').not.to.equal('none');
       expect(lit().borderTopColor).not.to.equal(getComputedStyle(frame().parentElement!).borderTopColor);
-      expect(getComputedStyle(card('r0').querySelector('span.absolute')!).display, 'no check mark').to.equal('block');
+      expect(mark().backgroundColor, 'the mark in the corner is not filled').not.to.equal(unlit);
 
-      card('r0').querySelector<HTMLElement>('p')!.click();
+      tapMark('r0');
+      input('r0').blur(); // the ring of the keyboard focus (peer-focus-visible) is another shadow of the frame: whether the label tap leaves the focus-visible look depends on the browser's last input, and this test is about the glow of the choice
       expect(lit().boxShadow).to.equal('none');
     } finally {
       stylesheet.remove();
+      noFade.remove();
     }
   });
 });

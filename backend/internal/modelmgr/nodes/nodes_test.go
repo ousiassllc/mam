@@ -6,11 +6,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -18,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/extract"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodecat"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodes"
@@ -31,7 +34,13 @@ func archive(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	for name, body := range files {
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	slices.Sort(names) // map order is random: the same files must give the same bytes, or a pinned size and SHA-256 never match
+	for _, name := range names {
+		body := files[name]
 		w, err := zw.Create("pack-" + commit + "/" + name)
 		require.NoError(t, err)
 		_, err = w.Write([]byte(body))
@@ -151,12 +160,12 @@ func TestAnInstalledFolderThatChangedIsNotEnabledUntilItIsInstalledAgain(t *test
 	require.NoError(t, r.m.Install(context.Background(), "pack", nil, nil))
 	dir := r.m.Folder(r.node)
 
-	// Python writes __pycache__ when it imports the node: that is not a change.
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "__pycache__"), 0o750))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "__pycache__", "nodes.cpython-312.pyc"), []byte("bytecode"), 0o600))
-	assert.Equal(t, []string{"pack"}, r.m.Enabled())
-
 	for name, tamper := range map[string]func(){
+		// The engine runs with PYTHONDONTWRITEBYTECODE=1, so a .pyc was not written by Python: it would run in place of the source.
+		"bytecode planted": func() {
+			require.NoError(t, os.MkdirAll(filepath.Join(dir, "__pycache__"), 0o750))
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "__pycache__", "nodes.cpython-312.pyc"), []byte("bytecode"), 0o600))
+		},
 		"a file edited": func() {
 			require.NoError(t, os.WriteFile(filepath.Join(dir, "nodes.py"), []byte("import subprocess\n"), 0o600))
 		},
@@ -263,4 +272,35 @@ func TestTheRecordSurvivesARestartAndABrokenRecordInstallsNothing(t *testing.T) 
 	broken.Catalog = r.m.Catalog
 	assert.Empty(t, broken.Enabled(), "a record that cannot be read enables nothing")
 	assert.FileExists(t, r.m.Layout.NodesPath()+".corrupt", "it is moved aside, not deleted")
+}
+
+// The bytes that were checked are the bytes that are extracted: a zip put in place of the downloaded one is not what the install reads.
+func TestAnArchiveReplacedAfterTheDownloadIsNotExtracted(t *testing.T) {
+	r := newRig(t, good)
+	path := r.m.Layout.DownloadsDir()
+	require.NoError(t, os.MkdirAll(path, 0o750))
+	path = filepath.Join(path, "pack-"+commit[:8]+".zip")
+	pinned := archive(t, good)
+	require.NoError(t, os.WriteFile(path, pinned, 0o600))
+
+	held, err := nodes.ReadPinned(path, r.node)
+	require.NoError(t, err)
+	assert.Equal(t, pinned, held)
+
+	evil := archive(t, map[string]string{"__init__.py": "import os\n"})
+	require.NoError(t, os.WriteFile(path, evil, 0o600))
+	_, err = nodes.ReadPinned(path, r.node)
+	require.ErrorIs(t, err, nodes.ErrArchiveChanged)
+	assert.NoFileExists(t, path, "the changed file is removed so that the next install downloads it again")
+
+	// Replaced while the extraction runs: the extraction still reads the held bytes.
+	r2 := newRig(t, good)
+	r2.m.Extract = func(ctx context.Context, ra io.ReaderAt, size int64, dest, strip string, limit int64, progress extract.Progress) error {
+		require.NoError(t, os.WriteFile(filepath.Join(r2.m.Layout.DownloadsDir(), "pack-"+commit[:8]+".zip"), evil, 0o600))
+		return extract.ZipFrom(ctx, ra, size, dest, strip, limit, progress)
+	}
+	require.NoError(t, r2.m.Install(context.Background(), "pack", nil, nil))
+	body, err := os.ReadFile(filepath.Join(r2.m.Folder(r2.node), "nodes.py"))
+	require.NoError(t, err)
+	assert.Equal(t, good["nodes.py"], string(body))
 }

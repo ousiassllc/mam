@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -53,7 +54,7 @@ templ HFResultView(r HFResult) {
 				for _, hit := range r.Hits {
 					<li class="flex flex-wrap items-center justify-between gap-2 py-2" data-repo={ hit.Repo }>
 						<span class="flex flex-wrap items-center gap-2">
-							<code>{ hit.Repo }</code>
+							<code class="break-all">{ hit.Repo }</code>
 							if hit.Gated {
 								@atoms.Badge(atoms.BadgeWarn, "gated")
 							}
@@ -79,7 +80,7 @@ templ HFResultView(r HFResult) {
 templ hfRepoView(r HFRepo) {
 	<div class="flex flex-col gap-3" data-testid="mm-hfi-repo" data-repo={ r.ID } data-commit={ r.Commit }>
 		<div class="flex flex-wrap items-center gap-2 text-sm">
-			<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer"><code>{ r.ID }</code></a>
+			<a class="break-all underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer"><code>{ r.ID }</code></a>
 			<span class="text-xs text-neutral-400">コミット <code>{ shortHash(r.Commit) }</code> に固定</span>
 			if r.Gated {
 				@atoms.BadgeWith(atoms.BadgeWarn, "gated", templ.Attributes{"data-testid": "mm-hfi-gated"})
@@ -106,7 +107,7 @@ templ hfRepoView(r HFRepo) {
 		}
 		for _, g := range r.Groups {
 			<section class="flex flex-col gap-1" data-testid="mm-hfi-group" data-group={ g.Name }>
-				<h4 class="text-sm font-medium">{ g.Name }</h4>
+				<h4 class="break-words text-sm font-medium">{ g.Name }</h4>
 				<ul class="flex flex-col divide-y divide-neutral-800 text-xs">
 					for _, f := range g.Files {
 						@hfFileRow(r, f)
@@ -120,7 +121,7 @@ templ hfRepoView(r HFRepo) {
 templ hfFileRow(r HFRepo, f HFFile) {
 	<li class="flex flex-col gap-1 py-2" data-testid="mm-hfi-file" data-path={ f.Path } data-installable={ boolText(f.Installable) }>
 		<div class="flex flex-wrap items-center gap-2">
-			<code>{ f.Path }</code>
+			<code class="break-all">{ f.Path }</code>
 			<span class="text-neutral-300">{ f.Size }</span>
 			@atoms.Badge(atoms.BadgeNeutral, f.Format)
 			if f.Variant != "" {
@@ -138,7 +139,7 @@ templ hfFileRow(r HFRepo, f HFFile) {
 			}
 		</div>
 		if f.SHA256 != "" {
-			<p class="text-neutral-400">SHA-256 <code>{ f.SHA256 }</code></p>
+			<p class="break-all text-neutral-400">SHA-256 <code>{ f.SHA256 }</code></p>
 		}
 		if !f.Installable {
 			<p class="text-amber-300" data-testid="mm-hfi-reason">{ f.Reason }</p>
@@ -246,11 +247,12 @@ templ HFModelListView(l HFModelList) {
 			hx-swap="outerHTML"
 		}
 	>
+		@refresh.Bar(hfModelsURL(l), HFModelsID, l.UpdatedAt)
 		@notice(l.Message, "mm-hfi-models")
 		for _, j := range l.Installing {
 			<div class="flex flex-col gap-1" data-testid="mm-hfi-job">
 				<div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-					<code>{ j.Name }</code>
+					<code class="break-all">{ j.Name }</code>
 					@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", j.Name, templ.Attributes{
 						"type": "button", "hx-post": paths.ModelManagerPart("hf", "jobs", j.Progress.JobID, "cancel"), "hx-target": "#" + HFModelsID,
 						"hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",

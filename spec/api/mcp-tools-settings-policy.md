@@ -7,7 +7,8 @@
 ## 方針
 
 - **MCP トークンの管理は MCP からはできない**（設定画面だけ。`PUT /settings/mcp/bind`・`POST /settings/mcp/tokens`・`DELETE /settings/mcp/tokens/:id`）。トークンの発行・失効や待ち受け先の変更をエージェントに許すと、エージェントが自分の接続の権限を変えられてしまうため、ツールを作らない（`spec/architecture/mcp.md`）。`get_global_settings` にも MCP の区画は含めない。
-- **LLM・モデルの割り当ては「保存した設定」を読み書きする**。画面と同じく、LLM の割り当ての反映にはアプリの再起動が必要（実行中の割り当てではない）。画像・動画モデルの割り当ては保存するとすぐに反映される（#831。`model` にはローカル・代替モデルの識別子も使える。[mcp-tools-local-models.md](mcp-tools-local-models.md)）。`--llm-config` / `--model-config` で固定されたファイルは読めるが変更できず、`conflict`（「起動オプションで固定されている…」）になる。
+- **外部ツールの実行ファイルのパスは MCP からは設定しない**（ffmpeg・FaceFusion の Python とフォルダ。設定画面だけ。`PUT /settings/ffmpeg`・`PUT /settings/facefusion`）。パスは後で起動される実行ファイルを決めるので、MCP のクライアント（プロンプトインジェクションされたエージェントを含む）に決めさせない。FaceFusion は状態の読み取り（`get_facefusion_status`）と顔の入れ替え（`swap_generation_face`。[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）だけを MCP に出す。
+- **LLM・モデルの割り当ては「保存した設定」を読み書きする**。LLM の割り当て・画像／動画モデルの割り当ては、どちらも保存するとすぐに反映される（LLM は次の呼び出しから。#1006。再起動が要る設定は [restart.md](../architecture/restart.md) §2。`get_global_settings` の `llm.restart_pending` と `get_health` の `restart_pending` が、保存したが再起動で反映される設定を言い、`restart_app` で反映する）。画像・動画モデルの割り当ては保存するとすぐに反映される（#831。`model` にはローカル・代替モデルの識別子も使える。[mcp-tools-local-models.md](mcp-tools-local-models.md)）。`--llm-config` / `--model-config` で固定されたファイルは読めるが変更できず、`conflict`（「起動オプションで固定されている…」）になる。
 - `set_llm_assignment` / `set_model_assignment` は、**指定した Agent・用途・Quality Policy だけ**を変える（画面はフォーム全体を送るが、ツールは差分だけ受け、保存済みの値に重ねてから同じ検証 `check` を通す）。指定しなかったものは保存済みのまま。年齢確認がオフの間は、導入済みの成人向けモデルは `image_models` / `video_models` に出ず、割り当てがまだ指していれば `gated_models` に挙がる（そのモデルでの生成は `conflict` で断られる）。主・代替のどちらかが成人向けのモデルを指す保存は、変えていなくても `validation` で断る（メッセージに年齢確認をオンにするか別のモデルを選ぶ旨。`reset_model_assignment` はできる。[../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md) §6.1）。検証の失敗は `validation`（メッセージは画面と同じ）で、ファイルには何も書かない。
 - **アップデート**は、アップデーターを持つ版（Windows デスクトップ）でだけ使える。ヘッドレス版では `get_update_status` / `check_for_update` が `unavailable`、`get_global_settings` の `update.available` が `false`（バージョンだけ返す）。LLM・モデルの区画を持たないアプリ（テスト用ルーター）では同様に各ツールが `unavailable`、`get_global_settings` の `llm.available` / `models.available` が `false`。
 - **音声・口パクのプロバイダーは「保存した設定」を読み書きする**（`audiosettings.Service`。画面と同じ。#924）。反映は**次の音声作成から**で、再起動は要らない。`generate_audio` に provider の引数は無く、選択はこの 2 つのツールで行う。切り替えた実行は、Project のチャット（`list_chat_messages`）に「ローカル…を使えなかったため、この実行はクラウド…で作りました。使えない理由: …」と残る。ローカルを選べない環境（macOS など）では、`get_audio_providers` の `state` が `unsupported` で `support_reason` に理由とクラウドの案内が出る。
@@ -44,7 +45,7 @@
 
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
-| `get_global_settings` | 全体設定画面の内容（API キーの区画・MCP の区画を除く）。保存済みの設定で、反映は次の起動から | なし | `llm`（`available`, `pinned`, `problem`, `providers[]`, `max_model_length`, `agents[]`: `agent`, `label`, `unused`, `primary`, `fallback`, `default_primary`, `default_fallback`）, `models`（`available`, `pinned`, `customized`, `problem`, `images[]`, `policies[]`, `image_models[]`, `video_models[]`, `gated_models[]`）, `update`（`get_update_status` と同じ） | はい |
+| `get_global_settings` | 全体設定画面の内容（API キーの区画・MCP の区画を除く）。保存済みの設定（LLM・モデルともすぐに反映済み。再起動で反映されるものは `llm.restart_pending`） | なし | `llm`（`available`, `pinned`, `problem`, `providers[]`, `max_model_length`, `applies_at_once`（保存した割り当てが次の呼び出しからすぐ効くか）, `restart_pending[]`（保存したが再起動で反映される設定。無ければ空）, `agents[]`: `agent`, `label`, `unused`, `primary`, `fallback`, `default_primary`, `default_fallback`）, `models`（`available`, `pinned`, `customized`, `problem`, `images[]`, `policies[]`, `image_models[]`, `video_models[]`, `gated_models[]`）, `update`（`get_update_status` と同じ） | はい |
 | `list_llm_models` | 「LLM の割り当て」で選べるモデルの一覧（API の一覧、取れなければ mam の既定候補。10 分キャッシュ。トークン・キーは返さない。[mcp-tools-chatgpt.md](mcp-tools-chatgpt.md)） | `provider?` | `providers[]`: `provider`, `source`（`api` / `default`）, `reason?`, `models[]`（`id`, `name?`） | はい（openWorld） |
 | `set_llm_assignment` | 指定した Agent の LLM（主・代替）を保存する。冪等。モデル名がそのプロバイダーの一覧（`list_llm_models`）にないときは**拒否せず保存し**、`warnings[]` で知らせる | `routes[]`: `agent`, `primary`, `fallback`（`provider`, `model`） | `get_global_settings` の `llm` に `warnings[]`（`kind`（`unlisted_model`）, `agent`, `role`（`primary` / `fallback`）, `provider`, `model`, `message`。無ければ空配列） | いいえ |
 | `reset_llm_assignment` | LLM の割り当てを既定に戻す（上書きをすべて消す。冪等） | なし | 同上 | いいえ（破壊的） |
@@ -53,6 +54,7 @@
 | `get_audio_providers` | 音声・口パクのプロバイダーの設定（`audio.json`）と、ローカルの状態。保存済みの設定で、次の音声作成から使われる | なし | `available`, `problem`（`audio.json` が読めない理由）, `voice_provider`（`elevenlabs` / `local`）, `lip_sync_provider`（`synclabs` / `local`）, `fallback_to_cloud`, `voice` と `lip_sync`（`available`, `name`, `runtime_id`, `state`（`unsupported` / `installing` / `not_installed` / `weights_missing` / `ready` / `starting` / `running` / `failed`）, `usable`, `reason`（使えないときの文。画面・実行の失敗と同じ）, `support_reason`（この PC で動かせない理由とクラウドの案内。macOS はここ）, `process_error`, `vram_min_gb`, `vram_estimate`, `source_url`, `license`, `license_url`, `commercial_condition`, `unclear_commercial_use[]`, `cloud_provider`（`elevenlabs` / `synclabs`）, `cloud_key_set`（API キーの有無。値は返さない）） | はい |
 | `set_audio_providers` | 声・口パクのプロバイダーと `fallback_to_cloud` を保存する。指定した項目だけ変わる（`false` も値）。この PC で動かせないローカルを選ぶと `validation`（ランタイム管理の理由つき）、`audio.json` が読めないと `conflict`。`fallback_to_cloud` をオンにすると、ローカルが使えない実行がクラウドで作られ API 費用が出ることがある。冪等 | `voice_provider?`（`elevenlabs` / `local`）, `lip_sync_provider?`（`synclabs` / `local`）, `fallback_to_cloud?`。1 つ以上 | `get_audio_providers` と同じ | いいえ |
 | `get_update_status` | アップデートの状態 | なし | `available`, `version`, `state`（`checking` / `error` / `ready` / `blocked` / `available` / `dev_build` / `no_release` / `up_to_date` / `unchecked`）, `checked_at`, `latest`, `blocked_by`, `error_kind` | はい |
+| `restart_app` | アプリを再起動する（[restart.md](../architecture/restart.md)）。**`confirm: true` を明示したときだけ**動く（必須の引数。`false` は `validation`、省略はスキーマの検証で拒否される。どれも何も起きない）。動いている作業（生成などのジョブ・編集・ffmpeg・ワークフロー実行・ダウンロード）があるとき `when_busy` で選ぶ: `refuse`（既定: 再起動せず `conflict` で何が動いているか返す）/ `wait`（終わるまで待ってから再起動。応答は `state: "waiting"`。上限 `wait_minutes`、既定 30・最大 1440。過ぎたら再起動せずにやめる）/ `stop`（中断して今すぐ再起動。生成ジョブは失敗、再開できるジョブは再起動後に続く。**モデル・エンジン・ffmpeg のダウンロードや導入が動いていれば `stop` でも `conflict`**）。この版が自分で再起動できないとき（ブラウザ版 `cmd/server`）は `unavailable`。応答は `state: "restarting"` を返したあとアプリが終わるので、届かないことがある。再起動できたかは `get_health` の `boot_id` が変わり `ok: true` になることで確かめる | `confirm`, `when_busy?`（`refuse` / `wait` / `stop`）, `wait_minutes?` | `state`（`restarting` / `waiting`）, `boot_id`（頼んだ時点の実行の ID）, `busy[]`（`kind`（`jobs` / `editing` / `media` / `workflow_run` / `download` / `check_failed`）, `message`）, `wait_until?`, `next` | いいえ（破壊的） |
 | `check_for_update` | 今すぐアップデートを確認する。検証できた新しいリリースがあると、画面と同じくアプリが終了してインストーラーが走る（応答は届かないことがある）。確認の失敗は `state: "error"` で返り、ツールエラーにはならない | なし | `get_update_status` と同じ | いいえ（`openWorld`） |
 
 ### 制作指標・ヘルス（`tools/analytics`・`tools/health`）
@@ -60,7 +62,7 @@
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
 | `get_production_metrics` | MVP Success Metrics（`spec/spec.md` §28）。`project_id` なしは全 Project の合計 | `project_id?` | `project_id`, `project_name`, `metrics`（`projects`, `started`, `completed`, `exported`, `shots`, `override_events`, 各指標は `{numerator, denominator, defined, value}`: `first_pass_shot_acceptance`, `final_shot_acceptance`, `character_continuity_fail`, `product_accuracy_fail`, `prompt_adherence`, `auto_completion`, `user_override`, `export_completion`, `north_star`, `average_retakes_per_shot`, `interventions_per_finished`, `cost_per_accepted_second`, `time_to_first_rough_cut`, `time_to_final_video`）。`defined` が false は測る対象がまだない（画面の「—」） | はい |
-| `get_health` | 本体とデータベースが使えるか。使えなくてもエラーにせず `ok: false` | なし | `ok`, `database`（`ok` / `unavailable`） | はい |
+| `get_health` | 本体とデータベースが使えるか。使えなくてもエラーにせず `ok: false`。`boot_id` は実行（起動）ごとの ID で、`restart_app` のあとに変わる | なし | `ok`, `database`（`ok` / `unavailable`）, `boot_id`, `started_at`, `restart_pending[]`（保存したが再起動で反映される設定。無ければ空）, `restart_waiting`（`restart_app` が作業の終わりを待っている） | はい |
 
 ## ルートとツールの対応
 
@@ -91,6 +93,7 @@
 | `GET /settings/audio` | `get_audio_providers` |
 | `PUT /settings/audio` | `set_audio_providers` |
 | `POST /settings/update/check` | `check_for_update`（状態の読み取りは `get_update_status`） |
+| `POST /settings/restart` | `restart_app`（画面は `refuse` と `wait` だけ。`stop` は MCP のみ） |
 | `PUT /credentials/:provider` | `set_credential`（基盤） |
 | `DELETE /credentials/:provider` | `delete_credential`（基盤） |
 | `PUT /settings/mcp/bind` | none: MCP の待ち受け先は設定画面だけで変える（エージェントが自分の接続を変えられないようにする） |
@@ -105,3 +108,5 @@
 | 1.1 | 2026-10-25 | `get_global_settings` の `models` に `gated_models[]` を足した。年齢確認がオフの間は成人向けモデルを選択肢から外し、`set_model_assignment` がそれを指す経路を断る | Issue #848 |
 | 1.2 | 2026-11-01 | 全体設定（`tools/settings`）に `get_audio_providers`・`set_audio_providers` と、ルートの対応（`GET`・`PUT /settings/audio`）を足した。声・口パクのプロバイダーと「ローカルが使えないときはクラウドに切り替える」の保存。ローカルの状態・使えない理由・クラウドの API キーの有無（値は返さない）を返す | Issue #924（#912 声と口パクのローカル化） |
 | 1.3 | 2026-11-03 | `list_llm_models` を足し、`set_llm_assignment` が一覧にないモデル名に `warnings[]` を返すようにした（保存は拒まない） | Issue #987・#988 |
+| 1.4 | 2026-11-03 | `restart_app` を足し、`get_health` に `boot_id`・`started_at`・`restart_pending`・`restart_waiting`、`get_global_settings` の `llm` に `applies_at_once`・`restart_pending` を足した。LLM の割り当ては保存するとすぐ反映される（再起動不要）。ルートの対応に `POST /settings/restart` | Issue #1006・#1007 |
+| 1.5 | 2026-11-03 | 方針に「外部ツールの実行ファイルのパスは MCP からは設定しない」を足した（FaceFusion の `set_facefusion_paths` は置かない） | 統合後レビューの指摘 |

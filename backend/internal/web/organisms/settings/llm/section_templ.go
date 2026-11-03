@@ -16,7 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// Section is the category: the restart notice, the notes of the file (pinned, unreadable) and of the plan sign-in, the
+// Section is the category: the notice that a saved assignment applies at once, the notes of the file (pinned, unreadable) and of the plan sign-in, the
 // button that puts the whole table back to the defaults, and the table of the Agents that run with those that do not
 // folded below it. The whole table's answers (a reset, PUT /settings/llm) replace it by PanelID. A pinned file is a table
 // to read: no button edits or resets it.
@@ -70,7 +70,7 @@ func Section(d Data) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-neutral-300\" data-testid=\"llm-restart-note\">反映にはアプリの再起動が必要です。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-neutral-300\" data-testid=\"llm-apply-note\">保存した割り当ては、次の呼び出しからすぐ使われます（再起動は要りません）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -217,7 +217,7 @@ func planHelp() templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p>保存した割り当ては、次の起動から使われます。</p><p class=\"mt-2\" data-testid=\"llm-chatgpt-note\">プロバイダー「chatgpt-subscription」を選ぶと、ChatGPT のプランを使います（Using ChatGPT plan）。組織（Business / Enterprise / Edu）のアカウントは、「API キーとログイン」の Codex 経由でログインして、プロバイダー「chatgpt-codex」を選びます（テキスト生成だけ）。モデル名は、ログインしたあと、「API キーとログイン」の ChatGPT の欄で確認できます。 <a class=\"underline\" href=\"https://chatgpt.com/settings/usage\" target=\"_blank\" rel=\"noopener noreferrer\">Manage usage</a></p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p>保存した割り当ては、次の呼び出しからすぐ使われます。実行中の呼び出しは、始めたときの割り当てのまま終わります。llm.json を手で書き換えた base_url・タイムアウト・リトライ・サーキットブレーカーだけは、再起動すると反映されます（その設定があるときは、画面の上に「再起動して反映」が出ます）。</p><p class=\"mt-2\" data-testid=\"llm-chatgpt-note\">プロバイダー「chatgpt-subscription」を選ぶと、ChatGPT のプランを使います（Using ChatGPT plan）。組織（Business / Enterprise / Edu）のアカウントは、「API キーとログイン」の Codex 経由でログインして、プロバイダー「chatgpt-codex」を選びます（テキスト生成だけ）。モデル名は、ログインしたあと、「API キーとログイン」の ChatGPT の欄で確認できます。 <a class=\"underline\" href=\"https://chatgpt.com/settings/usage\" target=\"_blank\" rel=\"noopener noreferrer\">Manage usage</a></p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -504,12 +504,6 @@ func row(r Row, pinned, oob bool) templ.Component {
 					}
 				} else {
 					templ_7745c5c3_Err = atoms.Badge(atoms.BadgeNeutral, "既定").Render(ctx, templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				if r.Restart {
-					templ_7745c5c3_Err = atoms.Badge(atoms.BadgeWarn, "再起動で反映").Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

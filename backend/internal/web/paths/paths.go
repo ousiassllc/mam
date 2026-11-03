@@ -156,6 +156,9 @@ func Settings() string { return "/settings" }
 // LLMSettings is "/settings/llm", the LLM assignment of the settings screen.
 func LLMSettings() string { return Settings() + "/llm" }
 
+// Restart is "/settings/restart", the "再起動して反映" button of the settings screen (POST, form when_busy: refuse or wait).
+func Restart() string { return Settings() + "/restart" }
+
 // UpdateCheck is "/settings/update/check", the manual update check of the settings screen (POST).
 func UpdateCheck() string { return Settings() + "/update/check" }
 
@@ -165,6 +168,12 @@ func ModelSettings() string { return Settings() + "/models" }
 // AudioSettings is "/settings/audio", the "音声・口パク" category of the settings screen (GET: the page) and the choice of the voice and
 // lip-sync providers (PUT).
 func AudioSettings() string { return Settings() + "/" + SettingsAudio }
+
+// AudioDetail is "/settings/audio/<choice>/<provider>", the detail of the card of a provider of the voice ("voice") or of the lip sync
+// ("lip-sync"): the "cloud" or the "local" one (GET: a modal).
+func AudioDetail(choice, provider string) string {
+	return AudioSettings() + "/" + choice + "/" + provider
+}
 
 // FFmpegSettings is "/settings/ffmpeg", the ffmpeg section of the settings screen (GET: the page) and the paths of ffmpeg and
 // ffprobe (PUT).
@@ -176,6 +185,10 @@ func FFmpegDownload() string { return FFmpegSettings() + "/download" }
 
 // FFmpegDownloadCancel is "/settings/ffmpeg/download/cancel": POST stops the download (it resumes later).
 func FFmpegDownloadCancel() string { return FFmpegDownload() + "/cancel" }
+
+// FaceFusionSettings is "/settings/facefusion", the FaceFusion section of the settings screen (GET: the page) and the paths of its Python and
+// its folder (PUT).
+func FaceFusionSettings() string { return Settings() + "/" + SettingsFaceFusion }
 
 // MCPSettings is "/settings/mcp", the MCP server section of the settings screen (the section itself is
 // part of GET /settings).

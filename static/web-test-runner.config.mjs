@@ -75,12 +75,27 @@ const gentestAnswers = {
   'GET /generation-test/history': ['gentest-history-live-done.html', 200], // the part of the history ("?live=1"): the last result finished
 };
 
+// The answers of a tile that is opened in the modal (test: gentest/result-modal, #1004): the detail of any result (GET, into the body of the dialog), the
+// favorite button (POST: the button and the heart of the tile out of band) and a delete (DELETE: the tile goes out of band and the modal closes).
+const gentestResultAnswers = [
+  ['GET', /^\/generation-test\/results\/[^/]+$/, 'gentest-detail-modal.html', {}],
+  ['POST', /^\/generation-test\/results\/[^/]+\/favorite$/, 'gentest-favorite-reply.html', {}],
+  [
+    'DELETE',
+    /^\/generation-test\/results\/[^/]+$/,
+    'gentest-result-gone.html',
+    { 'HX-Trigger-After-Swap': 'modal-close' },
+  ],
+];
+
 async function gentestAnswerMiddleware(ctx, next) {
-  const answer = gentestAnswers[`${ctx.method} ${ctx.path}`];
+  const result = gentestResultAnswers.find(([method, path]) => ctx.method === method && path.test(ctx.path));
+  const answer = result ? [result[2], 200, result[3]] : gentestAnswers[`${ctx.method} ${ctx.path}`];
   if (!answer) return next();
-  const [file, status] = answer;
+  const [file, status, headers = {}] = answer;
   ctx.status = status;
   ctx.type = 'text/html';
+  for (const [name, value] of Object.entries(headers)) ctx.set(name, value);
   ctx.body = await readFile(new URL(`./src/components/testdata/${file}`, import.meta.url));
 }
 

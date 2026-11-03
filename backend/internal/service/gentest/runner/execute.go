@@ -38,9 +38,12 @@ func (br *batchRun) execute(ctx context.Context, r gentestrepo.Result) {
 		cost       *float64
 		err        error
 	)
-	if r.Media == gentestrepo.MediaVideo {
+	switch {
+	case r.Media == gentestrepo.MediaVideo:
 		file, mime, size, cost, err = br.video(ctx, r, p)
-	} else {
+	case p.FaceSwap != nil:
+		file, mime, size, err = br.faceSwap(ctx, r, p)
+	default:
 		file, mime, size, cost, err = br.image(ctx, r, p)
 	}
 	switch {
@@ -89,7 +92,7 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	if p.Sampling != nil {
 		req.Options.Sampling = *p.Sampling
 	}
-	req.Options.Exposed = p.Exposed
+	req.Options.Exposed, req.Options.SpeedMode = p.Exposed, p.SpeedMode
 	if p.Inpaint != nil {
 		if in, ok := br.inputs[p.Inpaint.MaskInput]; ok {
 			req.Inpaint = &modeladapter.Inpaint{Mask: in.in, Denoise: p.Inpaint.Denoise}
@@ -106,6 +109,7 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	if err := fsutil.WriteFileAtomic(filepath.Join(br.dir, file), out.Data, 0o600); err != nil {
 		return "", "", 0, nil, fmt.Errorf("store the image: %w", err)
 	}
+	br.scoreFace(ctx, r, out.Data)
 	return file, out.MimeType, int64(len(out.Data)), out.ActualCost, nil
 }
 

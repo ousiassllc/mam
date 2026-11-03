@@ -32,6 +32,8 @@ func (i *Installer) assemble(ctx context.Context, a catalog.RuntimeVariant, file
 		switch p.Kind {
 		case parts.KindZip:
 			err = extract.Zip(ctx, files[n].Path, filepath.Join(tmp, filepath.FromSlash(p.Dest)), p.Strip, p.ExtractedSize, report)
+		case parts.KindTarGz:
+			err = extract.TarGz(ctx, files[n].Path, filepath.Join(tmp, filepath.FromSlash(p.Dest)), p.Strip, p.ExtractedSize, report)
 		case parts.KindWheel:
 			err = extract.Wheel(ctx, files[n].Path, filepath.Join(tmp, filepath.FromSlash(b.SitePackages)), p.ExtractedSize, report)
 		default:

@@ -38,6 +38,9 @@ func TestARunningJobIsRecordedForTheGPUStatusAndRemovedAtTheEnd(t *testing.T) {
 	p, _ := live.Default.Lookup("box", promptID)
 	assert.Equal(t, "KSampler", p.Node)
 	assert.Equal(t, 5, p.Step, "another client's progress is not recorded")
+	assert.Positive(t, p.Elapsed, "the time since the call was queued runs while the job runs")
+	require.NotNil(t, p.View())
+	assert.GreaterOrEqual(t, p.View().ElapsedSeconds, 0)
 
 	close(f.Hold)
 	require.NoError(t, <-done)

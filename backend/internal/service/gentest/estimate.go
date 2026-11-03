@@ -11,6 +11,9 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/timing"
 
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 )
@@ -28,6 +31,8 @@ type ModelEstimate struct {
 	SubtotalUSD *float64 `json:"subtotal_usd,omitempty"`
 	Resolution  string   `json:"resolution,omitempty"`
 	Seconds     float64  `json:"seconds,omitempty"`
+	// Line is the time a result of a local model needs (Issue #1002); the fields are left out for a model that is not local.
+	timing.Line
 }
 
 // Estimate is what the confirmation shows: how many results the batch makes, what they are estimated to cost per model and in
@@ -45,6 +50,8 @@ type Estimate struct {
 	Warnings      []Warning       `json:"warnings"`
 	MaxItems      int             `json:"max_items"`
 	MaxCostUSD    float64         `json:"max_cost_usd" jsonschema:"1 回のバッチの見積り額の上限（0 は上限なし）"`
+	// Total is the time of the batch for the local models (Issue #1002). It comes from the history and is not part of the confirmation.
+	timing.Total
 	// OverLimit is why the batch cannot run ("" when it can): the estimate is over max_cost_usd.
 	OverLimit string `json:"over_limit,omitempty"`
 }
@@ -74,7 +81,7 @@ func (s *Service) Estimate(ctx context.Context, r Request) (Estimate, error) {
 	return est, nil
 }
 
-func (s *Service) estimate(_ context.Context, r Request) (Estimate, []modelPlan, error) {
+func (s *Service) estimate(ctx context.Context, r Request) (Estimate, []modelPlan, error) {
 	r, models, err := s.normalize(r)
 	if err != nil {
 		return Estimate{}, nil, err
@@ -113,7 +120,28 @@ func (s *Service) estimate(_ context.Context, r Request) (Estimate, []modelPlan,
 			usd(est.TotalUSD), usd(est.MaxCostUSD))
 	}
 	est.ID = estimateID(est)
+	if err := s.addTimes(ctx, &est, plans); err != nil { // after the ID: the times change with the history, the price that is confirmed does not
+		return Estimate{}, nil, err
+	}
 	return est, plans, nil
+}
+
+// addTimes gives each local model of the estimate its time (package timing). A model that is not local (a vendor's queue decides how long
+// it takes) gets none.
+func (s *Service) addTimes(ctx context.Context, est *Estimate, plans []modelPlan) error {
+	var local []timing.Plan
+	for i, p := range plans {
+		if p.basis == modelcatalog.BasisFree {
+			params := record.ResultParams{AspectRatio: est.Request.AspectRatio, Resolution: p.resolution, DurationSeconds: p.seconds, SpeedMode: p.speedMode}
+			local = append(local, timing.Plan{Index: i, Model: p.info.ID, Items: est.Breakdown[i].Items, Params: params})
+		}
+	}
+	lines, total, err := timing.Fill(ctx, s.Repo, est.Request.Media, local)
+	for i, l := range lines {
+		est.Breakdown[i].Line = l
+	}
+	est.Total = total
+	return err
 }
 
 func round4(v float64) float64 { return math.Round(v*1e4) / 1e4 }

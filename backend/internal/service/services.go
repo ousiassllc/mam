@@ -53,8 +53,7 @@ type Deps struct {
 	Judge judge.Config
 	// Jev is the TypeSafe Jev client of the Repair Agent's shadow run. Nil: no shadow run.
 	Jev repair.Shadow
-	// Audio are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects) and Sync Labs
-	// (Lip Sync). It needs Audio.Speech and Media; a missing Music / Sounds / LipSync leaves that layer out.
+	// Audio are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects) and Sync Labs (Lip Sync). It needs Audio.Speech and Media; a missing Music / Sounds / LipSync leaves that layer out.
 	Audio         audiodirector.Providers
 	AudioSettings *audiosettings.Service // the saved audio providers (the settings screen and MCP write them)
 }
@@ -92,6 +91,7 @@ type Services struct {
 	Gentest       *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
 	Workflows     *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
 	VoiceRef      *voicerefsvc.Service  // the reference voice of a Character (F-20, F-29) and the speaker -> voice lookup
+	LLMClient     *llm.Client           // the Reasoning LLM Adapter the Agents call; the app sets it (a saved LLM assignment is applied to it at once)
 }
 
 // Close stops the background workers and kills the running Take preview conversions. Call it on shutdown, after the job queue stopped.

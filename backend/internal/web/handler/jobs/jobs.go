@@ -70,7 +70,7 @@ func finished(s joblist.State) bool {
 }
 
 func row(e joblist.Entry) view.Row {
-	r := view.Row{ID: e.ID, Label: e.Label, Subject: e.Subject, StartedAt: e.StartedAt.Local().Format("2006-01-02 15:04"), Error: e.Error, Href: href(e.Dest)}
+	r := view.Row{ID: e.ID, Label: e.Label, Subject: e.Subject, StartedAt: e.StartedAt.Local().Format("2006-01-02 15:04"), Error: e.Error, NextSteps: e.NextSteps, Href: href(e.Dest)}
 	r.StateText, r.Tone = stateBadge(e.State)
 	if e.Progress != nil {
 		r.Progress = &view.Progress{Percent: e.Progress.Percent, Text: e.Progress.Text}

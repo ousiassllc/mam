@@ -149,6 +149,21 @@ func (r *WorldRepository) appendVersion(ctx context.Context, tx *sql.Tx, project
 	return id, next, nil
 }
 
+// EditWorld runs edit in a write transaction, then appends the World State it leaves as a new version of the trunk (or of the Branch).
+func (r *WorldRepository) EditWorld(ctx context.Context, projectID, branchID string, edit func(ctx context.Context, tx *sql.Tx) error) error {
+	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if err := edit(ctx, tx); err != nil {
+			return err
+		}
+		w, err := readWorld(ctx, tx, projectID, branchID)
+		if err != nil {
+			return err
+		}
+		_, _, err = r.appendVersion(ctx, tx, projectID, branchID, w)
+		return err
+	})
+}
+
 // UpdateEntity sets fields of a Character, Product or Location of the Project (F-09) and appends
 // the resulting World State as a new version of the trunk, or of the Branch when branchID is set.
 // fields maps an editable field name (domain.EditableFields) to its new text; all of them are
@@ -164,13 +179,8 @@ func (r *WorldRepository) UpdateEntity(ctx context.Context, projectID, branchID 
 			return fmt.Errorf("update %s: field %q is not editable", target, name)
 		}
 	}
-	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var one int
-		err := tx.QueryRowContext(ctx, `SELECT 1 FROM `+table+` WHERE id = ? AND project_id = ? AND branch_id IS ?`, id, projectID, nullIfEmpty(branchID)).Scan(&one) //nolint:gosec // table is from worldTables
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
-		if err != nil {
+	err := r.EditWorld(ctx, projectID, branchID, func(ctx context.Context, tx *sql.Tx) error {
+		if err := entityExists(ctx, tx, projectID, branchID, target, id); err != nil {
 			return err
 		}
 		locks, err := readLocks(ctx, tx, projectID)
@@ -187,13 +197,7 @@ func (r *WorldRepository) UpdateEntity(ctx context.Context, projectID, branchID 
 				return err
 			}
 		}
-		w, err := readWorld(ctx, tx, projectID, branchID)
-		if err != nil {
-			return err
-		}
-		// The Camera and Story carry over from the previous version.
-		_, _, err = r.appendVersion(ctx, tx, projectID, branchID, w)
-		return err
+		return nil
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLocked) {
 		return err

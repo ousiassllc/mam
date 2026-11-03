@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/audio"
 )
 
@@ -35,7 +36,7 @@ func SectionData(ctx context.Context, svc *audiosettings.Service) view.Data {
 func Data(v audiosettings.View) view.Data {
 	d := view.Data{Problem: v.Problem, Fallback: v.Settings.FallbackToCloud}
 	d.Voice = view.Provider{
-		ID: "audio-voice", Title: "声（セリフ・ナレーション）", Field: view.FieldVoice,
+		ID: "audio-voice", Title: "声（セリフ・ナレーション）", Field: view.FieldVoice, Slug: view.SlugVoice,
 		Description: "ドラマ・CM のセリフとナレーションを話す声です。",
 		Selected:    string(v.Settings.VoiceProvider),
 		CloudValue:  audiosettings.CloudVoice,
@@ -47,7 +48,7 @@ func Data(v audiosettings.View) view.Data {
 		Note:        "ローカルの声は、Character に設定した参照音声で話します。プロジェクトの「声のサンプルから ElevenLabs でクローン」は ElevenLabs の声で、ローカルの声には使われません。",
 	}
 	d.LipSync = view.Provider{
-		ID: "audio-lip-sync", Title: "口パク", Field: view.FieldLipSync,
+		ID: "audio-lip-sync", Title: "口パク", Field: view.FieldLipSync, Slug: view.SlugLipSync,
 		Description: "しゃべるクリップの口元を、音声に合わせて作り直します（MAX QUALITY のときだけ作られます）。",
 		Selected:    string(v.Settings.LipSyncProvider),
 		CloudValue:  audiosettings.CloudLipSync,
@@ -99,6 +100,27 @@ func stateText(s audiosettings.State) (string, atoms.BadgeTone) {
 		return "起動に失敗", atoms.BadgeError
 	}
 	return "導入済み", atoms.BadgeOK
+}
+
+// Detail answers the modal of the detail of a card (GET /settings/audio/:choice/:provider): what is too long for it. A request that
+// is not HTMX gets page; a card that is not there (an unknown choice or provider, a local one in an app without the local runtimes) gets
+// a 404 modal that says so.
+func Detail(svc *audiosettings.Service, page gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !settingshttp.IsHTMX(c) {
+			page(c)
+			return
+		}
+		c.Header("Cache-Control", "no-store")
+		d := SectionData(c.Request.Context(), svc)
+		p, ok := d.Choice(c.Param("choice"))
+		which := c.Param("provider")
+		if d.Problem != "" || !ok || (which != view.WhichCloud && (which != view.WhichLocal || p.Local == nil)) {
+			settingshttp.Render(c, http.StatusNotFound, modal.Notice("音声・口パク", "対象が見つかりません"))
+			return
+		}
+		settingshttp.Render(c, http.StatusOK, view.DetailModal(p, which))
+	}
 }
 
 // Save stores the choices of the form (PUT /settings/audio, fields voice_provider, lip_sync_provider and fallback_to_cloud) and answers

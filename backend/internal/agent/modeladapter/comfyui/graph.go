@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/stage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
+	"github.com/ousiassllc/mam/backend/internal/imgprep"
 )
 
 // defaultNegative is what an image workflow's negative prompt gets: an ImageRequest has none.
@@ -30,7 +31,7 @@ type values struct {
 	mask             *modeladapter.Input // inpaint mask (nil: none); redraw is its strength (nil: the graph's denoise)
 	redraw           *float64
 	denoiseFloor     float64                   // the workflow's ReferenceDenoiseMin
-	speedMode        string                    // the request's VideoRequest.SpeedMode ("": the workflow's first)
+	speedMode        string                    // the request's speed mode ("": the workflow's first)
 	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
 	upscaleRatio     float64                   // the workflow's Upscale.Ratio of the request's UpscaleScale (build sets it)
 	keepSlots        bool                      // no image is uploaded (GraphFor): the image nodes a workflow cannot run without keep the file the workflow holds
@@ -44,7 +45,7 @@ func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 	if req.NegativePrompt != "" {
 		negative = req.NegativePrompt
 	}
-	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options, sampling: req.Options.Sampling}
+	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options, sampling: req.Options.Sampling, speedMode: req.Options.SpeedMode}
 	if in := req.Inpaint; in != nil {
 		mask := in.Mask
 		v.mask, v.redraw = &mask, in.Denoise
@@ -205,6 +206,13 @@ func (b *Backend) upload(ctx context.Context, v values, promptID string) (map[in
 		in, isImage := v.input(a)
 		if !isImage || in == nil {
 			continue // not an image, or a slot the run has no image for (missing refused a required one)
+		}
+		if kind := b.Model.Workflow.ReferencePreprocess; kind != "" && a.Param == localcfg.ParamReferenceImage {
+			data, mime, err := imgprep.Apply(kind, in.Data, in.MimeType) // the control image is made here, not by a custom node (Issue #993)
+			if err != nil {
+				return nil, b.Client.Error(http.StatusUnprocessableEntity, "the reference image cannot be turned into the control image: "+err.Error(), nil)
+			}
+			in = &modeladapter.Input{Data: data, MimeType: mime}
 		}
 		name, err := b.uploadOne(ctx, in, fmt.Sprintf("mam-%s-%d", promptID[:8], i))
 		if err != nil {

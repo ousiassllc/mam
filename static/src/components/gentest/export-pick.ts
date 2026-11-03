@@ -19,7 +19,6 @@
  */
 
 const ROOT = '#gt-history';
-const INTERACTIVE = 'a, button, video, audio, input, select, textarea, summary, label';
 
 const choices = new WeakMap<Element, Set<string>>();
 
@@ -52,6 +51,9 @@ export function renderChoice(root: Element): void {
     if (input) input.checked = set.has(id);
   }
   for (const id of [...set]) if (!present.has(id)) set.delete(id);
+  for (const box of document.querySelectorAll<HTMLInputElement>('[data-gt-modal-pick]')) {
+    box.checked = set.has(box.dataset.gtModalPick ?? '');
+  }
 
   const ids = chosenShown(root);
   const form = root.querySelector<HTMLFormElement>('[data-gt-export-selected]');
@@ -89,7 +91,7 @@ function renderAll(): void {
 const installed = new WeakSet<Document>();
 
 /**
- * Installs the choice. Call it once (main.ts): the taps work for the history of any page and swap, and the choice is put on again after
+ * Installs the choice. Call it once (main.ts): the check boxes work for the history of any page and swap, and the choice is put on again after
  * every swap and after the commercial-use filter changed what is shown.
  */
 export function installExportPick(doc: Document = document): void {
@@ -98,20 +100,21 @@ export function installExportPick(doc: Document = document): void {
   doc.addEventListener('click', (event) => {
     const target = event.target as Element | null;
     const root = target?.closest(ROOT);
-    if (!root || !target) return;
-    if (target.closest('[data-gt-select-clear]')) {
-      choiceOf(root).clear();
-      renderChoice(root);
+    if (!root || !target?.closest('[data-gt-select-clear]')) return;
+    choiceOf(root).clear();
+    renderChoice(root);
+  });
+  // The checkbox is the source of the change: a tap on its mark, or Space on the focused checkbox (and the box of the modal, which is outside the history).
+  doc.addEventListener('change', (event) => {
+    const modalBox = (event.target as Element | null)?.closest<HTMLInputElement>('[data-gt-modal-pick]');
+    const history = document.querySelector(ROOT);
+    if (modalBox && history) {
+      const id = modalBox.dataset.gtModalPick ?? '';
+      if (modalBox.checked) choiceOf(history).add(id);
+      else choiceOf(history).delete(id);
+      renderChoice(history);
       return;
     }
-    const card = target.closest<HTMLElement>('[data-gt-pick]');
-    const input = card?.querySelector<HTMLInputElement>('[data-gt-pick-input]');
-    if (!card || !input || target.closest(INTERACTIVE)) return;
-    input.checked = !input.checked;
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-  // The checkbox is the source of the change: a tap above, or Space on the focused checkbox.
-  doc.addEventListener('change', (event) => {
     const input = (event.target as Element | null)?.closest<HTMLInputElement>('[data-gt-pick-input]');
     const root = input?.closest(ROOT);
     const id = input?.closest<HTMLElement>('[data-gt-pick]')?.dataset.gtPick;

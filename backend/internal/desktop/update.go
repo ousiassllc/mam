@@ -103,6 +103,14 @@ func (u *Updater) Install(installerPath string) {
 	go u.quit()
 }
 
+// Pending reports whether an update is waiting to be installed (Install was called): the installer then restarts the
+// application itself, so a restart that was asked for at the same time must not start a second copy.
+func (u *Updater) Pending() bool {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return u.pending != ""
+}
+
 // RunPending starts the installer Install remembered, detached from this process, and returns the
 // error of starting it. It does nothing (nil) when no update is pending. Call it after the server
 // stopped: the installer replaces the running application (the exe on Windows, the bundle on macOS), and waits

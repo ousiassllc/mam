@@ -27,6 +27,9 @@ const (
 	FromHistory = "history"
 	// FromPoseLibrary: a pose picture of the pose library (poses.Library; ID is the picture's ID, "std_P001_front"), no ProjectID.
 	FromPoseLibrary = "pose_library"
+	// FromBatchInput: the stored input image of an earlier batch (its input ID, the input_id of the detail of a result). It is how "この設定でもう一度" and
+	// the redo of a partial redraw put an uploaded image back: the file stays with the batch until the batch's last result is deleted.
+	FromBatchInput = "batch_input"
 )
 
 // PromptInput is a prompt with its optional negative prompt.
@@ -74,7 +77,7 @@ type Request struct {
 	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty"`
 	// LoRA is applied to every image model that can take one (modelcatalog.Info.SupportsLoRA), together with the references.
 	LoRA *LoRAInput `json:"lora,omitempty"`
-	// SpeedMode is how a video model samples (modelcatalog.VideoCaps.SpeedModes: "fast", "standard"); "" is each model's default.
+	// SpeedMode is how a model samples (modelcatalog.Info.SpeedModes: "fast", "standard", "lightning-4"); "" is each model's default.
 	SpeedMode string `json:"speed_mode,omitempty"`
 	// Seed fixes the seed (0..SeedMax): the n-th result of every model and prompt takes Seed+n-1, so that the results of the models can
 	// be compared and any one can be made again. Nil takes a new random seed for every result. A model without a seed ignores it.
@@ -147,7 +150,7 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 		}
 		r.LoRA = &LoRAInput{Name: l.Name, Strength: &l.Strength} // a copy: the caller's request stays as it was
 	}
-	if r.SpeedMode, err = refs.CheckSpeedMode(r.Media, r.SpeedMode); err != nil {
+	if r.SpeedMode, err = refs.CheckSpeedMode(r.SpeedMode); err != nil {
 		return r, nil, err
 	}
 	if err := refs.CheckAvoidPose(r.Media, r.AvoidReferencePose); err != nil {
@@ -261,13 +264,13 @@ func checkSource(ref RefInput) error {
 		return gterr.Invalid("入力画像の ID がありません")
 	}
 	switch ref.Source {
-	case FromStaged, FromHistory, FromPoseLibrary:
+	case FromStaged, FromHistory, FromPoseLibrary, FromBatchInput:
 	case FromProjectAsset, FromReferenceItem:
 		if ref.ProjectID == "" {
 			return gterr.Invalid("プロジェクトの画像には project_id が要ります")
 		}
 	default:
-		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library）", ref.Source)
+		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library / batch_input）", ref.Source)
 	}
 	return nil
 }
