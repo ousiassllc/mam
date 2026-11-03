@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
  "description": "深度マップ（手前が白・奥が黒の灰色画像）の奥行きの形に沿って SDXL で描く ControlNet（xinsir 版、約 2.5 GB）。ComfyUI 標準のノードだけで動き、追加ノードは要らない。参照画像は深度マップそのものを渡す（mam は深度を推定しない）。生成テストの「ポーズを選ぶ」で「深度」を選ぶと、ポーズ集（Shisei）の深度マップを参照画像に入れられる。SDXL base 1.0 は導入済みの「Stable Diffusion XL base 1.0」と共有する。",
  "files": [
   {
