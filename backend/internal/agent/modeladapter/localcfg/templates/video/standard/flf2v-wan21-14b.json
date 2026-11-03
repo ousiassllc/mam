@@ -1,0 +1,50 @@
+{
+ "id": "flf2v-wan21-14b",
+ "label": "Wan 2.1 FLF2V 14B: 最初と最後のフレームから動画",
+ "media": "video",
+ "description": "Wan 2.1 FLF2V 14B 720P（fp8 の wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、CLIP Vision の clip_vision_h.safetensors、VAE wan_2.1_vae.safetensors）で、先頭フレームと最後のフレームの 2 枚から、その間の動きを作る（FLF2V）標準ノードだけのワークフロー。ComfyUI の公式テンプレート（wan2.1_flf2v_720_f16）に従う: 2 枚の画像をそれぞれ CLIPVisionEncode（crop は none）に通し、WanFirstLastFrameToVideo に渡す。20 ステップ・uni_pc/simple・cfg 3 の 1 つの KSampler、ModelSamplingSD3 の shift は 8。公式は fp16（32.8 GB）だが、mam は Comfy-Org の fp8（16.4 GB）を使う。16fps、フレーム数は 4n+1。公式の例は 720p（720×1280・33 フレーム）で、Wan 公式は 720P 専用のモデルと書くので、解像度は 720p のみ。2 枚の画像は同じ縦横比にする。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [2, 3, 4, 5], "resolutions": ["720p"]},
+  "workflow": {
+   "prompt_weight": "weak",
+   "graph": {
+    "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors", "weight_dtype": "default"}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+    "49": {"class_type": "CLIPVisionLoader", "inputs": {"clip_name": "clip_vision_h.safetensors"}},
+    "79": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["37", 0]}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "52": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "72": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "51": {"class_type": "CLIPVisionEncode", "inputs": {"crop": "none", "clip_vision": ["49", 0], "image": ["52", 0]}},
+    "87": {"class_type": "CLIPVisionEncode", "inputs": {"crop": "none", "clip_vision": ["49", 0], "image": ["72", 0]}},
+    "83": {"class_type": "WanFirstLastFrameToVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["39", 0], "clip_vision_start_image": ["51", 0], "clip_vision_end_image": ["87", 0], "start_image": ["52", 0], "end_image": ["72", 0]}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 3, "sampler_name": "uni_pc", "scheduler": "simple", "denoise": 1, "model": ["79", 0], "positive": ["83", 0], "negative": ["83", 1], "latent_image": ["83", 2]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["39", 0]}},
+    "91": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+    "92": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["91", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "83", "input": "width"},
+    {"param": "height", "node": "83", "input": "height"},
+    {"param": "frames", "node": "83", "input": "length"},
+    {"param": "fps", "node": "91", "input": "fps"},
+    {"param": "first_frame", "node": "52", "input": "image"},
+    {"param": "last_frame", "node": "72", "input": "image"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "92",
+   "fps": 16,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}

@@ -1,0 +1,74 @@
+{
+ "id": "wan21-flf2v-14b-720p",
+ "name": "Wan 2.1 FLF2V 14B 720P (fp8)",
+ "kind": "video",
+ "tier": "standard",
+ "content_rating": "general",
+ "traits": {
+  "params_b": 14,
+  "params_label": "14B",
+  "uncensored": false,
+  "speed": "slow",
+  "quality": "high"
+ },
+ "description": "【中ティア・非検閲ではない標準モデル】先頭フレームと最後のフレームの 2 枚から、その間の動きを作る Wan 2.1 の FLF2V（First-Last-Frame to Video。14B・720P 専用）。ストーリーボードの 2 枚をつなぐ橋渡し向き。拡散モデル（fp8、約 16.4 GB）・テキストエンコーダー（他の Wan と共有）・CLIP Vision（約 1.3 GB）・VAE（共有）の合計約 24.7 GB。16fps・音声なし。得意: 2 枚の絵の間を滑らかにつなぐ。注意: 公式は 720P 専用で、プロンプトは中国語の方が良いと書く。2 枚の画像は同じ縦横比にする。テキストだけから作る・先頭 1 枚だけから作るモデルではない（それは wan22-t2v-14b・wan22-i2v-14b）。14B で 720p なので重く、VRAM 16 GB は fp8 と ComfyUI の自動の offload が前提でぎりぎり。公式は fp16（約 32.8 GB）だが、mam は Comfy-Org の fp8 を使う（品質は fp16 より少し落ちる）。macOS（Apple Silicon）は fp8 が動かないため非対応。ライセンス: Apache-2.0 で商用を含めて自由に使える。",
+ "files": [
+  {
+   "name": "wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/diffusion_models/wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors",
+   "sha256": "d68ca694a695274e48e00974128337e06e497d95a1dc09e86fd2a01a405f455f",
+   "size": 16397952536
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "clip_vision_h.safetensors",
+   "folder": "clip_vision",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/clip_vision/clip_vision_h.safetensors",
+   "sha256": "64a7ef761bfccbadbaa3da77366aac4185a6c58fa5de5f589b42a65bcc21f161",
+   "size": 1264219396
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "Wan 14B の fp8（16.4 GB）を 720p で 1 つ使う。公式（fp16・720P）はこれより大きく、ComfyUI の自動の offload が前提。ComfyUI の公式テンプレートは 720×1280・33 フレームの例。Wan 14B fp8 は 16〜24 GB 以上の目安。mam の実機では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://www.apache.org/licenses/LICENSE-2.0",
+  "summary": "Wan-AI/Wan2.1-FLF2V-14B-720P のモデルカードは license: apache-2.0（Comfy-Org/Wan-2.1 も apache-2.0）。公式の GitHub リポジトリ Wan-Video/Wan2.1 の LICENSE.txt は Apache License 2.0 の本文（2026-11-03 に本文を確認。HF のリポジトリに LICENSE のファイルは無く、カードの宣言に従う）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03"
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan21-flf2v-14b-720p",
+   "template": "flf2v-wan21-14b"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つファイルを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-03 に確認。このモデルのファイルに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（2026-11-03。拡散モデルとテキストエンコーダー）。Mac の実機では未確認"
+ }
+}
