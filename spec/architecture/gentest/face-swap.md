@@ -23,7 +23,7 @@
 |---|---|
 | `python` | FaceFusion の環境の Python の実行ファイルの絶対パス。空なら、conda の環境 `facefusion` の `python`（`~/miniconda3`・`~/anaconda3`・`~/miniforge3` の `envs/facefusion`。FaceFusion の公式手順がこの名前を使う）、なければ PATH の `python3`・`python` |
 | `path` | FaceFusion のフォルダ（`facefusion.py` と `facefusion/metadata.py` があるところ。`facefusion.py` のパスを書いても、その親として扱う）の絶対パス。空なら `~/facefusion`・`~/Documents/facefusion`・`~/Desktop/facefusion` を順に |
-| 使えないパス | 絶対パスでない・実行ファイルでない・`facefusion.py` が無い・FaceFusion のフォルダでない（`facefusion/metadata.py` が無い）は `*facefusion.ConfigError`（保存せず、画面は 422、MCP は `validation`）。**保存済みのパスが後で使えなくなっても、探索には切り替えない**（別のものを起動しないため。ffmpeg と同じ） |
+| 使えないパス | 絶対パスでない・実行ファイルでない・`facefusion.py` が無い・FaceFusion のフォルダでない（`facefusion/metadata.py` が無い）は `*facefusion.ConfigError`（保存せず、画面は 422）。**保存済みのパスが後で使えなくなっても、探索には切り替えない**（別のものを起動しないため。ffmpeg と同じ） |
 | 状態の表示 | Python とフォルダのそれぞれの「見つかりました（パス）／見つかりません（理由）」、見つかった FaceFusion の版とライセンス（`facefusion/metadata.py` の `version`・`license` の自己申告）、フォルダを探す場所 |
 | 反映 | **保存するとすぐ**使われる（ffmpeg は次の起動から。ffmpeg は起動時にツールを組み立てるが、FaceFusion は入れ替えのたびに探すため） |
 | FaceFusion を実行して確かめない | 状態の表示は、ファイルの有無と `metadata.py` の読み取りだけ（`facefusion.py --version` も走らせない。モデルのランタイムを読み込むので数秒かかる） |
@@ -65,12 +65,11 @@
 
 ## 5. MCP
 
-画面と同じ操作を `mcp/tools/gentestface/face.go` の 3 ツールで行う（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)）。
+画面と同じ操作を `mcp/tools/gentestface/face.go` の 2 ツールで行う（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)）。
 
 | ツール | 内容 |
 |---|---|
 | `get_facefusion_status` | 見つかったか・保存したパス・版とライセンスの自己申告・探した場所・選べるモデルと級・既定・標準の注意（`notes`）・出典の URL |
-| `set_facefusion_paths` | `python`・`path` を保存（空で解除。使えないパスは `validation` で何も書かない）。保存後の状態を返す |
 | `swap_generation_face` | `target`・`face`（どちらも `{source, id}`）と任意の `swapper`・`detector`・`enhancer`。`job_id`・`batch_id`・`result_id`・`warnings` を返す。FaceFusion が見つからない・未知のモデルは `validation` |
 
 ## 6. モデルのライセンス表（一次情報）
@@ -112,3 +111,4 @@
 | 版 | 日付 | 変更内容 | 理由 |
 |---|---|---|---|
 | 1.0 | 2026-11-03 | 新規。FaceFusion を同梱しない外部ツールとして扱う方針、検出と設定（`facefusion.json`）、`headless-run` での入れ替え（既定 ghost＋yunet＋gfpgan）、画面・MCP、モデルのライセンス表（FaceFusion の公式一覧が一次情報）、ArcFace の注意、実機が要る項目 | Issue #995 |
+| 1.1 | 2026-11-03 | §2・§5: MCP の `set_facefusion_paths` を外した。パスの設定は設定画面だけ（パスは後で起動される実行ファイルを決めるので、MCP のクライアントに決めさせない。ffmpeg のパスに MCP ツールが無いのと同じ）。MCP は `get_facefusion_status`（読み取り）と `swap_generation_face` の 2 つ | 統合後レビューの指摘 |

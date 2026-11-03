@@ -284,6 +284,10 @@ func (s *Service) waitForIdle(waitFor time.Duration) {
 			return
 		}
 		s.mu.Lock()
+		if s.restarting { // another request began the restart while this one waited
+			s.mu.Unlock()
+			return
+		}
 		if len(s.d.Busy(ctx)) == 0 {
 			s.trigger(Result{})
 			s.mu.Unlock()

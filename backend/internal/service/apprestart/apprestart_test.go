@@ -149,6 +149,23 @@ func TestRequest_WaitRestartsWhenTheWorkEnds(t *testing.T) {
 	assert.True(t, r.svc.Status().Restarting)
 }
 
+func TestRequest_WaitDoesNotRestartAgainWhenAnotherRequestRestartedFirst(t *testing.T) {
+	r := newRig(t, true)
+	r.setBusy(jobs)
+	_, err := r.svc.Request(t.Context(), apprestart.Options{WhenBusy: apprestart.WhenBusyWait})
+	require.NoError(t, err)
+	<-r.asleep
+
+	r.setBusy()
+	res, err := r.svc.Request(t.Context(), apprestart.Options{WhenBusy: apprestart.WhenBusyRefuse})
+	require.NoError(t, err)
+	assert.Equal(t, apprestart.StateRestarting, res.State)
+	r.tick <- struct{}{} // the waiting request looks: the restart is already on
+	r.svc.Close()        // waits for the waiting request to end
+
+	assert.EqualValues(t, 1, r.restarts.Load(), "the waiting request does not ask the front a second time")
+}
+
 func TestRequest_WaitGivesUpWithoutRestartingWhenClosed(t *testing.T) {
 	r := newRig(t, true)
 	r.setBusy(jobs)

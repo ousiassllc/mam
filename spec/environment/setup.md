@@ -170,11 +170,11 @@ ComfyUI・OpenAI 互換の接続先とそのモデル（`spec/architecture/local
 
 ## モデルマネージャーの設定（ComfyUI エンジンの取得と検出）
 
-設計は `spec/architecture/model-manager/model-manager.md`。専用の設定ファイルや環境変数は無く、導入状態（自動起動の有無・導入したエンジンとモデル・ライセンスの同意）は exe と同じ場所の `comfyui\state.json` に、画面（別 Issue）から保存する。置き場所は `<mam.exe のディレクトリ>\comfyui`（インストール版は `%LOCALAPPDATA%\Programs\MAM\comfyui`）で、`--data-dir` では変えられない。
+設計は `spec/architecture/model-manager/model-manager.md`。専用の設定ファイルや環境変数は無く、導入状態（自動起動の有無・導入したエンジンとモデル・ライセンスの同意）は exe と同じ場所の `comfyui\state.json` に、画面（別 Issue）から保存する。置き場所は、Windows では `<mam.exe のディレクトリ>\comfyui`（インストール版は `%LOCALAPPDATA%\Programs\MAM\comfyui`）で、`--data-dir` では変えられない。macOS（Apple Silicon・macOS 14 以降）では、データディレクトリの `comfyui`（`~/Library/Application Support/mam/comfyui`。`--data-dir` に従う。`MAM.app` の中は自動更新で入れ替わるため使わない）。
 
 コマンドラインの追加オプション（`--help` に出る。ウィンドウ・データディレクトリ・単一起動の確認より前に処理し、JSON を出して終了する。インストーラーと利用者が使う）:
 
-- `--detect-gpu`: GPU（アダプター名・ベンダー・専用 VRAM）と、推奨する ComfyUI のビルド（`nvidia`・`nvidia_cu126`・`amd`・`intel`、または対応なし）の JSON。Windows 以外は空。
+- `--detect-gpu`: GPU（アダプター名・ベンダー・専用 VRAM）と、推奨する ComfyUI のビルド（`nvidia`・`nvidia_cu126`・`amd`・`intel`、または対応なし）の JSON。macOS（Apple Silicon）は Apple のビルド（GPU は SoC のチップ名と、統合メモリを VRAM として出す）、それ以外の OS は空。
 - `--detect-comfyui`: `127.0.0.1:8188`・`:8000` で動いている ComfyUI（版つき）と、ComfyUI Desktop の設定（`%APPDATA%\ComfyUI\config.json`）の JSON。
 - 両方を付けると `{"gpu": ..., "comfyui": ...}`。`--detect-output FILE` で標準出力ではなくファイルへ書く（`-H windowsgui` の exe はコンソールに書けないことがあるため、インストーラーはこちらを使うと確実）。
 
@@ -266,3 +266,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.50 | 2026-11-01 | タスク表に `scripts/fetch-onnxruntime.sh` を足し、CI の節に `windows` ジョブ（`windows-latest` で ONNX Runtime の DLL とモデルを取得し facesim のテストを動かす。このリポジトリのブランチだけ）を足した。`make test-scripts` に `scripts/fetch-onnxruntime_test.sh` を足し、`scripts/third-party-notices.sh` が ONNX Runtime のライセンスを載せるようにしたことを記した。顔同一性の実モデルのテストの記述に、Windows の CI で写真の要らないものを動かすことを足した | Issue #910。Linux からのクロスビルドでは Windows の DLL を読み込めるか確かめられない |
 | 1.51 | 2026-11-02 | タスク表に `make check-notices`・`scripts/check-third-party-notices.sh`（とそのテスト）を足し、`scripts/third-party-notices.sh` の行の「CI でも実行しない」を、生成物の最新さを CI の `ci` ジョブが確かめる、に改めた。`THIRD_PARTY_NOTICES.md` はバイナリに埋め込まれて設定画面「第三者のライセンス」に出る | Issue #910。[settings-screen-licenses.md](../components/settings-screen-licenses.md) |
 | 1.52 | 2026-11-02 | `ci.yml` の `windows` ジョブに、実物の DLL・モデルを使う顔同一性のテストが `PASS` になったことを確かめる手順を足した（`scripts/require-tests-passed.sh`。`make test-scripts` にそのテスト `scripts/require-tests-passed_test.sh` を入れた）。`windows` ジョブは必須チェックに入れないまま | Issue #950。`go test` は Skip を成功として終わるため、環境変数が渡らず実モデルのテストが全部 Skip されても、`windows` ジョブが緑になっていた |
+| 1.53 | 2026-11-03 | 「モデルマネージャーの設定」に macOS のエンジンの置き場所（データディレクトリの `comfyui`）を足し、「`--data-dir` では変えられない」を Windows 限定にした。`--detect-gpu` は macOS（Apple Silicon）では Apple のビルドを出すと直した | 統合後レビューの指摘（macOS 版の同梱エンジン #854） |

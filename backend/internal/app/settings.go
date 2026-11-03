@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/app/restartwork"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
@@ -29,7 +30,11 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
 	settings.LocalModels = services.LocalModels
 	var pending *restartpending.Registry
-	settings.Restart, pending = restartwork.New(restart, services, jobs, ffmpegDL, logger)
+	var codexSvc *codex.Service
+	if gpt != nil {
+		codexSvc = gpt.Codex()
+	}
+	settings.Restart, pending = restartwork.New(restart, services, jobs, ffmpegDL, codexSvc, logger)
 	if services.LLMClient != nil { // a saved LLM assignment applies at once (restartwork.LLMApplier)
 		settings.LLM.SetApplier(restartwork.LLMApplier(services.LLMClient, pending))
 	}

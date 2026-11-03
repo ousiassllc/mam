@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
@@ -20,9 +21,10 @@ import (
 )
 
 // Busy lists what is running that a restart would interrupt: the jobs of the queue (running or queued; an install is a
-// download), the editing stages and the AUTO chain, the ffmpeg processes, the runs of a saved workflow and the download of
-// ffmpeg. A lookup that fails is a "check_failed" entry: nothing is assumed to be idle.
-func Busy(services *service.Services, jobs *repository.JobRepository, ffmpegDL *ffmpegdl.Service) func(context.Context) []apprestart.Busy {
+// download), the editing stages and the AUTO chain, the ffmpeg processes, the runs of a saved workflow and the downloads of
+// ffmpeg, of the pose library and of the Codex engine (codexSvc is nil when the app has none). A lookup that fails is a
+// "check_failed" entry: nothing is assumed to be idle.
+func Busy(services *service.Services, jobs *repository.JobRepository, ffmpegDL *ffmpegdl.Service, codexSvc *codex.Service) func(context.Context) []apprestart.Busy {
 	return func(ctx context.Context) []apprestart.Busy {
 		var busy []apprestart.Busy
 		running, installs := map[domain.JobStatus]int{}, 0
@@ -47,6 +49,12 @@ func Busy(services *service.Services, jobs *repository.JobRepository, ffmpegDL *
 		}
 		if ffmpegDL.Status().Install.State == ffmpegdl.InstallRunning {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "ffmpeg のダウンロード"})
+		}
+		if services.Gentest != nil && services.Gentest.Poses != nil && services.Gentest.Poses.Progress().Running {
+			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "ポーズ集の導入"})
+		}
+		if codexSvc != nil && codexSvc.InstallStatus().State == codex.InstallRunning {
+			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "Codex エンジンの導入"})
 		}
 		if services.Editor.Busy() {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindEditing, Message: "編集の工程（Rough Cut・判定・音声・Final QC・書き出し）または AUTO の連鎖"})
@@ -92,10 +100,10 @@ func FFmpegPaths(pending *restartpending.Registry) func() {
 // New is the restart service of the app (spec/architecture/restart.md) with the registry of the settings that wait for a restart:
 // restart asks the front to quit and start the app again (app.Options.Restart; nil in the browser build, which cannot), and what a
 // restart would break is read by Busy.
-func New(restart func(), services *service.Services, jobs *repository.JobRepository, ffmpegDL *ffmpegdl.Service, logger *slog.Logger) (*apprestart.Service, *restartpending.Registry) {
+func New(restart func(), services *service.Services, jobs *repository.JobRepository, ffmpegDL *ffmpegdl.Service, codexSvc *codex.Service, logger *slog.Logger) (*apprestart.Service, *restartpending.Registry) {
 	pending := restartpending.New()
 	return apprestart.New(apprestart.Deps{
-		Restart: restart, Busy: Busy(services, jobs, ffmpegDL), Pending: pending, Logger: logger,
+		Restart: restart, Busy: Busy(services, jobs, ffmpegDL, codexSvc), Pending: pending, Logger: logger,
 		BootID: domain.NewID(), StartedAt: time.Now().UTC(),
 	}), pending
 }

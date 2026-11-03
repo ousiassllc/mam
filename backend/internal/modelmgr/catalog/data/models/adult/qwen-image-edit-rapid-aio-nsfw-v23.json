@@ -27,8 +27,8 @@
   "version": "2.0",
   "name": "Apache License 2.0（Hugging Face のモデルカードの license。作者 Phr00t のリポジトリ）",
   "url": "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/blob/691024f438640508f8aa86414863fc15edfb8a84/README.md",
-  "summary": "作者のカードのメタデータは license: apache-2.0（base_model は Qwen/Qwen-Image-Edit-2511。ゲートなし）。ベースの Qwen-Image-Edit-2511 も Apache 2.0 で、商用を含めて使える（著作権表示とライセンス文を保つ）。ただし、このモデルは加速 LoRA・NSFW の LoRA・肌の質感の LoRA など、ほかの人の LoRA を多数混ぜたマージで、作者のカードは混ぜた LoRA の名前を一部書くだけで、それぞれのライセンスは書いていない。混ぜた LoRA の条件までは確かめられないので、商用に使うときは作者の宣言（Apache 2.0）を前提にしていることに注意する。",
-  "commercial": "yes",
+  "summary": "作者のカードのメタデータは license: apache-2.0（base_model は Qwen/Qwen-Image-Edit-2511。ゲートなし）。ベースの Qwen-Image-Edit-2511 も Apache 2.0 で、商用を含めて使える（著作権表示とライセンス文を保つ）。ただし、このモデルは加速 LoRA・NSFW の LoRA・肌の質感の LoRA など、ほかの人の LoRA を多数混ぜたマージで、作者のカードは混ぜた LoRA の名前を一部書くだけで、それぞれのライセンスは書いていない。混ぜた LoRA の条件が確かめられないため、商用の可否は不明（作者の宣言は Apache 2.0 だが、混ぜた LoRA の条件までは保証されない）。",
+  "commercial": "unknown",
   "checked_at": "2026-11-03",
   "components": [
    {
@@ -41,7 +41,7 @@
     "part": "Qwen-Image-Edit-Rapid-AIO NSFW v23（Phr00t のマージ。混ぜた LoRA のライセンスは作者のカードに無い）",
     "name": "Apache License 2.0（Hugging Face のモデルカードの license。作者 Phr00t のリポジトリ）",
     "url": "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/blob/691024f438640508f8aa86414863fc15edfb8a84/README.md",
-    "commercial": "yes"
+    "commercial": "unknown"
    }
   ],
   "notice": "成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。混ぜ込まれた LoRA のライセンスは作者のカードに書かれていません。"

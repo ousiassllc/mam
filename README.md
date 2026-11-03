@@ -82,9 +82,10 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 
 自動更新は Windows 版と同じです（起動時と 6 時間ごとに確認し、SHA-256 と ed25519 署名を検証し、作業中でないときにアプリを終了して `MAM.app` を入れ替え、新しい版で起動し直します）。`/Applications` など自分が書き込めるフォルダにある `MAM.app` だけが更新されます。
 
+同梱の ComfyUI エンジンは、Apple Silicon の Mac（macOS 14 以降）で導入・起動できます（MPS での生成は実機で確かめていません）。Intel の Mac や macOS 13 以前では、別に動かしている ComfyUI の URL を設定すれば使えます。
+
 macOS 版でまだ使えないもの:
 
-- 同梱の ComfyUI エンジンの導入（別に動かしている ComfyUI の URL を設定すれば使えます）。
 - **ローカルの声（GPT-SoVITS）とローカルの口パク（MuseTalk 1.5）**。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。macOS では、声は公式が macOS の MPS / CPU での推論に対応しているものの mam は自動導入せず、口パクは公式の PyTorch 版が macOS（Apple Silicon）の GPU に対応していません（第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4` は mam の対象外です）。設定の「音声・口パク」では、macOS だとローカルを選べず、その理由が出ます。**クラウドの ElevenLabs（声）と Sync Labs（口パク）は macOS でもそのまま使えます**（設定の「API キーとログイン」で `elevenlabs`・`synclabs` のキーを登録します。何も選ばないときの既定はクラウドです）。
 
 ffmpeg は同梱していません（次の節）。
