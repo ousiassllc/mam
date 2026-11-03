@@ -55,6 +55,10 @@ func TestThePoseLibraryIsInstalledWithTheAgreementSearchedAndRemoved(t *testing.
 	}
 	assert.Equal(t, []string{"P001", "P002", "U001"}, ids, "no suggestive pose, no pose without a picture")
 	assert.Equal(t, "std_P001_front", lib.Poses[0].Images["front"])
+	// The depth and normal maps of the angles that have one, as references to a ControlNet.
+	assert.Equal(t, map[string]string{"front": "std_P001_front.depth"}, lib.Poses[0].DepthImages)
+	assert.Equal(t, map[string]string{"front": "std_P001_front.normal", "diag": "std_P001_diag.normal"}, lib.Poses[0].NormalImages)
+	assert.Empty(t, lib.Poses[2].DepthImages, "a pose with no map lists none")
 
 	var found gentestposes.Library
 	r.CallOK("get_pose_library", map[string]any{"query": "sitting"}, &found)

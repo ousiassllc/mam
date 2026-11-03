@@ -83,7 +83,8 @@ type Info struct {
 	// DownloadBytes is the size of everything the install downloads; NeedBytes what is still to download (a partial download counts).
 	DownloadBytes int64
 	NeedBytes     int64
-	// Poses and Images are how many poses and pictures the install puts in place (the pose catalog's own list is only known once installed).
+	// Poses and Images are how many poses and pictures (line art, depth maps and normal maps together) the install puts in place (the pose
+	// catalog's own list is only known once installed).
 	Poses  int
 	Images int
 	// Source is the repository the files are from.
@@ -109,7 +110,7 @@ func (l *Library) Status() Status {
 	for _, a := range l.set.Assets {
 		for _, m := range a.Members {
 			if id, ok := strings.CutSuffix(path.Base(m.Dest), imageExt); ok && imageID.MatchString(id) {
-				images++
+				images++                                      // a pose's depth map has the file name of its line picture, in another directory
 				poses[id[:strings.LastIndex(id, "_")]] = true // <series>_<pose id>
 			}
 		}
@@ -202,33 +203,36 @@ func (l *Library) Pose(id string) (Pose, bool) {
 	return Pose{}, false
 }
 
-// ImageOwner is the pose a picture belongs to (false for an ID that is not a picture of an installed pose).
-func (l *Library) ImageOwner(id string) (Pose, Angle, bool) {
+// ImageOwner is the pose a picture belongs to, with its angle and kind (false for an ID that is not a picture of an installed pose).
+func (l *Library) ImageOwner(id string) (Pose, Angle, Kind, bool) {
 	all, err := l.Poses()
 	if err != nil {
-		return Pose{}, "", false
+		return Pose{}, "", "", false
 	}
 	for _, p := range all {
-		for a, img := range p.Views {
-			if img == id {
-				return p, a, true
+		for _, c := range Kinds {
+			for a, img := range p.views(c.Kind) {
+				if img == id {
+					return p, a, c.Kind, true
+				}
 			}
 		}
 	}
-	return Pose{}, "", false
+	return Pose{}, "", "", false
 }
 
-// File is the path of the picture with the ID (<series>_<pose id>_<angle>): only a picture of an installed pose, never a path the caller
-// made up.
+// File is the path of the picture with the ID (<series>_<pose id>_<angle>, and ".depth" or ".normal" after it for the maps): only a picture of
+// an installed pose, never a path the caller made up.
 func (l *Library) File(id string) (string, error) {
 	if !imageID.MatchString(id) {
 		return "", gterr.Invalid("ポーズ画像の ID が正しくありません: %q", id)
 	}
-	if _, _, ok := l.ImageOwner(id); !ok {
+	if _, _, _, ok := l.ImageOwner(id); !ok {
 		if len(l.install.NotReady()) > 0 {
 			return "", ErrNotInstalled
 		}
 		return "", gterr.Invalid("ポーズ画像 %q はポーズ集にありません", id)
 	}
-	return filepath.Join(l.dir(), picturesDir, id+imageExt), nil
+	name, kind := splitID(id)
+	return filepath.Join(l.dir(), kind.dir(), name+imageExt), nil
 }

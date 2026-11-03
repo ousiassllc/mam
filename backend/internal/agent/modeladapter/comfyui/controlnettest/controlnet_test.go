@@ -194,3 +194,23 @@ func TestIPAdapterWorkflowUploadsThePictureAsItIs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, [][]byte{photo(t)}, f.UploadBodies())
 }
+
+// A depth or normal workflow (Issue #1020) is given a depth or a normal map (here the photograph stands for it) and uploads it as it is: it
+// is the control image already, and mam draws no edges from it. The normal one reads the ControlNet whose type was set to normal.
+func TestDepthAndNormalControlNetWorkflowsUploadTheMapAsItIs(t *testing.T) {
+	for template, control := range map[string]string{"txt2img-sdxl-controlnet-depth": `"12"/0`, "txt2img-sdxl-controlnet-normal": `"14"/0`} {
+		f := comfyuitest.New(t)
+		b := backend(t, f, template)
+		req := refs(t, "a cat", 0.6)
+		req.Options.Refs[0].Role = localcfg.RolePose // the pose library's map is given as the pose
+		_, err := b.GenerateImage(ctx(t), "", req)
+		require.NoError(t, err, template)
+
+		assert.Equal(t, [][]byte{photo(t)}, f.UploadBodies(), template+": the map itself is the control image")
+		g := f.Graph()
+		assert.InDelta(t, 0.6, num(g["13"].Inputs["strength"]), 1e-9, template)
+		assert.Equal(t, `"10"/0`, linkTo(g["13"].Inputs["image"]), template)
+		assert.Equal(t, control, linkTo(g["13"].Inputs["control_net"]), template)
+		assert.Equal(t, `"13"/0`, linkTo(g["3"].Inputs["positive"]), template)
+	}
+}
