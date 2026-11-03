@@ -3,6 +3,7 @@ package localruntime
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
@@ -29,7 +30,8 @@ type Tool struct {
 // BeginTool reserves the runtime id for a script of mam's own: the refusals are those of CheckStart (a machine that cannot run it, not
 // installed, an install running, weights not there) and, for the weights that only the job needs (assets, by their names in the catalog), a
 // *WeightsError; a runtime that a job holds already is ErrTraining. The server of the runtime is stopped (a fine-tuning uses the GPU and the
-// two never run at the same moment). The caller ends the reservation with Tool.End.
+// two never run at the same moment). What an earlier job left in Tool.Dir (a mam that ended under it) is removed once this job holds the
+// runtime: no other job runs then. The caller ends the reservation with Tool.End.
 func (s *Service) BeginTool(ctx context.Context, id string, assets ...string) (*Tool, error) {
 	if err := s.CheckStart(ctx, id); err != nil {
 		return nil, err
@@ -46,8 +48,30 @@ func (s *Service) BeginTool(ctx context.Context, id string, assets ...string) (*
 		return nil, fmt.Errorf("stop %s before the job: %w", inst.rt.Name, err)
 	}
 	t := &Tool{s: s, inst: inst, Dir: filepath.Join(inst.layout.Root, "train")}
+	cleanToolDir(t.Dir)
 	t.GPUName, t.VRAMGB = bestGPU(s.report(ctx, true))
 	return t, nil
+}
+
+// cleanToolDir removes what is directly in dir (the working directories that a job that did not end by itself left). It never follows a link: a
+// symbolic link in dir, or dir itself, is removed as the link, and what it points at is left alone. A failure is not one of the job (it works in
+// a directory of its own id), so it is not reported.
+func cleanToolDir(dir string) {
+	fi, err := os.Lstat(dir)
+	if err != nil {
+		return
+	}
+	if !fi.IsDir() {
+		_ = os.Remove(dir)
+		return
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		_ = os.RemoveAll(filepath.Join(dir, e.Name())) // RemoveAll does not follow a link that is the last element
+	}
 }
 
 // Spec is the launch of the tool script with args and env added (rtm.Installer.Tool); the caller sets the LogPath it wants.
