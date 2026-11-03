@@ -35,7 +35,7 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 			Providers: []string{"anthropic", "openai"},
 			Rows: []llm.Row{
 				{Agent: "producer", Label: "Producer", Purpose: "企画の取りまとめ", Primary: target, Fallback: target, DefaultPrimary: target, DefaultFallback: target},
-				{Agent: "director", Label: "Director", Purpose: "カットの演出", Primary: target, Fallback: llm.Target{Provider: "openai", Model: "gpt-5"}, DefaultPrimary: target, DefaultFallback: target, Restart: true},
+				{Agent: "director", Label: "Director", Purpose: "カットの演出", Primary: target, Fallback: llm.Target{Provider: "openai", Model: "gpt-5"}, DefaultPrimary: target, DefaultFallback: target},
 			},
 		}),
 		// #915: the side menu of a Project's screen (the longest menu, a long Project name); the test puts the page beside it.

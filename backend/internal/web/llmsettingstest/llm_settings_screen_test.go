@@ -22,7 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-const savedNotice = "保存しました。反映にはアプリの再起動が必要です"
+const savedNotice = "保存しました。次の呼び出しからすぐ使われます（再起動は要りません）"
 
 // llmScreen is the settings screen over an llm.json of its own.
 type llmScreen struct {

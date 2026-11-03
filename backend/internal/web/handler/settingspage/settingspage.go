@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/licenses"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/apprestart"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
@@ -35,6 +36,7 @@ import (
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
+	restarthandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/restart"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
@@ -61,6 +63,8 @@ type Services struct {
 	// FFmpegDownload is the download of ffmpeg shown in the ffmpeg category; nil leaves the download out.
 	FFmpegDownload *ffmpegdl.Service
 	Update         *appupdate.Service
+	// Restart is the "再起動して反映" panel at the top of every page; nil leaves it out.
+	Restart *apprestart.Service
 	// Licenses is the entries of the "第三者のライセンス" category; nil is licenses.Default() (the embedded THIRD_PARTY_NOTICES.md).
 	Licenses *licenses.Catalog
 	// Guide is whether the first-run guide exists (the overview links to it).
@@ -201,6 +205,6 @@ func (s Services) render(c *gin.Context, slug, title, canonical string, body tem
 		return
 	}
 	settingshttp.Render(c, http.StatusOK, pages.GlobalSettingsPage(middleware.CSRFToken(c), pages.GlobalSettingsPageData{
-		Title: title, Canonical: canonical, Nav: s.nav(slug), Body: body,
+		Title: title, Canonical: canonical, Nav: s.nav(slug), Body: body, Restart: restarthandler.PanelData(s.Restart), HasRestart: s.Restart != nil,
 	}))
 }

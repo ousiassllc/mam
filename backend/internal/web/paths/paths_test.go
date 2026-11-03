@@ -98,6 +98,7 @@ func TestHomeAnalyticsSettings_AreTheFixedPathsOfTheirPages(t *testing.T) {
 	assert.Equal(t, "/analytics", paths.Analytics())
 	assert.Equal(t, "/settings", paths.Settings())
 	assert.Equal(t, "/settings/update/check", paths.UpdateCheck())
+	assert.Equal(t, "/settings/restart", paths.Restart())
 }
 
 func TestWithBranch_AddsTheEscapedBranchQueryAndNothingForTheTrunk(t *testing.T) {

@@ -69,7 +69,7 @@ func knownProvider(provider string) bool {
 }
 
 // Save stores or replaces the key for provider. Adapters read the store on every call, so the key
-// is in effect without a restart. A provider the settings screen does not manage, an empty key and
+// is in effect without a restart; it is read back, and a key the store does not return is an error (credential.StoreError, #1006). A provider the settings screen does not manage, an empty key and
 // a key with whitespace inside or too long for the OS store are refused (ValidationError; field "api_key").
 func (s *CredentialService) Save(provider, apiKey string) error {
 	if !knownProvider(provider) {
@@ -79,7 +79,7 @@ func (s *CredentialService) Save(provider, apiKey string) error {
 	if problem != "" {
 		return &ValidationError{Field: "api_key", Message: problem}
 	}
-	err := s.store.Set(provider, apiKey)
+	err := credential.SetChecked(s.store, provider, apiKey)
 	if errors.Is(err, credential.ErrTooLarge) {
 		return &ValidationError{Field: "api_key", Message: "API キーが長すぎます"}
 	}

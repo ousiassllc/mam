@@ -72,7 +72,8 @@ type Work struct {
 // two (a fix looks at two pictures and the whole prompt), so the estimate is never lower than what the run can cost. The calls follow
 // the routes with their fail-over: the estimate prices the primary target.
 func (m *Matcher) Plan(rounds int) (write, compare Work) {
-	return Work{m.create, rounds, unit(m.create, reviseUsage, describeUsage)}, Work{m.judge, rounds, unit(m.judge, compareUsage)}
+	create, judge := m.create(), m.judge()
+	return Work{create, rounds, unit(create, reviseUsage, describeUsage)}, Work{judge, rounds, unit(judge, compareUsage)}
 }
 
 // unit is the dearest of the usages at the price of the target.

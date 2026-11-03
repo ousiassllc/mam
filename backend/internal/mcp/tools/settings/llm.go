@@ -33,6 +33,8 @@ type LLMSection struct {
 	Providers      []string     `json:"providers"`
 	MaxModelLength int          `json:"max_model_length"`
 	Agents         []AgentRoute `json:"agents"`
+	AppliesAtOnce  bool         `json:"applies_at_once" jsonschema:"true なら、保存した割り当ては次の LLM 呼び出しからすぐ効く（再起動は要らない）"`
+	RestartPending []string     `json:"restart_pending" jsonschema:"保存したが、再起動するまで効かない設定（llm.json を手で書き換えた base_url・タイムアウト・リトライ・サーキットブレーカー）。無ければ空。restart_app で反映する"`
 }
 
 func targetOf(t llmassign.Target) Target { return Target(t) }
@@ -42,6 +44,7 @@ func llmSection(svc *llmassign.Service) LLMSection {
 	out := LLMSection{
 		Available: true, Pinned: v.Pinned, Problem: v.Problem, Providers: v.Providers,
 		MaxModelLength: llmassign.MaxModelBytes, Agents: make([]AgentRoute, 0, len(v.Entries)),
+		AppliesAtOnce: v.Live, RestartPending: append([]string{}, v.Pending...),
 	}
 	for _, e := range v.Entries {
 		out.Agents = append(out.Agents, AgentRoute{

@@ -156,6 +156,9 @@ func Settings() string { return "/settings" }
 // LLMSettings is "/settings/llm", the LLM assignment of the settings screen.
 func LLMSettings() string { return Settings() + "/llm" }
 
+// Restart is "/settings/restart", the "再起動して反映" button of the settings screen (POST, form when_busy: refuse or wait).
+func Restart() string { return Settings() + "/restart" }
+
 // UpdateCheck is "/settings/update/check", the manual update check of the settings screen (POST).
 func UpdateCheck() string { return Settings() + "/update/check" }
 

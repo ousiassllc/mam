@@ -27,6 +27,6 @@ func newFFmpegDownloader(cfg config.Config, logger *slog.Logger) *ffmpegdl.Servi
 
 // newFFmpegSettings is the ffmpeg settings (ffmpeg.json) with the lookup that ends in the downloaded copy: it is searched after
 // PATH and the Homebrew directories, so an ffmpeg the user installed always wins (spec/architecture/ffmpeg-lookup.md).
-func newFFmpegSettings(cfg config.Config, dl *ffmpegdl.Service) *ffmpegsettings.Service {
-	return ffmpegsettings.New(cfg.FFmpegSettingsFile(), ffmpegsettings.WithManagedDirs(dl.Dirs))
+func newFFmpegSettings(cfg config.Config, dl *ffmpegdl.Service, opts ...ffmpegsettings.Option) *ffmpegsettings.Service {
+	return ffmpegsettings.New(cfg.FFmpegSettingsFile(), append([]ffmpegsettings.Option{ffmpegsettings.WithManagedDirs(dl.Dirs)}, opts...)...)
 }

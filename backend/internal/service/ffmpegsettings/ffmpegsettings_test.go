@@ -227,3 +227,17 @@ func TestManagedDirs_DoNotChangeTheFinderOfTheService(t *testing.T) {
 	assert.Equal(t, []string{"/usr/bin", "/bin", "/opt/homebrew/bin", "/usr/local/bin", "/mine/extra", "/data/ffmpeg/bin"}, v.SearchDirs)
 	assert.Equal(t, []string{"/mine/extra"}, s.finder.Extra, "the extra directories are copied, not appended in place")
 }
+
+// A saved path applies from the next start, so the service tells the app that something waits for a restart (#1007); a refused
+// path does not.
+func TestSet_TellsTheAppAfterItWroteThePathsAndNotWhenItRefusedThem(t *testing.T) {
+	calls := 0
+	path := filepath.Join(t.TempDir(), FileName)
+	s := New(path, WithFinder(machine("/opt/mine/ffmpeg")), WithOnSet(func() { calls++ }))
+
+	require.Error(t, s.Set(locate.Config{FFmpeg: "/opt/gone/ffmpeg"}))
+	assert.Zero(t, calls)
+
+	require.NoError(t, s.Set(locate.Config{FFmpeg: "/opt/mine/ffmpeg"}))
+	assert.Equal(t, 1, calls)
+}

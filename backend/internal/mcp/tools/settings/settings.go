@@ -2,8 +2,8 @@
 // the image / video model assignment and the update check. API keys are in tools/credentials. The MCP
 // server section (bind address, bearer tokens) has no tool by design: an agent never manages its own access.
 //
-// The sections show what is saved in the settings files: the LLM assignment applies from the next start of
-// the app, the image / video model assignment at once.
+// The sections show what is saved in the settings files: the LLM assignment and the image / video model assignment
+// apply at once (what only a restart applies is llm.restart_pending, and restart_app restarts the app).
 package settings
 
 import (
@@ -20,16 +20,16 @@ import (
 func Register(r *mcpkit.Registrar, _ *service.Services) {
 	h := handlers{r: r}
 	mcpkit.Read(r, "get_global_settings",
-		"全体設定画面の内容（LLM の割り当て・画像／動画モデルの割り当て・バージョンとアップデート）。API キーは list_credentials。保存済みの設定で、LLM の割り当ては次の起動から、画像・動画モデルはすぐに反映 / The global settings screen without secrets.",
+		"全体設定画面の内容（LLM の割り当て・画像／動画モデルの割り当て・バージョンとアップデート）。API キーは list_credentials。保存した LLM の割り当てと画像・動画モデルは、すぐに反映される（llm.restart_pending は再起動で反映される設定。restart_app）/ The global settings screen without secrets.",
 		h.overview)
 	mcpkit.Read(r, "list_llm_models",
 		"LLM の割り当てで選べるモデルの一覧（プロバイダー指定。省略で全部）。source=api はそのアカウント・API キーで使えるモデル（chatgpt-subscription はサインイン済みのアカウントの一覧、chatgpt-codex は Codex の一覧）、default は取得できないとき（キーなし・未ログイン・失敗）の mam の既定候補。トークン・キーは返さない。10 分ほどキャッシュする / The models to choose for an LLM assignment, from the provider's API when it can be read, else mam's defaults.",
 		h.listModels, mcpkit.OpenWorld())
 	mcpkit.Write(r, "set_llm_assignment",
-		"Agent ごとの LLM（主・代替）の割り当てを保存する。指定した Agent だけ変わる。反映にはアプリの再起動が必要。モデル名が list_llm_models の一覧にないときは拒否せず保存し、warnings で知らせる / Save the LLM routes of some Agents (effective after a restart). A model that is not in the provider's list is saved with a warning.",
+		"Agent ごとの LLM（主・代替）の割り当てを保存する。指定した Agent だけ変わる。保存すると次の LLM 呼び出しからすぐ反映される（再起動は要らない）。モデル名が list_llm_models の一覧にないときは拒否せず保存し、warnings で知らせる / Save the LLM routes of some Agents (effective at once, no restart). A model that is not in the provider's list is saved with a warning.",
 		h.setLLM, mcpkit.Idempotent(), mcpkit.OpenWorld())
 	mcpkit.Destroy(r, "reset_llm_assignment",
-		"LLM の割り当てを既定に戻す（保存した上書きをすべて消す）。反映にはアプリの再起動が必要 / Drop every saved LLM route override.",
+		"LLM の割り当てを既定に戻す（保存した上書きをすべて消す）。次の LLM 呼び出しからすぐ反映される / Drop every saved LLM route override (effective at once).",
 		h.resetLLM, mcpkit.Idempotent())
 	mcpkit.Write(r, "set_model_assignment",
 		"画像・動画モデルの割り当てを保存する。指定した用途・Quality Policy だけ変わる。model には組み込みの名前のほか、ローカル・代替モデルの識別子（comfyui:<接続先>/<名前>）も使える。すぐに反映される / Save image / video model routes, including local models (effective at once).",
@@ -43,6 +43,9 @@ func Register(r *mcpkit.Registrar, _ *service.Services) {
 	mcpkit.Write(r, "set_audio_providers",
 		"声・口パクのプロバイダーと「ローカルが使えないときはクラウドに切り替える」を保存する。指定した項目だけ変わる。この PC で動かせないとき（macOS など）に local を選ぶと validation で、理由を返す。fallback_to_cloud をオンにすると、ローカルが使えない実行がクラウドで作られ、API 費用が出る。次の音声作成から使われる / Save the voice and lip-sync providers and the opt-in fallback to the cloud.",
 		h.setAudio, mcpkit.Idempotent())
+	mcpkit.Destroy(r, "restart_app",
+		"アプリを再起動する（再起動が要る設定の反映用）。confirm: true を明示したときだけ動く。作業が動いているとき（when_busy）: refuse は再起動せず何が動いているか返す（既定）、wait は終わるまで待ってから再起動、stop は中断して再起動（生成ジョブは失敗になる。ダウンロード中は stop でも拒否）。再起動したかは get_health の boot_id が変わるかで確かめる。この版が自分で再起動できないとき（ブラウザ版）は unavailable / Restart the app (needs confirm: true). when_busy: refuse (default) / wait / stop. Check boot_id of get_health afterwards.",
+		h.restart)
 	mcpkit.Read(r, "get_update_status",
 		"アップデートの状態（今のバージョン・最後の確認の結果・新しいバージョン）。アップデートできない版（ヘッドレス）では unavailable / The state of the update check.",
 		h.updateStatus)

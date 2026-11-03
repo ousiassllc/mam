@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/keylock"
@@ -234,7 +235,7 @@ func (o *Orchestrator) report(ctx context.Context, projectID string, err error) 
 	}
 	o.logger.Error("planning pipeline failed", "project_id", projectID, "err", err)
 	reason := failureReason(err)
-	notice := assistantText("制作を続けられませんでした: " + reason + "\n対処したら、何かメッセージを送ると続きから再開します。")
+	notice := failmsg.Notice(err, "制作を続けられませんでした: "+reason+"\n対処したら、何かメッセージを送ると続きから再開します。") // a missing key links to the LLM assignment
 	if aerr := o.chat.Announce(context.WithoutCancel(ctx), projectID, notice); aerr != nil {
 		o.logger.Error("post failure notice failed", "project_id", projectID, "err", aerr)
 	}

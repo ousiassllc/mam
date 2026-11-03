@@ -22,7 +22,8 @@ func TestLLMSettings_TheScreenIsATableWithARowForEveryAgentAndKeepsTheUnusedOnes
 	assert.Contains(t, html, `id="llm-assignment-panel"`)
 	assert.Contains(t, html, `<h2 id="settings-category-title"`)
 	assert.Contains(t, html, `hx-delete="`+paths.LLMSettings()+`"`, "the whole reset stays")
-	assert.Contains(t, html, "反映にはアプリの再起動が必要です", "the restart notice is always there")
+	assert.Contains(t, html, "次の呼び出しからすぐ使われます（再起動は要りません）", "the notice that a save is in effect at once is always there")
+	assert.NotContains(t, html, "再起動で反映", "no row waits for a restart")
 	assert.NotContains(t, html, "<input", "the fields are in the modal of a row")
 	for _, a := range llm.Agents() {
 		assert.Contains(t, html, `id="llm-row-`+string(a)+`"`, a)
@@ -93,7 +94,7 @@ func TestLLMSettings_ASavedAgentIsWhatTheNextStartLoadsAndTheAnswerIsItsRow(t *t
 	assert.Contains(t, body, `hx-swap-oob="true"`)
 	assert.Contains(t, body, "google / gemini-x")
 	assert.Contains(t, body, "変更あり")
-	assert.Contains(t, body, "再起動で反映")
+	assert.NotContains(t, body, "再起動で反映", "a saved route is in effect at once: the row does not wait for a restart")
 	assert.Contains(t, body, savedNoticeFor("Director（Scene / Shot の計画）"))
 	assert.NotContains(t, body, `id="llm-row-writer"`, "only the row that was saved")
 
@@ -106,7 +107,7 @@ func TestLLMSettings_ASavedAgentIsWhatTheNextStartLoadsAndTheAnswerIsItsRow(t *t
 	require.NoError(t, err)
 	assert.Equal(t, llm.DefaultConfig().Routes[llm.AgentWriter], writer)
 
-	// A reload shows it saved, without the restart mark (the service does not know what runs).
+	// A reload shows it saved.
 	row := regexp.MustCompile(`(?s)<tr id="llm-row-director".*?</tr>`).FindString(s.page())
 	assert.Contains(t, row, "google / gemini-x")
 	assert.Contains(t, row, "変更あり")
@@ -200,7 +201,7 @@ func TestLLMSettings_TheWholeSaveAndResetStay(t *testing.T) {
 	rec = s.request(http.MethodDelete, nil)
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Regexp(t, `role="status"[^>]*data-testid="llm-notice">既定に戻しました。反映にはアプリの再起動が必要です`, rec.Body.String(), "the reset says so, not only the restart note that is always there")
+	assert.Regexp(t, `role="status"[^>]*data-testid="llm-notice">既定に戻しました。次の呼び出しからすぐ使われます（再起動は要りません）`, rec.Body.String(), "the reset says so, not only the restart note that is always there")
 	assert.NoFileExists(t, s.file)
 
 	for name, mutate := range map[string]func(url.Values){

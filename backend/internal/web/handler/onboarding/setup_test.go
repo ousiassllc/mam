@@ -138,7 +138,7 @@ func TestModelsStep_SavesWhereTheSettingsScreenSaves(t *testing.T) {
 	assert.Contains(t, body, "既定の割り当てのままでも進めます")
 	assert.Contains(t, body, `data-testid="onboarding-llm"`)
 	assert.Contains(t, body, `data-testid="onboarding-media"`)
-	assert.Contains(t, body, `data-testid="llm-restart-note"`, "the table of the LLM category")
+	assert.Contains(t, body, `data-testid="llm-apply-note"`, "the table of the LLM category")
 	assert.Contains(t, body, `data-testid="model-assignment"`, "the tables of the image / video models category")
 	assert.Contains(t, body, `hx-get="`+paths.LLMAgentEdit("director")+`"`)
 	assert.NotContains(t, body, `data-testid="onboarding-llm" open`, "folded: the defaults work")

@@ -36,6 +36,13 @@ func (t *runTracker) get(id string) (progress.Update, bool) {
 	return u, ok
 }
 
+// count is how many runs are running in this process.
+func (t *runTracker) count() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.now)
+}
+
 func (t *runTracker) drop(id string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()

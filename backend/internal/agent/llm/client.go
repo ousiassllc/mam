@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"sync"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
@@ -118,6 +120,9 @@ func unavailable(err error) bool {
 }
 
 // Client is the Reasoning LLM Adapter. It is safe for concurrent use.
+//
+// The routes can be replaced while it runs (Apply); the rest of the Config (the base URLs the backends were built with, the
+// timeout, the retry policy, the breakers) is fixed when the Client is built.
 type Client struct {
 	cfg      Config
 	backends map[Provider]Backend
@@ -125,6 +130,10 @@ type Client struct {
 	now      func() time.Time
 	sleep    func(ctx context.Context, d time.Duration) error
 	logger   *slog.Logger
+
+	mu      sync.RWMutex
+	routes  map[Agent]Route
+	restart []string // what of the last applied Config only a restart can take (Apply)
 }
 
 // Option customises a Client.
@@ -150,6 +159,7 @@ func NewClient(cfg Config, backends map[Provider]Backend, opts ...Option) *Clien
 		now:      time.Now,
 		sleep:    resilience.SleepContext,
 		logger:   slog.New(slog.DiscardHandler),
+		routes:   maps.Clone(cfg.Routes),
 	}
 	for _, o := range opts {
 		o(c)
@@ -160,11 +170,56 @@ func NewClient(cfg Config, backends map[Provider]Backend, opts ...Option) *Clien
 	return c
 }
 
+// Apply makes the routes of cfg the ones the next calls use (a call in flight finishes on the route it began with), so a
+// saved "LLM の割り当て" is in effect without a restart. The other settings of cfg cannot change while the Client runs: Apply
+// returns, in words for the user, those that differ from what the Client was built with (the base URL of a provider, the timeout,
+// the retry policy, the circuit breakers) and that therefore wait for a restart. Nil when there are none. The same list is told by
+// the failures of Complete (RouteError.RestartPending) until the next Apply.
+func (c *Client) Apply(cfg Config) (restart []string) {
+	if !maps.Equal(cfg.Providers, c.cfg.Providers) {
+		restart = append(restart, "プロバイダーの base_url")
+	}
+	if cfg.TimeoutSeconds != c.cfg.TimeoutSeconds || cfg.Retry != c.cfg.Retry || cfg.Breaker != c.cfg.Breaker {
+		restart = append(restart, "タイムアウト・リトライ・サーキットブレーカー")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.routes = maps.Clone(cfg.Routes)
+	c.restart = restart
+	return restart
+}
+
+// Routes is the assignment the calls use now (a copy).
+func (c *Client) Routes() map[Agent]Route {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return maps.Clone(c.routes)
+}
+
+// PrimaryOf is the target the Agent's route calls first now (the zero Target when the Agent has no route): what an estimate
+// names, read at the time it is made, so that it follows a saved assignment.
+func (c *Client) PrimaryOf(agent Agent) Target {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.routes[agent].Primary
+}
+
+// routeFor resolves the providers of the Agent from the routes in effect, with what waits for a restart.
+func (c *Client) routeFor(agent Agent) (Route, []string, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	r, ok := c.routes[agent]
+	if !ok {
+		return Route{}, nil, fmt.Errorf("llm: no route configured for agent %q", agent)
+	}
+	return r, c.restart, nil
+}
+
 // Complete calls the primary target of the Agent, retrying timeouts and 429 with exponential
 // backoff. When the primary's circuit breaker is open, or the call still fails, it routes to the
 // Agent's alternative target. It fails only when every target failed.
 func (c *Client) Complete(ctx context.Context, agent Agent, req Request) (Response, error) {
-	route, err := c.cfg.RouteFor(agent)
+	route, restart, err := c.routeFor(agent)
 	if err != nil {
 		return Response{}, err
 	}
@@ -177,6 +232,7 @@ func (c *Client) Complete(ctx context.Context, agent Agent, req Request) (Respon
 	}
 
 	var failures []error
+	var tried []TargetFailure
 	for i, t := range targets {
 		done, err := c.callTarget(ctx, agent, t, req)
 		if err == nil {
@@ -186,6 +242,7 @@ func (c *Client) Complete(ctx context.Context, agent Agent, req Request) (Respon
 			return Response{}, ctx.Err()
 		}
 		failures = append(failures, fmt.Errorf("%s/%s: %w", t.Provider, t.Model, err))
+		tried = append(tried, TargetFailure{Target: t, Err: err})
 		if i+1 < len(targets) {
 			c.logger.Warn("llm target failed, routing to the alternative provider",
 				"agent", agent, "provider", t.Provider, "next_provider", targets[i+1].Provider, "err", err)
@@ -194,8 +251,10 @@ func (c *Client) Complete(ctx context.Context, agent Agent, req Request) (Respon
 	}
 	// Only a route whose providers were all skipped by their breakers is an ErrCircuitOpen: when the
 	// alternative was tried and failed for its own reason, that reason is what the caller must see.
-	return Response{}, fmt.Errorf("llm: every provider failed for agent %s: %w", agent,
-		resilience.RouteFailure(failures, func(err error) bool { return errors.Is(err, ErrCircuitOpen) }))
+	return Response{}, &RouteError{
+		Agent: agent, Tried: tried, RestartPending: restart,
+		err: resilience.RouteFailure(failures, func(err error) bool { return errors.Is(err, ErrCircuitOpen) }),
+	}
 }
 
 // callTarget makes the call on one target with retries. The breaker of the provider is

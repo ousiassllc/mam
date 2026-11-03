@@ -23,14 +23,14 @@ func renderSection(t *testing.T, d llm.Data) string {
 func TestSection_ShowsTheNoticeTheErrorAndTheProblemEachWithItsRole(t *testing.T) {
 	d := llm.Data{
 		Providers: []string{"anthropic"},
-		Notice:    "既定に戻しました。反映にはアプリの再起動が必要です",
+		Notice:    "既定に戻しました。次の呼び出しからすぐ使われます（再起動は要りません）",
 		Error:     "Director のモデル名を入力してください",
 		Problem:   "unknown field",
 	}
 
 	html := renderSection(t, d)
 
-	assert.Regexp(t, `<p[^>]*role="status"[^>]*data-testid="llm-notice">既定に戻しました。反映にはアプリの再起動が必要です</p>`, html)
+	assert.Regexp(t, `<p[^>]*role="status"[^>]*data-testid="llm-notice">既定に戻しました。次の呼び出しからすぐ使われます（再起動は要りません）</p>`, html)
 	assert.Regexp(t, `<p[^>]*role="alert"[^>]*data-testid="llm-error">Director のモデル名を入力してください</p>`, html)
 	assert.Regexp(t, `<p[^>]*role="alert"[^>]*data-testid="llm-problem">[^<]*unknown field</p>`, html)
 }
@@ -48,18 +48,18 @@ func TestSection_SaysNothingWhenThereIsNothingToSay(t *testing.T) {
 // The restart notice is what an operation depends on, so it stays on the page; the longer explanation (when a saved
 // assignment is used, the ChatGPT plan) is only in the help beside it, and the pinned notice and the errors stay visible
 // without opening it.
-func TestSection_KeepsTheRestartNoticeVisibleAndPutsTheLongTextInTheHelp(t *testing.T) {
+func TestSection_KeepsTheApplyNoticeVisibleAndPutsTheLongTextInTheHelp(t *testing.T) {
 	html := renderSection(t, llm.Data{Providers: []string{"anthropic"}, Pinned: true, Error: "失敗"})
 
 	panelAt := strings.Index(html, "data-help-panel")
 	require.GreaterOrEqual(t, panelAt, 0)
 	panelEnd := panelAt + strings.Index(html[panelAt:], "</div>")
 	visible := html[:panelAt] + html[panelEnd:]
-	assert.Contains(t, visible, `data-testid="llm-restart-note">反映にはアプリの再起動が必要です。</p>`)
+	assert.Contains(t, visible, `data-testid="llm-apply-note">保存した割り当ては、次の呼び出しからすぐ使われます（再起動は要りません）。</p>`)
 	assert.Contains(t, visible, `data-testid="llm-pinned"`)
 	assert.Contains(t, visible, `role="alert" data-testid="llm-error"`)
 	assert.NotContains(t, visible, "llm-chatgpt-note")
-	assert.NotContains(t, visible, "次の起動から使われます")
+	assert.NotContains(t, visible, "実行中の呼び出しは")
 	assert.Contains(t, html[panelAt:panelEnd], `data-testid="llm-chatgpt-note"`)
-	assert.Contains(t, html[panelAt:panelEnd], "次の起動から使われます")
+	assert.Contains(t, html[panelAt:panelEnd], "実行中の呼び出しは")
 }

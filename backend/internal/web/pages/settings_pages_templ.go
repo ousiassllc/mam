@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/restart"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
@@ -25,6 +26,9 @@ type GlobalSettingsPageData struct {
 	Nav       []settingsui.NavItem
 	// Body is the category: its h2 and what it holds (settingsui.Category). An HTMX request gets it alone.
 	Body templ.Component
+	// Restart is the "再起動して反映" panel, drawn above the category when HasRestart (the app has a restart service).
+	Restart    restart.Data
+	HasRestart bool
 }
 
 // GlobalSettingsPage is the frame of the global settings screen (the settings that belong to no Project): the h1,
@@ -89,6 +93,12 @@ func GlobalSettingsPage(csrfToken string, d GlobalSettingsPageData) templ.Compon
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"min-w-0 flex-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
+				}
+				if d.HasRestart {
+					templ_7745c5c3_Err = restart.Slot(d.Restart).Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
 				}
 				templ_7745c5c3_Err = d.Body.Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {

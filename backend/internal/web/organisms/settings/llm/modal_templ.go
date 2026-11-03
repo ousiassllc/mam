@@ -144,7 +144,7 @@ func Modal(f Form) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = modal.Frame(f.Row.Label+" の LLM", f.Row.Purpose+"。反映にはアプリの再起動が必要です。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = modal.Frame(f.Row.Label+" の LLM", f.Row.Purpose+"。保存すると、次の呼び出しからすぐ使われます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

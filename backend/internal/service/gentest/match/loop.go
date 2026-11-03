@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/matchinfo"
@@ -200,10 +201,9 @@ func (s *Service) failRound(ctx context.Context, q gentestrepo.Result, err error
 
 // failure says in words why the LLM could not do its part.
 func failure(err error) string {
-	const keys = "設定の「LLM の割り当て」の Prompt Planner と AI Video Judge が使うプロバイダー"
 	switch {
 	case errors.Is(err, llm.ErrNoAPIKey):
-		return "LLM の API キーが登録されていません（" + keys + "）"
+		return failmsg.NoKeyMessage(err)
 	case errors.Is(err, llm.ErrCircuitOpen):
 		return "LLM が一時的に使えません。しばらく待ってからもう一度試してください"
 	case errors.Is(err, llm.ErrTimeout):

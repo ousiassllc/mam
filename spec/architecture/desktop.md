@@ -23,6 +23,7 @@ Windows では Wails v3 のネイティブウィンドウ（WebView2）、macOS�
 - 起動エラー（設定の誤り・データディレクトリが別プロセスで使用中・リッスン失敗）はコンソールが無い（`-H windowsgui`）ためネイティブのエラーダイアログ（Win32 `MessageBox`。Wails のダイアログはイベントループが要るため使わない）に出して終了コード 1 で終わる。`--help` と引数の誤りもダイアログに出す（`app.ValidateArgs` が使い方の文字列を返す）。起動後にサーバーが落ちたときも同じ（ダイアログ → 終了コード 1）
 - 設定は `cmd/server` と同じ `config.Load`（フラグ・`MAM_*`。`--data-dir`・`MAM_DATA_DIR` も同様に効く）。`--no-browser` は無視する。ショートカットは引数なしで起動する（データディレクトリの既定は `os.UserConfigDir()` 配下の `mam`、つまり `%AppData%\mam`）
 - ブラウザ版と異なる点: 顔同一性の定量評価は、インストーラー版なら ONNX Runtime の DLL が `mam.exe` の隣に入っているので、モデルを置けば動く（§4。ポータブル版は DLL を含まない。model-adapters.md §10.1）。ffmpeg は設定で指定したパス、無ければ `PATH`（macOS は Homebrew の場所も）、どこにも無ければ**利用者がボタンで取得して入れたもの**（Windows x64・macOS arm64 のみ。`<mam.exe のディレクトリ>\ffmpeg` / `~/Library/Application Support/mam/ffmpeg`）から探す。同梱はしない（[ffmpeg-lookup.md](ffmpeg-lookup.md)・[ffmpeg-download.md](ffmpeg-download.md)）
+- 再起動（#1007）: 設定画面の「再起動して反映」と MCP の `restart_app` が、`desktop.Restarter` で終了（自動更新と同じ穏やかな終了）してから自分を起動し直す。ブラウザ版（`cmd/server`）は再起動できない。実行・実機で確かめる項目は [restart.md](restart.md)。
 - 子プロセス: ffmpeg / ffprobe はコンソールウィンドウを出さずに起動する（GUI プロセスはコンソールを持たず、何もしないと起動のたびに黒いウィンドウが点滅するため。`internal/media/run_windows.go` が `HideWindow` と `CREATE_NO_WINDOW` を付ける）。ブラウザ版は親のコンソールを継承するので影響しない。付くことは Windows 専用テスト `internal/media/run_windows_test.go` が確かめる（`hideWindow` 単体と、ffmpeg / ffprobe を起動する唯一の経路 `run` を実 exe で通して `commandContext` が作った `exec.Cmd` を見る検査の 2 つ）。リリースの `build` ジョブ（`spec/environment/setup.md` のリリース手順 5）が Windows 上で動かす
 
 ## 3. 実装時に検証する項目
@@ -193,3 +194,4 @@ Issue #853。Windows 版と同じ `cmd/wails`（サーバーを維持し、ウ�
 | 1.32 | 2026-11-01 | §4 の成果物の行の、インストーラー完了画面の ffmpeg の案内を、「PATH に置く」だけの記述から、アプリ内のダウンロード（Windows x64・macOS arm64）・自分で入れたもの・探す順に改めた（`build/windows/nsis/project.nsi` の完了画面の文と同じ内容） | PR #911 のレビューの指摘（1.31 で §4 の別の行だけ直していた） |
 | 1.33 | 2026-11-01 | §6.8 のアンインストールの再試行を、`comfyui` に加えて `localai`（ローカルランタイムの置き場所）が消えるまでにした（`project.nsi`。`localai` も `$INSTDIR` の中で、インストーラーは消さない・更新で残る） | Issue #918（親 #912）。GPT-SoVITS の実行環境（約 14 GB）が子プロセスのファイルを放すまでの間に消せないことがあるため |
 | 1.34 | 2026-11-01 | §2 のブラウザ版との違いから「Windows では顔同一性の数値評価は使えない」を外し、§4 に「ONNX Runtime は同梱する（Windows のインストーラー）」を足した（成果物の行に DLL を追記）。§3 の未確認項目に、インストールした実機で DLL が読み込めるかを足し、§7.4 の macOS の記述を、同梱が無いことが分かるように直した | Issue #910。Windows の顔同一性の数値評価が、バインディングの非対応でスタブのまま使えなかった |
+| 1.35 | 2026-11-03 | §2 に、設定画面と MCP からの再起動（`desktop.Restarter`）を足した | Issue #1007 |

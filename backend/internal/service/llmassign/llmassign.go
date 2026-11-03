@@ -1,7 +1,8 @@
 // Package llmassign is the use case behind the "LLM の割り当て" section of the settings screen: which
 // provider and model each Agent calls first (primary) and falls back to (fallback). The assignment is
 // stored in the settings file of the data directory (config.Config.LLMSettingsFile, llm.json) as the
-// overrides of the defaults, in the schema llm.LoadConfig reads, so it is in effect from the next start.
+// overrides of the defaults, in the schema llm.LoadConfig reads. A saved assignment is handed to the running client at
+// once (SetApplier), so it needs no restart; what the client cannot take while it runs (Pending) waits for one.
 //
 // The package does not import service (service holds it in Services), so it has its own errors.
 package llmassign
@@ -15,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/service/settingsfile"
 )
 
@@ -30,24 +32,6 @@ var ErrPinned = errors.New("llmassign: the settings file is pinned by a start op
 type InvalidError struct{ Message, Role, Field string }
 
 func (e *InvalidError) Error() string { return "invalid LLM assignment: " + e.Message }
-
-// labels are the Japanese names of the Agents.
-var labels = map[llm.Agent]string{
-	llm.AgentOrchestrator:       "Orchestrator（進行管理）",
-	llm.AgentProducer:           "Producer（コンセプト）",
-	llm.AgentWriter:             "Writer（脚本）",
-	llm.AgentDirector:           "Director（Scene / Shot の計画）",
-	llm.AgentStoryboard:         "Storyboard（絵コンテ）",
-	llm.AgentArtDirector:        "Art Director（Reference Pack）",
-	llm.AgentPromptPlanner:      "Prompt Planner（Shot Spec）",
-	llm.AgentVideoJudge:         "AI Video Judge（動画の評価）",
-	llm.AgentRepair:             "Repair（修復戦略の選択）",
-	llm.AgentEditor:             "Editor（編集の判定）",
-	llm.AgentAudioDirector:      "Audio Director（音声の設計）",
-	llm.AgentCommandInterpreter: "Command Interpreter（DIRECTOR 指示）",
-	llm.AgentStateExtractor:     "State Extractor（World State の抽出）",
-	llm.AgentFinalQC:            "Final QC（最終検査）",
-}
 
 // unused are the Agents whose route no code reads today (spec/architecture/model-adapters.md §2): the
 // Orchestrator advances the state machine deterministically and Final QC only runs deterministic checks.
@@ -84,26 +68,42 @@ func (r Route) llm() llm.Route {
 // View is the saved assignment, in the order of llm.Agents(). Problem is why the settings file could not be
 // read (a file edited by hand into something llm.LoadConfig refuses): the Entries then show the defaults
 // and a save is refused until the file is repaired. Pinned is the file the operator named; the screen only
-// shows it. Providers are the choices of a provider.
+// shows it. Providers are the choices of a provider. Pending says which of the saved settings the running app has not
+// taken and a restart applies (the base URLs, the timeout, the retry policy, the circuit breakers; not the routes), nil
+// for none.
 type View struct {
 	Entries   []Entry
 	Providers []string
 	Pinned    bool
 	Problem   string
+	Pending   []string
+	// Live is true when a saved assignment is handed to the running client (SetApplier): the routes apply at once.
+	Live bool
 }
 
 // Service reads and writes the assignment of the Agents.
 type Service struct {
-	mu     sync.Mutex // one read-modify-write of the file at a time
-	path   string
-	pinned bool
+	mu      sync.Mutex // one read-modify-write of the file at a time
+	path    string
+	pinned  bool
+	apply   func(llm.Config) []string
+	pending []string
 }
 
 // New returns a Service over the settings file at path; pinned means the screen must not write it.
 func New(path string, pinned bool) *Service { return &Service{path: path, pinned: pinned} }
 
-// View returns the assignment that is saved in the settings file (defaults where it has no override),
-// which is what the next start runs with, not what runs now.
+// SetApplier sets what a saved assignment is handed to: the running client (llm.Client.Apply), which takes the routes at once
+// and returns what only a restart applies. Without one (a service no client runs under: the tests of the screens) a save only
+// writes the file.
+func (s *Service) SetApplier(apply func(llm.Config) (restart []string)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.apply = apply
+}
+
+// View returns the assignment that is saved in the settings file (defaults where it has no override). With an applier
+// it is also the assignment the app runs with, except for what Pending lists.
 func (s *Service) View() View {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -116,10 +116,10 @@ func (s *Service) View() View {
 	} else if cfg, err = llm.ParseConfig(data); err != nil {
 		cfg, problem = def, err.Error()
 	}
-	v := View{Providers: providers(), Pinned: s.pinned, Problem: problem}
+	v := View{Providers: providers(), Pinned: s.pinned, Problem: problem, Pending: slices.Clone(s.pending), Live: s.apply != nil}
 	for _, a := range llm.Agents() {
 		v.Entries = append(v.Entries, Entry{
-			Agent: string(a), Label: labels[a], Unused: slices.Contains(unused, a), Route: routeOf(cfg.Routes[a]), Default: routeOf(def.Routes[a]),
+			Agent: string(a), Label: failmsg.Label(a), Unused: slices.Contains(unused, a), Route: routeOf(cfg.Routes[a]), Default: routeOf(def.Routes[a]),
 		})
 	}
 	return v
@@ -213,10 +213,17 @@ func (s *Service) update(edit func(routes map[string]json.RawMessage) error) err
 	if err != nil {
 		return err
 	}
-	if _, err := llm.ParseConfig(data); err != nil {
+	cfg, err := llm.ParseConfig(data)
+	if err != nil {
 		return &InvalidError{Message: "この割り当ては保存できません: " + err.Error()}
 	}
-	return settingsfile.Write(s.path, obj)
+	if err := settingsfile.Write(s.path, obj); err != nil {
+		return err
+	}
+	if s.apply != nil {
+		s.pending = s.apply(cfg) // in effect from the next call: no restart for the routes
+	}
+	return nil
 }
 
 func checkRoute(a llm.Agent, r llm.Route) error {
@@ -224,7 +231,7 @@ func checkRoute(a llm.Agent, r llm.Route) error {
 		role, name string
 		target     llm.Target
 	}{{"primary", "プライマリ", r.Primary}, {"fallback", "代替", r.Fallback}} {
-		where := labels[a] + " の" + t.name
+		where := failmsg.Label(a) + " の" + t.name
 		bad := func(field, reason string) error {
 			return &InvalidError{Message: where + ": " + reason, Role: t.role, Field: field}
 		}
