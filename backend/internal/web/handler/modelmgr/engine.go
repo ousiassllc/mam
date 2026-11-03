@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
 )
 
 // engineWithCatalog answers an action of the engine: the card, and the model list out of band (what can be
@@ -20,7 +21,7 @@ import (
 func (h Handlers) engineWithCatalog(c *gin.Context, status int, e view.Engine) {
 	cat := catalogData(c, h.Svc, nil)
 	cat.OOB = true
-	render(c, status, view.EngineWithCatalog(e, cat))
+	render(c, status, oob.EngineWithCatalog(e, cat))
 }
 
 // Engine answers GET /model-manager/engine, which the card polls while an install or a start is in progress. job is

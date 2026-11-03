@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/diskfile"
 )
 
 // The import from Hugging Face (spec/architecture/model-manager/model-manager.md §13): the reads, the decisions and the pins
@@ -155,7 +156,7 @@ func (s *Service) recordedAt(rel string) (sha string, size int64, ok bool) {
 
 func (s *Service) checkHFSpace(p hfplan.Payload) error {
 	dest := s.Layout.ModelPath(p.Rel())
-	if need := p.Size - partSize(dest, p.Size); !fileIsThere(dest, p.Size) && need > 0 {
+	if need := p.Size - diskfile.PartSize(dest, p.Size); !diskfile.IsThere(dest, p.Size) && need > 0 {
 		if have := s.free(s.Layout.DataDir()); uint64(need) > have {
 			return &fetch.NoSpaceError{Need: uint64(need), Free: have, Path: s.Layout.DataDir()}
 		}

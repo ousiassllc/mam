@@ -439,7 +439,7 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 
 - 部品の組み立て・展開・拒否: `modelmgr/runtime/assemble_test.go`（偽の取得元に 4 つの部品（Python・ソース・wheel 2 つ）。展開の配置・`.data` の扱い・`._pth` の置き換え・SHA-256 不一致・展開爆弾（`ErrTooLarge`）・再開（ダウンロード済みの部品を取り直さない）・失敗しても既存の環境が残る）、`extract/zip_test.go`（`..`・絶対パス・ドライブ・上書き・取り消し）、`fetch/auth_test.go`（`PackageURL`）。
 - カタログ: `catalog/musetalktest/musetalk_test.go`・`catalog/parts/parts_test.go`（固定した URL・SHA-256・合計・URL パターン・検証の拒否 16 通り）。
-- 対応環境: `modelmgr/runtime/musetalk_support_test.go`（macOS・Linux・AMD・GPU なし・2 GB・RTX 50 を断り、Sync Labs の案内が付く）。
+- 対応環境: `modelmgr/runtime/supporttest/musetalk_support_test.go`（macOS・Linux・AMD・GPU なし・2 GB・RTX 50 を断り、Sync Labs の案内が付く）。
 - 起動・停止・状態・口パクの入口: `service/localruntime/musetalktest`（偽のホスト・**偽のプロセス＝テストバイナリ自身**が、ラッパーと同じ契約で応答する）。導入（部品＋重み）・遅延起動・トークンが通る/他のトークンは 403・`no_face`・`out_of_memory` の中継・起動前の拒否（未導入・重みが不足・macOS・RTX 50・VRAM 不足・不正な要求）・1 件ずつの実行（待つ呼び出しが自分の `ctx` で諦める）。入口の型: `modelmgr/lipsync`（偽のサーバー: 要求・トークン・全コードの対応・未知のコード・応答が壊れている・サーバーが無い・取り消し）。
 - **Python 側の契約**: `catalog/musetalktest/testdata/test_musetalk_server.py` を Go のテスト `TestMuseTalkServerHonoursTheClientContract` が実行する（偽のエンジン。トークン・Host・不正な要求 13 通り・各コードの HTTP ステータス・1 件ずつ・ffmpeg の失敗。Python 3 が無い環境ではスキップ）。
 - **実物の確認（Linux の CPU）**: 開発機で、公式の手順と同じ版の環境（PyTorch 2.0.1 の CPU 版・mmcv 2.0.1・mmdet 3.1.0・mmpose 1.1.0 ほか）に、**カタログの 12 件の重みを `dest` の位置に置き**（SHA-256・サイズはカタログと一致することを取得時に確かめた）、**ネットワークの無い名前空間（`unshare -rn`。ループバックだけ）**で、MuseTalk のソース（コミット `0a89dec4`）と `mam_musetalk_server.py` を起動し、`/health` が 200 になってから `POST /v1/lipsync` に 1 秒の動画（576×768・25 fps）と 1.2 秒の音声を送った。**1.2 秒・30 フレーム・H.264＋AAC の mp4 が返った**（約 95 秒。CPU）。ネットワークの無い環境で動いたので、推論の経路が実行時にどこにも取りに行かないことの確認にもなる（S3FD・ResNet-18・Whisper・VAE・DWPose はすべて `models/…` から読んだ）。84 個の部品は、実物を取得して SHA-256 が固定した値と一致すること、wheel の中のパスが安全なことを確かめ、実物の部品を `Installer.Install` に通して `env\` に組み立てた。
@@ -594,7 +594,7 @@ PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だっ
 | MuseTalk 1.5 | 公式の PyTorch 版は CUDA 前提で、`mmcv==2.0.1` の Apple Silicon 向けの事前ビルドも無い。第三者の MLX 版（`mlx-community/MuseTalk-1.5-q4`、MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無い（§16.3） | クラウドの口パク（Sync Labs） |
 | Irodori-TTS | 変更なし（公式のサーバーは Apple silicon（MPS）に対応するが、mam は自動導入しない。この Issue の範囲外） | ElevenLabs |
 
-テスト: `modelmgr/runtime/macos_support_test.go`（Apple Silicon・Intel Mac の両方で、64 GiB のユニファイドメモリでも `Supported=false`・`Code=os`・ランタイムごとに別の理由と別のクラウド）、`service/localruntime/realcatalogtest/macos_fallback_test.go`（実カタログ・Mac で `Install`・`Start` が `ErrUnsupported` になり、Audio Director の `UnavailableError` の文が、そのランタイムの理由とそのランタイムのクラウドだけを含む）。`GOOS=darwin GOARCH=arm64` で `modelmgr/...`・`service/localruntime/...`・`service/localspeech/...` のビルドと vet が通ることを確かめた。
+テスト: `modelmgr/runtime/supporttest/macos_support_test.go`（Apple Silicon・Intel Mac の両方で、64 GiB のユニファイドメモリでも `Supported=false`・`Code=os`・ランタイムごとに別の理由と別のクラウド）、`service/localruntime/realcatalogtest/macos_fallback_test.go`（実カタログ・Mac で `Install`・`Start` が `ErrUnsupported` になり、Audio Director の `UnavailableError` の文が、そのランタイムの理由とそのランタイムのクラウドだけを含む）。`GOOS=darwin GOARCH=arm64` で `modelmgr/...`・`service/localruntime/...`・`service/localspeech/...` のビルドと vet が通ることを確かめた。
 
 ### 16.2 GPT-SoVITS（実装しなかった理由）
 

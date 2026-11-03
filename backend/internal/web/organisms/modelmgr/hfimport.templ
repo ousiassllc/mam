@@ -273,18 +273,6 @@ templ HFModelListView(l HFModelList) {
 	</div>
 }
 
-// HFModelsWithMsgClear is the list with the error line above it emptied out of band: an action that worked.
-templ HFModelsWithMsgClear(l HFModelList) {
-	@HFModelListView(l)
-	<p id={ HFMsgID } hx-swap-oob="true" class="text-sm text-red-300" role="alert" data-testid="mm-hfi-msg"></p>
-}
-
-// HFModelsWithTrial is the list with the trial section out of band: an import that ended changed the models a trial can use.
-templ HFModelsWithTrial(l HFModelList, t TrialPanel) {
-	@HFModelListView(l)
-	@TrialSection(t)
-}
-
 // HFMsg is the error line of the import, swapped in where the form's error answer is retargeted.
 templ HFMsg(msg string) {
 	<span data-testid="mm-hfi-msg-text">{ msg }</span>

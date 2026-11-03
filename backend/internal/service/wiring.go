@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
+	"github.com/ousiassllc/mam/backend/internal/service/broker"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 )
 
@@ -116,7 +117,7 @@ func newWiring(deps Deps) *wiring {
 	}
 	c.takeActions = takeActions{judges: r.judges, policies: r.policies}
 	chat := &ChatService{c}
-	generations := &GenerationService{core: c, shots: r.gens, progress: newBroker[generation.Progress]()}
+	generations := &GenerationService{core: c, shots: r.gens, progress: broker.New[generation.Progress]()}
 	judges := &JudgeService{core: c, judges: r.judges, generations: generations}
 	return &wiring{
 		deps: deps, logger: logger, r: r, c: c, chat: chat,

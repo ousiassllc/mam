@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
 )
 
 // adultData is the setting "成人向けモデルを表示する".
@@ -61,7 +62,7 @@ func (h Handlers) SetAdult(c *gin.Context) {
 	cat.OOB = true
 	trial := h.trialPanel(ctx, view.TrialForm{}, "", "")
 	trial.OOB = true
-	render(c, http.StatusOK, view.AdultWithCatalog(a, cat, trial))
+	render(c, http.StatusOK, oob.AdultWithCatalog(a, cat, trial))
 }
 
 // commercialData is the setting "商用OKのモデルだけを使う": what the commercial-use choice of the filters starts at.
@@ -90,5 +91,5 @@ func (h Handlers) SetCommercial(c *gin.Context) {
 	cat.OOB, cat.Filter.Sync = true, true
 	trial := h.trialPanel(ctx, view.TrialForm{}, "", "")
 	trial.OOB = true
-	render(c, http.StatusOK, view.CommercialWithList(p, cat, trial))
+	render(c, http.StatusOK, oob.CommercialWithList(p, cat, trial))
 }

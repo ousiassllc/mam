@@ -240,23 +240,3 @@ templ ConsentDialog(c Consent) {
 templ DialogClear() {
 	<div id={ DialogID } hx-swap-oob="innerHTML" data-testid="mm-dialog"></div>
 }
-
-// EngineWithCatalog is the engine card with the model list out of band: an action of the engine changed what can be
-// installed.
-templ EngineWithCatalog(e Engine, c Catalog) {
-	@EngineCard(e)
-	@CatalogList(c)
-}
-
-// CatalogWithTrial is the model list with the trial section out of band: installing or deleting a model changed the
-// models a trial can use.
-templ CatalogWithTrial(c Catalog, t TrialPanel) {
-	@CatalogList(c)
-	@TrialSection(t)
-}
-
-// CatalogWithDialogClear is the model list with the (answered) license dialog emptied out of band.
-templ CatalogWithDialogClear(c Catalog) {
-	@CatalogList(c)
-	@DialogClear()
-}

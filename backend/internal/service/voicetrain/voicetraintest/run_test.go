@@ -1,4 +1,4 @@
-package voicetrain_test
+package voicetraintest_test
 
 import (
 	"context"

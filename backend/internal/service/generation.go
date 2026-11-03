@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/broker"
 	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
@@ -21,7 +22,7 @@ type GenerationService struct {
 	*core
 	gen      *generation.Orchestrator // nil when generation is not configured
 	shots    *repository.GenerationRepository
-	progress *broker[generation.Progress]
+	progress *broker.Broker[generation.Progress]
 }
 
 // ShotFragment is a Shot with its Project, for the fragment an action answers with.
@@ -108,14 +109,14 @@ func (s *GenerationService) SubscribeShot(ctx context.Context, shotID string) (<
 
 // subscribeShot is SubscribeShot reading the Shot through getShot (a seam for the test of the ordering).
 func (s *GenerationService) subscribeShot(ctx context.Context, shotID string, getShot func(context.Context, string) (repository.ShotRef, error)) (<-chan generation.Progress, func(), error) {
-	ch, cancel := s.progress.subscribe(shotID)
+	ch, cancel := s.progress.SubscribeSend(shotID)
 	ref, err := getShot(ctx, shotID)
 	if err != nil {
 		cancel()
 		return nil, nil, notFound(err)
 	}
 	snapshot, running := progressSnapshot(ref.Shot)
-	s.progress.sendTo(ch, snapshot, running)
+	s.progress.SendTo(ch, snapshot, running)
 	return ch, cancel, nil
 }
 

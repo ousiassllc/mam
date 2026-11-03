@@ -7,6 +7,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
 )
 
 // The wtest static/src/components/scroll/scroll.wtest.ts draws the model manager from these files and checks that the page
@@ -76,9 +77,9 @@ func TestScrollFixtures_AreWhatTheComponentsRender(t *testing.T) {
 
 	checkFixtures(t, map[string]templ.Component{
 		"scroll-mm-consent.html":        modelmgr.ConsentDialog(consent),
-		"scroll-mm-consent-answer.html": modelmgr.CatalogWithDialogClear(startedConsent),
+		"scroll-mm-consent-answer.html": oob.CatalogWithDialogClear(startedConsent),
 		"scroll-mm-page.html":           modelmgr.Body(modelmgr.Data{Catalog: scrollCatalog(0, nil), Trial: scrollTrial(false), HFImport: modelmgr.HFImport{Kind: "text-to-image"}}),
-		"scroll-mm-install-answer.html": modelmgr.CatalogWithDialogClear(started),
-		"scroll-mm-poll-done.html":      modelmgr.CatalogWithTrial(finished, scrollTrial(true)),
+		"scroll-mm-install-answer.html": oob.CatalogWithDialogClear(started),
+		"scroll-mm-poll-done.html":      oob.CatalogWithTrial(finished, scrollTrial(true)),
 	})
 }

@@ -1,4 +1,6 @@
-package organisms
+// Package locktoggles builds the data of the AUTO / MANUAL / LOCK switches of a Shot and of a Project (molecules.LockToggle). It is a package of its own because
+// the directory of the organisms is at its line budget (linterly).
+package locktoggles
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"

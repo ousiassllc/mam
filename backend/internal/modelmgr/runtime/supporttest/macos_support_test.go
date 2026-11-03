@@ -1,4 +1,4 @@
-package runtime_test
+package supporttest_test
 
 import (
 	"testing"

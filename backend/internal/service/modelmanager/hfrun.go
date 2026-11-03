@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/diskfile"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 )
 
@@ -102,7 +103,7 @@ func (s *Service) writeModel(ctx context.Context, name string, m localcfg.Model)
 func (s *Service) UserModels() []UserModelView {
 	st := s.state.Get()
 	return hfplan.UserModels(st, s.AdultContentEnabled(), BundledEndpoint,
-		func(um store.UserModel) bool { return fileIsThere(s.Layout.ModelPath(um.Path), um.Size) },
+		func(um store.UserModel) bool { return diskfile.IsThere(s.Layout.ModelPath(um.Path), um.Size) },
 		func(path string) []string { return s.visibleCatalogHolders(st, path) })
 }
 

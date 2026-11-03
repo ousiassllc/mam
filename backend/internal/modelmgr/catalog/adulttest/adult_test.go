@@ -1,6 +1,10 @@
-package catalog_test
+// Package adulttest checks the adult (uncensored) models of the catalog (Issue #841): which models are for adults, that their files are pinned to
+// what Hugging Face reports, and the validation of their LoRAs and source notes. It is a package of its own because the directory of the catalog
+// is at its line budget.
+package adulttest_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"testing"
@@ -10,8 +14,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 )
+
+// mutate returns the validation problems of the embedded catalog after edit changed a copy of it.
+func mutate(t *testing.T, edit func(c *catalog.Catalog)) []error {
+	t.Helper()
+	data, err := json.Marshal(catalog.Default())
+	require.NoError(t, err)
+	var c catalog.Catalog
+	require.NoError(t, json.Unmarshal(data, &c))
+	edit(&c)
+	return catalog.Validate(&c, localcfg.TemplateByID)
+}
 
 var adultIDs = []string{"big-lust-v16", "bigasp-v2", "chroma1-hd", "cyberrealistic-pony-v18", "cyberrealistic-xl-v10", "epicrealism-xl-lastfame", "flux1-dev-nsfw-master", "hunyuanvideo-t2v-nsfw-lora", "juggernaut-xl-ragnarok", "ltx-2.5-22b-distilled-uncensored", "lustify-sdxl-zenith-v9", "lustify-v10-krea2-turbo-fp8", "noctq-v4-qwen-image21", "noobai-xl-v11", "nsfw-anime-wan22-5b", "nsfw-wan21-1b3-t2v", "pony-diffusion-v6-xl", "qwen-image-21-uncensored-int8", "qwen-image-edit-rapid-aio-nsfw-v23", "realism-sdxl-stable-yogi-v8", "realvisxl-v50", "realvisxl-v50-lightning", "thisisreal-sdxl-v3", "wai-illustrious-sdxl-v17", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-i2v-r1-v2-uncensored", "wan22-rapid-mega-nsfw-t2v", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v", "wan22-t2v-14b-mystic-xxx-lora", "wan22-ti2v-5b-cowgirl-lora"}
 
