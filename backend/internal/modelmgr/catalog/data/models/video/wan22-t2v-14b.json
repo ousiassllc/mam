@@ -1,0 +1,68 @@
+{
+ "id": "wan22-t2v-14b",
+ "name": "Wan 2.2 T2V 14B (fp8)",
+ "kind": "video",
+ "tier": "standard",
+ "content_rating": "general",
+ "traits": {"params_b": 14, "params_label": "14B", "uncensored": false, "speed": "slow", "quality": "high"},
+ "description": "【中ティア・非検閲ではない標準モデル】テキストだけから動画を作る Wan 2.2 の 14B（公式のベース。wan22-i2v-14b の T2V 版）。高ノイズ用と低ノイズ用の 2 つの拡散モデル（fp8、各約 14.3 GB）を順に使う。テキストエンコーダー（wan22-ti2v-5b・wan22-i2v-14b と共有）と Wan 2.1 の VAE を含め、合計約 35.6 GB。16fps・音声なし。得意: テキストからの映像の作り込みと動きの質（同じ Wan 2.2 の 5B より重いが高品質）。注意: 先頭フレームの画像は使わない（先頭フレームから作るのは wan22-i2v-14b、テキストと画像のどちらでも作るなら wan22-ti2v-5b）。ステップは 20・cfg 3.5 が既定で遅い（数分〜十数分の目安。mam の実測ではない）。VRAM 16 GB は fp8 と ComfyUI の自動の offload が前提でぎりぎり。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。ライセンス: Apache-2.0 で商用を含めて自由に使える。",
+ "files": [
+  {
+   "name": "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors",
+   "sha256": "cad711ae211c8b23455ec68cd6a190a33a3d874234a77eb57266d73f8f0e6c9f",
+   "size": 14293923632
+  },
+  {
+   "name": "wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors",
+   "sha256": "e71b96d7c82e638694c5e7fb98fac4bfb0e4ddc5fbbb4b1df40da8f0f1278a97",
+   "size": 14293923632
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "wan22-i2v-14b と同じ大きさの Wan 14B fp8（高ノイズ・低ノイズを順に使い、ComfyUI の自動の offload で入れ替える）。16〜24 GB 以上の目安。公式の参照実装のピークはこれより高い。mam の実機では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://www.apache.org/licenses/LICENSE-2.0",
+  "summary": "Wan-AI/Wan2.2-T2V-A14B のモデルカードは license: apache-2.0（Comfy-Org/Wan-2.2 も apache-2.0。公式の GitHub リポジトリ Wan-Video/Wan2.2 の LICENSE.txt は Apache License 2.0 の本文）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03"
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-t2v-14b",
+   "template": "txt2video-wan22-14b"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つファイルを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-03 に確認。このモデルのファイルに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（2026-11-03。拡散モデル 2 つとテキストエンコーダー）。Mac の実機では未確認"
+ }
+}

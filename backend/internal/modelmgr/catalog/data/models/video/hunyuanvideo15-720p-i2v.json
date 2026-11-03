@@ -1,0 +1,107 @@
+{
+ "id": "hunyuanvideo15-720p-i2v",
+ "name": "HunyuanVideo 1.5 720p I2V (fp8)",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "general",
+ "consent_required": true,
+ "requires_hf_token": false,
+ "traits": {
+  "params_b": 8.3,
+  "params_label": "8.3B",
+  "uncensored": false,
+  "speed": "slow",
+  "quality": "high"
+ },
+ "description": "【中ティア・非検閲ではない標準モデル】HunyuanVideo 1.5（8.3B）の 720p の先頭フレームから動画（cfg 蒸留版の fp8、約 8.3 GB）。拡散モデル・テキストエンコーダー 2 つ・CLIP Vision（sigclip、約 0.86 GB）・VAE で合計約 21.5 GB（テキストエンコーダーと VAE は hunyuanvideo15-480p と共有）。24fps・音声なし・1280×720 の 121 フレーム。得意: 1 枚の絵から高解像度で動かす（8.3 GB の fp8 なので 16 GB の GPU にも載りやすい）。注意: 公式のテンプレートは cfg 蒸留でない fp16・cfg 6 だが、mam は蒸留版の fp8 を cfg 1 で使う（既存の 480p の蒸留版と同じ推定値で、mam の実機では未検証）。テキストだけから作るのは hunyuanvideo15-720p-t2v。ライセンス: Tencent Hunyuan Community License。EU・英国・韓国では使えない（導入しない）。月間アクティブユーザーが 1 億を超える製品は Tencent の許諾が要る。生成物を他の AI モデルの改良に使うことは禁止。macOS（Apple Silicon）は未確認で、Windows（NVIDIA）のみ。同意が要る（導入時に確認）。",
+ "files": [
+  {
+   "name": "hunyuanvideo1.5_720p_i2v_cfg_distilled_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/diffusion_models/hunyuanvideo1.5_720p_i2v_cfg_distilled_fp8_scaled.safetensors",
+   "sha256": "ee7680ea04685d72b1030cc00178954e11062ad558f66acce3ffe26454dc29c2",
+   "size": 8330399746
+  },
+  {
+   "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4",
+   "size": 9384670680
+  },
+  {
+   "name": "byt5_small_glyphxl_fp16.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors",
+   "sha256": "516910bb4c9b225370290e40585d1b0e6c8cd3583690f7eec2f7fb593990fb48",
+   "size": 438643184
+  },
+  {
+   "name": "sigclip_vision_patch14_384.safetensors",
+   "folder": "clip_vision",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/clip_vision/sigclip_vision_patch14_384.safetensors",
+   "sha256": "1fee501deabac72f0ed17610307d7131e3e9d1e838d0363aa3c2b97a6e03fb33",
+   "size": 856505640
+  },
+  {
+   "name": "hunyuanvideo15_vae_fp16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/vae/hunyuanvideo15_vae_fp16.safetensors",
+   "sha256": "e7c3091949c27e2d55ae6d5df917b99dadfebbf308e5a50d0ade0d16c90297ae",
+   "size": 2521292758
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "cfg 蒸留版の fp8 の拡散モデルは約 8.3 GB（480p の fp8 と同じ大きさ）で、テキストエンコーダー（fp8 の Qwen2.5-VL 7B・約 9.4 GB）は ComfyUI が実行ごとに入れ替える。公式の目安は 14 GB 以上（offload）、ComfyUI の公式ガイドは 24 GB。mam は 16 GB を目安にした。mam の実機では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "tencent-hunyuan-community",
+  "version": "2025-11-21",
+  "name": "Tencent Hunyuan Community License Agreement (HunyuanVideo 1.5)",
+  "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo-1.5/blob/master/LICENSE",
+  "summary": "許諾の地域は EU・英国・韓国を除く全世界。この 3 地域では使えない。月間アクティブユーザーが 1 億を超える製品・サービスは Tencent の許諾が要る。生成物や結果を他の AI モデルの改良に使うことと、地域の外での利用は禁じられる。（Tencent の LICENSE 本文を 2026-11-03 に確認。HF のモデルカードは license: other・license_name: tencent-hunyuan-community・extra_gated_eu_disallowed: true。ログインは要らない gated なしのリポジトリ）",
+  "commercial": "conditional",
+  "commercial_condition": "月間アクティブユーザーが 1 億を超える場合は Tencent の許諾が要る",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（HunyuanVideo 1.5）",
+    "name": "Tencent Hunyuan Community License Agreement",
+    "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo-1.5/blob/master/LICENSE",
+    "commercial": "conditional"
+   },
+   {
+    "part": "テキストエンコーダー（Qwen2.5-VL 7B）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct",
+    "commercial": "yes"
+   },
+   {
+    "part": "テキストエンコーダー（byT5 small）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/google/byt5-small",
+    "commercial": "yes"
+   },
+   {
+    "part": "CLIP Vision（SigLIP so400m-patch14-384。i2v のみ）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Comfy-Org/sigclip_vision_384",
+    "commercial": "yes"
+   }
+  ],
+  "excluded_regions": [
+   "EU",
+   "GB",
+   "KR"
+  ],
+  "notice": "このライセンスは EU・英国・韓国では適用されません（使えません）。これらの地域では導入しないでください。"
+ },
+ "workflows": [
+  {
+   "name": "hunyuanvideo15-720p-i2v",
+   "template": "img2video-hunyuan15-720p"
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "id": "txt2video-wan21-1-3b",
+ "label": "Wan 2.1 T2V 1.3B: テキストから動画",
+ "media": "video",
+ "description": "Wan 2.1 T2V 1.3B（fp16 の wan2.1_t2v_1.3B_fp16.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、VAE wan_2.1_vae.safetensors）でテキストだけから動画を作る、標準ノードだけのワークフロー。ComfyUI の公式例（ComfyUI_examples の wan / text_to_video_wan.json）の値に従う: 1 つの拡散モデルを 1 つの KSampler で 30 ステップ・uni_pc/simple・cfg 6、ModelSamplingSD3 の shift は 8、空の潜在は EmptyHunyuanLatentVideo。16fps、フレーム数は 4n+1。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [2, 3, 4, 5], "resolutions": ["480p"]},
+  "workflow": {
+   "prompt_weight": "weak",
+   "graph": {
+    "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.1_t2v_1.3B_fp16.safetensors", "weight_dtype": "default"}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+    "48": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["37", 0]}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "40": {"class_type": "EmptyHunyuanLatentVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 30, "cfg": 6, "sampler_name": "uni_pc", "scheduler": "simple", "denoise": 1, "model": ["48", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["40", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["39", 0]}},
+    "57": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+    "58": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["57", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "40", "input": "width"},
+    {"param": "height", "node": "40", "input": "height"},
+    {"param": "frames", "node": "40", "input": "length"},
+    {"param": "fps", "node": "57", "input": "fps"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "58",
+   "fps": 16,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}

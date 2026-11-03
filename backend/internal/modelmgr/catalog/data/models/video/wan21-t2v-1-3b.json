@@ -1,0 +1,67 @@
+{
+ "id": "wan21-t2v-1-3b",
+ "name": "Wan 2.1 T2V 1.3B",
+ "kind": "video",
+ "tier": "standard",
+ "content_rating": "general",
+ "traits": {
+  "params_b": 1.3,
+  "params_label": "1.3B",
+  "uncensored": false,
+  "speed": "fast",
+  "quality": "standard"
+ },
+ "description": "【小ティア・非検閲ではない標準モデル】Wan 2.1 の公式の軽量 T2V（テキストから動画。1.3B）。拡散モデル（fp16、約 2.8 GB）・テキストエンコーダー（fp8、約 6.7 GB、他の Wan と共有）・VAE（他の Wan と共有）の合計約 9.8 GB。480p・16fps・音声なし。得意: 試し・プレビュー向きの軽さと速さ（公式は 8.19 GB の VRAM で動くと書き、RTX 4090 で 5 秒の 480P が約 4 分）。注意: 品質は 14B の Wan 2.2 より落ちる。720p でも作れるが、公式は学習が少なく不安定と書くので 480p のみにした。先頭フレームは使わない。Wan 2.1 の VAE（wan_2.1_vae）は Wan 2.2 の 14B と共有し、5B（wan2.2_vae）とは別。ライセンス: Apache-2.0 で商用を含めて自由に使える。",
+ "files": [
+  {
+   "name": "wan2.1_t2v_1.3B_fp16.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors",
+   "sha256": "be531024cd9018cb5b48c40cfbb6a6191645b1c792eb8bf4f8c1c6e10f924dc5",
+   "size": 2838303560
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  }
+ ],
+ "vram": {
+  "min_gb": 8,
+  "source": "Wan 公式（Wan-AI/Wan2.1-T2V-1.3B のモデルカード）は「T2V-1.3B は 8.19 GB の VRAM だけで動く」と書く（量子化などの最適化なしで、RTX 4090 で 5 秒の 480P が約 4 分）。テキストエンコーダーは fp8 版。mam の実機では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://www.apache.org/licenses/LICENSE-2.0",
+  "summary": "Wan-AI/Wan2.1-T2V-1.3B のモデルカードは license: apache-2.0。同じリポジトリの LICENSE.txt は Apache License 2.0 の本文（2026-11-03 に本文を確認）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03"
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan21-t2v-1-3b",
+   "template": "txt2video-wan21-1-3b"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つテキストエンコーダー（umt5_xxl_fp8_e4m3fn_scaled）を含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-03 に確認。テキストエンコーダーに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（2026-11-03。拡散モデルは fp16）。Mac の実機では未確認"
+ }
+}

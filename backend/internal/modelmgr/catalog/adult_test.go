@@ -94,8 +94,8 @@ func TestSharedFilesOfTheUncensoredModelsAreTheSameFile(t *testing.T) {
 	}
 	for path, want := range map[string][]string{
 		"models/checkpoints/flux1-dev-fp8.safetensors":                             {"flux1-dev", "flux1-dev-nsfw-master"},
-		"models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors":              {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8"},
-		"models/vae/wan_2.1_vae.safetensors":                                       {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v"},
+		"models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors":              {"wan21-flf2v-14b-720p", "wan21-t2v-1-3b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v", "wan22-t2v-14b", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8"},
+		"models/vae/wan_2.1_vae.safetensors":                                       {"wan21-flf2v-14b-720p", "wan21-t2v-1-3b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v", "wan22-t2v-14b"},
 		"models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors": {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora"},
 		"models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors":  {"wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora"},
 	} {

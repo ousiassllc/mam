@@ -23,16 +23,16 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 47)
+	require.Len(t, c.Models, 52)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
 	}
 	assert.Equal(t, []string{
-		"flux1-schnell", "flux2-klein-4b", "qwen-image", "qwen-image-edit-2511", "sdxl-base", "sdxl-controlnet-canny", "sdxl-ipadapter-plus", "upscale-2pass-sdxl-span", "upscale-nomos-uni-span", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
+		"flux1-schnell", "flux2-klein-4b", "qwen-image", "qwen-image-edit-2511", "sdxl-base", "sdxl-controlnet-canny", "sdxl-ipadapter-plus", "upscale-2pass-sdxl-span", "upscale-nomos-uni-span", "ltx-video-2b", "wan21-flf2v-14b-720p", "wan21-t2v-1-3b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-t2v-14b", "wan22-ti2v-5b", "wan22-ti2v-5b-fp8", // standard: images, then videos
 		"big-lust-v16", "bigasp-v2", "chroma1-hd", "cyberrealistic-pony-v18", "cyberrealistic-xl-v10", "epicrealism-xl-lastfame", "flux1-dev", "flux1-dev-nsfw-master", "juggernaut-xl-ragnarok", "lustify-sdxl-zenith-v9", "lustify-v10-krea2-turbo-fp8", "noctq-v4-qwen-image21", // advanced: images, then videos
 		"noobai-xl-v11", "pony-diffusion-v6-xl", "qwen-image-21-uncensored-int8", "qwen-image-21-vnccs-pose", "qwen-image-edit-rapid-aio-nsfw-v23", "realism-sdxl-stable-yogi-v8", "realvisxl-v50", "realvisxl-v50-lightning", "sd35-medium", "thisisreal-sdxl-v3", "wai-illustrious-sdxl-v17", "upscale-nomos-webphoto-esrgan",
-		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-dfr", "ltx-2.5-22b-distilled-nvfp4", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v",
+		"hunyuanvideo15-480p", "hunyuanvideo15-720p-i2v", "hunyuanvideo15-720p-t2v", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-dfr", "ltx-2.5-22b-distilled-nvfp4", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v",
 	}, ids)
 }
 
