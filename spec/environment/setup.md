@@ -170,11 +170,11 @@ ComfyUI・OpenAI 互換の接続先とそのモデル（`spec/architecture/local
 
 ## モデルマネージャーの設定（ComfyUI エンジンの取得と検出）
 
-設計は `spec/architecture/model-manager/model-manager.md`。専用の設定ファイルや環境変数は無く、導入状態（自動起動の有無・導入したエンジンとモデル・ライセンスの同意）は exe と同じ場所の `comfyui\state.json` に、画面（別 Issue）から保存する。置き場所は `<mam.exe のディレクトリ>\comfyui`（インストール版は `%LOCALAPPDATA%\Programs\MAM\comfyui`）で、`--data-dir` では変えられない。
+設計は `spec/architecture/model-manager/model-manager.md`。専用の設定ファイルや環境変数は無く、導入状態（自動起動の有無・導入したエンジンとモデル・ライセンスの同意）は exe と同じ場所の `comfyui\state.json` に、画面（別 Issue）から保存する。置き場所は、Windows では `<mam.exe のディレクトリ>\comfyui`（インストール版は `%LOCALAPPDATA%\Programs\MAM\comfyui`）で、`--data-dir` では変えられない。macOS（Apple Silicon・macOS 14 以降）では、データディレクトリの `comfyui`（`~/Library/Application Support/mam/comfyui`。`--data-dir` に従う。`MAM.app` の中は自動更新で入れ替わるため使わない）。
 
 コマンドラインの追加オプション（`--help` に出る。ウィンドウ・データディレクトリ・単一起動の確認より前に処理し、JSON を出して終了する。インストーラーと利用者が使う）:
 
-- `--detect-gpu`: GPU（アダプター名・ベンダー・専用 VRAM）と、推奨する ComfyUI のビルド（`nvidia`・`nvidia_cu126`・`amd`・`intel`、または対応なし）の JSON。Windows 以外は空。
+- `--detect-gpu`: GPU（アダプター名・ベンダー・専用 VRAM）と、推奨する ComfyUI のビルド（`nvidia`・`nvidia_cu126`・`amd`・`intel`、または対応なし）の JSON。macOS（Apple Silicon）は Apple のビルド（GPU は SoC のチップ名と、統合メモリを VRAM として出す）、それ以外の OS は空。
 - `--detect-comfyui`: `127.0.0.1:8188`・`:8000` で動いている ComfyUI（版つき）と、ComfyUI Desktop の設定（`%APPDATA%\ComfyUI\config.json`）の JSON。
 - 両方を付けると `{"gpu": ..., "comfyui": ...}`。`--detect-output FILE` で標準出力ではなくファイルへ書く（`-H windowsgui` の exe はコンソールに書けないことがあるため、インストーラーはこちらを使うと確実）。
 

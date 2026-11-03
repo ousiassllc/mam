@@ -65,12 +65,12 @@
 | 起動しています（`starting`） | — | info ・ ComfyUI: 起動しています |
 | 停止中（導入済み） | — | neutral ・ ComfyUI: 停止中 |
 | 起動に失敗（`failed`） | — | error ・ ComfyUI: 起動に失敗 |
-| 未導入、または非対応（Windows 以外） | 1 件以上 | neutral ・ 外部の ComfyUI: n 件 |
+| 未導入、または非対応（Windows と Apple Silicon の Mac 以外） | 1 件以上 | neutral ・ 外部の ComfyUI: n 件 |
 | 未導入 | なし | neutral ・ ComfyUI: 未導入 |
-| 非対応（Windows 以外） | なし | neutral ・ 同梱の ComfyUI は Windows 版のみ |
+| 非対応（Windows と Apple Silicon の Mac 以外） | なし | neutral ・ 同梱の ComfyUI は Windows 版と Apple Silicon の Mac 版のみ |
 
 - 同梱が導入済みで外部もあるときは、同梱の状態を出す（外部の件数は足さない）。
-- 上の表のうち同梱エンジンの 6 状態は Windows 実機での確認が要る（**未検証**）。非 Windows の「非対応」は Linux 上でも確かめられる。
+- 上の表のうち同梱エンジンの 6 状態は Windows 実機での確認が要る（**未検証**）。Windows と Apple Silicon の Mac 以外の「非対応」は Linux 上でも確かめられる。
 
 ### エンドポイント
 
