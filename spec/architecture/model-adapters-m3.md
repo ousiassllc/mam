@@ -251,7 +251,7 @@ Lip Sync を、クラウドの Sync Labs の代わりに、この PC の MuseTal
 | 3 | 1 行・1 クリップあたりの時間（時間上限は見積） | §14.8・§14.9 |
 | 4 | ビデオメモリの下限（声 4 GB は mam の推定、口パク 4 GB は公式の README の例）と、CUDA の `out of memory` の実際のメッセージ文字列（`gpu_memory` の判定は文字列に頼る） | [local-runtime.md](model-manager/local-runtime.md) §11・§13.8 |
 | 5 | 依存の重み（whisper-tiny・sd-vae-ft-mse・DWPose・face-parse-bisent・syncnet など）の**商用利用の可否**。はっきりしないものは画面で目立つ注記を出す。face-parse-bisent は Google Drive 配布で、固定 URL＋SHA-256 に載せる方法は #921 の方針（§13.4）に従う | [local-runtime.md](model-manager/local-runtime.md) §12.8・§13.4・§13.6 |
-| 6 | macOS の第三者の MLX 版（`mlx-community/MuseTalk-1.5-q4`）は mam の自動導入の対象外（macOS ではクラウドを使う） | local-runtime.md §13 |
+| 6 | macOS（Apple Silicon）の自動導入（GPT-SoVITS・MuseTalk。第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4` を含む）は、確かな一次情報だけでは組み立てられないので対象外（#935 で調査。macOS ではランタイムごとの理由を出し、クラウドを使う）。**実機の Mac での導入・起動・生成は未確認** | local-runtime.md §13・§16 |
 | 7 | このフォールバックを実物のランタイムが使えない PC（Windows の NVIDIA 無し・導入前・重み無し）で通しで確かめたこと | §14.10（偽のランタイムでのテストだけ） |
 
 #### #912「やってほしいこと」との対応

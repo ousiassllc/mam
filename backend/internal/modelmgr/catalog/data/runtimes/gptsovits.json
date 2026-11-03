@@ -35,7 +35,7 @@
   "os": "windows",
   "arch": "amd64",
   "os_reasons": {
-   "darwin": "macOS では GPT-SoVITS の自動導入に対応していません。公式は macOS の MPS / CPU での推論に対応していますが、mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
+   "darwin": "macOS では GPT-SoVITS の自動導入に対応していません。公式は macOS の MPS / CPU での推論に対応していますが、その導入手順（install.sh）は conda と pip で依存をその場で入れてビルドする方式で、Windows の統合パッケージに当たる Apple Silicon 向けの配布物がありません。mam が SHA-256 で固定して取得できる Apple Silicon 向けの部品（wheel）だけでは、起動に必須の pyopenjtalk（日本語）・jieba_fast・jieba が揃いません（PyPI にソース配布しかない）。実機で確かめられない組み立てはしないため、mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
    "linux": "Linux では GPT-SoVITS の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
    "default": "この OS では GPT-SoVITS の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。"
   },

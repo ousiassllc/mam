@@ -20,7 +20,7 @@
 - **MAM は何も同梱しない**。公式の配布先から取得する別プログラムで、`THIRD_PARTY_NOTICES.md`（GPT-SoVITS の節）に載せる。ライセンスと商用利用の可否の表示は §12（#920）。
 - **置き場所は `<mam.exe のあるディレクトリ>\localai\<ランタイム ID>\` だけ**（§2）。ライブラリのキャッシュと一時ファイルもその中に置く。インストール版はアンインストーラーが消し、ポータブル版は exe の隣に残る。書けない場所なら `store.ErrNotWritable` で断る。
 - **取得物は固定して SHA-256 を検証する**（model-manager.md §1 と同じ）。ハッシュ・サイズが合わないものは使わず消す。取得は `fetch`（`Range` 再開・空き容量確認）と `extract` をそのまま使う。
-- **対応は Windows x64 ＋ NVIDIA GPU だけ**（ComfyUI の同梱エンジンと同じ範囲）。それ以外は導入も起動もさせず、**理由の文とクラウド（ElevenLabs）を使う案内**を返す（§4）。macOS の MPS / CPU 対応は、オーナーの判断が要る（既定は「自動導入しない」）。
+- **対応は Windows x64 ＋ NVIDIA GPU だけ**（ComfyUI の同梱エンジンと同じ範囲）。それ以外は導入も起動もさせず、**理由の文とクラウド（ElevenLabs）を使う案内**を返す（§4）。macOS（Apple Silicon）の MPS / CPU 対応は §16 で調べた（確かな一次情報だけでは組み立てられないので、自動導入しない。ランタイムごとの理由を出す）。
 - **ComfyUI のエンジン・既存のモデル導入は変えない**。`model_install` のジョブ種別・ダウンローダー・抽出器・プロセス管理を共有するだけで、状態（`state.json`）もディレクトリも別。
 
 ## 2. ディレクトリ
@@ -66,7 +66,7 @@ SHA-256 は Hugging Face の API（`/api/models/lj1995/GPT-SoVITS-windows-packag
 
 | 順 | 条件 | `Support.Code` | 理由（カタログの文） |
 |---|---|---|---|
-| 1 | OS が `windows` でない | `os` | OS ごとの文（`darwin`: 「macOS では GPT-SoVITS の自動導入に対応していません。公式は macOS の MPS / CPU での推論に対応していますが、mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。」、`linux`、その他） |
+| 1 | OS が `windows` でない | `os` | OS ごとの文（`darwin`: 「macOS では GPT-SoVITS の自動導入に対応していません。公式は macOS の MPS / CPU での推論に対応していますが、その導入手順は…（pyopenjtalk・jieba_fast・jieba が揃わない理由。#935 で具体化。§16.1）」、`linux`、その他） |
 | 2 | CPU が `amd64` でない | `arch` | 「この CPU（64 ビットの x86 以外）では…」 |
 | 3 | アダプターを 1 つも取得できない | `no_gpu` | 「GPU を取得できなかったため…」 |
 | 4 | NVIDIA のアダプター（ソフトウェアアダプターを除く）がない | `not_nvidia` | 「NVIDIA の GPU が見つからないため…AMD・Intel の GPU では使えません」 |
@@ -151,9 +151,9 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 
 - **ファインチューン（学習）はしない**。参照音声（約 5 秒）のゼロショットだけ（学習は VRAM と時間がかかり、macOS 非推奨）。
 - **クラウドへのフォールバックは利用者が設定で選ぶ**。黙って切り替えない。設定の追加と Audio Director のプロバイダーは #912 の別の子。
-- **Apple Silicon での自動導入**はしない（公式は MPS / CPU の推論に対応するが、パッケージと検証が別に要る）。オーナーの判断で別 Issue。
+- **Apple Silicon での自動導入**はしない（公式は MPS / CPU の推論に対応するが、パッケージと検証が別に要る）。#935 で一次情報を調べ、確かな一次情報だけでは組み立てられないと判断した（§16）。
 - 重みの取得・ライセンス表示・画面・MCP は #920 で実装した（§12）。MuseTalk のランタイムのパッケージと起動は #921（§13）。
-- **MuseTalk の第三者の MLX 版**（`mlx-community/MuseTalk-1.5-q4`）の自動導入は、この Issue では実装しない（オーナーの判断が要る別の事項）。macOS は理由の文とクラウド（Sync Labs）の案内を返す（§13.5）。
+- **MuseTalk の第三者の MLX 版**（`mlx-community/MuseTalk-1.5-q4`）の自動導入は、この Issue では実装しない。macOS は理由の文とクラウド（Sync Labs）の案内を返す（§13.5）。#935 で出典・ライセンス・できることを調べ、実装しないと判断した（§16.3）。
 
 ## 11. 未確認
 
@@ -421,14 +421,14 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 | 条件 | `Code` | 理由（カタログの文の要旨） |
 |---|---|---|
-| macOS | `os` | 「macOS では MuseTalk 1.5 を自動導入できません。**公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4）は mam の自動導入の対象にしていません。**mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです」 |
+| macOS | `os` | 「macOS では MuseTalk 1.5 を自動導入できません。**公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず（CUDA 前提。`mmcv 2.0.1` の Apple Silicon 向けの事前ビルドも無い）、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4。MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無いため、mam の自動導入の対象にしていません。**mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです」（#935 で具体化。§16.3） |
 | Linux・その他の OS | `os` | 自動導入に対応していない |
 | 64 ビット x86 でない | `arch` | 同上 |
 | GPU を取得できない・NVIDIA がない（AMD・Intel） | `no_gpu`・`not_nvidia` | 同上（§4） |
 | NVIDIA の最大の専用メモリ < 4 GB | `low_vram` | 「{gpu} のビデオメモリは {vram_gb} GB で、MuseTalk 1.5 に必要な 4 GB に足りない」 |
 | Compute Capability ≥ 12.0（RTX 50） | `compute_cap` | 「{gpu} は NVIDIA の RTX 50 シリーズ（Blackwell）で、MuseTalk の公式の手順が使う PyTorch 2.0.1（CUDA 11.8）が対応していない」 |
 
-**VRAM の下限 4 GB は、公式の README の記載に基づく**（Gradio Demo の節: 「Windows の NVIDIA GeForce RTX 3050 Ti Laptop GPU、4GB VRAM で、fp16 で 8 秒の動画を約 5 分で生成」）。`vram.estimate=false`（出典あり）。ただし **mam 自身の実機での実測は無い**（§13.8）。出力の解像度・長さによっては 4 GB で足りず、そのときは `out_of_memory` でわかりやすい文を返す。**MLX 版の自動導入は実装しない**（オーナーの判断が要る別の事項）。**クラウドへの自動の切り替えはしない**（§10。利用者が設定で選ぶ。#924）。
+**VRAM の下限 4 GB は、公式の README の記載に基づく**（Gradio Demo の節: 「Windows の NVIDIA GeForce RTX 3050 Ti Laptop GPU、4GB VRAM で、fp16 で 8 秒の動画を約 5 分で生成」）。`vram.estimate=false`（出典あり）。ただし **mam 自身の実機での実測は無い**（§13.8）。出力の解像度・長さによっては 4 GB で足りず、そのときは `out_of_memory` でわかりやすい文を返す。**MLX 版の自動導入は実装しない**（#935 で調べた結果は §16.3）。**クラウドへの自動の切り替えはしない**（§10。利用者が設定で選ぶ。#924）。
 
 ### 13.6 ライセンスの記録
 
@@ -578,3 +578,53 @@ PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だっ
 | GPT-SoVITS と MuseTalk の VRAM を合算せず、片方の常駐のまま他方を起動する | **仕様として記録**。`vram.min_gb` はランタイムごとの目安で、MAX QUALITY で両方を使うには両方の合計が要る。実機（Windows ＋ NVIDIA）で確かめていないので、アイドルのランタイムを止める仕組みは入れない。§11 の未確認に含む |
 | 新しい録音を置くとき、書き起こしの欄を触らないと、保存済みと同じ書き起こしは「送られていない」扱いで消える | **見送り**。サーバーは「触っていない」と「同じ文を入れ直した」を区別できない。画面は新しい録音を選んだときに書き起こしを入れ直すよう案内している（`spec/api/endpoints.md` §2.9）。クライアント側で欄を空にする変更は別 Issue |
 | ある版のカノン（`series_version` のスナップショット）が参照する旧い参照音声のファイルは、カノンの声を置き換えて Episode がコピーしていなければ、消える | **仕様として記録**。履歴の版は読み取り専用の記録で、再生できなくなる。ファイルを残すにはスナップショットの参照も `InUse` で数える必要があり、容量が増える。必要になったら `InUse` の対象を広げる |
+
+## 16. macOS（Apple Silicon）の調査と、ランタイムごとの判定（Issue #935）
+
+#912 / PR #934 の後続。「Apple Silicon で声（GPT-SoVITS）と口パク（MuseTalk）をローカルで動かす」を、**一次情報（公式の README・ソース・PyPI の JSON API・Hugging Face の API・OpenMMLab の公式の索引）を 2026-11-04 に実際に取得して**調べた結果。**結論: どちらも mam が「固定した部品を展開して組み立てる」方式（§3・§13.1・§14）では、確かな一次情報だけでは組み立てられない。よって macOS（darwin/arm64）を対応 OS にせず、ランタイムごとの理由を画面・MCP・Audio Director に出す**（実機の Mac が無いので、組み立てても動作を確かめられない。確かめられない URL・SHA-256・サイズ・版を推測で入れない）。
+
+### 16.1 判定の仕組み（変更なし。各ランタイムが自分の理由を持つ）
+
+`Evaluate(runtime, Platform, gpu.Report)`（§4）は元からランタイムごとに `catalog.Runtime.Support`（`os_reasons.darwin`・`fallback`）を読む。macOS（Apple Silicon でも Intel でも）は、どのランタイムも `Code = os` で断られ、**そのランタイム自身の文**と**そのランタイムの代わりのクラウド**（GPT-SoVITS・Irodori-TTS は ElevenLabs、MuseTalk は Sync Labs）が付く。Apple Silicon のユニファイドメモリ（`gpu.VendorApple`、ComfyUI の同梱エンジンは [model-manager.md §3.7](model-manager.md) でこれを VRAM として扱う）は、**NVIDIA の VRAM としては数えない**（`bestNVIDIA` は NVIDIA だけを見るので、64 GB の Mac でも `Supported` にならない）。画面（モデルマネージャー・設定の「音声・口パク」）・MCP（`list_local_runtime`・`install_local_runtime`）・Audio Director（`localspeech.UnavailableFor` → `localvoice.UnavailableError{Kind: unsupported}`。クラウドへの切り替えは利用者が選ぶ。#924）は、同じ `Support.Message()` を使う。今回、`os_reasons.darwin` の文を、**ランタイムごとに具体的な理由**へ書き換えた（以前は「mam が自動で導入するのは Windows + NVIDIA だけです」だけ）。
+
+| ランタイム | 画面・MCP に出る macOS の理由（要旨） | 代わりの案内 |
+|---|---|---|
+| GPT-SoVITS | 公式は macOS の MPS / CPU に対応するが、導入は conda＋pip でその場でビルドする方式で Apple Silicon 向けの配布物が無い。固定して取得できる wheel だけでは、起動に必須の `pyopenjtalk`・`jieba_fast`・`jieba` が揃わない（§16.2） | クラウドの音声合成（ElevenLabs） |
+| MuseTalk 1.5 | 公式の PyTorch 版は CUDA 前提で、`mmcv==2.0.1` の Apple Silicon 向けの事前ビルドも無い。第三者の MLX 版（`mlx-community/MuseTalk-1.5-q4`、MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無い（§16.3） | クラウドの口パク（Sync Labs） |
+| Irodori-TTS | 変更なし（公式のサーバーは Apple silicon（MPS）に対応するが、mam は自動導入しない。この Issue の範囲外） | ElevenLabs |
+
+テスト: `modelmgr/runtime/macos_support_test.go`（Apple Silicon・Intel Mac の両方で、64 GiB のユニファイドメモリでも `Supported=false`・`Code=os`・ランタイムごとに別の理由と別のクラウド）、`service/localruntime/realcatalogtest/macos_fallback_test.go`（実カタログ・Mac で `Install`・`Start` が `ErrUnsupported` になり、Audio Director の `UnavailableError` の文が、そのランタイムの理由とそのランタイムのクラウドだけを含む）。`GOOS=darwin GOARCH=arm64` で `modelmgr/...`・`service/localruntime/...`・`service/localspeech/...` のビルドと vet が通ることを確かめた。
+
+### 16.2 GPT-SoVITS（実装しなかった理由）
+
+確かめた一次情報:
+
+- **公式の macOS 対応**: README（タグ `20250606v2pro`）の Tested Environments に Apple silicon（Python 3.9 + PyTorch 2.5.1、Python 3.11 + PyTorch 2.7.0）と CPU がある。macOS の導入は `bash install.sh --device <MPS|CPU>`（conda 前提）で、README は「Mac で GPU を使って学習したモデルは品質が大きく劣るので、一時的に CPU を使う」と書く。**Windows の統合パッケージに当たる macOS の配布物は無い**（Hugging Face `lj1995/GPT-SoVITS-windows-package` は Windows 専用）。
+- **`install.sh` の中身**（タグ `20250606v2pro`）: conda で ffmpeg・cmake・make・unzip を入れ、重み・G2PW・NLTK データ・OpenJTalk の辞書を Hugging Face の第三者の `XXXXRT/GPT-SoVITS-Pretrained`（コミット固定でなく `main`）から取得し、`pip install -r requirements.txt` を**その場で**実行する。mam の方式（§3: 固定した部品を展開するだけで、pip・ビルドを走らせない）には載らない。
+- **`requirements.txt` の閉包（macOS arm64・Python 3.10）**: `uv pip compile --python-platform aarch64-apple-darwin --python-version 3.10` で 222 個に解決した。各固定版について PyPI の JSON API で「macOS arm64（または `any`）の cp310 の wheel があるか」を調べたところ、**wheel が無い（ソース配布 `.tar.gz` だけの）ものが 8 個**: `pyopenjtalk 0.4.1`・`jieba_fast 0.53`・`jieba 0.42.1`・`distance 0.1.3`・`crcmod 1.7`・`oss2 2.19.1`（`funasr` が要求）・`antlr4-python3-runtime 4.9.3`・`openai-whisper 20250625`。
+- **そのうち起動に必須のもの**: 起動の import 連鎖は、`api_v2.py` → `TTS_infer_pack/TTS.py` → `TextPreprocessor.py` が `from text import chinese`（`chinese.py` が `import jieba_fast` を**無条件に**する）と `from text.LangSegmenter import LangSegmenter`（`import jieba`）を実行し、日本語の音素化は `text/japanese.py` の `import pyopenjtalk`（失敗しても例外の分岐で同じ import を再度して落ちる）。つまり **`jieba_fast`（C 拡張）・`jieba`・`pyopenjtalk`（C++ と cmake が要る）が無いと、日本語の声どころか起動できない**。
+- **代用の候補を採らなかった理由**: PyPI には macOS の wheel を持つ `pyopenjtalk-plus 0.4.1.post10`（universal2）・`pyopenjtalk-prebuilt 0.3.0`（arm64）があるが、どちらも公式が固定していない第三者のフォークで、GPT-SoVITS が呼ぶ関数（`run_frontend`・`make_label`・`mecab_dict_index`・`update_global_jtalk_with_user_dict`）の互換と日本語の出力の同一性を**実機で確かめられない**。`jieba_fast`（C 拡張）には macOS の wheel が無く、`jieba` で代用すると公式のコードを書き換えることになる。
+- 重み: Windows パッケージの重みは Windows 専用ではないが、macOS 用には `lj1995/GPT-SoVITS`（コミット `8f885756…`、ライセンス MIT）か `XXXXRT/GPT-SoVITS-Pretrained` から別に固定し直す必要があり、実機で動かさない固定は意味が薄い。
+
+→ **実装しない**。macOS では上の理由を出し、ElevenLabs を案内する。
+
+### 16.3 MuseTalk（実装しなかった理由）
+
+確かめた一次情報:
+
+- **公式（`TMElyralab/MuseTalk`、コミット `0a89dec4`）**: README は CUDA 前提（CUDA 11.7・`pytorch-cuda=11.8`）で macOS の記載が無い。mam の組み立て（§13.1）は `mmcv==2.0.1` の事前ビルド（OpenMMLab の索引 `…/mmcv/dist/cu118/torch2.0.0/`）を使うが、**macOS 向けの `mmcv 2.0.1` の wheel は OpenMMLab の索引にも PyPI（ソース配布のみ）にも無い**（索引にあるのは 2.0.0 の cp311 universal2 と、x86_64 の cp310 だけ。Python 3.11 は公式の検証範囲外）。さらに mam の `mam_musetalk_engine.py` は `cuda` か `cpu` だけを扱い、MPS を扱わない（実機で確かめられない書き換えになる）。
+- **第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4`**（Hugging Face API。コミット `ff57bd4b785b3813f43be689390c3d7494258a35`、2026-06-05）: **実在する**。ライセンス MIT（モデルカードの `license: mit`。上流 MuseTalk を MIT と書く）。作者は MVS Collective（xocialize-code）。UNet の Linear を int4（group_size 64）にし、VAE と Whisper の encoder は fp16。ファイルは `unet.safetensors`（1,325,610,215 B、SHA-256 `7a66b9f6…0f1b`）・`vae.safetensors`（167,335,279 B、`2a767078…0f98`）・`whisper_encoder.safetensors`（16,423,174 B、`c04baf72…36d3`）・`config.json`。fp16・q8 の兄弟もある。モデルカードの数値（34 顔/秒・約 7 GB・上流との差 2.74/255）は**自己申告で mam は確かめていない**。
+- **コード `xocialize/musetalk-mlx`**（コミット `c6eb30eb…`）: `pip install -e .`（mlx・numpy・opencv-python・librosa・soundfile。**PyPI には無い**）で入る**ニューラルコアのライブラリ**（`MuseTalkPipeline.from_pretrained_mlx`・`generate_faces`）。README 自身が「顔の検出・DWPose・face-parse・貼り戻しは上流の CPU 前処理を**呼び出し側が**つなぐ」と書く。**サーバー（HTTP）も、動画から顔を検出して貼り戻す処理も無い**。リポジトリに `LICENSE` ファイルが無い（GitHub の API は license なし。`pyproject.toml` と README が MIT と書くだけ）。
+- **他の Apple Silicon 向けの実装**: `Lulzx/fast-lipsync`（MIT。Core ML、macOS 15 以降、`uv`・`ffmpeg`・`git` が前提の `setup.sh` が MuseTalk を clone してパッチを当て、重みを取得し、Core ML にコンパイルする）、`dahai80/musetalk-mlx`（Apache-2.0。別のライブラリ fusion-mlx の上の業務層）、`barnent1/musetalk-mac`（ライセンス NOASSERTION。MPS と Mediapipe、FastAPI サーバーだが、公式の API と別形で、自前の `requirements-mac.txt` を pip で入れる）。いずれも、**固定した部品の展開だけで組み立てられる配布物ではなく**、セットアップに pip・clone・コンパイルが要る。
+- **公式の API 形式との整合**: MuseTalk に公式の HTTP API は無い（§13.3）。mam の口パクの入口（`mam_musetalk_server.py` の `POST /v1/lipsync`）は mam 自身のラッパーなので、MLX 版を使うなら**新しいエンジンと顔検出・貼り戻しを mam が書く**ことになる（Windows 版では公式の `scripts/inference.py` を流用した部分）。実機（MLX が動く Mac）が無く、出来を確かめられない。
+
+→ **実装しない**。MLX 版は「出典・ライセンス・できること」を上に記録し、画面・MCP の理由の文でも名前を挙げる（`mlx-community/MuseTalk-1.5-q4`、MIT）。実装するなら、(a) 顔の検出・貼り戻しを含む `/v1/lipsync` のエンジンの設計（face detection に mmpose を使わない形）、(b) mlx・opencv などの macOS arm64 の wheel と python-build-standalone の `aarch64-apple-darwin` の固定、(c) 実機での確認、が要る。
+
+### 16.4 未確認・やっていないこと
+
+| 項目 | 状態 |
+|---|---|
+| **実機の Mac（Apple Silicon）での、GPT-SoVITS・MuseTalk の導入・起動・生成** | **未確認（対応していないので、導入も起動も無い）**。この開発環境は Linux で、macOS・Apple Silicon の GPU が無い。上の調査は一次情報の取得（HTTP）と PyPI の wheel の有無の確認だけで、macOS で何も実行していない |
+| macOS で `Evaluate` が断る文が、実際の画面・MCP でそのとおり出ること | 画面・MCP は `Support.Message()` を表示するだけ（既存のテストで確認済み）。実際の Mac の画面は未確認 |
+| 上の調査が示す wheel の有無・第三者の実装の状態が将来も同じであること | 保証できない（2026-11-04 時点）。PyPI に `pyopenjtalk` の macOS の wheel が出る、MLX 版に顔検出つきのサーバーが出るなどすれば、再調査して対応を足せる |
+| `mlx-community/MuseTalk-1.5-q4` の性能（34 顔/秒）・画質、`xocialize/musetalk-mlx` の LICENSE（ファイルが無い） | 未確認（モデルカードと `pyproject.toml` の自己申告だけ） |
