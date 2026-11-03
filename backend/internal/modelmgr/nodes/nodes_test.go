@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -33,7 +34,13 @@ func archive(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	for name, body := range files {
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	slices.Sort(names) // map order is random: the same files must give the same bytes, or a pinned size and SHA-256 never match
+	for _, name := range names {
+		body := files[name]
 		w, err := zw.Create("pack-" + commit + "/" + name)
 		require.NoError(t, err)
 		_, err = w.Write([]byte(body))
