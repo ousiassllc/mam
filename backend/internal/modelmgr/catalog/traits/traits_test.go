@@ -47,7 +47,7 @@ func TestFactsOfReadsAWorkflowTemplate(t *testing.T) {
 		"flf2v-ltx-2-5":           {Video: true, FirstFrame: true, LastFrame: true, NativeAudio: true},
 		"txt2img-sdxl":            {},
 		"inpaint-sdxl":            {ReferenceMode: "inpaint", MaxRefs: 1, Roles: []string{localcfg.RoleWhole}},
-		"txt2img-sdxl-controlnet": {ReferenceMode: "controlnet", MaxRefs: 1, Roles: []string{localcfg.RoleWhole}, NeedsReference: true},
+		"txt2img-sdxl-controlnet": {ReferenceMode: "controlnet", MaxRefs: 1, Roles: []string{localcfg.RoleWhole, localcfg.RolePose}, NeedsReference: true},
 	} {
 		tpl, ok := localcfg.TemplateByID(id)
 		assert.True(t, ok, id)
