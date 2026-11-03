@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": true, "speed": "standard"},
  "description": "【実写】写真風の成人向け SDXL チェックポイント LUSTIFY! の SDXL 版の最新 ZENITH（V9。約 6.9 GB）。Krea 2 版の v10 は別のテンプレートと追加ノードが要るため入れていない。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
  "files": [
   {

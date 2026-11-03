@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/kind"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/mainfile"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/samplefile"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 )
 
 // Workflow is a #831 model created on the bundled endpoint when the model is installed: Name is its model
@@ -43,4 +45,19 @@ func (w Workflow) Model(template func(id string) (localcfg.Template, bool)) (loc
 		return localcfg.Model{}, fmt.Errorf("sampling: %w", err)
 	}
 	return m, nil
+}
+
+// Derived is what the workflows of the model say of its inputs and its sound (package traits): the union over the facts of its workflows' templates (the
+// embedded ones, read once). An upscale model has none: its workflow takes the picture to enlarge, which is not an input of the filter.
+func (m Model) Derived() traits.Derived {
+	if m.Kind == kind.Upscale {
+		return traits.Derived{}
+	}
+	var facts []traits.Facts
+	for _, w := range m.Workflows {
+		if f, ok := traits.TemplateFacts(w.Template); ok {
+			facts = append(facts, f)
+		}
+	}
+	return traits.Derive(facts)
 }

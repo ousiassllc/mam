@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"params_b": 4, "params_label": "4B", "uncensored": false, "speed": "fast"},
  "description": "FLUX.2 [klein] 4B の fp8 蒸留版。テキストから画像を作るほか、最大 4 枚の参照画像を使った編集（画風の変更・物の置き換え・複数の画像の合成）ができる。4 ステップで数秒。拡散モデル（fp8、約 4.1 GB）・テキストエンコーダー（Qwen3 4B、約 8.0 GB）・VAE の 3 ファイル、合計約 12.5 GB。公式は安全調整つきで検閲寄り（成人向けは flux1-dev-nsfw-master・noctq-v4-qwen-image21 に任せる）。同じ klein でも 9B と dev は非商用なので入れていない。macOS（Apple Silicon）は ComfyUI が fp8 を扱えない既知の問題があり、Windows のみの対応。",
  "files": [
   {

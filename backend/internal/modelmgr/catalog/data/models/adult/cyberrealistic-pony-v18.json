@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": true, "speed": "standard"},
  "description": "【実写寄り】Pony 系の SDXL チェックポイントを実写に寄せたもの（成人向け。約 6.9 GB、fp16）。プロンプトは score_9, score_8_up, score_7_up, （描きたいこと）の形で書く。作者の推奨は 30 ステップ以上・cfg 5・clip skip 2・解像度 832×1216 または 896×1152 で、clip skip 2 のテンプレートを、作者の推奨に合わせて 30 ステップ・cfg 5 で動かす（サンプラーは標準の dpmpp_2m/karras。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
  "files": [
   {

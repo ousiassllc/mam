@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "general",
+ "traits": {"params_b": 2.5, "params_label": "2.5B", "uncensored": false, "speed": "standard"},
  "description": "Stable Diffusion 3.5 の中型版。CLIP と T5 入りの 1 ファイルのチェックポイント（約 12 GB）。",
  "files": [
   {

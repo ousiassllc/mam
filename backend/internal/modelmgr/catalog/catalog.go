@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/platform"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 )
 
 //go:embed data
@@ -137,7 +138,10 @@ type Model struct {
 	Kind          localcfg.Media `json:"kind"`
 	Tier          Tier           `json:"tier"`
 	ContentRating ContentRating  `json:"content_rating"`
-	Description   string         `json:"description"`
+	// Traits are what the model filter needs besides the license and the VRAM (#1011; package traits). What the workflows say (the inputs, the sound
+	// of a video) is not in it: Derived reads that from them.
+	Traits      traits.Traits `json:"traits"`
+	Description string        `json:"description"`
 	// TriggerWords are the words a LoRA of the model needs in the prompt (none for a model without a LoRA).
 	TriggerWords []string `json:"trigger_words,omitempty"`
 	Files        []File   `json:"files"`

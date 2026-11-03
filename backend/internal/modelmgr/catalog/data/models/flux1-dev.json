@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "general",
+ "traits": {"params_b": 12, "params_label": "12B", "uncensored": false, "speed": "standard"},
  "description": "FLUX.1 の高品質版。非商用ライセンス。CLIP・T5・VAE を含む 1 ファイルのチェックポイント（約 17 GB）。マスクで一部だけ描き直す（インペイント）にも使える。",
  "files": [
   {

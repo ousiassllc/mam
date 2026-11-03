@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"uncensored": true, "speed": "standard"},
  "description": "Qwen-Image 2.1 を非検閲にした派生モデル（成人向け）。標準ノードだけで動く int8_convrot 版で、拡散モデル（約 7.3 GB）・Qwen3-VL 8B のテキストエンコーダー（約 9.4 GB）・VAE の 3 ファイル、合計約 17.3 GB。作者の推奨は 25 ステップ・euler/simple・cfg 3（ネガティブプロンプトあり）。",
  "files": [
   {

@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": true, "speed": "standard"},
  "description": "【実写】写真風の成人向け画像に特化した SDXL チェックポイント（約 6.9 GB）。JoyTag のタグを理解し、自然文でも書ける（作者の例は「Photo of …」の書き出しと、ネガティブの low quality）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
  "files": [
   {

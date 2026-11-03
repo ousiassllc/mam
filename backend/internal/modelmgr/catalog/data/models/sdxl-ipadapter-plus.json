@@ -4,6 +4,7 @@
  "kind": "image",
  "tier": "standard",
  "content_rating": "general",
+ "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
  "description": "参照画像 1 枚の雰囲気・構図・人物を SDXL の生成へ寄せる IP-Adapter（ip-adapter-plus_sdxl_vit-h と CLIP ViT-H。合わせて約 3.4 GB）。追加ノード「ComfyUI_IPAdapter_plus」を先に導入しておく必要がある（モデルマネージャーの「追加ノード」の節）。SDXL base 1.0 は導入済みの「Stable Diffusion XL base 1.0」と共有する。",
  "files": [
   {

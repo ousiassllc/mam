@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/kind"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 )
 
 var (
@@ -67,6 +68,7 @@ func Validate(c *Catalog, template func(id string) (localcfg.Template, bool)) []
 		}
 		seenModel[m.ID] = true
 		errs = append(errs, validateModel(m, shared)...)
+		errs = append(errs, m.Traits.Validate(where, m.Derived().Audio)...)
 		used := map[string]bool{} // the files some workflow of the model loads: a model may carry files only some of its workflows need (FLF2V does not load the upscaler)
 		for _, w := range m.Workflows {
 			if seenWorkflow[w.Name] {
@@ -205,6 +207,13 @@ func validateRating(where string, m Model) []error {
 		errs = append(errs, fmt.Errorf("%s: a license without a text (%s) is not commercial use (no or unknown)", where, unspecifiedLicense))
 	}
 	hasLoRA := slices.ContainsFunc(m.Files, func(f File) bool { return f.Folder == "loras" })
+	if m.Traits.Uncensored && !m.Adult() {
+		errs = append(errs, fmt.Errorf("%s: an uncensored model is an adult model (traits.uncensored needs content_rating adult)", where))
+	}
+	if !m.Traits.Uncensored && (slices.ContainsFunc(m.Files, func(f File) bool { return traits.UncensoredFile(f.Name + " " + f.URL) }) ||
+		slices.ContainsFunc(m.Workflows, func(w Workflow) bool { return traits.UncensoredFile(w.Template) })) {
+		errs = append(errs, fmt.Errorf("%s: a file or a workflow of the model is uncensored (uncensor, nsfw, heretic, abliterated in its name): traits.uncensored must be true and content_rating adult", where))
+	}
 	if len(m.TriggerWords) > 0 && !hasLoRA {
 		errs = append(errs, fmt.Errorf("%s: trigger_words belong to a model with a LoRA file", where))
 	}

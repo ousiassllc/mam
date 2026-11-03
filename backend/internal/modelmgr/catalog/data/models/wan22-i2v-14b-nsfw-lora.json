@@ -4,6 +4,7 @@
  "kind": "video",
  "tier": "advanced",
  "content_rating": "adult",
+ "traits": {"params_b": 14, "params_label": "14B", "uncensored": true, "speed": "slow"},
  "description": "wan22-i2v-14b（ベースは共有）に、成人向けの表現を足す LoRA「General NSFW」の高ノイズ用・低ノイズ用（各約 0.6 GB）を重ねる構成（成人向け）。ベースを導入済みなら、取得するのは LoRA だけ。LoRA の強さは 1.0。16fps。",
  "trigger_words": [
   "nsfwsks"
