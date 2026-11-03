@@ -226,6 +226,30 @@ func TestSync_ACallThatRunsOverItsLimitIsATimeoutAndTheCallersCancelIsNot(t *tes
 	assert.False(t, errors.As(err, &un), "the caller's own cancel is no failure of the runtime")
 }
 
+// Another clip's run is not part of this clip's limit: the clip waits for the runtime before its own limit starts.
+func TestSync_TheTimeLimitDoesNotCountTheWaitBehindAnotherClip(t *testing.T) {
+	const limit = 5 * time.Second
+	started := make(chan struct{})
+	rt := &fakeRuntime{answer: func(ctx context.Context, n int, req lipsync.Request) (lipsync.Response, error) {
+		if n == 0 {
+			close(started)
+			time.Sleep(300 * time.Millisecond) // the clip in front takes this long to run
+		}
+		return writes([]byte("mp4"))(ctx, n, req)
+	}}
+	c := musetalk.New(rt, musetalk.Config{FFmpegPath: ffmpeg, BaseTimeout: limit, PerSecondTimeout: time.Millisecond, MaxTimeout: limit})
+	first := make(chan error, 1)
+	go func() { _, err := c.Sync(context.Background(), request()); first <- err }()
+	<-started
+
+	_, err := c.Sync(context.Background(), request())
+
+	require.NoError(t, err)
+	require.NoError(t, <-first)
+	require.Len(t, rt.calls, 2)
+	assert.Greater(t, rt.calls[1].remaining, limit-200*time.Millisecond, "the second clip has its whole limit when it starts to run")
+}
+
 // A GPU is far faster or slower than another: the limit of a clip is the base plus a share of each second, up to the maximum.
 func TestSync_TheLimitOfAClipFollowsItsLength(t *testing.T) {
 	cfg := musetalk.Config{FFmpegPath: ffmpeg, BaseTimeout: 10 * time.Minute, PerSecondTimeout: time.Minute, MaxTimeout: 20 * time.Minute}

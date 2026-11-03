@@ -59,6 +59,9 @@ type Config struct {
 type Client struct {
 	cfg    Config
 	runner Runner
+	// gpu is the one slot of the runtime: a clip waits for it before its time limit starts (as gptsovits.Client does), so the limit is the
+	// clip's own run and not the wait behind another one.
+	gpu chan struct{}
 }
 
 // New returns a Client of the runtime.
@@ -80,7 +83,7 @@ func New(runner Runner, cfg Config) *Client {
 			*l.v = l.d
 		}
 	}
-	return &Client{cfg: cfg, runner: runner}
+	return &Client{cfg: cfg, runner: runner, gpu: make(chan struct{}, 1)}
 }
 
 // Prepare starts the runtime when it is stopped and waits until it answers (audiodirector.LocalLipSyncer). A runtime that cannot be
@@ -114,6 +117,12 @@ func (c *Client) Sync(ctx context.Context, req audiodirector.LipSyncRequest) ([]
 	ffmpeg, err := filepath.Abs(c.cfg.FFmpegPath)
 	if err != nil {
 		return nil, fmt.Errorf("musetalk: ffmpeg path: %w", err)
+	}
+	select {
+	case c.gpu <- struct{}{}:
+		defer func() { <-c.gpu }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 	dir, err := os.MkdirTemp(c.cfg.WorkDir, "mam-musetalk-")
 	if err != nil {

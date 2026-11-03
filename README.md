@@ -10,8 +10,8 @@ AI Video Production Agent。企画・脚本・演出・撮影・品質判定・�
 
 | 用途 | ローカルのモデル | 入手元 | ライセンス |
 |---|---|---|---|
-| 声（TTS・参照音声からの声の再現） | GPT-SoVITS | [RVC-Boss/GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（重みは [lj1995/GPT-SoVITS](https://huggingface.co/lj1995/GPT-SoVITS)） | コード・重みとも MIT |
-| 口パク | MuseTalk 1.5 | [TMElyralab/MuseTalk](https://github.com/TMElyralab/MuseTalk)（重みは [TMElyralab/MuseTalk](https://huggingface.co/TMElyralab/MuseTalk)） | コード MIT。モデルは商用を含む利用が可と README にあります |
+| 声（TTS・参照音声からの声の再現） | GPT-SoVITS | [RVC-Boss/GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（重みは [lj1995/GPT-SoVITS](https://huggingface.co/lj1995/GPT-SoVITS)） | コード・重みとも MIT。ただし依存の一部（g2pW など）は商用利用がはっきりしません |
+| 口パク | MuseTalk 1.5 | [TMElyralab/MuseTalk](https://github.com/TMElyralab/MuseTalk)（重みは [TMElyralab/MuseTalk](https://huggingface.co/TMElyralab/MuseTalk)） | コード MIT。モデルは商用を含む利用が可と README にあります。ただし依存の重みの一部は商用利用がはっきりしません。RTX 50 シリーズは非対応です |
 
 - 実行環境（Python 環境）と重みは**インストーラーに含まれません**。モデルマネージャー（`/model-manager`）の「ローカル音声・口パク」から、mam が取得して導入・起動・停止します（固定した URL と SHA-256 を確かめます）。重み・依存ファイル（whisper・sd-vae・DWPose・face-parse-bisent など）の出典とライセンスは、そこと、設定の「音声・口パク」に出ます。**商用利用がはっきりしないものは、画面に目立つ注記が出ます。商用の動画に使う前に確認してください。**
 - 設定の「音声・口パク」（`/settings/audio`）で、声と口パクをそれぞれクラウドかローカルかで選びます（MCP の `get_audio_providers`・`set_audio_providers` でも同じです）。**選ばないときはクラウド**です。保存した選択は、次の音声作成から使われます。

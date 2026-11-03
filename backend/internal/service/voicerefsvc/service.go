@@ -187,7 +187,7 @@ func (s *Service) set(ctx context.Context, o owner, characterID string, in Input
 	ref.Text, ref.Language = text, lang
 	previous, err := s.write(ctx, o, characterID, &ref)
 	if err != nil {
-		s.discard(ctx, have, &ref)
+		s.discard(ctx, &ref, have) // the file just stored is the orphan; the old one is still the voice of the row
 		return voiceref.Reference{}, err
 	}
 	s.discard(ctx, previous, &ref)

@@ -1,7 +1,7 @@
 // Package lipsync is the entry of the local lip-sync runtime (MuseTalk 1.5): the request, the response and the errors of one lip-sync
 // generation, and the client that sends it to the runtime's server on 127.0.0.1 (spec/architecture/model-manager/local-runtime.md §13.3).
 // The Audio Director's local lip-sync provider calls it through localruntime.Service.LipSync, which starts the runtime first. The
-// server is mam's own wrapper (catalog/data/overlays/musetalk_server.py); the Python side of the contract is tested with it.
+// server is mam's own wrapper (catalog/data/overlays/mam_musetalk_server.py); the Python side of the contract is tested with it.
 package lipsync
 
 import (
@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
@@ -112,9 +113,12 @@ func (e *Error) Is(target error) bool {
 // Check says whether the request can be sent: the same rules the server applies, so that a mistake is caught before the runtime is
 // started. It does not touch the disk.
 func (r Request) Check() error {
-	for name, v := range map[string]string{"video_path": r.VideoPath, "audio_path": r.AudioPath, "output_path": r.OutputPath, "ffmpeg_path": r.FFmpegPath} {
-		if v == "" || !filepath.IsAbs(v) || strings.ContainsRune(v, 0) {
-			return fmt.Errorf("%w: %s は絶対パスで指定してください", ErrBadRequest, name)
+	// An ordered list: with several bad fields the one that is reported is always the first.
+	for _, f := range []struct{ name, value string }{
+		{"video_path", r.VideoPath}, {"audio_path", r.AudioPath}, {"output_path", r.OutputPath}, {"ffmpeg_path", r.FFmpegPath},
+	} {
+		if f.value == "" || !filepath.IsAbs(f.value) || strings.ContainsRune(f.value, 0) {
+			return fmt.Errorf("%w: %s は絶対パスで指定してください", ErrBadRequest, f.name)
 		}
 	}
 	if r.FPS < 0 || r.FPS > 60 {
@@ -123,10 +127,20 @@ func (r Request) Check() error {
 	if !strings.EqualFold(filepath.Ext(r.OutputPath), ".mp4") {
 		return fmt.Errorf("%w: output_path は .mp4 のファイルにしてください", ErrBadRequest)
 	}
-	if filepath.Clean(r.OutputPath) == filepath.Clean(r.VideoPath) || filepath.Clean(r.OutputPath) == filepath.Clean(r.AudioPath) {
+	if samePath(r.OutputPath, r.VideoPath) || samePath(r.OutputPath, r.AudioPath) {
 		return fmt.Errorf("%w: output_path は入力のファイルと別にしてください", ErrBadRequest)
 	}
 	return nil
+}
+
+// samePath reports whether two absolute paths name the same file by their text: Windows paths are case-insensitive (`C:\a\X.mp4` and
+// `c:\a\x.mp4`), and ffmpeg would overwrite the input with -y.
+func samePath(a, b string) bool {
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
 }
 
 // Client sends a Request to the server at BaseURL ("http://127.0.0.1:<port>").

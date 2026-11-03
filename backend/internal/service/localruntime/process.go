@@ -42,8 +42,9 @@ func (s *Service) Start(ctx context.Context, id string) (proc.Status, error) {
 	if err != nil {
 		return st, err
 	}
+	// The port is only remembered to try it first next time: a failure to save it is no failure of the server that is running now.
 	if err := inst.state.Update(func(r *store.RuntimeState) { r.LastPort = st.Port }); err != nil {
-		return st, err
+		s.Logger.Warn("remember the port of the local runtime failed", "runtime", id, "port", st.Port, "err", err)
 	}
 	return st, nil
 }
@@ -122,12 +123,18 @@ type Event struct {
 	Job     *track.Entry `json:"job,omitempty"`
 }
 
-// OnStartup does what mam does when it starts: removes what an interrupted install left, and starts the runtimes that are set to
-// start with mam (on a machine that can run them). It does not block on the start (the server takes a while to load the models).
-// Failures are logged and shown by Status.
-func (s *Service) OnStartup(ctx context.Context) {
+// CleanLeftovers removes what an interrupted install or update left in every runtime's directory. It runs before the job queue starts:
+// an install job that the queue resumes is using those directories (the extraction, the swap), and must not find them cleaned under it.
+func (s *Service) CleanLeftovers() {
 	for _, inst := range s.instances {
 		inst.install.CleanLeftovers()
+	}
+}
+
+// OnStartup starts the runtimes that are set to start with mam (on a machine that can run them). It does not block on the start (the
+// server takes a while to load the models). Failures are logged and shown by Status.
+func (s *Service) OnStartup(ctx context.Context) {
+	for _, inst := range s.instances {
 		if !inst.state.Get().AutoStart || !inst.install.Status().Installed {
 			continue
 		}

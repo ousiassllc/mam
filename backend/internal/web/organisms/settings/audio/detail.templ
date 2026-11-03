@@ -83,7 +83,7 @@ templ localState(p Provider) {
 		}
 		if len(p.Local.Unclear) > 0 {
 			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-unclear-" + p.Field }>
-				<p class="font-semibold">商用利用がはっきりしない重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
+				<p class="font-semibold">商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
 				<p class="break-words">{ join(p.Local.Unclear) }</p>
 				<p>商用の動画に使う前に、モデルマネージャーの一覧で出典とライセンスを確認してください。</p>
 			</div>

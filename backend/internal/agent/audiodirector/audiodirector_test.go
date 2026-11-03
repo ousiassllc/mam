@@ -58,5 +58,3 @@ func TestDefaultClientsDoNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T) 
 
 	assert.Zero(t, foreignHits.Load())
 }
-
-// Sync Labs bills a generation it accepted: a failure after the job exists is a ChargedError, a

@@ -1,0 +1,43 @@
+name: Upstream check
+
+# Asks the upstream of every URL that the model catalog pins (weights, runtime packages, engine builds) whether the file is still there with
+# the pinned size and, where the upstream says so without a download, the pinned SHA-256 (spec/architecture/model-manager/local-runtime.md
+# §12.10). A mirror that disappeared or changed fails the job, which is how a maintainer finds out. It never runs for a pull request or a
+# push (ci.yml does that), and ci.yml does not depend on it.
+#
+# Locally: `make upstream-check` (the same command; UPSTREAM_CHECK_FLAGS="-only musetalk -v" narrows it and lists what was not proved by
+# SHA-256). The files behind a Hugging Face login (LTX-2.5) are asked only when the repository secret HF_TOKEN is set (a read token of an
+# account that accepted the model's terms); without it they are reported as skipped.
+
+on:
+  schedule:
+    - cron: "17 3 * * 1" # every Monday, 03:17 UTC (off the hour: the top of the hour is when the scheduler is busiest)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-check
+  cancel-in-progress: false
+
+jobs:
+  upstream-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      # Exit status 1 when a pin no longer holds (gone, size changed, SHA-256 changed); -v also lists what was verified by size only.
+      - name: Check the pinned URLs against their upstream
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: go run ./backend/cmd/upstreamcheck -v

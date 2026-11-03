@@ -89,7 +89,8 @@ func (i *Installer) Assets() []AssetStatus {
 }
 
 // NotReady lists the required assets that are not verified (missing, or not checked yet): the runtime must not start while there are
-// any. Nothing is listed for a runtime whose package is not installed (there is nothing to check).
+// any. It does not look at whether the package is installed (every required asset of a runtime without one is listed as missing): the
+// caller checks that first (localruntime.Service.CheckStart).
 func (i *Installer) NotReady() []AssetStatus {
 	var out []AssetStatus
 	for _, s := range i.Assets() {

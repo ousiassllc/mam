@@ -151,11 +151,18 @@ class MuseTalkEngine:
                     merged = original
                 cv2.imwrite(os.path.join(out_dir, f"{i:08d}.png"), merged)
 
-        run_ffmpeg(
-            ffmpeg, "-r", str(fps), "-f", "image2", "-i", os.path.join(out_dir, "%08d.png"), "-i", audio,
-            "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", "-c:a", "aac", "-shortest",
-            "-movflags", "+faststart", output,
-        )
+        # Written beside the output and moved onto it when ffmpeg is done: a failure or a dead process never leaves a truncated .mp4 at the output (a .part.mp4 beside it can remain after a dead process).
+        partial = output + ".part.mp4"
+        try:
+            run_ffmpeg(
+                ffmpeg, "-r", str(fps), "-f", "image2", "-i", os.path.join(out_dir, "%08d.png"), "-i", audio,
+                "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", "-c:a", "aac", "-shortest",
+                "-movflags", "+faststart", partial,
+            )
+            os.replace(partial, output)
+        finally:
+            if os.path.exists(partial):
+                os.remove(partial)
         return {"output_path": output, "frames": len(results), "fps": fps, "duration_sec": round(len(results) / fps, 3)}
 
     @staticmethod

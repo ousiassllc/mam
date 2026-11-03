@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -67,6 +68,22 @@ func (r *Reference) Scan(src any) error {
 	}
 	if err := json.Unmarshal(raw, r); err != nil {
 		return fmt.Errorf("decode voice reference: %w", err)
+	}
+	return nil
+}
+
+// Validate holds a reference that did not come through the upload (a bundle's character row) to what the upload enforces: a known
+// language, a transcript within MaxTextRunes, and a file whose extension and MIME type are those of one supported format (the content is
+// the playback's concern: the response is sandboxed and nosniff).
+func (r Reference) Validate() error {
+	if _, err := NormalizeLanguage(r.Language); err != nil {
+		return fmt.Errorf("language %q: %w", r.Language, err)
+	}
+	if _, err := NormalizeText(r.Text); err != nil {
+		return err
+	}
+	if f, ok := FormatOf(path.Ext(r.FilePath)); !ok || f.MimeType != r.MimeType {
+		return fmt.Errorf("voiceref: file %q with MIME type %q is not a supported recording", r.FilePath, r.MimeType)
 	}
 	return nil
 }

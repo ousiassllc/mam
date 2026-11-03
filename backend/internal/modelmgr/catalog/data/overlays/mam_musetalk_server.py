@@ -61,7 +61,9 @@ def validate_request(body: object) -> dict:
     out_dir = os.path.dirname(out["output_path"])
     if not os.path.isdir(out_dir):
         raise LipSyncError("bad_request", f"output_path のフォルダがありません: {out_dir}")
-    if os.path.abspath(out["output_path"]) in (os.path.abspath(out["video_path"]), os.path.abspath(out["audio_path"])):
+    # Windows paths are case-insensitive and may be reached through a link: compare what the paths resolve to, not their text.
+    resolved = {key: os.path.normcase(os.path.realpath(out[key])) for key in ("video_path", "audio_path", "output_path")}
+    if resolved["output_path"] in (resolved["video_path"], resolved["audio_path"]):
         raise LipSyncError("bad_request", "output_path は入力のファイルと別にしてください")
     return out
 

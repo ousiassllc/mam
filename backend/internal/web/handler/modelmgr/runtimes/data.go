@@ -64,10 +64,7 @@ func runtimeCard(ctx context.Context, svc *localruntime.Service, v localruntime.
 		VRAM:      jobview.VRAMText(v.VRAM.MinGB, v.VRAM.Source, v.VRAM.Estimate),
 		Installed: v.Installed, Broken: v.Broken, Version: v.Version, PinnedVersion: v.PinnedVersion, UpdateAvailable: v.UpdateAvailable,
 		State: string(v.Process.State), URL: v.Process.URL, ProcessError: v.Process.Error, AutoStart: v.AutoStart,
-		LicenseName: v.License.Name, LicenseURL: v.License.URL, Weights: weightsOf(v.Weights),
-	}
-	if v.License.CommercialCondition != "" {
-		r.LicenseCondition = v.License.CommercialCondition
+		LicenseName: v.License.Name, LicenseURL: v.License.URL, LicenseCondition: v.License.CommercialCondition, Weights: weightsOf(v.Weights),
 	}
 	r.Commercial = commercialOf(v)
 	// The build the card talks about: the installed one, else the one this GPU gets, else the first (a machine that cannot run it).

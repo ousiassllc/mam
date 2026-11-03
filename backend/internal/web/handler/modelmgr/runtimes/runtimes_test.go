@@ -100,7 +100,7 @@ func TestRuntimes_ThePageShowsTheCardAndItsModalTheWeightsSourceLicenseAndTheUnc
 
 	// The asset whose commercial use is unclear is said before the list, and again in its own row, prominently.
 	assert.Contains(t, d, `data-testid="mm-runtime-unclear"`)
-	assert.Contains(t, d, "商用利用がはっきりしない重み・依存ファイルが 1 件あります")
+	assert.Contains(t, d, "商用利用が確認できていない（不可・不明）重み・依存ファイルが 1 件あります")
 	assert.Contains(t, d, `data-commercial-badge="unknown"`)
 	assert.Contains(t, d, `data-testid="mm-runtime-asset-notice"`)
 	assert.Contains(t, d, "商用で使う前に配布元に確認してください")
