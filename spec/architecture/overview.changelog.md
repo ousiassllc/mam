@@ -96,3 +96,4 @@
 | 1.89 | 2026-11-02 | §5 の `static/src/components/poll/` の説明に、更新ボタン（`molecules/refresh.Bar`）の要求は止めないことを足した | Issue #962 |
 | 1.90 | 2026-11-03 | §5 のディレクトリ構成に `service/joblist/`（ジョブ一覧の読み取り）と `repository/jobrecent/` を足した | Issue #980 |
 | 1.91 | 2026-11-03 | §5 のディレクトリ構成に `facefusion/`（外部ツール FaceFusion の検出と起動）を足した | Issue #995 |
+| 1.92 | 2026-11-03 | §5 の `.github/workflows` に、固定した URL を上流と照合する `upstream-check.yml` を足した | Issue #937 |
