@@ -97,6 +97,7 @@
 | 生成テスト・プロジェクト・Shot の生成設定のモデル選択 | `gentest.Service.ModelsWhere(ctx, media, cond)`（`modelcatalog.Info` の一覧。選択画面は `Default()` から）。`Info` に `available`・`unavailable`・`unavailable_message`・`settings_route`・`inputs`・`provider`・`origin`・`catalog`（カタログのモデルの成人向け・`traits`・`vram_min_gb`）。1 件の可否は `Service.Availability(id)` |
 | 割り当て（設定の画像・動画モデル、Quality Policy）の候補 | `modelsettings.View.ImageModels` / `VideoModels` の各候補に `Availability`。`View.ImageModelsWhere(cond)` / `VideoModelsWhere(cond)`。今の割り当てが使えないモデルを指すとき `View.Unusable[]`（§5.3） |
 | LLM の割り当ての候補 | `llmmodels.Service.Candidates(ctx, cond)`（`Candidate` の一覧。選択画面は `Default()` から）。プロバイダー 1 つの可否は `Availability(provider)`、各 `List` に `Availability` |
+| 入力画像を添えたときのモデルの並べ替え（#1009） | `modelfilter.InputsOfRoles(roles []string) []traits.Input`（添えた画像の役割 `reference`・`face`・`style`・`edit`・`pose`・`first_frame`・`last_frame` から、モデルが受け付けるべき入力 `reference_whole`・`reference_face`・…・`first_frame`・`last_frame` を返す。重複なし）と `modelfilter.PreferForInputs[T](list []T, item func(T) Item, attached []traits.Input) []T`（`Item.Inputs` が `attached` を多く持つモデルを先に並べる**安定ソート**。同じ数ならもとの順。何も隠さない（持たないモデルは最後に残る）。`attached` が空なら並びは変えない。`list` を並べ替えて返す）。生成テストのモデル選択は、添えた画像の役割を `InputsOfRoles` に渡し、`ModelsWhere` の結果を `PreferForInputs` に通す |
 
 ## 5. 選べる状態（Issue #1013）
 
