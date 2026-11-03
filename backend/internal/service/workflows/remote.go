@@ -25,7 +25,7 @@ func (s *Service) client(ctx context.Context, endpoint string, start bool) (*loc
 			case errors.Is(err, modelmanager.ErrEngineNotInstalled):
 				return nil, invalid("同梱の ComfyUI がまだ入っていません。モデルマネージャーで入れてください")
 			case errors.Is(err, modelmanager.ErrUnsupported):
-				return nil, invalid("同梱の ComfyUI は Windows 版だけで使えます。外部の ComfyUI を接続先に登録してください")
+				return nil, invalid("同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけで使えます。外部の ComfyUI を接続先に登録してください")
 			}
 			return nil, err
 		}

@@ -25,15 +25,16 @@ import (
 //go:embed data
 var dataFS embed.FS
 
-// Variant is the build of the ComfyUI portable package: the GPU it is made for.
+// Variant is the build of the ComfyUI engine: the GPU it is made for.
 type Variant string
 
-// The portable builds of ComfyUI.
+// The builds of ComfyUI: the portable packages of Windows, and the build mam puts together for Apple silicon.
 const (
 	VariantNVIDIA      Variant = "nvidia"       // RTX 20 series and later (CUDA 13)
 	VariantNVIDIACU126 Variant = "nvidia_cu126" // GTX 10 series and older (CUDA 12.6)
 	VariantAMD         Variant = "amd"
 	VariantIntel       Variant = "intel"
+	VariantApple       Variant = "apple" // Apple silicon (M1 and later), on the GPU through Metal (MPS)
 )
 
 // Tier says how a model is offered: Standard models are listed first, Advanced ones are the models that need
@@ -190,6 +191,9 @@ type Engine struct {
 	Main     string            `json:"main"`
 	License  License           `json:"license"`
 	Variants map[Variant]Asset `json:"variants"`
+	// Apple is the macOS build (data/engine_apple.json; nil when the catalog has none). It is not one of Variants: the project ships no
+	// portable package for macOS, so mam puts it together from pinned parts (spec/architecture/model-manager/model-manager.md §3.7).
+	Apple *AppleEngine `json:"-"`
 }
 
 // Catalog is the engine, the models, the local runtimes (GPT-SoVITS; data/runtimes/*.json) and the weights and dependencies of
@@ -242,7 +246,11 @@ func Load(fsys fs.FS) (*Catalog, error) {
 	if err := decode(fsys, "data/engine.json", &c.Engine); err != nil {
 		return nil, err
 	}
-	err := fs.WalkDir(fsys, "data/models", func(name string, e fs.DirEntry, err error) error {
+	var err error
+	if c.Engine.Apple, err = loadApple(fsys); err != nil {
+		return nil, err
+	}
+	err = fs.WalkDir(fsys, "data/models", func(name string, e fs.DirEntry, err error) error {
 		if err != nil || e.IsDir() {
 			return err
 		}

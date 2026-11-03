@@ -1,6 +1,7 @@
 // Package engine installs and describes the bundled ComfyUI (spec/architecture/model-manager/model-manager.md §3.3): it downloads
-// the pinned portable archive of the GPU's build from the official release, checks its SHA-256, extracts it next
-// to mam.exe, and says what is installed against what the catalog pins. mam ships none of ComfyUI's bytes.
+// the pinned portable archive of the GPU's build from the official release (Windows), or the pinned parts of the macOS build (§3.7),
+// checks their SHA-256, extracts them into the engine directory, and says what is installed against what the catalog pins. mam ships
+// none of ComfyUI's bytes.
 package engine
 
 import (
@@ -93,14 +94,32 @@ func (i *Installer) Status() Status {
 	return st
 }
 
+// entry is the interpreter and the script of the engine of build v, relative to the engine directory.
+func (i *Installer) entry(v string) (python, main string) {
+	if v == string(catalog.VariantApple) && i.Engine.Apple != nil {
+		return i.Engine.Apple.Python, i.Engine.Apple.Main
+	}
+	return i.Engine.Python, i.Engine.Main
+}
+
+// installedEntry is the entry of the installed build (the Windows one while nothing is recorded).
+func (i *Installer) installedEntry() (python, main string) {
+	if rec := i.Store.Get().Engine; rec != nil {
+		return i.entry(rec.Variant)
+	}
+	return i.entry("")
+}
+
 // PythonPath and MainPath are the interpreter and the script of the installed engine.
 func (i *Installer) PythonPath() string {
-	return filepath.Join(i.Layout.EngineDir(), filepath.FromSlash(i.Engine.Python))
+	python, _ := i.installedEntry()
+	return filepath.Join(i.Layout.EngineDir(), filepath.FromSlash(python))
 }
 
 // MainPath is the main.py of ComfyUI inside the extracted engine.
 func (i *Installer) MainPath() string {
-	return filepath.Join(i.Layout.EngineDir(), filepath.FromSlash(i.Engine.Main))
+	_, main := i.installedEntry()
+	return filepath.Join(i.Layout.EngineDir(), filepath.FromSlash(main))
 }
 
 // archivePath is where the archive of a build is downloaded to.
@@ -111,6 +130,9 @@ func (i *Installer) archivePath(a catalog.Asset) string {
 // NeedBytes is the free space an install of the build needs: the part of the archive that is not downloaded yet,
 // and the extracted files (which exist next to the archive until it is deleted).
 func (i *Installer) NeedBytes(v catalog.Variant) (int64, error) {
+	if v == catalog.VariantApple {
+		return i.appleNeedBytes()
+	}
 	a, ok := i.Engine.Variants[v]
 	if !ok {
 		return 0, ErrVariant
@@ -147,6 +169,9 @@ func (i *Installer) CheckSpace(v catalog.Variant) error {
 // partial extraction is removed (the archive and its part file are kept for a resume, unless the checksum
 // was wrong).
 func (i *Installer) Install(ctx context.Context, v catalog.Variant, cpu bool, progress Progress) error {
+	if v == catalog.VariantApple {
+		return i.installApple(ctx, cpu, progress)
+	}
 	a, ok := i.Engine.Variants[v]
 	if !ok {
 		return ErrVariant
@@ -175,15 +200,13 @@ func (i *Installer) Install(ctx context.Context, v catalog.Variant, cpu bool, pr
 		}
 	})
 	if err == nil {
-		err = i.swap(tmp)
+		err = i.swap(tmp, i.Engine.Python, i.Engine.Main)
 	}
 	if err != nil {
 		_ = os.RemoveAll(tmp)
 		return err
 	}
-	if err := i.Store.Update(func(s *store.State) {
-		s.Engine = &store.EngineRecord{Version: i.Engine.Version, Variant: string(v), CPU: cpu, InstalledAt: i.now()}
-	}); err != nil {
+	if err := i.record(v, cpu); err != nil {
 		return err
 	}
 	_ = os.Remove(archive)
@@ -191,13 +214,21 @@ func (i *Installer) Install(ctx context.Context, v catalog.Variant, cpu bool, pr
 	return nil
 }
 
-// swap makes tmp the engine; the previous engine is removed once the new one is in place.
-func (i *Installer) swap(tmp string) error {
-	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(i.Engine.Python))); err != nil {
-		return fmt.Errorf("engine: the archive has no %s", i.Engine.Python)
+// record notes that build v is installed.
+func (i *Installer) record(v catalog.Variant, cpu bool) error {
+	return i.Store.Update(func(s *store.State) {
+		s.Engine = &store.EngineRecord{Version: i.Engine.Version, Variant: string(v), CPU: cpu, InstalledAt: i.now()}
+	})
+}
+
+// swap makes tmp the engine once it holds the interpreter python and the script main (relative paths); the previous engine is removed
+// once the new one is in place.
+func (i *Installer) swap(tmp, python, main string) error {
+	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(python))); err != nil {
+		return fmt.Errorf("engine: the archive has no %s", python)
 	}
-	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(i.Engine.Main))); err != nil {
-		return fmt.Errorf("engine: the archive has no %s", i.Engine.Main)
+	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(main))); err != nil {
+		return fmt.Errorf("engine: the archive has no %s", main)
 	}
 	engine, old := i.Layout.EngineDir(), i.Layout.EngineOldDir()
 	_ = os.RemoveAll(old)
@@ -248,8 +279,9 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 	if rec == nil || !i.Status().Installed {
 		return proc.Spec{}, errors.New("ComfyUI エンジンが導入されていません")
 	}
+	_, main := i.entry(rec.Variant)
 	args := []string{
-		"-s", filepath.FromSlash(i.Engine.Main),
+		"-s", filepath.FromSlash(main),
 		"--listen", "127.0.0.1", "--port", fmt.Sprint(port),
 		"--disable-auto-launch", "--disable-all-custom-nodes",
 	}
@@ -265,8 +297,9 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 	if err := os.MkdirAll(i.Layout.DataDir(), 0o750); err != nil {
 		return proc.Spec{}, err
 	}
-	return proc.Spec{
-		Command: i.PythonPath(), Args: args, Dir: i.Layout.EngineDir(), LogPath: i.Layout.LogPath(),
-		Env: []string{"PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONNOUSERSITE=1", "PYTHONDONTWRITEBYTECODE=1"},
-	}, nil
+	env := []string{"PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONNOUSERSITE=1", "PYTHONDONTWRITEBYTECODE=1"}
+	if rec.Variant == string(catalog.VariantApple) && i.Engine.Apple != nil {
+		env = append(env, i.Engine.Apple.Env...) // PYTORCH_ENABLE_MPS_FALLBACK=1: an operator MPS lacks runs on the CPU, not as an error
+	}
+	return proc.Spec{Command: i.PythonPath(), Args: args, Dir: i.Layout.EngineDir(), LogPath: i.Layout.LogPath(), Env: env}, nil
 }

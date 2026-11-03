@@ -122,11 +122,11 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 	}
 	switch {
 	case !st.Engine.Supported:
-		return "同梱の ComfyUI は Windows 版だけで使えるため、この環境ではモデルを導入できません。外部の ComfyUI の URL を設定してください"
+		return "同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけで使えるため、この環境ではモデルを導入できません。外部の ComfyUI の URL を設定してください"
 	case st.Pinned:
 		return "起動オプション（--model-config）でモデルの設定ファイルが固定されているため、モデルを導入・削除できません"
 	case !st.Engine.Writable:
-		return "mam.exe のあるフォルダに書き込めないため、モデルを導入できません"
+		return "導入先のフォルダ（Windows は mam.exe のあるフォルダ、macOS は mam のデータフォルダ）に書き込めないため、モデルを導入できません"
 	case st.Engine.InstallJob != "":
 		return "ComfyUI エンジンを導入しています。終わるとモデルを導入できます"
 	case !st.Engine.Installed || st.Engine.Broken:

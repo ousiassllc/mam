@@ -1,7 +1,8 @@
 // Package store is the place and the record of the model manager (spec/architecture/model-manager/model-manager.md §2, §7): where
 // the engine and the models lie on disk (Layout) and what is installed, accepted and set (State). Everything is
-// below one directory, the comfyui directory next to mam.exe, so that deleting it (the uninstaller removes the
-// install directory) leaves nothing of the engine, the models or the record behind.
+// below one directory, the comfyui directory next to mam.exe on Windows (so that deleting it, which the uninstaller does with the
+// install directory, leaves nothing of the engine, the models or the record behind) and in the data directory on macOS (outside MAM.app,
+// which the auto-update replaces as a whole).
 package store
 
 import (
@@ -9,16 +10,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 )
 
-// DirName is the name of the directory next to the executable.
+// DirName is the name of the directory next to the executable (Windows) or in the data directory (macOS).
 const DirName = "comfyui"
 
 // Layout is the places below Root.
 type Layout struct{ Root string }
 
-// ForExecutable is the Layout of the directory next to the executable at exe.
-func ForExecutable(exe string) Layout { return Layout{Root: filepath.Join(filepath.Dir(exe), DirName)} }
+// ForSystem is For on the OS this build runs on.
+func ForSystem(exe, dataDir string) Layout { return For(runtime.GOOS, exe, dataDir) }
+
+// For is the Layout on goos: exeinstall.Root, which is in the data directory on macOS (the executable there is inside MAM.app, which the
+// auto-update replaces as a whole, and anything put there would go with it) and next to the executable at exe elsewhere. An empty dataDir
+// on macOS gives the empty Layout, which has no place to install to.
+func For(goos, exe, dataDir string) Layout {
+	return Layout{Root: exeinstall.Root(goos, exe, dataDir, DirName)}
+}
 
 // EngineDir is the extracted portable package: the Python directory, ComfyUI, ... The engine is replaced as a whole
 // when it is updated; nothing of the user lives here.
@@ -55,7 +66,7 @@ func (l Layout) ModelPath(rel string) string {
 }
 
 // ErrNotWritable means the directory cannot be written to (a portable mam.exe in a read-only place, for example).
-var ErrNotWritable = errors.New("store: the directory next to mam.exe is not writable")
+var ErrNotWritable = errors.New("store: the directory of the engine is not writable")
 
 // CheckWritable creates Root if needed and makes sure a file can be created in it.
 func (l Layout) CheckWritable() error { return checkWritable(l.Root) }

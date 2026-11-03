@@ -3,8 +3,8 @@
 // read-only view of an external ComfyUI (spec/architecture/model-manager/model-manager.md, "Service API"). The trial
 // generation outside any Project is a batch of the generation test service (package gentest).
 //
-// The engine and the models are below one directory next to mam.exe, so that the uninstaller removes them with the
-// application. An installed model appears as a model of the managed endpoint "bundled-comfyui" (localmodels) and
+// The engine and the models are below one directory: next to mam.exe on Windows, so that the uninstaller removes them with the
+// application, and in the data directory on macOS, outside MAM.app (which the auto-update replaces as a whole). An installed model appears as a model of the managed endpoint "bundled-comfyui" (localmodels) and
 // is then selectable everywhere a #831 model is. Downloads are background jobs (domain.JobModelInstall, resumable):
 // Register installs the handler, JobStatus reads the progress.
 //
@@ -54,8 +54,8 @@ const HuggingFaceProvider = "huggingface"
 
 // Errors of the service. A refusal that the user can fix is an *InvalidError (the message is shown).
 var (
-	// ErrUnsupported: the bundled engine exists on Windows only; elsewhere use an external ComfyUI.
-	ErrUnsupported = errors.New("modelmanager: the bundled engine is available on Windows only")
+	// ErrUnsupported: the bundled engine exists on Windows and on macOS (Apple silicon, macOS 14 or later) only; elsewhere use an external ComfyUI.
+	ErrUnsupported = errors.New("modelmanager: the bundled engine is available on Windows and Apple silicon macOS only")
 	// ErrNotFound: no such model, job or trial.
 	ErrNotFound = errors.New("modelmanager: not found")
 	// ErrEngineNotInstalled: the engine is not installed (a model needs it).
@@ -84,7 +84,7 @@ func invalid(format string, args ...any) error {
 
 // Deps are what the Service needs.
 type Deps struct {
-	// Layout is the comfyui directory next to mam.exe (store.ForExecutable).
+	// Layout is the comfyui directory: next to mam.exe on Windows, in the data directory on macOS (store.For).
 	Layout store.Layout
 	// Catalog is the catalog (nil: catalog.Default()).
 	Catalog *catalog.Catalog
@@ -105,8 +105,9 @@ type Deps struct {
 
 	// The following default to the real implementations; tests replace them.
 
-	// Platform is the operating system for the bundled engine ("windows" supports it; default runtime.GOOS).
-	Platform string
+	// Platform, Arch and MacOSMajor decide whether the bundled engine exists (engine.Supported); defaults: GOOS, GOARCH, sw_vers.
+	Platform, Arch string
+	MacOSMajor     func(ctx context.Context) (int, error)
 	// Extract unpacks the engine archive (default extract.SevenZip).
 	Extract extract.Extractor
 	// Fetch are the options of the downloads (client, URL check); Progress is set per download.
@@ -176,7 +177,7 @@ func New(d Deps) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{Deps: d, Book: mmlicense.New(d.Catalog, st, BundledEndpoint), cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
+	s := &Service{Deps: d, Book: mmlicense.New(d.Catalog, st, BundledEndpoint), cat: d.Catalog, state: st, bundled: engine.Supported(d.Catalog.Engine, d.Platform, d.Arch, d.Layout.Root, d.MacOSMajor), tracker: track.New(),
 		active: map[string]string{}, activeDest: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
 	s.hf = hf.New(hf.Options{Base: d.HFBase, HTTP: d.Fetch.Client, CheckURL: d.Fetch.CheckURL, AuthHost: d.Fetch.AuthHost, Token: s.huggingFaceToken})
 	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now, CustomNodes: d.Nodes.Enabled}

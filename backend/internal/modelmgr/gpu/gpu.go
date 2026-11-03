@@ -1,7 +1,7 @@
-// Package gpu finds the GPU of the machine and chooses the ComfyUI portable build for it
-// (spec/architecture/model-manager/model-manager.md §3.2). The adapter list comes from a Detector (DXGI on Windows; nothing elsewhere), the
-// architecture of an NVIDIA GPU from nvidia-smi or, failing that, from the adapter name. The choice is a pure
-// function of those facts (Recommend), so it is tested with fakes; the real detection only runs on Windows.
+// Package gpu finds the GPU of the machine and chooses the ComfyUI build for it
+// (spec/architecture/model-manager/model-manager.md §3.2). The adapter list comes from a Detector (DXGI on Windows; sysctl on an Apple
+// silicon Mac; nothing elsewhere), the architecture of an NVIDIA GPU from nvidia-smi or, failing that, from the adapter name. The choice
+// is a pure function of those facts (Recommend), so it is tested with fakes; the real detection only runs on Windows and macOS.
 package gpu
 
 import (
@@ -17,17 +17,21 @@ const (
 	VendorNVIDIA = 0x10DE
 	VendorAMD    = 0x1002
 	VendorIntel  = 0x8086
+	// VendorApple is the PCI vendor ID of Apple (the Apple silicon GPU is no PCI device; the Detector of a Mac gives it this ID).
+	VendorApple = 0x106B
 )
 
 // minVRAM is the dedicated video memory below which an adapter is treated as an integrated GPU: the
-// portable builds are for discrete GPUs (an Intel UHD / an AMD APU shares system memory).
+// portable builds are for discrete GPUs (an Intel UHD / an AMD APU shares system memory). An Apple silicon GPU has no memory of its own
+// either: its Adapter holds the unified memory of the Mac (every M-series Mac has 8 GiB or more).
 const minVRAM = 4 << 30
 
 // Adapter is a display adapter as DXGI lists it.
 type Adapter struct {
 	Name     string `json:"name"`
 	VendorID uint32 `json:"vendor_id"`
-	// VRAMBytes is the dedicated video memory (DedicatedVideoMemory, 64 bit).
+	// VRAMBytes is the dedicated video memory (DedicatedVideoMemory, 64 bit); for the GPU of an Apple silicon Mac, the unified memory
+	// of the whole machine (hw.memsize), which the GPU shares with the CPU.
 	VRAMBytes uint64 `json:"vram_bytes"`
 	// LUID is the locally unique ID of the adapter on Windows (high << 32 | low), which the performance counters name an adapter
 	// by; 0 when the Detector does not know it. It is not part of the report.
@@ -91,8 +95,8 @@ func Detect(ctx context.Context, d Detector, caps map[string]float64, goos strin
 }
 
 // Recommend chooses the build for the best supported adapter: NVIDIA (the CUDA 13 build for Turing, RTX 20
-// series, and later, CUDA 12.6 for older), AMD (Radeon) and Intel (Arc). An adapter with less than 4 GiB of
-// dedicated memory (an integrated GPU) and a software adapter are not supported. The adapter with the most
+// series, and later, CUDA 12.6 for older), AMD (Radeon), Intel (Arc) and the GPU of an Apple silicon Mac (the macOS build). An adapter
+// with less than 4 GiB of dedicated memory (an integrated GPU) and a software adapter are not supported. The adapter with the most
 // video memory wins.
 func Recommend(adapters []Adapter, caps map[string]float64) Recommendation {
 	var best *Adapter
@@ -122,6 +126,8 @@ func Recommend(adapters []Adapter, caps map[string]float64) Recommendation {
 		}
 	case VendorAMD:
 		rec.Variant, rec.Reason = catalog.VariantAMD, fmt.Sprintf("AMD %s: ROCm のビルド。", best.Name)
+	case VendorApple:
+		rec.Variant, rec.Reason = catalog.VariantApple, fmt.Sprintf("%s（ユニファイドメモリ %.0f GB）: GPU は Metal（MPS）で使う Mac 用のビルド。", best.Name, float64(best.VRAMBytes)/(1<<30))
 	default:
 		rec.Variant, rec.Reason = catalog.VariantIntel, fmt.Sprintf("Intel %s: XPU のビルド。", best.Name)
 	}
@@ -133,7 +139,7 @@ func supported(a Adapter) bool {
 		return false
 	}
 	switch a.VendorID {
-	case VendorNVIDIA, VendorAMD:
+	case VendorNVIDIA, VendorAMD, VendorApple:
 		return true
 	case VendorIntel:
 		return strings.Contains(strings.ToLower(a.Name), "arc") // an Arc card; an Intel UHD / Iris iGPU is not

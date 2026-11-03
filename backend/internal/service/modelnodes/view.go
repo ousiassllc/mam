@@ -118,16 +118,16 @@ func (s *Service) consentCurrent(n nodecat.Node, c nodes.Consent) bool {
 	return c.LicenseID == n.License.ID && c.LicenseVersion == n.License.Version && c.NoticeVersion == NoticeVersion
 }
 
-// unavailable is why no node can be installed now ("" when one can): the bundled engine exists on Windows only, and the nodes live next to it.
+// unavailable is why no node can be installed now ("" when one can): the bundled engine exists on Windows and on Apple silicon Macs only, and the nodes live next to it.
 func (s *Service) unavailable() string {
 	ev := s.Engine.Engine()
 	switch {
 	case !ev.Supported:
-		return "同梱の ComfyUI は Windows 版だけで使えるため、この環境では追加ノードを導入できません。外部の ComfyUI を使う場合は、そちらにノードを入れてください"
+		return "同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけで使えるため、この環境では追加ノードを導入できません。外部の ComfyUI を使う場合は、そちらにノードを入れてください"
 	case !ev.Installed || ev.Broken:
 		return "先に ComfyUI エンジンを導入してください"
 	case !ev.Writable:
-		return "mam.exe のあるフォルダに書き込めないため、追加ノードを導入できません"
+		return "導入先のフォルダ（Windows は mam.exe のあるフォルダ、macOS は mam のデータフォルダ）に書き込めないため、追加ノードを導入できません"
 	}
 	return ""
 }

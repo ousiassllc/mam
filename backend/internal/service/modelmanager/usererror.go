@@ -33,7 +33,7 @@ func userFacing(ctx context.Context, err error) error {
 	case errors.Is(err, ErrAdultNotConfirmed):
 		return &userError{AdultGateMessage, err}
 	case errors.Is(err, store.ErrNotWritable):
-		return fmt.Errorf("mam.exe のあるフォルダに書き込めません。書き込める場所に置くか、外部の ComfyUI の URL を使ってください: %w", err)
+		return fmt.Errorf("導入先のフォルダ（Windows は mam.exe のあるフォルダ、macOS は mam のデータフォルダ）に書き込めません。書き込める場所に置くか、外部の ComfyUI の URL を使ってください: %w", err)
 	}
 	return err
 }
