@@ -39,3 +39,4 @@
 | 1.32 | 2026-11-03 | §3.5 に、マスク部品のキャンバスの上限（長辺 2048。画面側のメモリ）と、実測が未実施であることを足した | Issue #999 |
 | 1.33 | 2026-11-03 | §6: ポーズ集の削除（画面のボタン・MCP）・導入中の進み具合・MCP からの導入（`get_pose_library`・`install_pose_library`・`remove_pose_library`）。`poses.Library` に `Progress`・`Remove` | Issue #994 (e) |
 | 1.34 | 2026-11-04 | §6: 速さのモード（`speed_mode`）を画像にも広げた。`speed_modes` を `video.speed_modes` からモデル直下（`modelcatalog.Info.SpeedModes`）へ移し、画像のリクエストに付けても 400 にしない（持たないモデルは警告 `speed_mode_unsupported`）。`runner` が画像の呼び出しにも `SpeedMode` を渡す。画面は画像のフォームにも「速さ」の選択を出す | Issue #991（Qwen-Image-Edit 2511 + Lightning 4・8 ステップ） |
+| 1.35 | 2026-11-03 | §6: ControlNet のテンプレートの `reference_preprocess: "canny"`（写真の参照画像から Go で Canny のエッジ画像を作ってから ComfyUI に送る。読めない画像は 422）を足した。VNCCS PoseStudio の節をルート③（ノード無し: Shisei + LoRA `qwen-image-21-vnccs-pose`）とルート④（画面が要るため mam は提供しない）に改めた | Issue #993・#985 |

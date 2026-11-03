@@ -2,7 +2,7 @@
  "id": "txt2img-sdxl-controlnet",
  "label": "SDXL: ControlNet（制御画像から画像）",
  "media": "image",
- "description": "ControlNetLoader と ControlNetApplyAdvanced（ComfyUI 標準ノードだけ）で、利用者が用意した制御画像（canny のエッジ画像：黒地に白い線）の形に沿って SDXL で描く。前処理（エッジやポーズの抽出）はしない。参照画像の 1 枚目が制御画像で、参照の強さが ControlNet の強さ（既定 0.7）。制御画像が無い実行は断る。GPU では未実行（構造のテストのみ）。",
+ "description": "ControlNetLoader と ControlNetApplyAdvanced（ComfyUI 標準ノードだけ）で、参照画像の輪郭（canny のエッジ画像：黒地に白い線）の形に沿って SDXL で描く。参照画像は写真でも絵でもよく、mam が Go で Canny のエッジ画像を作ってから渡す（追加ノード・Python パッケージ・重みは要らない）。すでにエッジ画像（ほぼ黒と白だけで、黒が多い画像）ならそのまま使う。ポーズ・深度などの前処理（重みが要るもの）はしない。参照画像の 1 枚目が制御画像で、参照の強さが ControlNet の強さ（既定 0.7）。制御画像が無い実行は断る。GPU では未実行（構造のテストのみ）。",
  "model": {
   "media": "image",
   "workflow": {
@@ -193,7 +193,8 @@
    "output_node": "9",
    "prompt_weight": "supported",
    "quality_presets": {"fast": {"steps": 15}, "high": {"steps": 40}},
-   "reference_mode": "controlnet"
+   "reference_mode": "controlnet",
+   "reference_preprocess": "canny"
   }
  }
 }

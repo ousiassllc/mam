@@ -65,6 +65,13 @@ func (f *Fake) Uploads() []string {
 	return append([]string(nil), f.uploads...)
 }
 
+// UploadBodies are the bytes of the files uploaded to /upload/image, in the order of Uploads.
+func (f *Fake) UploadBodies() [][]byte {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([][]byte(nil), f.bodies...)
+}
+
 // Auths are the Authorization headers of the requests, in order, with their "METHOD path".
 func (f *Fake) Auths() (requests, auths []string) {
 	f.mu.Lock()

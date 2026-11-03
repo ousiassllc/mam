@@ -41,7 +41,7 @@
   "color_matcher",
   "dynamicprompts"
  ],
- "install_blocked": "PoseStudio はブラウザの画面でポーズを取り込む（ノードが画面からの結果を最長 150 秒待つ）ため、mam が API だけで流すグラフでは動きません。実行時に Hugging Face からポーズ集・モデルを自動で取得し（取得物を固定して SHA-256 を検証する mam の方針に合いません）、同梱の Python 環境に OpenCV（cv2）・huggingface_hub・omegaconf・yacs・roma・timm・pytorch_lightning・color_matcher・dynamicprompts が無く、mam は pip を実行しません。",
+ "install_blocked": "PoseStudio はブラウザの画面でポーズを取り込む（ノードが画面からの結果を最長 150 秒待つ）ため、mam が API だけで流すグラフでは動きません（pose_image の経路も vnccs_apply_sam3d_pose で画面の返りを最長 150 秒待ちます）。実行時に Hugging Face からポーズ集・モデルを自動で取得し（取得物を固定して SHA-256 を検証する mam の方針に合いません）、同梱の Python 環境に OpenCV（cv2）・huggingface_hub・omegaconf・yacs・roma・timm・pytorch_lightning・color_matcher・dynamicprompts が無く、mam は pip を実行しません。",
  "node_classes": [
   "VNCCS_PoseStudio",
   "VNCCS_PositionControl",

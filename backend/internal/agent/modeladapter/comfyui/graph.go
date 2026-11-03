@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/stage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
+	"github.com/ousiassllc/mam/backend/internal/imgprep"
 )
 
 // defaultNegative is what an image workflow's negative prompt gets: an ImageRequest has none.
@@ -205,6 +206,13 @@ func (b *Backend) upload(ctx context.Context, v values, promptID string) (map[in
 		in, isImage := v.input(a)
 		if !isImage || in == nil {
 			continue // not an image, or a slot the run has no image for (missing refused a required one)
+		}
+		if kind := b.Model.Workflow.ReferencePreprocess; kind != "" && a.Param == localcfg.ParamReferenceImage {
+			data, mime, err := imgprep.Apply(kind, in.Data, in.MimeType) // the control image is made here, not by a custom node (Issue #993)
+			if err != nil {
+				return nil, b.Client.Error(http.StatusUnprocessableEntity, "the reference image cannot be turned into the control image: "+err.Error(), nil)
+			}
+			in = &modeladapter.Input{Data: data, MimeType: mime}
 		}
 		name, err := b.uploadOne(ctx, in, fmt.Sprintf("mam-%s-%d", promptID[:8], i))
 		if err != nil {
