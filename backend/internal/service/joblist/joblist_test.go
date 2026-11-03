@@ -117,6 +117,36 @@ func TestRecent_TheEngineHasANameAndAnUnknownModelHasNone(t *testing.T) {
 	assert.Empty(t, subjects[blank.ID])
 }
 
+// The age gate closed (Issue #992): an import from Hugging Face of a repository for adults (NFAA) does not name the repository, as a catalog model
+// for adults has no name here; the name comes back when the gate opens, and an import of a general repository is named either way.
+func TestRecent_AnHFImportOfAnAdultRepositoryHasNoNameWhileTheGateIsClosed(t *testing.T) {
+	w := newWorld(t)
+	pin := func(repo string, nfaa bool) map[string]any {
+		return map[string]any{
+			"target": "hf:" + repo + "@abc/x.safetensors",
+			"hf":     map[string]any{"repo": repo, "commit": "abc", "path": "x.safetensors", "folder": "checkpoints", "name": "x-" + repo + ".safetensors", "nfaa": nfaa},
+		}
+	}
+	adult := w.create(domain.JobModelInstall, pin("o/adult", true))
+	general := w.create(domain.JobModelInstall, pin("o/general", false))
+	subjects := func() map[string]string {
+		out := map[string]string{}
+		for _, e := range w.recent() {
+			out[e.ID] = e.Subject
+		}
+		return out
+	}
+
+	closed := subjects()
+	assert.Empty(t, closed[adult.ID], "the repository of an adult model is not named while the gate is closed")
+	assert.Equal(t, "o/general", closed[general.ID])
+
+	w.rig.ConfirmAdult()
+	open := subjects()
+	assert.Equal(t, "o/adult", open[adult.ID])
+	assert.Equal(t, "o/general", open[general.ID])
+}
+
 // The work on a Shot leads to the Scene / Shot screen of its Project and names the Project; a failure is shown with its reason (secrets
 // hidden). A Shot or a Project that is gone is not a fault of the list.
 func TestRecent_AShotJobLeadsToTheProjectAndAFailureSaysWhy(t *testing.T) {

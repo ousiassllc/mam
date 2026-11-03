@@ -109,6 +109,7 @@
 | `delete_generation_recipe` | レシピを削除する（破壊的）。生成の結果は残る | `id` | `deleted` |
 
 - **`recipe`**（`estimate_generation_test`・`run_generation_test` の引数。画像だけ）: レシピのモデルと設定で作る。**リクエストが名指しした項目（`sampling`・`seed`・`quality`・`aspect_ratio`・`lora`・`exposed`・プロンプトごとの `negative_prompt`・入力画像の `strength`）が勝つ**。`models`・`intent` とは同時に指定できない（`validation`）。レシピが無い／消えたものは `not_found`。使えないレシピ（モデルの削除・未導入・成人ゲート・「商用OKのモデルだけを使う」・OS／GPU）は、理由つきの `validation`（レシピは消えない）。見積りの `request.models` にレシピのモデルが入る。
+- **成人ゲートが閉じているとき（Issue #992）**: `list_generation_recipes`・`update_generation_recipe` の返すレシピは、成人向けモデルのものなら `model` が空・`model_label` が「成人向けのモデル」・`usable=false`・`reason` が成人ゲートの文言で、`sampling`・`negative_prompt`・`lora`・`exposed` などの設定も出さない（保存は残り、ゲートを開くと元に戻る）。`recipe` を指定した見積り・実行は上のとおり `validation`。
 - **`exposed`**（同。画像だけ）: モデルの「画面に出す値」（`list_generation_models` の各モデルの `exposed[]`: `key`＝`<ノード ID>.<入力名>`・`label`・`type`（int / float / string / enum）・`min`・`max`・`options`・`default`＝ワークフローのグラフが持つ値）の値を `{"<key>": 値}` で渡す。型・範囲・選択肢の外、どのモデルにも無いキーは `validation`。そのキーを持たないモデルには警告 `exposed_ignored` を出して使わない。結果の `exposed`（`get_generation_result` ほか）に使った値が残り、そのまま次のリクエストの `exposed` に渡せば同じ条件で作り直せる。
 - 「画面に出す値」を決める側（ワークフローの `exposed_inputs`）は [mcp-tools-workflows.md](mcp-tools-workflows.md)・[mcp-tools-local-models.md](mcp-tools-local-models.md)。
 - テストは `mcp/tools/gentestrecipe/recipes_test.go`（保存 → 一覧 → レシピ指定の見積り・実行で同じ設定になる → 名前の変更・外す → 削除）。

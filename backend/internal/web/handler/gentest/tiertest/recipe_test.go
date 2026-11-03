@@ -169,3 +169,29 @@ func TestOpenInComfyUISaysWhyItCannotBeDone(t *testing.T) {
 	assert.Contains(t, testid(rec.Body.String(), "gt-comfy-open-result"), "ノード画面")
 	assert.Contains(t, s.page(paths.GenerationTest()+"?tier=detail&model="+url.QueryEscape(string(gentesttest.ExposedModel))), `data-testid="gt-comfy-open-button"`)
 }
+
+// 年齢確認がオフ（Issue #992）: 成人向けモデルのレシピは、こだわりの一覧にも、かんたんの選択肢にも、選んだあとの表示にも、モデルの名前を出さない（使えない理由は出る）。
+func TestARecipeOfAHiddenModelNamesNoModelOnTheScreens(t *testing.T) {
+	hidden := false
+	s := newScreen(t, gentesttest.WithTemplateModels(), gentesttest.WithExposedModel(),
+		gentesttest.WithHidden(func(id string) bool { return hidden && id == string(gentesttest.ExposedModel) }))
+	id := idOfRecipe(t, s.htmx(http.MethodPost, paths.GenerationTestPart("recipes"), recipeForm("Fox look", true)).Body.String())
+	open := testid(s.page(paths.GenerationTest()+"?tier=easy"), "gt-recipe-choices")
+	require.Contains(t, open, "sdxl-exposed", "the gate is open: the choice says its model")
+
+	hidden = true
+	easy := s.page(paths.GenerationTest() + "?tier=easy")
+	choices := testid(easy, "gt-recipe-choices")
+	assert.Contains(t, choices, "Fox look")
+	assert.Contains(t, choices, "成人向けのモデル")
+	assert.NotContains(t, choices, "sdxl-exposed")
+	pick := s.htmx(http.MethodGet, paths.GenerationTestPart("easy-pick")+"?"+url.Values{"intent": {"recipe:" + id}}.Encode(), nil)
+	require.Equal(t, http.StatusOK, pick.Code)
+	assert.NotContains(t, pick.Body.String(), "sdxl-exposed")
+	assert.Contains(t, pick.Body.String(), "成人向け")
+
+	list := testid(s.page(paths.GenerationTest()+"?tier=detail"), "gt-recipe-list")
+	assert.Contains(t, list, "Fox look")
+	assert.Contains(t, list, "成人向けのモデル")
+	assert.NotContains(t, list, "sdxl-exposed")
+}
