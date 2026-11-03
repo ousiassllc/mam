@@ -267,6 +267,6 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 	}
 	return proc.Spec{
 		Command: i.PythonPath(), Args: args, Dir: i.Layout.EngineDir(), LogPath: i.Layout.LogPath(),
-		Env: []string{"PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONNOUSERSITE=1"},
+		Env: []string{"PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONNOUSERSITE=1", "PYTHONDONTWRITEBYTECODE=1"},
 	}, nil
 }

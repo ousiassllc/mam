@@ -26,7 +26,22 @@ var ErrExists = errors.New("extract: the archive writes a file that is there alr
 // is never overwritten (ErrExists). Entries outside dest (".." and absolute paths) and links are refused. The caller removes a
 // partial dest.
 func Zip(ctx context.Context, archive, dest, strip string, limit int64, progress Progress) error {
-	return unzip(ctx, archive, dest, limit, progress, func(name string) (string, bool, error) {
+	return unzip(ctx, archive, dest, limit, progress, stripRoot(strip))
+}
+
+// ZipFrom is Zip for an archive that is held already (r of size bytes, as a caller that checked the bytes it will extract keeps them): the
+// archive is not read from a path, so nothing can replace it between the check and the extraction.
+func ZipFrom(ctx context.Context, r io.ReaderAt, size int64, dest, strip string, limit int64, progress Progress) error {
+	zr, err := zip.NewReader(r, size)
+	if err != nil {
+		return fmt.Errorf("extract: open the archive: %w", err)
+	}
+	return unzipFiles(ctx, zr.File, "the archive", dest, limit, progress, stripRoot(strip))
+}
+
+// stripRoot places the entries below the single top directory strip ("" for none; an entry outside it is an error).
+func stripRoot(strip string) func(name string) (string, bool, error) {
+	return func(name string) (string, bool, error) {
 		clean, err := cleanEntry(name)
 		if err != nil {
 			return "", false, err
@@ -42,7 +57,7 @@ func Zip(ctx context.Context, archive, dest, strip string, limit int64, progress
 			return "", false, fmt.Errorf("extract: %q is not inside %q", name, strip)
 		}
 		return rel, true, nil
-	})
+	}
 }
 
 // Wheel extracts a Python wheel into siteDir, the way an installer does for a package that has no scripts: the files of the archive
@@ -84,18 +99,23 @@ func unzip(ctx context.Context, archive, dest string, limit int64, progress Prog
 		return fmt.Errorf("extract: open %s: %w", filepath.Base(archive), err)
 	}
 	defer func() { _ = r.Close() }()
+	return unzipFiles(ctx, r.File, filepath.Base(archive), dest, limit, progress, place)
+}
+
+// unzipFiles is unzip for the entries of an opened archive; name is what the errors call it.
+func unzipFiles(ctx context.Context, files []*zip.File, name, dest string, limit int64, progress Progress, place func(name string) (rel string, ok bool, err error)) error {
 	var total uint64
-	for _, f := range r.File {
+	for _, f := range files {
 		total += f.UncompressedSize64
 	}
 	if limit <= 0 || total > uint64(limit) {
-		return fmt.Errorf("%w: %s holds %d bytes, the catalog pins %d", ErrTooLarge, filepath.Base(archive), total, limit)
+		return fmt.Errorf("%w: %s holds %d bytes, the catalog pins %d", ErrTooLarge, name, total, limit)
 	}
 	if err := os.MkdirAll(dest, 0o750); err != nil {
 		return fmt.Errorf("extract: %w", err)
 	}
 	var done int64
-	for _, f := range r.File {
+	for _, f := range files {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

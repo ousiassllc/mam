@@ -1,11 +1,16 @@
 package nodes
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/extract"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
@@ -51,13 +56,19 @@ func (m *Manager) Install(ctx context.Context, id string, progress Progress, pre
 	if err := fetch.Download(ctx, archive, fetch.Source{URL: n.ArchiveURL, SHA256: n.ArchiveSHA256, Size: n.ArchiveSize}, opts); err != nil {
 		return err
 	}
+	// The bytes that are checked are the bytes that are extracted: the file is read once, here, so a replacement of it after the download
+	// (by whoever can write the data directory) does not reach the extraction.
+	held, err := readPinned(archive, n)
+	if err != nil {
+		return err
+	}
 	tmp := m.Folder(n) + ".new"
 	_ = os.RemoveAll(tmp)
 	unzip := m.Extract
 	if unzip == nil {
-		unzip = extract.Zip
+		unzip = extract.ZipFrom
 	}
-	err := unzip(ctx, archive, tmp, n.ArchiveRoot(), n.ExtractedSize, func(done, total int64) {
+	err = unzip(ctx, bytes.NewReader(held), int64(len(held)), tmp, n.ArchiveRoot(), n.ExtractedSize, func(done, total int64) {
 		if progress != nil {
 			progress(PhaseExtract, done, total)
 		}
@@ -87,6 +98,29 @@ func (m *Manager) Install(ctx context.Context, id string, progress Progress, pre
 	_ = os.Remove(archive)
 	_ = os.Remove(m.Layout.DownloadsDir()) // only when empty
 	return nil
+}
+
+// ErrArchiveChanged reports that the archive was not the pinned one when the install read it, after the download had checked it. The file is
+// removed: the next install downloads it again.
+var ErrArchiveChanged = errors.New("nodes: the downloaded archive changed after it was checked")
+
+// readPinned reads the archive into memory (a node archive is at most tens of MB) and checks its size and SHA-256 against the pin again.
+func readPinned(archive string, n nodecat.Node) ([]byte, error) {
+	f, err := os.Open(archive) // #nosec G304 -- the archive this manager downloaded
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	held, err := io.ReadAll(io.LimitReader(f, n.ArchiveSize+1))
+	if err != nil {
+		return nil, err
+	}
+	sum := sha256.Sum256(held)
+	if int64(len(held)) != n.ArchiveSize || !strings.EqualFold(hex.EncodeToString(sum[:]), n.ArchiveSHA256) {
+		_ = os.Remove(archive)
+		return nil, ErrArchiveChanged
+	}
+	return held, nil
 }
 
 // seal checks the extracted tree is a package ComfyUI can load and returns its digest.

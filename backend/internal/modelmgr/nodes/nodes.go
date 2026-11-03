@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -77,8 +78,8 @@ type Manager struct {
 	Layout store.Layout
 	// Catalog is the allowlist (nil: nodecat.Default()).
 	Catalog *nodecat.Catalog
-	// Extract unpacks the archive (default extract.Zip).
-	Extract func(ctx context.Context, archive, dest, strip string, limit int64, progress extract.Progress) error
+	// Extract unpacks the archive held in r (size bytes; default extract.ZipFrom).
+	Extract func(ctx context.Context, r io.ReaderAt, size int64, dest, strip string, limit int64, progress extract.Progress) error
 	// Fetch are the options of the download (client, URL check); Progress is set per download.
 	Fetch     fetch.Options
 	FreeBytes func(path string) (uint64, error)
