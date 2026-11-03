@@ -4,7 +4,7 @@
  "kind": "image",
  "tier": "advanced",
  "content_rating": "adult",
- "description": "【アニメ・イラスト】実写ではない。Illustrious 系の SDXL チェックポイント（旧称 WAI-NSFW-illustrious。成人向け。約 6.9 GB）。Danbooru 風のタグでプロンプトを書く。作者の推奨は 15〜30 ステップ・cfg 5〜7・Euler a・1024×1024 より大きい解像度で、品質・美的のタグや長いネガティブを足しすぎると画質が落ちると注意する。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "description": "【アニメ・イラスト】実写ではない。Illustrious 系の SDXL チェックポイント（旧称 WAI-NSFW-illustrious。成人向け。約 6.9 GB）。Danbooru 風のタグでプロンプトを書く。作者の推奨は 15〜30 ステップ・cfg 5〜7・Euler a・1024×1024 より大きい解像度で、品質・美的のタグや長いネガティブを足しすぎると画質が落ちると注意する。テンプレートは SDXL 標準だが、作者の推奨に合わせて Euler a（euler_ancestral）で動かす（25 ステップ・cfg 7・karras は作者の範囲内なのでそのまま。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
  "files": [
   {
    "name": "waiIllustriousSDXL_v170.safetensors",
@@ -36,12 +36,18 @@
   {
    "name": "wai-illustrious-sdxl-v17",
    "template": "txt2img-sdxl",
-   "model_file": "waiIllustriousSDXL_v170.safetensors"
+   "model_file": "waiIllustriousSDXL_v170.safetensors",
+   "sampling": {
+    "sampler": "euler_ancestral"
+   }
   },
   {
    "name": "wai-illustrious-sdxl-v17-img2img",
    "template": "img2img-sdxl",
-   "model_file": "waiIllustriousSDXL_v170.safetensors"
+   "model_file": "waiIllustriousSDXL_v170.safetensors",
+   "sampling": {
+    "sampler": "euler_ancestral"
+   }
   }
  ]
 }

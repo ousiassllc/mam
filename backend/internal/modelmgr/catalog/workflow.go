@@ -15,16 +15,31 @@ type Workflow struct {
 	Name      string `json:"name"`
 	Template  string `json:"template"`
 	ModelFile string `json:"model_file,omitempty"`
+	// Sampling (optional) is the steps, cfg, sampler and scheduler the model's author recommends, which the model runs with in place of the
+	// template's own (a request that names a value still wins). Only what the author states goes here (the description says where), not mam's guess.
+	Sampling *localcfg.SamplingSettings `json:"sampling,omitempty"`
 }
 
-// Model is the model the install saves for the workflow: the one of the template, with ModelFile in place of its main file.
+// Model is the model the install saves for the workflow: the one of the template, with ModelFile in place of its main file and Sampling in
+// place of its sampling values.
 func (w Workflow) Model(template func(id string) (localcfg.Template, bool)) (localcfg.Model, error) {
 	tpl, ok := template(w.Template)
-	switch {
-	case !ok:
+	if !ok {
 		return localcfg.Model{}, fmt.Errorf("template %q does not exist", w.Template)
-	case w.ModelFile == "":
-		return tpl.Model, nil
 	}
-	return mainfile.Model(tpl, w.ModelFile)
+	m := tpl.Model
+	if w.ModelFile != "" {
+		var err error
+		if m, err = mainfile.Model(tpl, w.ModelFile); err != nil {
+			return localcfg.Model{}, err
+		}
+	}
+	if w.Sampling == nil {
+		return m, nil
+	}
+	m, err := m.WithSampling(*w.Sampling)
+	if err != nil {
+		return localcfg.Model{}, fmt.Errorf("sampling: %w", err)
+	}
+	return m, nil
 }
