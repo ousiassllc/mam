@@ -85,7 +85,8 @@ func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice
 		out[i] = view.ModelChoice{
 			ID: m.ID, Label: m.Label, Source: sourceLabel[m.Source], Price: gtshare.PriceText(m.Price), Features: featuresText(m),
 			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA,
-			Answer: commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m),
+			RequiresFirstFrame: slices.Contains(m.RequiresInputs, gentest.RoleFirstFrame),
+			Answer:             commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m),
 		}
 		if !m.Available {
 			out[i].Reason = m.UnavailableMessage
@@ -127,6 +128,9 @@ func cardOf(r record.ResultView, withDetail bool) resulttile.Card {
 		ID: r.ID, Model: r.ModelLabel, Prompt: r.Prompt, Status: r.Status, StatusText: gtshare.StatusText[r.Status], Error: r.Error, Failure: r.Failure,
 		Video: r.Media == gentest.MediaVideo, Favorite: r.Favorite, CreatedAt: timeText(r.CreatedAt), Answer: commercial.Of(r.Model),
 	}
+	if n := len(r.UnusedInputs); n > 0 {
+		c.Unused, c.UnusedText = n, unusedText(r.UnusedInputs)
+	}
 	if r.HasFile {
 		c.FileURL = paths.GenerationTestPart("results", r.ID, "file")
 		c.Meta = sizeText(r.SizeBytes)
@@ -138,6 +142,15 @@ func cardOf(r record.ResultView, withDetail bool) resulttile.Card {
 		c.Detail = paths.GenerationTestPart("results", r.ID)
 	}
 	return c
+}
+
+// unusedText is the hover of the "未使用" mark of a tile: each image the model was not given, with the reason.
+func unusedText(list []record.UnusedInput) string {
+	lines := make([]string, len(list))
+	for i, u := range list {
+		lines[i] = roleNames[u.Role] + ": " + u.Reason
+	}
+	return strings.Join(lines, "\n")
 }
 
 func spendText(s record.Spend) string {

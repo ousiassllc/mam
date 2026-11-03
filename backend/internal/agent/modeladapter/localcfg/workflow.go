@@ -127,6 +127,36 @@ func (w Workflow) Has(p Param) bool {
 	return slices.ContainsFunc(w.Assignments, func(a Assignment) bool { return a.Param == p })
 }
 
+// The inputs RequiredImages names (the words of the generation test's input image roles).
+const (
+	RequiredFirstFrame = "first_frame"
+	RequiredLastFrame  = "last_frame"
+	RequiredReference  = "reference"
+)
+
+// RequiredImages are the input images the workflow cannot run without (the adapter refuses a request that lacks one: comfyui's missing):
+// "first_frame" and "last_frame" when the workflow has that assignment, and "reference" when a reference slot is not optional and the workflow
+// does not list what a run without a reference changes (NoReference).
+func (w Workflow) RequiredImages() []string {
+	var out []string
+	add := func(r string) {
+		if !slices.Contains(out, r) {
+			out = append(out, r)
+		}
+	}
+	for _, a := range w.Assignments {
+		switch {
+		case a.Param == ParamFirstFrame:
+			add(RequiredFirstFrame)
+		case a.Param == ParamLastFrame:
+			add(RequiredLastFrame)
+		case a.Param == ParamReferenceImage && !a.Optional && len(w.NoReference) == 0:
+			add(RequiredReference)
+		}
+	}
+	return out
+}
+
 // Count is the number of assignments of p.
 func (w Workflow) Count(p Param) int {
 	n := 0

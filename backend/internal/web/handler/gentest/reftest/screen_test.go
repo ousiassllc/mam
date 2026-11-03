@@ -104,9 +104,9 @@ func (s *screen) estimate(form url.Values, files ...[]byte) *httptest.ResponseRe
 }
 
 // confirmed estimates the form and returns the form the confirmation posts.
-func (s *screen) confirmed(form url.Values) url.Values {
+func (s *screen) confirmed(form url.Values, files ...[]byte) url.Values {
 	s.t.Helper()
-	rec := s.estimate(form)
+	rec := s.estimate(form, files...)
 	require.Equal(s.t, http.StatusOK, rec.Code, rec.Body.String())
 	return hiddenOf(s.t, rec.Body.String())
 }

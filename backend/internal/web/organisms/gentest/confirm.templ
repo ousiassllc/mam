@@ -1,8 +1,11 @@
 package gentest
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
 )
 
@@ -15,6 +18,13 @@ templ ConfirmEmpty() {
 templ ConfirmFailed(msg string) {
 	<div id={ ConfirmID } class="rounded-md border border-red-500/60 p-4" data-testid="gt-confirm-failed">
 		<p class="text-sm text-red-300" role="alert" data-testid="gt-confirm-error">{ msg }</p>
+	</div>
+}
+
+// ConfirmBlocked is the confirmation of a request that was stopped before it was sent, as the common error: the cause and the fix first, the detail folded.
+templ ConfirmBlocked(v apperr.View) {
+	<div id={ ConfirmID } class="rounded-md" data-testid="gt-confirm-failed">
+		@errorbox.Box(errorbox.Props{View: v, Lang: apperr.LangJa, ID: "gt-confirm"})
 	</div>
 }
 
@@ -53,6 +63,9 @@ templ ConfirmBox(c Confirm) {
 		</table>
 		if c.Unknown != "" {
 			<p class="text-xs text-amber-300" data-testid="gt-confirm-unknown">{ c.Unknown }</p>
+		}
+		if len(c.InputWarnings) > 0 {
+			@inputnotice.Warnings(c.InputWarnings, "gt-confirm-input-warnings")
 		}
 		if len(c.Warnings) > 0 {
 			<ul class="list-disc pl-5 text-xs text-amber-300" data-testid="gt-confirm-warnings">

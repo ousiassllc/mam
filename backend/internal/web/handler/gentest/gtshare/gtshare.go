@@ -13,6 +13,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
@@ -100,6 +101,9 @@ func Refuse(c *gin.Context, err error) (status int, msg string) {
 		upstream *gterr.UpstreamError
 		tooBig   *http.MaxBytesError
 	)
+	if e, ok := apperr.As(err); ok { // a request stopped as the common error (#1009): the cause and the fix in words
+		return e.Status(), e.View(apperr.LangJa).Sentence(apperr.LangJa)
+	}
 	switch {
 	case errors.As(err, &tooBig):
 		return http.StatusRequestEntityTooLarge, "送った画像が大きすぎます"
@@ -116,4 +120,15 @@ func Refuse(c *gin.Context, err error) (status int, msg string) {
 	}
 	_ = c.Error(err)
 	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+}
+
+// ConfirmFailure draws the answer of an estimate that could not be made: the error box (cause, fix, detail) when the request was stopped as the common
+// error (an input image the model cannot use, #1009), else the line Refuse words.
+func ConfirmFailure(c *gin.Context, err error) {
+	if e, ok := apperr.As(err); ok {
+		Render(c, e.Status(), view.ConfirmBlocked(e.View(apperr.LangJa)))
+		return
+	}
+	status, msg := Refuse(c, err)
+	Render(c, status, view.ConfirmFailed(msg))
 }

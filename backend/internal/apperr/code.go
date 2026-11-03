@@ -30,6 +30,7 @@ const (
 	CodeRequestRejected  Code = "request_rejected"      // 4xx (422 and others): the request itself was refused
 	CodeInputMissing     Code = "input_missing"         // an input the model needs was not sent ("needs first_frame")
 	CodeInputUnsupported Code = "input_unsupported"     // an input image or resolution the model does not take
+	CodeInputUnused      Code = "input_unused"          // every input image attached is one the chosen models cannot use: stopped before the call (#1009)
 	CodeRateLimited      Code = "rate_limited"          // 429
 	CodeServerError      Code = "server_error"          // 5xx
 	CodeConnectionFailed Code = "connection_failed"     // the endpoint could not be reached
@@ -119,6 +120,7 @@ var specs = map[Code]spec{
 	CodeRequestRejected:  {ClassUpstream, nil},
 	CodeInputMissing:     {ClassValidation, nil},
 	CodeInputUnsupported: {ClassValidation, nil},
+	CodeInputUnused:      {ClassValidation, nil},
 	CodeRateLimited:      {ClassRateLimited, nil},
 	CodeServerError:      {ClassUpstream, nil},
 	CodeConnectionFailed: {ClassUpstream, []Place{PlaceModelMgr, PlaceLocalModels}},

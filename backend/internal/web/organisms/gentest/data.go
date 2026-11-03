@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
@@ -77,10 +78,12 @@ type ModelChoice struct {
 	Selected bool
 	// Media is image or video. RefMode ("edit", "img2img" or "" when it does not say), RefRoles (empty: the model takes no input
 	// images) and CanLoRA are what the card's icon and the role, strength and LoRA controls follow.
-	Media                 string
-	RefMode               string
-	RefRoles              []string
-	CanLoRA               bool
+	Media    string
+	RefMode  string
+	RefRoles []string
+	CanLoRA  bool
+	// RequiresFirstFrame: the model cannot run without a first frame (an I2V model). The card's data-requires-first-frame: the browser starts a picture as the first frame while one is ticked (#1009).
+	RequiresFirstFrame    bool
 	Answer                commercial.View // whether the model may be used commercially (#928): the badge, data-commercial for the filter
 	gentestadv.ModelFacts                 // the detailed settings the model takes and how it reads prompt weights (the card's data attributes)
 }
@@ -142,8 +145,9 @@ type Compose struct {
 	// SpeedModes are the speed modes the models offer (none: not drawn), SpeedMode the one chosen ("" for each model's default).
 	SpeedModes         []SpeedChoice
 	SpeedMode          string
-	gentestadv.Section                  // the "詳細設定" and the "?" of the prompt weights
-	Tier               gentesttier.Data // the tiers of an image form (かんたん / こだわり / ComfyUI; Issue #977)
+	gentestadv.Section                   // the "詳細設定" and the "?" of the prompt weights
+	InputCheck         inputnotice.Check // the notice of the input images (a video form; #1009)
+	Tier               gentesttier.Data  // the tiers of an image form (かんたん / こだわり / ComfyUI; Issue #977)
 }
 
 // SpeedChoice is a speed mode of a model (localcfg.SpeedMode): the ID the form posts and the label of its option.
@@ -167,6 +171,8 @@ type Confirm struct {
 	Total    string
 	Lines    []ConfirmLine
 	Warnings []string
+	// InputWarnings are the warnings about input images a model leaves out (#1009): shown in a box of their own, above the table, so that they are not missed.
+	InputWarnings []string
 	// Unknown notes the results whose price is not known and so are not in the total ("" when every price is known).
 	Unknown string
 	// OverLimit says why the batch cannot run ("" when it can); the confirm button is off then.
@@ -278,6 +284,7 @@ type Detail struct {
 	NegMode          string
 	Params           []KV
 	Inputs           []InputCard
+	Unused           []inputnotice.Unused // the input images the model was not given, and why (#1009)
 	Imports          []ImportRow
 	Import           importbox.Form
 	UseURL, MatchURL string                // set for an image that has a file

@@ -104,6 +104,8 @@ type Info struct {
 	SupportsInpaint bool `json:"supports_inpaint,omitempty" jsonschema:"一部だけ描き直す（インペイント）に対応する。reference_mode が inpaint のとき true。対応しないモデルは選べない"`
 	// DenoiseDefault is the redraw strength the workflow uses when a request names none (the template's denoise).
 	DenoiseDefault *float64 `json:"denoise_default,omitempty" jsonschema:"一部だけ描き直すときの描き直しの強さの既定（0 より大きく 1 以下）。supports_inpaint のモデルだけ"`
+	// RequiresInputs are the input images the model cannot run without (first_frame / last_frame / reference): a request without one is stopped before it is sent.
+	RequiresInputs []string `json:"requires_inputs,omitempty" jsonschema:"このモデルが必ず使う入力画像（first_frame / last_frame / reference）。I2V のワークフローは first_frame。リクエストに無い（役割が違う）と、送らずに input_missing で止める。無いモデルは省略"`
 	// Provider is who serves the model: the vendor of a cloud model ("google", "openai", "kling"...), "chatgpt-subscription" for the ChatGPT subscription's image
 	// model, "local" for a ComfyUI / OpenAI-compatible endpoint model or a saved workflow. Origin is "local" or "api". Both are the words of the filter (modelfilter).
 	Provider string `json:"provider" jsonschema:"提供元（クラウドはベンダー、local はローカル。絞り込みの providers に使う）"`
@@ -233,6 +235,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
 		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
 		mi.Exposed, mi.SpeedModes = c.exposedCaps(*lm.Workflow), SpeedModesOf(*lm.Workflow)
+		mi.RequiresInputs = lm.Workflow.RequiredImages()
 		if d, ok := denoiseDefault(lm.Workflow); ok {
 			mi.SupportsInpaint, mi.DenoiseDefault = true, &d
 		}

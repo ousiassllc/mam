@@ -29,10 +29,11 @@ func WithReferenceModels(baseURL string) Option {
 	if baseURL == "" {
 		baseURL = "http://127.0.0.1:1"
 	}
+	// the references are optional, as in the templates of the editing and img2img models: they run (as text to image) without one
 	workflow := func(mode localcfg.ReferenceMode, refs int, lora string) *localcfg.Workflow {
 		w := &localcfg.Workflow{ReferenceMode: mode, LoraModelNode: lora}
 		for i := range refs {
-			w.Assignments = append(w.Assignments, localcfg.Assignment{Param: localcfg.ParamReferenceImage, Node: "1", Input: "image", Index: i})
+			w.Assignments = append(w.Assignments, localcfg.Assignment{Param: localcfg.ParamReferenceImage, Node: "1", Input: "image", Index: i, Optional: true})
 		}
 		return w
 	}
@@ -87,4 +88,39 @@ func WithSpeedModel() Option {
 // WithPoseLibrary gives the Service a pose library (Deps.Poses; poses/posestest builds an installed one over a fake GitHub).
 func WithPoseLibrary(lib *poses.Library) Option {
 	return func(_ *Rig, d *gentest.Deps) { d.Poses = lib }
+}
+
+// The local ComfyUI models WithInputModels adds, one for each way a model takes input images (#1009): I2VModel needs a first frame, FLFModel a first and a
+// last frame, T2VModel takes no image, ControlModel is an image model that cannot run without its reference (ControlNet).
+var (
+	I2VModel     = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "i2v"))
+	FLFModel     = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "flf"))
+	T2VModel     = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "t2v"))
+	ControlModel = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "control"))
+)
+
+// WithInputModels adds I2VModel, FLFModel, T2VModel and ControlModel to the rig, with a fake backend, at the endpoint "bundled-comfyui".
+func WithInputModels() Option {
+	return func(r *Rig, d *gentest.Deps) {
+		video := &localcfg.VideoSettings{Durations: []float64{5}, Resolutions: []string{"720p"}}
+		frame := func(params ...localcfg.Param) *localcfg.Workflow {
+			w := &localcfg.Workflow{}
+			for i, p := range params {
+				w.Assignments = append(w.Assignments, localcfg.Assignment{Param: p, Node: "1", Input: "in" + string(rune('a'+i))})
+			}
+			return w
+		}
+		control := &localcfg.Workflow{ReferenceMode: localcfg.ModeControlNet, Assignments: []localcfg.Assignment{{Param: localcfg.ParamReferenceImage, Node: "1", Input: "image"}}}
+		r.Config.Endpoints = map[string]localcfg.Endpoint{EndpointName: {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:1"}}
+		r.Config.LocalModels = map[string]localcfg.Model{
+			localcfg.Key(EndpointName, "i2v"):     {Media: localcfg.MediaVideo, Workflow: frame(localcfg.ParamFirstFrame), Video: video},
+			localcfg.Key(EndpointName, "flf"):     {Media: localcfg.MediaVideo, Workflow: frame(localcfg.ParamFirstFrame, localcfg.ParamLastFrame), Video: video},
+			localcfg.Key(EndpointName, "t2v"):     {Media: localcfg.MediaVideo, Workflow: frame(), Video: video},
+			localcfg.Key(EndpointName, "control"): {Media: localcfg.MediaImage, Workflow: control},
+		}
+		r.extra = append(r.extra, I2VModel, FLFModel, T2VModel, ControlModel)
+		d.BundledEndpoint = EndpointName
+		localbackends.Publish(r.Config)
+		r.T.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
+	}
 }

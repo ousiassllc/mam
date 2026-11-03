@@ -39,7 +39,8 @@ func TestBothLanguagesHaveTheSameKeys(t *testing.T) {
 func TestViewFillsTheArgumentsAndLinks(t *testing.T) {
 	v := apperr.New(apperr.CodeInputMissing).With("param", "first_frame").WithDetail("the workflow needs first_frame (12)").View(apperr.LangJa)
 	assert.Contains(t, v.Cause, "（first_frame）")
-	assert.Contains(t, v.Remedy, "first_frame に使う画像")
+	assert.Contains(t, v.Remedy, "first_frame に使う画像を添えるか、添えた画像の役割を変えて")
+	assert.Contains(t, v.Remedy, "「最初のフレーム」に変えてください")
 	assert.Equal(t, "the workflow needs first_frame (12)", v.Detail)
 	assert.Equal(t, apperr.ClassValidation, v.Class)
 

@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
@@ -58,6 +59,9 @@ templ DetailSection(d Detail, inModal bool) {
 			</div>
 		} else if d.Card.Error != "" {
 			<p class="break-words text-sm text-red-300" data-testid="gt-card-error">{ d.Card.Error }</p>
+		}
+		if len(d.Unused) > 0 {
+			@inputnotice.UnusedBox(d.Unused)
 		}
 		<div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 			@detailMedia(d.Card)
