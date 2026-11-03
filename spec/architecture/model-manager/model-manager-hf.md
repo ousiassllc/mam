@@ -7,7 +7,7 @@
 | 決めたこと（Issue #842 の「決まったこと」） | この実装 |
 |---|---|
 | 1. 入口は URL・リポジトリ ID の貼り付けと、キーワード検索 | `HFRepo`（URL・`owner/repo`）・`SearchHF`（キーワード。`pipeline_tag` の絞り込み） |
-| 2. GGUF は一覧に出すが選べない | `installable=false`、理由 `ReasonGGUF`（ComfyUI-GGUF のカスタムノードが要る） |
+| 2. GGUF は一覧に出すが選べない | `installable=false`、理由 `ReasonGGUF`（ComfyUI-GGUF のカスタムノードが要る。ノードは許可リストにあるが、`gguf` が同梱の Python に無く導入できない: [custom-nodes.md](custom-nodes.md) §5.5。ノードが導入できるようになるまで GGUF は選べないままにする） |
 | 3. pickle 形式は拒否 | `.ckpt` `.pt` `.pth` `.bin` `.pkl` ほか。`ReasonPickle`。導入しない（API でも 422） |
 | 4. フォルダは自動判定し、利用者が確認する | パス（`vae/`・`loras/` など）→ safetensors のヘッダー（§4）の順に推定。画面は既定値を選んだフォームを出し、利用者が変えられる |
 | 5. ワークフローのテンプレートは SDXL の一体型チェックポイントだけ | ヘッダーが SDXL のチェックポイントだけ、`txt2img-sdxl`・`img2img-sdxl` の `ckpt_name` を差し替えた 2 つのモデルを作る。**LoRA を載せるワークフローは作らない**（LoRA はファイルを置くだけ） |

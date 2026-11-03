@@ -18,7 +18,7 @@ type Format string
 const (
 	// FormatSafetensors (.safetensors, .sft) is the only format that is installed.
 	FormatSafetensors Format = "safetensors"
-	// FormatGGUF is listed but not selectable: ComfyUI reads it only with the custom node ComfyUI-GGUF.
+	// FormatGGUF is listed but not selectable: ComfyUI reads it only with the custom node ComfyUI-GGUF, which mam cannot install (its package gguf is not in the bundled Python).
 	FormatGGUF Format = "gguf"
 	// FormatPickle (.ckpt .pt .pt2 .pth .bin .pkl) can run arbitrary code when it is loaded: refused.
 	FormatPickle Format = "pickle"
@@ -41,7 +41,7 @@ func FormatOf(p string) Format {
 
 // The reasons a file cannot be installed (shown to the user).
 const (
-	ReasonGGUF     = "ComfyUI-GGUF（カスタムノード）が要るため、同梱の ComfyUI では使えません"
+	ReasonGGUF     = "GGUF は追加ノード ComfyUI-GGUF が要りますが、同梱の Python 環境に gguf が無く mam は pip を実行しないため、今は導入できません（理由は「追加ノード」の節にも出ています）"
 	ReasonPickle   = "pickle 形式（.ckpt・.pt・.pth・.bin・.pkl など）は、読み込むときに任意のコードが動きうるため導入しません。.safetensors を選んでください"
 	ReasonSplit    = "分割された形式（diffusers の unet/・text_encoder/・transformer/ や -00001-of-0000N のファイル）は、ComfyUI の単一ファイルではないため導入できません。一体型の .safetensors を選んでください"
 	ReasonNoLFS    = "LFS のファイルではなく SHA-256 が分からないため、モデルファイルとしては扱いません"
