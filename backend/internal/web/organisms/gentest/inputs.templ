@@ -5,6 +5,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/facelock"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestposes"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -14,6 +16,8 @@ func inputsHelp(c Compose) string {
 	t := fmt.Sprintf("最大 %d 枚。PNG・JPEG・WebP。番号の順にモデルへ渡します。", c.MaxReferences)
 	if c.Media == "video" {
 		t += "\n「参照」は自由な参照、最初・最後のフレームはそれぞれの位置に使います。"
+	} else {
+		t += "\n" + facelock.Help
 	}
 	return t
 }
@@ -54,6 +58,9 @@ templ inputFields(c Compose) {
 					"type": "button", "data-gt-open-picker": "history", "hx-get": paths.GenerationTestPart("picker") + "?source=history",
 					"hx-target": "#" + PickerID, "hx-swap": "innerHTML",
 				})
+				if c.Poses {
+					@gentestposes.OpenButton(gentestposes.NewWire())
+				}
 			</div>
 		</div>
 		if c.Media == "video" {
@@ -83,6 +90,9 @@ templ inputFields(c Compose) {
 		</template>
 		@refOptions(c)
 		@pickerDialog(c)
+		if c.Poses {
+			@gentestposes.Dialog()
+		}
 		@lightbox()
 	</fieldset>
 }

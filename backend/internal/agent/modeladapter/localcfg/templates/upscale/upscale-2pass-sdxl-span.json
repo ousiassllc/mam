@@ -1,0 +1,202 @@
+{
+ "id": "upscale-2pass-sdxl-span",
+ "label": "アップスケール: 2 パス仕上げ（4xNomosUni SPAN ＋ SDXL）",
+ "media": "image",
+ "description": "モデル型アップスケールで大きくしてから、SDXL で denoise 0.3 の低い値でもう一度サンプリングして仕上げる。VAE はタイル版（VAEEncodeTiled・VAEDecodeTiled。タイル 512）で、16GB で落とさない作り。プロンプトは元の結果から引き継ぐ。標準ノードだけ。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "prompt_weight": "supported",
+   "graph": {
+    "1": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "example.png"
+     }
+    },
+    "2": {
+     "class_type": "UpscaleModelLoader",
+     "inputs": {
+      "model_name": "4xNomosUni_span_multijpg.safetensors"
+     }
+    },
+    "3": {
+     "class_type": "ImageUpscaleWithModel",
+     "inputs": {
+      "upscale_model": [
+       "2",
+       0
+      ],
+      "image": [
+       "1",
+       0
+      ]
+     }
+    },
+    "4": {
+     "class_type": "ImageScaleBy",
+     "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": 1,
+      "image": [
+       "3",
+       0
+      ]
+     }
+    },
+    "10": {
+     "class_type": "CheckpointLoaderSimple",
+     "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+     }
+    },
+    "6": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "10",
+       1
+      ]
+     }
+    },
+    "7": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "10",
+       1
+      ]
+     }
+    },
+    "11": {
+     "class_type": "VAEEncodeTiled",
+     "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "pixels": [
+       "4",
+       0
+      ],
+      "vae": [
+       "10",
+       2
+      ]
+     }
+    },
+    "12": {
+     "class_type": "KSampler",
+     "inputs": {
+      "seed": 0,
+      "steps": 25,
+      "cfg": 7,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.3,
+      "model": [
+       "10",
+       0
+      ],
+      "positive": [
+       "6",
+       0
+      ],
+      "negative": [
+       "7",
+       0
+      ],
+      "latent_image": [
+       "11",
+       0
+      ]
+     }
+    },
+    "13": {
+     "class_type": "VAEDecodeTiled",
+     "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "samples": [
+       "12",
+       0
+      ],
+      "vae": [
+       "10",
+       2
+      ]
+     }
+    },
+    "14": {
+     "class_type": "SaveImage",
+     "inputs": {
+      "filename_prefix": "mam/upscale",
+      "images": [
+       "13",
+       0
+      ]
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "prompt",
+     "node": "6",
+     "input": "text"
+    },
+    {
+     "param": "negative_prompt",
+     "node": "7",
+     "input": "text"
+    },
+    {
+     "param": "seed",
+     "node": "12",
+     "input": "seed"
+    },
+    {
+     "param": "reference_image",
+     "node": "1",
+     "input": "image",
+     "index": 0
+    },
+    {
+     "param": "upscale_ratio",
+     "node": "4",
+     "input": "scale_by"
+    },
+    {
+     "param": "steps",
+     "node": "12",
+     "input": "steps"
+    },
+    {
+     "param": "cfg",
+     "node": "12",
+     "input": "cfg"
+    },
+    {
+     "param": "sampler",
+     "node": "12",
+     "input": "sampler_name"
+    },
+    {
+     "param": "scheduler",
+     "node": "12",
+     "input": "scheduler"
+    }
+   ],
+   "output_node": "14",
+   "upscale": {
+    "label": "2 パス仕上げ（SPAN ＋ SDXL）",
+    "native": 4,
+    "mode": "two_pass",
+    "max_output_pixels": 16777216
+   }
+  }
+ }
+}

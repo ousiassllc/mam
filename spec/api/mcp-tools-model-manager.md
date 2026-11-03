@@ -95,6 +95,18 @@
 
 `weights` は、`state`（`none`: 未導入 / `ready` / `missing`: **導入済みだが重みが不足** / `unverified`: 確認が済んでいない）・`message`・`need_bytes`・`total_bytes`・`unclear`（商用利用が `yes` でない重みの数）と、`assets[]`: `name`, `description`, `state`（`ok` / `missing` / `unverified`）, `required`, `size`, `source`（`name`, `url`, `source_note`）, `license`（`id`, `name`, `url`, `summary`, **`commercial`（`yes` / `conditional` / `no` / `unknown`）**, `notice`）。**`commercial` が `yes` でない重みは、ユーザーに `notice` を見せてから使う**（法的な助言ではなく、確認できた範囲の記載）。`cancel_model_install` は `runtime:<id>` のジョブも中断する。
 
+## 追加ノード（ComfyUI のカスタムノードの許可リスト。Issue #976）
+
+意味・許可リスト・導入の流れは [custom-nodes.md](../architecture/model-manager/custom-nodes.md)。実装は `backend/internal/mcp/tools/modelmgr/nodetools`（画面と同じ `modelnodes.Service`＝`service.Services.ModelNodes`。アプリが持たないときは全ツールが `unavailable`）。**許可リストにないノードは導入できず、読み込まれない**。ノードは ComfyUI の中でそのまま実行されるプログラムなので、同意（ライセンスと注意事項）はユーザーが内容を確認してからにする。MCP のエージェントが同意を記録できる（`accept_custom_node_license`。`accept_model_license` と同じ扱いで、ユーザーが確認した後にだけ呼ぶ）。`install_custom_node` は、`accept_custom_node_license` で同意が記録されていなければ `validation` で拒否し、何も取得しない。拒否の文面は画面と同じ（`mmview.Refuse`）。導入は `get_job`（`target` = `node:<id>`）、中断は `cancel_model_install`。`list_model_catalog`・`get_catalog_model` のモデルには、必要なノードの id が `requires_nodes` で付く（ノードが無い間、`install_model` は `validation`「追加ノード「…」が導入されていません…」で拒否される）。
+
+| ツール | 説明 | 入力 | 出力 | readOnly |
+|--------|------|------|------|----------|
+| `list_custom_nodes` | 許可リストの全ノードと状態 | なし | `nodes[]`（`id`, `name`, `description`, `repo`, `commit`, `archive_sha256`, `archive_size`, `extracted_size`, `folder`（`custom_nodes` の下のフォルダ名）, `license`（`name`, `url`, `summary`, `commercial`: yes / conditional / no / unknown, `commercial_condition`, `notice`）, `python_requires`, `python_optional`, `install_blocked`, `node_classes`, `limits`, `reviewed_at`, `review`, `state`: not_installed / installed / outdated / modified / blocked, `detail`, `installed_commit`, `accepted`, `security_notice`, `notice_version`, `install_job`, `models[]`, `unavailable`, `need_bytes`） | はい |
+| `get_custom_node_status` | 1 つのノードの状態（`list_custom_nodes` の 1 件と同じ） | `node_id` | 同上 | はい |
+| `accept_custom_node_license` | ライセンスと注意事項に同意したことを記録する（ユーザーが確認した後にだけ呼ぶ。版が違えば `validation`） | `node_id`, `license_id`, `license_version`, `notice_version`（`get_custom_node_status` の値） | `node_id`, `accepted` | いいえ（冪等） |
+| `install_custom_node` | 固定のコミットのアーカイブを取得して導入する（ジョブ。SHA-256 を検証。動いている ComfyUI は再起動し、読み込まれたことを確かめる）。同意が無い・許可リストにない（`not_found`）・`install_blocked`・同梱エンジンが無い（`conflict`）・空き容量不足は始めずに拒否 | `node_id` | `job_id`, `state`, `existing`, `target`（`node:<id>`） | いいえ |
+| `remove_custom_node` | 導入したノードを削除する（動いている ComfyUI は再起動）。導入中・未導入は `conflict` | `node_id` | `node_id`, `removed` | いいえ（冪等・破壊的） |
+
 ## 試し生成
 
 モデルマネージャーの「試し生成」は、生成テスト（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）の 1 件のバッチとして動く。専用のツールは無い。ローカルのモデルを試すには `list_generation_models`・`estimate_generation_test`・`run_generation_test`（参照画像は用途 `gentest_reference`、結果のファイルは `get_generation_result` の URL）を使う。**導入済みの成人向けモデルは、年齢確認のゲートが閉じている間は `list_generation_models` に出ず、名指しても不明なモデルとして断られる**（Service が強制する。[model-manager.md](../architecture/model-manager/model-manager.md) §6.2）。1.0 の `list_trial_models`・`start_model_trial`・`list_model_trials`・`get_model_trial`・`get_model_trial_file_url`・`delete_model_trial`、アップロードの用途 `model_trial_reference`、ダウンロードの種類 `model_trial_file` は削除した。
@@ -103,7 +115,7 @@
 
 | 種別（`kind`） | 開始するツール | `target` | `done` / `total` | `result` |
 |---------------|---------------|----------|------------------|----------|
-| `model_install` | `install_model_engine`・`install_model`・`install_hf_file`・`install_local_runtime`・`install_local_runtime_weights` | `engine` / `model:<id>` / `hf:<repo>@<commit>/<path>` / `runtime:<id>` | 進捗の割合 / 100 | `target`, `phase`（download / extract / register / done など）, `done_bytes`, `total_bytes` |
+| `model_install` | `install_model_engine`・`install_model`・`install_hf_file`・`install_local_runtime`・`install_local_runtime_weights`・`install_custom_node` | `engine` / `model:<id>` / `hf:<repo>@<commit>/<path>` / `runtime:<id>` / `node:<id>` | 進捗の割合 / 100 | `target`, `phase`（download / extract / register / done など）, `done_bytes`, `total_bytes` |
 
 `state` は `queued` / `running` / `succeeded` / `failed`。失敗の `error` はジョブキューの行の理由（SHA-256 の不一致・空き容量・取得元が認証を求めた・**取得元が消えた（404・410。ミラーの削除など。ファイル名と、ミラーなら原本の場所を添える）**・中断・ComfyUI の失敗など）。導入は再開できる（再起動のたびに最大 3 回）。進捗の割合はメモリ上で、ジョブの終了直前や再起動の後は 0 に戻ることがある（`succeeded` では 100）。
 
@@ -127,3 +139,4 @@
 | 1.9 | 2026-11-02 | `get_commercial_only`・`set_commercial_only` を足した。`list_model_catalog` に入力 `commercial`・出力 `commercial_filter`、`license` の `commercial_use`（真偽値）を `commercial`（4 値）・`checked_at`・`components[]` に替えた。ローカル実行環境の重みの `commercial_use` / `unclear` も `commercial` / `unknown` に | Issue #928（商用利用の可否の表示と絞り込み） |
 | 1.10 | 2026-11-02 | `list_model_catalog` の出力に `vram_fit`、モデルの `vram` に `recommended_gb`・`limits` を足した | Issue #927（LTX-2.5。16 GB は動くが制約あり）|
 | 1.11 | 2026-11-02 | `get_gpu_status` が Windows の AMD・Intel（と nvidia-smi が失敗した NVIDIA）の VRAM の使用量・使用率を、Windows のパフォーマンスカウンター（WMI の `Win32_PerfFormattedData_GPUPerformanceCounters_*`。管理者権限不要）から返すことを足した。`source` に `windows-counters`。進みの記録は `get_job`・`get_generation_test` の `progress` にも使う | Issue #966（#914 の続き） |
+| 1.12 | 2026-11-03 | 追加ノードのツール 5 つ（`list_custom_nodes`・`get_custom_node_status`・`accept_custom_node_license`・`install_custom_node`・`remove_custom_node`）を足した。`get_job` の `target` に `node:<id>`、モデルに `requires_nodes` | Issue #976 |

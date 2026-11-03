@@ -6,10 +6,14 @@ package gentest
 import (
 	"strconv"
 
-	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -49,7 +53,6 @@ const (
 // Limits of the text fields (the service checks the same).
 const (
 	MaxAspectLen = len("99:99")
-	MaxNameLen   = domain.MaxReferenceNameRunes
 )
 
 func itoa(n int) string { return strconv.Itoa(n) }
@@ -72,19 +75,16 @@ type ModelChoice struct {
 	Selected bool
 	// Media is image or video. RefMode ("edit", "img2img" or "" when it does not say), RefRoles (empty: the model takes no input
 	// images) and CanLoRA are what the card's icon and the role, strength and LoRA controls follow.
-	Media    string
-	RefMode  string
-	RefRoles []string
-	CanLoRA  bool
-	// Answer is whether the model may be used commercially (#928): the badge on the card, data-commercial for the filter.
-	Answer commercial.View
+	Media                 string
+	RefMode               string
+	RefRoles              []string
+	CanLoRA               bool
+	Answer                commercial.View // whether the model may be used commercially (#928): the badge, data-commercial for the filter
+	gentestadv.ModelFacts                 // the detailed settings the model takes and how it reads prompt weights (the card's data attributes)
 }
 
 // PromptText is a prompt and its negative prompt.
-type PromptText struct {
-	Text     string
-	Negative string
-}
+type PromptText = gentesttier.Prompt
 
 // RecentPrompt is an entry of the prompt history offered for reuse.
 type RecentPrompt struct {
@@ -120,8 +120,8 @@ type Compose struct {
 	Filter commercial.FilterData
 	// Prompts has at least one entry.
 	Prompts []PromptText
-	// Translate is the switch "英語に訳して送る" (on for a fresh form).
-	Translate                                    bool
+	// Translate is the switch "英語に訳して送る" (on for a fresh form); Poses says the pose library is there: "ポーズを選ぶ" is offered (an image batch only).
+	Translate, Poses                             bool
 	Count, Aspect, Resolution, Duration          string
 	Resolutions, Durations                       []string
 	MaxPrompt, MaxCount, MaxItems, MaxReferences int
@@ -130,18 +130,18 @@ type Compose struct {
 	Projects                                     []ProjectChoice
 	Picked                                       []Ref
 	Spend                                        string
-	// MaxImageBytes is the largest input image; the browser checks it when an image is chosen.
-	MaxImageBytes int
+	MaxImageBytes                                int // the largest input image; the browser checks it when an image is chosen
 	// AvoidPose is the checkbox "do not copy the pose of the references". LoRAs are the LoRA files of the engine (none: the choice
 	// is not drawn), LoRA the one chosen ("" for none) and LoRAStrength its strength (nil: not given, so the default).
 	AvoidPose    bool
 	LoRAs        []string
 	LoRA         string
 	LoRAStrength *float64
-	// SpeedModes are the speed modes the video models offer (none: the choice is not drawn) and SpeedMode the one chosen ("" for each
-	// model's default).
-	SpeedModes []SpeedChoice
-	SpeedMode  string
+	// SpeedModes are the speed modes the video models offer (none: not drawn), SpeedMode the one chosen ("" for each model's default).
+	SpeedModes         []SpeedChoice
+	SpeedMode          string
+	gentestadv.Section                  // the "詳細設定" and the "?" of the prompt weights
+	Tier               gentesttier.Data // the tiers of an image form (かんたん / こだわり / ComfyUI; Issue #977)
 }
 
 // SpeedChoice is a speed mode of a video model (localcfg.SpeedMode): the ID the form posts and the label of its option.
@@ -282,35 +282,25 @@ type ImportRow struct {
 	At          string
 }
 
-// ImportForm is the form that imports a result into a Project.
-type ImportForm struct {
-	Message
-	ResultID string
-	Image    bool
-	Projects []ProjectChoice
-	// Done says the import was made: the form shows the outcome instead of the fields.
-	Done string
-}
-
 // Detail is one result with everything about it.
 type Detail struct {
 	Message
 	Card       Card
 	SentPrompt string
-	// English and EnglishNegative are what the prompt and the negative prompt were translated to before they were sent ("" when they
-	// were sent as typed); the originals are the "入力したプロンプト" of Params.
-	English         string
-	EnglishNegative string
-	Negative        string
-	NegMode         string
-	Params          []KV
-	Inputs          []InputCard
-	Imports         []ImportRow
-	Import          ImportForm
-	UseURL          string // compose with this result as an input ("" for a video)
-	MatchURL        string // the prompt match with this result as the reference ("" for a video)
-	// Answer is the license of the model that made the result: the detail says it in words (the note) as well as by the mark.
-	Answer commercial.View
+	// English and EnglishNegative are the translation that was sent ("" when the text was sent as typed).
+	English          string
+	EnglishNegative  string
+	Negative         string
+	NegMode          string
+	Params           []KV
+	Inputs           []InputCard
+	Imports          []ImportRow
+	Import           importbox.Form
+	UseURL, MatchURL string                // set for an image that has a file
+	Actions          gentestresult.Actions // the buttons under the picture (#977)
+	Used             gentestresult.Used    // the settings it was made with, folded
+	Upscale          upscalebox.Form       // "make it larger", and where an enlargement came from
+	Answer           commercial.View
 }
 
 // PromptRow is an entry of the prompt history.

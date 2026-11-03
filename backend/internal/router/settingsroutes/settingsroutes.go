@@ -17,17 +17,22 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	onboardingsvc "github.com/ousiassllc/mam/backend/internal/service/onboarding"
 	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/comfyscreen"
+	jobshandler "github.com/ousiassllc/mam/backend/internal/web/handler/jobs"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
 	onboardinghandler "github.com/ousiassllc/mam/backend/internal/web/handler/onboarding"
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
@@ -43,8 +48,11 @@ import (
 
 // Services are the services of the sections of the settings screen.
 type Services struct {
-	LLM    *llmassign.Service
-	Models *modelsettings.Service
+	LLM *llmassign.Service
+	// LLMModels are the models the LLM pull-downs offer for each provider (the API's list, else the candidates of mam). New
+	// builds one that knows no key and no sign-in (the candidates only); the app replaces it.
+	LLMModels *llmmodels.Service
+	Models    *modelsettings.Service
 	// Update checks for a newer version. Nil in the headless server, which cannot update itself: the
 	// version section then shows the version only and has no check route.
 	Update *appupdate.Service
@@ -66,6 +74,8 @@ type Services struct {
 	// LocalRuntimes are the local voice and lip-sync runtimes (GPT-SoVITS, MuseTalk) shown in the model manager screen. Nil leaves the
 	// section "ローカル音声・口パク" out.
 	LocalRuntimes *localruntime.Service
+	// ModelNodes are the custom nodes of the allowlist (section "追加ノード" of the model manager screen). Nil leaves the section out.
+	ModelNodes *modelnodes.Service
 	// Onboarding is the first-run guide (paths.Onboarding) and the redirect of a first run from GET / (OnboardingHome). Nil
 	// leaves both out: the root page is always the project list.
 	Onboarding *onboardingsvc.Service
@@ -79,20 +89,21 @@ type Services struct {
 	// Gentest is the generation test screen (paths.GenerationTest) and the trial generations of the model manager screen
 	// (service.Services.Gentest). Nil leaves the screen out and the trial panel without a form.
 	Gentest *gentest.Service
+	// JobList is the job list screen (paths.Jobs): the jobs that run and the latest that ended. Nil leaves the screen out.
+	JobList *joblist.Service
 }
 
 // New builds the services over the settings files (llm.json / models.json, or the files the operator pinned
 // by a start option, which the screen shows and does not write).
 func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Services {
-	return &Services{LLM: llmassign.New(llmFile, llmPinned), Models: modelsettings.New(modelFile, modelPinned)}
+	return &Services{LLM: llmassign.New(llmFile, llmPinned), LLMModels: llmmodels.New(llmmodels.Options{}), Models: modelsettings.New(modelFile, modelPinned)}
 }
 
 // Register adds the pages of the settings screen (settingspage.Register: the overview and "API キーとログイン" always,
 // the version page with the version only, and the other categories of the services there are) and, when s is not nil, the
 // LLM and model sections with their PUT / DELETE routes and, when s.Update is set, POST paths.UpdateCheck() and, when s.MCP
 // is set, the MCP server section with its PUT / POST / DELETE routes. Without s the screen has no such sections and the
-// routes do not exist. It also adds the status routes of the tool cards of the home page (registerTools), which read the
-// services of both.
+// routes do not exist. It also adds the status route of the model manager card of the settings screen (registerTools).
 func Register(engine *gin.Engine, services *service.Services, s *Services, logger *slog.Logger) {
 	pages := pageServices(services, s)
 	update := pages.Update
@@ -124,7 +135,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.PUT(paths.ChatGPTCodexPath(), chatgpthandler.CodexSetPath(s.ChatGPT))
 	}
 	if s != nil {
-		llmhandler.Register(engine, s.LLM, pages.Page(paths.SettingsLLM))
+		llmhandler.Register(engine, s.LLM, s.LLMModels, pages.Page(paths.SettingsLLM))
 		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
 	if s != nil && s.Audio != nil {
@@ -150,16 +161,20 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.GET(paths.LocalModelsHealth(), settingspage.Health(s.LocalModels, 0))
 	}
 	if s != nil && s.ModelManager != nil {
-		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest, s.LocalRuntimes)
+		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest, s.LocalRuntimes, s.ModelNodes)
 	}
 	if s != nil && s.Gentest != nil {
 		gentesthandler.Register(engine, s.Gentest)
+		comfyscreen.Register(engine, s.Gentest, s.Workflows, s.LocalModels, gentesthandler.RequestOfForm(s.Gentest)) // #977: the ComfyUI tier
+	}
+	if s != nil && s.JobList != nil {
+		jobshandler.Register(engine, s.JobList)
 	}
 	if s != nil && s.Onboarding != nil {
 		registerOnboarding(engine, services, s, pages)
 	}
 	settingspage.Register(engine, pages)
-	registerTools(engine, services, s, logger)
+	registerTools(engine, s, logger)
 }
 
 // pageServices are the services the pages of the settings screen are built from (the ones s does not have stay nil).

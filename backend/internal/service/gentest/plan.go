@@ -6,8 +6,10 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
@@ -37,6 +39,8 @@ const (
 	WarnRoleUnsupported  = refs.WarnRoleUnsupported  // the model does not take the role of a reference: it is used as a whole
 	WarnLoRAUnsupported  = refs.WarnLoRAUnsupported  // the model cannot take a LoRA: it is not sent
 	WarnSpeedUnsupported = refs.WarnSpeedUnsupported // the video model has no such speed mode: it runs its default
+	// WarnSamplingIgnored and WarnSeedIgnored (sampling.go): the model does not take the steps, cfg, sampler, scheduler or seed asked for.
+	// WarnPromptWeight (promptweight.go): the prompt has weights and the model does not read them (or reads them poorly).
 )
 
 // modelPlan is how one model takes the request: the inputs it uses, the parameters it is called with and its unit price.
@@ -50,8 +54,14 @@ type modelPlan struct {
 	lora, avoidPose bool
 	// speedMode is the speed mode the video model is asked for ("" for its default).
 	speedMode string
-	warnings  []Warning
-	basis     string
+	// sampling is the steps, cfg, sampler and scheduler the model runs with (what it takes: the request's value, else its default); nil when it takes none.
+	sampling *sampling.Settings
+	// exposed are the values the model's exposed inputs run with (nil: it exposes none).
+	exposed map[string]any
+	// denoise is the redraw strength sent to an inpaint model (nil: the graph's own, or not an inpaint run).
+	denoise  *float64
+	warnings []Warning
+	basis    string
 	// unit is the price of one result in USD (nil when the basis is unknown).
 	unit *float64
 }
@@ -66,6 +76,13 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 	} else {
 		s.planVideo(cfg, r, &p, warn)
 	}
+	planSampling(r, &p, warn)
+	planInpaint(r, &p, warn)
+	var ignored []string
+	if p.exposed, ignored = exposedreq.Plan(info, r.Exposed); len(ignored) > 0 {
+		warn(WarnExposedIgnored, "%s", exposedreq.Warning(info.Label, ignored))
+	}
+	planPromptWeight(r, &p, warn)
 	p.unit, p.basis = unitPrice(info, r.Media, p.resolution, p.seconds)
 	if r.Media == gentestrepo.MediaImage && p.basis == modelcatalog.BasisPriced {
 		// the price of an image can depend on its size (GPT Image 2): the catalog holds the dearest one
@@ -178,14 +195,33 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 }
 
 // resultParamsOf is what is recorded of the request for the result of one model.
-func resultParamsOf(r Request, mp modelPlan, translation *record.SentText) record.ResultParams {
+func resultParamsOf(r Request, mp modelPlan, translation *record.SentText, maskID string) record.ResultParams {
 	p := record.ResultParams{
-		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode,
+		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode, Sampling: mp.sampling, Exposed: mp.exposed,
+	}
+	if r.Mask != nil && len(r.References) == 1 {
+		p.Inpaint = &record.Inpaint{Denoise: mp.denoise, SourceKind: r.References[0].Source, SourceID: r.References[0].ID, MaskInput: maskID}
 	}
 	if mp.lora {
 		p.LoRA = &refs.LoRA{Name: r.LoRA.Name, Strength: *r.LoRA.Strength}
 	}
 	return p
+}
+
+// planInpaint decides the redraw strength an inpaint model is sent. A model that has no denoise keeps the graph's value and warns.
+func planInpaint(r Request, p *modelPlan, warn func(code, format string, args ...any)) {
+	if r.Mask == nil {
+		return
+	}
+	if r.Denoise != nil && p.info.DenoiseDefault == nil {
+		warn(WarnDenoiseIgnored, "%s は描き直しの強さを受け取れないため、テンプレートの既定で作ります", p.info.Label)
+		return
+	}
+	if r.Denoise != nil {
+		p.denoise = r.Denoise
+		return
+	}
+	p.denoise = p.info.DenoiseDefault
 }
 
 // planImage decides which references, which LoRA and which pose option an image model takes of the request (refs.Decide).

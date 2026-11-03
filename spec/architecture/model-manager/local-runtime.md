@@ -197,7 +197,7 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 
 ### 12.2 検証（`catalog.Validate`）
 
-URL は `https://huggingface.co/<owner>/<repo>/resolve/<40 桁のコミット>/<パス>` だけ（ブランチ名・http・他のホストを拒否。**取得の許可ホストは増やさない**。GitHub や Google Drive にある原本は、SHA-256 を確かめた Hugging Face のコピーを使う）。SHA-256 は小文字 64 桁、サイズは正。出典・ライセンスの欠落、ライセンス ID が一覧に無い、同じ名前・同じ `dest` が 2 件、`conditional` / `no` / `unknown` で `notice` が空、`commercial` が 4 値以外、取得先と原本が違うのに `source_note` に実在する日付が無い、アーカイブの `members` が空・エントリが `..` を含む・`dest` が外へ出る・メンバーの SHA-256 かサイズが無い、`required` が 1 件も無い、を拒否する。テスト: `catalog/assets_test.go`。
+URL は `https://huggingface.co/<owner>/<repo>/resolve/<40 桁のコミット>/<パス>` か、**GitHub の 2 つの形**（Issue #986。`https://github.com/<owner>/<repo>/releases/download/<タグ>/<ファイル>` のリリースのアセット、`https://raw.githubusercontent.com/<owner>/<repo>/<40 桁のコミット>/<パス>` のコミット固定のファイル）だけ（ブランチ名・http・他のホストを拒否。**取得の許可ホスト（`fetch.AllowedURL`）は増やさない**: github.com・githubusercontent.com は ComfyUI・Codex の導入で既に許可している。Google Drive にある原本は、SHA-256 を確かめた Hugging Face のコピーを使う）。**リリースのタグは付け替えられる**ので、リリースのアセットは URL では固定できず、SHA-256 とサイズが固定の本体になる（不一致は取得を破棄）。`source.url` が原本のリポジトリ（GitHub の `<owner>/<repo>`）と同じなら、第三者のミラーではなく `source_note` は要らない（`inRepoOf`）。SHA-256 は小文字 64 桁、サイズは正。出典・ライセンスの欠落、ライセンス ID が一覧に無い、同じ名前・同じ `dest` が 2 件、`conditional` / `no` / `unknown` で `notice` が空、`commercial` が 4 値以外、取得先と原本が違うのに `source_note` に実在する日付が無い、アーカイブの `members` が空・エントリが `..` を含む・`dest` が外へ出る・メンバーの SHA-256 かサイズが無い、`required` が 1 件も無い、を拒否する。テスト: `catalog/assets_test.go`。
 
 ### 12.3 取得・検証（`runtime.Installer.EnsureAssets`）
 
@@ -291,6 +291,21 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 | MuseTalk の重みを置いた環境で MuseTalk が動くこと（`models/…` の配置が公式の既定と同じこと、S3FD の置き場所） | **Linux の CPU で確認した**（#921。§13.7）: 12 件の重みをカタログの `dest` に置き、ネットワークの無い名前空間で、公式の推論と同じ手順（ラッパー）が 1.2 秒の動画を作った。**Windows ＋ CUDA は未確認** |
 | 各ライセンスの**原文との突き合わせ** | モデルカード・同梱の LICENSE・NLTK の配布一覧・MuseTalk の README / LICENSE.txt は読んだ。**法的な助言ではない**。`unknown` の 5 件（g2pW・SyncNet・face-parse・S3FD・resnet18）は、利用者が配布元に確認する前提（画面の注記） |
 | 第三者のミラー（`ManyOtherFunctions/face-parse-bisent`・`XXXXRT/GPT-SoVITS-Pretrained`）が将来も残ること | 保証できない。消えたら `ErrSourceGone`（原本の場所つき）で失敗する |
+
+### 12.9 Shisei のポーズ集（`data/assets/shisei-poses.json`。Issue #986）
+
+生成テストの「ポーズを選ぶ」（[../gentest/gentest.md](../gentest/gentest.md) §6）が使う、ポーズの参照画像（マネキンの線画）。**ランタイム（プロセス）ではなく、画像のファイルだけの資産セット**で、ID は `shisei-poses`（`data/runtimes/` には定義を置かない。§12.1 の「ランタイムが無い ID のファイルがあってもよい」と同じ扱い）。取得・検証は `rtm.Installer.EnsureAssets`（§12.3）をそのまま使い、`service/gentest/poses.Library.Install` が、同意（`accepted`）を確かめてから呼ぶ。置き場所は MAM の実行ファイルと同じ場所の `localai\shisei-poses\env\`（`catalog.json` と `poses/<シリーズ>_<ID>_<アングル>.webp`）。
+
+| 名前 | 取得元（固定） | サイズ | 取り出すもの |
+|---|---|---|---|
+| 標準シリーズの線画 Zip | `wquguru/shisei` の Release `v0.4.1`（`shisei-std-v0.4.1.zip`。SHA-256 `3b88bda3…`） | 9,409,110 B | `line/` の 290 枚のうち、全年齢向けのポーズの分 |
+| 上半身シリーズの線画 Zip | 同（`shisei-upper-v0.4.1.zip`。SHA-256 `c10a2fa4…`） | 10,037,299 B | `line/` の 124 枚のうち、同上 |
+| 分類表 `catalog.json` | `raw.githubusercontent.com/wquguru/shisei/26522a70…/data/catalog.json`（コミット固定。SHA-256 `e01c7f83…`） | 264,767 B | 全体 |
+
+- **取り出すのは全年齢向け（`rating: general`）で線画のあるポーズだけ**: 96 ポーズ・414 枚（展開後 約 10.85 MB、取得 約 19.7 MiB）。成人向けのシリーズ（`sexy`・`duo`）と、成人向けと分類されたポーズは、Zip に入っていても**取り出さない**（メンバーに挙げない。成人向けの扱いは Issue #986 の範囲外で、必要なら年齢確認の仕組み〔`agegate`〕に載せて別に足す）。粘土風・深度・法線・写真は取らない（取得は最小で 36.5 MB の線画の Zip に近い 2 つだけ）。
+- **ライセンス**: 画像は CC0 1.0（`commercial: yes`）。出典は Shisei の `NOTICE`・`LICENSE-images`（コミット `26522a70…`）と `docs/LICENSING.md` の「AI が作る画像の権利」の規則。コードは Apache-2.0（取得しない）。**分類表（ポーズの選び方・番号・名前・分類）は ai-pose-gallery（ギア〔@giaaibusi〕）に従い、NOTICE が「credited, not licensed」と書くので、`commercial: unknown`**（画面は注意書きを出す）。
+- **確かめたこと（2026-11-03、GitHub API とダウンロード）**: タグ `v0.4.1` のコミットは `26522a70…`、メイン（`8f61ceab…`）は先に進んでいる。分類表は 288 件で画像のあるものは 280、アングルごとの線画の数は diag 263・side 257・front 251・above 228・below 213（README の「250 ポーズ × 5 アングル」とは一致しない）。Zip のバイト列は SHA-256 を記録した。**実物の Windows での導入・GitHub からの実取得は未確認**（テストは偽の GitHub サーバーで、`posestest` が同じ手順を走らせる）。
+- 画面は同意のチェック（`pose_accept`）が無いと導入を断り、取得元・サイズ・ライセンスを先に見せる。進捗の表示と、導入したポーズ集の削除の画面は無い（ファイルを消せば未導入に戻る）。
 
 ## 13. MuseTalk 1.5 のランタイム（Issue #921）
 

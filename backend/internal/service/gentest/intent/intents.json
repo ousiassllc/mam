@@ -1,0 +1,65 @@
+{
+  "intents": [
+    {
+      "id": "photo",
+      "label": "人物写真",
+      "hint": "実写のような人物・ポートレート",
+      "candidates": [
+        {"model": "flux1-dev"},
+        {"model": "qwen-image"},
+        {"model": "flux2-klein-4b"},
+        {"model": "sdxl-base"},
+        {"model": "sdxl-base-img2img", "reference_only": true},
+        {"model": "realvisxl-v50"},
+        {"model": "realvisxl-v50-img2img", "reference_only": true},
+        {"model": "juggernaut-xl-ragnarok"},
+        {"model": "juggernaut-xl-ragnarok-img2img", "reference_only": true},
+        {"model": "cyberrealistic-xl-v10"},
+        {"model": "cyberrealistic-xl-v10-img2img", "reference_only": true}
+      ]
+    },
+    {
+      "id": "anime",
+      "label": "アニメ",
+      "hint": "アニメ・イラスト調",
+      "candidates": [
+        {"model": "noobai-xl-v11"},
+        {"model": "noobai-xl-v11-img2img", "reference_only": true},
+        {"model": "wai-illustrious-sdxl-v17"},
+        {"model": "wai-illustrious-sdxl-v17-img2img", "reference_only": true},
+        {"model": "pony-diffusion-v6-xl"},
+        {"model": "pony-diffusion-v6-xl-img2img", "reference_only": true},
+        {"model": "qwen-image", "note": "アニメ専用のモデルが使えないため、汎用のモデルで作ります。絵柄はプロンプトで指定してください"},
+        {"model": "flux1-dev", "note": "アニメ専用のモデルが使えないため、汎用のモデルで作ります。絵柄はプロンプトで指定してください"},
+        {"model": "flux2-klein-4b", "note": "アニメ専用のモデルが使えないため、汎用のモデルで作ります。絵柄はプロンプトで指定してください"},
+        {"model": "sdxl-base", "note": "アニメ専用のモデルが使えないため、汎用のモデルで作ります。絵柄はプロンプトで指定してください"},
+        {"model": "sdxl-base-img2img", "reference_only": true, "note": "アニメ専用のモデルが使えないため、汎用のモデルで作ります。絵柄はプロンプトで指定してください"}
+      ]
+    },
+    {
+      "id": "landscape",
+      "label": "風景",
+      "hint": "景色・背景・建物",
+      "candidates": [
+        {"model": "flux1-dev"},
+        {"model": "qwen-image"},
+        {"model": "flux2-klein-4b"},
+        {"model": "sdxl-base"},
+        {"model": "sdxl-base-img2img", "reference_only": true}
+      ]
+    },
+    {
+      "id": "face",
+      "label": "同じ顔で",
+      "hint": "顔の写真を入力画像に入れて、同じ顔で別のシーンを作る",
+      "needs_references": true,
+      "needs_role": "face",
+      "candidates": [
+        {"model": "qwen-image-edit-2511"},
+        {"model": "flux2-klein-4b", "note": "同じ顔に寄せる力は弱めです（顔だけの固定は編集モデルの指示文と強さで寄せるため）"},
+        {"model": "qwen-image-21-uncensored-int8"},
+        {"model": "noctq-v4-qwen-image21"}
+      ]
+    }
+  ]
+}

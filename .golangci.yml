@@ -8,6 +8,7 @@ linters:
   enable:
     - depguard
     - errorlint
+    - forbidigo
     - gocognit
     - gocyclo
     - gosec
@@ -15,6 +16,12 @@ linters:
     - revive
     - unconvert
   settings:
+    forbidigo:
+      # analyze-types matches the imported package even under an alias (import rt "runtime").
+      analyze-types: true
+      forbid:
+        - pattern: ^runtime\.Caller$
+          msg: runtime.Caller breaks under -trimpath (a module path, not a disk path); use testenv.ModuleRoot(t) (#957)
     gocyclo:
       min-complexity: 25
     gocognit:

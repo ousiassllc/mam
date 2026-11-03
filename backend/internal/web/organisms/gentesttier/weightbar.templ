@@ -1,0 +1,8 @@
+package gentesttier
+
+// WeightBar is the "強める + / 弱める −" of the words selected in the prompt boxes of the fieldset it stands in (the easy tier's and the detail
+// tier's; static/src/components/prompt-weight/mam-prompt-weight.ts draws the bar while words are selected, and hides itself otherwise). What the
+// chosen models do with weights is read from their cards (data-prompt-weight, data-prompt-weight-text).
+templ WeightBar() {
+	<mam-prompt-weight class="block" scope="fieldset" hidden data-testid="gt-weight"></mam-prompt-weight>
+}

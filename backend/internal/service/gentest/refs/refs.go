@@ -35,10 +35,10 @@ func (l LoRA) Sent() localcfg.LoRA {
 }
 
 // ImageRoles are the roles a reference of an image model may have (the whole picture first).
-var ImageRoles = []string{gentestrepo.RoleReference, gentestrepo.RoleFace, gentestrepo.RoleStyle, gentestrepo.RoleEdit}
+var ImageRoles = []string{gentestrepo.RoleReference, gentestrepo.RoleFace, gentestrepo.RoleStyle, gentestrepo.RoleEdit, gentestrepo.RolePose}
 
 // CheckRole fills the role ("" is the whole picture) and refuses a role the media has not (first / last frame are video
-// only, face / style / edit image only) and a strength that is out of range, or given to a video input.
+// only, face / style / edit / pose image only) and a strength that is out of range, or given to a video input.
 func CheckRole(media, role string, strength *float64) (string, error) {
 	if role == "" {
 		role = gentestrepo.RoleReference
@@ -50,12 +50,12 @@ func CheckRole(media, role string, strength *float64) (string, error) {
 		if !isVideo {
 			return role, gterr.Invalid("最初・最後のフレームは動画だけで使えます")
 		}
-	case gentestrepo.RoleFace, gentestrepo.RoleStyle, gentestrepo.RoleEdit:
+	case gentestrepo.RoleFace, gentestrepo.RoleStyle, gentestrepo.RoleEdit, gentestrepo.RolePose:
 		if isVideo {
-			return role, gterr.Invalid("顔・スタイル・編集の役割は画像だけで使えます")
+			return role, gterr.Invalid("顔・スタイル・編集・ポーズの役割は画像だけで使えます")
 		}
 	default:
-		return role, gterr.Invalid("入力画像の役割が正しくありません: %q（reference / face / style / edit / first_frame / last_frame）", role)
+		return role, gterr.Invalid("入力画像の役割が正しくありません: %q（reference / face / style / edit / pose / first_frame / last_frame）", role)
 	}
 	if strength != nil {
 		if isVideo {

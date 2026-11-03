@@ -16,7 +16,7 @@
 
 ## gentest_input（バッチに渡した入力画像）
 
-`batch_id`（FK → `gentest_batch`、削除でカスケード）・`role`（`reference` / `face` / `style` / `edit` / `first_frame` / `last_frame`。画像モデルの参照は前の 4 つ、動画は `reference` / `first_frame` / `last_frame`）・`file_path`（`<バッチ ID>/` 以下の相対パス。**入力は履歴の側へ複製**するので、元のプロジェクトや結果を消しても残る）・`mime_type`・`size_bytes`・`origin`（JSON: `kind` = `upload` / `project_asset` / `reference_item` / `history`、`id`、`project_id`）・`position`・`strength`（REAL、NULL 許容、CHECK 0〜1。画像モデルの参照を**どれだけ強く反映するか**。NULL は既定（0.7）と、強さのないフレーム）。
+`batch_id`（FK → `gentest_batch`、削除でカスケード）・`role`（`reference` / `face` / `style` / `edit` / `pose` / `first_frame` / `last_frame` / `mask`。画像モデルの参照は `first_frame` の前の 5 つ（`pose` は Issue #986）、動画は `reference` / `first_frame` / `last_frame`、`mask` は一部だけ描き直すマスクで参照ではない）・`file_path`（`<バッチ ID>/` 以下の相対パス。**入力は履歴の側へ複製**するので、元のプロジェクトや結果を消しても残る）・`mime_type`・`size_bytes`・`origin`（JSON: `kind` = `upload` / `project_asset` / `reference_item` / `history` / `pose_library`、`id`、`project_id`）・`position`・`strength`（REAL、NULL 許容、CHECK 0〜1。画像モデルの参照を**どれだけ強く反映するか**。NULL は既定（0.7）と、強さのないフレーム）。
 
 ## gentest_result（1 件の生成）
 
@@ -38,6 +38,10 @@
 ## gentest_prompt（プロンプト履歴）
 
 `id`・`prompt`・`negative_prompt`（`UNIQUE (prompt, negative_prompt)` で重複排除）・`use_count`（バッチで使うたびに +1）・`created_at`・`last_used_at`。**結果へのリンクを持たない**: 結果を消してもプロンプトは残り、プロンプトを消しても結果は残る（明示の削除だけで消える）。
+
+## gentest_recipe（レシピ。Issue #977）
+
+`id`・`name`（`NOT NULL COLLATE NOCASE UNIQUE`・空でない。大文字小文字を区別せず一意）・`params`（JSON。`service/gentest/recipe.Params`: モデルの識別子・steps・cfg・sampler・scheduler・固定のシード・ネガティブ・LoRA・入力画像の強さ・縦横比・品質・画面に出す値。**プロンプトの本文と入力画像は持たない**）・`easy`（0/1。かんたんの選択肢に出す）・`created_at`・`updated_at`。**外部キーなし**（モデルは識別子で名指しし、削除・未導入でもレシピは残る）。マイグレーション `20261104100000_gentest_recipe.sql`、`repository/reciperepo`。プロジェクトのバンドルには含めない（`unbundledTables`）。結果の `gentest_result.params` に `exposed`（使った画面に出す値）が足された（JSON の項目。列は変わらない）。
 
 ## gentest_import（プロジェクトへの取り込みの記録）
 

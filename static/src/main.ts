@@ -18,6 +18,11 @@ import { installSidenav } from './components/sidenav/sidenav';
 import { installCommercialFilter } from './components/commercial-filter/commercial-filter';
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
+import { initGentestAdvanced } from './components/gentest/advanced';
+import { initGentestRefine } from './components/gentest-tiers/refine';
+import { initGentestEasy } from './components/gentest-tiers/easy';
+import { initGentestExposed } from './components/gentest-tiers/exposed';
+import { initGentestRecipe } from './components/gentest-tiers/recipe';
 import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
 import { installExportPick } from './components/gentest/export-pick';
@@ -85,6 +90,12 @@ installCopy();
 
 // The prompt match form of the generation test: the chosen image, the fields of the way to go on, the slider's value.
 initGentestMatch();
+// The detailed settings of the generation test (seed, steps, cfg, sampler, scheduler): shown while a ticked model takes them.
+initGentestAdvanced();
+initGentestRefine();
+initGentestEasy();
+initGentestExposed();
+initGentestRecipe();
 // The filter of commercial use of the lists of models: 商用OKのみ / 条件つきまで / すべて.
 installCommercialFilter();
 
@@ -127,3 +138,5 @@ import './components/video-player/mam-video-player';
 import './components/take-comparator/mam-take-comparator';
 import './components/timeline-editor/mam-timeline-editor';
 import './components/comfy-frame/mam-comfy-frame';
+import './components/mask-paint/mam-mask-paint';
+import './components/prompt-weight/mam-prompt-weight';

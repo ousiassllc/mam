@@ -1,6 +1,10 @@
 package service
 
-import "context"
+import (
+	"context"
+
+	"github.com/ousiassllc/mam/backend/internal/repository"
+)
 
 // ResumeEditing asks the worker to look for editing follow-ups: Reshoot Loop Shots that are ready to go into
 // their Edit Timeline, and AUTO Projects whose editing stage can start. Call it when a job finished or a Take was selected.
@@ -15,4 +19,15 @@ func (s *EditorService) Close() { s.resume.Close() }
 func (s *EditorService) resumeAll(ctx context.Context) {
 	s.resumeReshoots(ctx)
 	s.resumeAuto(ctx)
+}
+
+// removeAddedShots takes additional Shots that never started, and the Scenes made for them, out of the Project.
+func (s *EditorService) removeAddedShots(ctx context.Context, reqs []repository.NewReshoot, sceneIDs []string) {
+	ids := make([]string, len(reqs))
+	for i, r := range reqs {
+		ids[i] = r.ShotID
+	}
+	if err := s.plans.RemoveShots(ctx, ids, sceneIDs); err != nil {
+		s.logger.Error("remove additional shots", "err", err)
+	}
 }

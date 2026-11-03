@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -25,23 +26,27 @@ type AssetRef struct {
 
 // RunInput is one run.
 type RunInput struct {
-	WorkflowID      string     `json:"workflow_id"`
-	Version         int        `json:"version,omitempty" jsonschema:"実行する版（省略: 現在の版）。古い版も、保存してあれば実行できる"`
-	Prompt          string     `json:"prompt" jsonschema:"プロンプト（英語が確実）"`
-	NegativePrompt  string     `json:"negative_prompt,omitempty"`
-	AspectRatio     string     `json:"aspect_ratio,omitempty" jsonschema:"16:9（省略）, 9:16, 1:1"`
-	Resolution      string     `json:"resolution,omitempty" jsonschema:"動画: 短辺。省略するとワークフローの最初のもの"`
-	DurationSeconds float64    `json:"duration_seconds,omitempty" jsonschema:"動画: 秒。ワークフローが作れる長さに丸める"`
-	References      []AssetRef `json:"references,omitempty" jsonschema:"参照画像（Project の素材）"`
-	FirstFrame      *AssetRef  `json:"first_frame,omitempty"`
-	LastFrame       *AssetRef  `json:"last_frame,omitempty"`
+	WorkflowID      string             `json:"workflow_id"`
+	Version         int                `json:"version,omitempty" jsonschema:"実行する版（省略: 現在の版）。古い版も、保存してあれば実行できる"`
+	Prompt          string             `json:"prompt" jsonschema:"プロンプト（英語が確実）"`
+	NegativePrompt  string             `json:"negative_prompt,omitempty"`
+	AspectRatio     string             `json:"aspect_ratio,omitempty" jsonschema:"16:9（省略）, 9:16, 1:1"`
+	Resolution      string             `json:"resolution,omitempty" jsonschema:"動画: 短辺。省略するとワークフローの最初のもの"`
+	DurationSeconds float64            `json:"duration_seconds,omitempty" jsonschema:"動画: 秒。ワークフローが作れる長さに丸める"`
+	References      []AssetRef         `json:"references,omitempty" jsonschema:"参照画像（Project の素材）"`
+	FirstFrame      *AssetRef          `json:"first_frame,omitempty"`
+	LastFrame       *AssetRef          `json:"last_frame,omitempty"`
+	Seed            *int64             `json:"seed,omitempty" jsonschema:"シードを固定する（0〜9007199254740991）。省くと実行ごとにランダム。使った seed は結果に残る"`
+	Sampling        *sampling.Settings `json:"sampling,omitempty" jsonschema:"詳細設定: steps（1〜150）・cfg（0〜30）・sampler・scheduler。省いた項目はワークフローの値。ワークフローが受け取らない項目（割り当てが無い）と、速さのモードがあるワークフローの steps・cfg は、警告（kind sampling）を出して使わない"`
 }
 
 // RunOutput is the job of a run.
 type RunOutput struct {
 	mcpkit.JobRef
-	ModelID  string    `json:"model_id" jsonschema:"実行した版の識別子 comfy:<id>@v<N>"`
-	Warnings []Warning `json:"warnings" jsonschema:"実行前の照合で、ComfyUI に足りなかったノード・モデル（実行は止めない）"`
+	ModelID  string             `json:"model_id" jsonschema:"実行した版の識別子 comfy:<id>@v<N>"`
+	Warnings []Warning          `json:"warnings" jsonschema:"実行前の照合で、ComfyUI に足りなかったノード・モデル、と使わなかった詳細設定（kind sampling）。実行は止めない"`
+	Seed     int64              `json:"seed" jsonschema:"この実行が使う seed（指定しなければ新しく決めたもの）。同じ seed と詳細設定で作り直せる"`
+	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"この実行が使うステップ数・CFG・サンプラー・スケジューラー（上書きしなかった項目はワークフローの値。受け取らないものは無い）"`
 }
 
 func (h handlers) run(ctx context.Context, in RunInput) (RunOutput, error) {
@@ -55,13 +60,21 @@ func (h handlers) run(ctx context.Context, in RunInput) (RunOutput, error) {
 		rec, err = svc.StartRun(ctx, workflowsvc.RunInput{
 			WorkflowID: in.WorkflowID, Version: in.Version, Prompt: in.Prompt, NegativePrompt: in.NegativePrompt, AspectRatio: in.AspectRatio,
 			Resolution: in.Resolution, DurationSeconds: in.DurationSeconds, References: refs(in.References), FirstFrame: ref(in.FirstFrame), LastFrame: ref(in.LastFrame),
+			Seed: in.Seed, Sampling: samplingOf(in.Sampling),
 		})
 		return rec.ID, "", err
 	})
 	if err != nil {
 		return RunOutput{}, mapError(err)
 	}
-	return RunOutput{JobRef: ref, ModelID: rec.ModelID, Warnings: warningsOf(rec.Warnings)}, nil
+	return RunOutput{JobRef: ref, ModelID: rec.ModelID, Warnings: warningsOf(rec.Warnings), Seed: rec.Seed, Sampling: rec.Sampling}, nil
+}
+
+func samplingOf(s *sampling.Settings) sampling.Settings {
+	if s == nil {
+		return sampling.Settings{}
+	}
+	return *s
 }
 
 func ref(r *AssetRef) *workflowsvc.AssetRef {
@@ -97,6 +110,7 @@ func (h handlers) runProbe(ctx context.Context, j mcpkit.JobInfo) (mcpkit.Progre
 		}
 		return mcpkit.Progress{State: mcpkit.JobSucceeded, Message: "完了しました", Done: 1, Total: 1, Result: map[string]any{
 			"model_id": rec.ModelID, "media": rec.Media, "download_url": link.URL, "expires_at": link.ExpiresAt, "file_name": link.FileName, "mime_type": rec.MimeType,
+			"seed": rec.Seed, "sampling": rec.Sampling,
 		}}, nil
 	case workflowsvc.RunFailed:
 		return mcpkit.Progress{State: mcpkit.JobFailed, Error: rec.Error}, nil

@@ -100,11 +100,11 @@ func gentestRefsCompose() gentest.Compose {
 		return "data:image/svg+xml," + url.PathEscape(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="`+color+`"/></svg>`)
 	}
 	c := gentestCompose("image", []gentest.ModelChoice{
-		{ID: "edit", Label: "Qwen Image Edit", Source: "ローカル", Price: "無料（ローカル）", Selected: true, Media: "image", RefMode: "edit", RefRoles: []string{"reference", "face", "style", "edit"}, CanLoRA: true},
+		{ID: "edit", Label: "Qwen Image Edit", Source: "ローカル", Price: "無料（ローカル）", Selected: true, Media: "image", RefMode: "edit", RefRoles: []string{"reference", "face", "style", "edit", "pose"}, CanLoRA: true},
 		{ID: "i2i", Label: "SDXL", Source: "ローカル", Price: "無料（ローカル）", Media: "image", RefMode: "img2img", RefRoles: []string{"reference"}},
 		{ID: "plain", Label: "FLUX.1 schnell", Source: "ローカル", Price: "無料（ローカル）", Media: "image"},
 	})
-	c.MaxImageBytes, c.LoRAs = 20<<20, []string{"face-a.safetensors", "style-b.safetensors"}
+	c.MaxImageBytes, c.LoRAs, c.Poses = 20<<20, []string{"face-a.safetensors", "style-b.safetensors"}, true // #986: the pose picker is offered
 	strength := func(v float64) *float64 { return &v }
 	c.Picked = []gentest.Ref{
 		{Value: "history::r1", Label: "FLUX・a red fox", ThumbURL: thumb("#c0392b"), Role: "reference", Strength: strength(0.7)},

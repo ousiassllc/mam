@@ -2,7 +2,6 @@ package pages_test
 
 import (
 	"context"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// renderProjectsPage is the page without the side menu: the menu links to the same screens as the cards (side-menu.md §6), and
+// renderProjectsPage is the page without the side menu: the menu links to the screens of the app (side-menu.md), and
 // these tests are about what the page itself holds.
 func renderProjectsPage(t *testing.T, projects ...domain.Project) string {
 	t.Helper()
@@ -25,63 +24,28 @@ func renderProjectsPage(t *testing.T, projects ...domain.Project) string {
 	return html[strings.Index(html, `id="content"`):]
 }
 
-// The tools are seven cards in three groups under the Project list; the status of five of them is read after the page is
-// shown (spec/components/home-screen.md §3, §5).
-func TestProjectsPage_HasSevenToolCardsInThreeGroupsWithAStatusLoadedLater(t *testing.T) {
-	html := renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"})
-
-	cards := regexp.MustCompile(`<a id="tool-([a-z-]+)" href="([^"]+)"`).FindAllStringSubmatch(html, -1)
-	got := map[string]string{}
-	var order []string
-	for _, c := range cards {
-		got[c[1]] = c[2]
-		order = append(order, c[1])
+// The page holds the new-Project form, the import form and the Project list only: the other screens are reached from the
+// side menu, so no tool card and no status that the cards read after the page is shown (spec/components/home-screen.md §2).
+func TestProjectsPage_HasNoToolCards(t *testing.T) {
+	for _, html := range []string{renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"}), renderProjectsPage(t)} {
+		assert.NotContains(t, html, `data-testid="tool-card"`)
+		assert.NotContains(t, html, `hx-trigger="load"`)
+		assert.NotContains(t, html, "ツール")
+		for _, p := range []string{paths.Reviews(), paths.Analytics(), paths.Settings(), paths.ModelManager(), paths.GenerationTest(), paths.Nodes(), paths.Workflows()} {
+			assert.NotContains(t, html, `href="`+p+`"`, "%s is reached from the side menu", p)
+		}
 	}
-	assert.Equal(t, []string{"generation-test", "nodes", "workflows", "model-manager", "settings", "analytics", "reviews"}, order)
-	assert.Equal(t, map[string]string{
-		"generation-test": paths.GenerationTest(), "nodes": paths.Nodes(), "workflows": paths.Workflows(), "model-manager": paths.ModelManager(),
-		"settings": paths.Settings(), "analytics": paths.Analytics(), "reviews": paths.Reviews(),
-	}, got)
-
-	assert.Equal(t, 3, strings.Count(html, `<ul role="list" aria-labelledby="tool-group-`), "three groups, each a list named by its heading")
-	for _, tool := range []string{paths.ToolNodes, paths.ToolWorkflows, paths.ToolModelManager, paths.ToolSettings, paths.ToolReviews} {
-		assert.Contains(t, html, `hx-get="`+paths.ToolStatus(tool)+`" hx-trigger="load"`, tool)
-	}
-	assert.Equal(t, 5, strings.Count(html, `hx-trigger="load"`), "the generation test and the analytics have no status")
 }
 
-// The text links the cards replace are gone, the reviews link included, and the Project list stays.
-func TestProjectsPage_TheTextLinksAreGone(t *testing.T) {
-	html := renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"})
-
-	for _, old := range []string{
-		"受け取ったレビューパッケージを開く（レビュアー向け）", "制作指標（すべてのプロジェクト）", "設定（API キー・モデル）",
-		"モデルマネージャー（ローカルモデルの導入・試し生成）", "生成テスト（モデルとプロンプトを並べて比べる）", "ノード（ComfyUI のワークフロー）",
-	} {
-		assert.NotContains(t, html, old)
-	}
-	for _, p := range []string{paths.Reviews(), paths.Analytics(), paths.Settings(), paths.ModelManager(), paths.GenerationTest(), paths.Nodes(), paths.Workflows()} {
-		assert.Equal(t, 1, strings.Count(html, `href="`+p+`"`), "%s is linked once, by its card", p)
-	}
-	assert.Contains(t, html, "作品")
+func TestProjectsPage_ListsTheProjects(t *testing.T) {
+	assert.Contains(t, renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"}), "作品")
 }
 
-func TestProjectsPage_WithoutProjectsTheCardsAreTheSame(t *testing.T) {
-	with := renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"})
-	without := renderProjectsPage(t)
-
-	assert.Equal(t, strings.Count(with, `data-testid="tool-card"`), strings.Count(without, `data-testid="tool-card"`))
-	assert.Equal(t, 7, strings.Count(without, `data-testid="tool-card"`))
-}
-
-// The whole page is one column of max-w-5xl (no narrower wrapper around the forms and the list), and the tool cards are
-// three columns at every width (spec/components/home-screen.md §2, §4, §9 question 2).
-func TestProjectsPage_IsOneWideColumnWithThreeCardColumns(t *testing.T) {
+// The whole page is one column of max-w-5xl, with no narrower wrapper around the forms and the list
+// (spec/components/home-screen.md §2).
+func TestProjectsPage_IsOneWideColumn(t *testing.T) {
 	html := renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"})
 
 	assert.Contains(t, html, `<main class="mx-auto flex w-full flex-col gap-6 p-4 md:p-8 max-w-5xl">`)
 	assert.NotContains(t, html, "max-w-3xl", "the heading, the forms and the list are not in a narrower wrapper")
-	assert.Equal(t, 3, strings.Count(html, `class="mt-2 grid grid-cols-3 gap-4"`), "each of the three groups is three columns")
-	assert.NotContains(t, html, "grid-cols-2")
-	assert.NotContains(t, html, "xl:grid-cols")
 }

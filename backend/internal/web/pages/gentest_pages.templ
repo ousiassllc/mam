@@ -5,6 +5,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	gentest "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestinpaint"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -15,6 +17,7 @@ templ generationNav(current string) {
 		for _, l := range []struct{ Key, Label, Href string }{
 			{"new", "生成する", paths.GenerationTest()},
 			{"match", "画像から似せる", paths.GenerationTestMatch()},
+			{"inpaint", "一部だけ描き直す", paths.GenerationTestInpaint()},
 			{"history", "履歴", paths.GenerationTestHistory()},
 			{"prompts", "プロンプト履歴", paths.GenerationTestPrompts()},
 		} {
@@ -42,10 +45,31 @@ templ generationShell(title, csrfToken, current, lead string) {
 // GenerationTestPage is GET /generation-test: choose models and prompts, see the estimate, run, compare.
 templ GenerationTestPage(csrfToken string, c gentest.Compose) {
 	@generationShell("生成テスト", csrfToken, "new", "プロジェクトに属さない画像・動画の生成です。モデルとプロンプトを組み合わせて並べて比べ、気に入った結果だけプロジェクトに取り込めます。結果は Take・コスト台帳には入りません。") {
-		@gentest.ComposeForm(c)
+		if c.Tier.IsComfy() {
+			@gentesttier.Tabs(c.Tier)
+			@gentesttier.ComfyPanel()
+		} else {
+			@gentest.ComposeForm(c)
+			@gentest.ConfirmEmpty()
+			@gentest.BatchEmpty()
+			@modal.Host()
+		}
+	}
+}
+
+// GenerationExposedPage is GET /generation-test/comfy/exposed: the inputs of a model's ComfyUI graph that the form offers as fields of their own (#977).
+templ GenerationExposedPage(csrfToken string, d gentesttier.PickerData) {
+	@generationShell("画面に出す値", csrfToken, "new", "ComfyUI のワークフローのノードの入力を選ぶと、生成テストのこだわりに入力欄として出ます。") {
+		@gentesttier.Tabs(gentesttier.Data{Tier: gentesttier.TierComfy})
+		@gentesttier.ExposedPicker(d)
+	}
+}
+
+// GenerationInpaintPage is GET /generation-test/inpaint: redraw the white part of a mask on one picture (#974).
+templ GenerationInpaintPage(csrfToken string, p gentestinpaint.Page) {
+	@generationShell("一部だけ描き直す", csrfToken, "inpaint", "元画像の上で描き直す部分を白く塗ります。塗っていないところは元の画像のまま残ります。対応しているモデルだけ選べます。") {
+		@gentestinpaint.Form(p)
 		@gentest.ConfirmEmpty()
-		@gentest.BatchEmpty()
-		@modal.Host()
 	}
 }
 

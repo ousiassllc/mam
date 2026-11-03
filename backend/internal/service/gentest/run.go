@@ -60,11 +60,22 @@ func (s *Service) Run(ctx context.Context, r Request, c Confirmation) (RunRef, e
 			return RunRef{}, err
 		}
 	}
+	var mask *Source
+	if r.Mask != nil {
+		src, err := s.ResolveInput(ctx, *r.Mask)
+		if err != nil {
+			return RunRef{}, err
+		}
+		if err := maskPaintsFile(src.Path); err != nil {
+			return RunRef{}, err
+		}
+		mask = &src
+	}
 	tr, err := s.translate(ctx, r) // once for the whole batch; before anything of the batch is written
 	if err != nil {
 		return RunRef{}, err
 	}
-	nb, err := s.newBatch(r, est, plans, sources, tr)
+	nb, err := s.newBatch(r, est, plans, sources, mask, tr)
 	if err != nil {
 		return RunRef{}, err
 	}
@@ -86,12 +97,15 @@ func (s *Service) Run(ctx context.Context, r Request, c Confirmation) (RunRef, e
 			_ = os.Remove(filepath.Join(s.dir(), stagingDirName, ref.ID)) //nolint:gosec // a staged id has no separator (checked by StagedFile in resolve)
 		}
 	}
+	if r.Mask != nil && r.Mask.Source == FromStaged {
+		_ = os.Remove(filepath.Join(s.dir(), stagingDirName, r.Mask.ID)) //nolint:gosec // a staged id has no separator
+	}
 	return RunRef{BatchID: nb.Batch.ID, JobID: job.ID, TotalItems: est.TotalItems}, nil
 }
 
 // newBatch copies the inputs into the batch's directory and plans every result: the models in the order given, each with
 // every prompt (sent as tr says: translated, or as typed), each Count times, every result with its own seed when the model takes one.
-func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources []Source, tr translated) (gentestrepo.NewBatch, error) {
+func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources []Source, mask *Source, tr translated) (gentestrepo.NewBatch, error) {
 	cfg := s.Adapter.Config()
 	now := s.Now().UTC()
 	id := domain.NewID()
@@ -122,6 +136,18 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 			Origin: src.Origin, Position: i, Strength: r.References[i].Strength,
 		})
 	}
+	maskID := ""
+	if mask != nil {
+		maskID = domain.NewID()
+		name := "in-" + maskID + inputTypes[mask.Mime]
+		if err := fsutil.CopyFile(mask.Path, filepath.Join(dir, name)); err != nil {
+			return fail(fmt.Errorf("copy mask image: %w", err))
+		}
+		nb.Inputs = append(nb.Inputs, gentestrepo.Input{
+			ID: maskID, BatchID: id, Role: gentestrepo.RoleMask, FilePath: path.Join(id, name), MimeType: mask.Mime, SizeBytes: mask.Size,
+			Origin: mask.Origin, Position: len(sources),
+		})
+	}
 	for _, p := range r.Prompts {
 		nb.Prompts = append(nb.Prompts, gentestrepo.PromptKey{Prompt: p.Prompt, NegativePrompt: p.Negative})
 	}
@@ -133,8 +159,8 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 		}
 		for _, p := range r.Prompts {
 			send := tr.sendOf(p)
-			rp, _ := json.Marshal(resultParamsOf(r, mp, tr.record(p)))
-			for range r.Count {
+			rp, _ := json.Marshal(resultParamsOf(r, mp, tr.record(p), maskID))
+			for n := range r.Count {
 				res := gentestrepo.Result{
 					ID: domain.NewID(), BatchID: id, Position: pos, Media: r.Media, Model: mp.info.ID, APIModel: cfg.ModelSettings(domain.ModelName(mp.info.ID)).Model,
 					Prompt: p.Prompt, NegativePrompt: p.Negative, SentPrompt: send.Prompt, NegativeMode: gentestrepo.NegativeNone, Params: rp,
@@ -147,7 +173,7 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 					res.SentPrompt, res.NegativeMode = foldFor(mp.info, send)
 				}
 				if mp.info.SupportsSeed {
-					seed := s.Seed()
+					seed := s.seedFor(r, n)
 					res.Seed, res.SeedSent = &seed, true
 				}
 				nb.Results = append(nb.Results, res)

@@ -1,0 +1,73 @@
+{
+ "id": "sdxl-ipadapter-plus",
+ "name": "SDXL + IP-Adapter Plus",
+ "kind": "image",
+ "tier": "standard",
+ "content_rating": "general",
+ "description": "参照画像 1 枚の雰囲気・構図・人物を SDXL の生成へ寄せる IP-Adapter（ip-adapter-plus_sdxl_vit-h と CLIP ViT-H。合わせて約 3.4 GB）。追加ノード「ComfyUI_IPAdapter_plus」を先に導入しておく必要がある（モデルマネージャーの「追加ノード」の節）。SDXL base 1.0 は導入済みの「Stable Diffusion XL base 1.0」と共有する。",
+ "files": [
+  {
+   "name": "sd_xl_base_1.0.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/462165984030d82259a11f4367a4eed129e94a7b/sd_xl_base_1.0.safetensors",
+   "sha256": "31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b",
+   "size": 6938078334
+  },
+  {
+   "name": "ip-adapter-plus_sdxl_vit-h.safetensors",
+   "folder": "ipadapter",
+   "url": "https://huggingface.co/h94/IP-Adapter/resolve/018e402774aeeddd60609b4ecdb7e298259dc729/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors",
+   "sha256": "3f5062b8400c94b7159665b21ba5c62acdcd7682262743d7f2aefedef00e6581",
+   "size": 847517512
+  },
+  {
+   "name": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+   "folder": "clip_vision",
+   "url": "https://huggingface.co/h94/IP-Adapter/resolve/018e402774aeeddd60609b4ecdb7e298259dc729/models/image_encoder/model.safetensors",
+   "sha256": "6ca9667da1ca9e0b0f75e46bb030f7e011f44f86cbfb8d5a36590fcd7507b030",
+   "size": 2528373448
+  }
+ ],
+ "vram": {
+  "min_gb": 10,
+  "source": "SDXL base の見積もり（8 GB）に IP-Adapter（約 0.8 GB）と CLIP ViT-H（約 2.5 GB）を足した mam の見積もり（出典なし・実機未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "sdxl-ipadapter-plus",
+  "version": "2026-11-03",
+  "name": "CreativeML Open RAIL++-M（SDXL）＋ Apache-2.0（IP-Adapter）＋ MIT（CLIP ViT-H）",
+  "url": "https://huggingface.co/h94/IP-Adapter/blob/018e402774aeeddd60609b4ecdb7e298259dc729/README.md",
+  "summary": "IP-Adapter（h94/IP-Adapter）はモデルカードの license: apache-2.0。画像エンコーダー（OpenCLIP ViT-H/14 laion2B。h94/IP-Adapter の models/image_encoder に置かれた写し）の元のモデルカード laion/CLIP-ViT-H-14-laion2B-s32B-b79K は license: mit。ベースの SDXL は CreativeML Open RAIL++-M（使用制限つきで商用可）。顔の IP-Adapter（FaceID 系）は InsightFace を使うが、ここの Plus（顔以外）は使わない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Stable Diffusion XL base 1.0）",
+    "name": "CreativeML Open RAIL++-M License",
+    "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/462165984030d82259a11f4367a4eed129e94a7b/LICENSE.md",
+    "commercial": "yes"
+   },
+   {
+    "part": "IP-Adapter（h94/IP-Adapter の ip-adapter-plus_sdxl_vit-h）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/h94/IP-Adapter/blob/018e402774aeeddd60609b4ecdb7e298259dc729/README.md",
+    "commercial": "yes"
+   },
+   {
+    "part": "画像エンコーダー（OpenCLIP ViT-H/14 laion2B）",
+    "name": "MIT License",
+    "url": "https://huggingface.co/laion/CLIP-ViT-H-14-laion2B-s32B-b79K/blob/1c2b8495b28150b8a4922ee1c8edee224c284c0c/README.md",
+    "commercial": "yes"
+   }
+  ]
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "sdxl-ipadapter-plus",
+   "template": "txt2img-sdxl-ipadapter"
+  }
+ ]
+}

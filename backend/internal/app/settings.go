@@ -4,12 +4,14 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/onboarding"
 )
 
@@ -32,10 +34,34 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 		}
 	})
 	settings.ChatGPT = gpt
+	models := llmmodels.Options{Keys: settings.Keys, BaseURLs: llmBaseURLs(cfg, logger), Logger: logger}
+	if gpt != nil {
+		models.ChatGPT = llmmodels.FromChatGPT(gpt)
+	}
+	settings.LLMModels = llmmodels.New(models)
 	settings.ModelManager, settings.LocalRuntimes = services.ModelManager, services.LocalRuntimes
+	settings.ModelNodes = services.ModelNodes
 	settings.Audio = newAudioSettings(cfg, services.LocalRuntimes, settings.Keys)
 	settings.Models.SetHidden(services.ModelManager.HidesModel)
 	settings.Gentest = services.Gentest
 	settings.Onboarding = onboarding.New(filepath.Join(cfg.DataDir, onboarding.FileName), onboarding.WithLookPath(ffmpeg.Find))
 	return settings
+}
+
+// llmBaseURLs is the base_url of each provider as llm.json sets it: the model list's API key goes where the Agents' calls go.
+// A file that cannot be read gives none (the defaults).
+func llmBaseURLs(cfg config.Config, logger *slog.Logger) map[llm.Provider]string {
+	file, err := settingsFileToLoad(cfg.LLMSettingsFile())
+	if err == nil {
+		var loaded llm.Config
+		if loaded, err = llm.LoadConfig(file); err == nil {
+			urls := make(map[llm.Provider]string, len(loaded.Providers))
+			for p, pc := range loaded.Providers {
+				urls[p] = pc.BaseURL
+			}
+			return urls
+		}
+	}
+	logger.Warn("llm.json is not read for the base_url of the model lists; the vendors' own are used", "err", err)
+	return nil
 }

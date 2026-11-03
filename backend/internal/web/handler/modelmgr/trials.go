@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
@@ -165,7 +166,7 @@ func (h Handlers) data(c *gin.Context) view.Data {
 		HF: hfimport.TokenData(h.Svc), HFImport: hfimport.Panel(ctx, h.Svc),
 		External: view.External{Endpoints: h.externalEndpoints(c)},
 		Trial:    h.trialPanel(ctx, view.TrialForm{}, "", ""),
-		Runtimes: runtimes.Section(ctx, h.Runtimes),
+		Runtimes: runtimes.Section(ctx, h.Runtimes), Nodes: nodes.Section(ctx, h.Nodes),
 	}
 	return d
 }

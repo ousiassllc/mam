@@ -31,6 +31,9 @@ type Installer struct {
 	// FreeBytes reports the free space at a path (nil: fsutil.FreeBytes).
 	FreeBytes func(path string) (uint64, error)
 	Now       func() time.Time
+	// CustomNodes are the folders of custom_nodes the engine may load (nodes.Manager.Enabled; nil: none). They are the only ones the engine
+	// is told to load (--whitelist-custom-nodes): every other folder stays skipped by --disable-all-custom-nodes.
+	CustomNodes func() []string
 }
 
 // Phase is what Install is doing.
@@ -237,8 +240,9 @@ func (i *Installer) CleanLeftovers() {
 
 // Command is the launch of the installed engine on port: the recipe of the portable build's run_*.bat
 // (`<python dir>\python.exe -s ComfyUI\main.py`) with the flags of the bundled use: loopback only, no
-// browser, no custom node (they run arbitrary code), every file below the data directory. --windows-standalone-build
-// is left out: in this release it only opens the browser and enables the assets API, neither of which is wanted.
+// browser, no custom node but the allowlist's (they run arbitrary code: --disable-all-custom-nodes, and --whitelist-custom-nodes for the folders
+// CustomNodes names), every file below the data directory. --windows-standalone-build is left out: in this release it only opens the browser
+// and enables the assets API, neither of which is wanted.
 func (i *Installer) Command(port int) (proc.Spec, error) {
 	rec := i.Store.Get().Engine
 	if rec == nil || !i.Status().Installed {
@@ -248,8 +252,13 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 		"-s", filepath.FromSlash(i.Engine.Main),
 		"--listen", "127.0.0.1", "--port", fmt.Sprint(port),
 		"--disable-auto-launch", "--disable-all-custom-nodes",
-		"--base-directory", i.Layout.DataDir(),
 	}
+	if i.CustomNodes != nil {
+		if folders := i.CustomNodes(); len(folders) > 0 {
+			args = append(append(args, "--whitelist-custom-nodes"), folders...) // takes every value up to the next option
+		}
+	}
+	args = append(args, "--base-directory", i.Layout.DataDir())
 	if rec.CPU {
 		args = append(args, "--cpu")
 	}

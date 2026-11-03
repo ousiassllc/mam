@@ -8,4 +8,6 @@ func init() {
 	for _, table := range []string{"gentest_batch", "gentest_input", "gentest_result", "gentest_prompt", "gentest_import"} {
 		unbundledTables[table] = reason
 	}
+	// The recipes are the user's own settings for every image, not part of any Project (Issue #977).
+	unbundledTables["gentest_recipe"] = "the recipes of the generation test are settings of the user's, not of a Project (spec/architecture/gentest/er-gentest.md)"
 }

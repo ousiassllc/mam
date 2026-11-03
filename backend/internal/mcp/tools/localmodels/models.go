@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 )
@@ -35,12 +36,14 @@ func registerModels(r *mcpkit.Registrar, h handlers) {
 
 // Assignment says which input of which node a value of mam goes to.
 type Assignment struct {
-	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, reference_denoise, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）"`
+	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, reference_denoise, steps, cfg, sampler, scheduler, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）。steps・cfg は数値の入力、sampler・scheduler は文字の入力（KSampler の sampler_name・scheduler など）に割り当てる"`
 	Node  string `json:"node" jsonschema:"ノード ID（import_local_workflow の nodes[].id）"`
 	Input string `json:"input" jsonschema:"そのノードの入力名。ほかのノードがつないでいる入力は使えない"`
 	Index int    `json:"index,omitempty" jsonschema:"reference_image だけ: 何枚目か（0 から、抜けなし）"`
 	// Optional is a pointer so that an update can leave it out: it is then the saved assignment's (same param, index, node, input).
 	Optional *bool `json:"optional,omitempty" jsonschema:"reference_image だけ: 使わない枚があってもよい（その枚のノードは外され、つないでいたほかのノードの入力も外される）。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
+	// Ratio is a pointer for the same reason as Optional.
+	Ratio *float64 `json:"ratio,omitempty" jsonschema:"steps だけ（0 と 1 の間）: ステップ数そのものではなく round(steps × ratio) を入れる。2 段のサンプラー（Wan 2.2 の高ノイズ・低ノイズ）の切り替えのステップ（KSamplerAdvanced の end_at_step・start_at_step）に使う。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
 }
 
 // VideoCapabilities is what a video model can make.
@@ -75,6 +78,9 @@ func assignmentsOf(w *localcfg.Workflow) []Assignment {
 		item := Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index}
 		if a.Optional {
 			item.Optional = &a.Optional
+		}
+		if a.Ratio != 0 {
+			item.Ratio = &a.Ratio
 		}
 		out = append(out, item)
 	}
@@ -167,10 +173,12 @@ type Model struct {
 	Media             string             `json:"media" jsonschema:"image or video"`
 	ModelID           string             `json:"model_id,omitempty" jsonschema:"OpenAI 互換: サーバーに渡すモデル ID"`
 	AcceptsReferences bool               `json:"accepts_references" jsonschema:"参照画像を受け取れる"`
-	ReferenceMode     string             `json:"reference_mode,omitempty" jsonschema:"ComfyUI の画像: 参照画像の使い方。edit（編集モデル。複数枚・顔 / スタイル / 編集の役割あり）/ img2img（1 枚から始める）。ワークフローが示さなければ空"`
+	ReferenceMode     string             `json:"reference_mode,omitempty" jsonschema:"ComfyUI の画像: 参照画像の使い方。edit / img2img / inpaint（マスクで一部だけ描き直す）。ワークフローが示さなければ空"`
+	SupportsInpaint   bool               `json:"supports_inpaint,omitempty" jsonschema:"一部だけ描き直すに対応する（reference_mode が inpaint）"`
 	SupportsLoRA      bool               `json:"supports_lora,omitempty" jsonschema:"ComfyUI の画像: 生成テストの LoRA を使える（ワークフローに LoRA を差し込むノードがある）"`
 	Assignments       []Assignment       `json:"assignments" jsonschema:"ComfyUI: 入力の割り当て"`
 	OutputNode        string             `json:"output_node,omitempty"`
+	ExposedInputs     []exposed.Input    `json:"exposed_inputs,omitempty" jsonschema:"ComfyUI の画像: 画面に出す値（生成テストのこだわりの入力欄）"`
 	FPS               int                `json:"fps,omitempty"`
 	FramesStep        int                `json:"frames_step,omitempty"`
 	SizeMultiple      int                `json:"size_multiple,omitempty"`
@@ -191,12 +199,14 @@ func modelOf(m localmodels.ModelView) Model {
 	}
 	if w := m.Workflow; w != nil {
 		out.OutputNode, out.FPS, out.FramesStep, out.SizeMultiple = w.OutputNode, w.FPS, w.FramesStep, w.SizeMultiple
+		out.ExposedInputs = w.ExposedInputs
 	}
 	if caps, ok := m.VideoCaps(); ok {
 		out.MaxReferences, out.FirstFrame, out.LastFrame = caps.MaxReferenceImages, caps.FirstFrame, caps.LastFrame
 	}
 	if caps := m.ReferenceCaps(); caps.Max > 0 {
 		out.MaxReferences, out.ReferenceMode = caps.Max, string(caps.Mode)
+		out.SupportsInpaint = caps.Mode == localcfg.ModeInpaint
 	}
 	out.SupportsLoRA = m.SupportsLoRA() && m.Media == localcfg.MediaImage
 	return out

@@ -30,7 +30,9 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 |再取り込み（`replace`）|既存のワークフローのグラフと画面の形式を入れ替える。変わっていれば版が上がる|
 |ノード画面で開く（画面 `POST /workflows/:id/open`）|画面の形式を ComfyUI のユーザーデータ（`workflows/mam/<名前>.json`）へ書き、ノード画面へ移る（左の「ワークフロー」から開く）。API 形式だけで取り込んだものは開けない（理由を表示）|
 
-カスタムノードやフロントエンドの拡張は入れない（`postMessage` で渡す方式は採らない。ComfyUI のフロントエンドにその口が無く、同梱版は `--disable-all-custom-nodes` のため）。
+生成テストの「今の設定を ComfyUI で開く」（Issue #977。[../../components/gentest-tiers.md](../../components/gentest-tiers.md) §10.1）も、同じ「ComfyUI のユーザーデータ `workflows/mam/<名前>.json` へ置く」流れ（`Service.OpenUI`）を使う。保存したワークフローではなく、フォームの値を入れたグラフ（`comfyui.GraphFor`）を `graphui.Convert` で画面の形式にして置く。ワークフローの `exposed_inputs`（画面に出す値）は割り当て（`assignment_json`）と同じ JSON に持つ（[../local-models.md](../local-models.md) §4.8）。
+
+カスタムノードやフロントエンドの拡張は入れない（`postMessage` で渡す方式は採らない。ComfyUI のフロントエンドにその口が無く、同梱版は `--disable-all-custom-nodes` のため。許可リストの追加ノードだけは `--whitelist-custom-nodes` で読み込める: [../model-manager/custom-nodes.md](../model-manager/custom-nodes.md)）。
 
 ## 4. 割り当ての編集と警告
 
@@ -45,6 +47,8 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 
 ワークフローは全体で持つので**バンドルに含めない**（`bundle` の `unbundledTables` に理由つきで載せる）。バンドルを取り込んだとき、その Project の Take（`model_name`）と Video Model の LOCK が指す `comfy:<id>@v<N>` のうち、この mam に無いワークフロー（または版）があれば、**取り込みは成功させ**、その Project のチャットに「見つからない」と一覧を出して警告する（`repository/bundle.MissingWorkflows`）。該当の Shot は、ワークフローを取り込むか別のモデルを選び直すまで、固定が無視されて AUTO と同じ経路で選ばれる。
 
+**アップスケールのワークフロー（Issue #975）**: 画像を大きくするワークフロー（`upscale` の印。[../local-models.md](../local-models.md) §4.5）は、モデルマネージャーのカタログ（`kind: upscale`）が同梱エンジンに作る。保存したワークフロー（この表）には、印はまだ持てない（保存の画面は `upscale` を編集しない）。印のある同梱のワークフローは、保存したワークフローの「モデルとしての公開」（§2）と同じ「プロンプトを渡すモデル」の一覧には出ない。
+
 ## 7. 検証できていないこと
 
-実機の ComfyUI と GPU では実行していない（偽の ComfyUI `comfyuitest` が `/object_info`・`/userdata`・`/history`・`/models/<folder>` と実行を再現する）。`/history` の記録の形（`prompt` タプルと `extra_data.extra_pnginfo.workflow`）は ComfyUI のソースから読んだもので、実機での確認が残っている。
+実機の ComfyUI と GPU では実行していない（偽の ComfyUI `comfyuitest` が `/object_info`・`/userdata`・`/history`・`/models/<folder>` と実行を再現する）。一部だけ描き直す（#974。`inpaint-sdxl`・`inpaint-flux-dev`）も同じで、マスクの外が元の画素のままかはグラフの `ImageCompositeMasked` のリンクまでを確かめ、画素の比較はしていない。`/history` の記録の形（`prompt` タプルと `extra_data.extra_pnginfo.workflow`）は ComfyUI のソースから読んだもので、実機での確認が残っている。

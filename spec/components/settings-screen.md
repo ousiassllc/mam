@@ -105,7 +105,7 @@
 
 | カード | 状態の行（取得元） | 行き先 |
 |--------|------------------|--------|
-| API キーとログイン | API キー n / 14 件（`CredentialService.Status`）、ChatGPT のログイン（`chatgpt.Service.Overview`。トップ画面と同じ規則）。キーストアが読めないときは warn ・ キーストアを利用できません | `/settings/api-keys` |
+| API キーとログイン | API キー n / 14 件（`CredentialService.Status`）、ChatGPT のログイン（`chatgpt.Service.Overview`。`toolstatus.Services.Settings` が組み立てる。[home-screen.md](home-screen.md) §5）。キーストアが読めないときは warn ・ キーストアを利用できません | `/settings/api-keys` |
 | テキスト生成（LLM） | 既定から変えた Agent の数「変更 n / 14 件」（`llmassign.Service.View` の `Route` と `Default` を比べる）。固定（`Pinned`）のときは neutral ・ 起動オプションで固定 | `/settings/llm` |
 | 画像・動画モデル | 「既定のまま」／「変更あり」（`modelsettings` の `Customized`）。固定のときは neutral ・ 起動オプションで固定 | `/settings/models` |
 | ローカル・代替モデル | 接続先 n 件・モデル m 件。接続の状態は **`hx-get` で後から**（`GET /settings/local-models/health`。接続先ごとに並行して既存の `localmodels.Service.TestEndpoint` を呼ぶが、概要では各 3 秒で打ち切る。「n 件中 m 件に接続できます」。取れないときは空）。接続先 0 件は「接続先なし」 | `/settings/local-models` |
@@ -114,7 +114,7 @@
 | ffmpeg | 「ffmpeg・ffprobe を使えます」（ok）／「ffmpeg が見つかりません」などの警告（warn）／「設定ファイルを読めません」（`ffmpegsettings.Service` の探した結果。[categories](settings-screen-categories.md) §8） | `/settings/ffmpeg` |
 | バージョンとアップデート | 版（`updatepanel.Data.Version`）と状態（最後の確認の結果。`Tone` をそのまま使う） | `/settings/update` |
 | 第三者のライセンス | 項目の数「n 件」（neutral。`licenses.Catalog.Len`）。説明は 1 行「MAM が使っているソフトウェアのライセンス文。」（#910。[settings-screen-licenses.md](settings-screen-licenses.md) §4） | `/settings/licenses` |
-| モデルマネージャー（決定事項 6(a)） | ComfyUI の状態（トップ画面と同じ。[home-screen.md](home-screen.md) §5。`hx-get="/tools/model-manager/status"` を使う）。説明は「別の画面を開きます」を含める | `paths.ModelManager()` |
+| モデルマネージャー（決定事項 6(a)） | ComfyUI の状態（[home-screen.md](home-screen.md) §5。`hx-get="/tools/model-manager/status"` を使う）。説明は「別の画面を開きます」を含める | `paths.ModelManager()` |
 
 - 10 枚（#856 で ffmpeg、#924 で音声・口パク、#910 で第三者のライセンスを足した）で、並びはナビと同じ順にモデルマネージャーを最後に置く。`Settings` サービスが無い構成では LLM・画像動画のカードを出さない（ナビと同じ条件）。
 - 「接続の状態」を概要に出すかは §11 の質問 5（既定は上の案）。
@@ -149,7 +149,7 @@
 | テスト | ① | ② |
 |--------|---|---|
 | `web/global_settings_test.go` | `GET /settings` に全区画がある前提を、概要＋各分類のページに書き直す。API キーのパネルは `/settings/api-keys` | カードの `id`・`data-testid`（既存を維持）に合わせる |
-| `web/llm_settings_test.go`・`model_settings_test.go`・`model_settings_screen_test.go`・`mcp_settings_test.go`・`update_settings_test.go` | ページの取得先を各分類の URL に変える | モーダルの断片・Agent ごとの保存・OOB の行・422 の本文を検査するものに書き換える（今の全体フォームの検査は、`PUT /settings/llm` と `/settings/models` が残るので残す） |
+| `web/llmsettingstest/llm_settings_test.go`・`model_settings_test.go`・`model_settings_screen_test.go`・`mcp_settings_test.go`・`update_settings_test.go` | ページの取得先を各分類の URL に変える | モーダルの断片・Agent ごとの保存・OOB の行・422 の本文を検査するものに書き換える（今の全体フォームの検査は、`PUT /settings/llm` と `/settings/models` が残るので残す） |
 | `router/credential_test.go`・`web/credential_handler_test.go` | `GET /settings/api-keys` を取得する | 保存の応答を OOB の行＋ `HX-Trigger-After-Swap` に。422・キーが応答に出ないことは残す |
 | `web/handler/settings/local/screen_test.go`・`endpoints_test.go` | 取得先を `/settings/local-models`（HTMX でない）に | カード・モーダル・サブページ。`#model-assignment` の OOB の検査は、別ページになるため外す |
 | `web/handler/chatgptsettings/chatgptsettings_test.go` | `GET /settings/chatgpt`（HTMX なし）がページ全体、HTMX が断片 | カードの一覧の断片 |

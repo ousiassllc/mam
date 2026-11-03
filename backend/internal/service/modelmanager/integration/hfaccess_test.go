@@ -222,6 +222,7 @@ func TestTwoImportsOfDifferentFilesToOneDestinationNeverOverwriteEachOther(t *te
 	release := r.hf.HoldCDN(t)
 	first, err := r.svc.InstallHFFile(ctx(), hfIn("pony.safetensors", "checkpoints", ""))
 	require.NoError(t, err)
+	r.waitForDownload() // the first holds the destination before the second is queued: which of the two wins must not depend on the scheduler
 	in := hfIn("pony.safetensors", "checkpoints", "")
 	in.Repo = "o/other"
 	second, err := r.svc.InstallHFFile(ctx(), in)
@@ -250,6 +251,7 @@ func TestACatalogInstallQueuedBehindAnImportOfAnotherFileOfTheSameNameIsRefused(
 	release := r.hf.HoldCDN(t)
 	imp, err := r.svc.InstallHFFile(ctx(), hfIn("a.safetensors", "checkpoints", ""))
 	require.NoError(t, err)
+	r.waitForDownload() // the import holds the destination before the install is queued: which of the two wins must not depend on the scheduler
 	cat, err := r.svc.InstallModel(ctx(), "m-a", nil)
 	require.NoError(t, err, "nothing is recorded yet when the request is made")
 	release()

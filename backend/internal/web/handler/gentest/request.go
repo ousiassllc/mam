@@ -12,7 +12,9 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/tierform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
 
@@ -31,8 +33,11 @@ type formState struct {
 	// translate is the switch "英語に訳して送る": a checkbox, so a form that does not carry it has it off.
 	translate bool
 	refs      []gentest.RefInput
-	// opts are the options of the batch besides its inputs (refform.Options).
+	// opts are the options of the batch besides its inputs (refform.Options); adv the detailed settings (advform).
 	opts refform.Opts
+	adv  advform.Fields
+	// tier is the tier of the image form (tierform): the easy tier picks the model from its intent when it is estimated.
+	tier tierform.State
 }
 
 // readForm reads the compose form (a POST, multipart or not, or the query of a GET that includes the form). Input images that
@@ -60,6 +65,8 @@ func readForm(c *gin.Context, stage bool) (formState, error) {
 	}
 	f.refs = refform.Refs(v, f.media)
 	f.opts = refform.Options(v)
+	f.adv = advform.Read(v)
+	f.tier = tierform.Read(v)
 	return f, nil
 }
 
@@ -82,6 +89,9 @@ func (f formState) request() (gentest.Request, error) {
 	r := gentest.Request{
 		Media: f.media, Models: f.models, AspectRatio: f.aspect, Resolution: f.resol, References: f.refs, TranslateToEnglish: f.translate,
 		AvoidReferencePose: f.opts.AvoidPose, LoRA: f.opts.LoRA, SpeedMode: f.opts.SpeedMode,
+	}
+	if err := f.adv.Apply(&r); err != nil {
+		return r, err
 	}
 	for _, p := range f.prompts {
 		if strings.TrimSpace(p.Text) == "" {
@@ -123,5 +133,6 @@ func hidden(f formState, req gentest.Request, estimateID, total string) []view.H
 		view.Hidden{Name: view.FieldCount, Value: f.count}, view.Hidden{Name: view.FieldAspect, Value: f.aspect},
 		view.Hidden{Name: view.FieldResolution, Value: f.resol}, view.Hidden{Name: view.FieldDuration, Value: f.duration})
 	h = append(h, refform.Hidden(req)...)
+	h = append(h, advform.Hidden(req)...)
 	return append(h, view.Hidden{Name: view.FieldEstimateID, Value: estimateID}, view.Hidden{Name: view.FieldTotal, Value: total})
 }

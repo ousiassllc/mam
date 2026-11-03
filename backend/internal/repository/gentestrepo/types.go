@@ -24,6 +24,10 @@ const (
 	RoleFace  = "face"
 	RoleStyle = "style"
 	RoleEdit  = "edit"
+	// RoleMask is the inpaint mask (white redraws). It is not a reference role.
+	RoleMask = "mask"
+	// RolePose is a pose reference (a mannequin or pose chart): only the body pose and camera angle are taken from the picture.
+	RolePose = "pose"
 )
 
 // Status of a result. queued -> running -> succeeded | failed; a queued result can also be cancelled.

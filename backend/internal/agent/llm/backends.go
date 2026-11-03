@@ -103,10 +103,10 @@ type anthropicBackend struct{ httpBackend }
 
 const anthropicVersion = "2023-06-01"
 
-func (b anthropicBackend) Complete(ctx context.Context, model string, req Request) (string, error) {
+func (b anthropicBackend) Complete(ctx context.Context, model string, req Request) (Completion, error) {
 	key, err := b.apiKey()
 	if err != nil {
-		return "", err
+		return Completion{}, err
 	}
 	data, err := b.post(ctx, "/v1/messages", map[string]string{"x-api-key": key, "anthropic-version": anthropicVersion}, map[string]any{
 		"model":      model,
@@ -115,16 +115,24 @@ func (b anthropicBackend) Complete(ctx context.Context, model string, req Reques
 		"messages":   []map[string]any{{"role": "user", "content": anthropicContent(req)}},
 	})
 	if err != nil {
-		return "", err
+		return Completion{}, err
 	}
 	var out struct {
 		Content []struct {
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
+		// The cache counts are separate from input_tokens in this API; the app sets no cache_control, so they are zero, but they
+		// are tokens the call used all the same.
+		Usage *struct {
+			InputTokens         int `json:"input_tokens"`
+			OutputTokens        int `json:"output_tokens"`
+			CacheCreationTokens int `json:"cache_creation_input_tokens"`
+			CacheReadTokens     int `json:"cache_read_input_tokens"`
+		} `json:"usage"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil {
-		return "", &APIError{Provider: b.provider, Status: http.StatusOK, Message: "undecodable answer", Err: err}
+		return Completion{}, &APIError{Provider: b.provider, Status: http.StatusOK, Message: "undecodable answer", Err: err}
 	}
 	var text strings.Builder
 	for _, c := range out.Content {
@@ -133,18 +141,22 @@ func (b anthropicBackend) Complete(ctx context.Context, model string, req Reques
 		}
 	}
 	if text.Len() == 0 {
-		return "", b.emptyAnswer()
+		return Completion{}, b.emptyAnswer()
 	}
-	return text.String(), nil
+	done := Completion{Text: text.String()}
+	if u := out.Usage; u != nil {
+		done.Usage = &Usage{InputTokens: u.InputTokens + u.CacheCreationTokens + u.CacheReadTokens, OutputTokens: u.OutputTokens}
+	}
+	return done, nil
 }
 
 // openAIBackend calls the Chat Completions API (GPT).
 type openAIBackend struct{ httpBackend }
 
-func (b openAIBackend) Complete(ctx context.Context, model string, req Request) (string, error) {
+func (b openAIBackend) Complete(ctx context.Context, model string, req Request) (Completion, error) {
 	key, err := b.apiKey()
 	if err != nil {
-		return "", err
+		return Completion{}, err
 	}
 	body := map[string]any{
 		"model":                 model,
@@ -159,7 +171,7 @@ func (b openAIBackend) Complete(ctx context.Context, model string, req Request) 
 	}
 	data, err := b.post(ctx, "/v1/chat/completions", map[string]string{"Authorization": "Bearer " + key}, body)
 	if err != nil {
-		return "", err
+		return Completion{}, err
 	}
 	var out struct {
 		Choices []struct {
@@ -167,23 +179,32 @@ func (b openAIBackend) Complete(ctx context.Context, model string, req Request) 
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		// completion_tokens counts the reasoning tokens too, which are billed as output.
+		Usage *struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+		} `json:"usage"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil {
-		return "", &APIError{Provider: b.provider, Status: http.StatusOK, Message: "undecodable answer", Err: err}
+		return Completion{}, &APIError{Provider: b.provider, Status: http.StatusOK, Message: "undecodable answer", Err: err}
 	}
 	if len(out.Choices) == 0 || out.Choices[0].Message.Content == "" {
-		return "", b.emptyAnswer()
+		return Completion{}, b.emptyAnswer()
 	}
-	return out.Choices[0].Message.Content, nil
+	done := Completion{Text: out.Choices[0].Message.Content}
+	if u := out.Usage; u != nil {
+		done.Usage = &Usage{InputTokens: u.PromptTokens, OutputTokens: u.CompletionTokens}
+	}
+	return done, nil
 }
 
 // googleBackend calls the Gemini generateContent API.
 type googleBackend struct{ httpBackend }
 
-func (b googleBackend) Complete(ctx context.Context, model string, req Request) (string, error) {
+func (b googleBackend) Complete(ctx context.Context, model string, req Request) (Completion, error) {
 	key, err := b.apiKey()
 	if err != nil {
-		return "", err
+		return Completion{}, err
 	}
 	gen := map[string]any{"maxOutputTokens": req.MaxTokens}
 	if req.JSON {
@@ -195,7 +216,7 @@ func (b googleBackend) Complete(ctx context.Context, model string, req Request) 
 		"generationConfig":  gen,
 	})
 	if err != nil {
-		return "", err
+		return Completion{}, err
 	}
 	var out struct {
 		Candidates []struct {
@@ -205,9 +226,15 @@ func (b googleBackend) Complete(ctx context.Context, model string, req Request) 
 				} `json:"parts"`
 			} `json:"content"`
 		} `json:"candidates"`
+		// thoughtsTokenCount is not in candidatesTokenCount, but the thinking tokens are billed as output.
+		UsageMetadata *struct {
+			PromptTokenCount     int `json:"promptTokenCount"`
+			CandidatesTokenCount int `json:"candidatesTokenCount"`
+			ThoughtsTokenCount   int `json:"thoughtsTokenCount"`
+		} `json:"usageMetadata"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil {
-		return "", &APIError{Provider: b.provider, Status: http.StatusOK, Message: "undecodable answer", Err: err}
+		return Completion{}, &APIError{Provider: b.provider, Status: http.StatusOK, Message: "undecodable answer", Err: err}
 	}
 	var text strings.Builder
 	if len(out.Candidates) > 0 {
@@ -216,9 +243,13 @@ func (b googleBackend) Complete(ctx context.Context, model string, req Request) 
 		}
 	}
 	if text.Len() == 0 {
-		return "", b.emptyAnswer()
+		return Completion{}, b.emptyAnswer()
 	}
-	return text.String(), nil
+	done := Completion{Text: text.String()}
+	if u := out.UsageMetadata; u != nil {
+		done.Usage = &Usage{InputTokens: u.PromptTokenCount, OutputTokens: u.CandidatesTokenCount + u.ThoughtsTokenCount}
+	}
+	return done, nil
 }
 
 // anthropicContent is the user content of a request: the plain text, or text and pictures.

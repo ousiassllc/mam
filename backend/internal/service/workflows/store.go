@@ -130,10 +130,14 @@ func (s *Service) Update(ctx context.Context, id string, in UpdateInput) (Workfl
 		w.APIJSON = graph
 	}
 	if in.Spec != nil {
-		if err := s.checkSpec(kind, w.APIJSON, *in.Spec); err != nil {
+		spec := *in.Spec
+		if cur, _ := localcfg.ParseSpec(w.Assignment); spec.ExposedInputs == nil {
+			spec.ExposedInputs = cur.ExposedInputs // a settings form or tool that does not name them leaves the "画面に出す値" (#977) as they are
+		}
+		if err := s.checkSpec(kind, w.APIJSON, spec); err != nil {
 			return Workflow{}, err
 		}
-		raw, _ := json.Marshal(*in.Spec)
+		raw, _ := json.Marshal(spec)
 		changed = changed || !sameJSON(raw, w.Assignment)
 		w.Assignment = raw
 	}

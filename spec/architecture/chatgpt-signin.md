@@ -58,7 +58,7 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 
 ### 5.1 テキスト生成（`internal/agent/llm/chatgptsub`）
 
-- プロバイダー `chatgpt-subscription`（`llm.Providers()` に追加。設定画面の「LLM の割り当て」で Agent の primary / fallback に選べる）。API キーではなくログインを使う。モデル名は固定せず、`GET https://api.openai.com/v1/models`（同じアクセストークン。応答は `models[]`、`visibility=="list"` の `slug`）を設定画面の「利用できるモデルを表示」で出し、利用者が割り当てに入力する。
+- プロバイダー `chatgpt-subscription`（`llm.Providers()` に追加。設定画面の「LLM の割り当て」で Agent の primary / fallback に選べる）。API キーではなくログインを使う。モデル名は固定せず、`GET https://api.openai.com/v1/models`（同じアクセストークン。応答は `models[]`、`visibility=="list"` の `slug`）を設定画面の「利用できるモデルを表示」で出し、「LLM の割り当て」のモデルのプルダウンと MCP の `list_llm_models` も同じ一覧を使う（`service/llmmodels`。10 分キャッシュ。サインアウト・別アカウントで捨てる。トークンは応答にもログにも出さない。取れないときは mam の既定候補 `agent/llm/data/models.json`）。プルダウンにない名前も保存はできる（警告だけ。#988・#987）。
 - リクエストは公式のプレビューの制限に合わせる: `store:false`・`stream:true`・`input` は配列・システムプロンプトは `instructions`（`role:"system"` は使わない）・`max_output_tokens`・`temperature` など非対応の項目は送らない。JSON は `text.format` を使わず、`instructions` で言葉で求め、`CompleteJSON` の検証で受ける。画像入力は `input_image`（Art Director・Video Judge・Editor など。モデルが対応していれば使える）。
 - 成功は `response.completed` だけ。`response.failed`・`response.incomplete`・途中で切れたストリームは別のエラー。401 は更新で確かめてから 1 回だけ再試行する。
 - エラー（公式 errors-and-recovery。網羅ではない）: `subscription_sharing_usage_limit_exceeded`（429）・`subscription_sharing_user_not_eligible`（403）は**再試行せず**、サーキットブレーカーにも数えず代替へ回す。理由と `https://chatgpt.com/settings/usage` のリンクをチャットに出す（`llm.WithFallbackNotice`。Orchestrator のジョブが Project のチャットに 1 実行 1 回出す。代替も失敗したときは失敗の文面に同じ理由が入る）。`…_usage_unavailable`・`…_user_unavailable`（503）と 5xx は指数バックオフで再試行（再試行・ブレーカー・代替は §2.1 と同じ）。`…_unsupported_capability`（400）・`…_route_not_supported`（403）・`chatpass_v2_*`（403）・未知の 4xx は再試行しない。未ログイン・再ログイン要・プラン未許可はその理由を通知して代替へ。
@@ -75,7 +75,7 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 ## 6. 画面と MCP
 
 - 設定画面（`GET /settings`）の「ChatGPT でログイン」: 方式の切り替え（公式／Codex 経由。Codex 経由は `chatgpt-codex/codex-login.md` §3）。公式（状態・メール・プラン・期限・「再ログインが必要」・ログアウト・モデル一覧）と、画像生成（非公式）のリスク・ON/OFF・ブラウザ／デバイスコードのログイン。ログイン中は区画が 2 秒ごとに自分を取り直す。ルートは `spec/api/endpoints.md`。
-- MCP ツール 8 つ（`spec/api/mcp-tools-chatgpt.md`）: ログイン開始・状態の取得・ログアウト・画像生成の ON/OFF・Codex のエンジンの取得とログイン。トークンはどの応答にも載せない。ブラウザのログインはコールバックが mam の PC の `127.0.0.1` に来るため、リモートの利用者は mam の PC のブラウザで URL を開く（公式にデバイスコードはない）。画像生成のログインだけデバイスコードで遠隔から行える。
+- MCP ツール 8 つ（`spec/api/mcp-tools-chatgpt.md`。ほかにモデルの一覧 `list_llm_models`）: ログイン開始・状態の取得・ログアウト・画像生成の ON/OFF・Codex のエンジンの取得とログイン。トークンはどの応答にも載せない。ブラウザのログインはコールバックが mam の PC の `127.0.0.1` に来るため、リモートの利用者は mam の PC のブラウザで URL を開く（公式にデバイスコードはない）。画像生成のログインだけデバイスコードで遠隔から行える。
 
 ## 7. 注意
 
@@ -100,3 +100,4 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 | 1.3 | 2026-11-01 | §8 のエンジンの取得を、Windows 版のみから Windows と macOS（Apple Silicon）に改め、置き場所（macOS は `.app` の外のデータディレクトリ）を書いた。詳細は `chatgpt-codex/codex-login.md` §2 の 1 | Issue #855。macOS 版でも設定画面の「Codex 経由」から Codex 本体を取得できるようにした |
 | 1.4 | 2026-11-01 | §5.2: Codex のドライバーを `gpt-5.5` 固定から自動選択（Codex のモデル一覧 `GET /models?client_version=`・`FallbackDrivers`・前回成功したものを覚える・`Options.Driver` の上書き）に改めた。全部拒否されたときの利用者向けの文言（`ErrNoImageModel`）を足した。検証結果（Codex の `codex-rs/models-manager` の読み取り・公式 Models ページ）を §5.2 に書いた。ドライバーの拒否の判定を、本文が引用符で示すモデル名が試したドライバーと完全に一致するときだけに絞った（`chatgpt account` だけでの一致と前方一致をやめた。画像ツールの `gpt-image-2` の拒否で全ドライバーを試して実際の 400 を隠し、誤って `ErrNoImageModel` にしていた） | Issue #907（GPT-5.5 の退役で ChatGPT サブスクの画像生成が HTTP 400 で失敗した） |
 | 1.5 | 2026-11-02 | §5.2: ドライバーの拒否の判定に、引用符なしの `Unsupported model: <モデル名>` だけの本文（モデル名が試したドライバーと完全一致するもの）を加えた。それ以外の文言（前後に語がある文・別のモデル名・前方一致）では引き続き次へ進まない | Issue #951（本文の文言が引用符つきから変わるとフォールバックしなかった。実アカウントでの `GET /models`・`/responses` の確認はまだ） |
+| 1.6 | 2026-11-03 | §5.1・§6: モデル一覧を「LLM の割り当て」のプルダウンと MCP の `list_llm_models` でも使う（`llmmodels.Service`。キャッシュ・取れないときは mam の既定候補・一覧にない名前は警告） | Issue #988・#987。実アカウントでの一覧取得の確認はまだ |

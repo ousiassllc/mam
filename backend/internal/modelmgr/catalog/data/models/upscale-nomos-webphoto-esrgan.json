@@ -1,0 +1,40 @@
+{
+ "id": "upscale-nomos-webphoto-esrgan",
+ "name": "4xNomosWebPhoto ESRGAN（写真向けの 4 倍アップスケール）",
+ "kind": "upscale",
+ "tier": "advanced",
+ "content_rating": "general",
+ "description": "写真向けに学習したアップスケール用モデル（ESRGAN。約 33 MB）。実写の画像を JPEG・WebP の劣化やノイズごと直しながら 4 倍まで大きくする。生成テストの結果の「大きくする」で使う（2 倍・4 倍）。ライセンスの表記が配布元で食い違い、商用の可否は不明。",
+ "files": [
+  {
+   "name": "4xNomosWebPhoto_esrgan.safetensors",
+   "folder": "upscale_models",
+   "url": "https://huggingface.co/Phips/4xNomosWebPhoto_esrgan/resolve/b18f7dea815aa30cf5be2d0633787ac5a714b119/4xNomosWebPhoto_esrgan.safetensors",
+   "sha256": "2f49c3065db8aaeb64adb08e8879001fe2f1460df5655499707efedad8a3d556",
+   "size": 33467822
+  }
+ ],
+ "vram": {
+  "min_gb": 4,
+  "source": "mam の見積もり（出典なし・実機未測定。ImageUpscaleWithModel は絵をタイルに分けて処理する）",
+  "estimate": true
+ },
+ "license": {
+  "id": "cc-by-4.0-conflict",
+  "version": "unverified",
+  "name": "cc-by-4.0（モデルカードのメタデータ）／ CC-BY-0.4（モデルカードの本文）",
+  "url": "https://huggingface.co/Phips/4xNomosWebPhoto_esrgan",
+  "summary": "配布元 Phips/4xNomosWebPhoto_esrgan のモデルカードで、メタデータは license: cc-by-4.0、本文は License: CC-BY-0.4（存在しない版）と食い違っている。作者の GitHub（Phhofm/models）の同じリリースの文面も CC-BY-0.4 で、LICENSE ファイルは見つからなかった。どちらが作者の意図かを一次情報で確かめられないため、商用の可否は不明として扱う。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-03",
+  "notice": "配布元の表記が食い違っていて、ライセンスを確かめられていません。商用で使う前に、作者（Philip Hofmann。Phips）に確認してください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "upscale-nomos-webphoto-esrgan",
+   "template": "upscale-nomos-webphoto-esrgan"
+  }
+ ]
+}

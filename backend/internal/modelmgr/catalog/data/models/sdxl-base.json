@@ -4,7 +4,7 @@
  "kind": "image",
  "tier": "standard",
  "content_rating": "general",
- "description": "定番の画像モデル。いちばん小さく動く（約 7 GB）。参照画像からの画像（img2img）にも使える。",
+ "description": "定番の画像モデル。いちばん小さく動く（約 7 GB）。参照画像からの画像（img2img）と、マスクで一部だけ描き直す（インペイント）にも使える。",
  "files": [
   {
    "name": "sd_xl_base_1.0.safetensors",
@@ -38,6 +38,7 @@
   {
    "name": "sdxl-base-img2img",
    "template": "img2img-sdxl"
-  }
+  },
+  {"name": "sdxl-base-inpaint", "template": "inpaint-sdxl"}
  ]
 }

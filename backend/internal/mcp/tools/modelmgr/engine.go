@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr/nodetools"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/detect"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
@@ -187,6 +188,9 @@ func (h handlers) cancelInstall(_ context.Context, in CancelInput) (CancelOutput
 		if rerr := h.svc.LocalRuntimes.CancelInstall(in.JobID); rerr == nil {
 			return CancelOutput{JobID: in.JobID, Cancelled: true}, nil
 		}
+	}
+	if errors.Is(err, modelmanager.ErrNotFound) && nodetools.Cancel(h.svc, in.JobID) == nil { // the job of a custom node
+		return CancelOutput{JobID: in.JobID, Cancelled: true}, nil
 	}
 	if err != nil {
 		return CancelOutput{}, MapError(err)

@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 )
@@ -13,21 +14,22 @@ import (
 // ModelFields are the definition of a model. On create, what is not given is the template's (template_id)
 // or empty; on update, what is not given is what is saved.
 type ModelFields struct {
-	TemplateID        string       `json:"template_id,omitempty" jsonschema:"ComfyUI: list_local_templates の id。ワークフロー・割り当て・動画の能力をテンプレートから始める（作成のみ）"`
-	Media             string       `json:"media,omitempty" jsonschema:"image or video。テンプレートなしで作るときに必要（OpenAI 互換は image のみ）"`
-	WorkflowJSON      string       `json:"workflow_json,omitempty" jsonschema:"ComfyUI: Save (API Format) の JSON。渡すと assignments も渡す必要がある"`
-	Assignments       []Assignment `json:"assignments,omitempty" jsonschema:"ComfyUI: 入力の割り当て（渡すと全体を置き換える）。prompt が必須"`
-	OutputNode        string       `json:"output_node,omitempty" jsonschema:"ComfyUI: 出力に使うノード ID"`
-	FPS               int          `json:"fps,omitempty" jsonschema:"ComfyUI 動画: 既定 16"`
-	FramesStep        int          `json:"frames_step,omitempty" jsonschema:"ComfyUI 動画: 正なら総フレーム数を n×step+1 にする（Wan は 4、LTX は 8）"`
-	SizeMultiple      int          `json:"size_multiple,omitempty" jsonschema:"ComfyUI: 幅・高さの倍数。既定 16"`
-	ModelID           string       `json:"model_id,omitempty" jsonschema:"OpenAI 互換: サーバーに渡すモデル ID"`
-	AcceptsReferences *bool        `json:"accepts_references,omitempty" jsonschema:"OpenAI 互換: 参照画像を受け取れる（/v1/images/edits を使う）"`
-	Durations         []float64    `json:"durations,omitempty" jsonschema:"動画: 長さ（秒、小さい順）"`
-	Resolutions       []string     `json:"resolutions,omitempty" jsonschema:"動画: 解像度（短辺。例 480p, 720p）"`
-	NativeAudio       *bool        `json:"native_audio,omitempty" jsonschema:"動画: 音声も同時に生成する"`
-	CostPerImageUSD   *float64     `json:"cost_per_image_usd,omitempty" jsonschema:"見積コスト（USD / 枚）。既定 0"`
-	CostPerSecondUSD  *float64     `json:"cost_per_second_usd,omitempty" jsonschema:"見積コスト（USD / 秒）。既定 0"`
+	TemplateID        string          `json:"template_id,omitempty" jsonschema:"ComfyUI: list_local_templates の id。ワークフロー・割り当て・動画の能力をテンプレートから始める（作成のみ）"`
+	Media             string          `json:"media,omitempty" jsonschema:"image or video。テンプレートなしで作るときに必要（OpenAI 互換は image のみ）"`
+	WorkflowJSON      string          `json:"workflow_json,omitempty" jsonschema:"ComfyUI: Save (API Format) の JSON。渡すと assignments も渡す必要がある"`
+	Assignments       []Assignment    `json:"assignments,omitempty" jsonschema:"ComfyUI: 入力の割り当て（渡すと全体を置き換える）。prompt が必須"`
+	OutputNode        string          `json:"output_node,omitempty" jsonschema:"ComfyUI: 出力に使うノード ID"`
+	ExposedInputs     []exposed.Input `json:"exposed_inputs,omitempty" jsonschema:"ComfyUI の画像: 画面に出す値（ノードの入力。生成テストの「こだわり」に入力欄として出て、リクエストの exposed に key <ノード ID>.<入力名> で値を渡せる）。渡すと全体を置き換える（空配列で消す）。割り当てが使っている入力・ほかのノードがつないでいる入力は選べない"`
+	FPS               int             `json:"fps,omitempty" jsonschema:"ComfyUI 動画: 既定 16"`
+	FramesStep        int             `json:"frames_step,omitempty" jsonschema:"ComfyUI 動画: 正なら総フレーム数を n×step+1 にする（Wan は 4、LTX は 8）"`
+	SizeMultiple      int             `json:"size_multiple,omitempty" jsonschema:"ComfyUI: 幅・高さの倍数。既定 16"`
+	ModelID           string          `json:"model_id,omitempty" jsonschema:"OpenAI 互換: サーバーに渡すモデル ID"`
+	AcceptsReferences *bool           `json:"accepts_references,omitempty" jsonschema:"OpenAI 互換: 参照画像を受け取れる（/v1/images/edits を使う）"`
+	Durations         []float64       `json:"durations,omitempty" jsonschema:"動画: 長さ（秒、小さい順）"`
+	Resolutions       []string        `json:"resolutions,omitempty" jsonschema:"動画: 解像度（短辺。例 480p, 720p）"`
+	NativeAudio       *bool           `json:"native_audio,omitempty" jsonschema:"動画: 音声も同時に生成する"`
+	CostPerImageUSD   *float64        `json:"cost_per_image_usd,omitempty" jsonschema:"見積コスト（USD / 枚）。既定 0"`
+	CostPerSecondUSD  *float64        `json:"cost_per_second_usd,omitempty" jsonschema:"見積コスト（USD / 秒）。既定 0"`
 }
 
 // CreateModelInput is a model to define.
@@ -91,6 +93,9 @@ func (f ModelFields) apply(base localcfg.Model) (localcfg.Model, error) {
 		if f.OutputNode != "" {
 			w.OutputNode = f.OutputNode
 		}
+		if f.ExposedInputs != nil {
+			w.ExposedInputs = f.ExposedInputs
+		}
 		w.FPS, w.FramesStep, w.SizeMultiple = nonZero(f.FPS, w.FPS), nonZero(f.FramesStep, w.FramesStep), nonZero(f.SizeMultiple, w.SizeMultiple)
 		m.Workflow = &w
 	}
@@ -114,21 +119,27 @@ func assignmentsFrom(given []Assignment, saved []localcfg.Assignment) []localcfg
 	out := make([]localcfg.Assignment, len(given))
 	for i, a := range given {
 		out[i] = localcfg.Assignment{Param: localcfg.Param(a.Param), Node: a.Node, Input: a.Input, Index: a.Index}
-		if a.Optional != nil {
-			out[i].Optional = *a.Optional
-			continue
-		}
-		if j := slices.IndexFunc(saved, func(s localcfg.Assignment) bool {
+		kept := slices.IndexFunc(saved, func(s localcfg.Assignment) bool {
 			return s.Param == out[i].Param && s.Index == out[i].Index && s.Node == out[i].Node && s.Input == out[i].Input
-		}); j >= 0 {
-			out[i].Optional = saved[j].Optional
+		})
+		switch {
+		case a.Optional != nil:
+			out[i].Optional = *a.Optional
+		case kept >= 0:
+			out[i].Optional = saved[kept].Optional
+		}
+		switch {
+		case a.Ratio != nil:
+			out[i].Ratio = *a.Ratio
+		case kept >= 0:
+			out[i].Ratio = saved[kept].Ratio
 		}
 	}
 	return out
 }
 
 func (f ModelFields) touchesWorkflow() bool {
-	return f.WorkflowJSON != "" || f.Assignments != nil || f.OutputNode != "" || f.FPS != 0 || f.FramesStep != 0 || f.SizeMultiple != 0
+	return f.WorkflowJSON != "" || f.Assignments != nil || f.ExposedInputs != nil || f.OutputNode != "" || f.FPS != 0 || f.FramesStep != 0 || f.SizeMultiple != 0
 }
 
 func (h handlers) createModel(ctx context.Context, in CreateModelInput) (Model, error) {

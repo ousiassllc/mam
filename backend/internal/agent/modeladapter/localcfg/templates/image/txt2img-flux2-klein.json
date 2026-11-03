@@ -6,6 +6,7 @@
  "model": {
   "media": "image",
   "workflow": {
+   "prompt_weight": "unsupported",
    "graph": {
     "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "flux-2-klein-4b-fp8.safetensors", "weight_dtype": "default"}},
     "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_3_4b.safetensors", "type": "flux2", "device": "default"}},
@@ -51,7 +52,10 @@
     {"param": "reference_image", "node": "101", "input": "image", "index": 0, "optional": true},
     {"param": "reference_image", "node": "102", "input": "image", "index": 1, "optional": true},
     {"param": "reference_image", "node": "103", "input": "image", "index": 2, "optional": true},
-    {"param": "reference_image", "node": "104", "input": "image", "index": 3, "optional": true}
+    {"param": "reference_image", "node": "104", "input": "image", "index": 3, "optional": true},
+    {"param": "steps", "node": "62", "input": "steps"},
+    {"param": "cfg", "node": "63", "input": "cfg"},
+    {"param": "sampler", "node": "61", "input": "sampler_name"}
    ],
    "reference_mode": "edit",
    "output_node": "9"

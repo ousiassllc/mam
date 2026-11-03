@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/platform"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
@@ -63,4 +64,23 @@ func TestGPUVRAMDoesNotKeepAFailedDetectionForLong(t *testing.T) {
 	mmview.GPUVRAM(cancelled, r.Svc)
 	r.GPUReport = gpu.Report{Adapters: []gpu.Adapter{{Name: "RTX", VRAMBytes: 8 << 30}}}
 	assert.Equal(t, uint64(8<<30), mmview.GPUVRAM(ctx, r.Svc), "a cancelled detection was not remembered")
+}
+
+// The OS and the GPU generation for the catalog's columns (Issue #979) come from the same remembered detection: no child process more, and a
+// new one after the time.
+func TestHostIsRememberedWithTheVRAM(t *testing.T) {
+	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
+	r := mmtest.New(t, mmtest.WithClock(func() time.Time { return now }))
+	r.GPUReport.OS = "windows"
+	r.GPUReport.Adapters = []gpu.Adapter{{Name: "NVIDIA GeForce RTX 5090", VendorID: gpu.VendorNVIDIA, VRAMBytes: 32 << 30, ComputeCap: 12}}
+	ctx := context.Background()
+
+	assert.Equal(t, platform.Host{OS: "windows", GPUArch: platform.ArchBlackwell}, mmview.Host(ctx, r.Svc))
+	assert.Equal(t, uint64(32<<30), mmview.GPUVRAM(ctx, r.Svc))
+	assert.EqualValues(t, 1, r.GPUDetections.Load(), "the memory and the generation are one detection")
+
+	r.GPUReport.OS, r.GPUReport.Adapters = "darwin", nil
+	assert.Equal(t, platform.ArchBlackwell, mmview.Host(ctx, r.Svc).GPUArch, "still remembered")
+	now = now.Add(6 * time.Minute)
+	assert.Equal(t, platform.Host{OS: "darwin", GPUArch: platform.ArchApple}, mmview.Host(ctx, r.Svc), "after the time the PC is looked at again")
 }

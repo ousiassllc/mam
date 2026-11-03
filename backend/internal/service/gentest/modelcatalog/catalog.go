@@ -10,6 +10,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
@@ -66,8 +69,8 @@ type Info struct {
 	UnavailableMessage string `json:"unavailable_message,omitempty"`
 	// AcceptsReferences: an image model uses reference images.
 	AcceptsReferences bool `json:"accepts_references"`
-	// ReferenceMode is how an image model uses references: "edit" (an editing model: several images, roles) or "img2img" (one
-	// image the sampling starts from); empty for a model that takes none (and for a cloud model that does).
+	// ReferenceMode is how an image model uses references: "edit", "img2img", or "inpaint" (a mask redraws part of one image);
+	// empty for a model that takes none (and for a cloud model that does).
 	ReferenceMode string `json:"reference_mode,omitempty"`
 	// MaxReferenceImages is how many reference images an image model takes (0: not known or none).
 	MaxReferenceImages int `json:"max_reference_images,omitempty"`
@@ -85,6 +88,17 @@ type Info struct {
 	// License is whether the model may be used commercially, with the license, the condition and the source (#928). A model whose
 	// license mam has not checked is "unknown".
 	License modellicense.Info `json:"license" jsonschema:"商用利用の可否（commercial: yes / conditional / no / unknown）・ライセンス名・条件・出典 URL・確認日。確認できていないモデルは unknown"`
+	// Sampling is the steps, cfg, sampler and scheduler the model takes with their defaults (a request's sampling and seed fields);
+	// absent for a model that takes none (the cloud models, the distilled LTX-2.5 whose sigmas are fixed).
+	Sampling *sampling.Caps `json:"sampling,omitempty" jsonschema:"このモデルが受け取るステップ数・CFG・サンプラー・スケジューラーと既定値。無い項目は受け取らない（指定しても使わない）。steps / cfg の locked が speed_mode のものは、速さのモードが決めるので指定しても無視する"`
+	// PromptWeight is whether the model reads the weights of a prompt, "(word:1.3)": supported / weak / unsupported / unknown.
+	PromptWeight promptweight.Level `json:"prompt_weight" jsonschema:"プロンプトのウェイト（(word:1.3)）が効くか。supported（効く）/ weak（効くが弱いかもしれない）/ unsupported（効かない: 括弧と数字がそのまま文として読まれる）/ unknown（確かめていない）"`
+	// Exposed are the inputs of the model's workflow the screen offers as fields of their own (a request's exposed; Issue #977).
+	Exposed []exposed.Cap `json:"exposed,omitempty" jsonschema:"画面に出す値（ComfyUI のノードの入力）。リクエストの exposed に key で値を渡せる。type・min / max・options の範囲外は validation。default はワークフローのグラフが持つ値"`
+	// SupportsInpaint: the model redraws the white part of a mask and keeps the rest (reference_mode inpaint).
+	SupportsInpaint bool `json:"supports_inpaint,omitempty" jsonschema:"一部だけ描き直す（インペイント）に対応する。reference_mode が inpaint のとき true。対応しないモデルは選べない"`
+	// DenoiseDefault is the redraw strength the workflow uses when a request names none (the template's denoise).
+	DenoiseDefault *float64 `json:"denoise_default,omitempty" jsonschema:"一部だけ描き直すときの描き直しの強さの既定（0 より大きく 1 以下）。supports_inpaint のモデルだけ"`
 }
 
 // FilterByCommercial keeps the models whose answer the filter allows.
@@ -104,6 +118,11 @@ type Catalog struct {
 	// Hidden says a model is left out of the lists and cannot be chosen (the adult models of the model manager while the age
 	// gate is closed). Nil hides nothing.
 	Hidden func(id string) bool
+	// HideChoices leaves the choices of a choice input that only an adult model has out of Info.Exposed while the gate is closed. Nil hides none.
+	HideChoices func(options []string, keep string) []string
+	// MissingNodes gives the reason a local model cannot be chosen because the custom nodes its workflow requires (localcfg.Workflow.RequiresNodes) are
+	// not installed; empty when it can. Nil asks for none.
+	MissingNodes func(id string, required []string) string
 }
 
 // Models lists the models of the media ("" for both): every built-in cloud model, the models of the registered endpoints,
@@ -129,13 +148,53 @@ func (c Catalog) Models(media string) []Info {
 	return out
 }
 
+// ExcludedMissingNode is the reason code of a model whose workflow needs a custom node that is not installed (Info.Unavailable).
+const ExcludedMissingNode = "missing_node"
+
+// missingNodes is the reason the workflow of a local model cannot run: the nodes it requires are not installed ("" when it can).
+func (c Catalog) missingNodes(cfg modeladapter.Config, m domain.ModelName) string {
+	lm, _, ok := cfg.LocalModel(m)
+	if !ok || c.MissingNodes == nil || lm.Workflow == nil {
+		return ""
+	}
+	return c.MissingNodes(string(m), lm.Workflow.RequiresNodes)
+}
+
+// exposedCaps are the exposed inputs of the workflow, with the choices the closed age gate hides left out (the value the graph holds stays).
+func (c Catalog) exposedCaps(w localcfg.Workflow) []exposed.Cap {
+	caps := w.ExposedCaps()
+	if c.HideChoices == nil {
+		return caps
+	}
+	for i, cp := range caps {
+		if len(cp.Options) == 0 {
+			continue
+		}
+		d, _ := cp.Default.(string)
+		caps[i].Options = c.HideChoices(cp.Options, d)
+	}
+	return caps
+}
+
 func (c Catalog) hidden(m domain.ModelName) bool { return c.Hidden != nil && c.Hidden(string(m)) }
 
-// Model returns one model of the media; false when there is none.
+// Model returns one model of the media; false when there is none. Only that model is described (its backend asked, its price and
+// capabilities read) and only it goes through the Hidden predicate: describing every model of the list to pick one out cost a key
+// lookup in the OS secure storage (a call that can wait for its time limit) and a read of the workflow graph for each of them, on
+// every estimate of a match or a batch (#981).
 func (c Catalog) Model(media, id string) (Info, bool) {
-	for _, m := range c.Models(media) {
-		if m.ID == id {
-			return m, true
+	cfg := c.Adapter.Config()
+	for _, kind := range []struct {
+		media  string
+		models []domain.ModelName
+	}{{gentestrepo.MediaImage, domain.ImageModels()}, {gentestrepo.MediaVideo, domain.VideoModels()}} {
+		if media != "" && media != kind.media {
+			continue
+		}
+		for _, m := range kind.models {
+			if string(m) == id && !c.hidden(m) {
+				return c.info(cfg, m, kind.media), true
+			}
 		}
 	}
 	return Info{}, false
@@ -149,8 +208,18 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	}
 	if reason := c.Adapter.Unavailable(m); reason != "" {
 		mi.Unavailable, mi.UnavailableMessage = reason, unavailableMessage(reason, mi.Source)
+	} else if msg := c.missingNodes(cfg, m); msg != "" {
+		mi.Unavailable, mi.UnavailableMessage = ExcludedMissingNode, msg
 	} else {
 		mi.Available = true
+	}
+	mi.PromptWeight = promptweight.Unknown
+	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
+		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
+		mi.Exposed = c.exposedCaps(*lm.Workflow)
+		if d, ok := denoiseDefault(lm.Workflow); ok {
+			mi.SupportsInpaint, mi.DenoiseDefault = true, &d
+		}
 	}
 	if media == gentestrepo.MediaImage {
 		mi.AcceptsReferences = cfg.AcceptsImages(m)

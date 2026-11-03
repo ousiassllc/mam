@@ -4,6 +4,7 @@
 
 ## 方針
 
+- **モデルの一覧**（`list_llm_models`、#987・#988）: `set_llm_assignment` に渡すモデル名を確かめるためのツール。トークン・API キーは返さない。`set_llm_assignment` は、一覧にないモデル名を**拒否せず保存し**、応答の `warnings[]`（`kind: unlisted_model`, `agent`, `role`, `provider`, `model`, `message`）で知らせる（[`mcp-tools-settings-policy.md`](mcp-tools-settings-policy.md)）。
 - **トークンはどのツールの応答にも載せない**（アクセス・リフレッシュ・ID トークン、`id_token_hint` つきの URL も）。返すのは、ログインしているか・メール・プラン・アクセストークンの期限・再ログインの要否・画像生成の ON/OFF だけ。全ツールの結果の全文に、保存されたトークンの値と JWT らしい値（`eyJ`）が無いことを、テスト（`chatgptauth_test.go`）で確かめている。
 - ログインは 3 系統（`account`）: `official`（公式。テキスト生成）、`codex`（Codex の app-server 経由。テキスト生成のみ。Business / Enterprise / Edu のワークスペースのアカウントも使える。プロバイダー `chatgpt-codex`。設計 `chatgpt-codex/codex-login.md`）、`image`（画像生成・非公式）。`codex` もトークンを返さない（mam は Codex のトークンを読まない）。
 - **ブラウザのログインはコールバックが mam の PC の `127.0.0.1` に来る**。`start_chatgpt_login` は mam の PC の既定ブラウザを開き、`auth_url` も返す。tailnet などリモートから使うときは、mam の PC のブラウザでその URL を開いてもらう（公式のログインにデバイスコードはない: 確認済み、設計 §2）。画像生成のログインだけ、デバイスコードでどの端末からも行える。
@@ -22,6 +23,7 @@
 | `get_chatgpt_login_status` | `login_id` のログインの進み具合（`codex` のログインも含む）。`pending` の間は `interval_seconds`（無ければ数秒）ごとに呼ぶ。知らない ID は `not_found` | `login_id` | 上の `login_id` … `expires_at` に `state`（`pending` / `succeeded` / `failed` / `cancelled`）と `message`（失敗の理由） | はい |
 | `logout_chatgpt` | ログアウト（失効の要求 → トークンの削除。冪等）。`codex` は app-server に `account/logout` を頼み、`remove_files: true` で取得した本体と mam 専用の `CODEX_HOME` も削除する（アンインストールの前に使う） | `account`（`official` / `codex` / `image`）, `remove_files?`（`codex` のみ） | `account`, `was_signed_in`, `revoke_confirmed`, `message` | いいえ（破壊的・openWorld） |
 | `set_chatgpt_image_generation` | 画像生成（非公式）の ON/OFF（冪等）。ON は `acknowledge_risks: true` が必要（無ければ `validation`、リスクの全文つき） | `enabled`, `acknowledge_risks?` | `image_generation_enabled`, `image_generation_risks[]`, `next` | いいえ |
+| `list_llm_models` | 「LLM の割り当て」で選べるモデルの一覧（設定画面のプルダウンと同じ `llmmodels.Service`）。`chatgpt-subscription`（サインイン済みのアカウントの `GET https://api.openai.com/v1/models`、`visibility=="list"` の `slug`）・`chatgpt-codex`（Codex の `model/list`）・`openai` / `anthropic` / `google`（保存した API キーでの各社の一覧）は API の一覧、取得できないとき（キーなし・未ログイン・失敗）は mam の既定候補（`agent/llm/data/models.json`）。10 分キャッシュ（失敗は 1 分）。トークン・API キーは返さない。未対応の `provider` は `validation`。実装は `tools/settings`（LLM の割り当てと同じ区画）で、`Settings.LLMModels` が無いアプリでは `unavailable` | `provider?`（`get_global_settings` の `llm.providers`。省略で全部） | `providers[]`: `provider`, `source`（`api` / `default`）, `reason?`（`default` の理由）, `models[]`（`id`, `name?`）。`set_llm_assignment` の `model` には `id` を渡す | はい（openWorld） |
 
 ## 改訂履歴
 
@@ -30,3 +32,4 @@
 | 1.0 | 2026-10-24 | 新規作成。6 ツール（`get_chatgpt_status`・`start_chatgpt_login`・`start_chatgpt_image_device_login`・`get_chatgpt_login_status`・`logout_chatgpt`・`set_chatgpt_image_generation`） | Issue #832。ChatGPT のログインを MCP でも扱う（トークンは返さない） |
 | 1.1 | 2026-10-25 | `account: codex` を足し、`install_chatgpt_codex_engine`・`start_chatgpt_codex_login` を追加（8 ツール）。`get_chatgpt_status` に `codex`、`logout_chatgpt` に `remove_files` | Issue #845。Business / Enterprise / Edu のアカウントを Codex の app-server 経由で使えるようにする |
 | 1.2 | 2026-11-01 | `install_chatgpt_codex_engine` を macOS（Apple Silicon）にも開き（取得先は `.app` の外のデータディレクトリの `codex`）、「Windows 版のみ」の書き方を直した。`get_chatgpt_status` の `can_download` も同じ | Issue #855。macOS 版でも Codex 本体を取得できるようにした（詳細は `architecture/chatgpt-codex/codex-login.md` §2） |
+| 1.3 | 2026-11-03 | `list_llm_models` を追加（`chatgpt-subscription`・`chatgpt-codex` を含む各プロバイダーのモデルの一覧。API の一覧、取れなければ mam の既定候補）。`set_llm_assignment` が一覧にない名前に警告を返す | Issue #987・#988。実アカウントでの一覧の取得は未確認（実機） |

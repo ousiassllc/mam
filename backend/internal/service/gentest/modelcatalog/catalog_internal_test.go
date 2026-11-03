@@ -42,3 +42,30 @@ func TestPriceOfKlingIsThePriceOfOneSecond(t *testing.T) {
 		assert.InDelta(t, cfg.VideoCost(modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: res}, 1), perSecond, 1e-9, res)
 	}
 }
+
+// Picking one model out of the catalog asks the Hidden predicate about that model alone: the predicate reads workflow graphs, and
+// describing the other models costs a lookup of their API key in the OS secure storage each (#981: the first estimate of a match
+// waited for them).
+func TestModelDescribesOnlyTheModelItIsAskedFor(t *testing.T) {
+	var asked []string
+	c := Catalog{Adapter: modeladapter.New(modeladapter.DefaultConfig(), modeladapter.Backends{}), Hidden: func(id string) bool {
+		asked = append(asked, id)
+		return id == string(domain.ModelKling3)
+	}}
+
+	info, ok := c.Model(gentestrepo.MediaImage, string(domain.ModelFlux2))
+	require.True(t, ok)
+	assert.Equal(t, string(domain.ModelFlux2), info.ID)
+	assert.Equal(t, gentestrepo.MediaImage, info.Media)
+	assert.Equal(t, []string{string(domain.ModelFlux2)}, asked)
+
+	_, ok = c.Model(gentestrepo.MediaImage, string(domain.ModelKling3))
+	assert.False(t, ok, "a video model is not an image model")
+	video, ok := c.Model("", string(domain.ModelSeedance2))
+	require.True(t, ok, "no media: both are looked in")
+	assert.Equal(t, gentestrepo.MediaVideo, video.Media)
+	_, ok = c.Model("", string(domain.ModelKling3))
+	assert.False(t, ok, "a hidden model cannot be chosen")
+	_, ok = c.Model("", "no-such-model")
+	assert.False(t, ok)
+}

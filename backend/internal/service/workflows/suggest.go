@@ -35,6 +35,7 @@ func Suggest(graph json.RawMessage, kind localcfg.Media) localcfg.WorkflowSpec {
 			texts++
 		case strings.HasPrefix(n.ClassType, "KSampler") && literal(n, "seed") && !has(spec, localcfg.ParamSeed):
 			add(localcfg.ParamSeed, id, "seed")
+			suggestSampling(n, id, add)
 		case n.ClassType == "RandomNoise" && literal(n, "noise_seed") && !has(spec, localcfg.ParamSeed):
 			add(localcfg.ParamSeed, id, "noise_seed")
 		case strings.HasPrefix(n.ClassType, "Empty") && strings.Contains(n.ClassType, "Latent") && !has(spec, localcfg.ParamWidth):
@@ -54,6 +55,22 @@ func Suggest(graph json.RawMessage, kind localcfg.Media) localcfg.WorkflowSpec {
 		spec.Video = &v
 	}
 	return spec
+}
+
+// suggestSampling assigns the steps, cfg, sampler and scheduler of the sampler node that took the seed (a KSampler, the node of one
+// sampling pass). A KSamplerAdvanced is not guessed: its two halves share the steps and hand over at a step the user has to name.
+func suggestSampling(n localcfg.Node, id string, add func(p localcfg.Param, node, input string)) {
+	if n.ClassType != "KSampler" {
+		return
+	}
+	for _, x := range []struct {
+		param localcfg.Param
+		input string
+	}{{localcfg.ParamSteps, "steps"}, {localcfg.ParamCFG, "cfg"}, {localcfg.ParamSampler, "sampler_name"}, {localcfg.ParamScheduler, "scheduler"}} {
+		if literal(n, x.input) {
+			add(x.param, id, x.input)
+		}
+	}
 }
 
 func has(s localcfg.WorkflowSpec, p localcfg.Param) bool {

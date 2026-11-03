@@ -47,6 +47,7 @@ func mediaLabel(media string) string {
 // slotLabels names the values of mam a workflow takes, in the order of the table.
 var slotLabels = map[string]string{
 	"prompt": "Prompt", "negative_prompt": "Negative Prompt", "seed": "Seed", "width": "幅", "height": "高さ",
+	"steps": "ステップ数 (steps)", "cfg": "CFG", "sampler": "サンプラー (sampler)", "scheduler": "スケジューラー (scheduler)",
 	"frames": "フレーム数", "fps": "fps（入力）", "reference_image": "参照画像", "first_frame": "最初のフレーム", "last_frame": "最後のフレーム",
 }
 

@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"math"
 	"regexp"
 	"slices"
@@ -21,12 +20,18 @@ import (
 // strength, so the sampling is cut at every distinct fraction and each part is encoded with the references still in it.
 
 const (
-	encodeClass = "TextEncodeQwenImage21"
-	slotPrefix  = "images.image_"
-	maxStages   = 6
+	encodeClass   = "TextEncodeQwenImage21"
+	editPlusClass = "TextEncodeQwenImageEditPlus"
+	slotPrefix    = "images.image_"
+	maxStages     = 6
 )
 
-var imageTag = regexp.MustCompile(`<image([0-9]+)>`)
+var (
+	imageTag = regexp.MustCompile(`<image([0-9]+)>`)
+	// slotInput is an input of an encoder that holds a reference image: image_N of TextEncodeQwenImage21 (as images.image_N) or
+	// imageN of TextEncodeQwenImageEditPlus.
+	slotInput = regexp.MustCompile(`^(images\.image_|image)[0-9]+$`)
+)
 
 // refUse is a reference of the run: its slot (the index of the assignment), role and the number of steps it stays in (the
 // steps of the sampler when it stays to the end).
@@ -37,22 +42,29 @@ type refUse struct {
 }
 
 // Apply rewrites an editing workflow for the references of the run. It returns an error for a graph that is not the shape
-// the staging knows: a text encoder that takes the references (TextEncodeQwenImage21) and one KSampler fed by it, or a
-// CLIPTextEncode whose conditioning the references join through ReferenceLatent nodes (FLUX.2, stageReferenceLatent).
+// the staging knows: a text encoder that takes the references (TextEncodeQwenImage21, or TextEncodeQwenImageEditPlus for the
+// positive and for the negative) and one KSampler fed by it, or a CLIPTextEncode whose conditioning the references join
+// through ReferenceLatent nodes (FLUX.2, stageReferenceLatent).
 func Apply(g localcfg.Graph, wf localcfg.Workflow, count int, opts localcfg.ImageOptions, prompt string) error {
 	if wf.ReferenceMode != localcfg.ModeEdit || count == 0 {
 		return nil
 	}
-	enc, ok := nodeOf(g, wf, localcfg.ParamPrompt)
-	if ok && g[enc].ClassType == "CLIPTextEncode" {
-		return stageReferenceLatent(g, enc, count, opts, prompt)
+	pos, ok := nodeOf(g, wf, localcfg.ParamPrompt)
+	if ok && g[pos].ClassType == "CLIPTextEncode" {
+		return stageReferenceLatent(g, pos, count, opts, prompt)
 	}
-	if !ok || g[enc].ClassType != encodeClass {
-		return fmt.Errorf("the editing workflow's prompt is not in a %s or CLIPTextEncode node", encodeClass)
+	if !ok || (g[pos].ClassType != encodeClass && g[pos].ClassType != editPlusClass) {
+		return fmt.Errorf("the editing workflow's prompt is not in a %s, %s or CLIPTextEncode node", encodeClass, editPlusClass)
 	}
-	sampler, ok := samplerOf(g, enc)
+	sampler, ok := samplerOf(g, pos)
 	if !ok {
-		return fmt.Errorf("no KSampler takes the output of %s", enc)
+		return fmt.Errorf("no KSampler takes the output of %s", pos)
+	}
+	enc := encoders{pos: pos, plus: g[pos].ClassType == editPlusClass}
+	if enc.plus {
+		if enc.neg, ok = negativeEncoder(g, sampler); !ok {
+			return fmt.Errorf("the negative conditioning of %s is not a %s node", sampler, editPlusClass)
+		}
 	}
 	total := intInput(g[sampler], "steps")
 	uses := make([]refUse, count)
@@ -119,16 +131,8 @@ func absInt(n int) int {
 	return n
 }
 
-// singleStage keeps the node: every reference is in the whole run.
-func singleStage(g localcfg.Graph, enc string, uses []refUse, prompt string) error {
-	n := g[enc]
-	n.Inputs["prompt"] = Literal(promptFor(uses, prompt))
-	setVAE(g, n, uses)
-	return nil
-}
-
 // multiStage replaces the KSampler by one SamplerCustomAdvanced per part of the sampling, each with its own encoder node.
-func multiStage(g localcfg.Graph, enc, sampler string, uses []refUse, cuts []int, prompt string) error {
+func multiStage(g localcfg.Graph, enc encoders, sampler string, uses []refUse, cuts []int, prompt string) error {
 	ks := g[sampler]
 	steps := intInput(ks, "steps")
 	sigmas := "mam_sigmas"
@@ -144,11 +148,15 @@ func multiStage(g localcfg.Graph, enc, sampler string, uses []refUse, cuts []int
 	for k, end := range bounds {
 		active := activeAt(uses, start)
 		id := fmt.Sprintf("mam_enc_%d", k)
-		clone := cloneNode(g[enc])
-		clone.Inputs["prompt"] = Literal(promptFor(active, prompt))
-		setVAE(g, clone, active)
-		keepSlots(clone, g[enc], active)
-		g[id] = clone
+		posNode := encoderFor(g, enc.pos, enc, active)
+		posNode.Inputs["prompt"] = Literal(enc.words(promptFor(active, prompt)))
+		g[id] = posNode
+		negative := Link(id, 1)
+		if enc.neg != "" { // the negative encoder keeps the negative prompt of the workflow
+			negID := fmt.Sprintf("mam_negenc_%d", k)
+			g[negID] = encoderFor(g, enc.neg, enc, active)
+			negative = Link(negID, 0)
+		}
 
 		part := rest
 		if k < len(bounds)-1 { // cut the sigmas here: the first part is this stage, the second the rest
@@ -158,7 +166,7 @@ func multiStage(g localcfg.Graph, enc, sampler string, uses []refUse, cuts []int
 		}
 		guider, run := fmt.Sprintf("mam_guider_%d", k), fmt.Sprintf("mam_run_%d", k)
 		g[guider] = localcfg.Node{ClassType: "CFGGuider", Inputs: map[string]json.RawMessage{
-			"model": ks.Inputs["model"], "positive": Link(id, 0), "negative": Link(id, 1), "cfg": ks.Inputs["cfg"],
+			"model": ks.Inputs["model"], "positive": Link(id, 0), "negative": negative, "cfg": ks.Inputs["cfg"],
 		}}
 		noise := "mam_noise"
 		if k > 0 {
@@ -178,7 +186,10 @@ func multiStage(g localcfg.Graph, enc, sampler string, uses []refUse, cuts []int
 		}
 	}
 	delete(g, sampler)
-	delete(g, enc)
+	delete(g, enc.pos)
+	if enc.neg != "" {
+		delete(g, enc.neg)
+	}
 	return nil
 }
 
@@ -191,54 +202,6 @@ func activeAt(uses []refUse, start int) []refUse {
 		}
 	}
 	return out
-}
-
-// cloneNode copies a node so that the copy's inputs can change.
-func cloneNode(n localcfg.Node) localcfg.Node {
-	return localcfg.Node{ClassType: n.ClassType, Inputs: maps.Clone(n.Inputs)}
-}
-
-// keepSlots links the images of the references of the part into the encoder, in their order: the n-th is <image n> of its
-// prompt. src is the encoder as the template has it, whose slot k holds the image of the reference k-1.
-func keepSlots(n, src localcfg.Node, active []refUse) {
-	for name := range n.Inputs {
-		if strings.HasPrefix(name, slotPrefix) {
-			delete(n.Inputs, name)
-		}
-	}
-	for k, u := range active {
-		n.Inputs[slotPrefix+strconv.Itoa(k+1)] = src.Inputs[slotPrefix+strconv.Itoa(u.slot+1)]
-	}
-}
-
-// setVAE gives the encoder the VAE when a reference is to be reproduced (the whole picture or the one to edit): the encoder
-// then also hands the picture's latents to the model. A face or a style is read with the vision tower alone. The VAE is the
-// one the VAEDecode node takes (the lowest ID of them when there are several), else the VAELoader with the lowest ID.
-func setVAE(g localcfg.Graph, n localcfg.Node, active []refUse) {
-	if !slices.ContainsFunc(active, func(u refUse) bool { return u.role != localcfg.RoleFace && u.role != localcfg.RoleStyle }) {
-		delete(n.Inputs, "vae")
-		return
-	}
-	ids := make([]string, 0, len(g))
-	for id := range g {
-		ids = append(ids, id)
-	}
-	slices.Sort(ids)
-	for _, id := range ids {
-		if g[id].ClassType != "VAEDecode" {
-			continue
-		}
-		if to, _, ok := LinkOf(g[id].Inputs["vae"]); ok && g[to].ClassType == "VAELoader" {
-			n.Inputs["vae"] = Link(to, 0)
-			return
-		}
-	}
-	for _, id := range ids {
-		if g[id].ClassType == "VAELoader" {
-			n.Inputs["vae"] = Link(id, 0)
-			return
-		}
-	}
 }
 
 // promptFor is the prompt of a part of the sampling: a sentence for each reference that tells the model what to take from
@@ -268,13 +231,19 @@ func promptFor(active []refUse, prompt string) string {
 	return strings.Join(lines, "\n")
 }
 
-// roleSentence tells the editing model what to take from <image n>; the whole picture and the one to edit need no sentence.
+// roleSentence tells the editing model what to take from <image n>; the whole picture and the one to edit need no sentence. A
+// face gets three sentences (#960): what to leave out, what the face is made of, and what not to do. One general sentence kept
+// the identity weakly (the likeness was 0.26 in the measurement of PR #953). How much stronger the longer text is is not measured.
 func roleSentence(role string, n int) string {
 	switch role {
 	case localcfg.RoleFace:
-		return fmt.Sprintf("Keep only the face and identity of <image%d>; its hair, clothes, pose and background do not matter: follow the description below for them.", n)
+		return fmt.Sprintf("Keep only the face and identity of <image%d>; its hair, clothes, pose and background do not matter: follow the description below for them. "+
+			"The person in the result must be the same person as in <image%d>: the same face shape, eyes, nose, mouth, eyebrows and skin tone, and the same apparent age. "+
+			"Do not draw a different or an idealized face, and do not take anything else from <image%d>.", n, n, n)
 	case localcfg.RoleStyle:
 		return fmt.Sprintf("Take only the art style, color grading and mood of <image%d>; its subject and composition do not matter.", n)
+	case localcfg.RolePose:
+		return fmt.Sprintf("Use <image%d> only as a pose reference: copy only the body pose and the camera angle of its figure; its drawing style, colors, face, hair, clothes and background do not matter: follow the description below for them.", n)
 	}
 	return ""
 }

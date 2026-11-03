@@ -1,8 +1,8 @@
-// Package wfrefresh brings the models of the managed ComfyUI endpoint up to the reference image support of the templates
-// (#933). modelmanager copies a template into "local_models" only when a catalog model is installed, so a model installed before
-// its template learned reference images keeps the old text-to-image copy and would never accept a reference. Only such an
-// unedited old copy is replaced (see unedited): the template grew nodes and inputs and rewired links, a copy the user changed
-// differs from it in a value.
+// Package wfrefresh brings the models of the managed ComfyUI endpoint up to what their templates learned: reference image support
+// (#933) and, with the generation settings, the steps, cfg, sampler and scheduler assignments and the prompt weight value (#973,
+// #972). modelmanager copies a template into "local_models" only when a catalog model is installed, so a model installed before
+// keeps the old copy and would never take a reference or show the detailed settings. Only such an unedited old copy is replaced
+// (see unedited): the template grew nodes, inputs, assignments and rewired links, a copy the user changed differs from it in a value.
 package wfrefresh
 
 import (
@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 )
@@ -23,8 +24,7 @@ type Models interface {
 	UpdateModel(ctx context.Context, endpoint, name string, in localmodels.ModelInput) error
 }
 
-// Run replaces the saved copy of a catalog workflow when it has no reference mode, its template has one and the copy is an
-// unedited old version of the template. Such a model was created by an install (its name is a catalog workflow's); the graph,
+// Run replaces the saved copy of a catalog workflow when it is behind its template (behind) and is an unedited old version of it. Such a model was created by an install (its name is a catalog workflow's); the graph,
 // the model files it points to and the assignments become the ones the catalog installs and the prices the user set are kept.
 // A model the user edited (a value of its graph differs from the template's), a model whose template has no reference support
 // and one that is up to date are left alone. warn gets a failure; a pinned model file (ErrPinned) is not one.
@@ -58,12 +58,40 @@ func refreshed(cur localcfg.Model, template string) (localcfg.Model, bool) {
 	if !found || cur.Workflow == nil || tpl.Model.Workflow == nil {
 		return localcfg.Model{}, false
 	}
-	if cur.Workflow.ReferenceMode != "" || tpl.Model.Workflow.ReferenceMode == "" || !unedited(*cur.Workflow, *tpl.Model.Workflow) {
+	if !behind(*cur.Workflow, *tpl.Model.Workflow) || !unedited(*cur.Workflow, *tpl.Model.Workflow) {
 		return localcfg.Model{}, false
 	}
 	next := tpl.Model
 	next.CostPerImage, next.CostPerSecond = cur.CostPerImage, cur.CostPerSecond
+	next.Workflow.ExposedInputs = keptExposed(cur.Workflow.ExposedInputs, next.Workflow.Assignments) // the user's "画面に出す値" (#977) stay
 	return next, true
+}
+
+// keptExposed are the exposed inputs of the old copy that the template does not feed with an assignment now (the template grew the steps and cfg
+// assignments an old copy lacked: an input cannot be exposed and assigned both).
+func keptExposed(inputs []exposed.Input, assignments []localcfg.Assignment) []exposed.Input {
+	var out []exposed.Input
+	for _, in := range inputs {
+		if !slices.ContainsFunc(assignments, func(a localcfg.Assignment) bool { return a.Node == in.Node && a.Input == in.Input }) {
+			out = append(out, in)
+		}
+	}
+	return out
+}
+
+// behind says the template has something the copy lacks: a reference mode, a prompt weight value, quality presets, or a sampling assignment.
+func behind(cur, tpl localcfg.Workflow) bool {
+	sampling := func(w localcfg.Workflow) int {
+		n := 0
+		for _, a := range w.Assignments {
+			if slices.Contains([]localcfg.Param{localcfg.ParamSteps, localcfg.ParamCFG, localcfg.ParamSampler, localcfg.ParamScheduler}, a.Param) {
+				n++
+			}
+		}
+		return n
+	}
+	return (cur.ReferenceMode == "" && tpl.ReferenceMode != "") || (cur.PromptWeight == "" && tpl.PromptWeight != "") ||
+		(cur.QualityPresets.None() && !tpl.QualityPresets.None()) || sampling(cur) < sampling(tpl)
 }
 
 // unedited reports whether cur is an old copy of tpl that the user did not change: the output node is the same, every

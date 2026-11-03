@@ -6,6 +6,8 @@
  "model": {
   "media": "image",
   "workflow": {
+   "prompt_weight": "weak",
+   "quality_presets": {"fast": {"steps": 16}, "high": {"steps": 40}},
    "graph": {
     "731": {"class_type": "UNETLoader", "inputs": {"unet_name": "Chroma1-HD-fp8mixed.safetensors", "weight_dtype": "default"}},
     "733": {"class_type": "CLIPLoader", "inputs": {"clip_name": "t5xxl_fp8_e4m3fn_scaled.safetensors", "type": "chroma", "device": "default"}},
@@ -36,7 +38,10 @@
     {"param": "reference_image", "node": "760", "input": "image"},
     {"param": "width", "node": "761", "input": "width"},
     {"param": "height", "node": "761", "input": "height"},
-    {"param": "reference_denoise", "node": "763", "input": "denoise"}
+    {"param": "reference_denoise", "node": "763", "input": "denoise"},
+    {"param": "steps", "node": "751", "input": "steps"},
+    {"param": "cfg", "node": "694", "input": "cfg"},
+    {"param": "sampler", "node": "700", "input": "sampler_name"}
    ],
    "reference_mode": "img2img",
    "reference_denoise_min": 0.6,

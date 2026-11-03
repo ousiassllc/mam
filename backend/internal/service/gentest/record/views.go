@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
@@ -27,10 +28,12 @@ type ResultView struct {
 	Translated               bool   `json:"translated"`
 	TranslatedPrompt         string `json:"translated_prompt,omitempty"`
 	TranslatedNegativePrompt string `json:"translated_negative_prompt,omitempty"`
-	NegativePrompt           string `json:"negative_prompt,omitempty"`
-	NegativeMode             string `json:"negative_mode" jsonschema:"none / field（モデルの欄に送った）/ folded（プロンプトに「Avoid: …」として書き足した）"`
-	AspectRatio              string `json:"aspect_ratio"`
-	Resolution               string `json:"resolution,omitempty"`
+	// LostWeights lists the prompt weights ("(word:1.3)", brackets) that the translation lost; the picture is made without them.
+	LostWeights    []string `json:"lost_weights,omitempty" jsonschema:"英訳で消えたプロンプトのウェイト（重みの数字・括弧）。英訳した文にはもう無いので、そのウェイトは効かないまま作られた"`
+	NegativePrompt string   `json:"negative_prompt,omitempty"`
+	NegativeMode   string   `json:"negative_mode" jsonschema:"none / field（モデルの欄に送った）/ folded（プロンプトに「Avoid: …」として書き足した）"`
+	AspectRatio    string   `json:"aspect_ratio"`
+	Resolution     string   `json:"resolution,omitempty"`
 	// DurationSeconds is the length the model was asked for (rounded to what it makes).
 	DurationSeconds float64 `json:"duration_seconds,omitempty"`
 	// Seed is the seed that was sent; absent for a model that takes none (SeedSent false).
@@ -52,8 +55,14 @@ type ResultView struct {
 	AvoidReferencePose bool       `json:"avoid_reference_pose,omitempty"`
 	LoRA               *refs.LoRA `json:"lora,omitempty" jsonschema:"このモデルに渡した LoRA（名前と強さ）"`
 	SpeedMode          string     `json:"speed_mode,omitempty" jsonschema:"動画: このモデルに頼んだ速さのモード（fast / standard など。無ければモデルの既定）"`
-	CreatedAt          time.Time  `json:"created_at"`
-	FinishedAt         *time.Time `json:"finished_at,omitempty"`
+	// Sampling is what the model ran with: with seed (above) and the other fields, enough to make the result again.
+	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"このモデルが使ったステップ数・CFG・サンプラー・スケジューラー（上書きしなかった項目はモデルの既定）。seed と合わせて同じ条件で作り直せる。受け取らないモデルは無い"`
+	Exposed  map[string]any     `json:"exposed,omitempty" jsonschema:"このモデルの画面に出す値（ComfyUI のノードの入力）が使った値（key は <ノード ID>.<入力名>。指定しなかった項目はグラフが持つ値）。リクエストの exposed に渡せば同じ条件で作り直せる"`
+	Inpaint  *Inpaint           `json:"inpaint,omitempty" jsonschema:"一部だけ描き直したとき。denoise は使った強さ、source_kind / source_id は元画像（history なら結果の ID）"`
+	// Upscale is set for a result of "make it larger": the result it enlarged and the scale, mode and model it used.
+	Upscale    *Upscale   `json:"upscale,omitempty" jsonschema:"アップスケール（大きくする）で作った結果のとき: 元の結果・倍率・使ったモデルと方式・元と出力の大きさ。普通に生成した結果には無い"`
+	CreatedAt  time.Time  `json:"created_at"`
+	FinishedAt *time.Time `json:"finished_at,omitempty"`
 }
 
 // ViewOf is the view of a stored result.
@@ -66,11 +75,12 @@ func ViewOf(r gentestrepo.Result) ResultView {
 		AspectRatio: p.AspectRatio, Resolution: p.Resolution, DurationSeconds: p.DurationSeconds, Seed: r.Seed, SeedSent: r.SeedSent,
 		Status: r.Status, Error: r.Error, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "", MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
-		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode,
+		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, Inpaint: p.Inpaint, Upscale: p.Upscale,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}
 	if p.Translation != nil {
 		v.Translated, v.TranslatedPrompt, v.TranslatedNegativePrompt = true, p.Translation.Prompt, p.Translation.Negative
+		v.LostWeights = p.Translation.LostWeights
 	}
 	return v
 }
@@ -87,7 +97,7 @@ func ViewsOf(list []gentestrepo.Result) []ResultView {
 // InputView is an input image of a batch.
 type InputView struct {
 	ID        string `json:"input_id"`
-	Role      string `json:"role" jsonschema:"reference / face / style / edit / first_frame / last_frame"`
+	Role      string `json:"role" jsonschema:"reference / face / style / edit / pose / first_frame / last_frame"`
 	MimeType  string `json:"mime_type"`
 	SizeBytes int64  `json:"size_bytes"`
 	// Strength is how strongly an image model was asked to show the reference; absent when the default was used.
@@ -97,7 +107,7 @@ type InputView struct {
 
 // InputOrigin is where an input image was taken from (the Source of the RefInput and its ID).
 type InputOrigin struct {
-	Kind      string `json:"kind" jsonschema:"upload / project_asset / reference_item / history"`
+	Kind      string `json:"kind" jsonschema:"upload / project_asset / reference_item / history / pose_library"`
 	ID        string `json:"id"`
 	ProjectID string `json:"project_id,omitempty"`
 }
@@ -119,6 +129,8 @@ type ResultDetail struct {
 	Imports []ImportView `json:"imports"`
 	// Estimate is the confirmed estimate of the batch the result belongs to.
 	BatchEstimatedUSD float64 `json:"batch_estimated_usd"`
+	// TranslateToEnglish is whether the batch asked for the prompts to be translated (the switch of the screen); Translated says this result's were.
+	TranslateToEnglish bool `json:"translate_to_english"`
 }
 
 // PromptView is an entry of the prompt history.

@@ -12,14 +12,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
-	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 )
 
 // newLocalRuntimes builds the manager of the local AI runtimes (GPT-SoVITS) and takes over the model_install handler on jobs
 // (before the queue starts, after newModelManager registered its own): the jobs of a runtime are its own, the others still go to
 // the model manager. The runtimes live in the "localai" directory next to the executable, like the engine in "comfyui", so that
 // the uninstaller removes them with the install directory.
-func newLocalRuntimes(jobs *jobqueue.Queue, table *repository.JobRepository, mgr *modelmanager.Service, logger *slog.Logger) (*localruntime.Service, error) {
+func newLocalRuntimes(jobs *jobqueue.Queue, table *repository.JobRepository, next jobqueue.Handler, logger *slog.Logger) (*localruntime.Service, error) {
 	exe, err := executablePath()
 	if err != nil {
 		return nil, err
@@ -28,7 +27,7 @@ func newLocalRuntimes(jobs *jobqueue.Queue, table *repository.JobRepository, mgr
 	if err != nil {
 		return nil, fmt.Errorf("local runtimes: %w", err)
 	}
-	rts.Register(mgr.HandleInstall)
+	rts.Register(next)
 	return rts, nil
 }
 

@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 )
 
 // Param is a value of a generation that an Assignment puts into a node of a ComfyUI workflow.
@@ -34,8 +37,8 @@ const (
 
 // imageParams are the values an image workflow takes; videoParams the ones a video workflow takes.
 var (
-	imageParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamReferenceImage, ParamReferenceDenoise}
-	videoParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamFrames, ParamFPS, ParamReferenceImage, ParamFirstFrame, ParamLastFrame}
+	imageParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamReferenceImage, ParamReferenceDenoise, ParamReferenceStrength, ParamSteps, ParamCFG, ParamSampler, ParamScheduler}
+	videoParams = []Param{ParamPrompt, ParamNegativePrompt, ParamSeed, ParamWidth, ParamHeight, ParamFrames, ParamFPS, ParamReferenceImage, ParamFirstFrame, ParamLastFrame, ParamSteps, ParamCFG, ParamSampler, ParamScheduler}
 )
 
 // ImageParams lists the values an image workflow takes.
@@ -54,6 +57,8 @@ type Assignment struct {
 	// Optional (ParamReferenceImage only) lets the workflow run without that reference: the assignment's node is dropped and the
 	// inputs of other nodes that linked to it are removed (a variable number of references).
 	Optional bool `json:"optional,omitempty"`
+	// Ratio (ParamSteps only, 0 < Ratio < 1) puts round(steps * Ratio) there instead of the steps: where a two-stage sampler (Wan 2.2) hands over.
+	Ratio float64 `json:"ratio,omitempty"`
 }
 
 // Workflow is a ComfyUI workflow in API format with the table that tells mam where its values go.
@@ -81,8 +86,17 @@ type Workflow struct {
 	ReferenceDenoiseMin float64 `json:"reference_denoise_min,omitempty"`
 	// LoraModelNode is the node whose output 0 is the model: a LoRA of a request is inserted behind it. Empty: no LoRA.
 	LoraModelNode string `json:"lora_model_node,omitempty"`
+	// PromptWeight says whether the model reads the weights of a prompt, "(word:1.3)" (package promptweight); empty: not said (unknown).
+	PromptWeight promptweight.Level `json:"prompt_weight,omitempty"`
 	// SpeedModes are the ways a video workflow can sample (SpeedMode); the first is the graph as it stands and the default. Empty: one way.
 	SpeedModes []SpeedMode `json:"speed_modes,omitempty"`
+	Upscale    *Upscale    `json:"upscale,omitempty"` // marks a workflow that enlarges a picture; nil: one that makes pictures
+	// RequiresNodes are the IDs of the custom nodes (the allowlist, modelmgr/nodecat) the graph uses besides the core nodes. Empty: core only.
+	RequiresNodes []string `json:"requires_nodes,omitempty"`
+	// QualityPresets are the steps and cfg of the fast and the high quality of the screen's "品質" buttons (Issue #977); nil: the model has no quality to choose.
+	QualityPresets *sampling.Presets `json:"quality_presets,omitempty"`
+	// ExposedInputs are the inputs of the graph the screen offers as fields of their own (Issue #977; package exposed); empty: none.
+	ExposedInputs []exposed.Input `json:"exposed_inputs,omitempty"`
 }
 
 // DefaultFPS is the frame rate of a video workflow that names none.
@@ -213,59 +227,6 @@ func sortedKeys[V any](m map[string]V) []string {
 	return keys
 }
 
-// InputInfo is one input of a node as the settings screen shows it when the user picks where a value goes.
-type InputInfo struct {
-	Name string `json:"name"`
-	// Link is true when the input is fed by another node (a value cannot be put there).
-	Link bool `json:"link"`
-	// Value is the literal value, shortened (empty for a link).
-	Value string `json:"value,omitempty"`
-}
-
-// NodeInfo is one node of a workflow.
-type NodeInfo struct {
-	ID     string      `json:"id"`
-	Class  string      `json:"class_type"`
-	Inputs []InputInfo `json:"inputs"`
-}
-
-// Inspect lists the nodes of a workflow (API format) with their inputs, by node ID in numeric order where
-// the IDs are numbers.
-func Inspect(raw []byte) ([]NodeInfo, error) {
-	g, err := ParseGraph(raw)
-	if err != nil {
-		return nil, err
-	}
-	ids := sortedKeys(g)
-	slices.SortStableFunc(ids, func(a, b string) int {
-		if len(a) != len(b) {
-			return len(a) - len(b)
-		}
-		return strings.Compare(a, b)
-	})
-	out := make([]NodeInfo, 0, len(ids))
-	for _, id := range ids {
-		n := g[id]
-		info := NodeInfo{ID: id, Class: n.ClassType}
-		for _, name := range sortedKeys(n.Inputs) {
-			in := InputInfo{Name: name, Link: IsLink(n.Inputs[name])}
-			if !in.Link {
-				in.Value = shorten(string(n.Inputs[name]), 60)
-			}
-			info.Inputs = append(info.Inputs, in)
-		}
-		out = append(out, info)
-	}
-	return out, nil
-}
-
-func shorten(s string, n int) string {
-	if r := []rune(s); len(r) > n {
-		return string(r[:n]) + "…"
-	}
-	return s
-}
-
 // validateWorkflow checks a workflow for media: the graph, the assignments (a known value, an existing
 // node and a literal input to put it in, no input fed twice), the output node and the frame settings.
 func validateWorkflow(where string, media Media, w Workflow) []error {
@@ -302,7 +263,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 			errs = append(errs, fmt.Errorf("%s: optional applies to reference_image only", at))
 		}
 	}
-	if !w.Has(ParamPrompt) {
+	if !w.Has(ParamPrompt) && w.Upscale == nil { // an upscale workflow without sampling has no prompt (validateUpscale)
 		errs = append(errs, fmt.Errorf("%s: no assignment of the prompt", where))
 	}
 	if _, ok := g[w.OutputNode]; !ok {
@@ -311,6 +272,10 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 	errs = append(errs, validateReferences(where, media, w)...)
 	errs = append(errs, validateReferenceMode(where, w, g)...)
 	errs = append(errs, validateSpeedModes(where, media, w, g)...)
+	errs = append(errs, validateRequiresNodes(where, w)...)
+	errs = append(errs, validateSampling(where, w, g)...)
+	errs = append(errs, validateExposed(where, w, g)...)
+	errs = append(errs, append(validatePromptWeight(where, w), validateUpscale(where, media, w, g)...)...)
 	if w.FPS < 0 || w.FPS > 240 || w.FramesStep < 0 || w.FramesStep > 64 || w.SizeMultiple < 0 || w.SizeMultiple > 128 {
 		errs = append(errs, fmt.Errorf("%s: fps must be within 0-240, frames_step within 0-64 and size_multiple within 0-128", where))
 	}

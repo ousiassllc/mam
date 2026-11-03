@@ -6,6 +6,8 @@
  "model": {
   "media": "image",
   "workflow": {
+   "prompt_weight": "weak",
+   "quality_presets": {"fast": {"steps": 12}, "high": {"steps": 30}},
    "graph": {
     "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "flux1-dev-fp8.safetensors"}},
     "12": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "NSFW_master_Flux.safetensors", "strength_model": 0.8, "model": ["4", 0]}},
@@ -28,7 +30,11 @@
     {"param": "reference_image", "node": "760", "input": "image"},
     {"param": "width", "node": "761", "input": "width"},
     {"param": "height", "node": "761", "input": "height"},
-    {"param": "reference_denoise", "node": "3", "input": "denoise"}
+    {"param": "reference_denoise", "node": "3", "input": "denoise"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
    ],
    "reference_mode": "img2img",
    "no_reference": [{"node": "3", "input": "latent_image", "value": ["5", 0]}],

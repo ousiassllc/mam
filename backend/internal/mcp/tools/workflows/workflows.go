@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -93,10 +94,11 @@ type Input struct {
 
 // Assignment says which input of which node a value of mam goes to.
 type Assignment struct {
-	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）"`
-	Node  string `json:"node" jsonschema:"ノード ID（get_workflow の nodes[].id）"`
-	Input string `json:"input" jsonschema:"そのノードの入力名。ほかのノードがつないでいる入力は使えない"`
-	Index int    `json:"index,omitempty" jsonschema:"reference_image だけ: 何枚目か（0 から、抜けなし）"`
+	Param string  `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, steps, cfg, sampler, scheduler, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）。steps・cfg は数値の入力、sampler・scheduler は文字の入力（KSampler の sampler_name・scheduler）に割り当てる。割り当てると run_workflow の sampling で上書きできる"`
+	Node  string  `json:"node" jsonschema:"ノード ID（get_workflow の nodes[].id）"`
+	Input string  `json:"input" jsonschema:"そのノードの入力名。ほかのノードがつないでいる入力は使えない"`
+	Index int     `json:"index,omitempty" jsonschema:"reference_image だけ: 何枚目か（0 から、抜けなし）"`
+	Ratio float64 `json:"ratio,omitempty" jsonschema:"steps だけ（0 と 1 の間）: ステップ数そのものではなく round(steps × ratio) を入れる。2 段のサンプラー（KSamplerAdvanced の end_at_step・start_at_step）の切り替えのステップに使う"`
 }
 
 // VideoCapabilities is what a video workflow can make.
@@ -114,12 +116,14 @@ type Settings struct {
 	FramesStep   int                `json:"frames_step,omitempty" jsonschema:"動画: 総フレーム数を n×step+1 にする（Wan は 4、LTX は 8）"`
 	SizeMultiple int                `json:"size_multiple,omitempty" jsonschema:"幅・高さを丸める倍数（省略: 16）"`
 	Video        *VideoCapabilities `json:"video,omitempty" jsonschema:"動画: 長さと解像度。省略すると既定（3・4・5 秒、480p・720p）"`
+	// ExposedInputs are the inputs the generation test screen offers as fields of their own.
+	ExposedInputs []exposed.Input `json:"exposed_inputs,omitempty" jsonschema:"画像: 画面に出す値（ノードの入力。生成テストのこだわりに入力欄として出て、リクエストの exposed に key <ノード ID>.<入力名> で値を渡せる）。割り当てが使っている入力・ほかのノードがつないでいる入力は選べない"`
 }
 
 func settingsOf(s localcfg.WorkflowSpec) Settings {
-	out := Settings{Assignments: make([]Assignment, 0, len(s.Assignments)), OutputNode: s.OutputNode, FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple}
+	out := Settings{Assignments: make([]Assignment, 0, len(s.Assignments)), OutputNode: s.OutputNode, FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple, ExposedInputs: s.ExposedInputs}
 	for _, a := range s.Assignments {
-		out.Assignments = append(out.Assignments, Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index})
+		out.Assignments = append(out.Assignments, Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index, Ratio: a.Ratio})
 	}
 	if v := s.Video; v != nil {
 		out.Video = &VideoCapabilities{Durations: v.Durations, Resolutions: v.Resolutions, NativeAudio: v.NativeAudio}
@@ -128,9 +132,9 @@ func settingsOf(s localcfg.WorkflowSpec) Settings {
 }
 
 func (s Settings) spec() localcfg.WorkflowSpec {
-	out := localcfg.WorkflowSpec{OutputNode: s.OutputNode, FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple}
+	out := localcfg.WorkflowSpec{OutputNode: s.OutputNode, FPS: s.FPS, FramesStep: s.FramesStep, SizeMultiple: s.SizeMultiple, ExposedInputs: s.ExposedInputs}
 	for _, a := range s.Assignments {
-		out.Assignments = append(out.Assignments, localcfg.Assignment{Param: localcfg.Param(a.Param), Node: a.Node, Input: a.Input, Index: a.Index})
+		out.Assignments = append(out.Assignments, localcfg.Assignment{Param: localcfg.Param(a.Param), Node: a.Node, Input: a.Input, Index: a.Index, Ratio: a.Ratio})
 	}
 	if v := s.Video; v != nil {
 		out.Video = &localcfg.VideoSettings{Durations: v.Durations, Resolutions: v.Resolutions, NativeAudio: v.NativeAudio}

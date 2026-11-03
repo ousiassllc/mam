@@ -41,6 +41,9 @@ type Response struct {
 	Model    string
 	// Fallback is true when the Agent's alternative target answered.
 	Fallback bool
+	// Usage is what the answering call used, as the provider reported it; nil when the provider did not say (a Response with
+	// no usage is "unknown", never zero tokens). The tokens of attempts that failed are not in it.
+	Usage *Usage
 }
 
 // Completer is what an Agent needs from the adapter. Client implements it.
@@ -48,10 +51,17 @@ type Completer interface {
 	Complete(ctx context.Context, agent Agent, req Request) (Response, error)
 }
 
-// Backend calls one provider's API. It returns the text of the answer. Errors that come from
+// Completion is what a Backend returns for one call: the text of the answer and the tokens the provider says it used (nil when the
+// provider does not report them).
+type Completion struct {
+	Text  string
+	Usage *Usage
+}
+
+// Backend calls one provider's API. It returns the answer. Errors that come from
 // the provider or the network MUST be *APIError so the Client can classify them.
 type Backend interface {
-	Complete(ctx context.Context, model string, req Request) (string, error)
+	Complete(ctx context.Context, model string, req Request) (Completion, error)
 }
 
 // ErrCircuitOpen marks a provider that was skipped because its circuit breaker is open.
@@ -168,9 +178,9 @@ func (c *Client) Complete(ctx context.Context, agent Agent, req Request) (Respon
 
 	var failures []error
 	for i, t := range targets {
-		text, err := c.callTarget(ctx, agent, t, req)
+		done, err := c.callTarget(ctx, agent, t, req)
 		if err == nil {
-			return Response{Text: text, Provider: t.Provider, Model: t.Model, Fallback: i > 0}, nil
+			return Response{Text: done.Text, Provider: t.Provider, Model: t.Model, Fallback: i > 0, Usage: done.Usage}, nil
 		}
 		if ctx.Err() != nil {
 			return Response{}, ctx.Err()
@@ -190,11 +200,11 @@ func (c *Client) Complete(ctx context.Context, agent Agent, req Request) (Respon
 
 // callTarget makes the call on one target with retries. The breaker of the provider is
 // consulted before every attempt: once it is open no further attempt is made.
-func (c *Client) callTarget(ctx context.Context, agent Agent, t Target, req Request) (string, error) {
+func (c *Client) callTarget(ctx context.Context, agent Agent, t Target, req Request) (Completion, error) {
 	b := c.breakers[t.Provider]
 	backend := c.backends[t.Provider]
 	if b == nil || backend == nil {
-		return "", fmt.Errorf("llm: provider %q is not available", t.Provider)
+		return Completion{}, fmt.Errorf("llm: provider %q is not available", t.Provider)
 	}
 	policy := resilience.Policy{MaxAttempts: c.cfg.Retry.MaxAttempts, BaseDelay: c.cfg.baseDelay(), MaxDelay: c.cfg.maxDelay()}
 	hooks := resilience.Hooks{
@@ -206,23 +216,23 @@ func (c *Client) callTarget(ctx context.Context, agent Agent, t Target, req Requ
 				"attempt", attempt, "wait", wait, "err", err)
 		},
 	}
-	text, err := resilience.Do(ctx, b, policy, hooks, func(ctx context.Context) (string, error) {
+	done, err := resilience.Do(ctx, b, policy, hooks, func(ctx context.Context) (Completion, error) {
 		return c.attempt(ctx, backend, t, req)
 	})
 	if errors.Is(err, resilience.ErrOpen) {
-		return "", ErrCircuitOpen
+		return Completion{}, ErrCircuitOpen
 	}
-	return text, err
+	return done, err
 }
 
-func (c *Client) attempt(ctx context.Context, backend Backend, t Target, req Request) (string, error) {
+func (c *Client) attempt(ctx context.Context, backend Backend, t Target, req Request) (Completion, error) {
 	callCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout())
 	defer cancel()
-	text, err := backend.Complete(callCtx, t.Model, req)
+	done, err := backend.Complete(callCtx, t.Model, req)
 	if err != nil && ctx.Err() == nil && errors.Is(callCtx.Err(), context.DeadlineExceeded) {
-		return "", fmt.Errorf("%w after %s: %w", ErrTimeout, c.cfg.Timeout(), err)
+		return Completion{}, fmt.Errorf("%w after %s: %w", ErrTimeout, c.cfg.Timeout(), err)
 	}
-	return text, err
+	return done, err
 }
 
 func retryAfter(err error) time.Duration {

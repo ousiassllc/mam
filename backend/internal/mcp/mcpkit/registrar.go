@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 
@@ -29,9 +30,12 @@ import (
 // them next to the router: router/settingsroutes.Services). A nil field is a section the app does not
 // have (Update in the headless server); its tools answer "unavailable".
 type Settings struct {
-	LLM    *llmassign.Service
-	Models *modelsettings.Service
-	Update *appupdate.Service
+	LLM *llmassign.Service
+	// LLMModels lists the models of a provider (list_llm_models) and tells set_llm_assignment which names are unknown. Nil:
+	// no list tool, and no warning.
+	LLMModels *llmmodels.Service
+	Models    *modelsettings.Service
+	Update    *appupdate.Service
 	// ChatGPT is the ChatGPT sign-in (login, logout, status and the image generation switch).
 	ChatGPT *chatgpt.Service
 	// Audio is the choice of the voice and lip-sync providers (audio.json).

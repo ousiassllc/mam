@@ -1,0 +1,157 @@
+{
+ "id": "txt2img-sdxl-clipskip2",
+ "label": "SDXL（clip skip 2）: テキストから画像",
+ "media": "image",
+ "description": "ComfyUI 標準ノードだけの SDXL 系チェックポイントのワークフロー（sd_xl_base_1.0.safetensors）。CLIPSetLastLayer で clip skip 2 にする（Pony Diffusion とその派生は、作者が clip skip 2 で読み込むよう求める）。チェックポイント名は使うモデルに合わせて変える。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "prompt_weight": "supported",
+   "quality_presets": {"fast": {"steps": 15}, "high": {"steps": 40}},
+   "graph": {
+    "4": {
+     "class_type": "CheckpointLoaderSimple",
+     "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+     }
+    },
+    "6": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "12",
+       0
+      ]
+     }
+    },
+    "7": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "12",
+       0
+      ]
+     }
+    },
+    "8": {
+     "class_type": "VAEDecode",
+     "inputs": {
+      "samples": [
+       "3",
+       0
+      ],
+      "vae": [
+       "4",
+       2
+      ]
+     }
+    },
+    "9": {
+     "class_type": "SaveImage",
+     "inputs": {
+      "filename_prefix": "mam/image",
+      "images": [
+       "8",
+       0
+      ]
+     }
+    },
+    "5": {
+     "class_type": "EmptyLatentImage",
+     "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+     }
+    },
+    "3": {
+     "class_type": "KSampler",
+     "inputs": {
+      "seed": 0,
+      "steps": 25,
+      "cfg": 7,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+       "4",
+       0
+      ],
+      "positive": [
+       "6",
+       0
+      ],
+      "negative": [
+       "7",
+       0
+      ],
+      "latent_image": [
+       "5",
+       0
+      ]
+     }
+    },
+    "12": {
+     "class_type": "CLIPSetLastLayer",
+     "inputs": {
+      "stop_at_clip_layer": -2,
+      "clip": [
+       "4",
+       1
+      ]
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "prompt",
+     "node": "6",
+     "input": "text"
+    },
+    {
+     "param": "negative_prompt",
+     "node": "7",
+     "input": "text"
+    },
+    {
+     "param": "seed",
+     "node": "3",
+     "input": "seed"
+    },
+    {
+     "param": "width",
+     "node": "5",
+     "input": "width"
+    },
+    {
+     "param": "height",
+     "node": "5",
+     "input": "height"
+    },
+    {
+     "param": "steps",
+     "node": "3",
+     "input": "steps"
+    },
+    {
+     "param": "cfg",
+     "node": "3",
+     "input": "cfg"
+    },
+    {
+     "param": "sampler",
+     "node": "3",
+     "input": "sampler_name"
+    },
+    {
+     "param": "scheduler",
+     "node": "3",
+     "input": "scheduler"
+    }
+   ],
+   "output_node": "9"
+  }
+ }
+}

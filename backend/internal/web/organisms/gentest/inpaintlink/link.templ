@@ -1,0 +1,13 @@
+package inpaintlink
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// Links are "redraw part of this" and, when this picture is itself a redraw, the link back to the source.
+templ Links(inpaintURL, redrawFrom string) {
+	if inpaintURL != "" {
+		@atoms.ButtonLink(atoms.TonePrimary, "一部だけ描き直す", templ.SafeURL(inpaintURL), templ.Attributes{"data-testid": "gt-inpaint"})
+	}
+	if redrawFrom != "" {
+		@atoms.ButtonLink(atoms.ToneNeutral, "元の結果", templ.SafeURL(redrawFrom), templ.Attributes{"data-testid": "gt-inpaint-source"})
+	}
+}

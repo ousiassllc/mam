@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/tierform"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
@@ -26,7 +27,9 @@ func (h Handlers) Estimate(c *gin.Context) {
 	if err == nil {
 		if f.refs, err = refform.Stage(f.refs, c.Request.MultipartForm, h.stage); err == nil {
 			if req, err = f.request(); err == nil {
-				est, err = h.Svc.Estimate(ctx, req)
+				if req, err = tierform.Resolve(ctx, h.Svc, f.tier, req); err == nil { // the easy tier's model is its intent's
+					est, err = h.Svc.Estimate(ctx, req)
+				}
 			}
 		}
 	}

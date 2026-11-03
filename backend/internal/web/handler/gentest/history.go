@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -121,7 +122,7 @@ func (h Handlers) Detail(c *gin.Context) {
 		gtshare.Render(c, status, pages.GenerationResultPage(middleware.CSRFToken(c), view.Detail{Message: view.Message{Error: msg}}))
 		return
 	}
-	gtshare.Render(c, http.StatusOK, pages.GenerationResultPage(middleware.CSRFToken(c), h.detail(ctx, d, view.ImportForm{})))
+	gtshare.Render(c, http.StatusOK, pages.GenerationResultPage(middleware.CSRFToken(c), h.detail(ctx, d, importbox.Form{})))
 }
 
 // serveFile answers with a stored file as the media routes do: the stored type, inside a sandbox so that the file cannot run

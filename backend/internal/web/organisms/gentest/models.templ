@@ -49,6 +49,14 @@ templ modelCard(m ModelChoice) {
 		data-reference-mode={ m.RefMode }
 		data-reference-roles={ strings.Join(m.RefRoles, " ") }
 		data-supports-lora={ boolText(m.CanLoRA) }
+		data-sampling={ m.Use.Names() }
+		data-sampling-locked={ boolText(m.Use.Locked) }
+		data-supports-seed={ boolText(m.Use.Seed) }
+		data-default-steps={ strconv.FormatFloat(m.Use.StepsDefault, 'f', -1, 64) }
+		data-min-steps={ strconv.Itoa(max(m.Use.StepsMin, 1)) }
+		data-default-cfg={ strconv.FormatFloat(m.Use.CFGDefault, 'f', -1, 64) }
+		data-prompt-weight={ m.Weight }
+		data-prompt-weight-text={ m.WeightText }
 		data-commercial={ m.Answer.Answer() }
 	>
 		<label class="relative block cursor-pointer has-[:disabled]:cursor-not-allowed">

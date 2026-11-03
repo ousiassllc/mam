@@ -28,6 +28,10 @@ func (br *batchRun) execute(ctx context.Context, r gentestrepo.Result) {
 	s := br.s
 	var p record.ResultParams
 	_ = json.Unmarshal(r.Params, &p)
+	if s.HiddenWith != nil && s.HiddenWith(r.Model, p.Exposed) { // the values name a file of an adult model and the gate is closed
+		s.settle(ctx, r.ID, gentestrepo.StatusFailed, ReasonHidden, nil)
+		return
+	}
 	var (
 		file, mime string
 		size       int64
@@ -75,12 +79,24 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	roles := modelcatalog.ReferenceCapsOf(br.s.Adapter.Config(), domain.ModelName(r.Model)).Roles
 	for _, in := range br.inputsOf(r) {
 		role, strength := refs.InputOf(roles, in.role, in.strength)
-		req.Inputs = append(req.Inputs, in.in)
+		req.Inputs = append(req.Inputs, in.forRole(role))
 		req.Options.Refs = append(req.Options.Refs, localcfg.RefOption{Role: role, Strength: strength})
 	}
 	if p.LoRA != nil {
 		sent := p.LoRA.Sent()
 		req.Options.LoRA = &sent
+	}
+	if p.Sampling != nil {
+		req.Options.Sampling = *p.Sampling
+	}
+	req.Options.Exposed = p.Exposed
+	if p.Inpaint != nil {
+		if in, ok := br.inputs[p.Inpaint.MaskInput]; ok {
+			req.Inpaint = &modeladapter.Inpaint{Mask: in.in, Denoise: p.Inpaint.Denoise}
+		}
+	}
+	if p.Upscale != nil {
+		req.Options.UpscaleScale = float64(p.Upscale.Scale)
 	}
 	out, err := direct.Image(ctx, br.s.Adapter, domain.ModelName(r.Model), req)
 	if err != nil {
@@ -99,6 +115,9 @@ func (br *batchRun) video(ctx context.Context, r gentestrepo.Result, p record.Re
 	}
 	if r.NegativeMode == gentestrepo.NegativeField {
 		req.NegativePrompt = sentNegative(r, p)
+	}
+	if p.Sampling != nil {
+		req.Sampling = *p.Sampling
 	}
 	for _, in := range br.inputsOf(r) {
 		img := in.in

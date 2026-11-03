@@ -193,12 +193,12 @@ func validateVideoSettings(where string, v *VideoSettings) []error {
 }
 
 // IDs are the identifiers (ID) of the models of the given media, in key order. A model whose endpoint is
-// not registered is left out.
+// not registered is left out, and so is an upscale workflow: it is no model to give a prompt to (the generation test lists those apart).
 func IDs(endpoints map[string]Endpoint, models map[string]Model, media Media) []string {
 	var ids []string
 	for _, key := range slices.Sorted(maps.Keys(models)) {
 		endpoint, name, ok := SplitKey(key)
-		if ep, registered := endpoints[endpoint]; ok && registered && models[key].Media == media {
+		if ep, registered := endpoints[endpoint]; ok && registered && models[key].Media == media && !models[key].IsUpscale() {
 			ids = append(ids, ID(ep.Kind, endpoint, name))
 		}
 	}

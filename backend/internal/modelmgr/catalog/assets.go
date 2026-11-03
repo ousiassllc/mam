@@ -44,7 +44,7 @@ const (
 )
 
 // Resource is a weight or a dependency of a runtime that the runtime needs on disk, pinned: a file (Dest) or the files of an archive
-// (Format and Members). URL is a Hugging Face file at a commit; SHA256 and Size are those of the downloaded file (the archive for an
+// (Format and Members). URL is a Hugging Face file at a commit, a GitHub release asset or a GitHub file at a commit; SHA256 and Size are those of the downloaded file (the archive for an
 // archive asset). Dest is relative to the runtime's environment directory and slash separated. Source and License (an ID of the
 // ResourceSet's licenses) are what the screen shows next to it. Required: the runtime is not started without it.
 type Resource struct {

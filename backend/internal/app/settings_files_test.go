@@ -31,6 +31,20 @@ func TestSettingsFileToLoad_AMissingDefaultFileSelectsTheDefaults(t *testing.T) 
 	require.NoError(t, err)
 }
 
+// The model list of a vendor is asked at the base_url the Agents' calls use, so that the API key never goes to the vendor's
+// own origin when llm.json points somewhere else.
+func TestLLMBaseURLs_FollowLLMJSON(t *testing.T) {
+	cfg := testConfig(t)
+	urls := llmBaseURLs(cfg, slog.New(slog.DiscardHandler))
+	assert.Equal(t, llm.DefaultConfig().Providers[llm.ProviderOpenAI].BaseURL, urls[llm.ProviderOpenAI], "no llm.json: the vendor's own")
+
+	path, _ := cfg.LLMSettingsFile()
+	require.NoError(t, os.WriteFile(path, []byte(`{"providers":{"openai":{"base_url":"http://gateway.internal:8080"}}}`), 0o600))
+	urls = llmBaseURLs(cfg, slog.New(slog.DiscardHandler))
+	assert.Equal(t, "http://gateway.internal:8080", urls[llm.ProviderOpenAI])
+	assert.Equal(t, llm.DefaultConfig().Providers[llm.ProviderAnthropic].BaseURL, urls[llm.ProviderAnthropic], "the others keep the default")
+}
+
 func TestSettingsFileToLoad_AnExistingDefaultFileOverridesTheDefaults(t *testing.T) {
 	cfg := testConfig(t)
 	llmPath, pinned := cfg.LLMSettingsFile()

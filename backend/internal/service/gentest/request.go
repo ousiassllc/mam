@@ -6,6 +6,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
@@ -23,6 +25,8 @@ const (
 	FromReferenceItem = "reference_item"
 	// FromHistory: the file of a succeeded image result of the history (the result's ID).
 	FromHistory = "history"
+	// FromPoseLibrary: a pose picture of the pose library (poses.Library; ID is the picture's ID, "std_P001_front"), no ProjectID.
+	FromPoseLibrary = "pose_library"
 )
 
 // PromptInput is a prompt with its optional negative prompt.
@@ -33,7 +37,7 @@ type PromptInput struct {
 
 // RefInput is an input image of a batch and the role it plays. Role is reference (the whole picture: a reference image of an
 // image model, a free reference of a video model), face, style or edit (image models that take them, see
-// modelcatalog.Info.ReferenceRoles), first_frame or last_frame (video). Strength (0..1, nil: localcfg.DefaultReferenceStrength)
+// modelcatalog.Info.ReferenceRoles), first_frame or last_frame (video). Strength (0..1, nil: localcfg.DefaultStrengthOf(role))
 // is how strongly an image model shows the reference.
 type RefInput struct {
 	Source    string   `json:"source"`
@@ -72,6 +76,21 @@ type Request struct {
 	LoRA *LoRAInput `json:"lora,omitempty"`
 	// SpeedMode is how a video model samples (modelcatalog.VideoCaps.SpeedModes: "fast", "standard"); "" is each model's default.
 	SpeedMode string `json:"speed_mode,omitempty"`
+	// Seed fixes the seed (0..SeedMax): the n-th result of every model and prompt takes Seed+n-1, so that the results of the models can
+	// be compared and any one can be made again. Nil takes a new random seed for every result. A model without a seed ignores it.
+	Seed *int64 `json:"seed,omitempty"`
+	// Sampling overrides the steps, cfg, sampler and scheduler of the models that take them (modelcatalog.Info.Sampling); the
+	// others, and the steps and cfg of a model whose speed mode owns them, ignore it with a warning. The zero value overrides nothing.
+	Sampling sampling.Settings `json:"sampling,omitzero"`
+	// Quality is the screen's "品質" (fast / standard / high; "" is standard): where Sampling names no steps or cfg, a model takes the ones of its
+	// quality preset (modelcatalog.Info.Sampling.Presets). Standard is the model's own values, so a request without it runs as it always did.
+	Quality sampling.Quality `json:"quality,omitempty"`
+	// Exposed are the values of the models' exposed inputs (modelcatalog.Info.Exposed), by key "<node>.<input>"; a model without that input ignores it with a warning.
+	Exposed map[string]any `json:"exposed,omitempty"`
+	// Mask is the inpaint mask (white redraws, black keeps), in the same shape as a reference. Nil: not a partial redraw.
+	Mask *RefInput `json:"mask,omitempty"`
+	// Denoise is the redraw strength (above 0 through 1). Nil uses each model's template default (modelcatalog.Info.DenoiseDefault).
+	Denoise *float64 `json:"denoise,omitempty"`
 	// TranslateToEnglish translates the prompts and the negative prompts that are not English with the Reasoning LLM before
 	// they are sent (once per run; English ones are left as they are). A failed translation stops the run. The zero value is
 	// off: DefaultTranslate is what the screen and the MCP tools ask for when the caller does not say.
@@ -132,6 +151,15 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 		return r, nil, err
 	}
 	if err := refs.CheckAvoidPose(r.Media, r.AvoidReferencePose); err != nil {
+		return r, nil, err
+	}
+	if r, err = withSettings(r, models); err != nil {
+		return r, nil, err
+	}
+	if err := exposedreq.Refuse(s.HiddenWith, models, r.Exposed); err != nil {
+		return r, nil, err
+	}
+	if err := checkInpaint(r, models); err != nil {
 		return r, nil, err
 	}
 	if n := len(models) * len(r.Prompts) * r.Count; n > s.maxItems() {
@@ -233,13 +261,31 @@ func checkSource(ref RefInput) error {
 		return gterr.Invalid("入力画像の ID がありません")
 	}
 	switch ref.Source {
-	case FromStaged, FromHistory:
+	case FromStaged, FromHistory, FromPoseLibrary:
 	case FromProjectAsset, FromReferenceItem:
 		if ref.ProjectID == "" {
 			return gterr.Invalid("プロジェクトの画像には project_id が要ります")
 		}
 	default:
-		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history）", ref.Source)
+		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library）", ref.Source)
 	}
 	return nil
+}
+
+// withSettings checks the sampling values, the quality and the values of the exposed inputs (against the models that are asked for).
+func withSettings(r Request, models []modelcatalog.Info) (Request, error) {
+	var err error
+	if r.Sampling, err = checkSampling(r); err != nil {
+		return r, err
+	}
+	for _, m := range models {
+		if err := r.Sampling.ValidateFor(m.Sampling); err != nil {
+			return r, gterr.Invalid("%s の詳細設定が正しくありません: %v", m.Label, err)
+		}
+	}
+	if r.Quality, err = checkQuality(r.Quality); err != nil {
+		return r, err
+	}
+	r.Exposed, err = exposedreq.Check(models, r.Exposed)
+	return r, err
 }

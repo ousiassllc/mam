@@ -77,6 +77,7 @@
 | `IconSeries` | `users` | 〃 Series（`sidenav.Views` が SeriesID を持つとき） | #915 |
 | `IconPanelClose` | `panel-left-close` | 〃 たたむボタン | #915 |
 | `IconPanelOpen` | `panel-left-open` | 〃 開くボタン | #915 |
+| `IconJobs` | `list-checks` | 左メニュー: ジョブ | #980 |
 | （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。
@@ -85,7 +86,7 @@
 
 ## 3. `molecules.ToolCard`（カード）
 
-2 つの画面で使う、リンクとしてのカード。**カードの中にボタンもリンクも入れない**（カード全体が 1 つの `<a>`）。
+設定画面（概要・「ローカル・代替モデル」）で使う、リンクとしてのカード（トップ画面のツールのカードは #978 で外した）。**カードの中にボタンもリンクも入れない**（カード全体が 1 つの `<a>`）。
 
 テンプレートは `ToolCardItem(c ToolCard)`（`<li>`）、状態の断片は `ToolStatus([]StatusLine)`。
 
@@ -97,7 +98,7 @@ type ToolCard struct {
     Title       string        // リンクの名前になる
     Description string        // 1 行の説明（2 行までに折り返す）
     CTA         string        // 既定 "開く"。見た目だけ（aria-hidden）
-    StatusURL   string        // 空でなければ、状態を hx-get で後から読む（トップ画面）
+    StatusURL   string        // 空でなければ、状態を hx-get で後から読む（モデルマネージャーのカード）
     // Status []StatusLine は #847 が足す（StatusURL が空のときの、サーバーで組み立てた状態。設定の概要）。#846 は StatusURL だけ
 }
 type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge の文字（状態を言葉で言う）。実装は #846
@@ -211,6 +212,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.14 | 2026-10-29 | §9.1 に、ポーリングで差し替わる範囲のカードの「?」のパネルを範囲の外に置き、差し替えても開いたままにする例外を足した（`Card.HelpPanelElsewhere`・`help.ts` の `htmx:afterSettle`）。§9.2 の `Card.Help` の行を合わせた | Issue #866。オーナーの決定（案 A） |
 | 0.15 | 2026-11-01 | §10 の生成テストの行に、作成フォームの区画の説明・モデルごとの性質と選べない理由・パラメーター・見積り・実行の補足を足した | Issue #906 |
 | 0.16 | 2026-11-02 | §1 の表に、スライダーの共通の見た目（`slider.css`・`--fill`・`components/slider/`）を足した。`app.css` の説明に `slider.css` の import を足した | Issue #955 |
+| 0.17 | 2026-11-03 | §10 の生成テストの行に、かんたんのプロンプトの見出しに足した「プロンプトのウェイト」の「?」（`help.Row`。`gentestadv.WeightIntro`）を足した | Issue #977（ステージ 2） |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
@@ -287,7 +289,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 設定: ローカル・代替モデル | 分類の説明（`local.Description`） | h2・固定の注意・接続先のカード・エラー |
 | 設定: MCP サーバー | 分類の説明（`mcp.Description`） | h2・待ち受け先・トークンの表・エラー |
 | 設定: 概要 | 分類の説明 | h2・カード（各分類の状態） |
-| 生成テスト（[gentest-screen.md](gentest-screen.md)） | 各ページのリード文（h1 の下）。作成フォームでは、モデル・プロンプト・入力画像の区画の説明、モデルごとの性質（シード・ネガティブ・参照画像）と選べない理由、パラメーター・見積り・実行の補足（Issue #906） | h1・モデルのカード（名前・出どころ・単価・選べないバッジ）・フォーム・結果・エラー |
+| 生成テスト（[gentest-screen.md](gentest-screen.md)） | （Issue #977 ステージ 2: かんたんのプロンプトの見出しにも「プロンプトのウェイト」の「?」を足した。書き方とボタンの使い方だけで、モデルごとの効き方は語を選んだときのバーに出る。[gentest-tiers.md](gentest-tiers.md) §4）各ページのリード文（h1 の下）。作成フォームでは、モデル・プロンプト・入力画像の区画の説明、モデルごとの性質（シード・ネガティブ・参照画像）と選べない理由、パラメーター・見積り・実行の補足（Issue #906） | h1・モデルのカード（名前・出どころ・単価・選べないバッジ）・フォーム・結果・エラー |
 | プロジェクトの設定 | Production Template・Quality Policy・ディスク・Brand / Safety Constraints・Brand Templates・プロジェクトバンドルの区画の説明 | h2・フォーム・状態・結果 |
 
 初回ガイド（`organisms/onboarding/`。[onboarding-screen.md](onboarding-screen.md)）は #866 の対象外で、変えない。ただし「API キーとログイン」の区画（`credentials.Section`・`chatgpt.SectionIf`）を共有しているため、そこに入る「?」は初回ガイドにも出る（同じ部品・同じ動き。§9）。

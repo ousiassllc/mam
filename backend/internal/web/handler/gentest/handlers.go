@@ -13,7 +13,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/exportscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/inpaintscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/posescreen"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/recipescreen"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -27,6 +30,7 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	h := Handlers{Svc: svc}
 	engine.GET(paths.GenerationTest(), h.Page)
 	engine.GET(paths.GenerationTestPart("form"), h.Form)
+	engine.GET(paths.GenerationTestPart("easy-pick"), h.EasyPick)
 	engine.GET(paths.GenerationTestPart("prompt-row"), h.PromptRow)
 	engine.GET(paths.GenerationTestPart("picker"), h.Picker)
 	engine.GET(paths.GenerationTestPart("ref-row"), h.RefRow)
@@ -41,10 +45,14 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.GET(paths.GenerationTestPart("results", ":id", "file"), h.ResultFile)
 	engine.POST(paths.GenerationTestPart("results", ":id", "favorite"), h.Favorite)
 	engine.POST(paths.GenerationTestPart("results", ":id", "import"), h.Import)
+	engine.POST(paths.GenerationTestPart("results", ":id", "upscale"), h.Upscale)
 	engine.DELETE(paths.GenerationTestPart("results", ":id"), h.DeleteResult)
 	engine.GET(paths.GenerationTestPart("inputs", ":id", "file"), h.InputFile)
 
+	recipescreen.Register(engine, svc, RequestOfForm(svc)) // #977
+	posescreen.Register(engine, svc)
 	matchscreen.Register(engine, svc)
+	inpaintscreen.Register(engine, svc)
 	exportscreen.Register(engine, svc)
 
 	engine.GET(paths.GenerationTestPrompts(), h.Prompts)

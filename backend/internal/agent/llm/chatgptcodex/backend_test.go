@@ -25,9 +25,9 @@ type fixed struct {
 	text  string
 }
 
-func (f *fixed) Complete(context.Context, string, llm.Request) (string, error) {
+func (f *fixed) Complete(context.Context, string, llm.Request) (llm.Completion, error) {
 	f.calls.Add(1)
-	return f.text, nil
+	return llm.Completion{Text: f.text}, nil
 }
 
 // rig is the whole path: an Agent of the Client, the backend, the Codex service and a fake app-server.

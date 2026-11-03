@@ -17,4 +17,6 @@ const (
 	RoleFace        = gentestrepo.RoleFace
 	RoleStyle       = gentestrepo.RoleStyle
 	RoleEdit        = gentestrepo.RoleEdit
+	RoleMask        = gentestrepo.RoleMask
+	RolePose        = gentestrepo.RolePose
 )

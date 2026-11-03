@@ -1,0 +1,40 @@
+{
+ "id": "inpaint-sdxl",
+ "label": "SDXL: 一部だけ描き直す",
+ "media": "image",
+ "description": "元画像のマスク（白＝描き直す、黒＝残す）の内側だけを SDXL で描き直し、ImageCompositeMasked で外側は元画像のままにする。標準ノードだけ。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "prompt_weight": "supported",
+   "reference_mode": "inpaint",
+   "graph": {
+    "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "sd_xl_base_1.0.safetensors"}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["4", 1]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["4", 1]}},
+    "10": {"class_type": "LoadImage", "inputs": {"image": "source.png"}},
+    "20": {"class_type": "LoadImage", "inputs": {"image": "mask.png"}},
+    "21": {"class_type": "ImageToMask", "inputs": {"image": ["20", 0], "channel": "red"}},
+    "11": {"class_type": "VAEEncode", "inputs": {"pixels": ["10", 0], "vae": ["4", 2]}},
+    "12": {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["11", 0], "mask": ["21", 0]}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 25, "cfg": 7, "sampler_name": "dpmpp_2m", "scheduler": "karras", "denoise": 0.75, "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["12", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+    "13": {"class_type": "ImageCompositeMasked", "inputs": {"destination": ["10", 0], "source": ["8", 0], "x": 0, "y": 0, "resize_source": false, "mask": ["21", 0]}},
+    "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "mam/image", "images": ["13", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "reference_image", "node": "10", "input": "image", "index": 0},
+    {"param": "mask_image", "node": "20", "input": "image"},
+    {"param": "denoise", "node": "3", "input": "denoise"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "9"
+  }
+ }
+}

@@ -57,8 +57,8 @@ func (u usageLimitClient) Complete(ctx context.Context, agent llm.Agent, req llm
 
 type failingBackend struct{ reason string }
 
-func (b failingBackend) Complete(context.Context, string, llm.Request) (string, error) {
-	return "", &llm.APIError{Provider: llm.ProviderChatGPTSubscription, Status: 429, Permanent: true, Notice: b.reason}
+func (b failingBackend) Complete(context.Context, string, llm.Request) (llm.Completion, error) {
+	return llm.Completion{}, &llm.APIError{Provider: llm.ProviderChatGPTSubscription, Status: 429, Permanent: true, Notice: b.reason}
 }
 
 type answerBackend struct {
@@ -66,9 +66,9 @@ type answerBackend struct {
 	agent llm.Agent
 }
 
-func (b answerBackend) Complete(ctx context.Context, _ string, req llm.Request) (string, error) {
+func (b answerBackend) Complete(ctx context.Context, _ string, req llm.Request) (llm.Completion, error) {
 	res, err := b.next.Complete(ctx, b.agent, req)
-	return res.Text, err
+	return llm.Completion{Text: res.Text}, err
 }
 
 func TestHandle_WhenEveryProviderFailedTheChatShowsTheCauseTheProviderGave(t *testing.T) {

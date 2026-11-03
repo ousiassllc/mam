@@ -16,6 +16,15 @@ const (
 	ModeEdit ReferenceMode = "edit"
 	// ModeImg2Img is a model that starts the sampling from one reference image: the denoise tells how far the result leaves it.
 	ModeImg2Img ReferenceMode = "img2img"
+	// ModeControlNet is a ControlNet workflow: the one reference image is the control image (a canny edge map, an OpenPose skeleton, a depth
+	// map: made by the user, mam runs no preprocessor), and the strength of the reference is the ControlNet's strength. The workflow
+	// cannot run without it.
+	ModeControlNet ReferenceMode = "controlnet"
+	// ModeIPAdapter is an IP-Adapter workflow (a custom node: Workflow.RequiresNodes): the one reference image shows the look, the style or the
+	// person to carry over, and the strength of the reference is the adapter's weight. It cannot run without it.
+	ModeIPAdapter ReferenceMode = "ipadapter"
+	// ModeInpaint redraws the white of a mask; the rest of the picture stays the source.
+	ModeInpaint ReferenceMode = "inpaint"
 )
 
 // Override sets one input of one node of the graph: Value is a JSON literal or a link ["<node id>", <output index>].
@@ -43,7 +52,7 @@ func (m Model) ReferenceCaps() ReferenceCaps {
 	}
 	caps := ReferenceCaps{Mode: w.ReferenceMode, Max: w.Count(ParamReferenceImage), Roles: []string{RoleWhole}}
 	if caps.Mode == ModeEdit {
-		caps.Roles = []string{RoleWhole, RoleFace, RoleStyle, RoleEdit}
+		caps.Roles = []string{RoleWhole, RoleFace, RoleStyle, RoleEdit, RolePose}
 	}
 	return caps
 }
@@ -55,15 +64,23 @@ func (m Model) SupportsLoRA() bool { return m.Workflow != nil && m.Workflow.Lora
 func validateReferenceMode(where string, w Workflow, g Graph) []error {
 	var errs []error
 	switch w.ReferenceMode {
-	case "", ModeEdit, ModeImg2Img:
+	case "", ModeEdit, ModeImg2Img, ModeInpaint, ModeControlNet, ModeIPAdapter:
 	default:
-		errs = append(errs, fmt.Errorf("%s: reference_mode must be edit or img2img", where))
+		errs = append(errs, fmt.Errorf("%s: reference_mode must be edit, img2img, inpaint, controlnet or ipadapter", where))
+	}
+	if w.ReferenceMode == ModeInpaint {
+		errs = append(errs, inpaintErrs(where, w, g)...)
 	}
 	if w.ReferenceMode != "" && !w.Has(ParamReferenceImage) {
 		errs = append(errs, fmt.Errorf("%s: reference_mode needs a reference_image assignment", where))
 	}
-	if w.ReferenceMode == ModeImg2Img && w.Count(ParamReferenceImage) != 1 {
-		errs = append(errs, fmt.Errorf("%s: an img2img workflow takes exactly one reference image", where))
+	if single := w.ReferenceMode == ModeImg2Img || w.ReferenceMode == ModeControlNet || w.ReferenceMode == ModeIPAdapter; single && w.Count(ParamReferenceImage) != 1 {
+		errs = append(errs, fmt.Errorf("%s: a %s workflow takes exactly one reference image", where, w.ReferenceMode))
+	}
+	if w.ReferenceMode == ModeControlNet || w.ReferenceMode == ModeIPAdapter {
+		if len(w.NoReference) > 0 || slices.ContainsFunc(w.Assignments, func(a Assignment) bool { return a.Optional }) {
+			errs = append(errs, fmt.Errorf("%s: a %s workflow cannot run without its reference image (no no_reference, no optional)", where, w.ReferenceMode))
+		}
 	}
 	if w.ReferenceDenoiseMin < 0 || w.ReferenceDenoiseMin >= 1 {
 		errs = append(errs, fmt.Errorf("%s: reference_denoise_min must be within 0 and below 1", where))
@@ -88,6 +105,7 @@ const (
 	RoleFace  = "face"      // the face (identity) only: hair, clothes and pose follow the prompt
 	RoleStyle = "style"     // the painting style and mood only: the content follows the prompt
 	RoleEdit  = "edit"      // the picture the prompt edits
+	RolePose  = "pose"      // the body pose and camera angle only (a mannequin or a pose chart): the look, clothes and background follow the prompt
 )
 
 // DefaultReferenceStrength is the strength of a reference that names none: strong enough to show, weak enough to leave the
@@ -96,6 +114,21 @@ const (
 	DefaultReferenceStrength = 0.7
 	DefaultLoRAStrength      = 0.4
 )
+
+// DefaultFaceReferenceStrength is the strength of a reference of RoleFace that names none (#960). An editing workflow keeps a
+// reference in the conditioning for the first s of the steps only (spec/architecture/model-adapters.md), and a face is drawn in
+// the finer, later steps: at 0.7 the last 30% of them no longer see it, which is where a face is told from another. A face does
+// not carry the pose, the clothes or the background (the role sentence says so), so a longer stay costs the prompt less than it
+// does for the whole picture. The effect on the likeness is not measured yet.
+const DefaultFaceReferenceStrength = 0.9
+
+// DefaultStrengthOf is the strength of a reference of the role that names none.
+func DefaultStrengthOf(role string) float64 {
+	if role == RoleFace {
+		return DefaultFaceReferenceStrength
+	}
+	return DefaultReferenceStrength
+}
 
 // AvoidPoseNegative is added to the negative prompt when the user asks that a reference's pose and composition not be copied.
 const AvoidPoseNegative = "same pose as reference, same composition as reference, studio portrait"
@@ -107,28 +140,34 @@ type LoRA struct {
 }
 
 // RefOption is what a request says about one reference image: its role (RoleWhole when empty) and its strength, how strongly it
-// shows in the result (0..1; 0 is DefaultReferenceStrength).
+// shows in the result (0..1; 0 is DefaultStrengthOf the role).
 type RefOption struct {
 	Role     string
 	Strength float64
 }
 
-// StrengthOrDefault is the strength to use: 0 (not given) and NaN are the default, anything else is kept within 0..1.
+// StrengthOrDefault is the strength to use: 0 (not given) and NaN are the default of the role, anything else is kept within 0..1.
 func (o RefOption) StrengthOrDefault() float64 {
 	switch {
 	case math.IsNaN(o.Strength) || o.Strength <= 0:
-		return DefaultReferenceStrength
+		return DefaultStrengthOf(o.Role)
 	case o.Strength > 1:
 		return 1
 	}
 	return o.Strength
 }
 
-// ImageOptions are the parts of an image request that only a workflow with reference images or a LoRA uses: Refs is one entry
+// ImageOptions are the parts of an image request that only a workflow with reference images, a LoRA or sampling values uses: Refs is one entry
 // for each input image of the request, in its order (a missing entry is the whole picture at the default strength).
 type ImageOptions struct {
 	Refs []RefOption
 	LoRA *LoRA
+	// Sampling overrides the steps, cfg, sampler and scheduler of a workflow that takes them.
+	Sampling SamplingSettings
+	// UpscaleScale is the scale an upscale workflow (Workflow.Upscale) enlarges the picture by (0: the model's own factor).
+	UpscaleScale float64
+	// Exposed are the values of the workflow's exposed inputs (Workflow.ExposedInputs), by exposed.Input.Key; the others keep the graph's value.
+	Exposed map[string]any
 }
 
 // Ref is the option of the i-th input image.
@@ -152,6 +191,41 @@ func validateReferences(where string, media Media, w Workflow) []error {
 	}
 	if media == MediaVideo && w.Has(ParamLastFrame) && !w.Has(ParamFirstFrame) {
 		errs = append(errs, fmt.Errorf("%s: a last_frame assignment needs a first_frame assignment", where))
+	}
+	return errs
+}
+
+// ParamReferenceStrength is how strongly the first reference image works, as the request gives it (0..1; the default when it names none):
+// the strength of a ControlNet or an IP-Adapter node. It is image-only and goes into a float input.
+const ParamReferenceStrength Param = "reference_strength"
+
+// ParamMaskImage is the inpaint mask. White redraws; black stays.
+const ParamMaskImage Param = "mask_image"
+
+// ParamDenoise is the inpaint strength. The graph's literal stays when the request omits it.
+const ParamDenoise Param = "denoise"
+
+func init() { imageParams = append(imageParams, ParamMaskImage, ParamDenoise) }
+
+func inpaintErrs(where string, w Workflow, g Graph) (errs []error) {
+	if w.Count(ParamReferenceImage) != 1 || w.Count(ParamMaskImage) != 1 || !w.Has(ParamDenoise) {
+		return []error{fmt.Errorf("%s: an inpaint workflow needs one reference_image, one mask_image and a denoise assignment", where)}
+	}
+	for i, a := range w.Assignments {
+		var f float64
+		if a.Param == ParamDenoise && (json.Unmarshal(g[a.Node].Inputs[a.Input], &f) != nil || !(f > 0 && f <= 1)) {
+			errs = append(errs, fmt.Errorf("%s: assignments[%d]: denoise must be a number from above 0 to 1", where, i))
+		}
+	}
+	return errs
+}
+
+// validateRequiresNodes checks that every entry of Workflow.RequiresNodes can be the ID of a custom node.
+func validateRequiresNodes(where string, w Workflow) (errs []error) {
+	for _, id := range w.RequiresNodes {
+		if !ValidName(id) {
+			errs = append(errs, fmt.Errorf("%s: requires_nodes %q is not the ID of a custom node", where, id))
+		}
 	}
 	return errs
 }

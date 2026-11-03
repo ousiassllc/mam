@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/sampled"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/stage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
@@ -26,22 +27,28 @@ type values struct {
 	references       []modeladapter.Input
 	first, last      *modeladapter.Input
 	opts             localcfg.ImageOptions
-	denoiseFloor     float64 // the workflow's ReferenceDenoiseMin
-	speedMode        string  // the request's VideoRequest.SpeedMode ("": the workflow's first)
+	mask             *modeladapter.Input // inpaint mask (nil: none); redraw is its strength (nil: the graph's denoise)
+	redraw           *float64
+	denoiseFloor     float64                   // the workflow's ReferenceDenoiseMin
+	speedMode        string                    // the request's VideoRequest.SpeedMode ("": the workflow's first)
+	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
+	upscaleRatio     float64                   // the workflow's Upscale.Ratio of the request's UpscaleScale (build sets it)
+	keepSlots        bool                      // no image is uploaded (GraphFor): the image nodes a workflow cannot run without keep the file the workflow holds
 }
 
-// imageValues are the values of an image request. A workflow with a reference mode (a bundled img2img or editing model) takes
-// its inputs as references only when the request describes them (Options.Refs): the callers that pass bare Inputs (a character
-// sheet, a workflow step) meant a picture to see, not a picture to copy, and would get the model's default strength and every
-// image as a reference. The inputs are ignored then and the run is the text-to-image one. A workflow without a reference mode
-// (a user's own img2img graph) takes the inputs as it always did.
+// imageValues are the values of an image request. A reference-mode workflow uses Inputs only when Options.Refs describes them;
+// bare Inputs (a picture to see, not to copy) are ignored and the run is text-to-image. Without a reference mode, Inputs are used as given.
 func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 	w, h := aspectsize.Flux(req.AspectRatio)
 	negative := defaultNegative
 	if req.NegativePrompt != "" {
 		negative = req.NegativePrompt
 	}
-	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options}
+	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options, sampling: req.Options.Sampling}
+	if in := req.Inpaint; in != nil {
+		mask := in.Mask
+		v.mask, v.redraw = &mask, in.Denoise
+	}
 	if wf := b.Model.Workflow; wf != nil && wf.ReferenceMode != "" && len(req.Options.Refs) == 0 {
 		v.references = nil
 	}
@@ -53,7 +60,7 @@ func videoValues(wf localcfg.Workflow, req modeladapter.VideoRequest) values {
 	return values{
 		prompt: req.Prompt, negative: req.NegativePrompt, seed: seedOr(req.Seed), width: w, height: h,
 		frames: wf.Frames(req.DurationSeconds), fps: wf.FPSOrDefault(),
-		references: req.References, first: req.FirstFrame, last: req.LastFrame, speedMode: req.SpeedMode,
+		references: req.References, first: req.FirstFrame, last: req.LastFrame, speedMode: req.SpeedMode, sampling: req.Sampling,
 	}
 }
 
@@ -80,6 +87,8 @@ func (v values) input(a localcfg.Assignment) (in *modeladapter.Input, isImage bo
 		return v.first, true
 	case localcfg.ParamLastFrame:
 		return v.last, true
+	case localcfg.ParamMaskImage:
+		return v.mask, true
 	}
 	return nil, false
 }
@@ -103,6 +112,15 @@ func (v values) scalar(p localcfg.Param) any {
 		return v.fps
 	case localcfg.ParamReferenceDenoise:
 		return v.denoise()
+	case localcfg.ParamDenoise:
+		if v.redraw == nil {
+			return nil
+		}
+		return *v.redraw
+	case localcfg.ParamUpscaleRatio:
+		return v.upscaleRatio
+	case localcfg.ParamReferenceStrength:
+		return v.opts.Ref(0).StrengthOrDefault()
 	}
 	return nil
 }
@@ -113,30 +131,54 @@ func (v values) scalar(p localcfg.Param) any {
 func (b *Backend) missing(v values) error {
 	for _, a := range b.Model.Workflow.Assignments {
 		if in, isImage := v.input(a); isImage && in == nil && !a.Optional && !b.noReferenceOK(v, a) {
-			return b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the workflow needs %s (%s), the request has none", a.Param, a.Node), nil)
+			return b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the workflow needs %s (%s)%s, the request has none", a.Param, a.Node, b.referenceRole()), nil)
 		}
 	}
 	return nil
+}
+
+// referenceRole names what the reference image is for in a ControlNet or an IP-Adapter workflow (they cannot run without it), "" otherwise.
+func (b *Backend) referenceRole() string {
+	switch b.Model.Workflow.ReferenceMode {
+	case localcfg.ModeControlNet:
+		return " as the control image of its ControlNet"
+	case localcfg.ModeIPAdapter:
+		return " as the image its IP-Adapter takes the look from"
+	}
+	return ""
 }
 
 // build puts the values into a copy of the workflow's graph. files are the names the images were uploaded
 // as, by assignment index.
 func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error) {
 	v.denoiseFloor = b.Model.Workflow.ReferenceDenoiseMin
+	if u := b.Model.Workflow.Upscale; u != nil {
+		v.upscaleRatio = u.Ratio(v.opts.UpscaleScale)
+	}
+	if err := sampled.Check(*b.Model.Workflow, v.sampling); err != nil {
+		return nil, b.Client.Error(http.StatusUnprocessableEntity, err.Error(), nil)
+	}
+	v.sampling = sampled.Applicable(*b.Model.Workflow, v.sampling)
 	if n := b.Model.Workflow.Count(localcfg.ParamReferenceImage); b.Model.Workflow.ReferenceMode != "" && len(v.references) > n {
 		v.references = v.references[:n] // the images beyond the slots were not uploaded
 	}
-	g, err := localcfg.ParseGraph(b.Model.Workflow.Graph)
+	g, err := b.Model.Workflow.GraphWith(v.opts.Exposed) // the values of the exposed inputs (Issue #977) go in first; the assignments below never touch those inputs
 	if err != nil {
 		return nil, b.Client.Error(http.StatusUnprocessableEntity, "the workflow is unusable: "+err.Error(), nil)
 	}
 	for i, a := range b.Model.Workflow.Assignments {
 		value := v.scalar(a.Param)
+		if sv, named, isSampling := sampled.Value(a, v.sampling); isSampling {
+			if !named {
+				continue // the request names no value: the graph's own stays
+			}
+			value = sv
+		}
 		name, isFile := files[i]
 		if isFile {
 			value = name
-		} else if a.Param == localcfg.ParamReferenceImage {
-			continue // a slot the run has no image for: dropUnused takes its node out
+		} else if _, isImage := v.input(a); (isImage && v.keepSlots) || a.Param == localcfg.ParamReferenceImage || (a.Param == localcfg.ParamDenoise && v.redraw == nil) {
+			continue // a slot the run has no image for (GraphFor keeps the workflow's file), or a denoise the request leaves at the graph's value
 		}
 		raw, err := json.Marshal(value)
 		if err != nil {

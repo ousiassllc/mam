@@ -1,0 +1,40 @@
+{
+ "id": "inpaint-flux-dev",
+ "label": "FLUX.1 dev: 一部だけ描き直す",
+ "media": "image",
+ "description": "FLUX.1 dev（fp8）の img2img にマスクを足す。白く塗った部分だけを denoise で描き直し、ImageCompositeMasked で外側は元画像のままにする。標準ノードだけ。非商用ライセンス。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "prompt_weight": "weak",
+   "reference_mode": "inpaint",
+   "graph": {
+    "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "flux1-dev-fp8.safetensors"}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["4", 1]}},
+    "10": {"class_type": "FluxGuidance", "inputs": {"guidance": 3.5, "conditioning": ["6", 0]}},
+    "11": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["6", 0]}},
+    "20": {"class_type": "LoadImage", "inputs": {"image": "source.png"}},
+    "21": {"class_type": "LoadImage", "inputs": {"image": "mask.png"}},
+    "22": {"class_type": "ImageToMask", "inputs": {"image": ["21", 0], "channel": "red"}},
+    "23": {"class_type": "VAEEncode", "inputs": {"pixels": ["20", 0], "vae": ["4", 2]}},
+    "24": {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["23", 0], "mask": ["22", 0]}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 0.75, "model": ["4", 0], "positive": ["10", 0], "negative": ["11", 0], "latent_image": ["24", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+    "25": {"class_type": "ImageCompositeMasked", "inputs": {"destination": ["20", 0], "source": ["8", 0], "x": 0, "y": 0, "resize_source": false, "mask": ["22", 0]}},
+    "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "mam/image", "images": ["25", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "reference_image", "node": "20", "input": "image", "index": 0},
+    {"param": "mask_image", "node": "21", "input": "image"},
+    {"param": "denoise", "node": "3", "input": "denoise"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "9"
+  }
+ }
+}

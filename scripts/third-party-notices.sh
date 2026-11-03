@@ -11,6 +11,7 @@
 #     pinned release, committed in build/windows/onnxruntime/ (scripts/fetch-onnxruntime.sh pins the version and refuses
 #     a zip whose two files differ from the committed ones)
 #   - scripts/third-party-notices-musetalk.md: the MuseTalk section (text that is written by hand)
+#   - scripts/third-party-notices-poses.md: the Shisei pose library and VNCCS_Utils sections (text that is written by hand)
 # Usage: scripts/third-party-notices.sh [OUTPUT]      OUTPUT defaults to THIRD_PARTY_NOTICES.md in the repository root
 # Needs: go, node, and `npm ci --prefix static` done. Run it again when go.mod or static/package-lock.json changes.
 # Fails when a component has no license file, so a dependency can never be left out silently.
@@ -271,6 +272,8 @@ MAM の「ChatGPT でログイン」の Codex 経由の方式（Business / Enter
 - Codex が保存するログイン情報は、MAM 専用の `CODEX_HOME`（データディレクトリの `codex-home`）と OS の資格情報ストアにあり、MAM は読みません。
 - 取得したものを再配布するときは、Apache-2.0 の LICENSE と NOTICE（上のソースにあります）を添えてください。取得した実行ファイルが静的に含む依存のライセンスは、**一覧を調べていません（未確認）**。
 EOF
+  # The pose library section is a file of its own (written by hand), like the MuseTalk one.
+  cat scripts/third-party-notices-poses.md
 } >"$tmp_out"
 chmod 644 "$tmp_out" # mktemp creates it 0600
 mv "$tmp_out" "$out"

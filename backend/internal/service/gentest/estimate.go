@@ -62,6 +62,15 @@ func (s *Service) Estimate(ctx context.Context, r Request) (Estimate, error) {
 			return Estimate{}, err
 		}
 	}
+	if est.Request.Mask != nil {
+		src, err := s.ResolveInput(ctx, *est.Request.Mask)
+		if err != nil {
+			return Estimate{}, err
+		}
+		if err := maskPaintsFile(src.Path); err != nil {
+			return Estimate{}, err
+		}
+	}
 	return est, nil
 }
 

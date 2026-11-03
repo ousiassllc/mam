@@ -30,15 +30,19 @@ type MatchCall struct {
 
 // FakeMatchLLM is the Reasoning LLM of a prompt match: it writes "prompt 1" for the reference, answers every comparison with the next
 // of Scores (the last one again when they run out) and fixes a prompt by writing ", fix <n>" after it. Err fails the calls of a
-// kind; Before runs at the start of every call (a test holds a call there).
+// kind; Before runs at the start of every call (a test holds a call there). Usage is what the answer of a kind says it used (a kind
+// that is not in it reports nothing: the tokens are unknown); Answered is the target the answers come from (anthropic / fake-llm,
+// which has no price, when it is empty).
 type FakeMatchLLM struct {
-	mu     sync.Mutex
-	calls  []MatchCall
-	next   int
-	fixes  int
-	Scores []int
-	Err    map[string]error
-	Before func(kind string)
+	mu       sync.Mutex
+	calls    []MatchCall
+	next     int
+	fixes    int
+	Scores   []int
+	Err      map[string]error
+	Before   func(kind string)
+	Usage    map[string]llm.Usage
+	Answered llm.Target
 }
 
 // Calls returns the calls so far.
@@ -96,7 +100,14 @@ func (f *FakeMatchLLM) Complete(_ context.Context, agent llm.Agent, req llm.Requ
 		return llm.Response{}, err
 	}
 	raw, _ := json.Marshal(text)
-	return llm.Response{Text: string(raw), Provider: llm.ProviderAnthropic, Model: "fake-llm"}, nil
+	res := llm.Response{Text: string(raw), Provider: llm.ProviderAnthropic, Model: "fake-llm"}
+	if f.Answered != (llm.Target{}) {
+		res.Provider, res.Model = f.Answered.Provider, f.Answered.Model
+	}
+	if u, ok := f.Usage[kind]; ok {
+		res.Usage = &u
+	}
+	return res, nil
 }
 
 // UseMatch gives the Service the prompt match through f, and returns it. The targets the estimate names (Target) have no price.

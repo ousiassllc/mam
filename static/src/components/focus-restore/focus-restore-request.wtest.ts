@@ -223,4 +223,21 @@ describe('focus after a request that disables, replaces by hx-swap-oob or sets o
       expectFocusOn(find('#note-list'));
     });
   });
+
+  // The job list replaces itself every 2 seconds (a poll, so no user event): the "開く" link keeps the focus through htmx's own
+  // restoring by `id` (jobs-open-<job id>, organisms/jobs/list.templ, #980).
+  describe('a list that a poll replaces', () => {
+    it('keeps the focus on the link that has an id', async () => {
+      render('<section id="jobs-list"><a id="jobs-open-j2" href="#j2">開く</a></section>');
+      const old = find('#jobs-open-j2');
+      old.focus();
+      const done = swapped('#jobs-list');
+      void htmx.ajax('get', `${DATA}/focus-jobs-polled.html`, { target: '#jobs-list', swap: 'outerHTML' });
+      await done;
+      await waitUntil(() => document.activeElement?.id === 'jobs-open-j2', 'the focus did not come back', {
+        timeout: 2000,
+      });
+      expect(document.activeElement).to.not.equal(old);
+    });
+  });
 });

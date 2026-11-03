@@ -183,3 +183,8 @@
 | 1.176 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.5）の `GET /generation-test/history` に、`live=1`（変わる部分だけ）・最終更新の時刻・更新ボタン・動いている結果があるあいだの 2 秒ごとの取り直しを足した | Issue #925 |
 | 1.177 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.6）に、プロンプトマッチの画面とそのルート（`/generation-test/match` ほか）を足した | Issue #916 |
 | 1.178 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.9・1.10）に、`POST /generation-test/run-notice`（未対応の役割のモーダルの本文。1.9）と、プロンプトマッチの点の内訳・各回の「プロンプトで比べる」・LLM の行の単価（1.10）を足した | Issue #959・#964・#965 |
+| 1.179 | 2026-11-03 | §1 の `GET /tools/:tool/status` を `GET /tools/model-manager/status` だけにした（`nodes`・`workflows`・`settings`・`reviews` はトップ画面のカードと一緒に削除）。[endpoints-home.md](endpoints-home.md) も合わせた | Issue #978 |
+| 1.180 | 2026-11-03 | [endpoints-gentest.md](endpoints-gentest.md)（1.11）に、生成テストの詳細設定のフィールド（`seed`・`steps`・`cfg`・`sampler`・`scheduler`）を足した | Issue #973・#972 |
+| 1.181 | 2026-11-03 | §1 の表に `GET /jobs`・`GET /jobs/list`（ジョブ一覧の画面と一覧の区画）の行を足し、[endpoints-jobs.md](endpoints-jobs.md) を作った | Issue #980 |
+| 1.182 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.14）に、`/generation-test/inpaint`（一部だけ描き直す。見積りと実行）を足した | Issue #974 |
+| 1.183 | 2026-11-03 | [endpoints-gentest.md](endpoints-gentest.md)（1.15）に、画像のフォームの 3 段（`tier`・`intent`・`quality`）、`GET /generation-test/easy-pick`、結果の `again` を足した | Issue #977 |

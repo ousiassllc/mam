@@ -1,12 +1,7 @@
 // Package modeladapter is the Model Adapter: the layer through which Agents generate images and
-// videos (spec/spec.md §7.2, spec/architecture/model-adapters.md §3, §4). It turns the
-// model-independent Canonical Shot Spec into the prompt and parameters of one video model, calls
-// the model behind a circuit breaker with exponential backoff, routes to the alternative model when
-// the primary is unavailable (§7) and limits concurrent calls per vendor according to the
-// rate limits the vendor reports (spec/requirements/non-functional.md §4).
-//
-// Which model serves which purpose comes from Config (never from Agent code). The Reasoning
-// LLM Adapter (package llm) is a separate layer.
+// videos (spec/spec.md §7.2, spec/architecture/model-adapters.md §3, §4). It calls the model behind
+// a circuit breaker, routes to the alternative when the primary is unavailable, and limits concurrent
+// calls. Which model serves which purpose comes from Config. The Reasoning LLM is package llm.
 package modeladapter
 
 import (
@@ -28,15 +23,21 @@ type Input struct {
 	MimeType string
 }
 
-// ImageRequest is one image generation. Inputs are reference images (a model that cannot use them generates from the prompt alone).
+// ImageRequest is one image generation. Inputs are reference images. Inpaint, when set, redraws the masked part.
 type ImageRequest struct {
-	Prompt      string
-	AspectRatio string // "16:9", "9:16", "1:1"
-	Inputs      []Input
-	// NegativePrompt is for a model that has the field (a ComfyUI workflow with a negative prompt); others ignore it.
-	NegativePrompt string
-	Seed           *int64                // for a model that takes one (SupportsSeed); nil lets the vendor choose
-	Options        localcfg.ImageOptions // the role and strength of each of Inputs and a LoRA, for a model that has them
+	Prompt         string
+	AspectRatio    string // "16:9", "9:16", "1:1"
+	Inputs         []Input
+	NegativePrompt string // a workflow with the field; others ignore it
+	Seed           *int64
+	Options        localcfg.ImageOptions // role and strength of Inputs, and a LoRA
+	Inpaint        *Inpaint              // nil: not a partial redraw
+}
+
+// Inpaint is the mask (white redraws, black keeps) and the denoise (nil: the workflow's own) of a partial redraw.
+type Inpaint struct {
+	Mask    Input
+	Denoise *float64
 }
 
 // ImageResult is a generated image.
@@ -54,8 +55,7 @@ func withSeed(body map[string]any, seed *int64) map[string]any {
 	return body
 }
 
-// ImageBackend calls one image model. apiModel is the vendor's model identifier from Config.
-// Failures of the vendor or the network MUST be *ProviderError so they can be classified.
+// ImageBackend calls one image model. apiModel is the vendor's model identifier from Config. Failures of the vendor or the network MUST be *ProviderError.
 type ImageBackend interface {
 	GenerateImage(ctx context.Context, apiModel string, req ImageRequest) (ImageResult, error)
 }
@@ -70,8 +70,9 @@ type VideoRequest struct {
 	FirstFrame      *Input
 	LastFrame       *Input
 	References      []Input
-	Seed            *int64 // for a model that takes one (SupportsSeed); nil lets the vendor choose
-	SpeedMode       string // one of the speed modes of a ComfyUI workflow (localcfg.SpeedMode), "" its default; other models ignore it
+	Seed            *int64
+	SpeedMode       string                    // a ComfyUI speed mode ("": the workflow's first); other models ignore it
+	Sampling        localcfg.SamplingSettings // steps, cfg, sampler, scheduler a workflow takes; others ignore it
 }
 
 // VideoResult is a generated video file. The caller owns File and MUST store or discard it.
@@ -87,22 +88,18 @@ type VideoBackend interface {
 	GenerateVideo(ctx context.Context, apiModel string, req VideoRequest) (VideoResult, error)
 }
 
-// ErrNoAPIKey means no API key is stored for the vendor.
-var ErrNoAPIKey = errors.New("modeladapter: API key is not configured")
-
-// ErrTimeout means a model call exceeded the vendor's timeout.
-var ErrTimeout = errors.New("modeladapter: model call timed out")
-
-// ErrTimeLimit means the model calls of a job together exceeded VideoJob.MaxTime.
-var ErrTimeLimit = errors.New("modeladapter: the time limit of the job was exceeded")
-
-// ErrCircuitOpen means the model was skipped because its circuit breaker is open. The error of a whole
-// route matches it only when every model of the route was skipped.
-var ErrCircuitOpen = errors.New("modeladapter: circuit breaker is open")
-
-// ErrRejected means the vendor refused the request itself (a 4xx other than 429), for example a
-// prompt that violates its content policy. Retrying or waiting does not help.
-var ErrRejected = errors.New("modeladapter: the request was rejected")
+var (
+	// ErrNoAPIKey is returned when no key is stored for the vendor.
+	ErrNoAPIKey = errors.New("modeladapter: API key is not configured")
+	// ErrTimeout is returned when one call exceeded the vendor's timeout.
+	ErrTimeout = errors.New("modeladapter: model call timed out")
+	// ErrTimeLimit is returned when the calls of a job together exceeded VideoJob.MaxTime.
+	ErrTimeLimit = errors.New("modeladapter: the time limit of the job was exceeded")
+	// ErrCircuitOpen is returned when every model of the route was skipped.
+	ErrCircuitOpen = errors.New("modeladapter: circuit breaker is open")
+	// ErrRejected is returned for a 4xx other than 429; retrying does not help.
+	ErrRejected = errors.New("modeladapter: the request was rejected")
+)
 
 // ProviderError is a failed call of a vendor. Status is the HTTP status, 0 for a network failure.
 type ProviderError struct {

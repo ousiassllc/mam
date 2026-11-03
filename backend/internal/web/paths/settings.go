@@ -47,6 +47,12 @@ func LLMAgent(agent string) string { return join(LLMSettings(), "agents", agent)
 // LLMAgentEdit is "/settings/llm/agents/<agent>/edit": GET answers the body of the modal that edits the Agent.
 func LLMAgentEdit(agent string) string { return join(LLMSettings(), "agents", agent, "edit") }
 
+// LLMModelField is "/settings/llm/agents/<agent>/models/<role>": GET answers the model field of the modal ("primary" or
+// "fallback") for the provider in the query ("<role>.provider"): the models to choose from and where they come from.
+func LLMModelField(agent, role string) string {
+	return join(LLMSettings(), "agents", agent, "models", role)
+}
+
 // ModelImage is "/settings/models/images/<purpose>": PUT saves the models of one image purpose.
 func ModelImage(purpose string) string { return join(ModelSettings(), "images", purpose) }
 

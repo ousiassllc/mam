@@ -47,7 +47,7 @@ func TestListModelsShowsTheReferenceCapabilitiesAndTheLoRAs(t *testing.T) {
 	edit := by[string(gentesttest.EditModel)]
 	assert.Equal(t, "edit", edit.ReferenceMode)
 	assert.Equal(t, 3, edit.MaxReferenceImages)
-	assert.Equal(t, []string{"reference", "face", "style", "edit"}, edit.ReferenceRoles)
+	assert.Equal(t, []string{"reference", "face", "style", "edit", "pose"}, edit.ReferenceRoles)
 	assert.True(t, edit.SupportsLoRA)
 	i2i := by[string(gentesttest.Img2ImgModel)]
 	assert.Equal(t, "img2img", i2i.ReferenceMode)
@@ -140,7 +140,7 @@ func TestInvalidRoleStrengthAndLoRAAreValidationErrors(t *testing.T) {
 	}
 	for name, mut := range map[string]func(map[string]any){
 		"strength 1.5": func(a map[string]any) { a["references"].([]map[string]any)[0]["strength"] = 1.5 },
-		"role pose":    func(a map[string]any) { a["references"].([]map[string]any)[0]["role"] = "pose" },
+		"role middle":  func(a map[string]any) { a["references"].([]map[string]any)[0]["role"] = "middle" },
 		"empty lora":   func(a map[string]any) { a["lora"] = map[string]any{"name": ""} },
 		"lora 2":       func(a map[string]any) { a["lora"] = map[string]any{"name": "a", "strength": 2} },
 	} {
