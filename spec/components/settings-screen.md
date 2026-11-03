@@ -165,7 +165,7 @@
 | `pages/settings_pages.templ`（約 60 行） | 枠（戻る・h1・nav・分類の h2） | `pages/global_settings_page.templ` を置き換え |
 | `organisms/settings/overview/` | 概要のカード | 新規（`global_settings_body.templ` を置き換え） |
 | `organisms/settings/credentials/` | API キーのカード・モーダルの断片 | `organisms/credentialpanel/`（111 行）を作り直して消す |
-| `organisms/settings/chatgpt/` | ログインのカード・ログイン中のモーダル・モデル一覧のモーダル | `organisms/chatgptpanel/`（`panel.templ` 274 行・Codex 経由の `codex.templ` 218 行。1 ファイルの上限に近いのでカード・モーダル・データに分ける） |
+| `organisms/settings/chatgpt/` | ログインのカード・ログイン中のモーダル・モデル一覧のモーダル・「詳細」のモーダル（`detail.templ`。#1005） | `organisms/chatgptpanel/`（`panel.templ` 274 行・Codex 経由の `codex.templ` 218 行。1 ファイルの上限に近いのでカード・モーダル・データに分ける） |
 | `organisms/settings/llm/`・`media/`・`local/`・`mcp/` | 各分類 | `llmassign/`・`modelassignment/`・`localmodels/`（②-5 で `settings/local/` に移した）・`mcppanel/`（②-6 で `settings/mcp/` に移した）。バージョンとアップデートは `organisms/updatepanel/` のまま動かしていない（`GET /settings/update` もこれを使う） |
 | `handler/settingspage/`・`handler/settings/<分類>/` | ページ・モーダルの断片・保存。`handler/` は基準値 2,895 行で上限を超え、増やせない | `handler/credential.go` の保存・削除は `handler/settings/credentials/` に移す |
 | `molecules/settingsui/`・`molecules/modal/` | ナビ・カード・表・モーダル | 新規 |
@@ -219,3 +219,4 @@
 | 0.13 | 2026-11-01 | §2 の分類の表に「音声・口パク」（`/settings/audio`。MCP サーバーの前）を足して順を 1 つずつ後ろにし、§5 の概要のカードの表に「音声・口パク」を足した（8 枚 → 9 枚） | Issue #924（#912 声と口パクのローカル化）。ローカルの声・口パクを選ぶ場所が要る |
 | 0.14 | 2026-11-02 | §2 の分類の表に「第三者のライセンス」（`/settings/licenses`。バージョンのあと）を足し、§5 の概要のカードの表に「第三者のライセンス」を足した（9 枚 → 10 枚）。分類の仕様は [settings-screen-licenses.md](settings-screen-licenses.md)（新規） | Issue #910（オーナー決定: ONNX Runtime の DLL を同梱するので、ライセンス表記をアプリの中にも出す） |
 | 0.15 | 2026-11-03 | §2 の分類の表に「FaceFusion」（`/settings/facefusion`。ffmpeg の次、バージョンの前）を足して順を 1 つずつ後ろにし、§5 の概要のカードの表に「FaceFusion」を足した（10 枚 → 11 枚） | Issue #995。顔の入れ替えの外部ツールの場所を設定する分類 |
+| 0.16 | 2026-11-03 | §9 の部品の表に、ChatGPT のログインの「詳細」のモーダル（`organisms/settings/chatgpt/detail.templ`）を足した。「API キーとログイン」の ChatGPT と「音声・口パク」のカード化の詳細は [settings-screen-categories.md](settings-screen-categories.md) §1.3・§9 | Issue #1005 |

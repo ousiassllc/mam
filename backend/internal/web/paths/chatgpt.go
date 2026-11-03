@@ -7,6 +7,10 @@ func ChatGPTSettings() string { return Settings() + "/chatgpt" }
 // ChatGPTAccount is "/settings/chatgpt/<kind>", one login system ("official" or "image"); DELETE signs out of it.
 func ChatGPTAccount(kind string) string { return ChatGPTSettings() + "/" + kind }
 
+// ChatGPTDetail is "/settings/chatgpt/<kind>/detail": GET answers the detail of the card of a login system (the explanations, the risks
+// and the terms; a modal).
+func ChatGPTDetail(kind string) string { return ChatGPTAccount(kind) + "/detail" }
+
 // ChatGPTLogin is "/settings/chatgpt/<kind>/login": POST starts a login (field method: browser or device).
 func ChatGPTLogin(kind string) string { return ChatGPTAccount(kind) + "/login" }
 

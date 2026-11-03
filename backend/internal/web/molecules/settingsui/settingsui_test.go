@@ -90,7 +90,7 @@ func TestCardItem_IsAListItemWithItsIDStateAndButtonsAndReplacesItselfOnlyWhenAs
 	html := renderCard(card)
 	assert.Contains(t, html, `<li id="credential-row-kling" data-testid="credential-row"`)
 	assert.Contains(t, html, `data-provider="kling"`)
-	assert.Contains(t, html, `<h3 class="text-sm font-semibold text-neutral-100">Kling</h3>`)
+	assert.Contains(t, html, `<h3 class="min-w-0 break-words text-sm font-semibold text-neutral-100">Kling</h3>`)
 	assert.Contains(t, html, "設定済み")
 	assert.Contains(t, html, `role="status">保存しました`)
 	assert.Contains(t, html, "<button>操作</button>")
@@ -146,4 +146,21 @@ func TestSettingsTable_HasACaptionColumnHeadersRowHeadsAndRowsThatReplaceThemsel
 	require.NoError(t, settingsui.RowHead("").Render(ctx, &sb))
 	assert.Contains(t, sb.String(), `<th scope="row"`)
 	assert.NotContains(t, html+sb.String(), "text-neutral-500")
+}
+
+// A card can carry marks (the risk of a route: "非公式", "商用注意") before its state: they are badges with words, in the
+// order given, and a card without them has the state alone.
+func TestCardItem_MarksComeBeforeTheStateAndAreBadgesWithWords(t *testing.T) {
+	card := settingsui.Card{
+		ID: "chatgpt-card-image", Title: "画像生成", State: "オフ", Tone: atoms.BadgeNeutral,
+		Marks: []settingsui.Mark{{Tone: atoms.BadgeWarn, Text: "非公式"}, {Tone: atoms.BadgeWarn, Text: "商用注意"}}, Class: "chosen",
+	}
+	html := render(t, settingsui.CardItem(card))
+
+	assert.Contains(t, html, `class="flex min-w-0 flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4 chosen"`)
+	assert.Less(t, strings.Index(html, "非公式"), strings.Index(html, "商用注意"))
+	assert.Less(t, strings.Index(html, "商用注意"), strings.Index(html, "オフ"))
+
+	card.Marks, card.State = nil, ""
+	assert.NotContains(t, render(t, settingsui.CardItem(card)), "inline-block rounded-full", "no badge when there is nothing to say")
 }

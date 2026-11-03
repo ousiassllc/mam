@@ -40,6 +40,11 @@ func downloadNotice(e CodexEngine) string {
 	return fmt.Sprintf("約 %d MB。展開後は約 %d MB。", megabytes(e.DownloadBytes), megabytes(e.ExtractedBytes))
 }
 
+// downloadConfirm is what is said before the download: what is fetched, from where, how big and where it is put.
+func downloadConfirm(e CodexEngine) string {
+	return "初回は Codex の実行ファイルを OpenAI の公式のリリース（GitHub）からダウンロードします（" + downloadNotice(e) + "SHA-256 とサイズを確かめます。Apache-2.0）。置き場所は " + e.Dir + " です。"
+}
+
 func engineSource(source string) string {
 	switch source {
 	case "download":

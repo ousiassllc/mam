@@ -159,14 +159,27 @@ func TestChatGPTSettings_WithoutTheServiceThereIsNoSectionAndNoRoute(t *testing.
 
 func TestChatGPTSettings_TheSectionShowsTheButtonTheRisksAndAnOffSwitch(t *testing.T) {
 	s := newScreen(t, true)
+	// The cards say the state and the risk marks; the long explanations and the risks are behind the detail button.
 	for _, want := range []string{
-		"ChatGPT でログイン", `data-testid="chatgpt-login-official"`, "ログインしていません", "chatgpt-subscription",
-		"非公式", "サポート外", "利用上限", "オンにする", `data-testid="chatgpt-image-ack"`, "オフの間は、この経路を一切呼びません",
+		"ChatGPT でログイン", `data-testid="chatgpt-login-official"`, "ログインしていません", "非公式", "商用注意",
+		"オフ", "オフの間は、この経路を一切呼びません", `data-testid="chatgpt-detail-official"`, `data-testid="chatgpt-detail-image"`,
+		`data-testid="chatgpt-detail-codex"`, `hx-get="` + paths.ChatGPTDetail("official") + `"`,
 	} {
 		assert.Contains(t, s.page, want)
 	}
+	for _, away := range []string{"サポート外", `data-testid="chatgpt-risks"`, `data-testid="chatgpt-image-ack"`, `data-testid="chatgpt-codex-terms"`} {
+		assert.NotContains(t, s.page, away, "the long text is in the detail, not on the card")
+	}
 	assert.NotContains(t, s.page, `data-testid="chatgpt-login-image-device"`, "no image login while it is off")
 	assert.NotContains(t, s.page, `data-testid="chatgpt-using-plan"`, "nothing to show before signing in")
+
+	image := s.detail("image")
+	for _, want := range []string{"非公式", "サポート外", "利用上限", "オンにする", `data-testid="chatgpt-image-ack"`, `data-testid="chatgpt-risks"`} {
+		assert.Contains(t, image, want)
+	}
+	official := s.detail("official")
+	assert.Contains(t, official, "chatgpt-subscription")
+	assert.Contains(t, official, `id="mam-modal-title"`)
 
 	// The login is a modal: the button opens it, and the modal has the Continue with ChatGPT button.
 	assert.Contains(t, s.page, `hx-get="`+paths.ChatGPTLogin("official")+`"`)
@@ -187,10 +200,13 @@ func TestChatGPTSettings_OfficialLoginShowsTheAccountAndNeverATokenThenLogsOut(t
 
 	p := s.waitSettled(s.svc.Official(), "me@example.com")
 	assert.Contains(t, p, "ログイン済み")
-	assert.Contains(t, p, "Using ChatGPT plan")
-	assert.Contains(t, p, "Manage usage")
-	assert.Contains(t, p, "https://chatgpt.com/settings/usage")
 	assert.Contains(t, p, "プラン: plus")
+	detail := s.detail("official")
+	assert.Contains(t, detail, "Using ChatGPT plan")
+	assert.Contains(t, detail, "Manage usage")
+	assert.Contains(t, detail, "https://chatgpt.com/settings/usage")
+	assert.Contains(t, detail, "アクセストークンの期限")
+	s.noTokens(detail)
 	assert.NotContains(t, p, `hx-trigger="every 2s"`, "no polling once it is done")
 	s.noTokens(p)
 	s.noTokens(s.page)
@@ -247,9 +263,23 @@ func TestChatGPTSettings_ImageGenerationNeedsTheConfirmationAndHasItsOwnLogin(t 
 	assert.Contains(t, rec.Body.String(), "リスクを確認する")
 	assert.False(t, s.svc.ImageEnabled(), "refused without the confirmation")
 
+	// From the detail modal a refusal is said in the modal (its form stays), the cards are replaced out of band.
+	rec = s.actFromModal(http.MethodPut, paths.ChatGPTImageEnabled(), url.Values{"enabled": {"true"}})
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), `id="mam-modal-error"`)
+	assert.Contains(t, rec.Body.String(), `data-testid="chatgpt-image-ack"`)
+	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`)
+	assert.False(t, s.svc.ImageEnabled())
+
+	// What worked closes the modal.
+	rec = s.actFromModal(http.MethodPut, paths.ChatGPTImageEnabled(), url.Values{"enabled": {"true"}, "acknowledge_risks": {"true"}})
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "modal-close", rec.Header().Get("HX-Trigger-After-Swap"))
+	assert.Contains(t, rec.Body.String(), `data-testid="chatgpt-login-image"`, "the cards are replaced out of band")
+	assert.True(t, s.svc.ImageEnabled())
+	require.Equal(t, http.StatusOK, s.act(http.MethodPut, paths.ChatGPTImageEnabled(), url.Values{"enabled": {"false"}}).Code)
 	rec = s.act(http.MethodPut, paths.ChatGPTImageEnabled(), url.Values{"enabled": {"true"}, "acknowledge_risks": {"true"}})
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.True(t, s.svc.ImageEnabled())
 	assert.Contains(t, rec.Body.String(), "オフにする")
 	assert.Contains(t, rec.Body.String(), `data-testid="chatgpt-login-image"`)
 	modal := s.modal(paths.ChatGPTLogin("image"))

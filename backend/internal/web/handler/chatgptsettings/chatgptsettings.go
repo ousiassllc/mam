@@ -273,7 +273,7 @@ func Logout(svc *chatgpt.Service) gin.HandlerFunc {
 		default:
 			d.Notice = "ログアウトしました"
 		}
-		render(c, status, view.Panel(d))
+		answer(c, status, d, kind)
 	}
 }
 
@@ -287,7 +287,7 @@ func SetImageEnabled(svc *chatgpt.Service) gin.HandlerFunc {
 		status := http.StatusOK
 		switch {
 		case err == nil && enabled:
-			d.Notice = "画像生成（非公式）をオンにしました。続けて、下のログインを済ませてください"
+			d.Notice = "画像生成（非公式）をオンにしました。続けて、カードのログインを済ませてください"
 		case err == nil:
 			d.Notice = "画像生成（非公式）をオフにしました。この経路は呼びません"
 		case errors.Is(err, chatgpt.ErrRisksNotAcknowledged):
@@ -296,7 +296,7 @@ func SetImageEnabled(svc *chatgpt.Service) gin.HandlerFunc {
 			_ = c.Error(err)
 			status, d.Error = http.StatusInternalServerError, "設定を保存できませんでした。mam のログを確認してください"
 		}
-		render(c, status, view.Panel(d))
+		answer(c, status, d, kindImage)
 	}
 }
 

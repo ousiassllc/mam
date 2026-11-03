@@ -1,0 +1,92 @@
+package audio
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// DetailModal is the body of the modal of a card: what is too long for it. For the cloud provider that is what it is and where its key
+// is; for the local one, where it stands and why it cannot run, the video memory it needs, the source and the license, and the limits of
+// its commercial use. It only reads: choosing and saving are on the screen.
+templ DetailModal(p Provider, which string) {
+	if which == WhichCloud {
+		@modal.Frame(p.CloudLabel, p.Description) {
+			@cloudKey(p)
+			@providerNote(p)
+			@closeButton()
+		}
+	} else if p.Local != nil {
+		@modal.Frame(p.LocalLabel, p.Description) {
+			<div class="flex min-w-0 flex-col gap-3 text-sm text-neutral-300" data-testid={ "audio-local-" + p.Field }>
+				<p class="flex items-center gap-2">
+					<span>いまの状態</span>
+					@atoms.BadgeWith(p.Local.Tone, p.Local.State, templ.Attributes{"data-testid": "audio-state-badge-" + p.Field})
+				</p>
+				@localState(p)
+				@providerNote(p)
+			</div>
+			@modal.Actions() {
+				@atoms.ButtonLink(atoms.ToneNeutral, "モデルマネージャーを開く", templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-detail-open-manager-" + p.Field})
+				@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true, "autofocus": true})
+			}
+		}
+	}
+}
+
+templ closeButton() {
+	@modal.Actions() {
+		@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true, "autofocus": true})
+	}
+}
+
+// providerNote is the line under a choice: what the choice does not change.
+templ providerNote(p Provider) {
+	if p.Note != "" {
+		<p class="text-xs text-neutral-400" data-testid={ "audio-note-" + p.Field }>{ p.Note }</p>
+	}
+}
+
+// localState is the facts about a local provider: why it cannot be chosen on this PC, why it cannot be used now, the video memory it
+// needs, where it comes from, its license and the limits of its commercial use.
+templ localState(p Provider) {
+	<div id={ "audio-state-" + p.Field } class="flex min-w-0 flex-col gap-2 text-xs text-neutral-400">
+		if !p.Local.Supported {
+			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-unsupported-" + p.Field }>
+				<p>この PC では { p.Local.Name } を選べません。{ p.CloudLabel } のまま使えます。</p>
+				<p data-testid={ "audio-support-reason-" + p.Field }>{ p.Local.SupportReason }</p>
+			</div>
+		} else if p.Local.Reason != "" {
+			<p class="text-amber-300" role="status" data-testid={ "audio-reason-" + p.Field }>{ p.Local.Reason }</p>
+		}
+		if p.Selected == LocalValue && !p.Local.Supported {
+			<p class="text-amber-300" role="status">保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
+		}
+		if p.Local.ProcessError != "" {
+			<pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-neutral-950 p-2" data-testid={ "audio-process-error-" + p.Field }>{ p.Local.ProcessError }</pre>
+		}
+		if p.Local.VRAM != "" {
+			<p data-testid={ "audio-vram-" + p.Field }>{ p.Local.VRAM }</p>
+		}
+		<p class="break-words" data-testid={ "audio-source-" + p.Field }>
+			出典: <a class="break-all underline" href={ templ.SafeURL(p.Local.SourceURL) } rel="noopener noreferrer" target="_blank">{ p.Local.SourceURL }</a>
+			／ ライセンス: 
+			if p.Local.LicenseURL != "" {
+				<a class="underline" href={ templ.SafeURL(p.Local.LicenseURL) } rel="noopener noreferrer" target="_blank">{ p.Local.License }</a>
+			} else {
+				{ p.Local.License }
+			}
+			。重みと依存ファイルの出典・ライセンスは、モデルマネージャーの一覧にあります。
+		</p>
+		if p.Local.Condition != "" {
+			<p class="text-amber-300" data-testid={ "audio-condition-" + p.Field }>{ p.Local.Condition }</p>
+		}
+		if len(p.Local.Unclear) > 0 {
+			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-unclear-" + p.Field }>
+				<p class="font-semibold">商用利用がはっきりしない重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
+				<p class="break-words">{ join(p.Local.Unclear) }</p>
+				<p>商用の動画に使う前に、モデルマネージャーの一覧で出典とライセンスを確認してください。</p>
+			</div>
+		}
+	</div>
+}

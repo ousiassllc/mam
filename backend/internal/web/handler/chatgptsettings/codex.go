@@ -170,7 +170,7 @@ func CodexSetPath(svc *chatgpt.Service) gin.HandlerFunc {
 		} else {
 			d.Error = r.Message
 		}
-		render(c, r.Status, view.Panel(d))
+		answer(c, r.Status, d, kindCodex)
 	}
 }
 
@@ -223,5 +223,5 @@ func logoutCodex(c *gin.Context, svc *chatgpt.Service) {
 	default:
 		d.Notice = "ログアウトしました"
 	}
-	render(c, status, view.Panel(d))
+	answer(c, status, d, kindCodex)
 }
