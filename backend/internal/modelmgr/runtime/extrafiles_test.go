@@ -73,5 +73,5 @@ func TestInstallRefusesAnExtraFileWhoseOverlayIsNotThereAndKeepsTheInstalledEnvi
 
 	require.ErrorContains(t, err, `no overlay "nope.py"`)
 	assert.NoDirExists(t, r.Layout.EnvNewDir())
-	assert.FileExists(t, r.PythonPath())
+	assert.FileExists(t, r.ProgramPath())
 }

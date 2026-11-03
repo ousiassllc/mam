@@ -35,7 +35,7 @@ type Choice struct {
 	// Default marks the model that is used until the user chooses another (exactly one choice has it).
 	Default bool `json:"default,omitempty"`
 	// Kind and Languages are what the filter of the model list ("音声", "日本語") reads (spec: Issue #1011): the kind of what the model makes
-	// ("tts") and the languages it speaks (ISO 639-1 codes).
+	// ("tts", "llm") and the languages it speaks (ISO 639-1 codes).
 	Kind      string   `json:"kind"`
 	Languages []string `json:"languages"`
 	// License is the id of a license of the runtime's weights (catalog.ResourceSet.Licenses) that applies to the model.
@@ -53,12 +53,21 @@ type Choice struct {
 	VRAMEstimate      bool   `json:"vram_estimate"`
 	// Env is added to the environment of the server when this model is chosen ("NAME=value").
 	Env []string `json:"env,omitempty"`
+	// Values are what the model gives the placeholders of the runtime's launch args ("{ctx_size}": "16384"; package launchargs). A value is a plain
+	// word (letters, digits, . _ -), so no value can add an argument.
+	Values map[string]string `json:"values,omitempty"`
+	// Uncensored marks a model whose refusals were removed (an abliterated derivative): the screens say it is for adults and where its use is the user's responsibility.
+	Uncensored bool `json:"uncensored,omitempty"`
 }
 
 var (
 	idPattern  = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,30}$`)
 	envPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*=.*$`)
 	langRegexp = regexp.MustCompile(`^[a-z]{2,3}$`)
+	// A value of a model ends up in the arguments of the server: a plain word, never something with a space or a quote.
+	valueName    = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	valueContent = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	builtinNames = []string{"port", "model", "choice"} // the placeholders of every start (package launchargs): a model cannot give them
 )
 
 // Default is the choice that is used until another is chosen ("" for a runtime without choices).
@@ -118,6 +127,11 @@ func (c Choice) check(cw string, duplicate bool, licenses, used map[string]bool)
 	for _, e := range c.Env {
 		if !envPattern.MatchString(e) {
 			errs = append(errs, fmt.Errorf("%s: env %q must be NAME=value", cw, e))
+		}
+	}
+	for name, v := range c.Values {
+		if !valueName.MatchString(name) || slices.Contains(builtinNames, name) || !valueContent.MatchString(v) {
+			errs = append(errs, fmt.Errorf("%s: value %s=%q must be a name (not port, model or choice) and a plain word", cw, name, v))
 		}
 	}
 	return errs

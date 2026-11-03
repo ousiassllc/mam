@@ -2,11 +2,12 @@ package runtime
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/launchargs"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 )
 
@@ -34,9 +35,16 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 		return proc.Spec{}, err
 	}
 	l := i.Runtime.Launch
-	args := make([]string, len(l.Args))
-	for n, a := range l.Args {
-		args[n] = strings.ReplaceAll(a, "{port}", fmt.Sprint(port))
+	chosen := i.AssetSet.Chosen(i.Store.Get().Choice) // the model in force ("" for a runtime without models): its file, id and values fill the placeholders
+	var model choice.Choice
+	for _, c := range i.AssetSet.Choices {
+		if c.ID == chosen {
+			model = c
+		}
+	}
+	args, err := launchargs.Expand(l.Args, launchargs.Values(port, i.AssetSet.ModelFile(chosen), chosen, model.Values))
+	if err != nil {
+		return proc.Spec{}, err
 	}
 	dirs := make([]string, 0, len(l.PathDirs)+1)
 	for _, d := range l.PathDirs {
@@ -61,15 +69,11 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 		"MODELSCOPE_CACHE=" + filepath.Join(cache, "modelscope"), "XDG_CACHE_HOME=" + cache,
 		"TEMP=" + tmp, "TMP=" + tmp, "TMPDIR=" + tmp,
 	}, l.Env...)
-	if id := i.AssetSet.Chosen(i.Store.Get().Choice); id != "" { // the model in force: its folder is named by MAM_RUNTIME_CHOICE, its settings are its env
-		env = append(env, ChoiceEnv+"="+id)
-		for _, c := range i.AssetSet.Choices {
-			if c.ID == id {
-				env = append(env, c.Env...)
-			}
-		}
+	if chosen != "" { // its folder is named by MAM_RUNTIME_CHOICE, its settings are its env
+		env = append(env, ChoiceEnv+"="+chosen)
+		env = append(env, model.Env...)
 	}
 	return proc.Spec{
-		Command: i.PythonPath(), Args: args, Dir: i.Layout.EnvDir(), LogPath: i.Layout.LogPath(), Env: env, DropEnv: foreignEnv,
+		Command: i.ProgramPath(), Args: args, Dir: i.Layout.EnvDir(), LogPath: i.Layout.LogPath(), Env: env, DropEnv: foreignEnv,
 	}, nil
 }

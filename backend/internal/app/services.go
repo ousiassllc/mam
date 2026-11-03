@@ -39,6 +39,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/llamaserver"
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/locallipsync"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
@@ -112,9 +113,9 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	llmPath, llmPinned := cfg.LLMSettingsFile()
 	llmLocal := llmlocal.New(llmPath, llmPinned, keys, nil)
 	llmBackends := llm.NewBackends(llmCfg, keys, nil)
-	localllm.Add(llmBackends, keys, nil, llmLocal.BaseURL)   // the local OpenAI-compatible server (#1008); its address applies at once
-	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
-	chatgptcodex.Add(llmBackends, llmCfg, gpt.Codex())       // the same plan through the Codex app-server (workspace accounts)
+	localllm.Add(llmBackends, keys, nil, llmLocal.BaseURL, localllm.WithManaged(llmLocal)) // the local OpenAI-compatible server (#1008); its address applies at once; or mam's own llama.cpp
+	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil)                               // the ChatGPT plan provider; its sign-in is not an API key
+	chatgptcodex.Add(llmBackends, llmCfg, gpt.Codex())                                     // the same plan through the Codex app-server (workspace accounts)
 	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
 
 	// The saved ComfyUI workflows are models of the settings: the routes of models.json may name them.
@@ -192,6 +193,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	llmLocal.SetManaged(llamaserver.Server{Runtime: rts, MakeRoom: irodoriwire.Guard(mgr).MakeRoom}) // "この PC の llama.cpp を使う" (#1008)
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
 	services := service.New(service.Deps{

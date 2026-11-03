@@ -12,6 +12,7 @@
 #     a zip whose two files differ from the committed ones)
 #   - scripts/third-party-notices-musetalk.md: the MuseTalk section (text that is written by hand)
 #   - scripts/third-party-notices-irodori.md: the Irodori-TTS section and its weights (text that is written by hand, with the Python packages)
+#   - scripts/third-party-notices-llamacpp.md: the llama.cpp section and the weights of the local LLMs (text that is written by hand)
 #   - scripts/third-party-notices-poses.md: the Shisei pose library and VNCCS_Utils sections (text that is written by hand)
 # Usage: scripts/third-party-notices.sh [OUTPUT]      OUTPUT defaults to THIRD_PARTY_NOTICES.md in the repository root
 # Needs: go, node, and `npm ci --prefix static` done. Run it again when go.mod or static/package-lock.json changes.
@@ -215,6 +216,8 @@ EOF
   cat scripts/third-party-notices-musetalk.md
   # The Irodori-TTS section is a file of its own too (the Python packages of the environment mam assembles, and its weights).
   cat scripts/third-party-notices-irodori.md
+  # The llama.cpp section (the local LLM runtime and its GGUF weights) is a file of its own too.
+  cat scripts/third-party-notices-llamacpp.md
   cat <<'EOF'
 ## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
 

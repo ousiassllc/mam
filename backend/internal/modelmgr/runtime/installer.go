@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -70,9 +71,10 @@ func (i *Installer) now() time.Time {
 	return time.Now().UTC()
 }
 
-// PythonPath is the interpreter of the installed runtime.
-func (i *Installer) PythonPath() string {
-	return filepath.Join(i.Layout.EnvDir(), filepath.FromSlash(i.Runtime.Launch.Python))
+// ProgramPath is what the runtime starts: the native server of a runtime that has one, else the interpreter.
+func (i *Installer) ProgramPath() string {
+	l := i.Runtime.Launch
+	return filepath.Join(i.Layout.EnvDir(), filepath.FromSlash(cmp.Or(l.Program, l.Python)))
 }
 
 // Status reads the record and checks the files.
@@ -94,7 +96,7 @@ func (i *Installer) Status() Status {
 // filesPresent reports whether the interpreter and the files mam wrote next to the vendor's server are in the environment (an
 // environment installed before the launcher was added has not got it: installing again writes it).
 func (i *Installer) filesPresent() bool {
-	if _, err := os.Stat(i.PythonPath()); err != nil {
+	if _, err := os.Stat(i.ProgramPath()); err != nil {
 		return false
 	}
 	for _, f := range i.Runtime.ExtraFiles {
@@ -241,8 +243,8 @@ func download(ctx context.Context, files []packageFile, total int64, opts fetch.
 
 // swap makes tmp the environment; the previous one is removed once the new one is in place.
 func (i *Installer) swap(tmp string) error {
-	for _, rel := range []string{i.Runtime.Launch.Python, i.Runtime.Launch.Entry} {
-		if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(rel))); err != nil {
+	for _, rel := range []string{cmp.Or(i.Runtime.Launch.Program, i.Runtime.Launch.Python), i.Runtime.Launch.Entry} {
+		if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(rel))); err != nil && rel != "" {
 			return fmt.Errorf("runtime: the archive has no %s", rel)
 		}
 	}

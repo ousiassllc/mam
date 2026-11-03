@@ -131,7 +131,7 @@ func TestInstallDownloadsVerifiesAndExtractsTheRuntime(t *testing.T) {
 	assert.Equal(t, "20250604", st.Version)
 	assert.Equal(t, "nvidia", st.Variant)
 	assert.False(t, st.UpdateAvailable)
-	assert.FileExists(t, r.PythonPath())
+	assert.FileExists(t, r.ProgramPath())
 	assert.FileExists(t, filepath.Join(r.Layout.EnvDir(), entryRel))
 	assert.NoDirExists(t, r.Layout.DownloadsDir(), "the archive is deleted once extracted")
 	assert.NoDirExists(t, r.Layout.EnvNewDir())
@@ -260,7 +260,7 @@ func TestStatusNoticesDeletedFilesAndRemoveCleansEverythingButTheSettings(t *tes
 	require.NoError(t, r.Store.Update(func(s *store.RuntimeState) { s.AutoStart = true }))
 	require.NoError(t, os.MkdirAll(r.Layout.CacheDir(), 0o750))
 
-	require.NoError(t, os.Remove(r.PythonPath()))
+	require.NoError(t, os.Remove(r.ProgramPath()))
 	st := r.Status()
 	assert.False(t, st.Installed)
 	assert.True(t, st.Broken)
@@ -300,7 +300,7 @@ func TestCommandRunsTheVendorsServerOnLoopbackOnlyAndKeepsEverythingBelowTheRunt
 
 	spec, err := r.Command(51234)
 	require.NoError(t, err)
-	assert.Equal(t, r.PythonPath(), spec.Command)
+	assert.Equal(t, r.ProgramPath(), spec.Command)
 	assert.Equal(t, r.Layout.EnvDir(), spec.Dir)
 	assert.Equal(t, []string{"-I", "-u", entryRel, "-a", "127.0.0.1", "-p", "51234"}, spec.Args)
 	assert.Equal(t, r.Layout.LogPath(), spec.LogPath)

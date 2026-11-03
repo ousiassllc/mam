@@ -21,10 +21,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/weightlist"
 )
 
-var purposeLabels = map[catalog.Purpose]string{catalog.PurposeTTS: "声（音声合成）", catalog.PurposeLipSync: "口パク"}
+var purposeLabels = map[catalog.Purpose]string{catalog.PurposeTTS: "声（音声合成）", catalog.PurposeLipSync: "口パク", catalog.PurposeLLM: "文章（LLM）"}
 
 // purposeIcons are the pictures of the cards: the tile of what the runtime is for.
-var purposeIcons = map[catalog.Purpose]atoms.IconName{catalog.PurposeTTS: atoms.IconVoice, catalog.PurposeLipSync: atoms.IconLipSync}
+var purposeIcons = map[catalog.Purpose]atoms.IconName{catalog.PurposeTTS: atoms.IconVoice, catalog.PurposeLipSync: atoms.IconLipSync, catalog.PurposeLLM: atoms.IconText}
 
 // Section is the section of the screen: a card for every runtime of the catalog. Nil (the section is left out) when there is no
 // service or no runtime.

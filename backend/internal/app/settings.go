@@ -57,7 +57,8 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	settings.ChatGPT = gpt
 	models := llmmodels.Options{Keys: settings.Keys, BaseURLs: llmBaseURLs(cfg, logger), Logger: logger}
 	if services.LLMLocal != nil {
-		models.LocalBaseURL = services.LLMLocal.BaseURL // the address can change while the app runs
+		models.LocalBaseURL = services.LLMLocal.BaseURL       // the address can change while the app runs
+		models.LocalManaged = services.LLMLocal.ManagedModels // and the user can choose mam's own llama.cpp instead
 	}
 	if gpt != nil {
 		models.ChatGPT = llmmodels.FromChatGPT(gpt)

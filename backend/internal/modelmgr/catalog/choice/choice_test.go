@@ -53,8 +53,14 @@ func TestCheck_RefusesWhatTheScreenCouldNotShowHonestly(t *testing.T) {
 		"a consent without its text":                           {func(cs []choice.Choice) []choice.Choice { cs[1].Consent.Text = ""; return cs }, "consent"},
 		"a consent without a version":                          {func(cs []choice.Choice) []choice.Choice { cs[1].Consent.Version = ""; return cs }, "consent"},
 		"an env that is not NAME=value":                        {func(cs []choice.Choice) []choice.Choice { cs[1].Env = []string{"bf16"}; return cs }, "NAME=value"},
-		"no default":                                           {func(cs []choice.Choice) []choice.Choice { cs[0].Default = false; return cs }, "exactly one"},
-		"two defaults":                                         {func(cs []choice.Choice) []choice.Choice { cs[1].Default = true; return cs }, "exactly one"},
+		"a value that adds an argument": {func(cs []choice.Choice) []choice.Choice {
+			cs[1].Values = map[string]string{"ngl": "all --x"}
+			return cs
+		}, "plain word"},
+		"a value named like a built-in placeholder": {func(cs []choice.Choice) []choice.Choice { cs[1].Values = map[string]string{"port": "1"}; return cs }, "plain word"},
+		"a value whose name is no placeholder":      {func(cs []choice.Choice) []choice.Choice { cs[1].Values = map[string]string{"Ctx-Size": "1"}; return cs }, "plain word"},
+		"no default":                                {func(cs []choice.Choice) []choice.Choice { cs[0].Default = false; return cs }, "exactly one"},
+		"two defaults":                              {func(cs []choice.Choice) []choice.Choice { cs[1].Default = true; return cs }, "exactly one"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			errs := choice.Check("set", tc.edit(valid()), licenses, used)
@@ -63,6 +69,13 @@ func TestCheck_RefusesWhatTheScreenCouldNotShowHonestly(t *testing.T) {
 			assert.Contains(t, fmt.Sprint(errs), tc.want)
 		})
 	}
+}
+
+func TestCheck_AcceptsTheValuesOfALlamaServerModel(t *testing.T) {
+	cs := valid()
+	cs[1].Values = map[string]string{"ctx_size": "16384", "ngl": "auto"}
+	cs[1].Uncensored = true
+	assert.Empty(t, choice.Check("set", cs, licenses, used))
 }
 
 func TestCheck_EveryChoiceHasAssetsAndEveryAssetsChoiceExists(t *testing.T) {

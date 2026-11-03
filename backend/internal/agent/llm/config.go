@@ -102,6 +102,9 @@ type ProviderConfig struct {
 	// UnloadBeforeGeneration is for ProviderLocal only: when true, mam asks an Ollama server to unload its models before a local image or
 	// video generation starts, so that they do not share the GPU memory (spec/architecture/local-llm.md §5).
 	UnloadBeforeGeneration bool `json:"unload_before_generation,omitempty"`
+	// UseManagedRuntime is for ProviderLocal only: when true, the calls go to the llama.cpp server that mam installs and starts itself (the local
+	// runtime "llama-cpp"), whatever BaseURL says (spec/architecture/local-llm.md §10).
+	UseManagedRuntime bool `json:"use_managed_runtime,omitempty"`
 }
 
 // RetryConfig is the exponential backoff of one target: a failed attempt is repeated after

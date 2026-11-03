@@ -116,3 +116,35 @@ func TestGuard_ACancelledCallIsACancellation(t *testing.T) {
 
 	assert.ErrorIs(t, err, context.Canceled)
 }
+
+// MakeRoom is what the local LLM calls before its server starts: busy while ComfyUI generates (nothing is freed), the memory freed when it is idle, nothing
+// when ComfyUI is not running or cannot be reached.
+func TestGuard_MakeRoomSaysBusyForAGeneratingComfyUIAndFreesAnIdleOne(t *testing.T) {
+	busy := newComfy(t, `{"queue_running":[[0,"id",{},{},[]]],"queue_pending":[]}`)
+	b, err := gpufree.Guard{Engine: engine(busy.srv.URL)}.MakeRoom(context.Background())
+	require.NoError(t, err)
+	assert.True(t, b)
+	assert.Empty(t, busy.freedBodies(), "a generation is not disturbed")
+
+	idle := newComfy(t, `{"queue_running":[],"queue_pending":[]}`)
+	b, err = gpufree.Guard{Engine: engine(idle.srv.URL)}.MakeRoom(context.Background())
+	require.NoError(t, err)
+	assert.False(t, b)
+	assert.Equal(t, []string{`{"unload_models":true,"free_memory":true}`}, idle.freedBodies())
+
+	for name, g := range map[string]gpufree.Guard{"no engine": {}, "a stopped engine": {Engine: engine("")}, "an engine that cannot be reached": {Engine: engine("http://127.0.0.1:1")}} {
+		b, err = g.MakeRoom(context.Background())
+		require.NoError(t, err, name)
+		assert.False(t, b, name)
+	}
+}
+
+func TestGuard_MakeRoomStopsWhenTheCallerGivesUp(t *testing.T) {
+	c := newComfy(t, `{"queue_running":[],"queue_pending":[]}`)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := gpufree.Guard{Engine: engine(c.srv.URL)}.MakeRoom(ctx)
+
+	assert.ErrorIs(t, err, context.Canceled)
+}

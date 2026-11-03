@@ -18,8 +18,18 @@ type LocalServer struct {
 	DefaultBaseURL         string `json:"default_base_url,omitempty"`
 	KeyConfigured          bool   `json:"key_configured" jsonschema:"API キーを保存しているか（任意のキー。値は返さない）"`
 	UnloadBeforeGeneration bool   `json:"unload_before_generation" jsonschema:"画像・動画を作る前に Ollama のモデルをメモリから降ろすか（keep_alive=0）"`
+	UseManagedRuntime      bool   `json:"use_managed_runtime" jsonschema:"true ならアドレスを使わず、mam が導入・起動する llama.cpp（モデルマネージャーのローカルの llama-cpp）に向かう"`
 	Pinned                 bool   `json:"pinned" jsonschema:"起動オプションで設定ファイルが固定されていて、アドレスとスイッチは変えられない"`
 	Problem                string `json:"problem,omitempty" jsonschema:"設定ファイルを読めない理由"`
+	// ManagedRuntime is where mam's own llama.cpp stands (absent when the app has none).
+	ManagedRuntime *ManagedRuntime `json:"managed_runtime,omitempty"`
+}
+
+// ManagedRuntime is the llama.cpp server that mam installs and starts itself, as the settings see it.
+type ManagedRuntime struct {
+	State  string `json:"state" jsonschema:"unsupported（この PC では使えない）・not_installed（未導入か重みが不足）・stopped・starting・running・failed"`
+	Reason string `json:"reason,omitempty" jsonschema:"使えない・失敗の理由と、何をすればよいか"`
+	Model  string `json:"model,omitempty" jsonschema:"使うモデルの id（LLM の割り当ての model に渡す名前）。選び方は select_local_runtime_model"`
 }
 
 func localServerOf(svc *llmlocal.Service) LocalServer {
@@ -27,10 +37,14 @@ func localServerOf(svc *llmlocal.Service) LocalServer {
 		return LocalServer{}
 	}
 	v := svc.View()
-	return LocalServer{
+	out := LocalServer{
 		Available: true, BaseURL: v.BaseURL, DefaultBaseURL: v.DefaultBaseURL, KeyConfigured: v.KeyConfigured,
-		UnloadBeforeGeneration: v.UnloadBeforeGeneration, Pinned: v.Pinned, Problem: v.Problem,
+		UnloadBeforeGeneration: v.UnloadBeforeGeneration, UseManagedRuntime: v.UseManaged, Pinned: v.Pinned, Problem: v.Problem,
 	}
+	if info, ok := svc.ManagedInfo(context.Background()); ok {
+		out.ManagedRuntime = &ManagedRuntime{State: string(info.State), Reason: info.Reason, Model: info.Model}
+	}
+	return out
 }
 
 // SetLocalServerInput is what to change; a field that is left out keeps what is saved.
@@ -39,6 +53,7 @@ type SetLocalServerInput struct {
 	APIKey                 string `json:"api_key,omitempty" jsonschema:"サーバーが API キーを求めるときだけ。OS のセキュアストレージ（プロバイダー local）に保存され、応答には含まれない"`
 	ClearAPIKey            bool   `json:"clear_api_key,omitempty" jsonschema:"true なら保存したキーを削除する"`
 	UnloadBeforeGeneration *bool  `json:"unload_before_generation,omitempty" jsonschema:"画像・動画を作る前に Ollama のモデルを降ろすか。Ollama 以外では何もしない"`
+	UseManagedRuntime      *bool  `json:"use_managed_runtime,omitempty" jsonschema:"true で「この PC の llama.cpp を使う」（mam が導入・起動する llama.cpp。起動中はそのポートを自動で使い、画像・動画を作る前に止める）。false でアドレスに戻す"`
 }
 
 func (h handlers) setLocalServer(_ context.Context, in SetLocalServerInput) (LocalServer, error) {
@@ -46,10 +61,10 @@ func (h handlers) setLocalServer(_ context.Context, in SetLocalServerInput) (Loc
 	if svc == nil {
 		return LocalServer{}, unavailable("ローカル LLM サーバーの設定")
 	}
-	if in.BaseURL == "" && in.APIKey == "" && !in.ClearAPIKey && in.UnloadBeforeGeneration == nil {
-		return LocalServer{}, invalidInput("base_url", "変える項目（base_url・api_key・clear_api_key・unload_before_generation）を 1 つ以上指定してください")
+	if in.BaseURL == "" && in.APIKey == "" && !in.ClearAPIKey && in.UnloadBeforeGeneration == nil && in.UseManagedRuntime == nil {
+		return LocalServer{}, invalidInput("base_url", "変える項目（base_url・api_key・clear_api_key・unload_before_generation・use_managed_runtime）を 1 つ以上指定してください")
 	}
-	err := svc.Save(llmlocal.SaveInput{BaseURL: in.BaseURL, APIKey: in.APIKey, ClearKey: in.ClearAPIKey, Unload: in.UnloadBeforeGeneration})
+	err := svc.Save(llmlocal.SaveInput{BaseURL: in.BaseURL, APIKey: in.APIKey, ClearKey: in.ClearAPIKey, Unload: in.UnloadBeforeGeneration, UseManaged: in.UseManagedRuntime})
 	var invalid *llmlocal.InvalidError
 	var store *credential.StoreError
 	switch {
@@ -57,6 +72,8 @@ func (h handlers) setLocalServer(_ context.Context, in SetLocalServerInput) (Loc
 		return localServerOf(svc), nil
 	case errors.As(err, &invalid):
 		return LocalServer{}, invalidInput(invalid.Field, invalid.Message)
+	case errors.Is(err, llmlocal.ErrManagedUnavailable):
+		return LocalServer{}, invalidInput("use_managed_runtime", "このアプリには、mam が管理する llama.cpp がありません")
 	case errors.Is(err, llmlocal.ErrPinned):
 		return LocalServer{}, &service.ConflictError{Message: pinnedMessage}
 	case errors.As(err, &store):

@@ -14,11 +14,20 @@ type Data struct {
 	KeyHint       string
 	KeyUnreadable bool
 	Unload        bool
-	Pinned        bool
+	// UseManaged is whether the calls go to the llama.cpp server mam manages itself. Managed is where that server stands (nil: this app has none).
+	UseManaged bool
+	Managed    *Managed
+	Pinned     bool
 	// Problem is why the settings file could not be read (a save is refused until it is repaired).
 	Problem string
 	// Notice is what the last save did; Error is why it was refused, and Blame the field it is about ("base_url" / "api_key").
 	Notice, Error, Blame string
+}
+
+// Managed is the llama.cpp server mam installs and starts itself, as the card shows it.
+type Managed struct {
+	// State is the llmlocal.ManagedState; Reason says (Japanese) why it cannot be used or failed; Model is the name of the model in force ("" for none).
+	State, Reason, Model string
 }
 
 // TestResult is the outcome of a connection test, drawn under the form.

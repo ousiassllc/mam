@@ -33,9 +33,13 @@ func (b bundledComfyUI) URL(ctx context.Context) string {
 	return ""
 }
 
+// Guard is the guard of the GPU for the bundled ComfyUI of mgr: the voice and the local LLM (package llamaserver) make room with it before their server starts.
+func Guard(mgr *modelmanager.Service) gpufree.Guard {
+	return gpufree.Guard{Engine: bundledComfyUI{mgr}}
+}
+
 // Voice is the local voice Irodori-TTS of the Audio Director: the server of the runtime manager, which the voice makes room for on the
 // GPU before it starts (it never runs at the same moment as the bundled ComfyUI: spec/architecture/model-adapters-m3.md §14.12).
 func Voice(rts *localruntime.Service, mgr *modelmanager.Service) audiodirector.LocalSynthesizer {
-	guard := gpufree.Guard{Engine: bundledComfyUI{mgr}}
-	return irodori.New(localspeech.IrodoriServer(rts, guard.Before), irodori.Config{}, nil)
+	return irodori.New(localspeech.IrodoriServer(rts, Guard(mgr).Before), irodori.Config{}, nil)
 }

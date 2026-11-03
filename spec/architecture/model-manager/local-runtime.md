@@ -1,4 +1,4 @@
-# ローカルランタイム（GPT-SoVITS・Irodori-TTS・MuseTalk）
+# ローカルランタイム（GPT-SoVITS・Irodori-TTS・MuseTalk・llama.cpp）
 
 [model-manager.md](model-manager.md)（同梱の ComfyUI エンジン）と同じ作りで、**声（GPT-SoVITS）と口パク（MuseTalk 1.5）をローカルで動かす実行環境を、MAM が自動で導入・起動・停止・状態表示まで管理する**ための基盤。親 Issue は #912（決定事項: 実行方式 B「ComfyUI の同梱エンジンと同じ感じで、mam が自動で入れて起動まで管理する」）。この文書は基盤と GPT-SoVITS の環境導入（Issue #918）、重み・依存ファイルの固定カタログと取得・検証・出典とライセンスの表示・画面と MCP（Issue #920。§12）、MuseTalk 1.5 の環境の組み立て・起動・口パクの入口（Issue #921。§13）を定める。実装は `backend/internal/modelmgr/runtime`（導入・判定・起動コマンド・重みの検証と取得）、`backend/internal/modelmgr/catalog`（カタログ）と `backend/internal/service/localruntime`（Service）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
 
@@ -9,6 +9,7 @@
 | 固定した URL と SHA-256 の上流との定期照合（週 1 回の CI ジョブ） | **#937（§12.10）** |
 | MuseTalk 1.5 のランタイム（環境の組み立て・起動・口パクの入口） | **#921（§13）** |
 | Irodori-TTS のランタイム（環境の組み立て・起動）、モデルの選択、Gemma Terms の同意 | **#1015（§14）** |
+| llama.cpp のランタイム（ローカル LLM。GGUF の重み 6 系統 8 本の選択、同梱ランタイムとしての起動、プロバイダー `local` への結びつき） | **#1008（後半。§17）** |
 | Irodori-TTS の声のプロバイダー（Audio Director。参照音声・キャプション・絵文字・GPU の扱い） | **#1015**（[model-adapters-m3.md §14.11・§14.12](../model-adapters-m3.md)。この文書の範囲外） |
 | MuseTalk の口パクプロバイダー（Audio Director。実行ごとの選択の入口まで） | **#923**（[model-adapters-m3.md §14.9](../model-adapters-m3.md)。この文書の範囲外） |
 | プロバイダーの選択の保存・クラウドへのフォールバック・利用者向けの文言 | #924（この文書の範囲外） |
@@ -628,3 +629,96 @@ PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だっ
 | macOS で `Evaluate` が断る文が、実際の画面・MCP でそのとおり出ること | 画面・MCP は `Support.Message()` を表示するだけ（既存のテストで確認済み）。実際の Mac の画面は未確認 |
 | 上の調査が示す wheel の有無・第三者の実装の状態が将来も同じであること | 保証できない（2026-11-04 時点）。PyPI に `pyopenjtalk` の macOS の wheel が出る、MLX 版に顔検出つきのサーバーが出るなどすれば、再調査して対応を足せる |
 | `mlx-community/MuseTalk-1.5-q4` の性能（34 顔/秒）・画質、`xocialize/musetalk-mlx` の LICENSE（ファイルが無い） | 未確認（モデルカードと `pyproject.toml` の自己申告だけ） |
+
+## 17. llama.cpp のランタイム（ローカル LLM。Issue #1008 後半）
+
+LLM のローカル実行用に、llama.cpp の `llama-server`（ggml-org/llama.cpp。MIT）を、GPT-SoVITS・Irodori-TTS・MuseTalk と**同じ基盤**（§3〜§8・§12・§14）で導入・起動・停止する。新しい 2 つ目の仕組みは作らず、足したのは次の 3 つだけ: ①Python を使わない**ネイティブのサーバー**の起動（`launch.program`）、②選んだモデルが起動の引数に値を渡す**固定のテンプレート**（`launch.args` のプレースホルダー）、③ランタイムの用途 `llm`。使う側（プロバイダー `local` への結びつき・VRAM の扱い）は [local-llm.md §10](../local-llm.md)。
+
+### 17.1 実行環境（`data/runtimes/llama-cpp.json`）
+
+| 項目 | 内容 |
+|---|---|
+| ID・用途 | `llama-cpp`・`llm`。画面の区画名は「ローカル音声・口パク・LLM」、カードの種類ラベルは「文章（LLM）」 |
+| 固定する版 | GitHub リリース **`b11960`**（コミット `8642541b255bfb5dc39cd351a178be09013a55d6`。2026-10-28。GitHub の API で、タグの指すコミットとアセットの `digest`〔SHA-256〕を確かめた。リリースのタグは付け替えられるので、固定の本体は SHA-256 とサイズ）。`ggml-org/llama.cpp` の `releases/download/b<数字>/` の 2 種類のファイル名だけを取得できる（`parts.URLAllowed`。ソース・他のプラットフォームのビルド・他のリポジトリ・ミラーは拒否） |
+| 対応 | **Windows x64 + NVIDIA の GPU だけ**（他のランタイムと同じ判定 §4。`vram.min_gb` は 6 の推定）。理由の文と代わりの案内（Ollama・LM Studio に接続するか、クラウドの LLM）はカタログの文 |
+| 変種 | `nvidia`（CUDA 12.4。Compute Capability 12.0 未満＝GTX 10 〜 RTX 40）と `nvidia50`（CUDA 13.4。12.0 以上＝RTX 50）。GPU の選び方は §4 の `ChooseVariant` そのまま（Irodori・GPT-SoVITS の `nvidia`/`nvidia50` と同じ） |
+| 部品 | 各変種に 2 つの zip: 本体のビルド（`llama-b11960-bin-win-cuda-<12.4\|13.4>-x64.zip`。`llama-server.exe` ほか 53 ファイル）と CUDA ランタイムの DLL（`cudart-llama-bin-win-cuda-<12.4\|13.4>-x64.zip`。`cudart`・`cublas`・`cublasLt`）。2 つは同じ名前のファイルを持たない（実物で確認）ので、同じディレクトリに展開する |
+| サイズ | `nvidia`: 取得 671,206,851 B（279,763,224 + 391,443,627）、展開後 1,231,292,189 B。`nvidia50`: 取得 588,521,743 B（164,986,387 + 423,535,356）、展開後 766,250,605 B |
+| SHA-256 | 本体 12.4 `8d9d8192…d684`、cudart 12.4 `8c79a9b2…e1d6`、本体 13.4 `31c75ea6…ea4a`、cudart 13.4 `738f8c25…be668`（全文はカタログ。実物をダウンロードして `sha256sum` で測り、API の `digest` と一致することを確かめた） |
+| ライセンス | llama.cpp 本体は MIT（リポジトリの LICENSE・GitHub のライセンス表示）。CUDA ランタイムの DLL は NVIDIA のライセンスに従う（再配布の条件は確認していない）ので `commercial: conditional` で注記を出す（§17.5） |
+| 同梱 | しない。実行時に GitHub の公式リリースから取得する（取得の許可ホストは増やしていない。github.com は ComfyUI・Codex の導入で許可済み） |
+
+**CUDA の世代**: 12.4 版の `ggml-cuda.dll` は `sm_50`〜`sm_90`（Maxwell〜Hopper。RTX 30・40 を含む）と `compute_86/89` を持ち、RTX 50（`sm_120`）には 13.4 版を使う（`ggml-cuda.dll` の中の PTX/SASS の対応を実物の文字列で確かめた。13.4 版は `compute_120a`・`121a`・`86`・`89`）。実機のドライバーが CUDA 13.4 に足りるかは未確認（§17.7）。
+
+**起動**: `llama-server.exe` を**直接**起動する（Python の環境・起動用スクリプトは無い）。コマンドラインは次の 1 つだけ（`catalog/data/runtimes/llama-cpp.json` の `launch.args`）:
+
+```
+llama-server.exe -m {model} --host 127.0.0.1 --port {port} --ctx-size {ctx_size} -ngl {ngl} --alias {choice}
+                 --parallel 1 --no-webui --no-slots --sleep-idle-seconds 900 --offline
+```
+
+- **任意の実行ファイル・任意の引数は受け付けない**。実行ファイルは `launch.program`（環境の下の固定のパス）、引数はこのテンプレートだけで、利用者・MCP・設定が渡せるのは**モデルの選択（カタログのモデルの id）**だけ。値は次の 4 つのプレースホルダーに入る: `{port}`（mam が決めた空きポート。前回のポートを優先）、`{model}`（選んだモデルの GGUF の、環境の下の相対パス）、`{choice}`（モデルの id。`--alias` で API のモデル名になる）、`{ctx_size}`・`{ngl}`（モデルごとの値。`choice.Values`）。値は英数字と `. _ -` だけ（空白・引用符で引数を増やせない）。`port`・`model`・`choice` の名前は組み込みで、モデルの値では上書きできない。`launchargs.Expand` は値の無いプレースホルダーが残ると起動しない（`{model}` のまま起動することはない）。カタログの検証が、`--host 127.0.0.1` と `{port}` を含み `0.0.0.0`・`::` を含まないことを確かめる（§5.2 と同じ）。
+- `--offline`・`HF_HUB_OFFLINE=1`: 実行中にモデルを取りに行かない。`--no-webui`: 組み込みの Web 画面を出さない。`--no-slots`: スロットの監視口を出さない。`--parallel 1`: 並列 1（VRAM を抑える）。
+- **認証**: 起動のたびに作る乱数のトークンを環境変数 **`LLAMA_API_KEY`**（`launch.token_env`）で渡す。llama-server はこれを API キーとして読み、`/health` 以外のすべての要求に `Authorization: Bearer <トークン>` を求める（実物の `--help` で `--api-key`・env `LLAMA_API_KEY` を確かめた）。ブラウザのページからは送れないので、`127.0.0.1` で待ち受けても他のサイトから叩けない。このトークンは設定の API キーとは別のもので、プロバイダー `local` が管理サーバーを使う間だけ使う（§local-llm.md §10）。
+- 準備の確認は `GET /health`（200 になるまで。起動の待ちは最長 900 秒＝27B をディスクから読み込む時間）。
+- `--sleep-idle-seconds 900`: 15 分使われないと、llama-server 自身がモデルをメモリ（VRAM）から降ろす（次の呼び出しで読み込み直す）。**LLM の「長時間アイドルでアンロード」**はこれ（§local-llm.md §10.3）。
+
+**`launch.program`**: ネイティブのサーバーのランタイムでは `python`・`entry` の代わりに `program` を使う（相対パス。どちらかだけ。検証が確かめる）。導入は、その実行ファイルが環境にあることを確かめて入れ替える。`parts.Build.site_packages` は wheel の部品があるときだけ必須（llama.cpp には wheel が無い）。
+
+### 17.2 モデルの選択（`data/assets/llama-cpp.json`）
+
+Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Resource.Choice`・`runtimechoices.Service`・`list_local_runtime_models`・`select_local_runtime_model`・モデルのラジオ画面）で、**8 つの選択肢**を載せた。重みは 1 モデル 1 ファイルで、`Resource.Role: "model"`（`launchargs` の `{model}` になる）。選ばれていないモデルの重みは取得しない。標準は Gemma 4 12B-it 純正。
+
+どの GGUF も、`mradermacher/<名前>-GGUF` のリポジトリの**コミット固定の URL**（`https://huggingface.co/<repo>/resolve/<40 桁のコミット>/<ファイル>`）で、**2026-11-03 に Hugging Face の API（`/api/models/<repo>/tree/<コミット>?recursive=1` の `lfs.oid`・`size`）で確かめた**値。ダウンロード応答の `x-linked-etag`・`x-linked-size` が同じことと、先頭 4 バイトが `GGUF` であることも確かめた。どのリポジトリも gated ではない（同意なしで取得できる）。
+
+| id | 名前（画面） | GGUF（コミット） | サイズ | SHA-256 | ライセンス（元の重み／GGUF 変換元のカードの `license`） |
+|---|---|---|---|---|---|
+| `gemma-4-12b-it`（標準） | Gemma 4 12B-it（純正・Q4_K_M） | `mradermacher/gemma-4-12B-it-GGUF`@`bd28046d` `gemma-4-12B-it.Q4_K_M.gguf` | 7,381,382,592（6.87 GiB） | `2a25529e…4e32` | Apache-2.0（商用可） |
+| `gemma-4-12b-it-abliterated` | Gemma 4 12B-it 非検閲（Huihui abliterated・Q4_K_M） | `mradermacher/Huihui-gemma-4-12B-it-abliterated-GGUF`@`f28c4a14` | 7,381,382,720（6.87 GiB） | `46fce9e4…573a` | Apache-2.0（商用可） |
+| `qwen3.8-27b` | Qwen3.8-27B（純正・IQ4_XS） | `mradermacher/Qwen3.8-27B-GGUF`@`860659a5` `Qwen3.8-27B.IQ4_XS.gguf` | 15,420,450,528（14.36 GiB） | `791e8775…3d1e` | Apache-2.0（商用可） |
+| `qwen3.8-27b-q3km` | Qwen3.8-27B（純正・Q3_K_M 軽量版） | 同上 `Qwen3.8-27B.Q3_K_M.gguf` | 13,500,737,248（12.57 GiB） | `98da2db1…6f9d` | Apache-2.0（商用可） |
+| `qwen3.8-27b-abliterated` | Qwen3.8-27B 非検閲（Huihui abliterated・IQ4_XS） | `mradermacher/Huihui-Qwen3.8-27B-abliterated-GGUF`@`c5f7e0aa` | 15,420,450,976（14.36 GiB） | `46cbac11…f6dc` | Apache-2.0（商用可） |
+| `qwen3.8-27b-abliterated-q3km` | 同（Q3_K_M 軽量版） | 同上 | 13,500,737,696（12.57 GiB） | `e3bebdd3…09c2` | Apache-2.0（商用可） |
+| `deepseek-r1-14b` | DeepSeek-R1-Distill-Qwen-14B（純正・Q4_K_M） | `mradermacher/DeepSeek-R1-Distill-Qwen-14B-GGUF`@`f5a17506` | 8,988,110,432（8.37 GiB） | `e6556ad1…0d80` | MIT（商用可） |
+| `deepseek-r1-14b-abliterated-v2` | DeepSeek-R1-Distill-Qwen-14B 非検閲（Huihui abliterated-v2・Q4_K_M） | `mradermacher/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2-GGUF`@`39e97fd1` | 8,988,110,912（8.37 GiB） | `5bc6f9ce…7e70` | **派生側に記載なし → 商用不明（`unknown`）** |
+
+（SHA-256 の全文・各ファイルの全コミットはカタログ。上の表のサイズは Issue 追記の表の GiB と一致した。）
+
+- **ライセンスの根拠**: 元の重み（`google/gemma-4-12B-it`・`huihui-ai/Huihui-gemma-4-12B-it-abliterated`・`Qwen/Qwen3.8-27B`・`huihui-ai/Huihui-Qwen3.8-27B-abliterated`・`deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`）と GGUF 変換元のモデルカードの `license:` を読んだ（Gemma は `apache-2.0` ＋ `license_link: ai.google.dev/gemma/docs/gemma_4_license`、DeepSeek のカードは「コードと重みは MIT。Qwen-2.5 系〔Apache 2.0〕から派生」）。**`huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2` と、その GGUF `mradermacher/…-abliterated-v2-GGUF` のカードには `license` が無い**（`base_model` だけ）ので、**「商用不明」とし、商用可として扱わない**（注記は画面・MCP に出る）。**法的な保証ではない**。
+- **載せられなかったモデルは無い**: 6 本の元の重み・GGUF のリポジトリとファイル名はすべて Hugging Face に実在した（Issue の表の名前のまま。代わりの名前は使っていない）。
+- **非検閲（abliterated）の 4 つ**は `uncensored: true`（`choice.Choice.Uncensored`）。画面は「成人向け相当（非検閲）」のバッジと注記（安全のための拒否を取り除いた派生で、暴力・性的表現などを拒否せず出力しうる・質や JSON を守る力が落ちうる・使い道は利用者の責任）を出す。MCP の `list_local_runtime_models` にも `uncensored` と `cautions` が出る。
+- **同意**: どのモデルも `consent`（利用規約への同意）は無い（ライセンスが Apache-2.0・MIT で、同意を求める条件が無い）。**mam が `accept_terms`・同意を自動で行うことは無い**。モデルを選ぶ操作は利用者の選択（ラジオ・MCP の `select_local_runtime_model`）で、同意とは別。商用不明の注記は表示だけで、選択をふさがない。
+- **VRAM の目安**（`vram_min_gb`。mam の推定で `vram_estimate: true`・実機では未確認）: Gemma 12B 9 GB・DeepSeek 14B 11 GB・Qwen3.8-27B の Q3_K_M 16 GB・IQ4_XS 18 GB（重み + 文脈 16384 の KV キャッシュ + 作業領域）。**Qwen 27B は Q4_K_M（15.66 GiB）だと 16 GB に収まらないので載せず、IQ4_XS を標準・Q3_K_M を軽量版にした**。`ngl` は Gemma・DeepSeek が `all`、Qwen が `auto`（収まらない分は llama.cpp が CPU に置く）。`ctx_size` は全モデル 16384（mam の企画・脚本の入力は長く、既定の小さい値だと途中が切れる）。
+- **thinking**: Gemma・Qwen は考える過程があり、JSON を返す役割では mam が `chat_template_kwargs: {"enable_thinking": false}` を送ってオフにする（前半 [local-llm.md §3](../local-llm.md) の実装。`--jinja` は llama-server の既定で有効）。DeepSeek R1 Distill はオフにできないので、`<think>…</think>` を取り除いてから JSON を読む（同 §3.3）。これらが**このランタイム（偽 llama-server）でも効く**ことは `llamaservertest` で確かめた（§17.6）。
+
+### 17.3 導入・起動・停止・状態
+
+§5・§6 と同じ。`Service.Install` は GPU から変種（`nvidia`/`nvidia50`）を選び、本体と cudart の zip を取得・展開（`extract.Zip`。展開後サイズで打ち切り・`ErrExists` で同名ファイルを拒否）して `env\` と入れ替え、続けて**選んだモデル 1 つの重み**を取得する。モデルを変える（`select_local_runtime_model`・画面）とサーバーを止め、次の起動から新しいモデルを読む（重みが無ければ「重みを導入」）。`Remove`・`Stop`・`SetAutoStart`・`Watch`・ログ・排他は他のランタイムと同じ。**自動起動は既定でオフ**（最初の LLM の呼び出しで起動する。§local-llm.md §10）。
+
+### 17.4 macOS（Apple Silicon）は「対応外」にした（理由）
+
+公式のリリースには `llama-b11960-bin-macos-arm64.tar.gz`（Metal。16,465,074 B。SHA-256 `58e5a5e1…1e3c`）がある。ランタイム定義の `os_reasons.darwin` に理由を書き、画面・MCP・`Service.Install` は「macOS（Apple Silicon）では llama.cpp の自動導入に対応していません。公式のリリースには macOS arm64（Metal）のビルド済みバイナリがありますが、mam はこの開発環境で macOS の実機を使えず…」と代わりの案内（Ollama・LM Studio への接続、クラウドの LLM）を返す。**理由**: ①`.tar.gz` の展開と `llama-server` の実行権限・Gatekeeper（未署名の実行ファイル）・Metal の動作は、実機なしで確かめられない。②§10 と同じく Apple Silicon の自動導入はオーナーの判断（別 Issue）。③ GPU の判定（`gpu.Report` の Apple Silicon のユニファイドメモリ）と VRAM の目安が、Windows + NVIDIA の規則とは別に要る。**ランタイム定義・テスト（非対応の理由・案内・`Install` が断ること）は他のランタイムと同じ水準で入れた**。Apple Silicon の Mac では、Ollama または LM Studio を入れて設定の「ローカル LLM サーバー」で接続する（local-llm.md §8）。
+
+### 17.5 表示（画面・MCP・docs）
+
+- **画面**: モデルマネージャーの区画「ローカル音声・口パク・LLM」に、llama.cpp のカード（種類「文章（LLM）」）。状態・導入・起動・停止・自動起動・削除・重み一覧（出典・ライセンス・商用利用）・**使うモデルの選択**（名前・説明・取得量・言語・VRAM の目安と GPU との比較・ライセンス・商用利用・注意）。**`unknown`（商用不明）の重みは琥珀色の枠**（§12.5）。非検閲のモデルは「成人向け相当（非検閲）」のバッジと注記。
+- **MCP**: `list_local_runtimes`・`get_local_runtime_status`・`install_local_runtime`・`install_local_runtime_weights`・`start_local_runtime`・`stop_local_runtime`・`list_local_runtime_models`・`select_local_runtime_model` が、**既存のまま**このランタイムを扱う（カタログのランタイム一覧に載る）。
+- **docs**: [THIRD_PARTY_NOTICES.md](../../../THIRD_PARTY_NOTICES.md) の「利用者が取得する別プログラム」に llama.cpp と 8 つの重みの一覧（出典・ライセンス・商用利用）。README の表と手順。
+
+### 17.6 テスト
+
+- `catalog/llamacpptest`: ピン（部品の SHA-256・サイズ・URL がコミット固定でないリリースのアセットだけ・展開後サイズの合計）、固定の 1 つのコマンドライン（`--host 127.0.0.1`・`{port}`・認証）、8 つのモデル（GGUF の URL がコミット固定・SHA-256・サイズ・Qwen は Q4_K_M を載せない・`ngl`/`ctx_size`）、ライセンス（DeepSeek の abliterated-v2 だけ `unknown`・商用不明の注記）、非検閲 4 つの `uncensored`、同意が無いこと、検証が拒否するもの（ミラー・http・ブランチ名・任意の引数を足す値・組み込みの名前の上書き）。
+- `catalog/launchargs`・`catalog/choice`・`catalog/parts`・`modelmgr/runtime/choicetest`: プレースホルダーの展開（値が無ければ起動しない・組み込みが勝つ・値に空白があれば拒否）、ネイティブのプログラムの起動（引数は固定の並びで、選んだモデルのファイルと値）、llama.cpp の URL の許可と他の拒否、wheel が無いビルドの `site_packages`。
+- `service/llamaserver/llamaservertest`（**偽の llama-server**: テストバイナリ自身を `llama-server.exe` として導入し、llama-server と同じ引数を読んで、知らない引数は断る）: 導入（本体 + cudart の zip を取得・展開・SHA-256 検証・選んだモデルの重みだけ）、RTX 50 世代は CUDA 13.4 版、起動（固定のコマンドライン・トークンなしの要求は 401・`/health` は通る）、停止、モデルの切り替え（停止して次の起動で別のファイル）、重みの SHA-256 不一致（取り直す／起動しない）、非対応の OS・GPU の理由、プロバイダー `local` からの呼び出し（管理サーバーへ結びつく・トークンを付ける・ベース URL の設定は使われない）、thinking（Gemma・Qwen は `enable_thinking=false` が効く・DeepSeek は `<think>` を除去して JSON を読む）、ComfyUI が生成中なら待つ・空いていれば `/free`（§local-llm.md §10）。
+- 実物の Windows ＋ NVIDIA での導入・起動・推論は **device_only**（§17.7）。
+
+### 17.7 未確認
+
+| 項目 | 状態 |
+|---|---|
+| **実物の Windows ＋ NVIDIA での導入（本体 + cudart の zip の取得・展開）・`llama-server.exe` の起動・推論** | **未確認（device_only）**。この開発環境は Linux で GPU が無い。部品の SHA-256・サイズは実物のファイルで測り、API の `digest` と一致することを確かめた。引数は、同じリリースの Linux 版 `llama-server --help` で、使う引数（`-m`・`--host`・`--port`・`--ctx-size`・`-ngl`・`--alias`・`--parallel`・`--no-webui`・`--no-slots`・`--sleep-idle-seconds`・`--offline`・`LLAMA_API_KEY`）が実在することを確かめた。Windows 版の実行は未実行 |
+| 12.4 / 13.4 の CUDA のビルドが、利用者のドライバーで動くか（13.4 は新しいドライバーが要る） | **未確認**。動かないドライバーは、起動の失敗（ログの末尾つき）として表示される |
+| 各モデルの VRAM・速さ・出力の質・JSON の守り方、ComfyUI との同居（Gemma 12B は同居しやすいが、27B は同居できない） | **未確認**。`vram_estimate: true`。数値は出さない |
+| `--sleep-idle-seconds` で VRAM が実際に空くこと | **未確認**（llama.cpp のヘルプの記述に基づく） |
+| macOS（Apple Silicon）の自動導入 | **対応外**（§17.4） |
+| 部品・重みの URL が将来も残ること | 保証できない。変われば SHA-256 の不一致・404 で失敗する |

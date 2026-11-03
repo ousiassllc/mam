@@ -12,6 +12,7 @@ import (
 
 const (
 	description = "Ollama・LM Studio・llama.cpp server など、OpenAI 互換の API（/v1/chat/completions・/v1/models）を出すサーバーを LLM のプロバイダー「local」として使います。API キーは要りません（サーバーが求めるときだけ入れます）。モデルは、サーバーが持っているものから「LLM の割り当て」で選びます。"
+	managedHelp = "mam が導入・管理する llama.cpp（モデルマネージャーの「ローカル」）で LLM を動かします。選ぶとベース URL と API キーは使わず、起動した llama.cpp のポートを自動で使います。モデルを変えると再起動します。"
 	baseURLHelp = "例: Ollama は http://localhost:11434、LM Studio は http://localhost:1234、llama.cpp server は http://localhost:8080。同じ PC か LAN・tailnet のサーバーを指定します（http も使えます。リンクローカルのアドレスは使えません）。末尾の /v1 は付けても付けなくても構いません。"
 )
 
@@ -20,6 +21,22 @@ templ Card(d Data) {
 	<ul role="list" class="grid grid-cols-1 gap-4">
 		@settingsui.CardItem(d.card()) {
 			<form id="llm-local-form" class="flex w-full flex-col gap-3" hx-put={ paths.LLMLocal() } hx-target={ "#" + CardID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="llm-local-form">
+				if d.Managed != nil {
+					<div class="flex flex-col gap-1 rounded-md border border-neutral-700 p-3" data-testid="llm-local-managed">
+						<label class="flex items-start gap-2 text-sm text-neutral-200">
+							@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": "use_managed", "value": "1", "checked": d.UseManaged, "disabled": d.Pinned, "data-testid": "llm-local-use-managed"})
+							<span>この PC の llama.cpp を使う<span class="block text-xs text-neutral-400">{ managedHelp }</span></span>
+						</label>
+						<p class="text-xs text-neutral-300" data-testid="llm-local-managed-state" data-state={ d.Managed.State }>{ d.Managed.stateText() }</p>
+						if d.Managed.Reason != "" && d.Managed.State != "running" && d.Managed.State != "stopped" {
+							<p class="whitespace-pre-wrap break-words text-xs text-amber-300" data-testid="llm-local-managed-reason">{ d.Managed.Reason }</p>
+						}
+						<a class="w-fit text-xs text-sky-300 underline" href={ templ.SafeURL(paths.ModelManager()) } data-testid="llm-local-managed-link">モデルマネージャーで導入・モデルを選ぶ</a>
+					</div>
+					if !d.Pinned {
+						<input type="hidden" name="use_managed_present" value="1"/>
+					}
+				}
 				<div class="flex flex-col gap-1">
 					<label class="text-sm font-semibold text-neutral-100" for="llm-local-base-url">ベース URL</label>
 					@atoms.Input(atoms.FieldSm, "w-full", templ.Attributes{
@@ -68,6 +85,27 @@ func invalid(yes bool) any {
 		return "true"
 	}
 	return false
+}
+
+// stateText says where the managed llama.cpp stands, in a sentence.
+func (m Managed) stateText() string {
+	model := m.Model
+	if model == "" {
+		model = "モデル未選択"
+	}
+	switch m.State {
+	case "running":
+		return "動いています（モデル: " + model + "）。画像・動画を作る前に止まり、次の LLM の呼び出しで自動で起動します"
+	case "starting":
+		return "起動しています（モデル: " + model + "。読み込みに時間がかかります）"
+	case "stopped":
+		return "導入済みです（モデル: " + model + "）。最初の LLM の呼び出しで自動で起動します（モデルの読み込みに少し待ちます）"
+	case "failed":
+		return "起動に失敗しました（モデル: " + model + "）"
+	case "unsupported":
+		return "この PC では使えません"
+	}
+	return "まだ使えません"
 }
 
 func keyPlaceholder(d Data) string {

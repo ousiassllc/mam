@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/launchargs"
 )
 
 // ResourceLicense is the license of a weight or a dependency, as the screen and the docs show it. Notice is the sentence that says what
@@ -61,10 +62,12 @@ type Resource struct {
 	Size    int64            `json:"size"`
 	// Required: the runtime needs the asset to start. Choice names the model (ResourceSet.Choices) the asset belongs to: it is fetched and
 	// checked only while that model is chosen ("" for an asset every model needs).
-	Required bool           `json:"required"`
-	Choice   string         `json:"choice,omitempty"`
-	Source   ResourceSource `json:"source"`
-	License  string         `json:"license"`
+	Required bool   `json:"required"`
+	Choice   string `json:"choice,omitempty"`
+	// Role is "model" for the file the server loads ("{model}" of the launch args, package launchargs); "" for any other asset.
+	Role    string         `json:"role,omitempty"`
+	Source  ResourceSource `json:"source"`
+	License string         `json:"license"`
 }
 
 // Files lists where the resource's files go (relative to the environment directory) with the size and SHA-256 each must have.
@@ -107,6 +110,27 @@ func (s ResourceSet) Active(chosen string) []Resource {
 		}
 	}
 	return out
+}
+
+// modelAssets is how many assets of the model have the role "model" (the file the server loads).
+func (s ResourceSet) modelAssets(choiceID string) int {
+	n := 0
+	for _, a := range s.Active(choiceID) {
+		if a.Role == launchargs.RoleModel {
+			n++
+		}
+	}
+	return n
+}
+
+// ModelFile is the file the server loads for the model in force (Chosen), relative to the environment directory ("" when the runtime has none).
+func (s ResourceSet) ModelFile(chosen string) string {
+	for _, a := range s.Active(chosen) {
+		if a.Role == launchargs.RoleModel {
+			return a.Dest
+		}
+	}
+	return ""
 }
 
 // License returns the license with the id.

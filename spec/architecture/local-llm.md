@@ -2,7 +2,7 @@
 
 Issue #1008（前半）。LLM のプロバイダーに、自分の PC や LAN で動く **OpenAI 互換のサーバー**（Ollama・LM Studio・llama.cpp server）を足す。API キー不要・オフライン・内容の制限を自分で決められる形で、企画・脚本・Shot 計画などを回せるようにする。Reasoning LLM Adapter の全体は [`model-adapters.md`](model-adapters.md) §2。共通のエラーは [`errors.md`](errors.md)。モデルの絞り込み・使えるかどうかは [`model-manager/model-filter.md`](model-manager/model-filter.md)。
 
-**この版でやらないこと（別の担当）**: GGUF のカタログ（モデルマネージャーからのダウンロード）と、llama.cpp server の同梱・起動の管理。この版は「すでに動いている OpenAI 互換サーバー」につなぐところまで。§7 の推奨モデルは、そのカタログに入れる候補の調査結果。
+**構成**: §1〜§9 は「すでに動いている OpenAI 互換サーバー」につなぐ部分（前半）。**GGUF のカタログ（モデルマネージャーからのダウンロード）と、mam が管理する llama.cpp server（同梱ランタイム）は §10**（後半）。§7 の推奨モデルは、そのカタログに入れた 6 系統の調査結果。
 
 ## 1. プロバイダー `local`
 
@@ -58,9 +58,9 @@ ComfyUI と同じ GPU（16GB 級）でローカル LLM を動かすと、LLM の
 
 1. **設定でオンにしたときだけ**、ローカルの画像・動画の生成を始める前に、Ollama のモデルをメモリから降ろす。既定はオフ（`providers.local.unload_before_generation`）。理由: 降ろすと次の LLM の呼び出しでモデルを読み込み直すので、数秒〜数十秒遅くなる。CPU メモリや別の GPU に余裕がある人には不要。Ollama 以外のサーバーを黙って操作しない。
 2. **実装**（`llmlocal.Service.BeforeGeneration`／`UnloadModels`）: `GET {base_url}/api/ps`（Ollama が今メモリに置いているモデルの一覧。公式の API）で名前を取り、各モデルに `POST {base_url}/api/generate` `{"model": <名前>, "keep_alive": 0}`（公式の FAQ にある「すぐ降ろす」方法）。全体で 10 秒まで。キー（あれば）は付ける。アプリでは、ローカルのモデルの生成の前に呼ばれる `Prepare` のフック（同梱の ComfyUI を起動するのと同じ場所）から呼ぶ。**失敗は警告ログだけで、生成は止めない**（降ろせなくても生成は試せる）。
-3. **Ollama 以外**（LM Studio・llama.cpp server）: `/api/ps` が無い（404）ので何もしない。LM Studio は「Idle TTL and Auto-Evict」（モデルを使わない間に自動で降ろす）をサーバー側で設定する。llama.cpp server は起動時に別のサーバーとして必要なときだけ立ち上げる、またはモデルサイズ・`-ngl`（GPU に載せる層の数）で VRAM に収める。mam の画面・API には、これらを降ろす操作は入れていない（OpenAI 互換の API には「降ろす」が無い）。
+3. **Ollama 以外**（LM Studio・llama.cpp server）: `/api/ps` が無い（404）ので何もしない。LM Studio は「Idle TTL and Auto-Evict」（モデルを使わない間に自動で降ろす）をサーバー側で設定する。llama.cpp server は、mam が管理するもの（§10）なら生成の前に止まる。自分で立てた llama-server は、必要なときだけ立ち上げる、またはモデルサイズ・`-ngl`（GPU に載せる層の数）で VRAM に収める。mam の画面・API には、これらを降ろす操作は入れていない（OpenAI 互換の API には「降ろす」が無い）。
 4. **実機での確認はしていない**: Ollama の `/api/ps`・`keep_alive: 0` は公式ドキュメントの API に合わせて実装し、偽の Ollama サーバー（httptest）でリクエストの形をテストした。実際の Ollama と ComfyUI を同時に動かしての確認は device_only（悠太さんの PC）。
-5. 実装していない・後の担当: LLM の呼び出しの前に ComfyUI のモデルを降ろす（逆方向）、llama.cpp server の同梱時の起動・停止による降ろし（同梱は別の担当）。
+5. mam が管理する llama.cpp は、画像・動画の生成の前に**止めて VRAM を空ける**（§10.3）。LLM の起動の前に ComfyUI が生成中なら待ち、空いていれば ComfyUI のモデルを降ろす（§10.3。逆方向）。Ollama 以外の外部サーバーは従来どおり何もしない。
 
 ## 6. 非機能の注意
 
@@ -121,8 +121,50 @@ ComfyUI と同じ GPU（16GB 級）でローカル LLM を動かすと、LLM の
 - 統合（`orchestrator`）: 偽の OpenAI 互換サーバーで、Producer・Writer・Director・Storyboard のすべてを `local` に割り当て、`response_format` を拒否するサーバー・`<think>` つきの答え・コードフェンスの答え・最初は JSON でない答え（リトライ）を含めて、**企画が Shot 計画・絵コンテまで最後まで通る**（`TestHandle_PlanningRunsToTheEndOnALocalOpenAICompatibleServer`）。
 - **device_only（未確認）**: 実際の Ollama・LM Studio・llama.cpp server につないでの企画の通し、実際の Ollama の `/api/ps`・`keep_alive: 0` での VRAM の解放と ComfyUI との同居、各モデルの出力の質・JSON の守り方。
 
+## 10. mam が管理する llama.cpp（GGUF の LLM。Issue #1008 後半）
+
+モデルマネージャーの「ローカル」から llama.cpp の `llama-server` と GGUF の重みを導入し、mam が起動・停止して LLM のプロバイダー `local` から使う。ランタイムの定義・導入・モデルの選択は [model-manager/local-runtime.md §17](model-manager/local-runtime.md)（Irodori-TTS と同じ基盤）。この節は、LLM として使う側。
+
+### 10.1 「この PC の llama.cpp を使う」（管理されたサーバー）
+
+- 設定「テキスト生成（LLM）」のカード「ローカル LLM サーバー」に、チェックボックス「この PC の llama.cpp を使う」（`providers.local.use_managed_runtime`。既定オフ）。オンの間、プロバイダー `local` の呼び出しは**ベース URL・API キーを使わず**、管理サーバーの `http://127.0.0.1:<ポート>` に向かう。起動中はそのポートを自動で使い（ポートは起動のたびに mam が決める。前回のポートを優先）、ベース URL の欄は別のサーバー（Ollama など）用にそのまま残る。オフにすれば元のアドレスに戻る。
+- カードは、サーバーの状態（`unsupported` この PC では使えない／`not_installed` 未導入か重みが不足／`stopped` 導入済み（最初の呼び出しで起動）／`starting`／`running`／`failed`）と、使うモデル名、理由と何をすればよいか、モデルマネージャーへのリンクを出す。管理サーバーが無い PC（macOS など）では、理由とクラウド・Ollama への案内。モデルの導入と選択はモデルマネージャーでする（カードは選ばない）。
+- **モデル名**: 管理サーバーが答えるモデル名は、選んだモデルの id（`--alias`。例 `gemma-4-12b-it`・`qwen3.8-27b`）。`list_llm_models` の `local` と LLM の割り当てのモデル選択には、管理サーバーを選んでいる間は**そのモデル 1 つだけ**が出る（止まっていても出る。未導入・非対応は 0 件）。割り当ての `model` にその id を指定する。モデルを切り替える（モデルマネージャー・MCP の `select_local_runtime_model`）とサーバーが止まり、次の呼び出しで新しいモデルが起動する。
+- **起動**: 最初の LLM の呼び出し（`localllm` のバックエンドが `Endpoint` を呼ぶ）でサーバーが止まっていれば起動し、`/health` が 200 になるまで待つ（モデルの読み込みで数十秒〜数分。呼び出しのタイムアウト `timeout_seconds` が先に切れるなら延ばす）。自動起動（モデルマネージャーのカードのスイッチ）をオンにすれば mam の起動時に起動する（既定オフ）。起動できないとき（非対応・未導入・重みが不足・ComfyUI が生成中のまま・起動の失敗）は、理由つきのエラーで、**黙って別のアドレスに切り替えない**。エージェントの呼び出しからは「ローカルサーバーが応答しない」と同じ扱い（`local_llm_unreachable`。再試行・代替プロバイダーへの切り替えの対象）。
+- **接続テスト**: 管理サーバーを選んでいる間は、フォームのアドレスを試さず、サーバーの状態を言う（起動はしない。モデルの読み込みは接続テストより長いため）。MCP は `set_local_llm_server` の `use_managed_runtime`、`get_global_settings` の `llm.local_server.managed_runtime`（`state`・`reason`・`model`）。
+
+### 10.2 コマンドラインは外から指定できない
+
+起動の引数は**カタログの固定のテンプレート 1 つ**で、利用者・設定・MCP が渡せるのはモデルの選択（カタログの id）だけ（local-runtime.md §17.1）。任意の実行ファイルも任意の引数も受け付けない。サーバーは `127.0.0.1` だけで待ち受け、起動のたびの乱数の合言葉（`LLAMA_API_KEY`）を `/health` 以外のすべての要求に求める。プロバイダーはこの合言葉を `Authorization: Bearer` に付ける。設定の API キーは管理サーバーには送らない（別のサーバーのキーを漏らさない）。
+
+### 10.3 VRAM の取り合い（決めたこと）
+
+16GB VRAM で ComfyUI と同居する前提。LLM はオーケストレーターが常に呼ぶので、画像・動画の生成と LLM が同じ GPU を取り合う。決め:
+
+| 場面 | 動作 |
+|---|---|
+| LLM を**起動する**とき | 同梱の ComfyUI が**生成中なら待つ**（`gpufree.Guard.MakeRoom` が ComfyUI の `GET /queue` を見る。最長 5 分、3 秒ごと。呼び出しの文脈が先に切れればそれまで）。まだ空かなければ「ComfyUI が画像・動画を生成している最中で、GPU のメモリが空きません」で断る。生成中でなければ ComfyUI に `POST /free`（モデルのアンロード）を送ってから起動する。Irodori-TTS が使う GPU 調停と**同じ部品**（`gpufree.Guard`。声は生成中なら待たずに断り、LLM は待つ） |
+| 画像・動画の生成を**始める**とき | 管理サーバーを選んでいれば、サーバーを**止める**（VRAM を返す。27B は ComfyUI と同居できず、12B・14B も生成の余裕を空けるため）。次の LLM の呼び出しで、モデルを読み込み直して起動する（数十秒〜数分）。Ollama のアンロードのスイッチ（§5.3）とは独立で、管理サーバーには常に効く |
+| LLM が**使われない**間 | `--sleep-idle-seconds 900`（llama-server 自身が 15 分使われなければモデルをメモリから降ろす。次の呼び出しで読み込み直す） |
+
+Qwen 27B は IQ4_XS（14.36 GiB）でも 16GB の GPU に収まらないぶんは CPU に置いて動き、ComfyUI とは同時に動かせない。Gemma 12B（約 7 GiB）なら同居しやすい。**実機での同居の確認は device_only**。
+
+### 10.4 実装
+
+- `service/llamaserver.Server`（`llmlocal.Managed`）: `Endpoint`（必要なら ComfyUI を待って起動し、アドレスと合言葉を返す）・`Stop`・`Info`（起動せずに状態）。`localruntime.Service` を呼ぶ（導入・重み・非対応の拒否は他のランタイムと同じエラー。文面にしたのが `llamaserver.Explain`）。`llmlocal.Service` が `SetManaged` で持ち、`localllm.WithManaged` でバックエンドへ、`llmmodels.Options.LocalManaged` でモデル一覧へ、`BeforeGeneration`（生成の前の `Prepare` のフック）で停止へ結ぶ（`app/services.go`）。
+- `gpufree.Guard.MakeRoom` を、声の `Before` と LLM の起動で共有する（`irodoriwire.Guard`）。
+
+### 10.5 thinking
+
+JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除去（§3）。管理サーバーでも同じバックエンド（`localllm`）が呼ぶので、そのまま効く。偽の llama-server で、Gemma・Qwen のモデルは thinking が切れ（JSON の役割だけ）、DeepSeek は `<think>` 付きの答えから JSON を読めることを確かめた（`llamaservertest`）。
+
+### 10.6 テスト・未確認
+
+`llamaservertest`（偽の llama-server。local-runtime.md §17.6）・`localllm`（管理サーバーへの結びつき・キーの扱い）・`llmlocal`（`use_managed_runtime` の保存・固定・停止）・`llmmodels`・`gpufree`・設定画面（`llmsettingstest`）・MCP。**device_only**: 実機での導入・起動・推論、ComfyUI との同居、`--sleep-idle-seconds` での VRAM の解放、各モデルの質と JSON の守り方。
+
 ## 改訂履歴
 
 | 版 | 日付 | 内容 | 理由 |
 |---|---|---|---|
+| 1.1 | 2026-11-04 | §10 を足した: mam が管理する llama.cpp（GGUF の 8 モデル）を「この PC の llama.cpp を使う」でプロバイダー `local` に結びつける。VRAM の調停（ComfyUI が生成中なら待つ・生成の前に止める・アイドルで降ろす） | Issue #1008（後半） |
 | 1.0 | 2026-11-03 | 新規作成。プロバイダー `local`、モデル一覧・使えるか、JSON の扱い、エラー、設定画面・MCP、VRAM の取り合い、推奨モデルの調査、Ollama / LM Studio / llama.cpp server の使い方 | Issue #1008（前半） |

@@ -14,7 +14,9 @@ func ModelsID(id string) string { return "mm-runtime-models-" + id }
 type Model struct {
 	ID, Name, Description string
 	Active, Default       bool
-	Size, Languages       string
+	// Uncensored: the model's refusals were removed (an abliterated derivative); the screen says it is for adults.
+	Uncensored      bool
+	Size, Languages string
 	// VRAM is the guideline of the video memory; VRAMFit says how this PC's GPU stands to it ("" when not known).
 	VRAM, VRAMFit string
 	License       string

@@ -92,7 +92,7 @@
 - 使われていない Agent（`Unused`: Orchestrator・Final QC）は、今と同じく折りたたみ（`<details>`「現在は使われません」）に入れ、表の下に置く。折りたたみの中の表も同じ列・同じ編集。
 - 14 行で、1440×900 では 1 画面に収まらず main がスクロールする。「用途」列は `xl:`（1280 px）以上でだけ出し、狭いときは行見出しの下に 1 行で出す（実装で変更: 当初は `lg:` の案だったが、サイドナビで表が約 700 px に狭まる 1024×700 の実画面で、`lg:` ではモデル名が割れて読みにくかった。2026-10-25 に両方を撮って比べた）。
 - 実装（2026-10-25）: 全体の「既定に戻す」は「すべて既定に戻す」（`hx-confirm`。`DELETE /settings/llm`）。モーダルの 422 は `llmassign.InvalidError` の `Role`・`Field` で問題の欄に `aria-invalid`・`autofocus`。「再起動で反映」の印（`Badge` warn）は保存した直後の行だけ。『この Agent を既定に戻す』の確認なしは `destructive_confirm_test` の例外に理由つきで足した。用途の 1 行（§7 の質問 2）は `model-adapters.md` §2 の選定理由から要約した（`handler/settings/llm/purposes.go`）。`PUT /settings/llm`（全体）は MCP のツールとテストのために残し、応答は表の区画（`#llm-assignment-panel`）。
-- ローカル LLM サーバー（#1008）: 表の下に、カード（`organisms/settings/llmlocal`、`settingsui.CardItem`）「ローカル LLM サーバー（OpenAI 互換）」を置く。欄はベース URL・API キー（任意・`type=password`・値は出さない）・「保存したキーを削除する」・スイッチ「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」、ボタン「保存」（`PUT /settings/llm/local`）「接続テスト」（`POST /settings/llm/local/test`。結果は共通のエラー表示）。「API キーとログイン」のカードは変えない。詳細は `spec/architecture/local-llm.md` §5
+- ローカル LLM サーバー（#1008）: 表の下に、カード（`organisms/settings/llmlocal`、`settingsui.CardItem`）「ローカル LLM サーバー（OpenAI 互換）」を置く。欄はベース URL・API キー（任意・`type=password`・値は出さない）・「保存したキーを削除する」・スイッチ「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」、ボタン「保存」（`PUT /settings/llm/local`）「接続テスト」（`POST /settings/llm/local/test`。結果は共通のエラー表示）。「API キーとログイン」のカードは変えない。**カードの先頭に、チェックボックス「この PC の llama.cpp を使う」**（`use_managed`・`use_managed_present`。管理サーバーのある app だけ。状態 `data-state`・理由・モデル名・モデルマネージャーへのリンク。オンの間はベース URL・API キーを使わない。`spec/architecture/local-llm.md` §10）。詳細は `spec/architecture/local-llm.md` §5
 
 モーダル（`GET /settings/llm/agents/:agent/edit`。`:agent` は `llmassign.Agents()` の名前。未知は 404）:
 
@@ -213,4 +213,8 @@
 | 0.16 | 2026-11-03 | §1.3（ChatGPT でログイン）と §9（音声・口パク）を、API キーと同じカード（2 列。名前・説明・状態の `Badge`・印・主なボタン）にそろえた。長い説明・注意・トークンの期限・リスク・商用利用の条件・出典とライセンスは「詳細」のモーダルへ移した。「非公式」「商用注意」の印をカードに常に出す。音声・口パクはプロバイダーごとのカードを選ぶ形（選択中は枠と文字）。`GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider` を足した | Issue #1005 |
 | 0.17 | 2026-11-03 | §9 に Irodori-TTS のカード（ラジオ値 `irodori`・詳細・使うモデルと制限・声のコピーの注記）を足した | Issue #1015 |
 | 0.18 | 2026-11-03 | §2 に、ローカル LLM サーバーのカードを足した | Issue #1008 |
+<<<<<<< HEAD
 | 0.19 | 2026-11-04 | §2 の LLM のモデル欄を、プロバイダーとモデルを一緒に選ぶモデル選択の欄にした。使えないプロバイダーを指す割り当ての警告を足した | Issue #1011・#1013 |
+=======
+| 0.19 | 2026-11-04 | §2 のローカル LLM サーバーのカードに「この PC の llama.cpp を使う」を足した | Issue #1008（後半） |
+>>>>>>> sweep38/w1008b

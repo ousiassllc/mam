@@ -38,7 +38,7 @@ func modelsOf(ctx context.Context, svc runtimechoices.Service, id string) []card
 			Size: jobview.BytesText(v.SizeBytes), Languages: strings.Join(langs, "・"),
 			VRAM:    jobview.ModelVRAMText(catalog.VRAM{MinGB: v.VRAMMinGB, RecommendedGB: v.VRAMRecommendedGB, Source: v.VRAMNote, Estimate: v.VRAMEstimate}),
 			VRAMFit: v.VRAMFit, License: v.LicenseInfo.Name, LicenseURL: v.LicenseInfo.URL, Commercial: v.LicenseInfo.Commercial.Label(),
-			Cautions: v.Cautions,
+			Cautions: v.Cautions, Uncensored: v.Uncensored,
 		}
 		if v.Consent != nil {
 			m.Consent = &card.ModelConsent{Version: v.Consent.Version, Text: v.Consent.Text, Accepted: v.Accepted}

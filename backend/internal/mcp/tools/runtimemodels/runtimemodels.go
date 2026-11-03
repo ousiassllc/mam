@@ -19,7 +19,7 @@ import (
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc}
 	mcpkit.Read(r, "list_local_runtime_models",
-		"ローカルの実行環境で選べるモデルの一覧（Irodori-TTS: v4.1-Small・v4.1-Small-MF・v4-Large・v4-Large の int8 / int4 / fp8）。各モデルの種類（kind: tts）・言語（languages）・ライセンスと商用利用の可否・倫理上の制限（cautions）・必要なビデオメモリ（この PC の GPU との判定つき）・取得するサイズ・使用中か・同意が要るか（consent_needed。同意の本文と版は consent）を返す。モデルを持たない実行環境は空 / The models of a local runtime with their license, restrictions, VRAM and whether the license has to be accepted.",
+		"ローカルの実行環境で選べるモデルの一覧（Irodori-TTS: v4.1-Small・v4.1-Small-MF・v4-Large・v4-Large の int8 / int4 / fp8。llama-cpp: Gemma 4 12B・Qwen3.8-27B・DeepSeek-R1-Distill-Qwen-14B の純正と非検閲〔uncensored: true。成人向け相当〕）。各モデルの種類（kind: tts・llm）・言語（languages）・ライセンスと商用利用の可否・倫理上の制限（cautions）・必要なビデオメモリ（この PC の GPU との判定つき）・取得するサイズ・使用中か・同意が要るか（consent_needed。同意の本文と版は consent）を返す。モデルを持たない実行環境は空 / The models of a local runtime with their license, restrictions, VRAM and whether the license has to be accepted.",
 		h.list)
 	mcpkit.Write(r, "select_local_runtime_model",
 		"ローカルの実行環境が使うモデルを選ぶ（動いているサーバーは止める。重みは、モデルを選んだあとに install_local_runtime_weights で取得する）。ライセンスの同意が要るモデル（Gemma Terms の v4-Large 系。list_local_runtime_models の consent_needed）は、ユーザーに consent.text を見せ、ユーザーが同意した後にだけ accept_license_version に consent.version を渡す。エージェントが代わりに渡してはならない（渡さなければ conflict で拒否され、何も記録しない）/ Choose the model of a runtime; a model with a license to accept needs accept_license_version, which only the user's own agreement may supply.",
