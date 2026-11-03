@@ -1,6 +1,6 @@
 // Package gentestrecipe holds the MCP tools of the recipes of the generation test (Issue #977, spec/api/mcp-tools-generation-test.md): list, save, change and
 // delete a recipe (the settings of an image kept under a name: the model, the sampling values, the seed, the negative prompt, the LoRA, the strength of the input
-// images, the size, the quality and the values of the exposed inputs; never a prompt or an input image). A request of estimate_generation_test and
+// images, the size, the quality, the speed mode and the values of the exposed inputs; never a prompt or an input image). A request of estimate_generation_test and
 // run_generation_test takes a recipe with "recipe". It is a package of its own because tools/gentest is at its line limit.
 package gentestrecipe
 
@@ -87,6 +87,7 @@ type Settings struct {
 	LoRA              *LoRA              `json:"lora,omitempty"`
 	ReferenceStrength *float64           `json:"reference_strength,omitempty" jsonschema:"入力画像の強さ（0〜1）"`
 	AspectRatio       string             `json:"aspect_ratio,omitempty" jsonschema:"16:9 のように"`
+	SpeedMode         string             `json:"speed_mode,omitempty" jsonschema:"速さのモード（モデルの speed_modes の id。例: lightning-4）。そのモデルが持つモードだけ保存できる。省くと使うときのモデルの既定"`
 	Exposed           map[string]any     `json:"exposed,omitempty" jsonschema:"画面に出す値（キーは <ノード ID>.<入力名>）"`
 }
 
@@ -100,7 +101,7 @@ func recipeOf(v recipe.View) Recipe {
 	p := v.Params
 	out := Recipe{
 		ID: v.ID, Name: v.Name, Model: p.Model, ModelLabel: v.ModelLabel, Easy: v.Easy, Usable: v.Usable, Reason: v.Reason,
-		Settings:  Settings{Quality: string(p.Quality), Seed: p.Seed, NegativePrompt: p.Negative, ReferenceStrength: p.ReferenceStrength, AspectRatio: p.AspectRatio, Exposed: p.Exposed},
+		Settings:  Settings{Quality: string(p.Quality), Seed: p.Seed, NegativePrompt: p.Negative, ReferenceStrength: p.ReferenceStrength, AspectRatio: p.AspectRatio, SpeedMode: p.SpeedMode, Exposed: p.Exposed},
 		CreatedAt: v.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"), UpdatedAt: v.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
 	if !p.Sampling.IsZero() {
@@ -151,7 +152,7 @@ func (h handlers) save(ctx context.Context, in SaveInput) (Recipe, error) {
 		return Recipe{}, err
 	}
 	req := gentest.Request{
-		Media: gentest.MediaImage, Models: []string{in.Model}, Seed: in.Seed, Quality: sampling.Quality(in.Quality), AspectRatio: in.AspectRatio, Exposed: in.Exposed,
+		Media: gentest.MediaImage, Models: []string{in.Model}, Seed: in.Seed, Quality: sampling.Quality(in.Quality), AspectRatio: in.AspectRatio, SpeedMode: in.SpeedMode, Exposed: in.Exposed,
 	}
 	if in.Sampling != nil {
 		req.Sampling = *in.Sampling

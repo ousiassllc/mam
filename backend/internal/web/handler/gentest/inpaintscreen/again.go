@@ -33,6 +33,11 @@ func (h Handlers) restore(c *gin.Context, p *gentestinpaint.Page) string {
 	case !same:
 	case d.SeedSent && d.Seed != nil:
 		p.Seed = strconv.FormatInt(*d.Seed, 10)
+		if d.Translated && d.TranslatedPrompt != "" {
+			// The same seed makes the same picture only from the same words (as redo.Of does): the English that was sent goes in, untranslated again.
+			p.Prompt, p.Negative, p.Translate = d.TranslatedPrompt, d.TranslatedNegativePrompt, false
+			notes = append(notes, redo.SameEnglishNote)
+		}
 	default:
 		notes = append(notes, "このモデルはシードを受け取らないため、同じ絵は再現できません（同じ設定で作り直します）")
 	}

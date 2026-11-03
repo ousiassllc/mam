@@ -18,6 +18,9 @@ const (
 	ParamSameSeed = "same_seed"
 )
 
+// SameEnglishNote is the note of a replay with the same seed that puts the English of the earlier run into the form as it is.
+const SameEnglishNote = "同じ絵にするため、前回送った英訳をそのまま入れました（英訳はやり直しません。元の文は結果の詳細にあります）"
+
 // Restored is a result's settings in the terms of the form. A text field is "" when the result did not hold the value.
 type Restored struct {
 	Model              string
@@ -34,6 +37,8 @@ type Restored struct {
 	Refs        []gentest.RefInput
 	AvoidPose   bool
 	LoRA        *gentest.LoRAInput
+	// SpeedMode is the speed mode the model was asked for ("": its default).
+	SpeedMode string
 	// Notes say what could not be put back, and why.
 	Notes []string
 }
@@ -42,7 +47,7 @@ type Restored struct {
 func Of(d record.ResultDetail, sameSeed bool) Restored {
 	r := Restored{
 		Model: d.Model, Prompt: d.Prompt, Negative: d.NegativePrompt, Translate: d.TranslateToEnglish, Aspect: d.AspectRatio,
-		AvoidPose: d.AvoidReferencePose,
+		AvoidPose: d.AvoidReferencePose, SpeedMode: d.SpeedMode,
 	}
 	if d.LoRA != nil {
 		s := d.LoRA.Strength
@@ -71,7 +76,7 @@ func Of(d record.ResultDetail, sameSeed bool) Restored {
 			// The same seed makes the same picture only from the same words: a translation done again may come out differently. The English
 			// that was sent goes into the form as it is, and the translation is off for this run.
 			r.Prompt, r.Negative, r.Translate = d.TranslatedPrompt, d.TranslatedNegativePrompt, false
-			r.Notes = append(r.Notes, "同じ絵にするため、前回送った英訳をそのまま入れました（英訳はやり直しません。元の文は結果の詳細にあります）")
+			r.Notes = append(r.Notes, SameEnglishNote)
 		}
 	default:
 		r.Notes = append(r.Notes, "このモデルはシードを受け取らないため、同じ絵は再現できません（同じ設定で作り直します）")
@@ -90,6 +95,11 @@ func RefOf(in record.InputView) gentest.RefInput {
 		return gentest.RefInput{Source: gentest.FromBatchInput, ID: in.ID, Role: in.Role, Strength: in.Strength}
 	}
 	return gentest.RefInput{Source: in.Origin.Kind, ID: in.Origin.ID, ProjectID: in.Origin.ProjectID, Role: in.Role, Strength: in.Strength}
+}
+
+// SpeedGone is the note of a speed mode that the model of the form does not have (it is made in the model's default).
+func SpeedGone(id string) string {
+	return fmt.Sprintf("速さのモード %s はこのモデルにないため既定で作ります", id)
 }
 
 // Missing is the note of an input image that the form can no longer offer (its source is gone).

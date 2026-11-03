@@ -91,6 +91,9 @@ func (s *Service) paramsOf(ctx context.Context, req gentest.Request) (Params, er
 			p.ReferenceStrength = &v
 		}
 	}
+	if p.SpeedMode, err = speedModeOf(m, req.SpeedMode); err != nil {
+		return Params{}, err
+	}
 	if a := strings.TrimSpace(req.AspectRatio); a != "" {
 		if !aspectPattern.MatchString(a) {
 			return Params{}, gterr.Invalid("縦横比は 16:9 のように指定してください")
@@ -101,4 +104,17 @@ func (s *Service) paramsOf(ctx context.Context, req gentest.Request) (Params, er
 		return Params{}, err
 	}
 	return p, nil
+}
+
+// speedModeOf is the speed mode a recipe keeps: the one the request names, when the model has it ("" for none). A mode the model does not have is refused,
+// not dropped (the recipe would not do what was asked).
+func speedModeOf(m modelcatalog.Info, id string) (string, error) {
+	id, err := refs.CheckSpeedMode(id)
+	if err != nil || id == "" {
+		return "", err
+	}
+	if !m.HasSpeedMode(id) {
+		return "", gterr.Invalid("モデル「%s」には速さのモード %q がありません", m.Label, id)
+	}
+	return id, nil
 }

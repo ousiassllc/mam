@@ -135,7 +135,7 @@
 | ツール | 内容 | 入力 | 出力 |
 |---|---|---|---|
 | `list_generation_recipes` | レシピの一覧（名前順） | なし | `recipes[]`: `id`・`name`・`model`・`model_label`・`easy`（かんたんの選択肢に出ているか）・`usable`・`reason`（使えない理由）・保存した設定（`sampling`・`quality`・`seed`・`negative_prompt`・`lora`・`reference_strength`・`aspect_ratio`・`exposed`）・`created_at`・`updated_at` |
-| `save_generation_recipe` | 設定をレシピとして保存する（モデル 1 つ。プロンプトの本文と入力画像は保存しない） | `name`（1〜60 文字の 1 行。大文字小文字を区別せず一意: 重複は `conflict`）・`model`・`easy?`・上の設定の各項目 | 保存したレシピ |
+| `save_generation_recipe` | 設定をレシピとして保存する（モデル 1 つ。プロンプトの本文と入力画像は保存しない） | `name`（1〜60 文字の 1 行。大文字小文字を区別せず一意: 重複は `conflict`）・`model`・`easy?`・上の設定の各項目（`speed_mode`（モデルの `speed_modes` の `id`）も保存する。そのモデルが持たない値は `validation`。レシピを指定したリクエストは、`speed_mode` を名指ししていなければレシピのモードで作る） | 保存したレシピ |
 | `update_generation_recipe` | 名前を変える・かんたんの選択肢に足す／外す（冪等） | `id`・`name?`・`easy?`（どちらも無ければ `validation`） | 変えたレシピ |
 | `delete_generation_recipe` | レシピを削除する（破壊的）。生成の結果は残る | `id` | `deleted` |
 
@@ -169,3 +169,4 @@
 | 1.17 | 2026-11-04 | `speed_mode` を画像にも広げた（Qwen-Image-Edit 2511 の `standard` / `lightning-8` / `lightning-4`）。モデルの `video.speed_modes` をモデル直下の `speed_modes` へ移した（動画のモデルも同じ場所）。画像のリクエストに付けても `invalid` にしない | Issue #991 |
 | 1.18 | 2026-11-05 | `estimate_generation_test` に、ローカルモデルの所要時間の見込み（`breakdown[].time_basis` / `seconds_per_item` / `time_samples` / `time_note`、`total_seconds`、`unknown_time_models`）を足した。`get_job`・`get_generation_test` の `progress` に `elapsed_seconds` を足した | Issue #1002。長いローカル生成が止まっているのか進んでいるのか・待てるのかが分からなかった |
 | 1.19 | 2026-11-03 | `get_facefusion_status`・`set_facefusion_paths`・`swap_generation_face`（FaceFusion での顔の入れ替え）を足した。結果に `face_swap` と `face_similarity`（SFace の顔の類似度）が付く | Issue #995・#998 |
+| 1.20 | 2026-11-03 | `save_generation_recipe` が `speed_mode` を保存するようにした（そのモデルが持つモードだけ。無いモードは `validation`）。`list_generation_recipes` の返すレシピに `speed_mode` が出て、レシピを指定したリクエストに入る | Issue #977・#991 |

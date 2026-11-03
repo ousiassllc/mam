@@ -41,7 +41,7 @@
 
 ## gentest_recipe（レシピ。Issue #977）
 
-`id`・`name`（`NOT NULL COLLATE NOCASE UNIQUE`・空でない。大文字小文字を区別せず一意）・`params`（JSON。`service/gentest/recipe.Params`: モデルの識別子・steps・cfg・sampler・scheduler・固定のシード・ネガティブ・LoRA・入力画像の強さ・縦横比・品質・画面に出す値。**プロンプトの本文と入力画像は持たない**）・`easy`（0/1。かんたんの選択肢に出す）・`created_at`・`updated_at`。**外部キーなし**（モデルは識別子で名指しし、削除・未導入でもレシピは残る）。マイグレーション `20261104100000_gentest_recipe.sql`、`repository/reciperepo`。プロジェクトのバンドルには含めない（`unbundledTables`）。結果の `gentest_result.params` に `exposed`（使った画面に出す値）が足された（JSON の項目。列は変わらない）。
+`id`・`name`（`NOT NULL COLLATE NOCASE UNIQUE`・空でない。大文字小文字を区別せず一意）・`params`（JSON。`service/gentest/recipe.Params`: モデルの識別子・steps・cfg・sampler・scheduler・固定のシード・ネガティブ・LoRA・入力画像の強さ・縦横比・品質・速さのモード・画面に出す値。**プロンプトの本文と入力画像は持たない**）・`easy`（0/1。かんたんの選択肢に出す）・`created_at`・`updated_at`。**外部キーなし**（モデルは識別子で名指しし、削除・未導入でもレシピは残る）。マイグレーション `20261104100000_gentest_recipe.sql`、`repository/reciperepo`。プロジェクトのバンドルには含めない（`unbundledTables`）。結果の `gentest_result.params` に `exposed`（使った画面に出す値）が足された（JSON の項目。列は変わらない）。
 
 ## gentest_import（プロジェクトへの取り込みの記録）
 

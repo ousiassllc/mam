@@ -98,6 +98,28 @@ func TestTheRedoScreenRunsWithThePictureOfTheBatchAndKeepsTheSeed(t *testing.T) 
 	assert.Contains(t, s.page(paths.GenerationTestPart("results", second)), "前の生成の入力")
 }
 
+// 英訳つきで描き直した結果の「この設定でもう一度」: 前回送った英訳をそのまま入れ、英訳はやり直さない（同じシードでも別の絵になるのを防ぐ）。
+// 「似た感じでもう1枚」は元の文のまま、英訳をつける。
+func TestARedoOfATranslatedRedrawSendsTheEnglishThatWentOutAndDoesNotTranslateAgain(t *testing.T) {
+	s := newScreen(t, gentesttest.WithTranslator(&gentesttest.FakeLLM{}))
+	id := s.madeFromUpload("赤い狐")
+	d, err := s.rig.Svc.Result(t.Context(), id)
+	require.NoError(t, err)
+	require.True(t, d.Translated)
+	require.Equal(t, "EN: 赤い狐", d.TranslatedPrompt)
+
+	same := s.page(paths.GenerationTestInpaint() + "?again=" + id + "&same_seed=1")
+	assert.Contains(t, same, `>EN: 赤い狐</textarea>`, "the English that was sent")
+	assert.NotContains(t, same, `>赤い狐</textarea>`)
+	assert.Contains(t, same, "前回送った英訳をそのまま入れました")
+	assert.NotRegexp(t, `name="translate"[^>]*checked`, same, "no new translation")
+
+	similar := s.page(paths.GenerationTestInpaint() + "?again=" + id)
+	assert.Contains(t, similar, `>赤い狐</textarea>`, "a similar one starts from the words that were typed")
+	assert.Regexp(t, `name="translate"[^>]*checked`, similar)
+	assert.NotContains(t, similar, "前回送った英訳")
+}
+
 func batchOf(t *testing.T, s *screen, resultID string) string {
 	t.Helper()
 	d, err := s.rig.Svc.Result(t.Context(), resultID)
