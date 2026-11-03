@@ -226,7 +226,7 @@ func entityExists(ctx context.Context, q queryer, projectID, branchID string, ta
 // Library entry; "" clears the slot) and appends the resulting World State as a new version of the trunk (or the Branch).
 // The entity is ErrNotFound when it is not in that trunk or Branch; the write is ErrLocked when slot.Lock is LOCKed.
 func (r *WorldRepository) AssignReference(ctx context.Context, projectID, branchID string, slot domain.ReferenceSlot, id, assetID string) error {
-	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+	err := r.EditWorld(ctx, projectID, branchID, func(ctx context.Context, tx *sql.Tx) error {
 		if err := entityExists(ctx, tx, projectID, branchID, slot.Target, id); err != nil {
 			return err
 		}
@@ -237,14 +237,7 @@ func (r *WorldRepository) AssignReference(ctx context.Context, projectID, branch
 		if locks.Locked(slot.Target, id, slot.Lock) {
 			return ErrLocked
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE `+worldTables[slot.Target]+` SET `+slot.Column+` = ? WHERE id = ?`, nullIfEmpty(assetID), id); err != nil { //nolint:gosec // table and column are constants of domain.ReferenceSlots; only the values are data
-			return err
-		}
-		w, err := readWorld(ctx, tx, projectID, branchID)
-		if err != nil {
-			return err
-		}
-		_, _, err = r.appendVersion(ctx, tx, projectID, branchID, w)
+		_, err = tx.ExecContext(ctx, `UPDATE `+worldTables[slot.Target]+` SET `+slot.Column+` = ? WHERE id = ?`, nullIfEmpty(assetID), id) //nolint:gosec // table and column are constants of domain.ReferenceSlots; only the values are data
 		return err
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLocked) {

@@ -113,6 +113,21 @@ func locationView(d Data, l domain.WorldLocation) entityView {
 	}
 }
 
+// characterCreate is the form that makes a Character (POST /projects/:id/characters) with the Library images that can be its face or body.
+func (d Data) characterCreate() molecules.CharacterCreateData {
+	images := []domain.ReferenceItem{}
+	for _, it := range d.Library {
+		if it.Kind == domain.RefCharacter {
+			images = append(images, it)
+		}
+	}
+	form := molecules.CharacterCreateData{DOMID: "ws-create-character", URL: paths.WithBranch(paths.Project(d.Project.ID, "characters"), d.branchID()), Images: images}
+	if len(images) == 0 {
+		form.Note = "顔・全身の参照画像は、Reference Library に「キャラクター」の画像を登録すると選べます。追加したあとでも、下の各登場人物から割り当てられます。"
+	}
+	return form
+}
+
 // entity finds the Character, Product or Location of the view; ok is false when there is none.
 func (d Data) entity(target domain.WorldTarget, id string) (entityView, bool) {
 	switch target {

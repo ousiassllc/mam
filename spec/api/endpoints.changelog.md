@@ -188,3 +188,4 @@
 | 1.181 | 2026-11-03 | §1 の表に `GET /jobs`・`GET /jobs/list`（ジョブ一覧の画面と一覧の区画）の行を足し、[endpoints-jobs.md](endpoints-jobs.md) を作った | Issue #980 |
 | 1.182 | 2026-11-02 | [endpoints-gentest.md](endpoints-gentest.md)（1.14）に、`/generation-test/inpaint`（一部だけ描き直す。見積りと実行）を足した | Issue #974 |
 | 1.183 | 2026-11-03 | [endpoints-gentest.md](endpoints-gentest.md)（1.15）に、画像のフォームの 3 段（`tier`・`intent`・`quality`）、`GET /generation-test/easy-pick`、結果の `again` を足した | Issue #977 |
+| 1.184 | 2026-11-03 | §2.8 に `POST /projects/:id/characters`、§2.9 に `POST /series/:id/characters`（Character を手で作る。AI の企画を待たずに World State・Series の正本へ登録する）を足した | Issue #1001。登場人物は LLM の企画だけが作っていたため、LLM が止まるとシリーズの正本も空のままだった |

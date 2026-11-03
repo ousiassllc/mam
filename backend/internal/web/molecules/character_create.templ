@@ -1,0 +1,89 @@
+package molecules
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// CharacterCreateData is the form that makes a Character by hand (#1001): in a Project's World State
+// (POST /projects/:id/characters) or in the canon of a Series (POST /series/:id/characters).
+type CharacterCreateData struct {
+	// DOMID is the id of the form; its answer replaces it with an empty one.
+	DOMID string
+	// URL is where the form is posted.
+	URL string
+	// Images are the Library images that can be the face or the body (kind character). Nil leaves the two selects out: a Series has
+	// no Library of its own.
+	Images []domain.ReferenceItem
+	// Note is a line under the fields (what to do for an image when there is no select for it); "" for none.
+	Note string
+}
+
+// characterNameMax is voicerefsvc.MaxCharacterNameRunes (the web layers do not import service; the handler test holds the two together).
+const characterNameMax = "100"
+
+var characterCreateFields = []struct{ Name, Label string }{
+	{"hairstyle", "髪型 (hairstyle)"}, {"wardrobe", "衣装 (wardrobe)"}, {"personality", "性格 (personality)"}, {"voice", "声 (voice)"},
+}
+
+// CharacterCreate is the form "登場人物を追加": the name (required), the look and voice, and, when Images is set, the Library
+// images of the face and the body. It replaces itself with an empty form when the Character is made.
+templ CharacterCreate(d CharacterCreateData) {
+	<form
+		id={ d.DOMID }
+		class="flex flex-col gap-2"
+		hx-post={ d.URL }
+		hx-target="this"
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+	>
+		<div class="grid gap-2 sm:grid-cols-2">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-name" }>
+				名前 (name)（必須）
+				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+					"id":        d.DOMID + "-name",
+					"name":      "name",
+					"type":      "text",
+					"required":  true,
+					"maxlength": characterNameMax,
+				})
+			</label>
+			for _, f := range characterCreateFields {
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-" + f.Name }>
+					{ f.Label }
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+						"id":        d.DOMID + "-" + f.Name,
+						"name":      f.Name,
+						"type":      "text",
+						"maxlength": strconv.Itoa(domain.MaxWorldValueRunes),
+					})
+				</label>
+			}
+			if d.Images != nil {
+				@characterImageSelect(d, "face_reference_id", "顔の参照画像 (face)")
+				@characterImageSelect(d, "body_reference_id", "全身の参照画像 (body)")
+			}
+		</div>
+		if d.Note != "" {
+			<p class="text-xs text-neutral-400">{ d.Note }</p>
+		}
+		<div>
+			@atoms.Button(atoms.TonePrimary, "登場人物を追加", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
+}
+
+templ characterImageSelect(d CharacterCreateData, name, label string) {
+	<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-" + name }>
+		{ label }
+		@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": d.DOMID + "-" + name, "name": name}) {
+			<option value="">（なし）</option>
+			for _, it := range d.Images {
+				<option value={ it.ID }>{ it.Name }</option>
+			}
+		}
+	</label>
+}

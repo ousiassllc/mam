@@ -20,7 +20,7 @@
 509	backend/internal/domain/editor.go
 332	backend/internal/domain/judge.go
 374	backend/internal/domain/review.go
-13047	backend/internal/repository/
+13044	backend/internal/repository/
 352	backend/internal/repository/editor.go
 548	backend/internal/repository/generation.go
 461	backend/internal/repository/generation_test.go

@@ -39,7 +39,7 @@
 
 ### `message`（`messages[]` の要素）
 
-`id`, `role`（`user` / `assistant`）, `kind`（`text` / `question` / `approval` / `keyframe` / `take` / `progress` / `escalation`）, `text`（本文。question・escalation は文面、take はタイトル）, `options[]`（question・escalation のクイック回答）, `non_blocking`, `reply_to_message_id`, `ref_type`, `ref_id`, `approval_status`（`pending` / `approved` / `changes_requested`）, `open`（回答待ち）, `pending`（まだ変わりうる）, `attachments[]`（`asset_id`, `type`, `mime_type`, `size_bytes`）, `take`（`take_id`, `shot_id`, `title`, `badge`, `score`, `summary`）, `job`（progress: `id`, `kind`, `status`, `error`）, `created_at`。
+`id`, `role`（`user` / `assistant`）, `kind`（`text` / `question` / `approval` / `keyframe` / `take` / `progress` / `escalation`）, `text`（本文。question・escalation は文面、take はタイトル）, `options[]`（question・escalation のクイック回答）, `non_blocking`, `reply_to_message_id`, `ref_type`, `ref_id`, `approval_status`（`pending` / `approved` / `changes_requested`）, `open`（回答待ち）, `pending`（まだ変わりうる）, `attachments[]`（`asset_id`, `type`, `mime_type`, `size_bytes`）, `take`（`take_id`, `shot_id`, `title`, `badge`, `score`, `summary`）, `job`（progress: `id`, `kind`, `status`, `error`, `next_steps`。`next_steps` は企画のジョブが LLM の API キー未設定で失敗したときだけ。[mcp-tools.md](mcp-tools.md) の `list_jobs` の補足）, `created_at`。
 
 ## ルートとの対応
 

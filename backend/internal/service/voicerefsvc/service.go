@@ -1,6 +1,7 @@
-// Package voicerefsvc keeps the reference voice of a Character (F-20, F-29): the recording a local voice
-// provider clones so that the same Character has the same voice in every Episode. The Series canon Character owns
-// it and the Episodes copy it (repository, spec/architecture/er.md §4); a Project's own Characters have one too.
+// Package voicerefsvc keeps the Characters of a Project and of a Series canon that are made by hand (#1001, create.go) and the
+// reference voice of a Character (F-20, F-29): the recording a local voice provider clones so that the same Character has the same
+// voice in every Episode. The Series canon Character owns it and the Episodes copy it (repository, spec/architecture/er.md §4); a
+// Project's own Characters have one too. (Both are here because package service, which holds this one, is at its line limit.)
 // Like localmodels it does not import package service (which holds it): its refusals are ErrNotFound and
 // *InvalidError, and the screen and the MCP tools turn them into their own.
 package voicerefsvc
@@ -66,6 +67,7 @@ type Service struct {
 	series    *repository.SeriesRepository
 	projects  *repository.ProjectRepository
 	world     *repository.WorldRepository
+	refs      *repository.ReferenceRepository
 	assetsDir string
 	probe     Prober
 	logger    *slog.Logger
@@ -80,7 +82,7 @@ func New(d Deps) *Service {
 		d.Probe = d.Media
 	}
 	return &Service{
-		repo: voicerefrepo.New(d.DB, d.Series), series: d.Series, projects: d.Projects, world: d.World,
+		repo: voicerefrepo.New(d.DB, d.Series), series: d.Series, projects: d.Projects, world: d.World, refs: repository.NewReferenceRepository(d.DB),
 		assetsDir: d.AssetsDir, probe: d.Probe, logger: d.Logger,
 	}
 }

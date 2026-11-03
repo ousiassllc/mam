@@ -5,6 +5,7 @@ package worldnotes
 import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/branches"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/character"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/notes"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/references"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/series"
@@ -17,6 +18,7 @@ import (
 // Register adds every tool of these screens.
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	worldstate.Register(r, svc)
+	character.Register(r, svc)
 	references.Register(r, svc)
 	branches.Register(r, svc)
 	versions.Register(r, svc)

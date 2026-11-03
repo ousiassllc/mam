@@ -154,6 +154,26 @@ func TestJobs_AQueueRowIdWorksWithoutTheRegistry(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrNotFound, "without a job table only registered ids are known")
 }
 
+// A planning job that stopped for want of an LLM key says how to go on, in get_job and in list_jobs; any other failure says nothing.
+func TestJobs_ANoKeyPlanFailureSaysHowToGoOn(t *testing.T) {
+	ctx := context.Background()
+	started := time.Date(2026, 11, 3, 11, 0, 0, 0, time.UTC)
+	done := started.Add(time.Minute)
+	j, _ := newJobs(t, fakeTable{
+		"plan-nokey": {ID: "plan-nokey", Kind: domain.JobPlan, Status: domain.JobFailed, CreatedAt: started, FinishedAt: &done, Error: "LLM の API キーが設定されていません。失敗した Agent は Producer です。"},
+		"plan-other": {ID: "plan-other", Kind: domain.JobPlan, Status: domain.JobFailed, CreatedAt: started, FinishedAt: &done, Error: "AI の応答がタイムアウトしました"},
+	})
+	st, err := j.Get(ctx, "plan-nokey")
+	require.NoError(t, err)
+	assert.Equal(t, mcpkit.JobFailed, st.State)
+	assert.Contains(t, st.NextSteps, "create_character")
+	assert.Contains(t, st.Error, "API キー", "the failure text itself is left as it was worded")
+
+	st, err = j.Get(ctx, "plan-other")
+	require.NoError(t, err)
+	assert.Empty(t, st.NextSteps)
+}
+
 func TestJobs_RunRefusesWhatCannotBeFollowed(t *testing.T) {
 	ctx := context.Background()
 	j, _ := newJobs(t, nil)

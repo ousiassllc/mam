@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
+	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -76,7 +77,9 @@ type Entry struct {
 	Progress *Progress
 	// Error is why a job that failed failed, with the secrets hidden.
 	Error string
-	Dest  Dest
+	// NextSteps is what to do to go on, when a planning job stopped for want of an LLM API key (planadvice.For); "" otherwise.
+	NextSteps string
+	Dest      Dest
 }
 
 // Table is the persisted job queue (jobrecent.Repository).
@@ -138,7 +141,7 @@ func (r *reader) entry(ctx context.Context, row domain.Job) (Entry, error) {
 	_ = json.Unmarshal(row.Payload, &p)
 	e := Entry{
 		ID: row.ID, Kind: row.Kind, Label: label(row.Kind), State: State(row.Status), StartedAt: row.CreatedAt, FinishedAt: row.FinishedAt,
-		Error: logging.Redact(row.Error),
+		Error: logging.Redact(row.Error), NextSteps: planadvice.For(row, false),
 	}
 	if row.StartedAt != nil {
 		e.StartedAt = *row.StartedAt

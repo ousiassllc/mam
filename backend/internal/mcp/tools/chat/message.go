@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/planadvice"
 )
 
 // Project is the state of the Project next to its thread.
@@ -39,6 +40,8 @@ type Job struct {
 	Kind   string `json:"kind"`
 	Status string `json:"status" jsonschema:"queued, running, succeeded or failed"`
 	Error  string `json:"error,omitempty"`
+	// NextSteps is what to do to go on when the planning job stopped for want of an LLM API key (planadvice.For).
+	NextSteps string `json:"next_steps,omitempty" jsonschema:"企画（plan）のジョブが LLM の API キー未設定で止まったときだけ: 続けるためにすること（鍵を入れて再開する、または create_character で登場人物を直接作る）"`
 }
 
 // Message is one entry of the thread.
@@ -92,7 +95,7 @@ func messageOf(m domain.ThreadMessage) Message {
 		out.Attachments = append(out.Attachments, Attachment{AssetID: a.ID, Type: string(a.Type), MimeType: a.MimeType, SizeBytes: a.SizeBytes})
 	}
 	if j := m.Job; j != nil {
-		out.Job = &Job{ID: j.ID, Kind: string(j.Kind), Status: string(j.Status), Error: j.Error}
+		out.Job = &Job{ID: j.ID, Kind: string(j.Kind), Status: string(j.Status), Error: j.Error, NextSteps: planadvice.For(*j, true)}
 	}
 	return out
 }

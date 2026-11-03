@@ -97,14 +97,24 @@ templ View(d Data) {
 				@molecules.LockToggle(organisms.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
 			}
 		</section>
-		if d.empty() {
-			<p class="text-sm text-neutral-400">登場人物・商品・場所はまだ登録されていません。</p>
-		}
+		<p id="world-state-empty" class="text-sm text-neutral-400">
+			if d.empty() {
+				登場人物・商品・場所はまだ登録されていません。
+			}
+		</p>
 		<section aria-label="Characters" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Characters</h2>
-			for _, c := range d.World.Characters {
-				@entityForm(d, characterView(d, c))
-			}
+			<details class="text-sm" id="ws-add-character">
+				<summary class="cursor-pointer text-xs text-neutral-300">登場人物を追加（AI の企画を待たずに、名前・髪型・衣装・性格・声と顔・全身の参照画像を直接登録する）</summary>
+				<div class="mt-2">
+					@molecules.CharacterCreate(d.characterCreate())
+				</div>
+			</details>
+			<div id="ws-characters" class="flex flex-col gap-2">
+				for _, c := range d.World.Characters {
+					@entityForm(d, characterView(d, c))
+				}
+			</div>
 		</section>
 		<section aria-label="Products" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Products</h2>
