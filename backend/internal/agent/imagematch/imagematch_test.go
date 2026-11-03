@@ -217,3 +217,48 @@ func TestACallOfAModelWithoutAPriceHasTokensButNoUSD(t *testing.T) {
 	assert.Equal(t, 10, call.InputTokens)
 	assert.Nil(t, call.USD, "a ChatGPT plan is not billed per token: no price is made up")
 }
+
+// A call that was answered is paid for even when the answer cannot be used: the Call comes back with the error (#994). A call that got no
+// answer cost nothing: the zero Call.
+func TestAnAnswerThatCannotBeUsedIsPaidForAndItsCallIsReturnedWithTheError(t *testing.T) {
+	answered := llm.Target{Provider: llm.ProviderAnthropic, Model: "claude-opus-4-5"}
+	used := &llm.Usage{InputTokens: 2000, OutputTokens: 300}
+	paid := func(text string) *answer { return &answer{text: text, answered: answered, usage: used} }
+	assertPaid := func(c imagematch.Call, kind string) {
+		t.Helper()
+		assert.True(t, c.Made())
+		assert.Equal(t, kind, c.Kind)
+		assert.True(t, c.Measured)
+		require.NotNil(t, c.USD)
+		assert.InDelta(t, (2000*5+300*25)/1e6, *c.USD, 1e-12)
+	}
+	input := imagematch.ReviseInput{Reference: ref, Generated: gen, Prompt: "a fox"}
+
+	for name, text := range map[string]string{"not JSON": "sorry, I cannot", "empty prompt": `{"prompt": " "}`} {
+		_, call, err := newMatcher(paid(text)).Describe(t.Context(), ref, "")
+		require.ErrorIs(t, err, llm.ErrInvalidOutput, name)
+		assertPaid(call, imagematch.CallDescribe)
+		rev, err := newMatcher(paid(text)).Revise(t.Context(), input)
+		require.ErrorIs(t, err, llm.ErrInvalidOutput, name)
+		assertPaid(rev.Call, imagematch.CallRevise)
+	}
+	rev, err := newMatcher(paid(`{"prompt": "a fox"}`)).Revise(t.Context(), input)
+	require.ErrorIs(t, err, imagematch.ErrNotRevised)
+	assertPaid(rev.Call, imagematch.CallRevise)
+	for name, text := range map[string]string{"not JSON": "no", "no score": `{"differences": []}`, "score out of range": `{"score": 101}`} {
+		j, err := newMatcher(paid(text)).Compare(t.Context(), ref, gen)
+		require.ErrorIs(t, err, llm.ErrInvalidOutput, name)
+		assertPaid(j.Call, imagematch.CallCompare)
+	}
+
+	failing := &answer{err: llm.ErrTimeout}
+	_, call, err := newMatcher(failing).Describe(t.Context(), ref, "")
+	require.ErrorIs(t, err, llm.ErrTimeout)
+	assert.False(t, call.Made(), "no answer, nothing to pay")
+	j, err := newMatcher(failing).Compare(t.Context(), ref, gen)
+	require.Error(t, err)
+	assert.False(t, j.Call.Made())
+	rev, err = newMatcher(failing).Revise(t.Context(), input)
+	require.Error(t, err)
+	assert.False(t, rev.Call.Made())
+}
