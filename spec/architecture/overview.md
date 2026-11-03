@@ -137,6 +137,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── httpclient/     # ベンダー API アダプターが共通で使う HTTP クライアント（別ホストへのリダイレクトでは独自認証ヘッダーを引き継がない）
 │       ├── safefetch/      # ベンダー API が返したダウンロード URL の検証（https 以外と、公開インターネット以外のアドレス（ループバック・リンクローカル・プライベート・マルチキャスト・CGNAT などの IANA 特殊用途範囲。IPv4 を埋め込んだ IPv6 は埋め込み先で判定）への接続を拒否）
 │       ├── facesim/        # 顔の同一性の局所計測（ONNX Runtime で YuNet / SFace をプロセス内実行、外部送信なし。`model-adapters.md` §10.1）
+│       ├── facefusion/     # 外部ツール FaceFusion（顔の入れ替え）の検出・モデルの表とライセンスの級・`headless-run` の起動（同梱しない。`gentest/face-swap.md`）
 │       ├── textutil/       # 文字列ヘルパー（ルーン単位の切り詰め `TruncateRunes` / `TruncateRunesEllipsis`、ID の短縮 `ShortID`）。domain からは使わない
 │       ├── testenv/        # テストの共通ヘルパー: ffmpeg が無いときの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）、並列実行（`Parallel`: 並列数を 8 に絞る）、ffmpeg の素材（`FFmpegFile` / `PatternVideo`: プロセスごとに 1 回だけ作り共有する）、期限の起点（`EndsAfterFirstRequest`: 最初のリクエストをサーバが受けてから一定時間後に終わる ctx。固定の期限だと負荷時に最初のリクエストの前に切れる。`CountGets`: ジョブ API のハンドラが受けた GET＝最初の状態確認を数える。受理前の POST では起点にならないため。`CPUTime`: 処理が使った CPU 時間を測る（Linux はスレッドの CPU 時間）。`Starvation`: 一定量の CPU 仕事が使った CPU 時間の何倍の時計時間を要したか（空いたマシンでは 1。Linux 以外は常に 1）。時計の上限に掛けると、負荷でスケジュールされない時間を遅さと取り違えて落ちるのを防ぎつつ、空いたマシンでは時計のままの厳しさを保つ。ロックや I/O の待ちは赦さない）
 │       ├── bgwork/         # 専用ゴルーチンで動かす処理の panic をログに落とす（`RunSafely`）と、起こし合図をまとめて 1 本のワーカーで走らせる `Worker`（サーバー全体を落とさない）

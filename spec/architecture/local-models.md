@@ -188,6 +188,39 @@ openai-compat:lmstudio/flux-schnell
 - **保存**: 保存したワークフローは `comfy_workflow.assignment_json` の `exposed_inputs`、接続先のモデルは `models.json` の `local_models[].workflow.exposed_inputs`。編集は ComfyUI の段の「画面に出す値を選ぶ」（`service/gentest/exposedpick`）、MCP の `exposed_inputs`、設定画面の保存（保存した値を変えない）。`workflows.Service.Update` は、`exposed_inputs` を持たない設定の保存では今の値を残す。`wfrefresh`（導入済みのコピーをテンプレートに合わせる更新）は、利用者が選んだ「画面に出す値」を残す（テンプレートが割り当てを足した入力は、割り当てと重ならないよう外す）。
 - テンプレートには付けない（利用者が選ぶ）。画像だけ（動画のワークフローの値は生成テストの画像のフォームに出ない）。
 
+### 4.9 生成テストの顔の類似度の自動計測（SFace。Issue #998）と #960 の監査
+
+顔固定の効き目を印象でなく**数字で**見るため、生成テストの結果ごとに、参照の顔と出力の顔の類似度を自動で測って残す。#960 の「評価方法」のうち、**物差しを商用可能なもの（SFace）にそろえる部分**がこれ。実機で改善幅を測るのは含まない（下の「実機が必要」）。
+
+- **いつ測るか**: 結果が画像で、バッチに役割 `face` の入力があるとき、結果の画像を保存した直後に 1 回（`runner.scoreFace`）。役割 `face` 以外（`reference`・`style` など）は、顔を保つ目的ではないので測らない。複数の `face` があるときは先頭の 1 枚。プロンプトマッチ（`imagematch`）の各回は入力を持たないので測らない（あちらは `match_face` で顔を点に混ぜる。[gentest/prompt-match.md](gentest/prompt-match.md)）。顔の入れ替え（[gentest/face-swap.md](gentest/face-swap.md)）の結果は、顔の画像が役割 `face` の入力なので測られる。
+- **何と何を比べるか**: 参照は**アップロードされたままの画像**（「顔だけ」の切り出し（§4.6 ①）の前の画像。検出器はどちらでも最大の顔を取る）、出力はモデルが作った画像。それぞれの**いちばん大きい顔**の SFace の埋め込み（`facesim.Compare` → `facesim.Similarity`）のコサイン類似度（−1〜1）。顔の検出は YuNet、埋め込みは SFace で、`TestONNX_FaceLockPairs`（旧指標との併記）・Judge の顔照合・プロンプトマッチの顔の混ぜと**同じ `facesim.Engine`**（同じ ONNX Runtime・同じ 2 つのモデル）。
+- **目安の閾値**: 0.363（`facesim.SameFaceThreshold`）。OpenCV Zoo の SFace の既定の閾値（`models/face_recognition_sface/sface.py` の `_threshold_cosine = 0.363`）。**目安であって保証ではない**（同じ人でも服・照明・角度で下がり、似た別人で上がる）。旧指標（buffalo_l）の「同一人物は 0.4〜0.5 以上」とは**数値の尺度が違う**ので、同じ画像で併記する（`TestONNX_FaceLockPairs`）まで、旧指標の数字と直接比べない。両指標の換算（相関）は**未検証**。
+- **記録**: 結果の `params.face_similarity`（`record.FaceSimilarity`）: `metric`（`sface`）・`cosine`・`threshold`・`same_person`（`cosine >= threshold`）・`skipped`。測れなかったときは `skipped` に理由（`reference_no_face` = 参照に顔が見つからない / `result_no_face` = 出力に顔が見つからない（小さい・横向き・隠れている・入れ替えの失敗）/ `error` = 画像の読み取りか推論の失敗）を残す。**測れなくても結果は成功のまま**（画像は利用者のもの）。顔のモデル・ONNX Runtime が無いとき（`ErrUnavailable`）は何も記録しない（番号が無い = 測っていない）。ほかのキー（プロンプトマッチの `match` など）は残す。
+- **見え方**: 結果の詳細の「顔の類似度」の行（「0.512（SFace のコサイン類似度。同じ人と見なす目安 0.363 以上。…）」）、MCP は `get_generation_result`・`get_generation_test`・`list_generation_results` の `face_similarity`。履歴の一覧の札には出さない（詳細だけ）。
+- **モデルファイルの配布**: **YuNet の先例のまま**。SFace の重み（`face_recognition_sface_2021dec.onnx`。2 つのモデルで約 39 MB、model-adapters.md §10.1）は、YuNet と同じ `scripts/fetch-face-models.sh`（opencv_zoo のコミット `47534e27…` に固定、SHA-256 `0ba9fbfa…4e79` を検証）で利用者が取得する既存の経路で、**新しい重みは足していない**。カタログ（`modelmgr/catalog/data/assets`）には、YuNet も SFace も載っていない（載っているのは GPT-SoVITS・MuseTalk・Shisei のポーズ集だけ）ので、**載せない**（ダウンロードの同意の画面も要らない: mam は取得しない）。
+- **ライセンス（一次情報。2026-11-03 に再確認）**: SFace の重みは OpenCV Zoo の `models/face_recognition_sface` で **Apache-2.0**（[LICENSE](https://github.com/opencv/opencv_zoo/blob/main/models/face_recognition_sface/LICENSE)。[README](https://github.com/opencv/opencv_zoo/blob/main/models/face_recognition_sface/README.md) は、MobileFaceNet を SFace の損失で学習したもので、Yaoyao Zhong の寄稿、ONNX への変換は Chengrui Wang、と書く）。閾値の出典は [sface.py](https://github.com/opencv/opencv_zoo/blob/main/models/face_recognition_sface/sface.py)。**学習データの権利は README にも書かれておらず、一次情報では確かめられない**（[model-adapters.md](model-adapters.md) §8 のとおり）。そのため、重みを配るのではなく利用者が自分で取得する今の形を変えず、自動計測は**結果を作り変えず、点にも混ぜない**（診断の数字を残すだけ）。YuNet は MIT（[LICENSE](https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE)）。
+- **テスト**: `facesim.Compare` と閾値は単体（偽のエンジン）。結果ごとの計測（測る・測れない 3 種・顔の役割が無い・モデルが無い）は `service/gentest/face/score_test.go`。実モデルでは `TestONNX_CompareOfFilesSeparatesTheSamePersonFromAnotherAndNamesNoFace`（`MAM_FACESIM_MODEL_DIR` と `MAM_FACESIM_PHOTOS` が無いと Skip する既存の慣習。CI では動かさない）。
+
+**#960 の監査（2026-11-03）**。第 1 段（PR #989）以外の項目を、この時点の実装と照らした。
+
+| #960 の項目 | 状態 | 備考 |
+|---|---|---|
+| 緩和 1: 参照を顔付近に自動クロップ | 済（#989） | §4.6 ① |
+| 緩和 2: 指示文の強化 | 済（#989） | §4.6 ② |
+| 緩和 3: strength の見直し | 一部済（#989: 既定 0.9） | 下限を設けることは不採用（§4.6 の表）。0.9 が良いかは**未検証** |
+| 緩和 4: 二段目（顔マスクの弱い img2img / inpaint） | **未着手**（残り） | 部品はある（YuNet の顔の枠 + 一部描き直し §4.7 の inpaint）が、枠 → マスク → 低 denoise の再サンプリングの 2 段のジョブと画面を足す設計になり、効果の見込みも GPU での実測が先に要る。**安くない**ので今回は入れない |
+| 緩和 5: UI の案内 | 済（#989 / #959） | `facelock.Help` と実行前のモーダル |
+| 評価方法: コサイン類似度（検出 → クロップ → 埋め込み） | **済（#998）** | 上のとおり、結果ごとに自動 |
+| 評価方法: 商用可能な埋め込み（SFace） | **済**（#989 の手動テスト + #998） | 学習データの権利は未確認（§8） |
+| 評価方法: 旧指標との併記 | 済（手動。#989） | `TestONNX_FaceLockPairs`。換算（相関）は**未検証** |
+| 評価方法: 3 プロンプト × 複数 seed、目標値の決定 | **残り（実機が要る）** | GPU で生成してから閾値を決める（Issue 本文どおり、いまは仮置きしない） |
+| 第 2 段: `qwen-image-edit-2511`（Apache-2.0） | 済（#971） | §4.6 |
+| 第 2 段: PuLID-Flux-Chroma | 許可リストに載せたが導入不可（`install_blocked`） | 導入の経路は別の作業（カスタムノード）の領域 |
+| 顔入れ替え（後処理） | 外部ツール FaceFusion として実装（#995） | [gentest/face-swap.md](gentest/face-swap.md)。拡散モデルでの入れ替え（Qwen Edit の二段）は未着手 |
+| 未検証（全項目） | 残り | 改善幅の数値、macOS、Chroma + PuLID、各 LoRA のライセンスなど。**どれも実機が必要**で、#998 の計測が揃ってから測る |
+
+**実機が必要（今回できないこと）**: ① 第 1 段（切り出し・指示文・既定 0.9）の**改善幅**を、同じ参照・prompt・seed で生成して SFace の数字で示すこと。計測の仕組み（結果ごとの数字、`TestONNX_FaceLockPairs` の表）は入ったので、GPU で生成すれば出せる。② SFace と旧指標（buffalo_l）の相関。③ 実モデルのテストの CI への組み込み（写真・モデルを置けない）。
+
 ## 5. 接続テスト
 
 ComfyUI は `GET /system_stats`（バージョンを返す）、OpenAI 互換は `GET /v1/models`（先頭 20 件のモデル ID を返す）。互換サーバーが 404/405 を返したら「到達できる。`/v1/models` は提供されていない」を注意付きの成功とする。

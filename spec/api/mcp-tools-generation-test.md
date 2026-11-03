@@ -43,6 +43,9 @@
 | `upscale_generation_result` | 成功した画像の結果を 2 倍か 4 倍に大きくする（Issue #975。[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.4）。結果は元とは別の結果（別のバッチ・別のファイル）として履歴に残り、`get_generation_result` の `upscale`（`source_result_id`・`scale`・`model`・`mode`・`native`・元と出力の大きさ）に元と使った値が入る。ローカルのモデルなので**見積り・確認は無く、すぐ始まる**（無料）。`model` を省くと、入っているもののうちプロンプトの要らない `mode=model` の最初。2 パス（`two_pass`）は元の結果のプロンプト・ネガティブ・シードを引き継ぐ。倍率が 2・4 以外・元が画像として使えない・アップスケール用のモデルが入っていない・名指しのモデルが入っていないか今は使えない・出力が上限（`max_output_pixels`）を超える、は `validation`。元の結果が無ければ `not_found`。16GB の GPU での 4 倍の動作は実機で未確認 | `result_id`, `scale`（2 / 4）, `model` | `job_id`, `state`, `batch_id`, `result_id` | いいえ（ローカルの ComfyUI を動かす） |
 
 結果（`results[]`）: `result_id`, `batch_id`, `position`, `media`, `model`, `model_label`, `api_model`, `prompt`, `sent_prompt`, `translated`, `translated_prompt`, `translated_negative_prompt`, `negative_prompt`, `negative_mode`, `aspect_ratio`, `resolution`, `duration_seconds`, `seed`, `seed_sent`, `status`（queued / running / succeeded / failed / cancelled）, `error`, `has_file`, `mime_type`, `size_bytes`, `cost_basis`, `estimated_cost_usd`, `actual_cost_usd`（ベンダーが返したときだけ）, `favorite`, `used_inputs`, `avoid_reference_pose`, `lora`（`name`, `strength`。使ったときだけ）, `created_at`, `finished_at`。
+| `get_facefusion_status` | 顔の入れ替え（FaceFusion。mam に同梱しない外部ツール）の状態（Issue #995。[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md)）。`ready`（Python とフォルダが見つかった）・保存したパスと探した結果・FaceFusion の版と自己申告のライセンス・探した場所・選べるモデル（`swappers`・`detectors`・`enhancers`。それぞれ `class`: open / conditional / noncommercial / research / unknown とライセンス名）・既定・標準の注意 `notes`（ArcFace が非商用・成人向けの画像は断られる・本体は OpenRAIL-AS・モデルは FaceFusion が取得する）・出典の URL |
+| `set_facefusion_paths` | FaceFusion の `python` と `path` を保存（空文字で解除）。使えないパスは `validation` で何も書かない。保存後の状態を返す。すぐ使われる |
+| `swap_generation_face` | `target`（顔を入れ替えられる側の画像）の顔を `face`（顔の画像）の顔に入れ替える（Issue #995）。`{source, id}` で指す。任意の `swapper`・`detector`・`enhancer`（既定 ghost_2_256・yunet・gfpgan_1.4。`none` で復元しない）。結果は別の結果（`model: facefusion`）で、`face_swap`（元の結果・モデル・ライセンスの警告）と `face_similarity` が付く。見積り・確認なし。非商用・研究用・商用不明のモデルは `warnings` で知らせて実行する。FaceFusion が見つからない・未知のモデルは `validation`。`job_id`・`batch_id`・`result_id`・`warnings` |
 
 ### アップロードの用途とダウンロードの種類
 
@@ -97,6 +100,12 @@
 - `list_generation_models` には**アップスケールのワークフローは出ない**（プロンプトを渡すモデルではない）。一覧は `list_generation_upscalers`。
 - ジョブの `result` は `batch_id`・`succeeded`・`failed`・`cancelled`（既存と同じ）。取り消しは `cancel_generation_test`。
 
+## 顔の入れ替えと顔の類似度（Issue #995・#998）
+
+- 画面の「顔を入れ替える」と同じ `face.Swap`（`service/gentest/face`）を呼ぶ（`mcp/tools/gentestface/face.go`。`tools/gentest` が行数の上限なので別パッケージ）。FaceFusion の設定は `mcpkit.Settings.FaceFusion`（`facefusionsettings.Service`。画面と同じファイル `facefusion.json`）で、無い構成では `get_facefusion_status`・`set_facefusion_paths` が `unavailable`。
+- `get_generation_result`・`get_generation_test`・`list_generation_results` の結果に、`face_swap`（顔の入れ替えで作った結果）と `face_similarity`（役割 `face` の参照があった結果。`metric: sface`・`cosine`・`threshold: 0.363`・`same_person`・測れなかった理由 `skipped`）が付く。`face_similarity` は目安で、同じ人である保証ではない（[../architecture/local-models.md](../architecture/local-models.md) §4.9）。
+- ジョブの `result` は `batch_id`・`succeeded`・`failed`・`cancelled`（既存と同じ）。FaceFusion が断る・失敗するときは、結果の `error` に FaceFusion の出力の末尾の数行が入る。
+
 ## レシピと「画面に出す値」（Issue #977 ステージ 2）
 
 画面の「レシピ」（[../components/gentest-tiers.md](../components/gentest-tiers.md) §9）と同じものを、4 つのツールで扱う。実装は `backend/internal/mcp/tools/gentestrecipe`（`tools/gentest` は行数の上限まで来ているため別パッケージ）。サービスは `service/gentest/recipe`。アプリが生成テストを持たないとき（`Gentest` が nil）は `unavailable`。
@@ -133,3 +142,4 @@
 | 1.12 | 2026-11-02 | `estimate_generation_test`・`run_generation_test` に `mask`・`denoise`、`list_generation_models` に `supports_inpaint`・`denoise_default`、結果に `inpaint`、警告 `denoise_ignored` を足した。対応しないモデルは `validation` | Issue #974 |
 | 1.13 | 2026-11-03 | `estimate_generation_test`・`run_generation_test` に `quality`（fast / standard / high）と `intent`（photo / anime / landscape / face）、`list_generation_models` に `intents[]` とモデルの `sampling.quality_presets`、警告 `quality_ignored` を足した。既存の引数は変えない | Issue #977（ステージ 1） |
 | 1.14 | 2026-11-04 | `list_generation_recipes`・`save_generation_recipe`・`update_generation_recipe`・`delete_generation_recipe`、`estimate_generation_test`・`run_generation_test` に `recipe` と `exposed`、`list_generation_models` の各モデルに `exposed[]`、結果に `exposed`、警告 `exposed_ignored` を足した | Issue #977（ステージ 2） |
+| 1.15 | 2026-11-03 | `get_facefusion_status`・`set_facefusion_paths`・`swap_generation_face`（FaceFusion での顔の入れ替え）を足した。結果に `face_swap` と `face_similarity`（SFace の顔の類似度）が付く | Issue #995・#998 |

@@ -25,7 +25,7 @@
 | `id`・`batch_id`・`position` | PK・FK（カスケード）・バッチ内の計画順（モデル → プロンプト → 本数） |
 | `media`・`model`・`api_model` | 種類・**正規のモデル識別子（代替しないので実際に使ったモデル）**・ベンダーの識別子 |
 | `prompt`・`negative_prompt`・`sent_prompt`・`negative_mode` | 入力・実際に送った文・`none` / `field`（モデルの欄）/ `folded`（「Avoid: …」としてプロンプトに書き足した） |
-| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・`avoid_pose`（参照を使うモデルのネガティブに「ポーズ・構図を真似ない」を足したとき true）・`lora`（`name`・`strength`。使ったときだけ）・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
+| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・顔の入れ替え（[face-swap.md](face-swap.md)）の結果は `face_swap`（元の結果・モデル・ライセンスの警告）を、役割 `face` の入力があった結果は `face_similarity`（SFace の顔の類似度。[../local-models.md](../local-models.md) §4.9）を持つ。`avoid_pose`（参照を使うモデルのネガティブに「ポーズ・構図を真似ない」を足したとき true）・`lora`（`name`・`strength`。使ったときだけ）・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
 | `seed`・`seed_sent` | 送ったシード（対応しないモデルは NULL・0）。実際に送った値を保存する |
 | `status`・`error` | `queued` / `running` / `succeeded` / `failed` / `cancelled`・失敗の理由 |
 | `file_path`・`mime_type`・`size_bytes` | 結果のファイル（成功したときだけ） |
