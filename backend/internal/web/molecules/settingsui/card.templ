@@ -17,6 +17,11 @@ type Card struct {
 	TitleLevel int
 	Tone       atoms.BadgeTone
 	State      string // the text of the Badge; empty draws none
+	// Marks are more badges beside State for what must not be missed even when the details are behind a button: "非公式",
+	// "商用注意". They come before State.
+	Marks []Mark
+	// Class is more classes of the <li> (the look of a card that is chosen: has-[:checked]:...).
+	Class string
 	// Help is the explanation of the row behind a "?" button beside its title (nil: none): what is too long for the card.
 	Help templ.Component
 	// HelpPanelElsewhere leaves the panel of Help out of the card: the card draws only the "?" button (aria-controls =
@@ -33,6 +38,12 @@ type Card struct {
 	OOB bool
 }
 
+// Mark is a badge of a card that says a risk or a condition: the tone and the words (never colour alone).
+type Mark struct {
+	Tone atoms.BadgeTone
+	Text string
+}
+
 func (c Card) testID() string {
 	if c.TestID == "" {
 		return "settings-card"
@@ -46,18 +57,18 @@ templ CardItem(c Card) {
 	<li
 		id={ c.ID }
 		data-testid={ c.testID() }
-		class="flex min-w-0 flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4"
+		class={ "flex min-w-0 flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4", c.Class }
 		{ c.Attrs... }
 		if c.OOB {
 			hx-swap-oob="true"
 		}
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<div class="flex items-center gap-2">
+			<div class="flex min-w-0 items-center gap-2">
 				if c.TitleLevel == 4 {
-					<h4 class="text-sm font-semibold text-neutral-100">{ c.Title }</h4>
+					<h4 class="min-w-0 break-words text-sm font-semibold text-neutral-100">{ c.Title }</h4>
 				} else {
-					<h3 class="text-sm font-semibold text-neutral-100">{ c.Title }</h3>
+					<h3 class="min-w-0 break-words text-sm font-semibold text-neutral-100">{ c.Title }</h3>
 				}
 				if c.Help != nil {
 					@help.Toggle(help.ID(c.ID), c.Title)
@@ -68,8 +79,15 @@ templ CardItem(c Card) {
 					}
 				}
 			</div>
-			if c.State != "" {
-				@atoms.Badge(c.Tone, c.State)
+			if c.State != "" || len(c.Marks) > 0 {
+				<div class="flex min-w-0 max-w-full flex-wrap items-center gap-1 [&>*]:max-w-full [&>*]:break-words" data-testid="settings-card-badges">
+					for _, m := range c.Marks {
+						@atoms.Badge(m.Tone, m.Text)
+					}
+					if c.State != "" {
+						@atoms.Badge(c.Tone, c.State)
+					}
+				</div>
 			}
 		</div>
 		if c.Description != "" {

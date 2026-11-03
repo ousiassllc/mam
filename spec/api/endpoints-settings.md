@@ -45,6 +45,8 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | GET | `/settings/mcp/bind/edit` | MCP の待ち受け先のモーダル（候補つきの 1 欄。保存済みのアドレスが入る） |
 | GET | `/settings/mcp/tokens/new` | MCP トークンの発行のモーダル（名前の欄 1 つ） |
 | GET | `/settings/chatgpt/models`・`/settings/chatgpt/codex/models` | 利用できるモデルの一覧のモーダル（読み取りだけ）。読めないときはその理由 |
+| GET | `/settings/chatgpt/:kind/detail` | **#1005**。ChatGPT のカードの「詳細」のモーダル（読み取りと、その場の操作）。`:kind` は `official` / `image` / `codex`（他は 404 のモーダル「対象が見つかりません」）。HTMX でなければ `/settings/api-keys` のページ全体。本文: 公式は説明・トークンの期限・「Manage usage」、画像はリスクの一覧と（OFF の間）確認のチェックと「オンにする」、Codex は商用・ホスティングに使えない条件の全文・エンジンの詳細・パスの欄・「ログアウトして Codex 本体と CODEX_HOME も削除」 |
+| GET | `/settings/audio/:choice/:provider` | **#1005**。音声・口パクのカードの「詳細」のモーダル（読み取りだけ）。`:choice` は `voice` / `lip-sync`、`:provider` は `cloud` / `local`。知らない値・ローカルのランタイムが無い `local`・読めない `audio.json` は 404 のモーダル。HTMX でなければ `/settings/audio` のページ全体。ローカルは状態・使えない理由・ビデオメモリ・出典とライセンス・商用利用の条件・はっきりしない依存 |
 
 ## 3. 保存・操作の応答の決まり（モーダルを使う操作）
 
@@ -86,7 +88,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | DELETE | `/credentials/:provider` | 成功の本文が**カードだけ**（`hx-swap="outerHTML"`）＋成功のトースト。未設定でも 200。未知の `provider` は 422（トースト）、キーストアの拒否は 503（トースト） |
 | POST | `/settings/chatgpt/:kind/login` | 本文が**モーダルの断片**（ブラウザ: 開いたことと認可 URL、デバイスコード: 確認 URL・コード・期限、どちらも 2 秒ごとの取り直しつき）＋区画の OOB。公式のデバイスコードは 422、画像が OFF は 409、エンジンが無い `codex` は 409（モーダルの断片に理由） |
 | POST | `/settings/chatgpt/:kind/login/cancel` | ログインの中止。モーダルを閉じ（`HX-Trigger-After-Swap: modal-close`）、カードを OOB で差し替える |
-| DELETE・PUT・POST | `/settings/chatgpt/…`（ログアウト・画像の ON/OFF・Codex の取得・中断・パス・更新） | 本文は今のまま区画（`#chatgpt-panel`、`hx-swap="outerHTML"`）。区画の中身がカードの一覧になった |
+| DELETE・PUT・POST | `/settings/chatgpt/…`（ログアウト・画像の ON/OFF・Codex の取得・中断・パス・更新） | 本文は今のまま区画（`#chatgpt-panel`、`hx-swap="outerHTML"`）。区画の中身がカードの一覧になった。**詳細のモーダルから送った操作**（画像の「オンにする」・Codex のパス・「ログアウトして…も削除」。リクエストの `HX-Target` が `mam-modal-body`）: 成功は 200 と `HX-Trigger-After-Swap: modal-close`、本文は区画の OOB（`hx-swap-oob="true"`）。失敗（422 など）は、モーダルの本文に `#mam-modal-error`（`role="alert"`）つきの詳細と、区画の OOB |
 | GET | `/settings/local-models` | HTMX でなければ分類のページ全体、HTMX は本体だけ（上の §1）。今の断片（`#local-models-panel` の区画）はもう返さない |
 
 ## 4. API キーの接続テスト
@@ -200,3 +202,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.9 | 2026-11-02 | §1 の表に `GET /settings/licenses` を、§5.4 に `GET /settings/licenses/:id`（項目の全文の断片）を足した | Issue #910 |
 | 1.10 | 2026-11-03 | LLM のモーダルのモデル名を、プロバイダーごとの候補のプルダウンにした。`GET /settings/llm/agents/:agent/models/:role` を足し、`PUT /settings/llm/agents/:agent` に `*.model_custom` を足した | Issue #988 |
 | 1.11 | 2026-11-03 | §5.2.2 に `PUT /settings/facefusion`（FaceFusion の Python とフォルダのパス）を足した | Issue #995 |
+| 1.12 | 2026-11-03 | §5.2 に `GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider`（カードの「詳細」のモーダル）を足し、ChatGPT の操作を詳細のモーダルから送ったときの答え（`HX-Target` が `mam-modal-body`）を足した | Issue #1005 |

@@ -8,6 +8,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/jobs"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/audio"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 )
 
 // The wtest static/src/components/layout/long-names.wtest.ts draws these files with the real Tailwind CSS and checks that a long
@@ -57,9 +59,42 @@ func longNamesJobs() templ.Component {
 	}}})
 }
 
+// longNamesChatGPT is the cards of the ChatGPT login with an account whose e-mail has no place to break, a long login failure and
+// the Codex engine downloading a file with a long name (#1005: the cards are cards like those of the API keys, in two columns).
+func longNamesChatGPT() templ.Component {
+	email := "a-very-long-mail-address-of-a-person-with-a-long-name-and-a-long-tag@a-company-with-a-long-name.example.invalid"
+	d := chatgpt.Data{
+		Official: chatgpt.Account{SignedIn: true, PlanUsageGranted: true, Email: email, Plan: "enterprise-with-a-long-name", Login: &chatgpt.Login{Failed: true, Message: longPath}},
+		Image:    chatgpt.Account{SignedIn: true, Email: email},
+		Codex: chatgpt.Codex{SignedIn: true, Email: email, Plan: "business", Engine: chatgpt.CodexEngine{
+			State: "installing", Supported: true, Install: chatgpt.CodexInstall{Running: true, Percent: 3, Message: longFile + "（1/4）"},
+		}},
+		ImageEnabled: true,
+	}
+	return chatgpt.Panel(d)
+}
+
+// longNamesAudio is the cards of the voice and the lip sync with a long provider name and a long reason for the badge (the heading of a
+// choice is a fixed text).
+func longNamesAudio() templ.Component {
+	provider := func(id, field, slug string) audio.Provider {
+		return audio.Provider{
+			ID: id, Title: "声（セリフ・ナレーション）", Field: field, Slug: slug, Selected: audio.LocalValue, CloudValue: "cloud", CloudLabel: longModel + "（クラウド）",
+			LocalLabel: longModel + "（この PC）", CloudKey: longFile, CloudKeySet: false,
+			Local: &audio.Local{
+				Name: longModel, State: "この PC では使えません: " + longPath, Tone: atoms.BadgeWarn, Supported: false, SupportReason: longPath,
+				Unclear: []string{longFile, longModel}, SourceURL: "https://example.invalid/" + longPath, License: longRepo,
+			},
+		}
+	}
+	return audio.Section(audio.Data{Voice: provider("audio-voice", "voice_provider", "voice"), LipSync: provider("audio-lip-sync", "lip_sync_provider", "lip-sync")})
+}
+
 func TestLongNamesFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	checkFixtures(t, map[string]templ.Component{
 		"layout-long-names-model-manager.html": longNamesPage(),
 		"layout-long-names-jobs.html":          longNamesJobs(),
+		"layout-long-names-chatgpt-cards.html": longNamesChatGPT(),
+		"layout-long-names-audio-cards.html":   longNamesAudio(),
 	})
 }

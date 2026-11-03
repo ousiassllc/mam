@@ -169,6 +169,12 @@ func ModelSettings() string { return Settings() + "/models" }
 // lip-sync providers (PUT).
 func AudioSettings() string { return Settings() + "/" + SettingsAudio }
 
+// AudioDetail is "/settings/audio/<choice>/<provider>", the detail of the card of a provider of the voice ("voice") or of the lip sync
+// ("lip-sync"): the "cloud" or the "local" one (GET: a modal).
+func AudioDetail(choice, provider string) string {
+	return AudioSettings() + "/" + choice + "/" + provider
+}
+
 // FFmpegSettings is "/settings/ffmpeg", the ffmpeg section of the settings screen (GET: the page) and the paths of ffmpeg and
 // ffprobe (PUT).
 func FFmpegSettings() string { return Settings() + "/" + SettingsFFmpeg }

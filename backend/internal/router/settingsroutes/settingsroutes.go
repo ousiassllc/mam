@@ -142,6 +142,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.GET(paths.ChatGPTSettings(), chatgpthandler.Panel(s.ChatGPT, apiKeys))
 		engine.GET(paths.ChatGPTModels(), chatgpthandler.Models(s.ChatGPT, apiKeys))
 		engine.GET(paths.ChatGPTLogin(":kind"), chatgpthandler.LoginModal(s.ChatGPT, apiKeys))
+		engine.GET(paths.ChatGPTDetail(":kind"), chatgpthandler.Detail(s.ChatGPT, apiKeys))
 		engine.PUT(paths.ChatGPTImageEnabled(), chatgpthandler.SetImageEnabled(s.ChatGPT))
 		engine.POST(paths.ChatGPTLogin(":kind"), chatgpthandler.StartLogin(s.ChatGPT))
 		engine.POST(paths.ChatGPTLoginCancel(":kind"), chatgpthandler.CancelLogin(s.ChatGPT))
@@ -157,6 +158,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
 	if s != nil && s.Audio != nil {
+		engine.GET(paths.AudioDetail(":choice", ":provider"), audiohandler.Detail(s.Audio, pages.Page(paths.SettingsAudio)))
 		engine.PUT(paths.AudioSettings(), audiohandler.Save(s.Audio))
 	}
 	registerFaceFusion(engine, s)

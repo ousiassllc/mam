@@ -2,7 +2,6 @@ package chatgpt_test
 
 import (
 	"context"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -103,7 +102,7 @@ func TestPanel_TheStateOfACardIsSaidInWords(t *testing.T) {
 	assert.Contains(t, html, "再ログインが必要")
 	assert.Contains(t, html, "エンジン未取得")
 	assert.Contains(t, html, "オフ", "the image generation is off until its risks are acknowledged")
-	assert.Contains(t, html, `data-testid="chatgpt-image-ack"`)
+	assert.NotContains(t, html, `data-testid="chatgpt-image-ack"`, "the risks and the confirmation are in the detail")
 
 	pending := render(t, view.Panel(view.Data{Official: view.Account{Login: &view.Login{Pending: true}}}))
 	assert.Contains(t, pending, "ログイン待ち")
@@ -138,25 +137,52 @@ func TestLoginModal_ChoosesTheMethodOrShowsTheProgress(t *testing.T) {
 	assert.Contains(t, failed, `name="method"`, "and it can be started again")
 }
 
-// The "?" of a card has its panel outside #chatgpt-panel, which a poll swaps: the panel is drawn by Section, the Panel
-// (what the poll answers) has the buttons only, and every button's panel is in the Section, named by it.
-func TestSection_TheHelpPanelsOfTheCardsAreOutsideWhatAPollSwaps(t *testing.T) {
-	d := view.Data{}
-	d.Codex.Engine.Install.Running = true // the panel polls itself
+// A card says its state and, whatever the state, the risk of its route in a badge: "非公式" on the image generation and
+// "商用注意" on Codex. The long text is not on the card: it is in the detail, which the card has a button for.
+func TestPanel_TheRisksAreBadgesOnTheCardsAndTheLongTextIsInTheDetail(t *testing.T) {
+	d := view.Data{Risks: []string{"リスクその 1", "リスクその 2"}}
+	html := render(t, view.Panel(d))
 
-	poll := render(t, view.Panel(d))
-	section := render(t, view.Section(d))
-
-	assert.Contains(t, poll, `hx-trigger="every 2s"`)
-	assert.NotContains(t, poll, "data-help-panel", "a help panel in what a poll swaps closes with every poll")
-	buttons := regexp.MustCompile(`data-help-toggle[^>]*aria-controls="(help-[0-9a-f]+)"`).FindAllStringSubmatch(poll, -1)
-	require.Len(t, buttons, 3, "a button for each card")
-	start := strings.Index(section, `id="chatgpt-panel"`)
-	require.Positive(t, start)
-	end := start + strings.Index(section[start:], "</section>")
-	for _, b := range buttons {
-		at := strings.Index(section, `<div id="`+b[1]+`" popover`)
-		require.Positive(t, at, "the Section has the panel %s", b[1])
-		assert.True(t, at < start || at > end, "the panel %s is inside what a poll swaps", b[1])
+	card := func(kind string) string {
+		start := strings.Index(html, `id="chatgpt-card-`+kind+`"`)
+		require.Positive(t, start)
+		end := strings.Index(html[start:], "</li>")
+		return html[start : start+end]
 	}
+	assert.Contains(t, card("image"), "非公式")
+	assert.Contains(t, card("codex"), "商用注意")
+	assert.NotContains(t, card("official"), "非公式")
+	for _, kind := range []string{"official", "image", "codex"} {
+		assert.Contains(t, card(kind), `hx-get="/settings/chatgpt/`+kind+`/detail"`, kind)
+	}
+	assert.NotContains(t, html, "リスクその 1", "the risks are in the detail")
+	assert.NotContains(t, html, `data-help-toggle`, "no help buttons: the detail is the way to the long text")
+
+	image := render(t, view.DetailModal(view.DetailForm{Kind: "image", Data: d}))
+	assert.Contains(t, image, "リスクその 1")
+	assert.Contains(t, image, `data-testid="chatgpt-image-ack"`)
+	assert.Contains(t, image, `hx-target="#mam-modal-body"`, "the switch answers in the modal")
+
+	d.ImageEnabled = true
+	on := render(t, view.DetailModal(view.DetailForm{Kind: "image", Data: d}))
+	assert.Contains(t, on, "リスクその 2", "the risks stay readable while it is on")
+	assert.NotContains(t, on, `data-testid="chatgpt-image-ack"`)
+	assert.Contains(t, render(t, view.Panel(d)), `data-testid="chatgpt-image-off"`, "the switch to turn it off is on the card")
+
+	codex := render(t, view.DetailModal(view.DetailForm{Kind: "codex", Data: d}))
+	assert.Contains(t, codex, `data-testid="chatgpt-codex-terms"`)
+	assert.Contains(t, codex, "商用・ホスティング")
+	assert.Contains(t, render(t, view.DetailModal(view.DetailForm{Kind: "official", Data: d})), `data-testid="chatgpt-official-detail"`)
+
+	refused := render(t, view.DetailModal(view.DetailForm{Kind: "image", Data: d, Error: "だめでした"}))
+	assert.Contains(t, refused, `id="mam-modal-error"`)
+}
+
+// The cards are in two columns like those of the API keys, and a long name or e-mail breaks instead of coming out.
+func TestPanel_TheCardsAreInTwoColumnsAndAnAccountThatIsLongBreaks(t *testing.T) {
+	d := view.Data{Official: view.Account{SignedIn: true, PlanUsageGranted: true, Email: strings.Repeat("a", 80) + "@example.invalid", Plan: "plus"}}
+	html := render(t, view.Panel(d))
+
+	assert.Contains(t, html, `<ul id="chatgpt-cards" role="list" class="grid grid-cols-1 gap-4 xl:grid-cols-2"`)
+	assert.Contains(t, html, `class="break-all font-medium" data-testid="chatgpt-email"`)
 }

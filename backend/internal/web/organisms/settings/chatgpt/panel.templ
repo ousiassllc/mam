@@ -23,18 +23,6 @@ const CardsID = "chatgpt-cards"
 templ Section(d Data) {
 	@molecules.SettingsSectionHelp(molecules.HeadingH3, "ChatGPT でログイン", help.Text("ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成には方式が 2 つあります。個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT（プロバイダー「chatgpt-subscription」）、組織（Business / Enterprise / Edu）のアカウントは Codex 経由（プロバイダー「chatgpt-codex」）です。\nLLM の割り当てで選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。")) {
 		@Panel(d)
-		@cardHelpPanels()
-	}
-}
-
-// cardHelpPanels are the panels of the "?" of the cards. They are in Section, not in Panel: Panel is what a poll swaps,
-// and a help that is open stays open across it (spec/components/shared-ui-parts.md §9.1). The popover is in the top
-// layer, so where it is in the page does not change where it shows.
-templ cardHelpPanels() {
-	for _, h := range cardHelps {
-		@help.Panel(help.ID(cardID(h.kind)), h.title) {
-			@help.Text(h.text)
-		}
 	}
 }
 
@@ -45,9 +33,11 @@ templ SectionIf(d *Data) {
 	}
 }
 
-// Panel is the cards of the three login systems: official, image generation (unofficial), Codex, in that order. Every
-// action that is not the login answers with the panel itself; while a login is pending, or the Codex engine is being
-// downloaded, the panel polls itself. The login and the model list are modals (login.templ, models.templ).
+// Panel is the cards of the three login systems: official, image generation (unofficial), Codex, in that order, in two
+// columns like the cards of the API keys. A card has the name, what it is for, the state, the account and the main buttons;
+// the explanations, the risks and the terms are in its detail, a modal (detail.templ). Every action that is not the login
+// answers with the panel itself; while a login is pending, or the Codex engine is being downloaded, the panel polls itself.
+// The login, the model list and the detail are modals (login.templ, models.templ, detail.templ).
 templ Panel(d Data) {
 	<section
 		id="chatgpt-panel"
@@ -62,12 +52,12 @@ templ Panel(d Data) {
 		}
 	>
 		if d.Notice != "" {
-			<p class="text-sm text-emerald-300" role="status" data-testid="chatgpt-notice">{ d.Notice }</p>
+			<p class="break-words text-sm text-emerald-300" role="status" data-testid="chatgpt-notice">{ d.Notice }</p>
 		}
 		if d.Error != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="chatgpt-error">{ d.Error }</p>
+			<p class="break-words text-sm text-red-300" role="alert" data-testid="chatgpt-error">{ d.Error }</p>
 		}
-		<ul id={ CardsID } role="list" class="flex flex-col gap-4">
+		<ul id={ CardsID } role="list" class="grid grid-cols-1 gap-4 xl:grid-cols-2">
 			@officialCard(d)
 			@imageCard(d)
 			@codexCard(d)
@@ -95,6 +85,19 @@ templ openLogin(kind, label, subject string, primary bool) {
 func openLoginAttrs(kind string) map[string]any {
 	a := modal.OpenAttrs(paths.ChatGPTLogin(kind), "chatgpt-login-"+kind)
 	a["data-testid"] = "chatgpt-login-" + kind
+	return a
+}
+
+// openDetail is the button that opens the detail of a card: the explanations, the notes and the terms that are too long for it.
+templ openDetail(kind, subject string) {
+	@atoms.SmallButtonFor(atoms.ToneNeutral, "詳細", subject, openDetailAttrs(kind, "chatgpt-detail"))
+}
+
+// openDetailAttrs open the detail of a card; testID names the button (the one that turns the image generation on is another
+// button to the same modal).
+func openDetailAttrs(kind, testID string) map[string]any {
+	a := modal.OpenAttrs(paths.ChatGPTDetail(kind), "chatgpt-detail-"+kind)
+	a["data-testid"] = testID + "-" + kind
 	return a
 }
 

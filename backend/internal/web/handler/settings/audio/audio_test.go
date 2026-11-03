@@ -110,6 +110,15 @@ func (s *screen) page() string {
 	return rec.Body.String()
 }
 
+// detail is the body of the modal of a card, asked for as its button does.
+func (s *screen) detail(choice, provider string) string {
+	req := httptest.NewRequest(http.MethodGet, paths.AudioDetail(choice, provider), nil)
+	req.Header.Set("HX-Request", "true")
+	rec := s.send(req)
+	require.Equal(s.t, http.StatusOK, rec.Code)
+	return rec.Body.String()
+}
+
 func (s *screen) save(form url.Values, withToken bool) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPut, paths.AudioSettings(), strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -143,26 +152,45 @@ func TestAudioPage_DefaultsToTheCloudWithTheLocalStateAndTheSource(t *testing.T)
 	assert.Contains(t, html, `<title>設定: 音声・口パク | mam</title>`)
 	assert.Contains(t, html, "声（セリフ・ナレーション）")
 	assert.Contains(t, html, "口パク")
+	assert.Equal(t, 4, strings.Count(html, `data-testid="audio-card"`), "a card for each provider: two clouds and two locals")
 	assert.Contains(t, radio(t, html, "audio-voice_provider-cloud"), "checked", "nothing saved: the cloud")
 	assert.NotContains(t, radio(t, html, "audio-voice_provider-local"), "checked")
 	assert.NotContains(t, radio(t, html, "audio-voice_provider-local"), "disabled", "this PC can run it")
 	assert.Contains(t, radio(t, html, "audio-lip_sync_provider-cloud"), "checked")
+	assert.Contains(t, html, "選択中", "the chosen card says so in words")
 	assert.Contains(t, html, "導入済み", "where each local provider stands")
+	assert.Contains(t, html, "API キー設定済み")
+	assert.Contains(t, html, "API キー未設定")
 	assert.Contains(t, html, "API キー（elevenlabs）: 設定済み")
 	assert.Contains(t, html, "API キー（synclabs）: 未設定")
 	assert.Contains(t, html, paths.SettingsCategory(paths.SettingsAPIKeys), "unset keys link to where they are stored")
 	assert.Contains(t, html, `href="`+paths.ModelManager()+`"`, "the way to the model manager")
-	assert.Contains(t, html, "https://example.test/gpt-sovits", "the source of the program")
-	assert.Contains(t, html, "ライセンス:")
-	assert.Contains(t, html, "必要なビデオメモリ: 4 GB 以上（mam の推定です。実機では確かめていません）")
-	assert.Contains(t, html, "商用利用がはっきりしない重み・依存ファイルが 1 件あります", "shown prominently")
-	assert.Contains(t, html, "「whisper-tiny」")
+	assert.Contains(t, html, "商用注意", "the risk of the commercial use is a mark on the card")
+	assert.Contains(t, html, "商用利用がはっきりしない重み・依存ファイルが 1 件あります", "and a line of it")
+	assert.NotContains(t, html, "https://example.test/gpt-sovits", "the source is in the detail, not on the card")
+	assert.NotContains(t, html, "必要なビデオメモリ", "the memory is in the detail")
 	assert.NotContains(t, radio(t, html, "audio-fallback-input"), "checked", "the fallback is off")
 	assert.Contains(t, html, "クラウドの費用は出ません")
 	assert.NotContains(t, html, "audio-unsupported", "a PC that can run it has no refusal")
+	for _, which := range []string{"cloud", "local"} {
+		assert.Contains(t, html, `hx-get="/settings/audio/voice/`+which+`"`, "the detail button of each card")
+	}
+
+	local := s.detail("voice", "local")
+	assert.Contains(t, local, "https://example.test/gpt-sovits", "the source of the program")
+	assert.Contains(t, local, "ライセンス:")
+	assert.Contains(t, local, "必要なビデオメモリ: 4 GB 以上（mam の推定です。実機では確かめていません）")
+	assert.Contains(t, local, "商用利用がはっきりしない重み・依存ファイルが 1 件あります", "shown prominently")
+	assert.Contains(t, local, "「whisper-tiny」")
+	assert.Contains(t, local, "導入済み")
+	assert.Contains(t, local, `href="`+paths.ModelManager()+`"`)
+	assert.Contains(t, local, "ローカルの声は、Character に設定した参照音声で話します")
+	cloud := s.detail("voice", "cloud")
+	assert.Contains(t, cloud, "API キー（elevenlabs）: 設定済み")
+	assert.Contains(t, cloud, `id="mam-modal-title"`)
 }
 
-// A PC that cannot run the local providers (macOS): the radio is disabled, the reason and what to use are on the screen, and the cloud stays.
+// A PC that cannot run the local providers (macOS): the radio is disabled, the badge and the detail say why and what to use, and the cloud stays.
 func TestAudioPage_AnUnsupportedPCShowsTheReasonAndDisablesTheLocalChoice(t *testing.T) {
 	s := newScreen(t, machine(false), nil)
 
@@ -171,12 +199,29 @@ func TestAudioPage_AnUnsupportedPCShowsTheReasonAndDisablesTheLocalChoice(t *tes
 	for _, field := range []string{"voice_provider", "lip_sync_provider"} {
 		assert.Contains(t, radio(t, html, "audio-"+field+"-local"), "disabled", field)
 		assert.Contains(t, radio(t, html, "audio-"+field+"-cloud"), "checked", field)
-		assert.Contains(t, html, `data-testid="audio-unsupported-`+field+`"`)
 	}
-	assert.Contains(t, html, "macOS では公式の PyTorch 版が使えません", "the reason of the runtime manager")
-	assert.Contains(t, html, "代わりに、クラウドを使ってください", "and what to use instead")
-	assert.Contains(t, html, "この PC では GPT-SoVITS を選べません。ElevenLabs（クラウド） のまま使えます")
 	assert.Contains(t, html, "この PC では使えません", "the badge")
+	assert.Contains(t, html, "選べません")
+	voice := s.detail("voice", "local")
+	assert.Contains(t, voice, `data-testid="audio-unsupported-voice_provider"`)
+	assert.Contains(t, s.detail("lip-sync", "local"), `data-testid="audio-unsupported-lip_sync_provider"`)
+	assert.Contains(t, voice, "macOS では公式の PyTorch 版が使えません", "the reason of the runtime manager")
+	assert.Contains(t, voice, "代わりに、クラウドを使ってください", "and what to use instead")
+	assert.Contains(t, voice, "この PC では GPT-SoVITS を選べません。ElevenLabs（クラウド） のまま使えます")
+}
+
+func TestAudioDetail_AnUnknownCardIsA404ModalAndAPlainRequestGetsThePage(t *testing.T) {
+	s := newScreen(t, machine(true), nil)
+	for _, target := range []string{paths.AudioDetail("nobody", "cloud"), paths.AudioDetail("voice", "nobody")} {
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		req.Header.Set("HX-Request", "true")
+		rec := s.send(req)
+		assert.Equal(t, http.StatusNotFound, rec.Code, target)
+		assert.Contains(t, rec.Body.String(), "対象が見つかりません", target)
+	}
+	rec := s.send(httptest.NewRequest(http.MethodGet, paths.AudioDetail("voice", "local"), nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `data-testid="audio-panel"`, "the page the card is on")
 }
 
 func TestAudioSave_PersistsTheChoiceAndTheFormShowsIt(t *testing.T) {
@@ -222,7 +267,8 @@ func TestAudioPage_ASavedLocalChoiceThatThisPCCannotRunIsSaidSoAndTheFormShowsTh
 
 	html := s.page()
 
-	assert.Contains(t, html, "保存済みの設定はローカルですが、この PC では動かせないため、今は使われません")
+	assert.Contains(t, html, "保存済みの設定はローカルですが、この PC では動かせないため、今は使われません", "on the card")
+	assert.Contains(t, s.detail("voice", "local"), "保存済みの設定はローカルですが、この PC では動かせないため、今は使われません", "and in the detail")
 	assert.Contains(t, radio(t, html, "audio-voice_provider-cloud"), "checked")
 	rec := s.save(url.Values{"voice_provider": {"elevenlabs"}, "lip_sync_provider": {"synclabs"}}, true)
 	require.Equal(t, http.StatusOK, rec.Code)

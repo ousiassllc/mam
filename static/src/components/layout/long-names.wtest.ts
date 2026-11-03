@@ -14,6 +14,8 @@ const BOXES = [
   '[data-testid=mm-hfi-file]',
   '[data-testid=mm-hfi-hits] > li',
   '[data-testid=jobs-item]',
+  '[data-testid=chatgpt-card]',
+  '[data-testid=audio-card]',
 ];
 
 describe('long names stay inside their boxes (#1003)', () => {
@@ -63,6 +65,8 @@ describe('long names stay inside their boxes (#1003)', () => {
     const screens: [string, string][] = [
       ['the model manager (install progress, files, Hugging Face)', 'layout-long-names-model-manager.html'],
       ['the job list', 'layout-long-names-jobs.html'],
+      ['the cards of the ChatGPT login (#1005)', 'layout-long-names-chatgpt-cards.html'],
+      ['the cards of the voice and the lip sync (#1005)', 'layout-long-names-audio-cards.html'],
     ];
     for (const [name, fixture] of screens) {
       it(`keeps ${name} inside its boxes at ${width} px`, async () => {
