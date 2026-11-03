@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
 )
 
@@ -12,7 +13,7 @@ func failureReason(err error) string {
 	var api *llm.APIError
 	switch {
 	case errors.Is(err, llm.ErrNoAPIKey):
-		return "LLM の API キーが設定されていません（設定画面で Anthropic / OpenAI / Google のキーを登録してください）"
+		return failmsg.NoKeyMessage(err)
 	case errors.Is(err, planning.ErrInvalidPlan), errors.Is(err, llm.ErrInvalidOutput):
 		return "AI の出力を制作に使える形で受け取れませんでした"
 	case errors.As(err, &api) && api.Notice != "":

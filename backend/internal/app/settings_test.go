@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -27,7 +28,7 @@ func buildWithAdultModel(t *testing.T) (*modelsettings.Service, func() []domain.
 	logger := slog.New(slog.DiscardHandler)
 	ffmpegDL := newFFmpegDownloader(cfg, logger)
 	t.Cleanup(ffmpegDL.Close)
-	services, _, cleanup, err := buildServices(context.Background(), cfg, logger, gpt, ffmpegDL)
+	services, db, cleanup, err := buildServices(context.Background(), cfg, logger, gpt, ffmpegDL)
 	require.NoError(t, err)
 	t.Cleanup(cleanup)
 
@@ -38,7 +39,7 @@ func buildWithAdultModel(t *testing.T) (*modelsettings.Service, func() []domain.
 	require.NoError(t, services.LocalModels.CreateModel(ctx, localmodels.ModelInput{Endpoint: modelmanager.BundledEndpoint, Name: "chroma1-hd", Model: tpl.Model}))
 	require.False(t, services.ModelManager.AdultContentEnabled(), "the age was never confirmed")
 
-	settings := newSettings(cfg, services, gpt, ffmpegDL, logger)
+	settings := newSettings(cfg, services, gpt, ffmpegDL, nil, repository.NewJobRepository(db), logger)
 	choices := func() []domain.ModelName {
 		view, err := settings.Models.View()
 		require.NoError(t, err)

@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/gptsovits"
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/musetalk"
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/synclabs"
+	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -23,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
+	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
@@ -199,6 +201,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		AudioSettings: newAudioSettings(cfg, rts, keys), // read at every run
 	})
 	services.LocalModels = localModels
+	services.LLMClient = reasoning
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
 	services.ModelManager = mgr
 	services.LocalRuntimes = rts
@@ -208,7 +211,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
 	modellicense.SetResolver(mgr.LicenseOf) // what the screens and tools say of a local model's commercial use (#928)
 	modellicense.SetDefaultFilter(mgr.DefaultFilter)
-	services.Gentest = newGentest(cfg, db, jobs, models, services, newTranslator(reasoning, llmCfg), newMatcher(reasoning, llmCfg, judging.engine(), models.Config().Gentest.Face()), judging.engine(), logger)
+	services.Gentest = newGentest(cfg, db, jobs, models, services, prompttranslate.FromClient(reasoning), imagematch.FromClient(reasoning, judging.engine(), models.Config().Gentest.Face()), judging.engine(), logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {

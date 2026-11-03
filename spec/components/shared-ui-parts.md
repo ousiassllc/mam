@@ -286,7 +286,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 |------|-------------------------------|---------------|
 | モデルマネージャー（[model-manager-screen.md](model-manager-screen.md)） | 各区画（ComfyUI エンジン・モデル・試し生成・Hugging Face から導入・Hugging Face のトークン・外部の ComfyUI）の説明。ローカル音声・口パクとモデルの区画の「?」には、カードをタップすると詳細（出典・ライセンス・ファイル一覧・SHA-256）が見られること・実行環境の扱い・自動起動の意味も入る（#954）。**h1 の下の説明は動かさない**（h1 に「?」は付けない。オーナーの決定） | h1・h1 の下の説明・各区画の h2・操作・状態・結果・エラー |
 | 設定: API キーとログイン（[settings-screen-categories.md](settings-screen-categories.md)） | 「API キー」「ChatGPT でログイン」の説明、ChatGPT の公式・Codex・画像のカードの説明 | h3・カードの名前・状態・要約・操作 |
-| 設定: テキスト生成（LLM） | 分類の説明、再起動の補足（次の起動から使われる）、ChatGPT プランの長文（`llm-chatgpt-note`） | 「反映にはアプリの再起動が必要です」（操作の前提）・固定・エラー・結果・表 |
+| 設定: テキスト生成（LLM） | 分類の説明、反映の補足（次の呼び出しから使われる・再起動で反映される設定）、ChatGPT プランの長文（`llm-chatgpt-note`） | 「保存した割り当ては、次の呼び出しからすぐ使われます」（操作の前提。`llm-apply-note`）・固定・エラー・結果・表 |
 | 設定: 画像・動画モデル | 分類の説明（`models.json` の保存先を含む）、「画像モデル（用途ごと）」「動画モデル（Quality Policy ごと）」の説明 | h2・h3・表 |
 | 設定: ローカル・代替モデル | 分類の説明（`local.Description`） | h2・固定の注意・接続先のカード・エラー |
 | 設定: MCP サーバー | 分類の説明（`mcp.Description`） | h2・待ち受け先・トークンの表・エラー |

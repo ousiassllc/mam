@@ -52,13 +52,19 @@ type Image = llm.Image
 // to price (Plan; the calls follow the routes, with their fail-over).
 type Matcher struct {
 	llm           llm.Completer
-	create, judge llm.Target
+	create, judge func() llm.Target
 	faces         facesim.Engine
 	mix           FaceMix
 }
 
-// New returns a Matcher that reasons through c.
+// New returns a Matcher that reasons through c and names create and judge in the estimate.
 func New(c llm.Completer, create, judge llm.Target) *Matcher {
+	return NewFollowing(c, func() llm.Target { return create }, func() llm.Target { return judge })
+}
+
+// NewFollowing is New for routes that can change while the app runs (a saved "LLM の割り当て" applies at once): the estimate
+// names what create and judge say at the time it is made.
+func NewFollowing(c llm.Completer, create, judge func() llm.Target) *Matcher {
 	return &Matcher{llm: c, create: create, judge: judge}
 }
 

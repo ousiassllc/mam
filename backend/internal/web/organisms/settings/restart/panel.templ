@@ -1,0 +1,102 @@
+package restart
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// SlotID is the id of the element that holds the panel: it is always on the page, so that the panel can appear after a save
+// (the slot reads the panel again after every save of the screen) and the answer of the buttons goes into it.
+const SlotID = "restart-slot"
+
+// refreshTrigger is the event static/src/components/restart/refresh.ts sends to the slot after a save of the screen (htmx evaluates
+// no filter expression, so the choice of which requests count is in that script).
+const refreshTrigger = "restart-refresh"
+
+// Data is the "再起動して反映" panel, shown at the top of every page of the settings screen while a saved setting waits for a
+// restart. Pending are the settings that wait, in words. CanRestart is whether this build can restart itself (the browser
+// build cannot: the panel then says to restart by hand). Waiting is a restart that waits for the running work to end. Notice
+// is what the last request did, Error why it was refused; Busy is the work that held it back (then the button that waits for it
+// is offered). Restarting means the app is quitting: there is no button.
+type Data struct {
+	Pending    []string
+	CanRestart bool
+	Waiting    bool
+	Restarting bool
+	Notice     string
+	Error      string
+	Busy       []string
+}
+
+// Visible is whether there is anything to say: a setting waits, or a request was answered.
+func (d Data) Visible() bool {
+	return len(d.Pending) > 0 || d.Waiting || d.Restarting || d.Notice != "" || d.Error != ""
+}
+
+// Slot is the page's place of the panel: the panel, and the attributes that read it again after a save.
+templ Slot(d Data) {
+	<div id={ SlotID } hx-get={ paths.Restart() } hx-trigger={ refreshTrigger } hx-swap="innerHTML">
+		@Panel(d)
+	</div>
+}
+
+// Panel is the notice with the buttons. It draws nothing when there is nothing to say.
+templ Panel(d Data) {
+	if d.Visible() {
+		<section id="restart-panel" class="mb-4 flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 px-4 py-3" aria-label="再起動して反映" data-testid="restart-panel">
+			if len(d.Pending) > 0 {
+				<p class="text-sm text-amber-300" data-testid="restart-pending">
+					保存した設定のうち、再起動すると反映されるものがあります:
+					for i, p := range d.Pending {
+						if i > 0 {
+							、
+						}
+						<span data-testid="restart-pending-item">{ p }</span>
+					}
+				</p>
+			}
+			if d.Restarting {
+				<p class="text-sm text-emerald-300" role="status" data-testid="restart-notice">{ d.Notice }</p>
+			} else {
+				if d.Notice != "" {
+					<p class="text-sm text-emerald-300" role="status" data-testid="restart-notice">{ d.Notice }</p>
+				}
+				if d.Error != "" {
+					<p class="text-sm text-red-300" role="alert" data-testid="restart-error">{ d.Error }</p>
+				}
+				if len(d.Busy) > 0 {
+					<ul class="list-disc pl-5 text-sm text-neutral-300" data-testid="restart-busy">
+						for _, b := range d.Busy {
+							<li>{ b }</li>
+						}
+					</ul>
+				}
+				if d.CanRestart && !d.Waiting {
+					<div class="flex flex-wrap items-center gap-2">
+						@button("再起動して反映", "refuse", "再起動します。実行中の作業があるときは、再起動せずに知らせます。よろしいですか？", "restart-now")
+						if len(d.Busy) > 0 {
+							@button("作業が終わったら再起動する", "wait", "作業が終わるまで待ってから再起動します。よろしいですか？", "restart-wait")
+						}
+					</div>
+				}
+				if !d.CanRestart {
+					<p class="text-sm text-neutral-300" data-testid="restart-manual">このビルドは自分で再起動できません。アプリを終了して、起動し直してください。</p>
+				}
+			}
+		</section>
+	}
+}
+
+templ button(label, whenBusy, confirm, testID string) {
+	@atoms.Button(atoms.ToneNeutral, label, templ.Attributes{
+		"type":            "button",
+		"hx-post":         paths.Restart(),
+		"hx-vals":         `{"when_busy":"` + whenBusy + `"}`,
+		"hx-target":       "#" + SlotID,
+		"hx-swap":         "innerHTML",
+		"hx-sync":         "this:drop",
+		"hx-disabled-elt": "this",
+		"hx-confirm":      confirm,
+		"data-testid":     testID,
+	})
+}

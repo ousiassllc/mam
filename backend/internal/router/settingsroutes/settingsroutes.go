@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/apprestart"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
@@ -42,6 +43,7 @@ import (
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
+	restarthandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/restart"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settingspage"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -56,6 +58,9 @@ type Services struct {
 	// Update checks for a newer version. Nil in the headless server, which cannot update itself: the
 	// version section then shows the version only and has no check route.
 	Update *appupdate.Service
+	// Restart is the "再起動して反映" panel: the settings that wait for a restart and the button (POST paths.Restart()). Nil leaves
+	// the panel and its route out.
+	Restart *apprestart.Service
 	// MCP is the MCP server section (address, bind address, tokens). Nil when the MCP server is not running
 	// (a router built without the app, as the tests do): the section and its routes are then absent.
 	MCP *mcpsettings.Service
@@ -99,6 +104,14 @@ func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Se
 	return &Services{LLM: llmassign.New(llmFile, llmPinned), LLMModels: llmmodels.New(llmmodels.Options{}), Models: modelsettings.New(modelFile, modelPinned)}
 }
 
+// registerRestart adds the routes of the "再起動して反映" panel when the app has a restart service.
+func registerRestart(engine *gin.Engine, s *Services) {
+	if s != nil && s.Restart != nil {
+		engine.GET(paths.Restart(), restarthandler.Show(s.Restart))
+		engine.POST(paths.Restart(), restarthandler.Restart(s.Restart))
+	}
+}
+
 // Register adds the pages of the settings screen (settingspage.Register: the overview and "API キーとログイン" always,
 // the version page with the version only, and the other categories of the services there are) and, when s is not nil, the
 // LLM and model sections with their PUT / DELETE routes and, when s.Update is set, POST paths.UpdateCheck() and, when s.MCP
@@ -111,6 +124,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 	if update != nil {
 		engine.POST(paths.UpdateCheck(), updatehandler.Check(update))
 	}
+	registerRestart(engine, s)
 	if s != nil && s.MCP != nil {
 		h := mcphandler.Handlers{Svc: s.MCP, Page: pages.Page(paths.SettingsMCP)}
 		engine.GET(paths.MCPBindEdit(), h.EditBind)
@@ -186,6 +200,7 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 		}
 		p.ChatGPT, p.LLM, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
 		p.Audio = s.Audio
+		p.Restart = s.Restart
 		p.FFmpegDownload = s.FFmpegDownload
 		p.Guide = s.Onboarding != nil
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -26,6 +27,7 @@ func TestMapError_GivesTheScreensStatusAndAMessageThatKeepsNoInternals(t *testin
 		"wrapped service": {fmt.Errorf("load: %w", service.ErrNotFound), "not_found", 404, "見つかりません"},
 		"conflict":        {&service.ConflictError{Message: "別の編集処理が走っています"}, "conflict", 409, "別の編集処理が走っています"},
 		"busy":            {service.ErrBusy, "conflict", 409, "生成中"},
+		"key store":       {fmt.Errorf("save: %w", &credential.StoreError{Message: "読み戻せませんでした", Err: errors.New("vault locked")}), "unavailable", 503, "読み戻せませんでした"},
 		"locked":          {&service.LockedError{Parameters: []domain.LockParameter{domain.ParamPrompt}}, "locked", 423, "LOCK"},
 		"budget":          {service.ErrBudgetExceeded, "budget_exceeded", 402, "予算"},
 		"unavailable":     {service.ErrUnavailable, "unavailable", 503, "生成機能"},

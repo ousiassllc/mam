@@ -14,6 +14,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
@@ -159,6 +160,10 @@ func done(c *gin.Context, k Keys, provider string, opErr error, saved, savedUnre
 	}
 	if opErr != nil {
 		_ = c.Error(opErr)
+		var store *credential.StoreError
+		if errors.As(opErr, &store) { // the store's own words: it refused, or took the key and does not return it
+			failed = store.Message
+		}
 		refuse(c, k, provider, http.StatusServiceUnavailable, failed)
 		return
 	}

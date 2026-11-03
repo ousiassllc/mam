@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
@@ -27,10 +28,7 @@ func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Actio
 	if a == ActionReferencePack {
 		what = "Reference Pack の作成"
 	}
-	notice := domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindText,
-		Content: fmt.Sprintf("Shot %d の%sに失敗しました: %s\n対処したら、もう一度実行してください。", ref.Shot.OrderIndex+1, what, reason),
-	}
+	notice := failmsg.Notice(err, fmt.Sprintf("Shot %d の%sに失敗しました: %s\n対処したら、もう一度実行してください。", ref.Shot.OrderIndex+1, what, reason))
 	if aerr := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); aerr != nil {
 		o.logger.Error("post failure notice failed", "shot_id", ref.Shot.ID, "err", aerr)
 	}
@@ -41,8 +39,10 @@ func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Actio
 // FailureReason is the user-facing cause of a failure. Details stay in the log.
 func FailureReason(err error) string {
 	switch {
-	case errors.Is(err, modeladapter.ErrNoAPIKey), errors.Is(err, llm.ErrNoAPIKey):
-		return "生成モデルまたは LLM の API キーが設定されていません（設定画面でキーを登録してください）"
+	case errors.Is(err, llm.ErrNoAPIKey):
+		return failmsg.NoKeyMessage(err)
+	case errors.Is(err, modeladapter.ErrNoAPIKey):
+		return "生成モデルの API キーが設定されていません（設定画面で、そのモデルのプロバイダーのキーを登録してください）"
 	case errors.Is(err, agegate.ErrRefused):
 		return agegate.Reason(err)
 	case errors.Is(err, ErrBudgetExceeded):

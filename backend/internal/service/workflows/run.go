@@ -83,6 +83,10 @@ type RunRecord struct {
 	Message string `json:"message,omitempty"`
 }
 
+// Running is how many runs of a saved workflow are running now (the bundled ComfyUI is generating for them): a restart of the
+// app would cut them short.
+func (s *Service) Running() int { return s.runs.count() }
+
 // StartRun checks the input and starts the run in the background; the record it returns is running. The result
 // is read with Run and RunFile. The bundled ComfyUI is started when it is stopped. Nothing is written to a
 // Project and no Cost Ledger row is made: it is the workflow alone.

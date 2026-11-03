@@ -239,3 +239,36 @@ func TestPinned_IsShownButNeverWritten(t *testing.T) {
 	require.NoError(t, readErr)
 	assert.Equal(t, pinned, string(data))
 }
+
+// A saved assignment is handed to the running client at once, and what only a restart applies is kept as pending (#1006).
+func TestSave_HandsTheConfigToTheApplierAndKeepsWhatWaitsForARestart(t *testing.T) {
+	svc := llmassign.New(settingsPath(t), false)
+	assert.False(t, svc.View().Live, "no client runs under the service")
+	var got []llm.Config
+	restart := []string{"llm.json のタイムアウト"}
+	svc.SetApplier(func(c llm.Config) []string { got = append(got, c); return restart })
+	assert.True(t, svc.View().Live)
+
+	require.NoError(t, svc.Save(map[string]llmassign.Route{string(llm.AgentProducer): route(llm.ProviderGoogle, "gemini-x")}))
+
+	require.Len(t, got, 1)
+	assert.Equal(t, llm.Target{Provider: llm.ProviderGoogle, Model: "gemini-x"}, got[0].Routes[llm.AgentProducer].Primary, "the route that was saved")
+	assert.Equal(t, restart, svc.View().Pending)
+
+	restart = nil
+	require.NoError(t, svc.Reset())
+	require.Len(t, got, 2)
+	assert.Equal(t, llm.DefaultConfig().Routes[llm.AgentProducer], got[1].Routes[llm.AgentProducer], "a reset applies the defaults")
+	assert.Empty(t, svc.View().Pending)
+}
+
+func TestSave_ARefusedAssignmentIsNotHandedToTheApplier(t *testing.T) {
+	svc := llmassign.New(settingsPath(t), false)
+	called := false
+	svc.SetApplier(func(llm.Config) []string { called = true; return nil })
+
+	err := svc.Save(map[string]llmassign.Route{string(llm.AgentProducer): route("nobody", "m")})
+
+	require.Error(t, err)
+	assert.False(t, called)
+}

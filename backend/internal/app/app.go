@@ -46,6 +46,10 @@ type Options struct {
 	// OpenBrowser opens a URL in the default browser of this machine (never in the Wails window): the browser login
 	// of "Sign in with ChatGPT" uses it. Nil: the login screen shows the URL to open by hand.
 	OpenBrowser func(url string) error
+	// Restart, when not nil, quits the application and starts it again (the Wails front: desktop.Restarter.Restart). It is
+	// called after the settings screen's "再起動して反映" or the MCP tool restart_app checked what is running, and must not
+	// block. Nil (the browser build, whose process nobody else owns): the app cannot restart itself and says so.
+	Restart func()
 }
 
 // staticFS serves assets from disk when --static-dir is set (make dev), else from the binary.
@@ -114,7 +118,8 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	defer cleanup()
 
 	gin.SetMode(gin.ReleaseMode)
-	settings := newSettings(cfg, services, gpt, ffmpegDL, logger)
+	settings := newSettings(cfg, services, gpt, ffmpegDL, opts.Restart, repository.NewJobRepository(db), logger)
+	defer settings.Restart.Close()
 	settings.JobList = joblist.New(joblist.Deps{Table: jobrecent.New(db), Shots: repository.NewGenerationRepository(db), Projects: services.Projects, ModelManager: services.ModelManager, Gentest: services.Gentest})
 	if opts.Update != nil {
 		var stop func()

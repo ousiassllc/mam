@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	restartNeeded = "反映にはアプリの再起動が必要です"
-	pinnedReason  = "起動オプションで固定されているため、この画面では変更できません"
-	writeFailed   = "設定ファイルを書き込めませんでした。保存先の権限と空き容量を確認してください"
-	notFound      = "対象が見つかりません"
-	modalTitle    = "LLM の割り当て"
+	appliedNow   = "次の呼び出しからすぐ使われます（再起動は要りません）"
+	pinnedReason = "起動オプションで固定されているため、この画面では変更できません"
+	writeFailed  = "設定ファイルを書き込めませんでした。保存先の権限と空き容量を確認してください"
+	notFound     = "対象が見つかりません"
+	modalTitle   = "LLM の割り当て"
 )
 
 // SectionData is the saved assignment as the category shows it (the page handler of the settings screen calls it). It is
@@ -125,9 +125,8 @@ func change(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, r
 		now := svc.View()
 		saved, _ := find(now, agent)
 		row := rowOf(saved)
-		row.Restart = true
 		settingshttp.CloseModal(c)
-		settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(row), atoms.SuccessToastOOB(e.Label+done+"。"+restartNeeded)))
+		settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(row), atoms.SuccessToastOOB(e.Label+done+"。"+appliedNow)))
 		return
 	}
 	if typed != nil { // the refused modal is drawn again with what was typed
@@ -172,7 +171,7 @@ func Save(svc *llmassign.Service) gin.HandlerFunc {
 		for _, a := range llmassign.Agents() {
 			routes[a] = llmassign.Route{Primary: formTarget(c, a+".primary"), Fallback: formTarget(c, a+".fallback")}
 		}
-		answer(c, svc, svc.Save(routes), "保存しました。"+restartNeeded)
+		answer(c, svc, svc.Save(routes), "保存しました。"+appliedNow)
 	}
 }
 
@@ -180,7 +179,7 @@ func Save(svc *llmassign.Service) gin.HandlerFunc {
 // the table.
 func Reset(svc *llmassign.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		answer(c, svc, svc.Reset(), "既定に戻しました。"+restartNeeded)
+		answer(c, svc, svc.Reset(), "既定に戻しました。"+appliedNow)
 	}
 }
 

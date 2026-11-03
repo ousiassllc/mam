@@ -42,14 +42,22 @@ func Needs(text string) bool {
 // estimate to name (the call itself follows the route, with its fail-over).
 type Translator struct {
 	llm    llm.Completer
-	target llm.Target
+	target func() llm.Target
 }
 
-// New returns a Translator that reasons through c.
-func New(c llm.Completer, target llm.Target) *Translator { return &Translator{llm: c, target: target} }
+// New returns a Translator that reasons through c and names target in the estimate.
+func New(c llm.Completer, target llm.Target) *Translator {
+	return NewFollowing(c, func() llm.Target { return target })
+}
+
+// NewFollowing is New for a route that can change while the app runs (a saved "LLM の割り当て" applies at once): the estimate
+// names what target says at the time it is made.
+func NewFollowing(c llm.Completer, target func() llm.Target) *Translator {
+	return &Translator{llm: c, target: target}
+}
 
 // Target is the primary target of the translation.
-func (t *Translator) Target() llm.Target { return t.target }
+func (t *Translator) Target() llm.Target { return t.target() }
 
 // Select returns the distinct texts of in that Need a translation, in the order they first appear.
 func Select(in []string) []string {

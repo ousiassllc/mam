@@ -6,7 +6,6 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
-	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 	"github.com/ousiassllc/mam/backend/internal/config"
@@ -83,29 +82,4 @@ func faceCropper(faces facesim.Engine) runner.FaceCropFunc {
 	return func(ctx context.Context, image []byte) ([]byte, bool, error) {
 		return facesim.CropFace(ctx, faces, image)
 	}
-}
-
-// newTranslator is the translation of the generation test's prompts: it reasons through the route of the Prompt Planner in
-// the "LLM の割り当て" (llm.json), and names its primary target in the estimate. nil when the settings have no such route.
-func newTranslator(c llm.Completer, cfg llm.Config) *prompttranslate.Translator {
-	route, err := cfg.RouteFor(prompttranslate.Agent)
-	if err != nil {
-		return nil
-	}
-	return prompttranslate.New(c, route.Primary)
-}
-
-// newMatcher is the LLM work of the prompt match: it writes and fixes the prompts through the route of the Prompt Planner and
-// compares the pictures through the route of the AI Video Judge. nil when the settings have no such route. faces and mix say whether
-// and how the face of the generated image is mixed into the similarity (the "match_face" of the Judge setting, off by default).
-func newMatcher(c llm.Completer, cfg llm.Config, faces facesim.Engine, mix imagematch.FaceMix) *imagematch.Matcher {
-	create, err := cfg.RouteFor(imagematch.PromptAgent)
-	if err != nil {
-		return nil
-	}
-	judge, err := cfg.RouteFor(imagematch.JudgeAgent)
-	if err != nil {
-		return nil
-	}
-	return imagematch.New(c, create.Primary, judge.Primary).UseFaces(faces, mix)
 }

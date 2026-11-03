@@ -85,7 +85,7 @@ func TestLLMTable_EditButtonsAreNamedAfterTheirAgent(t *testing.T) {
 // focus finds the control of the new row again by the key (shared-ui-parts.md §4).
 func TestLLMTable_EditButtonKeepsItsFocusKeyWhenTheRowChanges(t *testing.T) {
 	def := llm.Target{Provider: "anthropic", Model: "claude-x"}
-	changed := llm.Row{Agent: "writer", Label: "Writer", Primary: llm.Target{Provider: "openai", Model: "gpt-x"}, Fallback: def, DefaultPrimary: def, DefaultFallback: def, Restart: true}
+	changed := llm.Row{Agent: "writer", Label: "Writer", Primary: llm.Target{Provider: "openai", Model: "gpt-x"}, Fallback: def, DefaultPrimary: def, DefaultFallback: def}
 	plain := llm.Row{Agent: "writer", Label: "Writer", Primary: def, Fallback: def, DefaultPrimary: def, DefaultFallback: def}
 
 	for _, r := range []llm.Row{plain, changed} {

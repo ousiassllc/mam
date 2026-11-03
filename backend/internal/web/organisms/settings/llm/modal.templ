@@ -12,7 +12,7 @@ import (
 // name each, with the default beside the model), "保存" for this Agent, and "この Agent を既定に戻す". A refusal draws it again
 // with what was typed and why.
 templ Modal(f Form) {
-	@modal.Frame(f.Row.Label+" の LLM", f.Row.Purpose+"。反映にはアプリの再起動が必要です。") {
+	@modal.Frame(f.Row.Label+" の LLM", f.Row.Purpose+"。保存すると、次の呼び出しからすぐ使われます。") {
 		if f.Error != "" {
 			@modal.Error(f.Error)
 		}
