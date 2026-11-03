@@ -93,6 +93,7 @@ templ Box(p Props)
 | `image_unavailable` | `unavailable` | ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。 | /settings/chatgpt |
 | `input_missing` | `validation` | このモデルが必ず使う入力（）が渡されていません。 |  |
 | `input_unsupported` | `validation` | このモデルは、渡された入力画像や解像度の組み合わせを受け付けません。 |  |
+| `input_unused` | `validation` | 添えた入力画像は、選んだモデルでは使われません。 |  |
 | `install_failed` | `upstream` | 導入を完了できませんでした。 | /model-manager |
 | `invalid_input` | `validation` | 入力が正しくありません。 |  |
 | `key_missing` | `unavailable` | API キーが設定されていません。 | /settings/api-keys |
@@ -194,6 +195,7 @@ templ Box(p Props)
 
 - 新しい失敗の種類を足すとき: `apperr/code.go` にコードとクラス・導線を足し、`messages_ja.go`・`messages_en.go` に `<code>.cause`・`<code>.remedy` を足す（`TestEveryCodeHasItsTexts` が両方を要求する）。外部の失敗なら `errmap` の表に条件を足し、`errmap_test.go` に行を足す。サービスが自分で言葉にする拒否なら、`apperr.New(code).WithCause(…)` を返す。
 - 画面に出すとき: ハンドラが `apperr.View` を作り（`apperr.As(err)` か `errmap.Explain(err)` の `View(apperr.LangJa)`）、templ で `@errorbox.Box(errorbox.Props{View: v, Lang: apperr.LangJa, ID: <画面内で一意の id>})`。
+- **#1009 の実装（2026-11-03）**: 実行前の検査が `input_missing`（必須の入力が無い。`param`＝`first_frame` など、原因は「「<モデル>」は最初のフレームの画像が必要です。添えた画像が「参照」になっています。「最初のフレーム」に変えてください」を `WithCause` で上書き）と `input_unused`（添えた画像がどのモデルにも使われない）を、ベンダーに送る前に返す（画面は `errorbox.Box`、MCP は `failure`）。`input_missing.remedy` に「添えた画像が「参照」になっているときは「最初のフレーム」に変えてください」を足した。422 の後追い（`byMessage` の `the workflow needs`）は従来どおり残る（検査をすり抜けた場合の保険）。詳しくは [gentest/gentest.md](gentest/gentest.md) §5.1。
 - **#1009（I2V の first_frame 422）**: 同梱 ComfyUI の「the workflow needs first_frame (12), the request has none」は、すでに `input_missing`（`param=first_frame`、`node=12`）になり、結果の `failure`・詳細のエラーボックスに出る。使われなかった入力の表示は、結果の `used_inputs` と合わせて、この `failure` の `cause` / `remedy` を使うこと。新しい文を足すときは `input_missing.cause` / `.remedy`（カタログ）に足す。
 - **#1011（UI）**: 結果のカードの 1 行（`Card.Error`）は、いまは `error`（原因 + 直し方 + 詳細の先頭）。カードにも `errorbox` を出すなら `Card.Failure`（`resulttile.Card`）がある。モデル管理の導入の失敗は `job.error_info`（`apperr.Unmarshal`）から読める。
 - 履歴の古い失敗（`error_info` が空）は `error` の 1 文だけ。`failure` は無い。
@@ -208,3 +210,4 @@ templ Box(p Props)
 | 版 | 日付 | 変更 | 理由 |
 |---|---|---|---|
 | 1.0 | 2026-11-03 | 新規。共通のエラー型・変換層・画面部品・MCP のフィールド・i18n・載せ替え状況 | Issue #1010 |
+| 1.1 | 2026-11-03 | `input_missing` の直し方に「添えた画像が参照のときは最初のフレームに変える」を足し、`input_unused`（添えた画像がどのモデルにも使われない）を新設。生成テストが送る前の検査で返す（§6 の表、#1009 の節） | Issue #1009 |

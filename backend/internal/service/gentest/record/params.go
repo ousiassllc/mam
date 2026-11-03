@@ -48,6 +48,16 @@ type ResultParams struct {
 	FaceSwap *FaceSwap `json:"face_swap,omitempty"`
 	// FaceSimilarity is how much the face of the result is the face of the batch's reference of the role "face" (measured when it was made).
 	FaceSimilarity *FaceSimilarity `json:"face_similarity,omitempty"`
+	// UnusedInputs are the input images of the batch this model was not given, with why (#1009). Absent: it used every one (or the batch had none).
+	UnusedInputs []UnusedInput `json:"unused_inputs,omitempty"`
+}
+
+// UnusedInput is an input image of the batch that the model of a result was not given: the input (its id in the detail's inputs), its role and
+// the reason in words.
+type UnusedInput struct {
+	InputID string `json:"input_id" jsonschema:"使われなかった入力画像（get_generation_result の inputs の input_id）"`
+	Role    string `json:"role" jsonschema:"その画像の役割（reference / face / style / edit / pose / first_frame / last_frame）"`
+	Reason  string `json:"reason" jsonschema:"使われなかった理由（日本語）"`
 }
 
 // Inpaint is a partial redraw: the strength that was sent (nil: the template's own), where the source picture came from, and the

@@ -49,6 +49,7 @@ templ modelCard(m ModelChoice) {
 		data-reference-mode={ m.RefMode }
 		data-reference-roles={ strings.Join(m.RefRoles, " ") }
 		data-supports-lora={ boolText(m.CanLoRA) }
+		data-requires-first-frame={ boolText(m.RequiresFirstFrame) }
 		data-sampling={ m.Use.Names() }
 		data-sampling-locked={ boolText(m.Use.Locked) }
 		data-supports-seed={ boolText(m.Use.Seed) }

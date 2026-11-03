@@ -4,6 +4,8 @@
 package resulttile
 
 import (
+	"strconv"
+
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 )
@@ -24,6 +26,11 @@ type Card struct {
 	Detail    string // the link to the detail
 	Meta      string // "seed 123 ・ 16:9 ・ 2.1 MiB"
 	CreatedAt string
+	// Unused is how many of the input images the model was not given (#1009) and UnusedText the words for the tile's hover ("" when it used every one).
+	Unused     int
+	UnusedText string
 	// Answer is whether the model that made the result may be used commercially (the mark on the card).
 	Answer commercial.View
 }
+
+func itoa(n int) string { return strconv.Itoa(n) }
