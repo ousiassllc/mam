@@ -612,14 +612,14 @@ func localState(p Provider) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\"><p class=\"font-semibold\">商用利用がはっきりしない重み・依存ファイルが ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\"><p class=\"font-semibold\">商用利用が確認できていない（不可・不明）重み・依存ファイルが ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(len(p.Local.Unclear)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/detail.templ`, Line: 86, Col: 124}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/detail.templ`, Line: 86, Col: 148}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {

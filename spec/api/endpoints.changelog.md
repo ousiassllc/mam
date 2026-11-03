@@ -192,3 +192,4 @@
 | 1.185 | 2026-11-03 | §2.8 に `POST /projects/:id/characters`、§2.9 に `POST /series/:id/characters`（Character を手で作る。AI の企画を待たずに World State・Series の正本へ登録する）を足した | Issue #1001。登場人物は LLM の企画だけが作っていたため、LLM が止まるとシリーズの正本も空のままだった |
 | 1.186 | 2026-11-03 | [endpoints-gentest.md](endpoints-gentest.md)（1.20）に、`POST /generation-test/results/:id/face-swap` と `GET …/face-swap/warnings` を足した。[endpoints-settings.md](endpoints-settings.md)（1.11）に、`GET/PUT /settings/facefusion`（FaceFusion のパス）を足した | Issue #995 |
 | 1.187 | 2026-11-03 | [endpoints-settings.md](endpoints-settings.md)（1.12）に、`GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider`（設定のカードの「詳細」のモーダル）と、詳細から送った ChatGPT の操作の答えを足した | Issue #1005 |
+| 1.188 | 2026-11-03 | §1 の `/settings` 概要の分類に「音声・口パク」を足し、`/settings/audio/…` の行を足した（1.171・1.187 は endpoints-settings.md のみに書いていた） | Issue #938 |

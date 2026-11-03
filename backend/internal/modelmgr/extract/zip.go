@@ -184,7 +184,7 @@ func writeEntry(ctx context.Context, r io.Reader, name, target string, declared 
 		return fmt.Errorf("extract: create %s: %w", name, err)
 	}
 	defer func() { err = errors.Join(err, out.Close()) }()
-	buf := make([]byte, chunk)
+	buf := make([]byte, min(chunk, declared+1)) // one byte past the header is enough to see an entry that lies; most entries are small
 	var written int64
 	for {
 		if err := ctx.Err(); err != nil {

@@ -115,6 +115,7 @@ func TestAutoStartAtStartupAndCleanupOfWhatAnInterruptedInstallLeft(t *testing.T
 	v, _ := r.svc.Status(ctx(), "gpt-sovits")
 	assert.True(t, v.AutoStart)
 
+	r.svc.CleanLeftovers() // the app runs it before the job queue starts, so that a resumed install does not meet it
 	r.svc.OnStartup(context.Background())
 	assert.NoDirExists(t, r.layout.EnvNewDir(), "the half-extracted environment is removed")
 	require.Eventually(t, func() bool {

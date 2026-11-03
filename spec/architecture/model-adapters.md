@@ -100,6 +100,8 @@ Jev の利用ルール:
 | Lip Sync | Sync Labs | 音声ソースを問わないAPI-first設計。ElevenLabsで生成したクローン音声IDをそのままLip Sync入力に使える連携を前提に選定 |
 | Mixing / Loudness最適化 | （AI API不使用）ローカルDSP処理 | ラウドネス正規化・ミキシングは決定的信号処理であり生成AIの対象外。`internal/agent/audiodirector` 内でffmpeg等を用いて実装する |
 
+上の表は**クラウドの既定**のプロバイダーである。声と口パクには、利用者の PC で動かすローカルの選択肢（`gpt-sovits-tts`・`musetalk-1.5`。[model-adapters-m3.md](model-adapters-m3.md) §14.8〜14.10）もあり、設定画面「音声・口パク」で選べる。
+
 ## 6. `model_name` / `provider` 識別子命名規約
 
 `architecture/er.md` の `TAKE.model_name`、`COST_LEDGER_ENTRY.provider` に格納する識別子は以下の文字列を正規値とする（Model Adapter実装時のenum定義元）。

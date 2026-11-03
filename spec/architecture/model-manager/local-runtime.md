@@ -6,6 +6,7 @@
 |---|---|
 | ランタイム管理の基盤、GPT-SoVITS の環境の導入・起動・停止・状態 | **#918（この文書）** |
 | 重み・依存ファイルの固定カタログ（固定 URL＋SHA-256、再開可）、出典とライセンスの画面表示、画面・MCP | **#920（§12）** |
+| 固定した URL と SHA-256 の上流との定期照合（週 1 回の CI ジョブ） | **#937（§12.10）** |
 | MuseTalk 1.5 のランタイム（環境の組み立て・起動・口パクの入口） | **#921（§13）** |
 | MuseTalk の口パクプロバイダー（Audio Director。実行ごとの選択の入口まで） | **#923**（[model-adapters-m3.md §14.9](../model-adapters-m3.md)。この文書の範囲外） |
 | プロバイダーの選択の保存・クラウドへのフォールバック・利用者向けの文言 | #924（この文書の範囲外） |
@@ -290,7 +291,7 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 | 実物の `nltk_data.zip`・`G2PWModel.zip`・`open_jtalk_dic…tar.gz` からのメンバーの取り出し（`exeinstall.Extract`）と、取り出したファイルで GPT-SoVITS が動くこと | **未確認**（アーカイブの一覧とメンバーの SHA-256 は実物で確かめたが、取り出し→起動は実機で試していない。合成のアーカイブでは確認した） |
 | MuseTalk の重みを置いた環境で MuseTalk が動くこと（`models/…` の配置が公式の既定と同じこと、S3FD の置き場所） | **Linux の CPU で確認した**（#921。§13.7）: 12 件の重みをカタログの `dest` に置き、ネットワークの無い名前空間で、公式の推論と同じ手順（ラッパー）が 1.2 秒の動画を作った。**Windows ＋ CUDA は未確認** |
 | 各ライセンスの**原文との突き合わせ** | モデルカード・同梱の LICENSE・NLTK の配布一覧・MuseTalk の README / LICENSE.txt は読んだ。**法的な助言ではない**。`unknown` の 5 件（g2pW・SyncNet・face-parse・S3FD・resnet18）は、利用者が配布元に確認する前提（画面の注記） |
-| 第三者のミラー（`ManyOtherFunctions/face-parse-bisent`・`XXXXRT/GPT-SoVITS-Pretrained`）が将来も残ること | 保証できない。消えたら `ErrSourceGone`（原本の場所つき）で失敗する |
+| 第三者のミラー（`ManyOtherFunctions/face-parse-bisent`・`XXXXRT/GPT-SoVITS-Pretrained`）が将来も残ること | 保証できない。消えたら `ErrSourceGone`（原本の場所つき）で失敗する。消えたことは §12.10 の定期照合が先に知らせる |
 
 ### 12.9 Shisei のポーズ集（`data/assets/shisei-poses.json`。Issue #986）
 
@@ -306,6 +307,22 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 - **ライセンス**: 画像は CC0 1.0（`commercial: yes`）。出典は Shisei の `NOTICE`・`LICENSE-images`（コミット `26522a70…`）と `docs/LICENSING.md` の「AI が作る画像の権利」の規則。コードは Apache-2.0（取得しない）。**分類表（ポーズの選び方・番号・名前・分類）は ai-pose-gallery（ギア〔@giaaibusi〕）に従い、NOTICE が「credited, not licensed」と書くので、`commercial: unknown`**（画面は注意書きを出す）。
 - **確かめたこと（2026-11-03、GitHub API とダウンロード）**: タグ `v0.4.1` のコミットは `26522a70…`、メイン（`8f61ceab…`）は先に進んでいる。分類表は 288 件で画像のあるものは 280、アングルごとの線画の数は diag 263・side 257・front 251・above 228・below 213（README の「250 ポーズ × 5 アングル」とは一致しない）。Zip のバイト列は SHA-256 を記録した。**実物の Windows での導入・GitHub からの実取得は未確認**（テストは偽の GitHub サーバーで、`posestest` が同じ手順を走らせる）。
 - 画面は同意のチェック（`pose_accept`）が無いと導入を断り、取得元・サイズ・ライセンスを先に見せる。導入中は、案内が `GET /generation-test/poses/progress` を 1 秒ごとに取り直して「ダウンロード中: x / y（n%）」を出す（`Library.Progress`。`EnsureAssets` の進み具合）。一覧の下の「ポーズ集を削除」（確認つき）と MCP の `remove_pose_library` は `Library.Remove`（`Installer.Remove` と同じ。画像・目録・ダウンロード・記録を消して未導入に戻す。導入中は conflict）。MCP からの導入は `install_pose_library`（`accepted: true` が同意に当たる。[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)。Issue #994）。
+
+### 12.10 固定した URL の定期照合（Issue #937）
+
+取得時には、固定した SHA-256 とサイズで毎回検証する（§12.3）。それとは別に、**ミラーや上流が消えたり中身が変わったりしたことを、利用者の導入が失敗する前に maintainer が知る**ための定期ジョブを置く。
+
+| 項目 | 内容 |
+|---|---|
+| コマンド | `backend/cmd/upstreamcheck`（実装は `modelmgr/upstream`）。ローカルでも同じものを `make upstream-check`（`UPSTREAM_CHECK_FLAGS="-only musetalk -v"` で絞る）か `go run ./backend/cmd/upstreamcheck` で動かせる。不一致が 1 件でもあれば終了コード 1 |
+| 対象 | カタログのすべての固定 URL（エンジンの各ビルドと macOS の部品、モデルのファイル、ランタイムのパッケージと部品、`data/assets/*.json` の重み・依存）。同じ URL・SHA-256・サイズは 1 件に数える（現在 270 件） |
+| 許可ホスト | 取得と同じ検査（`fetch.AllowedURL`、ランタイムのパッケージ・部品は `fetch.PackageURL`）を、最初の URL とリダイレクトの各先に掛ける。許可されないホストへは問い合わせず、不一致として報告する |
+| 生存・サイズ | `HEAD`。サイズが分からなければ `Range: bytes=0-0` の `GET`（`Content-Range` の全体サイズ）。Hugging Face は 1 回目の応答の `X-Linked-Size` を使い、署名つきの CDN の先へは進まない。固定したサイズと違えば「サイズが変わった」、404・410 は「消えた」、その他の 4xx・5xx は「取得できない」。ネットワークの失敗・429・5xx は `-retries` 回まで繰り返す |
+| SHA-256 | Hugging Face の LFS のファイルは、1 回目の応答の `X-Linked-Etag`（SHA-256）と照合する（ダウンロードしない）。`X-Linked-Etag` を返さず、`-hash-below`（既定 16 MiB）以下のファイルは、ダウンロードして計算する |
+| 限界（**SHA-256 をダウンロードなしでは照合できないもの**） | PyPI・PyTorch・OpenMMLab の wheel、python.org・GitHub のリリース・アーカイブ（エンジンの 7z、`archive/<コミット>.zip`、python-build-standalone）は、上流が SHA-256 をヘッダーで返さない。これらは `-hash-below` 以下ならダウンロードして照合し、**それより大きいもの（PyTorch・mmcv・scipy などの大きな wheel、エンジンの 7z、macOS 用の torch など。現在 21 件）は生存とサイズだけ**を確かめる（`-v` で「size」として列挙される）。同じサイズのまま中身が変わったことは、実際の導入が SHA-256 の不一致で検出する（§12.3）。大きなファイル（合計で数十 GB）の毎週のダウンロードは重いので行わない |
+| ログインが要るもの | `Lightricks/LTX-2.5` など、Hugging Face のログインが要る 10 件（`Model.RequiresHFToken`）は、リポジトリのシークレット `HF_TOKEN`（利用条件に同意したアカウントの read トークン）があるときだけ問い合わせる。トークンは huggingface.co / hf.co にだけ送り、CDN へのリダイレクト先には送らない。無いときは「skipped」と数えて失敗にしない（落ちるのは、確かめられないからではなく、不一致があったときだけ） |
+| 定期実行 | `.github/workflows/upstream-check.yml`。`schedule`（毎週月曜 03:17 UTC）と `workflow_dispatch`。**PR・push では走らせず**、`ci.yml` とは独立（`ci.yml` はこのジョブに依存しない）。不一致があるとジョブが失敗し、GitHub の失敗通知で気づける。Issue を自動で立てる処理は入れない |
+| 現在の結果 | 2026-11-03 に実機のネットワークで実行: 270 件中、不一致 0、SHA-256 で一致 239、サイズだけ 21、ログインが要るため未確認 10（`HF_TOKEN` なし） |
 
 ## 13. MuseTalk 1.5 のランタイム（Issue #921）
 
@@ -431,3 +448,21 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 | GitHub の zip アーカイブのバイト列が将来も同じであること（§13.1）、PyPI・PyTorch・OpenMMLab・python.org の URL が将来も残ること | 保証できない。変わったら導入は SHA-256 の不一致・404 で失敗する（`ErrSourceGone` と同様に、旧い URL を差し替える更新が要る） |
 | 82 個の Python パッケージ・Python 本体・NVIDIA の DLL のライセンスの原文との突き合わせ | **未確認**（`THIRD_PARTY_NOTICES.md`） |
 | `ffmpeg` の libx264・aac を持つビルド（mam が導入する ffmpeg は GPL ビルドで持つが、利用者が設定で指す ffmpeg は未確認） | 出力の書き込みに失敗したら `ffmpeg_failed`（ffmpeg の末尾のメッセージつき） |
+
+## 14. 見送り一覧（Issue #938。#912 / PR #934 の研磨の minor 指摘）
+
+PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だった）のうち、**直さないと決めたもの**と、**直さずに仕様として記録したもの**。直したものは [model-manager.changelog.md](model-manager.changelog.md) 1.44 に書いた。1 件 1 行（指摘・理由）。
+
+| 指摘 | 判断と理由 |
+|---|---|
+| SyncNet の重み（`latentsync_syncnet.pt`、約 1.5 GB、ライセンス不明）が `required: true` で、推論では読まないのに導入に必須 | **見送り（オーナーの決定が要る）**。決定 3 の「表示する」を `required` にするかどうかはカタログの方針で、実機での確認（SyncNet を欠いた MuseTalk が起動すること）も要る。変えるなら `required: false` にして `CheckStart` が止めないようにする（1 行）。今は決定 3 のまま |
+| `elevenlabs/` が外部テストだけで、本体は `audiodirector/elevenlabs.go` に残っている | **見送り**。本体を移すと、`audiodirector` の公開型への依存の向きと、すべての呼び出し元の import を変える作業になり、この指摘（置き場の見た目）に対して大きすぎる。行数の上限を保つためのテスト分割で、動作に影響はない。アダプターを移すときにまとめて直す |
+| 展開したアーカイブを同じ URL の別の重みが使うとき、削除して 2 回ダウンロードする（`nltk_data.zip`、9.9 MB） | **見送り**。影響が 1 回分の 9.9 MB だけで、URL ごとにまとめて取得する変更は進捗・再開・合計サイズの計算に及ぶ。合計の重複（`TotalSize`）は表示で既に除いている |
+| ランタイムの更新（版を上げる）で `env/` ごと重みも消え、重みをすべて取り直す | **見送り（§12.3 の 6 で決めた動作）**。更新は旧環境の丸ごと入れ替えで、古い重みを新しい環境へ移すには、新しい版が同じ配置であることの保証が要る。重みを `env/` の外へ出す変更は配置の仕様（§2）を変える |
+| `Status()` が書き込みの確認・ログの末尾・重みの状態を毎回読む（TTS の 1 行ごと）ため、実行中の URL だけを返す軽い入口にしたい | **見送り**。`Ensure` が失敗する条件（実行中でない）は直した。軽い入口は `localruntime` の公開 API を増やす割に、1 行の TTS の間隔（秒単位）に対する費用は小さい |
+| `audiosettings.View()` の表示のたびに `CheckStart` が GPU を新しく調べる（nvidia-smi 2 回）。1 分のキャッシュを使いたい | **見送り**。`CheckStart` は「起動できるか」の判定なので、キャッシュを使うと古い GPU の情報で通る。表示用に別の入口（`fresh` の引数）を作るのは API の変更で、設定画面を開くときだけの費用 |
+| 重みの導入・修復（`WeightsOnly`）でも、動いているサーバーを止める | **見送り**。Windows では、動いているサーバーが開いている重みのファイルは置き換えられない（読み込み中のファイルの置き換えが失敗する）。どの重みが読み込み済みかは mam には分からないので、止めるのが安全。進行中の生成は `ErrUnreachable` で失敗し、再実行で直る |
+| `audio.json` が壊れているときの `ErrUnreadable` が、`AIError`（HTTP 502「上流の AI の失敗」）で返る | **仕様として記録**。利用者へ出す文（`UserMessage`）は同じで、HTTP の分類だけが違う。この分類は `localspeech.Reason` の全体の規則（ローカルの設定の失敗も `AIError`）に合わせている。分類を変えるのは Audio Director の全プロバイダーの規則の変更になる |
+| GPT-SoVITS と MuseTalk の VRAM を合算せず、片方の常駐のまま他方を起動する | **仕様として記録**。`vram.min_gb` はランタイムごとの目安で、MAX QUALITY で両方を使うには両方の合計が要る。実機（Windows ＋ NVIDIA）で確かめていないので、アイドルのランタイムを止める仕組みは入れない。§11 の未確認に含む |
+| 新しい録音を置くとき、書き起こしの欄を触らないと、保存済みと同じ書き起こしは「送られていない」扱いで消える | **見送り**。サーバーは「触っていない」と「同じ文を入れ直した」を区別できない。画面は新しい録音を選んだときに書き起こしを入れ直すよう案内している（`spec/api/endpoints.md` §2.9）。クライアント側で欄を空にする変更は別 Issue |
+| ある版のカノン（`series_version` のスナップショット）が参照する旧い参照音声のファイルは、カノンの声を置き換えて Episode がコピーしていなければ、消える | **仕様として記録**。履歴の版は読み取り専用の記録で、再生できなくなる。ファイルを残すにはスナップショットの参照も `InUse` で数える必要があり、容量が増える。必要になったら `InUse` の対象を広げる |

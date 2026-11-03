@@ -1,6 +1,7 @@
 package localspeech_test
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ type runtime struct {
 	tokenErr  error
 	url       string
 	token     string
+	state     proc.State // proc.StateRunning when empty
 	prepared  []string
 }
 
@@ -35,7 +37,8 @@ func (r *runtime) Prepare(_ context.Context, id string) error {
 }
 
 func (r *runtime) Status(context.Context, string) (localruntime.View, error) {
-	return localruntime.View{Process: proc.Status{State: proc.StateRunning, URL: r.url}}, r.statusErr
+	state := cmp.Or(r.state, proc.StateRunning)
+	return localruntime.View{Process: proc.Status{State: state, URL: r.url}}, r.statusErr
 }
 
 func (r *runtime) Token(string) (string, error) { return r.token, r.tokenErr }
@@ -53,8 +56,9 @@ func TestServer_EnsureStartsTheRuntimeAndReturnsItsAddressAndToken(t *testing.T)
 
 func TestServer_EnsureWithoutAnAddressOrATokenIsKindProcess(t *testing.T) {
 	for name, rt := range map[string]*runtime{
-		"no address": {token: "t"},
-		"no token":   {url: "http://127.0.0.1:9880"}, // the server answers no request without it
+		"no address":            {token: "t"},
+		"no token":              {url: "http://127.0.0.1:9880"},                                      // the server answers no request without it
+		"it died after Prepare": {url: "http://127.0.0.1:9880", token: "t", state: proc.StateFailed}, // Failed keeps the address
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, _, err := localspeech.Server{Runtime: rt}.Ensure(context.Background())

@@ -214,6 +214,8 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	services.Gentest = newGentest(cfg, db, jobs, models, services, prompttranslate.FromClient(reasoning), imagematch.FromClient(reasoning, judging.engine(), models.Config().Gentest.Face()), judging.engine(), logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
+	// Before any job runs: a runtime install that the queue resumes is using the directories this cleans.
+	rts.CleanLeftovers()
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err
 	}

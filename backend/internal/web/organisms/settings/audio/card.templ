@@ -81,7 +81,7 @@ templ localBrief(p Provider) {
 		<p class="break-words text-xs text-amber-300" role="status" data-testid={ "audio-saved-local-" + p.Field }>保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
 	}
 	if len(p.Local.Unclear) > 0 {
-		<p class="break-words text-xs text-amber-300" data-testid={ "audio-unclear-line-" + p.Field }>商用利用がはっきりしない重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります（詳細を見てください）。</p>
+		<p class="break-words text-xs text-amber-300" data-testid={ "audio-unclear-line-" + p.Field }>商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります（詳細を見てください）。</p>
 	}
 }
 

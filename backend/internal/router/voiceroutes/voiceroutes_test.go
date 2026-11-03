@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -209,6 +210,22 @@ func TestSeriesVoice_RefusesWhatIsNotAVoiceWith422AndUnknownTargetsWith404(t *te
 
 	big := a.put(route, "voice.wav", append(wav(8), make([]byte, 11<<20)...), nil)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, big.Code, "over the limit of the recording")
+
+	// A chunked body declares no length: the limit is then enforced while the form is read (http.MaxBytesReader), not by the early refusal.
+	var form bytes.Buffer
+	mw := multipart.NewWriter(&form)
+	part, err := mw.CreateFormFile("file", "voice.wav")
+	require.NoError(t, err)
+	_, err = part.Write(append(wav(8), make([]byte, 11<<20)...))
+	require.NoError(t, err)
+	require.NoError(t, mw.Close())
+	chunked := httptest.NewRequest(http.MethodPut, route, io.NopCloser(&form))
+	chunked.ContentLength = -1
+	chunked.AddCookie(a.cookie)
+	chunked.Header.Set(middleware.CSRFHeaderName, a.token)
+	chunked.Header.Set("HX-Request", "true")
+	chunked.Header.Set("Content-Type", mw.FormDataContentType())
+	assert.Equal(t, http.StatusRequestEntityTooLarge, a.do(chunked).Code, "over the limit of the recording, without a declared length")
 
 	// A write needs the CSRF token like every other action.
 	req := httptest.NewRequest(http.MethodDelete, route, nil)

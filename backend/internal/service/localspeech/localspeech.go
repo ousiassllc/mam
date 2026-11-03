@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	rtm "github.com/ousiassllc/mam/backend/internal/modelmgr/runtime"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
@@ -44,7 +45,8 @@ func (s Server) Ensure(ctx context.Context) (string, string, error) {
 	if err != nil {
 		return "", "", Unavailable(ctx, err)
 	}
-	if v.Process.URL == "" {
+	// A server that died between Prepare and Status keeps its address in the Failed state: only a running one is an address to call.
+	if v.Process.State != proc.StateRunning || v.Process.URL == "" {
 		return "", "", &localvoice.UnavailableError{Kind: localvoice.KindProcess, Detail: "GPT-SoVITS のアドレスを取得できませんでした"}
 	}
 	token, err := s.Runtime.Token(RuntimeID)
