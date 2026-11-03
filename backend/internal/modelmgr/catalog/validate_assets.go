@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/launchargs"
 )
 
 // hfRepoURL matches the Hugging Face repository a pinned file URL lies in.
@@ -47,6 +48,8 @@ func validateResourceSets(c *Catalog) []error {
 		if !seen[r.ID] {
 			errs = append(errs, fmt.Errorf("runtime %s: no weights and dependencies (data/assets/%s.json)", r.ID, r.ID))
 		}
+		set, _ := c.ResourceSet(r.ID)
+		errs = append(errs, launchargs.Check("runtime "+r.ID, r.Launch.Args, set.Choices, set.modelAssets)...)
 	}
 	return errs
 }
@@ -120,6 +123,8 @@ func validateResource(aw string, a Resource) []error {
 		errs = append(errs, fmt.Errorf("%s: sha256 must be 64 lower-case hex digits", aw))
 	case a.Size <= 0:
 		errs = append(errs, fmt.Errorf("%s: size is required", aw))
+	case a.Role != "" && (a.Role != launchargs.RoleModel || a.IsArchive()):
+		errs = append(errs, fmt.Errorf("%s: role must be %q, on a file", aw, launchargs.RoleModel))
 	}
 	src := a.Source
 	switch {

@@ -49,6 +49,9 @@ templ runtimeModel(r Runtime, m Model) {
 					if m.Default {
 						@atoms.Badge(atoms.BadgeNeutral, "標準")
 					}
+					if m.Uncensored {
+						@atoms.Badge(atoms.BadgeWarn, "成人向け相当（非検閲）")
+					}
 				</span>
 				<span class="text-xs text-neutral-300">{ m.Description }</span>
 			</span>

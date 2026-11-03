@@ -53,6 +53,8 @@ type Service struct {
 	keys   credential.Store
 	client httpclient.Doer
 	apply  func(llm.Config) []string
+	// managed is the llama.cpp server mam runs itself (nil: none).
+	managed Managed
 }
 
 // New returns a Service over the settings file at path (pinned: the screen must not write it) and the key store. keys may be nil (no key can
@@ -84,7 +86,9 @@ type View struct {
 	KeyUnreadable bool
 	// UnloadBeforeGeneration is whether mam asks an Ollama server to unload its models before a local image or video generation.
 	UnloadBeforeGeneration bool
-	Pinned                 bool
+	// UseManaged is whether the calls go to the llama.cpp server that mam installs and starts itself (the address above is then not used).
+	UseManaged bool
+	Pinned     bool
 	// Problem is why the settings file could not be read; the view then shows the defaults and a save is refused until it is repaired.
 	Problem string
 }
@@ -109,7 +113,7 @@ func (s *Service) settingsView() View {
 		v.Problem = err.Error()
 	} else {
 		pc := cfg.Providers[llm.ProviderLocal]
-		v.BaseURL, v.UnloadBeforeGeneration = pc.BaseURL, pc.UnloadBeforeGeneration
+		v.BaseURL, v.UnloadBeforeGeneration, v.UseManaged = pc.BaseURL, pc.UnloadBeforeGeneration, pc.UseManagedRuntime
 	}
 	return v
 }
@@ -148,6 +152,8 @@ type SaveInput struct {
 	ClearKey bool
 	// Unload sets UnloadBeforeGeneration; nil keeps it.
 	Unload *bool
+	// UseManaged sets UseManaged (the llama.cpp server of mam instead of an address); nil keeps it. Choosing it with no such server in the app is ErrManagedUnavailable.
+	UseManaged *bool
 }
 
 // Save stores the address and the switch in llm.json (the rest of the file is kept; an address equal to the default is dropped, so that a later
@@ -171,14 +177,17 @@ func (s *Service) Save(in SaveInput) error {
 		}
 		key = clean
 	}
-	if (baseURL != "" || in.Unload != nil) && s.pinned {
+	if (baseURL != "" || in.Unload != nil || in.UseManaged != nil) && s.pinned {
 		return ErrPinned
+	}
+	if in.UseManaged != nil && *in.UseManaged && s.managedServer() == nil {
+		return ErrManagedUnavailable
 	}
 	if (key != "" || in.ClearKey) && s.keys == nil {
 		return &InvalidError{Message: "キーストアを利用できません", Field: "api_key"}
 	}
-	if baseURL != "" || in.Unload != nil {
-		if err := s.write(baseURL, in.Unload); err != nil {
+	if baseURL != "" || in.Unload != nil || in.UseManaged != nil {
+		if err := s.write(baseURL, in.Unload, in.UseManaged); err != nil {
 			return err
 		}
 	}
@@ -202,7 +211,7 @@ func (s *Service) saveKey(key string, clear bool) error {
 }
 
 // write sets providers.local of the settings file.
-func (s *Service) write(baseURL string, unload *bool) error {
+func (s *Service) write(baseURL string, unload, useManaged *bool) error {
 	defer settingsfile.Lock(s.path)()
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -229,6 +238,11 @@ func (s *Service) write(baseURL string, unload *bool) error {
 	}
 	if unload != nil {
 		if err := setKey(local, "unload_before_generation", *unload, *unload); err != nil {
+			return err
+		}
+	}
+	if useManaged != nil {
+		if err := setKey(local, "use_managed_runtime", *useManaged, *useManaged); err != nil {
 			return err
 		}
 	}

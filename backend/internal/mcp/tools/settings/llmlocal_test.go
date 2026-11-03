@@ -1,6 +1,7 @@
 package settings_test
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -168,3 +169,42 @@ func TestListLLMModels_ADownLocalServerIsUnusableWithTheReason(t *testing.T) {
 }
 
 func mcpkitSettingsWithout() mcpkit.Settings { return mcpkit.Settings{} }
+
+type managedStub struct{ info llmlocal.ManagedInfo }
+
+func (managedStub) Endpoint(context.Context) (string, string, error) {
+	return "http://127.0.0.1:9", "k", nil
+}
+func (managedStub) Stop(context.Context) error                  { return nil }
+func (m managedStub) Info(context.Context) llmlocal.ManagedInfo { return m.info }
+
+// use_managed_runtime makes the provider "local" go to mam's own llama.cpp: the tool says where that server stands (and its model id, which the assignment names).
+func TestSetLocalLLMServer_UseManagedRuntimeNeedsTheManagedServerAndShowsItsState(t *testing.T) {
+	env, _, _ := withLocal(t, false)
+	assert.Contains(t, env.CallError("set_local_llm_server", map[string]any{"use_managed_runtime": true}), "validation:", "no managed llama.cpp in this app")
+
+	managedEnv := func(info llmlocal.ManagedInfo) *mcptest.Env {
+		keys := credentialtest.New()
+		s, f := newFiles(t, false)
+		s.LLMLocal = llmlocal.New(f.llm, false, keys, nil)
+		s.LLMLocal.SetManaged(managedStub{info})
+		s.LLMModels = llmmodels.New(llmmodels.Options{Keys: keys, LocalBaseURL: s.LLMLocal.BaseURL, LocalManaged: s.LLMLocal.ManagedModels})
+		return newEnv(t, s)
+	}
+
+	var local settings.LocalServer
+	managedEnv(llmlocal.ManagedInfo{State: llmlocal.ManagedNotInstalled, Model: "gemma-4-12b-it", Reason: "llama.cpp が導入されていません"}).
+		CallOK("set_local_llm_server", map[string]any{"use_managed_runtime": true}, &local)
+	assert.True(t, local.UseManagedRuntime)
+	require.NotNil(t, local.ManagedRuntime)
+	assert.Equal(t, "not_installed", local.ManagedRuntime.State)
+	assert.Equal(t, "gemma-4-12b-it", local.ManagedRuntime.Model)
+	assert.Contains(t, local.ManagedRuntime.Reason, "導入")
+
+	ready := managedEnv(llmlocal.ManagedInfo{State: llmlocal.ManagedStopped, Model: "gemma-4-12b-it"})
+	ready.CallOK("set_local_llm_server", map[string]any{"use_managed_runtime": true}, &local)
+	var list settings.ListModelsOutput
+	ready.CallOK("list_llm_models", map[string]any{"provider": "local"}, &list)
+	require.Len(t, list.Providers[0].Models, 1)
+	assert.Equal(t, "gemma-4-12b-it", list.Providers[0].Models[0].ID, "the picker offers the model of the managed server, while it is stopped too")
+}

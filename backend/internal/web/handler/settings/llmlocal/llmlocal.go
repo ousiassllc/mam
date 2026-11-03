@@ -5,6 +5,7 @@
 package llmlocal
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -29,12 +30,15 @@ func CardData(svc *llmlocal.Service) view.Data {
 	v := svc.View()
 	d := view.Data{
 		BaseURL: v.BaseURL, DefaultBaseURL: v.DefaultBaseURL, KeyConfigured: v.KeyConfigured, KeyHint: v.KeyHint, KeyUnreadable: v.KeyUnreadable,
-		Unload: v.UnloadBeforeGeneration, Pinned: v.Pinned, Problem: v.Problem,
+		Unload: v.UnloadBeforeGeneration, UseManaged: v.UseManaged, Pinned: v.Pinned, Problem: v.Problem,
+	}
+	if info, ok := svc.ManagedInfo(context.Background()); ok { // where it stands: nothing is started
+		d.Managed = &view.Managed{State: string(info.State), Reason: info.Reason, Model: info.ModelName}
 	}
 	return d
 }
 
-// Save stores the form of the card (PUT /settings/llm/local; fields base_url, api_key, clear_key, unload, and unload_present, which says that the form
+// Save stores the form of the card (PUT /settings/llm/local; fields base_url, api_key, clear_key, unload, use_managed, and unload_present / use_managed_present, which say that the form
 // carried the switch) and answers with the card: 200 with the notice, or 422 with the reason and what was typed (the key is not drawn back).
 func Save(svc *llmlocal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -43,6 +47,10 @@ func Save(svc *llmlocal.Service) gin.HandlerFunc {
 		if c.PostForm("unload_present") == "1" {
 			on := c.PostForm("unload") == "1"
 			in.Unload = &on
+		}
+		if c.PostForm("use_managed_present") == "1" {
+			on := c.PostForm("use_managed") == "1"
+			in.UseManaged = &on
 		}
 		err := svc.Save(in)
 		d := CardData(svc)
@@ -58,6 +66,8 @@ func Save(svc *llmlocal.Service) gin.HandlerFunc {
 				d.BaseURL = in.BaseURL
 			}
 			d.Unload = in.Unload != nil && *in.Unload
+		case errors.Is(err, llmlocal.ErrManagedUnavailable):
+			status, d.Error = http.StatusUnprocessableEntity, "このアプリには、mam が管理する llama.cpp がありません"
 		case errors.Is(err, llmlocal.ErrPinned):
 			status, d.Error = http.StatusConflict, pinned
 		case errors.As(err, &store):

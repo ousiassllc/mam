@@ -48,6 +48,9 @@ type TestResult struct {
 // Test asks the server for its models (GET /v1/models), the call the model picker makes. A transport failure or an unexpected answer is a
 // TestResult with OK false, not an error; an unusable address is an *InvalidError.
 func (s *Service) Test(ctx context.Context, in TestInput) (TestResult, error) {
+	if s.InUse() {
+		return s.testManaged(ctx), nil // the address and key of the form are not what the calls use now
+	}
 	baseURL := strings.TrimSpace(in.BaseURL)
 	if baseURL == "" {
 		baseURL = s.BaseURL()
@@ -75,6 +78,24 @@ func (s *Service) Test(ctx context.Context, in TestInput) (TestResult, error) {
 		res.Message = fmt.Sprintf("ローカルサーバーに接続できました（モデル %d 件）", len(ids))
 	}
 	return res, nil
+}
+
+// testManaged is the test while the calls go to the llama.cpp server of mam: it says where the server stands, and never starts it (loading a model
+// takes much longer than a test; the first call starts it).
+func (s *Service) testManaged(ctx context.Context) TestResult {
+	info, _ := s.ManagedInfo(ctx)
+	name := info.ModelName
+	if name == "" {
+		name = info.Model
+	}
+	switch info.State {
+	case ManagedRunning:
+		return TestResult{OK: true, Message: "この PC の llama.cpp が動いています（モデル: " + name + "）", Models: []string{info.Model}, Count: 1}
+	case ManagedStopped, ManagedStarting:
+		return TestResult{OK: true, Message: "この PC の llama.cpp を使います（モデル: " + name + "）。いまは止まっていて、最初の LLM の呼び出しで自動で起動します（モデルの読み込みに時間がかかります）", Models: []string{info.Model}, Count: 1}
+	}
+	e := apperr.New(apperr.CodeLocalLLMDown).WithDetail(info.Reason)
+	return TestResult{Message: "この PC の llama.cpp を使えません: " + info.Reason, Error: e}
 }
 
 // failure is a failed test as a result that says why in words the user can act on.

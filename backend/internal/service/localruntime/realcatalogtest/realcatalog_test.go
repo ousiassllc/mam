@@ -22,16 +22,17 @@ func TestMain(m *testing.M) {
 	mmtest.Main(m)
 }
 
-// The real catalog on a Mac: GPT-SoVITS, Irodori-TTS and MuseTalk are refused, each with its own sentence of the catalog and the cloud
+// The real catalog on a Mac: GPT-SoVITS, Irodori-TTS, llama.cpp and MuseTalk are refused, each with its own sentence of the catalog and the cloud
 // provider that makes the same thing.
 func TestTheRealCatalogRefusesAMacWithTheReasonAndTheCloudFallback(t *testing.T) {
 	svc, err := localruntime.New(localruntime.Deps{Root: t.TempDir(), Platform: rtm.Platform{OS: "darwin", Arch: "arm64"}, Queue: mmtest.New(t).Queue})
 	require.NoError(t, err)
 	list := svc.List(context.Background())
-	require.Len(t, list, 3)
+	require.Len(t, list, 4)
 	for i, want := range []struct{ id, why, instead string }{
 		{"gpt-sovits", "macOS では GPT-SoVITS の自動導入に対応していません", "ElevenLabs"},
 		{"irodori-tts", "macOS では Irodori-TTS の自動導入に対応していません", "ElevenLabs"},
+		{"llama-cpp", "macOS（Apple Silicon）では llama.cpp の自動導入に対応していません", "Ollama"},
 		{"musetalk", "macOS では MuseTalk 1.5 を自動導入できません", "Sync Labs"},
 	} {
 		assert.Equal(t, want.id, list[i].ID)

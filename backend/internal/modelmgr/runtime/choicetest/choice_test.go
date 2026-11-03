@@ -99,7 +99,7 @@ func newInstaller(t *testing.T) (*rtm.Installer, *host) {
 		FreeBytes: func(string) (uint64, error) { return 1 << 40, nil },
 		Getenv:    func(string) string { return "/usr/bin" },
 	}
-	py := i.PythonPath()
+	py := i.ProgramPath()
 	require.NoError(t, os.MkdirAll(filepath.Dir(py), 0o750))
 	require.NoError(t, os.WriteFile(py, []byte("python"), 0o600))
 	require.NoError(t, st.Update(func(s *store.RuntimeState) { s.Installed = &store.RuntimeRecord{Version: "1", Variant: "nvidia"} }))

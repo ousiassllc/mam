@@ -117,6 +117,8 @@ type Options struct {
 	// LocalBaseURL is the address of the local server (llm.ProviderLocal) now: the settings screen can change it while the app runs, so it is asked
 	// at every read. Nil: BaseURLs, else the default.
 	LocalBaseURL func() string
+	// LocalManaged is the model of mam's own llama.cpp while the user has chosen it (managed true; see managed.go). Nil: never managed.
+	LocalManaged func(ctx context.Context) (models []string, managed bool)
 	// Logger receives why a list could not be read (never a token or a key); nil discards it.
 	Logger *slog.Logger
 	// Now replaces the clock (tests).
@@ -229,7 +231,7 @@ func (s *Service) account(p llm.Provider) (string, Fallback) {
 		// The key is optional and the address is a setting: a change of either is another account, so a list is never answered with the one
 		// of the server before.
 		key, _ := s.key(p)
-		sum := sha256.Sum256([]byte(s.baseURL(p) + "\x00" + key))
+		sum := sha256.Sum256([]byte(s.baseURL(p) + "\x00" + key + "\x00" + s.managedKey()))
 		return hex.EncodeToString(sum[:8]), FallbackNone
 	}
 	key, ok := s.key(p)
@@ -261,6 +263,9 @@ func (s *Service) fetch(ctx context.Context, p llm.Provider) (List, error) {
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 	var models []Model
+	if l, ok := s.managedList(ctx, p); ok {
+		return l, nil
+	}
 	switch p {
 	case llm.ProviderChatGPTSubscription, llm.ProviderChatGPTCodex:
 		m, err := s.o.ChatGPT.Models(ctx, p)

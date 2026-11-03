@@ -1,6 +1,7 @@
 package llmlocal_test
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"os"
@@ -182,4 +183,76 @@ func TestSave_TheUnloadSwitch(t *testing.T) {
 	off := false
 	require.NoError(t, svc.Save(llmlocal.SaveInput{Unload: &off}))
 	assert.False(t, svc.View().UnloadBeforeGeneration)
+}
+
+type stubManaged struct{ stopped int }
+
+func (m *stubManaged) Endpoint(context.Context) (string, string, error) {
+	return "http://127.0.0.1:9", "k", nil
+}
+func (m *stubManaged) Stop(context.Context) error { m.stopped++; return nil }
+func (m *stubManaged) Info(context.Context) llmlocal.ManagedInfo {
+	return llmlocal.ManagedInfo{State: llmlocal.ManagedStopped, Model: "gemma-4-12b-it", ModelName: "Gemma"}
+}
+
+func TestSave_UseManagedIsStoredOnlyWhenOnAndNeedsAManagedServer(t *testing.T) {
+	path := settingsPath(t)
+	svc, _ := newService(t, path, false)
+	on, off := true, false
+
+	require.ErrorIs(t, svc.Save(llmlocal.SaveInput{UseManaged: &on}), llmlocal.ErrManagedUnavailable, "no managed server in the app")
+	assert.NoFileExists(t, path)
+	require.NoError(t, svc.Save(llmlocal.SaveInput{UseManaged: &off}), "turning it off needs nothing")
+
+	svc.SetManaged(&stubManaged{})
+	require.NoError(t, svc.Save(llmlocal.SaveInput{UseManaged: &on}))
+	assert.True(t, svc.View().UseManaged)
+	assert.True(t, svc.InUse())
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"use_managed_runtime": true`)
+	assert.Contains(t, string(raw), `"base_url"`, "an entry that says anything has the address too (llm.Config reads it as a whole)")
+
+	require.NoError(t, svc.Save(llmlocal.SaveInput{UseManaged: &off}))
+	assert.False(t, svc.InUse())
+	assert.NoFileExists(t, path+".tmp")
+	raw, _ = os.ReadFile(path)
+	assert.NotContains(t, string(raw), "use_managed_runtime")
+}
+
+func TestSave_UseManagedIsRefusedWhenTheFileIsPinned(t *testing.T) {
+	svc, _ := newService(t, settingsPath(t), true)
+	svc.SetManaged(&stubManaged{})
+	on := true
+
+	assert.ErrorIs(t, svc.Save(llmlocal.SaveInput{UseManaged: &on}), llmlocal.ErrPinned)
+}
+
+// Before a generation the managed server gives its memory back, whatever the Ollama switch says; without the choice the managed server is left alone.
+func TestBeforeGeneration_StopsTheManagedServerOnlyWhileItIsChosen(t *testing.T) {
+	svc, _ := newService(t, settingsPath(t), false)
+	m := &stubManaged{}
+	svc.SetManaged(m)
+
+	require.NoError(t, svc.BeforeGeneration(context.Background()))
+	assert.Zero(t, m.stopped, "not chosen: the calls do not go to it")
+
+	on := true
+	require.NoError(t, svc.Save(llmlocal.SaveInput{UseManaged: &on}))
+	require.NoError(t, svc.BeforeGeneration(context.Background()))
+	assert.Equal(t, 1, m.stopped)
+}
+
+func TestManagedModels_IsTheModelOfTheManagedServerOnlyWhileChosen(t *testing.T) {
+	svc, _ := newService(t, settingsPath(t), false)
+	svc.SetManaged(&stubManaged{})
+
+	_, managed := svc.ManagedModels(context.Background())
+	assert.False(t, managed)
+
+	on := true
+	require.NoError(t, svc.Save(llmlocal.SaveInput{UseManaged: &on}))
+	models, managed := svc.ManagedModels(context.Background())
+	assert.True(t, managed)
+	assert.Equal(t, []string{"gemma-4-12b-it"}, models)
 }

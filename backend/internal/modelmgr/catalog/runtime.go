@@ -7,7 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/parts"
 )
 
-// Purpose says what a local runtime makes: speech (TTS, voice cloning) or a lip-synced video. The runtime kind is data (data/runtimes/*.json),
+// Purpose says what a local runtime makes: speech (TTS, voice cloning), a lip-synced video or text (a language model). The runtime kind is data (data/runtimes/*.json),
 // so a second runtime (MuseTalk) is a new file of the same shape, not new code (spec/architecture/model-manager/local-runtime.md §3).
 type Purpose string
 
@@ -15,6 +15,7 @@ type Purpose string
 const (
 	PurposeTTS     Purpose = "tts"
 	PurposeLipSync Purpose = "lip_sync"
+	PurposeLLM     Purpose = "llm"
 )
 
 // VariantNVIDIA50 is the extra build of a runtime for the newest NVIDIA generation (RTX 50 series, compute capability 12.0 and up).
@@ -37,12 +38,17 @@ func (v RuntimeVariant) Assembled() bool { return len(v.Parts) > 0 }
 type RuntimeLaunch struct {
 	// Python is the interpreter, relative to the runtime's environment directory. PathDirs are the directories (relative, slash
 	// separated) that are put in front of PATH, as the vendor's launcher does.
-	Python   string   `json:"python"`
+	Python   string   `json:"python,omitempty"`
 	PathDirs []string `json:"path_dirs,omitempty"`
 	// Entry is the server script (relative): the vendor's, or mam's own launcher that the install writes (Runtime.ExtraFiles); the
 	// install checks it is in the environment, and Args must run it.
-	Entry string `json:"entry"`
-	// Args are the arguments of Python; "{port}" is replaced by the port. The server must bind 127.0.0.1 only (validated).
+	Entry string `json:"entry,omitempty"`
+	// Program is the native server (relative) of a runtime that is no Python program (llama.cpp's llama-server): it is started as it is, with Args,
+	// and Python and Entry are empty. Exactly one of Python and Program is set.
+	Program string `json:"program,omitempty"`
+	// Args are the arguments of the interpreter (or of Program); the placeholders are replaced when it starts (package launchargs): "{port}" is the
+	// port, "{model}" the file of the model in force, "{choice}" its id, and any other "{name}" is the value the model gives (Choice.Values). The server must bind 127.0.0.1 only
+	// (validated).
 	Args []string `json:"args"`
 	// ReadyPath is the path that answers 200 once the server is ready (the models are loaded before the port opens).
 	ReadyPath string `json:"ready_path"`

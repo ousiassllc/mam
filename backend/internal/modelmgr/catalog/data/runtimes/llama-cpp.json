@@ -1,0 +1,34 @@
+{
+ "id": "llama-cpp",
+ "name": "llama.cpp（ローカル LLM）",
+ "purpose": "llm",
+ "version": "b11960",
+ "source_url": "https://github.com/ggml-org/llama.cpp/tree/b11960",
+ "description": "ローカルで動かす LLM（GGUF の重み）のサーバー llama.cpp の llama-server（ggml-org/llama.cpp。MIT）の実行環境です。公式の GitHub リリースのビルド済みバイナリ（Windows x64 の CUDA 版）と CUDA ランタイムの DLL を、固定の URL と SHA-256 で取得して展開します。起動は mam が組み立てる固定の引数（-m・--ctx-size・-ngl・--port など）だけで、コマンドラインを利用者が指定することはできません（127.0.0.1 だけで待ち受け、起動のたびに作る合言葉つき）。使うモデル（Gemma・Qwen・DeepSeek の GGUF）は「使うモデルの選択」で選び、重みは別に取得します。設定の「ローカル LLM サーバー」で「この PC の llama.cpp を使う」を選ぶと、LLM のプロバイダー local がこのサーバーを使います。最新の NVIDIA ドライバーが要ります（CUDA 版のバイナリのため）。",
+ "build": {"files": []},
+ "launch": {"program": "llama-server.exe", "args": ["-m", "{model}", "--host", "127.0.0.1", "--port", "{port}", "--ctx-size", "{ctx_size}", "-ngl", "{ngl}", "--alias", "{choice}", "--parallel", "1", "--no-webui", "--no-slots", "--sleep-idle-seconds", "900", "--offline"], "ready_path": "/health", "env": ["HF_HUB_OFFLINE=1", "DO_NOT_TRACK=1"], "start_timeout_sec": 900, "token_env": "LLAMA_API_KEY"},
+ "vram": {"min_gb": 6, "source": "mam の推定（最小のモデルでも、重みの約 7〜8 GiB のうち 6 GB 以上は GPU に載せないと CPU 実行とほとんど変わらない）。モデルごとの目安は選択肢の欄にある。収まらないときは、llama.cpp が一部の層を CPU に置いて動く（遅くなる）。実機では未確認。", "estimate": true},
+ "support": {"os": "windows", "arch": "amd64", "os_reasons": {"darwin": "macOS（Apple Silicon）では llama.cpp の自動導入に対応していません。公式のリリースには macOS arm64（Metal）のビルド済みバイナリがありますが、mam はこの開発環境で macOS の実機を使えず、導入・起動・推論を確かめられないため、自動導入の対象にしていません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。", "linux": "Linux では llama.cpp の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。", "default": "この OS では llama.cpp の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。"}, "arch_reason": "この CPU（64 ビットの x86 以外）では llama.cpp の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。", "no_gpu_reason": "GPU を取得できなかったため、llama.cpp を導入できません。自動導入には NVIDIA の GPU が必要です。", "not_nvidia_reason": "NVIDIA の GPU が見つからないため、llama.cpp を導入できません。自動導入は NVIDIA の GPU（CUDA）だけに対応していて、AMD・Intel の GPU では使えません（公式には Vulkan 版のバイナリがありますが、mam は自動導入の対象にしていません）。", "low_vram_reason": "{gpu} のビデオメモリは {vram_gb} GB で、llama.cpp に必要な {min_vram_gb} GB に足りないため導入できません。", "fallback": "代わりに、Ollama・LM Studio など別の OpenAI 互換サーバーに接続するか（設定の「ローカル LLM サーバー」）、クラウドの LLM（Anthropic・OpenAI・Google）を使ってください。"},
+ "license": {"id": "mit-llama-cpp", "version": "b11960", "name": "MIT License", "url": "https://github.com/ggml-org/llama.cpp/blob/b11960/LICENSE", "summary": "llama.cpp（ggml-org/llama.cpp）はリポジトリの LICENSE と GitHub のライセンス表示が MIT（2026-11-03 に GitHub の API で確認）。mam は llama.cpp のバイトを同梱・配布せず、利用者の PC に公式の GitHub リリース（タグ b11960。v0.8.0 の安定版がこのタグを指す）のアーカイブを取得する。アーカイブには llama.cpp のプログラム・DLL のほか、LLVM OpenMP のライセンス文（LICENSE-LLVM-OpenMP）と、NVIDIA の CUDA ランタイム（cudart・cuBLAS の DLL。別のアーカイブ）が入る。重み（GGUF）のライセンスは重みごとの一覧（出典・ライセンス）に従う。", "commercial": "conditional", "checked_at": "2026-11-03", "commercial_condition": "llama.cpp 本体は MIT で商用利用できる。CUDA ランタイムの DLL（NVIDIA）は NVIDIA の CUDA Toolkit の使用許諾に従う（再配布の条件は確認していない）。重み（GGUF）は選ぶモデルごとに別のライセンスで、商用不明のモデルがある（重みの一覧）。", "notice": "llama.cpp 本体は MIT ですが、取得する CUDA ランタイムの DLL は NVIDIA のライセンスに従います（条件は確認していません）。商用で使う前に、選んだモデルのライセンスと重みの一覧（出典とライセンス）を確認してください。"},
+ "variants": {
+  "nvidia": {
+   "label": "NVIDIA（CUDA 12.4。GTX 10 〜 RTX 40 世代。Compute Capability 12.0 未満）",
+   "size": 671206851,
+   "extracted_size": 1231292189,
+   "parts": [
+    {"name": "llama-cuda-12.4", "kind": "zip", "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/llama-b11960-bin-win-cuda-12.4-x64.zip", "sha256": "8d9d819261de10cc2f03921b8b79c779c5c458e21edb60c170ee30a7d462d684", "size": 279763224, "extracted_size": 657153309},
+    {"name": "cudart-12.4", "kind": "zip", "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/cudart-llama-bin-win-cuda-12.4-x64.zip", "sha256": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6", "size": 391443627, "extracted_size": 574138880}
+   ]
+  },
+  "nvidia50": {
+   "label": "NVIDIA RTX 50 世代（CUDA 13.4。Compute Capability 12.0 以上）",
+   "size": 588521743,
+   "extracted_size": 766250605,
+   "parts": [
+    {"name": "llama-cuda-13.4", "kind": "zip", "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/llama-b11960-bin-win-cuda-13.4-x64.zip", "sha256": "31c75ea62b80f0816c855ea783ef68757bc2d48028edaa57d904e4982bddea4a", "size": 164986387, "extracted_size": 218004765},
+    {"name": "cudart-13.4", "kind": "zip", "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/cudart-llama-bin-win-cuda-13.4-x64.zip", "sha256": "738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668", "size": 423535356, "extracted_size": 548245840}
+   ],
+   "min_compute_cap": 12.0
+  }
+ }
+}

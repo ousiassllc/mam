@@ -48,17 +48,39 @@ func trim(raw string) string {
 // Add registers the backend of llm.ProviderLocal. baseURL gives the address at every call, so a saved address is in effect at once (the settings file
 // is the truth); keys holds the optional API key under llm.ProviderLocal; client may be nil, which selects the client of every registered endpoint
 // (safefetch.NewEndpointClient: this PC, the LAN and a tailnet, never a link-local address).
-func Add(backends map[llm.Provider]llm.Backend, keys credential.Store, client httpclient.Doer, baseURL func() string) {
+func Add(backends map[llm.Provider]llm.Backend, keys credential.Store, client httpclient.Doer, baseURL func() string, opts ...Option) {
 	if client == nil {
 		client = safefetch.NewEndpointClient()
 	}
-	backends[llm.ProviderLocal] = &backend{keys: keys, client: client, baseURL: baseURL}
+	b := &backend{keys: keys, client: client, baseURL: baseURL}
+	for _, o := range opts {
+		o(b)
+	}
+	backends[llm.ProviderLocal] = b
 }
+
+// ManagedServer is the llama.cpp server that mam installs, starts and stops itself (the local runtime "llama-cpp", spec/architecture/model-manager/
+// local-runtime.md §17), as the backend needs it: whether the user chose it, and where it is.
+type ManagedServer interface {
+	// InUse says whether the calls go to the managed server instead of the address of the settings (read at every call).
+	InUse() bool
+	// Endpoint starts the server when it is stopped and gives its address and the key of this start (every request of the start carries it; a web
+	// page cannot know it). An error says why it cannot run now (not installed, the GPU is busy, ...).
+	Endpoint(ctx context.Context) (baseURL, key string, err error)
+}
+
+// Option changes the backend that Add registers.
+type Option func(*backend)
+
+// WithManaged makes the calls go to the managed server while the user has chosen it, with the address and the key of its current start (the
+// stored API key and the address of the settings are not used then).
+func WithManaged(m ManagedServer) Option { return func(b *backend) { b.managed = m } }
 
 type backend struct {
 	keys    credential.Store
 	client  httpclient.Doer
 	baseURL func() string
+	managed ManagedServer
 	// caps is what each (server, model) has refused: *caps by "<address>\x00<model>".
 	caps sync.Map
 }
@@ -95,6 +117,13 @@ func (b *backend) Complete(ctx context.Context, model string, req llm.Request) (
 		return llm.Completion{}, err
 	}
 	base := trim(b.baseURL())
+	if b.managed != nil && b.managed.InUse() {
+		// A server that could not be started is a server that did not answer: the same retries, breaker and fallback as for an address that is down.
+		if base, key, err = b.managed.Endpoint(ctx); err != nil {
+			return llm.Completion{}, &llm.APIError{Provider: llm.ProviderLocal, Err: err}
+		}
+		base = trim(base)
+	}
 	headers := map[string]string{}
 	if key != "" {
 		headers["Authorization"] = "Bearer " + key
