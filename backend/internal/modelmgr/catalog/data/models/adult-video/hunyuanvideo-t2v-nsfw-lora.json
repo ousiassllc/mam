@@ -66,7 +66,7 @@
   "url": "https://huggingface.co/tencent/HunyuanVideo/blob/6204ad6aea1a77ff5aba337c88278bb9500eb37d/LICENSE",
   "summary": "HunyuanVideo の許諾は、EU・英国・韓国を除く地域に限る（この 3 地域では使えない。地域の外での使用も無許諾）。リリース日の時点で月間アクティブユーザーが 1 億を超える製品・サービスは Tencent の許諾が要る。使用ポリシーは、安全ガードレールの回避・違法な使用・生成物に機械生成の明示を付けない公開などを禁じる。LoRA（BigStationW）のカードは license: unknown で、原本は削除されており、商用利用の可否は「不明」。確認できるまで商用には使わない前提で扱う。",
   "commercial": "unknown",
-  "checked_at": "2026-11-03",
+  "checked_at": "2026-11-04",
   "components": [
    {
     "part": "ベースモデル・テキストエンコーダー・VAE（HunyuanVideo。Comfy-Org の再配布）",

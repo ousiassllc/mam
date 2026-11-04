@@ -58,7 +58,7 @@
   "url": "https://civitai.com/models/1428098",
   "summary": "ライセンスの記載が無い（ミラーの HF リポジトリは license を持たず、タグは art だけ）。原本（Civitai の model 1428098）の表示は、商用の用途として RentCivit（Civitai 上の生成サービス）と生成物の販売だけを認め、Civitai の外での商用は認められないと読める。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。ベースの Wan 2.2 TI2V 5B は Apache-2.0。",
   "commercial": "unknown",
-  "checked_at": "2026-11-03",
+  "checked_at": "2026-11-04",
   "components": [
    {
     "part": "ベースモデル（Wan 2.2 TI2V 5B。fp8 は Kijai の変換）",

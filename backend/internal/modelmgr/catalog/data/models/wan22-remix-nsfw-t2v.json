@@ -4,7 +4,12 @@
  "kind": "video",
  "tier": "advanced",
  "content_rating": "adult",
- "traits": {"params_b": 14, "params_label": "14B", "uncensored": true, "speed": "slow"},
+ "traits": {
+  "params_b": 14,
+  "params_label": "14B",
+  "uncensored": true,
+  "speed": "slow"
+ },
  "description": "【中（〜14B）・T2V・音声なし】Wan 2.2 14B を成人向けの表現に寄せてマージした Remix の T2V v2.0（成人向け）。テキストだけから動画を作る（先頭フレームは使わない。先頭フレームから作るのは wan22-remix-nsfw-i2v）。高ノイズ用と低ノイズ用の拡散モデル（fp8、各約 14.3 GB）。テキストエンコーダー・VAE は wan22-remix-nsfw-i2v と共有し、合計約 35.6 GB。得意: 非検閲の T2V を LoRA なしで、Lightning 系の 12 ステップ・cfg 1 で作る。注意: マージの出所の LoRA が不明で、ライセンスは不明（商用には使わない）。16fps。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。",
  "files": [
   {
@@ -50,7 +55,7 @@
   "url": "https://civitai.com/models/2003153",
   "summary": "ライセンスの記載が無い（HF のタグは other で本文が無い）。原本（Civitai）の表示は、販売やマージの販売まで許可している。ただし HF の側に本文が無いので、商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。元になった Wan 2.2 は Apache-2.0。",
   "commercial": "unknown",
-  "checked_at": "2026-11-02",
+  "checked_at": "2026-11-04",
   "components": [
    {
     "part": "ベースモデル（Wan 2.2）",
