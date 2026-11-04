@@ -3,11 +3,14 @@ package face
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
@@ -31,6 +34,22 @@ func Score(faces facesim.Engine) runner.FaceScoreFunc {
 	return func(ctx context.Context, reference, generated []byte) (facesim.Comparison, error) {
 		return facesim.Compare(ctx, faces, reference, generated)
 	}
+}
+
+// OffRecord is what a result with a face reference records while the face similarity is off (#1026): skipped models_missing (a model file is not in the
+// model folder) or runtime_unavailable (the ONNX Runtime library), with the cause and the fix in words (apperr: which files to put where; mam does not
+// fetch the models and the model manager's catalog does not list them). nil when off is nil (the engine is on).
+func OffRecord(off *facesim.Off) *record.FaceSimilarity {
+	if off == nil {
+		return nil
+	}
+	e, skipped := apperr.New(apperr.CodeFaceRuntime).WithDetail(off.Detail), record.SkipRuntimeMissing
+	if off.Reason == facesim.ReasonModelsMissing {
+		e = apperr.New(apperr.CodeFaceModels).With("files", strings.Join(off.Missing, "{{list.separator}}")).With("dir", filepath.Clean(off.ModelDir))
+		skipped = record.SkipModelsMissing
+	}
+	v := e.View(apperr.LangJa)
+	return &record.FaceSimilarity{Metric: record.MetricSFace, Threshold: facesim.SameFaceThreshold, Skipped: skipped, Reason: v.Cause, Fix: v.Remedy, ModelDir: off.ModelDir, MissingFiles: off.Missing}
 }
 
 // Swapper is what the generation test needs of FaceFusion (Issue #995): the swap that starts `facefusion.py headless-run` of the install the

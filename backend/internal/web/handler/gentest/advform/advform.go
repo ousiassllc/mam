@@ -107,7 +107,7 @@ func FactsOf(m modelcatalog.Info) adv.ModelFacts {
 			u.CFGDefault = c.CFG.Default
 		}
 	}
-	return adv.ModelFacts{Use: u, Weight: string(m.PromptWeight), WeightText: settingsview.WeightText(m)}
+	return adv.ModelFacts{Use: u, Weight: string(m.PromptWeight.OrUnknown()), WeightTitle: settingsview.WeightTitle(m.PromptWeight)}
 }
 
 // SectionOf is the part of the form that these settings add, around the fields it holds, with the lines of the models it is offered for; ticked are
@@ -118,7 +118,9 @@ func SectionOf(f Fields, models []modelcatalog.Info, ticked []string) adv.Sectio
 	s.Advanced.Exposed = len(f.Exposed) > 0
 	for _, m := range models {
 		s.Lines = append(s.Lines, adv.AdvancedLine{Label: m.Label, Text: settingsview.LineText(m)})
-		s.WeightLines = append(s.WeightLines, adv.WeightLine{Label: m.Label, Level: string(m.PromptWeight), Text: settingsview.WeightText(m)})
+	}
+	for _, g := range settingsview.WeightGroups(models) {
+		s.WeightAll = append(s.WeightAll, adv.WeightGroup{Level: string(g.Level), Title: g.Title, Names: g.Names})
 	}
 	return s
 }

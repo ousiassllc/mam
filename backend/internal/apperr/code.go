@@ -49,6 +49,8 @@ const (
 	CodeInstallFailed    Code = "install_failed"         // an install of a model, a node or a runtime stopped for a reason the installer worded
 	CodeNotWritable      Code = "not_writable"           // the folder cannot be written
 	CodeNoGPU            Code = "no_gpu"                 // no supported GPU
+	CodeFaceModels       Code = "face_models_missing"    // the face models (YuNet, SFace) of the face similarity are not in the model folder (#1026)
+	CodeFaceRuntime      Code = "face_runtime_missing"   // the ONNX Runtime library of the face similarity is missing or does not load (#1026)
 	CodeImageUnavailable Code = "image_unavailable"      // the ChatGPT account hosts no model for the image generation
 	CodeSaveFailed       Code = "save_failed"            // a setting or a file could not be saved
 	CodeTrainFailed      Code = "training_failed"        // the fine-tuning of a Character's voice stopped for a reason the trainer worded (#936)
@@ -158,6 +160,8 @@ var specs = map[Code]spec{
 	CodeTrainFailed:      {ClassUpstream, []Place{PlaceModelMgr}},
 	CodeNotWritable:      {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeNoGPU:            {ClassUnavailable, []Place{PlaceModelMgr, PlaceLocalModels}},
+	CodeFaceModels:       {ClassUnavailable, nil},
+	CodeFaceRuntime:      {ClassUnavailable, nil},
 	CodeImageUnavailable: {ClassUnavailable, []Place{PlaceChatGPT}},
 	CodeSaveFailed:       {ClassInternal, nil},
 	CodeFFmpegMissing:    {ClassUnavailable, []Place{PlaceFFmpeg}},

@@ -37,7 +37,7 @@ func modelCardOf(m ModelChoice) modelcard.Card {
 		"data-min-steps":            strconv.Itoa(max(m.Use.StepsMin, 1)),
 		"data-default-cfg":          strconv.FormatFloat(m.Use.CFGDefault, 'f', -1, 64),
 		"data-prompt-weight":        m.Weight,
-		"data-prompt-weight-text":   m.WeightText,
+		"data-prompt-weight-title":  m.WeightTitle,
 	}
 	return card
 }

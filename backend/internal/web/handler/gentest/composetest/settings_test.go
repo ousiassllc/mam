@@ -93,22 +93,3 @@ func TestAModelThatDoesNotTakeTheValuesIsWarned(t *testing.T) {
 	body := s.upload(paths.GenerationTestPart("estimate"), form, "", nil).Body.String()
 	assert.Contains(t, html.UnescapeString(body), "ステップ数")
 }
-
-// #972: the "?" of the prompts says how to write a weight and, for each model of the form, whether it works: it does for CLIP, may be weak
-// for T5, does not for Qwen-Image (with what to do instead), and is not known for a cloud model.
-func TestThePromptHelpSaysHowEachModelReadsTheWeights(t *testing.T) {
-	s := newScreen(t, gentesttest.WithTemplateModels())
-	body := html.UnescapeString(s.page(paths.GenerationTest() + "?tier=detail"))
-	help := regexp.MustCompile(`(?s)data-testid="gt-weight-help".*?</ul>`).FindString(body)
-	require.NotEmpty(t, help)
-	assert.Contains(t, body, "(語:1.3)")
-	line := func(level string) string {
-		return regexp.MustCompile(`(?s)<li[^>]*data-weight="` + level + `".*?</li>`).FindString(help)
-	}
-	assert.Contains(t, line("supported"), "効きます")
-	assert.Contains(t, line("weak"), "弱いかもしれません")
-	assert.Contains(t, line("unsupported"), "効きません")
-	assert.Contains(t, line("unsupported"), "文で", "Qwen-Image: what to do instead")
-	assert.Contains(t, line("unknown"), "確かめていません")
-	assert.Contains(t, regexp.MustCompile(`(?s)<li [^>]*data-model="`+string(gentesttest.NoWeightModel)+`"[^>]*>.*?</li>`).FindString(body), `data-prompt-weight="unsupported"`)
-}

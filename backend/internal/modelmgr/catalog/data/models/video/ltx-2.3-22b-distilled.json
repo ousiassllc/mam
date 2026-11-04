@@ -1,0 +1,86 @@
+{
+ "id": "ltx-2.3-22b-distilled",
+ "name": "LTX-2.3 22B Distilled fp8（音声つき）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "general",
+ "traits": {
+  "params_b": 22,
+  "params_label": "22B",
+  "uncensored": false,
+  "speed": "slow",
+  "quality": "high"
+ },
+ "description": "【大ティア・非検閲ではない標準モデル】Lightricks の LTX-2.3（蒸留版 22B）。映像と同期した音声を 1 回の生成で作る（保存は音声つきの mp4）。LTX-2.5（ltx-2.5-22b-distilled）の 1 つ前の世代で、ComfyUI のネイティブワークフローで動き、テキストからも先頭フレームからも、先頭と最後の 2 枚からも作れる（T2V・I2V・FLF2V）。fp8 の 1 つのチェックポイント（映像・音声の VAE を含む約 29.5 GB）と Gemma 3 12B の fp4 のテキストエンコーダー（約 9.4 GB）の合計約 39 GB。25fps・8 ステップ・cfg 1。得意: 音声つきの映像を 1 回で作る・画質。注意: 22B で重く、VRAM 24 GB 以上・メインメモリ 32 GB 以上を目安にした推定（16 GB では ComfyUI のオフロードが前提で、遅いか動かない可能性がある。GPU では未検証）。mam のテンプレートは公式の 2 段（dev 版＋蒸留 LoRA＋拡大モデル）ではなく、蒸留版の 1 段（拡大モデルなし）で、公式の FLF2V テンプレートに合わせた。新規に使うなら新しい LTX-2.5 を勧める。LTX-2.x Community License（年間売上 1,000 万米ドル未満は無償）と Gemma Terms of Use に従う。Mac（MPS）は fp8・fp4 の重みのため非対応。",
+ "files": [
+  {
+   "name": "ltx-2.3-22b-distilled-fp8.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/Lightricks/LTX-2.3-fp8/resolve/91eda216f820e5ecb3d17dc9fe3b7cdaf56b587d/ltx-2.3-22b-distilled-fp8.safetensors",
+   "sha256": "d9646b6f2d5c42d337b23671634c43bfeece6989644f51b4a3aa088465ccd3b2",
+   "size": 29531884062
+  },
+  {
+   "name": "gemma_3_12B_it_fp4_mixed.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/ltx-2/resolve/ccde4ba417d7900669fd56dd292a883cee11ff37/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors",
+   "sha256": "aaca463d11e6d8d2a4bdb0d6299214c15ef78a3f73e0ef8113d5a9d0219b3f6d",
+   "size": 9447702218
+  }
+ ],
+ "vram": {
+  "min_gb": 24,
+  "recommended_gb": 32,
+  "limits": "fp8 の 22B（約 29.5 GB）と fp4 のテキストエンコーダー（約 9.4 GB）は 24 GB の VRAM にも入りきらず、ComfyUI のオフロード（重みを一時的にメインメモリへ退避）が前提で、生成は遅くなります。メインメモリも多く使います。16 GB の GPU では動かない、または非常に遅い可能性があります。解像度は低め（480p〜720p）・長さは短めにしてください。",
+  "source": "Lightricks の公式ドキュメントの推奨は 32 GB 以上（LTX-2.5 について docs.ltx.io の ComfyUI の前提条件を 2026-11-02 に確認。LTX-2.3 の個別の値は確認できていない）。24 GB は mam の推定（fp8 のチェックポイントのサイズから。公式の FLF2V テンプレートは 27.5 GB のチェックポイントと 8.8 GB のテキストエンコーダーを書く）。mam の実機では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "ltx-2x-community-ltx23",
+  "version": "2026-01-05",
+  "name": "LTX-2 Community License Agreement（LTX-2.3）＋ Gemma Terms of Use",
+  "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2",
+  "summary": "Lightricks/LTX-2.3 と Lightricks/LTX-2.3-fp8 のモデルカードは license: other・license_name: ltx-2-community-license-agreement・license_link: https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2（License date: January 5, 2026）で、LTX-2.5 の LTX-2.x Community License（LICENSE-2_x。2026-08-11）とは別の版を指す。本文（2026-11-04 に確認）は、年間売上が 1,000 万米ドル以上の組織（子会社・関連会社を合算）は Lightricks との有償の商用ライセンスが必要で、それ未満なら商用を含めて使える。違法・有害な用途を禁じる使用制限（Attachment A）がある。テキストエンコーダーは Google の Gemma 3 12B を fp4 に変換したもので、Gemma Terms of Use（禁止用途ポリシーを含む）に従う。生成物の権利は主張されない。",
+  "commercial": "conditional",
+  "commercial_condition": "年間売上が 1,000 万米ドル（子会社・関連会社を合算）未満の個人・組織に限る",
+  "checked_at": "2026-11-04",
+  "components": [
+   {
+    "part": "ベースモデル・VAE（LTX-2.3）",
+    "name": "LTX-2 Community License Agreement",
+    "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2",
+    "commercial": "conditional"
+   },
+   {
+    "part": "テキストエンコーダー（Gemma 3 12B の fp4 変換。Comfy-Org の再配布）",
+    "name": "Gemma Terms of Use",
+    "url": "https://ai.google.dev/gemma/terms",
+    "commercial": "conditional"
+   }
+  ],
+  "notice": "年間売上が 1,000 万米ドル以上の組織が商用に使うには、Lightricks との別の契約（licensing@ltx.io）が必要です。テキストエンコーダーは Gemma Terms of Use と Gemma の禁止用途ポリシー（https://ai.google.dev/gemma/prohibited_use_policy）に従う必要があります。Hugging Face のリポジトリはログインなしで取得できます（gated なし）。導入の前に、利用者が規約を読んで同意したことを確かめます。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "ltx-2-3-t2v",
+   "template": "txt2video-ltx-2-3"
+  },
+  {
+   "name": "ltx-2-3-i2v",
+   "template": "img2video-ltx-2-3"
+  },
+  {
+   "name": "ltx-2-3-flf2v",
+   "template": "flf2v-ltx-2-3"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つファイルを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。FP16/BF16 を使う回避策）。2026-11-04 に確認。このモデルのチェックポイント（F8_E4M3 のテンソルが 1,462）とテキストエンコーダー（F8_E4M3 が 336・U8〔fp4〕が 639）に F8 のテンソルがあることを safetensors のヘッダーで確認（2026-11-04）。Mac の実機では未確認"
+ }
+}

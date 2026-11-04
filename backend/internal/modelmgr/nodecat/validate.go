@@ -41,7 +41,7 @@ func ClassesOf(c *Catalog, ids []string) []string {
 }
 
 // Validate checks the allowlist: every pin, the license, the dependencies, the review, and that it agrees with the model catalog and the
-// templates (a template names the custom nodes whose classes it uses, and only an installable node). engine is the pinned ComfyUI release
+// templates (a template names the custom nodes whose classes it uses, and only those). engine is the pinned ComfyUI release
 // (the Python package list is read from that release). It returns every problem found; nil means the allowlist can be used.
 func Validate(c *Catalog, models *catalog.Catalog, template func(id string) (localcfg.Template, bool)) []error {
 	var errs []error
@@ -132,8 +132,9 @@ func validateLicense(where string, n Node) []error {
 	return errs
 }
 
-// validateUses checks the templates and the model files against the nodes: a template that uses the classes of a node names it, names only
-// nodes it uses, and never one that cannot be installed; a model with a file in a folder a node adds has a workflow that requires the node.
+// validateUses checks the templates and the model files against the nodes: a template that uses the classes of a node names it and names only
+// nodes it uses (it may name a node mam cannot install: the model is then listed with the reason, and cannot be installed or chosen until the node
+// can be installed, #1016); a model with a file in a folder a node adds has a workflow that requires the node.
 func validateUses(c *Catalog, models *catalog.Catalog, template func(id string) (localcfg.Template, bool)) []error {
 	var errs []error
 	for _, m := range models.Models {
@@ -175,8 +176,6 @@ func validateTemplateNodes(c *Catalog, where string, w localcfg.Workflow) []erro
 		switch {
 		case !ok:
 			errs = append(errs, fmt.Errorf("%s: requires_nodes names %q, which is not in the allowlist", where, id))
-		case !n.Installable():
-			errs = append(errs, fmt.Errorf("%s: requires the node %s, which mam cannot install (%s)", where, id, n.InstallBlocked))
 		case !slices.ContainsFunc(n.NodeClasses, func(class string) bool { return used[class] }):
 			errs = append(errs, fmt.Errorf("%s: requires the node %s but the graph uses none of its classes", where, id))
 		}

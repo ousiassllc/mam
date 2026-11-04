@@ -8,7 +8,7 @@ const card = (
   id: string,
   level: Level,
   checked = true,
-) => html`<li data-model=${id} data-label=${id} data-prompt-weight=${level} data-prompt-weight-text=${`${id} は ${level}`}>
+) => html`<li data-model=${id} data-label=${id} data-prompt-weight=${level} data-prompt-weight-title=${`${id} は ${level}`}>
   <input type="checkbox" name="model" value=${id} ?checked=${checked} />
 </li>`;
 
@@ -156,7 +156,7 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
     box.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', ctrlKey: true, bubbles: true, cancelable: true }));
     await weight.updateComplete;
     expect(box.value).to.equal('a cat');
-    expect(weight.querySelector('[data-testid="gt-weight-note"]')!.textContent).to.contain('m0 は unsupported');
+    expect(weight.querySelector('[data-testid="gt-weight-note"]')!.textContent).to.contain('m0 では、ウェイト');
     expect(button(weight, 'up').getAttribute('aria-describedby')).to.equal('w-note');
   });
 

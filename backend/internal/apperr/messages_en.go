@@ -71,6 +71,12 @@ var messagesEn = map[string]string{
 	"node_missing.cause":  "A custom node that the workflow uses is missing from ComfyUI.",
 	"node_missing.remedy": "Install the custom node in the model manager, restart ComfyUI and run it again.",
 
+	"face_models_missing.cause":  "The face models for the face similarity are missing ({files}). The face similarity (SFace) is off.",
+	"face_models_missing.remedy": "mam does not fetch the face models (YuNet and SFace ONNX from OpenCV Zoo) by itself, and they are not in the model manager's catalog. Put them in {dir}. scripts/fetch-face-models.sh {dir} in the repository fetches them from a pinned commit and verifies their SHA-256 (YuNet is MIT, SFace is Apache-2.0). To use another folder, start mam with --face-model-dir. Restart mam after you put them there.",
+
+	"face_runtime_missing.cause":  "The ONNX Runtime library for the face similarity cannot be loaded. The face similarity (SFace) is off.",
+	"face_runtime_missing.remedy": "Provide the ONNX Runtime 1.23.x library (on Windows onnxruntime.dll next to mam.exe, which the installer puts there; libonnxruntime elsewhere). --onnxruntime-lib sets its location. If the DLL is there but does not load on Windows, the Microsoft Visual C++ 2015-2022 Redistributable (x64) is needed. Restart mam afterwards.",
+
 	"llm_invalid_output.cause":  "The LLM's answer was not in the requested form.",
 	"llm_invalid_output.remedy": "Run it again. If it continues, change the model of that Agent in Settings > text generation (LLM).",
 

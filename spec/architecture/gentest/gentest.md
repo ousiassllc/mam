@@ -14,9 +14,11 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 2. 選べるモデル（`modelcatalog`）
 
-画像: 組み込みのクラウドモデルすべて（`domain.ImageModels()`）と、#831 のローカル・OpenAI 互換のモデル、#832 の ChatGPT サブスクの画像モデル（`gpt-image-2:chatgpt-subscription`。モデル選択・見積りの内訳・履歴には表示名 `GPT Image 2 (ChatGPT サブスク)` で出す。`chatgptid.Label`、`localbackends.Options.Publish` が `modelreg.SetLabels` で登録する。ON/OFF によらず登録する。Issue #870）、#834 の保存したワークフロー（`comfy:<id>@v<N>`）。動画: `domain.VideoModels()`（組み込みと #831 のローカル動画モデルと #834 のワークフロー）。
+画像: 組み込みのクラウドモデルすべて（`domain.ImageModels()`）と、#831 のローカル・OpenAI 互換のモデル、#832 の ChatGPT サブスクの画像モデル（`gpt-image-2:chatgpt-subscription`。モデル選択・見積りの内訳・履歴には表示名 `GPT Image 2 (ChatGPT サブスク)` で出す。`chatgptid.Label`、`localbackends.Options.Publish` が `modelreg.SetLabels` で登録する。ON/OFF によらず登録する。Issue #870）、#834 の保存したワークフロー（`comfy:<id>@v<N>`）。動画: `domain.VideoModels()`（組み込みと #831 のローカル動画モデルと #834 のワークフロー）。**モデルの表示名（`Info.Label`）**: モデルマネージャーが入れたモデルはカタログの名前（`catalog.Model.Name`。1 項目が複数のワークフローを持つときは `SDXL base（img2img）` のように違いを括弧で足す。`mmview.DisplayName`、`modelfilter.CatalogInfo.Name`）、カタログが知らないローカルモデル（外部の ComfyUI など）は `comfyui:<接続先>/` を除いたモデル名、保存したワークフローは `<名前> (v<N>)`、クラウドはモデル名。画面（カード・ヘルプ・見積りの内訳・警告）は内部 ID を出さず、この名前で出す（Issue #1023）。
 
 **今使えるものだけ選べる**: `Adapter.Unavailable(model)` が理由を返すモデルは、一覧に残して無効にし、理由を出す（API キー未登録・接続先を使えない・ChatGPT にログインしていない・サーキットブレーカーが開いている）。`Unavailable` は #835 で画像モデルにも広げた（バックエンドが無い・設定されていない・ブレーカー開）。ChatGPT サブスクはログアウト後も「呼び出しの失敗」になりうる（一覧はバックエンドの有無と設定だけを見る）。
+
+**モデルマネージャーのカタログのモデルは、カタログの導入状態と同じ答え（Issue #1025）**: `modelcatalog.Catalog.availability` は、アダプターの理由（API キー・サーキットブレーカー・年齢確認）のあと、`CatalogInfo`（`mmview.InfoOf`。カタログのモデルをワークフロー名で引き当てる）の `NotInstalled` を見る。記録が無い・必須のファイルが欠けている・導入中のモデルは `unavailable: not_installed`（理由の文はカタログと同じ）で、必須のファイルが揃っていれば使える（任意の Lightning LoRA だけ無いときは使え、`catalog.missing_optional_files[]`・`catalog.partial_note` で「速さのモードの一部は未導入」と分かる）。`local_models` に登録があるだけでは使える扱いにならない。詳しくは [model-manager/model-manager.md](../model-manager/model-manager.md) §5.2。
 
 **成人向けモデルの年齢確認（Issue #841）**: モデルマネージャーの成人向けのモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）は、年齢確認のゲートが閉じている間、一覧（`Models`・`Model`）に出ず、名指しの要求は不明なモデル（`ErrNotFound`）として断る。`gentest.Deps.Hidden`（`modelmanager.Service.HidesModel`）が決める。ゲートはモデルマネージャーの Service が持つ（[../model-manager/model-manager.md](../model-manager/model-manager.md) §6.2）。直接呼び出し（`direct.Image`・`direct.Video`）も、一覧と始まる時の確認をすり抜けたモデルを `agegate.ErrRefused` で断る（何も呼ばない。§6.1 の「導入済みでも、年齢確認がオフの間は使えない」）。
 
@@ -115,7 +117,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 結果の詳細から、成功した画像の顔を別の画像の顔に入れ替える。入れ替えは mam に同梱しない外部ツール **FaceFusion**（ffmpeg と同じ扱い）を別プロセスで呼ぶ（`facefusion.py headless-run`）。アップスケールと同じく、**独立したバッチ（結果 1 件・入力 2 枚）**として実行し、結果は履歴とジョブ一覧に通常の結果と同じに並ぶ（モデル識別子は `facefusion`）。非商用・研究用・商用不明のモデルは警告つきで選べ、成人向けの画像には使えない旨を画面に出す。設定（Python とフォルダ）・実行の引数・モデルのライセンス表（FaceFusion の公式一覧が一次情報）・画面・MCP は [face-swap.md](face-swap.md)。
 
-役割 `face` の入力があった結果には、**参照の顔と出力の顔の類似度（SFace のコサイン類似度）**を結果ごとに自動で測って `params.face_similarity` に残す（測れない理由も残し、結果は成功のまま）。計測の定義・目安の閾値・モデルの配布・ライセンスの一次情報・#960 の監査は [../local-models.md](../local-models.md) §4.9。
+役割 `face` の入力があった結果には、**参照の顔と出力の顔の類似度（SFace のコサイン類似度）**を結果ごとに自動で測って `params.face_similarity` に残す（測れない理由も残し、結果は成功のまま。顔のモデル・ONNX Runtime が無くて測らないときも `skipped: models_missing` / `runtime_unavailable` と理由・直し方を残し、`list_generation_models` の `face_similarity` と見積りの警告 `face_similarity_off` でも読める。Issue #1026）。計測の定義・目安の閾値・モデルの配布・ライセンスの一次情報・#960 の監査は [../local-models.md](../local-models.md) §4.9。
 
 ## 3.2 プロンプトマッチ（Issue #916）
 

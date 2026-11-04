@@ -2,7 +2,14 @@ package gentesttier
 
 // WeightBar is the "強める + / 弱める −" of the words selected in the prompt boxes of the fieldset it stands in (the easy tier's and the detail
 // tier's; static/src/components/prompt-weight/mam-prompt-weight.ts draws the bar while words are selected, and hides itself otherwise). What the
-// chosen models do with weights is read from their cards (data-prompt-weight, data-prompt-weight-text).
+// chosen models do with weights is read from their cards (data-prompt-weight, data-prompt-weight-title).
 templ WeightBar() {
 	<mam-prompt-weight class="block" scope="fieldset" hidden data-testid="gt-weight"></mam-prompt-weight>
+}
+
+// WeightNote is the short caution under the prompt boxes while a chosen model does not read the weights ("効きません"), so that it is known without
+// opening the "?" (Issue #1023). <mam-weight-note> (static/src/components/prompt-weight) writes it from the cards of the chosen models and is hidden
+// while there is nothing to say.
+templ WeightNote() {
+	<mam-weight-note class="block" hidden data-testid="gt-weight-caution"></mam-weight-note>
 }
