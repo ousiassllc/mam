@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
@@ -105,7 +104,7 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 		}
 		path, mime = p, m
 	case FromProjectAsset, FromReferenceItem:
-		p, m, err := s.projectFile(ctx, ref)
+		p, m, err := s.ImageFile(ctx, ref.ProjectID, ref.ID, ref.Source == FromReferenceItem)
 		if err != nil {
 			return Source{}, err
 		}
@@ -159,34 +158,4 @@ func (s *Service) poseFile(id string) (string, error) {
 		return "", gterr.Invalid("ポーズ集が導入されていません。生成テストの「ポーズを選ぶ」から導入してください")
 	}
 	return path, err
-}
-
-// projectFile finds the image of a Project's asset or Reference Library entry inside the assets directory.
-func (s *Service) projectFile(ctx context.Context, ref RefInput) (path, mime string, err error) {
-	assetID := ref.ID
-	if ref.Source == FromReferenceItem {
-		item, err := s.References.Get(ctx, ref.ProjectID, ref.ID)
-		if errors.Is(err, repository.ErrNotFound) {
-			return "", "", gterr.Invalid("プロジェクトの参照画像 %q が見つかりません", ref.ID)
-		}
-		if err != nil {
-			return "", "", err
-		}
-		assetID = item.AssetID
-	}
-	a, err := s.Assets.Get(ctx, ref.ProjectID, assetID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return "", "", gterr.Invalid("プロジェクトの画像 %q が見つかりません", assetID)
-	}
-	if err != nil {
-		return "", "", err
-	}
-	if a.Type == domain.AssetVideo || !strings.HasPrefix(a.MimeType, "image/") {
-		return "", "", gterr.Invalid("プロジェクトの %q は画像ではありません", assetID)
-	}
-	path = filepath.Join(s.AssetsDir, filepath.FromSlash(a.FilePath))
-	if rel, err := filepath.Rel(s.AssetsDir, path); err != nil || strings.HasPrefix(rel, "..") {
-		return "", "", gterr.Invalid("プロジェクトの画像 %q の場所が正しくありません", assetID)
-	}
-	return path, a.MimeType, nil
 }

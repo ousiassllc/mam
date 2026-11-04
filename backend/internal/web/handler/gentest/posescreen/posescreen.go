@@ -323,7 +323,7 @@ func (h Handlers) Image(c *gin.Context) {
 		return
 	}
 	c.Header("Content-Type", "image/webp")
-	c.Header("Cache-Control", "private, max-age=3600")
+	c.Header("Cache-Control", cacheControl(c.Param("id")))
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.File(path)
 }

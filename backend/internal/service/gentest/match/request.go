@@ -159,6 +159,9 @@ func (s *Service) continued(ctx context.Context, r Request) (Request, int, error
 	if len(results) == 0 {
 		return r, 0, gterr.Conflict("このマッチには続ける元の結果がありません")
 	}
+	if inputs, err := s.g.Repo.Inputs(ctx, b.ID); err == nil && len(inputs) > 0 && s.g.InputHidden(ctx, inputs[0]) { // the same check as the job's: the estimate says it too
+		return r, 0, gterr.Invalid("このマッチの参考画像は、年齢確認が無効になったため使えません。続けることはできません")
+	}
 	r.Model, r.AspectRatio = results[0].Model, bp.AspectRatio
 	if r.TargetScore == 0 {
 		r.TargetScore = bp.Match.Target

@@ -139,7 +139,7 @@ func planSpeedMode(r Request, p *modelPlan, warn func(code, format string, args 
 	case p.info.HasSpeedMode(r.SpeedMode):
 		p.speedMode = r.SpeedMode
 	default:
-		warn(WarnSpeedUnsupported, "%s には速さのモード %q がないため、このモデルの既定で作ります", p.info.Label, r.SpeedMode)
+		warn(WarnSpeedUnsupported, "%s", p.info.SpeedModeUnsupported(r.SpeedMode))
 	}
 }
 

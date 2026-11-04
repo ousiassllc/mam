@@ -12,7 +12,6 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
-	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
@@ -21,21 +20,11 @@ import (
 )
 
 const (
-	modelID    = "m-opt"
+	modelID    = mmtest.OptionalModelID
 	workflowID = "comfyui:" + modelmanager.BundledEndpoint + "/wf-opt"
 )
 
-// withOptionalModel adds m-opt to the catalog of the rig: two required files (the text encoder and the VAE of the test catalog) and one optional one (a LoRA).
-func withOptionalModel() mmtest.Option {
-	return func(d *modelmanager.Deps, r *mmtest.Rig) {
-		src := d.Catalog.Models[0]
-		d.Catalog.Models = append(d.Catalog.Models, catalog.Model{
-			ID: modelID, Name: "Opt", Kind: localcfg.MediaImage, Tier: catalog.TierStandard, Description: "d", VRAM: src.VRAM, License: src.License,
-			Files:     []catalog.File{r.Host.CatalogFile(mmtest.ClipC, false), r.Host.CatalogFile(mmtest.VaeBC, false), r.Host.CatalogFile(mmtest.LoraD, true)},
-			Workflows: []catalog.Workflow{{Name: "wf-opt", Template: "txt2img-sdxl"}},
-		})
-	}
-}
+func withOptionalModel() mmtest.Option { return mmtest.WithOptionalModel() }
 
 // answers are the two answers to compare: the catalog's (the entry of list_model_catalog / get_catalog_model) and the generation test's (list_generation_models).
 func answers(t *testing.T, r *mmtest.Rig) (entry mmview.Entry, listed modelcatalog.Info, direct modelfilter.Availability) {

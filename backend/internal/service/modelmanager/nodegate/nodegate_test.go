@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes/nodetest"
 )
@@ -97,6 +98,15 @@ func TestAModelThatNeedsTheBlockedGGUFNodeIsNeitherInstalledNorChosen(t *testing
 	assert.Equal(t, []string{"comfyui-gguf"}, m.RequiresNodes)
 	assert.Equal(t, modelmanager.ModelNotInstalled, m.State)
 	assert.Empty(t, m.InstallJob, "no job was made")
+
+	// #1016: the model list of the screen and of the MCP tools (available / message) says the reason too, not "install it in the model manager".
+	entry := mmview.EntryOf(r.Svc, m)
+	assert.False(t, entry.Available)
+	assert.Equal(t, nodegate.Reason(mgr, m.RequiresNodes), entry.Message)
+	assert.NotContains(t, entry.Message, "モデルマネージャーで導入します")
+	info, ok := mmview.InfoOf(r.Svc)(localcfg.ID(localcfg.KindComfyUI, modelmanager.BundledEndpoint, "wf-g"))
+	require.True(t, ok)
+	assert.Equal(t, entry.Message, info.NotInstalled, "the generation test's list says it as well")
 
 	id := localcfg.ID(localcfg.KindComfyUI, modelmanager.BundledEndpoint, "wf-g")
 	assert.Equal(t, invalid.Message[len("N は、"):], nodegate.ForModels(mgr, modelmanager.BundledEndpoint)(id, m.RequiresNodes), "the generation test lists it as unavailable with the same reason")

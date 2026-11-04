@@ -121,7 +121,7 @@ func modelCardData(m Model) modelcard.Card {
 // source, license, files and SHA-256 are in the modal that the card opens (modeldetail.Detail).
 templ modelCard(m Model, blocked bool) {
 	@modelcard.Item(modelCardData(m)) {
-		if m.State == "installing" && m.Install != nil {
+		if m.Install != nil {
 			@progressBar(*m.Install, m.Name+" の導入の進み具合")
 		}
 		if m.NeedsNodes != "" && m.State != "installed" {
@@ -133,8 +133,17 @@ templ modelCard(m Model, blocked bool) {
 	}
 }
 
+// actionState is the state the buttons of a card follow: an installed model that fetches its optional files (it keeps the state "installed", #1025) has the
+// job's button, not the install and delete ones.
+func actionState(m Model) string {
+	if m.Install != nil {
+		return "installing"
+	}
+	return m.State
+}
+
 templ modelActions(m Model, blocked bool) {
-	switch m.State {
+	switch actionState(m) {
 		case "installing":
 			if m.Install != nil {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", m.Name, templ.Attributes{
