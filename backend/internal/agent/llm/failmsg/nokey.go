@@ -67,12 +67,12 @@ func NoKeyError(err error) *apperr.Error {
 		}
 		tried = append(tried, fmt.Sprintf("%s / %s%s", f.Target.Provider, f.Target.Model, why))
 	}
-	e = e.With("route", "{{llm_key_missing.route}}").With("agent", Label(route.Agent)).With("tried", strings.Join(tried, "、"))
+	e = e.With("route", "{{llm_key_missing.route}}").With("agent", agentText(route.Agent)).With("tried", strings.Join(tried, "{{list.separator}}"))
 	if len(missing) > 0 {
-		e = e.With("who", "{{llm_key_missing.named}}").With("providers", strings.Join(missing, "・"))
+		e = e.With("who", "{{llm_key_missing.named}}").With("providers", strings.Join(missing, "{{list.join}}"))
 	}
 	if len(route.RestartPending) > 0 {
-		e = e.With("restart", "{{restart.pending}}").With("items", strings.Join(route.RestartPending, "・"))
+		e = e.With("restart", "{{restart.pending}}").With("items", strings.Join(route.RestartPending, "{{list.join}}"))
 	}
 	return e
 }
@@ -81,6 +81,14 @@ func NoKeyError(err error) *apperr.Error {
 // Japanese. The log keeps the raw error.
 func NoKeyMessage(err error) string {
 	return NoKeyError(err).View(apperr.LangJa).Sentence(apperr.LangJa)
+}
+
+// agentText names the Agent in the language of the reader: the text of the catalog ("agent.<id>"), else the label.
+func agentText(a llm.Agent) string {
+	if key := "agent." + string(a); apperr.Text(apperr.LangJa, key, nil) != key {
+		return "{{" + key + "}}"
+	}
+	return Label(a)
 }
 
 func providerName(p llm.Provider) string {

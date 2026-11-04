@@ -11,8 +11,10 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -38,6 +40,8 @@ type Data struct {
 	CheckedAt time.Time
 	CanCheck  bool
 	Checking  bool
+	// Failure is why the last check failed, as the common error (#1010): the cause and the remedy in words. nil when it did not fail.
+	Failure *apperr.View
 }
 
 // Section is the "バージョンとアップデート" section of the global settings screen: Panel under its title.
@@ -158,7 +162,7 @@ func Panel(d Data) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(d.Version)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 63, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 67, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -192,9 +196,9 @@ func Panel(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(statusRole(d.Tone))
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(statusRole(d))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 66, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 70, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -207,7 +211,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(d.Tone))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 66, Col: 118}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 70, Col: 113}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -220,13 +224,19 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(d.Status)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 66, Col: 131}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 70, Col: 126}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		if d.Failure != nil {
+			templ_7745c5c3_Err = errorbox.Box(errorbox.Props{View: *d.Failure, Lang: apperr.LangJa, ID: "update"}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -239,7 +249,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.CheckedAt.UTC().Format(time.RFC3339))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 71, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 78, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -252,7 +262,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(d.CheckedAt.Local().Format("2006-01-02 15:04"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 71, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 78, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -271,7 +281,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.UpdateCheck())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 77, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 84, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
@@ -310,8 +320,9 @@ func statusClass(t Tone) string {
 	return "text-sm text-neutral-300"
 }
 
-func statusRole(t Tone) string {
-	if t == ToneWarn || t == ToneError {
+// statusRole announces a warning or an error at once, unless the error box does (its own role="alert"): one failure is read out once.
+func statusRole(d Data) string {
+	if d.Failure == nil && (d.Tone == ToneWarn || d.Tone == ToneError) {
 		return "alert"
 	}
 	return "status"

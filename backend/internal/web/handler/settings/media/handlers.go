@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
@@ -19,7 +20,6 @@ import (
 
 const (
 	pinnedReason = "起動オプションで固定されているため、この画面では変更できません"
-	writeFailed  = "設定ファイルを書き込めませんでした。保存先の権限と空き容量を確認してください"
 	notFound     = "対象が見つかりません"
 	imageTitle   = "画像モデル"
 	policyTitle  = "動画モデル"
@@ -76,7 +76,7 @@ func answer(c *gin.Context, svc *modelsettings.Service, err error, notice string
 		status, message = http.StatusUnprocessableEntity, invalid.Message
 	default:
 		_ = c.Error(err)
-		status, message = http.StatusInternalServerError, writeFailed
+		status, message = failure.Save(err)
 	}
 	d := SectionData(svc)
 	if d.Problem == "" {
@@ -214,10 +214,13 @@ func done(c *gin.Context, v modelsettings.View, row templ.Component, toast strin
 }
 
 // refuse answers a save that did not happen with the modal again (draw) and why: 422 for a refused input, 409 for a file
-// that was pinned or unreadable meanwhile, 500 for a failed write. draw is nil when the saved assignment cannot be read
+// that was pinned or unreadable meanwhile, the status of the class for a failed write (failure.Save). draw is nil when the saved assignment cannot be read
 // any more: the modal then says only that.
 func refuse(c *gin.Context, err error, draw func(message, field string) templ.Component) {
-	status, message, field := http.StatusInternalServerError, writeFailed, ""
+	var (
+		status         int
+		message, field string
+	)
 	var invalid *modelsettings.InvalidError
 	switch {
 	case errors.Is(err, modelsettings.ErrPinned):
@@ -226,6 +229,7 @@ func refuse(c *gin.Context, err error, draw func(message, field string) templ.Co
 		status, message, field = http.StatusUnprocessableEntity, invalid.Message, invalid.Field
 	default:
 		_ = c.Error(err)
+		status, message = failure.Save(err)
 	}
 	if draw == nil || status == http.StatusConflict {
 		settingshttp.Render(c, status, modal.Notice("画像・動画モデル", message))

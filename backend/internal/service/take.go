@@ -169,7 +169,7 @@ func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, t
 	}
 	info, err := s.tools.Compose(ctx, parts, dst)
 	if err != nil {
-		return "", &AIError{Reason: "Take の合成に失敗しました: " + err.Error()}
+		return "", mediaError(s.logger, "what.compose", err)
 	}
 	params, err := json.Marshal(struct {
 		Kind              string               `json:"kind"`

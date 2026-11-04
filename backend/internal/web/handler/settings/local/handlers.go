@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	service "github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
@@ -61,7 +62,7 @@ func (h Handlers) classify(c *gin.Context, err error, exists string) (int, strin
 		return http.StatusUnprocessableEntity, invalid.Message
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "保存できませんでした。保存先の権限と空き容量、mam のログを確認してください"
+	return failure.Save(err)
 }
 
 // unchangeable is why no form can be opened: the file is pinned (409) or cannot be read (500). Status 0 means it can.

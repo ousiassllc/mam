@@ -20,3 +20,12 @@ func Fallback(err error) (status int, msg string) {
 	}
 	return http.StatusInternalServerError, Generic
 }
+
+// Save is the status and the message of a setting that could not be written (#1010): the cause and the remedy of what errmap knows of the
+// disk (a full disk, a folder that cannot be written), else of the code save_failed. It is the same failure as the settings tools of the MCP
+// answer with (errmap.SaveFailure), so that a screen and an agent read one text. The cause of the failure is not on the screen: the caller
+// attaches it to the context, where the logging middleware writes it.
+func Save(err error) (status int, msg string) {
+	e := errmap.SaveFailure(err)
+	return e.Status(), e.View(apperr.LangJa).Sentence(apperr.LangJa)
+}

@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -45,7 +46,8 @@ type SwapRef struct {
 	Warnings []string `json:"warnings,omitempty" jsonschema:"選んだモデルのライセンス上の注意（商用NG・研究用・商用不明）。空なら無い。どのモデルでも、ArcFace の注意は別（get_facefusion_status の arcface_note）"`
 }
 
-// Available says whether a swap can start: nil, or why not (the service has no FaceFusion, or it is not set up). The settings screen and
+// Available says whether a swap can start: nil, or why not (the service has no FaceFusion, or it is not set up: then the common error
+// facefusion_unavailable, #1010). The settings screen and
 // get_facefusion_status say the same things from the lookup.
 func Available(g *gentest.Service) error {
 	if g.FaceFusion == nil {
@@ -53,7 +55,7 @@ func Available(g *gentest.Service) error {
 	}
 	if g.FaceFusionCheck != nil {
 		if err := g.FaceFusionCheck(); err != nil {
-			return gterr.Invalid("FaceFusion を使えません: %v。設定の「FaceFusion」で Python と FaceFusion のフォルダを指定してください", err)
+			return apperr.New(apperr.CodeFaceFusionNone).Wrap(err) // the cause and the remedy in Japanese (and the reason it was not found as the detail)
 		}
 	}
 	return nil

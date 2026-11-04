@@ -3,8 +3,10 @@ package updatepanel
 import (
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -30,6 +32,8 @@ type Data struct {
 	CheckedAt time.Time
 	CanCheck  bool
 	Checking  bool
+	// Failure is why the last check failed, as the common error (#1010): the cause and the remedy in words. nil when it did not fail.
+	Failure *apperr.View
 }
 
 // Section is the "バージョンとアップデート" section of the global settings screen: Panel under its title.
@@ -63,7 +67,10 @@ templ Panel(d Data) {
 			<span id="update-version" class="font-medium" data-testid="update-version">{ d.Version }</span>
 		</p>
 		if d.Status != "" {
-			<p class={ statusClass(d.Tone) } role={ statusRole(d.Tone) } data-testid="update-status" data-tone={ string(d.Tone) }>{ d.Status }</p>
+			<p class={ statusClass(d.Tone) } role={ statusRole(d) } data-testid="update-status" data-tone={ string(d.Tone) }>{ d.Status }</p>
+		}
+		if d.Failure != nil {
+			@errorbox.Box(errorbox.Props{View: *d.Failure, Lang: apperr.LangJa, ID: "update"})
 		}
 		if !d.CheckedAt.IsZero() {
 			<p class="text-xs text-neutral-400" data-testid="update-checked-at">
@@ -98,8 +105,9 @@ func statusClass(t Tone) string {
 	return "text-sm text-neutral-300"
 }
 
-func statusRole(t Tone) string {
-	if t == ToneWarn || t == ToneError {
+// statusRole announces a warning or an error at once, unless the error box does (its own role="alert"): one failure is read out once.
+func statusRole(d Data) string {
+	if d.Failure == nil && (d.Tone == ToneWarn || d.Tone == ToneError) {
 		return "alert"
 	}
 	return "status"

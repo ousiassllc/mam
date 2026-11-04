@@ -3,8 +3,8 @@ package face
 import (
 	"context"
 	"errors"
-	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
@@ -44,7 +44,7 @@ func Swapper(ff *facefusionsettings.Service) (swap runner.FaceSwapFunc, check fu
 	swap = func(ctx context.Context, in runner.FaceSwapInput) ([]byte, string, error) {
 		install, err := ff.Look()
 		if err != nil {
-			return nil, "", fmt.Errorf("FaceFusion を使えません: %w", err)
+			return nil, "", apperr.New(apperr.CodeFaceFusionNone).Wrap(err)
 		}
 		faceExt, targetExt := extensions[in.Face.MimeType], extensions[in.Target.MimeType]
 		if faceExt == "" || targetExt == "" {

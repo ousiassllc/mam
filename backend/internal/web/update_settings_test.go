@@ -145,9 +145,32 @@ func TestUpdateSettings_AFailedCheckShowsItsKindNotTheRawError(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "ダウンロードしたファイルを検証できませんでした")
+	assert.Contains(t, body, "ダウンロードした更新のファイルを検証できませんでした")
 	assert.Contains(t, body, `data-tone="error"`)
 	assert.NotContains(t, body, "secret internal detail")
+	// The cause and the remedy come in the common error box (#1010): the code, the remedy and the detail folded away.
+	assert.Contains(t, body, `data-error-code="update_verification"`)
+	assert.Contains(t, body, "配布元から新しい版を取得して入れ直してください")
+	assert.Contains(t, body, `data-testid="error-copy"`)
+}
+
+// Every kind of failed check shows its own code in the box on the screen, and a check that did not fail shows no box.
+func TestUpdateSettings_EveryKindOfFailureHasItsCodeInTheBox(t *testing.T) {
+	for kind, code := range map[updater.ErrorKind]string{
+		updater.ErrorNetwork: "update_network", updater.ErrorRateLimit: "update_rate_limit", updater.ErrorAccess: "update_access",
+		updater.ErrorVerification: "update_verification", updater.ErrorRelease: "update_release", updater.ErrorOther: "update_failed",
+	} {
+		t.Run(string(kind), func(t *testing.T) {
+			s := newUpdateScreen(t, "v0.1.2", &scriptedChecker{err: assert.AnError, status: updater.Status{CheckedAt: time.Now(), LastError: "x", ErrorKind: kind}})
+
+			body := s.check(true).Body.String()
+
+			assert.Contains(t, body, `data-error-code="`+code+`"`)
+			assert.Contains(t, body, "更新の確認に失敗しました。")
+		})
+	}
+	ok := newUpdateScreen(t, "v0.1.2", &scriptedChecker{status: updater.Status{CheckedAt: time.Now()}})
+	assert.NotContains(t, ok.check(true).Body.String(), `data-testid="error-box"`)
 }
 
 func TestUpdateSettings_ADevBuildSaysItDoesNotCheck(t *testing.T) {

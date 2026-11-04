@@ -13,13 +13,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/audio"
 )
 
 const (
-	writeFailed = "設定を保存できませんでした。データフォルダの権限と空き容量を確認してください"
 	savedNotice = "保存しました。次の音声作成から使われます"
 )
 
@@ -158,7 +158,7 @@ func Save(svc *audiosettings.Service) gin.HandlerFunc {
 			status, d.Error = http.StatusConflict, audiosettings.UnreadableMessage
 		default:
 			_ = c.Error(err)
-			status, d.Error = http.StatusInternalServerError, writeFailed
+			status, d.Error = failure.Save(err)
 		}
 		settingshttp.Render(c, status, view.Section(d))
 	}

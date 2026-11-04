@@ -10,13 +10,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/media/locate"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 )
 
 const (
 	unreadable    = "設定ファイル（ffmpeg.json）を読めません。壊れていれば、直すか削除してください"
-	writeFailed   = "パスを保存できませんでした。データフォルダの権限と空き容量を確認してください"
 	savedNotice   = "保存しました。次に mam を起動したときから使われます"
 	clearedNotice = "パスの指定を解除しました。次に mam を起動したときから、自動で探します"
 )
@@ -71,7 +71,7 @@ func Save(s Services) gin.HandlerFunc {
 			d.FFmpeg.Configured, d.FFprobe.Configured = cfg.FFmpeg, cfg.FFprobe
 		default:
 			_ = c.Error(err)
-			status, d.Error = http.StatusInternalServerError, writeFailed
+			status, d.Error = failure.Save(err)
 		}
 		settingshttp.Render(c, status, view.Section(d))
 	}
