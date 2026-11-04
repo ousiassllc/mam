@@ -1,0 +1,88 @@
+{
+ "id": "nsfw-wan21-14b-t2v",
+ "name": "NSFW Wan 14B e15 fp8（Wan 2.1 T2V 14B・テキストから動画）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "traits": {
+  "params_b": 14,
+  "params_label": "14B",
+  "uncensored": true,
+  "speed": "slow"
+ },
+ "description": "【中（〜14B）・T2V・音声なし】Wan 2.1 T2V 14B を非検閲（成人向け）にフル微調整した NSFW-API の NSFW Wan 14B の最終エポック e15（fp8 版。成人向け）。作者が自分で学習した完全な微調整で、LoRA やマージの寄せ集めではない（カードは 3 万本の動画と 2 万枚の静止画の混合データを 1 回の設定で 15 エポック学習したと書く）。得意: 1.3B 版（nsfw-wan21-1b3-t2v。同じ作者・同じ系統）より細部と動きの質が高い、14B 級の汎用の非検閲 T2V（拡散モデル fp8 約 14.3 GB・テキストエンコーダー・VAE を合わせて約 21.3 GB）。作者は最終の e15 を推奨と書く。テキストからのみで先頭フレームは使わない。480p（832×480）・16fps・短尺（数秒）が前提（作者は 480p・17 フレームの動画で学習したと書く）で、30 ステップ・uni_pc・cfg 6（ComfyUI 公式の Wan 2.1 T2V の例。作者の推奨のサンプラー値はカードに無い）。注意: fp8 は作者が bf16 から変換したもの（スケール無しの単純な変換。ファイルのヘッダーの metadata に変換のグラフが残る）。16 GB の GPU ではテキストエンコーダーとの入れ替え（オフロード）が前提で、cfg 6 は 1 ステップに 2 回計算するので遅い。ライセンスはカードが CreativeML OpenRAIL-M と宣言し（本文は無い）、作者は「Steal this model!」と書くので、商用利用の可否は「不明」（宣言だけで本文が無く、学習データは Reddit の成人向け投稿で権利は未確認なので、商用には使わない）。macOS（Apple Silicon）は fp8 のファイルを含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
+ "files": [
+  {
+   "name": "nsfw_wan_14b_e15_fp8.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/NSFW-API/NSFW_Wan_14b/resolve/0fce98c7e7c9876d13b717ff317001596275f2b7/nsfw_wan_14b_e15_fp8.safetensors",
+   "sha256": "bc13ced6d1f3f6df423834432f11f2efb5bbb832d81c74fb6fcebe919968216c",
+   "size": 14288641704
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "Wan 2.1 T2V 14B の fp8（約 14.3 GB。ファイルのテンソルは F8_E4M3 で約 142.9 億個。safetensors のヘッダーで確認、2026-11-04）。16 GB の GPU では ComfyUI の自動のオフロードで、拡散モデル・テキストエンコーダー（約 6.7 GB）を入れ替えながら動かす前提という mam の推定（wan22-t2v-14b などの 14B fp8 と同じ 16 GB）。mam の実機（16 GB）では未確認",
+  "estimate": true
+ },
+ "license": {
+  "id": "creativeml-openrail-m-declared",
+  "version": "2022-08-22",
+  "name": "CreativeML OpenRAIL-M（モデルカードの宣言と『Steal this model!』。LICENSE の本文なし）",
+  "url": "https://huggingface.co/NSFW-API/NSFW_Wan_14b/blob/0fce98c7e7c9876d13b717ff317001596275f2b7/README.md",
+  "summary": "ベースの Wan 2.1 T2V 14B（Wan-AI）は Apache-2.0（カード 2 行目 license: apache-2.0、291 行目）。この微調整は NSFW-API が自分で学習したフル微調整で、モデルカードは license: creativeml-openrail-m と宣言し（README 2 行目）、「License」の節（97〜99 行目）は「Steal this model!」とだけ書く。答えは「不明」（2026-11-04 に確認）。カードの宣言だけで LICENSE の本文が無く、OpenRAIL-M の使用制限（Attachment A）の正確な文面も確かめられない。宣言だけでは確かめられないものは厳しい方の「不明」とする（`wan22-i2v-14b-lightx2v-uncensored` などと同じ扱い。本文がリポジトリにある sdxl-base の OpenRAIL++-M とは違う）。学習データは Reddit の成人向けの約 1,250 の投稿先の上位 1,000 件ずつ（README 34 行目）で、その権利を作者が確かめた記録は無い。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-04",
+  "components": [
+   {
+    "part": "ベースモデル（Wan 2.1 T2V 14B・Wan-AI）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   },
+   {
+    "part": "微調整の重み（NSFW Wan 14B e15 fp8・NSFW-API）",
+    "name": "CreativeML OpenRAIL-M（モデルカードの宣言と『Steal this model!』。使用制限つき。学習データの権利は未確認）",
+    "url": "https://huggingface.co/NSFW-API/NSFW_Wan_14b",
+    "commercial": "unknown"
+   },
+   {
+    "part": "テキストエンコーダー・VAE（Comfy-Org の再配布）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   }
+  ],
+  "notice": "この mam のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（CreativeML OpenRAIL-M）だけで本文が無く、学習データ（Reddit の成人向け投稿）の権利も確認できていません。商用には使わないでください（OpenRAIL-M の使用制限〔Attachment A〕と学習データの権利を自分で確認できるまで）。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "nsfw-wan21-14b-t2v",
+   "template": "txt2video-wan21-1b3-nsfw",
+   "model_file": "nsfw_wan_14b_e15_fp8.safetensors"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つファイルを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-04 に確認。このモデルのファイルに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（2026-11-04）。Mac の実機では未確認"
+ }
+}
