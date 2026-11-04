@@ -188,6 +188,8 @@ func validateModel(m Model, shared map[string]File) []error {
 	}
 	if len(m.Files) == 0 || len(m.Workflows) == 0 {
 		errs = append(errs, fmt.Errorf("%s: files and workflows are required", where))
+	} else if !slices.ContainsFunc(m.Files, func(f File) bool { return !f.Optional }) {
+		errs = append(errs, fmt.Errorf("%s: at least one file must not be optional", where))
 	}
 	return append(errs, validateFiles(where, m.Files, shared)...)
 }

@@ -43,7 +43,7 @@ func Where(s *modelmanager.Service, c modelfilter.Condition) []Entry {
 
 // EntryOf is the Entry of one model view (modelmanager.Service.Model, Catalog).
 func EntryOf(s *modelmanager.Service, v modelmanager.ModelView) Entry {
-	e := Entry{ModelView: v, Inputs: []traits.Input{}, Availability: availability(v.State)}
+	e := Entry{ModelView: v, Inputs: []traits.Input{}, Availability: availability(v)}
 	if m, ok := s.Deps.Catalog.Model(v.ID); ok {
 		d := m.Derived()
 		e.Traits, e.Audio = m.Traits, d.Audio
@@ -54,10 +54,11 @@ func EntryOf(s *modelmanager.Service, v modelmanager.ModelView) Entry {
 	return e
 }
 
-// availability is whether a model in this state can be used: only an installed one (#1013).
-func availability(st modelmanager.ModelState) modelfilter.Availability {
+// availability is whether a model can be used: only an installed one (#1013). Its files do not matter by themselves (an optional file that is missing leaves the
+// model installed, ModelView.PartialNote); the generation test's model list takes the very same answer (InfoOf, #1025).
+func availability(v modelmanager.ModelView) modelfilter.Availability {
 	var msg string
-	switch st {
+	switch v.State {
 	case modelmanager.ModelInstalled:
 		return modelfilter.Usable()
 	case modelmanager.ModelInstalling:
@@ -66,6 +67,9 @@ func availability(st modelmanager.ModelState) modelfilter.Availability {
 		msg = "ファイルが足りません。モデルマネージャーで入れ直してください"
 	default:
 		msg = "ローカルに導入されていません（モデルマネージャーで導入します）"
+		if v.FilesInPlace {
+			msg = "必須のファイルは揃っていますが、導入の記録がありません。モデルマネージャーで「導入」を押すと、取得済みのファイルは取得し直さずに記録します"
+		}
 	}
 	return modelfilter.Unusable(modelfilter.ReasonNotInstalled, msg, modelfilter.RouteOf(modelfilter.ReasonNotInstalled, modelfilter.SourceLocal))
 }
@@ -93,7 +97,9 @@ func (e Entry) Item() modelfilter.Item {
 }
 
 // InfoOf is what the catalog says of the model an install created, by its identifier (comfyui:bundled-comfyui/<workflow name>); false for any other model.
-// The generation test reads it to filter its list by the same adult flag and traits as the model manager (gentest.Deps.CatalogInfo).
+// The generation test reads it to filter its list by the same adult flag and traits as the model manager (gentest.Deps.CatalogInfo), and to judge whether
+// the model is installed by the very answer of the catalog (availability: only an installed model is available; #1025). An adult model while the age gate is
+// closed has no state here (the gate hides it).
 func InfoOf(s *modelmanager.Service) func(modelID string) (modelfilter.CatalogInfo, bool) {
 	return func(modelID string) (modelfilter.CatalogInfo, bool) {
 		k, endpoint, name, ok := localcfg.ParseID(modelID)
@@ -101,9 +107,15 @@ func InfoOf(s *modelmanager.Service) func(modelID string) (modelfilter.CatalogIn
 			return modelfilter.CatalogInfo{}, false
 		}
 		for _, m := range s.Deps.Catalog.Models {
-			if slices.ContainsFunc(m.Workflows, func(w catalog.Workflow) bool { return w.Name == name }) {
-				return modelfilter.CatalogInfo{Adult: m.Adult(), Traits: m.Traits, VRAMMinGB: m.VRAM.MinGB}, true
+			if !slices.ContainsFunc(m.Workflows, func(w catalog.Workflow) bool { return w.Name == name }) {
+				continue
 			}
+			info := modelfilter.CatalogInfo{Adult: m.Adult(), Traits: m.Traits, VRAMMinGB: m.VRAM.MinGB}
+			if v, err := s.Model(m.ID); err == nil {
+				info.NotInstalled = availability(v).Message
+				info.MissingOptional, info.PartialNote = v.MissingOptional, v.PartialNote
+			}
+			return info, true
 		}
 		return modelfilter.CatalogInfo{}, false
 	}

@@ -103,6 +103,8 @@ type File struct {
 	SHA256     string `json:"sha256"`
 	Size       int64  `json:"size"`
 	SourceNote string `json:"source_note,omitempty"`
+	// Optional: the model works without the file (a LoRA of a speed mode); the install fetches it, but its absence leaves the model installed (#1025).
+	Optional bool `json:"optional,omitempty"`
 }
 
 // Path is where the file lies below the base directory of the engine: models/<folder>/<name>.
