@@ -1,6 +1,7 @@
 package screentest_test
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -38,4 +39,26 @@ func TestTheDetailSaysTheFaceSimilarityIsOffWhenTheFaceModelsAreMissing(t *testi
 	assert.Contains(t, body, "顔の類似度はオフ")
 	assert.Contains(t, body, facesim.RecognizerFile, "which file is missing")
 	assert.Contains(t, body, "/data/models", "where to put it")
+}
+
+// Issue #1026: the screen of the input images says the face similarity is off and links to the model manager's "顔チェック用モデル" while the models are missing;
+// it says nothing while the similarity works, and does not offer the models as the fix when the ONNX Runtime library is what is missing.
+func TestTheInputImagesLinkToTheFaceModelsWhileTheSimilarityIsOff(t *testing.T) {
+	modelsOff := face.OffRecord(&facesim.Off{Reason: facesim.ReasonModelsMissing, ModelDir: "/data/models", Missing: []string{facesim.DetectorFile, facesim.RecognizerFile}})
+	body := newScreen(t, gentesttest.WithFaceOff(modelsOff)).page(paths.GenerationTest())
+	assert.Contains(t, body, `data-testid="gt-face-off"`)
+	assert.Contains(t, body, "顔チェック用モデルを入れる")
+	assert.Contains(t, body, `href="`+paths.ModelManagerFaceModels()+`"`)
+
+	runtimeOff := face.OffRecord(&facesim.Off{Reason: facesim.ReasonRuntimeMissing, ModelDir: "/data/models", Detail: "onnxruntime.dll: not found"})
+	body = newScreen(t, gentesttest.WithFaceOff(runtimeOff)).page(paths.GenerationTest())
+	assert.Contains(t, body, `data-testid="gt-face-off"`)
+	assert.NotContains(t, body, "顔チェック用モデルを入れる", "installing the models does not fix a missing ONNX Runtime library")
+	assert.Contains(t, body, "ONNX Runtime")
+
+	body = newScreen(t, gentesttest.WithFaceScore(func(context.Context, []byte, []byte) (facesim.Comparison, error) {
+		return facesim.Comparison{}, nil
+	})).page(paths.GenerationTest())
+	assert.NotContains(t, body, `data-testid="gt-face-off"`, "the similarity works: nothing to say")
+	assert.NotContains(t, newScreen(t).page(paths.GenerationTest()), `data-testid="gt-face-off"`, "no face similarity at all: nothing to say")
 }

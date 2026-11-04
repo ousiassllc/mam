@@ -7,13 +7,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest/facestatus"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest/intentinfo"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/recipe"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
@@ -36,8 +36,8 @@ type ListModelsOutput struct {
 	Limits Limits   `json:"limits"`
 	// Intents are the "やりたいこと" a request's intent takes, with the model each picks now (Issue #977).
 	Intents []intentinfo.IntentInfo `json:"intents" jsonschema:"リクエストの intent に使えるやりたいこと（photo / anime / landscape / face）と、いま選ばれるモデル（導入済み・商用の絞り込み・OS・GPU の条件に合うもの）"`
-	// FaceSimilarity is whether the SFace similarity of a result with a face reference is measured (Issue #1026).
-	FaceSimilarity record.FaceSimilarityStatus `json:"face_similarity" jsonschema:"顔の類似度（SFace）を測れるか。enabled が false なら顔モデル（YuNet・SFace の ONNX）か ONNX Runtime が無く、役割 face の参照を付けた結果の face_similarity.skipped（models_missing / runtime_unavailable）に理由と直し方が残る。off に同じ内容が入る"`
+	// FaceSimilarity is whether the SFace similarity of a result with a face reference is measured, and the state of the models it needs (Issue #1026).
+	FaceSimilarity facestatus.Status `json:"face_similarity" jsonschema:"顔の類似度（SFace）を測れるか。enabled が false なら顔モデル（YuNet・SFace の ONNX）か ONNX Runtime が無く、役割 face の参照を付けた結果の face_similarity.skipped（models_missing / runtime_unavailable）に理由と直し方が残る。off に同じ内容が入る。models は顔チェック用モデルの導入の状態（導入は install_face_models。再起動は要らない）"`
 }
 
 // Limits are the caps of one batch (models.json: gentest).
@@ -64,7 +64,7 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 	if filter == "" {
 		filter = string(modellicense.FilterAll)
 	}
-	return ListModelsOutput{Models: models, CommercialFilter: filter, LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}, Intents: intentinfo.List(ctx, g), FaceSimilarity: record.StatusOf(g.FaceScore != nil, g.FaceOff)}, nil
+	return ListModelsOutput{Models: models, CommercialFilter: filter, LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}, Intents: intentinfo.List(ctx, g), FaceSimilarity: facestatus.Of(g)}, nil
 }
 
 // ReferenceInput is an input image of a batch.

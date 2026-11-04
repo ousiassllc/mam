@@ -83,6 +83,9 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 		c.InputCheck = inputCheckOf(h.Svc.CheckInputs(gentest.Request{Media: media, Models: f.models, References: f.refs}))
 	}
 	c.Poses = media != gentest.MediaVideo && h.Svc.Poses != nil
+	if fs := h.Svc.FaceSimilarity(); media != gentest.MediaVideo && fs.Off != nil {
+		c.FaceOff = fs.Off.Skipped
+	}
 	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.opts.AvoidPose, h.Svc.LoRAs(ctx, media)
 	if f.opts.LoRA != nil {
 		c.LoRA, c.LoRAStrength = f.opts.LoRA.Name, f.opts.LoRA.Strength

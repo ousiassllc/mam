@@ -28,6 +28,10 @@
 | PUT | `/model-manager/adult` | 設定「成人向けモデルを表示する」（既定オフ）。フォーム `on`（`1` / `0`）。**オンにする最初の 1 回**は、ダイアログの `notice_version`（`Service.AdultContent().NoticeVersion`）と `agree=1`（18 歳以上の確認と注意書きへの同意）が要る。確認の記録（日時・注意書きの版）が `state.json` に残り、以後のオン／オフは `on` だけでよい。確認の記録が無く `notice_version` も無いオンは 409、`agree` が無い・版が違うのは 422（ダイアログに理由を出し、ゲートは開かない）。200 でカード（`#mm-adult`）を返し、モデルの一覧・試し生成の区画を `hx-swap-oob` で描き直し、ダイアログを閉じる。**確認が無い間は、一覧（`GET /model-manager/models`）に成人向けのモデルが出ず、試し生成のフォームにも導入済みの成人向けモデルが出ず、名指しの要求は 404** |
 | POST | `/model-manager/models/:id/install` | モデルの導入（ジョブ）。`requires_hf_token` のモデル（LTX-2.5）は、トークン未設定・トークンが無効（401）・アクセスが承認されていない（403）のとき、**ジョブを作らず 422** で案内（model-manager.md §5.3 の文言 A〜C。トークンの区画へのリンクとモデルのページへのリンクつき）を返す。同意が要るモデルは、フォーム `agree=1`・`license_id`・`license_version` で同意を渡す。**同意の記録が無ければ、画面を経ずに叩いても 409 で、ジョブは作らない**（サービスが強制する）。**成人向けのモデルは、年齢確認が無ければ同意を渡しても 409**（下の `adult`）。202 で一覧を返し、ダイアログを閉じる |
 | DELETE | `/model-manager/models/:id` | モデルの削除。画像の用途・Quality Policy に使われていれば 422、導入中は 409、未導入は 409。他のモデルと共有するファイルは残る |
+| GET | `/model-manager/face-models` | 区画「顔チェック用モデル」（`#mm-face-models`）を読み直す。YuNet・SFace の状態（`data-state`: `installed` / `unverified` / `missing`）・導入先・ファイルの取得元・ライセンスと商用の答え・注意（導入の前に出す）・同意のチェック・導入と削除のボタン。顔の類似度がオフの理由が `runtime_unavailable`（モデルは有るが ONNX Runtime が無い）のときは、その旨と直し方を出す（Issue #1026） |
+| POST | `/model-manager/face-models/install` | 2 つのモデルを `--face-model-dir`（既定 `<data-dir>/models`）に取得して検証する。**同期**（終わるまで応答しない。進捗は下の `progress` を 1 秒ごとに取る）。フォーム `accept=on` が無ければ 422（何も取得しない）。固定した SHA-256 と合わなければ 422。区画を返す（導入済みの表示。再起動は要らない） |
+| GET | `/model-manager/face-models/progress` | 導入の進み具合の 1 行（`ダウンロード中: 12.3 MiB / 37.1 MiB（33%）`）。導入していなければ空 |
+| DELETE | `/model-manager/face-models` | 2 つのファイル（と取りかけのファイル）だけを削除する（フォルダの中のほかのファイルは残す）。進行中の計測を待ってから消す。導入中は 409。導入していなくても成功する |
 | GET | `/model-manager/dialog` | 空（ダイアログを閉じる） |
 | PUT | `/model-manager/hf-token` | Hugging Face のトークンの保存。フォーム `token`。応答は「設定済み（末尾 4 文字）」の状態だけで、**値は返さない** |
 | DELETE | `/model-manager/hf-token` | トークンの削除（未設定でもエラーにならない） |
@@ -124,3 +128,4 @@
 | 1.9 | 2026-11-02 | 更新ボタン（`molecules/refresh.Bar`）を、エンジンのカード（`GET /model-manager/engine`）・モデルの一覧（`GET /model-manager/models`）・実行環境の区画（新しい `GET /model-manager/runtimes`）・試し生成の結果（`GET /model-manager/trials`）に足した。エンジンのカードが開く詳細モーダルのルート `GET /model-manager/engine/detail` を足した。見た目は [model-manager-screen.md](../components/model-manager-screen.md) の「更新ボタンとエンジンのカード（#962・#970）」 | Issue #962・#970 |
 | 1.10 | 2026-11-03 | 追加ノードの区画のルート（`/model-manager/nodes`・`:id`・`detail`・`consent`・`install`・`cancel`）と、モデルのカードの「追加ノードが必要」を足した | Issue #976 |
 | 1.11 | 2026-11-03 | `PUT /model-manager/runtimes/:id/model`（モデルの選択と Gemma Terms の同意）を足した。ランタイムのカードの詳細モーダルに「使うモデルの選択」を出す | Issue #1015。意味は [../architecture/model-manager/local-runtime.md §14.5・§14.6](../architecture/model-manager/local-runtime.md) |
+| 1.12 | 2026-11-04 | 区画「顔チェック用モデル」のルート（`GET /model-manager/face-models`・`POST …/install`・`GET …/progress`・`DELETE /model-manager/face-models`）を足した。意味は [../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md) §5.4 | Issue #1026 |

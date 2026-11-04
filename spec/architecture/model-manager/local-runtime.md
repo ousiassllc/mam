@@ -342,6 +342,21 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 | 定期実行 | `.github/workflows/upstream-check.yml`。`schedule`（毎週月曜 03:17 UTC）と `workflow_dispatch`。**PR・push では走らせず**、`ci.yml` とは独立（`ci.yml` はこのジョブに依存しない）。不一致があるとジョブが失敗し、GitHub の失敗通知で気づける。Issue を自動で立てる処理は入れない |
 | 現在の結果 | 2026-11-03 に実機のネットワークで実行: 270 件中、不一致 0、SHA-256 で一致 239、サイズだけ 21、ログインが要るため未確認 10（`HF_TOKEN` なし） |
 
+### 12.11 顔チェック用モデル（`data/assets/onnx-face-models.json`。Issue #1026）
+
+生成テストの顔の類似度・「顔だけ」の参照の切り出し・Judge の顔の一致が読む YuNet と SFace の ONNX。ポーズ集（§12.9）と同じく**ランタイム（プロセス）ではない、ファイルだけの資産セット**で、ID は `onnx-face-models`（`data/runtimes/` に定義を置かない）。ID が `face-models` ではなく `onnx-face-models` なのは、`catalog.ResourceSets` が ID 順に並び、先頭の資産セット（`gpt-sovits`）を添字 0 で読んで検証の変異テストを作る既存のテストがあるため（先頭を変えない）。導入・削除・画面は [model-manager.md](model-manager.md) §5.4。
+
+| 名前 | 取得元（固定） | サイズ | SHA-256 | ライセンス |
+|---|---|---|---|---|
+| YuNet（顔検出）`face_detection_yunet_2023mar.onnx` | `github.com/opencv/opencv_zoo/raw/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_detection_yunet/…` | 232,589 B | `8f2383e4…2fa4` | MIT（Copyright (c) 2020 Shiqi Yu）。`models/face_detection_yunet/LICENSE` |
+| SFace（顔の照合）`face_recognition_sface_2021dec.onnx` | 同 `…/models/face_recognition_sface/…` | 38,696,353 B | `0ba9fbfa…4e79` | Apache-2.0（README「このディレクトリのファイルはすべて Apache 2.0 License」）。`models/face_recognition_sface/LICENSE` |
+
+- **`dest` はファイル名だけ**で、置き場所（`Installer` の環境ディレクトリ）は `config.FaceModels()`（§5.4 の `store.RuntimeLayout.Env`）。両方 `required`。
+- **URL の形**: opencv_zoo の ONNX は Git LFS で、`raw.githubusercontent.com/…` は LFS のポインターファイル（131 B）を返す。**`github.com/<repo>/raw/<40 桁のコミット>/<path>`** は `media.githubusercontent.com` の実体に転送される（`fetch.AllowedURL` の許可ドメイン `github.com`・`githubusercontent.com` の中。2026-11-04 に両方を取得して確かめた: 前者 131 B の別ファイル、後者が上の SHA-256・サイズ）。このため `validate_assets.go` の `githubAssetURL` に、コミットに固定した `github.com/<repo>/raw/<40 桁>/…`（ブランチ名は不可）を足した。`upstream-check`（§12.10）も同じ URL を照合する。
+- **ライセンスの答えと注意**: どちらも `commercial: yes`（重みのライセンスについて）。SFace の `notice` は「学習データの権利は一次情報（opencv_zoo の README・LICENSE）に書かれていないため確かめられていない。Apache-2.0 は学習データの権利まで保証しない」。**一次情報が言う以上のことは書かない**（学習データの権利の確認は [../model-adapters.md](../model-adapters.md) §8 の未解決のまま）。区画は「商用OK」の答えと注意を**両方**出す（`commercial.Note` は `yes` では何も描かないので、区画が `notice` を自分で描く）。
+- **コミットの固定**: `scripts/fetch-face-models.sh` と同じコミット（`47534e27…`、2026-05-28）。2 つのファイルの SHA-256 は、実物をダウンロードして計算した値（スクリプトの値と同じ）。コミットを変えるときは、この JSON・スクリプト・`THIRD_PARTY_NOTICES.md` の説明を一緒に変える。
+- **テスト**: `catalog/assetstest/face_models_test.go`（ファイル名・ハッシュ・サイズ・URL がコミット固定の `github.com/…/raw/` 形・ライセンスの答えと注意・URL の形の検証〔コミットなら通り、ブランチ・`blob`・別ホストは拒否〕）。`assets_test.go` の資産セットの数は 6 → 7。
+
 ## 13. MuseTalk 1.5 のランタイム（Issue #921）
 
 親 Issue #912 の決定事項 1（B）: MuseTalk 1.5 の実行環境（Python 環境とプロセス）を、mam が GPT-SoVITS・ComfyUI と同じように、自動で導入・起動・停止・状態表示する。**ComfyUI のカスタムノードは使わない**（古いものが多い。§1）。MuseTalk の公式の推論スクリプト（`scripts/inference.py`）と同じ手順を、mam が同梱する薄い HTTP ラッパーから 1 度だけ読み込んで呼ぶ。Windows x64 ＋ NVIDIA だけが自動導入の対象（§13.5）。重み（約 6 GB）は §12.7 のカタログで、環境の導入と同じジョブの最後に取得・検証する（§12.3）。

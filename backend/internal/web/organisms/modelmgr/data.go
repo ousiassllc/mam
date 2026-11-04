@@ -75,6 +75,8 @@ type Data struct {
 	Runtimes templ.Component
 	// Nodes is the section of the custom nodes (nodecard.NodesSection); nil leaves the section out.
 	Nodes templ.Component
+	// FaceModels is the section "顔チェック用モデル" (facecard.Section; #1026); nil leaves the section out.
+	FaceModels templ.Component
 }
 
 // Message is the confirmation or the refusal of the last action of a section.

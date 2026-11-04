@@ -8,9 +8,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
+	"github.com/ousiassllc/mam/backend/internal/app/facewire"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/facesim"
+	"github.com/ousiassllc/mam/backend/internal/facesim/holder"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -30,7 +31,7 @@ import (
 // newGentest builds the generation test service and registers its job handler on jobs (before the queue starts and
 // before Recover, which fails the jobs of a kind without handler). A slot assignment of an import goes through the
 // World service, so its locks and kind checks apply.
-func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, faceOff *facesim.Off, logger *slog.Logger) *gentest.Service {
+func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces *holder.Holder, logger *slog.Logger) *gentest.Service {
 	swap, swapCheck := face.Swapper(facefusionsettings.Default(cfg.DataDir)) // FaceFusion, the external face swapper (#995)
 	g := gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
@@ -50,7 +51,8 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		Translator:      translator,
 		Poses:           newPoseLibrary(services.ModelManager.AdultContentEnabled, logger),
 		FaceCrop:        face.Crop(faces),
-		FaceScore:       face.Score(faces), FaceOff: face.OffRecord(faceOff), // FaceOff: why there is no score (#1026)
+		FaceScore:       face.Score(faces), FaceOff: face.OffNow(faces.Off), // FaceOff: why there is no score right now; the models can be installed while mam runs (#1026)
+		FaceModels: facewire.Models(cfg, faces, logger),
 		FaceFusion: swap, FaceFusionCheck: swapCheck,
 		Logger: logger,
 	})

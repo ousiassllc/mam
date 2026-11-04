@@ -131,7 +131,10 @@ type Compose struct {
 	// Prompts has at least one entry.
 	Prompts []PromptText
 	// Translate is the switch "英語に訳して送る" (on for a fresh form); Poses says the pose library is there: "ポーズを選ぶ" is offered (an image batch only).
-	Translate, Poses                             bool
+	Translate, Poses bool
+	// FaceOff says the face similarity is off now ("models_missing": the face models are not installed; "runtime_unavailable": the ONNX Runtime library is
+	// missing; "" while it works, and for a video batch): the input images say so, with the link to the model manager's "顔チェック用モデル" (#1026).
+	FaceOff                                      string
 	Count, Aspect, Resolution, Duration          string
 	Resolutions, Durations                       []string
 	MaxPrompt, MaxCount, MaxItems, MaxReferences int
