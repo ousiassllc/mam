@@ -1,0 +1,37 @@
+{
+ "id": "ref2video-wan21-vace-1-3b", "label": "Wan 2.1 VACE 1.3B: 参照画像から動画", "media": "video",
+ "description": "Wan 2.1 VACE 1.3B（fp16 の wan2.1_vace_1.3B_fp16.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、VAE wan_2.1_vae.safetensors）で参照画像 1 枚（人物・物・背景）を登場させた動画を作る、標準ノードだけのワークフロー。Comfy 公式のテンプレート（video_wan_vace_14B_t2v・video_wan_vace_14B_ref2v。どちらも 14B と 1.3B の枝を持ち、1.3B の枝は 480p 専用）に従う: UNETLoader → ModelSamplingSD3（shift 8）→ WanVaceToVideo → KSampler → TrimVideoLatent → VAEDecode。公式のテンプレートは CausVid LoRA で 2〜4 ステップ・cfg 1 に加速しているが、mam は LoRA を使わず、同じテンプレートの注記にある既定の値（20 ステップ・cfg 6）と、VACE の FLF2V テンプレートの LoRA なしの枝の値（uni_pc/simple）で動かす。参照画像は WanVaceToVideo の reference_image に 1 枚だけ渡す（このノードは 1 枚だけ。公式の ref2v テンプレートの有効な部分と同じで、先頭フレームの制御〔control_video・control_masks〕は使わない）。公式は、参照画像を単色の背景の物か背景の絵にするよう勧める（VACE は絵柄の参照では学習していない）。参照画像は先頭フレームではなく、動画の中の人物や物の見た目の手がかりになる。16fps、フレーム数は 4n+1、480p。GPU では未実行（構造のテストのみ）。",
+ "model": {"media": "video", "video": {"durations": [2, 3, 4, 5], "resolutions": ["480p"]}, "workflow": {
+  "prompt_weight": "weak",
+  "graph": {
+   "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 6, "sampler_name": "uni_pc", "scheduler": "simple", "denoise": 1, "model": ["48", 0], "positive": ["49", 0], "negative": ["49", 1], "latent_image": ["49", 2]}},
+   "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+   "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+   "8": {"class_type": "VAEDecode", "inputs": {"samples": ["58", 0], "vae": ["105", 0]}},
+   "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+   "48": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["106", 0]}},
+   "49": {"class_type": "WanVaceToVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1, "strength": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["105", 0], "reference_image": ["73", 0]}},
+   "58": {"class_type": "TrimVideoLatent", "inputs": {"samples": ["3", 0], "trim_amount": ["49", 3]}},
+   "68": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+   "73": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+   "105": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+   "106": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.1_vace_1.3B_fp16.safetensors", "weight_dtype": "default"}},
+   "114": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["68", 0]}}
+  },
+  "assignments": [
+   {"param": "prompt", "node": "6", "input": "text"},
+   {"param": "negative_prompt", "node": "7", "input": "text"},
+   {"param": "seed", "node": "3", "input": "seed"},
+   {"param": "width", "node": "49", "input": "width"},
+   {"param": "height", "node": "49", "input": "height"},
+   {"param": "frames", "node": "49", "input": "length"},
+   {"param": "fps", "node": "68", "input": "fps"},
+   {"param": "steps", "node": "3", "input": "steps"},
+   {"param": "cfg", "node": "3", "input": "cfg"},
+   {"param": "sampler", "node": "3", "input": "sampler_name"},
+   {"param": "scheduler", "node": "3", "input": "scheduler"},
+   {"param": "reference_image", "node": "73", "input": "image"}
+  ],
+  "output_node": "114", "fps": 16, "frames_step": 4, "size_multiple": 16
+ }}
+}

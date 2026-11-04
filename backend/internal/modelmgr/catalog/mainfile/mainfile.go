@@ -11,8 +11,8 @@ import (
 )
 
 // loaders are the core loader nodes (and the input) that name the main file of a model: the checkpoint of an all-in-one
-// checkpoint model, the diffusion model of a split one.
-var loaders = map[string]string{"CheckpointLoaderSimple": "ckpt_name", "UNETLoader": "unet_name"}
+// checkpoint model, the diffusion model of a split one (UNETLoader; UnetLoaderGGUF of the custom node ComfyUI-GGUF for a GGUF).
+var loaders = map[string]string{"CheckpointLoaderSimple": "ckpt_name", "UNETLoader": "unet_name", "UnetLoaderGGUF": "unet_name"}
 
 // Model is the model of the template with the file of its main loader replaced by file. The template is not changed. The template
 // must have exactly one main loader (loaders), or it does not say which node the file is for.
@@ -36,7 +36,7 @@ func Model(tpl localcfg.Template, file string) (localcfg.Model, error) {
 		loader = id
 	}
 	if loader == "" {
-		return localcfg.Model{}, fmt.Errorf("template %s has no main loader (CheckpointLoaderSimple, UNETLoader) for model_file", tpl.ID)
+		return localcfg.Model{}, fmt.Errorf("template %s has no main loader (CheckpointLoaderSimple, UNETLoader, UnetLoaderGGUF) for model_file", tpl.ID)
 	}
 	value, err := json.Marshal(file)
 	if err != nil {

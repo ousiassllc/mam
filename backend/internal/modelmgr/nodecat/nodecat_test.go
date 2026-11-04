@@ -129,7 +129,7 @@ func TestTemplatesAndModelsMustNameTheNodesTheyUse(t *testing.T) {
 	assert.Contains(t, errs, "the graph uses classes of the node ipadapter-plus, which requires_nodes does not name")
 	assert.Contains(t, errs, "no workflow of the model requires that node")
 
-	blockedTemplate := func(id string) (localcfg.Template, bool) {
+	wrongNames := func(id string) (localcfg.Template, bool) {
 		t, ok := localcfg.TemplateByID(id)
 		if ok && id == "txt2img-sdxl-ipadapter" {
 			w := *t.Model.Workflow
@@ -138,7 +138,8 @@ func TestTemplatesAndModelsMustNameTheNodesTheyUse(t *testing.T) {
 		}
 		return t, ok
 	}
-	errs = joined(nodecat.Validate(c, models, blockedTemplate))
-	assert.Contains(t, errs, "which mam cannot install", "a template cannot depend on a node that is blocked")
+	errs = joined(nodecat.Validate(c, models, wrongNames))
+	assert.Contains(t, errs, "requires the node controlnet-aux but the graph uses none of its classes", "a node that is named has to be used (a blocked node may be named: #1016)")
+	assert.NotContains(t, errs, "which mam cannot install", "naming a node mam cannot install is allowed: the model waits for it")
 	assert.Contains(t, errs, `"nope", which is not in the allowlist`)
 }
