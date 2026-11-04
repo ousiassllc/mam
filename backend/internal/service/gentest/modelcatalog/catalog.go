@@ -36,15 +36,6 @@ const (
 	BasisUnknown = gentestrepo.CostUnknown // no price (a subscription, a cloud model without a price in models.json)
 )
 
-// Price is the unit price of a model.
-type Price struct {
-	Basis string `json:"basis" jsonschema:"priced（単価あり）/ free（ローカル: 0）/ unknown（単価なし。見積りの合計に入れない）"`
-	// PerImageUSD is the price of one image (an image model with Basis priced).
-	PerImageUSD *float64 `json:"per_image_usd,omitempty"`
-	// PerSecondUSD is the price of one second of video by resolution (a video model with Basis priced).
-	PerSecondUSD map[string]float64 `json:"per_second_usd,omitempty"`
-}
-
 // VideoCaps are the capabilities of a video model.
 type VideoCaps struct {
 	Durations          []float64 `json:"durations"`
@@ -84,6 +75,9 @@ type Info struct {
 	// SpeedModes are the ways the model can sample, the default first (a ComfyUI workflow with localcfg.Workflow.SpeedModes: the distilled
 	// LoRA of Wan 2.2 14B or Qwen-Image-Edit 2511); empty for a model with one way. A request's speed_mode names one of them.
 	SpeedModes []SpeedMode `json:"speed_modes,omitempty" jsonschema:"速さのモード（蒸留 LoRA など）。先頭が既定（default: true）。リクエストの speed_mode に id を渡せる。持たないモデルは警告 speed_mode_unsupported で既定のまま作る。モードがあるモデルのステップ数・cfg はモードが決める（sampling の locked が speed_mode）"`
+	// BlockedSpeedModes are the modes of the workflow that the model cannot run now, because the optional file they load is not installed (Catalog.MissingOptional), each with
+	// the reason: they are not in SpeedModes, and a request that names one is told why (#1025).
+	BlockedSpeedModes []BlockedSpeedMode `json:"blocked_speed_modes,omitempty" jsonschema:"今は使えない速さのモード（そのモードが使う任意ファイル、例: Lightning LoRA が導入されていない）。id・label・reason（日本語の理由）。speed_modes には載らない。リクエストで指定すると警告 speed_mode_unsupported で既定のまま作る"`
 	// SupportsSeed: the seed is sent to the model. Without it the n results of a combination are n calls with the same input.
 	SupportsSeed bool `json:"supports_seed"`
 	// NegativeField: the model has a negative prompt field. Without it the negative prompt is written into the prompt
@@ -224,14 +218,19 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 		SupportsSeed: direct.SupportsSeed(cfg, m), NegativeField: direct.NegativeField(cfg, m), Price: priceOf(cfg, m, media),
 		License: modellicense.Of(string(m)),
 	}
-	a := c.availability(cfg, m, mi.Source)
+	catalogInfo, known := c.catalogInfo(string(m)) // once: it stats the model's files
+	var asked *modelfilter.CatalogInfo
+	if known {
+		asked = &catalogInfo
+	}
+	a := c.availability(cfg, m, mi.Source, asked)
 	mi.Available, mi.Unavailable, mi.UnavailableMessage = a.Available, string(a.Reason), a.Message
 	mi.SettingsRoute = a.Route
 	mi.Provider, mi.Origin = providerOf(m, mi.Source), originOf(mi.Source)
-	if info, ok := c.catalogInfo(string(m)); ok {
-		mi.Catalog = &CatalogTraits{Adult: info.Adult, Traits: info.Traits, VRAMMinGB: info.VRAMMinGB, MissingOptional: info.MissingOptional, PartialNote: info.PartialNote}
-		if info.Name != "" {
-			mi.Label = info.Name // the catalog's name, not the identifier (#1023)
+	if known {
+		mi.Catalog = &CatalogTraits{Adult: catalogInfo.Adult, Traits: catalogInfo.Traits, VRAMMinGB: catalogInfo.VRAMMinGB, MissingOptional: catalogInfo.MissingOptional, PartialNote: catalogInfo.PartialNote}
+		if catalogInfo.Name != "" {
+			mi.Label = catalogInfo.Name // the catalog's name, not the identifier (#1023)
 		}
 	}
 	if _, _, name, ok := localcfg.ParseID(string(m)); ok && mi.Label == mi.ID {
@@ -240,7 +239,8 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	mi.PromptWeight = promptweight.Unknown
 	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
 		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
-		mi.Exposed, mi.SpeedModes = c.exposedCaps(*lm.Workflow), SpeedModesOf(*lm.Workflow)
+		mi.Exposed = c.exposedCaps(*lm.Workflow)
+		mi.SpeedModes, mi.BlockedSpeedModes = SpeedModesOf(*lm.Workflow, catalogInfo.MissingOptional)
 		mi.RequiresInputs = lm.Workflow.RequiredImages()
 		if d, ok := denoiseDefault(lm.Workflow); ok {
 			mi.SupportsInpaint, mi.DenoiseDefault = true, &d
@@ -278,39 +278,6 @@ func sourceOf(cfg modeladapter.Config, m domain.ModelName) string {
 		return SourceLocal
 	}
 	return SourceBuiltin
-}
-
-// priceOf is the unit price: a local model is free unless the user priced it, the ChatGPT subscription's model has no price
-// (the plan pays), and a cloud model without a price in models.json is unknown.
-func priceOf(cfg modeladapter.Config, m domain.ModelName, media string) Price {
-	if m == chatgptid.Model {
-		return Price{Basis: BasisUnknown}
-	}
-	lm, _, local := cfg.LocalModel(m)
-	if media == gentestrepo.MediaImage {
-		c := cfg.ImageCost(m)
-		switch {
-		case c > 0:
-			return Price{Basis: BasisPriced, PerImageUSD: &c}
-		case local:
-			return Price{Basis: BasisFree}
-		}
-		return Price{Basis: BasisUnknown}
-	}
-	caps, _ := cfg.VideoCaps(m)
-	prices := map[string]float64{}
-	for _, res := range caps.Resolutions {
-		if p := cfg.VideoPerSecond(modeladapter.VideoTarget{Model: m, Resolution: res}); p > 0 {
-			prices[res] = p
-		}
-	}
-	switch {
-	case len(prices) > 0:
-		return Price{Basis: BasisPriced, PerSecondUSD: prices}
-	case local && lm.CostPerSecond == 0:
-		return Price{Basis: BasisFree}
-	}
-	return Price{Basis: BasisUnknown}
 }
 
 func unavailableMessage(reason, source string) string {

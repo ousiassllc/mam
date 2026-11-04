@@ -113,6 +113,9 @@ func speedModeOf(m modelcatalog.Info, id string) (string, error) {
 	if err != nil || id == "" {
 		return "", err
 	}
+	if reason, blocked := m.SpeedModeBlock(id); blocked {
+		return "", gterr.Invalid("%s", reason)
+	}
 	if !m.HasSpeedMode(id) {
 		return "", gterr.Invalid("モデル「%s」には速さのモード %q がありません", m.Label, id)
 	}

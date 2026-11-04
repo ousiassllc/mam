@@ -38,6 +38,48 @@ func (w Workflow) SpeedMode(id string) (SpeedMode, bool) {
 	return w.SpeedModes[i], true
 }
 
+// SpeedModeReads lists which of the file names the graph of the speed mode id (the empty id: the first mode, or the plain graph of a workflow without modes) reads: the
+// string inputs of the nodes the output node depends on, once the mode's overrides are in. A node no output reaches (the LoRA of another mode) does not count, which is
+// what the adapter does too (comfyui.applySpeedMode drops it): so the answer is exactly the files the run asks the server to load. An unknown mode or a graph that
+// cannot be read reads none.
+func (w Workflow) SpeedModeReads(id string, names []string) []string {
+	mode, ok := w.SpeedMode(id)
+	if !ok && (id != "" || len(w.SpeedModes) > 0) || len(names) == 0 {
+		return nil
+	}
+	g, err := ParseGraph(w.Graph)
+	if err != nil {
+		return nil
+	}
+	for _, o := range mode.Overrides {
+		if n, exists := g[o.Node]; exists {
+			n.Inputs[o.Input] = o.Value
+		}
+	}
+	var out []string
+	seen := map[string]bool{}
+	for todo := []string{w.OutputNode}; len(todo) > 0; {
+		node := todo[len(todo)-1]
+		todo = todo[:len(todo)-1]
+		if seen[node] {
+			continue
+		}
+		seen[node] = true
+		for _, raw := range g[node].Inputs {
+			if to, linked := linkTarget(raw); linked {
+				todo = append(todo, to)
+				continue
+			}
+			var s string
+			if json.Unmarshal(raw, &s) == nil && slices.Contains(names, s) && !slices.Contains(out, s) {
+				out = append(out, s)
+			}
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
 // validateSpeedModes checks the modes against the graph: each with a distinct ID and a label, the first one without overrides (it is
 // the graph itself), and every override naming an input of a node of the workflow with a JSON value or a link to a node of the workflow.
 func validateSpeedModes(where string, w Workflow, g Graph) []error {

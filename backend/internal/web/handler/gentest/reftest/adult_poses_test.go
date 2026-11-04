@@ -103,6 +103,8 @@ func TestTheOpenAgeGateOffersInstallsAndListsTheSuggestiveSeries(t *testing.T) {
 
 	img := s.get(paths.GenerationTestPoses("image", "sexy_S001_front"))
 	require.Equal(t, http.StatusOK, img.Code)
+	assert.Equal(t, "no-store", img.Header().Get("Cache-Control"), "a suggestive picture is not kept by the browser: the gate may be closed within the hour")
+	assert.Equal(t, "private, max-age=3600", s.get(paths.GenerationTestPoses("image", "std_P001_front")).Header().Get("Cache-Control"), "an ordinary one is")
 	assert.Equal(t, http.StatusOK, httpGetRefRow(s, "pose_library::sexy_S001_front"))
 
 	lib.Open.Store(false)

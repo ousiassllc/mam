@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"slices"
@@ -159,22 +160,38 @@ func (l *Library) Install(ctx context.Context, accepted bool, progress func(done
 	if !accepted {
 		return ErrNotAccepted
 	}
-	return l.ensure(ctx, l.install, progress)
+	return l.ensure(ctx, l.install, false, progress)
 }
 
-// ensure installs what the installer's set still lacks, one install at a time, reporting the progress.
-func (l *Library) ensure(ctx context.Context, in *rtm.Installer, progress func(done, total int64)) error {
+// ensure installs what the installer's set still lacks, one install at a time, reporting the progress. An install behind the age gate (gated: the
+// suggestive series) looks at the gate again once it holds the lock (the wait lasts as long as another install's whole download, and the gate may
+// have been closed meanwhile) and at every progress report: a gate that closes during the download stops it (ErrAdultGateClosed; the part file is
+// dropped, so that nothing of the series is left that was not complete when the gate closed).
+func (l *Library) ensure(ctx context.Context, in *rtm.Installer, gated bool, progress func(done, total int64)) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if gated && !l.adultOpen() {
+		return ErrAdultGateClosed
+	}
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 	l.index, l.general = nil, nil
 	l.prog.start()
 	defer l.prog.stop()
 	err := in.EnsureAssets(ctx, func(_ rtm.Phase, _ string, done, total int64) {
+		if gated && !l.adultOpen() {
+			cancel(ErrAdultGateClosed)
+			return
+		}
 		l.prog.set(done, total)
 		if progress != nil {
 			progress(done, total)
 		}
 	})
+	if err != nil && errors.Is(context.Cause(ctx), ErrAdultGateClosed) {
+		_ = os.RemoveAll(l.adult.layout.DownloadsDir())
+		return ErrAdultGateClosed
+	}
 	if err != nil {
 		return userError(ctx, err)
 	}

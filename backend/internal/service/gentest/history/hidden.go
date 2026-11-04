@@ -24,6 +24,12 @@ func (s *Store) InputHidden(ctx context.Context, in gentestrepo.Input) bool {
 	return s.originHidden(ctx, decode[record.InputOrigin](in.Origin), 0)
 }
 
+// RefHidden is InputHidden for an input image a request names (RefInput.Source and ID) rather than one that is stored: a picture of a suggestive
+// pose series, or the stored copy of one (batch_input). The request a batch kept (BatchStatus.Estimate) is cleaned with it.
+func (s *Store) RefHidden(ctx context.Context, source, id string) bool {
+	return s.originHidden(ctx, record.InputOrigin{Kind: source, ID: id}, 0)
+}
+
 func (s *Store) originHidden(ctx context.Context, o record.InputOrigin, depth int) bool {
 	switch o.Kind {
 	case OriginPoseLibrary:

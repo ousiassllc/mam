@@ -150,7 +150,7 @@ PuLID-Flux-Chroma を mam から導入できる経路は、**作らない**。�
 
 - テンプレートの `model.workflow.requires_nodes`（`localcfg.Workflow.RequiresNodes`）に、必要な許可リストの id を書く。テンプレートの全クラスは、コアのノードか、その `requires_nodes` のノードの `node_classes` でなければならない（`localcfg_test.go`）。
 - `nodegate.Check` が `InstallModel` の入口で、ノードが読み込まれていなければ `InvalidError`（「追加ノード「…」が導入されていないため使えません。モデルマネージャーの「追加ノード」の節…」）で拒否し、ジョブを作らない。同じ理由で、生成テストの一覧（`gentest/modelcatalog`）はそのモデルを `Available=false`・`Unavailable=missing_node` にして、メッセージを付ける。**ノードが `install_blocked`（mam が導入できない。ComfyUI-GGUF など）のときは、「導入してください」という案内ではなく、導入できない理由（`install_blocked` の文）を同じ位置に出す**（`nodegate.Reason`。画面の各モデルのカード・`install_model` の拒否〔MCP〕・生成テストの一覧がすべて同じ文を使う）。`install_blocked` のノードを `requires_nodes` に書いたテンプレートのモデル（GGUF の 2 件）は、ノードが導入できるようになるまで、導入も選択もできない（`TestAModelThatNeedsTheBlockedGGUFNodeIsNeitherInstalledNorChosen`）。**同梱エンジン（`bundled-comfyui`）のモデルだけが対象**で、外部の ComfyUI は自分のノードを持つので止めない。
-- 画面のモデルのカードには「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。
+- 画面のモデルのカードには「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。モデル選択のモーダル・MCP の `list_model_catalog`／`get_catalog_model`（`available`・`message`）・生成テストの一覧にも同じ理由（`nodegate.Reason`。GGUF なら「導入できないため使えません…」）を出し、既定の「モデルマネージャーで導入します」（行き止まりの案内）にはしない（Issue #1016）。
 
 ### 6.1 コアのノードだけの ControlNet と IP-Adapter
 

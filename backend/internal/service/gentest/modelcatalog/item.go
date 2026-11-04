@@ -117,7 +117,11 @@ func (c Catalog) Availability(id string) (modelfilter.Availability, bool) {
 	for _, list := range [][]domain.ModelName{domain.ImageModels(), domain.VideoModels()} {
 		for _, m := range list {
 			if string(m) == id && !c.hidden(m) {
-				return c.availability(cfg, m, sourceOf(cfg, m)), true
+				var info *modelfilter.CatalogInfo
+				if i, ok := c.catalogInfo(id); ok {
+					info = &i
+				}
+				return c.availability(cfg, m, sourceOf(cfg, m), info), true
 			}
 		}
 	}
@@ -126,12 +130,12 @@ func (c Catalog) Availability(id string) (modelfilter.Availability, bool) {
 
 // availability is the one judgement of "can this model be chosen now": the adapter's reason (no backend or API key, the vendor's breaker, the age gate), else the
 // model manager's own state of a catalog model (not installed, being installed, a required file missing: the same answer as the catalog's, #1025), else a custom
-// node of the workflow that is missing.
-func (c Catalog) availability(cfg modeladapter.Config, m domain.ModelName, source string) modelfilter.Availability {
+// node of the workflow that is missing. info is what the catalog said of the model (nil: it knows none); the caller asks it once, for it stats the model's files.
+func (c Catalog) availability(cfg modeladapter.Config, m domain.ModelName, source string, info *modelfilter.CatalogInfo) modelfilter.Availability {
 	reason, msg := c.Adapter.Unavailable(m), ""
 	if reason != "" {
 		msg = unavailableMessage(reason, source)
-	} else if info, ok := c.catalogInfo(string(m)); ok && info.NotInstalled != "" {
+	} else if info != nil && info.NotInstalled != "" {
 		reason, msg = string(modelfilter.ReasonNotInstalled), info.NotInstalled
 	} else if msg = c.missingNodes(cfg, m); msg != "" {
 		reason = ExcludedMissingNode

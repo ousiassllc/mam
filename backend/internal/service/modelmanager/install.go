@@ -141,12 +141,13 @@ func (s *Service) userModelAt(rel string) (store.UserModel, bool) {
 	return store.UserModel{}, false
 }
 
-// checkModelSpace is the refusal of an install that does not fit: what is not downloaded yet against the free space.
+// checkModelSpace is the refusal of an install that does not fit: what is not downloaded yet against the free space. Only the required files count: an
+// optional file that does not fit is left out by the install, with a warning (runModelInstall).
 func (s *Service) checkModelSpace(m catalog.Model) error {
 	var need int64
 	for _, f := range m.Files {
 		dest := s.Layout.ModelPath(f.Path())
-		if !diskfile.IsThere(dest, f.Size) {
+		if !f.Optional && !diskfile.IsThere(dest, f.Size) {
 			need += f.Size - diskfile.PartSize(dest, f.Size)
 		}
 	}
@@ -203,6 +204,7 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 	}
 	opts.Token = s.huggingFaceToken
 	installed := make([]store.InstalledFile, 0, len(m.Files))
+	var skipped []string // the optional files that could not be fetched
 	for i, f := range m.Files {
 		dest := s.Layout.ModelPath(f.Path())
 		label := fmt.Sprintf("%s（%d/%d）", f.Name, i+1, len(m.Files))
@@ -214,6 +216,12 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 		}
 		set(track.Update{Percent: int(float64(base) / float64(total) * 99), Phase: "download", Message: label, DoneBytes: base, TotalBytes: total})
 		if err := s.fetchFile(ctx, dest, f, opts); err != nil {
+			if f.Optional && ctx.Err() == nil { // the model works without it: leave it out of the record, keep going, and say so (#1025)
+				s.Logger.Warn("optional model file not fetched", "model", id, "file", f.Path(), "err", err)
+				skipped = append(skipped, f.Name)
+				base += f.Size
+				continue
+			}
 			// only a model behind the login is guided to the token and the access; any other keeps the plain 401/403 message (userFacing)
 			if msg, ok := hfguide.DownloadDenied(ctx, s.hf, f.URL, err); ok && m.RequiresHFToken {
 				return &userError{msg, fmt.Errorf("%w: %w", errHFAccess, err)}
@@ -239,7 +247,11 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 	}); err != nil {
 		return err
 	}
-	set(track.Update{Percent: 100, Phase: "done", Message: "導入しました", DoneBytes: total, TotalBytes: total})
+	done := "導入しました"
+	if len(skipped) > 0 { // a warning, not a failure: the model is installed without these (ModelView.PartialNote says which, and how to get them)
+		done += "（任意のファイルを取得できなかったため、それを使う機能は使えません: " + strings.Join(skipped, "、") + "）"
+	}
+	set(track.Update{Percent: 100, Phase: "done", Message: done, DoneBytes: total, TotalBytes: total})
 	return nil
 }
 
