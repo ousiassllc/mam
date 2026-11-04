@@ -14,15 +14,15 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llmlocal"
 )
 
 const (
-	saved       = "保存しました。次の LLM の呼び出しからすぐ使われます（再起動は要りません）"
-	writeFailed = "設定ファイルを書き込めませんでした。保存先の権限と空き容量を確認してください"
-	pinned      = "起動オプションで設定ファイルが固定されているため、ベース URL とスイッチは変えられません"
-	keyStore    = "API キーを OS のセキュアストレージに保存できませんでした。キーストアを確認してください"
+	saved    = "保存しました。次の LLM の呼び出しからすぐ使われます（再起動は要りません）"
+	pinned   = "起動オプションで設定ファイルが固定されているため、ベース URL とスイッチは変えられません"
+	keyStore = "API キーを OS のセキュアストレージに保存できませんでした。キーストアを確認してください"
 )
 
 // CardData is the saved settings as the card shows them.
@@ -78,7 +78,7 @@ func Save(svc *llmlocal.Service) gin.HandlerFunc {
 			status, d.Error, d.Blame = http.StatusServiceUnavailable, keyStore, "api_key"
 		default:
 			_ = c.Error(err)
-			status, d.Error = http.StatusInternalServerError, writeFailed
+			status, d.Error = failure.Save(err)
 		}
 		settingshttp.Render(c, status, view.Card(d))
 	}

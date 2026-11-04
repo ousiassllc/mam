@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/settings"
@@ -237,6 +239,11 @@ func TestUpdate_StatusAndCheckFollowTheSettingsScreen(t *testing.T) {
 	env.CallOK("check_for_update", map[string]any{}, &st)
 	assert.Equal(t, "error", st.State)
 	assert.Equal(t, "network", st.ErrorKind)
+	require.NotNil(t, st.Failure, "the cause and the remedy of the screen (#1010)")
+	assert.Equal(t, apperr.CodeUpdateNetwork, st.Failure.Code)
+	assert.Contains(t, st.Failure.Cause, "ネットワークに接続できませんでした")
+	assert.NotEmpty(t, st.Failure.Remedy)
+	assert.Empty(t, st.Failure.Detail)
 	assert.NotContains(t, mcptest.Text(env.Call("check_for_update", map[string]any{})), "boom", "the raw error text stays in the log")
 }
 
@@ -267,4 +274,34 @@ func TestGetGlobalSettings_NeverCarriesKeys(t *testing.T) {
 	text := mcptest.Text(env.Call("get_global_settings", map[string]any{}))
 	assert.NotContains(t, text, "sk-secret-value")
 	assert.NotContains(t, text, "1234")
+}
+
+// A save that cannot write is the common error (#1010), the same cause and remedy as the screen of the settings gives: a folder that cannot be
+// written says so (not the generic "unexpected error"), and the message of the system is the detail, not the sentence.
+func TestSetLLMAssignment_AFolderThatCannotBeWrittenIsToldWithItsCauseAndRemedy(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes to a read-only folder")
+	}
+	s, f := newFiles(t, false)
+	env := newEnv(t, s)
+	var ov settings.Overview
+	env.CallOK("get_global_settings", map[string]any{}, &ov)
+	dir := filepath.Dir(f.llm)
+	require.NoError(t, os.MkdirAll(dir, 0o750))
+	require.NoError(t, os.Chmod(dir, 0o500))       // #nosec G302 -- the test makes its own folder read-only
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) }) // #nosec G302 -- so that the temporary directory can be removed
+
+	out := env.CallError("set_llm_assignment", map[string]any{"routes": []map[string]any{{
+		"agent":    ov.LLM.Agents[0].Agent,
+		"primary":  map[string]any{"provider": "openai", "model": "gpt-x"},
+		"fallback": map[string]any{"provider": "anthropic", "model": "claude-x"},
+	}}})
+
+	first, second, _ := strings.Cut(out, "\n")
+	assert.Contains(t, first, "internal: ", "the class of the code save_failed")
+	assert.Contains(t, first, "設定やデータを保存できませんでした（保存先のフォルダに書き込めません）")
+	assert.Contains(t, first, "フォルダの権限を確かめて")
+	assert.NotContains(t, first, "permission denied", "the English message of the system is not in the sentence")
+	assert.Contains(t, second, `"code":"save_failed"`)
+	assert.Contains(t, second, "permission denied", "it is the detail of the structure")
 }

@@ -41,7 +41,7 @@ func TestMapError_GivesTheScreensStatusAndAMessageThatKeepsNoInternals(t *testin
 		"brand":           {service.ErrBrandViolation, "forbidden", 403, "Brand"},
 		"rate limit":      {rateLimited, "rate_limited", 429, "上限"},
 		"ai failure":      {&service.AIError{Reason: "回答を読み取れませんでした"}, "upstream", 502, "読み取れません"},
-		"unknown":         {errors.New(`open /home/me/.mam/assets/x.mp4: permission denied`), "internal", 500, "ログを確認"},
+		"unknown":         {errors.New(`open /home/me/.mam/assets/x.mp4: permission denied`), "internal", 500, "原因がわかりませんでした"},
 	} {
 		te := mcpkit.MapError(tc.err)
 		assert.Equal(t, tc.code, te.Code, name)
@@ -52,6 +52,10 @@ func TestMapError_GivesTheScreensStatusAndAMessageThatKeepsNoInternals(t *testin
 	}
 	te := mcpkit.MapError(errors.New(`open /home/me/.mam/assets/x.mp4: permission denied`))
 	assert.NotContains(t, te.Message, "/home/me", "an unknown error shows none of its text")
+	require.NotNil(t, te.Failure, "an unknown error is told as the common error too")
+	assert.Equal(t, apperr.CodeUnknown, te.Failure.Code)
+	assert.Empty(t, te.Failure.Detail, "its text is not told: it can carry a path (the log has it)")
+	assert.Contains(t, te.Error(), `"code":"unknown"`, "the second line has the structure")
 	assert.True(t, mcpkit.Internal(errors.New("x")))
 	assert.False(t, mcpkit.Internal(service.ErrNotFound))
 }

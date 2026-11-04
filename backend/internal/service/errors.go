@@ -3,12 +3,14 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/failreport"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -94,6 +96,12 @@ func rateLimited(err error) bool {
 	return modeladapter.RateLimited(err) ||
 		(errors.As(err, &api) && api.Status == http.StatusTooManyRequests) ||
 		(errors.As(err, &ap) && ap.Status == http.StatusTooManyRequests)
+}
+
+// mediaError is a failed run of ffmpeg on the work that what names (the catalog key "what.export", ...), told as the common error (#1010, failreport.Media).
+func mediaError(logger *slog.Logger, what string, err error) error {
+	e, reason := failreport.Media(logger, what, err)
+	return &AIError{Reason: reason, Err: e}
 }
 
 func invalid(field, format string, args ...any) error {

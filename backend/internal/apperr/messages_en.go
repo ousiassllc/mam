@@ -107,8 +107,38 @@ var messagesEn = map[string]string{
 	"image_unavailable.cause":  "No Codex model that can host the image generation was found for the ChatGPT subscription (OpenAI may have changed the models a ChatGPT sign-in can use).",
 	"image_unavailable.remedy": "Update mam to the latest version and run it again. If it does not help, turn the ChatGPT image generation OFF in Settings and switch to an image model that works with an API key.",
 
-	"save_failed.cause":  "The setting or the data could not be saved.",
+	"save_failed.cause":  "The setting or the data could not be saved{why}.",
 	"save_failed.remedy": "Check the free disk space and the permissions of the folder and save again. If it continues, check the log of mam.",
+
+	"ffmpeg_missing.cause":  "ffmpeg and ffprobe were not found.",
+	"ffmpeg_missing.remedy": "In Settings > ffmpeg, download ffmpeg and ffprobe, or give the path of the ones you installed yourself.",
+
+	"media_failed.cause":  "{what} failed. The video / audio processing (ffmpeg) ended with an error.",
+	"media_failed.remedy": "Check that the source video is not broken, and the free space and the write permission of the destination, then run it again. If it continues, report it with the detail (the end of the output of ffmpeg).",
+
+	"facefusion_unavailable.cause":  "FaceFusion cannot be used. It was not found, or the path that is set cannot be used.",
+	"facefusion_unavailable.remedy": "mam does not ship FaceFusion; install it yourself. If it is installed, check the paths of Python and the FaceFusion folder in Settings > FaceFusion. The detail has why it was not found and where mam looked.",
+
+	"facefusion_failed.cause":  "FaceFusion could not make the picture. {why}",
+	"facefusion_failed.remedy": "Check that a face is clearly visible in the face picture and in the target picture. FaceFusion refuses adult images. A shortage of GPU memory or a faulty install of FaceFusion can also be the cause. Check the detail (the end of the output of FaceFusion) and the state shown in Settings > FaceFusion.",
+
+	"update_network.cause":  "The update check could not connect to the network.",
+	"update_network.remedy": "Check the network connection. mam checks again by itself after a while.",
+
+	"update_rate_limit.cause":  "The update could not be checked because the request limit of GitHub was reached.",
+	"update_rate_limit.remedy": "Wait a while. mam checks again by itself.",
+
+	"update_access.cause":  "The update release could not be fetched from GitHub (access was refused, or the file is gone).",
+	"update_access.remedy": "Check again after a while. If it continues, check that a proxy or a firewall does not block GitHub.",
+
+	"update_verification.cause":  "The downloaded update file could not be verified (it may be damaged or tampered with, so mam does not update).",
+	"update_verification.remedy": "Check again after a while. If it continues, get a new version from the distributor and install it again.",
+
+	"update_release.cause":  "The content of the published release is not valid.",
+	"update_release.remedy": "Check again after a while. If it continues, tell the distributor.",
+
+	"update_failed.cause":  "The update check failed for a reason that is not known.",
+	"update_failed.remedy": "Check again. If it continues, read the log file.",
 
 	"invalid_input.cause":    "The input is not valid.",
 	"invalid_input.remedy":   "Correct the input and run it again.",
@@ -154,4 +184,40 @@ var messagesEn = map[string]string{
 
 	"http.status": " (HTTP {status})",
 	"where.path":  " (at {path})",
+
+	"save_failed.disk":       " (there is not enough free disk space)",
+	"save_failed.permission": " (the destination folder cannot be written)",
+
+	"duration.hours":   "{n} h",
+	"duration.minutes": "{n} min",
+	"duration.seconds": "{n} s",
+
+	"key_missing.elevenlabs": "ElevenLabs ",
+
+	"what.rough_cut": "Rendering the Rough Cut",
+	"what.export":    "Exporting the video",
+	"what.compose":   "Composing the Take",
+	"what.audio_mix": "Mixing the audio",
+
+	"facefusion.timeout":  "It did not finish in the time allowed and was stopped.",
+	"facefusion.exit":     "FaceFusion ended with an error.",
+	"facefusion.nooutput": "FaceFusion finished, but there is no output image.",
+
+	"agent.orchestrator":        "Orchestrator (progress control)",
+	"agent.producer":            "Producer (concept)",
+	"agent.writer":              "Writer (script)",
+	"agent.director":            "Director (Scene / Shot plan)",
+	"agent.storyboard":          "Storyboard",
+	"agent.art_director":        "Art Director (Reference Pack)",
+	"agent.prompt_planner":      "Prompt Planner (Shot Spec)",
+	"agent.video_judge":         "AI Video Judge (video evaluation)",
+	"agent.repair":              "Repair (choice of the repair strategy)",
+	"agent.editor":              "Editor (editing verdict)",
+	"agent.audio_director":      "Audio Director (audio design)",
+	"agent.command_interpreter": "Command Interpreter (DIRECTOR instructions)",
+	"agent.state_extractor":     "State Extractor (World State extraction)",
+	"agent.final_qc":            "Final QC (final inspection)",
+
+	"list.separator": ", ",
+	"list.join":      " / ",
 }

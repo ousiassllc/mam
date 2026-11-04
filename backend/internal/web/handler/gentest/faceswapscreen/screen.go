@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/face"
@@ -65,9 +66,13 @@ func FormFor(svc *gentest.Service, d record.ResultDetail, sel facefusion.Selecti
 	return f
 }
 
-// problemOf is the reason of a refusal in words (the message of an *gterr.InvalidError, else the error's own text).
+// problemOf is the reason of a refusal in words (the cause and the remedy of the common error, #1010, else the message of an
+// *gterr.InvalidError, else the error's own text).
 func problemOf(err error) string {
 	var invalid *gterr.InvalidError
+	if e, ok := apperr.As(err); ok {
+		return e.View(apperr.LangJa).Sentence(apperr.LangJa)
+	}
 	if errors.As(err, &invalid) {
 		return invalid.Message
 	}

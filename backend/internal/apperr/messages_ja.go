@@ -109,8 +109,38 @@ var messagesJa = map[string]string{
 	"image_unavailable.cause":  "ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。",
 	"image_unavailable.remedy": "mam を最新版に更新して、もう一度実行してください。直らない場合は、設定で ChatGPT 画像生成を OFF にして、API キーで使える画像モデルに切り替えてください。",
 
-	"save_failed.cause":  "設定やデータを保存できませんでした。",
+	"save_failed.cause":  "設定やデータを保存できませんでした{why}。",
 	"save_failed.remedy": "ディスクの空き容量とフォルダの権限を確かめてから、もう一度保存してください。続くときは mam のログを確認してください。",
+
+	"ffmpeg_missing.cause":  "ffmpeg と ffprobe が見つかりません。",
+	"ffmpeg_missing.remedy": "設定画面の「ffmpeg」で、ffmpeg と ffprobe をダウンロードするか、自分で入れたもののパスを指定してください。",
+
+	"media_failed.cause":  "{what}に失敗しました。動画・音声の処理（ffmpeg）がエラーで終わりました。",
+	"media_failed.remedy": "素材の動画が壊れていないか、保存先の空き容量と書き込み権限を確かめてから、もう一度実行してください。続くときは、詳細（ffmpeg の出力の末尾）を添えて報告してください。",
+
+	"facefusion_unavailable.cause":  "FaceFusion を使えません。見つからないか、設定したパスが使えません。",
+	"facefusion_unavailable.remedy": "FaceFusion は mam に同梱していないので、自分で入れてください。入れてあるときは、設定画面の「FaceFusion」で、Python と FaceFusion のフォルダのパスを確かめてください。詳細に、見つからなかった理由と探した場所があります。",
+
+	"facefusion_failed.cause":  "FaceFusion が画像を作れませんでした。{why}",
+	"facefusion_failed.remedy": "顔の画像と入れ替え先の画像に、顔がはっきり写っているか確かめてください。成人向けの画像は FaceFusion が断ります。GPU のメモリ不足や FaceFusion の導入の不備のこともあります。詳細（FaceFusion の出力の末尾）と、設定画面の「FaceFusion」の状態を確かめてください。",
+
+	"update_network.cause":  "更新の確認で、ネットワークに接続できませんでした。",
+	"update_network.remedy": "ネットワークの接続を確かめてください。mam はしばらくしてから、自動でもう一度確認します。",
+
+	"update_rate_limit.cause":  "GitHub の取得回数の上限に達したため、更新を確認できませんでした。",
+	"update_rate_limit.remedy": "しばらく待ってください。mam が自動でもう一度確認します。",
+
+	"update_access.cause":  "更新のリリースを GitHub から取得できませんでした（アクセスが拒否されたか、ファイルがありません）。",
+	"update_access.remedy": "しばらくしてから、もう一度確認してください。続くときは、プロキシやファイアウォールが GitHub への接続を止めていないか確かめてください。",
+
+	"update_verification.cause":  "ダウンロードした更新のファイルを検証できませんでした（破損または改ざんの可能性があるため、更新しません）。",
+	"update_verification.remedy": "しばらくしてから、もう一度確認してください。続くときは、配布元から新しい版を取得して入れ直してください。",
+
+	"update_release.cause":  "公開されているリリースの内容が正しくありません。",
+	"update_release.remedy": "しばらくしてから、もう一度確認してください。続くときは、配布元に知らせてください。",
+
+	"update_failed.cause":  "更新の確認に失敗しました。原因はわかりませんでした。",
+	"update_failed.remedy": "もう一度確認してください。続くときは、ログファイルを確認してください。",
 
 	"invalid_input.cause":    "入力が正しくありません。",
 	"invalid_input.remedy":   "入力内容を直してから、もう一度実行してください。",
@@ -156,4 +186,40 @@ var messagesJa = map[string]string{
 
 	"http.status": "（HTTP {status}）",
 	"where.path":  "（場所 {path}）",
+
+	"save_failed.disk":       "（ディスクの空き容量が足りません）",
+	"save_failed.permission": "（保存先のフォルダに書き込めません）",
+
+	"duration.hours":   "{n}時間",
+	"duration.minutes": "{n}分",
+	"duration.seconds": "{n}秒",
+
+	"key_missing.elevenlabs": "ElevenLabs の ",
+
+	"what.rough_cut": "Rough Cut の書き出し",
+	"what.export":    "動画の書き出し",
+	"what.compose":   "Take の合成",
+	"what.audio_mix": "音声のミキシング",
+
+	"facefusion.timeout":  "決められた時間内に終わらなかったため、打ち切りました。",
+	"facefusion.exit":     "FaceFusion が途中でエラーを出して終わりました。",
+	"facefusion.nooutput": "FaceFusion は終わりましたが、出力の画像がありません。",
+
+	"agent.orchestrator":        "Orchestrator（進行管理）",
+	"agent.producer":            "Producer（コンセプト）",
+	"agent.writer":              "Writer（脚本）",
+	"agent.director":            "Director（Scene / Shot の計画）",
+	"agent.storyboard":          "Storyboard（絵コンテ）",
+	"agent.art_director":        "Art Director（Reference Pack）",
+	"agent.prompt_planner":      "Prompt Planner（Shot Spec）",
+	"agent.video_judge":         "AI Video Judge（動画の評価）",
+	"agent.repair":              "Repair（修復戦略の選択）",
+	"agent.editor":              "Editor（編集の判定）",
+	"agent.audio_director":      "Audio Director（音声の設計）",
+	"agent.command_interpreter": "Command Interpreter（DIRECTOR 指示）",
+	"agent.state_extractor":     "State Extractor（World State の抽出）",
+	"agent.final_qc":            "Final QC（最終検査）",
+
+	"list.separator": "、",
+	"list.join":      "・",
 }

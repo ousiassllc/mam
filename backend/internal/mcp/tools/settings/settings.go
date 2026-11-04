@@ -11,6 +11,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
@@ -97,7 +98,8 @@ func (h handlers) overview(_ context.Context, _ Input) (Overview, error) {
 }
 
 // mapSaveError turns the refusals of the settings services into the errors the tools map: an invalid input
-// is a validation error, a pinned file a conflict. Anything else (a file that cannot be written) is internal.
+// is a validation error, a pinned file a conflict. Anything else (a file that cannot be written) is the common error of a failed save (errmap.SaveFailure: the
+// same cause and remedy as the screens give).
 func mapSaveError(err error, invalid func(error) (string, bool), pinned error) error {
 	if msg, ok := invalid(err); ok {
 		return invalidInput("", msg)
@@ -105,5 +107,5 @@ func mapSaveError(err error, invalid func(error) (string, bool), pinned error) e
 	if errors.Is(err, pinned) {
 		return &service.ConflictError{Message: pinnedMessage}
 	}
-	return err
+	return errmap.SaveFailure(err)
 }

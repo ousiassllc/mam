@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -179,7 +180,11 @@ func TestSwapToolSaysFaceFusionIsNotSetUpAndRefusesAnUnknownModel(t *testing.T) 
 		return a
 	}
 
-	assert.Contains(t, r.CallError("swap_generation_face", args(nil)), "validation", "FaceFusion is not found yet")
+	notFound := r.CallError("swap_generation_face", args(nil))
+	assert.True(t, strings.HasPrefix(notFound, "unavailable: "), "FaceFusion is not found yet: a feature that is not set up (the class of the code facefusion_unavailable): %s", notFound)
+	assert.Contains(t, notFound, `"code":"facefusion_unavailable"`, "the structure is on the second line (#1010)")
+	assert.Contains(t, notFound, "設定画面の「FaceFusion」", "the remedy")
+	assert.Contains(t, notFound, `"path":"/settings/facefusion"`)
 	require.NoError(t, ff.Set(facefusion.Config{Python: python, Path: dir}))
 	assert.Contains(t, r.CallError("swap_generation_face", args(map[string]any{"swapper": "nope"})), "validation")
 }

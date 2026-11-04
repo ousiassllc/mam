@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
@@ -294,7 +295,7 @@ func SetImageEnabled(svc *chatgpt.Service) gin.HandlerFunc {
 			status, d.Error = http.StatusUnprocessableEntity, "リスクを確認するにチェックを入れてから、オンにしてください"
 		default:
 			_ = c.Error(err)
-			status, d.Error = http.StatusInternalServerError, "設定を保存できませんでした。mam のログを確認してください"
+			status, d.Error = failure.Save(err)
 		}
 		answer(c, status, d, kindImage)
 	}

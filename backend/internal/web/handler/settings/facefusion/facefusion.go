@@ -12,13 +12,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media/locate"
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/facefusion"
 )
 
 const (
 	unreadable    = "設定ファイル（facefusion.json）を読めません。壊れていれば、直すか削除してください"
-	writeFailed   = "パスを保存できませんでした。データフォルダの権限と空き容量を確認してください"
 	savedNotice   = "保存しました。次の顔の入れ替えから使われます"
 	clearedNotice = "パスの指定を解除しました。次の顔の入れ替えから、自動で探します"
 )
@@ -106,7 +106,7 @@ func Save(s *facefusionsettings.Service) gin.HandlerFunc {
 			d.Python.Configured, d.Path.Configured = cfg.Python, cfg.Path
 		default:
 			_ = c.Error(err)
-			status, d.Error = http.StatusInternalServerError, writeFailed
+			status, d.Error = failure.Save(err)
 		}
 		settingshttp.Render(c, status, view.Section(d))
 	}

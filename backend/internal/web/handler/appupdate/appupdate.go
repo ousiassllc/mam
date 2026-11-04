@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/version"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
@@ -53,6 +55,10 @@ func versionLabel(v string) string {
 func dataOf(v appupdate.View) view.Data {
 	d := view.Data{Version: versionLabel(v.Version), CheckedAt: v.CheckedAt, CanCheck: true, Checking: v.State == appupdate.StateChecking}
 	d.Status, d.Tone = status(v)
+	if v.State == appupdate.StateError { // the cause and the remedy of the failed check, as everywhere (#1010)
+		fv := errmap.UpdateCheck(string(v.ErrorKind)).View(apperr.LangJa)
+		d.Failure = &fv
+	}
 	return d
 }
 
@@ -62,7 +68,7 @@ func status(v appupdate.View) (string, view.Tone) {
 	case appupdate.StateChecking:
 		return "確認しています…", view.ToneNeutral
 	case appupdate.StateError:
-		return "更新の確認に失敗しました。" + errorText(v.ErrorKind), view.ToneError
+		return "更新の確認に失敗しました。", view.ToneError
 	case appupdate.StateReady:
 		return fmt.Sprintf("新しいバージョン %s をダウンロードして検証しました。まもなくアプリを再起動して更新します。", v.Latest), view.ToneOK
 	case appupdate.StateBlocked:
@@ -89,20 +95,4 @@ func blockText(b appupdate.Block) string {
 		return "動画の変換（ffmpeg）が動いているため、終わるまで更新を待っています"
 	}
 	return "作業の実行状況を確認できなかったため、更新を見送っています"
-}
-
-func errorText(k appupdate.ErrorKind) string {
-	switch k {
-	case appupdate.ErrorNetwork:
-		return "ネットワークに接続できませんでした。しばらくして再確認します。"
-	case appupdate.ErrorRateLimit:
-		return "GitHub の取得回数の上限に達しました。しばらくして再確認します。"
-	case appupdate.ErrorAccess:
-		return "リリースを取得できませんでした（アクセスが拒否されたか、ファイルがありません）。"
-	case appupdate.ErrorVerification:
-		return "ダウンロードしたファイルを検証できませんでした（破損または改ざんの可能性があるため、更新しません）。"
-	case appupdate.ErrorRelease:
-		return "リリースの内容が正しくありません。"
-	}
-	return "原因は不明です。詳しくはログファイルを確認してください。"
 }

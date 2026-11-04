@@ -18,42 +18,52 @@ type Code string
 // The codes. Every code has a Japanese and an English text in the catalog (messages_ja.go, messages_en.go) and a class and the
 // settings places in specs below; TestEveryCodeHasItsTexts pins that.
 const (
-	CodeUnknown          Code = "unknown"               // a failure none of the others fits: the cause is not known, the detail and the log have it
-	CodeKeyMissing       Code = "key_missing"           // no API key is stored for the service
-	CodeLLMKeyMissing    Code = "llm_key_missing"       // no API key for any provider an Agent of the Reasoning LLM may use
-	CodeAuthFailed       Code = "auth_failed"           // 401 / 403
-	CodeRemoteNotFound   Code = "remote_not_found"      // 404 from the service or the endpoint
-	CodeTimeout          Code = "timeout"               // 408, or no answer within the time (a cloud call)
-	CodeStalled          Code = "stalled"               // a local job showed no progress for the endpoint's timeout
-	CodeTimeLimit        Code = "time_limit"            // a local call ran past the ceiling of a ComfyUI call
-	CodeEndpointTimeout  Code = "endpoint_timeout"      // a local call ran past the timeout of its endpoint
-	CodeRequestRejected  Code = "request_rejected"      // 4xx (422 and others): the request itself was refused
-	CodeInputMissing     Code = "input_missing"         // an input the model needs was not sent ("needs first_frame")
-	CodeInputUnsupported Code = "input_unsupported"     // an input image or resolution the model does not take
-	CodeInputUnused      Code = "input_unused"          // every input image attached is one the chosen models cannot use: stopped before the call (#1009)
-	CodeRateLimited      Code = "rate_limited"          // 429
-	CodeServerError      Code = "server_error"          // 5xx
-	CodeConnectionFailed Code = "connection_failed"     // the endpoint could not be reached
-	CodeCircuitOpen      Code = "circuit_open"          // calls to the vendor are paused after repeated failures
-	CodeVRAM             Code = "vram_oom"              // the GPU ran out of memory (CUDA OOM)
-	CodeDiskFull         Code = "disk_full"             // no free disk space
-	CodeModelMissing     Code = "model_not_installed"   // the model (a file of it) is not installed
-	CodeLicense          Code = "license_not_accepted"  // the license of the model was not accepted
-	CodeEngineMissing    Code = "engine_not_installed"  // the bundled ComfyUI engine is not installed
-	CodeNodeMissing      Code = "node_missing"          // a custom node of the workflow is missing from ComfyUI
-	CodeLLMInvalidOutput Code = "llm_invalid_output"    // the LLM answered something that is not the requested form
-	CodeLocalLLMDown     Code = "local_llm_unreachable" // the local OpenAI-compatible LLM server (Ollama, LM Studio, llama.cpp server) did not answer
-	CodeGenTimeLimit     Code = "generation_time_limit" // the Max generation time of the Policy ran out
-	CodeMediaTimeout     Code = "media_timeout"         // ffmpeg / ffprobe ran past its limit
-	CodeDownloadCorrupt  Code = "download_corrupt"      // the downloaded file does not match its checksum or size
-	CodeInstallFailed    Code = "install_failed"        // an install of a model, a node or a runtime stopped for a reason the installer worded
-	CodeNotWritable      Code = "not_writable"          // the folder cannot be written
-	CodeNoGPU            Code = "no_gpu"                // no supported GPU
-	CodeFaceModels       Code = "face_models_missing"   // the face models (YuNet, SFace) of the face similarity are not in the model folder (#1026)
-	CodeFaceRuntime      Code = "face_runtime_missing"  // the ONNX Runtime library of the face similarity is missing or does not load (#1026)
-	CodeImageUnavailable Code = "image_unavailable"     // the ChatGPT account hosts no model for the image generation
-	CodeSaveFailed       Code = "save_failed"           // a setting or a file could not be saved
-	CodeTrainFailed      Code = "training_failed"       // the fine-tuning of a Character's voice stopped for a reason the trainer worded (#936)
+	CodeUnknown          Code = "unknown"                // a failure none of the others fits: the cause is not known, the detail and the log have it
+	CodeKeyMissing       Code = "key_missing"            // no API key is stored for the service
+	CodeLLMKeyMissing    Code = "llm_key_missing"        // no API key for any provider an Agent of the Reasoning LLM may use
+	CodeAuthFailed       Code = "auth_failed"            // 401 / 403
+	CodeRemoteNotFound   Code = "remote_not_found"       // 404 from the service or the endpoint
+	CodeTimeout          Code = "timeout"                // 408, or no answer within the time (a cloud call)
+	CodeStalled          Code = "stalled"                // a local job showed no progress for the endpoint's timeout
+	CodeTimeLimit        Code = "time_limit"             // a local call ran past the ceiling of a ComfyUI call
+	CodeEndpointTimeout  Code = "endpoint_timeout"       // a local call ran past the timeout of its endpoint
+	CodeRequestRejected  Code = "request_rejected"       // 4xx (422 and others): the request itself was refused
+	CodeInputMissing     Code = "input_missing"          // an input the model needs was not sent ("needs first_frame")
+	CodeInputUnsupported Code = "input_unsupported"      // an input image or resolution the model does not take
+	CodeInputUnused      Code = "input_unused"           // every input image attached is one the chosen models cannot use: stopped before the call (#1009)
+	CodeRateLimited      Code = "rate_limited"           // 429
+	CodeServerError      Code = "server_error"           // 5xx
+	CodeConnectionFailed Code = "connection_failed"      // the endpoint could not be reached
+	CodeCircuitOpen      Code = "circuit_open"           // calls to the vendor are paused after repeated failures
+	CodeVRAM             Code = "vram_oom"               // the GPU ran out of memory (CUDA OOM)
+	CodeDiskFull         Code = "disk_full"              // no free disk space
+	CodeModelMissing     Code = "model_not_installed"    // the model (a file of it) is not installed
+	CodeLicense          Code = "license_not_accepted"   // the license of the model was not accepted
+	CodeEngineMissing    Code = "engine_not_installed"   // the bundled ComfyUI engine is not installed
+	CodeNodeMissing      Code = "node_missing"           // a custom node of the workflow is missing from ComfyUI
+	CodeLLMInvalidOutput Code = "llm_invalid_output"     // the LLM answered something that is not the requested form
+	CodeLocalLLMDown     Code = "local_llm_unreachable"  // the local OpenAI-compatible LLM server (Ollama, LM Studio, llama.cpp server) did not answer
+	CodeGenTimeLimit     Code = "generation_time_limit"  // the Max generation time of the Policy ran out
+	CodeMediaTimeout     Code = "media_timeout"          // ffmpeg / ffprobe ran past its limit
+	CodeDownloadCorrupt  Code = "download_corrupt"       // the downloaded file does not match its checksum or size
+	CodeInstallFailed    Code = "install_failed"         // an install of a model, a node or a runtime stopped for a reason the installer worded
+	CodeNotWritable      Code = "not_writable"           // the folder cannot be written
+	CodeNoGPU            Code = "no_gpu"                 // no supported GPU
+	CodeFaceModels       Code = "face_models_missing"    // the face models (YuNet, SFace) of the face similarity are not in the model folder (#1026)
+	CodeFaceRuntime      Code = "face_runtime_missing"   // the ONNX Runtime library of the face similarity is missing or does not load (#1026)
+	CodeImageUnavailable Code = "image_unavailable"      // the ChatGPT account hosts no model for the image generation
+	CodeSaveFailed       Code = "save_failed"            // a setting or a file could not be saved
+	CodeTrainFailed      Code = "training_failed"        // the fine-tuning of a Character's voice stopped for a reason the trainer worded (#936)
+	CodeFFmpegMissing    Code = "ffmpeg_missing"         // ffmpeg / ffprobe are not installed (#1010: the export, the Rough Cut, the composing of a Take)
+	CodeMediaFailed      Code = "media_failed"           // ffmpeg ran and failed on the media: Args "what" names the work
+	CodeFaceFusionNone   Code = "facefusion_unavailable" // no usable FaceFusion: not found, or the saved path cannot be used
+	CodeFaceFusionFailed Code = "facefusion_failed"      // FaceFusion ran and did not make a picture
+	CodeUpdateNetwork    Code = "update_network"         // the update check could not reach GitHub (the kinds of the updater: network, rate limit, access, verification, release, other)
+	CodeUpdateRateLimit  Code = "update_rate_limit"      // GitHub refused for rate limiting
+	CodeUpdateAccess     Code = "update_access"          // GitHub refused the release lookup or the download (401 / 403 / a removed asset)
+	CodeUpdateVerify     Code = "update_verification"    // a downloaded installer was rejected (checksum, signature, size)
+	CodeUpdateRelease    Code = "update_release"         // the release content is unusable
+	CodeUpdateFailed     Code = "update_failed"          // any other failure of the update check
 
 	// The codes of the classes below are for a failure that a service already worded (Error.Cause): the screen and the tool keep that
 	// sentence and add the generic remedy.
@@ -93,6 +103,9 @@ const (
 	PlaceLocalModels Place = "local-models"
 	PlaceModelMgr    Place = "model-manager"
 	PlaceChatGPT     Place = "chatgpt"
+	PlaceFFmpeg      Place = "ffmpeg"
+	PlaceFaceFusion  Place = "facefusion"
+	PlaceUpdate      Place = "update"
 )
 
 // places is where each Place is (the paths of web/paths: Settings, SettingsCategory, ModelManager, ChatGPTSettings; a test pins it).
@@ -103,6 +116,9 @@ var places = map[Place]string{ //nolint:gosec // G101 false positive: the path o
 	PlaceLocalModels: "/settings/local-models",
 	PlaceModelMgr:    "/model-manager",
 	PlaceChatGPT:     "/settings/chatgpt",
+	PlaceFFmpeg:      "/settings/ffmpeg",
+	PlaceFaceFusion:  "/settings/facefusion",
+	PlaceUpdate:      "/settings/update",
 }
 
 // spec is what a Code is: its class and the places that help.
@@ -148,6 +164,16 @@ var specs = map[Code]spec{
 	CodeFaceRuntime:      {ClassUnavailable, nil},
 	CodeImageUnavailable: {ClassUnavailable, []Place{PlaceChatGPT}},
 	CodeSaveFailed:       {ClassInternal, nil},
+	CodeFFmpegMissing:    {ClassUnavailable, []Place{PlaceFFmpeg}},
+	CodeMediaFailed:      {ClassUpstream, nil},
+	CodeFaceFusionNone:   {ClassUnavailable, []Place{PlaceFaceFusion}},
+	CodeFaceFusionFailed: {ClassUpstream, []Place{PlaceFaceFusion}},
+	CodeUpdateNetwork:    {ClassUpstream, []Place{PlaceUpdate}},
+	CodeUpdateRateLimit:  {ClassUpstream, []Place{PlaceUpdate}},
+	CodeUpdateAccess:     {ClassUpstream, []Place{PlaceUpdate}},
+	CodeUpdateVerify:     {ClassUpstream, []Place{PlaceUpdate}},
+	CodeUpdateRelease:    {ClassUpstream, []Place{PlaceUpdate}},
+	CodeUpdateFailed:     {ClassInternal, []Place{PlaceUpdate}},
 	CodeInvalidInput:     {ClassValidation, nil},
 	CodeNotFound:         {ClassNotFound, nil},
 	CodeConflict:         {ClassConflict, nil},

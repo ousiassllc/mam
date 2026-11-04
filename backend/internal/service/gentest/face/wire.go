@@ -3,8 +3,6 @@ package face
 import (
 	"context"
 	"errors"
-	"fmt"
-
 	"path/filepath"
 	"strings"
 
@@ -47,7 +45,7 @@ func OffRecord(off *facesim.Off) *record.FaceSimilarity {
 	}
 	e, skipped := apperr.New(apperr.CodeFaceRuntime).WithDetail(off.Detail), record.SkipRuntimeMissing
 	if off.Reason == facesim.ReasonModelsMissing {
-		e = apperr.New(apperr.CodeFaceModels).With("files", strings.Join(off.Missing, "、")).With("dir", filepath.Clean(off.ModelDir))
+		e = apperr.New(apperr.CodeFaceModels).With("files", strings.Join(off.Missing, "{{list.separator}}")).With("dir", filepath.Clean(off.ModelDir))
 		skipped = record.SkipModelsMissing
 	}
 	v := e.View(apperr.LangJa)
@@ -65,7 +63,7 @@ func Swapper(ff *facefusionsettings.Service) (swap runner.FaceSwapFunc, check fu
 	swap = func(ctx context.Context, in runner.FaceSwapInput) ([]byte, string, error) {
 		install, err := ff.Look()
 		if err != nil {
-			return nil, "", fmt.Errorf("FaceFusion を使えません: %w", err)
+			return nil, "", apperr.New(apperr.CodeFaceFusionNone).Wrap(err)
 		}
 		faceExt, targetExt := extensions[in.Face.MimeType], extensions[in.Target.MimeType]
 		if faceExt == "" || targetExt == "" {

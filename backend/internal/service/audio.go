@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -26,7 +28,7 @@ import (
 func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID string) (EditorView, error) {
 	opts, err := s.prefs.Load()
 	if err != nil {
-		return EditorView{}, audioError(err)
+		return EditorView{}, audioError(s.logger, err)
 	}
 	return s.GenerateAudioWith(ctx, projectID, branchID, opts)
 }
@@ -87,7 +89,7 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 	}
 	notes, err := s.prefs.Settle(ctx, &in, s.voiceRef, branchID, opts.FallbackToCloud)
 	if err != nil {
-		return EditorView{}, audioError(err)
+		return EditorView{}, audioError(s.logger, err)
 	}
 	if err := s.fixMusic(ctx, projectID, branchID, &in); err != nil {
 		return EditorView{}, err
@@ -100,7 +102,7 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 	in.RunID = domain.NewID()
 	tl, err := s.audio.Produce(ctx, in)
 	if err != nil {
-		return EditorView{}, audioError(err)
+		return EditorView{}, audioError(s.logger, err)
 	}
 	if _, err := s.editors.SaveAudioTimeline(context.WithoutCancel(ctx), projectID, branchID, tl); err != nil {
 		// No Audio Timeline refers to the files of the run: they are not kept (the cost ledger is).
@@ -204,8 +206,8 @@ func (s *EditorService) videoClips(ctx context.Context, tl domain.EditTimeline) 
 	return clips, nil
 }
 
-// audioError is the error the user sees when the audio stage failed.
-func audioError(err error) error {
+// audioError is the error the user sees when the audio stage failed (the mix of the sound, ffmpeg, is mediaError's; logger gets what nobody knows).
+func audioError(logger *slog.Logger, err error) error {
 	var (
 		pe  *audiodirector.ProviderError
 		be  *audiodirector.BudgetError
@@ -221,12 +223,12 @@ func audioError(err error) error {
 		return conflict("セリフの音声合成に約 $%.2f かかりますが、残りの予算が $%.2f です。予算上限を引き上げてから再実行してください", be.Needed, be.Remaining)
 	case errors.Is(err, media.ErrUnavailable):
 		return ErrUnavailable
-	case errors.Is(err, audiodirector.ErrNoAPIKey), errors.As(err, &pe), isKnownFailure(err):
-		return aiError(err) // the voice vendor, or any failure errmap knows: its cause and remedy (#1010)
+	case errors.Is(err, audiodirector.ErrNoAPIKey), errors.As(err, &pe), errmap.IsKnown(err):
+		return aiError(err) // the voice vendor, or any failure errmap knows
 	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrNoAPIKey), errors.Is(err, llm.ErrTimeout), errors.Is(err, llm.ErrCircuitOpen), errors.As(err, &api):
 		return aiError(err) // the Audio Director's planner
 	}
-	return &AIError{Reason: "音声のミキシングに失敗しました: " + err.Error(), Err: err}
+	return mediaError(logger, "what.audio_mix", err)
 }
 
 // MaxVoiceSampleBytes is the largest voice sample recording.
@@ -266,7 +268,7 @@ func (s *EditorService) CloneVoice(ctx context.Context, projectID, speaker, name
 	}
 	voiceID, err := s.cloner.Clone(ctx, name, audiodirector.Sample{Filename: file.Name, Data: data})
 	if err != nil {
-		return domain.VoiceClone{}, audioError(err)
+		return domain.VoiceClone{}, audioError(s.logger, err)
 	}
 	// The voice is billed once the vendor created it: it is stored even when the request is gone, and
 	// a failed save leaves its voice_id in the log (the vendor keeps the voice; it is not lost silently).
