@@ -1,0 +1,19 @@
+package facelock
+
+import "github.com/ousiassllc/mam/backend/internal/web/paths"
+
+// OffNotice is the line of the input images while the face similarity is off (#1026): the role "顔だけ" still works, but the result gets no similarity number. With the
+// models missing it links to the model manager's "顔チェック用モデル", where one button installs them (no restart); with the models in place the ONNX Runtime
+// library is what is missing, which the link does not fix, so the line says so.
+templ OffNotice(reason string) {
+	<p class="text-xs text-amber-300" role="status" data-testid="gt-face-off" data-reason={ reason }>
+		顔の類似度（SFace）はオフです。役割「顔だけ」の参照を付けても、結果に類似度の数字は付きません。
+		if reason == "models_missing" {
+			<a class="underline" href={ templ.SafeURL(paths.ModelManagerFaceModels()) } data-testid="gt-face-off-install">顔チェック用モデルを入れる</a>
+			（モデルマネージャーで、ボタン 1 つ。再起動は要りません）
+		} else {
+			顔モデルは入っていますが、ONNX Runtime のライブラリが使えません（モデルを入れ直しても直りません）。
+			<a class="underline" href={ templ.SafeURL(paths.ModelManagerFaceModels()) } data-testid="gt-face-off-status">状態と直し方を見る</a>
+		}
+	</p>
+}

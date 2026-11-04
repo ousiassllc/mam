@@ -11,6 +11,11 @@ import (
 // TopazAttribution is the credit the terms of the Topaz Video API ask for wherever its models are offered or used.
 const TopazAttribution = "Powered by Topaz Labs"
 
+// AdultWarning is what the user is told before a result of an adult model is sent to the paid cloud (Issue #1031, decision of 2026-11-05): the send is not
+// stopped, but it needs the user to have read this and confirmed. The screens and the MCP tool show the same words.
+const AdultWarning = "この結果は成人向けのモデルで作ったものです。Topaz（外部のクラウド）に送ると、成人向けの内容が Topaz Labs に送られます。" +
+	"Topaz の利用規約で禁止されている内容は送らないでください。処理した動画の扱いは Topaz の規約に従います。"
+
 // The limits of an enhancement.
 const (
 	// MaxOutputPixels is the most pixels (width × height) of one frame of the output: 3840 × 2160. Beyond it no encoder of the targets plays the

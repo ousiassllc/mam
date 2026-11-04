@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
@@ -63,6 +64,9 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	}
 	if nds != nil {
 		nodes.Register(engine, nds)
+	}
+	if g != nil && g.FaceModels != nil {
+		facemodels.Register(engine, g.FaceModels) // 顔チェック用モデル (#1026)
 	}
 
 	engine.GET(paths.ModelManagerPart("adult", "confirm"), h.AdultConfirm)
@@ -139,4 +143,12 @@ func render(c *gin.Context, status int, component templ.Component) {
 			c.AbortWithStatus(http.StatusInternalServerError)
 		}
 	}
+}
+
+// faceModels is the section "顔チェック用モデル" (nil while the generation test has no face models service).
+func (h Handlers) faceModels() templ.Component {
+	if h.Gentest == nil {
+		return nil
+	}
+	return facemodels.Section(h.Gentest.FaceModels)
 }

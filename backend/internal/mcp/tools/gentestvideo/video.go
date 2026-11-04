@@ -40,7 +40,8 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 			"結果は元とは別の結果（別ファイル）として履歴に残り、get_generation_result の video_enhance に元の result_id・操作・モデル・倍率や fps が入る。大きくした結果をもう一度処理してもよい（拡大のあとに補間、など）。"+
 			"アップスケールとコマ補間は別々の処理で、1 回に 1 つ。進捗は返る job_id を get_job / get_generation_test で読む。"+
 			"ローカルは無料でそのまま実行できる。Topaz（model が topaz:...）は有料クラウドで、estimate_generation_video_enhance の estimate_id と、利用者が確認した confirmed_credits（見積りの credits と同じ値）が無いと実行しない。"+
-			"Topaz が受け付けたあとに失敗しても自動では再送しない（二重課金を避ける）。表示には「Powered by Topaz Labs」が要る。",
+			"Topaz が受け付けたあとに失敗しても自動では再送しない（二重課金を避ける）。表示には「Powered by Topaz Labs」が要る。"+
+			"元の動画が成人向けのモデルで作られたものでも Topaz に送れるが、見積りの adult_warning（成人向けの内容が外部のクラウドに送られる・Topaz の規約で禁止の内容は送らない・扱いは Topaz の規約に従う）を利用者に見せて確認が取れたときだけ adult_confirmed=true を渡す。渡さないと送らない。",
 		h.enhance, mcpkit.OpenWorld())
 }
 
@@ -143,6 +144,7 @@ type RunInput struct {
 	TargetFPS        float64 `json:"target_fps,omitempty" jsonschema:"interpolate: 出力の fps。multiplier とどちらか一方"`
 	EstimateID       string  `json:"estimate_id,omitempty" jsonschema:"estimate_generation_video_enhance の estimate_id（Topaz などの有料クラウドは必須。ローカルは不要）"`
 	ConfirmedCredits float64 `json:"confirmed_credits,omitempty" jsonschema:"利用者が確認したクレジット（見積りの credits と同じ値。有料クラウドは必須）"`
+	AdultConfirmed   bool    `json:"adult_confirmed,omitempty" jsonschema:"利用者が見積りの adult_warning を読んで確認したか。元の動画が成人向けのモデルの結果で Topaz を使うときは true が必須（なければ送らない）"`
 }
 
 // RunOutput is a started enhancement.
@@ -159,7 +161,7 @@ func (h handlers) enhance(ctx context.Context, in RunInput) (RunOutput, error) {
 	}
 	req := videoenhance.Request{
 		ResultID: in.ResultID, Op: cloudenhance.Op(in.Op), Model: in.Model, Scale: in.Scale, TargetShortSide: in.TargetShortSide, Multiplier: in.Multiplier, TargetFPS: in.TargetFPS,
-		EstimateID: in.EstimateID, ConfirmedCredits: in.ConfirmedCredits,
+		EstimateID: in.EstimateID, ConfirmedCredits: in.ConfirmedCredits, AdultConfirmed: in.AdultConfirmed,
 	}
 	var ref videoenhance.Ref
 	jr, err := h.registrar.Jobs.Run(ctx, mcpgentest.KindGentest, "", func(ctx context.Context) (string, error) {

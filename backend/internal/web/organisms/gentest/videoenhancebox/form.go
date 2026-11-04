@@ -29,7 +29,8 @@ const (
 	FieldFPS        = "target_fps" // interpolate at Topaz, when FieldInterp is InterpFPS
 	FieldEstimateID = "estimate_id"
 	FieldCredits    = "confirmed_credits"
-	FieldConfirm    = "confirm" // "1": the user confirmed the quote and sending the video to the paid cloud
+	FieldConfirm    = "confirm"       // "1": the user confirmed the quote and sending the video to the paid cloud
+	FieldAdult      = "adult_confirm" // "1": the user read the warning of an adult source (venhance.AdultWarning)
 )
 
 // The values of FieldSize and FieldInterp.
@@ -110,6 +111,8 @@ type Quote struct {
 	Credits, CreditsMin float64
 	// Output is the video it would make, in words.
 	Output string
+	// AdultWarning is set when the source came from an adult model: the words the user reads, and a tick of its own is needed to send it on.
+	AdultWarning string
 	// Hidden are the fields the run form posts back: the values of the quote, its id and the credits.
 	Hidden []Pair
 }

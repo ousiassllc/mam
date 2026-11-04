@@ -16,9 +16,11 @@ import (
 	mcpgentest "github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentestvideo"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/jobs"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/venhance"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/videoenhance"
 )
 
@@ -193,4 +195,53 @@ func TestWithoutFfprobeTheToolSaysHowToFixIt(t *testing.T) {
 	assert.Contains(t, msg, `"code":"ffmpeg_missing"`)
 	assert.Contains(t, msg, "ffmpeg")
 	assert.Contains(t, msg, "設定")
+}
+
+// An adult result may go to Topaz (Issue #1031, decision of 2026-11-05): the estimate carries the warning, and without adult_confirmed nothing is sent.
+func TestAnAdultResultNeedsTheWarningConfirmedOverMCP(t *testing.T) {
+	r := newRig(t, true, gentesttest.WithCatalogInfo(func(id string) (modelfilter.CatalogInfo, bool) {
+		return modelfilter.CatalogInfo{Adult: id == string(domain.ModelKling3)}, true
+	}))
+	src := r.aVideo()
+	args := map[string]any{"result_id": src, "op": "upscale", "scale": 2, "model": "topaz:prob-4"}
+
+	var est videoenhance.Estimate
+	r.CallOK("estimate_generation_video_enhance", args, &est)
+	require.NotNil(t, est.Credits)
+	assert.True(t, est.Adult)
+	assert.Equal(t, venhance.AdultWarning, est.AdultWarning)
+
+	run := map[string]any{"estimate_id": est.EstimateID, "confirmed_credits": *est.Credits}
+	for k, v := range args {
+		run[k] = v
+	}
+	msg := r.CallError("enhance_generation_video", run)
+	assert.Contains(t, msg, "validation")
+	assert.Contains(t, msg, "Topaz Labs", "the same warning is returned")
+	assert.Empty(t, r.Cloud.Runs, "nothing is sent without adult_confirmed")
+
+	run["adult_confirmed"] = true
+	var out gentestvideo.RunOutput
+	r.CallOK("enhance_generation_video", run, &out)
+	r.job(out.JobID)
+	require.Len(t, r.Cloud.Runs, 1)
+}
+
+// A result that is not adult has no warning and needs no adult_confirmed.
+func TestAResultThatIsNotAdultHasNoWarningOverMCP(t *testing.T) {
+	r := newRig(t, true)
+	src := r.aVideo()
+	args := map[string]any{"result_id": src, "op": "upscale", "scale": 2, "model": "topaz:prob-4"}
+
+	var est videoenhance.Estimate
+	r.CallOK("estimate_generation_video_enhance", args, &est)
+	require.NotNil(t, est.Credits)
+	assert.False(t, est.Adult)
+	assert.Empty(t, est.AdultWarning)
+
+	args["estimate_id"], args["confirmed_credits"] = est.EstimateID, *est.Credits
+	var out gentestvideo.RunOutput
+	r.CallOK("enhance_generation_video", args, &out)
+	r.job(out.JobID)
+	require.Len(t, r.Cloud.Runs, 1)
 }

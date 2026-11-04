@@ -74,10 +74,10 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"node_missing.remedy": "モデル管理で必要なカスタムノードを導入し、ComfyUI を再起動してから実行し直してください。",
 
 	"face_models_missing.cause":  "顔の類似度を測る顔モデルがありません（{files}）。顔の類似度（SFace）はオフです。",
-	"face_models_missing.remedy": "顔モデル（YuNet と SFace の ONNX。OpenCV Zoo）は mam が自動では取得せず、モデル管理のカタログにもありません。{dir} に置いてください。リポジトリの scripts/fetch-face-models.sh {dir} が、固定したコミットから取得して SHA-256 を検証して置きます（YuNet は MIT・SFace は Apache-2.0）。置き場所を変えるときは起動オプション --face-model-dir を使います。置いたあと mam を再起動すると測れます。",
+	"face_models_missing.remedy": "モデルマネージャー（/model-manager）の「顔チェック用モデル」から、ボタン 1 つで {dir} に導入できます（YuNet は MIT・SFace は Apache-2.0。取得元は opencv/opencv_zoo の固定したコミットで、SHA-256 を確かめます。導入したあと mam を再起動する必要はなく、次の生成テストから測れます）。手で置くときは {dir} に置いてください（リポジトリの scripts/fetch-face-models.sh {dir} が、同じ固定したコミットから取得して置きます）。置き場所を変えるときは起動オプション --face-model-dir を使います。顔の類似度を測るには、このモデルのほかに ONNX Runtime のライブラリも要ります（Windows のインストーラー版は mam.exe と同じフォルダに入れます）。",
 
 	"face_runtime_missing.cause":  "顔の類似度を測る ONNX Runtime のライブラリを読み込めません。顔の類似度（SFace）はオフです。",
-	"face_runtime_missing.remedy": "ONNX Runtime 1.23.x のライブラリ（Windows は mam.exe と同じフォルダの onnxruntime.dll。インストーラーが置きます。ほかの OS は libonnxruntime）を用意してください。場所は起動オプション --onnxruntime-lib で指定できます。Windows で DLL があるのに読めないときは、Microsoft Visual C++ 2015-2022 Redistributable (x64) が必要です。置いたあと mam を再起動してください。",
+	"face_runtime_missing.remedy": "顔モデル（YuNet・SFace）は置いてあります。モデルマネージャーの「顔チェック用モデル」から導入し直しても直りません（直すのは ONNX Runtime のライブラリです）。ONNX Runtime 1.23.x のライブラリ（Windows は mam.exe と同じフォルダの onnxruntime.dll。インストーラーが置きます。ほかの OS は libonnxruntime）を用意してください。場所は起動オプション --onnxruntime-lib で指定できます。Windows で DLL があるのに読めないときは、Microsoft Visual C++ 2015-2022 Redistributable (x64) が必要です。置いたあとは、次の生成テストから測れます（再起動は要りません）。詳細に顔モデルのファイルの読み込みの失敗が出ているときは、モデルマネージャーの「顔チェック用モデル」で削除してから入れ直してください。",
 
 	"llm_invalid_output.cause":  "LLM の答えが、求めた形式になっていませんでした。",
 	"llm_invalid_output.remedy": "もう一度実行してください。続くときは、設定画面の「テキスト生成（LLM）」で、その Agent のモデルを変えてみてください。",

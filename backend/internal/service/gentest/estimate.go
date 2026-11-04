@@ -119,7 +119,7 @@ func (s *Service) estimate(ctx context.Context, r Request) (Estimate, []modelPla
 	if err := s.addTranslation(&est, r); err != nil {
 		return Estimate{}, nil, err
 	}
-	if code, msg, ok := record.FaceOffNote(s.FaceScore != nil, s.FaceOff, rolesOf(r)); ok { // the face similarity is off: say it before the run (#1026)
+	if code, msg, ok := record.FaceOffNote(false, s.FaceOff.Now(), rolesOf(r)); ok { // the face similarity is off right now (the models may be installed since the start): say it before the run (#1026)
 		est.Warnings = append(est.Warnings, Warning{Code: code, Message: msg})
 	}
 	est.TotalUSD = round4(est.TotalUSD)

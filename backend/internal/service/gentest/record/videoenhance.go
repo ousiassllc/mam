@@ -22,6 +22,8 @@ type VideoEnhance struct {
 	Width        int     `json:"width" jsonschema:"出力の予定の幅"`
 	Height       int     `json:"height" jsonschema:"出力の予定の高さ"`
 	FPS          float64 `json:"fps" jsonschema:"出力の予定の fps"`
+	// Adult says the source came from an adult model (the result of an enhancement of an adult result is adult too), so that sending it on to the cloud asks again.
+	Adult bool `json:"adult,omitempty" jsonschema:"元の動画が成人向けのモデルで作られたものか（処理した結果も引き継ぐ）"`
 	// Topaz is set when Provider is topaz.
 	Topaz *TopazRun `json:"topaz,omitempty"`
 }

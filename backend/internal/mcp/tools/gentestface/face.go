@@ -1,7 +1,8 @@
 // Package gentestface holds the MCP tools of the faces of the generation test (Issue #995, spec/api/mcp-tools-generation-test.md): the state of
 // FaceFusion (an external tool the user installed, as ffmpeg is; its paths are set on the settings screen only, as the paths of ffmpeg are: an agent does not
 // choose the program that is started later) and "swap the face" of a result. The face similarity of a result is
-// not a tool: it is the field face_similarity of get_generation_result. It is a package of its own because tools/gentest is at its line limit.
+// not a tool: it is the field face_similarity of get_generation_result; the models it needs are installed and removed with install_face_models and remove_face_models
+// (Issue #1026; their state is list_generation_models face_similarity.models). It is a package of its own because tools/gentest is at its line limit.
 package gentestface
 
 import (
@@ -23,6 +24,7 @@ import (
 // upscale: as a result of its own in the history. They answer "unavailable" when the app has no generation test or no FaceFusion settings.
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc, registrar: r}
+	registerModels(r, h)
 	mcpkit.Read(r, "get_facefusion_status",
 		"顔の入れ替え（FaceFusion。mam には同梱しない別ソフト）の状態。見つかったか（Python とフォルダ）・保存したパス・FaceFusion のバージョンと自己申告のライセンス・探した場所、選べるモデル（入れ替え・顔検出・復元）とそれぞれのライセンス（class: open 商用の制限なし / conditional 条件つき / noncommercial 商用NG / research 研究用のみ / unknown 商用不明）と既定、すべての入れ替えに付く注意（notes。ArcFace が非商用・成人向けの画像は断られる・本体は OpenRAIL-AS・モデルは FaceFusion が自分で取得する）、ライセンスの一次情報の URL。ready が true なら swap_generation_face を呼べる / The state of FaceFusion, the external face swapper, its models and their licenses.",
 		h.facefusionStatus)

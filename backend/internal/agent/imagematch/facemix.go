@@ -115,7 +115,7 @@ func (m *Matcher) score(ctx context.Context, reference, generated Image, llm int
 		return llm, nil
 	}
 	sc := &Scoring{LLM: llm}
-	if m.faces == nil {
+	if !facesim.Usable(m.faces) { // nil, or an engine whose models are not installed yet (they can be while mam runs, #1026)
 		sc.Skipped = SkipUnavailable
 		return llm, sc
 	}

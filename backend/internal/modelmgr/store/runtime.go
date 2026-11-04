@@ -21,15 +21,22 @@ const LocalAIDirName = "localai"
 // LocalAIRoot is the localai directory next to the executable at exe.
 func LocalAIRoot(exe string) string { return filepath.Join(filepath.Dir(exe), LocalAIDirName) }
 
-// RuntimeLayout is the places of one runtime below Root (<exe dir>/localai/<runtime id>).
-type RuntimeLayout struct{ Root string }
+// RuntimeLayout is the places of one runtime below Root (<exe dir>/localai/<runtime id>). Env, when set, is where the files of the asset set go instead
+// of Root/env: a set of single files that a program of mam's own reads from a folder the user may choose (the face models of the face check, #1026).
+// Nothing below such an Env is removed as a whole: runtime.Installer.RemoveAssets deletes the pinned files only.
+type RuntimeLayout struct{ Root, Env string }
 
 // ForRuntime is the RuntimeLayout of the runtime id below the localai directory root.
 func ForRuntime(root, id string) RuntimeLayout { return RuntimeLayout{Root: filepath.Join(root, id)} }
 
 // EnvDir is the extracted package: the Python environment and the vendor's program. It is replaced as a whole when the
-// runtime is updated; nothing of the user lives here.
-func (l RuntimeLayout) EnvDir() string { return filepath.Join(l.Root, "env") }
+// runtime is updated; nothing of the user lives here (unless Env is set: then it is that folder).
+func (l RuntimeLayout) EnvDir() string {
+	if l.Env != "" {
+		return l.Env
+	}
+	return filepath.Join(l.Root, "env")
+}
 
 // EnvNewDir is where a new environment is extracted to.
 func (l RuntimeLayout) EnvNewDir() string { return filepath.Join(l.Root, "env.new") }

@@ -170,7 +170,7 @@ var specs = map[Code]spec{
 	CodeTrainFailed:      {ClassUpstream, []Place{PlaceModelMgr}},
 	CodeNotWritable:      {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeNoGPU:            {ClassUnavailable, []Place{PlaceModelMgr, PlaceLocalModels}},
-	CodeFaceModels:       {ClassUnavailable, nil},
+	CodeFaceModels:       {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeFaceRuntime:      {ClassUnavailable, nil},
 	CodeImageUnavailable: {ClassUnavailable, []Place{PlaceChatGPT}},
 	CodeSaveFailed:       {ClassInternal, nil},

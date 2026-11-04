@@ -117,6 +117,7 @@ func (h Handlers) Estimate(c *gin.Context) {
 	if est.CreditsMin != nil {
 		q.CreditsMin = *est.CreditsMin
 	}
+	q.AdultWarning = est.AdultWarning
 	q.Hidden = hiddenOf(c, est)
 	gtshare.Render(c, http.StatusOK, videoenhancebox.QuoteBox(q))
 }
@@ -135,6 +136,7 @@ func (h Handlers) Enhance(c *gin.Context) {
 			err = gterr.Invalid("確認したクレジットが読み取れません。もう一度見積りを取ってください")
 		}
 		r.EstimateID = c.PostForm(videoenhancebox.FieldEstimateID)
+		r.AdultConfirmed = c.PostForm(videoenhancebox.FieldAdult) == "1"
 	}
 	if err == nil {
 		_, err = videoenhance.Enhance(ctx, h.Svc, r)

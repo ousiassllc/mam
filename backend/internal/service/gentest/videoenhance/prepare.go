@@ -2,6 +2,7 @@ package videoenhance
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/venhance"
 )
 
@@ -31,6 +33,9 @@ type Request struct {
 	// EstimateID and ConfirmedCredits are the quote of a model of the cloud and the credits the user confirmed (equal to the quote); a local model takes none.
 	EstimateID       string
 	ConfirmedCredits float64
+	// AdultConfirmed is the user's answer to venhance.AdultWarning, which a quote of an adult result carries: a model of the cloud is not started for an
+	// adult source without it.
+	AdultConfirmed bool
 }
 
 func (r Request) params() cloudenhance.Params {
@@ -45,6 +50,8 @@ type target struct {
 	facts cloudenhance.Source
 	model modelcatalog.VideoEnhancer
 	plan  venhance.Plan
+	// adult says the source came from an adult model.
+	adult bool
 }
 
 // prepare reads the source (a succeeded video result with its file: the facts are those ffprobe reads from the file, never what was asked of
@@ -79,7 +86,20 @@ func prepare(ctx context.Context, g *gentest.Service, r Request) (target, error)
 	if err != nil {
 		return target{}, err
 	}
-	return target{res: res, facts: facts, model: model, plan: plan}, nil
+	return target{res: res, facts: facts, model: model, plan: plan, adult: adultSource(g, res)}, nil
+}
+
+// adultSource says a result was made by an adult model of the model manager's catalog, or is the result of an enhancement of one (the flag is passed on).
+func adultSource(g *gentest.Service, res gentestrepo.Result) bool {
+	var p record.ResultParams
+	if json.Unmarshal(res.Params, &p) == nil && p.VideoEnhance != nil {
+		return p.VideoEnhance.Adult
+	}
+	if g.CatalogInfo == nil {
+		return false
+	}
+	info, ok := g.CatalogInfo(res.Model)
+	return ok && info.Adult
 }
 
 // probe reads the facts of the video file. Without ffprobe (no ffmpeg found) it is the common error ffmpeg_missing: where to set ffmpeg.

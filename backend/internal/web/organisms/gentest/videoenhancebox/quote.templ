@@ -33,6 +33,13 @@ templ QuoteBox(q Quote) {
 				for _, h := range q.Hidden {
 					<input type="hidden" name={ h.Name } value={ h.Value }/>
 				}
+				if q.AdultWarning != "" {
+					<p class="rounded-md border border-amber-500/60 p-2 text-sm text-amber-300" role="alert" data-testid="gt-venh-adult-warning">{ q.AdultWarning }</p>
+					<label class="flex items-start gap-2 text-sm">
+						@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAdult, "value": "1", "required": true, "data-testid": "gt-venh-adult-confirm"})
+						<span>上の警告を読みました。成人向けの動画を Topaz に送ってよいです</span>
+					</label>
+				}
 				<label class="flex items-start gap-2 text-sm">
 					@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldConfirm, "value": "1", "required": true, "data-testid": "gt-venh-confirm"})
 					<span>見積りの内容を確認しました。有料クラウド（Topaz）に動画を送ります</span>

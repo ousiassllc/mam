@@ -88,6 +88,9 @@ func confirm(g *gentest.Service, r Request, t target) (*record.TopazRun, clouden
 	if d := math.Abs(r.ConfirmedCredits - q.Estimate.Credits); !(d <= creditsEpsilon) || r.ConfirmedCredits < 0 {
 		return nil, cloudenhance.CloudEstimate{}, gterr.Conflict("確認したクレジット（%g）が見積り（%g）と違います。見積りの credits をそのまま confirmed_credits に渡してください", r.ConfirmedCredits, q.Estimate.Credits)
 	}
+	if t.adult && !r.AdultConfirmed { // checked before the quote is taken, so that the user can still confirm the same quote
+		return nil, cloudenhance.CloudEstimate{}, gterr.Invalid("この動画は成人向けのモデルで作ったものです。Topaz（外部のクラウド）に送る前に警告への確認が必要です: %s", venhance.AdultWarning)
+	}
 	if _, ok := g.VideoEstimates.Take(r.EstimateID); !ok { // another call ran it between
 		return nil, cloudenhance.CloudEstimate{}, errExpired()
 	}
@@ -109,7 +112,7 @@ func newBatch(g *gentest.Service, r Request, t target, topaz *record.TopazRun) (
 		SourceResultID: t.res.ID, SourceModel: t.res.Model, Op: string(r.Op), Provider: t.model.Provider, Model: t.model.ID,
 		Scale: r.Scale, TargetShortSide: r.TargetShortSide, Multiplier: r.Multiplier, TargetFPS: r.TargetFPS,
 		SourceWidth: t.facts.Width, SourceHeight: t.facts.Height, SourceFPS: t.facts.FPS, SourceFrames: t.facts.FrameCount,
-		Width: t.plan.Width, Height: t.plan.Height, FPS: t.plan.FPS, Topaz: topaz,
+		Width: t.plan.Width, Height: t.plan.Height, FPS: t.plan.FPS, Adult: t.adult, Topaz: topaz,
 	}
 	result := gentestrepo.Result{
 		ID: domain.NewID(), BatchID: id, Media: gentestrepo.MediaVideo, Model: t.model.ID, APIModel: apiModel(g, t.model),

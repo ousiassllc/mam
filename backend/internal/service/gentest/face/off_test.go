@@ -32,7 +32,7 @@ func ran(t *testing.T, off *facesim.Off, roles ...string) (*gentesttest.Rig, rec
 }
 
 // The report of #1026: without the face models a result made from a face reference had no face_similarity at all. It now says it is skipped and why, with the
-// fix: which files to put where, as the common error words (apperr).
+// fix: install them from the model manager (and where to put them by hand), as the common error words (apperr).
 func TestAResultWithAFaceReferenceSaysTheFaceModelsAreMissing(t *testing.T) {
 	_, d := ran(t, modelsOff, "face")
 
@@ -46,8 +46,10 @@ func TestAResultWithAFaceReferenceSaysTheFaceModelsAreMissing(t *testing.T) {
 	assert.Equal(t, "/data/models", fs.ModelDir)
 	assert.Contains(t, fs.Reason, facesim.DetectorFile)
 	assert.Contains(t, fs.Fix, "/data/models", "the fix names the folder")
-	assert.Contains(t, fs.Fix, "fetch-face-models.sh")
+	assert.Contains(t, fs.Fix, "顔チェック用モデル", "the fix points to the model manager's section")
+	assert.Contains(t, fs.Fix, "/model-manager")
 	assert.Contains(t, fs.Fix, "--face-model-dir")
+	assert.NotContains(t, fs.Fix, "再起動してください", "no restart is needed any more")
 }
 
 // The ONNX Runtime library is another reason, with its own words.
@@ -57,6 +59,7 @@ func TestAResultSaysTheONNXRuntimeIsUnavailable(t *testing.T) {
 	require.NotNil(t, d.FaceSimilarity)
 	assert.Equal(t, record.SkipRuntimeMissing, d.FaceSimilarity.Skipped)
 	assert.Contains(t, d.FaceSimilarity.Fix, "--onnxruntime-lib")
+	assert.Contains(t, d.FaceSimilarity.Fix, "導入し直しても直りません", "installing the models is not the fix for a missing library")
 	assert.Empty(t, d.FaceSimilarity.MissingFiles)
 }
 

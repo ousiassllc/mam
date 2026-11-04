@@ -13,18 +13,19 @@
 package gentest
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"path/filepath"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/cloudenhance"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/loras"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/venhance"
 
@@ -97,18 +98,19 @@ type Deps struct {
 	BundledEndpoint string
 	// FaceCrop cuts the face out of a reference of the role "face" before an editing model reads it (nil: the picture goes as it is).
 	FaceCrop runner.FaceCropFunc
-	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number; the face models are not installed).
+	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number).
 	FaceScore runner.FaceScoreFunc
-	FaceOff   *record.FaceSimilarity // why FaceScore is nil, recorded on a result with a face reference (nil while the face similarity is on)
+	// FaceOff says now why the face similarity is off (nil, or answering nil: it is on), recorded on a result with a face reference (#1026).
+	FaceOff runner.FaceOffFunc
+	// FaceModels installs and removes the face models of the face similarity (the model manager's "顔チェック用モデル"). Nil: not offered.
+	FaceModels *facemodels.Service
 	// FaceFusion runs FaceFusion for "swap the face" (nil: the feature is off). FaceFusionCheck says why it cannot run now (FaceFusion is not
 	// found) or nil; nil: always ready.
 	FaceFusion      runner.FaceSwapFunc
 	FaceFusionCheck func() error
-	// Cloud is the paid cloud of "make a video larger / smoother" (Topaz Video API; nil: only the local workflows are offered). Probe reads the facts of the source
-	// video (ffprobe; nil: there is no ffmpeg, so such an enhancement is refused). VideoEstimates keeps the quotes of the cloud until they are confirmed (nil: a new store).
-	Cloud          cloudenhance.Cloud
-	Probe          venhance.Prober
-	VideoEstimates *venhance.Estimates
+	Cloud           cloudenhance.Cloud  // the paid cloud of "make a video larger / smoother" (nil: local workflows only)
+	Probe           venhance.Prober     // reads the facts of the source video (nil: no ffmpeg; such an enhancement is refused)
+	VideoEstimates  *venhance.Estimates // the quotes of the cloud until confirmed (nil: a new store)
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
 	Translator *prompttranslate.Translator
 	Logger     *slog.Logger
@@ -141,9 +143,7 @@ func New(d Deps) *Service {
 	if d.Seed == nil {
 		d.Seed = randomSeed
 	}
-	if d.VideoEstimates == nil {
-		d.VideoEstimates = venhance.NewEstimates(d.Now)
-	}
+	d.VideoEstimates = cmp.Or(d.VideoEstimates, venhance.NewEstimates(d.Now))
 	dir := filepath.Join(d.DataDir, DirName)
 	link := projectlink.New(projectlink.Deps{
 		Repo: d.Repo, Dir: dir, AssetsDir: d.AssetsDir, Projects: d.Projects, Assets: d.Assets, References: d.References,

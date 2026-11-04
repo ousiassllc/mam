@@ -1,14 +1,13 @@
 package app
 
 import (
-	"errors"
-	"fmt"
 	"log/slog"
-	"runtime"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
+	"github.com/ousiassllc/mam/backend/internal/app/facewire"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
+	"github.com/ousiassllc/mam/backend/internal/facesim/holder"
 	"github.com/ousiassllc/mam/backend/internal/media"
 )
 
@@ -18,9 +17,9 @@ type judgeSetup struct {
 	config judge.Config
 	// frames is nil when ffmpeg is missing: the Judge is then off.
 	frames judge.FrameSource
-	// faces is nil when the models or the ONNX Runtime library are missing (faceOff says why, #1026): Takes are then judged qualitatively only.
-	faces   *facesim.ONNX
-	faceOff *facesim.Off
+	// faces is the face engine. It is always there, and loads the models when they are first used: it is off (Off says why, #1026) while the models or
+	// the ONNX Runtime library are missing, and Takes are then judged qualitatively only. The models can be installed from the model manager while mam runs.
+	faces *holder.Holder
 }
 
 // newJudgeSetup loads the Judge setting and looks for ffmpeg and the face models. Missing tools
@@ -37,44 +36,15 @@ func newJudgeSetup(cfg config.Config, tools *media.Tools, logger *slog.Logger) (
 	} else {
 		s.frames = judge.NewFFmpeg(*tools)
 	}
-	faces, err := newFaceEngine(cfg)
-	switch {
-	case err == nil:
-		s.faces = faces
-	case errors.Is(err, facesim.ErrUnavailable):
-		s.faceOff = facesim.ONNXConfig{ModelDir: cfg.FaceModels()}.Diagnose(err)
-		logger.Warn("face identity similarity is off: Takes are judged qualitatively only", "model_dir", cfg.FaceModels(), "reason", s.faceOff.Reason, "missing", s.faceOff.Missing, "err", err)
-	default:
-		return s, err
+	s.faces = facewire.Engine(cfg, executablePath)
+	if off := s.faces.Off(); off != nil { // loads the models now when they are there, so that a broken install shows at the start
+		logger.Warn("face identity similarity is off: Takes are judged qualitatively only (install the face models from the model manager)", "model_dir", cfg.FaceModels(), "reason", off.Reason, "missing", off.Missing, "detail", off.Detail)
 	}
 	return s, nil
 }
 
-// newFaceEngine loads the face models and the ONNX Runtime library: --onnxruntime-lib, else onnxruntime.dll next to mam.exe
-// on Windows (the installer puts it there), else the system's standard library search.
-func newFaceEngine(cfg config.Config) (*facesim.ONNX, error) {
-	exe, err := executablePath()
-	if err != nil {
-		exe = "" // only the Windows lookup needs it, and RuntimeLibraryPath says so
-	}
-	lib, err := facesim.RuntimeLibraryPath(runtime.GOOS, cfg.ONNXRuntimeLib, exe)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", facesim.ErrUnavailable, err)
-	}
-	return facesim.NewONNX(facesim.ONNXConfig{ModelDir: cfg.FaceModels(), RuntimeLibrary: lib})
-}
-
 // close releases the face models.
-func (s judgeSetup) close() {
-	if s.faces != nil {
-		_ = s.faces.Close()
-	}
-}
+func (s judgeSetup) close() { _ = s.faces.Close() }
 
-// engine is the face engine as an interface value that is nil (not a typed nil) when unavailable.
-func (s judgeSetup) engine() facesim.Engine {
-	if s.faces == nil {
-		return nil
-	}
-	return s.faces
-}
+// engine is the face engine (a Holder: Usable says whether it works now).
+func (s judgeSetup) engine() facesim.Engine { return s.faces }

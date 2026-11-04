@@ -1,0 +1,115 @@
+package facecard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+)
+
+func stateBadge(c Card) (atoms.BadgeTone, string) {
+	switch c.State {
+	case StateInstalled:
+		return atoms.BadgeOK, "導入済み"
+	case StateUnverified:
+		return atoms.BadgeWarn, "ファイルあり（SHA-256 は未確認）"
+	}
+	return atoms.BadgeNeutral, "未導入"
+}
+
+// Section is the section: what the models are for, whether they are installed, where they go, the files with their sources, the licenses with the
+// commercial-use answers (before the button, not behind it), and the install and remove buttons. The install is a request that returns when the files are in
+// place; the line under the buttons shows its progress while it runs. The whole section is swapped by the actions.
+templ Section(c Card) {
+	<div id={ SectionID } class="flex flex-col gap-3" data-testid="mm-face-models" data-state={ c.State } data-face-off={ c.OffReason }>
+		@view.Notice(c.Message, "mm-face-models")
+		<div class="flex flex-wrap items-center gap-2">
+			@badge(c)
+		</div>
+		<p class="text-sm text-neutral-300" data-testid="mm-face-models-description">
+			生成テストで「顔だけ」の参照画像を使ったときに、出力の顔が参照の顔にどれだけ似ているか（顔の類似度）を数字で測り、参照を顔のまわりに切るための小さなモデルです（YuNet と SFace。OpenCV Zoo）。
+			入れなくても生成はできますが、結果に類似度の数字は付きません。ボタン 1 つで、下の取得元から { c.Download } をこの PC に取得します（コミットを固定し、SHA-256 と大きさを確かめます。mam には同梱しません）。導入したあと mam を再起動する必要はありません。
+			if c.Remain != "" && c.Remain != c.Download {
+				<span data-testid="mm-face-models-remain">そろっているファイルは取り直しません。今回は { c.Remain } を取得します。</span>
+			}
+		</p>
+		if c.OffReason == "runtime_unavailable" {
+			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 p-2 text-xs text-amber-300" role="note" data-testid="mm-face-models-runtime">
+				<p class="font-semibold">モデルは入っていますが、顔の類似度はオフです（ONNX Runtime のライブラリが使えません）</p>
+				<p>{ c.OffCause }</p>
+				<p>{ c.OffFix }</p>
+			</div>
+		}
+		<p class="break-all text-xs text-neutral-400" data-testid="mm-face-models-dir">導入先: <code>{ c.ModelDir }</code>（起動オプション --face-model-dir で変えられます）</p>
+		<ul class="flex flex-col gap-2 text-xs" data-testid="mm-face-models-files">
+			for _, f := range c.Files {
+				<li class="flex flex-col gap-1 rounded-md border border-neutral-800 p-2" data-testid="mm-face-models-file" data-file={ f.Name } data-state={ f.State }>
+					<p class="flex flex-wrap items-center gap-1.5 text-neutral-200">
+						<span class="font-medium">{ f.Title }</span>
+						<code class="text-neutral-400">{ f.Name }</code>
+						<span class="text-neutral-400">・{ f.Size }・{ f.StateText }</span>
+					</p>
+					<p class="text-neutral-400">{ f.Description }</p>
+					<p class="break-all text-neutral-400">取得元: <a class="underline" href={ templ.SafeURL(f.SourceURL) } target="_blank" rel="noopener noreferrer">{ f.SourceName }</a></p>
+				</li>
+			}
+		</ul>
+		<ul class="flex flex-col gap-2 text-xs" data-testid="mm-face-models-licenses">
+			for _, l := range c.Licenses {
+				<li class="flex flex-col gap-1 rounded-md border border-neutral-800 p-2">
+					<p class="flex flex-wrap items-center gap-1.5 text-neutral-200">
+						<span class="font-medium">{ l.Name }</span>
+						@commercial.Badge(l.Answer)
+					</p>
+					<p class="text-neutral-400">{ l.Summary }</p>
+					@commercial.Note(l.Answer)
+					if l.Notice != "" {
+						<p class="rounded-md border border-amber-500/60 p-2 text-amber-300" role="note" data-testid="mm-face-models-license-notice">{ l.Notice }</p>
+					}
+					<p><a class="underline" href={ templ.SafeURL(l.URL) } target="_blank" rel="noopener noreferrer">ライセンス原文</a></p>
+				</li>
+			}
+		</ul>
+		if c.State != StateInstalled {
+			<label class="flex items-start gap-2 text-xs text-neutral-300">
+				@atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", acceptClass: "", "data-testid": "mm-face-models-accept"})
+				<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span>
+			</label>
+		}
+		<div class="flex flex-wrap items-center gap-2">
+			if c.State != StateInstalled {
+				@atoms.SmallButtonFor(atoms.TonePrimary, c.InstallLabel(), "顔チェック用モデル", templ.Attributes{
+					"type": "button", "hx-post": installURL(), "hx-target": "#" + SectionID, "hx-swap": "outerHTML", "hx-include": "[" + acceptClass + "]",
+					"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-face-models-install", "id": InstallID,
+				})
+			}
+			if c.HasFiles() {
+				@atoms.SmallButtonFor(atoms.ToneDanger, "削除", "顔チェック用モデル", templ.Attributes{
+					"type": "button", "hx-delete": removeURL(), "hx-target": "#" + SectionID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+					"data-testid": "mm-face-models-remove",
+					"hx-confirm":  "顔チェック用モデルの 2 つのファイルを削除します（フォルダの中のほかのファイルは残します）。削除すると顔の類似度はオフになります。よろしいですか？",
+				})
+			}
+		</div>
+		@ProgressLine(c.Running, "")
+	</div>
+}
+
+templ badge(c Card) {
+	{{ tone, label := stateBadge(c) }}
+	@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-face-models-badge"})
+}
+
+// ProgressLine is the line under the buttons that says how far the install is. It polls only while an install runs (running), and then draws itself again until
+// it ends; while none runs it waits for the install button to be pressed, and asks once shortly after: the page does not ask every second for nothing.
+templ ProgressLine(running bool, text string) {
+	<div
+		id={ ProgressID }
+		hx-get={ progressURL() }
+		hx-swap="outerHTML"
+		hx-trigger={ trigger(running) }
+		class="text-xs text-neutral-300"
+		role="status"
+		aria-live="polite"
+		data-testid="mm-face-models-progress"
+	>{ text }</div>
+}

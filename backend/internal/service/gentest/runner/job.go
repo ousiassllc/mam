@@ -65,10 +65,12 @@ type Deps struct {
 	InputHidden func(ctx context.Context, in gentestrepo.Input) bool
 	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See FaceCropFunc.
 	FaceCrop FaceCropFunc
-	// FaceScore measures the face of a result against the reference of the role "face" (nil: no number; the face models are not installed). See FaceScoreFunc.
+	// FaceScore measures the face of a result against the reference of the role "face" (nil: no number). See FaceScoreFunc.
 	FaceScore FaceScoreFunc
-	// FaceOff is what a result with a face reference records while FaceScore is nil: skipped models_missing / runtime_unavailable with the words (nil: nothing is recorded).
-	FaceOff *record.FaceSimilarity
+	// FaceOff says now why the face similarity is off: what a result with a face reference records instead of a number, skipped models_missing /
+	// runtime_unavailable with the words (nil, or answering nil: it is on, or nothing is recorded). The models are installed and removed while mam runs, so it is asked
+	// again for every result (#1026).
+	FaceOff FaceOffFunc
 	// FaceSwap runs FaceFusion for a result of "swap the face" (nil: such a result fails). See FaceSwapFunc.
 	FaceSwap FaceSwapFunc
 	Cloud    cloudenhance.Cloud // the paid cloud of "make a video larger / smoother" (nil: such a result fails)

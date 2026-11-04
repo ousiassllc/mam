@@ -108,7 +108,7 @@ templ Box(p Props)
 | `invalid_input` | `validation` | 入力が正しくありません。 |  |
 | `key_missing` | `unavailable` | API キーが設定されていません。 | /settings/api-keys |
 | `license_not_accepted` | `conflict` | このモデルのライセンスに、まだ同意していません。 | /model-manager |
-| `face_models_missing` | `unavailable` | 顔の類似度を測る顔モデルがありません（{files}）。顔の類似度（SFace）はオフです。 |  |
+| `face_models_missing` | `unavailable` | 顔の類似度を測る顔モデルがありません（{files}）。顔の類似度（SFace）はオフです。 | /model-manager |
 | `face_runtime_missing` | `unavailable` | 顔の類似度を測る ONNX Runtime のライブラリを読み込めません。顔の類似度（SFace）はオフです。 |  |
 | `llm_invalid_output` | `upstream` | LLM の答えが、求めた形式になっていませんでした。 | /settings/llm |
 | `local_llm_unreachable` | `upstream` | ローカルサーバーに接続できません。ローカルの LLM サーバー（Ollama・LM Studio・llama.cpp server など）が応答しませんでした。 | /settings/llm |
@@ -267,4 +267,5 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 | 1.2 | 2026-11-03 | コード `local_llm_unreachable` を足した（ローカルの OpenAI 互換 LLM サーバーに接続できない。`errmap` は `localllm.IsUnreachable` で見分ける）。設計は `local-llm.md` | Issue #1008 |
 | 1.3 | 2026-11-04 | コード `face_models_missing`・`face_runtime_missing` を足した（顔の類似度がオフのとき、役割 `face` の参照がある結果の `face_similarity.reason` / `fix` の言葉。YuNet・SFace の ONNX は mam が取得せず、カタログにも無いので、置き場所と `scripts/fetch-face-models.sh` を直し方に書く）。[local-models.md](local-models.md) §4.9 | Issue #1026 |
 | 1.4 | 2026-11-04 | 載せ替えなかった経路（§6）の見直し: ffmpeg の失敗（書き出し・Rough Cut・Take の合成・音声のミキシング。`media_failed`・`ffmpeg_missing`）、アップデート（`update_*`）、設定の書き込みの失敗（`errmap.SaveFailure`・`web/handler/failure.Save`）、FaceFusion（`facefusion_unavailable`・`facefusion_failed`）を載せ替えた。ChatGPT / Codex などは理由を更新して見送り。i18n（§7）: 言語によって変わる語（時間・Agent の名前・区切り・作業の名前）をカタログのキーにし、英語の辞書が `errmap` の全コードを持つことと、未訳の日本語へのフォールバックをテストで固定した。MCP のツールエラーは、分からない失敗にも 2 行目の `failure`（`unknown`）を付ける | Issue #1010（残り） |
+| 1.5 | 2026-11-04 | `face_models_missing` の直し方を、モデルマネージャーの「顔チェック用モデル」からの導入（ボタン 1 つ・再起動なし）に変え、案内先に `/model-manager` を足した（手で置く方法と `--face-model-dir` は残す）。`face_runtime_missing` の直し方に「モデルを入れ直しても直らない。ONNX Runtime のライブラリを用意する」を足し、2 つの理由を取り違えないようにした。再起動の案内を外した（導入・ライブラリの追加は次の計測から効く。エンジンは読み込めなかった結果を覚えない）。[model-manager/model-manager.md](model-manager/model-manager.md) §5.4 | Issue #1026 |
 | 1.6 | 2026-11-04 | コード `credits_insufficient`（HTTP 402）と `topaz_*` の 7 つ（Topaz Video API の失敗。`topaz_job_interrupted` は受理のあとに mam が止まったときの、リクエスト ID つきの文）を足した | Issue #1031 |

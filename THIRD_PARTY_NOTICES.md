@@ -12969,7 +12969,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 ## 同梱していないが実行時に取得するもの
 
-Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、MAM には同梱しません。利用者が `scripts/fetch-face-models.sh` で実行時にダウンロードします。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。ONNX Runtime の DLL（Windows 版）は同梱しており、上の節に載せています（macOS 版は同梱せず、利用者が用意した `libonnxruntime.dylib` を使います）。
+Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、MAM には同梱しません。利用者が、モデルマネージャーの「顔チェック用モデル」のボタン（または `scripts/fetch-face-models.sh`）で実行時にダウンロードします。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。ONNX Runtime の DLL（Windows 版）は同梱しており、上の節に載せています（macOS 版は同梱せず、利用者が用意した `libonnxruntime.dylib` を使います）。
 
 ## ComfyUI（利用者が取得する別プログラム）
 

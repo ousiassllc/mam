@@ -44,6 +44,10 @@ type Estimate struct {
 	Credits    *float64   `json:"credits,omitempty" jsonschema:"見積りのクレジット（上限）。enhance_generation_video の confirmed_credits にこの値を渡して確認する。クレジット単価はプランで違うので円・ドルには換算しない"`
 	CreditsMin *float64   `json:"credits_min,omitempty" jsonschema:"見積りのクレジット（下限。範囲で返ってきたときだけ）"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty" jsonschema:"この見積りで実行できる期限（過ぎたら見積りを取り直す）"`
+	// Adult and AdultWarning are set when the source came from an adult model and the model is the paid cloud: the video would go to an external
+	// cloud. The run needs adult_confirmed = true (the user has read the warning).
+	Adult        bool   `json:"adult,omitempty" jsonschema:"元の動画が成人向けのモデルで作られたものか（Topaz の見積りだけ）。true のとき adult_warning を利用者に見せ、確認が取れたら enhance_generation_video に adult_confirmed=true を渡す"`
+	AdultWarning string `json:"adult_warning,omitempty" jsonschema:"成人向けの動画を外部のクラウド（Topaz Labs）に送る前の警告。利用者に見せて確認を取る（確認なしでは送らない）"`
 	// Message says what to do next.
 	Message     string `json:"message"`
 	Attribution string `json:"attribution,omitempty" jsonschema:"表示が必要な出典（Topaz は Powered by Topaz Labs）"`
@@ -86,6 +90,10 @@ func EstimateEnhance(ctx context.Context, g *gentest.Service, r Request) (Estima
 	}
 	est.Message = "Topaz の有料クラウドです。実行するとクレジットを使います。利用者がこの額でよいと確認したら、enhance_generation_video に estimate_id と confirmed_credits（= credits）を渡してください。" +
 		"見積りは 30 分で切れ、1 回しか使えません。実行して Topaz が受け付けたあとに失敗しても、自動では再送しません（二重課金を避けるため）"
+	if t.adult {
+		est.Adult, est.AdultWarning = true, venhance.AdultWarning
+		est.Message += "。この動画は成人向けのモデルで作ったものです。adult_warning を利用者に見せ、読んだうえで確認が取れたときだけ adult_confirmed=true も渡してください（なければ送りません）"
+	}
 	return est, nil
 }
 
