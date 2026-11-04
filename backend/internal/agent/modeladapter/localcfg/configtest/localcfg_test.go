@@ -129,14 +129,14 @@ var coreNodes = []string{
 	"ManualSigmas", "ModelSamplingAuraFlow", "ModelSamplingSD3", "PrimitiveInt", "RandomNoise", "SamplerCustom",
 	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "SplitSigmasDenoise", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
 	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo", "EmptyHunyuanLatentVideo", // Wan 2.2 Remix T2V (#930)
-	"TextEncodeQwenImageEditPlus", "CFGNorm", "EmptyFlux2LatentImage", "Flux2Scheduler", "ImageScaleToTotalPixels", "ReferenceLatent", "ComfySwitchNode", "GetImageSize", "LTXVAddGeneratedKeyframes", "LTXVAddGuide", "LTXVAddLatentGuide", "LTXVCropGuides", "LTXVFreezeLatent", "LTXVGeneratedKeyframesToGuides", "LTXVSeparateGeneratedKeyframes", "PrimitiveBoolean", "PrimitiveFloat", "ResizeImageMaskNode", "SamplerEulerAncestral", "TextGenerateLTX2Prompt", "ImageScaleBy", "ImageUpscaleWithModel", "UpscaleModelLoader", "VAEEncodeTiled", "ImageToMask", "SetLatentNoiseMask", "ImageCompositeMasked", "CLIPVisionEncode", "CLIPVisionLoader", "HunyuanVideo15ImageToVideo", "WanFirstLastFrameToVideo", // #931 #968 #975 #974 #1014 (v0.42.1 nodes.py / nodes_mask.py / nodes_wan.py / nodes_hunyuan.py)
+	"TextEncodeQwenImageEditPlus", "CFGNorm", "EmptyFlux2LatentImage", "Flux2Scheduler", "ImageScaleToTotalPixels", "ReferenceLatent", "ComfySwitchNode", "GetImageSize", "LTXVAddGeneratedKeyframes", "LTXVAddGuide", "LTXVAddLatentGuide", "LTXVCropGuides", "LTXVFreezeLatent", "LTXVGeneratedKeyframesToGuides", "LTXVSeparateGeneratedKeyframes", "PrimitiveBoolean", "PrimitiveFloat", "ResizeImageMaskNode", "SamplerEulerAncestral", "TextGenerateLTX2Prompt", "ImageScaleBy", "ImageUpscaleWithModel", "UpscaleModelLoader", "VAEEncodeTiled", "ImageToMask", "SetLatentNoiseMask", "ImageCompositeMasked", "CLIPVisionEncode", "CLIPVisionLoader", "HunyuanVideo15ImageToVideo", "WanFirstLastFrameToVideo", "WanVaceToVideo", "TrimVideoLatent", "LTXAVTextEncoderLoader", "LTXVAudioVAELoader", // #931 #968 #975 #974 #1014 (v0.42.1 nodes.py / nodes_mask.py / nodes_wan.py / nodes_hunyuan.py)
 }
 
 // Every built-in template is a valid model: each assignment points to an existing, literal input of an
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 73)
+	require.Len(t, templates, 78)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -153,7 +153,7 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.Equal(t, tpl.ID, got.ID)
 	}
 	assert.Equal(t, 28, byMedia[localcfg.MediaImage])
-	assert.Equal(t, 45, byMedia[localcfg.MediaVideo])
+	assert.Equal(t, 50, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")
 	caps, ok := i2v.Model.VideoCaps()

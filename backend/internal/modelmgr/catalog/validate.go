@@ -46,6 +46,8 @@ var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", 
 var loaderInputs = map[string]map[string]string{
 	"CheckpointLoaderSimple":   {"ckpt_name": "checkpoints"},
 	"UNETLoader":               {"unet_name": "diffusion_models"},
+	"LTXAVTextEncoderLoader":   {"text_encoder": "text_encoders", "ckpt_name": "checkpoints"}, // LTX-2.3: the Gemma encoder, and the checkpoint the node reads as well
+	"LTXVAudioVAELoader":       {"ckpt_name": "checkpoints"},
 	"UnetLoaderGGUF":           {"unet_name": "diffusion_models"},
 	"CLIPLoader":               {"clip_name": "text_encoders"},
 	"DualCLIPLoader":           {"clip_name1": "text_encoders", "clip_name2": "text_encoders"},
