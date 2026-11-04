@@ -144,3 +144,5 @@ import './components/timeline-editor/mam-timeline-editor';
 import './components/comfy-frame/mam-comfy-frame';
 import './components/mask-paint/mam-mask-paint';
 import './components/prompt-weight/mam-prompt-weight';
+import './components/prompt-weight/mam-weight-help';
+import './components/prompt-weight/mam-weight-note';

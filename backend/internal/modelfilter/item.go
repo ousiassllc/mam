@@ -161,6 +161,8 @@ func (c Condition) Active() int {
 // CatalogInfo is what the model manager's catalog says of a local model beyond its inputs, for the lists that are not the catalog's own (the generation
 // test's models are found by their workflow's name, modelmanager.Service.InfoOf): the content rating, the traits and the VRAM guideline.
 type CatalogInfo struct {
+	// Name is what the screens call the model (the catalog's name, told apart from the other workflows of its entry), in place of its identifier (#1023).
+	Name      string
 	Adult     bool
 	Traits    traits.Traits
 	VRAMMinGB int

@@ -125,6 +125,7 @@ templ promptFields(c Compose) {
 				@PromptRowFields(p, c.MaxPrompt)
 			}
 		</div>
+		@gentesttier.WeightNote()
 		if c.Tier.Has() {
 			@gentesttier.WeightBar()
 		}
@@ -140,7 +141,7 @@ templ promptFields(c Compose) {
 			<span class="text-xs text-neutral-400">ウェイト (語:1.3)</span>
 			@help.Toggle(help.ID("ウェイト"), "ウェイト")
 			@help.Panel(help.ID("ウェイト"), "ウェイト") {
-				@gentestadv.WeightHelp(c.WeightLines)
+				@gentestadv.WeightHelp(c.WeightAll)
 			}
 			@atoms.SmallButtonFor(atoms.ToneNeutral, "プロンプトを追加", "生成テストのプロンプト", templ.Attributes{
 				"type": "button", "hx-get": paths.GenerationTestPart("prompt-row"), "hx-target": "#" + PromptsID, "hx-swap": "beforeend",

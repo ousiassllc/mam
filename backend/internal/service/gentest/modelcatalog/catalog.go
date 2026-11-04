@@ -230,6 +230,12 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	mi.Provider, mi.Origin = providerOf(m, mi.Source), originOf(mi.Source)
 	if info, ok := c.catalogInfo(string(m)); ok {
 		mi.Catalog = &CatalogTraits{Adult: info.Adult, Traits: info.Traits, VRAMMinGB: info.VRAMMinGB}
+		if info.Name != "" {
+			mi.Label = info.Name // the catalog's name, not the identifier (#1023)
+		}
+	}
+	if _, _, name, ok := localcfg.ParseID(string(m)); ok && mi.Label == mi.ID {
+		mi.Label = name // a local model the catalog does not know (an external ComfyUI's, one of the user's): its own name, not "comfyui:<endpoint>/<name>" (#1023)
 	}
 	mi.PromptWeight = promptweight.Unknown
 	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {

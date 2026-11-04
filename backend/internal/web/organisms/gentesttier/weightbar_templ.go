@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 // WeightBar is the "強める + / 弱める −" of the words selected in the prompt boxes of the fieldset it stands in (the easy tier's and the detail
 // tier's; static/src/components/prompt-weight/mam-prompt-weight.ts draws the bar while words are selected, and hides itself otherwise). What the
-// chosen models do with weights is read from their cards (data-prompt-weight, data-prompt-weight-text).
+// chosen models do with weights is read from their cards (data-prompt-weight, data-prompt-weight-title).
 func WeightBar() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -33,6 +33,38 @@ func WeightBar() templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<mam-prompt-weight class=\"block\" scope=\"fieldset\" hidden data-testid=\"gt-weight\"></mam-prompt-weight>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// WeightNote is the short caution under the prompt boxes while a chosen model does not read the weights ("効きません"), so that it is known without
+// opening the "?" (Issue #1023). <mam-weight-note> (static/src/components/prompt-weight) writes it from the cards of the chosen models and is hidden
+// while there is nothing to say.
+func WeightNote() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var2 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var2 == nil {
+			templ_7745c5c3_Var2 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<mam-weight-note class=\"block\" hidden data-testid=\"gt-weight-caution\"></mam-weight-note>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
