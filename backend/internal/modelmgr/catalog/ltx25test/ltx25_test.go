@@ -68,7 +68,7 @@ func TestUncensoredLTX25ShowsTheStricterLicenseOfItsParts(t *testing.T) {
 	require.True(t, ok)
 
 	assert.Equal(t, modellicense.Unknown, m.License.Commercial)
-	assert.Equal(t, "2026-11-02", m.License.CheckedAt)
+	assert.Equal(t, "2026-11-04", m.License.CheckedAt, "the card was read again for Issue #1028: still license: other")
 	assert.Contains(t, m.License.Notice, "不明")
 	assert.Contains(t, m.License.Notice, "licensing@ltx.io", "the revenue condition of the diffusion model is not lost")
 	answers := map[modellicense.Commercial]int{}

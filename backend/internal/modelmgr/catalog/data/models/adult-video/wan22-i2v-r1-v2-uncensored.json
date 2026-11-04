@@ -53,7 +53,7 @@
   "url": "https://huggingface.co/rzgar/Wan2.2_I2V_R1_base_v2",
   "summary": "ベースの Wan 2.2 I2V 14B は Apache-2.0。このマージのモデルカードも license: apache-2.0 と宣言しているが、LICENSE の本文も、焼き込んだ非検閲の LoRA の学習データの出所も無い。宣言だけでは商用で使ってよいか確かめられないので、商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。",
   "commercial": "unknown",
-  "checked_at": "2026-11-03",
+  "checked_at": "2026-11-04",
   "components": [
    {
     "part": "ベースモデル（Wan 2.2 I2V 14B・Wan-AI）",
