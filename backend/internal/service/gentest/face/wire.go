@@ -15,18 +15,21 @@ import (
 )
 
 // Crop is the cut of the face reference of the generation test to the face (#960): it uses the face detector of the Judge, so it works when
-// the face models and the ONNX Runtime library are there, and is nil (the picture goes whole) when they are not.
+// the face models and the ONNX Runtime library are there (they can be installed while mam runs: it asks every time), and leaves the picture whole when they are not.
 func Crop(faces facesim.Engine) runner.FaceCropFunc {
 	if faces == nil {
 		return nil
 	}
 	return func(ctx context.Context, image []byte) ([]byte, bool, error) {
+		if !facesim.Usable(faces) {
+			return nil, false, nil
+		}
 		return facesim.CropFace(ctx, faces, image)
 	}
 }
 
-// Score is the measurement of the face similarity of a generation test result (#998): the SFace of the Judge's face engine. nil (no number)
-// when the face models or the ONNX Runtime library are not there.
+// Score is the measurement of the face similarity of a generation test result (#998): the SFace of the Judge's face engine. nil (no number) for no engine at all;
+// an engine that is off for now (the models are installed later) answers facesim.ErrUnavailable, and OffNow is what a result records then.
 func Score(faces facesim.Engine) runner.FaceScoreFunc {
 	if faces == nil {
 		return nil
@@ -37,8 +40,8 @@ func Score(faces facesim.Engine) runner.FaceScoreFunc {
 }
 
 // OffRecord is what a result with a face reference records while the face similarity is off (#1026): skipped models_missing (a model file is not in the
-// model folder) or runtime_unavailable (the ONNX Runtime library), with the cause and the fix in words (apperr: which files to put where; mam does not
-// fetch the models and the model manager's catalog does not list them). nil when off is nil (the engine is on).
+// model folder) or runtime_unavailable (the ONNX Runtime library), with the cause and the fix in words (apperr: install the models from the model
+// manager's "顔チェック用モデル" when they are what is missing; the ONNX Runtime library when that is). nil when off is nil (the engine is on).
 func OffRecord(off *facesim.Off) *record.FaceSimilarity {
 	if off == nil {
 		return nil
@@ -50,6 +53,12 @@ func OffRecord(off *facesim.Off) *record.FaceSimilarity {
 	}
 	v := e.View(apperr.LangJa)
 	return &record.FaceSimilarity{Metric: record.MetricSFace, Threshold: facesim.SameFaceThreshold, Skipped: skipped, Reason: v.Cause, Fix: v.Remedy, ModelDir: off.ModelDir, MissingFiles: off.Missing}
+}
+
+// OffNow is OffRecord of why the engine is off right now (off answers nil while it is on): the models are installed and removed while mam runs, so the
+// generation test asks it for every result and every estimate instead of being told once at the start.
+func OffNow(off func() *facesim.Off) runner.FaceOffFunc {
+	return func() *record.FaceSimilarity { return OffRecord(off()) }
 }
 
 // Swapper is what the generation test needs of FaceFusion (Issue #995): the swap that starts `facefusion.py headless-run` of the install the

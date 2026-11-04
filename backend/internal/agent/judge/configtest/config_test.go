@@ -1,4 +1,4 @@
-package judge_test
+package configtest_test
 
 import (
 	"os"

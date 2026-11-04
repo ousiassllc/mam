@@ -78,6 +78,9 @@ templ inputFields(c Compose) {
 		}
 		<p class="text-xs text-red-300" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>
 		<p class="text-xs text-amber-300" role="status" data-gt-noref data-testid="gt-noref" hidden?={ c.NoRefNotice() == "" }>{ c.NoRefNotice() }</p>
+		if c.FaceOff != "" {
+			@facelock.OffNotice(c.FaceOff)
+		}
 		if c.Media == "video" {
 			@inputnotice.CheckBox(c.InputCheck)
 		}

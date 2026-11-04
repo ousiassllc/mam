@@ -7,8 +7,7 @@
 384	backend/internal/agent/generation/orchestrator_refpack_regen_test.go
 369	backend/internal/agent/generation/referencepack.go
 354	backend/internal/agent/jobqueue/queue_test.go
-3095	backend/internal/agent/judge/
-469	backend/internal/agent/judge/judge.go
+3061	backend/internal/agent/judge/
 430	backend/internal/agent/judge/judge_test.go
 3300	backend/internal/agent/modeladapter/
 2948	backend/internal/agent/repair/

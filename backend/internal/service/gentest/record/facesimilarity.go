@@ -14,7 +14,7 @@ const (
 	SkipResultNoFace = "result_no_face"
 	// SkipError: the measurement failed (a picture that does not decode, the engine failing); the result itself is not affected.
 	SkipError = "error"
-	// SkipModelsMissing: the face models (YuNet, SFace) are not in the model folder, so the face similarity is off (#1026). Reason and Fix say what to put where.
+	// SkipModelsMissing: the face models (YuNet, SFace) are not in the model folder, so the face similarity is off (#1026). Reason and Fix say what to do: install the face models from the model manager's "顔チェック用モデル".
 	SkipModelsMissing = "models_missing"
 	// SkipRuntimeMissing: the models are there but the ONNX Runtime library is missing or does not load, so the face similarity is off (#1026).
 	SkipRuntimeMissing = "runtime_unavailable"
@@ -39,9 +39,10 @@ type FaceSimilarity struct {
 	SamePerson bool    `json:"same_person" jsonschema:"cosine が threshold 以上か。目安であって、同じ人である保証ではない"`
 	// Skipped says why no number was made (the Skip constants); empty when there is one.
 	Skipped string `json:"skipped,omitempty" jsonschema:"測れなかった理由: reference_no_face（参照に顔が無い）/ result_no_face（出力に顔が無い）/ error（測定の失敗）/ models_missing（顔モデルが無い＝顔の類似度がオフ）/ runtime_unavailable（ONNX Runtime が使えない＝オフ）"`
-	// Reason and Fix are the words for models_missing / runtime_unavailable: why it is off and what to put where (the apperr texts, in Japanese).
+	// Reason and Fix are the words for models_missing / runtime_unavailable: why it is off and how to turn it on (the apperr texts, in Japanese): install the models from the model
+	// manager for models_missing, provide the ONNX Runtime library for runtime_unavailable (installing the models does not fix that).
 	Reason string `json:"reason,omitempty" jsonschema:"models_missing / runtime_unavailable のとき: なぜ測れないか（日本語）"`
-	Fix    string `json:"fix,omitempty" jsonschema:"models_missing / runtime_unavailable のとき: 直し方（どのファイルをどこへ置くか。日本語）"`
+	Fix    string `json:"fix,omitempty" jsonschema:"models_missing / runtime_unavailable のとき: 直し方（日本語）。models_missing はモデルマネージャーの「顔チェック用モデル」から導入する（install_face_models。再起動は要らない）。runtime_unavailable は ONNX Runtime のライブラリを用意する（モデルを入れ直しても直らない）"`
 	// ModelDir is the folder the face models are looked up in; MissingFiles are the ones that are not there (models_missing).
 	ModelDir     string   `json:"model_dir,omitempty" jsonschema:"顔モデルを探すフォルダ（models_missing のとき）"`
 	MissingFiles []string `json:"missing_files,omitempty" jsonschema:"無い顔モデルのファイル名（models_missing のとき）"`

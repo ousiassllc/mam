@@ -18,12 +18,12 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/loras"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -95,9 +95,12 @@ type Deps struct {
 	BundledEndpoint string
 	// FaceCrop cuts the face out of a reference of the role "face" before an editing model reads it (nil: the picture goes as it is).
 	FaceCrop runner.FaceCropFunc
-	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number; the face models are not installed).
+	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number).
 	FaceScore runner.FaceScoreFunc
-	FaceOff   *record.FaceSimilarity // why FaceScore is nil, recorded on a result with a face reference (nil while the face similarity is on)
+	// FaceOff says now why the face similarity is off (nil, or answering nil: it is on), recorded on a result with a face reference (#1026).
+	FaceOff runner.FaceOffFunc
+	// FaceModels installs and removes the face models of the face similarity (the model manager's "顔チェック用モデル"). Nil: not offered.
+	FaceModels *facemodels.Service
 	// FaceFusion runs FaceFusion for "swap the face" (nil: the feature is off). FaceFusionCheck says why it cannot run now (FaceFusion is not
 	// found) or nil; nil: always ready.
 	FaceFusion      runner.FaceSwapFunc

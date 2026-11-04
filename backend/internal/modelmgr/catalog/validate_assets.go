@@ -14,9 +14,10 @@ import (
 // hfRepoURL matches the Hugging Face repository a pinned file URL lies in.
 var hfRepoURL = regexp.MustCompile(`^(https://huggingface\.co/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/resolve/`)
 
-// githubAssetURL matches a pinned file of a GitHub repository: a release asset (the tag is a name, so the SHA-256 is the pin) or a file at
-// a 40-digit commit (raw.githubusercontent.com). The first group is the repository's page; the raw form names it without the host.
-var githubAssetURL = regexp.MustCompile(`^(https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/releases/download/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$|^https://raw\.githubusercontent\.com/([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/[0-9a-f]{40}/[^?#\s]+$`)
+// githubAssetURL matches a pinned file of a GitHub repository: a release asset (the tag is a name, so the SHA-256 is the pin), a file at
+// a 40-digit commit (raw.githubusercontent.com) or the same through github.com/<repo>/raw/<commit>/ (the form that follows a Git LFS file to its content: raw.githubusercontent.com
+// answers an LFS file with its pointer, the opencv_zoo ONNX files are such). The first group is the repository's page; the raw form names it without the host.
+var githubAssetURL = regexp.MustCompile(`^(https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/(?:releases/download/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+|raw/[0-9a-f]{40}/[^?#\s]+)$|^https://raw\.githubusercontent\.com/([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/[0-9a-f]{40}/[^?#\s]+$`)
 
 // inRepoOf reports whether the page at source is in the Hugging Face or GitHub repository the pinned file url lies in: then the file is
 // the original, and a source note is not needed.

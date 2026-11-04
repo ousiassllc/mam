@@ -117,7 +117,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 結果の詳細から、成功した画像の顔を別の画像の顔に入れ替える。入れ替えは mam に同梱しない外部ツール **FaceFusion**（ffmpeg と同じ扱い）を別プロセスで呼ぶ（`facefusion.py headless-run`）。アップスケールと同じく、**独立したバッチ（結果 1 件・入力 2 枚）**として実行し、結果は履歴とジョブ一覧に通常の結果と同じに並ぶ（モデル識別子は `facefusion`）。非商用・研究用・商用不明のモデルは警告つきで選べ、成人向けの画像には使えない旨を画面に出す。設定（Python とフォルダ）・実行の引数・モデルのライセンス表（FaceFusion の公式一覧が一次情報）・画面・MCP は [face-swap.md](face-swap.md)。
 
-役割 `face` の入力があった結果には、**参照の顔と出力の顔の類似度（SFace のコサイン類似度）**を結果ごとに自動で測って `params.face_similarity` に残す（測れない理由も残し、結果は成功のまま。顔のモデル・ONNX Runtime が無くて測らないときも `skipped: models_missing` / `runtime_unavailable` と理由・直し方を残し、`list_generation_models` の `face_similarity` と見積りの警告 `face_similarity_off` でも読める。Issue #1026）。計測の定義・目安の閾値・モデルの配布・ライセンスの一次情報・#960 の監査は [../local-models.md](../local-models.md) §4.9。
+役割 `face` の入力があった結果には、**参照の顔と出力の顔の類似度（SFace のコサイン類似度）**を結果ごとに自動で測って `params.face_similarity` に残す（測れない理由も残し、結果は成功のまま。顔のモデル・ONNX Runtime が無くて測らないときも `skipped: models_missing` / `runtime_unavailable` と理由・直し方を残し、`list_generation_models` の `face_similarity` と見積りの警告 `face_similarity_off` でも読める。モデルはモデルマネージャーの「顔チェック用モデル」からボタン 1 つで導入でき、導入・削除は再起動なしで次の結果から効く。入力画像の欄は、オフの間「顔チェック用モデルを入れる」のリンクを出す。Issue #1026）。計測の定義・目安の閾値・モデルの配布・ライセンスの一次情報・#960 の監査は [../local-models.md](../local-models.md) §4.9。
 
 ## 3.2 プロンプトマッチ（Issue #916）
 

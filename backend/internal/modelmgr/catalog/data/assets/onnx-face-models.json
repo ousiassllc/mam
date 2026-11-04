@@ -1,0 +1,31 @@
+{
+ "runtime": "onnx-face-models",
+ "licenses": [
+  {"id": "mit-yunet", "name": "MIT License（YuNet。Copyright (c) 2020 Shiqi Yu）", "url": "https://github.com/opencv/opencv_zoo/blob/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_detection_yunet/LICENSE", "summary": "OpenCV Zoo の models/face_detection_yunet/LICENSE が MIT License の本文（Copyright (c) 2020 Shiqi Yu）。商用利用・改変・再配布ができ、著作権表示と許諾表示を残すことが条件。mam はこのファイルを同梱せず、利用者の PC に取得するだけ。", "commercial": "yes"},
+  {"id": "apache-2.0-sface", "name": "Apache License 2.0（SFace。OpenCV Zoo の face_recognition_sface）", "url": "https://github.com/opencv/opencv_zoo/blob/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_recognition_sface/LICENSE", "summary": "OpenCV Zoo の models/face_recognition_sface/README.md に「このディレクトリのファイルはすべて Apache 2.0 License」とあり、LICENSE が Apache License 2.0 の本文。重みのファイルの商用利用・改変・再配布ができ、ライセンスと著作権表示を残すことが条件。README は MobileFaceNet を SFace の損失で学習したものとだけ書き（論文 arXiv:2205.12010）、学習データは書いていない。mam はこのファイルを同梱せず、利用者の PC に取得するだけ。", "commercial": "yes", "notice": "学習データの権利は、取得元（OpenCV Zoo）の一次情報に書かれていないため確かめられていません。重みのライセンス（Apache-2.0）は商用利用を妨げませんが、学習に使われたデータの権利まで保証するものではありません。この顔チェックは結果の目安を出すだけで、生成物を配る前の最終判断（権利の確認）の代わりにはなりません。"}
+ ],
+ "assets": [
+  {
+   "name": "YuNet（顔検出）",
+   "description": "face_detection_yunet_2023mar.onnx。画像の中の顔の位置を探す小さなモデルです（約 0.2 MB）。「顔だけ」の参照を顔のまわりに切るときと、顔の類似度（SFace）を測るときに使います。",
+   "dest": "face_detection_yunet_2023mar.onnx",
+   "url": "https://github.com/opencv/opencv_zoo/raw/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+   "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+   "size": 232589,
+   "required": true,
+   "source": {"name": "opencv/opencv_zoo（GitHub）のコミット 47534e27 の models/face_detection_yunet", "url": "https://github.com/opencv/opencv_zoo/tree/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_detection_yunet"},
+   "license": "mit-yunet"
+  },
+  {
+   "name": "SFace（顔の照合）",
+   "description": "face_recognition_sface_2021dec.onnx。顔の特徴（128 次元）を取り出し、2 つの顔が同じ人かをコサイン類似度で測るモデルです（約 37 MB）。生成テストの結果の「顔の類似度」と、動画の Judge の顔の一致の測定に使います。",
+   "dest": "face_recognition_sface_2021dec.onnx",
+   "url": "https://github.com/opencv/opencv_zoo/raw/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_recognition_sface/face_recognition_sface_2021dec.onnx",
+   "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+   "size": 38696353,
+   "required": true,
+   "source": {"name": "opencv/opencv_zoo（GitHub）のコミット 47534e27 の models/face_recognition_sface", "url": "https://github.com/opencv/opencv_zoo/tree/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_recognition_sface"},
+   "license": "apache-2.0-sface"
+  }
+ ]
+}

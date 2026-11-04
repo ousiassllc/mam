@@ -10,19 +10,31 @@ import (
 )
 
 // FaceScoreFunc measures how much the face of generated is the face of reference (two image files): facesim.Compare over the face models.
-// The application gives none when the models are not installed (Deps.FaceOff says why), and the results then carry no number.
+// The application's is always there; while the models are not installed FaceOff says why there is no number, and the results then carry that instead.
 type FaceScoreFunc func(ctx context.Context, reference, generated []byte) (facesim.Comparison, error)
+
+// FaceOffFunc is why the face similarity is off right now, as a result records it (nil: it is on).
+type FaceOffFunc func() *record.FaceSimilarity
+
+// Now asks it (nil for no function: nothing says the similarity is off).
+func (f FaceOffFunc) Now() *record.FaceSimilarity {
+	if f == nil {
+		return nil
+	}
+	return f()
+}
 
 // scoreFace measures the face of a result just made against the reference the batch gave it with the role "face" and writes the number
 // into the result's params (record.FaceSimilarity, #998): the same SFace metric for every model, strength and role, so that the effect of
-// a setting is a number and not an impression. It does nothing without FaceScore or without such a reference (the picture of the
+// a setting is a number and not an impression. It does nothing without such a reference (the picture of the
 // reference is the file as uploaded, not its crop: the detector takes the largest face of it either way). A measurement that fails
 // is recorded as skipped and never fails the result: the picture is the user's whatever the number is. While the face models are not there
-// (FaceScore nil) a result that has a face reference still records skipped models_missing / runtime_unavailable (Deps.FaceOff), so that "the face
-// similarity is off" is read from the result and is not told apart from "no face reference" only by a missing field (#1026).
+// (FaceOff answers) a result that has a face reference still records skipped models_missing / runtime_unavailable, so that "the face
+// similarity is off" is read from the result and is not told apart from "no face reference" only by a missing field (#1026). The models can be installed
+// while mam runs, so it asks every time and the next result is measured.
 func (br *batchRun) scoreFace(ctx context.Context, r gentestrepo.Result, made []byte) {
 	s := br.s
-	if (s.FaceScore == nil && s.FaceOff == nil) || ctx.Err() != nil {
+	if ctx.Err() != nil {
 		return
 	}
 	var reference []byte
@@ -36,9 +48,9 @@ func (br *batchRun) scoreFace(ctx context.Context, r gentestrepo.Result, made []
 		return
 	}
 	fs := record.FaceSimilarity{Metric: record.MetricSFace, Threshold: facesim.SameFaceThreshold}
-	if s.FaceScore == nil {
-		fs = *s.FaceOff // the engine is off: there is nothing to measure with, and the result says why
-	} else if !br.measure(ctx, r, reference, made, &fs) {
+	if off := s.FaceOff.Now(); off != nil {
+		fs = *off // the engine is off: there is nothing to measure with, and the result says why
+	} else if s.FaceScore == nil || !br.measure(ctx, r, reference, made, &fs) {
 		return
 	}
 	// The other keys of the params stay as they are (the prompt match keeps its own in them).
