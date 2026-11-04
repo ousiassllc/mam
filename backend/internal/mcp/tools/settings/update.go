@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 )
@@ -17,6 +19,8 @@ type UpdateSection struct {
 	Latest    string    `json:"latest,omitempty" jsonschema:"新しいリリースのタグ"`
 	BlockedBy string    `json:"blocked_by,omitempty" jsonschema:"state が blocked のとき、更新を待たせている作業（jobs, editing, media, check_failed）"`
 	ErrorKind string    `json:"error_kind,omitempty" jsonschema:"state が error のときの種類（network, rate_limit, access, verification, release, other）"`
+	// Failure is why the check failed in the words of the screen; the raw message of the check stays in the log.
+	Failure *apperr.View `json:"failure,omitempty" jsonschema:"state が error のとき、失敗の原因と直し方（code は update_network・update_rate_limit・update_access・update_verification・update_release・update_failed。画面と同じ文。元のエラーの文は返さず、ログにある）"`
 }
 
 func updateSection(r *mcpkit.Registrar) UpdateSection {
@@ -28,10 +32,15 @@ func updateSection(r *mcpkit.Registrar) UpdateSection {
 }
 
 func updateOf(v appupdate.View) UpdateSection {
-	return UpdateSection{
+	out := UpdateSection{
 		Available: true, Version: v.Version, State: string(v.State), CheckedAt: v.CheckedAt, Latest: v.Latest,
 		BlockedBy: string(v.BlockedBy), ErrorKind: string(v.ErrorKind),
 	}
+	if v.State == appupdate.StateError {
+		fv := errmap.UpdateCheck(string(v.ErrorKind)).View(apperr.LangJa)
+		out.Failure = &fv
+	}
+	return out
 }
 
 func (h handlers) updateStatus(_ context.Context, _ Input) (UpdateSection, error) {

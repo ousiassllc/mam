@@ -54,10 +54,10 @@ func assetNamed(t *testing.T, s catalog.ResourceSet, name string) catalog.Resour
 // license of the set; the files of an archive are pinned too.
 func TestEmbeddedAssetSetsArePinnedWithSourceAndLicense(t *testing.T) {
 	c := catalog.Default()
-	require.Len(t, c.ResourceSets, 5)
+	require.Len(t, c.ResourceSets, 6)
 	for _, s := range c.ResourceSets {
 		for _, a := range s.Assets {
-			if s.Runtime == "shisei-poses" { // the pose library's files lie on GitHub: the release's zips, and a file at a commit
+			if strings.HasPrefix(s.Runtime, "shisei-poses") { // the pose library's files (and the adult series') lie on GitHub: the release's zips, and a file at a commit
 				assert.Regexp(t, `^https://(github\.com/wquguru/shisei/releases/download/v0\.4\.1/|raw\.githubusercontent\.com/wquguru/shisei/[0-9a-f]{40}/)`, a.URL, a.Name)
 			} else {
 				assert.Regexp(t, `^https://huggingface\.co/[^/]+/[^/]+/resolve/[0-9a-f]{40}/`, a.URL, a.Name)

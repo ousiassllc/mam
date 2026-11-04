@@ -39,8 +39,8 @@ func Required(m catalog.Model) []string {
 	return slices.Compact(out)
 }
 
-// Missing is the nodes of ids that the engine does not load now, with their names (an ID of the allowlist's gives its name).
-func Missing(mgr *nodes.Manager, ids []string) []string {
+// missingNames is the nodes of ids that the engine does not load now, with their names (an ID of the allowlist's gives its name).
+func missingNames(mgr *nodes.Manager, ids []string) []string {
 	var names []string
 	for _, id := range mgr.Missing(ids) {
 		name := id
@@ -52,17 +52,33 @@ func Missing(mgr *nodes.Manager, ids []string) []string {
 	return names
 }
 
-// Message is the sentence for a workflow, or a model, that needs nodes that are not installed ("" when there is none missing).
-func Message(missing []string) string {
+// message is the sentence for a workflow, or a model, that needs nodes that are not installed ("" when there is none missing).
+func message(missing []string) string {
 	if len(missing) == 0 {
 		return ""
 	}
 	return fmt.Sprintf("追加ノード「%s」が導入されていないため使えません。モデルマネージャーの「追加ノード」の節（%s）で導入してください", strings.Join(missing, "」「"), Section)
 }
 
+// Reason is why a workflow, or a model, that needs the nodes ids cannot be used or installed now ("" when every node is installed). A node that mam
+// cannot install at all (install_blocked: ComfyUI-GGUF without its Python package, #1016) is said so, with the reason the section of the nodes
+// shows, instead of the advice to install it, which would lead nowhere.
+func Reason(mgr *nodes.Manager, ids []string) string {
+	var blocked []string
+	for _, id := range mgr.Missing(ids) {
+		if n, ok := mgr.Allowlist().Node(id); ok && !n.Installable() {
+			blocked = append(blocked, fmt.Sprintf("「%s」: %s", n.Name, n.InstallBlocked))
+		}
+	}
+	if len(blocked) > 0 {
+		return fmt.Sprintf("追加ノードが今の mam では導入できないため使えません（モデルマネージャーの「追加ノード」の節 %s に理由があります）。%s", Section, strings.Join(blocked, " "))
+	}
+	return message(missingNames(mgr, ids))
+}
+
 // Check is nil when every node the model's workflows need is installed; else an *InvalidError (the refusal of the install, before a job is made).
 func Check(mgr *nodes.Manager, m catalog.Model) error {
-	if msg := Message(Missing(mgr, Required(m))); msg != "" {
+	if msg := Reason(mgr, Required(m)); msg != "" {
 		return &modelsettings.InvalidError{Message: m.Name + " は、" + msg}
 	}
 	return nil
@@ -76,6 +92,6 @@ func ForModels(mgr *nodes.Manager, endpoint string) func(modelID string, require
 		if _, ep, _, ok := localcfg.ParseID(modelID); !ok || ep != endpoint || len(required) == 0 {
 			return ""
 		}
-		return Message(Missing(mgr, required))
+		return Reason(mgr, required)
 	}
 }

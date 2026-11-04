@@ -161,3 +161,22 @@ func TestFFmpegSettings_ADamagedFileIsTheProblemOfTheSectionOnly(t *testing.T) {
 	assert.Contains(t, body, `data-testid="ffmpeg-problem"`)
 	assert.Contains(t, s.get(paths.Settings()), "設定ファイルを読めません")
 }
+
+// A path that cannot be written because the folder of the settings is read-only is told as the common error (#1010): the cause is the folder, the
+// remedy says what to do, and neither is the generic sentence that every failed save used to give.
+func TestFFmpegSettings_AReadOnlyFolderIsToldWithItsCauseAndRemedy(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes to a read-only folder")
+	}
+	s := newFFmpegScreen(t)
+	dir := filepath.Dir(s.file)
+	require.NoError(t, os.Chmod(dir, 0o500))       // #nosec G302 -- the test makes its own folder read-only
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) }) // #nosec G302 -- so that the temporary directory can be removed
+
+	rec := s.put(url.Values{"ffmpeg": {executable(t, "myffmpeg")}, "ffprobe": {executable(t, "myffprobe")}})
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code, "the status of the class of save_failed")
+	assert.Contains(t, rec.Body.String(), "設定やデータを保存できませんでした（保存先のフォルダに書き込めません）")
+	assert.Contains(t, rec.Body.String(), "フォルダの権限を確かめてから")
+	assert.NotContains(t, rec.Body.String(), "permission denied", "the English message of the system stays in the log")
+}

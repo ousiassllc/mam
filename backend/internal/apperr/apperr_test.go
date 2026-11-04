@@ -2,6 +2,7 @@ package apperr_test
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -88,4 +89,13 @@ func TestParseLang(t *testing.T) {
 	assert.Equal(t, apperr.LangJa, apperr.ParseLang("ja,en;q=0.8"))
 	assert.Equal(t, apperr.LangJa, apperr.ParseLang(""))
 	assert.Equal(t, apperr.LangJa, apperr.ParseLang("fr"))
+}
+
+// An English screen is English from the first word: no text of the English catalog (the causes, the remedies, the names of the screens, the
+// words of the box, the Agents, the units of time) keeps a Japanese character.
+func TestEnglishTextsHaveNoJapanese(t *testing.T) {
+	japanese := regexp.MustCompile(`[\p{Han}\p{Hiragana}\p{Katakana}。、（）「」]`)
+	for _, k := range apperr.Keys() {
+		assert.False(t, japanese.MatchString(apperr.Text(apperr.LangEn, k, map[string]string{"n": "1"})), "the English text of %s", k)
+	}
 }

@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
@@ -16,8 +17,14 @@ var skippedText = map[string]string{
 	record.SkipError:           "測れませんでした（画像の読み取りか顔のモデルの失敗）",
 }
 
+// The skipped values that mean the face similarity is off: they carry their own words (FaceSimilarity.Reason and Fix).
+var offSkips = []string{record.SkipModelsMissing, record.SkipRuntimeMissing}
+
 // similarityText is the face similarity of a result in words: the SFace number with the line it is read by.
 func similarityText(s record.FaceSimilarity) string {
+	if slices.Contains(offSkips, s.Skipped) {
+		return "測っていません（顔の類似度はオフ）。" + s.Reason + " " + s.Fix
+	}
 	if s.Skipped != "" {
 		return skippedText[s.Skipped]
 	}

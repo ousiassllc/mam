@@ -127,7 +127,7 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 		path, mime = filepath.Join(s.dir(), res.FilePath), res.MimeType
 	case FromBatchInput:
 		in, err := s.Repo.GetInput(ctx, ref.ID)
-		if errors.Is(err, repository.ErrNotFound) {
+		if errors.Is(err, repository.ErrNotFound) || (err == nil && s.InputHidden(ctx, in)) { // a copy of an adult pose picture is as good as gone while the age gate is closed
 			return Source{}, gterr.Invalid("過去の入力画像 %q は残っていません（その結果をすべて削除すると、入力画像も消えます）", ref.ID)
 		}
 		if err != nil {

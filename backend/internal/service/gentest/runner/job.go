@@ -35,6 +35,10 @@ const (
 	ReasonHidden = "年齢確認が無効になったため、このモデルでは生成しませんでした"
 )
 
+// ErrInputHidden fails a batch that was queued with an input image taken from an adult pose (a suggestive series of the pose library) once the age
+// gate is closed: nothing is run, and the message names neither the pose nor the picture.
+var ErrInputHidden = errors.New("年齢確認が無効になったため、成人向けの入力画像を使う生成は行いませんでした")
+
 // Extra runs the batches whose rounds it plans itself (the prompt match); Handle reports false for one that is not its own.
 type Extra interface {
 	Handle(context.Context, domain.Job, gentestrepo.Batch) (bool, error)
@@ -55,11 +59,16 @@ type Deps struct {
 	HiddenWith func(modelID string, exposed map[string]any) bool
 	// Extra runs the batches that are not this runner's (nil: every batch is). The prompt match sets it once it is built, before the job queue starts.
 	Extra Extra
+	// InputHidden says a stored input image is out of sight (the age gate: history.Store.InputHidden): a batch that was queued with one is not run
+	// once the gate is closed. May be nil.
+	InputHidden func(ctx context.Context, in gentestrepo.Input) bool
 	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See
 	// FaceCropFunc.
 	FaceCrop FaceCropFunc
 	// FaceScore measures the face of a result against the reference of the role "face" (nil: no number; the face models are not installed). See FaceScoreFunc.
 	FaceScore FaceScoreFunc
+	// FaceOff is what a result with a face reference records while FaceScore is nil: skipped models_missing / runtime_unavailable with the words (nil: nothing is recorded).
+	FaceOff *record.FaceSimilarity
 	// FaceSwap runs FaceFusion for a result of "swap the face" (nil: such a result fails). See FaceSwapFunc.
 	FaceSwap FaceSwapFunc
 	Now      func() time.Time
@@ -130,16 +139,17 @@ func (s *Runner) RunJob(ctx context.Context, job domain.Job) (err error) {
 	if err != nil {
 		return err
 	}
-	inputs, err := s.loadInputs(ctx, batch.ID)
-	if err != nil {
-		return err
-	}
-	// When the batch cannot start, its results must not stay queued for a job that is over.
+	// When the batch cannot start (an input image that cannot be read or is out of sight of the age gate included), its results must not stay queued
+	// for a job that is over.
 	defer func() {
 		if err != nil {
 			_, _ = s.Repo.FailQueued(context.WithoutCancel(ctx), batch.ID, "バッチを開始できませんでした: "+err.Error(), s.Now().UTC())
 		}
 	}()
+	inputs, err := s.loadInputs(ctx, batch.ID)
+	if err != nil {
+		return err
+	}
 	rn := &run{}
 	s.mu.Lock()
 	s.runs[batch.ID] = rn
@@ -162,6 +172,9 @@ func (s *Runner) loadInputs(ctx context.Context, batchID string) (map[string]loa
 	}
 	out := make(map[string]loaded, len(list))
 	for _, in := range list {
+		if s.InputHidden != nil && s.InputHidden(ctx, in) { // an adult pose picture, and the age gate was closed after the batch was queued
+			return nil, ErrInputHidden
+		}
 		data, err := os.ReadFile(filepath.Join(s.Dir, filepath.FromSlash(in.FilePath))) //nolint:gosec // the path was written by newBatch below the gentest directory
 		if err != nil {
 			return nil, fmt.Errorf("read input image %s: %w", in.ID, err)

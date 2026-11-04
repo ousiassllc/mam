@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -159,9 +160,14 @@ func TestFaceSwapSaysWhyFaceFusionCannotRun(t *testing.T) {
 
 	_, err := face.Swap(context.Background(), r.Svc, face.SwapRequest{Target: target, Face: faceRef})
 
-	require.ErrorAs(t, err, &invalid)
-	assert.Contains(t, invalid.Message, "python not found")
-	assert.Contains(t, invalid.Message, "設定")
+	e, ok := apperr.As(err)
+	require.True(t, ok, "the common error (#1010)")
+	assert.Equal(t, apperr.CodeFaceFusionNone, e.Code)
+	v := e.View(apperr.LangJa)
+	assert.Contains(t, v.Cause, "FaceFusion を使えません")
+	assert.Contains(t, v.Remedy, "設定画面の「FaceFusion」")
+	assert.Contains(t, v.Detail, "python not found", "the reason it was not found is the detail")
+	assert.Equal(t, "/settings/facefusion", v.Settings[0].Path)
 
 	bare := gentesttest.New(t)
 	err = face.Available(bare.Svc)
@@ -180,4 +186,11 @@ func TestFaceSwapThatFailsIsAFailedResultWithTheReason(t *testing.T) {
 	assert.Equal(t, gentest.StateFailed, st.State)
 	assert.False(t, st.Results[0].HasFile)
 	assert.Contains(t, st.Results[0].Error, "NSFW content detected")
+	f := st.Results[0].Failure
+	require.NotNil(t, f, "the failure of the result is the common error (#1010)")
+	assert.Equal(t, apperr.CodeFaceFusionFailed, f.Code)
+	assert.Contains(t, f.Cause, "FaceFusion が途中でエラーを出して終わりました")
+	assert.Contains(t, f.Remedy, "成人向けの画像は FaceFusion が断ります")
+	assert.Contains(t, f.Detail, "NSFW content detected", "what FaceFusion printed is the detail")
+	assert.NotContains(t, f.Cause+f.Remedy, "NSFW")
 }

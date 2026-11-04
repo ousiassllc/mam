@@ -1,6 +1,8 @@
 package gentestadv
 
 import (
+	"strings"
+
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 )
@@ -97,20 +99,25 @@ templ advancedSlider(kind, label, name, value, min, max, step string, def float6
 	</div>
 }
 
-// WeightIntro is how to write a weight and how to put one with the buttons of the selected words (static/src/components/prompt-weight). The
-// easy tier's "?" of the prompt is this alone: its model follows the choice of what to make, so what the model does with weights is said
-// by the bar of the selected words.
-templ WeightIntro() {
+// WeightChosen is the explanation behind the "?" of the prompts: how to write a weight and how to put one with the buttons of the selected words, and
+// what the models that are chosen now do with it. <mam-weight-help> (static/src/components/prompt-weight) draws that part from the cards of the chosen
+// models, for one chosen model one line (Issue #1023), and follows the choice. The easy tier's "?" is this alone: its one model is the hidden card.
+templ WeightChosen() {
 	@help.Text(weightHelpIntro)
+	<mam-weight-help class="mt-2 block" data-testid="gt-weight-help"></mam-weight-help>
 }
 
-// WeightHelp is the explanation behind the "?" of the prompts: how to write a weight, and for each model of the form whether it reads
-// it and, when it does not, what to do instead.
-templ WeightHelp(lines []WeightLine) {
-	@WeightIntro()
-	<ul class="mt-2 flex flex-col gap-1.5" data-testid="gt-weight-help">
-		for _, l := range lines {
-			<li class="break-words" data-weight={ l.Level }><span class="text-neutral-100">{ l.Label }</span>: { l.Text }</li>
-		}
-	</ul>
+// WeightHelp is WeightChosen and, in a fold, all the models of the form by how they read weights (their display names, each once).
+templ WeightHelp(all []WeightGroup) {
+	@WeightChosen()
+	if len(all) > 0 {
+		<details class="mt-2" data-testid="gt-weight-all">
+			<summary class="cursor-pointer text-xs text-neutral-400">すべてのモデルを見る</summary>
+			<ul class="mt-1 flex flex-col gap-1.5">
+				for _, g := range all {
+					<li class="break-words" data-weight={ g.Level }>{ strings.Join(g.Names, "・") }: { g.Title }</li>
+				}
+			</ul>
+		</details>
+	}
 }

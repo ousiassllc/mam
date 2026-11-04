@@ -1,7 +1,7 @@
 {
  "id": "comfyui-gguf",
  "name": "ComfyUI-GGUF（GGUF 形式の拡散モデルの読み込み）",
- "description": "llama.cpp 系の GGUF（量子化）形式の拡散モデルを ComfyUI で読む Unet Loader (GGUF) などのノード集。ここに固定したのは city96/ComfyUI-GGUF の fork（leejet/ComfyUI-GGUF）で、Qwen-Image 2.1・Krea 2 の GGUF を読めるようにしたもの（city96 の本家は、これらの architecture を持たず読めない）。ノードが import する Python パッケージ gguf が同梱の Python 環境になく、mam は pip を実行しないため、今は導入できない。このため、GGUF 版のモデル（Qwen-Image-2.1-Uncensored の Q4_K_M など）もカタログに載せていない（導入できないモデルを載せない）。",
+ "description": "llama.cpp 系の GGUF（量子化）形式の拡散モデルを ComfyUI で読む Unet Loader (GGUF) などのノード集。ここに固定したのは city96/ComfyUI-GGUF の fork（leejet/ComfyUI-GGUF）で、Qwen-Image 2.1（qwen_image21）・Krea 2 の GGUF を読めるようにしたもの（city96 の本家は、これらの architecture を持たず読めない）。ノードが import する Python パッケージ gguf が同梱の Python 環境になく、mam は pip を実行しないため、今は導入できない。このノードを必要とする GGUF 版のモデル（Qwen-Image-2.1-Uncensored の Q4_K_M・Q8_0）はカタログに載っているが、ノードが導入できる状態になるまで導入も選択もできない。",
  "repo": "https://github.com/leejet/ComfyUI-GGUF",
  "commit": "373048b8403a7820620065210a691263d4da0a61",
  "archive_url": "https://github.com/leejet/ComfyUI-GGUF/archive/373048b8403a7820620065210a691263d4da0a61.zip",
@@ -20,7 +20,7 @@
  },
  "python_requires": ["torch", "gguf", "tqdm"],
  "python_optional": ["protobuf", "sentencepiece", "transformers", "packaging"],
- "install_blocked": "ノードが import 時に要る Python パッケージ gguf（loader.py・ops.py・dequant.py が先頭で import する）が、同梱の Python 環境（ComfyUI の公式ポータブル版。v0.42.1 の requirements.txt に gguf は無い）になく、mam は pip を実行しません（custom-nodes.md §5.1）。ノードを入れても読み込みで失敗するため導入しません。固定した wheel を許可リストの項目として持つ経路（§5.1 の将来の設計）ができるまで、このノードを必要とする GGUF 版のモデルも載せません。",
+ "install_blocked": "ノードが import 時に要る Python パッケージ gguf（loader.py・ops.py・dequant.py が先頭で import する）が、同梱の Python 環境（ComfyUI の公式ポータブル版。v0.42.1 の requirements.txt に gguf は無い）になく、mam は pip を実行しません（custom-nodes.md §5.1）。ノードを入れても読み込みで失敗するため導入しません。固定した wheel を許可リストの項目として持つ経路（§5.1 の将来の設計）ができるまで、このノードを必要とする GGUF 版のモデルも導入・選択できません。",
  "node_classes": [
   "UnetLoaderGGUF",
   "UnetLoaderGGUFAdvanced",

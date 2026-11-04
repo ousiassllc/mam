@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -96,6 +97,7 @@ type Deps struct {
 	FaceCrop runner.FaceCropFunc
 	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number; the face models are not installed).
 	FaceScore runner.FaceScoreFunc
+	FaceOff   *record.FaceSimilarity // why FaceScore is nil, recorded on a result with a face reference (nil while the face similarity is on)
 	// FaceFusion runs FaceFusion for "swap the face" (nil: the feature is off). FaceFusionCheck says why it cannot run now (FaceFusion is not
 	// found) or nil; nil: always ready.
 	FaceFusion      runner.FaceSwapFunc
@@ -137,12 +139,16 @@ func New(d Deps) *Service {
 		Repo: d.Repo, Dir: dir, AssetsDir: d.AssetsDir, Projects: d.Projects, References: d.References,
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
+	store := history.New(d.Repo, dir)
+	if d.Poses != nil {
+		store.HidePose = d.Poses.Hides // the pictures of the adult pose series are out of sight in the history while the age gate is closed
+	}
 	run := runner.New(runner.Deps{
-		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, FaceCrop: d.FaceCrop,
-		FaceScore: d.FaceScore, FaceSwap: d.FaceFusion, Now: d.Now, Logger: d.Logger,
+		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, InputHidden: store.InputHidden, FaceCrop: d.FaceCrop,
+		FaceScore: d.FaceScore, FaceOff: d.FaceOff, FaceSwap: d.FaceFusion, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
-		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes, CatalogInfo: d.CatalogInfo},
+		Deps: d, Link: link, Runner: run, Store: store, catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes, CatalogInfo: d.CatalogInfo},
 	}
 }
 

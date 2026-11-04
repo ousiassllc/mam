@@ -36,7 +36,7 @@
 
 1. **入力**: 入れ替え先（`Target`）と顔（`Face`）は `RefInput`（history・upload・project_asset・reference_item・pose_library）。どちらも `ResolveInput` で解決し（PNG・JPEG・WebP、20 MiB 以下）、バッチのディレクトリへ複製する。入力の役割は入れ替え先が `edit`、顔が `face`。
 2. **バッチ**: 結果 1 件・入力 2 枚の**独立したバッチ**。結果のモデル識別子は固定の `facefusion`（`face.SwapModel`）、`api_model` は入れ替えモデルの ID。見積り・確認は無い（ローカルの処理で費用が無い。`cost_basis: free`）。ジョブ（`gentest`）にして `SetBatchJob`。ジョブ一覧の「生成テスト」に並び、履歴（ギャラリー）に通常の結果と同じに並ぶ。履歴の「モデル」の絞り込みにも `facefusion` が出る。
-3. **実行**（`runner.faceSwap`）: `FaceSwapFunc`（アプリは `facefusion.Install.Swap`）を呼び、返った画像を `<result_id>.png` として保存して成功にする。FaceFusion が使えないときの失敗は結果の理由に出る。
+3. **実行**（`runner.faceSwap`）: `FaceSwapFunc`（アプリは `facefusion.Install.Swap`）を呼び、返った画像を `<result_id>.png` として保存して成功にする。FaceFusion が使えないときの失敗は `facefusion_unavailable`（導線 `/settings/facefusion`。共通エラー [../errors.md](../errors.md)）として結果の `failure` に出る。
 4. **起動する引数**（`facefusion.Args`。`python` の引数）:
 
    ```
@@ -49,7 +49,7 @@
 
    復元を使わない（`enhancer: none`）ときは `--processors face_swapper` だけで、`--face-enhancer-model` は付けない。作業ディレクトリは FaceFusion のフォルダ（相対の `facefusion.py` と `.assets` のため）。**入力・出力・ジョブ・一時ファイルは mam が作る一時ディレクトリ（`mam-facefusion-*`。終わったら消す）に置き**、FaceFusion のフォルダには書かせない。環境変数 `PYTHONIOENCODING=utf-8`・`PYTHONUTF8=1`・`PYTHONUNBUFFERED=1` を足す。Windows では `CREATE_NO_WINDOW`（コンソールの窓を出さない）。
 5. **モデルの検査**: 入れ替え・顔検出・復元のモデル ID は mam が持つ表（`facefusion.Swappers`・`Detectors`・`Enhancers`。FaceFusion 3.x の `choices` と同じ名前）にあるものだけ。無い ID は、プロセスを起動する前に「選べません（選べるもの一覧）」で拒否する。
-6. **失敗**: 非ゼロの終了・時間切れ（既定 30 分。初回はモデルの取得で長い）・終了しても出力が無い・出力が画像でない、は `*facefusion.RunError`。出力（標準出力・標準エラーの末尾の数行。キャリッジリターンも改行として扱う）を結果の理由に含める。ジョブが取り消されたとき（コンテキスト）は FaceFusion の失敗として扱わない。
+6. **失敗**: 非ゼロの終了・時間切れ（既定 30 分。初回はモデルの取得で長い）・終了しても出力が無い・出力が画像でない、は `*facefusion.RunError`。出力（標準出力・標準エラーの末尾の数行。キャリッジリターンも改行として扱う）を結果の理由に含める。結果の `failure` は `facefusion_failed`（原因は終わり方: 時間切れ・異常終了・出力なし。直し方は顔がはっきり写っているか・成人向けの画像は断られる・GPU のメモリ・設定画面の確認。出力の末尾は詳細）。出力に `out of memory` などがあれば `vram_oom`（共通エラー §5）。英語の出力そのものは `detail` にだけ出る。ジョブが取り消されたとき（コンテキスト）は FaceFusion の失敗として扱わない。
 7. **記録**（`record.FaceSwap`、結果の `params.face_swap`）: 元の結果 ID（入れ替え先が履歴の結果のとき）・入れ替え / 顔検出 / 復元のモデル・**ライセンスの警告**。元の結果を後で消しても、この結果は残る。
 8. **顔の類似度**: 顔の画像は役割 `face` の入力なので、結果には通常の生成と同じ顔の類似度（SFace。[../local-models.md](../local-models.md) §4.9）も測って付く。入れ替えで顔が実際に近づいたかを同じ物差しで見られる。
 
@@ -112,3 +112,4 @@
 |---|---|---|---|
 | 1.0 | 2026-11-03 | 新規。FaceFusion を同梱しない外部ツールとして扱う方針、検出と設定（`facefusion.json`）、`headless-run` での入れ替え（既定 ghost＋yunet＋gfpgan）、画面・MCP、モデルのライセンス表（FaceFusion の公式一覧が一次情報）、ArcFace の注意、実機が要る項目 | Issue #995 |
 | 1.1 | 2026-11-03 | §2・§5: MCP の `set_facefusion_paths` を外した。パスの設定は設定画面だけ（パスは後で起動される実行ファイルを決めるので、MCP のクライアントに決めさせない。ffmpeg のパスに MCP ツールが無いのと同じ）。MCP は `get_facefusion_status`（読み取り）と `swap_generation_face` の 2 つ | 統合後レビューの指摘 |
+| 1.2 | 2026-11-04 | 失敗を共通エラーにした: FaceFusion が使えないときは `facefusion_unavailable`（503。従来は 422 の入力エラー）、実行の失敗は `facefusion_failed`（出力の末尾は詳細）。結果の `failure`・画面のエラーボックス・MCP の `failure` で同じコード | Issue #1010 |

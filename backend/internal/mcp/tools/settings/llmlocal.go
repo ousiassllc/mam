@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
@@ -79,7 +80,7 @@ func (h handlers) setLocalServer(_ context.Context, in SetLocalServerInput) (Loc
 	case errors.As(err, &store):
 		return LocalServer{}, apperr.New(apperr.CodeSaveFailed).WithCause(store.Message).Wrap(err)
 	}
-	return LocalServer{}, err
+	return LocalServer{}, errmap.SaveFailure(err)
 }
 
 // TestLocalServerInput names the server to try; an empty field is the saved one.

@@ -1,0 +1,43 @@
+{
+ "id": "img2video-wan22-14b-rapid-aio",
+ "label": "Wan2.2 Rapid AllInOne v10 NSFW（I2V）: 先頭フレームから動画",
+ "media": "video",
+ "description": "Phr00t の WAN2.2 Rapid AllInOne の I2V v10 NSFW（モデル・テキストエンコーダー・VAE を 1 つにまとめた fp8 のチェックポイント wan2.2-i2v-rapid-aio-v10-nsfw.safetensors）で先頭フレーム 1 枚から動画を作る標準ノードだけのワークフロー。作者の説明（リポジトリのカード）に従い、CheckpointLoaderSimple 1 つから拡散モデル・CLIP・VAE を取り、ModelSamplingSD3（shift 8。作者の例と同じ）→ KSampler（4 ステップ・cfg 1・euler_ancestral/beta。カードが v10 に勧める euler_a/beta）で生成する。作者の例のワークフロー（wan2.2-i2v-rapid-aio-example.json）にある CLIP Vision は、Wan 2.2 I2V の公式のワークフローが使わないので省き、先頭フレームは WanImageToVideo の start_image に渡す。同じ作者の Mega 版（VACE。先頭・最終フレームの指定にカスタムノードが要る）の I2V とは別のファイルで、こちらは標準ノードだけで組める。16fps・フレーム数は 4n+1。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},
+  "workflow": {
+   "prompt_weight": "weak",
+   "graph": {
+    "26": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "wan2.2-i2v-rapid-aio-v10-nsfw.safetensors"}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["26", 1]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["26", 1]}},
+    "56": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "57": {"class_type": "WanImageToVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["26", 2], "start_image": ["56", 0]}},
+    "32": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["26", 0]}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 4, "cfg": 1, "sampler_name": "euler_ancestral", "scheduler": "beta", "denoise": 1, "model": ["32", 0], "positive": ["57", 0], "negative": ["57", 1], "latent_image": ["57", 2]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["26", 2]}},
+    "58": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+    "59": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["58", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "57", "input": "width"},
+    {"param": "height", "node": "57", "input": "height"},
+    {"param": "frames", "node": "57", "input": "length"},
+    {"param": "fps", "node": "58", "input": "fps"},
+    {"param": "first_frame", "node": "56", "input": "image"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "59",
+   "fps": 16,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}

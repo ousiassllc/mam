@@ -32,14 +32,20 @@ func (l *Library) Progress() Progress {
 }
 
 // Remove deletes the pictures, the pose catalog and what was downloaded, and the record of the install (the library is "not installed"
-// again; the next install downloads it again). A library that is not installed is removed without an error. A running install is a conflict:
-// it is left to finish (or to be cancelled by the user leaving the page).
+// again; the next install downloads it again), and the suggestive series with it (their names come from the catalog). A library that is not
+// installed is removed without an error. A running install is a conflict: it is left to finish (or to be cancelled by the user leaving the page).
+// Removing is allowed whatever the age gate says: clearing the files away is always possible.
 func (l *Library) Remove() error {
 	if l.prog.running.Load() {
 		return gterr.Conflict("ポーズ集を導入している最中は削除できません。終わってからやり直してください")
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.index = nil
+	l.index, l.general = nil, nil
+	if l.adult != nil {
+		if err := l.adult.install.Remove(); err != nil {
+			return err
+		}
+	}
 	return l.install.Remove()
 }

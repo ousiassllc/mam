@@ -30,7 +30,7 @@ import (
 // newGentest builds the generation test service and registers its job handler on jobs (before the queue starts and
 // before Recover, which fails the jobs of a kind without handler). A slot assignment of an import goes through the
 // World service, so its locks and kind checks apply.
-func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, logger *slog.Logger) *gentest.Service {
+func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, faceOff *facesim.Off, logger *slog.Logger) *gentest.Service {
 	swap, swapCheck := face.Swapper(facefusionsettings.Default(cfg.DataDir)) // FaceFusion, the external face swapper (#995)
 	g := gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
@@ -48,10 +48,10 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		PlatformWarning: mmview.PlatformWarningFor(services.ModelManager),
 		BundledEndpoint: modelmanager.BundledEndpoint,
 		Translator:      translator,
-		Poses:           newPoseLibrary(logger),
+		Poses:           newPoseLibrary(services.ModelManager.AdultContentEnabled, logger),
 		FaceCrop:        face.Crop(faces),
-		FaceScore:       face.Score(faces),
-		FaceFusion:      swap, FaceFusionCheck: swapCheck,
+		FaceScore:       face.Score(faces), FaceOff: face.OffRecord(faceOff), // FaceOff: why there is no score (#1026)
+		FaceFusion: swap, FaceFusionCheck: swapCheck,
 		Logger: logger,
 	})
 	g.Register()
@@ -59,15 +59,15 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 	return g
 }
 
-// newPoseLibrary is the pose library (Shisei) of the generation test, below the localai directory next to the executable like the local
-// runtimes. nil when the directory cannot be found or the library cannot be opened: the generation test then has no "ポーズを選ぶ".
-func newPoseLibrary(logger *slog.Logger) *poses.Library {
+// newPoseLibrary is the pose library (Shisei) of the generation test, below the localai directory next to the executable like the local runtimes.
+// adultOpen is the age gate of the model manager: the suggestive series (sexy, duo) are installed and shown only while it is open. nil when it cannot be opened.
+func newPoseLibrary(adultOpen func() bool, logger *slog.Logger) *poses.Library {
 	exe, err := executablePath()
 	if err != nil {
 		logger.Warn("pose library: the executable was not found", "err", err)
 		return nil
 	}
-	lib, err := poses.New(poses.Deps{Root: store.LocalAIRoot(exe)})
+	lib, err := poses.New(poses.Deps{Root: store.LocalAIRoot(exe), AdultOpen: adultOpen})
 	if err != nil {
 		logger.Warn("pose library: open failed", "err", err)
 		return nil

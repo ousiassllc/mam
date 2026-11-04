@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
+	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 )
@@ -110,7 +111,7 @@ func (h handlers) setAudio(ctx context.Context, in SetAudioInput) (AudioProvider
 	case errors.Is(err, audiosettings.ErrUnreadable):
 		return AudioProvidersSection{}, &service.ConflictError{Message: audiosettings.UnreadableMessage}
 	default:
-		return AudioProvidersSection{}, err
+		return AudioProvidersSection{}, errmap.SaveFailure(err)
 	}
 	return h.audioSection(ctx)
 }

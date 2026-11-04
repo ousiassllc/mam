@@ -14,6 +14,9 @@ type CatalogTraits struct {
 	Adult     bool          `json:"adult" jsonschema:"成人向け（content_rating が adult）"`
 	Traits    traits.Traits `json:"traits" jsonschema:"パラメータ数・非検閲・速度と品質の目安（カタログの traits）"`
 	VRAMMinGB int           `json:"vram_min_gb" jsonschema:"VRAM の目安（最小。GB）"`
+	// MissingOptional are the optional files that are not in place (the model is installed and usable without them).
+	MissingOptional []string `json:"missing_optional_files,omitempty" jsonschema:"導入済みで、まだ無い任意のファイル（速さのモードの Lightning LoRA など）。モデルは使えるが、それを使う速さのモードは使えない"`
+	PartialNote     string   `json:"partial_note,omitempty" jsonschema:"任意のファイルが足りないことを説明する文（導入済み・速さのモードの一部は未導入）"`
 }
 
 func (c Catalog) catalogInfo(id string) (modelfilter.CatalogInfo, bool) {
@@ -121,12 +124,15 @@ func (c Catalog) Availability(id string) (modelfilter.Availability, bool) {
 	return modelfilter.Availability{}, false
 }
 
-// availability is the one judgement of "can this model be chosen now": the adapter's reason (no backend or API key, the vendor's breaker, the age gate), else a
-// custom node of the workflow that is missing.
+// availability is the one judgement of "can this model be chosen now": the adapter's reason (no backend or API key, the vendor's breaker, the age gate), else the
+// model manager's own state of a catalog model (not installed, being installed, a required file missing: the same answer as the catalog's, #1025), else a custom
+// node of the workflow that is missing.
 func (c Catalog) availability(cfg modeladapter.Config, m domain.ModelName, source string) modelfilter.Availability {
 	reason, msg := c.Adapter.Unavailable(m), ""
 	if reason != "" {
 		msg = unavailableMessage(reason, source)
+	} else if info, ok := c.catalogInfo(string(m)); ok && info.NotInstalled != "" {
+		reason, msg = string(modelfilter.ReasonNotInstalled), info.NotInstalled
 	} else if msg = c.missingNodes(cfg, m); msg != "" {
 		reason = ExcludedMissingNode
 	} else {

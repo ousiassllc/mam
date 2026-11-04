@@ -90,6 +90,9 @@ func modelBadges(m Model) []modelcard.Badge {
 	if m.LowDisk && m.State != "installed" && m.State != "installing" {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-low-disk"}})
 	}
+	if m.PartialNote != "" {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "一部未導入（任意ファイル）", Attrs: templ.Attributes{"data-testid": "mm-partial-badge", "title": m.PartialNote}})
+	}
 	if m.PlatformWarning != "" {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "この PC は対象外の見込み", Attrs: templ.Attributes{"data-testid": "mm-platform-warning"}})
 	}
@@ -141,6 +144,9 @@ templ modelActions(m Model, blocked bool) {
 				})
 			}
 		case "installed":
+			if m.PartialNote != "" {
+				@installButton(m, blocked)
+			}
 			@atoms.SmallButtonFor(atoms.ToneDanger, "削除", m.Name, templ.Attributes{
 				"type": "button", "hx-delete": paths.ModelManagerPart("models", m.ID), "hx-target": "#" + CatalogID, "hx-swap": "outerHTML",
 				"hx-sync": "this:drop", "hx-disabled-elt": "this",
@@ -169,6 +175,9 @@ templ installButton(m Model, blocked bool) {
 func installLabel(m Model) string {
 	if m.State == "incomplete" {
 		return "不足分を取得して復旧"
+	}
+	if m.PartialNote != "" {
+		return "任意ファイルを取得"
 	}
 	return "導入"
 }

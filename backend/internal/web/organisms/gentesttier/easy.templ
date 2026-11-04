@@ -50,7 +50,7 @@ templ Easy(e EasyData, card templ.Component) {
 	</fieldset>
 	@EasyPick(e, card)
 	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-prompts-title" data-testid="gt-prompt-fields">
-		@help.Row(help.ID("プロンプトのウェイト"), "プロンプトのウェイト", gentestadv.WeightIntro()) {
+		@help.Row(help.ID("プロンプトのウェイト"), "プロンプトのウェイト", gentestadv.WeightChosen()) {
 			<span id="gt-prompts-title" class="text-sm font-medium text-neutral-200">プロンプト</span>
 		}
 		for i, p := range e.Prompts {
@@ -63,6 +63,7 @@ templ Easy(e EasyData, card templ.Component) {
 			}
 			<input type="hidden" name={ FieldNegative } value={ p.Negative }/>
 		}
+		@WeightNote()
 		@WeightBar()
 		if e.Translate {
 			<input type="hidden" name={ FieldTranslate } value="1"/>

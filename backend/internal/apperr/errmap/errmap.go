@@ -70,6 +70,12 @@ func Known(err error) (*apperr.Error, bool) {
 	return e, true
 }
 
+// IsKnown reports whether err is a failure this package knows (see Known).
+func IsKnown(err error) bool {
+	_, ok := Known(err)
+	return ok
+}
+
 // Report is Explain that also logs a failure it does not know: the cause goes to logger with a new correlation id (the attribute
 // error_id), and the id is in the returned error, so that a person who reports the failure and the log line meet. A known failure is not
 // logged here: the caller logs what it wants to log. attrs are added to the log line.
@@ -108,7 +114,7 @@ func classify(err error) *apperr.Error {
 	case errors.Is(err, modeladapter.ErrNoAPIKey):
 		return apperr.New(apperr.CodeKeyMissing)
 	case errors.Is(err, audiodirector.ErrNoAPIKey):
-		return apperr.New(apperr.CodeKeyMissing).With("service", "ElevenLabs の ")
+		return apperr.New(apperr.CodeKeyMissing).With("service", "{{key_missing.elevenlabs}}")
 	case localllm.IsUnreachable(err):
 		return apperr.New(apperr.CodeLocalLLMDown)
 	case errors.As(err, &te):
@@ -129,6 +135,8 @@ func classify(err error) *apperr.Error {
 		return apperr.New(apperr.CodeDownloadCorrupt)
 	case errors.Is(err, store.ErrNotWritable):
 		return apperr.New(apperr.CodeNotWritable)
+	case errors.Is(err, media.ErrUnavailable):
+		return apperr.New(apperr.CodeFFmpegMissing)
 	case errors.Is(err, media.ErrTimeout):
 		return apperr.New(apperr.CodeMediaTimeout)
 	case errors.As(err, &fetchNoSpace):
@@ -139,6 +147,9 @@ func classify(err error) *apperr.Error {
 		return apperr.New(apperr.CodeConnectionFailed)
 	}
 	if e := byMessage(err.Error()); e != nil {
+		return e
+	}
+	if e := faceFusion(err); e != nil {
 		return e
 	}
 	if status, ok := statusOf(err); ok {
@@ -187,24 +198,29 @@ func LocalTimeout(err error) *apperr.Error {
 }
 
 func localTimeout(te *localcfg.TimeoutError) *apperr.Error {
+	token, n := duration(te.After)
+	var code apperr.Code
 	switch {
 	case te.Stalled:
-		return apperr.New(apperr.CodeStalled).With("after", duration(te.After))
+		code = apperr.CodeStalled
 	case te.After >= localcfg.MaxTimeoutSeconds*time.Second:
-		return apperr.New(apperr.CodeTimeLimit).With("after", duration(te.After))
+		code = apperr.CodeTimeLimit
+	default:
+		code = apperr.CodeEndpointTimeout
 	}
-	return apperr.New(apperr.CodeEndpointTimeout).With("after", duration(te.After))
+	return apperr.New(code).With("after", token).With("n", n)
 }
 
-// duration is a time limit in words: whole hours, else whole minutes, else seconds.
-func duration(d time.Duration) string {
+// duration is a time limit as the arguments of the texts "duration.*" ({n} with the unit of the language): whole hours, else whole
+// minutes, else seconds. It returns the text that stands for the time and the number it needs.
+func duration(d time.Duration) (token, n string) {
 	switch {
 	case d >= time.Hour && d%time.Hour == 0:
-		return strconv.Itoa(int(d/time.Hour)) + "時間"
+		return "{{duration.hours}}", strconv.Itoa(int(d / time.Hour))
 	case d >= time.Minute && d%time.Minute == 0:
-		return strconv.Itoa(int(d/time.Minute)) + "分"
+		return "{{duration.minutes}}", strconv.Itoa(int(d / time.Minute))
 	}
-	return strconv.Itoa(int(d.Round(time.Second)/time.Second)) + "秒"
+	return "{{duration.seconds}}", strconv.Itoa(int(d.Round(time.Second) / time.Second))
 }
 
 // needs is what ComfyUI's adapter says when an input the workflow cannot run without was not sent: "the workflow needs first_frame

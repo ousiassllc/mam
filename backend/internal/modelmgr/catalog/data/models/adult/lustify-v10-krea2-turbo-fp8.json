@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"uncensored": true, "speed": "fast"},
- "description": "【実写】LUSTIFY! の v10（Krea 2 ベース。Krea 2 Turbo の蒸留版）の fp8 版（成人向け）。SDXL 版の LUSTIFY ZENITH (V9) の次の世代で、8 ステップ・cfg 1 で描く。拡散モデル（約 12.8 GB）・Qwen3-VL 4B のテキストエンコーダー（約 5.2 GB）・VAE（約 0.25 GB）の 3 ファイル、合計約 18.3 GB（VAE は qwen-image と同じファイルなので、導入済みなら取得しない）。標準ノードだけで動く（ComfyUI v0.42.1 が Krea 2 を持つ）。GGUF 版は追加ノードが要るため入れていない。商用の可否は Krea 2 のライセンスの条件つきで、LUSTIFY の作者の条件は確かめられていない。",
+ "description": "【実写】LUSTIFY! の v10（Krea 2 ベース。Krea 2 Turbo の蒸留版）の fp8 版（成人向け）。SDXL 版の LUSTIFY ZENITH (V9) の次の世代で、8 ステップ・cfg 1 で描く。拡散モデル（約 12.8 GB）・Qwen3-VL 4B のテキストエンコーダー（約 5.2 GB）・VAE（約 0.25 GB）の 3 ファイル、合計約 18.3 GB（VAE は qwen-image と同じファイルなので、導入済みなら取得しない）。標準ノードだけで動く（ComfyUI v0.42.1 が Krea 2 を持つ）。GGUF 版（Q2・Q4）は Hugging Face に同じファイルが無く（Civitai だけ）、カタログに載せていない。商用の可否は Krea 2 のライセンスの条件つきで、LUSTIFY の作者の条件は確かめられていない。",
  "files": [
   {
    "name": "lustifyNSFWCheckpoint_v10Krea2.safetensors",

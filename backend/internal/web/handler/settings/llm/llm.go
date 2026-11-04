@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
@@ -26,7 +27,6 @@ import (
 const (
 	appliedNow   = "次の呼び出しからすぐ使われます（再起動は要りません）"
 	pinnedReason = "起動オプションで固定されているため、この画面では変更できません"
-	writeFailed  = "設定ファイルを書き込めませんでした。保存先の権限と空き容量を確認してください"
 	notFound     = "対象が見つかりません"
 	modalTitle   = "LLM の割り当て"
 )
@@ -170,7 +170,7 @@ func change(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, r
 		return
 	default:
 		_ = c.Error(err)
-		status, f.Error = http.StatusInternalServerError, writeFailed
+		status, f.Error = failure.Save(err)
 	}
 	if f.Error != "" && f.Blame == "" { // a refusal that blames no field leaves the focus to the alert
 		f.Primary.Field.Autofocus = false
@@ -224,7 +224,7 @@ func answer(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, e
 		status, d.Error = http.StatusConflict, pinnedReason
 	default:
 		_ = c.Error(err)
-		status, d.Error = http.StatusInternalServerError, writeFailed
+		status, d.Error = failure.Save(err)
 	}
 	settingshttp.Render(c, status, view.Section(d))
 }

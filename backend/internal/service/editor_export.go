@@ -29,7 +29,7 @@ func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersio
 			return err
 		}
 		if _, err := s.tools.Render(ctx, cuts, media.RenderOptions{Draft: true}, dst); err != nil {
-			return &AIError{Reason: "Rough Cut の書き出しに失敗しました: " + err.Error(), Err: err}
+			return mediaError(s.logger, "what.rough_cut", err)
 		}
 		return nil
 	})
@@ -206,7 +206,7 @@ func (s *EditorService) renderExport(ctx context.Context, projectID, branchID st
 	id := domain.NewID()
 	rel := path.Join(projectID, "exports", id+"."+domain.ExportExtension(opts.Codec))
 	if _, err := s.tools.Render(ctx, cuts, ro, s.assetPath(rel)); err != nil {
-		return domain.Export{}, &AIError{Reason: "動画の書き出しに失敗しました: " + err.Error(), Err: err}
+		return domain.Export{}, mediaError(s.logger, "what.export", err)
 	}
 	return domain.Export{ID: id, ProjectID: projectID, BranchID: branchID, FilePath: rel, Resolution: opts.Resolution, AspectRatio: opts.AspectRatio, Codec: opts.Codec}, nil
 }

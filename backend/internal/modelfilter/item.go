@@ -159,9 +159,17 @@ func (c Condition) Active() int {
 }
 
 // CatalogInfo is what the model manager's catalog says of a local model beyond its inputs, for the lists that are not the catalog's own (the generation
-// test's models are found by their workflow's name, modelmanager.Service.InfoOf): the content rating, the traits and the VRAM guideline.
+// test's models are found by their workflow's name, modelmanager.Service.InfoOf): the content rating, the traits, the VRAM guideline and the install state.
 type CatalogInfo struct {
+	// Name is what the screens call the model (the catalog's name, told apart from the other workflows of its entry), in place of its identifier (#1023).
+	Name      string
 	Adult     bool
 	Traits    traits.Traits
 	VRAMMinGB int
+	// NotInstalled is why the catalog does not count the model as installed (its state is not "installed"; "" when it is, or when the state is not known).
+	// The generation test takes the model as unavailable with it, so that its list and the model manager's agree (#1025).
+	NotInstalled string
+	// MissingOptional are the optional files of an installed model that are not in place, and PartialNote the sentence that says so (#1025).
+	MissingOptional []string
+	PartialNote     string
 }

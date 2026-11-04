@@ -69,8 +69,8 @@ func (e *ToolError) Error() string {
 
 // MapError turns an error of the service layer into a *ToolError, with the messages and statuses the
 // screens use (web/handler.statusOf), so that a tool and a screen refuse the same request the same way.
-// An error it does not know becomes CodeInternal without its text, which can carry a path or a vendor
-// response; Internal tells the caller to log the cause.
+// An error it does not know is CodeInternal and "unknown" in its failure (the cause is not known; the id of the log line is added by
+// ReportError), without its text, which can carry a path or a vendor response; Internal tells the caller to log the cause.
 func MapError(err error) *ToolError {
 	var (
 		te         *ToolError
@@ -115,10 +115,10 @@ func MapError(err error) *ToolError {
 			return &ToolError{Code: m.code, Message: m.message, Status: m.status}
 		}
 	}
-	if e, ok := errmap.Known(err); ok && e.Code != apperr.CodeUnknown { // an outside failure no service worded: the table of errmap
+	if e := errmap.Explain(err); e.Code != apperr.CodeUnknown { // an outside failure no service worded: the table of errmap
 		return fromFailure(e)
 	}
-	return &ToolError{Code: CodeInternal, Message: "予期しないエラーです。mam のログを確認してください", Status: http.StatusInternalServerError}
+	return fromFailure(apperr.New(apperr.CodeUnknown)) // the detail is not told (see above); ReportError logs it under an id
 }
 
 // viewOfFailure is the common error of the failure behind an AIError (the cause and remedy in Japanese, the screens that help, the detail), nil when
