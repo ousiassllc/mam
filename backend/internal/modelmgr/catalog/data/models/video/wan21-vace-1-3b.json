@@ -1,0 +1,71 @@
+{
+ "id": "wan21-vace-1-3b",
+ "name": "Wan 2.1 VACE 1.3B（T2V・参照画像から動画）",
+ "kind": "video",
+ "tier": "standard",
+ "content_rating": "general",
+ "traits": {
+  "params_b": 1.3,
+  "params_label": "1.3B",
+  "uncensored": false,
+  "speed": "fast",
+  "quality": "standard"
+ },
+ "description": "【小ティア・非検閲ではない標準モデル】Wan 2.1 の VACE（1 つのモデルで動画の作成と編集を扱う All-in-One。1.3B）。mam では、テキストだけから作る T2V と、参照画像 1 枚（人物・物・背景）を登場させる R2V の 2 つで使う（VACE 本来の制御動画・マスクによる編集や延長は、mam の動画の入力にないので使わない）。拡散モデル（fp16、約 4.3 GB）・テキストエンコーダー（fp8、約 6.7 GB、他の Wan と共有）・VAE（他の Wan と共有）の合計約 11.3 GB。480p 専用・16fps・音声なし。得意: 軽さと速さ（Wan 2.1 T2V 1.3B と同じ 1.3B の骨格）に加えて、参照画像の人物や物を動画に出せること。注意: 品質は 14B の Wan 2.2 より落ちる。公式の ComfyUI のテンプレートは CausVid LoRA で 2〜4 ステップに加速するが、mam は LoRA を使わず 20 ステップ・cfg 6 で動かす。参照画像は、公式が「単色の背景の物か背景の絵」を勧める（VACE は絵柄の参照では学習していない）。参照画像は先頭フレームではなく見た目の手がかりで、先頭フレームから作るなら wan22-i2v-14b などを選ぶ。ライセンス: Apache-2.0（商用可）。Mac（MPS）は fp8 のテキストエンコーダーのため非対応。Mac 以外の実機では未検証。",
+ "files": [
+  {
+   "name": "wan2.1_vace_1.3B_fp16.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/diffusion_models/wan2.1_vace_1.3B_fp16.safetensors",
+   "sha256": "640ccc0577e6a5d4bb15cd91b11b699ef914fc55f126c5a1c544e152130784f2",
+   "size": 4309519800
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  }
+ ],
+ "vram": {
+  "min_gb": 12,
+  "source": "Wan 公式（Wan-AI/Wan2.1-VACE-1.3B・Wan2.1-T2V-1.3B のモデルカード）は「T2V-1.3B は 8.19 GB の VRAM だけで動く」と書く。VACE の 1.3B は拡散モデルが約 1.5 GB 大きく（4.3 GB と 2.8 GB）、制御・参照の潜在も足すので、mam は 12 GB を目安にした（推定。VACE 自身の VRAM の記述はカードにも ComfyUI の文書にも無い）。mam の実機では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://www.apache.org/licenses/LICENSE-2.0",
+  "summary": "Wan-AI/Wan2.1-VACE-1.3B のモデルカードは license: apache-2.0（Comfy-Org/Wan-2.1 も apache-2.0）。Wan-AI/Wan2.1-VACE-1.3B の LICENSE.txt は Apache License 2.0 の本文（2026-11-04 に本文の冒頭を確認）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-04"
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan21-vace-1-3b-t2v",
+   "template": "txt2video-wan21-vace-1-3b"
+  },
+  {
+   "name": "wan21-vace-1-3b-r2v",
+   "template": "ref2video-wan21-vace-1-3b"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つテキストエンコーダー（umt5_xxl_fp8_e4m3fn_scaled）を含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-03 に確認。このモデルのテキストエンコーダーに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（拡散モデルは fp16。2026-11-04 に VACE の fp16 に F8 が無いことも確認）。Mac の実機では未確認"
+ }
+}
