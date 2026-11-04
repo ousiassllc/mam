@@ -94,6 +94,13 @@ func (h *Host) Gone(f File) {
 	delete(h.files, "/"+f.Folder+"/"+f.Name)
 }
 
+// Serve makes the host serve one more file (a test that gives a catalog file a name of its own).
+func (h *Host) Serve(f File) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.files["/"+f.Folder+"/"+f.Name] = f
+}
+
 // Requests is how many requests reached the host.
 func (h *Host) Requests() int {
 	h.mu.Lock()

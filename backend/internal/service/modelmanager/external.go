@@ -3,20 +3,16 @@ package modelmanager
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"slices"
 
-	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/detect"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/extfolder"
 )
-
-// modelFolders are the ComfyUI model folders the catalog installs into.
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter", "upscale_models"}
 
 // ExternalModel is a model of the catalog against an external ComfyUI: which of its files the server has.
 type ExternalModel struct {
@@ -64,8 +60,8 @@ func (s *Service) ExternalInventory(ctx context.Context, endpoint string) (Exter
 	}
 	_ = json.Unmarshal(data, &stats)
 	inv.Version = stats.System.Version
-	for _, folder := range modelFolders {
-		files, err := listFolder(ctx, client, folder)
+	for _, folder := range extfolder.Folders {
+		files, err := extfolder.List(ctx, client, folder)
 		if err != nil {
 			return inv, err
 		}
@@ -87,23 +83,6 @@ func (s *Service) ExternalInventory(ctx context.Context, endpoint string) (Exter
 		inv.Models = append(inv.Models, em)
 	}
 	return inv, nil
-}
-
-// listFolder is GET /models/<folder>; a folder the server does not have (404) is empty.
-func listFolder(ctx context.Context, c *localhttp.Client, folder string) ([]string, error) {
-	data, err := c.Request(ctx, http.MethodGet, "/models/"+folder, nil, nil, localhttp.MaxJSONBytes)
-	var pe *modeladapter.ProviderError
-	if errors.As(err, &pe) && pe.Status == http.StatusNotFound {
-		return []string{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	files := []string{}
-	if err := json.Unmarshal(data, &files); err != nil {
-		return nil, c.Error(http.StatusOK, "undecodable model list", err)
-	}
-	return files, nil
 }
 
 // systemDetect looks for a ComfyUI on this machine: its usual ports and the ComfyUI Desktop configuration.

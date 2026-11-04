@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/kind"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 )
 
 // Entry is a model of the catalog as the filter and the screens read it (#1011, #1013): the ModelView and, beside it, the traits of the catalog entry
@@ -43,7 +44,7 @@ func Where(s *modelmanager.Service, c modelfilter.Condition) []Entry {
 
 // EntryOf is the Entry of one model view (modelmanager.Service.Model, Catalog).
 func EntryOf(s *modelmanager.Service, v modelmanager.ModelView) Entry {
-	e := Entry{ModelView: v, Inputs: []traits.Input{}, Availability: availability(v)}
+	e := Entry{ModelView: v, Inputs: []traits.Input{}, Availability: availability(s, v)}
 	if m, ok := s.Deps.Catalog.Model(v.ID); ok {
 		d := m.Derived()
 		e.Traits, e.Audio = m.Traits, d.Audio
@@ -55,8 +56,9 @@ func EntryOf(s *modelmanager.Service, v modelmanager.ModelView) Entry {
 }
 
 // availability is whether a model can be used: only an installed one (#1013). Its files do not matter by themselves (an optional file that is missing leaves the
-// model installed, ModelView.PartialNote); the generation test's model list takes the very same answer (InfoOf, #1025).
-func availability(v modelmanager.ModelView) modelfilter.Availability {
+// model installed, ModelView.PartialNote); the generation test's model list takes the very same answer (InfoOf, #1025). A model that is not installed and
+// needs custom nodes that are not (or cannot be: install_blocked, #1016) says that rather than "install it in the model manager", which would lead nowhere.
+func availability(s *modelmanager.Service, v modelmanager.ModelView) modelfilter.Availability {
 	var msg string
 	switch v.State {
 	case modelmanager.ModelInstalled:
@@ -68,7 +70,10 @@ func availability(v modelmanager.ModelView) modelfilter.Availability {
 	default:
 		msg = "ローカルに導入されていません（モデルマネージャーで導入します）"
 		if v.FilesInPlace {
-			msg = "必須のファイルは揃っていますが、導入の記録がありません。モデルマネージャーで「導入」を押すと、取得済みのファイルは取得し直さずに記録します"
+			msg = "必須のファイルは揃っていますが、導入の記録がありません。モデルマネージャーで「導入」を押すと、取得済みのファイルは取得し直さずに記録します（任意のファイルは取得を試み、取れなくても導入済みにします）"
+		}
+		if reason := nodegate.Reason(s.Nodes, v.RequiresNodes); reason != "" {
+			msg = reason
 		}
 	}
 	return modelfilter.Unusable(modelfilter.ReasonNotInstalled, msg, modelfilter.RouteOf(modelfilter.ReasonNotInstalled, modelfilter.SourceLocal))
@@ -112,7 +117,7 @@ func InfoOf(s *modelmanager.Service) func(modelID string) (modelfilter.CatalogIn
 			}
 			info := modelfilter.CatalogInfo{Name: DisplayName(m, name), Adult: m.Adult(), Traits: m.Traits, VRAMMinGB: m.VRAM.MinGB}
 			if v, err := s.Model(m.ID); err == nil {
-				info.NotInstalled = availability(v).Message
+				info.NotInstalled = availability(s, v).Message
 				info.MissingOptional, info.PartialNote = v.MissingOptional, v.PartialNote
 			}
 			return info, true

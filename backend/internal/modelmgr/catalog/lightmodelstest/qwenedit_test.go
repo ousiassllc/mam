@@ -124,3 +124,22 @@ func TestAModelWithOnlyOptionalFilesIsRefused(t *testing.T) {
 	}
 	assert.Contains(t, fmt.Sprint(catalog.Validate(&c, localcfg.TemplateByID)), "must not be optional")
 }
+
+// An optional file may only be loaded by a node the default graph does not reach (a LoRA of another speed mode): a model whose default graph loads it needs it,
+// so it cannot be optional (#1025). Marking the diffusion model optional is refused with its name.
+func TestAnOptionalFileTheDefaultGraphLoadsIsRefused(t *testing.T) {
+	data, err := json.Marshal(catalog.Default())
+	require.NoError(t, err)
+	var c catalog.Catalog
+	require.NoError(t, json.Unmarshal(data, &c))
+	var name string
+	for i := range c.Models {
+		if c.Models[i].ID == "qwen-image-edit-2511" {
+			c.Models[i].Files[0].Optional = true
+			name = c.Models[i].Files[0].Name
+		}
+	}
+	require.NotEmpty(t, name)
+	msg := fmt.Sprint(catalog.Validate(&c, localcfg.TemplateByID))
+	assert.Contains(t, msg, "the default graph loads the optional file "+name)
+}

@@ -121,3 +121,21 @@ func withModes(t *testing.T, id string, modes []localcfg.SpeedMode) localcfg.Mod
 	m.Workflow.SpeedModes = modes
 	return m
 }
+
+// SpeedModeReads is the files a speed mode's graph asks the server to load (#1025): the nodes behind the output node, with the mode's overrides put in. The LoRA node
+// of another mode is not behind the output, so the standard mode reads neither Lightning file and each Lightning mode reads only its own.
+func TestSpeedModeReadsIsTheFilesTheModesGraphLoads(t *testing.T) {
+	tpl, ok := localcfg.TemplateByID("txt2img-qwen-image-edit-2511")
+	require.True(t, ok)
+	w := tpl.Model.Workflow
+	const l4, l8 = "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors", "Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors"
+	both := []string{l4, l8, "qwen_image_edit_2511_fp8mixed.safetensors"}
+
+	assert.Equal(t, []string{"qwen_image_edit_2511_fp8mixed.safetensors"}, w.SpeedModeReads("standard", both), "no LoRA node reaches the output")
+	assert.Equal(t, []string{"qwen_image_edit_2511_fp8mixed.safetensors"}, w.SpeedModeReads("", both), "the empty id is the first mode")
+	assert.Equal(t, []string{l4, "qwen_image_edit_2511_fp8mixed.safetensors"}, w.SpeedModeReads("lightning-4", both))
+	assert.Equal(t, []string{l8, "qwen_image_edit_2511_fp8mixed.safetensors"}, w.SpeedModeReads("lightning-8", both))
+	assert.Equal(t, []string{l4}, w.SpeedModeReads("lightning-4", []string{l4, l8}), "only the names asked for")
+	assert.Empty(t, w.SpeedModeReads("lightning-4", nil))
+	assert.Empty(t, w.SpeedModeReads("no-such-mode", both), "a mode the workflow does not have reads nothing")
+}

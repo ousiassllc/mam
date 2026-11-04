@@ -131,17 +131,22 @@ func (s *Service) view(m catalog.Model, st store.State) ModelView {
 	for _, w := range m.Workflows {
 		v.ModelIDs = append(v.ModelIDs, localcfg.ID(localcfg.KindComfyUI, BundledEndpoint, w.Name))
 	}
-	// The one judgement of "installed", which the generation test's model list reads too (mmview.InfoOf): recorded, and every required file in place.
-	switch _, recorded := st.Models[m.ID]; {
-	case s.activeJob("model:"+m.ID) != "":
-		v.State, v.InstallJob = ModelInstalling, s.activeJob("model:"+m.ID)
+	// The one judgement of "installed", which the generation test's model list reads too (mmview.InfoOf): recorded, and every required file in place. An install
+	// that runs does not change it for such a model (it fetches the optional files into .part files and does not touch the required ones, so the model keeps
+	// working: #1025); it only carries the job.
+	job := s.activeJob("model:" + m.ID)
+	_, recorded := st.Models[m.ID]
+	switch {
 	case recorded && v.RequiredInPlace():
 		v.State = ModelInstalled
+	case job != "":
+		v.State = ModelInstalling
 	case recorded:
 		v.State = ModelIncomplete
 	default:
 		v.State = ModelNotInstalled
 	}
+	v.InstallJob = job
 	v.Seal(v.State == ModelInstalled, v.State != ModelNotInstalled)
 	return v
 }

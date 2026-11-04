@@ -298,5 +298,15 @@ func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Te
 			used[folder+"/"+name] = true
 		}
 	}
+	// An optional file may only be loaded by a node the default graph does not reach (a LoRA of another speed mode): the model has to run without it (#1025).
+	var optional []string
+	for _, f := range m.Files {
+		if f.Optional {
+			optional = append(optional, f.Name)
+		}
+	}
+	for _, name := range model.Workflow.SpeedModeReads("", optional) {
+		errs = append(errs, fmt.Errorf("%s: the default graph loads the optional file %s: a file the workflow needs is required", where, name))
+	}
 	return errs
 }
