@@ -428,23 +428,23 @@ M3 の Multi-model routing（§13）と Audio Director の実装（§14）は [m
 | 送信 | 元の動画ファイルを `urls[0]` へ `PUT`（`Content-Type: video/mp4`、`Content-Length` つきでファイルから流す。応答の `ETag` を控える） | — | 同じ内容の PUT なので、通信の失敗・5xx は繰り返す（`resilience.Repeat`。ジョブの時間の上限まで） |
 | 開始 | `PATCH /video/{id}/complete-upload/`、本文 `{"uploadResults":[{"partNum":1,"eTag":"…"}]}` | — | しない（`ErrAfterSubmit`） |
 | 待つ | `GET /video/{id}/status` を `PollInterval`（既定 5 秒）ごと。`status` を小文字にし、`complete` → `download.url`、`failed`・`canceled`・`cancelled` → 失敗（`errorCode`・`message`） | — | GET なので、通信の失敗・5xx・429 は待ち直す（Retry-After を守る） |
-| 受け取り | `download.url` を `DestPath` へ（`MaxDownloadBytes` まで。既定 2 GiB） | — | GET なので繰り返す。部分的なファイルは消す |
+| 受け取り | `download.url` を `DestPath` へ（`MaxDownloadBytes` まで。既定 2 GiB）。**0 バイトで終わったときは成功にせず**転送の失敗（`topaz_transfer_failed`）にし、ファイルを消す | — | GET なので繰り返す。部分的なファイルは消す |
 
 - 受理のあとの失敗はすべて `modeladapter.AfterSubmit` を付ける。**自動で受理からやり直さない**（二重に課金されるため）。全体の上限（`Timeout`。既定 3 時間）を過ぎたら `modeladapter.ErrTimeout`（`errmap` は `timeout`）。呼び出し側のキャンセルはそのまま返す。
 - 元の動画のアップロード先は 1 つの URL だけを使う（公式の例は小さいファイルを 1 つの URL へ送る。大きいファイルの分割の仕方は公式に書かれていないので、URL が 1 つでないときは推測せず、「Topaz の答えに必要な情報がない」（`upstream_failed`）で止める。Topaz 側は `TIMEOUT_UPLOAD_SOURCE` で返金する）。
-- **`X-API-Key` を送るのは `api.topazlabs.com`（設定の `BaseURL`）だけ**。アップロード先・ダウンロード先は署名つきの URL なので、鍵を付けず、https かつ公開ホストの URL だけを使う（`safefetch.CheckURL`。接続時にも非公開アドレスを拒否する `safefetch.NewClient`）。別ホストへのリダイレクトは追わない。API 用のクライアントも別ホストへのリダイレクトを追わない（`httpclient.New`）。`User-Agent` は `mam (https://github.com/ousiassllc/mam)`（公式の 403 の項: 既定のライブラリの名前は Cloudflare に止められる）。
+- **`X-API-Key` を送るのは `api.topazlabs.com`（設定の `BaseURL`）だけ**。アップロード先・ダウンロード先は署名つきの URL なので、鍵を付けず、https かつ公開ホストの URL だけを使う（`safefetch.CheckURL`。接続時にも非公開アドレスを拒否する `safefetch.NewClient`）。アップロード・ダウンロードの本番のクライアント（`safefetch.NewClient`）は、リダイレクトを最大 5 回まで追う。追う先は 1 回ごとに https かつ公開ホストの URL か確かめ直し（`safefetch.CheckURL`）、そうでなければ止める。API キーはこれらのホストに送らない（そもそも付けない）。API を呼ぶクライアント（`httpclient.New`）は別ホストへのリダイレクトを追わない（キーを付けて送るため）。`User-Agent` は `mam (https://github.com/ousiassllc/mam)`（公式の 403 の項: 既定のライブラリの名前は Cloudflare に止められる）。
 
 ### 15.3 見積り（クレジット）
 
-- 見積りの応答のうち、公式に載っているのは `requestId` を返すことだけで、**見積りの JSON の形（`estimates.cost` の型・単位）は公式に未掲載（実機未確認）**。そこで `estimates.cost` を、数・`[最小, 最大]`・`{"min":…,"max":…}` のどれでも読む。`CloudEstimate.Credits` は上限（確認する額）、`CreditsMin` は下限（数が 1 つなら同じ）。クレジット数が読めない・負・`requestId` が無いときは**見積りの失敗**（何も実行しない）にする。
+- 見積りの応答のうち、公式に載っているのは `requestId` を返すことだけで、**見積りの JSON の形（`estimates.cost` の型・単位）は公式に未掲載（実機未確認）**。そこで `estimates.cost` を、数・`[最小, 最大]`・`{"min":…,"max":…}` のどれでも読む。`CloudEstimate.Credits` は上限（確認する額）、`CreditsMin` は下限（数が 1 つなら同じ）。クレジット数が読めない・負・NaN／無限大・**上限が 0 以下（`0`・`[0,0]`・`{"min":0,"max":0}` も使える数ではない）**・`requestId` が無いときは**見積りの失敗**（何も実行しない）にする。
 - クレジットの単価は契約のプランで決まるので、ドルに換算しない。Topaz の画面にはクレジットで出す。
 - 見積りに載せる大きさ・フレームレートは、実際に作る値（`CloudEstimate.Width/Height/FPS`）を返す。
 
 ### 15.4 リクエストの本文（`POST /video/`。<https://developer.topazlabs.com/getting-started/request-parameters/video>）
 
-- `source`: `container`（小文字の拡張子。既定 `mp4`）・`size`（ファイルのバイト数）・`duration`・`frameCount`・`frameRate`・`resolution{width,height}`。**元の動画の ffprobe の値**（生成時の設定ではない）。1 つでも読めなければ、何も送らずに「ffmpeg（ffprobe）が動いているか確かめてください」で止める。値が実際とずれると `CREDIT_DIFFERENCE` で止まる。
+- `source`: `container`（小文字の拡張子。既定 `mp4`）・`size`（ファイルのバイト数）・`duration`・`frameCount`・`frameRate`・`resolution{width,height}`。**元の動画の ffprobe の値**（生成時の設定ではない）。`duration` は映像のストリームの長さ（`VideoDuration`。無ければ形式全体の長さ。`frameCount` と同じ根拠で、音声のほうが長いファイルでも映像の長さと合わせる）。1 つでも読めなければ、何も送らずに「ffmpeg（ffprobe）が動いているか確かめてください」で止める。値が実際とずれると `CREDIT_DIFFERENCE` で止まる。
 - `filters`: 1 つだけ（処理は 1 回に 1 つ。つなげるときは結果にもう一度かける）。`{"model": "<id>"}`、Proteus・Iris は公式のクイックスタートに合わせて `"auto": "Auto"` も付ける。ほかのパラメーターは付けない（既定のまま）。
-- `output`: `resolution`（アップスケールのとき = 倍率または短い辺から、4 の倍数に切り上げた大きさ。補間のときは元の大きさ）、`frameRate`（補間のとき = 元 × 倍数または目標。15〜240 fps 以外は拒否。アップスケールのときは元のまま）、`audioTransfer`/`audioCodec`（元に音声があれば `Copy`＋`AAC`、無ければ `None`）、`videoEncoder: "H264"`（H.265 が既定だが、H.264 のほうが広く再生でき、上限 4096×4096 に収まる範囲でだけ使うため。上限を超える大きさは何も送らずに拒否）、`dynamicCompressionLevel: "High"`、`container: "mp4"`。`slowmo` は使わない（目標のフレームレートへ合わせるだけ。`output.frameRate` で指定）。
+- `output`: `resolution`（アップスケールのとき = 倍率または短い辺から、4 の倍数に切り上げた大きさ。補間のときは元の大きさ）、`frameRate`（補間のとき = 元 × 倍数または目標。15〜240 fps 以外は拒否。アップスケールのときは元のまま）、`audioTransfer`/`audioCodec`（元に音声があれば `Convert`＋`AAC`、無ければ `None`。`Copy` は元の音声がすでに AAC のときしか使えないので、どの音声でも受ける `Convert` にする。値は公式の request-parameters/video の表のとおり）、`videoEncoder: "H264"`（H.265 が既定だが、H.264 のほうが広く再生でき、上限 4096×4096 に収まる範囲でだけ使うため。上限を超える大きさは何も送らずに拒否）、`dynamicCompressionLevel: "High"`、`container: "mp4"`。`slowmo` は使わない（目標のフレームレートへ合わせるだけ。`output.frameRate` で指定）。
 - `destination`・`notifications`（Webhook）は使わない。
 
 ### 15.5 モデルと識別子
@@ -477,7 +477,8 @@ M3 の Multi-model routing（§13）と Audio Director の実装（§14）は [m
 | `PROCESSING_FAILURE`・`HARDWARE_FAILURE`・`UNKNOWN`・`SERVER_ERROR`・取り消し（`errorCode` なし） | 同上 | **`topaz_job_failed`**（新規） |
 | 受理のあとの `INVALID_INPUT`（元の動画を処理できない） | 同上 | **`topaz_source_invalid`**（新規） |
 | 受理のあとの `INSUFFICIENT_CREDITS` / `UNAUTHORIZED` / `FORBIDDEN` | 同上 | `credits_insufficient` / `auth_failed` |
-| 元の動画のアップロード・結果のダウンロードの失敗（署名つき URL の 403 など。URL が https・公開ホストでない、サイズ超過、リダイレクトを含む） | `*topaz.Error`（`CodeTransferFailed`） | **`topaz_transfer_failed`**（新規。ストレージの 403 を「API キーが違う」と読ませない） |
+| 元の動画のアップロード・結果のダウンロードの失敗（署名つき URL の 403 など。URL が https・公開ホストでない、サイズ超過、0 バイトの結果、リダイレクトを含む） | `*topaz.Error`（`CodeTransferFailed`） | **`topaz_transfer_failed`**（新規。ストレージの 403 を「API キーが違う」と読ませない） |
+| 受理のあとに mam が止まった・ジョブを止めた（呼び出しの context が終わった） | `modeladapter.ErrAfterSubmit` つきの失敗を `runner.enhanceInCloud` が包む | **`topaz_job_interrupted`**（新規。Topaz 側は続いている可能性とクレジットが引かれる可能性、リクエスト ID、取り消しは未実装なので Topaz のアカウントで確かめることを日本語で伝える） |
 | 通信できない | `*modeladapter.ProviderError`（`Status` 0） | `connection_failed` |
 | 答えに必要な情報が無い（見積りにクレジットが無い・`requestId` が無い・アップロード先が 1 つでない・`download.url` が無い） | `apperr` の `upstream_failed`（原因は日本語で固定） | `upstream_failed` |
 | 全体の時間切れ | `modeladapter.ErrTimeout` | `timeout` |
@@ -485,11 +486,11 @@ M3 の Multi-model routing（§13）と Audio Director の実装（§14）は [m
 | Topaz で作れない指定（上限を超える大きさ・15〜240 fps の外・倍率 1 以下・不明なモデル） | `apperr` の `invalid_input` | `invalid_input`（日本語の原因つき。何も送らない） |
 
 - 受理のあとの失敗の文には「クレジットは返金される」「自動でやり直さない」を入れる（公式: サービス側の失敗は全額返金。同期の 4xx は課金されない）。詳細に `requestId`（サポートへ連絡するときに使う）を残す。キーは入らない。
-- 受理後に mam を止める（キャンセル）と、Topaz 側のジョブは残る（`GET /video/{id}/cancel-estimate` で取り消しの内訳を見られるが、取り消しの呼び出しは実装していない。未実装）。
+- 受理後に mam を止める（キャンセル）と、Topaz 側のジョブは残る（`GET /video/{id}/cancel-estimate` で取り消しの内訳を見られるが、取り消しの呼び出しは実装していない。未実装）。このときの結果は汎用の「mam が停止したため中断されました」ではなく `topaz_job_interrupted` で、Topaz のリクエスト ID（`record.TopazRun.RequestID`）を入れた日本語の文にする。
 
 ### 15.7 未確認・既知の限界
 
 - **実機（実キー・実 API）では一度も呼んでいない**。上の流れは公式のクイックスタート・エラーの頁・モデルの頁の記載に合わせたもので、テストは `httptest` の偽の Topaz（`internal/agent/topaz`）。
-- 見積りの JSON の形（`estimates.cost`）・状態の応答の `progress` の型・`urls[]` が複数になる条件（大きいファイルの分割）は公式に未掲載。読めない形は失敗にする（15.3）。
+- 見積りの JSON の形（`estimates.cost`）・状態の応答の `progress` の型（**実機未確認（progress の単位が公式に未掲載）**。数なら 0〜100 に切り詰めて百分率として扱う。1 が 1% か 100% かは分からないので、小数を割合とは読まない）・`urls[]` が複数になる条件（大きいファイルの分割）は公式に未掲載。読めない形は失敗にする（15.3）。
 - 大きいファイル（複数のアップロード URL）、`source.external`（自分の S3）、`/video/express`、Webhook、取り消しは使わない。
 - 料金は公式のページの「推定」で、見積りの `POST /video/` の値が正（クレジットの単価は契約のプラン次第）。

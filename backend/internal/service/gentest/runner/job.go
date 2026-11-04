@@ -63,8 +63,7 @@ type Deps struct {
 	// InputHidden says a stored input image is out of sight (the age gate: history.Store.InputHidden): a batch that was queued with one is not run
 	// once the gate is closed. May be nil.
 	InputHidden func(ctx context.Context, in gentestrepo.Input) bool
-	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See
-	// FaceCropFunc.
+	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See FaceCropFunc.
 	FaceCrop FaceCropFunc
 	// FaceScore measures the face of a result against the reference of the role "face" (nil: no number; the face models are not installed). See FaceScoreFunc.
 	FaceScore FaceScoreFunc

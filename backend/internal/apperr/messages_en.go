@@ -161,6 +161,9 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"topaz_transfer_failed.cause":  "The transfer of the video to or from Topaz failed (the upload of the source or the download of the result).",
 	"topaz_transfer_failed.remedy": "Check the network (proxy, VPN, firewall). If the upload failed, get a new quote and run it again. A failed download of a finished job can be tried later: Topaz keeps the result for 7 days. mam never repeats the job by itself (it would be charged twice).",
 
+	"topaz_job_interrupted.cause":  "mam stopped, or the job was cancelled, while it waited for Topaz, so it stopped waiting for the result. Topaz had already accepted the job, so it may keep running there and the credits may be charged (request ID: {request_id}).",
+	"topaz_job_interrupted.remedy": "mam cannot cancel a job at Topaz (the cancel call is not implemented). Look the request ID ({request_id}) up in your Topaz account to see the state of the job and the credits used. mam never repeats the job by itself (it would be charged twice).",
+
 	"invalid_input.cause":    "The input is not valid.",
 	"invalid_input.remedy":   "Correct the input and run it again.",
 	"not_found.cause":        "The target was not found.",

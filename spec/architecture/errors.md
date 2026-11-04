@@ -131,6 +131,7 @@ templ Box(p Props)
 | `timeout` | `upstream` | 相手の応答が時間内に返りませんでした。 |  |
 | `topaz_credit_difference` | `upstream` | アップロードした動画を Topaz が調べ直したところ、必要なクレジットが見積りと大きく違っていたため、処理を止めました（全額返金されます）。 |  |
 | `topaz_job_failed` | `upstream` | Topaz が処理を完了できませんでした（相手側の失敗か、処理が取り消されました）。クレジットは返金されます。 |  |
+| `topaz_job_interrupted` | `upstream` | 処理の途中で mam が止まったか、ジョブが取り消されたため、Topaz の結果を待つのをやめました。Topaz はこの処理をすでに受け付けているため、Topaz 側では続いている可能性があり、クレジットが引かれることがあります（リクエスト ID: ）。 |  |
 | `topaz_job_timeout` | `upstream` | Topaz の処理が時間切れになりました（アップロード待ち・順番待ち・処理時間のどれか）。クレジットは返金されます。 |  |
 | `topaz_maintenance` | `upstream` | Topaz のクラウド動画処理は、いまメンテナンス中で止まっています（HTTP 503）。 |  |
 | `topaz_source_invalid` | `upstream` | Topaz が元の動画を処理できませんでした。課金はされません。 |  |
@@ -266,4 +267,4 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 | 1.2 | 2026-11-03 | コード `local_llm_unreachable` を足した（ローカルの OpenAI 互換 LLM サーバーに接続できない。`errmap` は `localllm.IsUnreachable` で見分ける）。設計は `local-llm.md` | Issue #1008 |
 | 1.3 | 2026-11-04 | コード `face_models_missing`・`face_runtime_missing` を足した（顔の類似度がオフのとき、役割 `face` の参照がある結果の `face_similarity.reason` / `fix` の言葉。YuNet・SFace の ONNX は mam が取得せず、カタログにも無いので、置き場所と `scripts/fetch-face-models.sh` を直し方に書く）。[local-models.md](local-models.md) §4.9 | Issue #1026 |
 | 1.4 | 2026-11-04 | 載せ替えなかった経路（§6）の見直し: ffmpeg の失敗（書き出し・Rough Cut・Take の合成・音声のミキシング。`media_failed`・`ffmpeg_missing`）、アップデート（`update_*`）、設定の書き込みの失敗（`errmap.SaveFailure`・`web/handler/failure.Save`）、FaceFusion（`facefusion_unavailable`・`facefusion_failed`）を載せ替えた。ChatGPT / Codex などは理由を更新して見送り。i18n（§7）: 言語によって変わる語（時間・Agent の名前・区切り・作業の名前）をカタログのキーにし、英語の辞書が `errmap` の全コードを持つことと、未訳の日本語へのフォールバックをテストで固定した。MCP のツールエラーは、分からない失敗にも 2 行目の `failure`（`unknown`）を付ける | Issue #1010（残り） |
-| 1.5-B | 2026-11-04 | コード `credits_insufficient`（HTTP 402）と `topaz_*` の 6 つ（Topaz Video API の失敗）を足した | Issue #1031（B: Topaz）。版番号は統合のときに付け直す |
+| 1.6 | 2026-11-04 | コード `credits_insufficient`（HTTP 402）と `topaz_*` の 7 つ（Topaz Video API の失敗。`topaz_job_interrupted` は受理のあとに mam が止まったときの、リクエスト ID つきの文）を足した | Issue #1031 |

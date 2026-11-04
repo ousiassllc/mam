@@ -52,7 +52,7 @@ func (br *batchRun) execute(ctx context.Context, r gentestrepo.Result) {
 		s.settle(ctx, r.ID, gentestrepo.StatusSucceeded, "", func(st *gentestrepo.Settlement) {
 			st.FilePath, st.MimeType, st.SizeBytes, st.ActualCost = path.Join(r.BatchID, file), mime, size, cost
 		})
-	case ctx.Err() != nil:
+	case ctx.Err() != nil && !isInterruptedAtTopaz(err): // a job Topaz accepted has its own sentence (the request id to look it up by)
 		s.settle(ctx, r.ID, gentestrepo.StatusFailed, ReasonInterrupted, nil)
 	default:
 		s.Logger.Warn("generation test result failed", "result_id", r.ID, "model", r.Model, "err", err)

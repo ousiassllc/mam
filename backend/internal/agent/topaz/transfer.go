@@ -114,6 +114,10 @@ func (c *Client) download(ctx context.Context, requestID, target, dest string) (
 		}
 		return 0, transferFailed(requestID, "the download of the result failed", err)
 	}
+	if n == 0 { // a finished job always makes a file: an empty one is a broken transfer, not a result
+		_ = os.Remove(dest)
+		return 0, transferFailed(requestID, "the downloaded result file is empty", nil)
+	}
 	return n, nil
 }
 

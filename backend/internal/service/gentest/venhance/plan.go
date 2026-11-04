@@ -21,6 +21,9 @@ const (
 	// MinCloudFPS and MaxCloudFPS are the frame rates the cloud interpolates to (the range of the Topaz Video API).
 	MinCloudFPS = 15.0
 	MaxCloudFPS = 240.0
+	// MaxLocalFPS is the highest frame rate the local interpolation makes: the fps input of CreateVideo is at most 120 in ComfyUI (v0.42.1), which
+	// rejects a literal above it.
+	MaxLocalFPS = 120.0
 )
 
 // Multipliers are the factors of frames the local interpolation makes (the RIFE of ComfyUI makes whole multiples; 2 is what the screens offer).
@@ -48,19 +51,24 @@ func Resolve(src cloudenhance.Source, p cloudenhance.Params, local bool, maxPixe
 	if src.Width <= 0 || src.Height <= 0 || src.FPS <= 0 {
 		return Plan{}, gterr.Invalid("元の動画の大きさかフレームレートを読み取れませんでした。動画ファイルが壊れていないか確かめてください")
 	}
+	if !finite(p.Scale) || !finite(p.TargetFPS) {
+		return Plan{}, gterr.Invalid("scale と target_fps は有限の数値にしてください（NaN や無限大は使えません）")
+	}
 	if maxPixels <= 0 {
 		maxPixels = MaxOutputPixels
 	}
 	switch p.Op {
 	case cloudenhance.OpUpscale:
-		return resolveUpscale(src, p, maxPixels)
+		return resolveUpscale(src, p, local, maxPixels)
 	case cloudenhance.OpInterpolate:
 		return resolveInterpolate(src, p, local)
 	}
 	return Plan{}, gterr.Invalid("op は upscale（大きくする）か interpolate（コマを増やす）にしてください")
 }
 
-func resolveUpscale(src cloudenhance.Source, p cloudenhance.Params, maxPixels int) (Plan, error) {
+func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
+
+func resolveUpscale(src cloudenhance.Source, p cloudenhance.Params, local bool, maxPixels int) (Plan, error) {
 	if p.Multiplier != 0 || p.TargetFPS != 0 {
 		return Plan{}, gterr.Invalid("アップスケールには multiplier と target_fps は使えません（scale か target_short_side を指定してください）")
 	}
@@ -86,7 +94,7 @@ func resolveUpscale(src cloudenhance.Source, p cloudenhance.Params, maxPixels in
 		}
 		return Plan{}, gterr.Invalid("倍率は 1 より大きく %g 以下にしてください（今は %g）", MaxScale, p.Scale)
 	}
-	w, h := evenRound(float64(src.Width)*scale), evenRound(float64(src.Height)*scale)
+	w, h := scaledSide(src.Width, scale, local), scaledSide(src.Height, scale, local)
 	if w*h > maxPixels {
 		return Plan{}, gterr.Invalid("%d × %d（%d 万画素）になり、このモデルの上限 %d 万画素を超えます。倍率を下げるか、短い辺を小さくしてください",
 			w, h, w*h/10000, maxPixels/10000)
@@ -127,11 +135,20 @@ func resolveInterpolate(src cloudenhance.Source, p cloudenhance.Params, local bo
 	if !local && (plan.FPS < MinCloudFPS || plan.FPS > MaxCloudFPS) {
 		return Plan{}, gterr.Invalid("Topaz のコマ補間は %g〜%g fps の範囲です（今は %.4g fps になります）", MinCloudFPS, MaxCloudFPS, plan.FPS)
 	}
+	if local && plan.FPS > MaxLocalFPS+fpsTolerance {
+		return Plan{}, gterr.Invalid("この PC のコマ補間は出力 %g fps までです（今は %.4g fps になります）。倍率を下げるか、Topaz（%g fps まで）を使ってください", MaxLocalFPS, plan.FPS, MaxCloudFPS)
+	}
 	return plan, nil
 }
 
-// evenRound is v rounded to the nearest even number: the sides of an H.264 picture are even.
-func evenRound(v float64) int { return 2 * int(math.Round(v/2)) }
+// scaledSide is one side of the output of an upscale. A local workflow rounds the side like ComfyUI (round(side × scale), halves to even like Python),
+// and SeedVR2PostProcessing then cuts an odd result down to even. The cloud makes a multiple of 4 (the Topaz Video API rounds the size up).
+func scaledSide(side int, scale float64, local bool) int {
+	if local {
+		return int(math.RoundToEven(float64(side)*scale)) &^ 1
+	}
+	return (int(math.Round(float64(side)*scale)) + 3) / 4 * 4
+}
 
 // OpName is the name of an operation in a sentence.
 func OpName(op cloudenhance.Op) string {

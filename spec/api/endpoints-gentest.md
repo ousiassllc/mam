@@ -114,7 +114,6 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-26 | 新規作成（ルート・エラーの対応・画面・テスト） | Issue #835。生成テストの画面 |
-| 1.40 | 2026-11-04 | `POST /generation-test/results/:id/video-enhance/estimate`・`POST /generation-test/results/:id/video-enhance`（成功した動画の結果を大きくする・コマを増やして滑らかにする。Topaz は見積り → 確認 → 実行）を足した。結果の詳細に動画用の箱 `#gt-video-enhance`、ボタン行に「大きくする」「滑らかにする」、設定の欄に `video_enhance` の行 | Issue #1031 |
 | 1.1 | 2026-11-01 | 「画面」の節で、モデルはカードのタップで選ぶもの（見えないチェックボックス `model` が値を送る）に改め、選べない理由はカードでなく「?」ヘルプと読み上げにあることを足した | Issue #906。生成テスト画面の文字を減らし、モデルをカード選択にした |
 | 1.2 | 2026-11-01 | 見積りの `translate`（英語に訳して送る。無ければ OFF）と確認の「プロンプトの英訳」の行、`/run` の 502（訳せなかった）、エラーの対応の `*UpstreamError` を足した | Issue #913 |
 | 1.3 | 2026-11-02 | 見積りに `strength_<ref>`・`avoid_pose`・`lora`・`lora_strength` と役割 `face`・`style`・`edit`、ブラウザで選んだファイルの `upload::#<n>`、`ref-row` に `?model=` を足した | Issue #933 |
@@ -137,3 +136,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.20 | 2026-11-03 | `POST /generation-test/results/:id/face-swap`（顔の入れ替え）と `GET …/face-swap/warnings`（選んだモデルのライセンスの警告）を足した。結果の詳細に「顔の類似度」の行（役割 `face` の参照があった結果。SFace）が出る | Issue #995・#998 |
 | 1.21 | 2026-11-03 | `GET /generation-test/poses/results` に `pose_kind`（`line` / `depth` / `normal`。既定は線画）、`poses/image/:id` と `ref-row` の画像 ID に `.depth`・`.normal`（深度・法線マップ） | Issue #1020 |
 | 1.22 | 2026-11-04 | `POST /generation-test/poses/install-adult`・`/poses/remove-adult` を足した。成人向けのポーズ（`sexy`・`duo`）の画像・一覧・行への追加は、年齢確認がオフの間は 404／出さない。履歴の入力（`GET /generation-test/inputs/:id/file`）は、成人向けのポーズから取った写しをゲートがオフの間は 404 にする | Issue #1020 |
+| 1.23 | 2026-11-04 | `POST /generation-test/results/:id/video-enhance/estimate`・`POST /generation-test/results/:id/video-enhance`（成功した動画の結果を大きくする・コマを増やして滑らかにする。Topaz は見積り → 確認 → 実行）を足した。結果の詳細に動画用の箱 `#gt-video-enhance`、ボタン行に「大きくする」「滑らかにする」、設定の欄に `video_enhance` の行 | Issue #1031 |

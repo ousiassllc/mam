@@ -35,7 +35,9 @@ func TestRun_AnUploadURLThatIsNotHTTPSOfAPublicHostIsRefused(t *testing.T) {
 	}
 }
 
-// A presigned URL that redirects to another host is not followed (the redirect would carry the headers of the request).
+// The test client (httpclient.New: the API client, which the fake uses for the files too) refuses a redirect to another host. The production
+// client of the files (safefetch.NewClient) instead follows up to 5 redirects that each pass safefetch.CheckURL; it cannot connect to a local
+// httptest server, so that behaviour is pinned in safefetch (TestNewClientFollowsRedirectsOnlyToHTTPSURLsOfPublicHosts) and not here. No key goes to a file host either way.
 func TestRun_ADownloadThatRedirectsToAnotherHostIsRefused(t *testing.T) {
 	var otherHit atomic.Bool
 	hit := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { otherHit.Store(true) }))
@@ -49,6 +51,21 @@ func TestRun_ADownloadThatRedirectsToAnotherHostIsRefused(t *testing.T) {
 	require.Error(t, err)
 	assert.False(t, otherHit.Load(), "the redirect was not followed")
 	assert.Equal(t, apperr.CodeTopazTransferFailed, errmap.Explain(err).Code)
+	assert.NoFileExists(t, in.DestPath)
+}
+
+// A job that completed with an empty file is a failed transfer (not a success with a 0-byte video), and no file stays.
+func TestRun_AnEmptyDownloadIsAFailedTransfer(t *testing.T) {
+	f := newFake(t)
+	f.onDownload = func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
+	in := runInput(t)
+
+	n, err := f.client().Run(background(), in, nil)
+
+	require.Error(t, err)
+	assert.Zero(t, n)
+	assert.Equal(t, apperr.CodeTopazTransferFailed, errmap.Explain(err).Code)
+	assert.True(t, errorsIsAfterSubmit(err))
 	assert.NoFileExists(t, in.DestPath)
 }
 

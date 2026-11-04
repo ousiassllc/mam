@@ -89,6 +89,7 @@ func TestToolsAreRegisteredAndListTheModels(t *testing.T) {
 	assert.Contains(t, topaz.UnavailableMessage, "API キー")
 	assert.Equal(t, "Powered by Topaz Labs", topaz.Attribution)
 	assert.InDelta(t, 4, out.MaxScale, 0)
+	assert.InDelta(t, 120, out.LocalMaxFPS, 0)
 	assert.Equal(t, []int{2, 4}, out.Multipliers)
 }
 

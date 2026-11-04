@@ -83,19 +83,20 @@ func (c *Client) Estimate(ctx context.Context, r cloudenhance.CloudRequest) (clo
 }
 
 // parseCredits reads estimates.cost, whose shape the documentation does not give: a number, [min, max] or {"min": …, "max": …}. min and max
-// of a single number are the number. ok is false when no credit number is found.
+// of a single number are the number. ok is false when no credit number is found or the quote is not a positive finite price (a quote of 0 is
+// no usable number: the user has nothing to confirm).
 func parseCredits(raw json.RawMessage) (lo, hi float64, ok bool) {
 	if s := strings.TrimSpace(string(raw)); s == "" || s == "null" {
 		return 0, 0, false
 	}
 	var n float64
 	if json.Unmarshal(raw, &n) == nil {
-		return n, n, valid(n)
+		return n, n, usable(n, n)
 	}
 	var list []float64
 	if json.Unmarshal(raw, &list) == nil && len(list) > 0 {
 		lo, hi = slices.Min(list), slices.Max(list)
-		return lo, hi, valid(lo) && valid(hi)
+		return lo, hi, usable(lo, hi)
 	}
 	var span struct {
 		Min *float64 `json:"min"`
@@ -109,12 +110,15 @@ func parseCredits(raw json.RawMessage) (lo, hi float64, ok bool) {
 			}
 		}
 		lo, hi = slices.Min(ends), slices.Max(ends)
-		return lo, hi, valid(lo) && valid(hi)
+		return lo, hi, usable(lo, hi)
 	}
 	return 0, 0, false
 }
 
-func valid(n float64) bool { return n >= 0 && !math.IsNaN(n) && !math.IsInf(n, 0) }
+func usable(lo, hi float64) bool {
+	finite := func(n float64) bool { return !math.IsNaN(n) && !math.IsInf(n, 0) }
+	return finite(lo) && finite(hi) && lo >= 0 && hi > 0
+}
 
 // buildRequest is the body of POST /video/ for r, and its output (the size and the rate the job makes).
 func buildRequest(r cloudenhance.CloudRequest) (createRequest, outputBody, error) {
@@ -134,7 +138,8 @@ func buildRequest(r cloudenhance.CloudRequest) (createRequest, outputBody, error
 		VideoEncoder: "H264", DynamicCompressionLevel: "High", Container: "mp4",
 	}
 	if s.HasAudio {
-		out.AudioTransfer, out.AudioCodec = "Copy", "AAC"
+		// Convert, not Copy: Copy into AAC only works when the source audio already is AAC (Convert takes any source).
+		out.AudioTransfer, out.AudioCodec = "Convert", "AAC"
 	}
 	filter := map[string]any{"model": m.ID}
 	switch r.Params.Op {

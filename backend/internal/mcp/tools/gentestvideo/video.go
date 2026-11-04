@@ -27,13 +27,13 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"生成テストの動画の結果を大きくする（アップスケール）・コマを増やして滑らかにする（フレーム補間）モデルの一覧。ローカル（ComfyUI の SeedVR2 3B と RIFE。無料。モデルマネージャーで入れたものだけが出る）と、"+
 			"有料クラウドの Topaz Video API（API キーが無いときは available=false で、unavailable_message に直し方が出る）。provider・paid・商用可否（license）・表示が必要な出典（attribution）つき。"+
 			"ローカルの SeedVR2 / RIFE は RTX 4070 Ti SUPER 16GB での動作は実機未確認。Topaz は有料クラウド（見積り→確認が必須）で、表示には「Powered by Topaz Labs」が要る。"+
-			"大きくする倍率の上限・コマ補間の倍率は scales / multipliers で返る。",
+			"大きくする倍率の上限は max_scale、コマ補間の倍率は multipliers、Topaz の fps の範囲は cloud_fps_range、この PC（ローカル）の出力 fps の上限は local_max_fps（120）、出力の 1 コマの画素数の上限は max_output_pixels で返る。",
 		h.list)
 	mcpkit.Read(r, "estimate_generation_video_enhance",
 		"動画の結果を大きくする・コマを増やす処理の見積り。元の動画の大きさ・fps・コマ数は ffprobe でファイルから読む（ffmpeg が無いと日本語で直し方を返す）。"+
 			"ローカルのモデルは無料で確認不要（estimate_id なし）。Topaz は Topaz に見積りを聞いて credits を返し（課金されない・クレジットは円やドルに換算しない）、estimate_id を返す（30 分有効・1 回だけ使える）。"+
 			"見積りが取れなければ実行できない。op は upscale（scale か target_short_side）か interpolate（multiplier か target_fps）。"+
-			"ローカルのコマ補間は元の fps の 2 倍・4 倍だけ（それ以外の target_fps は断る。任意の fps は Topaz で 15〜240 fps）。",
+			"ローカルのコマ補間は元の fps の 2 倍・4 倍だけで、出力は 120 fps まで（それ以外の target_fps や、120 fps を超える倍率は断る。任意の fps や 240 fps までは Topaz で 15〜240 fps）。",
 		h.estimate)
 	mcpkit.Write(r, "enhance_generation_video",
 		"生成テストの成功した動画の結果を大きくする（op=upscale。scale は 1 より大きく 4 以下、または target_short_side で短い辺を 720 / 1080 などに）か、コマを増やして滑らかにする（op=interpolate。multiplier は 2 か 4、または target_fps）。"+
@@ -83,10 +83,11 @@ func mapError(err error) error {
 // EnhancersOutput is the models that make a video larger or smoother.
 type EnhancersOutput struct {
 	Enhancers []modelcatalog.VideoEnhancer `json:"enhancers"`
-	// Scales, Multipliers and the limits are what the tools take.
+	// MaxScale, Multipliers and the limits are what the tools take.
 	MaxScale        float64    `json:"max_scale" jsonschema:"scale の上限（1 より大きく、この値まで）"`
 	Multipliers     []int      `json:"multipliers" jsonschema:"multiplier に渡せる値（ローカルのコマ補間は元の fps のこの倍数だけ）"`
 	CloudFPSRange   [2]float64 `json:"cloud_fps_range" jsonschema:"Topaz のコマ補間で指定できる fps の範囲（下限・上限）"`
+	LocalMaxFPS     float64    `json:"local_max_fps" jsonschema:"この PC（ローカル）のコマ補間で出力できる fps の上限（元の fps × multiplier がこれを超えると断る。超えるときは Topaz を使う）"`
 	MaxOutputPixels int        `json:"max_output_pixels" jsonschema:"出力の 1 コマの画素数の上限（幅 × 高さ。モデルごとにもっと低い max_output_pixels がある）"`
 }
 
@@ -101,7 +102,7 @@ func (h handlers) list(ctx context.Context, _ Input) (EnhancersOutput, error) {
 	}
 	return EnhancersOutput{
 		Enhancers: list, MaxScale: venhance.MaxScale, Multipliers: venhance.Multipliers,
-		CloudFPSRange: [2]float64{venhance.MinCloudFPS, venhance.MaxCloudFPS}, MaxOutputPixels: venhance.MaxOutputPixels,
+		CloudFPSRange: [2]float64{venhance.MinCloudFPS, venhance.MaxCloudFPS}, LocalMaxFPS: venhance.MaxLocalFPS, MaxOutputPixels: venhance.MaxOutputPixels,
 	}, nil
 }
 
@@ -113,7 +114,7 @@ type EnhanceInput struct {
 	Scale           float64 `json:"scale,omitempty" jsonschema:"upscale: 倍率。1 より大きく 4 以下（2 が標準）。target_short_side とどちらか一方"`
 	TargetShortSide int     `json:"target_short_side,omitempty" jsonschema:"upscale: 短い辺をこの長さにする（720 / 1080 など。480×848 を 720 にすると 720×1272）。scale とどちらか一方"`
 	Multiplier      int     `json:"multiplier,omitempty" jsonschema:"interpolate: コマ数の倍率（2 か 4）。target_fps とどちらか一方"`
-	TargetFPS       float64 `json:"target_fps,omitempty" jsonschema:"interpolate: 出力の fps。ローカルは元の fps の 2 倍か 4 倍だけ。Topaz は 15〜240。multiplier とどちらか一方"`
+	TargetFPS       float64 `json:"target_fps,omitempty" jsonschema:"interpolate: 出力の fps。ローカルは元の fps の 2 倍か 4 倍だけで、出力は 120 fps まで。Topaz は 15〜240。multiplier とどちらか一方"`
 }
 
 func (in EnhanceInput) request() videoenhance.Request {

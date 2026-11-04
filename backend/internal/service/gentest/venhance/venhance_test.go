@@ -1,6 +1,7 @@
 package venhance_test
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/cloudenhance"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/venhance"
 )
@@ -99,4 +101,67 @@ func TestEstimatesExpireAndRunOnce(t *testing.T) {
 	assert.False(t, ok, "over after the TTL")
 	id3, _ := e.Put(venhance.Quote{})
 	assert.NotEqual(t, id2, id3, "the ids are not guessable counters")
+}
+
+func TestSourceOfSendsTheDurationOfTheVideoStream(t *testing.T) {
+	info := media.Info{Duration: 6.5, VideoDuration: 5.0625, FrameCount: 81, FPS: 16, Width: 480, Height: 848}
+	assert.InDelta(t, 5.0625, venhance.SourceOf(info, "mp4", 10).Duration, 0, "a longer audio track must not change the length of the picture")
+
+	info.VideoDuration = 0
+	assert.InDelta(t, 6.5, venhance.SourceOf(info, "mp4", 10).Duration, 0, "the container's length when the stream tells none")
+}
+
+func TestResolveRoundsTheSidesLikeTheTarget(t *testing.T) {
+	odd := cloudenhance.Source{Width: 1281, Height: 721, FPS: 24}
+	local, err := venhance.Resolve(odd, cloudenhance.Params{Op: cloudenhance.OpUpscale, Scale: 1.5}, true, 0)
+	require.NoError(t, err)
+	assert.Equal(t, [2]int{1922, 1082}, [2]int{local.Width, local.Height}, "round(1921.5)=1922 and round(1081.5)=1082 (half to even)")
+
+	local, err = venhance.Resolve(cloudenhance.Source{Width: 853, Height: 481, FPS: 24}, cloudenhance.Params{Op: cloudenhance.OpUpscale, Scale: 1.5}, true, 0)
+	require.NoError(t, err)
+	assert.Equal(t, [2]int{1280, 722}, [2]int{local.Width, local.Height}, "round(1279.5)=1280 (half to even); round(721.5)=722")
+
+	local, err = venhance.Resolve(cloudenhance.Source{Width: 1281, Height: 721, FPS: 24}, cloudenhance.Params{Op: cloudenhance.OpUpscale, Scale: 1.3}, true, 0)
+	require.NoError(t, err)
+	assert.Equal(t, [2]int{1664, 936}, [2]int{local.Width, local.Height}, "round(1665.3)=1665 is cut to 1664; round(937.3)=937 is cut to 936")
+
+	cloud, err := venhance.Resolve(odd, cloudenhance.Params{Op: cloudenhance.OpUpscale, Scale: 2}, false, 0)
+	require.NoError(t, err)
+	assert.Equal(t, [2]int{2564, 1444}, [2]int{cloud.Width, cloud.Height}, "the cloud rounds up to a multiple of 4: 2562 → 2564, 1442 → 1444")
+}
+
+func TestResolveRefusesWhatIsNotANumber(t *testing.T) {
+	for name, p := range map[string]cloudenhance.Params{
+		"scale NaN":       {Op: cloudenhance.OpUpscale, Scale: math.NaN()},
+		"scale Inf":       {Op: cloudenhance.OpUpscale, Scale: math.Inf(1)},
+		"target_fps NaN":  {Op: cloudenhance.OpInterpolate, TargetFPS: math.NaN()},
+		"target_fps Inf":  {Op: cloudenhance.OpInterpolate, TargetFPS: math.Inf(1)},
+		"target_fps -Inf": {Op: cloudenhance.OpInterpolate, TargetFPS: math.Inf(-1)},
+	} {
+		for _, local := range []bool{true, false} {
+			_, err := venhance.Resolve(wan, p, local, 0)
+			var inv *gterr.InvalidError
+			require.ErrorAs(t, err, &inv, name)
+			assert.Contains(t, inv.Message, "有限", name)
+		}
+	}
+}
+
+func TestResolveLocalInterpolationStopsAt120FPS(t *testing.T) {
+	fast := cloudenhance.Source{Width: 640, Height: 360, FPS: 60}
+	_, err := venhance.Resolve(fast, cloudenhance.Params{Op: cloudenhance.OpInterpolate, Multiplier: 4}, true, 0)
+	var inv *gterr.InvalidError
+	require.ErrorAs(t, err, &inv)
+	assert.Contains(t, inv.Message, "120 fps まで")
+	assert.Contains(t, inv.Message, "Topaz")
+
+	_, err = venhance.Resolve(fast, cloudenhance.Params{Op: cloudenhance.OpInterpolate, TargetFPS: 240}, true, 0)
+	require.ErrorAs(t, err, &inv, "a target that is a multiple still is above the limit")
+
+	p, err := venhance.Resolve(fast, cloudenhance.Params{Op: cloudenhance.OpInterpolate, Multiplier: 2}, true, 0)
+	require.NoError(t, err, "60 × 2 is the limit itself")
+	assert.InDelta(t, 120, p.FPS, 0)
+
+	_, err = venhance.Resolve(fast, cloudenhance.Params{Op: cloudenhance.OpInterpolate, Multiplier: 4}, false, 0)
+	require.NoError(t, err, "the cloud goes to 240")
 }

@@ -4,6 +4,7 @@
 package venhancescreen
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,6 +32,16 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.POST(paths.GenerationTestPart("results", ":id", "video-enhance"), h.Enhance)
 }
 
+// parseFinite reads a number of a form field. ParseFloat takes "NaN" and "Inf" as numbers, and a comparison with NaN is never true, so those are
+// refused here, before any check of a range or of the credits could be passed by them.
+func parseFinite(s string) (float64, error) {
+	v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+	if err == nil && (math.IsNaN(v) || math.IsInf(v, 0)) {
+		err = strconv.ErrSyntax
+	}
+	return v, err
+}
+
 // requestOf reads the form: the operation, the model and the values of it (a size of an upscale; the factor of the frames or, at Topaz, the fps). The
 // quote and the credits are read only for a model of the cloud (a local one takes none).
 func requestOf(c *gin.Context) (videoenhance.Request, error) {
@@ -54,7 +65,7 @@ func requestOf(c *gin.Context) (videoenhance.Request, error) {
 		case videoenhancebox.InterpX4:
 			r.Multiplier = 4
 		case videoenhancebox.InterpFPS:
-			fps, err := strconv.ParseFloat(strings.TrimSpace(c.PostForm(videoenhancebox.FieldFPS)), 64)
+			fps, err := parseFinite(c.PostForm(videoenhancebox.FieldFPS))
 			if err != nil || fps <= 0 {
 				return r, gterr.Invalid("fps は数字で入れてください（15〜240）")
 			}
@@ -120,7 +131,7 @@ func (h Handlers) Enhance(c *gin.Context) {
 	if err == nil && isCloud(r.Model) {
 		if c.PostForm(videoenhancebox.FieldConfirm) != "1" {
 			err = gterr.Invalid("見積りの内容を確認して、チェックを入れてください。確認がないと、有料クラウド（Topaz）には送りません")
-		} else if r.ConfirmedCredits, err = strconv.ParseFloat(c.PostForm(videoenhancebox.FieldCredits), 64); err != nil {
+		} else if r.ConfirmedCredits, err = parseFinite(c.PostForm(videoenhancebox.FieldCredits)); err != nil {
 			err = gterr.Invalid("確認したクレジットが読み取れません。もう一度見積りを取ってください")
 		}
 		r.EstimateID = c.PostForm(videoenhancebox.FieldEstimateID)

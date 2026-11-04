@@ -73,6 +73,7 @@ const (
 	CodeTopazJobFailed      Code = "topaz_job_failed"        // PROCESSING_FAILURE / HARDWARE_FAILURE / UNKNOWN / SERVER_ERROR / a cancelled job, after the job was accepted
 	CodeTopazSourceInvalid  Code = "topaz_source_invalid"    // INVALID_INPUT after the job was accepted: the source file could not be processed
 	CodeTopazTransferFailed Code = "topaz_transfer_failed"   // the upload of the source or the download of the result (a storage URL, not the API) failed
+	CodeTopazInterrupted    Code = "topaz_job_interrupted"   // mam stopped (or the job was cancelled) after Topaz accepted the job: it may run on at Topaz and the credits may be charged; Args "request_id"
 
 	// The codes of the classes below are for a failure that a service already worded (Error.Cause): the screen and the tool keep that
 	// sentence and add the generic remedy.
@@ -200,6 +201,7 @@ var specs = map[Code]spec{
 	CodeTopazJobFailed:      {ClassUpstream, nil},
 	CodeTopazSourceInvalid:  {ClassUpstream, nil},
 	CodeTopazTransferFailed: {ClassUpstream, nil},
+	CodeTopazInterrupted:    {ClassUpstream, nil},
 }
 
 // Codes returns every code, sorted by name.

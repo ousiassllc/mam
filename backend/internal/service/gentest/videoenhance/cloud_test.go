@@ -2,6 +2,7 @@ package videoenhance_test
 
 import (
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -126,4 +127,42 @@ func TestAFailedCloudRunIsNotSentAgain(t *testing.T) {
 	assert.Equal(t, "failed", res.Status)
 	assert.NotEmpty(t, res.Error)
 	assert.Len(t, cloud.Runs, 1, "run once, never again")
+}
+
+// Every comparison with NaN is false: a NaN (or Inf, or negative) confirmation must not pass the gate, and nothing is sent to the provider.
+func TestAConfirmationThatIsNotANumberDoesNotPassTheGate(t *testing.T) {
+	cloud := newCloud(true)
+	r := newRig(t, gentesttest.WithCloud(cloud))
+	src := aVideo(t, r)
+	est, err := videoenhance.EstimateEnhance(ctx, r.Svc, upscale(src, proteus))
+	require.NoError(t, err)
+
+	for name, credits := range map[string]float64{"NaN": math.NaN(), "+Inf": math.Inf(1), "-Inf": math.Inf(-1), "negative": -12.5, "zero": 0} {
+		req := upscale(src, proteus)
+		req.EstimateID, req.ConfirmedCredits = est.EstimateID, credits
+
+		_, err := videoenhance.Enhance(ctx, r.Svc, req)
+
+		assert.Contains(t, conflictMessage(t, err), "確認したクレジット", name)
+		assert.Empty(t, cloud.Runs, name)
+	}
+	_, ok := r.Svc.VideoEstimates.Get(est.EstimateID)
+	assert.True(t, ok, "a refused confirmation does not use the quote up")
+}
+
+// The result remembers the output the quote promised (the sizes of Topaz are multiples of 4), not the plan the app made on its own.
+func TestACloudResultRemembersTheSizesOfTheQuote(t *testing.T) {
+	cloud := newCloud(true)
+	cloud.Quote.Width, cloud.Quote.Height, cloud.Quote.FPS = 964, 1700, 16
+	r := newRig(t, gentesttest.WithCloud(cloud))
+	src := aVideo(t, r)
+	est, err := videoenhance.EstimateEnhance(ctx, r.Svc, upscale(src, proteus))
+	require.NoError(t, err)
+	req := upscale(src, proteus)
+	req.EstimateID, req.ConfirmedCredits = est.EstimateID, *est.Credits
+
+	res := enhance(t, r, req)
+
+	require.Equal(t, "succeeded", res.Status, res.Error)
+	assert.Equal(t, [2]int{964, 1700}, [2]int{res.VideoEnhance.Width, res.VideoEnhance.Height})
 }

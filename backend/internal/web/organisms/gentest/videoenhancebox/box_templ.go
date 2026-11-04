@@ -687,7 +687,7 @@ func sizeFields(o Op, topaz bool) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<p class=\"max-w-xs text-xs text-neutral-400\" data-testid=\"gt-venh-fps-note\">この PC のモデルは、元の fps の 2 倍か 4 倍（整数倍）にしかできません。fps を自分で決めたいときは Topaz のモデルを使ってください。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<p class=\"max-w-xs text-xs text-neutral-400\" data-testid=\"gt-venh-fps-note\">この PC のモデルは、元の fps の 2 倍か 4 倍（整数倍）にしかできず、出力は 120 fps までです。fps を自分で決めたいときや 120 fps を超えるときは Topaz のモデルを使ってください。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

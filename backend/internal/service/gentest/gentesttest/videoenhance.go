@@ -102,6 +102,10 @@ type FakeCloud struct {
 	EstimateErr  error
 	RunErr       error
 	Result       []byte
+	// HoldRun makes Run signal RunStarted (a channel the test makes) and wait until its context ends, then fail as a job that Topaz accepted does
+	// when it is stopped: with modeladapter.AfterSubmit.
+	HoldRun    bool
+	RunStarted chan struct{}
 
 	mu        sync.Mutex
 	Estimates []cloudenhance.CloudRequest
@@ -124,13 +128,18 @@ func (c *FakeCloud) Estimate(_ context.Context, r cloudenhance.CloudRequest) (cl
 }
 
 // Run implements cloudenhance.Cloud.
-func (c *FakeCloud) Run(_ context.Context, in cloudenhance.RunInput, progress func(cloudenhance.Progress)) (int64, error) {
+func (c *FakeCloud) Run(ctx context.Context, in cloudenhance.RunInput, progress func(cloudenhance.Progress)) (int64, error) {
 	c.mu.Lock()
 	src, _ := os.ReadFile(in.SourcePath)
 	c.Runs, c.Sources = append(c.Runs, in), append(c.Sources, src)
 	c.mu.Unlock()
 	if progress != nil {
 		progress(cloudenhance.Progress{Status: "processing", Percent: 50})
+	}
+	if c.HoldRun {
+		c.RunStarted <- struct{}{}
+		<-ctx.Done()
+		return 0, modeladapter.AfterSubmit(ctx.Err())
 	}
 	if c.RunErr != nil {
 		return 0, c.RunErr

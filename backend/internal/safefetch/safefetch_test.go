@@ -117,3 +117,25 @@ func TestClientDoesNotConnectToALoopbackServer(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-public address")
 	assert.Zero(t, hits)
 }
+
+// The client of the vendors' result files follows a few redirects (a signed URL may point to a storage host) as long as every hop is an https URL
+// of a public host; it does not stop at "another host". The key of an API is never on these requests (the callers add none).
+func TestNewClientFollowsRedirectsOnlyToHTTPSURLsOfPublicHosts(t *testing.T) {
+	check := safefetch.NewClient().CheckRedirect
+	next := func(target string) *http.Request {
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
+		require.NoError(t, err)
+		return req
+	}
+	assert.NoError(t, check(next("https://storage.example.com/result.mp4"), make([]*http.Request, 1)), "another public https host is followed")
+	assert.NoError(t, check(next("https://8.8.8.8/result.mp4"), make([]*http.Request, 4)), "the fifth hop")
+	for name, target := range map[string]string{
+		"to http":           "http://storage.example.com/x",
+		"to localhost":      "https://localhost/x",
+		"to a private IP":   "https://10.0.0.5/x",
+		"to the link-local": "https://169.254.169.254/latest/meta-data",
+	} {
+		assert.Error(t, check(next(target), make([]*http.Request, 1)), name)
+	}
+	assert.ErrorContains(t, check(next("https://storage.example.com/x"), make([]*http.Request, 5)), "too many redirects", "more than 5 hops")
+}

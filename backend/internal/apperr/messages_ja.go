@@ -163,6 +163,9 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"topaz_transfer_failed.cause":  "Topaz との動画のやり取り（元の動画のアップロード、または結果のダウンロード）に失敗しました。",
 	"topaz_transfer_failed.remedy": "ネットワーク（プロキシ・VPN・ファイアウォール）を確かめてください。アップロードに失敗したときは、見積りの有効期限が切れていないか確かめて、もう一度見積りを取って実行してください。処理が済んだあとのダウンロードの失敗は、結果が Topaz に 7 日間残るので、時間を置いてから確かめられます。同じ処理を mam が自動でやり直すことはありません（二重に課金されないため）。",
 
+	"topaz_job_interrupted.cause":  "処理の途中で mam が止まったか、ジョブが取り消されたため、Topaz の結果を待つのをやめました。Topaz はこの処理をすでに受け付けているため、Topaz 側では続いている可能性があり、クレジットが引かれることがあります（リクエスト ID: {request_id}）。",
+	"topaz_job_interrupted.remedy": "mam からは Topaz の処理を取り消せません（取り消しの呼び出しは未実装です）。Topaz のアカウントで、このリクエスト ID（{request_id}）の処理の状況と使われたクレジットを確かめてください。同じ処理を mam が自動でやり直すことはありません（二重に課金されないため）。",
+
 	"invalid_input.cause":    "入力が正しくありません。",
 	"invalid_input.remedy":   "入力内容を直してから、もう一度実行してください。",
 	"not_found.cause":        "対象が見つかりません。",

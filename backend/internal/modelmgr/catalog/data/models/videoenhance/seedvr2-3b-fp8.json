@@ -26,7 +26,7 @@
   "min_gb": 12,
   "recommended_gb": 16,
   "limits": "12GB では解像度と長さを小さくする（出力は 1 コマ 1080p まで、長い動画は分けて処理する）。16GB 未満の GPU で動くかは確かめていない",
-  "source": "出典: Issue #1031 の調査（公式ノード README・第三者測定）・mam 実機は未確認。公式ノードの README は 12〜16GB に fp8 とタイルを勧め、第三者の測定では 3B fp8・タイル・batch 5・480p から 1080p で約 6.5GB と報告されている。mam はこれより余裕を見て 12GB を下限の見積もりにした",
+  "source": "出典: Issue #1031 の調査（公式ノード README・第三者測定）・mam 実機は未確認。公式ノードの README は 12〜16GB に fp8 とタイルを勧める。約 6.5GB という数字は別の実装（numz の ComfyUI-SeedVR2_VideoUpscaler。BlockSwap を使い、batch 5・480p から 1080p）の第三者の報告で、mam が使う ComfyUI 本体のノードの組み合わせでの測定ではない（本体のノードでの使用量は未測定）。mam はこの数字を使わず、余裕を見て 12GB を下限の見積もりにした（min_gb は見積もりのまま）",
   "estimate": true
  },
  "license": {

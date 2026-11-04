@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/cloudenhance"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -41,8 +42,13 @@ func Enhance(ctx context.Context, g *gentest.Service, r Request) (Ref, error) {
 	}
 	var topaz *record.TopazRun
 	if t.model.Paid {
-		if topaz, err = confirm(g, r, t); err != nil {
+		var made cloudenhance.CloudEstimate
+		if topaz, made, err = confirm(g, r, t); err != nil {
 			return Ref{}, err
+		}
+		// The output the quote promised (the sizes of Topaz are multiples of 4) is what the result remembers, not the local plan's.
+		if made.Width > 0 && made.Height > 0 && made.FPS > 0 {
+			t.plan.Width, t.plan.Height, t.plan.FPS = made.Width, made.Height, made.FPS
 		}
 	}
 	nb, err := newBatch(g, r, t, topaz)
@@ -66,25 +72,26 @@ func Enhance(ctx context.Context, g *gentest.Service, r Request) (Ref, error) {
 }
 
 // confirm is the gate of a cloud model: the quote of EstimateID, for exactly this source, model and values, and the credits the user confirmed. It
-// takes the quote (it runs once) and returns what the result remembers of it.
-func confirm(g *gentest.Service, r Request, t target) (*record.TopazRun, error) {
+// takes the quote (it runs once) and returns what the result remembers of it, with the quote itself.
+func confirm(g *gentest.Service, r Request, t target) (*record.TopazRun, cloudenhance.CloudEstimate, error) {
 	if r.EstimateID == "" {
-		return nil, gterr.Invalid("Topaz は有料のクラウドです。estimate_generation_video_enhance で見積りを取り、利用者に確認してから、estimate_id と confirmed_credits を渡してください")
+		return nil, cloudenhance.CloudEstimate{}, gterr.Invalid("Topaz は有料のクラウドです。estimate_generation_video_enhance で見積りを取り、利用者に確認してから、estimate_id と confirmed_credits を渡してください")
 	}
 	q, ok := g.VideoEstimates.Get(r.EstimateID)
 	if !ok {
-		return nil, errExpired()
+		return nil, cloudenhance.CloudEstimate{}, errExpired()
 	}
 	if q.ResultID != r.ResultID || q.Model != t.model.ID || q.Plan.Params != t.plan.Params || q.Plan.Width != t.plan.Width || q.Plan.Height != t.plan.Height || q.Plan.FPS != t.plan.FPS {
-		return nil, gterr.Conflict("見積りのときと条件（元の動画・モデル・倍率や fps）が違います。もう一度見積りを取って、その額を確認してください")
+		return nil, cloudenhance.CloudEstimate{}, gterr.Conflict("見積りのときと条件（元の動画・モデル・倍率や fps）が違います。もう一度見積りを取って、その額を確認してください")
 	}
-	if math.Abs(r.ConfirmedCredits-q.Estimate.Credits) > creditsEpsilon {
-		return nil, gterr.Conflict("確認したクレジット（%g）が見積り（%g）と違います。見積りの credits をそのまま confirmed_credits に渡してください", r.ConfirmedCredits, q.Estimate.Credits)
+	// Written so that NaN, Inf and a negative number fail: every comparison with NaN is false, so the check asks for what is allowed, not for what is not.
+	if d := math.Abs(r.ConfirmedCredits - q.Estimate.Credits); !(d <= creditsEpsilon) || r.ConfirmedCredits < 0 {
+		return nil, cloudenhance.CloudEstimate{}, gterr.Conflict("確認したクレジット（%g）が見積り（%g）と違います。見積りの credits をそのまま confirmed_credits に渡してください", r.ConfirmedCredits, q.Estimate.Credits)
 	}
 	if _, ok := g.VideoEstimates.Take(r.EstimateID); !ok { // another call ran it between
-		return nil, errExpired()
+		return nil, cloudenhance.CloudEstimate{}, errExpired()
 	}
-	return &record.TopazRun{RequestID: q.Estimate.RequestID, EstimatedCredits: q.Estimate.Credits, Attribution: venhance.TopazAttribution}, nil
+	return &record.TopazRun{RequestID: q.Estimate.RequestID, EstimatedCredits: q.Estimate.Credits, Attribution: venhance.TopazAttribution}, q.Estimate, nil
 }
 
 // newBatch plans the batch and its one result. The batch has no input image (the runner reads the file of the source result), no estimate in USD and

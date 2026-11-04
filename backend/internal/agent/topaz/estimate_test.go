@@ -53,7 +53,7 @@ func TestEstimate_SendsTheDocumentedRequestAndReadsTheQuote(t *testing.T) {
 	assert.JSONEq(t, `{
 		"source": {"container": "mp4", "size": 12, "duration": 4, "frameCount": 97, "frameRate": 24, "resolution": {"width": 480, "height": 848}},
 		"filters": [{"model": "prob-4", "auto": "Auto"}],
-		"output": {"resolution": {"width": 960, "height": 1696}, "frameRate": 24, "audioTransfer": "Copy", "audioCodec": "AAC",
+		"output": {"resolution": {"width": 960, "height": 1696}, "frameRate": 24, "audioTransfer": "Convert", "audioCodec": "AAC",
 			"videoEncoder": "H264", "dynamicCompressionLevel": "High", "container": "mp4"}
 	}`, string(posts[0].Body))
 	assert.Equal(t, 1, f.total(), "a quote asks nothing else")
@@ -106,7 +106,7 @@ func TestEstimate_TheFilterAndTheOutputFollowTheModelAndTheOperation(t *testing.
 			assert.JSONEq(t, tc.filter, string(body.Filters[0]))
 			assert.JSONEq(t, tc.output, string(body.Output.Resolution))
 			if tc.req.Source.HasAudio {
-				assert.Equal(t, "Copy", body.Output.AudioTransfer)
+				assert.Equal(t, "Convert", body.Output.AudioTransfer, "Copy into AAC only works for a source that is AAC already")
 				assert.Equal(t, "AAC", body.Output.AudioCodec)
 			} else {
 				assert.Equal(t, "None", body.Output.AudioTransfer)
@@ -196,6 +196,10 @@ func TestEstimate_WithoutACreditNumberFailsAndNothingRuns(t *testing.T) {
 		"cost is null":     `{"requestId":"req-1","estimates":{"cost":null}}`,
 		"cost is empty":    `{"requestId":"req-1","estimates":{"cost":[]}}`,
 		"cost is negative": `{"requestId":"req-1","estimates":{"cost":-3}}`,
+		"cost is zero":     `{"requestId":"req-1","estimates":{"cost":0}}`,
+		"list of zeros":    `{"requestId":"req-1","estimates":{"cost":[0,0]}}`,
+		"range of zeros":   `{"requestId":"req-1","estimates":{"cost":{"min":0,"max":0}}}`,
+		"range negative":   `{"requestId":"req-1","estimates":{"cost":{"min":-2,"max":-1}}}`,
 		"no request id":    `{"estimates":{"cost":12}}`,
 		"not JSON":         `<html>`,
 	} {
