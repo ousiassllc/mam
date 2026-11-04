@@ -10,7 +10,7 @@
   "uncensored": true,
   "speed": "standard"
  },
- "description": "【小（〜5B）・T2V・音声なし】Wan 2.1 T2V 1.3B を非検閲（成人向け）にフル微調整した NSFW-API の NSFW Wan 1.3B の推奨チェックポイント wan_1.3B_exp_e14（成人向け）。得意: 小さくて軽い試し向きの汎用の非検閲 T2V（拡散モデル約 2.8 GB・テキストエンコーダー・VAE を合わせて約 9.8 GB）。作者のカードは、初期の e4〜e20 の画質の崩れ（体の破綻）を直した実験系列の exp_e14 を推奨と書くので、そのチェックポイントだけを入れる。テキストからのみで先頭フレームは使わない。480p（832×480）・16fps・短尺（数秒）が前提で、30 ステップ・uni_pc・cfg 6（ComfyUI 公式の Wan 2.1 T2V 1.3B の例と同じ）。16 GB の GPU に余裕で収まる。注意: 14B 級より細部・動きの質は落ちる。ライセンスはカードが CreativeML OpenRAIL-M と宣言し（本文は無い）、作者は「Steal this model!」と書くので、商用利用は「商用OK」（OpenRAIL-M の使用制限に従う前提。SDXL base と同じ扱い）。ただし学習データは Reddit の成人向け投稿で権利は未確認。macOS（Apple Silicon）は fp8 のテキストエンコーダーを含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
+ "description": "【小（〜5B）・T2V・音声なし】Wan 2.1 T2V 1.3B を非検閲（成人向け）にフル微調整した NSFW-API の NSFW Wan 1.3B の推奨チェックポイント wan_1.3B_exp_e14（成人向け）。得意: 小さくて軽い試し向きの汎用の非検閲 T2V（拡散モデル約 2.8 GB・テキストエンコーダー・VAE を合わせて約 9.8 GB）。作者のカードは、初期の e4〜e20 の画質の崩れ（体の破綻）を直した実験系列の exp_e14 を推奨と書くので、そのチェックポイントだけを入れる。テキストからのみで先頭フレームは使わない。480p（832×480）・16fps・短尺（数秒）が前提で、30 ステップ・uni_pc・cfg 6（ComfyUI 公式の Wan 2.1 T2V 1.3B の例と同じ）。16 GB の GPU に余裕で収まる。注意: 14B 級より細部・動きの質は落ちる。ライセンスはカードが CreativeML OpenRAIL-M と宣言し（本文は無い）、作者は「Steal this model!」と書くので、商用利用の可否は「不明」（宣言だけで本文が無く、学習データは Reddit の成人向け投稿で権利は未確認なので、商用には使わない）。macOS（Apple Silicon）は fp8 のテキストエンコーダーを含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
  "files": [
   {
    "name": "nsfw_wan_1.3b_exp_e14.safetensors",
@@ -44,8 +44,8 @@
   "version": "2022-08-22",
   "name": "CreativeML OpenRAIL-M（モデルカードの宣言と『Steal this model!』。LICENSE の本文なし）",
   "url": "https://huggingface.co/NSFW-API/NSFW_Wan_1.3b/blob/4d8db25317335b4a0cfbefad9877b893f08dbc67/README.md",
-  "summary": "ベースの Wan 2.1 T2V 1.3B（Wan-AI）は Apache-2.0。この微調整は NSFW-API が自分で学習したフル微調整で、モデルカードは license: creativeml-openrail-m と宣言し（README 2 行目）、「License」の節（128〜130 行目）は「Steal this model!」とだけ書く。CreativeML OpenRAIL-M は使用制限（Attachment A）つきで商用利用を認めるので、答えは「商用OK」（使用制限つき。sdxl-base の OpenRAIL++-M と同じ扱いで、学習データの権利の未確認は注意で知らせる。2026-11-04 に確認）。ただしリポジトリに LICENSE の本文は無く、使用制限の正確な文面はここでは確かめられない。学習データは Reddit の成人向けの約 1,250 の投稿先の上位 1,000 件ずつ（README 59 行目）で、その権利を作者が確かめた記録は無い。",
-  "commercial": "yes",
+  "summary": "ベースの Wan 2.1 T2V 1.3B（Wan-AI）は Apache-2.0。この微調整は NSFW-API が自分で学習したフル微調整で、モデルカードは license: creativeml-openrail-m と宣言し（README 2 行目）、「License」の節（128〜130 行目）は「Steal this model!」とだけ書く。答えは「不明」（2026-11-04 に確認）。カードの宣言だけで LICENSE の本文が無く、OpenRAIL-M の使用制限（Attachment A）の正確な文面も確かめられない。宣言だけでは確かめられないものは厳しい方の「不明」とする（`wan22-i2v-14b-lightx2v-uncensored` などと同じ扱い。本文がリポジトリにある sdxl-base の OpenRAIL++-M とは違う）。学習データは Reddit の成人向けの約 1,250 の投稿先の上位 1,000 件ずつ（README 59 行目）で、その権利を作者が確かめた記録は無い。",
+  "commercial": "unknown",
   "checked_at": "2026-11-04",
   "components": [
    {
@@ -58,7 +58,7 @@
     "part": "微調整の重み（NSFW Wan 1.3B exp_e14・NSFW-API）",
     "name": "CreativeML OpenRAIL-M（モデルカードの宣言と『Steal this model!』。使用制限つき。学習データの権利は未確認）",
     "url": "https://huggingface.co/NSFW-API/NSFW_Wan_1.3b",
-    "commercial": "yes"
+    "commercial": "unknown"
    },
    {
     "part": "テキストエンコーダー・VAE（Comfy-Org の再配布）",
@@ -67,7 +67,7 @@
     "commercial": "yes"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（CreativeML OpenRAIL-M）だけで本文が無く、学習データ（Reddit の成人向け投稿）の権利も確認できていません。商用で使う前に、OpenRAIL-M の使用制限（Attachment A）と学習データの権利を自分で確認してください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+  "notice": "この mam のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（CreativeML OpenRAIL-M）だけで本文が無く、学習データ（Reddit の成人向け投稿）の権利も確認できていません。商用には使わないでください（OpenRAIL-M の使用制限〔Attachment A〕と学習データの権利を自分で確認できるまで）。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

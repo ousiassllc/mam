@@ -111,19 +111,18 @@ func TestSmallTierSharesTheWanTextEncoderAndTheVAE(t *testing.T) {
 	assert.Contains(t, wan13.Files, file(t, i2v14, "wan_2.1_vae.safetensors"))
 }
 
-// The licenses (Issue #1028 read them again on 2026-11-04). The 1.3B card declares OpenRAIL-M (no text, the author writes "Steal this model!") and the
-// anime model has the Apache-2.0 text: both license texts allow commercial use, so the answer is "yes" (model-license.md §1: "conditional" is for a
-// condition the license itself sets, like a revenue cap; OpenRAIL-M's use restrictions are "yes" with a notice, as for sdxl-base), not "unknown", and
-// each notice says what is left unverified (the training data: scraped Reddit posts; anime clips with no recorded authorization in a restored
-// repository). The LoRA has no license at all (Civitai's original allows RentCivit and generated images only), so it stays unknown. Each says why
-// in its summary, and the stricter part is what is shown.
+// The licenses (Issue #1028 read them again on 2026-11-04). The anime model has the Apache-2.0 text in its repository, so the answer is "yes" (the
+// notice says what is left unverified: anime clips with no recorded authorization in a restored repository). The 1.3B card only declares
+// OpenRAIL-M (no text; the author writes "Steal this model!"; the training data is scraped Reddit posts), and a declaration alone cannot be checked, so
+// it is "unknown" like the other declaration-only models (model-license.md §3). The LoRA has no license at all (Civitai's original allows RentCivit
+// and generated images only), so it stays unknown. Each says why in its summary, and the stricter part is what is shown.
 func TestSmallTierLicensesSayWhatTheirSourcesSayAndWhatIsUnverified(t *testing.T) {
 	for id, tc := range map[string]struct {
 		license    string
 		commercial modellicense.Commercial
 		reason     string
 	}{
-		"nsfw-wan21-1b3-t2v":         {"creativeml-openrail-m-declared", modellicense.Yes, "Reddit"},
+		"nsfw-wan21-1b3-t2v":         {"creativeml-openrail-m-declared", modellicense.Unknown, "Reddit"},
 		"nsfw-anime-wan22-5b":        {"apache-2.0", modellicense.Yes, "復元"},
 		"wan22-ti2v-5b-cowgirl-lora": {"unspecified", modellicense.Unknown, "RentCivit"},
 	} {
