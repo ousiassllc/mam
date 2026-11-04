@@ -49,6 +49,8 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 
 **アップスケールのワークフロー（Issue #975）**: 画像を大きくするワークフロー（`upscale` の印。[../local-models.md](../local-models.md) §4.5）は、モデルマネージャーのカタログ（`kind: upscale`）が同梱エンジンに作る。保存したワークフロー（この表）には、印はまだ持てない（保存の画面は `upscale` を編集しない）。印のある同梱のワークフローは、保存したワークフローの「モデルとしての公開」（§2）と同じ「プロンプトを渡すモデル」の一覧には出ない。
 
+**動画を大きくする・滑らかにするワークフロー（Issue #1031）**: 動画のアップスケール（SeedVR2）とコマ補間（RIFE）のワークフロー（`video_enhance` の印。[../local-models.md](../local-models.md) §4.10）も、カタログ（`kind: video_upscale` / `video_interpolate`）が同梱エンジンに作る。保存したワークフローには印をまだ持てず、印のある同梱のワークフローは「プロンプトを渡すモデル」の一覧に出ない（上と同じ）。実機の ComfyUI・GPU では動かしていない（実機未確認）。
+
 ## 7. 検証できていないこと
 
 実機の ComfyUI と GPU では実行していない（偽の ComfyUI `comfyuitest` が `/object_info`・`/userdata`・`/history`・`/models/<folder>` と実行を再現する）。一部だけ描き直す（#974。`inpaint-sdxl`・`inpaint-flux-dev`）も同じで、マスクの外が元の画素のままかはグラフの `ImageCompositeMasked` のリンクまでを確かめ、画素の比較はしていない。`/history` の記録の形（`prompt` タプルと `extra_data.extra_pnginfo.workflow`）は ComfyUI のソースから読んだもので、実機での確認が残っている。

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/enhancevideo"
 )
 
 // PrepareFunc readies the server of an endpoint before a model of it is called: the bundled ComfyUI of the model
@@ -45,6 +46,19 @@ func (p preparedVideo) GenerateVideo(ctx context.Context, apiModel string, req m
 		return modeladapter.VideoResult{}, err
 	}
 	return p.inner.(modeladapter.VideoBackend).GenerateVideo(ctx, apiModel, req)
+}
+
+// EnhanceVideo readies the server like GenerateVideo and runs a video enhancement workflow (enhancevideo.Backend); an inner
+// backend that is none refuses.
+func (p preparedVideo) EnhanceVideo(ctx context.Context, req enhancevideo.Request) (modeladapter.VideoResult, error) {
+	inner, ok := p.inner.(enhancevideo.Backend)
+	if !ok {
+		return modeladapter.VideoResult{}, enhancevideo.ErrNotEnhance
+	}
+	if err := p.prepare(ctx, p.endpoint); err != nil {
+		return modeladapter.VideoResult{}, err
+	}
+	return inner.EnhanceVideo(ctx, req)
 }
 
 func wrapImage(endpoint string, prepare PrepareFunc, inner modeladapter.ImageBackend) modeladapter.ImageBackend {

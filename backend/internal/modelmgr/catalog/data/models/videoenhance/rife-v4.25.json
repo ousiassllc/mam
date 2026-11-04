@@ -1,0 +1,40 @@
+{
+ "id": "rife-v4.25",
+ "name": "RIFE v4.25（コマ補間）",
+ "kind": "video_interpolate",
+ "tier": "standard",
+ "content_rating": "general",
+ "traits": {"uncensored": false},
+ "description": "できあがった動画のコマとコマの間を作って滑らかにするモデル（Practical-RIFE の v4.25。約 22 MB で軽い）。生成テストの動画の結果から「コマ補間」で使う（2 倍・4 倍。16fps が 32 / 64fps になる）。Practical-RIFE の README が推すいまの既定（ほとんどの場面で 4.25）。解像度は変わらず、元の音声はそのまま付く。プロンプトを渡す動画モデルではない。注意: 480p・81 コマが 16GB に収まることは見込みで、mam の実機では未確認。",
+ "files": [
+  {
+   "name": "rife_v4.25.safetensors",
+   "folder": "frame_interpolation",
+   "url": "https://huggingface.co/Comfy-Org/Frame-Interpolation/resolve/aa7009be4d1471ea0bac91d6fe4d7e4b637cbbfc/frame_interpolation/rife_v4.25.safetensors",
+   "sha256": "1505884b9bdae956795430d2a70f7e2317b2abd8f130f8cfdb35a5759f909481",
+   "size": 22674688
+  }
+ ],
+ "vram": {
+  "min_gb": 4,
+  "source": "出典: Issue #1031 の調査・mam の見積もり（出典なし・mam 実機は未確認）。モデルは約 22 MB で、重いのはコマの画像（480p・81 コマ程度）",
+  "estimate": true
+ },
+ "license": {
+  "id": "mit",
+  "version": "2021",
+  "name": "MIT License（Practical-RIFE。Comfy-Org の再配布カードは license: other・license_name: mit-and-apache-2.0）",
+  "url": "https://github.com/hzwer/Practical-RIFE/blob/main/LICENSE",
+  "summary": "作者 hzwer の Practical-RIFE の LICENSE は MIT License（Copyright (c) 2021 hzwer）で、README にも「重みのリンクの内容はこのプロジェクトと同じ MIT ライセンス」とある。商用を含めて使える。著作権表示とライセンス文を保つ。再配布元 Comfy-Org/Frame-Interpolation のカードは RIFE（MIT）と FILM（Apache-2.0）を合わせて mit-and-apache-2.0 と書く。この 1 ファイルは RIFE なので MIT。（2026-11-04 に LICENSE・README・カードを確認）",
+  "commercial": "yes",
+  "checked_at": "2026-11-04"
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "video-interpolate-rife-v4.25",
+   "template": "video-interpolate-rife-v4.25"
+  }
+ ]
+}

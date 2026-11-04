@@ -92,6 +92,10 @@ func (e Entry) Item() modelfilter.Item {
 		it.Kinds = []modelfilter.Kind{modelfilter.KindVideo}
 	case kind.Upscale:
 		it.Kinds = []modelfilter.Kind{modelfilter.KindUpscale}
+	case kind.VideoUpscale:
+		it.Kinds = []modelfilter.Kind{modelfilter.KindVideoUpscale}
+	case kind.VideoInterpolate:
+		it.Kinds = []modelfilter.Kind{modelfilter.KindVideoInterpolate}
 	default:
 		it.Kinds = []modelfilter.Kind{modelfilter.KindImage}
 		if slices.Contains(e.Inputs, traits.Edit) || slices.Contains(e.Inputs, traits.Inpaint) {

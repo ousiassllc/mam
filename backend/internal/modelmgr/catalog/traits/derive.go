@@ -72,6 +72,7 @@ func (i Input) Label() string {
 // Facts are what one workflow (or one cloud model's description) says of its inputs: the single source the inputs of the catalog and of the
 // generation test's model list are both derived from. FactsOf reads them from a workflow; a cloud model fills the fields from its capabilities.
 type Facts struct {
+	// Upscale is set for a workflow that enlarges a picture or makes an existing video larger or smoother (Issue #1031): a kind of its own, with no inputs.
 	Video, Upscale bool
 	// ReferenceMode is localcfg.ReferenceMode ("" for none or a plain img2img), MaxRefs the number of reference images, Roles the roles
 	// (localcfg.Role*) a reference may have.
@@ -89,7 +90,7 @@ type Facts struct {
 
 // FactsOf reads the facts of a workflow of a local model (a ComfyUI workflow of a catalog template).
 func FactsOf(m localcfg.Model) Facts {
-	f := Facts{Video: m.Media == localcfg.MediaVideo, Upscale: m.IsUpscale()}
+	f := Facts{Video: m.Media == localcfg.MediaVideo, Upscale: m.IsUpscale() || m.IsVideoEnhance()}
 	if m.Workflow == nil {
 		return f
 	}
@@ -114,7 +115,7 @@ var roleInput = map[string]Input{
 	localcfg.RoleEdit: Edit, localcfg.RolePose: ReferencePose,
 }
 
-// Inputs lists the inputs the facts give, in the fixed order. An upscale workflow gives none (it is a kind of its own).
+// Inputs lists the inputs the facts give, in the fixed order. An upscale workflow, and a video enhancement workflow, gives none (they are kinds of their own).
 func (f Facts) Inputs() []Input {
 	if f.Upscale {
 		return nil

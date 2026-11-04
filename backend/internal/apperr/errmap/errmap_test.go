@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/topaz"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
@@ -42,6 +43,16 @@ func TestExplain_ClassifiesTheFailuresOfOutsideServices(t *testing.T) {
 		"408":                      {provider(408, "slow"), apperr.CodeTimeout},
 		"422 other":                {provider(422, "invalid prompt"), apperr.CodeRequestRejected},
 		"400":                      {provider(400, "bad"), apperr.CodeRequestRejected},
+		"402":                      {provider(402, "no credits"), apperr.CodeCreditsInsufficient},
+		"Topaz key":                {topaz.ErrNoAPIKey, apperr.CodeKeyMissing},
+		"Topaz maintenance":        {&topaz.Error{Code: topaz.CodeServerMaintenance, Status: 503, Err: provider(503, "maintenance")}, apperr.CodeTopazMaintenance},
+		"Topaz 503 with a code":    {&topaz.Error{Code: "SERVER_ERROR", Status: 503, Err: provider(503, "x")}, apperr.CodeServerError},
+		"Topaz credit difference":  {&topaz.Error{Code: topaz.CodeCreditDifference}, apperr.CodeTopazCreditDiff},
+		"Topaz timeout":            {&topaz.Error{Code: topaz.CodeTimeoutQueue}, apperr.CodeTopazJobTimeout},
+		"Topaz failed job":         {&topaz.Error{Code: "PROCESSING_FAILURE"}, apperr.CodeTopazJobFailed},
+		"Topaz cancelled":          {&topaz.Error{Code: topaz.CodeCanceled}, apperr.CodeTopazJobFailed},
+		"Topaz invalid source":     {&topaz.Error{Code: topaz.CodeInvalidInput}, apperr.CodeTopazSourceInvalid},
+		"Topaz transfer":           {&topaz.Error{Code: topaz.CodeTransferFailed, Err: errors.New("x")}, apperr.CodeTopazTransferFailed},
 		"429":                      {provider(429, "slow down"), apperr.CodeRateLimited},
 		"500":                      {provider(500, "oops"), apperr.CodeServerError},
 		"503":                      {provider(503, "busy"), apperr.CodeServerError},

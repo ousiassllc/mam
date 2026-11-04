@@ -1,0 +1,27 @@
+{
+ "id": "video-interpolate-rife-v4.26",
+ "label": "コマ補間: RIFE v4.26（2 倍・4 倍・音声を保つ）",
+ "media": "video",
+ "description": "RIFE v4.26（Practical-RIFE。MIT）で、できあがった動画のコマとコマの間を作って滑らかにする（FrameInterpolate。コマ数が整数倍になる）。Comfy 公式のテンプレート（Frame Interpolation FILM or RIFE）を API 形式に展開し、モデルを RIFE v4.26 に替えたもので、ComfyUI 標準ノードだけを使う。元の動画を GetVideoComponents でコマと音声に分け、倍率（frame_multiplier。2 か 4）でコマを増やし、増やしたコマの fps（output_fps。元の fps に倍率を掛けたもの）で動画に戻す。長さは変わらないので元の音声（あれば）はそのまま付く。解像度は変わらない。モデルは小さい（約 22MB）ので VRAM は軽い見込みで、480p・81 コマは 16GB に収まる見込みだが、実機は未確認。GPU では未実行（構造のテストのみ）。入力は元の動画のファイル（source_video）・倍率・出力 fps だけで、プロンプトは要らない。",
+ "model": {
+  "media": "video",
+  "workflow": {
+   "prompt_weight": "unsupported",
+   "graph": {
+    "1": {"class_type": "LoadVideo", "inputs": {"file": "example.mp4"}},
+    "2": {"class_type": "GetVideoComponents", "inputs": {"video": ["1", 0]}},
+    "3": {"class_type": "FrameInterpolationModelLoader", "inputs": {"model_name": "rife_v4.26.safetensors"}},
+    "4": {"class_type": "FrameInterpolate", "inputs": {"multiplier": 2, "interp_model": ["3", 0], "images": ["2", 0]}},
+    "5": {"class_type": "CreateVideo", "inputs": {"fps": 32, "images": ["4", 0], "audio": ["2", 1]}},
+    "6": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam-enhance", "format": "auto", "codec": "auto", "video": ["5", 0]}}
+   },
+   "assignments": [
+    {"param": "source_video", "node": "1", "input": "file"},
+    {"param": "frame_multiplier", "node": "4", "input": "multiplier"},
+    {"param": "output_fps", "node": "5", "input": "fps"}
+   ],
+   "output_node": "6",
+   "video_enhance": {"label": "RIFE v4.26（コマ補間）", "op": "interpolate"}
+  }
+ }
+}

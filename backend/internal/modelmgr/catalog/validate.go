@@ -39,8 +39,9 @@ func hasCheckDate(note string) bool {
 const unspecifiedLicense = "unspecified"
 
 // modelFolders are the ComfyUI model folders a catalog file goes to. latent_upscale_models is the folder of the spatial upscaler
-// the LTX-2.5 workflow loads (LatentUpscaleModelLoader).
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter", "upscale_models"}
+// the LTX-2.5 workflow loads (LatentUpscaleModelLoader). frame_interpolation is the folder of the RIFE models of the frame interpolation
+// workflows (FrameInterpolationModelLoader, Issue #1031).
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter", "upscale_models", "frame_interpolation"}
 
 // loaderInputs are the inputs of the core loader nodes that name a model file, with the folder the file is in.
 var loaderInputs = map[string]map[string]string{
@@ -55,6 +56,7 @@ var loaderInputs = map[string]map[string]string{
 	"LoraLoaderModelOnly":      {"lora_name": "loras"},
 	"LatentUpscaleModelLoader": {"model_name": "latent_upscale_models"},
 	"ControlNetLoader":         {"control_net_name": "controlnet"}, "CLIPVisionLoader": {"clip_name": "clip_vision"}, "IPAdapterModelLoader": {"ipadapter_file": "ipadapter"}, "UpscaleModelLoader": {"model_name": "upscale_models"},
+	"FrameInterpolationModelLoader": {"model_name": "frame_interpolation"}, // RIFE, FILM (Issue #1031)
 }
 
 // Validate checks the catalog: the pins (https URL at a commit or tag, SHA-256, size), the licenses, the
@@ -163,7 +165,7 @@ func validateModel(m Model, shared map[string]File) []error {
 		errs = append(errs, fmt.Errorf("%s: id (slug), name and description are required", where))
 	}
 	if !kind.Valid(m.Kind) {
-		errs = append(errs, fmt.Errorf("%s: kind must be image, video or upscale", where))
+		errs = append(errs, fmt.Errorf("%s: kind must be image, video, upscale, video_upscale or video_interpolate", where))
 	}
 	if m.Tier != TierStandard && m.Tier != TierAdvanced {
 		errs = append(errs, fmt.Errorf("%s: tier must be standard or advanced", where))
@@ -269,8 +271,8 @@ func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Te
 		return []error{fmt.Errorf("%s: name must be a slug", where)}
 	case !ok:
 		return []error{fmt.Errorf("%s: template %q does not exist", where, w.Template)}
-	case !kind.Fits(m.Kind, t.Media, t.Model.IsUpscale()):
-		return []error{fmt.Errorf("%s: template %s (makes %s, upscale %t) does not fit the model of kind %s", where, t.ID, t.Media, t.Model.IsUpscale(), m.Kind)}
+	case !kind.Fits(m.Kind, t.Model):
+		return []error{fmt.Errorf("%s: template %s (makes %s, upscale %t, video enhance %t) does not fit the model of kind %s", where, t.ID, t.Media, t.Model.IsUpscale(), t.Model.IsVideoEnhance(), m.Kind)}
 	}
 	endpoints := map[string]localcfg.Endpoint{"bundled-comfyui": {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}}
 	model, err := w.Model(template)

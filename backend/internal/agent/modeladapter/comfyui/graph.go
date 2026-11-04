@@ -34,6 +34,10 @@ type values struct {
 	speedMode        string                    // the request's speed mode ("": the workflow's first)
 	sampling         localcfg.SamplingSettings // the request's sampling values; build keeps the ones the workflow takes
 	upscaleRatio     float64                   // the workflow's Upscale.Ratio of the request's UpscaleScale (build sets it)
+	source           *modeladapter.Input       // the video a video enhancement workflow takes (uploaded like an image; the extension tells the server it is a video)
+	videoScale       float64                   // the factor an upscale video workflow enlarges by
+	frameMultiplier  int                       // how many frames an interpolation workflow makes of one
+	outputFPS        float64                   // the frame rate of the video an interpolation workflow makes
 	keepSlots        bool                      // no image is uploaded (GraphFor): the image nodes a workflow cannot run without keep the file the workflow holds
 }
 
@@ -90,6 +94,8 @@ func (v values) input(a localcfg.Assignment) (in *modeladapter.Input, isImage bo
 		return v.last, true
 	case localcfg.ParamMaskImage:
 		return v.mask, true
+	case localcfg.ParamSourceVideo:
+		return v.source, true
 	}
 	return nil, false
 }
@@ -120,6 +126,12 @@ func (v values) scalar(p localcfg.Param) any {
 		return *v.redraw
 	case localcfg.ParamUpscaleRatio:
 		return v.upscaleRatio
+	case localcfg.ParamVideoScale:
+		return v.videoScale
+	case localcfg.ParamFrameMultiplier:
+		return v.frameMultiplier
+	case localcfg.ParamOutputFPS:
+		return v.outputFPS
 	case localcfg.ParamReferenceStrength:
 		return v.opts.Ref(0).StrengthOrDefault()
 	}

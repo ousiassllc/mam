@@ -65,6 +65,15 @@ const (
 	CodeUpdateRelease    Code = "update_release"         // the release content is unusable
 	CodeUpdateFailed     Code = "update_failed"          // any other failure of the update check
 
+	// The cloud video service (Topaz Video API, #1031) and the credits of a vendor.
+	CodeCreditsInsufficient Code = "credits_insufficient"    //nolint:gosec // 402: the account has no credits left for the job (the code names the price, it is no credential)
+	CodeTopazMaintenance    Code = "topaz_maintenance"       // 503 SERVER_MAINTENANCE: the cloud video rendering is switched off
+	CodeTopazCreditDiff     Code = "topaz_credit_difference" // CREDIT_DIFFERENCE: the cost re-estimated from the uploaded file differs from the quote
+	CodeTopazJobTimeout     Code = "topaz_job_timeout"       // TIMEOUT_UPLOAD_SOURCE / TIMEOUT_QUEUE / TIMEOUT_PROCESSING of an accepted job
+	CodeTopazJobFailed      Code = "topaz_job_failed"        // PROCESSING_FAILURE / HARDWARE_FAILURE / UNKNOWN / SERVER_ERROR / a cancelled job, after the job was accepted
+	CodeTopazSourceInvalid  Code = "topaz_source_invalid"    // INVALID_INPUT after the job was accepted: the source file could not be processed
+	CodeTopazTransferFailed Code = "topaz_transfer_failed"   // the upload of the source or the download of the result (a storage URL, not the API) failed
+
 	// The codes of the classes below are for a failure that a service already worded (Error.Cause): the screen and the tool keep that
 	// sentence and add the generic remedy.
 	CodeInvalidInput Code = "invalid_input"
@@ -182,6 +191,15 @@ var specs = map[Code]spec{
 	CodeBudget:           {ClassBudget, nil},
 	CodeUnavailable:      {ClassUnavailable, []Place{PlaceSettings}},
 	CodeUpstream:         {ClassUpstream, nil},
+
+	// The cloud video service (Topaz Video API, #1031) and the credits of a vendor.
+	CodeCreditsInsufficient: {ClassUpstream, nil},
+	CodeTopazMaintenance:    {ClassUpstream, nil},
+	CodeTopazCreditDiff:     {ClassUpstream, nil},
+	CodeTopazJobTimeout:     {ClassUpstream, nil},
+	CodeTopazJobFailed:      {ClassUpstream, nil},
+	CodeTopazSourceInvalid:  {ClassUpstream, nil},
+	CodeTopazTransferFailed: {ClassUpstream, nil},
 }
 
 // Codes returns every code, sorted by name.

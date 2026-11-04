@@ -280,6 +280,9 @@ func sourceOf(cfg modeladapter.Config, m domain.ModelName) string {
 	return SourceBuiltin
 }
 
+// NoKeyMessage is the unavailable_message of a cloud model whose API key is not registered (#1013).
+const NoKeyMessage = "API キーが登録されていません（設定の「API キー」）"
+
 func unavailableMessage(reason, source string) string {
 	switch {
 	case reason == agegate.Excluded:
@@ -291,5 +294,5 @@ func unavailableMessage(reason, source string) string {
 	case source == SourceLocal || source == SourceWorkflow:
 		return "接続先を使えません（設定の「ローカル・代替モデル」を確認してください）"
 	}
-	return "API キーが登録されていません（設定の「API キー」）"
+	return NoKeyMessage
 }

@@ -66,6 +66,8 @@ type ResultView struct {
 	Inpaint  *Inpaint           `json:"inpaint,omitempty" jsonschema:"一部だけ描き直したとき。denoise は使った強さ、source_kind / source_id は元画像（history なら結果の ID）"`
 	// Upscale is set for a result of "make it larger": the result it enlarged and the scale, mode and model it used.
 	Upscale *Upscale `json:"upscale,omitempty" jsonschema:"アップスケール（大きくする）で作った結果のとき: 元の結果・倍率・使ったモデルと方式・元と出力の大きさ。普通に生成した結果には無い"`
+	// VideoEnhance is set for a result of "make a video larger / smoother": the result it started from, the operation, the model and the values.
+	VideoEnhance *VideoEnhance `json:"video_enhance,omitempty" jsonschema:"動画のアップスケール／コマ補間で作った結果のとき: 元の結果・操作（upscale / interpolate）・使ったモデルと提供元（local / topaz）・倍率や fps・元と出力の大きさ（Topaz は見積りのクレジットと表示義務の出典）。普通に生成した結果には無い"`
 	// FaceSwap is set for a result of "swap the face" (FaceFusion): the result it swapped into and the models it ran with.
 	FaceSwap *FaceSwap `json:"face_swap,omitempty" jsonschema:"顔の入れ替え（FaceFusion）で作った結果のとき: 元の結果・使ったモデル・ライセンス上の注意。普通に生成した結果には無い"`
 	// FaceSimilarity is the face similarity of the result to the reference of the role "face" (absent: not measured).
@@ -84,7 +86,7 @@ func ViewOf(r gentestrepo.Result) ResultView {
 		AspectRatio: p.AspectRatio, Resolution: p.Resolution, DurationSeconds: p.DurationSeconds, Seed: r.Seed, SeedSent: r.SeedSent,
 		Status: r.Status, Error: r.Error, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "", MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
-		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, Inpaint: p.Inpaint, Upscale: p.Upscale,
+		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, Inpaint: p.Inpaint, Upscale: p.Upscale, VideoEnhance: p.VideoEnhance,
 		FaceSwap: p.FaceSwap, FaceSimilarity: p.FaceSimilarity, UnusedInputs: p.UnusedInputs,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}

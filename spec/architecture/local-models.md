@@ -222,6 +222,14 @@ openai-compat:lmstudio/flux-schnell
 
 **実機が必要（今回できないこと）**: ① 第 1 段（切り出し・指示文・既定 0.9）の**改善幅**を、同じ参照・prompt・seed で生成して SFace の数字で示すこと。計測の仕組み（結果ごとの数字、`TestONNX_FaceLockPairs` の表）は入ったので、GPU で生成すれば出せる。② SFace と旧指標（buffalo_l）の相関。③ 実モデルのテストの CI への組み込み（写真・モデルを置けない）。
 
+### 4.10 動画を大きくする・滑らかにするワークフロー（`video_enhance`。Issue #1031）
+
+- **印**: ワークフローの `video_enhance`（`{label, op, max_output_pixels}`。`localcfg/videoenhance.Spec`。`upscale`（§4.5）と同じく下位パッケージに置いた）は、そのワークフローが**動画を作るのではなく、渡した動画を大きくする（`op: upscale`）か滑らかにする（`op: interpolate`）**ことを表す。`media: video` の印として持つので、接続先・導入・版の仕組みはそのまま使う。`max_output_pixels` は 1 コマの最大の画素数（0 は上限なし）。
+- **割り当て（動画のワークフローだけ。印の無いワークフローには割り当てられない）**: `source_video`（アップロードした動画のファイル名。`LoadVideo.file`。ちょうど 1 つで、グラフに `LoadVideo` が要る）。`op: upscale` は `video_scale`（`ResizeImageMaskNode` の倍率。ちょうど 1 つ）、`op: interpolate` は `frame_multiplier`（`FrameInterpolate.multiplier`。整数）と `output_fps`（`CreateVideo.fps`）をちょうど 1 つずつ。プロンプトは要らない。`video.durations`・`video.resolutions` も要らない（長さと大きさは元の動画のもの。`ValidateModel`・`ValidateSaved` は印のあるワークフローには求めない）。検査は `localcfg.validateVideoEnhance` → `videoenhance.Validate`。
+- **一覧**: `IsUpscale()` と同じく、`Model.IsVideoEnhance()` のワークフローは `localcfg.IDs`（画像・動画のモデルの識別子）・生成テストのモデルの一覧・試し生成には**出ない**（プロンプトを渡すモデルではない）。
+- **実行（`modeladapter`）**: `enhancevideo.Run(ctx, adapter, model, enhancevideo.Request{Source, Scale, Multiplier, OutputFPS})`（パッケージ `modeladapter/enhancevideo`。`modeladapter` 本体は行数上限のため増やさない） が ComfyUI の `comfyui.Backend.EnhanceVideo` を呼ぶ（代替モデルへの切り替えはしない。印の無いモデルは `enhancevideo.ErrNotEnhance`）。元の動画は `POST /upload/image` に**コンテナに合う拡張子**（`video/mp4` は `.mp4`、`video/webm` は `.webm`、`video/quicktime` は `.mov`、`video/x-matroska` は `.mkv`。`LoadVideo` が入力ディレクトリのファイルを内容の種類で選ぶため）でアップロードし、返った名前を `source_video` に入れ、依頼の値（倍率・整数倍・fps）を割り当てへ入れて実行し、`SaveVideo` の動画を取って返す（上限 `localhttp.MaxFileBytes`＝300 MB）。依頼の値が足りない（倍率が 1 以下・整数倍が 2〜16 の外・出力 fps が無い・元の動画が空）ときは、アップロードの前に断る。ジョブが走り出したあとの失敗は `AfterSubmit`（同じ動画を二重に走らせない）。
+- **テンプレートとカタログ**: `templates/videoenhance/`（`video-upscale-seedvr2-3b`・`video-interpolate-rife-v4.25`・`-v4.26`）。コアのノード（`LoadVideo`・`GetVideoComponents`・`ResizeImageMaskNode`・`SeedVR2Preprocess`・`SeedVR2Conditioning`・`SeedVR2TemporalChunk`・`SeedVR2TemporalMerge`・`SeedVR2PostProcessing`・`FrameInterpolationModelLoader`・`FrameInterpolate` など）だけで、ComfyUI v0.42.1 の `nodes.py` が読み込む `comfy_extras` のソースで node_id を確かめた。モデルは [model-manager/model-manager.md](model-manager/model-manager.md) §4.7。**GPU では動かしていない**（実機未確認。値の差し込みと構造のテストまで）。
+
 ## 5. 接続テスト
 
 ComfyUI は `GET /system_stats`（バージョンを返す）、OpenAI 互換は `GET /v1/models`（先頭 20 件のモデル ID を返す）。互換サーバーが 404/405 を返したら「到達できる。`/v1/models` は提供されていない」を注意付きの成功とする。

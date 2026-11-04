@@ -90,6 +90,7 @@ templ Box(p Props)
 | `circuit_open` | `upstream` | このモデルのベンダーで失敗が続いているため、呼び出しを止めています（一時的に利用できません）。 |  |
 | `conflict` | `conflict` | いまの状態では実行できません。 |  |
 | `connection_failed` | `upstream` | 接続先につながりませんでした。 | /model-manager<br>/settings/local-models |
+| `credits_insufficient` | `upstream` | 相手のサービスのクレジット（残高）が足りません（HTTP 402）。この処理に必要な分を確保できませんでした。 |  |
 | `disk_full` | `unavailable` | ディスクの空き容量が足りません。 | /model-manager |
 | `download_corrupt` | `upstream` | ダウンロードしたファイルが、固定した SHA-256 または大きさと一致しませんでした。破棄しました（取得元の改ざんか、転送の破損の可能性があります）。 | /model-manager |
 | `endpoint_timeout` | `upstream` | ローカルの生成が接続先の待ち時間（）を超えたため打ち切りました。 | /settings/local-models |
@@ -128,6 +129,12 @@ templ Box(p Props)
 | `stalled` | `upstream` | ローカルの生成がのあいだ進まなかったため打ち切りました。 | /settings/local-models |
 | `time_limit` | `upstream` | ローカルの生成が全体の上限（）を超えたため打ち切りました。 |  |
 | `timeout` | `upstream` | 相手の応答が時間内に返りませんでした。 |  |
+| `topaz_credit_difference` | `upstream` | アップロードした動画を Topaz が調べ直したところ、必要なクレジットが見積りと大きく違っていたため、処理を止めました（全額返金されます）。 |  |
+| `topaz_job_failed` | `upstream` | Topaz が処理を完了できませんでした（相手側の失敗か、処理が取り消されました）。クレジットは返金されます。 |  |
+| `topaz_job_timeout` | `upstream` | Topaz の処理が時間切れになりました（アップロード待ち・順番待ち・処理時間のどれか）。クレジットは返金されます。 |  |
+| `topaz_maintenance` | `upstream` | Topaz のクラウド動画処理は、いまメンテナンス中で止まっています（HTTP 503）。 |  |
+| `topaz_source_invalid` | `upstream` | Topaz が元の動画を処理できませんでした。課金はされません。 |  |
+| `topaz_transfer_failed` | `upstream` | Topaz との動画のやり取り（元の動画のアップロード、または結果のダウンロード）に失敗しました。 |  |
 | `training_failed` | `upstream` | 声の学習を完了できませんでした。 | /model-manager |
 | `unavailable` | `unavailable` | この機能はいま使えません（API キーや設定が足りません）。 | /settings |
 | `unknown` | `internal` | 原因がわかりませんでした。想定していない失敗です。 |  |
@@ -150,6 +157,9 @@ templ Box(p Props)
 | `modeladapter.ErrNoAPIKey` / `audiodirector.ErrNoAPIKey`（ElevenLabs） | `key_missing` |
 | `*localcfg.TimeoutError`（進みが止まった／全体の上限／接続先の待ち時間） | `stalled` / `time_limit` / `endpoint_timeout` |
 | `modeladapter.ErrTimeLimit`、`media.ErrTimeout` | `timeout`、`media_timeout` |
+| `topaz.ErrNoAPIKey` | `key_missing`（「Topaz Labs の」API キー） |
+| `*topaz.Error`（Topaz の `errorCode`・転送の失敗。[model-adapters.md](model-adapters.md) §15.6） | `topaz_*`・`credits_insufficient`・`auth_failed`（コードで決める。HTTP の応答の `SERVER_MAINTENANCE` だけ `topaz_maintenance`、ほかは HTTP の状態で決める） |
+| HTTP 402 | `credits_insufficient` |
 | `media.ErrUnavailable`（ffmpeg・ffprobe が無い） | `ffmpeg_missing` |
 | 429（`modeladapter.RateLimited`） | `rate_limited`（サーキットブレーカーより先。429 が開けた場合も 429 を原因にする） |
 | `ErrCircuitOpen`（モデル・LLM） | `circuit_open` |
@@ -256,3 +266,4 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 | 1.2 | 2026-11-03 | コード `local_llm_unreachable` を足した（ローカルの OpenAI 互換 LLM サーバーに接続できない。`errmap` は `localllm.IsUnreachable` で見分ける）。設計は `local-llm.md` | Issue #1008 |
 | 1.3 | 2026-11-04 | コード `face_models_missing`・`face_runtime_missing` を足した（顔の類似度がオフのとき、役割 `face` の参照がある結果の `face_similarity.reason` / `fix` の言葉。YuNet・SFace の ONNX は mam が取得せず、カタログにも無いので、置き場所と `scripts/fetch-face-models.sh` を直し方に書く）。[local-models.md](local-models.md) §4.9 | Issue #1026 |
 | 1.4 | 2026-11-04 | 載せ替えなかった経路（§6）の見直し: ffmpeg の失敗（書き出し・Rough Cut・Take の合成・音声のミキシング。`media_failed`・`ffmpeg_missing`）、アップデート（`update_*`）、設定の書き込みの失敗（`errmap.SaveFailure`・`web/handler/failure.Save`）、FaceFusion（`facefusion_unavailable`・`facefusion_failed`）を載せ替えた。ChatGPT / Codex などは理由を更新して見送り。i18n（§7）: 言語によって変わる語（時間・Agent の名前・区切り・作業の名前）をカタログのキーにし、英語の辞書が `errmap` の全コードを持つことと、未訳の日本語へのフォールバックをテストで固定した。MCP のツールエラーは、分からない失敗にも 2 行目の `failure`（`unknown`）を付ける | Issue #1010（残り） |
+| 1.5-B | 2026-11-04 | コード `credits_insufficient`（HTTP 402）と `topaz_*` の 6 つ（Topaz Video API の失敗）を足した | Issue #1031（B: Topaz）。版番号は統合のときに付け直す |

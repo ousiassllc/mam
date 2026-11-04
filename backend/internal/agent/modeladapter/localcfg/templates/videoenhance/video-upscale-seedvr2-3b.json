@@ -1,0 +1,35 @@
+{
+ "id": "video-upscale-seedvr2-3b",
+ "label": "動画アップスケール: SeedVR2 3B（fp8・タイル・音声を保つ）",
+ "media": "video",
+ "description": "SeedVR2（ByteDance-Seed、Apache-2.0）の 3B（fp8）で、できあがった動画を大きくする（1 ステップの拡散による動画の超解像）。Comfy 公式のテンプレート（Video Upscale: SeedVR2 3B Int8）を API 形式に展開し、重みを fp8（seedvr2_3b_fp8_e4m3fn）に替えたもので、ComfyUI 標準ノードだけを使う。元の動画を GetVideoComponents でコマと音声に分け、ResizeImageMaskNode の倍率（video_scale）で拡大してから SeedVR2Preprocess（16 の倍数に埋める）・VAEEncodeTiled・KSampler（1 ステップ）・VAEDecodeTiled・SeedVR2PostProcessing（元の大きさに揃える）に通し、元の fps・元の音声（あれば）で動画に戻す。16GB を見込んだ作りで、VAE はタイル版（タイル 512）、重みは fp8。時間方向は SeedVR2TemporalChunk（auto）で分ける: nodes_seedvr.py では auto が空き VRAM から 1 回に処理するコマ数を決め、全コマが収まるなら分けず（そのまま 1 回）、収まらないときだけ重なり 2 の Hann 窓で混ぜて分ける。公式テンプレートは既定で分けない（スイッチ off）が、81 コマの 480p を 2 倍以上にするときは分けないと 16GB に収まる保証が無いので、auto で常に付ける。16GB で落ちないことは見込みで、実機は未確認。GPU では未実行（構造のテストのみ）。入力は元の動画のファイル（source_video）と倍率（video_scale）だけで、プロンプトも長さも解像度も要らない。1 コマの出力は 2,073,600 画素（1080p）まで。",
+ "model": {
+  "media": "video",
+  "workflow": {
+   "prompt_weight": "unsupported",
+   "graph": {
+    "1": {"class_type": "LoadVideo", "inputs": {"file": "example.mp4"}},
+    "2": {"class_type": "GetVideoComponents", "inputs": {"video": ["1", 0]}},
+    "3": {"class_type": "ResizeImageMaskNode", "inputs": {"resize_type": "scale by multiplier", "resize_type.multiplier": 2, "scale_method": "lanczos", "input": ["2", 0]}},
+    "4": {"class_type": "SeedVR2Preprocess", "inputs": {"resized_images": ["3", 0]}},
+    "5": {"class_type": "UNETLoader", "inputs": {"unet_name": "seedvr2_3b_fp8_e4m3fn.safetensors", "weight_dtype": "default"}},
+    "6": {"class_type": "VAELoader", "inputs": {"vae_name": "seedvr2_ema_vae_fp16.safetensors"}},
+    "7": {"class_type": "VAEEncodeTiled", "inputs": {"tile_size": 512, "overlap": 128, "temporal_size": 64, "temporal_overlap": 8, "pixels": ["4", 0], "vae": ["6", 0]}},
+    "8": {"class_type": "SeedVR2TemporalChunk", "inputs": {"temporal_overlap": 2, "chunking_mode": "auto", "latent": ["7", 0]}},
+    "9": {"class_type": "SeedVR2Conditioning", "inputs": {"model": ["5", 0], "vae_conditioning": ["8", 0]}},
+    "10": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 1, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 1, "model": ["5", 0], "positive": ["9", 0], "negative": ["9", 1], "latent_image": ["8", 0]}},
+    "11": {"class_type": "SeedVR2TemporalMerge", "inputs": {"latents": ["10", 0], "temporal_overlap": ["8", 1]}},
+    "12": {"class_type": "VAEDecodeTiled", "inputs": {"tile_size": 512, "overlap": 128, "temporal_size": 64, "temporal_overlap": 8, "samples": ["11", 0], "vae": ["6", 0]}},
+    "13": {"class_type": "SeedVR2PostProcessing", "inputs": {"color_correction_method": "none", "images": ["12", 0], "original_resized_images": ["3", 0]}},
+    "14": {"class_type": "CreateVideo", "inputs": {"images": ["13", 0], "audio": ["2", 1], "fps": ["2", 2]}},
+    "15": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam-enhance", "format": "auto", "codec": "auto", "video": ["14", 0]}}
+   },
+   "assignments": [
+    {"param": "source_video", "node": "1", "input": "file"},
+    {"param": "video_scale", "node": "3", "input": "resize_type.multiplier"}
+   ],
+   "output_node": "15",
+   "video_enhance": {"label": "SeedVR2 3B（fp8・動画の超解像）", "op": "upscale", "max_output_pixels": 2073600}
+  }
+ }
+}

@@ -144,7 +144,7 @@ func sourcesOf(m modelmanager.ModelView) []string {
 }
 
 func kindLabel(kind string) string {
-	return cmp.Or(map[string]string{"video": "動画", "upscale": "アップスケール"}[kind], "画像")
+	return cmp.Or(map[string]string{"video": "動画", "upscale": "アップスケール", "video_upscale": "動画アップスケール", "video_interpolate": "コマ補間"}[kind], "画像")
 }
 
 // catalogData is the model list. jobs are the install jobs it reports on besides the running ones: those that ended

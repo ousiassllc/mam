@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/cloudenhance"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -71,6 +72,7 @@ type Deps struct {
 	FaceOff *record.FaceSimilarity
 	// FaceSwap runs FaceFusion for a result of "swap the face" (nil: such a result fails). See FaceSwapFunc.
 	FaceSwap FaceSwapFunc
+	Cloud    cloudenhance.Cloud // the paid cloud of "make a video larger / smoother" (nil: such a result fails)
 	Now      func() time.Time
 	Logger   *slog.Logger
 }

@@ -1,7 +1,7 @@
 package apperr
 
 // messagesEn are the English texts: the same keys as messagesJa (a test pins it).
-var messagesEn = map[string]string{
+var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say "credits" and "API key", but hold no credential)
 	"unknown.cause":  "The cause is not known. This is a failure mam did not expect.",
 	"unknown.remedy": "Try again. If it keeps failing, report it with the detail and the error ID; the log of mam has the same ID.",
 
@@ -140,6 +140,27 @@ var messagesEn = map[string]string{
 	"update_failed.cause":  "The update check failed for a reason that is not known.",
 	"update_failed.remedy": "Check again. If it continues, read the log file.",
 
+	"credits_insufficient.cause":  "The account of the service has too few credits (HTTP 402). The credits this job needs could not be reserved.",
+	"credits_insufficient.remedy": "Add credits to the account of the service, or turn on auto top-up, and run it again. It fails the same way until the balance grows.",
+
+	"topaz_maintenance.cause":  "The cloud video rendering of Topaz is switched off for maintenance (HTTP 503). A job that was running is refunded.",
+	"topaz_maintenance.remedy": "Wait a while, then get a new quote and run it again. GET /video/status of Topaz tells whether it is available (isAvailable and a message).",
+
+	"topaz_credit_difference.cause":  "Topaz examined the uploaded video again and the credits it needs differ a lot from the quote, so it stopped the job (it is refunded in full).",
+	"topaz_credit_difference.remedy": "The duration, the frame count, the frame rate or the size sent may not match the real file. Check that ffmpeg (ffprobe) works in the settings, then get a new quote and run it again.",
+
+	"topaz_job_timeout.cause":  "The Topaz job timed out (waiting for the upload, waiting in the queue or the processing time). The credits are refunded.",
+	"topaz_job_timeout.remedy": "Get a new quote and run it again. Try a shorter video for a long one.",
+
+	"topaz_job_failed.cause":  "Topaz could not finish the job (a failure on its side, or the job was cancelled). The credits are refunded.",
+	"topaz_job_failed.remedy": "Get a new quote and run it again. If it continues with the same video, try the video converted to a standard H.264 mp4, or send the request ID in the detail to the Topaz support. mam never repeats the job by itself (it would be charged twice).",
+
+	"topaz_source_invalid.cause":  "Topaz could not process the source video (it may be damaged, in another format than its extension says, or its facts differ from the real ones). Nothing is charged.",
+	"topaz_source_invalid.remedy": "Check that the source video plays, then run it again. If it continues, convert the video to a standard H.264 mp4 and try again.",
+
+	"topaz_transfer_failed.cause":  "The transfer of the video to or from Topaz failed (the upload of the source or the download of the result).",
+	"topaz_transfer_failed.remedy": "Check the network (proxy, VPN, firewall). If the upload failed, get a new quote and run it again. A failed download of a finished job can be tried later: Topaz keeps the result for 7 days. mam never repeats the job by itself (it would be charged twice).",
+
 	"invalid_input.cause":    "The input is not valid.",
 	"invalid_input.remedy":   "Correct the input and run it again.",
 	"not_found.cause":        "The target was not found.",
@@ -193,6 +214,7 @@ var messagesEn = map[string]string{
 	"duration.seconds": "{n} s",
 
 	"key_missing.elevenlabs": "ElevenLabs ",
+	"key_missing.topaz":      "Topaz Labs ",
 
 	"what.rough_cut": "Rendering the Rough Cut",
 	"what.export":    "Exporting the video",

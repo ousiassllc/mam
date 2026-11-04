@@ -27,6 +27,10 @@ func KindLabel(k modelfilter.Kind) string {
 		return "画像編集"
 	case modelfilter.KindUpscale:
 		return "アップスケール"
+	case modelfilter.KindVideoUpscale:
+		return "動画アップスケール"
+	case modelfilter.KindVideoInterpolate:
+		return "コマ補間"
 	case modelfilter.KindLLM:
 		return "LLM"
 	case modelfilter.KindAudio:

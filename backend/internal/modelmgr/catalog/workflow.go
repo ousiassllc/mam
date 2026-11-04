@@ -48,9 +48,10 @@ func (w Workflow) Model(template func(id string) (localcfg.Template, bool)) (loc
 }
 
 // Derived is what the workflows of the model say of its inputs and its sound (package traits): the union over the facts of its workflows' templates (the
-// embedded ones, read once). An upscale model has none: its workflow takes the picture to enlarge, which is not an input of the filter.
+// embedded ones, read once). An upscale model, and a video upscale or interpolation model, has none: its workflow takes the picture or the video to enhance,
+// which is not an input of the filter.
 func (m Model) Derived() traits.Derived {
-	if m.Kind == kind.Upscale {
+	if m.Kind == kind.Upscale || kind.IsVideoEnhance(m.Kind) {
 		return traits.Derived{}
 	}
 	var facts []traits.Facts

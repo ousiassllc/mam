@@ -94,3 +94,4 @@
 | 1.87 | 2026-11-03 | §14.1 の表に Irodori-TTS（`irodori-tts`）を、§14.10 の `voice_provider` に `irodori` を足し、§14.11（ローカルの声 Irodori-TTS: `POST /v1/audio/speech` の呼び方・参照音声〔合計 120 秒まで・空・形式・長さの検査〕・キャプション・絵文字への置き換えの表・透かしと倫理・同意）と §14.12（GPU の扱い: 同梱の ComfyUI と同時に動かさない・モデルごとの VRAM の目安）を足した | Issue #1015 |
 | 1.88 | 2026-11-03 | §2.1 にプロバイダー `local`（ローカルの OpenAI 互換サーバー）の 1 項を足した。設計は新規の `local-llm.md` | Issue #1008（前半） |
 | 1.89 | 2026-11-04 | §14.8 に、学習した声（Character の fine-tune した重み）の選択と `POST /mam/voice` での切り替え・壊れたときに止めることを足した | Issue #936 |
+| 1.90-B | 2026-11-04 | §15 に Topaz Video API（動画のアップスケール・フレーム補間。`internal/agent/topaz`）の実装を足した（流れ・見積り・リクエストの本文・6 モデル・エラーの対応・未確認）。`apperr` に `credits_insufficient`・`topaz_*` の 6 コードを足した | Issue #1031（B: Topaz）。版番号は統合のときに付け直す |

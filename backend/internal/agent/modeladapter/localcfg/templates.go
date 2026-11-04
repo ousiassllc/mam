@@ -10,10 +10,10 @@ import (
 	"sync"
 )
 
-//go:embed templates/image/*.json templates/image/extra/*.json templates/image/controlnet/*.json templates/video/*.json templates/video/ltx25/*.json templates/video/standard/*.json templates/video/uncensored/*.json templates/upscale/*.json
+//go:embed templates/image/*.json templates/image/extra/*.json templates/image/controlnet/*.json templates/video/*.json templates/video/ltx25/*.json templates/video/standard/*.json templates/video/uncensored/*.json templates/upscale/*.json templates/videoenhance/*.json
 var templateFS embed.FS
 
-// Template is a ready workflow with its input assignments, shipped in the binary as data (templates/image/*.json, templates/image/extra/*.json, templates/image/controlnet/*.json, templates/video/*.json, templates/video/ltx25/*.json, templates/video/standard/*.json, templates/video/uncensored/*.json; the few-step and pose templates added for the uncensored catalog models (SDXL Lightning, Krea 2 Turbo, Rapid-AIO, VNCCS PoseStudio) are in templates/image/extra and the SDXL depth / normal ControlNet ones of the "shisei" pose maps in templates/image/controlnet, which keep that directory under the line limit; the LTX-2.5 ones added with FLF2V, DFR and the prompt enhancer are in templates/video/ltx25 and the standard (not uncensored) Wan 2.1 / 2.2 and HunyuanVideo 1.5 720p ones of Issue #1014 in templates/video/standard, which keep the directories under the line limit; the workflows that enlarge a picture (Workflow.Upscale) are in templates/upscale/*.json):
+// Template is a ready workflow with its input assignments, shipped in the binary as data (templates/image/*.json, templates/image/extra/*.json, templates/image/controlnet/*.json, templates/video/*.json, templates/video/ltx25/*.json, templates/video/standard/*.json, templates/video/uncensored/*.json; the few-step and pose templates added for the uncensored catalog models (SDXL Lightning, Krea 2 Turbo, Rapid-AIO, VNCCS PoseStudio) are in templates/image/extra and the SDXL depth / normal ControlNet ones of the "shisei" pose maps in templates/image/controlnet, which keep that directory under the line limit; the LTX-2.5 ones added with FLF2V, DFR and the prompt enhancer are in templates/video/ltx25 and the standard (not uncensored) Wan 2.1 / 2.2 and HunyuanVideo 1.5 720p ones of Issue #1014 in templates/video/standard, which keep the directories under the line limit; the workflows that enlarge a picture (Workflow.Upscale) are in templates/upscale/*.json; the ones that make a video larger or smoother (Workflow.VideoEnhance, Issue #1031) are in templates/videoenhance/*.json):
 // adding one needs no code. It uses core ComfyUI nodes only, so the server needs no custom nodes. Only the
 // model files (the checkpoint names inside the graph) have to be present on the server, and the names may
 // need changing to what the server has.
@@ -29,7 +29,7 @@ type Template struct {
 // templateFiles lists the embedded template files (templates/image/extra, templates/image/controlnet, templates/video/ltx25, templates/video/standard and templates/video/uncensored are listed on their own).
 func templateFiles() []string {
 	var files []string
-	for _, dir := range []string{"templates/image", "templates/image/extra", "templates/image/controlnet", "templates/video", "templates/video/ltx25", "templates/video/standard", "templates/video/uncensored", "templates/upscale"} {
+	for _, dir := range []string{"templates/image", "templates/image/extra", "templates/image/controlnet", "templates/video", "templates/video/ltx25", "templates/video/standard", "templates/video/uncensored", "templates/upscale", "templates/videoenhance"} {
 		entries, err := fs.ReadDir(templateFS, dir)
 		if err != nil {
 			panic(err) // the directory is embedded: a build problem, not a run-time one

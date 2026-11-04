@@ -26,13 +26,16 @@ const (
 	KindVideo     Kind = "video"
 	KindImageEdit Kind = "image_edit" // an image model that edits a picture (inputs edit or inpaint)
 	KindUpscale   Kind = "upscale"
-	KindLLM       Kind = "llm"
-	KindAudio     Kind = "audio"
+	// KindVideoUpscale and KindVideoInterpolate are the models that make an existing video larger and smoother (Issue #1031).
+	KindVideoUpscale     Kind = "video_upscale"
+	KindVideoInterpolate Kind = "video_interpolate"
+	KindLLM              Kind = "llm"
+	KindAudio            Kind = "audio"
 )
 
 // Kinds lists the kinds in the order the screens show them.
 func Kinds() []Kind {
-	return []Kind{KindImage, KindVideo, KindImageEdit, KindUpscale, KindLLM, KindAudio}
+	return []Kind{KindImage, KindVideo, KindImageEdit, KindUpscale, KindVideoUpscale, KindVideoInterpolate, KindLLM, KindAudio}
 }
 
 // Origin is where a model runs.

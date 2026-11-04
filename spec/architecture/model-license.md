@@ -49,6 +49,7 @@
 - **2026-11-01**: エンジン（`engine.json`）・ローカル実行環境（GPT-SoVITS・MuseTalk）。
 - **2026-11-02**: 下の表の、次に挙げる 2026-11-03 の分を除くローカルのモデル（`sdxl-base`・`flux1-*`・`wan22-*`・`ltx-*`・`chroma1-hd`・`sd35-medium`・`hunyuanvideo15-480p`・`noctq-v4-qwen-image21` など）と、クラウドのモデル（`cloud.json`）。
 - **2026-11-03**: `qwen-image-edit-2511`・`sdxl-controlnet-canny`・`sdxl-ipadapter-plus`・`upscale-*` の 3 つ、成人向けのモデル 14 件（#984。`realvisxl-v50` から `qwen-image-21-uncensored-int8` まで）、非検閲の動画 7 件（#1012。`nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b`・`wan22-ti2v-5b-cowgirl-lora`・`wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v`・`wan22-t2v-14b-mystic-xxx-lora`・`hunyuanvideo-t2v-nsfw-lora`。上の `wan22-*` の 2026-11-02 の分には含まない）。
+- **2026-11-04**（#1031。モデルごとの JSON の `checked_at` も 2026-11-04）: 動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`・`rife-v4.25`・`rife-v4.26`。配布元のモデルカード・LICENSE・README を読んだ（SeedVR2 は `ByteDance-Seed/SeedVR2-3B` と再配布の `Comfy-Org/SeedVR2` のカード、RIFE は `hzwer/Practical-RIFE` の LICENSE と README と再配布の `Comfy-Org/Frame-Interpolation` のカード）。Issue #1031 の調査で商用NGとされた Upscale-A-Video・GIMM-VFI・4x-UltraSharp は、カタログに載せない（mam はこの 3 件の原文を読み直していない）。
 
 | モデル | 答え | 根拠（一次情報） |
 |---|---|---|
@@ -89,6 +90,8 @@
 | `upscale-nomos-uni-span` | 商用OK | 4xNomosUni_span_multijpg のモデルカード（メタデータ `license: cc-by-4.0`・本文 `License: CC BY 4.0`）。作者（Philip Hofmann）の表示が条件。学習データの条件は未確認（#975） |
 | `upscale-nomos-webphoto-esrgan` | **不明** | 4xNomosWebPhoto_esrgan のモデルカードは、メタデータが `license: cc-by-4.0` で本文が `License: CC-BY-0.4`（存在しない版）と食い違い、作者の GitHub リリースも `CC-BY-0.4`。LICENSE ファイルは無い。確かめられないので不明（#975） |
 | `upscale-2pass-sdxl-span` | 商用OK | SDXL base（CreativeML Open RAIL++-M）と SPAN（CC BY 4.0）の 2 部品で、どちらも商用OK |
+| `seedvr2-3b-fp8` | 商用OK | SeedVR2（ByteDance-Seed）。配布元 `ByteDance-Seed/SeedVR2-3B` のモデルカードの `license: apache-2.0` と本文「SeedVR and SeedVR2 are licensed under the Apache 2.0.」、再配布の `Comfy-Org/SeedVR2` のカードも `license: apache-2.0`（fp8 の変換は Comfy-Org。2026-11-04 に確認）。共有 VAE も同じリポジトリ。#1031 |
+| `rife-v4.25`・`rife-v4.26` | 商用OK | Practical-RIFE（作者 hzwer）の LICENSE は MIT License（Copyright (c) 2021 hzwer）で、README も「重みのリンクの内容はこのプロジェクトと同じ MIT ライセンス」と書く。再配布の `Comfy-Org/Frame-Interpolation` のカードは `license: other`・`license_name: mit-and-apache-2.0`（RIFE の MIT と FILM の Apache-2.0 を合わせた表記）で、この 2 ファイルは RIFE なので MIT。2026-11-04 に確認。#1031 |
 | クラウド: `nano-banana`・`nano-banana-lite`・`gemini-omni-flash`（Gemini API。「Use of Generated Content」: Google は生成物の所有権を主張しない）、`flux-2`（BFL。生成物の所有権を主張しない）、`gpt-image-2`・ChatGPT サブスク（OpenAI。Output は利用者のもの）、`runway-gen-4.5`（Runway。入力と生成物の所有権を主張しない） | 商用OK | 各社の利用規約を 2026-11-02 に読み、生成物の所有権を主張しない・利用者に帰属させるとしている（出典 URL は `cloud.json`）。ChatGPT サブスクは mam が使う経路が非公式で、注意を付ける |
 | クラウド: `luma-ray-3.2` | 条件つき | 規約 §4: 商用利用を認めるサブスクリプションに限る |
 | クラウド: `kling-3.0`・`kling-4.0`・`minimax-h3`・`minimax-h3-max`・`wan-3.0`・`seedance-2.0`・`seedance-2.5`（BytePlus） | **不明** | 規約の本文を読めなかった、または商用利用を許す文を見つけられなかった（公開ページが JS 描画・地域制限・契約で非公開）。商用の前に契約を確認する |
@@ -166,3 +169,4 @@
 | 1.13 | 2026-11-03 | §3 の答えの表に、非検閲の動画 7 つ（`nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b`・`wan22-ti2v-5b-cowgirl-lora`・`wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v`・`wan22-t2v-14b-mystic-xxx-lora`・`hunyuanvideo-t2v-nsfw-lora`。すべて不明）を足した | Issue #1012 |
 | 1.14 | 2026-11-04 | §5: 商用利用のフィルターを共通のモデルのフィルターバーの 1 項目にし、`commercial-filter` のスクリプトと `data-commercial` による隠しをやめた（絞るのはサーバー）。履歴は 3 択のラジオ（`commercial.Choice`）の答えで、サーバーが結果を絞る | Issue #1011 |
 | 1.15 | 2026-11-04 | §3 の答えの表に `wan22-rapid-aio-v10-nsfw-i2v`（不明。宣言だけ）を足した（`checked_at` は 2026-11-04） | Issue #1012 |
+| 1.40 | 2026-11-04 | §3 の答えの表と確認日に、動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`（Apache-2.0）・`rife-v4.25`・`rife-v4.26`（MIT）を足した（商用OK。`checked_at` は 2026-11-04）。版 1.40 は並行する PR と重ならないよう Issue #1031 が決めた値 | Issue #1031 |

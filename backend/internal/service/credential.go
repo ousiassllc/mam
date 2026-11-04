@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/topaz"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 )
 
@@ -25,9 +26,8 @@ var CredentialProviders = []struct{ ID, Label string }{
 	{string(modeladapter.VendorSeedance), "Seedance"}, {string(modeladapter.VendorRunway), "Runway"},
 	{string(modeladapter.VendorMiniMax), "MiniMax（H3）"},
 	{string(modeladapter.VendorAlibaba), "Alibaba Cloud（Wan 3.0）"}, {string(modeladapter.VendorLuma), "Luma（Ray 3.2）"},
-	{audiodirector.CredentialProvider, "ElevenLabs"},
-	{audiodirector.SyncCredentialProvider, "Sync Labs"},
-	{jev.CredentialProvider, "TypeSafe（Jev）"},
+	{topaz.CredentialProvider, "Topaz Labs（Topaz Video API）"}, {audiodirector.CredentialProvider, "ElevenLabs"},
+	{audiodirector.SyncCredentialProvider, "Sync Labs"}, {jev.CredentialProvider, "TypeSafe（Jev）"},
 }
 
 // CredentialStatus is whether the key of a provider is set. It never carries the key.

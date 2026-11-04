@@ -119,6 +119,21 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 役割 `face` の入力があった結果には、**参照の顔と出力の顔の類似度（SFace のコサイン類似度）**を結果ごとに自動で測って `params.face_similarity` に残す（測れない理由も残し、結果は成功のまま。顔のモデル・ONNX Runtime が無くて測らないときも `skipped: models_missing` / `runtime_unavailable` と理由・直し方を残し、`list_generation_models` の `face_similarity` と見積りの警告 `face_similarity_off` でも読める。Issue #1026）。計測の定義・目安の閾値・モデルの配布・ライセンスの一次情報・#960 の監査は [../local-models.md](../local-models.md) §4.9。
 
+## 3.9 動画のアップスケールとコマ補間（Issue #1031）
+
+成功した**動画**の結果を、大きくする（アップスケール）か、コマを増やして滑らかにする（フレーム補間）。画像の「大きくする」（§3.4）と同じく**独立した処理**で、元とは別の結果（別のバッチ・別のファイル）を **1 つ**作り、結果の詳細・MCP（`get_generation_result` の `video_enhance`）に元の `result_id`・操作・モデル・提供元・倍率や fps・元と出力の大きさが残る。アップスケールとコマ補間は**別々の処理**で、続けるときは、できた結果にもう一度かける（処理した結果をさらに処理してよい）。MCP は動画専用の 3 ツール（`list_generation_video_enhancers`・`estimate_generation_video_enhance`・`enhance_generation_video`。[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)）。画面（結果の詳細のボタン・Topaz の枠）は後続。
+
+- **実装の置き場**: 契約（`Op`・`Source`・`Params`・`Cloud` の口など）は `agent/cloudenhance`、値の検査・見積りの置き場は `service/gentest/venhance`、サービスは `service/gentest/videoenhance`（`gentest.Service` の行数の上限のため別パッケージ。`gentest.Service` の `Deps` の `Cloud`・`Probe`・`VideoEstimates` を使う）。実行は `runner/venhance.go`（`execute` が `params.video_enhance` のある結果で呼ぶ）。
+- **元の動画の事実**: 大きさ・fps・コマ数（ffprobe の `nb_frames`、無ければ fps × 長さ）・長さ・音声の有無・ファイルの大きさは、**保存したファイルを ffprobe で読んだ値**（`media.Tools.Probe`。生成のときの指定ではない）。`Deps.Probe`（`venhance.Prober`）は `media.Tools`（`app` が ffmpeg の設定から作る。無ければ nil）。**ffmpeg / ffprobe が無いと処理できず**、共通エラー `ffmpeg_missing`（設定の「ffmpeg」で入れる・指定する、の直し方つき）を返す。
+- **値**（`venhance.Resolve`）: アップスケールは `scale`（1 より大きく 4 以下。標準は 2）か `target_short_side`（720・1080 など。短い辺をその長さにし、長い辺は縦横比のまま。480×848 → 720 なら 720×1272）のどちらか一方。出力の幅・高さは**偶数に丸める**（H.264 の都合。SeedVR2 のノードは入力を 16 の倍数にそろえて処理し、後処理で元の大きさに合わせて切るので、8 の倍数への丸めは要らない。Topaz は 4 の倍数に切り上げる）。出力の 1 コマの画素数は 3840×2160 以下（モデルが `max_output_pixels` を持つときはそれ。SeedVR2 3B は 1920×1080）。補間は `multiplier`（2・4）か `target_fps` のどちらか一方で、**ローカル（RIFE）は元の fps の整数倍（2 倍・4 倍。誤差 0.01 fps まで）だけ**、それ以外の `target_fps` は断って、2 倍・4 倍か Topaz を案内する。Topaz は 15〜240 fps の任意の値（`slowmo` は使わず、目標の fps へ時間を合わせるだけ）。
+- **ローカル**: ComfyUI のワークフロー（`localcfg.Workflow.VideoEnhance` の印。テンプレート `video-upscale-seedvr2-3b`・`video-interpolate-rife-v4.25`・`…-v4.26`）を `enhancevideo.Run`（`modeladapter/enhancevideo`） で呼ぶ。無料で確認なしにすぐ始まる（`CostBasis` は `free`）。入力画像は持たず、実行のとき元の結果のファイルを読んで ComfyUI へ上げる。モデルの選択・モデルの一覧には出ない（プロンプトを渡すモデルではない）。SeedVR2 / RIFE の RTX 4070 Ti SUPER 16GB での動作は**実機未確認**。
+- **Topaz（有料クラウド）**: `Deps.Cloud`（`cloudenhance.Cloud`。実装は `internal/agent/topaz`）。モデルは識別子 `topaz:<Topaz のモデル名>` で一覧に並ぶ。API キー（設定の「API キー」）が無いと `available=false`・`unavailable=no_key`・#1013 の文言で、画面のモデル選択にも出さない。**見積り → 確認 → 実行**: `EstimateEnhance` が Topaz に見積りを聞き（課金されない）、不透明な `estimate_id` を返す。中身（Topaz のリクエスト ID・クレジット・値）は**メモリに 30 分だけ**持つ（`venhance.Estimates`。再起動で消える）。`Enhance` は `estimate_id` と `confirmed_credits`（= 見積りの `credits`）が無いと送らない（`estimate_id` なし → `validation`、期限切れ・使用済み・未知 → `conflict`「見積りの有効期限が切れました。もう一度見積りを取ってください」、クレジットが違う・見積りのときと元・モデル・値が違う → `conflict`）。見積りは `Take` で**1 回だけ**使える（同時に 2 回呼ばれても片方だけ。クレジットの二重消費を防ぐ）。見積りの金額が取れなければ見積りが失敗し、実行できない。
+- **Topaz の実行**（`runner.enhanceInCloud`）: 元のファイルを**パスで**渡し（`RunInput.SourcePath`。メモリに全部は読まない）、結果は `<バッチ>/<結果>.mp4.part` に書いて、できてから `<結果>.mp4` に移す。進み具合は `live` のジョブ（`get_job`・`get_generation_test` の `progress`）に出る。**受け付けたあとの失敗は自動で再送しない**（ジョブは再開しない種別。見積りは使い切り）。失敗は既存の失敗の対応（`runner.failure`。Topaz のエラーは `apperr` / `errmap`）で日本語の原因と直し方になる。実際の費用は不明（`actual_cost` なし）。
+- **費用の持ち方**: クレジットは金額ではないので USD に換算しない。結果の `cost_basis` は、ローカルが `free`、Topaz が `unknown`（見積りの `estimated_cost_usd` なし）。見積りのクレジットは `video_enhance.topaz.estimated_credits`、リクエスト ID は `request_id` に残る。
+- **表示の義務**: Topaz を出す・使う場所に「Powered by Topaz Labs」（`attribution`）を出す（一覧・見積り・結果の `video_enhance.topaz`）。出力の商用利用の可否は公式ドキュメント（FAQ）に書かれていないので、ライセンスは `commercial: unknown`（出典 <https://developer.topazlabs.com/getting-started/faqs>、確認日 2026-11-04。統合は可で出典の表示が要る、と書いてある）。
+- **見積りの JSON の形**は Topaz の公式に未掲載のため、`internal/agent/topaz` が寛容に読む。形が分からなければ見積りは失敗する（実機未確認）。
+- テストは `service/gentest/videoenhance`（偽の ffprobe・偽の ComfyUI のモデル・偽の `Cloud`: ローカルの成功と記録・短辺指定・連続処理・補間の整数倍・動画でない結果・ffmpeg が無いとき・値の検査・画素数の上限・見積り → 確認の関門〔無し／違う額／違う条件／未知の ID／使用済み〕・キー無しでは見積りも実行もしない・見積りが取れなければ実行しない・失敗した Topaz の実行は再送しない）、`service/gentest/venhance`（`Resolve`・`Estimates` の期限と使い切り）、`mcp/tools/gentestvideo`（3 ツールの一連）、`media`（`FrameCount`）。
+
 ## 3.2 プロンプトマッチ（Issue #916）
 
 参考の画像 1 枚から、AI が英語のプロンプトを作り、生成して、似ているかを測り、違いをもとに直して生成し直す（おまかせ・1回だけ・調整。言葉の指示で直せる）。生成テストのバッチとして動き、各回は結果として履歴に残る。設計は [prompt-match.md](prompt-match.md)。
@@ -222,6 +237,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | `recipe` / `exposedreq` / `exposedpick` / `comfyopen` / `recipetest` | レシピ（保存・一覧・使う・使えない理由）、リクエストの画面に出す値の検査と計画、画面に出す値を選ぶ側、今の設定を ComfyUI で開く、それらのテスト（Issue #977 ステージ 2。§3.7） |
 | `facefusion`（`internal/facefusion`。サービスの外） | FaceFusion の検出・モデルの表とライセンスの級・`headless-run` の起動（[face-swap.md](face-swap.md)）。`runner/faceswap.go`・`runner/facescore.go` が呼ぶ |
 | `face`（`internal/service/gentest/face`） | 顔の入れ替え（`Swap`・`Available`）と、アプリがサービスに渡す顔のモデルの口（`Crop`・`Score`・`Swapper`）。`service/gentest` の行数の上限のため別パッケージ。テストもここ |
+| `venhance` / `videoenhance`（`internal/service/gentest/…`） | 動画の大きさ・コマ数を変える処理（Issue #1031。§3.9）。`venhance` は `Resolve`〔値の検査と出力の予定〕・見積りの置き場 `Estimates`・`Prober`（契約の型 `Op`・`Source`・`Params`・`Cloud` の口は `agent/cloudenhance`。ハンドラーは agent を import できないので `venhance` が `Op` と定数を別名で出す）、`videoenhance` は `Enhancers`・`EstimateEnhance`・`Enhance`。`runner/venhance.go` が結果 1 件を実行する。`service/gentest` の行数の上限のため別パッケージ。テストもここ |
 | `gentesttest` / `servicetest` / `localtest` / `speedtest` | テストの道具と、パッケージをまたぐテスト |
 
 `Service` は `projectlink.Link`・`runner.Runner`・`history.Store` を埋め込み、これらのメソッドを自分のものとして公開する。`Deps.Extra`（プロンプトマッチ）は `runner.Runner` のフィールドで、`match.New` が組み立てるときに入れる。

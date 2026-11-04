@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/face"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/videoenhance"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/exposedgate"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
@@ -30,7 +31,7 @@ import (
 // newGentest builds the generation test service and registers its job handler on jobs (before the queue starts and
 // before Recover, which fails the jobs of a kind without handler). A slot assignment of an import goes through the
 // World service, so its locks and kind checks apply.
-func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, faceOff *facesim.Off, logger *slog.Logger) *gentest.Service {
+func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, faceOff *facesim.Off, video videoenhance.Wiring, logger *slog.Logger) *gentest.Service {
 	swap, swapCheck := face.Swapper(facefusionsettings.Default(cfg.DataDir)) // FaceFusion, the external face swapper (#995)
 	g := gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
@@ -40,18 +41,16 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 			_, err := services.World.AssignReference(ctx, projectID, "", target, id, slot, referenceID)
 			return err
 		},
-		Explain:    mmview.Failure,
-		Hidden:     services.ModelManager.HidesModel,
+		Explain: mmview.Failure, Hidden: services.ModelManager.HidesModel,
 		HiddenWith: exposedgate.Hides(services.ModelManager), HideChoices: exposedgate.Choices(services.ModelManager),
 		MissingNodes:    nodegate.ForModels(services.ModelManager.Nodes, modelmanager.BundledEndpoint), // a workflow whose custom node is not installed cannot be chosen
 		CatalogInfo:     mmview.InfoOf(services.ModelManager),                                          // the catalog's adult flag and traits, for the filter of the model list
 		PlatformWarning: mmview.PlatformWarningFor(services.ModelManager),
 		BundledEndpoint: modelmanager.BundledEndpoint,
-		Translator:      translator,
-		Poses:           newPoseLibrary(services.ModelManager.AdultContentEnabled, logger),
-		FaceCrop:        face.Crop(faces),
-		FaceScore:       face.Score(faces), FaceOff: face.OffRecord(faceOff), // FaceOff: why there is no score (#1026)
-		FaceFusion: swap, FaceFusionCheck: swapCheck,
+		Translator:      translator, Poses: newPoseLibrary(services.ModelManager.AdultContentEnabled, logger),
+		FaceCrop:  face.Crop(faces),
+		FaceScore: face.Score(faces), FaceOff: face.OffRecord(faceOff), // FaceOff: why there is no score (#1026)
+		FaceFusion: swap, FaceFusionCheck: swapCheck, Cloud: video.Cloud, Probe: video.Probe, // the paid cloud and the ffprobe of "make a video larger / smoother" (#1031)
 		Logger: logger,
 	})
 	g.Register()

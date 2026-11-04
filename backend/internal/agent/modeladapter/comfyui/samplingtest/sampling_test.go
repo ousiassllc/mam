@@ -14,9 +14,13 @@ import (
 func ptr[T any](v T) *T { return &v }
 
 // A request that names no sampling value runs every bundled workflow exactly as it was before the assignments existed: the graph the
-// server gets is the same, node for node and input for input.
+// server gets is the same, node for node and input for input. (A video enhancement workflow is no generation: it takes a source video, not a
+// request of the Adapter's generation calls, and has no sampling value of the user's; enhancetest runs it.)
 func TestNamingNothingSendsTheSameGraphForEveryTemplate(t *testing.T) {
 	for _, tp := range localcfg.Templates() {
+		if tp.Model.IsVideoEnhance() {
+			continue
+		}
 		t.Run(tp.ID, func(t *testing.T) {
 			assert.Equal(t, run(t, tp, without, localcfg.SamplingSettings{}, ""), run(t, tp, nil, localcfg.SamplingSettings{}, ""))
 		})

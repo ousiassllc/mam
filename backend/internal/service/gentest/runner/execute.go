@@ -38,6 +38,8 @@ func (br *batchRun) execute(ctx context.Context, r gentestrepo.Result) {
 		err        error
 	)
 	switch {
+	case p.VideoEnhance != nil:
+		file, mime, size, err = br.enhanceVideo(ctx, r, p)
 	case r.Media == gentestrepo.MediaVideo:
 		file, mime, size, cost, err = br.video(ctx, r, p)
 	case p.FaceSwap != nil:
