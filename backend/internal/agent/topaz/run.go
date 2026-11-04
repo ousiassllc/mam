@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -23,6 +24,11 @@ func (c *Client) Run(ctx context.Context, in cloudenhance.RunInput, progress fun
 	key, err := c.key()
 	if err != nil {
 		return 0, err
+	}
+	// The credits are reserved by the accept: a source that is gone (or empty) is found out before it, so that nothing is reserved for a
+	// job that cannot upload.
+	if info, err := os.Stat(in.SourcePath); err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
+		return 0, &Error{Code: CodeInvalidInput, Message: "the source video file is missing or empty", RequestID: in.RequestID, Err: err}
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
 	defer cancel()

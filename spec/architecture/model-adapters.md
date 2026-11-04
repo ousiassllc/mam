@@ -424,7 +424,7 @@ M3 の Multi-model routing（§13）と Audio Director の実装（§14）は [m
 |------|----------|------|------------------------|
 | 見積り | `POST /video/`（本文は 15.4）→ `requestId` と見積り | なし | しない（呼び出し側がもう一度見積りを取る） |
 | 確認 | 利用者が見積りのクレジットを確認する（mam の見積り ID で。有効期限あり） | — | — |
-| 受理 | `PATCH /video/{id}/accept` → `urls[]` | **クレジットを確保**（ここで 402 になりうる） | しない。4xx は「何も確保していない」、そのほか（通信の失敗・5xx・時間切れ）は確保したかもしれないので `ErrAfterSubmit` を付ける |
+| 受理 | `PATCH /video/{id}/accept` → `urls[]` | **クレジットを確保**（ここで 402 になりうる）。受理の**前**に元動画のファイル（通常のファイル・0 バイトでない）を確かめ、無ければ何も送らず `INVALID_INPUT`（元の動画を処理できない）で止める | しない。4xx は「何も確保していない」、そのほか（通信の失敗・5xx・時間切れ）は確保したかもしれないので `ErrAfterSubmit` を付ける |
 | 送信 | 元の動画ファイルを `urls[0]` へ `PUT`（`Content-Type: video/mp4`、`Content-Length` つきでファイルから流す。応答の `ETag` を控える） | — | 同じ内容の PUT なので、通信の失敗・5xx は繰り返す（`resilience.Repeat`。ジョブの時間の上限まで） |
 | 開始 | `PATCH /video/{id}/complete-upload/`、本文 `{"uploadResults":[{"partNum":1,"eTag":"…"}]}` | — | しない（`ErrAfterSubmit`） |
 | 待つ | `GET /video/{id}/status` を `PollInterval`（既定 5 秒）ごと。`status` を小文字にし、`complete` → `download.url`、`failed`・`canceled`・`cancelled` → 失敗（`errorCode`・`message`） | — | GET なので、通信の失敗・5xx・429 は待ち直す（Retry-After を守る） |

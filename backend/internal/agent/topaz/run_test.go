@@ -198,3 +198,24 @@ func TestRun_WithoutAKeyNothingIsSent(t *testing.T) {
 	require.ErrorIs(t, err, topaz.ErrNoAPIKey)
 	assert.Zero(t, f.total())
 }
+
+// The accept reserves the credits: a source file that is gone or empty is found out before it, so nothing is reserved for a job that cannot upload.
+func TestRun_AMissingOrEmptySourceIsRefusedBeforeTheAccept(t *testing.T) {
+	for name, prepare := range map[string]func(in *cloudenhance.RunInput){
+		"missing": func(in *cloudenhance.RunInput) { require.NoError(t, os.Remove(in.SourcePath)) },
+		"empty":   func(in *cloudenhance.RunInput) { require.NoError(t, os.WriteFile(in.SourcePath, nil, 0o600)) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFake(t)
+			in := runInput(t)
+			prepare(&in)
+
+			_, err := f.client().Run(background(), in, nil)
+
+			require.Error(t, err)
+			assert.False(t, errorsIsAfterSubmit(err), "nothing was reserved, so it is not an error after the submit")
+			assert.Equal(t, apperr.CodeTopazSourceInvalid, errmap.Explain(err).Code)
+			assert.Zero(t, f.total(), "not even the accept was sent")
+		})
+	}
+}

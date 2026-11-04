@@ -129,15 +129,3 @@ func TestRun_AnUploadThatIsRefusedOrHasNoETagIsAFailedTransferAndTheJobIsNotSubm
 		})
 	}
 }
-
-func TestRun_ASourceFileThatIsGoneIsALocalFailureNotATransferFailure(t *testing.T) {
-	f := newFake(t)
-	in := runInput(t)
-	require.NoError(t, os.Remove(in.SourcePath))
-
-	_, err := f.client().Run(background(), in, nil)
-
-	require.ErrorIs(t, err, os.ErrNotExist)
-	assert.Empty(t, f.seen("PUT /up"))
-	assert.True(t, errorsIsAfterSubmit(err))
-}
