@@ -119,6 +119,9 @@ func (s *Service) estimate(ctx context.Context, r Request) (Estimate, []modelPla
 	if err := s.addTranslation(&est, r); err != nil {
 		return Estimate{}, nil, err
 	}
+	if code, msg, ok := record.FaceOffNote(s.FaceScore != nil, s.FaceOff, rolesOf(r)); ok { // the face similarity is off: say it before the run (#1026)
+		est.Warnings = append(est.Warnings, Warning{Code: code, Message: msg})
+	}
 	est.TotalUSD = round4(est.TotalUSD)
 	if est.MaxCostUSD > 0 && est.TotalUSD > est.MaxCostUSD {
 		est.OverLimit = fmt.Sprintf("見積り %s USD が 1 回の上限 %s USD を超えています。モデル・プロンプト・本数を減らしてください（上限は models.json の gentest.max_cost_usd）",

@@ -1,0 +1,60 @@
+{
+ "id": "wan22-rapid-aio-v10-nsfw-i2v",
+ "name": "Wan2.2 Rapid AllInOne v10 NSFW（Phr00t・先頭フレームから動画）",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "traits": {
+  "params_b": 14,
+  "params_label": "14B",
+  "uncensored": true,
+  "speed": "fast"
+ },
+ "description": "【中（〜14B）・I2V・音声なし・作者のメンテ終了】Phr00t の WAN2.2 Rapid AllInOne の I2V v10 NSFW（成人向け）。Wan 2.2 14B の I2V と Wan 系のモデルに、加速 LoRA（Lightning・LightX2V）と多数の成人向け LoRA を低い強さでマージし、モデル・テキストエンコーダー・VAE を 1 つにした fp8 のチェックポイント（約 23.4 GB・1 ファイル）。得意: 4 ステップ・cfg 1・euler_ancestral/beta という作者の推奨設定で速く、「何でもそこそこ」の手軽な非検閲 I2V（先頭フレーム 1 枚から作る）。既存の wan22-rapid-mega-nsfw-t2v（Mega 版の T2V）とは別のファイルで、こちらは I2V 専用の旧系統（v10）。16fps。作者は 8 GB の VRAM でも動くと書く（4 ステップ）が、mam の想定は 16 GB の GPU。注意: 作者は「メンテはもうしておらず、これらのモデルは非推奨（deprecated）」と書く。作者は v10 の I2V が、動画が進むほど先頭の画像から離れ、プロンプトの場面へズームしやすいと書く。Mega 版の I2V・最初から最後のフレームの指定は、カスタムノード（WanVideoVACEStartToEndFrame）が要るので載せていない。ライセンスはカードが Apache-2.0 と宣言するだけで、マージした成人向け LoRA の出所・ライセンスが確かめられないため、商用利用の可否は不明。macOS（Apple Silicon）は未確認（fp8 のチェックポイントで、mam では動作の報告を確かめていない）。",
+ "files": [
+  {
+   "name": "wan2.2-i2v-rapid-aio-v10-nsfw.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/30e803babc766d791f140b197aa7bf7f18f6e36d/v10/wan2.2-i2v-rapid-aio-v10-nsfw.safetensors",
+   "sha256": "3ead1d9bfd24cc650052dcd310be32bcfd0dd6175418323c41a9208bbc027081",
+   "size": 23387046339
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "作者のカード（Phr00t/WAN2.2-14B-Rapid-AllInOne）は「8 GB の VRAM でも動くようだ」と書く（4 ステップ。旧版の画面）。ファイルは fp8 の 23.3 GB で、16 GB は ComfyUI のオフロードが前提という mam の推定。mam の実機（16 GB）では未確認",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0-declared",
+  "version": "1",
+  "name": "Apache License 2.0（モデルカードの宣言だけ。本文なし）",
+  "url": "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne",
+  "summary": "ベースの Wan 2.2 は Apache-2.0 で、リポジトリのカードも license: apache-2.0 と宣言する。しかしこの NSFW のマージは、作者が公開している埋め込みのワークフローが示すとおり、出所の異なる多数の成人向け LoRA（作者の埋め込みのワークフローに DR34ML4Y・NSFW-22・Femaled-Vaginus など）を混ぜたもので、それらの LoRA のライセンスは確かめられず、LICENSE の本文も無い。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。作者はメンテを終了し、モデルを非推奨としている。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-04",
+  "components": [
+   {
+    "part": "ベースモデル（Wan 2.2 I2V 14B・Wan-AI）",
+    "name": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "commercial": "yes"
+   },
+   {
+    "part": "マージした成人向け LoRA 群（作者のカードに内訳なし）",
+    "name": "ライセンスの記載なし（混ぜた LoRA の出所は未確認）",
+    "url": "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne",
+    "commercial": "unknown"
+   }
+  ],
+  "notice": "この mam のインストール先に取得するモデルです。作者はメンテを終了しており（非推奨）、マージした成人向け LoRA のライセンスを確認できていません。商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-rapid-aio-v10-nsfw-i2v",
+   "template": "img2video-wan22-14b-rapid-aio"
+  }
+ ]
+}

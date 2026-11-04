@@ -19,6 +19,8 @@ type File struct {
 	Shared  []string
 	// SourceNote is where the original of a third party's mirror lies ("" for a file of the original repository).
 	SourceNote string
+	// Optional: the model is installed without this file (a speed mode's LoRA).
+	Optional bool
 }
 
 // Model is a model of the catalog.
@@ -65,6 +67,8 @@ type Model struct {
 	WorkflowCheck string
 	// NeedsNodes says which custom nodes the model needs and does not have ("" when it needs none or has them): the install waits for them.
 	NeedsNodes string
+	// PartialNote says an installed model lacks optional files ("" when none is missing): the badge 「一部未導入」 and the note of the detail (#1025).
+	PartialNote string
 }
 
 // License is what the screen shows of the license of a model's weights.

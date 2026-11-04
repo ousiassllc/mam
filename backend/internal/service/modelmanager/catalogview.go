@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/diskfile"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/filestate"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 )
 
@@ -35,6 +36,7 @@ type FileView struct {
 	SharedWith []string `json:"shared_with,omitempty"`
 	// SourceNote says where the original of a third party's mirror lies and when its SHA-256 was checked to be the same.
 	SourceNote string `json:"source_note,omitempty"`
+	Optional   bool   `json:"optional,omitempty"` // the model is installed without this file (a speed mode's LoRA): ModelView.MissingOptional
 }
 
 // ModelView is a model of the catalog for the list.
@@ -56,11 +58,12 @@ type ModelView struct {
 	VRAM    catalog.VRAM    `json:"vram"`
 	License catalog.License `json:"license"`
 	// ConsentRequired: the license has to be accepted before the install. Accepted: it was, in this version.
-	ConsentRequired bool       `json:"consent_required"`
-	Accepted        bool       `json:"accepted"`
-	AcceptedAt      *time.Time `json:"accepted_at,omitempty"`
-	RequiresHFToken bool       `json:"requires_hf_token"`
-	State           ModelState `json:"state"`
+	ConsentRequired  bool       `json:"consent_required"`
+	Accepted         bool       `json:"accepted"`
+	AcceptedAt       *time.Time `json:"accepted_at,omitempty"`
+	RequiresHFToken  bool       `json:"requires_hf_token"`
+	State            ModelState `json:"state"`
+	filestate.Report            // the optional files that are missing, the note and "files in place" (#1025): the keys are the view's own
 	// InstallJob is the install that is queued or running.
 	InstallJob string `json:"install_job,omitempty"`
 	// ModelIDs are the #831 identifiers of the models an install creates (comfyui:bundled-comfyui/<name>), the
@@ -117,14 +120,10 @@ func (s *Service) view(m catalog.Model, st store.State) ModelView {
 		at := c.AcceptedAt
 		v.AcceptedAt = &at
 	}
-	present := 0
 	for _, f := range m.Files {
 		ok := diskfile.IsThere(s.Layout.ModelPath(f.Path()), f.Size)
-		if ok {
-			present++
-		}
-		fv := FileView{Name: f.Name, Folder: f.Folder, Size: f.Size, SHA256: f.SHA256, Present: ok, SourceNote: f.SourceNote, SharedWith: s.sharedWith(st, m.ID, f.Path())}
-		v.Files = append(v.Files, fv)
+		v.Add(f, ok)
+		v.Files = append(v.Files, FileView{Name: f.Name, Folder: f.Folder, Size: f.Size, SHA256: f.SHA256, Present: ok, Optional: f.Optional, SourceNote: f.SourceNote, SharedWith: s.sharedWith(st, m.ID, f.Path())})
 		if !ok {
 			v.NeedBytes += f.Size - diskfile.PartSize(s.Layout.ModelPath(f.Path()), f.Size)
 		}
@@ -132,16 +131,18 @@ func (s *Service) view(m catalog.Model, st store.State) ModelView {
 	for _, w := range m.Workflows {
 		v.ModelIDs = append(v.ModelIDs, localcfg.ID(localcfg.KindComfyUI, BundledEndpoint, w.Name))
 	}
-	switch _, installed := st.Models[m.ID]; {
+	// The one judgement of "installed", which the generation test's model list reads too (mmview.InfoOf): recorded, and every required file in place.
+	switch _, recorded := st.Models[m.ID]; {
 	case s.activeJob("model:"+m.ID) != "":
 		v.State, v.InstallJob = ModelInstalling, s.activeJob("model:"+m.ID)
-	case installed && present == len(m.Files):
+	case recorded && v.RequiredInPlace():
 		v.State = ModelInstalled
-	case installed:
+	case recorded:
 		v.State = ModelIncomplete
 	default:
 		v.State = ModelNotInstalled
 	}
+	v.Seal(v.State == ModelInstalled, v.State != ModelNotInstalled)
 	return v
 }
 

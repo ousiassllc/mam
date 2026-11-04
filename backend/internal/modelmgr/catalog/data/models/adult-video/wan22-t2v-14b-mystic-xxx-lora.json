@@ -10,7 +10,7 @@
   "uncensored": true,
   "speed": "slow"
  },
- "description": "【中（〜14B）・T2V・音声なし】Wan 2.2 T2V 14B の公式のベース（fp8、高ノイズ用・低ノイズ用）に、成人向けの汎用 LoRA「Mystic XXX」の Wan 2.2 T2V 用 v1（高ノイズ用・低ノイズ用、各約 0.3 GB）を重ねる構成（成人向け）。既存の Remix T2V（マージ）とは別系統で、ベースは無加速の公式なので 20 ステップ・cfg 3.5 と遅いが、ベースを差し替えずに LoRA だけで成人向けの表現を足す。LoRA の強さは 1.0。16 GB の GPU では fp8 とオフロードが前提（拡散モデル各約 14.3 GB）。16fps。注意: 作者は v2（動きが滑らかになった版）を Civitai で公開しているが、v2 は Hugging Face のミラーが見つからなかったため、確かめられた v1 だけを載せる（v1 のミラーは Civitai の原本と SHA-256 が一致）。LoRA のライセンスは HF のミラーに本文が無く（Civitai の原本の表示は販売まで可だが Civitai の外の本文は無い）、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は fp8 を含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
+ "description": "【中（〜14B）・T2V・音声なし】Wan 2.2 T2V 14B の公式のベース（fp8、高ノイズ用・低ノイズ用）に、成人向けの汎用 LoRA「Mystic XXX」の Wan 2.2 T2V 用 v1（高ノイズ用・低ノイズ用、各約 0.3 GB）を重ねる構成（成人向け）。得意: 既存の Remix T2V（マージ）とは別系統で、ベースは無加速の公式なので 20 ステップ・cfg 3.5 と遅いが、ベースを差し替えずに LoRA だけで成人向けの表現を足す。LoRA の強さは 1.0。16 GB の GPU では fp8 とオフロードが前提（拡散モデル各約 14.3 GB）。16fps。注意: 作者は v2（動きが滑らかになった版）を Civitai で公開しているが、v2 は Hugging Face のミラーが見つからなかったため、確かめられた v1 だけを載せる（v1 のミラーは Civitai の原本と SHA-256 が一致）。LoRA のライセンスは HF のミラーに本文が無く（Civitai の原本の表示は販売まで可だが Civitai の外の本文は無い）、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は fp8 を含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
  "files": [
   {
    "name": "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors",

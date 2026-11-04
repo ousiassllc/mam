@@ -30,7 +30,7 @@ import (
 // newGentest builds the generation test service and registers its job handler on jobs (before the queue starts and
 // before Recover, which fails the jobs of a kind without handler). A slot assignment of an import goes through the
 // World service, so its locks and kind checks apply.
-func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, logger *slog.Logger) *gentest.Service {
+func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, faceOff *facesim.Off, logger *slog.Logger) *gentest.Service {
 	swap, swapCheck := face.Swapper(facefusionsettings.Default(cfg.DataDir)) // FaceFusion, the external face swapper (#995)
 	g := gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
@@ -50,8 +50,8 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		Translator:      translator,
 		Poses:           newPoseLibrary(services.ModelManager.AdultContentEnabled, logger),
 		FaceCrop:        face.Crop(faces),
-		FaceScore:       face.Score(faces),
-		FaceFusion:      swap, FaceFusionCheck: swapCheck,
+		FaceScore:       face.Score(faces), FaceOff: face.OffRecord(faceOff), // FaceOff: why there is no score (#1026)
+		FaceFusion: swap, FaceFusionCheck: swapCheck,
 		Logger: logger,
 	})
 	g.Register()

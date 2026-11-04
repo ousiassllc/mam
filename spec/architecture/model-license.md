@@ -75,6 +75,7 @@
 | `nsfw-anime-wan22-5b` | **不明** | リポジトリに Apache-2.0 の LICENSE 本文があり、ベースの Wan 2.2 TI2V 5B も Apache-2.0。ただしカードは、リポジトリが一度削除されて復元されたことと、学習したアニメ動画の授権が記録されていないことを書く。#1012 |
 | `wan22-ti2v-5b-cowgirl-lora` | **不明** | ベースの Wan 2.2 TI2V 5B は Apache-2.0。LoRA（C0WG1RL + REV3RSE。ミラー）は HF にライセンスの記載が無く、原本（Civitai の model 1428098）の表示は RentCivit と生成物の販売だけ。#1012 |
 | `wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v` | **不明** | どちらもカードは `license: apache-2.0` と宣言するだけで本文が無く、焼き込んだ・混ぜた成人向けの LoRA の出所が確かめられない（Phr00t はメンテ終了・非推奨）。#1012 |
+| `wan22-rapid-aio-v10-nsfw-i2v` | **不明** | Phr00t の Rapid AllInOne I2V v10 NSFW。カードは `license: apache-2.0` と宣言するだけで本文が無く、混ぜた成人向けの LoRA の出所が確かめられない（メンテ終了・非推奨。`wan22-rapid-mega-nsfw-t2v` と同じ）。2026-11-04 に確認。#1012 |
 | `wan22-t2v-14b-mystic-xxx-lora` | **不明** | ベースの Wan 2.2 T2V 14B は Apache-2.0。LoRA（Mystic XXX v1。ミラー）は HF に本文が無く、原本（Civitai の model 1295758）の表示は販売まで可でも本文の根拠にしない。#1012 |
 | `hunyuanvideo-t2v-nsfw-lora` | **不明** | ベースは Tencent Hunyuan Community License（EU・英国・韓国では適用外、月間 1 億人超は許諾。条件つき）。LoRA（nsfw-e7）はカードが `license: unknown`。厳しい方の不明。#1012 |
 | `realvisxl-v50` | 商用OK | 作者 SG161222 のモデルカード（`SG161222/RealVisXL_V5.0`）の `license: openrail++`。ベースの SDXL も同じ OpenRAIL++-M。成人向けなので同意必須（#984） |
@@ -164,3 +165,4 @@
 | 1.12 | 2026-11-03 | §3 の答えの表に `sdxl-controlnet-depth`・`sdxl-controlnet-normal`（どちらも商用OK。ControlNet は Apache-2.0、ベースは OpenRAIL++-M）を足した | Issue #1020 |
 | 1.13 | 2026-11-03 | §3 の答えの表に、非検閲の動画 7 つ（`nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b`・`wan22-ti2v-5b-cowgirl-lora`・`wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v`・`wan22-t2v-14b-mystic-xxx-lora`・`hunyuanvideo-t2v-nsfw-lora`。すべて不明）を足した | Issue #1012 |
 | 1.14 | 2026-11-04 | §5: 商用利用のフィルターを共通のモデルのフィルターバーの 1 項目にし、`commercial-filter` のスクリプトと `data-commercial` による隠しをやめた（絞るのはサーバー）。履歴は 3 択のラジオ（`commercial.Choice`）の答えで、サーバーが結果を絞る | Issue #1011 |
+| 1.15 | 2026-11-04 | §3 の答えの表に `wan22-rapid-aio-v10-nsfw-i2v`（不明。宣言だけ）を足した（`checked_at` は 2026-11-04） | Issue #1012 |

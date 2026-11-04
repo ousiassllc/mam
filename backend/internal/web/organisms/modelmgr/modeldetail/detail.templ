@@ -69,12 +69,18 @@ templ Detail(m view.Model) {
 				}
 			</p>
 		}
+		if m.PartialNote != "" {
+			<p class="text-xs text-amber-300" data-testid="mm-partial-note">{ m.PartialNote }</p>
+		}
 		<section class="flex flex-col gap-2" aria-labelledby="mm-files-title">
 			<h3 id="mm-files-title" class="text-sm font-semibold">ファイル（{ strconv.Itoa(len(m.Files)) }）</h3>
 			<ul class="flex flex-col gap-2 text-xs text-neutral-300" role="list" data-testid="mm-files">
 				for _, f := range m.Files {
 					<li class="break-all rounded-md border border-neutral-800 p-2">
 						<code>{ f.Path }</code> { f.Size }
+						if f.Optional {
+							<span class="text-neutral-400" data-testid="mm-file-optional">（任意）</span>
+						}
 						if f.Present {
 							<span class="text-emerald-300">あり</span>
 						}

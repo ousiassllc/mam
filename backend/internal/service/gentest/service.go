@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -96,6 +97,8 @@ type Deps struct {
 	FaceCrop runner.FaceCropFunc
 	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number; the face models are not installed).
 	FaceScore runner.FaceScoreFunc
+	// FaceOff is why FaceScore is nil: what a result with a face reference records (nil while the face similarity is on; record.StatusOf).
+	FaceOff *record.FaceSimilarity
 	// FaceFusion runs FaceFusion for "swap the face" (nil: the feature is off). FaceFusionCheck says why it cannot run now (FaceFusion is not
 	// found) or nil; nil: always ready.
 	FaceFusion      runner.FaceSwapFunc
@@ -143,7 +146,7 @@ func New(d Deps) *Service {
 	}
 	run := runner.New(runner.Deps{
 		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, InputHidden: store.InputHidden, FaceCrop: d.FaceCrop,
-		FaceScore: d.FaceScore, FaceSwap: d.FaceFusion, Now: d.Now, Logger: d.Logger,
+		FaceScore: d.FaceScore, FaceOff: d.FaceOff, FaceSwap: d.FaceFusion, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
 		Deps: d, Link: link, Runner: run, Store: store, catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes, CatalogInfo: d.CatalogInfo},

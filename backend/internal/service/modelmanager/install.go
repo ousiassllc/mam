@@ -96,7 +96,7 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 			return JobRef{}, ErrConsentRequired
 		}
 	}
-	if v := s.view(m, s.state.Get()); v.State == ModelInstalled {
+	if v := s.view(m, s.state.Get()); v.State == ModelInstalled && len(v.MissingOptional) == 0 { // a model that lacks optional files may be installed again for them
 		return JobRef{}, ErrAlreadyInstalled
 	}
 	if err := s.Layout.CheckWritable(); err != nil {

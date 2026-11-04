@@ -36,6 +36,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/exposedgate"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 
@@ -174,6 +175,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 		Repo: gentestrepo.New(r.db), Jobs: r.Queue, JobTable: r.Table, Adapter: r.Adapter, DataDir: r.DataDir, AssetsDir: t.TempDir(),
 		Projects: repository.NewProjectRepository(r.db), Assets: repository.NewAssetRepository(r.db), References: repository.NewReferenceRepository(r.db),
 		Hidden: r.Svc.HidesModel, HiddenWith: exposedgate.Hides(r.Svc), HideChoices: exposedgate.Choices(r.Svc),
+		CatalogInfo: mmview.InfoOf(r.Svc), // as the app wires it: the catalog's install state is the generation test's "installed" (#1025)
 	})
 	r.Gentest.Register()
 	t.Cleanup(func() { r.Queue.Stop(); r.Svc.Close() })

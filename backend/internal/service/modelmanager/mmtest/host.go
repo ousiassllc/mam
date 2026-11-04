@@ -179,6 +179,11 @@ func testCatalog(h *Host) *catalog.Catalog {
 	}
 }
 
+// CatalogFile is the catalog entry of f as this host serves it (a model a test adds to the catalog with its own files, optional or not).
+func (h *Host) CatalogFile(f File, optional bool) catalog.File {
+	return catalog.File{Name: f.Name, Folder: f.Folder, URL: h.URL + "/" + f.Folder + "/" + f.Name, SHA256: f.sha(), Size: int64(len(f.Body)), Optional: optional}
+}
+
 func regionsOf(id string) []string {
 	if id == "non-commercial" {
 		return []string{"EU", "KR"}

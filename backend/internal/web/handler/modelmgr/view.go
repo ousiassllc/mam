@@ -113,7 +113,7 @@ func modelData(ctx context.Context, svc *modelmanager.Service, e mmview.Entry, f
 		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM),
 		License: licenseview.Of(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
-		State: string(m.State), ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
+		State: string(m.State), PartialNote: m.PartialNote, ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
 		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free, PlatformWarning: mmview.PlatformWarning(ctx, svc, m),
 	}
 	if fit, ok := mmview.FitOf(m.VRAM, gpuVRAM); ok {
@@ -124,7 +124,7 @@ func modelData(ctx context.Context, svc *modelmanager.Service, e mmview.Entry, f
 	}
 	out.NeedsNodes = nodegate.Reason(svc.Nodes, m.RequiresNodes)
 	for _, f := range m.Files {
-		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), SHA256: f.SHA256, Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
+		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), SHA256: f.SHA256, Present: f.Present, Optional: f.Optional, Shared: f.SharedWith, SourceNote: f.SourceNote})
 	}
 	if m.InstallJob != "" {
 		out.Install = progressOf(ctx, svc, m.InstallJob)

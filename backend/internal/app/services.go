@@ -230,7 +230,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
 	modellicense.SetResolver(mgr.LicenseOf) // what the screens and tools say of a local model's commercial use (#928)
 	modellicense.SetDefaultFilter(mgr.DefaultFilter)
-	services.Gentest = newGentest(cfg, db, jobs, models, services, prompttranslate.FromClient(reasoning), imagematch.FromClient(reasoning, judging.engine(), models.Config().Gentest.Face()), judging.engine(), logger)
+	services.Gentest = newGentest(cfg, db, jobs, models, services, prompttranslate.FromClient(reasoning), imagematch.FromClient(reasoning, judging.engine(), models.Config().Gentest.Face()), judging.engine(), judging.faceOff, logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
 	// Before any job runs: a runtime install that the queue resumes is using the directories this cleans.
