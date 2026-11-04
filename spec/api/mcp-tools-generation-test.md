@@ -114,7 +114,7 @@
 ## 顔の入れ替えと顔の類似度（Issue #995・#998）
 
 - 画面の「顔を入れ替える」と同じ `face.Swap`（`service/gentest/face`）を呼ぶ（`mcp/tools/gentestface/face.go`。`tools/gentest` が行数の上限なので別パッケージ）。FaceFusion の状態は `mcpkit.Settings.FaceFusion`（`facefusionsettings.Service`。画面と同じファイル `facefusion.json`）から読み、無い構成では `get_facefusion_status` が `unavailable`。**パスを設定するツールは無い**（設定画面 `PUT /settings/facefusion` だけ。パスは後で起動される実行ファイルを決めるので、MCP のクライアントに決めさせない。ffmpeg のパスに MCP ツールが無いのと同じ。[mcp-tools-settings-policy.md](mcp-tools-settings-policy.md)）。
-- `get_generation_result`・`get_generation_test`・`list_generation_results` の結果に、`face_swap`（顔の入れ替えで作った結果）と `face_similarity`（役割 `face` の参照があった結果。`metric: sface`・`cosine`・`threshold: 0.363`・`same_person`・測れなかった理由 `skipped`）が付く。`face_similarity` は目安で、同じ人である保証ではない（[../architecture/local-models.md](../architecture/local-models.md) §4.9）。
+- `get_generation_result`・`get_generation_test`・`list_generation_results` の結果に、`face_swap`（顔の入れ替えで作った結果）と `face_similarity`（役割 `face` の参照があった結果。`metric: sface`・`cosine`・`threshold: 0.363`・`same_person`・測れなかった理由 `skipped`: `reference_no_face`・`result_no_face`・`error`、顔モデル・ONNX Runtime が無いとき `models_missing`・`runtime_unavailable`〔このとき `reason`・`fix`・`model_dir`・`missing_files` が付く。Issue #1026〕）が付く。顔の類似度がいま測れるかは、`list_generation_models` の `face_similarity`（`enabled`。オフのときは `off` に結果と同じ内容）で読む。`estimate_generation_test` は、役割 `face` の参照があってオフのとき、警告 `face_similarity_off` を返す。`face_similarity` は目安で、同じ人である保証ではない（[../architecture/local-models.md](../architecture/local-models.md) §4.9）。
 - ジョブの `result` は `batch_id`・`succeeded`・`failed`・`cancelled`（既存と同じ）。FaceFusion が断る・失敗するときは、結果の `error` に FaceFusion の出力の末尾の数行が入る。
 ## ポーズ集のツール（Issue #994）
 
@@ -174,3 +174,4 @@
 | 1.22 | 2026-11-03 | `list_generation_models` に、画面のフィルターと同じ条件の入力と、各モデルの `settings_route`・`inputs[]`・`provider`・`origin`・`catalog` を足した。`available_only` で使えないモデルを除ける | Issue #1011・#1013 |
 | 1.23 | 2026-11-03 | `get_pose_library` の `poses[]` に `depth_images`・`normal_images`（ポーズ集の深度・法線マップ）を足した | Issue #1020 |
 | 1.24 | 2026-11-03 | 入力画像の検査を足した（必須の入力が無い → `input_missing`、添えた画像がすべて使われない → `input_unused`、どちらも送る前に `validation`。一部だけ使われない → 警告と結果の `unused_inputs`）。`list_generation_models` に `requires_inputs` | Issue #1009 |
+| 1.25 | 2026-11-04 | `list_generation_models` に `face_similarity`（`enabled`・`off`）を足し、`face_similarity.skipped` に `models_missing`・`runtime_unavailable`（と `reason`・`fix`・`model_dir`・`missing_files`）を足した。`estimate_generation_test` に警告 `face_similarity_off`。各モデルの `catalog` に `missing_optional_files`・`partial_note`、カタログのモデルの `available` はモデルマネージャーの `state` と同じ答え | Issue #1025・#1026 |

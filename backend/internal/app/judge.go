@@ -18,9 +18,9 @@ type judgeSetup struct {
 	config judge.Config
 	// frames is nil when ffmpeg is missing: the Judge is then off.
 	frames judge.FrameSource
-	// faces is nil when the models or the ONNX Runtime library are missing: Takes are then judged
-	// qualitatively only.
-	faces *facesim.ONNX
+	// faces is nil when the models or the ONNX Runtime library are missing (faceOff says why, #1026): Takes are then judged qualitatively only.
+	faces   *facesim.ONNX
+	faceOff *facesim.Off
 }
 
 // newJudgeSetup loads the Judge setting and looks for ffmpeg and the face models. Missing tools
@@ -42,7 +42,8 @@ func newJudgeSetup(cfg config.Config, tools *media.Tools, logger *slog.Logger) (
 	case err == nil:
 		s.faces = faces
 	case errors.Is(err, facesim.ErrUnavailable):
-		logger.Warn("face identity similarity is off: Takes are judged qualitatively only", "model_dir", cfg.FaceModels(), "err", err)
+		s.faceOff = facesim.ONNXConfig{ModelDir: cfg.FaceModels()}.Diagnose(err)
+		logger.Warn("face identity similarity is off: Takes are judged qualitatively only", "model_dir", cfg.FaceModels(), "reason", s.faceOff.Reason, "missing", s.faceOff.Missing, "err", err)
 	default:
 		return s, err
 	}
