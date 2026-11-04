@@ -81,3 +81,54 @@ func TestWithoutAPoseLibraryTheToolsAnswerUnavailable(t *testing.T) {
 		assert.Contains(t, r.CallError(tool, args), string(mcpkit.CodeUnavailable), tool)
 	}
 }
+
+// Issue #1020, the tools: while the age confirmation is off, get_pose_library says nothing of the suggestive series (no "adult" section, no pose of
+// theirs, whatever the query or series asked for) and install_pose_library with adult=true is refused without fetching; with it on, the series are offered,
+// installed on the agreement (the main library first) and listed with their maps; turning it off hides them at once.
+func TestTheSuggestiveSeriesAreOfferedInstalledAndListedOnlyWhileTheAgeGateIsOpen(t *testing.T) {
+	r := newRig(t, true)
+	r.CallOK("install_pose_library", map[string]any{"accepted": true}, nil)
+	before := r.Lib.Requests.Load()
+
+	var lib gentestposes.Library
+	r.CallOK("get_pose_library", map[string]any{}, &lib)
+	assert.Nil(t, lib.Adult, "closed: not even an offer")
+	assert.Contains(t, r.CallError("install_pose_library", map[string]any{"accepted": true, "adult": true}), string(mcpkit.CodeValidation))
+	assert.Equal(t, before, r.Lib.Requests.Load(), "refused: nothing fetched")
+	for _, q := range []map[string]any{{"query": "S字立ち"}, {"query": "S001"}, {"series": "sexy"}, {"series": "duo"}, {}} {
+		var found gentestposes.Library
+		r.CallOK("get_pose_library", q, &found)
+		for _, p := range found.Poses {
+			assert.NotContains(t, []string{"sexy", "duo"}, p.Series, "%v", q)
+		}
+	}
+
+	r.Lib.Open.Store(true)
+	r.CallOK("get_pose_library", map[string]any{}, &lib)
+	require.NotNil(t, lib.Adult, "open: the offer")
+	assert.False(t, lib.Adult.Installed)
+	assert.NotEmpty(t, lib.Adult.Download)
+	require.NotEmpty(t, lib.Adult.Licenses)
+	assert.Equal(t, "yes", lib.Adult.Licenses[0].Commercial)
+	assert.Contains(t, r.CallError("install_pose_library", map[string]any{"accepted": false, "adult": true}), string(mcpkit.CodeValidation))
+
+	r.CallOK("install_pose_library", map[string]any{"accepted": true, "adult": true}, &lib)
+	assert.True(t, lib.Adult.Installed)
+	var sexy gentestposes.Library
+	r.CallOK("get_pose_library", map[string]any{"series": "sexy"}, &sexy)
+	require.Len(t, sexy.Poses, 1)
+	assert.Equal(t, "S001", sexy.Poses[0].ID)
+	assert.Equal(t, "sexy_S001_front", sexy.Poses[0].Images["front"])
+	assert.Equal(t, map[string]string{"front": "sexy_S001_front.depth"}, sexy.Poses[0].DepthImages)
+
+	r.Lib.Open.Store(false)
+	var closed gentestposes.Library
+	r.CallOK("get_pose_library", map[string]any{"series": "sexy"}, &closed)
+	assert.Empty(t, closed.Poses, "closed again: gone at once")
+	assert.Nil(t, closed.Adult)
+
+	r.Lib.Open.Store(true)
+	r.CallOK("remove_pose_library", map[string]any{"adult": true}, &lib)
+	assert.True(t, lib.Installed, "the main library stays")
+	assert.False(t, lib.Adult.Installed)
+}

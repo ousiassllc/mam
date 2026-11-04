@@ -74,15 +74,21 @@ func zipOf(t testing.TB, files map[string][]byte) []byte {
 	return buf.Bytes()
 }
 
-// Rig is a library over a fake GitHub that serves a small zip of line pictures, one of depth maps, one of normal maps and the pose catalog.
+// Rig is a library over a fake GitHub that serves a small zip of line pictures, one of depth maps, one of normal maps and the pose catalog, and the same
+// three zips for the suggestive series (the asset set shisei-poses-adult). The age gate is Open: closed at first, the way the app starts.
 type Rig struct {
 	Lib      *poses.Library
 	Root     string
 	Requests *atomic.Int32
 	Dir      string // the directory of the installed files
+	AdultDir string // the directory of the installed files of the suggestive series
+	// Open is the age gate the library asks (Deps.AdultOpen): store true to open it.
+	Open *atomic.Bool
 }
 
-// Seed are the poses of the fake pose catalog: P003 is rated suggestive (its picture is in the zip all the same), P009 has no picture.
+// Seed are the poses of the fake pose catalog: P003 is rated suggestive (its picture is in the zip all the same), P009 has no picture. S001 and D001 are
+// of the suggestive series (sexy, duo; D001 is rated general all the same, as six of Shisei's duo poses are): their pictures are in the zips of the
+// suggestive set, never in the general one's.
 var Seed = []Entry{
 	{ID: "P001", Series: "std", Rating: "general", Class: "座り", Name: "仰け反り座り", NameEN: "Sitting leaning back", Desc: "sitting on the floor", Angles: []string{"front", "diag"},
 		Depth: []string{"front"}, Normal: []string{"front", "diag"}},
@@ -91,15 +97,18 @@ var Seed = []Entry{
 	{ID: "P003", Series: "std", Rating: "suggestive", Class: "座り", Name: "ひみつ", NameEN: "Hidden", Desc: "never shown", Angles: []string{"front"}},
 	{ID: "U001", Series: "upper", Rating: "general", Class: "かわいい系", Name: "両手ハート", NameEN: "Both hands heart", Desc: "hands forming a heart", Angles: []string{"front"}},
 	{ID: "P009", Series: "std", Rating: "general", Class: "立ち", Name: "写真なし", NameEN: "No picture", Desc: "has no file", Angles: []string{"front"}},
+	{ID: "S001", Series: "sexy", Rating: "suggestive", Class: "立ち", Name: "S字立ち", NameEN: "Standing S-curve", Desc: "standing in an S-curve", Angles: []string{"front", "diag"},
+		Depth: []string{"front"}, Normal: []string{"front"}},
+	{ID: "D001", Series: "duo", Rating: "general", Class: "立ち", Name: "向き合い", NameEN: "Facing each other", Desc: "two figures face to face", Angles: []string{"front"}, Depth: []string{"front"}},
 }
 
-// pictureFiles are the files of the zip of the kind ("line", "depth", "normal"): the entry name in the zip -> content. P003 and the like
-// are in the zips all the same (the zips hold what Shisei holds), P009 is in none.
-func pictureFiles() map[string]map[string][]byte {
+// pictureFiles are the files of the zip of the kind ("line", "depth", "normal") of the general set, or of the suggestive one (adult): the entry name in the
+// zip -> content. P003 and the like are in the zips all the same (the zips hold what Shisei holds), P009 is in none.
+func pictureFiles(adult bool) map[string]map[string][]byte {
 	out := map[string]map[string][]byte{"line": {}, "depth": {}, "normal": {}}
 	for _, e := range Seed {
-		if e.ID == "P009" {
-			continue // listed in the catalog, not in the zip
+		if e.ID == "P009" || poses.IsAdultSeries(e.Series) != adult {
+			continue // P009: listed in the catalog, not in the zip
 		}
 		for _, a := range e.Angles {
 			name := e.Series + "_" + e.ID + "_" + a
@@ -115,35 +124,11 @@ func pictureFiles() map[string]map[string][]byte {
 	return out
 }
 
-// New is a Rig with the library not installed yet.
-func New(t testing.TB) *Rig {
-	t.Helper()
-	files := pictureFiles()
-	zips := map[string][]byte{}
-	for kind, f := range files {
-		zips[kind] = zipOf(t, f)
-	}
-	cat := catalogJSON(t, Seed)
-	reqs := &atomic.Int32{}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqs.Add(1)
-		for kind, body := range zips {
-			if r.URL.Path == "/"+kind+".zip" {
-				http.ServeContent(w, r, kind+".zip", testTime, bytes.NewReader(body))
-				return
-			}
-		}
-		if r.URL.Path == "/catalog.json" {
-			http.ServeContent(w, r, "catalog.json", testTime, bytes.NewReader(cat))
-			return
-		}
-		http.NotFound(w, r)
-	}))
-	t.Cleanup(srv.Close)
-
+// assetSet is the asset set of the rig: a zip per kind of picture, served at <prefix><kind>.zip, and (the general set) the pose catalog.
+func assetSet(id, prefix, serverURL string, files map[string]map[string][]byte, zips map[string][]byte, cat []byte) catalog.ResourceSet {
 	source := catalog.ResourceSource{Name: "Shisei", URL: "https://github.com/wquguru/shisei"}
 	set := catalog.ResourceSet{
-		Runtime:  poses.SetID,
+		Runtime:  id,
 		Licenses: []catalog.ResourceLicense{{ID: "cc0", Name: "CC0 1.0", URL: "https://example.com/cc0", Summary: "s", Commercial: "yes"}},
 	}
 	for _, kind := range []string{"line", "depth", "normal"} {
@@ -155,26 +140,73 @@ func New(t testing.TB) *Rig {
 			}
 			members = append(members, catalog.ResourceMember{Entry: entry, Dest: dir + "/" + filepath.Base(entry), Size: int64(len(data)), SHA256: Sum(data)})
 		}
-		set.Assets = append(set.Assets, catalog.Resource{Name: kind + " pictures", Format: catalog.FormatZip, URL: srv.URL + "/" + kind + ".zip", SHA256: Sum(zips[kind]),
-			Size: int64(len(zips[kind])), Required: true, License: "cc0", Members: members, Source: source})
+		set.Assets = append(set.Assets, catalog.Resource{Name: prefix + kind + " pictures", Format: catalog.FormatZip, URL: serverURL + "/" + prefix + kind + ".zip", SHA256: Sum(zips[prefix+kind]),
+			Size: int64(len(zips[prefix+kind])), Required: true, License: "cc0", Members: members, Source: source})
 	}
-	set.Assets = append(set.Assets, catalog.Resource{Name: "catalog", Dest: "catalog.json", URL: srv.URL + "/catalog.json", SHA256: Sum(cat), Size: int64(len(cat)), Required: true, License: "cc0", Source: source})
+	if cat != nil {
+		set.Assets = append(set.Assets, catalog.Resource{Name: "catalog", Dest: "catalog.json", URL: serverURL + "/catalog.json", SHA256: Sum(cat), Size: int64(len(cat)), Required: true, License: "cc0", Source: source})
+	}
+	return set
+}
+
+// New is a Rig with the library not installed yet and the age gate closed.
+func New(t testing.TB) *Rig {
+	t.Helper()
+	general, adult := pictureFiles(false), pictureFiles(true)
+	zips := map[string][]byte{}
+	for kind, f := range general {
+		zips[kind] = zipOf(t, f)
+	}
+	for kind, f := range adult {
+		zips["adult-"+kind] = zipOf(t, f)
+	}
+	cat := catalogJSON(t, Seed)
+	reqs := &atomic.Int32{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqs.Add(1)
+		for name, body := range zips {
+			if r.URL.Path == "/"+name+".zip" {
+				http.ServeContent(w, r, name+".zip", testTime, bytes.NewReader(body))
+				return
+			}
+		}
+		if r.URL.Path == "/catalog.json" {
+			http.ServeContent(w, r, "catalog.json", testTime, bytes.NewReader(cat))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
 	root := filepath.Join(t.TempDir(), "localai")
+	open := &atomic.Bool{}
 	lib, err := poses.New(poses.Deps{
-		Root: root, Catalog: &catalog.Catalog{ResourceSets: []catalog.ResourceSet{set}},
+		Root: root,
+		Catalog: &catalog.Catalog{ResourceSets: []catalog.ResourceSet{
+			assetSet(poses.SetID, "", srv.URL, general, zips, cat), assetSet(poses.AdultSetID, "adult-", srv.URL, adult, zips, nil),
+		}},
 		Fetch: fetch.Options{
 			CheckURL: func(*url.URL) error { return nil },
 			Client:   fetch.WithRedirectRules(&http.Client{}, func(*url.URL) error { return nil }, ""),
 			Retry:    fetch.Retry{Attempts: 1},
 		},
 		FreeBytes: func(string) (uint64, error) { return 1 << 40, nil },
+		AdultOpen: open.Load,
 	})
 	require.NoError(t, err)
-	return &Rig{Lib: lib, Root: root, Requests: reqs, Dir: filepath.Join(root, poses.SetID, "env")}
+	return &Rig{Lib: lib, Root: root, Requests: reqs, Dir: filepath.Join(root, poses.SetID, "env"), AdultDir: filepath.Join(root, poses.AdultSetID, "env"), Open: open}
 }
 
 // Install installs the library the way the user does.
 func (r *Rig) Install(t testing.TB) {
 	t.Helper()
 	require.NoError(t, r.Lib.Install(context.Background(), true, nil))
+}
+
+// InstallAdult installs the suggestive series the way the user does: the age gate is opened for it (and left open), the main library installed first.
+func (r *Rig) InstallAdult(t testing.TB) {
+	t.Helper()
+	r.Open.Store(true)
+	r.Install(t)
+	require.NoError(t, r.Lib.InstallAdult(context.Background(), true, nil))
 }

@@ -76,6 +76,11 @@ templ InstallPanel(w Wire, in Install) {
 		<p class="text-sm text-neutral-200">
 			ポーズ集（Shisei）は、顔のない人形の線画で描いたポーズの見本です（{ strconv.Itoa(in.Poses) } 種類・線画と、ControlNet 用の深度・法線マップを合わせて { strconv.Itoa(in.Images) } 枚。アングルは正面・斜め・横・上から・下から）。
 			MAM には同梱せず、初回だけ { in.Source } から { in.Download } をダウンロードします（リリースを固定し、ファイルごとに SHA-256 を検証します）。
+			if in.Remain != "" && in.Remain != in.Download {
+				<span data-testid="gt-pose-remain">
+					導入済みのファイルは取り直しません。足りない分（深度・法線マップなど）だけ、今回 { in.Remain } をダウンロードします。
+				</span>
+			}
 		</p>
 		<ul class="flex flex-col gap-2 text-xs" data-testid="gt-pose-licenses">
 			for _, l := range in.Licenses {
@@ -206,7 +211,72 @@ templ GalleryPanel(w Wire, g Gallery) {
 				"hx-confirm": "ダウンロードしたポーズ集（画像と目録）を削除します。もう一度使うときは、改めて導入します。よろしいですか？", "data-testid": "gt-pose-remove",
 			})
 		</div>
+		if g.Adult != nil {
+			@adultSection(w, *g.Adult)
+		}
 	</div>
+}
+
+// adultSection is the part of the gallery about the suggestive series (sexy, duo), shown only while the age gate is open (g.Adult is nil otherwise,
+// and nothing of the series is said): the offer to install them (another zip set, with its own agreement), or the button to remove them.
+templ adultSection(w Wire, a AdultOffer) {
+	<section class="flex flex-col gap-2 rounded-md border border-neutral-800 p-3 text-xs" data-testid="gt-pose-adult">
+		<h3 class="text-sm font-medium text-neutral-200">成人向けのポーズ（sexy・二人）</h3>
+		if a.Installed {
+			<p class="text-neutral-400" data-testid="gt-pose-adult-installed">
+				成人向けのポーズを導入済みです。モデル管理の年齢確認をオフにすると、一覧にも出なくなります（ファイルは残ります）。
+			</p>
+			<div>
+				@atoms.SmallButton(atoms.ToneDanger, "成人向けのポーズを削除", templ.Attributes{
+					"type": "button", "hx-post": w.RemoveAdultURL, "hx-target": "#" + BodyID, "hx-swap": "innerHTML", "hx-include": w.IncludeForm,
+					"hx-confirm": "ダウンロードした成人向けのポーズ（画像）を削除します。もう一度使うときは、改めて導入します。よろしいですか？", "data-testid": "gt-pose-adult-remove",
+				})
+			</div>
+		} else {
+			<p class="text-neutral-300">
+				Shisei が「suggestive（扇情的）」とする、全身（sexy）と二人（duo）のポーズです（{ strconv.Itoa(a.Poses) } 種類・線画と深度・法線マップを合わせて { strconv.Itoa(a.Images) } 枚。いずれも顔のない人形）。
+				{ a.Source } から { a.Download } をダウンロードします（リリースを固定し、ファイルごとに SHA-256 を検証します）。
+				if a.Remain != "" && a.Remain != a.Download {
+					今回ダウンロードするのは残りの { a.Remain } です。
+				}
+			</p>
+			<ul class="flex flex-col gap-2" data-testid="gt-pose-adult-licenses">
+				for _, l := range a.Licenses {
+					<li class="flex flex-col gap-1 rounded-md border border-neutral-800 p-2">
+						<p class="flex flex-wrap items-center gap-1.5 text-neutral-200">
+							<span class="font-medium">{ l.Name }</span>
+							@commercial.Badge(l.Answer)
+						</p>
+						<p class="text-neutral-400">{ l.Summary }</p>
+						@commercial.Note(l.Answer)
+					</li>
+				}
+			</ul>
+			if a.Error != "" {
+				<p class="text-red-300" role="alert" data-testid="gt-pose-adult-error">{ a.Error }</p>
+			}
+			<label class="flex items-start gap-2 text-neutral-300">
+				@atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-adult-accept": "", "data-testid": "gt-pose-adult-accept"})
+				<span>上のライセンスと取得元を確認しました。成人向けのポーズのダウンロードに同意します。</span>
+			</label>
+			<div>
+				<button
+					type="button"
+					class="group inline-flex items-center justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+					data-testid="gt-pose-adult-install-button"
+					hx-post={ w.InstallAdultURL }
+					hx-target={ "#" + BodyID }
+					hx-swap="innerHTML"
+					hx-include={ "[data-gt-pose-adult-accept], " + w.IncludeForm }
+					hx-disabled-elt="this"
+				>
+					<span class="group-[.htmx-request]:hidden">成人向けのポーズを導入する</span>
+					<span class="hidden group-[.htmx-request]:inline" role="status">ダウンロードしています…</span>
+				</button>
+			</div>
+			<div hx-get={ w.ProgressURL } hx-trigger="every 1s" hx-swap="innerHTML" class="text-neutral-300" role="status" aria-live="polite" data-testid="gt-pose-adult-progress"></div>
+		}
+	</section>
 }
 
 // ProgressText is what the install panel shows while the library downloads: "" (nothing) when no install is running. The panel polls it.

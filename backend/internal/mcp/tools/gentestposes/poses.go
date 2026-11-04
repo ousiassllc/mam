@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
@@ -24,10 +25,10 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"生成テストのポーズ集（Shisei。マネキンの線画と、ControlNet 用の深度・法線マップ）の状態と、導入済みならポーズの検索結果。installed=false のときは、取得元・ダウンロードの大きさ・ライセンス（商用利用の可否つき）を返す。導入済みなら query（名前・分類・番号 P001・英語。すべての語を含むもの）・series（std / upper）・class（分類名）で絞った poses[] を返す。画像 ID（images の値。std_P001_front の形）を run_generation_test の references に {source: pose_library, id, role: pose} として渡す。ControlNet（深度・法線のモデル）には depth_images・normal_images の値（std_P001_front.depth の形）を渡す。ある角度だけ載る / The state of the pose library and, when installed, its poses.",
 		h.get)
 	mcpkit.Write(r, "install_pose_library",
-		"ポーズ集（Shisei）をダウンロードして導入する。accepted は、get_pose_library が返したライセンス（画像は CC0 1.0）と取得元を利用者が確認して同意したときだけ true にする（false だと何も取得せず拒否する。画面の同意チェックと同じ）。固定したリリースをファイルごとに SHA-256 で検証する。終わるまで応答しない（約 20 MB）。導入済みなら何もしない / Download and install the pose library; accepted must be true once the user agreed to the licenses and the source.",
+		"ポーズ集（Shisei）をダウンロードして導入する。accepted は、get_pose_library が返したライセンス（画像は CC0 1.0）と取得元を利用者が確認して同意したときだけ true にする（false だと何も取得せず拒否する。画面の同意チェックと同じ）。固定したリリースをファイルごとに SHA-256 で検証する。終わるまで応答しない（約 43 MB。以前の導入にファイルが足りないときは、足りない分だけ。get_pose_library の download_remaining）。導入済みなら何もしない。adult=true は成人向けシリーズ（get_pose_library の adult が返るときだけ。年齢確認がオンのときに限る）の導入 / Download and install the pose library; accepted must be true once the user agreed to the licenses and the source.",
 		h.install, mcpkit.OpenWorld(), mcpkit.Idempotent())
 	mcpkit.Destroy(r, "remove_pose_library",
-		"導入したポーズ集（画像と目録）を削除する。導入していなければ何もしない。導入中は conflict。履歴の結果は残る（結果は入力画像を自分で持っている）。もう一度使うときは install_pose_library / Delete the installed pose library.",
+		"導入したポーズ集（画像と目録）を削除する。成人向けシリーズも一緒に消える（adult=true なら成人向けシリーズだけ）。導入していなければ何もしない。導入中は conflict。履歴の結果は残る（結果は入力画像を自分で持っている）。もう一度使うときは install_pose_library / Delete the installed pose library.",
 		h.remove)
 }
 
@@ -89,25 +90,57 @@ type Library struct {
 	PoseCount  int       `json:"pose_count"`
 	ImageCount int       `json:"image_count"`
 	Download   string    `json:"download" jsonschema:"導入でダウンロードする大きさ（例: 19.7 MiB）"`
+	Remaining  string    `json:"download_remaining,omitempty" jsonschema:"今回ダウンロードする残りの大きさ。導入済みのファイルは取り直さないので、download より小さいときだけ（例: 以前の導入に深度・法線マップが無い）"`
 	Licenses   []License `json:"licenses"`
 	Poses      []Pose    `json:"poses,omitempty" jsonschema:"導入済みのときだけ。絞り込みに合うポーズ"`
+	// Adult is the suggestive series; nil (left out) while the age confirmation is off: nothing of them is said then.
+	Adult *AdultLibrary `json:"adult,omitempty" jsonschema:"成人向けシリーズ（sexy・duo）の状態。年齢確認（set_adult_content）がオンのときだけ現れる"`
+}
+
+// AdultLibrary is the state of the suggestive series (sexy, duo).
+type AdultLibrary struct {
+	Installed  bool      `json:"installed"`
+	PoseCount  int       `json:"pose_count"`
+	ImageCount int       `json:"image_count"`
+	Download   string    `json:"download"`
+	Remaining  string    `json:"download_remaining,omitempty"`
+	Licenses   []License `json:"licenses"`
 }
 
 // Input is the filter of get_pose_library.
 type Input struct {
 	Query  string `json:"query,omitempty" jsonschema:"名前・分類・番号（P001）・英語の語。すべての語を含むもの"`
-	Series string `json:"series,omitempty" jsonschema:"std / upper"`
+	Series string `json:"series,omitempty" jsonschema:"std / upper（成人向けの sexy / duo は、導入済みで年齢確認がオンのときだけ）"`
 	Class  string `json:"class,omitempty" jsonschema:"分類名（get_pose_library の poses[].class）"`
+}
+
+func licensesOf(ls []catalog.ResourceLicense) []License {
+	out := []License{}
+	for _, lic := range ls {
+		out = append(out, License{Name: lic.Name, URL: lic.URL, Summary: lic.Summary, Commercial: string(lic.Commercial), Notice: lic.Notice})
+	}
+	return out
+}
+
+// sizeText is a size of the download ("19.7 MiB").
+func sizeText(n int64) string { return fetch.HumanBytes(uint64(max(n, 0))) } //nolint:gosec // clamped
+
+// remaining is how much of the download is still to fetch: "" unless some of the files are in place already.
+func remaining(in poses.Info) string {
+	if in.RemainBytes >= in.DownloadBytes {
+		return ""
+	}
+	return sizeText(in.RemainBytes)
 }
 
 func libraryOf(l *poses.Library, in Input) (Library, error) {
 	st := l.Status()
 	out := Library{
-		Installed: st.Installed, Source: st.Source, PoseCount: st.Poses, ImageCount: st.Images, Download: fetch.HumanBytes(uint64(max(st.DownloadBytes, 0))), //nolint:gosec // clamped
-		Licenses: []License{},
+		Installed: st.Installed, Source: st.Source, PoseCount: st.Poses, ImageCount: st.Images, Download: sizeText(st.DownloadBytes), Remaining: remaining(st.Info),
+		Licenses: licensesOf(st.Licenses),
 	}
-	for _, lic := range st.Licenses {
-		out.Licenses = append(out.Licenses, License{Name: lic.Name, URL: lic.URL, Summary: lic.Summary, Commercial: string(lic.Commercial), Notice: lic.Notice})
+	if a := st.Adult; a != nil {
+		out.Adult = &AdultLibrary{Installed: a.Installed, PoseCount: a.Poses, ImageCount: a.Images, Download: sizeText(a.DownloadBytes), Remaining: remaining(a.Info), Licenses: licensesOf(a.Licenses)}
 	}
 	if !st.Installed {
 		return out, nil
@@ -149,6 +182,7 @@ func (h handlers) get(_ context.Context, in Input) (Library, error) {
 // InstallInput is the agreement of the user.
 type InstallInput struct {
 	Accepted bool `json:"accepted" jsonschema:"利用者がライセンス（画像は CC0 1.0）と取得元を確認し、ダウンロードに同意したときだけ true"`
+	Adult    bool `json:"adult,omitempty" jsonschema:"true で成人向けシリーズ（sexy・duo）を導入する。年齢確認（set_adult_content）がオンで、ポーズ集（全年齢向け）が導入済みのときだけ。オフの間は何も取得せず拒否する"`
 }
 
 func (h handlers) install(ctx context.Context, in InstallInput) (Library, error) {
@@ -156,22 +190,34 @@ func (h handlers) install(ctx context.Context, in InstallInput) (Library, error)
 	if err != nil {
 		return Library{}, err
 	}
-	if err := l.Install(ctx, in.Accepted, nil); err != nil {
+	if in.Adult {
+		err = l.InstallAdult(ctx, in.Accepted, nil)
+	} else {
+		err = l.Install(ctx, in.Accepted, nil)
+	}
+	if err != nil {
 		return Library{}, mapError(err)
 	}
 	out, err := libraryOf(l, Input{})
 	return out, mapError(err)
 }
 
-// Empty has no field.
-type Empty struct{}
+// RemoveInput says what to delete.
+type RemoveInput struct {
+	Adult bool `json:"adult,omitempty" jsonschema:"true で成人向けシリーズ（sexy・duo）だけを削除する（全年齢向けのポーズ集は残る）。省略すると全部を削除する"`
+}
 
-func (h handlers) remove(_ context.Context, _ Empty) (Library, error) {
+func (h handlers) remove(_ context.Context, in RemoveInput) (Library, error) {
 	l, err := h.lib()
 	if err != nil {
 		return Library{}, err
 	}
-	if err := l.Remove(); err != nil {
+	if in.Adult {
+		err = l.RemoveAdult()
+	} else {
+		err = l.Remove()
+	}
+	if err != nil {
 		return Library{}, mapError(err)
 	}
 	out, err := libraryOf(l, Input{})

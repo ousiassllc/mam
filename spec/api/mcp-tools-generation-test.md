@@ -122,9 +122,9 @@
 
 | ツール | 内容 | 入力 | 出力 |
 |---|---|---|---|
-| `get_pose_library` | ポーズ集の状態と、導入済みならポーズの検索結果（読み取り） | `query?`（名前・分類・番号 P001・英語の語。すべての語を含むもの）・`series?`（`std` / `upper`）・`class?` | `installed`・`source`（取得元）・`pose_count`・`image_count`・`download`（導入でダウンロードする大きさ）・`licenses[]`（`name`・`url`・`summary`・`commercial`・`notice`）・導入済みなら `poses[]`（`id`・`series`・`class`・`name`・`name_en`・`images`＝アングル→画像 ID〔線画〕・`depth_images`・`normal_images`＝同じポーズの ControlNet 用の深度・法線マップ〔`std_P001_front.depth` の形。マップのあるアングルだけ。#1020〕） |
-| `install_pose_library` | ダウンロードして導入する（冪等。終わるまで応答しない） | `accepted`（利用者がライセンスと取得元を確認して同意したときだけ true。false は何も取得せず `validation`。画面の同意チェックと同じで、強制するのは Library） | 導入後の状態（`get_pose_library` と同じ） |
-| `remove_pose_library` | 導入したポーズ集（画像と目録）を削除する（破壊的。冪等）。導入中は `conflict`。履歴の結果は残る | なし | 削除後の状態 |
+| `get_pose_library` | ポーズ集の状態と、導入済みならポーズの検索結果（読み取り） | `query?`（名前・分類・番号 P001・英語の語。すべての語を含むもの）・`series?`（`std` / `upper`。成人向けの `sexy` / `duo` は、導入済みで年齢確認がオンのときだけ）・`class?` | `installed`・`source`（取得元）・`pose_count`・`image_count`・`download`（導入でダウンロードする大きさ）・`licenses[]`（`name`・`url`・`summary`・`commercial`・`notice`）・導入済みなら `poses[]`（`id`・`series`・`class`・`name`・`name_en`・`images`＝アングル→画像 ID〔線画〕・`depth_images`・`normal_images`＝同じポーズの ControlNet 用の深度・法線マップ〔`std_P001_front.depth` の形。マップのあるアングルだけ。#1020〕）・`download_remaining`（導入済みのファイルは取り直さないので、`download` より小さいときだけ。例: 以前の導入に深度・法線マップが無い）・`adult`（成人向けシリーズ〔`sexy`・`duo`〕の `installed`・`pose_count`・`image_count`・`download`・`download_remaining`・`licenses[]`。**年齢確認がオフの間は項目ごと返さない**〔オファーもしない〕） |
+| `install_pose_library` | ダウンロードして導入する（冪等。終わるまで応答しない） | `accepted`（利用者がライセンスと取得元を確認して同意したときだけ true。false は何も取得せず `validation`。画面の同意チェックと同じで、強制するのは Library）・`adult?`（true で成人向けシリーズを導入する。**年齢確認がオンで、全年齢向けが導入済みのときだけ**。オフの間は何も取得せず `validation`） | 導入後の状態（`get_pose_library` と同じ） |
+| `remove_pose_library` | 導入したポーズ集（画像と目録）を削除する。成人向けシリーズも一緒に消える（破壊的。冪等）。導入中は `conflict`。履歴の結果は残る | `adult?`（true で成人向けシリーズだけを削除する。全年齢向けは残る） | 削除後の状態 |
 
 画像 ID は `run_generation_test` の `references` に `{source: pose_library, id, role: pose}` として渡す（ControlNet の深度・法線のモデルには `depth_images`・`normal_images` の ID を渡す。#1020）。画面の削除ボタン・導入の進み具合は [endpoints-gentest.md](endpoints-gentest.md)。
 
@@ -175,3 +175,4 @@
 | 1.23 | 2026-11-03 | `get_pose_library` の `poses[]` に `depth_images`・`normal_images`（ポーズ集の深度・法線マップ）を足した | Issue #1020 |
 | 1.24 | 2026-11-03 | 入力画像の検査を足した（必須の入力が無い → `input_missing`、添えた画像がすべて使われない → `input_unused`、どちらも送る前に `validation`。一部だけ使われない → 警告と結果の `unused_inputs`）。`list_generation_models` に `requires_inputs` | Issue #1009 |
 | 1.25 | 2026-11-04 | `list_generation_models` に `face_similarity`（`enabled`・`off`）を足し、`face_similarity.skipped` に `models_missing`・`runtime_unavailable`（と `reason`・`fix`・`model_dir`・`missing_files`）を足した。`estimate_generation_test` に警告 `face_similarity_off`。各モデルの `catalog` に `missing_optional_files`・`partial_note`、カタログのモデルの `available` はモデルマネージャーの `state` と同じ答え | Issue #1025・#1026 |
+| 1.26 | 2026-11-04 | `get_pose_library` に `adult`・`download_remaining`、`install_pose_library` に `adult`、`remove_pose_library` に `adult` を足した（成人向けシリーズ `sexy`・`duo`。年齢確認がオフの間は `adult` 項目も `sexy`・`duo` のポーズも返さず、導入は `validation` で断る）。履歴の結果の `inputs[]` は、成人向けのポーズから取った入力を、年齢確認がオフの間は含めない | Issue #1020 |

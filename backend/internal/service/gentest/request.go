@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 
@@ -26,10 +27,10 @@ const (
 	// FromHistory: the file of a succeeded image result of the history (the result's ID).
 	FromHistory = "history"
 	// FromPoseLibrary: a pose picture of the pose library (poses.Library; ID is the picture's ID, "std_P001_front"), no ProjectID.
-	FromPoseLibrary = "pose_library"
+	FromPoseLibrary = history.OriginPoseLibrary
 	// FromBatchInput: the stored input image of an earlier batch (its input ID, the input_id of the detail of a result). It is how "この設定でもう一度" and
 	// the redo of a partial redraw put an uploaded image back: the file stays with the batch until the batch's last result is deleted.
-	FromBatchInput = "batch_input"
+	FromBatchInput = history.OriginBatchInput
 )
 
 // PromptInput is a prompt with its optional negative prompt.

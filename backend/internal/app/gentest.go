@@ -48,7 +48,7 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		PlatformWarning: mmview.PlatformWarningFor(services.ModelManager),
 		BundledEndpoint: modelmanager.BundledEndpoint,
 		Translator:      translator,
-		Poses:           newPoseLibrary(logger),
+		Poses:           newPoseLibrary(services.ModelManager.AdultContentEnabled, logger),
 		FaceCrop:        face.Crop(faces),
 		FaceScore:       face.Score(faces), FaceOff: face.OffRecord(faceOff), // FaceOff: why there is no score (#1026)
 		FaceFusion: swap, FaceFusionCheck: swapCheck,
@@ -60,14 +60,15 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 }
 
 // newPoseLibrary is the pose library (Shisei) of the generation test, below the localai directory next to the executable like the local
-// runtimes. nil when the directory cannot be found or the library cannot be opened: the generation test then has no "ポーズを選ぶ".
-func newPoseLibrary(logger *slog.Logger) *poses.Library {
+// runtimes. adultOpen is the age gate of the model manager: the suggestive series (sexy, duo) are installed and shown only while it is open.
+// nil when the directory cannot be found or the library cannot be opened: the generation test then has no "ポーズを選ぶ".
+func newPoseLibrary(adultOpen func() bool, logger *slog.Logger) *poses.Library {
 	exe, err := executablePath()
 	if err != nil {
 		logger.Warn("pose library: the executable was not found", "err", err)
 		return nil
 	}
-	lib, err := poses.New(poses.Deps{Root: store.LocalAIRoot(exe)})
+	lib, err := poses.New(poses.Deps{Root: store.LocalAIRoot(exe), AdultOpen: adultOpen})
 	if err != nil {
 		logger.Warn("pose library: open failed", "err", err)
 		return nil
