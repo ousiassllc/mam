@@ -97,8 +97,7 @@ type Deps struct {
 	FaceCrop runner.FaceCropFunc
 	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number; the face models are not installed).
 	FaceScore runner.FaceScoreFunc
-	// FaceOff is why FaceScore is nil: what a result with a face reference records (nil while the face similarity is on; record.StatusOf).
-	FaceOff *record.FaceSimilarity
+	FaceOff   *record.FaceSimilarity // why FaceScore is nil, recorded on a result with a face reference (nil while the face similarity is on)
 	// FaceFusion runs FaceFusion for "swap the face" (nil: the feature is off). FaceFusionCheck says why it cannot run now (FaceFusion is not
 	// found) or nil; nil: always ready.
 	FaceFusion      runner.FaceSwapFunc

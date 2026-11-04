@@ -59,9 +59,8 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 	return g
 }
 
-// newPoseLibrary is the pose library (Shisei) of the generation test, below the localai directory next to the executable like the local
-// runtimes. adultOpen is the age gate of the model manager: the suggestive series (sexy, duo) are installed and shown only while it is open.
-// nil when the directory cannot be found or the library cannot be opened: the generation test then has no "ポーズを選ぶ".
+// newPoseLibrary is the pose library (Shisei) of the generation test, below the localai directory next to the executable like the local runtimes.
+// adultOpen is the age gate of the model manager: the suggestive series (sexy, duo) are installed and shown only while it is open. nil when it cannot be opened.
 func newPoseLibrary(adultOpen func() bool, logger *slog.Logger) *poses.Library {
 	exe, err := executablePath()
 	if err != nil {
