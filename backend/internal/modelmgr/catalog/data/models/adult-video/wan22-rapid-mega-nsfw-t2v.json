@@ -1,6 +1,6 @@
 {
  "id": "wan22-rapid-mega-nsfw-t2v",
- "name": "Wan2.2 Rapid AllInOne Mega NSFW v12.2（Phr00t・テキストから動画）",
+ "name": "Wan2.2 Rapid AllInOne Mega NSFW v12.2（Phr00t・テキスト／先頭フレームから動画）",
  "kind": "video",
  "tier": "advanced",
  "content_rating": "adult",
@@ -10,7 +10,7 @@
   "uncensored": true,
   "speed": "fast"
  },
- "description": "【中（〜14B）・T2V・音声なし・作者のメンテ終了】Phr00t の WAN2.2 Rapid AllInOne の Mega NSFW v12.2（成人向け）。Wan 2.2 14B の T2V（低ノイズ）に VACE と加速 LoRA（rCM・LightX2V）、多数の成人向け LoRA を低い強さでマージし、モデル・テキストエンコーダー・VAE を 1 つにした fp8 のチェックポイント（約 23.3 GB・1 ファイル）。得意: 4 ステップ・cfg 1・dpmpp_sde/beta という作者の推奨設定で速く、「何でもそこそこ」の手軽な非検閲 T2V。既存の Remix T2V とは別系統のマージ。16fps。作者は 8 GB の VRAM でも動くと書く（4 ステップ）が、mam の想定は 16 GB の GPU。注意: 作者は「メンテはもうしておらず、これらのモデルは非推奨（deprecated）」と書く。先頭フレーム・最終フレームの指定（作者の WanVideoVACEStartToEndFrame）はカスタムノードなので使わず、VACE の制御なし（strength 0）のテキストから動画だけを載せる。ライセンスはカードが Apache-2.0 と宣言するだけで、マージした成人向け LoRA の出所・ライセンスが確かめられないため、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は未確認（Windows（NVIDIA）を想定）。",
+ "description": "【中（〜14B）・T2V と I2V・音声なし・作者のメンテ終了】Phr00t の WAN2.2 Rapid AllInOne の Mega NSFW v12.2（成人向け）。Wan 2.2 14B の T2V（低ノイズ）に VACE と加速 LoRA（rCM・LightX2V）、多数の成人向け LoRA を低い強さでマージし、モデル・テキストエンコーダー・VAE を 1 つにした fp8 のチェックポイント（約 23.3 GB・1 ファイル）。得意: 4 ステップ・cfg 1・dpmpp_sde/beta という作者の推奨設定で速く、「何でもそこそこ」の手軽な非検閲 T2V。既存の Remix T2V とは別系統のマージ。16fps。作者は 8 GB の VRAM でも動くと書く（4 ステップ）が、mam の想定は 16 GB の GPU。注意: 作者は「メンテはもうしておらず、これらのモデルは非推奨（deprecated）」と書く。テキストから動画は VACE の制御なし（strength 0）で作る。先頭フレームから作る I2V は、作者の WanVideoVACEStartToEndFrame（カスタムノード）の代わりに、標準ノードだけで同じ制御映像とマスクを作る（作者のノードと数値で一致することを 49・65・81 フレームで確かめた。2026-11-04）。先頭と最後の 2 枚を渡す使い方は、フレーム数ごとに灰色のフレームの数が変わりグラフの形が変わるので、mam の割り当ての仕組みでは作れず載せない。ライセンスはカードが Apache-2.0 と宣言するだけで、マージした成人向け LoRA の出所・ライセンスが確かめられないため、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は未確認（Windows（NVIDIA）を想定）。",
  "files": [
   {
    "name": "wan2.2-rapid-mega-aio-nsfw-v12.2.safetensors",
@@ -30,9 +30,9 @@
   "version": "1",
   "name": "Apache License 2.0（モデルカードの宣言だけ。本文なし）",
   "url": "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne",
-  "summary": "ベースの Wan 2.2 と VACE は Apache-2.0 で、リポジトリのカードも license: apache-2.0 と宣言する。しかしこの NSFW のマージは、作者が公開している埋め込みのワークフローが示すとおり、出所の異なる多数の成人向け LoRA（Mystic XXX・dreamlay など）を混ぜたもので、それらの LoRA のライセンスは確かめられず、LICENSE の本文も無い。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。作者はメンテを終了し、モデルを非推奨としている。",
+  "summary": "ベースの Wan 2.2 と VACE は Apache-2.0 で、リポジトリのカードも license: apache-2.0 と宣言する。しかしこの NSFW のマージは、作者が公開している埋め込みのワークフローが示すとおり、出所の異なる多数の成人向け LoRA（Mystic XXX・dreamlay など）を混ぜたもので、それらの LoRA のライセンスは確かめられず、LICENSE の本文も無い。ファイルのヘッダー（metadata の workflow。2026-11-04 に範囲リクエストで読んだ）は、混ぜたファイルの名前を 62 個挙げる（加速 LoRA・VAE を含む。成人向けの LoRA は Wan2.2-Low-MysticXXX-v2・dreamlay-t2v-wan-low-v2・SmoothXXXAnimation_High/Low など）。それぞれの LoRA のライセンスは、このリポジトリのどこにも書かれていない。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。作者はメンテを終了し、モデルを非推奨としている。",
   "commercial": "unknown",
-  "checked_at": "2026-11-03",
+  "checked_at": "2026-11-04",
   "components": [
    {
     "part": "ベースモデル（Wan 2.2 T2V 14B・VACE・Wan-AI）",
@@ -55,6 +55,10 @@
   {
    "name": "wan22-rapid-mega-nsfw-t2v",
    "template": "txt2video-wan22-14b-rapid-mega"
+  },
+  {
+   "name": "wan22-rapid-mega-nsfw-i2v",
+   "template": "img2video-wan22-14b-rapid-mega"
   }
  ]
 }

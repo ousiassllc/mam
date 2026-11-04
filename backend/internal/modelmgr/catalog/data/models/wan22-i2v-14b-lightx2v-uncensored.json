@@ -4,7 +4,12 @@
  "kind": "video",
  "tier": "advanced",
  "content_rating": "adult",
- "traits": {"params_b": 14, "params_label": "14B", "uncensored": true, "speed": "fast"},
+ "traits": {
+  "params_b": 14,
+  "params_label": "14B",
+  "uncensored": true,
+  "speed": "fast"
+ },
  "description": "【中（〜14B）・I2V・音声なし】wan22-i2v-14b（ベースは共有）に、LightX2V の 4 ステップ蒸留に非検閲の学習を重ねた LoRA（高ノイズ用・低ノイズ用、各 1.2 GB。rzgar 作）を重ねる構成（成人向け）。得意: 4 ステップ・cfg 1 で速く作れ、先頭フレーム 1 枚から成人向けの動きを作る。注意: この LoRA は高速化の部分を含むため、強さを下げるとブレて動きが崩れる（作者の注意）ので、強さは 1 のまま使う。ライセンスはカードの Apache-2.0 の宣言だけで、商用は不明。ベースを導入済みなら、取得するのは LoRA の 2.5 GB だけ。16fps。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。",
  "files": [
   {
@@ -64,7 +69,7 @@
   "url": "https://huggingface.co/rzgar/Wan2.2_LightX2V_4Step_Uncensored",
   "summary": "ベースの Wan 2.2・LightX2V は Apache-2.0。この LoRA のモデルカードも license: apache-2.0 と宣言しているが、LICENSE の本文も、非検閲の学習に使ったデータの出所も無い。宣言だけでは商用で使ってよいか確かめられないので、商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。成人向けのモデルなので、利用条件への同意を取る。",
   "commercial": "unknown",
-  "checked_at": "2026-11-02",
+  "checked_at": "2026-11-04",
   "components": [
    {
     "part": "ベースモデル（Wan 2.2 I2V 14B）",

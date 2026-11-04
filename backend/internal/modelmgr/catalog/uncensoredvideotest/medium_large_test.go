@@ -19,7 +19,7 @@ var mediumAndLarge = map[string]struct {
 	speed  string
 }{
 	"wan22-i2v-r1-v2-uncensored":    {14, "中（〜14B）", []traits.Input{traits.I2V, traits.FirstFrame}, []traits.Input{traits.T2V}, "fast"},
-	"wan22-rapid-mega-nsfw-t2v":     {14, "中（〜14B）", []traits.Input{traits.T2V}, []traits.Input{traits.I2V, traits.FirstFrame}, "fast"},
+	"wan22-rapid-mega-nsfw-t2v":     {14, "中（〜14B）", []traits.Input{traits.T2V, traits.I2V, traits.FirstFrame}, []traits.Input{traits.LastFrame}, "fast"},
 	"wan22-t2v-14b-mystic-xxx-lora": {14, "中（〜14B）", []traits.Input{traits.T2V}, []traits.Input{traits.I2V, traits.FirstFrame}, "slow"},
 	"hunyuanvideo-t2v-nsfw-lora":    {13, "大（品質重視）", []traits.Input{traits.T2V}, []traits.Input{traits.I2V, traits.FirstFrame}, "slow"},
 }
@@ -103,7 +103,7 @@ func TestMediumAndLargeLicensesAreUnknownWithTheirReasons(t *testing.T) {
 		assert.Equal(t, modellicense.Unknown, m.License.Commercial, id)
 		assert.Contains(t, m.License.Summary, reason, id)
 		assert.NoError(t, m.License.Info().Check(), id)
-		assert.Equal(t, "2026-11-03", m.License.CheckedAt, id)
+		assert.Equal(t, "2026-11-04", m.License.CheckedAt, id)
 		assert.Contains(t, m.License.Notice, "商用には使わないでください", id)
 		require.GreaterOrEqual(t, len(m.License.Components), 2, id)
 	}
@@ -180,7 +180,7 @@ func TestMacOSColumnFollowsTheReports(t *testing.T) {
 func TestMediumAndLargeWorkflows(t *testing.T) {
 	for id, want := range map[string]map[string]string{
 		"wan22-i2v-r1-v2-uncensored":    {"wan22-i2v-r1-v2-uncensored": "img2video-wan22-14b-rzgar-r1"},
-		"wan22-rapid-mega-nsfw-t2v":     {"wan22-rapid-mega-nsfw-t2v": "txt2video-wan22-14b-rapid-mega"},
+		"wan22-rapid-mega-nsfw-t2v":     {"wan22-rapid-mega-nsfw-t2v": "txt2video-wan22-14b-rapid-mega", "wan22-rapid-mega-nsfw-i2v": "img2video-wan22-14b-rapid-mega"},
 		"wan22-t2v-14b-mystic-xxx-lora": {"wan22-t2v-14b-mystic-xxx-lora": "txt2video-wan22-14b-lora"},
 		"hunyuanvideo-t2v-nsfw-lora":    {"hunyuanvideo-t2v-nsfw-lora": "txt2video-hunyuan-video-lora"},
 	} {

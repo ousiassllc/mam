@@ -30,7 +30,7 @@
   "version": "1",
   "name": "Apache License 2.0（モデルカードの宣言だけ。本文なし）",
   "url": "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne",
-  "summary": "ベースの Wan 2.2 は Apache-2.0 で、リポジトリのカードも license: apache-2.0 と宣言する。しかしこの NSFW のマージは、作者が公開している埋め込みのワークフローが示すとおり、出所の異なる多数の成人向け LoRA（作者の埋め込みのワークフローに DR34ML4Y・NSFW-22・Femaled-Vaginus など）を混ぜたもので、それらの LoRA のライセンスは確かめられず、LICENSE の本文も無い。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。作者はメンテを終了し、モデルを非推奨としている。",
+  "summary": "ベースの Wan 2.2 は Apache-2.0 で、リポジトリのカードも license: apache-2.0 と宣言する。しかしこの NSFW のマージは、作者が公開している埋め込みのワークフローが示すとおり、出所の異なる多数の成人向け LoRA（作者の埋め込みのワークフローに DR34ML4Y・NSFW-22・Femaled-Vaginus など）を混ぜたもので、それらの LoRA のライセンスは確かめられず、LICENSE の本文も無い。ファイルのヘッダー（metadata の workflow。2026-11-04 に範囲リクエストで読んだ）は、混ぜた LoRA のファイル名を挙げる（NSFW-22-L-e8〔lopi999 の HF のミラーはライセンスの記載なし〕・DR34ML4Y_AIO_PREVIEW_V1・PENISLORA_epoch42e62e30e16 など）。それぞれのライセンスは、このリポジトリのどこにも書かれていない。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。作者はメンテを終了し、モデルを非推奨としている。",
   "commercial": "unknown",
   "checked_at": "2026-11-04",
   "components": [

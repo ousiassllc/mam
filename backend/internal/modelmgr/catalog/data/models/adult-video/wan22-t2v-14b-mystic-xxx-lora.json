@@ -69,7 +69,7 @@
   "url": "https://civitai.com/models/1295758",
   "summary": "ライセンスの記載が無い（ミラーの HF リポジトリはカードを持たない）。原本（Civitai の model 1295758）の権利の表示は、生成物の販売・Civitai 上での利用・マージの販売まで許すが、HF 側に本文が無いので、商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。ベースの Wan 2.2 は Apache-2.0。",
   "commercial": "unknown",
-  "checked_at": "2026-11-03",
+  "checked_at": "2026-11-04",
   "components": [
    {
     "part": "ベースモデル（Wan 2.2 T2V 14B・Wan-AI。fp8 は Comfy-Org の再配布）",

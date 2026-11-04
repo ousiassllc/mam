@@ -1,0 +1,47 @@
+{
+ "id": "img2video-wan22-14b-rapid-mega",
+ "label": "Wan2.2 Rapid AllInOne Mega NSFW v12.2: 先頭フレームから動画",
+ "media": "video",
+ "description": "Phr00t の WAN2.2 Rapid AllInOne の Mega NSFW v12.2（モデル・テキストエンコーダー・VAE を 1 つにまとめた fp8 のチェックポイント wan2.2-rapid-mega-aio-nsfw-v12.2.safetensors）で先頭フレーム 1 枚から動画を作る標準ノードだけのワークフロー。Mega は VACE を含み、作者の I2V は先頭フレームを自作ノード WanVideoVACEStartToEndFrame（WanVideoWrapper のカスタムノード）で「先頭フレームだけ画像・残りは灰色（0.5）の制御映像」と「先頭フレームだけ 0・残りは 1 のマスク」にして WanVaceToVideo に渡す。同じ入力を標準ノードだけで作る: 先頭フレームの画像をそのまま control_video に渡し（WanVaceToVideo が足りないフレームを 0.5 の灰色で埋める）、control_masks は先頭の 1 フレームだけ 0 の SolidMask（足りないフレームは WanVaceToVideo が 1 で埋める）。このグラフが作者のノードと同じ制御映像・マスクを作ることは、ComfyUI v0.42.1 の WanVaceToVideo に作者のノードの出力と本ワークフローの入力をそれぞれ渡して、VAE に渡るテンソルと VACE のマスクが 49・65・81 フレームのすべてで一致することを数値で確かめた（2026-11-04。CPU）。サンプラーは Mega T2V と同じ（ModelSamplingSD3 の shift 8、KSampler 4 ステップ・dpmpp_sde・beta・cfg 1、trim_latent を TrimVideoLatent に渡してからデコード）。GPU では未実行（構造のテストと上の数値の照合のみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},
+  "workflow": {
+   "prompt_weight": "weak",
+   "graph": {
+    "26": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "wan2.2-rapid-mega-aio-nsfw-v12.2.safetensors"}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["26", 1]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["26", 1]}},
+    "56": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "60": {"class_type": "SolidMask", "inputs": {"value": 0, "width": 832, "height": 480}},
+    "28": {"class_type": "WanVaceToVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1, "strength": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["26", 2], "control_video": ["56", 0], "control_masks": ["60", 0]}},
+    "32": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["26", 0]}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 4, "cfg": 1, "sampler_name": "dpmpp_sde", "scheduler": "beta", "denoise": 1, "model": ["32", 0], "positive": ["28", 0], "negative": ["28", 1], "latent_image": ["28", 2]}},
+    "29": {"class_type": "TrimVideoLatent", "inputs": {"samples": ["3", 0], "trim_amount": ["28", 3]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["29", 0], "vae": ["26", 2]}},
+    "57": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+    "58": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["57", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "28", "input": "width"},
+    {"param": "width", "node": "60", "input": "width"},
+    {"param": "height", "node": "28", "input": "height"},
+    {"param": "height", "node": "60", "input": "height"},
+    {"param": "frames", "node": "28", "input": "length"},
+    {"param": "fps", "node": "57", "input": "fps"},
+    {"param": "first_frame", "node": "56", "input": "image"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "58",
+   "fps": 16,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}
