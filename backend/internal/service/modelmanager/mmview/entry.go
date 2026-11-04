@@ -110,7 +110,7 @@ func InfoOf(s *modelmanager.Service) func(modelID string) (modelfilter.CatalogIn
 			if !slices.ContainsFunc(m.Workflows, func(w catalog.Workflow) bool { return w.Name == name }) {
 				continue
 			}
-			info := modelfilter.CatalogInfo{Adult: m.Adult(), Traits: m.Traits, VRAMMinGB: m.VRAM.MinGB}
+			info := modelfilter.CatalogInfo{Name: DisplayName(m, name), Adult: m.Adult(), Traits: m.Traits, VRAMMinGB: m.VRAM.MinGB}
 			if v, err := s.Model(m.ID); err == nil {
 				info.NotInstalled = availability(v).Message
 				info.MissingOptional, info.PartialNote = v.MissingOptional, v.PartialNote

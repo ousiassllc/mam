@@ -1,10 +1,10 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { factsOf, modelWeightOf, type Facts } from './weight-facts';
+import { chosenFacts } from './chosen-models';
+import { type Facts, notesOf } from './weight-facts';
 import { adjust, read, WEIGHT_MAX, WEIGHT_MIN, type Direction, type Reading } from './weight-model';
 
 const PROMPT = 'textarea[name="prompt"]';
-const CHOSEN = '[data-model] input[name="model"]:checked:not(:disabled)';
 
 const BUTTON =
   'inline-flex items-center justify-center rounded-md border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 ' +
@@ -60,8 +60,7 @@ export class MamPromptWeight extends LitElement {
 
   /** How the chosen models read weights: from the cards of the form (the easy tier's hidden one included). */
   private facts(): Facts {
-    const cards = [...(this.form?.querySelectorAll<HTMLInputElement>(CHOSEN) ?? [])];
-    return factsOf(cards.map((input) => modelWeightOf(input.closest<HTMLElement>('[data-model]')!.dataset)));
+    return chosenFacts(this.form);
   }
 
   private onModels = (): void => this.requestUpdate();
@@ -156,7 +155,7 @@ export class MamPromptWeight extends LitElement {
     const r = this.reading;
     if (!r) return nothing;
     const facts = this.facts();
-    const notes = this.notice ? [...facts.notes, this.notice] : facts.notes;
+    const notes = this.notice ? [...notesOf(facts), this.notice] : notesOf(facts);
     const noteID = `${this.id || 'gt-weight'}-note`;
     return html`<div
       role="group"

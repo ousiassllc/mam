@@ -89,18 +89,19 @@ type ExposedGroup struct {
 // text field that is empty is not given (the model's own value); Steps and CFG are on only while their "上書きする" box is ticked.
 type Section struct {
 	Advanced
-	// WeightLines are the models' lines of the "?" of the prompts.
-	WeightLines []WeightLine
+	// WeightAll are all the models of the form by how they read prompt weights: "すべてのモデルを見る" of the "?" of the prompts (what the chosen models do is
+	// said by the script from their cards, static/src/components/prompt-weight).
+	WeightAll []WeightGroup
 	// Exposed are the exposed inputs of the models that have some, by model (Issue #977).
 	Exposed []ExposedGroup
 }
 
-// ModelFacts is what a model card hands to the script: which settings the model takes and how it reads prompt weights (supported / weak /
-// unsupported / unknown, and WeightText, the sentence that says it: the bar of the selected words shows it).
+// ModelFacts is what a model card hands to the script: which settings the model takes and how it reads prompt weights (supported / weak / unsupported /
+// unknown, and WeightTitle, the short words that say it: "効きます", "効きが弱いかも", "効きません（…）", "未確認"; the "?" and the notes of the prompts show them).
 type ModelFacts struct {
-	Use        SamplingUse
-	Weight     string
-	WeightText string
+	Use         SamplingUse
+	Weight      string
+	WeightTitle string
 }
 
 // Advanced is the section "詳細設定".
@@ -135,11 +136,11 @@ func sliderValue(v string, def float64) string {
 }
 
 // weightHelpIntro is how to write a weight, the first paragraphs of the "?" of the prompts (the per-model lines follow).
-const weightHelpIntro = "語の強さを変える書き方です。(語:1.3) で 1.3 倍の強さ、(語:0.8) で弱く、(語) は 1.1 倍（((語)) は 1.21 倍）。かっこそのものを書くときは \\( \\) と書きます。\n書かなくても、プロンプトの語を選ぶと出る「強める +」「弱める −」で、0.1 刻みに 0.5〜1.5 の範囲で入れられます（Ctrl/⌘ + ↑ ↓ でも）。効かないモデルでは、ボタンは押せず、理由が出ます。\n英訳をオンにしても、かっこと数字はそのまま残し、中の語だけを訳します。英訳でウェイトが消えたときは、結果の詳細に出ます。\n[語] は ComfyUI では読まれません（ただの文字になります）。\n効き方はモデルによって違います（下）。"
+const weightHelpIntro = "語の強さを変える書き方です。(語:1.3) で 1.3 倍の強さ、(語:0.8) で弱く、(語) は 1.1 倍（((語)) は 1.21 倍）。かっこそのものを書くときは \\( \\) と書きます。\n書かなくても、プロンプトの語を選ぶと出る「強める +」「弱める −」で、0.1 刻みに 0.5〜1.5 の範囲で入れられます（Ctrl/⌘ + ↑ ↓ でも）。効かないモデルでは、ボタンは押せず、理由が出ます。\n英訳をオンにしても、かっこと数字はそのまま残し、中の語だけを訳します。英訳でウェイトが消えたときは、結果の詳細に出ます。\n[語] は ComfyUI では読まれません（ただの文字になります）。\n効き方はモデルによって違います。いま選んでいるモデルの分を下に出します（「未確認」は、効くかどうか確かめていないモデルです）。"
 
-// WeightLine is one model of the help of the weights.
-type WeightLine struct {
-	Label string
+// WeightGroup is the models (by display name) that read the weights the same way.
+type WeightGroup struct {
 	Level string // supported / weak / unsupported / unknown
-	Text  string
+	Title string
+	Names []string
 }
