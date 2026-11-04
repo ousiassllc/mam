@@ -2,6 +2,7 @@ package nodecat_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,25 +40,34 @@ func TestComfyUIGGUFIsAllowlistedButNotInstallable(t *testing.T) {
 	assert.Contains(t, n.Review, "qwen_image21", "the architecture of the Qwen-Image-2.1-Uncensored GGUF")
 }
 
-// A model that needs a node mam cannot install would be one that can never be installed, so the validation refuses a template that requires
-// the blocked ComfyUI-GGUF, and the catalog holds no GGUF model until the node can be installed (custom-nodes.md §5.5).
-func TestAGGUFTemplateCannotRequireTheBlockedNode(t *testing.T) {
+// The GGUF models of the catalog (#1016) name the blocked node in requires_nodes (through the template of their workflow): they are listed, and
+// the install and the choice wait for the node (service/modelmanager/nodegate). A template that loads a GGUF without naming the node is refused.
+func TestGGUFModelsRequireTheBlockedNode(t *testing.T) {
+	var ids []string
+	for _, m := range catalog.Default().Models {
+		for _, f := range m.Files {
+			if !strings.HasSuffix(f.Name, ".gguf") {
+				continue
+			}
+			ids = append(ids, m.ID)
+			assert.Equal(t, "diffusion_models", f.Folder, "the folder UnetLoaderGGUF reads (unet_gguf: diffusion_models or unet)")
+			require.Len(t, m.Workflows, 1, m.ID)
+			tpl, ok := localcfg.TemplateByID(m.Workflows[0].Template)
+			require.True(t, ok)
+			assert.Equal(t, []string{"comfyui-gguf"}, tpl.Model.Workflow.RequiresNodes, m.ID)
+		}
+	}
+	assert.Equal(t, []string{"qwen-image-21-uncensored-gguf-q4-k-m", "qwen-image-21-uncensored-gguf-q8-0"}, ids,
+		"LUSTIFY v10 Krea 2 GGUF is not on Hugging Face (custom-nodes.md §5.5)")
+	assert.Empty(t, joined(nodecat.Validate(nodecat.Default(), catalog.Default(), localcfg.TemplateByID)))
+
 	graph := `{"1": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "m.gguf"}}}`
-	tpl := func(id string) (localcfg.Template, bool) {
-		return localcfg.Template{ID: id, Media: localcfg.MediaImage, Model: localcfg.Model{Media: localcfg.MediaImage, Workflow: &localcfg.Workflow{
-			Graph: json.RawMessage(graph), RequiresNodes: []string{"comfyui-gguf"},
-		}}}, true
+	unnamed := func(id string) (localcfg.Template, bool) {
+		return localcfg.Template{ID: id, Media: localcfg.MediaImage, Model: localcfg.Model{Media: localcfg.MediaImage, Workflow: &localcfg.Workflow{Graph: json.RawMessage(graph)}}}, true
 	}
 	models := &catalog.Catalog{
 		Engine: catalog.Engine{Version: nodecat.Default().Python.ComfyUI},
 		Models: []catalog.Model{{ID: "gguf-model", Workflows: []catalog.Workflow{{Name: "gguf-model", Template: "t"}}}},
 	}
-	errs := joined(nodecat.Validate(nodecat.Default(), models, tpl))
-	assert.Contains(t, errs, "requires the node comfyui-gguf, which mam cannot install")
-
-	for _, m := range catalog.Default().Models {
-		for _, f := range m.Files {
-			assert.NotContains(t, f.Name, ".gguf", "model %s", m.ID)
-		}
-	}
+	assert.Contains(t, joined(nodecat.Validate(nodecat.Default(), models, unnamed)), "the graph uses classes of the node comfyui-gguf, which requires_nodes does not name")
 }

@@ -1,6 +1,8 @@
 package nodegate_test
 
 import (
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +11,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodes"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
@@ -69,4 +73,50 @@ func TestAModelThatNeedsANodeInstallsOnlyAfterTheNode(t *testing.T) {
 	assert.False(t, wf.Available)
 	assert.Equal(t, modelcatalog.ExcludedMissingNode, wf.Unavailable)
 	assert.Contains(t, wf.UnavailableMessage, "追加ノード「Pack」")
+}
+
+// #1016: a model whose workflow needs ComfyUI-GGUF, which mam cannot install (its package gguf is not in the bundled Python), is neither installed nor
+// chosen, and the reason is the one the section of the nodes shows (no "install it there" advice, which would lead nowhere). The screen's note, the
+// refusal of the install (the MCP tool install_model shows it) and the generation test's list say the same words.
+func TestAModelThatNeedsTheBlockedGGUFNodeIsNeitherInstalledNorChosen(t *testing.T) {
+	mgr := nodes.New(store.Layout{Root: filepath.Join(t.TempDir(), "comfyui")})
+	r := mmtest.New(t, mmtest.WithGGUFModel(mgr))
+	r.InstallEngine()
+
+	_, err := r.Svc.InstallModel(t.Context(), mmtest.GGUFModelID, nil)
+	var invalid *modelmanager.InvalidError
+	require.ErrorAs(t, err, &invalid)
+	assert.Contains(t, invalid.Message, "導入できないため使えません")
+	assert.Contains(t, invalid.Message, "ComfyUI-GGUF")
+	assert.Contains(t, invalid.Message, "gguf", "the Python package that is missing")
+	assert.Contains(t, invalid.Message, "pip", "mam runs no pip")
+	assert.Contains(t, invalid.Message, nodegate.Section)
+	assert.NotContains(t, invalid.Message, "導入してください")
+	m, err := r.Svc.Model(mmtest.GGUFModelID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"comfyui-gguf"}, m.RequiresNodes)
+	assert.Equal(t, modelmanager.ModelNotInstalled, m.State)
+	assert.Empty(t, m.InstallJob, "no job was made")
+
+	id := localcfg.ID(localcfg.KindComfyUI, modelmanager.BundledEndpoint, "wf-g")
+	assert.Equal(t, invalid.Message[len("N は、"):], nodegate.ForModels(mgr, modelmanager.BundledEndpoint)(id, m.RequiresNodes), "the generation test lists it as unavailable with the same reason")
+	assert.Equal(t, invalid.Message[len("N は、"):], nodegate.Reason(mgr, m.RequiresNodes), "the screen's note")
+	assert.Empty(t, nodegate.ForModels(mgr, modelmanager.BundledEndpoint)(localcfg.ID(localcfg.KindComfyUI, "other", "wf-g"), m.RequiresNodes), "an external ComfyUI has its own nodes")
+}
+
+// Every GGUF model of the embedded catalog is refused by the same check while the node is blocked.
+func TestTheGGUFModelsOfTheCatalogAreRefusedWhileTheNodeIsBlocked(t *testing.T) {
+	mgr := nodes.New(store.Layout{Root: filepath.Join(t.TempDir(), "comfyui")})
+	var found int
+	for _, m := range catalog.Default().Models {
+		if !strings.HasSuffix(m.Files[0].Name, ".gguf") {
+			continue
+		}
+		found++
+		assert.Equal(t, []string{"comfyui-gguf"}, nodegate.Required(m), m.ID)
+		var invalid *modelmanager.InvalidError
+		require.ErrorAs(t, nodegate.Check(mgr, m), &invalid, m.ID)
+		assert.Contains(t, invalid.Message, "導入できないため使えません", m.ID)
+	}
+	assert.Equal(t, 2, found)
 }

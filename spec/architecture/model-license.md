@@ -85,7 +85,7 @@
 | `pony-diffusion-v6-xl` | **商用NG** | Civitai のページ（model 257749）が「modified Fair AI Public License 1.0-SD」と書く: 課金・優先枠など収益化する Web サイト・アプリでの推論を許さず、商用は作者へ連絡。配布元の HF のカードの `license: creativeml-openrail-m` より、作者のページの条項を厳しい方として採る（#984） |
 | `cyberrealistic-pony-v18` | **商用NG** | 作者のカードは `creativeml-openrail-m` だが、ベースの Pony Diffusion V6（上の行）の制限が及ぶので内訳の厳しい方（#984） |
 | `noobai-xl-v11` | **商用NG** | 作者 Laxhar のカード（`Laxhar/noobai-XL-1.1`）が fair-ai-public-license-1.0-sd を継承し、追加条項「II. Commercial Prohibition: モデル・派生モデル・生成物の収益化・商用利用を含むあらゆる商業化を禁じる」を書く（#984） |
-| `qwen-image-21-uncensored-int8` | **商用NG** | 配布元（`abenzerps/Qwen-Image-2.1-Uncensored-Quantized`）のカードが `license: other / license_name: qwen-research` で、Qwen/Qwen-Image-2.1 の量子化と書く。本文は Qwen RESEARCH LICENSE AGREEMENT（`noctq-v4-qwen-image21` と同じ。テキストエンコーダー・VAE も同じ）（#984） |
+| `qwen-image-21-uncensored-int8`・`qwen-image-21-uncensored-gguf-q4-k-m`・`qwen-image-21-uncensored-gguf-q8-0`（GGUF 2 件は #1016。同じ配布元・同じ答え） | **商用NG** | 配布元（`abenzerps/Qwen-Image-2.1-Uncensored-Quantized`）のカードが `license: other / license_name: qwen-research` で、Qwen/Qwen-Image-2.1 の量子化と書く。本文は Qwen RESEARCH LICENSE AGREEMENT（`noctq-v4-qwen-image21` と同じ。テキストエンコーダー・VAE も同じ）（#984） |
 | `upscale-nomos-uni-span` | 商用OK | 4xNomosUni_span_multijpg のモデルカード（メタデータ `license: cc-by-4.0`・本文 `License: CC BY 4.0`）。作者（Philip Hofmann）の表示が条件。学習データの条件は未確認（#975） |
 | `upscale-nomos-webphoto-esrgan` | **不明** | 4xNomosWebPhoto_esrgan のモデルカードは、メタデータが `license: cc-by-4.0` で本文が `License: CC-BY-0.4`（存在しない版）と食い違い、作者の GitHub リリースも `CC-BY-0.4`。LICENSE ファイルは無い。確かめられないので不明（#975） |
 | `upscale-2pass-sdxl-span` | 商用OK | SDXL base（CreativeML Open RAIL++-M）と SPAN（CC BY 4.0）の 2 部品で、どちらも商用OK |
