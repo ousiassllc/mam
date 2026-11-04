@@ -10,7 +10,7 @@
   "uncensored": true,
   "speed": "slow"
  },
- "description": "【中（〜14B）・T2V・音声なし】Wan 2.1 T2V 14B を非検閲（成人向け）にフル微調整した NSFW-API の NSFW Wan 14B の最終エポック e15（fp8 版。成人向け）。作者が自分で学習した完全な微調整で、LoRA やマージの寄せ集めではない（カードは 3 万本の動画と 2 万枚の静止画の混合データを 1 回の設定で 15 エポック学習したと書く）。得意: 1.3B 版（nsfw-wan21-1b3-t2v。同じ作者・同じ系統）より細部と動きの質が高い、14B 級の汎用の非検閲 T2V（拡散モデル fp8 約 14.3 GB・テキストエンコーダー・VAE を合わせて約 21.3 GB）。作者は最終の e15 を推奨と書く。テキストからのみで先頭フレームは使わない。480p（832×480）・16fps・短尺（数秒）が前提（作者は 480p・17 フレームの動画で学習したと書く）で、30 ステップ・uni_pc・cfg 6（ComfyUI 公式の Wan 2.1 T2V の例。作者の推奨のサンプラー値はカードに無い）。注意: fp8 は作者が bf16 から変換したもの（スケール無しの単純な変換。ファイルのヘッダーの metadata に変換のグラフが残る）。16 GB の GPU ではテキストエンコーダーとの入れ替え（オフロード）が前提で、cfg 6 は 1 ステップに 2 回計算するので遅い。ライセンスはカードが CreativeML OpenRAIL-M と宣言し（本文は無い）、作者は「Steal this model!」と書くので、商用利用は「条件つき」（OpenRAIL-M の使用制限に従う場合。学習データは Reddit の成人向け投稿で権利は未確認）。macOS（Apple Silicon）は fp8 のファイルを含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
+ "description": "【中（〜14B）・T2V・音声なし】Wan 2.1 T2V 14B を非検閲（成人向け）にフル微調整した NSFW-API の NSFW Wan 14B の最終エポック e15（fp8 版。成人向け）。作者が自分で学習した完全な微調整で、LoRA やマージの寄せ集めではない（カードは 3 万本の動画と 2 万枚の静止画の混合データを 1 回の設定で 15 エポック学習したと書く）。得意: 1.3B 版（nsfw-wan21-1b3-t2v。同じ作者・同じ系統）より細部と動きの質が高い、14B 級の汎用の非検閲 T2V（拡散モデル fp8 約 14.3 GB・テキストエンコーダー・VAE を合わせて約 21.3 GB）。作者は最終の e15 を推奨と書く。テキストからのみで先頭フレームは使わない。480p（832×480）・16fps・短尺（数秒）が前提（作者は 480p・17 フレームの動画で学習したと書く）で、30 ステップ・uni_pc・cfg 6（ComfyUI 公式の Wan 2.1 T2V の例。作者の推奨のサンプラー値はカードに無い）。注意: fp8 は作者が bf16 から変換したもの（スケール無しの単純な変換。ファイルのヘッダーの metadata に変換のグラフが残る）。16 GB の GPU ではテキストエンコーダーとの入れ替え（オフロード）が前提で、cfg 6 は 1 ステップに 2 回計算するので遅い。ライセンスはカードが CreativeML OpenRAIL-M と宣言し（本文は無い）、作者は「Steal this model!」と書くので、商用利用は「商用OK」（OpenRAIL-M の使用制限に従う前提。SDXL base と同じ扱い。学習データは Reddit の成人向け投稿で権利は未確認）。macOS（Apple Silicon）は fp8 のファイルを含むため動かない可能性が高く、Windows（NVIDIA）のみ対応。",
  "files": [
   {
    "name": "nsfw_wan_14b_e15_fp8.safetensors",
@@ -44,8 +44,8 @@
   "version": "2022-08-22",
   "name": "CreativeML OpenRAIL-M（モデルカードの宣言と『Steal this model!』。LICENSE の本文なし）",
   "url": "https://huggingface.co/NSFW-API/NSFW_Wan_14b/blob/0fce98c7e7c9876d13b717ff317001596275f2b7/README.md",
-  "summary": "ベースの Wan 2.1 T2V 14B（Wan-AI）は Apache-2.0（カード 2 行目 license: apache-2.0、291 行目）。この微調整は NSFW-API が自分で学習したフル微調整で、モデルカードは license: creativeml-openrail-m と宣言し（README 2 行目）、「License」の節（97〜99 行目）は「Steal this model!」とだけ書く。CreativeML OpenRAIL-M は使用制限（Attachment A）つきで商用利用を認めるので、答えは「条件つき」（2026-11-04 に確認）。ただしリポジトリに LICENSE の本文は無く、使用制限の正確な文面は確かめられない。学習データは Reddit の成人向けの約 1,250 の投稿先の上位 1,000 件ずつ（README 34 行目）で、その権利を作者が確かめた記録は無い。",
-  "commercial": "conditional",
+  "summary": "ベースの Wan 2.1 T2V 14B（Wan-AI）は Apache-2.0（カード 2 行目 license: apache-2.0、291 行目）。この微調整は NSFW-API が自分で学習したフル微調整で、モデルカードは license: creativeml-openrail-m と宣言し（README 2 行目）、「License」の節（97〜99 行目）は「Steal this model!」とだけ書く。CreativeML OpenRAIL-M は使用制限（Attachment A）つきで商用利用を認めるので、答えは「商用OK」（使用制限つき。sdxl-base の OpenRAIL++-M と同じ扱いで、学習データの権利の未確認は注意で知らせる。2026-11-04 に確認）。ただしリポジトリに LICENSE の本文は無く、使用制限の正確な文面は確かめられない。学習データは Reddit の成人向けの約 1,250 の投稿先の上位 1,000 件ずつ（README 34 行目）で、その権利を作者が確かめた記録は無い。",
+  "commercial": "yes",
   "checked_at": "2026-11-04",
   "components": [
    {
@@ -58,7 +58,7 @@
     "part": "微調整の重み（NSFW Wan 14B e15 fp8・NSFW-API）",
     "name": "CreativeML OpenRAIL-M（モデルカードの宣言と『Steal this model!』。使用制限つき。学習データの権利は未確認）",
     "url": "https://huggingface.co/NSFW-API/NSFW_Wan_14b",
-    "commercial": "conditional"
+    "commercial": "yes"
    },
    {
     "part": "テキストエンコーダー・VAE（Comfy-Org の再配布）",
@@ -67,8 +67,7 @@
     "commercial": "yes"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（CreativeML OpenRAIL-M）だけで本文が無く、学習データ（Reddit の成人向け投稿）の権利も確認できていません。商用で使う前に、OpenRAIL-M の使用制限（Attachment A）と学習データの権利を自分で確認してください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。",
-  "commercial_condition": "CreativeML OpenRAIL-M の使用制限（Attachment A）に従う場合に限る。本文がリポジトリに無く、学習データ（Reddit の成人向け投稿）の権利は未確認"
+  "notice": "この mam のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（CreativeML OpenRAIL-M）だけで本文が無く、学習データ（Reddit の成人向け投稿）の権利も確認できていません。商用で使う前に、OpenRAIL-M の使用制限（Attachment A）と学習データの権利を自分で確認してください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

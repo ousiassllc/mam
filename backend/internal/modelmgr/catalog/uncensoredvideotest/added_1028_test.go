@@ -50,7 +50,7 @@ func TestNSFWWan14BIsAPinnedFullFineTuneRunByTheSmallModelsTemplate(t *testing.T
 	assert.True(t, d.Has(traits.T2V))
 	assert.False(t, d.Has(traits.I2V))
 	assert.False(t, d.Audio)
-	for _, want := range []string{"【中（〜14B）", "T2V", "音声なし", "得意", "注意", "条件つき"} {
+	for _, want := range []string{"【中（〜14B）", "T2V", "音声なし", "得意", "注意", "商用OK"} {
 		assert.Contains(t, m.Description, want)
 	}
 	require.NotNil(t, m.Unsupported, "fp8 weights: the MPS report applies")
@@ -74,8 +74,8 @@ func TestNSFWWan14BIsAPinnedFullFineTuneRunByTheSmallModelsTemplate(t *testing.T
 
 	l := m.License
 	assert.Equal(t, "creativeml-openrail-m-declared", l.ID)
-	assert.Equal(t, modellicense.Conditional, l.Commercial)
-	assert.NotEmpty(t, l.CommercialCondition)
+	assert.Equal(t, modellicense.Yes, l.Commercial, "OpenRAIL-M's use restrictions are a yes with a notice, as for sdxl-base")
+	assert.Empty(t, l.CommercialCondition)
 	assert.Equal(t, "2026-11-04", l.CheckedAt)
 	assert.NoError(t, l.Info().Check())
 	assert.Contains(t, l.Summary, "Steal this model!")

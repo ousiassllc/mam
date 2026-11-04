@@ -112,18 +112,19 @@ func TestSmallTierSharesTheWanTextEncoderAndTheVAE(t *testing.T) {
 }
 
 // The licenses (Issue #1028 read them again on 2026-11-04). The 1.3B card declares OpenRAIL-M (no text, the author writes "Steal this model!") and the
-// anime model has the Apache-2.0 text: both license texts allow commercial use, so the answer is "conditional" (OpenRAIL-M's use restrictions; the
-// anime author's own request to follow third-party rights), not "unknown", and each says in its condition what is left unverified (the training data:
-// scraped Reddit posts; anime clips with no recorded authorization in a restored repository). The LoRA has no license at all (Civitai's original allows
-// RentCivit and generated images only), so it stays unknown. Each says why in its summary, and the stricter part is what is shown.
+// anime model has the Apache-2.0 text: both license texts allow commercial use, so the answer is "yes" (model-license.md §1: "conditional" is for a
+// condition the license itself sets, like a revenue cap; OpenRAIL-M's use restrictions are "yes" with a notice, as for sdxl-base), not "unknown", and
+// each notice says what is left unverified (the training data: scraped Reddit posts; anime clips with no recorded authorization in a restored
+// repository). The LoRA has no license at all (Civitai's original allows RentCivit and generated images only), so it stays unknown. Each says why
+// in its summary, and the stricter part is what is shown.
 func TestSmallTierLicensesSayWhatTheirSourcesSayAndWhatIsUnverified(t *testing.T) {
 	for id, tc := range map[string]struct {
 		license    string
 		commercial modellicense.Commercial
 		reason     string
 	}{
-		"nsfw-wan21-1b3-t2v":         {"creativeml-openrail-m-declared", modellicense.Conditional, "Reddit"},
-		"nsfw-anime-wan22-5b":        {"apache-2.0", modellicense.Conditional, "復元"},
+		"nsfw-wan21-1b3-t2v":         {"creativeml-openrail-m-declared", modellicense.Yes, "Reddit"},
+		"nsfw-anime-wan22-5b":        {"apache-2.0", modellicense.Yes, "復元"},
 		"wan22-ti2v-5b-cowgirl-lora": {"unspecified", modellicense.Unknown, "RentCivit"},
 	} {
 		m := model(t, id)
@@ -134,10 +135,10 @@ func TestSmallTierLicensesSayWhatTheirSourcesSayAndWhatIsUnverified(t *testing.T
 		require.GreaterOrEqual(t, len(m.License.Components), 2, id)
 		assert.Equal(t, modellicense.Yes, m.License.Components[0].Commercial, id+": the base model is Apache-2.0")
 		assert.Equal(t, "2026-11-04", m.License.CheckedAt, id)
-		if tc.commercial == modellicense.Conditional {
-			assert.NotEmpty(t, m.License.CommercialCondition, id+": a conditional answer says its condition")
+		if tc.commercial == modellicense.Yes {
+			assert.Empty(t, m.License.CommercialCondition, id+": a plain yes has no condition (the unverified part is in the notice)")
 			assert.Contains(t, m.License.Notice, "商用で使う前に", id)
-			assert.Contains(t, m.Description, "条件つき", id)
+			assert.Contains(t, m.Description, "商用OK", id)
 		} else {
 			assert.Contains(t, m.License.Notice, "商用には使わないでください", id)
 		}

@@ -12,8 +12,8 @@ import (
 )
 
 // Issue #1012 asks that every uncensored video model of the catalog (not only the ones it added) has a description with its tier, what it is good
-// at and what to be careful about, and that the description says the commercial answer of the license (unknown, or conditional where Issue #1028 read
-// the license text and found one). The tier is the band of the parameter count.
+// at and what to be careful about, and that the description says the commercial answer of the license (unknown, or yes where Issue #1028 read the
+// license text and found one that allows it). The tier is the band of the parameter count.
 func TestEveryUncensoredVideoModelDescribesItsTierStrengthsAndCautions(t *testing.T) {
 	n := 0
 	for _, m := range catalog.Default().Models {
@@ -34,7 +34,7 @@ func TestEveryUncensoredVideoModelDescribesItsTierStrengthsAndCautions(t *testin
 		assert.Contains(t, m.Description, "得意", m.ID)
 		assert.Contains(t, m.Description, "注意", m.ID)
 		assert.Contains(t, m.Description, "音声", m.ID+": sound or not is said")
-		answer := map[modellicense.Commercial]string{modellicense.Unknown: "不明", modellicense.Conditional: "条件つき"}[m.License.Commercial]
+		answer := map[modellicense.Commercial]string{modellicense.Unknown: "不明", modellicense.Yes: "商用OK"}[m.License.Commercial]
 		require.NotEmpty(t, answer, m.ID+": no uncensored video model of the catalog is known to be free for commercial use")
 		assert.Contains(t, m.Description, answer, m.ID+": the description says the commercial answer of its license")
 	}
