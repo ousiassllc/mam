@@ -40,6 +40,13 @@
  },
  "consent_required": false,
  "requires_hf_token": false,
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応）。このモデルのファイル seedvr2_3b_fp8_e4m3fn.safetensors に F8_E4M3 のテンソルが 635 個あることは、固定コミットの safetensors のヘッダーで確認（2026-11-05）。Mac の実機では未確認"
+ },
  "workflows": [
   {
    "name": "video-upscale-seedvr2-3b",

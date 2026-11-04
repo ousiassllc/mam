@@ -219,3 +219,31 @@ func TestRun_AMissingOrEmptySourceIsRefusedBeforeTheAccept(t *testing.T) {
 		})
 	}
 }
+
+// The type of the progress of a status is not documented: one that is not a number must not fail a job that is charged already.
+func TestRun_AProgressThatIsNotANumberDoesNotFailTheJob(t *testing.T) {
+	for name, body := range map[string]string{
+		"text":   `{"status":"Processing","progress":"40%"}`,
+		"object": `{"status":"Processing","progress":{"percent":40}}`,
+		"null":   `{"status":"Processing","progress":null}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFake(t)
+			orig := f.onStatus
+			f.onStatus = func(w http.ResponseWriter, n int) {
+				if n == 2 {
+					writeJSON(w, http.StatusOK, body)
+					return
+				}
+				orig(w, n)
+			}
+			var states []cloudenhance.Progress
+
+			n, err := f.client().Run(background(), runInput(t), func(p cloudenhance.Progress) { states = append(states, p) })
+
+			require.NoError(t, err)
+			assert.EqualValues(t, len("RESULT"), n)
+			assert.Equal(t, cloudenhance.Progress{Status: "processing", Percent: -1}, states[1])
+		})
+	}
+}

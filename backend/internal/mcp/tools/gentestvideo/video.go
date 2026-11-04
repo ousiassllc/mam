@@ -34,14 +34,14 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 			"ローカルのモデルは無料で確認不要（estimate_id なし）。Topaz は Topaz に見積りを聞いて credits を返し（課金されない・クレジットは円やドルに換算しない）、estimate_id を返す（30 分有効・1 回だけ使える）。"+
 			"見積りが取れなければ実行できない。op は upscale（scale か target_short_side）か interpolate（multiplier か target_fps）。"+
 			"ローカルのコマ補間は元の fps の 2 倍・4 倍だけで、出力は 120 fps まで（それ以外の target_fps や、120 fps を超える倍率は断る。任意の fps や 240 fps までは Topaz で 15〜240 fps）。",
-		h.estimate)
+		h.estimate, mcpkit.OpenWorld())
 	mcpkit.Write(r, "enhance_generation_video",
 		"生成テストの成功した動画の結果を大きくする（op=upscale。scale は 1 より大きく 4 以下、または target_short_side で短い辺を 720 / 1080 などに）か、コマを増やして滑らかにする（op=interpolate。multiplier は 2 か 4、または target_fps）。"+
 			"結果は元とは別の結果（別ファイル）として履歴に残り、get_generation_result の video_enhance に元の result_id・操作・モデル・倍率や fps が入る。大きくした結果をもう一度処理してもよい（拡大のあとに補間、など）。"+
 			"アップスケールとコマ補間は別々の処理で、1 回に 1 つ。進捗は返る job_id を get_job / get_generation_test で読む。"+
 			"ローカルは無料でそのまま実行できる。Topaz（model が topaz:...）は有料クラウドで、estimate_generation_video_enhance の estimate_id と、利用者が確認した confirmed_credits（見積りの credits と同じ値）が無いと実行しない。"+
 			"Topaz が受け付けたあとに失敗しても自動では再送しない（二重課金を避ける）。表示には「Powered by Topaz Labs」が要る。",
-		h.enhance)
+		h.enhance, mcpkit.OpenWorld())
 }
 
 type handlers struct {

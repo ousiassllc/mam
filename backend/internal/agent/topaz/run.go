@@ -2,6 +2,7 @@ package topaz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -87,10 +88,11 @@ func timedOut(ctx context.Context, err error) error {
 // status is the part of the answer of GET /video/{id}/status that is read. Which fields there are is not documented beyond status, download.url
 // and errorCode; progress is read as a percentage when it is a number.
 type status struct {
-	Status   string   `json:"status"`
-	Progress *float64 `json:"progress"`
-	Message  string   `json:"message"`
-	Code     string   `json:"errorCode"`
+	Status string `json:"status"`
+	// Progress is read only when it is a JSON number: its type is not documented, and a job that is already charged must not fail on it.
+	Progress json.RawMessage `json:"progress"`
+	Message  string          `json:"message"`
+	Code     string          `json:"errorCode"`
 	Download struct {
 		URL string `json:"url"`
 	} `json:"download"`
@@ -138,9 +140,10 @@ func jobFailure(state, requestID, key string, st status) error {
 }
 
 // percent is the progress as 0..100; -1 when the answer has none.
-func percent(p *float64) float64 {
-	if p == nil {
+func percent(raw json.RawMessage) float64 {
+	var p float64
+	if string(raw) == "null" || json.Unmarshal(raw, &p) != nil { // null unmarshals to 0 without an error
 		return -1
 	}
-	return min(max(*p, 0), 100)
+	return min(max(p, 0), 100)
 }
