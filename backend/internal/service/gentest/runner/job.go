@@ -60,6 +60,8 @@ type Deps struct {
 	FaceCrop FaceCropFunc
 	// FaceScore measures the face of a result against the reference of the role "face" (nil: no number; the face models are not installed). See FaceScoreFunc.
 	FaceScore FaceScoreFunc
+	// FaceOff is what a result with a face reference records while FaceScore is nil: skipped models_missing / runtime_unavailable with the words (nil: nothing is recorded).
+	FaceOff *record.FaceSimilarity
 	// FaceSwap runs FaceFusion for a result of "swap the face" (nil: such a result fails). See FaceSwapFunc.
 	FaceSwap FaceSwapFunc
 	Now      func() time.Time

@@ -76,10 +76,10 @@ func AddMissing(ctx context.Context, models Creator, rec Record, cat *catalog.Ca
 	}
 }
 
-// hasFiles says the record has every file of the catalog model with the catalog's SHA-256.
+// hasFiles says the record has every required file of the catalog model with the catalog's SHA-256 (an optional file may be missing).
 func hasFiles(inst store.InstalledModel, m catalog.Model) bool {
 	for _, f := range m.Files {
-		if !slices.ContainsFunc(inst.Files, func(i store.InstalledFile) bool { return i.Path == f.Path() && i.SHA256 == f.SHA256 }) {
+		if !f.Optional && !slices.ContainsFunc(inst.Files, func(i store.InstalledFile) bool { return i.Path == f.Path() && i.SHA256 == f.SHA256 }) {
 			return false
 		}
 	}
