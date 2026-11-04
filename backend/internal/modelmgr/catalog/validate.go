@@ -46,6 +46,8 @@ var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", 
 var loaderInputs = map[string]map[string]string{
 	"CheckpointLoaderSimple":   {"ckpt_name": "checkpoints"},
 	"UNETLoader":               {"unet_name": "diffusion_models"},
+	"LTXAVTextEncoderLoader":   {"text_encoder": "text_encoders", "ckpt_name": "checkpoints"}, // LTX-2.3: the Gemma encoder, and the checkpoint the node reads as well
+	"LTXVAudioVAELoader":       {"ckpt_name": "checkpoints"},
 	"UnetLoaderGGUF":           {"unet_name": "diffusion_models"},
 	"CLIPLoader":               {"clip_name": "text_encoders"},
 	"DualCLIPLoader":           {"clip_name1": "text_encoders", "clip_name2": "text_encoders"},
@@ -190,6 +192,8 @@ func validateModel(m Model, shared map[string]File) []error {
 	}
 	if len(m.Files) == 0 || len(m.Workflows) == 0 {
 		errs = append(errs, fmt.Errorf("%s: files and workflows are required", where))
+	} else if !slices.ContainsFunc(m.Files, func(f File) bool { return !f.Optional }) {
+		errs = append(errs, fmt.Errorf("%s: at least one file must not be optional", where))
 	}
 	return append(errs, validateFiles(where, m.Files, shared)...)
 }

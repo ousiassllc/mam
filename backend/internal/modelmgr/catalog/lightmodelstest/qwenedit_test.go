@@ -1,6 +1,8 @@
 package lightmodelstest_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -96,4 +98,29 @@ func TestQwenImageEdit2511VRAMGuidelineIsHonestAbout16GB(t *testing.T) {
 	assert.Equal(t, vramfit.Short, vramfit.For(m.VRAM, 12*gb))
 	assert.Equal(t, vramfit.Limited, vramfit.For(m.VRAM, 16*gb))
 	assert.Equal(t, vramfit.Enough, vramfit.For(m.VRAM, 24*gb))
+}
+
+// The Lightning LoRAs only serve the speed modes: the model works without them, so they are optional (#1025). The diffusion model, the text encoder and the VAE are required.
+func TestQwenImageEdit2511LightningLoRAsAreOptionalAndTheRestIsRequired(t *testing.T) {
+	m, _ := catalog.Default().Model("qwen-image-edit-2511")
+	require.Len(t, m.Files, 5)
+	for i, f := range m.Files {
+		assert.Equal(t, i >= 3, f.Optional, f.Name)
+	}
+}
+
+// A model with no required file would be installed without anything to run: refused.
+func TestAModelWithOnlyOptionalFilesIsRefused(t *testing.T) {
+	data, err := json.Marshal(catalog.Default())
+	require.NoError(t, err)
+	var c catalog.Catalog
+	require.NoError(t, json.Unmarshal(data, &c))
+	for i := range c.Models {
+		if c.Models[i].ID == "qwen-image-edit-2511" {
+			for j := range c.Models[i].Files {
+				c.Models[i].Files[j].Optional = true
+			}
+		}
+	}
+	assert.Contains(t, fmt.Sprint(catalog.Validate(&c, localcfg.TemplateByID)), "must not be optional")
 }

@@ -33,14 +33,16 @@
    "folder": "loras",
    "url": "https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolve/107d238d68b8387e32843d0b4a2e24ceb0d3ad86/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
    "sha256": "22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f",
-   "size": 849608296
+   "size": 849608296,
+   "optional": true
   },
   {
    "name": "Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
    "folder": "loras",
    "url": "https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolve/107d238d68b8387e32843d0b4a2e24ceb0d3ad86/Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
    "sha256": "a9e81a58a78f260f67b337a6f615e8fa4cd3bc79847c77b7d61a581b789b1ba8",
-   "size": 849608296
+   "size": 849608296,
+   "optional": true
   }
  ],
  "vram": {

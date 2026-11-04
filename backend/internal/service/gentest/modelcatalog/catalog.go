@@ -229,7 +229,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	mi.SettingsRoute = a.Route
 	mi.Provider, mi.Origin = providerOf(m, mi.Source), originOf(mi.Source)
 	if info, ok := c.catalogInfo(string(m)); ok {
-		mi.Catalog = &CatalogTraits{Adult: info.Adult, Traits: info.Traits, VRAMMinGB: info.VRAMMinGB}
+		mi.Catalog = &CatalogTraits{Adult: info.Adult, Traits: info.Traits, VRAMMinGB: info.VRAMMinGB, MissingOptional: info.MissingOptional, PartialNote: info.PartialNote}
 		if info.Name != "" {
 			mi.Label = info.Name // the catalog's name, not the identifier (#1023)
 		}

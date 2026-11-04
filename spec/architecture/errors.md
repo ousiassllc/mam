@@ -98,6 +98,8 @@ templ Box(p Props)
 | `invalid_input` | `validation` | 入力が正しくありません。 |  |
 | `key_missing` | `unavailable` | API キーが設定されていません。 | /settings/api-keys |
 | `license_not_accepted` | `conflict` | このモデルのライセンスに、まだ同意していません。 | /model-manager |
+| `face_models_missing` | `unavailable` | 顔の類似度を測る顔モデルがありません（{files}）。顔の類似度（SFace）はオフです。 |  |
+| `face_runtime_missing` | `unavailable` | 顔の類似度を測る ONNX Runtime のライブラリを読み込めません。顔の類似度（SFace）はオフです。 |  |
 | `llm_invalid_output` | `upstream` | LLM の答えが、求めた形式になっていませんでした。 | /settings/llm |
 | `local_llm_unreachable` | `upstream` | ローカルサーバーに接続できません。ローカルの LLM サーバー（Ollama・LM Studio・llama.cpp server など）が応答しませんでした。 | /settings/llm |
 | `llm_key_missing` | `unavailable` | LLM の API キーが設定されていません。 | /settings/api-keys<br>/settings/llm |
@@ -215,3 +217,4 @@ templ Box(p Props)
 | 1.0 | 2026-11-03 | 新規。共通のエラー型・変換層・画面部品・MCP のフィールド・i18n・載せ替え状況 | Issue #1010 |
 | 1.1 | 2026-11-03 | `input_missing` の直し方に「添えた画像が参照のときは最初のフレームに変える」を足し、`input_unused`（添えた画像がどのモデルにも使われない）を新設。生成テストが送る前の検査で返す（§6 の表、#1009 の節） | Issue #1009 |
 | 1.2 | 2026-11-03 | コード `local_llm_unreachable` を足した（ローカルの OpenAI 互換 LLM サーバーに接続できない。`errmap` は `localllm.IsUnreachable` で見分ける）。設計は `local-llm.md` | Issue #1008 |
+| 1.3 | 2026-11-04 | コード `face_models_missing`・`face_runtime_missing` を足した（顔の類似度がオフのとき、役割 `face` の参照がある結果の `face_similarity.reason` / `fix` の言葉。YuNet・SFace の ONNX は mam が取得せず、カタログにも無いので、置き場所と `scripts/fetch-face-models.sh` を直し方に書く）。[local-models.md](local-models.md) §4.9 | Issue #1026 |

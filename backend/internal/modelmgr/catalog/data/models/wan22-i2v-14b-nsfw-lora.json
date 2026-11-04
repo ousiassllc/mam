@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"params_b": 14, "params_label": "14B", "uncensored": true, "speed": "slow"},
- "description": "wan22-i2v-14b（ベースは共有）に、成人向けの表現を足す LoRA「General NSFW」の高ノイズ用・低ノイズ用（各約 0.6 GB）を重ねる構成（成人向け）。ベースを導入済みなら、取得するのは LoRA だけ。LoRA の強さは 1.0。16fps。",
+ "description": "【中（〜14B）・I2V・音声なし】wan22-i2v-14b（ベースは共有）に、成人向けの表現を足す LoRA「General NSFW」の高ノイズ用・低ノイズ用（各約 0.6 GB）を重ねる構成（成人向け）。得意: 公式のベース（通常の 20 ステップ）の動きの質を保ったまま、成人向けの表現を足す。注意: 4 ステップの蒸留は入っていないので生成は遅い（速さは slow）。トリガー語は nsfwsks。LoRA はライセンスの記載が無く、商用は不明。ベースを導入済みなら、取得するのは LoRA だけ。LoRA の強さは 1.0。16fps。",
  "trigger_words": [
   "nsfwsks"
  ],
