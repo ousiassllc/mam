@@ -26,6 +26,7 @@ type Deps struct {
 	// AssetsDir is where an imported file is stored (config.AssetsDir).
 	AssetsDir  string
 	Projects   *repository.ProjectRepository
+	Assets     *repository.AssetRepository
 	References *repository.ReferenceRepository
 	// Assign is the optional second step of an import (nil: an import with a slot is refused).
 	Assign AssignFunc

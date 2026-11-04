@@ -3,6 +3,7 @@ package gentest
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
@@ -98,6 +99,7 @@ func (s *Service) status(ctx context.Context, b gentestrepo.Batch, results bool)
 	if len(b.Estimate) > 0 {
 		var e Estimate
 		if json.Unmarshal(b.Estimate, &e) == nil {
+			s.withoutHiddenInputs(ctx, &e.Request)
 			st.Estimate = &e
 		}
 	}
@@ -111,6 +113,15 @@ func (s *Service) status(ctx context.Context, b gentestrepo.Batch, results bool)
 		st.Results = record.ViewsOf(list)
 	}
 	return st, nil
+}
+
+// withoutHiddenInputs takes the input images the age gate keeps out of sight now (a picture of a suggestive pose series, or a copy of one) out of the
+// request a batch kept, so that the status of a batch names none of them while the gate is closed; the batch itself keeps them (Issue #1020).
+func (s *Service) withoutHiddenInputs(ctx context.Context, r *Request) {
+	r.References = slices.DeleteFunc(r.References, func(x RefInput) bool { return s.RefHidden(ctx, x.Source, x.ID) })
+	if r.Mask != nil && s.RefHidden(ctx, r.Mask.Source, r.Mask.ID) {
+		r.Mask = nil
+	}
 }
 
 // stateOf derives the state from the results and the job. A job that failed leaves its reason (the results it did not reach

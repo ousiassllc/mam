@@ -124,3 +124,52 @@ func TestABatchQueuedWithAnAdultPoseIsNotRunOnceTheAgeGateIsClosed(t *testing.T)
 		assert.NotContains(t, res.Error, "sexy_")
 	}
 }
+
+// The request a batch kept (the estimate it was confirmed with) names its input images; the status of the batch (the MCP tool get_generation_test, the
+// job's batch, the screen) hands it out as it is. With the gate closed it names no suggestive pose, nor a copy of one, whatever the way in (Service.Batch,
+// Service.BatchOfJob, the JSON of the status); an ordinary pose next to them stays, and the gate opened again brings them back (Issue #1020).
+func TestTheStatusOfABatchNamesNoAdultPoseWhileTheAgeGateIsClosed(t *testing.T) {
+	lib := posestest.New(t)
+	lib.InstallAdult(t)
+	r := gentesttest.New(t, gentesttest.WithReferenceModels(""), gentesttest.WithPoseLibrary(lib.Lib))
+	ctx := context.Background()
+
+	first := run(t, r, poseRef("sexy_S001_front"))
+	copyRef := gentest.RefInput{Source: gentest.FromBatchInput, ID: first.Inputs[0].ID, Role: gentest.RolePose}
+	req := imageReq(string(gentesttest.EditModel))
+	req.References = []gentest.RefInput{poseRef("duo_D001_front.depth"), copyRef, poseRef("std_P001_front")}
+	ref, err := r.Confirmed(req)
+	require.NoError(t, err)
+	r.Wait(ref.BatchID)
+
+	idsOf := func(st gentest.BatchStatus) (ids []string) {
+		require.NotNil(t, st.Estimate)
+		for _, x := range st.Estimate.Request.References {
+			ids = append(ids, x.ID)
+		}
+		return ids
+	}
+	st, err := r.Svc.Batch(ctx, ref.BatchID, false)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"duo_D001_front.depth", copyRef.ID, "std_P001_front"}, idsOf(st), "the gate is open: the request as it was")
+
+	lib.Open.Store(false)
+	for name, get := range map[string]func() (gentest.BatchStatus, error){
+		"Batch":      func() (gentest.BatchStatus, error) { return r.Svc.Batch(ctx, ref.BatchID, true) },
+		"BatchOfJob": func() (gentest.BatchStatus, error) { return r.Svc.BatchOfJob(ctx, st.JobID, false) },
+	} {
+		got, err := get()
+		require.NoError(t, err, name)
+		assert.Equal(t, []string{"std_P001_front"}, idsOf(got), name)
+		raw, err := json.Marshal(got)
+		require.NoError(t, err, name)
+		for _, w := range []string{"sexy_", "duo_", copyRef.ID} {
+			assert.NotContains(t, string(raw), w, name)
+		}
+	}
+
+	lib.Open.Store(true)
+	st, err = r.Svc.Batch(ctx, ref.BatchID, false)
+	require.NoError(t, err)
+	assert.Len(t, idsOf(st), 3, "the gate opened again: they are back")
+}

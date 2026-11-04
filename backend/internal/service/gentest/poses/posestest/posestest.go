@@ -84,6 +84,9 @@ type Rig struct {
 	AdultDir string // the directory of the installed files of the suggestive series
 	// Open is the age gate the library asks (Deps.AdultOpen): store true to open it.
 	Open *atomic.Bool
+	// OnGate, when set, runs after the library asked the gate (with the answer it got): a test learns that a call reached its check, or changes
+	// the gate between two checks.
+	OnGate atomic.Pointer[func()]
 }
 
 // Seed are the poses of the fake pose catalog: P003 is rated suggestive (its picture is in the zip all the same), P009 has no picture. S001 and D001 are
@@ -180,6 +183,7 @@ func New(t testing.TB) *Rig {
 
 	root := filepath.Join(t.TempDir(), "localai")
 	open := &atomic.Bool{}
+	rig := &Rig{Root: root, Requests: reqs, Dir: filepath.Join(root, poses.SetID, "env"), AdultDir: filepath.Join(root, poses.AdultSetID, "env"), Open: open}
 	lib, err := poses.New(poses.Deps{
 		Root: root,
 		Catalog: &catalog.Catalog{ResourceSets: []catalog.ResourceSet{
@@ -191,10 +195,17 @@ func New(t testing.TB) *Rig {
 			Retry:    fetch.Retry{Attempts: 1},
 		},
 		FreeBytes: func(string) (uint64, error) { return 1 << 40, nil },
-		AdultOpen: open.Load,
+		AdultOpen: func() bool {
+			answer := open.Load()
+			if f := rig.OnGate.Load(); f != nil {
+				(*f)()
+			}
+			return answer
+		},
 	})
 	require.NoError(t, err)
-	return &Rig{Lib: lib, Root: root, Requests: reqs, Dir: filepath.Join(root, poses.SetID, "env"), AdultDir: filepath.Join(root, poses.AdultSetID, "env"), Open: open}
+	rig.Lib = lib
+	return rig
 }
 
 // Install installs the library the way the user does.

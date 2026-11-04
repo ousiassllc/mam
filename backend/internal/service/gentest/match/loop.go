@@ -96,6 +96,9 @@ func (s *Service) reference(ctx context.Context, batchID string) (imagematch.Ima
 	if err != nil || len(inputs) == 0 {
 		return imagematch.Image{}, errors.Join(err, errors.New("the match has no reference image"))
 	}
+	if s.g.InputHidden(ctx, inputs[0]) { // the age gate was closed after the match was queued (a resumed one, a go-on): the picture is not read, not shown to the LLM
+		return imagematch.Image{}, runner.ErrInputHidden
+	}
 	return s.picture(inputs[0].FilePath)
 }
 

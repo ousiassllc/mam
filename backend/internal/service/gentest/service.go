@@ -136,7 +136,7 @@ func New(d Deps) *Service {
 	}
 	dir := filepath.Join(d.DataDir, DirName)
 	link := projectlink.New(projectlink.Deps{
-		Repo: d.Repo, Dir: dir, AssetsDir: d.AssetsDir, Projects: d.Projects, References: d.References,
+		Repo: d.Repo, Dir: dir, AssetsDir: d.AssetsDir, Projects: d.Projects, Assets: d.Assets, References: d.References,
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
 	store := history.New(d.Repo, dir)

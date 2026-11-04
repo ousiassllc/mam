@@ -80,3 +80,12 @@ func resultsOf(all []poses.Pose, f filters) gentestposes.Results {
 	}
 	return r
 }
+
+// cacheControl is the Cache-Control of a picture: an hour for a general one, none for a picture of a suggestive series, which the browser must not
+// keep past the age gate (Issue #1020: the gate can be closed within the hour, and a cached picture would still show).
+func cacheControl(pictureID string) string {
+	if poses.IsAdultImage(pictureID) {
+		return "no-store"
+	}
+	return "private, max-age=3600"
+}

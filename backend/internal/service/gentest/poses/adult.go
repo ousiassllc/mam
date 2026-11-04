@@ -84,7 +84,7 @@ func (l *Library) InstallAdult(ctx context.Context, accepted bool, progress func
 	case len(l.install.NotReady()) > 0:
 		return ErrBaseNotInstalled
 	}
-	return l.ensure(ctx, l.adult.install, progress)
+	return l.ensure(ctx, l.adult.install, true, progress)
 }
 
 // RemoveAdult deletes the suggestive series only (the main library stays). A series that is not installed is removed without an error; a running
