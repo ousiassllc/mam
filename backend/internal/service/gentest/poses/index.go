@@ -59,9 +59,22 @@ func (k Kind) dir() string {
 	return string(k)
 }
 
-// Series are the groups the library installs: the series of Shisei and the label the screen shows. The suggestive series (sexy, duo) are not
-// installed (see the asset set shisei-poses).
-var Series = []struct{ ID, Label string }{{"std", "全身"}, {"upper", "上半身"}}
+// Series are the groups the library lists: the series of Shisei and the label the screen shows. The suggestive series (sexy, duo) are Adult: they
+// are in their own asset set (shisei-poses-adult), installed only after the age confirmation, and listed only while the age gate is open (Issue #1020).
+var Series = []struct {
+	ID, Label string
+	Adult     bool
+}{{"std", "全身", false}, {"upper", "上半身", false}, {"sexy", "全身・sexy（成人向け）", true}, {"duo", "二人・duo（成人向け）", true}}
+
+// IsAdultSeries reports whether the series is one of the suggestive ones (sexy, duo).
+func IsAdultSeries(id string) bool {
+	for _, s := range Series {
+		if s.ID == id {
+			return s.Adult
+		}
+	}
+	return false
+}
 
 // Pose is a pose of the library as the installed catalog describes it: Views are the angles that have a line picture on the disk (the value is
 // the ID of the image, see Library.File); Maps are the depth and normal maps of the angles that have one.
@@ -73,8 +86,10 @@ type Pose struct {
 	NameEN  string
 	ClassEN string
 	Desc    string // an English description of the figure
-	Views   map[Angle]string
-	Maps    map[Kind]map[Angle]string
+	// Adult: the pose is of a suggestive series (IsAdultSeries); the library gives it only while the age gate is open.
+	Adult bool
+	Views map[Angle]string
+	Maps  map[Kind]map[Angle]string
 }
 
 // views are the pictures of the kind by angle.
@@ -110,7 +125,13 @@ func (p Pose) FirstAngleOf(k Kind, want Angle) Angle {
 
 // imageID is the ID of a picture: <series>_<pose id>_<angle>, the file name of the picture without its extension, and ".depth" or ".normal"
 // after it for the depth or normal map of the same pose and angle (no suffix: the line picture).
-var imageID = regexp.MustCompile(`^(std|upper)_[A-Z][0-9]{3}_(front|diag|side|above|below)(\.(depth|normal))?$`)
+var imageID = regexp.MustCompile(`^(std|upper|sexy|duo)_[A-Z][0-9]{3}_(front|diag|side|above|below)(\.(depth|normal))?$`)
+
+// IsAdultImage reports whether the picture ID is one of a suggestive series (sexy_…, duo_…). It looks at the ID only: it says nothing of whether
+// such a picture exists.
+func IsAdultImage(id string) bool {
+	return strings.HasPrefix(id, "sexy_") || strings.HasPrefix(id, "duo_")
+}
 
 // splitID cuts the ID of a picture into the file name without its extension and the kind (the ID must match imageID).
 func splitID(id string) (name string, k Kind) {
@@ -145,9 +166,10 @@ type catalogEntry struct {
 }
 
 // readIndex reads the catalog of the library (catalogFile in dir) and keeps the poses that have a line picture below dir/poses (and the depth
-// and normal maps below dir/depth and dir/normal), in the order of the catalog. A pose that is not rated general is never kept, whatever is
-// on the disk.
-func readIndex(dir string) ([]Pose, error) {
+// and normal maps below dir/depth and dir/normal), in the order of the catalog. A pose of a suggestive series is looked for below adultDir (""
+// when the adult set is not installed: such a pose is not kept), whatever its rating; any other pose that is not rated general is never kept,
+// whatever is on the disk.
+func readIndex(dir, adultDir string) ([]Pose, error) {
 	data, err := os.ReadFile(filepath.Join(dir, catalogFile)) //nolint:gosec // a fixed name below the library's own directory
 	if err != nil {
 		return nil, err
@@ -158,10 +180,17 @@ func readIndex(dir string) ([]Pose, error) {
 	}
 	var out []Pose
 	for _, e := range entries {
-		if e.Rating != "general" {
+		adult := IsAdultSeries(e.Series)
+		root := dir
+		switch {
+		case adult && adultDir == "":
+			continue
+		case adult:
+			root = adultDir
+		case e.Rating != "general":
 			continue
 		}
-		p := Pose{ID: e.ID, Series: e.Series, Class: e.ClassJP, Name: e.NameJP, NameEN: e.NameEN, ClassEN: e.ClassEN, Desc: e.Desc, Views: map[Angle]string{},
+		p := Pose{ID: e.ID, Series: e.Series, Class: e.ClassJP, Name: e.NameJP, NameEN: e.NameEN, ClassEN: e.ClassEN, Desc: e.Desc, Adult: adult, Views: map[Angle]string{},
 			Maps: map[Kind]map[Angle]string{Depth: {}, Normal: {}}}
 		for _, a := range Angles {
 			file := e.Views[string(a.Angle)]
@@ -171,7 +200,7 @@ func readIndex(dir string) ([]Pose, error) {
 			}
 			for _, c := range Kinds {
 				k := c.Kind
-				if st, err := os.Stat(filepath.Join(dir, k.dir(), file)); err == nil && st.Mode().IsRegular() {
+				if st, err := os.Stat(filepath.Join(root, k.dir(), file)); err == nil && st.Mode().IsRegular() {
 					p.views(k)[a.Angle] = pictureID(name, k)
 				}
 			}

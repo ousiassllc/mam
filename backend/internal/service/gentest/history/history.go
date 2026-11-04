@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
@@ -20,6 +21,9 @@ type Store struct {
 	repo *gentestrepo.Repository
 	// dir is the directory of the history's files (<data-dir>/gentest).
 	dir string
+	// HidePose says a picture of the pose library is out of sight now (poses.Library.Hides: a suggestive series while the age gate is closed).
+	// An input image that was taken from such a picture is then not listed, not served and not taken again (InputHidden). nil hides none.
+	HidePose func(pictureID string) bool
 }
 
 // New returns the Store of the tables repo and the directory dir.
@@ -83,8 +87,16 @@ func (s *Store) Result(ctx context.Context, id string) (record.ResultDetail, err
 	}
 	d := record.ResultDetail{ResultView: record.ViewOf(r), Inputs: []record.InputView{}, Imports: []record.ImportView{}, BatchEstimatedUSD: batch.EstimatedCost,
 		TranslateToEnglish: decode[record.BatchParams](batch.Params).TranslateToEnglish}
+	hidden := map[string]bool{} // the inputs the age gate keeps out of sight
 	for _, in := range inputs {
+		if s.InputHidden(ctx, in) {
+			hidden[in.ID] = true
+			continue
+		}
 		d.Inputs = append(d.Inputs, record.InputView{ID: in.ID, Role: in.Role, MimeType: in.MimeType, SizeBytes: in.SizeBytes, Strength: in.Strength, Origin: decode[record.InputOrigin](in.Origin)})
+	}
+	if len(hidden) > 0 {
+		d.UnusedInputs = slices.DeleteFunc(slices.Clone(d.UnusedInputs), func(u record.UnusedInput) bool { return hidden[u.InputID] })
 	}
 	for _, im := range imports {
 		d.Imports = append(d.Imports, record.ImportView{ID: im.ID, ProjectID: im.ProjectID, AssetID: im.AssetID, ReferenceItemID: im.ReferenceItemID, Target: decode[projectlink.ImportTarget](im.Target), CreatedAt: im.CreatedAt})
@@ -111,11 +123,14 @@ func (s *Store) ResultFile(ctx context.Context, id string) (File, error) {
 	return File{Path: s.filePath(r.FilePath), Mime: r.MimeType, Name: r.ID + filepath.Ext(r.FilePath)}, nil
 }
 
-// InputFile is the file of an input image of a batch (gterr.ErrNotFound).
+// InputFile is the file of an input image of a batch (gterr.ErrNotFound; also for one the age gate keeps out of sight: InputHidden).
 func (s *Store) InputFile(ctx context.Context, id string) (File, error) {
 	in, err := s.repo.GetInput(ctx, id)
 	if err != nil {
 		return File{}, gterr.NotFound(err)
+	}
+	if s.InputHidden(ctx, in) {
+		return File{}, gterr.ErrNotFound
 	}
 	return File{Path: s.filePath(in.FilePath), Mime: in.MimeType, Name: in.ID + filepath.Ext(in.FilePath)}, nil
 }

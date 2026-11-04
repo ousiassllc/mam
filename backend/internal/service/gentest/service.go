@@ -137,12 +137,16 @@ func New(d Deps) *Service {
 		Repo: d.Repo, Dir: dir, AssetsDir: d.AssetsDir, Projects: d.Projects, References: d.References,
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
+	store := history.New(d.Repo, dir)
+	if d.Poses != nil {
+		store.HidePose = d.Poses.Hides // the pictures of the adult pose series are out of sight in the history while the age gate is closed
+	}
 	run := runner.New(runner.Deps{
-		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, FaceCrop: d.FaceCrop,
+		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, InputHidden: store.InputHidden, FaceCrop: d.FaceCrop,
 		FaceScore: d.FaceScore, FaceSwap: d.FaceFusion, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
-		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes, CatalogInfo: d.CatalogInfo},
+		Deps: d, Link: link, Runner: run, Store: store, catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes, CatalogInfo: d.CatalogInfo},
 	}
 }
 

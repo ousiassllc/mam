@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
@@ -39,6 +40,8 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	engine.GET(paths.GenerationTestPoses("results"), h.Results)
 	engine.POST(paths.GenerationTestPoses("install"), h.Install)
 	engine.POST(paths.GenerationTestPoses("remove"), h.Remove)
+	engine.POST(paths.GenerationTestPoses("install-adult"), h.InstallAdult)
+	engine.POST(paths.GenerationTestPoses("remove-adult"), h.RemoveAdult)
 	engine.GET(paths.GenerationTestPoses("progress"), h.Progress)
 	engine.GET(paths.GenerationTestPoses("image", ":id"), h.Image)
 }
@@ -140,6 +143,11 @@ func (h Handlers) Panel(c *gin.Context) {
 
 // render writes the gallery when the library is installed, else the offer to install it (with the message of a failed install).
 func (h Handlers) render(c *gin.Context, lib *poses.Library, status int, notes gentestposes.Notes, failure string) {
+	h.renderWith(c, lib, status, notes, failure, "")
+}
+
+// renderWith is render with the message of a failed install of the suggestive series, which the gallery shows in its section about them.
+func (h Handlers) renderWith(c *gin.Context, lib *poses.Library, status int, notes gentestposes.Notes, failure, adultFailure string) {
 	w := gentestposes.NewWire()
 	st := lib.Status()
 	if !st.Installed {
@@ -151,21 +159,49 @@ func (h Handlers) render(c *gin.Context, lib *poses.Library, status int, notes g
 		gtshare.Render(c, http.StatusInternalServerError, gentestposes.InstallPanel(w, installOf(st, notes, "ポーズ集を読み込めませんでした。導入し直してください")))
 		return
 	}
-	gtshare.Render(c, status, gentestposes.GalleryPanel(w, galleryOf(all, queryOf(c), notes)))
+	g := galleryOf(all, queryOf(c), notes)
+	g.Adult = adultOf(st.Adult, adultFailure)
+	gtshare.Render(c, status, gentestposes.GalleryPanel(w, g))
 }
 
-func installOf(st poses.Status, notes gentestposes.Notes, failure string) gentestposes.Install {
-	in := gentestposes.Install{
-		Notes: notes, Error: failure, Poses: st.Poses, Images: st.Images, Download: fetch.HumanBytes(uint64(max(st.DownloadBytes, 0))), //nolint:gosec // clamped
-		Source: st.Source,
+// downloadText is a size for the screen ("19.7 MiB").
+func downloadText(n int64) string { return fetch.HumanBytes(uint64(max(n, 0))) } //nolint:gosec // clamped
+
+// remainText is how much of the download is still to fetch; "" when it is all of it (nothing of it is in place).
+func remainText(in poses.Info) string {
+	if in.RemainBytes >= in.DownloadBytes {
+		return ""
 	}
-	for _, l := range st.Licenses {
-		in.Licenses = append(in.Licenses, gentestposes.LicenseRow{
+	return downloadText(in.RemainBytes)
+}
+
+func licenseRows(ls []catalog.ResourceLicense) []gentestposes.LicenseRow {
+	var out []gentestposes.LicenseRow
+	for _, l := range ls {
+		out = append(out, gentestposes.LicenseRow{
 			Name: l.Name, Summary: l.Summary,
 			Answer: commercial.View{Level: l.Commercial, LicenseName: l.Name, SourceURL: l.URL, Notice: l.Notice},
 		})
 	}
-	return in
+	return out
+}
+
+func installOf(st poses.Status, notes gentestposes.Notes, failure string) gentestposes.Install {
+	return gentestposes.Install{
+		Notes: notes, Error: failure, Poses: st.Poses, Images: st.Images, Download: downloadText(st.DownloadBytes), Remain: remainText(st.Info),
+		Source: st.Source, Licenses: licenseRows(st.Licenses),
+	}
+}
+
+// adultOf is the section of the gallery about the suggestive series; nil while the age gate is closed (the status has none then).
+func adultOf(a *poses.AdultStatus, failure string) *gentestposes.AdultOffer {
+	if a == nil {
+		return nil
+	}
+	return &gentestposes.AdultOffer{
+		Installed: a.Installed, Error: failure, Poses: a.Poses, Images: a.Images, Download: downloadText(a.DownloadBytes), Remain: remainText(a.Info),
+		Source: a.Source, Licenses: licenseRows(a.Licenses),
+	}
 }
 
 // Install answers POST /generation-test/poses/install: the library is downloaded and verified (the box must be ticked: the service refuses
@@ -187,6 +223,26 @@ func (h Handlers) Install(c *gin.Context) {
 	h.render(c, lib, http.StatusOK, h.notesPost(c), "")
 }
 
+// InstallAdult answers POST /generation-test/poses/install-adult: the suggestive series (sexy, duo) are downloaded and verified. The service
+// refuses while the age gate is closed (the screen offers it only while it is open, and the service does not trust the screen), without the
+// agreement and before the main library; the gallery comes back with the message in its section about them.
+func (h Handlers) InstallAdult(c *gin.Context) {
+	lib, ok := h.library(c)
+	if !ok {
+		return
+	}
+	accepted := slices.Contains([]string{"on", "1", "true"}, c.PostForm(gentestposes.FieldAccept))
+	if err := lib.InstallAdult(c.Request.Context(), accepted, nil); err != nil {
+		if c.Request.Context().Err() != nil {
+			return
+		}
+		status, msg := refuse(c, err)
+		h.renderWith(c, lib, status, h.notesPost(c), "", msg)
+		return
+	}
+	h.render(c, lib, http.StatusOK, h.notesPost(c), "")
+}
+
 // Remove answers POST /generation-test/poses/remove: the pictures and the catalog are deleted and the body of the dialog comes back as the
 // offer to install (a library that is already gone is the same answer; a running install is refused: 409 and its message).
 func (h Handlers) Remove(c *gin.Context) {
@@ -196,6 +252,20 @@ func (h Handlers) Remove(c *gin.Context) {
 	}
 	if err := lib.Remove(); err != nil {
 		status, msg := refuse(c, err) // the gallery stays as it is: the message is the answer, as for the filters
+		c.String(status, msg)
+		return
+	}
+	h.render(c, lib, http.StatusOK, h.notesPost(c), "")
+}
+
+// RemoveAdult answers POST /generation-test/poses/remove-adult: the suggestive series are deleted, the main library stays.
+func (h Handlers) RemoveAdult(c *gin.Context) {
+	lib, ok := h.library(c)
+	if !ok {
+		return
+	}
+	if err := lib.RemoveAdult(); err != nil {
+		status, msg := refuse(c, err)
 		c.String(status, msg)
 		return
 	}

@@ -527,6 +527,7 @@ GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒
 | 試し生成のモデルの一覧（`mmview.TrialModels`、生成テストの `Models`・`Model`） | 導入済みの成人向けモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）も出さず、名指しの要求は不明なモデルとして断る（`gentest.Deps.Hidden` = `HidesModel`） |
 | 画像・動画モデルの割り当て（`modelsettings`、画面・MCP） | 導入済みの成人向けモデルを選択肢に出さず、それを指す割り当ては保存できない（`HidesModel` = `modelsettings.Service.SetHidden`）。§6.1 |
 | 生成（Shot・Reference Pack・生成テスト・Adapter の直接呼び出し） | 割り当てが指していても断る（`agegate.ErrRefused`。何も呼ばず、代替にも回さない）。§6.1 |
+| ポーズ集の成人向けのシリーズ（Shisei の `sexy`・`duo`。Issue #1020。[local-runtime.md](local-runtime.md) §12.9） | **同じゲートを使う**（`AdultContentEnabled`。新しい確認の方法は足さない）。導入は `ErrAdultGateClosed`、一覧・画像・参照・履歴の入力・ジョブ一覧には出さず、走り出す前のバッチは失敗にする |
 | `DeleteModel` | 影響しない（導入済みのファイルの片づけは、いつでもできる。ゲートが閉じていても導入済みのモデルを消せる。ただし割り当てが指していれば従来どおり `*InvalidError`） |
 
 ```go

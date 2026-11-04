@@ -34,6 +34,8 @@ const (
 // which models read a pose and whether they are for commercial use) and its own filters.
 type Wire struct {
 	PanelURL, ResultsURL, InstallURL, RemoveURL, ProgressURL, RowURL string
+	// InstallAdultURL and RemoveAdultURL are the routes of the suggestive series (only offered while the age gate is open).
+	InstallAdultURL, RemoveAdultURL string
 	// IncludeForm picks the media and the models out of the compose form; IncludeFilters the controls of the dialog's filters.
 	IncludeForm, IncludeFilters string
 }
@@ -43,6 +45,7 @@ func NewWire() Wire {
 	return Wire{
 		PanelURL: paths.GenerationTestPoses(), ResultsURL: paths.GenerationTestPoses("results"), InstallURL: paths.GenerationTestPoses("install"),
 		RemoveURL: paths.GenerationTestPoses("remove"), ProgressURL: paths.GenerationTestPoses("progress"),
+		InstallAdultURL: paths.GenerationTestPoses("install-adult"), RemoveAdultURL: paths.GenerationTestPoses("remove-adult"),
 		RowURL:         paths.GenerationTestPart("ref-row"),
 		IncludeForm:    "#gt-compose [name=media], #gt-compose [name=model]",
 		IncludeFilters: "[data-gt-pose-filters] [name^=pose_]",
@@ -79,8 +82,11 @@ type Install struct {
 	// Poses and Images are what an install puts in place; Download is how much is downloaded ("19.7 MiB"), Source where from.
 	Poses, Images int
 	Download      string
-	Source        string
-	Licenses      []LicenseRow
+	// Remain is how much of it is still to download ("" unless some of the files are in place already: a library from before the depth and normal maps,
+	// or an install that was interrupted; the files that are in place are not fetched again).
+	Remain   string
+	Source   string
+	Licenses []LicenseRow
 }
 
 // Option is an option of a select or a radio group.
@@ -123,6 +129,21 @@ type Gallery struct {
 	Angles  []Option
 	Kinds   []Option // the kind of picture the cards show: the line art, or the depth or normal map for a ControlNet
 	Results Results
+	// Adult is the offer of the suggestive series (sexy, duo). nil while the age gate is closed: nothing of the series is said then.
+	Adult *AdultOffer
+}
+
+// AdultOffer is the part of the gallery about the suggestive series (only while the age gate is open): the offer to install them, or the way to
+// remove them.
+type AdultOffer struct {
+	Installed bool
+	// Error is why the last install of them failed ("" when none did).
+	Error         string
+	Poses, Images int
+	Download      string
+	Remain        string
+	Source        string
+	Licenses      []LicenseRow
 }
 
 // joinNames lists names with "、".
