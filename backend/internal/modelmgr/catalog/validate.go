@@ -19,7 +19,8 @@ var (
 	// A model file is pinned to a commit of a Hugging Face repository (never a branch such as main).
 	modelURLPattern = regexp.MustCompile(`^https://huggingface\.co/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/resolve/[0-9a-f]{40}/[^?#\s]+$`)
 	engineTag       = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
-	fileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*\.safetensors$`)
+	// A model file is a .safetensors, or a .gguf that the custom node ComfyUI-GGUF (UnetLoaderGGUF) reads (#1016).
+	fileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*\.(safetensors|gguf)$`)
 	// sourceNoteDate finds the date a mirror's SHA-256 was checked against the original, in a File.SourceNote.
 	sourceNoteDate = regexp.MustCompile(`20[0-9]{2}-[0-9]{2}-[0-9]{2}`)
 )
@@ -45,6 +46,7 @@ var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", 
 var loaderInputs = map[string]map[string]string{
 	"CheckpointLoaderSimple":   {"ckpt_name": "checkpoints"},
 	"UNETLoader":               {"unet_name": "diffusion_models"},
+	"UnetLoaderGGUF":           {"unet_name": "diffusion_models"},
 	"CLIPLoader":               {"clip_name": "text_encoders"},
 	"DualCLIPLoader":           {"clip_name1": "text_encoders", "clip_name2": "text_encoders"},
 	"VAELoader":                {"vae_name": "vae"},
@@ -231,7 +233,7 @@ func validateFiles(where string, files []File, shared map[string]File) []error {
 		fw := where + " file " + f.Name
 		switch {
 		case !fileNamePattern.MatchString(f.Name):
-			errs = append(errs, fmt.Errorf("%s: name must be a .safetensors file name", fw))
+			errs = append(errs, fmt.Errorf("%s: name must be a .safetensors or .gguf file name", fw))
 		case !slices.Contains(modelFolders, f.Folder):
 			errs = append(errs, fmt.Errorf("%s: folder %q is not a model folder", fw, f.Folder))
 		case f.SourceNote != "" && !hasCheckDate(f.SourceNote):

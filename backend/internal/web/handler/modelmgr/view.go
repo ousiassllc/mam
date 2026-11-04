@@ -122,7 +122,7 @@ func modelData(ctx context.Context, svc *modelmanager.Service, e mmview.Entry, f
 	if m.RequiresHFToken && tokenMissing {
 		out.TokenGuide = hfguide.NoToken // the same words as the refusal of the install (service, MCP)
 	}
-	out.NeedsNodes = nodegate.Message(nodegate.Missing(svc.Nodes, m.RequiresNodes))
+	out.NeedsNodes = nodegate.Reason(svc.Nodes, m.RequiresNodes)
 	for _, f := range m.Files {
 		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), SHA256: f.SHA256, Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
 	}
