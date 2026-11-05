@@ -3,7 +3,9 @@ package testenv_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -22,6 +24,17 @@ func TestMissingFFmpeg_SkipsOutsideCI(t *testing.T) {
 		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
 	})
 	assert.True(t, skipped)
+}
+
+func TestFFmpegPath_IsTheAbsolutePathThatLocateFinds(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake ffmpeg is a shell file; Windows needs the .exe suffix")
+	}
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "ffmpeg")
+	require.NoError(t, os.WriteFile(fake, []byte("#!/bin/sh\n"), 0o700)) // #nosec G306 -- an executable fake of a test
+	t.Setenv("PATH", dir)
+	assert.Equal(t, fake, testenv.FFmpegPath(t), "the path, not the bare name that only PATH could resolve")
 }
 
 func TestMissingFFmpeg_FailsInCI(t *testing.T) {

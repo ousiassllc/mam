@@ -93,11 +93,9 @@ func (a *apiV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func toneWav(t *testing.T) []byte {
 	t.Helper()
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
-	}
+	ffmpeg := testenv.FFmpegPath(t)
 	out := filepath.Join(t.TempDir(), "tone.wav")
-	cmd := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=1", out)
+	cmd := exec.Command(ffmpeg, "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=1", out)
 	if b, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("make tone: %v: %s", err, b)
 	}

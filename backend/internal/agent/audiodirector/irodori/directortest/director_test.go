@@ -36,11 +36,9 @@ func tools(t *testing.T) media.Tools {
 // toneWav is a wav tone of the given length: what the server answers with.
 func toneWav(t *testing.T, seconds float64) []byte {
 	t.Helper()
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
-	}
+	ffmpeg := testenv.FFmpegPath(t)
 	out := filepath.Join(t.TempDir(), "tone.wav")
-	cmd := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", fmt.Sprintf("sine=frequency=300:duration=%g", seconds), "-af", "volume=0.3", out)
+	cmd := exec.Command(ffmpeg, "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", fmt.Sprintf("sine=frequency=300:duration=%g", seconds), "-af", "volume=0.3", out)
 	if b, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("make tone: %v: %s", err, b)
 	}
