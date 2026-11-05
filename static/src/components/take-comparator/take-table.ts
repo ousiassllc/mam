@@ -40,7 +40,7 @@ function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
     <td class="px-2 py-2" data-score="camera">${renderScore(t.scores?.camera, minAxis)}</td>
     <td class="px-2 py-2" data-score="continuity">${renderScore(t.scores?.continuity, minAxis)}</td>
     <td class="px-2 py-2">
-      <span class="rounded border px-2 py-0.5 text-xs ${STATUS_CLASS[t.status]}" data-status=${t.status}>${t.status_label}</span>
+      <span class="rounded-sm border px-2 py-1 text-xs ${STATUS_CLASS[t.status]}" data-status=${t.status}>${t.status_label}</span>
       ${t.verdict ? html`<span class="ml-1 text-xs text-mute">${t.verdict.toUpperCase()}</span>` : nothing}
     </td>
     <td class="px-2 py-2 text-xs">

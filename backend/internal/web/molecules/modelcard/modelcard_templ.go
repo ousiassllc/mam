@@ -124,7 +124,7 @@ func Item(c Card) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex min-w-0 flex-1 flex-col gap-0.5\"><h3 class=\"text-sm font-semibold text-ink\"><button class=\"max-w-full cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none\" aria-haspopup=\"dialog\" data-card-open")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex min-w-0 flex-1 flex-col gap-1\"><h3 class=\"text-sm font-semibold text-ink\"><button class=\"max-w-full cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none\" aria-haspopup=\"dialog\" data-card-open")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -163,7 +163,7 @@ func Item(c Card) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if c.Commercial != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"relative z-10 shrink-0\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"relative z-raised shrink-0\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -228,7 +228,7 @@ func Actions() templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"relative z-10 mt-auto flex flex-wrap items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"relative z-raised mt-auto flex flex-wrap items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

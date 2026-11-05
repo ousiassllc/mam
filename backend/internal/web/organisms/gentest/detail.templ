@@ -132,7 +132,7 @@ templ DetailSection(d Detail, inModal bool) {
 				<ul class="flex flex-wrap gap-3" data-testid="gt-inputs-list">
 					for _, in := range d.Inputs {
 						<li class="flex w-32 flex-col gap-1 text-xs">
-							<img class="h-24 w-full rounded object-cover" src={ in.URL } alt={ in.Role } loading="lazy"/>
+							<img class="h-24 w-full rounded-md object-cover" src={ in.URL } alt={ in.Role } loading="lazy"/>
 							<span class="text-mute">{ in.Role }・{ in.Origin }</span>
 						</li>
 					}
@@ -159,10 +159,10 @@ templ DetailSection(d Detail, inModal bool) {
 // detailMedia is the large picture of a result (a video plays), or that there is no file.
 templ detailMedia(c resulttile.Card) {
 	if c.FileURL != "" && c.Video {
-		<video class="max-h-[70vh] w-full rounded bg-black object-contain" src={ c.FileURL } controls preload="metadata"></video>
+		<video class="max-h-[70vh] w-full rounded-md bg-black object-contain" src={ c.FileURL } controls preload="metadata"></video>
 	} else if c.FileURL != "" {
-		<img class="max-h-[70vh] w-full rounded bg-black object-contain" src={ c.FileURL } alt={ c.Prompt }/>
+		<img class="max-h-[70vh] w-full rounded-md bg-black object-contain" src={ c.FileURL } alt={ c.Prompt }/>
 	} else {
-		<p class="flex h-40 items-center justify-center rounded bg-surface text-sm text-mute" data-testid="gt-no-file">ファイルはありません</p>
+		<p class="flex h-40 items-center justify-center rounded-md bg-surface text-sm text-mute" data-testid="gt-no-file">ファイルはありません</p>
 	}
 }

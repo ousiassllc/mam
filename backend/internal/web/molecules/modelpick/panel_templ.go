@@ -51,7 +51,7 @@ func Panel(b Filter, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"z-20 flex max-h-[70vh] flex-col gap-4 overflow-y-auto rounded-lg border border-border bg-surface p-4 shadow-xl\" role=\"group\" aria-label=\"詳細フィルター\" hidden data-mp-panel data-testid=\"model-pick-panel\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"z-dropdown flex max-h-[70vh] flex-col gap-4 overflow-y-auto rounded-lg border border-border bg-surface p-4\" role=\"group\" aria-label=\"詳細フィルター\" hidden data-mp-panel data-testid=\"model-pick-panel\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -131,7 +131,7 @@ func Panel(b Filter, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><div class=\"flex flex-wrap items-center justify-between gap-2\"><p class=\"text-sm text-mute\">条件を選ぶと、その場で一覧が絞り込まれます。</p><button type=\"button\" class=\"cursor-pointer rounded-md border border-border px-2.5 py-1 text-xs text-ink hover:border-mute focus-visible:focus-ring\" hx-get=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><div class=\"flex flex-wrap items-center justify-between gap-2\"><p class=\"text-sm text-mute\">条件を選ぶと、その場で一覧が絞り込まれます。</p><button type=\"button\" class=\"cursor-pointer rounded-md border border-border px-3 py-1 text-xs text-ink hover:border-mute focus-visible:focus-ring\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -200,7 +200,7 @@ func checks(legend, name string, opts []Option, chosen []string) templ.Component
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<fieldset class=\"flex min-w-0 flex-col gap-1.5\"><legend class=\"mb-1 text-xs text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<fieldset class=\"flex min-w-0 flex-col gap-2\"><legend class=\"mb-1 text-xs text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -213,7 +213,7 @@ func checks(legend, name string, opts []Option, chosen []string) templ.Component
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</legend><div class=\"flex flex-wrap gap-1.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</legend><div class=\"flex flex-wrap gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -253,7 +253,7 @@ func radios(legend, name string, opts []Option, current string) templ.Component 
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<fieldset class=\"flex min-w-0 flex-col gap-1.5\"><legend class=\"mb-1 text-xs text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<fieldset class=\"flex min-w-0 flex-col gap-2\"><legend class=\"mb-1 text-xs text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -266,7 +266,7 @@ func radios(legend, name string, opts []Option, current string) templ.Component 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</legend><div class=\"flex flex-wrap gap-1.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</legend><div class=\"flex flex-wrap gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -433,7 +433,7 @@ func sourceSection(b Filter) templ.Component {
 			templ_7745c5c3_Var18 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<fieldset class=\"flex min-w-0 flex-col gap-1.5\"><legend class=\"mb-1 text-xs text-ink\">提供元</legend><div class=\"flex flex-wrap gap-1.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<fieldset class=\"flex min-w-0 flex-col gap-2\"><legend class=\"mb-1 text-xs text-ink\">提供元</legend><div class=\"flex flex-wrap gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -481,7 +481,7 @@ func switchSection(b Filter) templ.Component {
 			templ_7745c5c3_Var19 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<fieldset class=\"flex min-w-0 flex-col gap-1.5\"><legend class=\"mb-1 text-xs text-ink\">その他</legend><div class=\"flex flex-wrap gap-1.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<fieldset class=\"flex min-w-0 flex-col gap-2\"><legend class=\"mb-1 text-xs text-ink\">その他</legend><div class=\"flex flex-wrap gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

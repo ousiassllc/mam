@@ -12,7 +12,7 @@ const recipeHelp = "今の設定（モデル・ステップ数・CFG・サンプ
 // form, so the buttons ask the server with HTMX and the form's own values go with them; Enter in a name presses the button of its row
 // (static/src/components/gentest-tiers/recipe.ts), not the estimate.
 templ RecipeSection(d RecipeData) {
-	<section class="flex flex-col gap-3 rounded-md border border-border p-3 text-sm" aria-labelledby="gt-recipes-title" data-testid="gt-recipe-section">
+	<section class="flex flex-col gap-3 rounded-lg border border-border p-3 text-sm" aria-labelledby="gt-recipes-title" data-testid="gt-recipe-section">
 		@help.Row(help.ID("レシピ"), "レシピ", help.Text(recipeHelp)) {
 			<h2 id="gt-recipes-title" class="text-sm font-semibold text-ink">レシピ</h2>
 		}
@@ -39,7 +39,7 @@ templ RecipePanel(d RecipeData) {
 						"id": "gt-recipe-name", "name": FieldRecipeName, "type": "text", "maxlength": itoa(MaxRecipeName), "placeholder": "例: 人物写真・きれい", "data-gt-recipe-name": "", "data-testid": "gt-recipe-name",
 					})
 				</label>
-				<label class="flex items-center gap-1.5 text-xs text-ink">
+				<label class="flex items-center gap-2 text-xs text-ink">
 					@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldRecipeEasy, "value": "1", "data-testid": "gt-recipe-easy"})
 					<span>かんたんの選択肢に足す</span>
 				</label>
@@ -69,7 +69,7 @@ func recipeAct(method, path, include string, vals map[string]string, extra, test
 }
 
 templ recipeRow(r RecipeRow) {
-	<li class="flex flex-col gap-1.5 rounded-md border border-border p-2" data-gt-recipe-row data-testid="gt-recipe">
+	<li class="flex flex-col gap-2 rounded-lg border border-border p-2" data-gt-recipe-row data-testid="gt-recipe">
 		<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 			<span class="text-ink" data-testid="gt-recipe-title">{ r.Name }</span>
 			<span class="text-xs text-mute">{ r.ModelLabel }</span>

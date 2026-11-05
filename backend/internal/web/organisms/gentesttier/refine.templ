@@ -10,7 +10,7 @@ templ Refine(d Data) {
 	<input type="hidden" name={ FieldTier } value={ TierDetail }/>
 	<input type="hidden" name={ FieldKeepIntent } value={ d.KeepIntent }/>
 	<input type="hidden" name={ FieldKeepQuality } value={ d.KeepQuality }/>
-	<section class="flex flex-col gap-2 rounded-md border border-border p-3 text-sm" aria-labelledby="gt-refine-title" data-gt-refine data-testid="gt-refine">
+	<section class="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm" aria-labelledby="gt-refine-title" data-gt-refine data-testid="gt-refine">
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<h2 id="gt-refine-title" class="text-sm font-semibold text-ink">こだわり</h2>
 			@atoms.SmallButton(atoms.ToneNeutral, "全部を元に戻す", templ.Attributes{"type": "button", "hidden": true, "data-gt-reset-all": "", "data-testid": "gt-reset-all"})

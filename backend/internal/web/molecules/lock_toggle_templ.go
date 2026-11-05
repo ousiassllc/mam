@@ -48,7 +48,7 @@ func (d LockToggleData) modes() []domain.LockMode {
 }
 
 func lockModeClass(active bool, m domain.LockMode) string {
-	base := "px-2 py-1 text-xs font-semibold transition "
+	base := "px-2 py-1 text-xs font-semibold transition-colors "
 	if !active {
 		return base + "text-ink hover:bg-accent-soft"
 	}

@@ -47,7 +47,7 @@ templ Tile(c Card, pick bool) {
 			}
 		</a>
 		if c.Unused > 0 {
-			<span class="absolute bottom-1.5 left-1.5 rounded-md bg-surface px-1.5 text-xs leading-5 text-warning" title={ c.UnusedText } data-testid="gt-tile-unused">画像 { itoa(c.Unused) } 枚が未使用</span>
+			<span class="absolute bottom-1.5 left-1.5 rounded-md bg-surface px-2 text-xs leading-5 text-warning" title={ c.UnusedText } data-testid="gt-tile-unused">画像 { itoa(c.Unused) } 枚が未使用</span>
 		}
 		@favoriteMark(c.ID, c.Favorite, false)
 	</article>
@@ -58,7 +58,7 @@ templ Tile(c Card, pick bool) {
 templ favoriteMark(id string, on bool, oob bool) {
 	<span
 		id={ "gt-fav-mark-" + id }
-		class="pointer-events-none absolute right-1.5 top-1.5 text-base leading-none text-warning drop-shadow"
+		class="pointer-events-none absolute right-1.5 top-1.5 text-base leading-none text-warning"
 		hidden?={ !on }
 		data-testid="gt-fav-mark"
 		if oob {
@@ -88,7 +88,7 @@ templ FavoriteButton(id string, on bool) {
 	<button
 		type="button"
 		id={ "gt-favorite-" + id }
-		class="rounded px-1 text-base leading-none hover:bg-accent-soft"
+		class="rounded-md px-1 text-base leading-none hover:bg-accent-soft"
 		hx-post={ paths.GenerationTestPart("results", id, "favorite") }
 		hx-vals={ favoriteVals(!on) }
 		hx-swap="outerHTML"

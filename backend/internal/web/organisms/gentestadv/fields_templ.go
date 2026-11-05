@@ -41,7 +41,7 @@ func Fields(a Section) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<details class=\"flex flex-col gap-3 rounded-md border border-border p-3 text-sm\" data-gt-advanced data-testid=\"gt-advanced\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<details class=\"flex flex-col gap-3 rounded-lg border border-border p-3 text-sm\" data-gt-advanced data-testid=\"gt-advanced\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -75,7 +75,7 @@ func Fields(a Section) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<ul class=\"mt-2 flex flex-col gap-1.5\" data-testid=\"gt-advanced-help\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<ul class=\"mt-2 flex flex-col gap-2\" data-testid=\"gt-advanced-help\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -365,7 +365,7 @@ func advancedSlider(kind, label, name, value, min, max, step string, def float64
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</span> <label class=\"flex items-center gap-1.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</span> <label class=\"flex items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -565,7 +565,7 @@ func WeightHelp(all []WeightGroup) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(all) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<details class=\"mt-2\" data-testid=\"gt-weight-all\"><summary class=\"cursor-pointer text-xs text-mute\">すべてのモデルを見る</summary><ul class=\"mt-1 flex flex-col gap-1.5\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<details class=\"mt-2\" data-testid=\"gt-weight-all\"><summary class=\"cursor-pointer text-xs text-mute\">すべてのモデルを見る</summary><ul class=\"mt-1 flex flex-col gap-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

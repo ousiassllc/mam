@@ -58,7 +58,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"storage-panel\" class=\"flex flex-col gap-3\"><dl class=\"grid grid-cols-1 gap-3 sm:grid-cols-3\"><div class=\"rounded-md border border-border p-3\"><dt class=\"text-xs text-mute\">Project のファイル</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"asset-bytes\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"storage-panel\" class=\"flex flex-col gap-3\"><dl class=\"grid grid-cols-1 gap-3 sm:grid-cols-3\"><div class=\"rounded-lg border border-border p-3\"><dt class=\"text-xs text-mute\">Project のファイル</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"asset-bytes\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -84,7 +84,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</dd></div><div class=\"rounded-md border border-border p-3\"><dt class=\"text-xs text-mute\">ディスクの空き容量</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"free-bytes\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</dd></div><div class=\"rounded-lg border border-border p-3\"><dt class=\"text-xs text-mute\">ディスクの空き容量</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"free-bytes\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -104,7 +104,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</dd></div><div class=\"rounded-md border border-border p-3\"><dt class=\"text-xs text-mute\">不要な Take</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"unneeded\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</dd></div><div class=\"rounded-lg border border-border p-3\"><dt class=\"text-xs text-mute\">不要な Take</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"unneeded\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

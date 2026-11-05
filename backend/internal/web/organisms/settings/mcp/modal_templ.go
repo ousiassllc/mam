@@ -423,7 +423,7 @@ func IssuedModal(t NewToken) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" aria-label=\"発行したトークン\" spellcheck=\"false\" autocomplete=\"off\" data-testid=\"mcp-issued-value\" class=\"min-w-0 flex-1 select-all rounded-md border border-border bg-bone px-2 py-1.5 font-mono text-sm text-ink focus-visible:focus-ring\"> <button type=\"button\" autofocus data-copy-source=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" aria-label=\"発行したトークン\" spellcheck=\"false\" autocomplete=\"off\" data-testid=\"mcp-issued-value\" class=\"min-w-0 flex-1 select-all rounded-md border border-border bg-bone px-2 py-2 font-mono text-sm text-ink focus-visible:focus-ring\"> <button type=\"button\" autofocus data-copy-source=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -449,7 +449,7 @@ func IssuedModal(t NewToken) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink hover:bg-accent-soft focus-visible:focus-ring\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-accent-soft focus-visible:focus-ring\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -334,7 +334,7 @@ func Confirm(c Box) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"flex flex-col gap-3 rounded-md border border-accent p-4\" data-testid=\"gt-inpaint-confirm\"><h2 class=\"text-sm font-semibold\">実行の確認</h2><p class=\"text-sm\">全部で <strong>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"flex flex-col gap-3 rounded-lg border border-accent p-4\" data-testid=\"gt-inpaint-confirm\"><h2 class=\"text-sm font-semibold\">実行の確認</h2><p class=\"text-sm\">全部で <strong>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -523,7 +523,7 @@ func Failed(msg string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"rounded-md border border-danger/60 p-4\" data-testid=\"gt-inpaint-failed\"><p class=\"text-sm text-danger\" role=\"alert\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"rounded-lg border border-danger/60 p-4\" data-testid=\"gt-inpaint-failed\"><p class=\"text-sm text-danger\" role=\"alert\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -579,7 +579,7 @@ func Started(history string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"rounded-md border border-success/60 p-4\" data-testid=\"gt-inpaint-started\"><p class=\"text-sm text-success\" role=\"status\">描き直しを始めました。結果は履歴に、元の画像とは別のファイルで残ります。</p><a class=\"text-sm text-ink underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"rounded-lg border border-success/60 p-4\" data-testid=\"gt-inpaint-started\"><p class=\"text-sm text-success\" role=\"status\">描き直しを始めました。結果は履歴に、元の画像とは別のファイルで残ります。</p><a class=\"text-sm text-ink underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -78,7 +78,7 @@ func Bar(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\"><button type=\"submit\" class=\"inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2 text-sm text-ink hover:bg-accent-soft focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50\" aria-label=\"選んだ結果を ZIP で保存\" title=\"選んだ結果を ZIP で保存（カードをタップで選ぶ）\" disabled data-gt-export-submit data-testid=\"gt-export-selected-submit\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\"><button type=\"submit\" class=\"inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm text-ink hover:bg-accent-soft focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50\" aria-label=\"選んだ結果を ZIP で保存\" title=\"選んだ結果を ZIP で保存（カードをタップで選ぶ）\" disabled data-gt-export-submit data-testid=\"gt-export-selected-submit\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

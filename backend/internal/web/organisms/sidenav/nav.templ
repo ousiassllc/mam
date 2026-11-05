@@ -17,7 +17,7 @@ const (
 	// LabelTheme names the button that switches between the Light and the Dark theme (static/src/components/theme).
 	LabelTheme = "ライト / ダークを切り替える"
 
-	itemClass   = "flex items-center gap-3 rounded-md border-l-2 px-3 py-1.5 text-sm transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
+	itemClass   = "flex min-h-10 items-center gap-3 rounded-md border-l-2 px-3 py-1 text-sm transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
 	idleClass   = " border-transparent text-ink"
 	activeClass = " border-accent bg-accent-soft text-ink"
 	// labelClass hides the text of an entry visually, not from assistive technology, when the menu is folded and on a narrow
@@ -109,7 +109,7 @@ templ list(items []Item, current Key, id, labelledBy string) {
 	<ul
 		id={ id }
 		role="list"
-		class="flex flex-col gap-0.5"
+		class="flex flex-col gap-2"
 		if labelledBy != "" {
 			aria-labelledby={ labelledBy }
 		}

@@ -47,10 +47,10 @@ templ AttachmentStrip(projectID string, assets []domain.Asset) {
 			<li>
 				if a.Type == domain.AssetImage {
 					<a href={ AssetURL(projectID, a.ID) } target="_blank" rel="noopener">
-						<img src={ string(AssetURL(projectID, a.ID)) } alt={ attachmentLabel("添付画像", i, len(assets)) } loading="lazy" class="h-24 rounded border border-border object-cover"/>
+						<img src={ string(AssetURL(projectID, a.ID)) } alt={ attachmentLabel("添付画像", i, len(assets)) } loading="lazy" class="h-24 rounded-md border border-border object-cover"/>
 					</a>
 				} else {
-					<video src={ string(AssetURL(projectID, a.ID)) } aria-label={ attachmentLabel("添付動画", i, len(assets)) } controls preload="metadata" class="h-32 rounded border border-border"></video>
+					<video src={ string(AssetURL(projectID, a.ID)) } aria-label={ attachmentLabel("添付動画", i, len(assets)) } controls preload="metadata" class="h-32 rounded-md border border-border"></video>
 				}
 			</li>
 		}

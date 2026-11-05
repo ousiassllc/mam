@@ -52,7 +52,7 @@ templ providerNote(p Provider) {
 templ localState(p Provider) {
 	<div id={ "audio-state-" + p.Field } class="flex min-w-0 flex-col gap-2 text-xs text-mute">
 		if !p.Local.Supported {
-			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-unsupported-" + p.Field }>
+			<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-unsupported-" + p.Field }>
 				<p>この PC では { p.Local.Name } を選べません。{ p.CloudLabel } のまま使えます。</p>
 				<p data-testid={ "audio-support-reason-" + p.Field }>{ p.Local.SupportReason }</p>
 			</div>
@@ -82,7 +82,7 @@ templ localState(p Provider) {
 			<p data-testid={ "audio-model-" + p.Field }>使うモデル: { p.Local.Model }（変えるにはモデルマネージャーの「モデルの選択」）</p>
 		}
 		if len(p.Local.Cautions) > 0 {
-			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-cautions-" + p.Field }>
+			<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-cautions-" + p.Field }>
 				<p class="">使うときの制限（モデルカードより）</p>
 				<ul class="list-disc pl-5">
 					for _, c := range p.Local.Cautions {
@@ -95,7 +95,7 @@ templ localState(p Provider) {
 			<p class="text-warning" data-testid={ "audio-condition-" + p.Field }>{ p.Local.Condition }</p>
 		}
 		if len(p.Local.Unclear) > 0 {
-			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-unclear-" + p.Field }>
+			<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-unclear-" + p.Field }>
 				<p class="">商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
 				<p class="break-words">{ join(p.Local.Unclear) }</p>
 				<p>商用の動画に使う前に、モデルマネージャーの一覧で出典とライセンスを確認してください。</p>

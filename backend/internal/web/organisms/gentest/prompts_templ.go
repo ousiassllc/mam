@@ -71,7 +71,7 @@ func PromptHistory(p Prompts) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, r := range p.Items {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li class=\"flex flex-col gap-2 rounded-md border border-border p-3\" data-testid=\"gt-prompt-item\"><p class=\"whitespace-pre-wrap break-words text-sm text-ink\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li class=\"flex flex-col gap-2 rounded-lg border border-border p-3\" data-testid=\"gt-prompt-item\"><p class=\"whitespace-pre-wrap break-words text-sm text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

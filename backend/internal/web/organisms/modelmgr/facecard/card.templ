@@ -33,7 +33,7 @@ templ Section(c Card) {
 			}
 		</p>
 		if c.OffReason == "runtime_unavailable" {
-			<div class="flex flex-col gap-1 rounded-md border border-warning/60 p-2 text-xs text-warning" role="note" data-testid="mm-face-models-runtime">
+			<div class="flex flex-col gap-1 rounded-lg border border-warning/60 p-2 text-xs text-warning" role="note" data-testid="mm-face-models-runtime">
 				<p class="">モデルは入っていますが、顔の類似度はオフです（ONNX Runtime のライブラリが使えません）</p>
 				<p>{ c.OffCause }</p>
 				<p>{ c.OffFix }</p>
@@ -42,8 +42,8 @@ templ Section(c Card) {
 		<p class="break-all text-sm text-mute" data-testid="mm-face-models-dir">導入先: <code>{ c.ModelDir }</code>（起動オプション --face-model-dir で変えられます）</p>
 		<ul class="flex flex-col gap-2 text-xs" data-testid="mm-face-models-files">
 			for _, f := range c.Files {
-				<li class="flex flex-col gap-1 rounded-md border border-border p-2" data-testid="mm-face-models-file" data-file={ f.Name } data-state={ f.State }>
-					<p class="flex flex-wrap items-center gap-1.5 text-ink">
+				<li class="flex flex-col gap-1 rounded-lg border border-border p-2" data-testid="mm-face-models-file" data-file={ f.Name } data-state={ f.State }>
+					<p class="flex flex-wrap items-center gap-2 text-ink">
 						<span class="">{ f.Title }</span>
 						<code class="text-mute">{ f.Name }</code>
 						<span class="text-mute">・{ f.Size }・{ f.StateText }</span>
@@ -55,8 +55,8 @@ templ Section(c Card) {
 		</ul>
 		<ul class="flex flex-col gap-2 text-xs" data-testid="mm-face-models-licenses">
 			for _, l := range c.Licenses {
-				<li class="flex flex-col gap-1 rounded-md border border-border p-2">
-					<p class="flex flex-wrap items-center gap-1.5 text-ink">
+				<li class="flex flex-col gap-1 rounded-lg border border-border p-2">
+					<p class="flex flex-wrap items-center gap-2 text-ink">
 						<span class="">{ l.Name }</span>
 						@commercial.Badge(l.Answer)
 					</p>
@@ -71,7 +71,7 @@ templ Section(c Card) {
 		</ul>
 		if c.State != StateInstalled {
 			<label class="flex items-start gap-2 text-xs text-ink">
-				@atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", acceptClass: "", "data-testid": "mm-face-models-accept"})
+				@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", acceptClass: "", "data-testid": "mm-face-models-accept"})
 				<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span>
 			</label>
 		}

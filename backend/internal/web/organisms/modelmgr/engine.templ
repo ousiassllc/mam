@@ -66,7 +66,7 @@ templ EngineCard(e Engine) {
 			case e.Installed && !e.Broken:
 				@installedCard(e)
 			default:
-				<div id={ GPUID } class="relative z-10" hx-get={ paths.ModelManagerPart("engine", "gpu") } hx-trigger="load" hx-swap="outerHTML">
+				<div id={ GPUID } class="relative z-raised" hx-get={ paths.ModelManagerPart("engine", "gpu") } hx-trigger="load" hx-swap="outerHTML">
 					<p class="text-sm text-mute">GPU を検出しています…</p>
 				</div>
 		}
@@ -75,7 +75,7 @@ templ EngineCard(e Engine) {
 
 templ installedCard(e Engine) {
 	if e.State == "failed" && e.ProcessError != "" {
-		<pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-surface p-2 text-xs text-danger" role="alert" data-testid="mm-engine-failure">{ e.ProcessError }</pre>
+		<pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-2 text-xs text-danger" role="alert" data-testid="mm-engine-failure">{ e.ProcessError }</pre>
 	}
 	@modelcard.Actions() {
 		if e.State == "running" || e.State == "starting" {

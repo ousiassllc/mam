@@ -37,7 +37,7 @@ templ RuntimeModels(r Runtime) {
 }
 
 templ runtimeModel(r Runtime, m Model) {
-	<li class="flex flex-col gap-2 rounded-md border border-border p-3" data-testid="mm-runtime-model" data-model={ m.ID } data-active={ boolText(m.Active) }>
+	<li class="flex flex-col gap-2 rounded-lg border border-border p-3" data-testid="mm-runtime-model" data-model={ m.ID } data-active={ boolText(m.Active) }>
 		<label class="flex items-start gap-2 text-sm">
 			@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldModel, "value": m.ID, "checked": m.Active})
 			<span class="flex flex-col gap-1">
@@ -83,7 +83,7 @@ templ runtimeModel(r Runtime, m Model) {
 			</ul>
 		}
 		if m.Consent != nil {
-			<div class="flex flex-col gap-2 rounded-md border border-warning/60 bg-warning/10 p-3 text-xs" data-testid="mm-runtime-model-consent">
+			<div class="flex flex-col gap-2 rounded-lg border border-warning/60 bg-warning/10 p-3 text-xs" data-testid="mm-runtime-model-consent">
 				<p class="text-ink">{ m.Consent.Text }</p>
 				if m.Consent.Accepted {
 					<p class="text-ink">同意済みです（{ m.Consent.Version }）</p>

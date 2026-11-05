@@ -22,7 +22,7 @@ templ Card(d Data) {
 		@settingsui.CardItem(d.card()) {
 			<form id="llm-local-form" class="flex w-full flex-col gap-3" hx-put={ paths.LLMLocal() } hx-target={ "#" + CardID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="llm-local-form">
 				if d.Managed != nil {
-					<div class="flex flex-col gap-1 rounded-md border border-border p-3" data-testid="llm-local-managed">
+					<div class="flex flex-col gap-1 rounded-lg border border-border p-3" data-testid="llm-local-managed">
 						<label class="flex items-start gap-2 text-sm text-ink">
 							@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": "use_managed", "value": "1", "checked": d.UseManaged, "disabled": d.Pinned, "data-testid": "llm-local-use-managed"})
 							<span>この PC の llama.cpp を使う<span class="block text-xs text-mute">{ managedHelp }</span></span>
@@ -144,7 +144,7 @@ func (d Data) card() settingsui.Card {
 // Result is the answer of a connection test: what happened, the models the server has, or the common error of the failure.
 templ Result(r TestResult) {
 	if r.OK {
-		<div class="flex flex-col gap-1 rounded-md border border-success/60 bg-success/10 p-3 text-sm text-ink" role="status" data-testid="llm-local-test-ok">
+		<div class="flex flex-col gap-1 rounded-lg border border-success/60 bg-success/10 p-3 text-sm text-ink" role="status" data-testid="llm-local-test-ok">
 			<p>{ r.Message }</p>
 			if len(r.Models) > 0 {
 				<ul class="list-inside list-disc text-xs text-ink" data-testid="llm-local-models">

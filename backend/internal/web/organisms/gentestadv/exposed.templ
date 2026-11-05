@@ -7,7 +7,7 @@ import "github.com/ousiassllc/mam/backend/internal/web/atoms"
 // and a field of a group that is hidden is disabled, so that it posts nothing. An empty field is the graph's own value, which it shows as its placeholder.
 templ exposedGroups(groups []ExposedGroup) {
 	for _, g := range groups {
-		<fieldset class="flex flex-col gap-2 rounded-md border border-border p-2" hidden?={ !g.Shown } data-gt-exposed-model={ g.ModelID } data-testid="gt-exposed">
+		<fieldset class="flex flex-col gap-2 rounded-lg border border-border p-2" hidden?={ !g.Shown } data-gt-exposed-model={ g.ModelID } data-testid="gt-exposed">
 			<legend class="px-1 text-xs text-ink">{ g.Label } の「画面に出す値」</legend>
 			for _, f := range g.Fields {
 				<label class="flex flex-col gap-1 text-xs text-mute" data-gt-exposed-field={ f.Key }>

@@ -21,7 +21,7 @@ templ RuntimeDetail(r Runtime) {
 			case !r.Supported:
 				@runtimeUnsupported(r)
 			case !r.Writable:
-				<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-runtime-readonly">
+				<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-runtime-readonly">
 					<p>mam.exe のあるフォルダ（{ r.Dir }）に書き込めません。書き込める場所に置き直してください。</p>
 					<p class="text-sm">{ r.WritableError }</p>
 				</div>
@@ -52,7 +52,7 @@ templ RuntimeDetail(r Runtime) {
 
 // runtimeUnsupported says why the runtime cannot run on this machine (the sentence of the catalog: macOS has its own) and what to use instead.
 templ runtimeUnsupported(r Runtime) {
-	<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid="mm-runtime-unsupported">
+	<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid="mm-runtime-unsupported">
 		<p data-testid="mm-runtime-reason">{ r.Reason }</p>
 		if r.Fallback != "" {
 			<p data-testid="mm-runtime-fallback">{ r.Fallback }</p>

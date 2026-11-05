@@ -55,7 +55,7 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 		<fieldset class="flex flex-col gap-2">
 			<legend class="text-xs text-mute">組み込みのテンプレートから始める（モデルのファイル名は、接続先にあるものに直してください）</legend>
 			for _, t := range templates {
-				@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID}, "flex flex-col gap-0.5 p-3 text-sm") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID}, "flex flex-col gap-1 p-3 text-sm") {
 					<span>
 						<span class="">{ t.Label }</span>
 						<span class="ml-1 text-xs text-mute">（{ mediaLabel(t.Media) }）</span>
@@ -70,10 +70,10 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 		<fieldset class="flex flex-col gap-2">
 			<legend class="text-xs text-mute">取り込むワークフローの種類（テンプレートを選んだときは無視されます）</legend>
 			<div class="flex items-center gap-2 text-sm">
-				@pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaImage, "checked": s.Media != MediaVideo}, "px-4 py-1.5 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaImage, "checked": s.Media != MediaVideo}, "px-4 py-2 text-center") {
 					画像
 				}
-				@pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaVideo, "checked": s.Media == MediaVideo}, "px-4 py-1.5 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaVideo, "checked": s.Media == MediaVideo}, "px-4 py-2 text-center") {
 					動画
 				}
 			</div>

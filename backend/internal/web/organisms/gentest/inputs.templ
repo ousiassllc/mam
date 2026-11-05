@@ -53,7 +53,7 @@ templ inputFields(c Compose) {
 			<p>画像をドロップ、またはクリック</p>
 			<div class="flex flex-wrap justify-center gap-2">
 				<input id="gt-upload" type="file" name={ FieldUpload } multiple accept="image/png,image/jpeg,image/webp" class="peer sr-only" data-gt-file/>
-				<label for="gt-upload" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs text-ink transition hover:bg-accent-soft peer-focus-visible:focus-ring">ファイルを選ぶ</label>
+				<label for="gt-upload" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs text-ink transition-colors hover:bg-accent-soft peer-focus-visible:focus-ring">ファイルを選ぶ</label>
 				@atoms.SmallButton(atoms.ToneNeutral, "プロジェクトの画像から選ぶ", templ.Attributes{"type": "button", "data-gt-open-picker": "project"})
 				@atoms.SmallButton(atoms.ToneNeutral, "履歴の画像から選ぶ", templ.Attributes{
 					"type": "button", "data-gt-open-picker": "history", "hx-get": paths.GenerationTestPart("picker") + "?source=history",
@@ -109,9 +109,9 @@ templ lightbox() {
 	<dialog
 		data-gt-lightbox
 		aria-label="入力画像の拡大"
-		class="m-auto max-h-[90vh] max-w-[92vw] rounded-lg border border-border bg-surface p-2 backdrop:bg-black/70"
+		class="m-auto max-h-[90vh] max-w-[92vw] rounded-xl shadow-modal border border-border bg-surface p-2 backdrop:bg-black/70"
 	>
-		<img alt="" class="max-h-[80vh] max-w-full rounded object-contain" data-gt-lightbox-image/>
+		<img alt="" class="max-h-[80vh] max-w-full rounded-md object-contain" data-gt-lightbox-image/>
 		<div class="mt-2 flex justify-end">
 			@atoms.SmallButton(atoms.ToneNeutral, "閉じる", templ.Attributes{"type": "button", "data-gt-lightbox-close": ""})
 		</div>

@@ -482,7 +482,7 @@ func Detail(m view.Model) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, f := range m.Files {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<li class=\"break-all rounded-md border border-border p-2\"><code>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<li class=\"break-all rounded-lg border border-border p-2\"><code>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

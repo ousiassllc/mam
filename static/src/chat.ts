@@ -224,7 +224,7 @@ class ChatWorkspace {
       ...[...this.files.files!].map((file) => {
         const li = document.createElement('li');
         li.textContent = file.name;
-        li.className = 'rounded bg-accent-soft px-2 py-0.5';
+        li.className = 'rounded-sm bg-accent-soft px-2 py-1';
         return li;
       }),
     );

@@ -18,7 +18,7 @@ templ PromptHistory(p Prompts) {
 		}
 		<ul class="flex flex-col gap-2">
 			for _, r := range p.Items {
-				<li class="flex flex-col gap-2 rounded-md border border-border p-3" data-testid="gt-prompt-item">
+				<li class="flex flex-col gap-2 rounded-lg border border-border p-3" data-testid="gt-prompt-item">
 					<p class="whitespace-pre-wrap break-words text-sm text-ink">{ r.Text }</p>
 					if r.Negative != "" {
 						<p class="whitespace-pre-wrap break-words text-sm text-mute">ネガティブ: { r.Negative }</p>

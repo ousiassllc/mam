@@ -19,7 +19,7 @@ function region(): HTMLElement {
   if (!el) {
     el = document.createElement('div');
     el.id = REGION_ID;
-    el.className = 'pointer-events-none fixed bottom-4 left-4 z-50 flex flex-col gap-2';
+    el.className = 'pointer-events-none fixed bottom-4 left-4 z-toast flex flex-col gap-2';
     document.body.append(el);
   }
   return el;

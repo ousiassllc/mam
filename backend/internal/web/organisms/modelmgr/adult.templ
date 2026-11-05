@@ -9,7 +9,7 @@ import (
 // asks the age confirmation and the agreement to the notice; the server records it and enforces it (the screen is only how
 // the user gives it).
 templ AdultCard(a Adult) {
-	<div id={ AdultID } class="flex flex-col gap-2 rounded-md border border-border p-3" data-testid="mm-adult">
+	<div id={ AdultID } class="flex flex-col gap-2 rounded-lg border border-border p-3" data-testid="mm-adult">
 		@notice(a.Message, "mm-adult")
 		if a.Enabled {
 			<p class="text-sm" data-testid="mm-adult-status">成人向けモデルを表示しています（確認: { a.ConfirmedAt }）。</p>

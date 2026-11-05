@@ -124,7 +124,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"flex flex-col gap-4 rounded-md border border-border p-4\" aria-label=\"Branch の詳細\" data-branch-detail=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"flex flex-col gap-4 rounded-lg border border-border p-4\" aria-label=\"Branch の詳細\" data-branch-detail=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -878,7 +878,7 @@ func BranchView(d BranchPageData) templ.Component {
 			}
 		}
 		for _, s := range d.Shots {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<details class=\"rounded-md border border-border p-2 text-sm\"><summary class=\"cursor-pointer\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<details class=\"rounded-lg border border-border p-2 text-sm\"><summary class=\"cursor-pointer\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

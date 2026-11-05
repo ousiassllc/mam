@@ -96,7 +96,7 @@ func versionOptions(latest int) []int {
 // World State reference forms, and the link to its World State (branch_id scoped). It is swapped into
 // #branch-detail when a Branch is selected in the Branch tree.
 templ BranchDetail(d BranchDetailData) {
-	<article class="flex flex-col gap-4 rounded-md border border-border p-4" aria-label="Branch の詳細" data-branch-detail={ d.Branch.ID } hx-get={ branchURL(d.Branch.ID) } hx-trigger="branch-reload from:body" hx-target="#branch-detail" hx-swap="innerHTML">
+	<article class="flex flex-col gap-4 rounded-lg border border-border p-4" aria-label="Branch の詳細" data-branch-detail={ d.Branch.ID } hx-get={ branchURL(d.Branch.ID) } hx-trigger="branch-reload from:body" hx-target="#branch-detail" hx-swap="innerHTML">
 		<header class="flex flex-col gap-1">
 			<h2 class="text-lg font-semibold">{ d.Branch.Name }</h2>
 			<p class="text-sm text-mute">
@@ -276,7 +276,7 @@ templ BranchView(d BranchPageData) {
 				<p class="text-sm text-mute">Branch を作れる Shot がまだありません。</p>
 			}
 			for _, s := range d.Shots {
-				<details class="rounded-md border border-border p-2 text-sm">
+				<details class="rounded-lg border border-border p-2 text-sm">
 					<summary class="cursor-pointer">{ s.Label }</summary>
 					<form class="mt-2 flex flex-wrap items-end gap-2" hx-post={ branchShotURL(s.ShotID) } hx-swap="none" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 						<label class="flex flex-col gap-1 text-xs text-mute">

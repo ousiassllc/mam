@@ -6,9 +6,9 @@ import (
 )
 
 // GPUBlock is the GPU detection and the form that installs the engine (it replaces #mm-gpu in the card of an engine
-// that is not installed). It is raised above the click area of the card (z-10), so that its form and links are pressed instead of the card.
+// that is not installed). It is raised above the click area of the card (z-raised), so that its form and links are pressed instead of the card.
 templ GPUBlock(g GPU) {
-	<div id={ GPUID } class="relative z-10 flex flex-col gap-3" data-testid="mm-gpu">
+	<div id={ GPUID } class="relative z-raised flex flex-col gap-3" data-testid="mm-gpu">
 		@notice(g.Message, "mm-gpu")
 		<div class="flex flex-col gap-1 text-sm">
 			<h3 class="text-sm font-semibold">GPU の検出結果</h3>
@@ -18,7 +18,7 @@ templ GPUBlock(g GPU) {
 			if len(g.Adapters) == 0 {
 				<p class="text-ink" data-testid="mm-gpu-none">GPU は見つかりませんでした。</p>
 			} else {
-				<ul class="flex flex-col gap-0.5" data-testid="mm-gpu-adapters">
+				<ul class="flex flex-col gap-1" data-testid="mm-gpu-adapters">
 					for _, a := range g.Adapters {
 						<li>{ a.Name }<span class="ml-2 text-xs text-mute">VRAM { a.VRAM }</span></li>
 					}
@@ -97,7 +97,7 @@ templ DetectBlock(d Detect) {
 			<p class="text-ink" data-testid="mm-detect-none">この PC（127.0.0.1 の 8188・8000 番）に動いている ComfyUI は見つかりませんでした。</p>
 		}
 		for _, f := range d.Found {
-			<div class="flex flex-col gap-1 rounded border border-border p-2" data-testid="mm-detect-found">
+			<div class="flex flex-col gap-1 rounded-lg border border-border p-2" data-testid="mm-detect-found">
 				<span>
 					<code>{ f.URL }</code> ComfyUI { f.Version }
 					if f.Desktop {

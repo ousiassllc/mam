@@ -4,8 +4,8 @@ package atoms
 // pressed (static/src/components/lib/toast.ts handles the click). The page shell embeds it once as
 // <template id="toast-template">, which toast.ts clones for the toasts it raises itself.
 templ Toast(message string) {
-	<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-danger/60 bg-surface px-4 py-2 text-sm text-danger shadow-lg" role="alert" data-toast>
-		@Icon(IconDanger, "mt-0.5 h-4 w-4 shrink-0")
+	<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-danger/60 bg-surface px-4 py-2 text-sm text-danger" role="alert" data-toast>
+		@Icon(IconDanger, "mt-1 h-4 w-4 shrink-0")
 		<span data-toast-message>{ message }</span>
 		<button type="button" class="ml-auto leading-none hover:text-ink" aria-label="閉じる" data-toast-close>×</button>
 	</div>
@@ -24,8 +24,8 @@ templ ToastOOB(message string) {
 // the error toast.
 templ SuccessToastOOB(message string) {
 	<div id="toast-region" hx-swap-oob="beforeend">
-		<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-success/60 bg-surface px-4 py-2 text-sm text-success shadow-lg" role="status" data-toast>
-			@Icon(IconSuccess, "mt-0.5 h-4 w-4 shrink-0")
+		<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-success/60 bg-surface px-4 py-2 text-sm text-success" role="status" data-toast>
+			@Icon(IconSuccess, "mt-1 h-4 w-4 shrink-0")
 			<span data-toast-message>{ message }</span>
 			<button type="button" class="ml-auto leading-none hover:text-ink" aria-label="閉じる" data-toast-close>×</button>
 		</div>

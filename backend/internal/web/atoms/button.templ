@@ -8,20 +8,25 @@ const (
 	ToneNeutral ButtonTone = "neutral"
 	TonePrimary ButtonTone = "primary"
 	ToneDanger  ButtonTone = "danger"
+	// ToneGhost is a button with no frame: the lightest action of a row of buttons (the UI guide's ghost button).
+	ToneGhost ButtonTone = "ghost"
 )
 
 func buttonClass(tone ButtonTone, small bool) string {
-	base := "inline-flex items-center justify-center rounded-md font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 "
+	// SemiBold, --r-md, disabled at opacity .4; a small button is 32 high and the others 40 (the UI guide, O7).
+	base := "inline-flex items-center justify-center rounded-md font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none "
 	if small {
-		base += "px-2 py-1 text-xs "
+		base += "min-h-8 px-3 py-1 text-sm "
 	} else {
-		base += "px-3 py-1.5 text-sm "
+		base += "min-h-10 px-4 py-2 text-sm "
 	}
 	switch tone {
 	case TonePrimary:
 		return base + "bg-accent text-bone hover:bg-accent/85"
 	case ToneDanger:
 		return base + "border border-danger/60 text-danger hover:bg-danger/10"
+	case ToneGhost:
+		return base + "text-ink hover:bg-accent-soft"
 	}
 	return base + "border border-border text-ink hover:bg-accent-soft"
 }

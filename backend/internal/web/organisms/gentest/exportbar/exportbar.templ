@@ -15,7 +15,7 @@ templ Bar(d Data) {
 		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-1" data-testid="gt-export-selected" data-gt-export-selected hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
 			<button
 				type="submit"
-				class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2 text-sm text-ink hover:bg-accent-soft focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50"
+				class="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm text-ink hover:bg-accent-soft focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50"
 				aria-label="選んだ結果を ZIP で保存"
 				title="選んだ結果を ZIP で保存（カードをタップで選ぶ）"
 				disabled

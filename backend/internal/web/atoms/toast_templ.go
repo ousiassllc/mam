@@ -32,11 +32,11 @@ func Toast(message string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-danger/60 bg-surface px-4 py-2 text-sm text-danger shadow-lg\" role=\"alert\" data-toast>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-danger/60 bg-surface px-4 py-2 text-sm text-danger\" role=\"alert\" data-toast>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(IconDanger, "mt-0.5 h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(IconDanger, "mt-1 h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -124,11 +124,11 @@ func SuccessToastOOB(message string) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div id=\"toast-region\" hx-swap-oob=\"beforeend\"><div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-success/60 bg-surface px-4 py-2 text-sm text-success shadow-lg\" role=\"status\" data-toast>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div id=\"toast-region\" hx-swap-oob=\"beforeend\"><div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-success/60 bg-surface px-4 py-2 text-sm text-success\" role=\"status\" data-toast>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(IconSuccess, "mt-0.5 h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(IconSuccess, "mt-1 h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

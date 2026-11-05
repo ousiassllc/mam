@@ -10,7 +10,7 @@ import (
 // button. The result is made as a result of its own in the history; the box says where it came from when this result is itself one.
 templ Box(f Form) {
 	if f.Show || f.SourceURL != "" {
-		<div id={ ID } class="flex flex-col gap-2 rounded-md border border-border p-4" data-testid="gt-upscale">
+		<div id={ ID } class="flex flex-col gap-2 rounded-lg border border-border p-4" data-testid="gt-upscale">
 			if f.SourceURL != "" {
 				<p class="text-sm" data-testid="gt-upscale-source">
 					<a class="underline" href={ templ.SafeURL(f.SourceURL) }>{ f.SourceText }</a>

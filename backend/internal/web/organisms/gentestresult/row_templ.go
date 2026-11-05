@@ -119,7 +119,7 @@ func Panel(u Used) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(u.Rows) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<details class=\"rounded-md border border-border p-3 text-sm\" data-testid=\"gt-used\"><summary class=\"cursor-pointer text-sm font-semibold text-ink\">使った設定</summary><dl class=\"mt-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<details class=\"rounded-lg border border-border p-3 text-sm\" data-testid=\"gt-used\"><summary class=\"cursor-pointer text-sm font-semibold text-ink\">使った設定</summary><dl class=\"mt-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

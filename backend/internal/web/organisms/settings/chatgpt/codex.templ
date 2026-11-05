@@ -187,7 +187,7 @@ templ codexWho(c Codex) {
 				}
 			</p>
 			if len(c.Limits) > 0 {
-				<ul class="flex flex-col gap-0.5 text-xs" data-testid="chatgpt-codex-limits">
+				<ul class="flex flex-col gap-1 text-xs" data-testid="chatgpt-codex-limits">
 					for _, l := range c.Limits {
 						<li>{ limitText(l) }</li>
 					}

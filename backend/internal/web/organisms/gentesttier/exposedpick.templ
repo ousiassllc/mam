@@ -11,7 +11,7 @@ import (
 // name the screen shows and, for a number, the range. What is saved shows in the detail tier as fields of their own. It is no graph editor: the graph is changed
 // in the node screen, and only which of its inputs the form offers is chosen here.
 templ ExposedPicker(d PickerData) {
-	<section id={ PickerID } class="flex flex-col gap-4 rounded-md border border-border p-4" aria-labelledby="gt-picker-title" data-testid="gt-exposed-picker">
+	<section id={ PickerID } class="flex flex-col gap-4 rounded-lg border border-border p-4" aria-labelledby="gt-picker-title" data-testid="gt-exposed-picker">
 		<h2 id="gt-picker-title" class="text-sm font-semibold text-ink">画面に出す値を選ぶ</h2>
 		<p class="text-sm text-ink">モデル（ComfyUI のワークフロー）のノードの入力を選ぶと、保存した入力が、こだわりの詳細設定に入力欄として出ます。生成のたびにその値がグラフに入り、結果に残ります。グラフそのものを変えるときは、ノード画面を使います。</p>
 		if d.Notice != "" {
@@ -28,7 +28,7 @@ templ ExposedPicker(d PickerData) {
 					for _, m := range d.Models {
 						<li>
 							if m.Selected {
-								<span class="rounded-md bg-accent-soft px-3 py-1.5 text-ink" aria-current="page">{ m.Label }（{ strconv.Itoa(m.Exposed) } 件）</span>
+								<span class="rounded-md bg-accent-soft px-3 py-2 text-ink" aria-current="page">{ m.Label }（{ strconv.Itoa(m.Exposed) } 件）</span>
 							} else {
 								<a class={ tabClass } href={ templ.SafeURL(ExposedPickerHref(m.ID)) }>{ m.Label }（{ strconv.Itoa(m.Exposed) } 件）</a>
 							}
@@ -82,7 +82,7 @@ templ pickerForm(d PickerData) {
 		if len(d.Others()) > 0 {
 			<details class="text-xs text-mute" data-testid="gt-picker-others">
 				<summary class="cursor-pointer">選べない入力（{ strconv.Itoa(len(d.Others())) } 件）と、その理由</summary>
-				<ul class="mt-2 flex flex-col gap-0.5">
+				<ul class="mt-2 flex flex-col gap-1">
 					for _, r := range d.Others() {
 						<li><span class="text-ink">{ r.Node } { r.Class }.{ r.Input }</span>: { r.Reason }</li>
 					}
@@ -94,18 +94,18 @@ templ pickerForm(d PickerData) {
 
 templ pickerRow(r PickerRow, editable bool) {
 	<tr class="border-t border-border" data-testid="gt-picker-row">
-		<td class="py-1.5 pr-2">
+		<td class="py-2 pr-2">
 			@atoms.Choice("", templ.Attributes{
 				"type": "checkbox", "name": FieldPickRow, "value": r.Key, "checked": r.Chosen, "disabled": !editable, "aria-label": r.Class + "." + r.Input + "（ノード " + r.Node + "）を画面に出す",
 			})
 		</td>
-		<th scope="row" class="py-1.5 pr-2 font-normal text-ink">{ r.Class }.{ r.Input } <span class="text-mute">ノード { r.Node }</span></th>
-		<td class="py-1.5 pr-2 break-all">{ r.Value }</td>
-		<td class="py-1.5 pr-2">{ r.Type }</td>
-		<td class="py-1.5 pr-2">
+		<th scope="row" class="py-2 pr-2 font-normal text-ink">{ r.Class }.{ r.Input } <span class="text-mute">ノード { r.Node }</span></th>
+		<td class="py-2 pr-2 break-all">{ r.Value }</td>
+		<td class="py-2 pr-2">{ r.Type }</td>
+		<td class="py-2 pr-2">
 			@atoms.Input(atoms.FieldSm, "w-44", templ.Attributes{"name": FieldPickLabel + r.Key, "type": "text", "maxlength": itoa(MaxPickLabel), "value": r.Label, "disabled": !editable, "aria-label": r.Key + " の画面での名前"})
 		</td>
-		<td class="py-1.5">
+		<td class="py-2">
 			if r.Type == "int" || r.Type == "float" {
 				<span class="flex items-center gap-1">
 					@atoms.Input(atoms.FieldSm, "w-20", templ.Attributes{"name": FieldPickMin + r.Key, "type": "number", "step": "any", "value": r.Min, "disabled": !editable, "aria-label": r.Key + " の下限"})

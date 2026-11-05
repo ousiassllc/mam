@@ -31,7 +31,7 @@ export class MamWeightHelp extends LitElement {
     const facts = chosenFacts(this.closest('form'));
     if (facts.groups.length === 0)
       return html`<p class="text-mute" data-testid="gt-weight-none">モデルを選ぶと、ここに効き方が出ます。</p>`;
-    return html`<ul class="flex flex-col gap-1.5">
+    return html`<ul class="flex flex-col gap-2">
       ${facts.groups.map((g) => html`<li class="break-words" data-weight=${g.level}>${lineOf(g)}</li>`)}
     </ul>`;
   }

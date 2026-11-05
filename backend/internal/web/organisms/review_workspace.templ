@@ -18,7 +18,7 @@ type ReviewInboxData struct {
 // It is what a reviewer sees without having a Project: the package is the whole of what they get.
 templ ReviewInboxList(d ReviewInboxData) {
 	<div id="review-inbox" class="flex flex-col gap-6">
-		<section class="flex flex-col gap-2 rounded-md border border-border p-3">
+		<section class="flex flex-col gap-2 rounded-lg border border-border p-3">
 			<h2 class="text-sm font-semibold">レビューパッケージを読み込む</h2>
 			<p class="text-sm text-mute">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
 			<form class="flex flex-wrap items-center gap-2" hx-post={ paths.ReviewImport() } hx-encoding="multipart/form-data" hx-target="#review-inbox" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
@@ -31,7 +31,7 @@ templ ReviewInboxList(d ReviewInboxData) {
 		}
 		<ul class="flex flex-col gap-2">
 			for _, i := range d.Items {
-				<li class="flex flex-wrap items-center gap-3 rounded-md border border-border p-3">
+				<li class="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">
 					<a class="text-sm hover:underline" href={ templ.SafeURL(paths.Review(i.ID)) }>{ i.ProjectName }</a>
 					@atoms.Badge(reviewDecisionBadge(i.Decision))
 					<span class="text-xs text-mute">{ i.Video.Resolution } / { i.Video.AspectRatio }</span>
@@ -73,7 +73,7 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 	<div id="review-workspace" class="flex flex-col gap-6">
 		<video class="w-full rounded-md bg-black" aria-label="レビュー対象の動画" controls preload="metadata" src={ paths.Review(i.ID, "video") }></video>
 		if i.Note != "" {
-			<section class="rounded-md border border-border p-3" aria-label="オーナーからのメモ">
+			<section class="rounded-lg border border-border p-3" aria-label="オーナーからのメモ">
 				<h2 class="mb-1 text-sm font-semibold">オーナーからのメモ</h2>
 				<p class="whitespace-pre-wrap text-sm text-ink">{ i.Note }</p>
 			</section>
@@ -142,7 +142,7 @@ templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 // ReviewDecision is the form of the decision and, once it is written, the badge and the link that
 // downloads the Review Response. It is the answer to saving the decision.
 templ ReviewDecision(i domain.ReviewInbox) {
-	<section id="review-decision" class="flex flex-col gap-2 rounded-md border border-border p-3" aria-label="判定">
+	<section id="review-decision" class="flex flex-col gap-2 rounded-lg border border-border p-3" aria-label="判定">
 		<h2 class="text-sm font-semibold">判定</h2>
 		<p class="text-sm text-mute">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
 		<form class="flex flex-col gap-2" hx-put={ paths.Review(i.ID, "decision") } hx-target="#review-decision" hx-swap="outerHTML">
@@ -152,10 +152,10 @@ templ ReviewDecision(i domain.ReviewInbox) {
 			</label>
 			<fieldset class="flex flex-wrap gap-2 text-sm">
 				<legend class="mb-1 text-xs text-mute">判定</legend>
-				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-1.5 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-2 text-center") {
 					承認
 				}
-				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-1.5 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-2 text-center") {
 					修正依頼
 				}
 			</fieldset>

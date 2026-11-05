@@ -802,7 +802,7 @@ func codexWho(c Codex) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(c.Limits) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<ul class=\"flex flex-col gap-0.5 text-xs\" data-testid=\"chatgpt-codex-limits\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<ul class=\"flex flex-col gap-1 text-xs\" data-testid=\"chatgpt-codex-limits\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

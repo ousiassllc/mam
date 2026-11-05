@@ -42,7 +42,7 @@ templ pickerDialog(c Compose) {
 		id={ pickerDialogID }
 		data-gt-picker-dialog
 		aria-labelledby="gt-picker-title"
-		class="m-auto w-[min(48rem,92vw)] max-h-[85vh] overflow-y-auto rounded-lg border border-border bg-surface p-4 text-ink backdrop:bg-black/70"
+		class="m-auto w-[min(48rem,92vw)] max-h-[85vh] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-4 text-ink backdrop:bg-black/70"
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<h2 id="gt-picker-title" class="text-sm font-semibold">画像を選ぶ</h2>
@@ -73,9 +73,9 @@ templ Picker(rows []Ref, empty string) {
 	}
 	<ul class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 		for _, r := range rows {
-			<li class="flex flex-col gap-1 rounded-md border border-border p-2 text-xs" data-testid="gt-pick">
+			<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-xs" data-testid="gt-pick">
 				if r.ThumbURL != "" {
-					<img class="aspect-square w-full rounded object-cover" src={ r.ThumbURL } alt={ r.Label } loading="lazy"/>
+					<img class="aspect-square w-full rounded-md object-cover" src={ r.ThumbURL } alt={ r.Label } loading="lazy"/>
 				}
 				<span class="break-words text-ink">{ r.Label }</span>
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "追加", r.Label, templ.Attributes{

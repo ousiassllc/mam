@@ -40,7 +40,7 @@ func RecipeSection(d RecipeData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"flex flex-col gap-3 rounded-md border border-border p-3 text-sm\" aria-labelledby=\"gt-recipes-title\" data-testid=\"gt-recipe-section\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"flex flex-col gap-3 rounded-lg border border-border p-3 text-sm\" aria-labelledby=\"gt-recipes-title\" data-testid=\"gt-recipe-section\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -171,7 +171,7 @@ func RecipePanel(d RecipeData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</label> <label class=\"flex items-center gap-1.5 text-xs text-ink\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</label> <label class=\"flex items-center gap-2 text-xs text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -251,7 +251,7 @@ func recipeRow(r RecipeRow) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<li class=\"flex flex-col gap-1.5 rounded-md border border-border p-2\" data-gt-recipe-row data-testid=\"gt-recipe\"><div class=\"flex flex-wrap items-baseline gap-x-3 gap-y-1\"><span class=\"text-ink\" data-testid=\"gt-recipe-title\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<li class=\"flex flex-col gap-2 rounded-lg border border-border p-2\" data-gt-recipe-row data-testid=\"gt-recipe\"><div class=\"flex flex-wrap items-baseline gap-x-3 gap-y-1\"><span class=\"text-ink\" data-testid=\"gt-recipe-title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

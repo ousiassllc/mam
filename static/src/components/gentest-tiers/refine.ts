@@ -183,7 +183,7 @@ function row(item: Item): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.gtReset = item.key;
-  button.className = 'rounded-md border border-border px-2 py-0.5 text-ink hover:bg-accent-soft';
+  button.className = 'rounded-md border border-border px-2 py-1 text-ink hover:bg-accent-soft';
   button.textContent = '元に戻す';
   button.setAttribute('aria-label', resetLabel(item));
   li.append(text, button);

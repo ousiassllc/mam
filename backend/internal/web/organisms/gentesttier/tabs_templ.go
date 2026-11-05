@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "github.com/ousiassllc/mam/backend/internal/web/paths"
 
-const tabClass = "rounded-md px-3 py-1.5 text-mute transition-colors hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
+const tabClass = "rounded-md px-3 py-2 text-mute transition-colors hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
 
 // Tabs is the switch かんたん / こだわり / ComfyUI at the top of the image form: the current tier is lit (aria-current, like the tabs of the
 // pages of the generation test). Inside the form the first two swap the form in place keeping what was typed and chosen (the address follows); a
@@ -42,14 +42,14 @@ func Tabs(d Data) templ.Component {
 		}
 		for _, t := range tabs {
 			if t.ID == d.Tier {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"rounded-md bg-accent-soft px-3 py-1.5 text-ink\" aria-current=\"page\" data-testid=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"rounded-md bg-accent-soft px-3 py-2 text-ink\" aria-current=\"page\" data-testid=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue("gt-tier-" + t.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 14, Col: 116}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 14, Col: 114}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 				if templ_7745c5c3_Err != nil {
@@ -62,7 +62,7 @@ func Tabs(d Data) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(t.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 14, Col: 128}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/tabs.templ`, Line: 14, Col: 126}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -224,12 +224,12 @@ func ComfyPanel() templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"flex flex-col gap-4 rounded-md border border-border p-4\" aria-labelledby=\"gt-comfy-title\" data-testid=\"gt-comfy\"><h2 id=\"gt-comfy-title\" class=\"text-sm font-semibold text-ink\">ComfyUI で細かく作る</h2><p class=\"text-sm text-ink\">ノードをつないで作るときは、次の画面を使います。ここ（生成テスト）の「かんたん」「こだわり」は、画像のモデルを選んで作る画面です。動画・音声はこれまでどおりです。</p><p class=\"text-sm text-ink\">今のかんたん・こだわりの設定をそのままグラフにして開くには、それぞれのフォームの「今の設定を ComfyUI で開く」を使います。</p><ul class=\"grid gap-3 sm:grid-cols-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"flex flex-col gap-4 rounded-lg border border-border p-4\" aria-labelledby=\"gt-comfy-title\" data-testid=\"gt-comfy\"><h2 id=\"gt-comfy-title\" class=\"text-sm font-semibold text-ink\">ComfyUI で細かく作る</h2><p class=\"text-sm text-ink\">ノードをつないで作るときは、次の画面を使います。ここ（生成テスト）の「かんたん」「こだわり」は、画像のモデルを選んで作る画面です。動画・音声はこれまでどおりです。</p><p class=\"text-sm text-ink\">今のかんたん・こだわりの設定をそのままグラフにして開くには、それぞれのフォームの「今の設定を ComfyUI で開く」を使います。</p><ul class=\"grid gap-3 sm:grid-cols-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, l := range comfyLinks() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-3\"><a class=\"text-sm text-ink underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-3\"><a class=\"text-sm text-ink underline\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

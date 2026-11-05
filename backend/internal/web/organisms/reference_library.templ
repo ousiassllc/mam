@@ -91,12 +91,12 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 		} else {
 			<ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				for _, it := range d.Items {
-					<li class="flex flex-col gap-2 rounded-md border border-border p-3">
+					<li class="flex flex-col gap-2 rounded-lg border border-border p-3">
 						<img
 							src={ paths.Project(d.Project.ID, "assets", it.AssetID) }
 							alt={ it.Name }
 							loading="lazy"
-							class="aspect-video w-full rounded object-contain bg-surface"
+							class="aspect-video w-full rounded-md object-contain bg-surface"
 						/>
 						<div class="flex items-center gap-2">
 							@atoms.Badge(atoms.BadgeNeutral, it.Kind.Label())

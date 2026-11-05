@@ -113,7 +113,7 @@ func Refine(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><section class=\"flex flex-col gap-2 rounded-md border border-border p-3 text-sm\" aria-labelledby=\"gt-refine-title\" data-gt-refine data-testid=\"gt-refine\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-refine-title\" class=\"text-sm font-semibold text-ink\">こだわり</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><section class=\"flex flex-col gap-2 rounded-lg border border-border p-3 text-sm\" aria-labelledby=\"gt-refine-title\" data-gt-refine data-testid=\"gt-refine\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-refine-title\" class=\"text-sm font-semibold text-ink\">こだわり</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

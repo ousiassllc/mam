@@ -61,12 +61,12 @@ func Summary(b Filter) templ.Component {
 			}
 		}
 		if chips := b.Chips(); len(chips) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<ul class=\"flex flex-wrap items-center gap-1.5\" aria-label=\"かかっている条件\" data-testid=\"model-pick-chips\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<ul class=\"flex flex-wrap items-center gap-2\" aria-label=\"かかっている条件\" data-testid=\"model-pick-chips\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, chip := range chips {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li><span class=\"inline-flex items-center gap-1 rounded-md bg-accent-soft py-0.5 pl-2.5 pr-1 text-xs text-accent\" data-testid=\"model-pick-chip\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li><span class=\"inline-flex items-center gap-1 rounded-md bg-accent-soft py-1 pl-3 pr-1 text-xs text-accent\" data-testid=\"model-pick-chip\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -79,7 +79,7 @@ func Summary(b Filter) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <button type=\"button\" class=\"cursor-pointer rounded-sm p-0.5 text-accent hover:text-ink focus-visible:focus-ring\" aria-label=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <button type=\"button\" class=\"cursor-pointer rounded-sm p-1 text-accent hover:text-ink focus-visible:focus-ring\" aria-label=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -144,7 +144,7 @@ func Summary(b Filter) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<li><button type=\"button\" class=\"cursor-pointer rounded-md px-2 py-0.5 text-xs text-ink underline hover:text-ink focus-visible:focus-ring\" hx-get=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<li><button type=\"button\" class=\"cursor-pointer rounded-md px-2 py-1 text-xs text-ink underline hover:text-ink focus-visible:focus-ring\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -194,7 +194,7 @@ templ VoiceSaved(d Data, characterID string) {
 
 // seriesCharacterBlock is the card of one canonical Character: its attribute form and its reference voice.
 templ seriesCharacterBlock(d Data, c domain.WorldCharacter) {
-	<div class="flex flex-col gap-2 rounded-md border border-border p-3">
+	<div class="flex flex-col gap-2 rounded-lg border border-border p-3">
 		@seriesCharacterForm(d, c)
 		@seriesVoiceForm(d, c)
 		@voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + c.ID, URL: paths.Series(d.Series.ID, "characters", c.ID, "voice-training")})

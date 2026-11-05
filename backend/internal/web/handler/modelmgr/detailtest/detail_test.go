@@ -74,7 +74,7 @@ func TestCatalog_EachModelIsACardWithAnH3ThatOpensTheDetailAndNoFineText(t *test
 		assert.Contains(t, card, `data-focus-key="open-mm-model-`+id+`"`, "%s: the focus goes back to the card that took its place", id)
 		assert.Contains(t, card, `data-testid="mm-model-state"`, id)
 		assert.Contains(t, card, `data-testid="model-tile"`, "%s: the picture", id)
-		assert.Regexp(t, `(?s)<div class="relative z-10 mt-auto flex flex-wrap[^"]*">\s*<button`, card, "%s: the buttons are above the click area", id)
+		assert.Regexp(t, `(?s)<div class="relative z-raised mt-auto flex flex-wrap[^"]*">\s*<button`, card, "%s: the buttons are above the click area", id)
 		for _, gone := range []string{"<details", "<dl", `data-testid="mm-files"`, `data-testid="mm-sha256"`, "SHA-256", `data-testid="mm-model-meta"`, "<a "} {
 			assert.NotContains(t, card, gone, "%s: the list has no %s", id, gone)
 		}

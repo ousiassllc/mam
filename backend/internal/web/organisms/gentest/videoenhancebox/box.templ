@@ -9,7 +9,7 @@ import (
 // where it came from when this result is itself one. A model that cannot run now (no key, not installed) is not offered: the box says how to get it.
 templ Box(f Form) {
 	if f.Show || f.SourceURL != "" {
-		<div id={ ID } class="flex flex-col gap-3 rounded-md border border-border p-4" data-testid="gt-venh">
+		<div id={ ID } class="flex flex-col gap-3 rounded-lg border border-border p-4" data-testid="gt-venh">
 			if f.SourceURL != "" {
 				<p class="text-sm" data-testid="gt-venh-source">
 					<a class="underline" href={ templ.SafeURL(f.SourceURL) }>{ f.SourceText }</a>

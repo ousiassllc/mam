@@ -8,12 +8,12 @@ package pick
 
 // Glow is the look of the frame that is the card: the border, glow and fill of the chosen one, the ring of the focused
 // one and the dimmed look of a disabled one. The layout of the card (padding, direction) is the caller's.
-const Glow = "transition-shadow hover:border-mute peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:focus-ring peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none"
+const Glow = "transition-colors hover:border-mute peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:focus-ring peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none"
 
 // OpenFrame is the look of the frame of a card that opens something (a detail) instead of being chosen: on hover the border and glow of the card
 // that is chosen (the same tokens as Glow), and the ring of the keyboard focus when the control that opens the card (data-card-open, the
 // name in modelcard.Item) has it. The layout of the card is the caller's.
-const OpenFrame = "transition-shadow hover:border-accent has-[[data-card-open]:focus-visible]:focus-ring motion-reduce:transition-none"
+const OpenFrame = "transition-colors hover:border-accent has-[[data-card-open]:focus-visible]:focus-ring motion-reduce:transition-none"
 
 // Card is a label around the hidden control (attrs: type, name, value, checked, disabled, data-*, hx-*) and the frame
 // that holds the children. layout is the classes of the frame for its content (padding, flex direction, text size).

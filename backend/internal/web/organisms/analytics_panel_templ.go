@@ -34,7 +34,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"analytics-panel\" class=\"flex flex-col gap-6\"><section class=\"rounded-md border border-success/60 bg-success/10 p-4\" data-testid=\"north-star\"><h2 class=\"text-xs text-mute\">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2><p class=\"text-2xl\" data-testid=\"metric-north-star\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"analytics-panel\" class=\"flex flex-col gap-6\"><section class=\"rounded-lg border border-success/60 bg-success/10 p-4\" data-testid=\"north-star\"><h2 class=\"text-xs text-mute\">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2><p class=\"text-2xl\" data-testid=\"metric-north-star\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -96,7 +96,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, row := range g.Rows {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"rounded-md border border-border p-3\" data-testid=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"rounded-lg border border-border p-3\" data-testid=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

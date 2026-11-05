@@ -628,7 +628,7 @@ func importRemote(d Data) templ.Component {
 			templ_7745c5c3_Var24 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div class=\"flex flex-col gap-3 rounded-md border border-border p-4\" data-testid=\"workflow-import-remote\"><h3 class=\"text-sm font-semibold\">ComfyUI から取り込む</h3><p class=\"text-sm text-mute\">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p><form class=\"flex flex-wrap items-end gap-3\" hx-get=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div class=\"flex flex-col gap-3 rounded-lg border border-border p-4\" data-testid=\"workflow-import-remote\"><h3 class=\"text-sm font-semibold\">ComfyUI から取り込む</h3><p class=\"text-sm text-mute\">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p><form class=\"flex flex-wrap items-end gap-3\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

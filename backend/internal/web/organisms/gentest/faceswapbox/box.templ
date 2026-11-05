@@ -9,7 +9,7 @@ import (
 // result of its own in the history (and in the job list); the box says where it came from when this result is itself a swap.
 templ Box(f Form) {
 	if f.Show || f.SourceURL != "" {
-		<div id={ ID } class="flex flex-col gap-2 rounded-md border border-border p-4" data-testid="gt-faceswap">
+		<div id={ ID } class="flex flex-col gap-2 rounded-lg border border-border p-4" data-testid="gt-faceswap">
 			if f.SourceURL != "" {
 				<p class="text-sm" data-testid="gt-faceswap-source">
 					<a class="underline" href={ templ.SafeURL(f.SourceURL) }>{ f.SourceText }</a>

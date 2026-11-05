@@ -16,7 +16,7 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 		hx-swap="outerHTML"
 	>
 		<dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-			<div class="rounded-md border border-border p-3">
+			<div class="rounded-lg border border-border p-3">
 				<dt class="text-xs text-mute">Project 推定コスト</dt>
 				<dd class="font-mono text-lg tabular-nums" data-testid="project-estimated">{ usd(s.Project.Estimated) }</dd>
 				<dd class="text-xs text-mute">上限: { ceilingText(s.ProjectCeiling) }</dd>
@@ -26,12 +26,12 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 					</dd>
 				}
 			</div>
-			<div class="rounded-md border border-border p-3">
+			<div class="rounded-lg border border-border p-3">
 				<dt class="text-xs text-mute">Project 実コスト（ベンダー報告）</dt>
 				<dd class="font-mono text-lg tabular-nums" data-testid="project-actual">{ actualText(s.Project) }</dd>
 				<dd class="text-xs text-mute">{ intText(s.Project.ActualEntries) } / { intText(s.Project.Entries) } 件で報告あり</dd>
 			</div>
-			<div class="rounded-md border border-border p-3">
+			<div class="rounded-lg border border-border p-3">
 				<dt class="text-xs text-mute">Shot 上限</dt>
 				<dd class="font-mono text-lg tabular-nums">{ ceilingText(s.ShotCeiling) }</dd>
 			</div>
@@ -56,9 +56,9 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 						</tr>
 						for _, sh := range sc.Shots {
 							<tr class="text-ink">
-								<th scope="row" class="py-0.5 pl-4 pr-2 text-left font-normal">{ "Shot " + intText(sh.OrderIndex+1) + shotLabel(sh.Objective) }</th>
-								<td class="py-0.5 pr-2 text-right font-mono tabular-nums">{ usd(sh.Totals.Estimated) }</td>
-								<td class="py-0.5 text-right font-mono tabular-nums">{ actualText(sh.Totals) }</td>
+								<th scope="row" class="py-1 pl-4 pr-2 text-left font-normal">{ "Shot " + intText(sh.OrderIndex+1) + shotLabel(sh.Objective) }</th>
+								<td class="py-1 pr-2 text-right font-mono tabular-nums">{ usd(sh.Totals.Estimated) }</td>
+								<td class="py-1 text-right font-mono tabular-nums">{ actualText(sh.Totals) }</td>
 							</tr>
 						}
 					}

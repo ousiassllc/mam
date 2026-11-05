@@ -23,7 +23,7 @@ templ Dialog() {
 		data-gt-pose-dialog
 		aria-labelledby="gt-pose-title"
 		data-testid="gt-pose-dialog"
-		class="m-auto w-[min(56rem,94vw)] max-h-[88vh] overflow-y-auto rounded-lg border border-border bg-surface p-4 text-ink backdrop:bg-black/70"
+		class="m-auto w-[min(56rem,94vw)] max-h-[88vh] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-4 text-ink backdrop:bg-black/70"
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<h2 id="gt-pose-title" class="text-sm font-semibold">ポーズを選ぶ</h2>
@@ -57,7 +57,7 @@ templ ModelNotes(n Notes) {
 			default:
 				for _, m := range n.Models {
 					<div class="flex flex-col gap-1" data-testid="gt-pose-model" data-commercial={ m.Answer.Answer() }>
-						<p class="flex flex-wrap items-center gap-1.5 text-ink">
+						<p class="flex flex-wrap items-center gap-2 text-ink">
 							<span class="">{ m.Label }</span>
 							<span class="text-mute">がポーズを読みます</span>
 							@commercial.Badge(m.Answer)
@@ -84,8 +84,8 @@ templ InstallPanel(w Wire, in Install) {
 		</p>
 		<ul class="flex flex-col gap-2 text-xs" data-testid="gt-pose-licenses">
 			for _, l := range in.Licenses {
-				<li class="flex flex-col gap-1 rounded-md border border-border p-2">
-					<p class="flex flex-wrap items-center gap-1.5 text-ink">
+				<li class="flex flex-col gap-1 rounded-lg border border-border p-2">
+					<p class="flex flex-wrap items-center gap-2 text-ink">
 						<span class="">{ l.Name }</span>
 						@commercial.Badge(l.Answer)
 					</p>
@@ -99,13 +99,13 @@ templ InstallPanel(w Wire, in Install) {
 			<p class="text-sm text-danger" role="alert" data-testid="gt-pose-error">{ in.Error }</p>
 		}
 		<label class="flex items-start gap-2 text-xs text-ink">
-			@atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-install-accept": "", "data-testid": "gt-pose-accept"})
+			@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-install-accept": "", "data-testid": "gt-pose-accept"})
 			<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span>
 		</label>
 		<div>
 			<button
 				type="button"
-				class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
+				class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
 				data-testid="gt-pose-install-button"
 				hx-post={ w.InstallURL }
 				hx-target={ "#" + BodyID }
@@ -220,7 +220,7 @@ templ GalleryPanel(w Wire, g Gallery) {
 // adultSection is the part of the gallery about the suggestive series (sexy, duo), shown only while the age gate is open (g.Adult is nil otherwise,
 // and nothing of the series is said): the offer to install them (another zip set, with its own agreement), or the button to remove them.
 templ adultSection(w Wire, a AdultOffer) {
-	<section class="flex flex-col gap-2 rounded-md border border-border p-3 text-xs" data-testid="gt-pose-adult">
+	<section class="flex flex-col gap-2 rounded-lg border border-border p-3 text-xs" data-testid="gt-pose-adult">
 		<h3 class="text-sm font-semibold text-ink">成人向けのポーズ（sexy・二人）</h3>
 		if a.Installed {
 			<p class="text-mute" data-testid="gt-pose-adult-installed">
@@ -242,8 +242,8 @@ templ adultSection(w Wire, a AdultOffer) {
 			</p>
 			<ul class="flex flex-col gap-2" data-testid="gt-pose-adult-licenses">
 				for _, l := range a.Licenses {
-					<li class="flex flex-col gap-1 rounded-md border border-border p-2">
-						<p class="flex flex-wrap items-center gap-1.5 text-ink">
+					<li class="flex flex-col gap-1 rounded-lg border border-border p-2">
+						<p class="flex flex-wrap items-center gap-2 text-ink">
 							<span class="">{ l.Name }</span>
 							@commercial.Badge(l.Answer)
 						</p>
@@ -256,13 +256,13 @@ templ adultSection(w Wire, a AdultOffer) {
 				<p class="text-danger" role="alert" data-testid="gt-pose-adult-error">{ a.Error }</p>
 			}
 			<label class="flex items-start gap-2 text-ink">
-				@atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-adult-accept": "", "data-testid": "gt-pose-adult-accept"})
+				@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-adult-accept": "", "data-testid": "gt-pose-adult-accept"})
 				<span>上のライセンスと取得元を確認しました。成人向けのポーズのダウンロードに同意します。</span>
 			</label>
 			<div>
 				<button
 					type="button"
-					class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
+					class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
 					data-testid="gt-pose-adult-install-button"
 					hx-post={ w.InstallAdultURL }
 					hx-target={ "#" + BodyID }
@@ -301,9 +301,9 @@ templ ResultsList(w Wire, r Results) {
 }
 
 templ card(w Wire, c Card) {
-	<li class="flex flex-col gap-1 rounded-md border border-border p-2 text-xs" data-testid="gt-pick" data-pose-card>
+	<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-xs" data-testid="gt-pick" data-pose-card>
 		<img
-			class="aspect-[3/4] w-full rounded bg-surface object-contain"
+			class="aspect-[3/4] w-full rounded-md bg-surface object-contain"
 			src={ c.Image }
 			alt={ c.Name + "（" + c.Angle + "）" }
 			loading="lazy"

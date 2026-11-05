@@ -32,12 +32,12 @@ func unneededText(s domain.StorageSummary) string {
 templ StoragePanel(d StoragePanelData) {
 	<section id="storage-panel" class="flex flex-col gap-3">
 		<dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-			<div class="rounded-md border border-border p-3">
+			<div class="rounded-lg border border-border p-3">
 				<dt class="text-xs text-mute">Project のファイル</dt>
 				<dd class="font-mono text-lg tabular-nums" data-testid="asset-bytes">{ domain.FormatBytes(d.Storage.AssetBytes) }</dd>
 				<dd class="text-xs text-mute" data-testid="preview-bytes">{ "プレビューのキャッシュ（全 Project 共通）: " + domain.FormatBytes(d.Storage.PreviewBytes) }</dd>
 			</div>
-			<div class="rounded-md border border-border p-3">
+			<div class="rounded-lg border border-border p-3">
 				<dt class="text-xs text-mute">ディスクの空き容量</dt>
 				<dd class="font-mono text-lg tabular-nums" data-testid="free-bytes">
 					if d.Storage.FreeKnown {
@@ -47,7 +47,7 @@ templ StoragePanel(d StoragePanelData) {
 					}
 				</dd>
 			</div>
-			<div class="rounded-md border border-border p-3">
+			<div class="rounded-lg border border-border p-3">
 				<dt class="text-xs text-mute">不要な Take</dt>
 				<dd class="font-mono text-lg tabular-nums" data-testid="unneeded">{ unneededText(d.Storage) }</dd>
 			</div>

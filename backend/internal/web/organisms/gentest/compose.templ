@@ -49,7 +49,7 @@ templ ComposeForm(c Compose) {
 					"hx-target":  "#" + ComposeID,
 					"hx-swap":    "outerHTML",
 					"hx-include": "#" + ComposeID,
-				}, "px-4 py-1.5 text-center") {
+				}, "px-4 py-2 text-center") {
 					{ mediaLabel(m) }
 				}
 			}
@@ -152,7 +152,7 @@ templ promptFields(c Compose) {
 				<summary class="cursor-pointer text-xs text-mute">過去のプロンプトから追加（<a class="underline" href={ templ.SafeURL(paths.GenerationTestPrompts()) }>履歴を開く</a>）</summary>
 				<ul class="mt-2 flex flex-col gap-2">
 					for _, r := range c.Recent {
-						<li class="flex items-start justify-between gap-2 rounded-md border border-border p-2">
+						<li class="flex items-start justify-between gap-2 rounded-lg border border-border p-2">
 							<span class="whitespace-pre-wrap break-words text-xs text-ink">{ r.Text }</span>
 							@atoms.SmallButtonFor(atoms.ToneNeutral, "追加", "プロンプト "+r.Text, templ.Attributes{
 								"type": "button", "hx-get": paths.GenerationTestPart("prompt-row") + "?from=" + r.ID, "hx-target": "#" + PromptsID, "hx-swap": "beforeend",
@@ -167,7 +167,7 @@ templ promptFields(c Compose) {
 
 // PromptRowFields is a prompt and its negative prompt.
 templ PromptRowFields(p PromptText, max int) {
-	<div class="flex flex-col gap-1 rounded-md border border-border p-2" data-testid="gt-prompt">
+	<div class="flex flex-col gap-1 rounded-lg border border-border p-2" data-testid="gt-prompt">
 		@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{
 			"name": FieldPrompt, "rows": "3", "maxlength": itoa(max), "aria-label": "プロンプト", "placeholder": "プロンプト",
 		}, p.Text)

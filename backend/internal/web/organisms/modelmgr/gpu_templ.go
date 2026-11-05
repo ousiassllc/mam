@@ -14,7 +14,7 @@ import (
 )
 
 // GPUBlock is the GPU detection and the form that installs the engine (it replaces #mm-gpu in the card of an engine
-// that is not installed). It is raised above the click area of the card (z-10), so that its form and links are pressed instead of the card.
+// that is not installed). It is raised above the click area of the card (z-raised), so that its form and links are pressed instead of the card.
 func GPUBlock(g GPU) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -49,7 +49,7 @@ func GPUBlock(g GPU) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"relative z-10 flex flex-col gap-3\" data-testid=\"mm-gpu\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"relative z-raised flex flex-col gap-3\" data-testid=\"mm-gpu\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -86,7 +86,7 @@ func GPUBlock(g GPU) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<ul class=\"flex flex-col gap-0.5\" data-testid=\"mm-gpu-adapters\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<ul class=\"flex flex-col gap-1\" data-testid=\"mm-gpu-adapters\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -448,7 +448,7 @@ func DetectBlock(d Detect) templ.Component {
 			}
 		}
 		for _, f := range d.Found {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<div class=\"flex flex-col gap-1 rounded border border-border p-2\" data-testid=\"mm-detect-found\"><span><code>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<div class=\"flex flex-col gap-1 rounded-lg border border-border p-2\" data-testid=\"mm-detect-found\"><span><code>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

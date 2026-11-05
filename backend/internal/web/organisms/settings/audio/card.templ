@@ -90,7 +90,7 @@ templ localBrief(p Provider) {
 templ chooser(p Provider, value, title string, checked, disabled bool, testID string) {
 	<label class="group relative inline-flex cursor-pointer items-center has-[:disabled]:cursor-not-allowed">
 		@atoms.Choice("peer sr-only", templ.Attributes{"type": "radio", "name": p.Field, "value": value, "checked": checked, "disabled": disabled, "data-testid": testID})
-		<span class="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-ink transition-colors hover:border-mute peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:focus-ring peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none">
+		<span class="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1 text-xs text-ink transition-colors hover:border-mute peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:focus-ring peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none">
 			<span class="sr-only">{ title }を</span>
 			if disabled {
 				<span>選べません</span>

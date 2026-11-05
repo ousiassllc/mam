@@ -261,7 +261,7 @@ export class MamTimelineEditor extends LitElement {
 
   private renderError() {
     return this.error
-      ? html`<p class="rounded border border-danger/60 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert" data-error>${this.error}</p>`
+      ? html`<p class="rounded-md border border-danger/60 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert" data-error>${this.error}</p>`
       : nothing;
   }
 

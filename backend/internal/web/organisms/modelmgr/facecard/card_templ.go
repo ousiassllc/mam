@@ -144,7 +144,7 @@ func Section(c Card) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if c.OffReason == "runtime_unavailable" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"flex flex-col gap-1 rounded-md border border-warning/60 p-2 text-xs text-warning\" role=\"note\" data-testid=\"mm-face-models-runtime\"><p class=\"\">モデルは入っていますが、顔の類似度はオフです（ONNX Runtime のライブラリが使えません）</p><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"flex flex-col gap-1 rounded-lg border border-warning/60 p-2 text-xs text-warning\" role=\"note\" data-testid=\"mm-face-models-runtime\"><p class=\"\">モデルは入っていますが、顔の類似度はオフです（ONNX Runtime のライブラリが使えません）</p><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -193,7 +193,7 @@ func Section(c Card) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, f := range c.Files {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2\" data-testid=\"mm-face-models-file\" data-file=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2\" data-testid=\"mm-face-models-file\" data-file=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -219,7 +219,7 @@ func Section(c Card) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\"><p class=\"flex flex-wrap items-center gap-2 text-ink\"><span class=\"\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -320,7 +320,7 @@ func Section(c Card) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, l := range c.Licenses {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2\"><p class=\"flex flex-wrap items-center gap-2 text-ink\"><span class=\"\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -408,7 +408,7 @@ func Section(c Card) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", acceptClass: "", "data-testid": "mm-face-models-accept"}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", acceptClass: "", "data-testid": "mm-face-models-accept"}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

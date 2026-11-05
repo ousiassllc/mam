@@ -93,7 +93,7 @@ func Card(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Managed != nil {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex flex-col gap-1 rounded-md border border-border p-3\" data-testid=\"llm-local-managed\"><label class=\"flex items-start gap-2 text-sm text-ink\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex flex-col gap-1 rounded-lg border border-border p-3\" data-testid=\"llm-local-managed\"><label class=\"flex items-start gap-2 text-sm text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -386,7 +386,7 @@ func Result(r TestResult) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if r.OK {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"flex flex-col gap-1 rounded-md border border-success/60 bg-success/10 p-3 text-sm text-ink\" role=\"status\" data-testid=\"llm-local-test-ok\"><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"flex flex-col gap-1 rounded-lg border border-success/60 bg-success/10 p-3 text-sm text-ink\" role=\"status\" data-testid=\"llm-local-test-ok\"><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -32,7 +32,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
   const { locked } = view;
   const t = c.transition;
   return html`<li
-    class="flex flex-col gap-2 rounded border p-3 ${view.over ? 'border-accent' : 'border-border'} ${view.dragging ? 'opacity-50' : ''}"
+    class="flex flex-col gap-2 rounded-lg border p-3 ${view.over ? 'border-accent' : 'border-border'} ${view.dragging ? 'opacity-50' : ''}"
     data-clip=${c.shot_id}
     draggable=${locked ? 'false' : 'true'}
     @dragstart=${(e: DragEvent) => view.dragStart(i, e)}
@@ -45,10 +45,10 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
   >
     <div class="flex flex-wrap items-center gap-3">
       <span class="text-xs text-mute">${i + 1}</span>
-      ${c.thumbnail_url ? html`<img class="h-10 w-auto rounded" src=${c.thumbnail_url} alt="" />` : nothing}
+      ${c.thumbnail_url ? html`<img class="h-10 w-auto rounded-md" src=${c.thumbnail_url} alt="" />` : nothing}
       <div class="min-w-40 flex-1">
         <p class="text-sm">
-          ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded bg-info/20 px-1.5 py-0.5 text-[10px] text-info" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
+          ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded-sm bg-info/20 px-2 py-1 text-[10px] text-info" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
         </p>
         ${c.objective ? html`<p class="text-xs text-mute">${c.objective}</p>` : nothing}
       </div>
@@ -60,11 +60,11 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
     <div class="flex flex-wrap items-end gap-3 text-xs text-mute">
       <label class="flex flex-col gap-1">
         開始（秒）
-        <input type="number" data-field="in" step="0.1" min="0" class="w-24 rounded border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(c.in_point))} ?disabled=${locked} @change=${(e: Event) => view.trim(i, 'in', e.target as HTMLInputElement)} />
+        <input type="number" data-field="in" step="0.1" min="0" class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(c.in_point))} ?disabled=${locked} @change=${(e: Event) => view.trim(i, 'in', e.target as HTMLInputElement)} />
       </label>
       <label class="flex flex-col gap-1">
         終了（秒）
-        <input type="number" data-field="out" step="0.1" min="0" class="w-24 rounded border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(c.out_point))} ?disabled=${locked} @change=${(e: Event) => view.trim(i, 'out', e.target as HTMLInputElement)} />
+        <input type="number" data-field="out" step="0.1" min="0" class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(c.out_point))} ?disabled=${locked} @change=${(e: Event) => view.trim(i, 'out', e.target as HTMLInputElement)} />
       </label>
       ${c.source_seconds ? html`<span>Take の長さ ${c.source_seconds.toFixed(1)} 秒</span>` : nothing}
       ${
@@ -72,7 +72,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
           ? nothing
           : html`<label class="flex flex-col gap-1">
               前のクリップからの切り替え
-              <select data-field="transition" class="rounded border border-mute bg-surface px-2 py-1 text-ink" ?disabled=${locked} @change=${(e: Event) => view.transition(i, (e.target as HTMLSelectElement).value as TransitionType)}>
+              <select data-field="transition" class="rounded-md border border-mute bg-surface px-2 py-1 text-ink" ?disabled=${locked} @change=${(e: Event) => view.transition(i, (e.target as HTMLSelectElement).value as TransitionType)}>
                 ${body.transitions.map((v) => html`<option value=${v} .selected=${live(v === t.type)}>${TRANSITION_LABEL[v] ?? v}</option>`)}
               </select>
             </label>
@@ -81,7 +81,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
                 ? nothing
                 : html`<label class="flex flex-col gap-1">
                   長さ（秒）
-                  <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(t.seconds))} ?disabled=${locked} @change=${(e: Event) => view.transition(i, t.type, (e.target as HTMLInputElement).value)} />
+                  <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(t.seconds))} ?disabled=${locked} @change=${(e: Event) => view.transition(i, t.type, (e.target as HTMLInputElement).value)} />
                 </label>`
             }`
       }
@@ -93,7 +93,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
         rows="2"
         maxlength=${body.limits.max_caption_runes * 2}
         placeholder="この区間に重ねる文字。空なら字幕なし"
-        class="rounded border border-mute bg-surface px-2 py-1 text-ink"
+        class="rounded-md border border-mute bg-surface px-2 py-1 text-ink"
         .value=${live(view.captionDraft ?? c.caption ?? '')}
         ?disabled=${locked}
         @change=${(e: Event) => view.caption(i, e.target as HTMLTextAreaElement)}

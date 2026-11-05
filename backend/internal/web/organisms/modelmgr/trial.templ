@@ -156,7 +156,7 @@ templ TrialList(t Trials) {
 }
 
 templ trialItem(t Trial) {
-	<li class="flex flex-col gap-2 rounded-md border border-border p-3 text-sm" data-testid="mm-trial-item" data-trial={ t.ID } data-status={ t.Status }>
+	<li class="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm" data-testid="mm-trial-item" data-trial={ t.ID } data-status={ t.Status }>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<span class="flex flex-wrap items-center gap-2">
 				<code class="break-all text-xs">{ t.ModelID }</code>
@@ -189,9 +189,9 @@ templ trialItem(t Trial) {
 		}
 		if t.Status == "succeeded" && t.FileURL != "" {
 			if t.Video {
-				<video class="max-h-80 max-w-full rounded" controls preload="metadata" src={ t.FileURL } aria-label={ trialVideoLabel(t) } data-audio?={ t.Audio }></video>
+				<video class="max-h-80 max-w-full rounded-md" controls preload="metadata" src={ t.FileURL } aria-label={ trialVideoLabel(t) } data-audio?={ t.Audio }></video>
 			} else {
-				<img class="max-h-80 max-w-full rounded" src={ t.FileURL } alt={ "試し生成の結果: " + t.Prompt }/>
+				<img class="max-h-80 max-w-full rounded-md" src={ t.FileURL } alt={ "試し生成の結果: " + t.Prompt }/>
 			}
 			<p class="text-sm text-mute">
 				{ t.Size }

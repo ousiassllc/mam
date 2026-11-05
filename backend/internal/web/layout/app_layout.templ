@@ -54,7 +54,7 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 				{ children... }
 			}
 			@modelpick.Host()
-			<div id="toast-region" class="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2" aria-live="assertive"></div>
+			<div id="toast-region" class="pointer-events-none fixed bottom-4 right-4 z-toast flex max-w-sm flex-col gap-2" aria-live="assertive"></div>
 			<template id="toast-template">
 				@atoms.Toast("")
 			</template>
@@ -69,7 +69,7 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 // Off (the guide of the first start) has neither the link nor the menu.
 templ Shell(nav sidenav.State) {
 	if !nav.Hidden {
-		<a href="#content" class="sr-only rounded-md bg-accent-soft px-3 py-2 text-sm text-ink focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:focus-ring">本文へ</a>
+		<a href="#content" class="sr-only rounded-md bg-accent-soft px-3 py-2 text-sm text-ink focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-toast focus-visible:focus-ring">本文へ</a>
 	}
 	<div class="flex min-h-screen">
 		@sidenav.Nav(nav)

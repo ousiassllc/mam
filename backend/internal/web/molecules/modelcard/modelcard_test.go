@@ -71,6 +71,6 @@ func TestCard_WithoutACommercialAnswerHasNoIcon(t *testing.T) {
 
 func TestActions_AreRaisedAboveTheClickAreaOfTheCard(t *testing.T) {
 	out := render(t, modelcard.Actions(), templ.Raw("<button>x</button>"))
-	assert.Contains(t, out, "relative z-10")
+	assert.Contains(t, out, "relative z-raised")
 	assert.Contains(t, out, "<button>x</button>")
 }

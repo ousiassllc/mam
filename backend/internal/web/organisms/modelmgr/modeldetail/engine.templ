@@ -22,7 +22,7 @@ templ EngineDetail(e view.Engine) {
 					<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」に登録して使ってください（モデルの導入は、その ComfyUI の側で行います）。
 				</p>
 			case "readonly":
-				<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-engine-readonly">
+				<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-engine-readonly">
 					<p>導入先のフォルダ（{ e.Dir }）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。</p>
 					<p class="text-sm">{ e.WritableError }</p>
 				</div>

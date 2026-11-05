@@ -11,7 +11,7 @@ import (
 
 // TakeTracePanel is the Generation Traceability of a Take (F-27, GET /takes/:id/trace): what led to it, from the Source Shot Spec to the Judge results and the Repair history.
 templ TakeTracePanel(t domain.TakeTrace) {
-	<section id={ "take-trace-" + t.Take.ID } aria-label="Generation Trace" class="flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
+	<section id={ "take-trace-" + t.Take.ID } aria-label="Generation Trace" class="flex flex-col gap-3 rounded-lg border border-border p-3 text-sm">
 		<dl class="grid gap-x-4 gap-y-1 md:grid-cols-[10rem_1fr]">
 			<dt class="text-xs text-mute">Prompt version</dt>
 			<dd>{ fmt.Sprintf("v%d", t.PromptVersion.VersionNumber) }</dd>
@@ -103,15 +103,15 @@ templ TakeTracePanel(t domain.TakeTrace) {
 		</div>
 		<details>
 			<summary class="cursor-pointer text-xs font-semibold">Source Shot Spec（Prompt version のスナップショット）</summary>
-			<pre class="mt-1 overflow-x-auto rounded bg-bone p-2 text-xs">{ prettyJSON(t.PromptVersion.SpecSnapshot) }</pre>
+			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs">{ prettyJSON(t.PromptVersion.SpecSnapshot) }</pre>
 		</details>
 		<details>
 			<summary class="cursor-pointer text-xs font-semibold">Model parameters</summary>
-			<pre class="mt-1 overflow-x-auto rounded bg-bone p-2 text-xs">{ prettyJSON(t.ModelParameters) }</pre>
+			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs">{ prettyJSON(t.ModelParameters) }</pre>
 		</details>
 		<details>
 			<summary class="cursor-pointer text-xs font-semibold">Model Adapter output</summary>
-			<pre class="mt-1 overflow-x-auto rounded bg-bone p-2 text-xs">{ prettyJSON(t.PromptVersion.AdapterOutput) }</pre>
+			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs">{ prettyJSON(t.PromptVersion.AdapterOutput) }</pre>
 		</details>
 		<div>
 			<h4 class="text-xs font-semibold">Judge results</h4>

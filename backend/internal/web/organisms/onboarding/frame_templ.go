@@ -16,7 +16,7 @@ import (
 
 const (
 	linkClass = "text-sm underline decoration-mute text-accent"
-	codeClass = "rounded bg-accent-soft px-1.5 py-0.5 font-mono text-sm text-ink"
+	codeClass = "rounded-sm bg-accent-soft px-2 py-1 font-mono text-sm text-ink"
 )
 
 // Layout is the frame of one step: the h1, the progress, the step (its h2 and body, the children) and the buttons that go

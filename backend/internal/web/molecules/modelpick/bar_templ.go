@@ -154,7 +154,7 @@ func Bar(b Filter) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<button type=\"button\" class=\"relative inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-mute bg-bone px-2.5 py-1 text-sm text-ink hover:border-accent focus-visible:focus-ring\" aria-expanded=\"false\" aria-controls=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<button type=\"button\" class=\"relative inline-flex cursor-pointer items-center gap-2 rounded-md border border-mute bg-bone px-3 py-1 text-sm text-ink hover:border-accent focus-visible:focus-ring\" aria-expanded=\"false\" aria-controls=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -234,7 +234,7 @@ func Count(b Filter, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-1.5 text-xs text-bone\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-2 text-xs text-bone\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

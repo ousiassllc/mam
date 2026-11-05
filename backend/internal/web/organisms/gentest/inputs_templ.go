@@ -136,7 +136,7 @@ func inputFields(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" multiple accept=\"image/png,image/jpeg,image/webp\" class=\"peer sr-only\" data-gt-file> <label for=\"gt-upload\" class=\"inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs text-ink transition hover:bg-accent-soft peer-focus-visible:focus-ring\">ファイルを選ぶ</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" multiple accept=\"image/png,image/jpeg,image/webp\" class=\"peer sr-only\" data-gt-file> <label for=\"gt-upload\" class=\"inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs text-ink transition-colors hover:bg-accent-soft peer-focus-visible:focus-ring\">ファイルを選ぶ</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -341,7 +341,7 @@ func lightbox() templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<dialog data-gt-lightbox aria-label=\"入力画像の拡大\" class=\"m-auto max-h-[90vh] max-w-[92vw] rounded-lg border border-border bg-surface p-2 backdrop:bg-black/70\"><img alt=\"\" class=\"max-h-[80vh] max-w-full rounded object-contain\" data-gt-lightbox-image><div class=\"mt-2 flex justify-end\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<dialog data-gt-lightbox aria-label=\"入力画像の拡大\" class=\"m-auto max-h-[90vh] max-w-[92vw] rounded-xl shadow-modal border border-border bg-surface p-2 backdrop:bg-black/70\"><img alt=\"\" class=\"max-h-[80vh] max-w-full rounded-md object-contain\" data-gt-lightbox-image><div class=\"mt-2 flex justify-end\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

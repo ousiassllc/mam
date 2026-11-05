@@ -26,7 +26,7 @@ templ Easy(e EasyData, card templ.Component) {
 					"type": "radio", "name": FieldIntent, "value": i.ID, "checked": i.Selected,
 					"hx-get": paths.GenerationTestPart("easy-pick"), "hx-trigger": "change", "hx-target": "#" + PickID, "hx-swap": "outerHTML",
 					"hx-include": "#" + FormID + " [name=intent]," + "#" + FormID + " [name=ref]," + "#" + FormID + " [name=quality]:checked",
-				}, "flex flex-col gap-0.5 px-3 py-2 text-sm") {
+				}, "flex flex-col gap-1 px-3 py-2 text-sm") {
 					<span class="text-ink">{ i.Label }</span>
 					<span class="text-xs text-mute">{ i.Hint }</span>
 				}
@@ -40,7 +40,7 @@ templ Easy(e EasyData, card templ.Component) {
 						"type": "radio", "name": FieldIntent, "value": i.ID, "checked": i.Selected,
 						"hx-get": paths.GenerationTestPart("easy-pick"), "hx-trigger": "change", "hx-target": "#" + PickID, "hx-swap": "outerHTML",
 						"hx-include": "#" + FormID + " [name=intent]," + "#" + FormID + " [name=ref]," + "#" + FormID + " [name=quality]:checked",
-					}, "flex flex-col gap-0.5 px-3 py-2 text-sm") {
+					}, "flex flex-col gap-1 px-3 py-2 text-sm") {
 						<span class="text-ink">{ i.Label }</span>
 						<span class="text-xs text-mute">{ i.Hint }</span>
 					}
@@ -81,7 +81,7 @@ templ Sizes(sizes []SizeChoice, oob bool) {
 		<span id="gt-size-title" class="text-sm text-ink">サイズ</span>
 		<div class="flex flex-wrap gap-2">
 			for _, s := range sizes {
-				@pick.Card(templ.Attributes{"type": "radio", "name": FieldAspect, "value": s.Value, "checked": s.Selected}, "px-4 py-1.5 text-center text-sm") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": FieldAspect, "value": s.Value, "checked": s.Selected}, "px-4 py-2 text-center text-sm") {
 					{ s.Label }
 				}
 			}
@@ -120,7 +120,7 @@ templ EasyPick(e EasyData, card templ.Component) {
 			if len(e.Qualities) > 0 {
 				<div class="flex flex-wrap gap-2">
 					for _, q := range e.Qualities {
-						@pick.Card(templ.Attributes{"type": "radio", "name": FieldQuality, "value": q.ID, "checked": q.Selected}, "px-4 py-1.5 text-center text-sm") {
+						@pick.Card(templ.Attributes{"type": "radio", "name": FieldQuality, "value": q.ID, "checked": q.Selected}, "px-4 py-2 text-center text-sm") {
 							{ q.Label }
 						}
 					}

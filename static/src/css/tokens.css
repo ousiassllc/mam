@@ -33,6 +33,20 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Layers (O4): the z-index of the page's layers (z-dropdown, z-sticky, z-drawer, z-modal, z-toast below). */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-drawer: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+
+  /* Spacing recipes (S2): the heights and gaps the guide names, in 4px steps. */
+  --menu-item-h: 2.5rem;
+  --gap-menu: 0.5rem;
+  --gap-option: 0.25rem;
+  --gap-inline: 0.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -115,6 +129,26 @@
   --text-3xl--line-height: 1.3;
 }
 
+/* Shape (S1, S3): corners 4 / 8 / 12 / 16 (tag and check / input and button / card / modal), and the one shadow, the modal's.
+   rounded-sm is a tag, rounded-md an input, a button or a panel inside a card, rounded-lg a card, rounded-xl a modal.
+   Motion (M1): what transition-* takes when
+   it says no duration: --motion-base 180ms and --ease-out. */
+@theme {
+  --radius-*: initial;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --shadow-*: initial;
+  --shadow-modal: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+@theme inline {
+  --default-transition-duration: var(--motion-base);
+  --default-transition-timing-function: var(--ease-out);
+}
+
 /* Body text (T3, T4): 16px Regular at 1.8 — a long Japanese text is not set tight. */
 @layer base {
   body {
@@ -128,4 +162,30 @@
 @utility focus-ring {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* The layers of the page (O4): a utility per layer, so that no source writes a bare z-10. */
+@utility z-dropdown {
+  z-index: var(--z-dropdown);
+}
+
+@utility z-sticky {
+  z-index: var(--z-sticky);
+}
+
+@utility z-drawer {
+  z-index: var(--z-drawer);
+}
+
+/* Inside one part, above a sibling that covers it (the click area of a card): not a layer of the page. */
+@utility z-raised {
+  z-index: 1;
+}
+
+@utility z-modal {
+  z-index: var(--z-modal);
+}
+
+@utility z-toast {
+  z-index: var(--z-toast);
 }

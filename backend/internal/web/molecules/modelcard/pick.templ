@@ -20,7 +20,7 @@ templ BadgeOf(b Badge) {
 templ Summary(c Card) {
 	<span class="flex items-start gap-3" data-mp-summary>
 		@Tile(c.Icon)
-		<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+		<span class="flex min-w-0 flex-1 flex-col gap-1">
 			<span class="break-words text-sm text-ink" data-mp-name>{ c.Name }</span>
 			<span class="break-words text-xs text-mute" data-testid="model-meta">{ c.Meta }</span>
 		</span>
@@ -30,7 +30,7 @@ templ Summary(c Card) {
 			</span>
 		}
 	</span>
-	<span class="flex flex-wrap items-center gap-1.5" data-testid="model-badges">
+	<span class="flex flex-wrap items-center gap-2" data-testid="model-badges">
 		if c.State.Label != "" {
 			@BadgeOf(c.State)
 		}
@@ -51,7 +51,7 @@ templ Summary(c Card) {
 // ring. With PickOne it is a button that sets the field of the model picker. A model that cannot be chosen now is dimmed, cannot be chosen, and says why and where
 // to fix it under the card.
 templ PickItem(c Card) {
-	<li id={ c.ID } class="relative flex min-w-0 flex-col gap-1.5" data-card data-available={ boolText(c.Reason == nil) } { c.Attrs... }>
+	<li id={ c.ID } class="relative flex min-w-0 flex-col gap-2" data-card data-available={ boolText(c.Reason == nil) } { c.Attrs... }>
 		if c.Pick.Mode == PickMany {
 			<label class="relative block cursor-pointer has-[:disabled]:cursor-not-allowed">
 				<input
@@ -73,7 +73,7 @@ templ PickItem(c Card) {
 		} else {
 			<button
 				type="button"
-				class={ "flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-shadow hover:border-accent focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none", chooseState(c) }
+				class={ "flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-colors hover:border-accent focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none", chooseState(c) }
 				aria-pressed={ boolText(c.Pick.Current) }
 				disabled?={ c.Reason != nil }
 				data-mp-choose

@@ -20,7 +20,7 @@ func sourceNoteLabel(s domain.NoteSource) string {
 // title or text appends a version; the category and pin do not. Every action answers with the note
 // list (#note-list) in which the other notes the page has are placeholders (notelist.Data.Only).
 templ NoteCard(n domain.NoteView) {
-	<article id={ "note-" + n.ID } class="flex flex-col gap-2 rounded-md border border-border p-3">
+	<article id={ "note-" + n.ID } class="flex flex-col gap-2 rounded-lg border border-border p-3">
 		<div class="flex flex-wrap items-center gap-2 text-xs text-mute">
 			@atoms.Badge(atoms.BadgeNeutral, n.Category.Label())
 			@atoms.Badge(atoms.BadgeInfo, "v"+strconv.Itoa(n.Version.Number))

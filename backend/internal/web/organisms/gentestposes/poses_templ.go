@@ -72,7 +72,7 @@ func Dialog() templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog data-gt-pose-dialog aria-labelledby=\"gt-pose-title\" data-testid=\"gt-pose-dialog\" class=\"m-auto w-[min(56rem,94vw)] max-h-[88vh] overflow-y-auto rounded-lg border border-border bg-surface p-4 text-ink backdrop:bg-black/70\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-pose-title\" class=\"text-sm font-semibold\">ポーズを選ぶ</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog data-gt-pose-dialog aria-labelledby=\"gt-pose-title\" data-testid=\"gt-pose-dialog\" class=\"m-auto w-[min(56rem,94vw)] max-h-[88vh] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-4 text-ink backdrop:bg-black/70\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-pose-title\" class=\"text-sm font-semibold\">ポーズを選ぶ</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -192,7 +192,7 @@ func ModelNotes(n Notes) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><p class=\"flex flex-wrap items-center gap-2 text-ink\"><span class=\"\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -338,7 +338,7 @@ func InstallPanel(w Wire, in Install) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, l := range in.Licenses {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2\"><p class=\"flex flex-wrap items-center gap-2 text-ink\"><span class=\"\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -416,11 +416,11 @@ func InstallPanel(w Wire, in Install) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-install-accept": "", "data-testid": "gt-pose-accept"}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-install-accept": "", "data-testid": "gt-pose-accept"}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50\" data-testid=\"gt-pose-install-button\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50\" data-testid=\"gt-pose-install-button\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -937,7 +937,7 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 			templ_7745c5c3_Var43 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<section class=\"flex flex-col gap-2 rounded-md border border-border p-3 text-xs\" data-testid=\"gt-pose-adult\"><h3 class=\"text-sm font-semibold text-ink\">成人向けのポーズ（sexy・二人）</h3>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<section class=\"flex flex-col gap-2 rounded-lg border border-border p-3 text-xs\" data-testid=\"gt-pose-adult\"><h3 class=\"text-sm font-semibold text-ink\">成人向けのポーズ（sexy・二人）</h3>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1038,7 +1038,7 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, l := range a.Licenses {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2\"><p class=\"flex flex-wrap items-center gap-2 text-ink\"><span class=\"\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1112,11 +1112,11 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-adult-accept": "", "data-testid": "gt-pose-adult-accept"}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-adult-accept": "", "data-testid": "gt-pose-adult-accept"}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<span>上のライセンスと取得元を確認しました。成人向けのポーズのダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50\" data-testid=\"gt-pose-adult-install-button\" hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<span>上のライセンスと取得元を確認しました。成人向けのポーズのダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50\" data-testid=\"gt-pose-adult-install-button\" hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1327,7 +1327,7 @@ func card(w Wire, c Card) templ.Component {
 			templ_7745c5c3_Var62 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2 text-xs\" data-testid=\"gt-pick\" data-pose-card><img class=\"aspect-[3/4] w-full rounded bg-surface object-contain\" src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2 text-xs\" data-testid=\"gt-pick\" data-pose-card><img class=\"aspect-[3/4] w-full rounded-md bg-surface object-contain\" src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

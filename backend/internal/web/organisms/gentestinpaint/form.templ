@@ -82,7 +82,7 @@ templ Form(p Page) {
 
 // Confirm is the estimate. Running posts the same inputs back.
 templ Confirm(c Box) {
-	<div id={ outID } class="flex flex-col gap-3 rounded-md border border-accent p-4" data-testid="gt-inpaint-confirm">
+	<div id={ outID } class="flex flex-col gap-3 rounded-lg border border-accent p-4" data-testid="gt-inpaint-confirm">
 		<h2 class="text-sm font-semibold">実行の確認</h2>
 		<p class="text-sm">全部で <strong>{ strconv.Itoa(c.Items) }</strong> 件。見積り合計は <strong>{ c.Total }</strong> です。結果は元の画像とは別のファイルになり、元の結果へのリンクが残ります。</p>
 		if len(c.Warnings) > 0 {
@@ -114,14 +114,14 @@ templ Confirm(c Box) {
 
 // Failed is an estimate or a run that was refused, in the place of the confirmation.
 templ Failed(msg string) {
-	<div id={ outID } class="rounded-md border border-danger/60 p-4" data-testid="gt-inpaint-failed">
+	<div id={ outID } class="rounded-lg border border-danger/60 p-4" data-testid="gt-inpaint-failed">
 		<p class="text-sm text-danger" role="alert">{ msg }</p>
 	</div>
 }
 
 // Started says the redraw was queued. The history keeps the new file.
 templ Started(history string) {
-	<div id={ outID } class="rounded-md border border-success/60 p-4" data-testid="gt-inpaint-started">
+	<div id={ outID } class="rounded-lg border border-success/60 p-4" data-testid="gt-inpaint-started">
 		<p class="text-sm text-success" role="status">描き直しを始めました。結果は履歴に、元の画像とは別のファイルで残ります。</p>
 		<a class="text-sm text-ink underline" href={ templ.SafeURL(history) }>履歴を見る</a>
 	</div>

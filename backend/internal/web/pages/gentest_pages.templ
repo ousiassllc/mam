@@ -22,9 +22,9 @@ templ generationNav(current string) {
 			{"prompts", "プロンプト履歴", paths.GenerationTestPrompts()},
 		} {
 			if l.Key == current {
-				<span class="rounded-md bg-accent-soft px-3 py-1.5 text-ink" aria-current="page">{ l.Label }</span>
+				<span class="rounded-md bg-accent-soft px-3 py-2 text-ink" aria-current="page">{ l.Label }</span>
 			} else {
-				<a class="rounded-md px-3 py-1.5 text-mute transition-colors hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring motion-reduce:transition-none" href={ templ.SafeURL(l.Href) }>{ l.Label }</a>
+				<a class="rounded-md px-3 py-2 text-mute transition-colors hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring motion-reduce:transition-none" href={ templ.SafeURL(l.Href) }>{ l.Label }</a>
 			}
 		}
 	</nav>

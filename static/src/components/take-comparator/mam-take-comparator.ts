@@ -242,7 +242,7 @@ export class MamTakeComparator extends LitElement {
 
   private renderError() {
     return this.error
-      ? html`<p class="rounded border border-danger/60 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert" data-error>${this.error}</p>`
+      ? html`<p class="rounded-md border border-danger/60 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert" data-error>${this.error}</p>`
       : nothing;
   }
 
@@ -266,7 +266,7 @@ export class MamTakeComparator extends LitElement {
         .fps=${t.fps ?? 0}
       ></mam-video-player>
       <div
-        class="relative h-7 cursor-crosshair touch-none select-none rounded bg-accent-soft"
+        class="relative h-7 cursor-crosshair touch-none select-none rounded-md bg-accent-soft"
         style="width:${widthPercent}%"
         role="group"
         aria-label="Take ${t.label} の区間を選ぶ"
