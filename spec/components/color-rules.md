@@ -38,7 +38,7 @@
 | 補助・説明の文字 | `text-mute`（本文の長文には使わない） | §1・`contrast_test` |
 | 枠・区切り | `border-border` / `divide-border` | §1・一覧 |
 | 据え置きの面（現在地・コード欄・チップ） | `bg-accent-soft` | ガイドの `--accent-soft` |
-| ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `hover:bg-accent-soft/60` | §1 |
+| ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` / `hover:bg-accent-soft/60` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない） |
 | ホバーの文字 | `hover:text-ink` | §1 |
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
 | リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える） | §1・`Icon` 周り |
@@ -117,4 +117,5 @@
 | 1.2 | 2026-11-02 | §3 のフォーカス輪に `has-[[data-card-open]:focus-visible]:ring-indigo-400`、§4 の「選択」の行に `hover:border-indigo-400`・`hover:shadow-indigo-400/40` を足した（モデルマネージャーのカードは、タップするとモーダルが開く「開くカード」。ホバーとキーボードのフォーカスで、選ぶカードと同じ枠・光る縁取り・輪を使う。新しい色は足していない） | Issue #954 |
 | 1.3 | 2026-11-02 | §4.1 を足した（スライダーの色・状態。`static/src/css/slider.css`）。§1 の `app.css` の書き方に `slider.css` の import を足した。新しい色相・シェードは足していない（表の indigo・neutral・white だけ） | Issue #955 |
 | 2.0 | 2026-11-05 | 色を Ousiass 共通デザインガイド（brand-guide `622ea73`）のトークンへ移した。§1 を「トークンだけ。`static/src/css/tokens.css` が値を書く唯一の場所」に改め、§3・§4 の許可クラスを `bg-bone` `text-ink` `border-border` などへ、フォーカスの輪を `focus-ring` へ、§4.1 のスライダーをトークンの変数へ置き換えた。ライト / ダークの切り替え（`data-theme`）を足した。テストの許可表・入力欄の枠のコントラスト検査も同じ版で改めた | Issue #1036 |
+| 2.1 | 2026-11-06 | §3 の「ホバー面」に `peer-not-checked:hover:border-mute` を足した（選ぶカードのホバーの枠は、選んでいないカードだけ。`hover:border-mute` は `peer-checked:border-accent` より後に描かれて、選んだカードの枠をホバーで灰色に戻していた）。新しい色は足していない | Issue #1061 |
 

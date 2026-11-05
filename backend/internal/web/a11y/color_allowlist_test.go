@@ -26,7 +26,7 @@ var colorAllowlist = map[string][]string{
 	"supporting text": {"text-mute"},
 	"border":          {"border-border", "divide-border"},
 	"raised face":     {"bg-accent-soft"},
-	"hover surface":   {"hover:bg-accent-soft", "hover:border-mute", "hover:bg-accent-soft/60"},
+	"hover surface":   {"hover:bg-accent-soft", "hover:border-mute", "peer-not-checked:hover:border-mute", "hover:bg-accent-soft/60"},
 	"hover text":      {"hover:text-ink"},
 	"primary action":  {"bg-accent", "hover:bg-accent/85", "text-bone"},
 	"link and icon":   {"text-accent", "decoration-mute"},
