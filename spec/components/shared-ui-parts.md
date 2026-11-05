@@ -66,11 +66,11 @@
 ## 2. `atoms.Icon`
 
 - 署名の案: `templ Icon(name IconName, class string)`。`IconName` は文字列型の定数（綴りの間違いはコンパイルで落ちる）。未知の名前は描かない。
-- 出力: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="{class}">…</svg>`。`<title>` は付けない。大きさは `class`（既定 `h-5 w-5 shrink-0`）。色は `currentColor`（親の `text-*`）。
+- 出力: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false" class="{class}">…</svg>`（`stroke-linecap` / `stroke-linejoin` は各形に付く）。`<title>` は付けない。大きさは `class`（既定 `h-5 w-5 shrink-0`。ガイドの 16 / 20 / 24 = `h-4` / `h-5` / `h-6` だけ。スピナーは 20px）。色は `currentColor`（親の `text-*`）。
 - アイコンだけで意味を持つボタンは作らない。必要ならボタンに `aria-label`（既存の `IconButton`）。このリポジトリのアイコンはすべて飾りで、意味は文字が持つ。
-- 入手元は #846 決定事項 3(a): **Lucide（ISC）の SVG のパスを `atoms/icon.templ` にコピー**する（npm の依存は足さない）。`atoms` の行数は約 414 行で、約 16 個で 150 行前後の見込み（1 ファイル 300 行以内に収める）。コピー元の版は `icon.templ` の先頭のコメントに固定する。
+- 入手元は #846 決定事項 3(a) を #1039 で改めた: **Iconoir（MIT。Ousiass 共通デザインガイド I1）の SVG のパスを `atoms/icon.templ` にコピー**する（npm の依存は足さない。`regular` 版・線 1.5）。`atoms` の行数は約 414 行で、約 16 個で 150 行前後の見込み（1 ファイル 300 行以内に収める）。コピー元の版は `icon.templ` の先頭のコメントに固定する。
 
-| `IconName`（案） | Lucide の名前 | 使う場所 | 入れる Issue |
+| `IconName`（案） | 当初の名前（Lucide。いまの絵は各 `case` のコメントの Iconoir の名前） | 使う場所 | 入れる Issue |
 |------------------|---------------|---------|-------------|
 | `IconFlask` | `flask-conical` | 生成テスト | #846 |
 | `IconNetwork` | `network` | ノード | #846 |
@@ -88,7 +88,7 @@
 | `IconUpdate` | `refresh-cw` | 〃 バージョンとアップデート | #847 |
 | `IconClose` | `x` | モーダルの閉じるボタン | #847 |
 | `IconCopy` | `copy` | MCP トークンのコピー | #847 |
-| `IconHelp` | `circle-question-mark`（Lucide v1.61.0。旧名 `circle-help`） | 「?」ヘルプのボタン（§9） | #866 |
+| `IconHelp` | `help-circle`（Iconoir。旧 Lucide `circle-question-mark`） | 「?」ヘルプのボタン（§9） | #866 |
 | `IconProjects` | `folder-kanban` | 左メニュー: プロジェクト（`atoms/icon_nav.templ`。行数の上限のため `icon.templ` から分けた） | #915 |
 | `IconChat` | `message-square` | 〃 Project のチャット | #915 |
 | `IconBrief` | `file-text` | 〃 Brief | #915 |

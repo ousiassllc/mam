@@ -38,10 +38,10 @@ printf 'logo license\n' >"$work/mods/b/LICENSE-LOGO"
 printf 'patent grant\n' >"$work/mods/b/PATENTS"
 printf 'License of c\n~~~~\nafter\n' >"$work/mods/c/LICENSE.md"
 mkdir -p "$work/npm/node_modules/lib"
-# The copied Lucide icons: the release comes from icon.templ, the license text from atoms/icons/LICENSE (with a Feather MIT part).
+# The copied Iconoir icons: the release comes from icon.templ, the license text from atoms/icons/LICENSE.
 mkdir -p "$work/repo/backend/internal/web/atoms/icons"
-printf '// Icons: paths copied from Lucide v9.8.7 (https://lucide.dev, ISC).\npackage atoms\n' >"$work/repo/backend/internal/web/atoms/icon.templ"
-printf 'ISC License\n\nLucide text\n\nThe MIT License (MIT) (for portions derived from Feather)\n' >"$work/repo/backend/internal/web/atoms/icons/LICENSE"
+printf '// Icons: paths copied from Iconoir v9.8.7 (https://iconoir.com, MIT).\npackage atoms\n' >"$work/repo/backend/internal/web/atoms/icon.templ"
+printf 'MIT License\n\nIconoir text\n' >"$work/repo/backend/internal/web/atoms/icons/LICENSE"
 # The bundled ONNX Runtime DLL: the version comes from fetch-onnxruntime.sh, the texts from build/windows/onnxruntime/.
 mkdir -p "$work/repo/build/windows/onnxruntime"
 printf 'MIT License\n\nONNX Runtime license text\n' >"$work/repo/build/windows/onnxruntime/LICENSE"
@@ -71,9 +71,9 @@ check "success writes the output" $?
 check "lists the Go standard library" "$(has '## Go standard library' && echo 0 || echo 1)"
 check "lists a Go module with its version" "$(has '## example.com/a v1.0.0' && echo 0 || echo 1)"
 check "lists an npm package" "$(has '## lib 1.2.3' && echo 0 || echo 1)"
-check "lists the copied Lucide icons with the release icon.templ names" "$(has '## Lucide（アイコン） 9.8.7' && grep -qxF '| 同梱した素材 | Lucide（アイコン） | 9.8.7 |' "$out" && echo 0 || echo 1)"
-check "the Lucide license is shown whole, the Feather MIT part included" "$(
-  diff <(awk '/^## Lucide/ { b = 1 } /^### LICENSE$/ && b { f = 1; next } f && /^~~~$/ { if (++n == 2) exit; next } f && n == 1 { print }' "$out") "$work/repo/backend/internal/web/atoms/icons/LICENSE" >/dev/null && grep -qF 'Feather' "$out" && echo 0 || echo 1
+check "lists the copied Iconoir icons with the release icon.templ names" "$(has '## Iconoir（アイコン） 9.8.7' && grep -qxF '| 同梱した素材 | Iconoir（アイコン） | 9.8.7 |' "$out" && echo 0 || echo 1)"
+check "the Iconoir license is shown whole" "$(
+  diff <(awk '/^## Iconoir/ { b = 1 } /^### LICENSE$/ && b { f = 1; next } f && /^~~~$/ { if (++n == 2) exit; next } f && n == 1 { print }' "$out") "$work/repo/backend/internal/web/atoms/icons/LICENSE" >/dev/null && echo 0 || echo 1
 )"
 check "lists the bundled ONNX Runtime with the pinned version, its license and Microsoft's notices whole" "$(
   pinned="$(bash "$work/repo/scripts/fetch-onnxruntime.sh" --version)"
@@ -136,16 +136,16 @@ rm "$work/npm/node_modules/lib/LICENSE"
 err="$(cd "$work/repo" && bash scripts/third-party-notices.sh "$work/third.md" 2>&1)" && rc=0 || rc=$?
 check "an npm package without a license file fails" "$([[ $rc -ne 0 && "$err" == *"no license file in npm package lib@1.2.3"* ]] && echo 0 || echo 1)"
 
-# The Lucide icons without their license text, or without a named release, fail (the npm license is back).
+# The Iconoir icons without their license text, or without a named release, fail (the npm license is back).
 printf 'License of lib\n' >"$work/npm/node_modules/lib/LICENSE"
-mv "$work/repo/backend/internal/web/atoms/icons/LICENSE" "$work/lucide-license"
+mv "$work/repo/backend/internal/web/atoms/icons/LICENSE" "$work/iconoir-license"
 err="$(cd "$work/repo" && bash scripts/third-party-notices.sh "$work/third.md" 2>&1)" && rc=0 || rc=$?
-check "the Lucide icons without a license file fail" "$([[ $rc -ne 0 && "$err" == *"no license file in backend/internal/web/atoms/icons"* ]] && echo 0 || echo 1)"
-mv "$work/lucide-license" "$work/repo/backend/internal/web/atoms/icons/LICENSE"
+check "the Iconoir icons without a license file fail" "$([[ $rc -ne 0 && "$err" == *"no license file in backend/internal/web/atoms/icons"* ]] && echo 0 || echo 1)"
+mv "$work/iconoir-license" "$work/repo/backend/internal/web/atoms/icons/LICENSE"
 printf 'package atoms\n' >"$work/repo/backend/internal/web/atoms/icon.templ"
 err="$(cd "$work/repo" && bash scripts/third-party-notices.sh "$work/third.md" 2>&1)" && rc=0 || rc=$?
-check "icons without a named Lucide release fail" "$([[ $rc -ne 0 && "$err" == *"does not name the Lucide release"* ]] && echo 0 || echo 1)"
-printf '// Lucide v9.8.7\n' >"$work/repo/backend/internal/web/atoms/icon.templ"
+check "icons without a named Iconoir release fail" "$([[ $rc -ne 0 && "$err" == *"does not name the Iconoir release"* ]] && echo 0 || echo 1)"
+printf '// Iconoir v9.8.7\n' >"$work/repo/backend/internal/web/atoms/icon.templ"
 
 # The ONNX Runtime license texts missing fail, one by one (the texts are back afterwards).
 for f in LICENSE ThirdPartyNotices.txt; do

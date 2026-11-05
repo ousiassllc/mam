@@ -8,7 +8,7 @@ package atoms
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// Icons of the side menu (Lucide v1.61.0, copied as in icon.templ; the file is split from icon.templ to stay under the
+// Icons of the side menu (Iconoir v7.12.2, copied as in icon.templ; the file is split from icon.templ to stay under the
 // line limit). Icon hands every name it does not know to iconNav, which hands the rest to iconModel (icon_model.templ).
 
 // Icons of the side menu: the screens of the app and the views of a Project, and the button that folds the menu.
@@ -68,7 +68,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<path d=\"M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z\"></path> <path d=\"M8 10v4\"></path> <path d=\"M12 10v2\"></path> <path d=\"M16 10v6\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<path d=\"M2 11V4.6C2 4.26863 2.26863 4 2.6 4H8.77805C8.92127 4 9.05977 4.05124 9.16852 4.14445L12.3315 6.85555C12.4402 6.94876 12.5787 7 12.722 7H21.4C21.7314 7 22 7.26863 22 7.6V11M2 11V19.4C2 19.7314 2.26863 20 2.6 20H21.4C21.7314 20 22 19.7314 22 19.4V11M2 11H22\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -95,7 +95,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<path d=\"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<path d=\"M17 12.5C17.2761 12.5 17.5 12.2761 17.5 12C17.5 11.7239 17.2761 11.5 17 11.5C16.7239 11.5 16.5 11.7239 16.5 12C16.5 12.2761 16.7239 12.5 17 12.5Z\" fill=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M12 12.5C12.2761 12.5 12.5 12.2761 12.5 12C12.5 11.7239 12.2761 11.5 12 11.5C11.7239 11.5 11.5 11.7239 11.5 12C11.5 12.2761 11.7239 12.5 12 12.5Z\" fill=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M7 12.5C7.27614 12.5 7.5 12.2761 7.5 12C7.5 11.7239 7.27614 11.5 7 11.5C6.72386 11.5 6.5 11.7239 6.5 12C6.5 12.2761 6.72386 12.5 7 12.5Z\" fill=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.8214 2.48697 15.5291 3.33782 17L2.5 21.5L7 20.6622C8.47087 21.513 10.1786 22 12 22Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -122,7 +122,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<path d=\"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z\"></path> <path d=\"M14 2v5a1 1 0 0 0 1 1h5\"></path> <path d=\"M10 9H8\"></path> <path d=\"M16 13H8\"></path> <path d=\"M16 17H8\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<path d=\"M4 21.4V2.6C4 2.26863 4.26863 2 4.6 2H16.2515C16.4106 2 16.5632 2.06321 16.6757 2.17574L19.8243 5.32426C19.9368 5.43679 20 5.5894 20 5.74853V21.4C20 21.7314 19.7314 22 19.4 22H4.6C4.26863 22 4 21.7314 4 21.4Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M8 10L16 10\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M8 18L16 18\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M8 14L12 14\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M16 2V5.4C16 5.73137 16.2686 6 16.6 6H20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -149,7 +149,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<circle cx=\"6\" cy=\"6\" r=\"3\"></circle> <path d=\"M8.12 8.12 12 12\"></path> <path d=\"M20 4 8.12 15.88\"></path> <circle cx=\"6\" cy=\"18\" r=\"3\"></circle> <path d=\"M14.8 14.8 20 20\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<path d=\"M7.23611 7C7.71115 6.46924 8 5.76835 8 5C8 3.34315 6.65685 2 5 2C3.34315 2 2 3.34315 2 5C2 6.65685 3.34315 8 5 8C5.8885 8 6.68679 7.61375 7.23611 7ZM7.23611 7L20 18\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M7.23611 17C7.71115 17.5308 8 18.2316 8 19C8 20.6569 6.65685 22 5 22C3.34315 22 2 20.6569 2 19C2 17.3431 3.34315 16 5 16C5.8885 16 6.68679 16.3863 7.23611 17ZM7.23611 17L20 6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -176,7 +176,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<path d=\"M10 5H3\"></path> <path d=\"M12 19H3\"></path> <path d=\"M14 3v4\"></path> <path d=\"M16 17v4\"></path> <path d=\"M21 12h-9\"></path> <path d=\"M21 19h-5\"></path> <path d=\"M21 5h-7\"></path> <path d=\"M8 10v4\"></path> <path d=\"M8 12H3\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<path d=\"M16 13C13.2386 13 11 11.8807 11 10.5C11 9.11929 13.2386 8 16 8C18.7614 8 21 9.11929 21 10.5C21 11.8807 18.7614 13 16 13Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M11 14.5C11 15.8807 13.2386 17 16 17C18.7614 17 21 15.8807 21 14.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M3 9.5C3 10.8807 5.23858 12 8 12C9.12583 12 10.1647 11.814 11.0005 11.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M3 13C3 14.3807 5.23858 15.5 8 15.5C9.12561 15.5 10.1643 15.314 11 15.0002\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M3 5.5V16.5C3 17.8807 5.23858 19 8 19C9.12563 19 10.1643 18.8139 11 18.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M13 8.5V5.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M11 10.5V18.5C11 19.8807 13.2386 21 16 21C18.7614 21 21 19.8807 21 18.5V10.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M8 8C5.23858 8 3 6.88071 3 5.5C3 4.11929 5.23858 3 8 3C10.7614 3 13 4.11929 13 5.5C13 6.88071 10.7614 8 8 8Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -203,7 +203,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<path d=\"M15 6a9 9 0 0 0-9 9V3\"></path> <circle cx=\"18\" cy=\"6\" r=\"3\"></circle> <circle cx=\"6\" cy=\"18\" r=\"3\"></circle>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<path d=\"M18 8C19.1046 8 20 7.10457 20 6C20 4.89543 19.1046 4 18 4C16.8954 4 16 4.89543 16 6C16 7.10457 16.8954 8 18 8Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M6 20C7.10457 20 8 19.1046 8 18C8 16.8954 7.10457 16 6 16C4.89543 16 4 16.8954 4 18C4 19.1046 4.89543 20 6 20Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M6 16V3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M8 18H9C12.5 18 18 15.9 18 9.5V8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -230,7 +230,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<circle cx=\"12\" cy=\"12\" r=\"10\"></circle> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"></path> <path d=\"M2 12h20\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<path d=\"M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M2.5 12.5L8 14.5L7 18L8 21\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M17 20.5L16.5 18L14 17V13.5L17 12.5L21.5 13\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M19 5.5L18.5 7L15 7.5V10.5L17.5 9.5H19.5L21.5 10.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M2.5 10.5L5 8.5L7.5 8L9.5 5L8.5 3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -257,7 +257,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<path d=\"m16 6 4 14\"></path> <path d=\"M12 6v14\"></path> <path d=\"M8 8v12\"></path> <path d=\"M4 4v16\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<path d=\"M5 19.5V5C5 3.89543 5.89543 3 7 3H18.4C18.7314 3 19 3.26863 19 3.6V21\" stroke-linecap=\"round\"></path> <path d=\"M9 7L15 7\" stroke-linecap=\"round\"></path> <path d=\"M6.5 15L19 15\" stroke-linecap=\"round\"></path> <path d=\"M6.5 18L19 18\" stroke-linecap=\"round\"></path> <path d=\"M6.5 21L19 21\" stroke-linecap=\"round\"></path> <path d=\"M6.5 18C5.5 18 5 17.3284 5 16.5C5 15.6716 5.5 15 6.5 15\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M6.5 21C5.5 21 5 20.3284 5 19.5C5 18.6716 5.5 18 6.5 18\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -284,7 +284,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<path d=\"M21 9a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z\"></path> <path d=\"M15 3v5a1 1 0 0 0 1 1h5\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<path d=\"M2.90602 17.505L5.33709 3.71766C5.5289 2.62987 6.56621 1.90354 7.654 2.09534L19.4717 4.17912C20.5595 4.37093 21.2858 5.40824 21.094 6.49603L18.6629 20.2833C18.4711 21.3711 17.4338 22.0975 16.346 21.9057L4.52834 19.8219C3.44055 19.6301 2.71421 18.5928 2.90602 17.505Z\"></path> <path d=\"M8.92902 6.38184L16.8075 7.77102\" stroke-linecap=\"round\"></path> <path d=\"M8.23444 10.3213L16.1129 11.7105\" stroke-linecap=\"round\"></path> <path d=\"M7.53986 14.2607L12.4639 15.129\" stroke-linecap=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -311,7 +311,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"></path> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\"></path> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"></path> <circle cx=\"9\" cy=\"7\" r=\"4\"></circle>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<path d=\"M1 20V19C1 15.134 4.13401 12 8 12V12C11.866 12 15 15.134 15 19V20\" stroke-linecap=\"round\"></path> <path d=\"M13 14V14C13 11.2386 15.2386 9 18 9V9C20.7614 9 23 11.2386 23 14V14.5\" stroke-linecap=\"round\"></path> <path d=\"M8 12C10.2091 12 12 10.2091 12 8C12 5.79086 10.2091 4 8 4C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M18 9C19.6569 9 21 7.65685 21 6C21 4.34315 19.6569 3 18 3C16.3431 3 15 4.34315 15 6C15 7.65685 16.3431 9 18 9Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -338,7 +338,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"></rect> <path d=\"M9 3v18\"></path> <path d=\"m16 15-3-3 3-3\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<path d=\"M19 21L5 21C3.89543 21 3 20.1046 3 19L3 5C3 3.89543 3.89543 3 5 3L19 3C20.1046 3 21 3.89543 21 5L21 19C21 20.1046 20.1046 21 19 21Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M7.25 10L5.5 12L7.25 14\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M9.5 21V3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -365,7 +365,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"></rect> <path d=\"M9 3v18\"></path> <path d=\"m14 9 3 3-3 3\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<path d=\"M19 21L5 21C3.89543 21 3 20.1046 3 19L3 5C3 3.89543 3.89543 3 5 3L19 3C20.1046 3 21 3.89543 21 5L21 19C21 20.1046 20.1046 21 19 21Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M9.5 21V3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M5.5 10L7.25 12L5.5 14\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -392,7 +392,7 @@ func iconNav(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<path d=\"M13 5h8\"></path> <path d=\"M13 12h8\"></path> <path d=\"M13 19h8\"></path> <path d=\"m3 17 2 2 4-4\"></path> <path d=\"m3 7 2 2 4-4\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<path d=\"M9 6L20 6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M3.80002 5.79999L4.60002 6.59998L6.60001 4.59999\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M3.80002 11.8L4.60002 12.6L6.60001 10.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M3.80002 17.8L4.60002 18.6L6.60001 16.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M9 12L20 12\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M9 18L20 18\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -57,7 +57,7 @@ func commercialName(c modellicense.Commercial, detail string) string {
 // data-testid); data-commercial carries the answer for the filter (components/commercial-filter).
 templ CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attributes) {
 	<span class={ commercialBadgeClass(c) } role="img" aria-label={ commercialName(c, detail) } title={ detail } data-commercial-badge={ string(c) } { attrs... }>
-		@Icon(commercialIcon(c), "h-3.5 w-3.5 shrink-0")
+		@Icon(commercialIcon(c), "h-4 w-4 shrink-0")
 		<span aria-hidden="true">{ c.Label() }</span>
 	</span>
 }
@@ -66,6 +66,6 @@ templ CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attr
 // word in the tooltip and the accessible name.
 templ CommercialMark(c modellicense.Commercial, detail string, attrs templ.Attributes) {
 	<span class={ commercialMarkClass(c) } role="img" aria-label={ commercialName(c, detail) } title={ c.Label() + ": " + detail } data-commercial-badge={ string(c) } { attrs... }>
-		@Icon(commercialIcon(c), "h-3.5 w-3.5 shrink-0")
+		@Icon(commercialIcon(c), "h-4 w-4 shrink-0")
 	</span>
 }

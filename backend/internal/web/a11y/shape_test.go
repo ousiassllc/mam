@@ -65,3 +65,24 @@ func TestSources_UseOnlyTheGuidesShapeLayersAndMotion(t *testing.T) {
 		}
 	}
 }
+
+var iconSize = regexp.MustCompile(`@(?:atoms\.)?Icon\([A-Za-z.]+, "[^"]*\b(?:h|w)-(?:3|3\.5|7|8|9|10)\b`)
+
+// An icon is 16, 20 or 24px (h-4 / h-5 / h-6, I2), and the spinner is 20px.
+func TestSources_IconsAreAtTheGuidesSizes(t *testing.T) {
+	for _, path := range colorSources(t) {
+		if !strings.HasSuffix(path, ".templ") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(src), "\n") {
+			if m := iconSize.FindString(line); m != "" {
+				t.Errorf("%s:%d: %q: an icon is h-4 w-4 (16), h-5 w-5 (20) or h-6 w-6 (24)", path, n+1, m)
+			}
+		}
+	}
+	spinner, err := os.ReadFile("../atoms/spinner.templ")
+	require.NoError(t, err)
+	assert.Contains(t, string(spinner), "h-5 w-5", "the spinner is 20px")
+}

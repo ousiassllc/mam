@@ -6,7 +6,7 @@
 #   - npm packages in the production front-end bundle: what static/src/main.ts imports (found with an esbuild
 #     metafile, like static/build.mjs bundles it), tailwindcss (its CSS is part of the generated app.css) and the
 #     @fontsource-variable packages of the fonts (Sora, Noto Sans JP, JetBrains Mono; static/fonts.mjs copies their files into dist/fonts)
-#   - material copied into the source tree: the Lucide icons of backend/internal/web/atoms/icon.templ, with the
+#   - material copied into the source tree: the Iconoir icons of backend/internal/web/atoms/icon.templ, with the
 #     license text of the release they were copied from (atoms/icons/LICENSE; the release is named in icon.templ)
 #   - the ONNX Runtime DLL the installer bundles (Face Identity Similarity): the LICENSE and ThirdPartyNotices.txt of the
 #     pinned release, committed in build/windows/onnxruntime/ (scripts/fetch-onnxruntime.sh pins the version and refuses
@@ -107,13 +107,13 @@ while IFS='|' read -r name version dir; do
   while IFS= read -r f; do record 3 "$name" "$version" "$f" "$dir"; done <<<"$files"
 done <<<"$npm_packages"
 
-# 4. Material copied into the source tree (the Go and npm lists above do not see it): the Lucide icons. The release
-# is the one icon.templ names ("Lucide v1.61.0"); the license file is the one of that release, whole.
+# 4. Material copied into the source tree (the Go and npm lists above do not see it): the Iconoir icons. The release
+# is the one icon.templ names ("Iconoir v7.12.2"); the license file is the one of that release, whole.
 icons_dir="backend/internal/web/atoms/icons"
-lucide_version="$(sed -n 's/.*Lucide v\([0-9][0-9.]*\).*/\1/p' backend/internal/web/atoms/icon.templ 2>/dev/null | head -n1 || true)"
-[[ -n "$lucide_version" ]] || die "backend/internal/web/atoms/icon.templ does not name the Lucide release (\"Lucide v<version>\")"
-[[ -n "$(license_files_in "$icons_dir")" ]] || die "no license file in $icons_dir (the Lucide icons)"
-while IFS= read -r f; do record 4 "Lucide（アイコン）" "$lucide_version" "$f" "$icons_dir"; done < <(license_files_in "$icons_dir")
+iconoir_version="$(sed -n 's/.*Iconoir v\([0-9][0-9.]*\).*/\1/p' backend/internal/web/atoms/icon.templ 2>/dev/null | head -n1 || true)"
+[[ -n "$iconoir_version" ]] || die "backend/internal/web/atoms/icon.templ does not name the Iconoir release (\"Iconoir v<version>\")"
+[[ -n "$(license_files_in "$icons_dir")" ]] || die "no license file in $icons_dir (the Iconoir icons)"
+while IFS= read -r f; do record 4 "Iconoir（アイコン）" "$iconoir_version" "$f" "$icons_dir"; done < <(license_files_in "$icons_dir")
 
 # 5. The ONNX Runtime DLL of the installer (scripts/package-windows.sh -> scripts/fetch-onnxruntime.sh). The license files are the
 # ones of the pinned release: LICENSE (MIT) and ThirdPartyNotices.txt (Microsoft's notices for what ONNX Runtime contains).
@@ -158,7 +158,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 
 - Go の標準ライブラリと、Windows 版 exe（`backend/cmd/wails`、`GOOS=windows`、`-tags production`）にリンクされる Go モジュール
 - `static/` の本番バンドルに入る npm パッケージ（`static/src/main.ts` から import されるもの。`static/src/dist/app.css` に Tailwind CSS が含まれるので `tailwindcss` も）と、画面に使うフォント（Sora・Noto Sans JP・JetBrains Mono。SIL Open Font License 1.1。`@fontsource-variable/*` のファイルを `static/src/dist/fonts/` に同梱する）
-- ソースにコピーして同梱した素材: アイコンの Lucide（ISC。Feather 由来のアイコンの MIT を含む。取り込んだ版の `LICENSE` の全文）
+- ソースにコピーして同梱した素材: アイコンの Iconoir（MIT。取り込んだ版の `LICENSE` の全文）
 - インストーラーが `mam.exe` の隣に置く ONNX Runtime の DLL（`onnxruntime.dll`・`onnxruntime_providers_shared.dll`。MIT、Microsoft）: 顔の同一性の数値評価に使います。取り込んだ版の `LICENSE` と、Microsoft が付ける第三者の通知 `ThirdPartyNotices.txt` の全文を載せています（`build/windows/onnxruntime/` にある写しで、`scripts/fetch-onnxruntime.sh` が固定した版のリリースと同じ内容であることを確かめます）。ONNX Runtime を Go から呼ぶバインディング（`github.com/shota3506/onnxruntime-purego`、MIT）と、その下の `github.com/ebitengine/purego`（Apache-2.0）は、上の Go モジュールに入っています。バインディングは、Windows 対応の修正（DLL の読み込みとモデルのパスの UTF-16 化）の 1 コミットだけを足した `github.com/aubs3993/onnxruntime-purego` のコミットに `go.mod` の `replace` で差し替えています（上の「版」は元のモジュールのもので、`LICENSE` は同じ MIT です）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 

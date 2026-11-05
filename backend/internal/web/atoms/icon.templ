@@ -1,6 +1,6 @@
 package atoms
 
-// Icons: paths copied from Lucide v1.61.0 (https://lucide.dev, ISC; the licence text is atoms/icons/LICENSE and goes
+// Icons: paths copied from Iconoir v7.12.2 (https://iconoir.com, MIT; the licence text is atoms/icons/LICENSE and goes
 // into THIRD_PARTY_NOTICES.md through scripts/third-party-notices.sh). To add an icon, copy the children of the
 // <svg> of icons/<name>.svg of that release into a new case below and add its IconName. Icons are decoration: the
 // SVG is aria-hidden and every meaning is carried by text next to it.
@@ -8,7 +8,7 @@ package atoms
 // IconName is the name of an icon of Icon.
 type IconName string
 
-// Icons, by what they stand for (the Lucide name is in the comment of its case in Icon).
+// Icons, by what they stand for (the Iconoir name is in the comment of its case in Icon).
 const (
 	IconFlask        IconName = "flask"
 	IconNetwork      IconName = "network"
@@ -55,212 +55,205 @@ func iconClass(class string) string {
 templ Icon(name IconName, class string) {
 	switch name {
 		case IconFlask:
-			// flask-conical
+			// flask
 			@iconSVG(class) {
-				<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"></path>
-				<path d="M6.453 15h11.094"></path>
-				<path d="M8.5 2h7"></path>
+				<path d="M18.5 15L5.5 15" stroke-linejoin="round"></path>
+				<path d="M16 4L8 4" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M9 4.5L9 10.2602C9 10.7376 8.82922 11.1992 8.51851 11.5617L3.48149 17.4383C3.17078 17.8008 3 18.2624 3 18.7398V19C3 20.1046 3.89543 21 5 21L19 21C20.1046 21 21 20.1046 21 19V18.7398C21 18.2624 20.8292 17.8008 20.5185 17.4383L15.4815 11.5617C15.1708 11.1992 15 10.7376 15 10.2602L15 4.5" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M12 9.01L12.01 8.99889" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M11 2.01L11.01 1.99889" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconNetwork:
 			// network
 			@iconSVG(class) {
-				<rect x="16" y="16" width="6" height="6" rx="1"></rect>
-				<rect x="2" y="16" width="6" height="6" rx="1"></rect>
-				<rect x="9" y="2" width="6" height="6" rx="1"></rect>
-				<path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path>
-				<path d="M12 12V8"></path>
+				<rect x="3" y="2" width="7" height="5" rx="0.6"></rect>
+				<rect x="8.5" y="17" width="7" height="5" rx="0.6"></rect>
+				<rect x="14" y="2" width="7" height="5" rx="0.6"></rect>
+				<path d="M6.5 7V10.5C6.5 11.6046 7.39543 12.5 8.5 12.5H15.5C16.6046 12.5 17.5 11.6046 17.5 10.5V7"></path>
+				<path d="M12 12.5V17"></path>
 			}
 		case IconWorkflow:
-			// workflow
+			// view-structure-down
 			@iconSVG(class) {
-				<rect width="8" height="8" x="3" y="3" rx="2"></rect>
-				<path d="M7 11v4a2 2 0 0 0 2 2h4"></path>
-				<rect width="8" height="8" x="13" y="13" rx="2"></rect>
+				<path d="M3 20.4V14.6C3 14.2686 3.26863 14 3.6 14H20.4C20.7314 14 21 14.2686 21 14.6V20.4C21 20.7314 20.7314 21 20.4 21H3.6C3.26863 21 3 20.7314 3 20.4Z"></path>
+				<path d="M14 9.4V3.6C14 3.26863 14.2686 3 14.6 3H20.4C20.7314 3 21 3.26863 21 3.6V9.4C21 9.73137 20.7314 10 20.4 10H14.6C14.2686 10 14 9.73137 14 9.4Z"></path>
+				<path d="M3 9.4V3.6C3 3.26863 3.26863 3 3.6 3H9.4C9.73137 3 10 3.26863 10 3.6V9.4C10 9.73137 9.73137 10 9.4 10H3.6C3.26863 10 3 9.73137 3 9.4Z"></path>
 			}
 		case IconPackage:
 			// package
 			@iconSVG(class) {
-				<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
-				<path d="M12 22V12"></path>
-				<polyline points="3.29 7 12 12 20.71 7"></polyline>
-				<path d="m7.5 4.27 9 5.15"></path>
+				<path d="M20 5.99999L20 18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V6C4 4.89543 4.89543 4 6 4H18C19.1045 4 19.9999 4.89543 20 5.99999Z" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M12 9V4" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconSettings:
 			// settings
 			@iconSVG(class) {
-				<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path>
-				<circle cx="12" cy="12" r="3"></circle>
+				<path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconChart:
-			// chart-column
+			// graph-up
 			@iconSVG(class) {
-				<path d="M3 3v16a2 2 0 0 0 2 2h16"></path>
-				<path d="M18 17V9"></path>
-				<path d="M13 17V5"></path>
-				<path d="M8 17v-3"></path>
+				<path d="M20 20H4V4" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M4 16.5L12 9L15 12L19.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconReview:
 			// clipboard-check
 			@iconSVG(class) {
-				<rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
-				<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-				<path d="m9 14 2 2 4-4"></path>
+				<path d="M8.5 4H6C4.89543 4 4 4.89543 4 6V20C4 21.1046 4.89543 22 6 22H12" stroke-linecap="round"></path>
+				<path d="M15.5 4H18C19.1046 4 20 4.89543 20 6V15" stroke-linecap="round"></path>
+				<path d="M8 6.4V4.5C8 4.22386 8.22386 4 8.5 4C8.77614 4 9.00422 3.77604 9.05152 3.50398C9.19968 2.65171 9.77399 1 12 1C14.226 1 14.8003 2.65171 14.9485 3.50398C14.9958 3.77604 15.2239 4 15.5 4C15.7761 4 16 4.22386 16 4.5V6.4C16 6.73137 15.7314 7 15.4 7H8.6C8.26863 7 8 6.73137 8 6.4Z" stroke-linecap="round"></path>
+				<path d="M15.5 20.5L17.5 22.5L22.5 17.5" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconChevronRight:
-			// chevron-right
+			// nav-arrow-right
 			@iconSVG(class) {
-				<path d="m9 18 6-6-6-6"></path>
+				<path d="M9 6L15 12L9 18" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconKey:
-			// key-round
+			// key
 			@iconSVG(class) {
-				<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path>
-				<circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle>
+				<path d="M10 12C10 14.2091 8.20914 16 6 16C3.79086 16 2 14.2091 2 12C2 9.79086 3.79086 8 6 8C8.20914 8 10 9.79086 10 12ZM10 12H22V15" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M18 12V15" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconText:
-			// message-square-text
+			// chat-lines
 			@iconSVG(class) {
-				<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"></path>
-				<path d="M7 11h10"></path>
-				<path d="M7 15h6"></path>
-				<path d="M7 7h8"></path>
+				<path d="M8 10L12 10L16 10" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M8 14L10 14L12 14" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.8214 2.48697 15.5291 3.33782 17L2.5 21.5L7 20.6622C8.47087 21.513 10.1786 22 12 22Z" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconMedia:
-			// clapperboard
+			// movie
 			@iconSVG(class) {
-				<path d="m12.296 3.464 3.02 3.956"></path>
-				<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z"></path>
-				<path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-				<path d="m6.18 5.276 3.1 3.899"></path>
+				<path d="M7 8.01L7.01 7.99889" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M17 8.01L17.01 7.99889" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M7 12.01L7.01 11.9989" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M17 12.01L17.01 11.9989" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M7 16.01L7.01 15.9989" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M17 16.01L17.01 15.9989" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M7 2H3.6C3.26863 2 3 2.26863 3 2.6V21.4C3 21.7314 3.26863 22 3.6 22H7M7 2V4M7 2H17M17 2H20.4C20.7314 2 21 2.26863 21 2.6V21.4C21 21.7314 20.7314 22 20.4 22H17M17 2V4M17 22V20M17 22H7M7 22V20" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconLocal:
 			// hard-drive
 			@iconSVG(class) {
-				<path d="M10 16h.01"></path>
-				<path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-				<path d="M21.946 12.013H2.054"></path>
-				<path d="M6 16h.01"></path>
+				<path d="M10 17.01L10.01 16.9989" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M6 17.01L6.01 16.9989" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M2 13V20.4C2 20.7314 2.26863 21 2.6 21H21.4C21.7314 21 22 20.7314 22 20.4V13M2 13H22M2 13L4.87172 3.42759C4.94786 3.1738 5.18145 3 5.44642 3H18.5536C18.8185 3 19.0521 3.1738 19.1283 3.42759L22 13"></path>
 			}
 		case IconPlug:
-			// plug
+			// plug-type-a
 			@iconSVG(class) {
-				<path d="M12 22v-5"></path>
-				<path d="M15 8V2"></path>
-				<path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"></path>
-				<path d="M9 8V2"></path>
+				<path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M9 10V14" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M15 10V14" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconUpdate:
-			// refresh-cw
+			// refresh
 			@iconSVG(class) {
-				<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-				<path d="M21 3v5h-5"></path>
-				<path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-				<path d="M8 16H3v5"></path>
+				<path d="M21.8883 13.5C21.1645 18.3113 17.013 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C16.1006 2 19.6248 4.46819 21.1679 8" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M17 8H21.4C21.7314 8 22 7.73137 22 7.4V3" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconClose:
-			// x
+			// xmark
 			@iconSVG(class) {
-				<path d="M18 6 6 18"></path>
-				<path d="m6 6 12 12"></path>
+				<path d="M6.75827 17.2426L12.0009 12M17.2435 6.75736L12.0009 12M12.0009 12L6.75827 6.75736M12.0009 12L17.2435 17.2426" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconCopy:
 			// copy
 			@iconSVG(class) {
-				<rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-				<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+				<path d="M19.4 20H9.6C9.26863 20 9 19.7314 9 19.4V9.6C9 9.26863 9.26863 9 9.6 9H19.4C19.7314 9 20 9.26863 20 9.6V19.4C20 19.7314 19.7314 20 19.4 20Z" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M15 9V4.6C15 4.26863 14.7314 4 14.4 4H4.6C4.26863 4 4 4.26863 4 4.6V14.4C4 14.7314 4.26863 15 4.6 15H9" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconHelp:
-			// circle-question-mark
+			// help-circle
 			@iconSVG(class) {
-				<circle cx="12" cy="12" r="10"></circle>
-				<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-				<path d="M12 17h.01"></path>
+				<path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M9 9C9 5.49997 14.5 5.5 14.5 9C14.5 11.5 12 10.9999 12 13.9999" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M12 18.01L12.01 17.9989" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconImage:
-			// image
+			// media-image
 			@iconSVG(class) {
-				<rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
-				<circle cx="9" cy="9" r="2"></circle>
-				<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+				<path d="M21 3.6V20.4C21 20.7314 20.7314 21 20.4 21H3.6C3.26863 21 3 20.7314 3 20.4V3.6C3 3.26863 3.26863 3 3.6 3H20.4C20.7314 3 21 3.26863 21 3.6Z" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M3 16L10 13L21 18" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M16 10C14.8954 10 14 9.10457 14 8C14 6.89543 14.8954 6 16 6C17.1046 6 18 6.89543 18 8C18 9.10457 17.1046 10 16 10Z" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconImagePlus:
-			// image-plus
+			// media-image-plus
 			@iconSVG(class) {
-				<path d="M16 5h6"></path>
-				<path d="M19 2v6"></path>
-				<path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"></path>
-				<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
-				<circle cx="9" cy="9" r="2"></circle>
+				<path d="M13 21H3.6C3.26863 21 3 20.7314 3 20.4V3.6C3 3.26863 3.26863 3 3.6 3H20.4C20.7314 3 21 3.26863 21 3.6V13" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M3 16L10 13L15.5 15.5" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M16 10C14.8954 10 14 9.10457 14 8C14 6.89543 14.8954 6 16 6C17.1046 6 18 6.89543 18 8C18 9.10457 17.1046 10 16 10Z" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M16 19H19M22 19H19M19 19V16M19 19V22" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconImageUp:
-			// image-up
+			// upload-square
 			@iconSVG(class) {
-				<path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"></path>
-				<path d="m14 19.5 3-3 3 3"></path>
-				<path d="M17 22v-5.5"></path>
-				<circle cx="9" cy="9" r="2"></circle>
+				<path d="M3 20.4V3.6C3 3.26863 3.26863 3 3.6 3H20.4C20.7314 3 21 3.26863 21 3.6V20.4C21 20.7314 20.7314 21 20.4 21H3.6C3.26863 21 3 20.7314 3 20.4Z"></path>
+				<path d="M6 18L18 18" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M12 14V6M12 6L15.5 9.5M12 6L8.5 9.5" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconImageOff:
-			// image-off
+			// media-image-xmark
 			@iconSVG(class) {
-				<line x1="2" x2="22" y1="2" y2="22"></line>
-				<path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"></path>
-				<line x1="13.5" x2="6" y1="13.5" y2="21"></line>
-				<line x1="18" x2="21" y1="12" y2="15"></line>
-				<path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"></path>
-				<path d="M21 15V5a2 2 0 0 0-2-2H9"></path>
+				<path d="M3 16L10 13L14 14.8182" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M16 10C14.8954 10 14 9.10457 14 8C14 6.89543 14.8954 6 16 6C17.1046 6 18 6.89543 18 8C18 9.10457 17.1046 10 16 10Z" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M16.8786 21.1213L19 19M21.1213 16.8787L19 19M19 19L16.8786 16.8787M19 19L21.1213 21.1213" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M13 21H3.6C3.26863 21 3 20.7314 3 20.4V3.6C3 3.26863 3.26863 3 3.6 3H20.4C20.7314 3 21 3.26863 21 3.6V13" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconBadgeCheck:
 			// badge-check
 			@iconSVG(class) {
-				<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path>
-				<path d="m16 9-5.5 5.5L8 12"></path>
+				<path d="M10.5213 2.62368C11.3147 1.75255 12.6853 1.75255 13.4787 2.62368L14.4989 3.74391C14.8998 4.18418 15.4761 4.42288 16.071 4.39508L17.5845 4.32435C18.7614 4.26934 19.7307 5.23857 19.6757 6.41554L19.6049 7.92905C19.5771 8.52388 19.8158 9.10016 20.2561 9.50111L21.3763 10.5213C22.2475 11.3147 22.2475 12.6853 21.3763 13.4787L20.2561 14.4989C19.8158 14.8998 19.5771 15.4761 19.6049 16.071L19.6757 17.5845C19.7307 18.7614 18.7614 19.7307 17.5845 19.6757L16.071 19.6049C15.4761 19.5771 14.8998 19.8158 14.4989 20.2561L13.4787 21.3763C12.6853 22.2475 11.3147 22.2475 10.5213 21.3763L9.50111 20.2561C9.10016 19.8158 8.52388 19.5771 7.92905 19.6049L6.41553 19.6757C5.23857 19.7307 4.26934 18.7614 4.32435 17.5845L4.39508 16.071C4.42288 15.4761 4.18418 14.8998 3.74391 14.4989L2.62368 13.4787C1.75255 12.6853 1.75255 11.3147 2.62368 10.5213L3.74391 9.50111C4.18418 9.10016 4.42288 8.52388 4.39508 7.92905L4.32435 6.41553C4.26934 5.23857 5.23857 4.26934 6.41554 4.32435L7.92905 4.39508C8.52388 4.42288 9.10016 4.18418 9.50111 3.74391L10.5213 2.62368Z"></path>
+				<path d="M9 12L11 14L15 10" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconBadgeAlert:
-			// badge-alert
+			// warning-square
 			@iconSVG(class) {
-				<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path>
-				<line x1="12" x2="12" y1="8" y2="12"></line>
-				<line x1="12" x2="12.01" y1="16" y2="16"></line>
+				<path d="M12 7V13" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M12 17.01L12.01 16.9989" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M3 20.4V3.6C3 3.26863 3.26863 3 3.6 3H20.4C20.7314 3 21 3.26863 21 3.6V20.4C21 20.7314 20.7314 21 20.4 21H3.6C3.26863 21 3 20.7314 3 20.4Z"></path>
 			}
 		case IconBadgeHelp:
-			// badge-question-mark
+			// help-square
 			@iconSVG(class) {
-				<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path>
-				<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-				<line x1="12" x2="12.01" y1="17" y2="17"></line>
+				<path d="M9 9C9 5.49997 14.5 5.5 14.5 9C14.5 11.5 12 10.9999 12 13.9999" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M12 18.01L12.01 17.9989" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M3 20.4V3.6C3 3.26863 3.26863 3 3.6 3H20.4C20.7314 3 21 3.26863 21 3.6V20.4C21 20.7314 20.7314 21 20.4 21H3.6C3.26863 21 3 20.7314 3 20.4Z"></path>
 			}
 		case IconBan:
-			// ban
+			// prohibition
 			@iconSVG(class) {
-				<circle cx="12" cy="12" r="10"></circle>
-				<path d="M4.929 4.929 19.07 19.071"></path>
+				<path d="M19.1414 5C17.3265 3.14864 14.7974 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19M19.1414 5C20.9097 6.80375 22 9.27455 22 12C22 17.5228 17.5228 22 12 22C9.20261 22 6.67349 20.8514 4.85857 19M19.1414 5L4.85857 19" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconFilter:
-			// funnel
+			// filter-list
 			@iconSVG(class) {
-				<path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"></path>
+				<path d="M3 6H21" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M7 12L17 12" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M11 18L13 18" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconCheck:
 			// check
 			@iconSVG(class) {
-				<path d="M20 6 9 17l-5-5"></path>
+				<path d="M5 13L9 17L19 7" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		case IconDownload:
 			// download
 			@iconSVG(class) {
-				<path d="M12 15V3"></path>
-				<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-				<path d="m7 10 5 5 5-5"></path>
+				<path d="M6 20L18 20" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M12 4V16M12 16L15.5 12.5M12 16L8.5 12.5" stroke-linecap="round" stroke-linejoin="round"></path>
 			}
 		default:
 			@iconNav(name, class)
 	}
 }
 
-// iconSVG is the <svg> every icon shares; the children are the shapes of the icon.
+// iconSVG is the <svg> every icon shares (Iconoir: stroke 1.5 in the colour of the text, 24 units; the line caps and joins are set on the
+// shapes); the children are the shapes of the icon.
 templ iconSVG(class string) {
-	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class={ iconClass(class) }>
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false" class={ iconClass(class) }>
 		{ children... }
 	</svg>
 }

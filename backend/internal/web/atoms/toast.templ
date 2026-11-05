@@ -7,7 +7,9 @@ templ Toast(message string) {
 	<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-danger/60 bg-surface px-4 py-2 text-sm text-danger" role="alert" data-toast>
 		@Icon(IconDanger, "mt-1 h-4 w-4 shrink-0")
 		<span data-toast-message>{ message }</span>
-		<button type="button" class="ml-auto leading-none hover:text-ink" aria-label="閉じる" data-toast-close>×</button>
+		<button type="button" class="ml-auto leading-none hover:text-ink" aria-label="閉じる" data-toast-close>
+			@Icon(IconClose, "h-4 w-4")
+		</button>
 	</div>
 }
 
@@ -27,7 +29,9 @@ templ SuccessToastOOB(message string) {
 		<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-success/60 bg-surface px-4 py-2 text-sm text-success" role="status" data-toast>
 			@Icon(IconSuccess, "mt-1 h-4 w-4 shrink-0")
 			<span data-toast-message>{ message }</span>
-			<button type="button" class="ml-auto leading-none hover:text-ink" aria-label="閉じる" data-toast-close>×</button>
+			<button type="button" class="ml-auto leading-none hover:text-ink" aria-label="閉じる" data-toast-close>
+				@Icon(IconClose, "h-4 w-4")
+			</button>
 		</div>
 	</div>
 }

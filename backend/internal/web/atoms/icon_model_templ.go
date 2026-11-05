@@ -8,7 +8,7 @@ package atoms
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// Icons of the model kinds on the cards of the model manager (Lucide v1.61.0, copied as in icon.templ; the file is split from
+// Icons of the model kinds on the cards of the model manager (Iconoir v7.12.2, copied as in icon.templ; the file is split from
 // icon_nav.templ to stay under the line limit). They are the pictures of the cards: no image is fetched from the net, so there is
 // nothing to license or to load. iconNav hands every name it does not know to iconModel, which hands the rest to iconStatus (icon_status.templ).
 
@@ -59,7 +59,7 @@ func iconModel(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<path d=\"m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5\"></path> <rect x=\"2\" y=\"6\" width=\"14\" height=\"12\" rx=\"2\"></rect>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<path d=\"M15 12V16.4C15 16.7314 14.7314 17 14.4 17H3.6C3.26863 17 3 16.7314 3 16.4V7.6C3 7.26863 3.26863 7 3.6 7H14.4C14.7314 7 15 7.26863 15 7.6V12ZM15 12L20.0159 7.82009C20.4067 7.49443 21 7.77232 21 8.28103V15.719C21 16.2277 20.4067 16.5056 20.0159 16.1799L15 12Z\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -86,7 +86,7 @@ func iconModel(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<path d=\"M2 10v3\"></path> <path d=\"M6 6v11\"></path> <path d=\"M10 3v18\"></path> <path d=\"M14 8v7\"></path> <path d=\"M18 5v13\"></path> <path d=\"M22 10v3\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<path d=\"M1 13.8571V10.1429C1 9.03829 1.89543 8.14286 3 8.14286H5.9C6.09569 8.14286 6.28708 8.08544 6.45046 7.97772L12.4495 4.02228C13.1144 3.5839 14 4.06075 14 4.85714V19.1429C14 19.9392 13.1144 20.4161 12.4495 19.9777L6.45046 16.0223C6.28708 15.9146 6.09569 15.8571 5.9 15.8571H3C1.89543 15.8571 1 14.9617 1 13.8571Z\"></path> <path d=\"M17.5 7.5C17.5 7.5 19 9 19 11.5C19 14 17.5 15.5 17.5 15.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M20.5 4.5C20.5 4.5 23 7 23 11.5C23 16 20.5 18.5 20.5 18.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -113,7 +113,7 @@ func iconModel(name IconName, class string) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<path d=\"M3 7V5a2 2 0 0 1 2-2h2\"></path> <path d=\"M17 3h2a2 2 0 0 1 2 2v2\"></path> <path d=\"M21 17v2a2 2 0 0 1-2 2h-2\"></path> <path d=\"M7 21H5a2 2 0 0 1-2-2v-2\"></path> <path d=\"M8 14s1.5 2 4 2 4-2 4-2\"></path> <path d=\"M9 9h.01\"></path> <path d=\"M15 9h.01\"></path>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<path d=\"M7 3H5C3.89543 3 3 3.89543 3 5V7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M17 3H19C20.1046 3 21 3.89543 21 5V7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M16 8L16 10\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M8 8L8 10\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M9 16C9 16 10 17 12 17C14 17 15 16 15 16\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M12 8L12 13L11 13\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M7 21H5C3.89543 21 3 20.1046 3 19V17\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M17 21H19C20.1046 21 21 20.1046 21 19V17\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
