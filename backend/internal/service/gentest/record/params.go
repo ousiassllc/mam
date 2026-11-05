@@ -42,6 +42,9 @@ type ResultParams struct {
 	Exposed map[string]any `json:"exposed,omitempty"`
 	// Inpaint is set when the result redrew part of a picture. Absent for every other result.
 	Inpaint *Inpaint `json:"inpaint,omitempty"`
+	// Adult says the model that made the result is an adult model of the model manager's catalog, as it was when the result was made (so that deleting the model
+	// later does not lose it). Sending the result to an external cloud asks the user first. Absent: not adult, or the result is older than this field.
+	Adult bool `json:"adult,omitempty"`
 	// Upscale is the enlargement the result is (a result of "make it larger"): the source and the values (Upscale). Absent: a generated result.
 	Upscale *Upscale `json:"upscale,omitempty"`
 	// VideoEnhance is the enlargement or the smoothing of a video the result is (a result of "make a video larger / smoother"): the source and the values. Absent: a generated result.

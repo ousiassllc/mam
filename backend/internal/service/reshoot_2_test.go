@@ -26,10 +26,7 @@ func TestEditorReshootLoop_APartialTakeUseOfTheLastShotReturnsToTheEditor(t *tes
 	require.Equal(t, domain.StateGenerating, f.state(t))
 	_, err := f.svc.Takes.UsePartial(ctx, newShot, service.PartialInput{Segments: []domain.TakeSegment{{TakeID: take, Start: 0, End: 1}, {TakeID: take, Start: 1, End: 2}}})
 	require.NoError(t, err)
-	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, domain.StateEditing, f.state(c)) }, 10*time.Second, 10*time.Millisecond, "back to EDITING")
-	view, err := f.svc.Editor.View(ctx, f.projectID, "")
-	require.NoError(t, err)
-	assert.Equal(t, judged.VersionNumber+1, view.Timeline.VersionNumber)
+	view := f.editorView(t, judged.VersionNumber+1, 2)
 	require.Len(t, view.Timeline.Clips, 2)
 	assert.Equal(t, newShot, view.Timeline.Clips[1].ShotID)
 }

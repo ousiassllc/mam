@@ -89,11 +89,17 @@ func prepare(ctx context.Context, g *gentest.Service, r Request) (target, error)
 	return target{res: res, facts: facts, model: model, plan: plan, adult: adultSource(g, res)}, nil
 }
 
-// adultSource says a result was made by an adult model of the model manager's catalog, or is the result of an enhancement of one (the flag is passed on).
+// adultSource says the source came from an adult model: the flag recorded when it was made, or the one of an enhancement it is the result of (passed on). A result
+// older than the flag is looked up in the model manager's catalog (a model that is no longer there cannot be told: not adult).
 func adultSource(g *gentest.Service, res gentestrepo.Result) bool {
 	var p record.ResultParams
-	if json.Unmarshal(res.Params, &p) == nil && p.VideoEnhance != nil {
-		return p.VideoEnhance.Adult
+	if json.Unmarshal(res.Params, &p) == nil {
+		if p.VideoEnhance != nil {
+			return p.VideoEnhance.Adult
+		}
+		if p.Adult {
+			return true
+		}
 	}
 	if g.CatalogInfo == nil {
 		return false

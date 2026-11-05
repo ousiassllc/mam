@@ -90,6 +90,18 @@ func (f genFixture) waitEditingWorkerIdle(t *testing.T) {
 	require.Eventually(t, f.svc.Editor.EditingWorkerIdle, 15*time.Second, 5*time.Millisecond, "the editing worker goes back to waiting")
 }
 
+// editorView waits until the Editor's view of the trunk is EDITING with the version (0: any) and clips of the round saved: EDITING comes before the round is saved, so the state alone does not say it.
+func (f genFixture) editorView(t *testing.T, version, clips int) (view service.EditorView) {
+	t.Helper()
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		v, err := f.svc.Editor.View(context.Background(), f.projectID, "")
+		require.NoError(c, err)
+		assert.True(c, v.Timeline != nil && v.Project.State == domain.StateEditing && v.PendingShots == 0 && (version == 0 || v.Timeline.VersionNumber == version) && len(v.Timeline.Clips) == clips)
+		view = v
+	}, 10*time.Second, 10*time.Millisecond, "back to EDITING with the Shot in the timeline")
+	return view
+}
+
 // additionalShot waits until the Director has made the additional Shot and it has a Take.
 func (f genFixture) additionalShot(t *testing.T) string {
 	t.Helper()
@@ -145,13 +157,7 @@ func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnch
 
 	// Selecting its Take returns to the Editor: the clip follows its anchor as a reaction.
 	f.selectTakeOf(t, newShot)
-	require.EventuallyWithT(t, func(c *assert.CollectT) { // EDITING comes before the round is saved: wait for the version with the Shot
-		v, err := f.svc.Editor.View(ctx, f.projectID, "")
-		require.NoError(c, err)
-		require.NotNil(c, v.Timeline)
-		assert.True(c, v.Project.State == domain.StateEditing && v.PendingShots == 0 && v.Timeline.VersionNumber == judged.VersionNumber+1)
-		view = v
-	}, 10*time.Second, 10*time.Millisecond, "back to EDITING with the Shot in the timeline")
+	view = f.editorView(t, judged.VersionNumber+1, 2)
 	assert.Equal(t, judged.VersionNumber+1, view.Timeline.VersionNumber)
 	require.Len(t, view.Timeline.Clips, 2)
 	assert.Equal(t, f.shotID, view.Timeline.Clips[0].ShotID)
@@ -185,10 +191,7 @@ func TestEditorReshootLoop_AFinishedShotWaitsForTheBusyStageAndIsPutInWhenItEnds
 
 	// Nothing else will start the Reshoot Loop again: the end of the stage does.
 	release()
-	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, domain.StateEditing, f.state(c)) }, 10*time.Second, 10*time.Millisecond, "back to EDITING after the stage ended")
-	view, err := f.svc.Editor.View(context.Background(), f.projectID, "")
-	require.NoError(t, err)
-	require.NotNil(t, view.Timeline)
+	view := f.editorView(t, 0, 2)
 	require.Len(t, view.Timeline.Clips, 2)
 	assert.Equal(t, newShot, view.Timeline.Clips[1].ShotID)
 }
