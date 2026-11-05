@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -47,13 +48,13 @@ func Busy(services *service.Services, jobs *repository.JobRepository, ffmpegDL *
 		if installs > 0 {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: fmt.Sprintf("モデル・エンジン・ランタイムの導入 %d 件", installs)})
 		}
-		if ffmpegDL.Status().Install.State == ffmpegdl.InstallRunning {
+		if ffmpegDL.Status().Install.State == exeinstall.Running {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "ffmpeg のダウンロード"})
 		}
 		if services.Gentest != nil && services.Gentest.Poses != nil && services.Gentest.Poses.Progress().Running {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "ポーズ集の導入"})
 		}
-		if codexSvc != nil && codexSvc.InstallStatus().State == codex.InstallRunning {
+		if codexSvc != nil && codexSvc.InstallStatus().State == exeinstall.Running {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "Codex エンジンの導入"})
 		}
 		if services.Editor.Busy() {

@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/media/locate"
@@ -85,7 +86,7 @@ func TestAfterTheDownloadTheAppFindsFFmpegAndTheToolsWork(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, started)
 	service.WaitInstall()
-	require.Equal(t, ffmpegdl.InstallSucceeded, service.Status().Install.State, service.Status().Install.Error)
+	require.Equal(t, exeinstall.Succeeded, service.Status().Install.State, service.Status().Install.Error)
 
 	tools, err := settings.Look()
 	require.NoError(t, err, "found by the lookup the app uses at its start")
@@ -126,7 +127,7 @@ func TestAMismatchedDownloadIsNeverFound(t *testing.T) {
 	require.NoError(t, err)
 	service.WaitInstall()
 	st := service.Status()
-	assert.Equal(t, ffmpegdl.InstallFailed, st.Install.State)
+	assert.Equal(t, exeinstall.Failed, st.Install.State)
 	assert.NotEmpty(t, st.Install.Error)
 	_, err = settings.Look()
 	require.ErrorIs(t, err, media.ErrUnavailable)
