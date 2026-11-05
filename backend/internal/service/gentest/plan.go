@@ -166,6 +166,7 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 func resultParamsOf(r Request, mp modelPlan, translation *record.SentText, maskID string, inputIDs []string) record.ResultParams {
 	p := record.ResultParams{
 		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode, Sampling: mp.sampling, Exposed: mp.exposed,
+		Adult: mp.info.Catalog != nil && mp.info.Catalog.Adult,
 	}
 	if r.Mask != nil && len(r.References) == 1 {
 		p.Inpaint = &record.Inpaint{Denoise: mp.denoise, SourceKind: r.References[0].Source, SourceID: r.References[0].ID, MaskInput: maskID}

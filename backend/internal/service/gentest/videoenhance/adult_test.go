@@ -1,6 +1,7 @@
 package videoenhance_test
 
 import (
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -93,6 +94,27 @@ func TestTheEnhancedResultOfAnAdultVideoStaysAdult(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, est.Adult)
 	req := upscale(local.ID, proteus)
+	req.EstimateID, req.ConfirmedCredits = est.EstimateID, *est.Credits
+	_, err = videoenhance.Enhance(ctx, r.Svc, req)
+	assert.Contains(t, invalidMessage(t, err), venhance.AdultWarning)
+	assert.Empty(t, cloud.Runs)
+}
+
+// The flag is recorded when the result is made: an adult model deleted afterwards (the catalog no longer knows it) does not lose the warning.
+func TestTheAdultFlagIsKeptWhenTheModelIsGoneFromTheCatalog(t *testing.T) {
+	var known atomic.Bool
+	known.Store(true)
+	cloud := newCloud(true)
+	r := newRig(t, gentesttest.WithCloud(cloud), gentesttest.WithCatalogInfo(func(id string) (modelfilter.CatalogInfo, bool) {
+		return modelfilter.CatalogInfo{Adult: id == string(domain.ModelKling3)}, known.Load()
+	}))
+	src := aVideo(t, r)
+	known.Store(false) // the model manager no longer has the model
+
+	est, err := videoenhance.EstimateEnhance(ctx, r.Svc, upscale(src, proteus))
+	require.NoError(t, err)
+	assert.True(t, est.Adult)
+	req := upscale(src, proteus)
 	req.EstimateID, req.ConfirmedCredits = est.EstimateID, *est.Credits
 	_, err = videoenhance.Enhance(ctx, r.Svc, req)
 	assert.Contains(t, invalidMessage(t, err), venhance.AdultWarning)
