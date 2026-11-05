@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
@@ -195,7 +196,7 @@ func installLabel(m Model) string {
 // the acceptance: the form is only how a user gives it.
 templ ConsentDialog(c Consent) {
 	<section
-		class="flex flex-col gap-3 rounded-md border border-warning/60 bg-surface p-4 focus-visible:focus-ring"
+		class="flex flex-col gap-3 p-5 focus-visible:focus-ring"
 		role="dialog"
 		aria-labelledby="mm-consent-title"
 		tabindex="-1"
@@ -256,5 +257,5 @@ templ ConsentDialog(c Consent) {
 
 // DialogClear empties the dialog area out of band: an install was accepted, the license question is answered.
 templ DialogClear() {
-	<div id={ DialogID } hx-swap-oob="innerHTML" data-testid="mm-dialog"></div>
+	@modal.InlineHostOOB(DialogID, "mm-dialog")
 }

@@ -60,6 +60,19 @@
 | リップル（M4） | `data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
 | 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない |
 
+### 部品・オーバーレイ（Issue #1041）
+
+オーバーレイと部品は Ousiass 共通デザインガイド（O1〜O4・O7）に従う。
+
+| 項目 | 決まり |
+|------|--------|
+| スクラムで閉じる（O1） | モーダルの `<dialog>` は、外側（スクラム）のクリックで閉じる（`static/src/components/scrim`。Esc・閉じるボタンも）。欄を変更した（`input` が起きた）ダイアログは、先に確認のモーダル「入力した内容は保存されません。閉じますか？」を出し、入力途中の内容を巻き込んで消さない。スクラムはダイアログと一緒にフェードする（M5） |
+| 確認・破壊的操作（O2） | 確認は OS 標準の `confirm()` でなく、中央のモーダル（`modal.Confirm`。`--r-xl`・`shadow-modal`・危険ボタン「実行する」と「キャンセル」）。`hx-confirm` の要素は `htmx:confirm` をこのモーダルが受けてから送る（`static/src/components/confirm`）。`AppLayout` が `#confirm-template` を埋め込む。モデルマネージャーの年齢確認・ライセンス確認もページ内の枠でなく同じ `<dialog>`（`modal.InlineHost`。`showModal()` で開く） |
+| トースト（O3） | 「保存しました」のような **1 行の短い成功の文だけ**。画面下中央（下から 24）・高さ 40・ピル・`bg-ink text-bone`・同時に 1 つ（新しいものが前を置き換える）・3 秒で自動消去。閉じるボタンも持たない。サーバーが返す成功は `atoms.ToastOOB`（`#toast-region` の中身を置き換える） |
+| インラインアラート（O3） | エラー・業務エラー（403 / 409 / 423・予算超過・LOCK 違反など）・エラー詳細は、ページ上部（`#content` の先頭の `#alert-region`）に `atoms.Alert`（お知らせ / 成功 / 注意 / エラーの 4 種。アイコン＋見出し＋本文）で出す。閉じるまで残る（長い文を読み終えるため。WCAG 2.2.1）。同じ文は重ねない。サーバーは `atoms.ErrorAlertOOB`（`beforeend`）、スクリプトは `lib/alert.ts`（`#alert-template`） |
+| 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `--surface` の地に `border-warning/60` の枠（スナックバー。影なし）。トーストではない |
+| ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`） |
+
 ### 商用利用の可否（Issue #928）
 
 モデルの商用利用の可否は `Badge` の手書きではなく、`atoms.CommercialBadge`（アイコン + 語）・`atoms.CommercialMark`（アイコンだけ）と、それを包む `molecules/commercial`（`Badge`・`Mark`・`Note`・`Filter`）で出す。色は商用OK＝`BadgeOK`、条件つき＝`BadgeWarn`、商用NG＝`BadgeError`、不明＝`BadgeWarn` に枠を足したもの。詳細は [../architecture/model-license.md](../architecture/model-license.md) §4・§5。
@@ -186,7 +199,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - **フォーカスの戻り**（`focus-restore` と同じ考え方）: 開くボタンを `htmx:beforeRequest` の時点で覚える（`document.activeElement`、`data-focus-key`、最も近い `id` 付きの祖先の id）。閉じたあと、(1) 覚えたボタンがまだ DOM にあればそこへ、(2) 行が OOB で差し替わっていれば、覚えた行の中で種類と `data-focus-key` が同じコントロールへ、(3) 無ければその行、(4) それも無ければ一覧の見出しへ（`tabindex="-1"` を付けて）。開くボタンには必ず `data-focus-key`（`edit-<行のキー>`・`add`・`issue` など。ラベルが変わってもキーは変えない）。
 - **成功**: 保存の応答は 200 で、本文は**一覧の行の OOB だけ**（`hx-swap-oob="true"`。同じ `id` の行を置き換える。新しい行は `beforeend:#<一覧の id>`）、ヘッダーに `HX-Trigger-After-Swap: modal-close`。モーダルの本文には空が入る。`modal/` は `document` で `modal-close` を聞いて閉じる（htmx 2.0.11 の `htmx.js` は、リクエストを出した要素が swap で DOM から消えていると、`HX-Trigger-After-Swap` を `<body>` に起こす。2026-10-25 に読んで確認。`bubbles` なので `document` で受けられる）。
 - **失敗（422）**: 応答の本文はモーダルの断片（`#mam-modal-body` に入り直す）。理由は `#mam-modal-error`、入力は**残す**（`value` を描き戻す）。`aria-invalid="true"` と `aria-describedby="mam-modal-error"` を、問題の欄に付ける。差し替え後は、問題の欄（無ければ `#mam-modal-error`）にフォーカス（`autofocus` を付け直す）。**秘密の値（API キー・トークン）は 422 でも描き戻さない**（入力し直す）。 理由の `#mam-modal-error` を取り除く答え（接続先のモーダルの接続テストの `DraftTestResult`）が入ったときは、同じ入れ替えのうちに、その理由を指していた欄の `aria-invalid` と `aria-describedby` を外す（`modal.ts`。宙に浮いた参照を残さない）。
-- **トーストは見えない**: `#toast-region` は `<body>` の子で、モーダルは最前面の層（top layer）に出るため、モーダルが開いている間のトーストはモーダルの背後に隠れる。そのためモーダル内の失敗は、断片の `role="alert"` に出す。HTML でない失敗（通信断・タイムアウト・5xx の非 HTML）は `htmx:responseError` / `sendError` / `timeout` を `modal/` が聞き、`#mam-modal-failure` に `requestFailureMessage` の文言を出す（トーストは出さない）。
+- **トースト・アラートは見えない**: `#toast-region` と `#alert-region` は `<body>` の子で、モーダルは最前面の層（top layer）に出るため、モーダルが開いている間のトーストはモーダルの背後に隠れる。そのためモーダル内の失敗は、断片の `role="alert"` に出す。HTML でない失敗（通信断・タイムアウト・5xx の非 HTML）は `htmx:responseError` / `sendError` / `timeout` を `modal/` が聞き、`#mam-modal-failure` に `requestFailureMessage` の文言を出す（トーストは出さない）。
 - **二重送信**: モーダルのフォームは `hx-sync="this:drop"` と `hx-disabled-elt="find button[type=submit]"` を持つ（`double_submit_test`）。削除などの危険な操作は `hx-confirm`（#847 決定事項 8(a)。`destructive_confirm_test`）。
 - **リンクから開く・広いダイアログ**（Issue #1004）: `modal.OpenLinkAttrs(url, focusKey)` は `OpenAttrs` の `<a>` 版（`type` が無く `href` が同じ内容のページ。スクリプトが無い・新しいタブで開く操作はそのページへ行き、ふつうのクリックは本文を求める）。本文の最初のブロックに `data-modal-wide`（`modal.WideAttr`）を付けると、ダイアログがその間だけ広くなる（`has-[[data-modal-wide]]:w-[min(64rem,…)]`。生成テストの結果の詳細が、画像と設定を並べるのに使う）。同じ URL がページとモーダルの本文の両方を返すときは、`HX-Target` が `mam-modal-body` かどうかで分け、`Vary: HX-Request, HX-Target` を付ける。
 - **置き場所**: `molecules/modal/`（`Host`・`Frame`・`Error`・`Actions`・`Cancel`・`Notice`・`OpenAttrs`）と `static/src/components/modal/`（`modal.ts`・`modal.wtest.ts`。Lit ではなく `focus-restore` と同じ `installModal()`。`main.ts` が呼ぶ）。テストは wtr: 開くとフォーカスが `autofocus` へ・`Esc` で閉じて開いたボタンへ戻る・行が差し替わっても戻る・成功で閉じる・422 で開いたまま入力が残る・閉じると本文が空・履歴の保存で空になる。

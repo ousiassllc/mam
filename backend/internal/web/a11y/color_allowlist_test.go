@@ -21,6 +21,7 @@ import (
 // or, when it carries a meaning the table has no row for, added to the exceptions with its reason in the spec.
 var colorAllowlist = map[string][]string{
 	"page":            {"bg-bone", "text-ink"},
+	"toast":           {"bg-ink", "text-bone"},
 	"card and modal":  {"bg-surface", "border-border"},
 	"supporting text": {"text-mute"},
 	"border":          {"border-border", "divide-border"},

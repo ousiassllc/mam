@@ -57,20 +57,27 @@ dialog[open]::backdrop {
   }
 }
 
-/* A toast comes in with the same fade and, when toast.ts marks it as leaving, goes out with the same one. */
+/* A toast comes in with the fade and, when toast.ts marks it as leaving, goes out with the fade-out. An alert (an error that stays) comes in with it too. */
 [data-toast] {
   opacity: 1;
-  transition: opacity var(--motion-fade-out) var(--ease-in);
+  transition: opacity var(--motion-fade-in) var(--ease-out);
+}
+
+[data-alert] {
+  opacity: 1;
+  transition: opacity var(--motion-fade-in) var(--ease-out);
 }
 
 @starting-style {
-  [data-toast] {
+  [data-toast],
+  [data-alert] {
     opacity: 0;
   }
 }
 
 [data-toast][data-leaving] {
   opacity: 0;
+  transition: opacity var(--motion-fade-out) var(--ease-in);
 }
 
 /* M4: the ripple of a press on a button or on a close button (static/src/components/ripple). The wave is a child that the script adds
@@ -89,7 +96,9 @@ dialog[open]::backdrop {
   [popover]:popover-open,
   dialog::backdrop,
   dialog[open]::backdrop,
-  [data-toast] {
+  [data-toast],
+  [data-toast][data-leaving],
+  [data-alert] {
     transition-duration: 100ms;
   }
 }

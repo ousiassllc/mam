@@ -158,7 +158,7 @@ func TestModelDetail_TheModalIsOutsideEverythingAPollSwaps(t *testing.T) {
 	rec := s.Do(http.MethodPost, installURL("m-a"), nil)
 	require.Equal(t, http.StatusAccepted, rec.Code)
 	assert.Contains(t, rec.Body.String(), `hx-trigger="every 2s"`, "the list polls")
-	assert.NotContains(t, rec.Body.String(), "<dialog", "a polled answer never carries the modal")
+	assert.NotContains(t, rec.Body.String(), `<dialog id="mam-modal"`, "a polled answer never carries the modal (the host of the questions, which it empties, is another dialog)")
 	assert.Contains(t, rec.Body.String(), `id="mm-model-m-a"`, "the card keeps its id across the swap")
 	assert.Contains(t, rec.Body.String(), `data-focus-key="open-mm-model-m-a"`)
 }

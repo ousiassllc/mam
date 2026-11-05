@@ -27,9 +27,8 @@ type Options struct {
 	Settings *settingsroutes.Services // the LLM / model sections of the settings screen; nil leaves them out
 }
 
-// New builds the engine. Middleware order matters: recovery and logging wrap everything; the
-// loopback guard runs before CSRF so foreign hosts get nothing, not even a token cookie. Routes go in pages.go (pages),
-// actions.go (fragment actions), api.go (Huma JSON); the settings screen's in settingsroutes, the reference voices' in voiceroutes.
+// New builds the engine. Middleware order matters: recovery and logging wrap everything; the loopback guard runs before CSRF so foreign
+// hosts get nothing, not even a token cookie. Routes: pages.go, actions.go (fragments), api.go (Huma JSON), settingsroutes, voiceroutes.
 func New(services *service.Services, opts Options) *gin.Engine {
 	logger := opts.Logger
 	if logger == nil {
@@ -41,8 +40,7 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	engine.Use(
 		middleware.Recovery(logger), middleware.Logger(logger),
 		middleware.LoopbackOnly(), middleware.SecurityHeaders(), middleware.CSRF(), middleware.MaxBody(),
-		navstate.Middleware(),   // the side menu's folded state, read from its cookie
-		themestate.Middleware(), // the colour theme the user chose, read from its cookie
+		navstate.Middleware(), themestate.Middleware(), // the side menu's folded state and the chosen colour theme, read from their cookies
 	)
 
 	registerStatic(engine, opts.Static)

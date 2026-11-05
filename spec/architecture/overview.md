@@ -210,7 +210,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │   ├── poll/                 # `hx-trigger="every …"` の要求を、タブが隠れているあいだと区画の動画・音声が再生中のあいだは出さない（`poll-guard.ts`。Issue #925。`main.ts` が `installPollGuard()` で組み込む。更新ボタン `molecules/refresh.Bar` の要求は人の要求なので止めない。Issue #962）
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
-        │       ├── ajax.ts / errors.ts / toast.ts / connection-notice.ts # フラグメント再取得・エラー表示
+        │       ├── ajax.ts / errors.ts / connection-notice.ts (+ components/toast, alert, confirm, scrim) # フラグメント再取得・エラー表示
         │       ├── history.ts / htmx-config.ts / sync.ts / thread.ts / shot.ts # htmx 履歴・設定・直列再取得・スレッド操作
         │       ├── ws.ts
         │       ├── query.ts          # `selfAndDescendants`: htmx の outerHTML swap で `htmx:load` が届く最上位ノード自身も含めて要素を探す

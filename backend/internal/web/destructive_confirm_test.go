@@ -45,6 +45,7 @@ var confirmExempt = map[string]struct {
 	count  int
 }{
 	"organisms/settings/llm/modal.templ": {reason: "settings-screen-categories.md §2 and §7 question 3", count: 1},
+	"molecules/modal/modal.templ":        {reason: "the button of the confirmation modal is the answer to the question, not a control that asks one", count: 1},
 }
 
 var (

@@ -293,8 +293,8 @@ func Current(c modelcard.Card) templ.Component {
 }
 
 // Host is the dialog of the model picker: one per page that has a Field, closed and empty. The request of the field's button fills BodyID and the script opens it
-// (static/src/components/model-pick). It lies above the modal of the settings screen when the field is in one. A click on the backdrop does not close it; Esc and
-// the close button do.
+// (static/src/components/model-pick). It lies above the modal of the settings screen when the field is in one. A click on the scrim closes it
+// (static/src/components/scrim), as do Esc and the close button.
 func Host() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

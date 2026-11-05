@@ -42,7 +42,7 @@ templ Body(d Data) {
 		@molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。カードをタップすると、出典・ライセンス・ファイル一覧・SHA-256 が見られます。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。導入先の空きが足りないときや、GPU のメモリが足りない見込みのときは、カードにそう出ます。成人向けモデル（非検閲のモデル・LoRA）は、18 歳以上の確認と注意書きへの同意の後に、一覧・導入・試し生成に出ます。") {
 			@AdultCard(d.Adult)
 			@CommercialCard(d.Commercial)
-			<div id={ DialogID } data-testid="mm-dialog"></div>
+			@modal.InlineHost(DialogID, "mm-dialog")
 			@modelpick.Bar(d.Catalog.Filter)
 			@CatalogList(d.Catalog)
 		}

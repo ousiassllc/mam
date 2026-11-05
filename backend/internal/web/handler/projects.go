@@ -166,7 +166,7 @@ func pageError(c *gin.Context, err error) {
 	status, message := statusOf(c, err)
 	if isHTMX(c) {
 		middleware.ToastOnly(c)
-		render(c, status, atoms.ToastOOB(message))
+		render(c, status, atoms.ErrorAlertOOB(message))
 		return
 	}
 	render(c, status, pages.ErrorPage(middleware.CSRFToken(c), status, message))

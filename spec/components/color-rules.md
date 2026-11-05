@@ -33,6 +33,7 @@
 | 用途 | 許可するクラス | 根拠の目安 |
 |------|---------------|-----------|
 | ページ背景・本文 | `bg-bone` / `text-ink` | §1・`AppLayout` |
+| トースト | `bg-ink` / `text-bone` | O3（インク地にボーン字のピル。`atoms.Toast`） |
 | カード・モーダルの面 | `bg-surface` / `border-border` | §1 |
 | 補助・説明の文字 | `text-mute`（本文の長文には使わない） | §1・`contrast_test` |
 | 枠・区切り | `border-border` / `divide-border` | §1・一覧 |

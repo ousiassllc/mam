@@ -33,16 +33,16 @@ describe('htmx history snapshot', () => {
     expect(saved).to.not.contain('connection-lost-region');
   });
 
-  it('drops the toasts on screen and keeps the toast region and template', () => {
+  it('drops the alerts on screen and keeps the alert region and template', () => {
     const saved = sanitizeHistoryHtml(`
       <main>内容</main>
-      <div id="toast-region" aria-live="assertive"><div role="alert" data-toast><span data-toast-message>予算を超えています</span></div></div>
-      <template id="toast-template"><div role="alert" data-toast><span data-toast-message></span></div></template>
+      <div id="alert-region" aria-live="assertive"><div role="alert" data-alert><span data-alert-message>予算を超えています</span></div></div>
+      <template id="alert-template"><div role="alert" data-alert><span data-alert-message></span></div></template>
     `);
-    expect(saved).to.contain('id="toast-region"');
+    expect(saved).to.contain('id="alert-region"');
     expect(saved).to.not.contain('予算を超えています');
-    // the template's toast is the markup to clone, not a toast on screen
-    expect(saved).to.contain('<template id="toast-template"><div role="alert" data-toast="">');
+    // the template's alert is the markup to clone, not an alert on screen
+    expect(saved).to.contain('<template id="alert-template"><div role="alert" data-alert="">');
   });
 
   it('drops the light-DOM paint of mam-* elements and keeps their attributes', () => {
@@ -69,7 +69,7 @@ describe('htmx history snapshot', () => {
         <div id="scene-shot-view"></div>
         <article id="card" data-shot-progress data-refresh-url="/refresh/back">生成中</article>
         <div id="connection-lost-region"><button type="button">再接続</button></div>
-        <div id="toast-region"><div role="alert" data-toast>古いエラー</div></div>
+        <div id="alert-region"><div role="alert" data-alert>古いエラー</div></div>
         <p data-chat-ready="true" id="chat-marker">chat</p>
         <button id="open-shot" type="button" hx-get="${OTHER}" hx-target="#history-root" hx-swap="innerHTML" hx-push-url="true">開く</button>
       </main>`;
@@ -106,7 +106,7 @@ describe('htmx history snapshot', () => {
       await waitUntil(() => document.getElementById('card') !== null, 'the scene was not restored', { timeout: 3000 });
       leftPage = false;
 
-      expect(document.querySelector('[data-toast]')).to.equal(null);
+      expect(document.querySelector('[data-alert]')).to.equal(null);
       const card = document.getElementById('card')!;
       card.dispatchEvent(new Event('progress-finished'));
       await aTimeout(50);

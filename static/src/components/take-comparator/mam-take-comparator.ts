@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { confirmDialog } from '../confirm/confirm';
 import { del, get, post } from '../lib/api';
 import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
@@ -108,11 +109,14 @@ export class MamTakeComparator extends LitElement {
   /** Rejects a Take once the user confirmed: the Take can never be chosen again. */
   private reject(take: TakeScore): void {
     const url = take.reject_url;
-    if (url && window.confirm(REJECT_CONFIRM))
-      void this.act(
-        () => del(url),
-        () => rowTargets(this, take.id, 'reject'),
-      );
+    if (!url) return;
+    void confirmDialog(REJECT_CONFIRM).then((yes) => {
+      if (yes)
+        void this.act(
+          () => del(url),
+          () => rowTargets(this, take.id, 'reject'),
+        );
+    });
   }
 
   /** Runs a request to the server, reports its error and reloads the Takes; the focus then goes to `focusTo`. */

@@ -49,5 +49,5 @@ func CloseModal(c *gin.Context) {
 // (a delete, a test). status is the status of the answer.
 func Toast(c *gin.Context, status int, message string) {
 	middleware.ToastOnly(c)
-	Render(c, status, atoms.ToastOOB(message))
+	Render(c, status, atoms.ErrorAlertOOB(message))
 }

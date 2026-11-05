@@ -1,5 +1,6 @@
 import { expect, waitUntil } from '@open-wc/testing';
 import htmx from 'htmx.org';
+import { stubConfirm } from '../confirm/testkit';
 import '../../main';
 
 // The Review Workspace (organisms/review_workspace.templ): adding or deleting a comment and saving the
@@ -27,7 +28,7 @@ function submit(button: Element): void {
 describe('Review Workspace: actions replace their own part only', () => {
   let host: HTMLElement;
   let video: HTMLVideoElement;
-  const realConfirm = window.confirm;
+  let confirm: ReturnType<typeof stubConfirm>;
 
   beforeEach(async function () {
     this.timeout(10_000);
@@ -35,7 +36,7 @@ describe('Review Workspace: actions replace their own part only', () => {
     host.innerHTML = WORKSPACE;
     document.body.append(host);
     htmx.process(host);
-    window.confirm = () => true;
+    confirm = stubConfirm(true);
 
     video = $<HTMLVideoElement>('#review-workspace video');
     video.src = CLIP;
@@ -45,7 +46,7 @@ describe('Review Workspace: actions replace their own part only', () => {
   });
 
   afterEach(() => {
-    window.confirm = realConfirm;
+    confirm.restore();
     host.remove();
   });
 

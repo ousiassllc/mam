@@ -187,7 +187,7 @@ func (h Handlers) saveModel(c *gin.Context, edit bool) {
 	if edit {
 		changed = view.ModelRowOOB(endpoint, row)
 	}
-	toast := atoms.SuccessToastOOB("モデル「" + service.ModelID(kind, endpoint, f.Name) + "」を保存しました。すぐに使え、「画像・動画モデル」で選べます")
+	toast := atoms.ToastOOB("モデル「" + service.ModelID(kind, endpoint, f.Name) + "」を保存しました。すぐに使え、「画像・動画モデル」で選べます")
 	settingshttp.Render(c, http.StatusOK, templ.Join(changed, view.EndpointCardOOB(e, true), toast))
 }
 
@@ -222,7 +222,7 @@ func (h Handlers) DeleteModel(c *gin.Context) {
 	}
 	e, _ := h.endpointOf(endpoint)
 	settingshttp.Render(c, http.StatusOK, templ.Join(
-		view.ModelRows(false, "", e), view.EndpointCardOOB(e, true), atoms.SuccessToastOOB("モデル「"+name+"」を削除しました"),
+		view.ModelRows(false, "", e), view.EndpointCardOOB(e, true), atoms.ToastOOB("モデル「"+name+"」を削除しました"),
 	))
 }
 

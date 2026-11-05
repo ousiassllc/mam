@@ -147,7 +147,7 @@ func Delete(k Keys) gin.HandlerFunc {
 			return
 		}
 		i := slices.IndexFunc(statuses, func(s service.CredentialStatus) bool { return s.Provider == provider })
-		settingshttp.Render(c, http.StatusOK, templ.Join(view.Row(providerView(k, statuses[i])), atoms.SuccessToastOOB("API キーを削除しました")))
+		settingshttp.Render(c, http.StatusOK, templ.Join(view.Row(providerView(k, statuses[i])), atoms.ToastOOB("API キーを削除しました")))
 	}
 }
 
@@ -175,7 +175,7 @@ func done(c *gin.Context, k Keys, provider string, opErr error, saved, savedUnre
 	}
 	settingshttp.CloseModal(c)
 	i := slices.IndexFunc(statuses, func(s service.CredentialStatus) bool { return s.Provider == provider })
-	settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(providerView(k, statuses[i])), atoms.SuccessToastOOB(saved)))
+	settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(providerView(k, statuses[i])), atoms.ToastOOB(saved)))
 }
 
 // refuse answers a save that did not happen with the modal again and why: the key field is empty, the reason is told.

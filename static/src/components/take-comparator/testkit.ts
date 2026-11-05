@@ -38,17 +38,6 @@ export function body(
   return { body: { shot_id: 's1', duration_seconds: 4, partial_url: partialUrl ?? undefined, limits, takes } };
 }
 
-/** Replaces window.confirm by an answer and records the questions. */
-export function stubConfirm(answer: boolean) {
-  const original = window.confirm;
-  const messages: string[] = [];
-  window.confirm = (message?: string) => {
-    messages.push(message ?? '');
-    return answer;
-  };
-  return { messages, restore: () => (window.confirm = original) };
-}
-
 export async function comparator(): Promise<MamTakeComparator> {
   const el = await fixture<MamTakeComparator>(html`<mam-take-comparator api-url=${API}></mam-take-comparator>`);
   await waitUntil(() => el.querySelector('[data-scores], [data-empty]') !== null, 'the Takes were not shown');

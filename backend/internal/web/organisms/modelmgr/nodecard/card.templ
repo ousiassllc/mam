@@ -2,6 +2,7 @@ package nodecard
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
@@ -14,7 +15,7 @@ templ NodesSection(s Section) {
 	<div id={ SectionID } class="flex flex-col gap-3" data-testid="mm-nodes">
 		@refresh.Bar(paths.ModelManagerPart("nodes"), SectionID, "")
 		@view.Notice(s.Message, SectionID)
-		<div id={ DialogID } data-testid="mm-nodes-dialog"></div>
+		@modal.InlineHost(DialogID, "mm-nodes-dialog")
 		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 			for _, n := range s.Items {
 				@NodeCard(n)
@@ -116,7 +117,7 @@ func installLabel(n Node) string {
 // enforces the acceptance: the form is only how a user gives it.
 templ ConsentDialog(n Node) {
 	<section
-		class="flex flex-col gap-3 rounded-md border border-warning/60 bg-surface p-4 focus-visible:focus-ring"
+		class="flex flex-col gap-3 p-5 focus-visible:focus-ring"
 		role="dialog"
 		aria-labelledby="mm-node-consent-title"
 		tabindex="-1"

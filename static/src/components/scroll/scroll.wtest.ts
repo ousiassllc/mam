@@ -156,9 +156,9 @@ for (const anchoring of [true, false]) {
         await frames();
       });
 
-      it('brings the question into view when it opens, and puts the page back when it is closed', async () => {
+      it('opens the question over the page, in sight, and leaves the page where it was when it is closed', async () => {
         expect(inView(dialog()!), 'the question is out of sight').to.equal(true);
-        expect(window.scrollY).to.be.lessThan(before);
+        expect(window.scrollY, 'the page behind the modal moved').to.equal(before);
 
         await press(host.querySelector<HTMLButtonElement>('[data-inline-dialog-close]')!);
         await waitUntil(() => dialog() === null, 'the dialog did not close');
@@ -166,18 +166,6 @@ for (const anchoring of [true, false]) {
 
         expect(window.scrollY, 'the page is not where it was when the button was pressed').to.equal(before);
         expect(document.activeElement === opener || opener.isConnected === false).to.equal(true);
-      });
-
-      it('brings a different question into view when it replaces the one that is open and the reader is far from it', async () => {
-        const first = dialog()!;
-        // The reader went back down to the list, away from the open question, and presses another control that asks.
-        opener.scrollIntoView({ block: 'center' });
-        await waitUntil(() => !inView(first), 'the first question is still in sight');
-        await press(opener);
-        await waitUntil(() => dialog() !== null && dialog() !== first, 'the second question did not arrive');
-        await frames();
-
-        expect(inView(dialog()!), 'the question that replaced the first one is out of sight').to.equal(true);
       });
 
       it('puts the page back where it was when the license is accepted and the install starts', async () => {

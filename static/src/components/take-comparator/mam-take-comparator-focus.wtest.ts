@@ -1,7 +1,8 @@
 import { expect, waitUntil } from '@open-wc/testing';
 import { expectFocusOn } from '../focus-restore/focus-assert';
 import { stubFetch } from '../testdata/fakes';
-import { API, body, comparator, dragLane, stubConfirm, take } from './testkit';
+import { stubConfirm } from '../confirm/testkit';
+import { API, body, comparator, dragLane, take } from './testkit';
 
 const focused = () => document.activeElement;
 

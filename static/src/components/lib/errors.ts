@@ -1,13 +1,13 @@
 import { ApiError } from './api';
 
-/** The message of an action's error response: a toast fragment (HTML) or a JSON problem. */
+/** The message of an action's error response: an alert fragment (HTML) or a JSON problem. */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const body = error.body;
     if (typeof body === 'string') {
-      // A toast fragment also holds the close button ("×"): take the message element alone.
+      // An alert fragment also holds the heading and the close button: take the message element alone.
       const { body: doc } = new DOMParser().parseFromString(body, 'text/html');
-      const text = (doc.querySelector('[data-toast-message]') ?? doc).textContent?.trim();
+      const text = (doc.querySelector('[data-alert-message]') ?? doc).textContent?.trim();
       if (text) return text;
     } else if (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string') {
       return body.detail;
@@ -20,7 +20,7 @@ export function errorMessage(error: unknown): string {
 /** The htmx events that report a request that produced no swappable response. */
 export type RequestFailure = 'htmx:responseError' | 'htmx:sendError' | 'htmx:timeout';
 
-/** What to tell the user about a failed htmx request: the server was unreachable, too slow, or answered with something that is not a toast. */
+/** What to tell the user about a failed htmx request: the server was unreachable, too slow, or answered with something that is not an alert. */
 export function requestFailureMessage(event: RequestFailure, status?: number): string {
   switch (event) {
     case 'htmx:sendError':

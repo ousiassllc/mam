@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
@@ -23,7 +24,8 @@ func render(ctx context.Context, t *testing.T, c templ.Component) string {
 }
 
 // The toast the client raises (toast.ts clones #toast-template) and the toast the server swaps in
-// (atoms.ToastOOB) must be the same DOM: both come from atoms.Toast.
+// (atoms.ToastOOB) must be the same DOM: both come from atoms.Toast. The same goes for the alert (#alert-template, atoms.ErrorAlertOOB)
+// and the confirmation modal (#confirm-template, modal.Confirm).
 func TestAppLayout_ToastTemplateHoldsTheServerToastMarkup(t *testing.T) {
 	ctx := templ.WithChildren(context.Background(), templ.Raw("<main></main>"))
 	page := render(ctx, t, layout.AppLayout("t", "csrf", sidenav.At(sidenav.None)))
@@ -31,6 +33,12 @@ func TestAppLayout_ToastTemplateHoldsTheServerToastMarkup(t *testing.T) {
 
 	assert.Contains(t, page, `<template id="toast-template">`+toast+`</template>`)
 	assert.Contains(t, page, `id="toast-region"`)
+
+	alert := render(context.Background(), t, atoms.Alert(atoms.AlertError, atoms.ErrorAlertTitle, ""))
+	assert.Contains(t, page, `<template id="alert-template">`+alert+`</template>`)
+	assert.Contains(t, page, `<div id="alert-region"`)
+	confirm := render(context.Background(), t, modal.Confirm())
+	assert.Contains(t, page, `<template id="confirm-template">`+confirm+`</template>`)
 }
 
 // The "connection lost" notice is cloned by connection-notice.ts (the chat, the Shot card and the

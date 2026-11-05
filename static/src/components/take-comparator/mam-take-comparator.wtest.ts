@@ -1,7 +1,8 @@
 import { expect, fixture, html, waitUntil } from '@open-wc/testing';
 import { holdFetch, stubFetch } from '../testdata/fakes';
 import type { MamTakeComparator } from './mam-take-comparator';
-import { API, body, comparator, scored, stubConfirm, take, text } from './testkit';
+import { stubConfirm } from '../confirm/testkit';
+import { API, body, comparator, scored, take, text } from './testkit';
 
 describe('mam-take-comparator: score table', () => {
   let stub: ReturnType<typeof stubFetch>;
@@ -209,7 +210,7 @@ describe('mam-take-comparator: choosing a Take', () => {
       [`GET ${API}`]: body([take('t1', 'A')]),
       'POST /takes/t1/select': {
         status: 422,
-        body: '<div data-toast>この Take のファイルはアーカイブされているため選択できません</div>',
+        body: '<div data-alert>この Take のファイルはアーカイブされているため選択できません</div>',
       },
     });
     const el = await comparator();

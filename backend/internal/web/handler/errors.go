@@ -100,7 +100,7 @@ func statusOf(c *gin.Context, err error) (int, string) {
 func toast(c *gin.Context, err error) {
 	status, message := statusOf(c, err)
 	middleware.ToastOnly(c)
-	render(c, status, atoms.ToastOOB(message))
+	render(c, status, atoms.ErrorAlertOOB(message))
 }
 
 // RouteErrors makes a URL without a route (NoRoute) or a method the route does not serve (NoMethod)
