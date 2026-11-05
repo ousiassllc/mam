@@ -96,7 +96,7 @@ func (f genFixture) editorView(t *testing.T, version, clips int) (view service.E
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		v, err := f.svc.Editor.View(context.Background(), f.projectID, "")
 		require.NoError(c, err)
-		assert.True(c, v.Timeline != nil && v.Project.State == domain.StateEditing && (version == 0 || v.Timeline.VersionNumber == version) && len(v.Timeline.Clips) == clips)
+		assert.True(c, v.Timeline != nil && v.Project.State == domain.StateEditing && v.PendingShots == 0 && (version == 0 || v.Timeline.VersionNumber == version) && len(v.Timeline.Clips) == clips)
 		view = v
 	}, 10*time.Second, 10*time.Millisecond, "back to EDITING with the Shot in the timeline")
 	return view
