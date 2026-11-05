@@ -57,7 +57,7 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 3. 展開（`exeinstall.Extract`）: 取り出すのは、カタログが名指しした 2 つのファイル（zip の中の**完全一致のエントリ名**）だけ。ほかのエントリは読まず・書かない。出力先は `bin.new/` の下で、ファイル名はカタログの**素の名前**（パスの区切り・`..`・ドライブ名は拒否）。リンクやディレクトリは拒否、同じエントリが 2 つあれば拒否。**アーカイブの中の名前や書き方は、書き込み先を決めない**。各ファイルは新規作成（既存は上書きしない）で、サイズと SHA-256 がカタログと一致すること。どれか 1 つでも一致しなければ、書いたものをすべて消し、アーカイブも消す。
 4. macOS の隔離属性（`com.apple.quarantine`）を外す（ベストエフォート。mam の取得は付けない）。
 5. 各実行ファイルを `bin.new/` で一度実行する（`-version`。出力に ` version ` を含むこと。上限時間つき、`internal/media.Version`）。実行できなければ（署名が通らない・セキュリティ製品が止めた・形式が違う）`ErrNotRunnable` で、何も入れない。
-6. **原子的に入れ替える**: 今の `bin/` を `bin.old/` に退避 → `bin.new/` を `bin/` に改名 → `bin.old/` を消す。途中で止まったら起動時と次の導入が `bin.old/` を戻す（`CleanLeftovers`）。
+6. **原子的に入れ替える**: 今の `bin/` を `bin.old/` に退避 → `bin.new/` を `bin/` に改名 → `bin.old/` を消す。途中で止まったら起動時と次の導入が `bin.old/` を戻す（`CleanLeftovers`）。**改名は、一時的なファイルロック（Windows でウイルス対策ソフト・インデクサーが開いている間）で失敗しても、上限つきでやり直す**（`exeinstall.Swap`。1 回の改名につき最大 5 回・失敗の間に 200 ms 待つ＝待ちは最長 800 ms。存在しないために失敗した改名は待たずに失敗にする）。上限を超えたら「（原因）(failed 5 times; another program may be using the files)」を含むエラーで失敗し、`bin.old/` に退避済みなら `bin/` に戻すので、**今の `bin/` は壊れない**（`bin.new/` は残り、次の導入が作り直す）。`codex` の入れ替えも同じ `Swap` を使う。
 7. **最後に** `installed.json`（版・各ファイルの名前・サイズ・SHA-256・時刻）を書く。アーカイブを消す。
 
 **使うのは、記録があり、ファイルがそろっているときだけ**（`Installer.Dirs`）。`installed.json` が無い・壊れている・記録に ffmpeg と ffprobe の両方が載っていない・記録のファイルが無い／サイズが違う（手で消した・変えた）ときは「壊れている」で、**探す場所に加えない**。`bin/` に記録の無いファイルが置かれていても使わない。検証に失敗した導入は、前の導入（あれば）をそのまま残す。
@@ -110,7 +110,7 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 
 - **Windows 11 x64**: ffmpeg の無い PC で、設定の「ffmpeg をダウンロードして入れる」を押し、約 110 MiB を取得して「ffmpeg を入れました」になること。mam を再起動して、Judge・Take のプレビュー・Export が動くこと。`<mam.exe のディレクトリ>\ffmpeg\bin` に `ffmpeg.exe`・`ffprobe.exe` ができ、**Windows Defender・SmartScreen が止めないこと**（Authenticode 署名は無い）。PATH に別の ffmpeg を入れたら、そちらが使われること。
 - **macOS（Apple Silicon）**: 同様に、約 54 MiB を取得して再起動後に Judge・プレビュー・Export が動くこと。`~/Library/Application Support/mam/ffmpeg/bin/ffmpeg` が **Gatekeeper に止められず**、`codesign -dv --verbose=4` で Developer ID の署名が出ること。Finder から起動した MAM.app で動くこと。`brew install ffmpeg` した ffmpeg があれば、そちらが使われること。
-- **Windows の入れ替え**: ダウンロードのあとの `bin.new` → `bin` の改名が、ウイルス対策ソフトに止められないこと。止められるなら、改名のやり直しを足す。
+- **Windows の入れ替え**: ダウンロードのあとの `bin.new` → `bin` の改名が、ウイルス対策ソフトに止められても、§4 6 のやり直し（最大 5 回）で入れ替わること。上限を超えて失敗したときに、画面のエラーが分かる文言であり、前の `bin` が使えること。
 - **9.0.2 の ffmpeg での mam の動作**（mam の CI は Ubuntu（apt）と macOS（Homebrew）の ffmpeg で動く）。同じ 9.0.2 の Linux 版ではテストが通ることを確かめたが、Windows・macOS のビルドでの Export（H.264・HEVC・VP9）・字幕（drawtext の既定フォント）は実機で確かめる。
 
 ## 改訂履歴
@@ -119,3 +119,4 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 |----|------|---------|---------|
 | 1.0 | 2026-11-01 | 新規作成。Windows x64（gyan.dev 9.0.2）と macOS arm64（martin-riedl.de 9.0.2）の ffmpeg / ffprobe を、ボタンでダウンロードして入れる。取得元・SHA-256 の固定・検証・GPL v3 の方針・更新の扱い（自動なし）・探す順（利用者の ffmpeg が先）を決めた | Issue #900 |
 | 1.1 | 2026-11-06 | 展開の失敗の分け方（`ErrInvalidRequest`・読み取りの失敗は `ErrUnsafeArchive` にしない・tar の展開は取り消しで止まる）、通信が切れたときの再開のログと利用者向けの文言、macOS は実行ファイルが見つからなくても取得を無効にしないことを書いた | Issue #1054 #1055 #1056 |
+| 1.2 | 2026-11-06 | §4 手順 6 に、入れ替えの改名を一時的なファイルロックで失敗しても上限つき（最大 5 回・200 ms 間隔）でやり直し、上限を超えたら前の `bin/` を戻して分かるエラーで失敗することを足した。§9 の Windows の入れ替えの確認項目を、やり直しで入れ替わることの確認に直した | Issue #1048。Windows ではウイルス対策ソフトなどが開いているファイルのせいで `bin.new` → `bin` の改名が一時的に失敗し得る |
