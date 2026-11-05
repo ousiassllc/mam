@@ -11,18 +11,21 @@ import (
 
 // newFFmpegDownloader is the download of ffmpeg and ffprobe (spec/architecture/ffmpeg-download.md): in the "ffmpeg" directory next to
 // the executable on Windows, and in the data directory on macOS (ffmpegdl.For: the executable there is inside MAM.app, which the
-// auto-update replaces). Where there is no pinned build for the platform, or the place cannot be found (no executable, no data
-// directory), the download is off and the service is not Supported; an ffmpeg the user installed still works.
+// auto-update replaces). Where there is no pinned build for the platform, or the place cannot be found (no executable on Windows,
+// no data directory on macOS), the download is off and the service is not Supported; an ffmpeg the user installed still works.
 func newFFmpegDownloader(cfg config.Config, logger *slog.Logger) *ffmpegdl.Service {
-	var layout ffmpegdl.Layout
-	if exe, err := executablePath(); err != nil {
-		logger.Warn("the ffmpeg download is off", "err", err)
-	} else {
-		layout = ffmpegdl.For(runtime.GOOS, exe, cfg.DataDir)
-	}
 	return ffmpegdl.New(ffmpegdl.Options{
-		Layout: layout, Catalog: ffmpegdl.Default(), GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, Logger: logger,
+		Layout: ffmpegLayoutFor(runtime.GOOS, executablePath, logger, cfg.DataDir), Catalog: ffmpegdl.Default(), GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, Logger: logger,
 	})
+}
+
+func ffmpegLayoutFor(goos string, find func() (string, error), logger *slog.Logger, dataDir string) ffmpegdl.Layout {
+	exe, err := downloadAnchor(goos, find)
+	if err != nil {
+		logger.Warn("the ffmpeg download is off", "err", err)
+		return ffmpegdl.Layout{}
+	}
+	return ffmpegdl.For(goos, exe, dataDir)
 }
 
 // newFFmpegSettings is the ffmpeg settings (ffmpeg.json) with the lookup that ends in the downloaded copy: it is searched after

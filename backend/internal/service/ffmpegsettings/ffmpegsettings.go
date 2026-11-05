@@ -135,9 +135,13 @@ func (s *Service) Look() (media.Tools, error) {
 }
 
 // Find is where the executable called name is with the saved paths, the signature of exec.LookPath: the first-run guide
-// reports it. An unreadable file leaves the paths to the search.
+// reports it. It answers as Look does, so that the guide and the app agree: a file that cannot be read is an error wrapping
+// media.ErrUnavailable (the app starts with no ffmpeg then), never a search that ignores the file.
 func (s *Service) Find(name string) (string, error) {
-	cfg, _ := s.Config()
+	cfg, err := s.Config()
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", media.ErrUnavailable, err)
+	}
 	return s.lookup().Find(name, cfg.Path(name))
 }
 

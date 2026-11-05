@@ -1,7 +1,6 @@
 package ffmpegsettings
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -141,9 +140,23 @@ func TestConfig_DamagedFileIsAnError(t *testing.T) {
 	require.Error(t, err)
 	_, err = s.Look()
 	require.ErrorIs(t, err, media.ErrUnavailable)
-	// The first-run guide only reports what is found: a damaged file leaves it to the search.
-	_, err = s.Find("ffmpeg")
-	assert.True(t, errors.Is(err, locate.ErrNotFound))
+}
+
+// The first-run guide (Find) and the app (Look) read the file alike: a damaged one is no ffmpeg to both, even where the search
+// would find one (Issue #1055).
+func TestFind_DamagedFileAnswersAsLookDoes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), FileName)
+	require.NoError(t, os.WriteFile(path, []byte(`{`), 0o600))
+	s := New(path, WithFinder(machine("/usr/bin/ffmpeg", "/usr/bin/ffprobe")))
+
+	_, lookErr := s.Look()
+	require.ErrorIs(t, lookErr, media.ErrUnavailable)
+	for _, name := range []string{locate.FFmpeg, locate.FFprobe} {
+		found, err := s.Find(name)
+		require.ErrorIs(t, err, media.ErrUnavailable, name)
+		assert.NotErrorIs(t, err, locate.ErrNotFound, name)
+		assert.Empty(t, found, name)
+	}
 }
 
 func TestConfig_NonStringPathIsAnError(t *testing.T) {
