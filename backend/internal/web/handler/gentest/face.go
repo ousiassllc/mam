@@ -35,6 +35,19 @@ func similarityText(s record.FaceSimilarity) string {
 	return fmt.Sprintf("%.3f（SFace のコサイン類似度。%s。目安であって、同じ人である保証ではありません）", s.Cosine, verdict)
 }
 
+// faceSummaryText is the face similarity of the results of one model of a batch in a line under its name: the mean of the SFace numbers and how many of the results reach the line
+// (Issue #998). Results without a number are counted apart, so a model whose results all went without one says so and shows no mean.
+func faceSummaryText(s record.FaceSummary) string {
+	if s.Measured == 0 {
+		return fmt.Sprintf("顔の類似度: 測れた結果なし（%d 件）", s.Skipped)
+	}
+	text := fmt.Sprintf("顔の類似度（SFace）: 平均 %.3f・%d/%d 件が目安 %.3f 以上", s.MeanCosine, s.SamePerson, s.Measured, s.Threshold)
+	if s.Skipped > 0 {
+		text += fmt.Sprintf("（ほか %d 件は測れず）", s.Skipped)
+	}
+	return text
+}
+
 // faceKVs are the rows of the detail that the face adds: the models and the cautions of a swap, and the similarity of the face of the result to
 // the face reference it was made with.
 func faceKVs(d record.ResultDetail) []view.KV {
