@@ -28,7 +28,7 @@ func TestHost_IsAClosedEmptyNativeDialogWithACloseButton(t *testing.T) {
 	assert.NotContains(t, html, " open")
 	assert.Contains(t, html, `<div id="mam-modal-body"></div>`)
 	assert.Contains(t, html, `id="mam-modal-failure" role="alert"`)
-	assert.Contains(t, html, `data-modal-close aria-label="閉じる"`)
+	assert.Contains(t, html, `data-modal-close data-ripple aria-label="閉じる"`)
 	assert.NotContains(t, html, "text-neutral-500")
 }
 

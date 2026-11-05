@@ -86,3 +86,20 @@ func TestSources_IconsAreAtTheGuidesSizes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(spinner), "h-5 w-5", "the spinner is 20px")
 }
+
+// The motion of the overlays and of a press (M3-M5) is in static/src/css/motion.css: a fade in with --ease-out and one out with --ease-in
+// (a dialog, a popover, the scrim, a toast), the clip of the ripple, and no motion beyond opacity under reduced motion.
+func TestMotionCSS_FadesTheOverlaysAndClipsTheRipple(t *testing.T) {
+	raw, err := os.ReadFile("../../../../static/src/css/motion.css")
+	require.NoError(t, err)
+	css := string(raw)
+
+	for _, want := range []string{
+		"opacity var(--motion-fade-out) var(--ease-in)", "opacity var(--motion-fade-in) var(--ease-out)",
+		"allow-discrete", "@starting-style", "dialog::backdrop", "var(--scrim)",
+		"[data-toast][data-leaving]", "[data-ripple]", "overflow: hidden", "@media (prefers-reduced-motion: reduce)",
+	} {
+		assert.Contains(t, css, want)
+	}
+	assert.NotRegexp(t, `animation|@keyframes|translate|scale`, css, "an overlay fades; it does not move or bounce (M2)")
+}

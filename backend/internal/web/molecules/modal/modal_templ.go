@@ -55,7 +55,7 @@ func Host() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"mam-modal\" data-modal aria-modal=\"true\" aria-labelledby=\"mam-modal-title\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink backdrop:bg-black/70\"><div id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"mam-modal\" data-modal aria-modal=\"true\" aria-labelledby=\"mam-modal-title\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink\"><div id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -68,7 +68,7 @@ func Host() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"></div><p id=\"mam-modal-failure\" role=\"alert\" class=\"px-5 pb-4 text-sm text-danger\" hidden></p><button type=\"button\" data-modal-close aria-label=\"閉じる\" class=\"absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"></div><p id=\"mam-modal-failure\" role=\"alert\" class=\"px-5 pb-4 text-sm text-danger\" hidden></p><button type=\"button\" data-modal-close data-ripple aria-label=\"閉じる\" class=\"absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -142,7 +142,7 @@ func Frame(title, description string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 78, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 79, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -160,7 +160,7 @@ func Frame(title, description string) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 80, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 81, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -212,7 +212,7 @@ func Error(message string) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 88, Col: 179}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modal/modal.templ`, Line: 89, Col: 179}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {

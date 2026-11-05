@@ -121,7 +121,7 @@ func Bar(url, target, updatedAt string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Icon(atoms.IconUpdate, "h-4 w-4 group-[.htmx-request]:animate-spin motion-reduce:animate-none").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Icon(atoms.IconUpdate, "h-4 w-4 group-[.htmx-request]:animate-spin").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

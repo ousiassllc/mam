@@ -46,7 +46,6 @@
 | 警告 | 文字 `text-warning`、枠/面 `border-warning/60`・`bg-warning/10`・`bg-warning/20`（Badge） | `BadgeWarn` |
 | 成功 | 文字 `text-success`、枠/面 `border-success/60`・`bg-success/10`・`bg-success/20`（Badge） | `BadgeOK` |
 | 情報・進行中 | 文字 `text-info`、枠/面 `border-info/60`・`bg-info/10`・`bg-info/20`（Badge） | `BadgeInfo` |
-| モーダルの背後 | `backdrop:bg-black/70` | 既存 modal |
 
 ### 3.1 意味の色の枠・薄い面
 
@@ -80,7 +79,7 @@
 | クラス | 使う場所 | 理由 |
 |--------|---------|------|
 | `border-mute` | 入力欄（`atoms.fieldClass`）と、Lit が出す `<input>`・`<select>`・`<textarea>`（Take の指示欄・タイムラインのクリップ） | 入力欄の枠は、面に対して **3:1 以上**（WCAG 1.4.11）が必要で、`--border`（罫線用の薄い線）では足りない。`--mute` はライト・ダークのどちらでも 3:1 を超える（`a11y/field_border_test.go`） |
-| `bg-black` | 動画・画像のプレビューの背景（`<video>`・`<img>` の余白）と動画プレイヤーの舞台 | 映像のレターボックスは黒でないと映像が浮く（どちらのテーマでも黒）。表の `backdrop:bg-black/70` はモーダルの背後だけ |
+| `bg-black` | 動画・画像のプレビューの背景（`<video>`・`<img>` の余白）と動画プレイヤーの舞台 | 映像のレターボックスは黒でないと映像が浮く（どちらのテーマでも黒）。モーダルの背後（スクラム）はクラスでなく `tokens.css` の `--scrim`（`static/src/css/motion.css` が `dialog::backdrop` に当てる） |
 | `border-transparent` | 現在地でないナビ・ステップの枠（`border-l-2` の幅を取っておく） | 枠の幅を保って現在地の切り替えで文字がずれないようにする（色はない） |
 | `accent-danger`・`accent-warning`・`accent-success` | 予算の `<progress>`（危険・警告・成功） | ブラウザが描くメーターの塗りの色（`accent-*`）で、表の文字用・面用のクラスは使えない。意味は状態色（危険 = danger・警告 = warning・成功 = success）を表と揃える。推定コストと上限の文字を添える（色だけで伝えない） |
 | `bg-danger/70`・`bg-warning/70`・`bg-success/70`・`bg-info/70` | 動画の上・Take のレーンの上に重ねる塗り（Judge の指摘の位置・選んだ区間・ドラッグ中の区間・読み込みの進捗） | 映像・レーンが透けて見える**重ね塗り**で、`/20`（バッジ）では映像の上で見えない。意味は表と同じ（danger = 重大・warning = 中・info = 軽い／ドラッグ中・success = 選んだ） |

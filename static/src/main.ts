@@ -16,6 +16,7 @@ import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
 import { installSidenav } from './components/sidenav/sidenav';
 import { installTheme } from './components/theme/theme';
+import { installRipple } from './components/ripple/ripple';
 import { installModelPick } from './components/model-pick/model-pick';
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
@@ -75,6 +76,7 @@ installHelp();
 // The fold button of the side menu: folds it to its icons or opens it, and keeps the choice in a cookie that the server reads.
 installSidenav();
 installTheme();
+installRipple();
 
 // The model manager's questions in the page (age confirmation, license): the focus goes in, Esc closes, the focus goes back.
 // Before the focus restore: a focus that is back on a control is not touched by it.

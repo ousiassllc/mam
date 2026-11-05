@@ -245,7 +245,7 @@ func menu(s State, folded bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" data-testid=\"sidenav-toggle\" class=\"rounded-md p-2 text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring max-md:hidden motion-reduce:transition-none\"><span class=\"group-data-[folded=true]:hidden\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" data-testid=\"sidenav-toggle\" data-ripple class=\"rounded-md p-2 text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring max-md:hidden motion-reduce:transition-none\"><span class=\"group-data-[folded=true]:hidden\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -277,7 +277,7 @@ func menu(s State, folded bool) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.Project.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 87, Col: 139}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 88, Col: 139}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 			if templ_7745c5c3_Err != nil {
@@ -290,7 +290,7 @@ func menu(s State, folded bool) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(s.Project.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 87, Col: 158}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 88, Col: 158}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -309,14 +309,14 @@ func menu(s State, folded bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div><button type=\"button\" data-theme-toggle data-theme-cookie=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div><button type=\"button\" data-theme-toggle data-ripple data-theme-cookie=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(themestate.CookieName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 95, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 97, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -329,7 +329,7 @@ func menu(s State, folded bool) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(LabelTheme)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 96, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 98, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
@@ -342,7 +342,7 @@ func menu(s State, folded bool) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(LabelTheme)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 97, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 99, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
@@ -363,7 +363,7 @@ func menu(s State, folded bool) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(LabelTheme)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 102, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 104, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -406,7 +406,7 @@ func list(items []Item, current Key, id, labelledBy string) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 110, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 112, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 		if templ_7745c5c3_Err != nil {
@@ -424,7 +424,7 @@ func list(items []Item, current Key, id, labelledBy string) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue(labelledBy)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 114, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 116, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 			if templ_7745c5c3_Err != nil {
@@ -499,7 +499,7 @@ func entry(it Item, current bool) templ.Component {
 		var templ_7745c5c3_Var26 templ.SafeURL
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(it.Href))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 127, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 129, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -512,7 +512,7 @@ func entry(it Item, current bool) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(it.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 128, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 130, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
@@ -525,7 +525,7 @@ func entry(it Item, current bool) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(it.Key))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 130, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 132, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
@@ -631,7 +631,7 @@ func entry(it Item, current bool) templ.Component {
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(it.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 141, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 143, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {

@@ -207,7 +207,7 @@ func pickerDialog(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" data-gt-picker-dialog aria-labelledby=\"gt-picker-title\" class=\"m-auto w-[min(48rem,92vw)] max-h-[85vh] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-4 text-ink backdrop:bg-black/70\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-picker-title\" class=\"text-sm font-semibold\">画像を選ぶ</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" data-gt-picker-dialog aria-labelledby=\"gt-picker-title\" class=\"m-auto w-[min(48rem,92vw)] max-h-[85vh] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-4 text-ink\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-picker-title\" class=\"text-sm font-semibold\">画像を選ぶ</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -342,7 +342,7 @@ func Host() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink backdrop:bg-black/70\"><div id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink\"><div id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -24,6 +24,9 @@
   --danger: #7a4545;
   --info: #4a5a6a;
 
+  /* The scrim behind a modal (O1): black in both themes. */
+  --scrim: rgb(0 0 0 / 0.7);
+
   /* Motion (M1): hover is colour / background only, in --motion-base. */
   --motion-fast: 120ms;
   --motion-base: 180ms;

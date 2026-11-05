@@ -34,7 +34,6 @@ var colorAllowlist = map[string][]string{
 	"warning":         {"text-warning", "border-warning/60", "bg-warning/10", "bg-warning/20"},
 	"success":         {"text-success", "border-success/60", "bg-success/10", "bg-success/20"},
 	"info":            {"text-info", "border-info/60", "bg-info/10", "bg-info/20"},
-	"modal backdrop":  {"backdrop:bg-black/70"},
 }
 
 var colorExceptions = map[string][]string{

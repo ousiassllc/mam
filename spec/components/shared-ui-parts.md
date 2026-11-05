@@ -19,7 +19,7 @@
 | アイコンの色 | `text-accent`（インク色） | 飾りなので 1.4.11 の対象外だが、見える色にしておく |
 | フォーカスの輪 | `focus-visible:focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`。`--focus` はライト `#4a72d0`・ダーク `#60a5fa`） | `peer-focus-visible:focus-ring`（チャットの添付）も同じ。輪は `outline` なので Windows のハイコントラスト（`forced-colors`）でも描かれ、`ring-*` の影の輪は使わない。輪を出さない見出しなどは `focus-visible:outline-none` |
 | ホバー | `hover:border-mute hover:bg-accent-soft/60` | 見た目の補助。ホバーだけに意味を持たせない |
-| 動き | 色・背景の `transition-colors`（`--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。拡大・移動・アニメーションは使わない | #797（`prefers-reduced-motion`）。スピナーは処理中表示なので、reduced-motion でも回す（#1040） |
+| 動き | 色・背景の `transition-colors`（`--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。拡大・移動・アニメーションは使わない。例外は下の「動き（#1040）」 | #797（`prefers-reduced-motion`）。スピナーは処理中表示なので、reduced-motion でも回す（#1040） |
 | 主ボタンの `bg-accent` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
 | カードの枠 | `border-border` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
@@ -48,6 +48,17 @@
 | 影（S3） | 影はモーダルの `<dialog>` の `shadow-modal`（`0 1px 2px rgba(0,0,0,.06)`）だけ。カード・パネル・トースト・通知は影なしで、`border border-border` で区切る。ホバーの光る縁取りは使わない（色・背景・枠の色だけ） |
 | レイヤー（O4） | `z-dropdown` 100 · `z-sticky` 200 · `z-drawer` 300 · `z-modal` 400 · `z-toast` 500。カードの中で、全面を覆うクリック領域の上に出す部品だけ `z-raised`（部品の中の積み順で、ページのレイヤーではない）。`z-10` などの数字は使わない |
 | 動き（M1） | `transition-colors`（既定で `--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。`transition`（すべての値）・`transition-shadow`・`transition-transform` は使わない |
+
+### 動き（Issue #1040）
+
+動きは Ousiass 共通デザインガイド（M1〜M5）に従う。値は `static/src/css/tokens.css` の `--motion-*` / `--ease-*`、モーションは `static/src/css/motion.css` と `static/src/components/ripple/`。
+
+| 項目 | 決まり |
+|------|--------|
+| ホバー・フォーカス（M1） | 色・背景だけ、`--motion-base` 180ms（フォーカスは即時〜`--motion-fast` 120ms）。`transition-colors` が既定でこの値を取る。光彩・拡大はしない |
+| 処理中表示（M3） | スピナー（`atoms.Spinner`）と更新ボタンの回る矢印は、`prefers-reduced-motion: reduce` でも回す（`motion-reduce:animate-none` を付けない）。移動・スライドの飾りだけを止める（`motion-reduce:transition-none`）。オーバーレイのフェードは reduce で 100ms 以内 |
+| リップル（M4） | `data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
+| 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない |
 
 ### 商用利用の可否（Issue #928）
 

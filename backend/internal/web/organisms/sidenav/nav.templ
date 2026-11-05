@@ -70,6 +70,7 @@ templ menu(s State, folded bool) {
 				aria-label={ foldLabel(folded) }
 				title={ foldLabel(folded) }
 				data-testid="sidenav-toggle"
+				data-ripple
 				class="rounded-md p-2 text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring max-md:hidden motion-reduce:transition-none"
 			>
 				<span class="group-data-[folded=true]:hidden">
@@ -92,6 +93,7 @@ templ menu(s State, folded bool) {
 		<button
 			type="button"
 			data-theme-toggle
+			data-ripple
 			data-theme-cookie={ themestate.CookieName }
 			aria-label={ LabelTheme }
 			title={ LabelTheme }
