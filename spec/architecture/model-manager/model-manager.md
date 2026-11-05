@@ -60,6 +60,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 - **取り直さないもの**: 利用者の取り消し（`ctx` の取り消し）、ディスクの空き不足・書き込みの失敗（`fsutil.LocalError`・`NoSpaceError`）、SHA-256・サイズの不一致、4xx（408・429 を除く）、アドレス規則の拒否など、通信の切断でないエラー。
 - 上限まで切れ続けたときの失敗は `*fetch.ConnectionLostError` で、`.part` は残る。モデルマネージャーのジョブは「通信が切れました。もう一度導入すると続きから再開します」で失敗する（原因の詳細は `userError` の裏側に残り、ログに出る）。
 - 再開は WARN（`download interrupted, resuming from the part file`。`job_id`・`target`・`attempt`・`max_attempts`・`retry_in`・`err`）、導入ジョブの結末は成功が INFO（`install succeeded`）、利用者の中断が INFO（`install cancelled by the user`）、シャットダウンでの中断が WARN（`install interrupted`）、失敗が ERROR（`install failed`。原因の `err` つき）で、いずれも `job_id` と対象（`target` = `engine`・`model:<id>`・`hf:…`）を持つ。
+- Codex のエンジンと ffmpeg の取得も、再開のたびに同じ WARN を出す（`job_id` は持たず、`target` = `codex`・`ffmpeg`。`exeinstall.RetryLogger`）。上限まで切れ続けたときの利用者向けの文言も同じ「通信が切れました。もう一度導入すると続きから再開します」（`fetch.ConnectionLostMessage`。Codex は `Install.Error`、ffmpeg は `ffmpegdl.Explain`）。
 
 取得できるホストは `huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com` だけで、リダイレクト先も同じ規則で調べる（`fetch.AllowedURL`。Windows のエンジンのアーカイブとカタログのモデルの取得）。**macOS のエンジンの部品だけ**は、これに `python.org`・`pythonhosted.org`・`pytorch.org`・`openmmlab.com` を足した `fetch.PackageURL` を使う（PyTorch ほかの wheel は `files.pythonhosted.org`。ローカルランタイムの MuseTalk と同じ。§3.7）。**Hugging Face の導入経路（`hf` のクライアントと導入したファイルの取得）は `huggingface.co` と `*.hf.co` だけ**（`fetch.HFAllowedURL`。GitHub へのリダイレクトは断る。[model-manager-hf.md](model-manager-hf.md) §2）。`Authorization` は最初の要求の宛先ホストにだけ付け、ホストが変わると外す（§5.3）。
 

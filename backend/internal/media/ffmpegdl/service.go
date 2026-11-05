@@ -55,6 +55,7 @@ func New(o Options) *Service {
 	if o.Logger == nil {
 		o.Logger = slog.New(slog.DiscardHandler)
 	}
+	o.Fetch.OnRetry = exeinstall.RetryLogger(o.Logger, "ffmpeg", o.Fetch.OnRetry) // an automatic resume of a download is logged
 	p, ok := o.Catalog.For(o.GOOS, o.GOARCH)
 	layout := o.Layout
 	if !ok || layout.Root == "" {
@@ -178,6 +179,8 @@ func (s *Service) Works() []worktrack.Record { return s.install.Works() }
 func Explain(err error) string {
 	var herr *fetch.HTTPError
 	switch {
+	case fetch.IsConnectionLost(err):
+		return fetch.ConnectionLostMessage
 	case errors.Is(err, fetch.ErrChecksum), errors.Is(err, fetch.ErrSize):
 		return "ダウンロードしたファイルが、mam が確かめた版と一致しませんでした（SHA-256 またはサイズの不一致）。ファイルは使わずに削除しました。配布元が差し替わったか、通信の途中で書き換わった可能性があります"
 	case errors.Is(err, exeinstall.ErrMismatch), errors.Is(err, exeinstall.ErrUnsafeArchive):
