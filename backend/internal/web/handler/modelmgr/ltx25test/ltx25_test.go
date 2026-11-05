@@ -167,7 +167,7 @@ func TestCatalog_ACardSaysHowTheGPUStandsToTheModelsVRAM(t *testing.T) {
 	assert.Contains(t, bd, `data-fit="limited"`)
 	assert.Contains(t, bd, "動くが制約あり")
 	assert.Contains(t, bd, "INT8・タイル VAE・オフロードが前提で遅い")
-	assert.Contains(t, bd, "text-amber-300")
+	assert.Contains(t, bd, "text-warning")
 	assert.Contains(t, bd, "推奨 32 GB 以上", "the recommendation is in the guideline of the modal")
 	s.rig.GPUReport.Adapters = []gpu.Adapter{{Name: "NVIDIA GeForce RTX", VRAMBytes: 12288 << 20}}
 	assert.Contains(t, card(t, s.get(paths.ModelManagerPart("models")).Body.String(), "m-b"), `data-fit="limited"`, "the list does not run the detection again at every draw")

@@ -15,36 +15,34 @@ import (
 
 // spec/components/color-rules.md is the source of the colour rules. colorAllowlist is its §3 table and
 // colorExceptions its §4 table, class by class: TestColorRulesSpec_MirrorsTheTests fails when they differ.
-// A class a screen needs that is in neither is mapped onto the table (same meaning, same class) or, when it
-// carries a meaning the table has no row for, added to the exceptions with its reason in the spec (#867).
+// The colours are the tokens of the Ousiass UI guide (static/src/css/tokens.css, which is the one place a colour is written as a
+// value): a class names a token (bg-surface, text-mute, border-border, ...), never a Tailwind palette shade, so a screen follows the
+// Light / Dark theme by itself. A class a screen needs that is in neither list is mapped onto the table (same meaning, same class)
+// or, when it carries a meaning the table has no row for, added to the exceptions with its reason in the spec.
 var colorAllowlist = map[string][]string{
-	"page":            {"bg-neutral-950", "text-neutral-100"},
-	"card and modal":  {"bg-neutral-900", "border-neutral-800", "border-neutral-700"},
-	"supporting text": {"text-neutral-400"},
-	"weaker body":     {"text-neutral-300", "text-neutral-200"},
-	"border":          {"border-neutral-800", "border-neutral-700", "divide-neutral-800"},
-	"hover surface":   {"hover:bg-neutral-800", "hover:border-neutral-600", "hover:bg-neutral-800/60"},
-	"focus ring":      {"focus-visible:ring-indigo-400", "peer-focus-visible:ring-indigo-400", "has-[[data-card-open]:focus-visible]:ring-indigo-400", "focus-visible:ring-offset-neutral-950", "focus-visible:ring-offset-neutral-900"},
-	"primary action":  {"bg-indigo-500", "hover:bg-indigo-400", "text-white"},
-	"link and icon":   {"text-indigo-300"},
-	"danger":          {"text-red-300", "border-red-500/60", "bg-red-500/10", "bg-red-500/20", "hover:bg-red-500/10"},
-	"warning":         {"text-amber-300", "border-amber-500/60", "bg-amber-500/10", "bg-amber-500/20"},
-	"success":         {"text-emerald-300", "border-emerald-500/60", "bg-emerald-500/10", "bg-emerald-500/20"},
-	"info":            {"text-sky-300", "border-sky-500/60", "bg-sky-500/10", "bg-sky-500/20"},
-	"neutral badge":   {"bg-neutral-700", "text-neutral-300"},
-	"quiet action":    {"border-neutral-600", "text-neutral-200", "text-neutral-400"},
-	"modal backdrop":  {"backdrop:bg-black/70"},
+	"page":            {"bg-bone", "text-ink"},
+	"toast":           {"bg-ink", "text-bone"},
+	"card and modal":  {"bg-surface", "border-border"},
+	"supporting text": {"text-mute"},
+	"border":          {"border-border", "divide-border"},
+	"raised face":     {"bg-accent-soft"},
+	"hover surface":   {"hover:bg-accent-soft", "hover:border-mute", "hover:bg-accent-soft/60"},
+	"hover text":      {"hover:text-ink"},
+	"primary action":  {"bg-accent", "hover:bg-accent/85", "text-bone"},
+	"link and icon":   {"text-accent", "decoration-mute"},
+	"selected":        {"border-accent", "has-[:checked]:border-accent", "peer-checked:border-accent", "peer-checked:bg-accent-soft", "hover:border-accent", "border-t-accent"},
+	"danger":          {"text-danger", "border-danger/60", "bg-danger/10", "bg-danger/20", "hover:bg-danger/10"},
+	"warning":         {"text-warning", "border-warning/60", "bg-warning/10", "bg-warning/20"},
+	"success":         {"text-success", "border-success/60", "bg-success/10", "bg-success/20"},
+	"info":            {"text-info", "border-info/60", "bg-info/10", "bg-info/20"},
 }
 
 var colorExceptions = map[string][]string{
-	"field border":   {"border-neutral-500"},
-	"raised face":    {"bg-neutral-800"},
-	"hover text":     {"hover:text-neutral-100"},
-	"selected":       {"border-indigo-400", "has-[:checked]:border-indigo-400", "bg-indigo-500/20", "border-t-indigo-400", "peer-checked:border-indigo-400", "peer-checked:bg-indigo-500/20", "peer-checked:shadow-indigo-400/40", "hover:border-indigo-400", "hover:shadow-indigo-400/40"},
+	"field border":   {"border-mute"},
 	"video backdrop": {"bg-black"},
 	"reserved edge":  {"border-transparent"},
-	"meter fill":     {"accent-red-400", "accent-amber-400", "accent-emerald-400"},
-	"overlay fill":   {"bg-red-500/70", "bg-amber-500/70", "bg-emerald-500/70", "bg-sky-500/70"},
+	"meter fill":     {"accent-danger", "accent-warning", "accent-success"},
+	"overlay fill":   {"bg-danger/70", "bg-warning/70", "bg-success/70", "bg-info/70"},
 }
 
 func classSet(groups map[string][]string) map[string]bool {
@@ -61,6 +59,7 @@ func classSet(groups map[string][]string) map[string]bool {
 // current, or an arbitrary value that is a colour. Sizes such as text-[10px] are not colours.
 var colorUtility = regexp.MustCompile(`^(?:bg|text|border(?:-[xyselrtb])?|divide|ring|ring-offset|inset-ring|outline|fill|stroke|accent|caret|decoration|placeholder|shadow|inset-shadow|drop-shadow|from|via|to|selection|marker)-` +
 	`(?:(?:neutral|slate|gray|zinc|stone|taupe|mauve|mist|olive|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}` +
+	`|ink|bone|mute|surface|border|accent-soft|accent|focus|success|warning|danger|info` +
 	`|white|black|transparent|current|inherit|\[(?:#|rgb|hsl|oklch|oklab|lab|lch|hwb|color:|var\()[^\]]*\])` +
 	`(?:/\d+|/\[[^\]]*\])?$`)
 
@@ -149,8 +148,12 @@ func colorSources(t *testing.T) []string {
 	return files
 }
 
+// tokensFile is the one source that writes colours as values: the design tokens of both themes.
+const tokensFile = "tokens.css"
+
 // Every colour utility of the UI sources is in the allowlist or the exceptions of spec/components/color-rules.md.
-// A new shade or /opacity for a meaning the table already has is a change to the table, not to the screen (#867).
+// A new class for a meaning the table already has is a change to the table, not to the screen (#867); a Tailwind palette
+// shade (bg-neutral-900, text-indigo-300, ...) is never in it.
 func TestSources_ColorUtilitiesAreInTheAllowlist(t *testing.T) {
 	allowed, excepted := classSet(colorAllowlist), classSet(colorExceptions)
 	files := colorSources(t)
@@ -164,7 +167,7 @@ func TestSources_ColorUtilitiesAreInTheAllowlist(t *testing.T) {
 					t.Errorf("%s:%d: %q is not in the colour allowlist of spec/components/color-rules.md: map it onto the table (same meaning, same class) or list it there as an exception with its reason", path, n+1, token)
 				}
 			}
-			if m := rawColor.FindString(line); m != "" {
+			if m := rawColor.FindString(line); m != "" && filepath.Base(path) != tokensFile {
 				t.Errorf("%s:%d: %q is a colour written outside a Tailwind palette class: use a class of spec/components/color-rules.md", path, n+1, m)
 			}
 		}
@@ -173,10 +176,10 @@ func TestSources_ColorUtilitiesAreInTheAllowlist(t *testing.T) {
 
 // The checker rejects what it should: the helper is not a pass-through.
 func TestColorUtility_RecognisesColoursAndNotSizes(t *testing.T) {
-	for _, c := range []string{"bg-red-950/40", "text-amber-200", "border-t-indigo-400", "bg-[#123456]", "text-[rgb(1,2,3)]", "accent-red-400", "text-white", "bg-black", "border-transparent", "ring-offset-neutral-900", "text-neutral-500", "bg-zinc-900"} {
+	for _, c := range []string{"bg-red-950/40", "text-amber-200", "border-t-indigo-400", "bg-[#123456]", "text-[rgb(1,2,3)]", "accent-red-400", "text-white", "bg-black", "border-transparent", "ring-offset-neutral-900", "text-neutral-500", "bg-zinc-900", "bg-surface", "text-mute", "border-border", "bg-accent-soft/60", "bg-danger/10", "accent-danger", "border-t-accent"} {
 		assert.True(t, colorUtility.MatchString(c), c)
 	}
-	for _, c := range []string{"text-[10px]", "text-sm", "border-2", "border-l-2", "bg-clip-text", "rounded-md", "ring-2", "shadow-lg", "outline-hidden", "divide-y", "bg-linear-to-r"} {
+	for _, c := range []string{"text-[10px]", "text-sm", "border-2", "border-l-2", "bg-clip-text", "rounded-md", "ring-2", "shadow-lg", "outline-hidden", "divide-y", "bg-linear-to-r", "font-semibold", "text-xl", "border-collapse"} {
 		assert.False(t, colorUtility.MatchString(c), c)
 	}
 	assert.Equal(t, []string{"has-[:checked]:border-indigo-400", "text-red-200"}, tokens(`class={ "a", templ.KV("has-[:checked]:border-indigo-400 text-red-200", x) }`)[3:5])
@@ -219,5 +222,10 @@ func TestColorRulesSpec_MirrorsTheTests(t *testing.T) {
 	for c := range classSet(colorExceptions) {
 		assert.False(t, classSet(colorAllowlist)[c], "%s is an exception and also in the allowlist", c)
 	}
-	assert.False(t, classSet(colorAllowlist)["text-neutral-500"] || classSet(colorExceptions)["text-neutral-500"], "text-neutral-500 stays banned (contrast_test.go)")
+	palette := regexp.MustCompile(`-(?:neutral|slate|gray|zinc|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b|-white\b`)
+	for _, set := range []map[string]bool{classSet(colorAllowlist), classSet(colorExceptions)} {
+		for c := range set {
+			assert.False(t, palette.MatchString(c), "%s is a Tailwind palette shade: the colours are the tokens of tokens.css", c)
+		}
+	}
 }

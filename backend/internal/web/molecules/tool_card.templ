@@ -60,26 +60,26 @@ templ ToolCardItem(c ToolCard) {
 			data-tool={ c.ID }
 			aria-labelledby={ c.elementID("title") }
 			aria-describedby={ c.describedBy() }
-			class="flex h-full min-h-36 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-neutral-600 hover:bg-neutral-800/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
+			class="flex h-full min-h-36 flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft/60 focus-visible:focus-ring motion-reduce:transition-none"
 		>
 			<span class="flex items-center gap-3">
-				<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-neutral-800 text-indigo-300" aria-hidden="true">
+				<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent" aria-hidden="true">
 					@atoms.Icon(c.Icon, "")
 				</span>
-				<span id={ c.elementID("title") } class="text-base font-semibold text-neutral-100">{ c.Title }</span>
+				<span id={ c.elementID("title") } class="text-base font-semibold text-ink">{ c.Title }</span>
 			</span>
-			<span id={ c.elementID("desc") } class="text-pretty text-sm text-neutral-400">{ c.Description }</span>
+			<span id={ c.elementID("desc") } class="text-pretty text-sm text-mute">{ c.Description }</span>
 			if len(c.Status) == 0 && c.StatusURL != "" {
 				<span
 					id={ c.elementID("status") }
-					class="mt-auto flex min-h-6 flex-col items-start gap-1 text-xs text-neutral-300"
+					class="mt-auto flex min-h-6 flex-col items-start gap-1 text-xs text-ink"
 					hx-get={ c.StatusURL }
 					hx-trigger="load"
 					hx-target="this"
 					hx-swap="innerHTML"
 				></span>
 			} else if len(c.Status) > 0 {
-				<span id={ c.elementID("status") } class="mt-auto flex min-h-6 flex-col items-start gap-1 text-xs text-neutral-300">
+				<span id={ c.elementID("status") } class="mt-auto flex min-h-6 flex-col items-start gap-1 text-xs text-ink">
 					@ToolStatus(c.Status)
 					if c.StatusURL != "" {
 						<span
@@ -93,7 +93,7 @@ templ ToolCardItem(c ToolCard) {
 					}
 				</span>
 			}
-			<span class={ "inline-flex items-center gap-1 text-sm font-medium text-indigo-300", templ.KV("mt-auto", !c.hasStatusBox()) } aria-hidden="true">
+			<span class={ "inline-flex items-center gap-1 text-sm text-accent", templ.KV("mt-auto", !c.hasStatusBox()) } aria-hidden="true">
 				{ c.cta() }
 				@atoms.Icon(atoms.IconChevronRight, "h-4 w-4 shrink-0")
 			</span>

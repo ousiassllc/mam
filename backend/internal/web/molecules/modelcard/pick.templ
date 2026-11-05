@@ -20,9 +20,9 @@ templ BadgeOf(b Badge) {
 templ Summary(c Card) {
 	<span class="flex items-start gap-3" data-mp-summary>
 		@Tile(c.Icon)
-		<span class="flex min-w-0 flex-1 flex-col gap-0.5">
-			<span class="break-words text-sm font-semibold text-neutral-100" data-mp-name>{ c.Name }</span>
-			<span class="break-words text-xs text-neutral-400" data-testid="model-meta">{ c.Meta }</span>
+		<span class="flex min-w-0 flex-1 flex-col gap-1">
+			<span class="break-words text-sm text-ink" data-mp-name>{ c.Name }</span>
+			<span class="break-words text-xs text-mute" data-testid="model-meta">{ c.Meta }</span>
 		</span>
 		if c.Commercial != nil {
 			<span class="shrink-0">
@@ -30,7 +30,7 @@ templ Summary(c Card) {
 			</span>
 		}
 	</span>
-	<span class="flex flex-wrap items-center gap-1.5" data-testid="model-badges">
+	<span class="flex flex-wrap items-center gap-2" data-testid="model-badges">
 		if c.State.Label != "" {
 			@BadgeOf(c.State)
 		}
@@ -42,7 +42,7 @@ templ Summary(c Card) {
 		}
 	</span>
 	if c.Note != "" {
-		<span class="break-words text-xs text-amber-300" data-testid="model-note">{ c.Note }</span>
+		<span class="break-words text-xs text-warning" data-testid="model-note">{ c.Note }</span>
 	}
 }
 
@@ -51,7 +51,7 @@ templ Summary(c Card) {
 // ring. With PickOne it is a button that sets the field of the model picker. A model that cannot be chosen now is dimmed, cannot be chosen, and says why and where
 // to fix it under the card.
 templ PickItem(c Card) {
-	<li id={ c.ID } class="relative flex min-w-0 flex-col gap-1.5" data-card data-available={ boolText(c.Reason == nil) } { c.Attrs... }>
+	<li id={ c.ID } class="relative flex min-w-0 flex-col gap-2" data-card data-available={ boolText(c.Reason == nil) } { c.Attrs... }>
 		if c.Pick.Mode == PickMany {
 			<label class="relative block cursor-pointer has-[:disabled]:cursor-not-allowed">
 				<input
@@ -65,15 +65,15 @@ templ PickItem(c Card) {
 						aria-describedby={ c.reasonID() }
 					}
 				/>
-				<span class={ "flex flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-3 pr-8 text-sm", pick.Glow }>
+				<span class={ "flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 pr-8 text-sm", pick.Glow }>
 					@Summary(c)
 				</span>
-				<span class="pointer-events-none absolute right-3 top-3 hidden text-indigo-300 peer-checked:block" aria-hidden="true" data-card-mark>✓</span>
+				<span class="pointer-events-none absolute right-3 top-3 hidden text-accent peer-checked:block" aria-hidden="true" data-card-mark>✓</span>
 			</label>
 		} else {
 			<button
 				type="button"
-				class={ "flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-shadow hover:border-indigo-400 hover:shadow-[0_0_12px_1px] hover:shadow-indigo-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none", chooseState(c) }
+				class={ "flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-colors hover:border-accent focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none", chooseState(c) }
 				aria-pressed={ boolText(c.Pick.Current) }
 				disabled?={ c.Reason != nil }
 				data-mp-choose
@@ -86,10 +86,10 @@ templ PickItem(c Card) {
 			</button>
 		}
 		if c.Reason != nil {
-			<p id={ c.reasonID() } class="flex flex-wrap items-center gap-x-2 px-1 text-xs text-neutral-400" data-testid="model-reason">
+			<p id={ c.reasonID() } class="flex flex-wrap items-center gap-x-2 px-1 text-sm text-mute" data-testid="model-reason">
 				<span class="break-words">{ c.Reason.Text }</span>
 				if c.Reason.Route != "" {
-					<a class="underline hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" href={ templ.SafeURL(c.Reason.Route) } data-testid="model-reason-route">{ c.Reason.RouteLabel() }</a>
+					<a class="underline hover:text-ink focus-visible:focus-ring" href={ templ.SafeURL(c.Reason.Route) } data-testid="model-reason-route">{ c.Reason.RouteLabel() }</a>
 				}
 			</p>
 		}

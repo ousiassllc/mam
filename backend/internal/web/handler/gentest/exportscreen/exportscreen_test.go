@@ -181,7 +181,7 @@ func TestHistoryHasTheExportBarAndOffersOnlyResultsWithAFile(t *testing.T) {
 	all := s.get(paths.GenerationTestHistory()).Body.String()
 	assert.Equal(t, 3, strings.Count(all, `data-testid="gt-history-item"`))
 	assert.Equal(t, 2, strings.Count(all, `data-gt-pick="`), "the running result has no file, so it cannot be chosen")
-	assert.Equal(t, 3, strings.Count(all, `class="overflow-hidden rounded-lg border border-neutral-800 `+pick.Glow+`"`), "the frame of every tile (also the running one) takes the look of the tiles that are chosen: the classes of pick.Glow, not a copy")
+	assert.Equal(t, 3, strings.Count(all, `class="overflow-hidden rounded-lg border border-border `+pick.Glow+`"`), "the frame of every tile (also the running one) takes the look of the tiles that are chosen: the classes of pick.Glow, not a copy")
 	for _, r := range res {
 		assert.Contains(t, all, `data-gt-pick="`+r.ID+`"`)
 	}

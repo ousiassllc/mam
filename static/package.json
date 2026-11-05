@@ -18,6 +18,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/noto-sans-jp": "^5.3.1",
+    "@fontsource-variable/sora": "^5.3.0",
     "@open-wc/testing": "^5.0.0",
     "@puppeteer/browsers": "3.2.5",
     "@tailwindcss/cli": "^4.1.0",

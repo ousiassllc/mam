@@ -13,22 +13,22 @@ const (
 )
 
 func badgeClass(tone BadgeTone) string {
-	return "inline-block rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(tone)
+	return "inline-block rounded-full px-2 py-1 text-xs " + badgeColors(tone)
 }
 
 // badgeColors are the colours of a tone: the background and the text (the palette of spec/components/color-rules.md).
 func badgeColors(tone BadgeTone) string {
 	switch tone {
 	case BadgeInfo:
-		return "bg-sky-500/20 text-sky-300"
+		return "bg-info/20 text-info"
 	case BadgeWarn:
-		return "bg-amber-500/20 text-amber-300"
+		return "bg-warning/20 text-warning"
 	case BadgeOK:
-		return "bg-emerald-500/20 text-emerald-300"
+		return "bg-success/20 text-success"
 	case BadgeError:
-		return "bg-red-500/20 text-red-300"
+		return "bg-danger/20 text-danger"
 	}
-	return "bg-neutral-700 text-neutral-300"
+	return "bg-accent-soft text-ink"
 }
 
 // Badge is a small status label.
@@ -43,8 +43,8 @@ templ BadgeWith(tone BadgeTone, text string, attrs templ.Attributes) {
 
 // BadgeIcon is a Badge with an icon before the text (the way a model uses input images): the icon is decoration, the words say it.
 templ BadgeIcon(tone BadgeTone, icon IconName, text string, attrs templ.Attributes) {
-	<span class={ "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(tone) } { attrs... }>
-		@Icon(icon, "h-3.5 w-3.5 shrink-0")
+	<span class={ "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs " + badgeColors(tone) } { attrs... }>
+		@Icon(icon, "h-4 w-4 shrink-0")
 		<span>{ text }</span>
 	</span>
 }

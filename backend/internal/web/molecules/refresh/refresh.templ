@@ -13,12 +13,12 @@ import "github.com/ousiassllc/mam/backend/internal/web/atoms"
 templ Bar(url, target, updatedAt string) {
 	<div class="ml-auto flex shrink-0 items-center gap-2">
 		if updatedAt != "" {
-			<span class="text-xs text-neutral-400" data-testid="refresh-updated">最終更新 <time>{ updatedAt }</time></span>
+			<span class="text-xs text-mute" data-testid="refresh-updated">最終更新 <time>{ updatedAt }</time></span>
 		}
 		<button
 			type="button"
 			id={ target + "-refresh" }
-			class="group inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-700 text-neutral-300 transition-colors hover:border-neutral-600 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
+			class="group inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-ink transition-colors hover:border-mute hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
 			hx-get={ url }
 			hx-target={ "#" + target }
 			hx-swap="outerHTML"
@@ -27,7 +27,7 @@ templ Bar(url, target, updatedAt string) {
 			title="更新"
 			data-testid="refresh"
 		>
-			@atoms.Icon(atoms.IconUpdate, "h-4 w-4 group-[.htmx-request]:animate-spin motion-reduce:animate-none")
+			@atoms.Icon(atoms.IconUpdate, "h-4 w-4 group-[.htmx-request]:animate-spin")
 		</button>
 	</div>
 }

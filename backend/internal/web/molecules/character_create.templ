@@ -44,7 +44,7 @@ templ CharacterCreate(d CharacterCreateData) {
 		hx-disabled-elt="find button[type=submit]"
 	>
 		<div class="grid gap-2 sm:grid-cols-2">
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-name" }>
+			<label class="flex flex-col gap-1 text-xs text-mute" for={ d.DOMID + "-name" }>
 				名前 (name)（必須）
 				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 					"id":        d.DOMID + "-name",
@@ -55,7 +55,7 @@ templ CharacterCreate(d CharacterCreateData) {
 				})
 			</label>
 			for _, f := range characterCreateFields {
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-" + f.Name }>
+				<label class="flex flex-col gap-1 text-xs text-mute" for={ d.DOMID + "-" + f.Name }>
 					{ f.Label }
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 						"id":        d.DOMID + "-" + f.Name,
@@ -71,7 +71,7 @@ templ CharacterCreate(d CharacterCreateData) {
 			}
 		</div>
 		if d.Note != "" {
-			<p class="text-xs text-neutral-400">{ d.Note }</p>
+			<p class="text-sm text-mute">{ d.Note }</p>
 		}
 		<div>
 			@atoms.Button(atoms.TonePrimary, "登場人物を追加", templ.Attributes{"type": "submit"})
@@ -80,7 +80,7 @@ templ CharacterCreate(d CharacterCreateData) {
 }
 
 templ characterImageSelect(d CharacterCreateData, name, label string) {
-	<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-" + name }>
+	<label class="flex flex-col gap-1 text-xs text-mute" for={ d.DOMID + "-" + name }>
 		{ label }
 		@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": d.DOMID + "-" + name, "name": name}) {
 			<option value="">（なし）</option>

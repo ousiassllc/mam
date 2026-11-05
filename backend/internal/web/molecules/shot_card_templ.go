@@ -248,7 +248,7 @@ func TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable boo
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<li class=\"flex items-center justify-between gap-2 text-xs text-neutral-300\"><span class=\"flex min-w-0 items-center gap-1\"><span class=\"truncate\" title=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<li class=\"flex items-center justify-between gap-2 text-xs text-ink\"><span class=\"flex min-w-0 items-center gap-1\"><span class=\"truncate\" title=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -388,7 +388,7 @@ func ShotCard(d ShotCardData) templ.Component {
 			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var10 = []any{"rounded-md border p-3", templ.KV("border-indigo-400 bg-indigo-500/20", d.Selected), templ.KV("border-neutral-700 bg-neutral-900", !d.Selected)}
+		var templ_7745c5c3_Var10 = []any{"rounded-md border p-3", templ.KV("border-accent bg-accent-soft", d.Selected), templ.KV("border-border bg-surface", !d.Selected)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var10...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -467,7 +467,7 @@ func ShotCard(d ShotCardData) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "><div class=\"flex flex-wrap items-center justify-between gap-2\"><a class=\"min-w-0 flex-1 font-medium hover:underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "><div class=\"flex flex-wrap items-center justify-between gap-2\"><a class=\"min-w-0 flex-1 hover:underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -506,7 +506,7 @@ func ShotCard(d ShotCardData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</a> <span class=\"flex items-center gap-2 text-xs text-neutral-400\"><a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</a> <span class=\"flex items-center gap-2 text-xs text-mute\"><a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -519,7 +519,7 @@ func ShotCard(d ShotCardData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" class=\"underline hover:text-neutral-100\">Inspector</a> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" class=\"underline hover:text-ink\">Inspector</a> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -568,14 +568,14 @@ func ShotCard(d ShotCardData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, row := range storyboardRows(*d.Storyboard) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<dt class=\"text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<dt class=\"text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(row[0])
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 245, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 245, Col: 35}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -630,7 +630,7 @@ func ShotCard(d ShotCardData) templ.Component {
 			}
 		}
 		if len(d.Takes) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<ul class=\"mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2\" aria-label=\"Take 一覧\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<ul class=\"mt-2 flex flex-col gap-1 border-t border-border pt-2\" aria-label=\"Take 一覧\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -658,13 +658,13 @@ func ShotCard(d ShotCardData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100\">Take 比較</a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"mt-1 inline-block text-xs text-mute underline hover:text-ink\">Take 比較</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		} else if d.Selected {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<p class=\"mt-2 text-xs text-neutral-400\">Take はまだありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<p class=\"mt-2 text-sm text-mute\">Take はまだありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

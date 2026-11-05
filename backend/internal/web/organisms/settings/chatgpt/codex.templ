@@ -71,15 +71,15 @@ func codexCardOf(d Data) settingsui.Card {
 
 templ codexBrief(d Data) {
 	<div class="flex min-w-0 flex-col gap-2" data-testid="chatgpt-codex">
-		<p class="text-xs text-amber-300" data-testid="chatgpt-codex-terms-line">商用・ホスティングでの提供には使えません（詳細に条件があります）。</p>
+		<p class="text-sm text-warning" data-testid="chatgpt-codex-terms-line">商用・ホスティングでの提供には使えません（詳細に条件があります）。</p>
 		@codexWho(d.Codex)
 		@codexProgress(d.Codex.Engine)
 		@loginFailed(d.Codex.Login)
 		if !d.Codex.Engine.Supported {
-			<p class="text-xs text-neutral-400" data-testid="chatgpt-codex-unsupported">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを、詳細で指定してください。</p>
+			<p class="text-sm text-mute" data-testid="chatgpt-codex-unsupported">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを、詳細で指定してください。</p>
 		}
 		if d.Codex.JustSignedIn {
-			<p class="text-sm text-emerald-300" data-testid="chatgpt-codex-assign-hint">
+			<p class="text-sm text-success" data-testid="chatgpt-codex-assign-hint">
 				ログインしました。「LLM の割り当て」で、使う Agent のプロバイダーを「chatgpt-codex」にすると、この方式で動きます（自動では切り替えません）。
 			</p>
 		}
@@ -90,13 +90,13 @@ templ codexBrief(d Data) {
 // own codex. The actions of the detail answer by closing the modal (or by saying why they were refused in it).
 templ codexDetail(d Data) {
 	<div class="flex flex-col gap-3" data-testid="chatgpt-codex-detail">
-		<p class="rounded-md border border-amber-500/60 px-3 py-2 text-sm text-amber-300" data-testid="chatgpt-codex-terms">{ codexTerms }</p>
-		<p class="text-sm text-neutral-300">{ codexExplanation }</p>
+		<p class="rounded-md border border-warning/60 px-3 py-2 text-sm text-warning" data-testid="chatgpt-codex-terms">{ codexTerms }</p>
+		<p class="text-sm text-ink">{ codexExplanation }</p>
 		@codexEngine(d.Codex)
 		@codexPathForm(d.Codex)
 		@codexAccount(d.Codex)
 		if d.Codex.EngineReady() {
-			<p class="text-xs text-neutral-400">
+			<p class="text-sm text-mute">
 				使うには、ワークスペースの所有者が「Codex をローカルで使う」権限（Codex Local）をメンバーに許可している必要があります。デバイスコードでログインするには、デバイスコードのログインも許可されている必要があります（beta）。
 			</p>
 		}
@@ -108,9 +108,9 @@ templ codexDetail(d Data) {
 
 // codexEngine is the Codex app-server on this machine: its state, where it came from and what to know before downloading it.
 templ codexEngine(c Codex) {
-	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 px-3 py-2" data-testid="chatgpt-codex-engine">
+	<div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2" data-testid="chatgpt-codex-engine">
 		<p class="text-sm">
-			<span class="font-medium">エンジン（Codex app-server）</span>
+			<span class="">エンジン（Codex app-server）</span>
 			switch c.Engine.State {
 				case "ready", "running":
 					@atoms.Badge(atoms.BadgeOK, engineLabel(c.Engine.State))
@@ -122,23 +122,23 @@ templ codexEngine(c Codex) {
 					@atoms.Badge(atoms.BadgeNeutral, engineLabel(c.Engine.State))
 			}
 			if c.Engine.Version != "" {
-				<span class="ml-2 text-xs text-neutral-400" data-testid="chatgpt-codex-version">バージョン: { c.Engine.Version }</span>
+				<span class="ml-2 text-xs text-mute" data-testid="chatgpt-codex-version">バージョン: { c.Engine.Version }</span>
 			}
 		</p>
 		if s := engineSource(c.Engine.Source); s != "" {
-			<p class="text-xs text-neutral-400">{ s }</p>
+			<p class="text-sm text-mute">{ s }</p>
 		}
 		if c.Engine.Error != "" {
-			<pre class="whitespace-pre-wrap break-words text-xs text-red-300" role="alert" data-testid="chatgpt-codex-engine-error">{ c.Engine.Error }</pre>
+			<pre class="whitespace-pre-wrap break-words text-xs text-danger" role="alert" data-testid="chatgpt-codex-engine-error">{ c.Engine.Error }</pre>
 		}
 		if c.Engine.UpdateAvailable {
-			<p class="text-xs text-amber-300" data-testid="chatgpt-codex-update">この mam が確かめた版は { c.Engine.PinnedVersion } です。取得済みの { c.Engine.Version } は使いません。もう一度取得してください。</p>
+			<p class="text-sm text-warning" data-testid="chatgpt-codex-update">この mam が確かめた版は { c.Engine.PinnedVersion } です。取得済みの { c.Engine.Version } は使いません。もう一度取得してください。</p>
 		}
 		if canInstall(c.Engine) {
-			<p class="text-xs text-neutral-400" data-testid="chatgpt-codex-download-notice">{ downloadConfirm(c.Engine) }カードの「Codex をダウンロード」で始めます。</p>
+			<p class="text-sm text-mute" data-testid="chatgpt-codex-download-notice">{ downloadConfirm(c.Engine) }カードの「Codex をダウンロード」で始めます。</p>
 		}
 		if !c.Engine.Supported {
-			<p class="text-xs text-neutral-400" data-testid="chatgpt-codex-unsupported-note">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>
+			<p class="text-sm text-mute" data-testid="chatgpt-codex-unsupported-note">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>
 		}
 	</div>
 }
@@ -149,13 +149,13 @@ templ codexProgress(e CodexEngine) {
 	if e.Install.Running {
 		<div class="flex flex-col gap-1" role="status" data-testid="chatgpt-codex-install">
 			<progress class="w-full" max="100" value={ percentText(e.Install.Percent) }></progress>
-			<p class="break-words text-xs">{ e.Install.Message }（{ percentText(e.Install.Percent) }%）</p>
+			<p class="break-words text-sm">{ e.Install.Message }（{ percentText(e.Install.Percent) }%）</p>
 			<form hx-post={ paths.ChatGPTCodexInstallCancel() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-install-cancel"})
 			</form>
 		</div>
 	} else if e.Install.Error != "" {
-		<p class="break-words text-sm text-red-300" role="alert" data-testid="chatgpt-codex-install-error">{ e.Install.Error }</p>
+		<p class="break-words text-sm text-danger" role="alert" data-testid="chatgpt-codex-install-error">{ e.Install.Error }</p>
 	}
 }
 
@@ -168,7 +168,7 @@ templ codexInstallButton(e CodexEngine) {
 
 templ codexPathForm(c Codex) {
 	<form class="flex flex-wrap items-center gap-2" hx-put={ paths.ChatGPTCodexPath() } hx-target={ "#" + modal.BodyID } hx-swap="innerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-		<label class="text-xs text-neutral-400" for="chatgpt-codex-path">自分で入れた codex のパス</label>
+		<label class="text-xs text-mute" for="chatgpt-codex-path">自分で入れた codex のパス</label>
 		@atoms.Input(atoms.FieldSm, "min-w-64 flex-1", templ.Attributes{"id": "chatgpt-codex-path", "name": "path", "type": "text", "value": c.Engine.CustomPath, "placeholder": "C:\\Tools\\codex\\codex.exe", "data-testid": "chatgpt-codex-path"})
 		@atoms.SmallButtonFor(atoms.ToneNeutral, "パスを設定", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-path-set"})
 	</form>
@@ -178,16 +178,16 @@ templ codexPathForm(c Codex) {
 templ codexWho(c Codex) {
 	<div class="flex min-w-0 flex-col gap-1 text-sm" data-testid="chatgpt-status-codex">
 		if !c.SignedIn {
-			<p class="text-neutral-300">ログインしていません</p>
+			<p class="text-ink">ログインしていません</p>
 		} else {
 			<p class="break-words">
-				<span class="break-all font-medium" data-testid="chatgpt-email">{ c.Email }</span>
+				<span class="break-all" data-testid="chatgpt-email">{ c.Email }</span>
 				if c.Plan != "" {
-					<span class="ml-2 text-xs text-neutral-400" data-testid="chatgpt-plan">プラン: { c.Plan }</span>
+					<span class="ml-2 text-xs text-mute" data-testid="chatgpt-plan">プラン: { c.Plan }</span>
 				}
 			</p>
 			if len(c.Limits) > 0 {
-				<ul class="flex flex-col gap-0.5 text-xs" data-testid="chatgpt-codex-limits">
+				<ul class="flex flex-col gap-1 text-xs" data-testid="chatgpt-codex-limits">
 					for _, l := range c.Limits {
 						<li>{ limitText(l) }</li>
 					}
@@ -200,7 +200,7 @@ templ codexWho(c Codex) {
 // codexAccount is where Codex keeps its tokens (the detail).
 templ codexAccount(c Codex) {
 	if c.SignedIn {
-		<p class="text-xs text-neutral-400" data-testid="chatgpt-codex-account">トークンは Codex が自分で保存・更新します（mam は読みも保存もしません）。保存先: { codexStore(c.CredentialsStore) }</p>
+		<p class="text-sm text-mute" data-testid="chatgpt-codex-account">トークンは Codex が自分で保存・更新します（mam は読みも保存もしません）。保存先: { codexStore(c.CredentialsStore) }</p>
 	}
 }
 

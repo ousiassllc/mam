@@ -28,7 +28,7 @@ templ MessageFrame(m domain.ThreadMessage) {
 		class={ frameClass(m) }
 	>
 		if m.ReplyTo != nil {
-			<p class="mb-2 border-l-2 border-neutral-700 pl-2 text-xs text-neutral-400">{ "返信: " + excerpt(*m.ReplyTo) }</p>
+			<p class="mb-2 border-l-2 border-border pl-2 text-sm text-mute">{ "返信: " + excerpt(*m.ReplyTo) }</p>
 		}
 		{ children... }
 		if len(m.Attachments) > 0 {
@@ -47,10 +47,10 @@ templ AttachmentStrip(projectID string, assets []domain.Asset) {
 			<li>
 				if a.Type == domain.AssetImage {
 					<a href={ AssetURL(projectID, a.ID) } target="_blank" rel="noopener">
-						<img src={ string(AssetURL(projectID, a.ID)) } alt={ attachmentLabel("添付画像", i, len(assets)) } loading="lazy" class="h-24 rounded border border-neutral-700 object-cover"/>
+						<img src={ string(AssetURL(projectID, a.ID)) } alt={ attachmentLabel("添付画像", i, len(assets)) } loading="lazy" class="h-24 rounded-md border border-border object-cover"/>
 					</a>
 				} else {
-					<video src={ string(AssetURL(projectID, a.ID)) } aria-label={ attachmentLabel("添付動画", i, len(assets)) } controls preload="metadata" class="h-32 rounded border border-neutral-700"></video>
+					<video src={ string(AssetURL(projectID, a.ID)) } aria-label={ attachmentLabel("添付動画", i, len(assets)) } controls preload="metadata" class="h-32 rounded-md border border-border"></video>
 				}
 			</li>
 		}

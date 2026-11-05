@@ -270,14 +270,14 @@ func runtimeInstalled(r Runtime) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if r.State == "failed" && r.ProcessError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<pre class=\"max-h-32 overflow-auto whitespace-pre-wrap rounded bg-neutral-900 p-2 text-xs text-red-300\" role=\"alert\" data-testid=\"mm-runtime-failure\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<pre class=\"max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-2 text-xs text-danger\" role=\"alert\" data-testid=\"mm-runtime-failure\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(r.ProcessError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 108, Col: 168}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 108, Col: 166}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {

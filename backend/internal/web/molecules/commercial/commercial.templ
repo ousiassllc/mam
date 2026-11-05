@@ -18,7 +18,7 @@ templ Mark(v View) {
 templ Note(v View) {
 	if v.NeedsNote() {
 		<div class={ noteClass(v) } role="note" data-testid="commercial-note" data-commercial-note={ v.Answer() }>
-			<p class="font-semibold">
+			<p class="">
 				@atoms.Icon(noteIcon(v), "mr-1 inline h-4 w-4 align-text-bottom")
 				{ v.Level.Label() }
 				if v.LicenseName != "" {
@@ -39,7 +39,7 @@ templ Note(v View) {
 // sourceLink is the link to the license original with the day it was read.
 templ sourceLink(v View) {
 	if v.SourceURL != "" {
-		<p class="text-xs">
+		<p class="text-sm">
 			<a class="underline" href={ templ.SafeURL(v.SourceURL) } target="_blank" rel="noopener noreferrer">ライセンス原文</a>
 			if v.CheckedAt != "" {
 				<span>（{ v.CheckedAt } に確認）</span>
@@ -51,11 +51,11 @@ templ sourceLink(v View) {
 // Choice is the choice 「すべて / 商用OKのみ / 条件つきまで」 of the history, a group of radio buttons that post under the field of the form around it.
 templ Choice(f ChoiceData) {
 	<div class="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="商用利用で絞り込む" data-testid="commercial-choice" id={ f.ID }>
-		@atoms.Icon(atoms.IconFilter, "h-4 w-4 shrink-0 text-neutral-400")
+		@atoms.Icon(atoms.IconFilter, "h-4 w-4 shrink-0 text-mute")
 		for _, opt := range filterOptions() {
 			<label class="relative cursor-pointer">
 				<input type="radio" class="peer sr-only" name={ f.Field } value={ string(opt) } checked?={ opt == f.Current }/>
-				<span class="inline-block rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400">{ opt.Label() }</span>
+				<span class="inline-block rounded-md border border-border px-2 py-1 text-xs text-ink hover:border-mute peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:focus-ring">{ opt.Label() }</span>
 			</label>
 		}
 	</div>

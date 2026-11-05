@@ -88,7 +88,7 @@ func (h Handlers) Bind(c *gin.Context) {
 	switch {
 	case err == nil:
 		settingshttp.CloseModal(c)
-		settingshttp.Render(c, http.StatusOK, templ.Join(view.BindRow(d, true), atoms.SuccessToastOOB("待ち受け先を "+addr+" に切り替えました。接続し直してください")))
+		settingshttp.Render(c, http.StatusOK, templ.Join(view.BindRow(d, true), atoms.ToastOOB("待ち受け先を "+addr+" に切り替えました。接続し直してください")))
 	case errors.As(err, &rejected):
 		settingshttp.Render(c, http.StatusUnprocessableEntity, view.BindModal(view.BindForm{Address: addr, Candidates: d.Candidates, Error: rejected.Message}))
 	default:
@@ -143,8 +143,8 @@ func (h Handlers) Revoke(c *gin.Context) {
 	d := SectionData(c.Request.Context(), h.Svc)
 	i := slices.IndexFunc(d.Tokens, func(t view.TokenRow) bool { return t.ID == id })
 	if i < 0 { // revoked, then gone from the list (cannot be read): the toast alone says it worked
-		settingshttp.Render(c, http.StatusOK, atoms.SuccessToastOOB("トークンを失効しました。このトークンでの接続はできなくなりました"))
+		settingshttp.Render(c, http.StatusOK, atoms.ToastOOB("トークンを失効しました。このトークンでの接続はできなくなりました"))
 		return
 	}
-	settingshttp.Render(c, http.StatusOK, templ.Join(view.TokenRowItem(d.Tokens[i], false), atoms.SuccessToastOOB("トークンを失効しました。このトークンでの接続はできなくなりました")))
+	settingshttp.Render(c, http.StatusOK, templ.Join(view.TokenRowItem(d.Tokens[i], false), atoms.ToastOOB("トークンを失効しました。このトークンでの接続はできなくなりました")))
 }

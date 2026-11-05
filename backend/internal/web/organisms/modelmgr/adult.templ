@@ -9,7 +9,7 @@ import (
 // asks the age confirmation and the agreement to the notice; the server records it and enforces it (the screen is only how
 // the user gives it).
 templ AdultCard(a Adult) {
-	<div id={ AdultID } class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" data-testid="mm-adult">
+	<div id={ AdultID } class="flex flex-col gap-2 rounded-lg border border-border p-3" data-testid="mm-adult">
 		@notice(a.Message, "mm-adult")
 		if a.Enabled {
 			<p class="text-sm" data-testid="mm-adult-status">成人向けモデルを表示しています（確認: { a.ConfirmedAt }）。</p>
@@ -19,7 +19,7 @@ templ AdultCard(a Adult) {
 				"aria-pressed": "true", "data-testid": "mm-adult-off",
 			})
 		} else {
-			<p class="text-sm text-neutral-300" data-testid="mm-adult-status">成人向けモデルは表示していません。</p>
+			<p class="text-sm text-ink" data-testid="mm-adult-status">成人向けモデルは表示していません。</p>
 			if a.Confirmed {
 				@atoms.Button(atoms.ToneNeutral, "成人向けモデルを表示する", templ.Attributes{
 					"type": "button", "hx-put": paths.ModelManagerPart("adult"), "hx-vals": atoms.HxVals(map[string]string{FieldOn: "1"}),
@@ -39,7 +39,7 @@ templ AdultCard(a Adult) {
 // AdultDialog is the age confirmation and the notice for adult models, with the form that turns the setting on.
 templ AdultDialog(d AdultConfirm) {
 	<section
-		class="flex flex-col gap-3 rounded-md border border-amber-500/60 bg-neutral-900 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+		class="flex flex-col gap-3 p-5 focus-visible:focus-ring"
 		role="dialog"
 		aria-labelledby="mm-adult-title"
 		tabindex="-1"
@@ -49,10 +49,10 @@ templ AdultDialog(d AdultConfirm) {
 	>
 		<h3 id="mm-adult-title" class="text-sm font-semibold">成人向けモデルを表示する前の確認</h3>
 		if d.Error != "" {
-			<p class="text-sm text-red-300 focus-visible:outline-none" role="alert" tabindex="-1" data-testid="mm-adult-dialog-error">{ d.Error }</p>
+			<p class="text-sm text-danger focus-visible:outline-none" role="alert" tabindex="-1" data-testid="mm-adult-dialog-error">{ d.Error }</p>
 		}
-		<p class="text-sm text-neutral-200" data-testid="mm-adult-notice">{ d.Notice }</p>
-		<p class="text-xs text-neutral-400">モデルの重みは mam が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は mam では選別しません。ローカルでの利用はあなたの責任です。</p>
+		<p class="text-sm text-ink" data-testid="mm-adult-notice">{ d.Notice }</p>
+		<p class="text-sm text-mute">モデルの重みは mam が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は mam では選別しません。ローカルでの利用はあなたの責任です。</p>
 		<form
 			class="flex flex-col gap-3"
 			hx-put={ paths.ModelManagerPart("adult") }
@@ -84,7 +84,7 @@ templ AdultDialog(d AdultConfirm) {
 templ CommercialCard(c CommercialPanel) {
 	<div
 		id={ CommercialID }
-		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		class="flex flex-col gap-2 rounded-md border border-border p-3"
 		data-testid="mm-commercial-setting"
 		if c.OOB {
 			hx-swap-oob="true"
@@ -92,7 +92,7 @@ templ CommercialCard(c CommercialPanel) {
 	>
 		@notice(c.Message, "mm-commercial-setting")
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<p class="text-sm text-neutral-200">商用利用で絞り込む（一覧の絞り込みの初めの状態）</p>
+			<p class="text-sm text-ink">商用利用で絞り込む（一覧の絞り込みの初めの状態）</p>
 			@atoms.Button(atoms.ToneNeutral, commercialToggleLabel(c.Only), templ.Attributes{
 				"type": "button", "hx-put": paths.ModelManagerPart("commercial"), "hx-vals": atoms.HxVals(map[string]string{FieldOn: commercialToggleValue(c.Only)}),
 				"hx-target": "#" + CommercialID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",

@@ -12,11 +12,11 @@ templ HFCard(h HFToken) {
 	<div id={ HFID } class="flex flex-col gap-3" data-testid="mm-hf">
 		@notice(h.Message, "mm-hf")
 		if h.Unavailable {
-			<p class="text-sm text-amber-300" data-testid="mm-hf-unavailable">キーの保管先を読めないため、トークンを扱えません。</p>
+			<p class="text-sm text-warning" data-testid="mm-hf-unavailable">キーの保管先を読めないため、トークンを扱えません。</p>
 		} else if h.Configured {
 			<p class="text-sm" data-testid="mm-hf-status">{ hfState(h) }</p>
 		} else {
-			<p class="text-sm text-neutral-300" data-testid="mm-hf-status">トークンは設定されていません（ログインや同意が要るモデル（例: LTX-2.5）の取得に使います。それ以外のカタログのモデルは、トークンなしで取得できます）。</p>
+			<p class="text-sm text-ink" data-testid="mm-hf-status">トークンは設定されていません（ログインや同意が要るモデル（例: LTX-2.5）の取得に使います。それ以外のカタログのモデルは、トークンなしで取得できます）。</p>
 		}
 		if !h.Unavailable {
 			<form
@@ -28,7 +28,7 @@ templ HFCard(h HFToken) {
 				hx-disabled-elt="find button[type=submit]"
 				autocomplete="off"
 			>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-hf-token">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="mm-hf-token">
 					<span>Hugging Face のトークン（ログインが要るモデル用）</span>
 					@atoms.Input(atoms.FieldMd, "w-72", templ.Attributes{
 						"id": "mm-hf-token", "name": FieldToken, "type": "password", "autocomplete": "off", "required": true, "maxlength": itoa(MaxTokenLen),
@@ -44,7 +44,7 @@ templ HFCard(h HFToken) {
 				}
 			</form>
 		}
-		<p class="text-xs text-neutral-400">トークンは OS の資格情報ストアに保存し、huggingface.co への最初の要求にだけ付けます（別のホストへの転送では外します）。画面には表示しません。</p>
+		<p class="text-sm text-mute">トークンは OS の資格情報ストアに保存し、huggingface.co への最初の要求にだけ付けます（別のホストへの転送では外します）。画面には表示しません。</p>
 	</div>
 }
 
@@ -68,7 +68,7 @@ templ ExternalCard(x External) {
 	<div id={ ExternalID } class="flex flex-col gap-3" data-testid="mm-external">
 		@notice(x.Message, "mm-external")
 		if len(x.Endpoints) == 0 {
-			<p class="text-sm text-neutral-300" data-testid="mm-external-none">
+			<p class="text-sm text-ink" data-testid="mm-external-none">
 				外部の ComfyUI はまだ登録されていません。<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」で、種類 ComfyUI の接続先を追加すると、ここで導入済みのモデルを確かめられます。
 			</p>
 		} else {
@@ -80,7 +80,7 @@ templ ExternalCard(x External) {
 				hx-sync="this:drop"
 				hx-disabled-elt="find button[type=submit]"
 			>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-external-endpoint">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="mm-external-endpoint">
 					<span>接続先</span>
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "mm-external-endpoint", "name": FieldEndpoint}) {
 						for _, e := range x.Endpoints {
@@ -110,8 +110,8 @@ templ externalResult(r ExternalResult) {
 				@externalModelCard(r.Endpoint, m)
 			}
 		</ul>
-		<details class="text-xs text-neutral-300">
-			<summary class="cursor-pointer text-neutral-400">フォルダごとのファイル</summary>
+		<details class="text-xs text-ink">
+			<summary class="cursor-pointer text-mute">フォルダごとのファイル</summary>
 			for _, f := range r.Folders {
 				<p class="mt-1 break-all"><code>{ f.Name }</code>（{ itoa(len(f.Files)) }）</p>
 				if len(f.Files) > 0 {
@@ -123,7 +123,7 @@ templ externalResult(r ExternalResult) {
 				}
 			}
 		</details>
-		<p class="text-xs text-neutral-400">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>
+		<p class="text-sm text-mute">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>
 	</div>
 }
 

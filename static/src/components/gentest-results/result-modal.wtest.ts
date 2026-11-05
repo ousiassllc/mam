@@ -1,5 +1,6 @@
 import { expect, waitUntil } from '@open-wc/testing';
 import htmx from 'htmx.org';
+import { stubConfirm } from '../confirm/testkit';
 import '../../main';
 
 // #1004: the results of the history are a grid of pictures; a tap on one opens its detail in the modal (the model, the state, the time, the prompt, the
@@ -10,7 +11,7 @@ const TESTDATA = '/src/components/testdata/';
 
 describe('a tile of the history opens the detail of the result in the modal (#1004)', () => {
   let host: HTMLElement;
-  const realConfirm = window.confirm;
+  let confirm: ReturnType<typeof stubConfirm>;
 
   const byTestId = (id: string) => host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!;
   const tile = (id: string) => host.querySelector<HTMLElement>(`[data-result="${id}"]`)!;
@@ -36,10 +37,10 @@ describe('a tile of the history opens the detail of the result in the modal (#10
   }
 
   beforeEach(() => {
-    window.confirm = () => true;
+    confirm = stubConfirm(true);
   });
   afterEach(() => {
-    window.confirm = realConfirm;
+    confirm.restore();
     if (dialog()?.open) dialog().close();
     host.remove();
   });
@@ -121,7 +122,8 @@ describe('a tile of the history opens the detail of the result in the modal (#10
   it('does not delete when the confirmation is refused', async () => {
     await show();
     await open('r0');
-    window.confirm = () => false;
+    confirm.restore();
+    confirm = stubConfirm(false);
 
     const asked = new Promise((resolve) => host.addEventListener('htmx:confirm', resolve, { once: true }));
     inModal('gt-delete')!.click();

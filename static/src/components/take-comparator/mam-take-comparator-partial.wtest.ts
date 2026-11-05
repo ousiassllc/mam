@@ -118,7 +118,7 @@ describe('mam-take-comparator: Partial Take Use', () => {
   it('reports a refusal of the server and keeps the picked parts', async () => {
     stub = stubFetch({
       [`GET ${API}`]: body(takes()),
-      'POST /shots/s1/takes/partial': { status: 503, body: '<div data-toast>生成機能が有効になっていません</div>' },
+      'POST /shots/s1/takes/partial': { status: 503, body: '<div data-alert>生成機能が有効になっていません</div>' },
     });
     const el = await comparator();
     dragLane(el, 't1', 0, 0.5);

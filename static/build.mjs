@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import * as esbuild from 'esbuild';
+import { buildFonts } from './fonts.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const args = new Set(process.argv.slice(2));
@@ -22,6 +23,9 @@ mkdirSync(outdir, { recursive: true });
 for (const name of readdirSync(outdir)) {
   if (name !== '.gitkeep') rmSync(join(outdir, name), { recursive: true, force: true });
 }
+
+// The fonts of the UI guide: dist/fonts.css and dist/fonts/ (fonts.mjs).
+buildFonts(outdir);
 
 const jsOptions = {
   entryPoints: [join(root, 'src', 'main.ts')],

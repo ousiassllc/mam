@@ -18,7 +18,7 @@ func TestButtonLink_IsAnAnchorWithTheButtonLookAndTheDownloadAttribute(t *testin
 	out := sb.String()
 	assert.Contains(t, out, `<a href="/projects/p1/bundle"`)
 	assert.Contains(t, out, " download")
-	assert.Contains(t, out, "border-neutral-600")
+	assert.Contains(t, out, "border-border")
 	assert.Contains(t, out, ">ダウンロード</a>")
 	assert.NotContains(t, out, "hx-boost")
 }
@@ -29,8 +29,8 @@ func TestLinkButton_PrimaryToneIsTheAccentColour(t *testing.T) {
 		require.NoError(t, atoms.LinkButton(tone, "開く", templ.Attributes{"type": "button"}).Render(context.Background(), &sb))
 		return sb.String()
 	}
-	assert.Contains(t, render(atoms.TonePrimary), "text-indigo-300")
-	assert.Contains(t, render(atoms.ToneNeutral), "text-neutral-400")
+	assert.Contains(t, render(atoms.TonePrimary), "text-accent")
+	assert.Contains(t, render(atoms.ToneNeutral), "text-mute")
 }
 
 // A button repeated down a list names the row it acts on, starting with its visible text (#783).
@@ -54,4 +54,20 @@ func TestRowButtons_AreNamedAfterTheirRowAndKeepTheVisibleText(t *testing.T) {
 	link := render(atoms.LinkButtonFor("選択", "Take A", templ.Attributes{"type": "button"}))
 	assert.Contains(t, link, `aria-label="選択: Take A"`)
 	assert.Contains(t, link, ">選択</button>")
+}
+
+// A press on a button or a link that looks like one starts the ripple of static/src/components/ripple (the UI guide, M4).
+func TestButtons_AreMarkedForTheRipple(t *testing.T) {
+	for name, c := range map[string]templ.Component{
+		"Button":         atoms.Button(atoms.TonePrimary, "保存", nil),
+		"SmallButton":    atoms.SmallButton(atoms.ToneNeutral, "開く", nil),
+		"ButtonLink":     atoms.ButtonLink(atoms.ToneNeutral, "戻る", "/x", nil),
+		"ButtonFor":      atoms.ButtonFor(atoms.ToneDanger, "削除", "A", nil),
+		"SmallButtonFor": atoms.SmallButtonFor(atoms.ToneDanger, "削除", "A", nil),
+		"IconButton":     atoms.IconButton("×", nil),
+	} {
+		var sb strings.Builder
+		require.NoError(t, c.Render(context.Background(), &sb))
+		assert.Contains(t, sb.String(), "data-ripple", name)
+	}
 }

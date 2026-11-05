@@ -32,13 +32,13 @@ type Pick struct {
 	Current bool
 }
 
-// chooseState is the border and fill of a card that is a button: the model that is in the field now is marked as a card that is chosen is (border-indigo-400); the others
+// chooseState is the border and fill of a card that is a button: the model that is in the field now is marked as a card that is chosen is (border-accent); the others
 // have the card's quiet border.
 func chooseState(c Card) string {
 	if c.Pick != nil && c.Pick.Current {
-		return "border-indigo-400 bg-indigo-500/20"
+		return "border-accent bg-accent-soft"
 	}
-	return "border-neutral-800 bg-neutral-900"
+	return "border-border bg-surface"
 }
 
 // valuesJSON is Values as the attribute the script reads (data-mp-values).

@@ -8,15 +8,15 @@ import (
 
 // ProjectList lists the Projects, newest first.
 templ ProjectList(projects []domain.Project) {
-	<ul id="project-list" class="mt-4 divide-y divide-neutral-800 rounded-md border border-neutral-800">
+	<ul id="project-list" class="mt-4 divide-y divide-border rounded-md border border-border">
 		if len(projects) == 0 {
-			<li class="px-4 py-6 text-center text-sm text-neutral-400">まだプロジェクトがありません。上の入力欄から作りたい動画を伝えてください。</li>
+			<li class="px-4 py-6 text-center text-sm text-mute">まだプロジェクトがありません。上の入力欄から作りたい動画を伝えてください。</li>
 		}
 		for _, p := range projects {
 			<li>
-				<a class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-800/60" href={ templ.SafeURL(paths.Project(p.ID)) }>
-					<span class="truncate font-medium" title={ p.Name }>{ p.Name }</span>
-					<span class="flex shrink-0 items-center gap-3 text-xs text-neutral-400">
+				<a class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-accent-soft/60" href={ templ.SafeURL(paths.Project(p.ID)) }>
+					<span class="truncate" title={ p.Name }>{ p.Name }</span>
+					<span class="flex shrink-0 items-center gap-3 text-xs text-mute">
 						@atoms.Badge(stateTone(p.State), stateLabel(p.State))
 						<time datetime={ p.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }>{ p.CreatedAt.Local().Format("2006/01/02 15:04") }</time>
 					</span>

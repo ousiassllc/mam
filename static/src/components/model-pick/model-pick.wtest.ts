@@ -12,7 +12,7 @@ describe('the model picker puts the model of a card into its field (#1011)', () 
     <button type="button"><span data-mp-current><span data-testid="shown">gpt-5</span></span></button>
   </div>`;
   const card = (provider: string, model: string) =>
-    `<button type="button" data-mp-choose data-mp-values='${JSON.stringify({ provider, model })}' class="border-neutral-800 bg-neutral-900"><span data-testid="name">${model}</span></button>`;
+    `<button type="button" data-mp-choose data-mp-values='${JSON.stringify({ provider, model })}' class="border-border bg-surface"><span data-testid="name">${model}</span></button>`;
 
   const field = () => host.querySelector<HTMLElement>('[data-model-pick-field]')!;
   const value = (name: string) => host.querySelector<HTMLInputElement>(`input[name="${name}"]`)!.value;
@@ -44,9 +44,9 @@ describe('the model picker puts the model of a card into its field (#1011)', () 
     markCurrent(host.querySelector('#body')!, field());
 
     expect(cards[0].getAttribute('aria-pressed')).to.equal('true');
-    expect(cards[0].classList.contains('border-indigo-400')).to.equal(true);
-    expect(cards[0].classList.contains('border-neutral-800')).to.equal(false);
+    expect(cards[0].classList.contains('border-accent')).to.equal(true);
+    expect(cards[0].classList.contains('border-border')).to.equal(false);
     expect(cards[1].getAttribute('aria-pressed')).to.equal('false');
-    expect(cards[1].classList.contains('border-neutral-800')).to.equal(true);
+    expect(cards[1].classList.contains('border-border')).to.equal(true);
   });
 });

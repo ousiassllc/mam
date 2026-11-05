@@ -184,5 +184,5 @@ func TestPanel_TheCardsAreInTwoColumnsAndAnAccountThatIsLongBreaks(t *testing.T)
 	html := render(t, view.Panel(d))
 
 	assert.Contains(t, html, `<ul id="chatgpt-cards" role="list" class="grid grid-cols-1 gap-4 xl:grid-cols-2"`)
-	assert.Contains(t, html, `class="break-all font-medium" data-testid="chatgpt-email"`)
+	assert.Contains(t, html, `class="break-all" data-testid="chatgpt-email"`)
 }

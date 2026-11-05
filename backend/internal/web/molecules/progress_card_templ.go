@@ -86,14 +86,14 @@ func ProgressCard(m domain.ThreadMessage) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if m.Job != nil && m.Job.Status == domain.JobFailed && m.Job.Error != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"mt-1 text-xs text-red-300\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"mt-1 text-sm text-danger\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(m.Job.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/progress_card.templ`, Line: 22, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/progress_card.templ`, Line: 22, Col: 52}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -110,14 +110,14 @@ func ProgressCard(m domain.ThreadMessage) templ.Component {
 			}
 			if m.Job != nil {
 				if steps := planadvice.For(*m.Job, false); steps != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"mt-1 text-xs text-neutral-300\" data-testid=\"progress-next-steps\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"mt-1 text-sm text-ink\" data-testid=\"progress-next-steps\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(steps)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/progress_card.templ`, Line: 26, Col: 86}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/progress_card.templ`, Line: 26, Col: 78}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {

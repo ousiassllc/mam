@@ -50,12 +50,13 @@ describe('the model cards of the generation test (spec/components/gentest-screen
     expect(input('nano-banana').checked).to.equal(false);
   });
 
-  it('shows the selected card with a glowing border and a mark, and not the others', () => {
+  it('shows the selected card with an accent border, a tinted face and a mark, and not the others', () => {
     const selected = getComputedStyle(face('nano-banana'));
     const plain = getComputedStyle(face('gpt-image-2'));
 
-    expect(selected.boxShadow, 'the selected card glows').to.not.equal('none');
-    expect(plain.boxShadow, 'a card that is not selected does not').to.equal('none');
+    expect(selected.backgroundColor, 'the selected card is tinted').to.not.equal(plain.backgroundColor);
+    expect(plain.boxShadow, "no card glows (a shadow is the modal's alone)").to.equal('none');
+    expect(selected.boxShadow).to.equal('none');
     expect(selected.borderTopColor, 'the border of the selected card differs').to.not.equal(plain.borderTopColor);
     expect(getComputedStyle(mark('nano-banana')).display, 'the mark (not colour alone)').to.not.equal('none');
     expect(getComputedStyle(mark('gpt-image-2')).display).to.equal('none');
@@ -70,11 +71,11 @@ describe('the model cards of the generation test (spec/components/gentest-screen
     await sendKeys({ press: 'Space' });
     expect(box.checked).to.equal(false);
 
-    // :focus-visible matches after a key press, and the card then shows a ring of its own (a box-shadow).
+    // :focus-visible matches after a key press, and the card then shows the focus ring of the guide (an outline of --focus).
     box.focus();
     await sendKeys({ press: 'Shift' });
     expect(box.matches(':focus-visible')).to.equal(true);
-    expect(getComputedStyle(face('gpt-image-2')).boxShadow).to.not.equal('none');
+    expect(getComputedStyle(face('gpt-image-2')).outlineStyle).to.equal('solid');
   });
 
   it('cannot select a model that cannot be called, and says why under the card, without a yellow line', () => {

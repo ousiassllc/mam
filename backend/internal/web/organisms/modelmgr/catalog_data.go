@@ -180,17 +180,17 @@ func modelCardSelector(id string) string {
 func FitClass(fit string) string {
 	switch fit {
 	case "short":
-		return "text-red-300"
+		return "text-danger"
 	case "limited":
-		return "text-amber-300"
+		return "text-warning"
 	}
-	return "text-neutral-300"
+	return "text-ink"
 }
 
 // NeedClass colours the free space an install needs: red when the disk cannot take it.
 func NeedClass(low bool) string {
 	if low {
-		return "text-red-300"
+		return "text-danger"
 	}
-	return "text-neutral-300"
+	return "text-ink"
 }

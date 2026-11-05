@@ -63,7 +63,7 @@ func TestInputControlsFollowTheChosenModels(t *testing.T) {
 	} {
 		body := s.page(paths.GenerationTest() + "?model=" + url.QueryEscape(c.model) + ref)
 		assert.Equal(t, c.roles, offered(t, body), "%s: the roles it takes", c.model)
-		controls := regexp.MustCompile(`<div class="flex flex-col gap-1.5" data-gt-ref-controls[^>]*>`).FindString(body)
+		controls := regexp.MustCompile(`<div class="flex flex-col gap-2" data-gt-ref-controls[^>]*>`).FindString(body)
 		assert.Equal(t, len(c.roles) == 0, strings.Contains(controls, " hidden"), "%s: no role or strength for a model that takes no image", c.model)
 		assert.Equal(t, c.lora, !strings.Contains(regexp.MustCompile(`<div[^>]*data-gt-lora[^>]*>`).FindString(body), " hidden"), "%s: LoRA", c.model)
 		assert.Contains(t, body, `<option value="face.safetensors"`, "the LoRAs of the engine are listed")

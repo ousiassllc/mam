@@ -15,7 +15,7 @@ templ Bar(d Data) {
 		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-1" data-testid="gt-export-selected" data-gt-export-selected hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
 			<button
 				type="submit"
-				class="inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-600 px-2 text-sm text-neutral-200 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+				class="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm text-ink hover:bg-accent-soft focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50"
 				aria-label="選んだ結果を ZIP で保存"
 				title="選んだ結果を ZIP で保存（カードをタップで選ぶ）"
 				disabled
@@ -27,7 +27,7 @@ templ Bar(d Data) {
 			</button>
 			<button
 				type="button"
-				class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-700 text-neutral-300 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400"
+				class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-ink hover:bg-accent-soft focus-visible:focus-ring"
 				aria-label="選択を解除"
 				title="選択を解除"
 				hidden
@@ -52,7 +52,7 @@ templ Bar(d Data) {
 			@atoms.Input(atoms.FieldMd, "w-20", templ.Attributes{"id": "gt-export-latest", "type": "number", "name": "latest", "min": "1", "max": "500", "value": "40", "inputmode": "numeric", "title": "新しい順に書き出す件数"})
 			<button
 				type="submit"
-				class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-600 text-neutral-200 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400"
+				class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-ink hover:bg-accent-soft focus-visible:focus-ring"
 				aria-label="この絞り込みの新しい順 N 件を ZIP で保存"
 				title="この絞り込みの新しい順 N 件を ZIP で保存"
 				data-testid="gt-export-latest-submit"
@@ -67,5 +67,5 @@ templ Bar(d Data) {
 // Problem is why a choice cannot be saved, drawn into StatusID in place of the answer of the server (a status of an error, which
 // main.ts swaps in as it does the toasts and the forms with errors).
 templ Problem(message string) {
-	<p class="text-sm text-red-300" role="alert" data-testid="gt-export-error">{ message }</p>
+	<p class="text-sm text-danger" role="alert" data-testid="gt-export-error">{ message }</p>
 }

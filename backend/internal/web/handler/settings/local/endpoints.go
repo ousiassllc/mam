@@ -72,13 +72,13 @@ func (h Handlers) CreateEndpoint(c *gin.Context) {
 		h.refuse(c, err, endpointExists, f)
 		return
 	}
-	toast := atoms.SuccessToastOOB("接続先「" + in.Name + "」を追加しました。すぐに使えます")
+	toast := atoms.ToastOOB("接続先「" + in.Name + "」を追加しました。すぐに使えます")
 	status := http.StatusOK
 	if key := strings.TrimSpace(postForm(c).Get(view.FieldAPIKey)); key != "" {
 		if err := h.Local.SetEndpointKey(in.Name, key); err != nil {
 			var msg string
 			status, msg = h.classify(c, err, "")
-			toast = atoms.ToastOOB("接続先「" + in.Name + "」は追加しましたが、API キーを保存できませんでした: " + msg)
+			toast = atoms.ErrorAlertOOB("接続先「" + in.Name + "」は追加しましたが、API キーを保存できませんでした: " + msg)
 		}
 	}
 	e, _ := h.endpointOf(in.Name)
@@ -109,7 +109,7 @@ func (h Handlers) UpdateEndpoint(c *gin.Context) {
 	}
 	e, _ := h.endpointOf(name)
 	settingshttp.CloseModal(c)
-	settingshttp.Render(c, http.StatusOK, templ.Join(view.EndpointCardOOB(e, f.OnPage), atoms.SuccessToastOOB("接続先「"+name+"」を保存しました。すぐに反映されます")))
+	settingshttp.Render(c, http.StatusOK, templ.Join(view.EndpointCardOOB(e, f.OnPage), atoms.ToastOOB("接続先「"+name+"」を保存しました。すぐに反映されます")))
 }
 
 // DeleteEndpoint removes the endpoint with its models and key (DELETE /settings/local-models/endpoints/:name) and answers
@@ -123,7 +123,7 @@ func (h Handlers) DeleteEndpoint(c *gin.Context) {
 		return
 	}
 	d := SectionData(h.Local)
-	parts := []templ.Component{view.EndpointCards(d), atoms.SuccessToastOOB("接続先「" + name + "」とそのモデルを削除しました")}
+	parts := []templ.Component{view.EndpointCards(d), atoms.ToastOOB("接続先「" + name + "」とそのモデルを削除しました")}
 	if len(d.Endpoints) == 0 {
 		parts = append(parts, view.EmptyNotice())
 	}

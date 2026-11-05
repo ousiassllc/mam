@@ -72,6 +72,6 @@ func TestSettingsSectionAt_DrawsTheHeadingAtTheLevelOrNoneAtAll(t *testing.T) {
 	assert.Contains(t, none, "CONTENT")
 
 	bare := render(molecules.HeadingNone, "")
-	assert.NotContains(t, bare, "text-neutral-400")
+	assert.NotContains(t, bare, "text-mute")
 	assert.Contains(t, bare, "CONTENT")
 }

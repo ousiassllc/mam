@@ -136,7 +136,7 @@ templ ShotActions(shotID, subject string, canContinue bool, candidates bool) {
 // the Shot is not busy (generating or repairing). The Judge button runs the AI Video Judge on a Take that
 // has no result (never judged, or the run failed); it is drawn only when domain.CheckJudge accepts it.
 templ TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable bool) {
-	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
+	<li class="flex items-center justify-between gap-2 text-xs text-ink">
 		<span class="flex min-w-0 items-center gap-1">
 			<span class="truncate" title={ t.ModelName }>{ t.ModelName }</span>
 			@commercial.Mark(commercial.Of(t.ModelName))
@@ -203,7 +203,7 @@ func storyboardRows(f domain.ShotStoryboard) [][2]string {
 templ ShotCard(d ShotCardData) {
 	<li
 		id={ "shot-" + d.Shot.ID }
-		class={ "rounded-md border p-3", templ.KV("border-indigo-400 bg-indigo-500/20", d.Selected), templ.KV("border-neutral-700 bg-neutral-900", !d.Selected) }
+		class={ "rounded-md border p-3", templ.KV("border-accent bg-accent-soft", d.Selected), templ.KV("border-border bg-surface", !d.Selected) }
 		if d.Selected {
 			aria-current="true"
 		}
@@ -217,15 +217,15 @@ templ ShotCard(d ShotCardData) {
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<a
-				class="min-w-0 flex-1 font-medium hover:underline"
+				class="min-w-0 flex-1 hover:underline"
 				href={ templ.SafeURL(shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID)) }
 				hx-get={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
 				hx-target="#scene-shot-view"
 				hx-swap="outerHTML"
 				hx-push-url="true"
 			>{ shotName(d.Shot) }</a>
-			<span class="flex items-center gap-2 text-xs text-neutral-400">
-				<a href={ templ.SafeURL(inspectorURL(d.Shot.ID)) } class="underline hover:text-neutral-100">Inspector</a>
+			<span class="flex items-center gap-2 text-xs text-mute">
+				<a href={ templ.SafeURL(inspectorURL(d.Shot.ID)) } class="underline hover:text-ink">Inspector</a>
 				<span>{ secondsText(d.Shot.Duration) }</span>
 				if d.Shot.State == domain.ShotGenerating {
 					@atoms.Spinner("生成中")
@@ -242,7 +242,7 @@ templ ShotCard(d ShotCardData) {
 		if d.Selected && d.Storyboard != nil {
 			<dl class="mt-2 grid grid-cols-[4rem_1fr] gap-x-2 gap-y-1 text-sm">
 				for _, row := range storyboardRows(*d.Storyboard) {
-					<dt class="text-neutral-400">{ row[0] }</dt>
+					<dt class="text-mute">{ row[0] }</dt>
 					<dd class="whitespace-pre-wrap break-words">{ row[1] }</dd>
 				}
 			</dl>
@@ -254,16 +254,16 @@ templ ShotCard(d ShotCardData) {
 			<mam-video-player class="mt-2 block" ws-url={ shotProgressURL(d.Shot.ID) }></mam-video-player>
 		}
 		if len(d.Takes) > 0 {
-			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">
+			<ul class="mt-2 flex flex-col gap-1 border-t border-border pt-2" aria-label="Take 一覧">
 				for i, t := range d.Takes {
 					@TakeRow(t, i, d.Selected, d.Repairable[t.ID], d.Judgeable[t.ID])
 				}
 			</ul>
 			if len(d.Takes) > 1 {
-				<a href={ templ.SafeURL(takeComparisonURL(d.Shot.ID)) } class="mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100">Take 比較</a>
+				<a href={ templ.SafeURL(takeComparisonURL(d.Shot.ID)) } class="mt-1 inline-block text-xs text-mute underline hover:text-ink">Take 比較</a>
 			}
 		} else if d.Selected {
-			<p class="mt-2 text-xs text-neutral-400">Take はまだありません。</p>
+			<p class="mt-2 text-sm text-mute">Take はまだありません。</p>
 		}
 	</li>
 }

@@ -54,14 +54,14 @@ func Panel(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Problem != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"workflows-problem\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"workflows-problem\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(d.Problem)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 13, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 13, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -73,14 +73,14 @@ func Panel(d Data) templ.Component {
 			}
 		} else {
 			if d.Notice != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-emerald-300\" role=\"status\" data-testid=\"workflows-notice\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"workflows-notice\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(d.Notice)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 16, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 16, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -96,14 +96,14 @@ func Panel(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Error != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"workflows-error\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"workflows-error\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 19, Col: 88}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 19, Col: 87}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -188,12 +188,12 @@ func list(d Data) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(d.Workflows) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-neutral-400\" data-testid=\"workflows-empty\">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-mute\" data-testid=\"workflows-empty\">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<ul class=\"flex flex-col divide-y divide-neutral-800 text-sm\" data-testid=\"workflow-list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<ul class=\"flex flex-col divide-y divide-border text-sm\" data-testid=\"workflow-list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -246,14 +246,14 @@ func row(w Row) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><div class=\"flex min-w-0 flex-col gap-1\"><span class=\"flex flex-wrap items-center gap-2\"><span class=\"font-medium\" data-testid=\"workflow-name\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><div class=\"flex min-w-0 flex-col gap-1\"><span class=\"flex flex-wrap items-center gap-2\"><span class=\"\" data-testid=\"workflow-name\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(w.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 50, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 50, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -267,14 +267,14 @@ func row(w Row) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<span class=\"text-xs text-neutral-400\" data-testid=\"workflow-version\">v")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<span class=\"text-xs text-mute\" data-testid=\"workflow-version\">v")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(w.Version))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 52, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 52, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -290,27 +290,27 @@ func row(w Row) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span> <code class=\"break-all text-xs text-neutral-300\" data-testid=\"workflow-model-id\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span> <code class=\"break-all text-xs text-ink\" data-testid=\"workflow-model-id\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(w.ModelID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 57, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 57, Col: 88}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</code> <span class=\"text-xs text-neutral-400\">接続先 ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</code> <span class=\"text-xs text-mute\">接続先 ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(w.Endpoint)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 58, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 58, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -323,7 +323,7 @@ func row(w Row) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(w.Updated)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 58, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 58, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -334,14 +334,14 @@ func row(w Row) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(w.UsedBy) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span class=\"text-xs text-neutral-400\" data-testid=\"workflow-used-by\">使用中: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span class=\"text-xs text-mute\" data-testid=\"workflow-used-by\">使用中: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(joinList(w.UsedBy))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 60, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 60, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -403,14 +403,14 @@ func row(w Row) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, p := range w.Problems {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-xs text-amber-300\" data-testid=\"workflow-problem\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-warning\" data-testid=\"workflow-problem\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(p)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 97, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 97, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -422,14 +422,14 @@ func row(w Row) templ.Component {
 			}
 		}
 		if w.Unreachable != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-xs text-amber-300\" role=\"status\" data-testid=\"workflow-unreachable\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-sm text-warning\" role=\"status\" data-testid=\"workflow-unreachable\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(w.Unreachable)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 100, Col: 101}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 100, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -440,14 +440,14 @@ func row(w Row) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else if w.Checked && len(w.Warnings) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<p class=\"text-xs text-emerald-300\" role=\"status\" data-testid=\"workflow-check-ok\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"workflow-check-ok\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(w.CheckedOn)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 102, Col: 98}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 102, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -459,7 +459,7 @@ func row(w Row) templ.Component {
 			}
 		}
 		if len(w.Warnings) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<ul class=\"flex flex-col gap-1 text-xs text-amber-300\" role=\"status\" data-testid=\"workflow-warnings\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<ul class=\"flex flex-col gap-1 text-xs text-warning\" role=\"status\" data-testid=\"workflow-warnings\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -529,7 +529,7 @@ func importJSON(d Data) templ.Component {
 			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<form class=\"flex flex-col gap-3 rounded-md border border-neutral-700 p-4\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<form class=\"flex flex-col gap-3 rounded-md border border-border p-4\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -555,7 +555,7 @@ func importJSON(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" autocomplete=\"off\" data-testid=\"workflow-import-json\"><h3 class=\"text-sm font-semibold\">API 形式の JSON から取り込む</h3><p class=\"text-xs text-neutral-400\">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-import-name\"><span>名前</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" autocomplete=\"off\" data-testid=\"workflow-import-json\"><h3 class=\"text-sm font-semibold\">API 形式の JSON から取り込む</h3><p class=\"text-sm text-mute\">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-import-name\"><span>名前</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -575,7 +575,7 @@ func importJSON(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</div><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-import-file\"><span>ファイル（JSON）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</div><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-import-file\"><span>ファイル（JSON）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -583,7 +583,7 @@ func importJSON(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-import-json\"><span>または JSON を貼り付け</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-import-json\"><span>または JSON を貼り付け</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -628,7 +628,7 @@ func importRemote(d Data) templ.Component {
 			templ_7745c5c3_Var24 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div class=\"flex flex-col gap-3 rounded-md border border-neutral-700 p-4\" data-testid=\"workflow-import-remote\"><h3 class=\"text-sm font-semibold\">ComfyUI から取り込む</h3><p class=\"text-xs text-neutral-400\">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p><form class=\"flex flex-wrap items-end gap-3\" hx-get=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div class=\"flex flex-col gap-3 rounded-lg border border-border p-4\" data-testid=\"workflow-import-remote\"><h3 class=\"text-sm font-semibold\">ComfyUI から取り込む</h3><p class=\"text-sm text-mute\">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p><form class=\"flex flex-wrap items-end gap-3\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -671,14 +671,14 @@ func importRemote(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.RemoteError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<p class=\"text-sm text-amber-300\" role=\"alert\" data-testid=\"workflow-remote-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<p class=\"text-sm text-warning\" role=\"alert\" data-testid=\"workflow-remote-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(d.RemoteError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 167, Col: 101}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 167, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -742,7 +742,7 @@ func importRemote(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\"> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-remote-path\"><span>ワークフロー（新しい順。空のときは最後の実行）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\"> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-remote-path\"><span>ワークフロー（新しい順。空のときは最後の実行）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -800,7 +800,7 @@ func importRemote(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-remote-name\"><span>mam での名前（空: ファイル名）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-remote-name\"><span>mam での名前（空: ファイル名）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -816,7 +816,7 @@ func importRemote(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-remote-replace\"><span>既存を更新</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-remote-replace\"><span>既存を更新</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -929,14 +929,14 @@ func kindSelect(id, selected string) templ.Component {
 			templ_7745c5c3_Var39 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 210, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 210, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
 		if templ_7745c5c3_Err != nil {
@@ -1017,14 +1017,14 @@ func endpointSelect(id string, endpoints []string, selected string) templ.Compon
 			templ_7745c5c3_Var42 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 220, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/panel.templ`, Line: 220, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 		if templ_7745c5c3_Err != nil {

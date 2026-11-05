@@ -9,27 +9,27 @@ import (
 // result of its own in the history (and in the job list); the box says where it came from when this result is itself a swap.
 templ Box(f Form) {
 	if f.Show || f.SourceURL != "" {
-		<div id={ ID } class="flex flex-col gap-2 rounded-md border border-neutral-700 p-4" data-testid="gt-faceswap">
+		<div id={ ID } class="flex flex-col gap-2 rounded-lg border border-border p-4" data-testid="gt-faceswap">
 			if f.SourceURL != "" {
 				<p class="text-sm" data-testid="gt-faceswap-source">
 					<a class="underline" href={ templ.SafeURL(f.SourceURL) }>{ f.SourceText }</a>
 				</p>
 			}
 			if f.Show {
-				<h3 class="text-sm font-medium">顔を入れ替える（FaceFusion）</h3>
+				<h3 class="text-sm font-semibold">顔を入れ替える（FaceFusion）</h3>
 				if f.Notice != "" {
-					<p class="text-sm text-emerald-300" role="status" data-testid="gt-faceswap-notice">{ f.Notice }</p>
+					<p class="text-sm text-success" role="status" data-testid="gt-faceswap-notice">{ f.Notice }</p>
 				}
 				if f.Error != "" {
-					<p class="text-sm text-red-300" role="alert" data-testid="gt-faceswap-error">{ f.Error }</p>
+					<p class="text-sm text-danger" role="alert" data-testid="gt-faceswap-error">{ f.Error }</p>
 				}
-				<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-amber-300" data-testid="gt-faceswap-notes">
+				<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-warning" data-testid="gt-faceswap-notes">
 					for _, n := range f.Notes {
 						<li>{ n }</li>
 					}
 				</ul>
 				if f.Problem != "" {
-					<p class="text-sm text-neutral-400" data-testid="gt-faceswap-problem">
+					<p class="text-sm text-mute" data-testid="gt-faceswap-problem">
 						{ f.Problem }
 						<a class="underline" href={ templ.SafeURL(f.SettingsURL) }>設定の「FaceFusion」</a>で、入れた場所を指定してください。
 					</p>
@@ -43,7 +43,7 @@ templ Box(f Form) {
 						hx-sync="this:drop"
 						hx-disabled-elt="find button[type=submit]"
 					>
-						<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-faceswap-face">
+						<label class="flex flex-col gap-1 text-xs text-mute" for="gt-faceswap-face">
 							<span>顔の画像（入れ替える顔。いちばん大きい顔が使われます。PNG・JPEG・WebP）</span>
 							<input id="gt-faceswap-face" type="file" name={ FieldFace } accept="image/png,image/jpeg,image/webp" required data-testid="gt-faceswap-face"/>
 						</label>
@@ -66,13 +66,13 @@ templ Box(f Form) {
 templ Warnings(list []string) {
 	<div id={ WarningsID } class="flex flex-col gap-1" data-testid="gt-faceswap-warnings" aria-live="polite">
 		for _, w := range list {
-			<p class="text-sm text-red-300" role="alert">{ w }</p>
+			<p class="text-sm text-danger" role="alert">{ w }</p>
 		}
 	</div>
 }
 
 templ modelSelect(id, name, label string, choices []Choice, warningsURL string) {
-	<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ id }>
+	<label class="flex flex-col gap-1 text-xs text-mute" for={ id }>
 		<span>{ label }</span>
 		@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{
 			"id": id, "name": name, "data-testid": id,

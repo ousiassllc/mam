@@ -88,7 +88,7 @@ export class MamComfyFrame extends LitElement {
     if (!this.openUrl) return nothing;
     return html`<a
       data-testid="comfy-frame-open"
-      class="text-sm text-neutral-300 underline hover:text-neutral-100"
+      class="text-sm text-ink underline hover:text-ink"
       href=${this.openUrl}
       target="_blank"
       rel="noopener noreferrer"
@@ -105,7 +105,7 @@ export class MamComfyFrame extends LitElement {
             ? html`<div
               role="alert"
               data-testid="comfy-frame-failure"
-              class="rounded-md border border-amber-500/60 p-3 text-sm text-amber-300"
+              class="rounded-md border border-warning/60 p-3 text-sm text-warning"
             >
               ${this.failureMessage || 'ComfyUI の画面を表示できませんでした。'}
             </div>`
@@ -115,7 +115,7 @@ export class MamComfyFrame extends LitElement {
           this.src && !failed
             ? html`<iframe
               data-testid="comfy-frame"
-              class="h-[75vh] w-full rounded-md border border-neutral-800 bg-neutral-900"
+              class="h-[75vh] w-full rounded-md border border-border bg-surface"
               title="ComfyUI ノード画面"
               src=${this.src}
               allow="clipboard-read; clipboard-write; fullscreen"
@@ -129,7 +129,7 @@ export class MamComfyFrame extends LitElement {
           ${this.link()}
           ${
             this.status === 'loading' && this.src
-              ? html`<span class="text-xs text-neutral-400" data-testid="comfy-frame-loading">読み込んでいます…</span>`
+              ? html`<span class="text-xs text-mute" data-testid="comfy-frame-loading">読み込んでいます…</span>`
               : nothing
           }
         </div>

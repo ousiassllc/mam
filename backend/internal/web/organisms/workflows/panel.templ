@@ -10,13 +10,13 @@ import (
 templ Panel(d Data) {
 	<section id={ PanelID } class="flex flex-col gap-6" data-testid="workflows">
 		if d.Problem != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="workflows-problem">{ d.Problem }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="workflows-problem">{ d.Problem }</p>
 		} else {
 			if d.Notice != "" {
-				<p class="text-sm text-emerald-300" role="status" data-testid="workflows-notice">{ d.Notice }</p>
+				<p class="text-sm text-success" role="status" data-testid="workflows-notice">{ d.Notice }</p>
 			}
 			if d.Error != "" {
-				<p class="text-sm text-red-300" role="alert" data-testid="workflows-error">{ d.Error }</p>
+				<p class="text-sm text-danger" role="alert" data-testid="workflows-error">{ d.Error }</p>
 			}
 			@list(d)
 			<div id={ EditorID } class="flex flex-col gap-3" data-testid="workflows-editor">
@@ -32,9 +32,9 @@ templ Panel(d Data) {
 
 templ list(d Data) {
 	if len(d.Workflows) == 0 {
-		<p class="text-sm text-neutral-400" data-testid="workflows-empty">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>
+		<p class="text-sm text-mute" data-testid="workflows-empty">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>
 	} else {
-		<ul class="flex flex-col divide-y divide-neutral-800 text-sm" data-testid="workflow-list">
+		<ul class="flex flex-col divide-y divide-border text-sm" data-testid="workflow-list">
 			for _, w := range d.Workflows {
 				@row(w)
 			}
@@ -47,17 +47,17 @@ templ row(w Row) {
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<div class="flex min-w-0 flex-col gap-1">
 				<span class="flex flex-wrap items-center gap-2">
-					<span class="font-medium" data-testid="workflow-name">{ w.Name }</span>
+					<span class="" data-testid="workflow-name">{ w.Name }</span>
 					@atoms.Badge(atoms.BadgeInfo, kindLabel(w.Kind))
-					<span class="text-xs text-neutral-400" data-testid="workflow-version">v{ itoa(w.Version) }</span>
+					<span class="text-xs text-mute" data-testid="workflow-version">v{ itoa(w.Version) }</span>
 					if !w.Ready {
 						@atoms.Badge(atoms.BadgeWarn, "実行できません")
 					}
 				</span>
-				<code class="break-all text-xs text-neutral-300" data-testid="workflow-model-id">{ w.ModelID }</code>
-				<span class="text-xs text-neutral-400">接続先 { w.Endpoint } ／ 更新 { w.Updated }</span>
+				<code class="break-all text-xs text-ink" data-testid="workflow-model-id">{ w.ModelID }</code>
+				<span class="text-xs text-mute">接続先 { w.Endpoint } ／ 更新 { w.Updated }</span>
 				if len(w.UsedBy) > 0 {
-					<span class="text-xs text-neutral-400" data-testid="workflow-used-by">使用中: { joinList(w.UsedBy) }</span>
+					<span class="text-xs text-mute" data-testid="workflow-used-by">使用中: { joinList(w.UsedBy) }</span>
 				}
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
@@ -94,15 +94,15 @@ templ row(w Row) {
 			</div>
 		</div>
 		for _, p := range w.Problems {
-			<p class="text-xs text-amber-300" data-testid="workflow-problem">{ p }</p>
+			<p class="text-sm text-warning" data-testid="workflow-problem">{ p }</p>
 		}
 		if w.Unreachable != "" {
-			<p class="text-xs text-amber-300" role="status" data-testid="workflow-unreachable">{ w.Unreachable }</p>
+			<p class="text-sm text-warning" role="status" data-testid="workflow-unreachable">{ w.Unreachable }</p>
 		} else if w.Checked && len(w.Warnings) == 0 {
-			<p class="text-xs text-emerald-300" role="status" data-testid="workflow-check-ok">{ w.CheckedOn } にノードもモデルもそろっています。</p>
+			<p class="text-sm text-success" role="status" data-testid="workflow-check-ok">{ w.CheckedOn } にノードもモデルもそろっています。</p>
 		}
 		if len(w.Warnings) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-amber-300" role="status" data-testid="workflow-warnings">
+			<ul class="flex flex-col gap-1 text-xs text-warning" role="status" data-testid="workflow-warnings">
 				for _, x := range w.Warnings {
 					<li data-kind={ x.Kind }>{ x.Message }</li>
 				}
@@ -113,7 +113,7 @@ templ row(w Row) {
 
 templ importJSON(d Data) {
 	<form
-		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		class="flex flex-col gap-3 rounded-md border border-border p-4"
 		hx-post={ paths.WorkflowsPart("import") }
 		hx-encoding="multipart/form-data"
 		hx-target={ "#" + PanelID }
@@ -124,20 +124,20 @@ templ importJSON(d Data) {
 		data-testid="workflow-import-json"
 	>
 		<h3 class="text-sm font-semibold">API 形式の JSON から取り込む</h3>
-		<p class="text-xs text-neutral-400">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p>
+		<p class="text-sm text-mute">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p>
 		<div class="flex flex-wrap items-end gap-3">
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-import-name">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-import-name">
 				<span>名前</span>
 				@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{"id": "workflow-import-name", "name": FieldName, "type": "text", "value": d.FormName, "required": true, "maxlength": itoa(MaxNameLen)})
 			</label>
 			@kindSelect("workflow-import-kind", d.FormKind)
 			@endpointSelect("workflow-import-endpoint", d.Endpoints, d.FormEndpoint)
 		</div>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-import-file">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-import-file">
 			<span>ファイル（JSON）</span>
 			@atoms.Input(atoms.FieldMd, "w-full max-w-md", templ.Attributes{"id": "workflow-import-file", "name": FieldAPIFile, "type": "file", "accept": ".json,application/json"})
 		</label>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-import-json">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-import-json">
 			<span>または JSON を貼り付け</span>
 			@atoms.Textarea(atoms.FieldMd, "w-full font-mono", templ.Attributes{"id": "workflow-import-json", "name": FieldAPIJSON, "rows": "6", "spellcheck": "false"}, d.FormJSON)
 		</label>
@@ -148,9 +148,9 @@ templ importJSON(d Data) {
 }
 
 templ importRemote(d Data) {
-	<div class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4" data-testid="workflow-import-remote">
+	<div class="flex flex-col gap-3 rounded-lg border border-border p-4" data-testid="workflow-import-remote">
 		<h3 class="text-sm font-semibold">ComfyUI から取り込む</h3>
-		<p class="text-xs text-neutral-400">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p>
+		<p class="text-sm text-mute">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p>
 		<form
 			class="flex flex-wrap items-end gap-3"
 			hx-get={ paths.WorkflowsPart("remote") }
@@ -164,7 +164,7 @@ templ importRemote(d Data) {
 			@atoms.Button(atoms.ToneNeutral, "ComfyUI の一覧を読む", templ.Attributes{"type": "submit"})
 		</form>
 		if d.RemoteError != "" {
-			<p class="text-sm text-amber-300" role="alert" data-testid="workflow-remote-error">{ d.RemoteError }</p>
+			<p class="text-sm text-warning" role="alert" data-testid="workflow-remote-error">{ d.RemoteError }</p>
 		}
 		if d.RemoteEndpoint != "" && d.RemoteError == "" {
 			<form
@@ -177,7 +177,7 @@ templ importRemote(d Data) {
 				data-testid="workflow-remote-import-form"
 			>
 				<input type="hidden" name={ FieldEndpoint } value={ d.RemoteEndpoint }/>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-remote-path">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-remote-path">
 					<span>ワークフロー（新しい順。空のときは最後の実行）</span>
 					@atoms.Select(atoms.FieldMd, "max-w-md", templ.Attributes{"id": "workflow-remote-path", "name": FieldRemotePath}) {
 						<option value="">最後の実行（ComfyUI の履歴）</option>
@@ -186,12 +186,12 @@ templ importRemote(d Data) {
 						}
 					}
 				</label>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-remote-name">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-remote-name">
 					<span>mam での名前（空: ファイル名）</span>
 					@atoms.Input(atoms.FieldMd, "w-56", templ.Attributes{"id": "workflow-remote-name", "name": FieldName, "type": "text", "maxlength": itoa(MaxNameLen)})
 				</label>
 				@kindSelect("workflow-remote-kind", "")
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-remote-replace">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-remote-replace">
 					<span>既存を更新</span>
 					@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{"id": "workflow-remote-replace", "name": FieldReplace}) {
 						<option value="">新しく保存</option>
@@ -207,7 +207,7 @@ templ importRemote(d Data) {
 }
 
 templ kindSelect(id, selected string) {
-	<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ id }>
+	<label class="flex flex-col gap-1 text-xs text-mute" for={ id }>
 		<span>種類</span>
 		@atoms.Select(atoms.FieldMd, "w-32", templ.Attributes{"id": id, "name": FieldKind}) {
 			<option value="image" selected?={ selected != KindVideo }>画像</option>
@@ -217,7 +217,7 @@ templ kindSelect(id, selected string) {
 }
 
 templ endpointSelect(id string, endpoints []string, selected string) {
-	<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ id }>
+	<label class="flex flex-col gap-1 text-xs text-mute" for={ id }>
 		<span>ComfyUI の接続先</span>
 		@atoms.Select(atoms.FieldMd, "w-56", templ.Attributes{"id": id, "name": FieldEndpoint}) {
 			for _, e := range endpoints {

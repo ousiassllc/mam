@@ -63,8 +63,8 @@ func description(d Data) string {
 templ Panel(d Data) {
 	<section id="update-panel" class="flex flex-col gap-3" aria-labelledby="update-version">
 		<p class="text-sm">
-			<span class="text-neutral-400">現在のバージョン:</span>
-			<span id="update-version" class="font-medium" data-testid="update-version">{ d.Version }</span>
+			<span class="text-mute">現在のバージョン:</span>
+			<span id="update-version" class="" data-testid="update-version">{ d.Version }</span>
 		</p>
 		if d.Status != "" {
 			<p class={ statusClass(d.Tone) } role={ statusRole(d) } data-testid="update-status" data-tone={ string(d.Tone) }>{ d.Status }</p>
@@ -73,7 +73,7 @@ templ Panel(d Data) {
 			@errorbox.Box(errorbox.Props{View: *d.Failure, Lang: apperr.LangJa, ID: "update"})
 		}
 		if !d.CheckedAt.IsZero() {
-			<p class="text-xs text-neutral-400" data-testid="update-checked-at">
+			<p class="text-sm text-mute" data-testid="update-checked-at">
 				最終確認:
 				<time datetime={ d.CheckedAt.UTC().Format(time.RFC3339) }>{ d.CheckedAt.Local().Format("2006-01-02 15:04") }</time>
 			</p>
@@ -96,13 +96,13 @@ templ Panel(d Data) {
 func statusClass(t Tone) string {
 	switch t {
 	case ToneOK:
-		return "text-sm text-emerald-300"
+		return "text-sm text-success"
 	case ToneWarn:
-		return "text-sm text-amber-300"
+		return "text-sm text-warning"
 	case ToneError:
-		return "text-sm text-red-300"
+		return "text-sm text-danger"
 	}
-	return "text-sm text-neutral-300"
+	return "text-sm text-ink"
 }
 
 // statusRole announces a warning or an error at once, unless the error box does (its own role="alert"): one failure is read out once.

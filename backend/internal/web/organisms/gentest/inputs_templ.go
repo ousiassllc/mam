@@ -123,7 +123,7 @@ func inputFields(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"flex flex-col items-center gap-2 rounded-md border border-dashed border-neutral-600 p-4 text-center text-sm text-neutral-300 transition-colors motion-reduce:transition-none\"><p>画像をドロップ、またはクリック</p><div class=\"flex flex-wrap justify-center gap-2\"><input id=\"gt-upload\" type=\"file\" name=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"flex flex-col items-center gap-2 rounded-md border border-dashed border-border p-4 text-center text-sm text-ink transition-colors motion-reduce:transition-none\"><p>画像をドロップ、またはクリック</p><div class=\"flex flex-wrap justify-center gap-2\"><input id=\"gt-upload\" type=\"file\" name=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -136,7 +136,7 @@ func inputFields(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" multiple accept=\"image/png,image/jpeg,image/webp\" class=\"peer sr-only\" data-gt-file> <label for=\"gt-upload\" class=\"inline-flex cursor-pointer items-center justify-center rounded-md border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400\">ファイルを選ぶ</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" multiple accept=\"image/png,image/jpeg,image/webp\" class=\"peer sr-only\" data-gt-file> <label for=\"gt-upload\" class=\"inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs text-ink transition-colors hover:bg-accent-soft peer-focus-visible:focus-ring\">ファイルを選ぶ</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -162,7 +162,7 @@ func inputFields(c Compose) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if c.Media == "video" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex flex-wrap gap-4\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-first\"><span>最初のフレーム</span> <input id=\"gt-first\" type=\"file\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex flex-wrap gap-4\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-first\"><span>最初のフレーム</span> <input id=\"gt-first\" type=\"file\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -175,7 +175,7 @@ func inputFields(c Compose) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" accept=\"image/png,image/jpeg,image/webp\" class=\"text-sm\"></label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-last\"><span>最後のフレーム</span> <input id=\"gt-last\" type=\"file\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" accept=\"image/png,image/jpeg,image/webp\" class=\"text-sm\"></label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-last\"><span>最後のフレーム</span> <input id=\"gt-last\" type=\"file\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -193,7 +193,7 @@ func inputFields(c Compose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-xs text-red-300\" role=\"alert\" data-gt-error data-testid=\"gt-inputs-error\" hidden></p><p class=\"text-xs text-amber-300\" role=\"status\" data-gt-noref data-testid=\"gt-noref\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-danger\" role=\"alert\" data-gt-error data-testid=\"gt-inputs-error\" hidden></p><p class=\"text-sm text-warning\" role=\"status\" data-gt-noref data-testid=\"gt-noref\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -210,7 +210,7 @@ func inputFields(c Compose) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(c.NoRefNotice())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/inputs.templ`, Line: 80, Col: 138}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/inputs.templ`, Line: 80, Col: 136}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -232,7 +232,7 @@ func inputFields(c Compose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"flex items-center justify-between text-xs text-neutral-400\"><span data-gt-count data-testid=\"gt-count\" aria-live=\"polite\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"flex items-center justify-between text-xs text-mute\"><span data-gt-count data-testid=\"gt-count\" aria-live=\"polite\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -341,7 +341,7 @@ func lightbox() templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<dialog data-gt-lightbox aria-label=\"入力画像の拡大\" class=\"m-auto max-h-[90vh] max-w-[92vw] rounded-lg border border-neutral-700 bg-neutral-900 p-2 backdrop:bg-black/70\"><img alt=\"\" class=\"max-h-[80vh] max-w-full rounded object-contain\" data-gt-lightbox-image><div class=\"mt-2 flex justify-end\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<dialog data-gt-lightbox aria-label=\"入力画像の拡大\" class=\"m-auto max-h-[90vh] max-w-[92vw] rounded-xl shadow-modal border border-border bg-surface p-2\"><img alt=\"\" class=\"max-h-[80vh] max-w-full rounded-md object-contain\" data-gt-lightbox-image><div class=\"mt-2 flex justify-end\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

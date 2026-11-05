@@ -41,16 +41,16 @@ func (e Endpoint) card(kind cardKind, oob bool) settingsui.Card {
 // endpointDetails is what the card says besides its name: the address, the state of the connection (not tried until the
 // button is pressed), the API key and, for the name that has no page, why the models cannot be opened.
 templ endpointDetails(e Endpoint) {
-	<code class="break-all text-xs text-neutral-300" data-testid="local-endpoint-url">{ e.BaseURL }</code>
+	<code class="break-all text-xs text-ink" data-testid="local-endpoint-url">{ e.BaseURL }</code>
 	<div class="flex items-baseline gap-2 text-xs">
-		<span class="shrink-0 text-neutral-400">接続:</span>
+		<span class="shrink-0 text-mute">接続:</span>
 		<div id={ testID(e.Name) } role="status" aria-live="polite" class="min-w-0 flex-1" data-testid="local-endpoint-test">
-			<span class="text-neutral-400">未確認（「接続テスト」で確かめます）</span>
+			<span class="text-mute">未確認（「接続テスト」で確かめます）</span>
 		</div>
 	</div>
 	@KeyRow(e.Name, e.Key)
 	if e.NoPage {
-		<p class="text-xs text-amber-300" data-testid="local-endpoint-no-page">
+		<p class="text-sm text-warning" data-testid="local-endpoint-no-page">
 			「{ e.Name }」は接続先の追加の画面と同じ URL になるため、この接続先のモデルは開けません。削除して、別の名前で作り直してください。
 		</p>
 	}
@@ -127,7 +127,7 @@ templ KeyRow(endpoint string, k Key) {
 			hx-disabled-elt="find button[type=submit]"
 			autocomplete="off"
 		>
-			<span class="text-xs text-neutral-400">API キー（任意）:</span>
+			<span class="text-xs text-mute">API キー（任意）:</span>
 			if k.Unavailable {
 				<span data-testid="local-key-state">
 					@atoms.Badge(atoms.BadgeWarn, "キーストアを利用できません")
@@ -162,7 +162,7 @@ templ KeyRow(endpoint string, k Key) {
 			}
 		</form>
 		if k.Error != "" {
-			<p class="text-xs text-red-300" role="alert" data-testid="local-key-error">{ k.Error }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="local-key-error">{ k.Error }</p>
 		}
 	</div>
 }
@@ -178,15 +178,15 @@ templ DraftTestResult(t TestView) {
 templ TestResult(t TestView) {
 	<div class="flex flex-col gap-1 text-xs" data-testid="local-test-result">
 		if t.OK {
-			<p class="text-emerald-300">{ t.Message }</p>
+			<p class="text-success">{ t.Message }</p>
 		} else {
-			<p class="whitespace-pre-line text-red-300" role="alert">{ t.Message }</p>
+			<p class="whitespace-pre-line text-danger" role="alert">{ t.Message }</p>
 		}
 		if t.Note != "" {
-			<p class="text-amber-300" data-testid="local-test-note">{ t.Note }</p>
+			<p class="text-warning" data-testid="local-test-note">{ t.Note }</p>
 		}
 		if len(t.Models) > 0 {
-			<p class="text-neutral-400" data-testid="local-test-models">モデル: { joinNames(t.Models) }</p>
+			<p class="text-mute" data-testid="local-test-models">モデル: { joinNames(t.Models) }</p>
 		}
 	</div>
 }

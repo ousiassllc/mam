@@ -124,14 +124,14 @@ func BranchDetail(d BranchDetailData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"flex flex-col gap-4 rounded-md border border-neutral-700 p-4\" aria-label=\"Branch の詳細\" data-branch-detail=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"flex flex-col gap-4 rounded-lg border border-border p-4\" aria-label=\"Branch の詳細\" data-branch-detail=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Branch.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 99, Col: 141}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 99, Col: 136}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -144,7 +144,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(branchURL(d.Branch.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 99, Col: 175}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 99, Col: 170}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -163,7 +163,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</h2><p class=\"text-sm text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</h2><p class=\"text-sm text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -181,14 +181,14 @@ func BranchDetail(d BranchDetailData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Parent != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "（親 Branch: <a class=\"text-indigo-300 underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "（親 Branch: <a class=\"text-accent underline decoration-mute\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 templ.SafeURL
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(branchURL(d.Parent.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 106, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 106, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -201,7 +201,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(d.Parent.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 106, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 106, Col: 116}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -230,14 +230,14 @@ func BranchDetail(d BranchDetailData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "（Branch 独自のバージョン系列） <a class=\"ml-2 text-indigo-300 underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "（Branch 独自のバージョン系列） <a class=\"ml-2 text-accent underline decoration-mute\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 templ.SafeURL
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(branchWorldStateURL(d.Project.ID, d.Branch.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 114, Col: 114}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 114, Col: 126}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -248,7 +248,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Started {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-sm text-emerald-300\">最初の Shot の生成を開始しました。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-sm text-success\">最初の Shot の生成を開始しました。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -266,7 +266,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" hx-target=\"#branch-detail\" hx-swap=\"innerHTML\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\">名称")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" hx-target=\"#branch-detail\" hx-swap=\"innerHTML\"><label class=\"flex flex-col gap-1 text-xs text-mute\">名称")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -306,7 +306,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" hx-target=\"#branch-detail\" hx-swap=\"innerHTML\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\">参照する World State")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" hx-target=\"#branch-detail\" hx-swap=\"innerHTML\"><label class=\"flex flex-col gap-1 text-xs text-mute\">参照する World State")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -385,12 +385,12 @@ func BranchDetail(d BranchDetailData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<section aria-label=\"Branch の Scene / Shot\" class=\"flex flex-col gap-1\"><h3 class=\"text-sm font-semibold text-neutral-200\">この Branch の Scene / Shot</h3>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<section aria-label=\"Branch の Scene / Shot\" class=\"flex flex-col gap-1\"><h3 class=\"text-sm font-semibold text-ink\">この Branch の Scene / Shot</h3>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Scenes) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-sm text-neutral-400\">まだ Scene がありません。Shot から「続きを作る」と、この Branch の Scene / Shot が作られます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-sm text-mute\">まだ Scene がありません。Shot から「続きを作る」と、この Branch の Scene / Shot が作られます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -432,14 +432,14 @@ func BranchDetail(d BranchDetailData) templ.Component {
 			}
 			for _, sh := range d.Shots {
 				if sh.Scene == sc.OrderIndex+1 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<li><a class=\"text-indigo-300 underline\" href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<li><a class=\"text-accent underline decoration-mute\" href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var17 templ.SafeURL
 					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Shot(sh.ShotID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 160, Col: 93}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 160, Col: 105}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 					if templ_7745c5c3_Err != nil {
@@ -452,7 +452,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 					var templ_7745c5c3_Var18 string
 					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(sh.Shot))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 160, Col: 124}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 160, Col: 136}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 					if templ_7745c5c3_Err != nil {
@@ -465,7 +465,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 					var templ_7745c5c3_Var19 string
 					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(sh.Objective)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 160, Col: 146}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 160, Col: 158}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 					if templ_7745c5c3_Err != nil {
@@ -482,7 +482,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</ul></section><section aria-label=\"Branch のバージョン履歴\" class=\"flex flex-col gap-1\"><h3 class=\"text-sm font-semibold text-neutral-200\">バージョン履歴</h3><ol class=\"flex flex-col gap-1 text-xs text-neutral-300\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</ul></section><section aria-label=\"Branch のバージョン履歴\" class=\"flex flex-col gap-1\"><h3 class=\"text-sm font-semibold text-ink\">バージョン履歴</h3><ol class=\"flex flex-col gap-1 text-xs text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -613,7 +613,7 @@ func BranchTree(d BranchTreeData, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "><ul class=\"flex flex-col gap-1 text-sm\"><li><span class=\"text-neutral-300\">トランク</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "><ul class=\"flex flex-col gap-1 text-sm\"><li><span class=\"text-ink\">トランク</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -628,7 +628,7 @@ func BranchTree(d BranchTreeData, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Roots) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<p class=\"mt-2 text-sm text-neutral-400\" data-empty>まだ Branch がありません。Shot から「Branch を作る」か、チャットで「このカットから別展開を作って」と頼めます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<p class=\"mt-2 text-sm text-mute\" data-empty>まだ Branch がありません。Shot から「Branch を作る」か、チャットで「このカットから別展開を作って」と頼めます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -662,7 +662,7 @@ func branchTreeGroup(nodes []BranchTreeNode, selected string) templ.Component {
 			templ_7745c5c3_Var25 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<ul class=\"ml-3 mt-1 flex flex-col gap-1 border-l border-neutral-700 pl-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<ul class=\"ml-3 mt-1 flex flex-col gap-1 border-l border-border pl-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -671,7 +671,7 @@ func branchTreeGroup(nodes []BranchTreeNode, selected string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var26 = []any{"underline", templ.KV("font-semibold text-indigo-300", n.Branch.ID == selected), templ.KV("text-neutral-200", n.Branch.ID != selected)}
+			var templ_7745c5c3_Var26 = []any{"underline", templ.KV("text-accent", n.Branch.ID == selected), templ.KV("text-ink", n.Branch.ID != selected)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var26...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -844,7 +844,7 @@ func BranchView(d BranchPageData) templ.Component {
 			templ_7745c5c3_Var34 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<div id=\"branch-view\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Branch ツリー</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<div id=\"branch-view\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Branch ツリー</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -862,23 +862,23 @@ func BranchView(d BranchPageData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<p class=\"text-sm text-neutral-400\">ツリーの Branch を選ぶと詳細を表示します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<p class=\"text-sm text-mute\">ツリーの Branch を選ぶと詳細を表示します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</div><section aria-label=\"Branch を作る\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Shot から Branch を作る</h2><p class=\"text-xs text-neutral-400\">分岐点の World State を Snapshot として保存します。チャットで「このカットから別展開を3つ作って」と頼むこともできます。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</div><section aria-label=\"Branch を作る\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Shot から Branch を作る</h2><p class=\"text-sm text-mute\">分岐点の World State を Snapshot として保存します。チャットで「このカットから別展開を3つ作って」と頼むこともできます。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Shots) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<p class=\"text-sm text-neutral-400\">Branch を作れる Shot がまだありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<p class=\"text-sm text-mute\">Branch を作れる Shot がまだありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		for _, s := range d.Shots {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<details class=\"rounded-md border border-neutral-700 p-2 text-sm\"><summary class=\"cursor-pointer\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<details class=\"rounded-lg border border-border p-2 text-sm\"><summary class=\"cursor-pointer\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -904,7 +904,7 @@ func BranchView(d BranchPageData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\" hx-swap=\"none\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\">分岐点")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\" hx-swap=\"none\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-mute\">分岐点")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -932,7 +932,7 @@ func BranchView(d BranchPageData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\">位置（秒、Frame のみ）")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\">位置（秒、Frame のみ）")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -945,7 +945,7 @@ func BranchView(d BranchPageData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\">名称（省略可）")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\">名称（省略可）")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -957,7 +957,7 @@ func BranchView(d BranchPageData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\">展開の指示（省略可、AI が最初の Shot を作ります）")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\">展開の指示（省略可、AI が最初の Shot を作ります）")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

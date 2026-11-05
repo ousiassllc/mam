@@ -111,7 +111,7 @@ func Field(f FieldData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		var templ_7745c5c3_Var7 = []any{"flex w-full cursor-pointer items-center gap-3 rounded-md border bg-neutral-950 px-3 py-2 text-left text-sm text-neutral-100 hover:border-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400", fieldBorder(f.Invalid)}
+		var templ_7745c5c3_Var7 = []any{"flex w-full cursor-pointer items-center gap-3 rounded-md border bg-bone px-3 py-2 text-left text-sm text-ink hover:border-accent focus-visible:focus-ring", fieldBorder(f.Invalid)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var7...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -216,7 +216,7 @@ func Field(f FieldData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "><span class=\"flex min-w-0 flex-1 flex-col gap-1.5\" data-mp-current>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "><span class=\"flex min-w-0 flex-1 flex-col gap-2\" data-mp-current>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -224,19 +224,19 @@ func Field(f FieldData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</span> <span class=\"shrink-0 text-xs text-indigo-300\" aria-hidden=\"true\">変更</span></button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</span> <span class=\"shrink-0 text-xs text-accent\" aria-hidden=\"true\">変更</span></button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if f.Note != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-xs text-amber-300\" data-testid=\"model-pick-note\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-sm text-warning\" data-testid=\"model-pick-note\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(f.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/field.templ`, Line: 44, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/field.templ`, Line: 44, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -278,7 +278,7 @@ func Current(c modelcard.Card) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if c.Name == "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<span class=\"text-neutral-400\" data-testid=\"model-pick-empty-choice\">モデルを選ぶ</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<span class=\"text-mute\" data-testid=\"model-pick-empty-choice\">モデルを選ぶ</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -293,8 +293,8 @@ func Current(c modelcard.Card) templ.Component {
 }
 
 // Host is the dialog of the model picker: one per page that has a Field, closed and empty. The request of the field's button fills BodyID and the script opens it
-// (static/src/components/model-pick). It lies above the modal of the settings screen when the field is in one. A click on the backdrop does not close it; Esc and
-// the close button do.
+// (static/src/components/model-pick). It lies above the modal of the settings screen when the field is in one. A click on the scrim closes it
+// (static/src/components/scrim), as do Esc and the close button.
 func Host() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -342,7 +342,7 @@ func Host() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70\"><div id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink\"><div id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -368,7 +368,7 @@ func Host() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" role=\"alert\" class=\"px-5 pb-4 text-sm text-red-300\" hidden></p><button type=\"button\" data-mp-close aria-label=\"閉じる\" class=\"absolute right-3 top-3 rounded-md p-1 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" role=\"alert\" class=\"px-5 pb-4 text-sm text-danger\" hidden></p><button type=\"button\" data-mp-close aria-label=\"閉じる\" class=\"absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -496,14 +496,14 @@ func PickerResults(p Picker) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(p.Cards) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<p class=\"text-sm text-neutral-300\" data-testid=\"model-pick-none\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<p class=\"text-sm text-ink\" data-testid=\"model-pick-none\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(p.Empty)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/field.templ`, Line: 96, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/field.templ`, Line: 96, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {

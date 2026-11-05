@@ -83,7 +83,7 @@ templ Created(d Data) {
 templ noteAddForm(d Data, oob bool) {
 	<form
 		id="note-add-form"
-		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		class="flex flex-col gap-2 rounded-md border border-border p-3"
 		hx-post={ d.BasePath }
 		hx-target="#note-list"
 		hx-swap="outerHTML"
@@ -95,7 +95,7 @@ templ noteAddForm(d Data, oob bool) {
 		}
 	>
 		<h2 class="text-sm font-semibold">メモを追加</h2>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-title">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="note-new-title">
 			タイトル（空なら本文の先頭行）
 			@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 				"id":        "note-new-title",
@@ -104,7 +104,7 @@ templ noteAddForm(d Data, oob bool) {
 				"maxlength": strconv.Itoa(domain.MaxNoteTitleRunes),
 			})
 		</label>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-content">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="note-new-content">
 			本文
 			@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
 				"id":        "note-new-content",
@@ -115,7 +115,7 @@ templ noteAddForm(d Data, oob bool) {
 			}, "")
 		</label>
 		<div class="flex flex-wrap items-end gap-3">
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-category">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="note-new-category">
 				カテゴリ
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{
 					"id":   "note-new-category",
@@ -148,11 +148,11 @@ templ Groups(d Data) {
 	{{ groups, archived := groupNotes(d.Notes) }}
 	<div id="note-list" class="flex flex-col gap-6" hx-include={ "#note-list input[name='" + OnPageField + "']" }>
 		if len(groups) == 0 {
-			<p class="text-sm text-neutral-400">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
+			<p class="text-sm text-mute">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
 		}
 		for _, g := range groups {
 			<section aria-label={ g.Title } class="flex flex-col gap-2">
-				<h2 class="text-sm font-semibold text-neutral-200">{ g.Title }</h2>
+				<h2 class="text-sm font-semibold text-ink">{ g.Title }</h2>
 				for _, n := range g.Notes {
 					@noteWithHistory(d, n)
 				}
@@ -160,7 +160,7 @@ templ Groups(d Data) {
 		}
 		if len(archived) > 0 {
 			<details class="flex flex-col gap-2">
-				<summary class="cursor-pointer text-sm font-semibold text-neutral-300">{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
+				<summary class="cursor-pointer text-sm font-semibold text-ink">{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
 				<div class="mt-2 flex flex-col gap-2">
 					for _, n := range archived {
 						@noteWithHistory(d, n)
@@ -196,7 +196,7 @@ templ noteItem(n domain.NoteView) {
 		<input type="hidden" name={ OnPageField } value={ n.ID }/>
 		@molecules.NoteCard(n)
 		<details class="pl-3 text-sm">
-			<summary class="cursor-pointer text-xs text-neutral-400">バージョン履歴</summary>
+			<summary class="cursor-pointer text-xs text-mute">バージョン履歴</summary>
 			<div class="mt-2">
 				@organisms.VersionHistoryPanel(organisms.VersionHistoryData{
 					DOMID: "note-history-" + n.ID, Title: "メモのバージョン", BasePath: paths.Note(n.ID),

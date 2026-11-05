@@ -9,7 +9,7 @@ import (
 
 // chosenClass is the look of the card whose radio is on: the frame turns to the colour of the chosen ones. The choice is also said in
 // words by the radio's own label ("選択中"), never by the colour alone.
-const chosenClass = "has-[:checked]:border-indigo-400"
+const chosenClass = "has-[:checked]:border-accent"
 
 // commercialMark is on a local provider that has a condition or a weight whose commercial use is not clear, whatever the card shows.
 const commercialMark = "商用注意"
@@ -43,7 +43,7 @@ func cloudCardOf(p Provider) settingsui.Card {
 
 // cloudKey is whether the API key of the cloud provider is stored, and where to store it.
 templ cloudKey(p Provider) {
-	<p class="break-words text-xs text-neutral-400" data-testid={ "audio-key-" + p.Field }>
+	<p class="break-words text-sm text-mute" data-testid={ "audio-key-" + p.Field }>
 		if p.CloudKeySet {
 			API キー（{ p.CloudKey }）: 設定済み
 		} else {
@@ -78,10 +78,10 @@ func localCardOf(p Provider) settingsui.Card {
 // localBrief is the one line a card says of a local provider that is chosen but cannot run here; the rest is in its detail.
 templ localBrief(p Provider) {
 	if p.Selected == p.value() && !p.Local.Supported {
-		<p class="break-words text-xs text-amber-300" role="status" data-testid={ "audio-saved-local-" + p.Field + localSuffix(p) }>保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
+		<p class="break-words text-sm text-warning" role="status" data-testid={ "audio-saved-local-" + p.Field + localSuffix(p) }>保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
 	}
 	if len(p.Local.Unclear) > 0 {
-		<p class="break-words text-xs text-amber-300" data-testid={ "audio-unclear-line-" + p.Field + localSuffix(p) }>商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります（詳細を見てください）。</p>
+		<p class="break-words text-sm text-warning" data-testid={ "audio-unclear-line-" + p.Field + localSuffix(p) }>商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります（詳細を見てください）。</p>
 	}
 }
 
@@ -90,7 +90,7 @@ templ localBrief(p Provider) {
 templ chooser(p Provider, value, title string, checked, disabled bool, testID string) {
 	<label class="group relative inline-flex cursor-pointer items-center has-[:disabled]:cursor-not-allowed">
 		@atoms.Choice("peer sr-only", templ.Attributes{"type": "radio", "name": p.Field, "value": value, "checked": checked, "disabled": disabled, "data-testid": testID})
-		<span class="inline-flex items-center gap-1 rounded-md border border-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-200 transition-colors hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none">
+		<span class="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1 text-xs text-ink transition-colors hover:border-mute peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:focus-ring peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none">
 			<span class="sr-only">{ title }を</span>
 			if disabled {
 				<span>選べません</span>

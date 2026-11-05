@@ -78,7 +78,7 @@ func Bar(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\"><button type=\"submit\" class=\"inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-600 px-2 text-sm text-neutral-200 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50\" aria-label=\"選んだ結果を ZIP で保存\" title=\"選んだ結果を ZIP で保存（カードをタップで選ぶ）\" disabled data-gt-export-submit data-testid=\"gt-export-selected-submit\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\"><button type=\"submit\" class=\"inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm text-ink hover:bg-accent-soft focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50\" aria-label=\"選んだ結果を ZIP で保存\" title=\"選んだ結果を ZIP で保存（カードをタップで選ぶ）\" disabled data-gt-export-submit data-testid=\"gt-export-selected-submit\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -86,7 +86,7 @@ func Bar(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<span data-gt-selected-count data-testid=\"gt-selected-count\">0</span></button> <button type=\"button\" class=\"inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-700 text-neutral-300 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400\" aria-label=\"選択を解除\" title=\"選択を解除\" hidden data-gt-select-clear data-testid=\"gt-select-clear\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<span data-gt-selected-count data-testid=\"gt-selected-count\">0</span></button> <button type=\"button\" class=\"inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-ink hover:bg-accent-soft focus-visible:focus-ring\" aria-label=\"選択を解除\" title=\"選択を解除\" hidden data-gt-select-clear data-testid=\"gt-select-clear\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -202,7 +202,7 @@ func Bar(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<button type=\"submit\" class=\"inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-600 text-neutral-200 hover:bg-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400\" aria-label=\"この絞り込みの新しい順 N 件を ZIP で保存\" title=\"この絞り込みの新しい順 N 件を ZIP で保存\" data-testid=\"gt-export-latest-submit\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<button type=\"submit\" class=\"inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-ink hover:bg-accent-soft focus-visible:focus-ring\" aria-label=\"この絞り込みの新しい順 N 件を ZIP で保存\" title=\"この絞り込みの新しい順 N 件を ZIP で保存\" data-testid=\"gt-export-latest-submit\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -254,14 +254,14 @@ func Problem(message string) templ.Component {
 			templ_7745c5c3_Var12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"gt-export-error\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"gt-export-error\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/exportbar/exportbar.templ`, Line: 70, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/exportbar/exportbar.templ`, Line: 70, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {

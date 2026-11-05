@@ -24,9 +24,9 @@ func tileOpenAttrs(c Card, pick bool) templ.Attributes {
 // (waiting, running, failed, cancelled), a badge of its state; a heart when it is a favorite. A tap opens the detail in the modal: the model, the state, the
 // time, the whole prompt, the settings, the large picture (a video plays there), and what can be done with it. The title is the prompt, for a hover.
 templ Tile(c Card, pick bool) {
-	<article class="relative aspect-square overflow-hidden rounded-lg bg-neutral-900" data-testid="gt-card" data-status={ c.Status } data-result={ c.ID }>
+	<article class="relative aspect-square overflow-hidden rounded-lg bg-surface" data-testid="gt-card" data-status={ c.Status } data-result={ c.ID }>
 		<a
-			class="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400"
+			class="block h-full w-full focus-visible:focus-ring focus-visible:-outline-offset-2"
 			title={ c.Prompt }
 			aria-label={ c.Model + "・" + c.StatusText + "・詳細を開く" }
 			aria-haspopup="dialog"
@@ -35,7 +35,7 @@ templ Tile(c Card, pick bool) {
 		>
 			if c.FileURL != "" && c.Video {
 				<video class="h-full w-full object-cover" src={ c.FileURL } preload="metadata" muted playsinline tabindex="-1" aria-hidden="true"></video>
-				<span class="absolute bottom-1.5 right-1.5 rounded-md bg-neutral-900 p-1 text-neutral-100" aria-hidden="true" data-testid="gt-tile-video">
+				<span class="absolute bottom-1.5 right-1.5 rounded-md bg-surface p-1 text-ink" aria-hidden="true" data-testid="gt-tile-video">
 					@atoms.Icon(atoms.IconVideo, "h-4 w-4")
 				</span>
 			} else if c.FileURL != "" {
@@ -47,7 +47,7 @@ templ Tile(c Card, pick bool) {
 			}
 		</a>
 		if c.Unused > 0 {
-			<span class="absolute bottom-1.5 left-1.5 rounded-md bg-neutral-900 px-1.5 text-xs font-medium leading-5 text-amber-300" title={ c.UnusedText } data-testid="gt-tile-unused">画像 { itoa(c.Unused) } 枚が未使用</span>
+			<span class="absolute bottom-1.5 left-1.5 rounded-md bg-surface px-2 text-xs leading-5 text-warning" title={ c.UnusedText } data-testid="gt-tile-unused">画像 { itoa(c.Unused) } 枚が未使用</span>
 		}
 		@favoriteMark(c.ID, c.Favorite, false)
 	</article>
@@ -58,7 +58,7 @@ templ Tile(c Card, pick bool) {
 templ favoriteMark(id string, on bool, oob bool) {
 	<span
 		id={ "gt-fav-mark-" + id }
-		class="pointer-events-none absolute right-1.5 top-1.5 text-base leading-none text-amber-300 drop-shadow"
+		class="pointer-events-none absolute right-1.5 top-1.5 text-base leading-none text-warning"
 		hidden?={ !on }
 		data-testid="gt-fav-mark"
 		if oob {
@@ -88,7 +88,7 @@ templ FavoriteButton(id string, on bool) {
 	<button
 		type="button"
 		id={ "gt-favorite-" + id }
-		class="rounded px-1 text-base leading-none hover:bg-neutral-800"
+		class="rounded-md px-1 text-base leading-none hover:bg-accent-soft"
 		hx-post={ paths.GenerationTestPart("results", id, "favorite") }
 		hx-vals={ favoriteVals(!on) }
 		hx-swap="outerHTML"

@@ -86,7 +86,7 @@ func HistoryList(h History) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-swap=\"outerHTML\" hx-push-url=\"true\" data-testid=\"gt-filter\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-filter-model\"><span>モデル</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-swap=\"outerHTML\" hx-push-url=\"true\" data-testid=\"gt-filter\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-filter-model\"><span>モデル</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -154,7 +154,7 @@ func HistoryList(h History) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-filter-media\"><span>種類</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-filter-media\"><span>種類</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -336,14 +336,14 @@ func HistoryLive(h History) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"flex items-center justify-between gap-3\"><p class=\"text-sm text-neutral-300\" data-testid=\"gt-spend\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"flex items-center justify-between gap-3\"><p class=\"text-sm text-ink\" data-testid=\"gt-spend\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(h.Spend)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/history.templ`, Line: 77, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/history.templ`, Line: 77, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -362,7 +362,7 @@ func HistoryLive(h History) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(h.Cards) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"text-sm text-neutral-400\" data-testid=\"gt-history-empty\">条件に合う結果はありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"text-sm text-mute\" data-testid=\"gt-history-empty\">条件に合う結果はありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -497,7 +497,7 @@ func HistoryCard(c resulttile.Card) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		var templ_7745c5c3_Var19 = []any{"overflow-hidden rounded-lg border border-neutral-800", pick.Glow}
+		var templ_7745c5c3_Var19 = []any{"overflow-hidden rounded-lg border border-border", pick.Glow}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var19...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -541,7 +541,7 @@ func HistoryCard(c resulttile.Card) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" class=\"absolute left-1.5 top-1.5 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-neutral-600 bg-neutral-900 text-indigo-300 hover:border-indigo-400 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100\" aria-hidden=\"true\" data-testid=\"gt-pick-mark\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" class=\"absolute left-1.5 top-1.5 z-raised flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-accent hover:border-accent peer-checked:border-accent peer-checked:bg-accent-soft [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100\" aria-hidden=\"true\" data-testid=\"gt-pick-mark\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

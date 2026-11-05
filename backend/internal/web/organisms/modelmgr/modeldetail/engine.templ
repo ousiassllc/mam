@@ -17,22 +17,22 @@ templ EngineDetail(e view.Engine) {
 		</div>
 		switch view.EnginePhase(e) {
 			case "unsupported":
-				<p class="rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid="mm-engine-unsupported">
+				<p class="rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid="mm-engine-unsupported">
 					同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版・Intel Mac など）では、別に動かしている ComfyUI の URL を
 					<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」に登録して使ってください（モデルの導入は、その ComfyUI の側で行います）。
 				</p>
 			case "readonly":
-				<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="alert" data-testid="mm-engine-readonly">
+				<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-engine-readonly">
 					<p>導入先のフォルダ（{ e.Dir }）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。</p>
-					<p class="text-xs">{ e.WritableError }</p>
+					<p class="text-sm">{ e.WritableError }</p>
 				</div>
 			case "broken":
-				<p class="text-sm text-amber-300" role="alert" data-testid="mm-engine-broken">導入済みの記録がありますが、エンジンのファイルが見つかりません。もう一度導入してください。</p>
+				<p class="text-sm text-warning" role="alert" data-testid="mm-engine-broken">導入済みの記録がありますが、エンジンのファイルが見つかりません。もう一度導入してください。</p>
 		}
-		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-neutral-300" data-testid="mm-engine-facts">
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink" data-testid="mm-engine-facts">
 			if view.EnginePhase(e) == "installed" {
 				<div class="col-span-2">
-					<dt class="text-neutral-400">導入済み</dt>
+					<dt class="text-mute">導入済み</dt>
 					<dd>
 						ComfyUI { e.Version }（{ e.VariantLabel }
 						if e.CPU {
@@ -42,20 +42,20 @@ templ EngineDetail(e view.Engine) {
 					</dd>
 				</div>
 				if e.State == "running" {
-					<div class="col-span-2"><dt class="text-neutral-400">待ち受け（この PC の中だけ）</dt><dd><code data-testid="mm-engine-url">{ e.URL }</code></dd></div>
+					<div class="col-span-2"><dt class="text-mute">待ち受け（この PC の中だけ）</dt><dd><code data-testid="mm-engine-url">{ e.URL }</code></dd></div>
 				}
 				if e.UpdateAvailable {
-					<div class="col-span-2 text-amber-300" data-testid="mm-engine-update-note"><dt>更新</dt><dd>固定版 { e.PinnedVersion } があります（導入済み: { e.Version }）</dd></div>
+					<div class="col-span-2 text-warning" data-testid="mm-engine-update-note"><dt>更新</dt><dd>固定版 { e.PinnedVersion } があります（導入済み: { e.Version }）</dd></div>
 				}
 			}
 			if e.Supported && e.Writable {
 				<div class="col-span-2">
-					<dt class="text-neutral-400">導入先（空き { e.Free }）</dt>
+					<dt class="text-mute">導入先（空き { e.Free }）</dt>
 					<dd><code class="break-all" data-testid="mm-engine-dir">{ e.Dir }</code></dd>
 				</div>
 			}
 		</dl>
-		<p class="text-xs text-neutral-400">
+		<p class="text-sm text-mute">
 			ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース
 			if e.PinnedVersion != "" {
 				（{ e.PinnedVersion }）

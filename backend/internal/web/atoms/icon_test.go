@@ -29,6 +29,7 @@ func TestIcon_EveryIconIsADecorativeSVGWithItsOwnShape(t *testing.T) {
 		atoms.IconProjects, atoms.IconChat, atoms.IconBrief, atoms.IconEdit, atoms.IconCost, atoms.IconBranch, atoms.IconWorld, atoms.IconLibrary, atoms.IconNotes, atoms.IconSeries, atoms.IconJobs, atoms.IconPanelClose, atoms.IconPanelOpen,
 		atoms.IconBadgeCheck, atoms.IconBadgeAlert, atoms.IconBadgeHelp, atoms.IconBan, atoms.IconFilter, atoms.IconCheck, atoms.IconDownload,
 		atoms.IconVideo, atoms.IconVoice, atoms.IconLipSync,
+		atoms.IconSuccess, atoms.IconWarning, atoms.IconDanger, atoms.IconInfo, atoms.IconTheme,
 	}
 	shapes := map[string]atoms.IconName{}
 	for _, name := range names {
@@ -38,6 +39,8 @@ func TestIcon_EveryIconIsADecorativeSVGWithItsOwnShape(t *testing.T) {
 			assert.Contains(t, html, `aria-hidden="true"`)
 			assert.Contains(t, html, `focusable="false"`)
 			assert.Contains(t, html, `stroke="currentColor"`)
+			assert.Contains(t, html, `stroke-width="1.5"`, "Iconoir's stroke (the UI guide, I2)")
+			assert.NotContains(t, html, `stroke-width="2"`)
 			assert.Contains(t, html, `fill="none"`)
 			assert.NotContains(t, html, "<title")
 			body := html[strings.Index(html, ">")+1 : strings.LastIndex(html, "</svg>")]
@@ -56,4 +59,12 @@ func TestIcon_ClassIsTheSizeAndDefaultsToTwentyPixels(t *testing.T) {
 
 func TestIcon_UnknownNameDrawsNothing(t *testing.T) {
 	assert.Empty(t, renderIcon(t, atoms.IconName("no-such-icon"), ""))
+}
+
+// The icons are the guide's Iconoir set (I1): every shape carries its own line caps and joins, and the stroke is 1.5 (I2).
+func TestIcon_ShapesCarryTheirCapsAndJoins(t *testing.T) {
+	html := renderIcon(t, atoms.IconClose, "")
+
+	assert.Contains(t, html, `stroke-linecap="round"`)
+	assert.Contains(t, html, `stroke-linejoin="round"`)
 }

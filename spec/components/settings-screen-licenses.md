@@ -7,7 +7,7 @@
 ## 1. 画面
 
 - URL は `GET /settings/licenses`（スラッグ `licenses`。ナビの最後、「バージョンとアップデート」のあと。常に出す）。タイトルは「設定: 第三者のライセンス」、`h2` は「第三者のライセンス」。
-- **画面に出す文字は、グループの見出し（件数つき）と、項目の題だけ。** 説明は `h2` の横の「?」ヘルプ（`help.Text(licenses.Description)`。[shared-ui-parts.md](shared-ui-parts.md) §9）に入れる。新しい色のクラス・部品は足さない（面は `bg-neutral-900`・枠は `border-neutral-800`・文字は `text-neutral-100` / `-300` / `-400`、フォーカスの輪は `ring-indigo-400`。いずれも [color-rules.md](color-rules.md) §3 の表にある）。
+- **画面に出す文字は、グループの見出し（件数つき）と、項目の題だけ。** 説明は `h2` の横の「?」ヘルプ（`help.Text(licenses.Description)`。[shared-ui-parts.md](shared-ui-parts.md) §9）に入れる。新しい色のクラス・部品は足さない（面は `bg-surface`・枠は `border-border`・文字は `text-ink` / `-300` / `-400`、フォーカスの輪は ``。いずれも [color-rules.md](color-rules.md) §3 の表にある）。
 - 1 項目 = 1 つの `<details>`（閉じた状態で並ぶ）。`<summary>` が題。開くと、その項目の全文を `<pre>`（プレーンテキスト。`whitespace-pre-wrap break-words`。長いときは `max-h-[60vh]` で縦にスクロール）で出す。
 - **全文はページに入れない。** ページ（`GET /settings/licenses`）は題だけを持ち、項目を初めて開いたときに（`hx-trigger="toggle once"`）`GET /settings/licenses/:id` が全文の断片を返す。`THIRD_PARTY_NOTICES.md` は約 13000 行・約 650 KB なので、1 つの DOM にしない。読み込み中は「読み込み中…」を出す。
 - 全文は**プレーンテキスト**。`{ body }`（templ のエスケープ）でだけ出し、HTML としては読まない（`<script>` を含む文字列も文字のまま出る）。`<pre>` は `tabindex="0"`・`role="region"`・`aria-label="<題>のライセンス文"` を持ち、キーボードでスクロールできる。

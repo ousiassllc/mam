@@ -186,10 +186,11 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
       const mark = () => getComputedStyle(card('r0').querySelector('[data-testid="gt-pick-mark"]')!);
       const unlit = mark().backgroundColor;
       const lit = () => getComputedStyle(frame());
-      expect(lit().boxShadow, 'a card that is not chosen glows').to.equal('none');
+      const plainFace = lit().backgroundColor;
+      expect(lit().boxShadow, 'no card glows').to.equal('none');
 
       tapMark('r0');
-      expect(lit().boxShadow, 'the chosen card does not glow').not.to.equal('none');
+      expect(lit().backgroundColor, 'the chosen card is tinted').not.to.equal(plainFace);
       expect(lit().borderTopColor).not.to.equal(getComputedStyle(frame().parentElement!).borderTopColor);
       expect(mark().backgroundColor, 'the mark in the corner is not filled').not.to.equal(unlit);
 

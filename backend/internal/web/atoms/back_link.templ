@@ -4,7 +4,7 @@ import "github.com/ousiassllc/mam/backend/internal/web/paths"
 
 // BackLink is the link at the top of an auxiliary view that leads back to the page it was opened from.
 templ BackLink(href, label string) {
-	<a href={ templ.SafeURL(href) } class="text-sm text-neutral-400 hover:text-neutral-100">{ label }</a>
+	<a href={ templ.SafeURL(href) } class="text-sm text-mute hover:text-ink">{ label }</a>
 }
 
 // ChatBackLink leads back to the chat of a Project, where every auxiliary view is opened from.

@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
@@ -28,7 +29,7 @@ templ CatalogList(c Catalog) {
 		@refresh.Bar(catalogURL(c), CatalogID, c.UpdatedAt)
 		@notice(c.Message, "mm-catalog")
 		if c.Blocked != "" {
-			<p class="text-sm text-amber-300" data-testid="mm-catalog-blocked">{ c.Blocked }</p>
+			<p class="text-sm text-warning" data-testid="mm-catalog-blocked">{ c.Blocked }</p>
 		}
 		@modelpick.Summary(c.Filter)
 		<ul id={ ModelsID } role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-models">
@@ -125,7 +126,7 @@ templ modelCard(m Model, blocked bool) {
 			@progressBar(*m.Install, m.Name+" の導入の進み具合")
 		}
 		if m.NeedsNodes != "" && m.State != "installed" {
-			<p class="text-xs text-amber-300" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
+			<p class="text-sm text-warning" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
 		}
 		@modelcard.Actions() {
 			@modelActions(m, blocked)
@@ -195,7 +196,7 @@ func installLabel(m Model) string {
 // the acceptance: the form is only how a user gives it.
 templ ConsentDialog(c Consent) {
 	<section
-		class="flex flex-col gap-3 rounded-md border border-amber-500/60 bg-neutral-900 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+		class="flex flex-col gap-3 p-5 focus-visible:focus-ring"
 		role="dialog"
 		aria-labelledby="mm-consent-title"
 		tabindex="-1"
@@ -205,29 +206,29 @@ templ ConsentDialog(c Consent) {
 	>
 		<h3 id="mm-consent-title" class="text-sm font-semibold">「{ c.Name }」のライセンスを確認してください</h3>
 		if c.Error != "" {
-			<p class="text-sm text-red-300 focus-visible:outline-none" role="alert" tabindex="-1" data-testid="mm-consent-error">{ c.Error }</p>
+			<p class="text-sm text-danger focus-visible:outline-none" role="alert" tabindex="-1" data-testid="mm-consent-error">{ c.Error }</p>
 		}
 		<p class="text-sm"><a class="underline" href={ templ.SafeURL(c.License.URL) } target="_blank" rel="noopener noreferrer">{ c.License.Name }（{ c.License.Version }）の全文</a></p>
-		<p class="text-sm text-neutral-200" data-testid="mm-consent-summary">{ c.License.Summary }</p>
+		<p class="text-sm text-ink" data-testid="mm-consent-summary">{ c.License.Summary }</p>
 		if c.AdultNotice != "" {
-			<p class="text-sm text-amber-300" data-testid="mm-consent-adult">{ c.AdultNotice }</p>
+			<p class="text-sm text-warning" data-testid="mm-consent-adult">{ c.AdultNotice }</p>
 		}
 		if c.PlatformWarning != "" {
-			<p class="text-sm text-amber-300" data-testid="mm-consent-platform-warning">{ c.PlatformWarning }</p>
+			<p class="text-sm text-warning" data-testid="mm-consent-platform-warning">{ c.PlatformWarning }</p>
 		}
 		if len(c.Sources) > 0 {
-			<p class="text-xs text-neutral-300" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>
+			<p class="text-sm text-ink" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>
 		}
 		<p class="flex flex-wrap items-center gap-2 text-sm" data-testid="mm-consent-commercial">
 			商用利用: { c.License.Commercial } @commercial.Badge(c.License.Answer)
 		</p>
 		if c.License.Regions != "" {
-			<p class="text-sm text-amber-300" data-testid="mm-consent-regions">{ c.License.Regions }</p>
+			<p class="text-sm text-warning" data-testid="mm-consent-regions">{ c.License.Regions }</p>
 		}
 		if c.License.Notice != "" {
-			<p class="text-xs text-neutral-400">{ c.License.Notice }</p>
+			<p class="text-sm text-mute">{ c.License.Notice }</p>
 		}
-		<p class="text-xs text-neutral-400">モデルの重みは mam が再配布するものではありません。導入すると、取得元から直接ダウンロードします。</p>
+		<p class="text-sm text-mute">モデルの重みは mam が再配布するものではありません。導入すると、取得元から直接ダウンロードします。</p>
 		<form
 			class="flex flex-col gap-3"
 			hx-post={ paths.ModelManagerPart("models", c.ModelID, "install") }
@@ -256,5 +257,5 @@ templ ConsentDialog(c Consent) {
 
 // DialogClear empties the dialog area out of band: an install was accepted, the license question is answered.
 templ DialogClear() {
-	<div id={ DialogID } hx-swap-oob="innerHTML" data-testid="mm-dialog"></div>
+	@modal.InlineHostOOB(DialogID, "mm-dialog")
 }

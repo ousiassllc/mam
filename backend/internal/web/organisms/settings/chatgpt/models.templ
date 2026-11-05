@@ -35,16 +35,16 @@ templ ModelsModal(m ModelList) {
 		if m.Error != "" {
 			@modal.Error(m.Error)
 		} else if len(m.Models) == 0 {
-			<p class="text-sm text-neutral-400">表示できるモデルがありません。</p>
+			<p class="text-sm text-mute">表示できるモデルがありません。</p>
 		} else {
-			<p class="text-xs text-neutral-400">「LLM の割り当て」のモデル欄のプルダウンにも、同じ一覧が「プロバイダーの API の一覧」として出ます（モデル名は太字）。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p>
+			<p class="text-sm text-mute">「LLM の割り当て」のモデル欄のプルダウンにも、同じ一覧が「プロバイダーの API の一覧」として出ます（モデル名は太字）。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p>
 			<ul class="flex flex-col gap-1 text-sm" data-testid={ modelsTestID(m.Kind) }>
 				for _, model := range m.Models {
 					<li>
-						<code class="font-medium select-all">{ model.Slug }</code>
-						<span class="text-xs text-neutral-400">{ model.DisplayName }</span>
+						<code class="select-all">{ model.Slug }</code>
+						<span class="text-xs text-mute">{ model.DisplayName }</span>
 						if model.Images {
-							<span class="text-xs text-sky-300">画像可</span>
+							<span class="text-xs text-info">画像可</span>
 						}
 					</li>
 				}

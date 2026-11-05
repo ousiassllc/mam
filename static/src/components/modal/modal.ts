@@ -7,10 +7,10 @@ import { requestFailureMessage, type RequestFailure } from '../lib/errors';
  * - A button with `data-modal-open` (molecules/modal OpenAttrs) asks for the body; when it arrives the dialog is
  *   opened with showModal(), which keeps the focus inside it and makes the rest of the page inert.
  * - It is closed by Esc (the native `cancel`), by a `data-modal-close` button and by the `modal-close` event that a
- *   saved form's answer sets off (HX-Trigger-After-Swap). A click on the backdrop does not close it.
+ *   saved form's answer sets off (HX-Trigger-After-Swap). A click on the scrim closes it (components/scrim).
  * - When it is closed the body is emptied (a token that was shown, what was typed, must not stay in the DOM) and the
  *   focus goes back to the button that opened it, or to the control that took its place when its row was replaced.
- * - A request from inside it that gets no HTML answer (server down, timeout) says so in `#mam-modal-failure`: the toast
+ * - A request from inside it that gets no HTML answer (server down, timeout) says so in `#mam-modal-failure`: the alert
  *   region lies behind the dialog, which is in the top layer.
  */
 
@@ -41,7 +41,7 @@ function dialog(): HTMLDialogElement | null {
   return document.querySelector<HTMLDialogElement>(DIALOG);
 }
 
-/** Whether `el` is inside the modal dialog: a failure there is shown by the dialog, not by a toast. */
+/** Whether `el` is inside the modal dialog: a failure there is shown by the dialog, not by an alert. */
 export function insideModal(el: Element | null | undefined): boolean {
   return !!el?.closest?.(DIALOG);
 }

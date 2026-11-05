@@ -16,8 +16,8 @@ import { syncSliders } from '../slider/slider';
 const inited = new WeakSet<HTMLElement>();
 
 // The drop highlight of the zone: classes of the colour table (spec/components/color-rules.md), swapped in by the script.
-const ZONE_REST = 'border-neutral-600';
-const ZONE_ACTIVE = ['border-indigo-400', 'bg-indigo-500/20'];
+const ZONE_REST = 'border-border';
+const ZONE_ACTIVE = ['border-accent', 'bg-accent-soft'];
 
 class Inputs {
   private readonly form: HTMLElement;

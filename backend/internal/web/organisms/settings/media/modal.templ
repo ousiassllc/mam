@@ -42,7 +42,7 @@ templ ImageModal(f ImageForm) {
 
 templ imageSlot(f ImageForm, slot, slotLabel string, field modelpick.FieldData, t ImageTarget) {
 	<div class="flex flex-wrap items-start gap-3">
-		<span id={ field.ID + "-label" } class="w-24 pt-2 text-sm font-medium">{ slotLabel }</span>
+		<span id={ field.ID + "-label" } class="w-24 pt-2 text-sm">{ slotLabel }</span>
 		<div class="min-w-0 flex-1">
 			@modelpick.Field(field)
 		</div>
@@ -77,7 +77,7 @@ templ PolicyModal(f PolicyForm) {
 			@policySlot(SlotPrimary, "主モデル", f.Primary)
 			@policySlot(SlotFallback, "代替モデル", f.Fallback)
 			<div class="flex flex-wrap items-center gap-3">
-				<label for={ PolicyTakesField(f.Row.Policy) } class="w-24 text-sm font-medium">テイク数</label>
+				<label for={ PolicyTakesField(f.Row.Policy) } class="w-24 text-sm">テイク数</label>
 				@atoms.Input(atoms.FieldMd, "w-20", blamed(templ.Attributes{
 					"id":    PolicyTakesField(f.Row.Policy),
 					"name":  PolicyTakesField(f.Row.Policy),
@@ -97,7 +97,7 @@ templ PolicyModal(f PolicyForm) {
 
 templ policySlot(slot, slotLabel string, field modelpick.FieldData) {
 	<div class="flex flex-wrap items-start gap-3">
-		<span id={ field.ID + "-label" } class="w-24 pt-2 text-sm font-medium">{ slotLabel }</span>
+		<span id={ field.ID + "-label" } class="w-24 pt-2 text-sm">{ slotLabel }</span>
 		<div class="min-w-0 flex-1">
 			@modelpick.Field(field)
 		</div>

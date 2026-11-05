@@ -210,7 +210,7 @@ func SavePolicy(svc *modelsettings.Service, k Cards) gin.HandlerFunc {
 // notes and the reset, which the save may have changed, and the toast.
 func done(c *gin.Context, v modelsettings.View, row templ.Component, toast string) {
 	settingshttp.CloseModal(c)
-	settingshttp.Render(c, http.StatusOK, templ.Join(row, media.Status(Data(v), true), atoms.SuccessToastOOB(toast)))
+	settingshttp.Render(c, http.StatusOK, templ.Join(row, media.Status(Data(v), true), atoms.ToastOOB(toast)))
 }
 
 // refuse answers a save that did not happen with the modal again (draw) and why: 422 for a refused input, 409 for a file

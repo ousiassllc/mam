@@ -63,10 +63,10 @@ export function markCurrent(body: ParentNode, field: Element | null): void {
     const current = values.length > 0 && values.every(([key, value]) => inputs.get(key)?.value === value);
     card.setAttribute('aria-pressed', current ? 'true' : 'false');
     // The card of the model in the field looks chosen, as a card that is ticked does (the classes are written out so that Tailwind finds them).
-    card.classList.toggle('border-indigo-400', current);
-    card.classList.toggle('bg-indigo-500/20', current);
-    card.classList.toggle('border-neutral-800', !current);
-    card.classList.toggle('bg-neutral-900', !current);
+    card.classList.toggle('border-accent', current);
+    card.classList.toggle('bg-accent-soft', current);
+    card.classList.toggle('border-border', !current);
+    card.classList.toggle('bg-surface', !current);
   }
 }
 

@@ -66,7 +66,7 @@ func editor(e Editor) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form class=\"flex flex-col gap-4 rounded-md border border-neutral-700 p-4\" hx-put=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form class=\"flex flex-col gap-4 rounded-md border border-border p-4\" hx-put=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -118,14 +118,14 @@ func editor(e Editor) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "）</h3><p class=\"text-xs text-neutral-400\">グラフか入力の割り当てを変えて保存すると、版が上がります（v")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "）</h3><p class=\"text-sm text-mute\">グラフか入力の割り当てを変えて保存すると、版が上がります（v")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(e.Version + 1))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/editor.templ`, Line: 27, Col: 147}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/editor.templ`, Line: 27, Col: 140}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -136,14 +136,14 @@ func editor(e Editor) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if e.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"workflow-form-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"workflow-form-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(e.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/editor.templ`, Line: 29, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/editor.templ`, Line: 29, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -155,14 +155,14 @@ func editor(e Editor) templ.Component {
 			}
 		}
 		for _, p := range e.Problems {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-xs text-amber-300\" data-testid=\"workflow-editor-problem\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-warning\" data-testid=\"workflow-editor-problem\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(p)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/editor.templ`, Line: 32, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/editor.templ`, Line: 32, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -199,7 +199,7 @@ func editor(e Editor) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\"><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-edit-name\"><span>名前</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\"><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-edit-name\"><span>名前</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -215,12 +215,12 @@ func editor(e Editor) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><fieldset class=\"flex flex-col gap-2\" data-testid=\"workflow-assignments\"><legend class=\"text-sm font-medium\">入力の割り当て</legend><p class=\"text-xs text-neutral-400\">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p><table class=\"w-full text-sm\"><tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><fieldset class=\"flex flex-col gap-2\" data-testid=\"workflow-assignments\"><legend class=\"text-sm\">入力の割り当て</legend><p class=\"text-sm text-mute\">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p><table class=\"w-full text-sm\"><tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, s := range e.Slots {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<tr class=\"border-b border-neutral-800\"><th scope=\"row\" class=\"py-1 pr-3 text-left font-normal\"><label for=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<tr class=\"border-b border-border\"><th scope=\"row\" class=\"py-1 pr-3 text-left font-normal\"><label for=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -352,7 +352,7 @@ func editor(e Editor) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</tbody></table></fieldset><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-edit-output\"><span>出力に使うノード（画像・動画を保存するノード）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</tbody></table></fieldset><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-edit-output\"><span>出力に使うノード（画像・動画を保存するノード）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -448,7 +448,7 @@ func editor(e Editor) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if e.Kind == KindVideo {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-edit-fps\"><span>fps（空: 16）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-edit-fps\"><span>fps（空: 16）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -456,7 +456,7 @@ func editor(e Editor) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-edit-step\"><span>フレーム数の刻み（Wan は 4、LTX は 8）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-edit-step\"><span>フレーム数の刻み（Wan は 4、LTX は 8）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -469,7 +469,7 @@ func editor(e Editor) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-edit-multiple\"><span>幅・高さの倍数（空: 16）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-edit-multiple\"><span>幅・高さの倍数（空: 16）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -482,7 +482,7 @@ func editor(e Editor) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if e.Kind == KindVideo {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"workflow-video-fields\"><legend class=\"text-sm font-medium\">動画の能力</legend><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-edit-durations\"><span>長さ（秒。小さい順にカンマ区切り）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"workflow-video-fields\"><legend class=\"text-sm\">動画の能力</legend><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-edit-durations\"><span>長さ（秒。小さい順にカンマ区切り）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -490,7 +490,7 @@ func editor(e Editor) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"workflow-edit-resolutions\"><span>解像度（短辺。カンマ区切り）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-edit-resolutions\"><span>解像度（短辺。カンマ区切り）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -512,7 +512,7 @@ func editor(e Editor) templ.Component {
 			}
 		}
 		if len(e.Versions) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div class=\"text-xs text-neutral-400\" data-testid=\"workflow-versions\">版: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div class=\"text-xs text-mute\" data-testid=\"workflow-versions\">版: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

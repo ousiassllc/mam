@@ -22,46 +22,46 @@ templ Card(d Data) {
 		@settingsui.CardItem(d.card()) {
 			<form id="llm-local-form" class="flex w-full flex-col gap-3" hx-put={ paths.LLMLocal() } hx-target={ "#" + CardID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="llm-local-form">
 				if d.Managed != nil {
-					<div class="flex flex-col gap-1 rounded-md border border-neutral-700 p-3" data-testid="llm-local-managed">
-						<label class="flex items-start gap-2 text-sm text-neutral-200">
+					<div class="flex flex-col gap-1 rounded-lg border border-border p-3" data-testid="llm-local-managed">
+						<label class="flex items-start gap-2 text-sm text-ink">
 							@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": "use_managed", "value": "1", "checked": d.UseManaged, "disabled": d.Pinned, "data-testid": "llm-local-use-managed"})
-							<span>この PC の llama.cpp を使う<span class="block text-xs text-neutral-400">{ managedHelp }</span></span>
+							<span>この PC の llama.cpp を使う<span class="block text-xs text-mute">{ managedHelp }</span></span>
 						</label>
-						<p class="text-xs text-neutral-300" data-testid="llm-local-managed-state" data-state={ d.Managed.State }>{ d.Managed.stateText() }</p>
+						<p class="text-sm text-ink" data-testid="llm-local-managed-state" data-state={ d.Managed.State }>{ d.Managed.stateText() }</p>
 						if d.Managed.Reason != "" && d.Managed.State != "running" && d.Managed.State != "stopped" {
-							<p class="whitespace-pre-wrap break-words text-xs text-amber-300" data-testid="llm-local-managed-reason">{ d.Managed.Reason }</p>
+							<p class="whitespace-pre-wrap break-words text-sm text-warning" data-testid="llm-local-managed-reason">{ d.Managed.Reason }</p>
 						}
-						<a class="w-fit text-xs text-sky-300 underline" href={ templ.SafeURL(paths.ModelManager()) } data-testid="llm-local-managed-link">モデルマネージャーで導入・モデルを選ぶ</a>
+						<a class="w-fit text-xs text-info underline" href={ templ.SafeURL(paths.ModelManager()) } data-testid="llm-local-managed-link">モデルマネージャーで導入・モデルを選ぶ</a>
 					</div>
 					if !d.Pinned {
 						<input type="hidden" name="use_managed_present" value="1"/>
 					}
 				}
 				<div class="flex flex-col gap-1">
-					<label class="text-sm font-semibold text-neutral-100" for="llm-local-base-url">ベース URL</label>
+					<label class="text-sm text-ink" for="llm-local-base-url">ベース URL</label>
 					@atoms.Input(atoms.FieldSm, "w-full", templ.Attributes{
 						"id": "llm-local-base-url", "name": "base_url", "type": "text", "value": d.BaseURL, "placeholder": d.DefaultBaseURL,
 						"autocomplete": "off", "spellcheck": "false", "disabled": d.Pinned, "data-testid": "llm-local-base-url",
 						"aria-invalid": invalid(d.Blame == "base_url"), "aria-describedby": "llm-local-base-url-help",
 					})
-					<p id="llm-local-base-url-help" class="text-xs text-neutral-400">{ baseURLHelp }</p>
+					<p id="llm-local-base-url-help" class="text-sm text-mute">{ baseURLHelp }</p>
 				</div>
 				<div class="flex flex-col gap-1">
-					<label class="text-sm font-semibold text-neutral-100" for="llm-local-api-key">API キー（任意）</label>
+					<label class="text-sm text-ink" for="llm-local-api-key">API キー（任意）</label>
 					@atoms.Input(atoms.FieldSm, "w-full", templ.Attributes{
 						"id": "llm-local-api-key", "name": "api_key", "type": "password", "value": "", "placeholder": keyPlaceholder(d),
 						"autocomplete": "off", "spellcheck": "false", "data-testid": "llm-local-api-key", "aria-invalid": invalid(d.Blame == "api_key"),
 					})
 					if d.KeyConfigured {
-						<label class="flex items-center gap-2 text-xs text-neutral-300">
+						<label class="flex items-center gap-2 text-xs text-ink">
 							@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": "clear_key", "value": "1", "data-testid": "llm-local-clear-key"})
 							保存したキーを削除する
 						</label>
 					}
 				</div>
-				<label class="flex items-start gap-2 text-sm text-neutral-200">
+				<label class="flex items-start gap-2 text-sm text-ink">
 					@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": "unload", "value": "1", "checked": d.Unload, "disabled": d.Pinned, "data-testid": "llm-local-unload"})
-					<span>画像・動画を作る前に、Ollama のモデルをメモリから降ろす<span class="block text-xs text-neutral-400">ComfyUI と GPU を取り合わないためのスイッチです（Ollama の keep_alive=0）。Ollama 以外のサーバーでは何もしません。使うときは、次の LLM の呼び出しでモデルを読み込み直すため少し待ちます。</span></span>
+					<span>画像・動画を作る前に、Ollama のモデルをメモリから降ろす<span class="block text-xs text-mute">ComfyUI と GPU を取り合わないためのスイッチです（Ollama の keep_alive=0）。Ollama 以外のサーバーでは何もしません。使うときは、次の LLM の呼び出しでモデルを読み込み直すため少し待ちます。</span></span>
 				</label>
 				if !d.Pinned {
 					<input type="hidden" name="unload_present" value="1"/>
@@ -144,22 +144,22 @@ func (d Data) card() settingsui.Card {
 // Result is the answer of a connection test: what happened, the models the server has, or the common error of the failure.
 templ Result(r TestResult) {
 	if r.OK {
-		<div class="flex flex-col gap-1 rounded-md border border-emerald-500/60 bg-emerald-500/10 p-3 text-sm text-neutral-100" role="status" data-testid="llm-local-test-ok">
+		<div class="flex flex-col gap-1 rounded-lg border border-success/60 bg-success/10 p-3 text-sm text-ink" role="status" data-testid="llm-local-test-ok">
 			<p>{ r.Message }</p>
 			if len(r.Models) > 0 {
-				<ul class="list-inside list-disc text-xs text-neutral-300" data-testid="llm-local-models">
+				<ul class="list-inside list-disc text-xs text-ink" data-testid="llm-local-models">
 					for _, m := range r.Models {
 						<li class="break-all">{ m }</li>
 					}
 				</ul>
 				if r.Count > len(r.Models) {
-					<p class="text-xs text-neutral-400">ほか { strconv.Itoa(r.Count - len(r.Models)) } 件</p>
+					<p class="text-sm text-mute">ほか { strconv.Itoa(r.Count - len(r.Models)) } 件</p>
 				}
 			}
 		</div>
 	} else if r.Failure != nil {
 		@errorbox.Box(errorbox.Props{View: *r.Failure, Lang: apperr.LangJa, ID: "llm-local-test"})
 	} else {
-		<p class="text-sm text-red-300" role="alert" data-testid="llm-local-test-failed">{ r.Message }</p>
+		<p class="text-sm text-danger" role="alert" data-testid="llm-local-test-failed">{ r.Message }</p>
 	}
 }

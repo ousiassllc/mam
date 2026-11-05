@@ -3,6 +3,7 @@ package sidenav
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/navstate"
+	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
 
 const (
@@ -13,10 +14,12 @@ const (
 	LabelOpen = "メニューを開く"
 	// MenuLabel names the navigation landmark.
 	MenuLabel = "メニュー"
+	// LabelTheme names the button that switches between the Light and the Dark theme (static/src/components/theme).
+	LabelTheme = "ライト / ダークを切り替える"
 
-	itemClass   = "flex items-center gap-3 rounded-md border-l-2 px-3 py-1.5 text-sm transition-colors hover:bg-neutral-800 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
-	idleClass   = " border-transparent text-neutral-300"
-	activeClass = " border-indigo-400 bg-neutral-800 font-medium text-neutral-100"
+	itemClass   = "flex min-h-10 items-center gap-3 rounded-md border-l-2 px-3 py-1 text-sm transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
+	idleClass   = " border-transparent text-ink"
+	activeClass = " border-accent bg-accent-soft text-ink"
 	// labelClass hides the text of an entry visually, not from assistive technology, when the menu is folded and on a narrow
 	// window (icons only there; the fold button is hidden too).
 	labelClass = "truncate max-md:sr-only group-data-[folded=true]:sr-only"
@@ -55,10 +58,10 @@ templ menu(s State, folded bool) {
 		data-cookie-folded={ navstate.Folded }
 		data-label-fold={ LabelFold }
 		data-label-open={ LabelOpen }
-		class="group sticky top-0 flex h-screen w-14 shrink-0 flex-col gap-4 border-r border-neutral-800 bg-neutral-950 px-2 py-4 md:data-[folded=false]:w-56"
+		class="group sticky top-0 flex h-screen w-14 shrink-0 flex-col gap-4 border-r border-border bg-bone px-2 py-4 md:data-[folded=false]:w-56"
 	>
 		<div class="flex items-center justify-between gap-2 px-1 group-data-[folded=true]:justify-center max-md:justify-center">
-			<span class="truncate text-base font-semibold text-neutral-100 max-md:sr-only group-data-[folded=true]:sr-only">mam</span>
+			<span class="truncate text-base text-ink max-md:sr-only group-data-[folded=true]:sr-only">mam</span>
 			<button
 				type="button"
 				data-sidenav-toggle
@@ -67,7 +70,8 @@ templ menu(s State, folded bool) {
 				aria-label={ foldLabel(folded) }
 				title={ foldLabel(folded) }
 				data-testid="sidenav-toggle"
-				class="rounded-md p-2 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 max-md:hidden motion-reduce:transition-none"
+				data-ripple
+				class="rounded-md p-2 text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring max-md:hidden motion-reduce:transition-none"
 			>
 				<span class="group-data-[folded=true]:hidden">
 					@atoms.Icon(atoms.IconPanelClose, "h-5 w-5")
@@ -80,12 +84,25 @@ templ menu(s State, folded bool) {
 		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden">
 			@list(Screens(), s.Current, "sidenav-screens", "")
 			if s.Project != nil {
-				<div class="flex flex-col gap-1 border-t border-neutral-800 pt-3">
-					<p id="sidenav-project" class="truncate px-3 text-xs text-neutral-400 max-md:sr-only group-data-[folded=true]:sr-only" title={ s.Project.Name }>{ s.Project.Name }</p>
+				<div class="flex flex-col gap-1 border-t border-border pt-3">
+					<p id="sidenav-project" class="truncate px-3 text-xs text-mute max-md:sr-only group-data-[folded=true]:sr-only" title={ s.Project.Name }>{ s.Project.Name }</p>
 					@list(Views(*s.Project), s.Current, "sidenav-views", "sidenav-project")
 				</div>
 			}
 		</div>
+		<button
+			type="button"
+			data-theme-toggle
+			data-ripple
+			data-theme-cookie={ themestate.CookieName }
+			aria-label={ LabelTheme }
+			title={ LabelTheme }
+			data-testid="theme-toggle"
+			class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none max-md:justify-center"
+		>
+			@atoms.Icon(atoms.IconTheme, "h-5 w-5")
+			<span class="max-md:sr-only group-data-[folded=true]:sr-only">{ LabelTheme }</span>
+		</button>
 	</nav>
 }
 
@@ -94,7 +111,7 @@ templ list(items []Item, current Key, id, labelledBy string) {
 	<ul
 		id={ id }
 		role="list"
-		class="flex flex-col gap-0.5"
+		class="flex flex-col gap-2"
 		if labelledBy != "" {
 			aria-labelledby={ labelledBy }
 		}
@@ -129,9 +146,9 @@ templ entry(it Item, current bool) {
 
 func iconClass(current bool) string {
 	if current {
-		return "shrink-0 text-indigo-300"
+		return "shrink-0 text-accent"
 	}
-	return "shrink-0 text-neutral-400"
+	return "shrink-0 text-mute"
 }
 
 func boolText(b bool) string { return foldedText(b) }

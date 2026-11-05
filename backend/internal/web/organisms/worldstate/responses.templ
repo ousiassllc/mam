@@ -17,7 +17,7 @@ templ versionInfo(d Data, oob bool) {
 templ versionLine(d Data, oob bool) {
 	<p
 		id="world-state-version"
-		class="text-xs text-neutral-400"
+		class="text-xs text-mute"
 		if oob {
 			hx-swap-oob="true"
 		}
@@ -82,7 +82,7 @@ templ CharacterCreated(d Data, id string) {
 			@entityForm(d, e)
 		</div>
 	}
-	<p id="world-state-empty" class="text-sm text-neutral-400" hx-swap-oob="true"></p>
+	<p id="world-state-empty" class="text-sm text-mute" hx-swap-oob="true"></p>
 	@versionInfo(d, true)
 }
 

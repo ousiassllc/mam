@@ -39,4 +39,3 @@
 440	backend/internal/service/review.go
 2777	backend/internal/web/handler/
 2323	backend/internal/web/organisms/
-2279	static/src/components/lib/

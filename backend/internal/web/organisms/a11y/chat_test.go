@@ -42,7 +42,7 @@ func TestChatComposer_AttachmentInputIsNamedAndItsFocusIsVisible(t *testing.T) {
 
 	label := regexp.MustCompile(`<label[^>]*for="composer-files"[^>]*>`).FindString(html)
 	require.NotEmpty(t, label, html)
-	assert.Contains(t, label, "peer-focus-visible:ring-2")
+	assert.Contains(t, label, "peer-focus-visible:focus-ring")
 	// peer-* styles the sibling that follows the peer, so the input must come first.
 	assert.Regexp(t, `class="[^"]*\bpeer\b`, input)
 	assert.Less(t, strings.Index(html, input), strings.Index(html, label))

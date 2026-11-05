@@ -149,7 +149,7 @@ func change(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, r
 		saved, _ := find(now, agent)
 		row := rowOf(saved)
 		settingshttp.CloseModal(c)
-		settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(row), atoms.SuccessToastOOB(e.Label+done+"。"+appliedNow)))
+		settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(row), atoms.ToastOOB(e.Label+done+"。"+appliedNow)))
 		return
 	}
 	if typed != nil { // the refused modal is drawn again with what was typed

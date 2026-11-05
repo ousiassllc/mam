@@ -21,16 +21,16 @@ templ RuntimeDetail(r Runtime) {
 			case !r.Supported:
 				@runtimeUnsupported(r)
 			case !r.Writable:
-				<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="alert" data-testid="mm-runtime-readonly">
+				<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-runtime-readonly">
 					<p>mam.exe のあるフォルダ（{ r.Dir }）に書き込めません。書き込める場所に置き直してください。</p>
-					<p class="text-xs">{ r.WritableError }</p>
+					<p class="text-sm">{ r.WritableError }</p>
 				</div>
 		}
 		@runtimeFacts(r)
 		if r.Weights.Message != "" {
-			<p class="text-sm text-amber-300" data-testid="mm-runtime-weights-message">{ r.Weights.Message }</p>
+			<p class="text-sm text-warning" data-testid="mm-runtime-weights-message">{ r.Weights.Message }</p>
 		}
-		<p class="text-xs text-neutral-400">
+		<p class="text-sm text-mute">
 			{ r.Name } は mam とは別のプログラムで、mam には含まれません。公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。
 			if r.SourceURL != "" {
 				<a class="underline" href={ templ.SafeURL(r.SourceURL) } target="_blank" rel="noopener noreferrer">ソース</a>
@@ -40,7 +40,7 @@ templ RuntimeDetail(r Runtime) {
 			}
 		</p>
 		if r.LicenseCondition != "" {
-			<p class="text-xs text-amber-300" data-testid="mm-runtime-license-note">{ r.LicenseCondition }</p>
+			<p class="text-sm text-warning" data-testid="mm-runtime-license-note">{ r.LicenseCondition }</p>
 		}
 		@RuntimeModels(r)
 		@weightlist.List(r.Weights)
@@ -52,7 +52,7 @@ templ RuntimeDetail(r Runtime) {
 
 // runtimeUnsupported says why the runtime cannot run on this machine (the sentence of the catalog: macOS has its own) and what to use instead.
 templ runtimeUnsupported(r Runtime) {
-	<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid="mm-runtime-unsupported">
+	<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid="mm-runtime-unsupported">
 		<p data-testid="mm-runtime-reason">{ r.Reason }</p>
 		if r.Fallback != "" {
 			<p data-testid="mm-runtime-fallback">{ r.Fallback }</p>
@@ -61,23 +61,23 @@ templ runtimeUnsupported(r Runtime) {
 }
 
 templ runtimeFacts(r Runtime) {
-	<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-neutral-300" data-testid="mm-runtime-facts">
+	<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink" data-testid="mm-runtime-facts">
 		if r.Installed {
-			<div class="col-span-2"><dt class="text-neutral-400">導入済み</dt><dd>{ r.Name } { r.Version }（{ r.VariantLabel }）</dd></div>
+			<div class="col-span-2"><dt class="text-mute">導入済み</dt><dd>{ r.Name } { r.Version }（{ r.VariantLabel }）</dd></div>
 			if r.State == "running" {
-				<div class="col-span-2"><dt class="text-neutral-400">待ち受け（この PC の中だけ）</dt><dd><code data-testid="mm-runtime-url">{ r.URL }</code></dd></div>
+				<div class="col-span-2"><dt class="text-mute">待ち受け（この PC の中だけ）</dt><dd><code data-testid="mm-runtime-url">{ r.URL }</code></dd></div>
 			}
 			if r.UpdateAvailable {
-				<div class="col-span-2 text-amber-300"><dt>更新</dt><dd>固定版 { r.PinnedVersion } があります（導入済み: { r.Version }）</dd></div>
+				<div class="col-span-2 text-warning"><dt>更新</dt><dd>固定版 { r.PinnedVersion } があります（導入済み: { r.Version }）</dd></div>
 			}
 		}
-		<div><dt class="text-neutral-400">必要な空き容量</dt><dd data-testid="mm-runtime-need">{ r.Need }</dd></div>
-		<div><dt class="text-neutral-400">VRAM の目安</dt><dd data-testid="mm-runtime-vram">{ r.VRAM }</dd></div>
+		<div><dt class="text-mute">必要な空き容量</dt><dd data-testid="mm-runtime-need">{ r.Need }</dd></div>
+		<div><dt class="text-mute">VRAM の目安</dt><dd data-testid="mm-runtime-vram">{ r.VRAM }</dd></div>
 		if r.GPU != "" {
-			<div class="col-span-2"><dt class="text-neutral-400">この PC の GPU</dt><dd>{ r.GPU }（{ r.VariantLabel }）</dd></div>
+			<div class="col-span-2"><dt class="text-mute">この PC の GPU</dt><dd>{ r.GPU }（{ r.VariantLabel }）</dd></div>
 		}
 		if r.Supported && r.Writable {
-			<div class="col-span-2"><dt class="text-neutral-400">導入先（空き { r.Free }）</dt><dd data-testid="mm-runtime-dir"><code class="break-all">{ r.Dir }</code></dd></div>
+			<div class="col-span-2"><dt class="text-mute">導入先（空き { r.Free }）</dt><dd data-testid="mm-runtime-dir"><code class="break-all">{ r.Dir }</code></dd></div>
 		}
 	</dl>
 }

@@ -10,19 +10,19 @@ import (
 templ Section(d Data) {
 	<div id={ PanelID } class="flex flex-col gap-4" data-testid="facefusion-panel">
 		if d.Problem != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="facefusion-problem">{ d.Problem }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="facefusion-problem">{ d.Problem }</p>
 		} else {
 			if d.Notice != "" {
-				<p class="text-sm text-emerald-300" role="status" data-testid="facefusion-notice">{ d.Notice }</p>
+				<p class="text-sm text-success" role="status" data-testid="facefusion-notice">{ d.Notice }</p>
 			}
 			if d.Error != "" {
-				<p class="text-sm text-red-300" role="alert" data-testid="facefusion-error">{ d.Error }</p>
+				<p class="text-sm text-danger" role="alert" data-testid="facefusion-error">{ d.Error }</p>
 			}
 			<p class="text-sm" data-testid="facefusion-state">
 				if d.Ready {
 					@atoms.Badge(atoms.BadgeOK, "使えます")
 					if d.Version != "" {
-						<span class="ml-2 text-xs text-neutral-400" data-testid="facefusion-version">FaceFusion { d.Version }（{ d.License }）</span>
+						<span class="ml-2 text-xs text-mute" data-testid="facefusion-version">FaceFusion { d.Version }（{ d.License }）</span>
 					}
 				} else {
 					@atoms.Badge(atoms.BadgeWarn, "未設定")
@@ -36,34 +36,34 @@ templ Section(d Data) {
 				</div>
 			</form>
 			if len(d.SearchDirs) > 0 {
-				<p class="text-xs text-neutral-400" data-testid="facefusion-search-dirs">フォルダを空にしたときの探し方: { joinDirs(d.SearchDirs) }（この順）。Python は、FaceFusion の公式手順の conda 環境 facefusion、次に PATH の python3 / python を探します。</p>
+				<p class="text-sm text-mute" data-testid="facefusion-search-dirs">フォルダを空にしたときの探し方: { joinDirs(d.SearchDirs) }（この順）。Python は、FaceFusion の公式手順の conda 環境 facefusion、次に PATH の python3 / python を探します。</p>
 			}
 			for _, g := range d.Groups {
 				<section class="flex flex-col gap-1" data-testid={ "facefusion-models-" + g.Title }>
-					<h3 class="text-sm font-semibold text-neutral-100">{ g.Title }</h3>
+					<h3 class="text-sm font-semibold text-ink">{ g.Title }</h3>
 					<ul class="flex flex-col gap-1 text-xs">
 						for _, m := range g.Models {
 							<li class="flex flex-wrap items-center gap-2" data-testid={ "facefusion-model-" + m.ID }>
 								<code>{ m.ID }</code>
 								@atoms.Badge(m.Tone, m.Class)
-								<span class="text-neutral-400">{ m.License }</span>
+								<span class="text-mute">{ m.License }</span>
 								if m.Default {
 									@atoms.Badge(atoms.BadgeNeutral, "既定")
 								}
 								if m.Note != "" {
-									<span class="text-neutral-400">{ m.Note }</span>
+									<span class="text-mute">{ m.Note }</span>
 								}
 							</li>
 						}
 					</ul>
 				</section>
 			}
-			<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-amber-300" data-testid="facefusion-notes">
+			<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-warning" data-testid="facefusion-notes">
 				for _, n := range d.Notes {
 					<li>{ n }</li>
 				}
 			</ul>
-			<p class="text-xs text-neutral-400">
+			<p class="text-sm text-mute">
 				ライセンスの出典:
 				<a class="underline" href={ templ.SafeURL(d.LicensesURL) } target="_blank" rel="noopener noreferrer">FaceFusion のライセンス一覧</a>、
 				<a class="underline" href={ templ.SafeURL(d.DisclaimerURL) } target="_blank" rel="noopener noreferrer">免責事項（成人向けの扱い）</a>
@@ -74,18 +74,18 @@ templ Section(d Data) {
 
 templ partField(p Part) {
 	<div class="flex flex-col gap-1" data-testid={ "facefusion-part-" + p.Field }>
-		<label class="text-sm font-semibold text-neutral-100" for={ "facefusion-path-" + p.Field }>{ p.Label }</label>
+		<label class="text-sm text-ink" for={ "facefusion-path-" + p.Field }>{ p.Label }</label>
 		@atoms.Input(atoms.FieldSm, "w-full", templ.Attributes{
 			"id": "facefusion-path-" + p.Field, "name": p.Field, "type": "text", "value": p.Configured,
 			"placeholder": p.Placeholder, "autocomplete": "off", "spellcheck": "false", "data-testid": "facefusion-path-" + p.Field,
 		})
 		if p.Problem != "" {
-			<p class="text-xs text-amber-300" role="status" data-testid={ "facefusion-state-" + p.Field }>
+			<p class="text-sm text-warning" role="status" data-testid={ "facefusion-state-" + p.Field }>
 				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
 				<span class="ml-2">{ p.Problem }</span>
 			</p>
 		} else {
-			<p class="text-xs text-neutral-400" data-testid={ "facefusion-state-" + p.Field }>
+			<p class="text-sm text-mute" data-testid={ "facefusion-state-" + p.Field }>
 				@atoms.Badge(atoms.BadgeOK, "見つかりました")
 				<code class="ml-2 break-all">{ p.Found }</code>
 			</p>

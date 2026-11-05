@@ -3,7 +3,7 @@
  * only listens to /ws/projects/:id and asks for HTML fragments when told something changed
  * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
  */
-import { ajaxChecked, showToast } from './ajax';
+import { ajaxChecked, showAlert } from './ajax';
 import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { selfAndDescendants } from './components/lib/query';
@@ -43,7 +43,7 @@ class ChatWorkspace {
   /** Fetches the messages after the last one shown; requests are merged and a failure is retried. */
   private readonly syncer = createSyncer({
     run: () => ajaxChecked('get', this.nextMessagesUrl(), { target: THREAD, swap: 'beforeend', source: THREAD }),
-    onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
+    onGiveUp: () => showAlert(AJAX_FAILED_MESSAGE),
   });
   /** One per card: a card refetch that failed is retried with a backoff, as syncer does for new messages. */
   private readonly cardSyncers = new Map<string, Syncer>();
@@ -103,7 +103,7 @@ class ChatWorkspace {
           const url = this.thread.querySelector<HTMLElement>(target)?.dataset.cardUrl;
           if (url) await ajaxChecked('get', url, { target, swap: 'outerHTML', source: target });
         },
-        onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
+        onGiveUp: () => showAlert(AJAX_FAILED_MESSAGE),
       });
       this.cardSyncers.set(messageId, syncer);
     }
@@ -177,7 +177,7 @@ class ChatWorkspace {
 
     // After a successful (2xx) send the composer is cleared; a failed one keeps the user's input. Only what was
     // sent is cleared: the input stays editable while the request runs, and the next message typed meanwhile
-    // is kept. detail.successful is not used: main.ts swaps HTML error responses (toasts), so htmx reports
+    // is kept. detail.successful is not used: main.ts swaps HTML error responses (alerts), so htmx reports
     // those as successful too.
     let sent: ComposerSnapshot | undefined;
     this.composer.addEventListener('htmx:beforeRequest', (event) => {
@@ -224,7 +224,7 @@ class ChatWorkspace {
       ...[...this.files.files!].map((file) => {
         const li = document.createElement('li');
         li.textContent = file.name;
-        li.className = 'rounded bg-neutral-800 px-2 py-0.5';
+        li.className = 'rounded-sm bg-accent-soft px-2 py-1';
         return li;
       }),
     );

@@ -113,7 +113,7 @@ func Refine(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><section class=\"flex flex-col gap-2 rounded-md border border-neutral-800 p-3 text-sm\" aria-labelledby=\"gt-refine-title\" data-gt-refine data-testid=\"gt-refine\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-refine-title\" class=\"text-sm font-medium text-neutral-200\">こだわり</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><section class=\"flex flex-col gap-2 rounded-lg border border-border p-3 text-sm\" aria-labelledby=\"gt-refine-title\" data-gt-refine data-testid=\"gt-refine\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-refine-title\" class=\"text-sm font-semibold text-ink\">こだわり</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -126,14 +126,14 @@ func Refine(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Carried != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-xs text-neutral-300\" data-testid=\"gt-carried\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-ink\" data-testid=\"gt-carried\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(d.Carried)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/refine.templ`, Line: 19, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/refine.templ`, Line: 19, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -144,7 +144,7 @@ func Refine(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-xs text-neutral-400\" data-gt-refine-empty data-testid=\"gt-refine-empty\">変えた項目はまだありません。変えると、ここに並び、元に戻せます。</p><ul class=\"flex flex-col gap-1\" data-gt-refine-list data-testid=\"gt-refine-list\" aria-live=\"polite\"></ul></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-sm text-mute\" data-gt-refine-empty data-testid=\"gt-refine-empty\">変えた項目はまだありません。変えると、ここに並び、元に戻せます。</p><ul class=\"flex flex-col gap-1\" data-gt-refine-list data-testid=\"gt-refine-list\" aria-live=\"polite\"></ul></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

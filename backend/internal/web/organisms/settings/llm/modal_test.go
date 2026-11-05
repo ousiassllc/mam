@@ -62,8 +62,8 @@ func TestModal_TheTargetsAreModelPickerFieldsThatPostTheProviderAndTheModel(t *t
 	html := render(t, form("", ""))
 
 	assert.NotContains(t, html, "<select", "no pull-down: the picker is the way to choose")
-	assert.Contains(t, html, `<legend class="mb-1 text-sm font-medium">プライマリ</legend>`)
-	assert.Contains(t, html, `<legend class="mb-1 text-sm font-medium">代替</legend>`)
+	assert.Contains(t, html, `<legend class="mb-1 text-sm">プライマリ</legend>`)
+	assert.Contains(t, html, `<legend class="mb-1 text-sm">代替</legend>`)
 	assert.Contains(t, html, `<input type="hidden" name="primary.provider" value="google" data-mp-from="provider">`)
 	assert.Contains(t, html, `<input type="hidden" name="primary.model" value="gemini-x" data-mp-from="model">`)
 	assert.Contains(t, html, `<input type="hidden" name="fallback.provider" value="openai" data-mp-from="provider">`)

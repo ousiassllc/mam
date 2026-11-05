@@ -8,10 +8,10 @@ import type { TakeScore } from './take-model';
  */
 export function renderScore(value: number | undefined, minAxisScore: number) {
   if (value === undefined) {
-    return html`<span class="text-neutral-400" data-no-score><span aria-hidden="true">—</span><span class="sr-only">スコアなし</span></span>`;
+    return html`<span class="text-mute" data-no-score><span aria-hidden="true">—</span><span class="sr-only">スコアなし</span></span>`;
   }
   return value < minAxisScore
-    ? html`<span class="text-red-300" data-below-min>${Math.round(value)}<span class="sr-only">（基準 ${minAxisScore} 未満）</span><span aria-hidden="true"> ▼</span></span>`
+    ? html`<span class="text-danger" data-below-min>${Math.round(value)}<span class="sr-only">（基準 ${minAxisScore} 未満）</span><span aria-hidden="true"> ▼</span></span>`
     : html`<span>${Math.round(value)}</span>`;
 }
 

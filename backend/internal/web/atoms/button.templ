@@ -8,75 +8,80 @@ const (
 	ToneNeutral ButtonTone = "neutral"
 	TonePrimary ButtonTone = "primary"
 	ToneDanger  ButtonTone = "danger"
+	// ToneGhost is a button with no frame: the lightest action of a row of buttons (the UI guide's ghost button).
+	ToneGhost ButtonTone = "ghost"
 )
 
 func buttonClass(tone ButtonTone, small bool) string {
-	base := "inline-flex items-center justify-center rounded-md font-medium transition disabled:cursor-not-allowed disabled:opacity-50 "
+	// SemiBold, --r-md, disabled at opacity .4; a small button is 32 high and the others 40 (the UI guide, O7).
+	base := "inline-flex items-center justify-center rounded-md font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none "
 	if small {
-		base += "px-2 py-1 text-xs "
+		base += "min-h-8 px-3 py-1 text-sm "
 	} else {
-		base += "px-3 py-1.5 text-sm "
+		base += "min-h-10 px-4 py-2 text-sm "
 	}
 	switch tone {
 	case TonePrimary:
-		return base + "bg-indigo-500 text-white hover:bg-indigo-400"
+		return base + "bg-accent text-bone hover:bg-accent/85"
 	case ToneDanger:
-		return base + "border border-red-500/60 text-red-300 hover:bg-red-500/10"
+		return base + "border border-danger/60 text-danger hover:bg-danger/10"
+	case ToneGhost:
+		return base + "text-ink hover:bg-accent-soft"
 	}
-	return base + "border border-neutral-600 text-neutral-200 hover:bg-neutral-800"
+	return base + "border border-border text-ink hover:bg-accent-soft"
 }
 
 // Button is a button element. attrs carry the HTMX attributes, type, name and value.
 templ Button(tone ButtonTone, label string, attrs templ.Attributes) {
-	<button class={ buttonClass(tone, false) } { attrs... }>{ label }</button>
+	<button class={ buttonClass(tone, false) } data-ripple { attrs... }>{ label }</button>
 }
 
 // SmallButton is the compact Button for actions inside a list row or card.
 templ SmallButton(tone ButtonTone, label string, attrs templ.Attributes) {
-	<button class={ buttonClass(tone, true) } { attrs... }>{ label }</button>
+	<button class={ buttonClass(tone, true) } data-ripple { attrs... }>{ label }</button>
 }
 
 // ButtonLink is a link (<a>) that looks like a Button, for a navigation or a download; attrs carry
 // for example download.
 templ ButtonLink(tone ButtonTone, label string, href templ.SafeURL, attrs templ.Attributes) {
-	<a href={ href } class={ buttonClass(tone, false) } { attrs... }>{ label }</a>
+	<a href={ href } class={ buttonClass(tone, false) } data-ripple { attrs... }>{ label }</a>
 }
 
 // LinkButton is a text-only button rendered like a link (for example "返信", "除外"). TonePrimary
 // colours it as an accent; any other tone is the muted default.
 templ LinkButton(tone ButtonTone, label string, attrs templ.Attributes) {
 	if tone == TonePrimary {
-		<button class="text-xs text-indigo-300 underline" { attrs... }>{ label }</button>
+		<button class="text-xs text-accent underline decoration-mute" { attrs... }>{ label }</button>
 	} else {
-		<button class="text-xs text-neutral-400 underline hover:text-neutral-100" { attrs... }>{ label }</button>
+		<button class="text-xs text-mute underline hover:text-ink" { attrs... }>{ label }</button>
 	}
 }
 
 // IconButton is a bare glyph button (for example the × that cancels a reply); label goes in
 // attrs as aria-label because the glyph is not a name.
 templ IconButton(glyph string, attrs templ.Attributes) {
-	<button class="text-neutral-400 hover:text-neutral-100" { attrs... }>{ glyph }</button>
+	<button class="text-mute hover:text-ink" data-ripple { attrs... }>{ glyph }</button>
 }
 
 // ButtonFor is the Button of one row of a list: its accessible name says which row it acts on
 // (RowLabel), while the visible text stays label.
 templ ButtonFor(tone ButtonTone, label, subject string, attrs templ.Attributes) {
-	<button class={ buttonClass(tone, false) } aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+	<button class={ buttonClass(tone, false) } data-ripple aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
 }
 
 // SmallButtonFor is the SmallButton of one row of a list: its accessible name says which row it acts on
 // (RowLabel), while the visible text stays label.
 templ SmallButtonFor(tone ButtonTone, label, subject string, attrs templ.Attributes) {
-	<button class={ buttonClass(tone, true) } aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+	<button class={ buttonClass(tone, true) } data-ripple aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
 }
 
 // LinkButtonFor is the LinkButton of one row of a list, named after the row like SmallButtonFor.
 templ LinkButtonFor(label, subject string, attrs templ.Attributes) {
-	<button class="text-xs text-neutral-400 underline hover:text-neutral-100" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+	<button class="text-xs text-mute underline hover:text-ink" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
 }
 
 // SmallButtonLinkFor is a link that looks like the SmallButtonFor of one row of a list (the page the row opens): its
 // accessible name says which row it acts on (RowLabel), while the visible text stays label.
 templ SmallButtonLinkFor(tone ButtonTone, label, subject string, href templ.SafeURL, attrs templ.Attributes) {
-	<a href={ href } class={ buttonClass(tone, true) } aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</a>
+	<a href={ href } class={ buttonClass(tone, true) } data-ripple aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</a>
 }

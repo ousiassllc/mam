@@ -31,13 +31,13 @@ func commercialIcon(c modellicense.Commercial) IconName {
 
 func commercialEdge(c modellicense.Commercial) string {
 	if c == modellicense.Unknown || !c.Valid() {
-		return " border border-amber-500/60"
+		return " border border-warning/60"
 	}
 	return ""
 }
 
 func commercialBadgeClass(c modellicense.Commercial) string {
-	return "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(commercialTone(c)) + commercialEdge(c)
+	return "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs " + badgeColors(commercialTone(c)) + commercialEdge(c)
 }
 
 func commercialMarkClass(c modellicense.Commercial) string {
@@ -57,7 +57,7 @@ func commercialName(c modellicense.Commercial, detail string) string {
 // data-testid); data-commercial carries the answer for the filter (components/commercial-filter).
 templ CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attributes) {
 	<span class={ commercialBadgeClass(c) } role="img" aria-label={ commercialName(c, detail) } title={ detail } data-commercial-badge={ string(c) } { attrs... }>
-		@Icon(commercialIcon(c), "h-3.5 w-3.5 shrink-0")
+		@Icon(commercialIcon(c), "h-4 w-4 shrink-0")
 		<span aria-hidden="true">{ c.Label() }</span>
 	</span>
 }
@@ -66,6 +66,6 @@ templ CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attr
 // word in the tooltip and the accessible name.
 templ CommercialMark(c modellicense.Commercial, detail string, attrs templ.Attributes) {
 	<span class={ commercialMarkClass(c) } role="img" aria-label={ commercialName(c, detail) } title={ c.Label() + ": " + detail } data-commercial-badge={ string(c) } { attrs... }>
-		@Icon(commercialIcon(c), "h-3.5 w-3.5 shrink-0")
+		@Icon(commercialIcon(c), "h-4 w-4 shrink-0")
 	</span>
 }

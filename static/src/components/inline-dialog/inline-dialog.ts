@@ -1,7 +1,10 @@
 /**
- * The questions of the model manager that are asked in the page itself: the age confirmation of adult models and the
- * license of a model (organisms/modelmgr: a `<section role="dialog" data-inline-dialog>` that a request swaps into
- * `#mm-dialog`). They are not the modal of the settings screen (`components/modal`), so what that gives is done here, small:
+ * The questions of the model manager: the age confirmation of adult models and the license of a model (organisms/modelmgr: a
+ * `<section role="dialog" data-inline-dialog>` that a request swaps into `#mm-dialog`, a native `<dialog data-inline-dialog-host>`,
+ * molecules/modal InlineHost). A question is a centred modal with a scrim like every confirmation (the UI guide, O2): when one arrives the host
+ * is opened with showModal() (the page behind it is inert, the focus stays inside) and when the answer takes it away the host is closed. Esc, a click
+ * on the scrim (static/src/components/scrim) and the question's own close button close it; closing empties it. It is not the modal of the
+ * settings screen (`components/modal`), so what that gives is done here, small:
  *
  * - When the dialog arrives the focus moves into it: to the reason of a refusal when there is one, else to the dialog
  *   itself (so that a reader starts at its name and Tab reaches its first control). An answer that draws the dialog again
@@ -19,6 +22,7 @@
  */
 
 const DIALOG = '[data-inline-dialog]';
+const HOST = 'dialog[data-inline-dialog-host]';
 const CLOSE = '[data-inline-dialog-close]';
 const CONTROL = 'a[href],button:not(:disabled),input:not([type="hidden"]):not(:disabled),select,textarea';
 
@@ -56,25 +60,8 @@ export function installInlineDialog(root: Document = document): void {
     if (elt) pressedAt.set(elt, { left: window.scrollX, top: window.scrollY });
   });
 
-  root.addEventListener('htmx:afterSwap', (event) => {
-    const dlg = document.querySelector<HTMLElement>(DIALOG);
-    if (dlg) {
-      if (dlg === shown) return;
-      const requester = (event as CustomEvent<SwapDetail>).detail?.requestConfig?.elt ?? null;
-      // A request from inside the dialog redraws it (a refusal): the control that opened it stays the one to go back to,
-      // and the page stays where it is. Any other control that draws a dialog (the first one, or a different question
-      // while one is open) is a new question: the page goes to it and, when it is gone, back to where that control was.
-      const isNewQuestion = !shown || (!!requester && !shown.contains(requester));
-      if (isNewQuestion) {
-        opener = requester;
-        origin = (requester && pressedAt.get(requester)) || null;
-      }
-      shown = dlg;
-      returnTo = dlg.getAttribute('data-return-focus');
-      if (isNewQuestion) dlg.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      focusOn(dlg.querySelector<HTMLElement>('[role="alert"]') ?? dlg);
-      return;
-    }
+  /** The question is gone: the page goes back to where it was, and the focus to the control that asked (or to the place of its card). */
+  function gone(): void {
     if (!shown) return;
     shown = null;
     const from = opener;
@@ -86,6 +73,50 @@ export function installInlineDialog(root: Document = document): void {
     if (focusOn(from as HTMLElement | null)) return;
     const place = returnTo ? document.querySelector(returnTo) : null;
     focusOn(place?.querySelector<HTMLElement>(CONTROL));
+  }
+
+  /** Opens the host while it holds a question and closes it when it does not (closing is a swap that took the question away). */
+  function syncHost(): void {
+    const host = document.querySelector<HTMLDialogElement>(HOST);
+    if (!host) return;
+    const holdsQuestion = host.querySelector(DIALOG) !== null;
+    if (holdsQuestion && !host.open) host.showModal();
+    else if (!holdsQuestion && host.open) host.close();
+  }
+
+  // A host closed by Esc or by the scrim goes with its question: what it held is gone, so that it does not open again with a swap.
+  root.addEventListener(
+    'close',
+    (event) => {
+      const host = event.target as Element | null;
+      if (!host?.matches(HOST)) return;
+      host.replaceChildren();
+      gone();
+    },
+    true,
+  );
+
+  root.addEventListener('htmx:afterSwap', (event) => {
+    syncHost();
+    const dlg = document.querySelector<HTMLElement>(DIALOG);
+    if (dlg) {
+      if (dlg === shown) return;
+      const requester = (event as CustomEvent<SwapDetail>).detail?.requestConfig?.elt ?? null;
+      // A request from inside the dialog redraws it (a refusal): the control that opened it stays the one to go back to.
+      // Any other control that draws a dialog (the first one, or a different question while one is open) is a new question:
+      // the dialog is a modal over the page, so nothing is scrolled to it, and when it is gone the page is back where that
+      // control was.
+      const isNewQuestion = !shown || (!!requester && !shown.contains(requester));
+      if (isNewQuestion) {
+        opener = requester;
+        origin = (requester && pressedAt.get(requester)) || null;
+      }
+      shown = dlg;
+      returnTo = dlg.getAttribute('data-return-focus');
+      focusOn(dlg.querySelector<HTMLElement>('[role="alert"]') ?? dlg);
+      return;
+    }
+    gone();
   });
 
   root.addEventListener('keydown', (event) => {

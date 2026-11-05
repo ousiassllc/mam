@@ -96,14 +96,14 @@ func versionOptions(latest int) []int {
 // World State reference forms, and the link to its World State (branch_id scoped). It is swapped into
 // #branch-detail when a Branch is selected in the Branch tree.
 templ BranchDetail(d BranchDetailData) {
-	<article class="flex flex-col gap-4 rounded-md border border-neutral-700 p-4" aria-label="Branch の詳細" data-branch-detail={ d.Branch.ID } hx-get={ branchURL(d.Branch.ID) } hx-trigger="branch-reload from:body" hx-target="#branch-detail" hx-swap="innerHTML">
+	<article class="flex flex-col gap-4 rounded-lg border border-border p-4" aria-label="Branch の詳細" data-branch-detail={ d.Branch.ID } hx-get={ branchURL(d.Branch.ID) } hx-trigger="branch-reload from:body" hx-target="#branch-detail" hx-swap="innerHTML">
 		<header class="flex flex-col gap-1">
 			<h2 class="text-lg font-semibold">{ d.Branch.Name }</h2>
-			<p class="text-sm text-neutral-400">
+			<p class="text-sm text-mute">
 				{ branchPointText(d.Branch) }
 				if d.Parent != nil {
 					（親 Branch:
-					<a class="text-indigo-300 underline" href={ templ.SafeURL(branchURL(d.Parent.ID)) }>{ d.Parent.Name }</a>
+					<a class="text-accent underline decoration-mute" href={ templ.SafeURL(branchURL(d.Parent.ID)) }>{ d.Parent.Name }</a>
 					）
 				} else {
 					（トランクから）
@@ -111,14 +111,14 @@ templ BranchDetail(d BranchDetailData) {
 			</p>
 			<p class="text-sm">
 				World State: { branchWorldText(d.Branch.WorldStateVersion) }（Branch 独自のバージョン系列）
-				<a class="ml-2 text-indigo-300 underline" href={ templ.SafeURL(branchWorldStateURL(d.Project.ID, d.Branch.ID)) }>この Branch の World State を見る</a>
+				<a class="ml-2 text-accent underline decoration-mute" href={ templ.SafeURL(branchWorldStateURL(d.Project.ID, d.Branch.ID)) }>この Branch の World State を見る</a>
 			</p>
 			if d.Started {
-				<p class="text-sm text-emerald-300">最初の Shot の生成を開始しました。</p>
+				<p class="text-sm text-success">最初の Shot の生成を開始しました。</p>
 			}
 		</header>
 		<form class="flex flex-wrap items-end gap-2" hx-put={ branchURL(d.Branch.ID) } hx-target="#branch-detail" hx-swap="innerHTML">
-			<label class="flex flex-col gap-1 text-xs text-neutral-400">
+			<label class="flex flex-col gap-1 text-xs text-mute">
 				名称
 				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 					"type":      "text",
@@ -132,7 +132,7 @@ templ BranchDetail(d BranchDetailData) {
 		</form>
 		if d.LatestWorldVersion > 0 {
 			<form class="flex flex-wrap items-end gap-2" hx-put={ branchURL(d.Branch.ID) } hx-target="#branch-detail" hx-swap="innerHTML">
-				<label class="flex flex-col gap-1 text-xs text-neutral-400">
+				<label class="flex flex-col gap-1 text-xs text-mute">
 					参照する World State
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
 						"name": "world_state_version",
@@ -146,9 +146,9 @@ templ BranchDetail(d BranchDetailData) {
 			</form>
 		}
 		<section aria-label="Branch の Scene / Shot" class="flex flex-col gap-1">
-			<h3 class="text-sm font-semibold text-neutral-200">この Branch の Scene / Shot</h3>
+			<h3 class="text-sm font-semibold text-ink">この Branch の Scene / Shot</h3>
 			if len(d.Scenes) == 0 {
-				<p class="text-sm text-neutral-400">まだ Scene がありません。Shot から「続きを作る」と、この Branch の Scene / Shot が作られます。</p>
+				<p class="text-sm text-mute">まだ Scene がありません。Shot から「続きを作る」と、この Branch の Scene / Shot が作られます。</p>
 			}
 			<ul class="flex flex-col gap-1 text-sm">
 				for _, sc := range d.Scenes {
@@ -157,7 +157,7 @@ templ BranchDetail(d BranchDetailData) {
 						<ul class="ml-4 list-disc">
 							for _, sh := range d.Shots {
 								if sh.Scene == sc.OrderIndex+1 {
-									<li><a class="text-indigo-300 underline" href={ templ.SafeURL(paths.Shot(sh.ShotID)) }>Shot { strconv.Itoa(sh.Shot) }</a>: { sh.Objective }</li>
+									<li><a class="text-accent underline decoration-mute" href={ templ.SafeURL(paths.Shot(sh.ShotID)) }>Shot { strconv.Itoa(sh.Shot) }</a>: { sh.Objective }</li>
 								}
 							}
 						</ul>
@@ -166,8 +166,8 @@ templ BranchDetail(d BranchDetailData) {
 			</ul>
 		</section>
 		<section aria-label="Branch のバージョン履歴" class="flex flex-col gap-1">
-			<h3 class="text-sm font-semibold text-neutral-200">バージョン履歴</h3>
-			<ol class="flex flex-col gap-1 text-xs text-neutral-300">
+			<h3 class="text-sm font-semibold text-ink">バージョン履歴</h3>
+			<ol class="flex flex-col gap-1 text-xs text-ink">
 				for _, v := range d.Versions {
 					<li>v{ strconv.Itoa(v.Number) } · { v.Name } · World State: { branchWorldText(v.WorldStateVersion) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
 				}
@@ -211,20 +211,20 @@ templ BranchTree(d BranchTreeData, oob bool) {
 	>
 		<ul class="flex flex-col gap-1 text-sm">
 			<li>
-				<span class="text-neutral-300">トランク</span>
+				<span class="text-ink">トランク</span>
 				if len(d.Roots) > 0 {
 					@branchTreeGroup(d.Roots, d.SelectedID)
 				}
 			</li>
 		</ul>
 		if len(d.Roots) == 0 {
-			<p class="mt-2 text-sm text-neutral-400" data-empty>まだ Branch がありません。Shot から「Branch を作る」か、チャットで「このカットから別展開を作って」と頼めます。</p>
+			<p class="mt-2 text-sm text-mute" data-empty>まだ Branch がありません。Shot から「Branch を作る」か、チャットで「このカットから別展開を作って」と頼めます。</p>
 		}
 	</nav>
 }
 
 templ branchTreeGroup(nodes []BranchTreeNode, selected string) {
-	<ul class="ml-3 mt-1 flex flex-col gap-1 border-l border-neutral-700 pl-3">
+	<ul class="ml-3 mt-1 flex flex-col gap-1 border-l border-border pl-3">
 		for _, n := range nodes {
 			<li>
 				<a
@@ -232,7 +232,7 @@ templ branchTreeGroup(nodes []BranchTreeNode, selected string) {
 					hx-get={ branchURL(n.Branch.ID) }
 					hx-target="#branch-detail"
 					hx-swap="innerHTML"
-					class={ "underline", templ.KV("font-semibold text-indigo-300", n.Branch.ID == selected), templ.KV("text-neutral-200", n.Branch.ID != selected) }
+					class={ "underline", templ.KV("text-accent", n.Branch.ID == selected), templ.KV("text-ink", n.Branch.ID != selected) }
 					if n.Branch.ID == selected {
 						aria-current="true"
 					}
@@ -257,29 +257,29 @@ templ BranchDetailWithTree(d BranchDetailData, tree BranchTreeData) {
 templ BranchView(d BranchPageData) {
 	<div id="branch-view" class="flex flex-col gap-6">
 		<section class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Branch ツリー</h2>
+			<h2 class="text-sm font-semibold text-ink">Branch ツリー</h2>
 			@BranchTree(BranchTreeData{Roots: d.Roots, SelectedID: selectedBranchID(d)}, false)
 		</section>
 		<div id="branch-detail">
 			if d.Selected != nil {
 				@BranchDetail(*d.Selected)
 			} else {
-				<p class="text-sm text-neutral-400">ツリーの Branch を選ぶと詳細を表示します。</p>
+				<p class="text-sm text-mute">ツリーの Branch を選ぶと詳細を表示します。</p>
 			}
 		</div>
 		<section aria-label="Branch を作る" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Shot から Branch を作る</h2>
-			<p class="text-xs text-neutral-400">
+			<h2 class="text-sm font-semibold text-ink">Shot から Branch を作る</h2>
+			<p class="text-sm text-mute">
 				分岐点の World State を Snapshot として保存します。チャットで「このカットから別展開を3つ作って」と頼むこともできます。
 			</p>
 			if len(d.Shots) == 0 {
-				<p class="text-sm text-neutral-400">Branch を作れる Shot がまだありません。</p>
+				<p class="text-sm text-mute">Branch を作れる Shot がまだありません。</p>
 			}
 			for _, s := range d.Shots {
-				<details class="rounded-md border border-neutral-700 p-2 text-sm">
+				<details class="rounded-lg border border-border p-2 text-sm">
 					<summary class="cursor-pointer">{ s.Label }</summary>
 					<form class="mt-2 flex flex-wrap items-end gap-2" hx-post={ branchShotURL(s.ShotID) } hx-swap="none" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-						<label class="flex flex-col gap-1 text-xs text-neutral-400">
+						<label class="flex flex-col gap-1 text-xs text-mute">
 							分岐点
 							@atoms.Select(atoms.FieldMd, "", templ.Attributes{
 								"name": "point_type",
@@ -289,7 +289,7 @@ templ BranchView(d BranchPageData) {
 								<option value="frame">Shot 内の位置（Frame）</option>
 							}
 						</label>
-						<label class="flex flex-col gap-1 text-xs text-neutral-400">
+						<label class="flex flex-col gap-1 text-xs text-mute">
 							位置（秒、Frame のみ）
 							@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{
 								"type": "number",
@@ -298,7 +298,7 @@ templ BranchView(d BranchPageData) {
 								"step": "0.1",
 							})
 						</label>
-						<label class="flex flex-col gap-1 text-xs text-neutral-400">
+						<label class="flex flex-col gap-1 text-xs text-mute">
 							名称（省略可）
 							@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 								"type":      "text",
@@ -306,7 +306,7 @@ templ BranchView(d BranchPageData) {
 								"maxlength": strconv.Itoa(domain.MaxBranchNameRunes),
 							})
 						</label>
-						<label class="flex flex-col gap-1 text-xs text-neutral-400">
+						<label class="flex flex-col gap-1 text-xs text-mute">
 							展開の指示（省略可、AI が最初の Shot を作ります）
 							@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{
 								"type":        "text",

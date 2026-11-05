@@ -5,7 +5,7 @@
  * module waits for the player's progress-finished), otherwise data-ws-url names the socket and this
  * module listens to it.
  */
-import { ajaxChecked, showToast } from './ajax';
+import { ajaxChecked, showAlert } from './ajax';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
@@ -46,7 +46,7 @@ function refresh(card: HTMLElement, stage: ShotProgress['stage']): void {
         select: plan.select,
       });
     },
-    onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
+    onGiveUp: () => showAlert(AJAX_FAILED_MESSAGE),
   });
   void syncer.request();
 }

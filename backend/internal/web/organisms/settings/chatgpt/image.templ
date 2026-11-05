@@ -62,13 +62,13 @@ func imageCardOf(d Data) settingsui.Card {
 templ imageBrief(d Data) {
 	<div class="flex min-w-0 flex-col gap-2" data-testid="chatgpt-image">
 		if d.ImageEnabled {
-			<p class="text-sm text-neutral-300" data-testid="chatgpt-image-state">オン: 画像の用途に、この経路のモデルを選べます。</p>
+			<p class="text-sm text-ink" data-testid="chatgpt-image-state">オン: 画像の用途に、この経路のモデルを選べます。</p>
 			@accountStatus(imageKind, d.Image)
 			@loginFailed(d.Image.Login)
 		} else {
-			<p class="text-sm text-neutral-300" data-testid="chatgpt-image-state">オフ: オフの間は、この経路を一切呼びません。</p>
+			<p class="text-sm text-ink" data-testid="chatgpt-image-state">オフ: オフの間は、この経路を一切呼びません。</p>
 		}
-		<p class="text-xs text-amber-300" data-testid="chatgpt-image-risk-line">予告なく使えなくなることがあり、ChatGPT のプランの利用上限を消費します。詳細でリスクを確認できます。</p>
+		<p class="text-sm text-warning" data-testid="chatgpt-image-risk-line">予告なく使えなくなることがあり、ChatGPT のプランの利用上限を消費します。詳細でリスクを確認できます。</p>
 	</div>
 }
 
@@ -76,20 +76,20 @@ templ imageBrief(d Data) {
 // switch that turns it on. The switch's answer closes the modal (or says why it was refused in it).
 templ imageDetail(d Data) {
 	<div class="flex flex-col gap-3" data-testid="chatgpt-image-detail">
-		<div class="flex flex-col gap-2 rounded-md border border-amber-500/60 px-3 py-2" data-testid="chatgpt-risks">
-			<p class="text-sm font-medium text-amber-300">オンにする前に、次のリスクを確認してください。</p>
+		<div class="flex flex-col gap-2 rounded-md border border-warning/60 px-3 py-2" data-testid="chatgpt-risks">
+			<p class="text-sm text-warning">オンにする前に、次のリスクを確認してください。</p>
 			<ul class="list-disc pl-5 text-sm">
 				for _, r := range d.Risks {
 					<li>{ r }</li>
 				}
 			</ul>
-			<p class="text-xs text-neutral-400">
+			<p class="text-sm text-mute">
 				<a class="underline" href={ templ.SafeURL(usageURL) } target="_blank" rel="noopener noreferrer">Manage usage</a>
 				で、プランの利用状況を確認できます。
 			</p>
 		</div>
 		if d.ImageEnabled {
-			<p class="text-sm text-neutral-300">オンです。画像の用途に、この経路のモデルを選べます。オフにするには、カードの「オフにする」を押します。</p>
+			<p class="text-sm text-ink">オンです。画像の用途に、この経路のモデルを選べます。オフにするには、カードの「オフにする」を押します。</p>
 			@accountStatus(imageKind, d.Image)
 			@tokenExpiry(d.Image)
 		} else {

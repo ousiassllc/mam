@@ -76,11 +76,11 @@ func intText(n int) string { return strconv.Itoa(n) }
 func meterClass(percent int) string {
 	switch {
 	case percent >= 100:
-		return "h-1.5 w-full accent-red-400"
+		return "h-1.5 w-full accent-danger"
 	case percent >= 80:
-		return "h-1.5 w-full accent-amber-400"
+		return "h-1.5 w-full accent-warning"
 	}
-	return "h-1.5 w-full accent-emerald-400"
+	return "h-1.5 w-full accent-success"
 }
 
 func shotLabel(objective string) string {

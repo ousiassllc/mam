@@ -30,7 +30,7 @@ func abortWith(c *gin.Context, status int, problem, toast string) {
 		ToastOnly(c)
 		c.Header("Content-Type", "text/html; charset=utf-8")
 		c.Status(status)
-		if err := atoms.ToastOOB(toast).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := atoms.ErrorAlertOOB(toast).Render(c.Request.Context(), c.Writer); err != nil {
 			_ = c.Error(err)
 		}
 		c.Abort()

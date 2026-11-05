@@ -42,7 +42,7 @@ func TestSeriesCharacterSaved_AnswersTheFormOfThatCharacterOnly(t *testing.T) {
 	assert.Contains(t, html, `id="series-character-c1"`)
 	assert.Contains(t, html, `hx-target="this"`)
 	assert.Contains(t, html, `red coat`)
-	assert.Contains(t, html, `<p id="series-version" class="text-xs text-neutral-400" hx-swap-oob="true">`)
+	assert.Contains(t, html, `<p id="series-version" class="text-xs text-mute" hx-swap-oob="true">`)
 	assert.Contains(t, html, `<section id="series-history" aria-label="History" class="flex flex-col gap-1" hx-swap-oob="true">`)
 	assert.Contains(t, html, "バージョン 3")
 	for _, other := range []string{`id="series-view"`, `id="series-character-c2"`, `id="series-style-form"`, `name="style"`, `name="previous_episode_id"`, `series/s1/episodes`} {
@@ -56,7 +56,7 @@ func TestSeriesStyleSaved_AnswersTheStyleFormOnly(t *testing.T) {
 	assert.Contains(t, html, `id="series-style-form"`)
 	assert.Contains(t, html, `hx-target="this"`)
 	assert.Contains(t, html, `value="watercolor"`)
-	assert.Contains(t, html, `<p id="series-version" class="text-xs text-neutral-400" hx-swap-oob="true">`)
+	assert.Contains(t, html, `<p id="series-version" class="text-xs text-mute" hx-swap-oob="true">`)
 	assert.Contains(t, html, `<section id="series-history" aria-label="History" class="flex flex-col gap-1" hx-swap-oob="true">`)
 	for _, other := range []string{`id="series-view"`, `id="series-character-c1"`, `id="series-character-c2"`, `name="previous_episode_id"`, `series/s1/episodes`} {
 		assert.NotContains(t, html, other)

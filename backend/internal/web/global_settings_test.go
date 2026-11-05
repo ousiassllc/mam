@@ -41,7 +41,7 @@ func TestGlobalSettings_HoldsTheAPIKeyPanelAndTheOtherPagesLinkToIt(t *testing.T
 
 	page := get(paths.SettingsCategory(paths.SettingsAPIKeys), false)
 	assert.Contains(t, page, "<html")
-	assert.Contains(t, page, `<h1 class="text-xl font-semibold">設定</h1>`)
+	assert.Contains(t, page, `<h1 class="text-3xl font-semibold">設定</h1>`)
 	assert.Contains(t, page, `<a href="`+paths.Home()+`" title="プロジェクト"`, "the side menu leads back to the landing page")
 	assert.Contains(t, page, `id="credential-panel"`)
 	assert.Contains(t, page, `hx-get="/settings/credentials/kling/edit"`, "the key is typed into a modal, not into the list")

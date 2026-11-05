@@ -20,28 +20,48 @@ const (
 )
 
 // Host is the <dialog> of the page, closed and empty: the request of OpenAttrs fills BodyID and the script opens it. A
-// click on the backdrop does not close it (what was typed would be lost); Esc, the buttons "キャンセル" / "閉じる" and a
-// saved form do.
+// click on the scrim closes it (static/src/components/scrim: with a confirmation first when a field was changed, so that what was typed is not lost
+// by a stray click), as do Esc, the buttons "キャンセル" / "閉じる" and a saved form.
 templ Host() {
 	<dialog
 		id="mam-modal"
 		data-modal
 		aria-modal="true"
 		aria-labelledby="mam-modal-title"
-		class="m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70"
+		class="m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink"
 	>
 		<div id={ BodyID }></div>
-		<p id="mam-modal-failure" role="alert" class="px-5 pb-4 text-sm text-red-300" hidden></p>
+		<p id="mam-modal-failure" role="alert" class="px-5 pb-4 text-sm text-danger" hidden></p>
 		<button
 			type="button"
 			data-modal-close
+			data-ripple
 			aria-label="閉じる"
-			class="absolute right-3 top-3 rounded-md p-1 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900"
+			class="absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring"
 		>
 			@atoms.Icon(atoms.IconClose, "h-5 w-5")
 		</button>
 	</dialog>
 }
+
+// InlineHost is the <dialog> that a question of a page is swapped into (the age confirmation and the licence of a model in the model manager: a
+// <section role="dialog" data-inline-dialog>). It is the same modal as Host in look (the UI guide, O2: a confirmation is a centred modal with a
+// scrim that closes it): static/src/components/inline-dialog opens it with showModal() when a question arrives and closes it when the answer takes
+// the question away. Esc, the scrim and the question's own close button close it; the content is emptied with it.
+templ InlineHost(id, testID string) {
+	<dialog id={ id } data-inline-dialog-host data-testid={ testID } aria-modal="true" class={ inlineHostClass }></dialog>
+}
+
+// InlineHostOOB empties the host out of band (an install was accepted, the question is answered): the script closes the dialog.
+templ InlineHostOOB(id, testID string) {
+	<dialog id={ id } hx-swap-oob="innerHTML" data-inline-dialog-host data-testid={ testID } aria-modal="true" class={ inlineHostClass }></dialog>
+}
+
+const (
+	frameClass      = "m-auto max-h-[calc(100vh-4rem)] overflow-y-auto rounded-xl border border-border bg-surface p-0 text-ink shadow-modal"
+	inlineHostClass = frameClass + " w-[min(40rem,calc(100vw-2rem))]"
+	confirmClass    = frameClass + " w-[min(28rem,calc(100vw-2rem))]"
+)
 
 // StartClass is the class of the first block of a body that takes the focus when the modal opens (tabindex="-1" autofocus): a modal that is a
 // long read starts at its top, where a reader goes on from the heading, instead of at a button at its foot. The block is not a control, so no
@@ -77,7 +97,7 @@ templ Frame(title, description string) {
 	<div id="mam-modal-content" class="flex flex-col gap-4 p-5">
 		<h2 id="mam-modal-title" class="pr-8 text-lg font-semibold">{ title }</h2>
 		if description != "" {
-			<p id="mam-modal-desc" class="text-sm text-neutral-400">{ description }</p>
+			<p id="mam-modal-desc" class="text-sm text-mute">{ description }</p>
 		}
 		{ children... }
 	</div>
@@ -85,7 +105,7 @@ templ Frame(title, description string) {
 
 // Error is the reason a request was refused; the script moves the focus to it when no field is to blame.
 templ Error(message string) {
-	<p id="mam-modal-error" role="alert" tabindex="-1" class="whitespace-pre-line rounded-md border border-red-500/60 px-3 py-2 text-sm text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">{ message }</p>
+	<p id="mam-modal-error" role="alert" tabindex="-1" class="whitespace-pre-line rounded-md border border-danger/60 px-3 py-2 text-sm text-danger focus-visible:focus-ring">{ message }</p>
 }
 
 // Actions is the row of buttons at the foot of the modal.
@@ -109,4 +129,21 @@ templ Notice(title, reason string) {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true, "autofocus": true})
 		}
 	}
+}
+
+// Confirm is the confirmation modal (the UI guide, O2: a deletion, a removal and an irreversible step are asked in a centred modal, not in the browser's
+// own confirm() box): a <dialog> with the question, "キャンセル" and the danger button that goes on. A request whose element
+// has hx-confirm raises it (static/src/components/confirm); the page shell embeds one as <template id="confirm-template">, which the script clones,
+// fills with the question and opens. Esc, the scrim and "キャンセル" answer no.
+templ Confirm() {
+	<dialog data-confirm aria-modal="true" aria-labelledby="mam-confirm-title" aria-describedby="mam-confirm-message" class={ confirmClass }>
+		<div class="flex flex-col gap-4 p-5">
+			<p id="mam-confirm-title" class="text-lg font-semibold">確認</p>
+			<p id="mam-confirm-message" class="whitespace-pre-line break-words text-sm text-ink" data-confirm-message></p>
+			<div class="flex flex-wrap items-center justify-end gap-2 pt-2">
+				@atoms.Button(atoms.ToneNeutral, "キャンセル", templ.Attributes{"type": "button", "data-confirm-cancel": true, "autofocus": true})
+				@atoms.Button(atoms.ToneDanger, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true})
+			</div>
+		</div>
+	</dialog>
 }

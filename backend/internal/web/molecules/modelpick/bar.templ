@@ -33,7 +33,7 @@ templ Bar(b Filter) {
 			})
 			<button
 				type="button"
-				class="relative inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-neutral-500 bg-neutral-950 px-2.5 py-1 text-sm text-neutral-100 hover:border-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+				class="relative inline-flex cursor-pointer items-center gap-2 rounded-md border border-mute bg-bone px-3 py-1 text-sm text-ink hover:border-accent focus-visible:focus-ring"
 				aria-expanded="false"
 				aria-controls={ b.panelID() }
 				data-mp-toggle
@@ -52,7 +52,7 @@ templ Bar(b Filter) {
 templ Count(b Filter, oob bool) {
 	<span
 		id={ b.countID() }
-		class="inline-flex min-w-5 items-center justify-center rounded-md bg-indigo-500 px-1.5 text-xs font-semibold text-white"
+		class="inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-2 text-xs text-bone"
 		hidden?={ b.Active() == 0 }
 		data-testid="model-pick-count"
 		if oob {
@@ -100,4 +100,4 @@ func boolText(v bool) string {
 }
 
 // chipClass is the look of a chip of the panel's choices.
-const chipClass = "inline-block rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400"
+const chipClass = "inline-block rounded-md border border-border px-2 py-1 text-xs text-ink hover:border-mute peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:focus-ring"

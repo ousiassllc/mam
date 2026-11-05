@@ -38,7 +38,7 @@ templ ConfirmationControl(p domain.Project) {
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
-		<label for="confirmation-level" class="text-neutral-400">確認レベル</label>
+		<label for="confirmation-level" class="text-mute">確認レベル</label>
 		@atoms.Select(atoms.FieldMd, "", templ.Attributes{
 			"id":   "confirmation-level",
 			"name": "level",

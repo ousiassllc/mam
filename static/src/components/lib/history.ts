@@ -12,14 +12,14 @@
 
 const READY = ['data-shot-ready', 'data-chat-ready'] as const;
 
-/** Strips init markers, the connection notice and the toasts on screen from an htmx history snapshot. */
+/** Strips init markers, the connection notice, the alerts and the toast on screen from an htmx history snapshot. */
 export function sanitizeHistoryHtml(html: string): string {
   const template = document.createElement('template');
   template.innerHTML = html;
   const root = template.content;
   root.querySelector('#connection-lost-region')?.remove();
-  // Toasts stay until closed, so one still open would come back with the restored page.
-  for (const toast of root.querySelectorAll('#toast-region [data-toast]')) toast.remove();
+  // Alerts stay until closed, so one still open would come back with the restored page (a toast is gone by itself).
+  for (const alert of root.querySelectorAll('#alert-region [data-alert], #toast-region [data-toast]')) alert.remove();
   for (const name of READY) {
     for (const el of root.querySelectorAll(`[${name}]`)) el.removeAttribute(name);
   }

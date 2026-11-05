@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/navstate"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
+	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
 
 func render(ctx context.Context, t *testing.T, s sidenav.State) string {
@@ -58,6 +59,15 @@ func TestNav_FoldStateIsDrawnFromTheRequestAndNamesTheButtonForIt(t *testing.T) 
 		assert.Contains(t, html, `data-cookie-folded="`+navstate.Folded+`"`)
 		assert.Contains(t, html, `aria-controls="sidenav"`)
 	}
+}
+
+// The menu has the button that switches between the Light and the Dark theme; the script writes the cookie the server reads.
+func TestNav_HasTheThemeButtonNamedForWhatItDoes(t *testing.T) {
+	html := render(t.Context(), t, sidenav.At(sidenav.Projects))
+
+	assert.Contains(t, html, `data-theme-toggle`)
+	assert.Contains(t, html, `data-theme-cookie="`+themestate.CookieName+`"`)
+	assert.Contains(t, html, `aria-label="`+sidenav.LabelTheme+`"`)
 }
 
 func TestNav_ProjectViewsFollowTheScreensAndSeriesOnlyForAnEpisode(t *testing.T) {

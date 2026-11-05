@@ -55,7 +55,7 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 			hx-swap="outerHTML"
 		>
 			<div>
-				<label for="ref-q" class="mb-1 block text-xs text-neutral-400">名前・タグ</label>
+				<label for="ref-q" class="mb-1 block text-xs text-mute">名前・タグ</label>
 				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 					"id":    "ref-q",
 					"name":  "q",
@@ -64,7 +64,7 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 				})
 			</div>
 			<div>
-				<label for="ref-kind" class="mb-1 block text-xs text-neutral-400">種別</label>
+				<label for="ref-kind" class="mb-1 block text-xs text-mute">種別</label>
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{
 					"id":   "ref-kind",
 					"name": "kind",
@@ -76,7 +76,7 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 				}
 			</div>
 			<div>
-				<label for="ref-tag" class="mb-1 block text-xs text-neutral-400">タグ（完全一致）</label>
+				<label for="ref-tag" class="mb-1 block text-xs text-mute">タグ（完全一致）</label>
 				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 					"id":    "ref-tag",
 					"name":  "tag",
@@ -87,22 +87,22 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 			@atoms.Button(atoms.ToneNeutral, "検索", templ.Attributes{"type": "submit"})
 		</form>
 		if len(d.Items) == 0 {
-			<p class="text-sm text-neutral-400">該当する参照画像はありません。</p>
+			<p class="text-sm text-mute">該当する参照画像はありません。</p>
 		} else {
 			<ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				for _, it := range d.Items {
-					<li class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+					<li class="flex flex-col gap-2 rounded-lg border border-border p-3">
 						<img
 							src={ paths.Project(d.Project.ID, "assets", it.AssetID) }
 							alt={ it.Name }
 							loading="lazy"
-							class="aspect-video w-full rounded object-contain bg-neutral-900"
+							class="aspect-video w-full rounded-md object-contain bg-surface"
 						/>
 						<div class="flex items-center gap-2">
 							@atoms.Badge(atoms.BadgeNeutral, it.Kind.Label())
-							<span class="min-w-0 break-words text-sm font-medium">{ it.Name }</span>
+							<span class="min-w-0 break-words text-sm">{ it.Name }</span>
 						</div>
-						<p class="text-xs text-neutral-400">
+						<p class="text-sm text-mute">
 							{ sourceLabel(it.Source) }
 							if len(it.Tags) > 0 {
 								· { strings.Join(it.Tags, " / ") }
@@ -128,7 +128,7 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
 	<form
 		id="reference-upload-form"
-		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		class="flex flex-col gap-2 rounded-md border border-border p-3"
 		hx-post={ paths.Project(d.Project.ID, "references") }
 		hx-encoding="multipart/form-data"
 		hx-target="#reference-library"
@@ -142,11 +142,11 @@ templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
 		<h2 class="text-sm font-semibold">参照画像を登録</h2>
 		<div class="grid gap-2 sm:grid-cols-2">
 			<div>
-				<label for="ref-file" class="mb-1 block text-xs text-neutral-400">画像（jpg / png / webp / gif、20MB まで）</label>
+				<label for="ref-file" class="mb-1 block text-xs text-mute">画像（jpg / png / webp / gif、20MB まで）</label>
 				<input id="ref-file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required class="w-full text-sm"/>
 			</div>
 			<div>
-				<label for="ref-new-kind" class="mb-1 block text-xs text-neutral-400">種別</label>
+				<label for="ref-new-kind" class="mb-1 block text-xs text-mute">種別</label>
 				@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{
 					"id":       "ref-new-kind",
 					"name":     "kind",
@@ -158,7 +158,7 @@ templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
 				}
 			</div>
 			<div>
-				<label for="ref-new-name" class="mb-1 block text-xs text-neutral-400">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>
+				<label for="ref-new-name" class="mb-1 block text-xs text-mute">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>
 				@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 					"id":        "ref-new-name",
 					"name":      "name",
@@ -168,7 +168,7 @@ templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
 				})
 			</div>
 			<div>
-				<label for="ref-new-tags" class="mb-1 block text-xs text-neutral-400">タグ（カンマ区切り、10 個まで）</label>
+				<label for="ref-new-tags" class="mb-1 block text-xs text-mute">タグ（カンマ区切り、10 個まで）</label>
 				@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 					"id":   "ref-new-tags",
 					"name": "tags",

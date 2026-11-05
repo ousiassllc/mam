@@ -39,13 +39,13 @@ func commercialIcon(c modellicense.Commercial) IconName {
 
 func commercialEdge(c modellicense.Commercial) string {
 	if c == modellicense.Unknown || !c.Valid() {
-		return " border border-amber-500/60"
+		return " border border-warning/60"
 	}
 	return ""
 }
 
 func commercialBadgeClass(c modellicense.Commercial) string {
-	return "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(commercialTone(c)) + commercialEdge(c)
+	return "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs " + badgeColors(commercialTone(c)) + commercialEdge(c)
 }
 
 func commercialMarkClass(c modellicense.Commercial) string {
@@ -153,7 +153,7 @@ func CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attri
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(commercialIcon(c), "h-3.5 w-3.5 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(commercialIcon(c), "h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -270,7 +270,7 @@ func CommercialMark(c modellicense.Commercial, detail string, attrs templ.Attrib
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(commercialIcon(c), "h-3.5 w-3.5 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(commercialIcon(c), "h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

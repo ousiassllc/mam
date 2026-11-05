@@ -129,7 +129,7 @@ func TestSave_ReplacesTheCardOutOfBandAndClosesTheModal(t *testing.T) {
 	assert.Contains(t, body, `<li id="credential-row-kling"`)
 	assert.Contains(t, body, `hx-swap-oob="true"`)
 	assert.Contains(t, body, "設定済み")
-	assert.Contains(t, body, `<div id="toast-region" hx-swap-oob="beforeend">`, "what was done is told in a toast, which outlives the modal")
+	assert.Contains(t, body, `<div id="toast-region" hx-swap-oob="innerHTML">`, "what was done is told in a toast, which outlives the modal")
 	assert.Contains(t, body, "API キーを保存しました")
 	assert.NotContains(t, body, secret)
 	assert.NotContains(t, body, `id="mam-modal-content"`, "nothing goes into the modal's body")
@@ -166,7 +166,7 @@ func TestSave_UnknownProviderIsAToastAndSavesNothing(t *testing.T) {
 	rec := r.do(http.MethodPut, paths.Credential("nobody"), url.Values{"api_key": {secret}}, true)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	assert.Contains(t, rec.Body.String(), "data-toast")
+	assert.Contains(t, rec.Body.String(), "data-alert")
 	ok, err := r.keys.Has("nobody")
 	require.NoError(t, err)
 	assert.False(t, ok)

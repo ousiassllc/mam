@@ -77,7 +77,7 @@ func Loader(p Placeholder) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-swap=\"outerHTML\" class=\"border-t border-neutral-800 pt-2 text-xs text-neutral-400\">声の学習の状態を読み込んでいます…</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-swap=\"outerHTML\" class=\"border-t border-border pt-2 text-xs text-mute\">声の学習の状態を読み込んでいます…</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -121,7 +121,7 @@ func Panel(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"flex flex-col gap-2 border-t border-neutral-800 pt-2\" data-testid=\"voice-train-panel\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"flex flex-col gap-2 border-t border-border pt-2\" data-testid=\"voice-train-panel\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -157,7 +157,7 @@ func Panel(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "><div class=\"flex flex-wrap items-center gap-2\"><p class=\"text-xs font-medium text-neutral-200\">声の学習（fine-tune）</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "><div class=\"flex flex-wrap items-center gap-2\"><p class=\"text-sm text-ink\">声の学習（fine-tune）</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -178,12 +178,12 @@ func Panel(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><p class=\"text-xs text-neutral-400\">この PC の GPT-SoVITS で、手持ちの音声からこの登場人物の声を学習します（参照音声だけで作るゼロショットより、声が近くなります）。学習した声は、この登場人物の声の合成に使われます（Series の正本で学習すると、以後に作る Episode に引き継がれます）。</p><p class=\"text-xs text-amber-300\" role=\"note\" data-testid=\"voice-train-consent-notice\">声の持ち主本人の同意を得た音声だけで学習してください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりしてはいけません。mam は同意を確かめません。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><p class=\"text-sm text-mute\">この PC の GPT-SoVITS で、手持ちの音声からこの登場人物の声を学習します（参照音声だけで作るゼロショットより、声が近くなります）。学習した声は、この登場人物の声の合成に使われます（Series の正本で学習すると、以後に作る Episode に引き継がれます）。</p><p class=\"text-sm text-warning\" role=\"note\" data-testid=\"voice-train-consent-notice\">声の持ち主本人の同意を得た音声だけで学習してください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりしてはいけません。mam は同意を確かめません。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if !d.HasReference {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-xs text-neutral-300\" data-testid=\"voice-train-need-reference\">学習は、参照音声を設定した登場人物だけでできます。先に上の「参照音声」を設定してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-ink\" data-testid=\"voice-train-need-reference\">学習は、参照音声を設定した登場人物だけでできます。先に上の「参照音声」を設定してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -215,33 +215,33 @@ func Panel(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"></progress><p class=\"break-words text-xs text-neutral-300\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"></progress><p class=\"break-words text-sm text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(d.percent())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 54, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 54, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "%<span class=\"text-neutral-400\">· ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "%<span class=\"text-mute\">· ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(d.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 54, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 54, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</span></p><p class=\"text-xs text-neutral-400\">学習は mam を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</span></p><p class=\"text-sm text-mute\">学習は mam を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -260,38 +260,38 @@ func Panel(d Data) templ.Component {
 			}
 		}
 		if d.cancelled() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-xs text-neutral-300\" data-testid=\"voice-train-cancelled\">学習を中止しました（途中までの結果は残していません）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-sm text-ink\" data-testid=\"voice-train-cancelled\">学習を中止しました（途中までの結果は残していません）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if d.Trained != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<p class=\"text-xs text-neutral-300\" data-testid=\"voice-train-trained\">学習済みの声: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<p class=\"text-sm text-ink\" data-testid=\"voice-train-trained\">学習済みの声: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(trained(d.Trained))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 69, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 69, Col: 105}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</p><p class=\"text-xs text-neutral-400\">プロジェクトの書き出し（バンドル）には学習した重みは入りません。取り込んだ先では、参照音声のゼロショットの声になります。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</p><p class=\"text-sm text-mute\">プロジェクトの書き出し（バンドル）には学習した重みは入りません。取り込んだ先では、参照音声のゼロショットの声になります。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex flex-col gap-1\"><p class=\"text-xs font-medium text-neutral-300\">学習に使う音声（")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex flex-col gap-1\"><p class=\"text-sm text-ink\">学習に使う音声（")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(len(d.Clips)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 73, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 73, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -304,20 +304,20 @@ func Panel(d Data) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(seconds(d.DataSeconds))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 73, Col: 135}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 73, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "）</p><p class=\"text-xs text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "）</p><p class=\"text-sm text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(limits(d.Limits))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 74, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 74, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -333,14 +333,14 @@ func Panel(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, c := range d.Clips {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<li class=\"flex flex-wrap items-center gap-2 text-xs text-neutral-200\"><span class=\"text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<li class=\"flex flex-wrap items-center gap-2 text-xs text-ink\"><span class=\"text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(clipSeconds(c))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 79, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 79, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -384,14 +384,14 @@ func Panel(d Data) templ.Component {
 			}
 		}
 		for _, p := range d.Problems {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-xs text-amber-300\" data-testid=\"voice-train-problem\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-warning\" data-testid=\"voice-train-problem\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(p)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 93, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 93, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -433,14 +433,14 @@ func Panel(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-file")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 106, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 106, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 			if templ_7745c5c3_Err != nil {
@@ -472,14 +472,14 @@ func Panel(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" required class=\"text-sm text-neutral-200\"></label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" required class=\"text-sm text-ink\"></label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-text")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 110, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 110, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 			if templ_7745c5c3_Err != nil {
@@ -527,14 +527,14 @@ func Panel(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\" hx-confirm=\"学習には数十分かかり、その間 GPU を使います（同梱の ComfyUI の生成と同時には動かせません）。mam を再起動すると学習はやり直しになります。声の持ち主本人の同意を得た音声ですか？ 始めますか？\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\" hx-confirm=\"学習には数十分かかり、その間 GPU を使います（同梱の ComfyUI の生成と同時には動かせません）。mam を再起動すると学習はやり直しになります。声の持ち主本人の同意を得た音声ですか？ 始めますか？\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-s2")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 127, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 127, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 			if templ_7745c5c3_Err != nil {
@@ -561,14 +561,14 @@ func Panel(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-s1")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 131, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 131, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 			if templ_7745c5c3_Err != nil {
@@ -615,12 +615,12 @@ func Panel(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.GPUBusy {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<p class=\"text-xs text-amber-300\">別の登場人物の学習が GPU を使っています。終わってから始めてください。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<p class=\"text-sm text-warning\">別の登場人物の学習が GPU を使っています。終わってから始めてください。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, " <p class=\"text-xs text-neutral-400\" data-testid=\"voice-train-eta-note\">見込み時間は、学習を始める前には出せません（実際の PC で測っていないため）。始めると、最初のエポックが終わった時点から、段階ごとの残り時間を表示します。VRAM の目安や学習の質は、実機では確かめていません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, " <p class=\"text-sm text-mute\" data-testid=\"voice-train-eta-note\">見込み時間は、学習を始める前には出せません（実際の PC で測っていないため）。始めると、最初のエポックが終わった時点から、段階ごとの残り時間を表示します。VRAM の目安や学習の質は、実機では確かめていません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

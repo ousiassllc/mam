@@ -28,7 +28,7 @@ func TestToolCard_IsOneLinkNamedByItsTitle(t *testing.T) {
 	assert.Contains(t, html, `href="/nodes"`)
 	assert.Contains(t, html, `aria-labelledby="tool-nodes-title"`)
 	assert.Contains(t, html, `aria-describedby="tool-nodes-desc tool-nodes-status"`)
-	assert.Contains(t, html, `id="tool-nodes-title" class="text-base font-semibold text-neutral-100">ノード</span>`)
+	assert.Contains(t, html, `id="tool-nodes-title" class="text-base font-semibold text-ink">ノード</span>`)
 	for _, banned := range []string{"<button", "<input", "<select", "tabindex"} {
 		assert.NotContains(t, html, banned)
 	}

@@ -37,7 +37,7 @@ func Tile(icon atoms.IconName) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<span class=\"flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-indigo-300\" aria-hidden=\"true\" data-testid=\"model-tile\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<span class=\"flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent\" aria-hidden=\"true\" data-testid=\"model-tile\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -77,7 +77,7 @@ func Item(c Card) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var3 = []any{"relative flex min-w-0 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm", pick.OpenFrame}
+		var templ_7745c5c3_Var3 = []any{"relative flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface p-4 text-sm", pick.OpenFrame}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var3...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -124,7 +124,7 @@ func Item(c Card) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex min-w-0 flex-1 flex-col gap-0.5\"><h3 class=\"text-sm font-semibold text-neutral-100\"><button class=\"max-w-full cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none\" aria-haspopup=\"dialog\" data-card-open")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex min-w-0 flex-1 flex-col gap-1\"><h3 class=\"text-sm font-semibold text-ink\"><button class=\"max-w-full cursor-pointer break-words rounded-sm text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none\" aria-haspopup=\"dialog\" data-card-open")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -145,14 +145,14 @@ func Item(c Card) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button></h3><p class=\"break-words text-xs text-neutral-400\" data-testid=\"model-meta\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button></h3><p class=\"break-words text-sm text-mute\" data-testid=\"model-meta\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(c.Meta)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/modelcard.templ`, Line: 33, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/modelcard.templ`, Line: 33, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -163,7 +163,7 @@ func Item(c Card) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if c.Commercial != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"relative z-10 shrink-0\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"relative z-raised shrink-0\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -228,7 +228,7 @@ func Actions() templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"relative z-10 mt-auto flex flex-wrap items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"relative z-raised mt-auto flex flex-wrap items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

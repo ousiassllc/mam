@@ -58,33 +58,33 @@ func StoragePanel(d StoragePanelData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"storage-panel\" class=\"flex flex-col gap-3\"><dl class=\"grid grid-cols-1 gap-3 sm:grid-cols-3\"><div class=\"rounded-md border border-neutral-700 p-3\"><dt class=\"text-xs text-neutral-400\">Project のファイル</dt><dd class=\"text-lg font-semibold\" data-testid=\"asset-bytes\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"storage-panel\" class=\"flex flex-col gap-3\"><dl class=\"grid grid-cols-1 gap-3 sm:grid-cols-3\"><div class=\"rounded-lg border border-border p-3\"><dt class=\"text-xs text-mute\">Project のファイル</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"asset-bytes\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(domain.FormatBytes(d.Storage.AssetBytes))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 37, Col: 106}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 37, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</dd><dd class=\"text-xs text-neutral-400\" data-testid=\"preview-bytes\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</dd><dd class=\"text-xs text-mute\" data-testid=\"preview-bytes\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs("プレビューのキャッシュ（全 Project 共通）: " + domain.FormatBytes(d.Storage.PreviewBytes))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 38, Col: 177}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 38, Col: 170}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</dd></div><div class=\"rounded-md border border-neutral-700 p-3\"><dt class=\"text-xs text-neutral-400\">ディスクの空き容量</dt><dd class=\"text-lg font-semibold\" data-testid=\"free-bytes\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</dd></div><div class=\"rounded-lg border border-border p-3\"><dt class=\"text-xs text-mute\">ディスクの空き容量</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"free-bytes\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -104,14 +104,14 @@ func StoragePanel(d StoragePanelData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</dd></div><div class=\"rounded-md border border-neutral-700 p-3\"><dt class=\"text-xs text-neutral-400\">不要な Take</dt><dd class=\"text-lg font-semibold\" data-testid=\"unneeded\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</dd></div><div class=\"rounded-lg border border-border p-3\"><dt class=\"text-xs text-mute\">不要な Take</dt><dd class=\"font-mono text-lg tabular-nums\" data-testid=\"unneeded\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(unneededText(d.Storage))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 52, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 52, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -151,12 +151,12 @@ func StoragePanel(d StoragePanelData) templ.Component {
 			}
 		}
 		if len(d.Storage.Takes) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm text-neutral-400\">保存されている Take はありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm text-mute\">保存されている Take はありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<ul class=\"flex flex-col divide-y divide-neutral-800 text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<ul class=\"flex flex-col divide-y divide-border text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -174,14 +174,14 @@ func StoragePanel(d StoragePanelData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " <span class=\"text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " <span class=\"text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(" · " + t.Status.Label() + " · " + domain.FormatBytes(t.SizeBytes))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 70, Col: 108}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 70, Col: 101}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -213,7 +213,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"text-xs text-neutral-400\" data-testid=\"take-in-use\">選択中、または編集・音声のタイムラインで使用中のためアーカイブできません</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"text-xs text-mute\" data-testid=\"take-in-use\">選択中、または編集・音声のタイムラインで使用中のためアーカイブできません</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

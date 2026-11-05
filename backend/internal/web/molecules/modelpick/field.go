@@ -60,7 +60,7 @@ type Picker struct {
 // fieldBorder is the border of the field's button: red for the field a refusal is about, else the border of the form fields.
 func fieldBorder(invalid bool) string {
 	if invalid {
-		return "border-red-500/60"
+		return "border-danger/60"
 	}
-	return "border-neutral-500"
+	return "border-mute"
 }

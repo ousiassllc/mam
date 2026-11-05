@@ -24,9 +24,9 @@ type NavItem struct {
 }
 
 const (
-	navLinkClass    = "block rounded-md border-l-2 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
-	navCurrentClass = "border-indigo-400 bg-neutral-800 font-medium text-neutral-100"
-	navOtherClass   = "border-transparent text-neutral-300 transition-colors hover:bg-neutral-800/60 hover:text-neutral-100"
+	navLinkClass    = "block rounded-md border-l-2 px-3 py-2 text-sm focus-visible:focus-ring motion-reduce:transition-none"
+	navCurrentClass = "border-accent bg-accent-soft text-ink"
+	navOtherClass   = "border-transparent text-ink transition-colors hover:bg-accent-soft/60 hover:text-ink"
 )
 
 func navClass(current bool) string {

@@ -18,24 +18,24 @@ type ReviewInboxData struct {
 // It is what a reviewer sees without having a Project: the package is the whole of what they get.
 templ ReviewInboxList(d ReviewInboxData) {
 	<div id="review-inbox" class="flex flex-col gap-6">
-		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+		<section class="flex flex-col gap-2 rounded-lg border border-border p-3">
 			<h2 class="text-sm font-semibold">レビューパッケージを読み込む</h2>
-			<p class="text-xs text-neutral-400">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
+			<p class="text-sm text-mute">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
 			<form class="flex flex-wrap items-center gap-2" hx-post={ paths.ReviewImport() } hx-encoding="multipart/form-data" hx-target="#review-inbox" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 				<input id="review-package-file" type="file" name="package" required accept=".zip,application/zip" aria-label="レビューパッケージ" class="text-xs"/>
 				@atoms.Button(atoms.TonePrimary, "読み込む", templ.Attributes{"type": "submit"})
 			</form>
 		</section>
 		if len(d.Items) == 0 {
-			<p class="text-sm text-neutral-400">読み込み済みのレビューはありません。</p>
+			<p class="text-sm text-mute">読み込み済みのレビューはありません。</p>
 		}
 		<ul class="flex flex-col gap-2">
 			for _, i := range d.Items {
-				<li class="flex flex-wrap items-center gap-3 rounded-md border border-neutral-700 p-3">
-					<a class="text-sm font-medium hover:underline" href={ templ.SafeURL(paths.Review(i.ID)) }>{ i.ProjectName }</a>
+				<li class="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">
+					<a class="text-sm hover:underline" href={ templ.SafeURL(paths.Review(i.ID)) }>{ i.ProjectName }</a>
 					@atoms.Badge(reviewDecisionBadge(i.Decision))
-					<span class="text-xs text-neutral-400">{ i.Video.Resolution } / { i.Video.AspectRatio }</span>
-					<span class="text-xs text-neutral-400">読み込み: { i.CreatedAt.Local().Format("2006-01-02 15:04") }</span>
+					<span class="text-xs text-mute">{ i.Video.Resolution } / { i.Video.AspectRatio }</span>
+					<span class="text-xs text-mute">読み込み: { i.CreatedAt.Local().Format("2006-01-02 15:04") }</span>
 				</li>
 			}
 		</ul>
@@ -73,9 +73,9 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 	<div id="review-workspace" class="flex flex-col gap-6">
 		<video class="w-full rounded-md bg-black" aria-label="レビュー対象の動画" controls preload="metadata" src={ paths.Review(i.ID, "video") }></video>
 		if i.Note != "" {
-			<section class="rounded-md border border-neutral-700 p-3" aria-label="オーナーからのメモ">
+			<section class="rounded-lg border border-border p-3" aria-label="オーナーからのメモ">
 				<h2 class="mb-1 text-sm font-semibold">オーナーからのメモ</h2>
-				<p class="whitespace-pre-wrap text-sm text-neutral-300">{ i.Note }</p>
+				<p class="whitespace-pre-wrap text-sm text-ink">{ i.Note }</p>
 			</section>
 		}
 		<section class="flex flex-col gap-2" aria-label="コメント">
@@ -98,12 +98,12 @@ templ ReviewCommentAdded(i domain.ReviewInbox) {
 templ ReviewComments(i domain.ReviewInbox) {
 	<div id="review-comments" class="flex flex-col gap-2">
 		if len(i.Comments) == 0 {
-			<p class="text-sm text-neutral-400">コメントはまだありません。</p>
+			<p class="text-sm text-mute">コメントはまだありません。</p>
 		}
 		<ul class="flex flex-col gap-2">
 			for _, c := range i.Comments {
 				<li class="flex flex-wrap items-start gap-2 text-sm">
-					<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ TimecodeLabel(c.TimecodeMs) }</span>
+					<span class="w-14 shrink-0 font-mono text-xs text-mute">{ TimecodeLabel(c.TimecodeMs) }</span>
 					<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
 					@atoms.ButtonFor(atoms.ToneDanger, "削除", TimecodeLabel(c.TimecodeMs)+" "+c.Body, templ.Attributes{"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-comments", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？"})
 				</li>
@@ -115,7 +115,7 @@ templ ReviewComments(i domain.ReviewInbox) {
 templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 	<form
 		id="review-comment-form"
-		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		class="flex flex-col gap-2 rounded-md border border-border p-3"
 		hx-post={ paths.Review(i.ID, "comments") }
 		hx-target="#review-comments"
 		hx-swap="outerHTML"
@@ -125,11 +125,11 @@ templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 			hx-swap-oob="true"
 		}
 	>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-timecode">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="review-comment-timecode">
 			位置（秒 または 分:秒。空なら動画全体）
 			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "review-comment-timecode", "name": "timecode", "type": "text", "inputmode": "decimal", "maxlength": intText(reviewTimecodeMaxRunes), "placeholder": "1:23"})
 		</label>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-body">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="review-comment-body">
 			コメント
 			@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{"id": "review-comment-body", "name": "body", "rows": "3", "maxlength": intText(domain.MaxReviewCommentRunes), "required": true}, "")
 		</label>
@@ -142,24 +142,24 @@ templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 // ReviewDecision is the form of the decision and, once it is written, the badge and the link that
 // downloads the Review Response. It is the answer to saving the decision.
 templ ReviewDecision(i domain.ReviewInbox) {
-	<section id="review-decision" class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" aria-label="判定">
+	<section id="review-decision" class="flex flex-col gap-2 rounded-lg border border-border p-3" aria-label="判定">
 		<h2 class="text-sm font-semibold">判定</h2>
-		<p class="text-xs text-neutral-400">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
+		<p class="text-sm text-mute">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
 		<form class="flex flex-col gap-2" hx-put={ paths.Review(i.ID, "decision") } hx-target="#review-decision" hx-swap="outerHTML">
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-reviewer-name">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="review-reviewer-name">
 				表示名（1〜50 文字）
 				@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{"id": "review-reviewer-name", "name": "reviewer_name", "type": "text", "maxlength": intText(domain.MaxReviewerNameRunes), "required": true, "value": i.ReviewerName})
 			</label>
 			<fieldset class="flex flex-wrap gap-2 text-sm">
-				<legend class="mb-1 text-xs text-neutral-400">判定</legend>
-				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-1.5 text-center") {
+				<legend class="mb-1 text-xs text-mute">判定</legend>
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-2 text-center") {
 					承認
 				}
-				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-1.5 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-2 text-center") {
 					修正依頼
 				}
 			</fieldset>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-decision-comment">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="review-decision-comment">
 				全体コメント（任意）
 				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{"id": "review-decision-comment", "name": "comment", "rows": "3", "maxlength": intText(domain.MaxReviewCommentRunes)}, i.Comment)
 			</label>
@@ -171,10 +171,10 @@ templ ReviewDecision(i domain.ReviewInbox) {
 			<div class="flex flex-wrap items-center gap-3">
 				@atoms.Badge(reviewDecisionBadge(i.Decision))
 				@atoms.ButtonLink(atoms.ToneNeutral, "応答ファイルをダウンロード（JSON）", templ.SafeURL(paths.Review(i.ID, "response")), templ.Attributes{"download": true})
-				<span class="text-xs text-neutral-400">オーナーにこのファイルを渡してください。</span>
+				<span class="text-xs text-mute">オーナーにこのファイルを渡してください。</span>
 			</div>
 		} else {
-			<p class="text-xs text-neutral-400">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>
+			<p class="text-sm text-mute">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>
 		}
 	</section>
 }

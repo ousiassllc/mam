@@ -16,7 +16,7 @@ import (
 // save, a slot form by an assignment, a switch by itself), so an operation never discards what the user has
 // typed in another form nor closes the LOCK settings.
 templ entityForm(d Data, e entityView) {
-	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+	<div class="flex flex-col gap-2 rounded-lg border border-border p-3">
 		@entityAttributeForm(d, e)
 		for _, sf := range d.slots(e.Target, e.Slots) {
 			@referenceSlotForm(d, e, sf)
@@ -26,7 +26,7 @@ templ entityForm(d Data, e entityView) {
 			@voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + e.ID, URL: paths.Project(d.Project.ID, "characters", e.ID, "voice-training")})
 		}
 		<details class="text-sm">
-			<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
+			<summary class="cursor-pointer text-xs text-mute">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
 			<div class="mt-2 flex flex-col gap-1">
 				for _, f := range domain.LockableFields(e.Target) {
 					@molecules.LockToggle(d.fieldLockToggle(e.Target, e.ID, f))
@@ -45,7 +45,7 @@ templ entityAttributeForm(d Data, e entityView) {
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
-		<p class="flex items-center gap-2 text-sm font-medium">
+		<p class="flex items-center gap-2 text-sm">
 			{ e.Name }
 			if e.Draft {
 				@atoms.BadgeWith(atoms.BadgeWarn, "下書き", templ.Attributes{"data-testid": "character-draft", "title": "Brief の添付画像から作った下書きです。髪型・衣装などを書き足して保存すると、この印は消えます（名前は仮のままです）"})
@@ -71,7 +71,7 @@ templ referenceSlotForm(d Data, e entityView, sf slotForm) {
 		hx-swap="outerHTML"
 	>
 		<input type="hidden" name="slot" value={ sf.Slot.Name }/>
-		<label class="w-40 shrink-0 text-xs text-neutral-400" for={ "slot-" + e.ID + "-" + sf.Slot.Name }>{ slotLabels[sf.Slot.Name] } の参照画像</label>
+		<label class="w-40 shrink-0 text-xs text-mute" for={ "slot-" + e.ID + "-" + sf.Slot.Name }>{ slotLabels[sf.Slot.Name] } の参照画像</label>
 		@atoms.Select(atoms.FieldSm, "", templ.Attributes{
 			"id":   "slot-" + e.ID + "-" + sf.Slot.Name,
 			"name": "reference_id",
@@ -82,7 +82,7 @@ templ referenceSlotForm(d Data, e entityView, sf slotForm) {
 			}
 		}
 		if sf.Current != "" {
-			<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)) } target="_blank" rel="noopener">現在の画像</a>
+			<a class="text-xs text-accent underline decoration-mute" href={ templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)) } target="_blank" rel="noopener">現在の画像</a>
 		}
 		@atoms.ButtonFor(atoms.ToneNeutral, "割り当て", e.Name+" の "+slotLabels[sf.Slot.Name], templ.Attributes{"type": "submit"})
 	</form>
@@ -93,27 +93,27 @@ templ referenceSlotForm(d Data, e entityView, sf slotForm) {
 templ View(d Data) {
 	<div id="world-state-view" class="flex flex-col gap-6">
 		if d.Branch != nil {
-			<p class="text-sm text-indigo-300">
+			<p class="text-sm text-accent">
 				Branch「{ d.Branch.Name }」の World State です。ここでの変更はトランクや他の Branch には影響しません。
 				<a class="underline" href={ templ.SafeURL(paths.Branch(d.Branch.ID)) }>Branch の詳細へ</a>
 			</p>
 		}
 		@versionLine(d, false)
 		<section aria-label="Story / Music" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Story / Music</h2>
+			<h2 class="text-sm font-semibold text-ink">Story / Music</h2>
 			for _, p := range domain.ProjectLockParameters() {
 				@molecules.LockToggle(locktoggles.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
 			}
 		</section>
-		<p id="world-state-empty" class="text-sm text-neutral-400">
+		<p id="world-state-empty" class="text-sm text-mute">
 			if d.empty() {
 				登場人物・商品・場所はまだ登録されていません。
 			}
 		</p>
 		<section aria-label="Characters" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Characters</h2>
+			<h2 class="text-sm font-semibold text-ink">Characters</h2>
 			<details class="text-sm" id="ws-add-character">
-				<summary class="cursor-pointer text-xs text-neutral-300">登場人物を追加（AI の企画を待たずに、名前・髪型・衣装・性格・声と顔・全身の参照画像を直接登録する）</summary>
+				<summary class="cursor-pointer text-xs text-ink">登場人物を追加（AI の企画を待たずに、名前・髪型・衣装・性格・声と顔・全身の参照画像を直接登録する）</summary>
 				<div class="mt-2">
 					@molecules.CharacterCreate(d.characterCreate())
 				</div>
@@ -125,24 +125,24 @@ templ View(d Data) {
 			</div>
 		</section>
 		<section aria-label="Products" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Products</h2>
+			<h2 class="text-sm font-semibold text-ink">Products</h2>
 			for _, p := range d.World.Products {
 				@entityForm(d, productView(d, p))
 			}
 		</section>
 		<section aria-label="Locations" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Locations</h2>
+			<h2 class="text-sm font-semibold text-ink">Locations</h2>
 			for _, l := range d.World.Locations {
 				@entityForm(d, locationView(d, l))
 			}
 		</section>
 		<section aria-label="Camera" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Camera</h2>
+			<h2 class="text-sm font-semibold text-ink">Camera</h2>
 			@cameraValues(d, false)
 			@singletonLocks(d, domain.TargetCamera)
 		</section>
 		<section aria-label="Story" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Story</h2>
+			<h2 class="text-sm font-semibold text-ink">Story</h2>
 			@storyValues(d, false)
 			@singletonLocks(d, domain.TargetStory)
 		</section>
@@ -153,7 +153,7 @@ templ View(d Data) {
 // singletonLocks are the LOCK switches of the Camera or the Story.
 templ singletonLocks(d Data, target domain.WorldTarget) {
 	<details class="text-sm">
-		<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
+		<summary class="cursor-pointer text-xs text-mute">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
 		<div class="mt-2 flex flex-col gap-1">
 			for _, f := range domain.LockableFields(target) {
 				@molecules.LockToggle(d.fieldLockToggle(target, "", f))

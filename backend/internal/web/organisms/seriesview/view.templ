@@ -54,26 +54,26 @@ templ View(d Data) {
 	<div id="series-view" class="flex flex-col gap-6">
 		@seriesVersionLine(d, false)
 		<section aria-label="Style" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Style</h2>
+			<h2 class="text-sm font-semibold text-ink">Style</h2>
 			@seriesStyleForm(d)
 			if d.Series.StyleReferenceAssetID != "" {
-				<p class="text-xs text-neutral-400">Style の参照画像を Episode の Reference Library に引き継ぎます。</p>
+				<p class="text-sm text-mute">Style の参照画像を Episode の Reference Library に引き継ぎます。</p>
 			}
 		</section>
 		<section aria-label="Characters" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Characters</h2>
-			<p id="series-characters-empty" class="text-sm text-neutral-400">
+			<h2 class="text-sm font-semibold text-ink">Characters</h2>
+			<p id="series-characters-empty" class="text-sm text-mute">
 				if len(d.Canon.Characters) == 0 {
 					登録された Character はありません。
 				}
 			</p>
 			<details class="text-sm" id="series-add-character">
-				<summary class="cursor-pointer text-xs text-neutral-300">登場人物を追加（AI の企画を待たずに、正本へ直接登録する。次の Episode から使われます）</summary>
+				<summary class="cursor-pointer text-xs text-ink">登場人物を追加（AI の企画を待たずに、正本へ直接登録する。次の Episode から使われます）</summary>
 				<div class="mt-2">
 					@molecules.CharacterCreate(seriesCharacterCreate(d))
 				</div>
 			</details>
-			<p class="text-xs text-neutral-400">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
+			<p class="text-sm text-mute">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
 			<div id="series-characters" class="flex flex-col gap-2">
 				for _, c := range d.Canon.Characters {
 					@seriesCharacterBlock(d, c)
@@ -81,7 +81,7 @@ templ View(d Data) {
 			</div>
 		</section>
 		<section aria-label="Products and Locations" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Products / Locations</h2>
+			<h2 class="text-sm font-semibold text-ink">Products / Locations</h2>
 			<ul class="flex flex-col gap-1 text-sm">
 				for _, p := range d.Canon.Products {
 					<li>Product: { p.Name }</li>
@@ -92,20 +92,20 @@ templ View(d Data) {
 			</ul>
 		</section>
 		<section aria-label="Notes" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Notes</h2>
-			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL(paths.Series(d.Series.ID, "notes")) }>Series の制作メモを開く（Episode 開始時に Project へコピーされます）</a>
+			<h2 class="text-sm font-semibold text-ink">Notes</h2>
+			<a class="text-sm text-accent underline decoration-mute" href={ templ.SafeURL(paths.Series(d.Series.ID, "notes")) }>Series の制作メモを開く（Episode 開始時に Project へコピーされます）</a>
 		</section>
 		<section aria-label="Episodes" class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-neutral-200">Episodes</h2>
+			<h2 class="text-sm font-semibold text-ink">Episodes</h2>
 			<ul class="flex flex-col gap-1 text-sm">
 				for _, p := range d.Episodes {
 					<li>
-						<a class="text-indigo-300 underline" href={ templ.SafeURL(paths.Project(p.ID)) }>{ episodeLabel(p) }: { p.Name }</a>
+						<a class="text-accent underline decoration-mute" href={ templ.SafeURL(paths.Project(p.ID)) }>{ episodeLabel(p) }: { p.Name }</a>
 					</li>
 				}
 			</ul>
 			<form class="flex flex-wrap items-end gap-2" hx-post={ paths.Series(d.Series.ID, "episodes") } hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="series-previous-episode">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="series-previous-episode">
 					前の話（最終 World State を開始状態にする）
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
 						"id":   "series-previous-episode",
@@ -128,7 +128,7 @@ templ View(d Data) {
 templ seriesVersionLine(d Data, oob bool) {
 	<p
 		id="series-version"
-		class="text-xs text-neutral-400"
+		class="text-xs text-mute"
 		if oob {
 			hx-swap-oob="true"
 		}
@@ -146,8 +146,8 @@ templ seriesHistory(d Data, oob bool) {
 			hx-swap-oob="true"
 		}
 	>
-		<h2 class="text-sm font-semibold text-neutral-200">正本の更新履歴</h2>
-		<ul class="text-xs text-neutral-400">
+		<h2 class="text-sm font-semibold text-ink">正本の更新履歴</h2>
+		<ul class="text-xs text-mute">
 			for _, v := range d.Versions {
 				<li>バージョン { strconv.Itoa(v.Number) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
 			}
@@ -194,7 +194,7 @@ templ VoiceSaved(d Data, characterID string) {
 
 // seriesCharacterBlock is the card of one canonical Character: its attribute form and its reference voice.
 templ seriesCharacterBlock(d Data, c domain.WorldCharacter) {
-	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+	<div class="flex flex-col gap-2 rounded-lg border border-border p-3">
 		@seriesCharacterForm(d, c)
 		@seriesVoiceForm(d, c)
 		@voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + c.ID, URL: paths.Series(d.Series.ID, "characters", c.ID, "voice-training")})
@@ -213,7 +213,7 @@ templ CharacterCreated(d Data, characterID string) {
 			</div>
 		}
 	}
-	<p id="series-characters-empty" class="text-sm text-neutral-400" hx-swap-oob="true"></p>
+	<p id="series-characters-empty" class="text-sm text-mute" hx-swap-oob="true"></p>
 	@seriesCanonSaved(d)
 }
 
@@ -231,7 +231,7 @@ templ seriesStyleForm(d Data) {
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
-		<label class="flex min-w-64 flex-1 flex-col gap-1 text-xs text-neutral-400" for="series-style">
+		<label class="flex min-w-64 flex-1 flex-col gap-1 text-xs text-mute" for="series-style">
 			スタイル（絵柄・色調・質感など）
 			@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 				"id":        "series-style",
@@ -253,10 +253,10 @@ templ seriesCharacterForm(d Data, c domain.WorldCharacter) {
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
-		<p class="text-sm font-medium">{ c.Name }</p>
+		<p class="text-sm">{ c.Name }</p>
 		<div class="grid gap-2 sm:grid-cols-2">
 			for _, name := range domain.SeriesCharacterFields() {
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ "series-" + c.ID + "-" + name }>
+				<label class="flex flex-col gap-1 text-xs text-mute" for={ "series-" + c.ID + "-" + name }>
 					{ seriesFieldLabels[name] }
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 						"id":        "series-" + c.ID + "-" + name,

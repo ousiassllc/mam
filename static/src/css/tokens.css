@@ -1,0 +1,194 @@
+/*
+ * The design tokens of the Ousiass UI guide (brand-guide 622ea73; the rules are spec/components/color-rules.md). This is the one
+ * place where a colour is written as a value: every other source names a token (bg-surface, text-mute, border-border, ...), and
+ * a Tailwind palette class or a raw colour anywhere else fails backend/internal/web/a11y/color_allowlist_test.go.
+ *
+ * The theme: Light is `:root`; Dark is `[data-theme="dark"]`, and `prefers-color-scheme: dark` while the page has no data-theme of its
+ * own (the cookie of the theme button, backend/internal/web/themestate, writes one). The values are the guide's, for both.
+ */
+
+:root {
+  color-scheme: light;
+
+  --ink: #050505;
+  --bone: #f5f5f4;
+  --mute: #8b8b8e;
+  --surface: #ffffff;
+  --border: #e7e7e5;
+  --accent: #050505;
+  --accent-soft: #e7e7e5;
+  --focus: #4a72d0;
+
+  --success: #3d5c4a;
+  --warning: #7a6a3a;
+  --danger: #7a4545;
+  --info: #4a5a6a;
+
+  /* The scrim behind a modal (O1): black in both themes. */
+  --scrim: rgb(0 0 0 / 0.7);
+
+  /* Motion (M1): hover is colour / background only, in --motion-base. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 280ms;
+  --motion-fade-in: 320ms;
+  --motion-fade-out: 240ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Layers (O4): the z-index of the page's layers (z-dropdown, z-sticky, z-drawer, z-modal, z-toast below). */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-drawer: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+
+  /* Spacing recipes (S2): the heights and gaps the guide names, in 4px steps. */
+  --menu-item-h: 2.5rem;
+  --gap-menu: 0.5rem;
+  --gap-option: 0.25rem;
+  --gap-inline: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ink: #ffffff;
+    --bone: #050505;
+    --surface: #141414;
+    --border: #2a2a2a;
+    --accent: #f5f5f4;
+    --accent-soft: #2a2a2a;
+    --focus: #60a5fa;
+
+    --success: #8fafa0;
+    --warning: #c4b87a;
+    --danger: #c49a9a;
+    --info: #9aabbc;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ink: #ffffff;
+  --bone: #050505;
+  --surface: #141414;
+  --border: #2a2a2a;
+  --accent: #f5f5f4;
+  --accent-soft: #2a2a2a;
+  --focus: #60a5fa;
+
+  --success: #8fafa0;
+  --warning: #c4b87a;
+  --danger: #c49a9a;
+  --info: #9aabbc;
+}
+
+/* Tailwind: the guide's tokens are the only colours (the default palette is switched off), so a class of a palette shade
+   (a neutral, an indigo, ...) does not compile. black is the letterbox of a video and the scrim of a modal, which are black in both themes. */
+@theme inline {
+  --color-*: initial;
+  --color-ink: var(--ink);
+  --color-bone: var(--bone);
+  --color-mute: var(--mute);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-black: #000000;
+}
+
+/* The fonts of the guide (T1; the files are dist/fonts.css, written by static/fonts.mjs): Sora for Latin text, Noto Sans JP for
+   Japanese, JetBrains Mono for code and for numbers that line up (font-mono; add tabular-nums where digits stack).
+   The size scale (T3): xs 12 · sm 14 · base 16 · lg 18 · xl 24 (h3) · 2xl 32 (h2) · 3xl 40 (h1), each with its line height (T4).
+   Tailwind's own scale is switched off (--text-*: initial), so text-4xl and the like do not compile. */
+@theme {
+  --font-sans: Sora, "Noto Sans JP", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --text-*: initial;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.6;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.7;
+  --text-base: 1rem;
+  --text-base--line-height: 1.8;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.7;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 1.5;
+  --text-2xl: 2rem;
+  --text-2xl--line-height: 1.4;
+  --text-3xl: 2.5rem;
+  --text-3xl--line-height: 1.3;
+}
+
+/* Shape (S1, S3): corners 4 / 8 / 12 / 16 (tag and check / input and button / card / modal), and the one shadow, the modal's.
+   rounded-sm is a tag, rounded-md an input, a button or a panel inside a card, rounded-lg a card, rounded-xl a modal.
+   Motion (M1): what transition-* takes when
+   it says no duration: --motion-base 180ms and --ease-out. */
+@theme {
+  --radius-*: initial;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --shadow-*: initial;
+  --shadow-modal: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+@theme inline {
+  --default-transition-duration: var(--motion-base);
+  --default-transition-timing-function: var(--ease-out);
+}
+
+/* Body text (T3, T4): 16px Regular at 1.8 — a long Japanese text is not set tight. */
+@layer base {
+  body {
+    font-size: var(--text-base);
+    line-height: 1.8;
+  }
+}
+
+/* The focus ring (C3): 2px solid --focus, offset 2. A utility so that every control says it the same way
+   (focus-visible:focus-ring, peer-focus-visible:focus-ring, ...). */
+@utility focus-ring {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The layers of the page (O4): a utility per layer, so that no source writes a bare z-10. */
+@utility z-dropdown {
+  z-index: var(--z-dropdown);
+}
+
+@utility z-sticky {
+  z-index: var(--z-sticky);
+}
+
+@utility z-drawer {
+  z-index: var(--z-drawer);
+}
+
+/* Inside one part, above a sibling that covers it (the click area of a card): not a layer of the page. */
+@utility z-raised {
+  z-index: 1;
+}
+
+@utility z-modal {
+  z-index: var(--z-modal);
+}
+
+@utility z-toast {
+  z-index: var(--z-toast);
+}

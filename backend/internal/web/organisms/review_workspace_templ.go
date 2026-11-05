@@ -45,7 +45,7 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"review-inbox\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\"><h2 class=\"text-sm font-semibold\">レビューパッケージを読み込む</h2><p class=\"text-xs text-neutral-400\">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p><form class=\"flex flex-wrap items-center gap-2\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"review-inbox\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2 rounded-lg border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビューパッケージを読み込む</h2><p class=\"text-sm text-mute\">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p><form class=\"flex flex-wrap items-center gap-2\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -71,7 +71,7 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Items) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"text-sm text-neutral-400\">読み込み済みのレビューはありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"text-sm text-mute\">読み込み済みのレビューはありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -81,14 +81,14 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, i := range d.Items {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<li class=\"flex flex-wrap items-center gap-3 rounded-md border border-neutral-700 p-3\"><a class=\"text-sm font-medium hover:underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<li class=\"flex flex-wrap items-center gap-3 rounded-lg border border-border p-3\"><a class=\"text-sm hover:underline\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 templ.SafeURL
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Review(i.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 35, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 35, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -101,7 +101,7 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(i.ProjectName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 35, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 35, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -115,14 +115,14 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"text-xs text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(i.Video.Resolution)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 37, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 37, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -135,20 +135,20 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(i.Video.AspectRatio)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 37, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 37, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <span class=\"text-xs text-neutral-400\">読み込み: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <span class=\"text-xs text-mute\">読み込み: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(i.CreatedAt.Local().Format("2006-01-02 15:04"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 38, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 38, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -233,14 +233,14 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if i.Note != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"rounded-md border border-neutral-700 p-3\" aria-label=\"オーナーからのメモ\"><h2 class=\"mb-1 text-sm font-semibold\">オーナーからのメモ</h2><p class=\"whitespace-pre-wrap text-sm text-neutral-300\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"rounded-lg border border-border p-3\" aria-label=\"オーナーからのメモ\"><h2 class=\"mb-1 text-sm font-semibold\">オーナーからのメモ</h2><p class=\"whitespace-pre-wrap text-sm text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(i.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 78, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 78, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -341,7 +341,7 @@ func ReviewComments(i domain.ReviewInbox) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(i.Comments) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"text-sm text-neutral-400\">コメントはまだありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"text-sm text-mute\">コメントはまだありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -351,14 +351,14 @@ func ReviewComments(i domain.ReviewInbox) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, c := range i.Comments {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<li class=\"flex flex-wrap items-start gap-2 text-sm\"><span class=\"w-14 shrink-0 font-mono text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<li class=\"flex flex-wrap items-start gap-2 text-sm\"><span class=\"w-14 shrink-0 font-mono text-xs text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(TimecodeLabel(c.TimecodeMs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 106, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 106, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -419,7 +419,7 @@ func ReviewCommentForm(i domain.ReviewInbox, oob bool) templ.Component {
 			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<form id=\"review-comment-form\" class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<form id=\"review-comment-form\" class=\"flex flex-col gap-2 rounded-md border border-border p-3\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -442,7 +442,7 @@ func ReviewCommentForm(i domain.ReviewInbox, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"review-comment-timecode\">位置（秒 または 分:秒。空なら動画全体）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"review-comment-timecode\">位置（秒 または 分:秒。空なら動画全体）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -450,7 +450,7 @@ func ReviewCommentForm(i domain.ReviewInbox, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"review-comment-body\">コメント")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"review-comment-body\">コメント")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -497,7 +497,7 @@ func ReviewDecision(i domain.ReviewInbox) templ.Component {
 			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<section id=\"review-decision\" class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\" aria-label=\"判定\"><h2 class=\"text-sm font-semibold\">判定</h2><p class=\"text-xs text-neutral-400\">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p><form class=\"flex flex-col gap-2\" hx-put=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<section id=\"review-decision\" class=\"flex flex-col gap-2 rounded-lg border border-border p-3\" aria-label=\"判定\"><h2 class=\"text-sm font-semibold\">判定</h2><p class=\"text-sm text-mute\">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p><form class=\"flex flex-col gap-2\" hx-put=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -510,7 +510,7 @@ func ReviewDecision(i domain.ReviewInbox) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" hx-target=\"#review-decision\" hx-swap=\"outerHTML\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"review-reviewer-name\">表示名（1〜50 文字）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" hx-target=\"#review-decision\" hx-swap=\"outerHTML\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"review-reviewer-name\">表示名（1〜50 文字）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -518,7 +518,7 @@ func ReviewDecision(i domain.ReviewInbox) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</label><fieldset class=\"flex flex-wrap gap-2 text-sm\"><legend class=\"mb-1 text-xs text-neutral-400\">判定</legend>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</label><fieldset class=\"flex flex-wrap gap-2 text-sm\"><legend class=\"mb-1 text-xs text-mute\">判定</legend>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -540,7 +540,7 @@ func ReviewDecision(i domain.ReviewInbox) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-1.5 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var19), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-2 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var19), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -562,11 +562,11 @@ func ReviewDecision(i domain.ReviewInbox) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-1.5 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-2 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</fieldset><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"review-decision-comment\">全体コメント（任意）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</fieldset><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"review-decision-comment\">全体コメント（任意）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -599,12 +599,12 @@ func ReviewDecision(i domain.ReviewInbox) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"text-xs text-neutral-400\">オーナーにこのファイルを渡してください。</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"text-xs text-mute\">オーナーにこのファイルを渡してください。</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<p class=\"text-xs text-neutral-400\">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<p class=\"text-sm text-mute\">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

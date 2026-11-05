@@ -13,10 +13,10 @@ func itoa(n int) string { return strconv.Itoa(n) }
 
 templ notice(m Message, id string) {
 	if m.Notice != "" {
-		<p class="text-sm text-emerald-300" role="status" data-testid={ id + "-notice" }>{ m.Notice }</p>
+		<p class="text-sm text-success" role="status" data-testid={ id + "-notice" }>{ m.Notice }</p>
 	}
 	if m.Error != "" {
-		<p class="text-sm text-red-300" role="alert" data-testid={ id + "-error" }>{ m.Error }</p>
+		<p class="text-sm text-danger" role="alert" data-testid={ id + "-error" }>{ m.Error }</p>
 	}
 }
 
@@ -24,10 +24,10 @@ templ notice(m Message, id string) {
 templ progressBar(p Progress, label string) {
 	<div class="flex flex-col gap-1" role="status" aria-live="polite" data-testid="mm-progress" data-job={ p.JobID }>
 		<progress class="w-full" max="100" value={ itoa(p.Percent) } aria-label={ label }></progress>
-		<p class="break-words text-xs text-neutral-300">
+		<p class="break-words text-sm text-ink">
 			{ p.Message }（{ itoa(p.Percent) }%）
 			if p.Bytes != "" {
-				<span class="text-neutral-400">{ p.Bytes }</span>
+				<span class="text-mute">{ p.Bytes }</span>
 			}
 		</p>
 	</div>
@@ -66,8 +66,8 @@ templ EngineCard(e Engine) {
 			case e.Installed && !e.Broken:
 				@installedCard(e)
 			default:
-				<div id={ GPUID } class="relative z-10" hx-get={ paths.ModelManagerPart("engine", "gpu") } hx-trigger="load" hx-swap="outerHTML">
-					<p class="text-sm text-neutral-400">GPU を検出しています…</p>
+				<div id={ GPUID } class="relative z-raised" hx-get={ paths.ModelManagerPart("engine", "gpu") } hx-trigger="load" hx-swap="outerHTML">
+					<p class="text-sm text-mute">GPU を検出しています…</p>
 				</div>
 		}
 	}
@@ -75,7 +75,7 @@ templ EngineCard(e Engine) {
 
 templ installedCard(e Engine) {
 	if e.State == "failed" && e.ProcessError != "" {
-		<pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-neutral-900 p-2 text-xs text-red-300" role="alert" data-testid="mm-engine-failure">{ e.ProcessError }</pre>
+		<pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-2 text-xs text-danger" role="alert" data-testid="mm-engine-failure">{ e.ProcessError }</pre>
 	}
 	@modelcard.Actions() {
 		if e.State == "running" || e.State == "starting" {

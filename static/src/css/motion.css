@@ -1,0 +1,104 @@
+/*
+ * Motion of the overlays and of the press (the Ousiass UI guide, M4 and M5; values are the --motion-* / --ease-* tokens of tokens.css).
+ *
+ * M5: a dialog, a popover and a toast come in with a fade (--motion-fade-in, --ease-out) and go out with one (--motion-fade-out, --ease-in);
+ * the scrim fades with its dialog. A <dialog> and a popover are `display: none` while closed, so the fade-out needs `allow-discrete`
+ * (display and overlay switch at the end of the transition) and the fade-in `@starting-style` (the state it starts from). A browser that
+ * has neither draws them at once, which is the same as no motion.
+ *
+ * Reduced motion: opacity only, at most 100ms.
+ */
+
+dialog,
+[popover] {
+  opacity: 0;
+  transition:
+    opacity var(--motion-fade-out) var(--ease-in),
+    overlay var(--motion-fade-out) var(--ease-in) allow-discrete,
+    display var(--motion-fade-out) var(--ease-in) allow-discrete;
+}
+
+dialog[open],
+[popover]:popover-open {
+  opacity: 1;
+  transition:
+    opacity var(--motion-fade-in) var(--ease-out),
+    overlay var(--motion-fade-in) var(--ease-out) allow-discrete,
+    display var(--motion-fade-in) var(--ease-out) allow-discrete;
+}
+
+@starting-style {
+  dialog[open],
+  [popover]:popover-open {
+    opacity: 0;
+  }
+}
+
+/* The scrim (O1): it is the dialog's own backdrop, and it fades with it. */
+dialog::backdrop {
+  background-color: transparent;
+  transition:
+    background-color var(--motion-fade-out) var(--ease-in),
+    overlay var(--motion-fade-out) var(--ease-in) allow-discrete,
+    display var(--motion-fade-out) var(--ease-in) allow-discrete;
+}
+
+dialog[open]::backdrop {
+  background-color: var(--scrim);
+  transition:
+    background-color var(--motion-fade-in) var(--ease-out),
+    overlay var(--motion-fade-in) var(--ease-out) allow-discrete,
+    display var(--motion-fade-in) var(--ease-out) allow-discrete;
+}
+
+@starting-style {
+  dialog[open]::backdrop {
+    background-color: transparent;
+  }
+}
+
+/* A toast comes in with the fade and, when toast.ts marks it as leaving, goes out with the fade-out. An alert (an error that stays) comes in with it too. */
+[data-toast] {
+  opacity: 1;
+  transition: opacity var(--motion-fade-in) var(--ease-out);
+}
+
+[data-alert] {
+  opacity: 1;
+  transition: opacity var(--motion-fade-in) var(--ease-out);
+}
+
+@starting-style {
+  [data-toast],
+  [data-alert] {
+    opacity: 0;
+  }
+}
+
+[data-toast][data-leaving] {
+  opacity: 0;
+  transition: opacity var(--motion-fade-out) var(--ease-in);
+}
+
+/* M4: the ripple of a press on a button or on a close button (static/src/components/ripple). The wave is a child that the script adds
+   and removes; the button clips it. In the components layer, so that a utility (`absolute` on a close button) still wins. */
+@layer components {
+  [data-ripple] {
+    position: relative;
+    overflow: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog,
+  dialog[open],
+  [popover],
+  [popover]:popover-open,
+  dialog::backdrop,
+  dialog[open]::backdrop,
+  [data-toast],
+  [data-toast][data-leaving],
+  [data-alert] {
+    transition-duration: 100ms;
+  }
+}

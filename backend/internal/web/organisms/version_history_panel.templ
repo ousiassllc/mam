@@ -56,13 +56,13 @@ templ VersionHistoryPanel(d VersionHistoryData) {
 	>
 		<h3 class="text-sm font-semibold">{ d.Title }</h3>
 		if len(d.Entries) == 0 {
-			<p class="text-sm text-neutral-400">保存されたバージョンはまだありません。</p>
+			<p class="text-sm text-mute">保存されたバージョンはまだありません。</p>
 		} else {
 			<ol class="flex flex-col gap-1 text-sm">
 				for i, e := range d.Entries {
 					<li class="flex flex-wrap items-center gap-2">
 						<span class="font-mono text-xs">{ fmt.Sprintf("v%d", e.Number) }</span>
-						<time class="text-xs text-neutral-400" datetime={ e.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }>{ e.CreatedAt.Local().Format("2006/01/02 15:04:05") }</time>
+						<time class="text-xs text-mute" datetime={ e.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }>{ e.CreatedAt.Local().Format("2006/01/02 15:04:05") }</time>
 						if e.Summary != "" {
 							<span class="truncate text-xs" title={ e.Summary }>{ e.Summary }</span>
 						}
@@ -82,7 +82,7 @@ templ VersionHistoryPanel(d VersionHistoryData) {
 				}
 			</ol>
 			if d.RestoreBlocked != "" && len(d.Entries) > 1 {
-				<p class="text-xs text-neutral-400">{ d.RestoreBlocked }</p>
+				<p class="text-sm text-mute">{ d.RestoreBlocked }</p>
 			}
 		}
 	</section>

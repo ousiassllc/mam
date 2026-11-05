@@ -31,7 +31,8 @@ func TestBar_IsANamedButtonThatSwapsItsTargetAndReplacesAPollOfIt(t *testing.T) 
 	assert.Contains(t, html, `aria-label="更新"`)
 	assert.Contains(t, html, `title="更新"`)
 	assert.Contains(t, html, `aria-hidden="true"`, "the icon is decoration")
-	assert.Contains(t, html, `motion-reduce:animate-none`, "the icon does not turn for a reader who asked for less motion")
+	assert.Contains(t, html, `group-[.htmx-request]:animate-spin`, "the icon turns while the request runs")
+	assert.NotContains(t, html, `motion-reduce:animate-none`, "that it is working is not a decoration: it turns for a reader who asked for less motion too")
 }
 
 // When it was read is small text beside the button; a part that has no single time (a list of cards that poll on their own) shows none.

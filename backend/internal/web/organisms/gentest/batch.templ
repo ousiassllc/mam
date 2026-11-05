@@ -17,7 +17,7 @@ templ BatchEmpty() {
 templ BatchBox(b Batch) {
 	<section
 		id={ BatchID }
-		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		class="flex flex-col gap-3 rounded-md border border-border p-4"
 		data-testid="gt-batch"
 		data-state={ b.StateTone }
 		if !b.Finished {
@@ -28,11 +28,11 @@ templ BatchBox(b Batch) {
 	>
 		@notice(b.Message, "gt-batch")
 		<div class="flex flex-wrap items-center gap-3">
-			<h2 class="text-sm font-medium">生成の結果</h2>
+			<h2 class="text-sm font-semibold">生成の結果</h2>
 			@atoms.BadgeWith(batchTone(b.StateTone), b.StateText, templ.Attributes{"data-testid": "gt-batch-state"})
-			<span class="text-xs text-neutral-400" data-testid="gt-batch-progress">{ itoa(b.Done) } / { itoa(b.Total) } 件（{ b.Counts }）</span>
+			<span class="text-xs text-mute" data-testid="gt-batch-progress">{ itoa(b.Done) } / { itoa(b.Total) } 件（{ b.Counts }）</span>
 			if b.Estimate != "" {
-				<span class="text-xs text-neutral-400">見積り { b.Estimate }</span>
+				<span class="text-xs text-mute">見積り { b.Estimate }</span>
 			}
 			if !b.Finished {
 				<form
@@ -54,15 +54,15 @@ templ BatchBox(b Batch) {
 			<table class="w-full min-w-max border-collapse text-sm" data-testid="gt-grid">
 				<thead>
 					<tr>
-						<th class="p-2 text-left text-xs font-normal text-neutral-400">モデル ＼ プロンプト</th>
+						<th class="p-2 text-left text-xs font-normal text-mute">モデル ＼ プロンプト</th>
 						for _, c := range b.Cols {
-							<th class="max-w-xs p-2 text-left align-top text-xs font-normal text-neutral-300" data-testid="gt-col">
+							<th class="max-w-xs p-2 text-left align-top text-xs font-normal text-ink" data-testid="gt-col">
 								<span class="line-clamp-3 whitespace-pre-wrap break-words">{ c.Text }</span>
 								if c.Negative != "" {
-									<span class="mt-1 block text-neutral-400">ネガティブ: { c.Negative }</span>
+									<span class="mt-1 block text-mute">ネガティブ: { c.Negative }</span>
 								}
 								if c.English != "" || c.EnglishNegative != "" {
-									<span class="mt-1 block text-neutral-200" data-testid="gt-col-english">
+									<span class="mt-1 block text-ink" data-testid="gt-col-english">
 										英訳:
 										<span class="line-clamp-3 whitespace-pre-wrap break-words">{ c.English }</span>
 										if c.EnglishNegative != "" {
@@ -76,8 +76,8 @@ templ BatchBox(b Batch) {
 				</thead>
 				<tbody>
 					for _, r := range b.Rows {
-						<tr class="border-t border-neutral-800" data-testid="gt-row">
-							<th class="p-2 text-left align-top text-xs font-medium text-neutral-200" scope="row">
+						<tr class="border-t border-border" data-testid="gt-row">
+							<th class="p-2 text-left align-top text-xs font-semibold text-ink" scope="row">
 								<span class="flex flex-col items-start gap-1">
 									<span>{ r.Model }</span>
 									@commercial.Badge(r.Answer)

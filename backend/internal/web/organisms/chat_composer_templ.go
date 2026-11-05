@@ -51,7 +51,7 @@ func ChatComposer(p domain.Project) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"border-t border-neutral-800 px-4 py-3\"><form id=\"chat-composer\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"border-t border-border px-4 py-3\"><form id=\"chat-composer\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -64,7 +64,7 @@ func ChatComposer(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-encoding=\"multipart/form-data\" hx-target=\"#chat-thread\" hx-swap=\"beforeend\" hx-sync=\"this:drop\"><div id=\"reply-chip\" class=\"mb-2 hidden items-center gap-2 text-xs text-neutral-300\"><span>返信先:</span> <span id=\"reply-label\" class=\"truncate\"></span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-encoding=\"multipart/form-data\" hx-target=\"#chat-thread\" hx-swap=\"beforeend\" hx-sync=\"this:drop\"><div id=\"reply-chip\" class=\"mb-2 hidden items-center gap-2 text-xs text-ink\"><span>返信先:</span> <span id=\"reply-label\" class=\"truncate\"></span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -76,7 +76,7 @@ func ChatComposer(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><input type=\"hidden\" name=\"reply_to_message_id\" id=\"reply-to\" value=\"\"><ul id=\"attachment-names\" class=\"mb-2 flex flex-wrap gap-2 text-xs text-neutral-300\"></ul><div class=\"flex items-end gap-2\"><input id=\"composer-files\" type=\"file\" name=\"attachments\" multiple accept=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><input type=\"hidden\" name=\"reply_to_message_id\" id=\"reply-to\" value=\"\"><ul id=\"attachment-names\" class=\"mb-2 flex flex-wrap gap-2 text-xs text-ink\"></ul><div class=\"flex items-end gap-2\"><input id=\"composer-files\" type=\"file\" name=\"attachments\" multiple accept=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -89,7 +89,7 @@ func ChatComposer(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" aria-label=\"画像・動画を添付\" class=\"peer sr-only\"> <label for=\"composer-files\" class=\"cursor-pointer rounded-md border border-neutral-600 px-3 py-1.5 text-sm hover:bg-neutral-800 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400\" title=\"画像・動画を添付\">＋</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" aria-label=\"画像・動画を添付\" class=\"peer sr-only\"> <label for=\"composer-files\" class=\"cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-accent-soft peer-focus-visible:focus-ring\" title=\"画像・動画を添付\">＋</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -110,7 +110,7 @@ func ChatComposer(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></form><div class=\"mt-2 flex flex-wrap items-center gap-4 text-xs text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></form><div class=\"mt-2 flex flex-wrap items-center gap-4 text-xs text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -202,7 +202,7 @@ func ChatComposer(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"hover:text-neutral-100\">設定</a></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"hover:text-ink\">設定</a></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

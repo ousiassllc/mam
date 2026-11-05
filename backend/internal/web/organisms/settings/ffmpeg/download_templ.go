@@ -54,7 +54,7 @@ func DownloadPanel(d Download) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-2 rounded-md border border-neutral-700 px-3 py-2\" data-testid=\"ffmpeg-download\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-2 rounded-md border border-border px-3 py-2\" data-testid=\"ffmpeg-download\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -77,7 +77,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "><p class=\"text-sm\"><span class=\"font-medium\">mam でダウンロードして入れる</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "><p class=\"text-sm\"><span class=\"\">mam でダウンロードして入れる</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -104,14 +104,14 @@ func DownloadPanel(d Download) templ.Component {
 			}
 		}
 		if d.Installed && d.Version != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"ml-2 text-xs text-neutral-400\" data-testid=\"ffmpeg-download-version\">バージョン: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"ml-2 text-xs text-mute\" data-testid=\"ffmpeg-download-version\">バージョン: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(d.Version)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 39, Col: 114}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 39, Col: 107}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -127,14 +127,14 @@ func DownloadPanel(d Download) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Notice != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-emerald-300\" role=\"status\" data-testid=\"ffmpeg-download-notice\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"ffmpeg-download-notice\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(d.Notice)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 43, Col: 100}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 43, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -146,14 +146,14 @@ func DownloadPanel(d Download) templ.Component {
 			}
 		}
 		if d.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"ffmpeg-download-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"ffmpeg-download-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 46, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 46, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -178,7 +178,7 @@ func DownloadPanel(d Download) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"></progress><p class=\"text-xs\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"></progress><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -244,14 +244,14 @@ func DownloadPanel(d Download) templ.Component {
 			}
 		} else {
 			if d.Install.Error != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"ffmpeg-download-install-error\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"ffmpeg-download-install-error\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(d.Install.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 58, Col: 110}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 58, Col: 109}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -267,7 +267,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Install.Cancelled {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"text-sm text-neutral-300\" role=\"status\" data-testid=\"ffmpeg-download-cancelled\">ダウンロードを中断しました。もう一度押すと続きから取得します。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"text-sm text-ink\" role=\"status\" data-testid=\"ffmpeg-download-cancelled\">ダウンロードを中断しました。もう一度押すと続きから取得します。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -277,7 +277,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Install.Succeeded {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-emerald-300\" role=\"status\" data-testid=\"ffmpeg-download-done\">ffmpeg と ffprobe を入れました。mam は起動時に ffmpeg を探すので、<strong>mam を一度終了して、起動し直してください</strong>。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"ffmpeg-download-done\">ffmpeg と ffprobe を入れました。mam は起動時に ffmpeg を探すので、<strong>mam を一度終了して、起動し直してください</strong>。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -287,14 +287,14 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Installed && d.UpdateAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-xs text-amber-300\" data-testid=\"ffmpeg-download-update\">この mam が確かめた版は ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-sm text-warning\" data-testid=\"ffmpeg-download-update\">この mam が確かめた版は ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(d.PinnedVersion)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 69, Col: 125}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 69, Col: 123}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -307,7 +307,7 @@ func DownloadPanel(d Download) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(d.Version)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 69, Col: 164}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 69, Col: 162}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -323,7 +323,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Broken {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-xs text-amber-300\" data-testid=\"ffmpeg-download-broken\">入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-warning\" data-testid=\"ffmpeg-download-broken\">入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -333,14 +333,14 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Installed && !d.Broken && !d.UpdateAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-xs text-neutral-400\">置き場所: <code class=\"break-all\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-sm text-mute\">置き場所: <code class=\"break-all\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(d.Dir)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 75, Col: 85}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/ffmpeg/download.templ`, Line: 75, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
@@ -382,7 +382,7 @@ func DownloadPanel(d Download) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-params=\"none\" hx-disabled-elt=\"find button[type=submit]\"><p class=\"mb-2 text-xs text-neutral-400\" data-testid=\"ffmpeg-download-about\">ffmpeg と ffprobe（")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-params=\"none\" hx-disabled-elt=\"find button[type=submit]\"><p class=\"mb-2 text-sm text-mute\" data-testid=\"ffmpeg-download-about\">ffmpeg と ffprobe（")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -491,7 +491,7 @@ func DownloadPanel(d Download) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if d.Found && !d.Managed {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"mb-2 text-xs text-neutral-400\" data-testid=\"ffmpeg-download-found-elsewhere\">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"mb-2 text-sm text-mute\" data-testid=\"ffmpeg-download-found-elsewhere\">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

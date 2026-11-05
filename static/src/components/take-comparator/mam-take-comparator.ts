@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { confirmDialog } from '../confirm/confirm';
 import { del, get, post } from '../lib/api';
 import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
@@ -108,11 +109,14 @@ export class MamTakeComparator extends LitElement {
   /** Rejects a Take once the user confirmed: the Take can never be chosen again. */
   private reject(take: TakeScore): void {
     const url = take.reject_url;
-    if (url && window.confirm(REJECT_CONFIRM))
-      void this.act(
-        () => del(url),
-        () => rowTargets(this, take.id, 'reject'),
-      );
+    if (!url) return;
+    void confirmDialog(REJECT_CONFIRM).then((yes) => {
+      if (yes)
+        void this.act(
+          () => del(url),
+          () => rowTargets(this, take.id, 'reject'),
+        );
+    });
   }
 
   /** Runs a request to the server, reports its error and reloads the Takes; the focus then goes to `focusTo`. */
@@ -191,9 +195,9 @@ export class MamTakeComparator extends LitElement {
   }
 
   protected override render() {
-    if (!this.loaded) return html`<p class="text-sm text-neutral-400" role="status">読み込み中…</p>`;
+    if (!this.loaded) return html`<p class="text-sm text-mute" role="status">読み込み中…</p>`;
     if (this.takes.length === 0) {
-      return html`${this.renderError()}<p class="text-sm text-neutral-400" data-empty>この Shot にはまだ Take がありません</p>`;
+      return html`${this.renderError()}<p class="text-sm text-mute" data-empty>この Shot にはまだ Take がありません</p>`;
     }
     const clips = this.clips();
     const clipById = new Map(clips.map((c) => [c.id, c]));
@@ -242,7 +246,7 @@ export class MamTakeComparator extends LitElement {
 
   private renderError() {
     return this.error
-      ? html`<p class="rounded border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-300" role="alert" data-error>${this.error}</p>`
+      ? html`<p class="rounded-md border border-danger/60 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert" data-error>${this.error}</p>`
       : nothing;
   }
 
@@ -257,7 +261,7 @@ export class MamTakeComparator extends LitElement {
     const bar = (s: { start: number; end: number }) =>
       `left:${(s.start / (duration || 1)) * 100}%;width:${((s.end - s.start) / (duration || 1)) * 100}%`;
     return html`<div class="flex flex-col gap-1" data-lane=${t.id}>
-      <div class="text-xs text-neutral-300">Take ${t.label}</div>
+      <div class="text-xs text-ink">Take ${t.label}</div>
       <mam-video-player
         class="block max-w-md"
         video-src=${t.video_url}
@@ -266,7 +270,7 @@ export class MamTakeComparator extends LitElement {
         .fps=${t.fps ?? 0}
       ></mam-video-player>
       <div
-        class="relative h-7 cursor-crosshair touch-none select-none rounded bg-neutral-800"
+        class="relative h-7 cursor-crosshair touch-none select-none rounded-md bg-accent-soft"
         style="width:${widthPercent}%"
         role="group"
         aria-label="Take ${t.label} の区間を選ぶ"
@@ -278,10 +282,10 @@ export class MamTakeComparator extends LitElement {
       >
         ${this.selection.map((s, i) =>
           s.take_id === t.id
-            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-emerald-500/70 text-[10px] leading-7 text-white" style=${bar(s)} data-picked>${i + 1}</div>`
+            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-success/70 text-[10px] leading-7 text-bone" style=${bar(s)} data-picked>${i + 1}</div>`
             : nothing,
         )}
-        ${preview ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-sky-500/70" style=${bar(preview)} data-drag></div>` : nothing}
+        ${preview ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-info/70" style=${bar(preview)} data-drag></div>` : nothing}
       </div>
     </div>`;
   }

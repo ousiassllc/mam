@@ -140,7 +140,7 @@ function mark(t: Tracked, on: boolean): void {
   if (on && !existing) {
     const badge = document.createElement('span');
     badge.setAttribute('data-gt-mark', '');
-    badge.className = 'text-xs text-amber-300';
+    badge.className = 'text-xs text-warning';
     badge.textContent = '● 変えた';
     if (t.before) t.host.before(badge);
     else t.host.prepend(badge);
@@ -175,7 +175,7 @@ function render(section: HTMLElement): void {
 
 function row(item: Item): HTMLElement {
   const li = document.createElement('li');
-  li.className = 'flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-200';
+  li.className = 'flex flex-wrap items-center justify-between gap-2 text-xs text-ink';
   li.dataset.gtRefineItem = item.key;
   const text = document.createElement('span');
   text.className = 'break-words';
@@ -183,7 +183,7 @@ function row(item: Item): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.gtReset = item.key;
-  button.className = 'rounded-md border border-neutral-600 px-2 py-0.5 text-neutral-200 hover:bg-neutral-800';
+  button.className = 'rounded-md border border-border px-2 py-1 text-ink hover:bg-accent-soft';
   button.textContent = '元に戻す';
   button.setAttribute('aria-label', resetLabel(item));
   li.append(text, button);

@@ -75,14 +75,14 @@ func EditorNotice(msg string) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"local-form-error\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"local-form-error\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 22, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 22, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -154,14 +154,14 @@ func formError(msg string) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if msg != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"local-form-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"local-form-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 38, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 38, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -197,7 +197,7 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<form class=\"flex flex-col gap-3 rounded-md border border-neutral-700 p-4\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<form class=\"flex flex-col gap-3 rounded-md border border-border p-4\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -244,7 +244,7 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<fieldset class=\"flex flex-col gap-2\"><legend class=\"text-xs text-neutral-400\">組み込みのテンプレートから始める（モデルのファイル名は、接続先にあるものに直してください）</legend> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<fieldset class=\"flex flex-col gap-2\"><legend class=\"text-xs text-mute\">組み込みのテンプレートから始める（モデルのファイル名は、接続先にあるものに直してください）</legend> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -261,40 +261,40 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span><span class=\"font-medium\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span><span class=\"\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(t.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 60, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 60, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <span class=\"ml-1 text-xs text-neutral-400\">（")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <span class=\"ml-1 text-xs text-mute\">（")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(mediaLabel(t.Media))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 61, Col: 74}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 61, Col: 67}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "）</span></span> <span class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "）</span></span> <span class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(t.Description)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 63, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 63, Col: 52}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -306,7 +306,7 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID}, "flex flex-col gap-0.5 p-3 text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID}, "flex flex-col gap-1 p-3 text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -329,11 +329,11 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""}, "p-3 text-sm font-medium").Render(templ.WithChildren(ctx, templ_7745c5c3_Var15), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""}, "p-3 text-sm ").Render(templ.WithChildren(ctx, templ_7745c5c3_Var15), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</fieldset><fieldset class=\"flex flex-col gap-2\"><legend class=\"text-xs text-neutral-400\">取り込むワークフローの種類（テンプレートを選んだときは無視されます）</legend><div class=\"flex items-center gap-2 text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</fieldset><fieldset class=\"flex flex-col gap-2\"><legend class=\"text-xs text-mute\">取り込むワークフローの種類（テンプレートを選んだときは無視されます）</legend><div class=\"flex items-center gap-2 text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -355,7 +355,7 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaImage, "checked": s.Media != MediaVideo}, "px-4 py-1.5 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaImage, "checked": s.Media != MediaVideo}, "px-4 py-2 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -377,11 +377,11 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaVideo, "checked": s.Media == MediaVideo}, "px-4 py-1.5 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaVideo, "checked": s.Media == MediaVideo}, "px-4 py-2 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></fieldset><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-workflow-json\"><span>ワークフローの JSON（ComfyUI の「Save (API Format)」で保存したもの。エディタ形式は取り込めません）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></fieldset><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-workflow-json\"><span>ワークフローの JSON（ComfyUI の「Save (API Format)」で保存したもの。エディタ形式は取り込めません）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

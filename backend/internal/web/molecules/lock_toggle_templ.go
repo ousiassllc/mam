@@ -48,14 +48,14 @@ func (d LockToggleData) modes() []domain.LockMode {
 }
 
 func lockModeClass(active bool, m domain.LockMode) string {
-	base := "px-2 py-1 text-xs font-medium transition "
+	base := "px-2 py-1 text-xs font-semibold transition-colors "
 	if !active {
-		return base + "text-neutral-300 hover:bg-neutral-800"
+		return base + "text-ink hover:bg-accent-soft"
 	}
 	if m == domain.LockLocked {
-		return base + "bg-amber-500/20 text-amber-300"
+		return base + "bg-warning/20 text-warning"
 	}
-	return base + "bg-indigo-500/20 text-indigo-300"
+	return base + "bg-accent-soft text-accent"
 }
 
 // LockToggle is the three-value switch of a parameter. Each button saves at once (no save button):
@@ -156,14 +156,14 @@ func LockToggle(d LockToggleData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"w-40 shrink-0 text-neutral-300\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"w-40 shrink-0 text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(d.label())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/lock_toggle.templ`, Line: 67, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/lock_toggle.templ`, Line: 67, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -182,7 +182,7 @@ func LockToggle(d LockToggleData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"inline-flex overflow-hidden rounded-md border border-neutral-600\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"inline-flex overflow-hidden rounded-md border border-border\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* The design tokens of the Ousiass UI guide: the colours of both themes, the Tailwind theme that names them, and the focus ring. */
+@import "./tokens.css";
+
+/* The fade of the overlays and the ripple of a press (M4, M5). */
+@import "./motion.css";
+
 /* The common look of every <input type="range"> (#955): the pseudo-elements of a slider cannot be written as utilities. It is in the
    components layer, so that a utility class on a slider (w-full, ...) still wins over it. */
 @import "./slider.css" layer(components);

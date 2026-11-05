@@ -2,6 +2,7 @@ package molecules_test
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,9 +68,9 @@ func TestLockToggle_CarriesTheHiddenFieldsOfAWorldStateSwitchAndReplacesOnlyItse
 // eye (color-rules.md: the selection is indigo, a warning is amber).
 func TestLockToggle_OnlyTheCurrentModeLooksSet(t *testing.T) {
 	for mode, tint := range map[domain.LockMode]string{
-		domain.LockAuto:   "bg-indigo-500/20 text-indigo-300",
-		domain.LockManual: "bg-indigo-500/20 text-indigo-300",
-		domain.LockLocked: "bg-amber-500/20 text-amber-300",
+		domain.LockAuto:   "bg-accent-soft text-accent",
+		domain.LockManual: "bg-accent-soft text-accent",
+		domain.LockLocked: "bg-warning/20 text-warning",
 	} {
 		html := render(t, molecules.LockToggle(molecules.LockToggleData{
 			DOMID: "lock-s1-camera", URL: "/shots/s1/locks", Parameter: domain.ParamCamera, Mode: mode,
@@ -82,13 +83,13 @@ func TestLockToggle_OnlyTheCurrentModeLooksSet(t *testing.T) {
 			if value == string(mode) {
 				assert.Equal(t, "true", pressed, "%s: %s is pressed", mode, value)
 				assert.Contains(t, class, tint, "%s: the current mode is tinted", mode)
-				assert.NotContains(t, class, "hover:bg-neutral-800", "%s: the current mode is not a plain button", mode)
+				assert.NotContains(t, class, "hover:bg-accent-soft", "%s: the current mode is not a plain button", mode)
 				continue
 			}
 			assert.Equal(t, "false", pressed, "%s: %s is not pressed", mode, value)
-			assert.Contains(t, class, "text-neutral-300 hover:bg-neutral-800", "%s: %s is a plain button", mode, value)
-			assert.NotContains(t, class, "bg-amber-500/20", "%s: %s is not tinted", mode, value)
-			assert.NotContains(t, class, "bg-indigo-500/20", "%s: %s is not tinted", mode, value)
+			assert.Contains(t, class, "text-ink hover:bg-accent-soft", "%s: %s is a plain button", mode, value)
+			assert.NotContains(t, class, "bg-warning/20", "%s: %s is not tinted", mode, value)
+			assert.NotContains(t, strings.Fields(class), "bg-accent-soft", "%s: %s is not tinted (the hover is not the tint)", mode, value)
 		}
 	}
 }

@@ -63,7 +63,7 @@ func ChatWorkspace(p domain.Project, msgs []domain.ThreadMessage) templ.Componen
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><header class=\"flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3\"><div class=\"flex min-w-0 items-center gap-3\"><h1 class=\"truncate text-base font-semibold\" title=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><header class=\"flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3\"><div class=\"flex min-w-0 items-center gap-3\"><h1 class=\"truncate text-base font-semibold\" title=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

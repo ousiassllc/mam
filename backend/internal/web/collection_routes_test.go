@@ -27,7 +27,7 @@ func TestCollectionRoutes_AreRegisteredUnderThePathsThePagesUse(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	engine := router.New(
 		servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()}),
-		router.Options{Static: fstest.MapFS{"app.js": {Data: []byte("x")}, "app.css": {Data: []byte("y")}}},
+		router.Options{Static: fstest.MapFS{"app.js": {Data: []byte("x")}, "app.css": {Data: []byte("y")}, "fonts.css": {Data: []byte("z")}}},
 	)
 	serve := func(req *http.Request) *httptest.ResponseRecorder {
 		req.Host, req.RemoteAddr = "127.0.0.1:8787", "127.0.0.1:54321"
@@ -40,7 +40,7 @@ func TestCollectionRoutes_AreRegisteredUnderThePathsThePagesUse(t *testing.T) {
 	csrf := home.Result().Cookies()[0]
 	token := strings.SplitN(strings.SplitN(home.Body.String(), `name="csrf-token" content="`, 2)[1], `"`, 2)[0]
 
-	for _, route := range []string{paths.Home(), paths.Analytics(), paths.Settings(), paths.Reviews(), paths.StaticApp, paths.StaticCSS} {
+	for _, route := range []string{paths.Home(), paths.Analytics(), paths.Settings(), paths.Reviews(), paths.StaticApp, paths.StaticCSS, paths.StaticFontsCSS} {
 		assert.Equal(t, http.StatusOK, serve(httptest.NewRequest(http.MethodGet, route, nil)).Code, route)
 	}
 	// An empty body is refused by the handler; a route that does not exist is a 404 / 405.

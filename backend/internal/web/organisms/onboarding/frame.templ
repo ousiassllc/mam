@@ -7,19 +7,19 @@ import (
 )
 
 const (
-	linkClass = "text-sm underline text-indigo-300"
-	codeClass = "rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-sm text-neutral-100"
+	linkClass = "text-sm underline decoration-mute text-accent"
+	codeClass = "rounded-sm bg-accent-soft px-2 py-1 font-mono text-sm text-ink"
 )
 
 // Layout is the frame of one step: the h1, the progress, the step (its h2 and body, the children) and the buttons that go
 // on. Every page of the guide is a whole page; the links are plain links.
 templ Layout(f Frame) {
 	<main class="mx-auto max-w-4xl p-8">
-		<h1 class="mb-1 text-xl font-semibold">はじめに</h1>
-		<p class="text-sm text-neutral-400">mam を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>
+		<h1 class="mb-1 text-3xl font-semibold">はじめに</h1>
+		<p class="text-sm text-mute">mam を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>
 		@progress(f)
 		<section aria-labelledby="onboarding-step-title" class="mt-6 flex flex-col gap-4" data-testid="onboarding-step" data-step={ f.Current().Slug }>
-			<p class="text-xs text-neutral-400">ステップ { f.Number() } / { f.Total() }（{ Group(f.Current()) }）</p>
+			<p class="text-sm text-mute">ステップ { f.Number() } / { f.Total() }（{ Group(f.Current()) }）</p>
 			<h2 id="onboarding-step-title" class="text-lg font-semibold">{ f.Current().Title }</h2>
 			{ children... }
 		</section>
@@ -37,11 +37,11 @@ templ progress(f Frame) {
 			for i, s := range f.Steps {
 				<li>
 					if i == f.Index {
-						<span aria-current="step" class="inline-block rounded-md border border-indigo-400 bg-neutral-800 px-2 py-1 font-medium text-neutral-100">
+						<span aria-current="step" class="inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 text-ink">
 							{ num(i) }. { s.Title }
 						</span>
 					} else {
-						<a href={ f.StepHref(i) } class="inline-block rounded-md border border-transparent px-2 py-1 text-neutral-300 hover:bg-neutral-800/60 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+						<a href={ f.StepHref(i) } class="inline-block rounded-md border border-transparent px-2 py-1 text-ink hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring">
 							{ num(i) }. { s.Title }
 						</a>
 					}
@@ -54,7 +54,7 @@ templ progress(f Frame) {
 // controls are the buttons under a step. The walkthrough goes on with "次へ"; a setup step may be left with "あとで"
 // (nothing is put in) or "次へ"; the last step finishes the guide. "ガイドを閉じる" skips the rest from every other page.
 templ controls(f Frame) {
-	<div class="mt-8 flex flex-col gap-3 border-t border-neutral-800 pt-4">
+	<div class="mt-8 flex flex-col gap-3 border-t border-border pt-4">
 		<div class="flex flex-wrap items-center gap-2">
 			if !f.First() {
 				@atoms.ButtonLink(atoms.ToneNeutral, "戻る", f.PrevHref(), templ.Attributes{"data-testid": "onboarding-back"})
@@ -73,7 +73,7 @@ templ controls(f Frame) {
 			</div>
 		</div>
 		if f.Current().Setup {
-			<p class="text-xs text-neutral-400">「あとで」で飛ばしても、設定画面からいつでも入れられます。</p>
+			<p class="text-sm text-mute">「あとで」で飛ばしても、設定画面からいつでも入れられます。</p>
 		}
 		if !f.Last() {
 			<div>

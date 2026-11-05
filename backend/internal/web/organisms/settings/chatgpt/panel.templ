@@ -52,10 +52,10 @@ templ Panel(d Data) {
 		}
 	>
 		if d.Notice != "" {
-			<p class="break-words text-sm text-emerald-300" role="status" data-testid="chatgpt-notice">{ d.Notice }</p>
+			<p class="break-words text-sm text-success" role="status" data-testid="chatgpt-notice">{ d.Notice }</p>
 		}
 		if d.Error != "" {
-			<p class="break-words text-sm text-red-300" role="alert" data-testid="chatgpt-error">{ d.Error }</p>
+			<p class="break-words text-sm text-danger" role="alert" data-testid="chatgpt-error">{ d.Error }</p>
 		}
 		<ul id={ CardsID } role="list" class="grid grid-cols-1 gap-4 xl:grid-cols-2">
 			@officialCard(d)

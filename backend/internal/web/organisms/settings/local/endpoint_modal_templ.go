@@ -142,38 +142,38 @@ func EndpointModal(f EndpointForm, errMsg string) templ.Component {
 				}
 			}
 			if f.Edit {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm\" data-testid=\"local-endpoint-fixed\"><span class=\"text-neutral-400\">名前:</span> <code>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm\" data-testid=\"local-endpoint-fixed\"><span class=\"text-mute\">名前:</span> <code>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(f.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/endpoint_modal.templ`, Line: 45, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/endpoint_modal.templ`, Line: 45, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</code> <span class=\"ml-3 text-neutral-400\">種類:</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</code> <span class=\"ml-3 text-mute\">種類:</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(kindLabel(f.Kind))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/endpoint_modal.templ`, Line: 46, Col: 75}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/endpoint_modal.templ`, Line: 46, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"text-xs text-neutral-400\">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"text-sm text-mute\">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-endpoint-name\"><span>名前（英小文字・数字・. _ -）</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-endpoint-name\"><span>名前（英小文字・数字・. _ -）</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -184,7 +184,7 @@ func EndpointModal(f EndpointForm, errMsg string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-endpoint-kind\"><span>種類</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-endpoint-kind\"><span>種類</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -261,7 +261,7 @@ func EndpointModal(f EndpointForm, errMsg string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-endpoint-url-input\"><span>base_url（例: http://127.0.0.1:8188、http://192.168.0.10:1234、http://100.101.102.103:8188）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-endpoint-url-input\"><span>base_url（例: http://127.0.0.1:8188、http://192.168.0.10:1234、http://100.101.102.103:8188）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -272,7 +272,7 @@ func EndpointModal(f EndpointForm, errMsg string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</label><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-endpoint-concurrency\"><span>同時実行数（空: 1）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</label><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-endpoint-concurrency\"><span>同時実行数（空: 1）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -282,7 +282,7 @@ func EndpointModal(f EndpointForm, errMsg string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-endpoint-timeout\"><span>タイムアウト（秒。ComfyUI は進みが止まってから。空: ComfyUI 10800・互換 900）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-endpoint-timeout\"><span>タイムアウト（秒。ComfyUI は進みが止まってから。空: ComfyUI 10800・互換 900）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -297,7 +297,7 @@ func EndpointModal(f EndpointForm, errMsg string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if !f.Edit {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-endpoint-key-input\"><span>API キー（任意。保存後は設定済みかどうかと末尾 4 文字だけを表示します）</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-endpoint-key-input\"><span>API キー（任意。保存後は設定済みかどうかと末尾 4 文字だけを表示します）</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

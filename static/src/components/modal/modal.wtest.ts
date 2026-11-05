@@ -94,12 +94,8 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     expect(document.activeElement === opener).to.equal(true);
   });
 
-  it('closes on the cancel button and on the close button, and does not close on the backdrop', async () => {
+  it('closes on the cancel button and on the close button', async () => {
     await open();
-    const box = dialog().getBoundingClientRect();
-    dialog().dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: box.left - 5, clientY: box.top - 5 }));
-    expect(dialog().open).to.equal(true);
-
     (host.querySelector('#mam-modal-body [data-modal-close]') as HTMLButtonElement).click();
     await waitUntil(() => !dialog().open, 'the cancel button did not close', { timeout: 2000 });
     expect(document.activeElement === opener).to.equal(true);
@@ -167,7 +163,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     expect(document.activeElement === host.querySelector('#mam-modal-body [data-modal-close]')).to.equal(true);
   });
 
-  it('says a failed request inside the dialog in the dialog (the toast region is behind it)', async () => {
+  it('says a failed request inside the dialog in the dialog (the alert region is behind it)', async () => {
     await open();
 
     (byId('modal-broken') as HTMLButtonElement).click();
@@ -176,7 +172,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
 
     expect(failure.textContent).to.contain('404');
     expect(dialog().open).to.equal(true);
-    expect(document.querySelector('#toast-region [data-toast]')).to.equal(null);
+    expect(document.querySelector('#alert-region [data-alert]')).to.equal(null);
   });
 
   // Keeps the next request of `click` in flight after htmx has opened it: no answer comes until `release()`, and an abort is seen.

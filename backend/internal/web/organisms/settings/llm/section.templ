@@ -15,16 +15,16 @@ import (
 templ Section(d Data) {
 	<section id={ PanelID } class="flex flex-col gap-3">
 		@help.Row(help.ID(helpSubject), helpSubject, planHelp()) {
-			<p class="text-sm text-neutral-300" data-testid="llm-apply-note">保存した割り当ては、次の呼び出しからすぐ使われます（再起動は要りません）。</p>
+			<p class="text-sm text-ink" data-testid="llm-apply-note">保存した割り当ては、次の呼び出しからすぐ使われます（再起動は要りません）。</p>
 		}
 		if d.Pinned {
-			<p class="text-sm text-neutral-300" data-testid="llm-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で固定されています。この画面では変更できません。</p>
+			<p class="text-sm text-ink" data-testid="llm-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で固定されています。この画面では変更できません。</p>
 		}
 		if d.Problem != "" {
-			<p class="text-sm text-amber-300" role="alert" data-testid="llm-problem">保存済みの設定ファイルを読み込めません（表示は既定値です）: { d.Problem }</p>
+			<p class="text-sm text-warning" role="alert" data-testid="llm-problem">保存済みの設定ファイルを読み込めません（表示は既定値です）: { d.Problem }</p>
 		}
 		if len(d.Warnings) > 0 {
-			<ul class="flex flex-col gap-1 text-sm text-amber-300" data-testid="llm-warnings">
+			<ul class="flex flex-col gap-1 text-sm text-warning" data-testid="llm-warnings">
 				for _, w := range d.Warnings {
 					<li data-testid="llm-warning">
 						{ w.Message }
@@ -36,10 +36,10 @@ templ Section(d Data) {
 			</ul>
 		}
 		if d.Notice != "" {
-			<p class="text-sm text-emerald-300" role="status" data-testid="llm-notice">{ d.Notice }</p>
+			<p class="text-sm text-success" role="status" data-testid="llm-notice">{ d.Notice }</p>
 		}
 		if d.Error != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="llm-error">{ d.Error }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="llm-error">{ d.Error }</p>
 		}
 		if !d.Pinned {
 			<div>
@@ -57,9 +57,9 @@ templ Section(d Data) {
 		}
 		@table(TableID, "LLM の割り当て（Agent ごと）", d.Rows, d.Pinned)
 		if len(d.Unused) > 0 {
-			<details class="rounded-md border border-neutral-800 px-3 py-2" data-testid="llm-unused">
-				<summary class="cursor-pointer text-sm text-neutral-300">現在は使われません</summary>
-				<p class="my-2 text-xs text-neutral-400">これらの Agent は今のところ LLM を呼びません。割り当ては保存され、使われるようになったときに効きます。</p>
+			<details class="rounded-md border border-border px-3 py-2" data-testid="llm-unused">
+				<summary class="cursor-pointer text-sm text-ink">現在は使われません</summary>
+				<p class="my-2 text-sm text-mute">これらの Agent は今のところ LLM を呼びません。割り当ては保存され、使われるようになったときに効きます。</p>
 				@table(UnusedTableID, "LLM の割り当て（現在は使われない Agent）", d.Unused, d.Pinned)
 			</details>
 		}
@@ -114,9 +114,9 @@ templ row(r Row, pinned, oob bool) {
 	@settingsui.TableRowItem(settingsui.TableRow{ID: RowID(r.Agent), TestID: "llm-row", Attrs: templ.Attributes{"data-agent": r.Agent}, OOB: oob}) {
 		@settingsui.RowHead("") {
 			{ r.Label }
-			<span class="mt-1 block text-xs font-normal text-neutral-400 xl:hidden">{ r.Purpose }</span>
+			<span class="mt-1 block text-xs font-normal text-mute xl:hidden">{ r.Purpose }</span>
 		}
-		@settingsui.Cell(purposeClass + " text-neutral-400") {
+		@settingsui.Cell(purposeClass + " text-mute") {
 			{ r.Purpose }
 		}
 		@settingsui.Cell("min-w-40") {

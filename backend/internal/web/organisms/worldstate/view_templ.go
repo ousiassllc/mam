@@ -44,7 +44,7 @@ func entityForm(d Data, e entityView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col gap-2 rounded-lg border border-border p-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -68,7 +68,7 @@ func entityForm(d Data, e entityView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<details class=\"text-sm\"><summary class=\"cursor-pointer text-xs text-neutral-400\">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary><div class=\"mt-2 flex flex-col gap-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<details class=\"text-sm\"><summary class=\"cursor-pointer text-xs text-mute\">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary><div class=\"mt-2 flex flex-col gap-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -134,7 +134,7 @@ func entityAttributeForm(d Data, e entityView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-target=\"this\" hx-swap=\"outerHTML\"><p class=\"flex items-center gap-2 text-sm font-medium\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-target=\"this\" hx-swap=\"outerHTML\"><p class=\"flex items-center gap-2 text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -245,14 +245,14 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"> <label class=\"w-40 shrink-0 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"> <label class=\"w-40 shrink-0 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue("slot-" + e.ID + "-" + sf.Slot.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 74, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 74, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
@@ -265,7 +265,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(slotLabels[sf.Slot.Name])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 74, Col: 126}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 74, Col: 119}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -343,14 +343,14 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if sf.Current != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<a class=\"text-xs text-indigo-300 underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<a class=\"text-xs text-accent underline decoration-mute\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 templ.SafeURL
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 85, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/worldstate/view.templ`, Line: 85, Col: 131}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -401,7 +401,7 @@ func View(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Branch != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-sm text-indigo-300\">Branch「")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-sm text-accent\">Branch「")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -436,7 +436,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<section aria-label=\"Story / Music\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Story / Music</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<section aria-label=\"Story / Music\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Story / Music</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -446,7 +446,7 @@ func View(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</section><p id=\"world-state-empty\" class=\"text-sm text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</section><p id=\"world-state-empty\" class=\"text-sm text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -456,7 +456,7 @@ func View(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</p><section aria-label=\"Characters\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Characters</h2><details class=\"text-sm\" id=\"ws-add-character\"><summary class=\"cursor-pointer text-xs text-neutral-300\">登場人物を追加（AI の企画を待たずに、名前・髪型・衣装・性格・声と顔・全身の参照画像を直接登録する）</summary><div class=\"mt-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</p><section aria-label=\"Characters\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Characters</h2><details class=\"text-sm\" id=\"ws-add-character\"><summary class=\"cursor-pointer text-xs text-ink\">登場人物を追加（AI の企画を待たずに、名前・髪型・衣装・性格・声と顔・全身の参照画像を直接登録する）</summary><div class=\"mt-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -474,7 +474,7 @@ func View(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div></section><section aria-label=\"Products\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Products</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div></section><section aria-label=\"Products\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Products</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -484,7 +484,7 @@ func View(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</section><section aria-label=\"Locations\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Locations</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</section><section aria-label=\"Locations\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Locations</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -494,7 +494,7 @@ func View(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</section><section aria-label=\"Camera\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Camera</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</section><section aria-label=\"Camera\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Camera</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -506,7 +506,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</section><section aria-label=\"Story\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Story</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</section><section aria-label=\"Story\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Story</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -556,7 +556,7 @@ func singletonLocks(d Data, target domain.WorldTarget) templ.Component {
 			templ_7745c5c3_Var19 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<details class=\"text-sm\"><summary class=\"cursor-pointer text-xs text-neutral-400\">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary><div class=\"mt-2 flex flex-col gap-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<details class=\"text-sm\"><summary class=\"cursor-pointer text-xs text-mute\">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary><div class=\"mt-2 flex flex-col gap-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

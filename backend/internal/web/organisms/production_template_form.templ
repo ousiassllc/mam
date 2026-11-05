@@ -32,11 +32,11 @@ templ ProductionTemplateForm(d PolicyFormData) {
 			<legend class="sr-only">Production Template</legend>
 			for _, t := range domain.ProductionTemplates() {
 				@pick.Card(templ.Attributes{"type": "radio", "name": "production_template", "value": string(t), "checked": t == d.Policy.Template}, "flex flex-col gap-1 p-3") {
-					<span class="text-sm font-medium">{ t.Label() }</span>
-					<ol class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-400">
+					<span class="text-sm">{ t.Label() }</span>
+					<ol class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-mute">
 						for i, a := range t.Axes() {
 							<li>
-								{ a.Label() } <span class="text-neutral-400">{ axisWeightPercent(t, a) }</span>
+								{ a.Label() } <span class="text-mute">{ axisWeightPercent(t, a) }</span>
 								if i < len(t.Axes())-1 {
 									<span aria-hidden="true">›</span>
 								}
@@ -47,7 +47,7 @@ templ ProductionTemplateForm(d PolicyFormData) {
 			}
 		</fieldset>
 		if msg := d.Errors["production_template"]; msg != "" {
-			<p class="text-sm text-red-300" role="alert">{ msg }</p>
+			<p class="text-sm text-danger" role="alert">{ msg }</p>
 		}
 	</form>
 }

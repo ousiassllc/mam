@@ -10,22 +10,22 @@ import (
 // button. The result is made as a result of its own in the history; the box says where it came from when this result is itself one.
 templ Box(f Form) {
 	if f.Show || f.SourceURL != "" {
-		<div id={ ID } class="flex flex-col gap-2 rounded-md border border-neutral-700 p-4" data-testid="gt-upscale">
+		<div id={ ID } class="flex flex-col gap-2 rounded-lg border border-border p-4" data-testid="gt-upscale">
 			if f.SourceURL != "" {
 				<p class="text-sm" data-testid="gt-upscale-source">
 					<a class="underline" href={ templ.SafeURL(f.SourceURL) }>{ f.SourceText }</a>
 				</p>
 			}
 			if f.Show {
-				<h3 class="text-sm font-medium">大きくする（アップスケール）</h3>
+				<h3 class="text-sm font-semibold">大きくする（アップスケール）</h3>
 				if f.Notice != "" {
-					<p class="text-sm text-emerald-300" role="status" data-testid="gt-upscale-notice">{ f.Notice }</p>
+					<p class="text-sm text-success" role="status" data-testid="gt-upscale-notice">{ f.Notice }</p>
 				}
 				if f.Error != "" {
-					<p class="text-sm text-red-300" role="alert" data-testid="gt-upscale-error">{ f.Error }</p>
+					<p class="text-sm text-danger" role="alert" data-testid="gt-upscale-error">{ f.Error }</p>
 				}
 				if !f.HasModel {
-					<p class="text-sm text-neutral-400" data-testid="gt-upscale-none">
+					<p class="text-sm text-mute" data-testid="gt-upscale-none">
 						アップスケール用のモデルが入っていません。
 						<a class="underline" href={ templ.SafeURL(f.ModelsURL) }>モデルマネージャー</a>で入れてください。
 					</p>
@@ -38,7 +38,7 @@ templ Box(f Form) {
 						hx-sync="this:drop"
 						hx-disabled-elt="find button[type=submit]"
 					>
-						<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-upscale-scale">
+						<label class="flex flex-col gap-1 text-xs text-mute" for="gt-upscale-scale">
 							<span>倍率</span>
 							@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-upscale-scale", "name": FieldScale}) {
 								for _, n := range f.Scales {
@@ -46,7 +46,7 @@ templ Box(f Form) {
 								}
 							}
 						</label>
-						<div class="flex min-w-48 max-w-md flex-1 flex-col gap-1 text-xs text-neutral-400">
+						<div class="flex min-w-48 max-w-md flex-1 flex-col gap-1 text-xs text-mute">
 							<span>方式（モデル）</span>
 							@modelpick.Field(f.Model)
 						</div>

@@ -2,17 +2,23 @@ package layout
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
 
 // AppLayout is the shared page shell. The CSRF token is published in a meta tag;
 // static/src/main.ts reads it and attaches it to every HTMX request, and
-// components/lib/api.ts attaches it to every fetch. #toast-region receives the
-// out-of-band toasts of failed actions; #toast-template is the markup that toast.ts clones for
-// the toasts it raises itself, so the toast is defined only in atoms.Toast. The same goes for
+// components/lib/api.ts attaches it to every fetch. #toast-region receives the out-of-band toast of an action that worked
+// (one at a time, gone after 3 seconds); #alert-region, at the top of #content, receives the out-of-band alerts of failed
+// actions. #toast-template, #alert-template and #confirm-template are the markup that the scripts clone for the ones they raise
+// themselves, so each is defined only in atoms.Toast, atoms.Alert and modal.Confirm. The same goes for
 // #connection-notice-template (atoms.ConnectionNotice), cloned by connection-notice.ts.
+//
+// The theme of the page is the data-theme of <html> (Light or Dark, from the cookie that the theme button of the menu writes; none
+// follows the system: static/src/css/tokens.css).
 //
 // The fixed menu on the left (organisms/sidenav) is part of the shell: nav says which entry is the current one and, on a
 // Project's screens, whose views to list. The page's own <main> is in #content, which the skip link before the menu leads to.
@@ -26,7 +32,13 @@ templ AppLayout(title string, csrfToken string, nav sidenav.State) {
 // canonical empty draws none): the page that several URLs show.
 templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 	<!DOCTYPE html>
-	<html lang="ja" class="overscroll-none">
+	<html
+		lang="ja"
+		class="overscroll-none"
+		if themestate.Chosen(ctx) != "" {
+			data-theme={ themestate.Chosen(ctx) }
+		}
+	>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -35,17 +47,24 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 			if canonical != "" {
 				<link rel="canonical" href={ canonical }/>
 			}
+			<link rel="stylesheet" href={ paths.StaticFontsCSS }/>
 			<link rel="stylesheet" href={ paths.StaticCSS }/>
 			<script type="module" src={ paths.StaticApp }></script>
 		</head>
-		<body class="min-h-screen overscroll-none bg-neutral-950 text-neutral-100">
+		<body class="min-h-screen overscroll-none bg-bone text-ink">
 			@Shell(nav) {
 				{ children... }
 			}
 			@modelpick.Host()
-			<div id="toast-region" class="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2" aria-live="assertive"></div>
+			<div id="toast-region" class="pointer-events-none fixed bottom-6 left-1/2 z-toast flex w-max max-w-[calc(100vw-3rem)] -translate-x-1/2 justify-center" aria-live="polite"></div>
 			<template id="toast-template">
 				@atoms.Toast("")
+			</template>
+			<template id="alert-template">
+				@atoms.Alert(atoms.AlertError, atoms.ErrorAlertTitle, "")
+			</template>
+			<template id="confirm-template">
+				@modal.Confirm()
 			</template>
 			<template id="connection-notice-template">
 				@atoms.ConnectionNotice()
@@ -58,11 +77,12 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 // Off (the guide of the first start) has neither the link nor the menu.
 templ Shell(nav sidenav.State) {
 	if !nav.Hidden {
-		<a href="#content" class="sr-only rounded-md bg-neutral-800 px-3 py-2 text-sm text-neutral-100 focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400">本文へ</a>
+		<a href="#content" class="sr-only rounded-md bg-accent-soft px-3 py-2 text-sm text-ink focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-toast focus-visible:focus-ring">本文へ</a>
 	}
 	<div class="flex min-h-screen">
 		@sidenav.Nav(nav)
 		<div id="content" class="min-w-0 flex-1">
+			<div id="alert-region" class="sticky top-0 z-sticky flex flex-col gap-2 px-4 pt-4 empty:hidden md:px-8"></div>
 			{ children... }
 		</div>
 	</div>

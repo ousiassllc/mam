@@ -5,16 +5,21 @@ import { CSRF_HEADER, csrfToken } from './components/lib/api';
 import { lockDownHtmx } from './components/lib/htmx-config';
 import { swapsErrorResponse } from './components/lib/thread';
 import { requestFailureMessage, type RequestFailure } from './components/lib/errors';
-import { showToast } from './ajax';
+import { showAlert } from './ajax';
 import { installHistorySnapshotHygiene } from './components/lib/history';
 import { installSaveOnChangeRevert } from './components/save-on-change/save-on-change';
 import { installFocusRestore } from './components/focus-restore/focus-restore';
 import { installInlineDialog } from './components/inline-dialog/inline-dialog';
-import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
+import { dedupeAlertsOnSwap, dismissAlertsOnClick } from './components/alert/alert';
+import { timeToastsOnSwap } from './components/toast/toast';
 import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
 import { installSidenav } from './components/sidenav/sidenav';
+import { installConfirm } from './components/confirm/confirm';
+import { installScrim } from './components/scrim/scrim';
+import { installTheme } from './components/theme/theme';
+import { installRipple } from './components/ripple/ripple';
 import { installModelPick } from './components/model-pick/model-pick';
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
@@ -35,7 +40,7 @@ document.addEventListener('htmx:configRequest', (event) => {
   headers[CSRF_HEADER] = csrfToken();
 });
 
-// Error responses of actions are HTML: a toast (out-of-band, target untouched) or a
+// Error responses of actions are HTML: an alert (out-of-band, target untouched) or a
 // re-rendered form with its errors (422). htmx does not swap 4xx/5xx by default.
 document.addEventListener('htmx:beforeSwap', (event) => {
   const detail = (event as CustomEvent<{ xhr: XMLHttpRequest; shouldSwap: boolean; isError: boolean }>).detail;
@@ -53,16 +58,16 @@ for (const type of [
   'htmx:timeout',
 ] as const satisfies readonly RequestFailure[]) {
   document.addEventListener(type, (event) => {
-    // The modal says so itself: the toast region lies behind the dialog, which is in the top layer.
+    // The modal says so itself: the alert region lies behind the dialog, which is in the top layer.
     if (insideModal(event.target as Element | null)) return;
     const xhr = (event as CustomEvent<{ xhr?: XMLHttpRequest }>).detail?.xhr;
-    showToast(requestFailureMessage(type, xhr?.status));
+    showAlert(requestFailureMessage(type, xhr?.status));
   });
 }
 
 // A control that saves on change (MODE, Production Template, Quality, Confirmation Level) has already
 // moved to the chosen value when the request goes out. When the save fails, whatever the response
-// (a 4xx/5xx toast, server down, timeout), put it back to the stored value, so that the screen never
+// (a 4xx/5xx alert, server down, timeout), put it back to the stored value, so that the screen never
 // shows a value that was not saved (issue 538).
 installSaveOnChangeRevert();
 
@@ -73,6 +78,12 @@ installHelp();
 
 // The fold button of the side menu: folds it to its icons or opens it, and keeps the choice in a cookie that the server reads.
 installSidenav();
+installTheme();
+installRipple();
+
+// A confirmation (an `hx-confirm`) is asked in a centred modal, and a click on the scrim of a dialog closes it (the UI guide, O1, O2).
+installConfirm();
+installScrim();
 
 // The model manager's questions in the page (age confirmation, license): the focus goes in, Esc closes, the focus goes back.
 // Before the focus restore: a focus that is back on a control is not touched by it.
@@ -118,9 +129,10 @@ installRestartRefresh();
 
 lockDownHtmx(htmx.config);
 
-// Error toasts stay until their close button is pressed.
-dismissToastsOnClick();
-dedupeToastsOnSwap();
+// Error alerts stay until their close button is pressed; a toast goes by itself after 3 seconds.
+dismissAlertsOnClick();
+dedupeAlertsOnSwap();
+timeToastsOnSwap();
 
 // A history snapshot must not keep init markers or the connection notice (issue 112).
 installHistorySnapshotHygiene();

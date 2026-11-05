@@ -103,7 +103,7 @@ func TestShotAdded_AppendsOnlyTheNewShotAndUpdatesTheCount(t *testing.T) {
 	assert.NotContains(t, html, `id="shot-sh1"`)
 	assert.NotContains(t, html, `aria-current="true"`)
 	assert.NotContains(t, html, `id="shot-empty"`)
-	assert.Contains(t, html, `<span id="scene-shot-count-sc1" class="block text-xs text-neutral-400" hx-swap-oob="true">2 Shot</span>`)
+	assert.Contains(t, html, `<span id="scene-shot-count-sc1" class="block text-xs text-mute" hx-swap-oob="true">2 Shot</span>`)
 	for _, other := range []string{`id="scene-form"`, `name="location"`, `id="scene-shot-view"`, `id="scene-list"`} {
 		assert.NotContains(t, html, other)
 	}

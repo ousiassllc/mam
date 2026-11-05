@@ -59,7 +59,7 @@ func HFCard(h HFToken) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if h.Unavailable {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-amber-300\" data-testid=\"mm-hf-unavailable\">キーの保管先を読めないため、トークンを扱えません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-warning\" data-testid=\"mm-hf-unavailable\">キーの保管先を読めないため、トークンを扱えません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -82,7 +82,7 @@ func HFCard(h HFToken) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-neutral-300\" data-testid=\"mm-hf-status\">トークンは設定されていません（ログインや同意が要るモデル（例: LTX-2.5）の取得に使います。それ以外のカタログのモデルは、トークンなしで取得できます）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\" data-testid=\"mm-hf-status\">トークンは設定されていません（ログインや同意が要るモデル（例: LTX-2.5）の取得に使います。それ以外のカタログのモデルは、トークンなしで取得できます）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -114,7 +114,7 @@ func HFCard(h HFToken) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" autocomplete=\"off\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"mm-hf-token\"><span>Hugging Face のトークン（ログインが要るモデル用）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" autocomplete=\"off\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"mm-hf-token\"><span>Hugging Face のトークン（ログインが要るモデル用）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -147,7 +147,7 @@ func HFCard(h HFToken) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-xs text-neutral-400\">トークンは OS の資格情報ストアに保存し、huggingface.co への最初の要求にだけ付けます（別のホストへの転送では外します）。画面には表示しません。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-mute\">トークンは OS の資格情報ストアに保存し、huggingface.co への最初の要求にだけ付けます（別のホストへの転送では外します）。画面には表示しません。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -214,7 +214,7 @@ func ExternalCard(x External) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(x.Endpoints) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-neutral-300\" data-testid=\"mm-external-none\">外部の ComfyUI はまだ登録されていません。<a class=\"underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-ink\" data-testid=\"mm-external-none\">外部の ComfyUI はまだ登録されていません。<a class=\"underline\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -258,7 +258,7 @@ func ExternalCard(x External) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"mm-external-endpoint\"><span>接続先</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"mm-external-endpoint\"><span>接続先</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -416,7 +416,7 @@ func externalResult(r ExternalResult) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</ul><details class=\"text-xs text-neutral-300\"><summary class=\"cursor-pointer text-neutral-400\">フォルダごとのファイル</summary> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</ul><details class=\"text-xs text-ink\"><summary class=\"cursor-pointer text-mute\">フォルダごとのファイル</summary> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -481,7 +481,7 @@ func externalResult(r ExternalResult) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</details><p class=\"text-xs text-neutral-400\">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</details><p class=\"text-sm text-mute\">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,7 +1,7 @@
 /*
- * The common slider (#955): every <input type="range"> of the app. Colours are the palette's own (var(--color-*) of Tailwind; the
- * rules are spec/components/color-rules.md §4.1): the filled part of the rail and the thumb's edge are indigo (selection),
- * the rest of the rail is neutral.
+ * The common slider (#955): every <input type="range"> of the app. Colours are the guide's tokens (static/src/css/tokens.css; the
+ * rules are spec/components/color-rules.md §4.1): the filled part of the rail and the thumb's edge are --accent, the rest of the rail
+ * is --accent-soft, and the keyboard focus is the --focus ring of every control.
  *
  * WebView2 (Chromium) and WKWebView (WebKit) have no pseudo-element for the filled part of the rail, so the rail is a gradient
  * up to `--fill` (0..1, written by components/slider/slider.ts from the value), and the browser's own look is switched off
@@ -10,13 +10,13 @@
  */
 input[type="range"] {
   --thumb: 1rem;
-  --rail: 0.375rem;
+  --rail: 0.25rem;
   --fill: 0;
   --stop: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--fill));
-  --rail-fill: var(--color-indigo-500);
-  --rail-rest: var(--color-neutral-600);
-  --thumb-face: var(--color-white);
-  --thumb-edge: var(--color-indigo-500);
+  --rail-fill: var(--accent);
+  --rail-rest: var(--accent-soft);
+  --thumb-face: var(--surface);
+  --thumb-edge: var(--accent);
 
   appearance: none;
   -webkit-appearance: none;
@@ -30,10 +30,10 @@ input[type="range"] {
 }
 
 input[type="range"]:disabled {
-  --rail-fill: var(--color-neutral-600);
-  --rail-rest: var(--color-neutral-700);
-  --thumb-face: var(--color-neutral-600);
-  --thumb-edge: var(--color-neutral-700);
+  --rail-fill: var(--mute);
+  --rail-rest: var(--accent-soft);
+  --thumb-face: var(--accent-soft);
+  --thumb-edge: var(--mute);
   cursor: not-allowed;
 }
 
@@ -68,9 +68,8 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 9999px;
   background: var(--thumb-face);
   transition:
-    background-color 150ms,
-    border-color 150ms,
-    box-shadow 150ms;
+    background-color var(--motion-base) var(--ease-out),
+    border-color var(--motion-base) var(--ease-out);
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -81,46 +80,39 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 9999px;
   background: var(--thumb-face);
   transition:
-    background-color 150ms,
-    border-color 150ms,
-    box-shadow 150ms;
+    background-color var(--motion-base) var(--ease-out),
+    border-color var(--motion-base) var(--ease-out);
 }
 
-/* Hover: a lighter edge and a glow (the glow of the cards that are hovered or selected, indigo-400/40). */
+/* Hover: colour and background only (M1): the thumb takes the soft background. */
 input[type="range"]:not(:disabled):hover::-webkit-slider-thumb {
-  border-color: var(--color-indigo-400);
-  box-shadow: 0 0 0 4px --alpha(var(--color-indigo-400) / 40%);
+  background: var(--accent-soft);
 }
 
 input[type="range"]:not(:disabled):hover::-moz-range-thumb {
-  border-color: var(--color-indigo-400);
-  box-shadow: 0 0 0 4px --alpha(var(--color-indigo-400) / 40%);
+  background: var(--accent-soft);
 }
 
 /* Dragging: the thumb is filled, so that it is plain which one is held. */
 input[type="range"]:not(:disabled):active::-webkit-slider-thumb {
-  border-color: var(--color-indigo-400);
-  background: var(--color-indigo-400);
-  box-shadow: 0 0 0 6px --alpha(var(--color-indigo-400) / 40%);
+  background: var(--accent);
 }
 
 input[type="range"]:not(:disabled):active::-moz-range-thumb {
-  border-color: var(--color-indigo-400);
-  background: var(--color-indigo-400);
-  box-shadow: 0 0 0 6px --alpha(var(--color-indigo-400) / 40%);
+  background: var(--accent);
 }
 
-/* Keyboard focus: the ring of the other controls (indigo-400, offset in the page's colour) around the thumb. */
+/* Keyboard focus: the ring of the other controls (2px --focus, offset 2, here a gap in the page's colour) around the thumb. */
 input[type="range"]:not(:disabled):focus-visible::-webkit-slider-thumb {
   box-shadow:
-    0 0 0 2px var(--color-neutral-950),
-    0 0 0 4px var(--color-indigo-400);
+    0 0 0 2px var(--bone),
+    0 0 0 4px var(--focus);
 }
 
 input[type="range"]:not(:disabled):focus-visible::-moz-range-thumb {
   box-shadow:
-    0 0 0 2px var(--color-neutral-950),
-    0 0 0 4px var(--color-indigo-400);
+    0 0 0 2px var(--bone),
+    0 0 0 4px var(--focus);
 }
 
 @media (prefers-reduced-motion: reduce) {

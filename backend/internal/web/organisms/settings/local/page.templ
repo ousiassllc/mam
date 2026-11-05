@@ -33,7 +33,7 @@ templ Page(d Data, e Endpoint) {
 	<div id={ PageID } class="flex flex-col gap-6" data-testid="local-endpoint-page">
 		@atoms.BackLink(paths.LocalModels(), "← ローカル・代替モデルに戻る")
 		if d.Pinned {
-			<p class="text-sm text-amber-300" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
+			<p class="text-sm text-warning" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
 		}
 		<ul role="list" class="grid grid-cols-1 gap-4">
 			@endpointCard(d.Pinned, d.PinnedNote, e, cardPage, false)
@@ -71,7 +71,7 @@ templ ModelRows(pinned bool, note string, e Endpoint) {
 
 templ emptyRow() {
 	<tr id={ ModelsEmptyID } data-testid="local-models-empty-row">
-		<td colspan="4" class="px-3 py-3 text-neutral-400">モデルはまだ定義されていません。</td>
+		<td colspan="4" class="px-3 py-3 text-mute">モデルはまだ定義されていません。</td>
 	</tr>
 }
 
@@ -86,10 +86,10 @@ templ modelRow(pinned bool, note, endpoint string, m Model, oob bool) {
 			@atoms.Badge(atoms.BadgeNeutral, mediaLabel(m.Media))
 		}
 		@settingsui.Cell("") {
-			<code class="break-all text-xs text-neutral-300" data-testid="local-model-id">{ m.ID }</code>
-			<span class="block text-xs text-neutral-400">{ m.Summary }</span>
+			<code class="break-all text-xs text-ink" data-testid="local-model-id">{ m.ID }</code>
+			<span class="block text-xs text-mute">{ m.Summary }</span>
 			if len(m.UsedBy) > 0 {
-				<span class="block text-xs text-neutral-400" data-testid="local-model-used-by">使用中: { joinNames(m.UsedBy) }</span>
+				<span class="block text-xs text-mute" data-testid="local-model-used-by">使用中: { joinNames(m.UsedBy) }</span>
 			}
 		}
 		@settingsui.Cell("") {

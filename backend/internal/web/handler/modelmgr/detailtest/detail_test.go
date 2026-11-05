@@ -62,7 +62,7 @@ func TestCatalog_EachModelIsACardWithAnH3ThatOpensTheDetailAndNoFineText(t *test
 	body := s.Get(paths.ModelManagerPart("models")).Body.String()
 
 	assert.Regexp(t, `<ul id="mm-models" role="list" class="[^"]*\bgrid\b[^"]*" data-testid="mm-models">`, body)
-	assert.Regexp(t, `<li id="mm-model-m-a" class="[^"]*rounded-lg border border-neutral-800 bg-neutral-900[^"]*" data-card`, body, "the surface of a card")
+	assert.Regexp(t, `<li id="mm-model-m-a" class="[^"]*rounded-lg border border-border bg-surface[^"]*" data-card`, body, "the surface of a card")
 	assert.NotContains(t, body, "divide-y", "the models are not a divided list of rows")
 
 	cards := strings.Split(body, `<li id="mm-model-`)[1:]
@@ -74,7 +74,7 @@ func TestCatalog_EachModelIsACardWithAnH3ThatOpensTheDetailAndNoFineText(t *test
 		assert.Contains(t, card, `data-focus-key="open-mm-model-`+id+`"`, "%s: the focus goes back to the card that took its place", id)
 		assert.Contains(t, card, `data-testid="mm-model-state"`, id)
 		assert.Contains(t, card, `data-testid="model-tile"`, "%s: the picture", id)
-		assert.Regexp(t, `(?s)<div class="relative z-10 mt-auto flex flex-wrap[^"]*">\s*<button`, card, "%s: the buttons are above the click area", id)
+		assert.Regexp(t, `(?s)<div class="relative z-raised mt-auto flex flex-wrap[^"]*">\s*<button`, card, "%s: the buttons are above the click area", id)
 		for _, gone := range []string{"<details", "<dl", `data-testid="mm-files"`, `data-testid="mm-sha256"`, "SHA-256", `data-testid="mm-model-meta"`, "<a "} {
 			assert.NotContains(t, card, gone, "%s: the list has no %s", id, gone)
 		}
@@ -158,7 +158,7 @@ func TestModelDetail_TheModalIsOutsideEverythingAPollSwaps(t *testing.T) {
 	rec := s.Do(http.MethodPost, installURL("m-a"), nil)
 	require.Equal(t, http.StatusAccepted, rec.Code)
 	assert.Contains(t, rec.Body.String(), `hx-trigger="every 2s"`, "the list polls")
-	assert.NotContains(t, rec.Body.String(), "<dialog", "a polled answer never carries the modal")
+	assert.NotContains(t, rec.Body.String(), `<dialog id="mam-modal"`, "a polled answer never carries the modal (the host of the questions, which it empties, is another dialog)")
 	assert.Contains(t, rec.Body.String(), `id="mm-model-m-a"`, "the card keeps its id across the swap")
 	assert.Contains(t, rec.Body.String(), `data-focus-key="open-mm-model-m-a"`)
 }

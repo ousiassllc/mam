@@ -82,7 +82,7 @@
 
 ## 6. アイコン
 
-トップ画面のカードで使っていたアイコンは、左メニュー（`sidenav`）・設定画面のカード・モデルマネージャーが使い続けるので、`atoms` から消さない。Lucide の名前・入手元・ライセンスの計画は [shared-ui-parts.md](shared-ui-parts.md) §2。
+トップ画面のカードで使っていたアイコンは、左メニュー（`sidenav`）・設定画面のカード・モデルマネージャーが使い続けるので、`atoms` から消さない。Iconoir の名前・入手元・ライセンスの計画は [shared-ui-parts.md](shared-ui-parts.md) §2。
 
 ## 改訂履歴
 
