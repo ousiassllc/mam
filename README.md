@@ -136,11 +136,14 @@ bin/mam       # サーバーを起動して既定ブラウザを開く
 ```sh
 make dev          # air + templ --watch + esbuild/tailwind --watch
 make test         # Go・front-end・スクリプトのテスト
+make stress PKG=./backend/internal/router RUN=TestX COUNT=200   # Go のテストを -race で繰り返す（負荷テストの入口。JOBS 既定 2・上限 4。CPUS=0 で CPU を絞る）
 make lint         # golangci-lint・tsc・Biome lint
 make lint-lines   # 行数上限の超過が .linterly-baseline より悪化していないか
 make vuln         # govulncheck: 到達できる既知の脆弱性（標準ライブラリ・依存）が無いか（Linux と Windows の両ターゲット）
 make fmt          # 整形（Go・templ・TypeScript）
 ```
+
+`make stress` は、たまにだけ落ちるテスト（flake）を追うときに、1 つのテストバイナリを `-race` で何度も回します（`scripts/stress-test.sh`）。`PKG`（対象パッケージ）は必須で、`RUN`（`go test -run` の正規表現）・`COUNT`（合計の実行回数。既定 20）・`JOBS`（同時に動かすプロセス数。**既定 2・上限 4**。上限を超える指定は丸めずにエラーにします）・`CPUS`（`taskset -c` で固定する CPU。`0` など。プロセスを増やさず CPU を絞って負荷を再現します）を指定できます。共有のホストを重くしないため、プロセス数は上限までです。
 
 macOS 版（Apple Silicon・署名なし）は、Apple Silicon の Mac で `scripts/package-macos.sh <version>`（`X.Y.Z`）で作ります（Xcode コマンドラインツール・Go・Node.js が要り、`bin/mam-<version>-darwin-arm64.dmg` ができます。リリースでは GitHub-hosted の `macos-latest`（Apple Silicon の Mac）が作ります）。
 
