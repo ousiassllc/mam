@@ -72,6 +72,7 @@
 | インラインアラート（O3） | エラー・業務エラー（403 / 409 / 423・予算超過・LOCK 違反など）・エラー詳細は、ページ上部（`#content` の先頭の `#alert-region`）に `atoms.Alert`（お知らせ / 成功 / 注意 / エラーの 4 種。アイコン＋見出し＋本文）で出す。閉じるまで残る（長い文を読み終えるため。WCAG 2.2.1）。同じ文は重ねない。サーバーは `atoms.ErrorAlertOOB`（`beforeend`）、スクリプトは `lib/alert.ts`（`#alert-template`） |
 | 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `--surface` の地に `border-warning/60` の枠（スナックバー。影なし）。トーストではない |
 | ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`） |
+| 独自ウィジェット（Lit。P3） | `mam-timeline-editor`・`mam-take-comparator`・`mam-mask-paint` は共通ガイドに無い独自ウィジェットで、見た目・状態表示・操作・文言は案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) が決める（ボタン・入力・バッジ・通知・数値は上の表と同じ部品を使う） |
 
 ### 商用利用の可否（Issue #928）
 
@@ -264,6 +265,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.17 | 2026-11-03 | §10 の生成テストの行に、かんたんのプロンプトの見出しに足した「プロンプトのウェイト」の「?」（`help.Row`。`gentestadv.WeightIntro`）を足した | Issue #977（ステージ 2） |
 | 0.18 | 2026-11-03 | §4 に `modal.OpenLinkAttrs`（リンク版の開く属性）と `data-modal-wide`（本文が広いダイアログを求める）を足した | Issue #1004（生成テストの結果の詳細を、一覧のタイルからモーダルで開く） |
 | 0.19 | 2026-11-03 | §5 の `SettingsCard` に、リスクの印（`Card.Marks`）・`Card.Class`・折り返し、長い説明は「詳細」のモーダルへ置く決まりを足した。§9.2 の `Card.Help` の行を、ChatGPT のカードが「?」をやめたことに合わせた | Issue #1005 |
+| 0.20 | 2026-11-06 | §1「部品・オーバーレイ」の表に、独自ウィジェット（Lit）の案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) への案内の行を足した | Issues #1043・#1044・#1045 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
