@@ -209,7 +209,7 @@ func ModelFormView(f ModelForm, errMsg string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</code></p><p class=\"text-xs text-mute\">名前は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</code></p><p class=\"text-sm text-mute\">名前は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -427,7 +427,7 @@ func workflowFields(f ModelForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-assignments\"><legend class=\"text-sm font-medium\">入力の割り当て</legend><p class=\"text-xs text-mute\">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます。他のノードがつないでいる入力は選べません。Prompt は必須です。参照画像の枚数と最初・最後のフレームの対応は、ここで選んだ入力から決まります。</p><table class=\"w-full text-sm\"><tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-assignments\"><legend class=\"text-sm\">入力の割り当て</legend><p class=\"text-sm text-mute\">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます。他のノードがつないでいる入力は選べません。Prompt は必須です。参照画像の枚数と最初・最後のフレームの対応は、ここで選んだ入力から決まります。</p><table class=\"w-full text-sm\"><tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -718,7 +718,7 @@ func videoFields(f ModelForm) templ.Component {
 			templ_7745c5c3_Var30 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-video-fields\"><legend class=\"text-sm font-medium\">動画の能力</legend><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-durations\"><span>長さ（秒。小さい順にカンマ区切り。例: 3, 4, 5）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-video-fields\"><legend class=\"text-sm\">動画の能力</legend><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-durations\"><span>長さ（秒。小さい順にカンマ区切り。例: 3, 4, 5）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -127,7 +127,7 @@ func EngineDetail(e view.Engine) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。</p><p class=\"text-xs\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。</p><p class=\"text-sm\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -283,7 +283,7 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</dl><p class=\"text-xs text-mute\">ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</dl><p class=\"text-sm text-mute\">ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

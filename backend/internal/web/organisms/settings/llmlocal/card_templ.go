@@ -114,7 +114,7 @@ func Card(d Data) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</span></span></label><p class=\"text-xs text-ink\" data-testid=\"llm-local-managed-state\" data-state=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</span></span></label><p class=\"text-sm text-ink\" data-testid=\"llm-local-managed-state\" data-state=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -145,7 +145,7 @@ func Card(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if d.Managed.Reason != "" && d.Managed.State != "running" && d.Managed.State != "stopped" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"whitespace-pre-wrap break-words text-xs text-warning\" data-testid=\"llm-local-managed-reason\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"whitespace-pre-wrap break-words text-sm text-warning\" data-testid=\"llm-local-managed-reason\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -187,7 +187,7 @@ func Card(d Data) templ.Component {
 					}
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"flex flex-col gap-1\"><label class=\"text-sm font-semibold text-ink\" for=\"llm-local-base-url\">ベース URL</label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"flex flex-col gap-1\"><label class=\"text-sm text-ink\" for=\"llm-local-base-url\">ベース URL</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -199,7 +199,7 @@ func Card(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p id=\"llm-local-base-url-help\" class=\"text-xs text-mute\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p id=\"llm-local-base-url-help\" class=\"text-sm text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -212,7 +212,7 @@ func Card(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</p></div><div class=\"flex flex-col gap-1\"><label class=\"text-sm font-semibold text-ink\" for=\"llm-local-api-key\">API キー（任意）</label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</p></div><div class=\"flex flex-col gap-1\"><label class=\"text-sm text-ink\" for=\"llm-local-api-key\">API キー（任意）</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -432,7 +432,7 @@ func Result(r TestResult) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if r.Count > len(r.Models) {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-xs text-mute\">ほか ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-sm text-mute\">ほか ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

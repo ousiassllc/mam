@@ -64,7 +64,7 @@ func Form(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\"><div class=\"flex flex-wrap items-center gap-2\"><p class=\"text-xs font-medium text-ink\">参照音声（声のクローン用）</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\"><div class=\"flex flex-wrap items-center gap-2\"><p class=\"text-sm text-ink\">参照音声（声のクローン用）</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -110,7 +110,7 @@ func Form(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></audio><p class=\"text-xs text-mute\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></audio><p class=\"text-sm text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -128,7 +128,7 @@ func Form(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Unmeasured() {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-xs text-warning\">長さを確認できていません（ffprobe がないため）。3〜10 秒の音声にしてください。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-warning\">長さを確認できていません（ffprobe がないため）。3〜10 秒の音声にしてください。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -303,7 +303,7 @@ func Form(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</label><p class=\"text-xs text-warning\" role=\"note\" data-testid=\"voice-ref-consent-notice\">声の持ち主本人の同意を得た音声だけを使ってください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりすることは、Irodori-TTS のモデルカードで禁じられています。</p><p class=\"text-xs text-mute\">ファイルを選ばずに保存すると、いまの音声のまま書き起こしと言語だけ変わります。</p><div class=\"flex flex-wrap gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</label><p class=\"text-sm text-warning\" role=\"note\" data-testid=\"voice-ref-consent-notice\">声の持ち主本人の同意を得た音声だけを使ってください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりすることは、Irodori-TTS のモデルカードで禁じられています。</p><p class=\"text-sm text-mute\">ファイルを選ばずに保存すると、いまの音声のまま書き起こしと言語だけ変わります。</p><div class=\"flex flex-wrap gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

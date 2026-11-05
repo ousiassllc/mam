@@ -12,7 +12,7 @@ import (
 // in the node screen, and only which of its inputs the form offers is chosen here.
 templ ExposedPicker(d PickerData) {
 	<section id={ PickerID } class="flex flex-col gap-4 rounded-md border border-border p-4" aria-labelledby="gt-picker-title" data-testid="gt-exposed-picker">
-		<h2 id="gt-picker-title" class="text-sm font-medium text-ink">画面に出す値を選ぶ</h2>
+		<h2 id="gt-picker-title" class="text-sm font-semibold text-ink">画面に出す値を選ぶ</h2>
 		<p class="text-sm text-ink">モデル（ComfyUI のワークフロー）のノードの入力を選ぶと、保存した入力が、こだわりの詳細設定に入力欄として出ます。生成のたびにその値がグラフに入り、結果に残ります。グラフそのものを変えるときは、ノード画面を使います。</p>
 		if d.Notice != "" {
 			<p class="text-sm text-success" role="status" data-testid="gt-picker-notice">{ d.Notice }</p>
@@ -28,7 +28,7 @@ templ ExposedPicker(d PickerData) {
 					for _, m := range d.Models {
 						<li>
 							if m.Selected {
-								<span class="rounded-md bg-accent-soft px-3 py-1.5 font-medium text-ink" aria-current="page">{ m.Label }（{ strconv.Itoa(m.Exposed) } 件）</span>
+								<span class="rounded-md bg-accent-soft px-3 py-1.5 text-ink" aria-current="page">{ m.Label }（{ strconv.Itoa(m.Exposed) } 件）</span>
 							} else {
 								<a class={ tabClass } href={ templ.SafeURL(ExposedPickerHref(m.ID)) }>{ m.Label }（{ strconv.Itoa(m.Exposed) } 件）</a>
 							}
@@ -46,7 +46,7 @@ templ ExposedPicker(d PickerData) {
 templ pickerForm(d PickerData) {
 	<form class="flex flex-col gap-3" hx-post={ paths.GenerationTestPart("comfy", "exposed") } hx-target={ "#" + PickerID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="gt-picker-form">
 		<input type="hidden" name={ FieldPickModel } value={ d.Model }/>
-		<h3 class="text-sm font-medium text-ink">{ d.ModelLabel } の入力</h3>
+		<h3 class="text-sm font-semibold text-ink">{ d.ModelLabel } の入力</h3>
 		if len(d.Choosable()) == 0 {
 			<p class="text-sm text-mute">このグラフに、画面に出せる入力（ほかのノードがつないでいない数値・文字・選択肢）がありません。</p>
 		} else {
@@ -77,7 +77,7 @@ templ pickerForm(d PickerData) {
 				<span class="text-xs text-mute">チェックを外して保存すると、その入力は画面から消えます（グラフの値は元のまま）</span>
 			</div>
 		} else {
-			<p class="text-xs text-warning" data-testid="gt-picker-readonly">このモデルの設定は、ここでは変えられません（設定ファイルが固定されています）。</p>
+			<p class="text-sm text-warning" data-testid="gt-picker-readonly">このモデルの設定は、ここでは変えられません（設定ファイルが固定されています）。</p>
 		}
 		if len(d.Others()) > 0 {
 			<details class="text-xs text-mute" data-testid="gt-picker-others">

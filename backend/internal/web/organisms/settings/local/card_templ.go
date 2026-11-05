@@ -104,7 +104,7 @@ func endpointDetails(e Endpoint) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if e.NoPage {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"text-xs text-warning\" data-testid=\"local-endpoint-no-page\">「")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"text-sm text-warning\" data-testid=\"local-endpoint-no-page\">「")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -433,7 +433,7 @@ func KeyRow(endpoint string, k Key) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if k.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"text-xs text-danger\" role=\"alert\" data-testid=\"local-key-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"local-key-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

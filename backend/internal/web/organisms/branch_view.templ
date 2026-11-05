@@ -232,7 +232,7 @@ templ branchTreeGroup(nodes []BranchTreeNode, selected string) {
 					hx-get={ branchURL(n.Branch.ID) }
 					hx-target="#branch-detail"
 					hx-swap="innerHTML"
-					class={ "underline", templ.KV("font-semibold text-accent", n.Branch.ID == selected), templ.KV("text-ink", n.Branch.ID != selected) }
+					class={ "underline", templ.KV("text-accent", n.Branch.ID == selected), templ.KV("text-ink", n.Branch.ID != selected) }
 					if n.Branch.ID == selected {
 						aria-current="true"
 					}
@@ -269,7 +269,7 @@ templ BranchView(d BranchPageData) {
 		</div>
 		<section aria-label="Branch を作る" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-ink">Shot から Branch を作る</h2>
-			<p class="text-xs text-mute">
+			<p class="text-sm text-mute">
 				分岐点の World State を Snapshot として保存します。チャットで「このカットから別展開を3つ作って」と頼むこともできます。
 			</p>
 			if len(d.Shots) == 0 {

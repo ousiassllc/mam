@@ -241,7 +241,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.RestoreBlocked != "" && len(d.Entries) > 1 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-xs text-mute\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-sm text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

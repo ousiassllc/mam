@@ -47,7 +47,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
       <span class="text-xs text-mute">${i + 1}</span>
       ${c.thumbnail_url ? html`<img class="h-10 w-auto rounded" src=${c.thumbnail_url} alt="" />` : nothing}
       <div class="min-w-40 flex-1">
-        <p class="text-sm font-medium">
+        <p class="text-sm">
           ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded bg-info/20 px-1.5 py-0.5 text-[10px] text-info" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
         </p>
         ${c.objective ? html`<p class="text-xs text-mute">${c.objective}</p>` : nothing}

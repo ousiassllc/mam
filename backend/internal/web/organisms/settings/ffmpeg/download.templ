@@ -24,7 +24,7 @@ templ DownloadPanel(d Download) {
 		}
 	>
 		<p class="text-sm">
-			<span class="font-medium">mam でダウンロードして入れる</span>
+			<span class="">mam でダウンロードして入れる</span>
 			switch  {
 				case d.Install.Running:
 					@atoms.Badge(atoms.BadgeInfo, "ダウンロード中")
@@ -48,7 +48,7 @@ templ DownloadPanel(d Download) {
 		if d.Install.Running {
 			<div class="flex flex-col gap-1" role="status" data-testid="ffmpeg-download-progress">
 				<progress class="w-full" max="100" value={ fmt.Sprintf("%d", d.Install.Percent) }></progress>
-				<p class="text-xs">{ d.Install.Message }（{ fmt.Sprintf("%d", d.Install.Percent) }%）</p>
+				<p class="text-sm">{ d.Install.Message }（{ fmt.Sprintf("%d", d.Install.Percent) }%）</p>
 				<form hx-post={ paths.FFmpegDownloadCancel() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
 					@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-cancel"})
 				</form>
@@ -66,17 +66,17 @@ templ DownloadPanel(d Download) {
 				</p>
 			}
 			if d.Installed && d.UpdateAvailable {
-				<p class="text-xs text-warning" data-testid="ffmpeg-download-update">この mam が確かめた版は { d.PinnedVersion } です。入れてある { d.Version } は、そのまま使えます。新しい版にするには、もう一度ダウンロードしてください。</p>
+				<p class="text-sm text-warning" data-testid="ffmpeg-download-update">この mam が確かめた版は { d.PinnedVersion } です。入れてある { d.Version } は、そのまま使えます。新しい版にするには、もう一度ダウンロードしてください。</p>
 			}
 			if d.Broken {
-				<p class="text-xs text-warning" data-testid="ffmpeg-download-broken">入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。</p>
+				<p class="text-sm text-warning" data-testid="ffmpeg-download-broken">入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。</p>
 			}
 			if d.Installed && !d.Broken && !d.UpdateAvailable {
-				<p class="text-xs text-mute">置き場所: <code class="break-all">{ d.Dir }</code>（設定したパスと、PATH などで見つかる ffmpeg が無いときだけ使われます）</p>
+				<p class="text-sm text-mute">置き場所: <code class="break-all">{ d.Dir }</code>（設定したパスと、PATH などで見つかる ffmpeg が無いときだけ使われます）</p>
 			}
 			if !d.Installed || d.UpdateAvailable {
 				<form hx-post={ paths.FFmpegDownload() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
-					<p class="mb-2 text-xs text-mute" data-testid="ffmpeg-download-about">
+					<p class="mb-2 text-sm text-mute" data-testid="ffmpeg-download-about">
 						ffmpeg と ffprobe（{ d.Build }）を、配布元（{ d.Publisher }）からダウンロードします。約 { megabytes(d.DownloadBytes) } MB。展開後は約 { megabytes(d.ExtractedBytes) } MB。
 						ダウンロードしたファイルは、mam に固定してある SHA-256 と一致したときだけ使います（一致しなければ削除します）。
 						ライセンスは <a class="underline" href={ templ.SafeURL(d.LicenseURL) } target="_blank" rel="noopener noreferrer">{ d.License }</a>、
@@ -84,7 +84,7 @@ templ DownloadPanel(d Download) {
 						置き場所は { d.Dir } です。ボタンを押したときだけ通信します（自動の更新確認はしません）。
 					</p>
 					if d.Found && !d.Managed {
-						<p class="mb-2 text-xs text-mute" data-testid="ffmpeg-download-found-elsewhere">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>
+						<p class="mb-2 text-sm text-mute" data-testid="ffmpeg-download-found-elsewhere">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>
 					}
 					if d.UpdateAvailable {
 						@atoms.SmallButtonFor(atoms.TonePrimary, "新しい版をダウンロード", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-button"})

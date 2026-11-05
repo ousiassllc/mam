@@ -264,14 +264,14 @@ func Items(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, t := range d.Templates {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<li class=\"flex flex-wrap items-start justify-between gap-2 py-2\" data-testid=\"brand-template\"><div class=\"min-w-0 flex-1\"><span class=\"font-medium\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<li class=\"flex flex-wrap items-start justify-between gap-2 py-2\" data-testid=\"brand-template\"><div class=\"min-w-0 flex-1\"><span class=\"\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brandtemplate/panel.templ`, Line: 69, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brandtemplate/panel.templ`, Line: 69, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -421,7 +421,7 @@ func brandTemplateForm(d Data, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "><label for=\"brand-template-name\" class=\"text-sm font-medium\">この Project の制約をテンプレートとして保存</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "><label for=\"brand-template-name\" class=\"text-sm\">この Project の制約をテンプレートとして保存</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -455,7 +455,7 @@ func brandTemplateForm(d Data, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-xs text-mute\">保存するのは現在の制約のコピーです。以後この Project の制約を変えてもテンプレートは変わらず、テンプレートを削除しても適用済みの Project には影響しません。</p><div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-mute\">保存するのは現在の制約のコピーです。以後この Project の制約を変えてもテンプレートは変わらず、テンプレートを削除しても適用済みの Project には影響しません。</p><div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

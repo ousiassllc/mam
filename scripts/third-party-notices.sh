@@ -4,7 +4,8 @@
 #   - Go modules linked into backend/cmd/wails (GOOS=windows, -tags production, the same build as
 #     build/windows/Taskfile.yml), plus the Go standard library
 #   - npm packages in the production front-end bundle: what static/src/main.ts imports (found with an esbuild
-#     metafile, like static/build.mjs bundles it) and tailwindcss (its CSS is part of the generated app.css)
+#     metafile, like static/build.mjs bundles it), tailwindcss (its CSS is part of the generated app.css) and the
+#     @fontsource-variable packages of the fonts (Sora, Noto Sans JP, JetBrains Mono; static/fonts.mjs copies their files into dist/fonts)
 #   - material copied into the source tree: the Lucide icons of backend/internal/web/atoms/icon.templ, with the
 #     license text of the release they were copied from (atoms/icons/LICENSE; the release is named in icon.templ)
 #   - the ONNX Runtime DLL the installer bundles (Face Identity Similarity): the LICENSE and ThirdPartyNotices.txt of the
@@ -89,6 +90,10 @@ for (const input of Object.keys(result.metafile.inputs)) {
 }
 const tailwind = dirname(createRequire(join(process.cwd(), "package.json")).resolve("tailwindcss/package.json"));
 dirs.add(tailwind);
+// The fonts are not imported by main.ts: static/fonts.mjs copies their files into dist/fonts (OFL: the license text goes with them).
+for (const font of ["sora", "jetbrains-mono", "noto-sans-jp"]) {
+  dirs.add(dirname(createRequire(join(process.cwd(), "package.json")).resolve(`@fontsource-variable/${font}/package.json`)));
+}
 for (const dir of dirs) {
   const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
   console.log(`${pkg.name}|${pkg.version}|${dir}`);
@@ -152,12 +157,12 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 載せている範囲は次のとおりです。
 
 - Go の標準ライブラリと、Windows 版 exe（`backend/cmd/wails`、`GOOS=windows`、`-tags production`）にリンクされる Go モジュール
-- `static/` の本番バンドルに入る npm パッケージ（`static/src/main.ts` から import されるもの。`static/src/dist/app.css` に Tailwind CSS が含まれるので `tailwindcss` も）
+- `static/` の本番バンドルに入る npm パッケージ（`static/src/main.ts` から import されるもの。`static/src/dist/app.css` に Tailwind CSS が含まれるので `tailwindcss` も）と、画面に使うフォント（Sora・Noto Sans JP・JetBrains Mono。SIL Open Font License 1.1。`@fontsource-variable/*` のファイルを `static/src/dist/fonts/` に同梱する）
 - ソースにコピーして同梱した素材: アイコンの Lucide（ISC。Feather 由来のアイコンの MIT を含む。取り込んだ版の `LICENSE` の全文）
 - インストーラーが `mam.exe` の隣に置く ONNX Runtime の DLL（`onnxruntime.dll`・`onnxruntime_providers_shared.dll`。MIT、Microsoft）: 顔の同一性の数値評価に使います。取り込んだ版の `LICENSE` と、Microsoft が付ける第三者の通知 `ThirdPartyNotices.txt` の全文を載せています（`build/windows/onnxruntime/` にある写しで、`scripts/fetch-onnxruntime.sh` が固定した版のリリースと同じ内容であることを確かめます）。ONNX Runtime を Go から呼ぶバインディング（`github.com/shota3506/onnxruntime-purego`、MIT）と、その下の `github.com/ebitengine/purego`（Apache-2.0）は、上の Go モジュールに入っています。バインディングは、Windows 対応の修正（DLL の読み込みとモデルのパスの UTF-16 化）の 1 コミットだけを足した `github.com/aubs3993/onnxruntime-purego` のコミットに `go.mod` の `replace` で差し替えています（上の「版」は元のモジュールのもので、`LICENSE` は同じ MIT です）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
-開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Irodori-TTS・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
+開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません（フォントの `@fontsource-variable/*` だけは、`devDependencies` でもファイルを同梱するので載せています）。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Irodori-TTS・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
 
 ## 一覧
 

@@ -19,7 +19,7 @@ type Props struct {
 // selected by hand when the clipboard is refused (static/src/components/copy).
 templ Box(p Props) {
 	<div class="flex flex-col gap-2 rounded-md border border-danger/60 bg-danger/10 p-3 text-sm text-ink" role="alert" data-testid="error-box" data-error-code={ string(p.View.Code) }>
-		<p class="font-medium text-danger">{ apperr.Text(p.Lang, "ui.title", nil) }</p>
+		<p class="text-danger">{ apperr.Text(p.Lang, "ui.title", nil) }</p>
 		<p data-testid="error-cause"><span class="mr-2 text-xs text-mute">{ apperr.Text(p.Lang, "ui.cause", nil) }</span>{ p.View.Cause }</p>
 		if p.View.Remedy != "" {
 			<p data-testid="error-remedy"><span class="mr-2 text-xs text-mute">{ apperr.Text(p.Lang, "ui.remedy", nil) }</span>{ p.View.Remedy }</p>
@@ -38,7 +38,7 @@ templ Box(p Props) {
 		<div class="flex items-center gap-2">
 			<button
 				type="button"
-				class="inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium text-ink transition hover:bg-accent-soft"
+				class="inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-semibold text-ink transition hover:bg-accent-soft"
 				data-copy-source={ fieldID(p) }
 				data-copy-status={ statusID(p) }
 				data-copy-done={ apperr.Text(p.Lang, "ui.copied", nil) }
@@ -47,7 +47,7 @@ templ Box(p Props) {
 			<span id={ statusID(p) } class="text-xs text-ink" role="status"></span>
 		</div>
 		if p.View.ErrorID != "" {
-			<p class="text-xs text-mute" data-testid="error-id">{ apperr.Text(p.Lang, "ui.error_id", nil) }: <code>{ p.View.ErrorID }</code></p>
+			<p class="text-sm text-mute" data-testid="error-id">{ apperr.Text(p.Lang, "ui.error_id", nil) }: <code>{ p.View.ErrorID }</code></p>
 		}
 	</div>
 }

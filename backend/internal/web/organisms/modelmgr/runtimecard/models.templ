@@ -28,7 +28,7 @@ templ RuntimeModels(r Runtime) {
 					@runtimeModel(r, m)
 				}
 			</ul>
-			<p class="text-xs text-mute">選ぶとサーバーを止めます。次に起動するときから、選んだモデルで動きます。そのモデルの重みは、カードの「重みを導入」で取得してください。</p>
+			<p class="text-sm text-mute">選ぶとサーバーを止めます。次に起動するときから、選んだモデルで動きます。そのモデルの重みは、カードの「重みを導入」で取得してください。</p>
 			<div class="flex gap-2">
 				@atoms.Button(atoms.TonePrimary, "このモデルにする", templ.Attributes{"type": "submit", "data-testid": "mm-runtime-model-submit"})
 			</div>
@@ -41,7 +41,7 @@ templ runtimeModel(r Runtime, m Model) {
 		<label class="flex items-start gap-2 text-sm">
 			@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldModel, "value": m.ID, "checked": m.Active})
 			<span class="flex flex-col gap-1">
-				<span class="font-semibold">
+				<span class="">
 					{ m.Name }
 					if m.Active {
 						@atoms.Badge(atoms.BadgeInfo, "使用中")

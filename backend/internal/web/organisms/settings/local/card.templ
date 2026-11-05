@@ -50,7 +50,7 @@ templ endpointDetails(e Endpoint) {
 	</div>
 	@KeyRow(e.Name, e.Key)
 	if e.NoPage {
-		<p class="text-xs text-warning" data-testid="local-endpoint-no-page">
+		<p class="text-sm text-warning" data-testid="local-endpoint-no-page">
 			「{ e.Name }」は接続先の追加の画面と同じ URL になるため、この接続先のモデルは開けません。削除して、別の名前で作り直してください。
 		</p>
 	}
@@ -162,7 +162,7 @@ templ KeyRow(endpoint string, k Key) {
 			}
 		</form>
 		if k.Error != "" {
-			<p class="text-xs text-danger" role="alert" data-testid="local-key-error">{ k.Error }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="local-key-error">{ k.Error }</p>
 		}
 	</div>
 }

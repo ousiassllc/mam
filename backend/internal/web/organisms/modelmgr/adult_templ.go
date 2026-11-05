@@ -187,7 +187,7 @@ func AdultDialog(d AdultConfirm) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"text-xs text-mute\">モデルの重みは mam が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は mam では選別しません。ローカルでの利用はあなたの責任です。</p><form class=\"flex flex-col gap-3\" hx-put=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"text-sm text-mute\">モデルの重みは mam が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は mam では選別しません。ローカルでの利用はあなたの責任です。</p><form class=\"flex flex-col gap-3\" hx-put=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

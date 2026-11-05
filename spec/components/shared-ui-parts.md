@@ -25,6 +25,18 @@
 | カードの枠 | `border-border` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
 | スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 6px・つまみ 16px の丸。塗り `--accent`・残り `--accent-soft`・つまみ `--surface` に `--accent` の縁）。ホバー（つまみの面が `--accent-soft`）・ドラッグ中（つまみが `--accent`）・`focus-visible`（`--focus` の輪）・無効（`--mute`）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
 
+### 文字（Issue #1037）
+
+文字は Ousiass 共通デザインガイド（T1〜T5）に従う。値は `static/src/css/tokens.css` の 1 か所に書き、画面は名前だけを使う。検査は `a11y/typography_test.go`。
+
+| 項目 | 決まり |
+|------|--------|
+| フォント（T1） | 英字・UI・日本語は `font-sans`（Sora → Noto Sans JP）、コードと桁を揃える数値は `font-mono`（JetBrains Mono）。いずれも SIL OFL。`static/fonts.mjs` が `@fontsource-variable/*` から `dist/fonts.css` と `dist/fonts/*.woff2` を作り、レイアウトが `paths.StaticFontsCSS` を読む（ネットワークからは取らない）。ライセンス全文は `THIRD_PARTY_NOTICES.md` |
+| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`）は `text-sm` 以上、`text-xs` は注記・バッジ・表の見出し |
+| 行間（T4） | サイズごとに `xs` 1.6 · `sm` 1.7 · `base` 1.8 · `lg` 1.7 · `xl` 1.5 · `2xl` 1.4 · `3xl` 1.3。`body` は 16px・1.8 |
+| ウェイト（T2） | Regular（400）と SemiBold（600）の 2 段だけ。SemiBold は見出し（`h1`〜`h4`）・ボタン・`<summary>`・表の見出し行だけ。ナビ・リンク・ラベル・数値には付けない（現在地は色と背景で示す）。`font-medium` は使わない |
+| 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ。表の見出し行は `text-xs font-semibold text-mute` |
+
 ### 商用利用の可否（Issue #928）
 
 モデルの商用利用の可否は `Badge` の手書きではなく、`atoms.CommercialBadge`（アイコン + 語）・`atoms.CommercialMark`（アイコンだけ）と、それを包む `molecules/commercial`（`Badge`・`Mark`・`Note`・`Filter`）で出す。色は商用OK＝`BadgeOK`、条件つき＝`BadgeWarn`、商用NG＝`BadgeError`、不明＝`BadgeWarn` に枠を足したもの。詳細は [../architecture/model-license.md](../architecture/model-license.md) §4・§5。
@@ -116,7 +128,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
     <span id="tool-<ID>-desc" class="text-sm text-mute">{Description}</span>
     <span id="tool-<ID>-status" class="mt-auto flex min-h-6 flex-col gap-1 text-xs text-ink"
           hx-get="{StatusURL}" hx-trigger="load" hx-target="this" hx-swap="innerHTML"></span>
-    <span class="inline-flex items-center gap-1 text-sm font-medium text-accent" aria-hidden="true">{CTA}{IconChevronRight}</span>
+    <span class="inline-flex items-center gap-1 text-sm text-accent" aria-hidden="true">{CTA}{IconChevronRight}</span>
   </a>
 </li>
 ```

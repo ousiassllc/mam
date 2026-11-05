@@ -89,7 +89,7 @@ func PromptHistory(p Prompts) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if r.Negative != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"whitespace-pre-wrap break-words text-xs text-mute\">ネガティブ: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"whitespace-pre-wrap break-words text-sm text-mute\">ネガティブ: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

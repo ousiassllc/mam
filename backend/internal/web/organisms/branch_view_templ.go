@@ -671,7 +671,7 @@ func branchTreeGroup(nodes []BranchTreeNode, selected string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var26 = []any{"underline", templ.KV("font-semibold text-accent", n.Branch.ID == selected), templ.KV("text-ink", n.Branch.ID != selected)}
+			var templ_7745c5c3_Var26 = []any{"underline", templ.KV("text-accent", n.Branch.ID == selected), templ.KV("text-ink", n.Branch.ID != selected)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var26...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -867,7 +867,7 @@ func BranchView(d BranchPageData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</div><section aria-label=\"Branch を作る\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Shot から Branch を作る</h2><p class=\"text-xs text-mute\">分岐点の World State を Snapshot として保存します。チャットで「このカットから別展開を3つ作って」と頼むこともできます。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</div><section aria-label=\"Branch を作る\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Shot から Branch を作る</h2><p class=\"text-sm text-mute\">分岐点の World State を Snapshot として保存します。チャットで「このカットから別展開を3つ作って」と頼むこともできます。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

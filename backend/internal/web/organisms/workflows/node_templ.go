@@ -191,7 +191,7 @@ func Node(d NodeData) templ.Component {
 			}
 		}
 		if d.State == NodeReady || d.State == NodeRejected {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-xs text-mute\">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で mam に保存します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-mute\">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で mam に保存します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

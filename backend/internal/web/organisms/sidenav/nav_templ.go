@@ -27,7 +27,7 @@ const (
 
 	itemClass   = "flex items-center gap-3 rounded-md border-l-2 px-3 py-1.5 text-sm transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
 	idleClass   = " border-transparent text-ink"
-	activeClass = " border-accent bg-accent-soft font-medium text-ink"
+	activeClass = " border-accent bg-accent-soft text-ink"
 	// labelClass hides the text of an entry visually, not from assistive technology, when the menu is folded and on a narrow
 	// window (icons only there; the fold button is hidden too).
 	labelClass = "truncate max-md:sr-only group-data-[folded=true]:sr-only"
@@ -193,7 +193,7 @@ func menu(s State, folded bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" class=\"group sticky top-0 flex h-screen w-14 shrink-0 flex-col gap-4 border-r border-border bg-bone px-2 py-4 md:data-[folded=false]:w-56\"><div class=\"flex items-center justify-between gap-2 px-1 group-data-[folded=true]:justify-center max-md:justify-center\"><span class=\"truncate text-base font-semibold text-ink max-md:sr-only group-data-[folded=true]:sr-only\">mam</span> <button type=\"button\" data-sidenav-toggle aria-controls=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" class=\"group sticky top-0 flex h-screen w-14 shrink-0 flex-col gap-4 border-r border-border bg-bone px-2 py-4 md:data-[folded=false]:w-56\"><div class=\"flex items-center justify-between gap-2 px-1 group-data-[folded=true]:justify-center max-md:justify-center\"><span class=\"truncate text-base text-ink max-md:sr-only group-data-[folded=true]:sr-only\">mam</span> <button type=\"button\" data-sidenav-toggle aria-controls=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

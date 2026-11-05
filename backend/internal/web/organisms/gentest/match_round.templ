@@ -25,7 +25,7 @@ templ matchRound(r MatchRound, target int) {
 			<div class="flex flex-wrap items-center gap-3">
 				<span class="text-xs text-mute">第 { itoa(r.N) } 回</span>
 				if r.Score != "" {
-					<span class="text-3xl font-semibold tabular-nums text-ink" data-testid="gt-match-score">{ r.Score }</span>
+					<span class="text-2xl tabular-nums text-ink" data-testid="gt-match-score">{ r.Score }</span>
 					if r.Reached {
 						@atoms.Badge(atoms.BadgeOK, "目標に届きました")
 					}
@@ -45,7 +45,7 @@ templ matchRound(r MatchRound, target int) {
 				</span>
 			</div>
 			if r.ScoreNote != "" {
-				<p class="break-words text-xs text-ink" data-testid="gt-match-scoring">{ r.ScoreNote }</p>
+				<p class="break-words text-sm text-ink" data-testid="gt-match-scoring">{ r.ScoreNote }</p>
 			}
 			if r.Score != "" {
 				<progress

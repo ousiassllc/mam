@@ -229,7 +229,7 @@ func Field(f FieldData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.Note != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-xs text-warning\" data-testid=\"model-pick-note\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-sm text-warning\" data-testid=\"model-pick-note\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

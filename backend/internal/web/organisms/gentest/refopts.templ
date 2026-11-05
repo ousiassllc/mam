@@ -45,7 +45,7 @@ templ pickerDialog(c Compose) {
 		class="m-auto w-[min(48rem,92vw)] max-h-[85vh] overflow-y-auto rounded-lg border border-border bg-surface p-4 text-ink backdrop:bg-black/70"
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<h2 id="gt-picker-title" class="text-sm font-medium">画像を選ぶ</h2>
+			<h2 id="gt-picker-title" class="text-sm font-semibold">画像を選ぶ</h2>
 			@atoms.SmallButton(atoms.ToneNeutral, "閉じる", templ.Attributes{"type": "button", "data-gt-picker-close": ""})
 		</div>
 		<div class="mt-3 flex flex-wrap items-end gap-3" data-gt-picker-source>
@@ -69,7 +69,7 @@ templ pickerDialog(c Compose) {
 // Picker lists images that can be added to the inputs: each has an "追加" button that appends its thumbnail to the grid.
 templ Picker(rows []Ref, empty string) {
 	if len(rows) == 0 {
-		<p class="text-xs text-mute" data-testid="gt-picker-empty">{ empty }</p>
+		<p class="text-sm text-mute" data-testid="gt-picker-empty">{ empty }</p>
 	}
 	<ul class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 		for _, r := range rows {

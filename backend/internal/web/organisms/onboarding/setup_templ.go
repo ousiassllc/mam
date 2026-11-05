@@ -160,7 +160,7 @@ func ModelsBody(text llm.Data, images media.Data) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\">既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。</p><p class=\"text-xs text-mute\">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p><details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"onboarding-llm\"><summary class=\"cursor-pointer text-sm font-medium\">テキスト生成（LLM）の割り当て</summary><div class=\"mt-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\">既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。</p><p class=\"text-sm text-mute\">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p><details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"onboarding-llm\"><summary class=\"cursor-pointer text-sm font-semibold\">テキスト生成（LLM）の割り当て</summary><div class=\"mt-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -168,7 +168,7 @@ func ModelsBody(text llm.Data, images media.Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></details> <details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"onboarding-media\"><summary class=\"cursor-pointer text-sm font-medium\">画像・動画モデルの割り当て</summary><div class=\"mt-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></details> <details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"onboarding-media\"><summary class=\"cursor-pointer text-sm font-semibold\">画像・動画モデルの割り当て</summary><div class=\"mt-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -243,7 +243,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"ml-2\">ffmpeg と ffprobe を使えます。</span></p><p class=\"text-xs text-mute\">ffmpeg: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"ml-2\">ffmpeg と ffprobe を使えます。</span></p><p class=\"text-sm text-mute\">ffmpeg: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -278,7 +278,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</code></p><p class=\"text-xs text-mute\">ffprobe: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</code></p><p class=\"text-sm text-mute\">ffprobe: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -313,7 +313,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</code></p><p class=\"text-xs text-mute\">mam を起動したあとに入れたときは、mam を再起動すると反映されます（ffmpeg は起動時に探します）。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</code></p><p class=\"text-sm text-mute\">mam を起動したあとに入れたときは、mam を再起動すると反映されます（ffmpeg は起動時に探します）。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -506,7 +506,7 @@ func installGuide(os OS) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">brew install ffmpeg</code></p><p class=\"text-xs text-mute\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、設定画面の「ffmpeg」でパスを指定してください。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">brew install ffmpeg</code></p><p class=\"text-sm text-mute\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、設定画面の「ffmpeg」でパスを指定してください。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -728,7 +728,7 @@ func MacBody(m Mac) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" data-testid=\"onboarding-local-models-link\">ローカル・代替モデル</a> で接続先を追加します。種類は ComfyUI、URL は 2 で確かめた値です。</li></ol><p class=\"text-xs text-mute\">これは今すぐでなくても構いません。ガイドを閉じたあとでも、設定画面から入れられます。</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" data-testid=\"onboarding-local-models-link\">ローカル・代替モデル</a> で接続先を追加します。種類は ComfyUI、URL は 2 で確かめた値です。</li></ol><p class=\"text-sm text-mute\">これは今すぐでなくても構いません。ガイドを閉じたあとでも、設定画面から入れられます。</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

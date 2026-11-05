@@ -21,7 +21,7 @@ templ Summary(c Card) {
 	<span class="flex items-start gap-3" data-mp-summary>
 		@Tile(c.Icon)
 		<span class="flex min-w-0 flex-1 flex-col gap-0.5">
-			<span class="break-words text-sm font-semibold text-ink" data-mp-name>{ c.Name }</span>
+			<span class="break-words text-sm text-ink" data-mp-name>{ c.Name }</span>
 			<span class="break-words text-xs text-mute" data-testid="model-meta">{ c.Meta }</span>
 		</span>
 		if c.Commercial != nil {
@@ -86,7 +86,7 @@ templ PickItem(c Card) {
 			</button>
 		}
 		if c.Reason != nil {
-			<p id={ c.reasonID() } class="flex flex-wrap items-center gap-x-2 px-1 text-xs text-mute" data-testid="model-reason">
+			<p id={ c.reasonID() } class="flex flex-wrap items-center gap-x-2 px-1 text-sm text-mute" data-testid="model-reason">
 				<span class="break-words">{ c.Reason.Text }</span>
 				if c.Reason.Route != "" {
 					<a class="underline hover:text-ink focus-visible:focus-ring" href={ templ.SafeURL(c.Reason.Route) } data-testid="model-reason-route">{ c.Reason.RouteLabel() }</a>

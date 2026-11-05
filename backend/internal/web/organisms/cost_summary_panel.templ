@@ -18,7 +18,7 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 		<dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 			<div class="rounded-md border border-border p-3">
 				<dt class="text-xs text-mute">Project 推定コスト</dt>
-				<dd class="text-lg font-semibold" data-testid="project-estimated">{ usd(s.Project.Estimated) }</dd>
+				<dd class="font-mono text-lg tabular-nums" data-testid="project-estimated">{ usd(s.Project.Estimated) }</dd>
 				<dd class="text-xs text-mute">上限: { ceilingText(s.ProjectCeiling) }</dd>
 				if s.ProjectCeiling != nil {
 					<dd class="mt-1">
@@ -28,12 +28,12 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 			</div>
 			<div class="rounded-md border border-border p-3">
 				<dt class="text-xs text-mute">Project 実コスト（ベンダー報告）</dt>
-				<dd class="text-lg font-semibold" data-testid="project-actual">{ actualText(s.Project) }</dd>
+				<dd class="font-mono text-lg tabular-nums" data-testid="project-actual">{ actualText(s.Project) }</dd>
 				<dd class="text-xs text-mute">{ intText(s.Project.ActualEntries) } / { intText(s.Project.Entries) } 件で報告あり</dd>
 			</div>
 			<div class="rounded-md border border-border p-3">
 				<dt class="text-xs text-mute">Shot 上限</dt>
-				<dd class="text-lg font-semibold">{ ceilingText(s.ShotCeiling) }</dd>
+				<dd class="font-mono text-lg tabular-nums">{ ceilingText(s.ShotCeiling) }</dd>
 			</div>
 		</dl>
 		if len(s.Scenes) == 0 {
@@ -42,36 +42,36 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 			<table class="w-full text-left text-sm">
 				<thead class="text-xs text-mute">
 					<tr>
-						<th scope="col" class="py-1 pr-2 font-medium">Scene / Shot</th>
-						<th scope="col" class="py-1 pr-2 text-right font-medium">推定</th>
-						<th scope="col" class="py-1 text-right font-medium">実コスト</th>
+						<th scope="col" class="py-1 pr-2 font-semibold">Scene / Shot</th>
+						<th scope="col" class="py-1 pr-2 text-right font-semibold">推定</th>
+						<th scope="col" class="py-1 text-right font-semibold">実コスト</th>
 					</tr>
 				</thead>
 				<tbody>
 					for _, sc := range s.Scenes {
-						<tr class="border-t border-border font-medium">
+						<tr class="border-t border-border">
 							<th scope="row" class="py-1 pr-2 text-left">{ sceneCostLabel(sc) }</th>
-							<td class="py-1 pr-2 text-right">{ usd(sc.Totals.Estimated) }</td>
-							<td class="py-1 text-right">{ actualText(sc.Totals) }</td>
+							<td class="py-1 pr-2 text-right font-mono tabular-nums">{ usd(sc.Totals.Estimated) }</td>
+							<td class="py-1 text-right font-mono tabular-nums">{ actualText(sc.Totals) }</td>
 						</tr>
 						for _, sh := range sc.Shots {
 							<tr class="text-ink">
 								<th scope="row" class="py-0.5 pl-4 pr-2 text-left font-normal">{ "Shot " + intText(sh.OrderIndex+1) + shotLabel(sh.Objective) }</th>
-								<td class="py-0.5 pr-2 text-right">{ usd(sh.Totals.Estimated) }</td>
-								<td class="py-0.5 text-right">{ actualText(sh.Totals) }</td>
+								<td class="py-0.5 pr-2 text-right font-mono tabular-nums">{ usd(sh.Totals.Estimated) }</td>
+								<td class="py-0.5 text-right font-mono tabular-nums">{ actualText(sh.Totals) }</td>
 							</tr>
 						}
 					}
 					if s.Unassigned.Entries > 0 {
 						<tr class="border-t border-border text-ink">
 							<th scope="row" class="py-1 pr-2 text-left font-normal">Shot に紐づかないコスト</th>
-							<td class="py-1 pr-2 text-right">{ usd(s.Unassigned.Estimated) }</td>
-							<td class="py-1 text-right">{ actualText(s.Unassigned) }</td>
+							<td class="py-1 pr-2 text-right font-mono tabular-nums">{ usd(s.Unassigned.Estimated) }</td>
+							<td class="py-1 text-right font-mono tabular-nums">{ actualText(s.Unassigned) }</td>
 						</tr>
 					}
 				</tbody>
 			</table>
 		}
-		<p class="text-xs text-mute">推定コストは生成時の見積り、実コストはベンダーが報告した金額です（* は一部のみ報告）。</p>
+		<p class="text-sm text-mute">推定コストは生成時の見積り、実コストはベンダーが報告した金額です（* は一部のみ報告）。</p>
 	</section>
 }

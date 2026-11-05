@@ -11,7 +11,7 @@ import (
 templ Summary(b Filter) {
 	<div class="flex flex-col gap-2" data-testid="model-pick-summary">
 		if b.Error != "" {
-			<p class="text-xs text-danger" role="alert" data-testid="model-pick-error">{ b.Error }（絞り込みは始めの状態に戻しました）</p>
+			<p class="text-sm text-danger" role="alert" data-testid="model-pick-error">{ b.Error }（絞り込みは始めの状態に戻しました）</p>
 		}
 		if chips := b.Chips(); len(chips) > 0 {
 			<ul class="flex flex-wrap items-center gap-1.5" aria-label="かかっている条件" data-testid="model-pick-chips">
@@ -47,7 +47,7 @@ templ Summary(b Filter) {
 				</li>
 			</ul>
 		}
-		<p class="text-xs text-mute" role="status" aria-live="polite" data-testid="model-pick-total">
+		<p class="text-sm text-mute" role="status" aria-live="polite" data-testid="model-pick-total">
 			{ strconv.Itoa(b.Shown) } 件
 			if b.Shown != b.Total {
 				（全 { strconv.Itoa(b.Total) } 件のうち）

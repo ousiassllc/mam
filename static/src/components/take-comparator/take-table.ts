@@ -14,13 +14,13 @@ export function renderTakeTable(takes: TakeScore[], minAxis: number, actions: Ta
   return html`<table class="w-full text-left text-sm" data-scores>
     <thead class="text-xs text-mute">
       <tr>
-        <th class="px-2 py-1 font-medium">Take</th>
-        <th class="px-2 py-1 font-medium">Product</th>
-        <th class="px-2 py-1 font-medium">Acting</th>
-        <th class="px-2 py-1 font-medium">Camera</th>
-        <th class="px-2 py-1 font-medium">Continuity</th>
-        <th class="px-2 py-1 font-medium">Status</th>
-        <th class="px-2 py-1 font-medium"><span class="sr-only">操作</span></th>
+        <th class="px-2 py-1 font-semibold">Take</th>
+        <th class="px-2 py-1 font-semibold">Product</th>
+        <th class="px-2 py-1 font-semibold">Acting</th>
+        <th class="px-2 py-1 font-semibold">Camera</th>
+        <th class="px-2 py-1 font-semibold">Continuity</th>
+        <th class="px-2 py-1 font-semibold">Status</th>
+        <th class="px-2 py-1 font-semibold"><span class="sr-only">操作</span></th>
       </tr>
     </thead>
     <tbody>
@@ -31,7 +31,7 @@ export function renderTakeTable(takes: TakeScore[], minAxis: number, actions: Ta
 
 function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
   return html`<tr class="border-t border-border ${t.status === 'rejected' ? 'text-mute' : ''}" data-take=${t.id}>
-    <th scope="row" class="px-2 py-2 font-medium">
+    <th scope="row" class="px-2 py-2 font-semibold">
       Take ${t.label}${t.adopted ? html` <span class="text-xs text-success" data-adopted>（使用中）</span>` : nothing}
       <div class="text-xs font-normal text-mute">${describeTake(t)}</div>
     </th>

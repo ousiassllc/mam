@@ -14,7 +14,7 @@ const recipeHelp = "今の設定（モデル・ステップ数・CFG・サンプ
 templ RecipeSection(d RecipeData) {
 	<section class="flex flex-col gap-3 rounded-md border border-border p-3 text-sm" aria-labelledby="gt-recipes-title" data-testid="gt-recipe-section">
 		@help.Row(help.ID("レシピ"), "レシピ", help.Text(recipeHelp)) {
-			<h2 id="gt-recipes-title" class="text-sm font-medium text-ink">レシピ</h2>
+			<h2 id="gt-recipes-title" class="text-sm font-semibold text-ink">レシピ</h2>
 		}
 		@RecipePanel(d)
 	</section>
@@ -30,7 +30,7 @@ templ RecipePanel(d RecipeData) {
 			<p class="text-sm text-warning" role="alert" data-testid="gt-recipes-error">{ d.Error }</p>
 		}
 		if d.Unavailable {
-			<p class="text-xs text-mute" data-testid="gt-recipes-unavailable">このアプリではレシピを保存できません</p>
+			<p class="text-sm text-mute" data-testid="gt-recipes-unavailable">このアプリではレシピを保存できません</p>
 		} else {
 			<div class="flex flex-wrap items-end gap-3" data-gt-recipe-row>
 				<label class="flex flex-col gap-1 text-xs text-mute" for="gt-recipe-name">
@@ -45,7 +45,7 @@ templ RecipePanel(d RecipeData) {
 				</label>
 				@atoms.SmallButton(atoms.TonePrimary, "今の設定をレシピとして保存", recipeAct("post", paths.GenerationTestPart("recipes"), "#"+FormID, nil, "data-gt-recipe-act", "gt-recipe-save"))
 			</div>
-			<p class="text-xs text-mute">プロンプトの本文と入力画像は保存しません。</p>
+			<p class="text-sm text-mute">プロンプトの本文と入力画像は保存しません。</p>
 			if len(d.Rows) == 0 {
 				<p class="text-xs text-mute" data-testid="gt-recipes-empty">保存したレシピはまだありません。</p>
 			} else {
@@ -71,14 +71,14 @@ func recipeAct(method, path, include string, vals map[string]string, extra, test
 templ recipeRow(r RecipeRow) {
 	<li class="flex flex-col gap-1.5 rounded-md border border-border p-2" data-gt-recipe-row data-testid="gt-recipe">
 		<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-			<span class="font-medium text-ink" data-testid="gt-recipe-title">{ r.Name }</span>
+			<span class="text-ink" data-testid="gt-recipe-title">{ r.Name }</span>
 			<span class="text-xs text-mute">{ r.ModelLabel }</span>
 			if r.Easy {
 				<span class="text-xs text-ink" data-testid="gt-recipe-easy-mark">かんたんに出ています</span>
 			}
 		</div>
 		if !r.Usable {
-			<p class="text-xs text-warning" data-testid="gt-recipe-reason">使えません: { r.Reason }</p>
+			<p class="text-sm text-warning" data-testid="gt-recipe-reason">使えません: { r.Reason }</p>
 		}
 		<div class="flex flex-wrap items-center gap-2">
 			if r.Usable {

@@ -45,6 +45,7 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 			if canonical != "" {
 				<link rel="canonical" href={ canonical }/>
 			}
+			<link rel="stylesheet" href={ paths.StaticFontsCSS }/>
 			<link rel="stylesheet" href={ paths.StaticCSS }/>
 			<script type="module" src={ paths.StaticApp }></script>
 		</head>

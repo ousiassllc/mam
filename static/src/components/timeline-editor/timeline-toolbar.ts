@@ -19,7 +19,7 @@ export function renderToolbar(view: ToolbarView) {
     <button
       type="button"
       data-action="save"
-      class="rounded bg-accent px-3 py-1 text-xs font-medium text-bone hover:bg-accent/85 disabled:opacity-40"
+      class="rounded bg-accent px-3 py-1 text-xs font-semibold text-bone hover:bg-accent/85 disabled:opacity-40"
       ?disabled=${view.busy || view.readonly || !dirty}
       @click=${() => view.save()}
     >

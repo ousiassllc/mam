@@ -58,7 +58,7 @@ templ Panel(b Filter, oob bool) {
 			}
 		</div>
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<p class="text-xs text-mute">条件を選ぶと、その場で一覧が絞り込まれます。</p>
+			<p class="text-sm text-mute">条件を選ぶと、その場で一覧が絞り込まれます。</p>
 			<button
 				type="button"
 				class="cursor-pointer rounded-md border border-border px-2.5 py-1 text-xs text-ink hover:border-mute focus-visible:focus-ring"
@@ -75,7 +75,7 @@ templ Panel(b Filter, oob bool) {
 // checks is a group of choices of which any can be chosen (a chip each).
 templ checks(legend, name string, opts []Option, chosen []string) {
 	<fieldset class="flex min-w-0 flex-col gap-1.5">
-		<legend class="mb-1 text-xs font-medium text-ink">{ legend }</legend>
+		<legend class="mb-1 text-xs text-ink">{ legend }</legend>
 		<div class="flex flex-wrap gap-1.5">
 			for _, o := range opts {
 				@choice("checkbox", name, o.Value, o.Label, slices.Contains(chosen, o.Value))
@@ -87,7 +87,7 @@ templ checks(legend, name string, opts []Option, chosen []string) {
 // radios is a group of choices of which one is chosen.
 templ radios(legend, name string, opts []Option, current string) {
 	<fieldset class="flex min-w-0 flex-col gap-1.5">
-		<legend class="mb-1 text-xs font-medium text-ink">{ legend }</legend>
+		<legend class="mb-1 text-xs text-ink">{ legend }</legend>
 		<div class="flex flex-wrap gap-1.5">
 			for _, o := range opts {
 				@choice("radio", name, o.Value, o.Label, o.Value == current)
@@ -107,7 +107,7 @@ templ choice(kind, name, value, label string, checked bool) {
 // sourceSection is where the models come from: local or cloud, and the providers the screen names.
 templ sourceSection(b Filter) {
 	<fieldset class="flex min-w-0 flex-col gap-1.5">
-		<legend class="mb-1 text-xs font-medium text-ink">提供元</legend>
+		<legend class="mb-1 text-xs text-ink">提供元</legend>
 		<div class="flex flex-wrap gap-1.5">
 			if b.Facets.Origins {
 				for _, o := range modelfilter.Origins() {
@@ -124,7 +124,7 @@ templ sourceSection(b Filter) {
 // switchSection is the yes-or-no filters: it runs on a 16 GB GPU, makes sound, and the switch that hides what cannot be chosen now.
 templ switchSection(b Filter) {
 	<fieldset class="flex min-w-0 flex-col gap-1.5">
-		<legend class="mb-1 text-xs font-medium text-ink">その他</legend>
+		<legend class="mb-1 text-xs text-ink">その他</legend>
 		<div class="flex flex-wrap gap-1.5">
 			if b.Facets.VRAM {
 				@choice("checkbox", "vram_fit", "1", "16GB の VRAM で動く", b.Cond.VRAMFit)

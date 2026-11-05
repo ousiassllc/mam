@@ -125,7 +125,7 @@ templ modelCard(m Model, blocked bool) {
 			@progressBar(*m.Install, m.Name+" の導入の進み具合")
 		}
 		if m.NeedsNodes != "" && m.State != "installed" {
-			<p class="text-xs text-warning" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
+			<p class="text-sm text-warning" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
 		}
 		@modelcard.Actions() {
 			@modelActions(m, blocked)
@@ -216,7 +216,7 @@ templ ConsentDialog(c Consent) {
 			<p class="text-sm text-warning" data-testid="mm-consent-platform-warning">{ c.PlatformWarning }</p>
 		}
 		if len(c.Sources) > 0 {
-			<p class="text-xs text-ink" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>
+			<p class="text-sm text-ink" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>
 		}
 		<p class="flex flex-wrap items-center gap-2 text-sm" data-testid="mm-consent-commercial">
 			商用利用: { c.License.Commercial } @commercial.Badge(c.License.Answer)
@@ -225,9 +225,9 @@ templ ConsentDialog(c Consent) {
 			<p class="text-sm text-warning" data-testid="mm-consent-regions">{ c.License.Regions }</p>
 		}
 		if c.License.Notice != "" {
-			<p class="text-xs text-mute">{ c.License.Notice }</p>
+			<p class="text-sm text-mute">{ c.License.Notice }</p>
 		}
-		<p class="text-xs text-mute">モデルの重みは mam が再配布するものではありません。導入すると、取得元から直接ダウンロードします。</p>
+		<p class="text-sm text-mute">モデルの重みは mam が再配布するものではありません。導入すると、取得元から直接ダウンロードします。</p>
 		<form
 			class="flex flex-col gap-3"
 			hx-post={ paths.ModelManagerPart("models", c.ModelID, "install") }

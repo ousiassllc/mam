@@ -52,7 +52,7 @@ templ Bar(b Filter) {
 templ Count(b Filter, oob bool) {
 	<span
 		id={ b.countID() }
-		class="inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-1.5 text-xs font-semibold text-bone"
+		class="inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-1.5 text-xs text-bone"
 		hidden?={ b.Active() == 0 }
 		data-testid="model-pick-count"
 		if oob {

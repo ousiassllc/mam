@@ -59,7 +59,7 @@ templ Section(d Data) {
 		if len(d.Unused) > 0 {
 			<details class="rounded-md border border-border px-3 py-2" data-testid="llm-unused">
 				<summary class="cursor-pointer text-sm text-ink">現在は使われません</summary>
-				<p class="my-2 text-xs text-mute">これらの Agent は今のところ LLM を呼びません。割り当ては保存され、使われるようになったときに効きます。</p>
+				<p class="my-2 text-sm text-mute">これらの Agent は今のところ LLM を呼びません。割り当ては保存され、使われるようになったときに効きます。</p>
 				@table(UnusedTableID, "LLM の割り当て（現在は使われない Agent）", d.Unused, d.Pinned)
 			</details>
 		}

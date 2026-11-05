@@ -71,7 +71,7 @@ templ CharacterCreate(d CharacterCreateData) {
 			}
 		</div>
 		if d.Note != "" {
-			<p class="text-xs text-mute">{ d.Note }</p>
+			<p class="text-sm text-mute">{ d.Note }</p>
 		}
 		<div>
 			@atoms.Button(atoms.TonePrimary, "登場人物を追加", templ.Attributes{"type": "submit"})

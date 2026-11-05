@@ -40,7 +40,7 @@ templ ConfirmNote(msg string) {
 templ ConfirmBox(c Confirm) {
 	<div id={ ConfirmID } class="flex flex-col gap-3 rounded-md border border-accent p-4" data-testid="gt-confirm">
 		@notice(c.Message, "gt-confirm")
-		<h2 class="text-sm font-medium">実行の確認</h2>
+		<h2 class="text-sm font-semibold">実行の確認</h2>
 		if c.Match {
 			<p class="text-sm" data-testid="gt-confirm-items">最大 <strong>{ itoa(c.Items) }</strong> 回まで生成します（目標に届けばそこで止まります）。見積り合計は <strong data-testid="gt-confirm-total">{ c.Total }</strong> です。</p>
 		} else {
@@ -62,7 +62,7 @@ templ ConfirmBox(c Confirm) {
 			</tbody>
 		</table>
 		if c.Unknown != "" {
-			<p class="text-xs text-warning" data-testid="gt-confirm-unknown">{ c.Unknown }</p>
+			<p class="text-sm text-warning" data-testid="gt-confirm-unknown">{ c.Unknown }</p>
 		}
 		if len(c.InputWarnings) > 0 {
 			@inputnotice.Warnings(c.InputWarnings, "gt-confirm-input-warnings")

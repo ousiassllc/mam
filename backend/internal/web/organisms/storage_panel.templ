@@ -34,12 +34,12 @@ templ StoragePanel(d StoragePanelData) {
 		<dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 			<div class="rounded-md border border-border p-3">
 				<dt class="text-xs text-mute">Project のファイル</dt>
-				<dd class="text-lg font-semibold" data-testid="asset-bytes">{ domain.FormatBytes(d.Storage.AssetBytes) }</dd>
+				<dd class="font-mono text-lg tabular-nums" data-testid="asset-bytes">{ domain.FormatBytes(d.Storage.AssetBytes) }</dd>
 				<dd class="text-xs text-mute" data-testid="preview-bytes">{ "プレビューのキャッシュ（全 Project 共通）: " + domain.FormatBytes(d.Storage.PreviewBytes) }</dd>
 			</div>
 			<div class="rounded-md border border-border p-3">
 				<dt class="text-xs text-mute">ディスクの空き容量</dt>
-				<dd class="text-lg font-semibold" data-testid="free-bytes">
+				<dd class="font-mono text-lg tabular-nums" data-testid="free-bytes">
 					if d.Storage.FreeKnown {
 						{ domain.FormatBytes(d.Storage.FreeBytes) }
 					} else {
@@ -49,7 +49,7 @@ templ StoragePanel(d StoragePanelData) {
 			</div>
 			<div class="rounded-md border border-border p-3">
 				<dt class="text-xs text-mute">不要な Take</dt>
-				<dd class="text-lg font-semibold" data-testid="unneeded">{ unneededText(d.Storage) }</dd>
+				<dd class="font-mono text-lg tabular-nums" data-testid="unneeded">{ unneededText(d.Storage) }</dd>
 			</div>
 		</dl>
 		if hasUnneeded(d.Storage) {

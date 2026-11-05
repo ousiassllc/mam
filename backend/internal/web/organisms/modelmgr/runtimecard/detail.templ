@@ -23,14 +23,14 @@ templ RuntimeDetail(r Runtime) {
 			case !r.Writable:
 				<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-runtime-readonly">
 					<p>mam.exe のあるフォルダ（{ r.Dir }）に書き込めません。書き込める場所に置き直してください。</p>
-					<p class="text-xs">{ r.WritableError }</p>
+					<p class="text-sm">{ r.WritableError }</p>
 				</div>
 		}
 		@runtimeFacts(r)
 		if r.Weights.Message != "" {
 			<p class="text-sm text-warning" data-testid="mm-runtime-weights-message">{ r.Weights.Message }</p>
 		}
-		<p class="text-xs text-mute">
+		<p class="text-sm text-mute">
 			{ r.Name } は mam とは別のプログラムで、mam には含まれません。公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。
 			if r.SourceURL != "" {
 				<a class="underline" href={ templ.SafeURL(r.SourceURL) } target="_blank" rel="noopener noreferrer">ソース</a>
@@ -40,7 +40,7 @@ templ RuntimeDetail(r Runtime) {
 			}
 		</p>
 		if r.LicenseCondition != "" {
-			<p class="text-xs text-warning" data-testid="mm-runtime-license-note">{ r.LicenseCondition }</p>
+			<p class="text-sm text-warning" data-testid="mm-runtime-license-note">{ r.LicenseCondition }</p>
 		}
 		@RuntimeModels(r)
 		@weightlist.List(r.Weights)

@@ -91,7 +91,7 @@ func QuoteBox(q Quote) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if q.CreditsMin > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-xs text-mute\" data-testid=\"gt-venh-credits-min\">少なくて ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-mute\" data-testid=\"gt-venh-credits-min\">少なくて ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -109,7 +109,7 @@ func QuoteBox(q Quote) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " <p class=\"text-xs text-mute\" data-testid=\"gt-venh-output\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " <p class=\"text-sm text-mute\" data-testid=\"gt-venh-output\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

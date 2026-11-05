@@ -56,7 +56,7 @@ templ Detail(m view.Model) {
 			}
 		</dl>
 		if m.PlatformWarning != "" {
-			<p class="text-xs text-warning" role="note" data-testid="mm-platform-warning-text">{ m.PlatformWarning }</p>
+			<p class="text-sm text-warning" role="note" data-testid="mm-platform-warning-text">{ m.PlatformWarning }</p>
 		}
 		if m.VRAMFitText != "" {
 			<p class={ "text-xs " + view.FitClass(m.VRAMFit) } data-testid="mm-vram-fit-text" data-fit={ m.VRAMFit }>{ m.VRAMFitText }</p>
@@ -70,7 +70,7 @@ templ Detail(m view.Model) {
 			</p>
 		}
 		if m.PartialNote != "" {
-			<p class="text-xs text-warning" data-testid="mm-partial-note">{ m.PartialNote }</p>
+			<p class="text-sm text-warning" data-testid="mm-partial-note">{ m.PartialNote }</p>
 		}
 		<section class="flex flex-col gap-2" aria-labelledby="mm-files-title">
 			<h3 id="mm-files-title" class="text-sm font-semibold">ファイル（{ strconv.Itoa(len(m.Files)) }）</h3>
@@ -91,7 +91,7 @@ templ Detail(m view.Model) {
 					</li>
 				}
 			</ul>
-			<p class="text-xs text-mute" data-testid="mm-model-ids">導入されるモデル: { joinNames(m.ModelIDs) }／{ m.WorkflowCheck }</p>
+			<p class="text-sm text-mute" data-testid="mm-model-ids">導入されるモデル: { joinNames(m.ModelIDs) }／{ m.WorkflowCheck }</p>
 		</section>
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
@@ -125,13 +125,13 @@ templ HFDetail(m view.HFModel) {
 			}
 		</dl>
 		if m.Gated {
-			<p class="text-xs text-warning">gated のリポジトリです（取得にはトークンとアクセスの許可が要ります）。</p>
+			<p class="text-sm text-warning">gated のリポジトリです（取得にはトークンとアクセスの許可が要ります）。</p>
 		}
 		if m.NFAA {
-			<p class="text-xs text-warning">成人向け（NFAA）のリポジトリです。</p>
+			<p class="text-sm text-warning">成人向け（NFAA）のリポジトリです。</p>
 		}
 		if len(m.Shared) > 0 {
-			<p class="text-xs text-mute">{ joinNames(m.Shared) } と共有しています。使うモデルが残る間は、ファイルは消えません。</p>
+			<p class="text-sm text-mute">{ joinNames(m.Shared) } と共有しています。使うモデルが残る間は、ファイルは消えません。</p>
 		}
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
@@ -163,7 +163,7 @@ templ ExternalDetail(endpoint string, m view.ExternalModel) {
 				</ul>
 			</section>
 		}
-		<p class="text-xs text-mute">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>
+		<p class="text-sm text-mute">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
 		}

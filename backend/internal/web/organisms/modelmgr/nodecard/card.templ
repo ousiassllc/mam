@@ -58,15 +58,15 @@ func card(n Node) modelcard.Card {
 templ NodeCard(n Node) {
 	@modelcard.Item(card(n)) {
 		@view.Notice(n.Message, NodeID(n.ID))
-		<p class="text-xs text-ink" data-testid="mm-node-description">{ n.Description }</p>
+		<p class="text-sm text-ink" data-testid="mm-node-description">{ n.Description }</p>
 		if n.Blocked != "" {
-			<p class="text-xs text-warning" role="note" data-testid="mm-node-blocked">導入できない理由: { n.Blocked }</p>
+			<p class="text-sm text-warning" role="note" data-testid="mm-node-blocked">導入できない理由: { n.Blocked }</p>
 		}
 		if n.Detail != "" {
-			<p class="text-xs text-warning" role="note" data-testid="mm-node-detail-note">{ n.Detail }</p>
+			<p class="text-sm text-warning" role="note" data-testid="mm-node-detail-note">{ n.Detail }</p>
 		}
 		if len(n.Models) > 0 {
-			<p class="text-xs text-mute" data-testid="mm-node-models">このノードを使うモデル: { modelNames(n.Models) }</p>
+			<p class="text-sm text-mute" data-testid="mm-node-models">このノードを使うモデル: { modelNames(n.Models) }</p>
 		}
 		if n.Install != nil {
 			@view.ProgressBar(*n.Install, n.Name+" の導入の進み具合")
@@ -88,7 +88,7 @@ templ nodeActions(n Node) {
 		case n.State == "blocked":
 		case n.Unavailable != "":
 			@atoms.SmallButtonFor(atoms.ToneNeutral, installLabel(n), n.Name, templ.Attributes{"type": "button", "disabled": true, "title": n.Unavailable})
-			<p class="text-xs text-warning" data-testid="mm-node-unavailable">{ n.Unavailable }</p>
+			<p class="text-sm text-warning" data-testid="mm-node-unavailable">{ n.Unavailable }</p>
 		default:
 			@atoms.SmallButtonFor(atoms.TonePrimary, installLabel(n), n.Name, templ.Attributes{
 				"type": "button", "hx-get": paths.ModelManagerPart("nodes", n.ID, "consent"), "hx-target": "#" + DialogID, "hx-swap": "innerHTML",
@@ -135,9 +135,9 @@ templ ConsentDialog(n Node) {
 			商用利用: { n.LicenseCommercial } @commercialBadge(n)
 		</p>
 		if n.LicenseNotice != "" {
-			<p class="text-xs text-mute">{ n.LicenseNotice }</p>
+			<p class="text-sm text-mute">{ n.LicenseNotice }</p>
 		}
-		<p class="break-all text-xs text-mute">取得元: { n.Repo }（コミット <code>{ n.Commit }</code>。SHA-256 <code>{ n.ArchiveSHA }</code> を確かめます）</p>
+		<p class="break-all text-sm text-mute">取得元: { n.Repo }（コミット <code>{ n.Commit }</code>。SHA-256 <code>{ n.ArchiveSHA }</code> を確かめます）</p>
 		<form
 			class="flex flex-col gap-3"
 			hx-post={ paths.ModelManagerPart("nodes", n.ID, "install") }

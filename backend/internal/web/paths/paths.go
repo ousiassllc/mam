@@ -131,10 +131,12 @@ func ReviewImport() string { return Reviews() + "/import" }
 // StaticPrefix is the base path of the front-end assets; the router serves them under it.
 const StaticPrefix = "/static"
 
-// The two files the layout loads (the CSP of middleware.SecurityHeaders allows only this script).
+// The files the layout loads (the CSP of middleware.SecurityHeaders allows only this script). StaticFontsCSS is the
+// @font-face rules of Sora, Noto Sans JP and JetBrains Mono; the font files are under StaticPrefix + "/fonts/".
 const (
-	StaticCSS = StaticPrefix + "/app.css"
-	StaticApp = StaticPrefix + "/app.js"
+	StaticCSS      = StaticPrefix + "/app.css"
+	StaticFontsCSS = StaticPrefix + "/fonts.css"
+	StaticApp      = StaticPrefix + "/app.js"
 )
 
 // WithBranch scopes the URL p to a Branch: p followed by "?branch_id=<id>", the query the Branch

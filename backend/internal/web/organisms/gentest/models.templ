@@ -11,7 +11,7 @@ import (
 // it.
 templ sectionTitle(id, title string, explanation templ.Component) {
 	@help.Row(help.ID(title), title, explanation) {
-		<span id={ id } class="text-sm font-medium text-ink">{ title }</span>
+		<span id={ id } class="text-sm text-ink">{ title }</span>
 	}
 }
 

@@ -18,7 +18,7 @@ templ Mark(v View) {
 templ Note(v View) {
 	if v.NeedsNote() {
 		<div class={ noteClass(v) } role="note" data-testid="commercial-note" data-commercial-note={ v.Answer() }>
-			<p class="font-semibold">
+			<p class="">
 				@atoms.Icon(noteIcon(v), "mr-1 inline h-4 w-4 align-text-bottom")
 				{ v.Level.Label() }
 				if v.LicenseName != "" {
@@ -39,7 +39,7 @@ templ Note(v View) {
 // sourceLink is the link to the license original with the day it was read.
 templ sourceLink(v View) {
 	if v.SourceURL != "" {
-		<p class="text-xs">
+		<p class="text-sm">
 			<a class="underline" href={ templ.SafeURL(v.SourceURL) } target="_blank" rel="noopener noreferrer">ライセンス原文</a>
 			if v.CheckedAt != "" {
 				<span>（{ v.CheckedAt } に確認）</span>

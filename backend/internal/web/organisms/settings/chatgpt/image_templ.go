@@ -193,7 +193,7 @@ func imageBrief(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-xs text-warning\" data-testid=\"chatgpt-image-risk-line\">予告なく使えなくなることがあり、ChatGPT のプランの利用上限を消費します。詳細でリスクを確認できます。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-warning\" data-testid=\"chatgpt-image-risk-line\">予告なく使えなくなることがあり、ChatGPT のプランの利用上限を消費します。詳細でリスクを確認できます。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -224,7 +224,7 @@ func imageDetail(d Data) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-image-detail\"><div class=\"flex flex-col gap-2 rounded-md border border-warning/60 px-3 py-2\" data-testid=\"chatgpt-risks\"><p class=\"text-sm font-medium text-warning\">オンにする前に、次のリスクを確認してください。</p><ul class=\"list-disc pl-5 text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-image-detail\"><div class=\"flex flex-col gap-2 rounded-md border border-warning/60 px-3 py-2\" data-testid=\"chatgpt-risks\"><p class=\"text-sm text-warning\">オンにする前に、次のリスクを確認してください。</p><ul class=\"list-disc pl-5 text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -247,7 +247,7 @@ func imageDetail(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</ul><p class=\"text-xs text-mute\"><a class=\"underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</ul><p class=\"text-sm text-mute\"><a class=\"underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

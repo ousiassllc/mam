@@ -93,7 +93,7 @@ templ ToolCardItem(c ToolCard) {
 					}
 				</span>
 			}
-			<span class={ "inline-flex items-center gap-1 text-sm font-medium text-accent", templ.KV("mt-auto", !c.hasStatusBox()) } aria-hidden="true">
+			<span class={ "inline-flex items-center gap-1 text-sm text-accent", templ.KV("mt-auto", !c.hasStatusBox()) } aria-hidden="true">
 				{ c.cta() }
 				@atoms.Icon(atoms.IconChevronRight, "h-4 w-4 shrink-0")
 			</span>

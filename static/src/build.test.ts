@@ -1,5 +1,5 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,19 @@ it('a production build removes leftovers of earlier builds from the embedded dis
   const files = readdirSync(dist)
     .filter((n) => n !== '.gitkeep')
     .sort();
-  expect(files).toEqual(['app.css', 'app.js']);
+  expect(files).toEqual(['app.css', 'app.js', 'fonts', 'fonts.css']);
+}, 60_000);
+
+// The fonts of the UI guide are shipped with the app (no network, no system font): every slice the stylesheet names is a file of dist/fonts.
+it('a build writes the fonts of the guide and every file their @font-face rules name', () => {
+  execFileSync('node', ['build.mjs', '--minify'], { cwd: root });
+
+  const css = readFileSync(join(dist, 'fonts.css'), 'utf8');
+  for (const family of ['Sora', 'Noto Sans JP', 'JetBrains Mono']) expect(css).toContain(`font-family: '${family}';`);
+  const files = [...css.matchAll(/url\(\.\/fonts\/([^)]+\.woff2)\)/g)].map((m) => m[1] as string);
+  expect(files.length).toBeGreaterThan(100);
+  for (const file of files) expect(existsSync(join(dist, 'fonts', file)), file).toBe(true);
+  expect(readdirSync(join(dist, 'fonts')).sort()).toEqual([...files].sort());
 }, 60_000);
 
 // Windows' `npx` is `npx.cmd`, which spawn() cannot start without a shell: the build must not need

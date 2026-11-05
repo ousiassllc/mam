@@ -56,7 +56,7 @@ func RecipeSection(d RecipeData) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<h2 id=\"gt-recipes-title\" class=\"text-sm font-medium text-ink\">レシピ</h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<h2 id=\"gt-recipes-title\" class=\"text-sm font-semibold text-ink\">レシピ</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -156,7 +156,7 @@ func RecipePanel(d RecipeData) templ.Component {
 			}
 		}
 		if d.Unavailable {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-xs text-mute\" data-testid=\"gt-recipes-unavailable\">このアプリではレシピを保存できません</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm text-mute\" data-testid=\"gt-recipes-unavailable\">このアプリではレシピを保存できません</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -187,7 +187,7 @@ func RecipePanel(d RecipeData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><p class=\"text-xs text-mute\">プロンプトの本文と入力画像は保存しません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><p class=\"text-sm text-mute\">プロンプトの本文と入力画像は保存しません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -251,14 +251,14 @@ func recipeRow(r RecipeRow) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<li class=\"flex flex-col gap-1.5 rounded-md border border-border p-2\" data-gt-recipe-row data-testid=\"gt-recipe\"><div class=\"flex flex-wrap items-baseline gap-x-3 gap-y-1\"><span class=\"font-medium text-ink\" data-testid=\"gt-recipe-title\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<li class=\"flex flex-col gap-1.5 rounded-md border border-border p-2\" data-gt-recipe-row data-testid=\"gt-recipe\"><div class=\"flex flex-wrap items-baseline gap-x-3 gap-y-1\"><span class=\"text-ink\" data-testid=\"gt-recipe-title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/recipe.templ`, Line: 74, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/recipe.templ`, Line: 74, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -292,7 +292,7 @@ func recipeRow(r RecipeRow) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !r.Usable {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-xs text-warning\" data-testid=\"gt-recipe-reason\">使えません: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-sm text-warning\" data-testid=\"gt-recipe-reason\">使えません: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

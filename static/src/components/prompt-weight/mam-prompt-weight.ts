@@ -7,7 +7,7 @@ import { adjust, read, WEIGHT_MAX, WEIGHT_MIN, type Direction, type Reading } fr
 const PROMPT = 'textarea[name="prompt"]';
 
 const BUTTON =
-  'inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium text-ink transition hover:bg-accent-soft ' +
+  'inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-semibold text-ink transition hover:bg-accent-soft ' +
   'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 ' +
   'focus-visible:focus-ring';
 

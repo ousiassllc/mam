@@ -57,7 +57,7 @@ templ View(d Data) {
 			<h2 class="text-sm font-semibold text-ink">Style</h2>
 			@seriesStyleForm(d)
 			if d.Series.StyleReferenceAssetID != "" {
-				<p class="text-xs text-mute">Style の参照画像を Episode の Reference Library に引き継ぎます。</p>
+				<p class="text-sm text-mute">Style の参照画像を Episode の Reference Library に引き継ぎます。</p>
 			}
 		</section>
 		<section aria-label="Characters" class="flex flex-col gap-2">
@@ -73,7 +73,7 @@ templ View(d Data) {
 					@molecules.CharacterCreate(seriesCharacterCreate(d))
 				</div>
 			</details>
-			<p class="text-xs text-mute">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
+			<p class="text-sm text-mute">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
 			<div id="series-characters" class="flex flex-col gap-2">
 				for _, c := range d.Canon.Characters {
 					@seriesCharacterBlock(d, c)
@@ -253,7 +253,7 @@ templ seriesCharacterForm(d Data, c domain.WorldCharacter) {
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
-		<p class="text-sm font-medium">{ c.Name }</p>
+		<p class="text-sm">{ c.Name }</p>
 		<div class="grid gap-2 sm:grid-cols-2">
 			for _, name := range domain.SeriesCharacterFields() {
 				<label class="flex flex-col gap-1 text-xs text-mute" for={ "series-" + c.ID + "-" + name }>

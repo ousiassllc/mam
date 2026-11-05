@@ -47,7 +47,7 @@ func editorEditStage(d Data, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><section class=\"flex flex-col gap-2\" aria-label=\"Rough Cut\"><h3 class=\"text-sm font-semibold\">1. Rough Cut</h3><p class=\"text-xs text-mute\">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p><div class=\"flex items-center gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><section class=\"flex flex-col gap-2\" aria-label=\"Rough Cut\"><h3 class=\"text-sm font-semibold\">1. Rough Cut</h3><p class=\"text-sm text-mute\">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p><div class=\"flex items-center gap-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -203,7 +203,7 @@ func editorEditStage(d Data, oob bool) templ.Component {
 			}
 		}
 		if d.PendingShots > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-xs text-warning\" data-pending-shots>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-sm text-warning\" data-pending-shots>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -353,7 +353,7 @@ func editorAudioStage(d Data, oob bool) templ.Component {
 			}
 		}
 		if !d.CanRender {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-warning\">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-sm text-warning\">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -573,13 +573,13 @@ func editorFinalQC(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.FinalQCBlockedByTrunk() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<p class=\"text-xs text-warning\" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<p class=\"text-sm text-warning\" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if d.BranchID != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<p class=\"text-xs text-mute\" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<p class=\"text-sm text-mute\" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -703,7 +703,7 @@ func editorExports(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.ExportBlocker() != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<p class=\"text-xs text-warning\" data-export-blocked>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<p class=\"text-sm text-warning\" data-export-blocked>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

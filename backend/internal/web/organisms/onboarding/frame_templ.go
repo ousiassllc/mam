@@ -42,7 +42,7 @@ func Layout(f Frame) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"mx-auto max-w-4xl p-8\"><h1 class=\"mb-1 text-xl font-semibold\">はじめに</h1><p class=\"text-sm text-mute\">mam を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"mx-auto max-w-4xl p-8\"><h1 class=\"mb-1 text-3xl font-semibold\">はじめに</h1><p class=\"text-sm text-mute\">mam を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -63,7 +63,7 @@ func Layout(f Frame) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><p class=\"text-xs text-mute\">ステップ ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><p class=\"text-sm text-mute\">ステップ ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -177,7 +177,7 @@ func progress(f Frame) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if i == f.Index {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span aria-current=\"step\" class=\"inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 font-medium text-ink\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span aria-current=\"step\" class=\"inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -332,7 +332,7 @@ func controls(f Frame) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.Current().Setup {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-xs text-mute\">「あとで」で飛ばしても、設定画面からいつでも入れられます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-sm text-mute\">「あとで」で飛ばしても、設定画面からいつでも入れられます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

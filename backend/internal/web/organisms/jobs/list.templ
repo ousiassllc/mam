@@ -108,7 +108,7 @@ templ Section(l List) {
 
 templ row(r Row) {
 	<div class="flex flex-wrap items-center gap-2">
-		<span class="text-sm font-medium text-ink" data-testid="jobs-label">{ r.Label }</span>
+		<span class="text-sm text-ink" data-testid="jobs-label">{ r.Label }</span>
 		@atoms.Badge(r.Tone, r.StateText)
 		<span class="ml-auto text-xs text-mute" data-testid="jobs-started">{ r.StartedAt }</span>
 	</div>
@@ -119,17 +119,17 @@ templ row(r Row) {
 		<div class="flex flex-col gap-1" data-testid="jobs-progress">
 			if r.Progress.Known() {
 				<progress class="h-2 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
-				<p class="break-words text-xs text-ink">{ itoa(r.Progress.Percent) }%<span class="text-mute">{ progressText(r.Progress.Text) }</span></p>
+				<p class="break-words text-sm text-ink">{ itoa(r.Progress.Percent) }%<span class="text-mute">{ progressText(r.Progress.Text) }</span></p>
 			} else {
-				<p class="break-words text-xs text-ink">{ r.Progress.Text }</p>
+				<p class="break-words text-sm text-ink">{ r.Progress.Text }</p>
 			}
 		</div>
 	}
 	if r.Error != "" {
-		<p class="break-words text-xs text-danger" data-testid="jobs-failure">{ r.Error }</p>
+		<p class="break-words text-sm text-danger" data-testid="jobs-failure">{ r.Error }</p>
 	}
 	if r.NextSteps != "" {
-		<p class="break-words text-xs text-ink" data-testid="jobs-next-steps">{ r.NextSteps }</p>
+		<p class="break-words text-sm text-ink" data-testid="jobs-next-steps">{ r.NextSteps }</p>
 	}
 	if r.Href != "" {
 		<a

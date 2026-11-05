@@ -155,14 +155,14 @@ func Panel(d Data) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"update-panel\" class=\"flex flex-col gap-3\" aria-labelledby=\"update-version\"><p class=\"text-sm\"><span class=\"text-mute\">現在のバージョン:</span> <span id=\"update-version\" class=\"font-medium\" data-testid=\"update-version\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"update-panel\" class=\"flex flex-col gap-3\" aria-labelledby=\"update-version\"><p class=\"text-sm\"><span class=\"text-mute\">現在のバージョン:</span> <span id=\"update-version\" class=\"\" data-testid=\"update-version\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(d.Version)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 67, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/updatepanel/panel.templ`, Line: 67, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -242,7 +242,7 @@ func Panel(d Data) templ.Component {
 			}
 		}
 		if !d.CheckedAt.IsZero() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-xs text-mute\" data-testid=\"update-checked-at\">最終確認: <time datetime=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-mute\" data-testid=\"update-checked-at\">最終確認: <time datetime=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

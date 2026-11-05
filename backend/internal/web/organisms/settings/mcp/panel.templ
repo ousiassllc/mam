@@ -60,9 +60,9 @@ templ bindDetails(d Data) {
 	<p class="text-sm">
 		<span class="text-mute">待ち受け中のアドレス:</span>
 		if d.Addr != "" {
-			<code class="break-all font-medium" data-testid="mcp-addr">{ "http://" + d.Addr + "/mcp" }</code>
+			<code class="break-all" data-testid="mcp-addr">{ "http://" + d.Addr + "/mcp" }</code>
 		} else {
-			<span class="font-medium" data-testid="mcp-addr">待ち受けていません</span>
+			<span class="" data-testid="mcp-addr">待ち受けていません</span>
 		}
 	</p>
 	if d.Problem != "" {

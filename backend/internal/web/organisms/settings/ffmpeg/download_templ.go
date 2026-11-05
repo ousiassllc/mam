@@ -77,7 +77,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "><p class=\"text-sm\"><span class=\"font-medium\">mam でダウンロードして入れる</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "><p class=\"text-sm\"><span class=\"\">mam でダウンロードして入れる</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -178,7 +178,7 @@ func DownloadPanel(d Download) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"></progress><p class=\"text-xs\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"></progress><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -287,7 +287,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Installed && d.UpdateAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-xs text-warning\" data-testid=\"ffmpeg-download-update\">この mam が確かめた版は ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-sm text-warning\" data-testid=\"ffmpeg-download-update\">この mam が確かめた版は ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -323,7 +323,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Broken {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-xs text-warning\" data-testid=\"ffmpeg-download-broken\">入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-warning\" data-testid=\"ffmpeg-download-broken\">入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -333,7 +333,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Installed && !d.Broken && !d.UpdateAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-xs text-mute\">置き場所: <code class=\"break-all\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-sm text-mute\">置き場所: <code class=\"break-all\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -382,7 +382,7 @@ func DownloadPanel(d Download) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-params=\"none\" hx-disabled-elt=\"find button[type=submit]\"><p class=\"mb-2 text-xs text-mute\" data-testid=\"ffmpeg-download-about\">ffmpeg と ffprobe（")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-params=\"none\" hx-disabled-elt=\"find button[type=submit]\"><p class=\"mb-2 text-sm text-mute\" data-testid=\"ffmpeg-download-about\">ffmpeg と ffprobe（")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -491,7 +491,7 @@ func DownloadPanel(d Download) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if d.Found && !d.Managed {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"mb-2 text-xs text-mute\" data-testid=\"ffmpeg-download-found-elsewhere\">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"mb-2 text-sm text-mute\" data-testid=\"ffmpeg-download-found-elsewhere\">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

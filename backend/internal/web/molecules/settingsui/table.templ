@@ -23,7 +23,7 @@ templ SettingsTable(bodyID, caption string, cols []Column) {
 			<thead class="bg-surface text-xs text-mute">
 				<tr>
 					for _, col := range cols {
-						<th scope="col" class={ "px-3 py-2 font-medium " + col.Class }>
+						<th scope="col" class={ "px-3 py-2 font-semibold " + col.Class }>
 							if col.SROnly {
 								<span class="sr-only">{ col.Header }</span>
 							} else {
@@ -68,7 +68,7 @@ templ TableRowItem(r TableRow) {
 
 // RowHead is the first cell of a row: its name, which is what the other cells and the buttons of the row are about.
 templ RowHead(class string) {
-	<th scope="row" class={ "px-3 py-3 font-medium text-ink " + class }>
+	<th scope="row" class={ "px-3 py-3 font-semibold text-ink " + class }>
 		{ children... }
 	</th>
 }

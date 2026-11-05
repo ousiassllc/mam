@@ -136,7 +136,7 @@ func inputFields(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" multiple accept=\"image/png,image/jpeg,image/webp\" class=\"peer sr-only\" data-gt-file> <label for=\"gt-upload\" class=\"inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium text-ink transition hover:bg-accent-soft peer-focus-visible:focus-ring\">ファイルを選ぶ</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" multiple accept=\"image/png,image/jpeg,image/webp\" class=\"peer sr-only\" data-gt-file> <label for=\"gt-upload\" class=\"inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs text-ink transition hover:bg-accent-soft peer-focus-visible:focus-ring\">ファイルを選ぶ</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -193,7 +193,7 @@ func inputFields(c Compose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-xs text-danger\" role=\"alert\" data-gt-error data-testid=\"gt-inputs-error\" hidden></p><p class=\"text-xs text-warning\" role=\"status\" data-gt-noref data-testid=\"gt-noref\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-danger\" role=\"alert\" data-gt-error data-testid=\"gt-inputs-error\" hidden></p><p class=\"text-sm text-warning\" role=\"status\" data-gt-noref data-testid=\"gt-noref\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

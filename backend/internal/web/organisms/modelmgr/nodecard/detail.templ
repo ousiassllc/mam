@@ -61,16 +61,16 @@ templ NodeDetail(n Node) {
 			<div class="col-span-2"><dt class="text-mute">追加されるノード（ComfyUI の /object_info で確かめるもの）</dt><dd class="break-words">{ n.Classes }</dd></div>
 		</dl>
 		if n.Limits != "" {
-			<p class="text-xs text-warning" data-testid="mm-node-limits">{ n.Limits }</p>
+			<p class="text-sm text-warning" data-testid="mm-node-limits">{ n.Limits }</p>
 		}
 		if len(n.Models) > 0 {
-			<p class="text-xs text-ink" data-testid="mm-node-models-detail">このノードを使うモデル: { modelNames(n.Models) }</p>
+			<p class="text-sm text-ink" data-testid="mm-node-models-detail">このノードを使うモデル: { modelNames(n.Models) }</p>
 		}
 		<section class="flex flex-col gap-1" aria-labelledby="mm-node-review-title">
 			<h3 id="mm-node-review-title" class="text-sm font-semibold">ソースの確認（{ n.ReviewedAt }）</h3>
-			<p class="text-xs text-ink" data-testid="mm-node-review">{ n.Review }</p>
+			<p class="text-sm text-ink" data-testid="mm-node-review">{ n.Review }</p>
 		</section>
-		<p class="text-xs text-mute">追加ノードは mam とは別のプログラムで、mam には含まれません。固定のコミットの GitHub のアーカイブを実行時に取得し、SHA-256 を確かめてから、モデルと同じ導入先（comfyui\data\custom_nodes）に展開します。pip は実行せず、同梱の Python 環境にあるパッケージだけで動くノードに限ります。</p>
+		<p class="text-sm text-mute">追加ノードは mam とは別のプログラムで、mam には含まれません。固定のコミットの GitHub のアーカイブを実行時に取得し、SHA-256 を確かめてから、モデルと同じ導入先（comfyui\data\custom_nodes）に展開します。pip は実行せず、同梱の Python 環境にあるパッケージだけで動くノードに限ります。</p>
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
 		}

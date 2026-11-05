@@ -29,9 +29,9 @@ func assetStateBadge(state string) (atoms.BadgeTone, string) {
 templ List(w Weights) {
 	if len(w.Unclear) > 0 {
 		<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid="mm-runtime-unclear">
-			<p class="font-semibold">商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(w.Unclear)) } 件あります</p>
+			<p class="">商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(w.Unclear)) } 件あります</p>
 			<p>{ joinNames(w.Unclear) }</p>
-			<p class="text-xs">配布元の表示では商用で使ってよいか確かめられていません。商用の動画に使う前に、下の一覧の注意書きと配布元を確認してください。</p>
+			<p class="text-sm">配布元の表示では商用で使ってよいか確かめられていません。商用の動画に使う前に、下の一覧の注意書きと配布元を確認してください。</p>
 		</div>
 	}
 	<section class="flex flex-col gap-2" data-testid="mm-runtime-weights" aria-labelledby="mm-runtime-weights-title">
@@ -48,7 +48,7 @@ templ item(a Asset) {
 	{{ stTone, stLabel := assetStateBadge(a.State) }}
 	<li class="flex flex-col gap-1 rounded-md border border-border bg-surface p-3" data-testid="mm-runtime-asset" data-commercial={ a.License.Commercial } data-state={ a.State }>
 		<div class="flex flex-wrap items-center gap-2">
-			<span class="font-semibold text-ink">{ a.Name }</span>
+			<span class="text-ink">{ a.Name }</span>
 			if !a.Required {
 				@atoms.Badge(atoms.BadgeNeutral, "任意")
 			}

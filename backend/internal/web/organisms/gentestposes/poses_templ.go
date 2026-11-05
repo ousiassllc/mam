@@ -72,7 +72,7 @@ func Dialog() templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog data-gt-pose-dialog aria-labelledby=\"gt-pose-title\" data-testid=\"gt-pose-dialog\" class=\"m-auto w-[min(56rem,94vw)] max-h-[88vh] overflow-y-auto rounded-lg border border-border bg-surface p-4 text-ink backdrop:bg-black/70\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-pose-title\" class=\"text-sm font-medium\">ポーズを選ぶ</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog data-gt-pose-dialog aria-labelledby=\"gt-pose-title\" data-testid=\"gt-pose-dialog\" class=\"m-auto w-[min(56rem,94vw)] max-h-[88vh] overflow-y-auto rounded-lg border border-border bg-surface p-4 text-ink backdrop:bg-black/70\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-pose-title\" class=\"text-sm font-semibold\">ポーズを選ぶ</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -192,14 +192,14 @@ func ModelNotes(n Notes) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"font-medium\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(m.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestposes/poses.templ`, Line: 61, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestposes/poses.templ`, Line: 61, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -338,14 +338,14 @@ func InstallPanel(w Wire, in Install) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, l := range in.Licenses {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(l.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestposes/poses.templ`, Line: 89, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestposes/poses.templ`, Line: 89, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -394,7 +394,7 @@ func InstallPanel(w Wire, in Install) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if in.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-xs text-danger\" role=\"alert\" data-testid=\"gt-pose-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"gt-pose-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -420,7 +420,7 @@ func InstallPanel(w Wire, in Install) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50\" data-testid=\"gt-pose-install-button\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50\" data-testid=\"gt-pose-install-button\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -877,7 +877,7 @@ func GalleryPanel(w Wire, g Gallery) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</div></fieldset></div><p class=\"text-xs text-mute\" data-testid=\"gt-pose-kinds-note\">線画は編集モデル（「ポーズだけ」の参照）向けです。深度・法線は、ControlNet のモデル（深度・法線）に制御画像として渡すマップです。 ControlNet のモデルは受け取った画像をそのまま制御画像にするので、モデルに合わせた種類を選んでください（深度のモデルには「深度」、法線のモデルには「法線」）。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</div></fieldset></div><p class=\"text-sm text-mute\" data-testid=\"gt-pose-kinds-note\">線画は編集モデル（「ポーズだけ」の参照）向けです。深度・法線は、ControlNet のモデル（深度・法線）に制御画像として渡すマップです。 ControlNet のモデルは受け取った画像をそのまま制御画像にするので、モデルに合わせた種類を選んでください（深度のモデルには「深度」、法線のモデルには「法線」）。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -937,7 +937,7 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 			templ_7745c5c3_Var43 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<section class=\"flex flex-col gap-2 rounded-md border border-border p-3 text-xs\" data-testid=\"gt-pose-adult\"><h3 class=\"text-sm font-medium text-ink\">成人向けのポーズ（sexy・二人）</h3>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<section class=\"flex flex-col gap-2 rounded-md border border-border p-3 text-xs\" data-testid=\"gt-pose-adult\"><h3 class=\"text-sm font-semibold text-ink\">成人向けのポーズ（sexy・二人）</h3>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1038,14 +1038,14 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, l := range a.Licenses {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"font-medium\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2\"><p class=\"flex flex-wrap items-center gap-1.5 text-ink\"><span class=\"\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var49 string
 				templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(l.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestposes/poses.templ`, Line: 247, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestposes/poses.templ`, Line: 247, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 				if templ_7745c5c3_Err != nil {
@@ -1116,7 +1116,7 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<span>上のライセンスと取得元を確認しました。成人向けのポーズのダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50\" data-testid=\"gt-pose-adult-install-button\" hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<span>上のライセンスと取得元を確認しました。成人向けのポーズのダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50\" data-testid=\"gt-pose-adult-install-button\" hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1252,7 +1252,7 @@ func ResultsList(w Wire, r Results) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "\" data-testid=\"gt-pose-results\" class=\"flex flex-col gap-2\"><p class=\"text-xs text-mute\" role=\"status\" aria-live=\"polite\" data-testid=\"gt-pose-count\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "\" data-testid=\"gt-pose-results\" class=\"flex flex-col gap-2\"><p class=\"text-sm text-mute\" role=\"status\" aria-live=\"polite\" data-testid=\"gt-pose-count\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1283,7 +1283,7 @@ func ResultsList(w Wire, r Results) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(r.Cards) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "<p class=\"text-xs text-mute\" data-testid=\"gt-pose-empty\">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "<p class=\"text-sm text-mute\" data-testid=\"gt-pose-empty\">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

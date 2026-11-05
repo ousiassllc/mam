@@ -54,7 +54,7 @@ templ TrialFormView(f TrialForm) {
 			@modelpick.Field(f.Model)
 		</div>
 		if f.NativeAudio {
-			<p class="text-xs text-ink" data-testid="mm-trial-audio-note">このモデルは映像と同期した音声も作ります。結果は音声つきの mp4 で、下のプレーヤーで音が出ます（ブラウザーとパソコンの音量・ミュートを確かめてください）。</p>
+			<p class="text-sm text-ink" data-testid="mm-trial-audio-note">このモデルは映像と同期した音声も作ります。結果は音声つきの mp4 で、下のプレーヤーで音が出ます（ブラウザーとパソコンの音量・ミュートを確かめてください）。</p>
 		}
 		<label class="flex flex-col gap-1 text-xs text-mute" for="mm-trial-prompt">
 			<span>プロンプト</span>
@@ -109,7 +109,7 @@ templ TrialFormView(f TrialForm) {
 				<input id="mm-trial-reference" type="file" name={ FieldReference } accept="image/png,image/jpeg,image/webp" class="text-sm"/>
 			</label>
 		}
-		<p class="text-xs text-mute">
+		<p class="text-sm text-mute">
 			ローカルのモデルなので課金はありません。結果はプロジェクトの Take やコスト台帳には入らず、
 			<a class="underline" href={ templ.SafeURL(paths.GenerationTestHistory()) }>生成テストの履歴</a>
 			に残ります。複数のモデル・プロンプトを並べて比べるなら
@@ -175,7 +175,7 @@ templ trialItem(t Trial) {
 			}
 		</div>
 		<p class="whitespace-pre-wrap break-words text-ink">{ t.Prompt }</p>
-		<p class="text-xs text-mute">
+		<p class="text-sm text-mute">
 			{ t.Detail }
 			if t.Reference {
 				／ 画像を添えて生成
@@ -193,7 +193,7 @@ templ trialItem(t Trial) {
 			} else {
 				<img class="max-h-80 max-w-full rounded" src={ t.FileURL } alt={ "試し生成の結果: " + t.Prompt }/>
 			}
-			<p class="text-xs text-mute">
+			<p class="text-sm text-mute">
 				{ t.Size }
 				／ <a class="underline" href={ templ.SafeURL(t.FileURL) } target="_blank" rel="noopener noreferrer">ファイルを開く</a>
 			</p>

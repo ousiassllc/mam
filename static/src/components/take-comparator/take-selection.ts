@@ -33,7 +33,7 @@ export function renderSelection(view: SelectionView) {
           <p class="text-xs text-mute">合計 ${totalSeconds(selection).toFixed(1)} 秒（つなぎ目はクロスフェード）</p>`
     }
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" data-action="confirm-partial" class="rounded bg-accent px-3 py-1 text-xs font-medium text-bone hover:bg-accent/85 disabled:opacity-40" ?disabled=${!view.canMerge} @click=${() => view.merge()}>
+      <button type="button" data-action="confirm-partial" class="rounded bg-accent px-3 py-1 text-xs font-semibold text-bone hover:bg-accent/85 disabled:opacity-40" ?disabled=${!view.canMerge} @click=${() => view.merge()}>
         この区間で合成
       </button>
       <button type="button" data-action="clear-selection" class="text-xs text-mute underline" ?disabled=${selection.length === 0} @click=${() => view.clear()}>選び直す</button>

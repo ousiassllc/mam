@@ -51,7 +51,7 @@ func Fields(a Section) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "><summary class=\"cursor-pointer text-sm font-medium text-ink\">詳細設定（シード・ステップ数・CFG・サンプラー）</summary><div class=\"mt-3 flex flex-col gap-3\"><div class=\"flex flex-wrap items-center gap-2\"><span class=\"text-xs text-mute\">モデルごとに受け取る項目が違います</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "><summary class=\"cursor-pointer text-sm font-semibold text-ink\">詳細設定（シード・ステップ数・CFG・サンプラー）</summary><div class=\"mt-3 flex flex-col gap-3\"><div class=\"flex flex-wrap items-center gap-2\"><span class=\"text-xs text-mute\">モデルごとに受け取る項目が違います</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -308,7 +308,7 @@ func Fields(a Section) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p class=\"text-xs text-warning\" data-gt-adv-note hidden data-testid=\"gt-advanced-note\"></p></div></details>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p class=\"text-sm text-warning\" data-gt-adv-note hidden data-testid=\"gt-advanced-note\"></p></div></details>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

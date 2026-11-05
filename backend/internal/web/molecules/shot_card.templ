@@ -217,7 +217,7 @@ templ ShotCard(d ShotCardData) {
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<a
-				class="min-w-0 flex-1 font-medium hover:underline"
+				class="min-w-0 flex-1 hover:underline"
 				href={ templ.SafeURL(shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID)) }
 				hx-get={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
 				hx-target="#scene-shot-view"
@@ -263,7 +263,7 @@ templ ShotCard(d ShotCardData) {
 				<a href={ templ.SafeURL(takeComparisonURL(d.Shot.ID)) } class="mt-1 inline-block text-xs text-mute underline hover:text-ink">Take 比較</a>
 			}
 		} else if d.Selected {
-			<p class="mt-2 text-xs text-mute">Take はまだありません。</p>
+			<p class="mt-2 text-sm text-mute">Take はまだありません。</p>
 		}
 	</li>
 }

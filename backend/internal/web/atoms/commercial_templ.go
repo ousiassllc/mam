@@ -45,7 +45,7 @@ func commercialEdge(c modellicense.Commercial) string {
 }
 
 func commercialBadgeClass(c modellicense.Commercial) string {
-	return "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(commercialTone(c)) + commercialEdge(c)
+	return "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs " + badgeColors(commercialTone(c)) + commercialEdge(c)
 }
 
 func commercialMarkClass(c modellicense.Commercial) string {

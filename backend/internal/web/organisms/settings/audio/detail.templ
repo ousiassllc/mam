@@ -43,7 +43,7 @@ templ closeButton() {
 // providerNote is the line under a choice: what the choice does not change.
 templ providerNote(p Provider) {
 	if p.Note != "" {
-		<p class="text-xs text-mute" data-testid={ "audio-note-" + p.Field }>{ p.Note }</p>
+		<p class="text-sm text-mute" data-testid={ "audio-note-" + p.Field }>{ p.Note }</p>
 	}
 }
 
@@ -83,7 +83,7 @@ templ localState(p Provider) {
 		}
 		if len(p.Local.Cautions) > 0 {
 			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-cautions-" + p.Field }>
-				<p class="font-semibold">使うときの制限（モデルカードより）</p>
+				<p class="">使うときの制限（モデルカードより）</p>
 				<ul class="list-disc pl-5">
 					for _, c := range p.Local.Cautions {
 						<li class="break-words">{ c }</li>
@@ -96,7 +96,7 @@ templ localState(p Provider) {
 		}
 		if len(p.Local.Unclear) > 0 {
 			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-unclear-" + p.Field }>
-				<p class="font-semibold">商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
+				<p class="">商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
 				<p class="break-words">{ join(p.Local.Unclear) }</p>
 				<p>商用の動画に使う前に、モデルマネージャーの一覧で出典とライセンスを確認してください。</p>
 			</div>

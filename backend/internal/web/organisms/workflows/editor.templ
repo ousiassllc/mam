@@ -24,12 +24,12 @@ templ editor(e Editor) {
 		data-testid="workflow-editor-form"
 	>
 		<h3 class="text-sm font-semibold">ワークフロー「{ e.Name }」を編集（現在 v{ itoa(e.Version) }）</h3>
-		<p class="text-xs text-mute">グラフか入力の割り当てを変えて保存すると、版が上がります（v{ itoa(e.Version + 1) }）。過去の Take は、作ったときの版の識別子を残します。名前や接続先だけの変更では版は上がりません。</p>
+		<p class="text-sm text-mute">グラフか入力の割り当てを変えて保存すると、版が上がります（v{ itoa(e.Version + 1) }）。過去の Take は、作ったときの版の識別子を残します。名前や接続先だけの変更では版は上がりません。</p>
 		if e.Error != "" {
 			<p class="text-sm text-danger" role="alert" data-testid="workflow-form-error">{ e.Error }</p>
 		}
 		for _, p := range e.Problems {
-			<p class="text-xs text-warning" data-testid="workflow-editor-problem">{ p }</p>
+			<p class="text-sm text-warning" data-testid="workflow-editor-problem">{ p }</p>
 		}
 		<input type="hidden" name={ FieldKind } value={ e.Kind }/>
 		<div class="flex flex-wrap items-end gap-3">
@@ -40,8 +40,8 @@ templ editor(e Editor) {
 			@endpointSelect("workflow-edit-endpoint", e.Endpoints, e.Endpoint)
 		</div>
 		<fieldset class="flex flex-col gap-2" data-testid="workflow-assignments">
-			<legend class="text-sm font-medium">入力の割り当て</legend>
-			<p class="text-xs text-mute">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p>
+			<legend class="text-sm">入力の割り当て</legend>
+			<p class="text-sm text-mute">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p>
 			<table class="w-full text-sm">
 				<tbody>
 					for _, s := range e.Slots {
@@ -93,7 +93,7 @@ templ editor(e Editor) {
 		</div>
 		if e.Kind == KindVideo {
 			<fieldset class="flex flex-col gap-2" data-testid="workflow-video-fields">
-				<legend class="text-sm font-medium">動画の能力</legend>
+				<legend class="text-sm">動画の能力</legend>
 				<div class="flex flex-wrap items-end gap-3">
 					<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-edit-durations">
 						<span>長さ（秒。小さい順にカンマ区切り）</span>

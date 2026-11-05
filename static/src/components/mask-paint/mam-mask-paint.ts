@@ -6,7 +6,7 @@ import { canvasSize } from './mask-size';
 type Point = { x: number; y: number };
 
 const BUTTON =
-  'inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium text-ink transition hover:bg-accent-soft ' +
+  'inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-semibold text-ink transition hover:bg-accent-soft ' +
   'focus-visible:focus-ring';
 const SELECTED = 'border-accent bg-accent-soft';
 const MAX_SIZE = 128;

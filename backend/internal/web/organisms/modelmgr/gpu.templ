@@ -31,10 +31,10 @@ templ GPUBlock(g GPU) {
 						（推定です。合っているか確認してください）
 					}
 				</p>
-				<p class="text-xs text-mute">{ g.Reason }</p>
+				<p class="text-sm text-mute">{ g.Reason }</p>
 			} else {
 				<p class="text-warning" data-testid="mm-gpu-guidance">{ g.Guidance }</p>
-				<p class="text-xs text-mute">
+				<p class="text-sm text-mute">
 					別の ComfyUI を使うなら、<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」にその URL を登録してください。
 				</p>
 			}
@@ -65,7 +65,7 @@ templ GPUBlock(g GPU) {
 					<span>GPU を使わず CPU で実行する（とても遅く、動画には向きません。対応する GPU が無いときだけの手段です）</span>
 				</label>
 			}
-			<p class="text-xs text-mute">空き { g.Free }</p>
+			<p class="text-sm text-mute">空き { g.Free }</p>
 			<div>
 				@atoms.Button(atoms.TonePrimary, "ComfyUI を導入する", templ.Attributes{"type": "submit"})
 			</div>
@@ -110,10 +110,10 @@ templ DetectBlock(d Detect) {
 			</div>
 		}
 		if d.DesktopHint {
-			<p class="text-xs text-mute">ComfyUI Desktop の設定ファイルがあります（起動していないと見つけられません）。</p>
+			<p class="text-sm text-mute">ComfyUI Desktop の設定ファイルがあります（起動していないと見つけられません）。</p>
 		}
 		if d.Recommended != "" {
-			<p class="text-xs text-ink">
+			<p class="text-sm text-ink">
 				<code>{ d.Recommended }</code> を<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」に接続先として登録すると使えます。mam はこの ComfyUI を起動も停止もしません。
 			</p>
 		}

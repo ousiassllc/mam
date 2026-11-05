@@ -16,7 +16,7 @@ templ Box(f Form) {
 				</p>
 			}
 			if f.Show {
-				<h3 class="text-sm font-medium">動画を大きくする・滑らかにする</h3>
+				<h3 class="text-sm font-semibold">動画を大きくする・滑らかにする</h3>
 				if f.Notice != "" {
 					<p class="text-sm text-success" role="status" data-testid="gt-venh-notice">{ f.Notice }</p>
 				}
@@ -36,7 +36,7 @@ templ Box(f Form) {
 // section is one operation: the form of the models of this PC, the form of the models of Topaz with the place of its quote, and the hints for what is missing.
 templ section(f Form, o Op) {
 	<section id={ o.SectionID() } class="flex flex-col gap-2 border-t border-border pt-3" data-testid={ "gt-venh-" + o.Name }>
-		<h4 class="text-sm font-medium">{ o.Title() }</h4>
+		<h4 class="text-sm font-semibold">{ o.Title() }</h4>
 		if len(o.Local) == 0 {
 			<p class="text-sm text-mute" data-testid={ "gt-venh-none-" + o.Name }>
 				この PC で使うモデルが入っていません。
@@ -55,7 +55,7 @@ templ section(f Form, o Op) {
 				<input type="hidden" name={ FieldOp } value={ o.Name }/>
 				@modelSelect(o.Local)
 				@sizeFields(o, false)
-				<p class="text-xs text-mute">この PC で実行します。無料</p>
+				<p class="text-sm text-mute">この PC で実行します。無料</p>
 				@atoms.Button(atoms.TonePrimary, o.LocalButton(), templ.Attributes{"type": "submit", "data-testid": "gt-venh-run-" + o.Name})
 			</form>
 		}
@@ -72,7 +72,7 @@ templ section(f Form, o Op) {
 				<input type="hidden" name={ FieldOp } value={ o.Name }/>
 				@modelSelect(o.Topaz)
 				@sizeFields(o, true)
-				<p class="text-xs text-mute">Topaz（有料のクラウド）で実行します。先にクレジットの見積りを取ります</p>
+				<p class="text-sm text-mute">Topaz（有料のクラウド）で実行します。先にクレジットの見積りを取ります</p>
 				@atoms.Button(atoms.ToneNeutral, "クレジットの見積りを取る", templ.Attributes{"type": "submit", "data-testid": "gt-venh-estimate-" + o.Name})
 			</form>
 			<div id={ o.QuoteID() }></div>
@@ -115,7 +115,7 @@ templ sizeFields(o Op, topaz bool) {
 				@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{"type": "number", "name": FieldFPS, "min": "15", "max": "240", "step": "any", "inputmode": "decimal"})
 			</label>
 		} else {
-			<p class="max-w-xs text-xs text-mute" data-testid="gt-venh-fps-note">
+			<p class="max-w-xs text-sm text-mute" data-testid="gt-venh-fps-note">
 				この PC のモデルは、元の fps の 2 倍か 4 倍（整数倍）にしかできず、出力は 120 fps までです。fps を自分で決めたいときや 120 fps を超えるときは Topaz のモデルを使ってください。
 			</p>
 		}

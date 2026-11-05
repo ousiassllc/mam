@@ -132,7 +132,7 @@ func RefRow(r Ref, media string, ui RefUI) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button> <span class=\"pointer-events-none absolute left-1 top-1 min-w-5 rounded bg-accent px-1.5 text-center text-xs font-medium leading-5 text-bone\" data-gt-badge></span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button> <span class=\"pointer-events-none absolute left-1 top-1 min-w-5 rounded bg-accent px-1.5 text-center text-xs leading-5 text-bone\" data-gt-badge></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

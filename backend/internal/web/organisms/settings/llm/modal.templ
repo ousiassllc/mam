@@ -51,11 +51,11 @@ templ Modal(f Form) {
 // "<role>.provider" and "<role>.model" (hidden inputs the picker sets), and "<role>.model_custom", a name typed for a model no list has, which wins when it is filled.
 templ targetFields(f Form, role, roleLabel string, t Target, m ModelField) {
 	<fieldset class="flex min-w-0 flex-col gap-2">
-		<legend class="mb-1 text-sm font-medium">{ roleLabel }</legend>
+		<legend class="mb-1 text-sm">{ roleLabel }</legend>
 		@modelpick.Field(m.Field)
-		<p class="text-xs text-mute" data-testid={ "llm-" + m.Role + "-default" }>既定: { m.Default.Summary() }</p>
+		<p class="text-sm text-mute" data-testid={ "llm-" + m.Role + "-default" }>既定: { m.Default.Summary() }</p>
 		if m.Unusable != "" {
-			<p class="text-xs text-warning" data-testid={ "llm-" + m.Role + "-unusable" }>
+			<p class="text-sm text-warning" data-testid={ "llm-" + m.Role + "-unusable" }>
 				{ m.Provider } は今は使えません: { m.Unusable }（保存はできます）
 				if m.Route != "" {
 					<a class="underline" href={ templ.SafeURL(m.Route) } data-testid={ "llm-" + m.Role + "-route" }>設定を開く</a>
@@ -63,7 +63,7 @@ templ targetFields(f Form, role, roleLabel string, t Target, m ModelField) {
 			</p>
 		}
 		if m.Unlisted {
-			<p class="text-xs text-warning" data-testid={ "llm-" + m.Role + "-model-unlisted" }>「{ m.Selected }」は { m.Provider } の一覧にありません。使えないかもしれません（保存はできます）。</p>
+			<p class="text-sm text-warning" data-testid={ "llm-" + m.Role + "-model-unlisted" }>「{ m.Selected }」は { m.Provider } の一覧にありません。使えないかもしれません（保存はできます）。</p>
 		}
 		<label class="flex min-w-0 flex-col gap-1 text-xs text-mute" for={ fieldID(m.Role, "model-custom") }>
 			<span>一覧にないモデル名を使うときだけ入力（入れると上の選択より優先）</span>

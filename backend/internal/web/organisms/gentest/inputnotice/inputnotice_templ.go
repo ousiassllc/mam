@@ -129,7 +129,7 @@ func Warnings(list []string, testid string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"><p class=\"font-medium text-warning\">使われない入力画像があります</p><ul class=\"list-disc pl-5 text-warning\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"><p class=\"text-warning\">使われない入力画像があります</p><ul class=\"list-disc pl-5 text-warning\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -152,7 +152,7 @@ func Warnings(list []string, testid string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</ul><p class=\"text-xs text-mute\">このまま実行すると、使われなかった画像は結果に記録されます。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</ul><p class=\"text-sm text-mute\">このまま実行すると、使われなかった画像は結果に記録されます。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -182,7 +182,7 @@ func UnusedBox(list []Unused) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex flex-col gap-2 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm\" role=\"status\" data-testid=\"gt-unused\"><p class=\"font-medium text-warning\">添えた画像のうち、このモデルに渡さなかった（使われなかった）ものがあります</p><ul class=\"flex flex-col gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex flex-col gap-2 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm\" role=\"status\" data-testid=\"gt-unused\"><p class=\"text-warning\">添えた画像のうち、このモデルに渡さなかった（使われなかった）ものがあります</p><ul class=\"flex flex-col gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -57,13 +57,13 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 			for _, t := range templates {
 				@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID}, "flex flex-col gap-0.5 p-3 text-sm") {
 					<span>
-						<span class="font-medium">{ t.Label }</span>
+						<span class="">{ t.Label }</span>
 						<span class="ml-1 text-xs text-mute">（{ mediaLabel(t.Media) }）</span>
 					</span>
 					<span class="text-xs text-mute">{ t.Description }</span>
 				}
 			}
-			@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""}, "p-3 text-sm font-medium") {
+			@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""}, "p-3 text-sm ") {
 				自分のワークフローを取り込む（下の欄に JSON を貼り付け）
 			}
 		</fieldset>

@@ -45,7 +45,7 @@ templ BriefForm(d BriefFormData) {
 	>
 		for _, f := range domain.RequiredBriefFields() {
 			<div>
-				<label for={ "brief-" + string(f) } class="mb-1 flex items-center gap-2 text-sm font-medium">
+				<label for={ "brief-" + string(f) } class="mb-1 flex items-center gap-2 text-sm">
 					{ f.Label() }
 					if d.Brief.Get(f) == "" && d.Brief.IsDelegated(f) {
 						@atoms.Badge(atoms.BadgeNeutral, "AIに任せる")
@@ -66,7 +66,7 @@ templ BriefForm(d BriefFormData) {
 			<p class="text-sm text-mute">スタイル（Series 正本）: { d.Brief.Style }</p>
 		}
 		<div>
-			<label for="brief-additional-instruction" class="mb-1 block text-sm font-medium">Additional Instruction</label>
+			<label for="brief-additional-instruction" class="mb-1 block text-sm">Additional Instruction</label>
 			@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
 				"id":        "brief-additional-instruction",
 				"name":      "additional_instruction",
@@ -78,7 +78,7 @@ templ BriefForm(d BriefFormData) {
 			}
 		</div>
 		<div>
-			<label for="brief-references" class="mb-1 block text-sm font-medium">References（URL、1行に1件）</label>
+			<label for="brief-references" class="mb-1 block text-sm">References（URL、1行に1件）</label>
 			@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
 				"id":   "brief-references",
 				"name": "references",
@@ -90,7 +90,7 @@ templ BriefForm(d BriefFormData) {
 		</div>
 		if len(d.Assets) > 0 {
 			<div>
-				<p class="mb-1 text-sm font-medium">Assets / References（添付）</p>
+				<p class="mb-1 text-sm">Assets / References（添付）</p>
 				@molecules.AttachmentStrip(d.Project.ID, d.Assets)
 			</div>
 		}

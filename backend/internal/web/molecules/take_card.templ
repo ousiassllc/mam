@@ -9,7 +9,7 @@ import (
 templ TakeCard(m domain.ThreadMessage) {
 	{{ body := domain.DecodeTakeCardBody(m.Content) }}
 	@MessageFrame(m) {
-		<p class="mb-2 flex items-center gap-2 font-medium">
+		<p class="mb-2 flex items-center gap-2">
 			<span>{ body.Title }</span>
 			if body.Badge != "" {
 				@atoms.Badge(atoms.BadgeInfo, body.Badge)

@@ -20,7 +20,7 @@ templ ReviewInboxList(d ReviewInboxData) {
 	<div id="review-inbox" class="flex flex-col gap-6">
 		<section class="flex flex-col gap-2 rounded-md border border-border p-3">
 			<h2 class="text-sm font-semibold">レビューパッケージを読み込む</h2>
-			<p class="text-xs text-mute">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
+			<p class="text-sm text-mute">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
 			<form class="flex flex-wrap items-center gap-2" hx-post={ paths.ReviewImport() } hx-encoding="multipart/form-data" hx-target="#review-inbox" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 				<input id="review-package-file" type="file" name="package" required accept=".zip,application/zip" aria-label="レビューパッケージ" class="text-xs"/>
 				@atoms.Button(atoms.TonePrimary, "読み込む", templ.Attributes{"type": "submit"})
@@ -32,7 +32,7 @@ templ ReviewInboxList(d ReviewInboxData) {
 		<ul class="flex flex-col gap-2">
 			for _, i := range d.Items {
 				<li class="flex flex-wrap items-center gap-3 rounded-md border border-border p-3">
-					<a class="text-sm font-medium hover:underline" href={ templ.SafeURL(paths.Review(i.ID)) }>{ i.ProjectName }</a>
+					<a class="text-sm hover:underline" href={ templ.SafeURL(paths.Review(i.ID)) }>{ i.ProjectName }</a>
 					@atoms.Badge(reviewDecisionBadge(i.Decision))
 					<span class="text-xs text-mute">{ i.Video.Resolution } / { i.Video.AspectRatio }</span>
 					<span class="text-xs text-mute">読み込み: { i.CreatedAt.Local().Format("2006-01-02 15:04") }</span>
@@ -144,7 +144,7 @@ templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 templ ReviewDecision(i domain.ReviewInbox) {
 	<section id="review-decision" class="flex flex-col gap-2 rounded-md border border-border p-3" aria-label="判定">
 		<h2 class="text-sm font-semibold">判定</h2>
-		<p class="text-xs text-mute">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
+		<p class="text-sm text-mute">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
 		<form class="flex flex-col gap-2" hx-put={ paths.Review(i.ID, "decision") } hx-target="#review-decision" hx-swap="outerHTML">
 			<label class="flex flex-col gap-1 text-xs text-mute" for="review-reviewer-name">
 				表示名（1〜50 文字）
@@ -174,7 +174,7 @@ templ ReviewDecision(i domain.ReviewInbox) {
 				<span class="text-xs text-mute">オーナーにこのファイルを渡してください。</span>
 			</div>
 		} else {
-			<p class="text-xs text-mute">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>
+			<p class="text-sm text-mute">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>
 		}
 	</section>
 }

@@ -18,7 +18,7 @@ templ PolicyForm(d PolicyFormData) {
 		hx-swap="outerHTML"
 	>
 		<div>
-			<label for="policy-quality" class="mb-1 block text-sm font-medium">Quality Policy</label>
+			<label for="policy-quality" class="mb-1 block text-sm">Quality Policy</label>
 			@atoms.Select(atoms.FieldLg, "", templ.Attributes{
 				"id":   "policy-quality",
 				"name": "quality_policy",
@@ -50,7 +50,7 @@ templ PolicyForm(d PolicyFormData) {
 
 templ numberField(d PolicyFormData, name, label, lo, hi, stored string, effective int) {
 	<div>
-		<label for={ "policy-" + name } class="mb-1 block text-sm font-medium">{ label }</label>
+		<label for={ "policy-" + name } class="mb-1 block text-sm">{ label }</label>
 		@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
 			"id":          "policy-" + name,
 			"name":        name,
@@ -82,7 +82,7 @@ templ BudgetForm(d PolicyFormData) {
 			@budgetField(d, "project_budget", "Project budget ceiling（USD）", ceilingValue(d.Policy.ProjectBudgetCeiling))
 			@budgetField(d, "shot_budget", "Shot budget ceiling（USD）", ceilingValue(d.Policy.ShotBudgetCeiling))
 		</div>
-		<p class="text-xs text-mute">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p>
+		<p class="text-sm text-mute">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p>
 		<div class="flex items-center gap-3">
 			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{
 				"type": "submit",
@@ -96,7 +96,7 @@ templ BudgetForm(d PolicyFormData) {
 
 templ budgetField(d PolicyFormData, name, label, stored string) {
 	<div>
-		<label for={ "budget-" + name } class="mb-1 block text-sm font-medium">{ label }</label>
+		<label for={ "budget-" + name } class="mb-1 block text-sm">{ label }</label>
 		@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
 			"id":          "budget-" + name,
 			"name":        name,

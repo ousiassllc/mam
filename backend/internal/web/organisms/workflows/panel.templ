@@ -47,7 +47,7 @@ templ row(w Row) {
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<div class="flex min-w-0 flex-col gap-1">
 				<span class="flex flex-wrap items-center gap-2">
-					<span class="font-medium" data-testid="workflow-name">{ w.Name }</span>
+					<span class="" data-testid="workflow-name">{ w.Name }</span>
 					@atoms.Badge(atoms.BadgeInfo, kindLabel(w.Kind))
 					<span class="text-xs text-mute" data-testid="workflow-version">v{ itoa(w.Version) }</span>
 					if !w.Ready {
@@ -94,12 +94,12 @@ templ row(w Row) {
 			</div>
 		</div>
 		for _, p := range w.Problems {
-			<p class="text-xs text-warning" data-testid="workflow-problem">{ p }</p>
+			<p class="text-sm text-warning" data-testid="workflow-problem">{ p }</p>
 		}
 		if w.Unreachable != "" {
-			<p class="text-xs text-warning" role="status" data-testid="workflow-unreachable">{ w.Unreachable }</p>
+			<p class="text-sm text-warning" role="status" data-testid="workflow-unreachable">{ w.Unreachable }</p>
 		} else if w.Checked && len(w.Warnings) == 0 {
-			<p class="text-xs text-success" role="status" data-testid="workflow-check-ok">{ w.CheckedOn } にノードもモデルもそろっています。</p>
+			<p class="text-sm text-success" role="status" data-testid="workflow-check-ok">{ w.CheckedOn } にノードもモデルもそろっています。</p>
 		}
 		if len(w.Warnings) > 0 {
 			<ul class="flex flex-col gap-1 text-xs text-warning" role="status" data-testid="workflow-warnings">
@@ -124,7 +124,7 @@ templ importJSON(d Data) {
 		data-testid="workflow-import-json"
 	>
 		<h3 class="text-sm font-semibold">API 形式の JSON から取り込む</h3>
-		<p class="text-xs text-mute">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p>
+		<p class="text-sm text-mute">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p>
 		<div class="flex flex-wrap items-end gap-3">
 			<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-import-name">
 				<span>名前</span>
@@ -150,7 +150,7 @@ templ importJSON(d Data) {
 templ importRemote(d Data) {
 	<div class="flex flex-col gap-3 rounded-md border border-border p-4" data-testid="workflow-import-remote">
 		<h3 class="text-sm font-semibold">ComfyUI から取り込む</h3>
-		<p class="text-xs text-mute">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p>
+		<p class="text-sm text-mute">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p>
 		<form
 			class="flex flex-wrap items-end gap-3"
 			hx-get={ paths.WorkflowsPart("remote") }

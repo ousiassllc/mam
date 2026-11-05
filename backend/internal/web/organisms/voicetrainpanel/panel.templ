@@ -33,7 +33,7 @@ templ Panel(d Data) {
 		}
 	>
 		<div class="flex flex-wrap items-center gap-2">
-			<p class="text-xs font-medium text-ink">声の学習（fine-tune）</p>
+			<p class="text-sm text-ink">声の学習（fine-tune）</p>
 			switch  {
 				case d.running():
 					@atoms.Badge(atoms.BadgeInfo, "学習中")
@@ -43,16 +43,16 @@ templ Panel(d Data) {
 					@atoms.Badge(atoms.BadgeNeutral, "未学習（ゼロショット）")
 			}
 		</div>
-		<p class="text-xs text-mute">この PC の GPT-SoVITS で、手持ちの音声からこの登場人物の声を学習します（参照音声だけで作るゼロショットより、声が近くなります）。学習した声は、この登場人物の声の合成に使われます（Series の正本で学習すると、以後に作る Episode に引き継がれます）。</p>
-		<p class="text-xs text-warning" role="note" data-testid="voice-train-consent-notice">声の持ち主本人の同意を得た音声だけで学習してください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりしてはいけません。mam は同意を確かめません。</p>
+		<p class="text-sm text-mute">この PC の GPT-SoVITS で、手持ちの音声からこの登場人物の声を学習します（参照音声だけで作るゼロショットより、声が近くなります）。学習した声は、この登場人物の声の合成に使われます（Series の正本で学習すると、以後に作る Episode に引き継がれます）。</p>
+		<p class="text-sm text-warning" role="note" data-testid="voice-train-consent-notice">声の持ち主本人の同意を得た音声だけで学習してください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりしてはいけません。mam は同意を確かめません。</p>
 		if !d.HasReference {
-			<p class="text-xs text-ink" data-testid="voice-train-need-reference">学習は、参照音声を設定した登場人物だけでできます。先に上の「参照音声」を設定してください。</p>
+			<p class="text-sm text-ink" data-testid="voice-train-need-reference">学習は、参照音声を設定した登場人物だけでできます。先に上の「参照音声」を設定してください。</p>
 		}
 		if d.running() {
 			<div class="flex flex-col gap-1" data-testid="voice-train-progress">
 				<progress class="h-2 w-full" max="100" value={ d.percent() } aria-label={ d.Name + " の学習の進み具合" }></progress>
-				<p class="break-words text-xs text-ink">{ d.percent() }%<span class="text-mute">· { d.Text }</span></p>
-				<p class="text-xs text-mute">学習は mam を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p>
+				<p class="break-words text-sm text-ink">{ d.percent() }%<span class="text-mute">· { d.Text }</span></p>
+				<p class="text-sm text-mute">学習は mam を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p>
 			</div>
 			@atoms.Button(atoms.ToneDanger, "学習を中止", templ.Attributes{
 				"type": "button", "hx-post": d.URL + "/cancel", "hx-target": "#" + d.DOMID, "hx-swap": "outerHTML",
@@ -63,15 +63,15 @@ templ Panel(d Data) {
 			@errorbox.Box(errorbox.Props{View: d.failure(), Lang: "ja", ID: d.DOMID})
 		}
 		if d.cancelled() {
-			<p class="text-xs text-ink" data-testid="voice-train-cancelled">学習を中止しました（途中までの結果は残していません）。</p>
+			<p class="text-sm text-ink" data-testid="voice-train-cancelled">学習を中止しました（途中までの結果は残していません）。</p>
 		}
 		if d.Trained != nil {
-			<p class="text-xs text-ink" data-testid="voice-train-trained">学習済みの声: { trained(d.Trained) }</p>
-			<p class="text-xs text-mute">プロジェクトの書き出し（バンドル）には学習した重みは入りません。取り込んだ先では、参照音声のゼロショットの声になります。</p>
+			<p class="text-sm text-ink" data-testid="voice-train-trained">学習済みの声: { trained(d.Trained) }</p>
+			<p class="text-sm text-mute">プロジェクトの書き出し（バンドル）には学習した重みは入りません。取り込んだ先では、参照音声のゼロショットの声になります。</p>
 		}
 		<div class="flex flex-col gap-1">
-			<p class="text-xs font-medium text-ink">学習に使う音声（{ itoa(len(d.Clips)) } 個・合計 { seconds(d.DataSeconds) }）</p>
-			<p class="text-xs text-mute">{ limits(d.Limits) }。話している人が 1 人だけの、ノイズの少ない録音と、その書き起こしを入れてください。</p>
+			<p class="text-sm text-ink">学習に使う音声（{ itoa(len(d.Clips)) } 個・合計 { seconds(d.DataSeconds) }）</p>
+			<p class="text-sm text-mute">{ limits(d.Limits) }。話している人が 1 人だけの、ノイズの少ない録音と、その書き起こしを入れてください。</p>
 			if len(d.Clips) > 0 {
 				<ul class="flex flex-col gap-1" data-testid="voice-train-clips">
 					for _, c := range d.Clips {
@@ -90,7 +90,7 @@ templ Panel(d Data) {
 				</ul>
 			}
 			for _, p := range d.Problems {
-				<p class="text-xs text-warning" data-testid="voice-train-problem">{ p }</p>
+				<p class="text-sm text-warning" data-testid="voice-train-problem">{ p }</p>
 			}
 		</div>
 		if !d.running() {
@@ -139,9 +139,9 @@ templ Panel(d Data) {
 				}
 			</form>
 			if d.GPUBusy {
-				<p class="text-xs text-warning">別の登場人物の学習が GPU を使っています。終わってから始めてください。</p>
+				<p class="text-sm text-warning">別の登場人物の学習が GPU を使っています。終わってから始めてください。</p>
 			}
-			<p class="text-xs text-mute" data-testid="voice-train-eta-note">見込み時間は、学習を始める前には出せません（実際の PC で測っていないため）。始めると、最初のエポックが終わった時点から、段階ごとの残り時間を表示します。VRAM の目安や学習の質は、実機では確かめていません。</p>
+			<p class="text-sm text-mute" data-testid="voice-train-eta-note">見込み時間は、学習を始める前には出せません（実際の PC で測っていないため）。始めると、最初のエポックが終わった時点から、段階ごとの残り時間を表示します。VRAM の目安や学習の質は、実機では確かめていません。</p>
 			if d.Trained != nil {
 				@atoms.Button(atoms.ToneDanger, "学習した声を削除（ゼロショットに戻す）", templ.Attributes{
 					"type": "button", "hx-delete": d.URL + "/voice", "hx-target": "#" + d.DOMID, "hx-swap": "outerHTML",

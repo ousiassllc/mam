@@ -64,7 +64,7 @@ templ LoginModal(f LoginForm) {
 			<div class="flex flex-col gap-4" data-testid="chatgpt-login-progress" { pollAttrs(f.Kind)... }>
 				@loginProgress(f.Login)
 				@modal.Actions() {
-					<p class="mr-auto text-xs text-mute">この画面を閉じても、ログインは続きます。</p>
+					<p class="mr-auto text-sm text-mute">この画面を閉じても、ログインは続きます。</p>
 					@modal.Cancel("閉じる")
 					<form hx-post={ paths.ChatGPTLoginCancel(f.Kind) } hx-target="#mam-modal-body" hx-swap="innerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
 						@atoms.Button(atoms.ToneNeutral, "ログインを中止", templ.Attributes{"type": "submit", "autofocus": true, "data-testid": "chatgpt-cancel-" + f.Kind})
@@ -90,14 +90,14 @@ templ loginStart(f LoginForm) {
 			<p class="text-sm text-ink">ブラウザは、mam が動いているこの PC で開きます。tailnet などの別のマシンから操作しているときは、先にこの PC でログインしてください（公式のログインにはデバイスコードの方式がありません）。</p>
 		} else {
 			<fieldset class="flex flex-col gap-2">
-				<legend class="mb-1 text-sm font-medium">ログインの方法</legend>
+				<legend class="mb-1 text-sm">ログインの方法</legend>
 				for i, m := range methods {
 					@pick.Card(templ.Attributes{"type": "radio", "name": "method", "value": m.Value, "checked": i == 0, "autofocus": i == 0, "data-testid": "chatgpt-login-" + f.Kind + "-" + m.Value}, "px-3 py-2 text-sm") {
 						{ m.Label }
 					}
 				}
 			</fieldset>
-			<p class="text-xs text-mute">デバイスコードは、別の端末のブラウザで ChatGPT にログインして、表示するコードを入力する方法です。</p>
+			<p class="text-sm text-mute">デバイスコードは、別の端末のブラウザで ChatGPT にログインして、表示するコードを入力する方法です。</p>
 		}
 		@modal.Actions() {
 			@modal.Cancel("キャンセル")
@@ -114,7 +114,7 @@ templ loginProgress(l *Login) {
 			<a class="break-all text-sm underline" href={ templ.SafeURL(l.VerificationURL) } target="_blank" rel="noopener noreferrer" data-testid="chatgpt-device-url">{ l.VerificationURL }</a>
 			<p class="text-sm">2. 次のコードを入力します（有効期限: { l.ExpiresAt.Local().Format("15:04") } まで）。</p>
 			<code class="w-fit rounded bg-bone px-3 py-1 text-lg tracking-widest select-all" data-testid="chatgpt-device-code">{ l.UserCode }</code>
-			<p class="text-xs text-mute">自分で始めたログインのときだけ続けてください。人やサイトに教えられたコードは入力しないでください。完了すると、この表示は自動で閉じます。</p>
+			<p class="text-sm text-mute">自分で始めたログインのときだけ続けてください。人やサイトに教えられたコードは入力しないでください。完了すると、この表示は自動で閉じます。</p>
 		</div>
 	} else {
 		<div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2" role="status" data-testid="chatgpt-browser-login">
@@ -122,7 +122,7 @@ templ loginProgress(l *Login) {
 			if l.AuthURL != "" && !l.BrowserOpened {
 				<a class="break-all text-sm underline" href={ templ.SafeURL(l.AuthURL) } target="_blank" rel="noopener noreferrer" data-testid="chatgpt-auth-url">ログインのページを開く</a>
 			}
-			<p class="text-xs text-mute">完了すると、この表示は自動で閉じます。</p>
+			<p class="text-sm text-mute">完了すると、この表示は自動で閉じます。</p>
 		</div>
 	}
 }

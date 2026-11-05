@@ -100,9 +100,9 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 						/>
 						<div class="flex items-center gap-2">
 							@atoms.Badge(atoms.BadgeNeutral, it.Kind.Label())
-							<span class="min-w-0 break-words text-sm font-medium">{ it.Name }</span>
+							<span class="min-w-0 break-words text-sm">{ it.Name }</span>
 						</div>
-						<p class="text-xs text-mute">
+						<p class="text-sm text-mute">
 							{ sourceLabel(it.Source) }
 							if len(it.Tags) > 0 {
 								· { strings.Join(it.Tags, " / ") }

@@ -222,7 +222,7 @@ func TrialFormView(f TrialForm) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.NativeAudio {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-xs text-ink\" data-testid=\"mm-trial-audio-note\">このモデルは映像と同期した音声も作ります。結果は音声つきの mp4 で、下のプレーヤーで音が出ます（ブラウザーとパソコンの音量・ミュートを確かめてください）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-sm text-ink\" data-testid=\"mm-trial-audio-note\">このモデルは映像と同期した音声も作ります。結果は音声つきの mp4 で、下のプレーヤーで音が出ます（ブラウザーとパソコンの音量・ミュートを確かめてください）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -444,7 +444,7 @@ func TrialFormView(f TrialForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<p class=\"text-xs text-mute\">ローカルのモデルなので課金はありません。結果はプロジェクトの Take やコスト台帳には入らず、 <a class=\"underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<p class=\"text-sm text-mute\">ローカルのモデルなので課金はありません。結果はプロジェクトの Take やコスト台帳には入らず、 <a class=\"underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -718,7 +718,7 @@ func trialItem(t Trial) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</p><p class=\"text-xs text-mute\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</p><p class=\"text-sm text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -844,7 +844,7 @@ func trialItem(t Trial) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, " <p class=\"text-xs text-mute\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, " <p class=\"text-sm text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

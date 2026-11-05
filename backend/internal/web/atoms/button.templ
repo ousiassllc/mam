@@ -11,7 +11,7 @@ const (
 )
 
 func buttonClass(tone ButtonTone, small bool) string {
-	base := "inline-flex items-center justify-center rounded-md font-medium transition disabled:cursor-not-allowed disabled:opacity-50 "
+	base := "inline-flex items-center justify-center rounded-md font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 "
 	if small {
 		base += "px-2 py-1 text-xs "
 	} else {

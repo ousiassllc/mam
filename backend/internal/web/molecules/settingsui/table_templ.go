@@ -63,7 +63,7 @@ func SettingsTable(bodyID, caption string, cols []Column) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, col := range cols {
-			var templ_7745c5c3_Var3 = []any{"px-3 py-2 font-medium " + col.Class}
+			var templ_7745c5c3_Var3 = []any{"px-3 py-2 font-semibold " + col.Class}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var3...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -259,7 +259,7 @@ func RowHead(class string) templ.Component {
 			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var12 = []any{"px-3 py-3 font-medium text-ink " + class}
+		var templ_7745c5c3_Var12 = []any{"px-3 py-3 font-semibold text-ink " + class}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var12...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

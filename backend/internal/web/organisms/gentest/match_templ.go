@@ -192,7 +192,7 @@ func MatchForm(c MatchCompose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-gt-match-ref></div><p class=\"text-xs text-danger\" role=\"alert\" data-gt-match-error data-testid=\"gt-match-error\" hidden></p></fieldset><div class=\"grid gap-5 sm:grid-cols-2\"><div class=\"flex flex-col gap-1 text-sm\"><span class=\"font-medium text-ink\" id=\"gt-match-model-label\">モデル</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-gt-match-ref></div><p class=\"text-sm text-danger\" role=\"alert\" data-gt-match-error data-testid=\"gt-match-error\" hidden></p></fieldset><div class=\"grid gap-5 sm:grid-cols-2\"><div class=\"flex flex-col gap-1 text-sm\"><span class=\"text-ink\" id=\"gt-match-model-label\">モデル</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -325,14 +325,14 @@ func MatchForm(c MatchCompose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "><label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-target\"><span class=\"flex items-baseline justify-between font-medium text-ink\"><span>目標の似てる度</span> <output class=\"text-2xl font-semibold tabular-nums text-ink\" for=\"gt-match-target\" data-gt-match-target-output data-testid=\"gt-match-target-output\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "><label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-target\"><span class=\"flex items-baseline justify-between text-ink\"><span>目標の似てる度</span> <output class=\"text-xl tabular-nums text-ink\" for=\"gt-match-target\" data-gt-match-target-output data-testid=\"gt-match-target-output\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(c.Target)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match.templ`, Line: 84, Col: 163}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match.templ`, Line: 84, Col: 148}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -364,7 +364,7 @@ func MatchForm(c MatchCompose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" class=\"w-full\" data-gt-match-target data-testid=\"gt-match-target\"></label><div class=\"flex flex-wrap items-end gap-4\"><label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-rounds\"><span class=\"font-medium text-ink\">上限の回数</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" class=\"w-full\" data-gt-match-target data-testid=\"gt-match-target\"></label><div class=\"flex flex-wrap items-end gap-4\"><label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-rounds\"><span class=\"text-ink\">上限の回数</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -374,7 +374,7 @@ func MatchForm(c MatchCompose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</label> <label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-max-cost\"><span class=\"font-medium text-ink\">上限の費用（USD）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</label> <label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-max-cost\"><span class=\"text-ink\">上限の費用（USD）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -384,7 +384,7 @@ func MatchForm(c MatchCompose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</label></div></div><label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-instruction\"><span class=\"font-medium text-ink\">言葉の指示（省略可）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</label></div></div><label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-instruction\"><span class=\"text-ink\">言葉の指示（省略可）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -671,7 +671,7 @@ func MatchBox(b MatchBatch) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"flex flex-col\"><span class=\"text-xs text-mute\">いちばん似ている</span> <span class=\"text-4xl font-semibold tabular-nums text-ink\" data-testid=\"gt-match-best\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"flex flex-col\"><span class=\"text-xs text-mute\">いちばん似ている</span> <span class=\"text-3xl tabular-nums text-ink\" data-testid=\"gt-match-best\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -916,14 +916,14 @@ func matchBestPrompt(b MatchBatch) templ.Component {
 			templ_7745c5c3_Var43 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div class=\"flex flex-col gap-2 rounded-lg border border-success/60 bg-success/10 p-3\" data-testid=\"gt-match-best-prompt\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><span class=\"text-sm font-medium text-success\">ベストのプロンプト（")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div class=\"flex flex-col gap-2 rounded-lg border border-success/60 bg-success/10 p-3\" data-testid=\"gt-match-best-prompt\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><span class=\"text-sm text-success\">ベストのプロンプト（")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(b.Best)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match.templ`, Line: 210, Col: 88}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match.templ`, Line: 210, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {

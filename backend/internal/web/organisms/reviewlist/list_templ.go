@@ -96,7 +96,7 @@ func List(d Data) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"review-list\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2 rounded-md border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビューを依頼する</h2><p class=\"text-xs text-mute\">選んだ書き出し（動画 1 本）とメモだけを ZIP（Review Package）にして渡します。Project の内容（Brief・チャット・Notes・参照画像・顔データ・設定）と API キーは含まれません。共有される名前は Project 名です。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"review-list\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2 rounded-md border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビューを依頼する</h2><p class=\"text-sm text-mute\">選んだ書き出し（動画 1 本）とメモだけを ZIP（Review Package）にして渡します。Project の内容（Brief・チャット・Notes・参照画像・顔データ・設定）と API キーは含まれません。共有される名前は Project 名です。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -111,7 +111,7 @@ func List(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</section><section class=\"flex flex-col gap-2 rounded-md border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビュアーの応答を取り込む</h2><p class=\"text-xs text-mute\">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</section><section class=\"flex flex-col gap-2 rounded-md border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビュアーの応答を取り込む</h2><p class=\"text-sm text-mute\">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -594,14 +594,14 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"><div class=\"flex flex-wrap items-center gap-2\"><span class=\"text-sm font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"><div class=\"flex flex-wrap items-center gap-2\"><span class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(r.ReviewerName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 193, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 193, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {

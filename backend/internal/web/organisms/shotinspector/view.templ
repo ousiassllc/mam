@@ -125,7 +125,7 @@ templ View(d Data) {
 		</header>
 		<section aria-label="AUTO / MANUAL / LOCK" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Locks</h3>
-			<p class="text-xs text-mute">AUTO は AI が決定、MANUAL はあなたの指定、LOCK は現在値を固定して AI の変更を禁止します。</p>
+			<p class="text-sm text-mute">AUTO は AI が決定、MANUAL はあなたの指定、LOCK は現在値を固定して AI の変更を禁止します。</p>
 			for _, p := range domain.ShotLockParameters() {
 				@molecules.LockToggle(locktoggles.LockToggleFor(d.Shot.ID, p, d.Locks))
 			}
@@ -152,7 +152,7 @@ templ View(d Data) {
 		<section aria-label="Generation Model" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Generation Model</h3>
 			<p class="text-sm">{ d.generationModel() }</p>
-			<p class="text-xs text-mute">モデル別のプロンプトは各 Take の「生成の経緯」で確認できます。</p>
+			<p class="text-sm text-mute">モデル別のプロンプトは各 Take の「生成の経緯」で確認できます。</p>
 		</section>
 		<section aria-label="Take 一覧" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Take List / Judge Results</h3>

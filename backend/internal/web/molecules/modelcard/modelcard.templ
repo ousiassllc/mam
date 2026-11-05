@@ -30,7 +30,7 @@ templ Item(c Card) {
 						{ modal.OpenAttrs(c.DetailURL, c.FocusKey())... }
 					>{ c.Name }</button>
 				</h3>
-				<p class="break-words text-xs text-mute" data-testid="model-meta">{ c.Meta }</p>
+				<p class="break-words text-sm text-mute" data-testid="model-meta">{ c.Meta }</p>
 			</div>
 			if c.Commercial != nil {
 				<span class="relative z-10 shrink-0">

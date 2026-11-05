@@ -481,7 +481,7 @@ func DetailSection(d Detail, inModal bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.EnglishNegative != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-xs text-mute\" data-testid=\"gt-english-negative\">ネガティブ: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-sm text-mute\" data-testid=\"gt-english-negative\">ネガティブ: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -522,7 +522,7 @@ func DetailSection(d Detail, inModal bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Negative != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"text-xs text-mute\" data-testid=\"gt-negative\">ネガティブ（")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"text-sm text-mute\" data-testid=\"gt-negative\">ネガティブ（")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

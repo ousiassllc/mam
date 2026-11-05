@@ -16,7 +16,7 @@ templ ProjectsPage(csrfToken string, projects []domain.Project, form organisms.N
 			@pagehead.Header("mam", "Autonomous Shot Studio", "")
 			@organisms.NewProjectForm(form)
 			@organisms.ProjectImportForm(organisms.ProjectImportFormData{})
-			<h2 class="text-sm font-medium text-ink">プロジェクト</h2>
+			<h2 class="text-sm font-semibold text-ink">プロジェクト</h2>
 			@organisms.ProjectList(projects)
 		}
 	}

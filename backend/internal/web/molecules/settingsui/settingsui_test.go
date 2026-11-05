@@ -37,7 +37,8 @@ func TestNav_MarksOnlyTheCurrentCategoryAndLinksAreNotBoosted(t *testing.T) {
 	current := html[strings.Index(html, `href="/settings/api-keys"`):]
 	current = current[:strings.Index(current, "</a>")]
 	assert.Contains(t, current, `aria-current="page"`)
-	assert.Contains(t, current, "font-medium")
+	assert.Contains(t, current, "bg-accent-soft", "the current one is told by its background and colour, not by a heavier weight")
+	assert.NotContains(t, current, "font-medium")
 	assert.Contains(t, current, "border-accent")
 	assert.NotContains(t, html, "text-neutral-500")
 }

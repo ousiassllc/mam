@@ -82,7 +82,7 @@ templ VersionHistoryPanel(d VersionHistoryData) {
 				}
 			</ol>
 			if d.RestoreBlocked != "" && len(d.Entries) > 1 {
-				<p class="text-xs text-mute">{ d.RestoreBlocked }</p>
+				<p class="text-sm text-mute">{ d.RestoreBlocked }</p>
 			}
 		}
 	</section>

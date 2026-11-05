@@ -98,16 +98,16 @@ templ hfRepoView(r HFRepo) {
 		if r.Gated && r.NoToken {
 			<p class="text-sm text-warning" data-testid="mm-hfi-gated-notice">gated のリポジトリです。下の「Hugging Face のトークン」を設定し、<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer">リポジトリのページ</a>でアクセスを申請してください（mam からは申請できません）。</p>
 		}
-		<p class="text-xs text-ink" data-testid="mm-hfi-terms">{ r.Terms }</p>
+		<p class="text-sm text-ink" data-testid="mm-hfi-terms">{ r.Terms }</p>
 		if r.Truncated {
-			<p class="text-xs text-warning">ファイルが多いため、一部だけ表示しています。</p>
+			<p class="text-sm text-warning">ファイルが多いため、一部だけ表示しています。</p>
 		}
 		if len(r.Groups) == 0 {
 			<p class="text-sm text-ink" data-testid="mm-hfi-nofiles">モデルのファイル（.safetensors・.gguf・.ckpt など）が見つかりません。</p>
 		}
 		for _, g := range r.Groups {
 			<section class="flex flex-col gap-1" data-testid="mm-hfi-group" data-group={ g.Name }>
-				<h4 class="break-words text-sm font-medium">{ g.Name }</h4>
+				<h4 class="break-words text-sm font-semibold">{ g.Name }</h4>
 				<ul class="flex flex-col divide-y divide-border text-xs">
 					for _, f := range g.Files {
 						@hfFileRow(r, f)

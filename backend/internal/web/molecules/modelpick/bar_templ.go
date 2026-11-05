@@ -234,7 +234,7 @@ func Count(b Filter, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-1.5 text-xs font-semibold text-bone\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-1.5 text-xs text-bone\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -17,9 +17,9 @@ templ QuoteBox(q Quote) {
 				このくらいのクレジットを使います（上限 { CreditsText(q.Credits) } クレジット）。1 クレジットの金額はプランによります
 			</p>
 			if q.CreditsMin > 0 {
-				<p class="text-xs text-mute" data-testid="gt-venh-credits-min">少なくて { CreditsText(q.CreditsMin) } クレジットです</p>
+				<p class="text-sm text-mute" data-testid="gt-venh-credits-min">少なくて { CreditsText(q.CreditsMin) } クレジットです</p>
 			}
-			<p class="text-xs text-mute" data-testid="gt-venh-output">{ q.ModelLabel }：{ q.Output }</p>
+			<p class="text-sm text-mute" data-testid="gt-venh-output">{ q.ModelLabel }：{ q.Output }</p>
 			<p class="text-xs text-mute">Powered by Topaz Labs</p>
 			<form
 				class="flex flex-col gap-2"

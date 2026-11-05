@@ -223,7 +223,7 @@ func Section(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Unused) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"llm-unused\"><summary class=\"cursor-pointer text-sm text-ink\">現在は使われません</summary><p class=\"my-2 text-xs text-mute\">これらの Agent は今のところ LLM を呼びません。割り当ては保存され、使われるようになったときに効きます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"llm-unused\"><summary class=\"cursor-pointer text-sm text-ink\">現在は使われません</summary><p class=\"my-2 text-sm text-mute\">これらの Agent は今のところ LLM を呼びません。割り当ては保存され、使われるようになったときに効きます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

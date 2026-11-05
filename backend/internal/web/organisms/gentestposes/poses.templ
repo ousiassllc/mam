@@ -26,7 +26,7 @@ templ Dialog() {
 		class="m-auto w-[min(56rem,94vw)] max-h-[88vh] overflow-y-auto rounded-lg border border-border bg-surface p-4 text-ink backdrop:bg-black/70"
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<h2 id="gt-pose-title" class="text-sm font-medium">ポーズを選ぶ</h2>
+			<h2 id="gt-pose-title" class="text-sm font-semibold">ポーズを選ぶ</h2>
 			@atoms.SmallButton(atoms.ToneNeutral, "閉じる", templ.Attributes{"type": "button", "data-gt-picker-close": ""})
 		</div>
 		<div id={ BodyID } class="mt-3 flex flex-col gap-3" data-testid="gt-pose-body" aria-live="polite">
@@ -58,7 +58,7 @@ templ ModelNotes(n Notes) {
 				for _, m := range n.Models {
 					<div class="flex flex-col gap-1" data-testid="gt-pose-model" data-commercial={ m.Answer.Answer() }>
 						<p class="flex flex-wrap items-center gap-1.5 text-ink">
-							<span class="font-medium">{ m.Label }</span>
+							<span class="">{ m.Label }</span>
 							<span class="text-mute">がポーズを読みます</span>
 							@commercial.Badge(m.Answer)
 						</p>
@@ -86,7 +86,7 @@ templ InstallPanel(w Wire, in Install) {
 			for _, l := range in.Licenses {
 				<li class="flex flex-col gap-1 rounded-md border border-border p-2">
 					<p class="flex flex-wrap items-center gap-1.5 text-ink">
-						<span class="font-medium">{ l.Name }</span>
+						<span class="">{ l.Name }</span>
 						@commercial.Badge(l.Answer)
 					</p>
 					<p class="text-mute">{ l.Summary }</p>
@@ -96,7 +96,7 @@ templ InstallPanel(w Wire, in Install) {
 		</ul>
 		@ModelNotes(in.Notes)
 		if in.Error != "" {
-			<p class="text-xs text-danger" role="alert" data-testid="gt-pose-error">{ in.Error }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="gt-pose-error">{ in.Error }</p>
 		}
 		<label class="flex items-start gap-2 text-xs text-ink">
 			@atoms.Choice("mt-0.5", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-install-accept": "", "data-testid": "gt-pose-accept"})
@@ -105,7 +105,7 @@ templ InstallPanel(w Wire, in Install) {
 		<div>
 			<button
 				type="button"
-				class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
+				class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
 				data-testid="gt-pose-install-button"
 				hx-post={ w.InstallURL }
 				hx-target={ "#" + BodyID }
@@ -200,7 +200,7 @@ templ GalleryPanel(w Wire, g Gallery) {
 				</div>
 			</fieldset>
 		</div>
-		<p class="text-xs text-mute" data-testid="gt-pose-kinds-note">
+		<p class="text-sm text-mute" data-testid="gt-pose-kinds-note">
 			線画は編集モデル（「ポーズだけ」の参照）向けです。深度・法線は、ControlNet のモデル（深度・法線）に制御画像として渡すマップです。
 			ControlNet のモデルは受け取った画像をそのまま制御画像にするので、モデルに合わせた種類を選んでください（深度のモデルには「深度」、法線のモデルには「法線」）。
 		</p>
@@ -221,7 +221,7 @@ templ GalleryPanel(w Wire, g Gallery) {
 // and nothing of the series is said): the offer to install them (another zip set, with its own agreement), or the button to remove them.
 templ adultSection(w Wire, a AdultOffer) {
 	<section class="flex flex-col gap-2 rounded-md border border-border p-3 text-xs" data-testid="gt-pose-adult">
-		<h3 class="text-sm font-medium text-ink">成人向けのポーズ（sexy・二人）</h3>
+		<h3 class="text-sm font-semibold text-ink">成人向けのポーズ（sexy・二人）</h3>
 		if a.Installed {
 			<p class="text-mute" data-testid="gt-pose-adult-installed">
 				成人向けのポーズを導入済みです。モデル管理の年齢確認をオフにすると、一覧にも出なくなります（ファイルは残ります）。
@@ -244,7 +244,7 @@ templ adultSection(w Wire, a AdultOffer) {
 				for _, l := range a.Licenses {
 					<li class="flex flex-col gap-1 rounded-md border border-border p-2">
 						<p class="flex flex-wrap items-center gap-1.5 text-ink">
-							<span class="font-medium">{ l.Name }</span>
+							<span class="">{ l.Name }</span>
 							@commercial.Badge(l.Answer)
 						</p>
 						<p class="text-mute">{ l.Summary }</p>
@@ -262,7 +262,7 @@ templ adultSection(w Wire, a AdultOffer) {
 			<div>
 				<button
 					type="button"
-					class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
+					class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-bone transition hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
 					data-testid="gt-pose-adult-install-button"
 					hx-post={ w.InstallAdultURL }
 					hx-target={ "#" + BodyID }
@@ -288,9 +288,9 @@ templ ProgressText(text string) {
 // read out: aria-live), and the cards have the shape of the picker's: static/src/components/gentest/inputs-dom.ts marks the ones that were added.
 templ ResultsList(w Wire, r Results) {
 	<div id={ ResultsID } data-testid="gt-pose-results" class="flex flex-col gap-2">
-		<p class="text-xs text-mute" role="status" aria-live="polite" data-testid="gt-pose-count">{ strconv.Itoa(len(r.Cards)) } / { strconv.Itoa(r.Total) } 種類</p>
+		<p class="text-sm text-mute" role="status" aria-live="polite" data-testid="gt-pose-count">{ strconv.Itoa(len(r.Cards)) } / { strconv.Itoa(r.Total) } 種類</p>
 		if len(r.Cards) == 0 {
-			<p class="text-xs text-mute" data-testid="gt-pose-empty">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>
+			<p class="text-sm text-mute" data-testid="gt-pose-empty">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>
 		}
 		<ul class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
 			for _, c := range r.Cards {

@@ -40,13 +40,13 @@ templ TakeTracePanel(t domain.TakeTrace) {
 		<div id={ "take-routing-" + t.Take.ID }>
 			<h4 class="text-xs font-semibold">Model routing</h4>
 			if t.Routing == nil {
-				<p class="text-xs text-mute">記録なし（Multi-model routing の導入前に作られた Take です）。</p>
+				<p class="text-sm text-mute">記録なし（Multi-model routing の導入前に作られた Take です）。</p>
 			} else {
-				<p class="flex flex-wrap items-center gap-2 text-xs">
+				<p class="flex flex-wrap items-center gap-2 text-sm">
 					@atoms.Badge(routingTone(t.Routing.Mode), routingModeLabel(t.Routing.Mode))
 					<span>{ t.Routing.Reason }</span>
 				</p>
-				<p class="text-xs text-mute">
+				<p class="text-sm text-mute">
 					{ "Quality Policy の割り当て: " + routingModelText(t.Routing.PolicyPrimary) + " → " + routingModelText(t.Routing.PolicyFallback) }
 					{ " / 使用: " + routingModelText(t.Routing.Primary) + " → " + routingModelText(t.Routing.Fallback) }
 				</p>
@@ -81,7 +81,7 @@ templ TakeTracePanel(t domain.TakeTrace) {
 					</table>
 				}
 				if t.Routing.AxisWeights != nil {
-					<p class="text-xs text-mute">{ routingAxisText(*t.Routing.AxisWeights) }</p>
+					<p class="text-sm text-mute">{ routingAxisText(*t.Routing.AxisWeights) }</p>
 				}
 			}
 		</div>

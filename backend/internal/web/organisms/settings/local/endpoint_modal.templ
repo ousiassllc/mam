@@ -45,7 +45,7 @@ templ EndpointModal(f EndpointForm, errMsg string) {
 					<span class="text-mute">名前:</span> <code>{ f.Name }</code>
 					<span class="ml-3 text-mute">種類:</span> { kindLabel(f.Kind) }
 				</p>
-				<p class="text-xs text-mute">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
+				<p class="text-sm text-mute">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
 			} else {
 				<div class="flex flex-wrap items-end gap-3">
 					<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-name">

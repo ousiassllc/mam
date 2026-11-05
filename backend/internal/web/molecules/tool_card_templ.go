@@ -299,7 +299,7 @@ func ToolCardItem(c ToolCard) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		var templ_7745c5c3_Var16 = []any{"inline-flex items-center gap-1 text-sm font-medium text-accent", templ.KV("mt-auto", !c.hasStatusBox())}
+		var templ_7745c5c3_Var16 = []any{"inline-flex items-center gap-1 text-sm text-accent", templ.KV("mt-auto", !c.hasStatusBox())}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var16...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

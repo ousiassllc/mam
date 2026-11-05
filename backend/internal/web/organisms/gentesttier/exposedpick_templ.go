@@ -52,7 +52,7 @@ func ExposedPicker(d PickerData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-4 rounded-md border border-border p-4\" aria-labelledby=\"gt-picker-title\" data-testid=\"gt-exposed-picker\"><h2 id=\"gt-picker-title\" class=\"text-sm font-medium text-ink\">画面に出す値を選ぶ</h2><p class=\"text-sm text-ink\">モデル（ComfyUI のワークフロー）のノードの入力を選ぶと、保存した入力が、こだわりの詳細設定に入力欄として出ます。生成のたびにその値がグラフに入り、結果に残ります。グラフそのものを変えるときは、ノード画面を使います。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-4 rounded-md border border-border p-4\" aria-labelledby=\"gt-picker-title\" data-testid=\"gt-exposed-picker\"><h2 id=\"gt-picker-title\" class=\"text-sm font-semibold text-ink\">画面に出す値を選ぶ</h2><p class=\"text-sm text-ink\">モデル（ComfyUI のワークフロー）のノードの入力を選ぶと、保存した入力が、こだわりの詳細設定に入力欄として出ます。生成のたびにその値がグラフに入り、結果に残ります。グラフそのものを変えるときは、ノード画面を使います。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -110,14 +110,14 @@ func ExposedPicker(d PickerData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if m.Selected {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"rounded-md bg-accent-soft px-3 py-1.5 font-medium text-ink\" aria-current=\"page\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"rounded-md bg-accent-soft px-3 py-1.5 text-ink\" aria-current=\"page\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(m.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/exposedpick.templ`, Line: 31, Col: 110}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/exposedpick.templ`, Line: 31, Col: 98}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -130,7 +130,7 @@ func ExposedPicker(d PickerData) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(m.Exposed))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/exposedpick.templ`, Line: 31, Col: 140}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/exposedpick.templ`, Line: 31, Col: 128}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -300,14 +300,14 @@ func pickerForm(d PickerData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"><h3 class=\"text-sm font-medium text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"><h3 class=\"text-sm font-semibold text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(d.ModelLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/exposedpick.templ`, Line: 49, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/exposedpick.templ`, Line: 49, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -352,7 +352,7 @@ func pickerForm(d PickerData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"text-xs text-warning\" data-testid=\"gt-picker-readonly\">このモデルの設定は、ここでは変えられません（設定ファイルが固定されています）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"text-sm text-warning\" data-testid=\"gt-picker-readonly\">このモデルの設定は、ここでは変えられません（設定ファイルが固定されています）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

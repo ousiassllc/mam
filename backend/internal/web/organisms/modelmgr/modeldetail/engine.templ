@@ -24,7 +24,7 @@ templ EngineDetail(e view.Engine) {
 			case "readonly":
 				<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-engine-readonly">
 					<p>導入先のフォルダ（{ e.Dir }）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。</p>
-					<p class="text-xs">{ e.WritableError }</p>
+					<p class="text-sm">{ e.WritableError }</p>
 				</div>
 			case "broken":
 				<p class="text-sm text-warning" role="alert" data-testid="mm-engine-broken">導入済みの記録がありますが、エンジンのファイルが見つかりません。もう一度導入してください。</p>
@@ -55,7 +55,7 @@ templ EngineDetail(e view.Engine) {
 				</div>
 			}
 		</dl>
-		<p class="text-xs text-mute">
+		<p class="text-sm text-mute">
 			ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース
 			if e.PinnedVersion != "" {
 				（{ e.PinnedVersion }）

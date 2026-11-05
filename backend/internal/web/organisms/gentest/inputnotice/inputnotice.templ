@@ -52,20 +52,20 @@ templ CheckBox(c Check) {
 // Warnings is the box of the models that leave an input image out: amber, with a heading, so that it is not read as a footnote.
 templ Warnings(list []string, testid string) {
 	<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm" role="status" data-testid={ testid }>
-		<p class="font-medium text-warning">使われない入力画像があります</p>
+		<p class="text-warning">使われない入力画像があります</p>
 		<ul class="list-disc pl-5 text-warning">
 			for _, w := range list {
 				<li>{ w }</li>
 			}
 		</ul>
-		<p class="text-xs text-mute">このまま実行すると、使われなかった画像は結果に記録されます。</p>
+		<p class="text-sm text-mute">このまま実行すると、使われなかった画像は結果に記録されます。</p>
 	</div>
 }
 
 // UnusedBox is the images of the batch that the model of a result was not given, with why (the detail of a result).
 templ UnusedBox(list []Unused) {
 	<div class="flex flex-col gap-2 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm" role="status" data-testid="gt-unused">
-		<p class="font-medium text-warning">添えた画像のうち、このモデルに渡さなかった（使われなかった）ものがあります</p>
+		<p class="text-warning">添えた画像のうち、このモデルに渡さなかった（使われなかった）ものがあります</p>
 		<ul class="flex flex-col gap-2">
 			for _, u := range list {
 				<li class="flex items-center gap-3" data-testid="gt-unused-item">

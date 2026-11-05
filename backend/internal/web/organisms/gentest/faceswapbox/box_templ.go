@@ -87,7 +87,7 @@ func Box(f Form) templ.Component {
 				}
 			}
 			if f.Show {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<h3 class=\"text-sm font-medium\">顔を入れ替える（FaceFusion）</h3>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<h3 class=\"text-sm font-semibold\">顔を入れ替える（FaceFusion）</h3>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -14,7 +14,7 @@ templ editorEditStage(d Data, oob bool) {
 	<div id="editor-edit-stage" class="contents" { oobAttr(oob)... }>
 		<section class="flex flex-col gap-2" aria-label="Rough Cut">
 			<h3 class="text-sm font-semibold">1. Rough Cut</h3>
-			<p class="text-xs text-mute">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p>
+			<p class="text-sm text-mute">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p>
 			<div class="flex items-center gap-3">
 				if d.TimelineID == "" {
 					@atoms.Button(atoms.TonePrimary, "Rough Cut を作成", templ.Attributes{
@@ -64,7 +64,7 @@ templ editorEditStage(d Data, oob bool) {
 				</div>
 			}
 			if d.PendingShots > 0 {
-				<p class="text-xs text-warning" data-pending-shots>{ fmt.Sprintf("追加 Shot を %d 件生成中です。できたら自動で編集タイムラインに入ります。", d.PendingShots) }</p>
+				<p class="text-sm text-warning" data-pending-shots>{ fmt.Sprintf("追加 Shot を %d 件生成中です。できたら自動で編集タイムラインに入ります。", d.PendingShots) }</p>
 			}
 		</section>
 	</div>
@@ -98,7 +98,7 @@ templ editorAudioStage(d Data, oob bool) {
 			</ul>
 		}
 		if !d.CanRender {
-			<p class="text-xs text-warning">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>
+			<p class="text-sm text-warning">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>
 		}
 	</div>
 }
@@ -149,10 +149,10 @@ templ editorFinalQC(d Data, oob bool) {
 			}
 		</div>
 		if d.FinalQCBlockedByTrunk() {
-			<p class="text-xs text-warning" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>
+			<p class="text-sm text-warning" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>
 		}
 		if d.BranchID != "" {
-			<p class="text-xs text-mute" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>
+			<p class="text-sm text-mute" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>
 		}
 		if d.QC != nil && len(d.QC.Findings) > 0 {
 			<ul class="flex flex-col gap-1 text-sm" data-qc-findings>
@@ -176,7 +176,7 @@ templ editorExportSubmit(d Data, oob bool) {
 templ editorExports(d Data, oob bool) {
 	<div id="editor-exports" class="contents" { oobAttr(oob)... }>
 		if d.ExportBlocker() != "" {
-			<p class="text-xs text-warning" data-export-blocked>{ d.ExportBlocker() }</p>
+			<p class="text-sm text-warning" data-export-blocked>{ d.ExportBlocker() }</p>
 		}
 		if len(d.Exports) > 0 {
 			<ul class="flex flex-col gap-1 text-sm" data-exports>

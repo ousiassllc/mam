@@ -33,10 +33,10 @@ templ Form(p Page) {
 			<input type="hidden" name="seed" value={ p.Seed } data-testid="gt-inpaint-seed"/>
 		}
 		<div class="flex flex-col gap-2">
-			<h2 class="text-sm font-medium">元画像</h2>
+			<h2 class="text-sm font-semibold">元画像</h2>
 			if p.SourceRef != "" {
 				if p.SourceLabel != "" {
-					<p class="text-xs text-mute">{ p.SourceLabel }</p>
+					<p class="text-sm text-mute">{ p.SourceLabel }</p>
 				}
 				<input type="hidden" name="ref" value={ p.SourceRef }/>
 			} else {
@@ -61,7 +61,7 @@ templ Form(p Page) {
 			<input id="gt-inpaint-denoise" name="denoise" type="range" min="0.05" max="1" step="0.05" value={ p.Denoise }/>
 		</label>
 		<fieldset class="flex flex-col gap-2">
-			<legend class="text-sm font-medium">モデル</legend>
+			<legend class="text-sm">モデル</legend>
 			if !p.HasModel {
 				<p class="text-sm text-mute" data-testid="gt-inpaint-none">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>
 			}
@@ -83,7 +83,7 @@ templ Form(p Page) {
 // Confirm is the estimate. Running posts the same inputs back.
 templ Confirm(c Box) {
 	<div id={ outID } class="flex flex-col gap-3 rounded-md border border-accent p-4" data-testid="gt-inpaint-confirm">
-		<h2 class="text-sm font-medium">実行の確認</h2>
+		<h2 class="text-sm font-semibold">実行の確認</h2>
 		<p class="text-sm">全部で <strong>{ strconv.Itoa(c.Items) }</strong> 件。見積り合計は <strong>{ c.Total }</strong> です。結果は元の画像とは別のファイルになり、元の結果へのリンクが残ります。</p>
 		if len(c.Warnings) > 0 {
 			<ul class="list-disc pl-5 text-xs text-warning">

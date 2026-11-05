@@ -34,7 +34,7 @@ templ BindModal(f BindForm) {
 			autocomplete="off"
 		>
 			<label class="flex flex-col gap-1 text-sm" for={ bindInputID }>
-				<span class="font-medium">待ち受け先の IP アドレス</span>
+				<span class="">待ち受け先の IP アドレス</span>
 				@atoms.Input(atoms.FieldMd, "w-full", bindAttrs(f))
 				<datalist id={ bindDatalist }>
 					for _, c := range f.Candidates {
@@ -87,7 +87,7 @@ templ IssueModal(f IssueForm) {
 			autocomplete="off"
 		>
 			<label class="flex flex-col gap-1 text-sm" for={ tokenNameID }>
-				<span class="font-medium">トークンの名前</span>
+				<span class="">トークンの名前</span>
 				@atoms.Input(atoms.FieldMd, "w-full", nameAttrs(f))
 			</label>
 			@modal.Actions() {
@@ -141,7 +141,7 @@ templ IssuedModal(t NewToken) {
 				autofocus
 				data-copy-source={ TokenFieldID }
 				data-copy-status={ CopyStatusID }
-				class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-ink hover:bg-accent-soft focus-visible:focus-ring"
+				class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink hover:bg-accent-soft focus-visible:focus-ring"
 			>
 				@atoms.Icon(atoms.IconCopy, "h-4 w-4")
 				コピー

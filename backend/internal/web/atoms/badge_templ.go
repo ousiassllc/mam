@@ -21,7 +21,7 @@ const (
 )
 
 func badgeClass(tone BadgeTone) string {
-	return "inline-block rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(tone)
+	return "inline-block rounded-full px-2 py-0.5 text-xs " + badgeColors(tone)
 }
 
 // badgeColors are the colours of a tone: the background and the text (the palette of spec/components/color-rules.md).
@@ -160,7 +160,7 @@ func BadgeIcon(tone BadgeTone, icon IconName, text string, attrs templ.Attribute
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var7 = []any{"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(tone)}
+		var templ_7745c5c3_Var7 = []any{"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs " + badgeColors(tone)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var7...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

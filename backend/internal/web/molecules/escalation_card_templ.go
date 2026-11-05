@@ -83,7 +83,7 @@ func EscalationCard(m domain.ThreadMessage) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><p class=\"mt-2 text-xs text-mute\">入力欄からの返信でも判断を伝えられます。</p><div class=\"mt-1\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><p class=\"mt-2 text-sm text-mute\">入力欄からの返信でも判断を伝えられます。</p><div class=\"mt-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

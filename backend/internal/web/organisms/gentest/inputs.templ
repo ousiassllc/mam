@@ -53,7 +53,7 @@ templ inputFields(c Compose) {
 			<p>画像をドロップ、またはクリック</p>
 			<div class="flex flex-wrap justify-center gap-2">
 				<input id="gt-upload" type="file" name={ FieldUpload } multiple accept="image/png,image/jpeg,image/webp" class="peer sr-only" data-gt-file/>
-				<label for="gt-upload" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium text-ink transition hover:bg-accent-soft peer-focus-visible:focus-ring">ファイルを選ぶ</label>
+				<label for="gt-upload" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs text-ink transition hover:bg-accent-soft peer-focus-visible:focus-ring">ファイルを選ぶ</label>
 				@atoms.SmallButton(atoms.ToneNeutral, "プロジェクトの画像から選ぶ", templ.Attributes{"type": "button", "data-gt-open-picker": "project"})
 				@atoms.SmallButton(atoms.ToneNeutral, "履歴の画像から選ぶ", templ.Attributes{
 					"type": "button", "data-gt-open-picker": "history", "hx-get": paths.GenerationTestPart("picker") + "?source=history",
@@ -76,8 +76,8 @@ templ inputFields(c Compose) {
 				</label>
 			</div>
 		}
-		<p class="text-xs text-danger" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>
-		<p class="text-xs text-warning" role="status" data-gt-noref data-testid="gt-noref" hidden?={ c.NoRefNotice() == "" }>{ c.NoRefNotice() }</p>
+		<p class="text-sm text-danger" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>
+		<p class="text-sm text-warning" role="status" data-gt-noref data-testid="gt-noref" hidden?={ c.NoRefNotice() == "" }>{ c.NoRefNotice() }</p>
 		if c.FaceOff != "" {
 			@facelock.OffNotice(c.FaceOff)
 		}
