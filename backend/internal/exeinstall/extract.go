@@ -7,6 +7,7 @@ package exeinstall
 import (
 	"archive/tar"
 	"archive/zip"
+	"compress/flate"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -28,6 +29,11 @@ const (
 // ErrUnsafeArchive means the archive is not what the catalog describes: a file is missing or twice in it, one is not a
 // regular file (a link, a directory), or, for an Exact extraction, there is more than the pinned files.
 var ErrUnsafeArchive = errors.New("exeinstall: the archive is not what the catalog describes")
+
+// ErrInvalidRequest means the call is wrong, whatever the archive holds: nothing to extract, a member that is not a bare name or
+// has no entry or size, or a format Extract does not know. It is a fault of the catalog or the caller, so the archive is
+// not blamed: it was not read.
+var ErrInvalidRequest = errors.New("exeinstall: invalid extraction request")
 
 // ErrMismatch means an extracted file has not the size or SHA-256 the catalog pinned.
 var ErrMismatch = errors.New("exeinstall: an extracted file does not match the catalog")
@@ -64,11 +70,11 @@ type Options struct {
 // not a member is skipped. On any failure every file written is removed again.
 func Extract(ctx context.Context, archive, format, dir string, members []Member, o Options) (err error) {
 	if len(members) == 0 {
-		return fmt.Errorf("%w: nothing to extract", ErrUnsafeArchive)
+		return fmt.Errorf("%w: nothing to extract", ErrInvalidRequest)
 	}
 	for _, m := range members {
 		if !bareName(m.Name) || m.Entry == "" || m.Size <= 0 {
-			return fmt.Errorf("%w: member %q as %q", ErrUnsafeArchive, m.Entry, m.Name)
+			return fmt.Errorf("%w: member %q as %q", ErrInvalidRequest, m.Entry, m.Name)
 		}
 	}
 	w := &writer{ctx: ctx, dir: dir, members: members, progress: o.Progress}
@@ -86,7 +92,7 @@ func Extract(ctx context.Context, archive, format, dir string, members []Member,
 	case FormatTarGz:
 		return w.tarGz(archive, o)
 	}
-	return fmt.Errorf("%w: format %q", ErrUnsafeArchive, format)
+	return fmt.Errorf("%w: format %q", ErrInvalidRequest, format)
 }
 
 // bareName reports whether name is a file name with no path in it.
@@ -153,6 +159,9 @@ func (w *writer) zip(archive string, o Options) error {
 		return fmt.Errorf("%w: %d entries", ErrUnsafeArchive, len(r.File))
 	}
 	for _, f := range r.File {
+		if err := w.ctx.Err(); err != nil {
+			return err
+		}
 		i, ok := w.index(f.Name)
 		if !ok {
 			if o.Exact {
@@ -196,12 +205,15 @@ func (w *writer) tarGz(archive string, o Options) error {
 	defer func() { _ = zr.Close() }()
 	tr := tar.NewReader(zr)
 	for {
+		if err := w.ctx.Err(); err != nil {
+			return err
+		}
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
 			return w.missing()
 		}
 		if err != nil {
-			return fmt.Errorf("%w: read an entry: %w", ErrUnsafeArchive, err)
+			return nextError(err)
 		}
 		i, ok := w.index(hdr.Name)
 		if !ok {
@@ -224,6 +236,18 @@ func (w *writer) tarGz(archive string, o Options) error {
 			return err
 		}
 	}
+}
+
+// nextError is the failure of the tar reader to move to the next entry. A stream that is cut off or not a tar.gz (a bad gzip
+// header or checksum, damaged deflate data, a bad tar header) is an archive the catalog does not describe; anything else
+// (the disk failing under the read, a cancelled context) is no verdict on the archive, so it is not ErrUnsafeArchive.
+func nextError(err error) error {
+	var corrupt flate.CorruptInputError
+	if errors.Is(err, tar.ErrHeader) || errors.Is(err, gzip.ErrHeader) || errors.Is(err, gzip.ErrChecksum) ||
+		errors.Is(err, io.ErrUnexpectedEOF) || errors.As(err, &corrupt) {
+		return fmt.Errorf("%w: read an entry: %w", ErrUnsafeArchive, err)
+	}
+	return fmt.Errorf("exeinstall: read an entry: %w", err)
 }
 
 // write copies r, the one file of the archive, to dir/m.Name and checks that it is as large as the catalog says and has its

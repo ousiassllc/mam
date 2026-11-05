@@ -35,6 +35,30 @@ func Root(goos, exe, dataDir, name string) string {
 	return RootNextToExecutable(exe, name)
 }
 
+// Archive is one file that an install downloads: where it lies once downloaded and how large it is.
+type Archive struct {
+	Path string
+	Size int64
+}
+
+// NeedBytes is the free space an install needs: the part of each archive that is not downloaded yet, and the extracted files
+// (extracted bytes in all), which exist next to the archives until these are deleted. What of an archive is in place counts as
+// downloaded: the part file of an interrupted download, or the whole archive an install that failed after the download kept
+// (it is verified again before it is used).
+func NeedBytes(extracted int64, archives ...Archive) int64 {
+	need := extracted
+	for _, a := range archives {
+		have := int64(0)
+		if st, err := os.Stat(fetch.PartPath(a.Path)); err == nil {
+			have = min(st.Size(), a.Size)
+		} else if st, err := os.Stat(a.Path); err == nil {
+			have = min(st.Size(), a.Size)
+		}
+		need += a.Size - have
+	}
+	return need
+}
+
 // CheckSpace returns a *fetch.NoSpaceError when the disk at root cannot hold need bytes. free reports the free space at a path
 // (nil: fsutil.FreeBytes).
 func CheckSpace(root string, need int64, free func(path string) (uint64, error)) error {

@@ -38,6 +38,22 @@ func TestCheckSpaceNamesWhatIsMissing(t *testing.T) {
 	require.ErrorIs(t, exeinstall.CheckSpace("r", 1, func(string) (uint64, error) { return 0, boom }), boom)
 }
 
+func TestNeedBytesCountsWhatIsDownloadedAlready(t *testing.T) {
+	dir := t.TempDir()
+	a := exeinstall.Archive{Path: filepath.Join(dir, "a.zip"), Size: 100}
+	b := exeinstall.Archive{Path: filepath.Join(dir, "b.zip"), Size: 50}
+	assert.Equal(t, int64(20+100+50), exeinstall.NeedBytes(20, a, b), "nothing is downloaded")
+
+	require.NoError(t, os.WriteFile(fetch.PartPath(a.Path), make([]byte, 30), 0o600))
+	assert.Equal(t, int64(20+70+50), exeinstall.NeedBytes(20, a, b), "a part file counts as downloaded")
+
+	require.NoError(t, os.WriteFile(b.Path, make([]byte, 50), 0o600))
+	assert.Equal(t, int64(20+70), exeinstall.NeedBytes(20, a, b), "so does an archive that was kept whole")
+
+	require.NoError(t, os.WriteFile(fetch.PartPath(a.Path), make([]byte, 500), 0o600))
+	assert.Equal(t, int64(20), exeinstall.NeedBytes(20, a, b), "never more than the archive's size")
+}
+
 func mkdirFile(t *testing.T, dir, content string) {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(dir, 0o750))

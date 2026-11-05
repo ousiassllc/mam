@@ -119,11 +119,7 @@ func (i *Installer) archivePath() string {
 // NeedBytes is the free space an install needs: the part of the archive that is not downloaded yet, and the executable
 // (which exists next to the archive until it is deleted).
 func (i *Installer) NeedBytes() int64 {
-	have := int64(0)
-	if st, err := os.Stat(fetch.PartPath(i.archivePath())); err == nil {
-		have = min(st.Size(), i.Asset.Size)
-	}
-	return i.Asset.Size - have + i.Asset.ExeSize
+	return exeinstall.NeedBytes(i.Asset.ExeSize, exeinstall.Archive{Path: i.archivePath(), Size: i.Asset.Size})
 }
 
 // CheckSpace returns a *fetch.NoSpaceError when the disk cannot hold the install.
