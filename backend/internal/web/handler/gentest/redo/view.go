@@ -15,11 +15,15 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// ActionsOf are the buttons under the picture of an image result that has a file. inpaintURL is the screen that redraws part of it; upscale says
-// the box of the enlargement is on the page. A result that is itself a redraw has its "again" in the redraw screen (its picture and mask are not
-// part of the compose form), and one that is an enlargement opens the result it enlarged with the scale and the workflow chosen.
-func ActionsOf(d record.ResultDetail, inpaintURL, redrawFrom string, upscale bool) gentestresult.Actions {
-	a := gentestresult.Actions{InpaintURL: inpaintURL, RedrawFrom: redrawFrom, Upscale: upscale}
+// ActionsOf are the buttons under the result that has a file. For an image: inpaintURL is the screen that redraws part of it; boxShown says the box of the
+// enlargement is on the page. A result that is itself a redraw has its "again" in the redraw screen (its picture and mask are not part of the compose form),
+// and one that is an enlargement opens the result it enlarged with the scale and the workflow chosen. A video has only the two of its box (大きくする・
+// 滑らかにする; boxShown says it is on the page): none of the buttons that make a picture.
+func ActionsOf(d record.ResultDetail, inpaintURL, redrawFrom string, boxShown bool) gentestresult.Actions {
+	if d.Media == gentest.MediaVideo && d.HasFile {
+		return gentestresult.Actions{VideoEnhance: boxShown}
+	}
+	a := gentestresult.Actions{InpaintURL: inpaintURL, RedrawFrom: redrawFrom, Upscale: boxShown}
 	if d.Media != gentest.MediaImage || !d.HasFile {
 		return gentestresult.Actions{}
 	}

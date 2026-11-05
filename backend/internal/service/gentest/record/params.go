@@ -44,6 +44,8 @@ type ResultParams struct {
 	Inpaint *Inpaint `json:"inpaint,omitempty"`
 	// Upscale is the enlargement the result is (a result of "make it larger"): the source and the values (Upscale). Absent: a generated result.
 	Upscale *Upscale `json:"upscale,omitempty"`
+	// VideoEnhance is the enlargement or the smoothing of a video the result is (a result of "make a video larger / smoother"): the source and the values. Absent: a generated result.
+	VideoEnhance *VideoEnhance `json:"video_enhance,omitempty"`
 	// FaceSwap is set for a result of "swap the face" (FaceFusion, an external tool): the picture it swapped into and the models. Absent: a generated result.
 	FaceSwap *FaceSwap `json:"face_swap,omitempty"`
 	// FaceSimilarity is how much the face of the result is the face of the batch's reference of the role "face" (measured when it was made).

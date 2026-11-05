@@ -49,7 +49,7 @@ func TestTheCatalogsTraitsAreConsistent(t *testing.T) {
 		case m.Adult():
 			assert.Contains(t, adultButGeneralPurpose, m.ID, m.ID+": an adult model that is not uncensored is a general-purpose one that can also make adult images")
 		}
-		if m.Kind == "upscale" {
+		if m.Kind == "upscale" || m.Kind == "video_upscale" || m.Kind == "video_interpolate" {
 			assert.Empty(t, d.Inputs, m.ID)
 			continue
 		}

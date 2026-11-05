@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/intentapply"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/recipe"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
@@ -165,7 +166,7 @@ func (h handlers) resolve(ctx context.Context, g *gentest.Service, in RequestInp
 	if in.Intent == "" {
 		return r, nil
 	}
-	r, _, err := g.ApplyIntent(ctx, r, in.Intent)
+	r, _, err := intentapply.Apply(ctx, g, r, in.Intent)
 	return r, mapError(err)
 }
 

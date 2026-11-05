@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/upscale"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 )
@@ -51,9 +52,9 @@ func generated(t *testing.T, r *mmtest.Rig) record.ResultView {
 }
 
 // enlarge starts an enlargement and waits for its batch to end.
-func enlarge(t *testing.T, r *mmtest.Rig, req gentest.UpscaleRequest) gentest.BatchStatus {
+func enlarge(t *testing.T, r *mmtest.Rig, req upscale.Request) gentest.BatchStatus {
 	t.Helper()
-	ref, err := r.Gentest.Upscale(ctx(), req)
+	ref, err := upscale.Run(ctx(), r.Gentest, req)
 	require.NoError(t, err)
 	r.Start()
 	var st gentest.BatchStatus
@@ -85,7 +86,7 @@ func TestAResultIsEnlargedByOneActionIntoAFileOfItsOwnThatRemembersItsSource(t *
 	src := generated(t, r)
 	uploads := f.Count("POST /upload/image")
 
-	st := enlarge(t, r, gentest.UpscaleRequest{ResultID: src.ID, Scale: 4, Model: upscaleModel})
+	st := enlarge(t, r, upscale.Request{ResultID: src.ID, Scale: 4, Model: upscaleModel})
 	require.Equal(t, gentest.StateSucceeded, st.State, st.Results[0].Error)
 	got := st.Results[0]
 	assert.NotEqual(t, src.BatchID, got.BatchID, "a batch of its own")
@@ -121,7 +122,7 @@ func TestAScaleOfTwoShrinksTheModelsFourTimesToHalf(t *testing.T) {
 	r := mmtest.New(t)
 	f := upscaleBox(t, r)
 	src := generated(t, r)
-	st := enlarge(t, r, gentest.UpscaleRequest{ResultID: src.ID, Scale: 2, Model: upscaleModel})
+	st := enlarge(t, r, upscale.Request{ResultID: src.ID, Scale: 2, Model: upscaleModel})
 	require.Equal(t, gentest.StateSucceeded, st.State, st.Results[0].Error)
 	assert.Equal(t, 0.5, scaleBy(t, f))
 }
@@ -130,7 +131,7 @@ func TestWithoutAModelTheFirstOneThatNeedsNoPromptIsUsed(t *testing.T) {
 	r := mmtest.New(t)
 	upscaleBox(t, r)
 	src := generated(t, r)
-	st := enlarge(t, r, gentest.UpscaleRequest{ResultID: src.ID, Scale: 2})
+	st := enlarge(t, r, upscale.Request{ResultID: src.ID, Scale: 2})
 	assert.Equal(t, upscaleModel, st.Results[0].Model, "the two-pass finish is chosen by name, not by default")
 }
 
@@ -138,7 +139,7 @@ func TestTheTwoPassFinishTakesThePromptAndTheSeedOfItsSource(t *testing.T) {
 	r := mmtest.New(t)
 	f := upscaleBox(t, r)
 	src := generated(t, r)
-	st := enlarge(t, r, gentest.UpscaleRequest{ResultID: src.ID, Scale: 2, Model: twoPassModel})
+	st := enlarge(t, r, upscale.Request{ResultID: src.ID, Scale: 2, Model: twoPassModel})
 	require.Equal(t, gentest.StateSucceeded, st.State, st.Results[0].Error)
 	got := st.Results[0]
 	assert.Equal(t, "a red fox", got.Prompt)
@@ -174,8 +175,8 @@ func TestAnEnlargementCanBeEnlargedAgain(t *testing.T) {
 	r := mmtest.New(t)
 	upscaleBox(t, r)
 	src := generated(t, r)
-	first := enlarge(t, r, gentest.UpscaleRequest{ResultID: src.ID, Scale: 2, Model: upscaleModel})
-	second := enlarge(t, r, gentest.UpscaleRequest{ResultID: first.Results[0].ID, Scale: 2, Model: upscaleModel})
+	first := enlarge(t, r, upscale.Request{ResultID: src.ID, Scale: 2, Model: upscaleModel})
+	second := enlarge(t, r, upscale.Request{ResultID: first.Results[0].ID, Scale: 2, Model: upscaleModel})
 	d, err := r.Gentest.Result(ctx(), second.Results[0].ID)
 	require.NoError(t, err)
 	assert.Equal(t, first.Results[0].ID, d.Upscale.SourceResultID)
@@ -186,16 +187,16 @@ func TestAnEnlargementThatCannotRunIsRefusedBeforeAnythingIsQueued(t *testing.T)
 	f := upscaleBox(t, r)
 	src := generated(t, r)
 	var invalid *gterr.InvalidError
-	for name, req := range map[string]gentest.UpscaleRequest{
+	for name, req := range map[string]upscale.Request{
 		"scale three":                     {ResultID: src.ID, Scale: 3, Model: upscaleModel},
 		"no scale":                        {ResultID: src.ID, Model: upscaleModel},
 		"a model that is not an upscaler": {ResultID: src.ID, Scale: 2, Model: "comfyui:box/gen"},
 		"a model that is not there":       {ResultID: src.ID, Scale: 2, Model: "comfyui:box/missing"},
 	} {
-		_, err := r.Gentest.Upscale(ctx(), req)
+		_, err := upscale.Run(ctx(), r.Gentest, req)
 		assert.ErrorAs(t, err, &invalid, name)
 	}
-	_, err := r.Gentest.Upscale(ctx(), gentest.UpscaleRequest{ResultID: "nope", Scale: 2})
+	_, err := upscale.Run(ctx(), r.Gentest, upscale.Request{ResultID: "nope", Scale: 2})
 	assert.ErrorIs(t, err, gterr.ErrNotFound)
 	batches, err := r.Gentest.Batches(ctx(), 10)
 	require.NoError(t, err)
@@ -210,7 +211,7 @@ func TestWithNoUpscaleModelInstalledTheRequestSaysSo(t *testing.T) {
 	tm, _ := localcfg.TemplateByID("txt2img-sdxl")
 	require.NoError(t, r.Models.CreateModel(ctx(), localmodels.ModelInput{Endpoint: "box", Name: "gen", Model: tm.Model}))
 	src := generated(t, r)
-	_, err := r.Gentest.Upscale(ctx(), gentest.UpscaleRequest{ResultID: src.ID, Scale: 2})
+	_, err := upscale.Run(ctx(), r.Gentest, upscale.Request{ResultID: src.ID, Scale: 2})
 	var invalid *gterr.InvalidError
 	require.ErrorAs(t, err, &invalid)
 	assert.Contains(t, invalid.Message, "モデルマネージャー")
@@ -246,14 +247,14 @@ func TestAnOutputOverTheLimitOfThePixelsIsRefused(t *testing.T) {
 	f.OutputBody = big.Bytes()
 	src := generated(t, r)
 
-	_, err := r.Gentest.Upscale(ctx(), gentest.UpscaleRequest{ResultID: src.ID, Scale: 4, Model: upscaleModel})
+	_, err := upscale.Run(ctx(), r.Gentest, upscale.Request{ResultID: src.ID, Scale: 4, Model: upscaleModel})
 	var invalid *gterr.InvalidError
 	require.ErrorAs(t, err, &invalid, "2100 x 4 squared is over 8192 x 8192")
 	assert.Contains(t, invalid.Message, "上限")
 
-	_, err = r.Gentest.Upscale(ctx(), gentest.UpscaleRequest{ResultID: src.ID, Scale: 2, Model: twoPassModel})
+	_, err = upscale.Run(ctx(), r.Gentest, upscale.Request{ResultID: src.ID, Scale: 2, Model: twoPassModel})
 	require.ErrorAs(t, err, &invalid, "the two-pass finish samples the whole picture: its limit is lower (4096 x 4096)")
 
-	_, err = r.Gentest.Upscale(ctx(), gentest.UpscaleRequest{ResultID: src.ID, Scale: 2, Model: upscaleModel})
+	_, err = upscale.Run(ctx(), r.Gentest, upscale.Request{ResultID: src.ID, Scale: 2, Model: upscaleModel})
 	assert.NoError(t, err, "2x of the same picture is within the limit of the upscale model alone")
 }

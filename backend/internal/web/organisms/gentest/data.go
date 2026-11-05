@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/videoenhancebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
@@ -298,6 +299,7 @@ type Detail struct {
 	Actions          gentestresult.Actions // the buttons under the picture (#977)
 	Used             gentestresult.Used    // the settings it was made with, folded
 	Upscale          upscalebox.Form       // "make it larger", and where an enlargement came from
+	VideoEnhance     videoenhancebox.Form  // "make the video larger / smoother", and where an enhancement came from
 	FaceSwap         faceswapbox.Form      // "swap the face" (FaceFusion), and where a swap came from
 	Answer           commercial.View
 	// CanPick says the detail was opened from a grid that has the choice for the ZIP export (the history, #932), so the modal offers it too.

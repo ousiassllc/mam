@@ -59,7 +59,7 @@ func (r Row) Key() string { return r.Node + "." + r.Input }
 func (p Picker) Models(ctx context.Context) []Model {
 	var out []Model
 	for _, m := range p.Gentest.Models(ctx, gentest.MediaImage) {
-		if lm, _, ok := p.Gentest.Adapter.Config().LocalModel(domain.ModelName(m.ID)); ok && lm.Workflow != nil && lm.Workflow.Upscale == nil {
+		if lm, _, ok := p.Gentest.Adapter.Config().LocalModel(domain.ModelName(m.ID)); ok && lm.Workflow != nil && !lm.IsUpscale() && !lm.IsVideoEnhance() {
 			out = append(out, Model{ID: m.ID, Label: m.Label, Exposed: len(lm.Workflow.ExposedInputs), Editable: p.where(m.ID) != nil})
 		}
 	}

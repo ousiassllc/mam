@@ -12,7 +12,7 @@ import (
 )
 
 // Folders are the ComfyUI model folders the catalog installs into.
-var Folders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter", "upscale_models"}
+var Folders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter", "upscale_models", "frame_interpolation"}
 
 // List is GET /models/<folder>; a folder the server does not have (404) is empty.
 func List(ctx context.Context, c *localhttp.Client, folder string) ([]string, error) {

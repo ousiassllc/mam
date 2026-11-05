@@ -13,11 +13,13 @@
 package gentest
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"path/filepath"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/cloudenhance"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/loras"
@@ -25,6 +27,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/venhance"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
@@ -105,6 +108,9 @@ type Deps struct {
 	// found) or nil; nil: always ready.
 	FaceFusion      runner.FaceSwapFunc
 	FaceFusionCheck func() error
+	Cloud           cloudenhance.Cloud  // the paid cloud of "make a video larger / smoother" (nil: local workflows only)
+	Probe           venhance.Prober     // reads the facts of the source video (nil: no ffmpeg; such an enhancement is refused)
+	VideoEstimates  *venhance.Estimates // the quotes of the cloud until confirmed (nil: a new store)
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
 	Translator *prompttranslate.Translator
 	Logger     *slog.Logger
@@ -137,6 +143,7 @@ func New(d Deps) *Service {
 	if d.Seed == nil {
 		d.Seed = randomSeed
 	}
+	d.VideoEstimates = cmp.Or(d.VideoEstimates, venhance.NewEstimates(d.Now))
 	dir := filepath.Join(d.DataDir, DirName)
 	link := projectlink.New(projectlink.Deps{
 		Repo: d.Repo, Dir: dir, AssetsDir: d.AssetsDir, Projects: d.Projects, Assets: d.Assets, References: d.References,
@@ -148,7 +155,7 @@ func New(d Deps) *Service {
 	}
 	run := runner.New(runner.Deps{
 		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, InputHidden: store.InputHidden, FaceCrop: d.FaceCrop,
-		FaceScore: d.FaceScore, FaceOff: d.FaceOff, FaceSwap: d.FaceFusion, Now: d.Now, Logger: d.Logger,
+		FaceScore: d.FaceScore, FaceOff: d.FaceOff, FaceSwap: d.FaceFusion, Cloud: d.Cloud, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
 		Deps: d, Link: link, Runner: run, Store: store, catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes, CatalogInfo: d.CatalogInfo},

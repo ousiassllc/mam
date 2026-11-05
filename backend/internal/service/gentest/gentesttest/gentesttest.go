@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/enhancevideo"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -45,10 +46,11 @@ func onePixelPNG() []byte {
 
 // Call is one request a fake backend got. Owner is the progress owner of the call's context (live.OwnerOf).
 type Call struct {
-	Model string
-	Owner string
-	Image *modeladapter.ImageRequest
-	Video *modeladapter.VideoRequest
+	Model   string
+	Owner   string
+	Image   *modeladapter.ImageRequest
+	Video   *modeladapter.VideoRequest
+	Enhance *enhancevideo.Request
 }
 
 // Fake serves every image and video model of the rig. Err, when set for a model, is the failure of its calls; Block, when set,
@@ -156,6 +158,7 @@ type Rig struct {
 	seed     int64
 	missing  map[domain.ModelName]bool
 	extra    []domain.ModelName // image models with a fake backend besides the built-in ones
+	enhance  []domain.ModelName // video enhancement workflows with a fake backend (WithVideoEnhanceModels)
 }
 
 // Option changes the Rig before the Service is made.
@@ -216,6 +219,9 @@ func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 	}
 	for _, m := range r.extra {
 		backends.Image[m] = imageBackend{f, m}
+	}
+	for _, m := range r.enhance {
+		backends.Video[m] = enhanceBackend{f, m}
 	}
 	for _, m := range []domain.ModelName{domain.ModelKling3, domain.ModelSeedance2, domain.ModelRunwayGen45, domain.ModelGeminiOmniFlash, domain.ModelKling4, domain.ModelSeedance25, domain.ModelMiniMaxH3, domain.ModelMiniMaxH3Max, domain.ModelWan3, domain.ModelLumaRay32} {
 		if !r.missing[m] {

@@ -4,10 +4,12 @@
 package media
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -78,6 +80,9 @@ type Info struct {
 	// VideoDuration is the length of the video stream alone, 0 when the container does not tell:
 	// shorter than Duration when an audio track is longer than the picture.
 	VideoDuration float64
+	// FrameCount is the number of frames of the video stream: ffprobe's nb_frames, else the frame rate times the length of the stream
+	// (rounded), 0 when neither is known.
+	FrameCount int
 }
 
 type probeOutput struct {
@@ -87,6 +92,7 @@ type probeOutput struct {
 		Duration   string `json:"duration"`
 		Width      int    `json:"width"`
 		Height     int    `json:"height"`
+		NbFrames   string `json:"nb_frames"`
 	} `json:"streams"`
 	Format struct {
 		Duration string `json:"duration"`
@@ -96,7 +102,7 @@ type probeOutput struct {
 // Probe reads the length, frame rate, size and audio of the video file.
 func (t Tools) Probe(ctx context.Context, path string) (Info, error) {
 	out, _, err := run(ctx, t.limits().probe, t.ffprobe, "-v", "error",
-		"-show_entries", "stream=codec_type,r_frame_rate,duration,width,height:format=duration", "-of", "json", path)
+		"-show_entries", "stream=codec_type,r_frame_rate,duration,nb_frames,width,height:format=duration", "-of", "json", path)
 	if err != nil {
 		return Info{}, fmt.Errorf("ffprobe %s: %w", filepath.Base(path), err)
 	}
@@ -115,6 +121,7 @@ func (t Tools) Probe(ctx context.Context, path string) (Info, error) {
 			info.FrameRate = s.RFrameRate
 			info.FPS = parseRate(s.RFrameRate)
 			info.VideoDuration, _ = strconv.ParseFloat(s.Duration, 64)
+			info.FrameCount, _ = strconv.Atoi(s.NbFrames) // "N/A" when the container has no count: 0, filled in below
 		case "audio":
 			info.HasAudio = true
 		}
@@ -130,6 +137,9 @@ func (t Tools) Probe(ctx context.Context, path string) (Info, error) {
 	}
 	if info.FPS <= 0 {
 		info.FPS, info.FrameRate = 24, "24"
+	}
+	if info.FrameCount <= 0 {
+		info.FrameCount = int(math.Round(info.FPS * cmp.Or(info.VideoDuration, info.Duration)))
 	}
 	return info, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentestface"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentestposes"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentestrecipe"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/gentestvideo"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/health"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/jobs"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/localmodels"
@@ -68,6 +69,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	runtimemodels.Register(r, svc)
 	gentest.Register(r, svc)
 	gentestface.Register(r, svc)
+	gentestvideo.Register(r, svc)
 	gentestrecipe.Register(r, svc)
 	gentestposes.Register(r, svc)
 	chatgptauth.Register(r, svc)

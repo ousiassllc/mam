@@ -146,6 +146,9 @@ func classify(err error) *apperr.Error {
 	case errors.As(err, &lost):
 		return apperr.New(apperr.CodeConnectionFailed)
 	}
+	if e := topazFailure(err); e != nil {
+		return e
+	}
 	if e := byMessage(err.Error()); e != nil {
 		return e
 	}
@@ -296,6 +299,8 @@ func byStatus(status int) *apperr.Error {
 	switch {
 	case status == http.StatusUnauthorized, status == http.StatusForbidden:
 		return apperr.New(apperr.CodeAuthFailed).With("http", "{{http.status}}").With("status", st)
+	case status == http.StatusPaymentRequired:
+		return apperr.New(apperr.CodeCreditsInsufficient)
 	case status == http.StatusNotFound, status == http.StatusGone:
 		return apperr.New(apperr.CodeRemoteNotFound)
 	case status == http.StatusRequestTimeout, status == http.StatusGatewayTimeout:

@@ -49,6 +49,7 @@ func TestProber_CallsTheFreeReadOnlyEndpointWithTheKeyInTheProvidersHeader(t *te
 		{"flux", "/v1/credits", "X-Key", secret},
 		{"runway", "/v1/organization", "Authorization", "Bearer " + secret},
 		{"elevenlabs", "/v1/user/subscription", "Xi-Api-Key", secret},
+		{"topaz", "/account/v1/credits/balance", "X-Api-Key", secret},
 	}
 	for _, tc := range tests {
 		t.Run(tc.provider, func(t *testing.T) {
@@ -126,7 +127,7 @@ func TestProber_DoesNotFollowARedirectToAnotherHost(t *testing.T) {
 }
 
 func TestSupported_OnlyTheProvidersWithAFreeReadOnlyCall(t *testing.T) {
-	for _, p := range []string{"anthropic", "openai", "google", "flux", "runway", "elevenlabs"} {
+	for _, p := range []string{"anthropic", "openai", "google", "flux", "runway", "elevenlabs", "topaz"} {
 		assert.True(t, probe.Supported(p), p)
 	}
 	for _, p := range []string{"kling", "seedance", "synclabs", "typesafe", ""} {

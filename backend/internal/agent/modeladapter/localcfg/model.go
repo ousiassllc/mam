@@ -140,7 +140,9 @@ func ValidateModel(key string, m Model, endpoints map[string]Endpoint) []error {
 		errs = append(errs, validateCompatModel(where, m)...)
 	}
 	if m.Media == MediaVideo {
-		errs = append(errs, validateVideoSettings(where, m.Video)...)
+		if !m.IsVideoEnhance() { // an enhancement workflow has no clip length or size of its own (the source video has)
+			errs = append(errs, validateVideoSettings(where, m.Video)...)
+		}
 	} else if m.Video != nil {
 		errs = append(errs, fmt.Errorf("%s: video settings belong to a video model", where))
 	}
@@ -193,12 +195,12 @@ func validateVideoSettings(where string, v *VideoSettings) []error {
 }
 
 // IDs are the identifiers (ID) of the models of the given media, in key order. A model whose endpoint is
-// not registered is left out, and so is an upscale workflow: it is no model to give a prompt to (the generation test lists those apart).
+// not registered is left out, and so are the upscale and the video enhancement workflows: they are no model to give a prompt to (the generation test lists those apart).
 func IDs(endpoints map[string]Endpoint, models map[string]Model, media Media) []string {
 	var ids []string
 	for _, key := range slices.Sorted(maps.Keys(models)) {
 		endpoint, name, ok := SplitKey(key)
-		if ep, registered := endpoints[endpoint]; ok && registered && models[key].Media == media && !models[key].IsUpscale() {
+		if ep, registered := endpoints[endpoint]; ok && registered && models[key].Media == media && !models[key].IsUpscale() && !models[key].IsVideoEnhance() {
 			ids = append(ids, ID(ep.Kind, endpoint, name))
 		}
 	}

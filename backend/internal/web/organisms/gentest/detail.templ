@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/videoenhancebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -107,6 +108,7 @@ templ DetailSection(d Detail, inModal bool) {
 			</form>
 		</div>
 		@upscalebox.Box(d.Upscale)
+		@videoenhancebox.Box(d.VideoEnhance)
 		@faceswapbox.Box(d.FaceSwap)
 		if d.English != "" || d.EnglishNegative != "" {
 			<div class="flex flex-col gap-1" data-testid="gt-english">

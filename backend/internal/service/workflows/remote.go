@@ -110,7 +110,8 @@ var folderOf = map[[2]string]string{
 	{"TripleCLIPLoader", "clip_name1"}: "text_encoders", {"CLIPVisionLoader", "clip_name"}: "clip_vision",
 	{"LoraLoader", "lora_name"}: "loras", {"LoraLoaderModelOnly", "lora_name"}: "loras",
 	{"ControlNetLoader", "control_net_name"}: "controlnet", {"UpscaleModelLoader", "model_name"}: "upscale_models",
-	{"StyleModelLoader", "style_model_name"}: "style_models",
+	{"FrameInterpolationModelLoader", "model_name"}: "frame_interpolation",
+	{"StyleModelLoader", "style_model_name"}:        "style_models",
 }
 
 // modelFolder is GET /models/<folder>: the files the server has in the folder.

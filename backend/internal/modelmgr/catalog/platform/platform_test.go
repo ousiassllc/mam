@@ -104,6 +104,10 @@ func TestCatalogColumns(t *testing.T) {
 			assert.Equal(t, []string{platform.OSDarwin}, m.Unsupported.OS, m.ID)
 			assert.Contains(t, m.Unsupported.Source, "#10292", m.ID)
 		case m.ID == "ltx-2.5-22b-distilled-nvfp4":
+		case m.ID == "seedvr2-3b-fp8": // the fp8 file has F8_E4M3 tensors (read from the header of the pinned file, Issue #1031); the report is the same MPS fp8 one
+			require.NotNil(t, m.Unsupported, m.ID)
+			assert.Equal(t, []string{platform.OSDarwin}, m.Unsupported.OS, m.ID)
+			assert.Contains(t, m.Unsupported.Source, "#10292", m.ID)
 		case m.ID == "ltx-2.3-22b-distilled": // fp8 checkpoint and fp4 text encoder (Issue #1014); the report is the same MPS fp8 one, the F8 tensors are read from the file headers
 			require.NotNil(t, m.Unsupported, m.ID)
 			assert.Equal(t, []string{platform.OSDarwin}, m.Unsupported.OS, m.ID)

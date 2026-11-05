@@ -16,7 +16,7 @@
 
 | キー | 型 | 意味 |
 |---|---|---|
-| `kinds` | `image` / `video` / `image_edit` / `upscale` / `llm` / `audio` の一覧 | 種類（**どれか**）。`image_edit` は画像モデルのうち入力に `edit` か `inpaint` を持つもの（画像モデルは `image` でもある） |
+| `kinds` | `image` / `video` / `image_edit` / `upscale` / `video_upscale` / `video_interpolate` / `llm` / `audio` の一覧 | 種類（**どれか**）。`image_edit` は画像モデルのうち入力に `edit` か `inpaint` を持つもの（画像モデルは `image` でもある）。`video_upscale`・`video_interpolate` は動画を大きくする・滑らかにするモデル（Issue #1031。[model-manager.md](model-manager.md) §4.7） |
 | `inputs` | `traits.Input` の一覧 | 入力（指定した**すべて**を持つモデル）。§3.2 |
 | `adult` | `all` / `general_only` / `adult_only` | 成人向け（`content_rating`）。三値。`all` は条件なし |
 | `uncensored` | `all` / `censored_only` / `uncensored_only` | 非検閲（`traits.uncensored`）。成人向けとは別の軸 |

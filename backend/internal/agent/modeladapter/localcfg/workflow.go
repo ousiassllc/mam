@@ -94,6 +94,8 @@ type Workflow struct {
 	// SpeedModes are the ways a workflow can sample (SpeedMode); the first is the graph as it stands and the default. Empty: one way.
 	SpeedModes []SpeedMode `json:"speed_modes,omitempty"`
 	Upscale    *Upscale    `json:"upscale,omitempty"` // marks a workflow that enlarges a picture; nil: one that makes pictures
+	// VideoEnhance marks a workflow that makes an existing video larger or smoother (Issue #1031); nil: one that makes pictures or videos.
+	VideoEnhance *VideoEnhance `json:"video_enhance,omitempty"`
 	// RequiresNodes are the IDs of the custom nodes (the allowlist, modelmgr/nodecat) the graph uses besides the core nodes. Empty: core only.
 	RequiresNodes []string `json:"requires_nodes,omitempty"`
 	// QualityPresets are the steps and cfg of the fast and the high quality of the screen's "品質" buttons (Issue #977); nil: the model has no quality to choose.
@@ -296,7 +298,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 			errs = append(errs, fmt.Errorf("%s: optional applies to reference_image only", at))
 		}
 	}
-	if !w.Has(ParamPrompt) && w.Upscale == nil { // an upscale workflow without sampling has no prompt (validateUpscale)
+	if !w.Has(ParamPrompt) && w.Upscale == nil && w.VideoEnhance == nil { // an upscale or video enhancement workflow without sampling has no prompt (validateUpscale, validateVideoEnhance)
 		errs = append(errs, fmt.Errorf("%s: no assignment of the prompt", where))
 	}
 	if _, ok := g[w.OutputNode]; !ok {
@@ -308,7 +310,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 	errs = append(errs, validateRequiresNodes(where, w)...)
 	errs = append(errs, validateSampling(where, w, g)...)
 	errs = append(errs, validateExposed(where, w, g)...)
-	errs = append(errs, append(validatePromptWeight(where, w), validateUpscale(where, media, w, g)...)...)
+	errs = append(errs, append(validatePromptWeight(where, w), append(validateUpscale(where, media, w, g), validateVideoEnhance(where, media, w, g)...)...)...)
 	if w.FPS < 0 || w.FPS > 240 || w.FramesStep < 0 || w.FramesStep > 64 || w.SizeMultiple < 0 || w.SizeMultiple > 128 {
 		errs = append(errs, fmt.Errorf("%s: fps must be within 0-240, frames_step within 0-64 and size_multiple within 0-128", where))
 	}

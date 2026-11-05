@@ -1,0 +1,56 @@
+{
+ "id": "seedvr2-3b-fp8",
+ "name": "SeedVR2 3B（動画の超解像・fp8）",
+ "kind": "video_upscale",
+ "tier": "standard",
+ "content_rating": "general",
+ "traits": {"uncensored": false},
+ "description": "できあがった動画を大きくするモデル（ByteDance-Seed の SeedVR2 3B。1 ステップの拡散で、時間方向の一貫性がある）。生成テストの動画の結果から「大きくする」で使う（2 倍、480p を 720p / 1080p へ）。拡散モデルは fp8（約 3.4 GB）と共有 VAE（約 0.5 GB）で合計約 3.9 GB。VAE はタイルで処理し、時間方向は ComfyUI の SeedVR2TemporalChunk（auto）で空き VRAM に合わせて分けるので、16GB の GPU を見込んだ作り。プロンプトを渡す動画モデルではない。注意: 16GB で 5 秒・480p・81 コマが収まることは見込みで、mam の実機では未確認。",
+ "files": [
+  {
+   "name": "seedvr2_3b_fp8_e4m3fn.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/df48879708206a403d2a61acd55578c2e80fd233/diffusion_models/seedvr2_3b_fp8_e4m3fn.safetensors",
+   "sha256": "a0226eaa2c3e6f47ae5ce83225120f16479da890ced1a3bc32b1a14619787914",
+   "size": 3392794232
+  },
+  {
+   "name": "seedvr2_ema_vae_fp16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/df48879708206a403d2a61acd55578c2e80fd233/vae/seedvr2_ema_vae_fp16.safetensors",
+   "sha256": "20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1",
+   "size": 501324814
+  }
+ ],
+ "vram": {
+  "min_gb": 12,
+  "recommended_gb": 16,
+  "limits": "12GB では解像度と長さを小さくする（出力は 1 コマ 1080p まで、長い動画は分けて処理する）。16GB 未満の GPU で動くかは確かめていない",
+  "source": "出典: Issue #1031 の調査（公式ノード README・第三者測定）・mam 実機は未確認。公式ノードの README は 12〜16GB に fp8 とタイルを勧める。約 6.5GB という数字は別の実装（numz の ComfyUI-SeedVR2_VideoUpscaler。BlockSwap を使い、batch 5・480p から 1080p）の第三者の報告で、mam が使う ComfyUI 本体のノードの組み合わせでの測定ではない（本体のノードでの使用量は未測定）。mam はこの数字を使わず、余裕を見て 12GB を下限の見積もりにした（min_gb は見積もりのまま）",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0（SeedVR2。モデルカードの license: apache-2.0）",
+  "url": "https://huggingface.co/ByteDance-Seed/SeedVR2-3B",
+  "summary": "配布元 ByteDance-Seed/SeedVR2-3B のモデルカードに license: apache-2.0 があり、本文にも「SeedVR and SeedVR2 are licensed under the Apache 2.0」とある。ComfyUI 用の再配布 Comfy-Org/SeedVR2 のカードも license: apache-2.0。商用を含めて使える。著作権表示とライセンス文を保つ。（2026-11-04 に両方のカードを確認）",
+  "commercial": "yes",
+  "checked_at": "2026-11-04"
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応）。このモデルのファイル seedvr2_3b_fp8_e4m3fn.safetensors に F8_E4M3 のテンソルが 635 個あることは、固定コミットの safetensors のヘッダーで確認（2026-11-05）。Mac の実機では未確認"
+ },
+ "workflows": [
+  {
+   "name": "video-upscale-seedvr2-3b",
+   "template": "video-upscale-seedvr2-3b"
+  }
+ ]
+}

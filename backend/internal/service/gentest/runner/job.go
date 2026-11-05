@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/cloudenhance"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -62,8 +63,7 @@ type Deps struct {
 	// InputHidden says a stored input image is out of sight (the age gate: history.Store.InputHidden): a batch that was queued with one is not run
 	// once the gate is closed. May be nil.
 	InputHidden func(ctx context.Context, in gentestrepo.Input) bool
-	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See
-	// FaceCropFunc.
+	// FaceCrop cuts the face out of a reference of the role "face" for a model that reads it (nil: the picture goes as it is). See FaceCropFunc.
 	FaceCrop FaceCropFunc
 	// FaceScore measures the face of a result against the reference of the role "face" (nil: no number). See FaceScoreFunc.
 	FaceScore FaceScoreFunc
@@ -73,6 +73,7 @@ type Deps struct {
 	FaceOff FaceOffFunc
 	// FaceSwap runs FaceFusion for a result of "swap the face" (nil: such a result fails). See FaceSwapFunc.
 	FaceSwap FaceSwapFunc
+	Cloud    cloudenhance.Cloud // the paid cloud of "make a video larger / smoother" (nil: such a result fails)
 	Now      func() time.Time
 	Logger   *slog.Logger
 }

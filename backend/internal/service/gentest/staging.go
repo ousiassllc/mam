@@ -27,6 +27,9 @@ const (
 // inputTypes are the image types a batch takes, with the extension of the stored file.
 var inputTypes = map[string]string{"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 
+// InputExt is the extension of the stored file of an image type a batch takes ("" for any other).
+func InputExt(mime string) string { return inputTypes[mime] }
+
 var stagedPattern = regexp.MustCompile(`^[0-9A-Za-z-]{8,64}(\.png|\.jpg|\.webp)$`)
 
 // StageReference stores an uploaded image until a batch takes it and returns the staged id (RefInput.ID with Source

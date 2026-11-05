@@ -23,7 +23,7 @@ func TestSettings_APIKeysAreSavedAndDeletedWithoutEverBeingShown(t *testing.T) {
 
 	// The API key category lists every provider as unset and offers the modal that sets the key.
 	body := a.get("/settings/api-keys", false).Body.String()
-	for _, p := range []string{"anthropic", "openai", "google", "kling", "seedance", "runway", "elevenlabs", "synclabs", "typesafe"} {
+	for _, p := range []string{"anthropic", "openai", "google", "kling", "seedance", "runway", "elevenlabs", "synclabs", "typesafe", "topaz"} {
 		assert.Contains(t, body, `hx-get="/settings/credentials/`+p+`/edit"`, p)
 	}
 	assert.Contains(t, row(body, "kling"), "未設定")

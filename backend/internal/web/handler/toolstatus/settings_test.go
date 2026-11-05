@@ -2,6 +2,7 @@ package toolstatus_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -35,14 +36,14 @@ func TestSettingsSource_CountsTheKeysThatAreSet(t *testing.T) {
 	keys := credentialtest.New()
 	creds := service.NewCredentialService(keys)
 	svc := toolstatus.Services{Credentials: creds}
-	assert.Contains(t, text(t, svc), "API キー 0 / 14 件")
+	assert.Contains(t, text(t, svc), fmt.Sprintf("API キー 0 / %d 件", len(service.CredentialProviders)))
 	assert.NotContains(t, text(t, svc), "ChatGPT", "no ChatGPT service: no second line")
 
 	require.NoError(t, creds.Save("anthropic", "sk-test-fake-1"))
 	require.NoError(t, creds.Save("openai", "sk-test-fake-2"))
 
 	got := text(t, svc)
-	assert.Contains(t, got, "API キー 2 / 14 件")
+	assert.Contains(t, got, fmt.Sprintf("API キー 2 / %d 件", len(service.CredentialProviders)))
 	assert.NotContains(t, got, "sk-test", "a key never reaches the page")
 }
 

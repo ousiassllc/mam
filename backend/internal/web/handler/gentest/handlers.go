@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/posescreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/recipescreen"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/venhancescreen"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -58,6 +59,7 @@ func Register(engine *gin.Engine, svc *gentest.Service) {
 	inpaintscreen.Register(engine, svc)
 	exportscreen.Register(engine, svc)
 	faceswapscreen.Register(engine, svc) // #995
+	venhancescreen.Register(engine, svc) // #1031
 
 	engine.GET(paths.GenerationTestPrompts(), h.Prompts)
 	engine.DELETE(paths.GenerationTestPart("prompts", ":id"), h.DeletePrompt)

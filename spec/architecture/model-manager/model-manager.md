@@ -545,6 +545,24 @@ GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒
 | `upscale-nomos-webphoto-esrgan`（`upscale-nomos-webphoto-esrgan`。4 倍） | — | — | — | — |
 | `upscale-2pass-sdxl-span`（`upscale-2pass-sdxl-span`。4 倍・2 倍。2 パス） | — | — | — | — |
 
+### 4.7 動画のアップスケールとコマ補間のモデル（Issue #1031）
+
+できあがった動画を**大きくする**・**滑らかにする**モデル 3 件をカタログに足した。ComfyUI v0.42.1 のコアのノード（`nodes_seedvr.py`・`nodes_frame_interpolation.py`・`nodes_video.py`）だけで動き、カスタムノードは要らない（許可リストを通さない）。プロンプトを渡す動画モデルではなく、画像の `upscale`（§4.5）と同じく「一覧・試し生成に出ない」種類（種類 `kind` を 2 つ足した）。**5 秒・480p・81 コマが RTX 4070 Ti SUPER 16GB で動くことは実機で確かめていない（実機未確認）**。
+
+| モデル（ID） | `kind` | ファイル（フォルダ。すべて HF のコミット固定・SHA-256・大きさを 2026-11-04 に Hugging Face の API で確認） | テンプレート（＝ワークフロー名） | ライセンス（商用） |
+|---|---|---|---|---|
+| `seedvr2-3b-fp8` | `video_upscale` | `seedvr2_3b_fp8_e4m3fn.safetensors`（`diffusion_models`・3,392,794,232 B）と共有の VAE `seedvr2_ema_vae_fp16.safetensors`（`vae`・501,324,814 B）。`Comfy-Org/SeedVR2` @ `df48879708206a403d2a61acd55578c2e80fd233` | `video-upscale-seedvr2-3b` | Apache-2.0（配布元 `ByteDance-Seed/SeedVR2-3B` と再配布のカードの `license: apache-2.0`）・yes |
+| `rife-v4.25` | `video_interpolate` | `rife_v4.25.safetensors`（`frame_interpolation`・22,674,688 B）。`Comfy-Org/Frame-Interpolation` @ `aa7009be4d1471ea0bac91d6fe4d7e4b637cbbfc` | `video-interpolate-rife-v4.25` | MIT（Practical-RIFE の LICENSE。再配布のカードは `mit-and-apache-2.0` で、この 1 ファイルは RIFE の MIT）・yes |
+| `rife-v4.26` | `video_interpolate` | `rife_v4.26.safetensors`（`frame_interpolation`・22,674,688 B）。同じリポジトリ・コミット | `video-interpolate-rife-v4.26` | 同上・yes |
+
+- **カタログの変更**: 種類 `video_upscale`・`video_interpolate`（`catalog/kind`。`Fits` は、テンプレートの印 `video_enhance.op`（`upscale` / `interpolate`）が種類に合うものだけを通し、ほかのモデルがこれらのテンプレートを使うことも断る）。`files[].folder` に **`frame_interpolation`**（`FrameInterpolationModelLoader.model_name` の読む先。`loaderInputs`・`extfolder.Folders`・`service/workflows/remote.go` の `folderOf` に足した）。エントリーは新しいディレクトリ `catalog/data/models/videoenhance/`（`**/*.json` を読むので、`adult-video/` と同じ）。`Model.Derived()` はこの 2 種類にも入力を持たせない（動画を渡すのはフィルターの入力ではない）。モデルのフィルター（[model-filter.md](model-filter.md)）の種類に `video_upscale`・`video_interpolate`（表示「動画アップスケール」「コマ補間」）を足した。
+- **SeedVR2 のテンプレート（`video-upscale-seedvr2-3b`）**: Comfy 公式の「Video Upscale: SeedVR2 3B Int8」（UI 形式・サブグラフ）を API 形式に手で展開し、重みを int8 から **fp8**（`seedvr2_3b_fp8_e4m3fn`）に替えた。`LoadVideo` → `GetVideoComponents`（コマ・音声・fps）→ `ResizeImageMaskNode`（倍率 `video_scale`）→ `SeedVR2Preprocess` → `VAEEncodeTiled`（タイル 512）→ `SeedVR2TemporalChunk` → `SeedVR2Conditioning` → `KSampler`（1 ステップ・cfg 1・euler / simple）→ `SeedVR2TemporalMerge` → `VAEDecodeTiled` → `SeedVR2PostProcessing`（元の大きさに揃える。色補正は公式の既定の `none`）→ `CreateVideo`（**元の音声と元の fps**。音声が無ければ空）→ `SaveVideo`。**時間方向の分割の判断**: 公式テンプレートは分割のスイッチを既定で切っている。しかし `nodes_seedvr.py` の `SeedVR2TemporalChunk` の `auto` は、空き VRAM と 1 コマの画素数から 1 回に処理するコマ数を決め、全コマが収まるなら分けずにそのまま返す（収まらないときだけ、重なりを Hann 窓で混ぜて分ける）ので、付けても収まる場合の結果は変わらない。81 コマの 480p を 2 倍以上にすると 16GB に収まる保証が無いので、**`auto`（重なり 2）で常に付けた**。この選択も実機では未確認。
+- **RIFE のテンプレート（`video-interpolate-rife-v4.25`・`-v4.26`）**: Comfy 公式の「Frame Interpolation: FILM or RIFE」を展開し、`FrameInterpolationModelLoader`（`rife_v4.25.safetensors` / `rife_v4.26.safetensors`）→ `FrameInterpolate`（倍率 `frame_multiplier`。整数倍）→ `CreateVideo`（fps `output_fps`。元の fps × 倍率。音声は元のもの）→ `SaveVideo`。長さが変わらないので音声はずれない。倍率は整数なので **2 倍・4 倍**（16fps → 32 / 64fps）。24fps など整数倍でない fps への変換はローカルではしない（Topaz の `target_fps` は別の経路）。
+- **見込み（VRAM）**: `seedvr2-3b-fp8` は `min_gb: 12`・`recommended_gb: 16`・`estimate: true`、出典の欄は「Issue #1031 の調査（公式ノード README・第三者測定）・mam 実機は未確認」。公式ノードの README は 12〜16GB に fp8 とタイルを勧める。約 6.5GB という数字は**別の実装**（numz の ComfyUI-SeedVR2_VideoUpscaler。BlockSwap を使い、batch 5・480p → 1080p）の第三者の報告で、mam が使う ComfyUI 本体のノードの組み合わせでの測定ではない（本体のノードでの使用量は未測定）。mam はこの数字を使わず、下限を 12GB の**見積もり**（`min_gb` は見積もりのまま）とし、測定した値ではない。RIFE は `min_gb: 4`（`estimate: true`。モデルは約 22MB で、重いのはコマの画像）。1 コマの出力は 1080p（2,073,600 画素）までを SeedVR2 の `video_enhance.max_output_pixels` にした（16GB を見込んだ保守的な上限で、これも実機で測っていない）。
+- **Mac（Apple Silicon）**: `seedvr2-3b-fp8` は fp8 の重み（F8_E4M3 のテンソル 635 個を固定コミットのヘッダーで確認）を含むので、ComfyUI Issue #10292（MPS は Float8 非対応）にもとづき `unsupported: darwin` を付けた（Mac の実機では未確認）。RIFE は fp8 を含まず、付けていない。
+- **入れなかったもの（理由）**: SeedVR2 の 7B・int8・fp16 と RIFE の heavy・lite・FILM（初期セットは 3 本。足すのは実機の結果を見てから）。Upscale-A-Video（S-Lab 1.0・商用NG）・GIMM-VFI（S-Lab 1.0・商用NG）・4x-UltraSharp（CC BY-NC-SA 4.0・商用NG）は、一次情報で商用NGなので載せない。FlashVSR はカスタムノードが要り、RTX 40 系の互換が公式で unknown。
+- **テスト**: `catalog_test.go`（71 件・ID の順）、`catalog/videoenhancetest`（URL がコミット固定・SHA-256・大きさ・フォルダ・ライセンスが商用OK・`checked_at`・VRAM が見積もりと明記・種類とテンプレートの対応・共有 VAE の名前・`Validate` が別の操作のテンプレートと違うフォルダを断ること）、`localcfg/configtest`（テンプレートが 83 件・構造・コアのノードだけ）。**GPU では動かしていない**（構造と値の差し込みのテストまで）。
+
 ## 5. モデルの導入
 
 ### 5.1 ジョブ

@@ -15,6 +15,10 @@ templ Row(a Actions) {
 			if a.Upscale {
 				@atoms.ButtonLink(atoms.ToneNeutral, "大きくする", templ.SafeURL(UpscaleAnchor), templ.Attributes{"data-testid": "gt-next-upscale"})
 			}
+			if a.VideoEnhance {
+				@atoms.ButtonLink(atoms.ToneNeutral, "大きくする", templ.SafeURL(VideoUpscaleAnchor), templ.Attributes{"data-testid": "gt-next-video-upscale"})
+				@atoms.ButtonLink(atoms.ToneNeutral, "滑らかにする", templ.SafeURL(VideoInterpolateAnchor), templ.Attributes{"data-testid": "gt-next-video-interpolate"})
+			}
 			if a.UpscaleAgainURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "同じ倍率でもう一度大きくする", templ.SafeURL(a.UpscaleAgainURL), templ.Attributes{"data-testid": "gt-next-upscale-again"})
 			}

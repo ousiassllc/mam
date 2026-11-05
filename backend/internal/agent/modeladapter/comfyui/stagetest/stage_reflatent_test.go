@@ -1,4 +1,4 @@
-package comfyui_test
+package stagetest_test
 
 import (
 	"testing"

@@ -23,6 +23,7 @@ var providerInfo = map[string]info{
 	"minimax":    {"動画生成（MiniMax H3・H3 Max。キーは MiniMax の API キー 1 つ。従量課金（Pay-as-you-go）の API が要る）", "https://platform.minimax.io/user-center/basic-information/interface-key"},
 	"alibaba":    {"動画生成（Wan 3.0。キーは「ワークスペース ID:API キー」の形（Singapore リージョン）。ワークスペース ID は Model Studio の Workspace Management の API Host の先頭（例: llm-xxx）、API キーは同じリージョンのもの）", "https://www.alibabacloud.com/help/en/model-studio/get-api-key"},
 	"luma":       {"動画生成（Luma Ray 3.2。キーは Luma Agents API の API キー 1 つ。画像・動画の API キーで、Luma アプリのものとは別）", "https://platform.lumalabs.ai"},
+	"topaz":      {"動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。生成テストの「動画を大きくする・滑らかにする」で使う）", "https://account.topazlabs.com/manage-api"},
 	"elevenlabs": {"音声（TTS・Music・SFX）", "https://elevenlabs.io/app/api/api-keys"},
 	"synclabs":   {"Lip Sync", ""},
 	"typesafe":   {"Repair の前段選別（Jev）", ""},

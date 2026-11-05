@@ -3,7 +3,7 @@ package apperr
 // messagesJa are the Japanese texts, the base of the catalog. A code has a cause ("<code>.cause": why it failed) and a remedy
 // ("<code>.remedy": what to do); each ends with its full stop, so that View.Sentence can join them. {name} is an argument
 // (Error.Args); an argument that is not given reads as nothing.
-var messagesJa = map[string]string{
+var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they mention "API キー" and credits, but hold no credential)
 	"unknown.cause":  "原因がわかりませんでした。想定していない失敗です。",
 	"unknown.remedy": "もう一度試してください。直らないときは、詳細（とエラー ID）を添えて報告してください。mam のログにも同じ ID で残しています。",
 
@@ -142,6 +142,30 @@ var messagesJa = map[string]string{
 	"update_failed.cause":  "更新の確認に失敗しました。原因はわかりませんでした。",
 	"update_failed.remedy": "もう一度確認してください。続くときは、ログファイルを確認してください。",
 
+	"credits_insufficient.cause":  "相手のサービスのクレジット（残高）が足りません（HTTP 402）。この処理に必要な分を確保できませんでした。",
+	"credits_insufficient.remedy": "相手のサービスのアカウントでクレジットを追加するか、自動チャージを有効にしてから、もう一度実行してください。残高が増えるまでは、何度実行しても同じように失敗します。",
+
+	"topaz_maintenance.cause":  "Topaz のクラウド動画処理は、いまメンテナンス中で止まっています（HTTP 503）。実行中だった処理の分は返金されます。",
+	"topaz_maintenance.remedy": "しばらく待ってから、もう一度見積りを取って実行してください。Topaz の状態は GET /video/status（isAvailable とメッセージ）で確かめられます。",
+
+	"topaz_credit_difference.cause":  "アップロードした動画を Topaz が調べ直したところ、必要なクレジットが見積りと大きく違っていたため、処理を止めました（全額返金されます）。",
+	"topaz_credit_difference.remedy": "動画の長さ・フレーム数・フレームレート・解像度が、ファイルの実際の値と合っていない可能性があります。ffmpeg の設定（ffprobe）が動いているか確かめて、もう一度見積りを取って実行してください。",
+
+	"topaz_job_timeout.cause":  "Topaz の処理が時間切れになりました（アップロード待ち・順番待ち・処理時間のどれか）。クレジットは返金されます。",
+	"topaz_job_timeout.remedy": "もう一度見積りを取って実行してください。長い動画は短く分けて試してください。",
+
+	"topaz_job_failed.cause":  "Topaz が処理を完了できませんでした（相手側の失敗か、処理が取り消されました）。クレジットは返金されます。",
+	"topaz_job_failed.remedy": "もう一度見積りを取って実行してください。同じ動画で続くときは、標準の H.264 の mp4 に変換した動画で試すか、詳細にあるリクエスト ID を添えて Topaz のサポートに連絡してください。同じ処理を mam が自動でやり直すことはありません（二重に課金されないため）。",
+
+	"topaz_source_invalid.cause":  "Topaz が元の動画を処理できませんでした（ファイルが壊れている、拡張子と中身の形式が違う、動画の情報が実際と違う、のどれかです）。課金はされません。",
+	"topaz_source_invalid.remedy": "元の動画が再生できるか確かめて、もう一度実行してください。続くときは、動画を標準の H.264 の mp4 に変換してから試してください。",
+
+	"topaz_transfer_failed.cause":  "Topaz との動画のやり取り（元の動画のアップロード、または結果のダウンロード）に失敗しました。",
+	"topaz_transfer_failed.remedy": "ネットワーク（プロキシ・VPN・ファイアウォール）を確かめてください。アップロードに失敗したときは、見積りの有効期限が切れていないか確かめて、もう一度見積りを取って実行してください。処理が済んだあとのダウンロードの失敗は、結果が Topaz に 7 日間残るので、時間を置いてから確かめられます。同じ処理を mam が自動でやり直すことはありません（二重に課金されないため）。",
+
+	"topaz_job_interrupted.cause":  "処理の途中で mam が止まったか、ジョブが取り消されたため、Topaz の結果を待つのをやめました。Topaz はこの処理をすでに受け付けているため、Topaz 側では続いている可能性があり、クレジットが引かれることがあります（リクエスト ID: {request_id}）。",
+	"topaz_job_interrupted.remedy": "mam からは Topaz の処理を取り消せません（取り消しの呼び出しは未実装です）。Topaz のアカウントで、このリクエスト ID（{request_id}）の処理の状況と使われたクレジットを確かめてください。同じ処理を mam が自動でやり直すことはありません（二重に課金されないため）。",
+
 	"invalid_input.cause":    "入力が正しくありません。",
 	"invalid_input.remedy":   "入力内容を直してから、もう一度実行してください。",
 	"not_found.cause":        "対象が見つかりません。",
@@ -195,6 +219,7 @@ var messagesJa = map[string]string{
 	"duration.seconds": "{n}秒",
 
 	"key_missing.elevenlabs": "ElevenLabs の ",
+	"key_missing.topaz":      "Topaz Labs の ",
 
 	"what.rough_cut": "Rough Cut の書き出し",
 	"what.export":    "動画の書き出し",

@@ -67,7 +67,7 @@ func ValidateSaved(m Model) []error {
 		return []error{fmt.Errorf("the workflow has no graph or no kind")}
 	}
 	errs := validateWorkflow("workflow", m.Media, *m.Workflow)
-	if m.Media == MediaVideo {
+	if m.Media == MediaVideo && !m.IsVideoEnhance() { // an enhancement workflow has no clip length or size of its own (the source video has)
 		errs = append(errs, validateVideoSettings("workflow", m.Video)...)
 	}
 	return errs

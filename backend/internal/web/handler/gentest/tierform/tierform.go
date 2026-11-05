@@ -14,6 +14,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/intent"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/intentapply"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/recipe"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
@@ -141,7 +142,7 @@ func Resolve(ctx context.Context, svc *gentest.Service, st State, req gentest.Re
 		req, _, err := recipe.New(svc).Apply(ctx, req, id)
 		return req, err
 	}
-	req, _, err := svc.ApplyIntent(ctx, req, st.IntentID())
+	req, _, err := intentapply.Apply(ctx, svc, req, st.IntentID())
 	return req, err
 }
 

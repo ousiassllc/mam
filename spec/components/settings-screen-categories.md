@@ -8,7 +8,7 @@
 
 ## 1. API キーとログイン（`/settings/api-keys`）
 
-### 1.1 API キー（14 プロバイダー。`service.CredentialProviders` の順）
+### 1.1 API キー（15 プロバイダー。`service.CredentialProviders` の順）
 
 方式: **カード（一覧）＋ 設定・変更はモーダル ＋ 削除は `hx-confirm`**。パスワード欄は出しっぱなしにしない。
 
@@ -35,10 +35,11 @@
 | `seedance` | 動画生成（Seedance 2.0・2.5。§4） | なし（BytePlus ModelArk。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `runway` | 動画生成（Runway Gen-4.5。§4） | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version`。組織の残高と階層を読むだけ） | 公式の `api.md` に記載。**実キーでは未検証**。`X-Runway-Version` の値は endpoints-settings.md §4 |
 | `elevenlabs` | 音声（TTS・Music・SFX。§5） | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`。契約の状態を読むだけ） | 認証ヘッダーは公式の認証の頁、エンドポイントは記載を確認。**実キーでは未検証** |
+| `topaz` | 動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。生成テストの「動画を大きくする・滑らかにする」。[model-adapters.md](../architecture/model-adapters.md) §15、Issue #1031） | `GET https://api.topazlabs.com/account/v1/credits/balance`（`X-API-Key`。クレジット残高を読むだけ。公式の FAQ「Can I check my credit balance from code?」） | FAQ の記載を確認（2026-11-04）。**実キーでは未検証**。キーの取り方: `https://account.topazlabs.com/manage-api` |
 | `synclabs` | Lip Sync（§5） | なし（読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `typesafe` | Repair の前段選別（Jev。§4.5） | なし（`POST /v1/systemone` だけ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 
-- 接続テストは、決定事項 5(a)（無料で読むだけの API があるプロバイダーだけ）に沿って付けた（上の 6 つ）。**実キーでの動作は所有者の実機で確かめる（未検証）**。公式資料で確認できなかった 4 つには接続テストのボタンを出さず、「保存したあと、最初の生成で確かめられます」を出す。
+- 接続テストは、決定事項 5(a)（無料で読むだけの API があるプロバイダーだけ）に沿って付けた（上の 6 つと、Issue #1031 で足した `topaz` の 1 つ）。**実キーでの動作は所有者の実機で確かめる（未検証）**。公式資料で確認できなかった 4 つには接続テストのボタンを出さず、「保存したあと、最初の生成で確かめられます」を出す。
 - 「キーの取り方のリンク」（各社のコンソール）: anthropic `https://platform.claude.com/settings/keys`、google `https://aistudio.google.com/apikey`、flux `https://dashboard.bfl.ai`、runway `https://dev.runway.com`（公式の setup の頁で確認）、elevenlabs `https://elevenlabs.io/app/api/api-keys`（公式のクイックスタートで確認）。そのほかのプロバイダーはリンクを出さない（公式の取得先を確認できていない）。リンクは `target="_blank" rel="noopener noreferrer"`。接続テストの呼び出しとその結果の分類は [../api/endpoints-settings.md](../api/endpoints-settings.md) §4。
 
 ### 1.2 API キーのモーダル（`GET /settings/credentials/:provider/edit`）
@@ -215,3 +216,4 @@
 | 0.18 | 2026-11-03 | §2 に、ローカル LLM サーバーのカードを足した | Issue #1008 |
 | 0.19 | 2026-11-04 | §2 の LLM のモデル欄を、プロバイダーとモデルを一緒に選ぶモデル選択の欄にした。使えないプロバイダーを指す割り当ての警告を足した | Issue #1011・#1013 |
 | 0.20 | 2026-11-04 | §2 のローカル LLM サーバーのカードに「この PC の llama.cpp を使う」を足した | Issue #1008（後半） |
+| 0.21 | 2026-11-04 | §1.1 の表に `topaz`（Topaz Video API。接続テストは `GET /account/v1/credits/balance`）を足した | Issue #1031 |

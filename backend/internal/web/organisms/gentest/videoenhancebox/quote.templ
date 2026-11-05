@@ -1,0 +1,53 @@
+package videoenhancebox
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// QuoteBox is the answer of the estimate at Topaz, drawn in the place of the quote of its operation: the credits it would use, the video it would make
+// and the form that runs exactly this quote once the user ticks that the quote is confirmed (the paid cloud is never started without it). When the quote
+// could not be had it says why and has no button to run.
+templ QuoteBox(q Quote) {
+	<div id={ q.QuoteID() } class="flex flex-col gap-2 rounded-md border border-neutral-800 p-3" data-testid="gt-venh-quote">
+		if q.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="gt-venh-quote-error">{ q.Error }</p>
+		} else {
+			<p class="text-sm" data-testid="gt-venh-credits">
+				このくらいのクレジットを使います（上限 { CreditsText(q.Credits) } クレジット）。1 クレジットの金額はプランによります
+			</p>
+			if q.CreditsMin > 0 {
+				<p class="text-xs text-neutral-400" data-testid="gt-venh-credits-min">少なくて { CreditsText(q.CreditsMin) } クレジットです</p>
+			}
+			<p class="text-xs text-neutral-400" data-testid="gt-venh-output">{ q.ModelLabel }：{ q.Output }</p>
+			<p class="text-xs text-neutral-400">Powered by Topaz Labs</p>
+			<form
+				class="flex flex-col gap-2"
+				hx-post={ paths.GenerationTestPart("results", q.ResultID, "video-enhance") }
+				hx-target={ "#" + ID }
+				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
+				data-testid="gt-venh-confirm-form"
+			>
+				for _, h := range q.Hidden {
+					<input type="hidden" name={ h.Name } value={ h.Value }/>
+				}
+				if q.AdultWarning != "" {
+					<p class="rounded-md border border-amber-500/60 p-2 text-sm text-amber-300" role="alert" data-testid="gt-venh-adult-warning">{ q.AdultWarning }</p>
+					<label class="flex items-start gap-2 text-sm">
+						@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAdult, "value": "1", "required": true, "data-testid": "gt-venh-adult-confirm"})
+						<span>上の警告を読みました。成人向けの動画を Topaz に送ってよいです</span>
+					</label>
+				}
+				<label class="flex items-start gap-2 text-sm">
+					@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldConfirm, "value": "1", "required": true, "data-testid": "gt-venh-confirm"})
+					<span>見積りの内容を確認しました。有料クラウド（Topaz）に動画を送ります</span>
+				</label>
+				<div>
+					@atoms.Button(atoms.TonePrimary, "Topaz で実行する", templ.Attributes{"type": "submit", "data-testid": "gt-venh-run-topaz"})
+				</div>
+			</form>
+		}
+	</div>
+}
