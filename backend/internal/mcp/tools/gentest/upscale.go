@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/upscale"
 )
 
 // registerUpscale adds the tools of "make it larger" (#975): the upscale workflows installed, and the enlargement of a result.
@@ -35,7 +35,7 @@ func (h handlers) listUpscalers(ctx context.Context, _ Input) (UpscalersOutput, 
 	if list == nil {
 		list = []modelcatalog.Upscaler{}
 	}
-	return UpscalersOutput{Upscalers: list, Scales: gentest.UpscaleScales, MaxOutputPixels: gentest.MaxUpscaleOutputPixels}, nil
+	return UpscalersOutput{Upscalers: list, Scales: upscale.Scales, MaxOutputPixels: upscale.MaxOutputPixels}, nil
 }
 
 // UpscaleInput is one enlargement.
@@ -57,10 +57,10 @@ func (h handlers) upscale(ctx context.Context, in UpscaleInput) (UpscaleOutput, 
 	if err != nil {
 		return UpscaleOutput{}, err
 	}
-	var ref gentest.UpscaleRef
+	var ref upscale.Ref
 	jr, err := h.registrar.Jobs.Run(ctx, KindGentest, "", func(ctx context.Context) (string, error) {
 		var err error
-		ref, err = g.Upscale(ctx, gentest.UpscaleRequest{ResultID: in.ResultID, Scale: in.Scale, Model: in.Model})
+		ref, err = upscale.Run(ctx, g, upscale.Request{ResultID: in.ResultID, Scale: in.Scale, Model: in.Model})
 		return ref.JobID, mapError(err)
 	})
 	return UpscaleOutput{JobRef: jr, BatchID: ref.BatchID, ResultID: ref.ResultID}, err

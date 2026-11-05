@@ -68,6 +68,10 @@ func (s *Service) Availability(modelID string) (modelfilter.Availability, bool) 
 	return s.catalog.Availability(modelID)
 }
 
+// Upscalers lists the upscale workflows the running setting has installed (an upscale model of the model manager that is not installed has none),
+// with what each is and whether it can run now. upscale.Run enlarges a result with one of them.
+func (s *Service) Upscalers(_ context.Context) []modelcatalog.Upscaler { return s.catalog.Upscalers() }
+
 // LoRAs lists the LoRA files of the bundled ComfyUI engine, sorted: the names a request's LoRA may take
 // (modelcatalog.Info.SupportsLoRA says which models use it). Empty when the engine is not running or has none, and always
 // for media video: a LoRA is for images only, so the engine is not asked ("" is both media).

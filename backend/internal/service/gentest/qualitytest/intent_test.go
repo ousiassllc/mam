@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/intent"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/intentapply"
 )
 
 func installed(names ...string) gentesttest.Option {
@@ -85,7 +86,7 @@ func TestNothingInstalledGivesAReasonAndNoModel(t *testing.T) {
 	assert.Contains(t, rec.Reason, "まだ導入されていません")
 	assert.Contains(t, rec.Reason, "モデルマネージャー")
 
-	_, _, err := r.Svc.ApplyIntent(context.Background(), gentest.Request{Media: "image"}, "landscape")
+	_, _, err := intentapply.Apply(context.Background(), r.Svc, gentest.Request{Media: "image"}, "landscape")
 	var invalid *gterr.InvalidError
 	assert.ErrorAs(t, err, &invalid)
 	assert.Contains(t, err.Error(), "導入されていません")
@@ -126,13 +127,13 @@ func TestTheCommercialFilterAndThePlatformWarningRuleModelsOut(t *testing.T) {
 // 「同じ顔で」は入力画像から作る: 画像が無いと断り、顔の役割を読めるモデルを選び、全体の参照を顔にする。
 func TestTheSameFaceIntentNeedsAnImageAndAModelThatReadsFaces(t *testing.T) {
 	r := gentesttest.New(t, installed("qwen-image", "sdxl-base", "qwen-image-edit-2511"))
-	_, _, err := r.Svc.ApplyIntent(context.Background(), gentest.Request{Media: "image"}, "face")
+	_, _, err := intentapply.Apply(context.Background(), r.Svc, gentest.Request{Media: "image"}, "face")
 	var invalid *gterr.InvalidError
 	require.ErrorAs(t, err, &invalid)
 	assert.Contains(t, err.Error(), "入力画像")
 
 	req := gentest.Request{Media: "image", References: []gentest.RefInput{{Source: gentest.FromHistory, ID: "x"}, {Source: gentest.FromHistory, ID: "y", Role: localcfg.RoleStyle}}}
-	got, rec, err := r.Svc.ApplyIntent(context.Background(), req, "face")
+	got, rec, err := intentapply.Apply(context.Background(), r.Svc, req, "face")
 	require.NoError(t, err)
 	assert.Equal(t, []string{gentesttest.InstalledID("qwen-image-edit-2511")}, got.Models)
 	assert.Equal(t, localcfg.RoleFace, got.References[0].Role)
@@ -161,10 +162,10 @@ func TestAnInputImageMakesTheIntentPickAModelThatTakesIt(t *testing.T) {
 func TestModelsAndAnIntentAreExclusive(t *testing.T) {
 	r := gentesttest.New(t, installed("qwen-image"))
 	var invalid *gterr.InvalidError
-	_, _, err := r.Svc.ApplyIntent(context.Background(), gentest.Request{Media: "image", Models: []string{"nano-banana"}}, "photo")
+	_, _, err := intentapply.Apply(context.Background(), r.Svc, gentest.Request{Media: "image", Models: []string{"nano-banana"}}, "photo")
 	assert.ErrorAs(t, err, &invalid)
-	_, _, err = r.Svc.ApplyIntent(context.Background(), gentest.Request{Media: "image"}, "cooking")
+	_, _, err = intentapply.Apply(context.Background(), r.Svc, gentest.Request{Media: "image"}, "cooking")
 	assert.ErrorAs(t, err, &invalid)
-	_, _, err = r.Svc.ApplyIntent(context.Background(), gentest.Request{Media: "video"}, "photo")
+	_, _, err = intentapply.Apply(context.Background(), r.Svc, gentest.Request{Media: "video"}, "photo")
 	assert.ErrorAs(t, err, &invalid)
 }

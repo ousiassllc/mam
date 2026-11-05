@@ -104,12 +104,12 @@
 - **`quality`**: モデルの `sampling.quality_presets`（`list_generation_models`）の steps・cfg で作る。`sampling` に `steps`・`cfg` を書いた項目はそちらが優先。標準は何も上書きしない（モデルの既定のまま）。プリセットの無いモデル（クラウド・蒸留・速さのモード）は警告 `quality_ignored` で標準の値で作る。範囲外の名前は `validation`。
 - **`intent`**: 導入済みで呼べて、商用フィルター・成人ゲート・この PC の OS／GPU の条件に合うモデルを、mam が選ぶ（`models` と同時には指定できない。`validation`）。「同じ顔で」（`face`）は `references`（顔の写真）が要り、役割 `reference` のものは `face` として使う。合うモデルが無いときは、理由（導入されていない・条件に合わない）つきの `validation`。見積りの `request.models` に、選ばれたモデルが入る。
 - **`list_generation_models`**: `intents[]`（`id`・`label`・`hint`・`needs_references`・いま選ばれる `model`・`model_label`・`note`・選べない `reason`）と、各モデルの `sampling.quality_presets`（`fast`・`high` の `steps`・`cfg`）を足した。
-- 画面の「かんたん」と同じ `gentest.Service.Recommend`・`ApplyIntent`（[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.6）を呼ぶ。テストは `mcp/tools/gentest/settingstest/quality_test.go`。
+- 画面の「かんたん」と同じ `gentest.Service.Recommend`・`intentapply.Apply`（[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.6）を呼ぶ。テストは `mcp/tools/gentest/settingstest/quality_test.go`。
 - 結果の「もう1枚」「もう一度」「この顔で作る」（画面の再現）に当たる MCP の操作は、既存の `get_generation_result`（使った `sampling`・`seed`）と `run_generation_test`（`seed`・`sampling`）の組み合わせで足りる（レシピは #977 のステージ 2）。
 
 ## 大きくする（アップスケール。Issue #975）
 
-- 画面の「大きくする」と同じ `gentest.Service.Upscale` を呼ぶ（`mcp/tools/gentest/upscale.go`）。実行は種別 `gentest` のジョブ（`get_job`・`get_generation_test`）で、進み具合は `progress` に出る。
+- 画面の「大きくする」と同じ `upscale.Run`（`service/gentest/upscale`）を呼ぶ（`mcp/tools/gentest/upscale.go`）。実行は種別 `gentest` のジョブ（`get_job`・`get_generation_test`）で、進み具合は `progress` に出る。
 - 結果は `result_id`（`get_generation_result` で読む）。`upscale` を持つ結果は大きくした結果で、元は `source_result_id`。大きくした結果をもう一度大きくしてもよい。
 - `list_generation_models` には**アップスケールのワークフローは出ない**（プロンプトを渡すモデルではない）。一覧は `list_generation_upscalers`。
 - ジョブの `result` は `batch_id`・`succeeded`・`failed`・`cancelled`（既存と同じ）。取り消しは `cancel_generation_test`。
