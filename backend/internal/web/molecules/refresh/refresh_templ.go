@@ -47,14 +47,14 @@ func Bar(url, target, updatedAt string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if updatedAt != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"text-xs text-neutral-400\" data-testid=\"refresh-updated\">最終更新 <time>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"text-xs text-mute\" data-testid=\"refresh-updated\">最終更新 <time>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(updatedAt)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/refresh/refresh.templ`, Line: 16, Col: 102}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/refresh/refresh.templ`, Line: 16, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -78,7 +78,7 @@ func Bar(url, target, updatedAt string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"group inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-700 text-neutral-300 transition-colors hover:border-neutral-600 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none\" hx-get=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"group inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-ink transition-colors hover:border-mute hover:text-ink focus-visible:focus-ring motion-reduce:transition-none\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

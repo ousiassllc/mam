@@ -21,14 +21,14 @@ templ HFImportSection(h HFImport) {
 			hx-disabled-elt="find button[type=submit]"
 			data-testid="mm-hfi-form"
 		>
-			<label class="flex max-w-full flex-col gap-1 text-xs text-neutral-400" for="mm-hfi-q">
+			<label class="flex max-w-full flex-col gap-1 text-xs text-mute" for="mm-hfi-q">
 				<span>キーワード・owner/repo・Hugging Face の URL</span>
 				@atoms.Input(atoms.FieldMd, "w-96 max-w-full", templ.Attributes{
 					"id": "mm-hfi-q", "name": FieldQuery, "type": "text", "required": true, "maxlength": itoa(MaxQueryLen), "value": h.Query,
 					"placeholder": "例: sdxl / stabilityai/sdxl-turbo / https://huggingface.co/…", "autocomplete": "off",
 				})
 			</label>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-hfi-kind">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="mm-hfi-kind">
 				<span>種別（キーワード検索のとき）</span>
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "mm-hfi-kind", "name": FieldKind}) {
 					for _, k := range HFKinds {
@@ -38,7 +38,7 @@ templ HFImportSection(h HFImport) {
 			</label>
 			@atoms.Button(atoms.TonePrimary, "探す", templ.Attributes{"type": "submit"})
 		</form>
-		<p id={ HFMsgID } class="text-sm text-red-300" role="alert" data-testid="mm-hfi-msg"></p>
+		<p id={ HFMsgID } class="text-sm text-danger" role="alert" data-testid="mm-hfi-msg"></p>
 		@HFResultView(h.Result)
 		<h3 class="text-sm font-semibold">追加したモデル</h3>
 		@HFModelListView(h.Models)
@@ -50,7 +50,7 @@ templ HFResultView(r HFResult) {
 	<div id={ HFResultID } class="flex flex-col gap-3" data-testid="mm-hfi-result">
 		@notice(r.Message, "mm-hfi-result")
 		if len(r.Hits) > 0 {
-			<ul class="flex flex-col divide-y divide-neutral-800 text-sm" data-testid="mm-hfi-hits">
+			<ul class="flex flex-col divide-y divide-border text-sm" data-testid="mm-hfi-hits">
 				for _, hit := range r.Hits {
 					<li class="flex flex-wrap items-center justify-between gap-2 py-2" data-repo={ hit.Repo }>
 						<span class="flex flex-wrap items-center gap-2">
@@ -61,7 +61,7 @@ templ HFResultView(r HFResult) {
 							if hit.NFAA {
 								@atoms.Badge(atoms.BadgeError, "NFAA")
 							}
-							<span class="text-xs text-neutral-400">ダウンロード { hit.Downloads }・いいね { hit.Likes }</span>
+							<span class="text-xs text-mute">ダウンロード { hit.Downloads }・いいね { hit.Likes }</span>
 						</span>
 						@atoms.SmallButtonFor(atoms.ToneNeutral, "ファイルを見る", hit.Repo, templ.Attributes{
 							"type": "button", "hx-get": hfSearchURL(hit.Repo), "hx-target": "#" + HFResultID, "hx-swap": "outerHTML",
@@ -81,7 +81,7 @@ templ hfRepoView(r HFRepo) {
 	<div class="flex flex-col gap-3" data-testid="mm-hfi-repo" data-repo={ r.ID } data-commit={ r.Commit }>
 		<div class="flex flex-wrap items-center gap-2 text-sm">
 			<a class="break-all underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer"><code>{ r.ID }</code></a>
-			<span class="text-xs text-neutral-400">コミット <code>{ shortHash(r.Commit) }</code> に固定</span>
+			<span class="text-xs text-mute">コミット <code>{ shortHash(r.Commit) }</code> に固定</span>
 			if r.Gated {
 				@atoms.BadgeWith(atoms.BadgeWarn, "gated", templ.Attributes{"data-testid": "mm-hfi-gated"})
 			}
@@ -93,22 +93,22 @@ templ hfRepoView(r HFRepo) {
 			ライセンス: { r.License } @commercial.Badge(r.Answer)
 		</p>
 		if r.LicenseWarn != "" {
-			<p class="text-sm text-amber-300" data-testid="mm-hfi-license-warning">{ r.LicenseWarn }</p>
+			<p class="text-sm text-warning" data-testid="mm-hfi-license-warning">{ r.LicenseWarn }</p>
 		}
 		if r.Gated && r.NoToken {
-			<p class="text-sm text-amber-300" data-testid="mm-hfi-gated-notice">gated のリポジトリです。下の「Hugging Face のトークン」を設定し、<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer">リポジトリのページ</a>でアクセスを申請してください（mam からは申請できません）。</p>
+			<p class="text-sm text-warning" data-testid="mm-hfi-gated-notice">gated のリポジトリです。下の「Hugging Face のトークン」を設定し、<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer">リポジトリのページ</a>でアクセスを申請してください（mam からは申請できません）。</p>
 		}
-		<p class="text-xs text-neutral-300" data-testid="mm-hfi-terms">{ r.Terms }</p>
+		<p class="text-xs text-ink" data-testid="mm-hfi-terms">{ r.Terms }</p>
 		if r.Truncated {
-			<p class="text-xs text-amber-300">ファイルが多いため、一部だけ表示しています。</p>
+			<p class="text-xs text-warning">ファイルが多いため、一部だけ表示しています。</p>
 		}
 		if len(r.Groups) == 0 {
-			<p class="text-sm text-neutral-300" data-testid="mm-hfi-nofiles">モデルのファイル（.safetensors・.gguf・.ckpt など）が見つかりません。</p>
+			<p class="text-sm text-ink" data-testid="mm-hfi-nofiles">モデルのファイル（.safetensors・.gguf・.ckpt など）が見つかりません。</p>
 		}
 		for _, g := range r.Groups {
 			<section class="flex flex-col gap-1" data-testid="mm-hfi-group" data-group={ g.Name }>
 				<h4 class="break-words text-sm font-medium">{ g.Name }</h4>
-				<ul class="flex flex-col divide-y divide-neutral-800 text-xs">
+				<ul class="flex flex-col divide-y divide-border text-xs">
 					for _, f := range g.Files {
 						@hfFileRow(r, f)
 					}
@@ -122,7 +122,7 @@ templ hfFileRow(r HFRepo, f HFFile) {
 	<li class="flex flex-col gap-1 py-2" data-testid="mm-hfi-file" data-path={ f.Path } data-installable={ boolText(f.Installable) }>
 		<div class="flex flex-wrap items-center gap-2">
 			<code class="break-all">{ f.Path }</code>
-			<span class="text-neutral-300">{ f.Size }</span>
+			<span class="text-ink">{ f.Size }</span>
 			@atoms.Badge(atoms.BadgeNeutral, f.Format)
 			if f.Variant != "" {
 				@atoms.Badge(atoms.BadgeInfo, f.Variant)
@@ -139,15 +139,15 @@ templ hfFileRow(r HFRepo, f HFFile) {
 			}
 		</div>
 		if f.SHA256 != "" {
-			<p class="break-all text-neutral-400">SHA-256 <code>{ f.SHA256 }</code></p>
+			<p class="break-all text-mute">SHA-256 <code>{ f.SHA256 }</code></p>
 		}
 		if !f.Installable {
-			<p class="text-amber-300" data-testid="mm-hfi-reason">{ f.Reason }</p>
+			<p class="text-warning" data-testid="mm-hfi-reason">{ f.Reason }</p>
 		} else if f.Job != "" {
-			<p class="text-neutral-300">導入中です（下の「追加したモデル」に進み具合が出ます）</p>
+			<p class="text-ink">導入中です（下の「追加したモデル」に進み具合が出ます）</p>
 		} else {
-			<details class="text-neutral-300" data-testid="mm-hfi-install">
-				<summary class="cursor-pointer text-emerald-300">導入する…</summary>
+			<details class="text-ink" data-testid="mm-hfi-install">
+				<summary class="cursor-pointer text-success">導入する…</summary>
 				@hfInstallForm(r, f)
 			</details>
 		}
@@ -169,7 +169,7 @@ templ hfInstallForm(r HFRepo, f HFFile) {
 		<input type="hidden" name={ FieldPath } value={ f.Path }/>
 		<input type="hidden" name={ FieldTerms } value={ r.TermsVersion }/>
 		<div class="flex flex-wrap items-end gap-2">
-			<label class="flex flex-col gap-1 text-xs text-neutral-400">
+			<label class="flex flex-col gap-1 text-xs text-mute">
 				<span>導入先のフォルダ</span>
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"name": FieldFolder, "data-testid": "mm-hfi-folder"}) {
 					if f.Folder == "" {
@@ -180,18 +180,18 @@ templ hfInstallForm(r HFRepo, f HFFile) {
 					}
 				}
 			</label>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400">
+			<label class="flex flex-col gap-1 text-xs text-mute">
 				<span>ファイル名</span>
 				@atoms.Input(atoms.FieldMd, "w-72 max-w-full", templ.Attributes{"name": FieldName, "type": "text", "value": f.Name, "maxlength": itoa(MaxFileNameLen), "autocomplete": "off"})
 			</label>
 		</div>
 		if f.FolderNote != "" {
-			<p class="text-neutral-400" data-testid="mm-hfi-folder-note">{ f.FolderNote }</p>
+			<p class="text-mute" data-testid="mm-hfi-folder-note">{ f.FolderNote }</p>
 		}
 		if f.Family == "sdxl" {
-			<p class="text-emerald-300" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として試し生成で選べます。</p>
+			<p class="text-success" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として試し生成で選べます。</p>
 		} else {
-			<p class="text-neutral-400">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
+			<p class="text-mute">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
 		}
 		if !r.Consented {
 			<label class="flex items-start gap-2">
@@ -263,7 +263,7 @@ templ HFModelListView(l HFModelList) {
 			</div>
 		}
 		if len(l.Models) == 0 && len(l.Installing) == 0 {
-			<p class="text-sm text-neutral-300" data-testid="mm-hfi-none">まだありません。</p>
+			<p class="text-sm text-ink" data-testid="mm-hfi-none">まだありません。</p>
 		}
 		<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-hfi-model-list">
 			for _, m := range l.Models {

@@ -77,12 +77,12 @@ func ModelsModal(m ModelList) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else if len(m.Models) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-neutral-400\">表示できるモデルがありません。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-mute\">表示できるモデルがありません。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-xs text-neutral-400\">「LLM の割り当て」のモデル欄のプルダウンにも、同じ一覧が「プロバイダーの API の一覧」として出ます（モデル名は太字）。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p><ul class=\"flex flex-col gap-1 text-sm\" data-testid=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-xs text-mute\">「LLM の割り当て」のモデル欄のプルダウンにも、同じ一覧が「プロバイダーの API の一覧」として出ます（モデル名は太字）。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p><ul class=\"flex flex-col gap-1 text-sm\" data-testid=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -113,14 +113,14 @@ func ModelsModal(m ModelList) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</code> <span class=\"text-xs text-neutral-400\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</code> <span class=\"text-xs text-mute\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(model.DisplayName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/models.templ`, Line: 45, Col: 64}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/models.templ`, Line: 45, Col: 57}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -131,7 +131,7 @@ func ModelsModal(m ModelList) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					if model.Images {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"text-xs text-sky-300\">画像可</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"text-xs text-info\">画像可</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}

@@ -58,12 +58,12 @@ templ BriefForm(d BriefFormData) {
 					"value": d.Brief.Get(f),
 				})
 				if msg := d.Errors[string(f)]; msg != "" {
-					<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+					<p class="mt-1 text-sm text-danger" role="alert">{ msg }</p>
 				}
 			</div>
 		}
 		if d.Brief.Style != "" {
-			<p class="text-sm text-neutral-400">スタイル（Series 正本）: { d.Brief.Style }</p>
+			<p class="text-sm text-mute">スタイル（Series 正本）: { d.Brief.Style }</p>
 		}
 		<div>
 			<label for="brief-additional-instruction" class="mb-1 block text-sm font-medium">Additional Instruction</label>
@@ -74,7 +74,7 @@ templ BriefForm(d BriefFormData) {
 				"maxlength": intText(domain.MaxMessageRunes),
 			}, d.Brief.AdditionalInstruction)
 			if msg := d.Errors["additional_instruction"]; msg != "" {
-				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+				<p class="mt-1 text-sm text-danger" role="alert">{ msg }</p>
 			}
 		</div>
 		<div>
@@ -85,7 +85,7 @@ templ BriefForm(d BriefFormData) {
 				"rows": "3",
 			}, referencesText(d))
 			if msg := d.Errors["references"]; msg != "" {
-				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+				<p class="mt-1 text-sm text-danger" role="alert">{ msg }</p>
 			}
 		</div>
 		if len(d.Assets) > 0 {
@@ -99,7 +99,7 @@ templ BriefForm(d BriefFormData) {
 				"type": "submit",
 			})
 			if d.Saved {
-				<span class="text-sm text-emerald-300" role="status">保存しました</span>
+				<span class="text-sm text-success" role="status">保存しました</span>
 			}
 		</div>
 	</form>

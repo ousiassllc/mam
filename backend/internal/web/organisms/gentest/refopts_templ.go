@@ -61,7 +61,7 @@ func refOptions(c Compose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(c.LoRAs) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex flex-wrap items-center gap-3 text-xs text-neutral-400\" data-gt-lora")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex flex-wrap items-center gap-3 text-xs text-mute\" data-gt-lora")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -207,7 +207,7 @@ func pickerDialog(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" data-gt-picker-dialog aria-labelledby=\"gt-picker-title\" class=\"m-auto w-[min(48rem,92vw)] max-h-[85vh] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-neutral-100 backdrop:bg-black/70\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-picker-title\" class=\"text-sm font-medium\">画像を選ぶ</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" data-gt-picker-dialog aria-labelledby=\"gt-picker-title\" class=\"m-auto w-[min(48rem,92vw)] max-h-[85vh] overflow-y-auto rounded-lg border border-border bg-surface p-4 text-ink backdrop:bg-black/70\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><h2 id=\"gt-picker-title\" class=\"text-sm font-medium\">画像を選ぶ</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -215,7 +215,7 @@ func pickerDialog(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div><div class=\"mt-3 flex flex-wrap items-end gap-3\" data-gt-picker-source><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-project\"><span>プロジェクト</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div><div class=\"mt-3 flex flex-wrap items-end gap-3\" data-gt-picker-source><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-project\"><span>プロジェクト</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -320,14 +320,14 @@ func Picker(rows []Ref, empty string) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(rows) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-xs text-neutral-400\" data-testid=\"gt-picker-empty\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-xs text-mute\" data-testid=\"gt-picker-empty\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(empty)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/refopts.templ`, Line: 72, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/refopts.templ`, Line: 72, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -343,7 +343,7 @@ func Picker(rows []Ref, empty string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, r := range rows {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<li class=\"flex flex-col gap-1 rounded-md border border-neutral-800 p-2 text-xs\" data-testid=\"gt-pick\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<li class=\"flex flex-col gap-1 rounded-md border border-border p-2 text-xs\" data-testid=\"gt-pick\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -379,14 +379,14 @@ func Picker(rows []Ref, empty string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"break-words text-neutral-300\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"break-words text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(r.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/refopts.templ`, Line: 80, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/refopts.templ`, Line: 80, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {

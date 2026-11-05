@@ -49,7 +49,7 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-trigger=\"every 15s\" hx-swap=\"outerHTML\"><dl class=\"grid grid-cols-1 gap-3 sm:grid-cols-3\"><div class=\"rounded-md border border-neutral-700 p-3\"><dt class=\"text-xs text-neutral-400\">Project 推定コスト</dt><dd class=\"text-lg font-semibold\" data-testid=\"project-estimated\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-trigger=\"every 15s\" hx-swap=\"outerHTML\"><dl class=\"grid grid-cols-1 gap-3 sm:grid-cols-3\"><div class=\"rounded-md border border-border p-3\"><dt class=\"text-xs text-mute\">Project 推定コスト</dt><dd class=\"text-lg font-semibold\" data-testid=\"project-estimated\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -62,14 +62,14 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</dd><dd class=\"text-xs text-neutral-400\">上限: ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</dd><dd class=\"text-xs text-mute\">上限: ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(ceilingText(s.ProjectCeiling))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/cost_summary_panel.templ`, Line: 22, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/cost_summary_panel.templ`, Line: 22, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -120,7 +120,7 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div class=\"rounded-md border border-neutral-700 p-3\"><dt class=\"text-xs text-neutral-400\">Project 実コスト（ベンダー報告）</dt><dd class=\"text-lg font-semibold\" data-testid=\"project-actual\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div class=\"rounded-md border border-border p-3\"><dt class=\"text-xs text-mute\">Project 実コスト（ベンダー報告）</dt><dd class=\"text-lg font-semibold\" data-testid=\"project-actual\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -133,14 +133,14 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</dd><dd class=\"text-xs text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</dd><dd class=\"text-xs text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(intText(s.Project.ActualEntries))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/cost_summary_panel.templ`, Line: 32, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/cost_summary_panel.templ`, Line: 32, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -153,13 +153,13 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(intText(s.Project.Entries))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/cost_summary_panel.templ`, Line: 32, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/cost_summary_panel.templ`, Line: 32, Col: 101}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " 件で報告あり</dd></div><div class=\"rounded-md border border-neutral-700 p-3\"><dt class=\"text-xs text-neutral-400\">Shot 上限</dt><dd class=\"text-lg font-semibold\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " 件で報告あり</dd></div><div class=\"rounded-md border border-border p-3\"><dt class=\"text-xs text-mute\">Shot 上限</dt><dd class=\"text-lg font-semibold\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -177,17 +177,17 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(s.Scenes) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-neutral-400\">Scene がまだありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-mute\">Scene がまだありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<table class=\"w-full text-left text-sm\"><thead class=\"text-xs text-neutral-400\"><tr><th scope=\"col\" class=\"py-1 pr-2 font-medium\">Scene / Shot</th><th scope=\"col\" class=\"py-1 pr-2 text-right font-medium\">推定</th><th scope=\"col\" class=\"py-1 text-right font-medium\">実コスト</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<table class=\"w-full text-left text-sm\"><thead class=\"text-xs text-mute\"><tr><th scope=\"col\" class=\"py-1 pr-2 font-medium\">Scene / Shot</th><th scope=\"col\" class=\"py-1 pr-2 text-right font-medium\">推定</th><th scope=\"col\" class=\"py-1 text-right font-medium\">実コスト</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, sc := range s.Scenes {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<tr class=\"border-t border-neutral-800 font-medium\"><th scope=\"row\" class=\"py-1 pr-2 text-left\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<tr class=\"border-t border-border font-medium\"><th scope=\"row\" class=\"py-1 pr-2 text-left\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -231,7 +231,7 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				for _, sh := range sc.Shots {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<tr class=\"text-neutral-300\"><th scope=\"row\" class=\"py-0.5 pl-4 pr-2 text-left font-normal\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<tr class=\"text-ink\"><th scope=\"row\" class=\"py-0.5 pl-4 pr-2 text-left font-normal\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -277,7 +277,7 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 				}
 			}
 			if s.Unassigned.Entries > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<tr class=\"border-t border-neutral-800 text-neutral-300\"><th scope=\"row\" class=\"py-1 pr-2 text-left font-normal\">Shot に紐づかないコスト</th><td class=\"py-1 pr-2 text-right\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<tr class=\"border-t border-border text-ink\"><th scope=\"row\" class=\"py-1 pr-2 text-left font-normal\">Shot に紐づかないコスト</th><td class=\"py-1 pr-2 text-right\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -313,7 +313,7 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-xs text-neutral-400\">推定コストは生成時の見積り、実コストはベンダーが報告した金額です（* は一部のみ報告）。</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-xs text-mute\">推定コストは生成時の見積り、実コストはベンダーが報告した金額です（* は一部のみ報告）。</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

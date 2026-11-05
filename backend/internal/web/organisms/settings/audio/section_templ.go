@@ -56,14 +56,14 @@ func Section(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Problem != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"audio-problem\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"audio-problem\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(d.Problem)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 15, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 15, Col: 86}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -75,14 +75,14 @@ func Section(d Data) templ.Component {
 			}
 		} else {
 			if d.Notice != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-emerald-300\" role=\"status\" data-testid=\"audio-notice\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"audio-notice\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(d.Notice)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 18, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 18, Col: 87}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -98,14 +98,14 @@ func Section(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Error != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"audio-error\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"audio-error\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 21, Col: 84}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 21, Col: 83}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -162,7 +162,7 @@ func Section(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<span>ローカルが使えないときは、クラウドに切り替える（API 費用が出ます） <span class=\"block text-xs text-neutral-400\">実行を始める前の検査で、ローカルが使えない（この PC で動かせない・導入されていない・重みが無い・参照音声が無い話者がいる）と分かったときだけ、その実行の全体をクラウドで作ります。実行の途中で切り替えることはなく、切り替えたときはチャットに書きます。オフのときは、理由を出して止まります（クラウドの費用は出ません）。</span></span></label><div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<span>ローカルが使えないときは、クラウドに切り替える（API 費用が出ます） <span class=\"block text-xs text-mute\">実行を始める前の検査で、ローカルが使えない（この PC で動かせない・導入されていない・重みが無い・参照音声が無い話者がいる）と分かったときだけ、その実行の全体をクラウドで作ります。実行の途中で切り替えることはなく、切り替えたときはチャットに書きます。オフのときは、理由を出して止まります（クラウドの費用は出ません）。</span></span></label><div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -256,14 +256,14 @@ func choice(p Provider) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if p.CloneNotice != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"mt-3 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300\" role=\"note\" data-testid=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"mt-3 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("audio-clone-notice-" + p.Field)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 55, Col: 157}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 55, Col: 151}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 				if templ_7745c5c3_Err != nil {
@@ -276,7 +276,7 @@ func choice(p Provider) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(p.CloneNotice)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 55, Col: 175}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/audio/section.templ`, Line: 55, Col: 169}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {

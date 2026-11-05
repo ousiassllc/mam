@@ -13,7 +13,7 @@ import (
 
 // generationNav is the links between the pages of the generation test: tabs, the current one lit.
 templ generationNav(current string) {
-	<nav class="flex flex-wrap gap-1 border-b border-neutral-800 pb-2 text-sm" aria-label="生成テスト">
+	<nav class="flex flex-wrap gap-1 border-b border-border pb-2 text-sm" aria-label="生成テスト">
 		for _, l := range []struct{ Key, Label, Href string }{
 			{"new", "生成する", paths.GenerationTest()},
 			{"match", "画像から似せる", paths.GenerationTestMatch()},
@@ -22,9 +22,9 @@ templ generationNav(current string) {
 			{"prompts", "プロンプト履歴", paths.GenerationTestPrompts()},
 		} {
 			if l.Key == current {
-				<span class="rounded-md bg-neutral-800 px-3 py-1.5 font-medium text-neutral-100" aria-current="page">{ l.Label }</span>
+				<span class="rounded-md bg-accent-soft px-3 py-1.5 font-medium text-ink" aria-current="page">{ l.Label }</span>
 			} else {
-				<a class="rounded-md px-3 py-1.5 text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 motion-reduce:transition-none" href={ templ.SafeURL(l.Href) }>{ l.Label }</a>
+				<a class="rounded-md px-3 py-1.5 text-mute transition-colors hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring motion-reduce:transition-none" href={ templ.SafeURL(l.Href) }>{ l.Label }</a>
 			}
 		}
 	</nav>

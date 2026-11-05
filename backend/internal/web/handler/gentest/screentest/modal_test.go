@@ -88,7 +88,7 @@ func TestTheFavoriteOfTheModalAnswersTheButtonAndTheHeartOfTheTile(t *testing.T)
 	assert.Contains(t, body, `data-on="true"`, "the button")
 	assert.Contains(t, body, `id="gt-fav-mark-`+id+`"`)
 	assert.Contains(t, body, `hx-swap-oob="true"`, "the heart of the tile is swapped out of band")
-	assert.NotContains(t, body, `id="gt-fav-mark-`+id+`" class="pointer-events-none absolute right-1.5 top-1.5 text-base leading-none text-amber-300 drop-shadow" hidden`, "a favorite shows the heart")
+	assert.NotContains(t, body, `id="gt-fav-mark-`+id+`" class="pointer-events-none absolute right-1.5 top-1.5 text-base leading-none text-warning drop-shadow" hidden`, "a favorite shows the heart")
 
 	history := s.page(paths.GenerationTestHistory())
 	assert.Contains(t, history, `id="gt-fav-mark-`+id+`"`)

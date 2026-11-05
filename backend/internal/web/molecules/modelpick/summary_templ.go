@@ -42,14 +42,14 @@ func Summary(b Filter) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if b.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-xs text-red-300\" role=\"alert\" data-testid=\"model-pick-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-xs text-danger\" role=\"alert\" data-testid=\"model-pick-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(b.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/summary.templ`, Line: 14, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/summary.templ`, Line: 14, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -66,7 +66,7 @@ func Summary(b Filter) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, chip := range chips {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li><span class=\"inline-flex items-center gap-1 rounded-md bg-indigo-500/20 py-0.5 pl-2.5 pr-1 text-xs text-indigo-300\" data-testid=\"model-pick-chip\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li><span class=\"inline-flex items-center gap-1 rounded-md bg-accent-soft py-0.5 pl-2.5 pr-1 text-xs text-accent\" data-testid=\"model-pick-chip\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -79,7 +79,7 @@ func Summary(b Filter) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <button type=\"button\" class=\"cursor-pointer rounded-sm p-0.5 text-indigo-300 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400\" aria-label=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <button type=\"button\" class=\"cursor-pointer rounded-sm p-0.5 text-accent hover:text-ink focus-visible:focus-ring\" aria-label=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -144,7 +144,7 @@ func Summary(b Filter) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<li><button type=\"button\" class=\"cursor-pointer rounded-md px-2 py-0.5 text-xs text-neutral-300 underline hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400\" hx-get=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<li><button type=\"button\" class=\"cursor-pointer rounded-md px-2 py-0.5 text-xs text-ink underline hover:text-ink focus-visible:focus-ring\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -188,7 +188,7 @@ func Summary(b Filter) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"text-xs text-neutral-400\" role=\"status\" aria-live=\"polite\" data-testid=\"model-pick-total\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"text-xs text-mute\" role=\"status\" aria-live=\"polite\" data-testid=\"model-pick-total\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -238,7 +238,7 @@ func Summary(b Filter) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " 件は今は選べません <button type=\"button\" class=\"ml-1 cursor-pointer text-indigo-300 underline hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400\" hx-get=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " 件は今は選べません <button type=\"button\" class=\"ml-1 cursor-pointer text-accent underline decoration-mute hover:text-ink focus-visible:focus-ring\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

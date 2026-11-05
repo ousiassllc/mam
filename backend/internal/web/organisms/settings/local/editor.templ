@@ -19,7 +19,7 @@ templ EditorBody(d Data) {
 
 // EditorNotice is why no form was opened (the file is pinned, the endpoint is gone), in the place of the form.
 templ EditorNotice(msg string) {
-	<p class="text-sm text-red-300" role="alert" data-testid="local-form-error">{ msg }</p>
+	<p class="text-sm text-danger" role="alert" data-testid="local-form-error">{ msg }</p>
 }
 
 // closeButton closes the open form by drawing the page of the endpoint again (without it).
@@ -35,13 +35,13 @@ templ closeButton(endpoint string) {
 
 templ formError(msg string) {
 	if msg != "" {
-		<p class="text-sm text-red-300" role="alert" data-testid="local-form-error">{ msg }</p>
+		<p class="text-sm text-danger" role="alert" data-testid="local-form-error">{ msg }</p>
 	}
 }
 
 templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 	<form
-		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		class="flex flex-col gap-3 rounded-md border border-border p-4"
 		hx-post={ paths.LocalEndpoint(s.Endpoint, "models", "start") }
 		hx-target={ "#" + EditorID }
 		hx-swap="innerHTML"
@@ -53,14 +53,14 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 		<h4 tabindex="-1" autofocus class="text-sm font-semibold focus-visible:outline-none">接続先「{ s.Endpoint }」にモデルを追加（ステップ 1: ワークフロー）</h4>
 		@formError(errMsg)
 		<fieldset class="flex flex-col gap-2">
-			<legend class="text-xs text-neutral-400">組み込みのテンプレートから始める（モデルのファイル名は、接続先にあるものに直してください）</legend>
+			<legend class="text-xs text-mute">組み込みのテンプレートから始める（モデルのファイル名は、接続先にあるものに直してください）</legend>
 			for _, t := range templates {
 				@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID}, "flex flex-col gap-0.5 p-3 text-sm") {
 					<span>
 						<span class="font-medium">{ t.Label }</span>
-						<span class="ml-1 text-xs text-neutral-400">（{ mediaLabel(t.Media) }）</span>
+						<span class="ml-1 text-xs text-mute">（{ mediaLabel(t.Media) }）</span>
 					</span>
-					<span class="text-xs text-neutral-400">{ t.Description }</span>
+					<span class="text-xs text-mute">{ t.Description }</span>
 				}
 			}
 			@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""}, "p-3 text-sm font-medium") {
@@ -68,7 +68,7 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 			}
 		</fieldset>
 		<fieldset class="flex flex-col gap-2">
-			<legend class="text-xs text-neutral-400">取り込むワークフローの種類（テンプレートを選んだときは無視されます）</legend>
+			<legend class="text-xs text-mute">取り込むワークフローの種類（テンプレートを選んだときは無視されます）</legend>
 			<div class="flex items-center gap-2 text-sm">
 				@pick.Card(templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaImage, "checked": s.Media != MediaVideo}, "px-4 py-1.5 text-center") {
 					画像
@@ -78,7 +78,7 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 				}
 			</div>
 		</fieldset>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-workflow-json">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="local-workflow-json">
 			<span>ワークフローの JSON（ComfyUI の「Save (API Format)」で保存したもの。エディタ形式は取り込めません）</span>
 			@atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-xs", templ.Attributes{
 				"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false",

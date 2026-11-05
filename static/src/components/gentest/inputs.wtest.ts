@@ -248,12 +248,12 @@ describe('the input images of the generation test (spec/components/gentest-scree
     const dt = new DataTransfer();
     dt.items.add(png('p.png'));
     zone.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
-    expect(zone.classList.contains('bg-indigo-500/20')).to.equal(true);
+    expect(zone.classList.contains('bg-accent-soft')).to.equal(true);
     const inner = zone.querySelector('button,label,span') ?? zone.firstElementChild!;
     zone.dispatchEvent(new DragEvent('dragleave', { bubbles: true, relatedTarget: inner }));
-    expect(zone.classList.contains('bg-indigo-500/20'), 'moving onto a child is not leaving').to.equal(true);
+    expect(zone.classList.contains('bg-accent-soft'), 'moving onto a child is not leaving').to.equal(true);
     zone.dispatchEvent(new DragEvent('dragleave', { bubbles: true, relatedTarget: document.body }));
-    expect(zone.classList.contains('bg-indigo-500/20')).to.equal(false);
+    expect(zone.classList.contains('bg-accent-soft')).to.equal(false);
   });
 
   it('gives the picker button back when its thumbnail is removed', () => {

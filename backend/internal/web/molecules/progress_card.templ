@@ -19,11 +19,11 @@ templ ProgressCard(m domain.ThreadMessage) {
 			@atoms.Badge(tone, label)
 		</p>
 		if m.Job != nil && m.Job.Status == domain.JobFailed && m.Job.Error != "" {
-			<p class="mt-1 text-xs text-red-300">{ m.Job.Error }</p>
+			<p class="mt-1 text-xs text-danger">{ m.Job.Error }</p>
 		}
 		if m.Job != nil {
 			if steps := planadvice.For(*m.Job, false); steps != "" {
-				<p class="mt-1 text-xs text-neutral-300" data-testid="progress-next-steps">{ steps }</p>
+				<p class="mt-1 text-xs text-ink" data-testid="progress-next-steps">{ steps }</p>
 			}
 		}
 	}

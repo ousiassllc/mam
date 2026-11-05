@@ -185,14 +185,14 @@ func officialDetail(d Data) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-official-detail\"><p class=\"text-sm text-neutral-300\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-official-detail\"><p class=\"text-sm text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(officialHelp)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 66, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 66, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -211,7 +211,7 @@ func officialDetail(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Official.SignedIn && !d.Official.NeedsRelogin {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-xs text-neutral-400\" data-testid=\"chatgpt-using-plan\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-xs text-mute\" data-testid=\"chatgpt-using-plan\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -242,7 +242,7 @@ func officialDetail(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-xs text-neutral-400\" data-testid=\"chatgpt-official-remote\">ブラウザは、mam が動いているこの PC で開きます。tailnet などの別のマシンから操作しているときは、先にこの PC でログインしてください（公式のログインにはデバイスコードの方式がありません）。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-xs text-mute\" data-testid=\"chatgpt-official-remote\">ブラウザは、mam が動いているこの PC で開きます。tailnet などの別のマシンから操作しているときは、先にこの PC でログインしてください（公式のログインにはデバイスコードの方式がありません）。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -290,7 +290,7 @@ func accountStatus(kind string, a Account) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !a.SignedIn {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-neutral-300\">ログインしていません</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-ink\">ログインしていません</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -313,14 +313,14 @@ func accountStatus(kind string, a Account) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if a.Plan != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"ml-2 text-xs text-neutral-400\" data-testid=\"chatgpt-plan\">プラン: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"ml-2 text-xs text-mute\" data-testid=\"chatgpt-plan\">プラン: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(a.Plan)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 92, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 92, Col: 88}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -336,7 +336,7 @@ func accountStatus(kind string, a Account) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if a.NeedsRelogin {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<p class=\"text-amber-300\" role=\"alert\" data-testid=\"chatgpt-relogin\">ログインの有効期限が切れました。もう一度ログインしてください。それまでこの経路は使われません。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<p class=\"text-warning\" role=\"alert\" data-testid=\"chatgpt-relogin\">ログインの有効期限が切れました。もう一度ログインしてください。それまでこの経路は使われません。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -373,14 +373,14 @@ func tokenExpiry(a Account) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if a.SignedIn && !a.ExpiresAt.IsZero() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"text-xs text-neutral-400\">アクセストークンの期限: <time datetime=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"text-xs text-mute\">アクセストークンの期限: <time datetime=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(a.ExpiresAt.UTC().Format(time.RFC3339))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 105, Col: 128}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 105, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
@@ -393,7 +393,7 @@ func tokenExpiry(a Account) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(a.ExpiresAt.Local().Format("2006-01-02 15:04"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 105, Col: 179}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 105, Col: 172}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -431,14 +431,14 @@ func loginFailed(l *Login) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if l != nil && l.Failed && !l.Pending {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"break-words text-sm text-red-300\" role=\"alert\" data-testid=\"chatgpt-login-failed\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"break-words text-sm text-danger\" role=\"alert\" data-testid=\"chatgpt-login-failed\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(l.Message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 112, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 112, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -477,14 +477,14 @@ func codexGuidance(d Data) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if (d.Official.Login != nil && d.Official.Login.UseCodex) || (d.Official.SignedIn && d.Official.WorkspacePlan) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"flex flex-col gap-2 rounded-md border border-amber-500/60 px-3 py-2\" data-testid=\"chatgpt-use-codex\"><p class=\"text-sm text-amber-300\">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p><a class=\"w-fit text-sm text-indigo-300 underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"flex flex-col gap-2 rounded-md border border-warning/60 px-3 py-2\" data-testid=\"chatgpt-use-codex\"><p class=\"text-sm text-warning\">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p><a class=\"w-fit text-sm text-accent underline decoration-mute\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 templ.SafeURL
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + cardID(codexKind)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 122, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 122, Col: 111}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {

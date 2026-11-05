@@ -28,7 +28,7 @@ templ HistoryList(h History) {
 			hx-push-url="true"
 			data-testid="gt-filter"
 		>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-filter-model">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-filter-model">
 				<span>モデル</span>
 				@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{"id": "gt-filter-model", "name": FieldModel}) {
 					<option value="">すべて</option>
@@ -37,7 +37,7 @@ templ HistoryList(h History) {
 					}
 				}
 			</label>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-filter-media">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-filter-media">
 				<span>種類</span>
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-filter-media", "name": FieldMedia}) {
 					<option value="">すべて</option>
@@ -74,11 +74,11 @@ templ HistoryLive(h History) {
 	>
 		@notice(h.Message, "gt-history")
 		<div class="flex items-center justify-between gap-3">
-			<p class="text-sm text-neutral-300" data-testid="gt-spend">{ h.Spend }</p>
+			<p class="text-sm text-ink" data-testid="gt-spend">{ h.Spend }</p>
 			@refresh.Bar(h.Refresh, HistoryLiveID, h.UpdatedAt)
 		</div>
 		if len(h.Cards) == 0 {
-			<p class="text-sm text-neutral-400" data-testid="gt-history-empty">条件に合う結果はありません。</p>
+			<p class="text-sm text-mute" data-testid="gt-history-empty">条件に合う結果はありません。</p>
 		}
 		<ul class="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-3">
 			for _, c := range h.Cards {
@@ -111,13 +111,13 @@ templ HistoryCard(c resulttile.Card) {
 		if c.FileURL != "" {
 			<input type="checkbox" id={ "gt-pick-" + c.ID } class="peer sr-only" aria-label="書き出しに選ぶ" data-gt-pick-input data-testid="gt-pick"/>
 		}
-		<div class={ "overflow-hidden rounded-lg border border-neutral-800", pick.Glow }>
+		<div class={ "overflow-hidden rounded-lg border border-border", pick.Glow }>
 			@resulttile.Tile(c, true)
 		</div>
 		if c.FileURL != "" {
 			<label
 				for={ "gt-pick-" + c.ID }
-				class="absolute left-1.5 top-1.5 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-neutral-600 bg-neutral-900 text-indigo-300 hover:border-indigo-400 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100"
+				class="absolute left-1.5 top-1.5 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-accent hover:border-accent peer-checked:border-accent peer-checked:bg-accent-soft [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100"
 				aria-hidden="true"
 				data-testid="gt-pick-mark"
 			>

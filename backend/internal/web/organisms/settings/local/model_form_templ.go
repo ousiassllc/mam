@@ -36,7 +36,7 @@ func ModelFormView(f ModelForm, errMsg string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form class=\"flex flex-col gap-4 rounded-md border border-neutral-700 p-4\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form class=\"flex flex-col gap-4 rounded-md border border-border p-4\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -196,25 +196,25 @@ func ModelFormView(f ModelForm, errMsg string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.Edit {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-sm\" data-testid=\"local-model-fixed\"><span class=\"text-neutral-400\">名前:</span> <code>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-sm\" data-testid=\"local-model-fixed\"><span class=\"text-mute\">名前:</span> <code>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(f.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/model_form.templ`, Line: 36, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/model_form.templ`, Line: 36, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</code></p><p class=\"text-xs text-neutral-400\">名前は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</code></p><p class=\"text-xs text-mute\">名前は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-model-name\"><span>名前（英小文字・数字・. _ -。識別子は「")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-model-name\"><span>名前（英小文字・数字・. _ -。識別子は「")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -318,7 +318,7 @@ func compatFields(f ModelForm) templ.Component {
 			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-model-id\"><span>サーバーに渡すモデル ID（/v1/images/generations の model）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-model-id\"><span>サーバーに渡すモデル ID（/v1/images/generations の model）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -427,12 +427,12 @@ func workflowFields(f ModelForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-assignments\"><legend class=\"text-sm font-medium\">入力の割り当て</legend><p class=\"text-xs text-neutral-400\">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます。他のノードがつないでいる入力は選べません。Prompt は必須です。参照画像の枚数と最初・最後のフレームの対応は、ここで選んだ入力から決まります。</p><table class=\"w-full text-sm\"><tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-assignments\"><legend class=\"text-sm font-medium\">入力の割り当て</legend><p class=\"text-xs text-mute\">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます。他のノードがつないでいる入力は選べません。Prompt は必須です。参照画像の枚数と最初・最後のフレームの対応は、ここで選んだ入力から決まります。</p><table class=\"w-full text-sm\"><tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, s := range f.Slots {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<tr class=\"border-b border-neutral-800\"><th scope=\"row\" class=\"py-1 pr-3 text-left font-normal\"><label for=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<tr class=\"border-b border-border\"><th scope=\"row\" class=\"py-1 pr-3 text-left font-normal\"><label for=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -564,7 +564,7 @@ func workflowFields(f ModelForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</tbody></table></fieldset><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-output-node\"><span>出力に使うノード（画像・動画を保存するノード）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</tbody></table></fieldset><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-output-node\"><span>出力に使うノード（画像・動画を保存するノード）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -660,7 +660,7 @@ func workflowFields(f ModelForm) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.Media == MediaVideo {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-fps\"><span>fps（空: 16）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-fps\"><span>fps（空: 16）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -668,7 +668,7 @@ func workflowFields(f ModelForm) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-frames-step\"><span>フレーム数の刻み（Wan は 4、LTX は 8。空: 刻みなし）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-frames-step\"><span>フレーム数の刻み（Wan は 4、LTX は 8。空: 刻みなし）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -681,7 +681,7 @@ func workflowFields(f ModelForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-size-multiple\"><span>幅・高さの倍数（空: 16）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-size-multiple\"><span>幅・高さの倍数（空: 16）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -718,7 +718,7 @@ func videoFields(f ModelForm) templ.Component {
 			templ_7745c5c3_Var30 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-video-fields\"><legend class=\"text-sm font-medium\">動画の能力</legend><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-durations\"><span>長さ（秒。小さい順にカンマ区切り。例: 3, 4, 5）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-video-fields\"><legend class=\"text-sm font-medium\">動画の能力</legend><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-durations\"><span>長さ（秒。小さい順にカンマ区切り。例: 3, 4, 5）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -726,7 +726,7 @@ func videoFields(f ModelForm) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-resolutions\"><span>解像度（短辺。カンマ区切り。例: 480p, 720p）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-resolutions\"><span>解像度（短辺。カンマ区切り。例: 480p, 720p）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -772,7 +772,7 @@ func costFields(f ModelForm) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if f.Media == MediaVideo {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-cost-second\"><span>見積コスト（USD / 秒。空: 0。参考値で、見積にだけ使います）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-cost-second\"><span>見積コスト（USD / 秒。空: 0。参考値で、見積にだけ使います）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -785,7 +785,7 @@ func costFields(f ModelForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-cost-image\"><span>見積コスト（USD / 枚。空: 0。参考値で、見積にだけ使います）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-cost-image\"><span>見積コスト（USD / 枚。空: 0。参考値で、見積にだけ使います）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -41,7 +41,7 @@ func generationNav(current string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav class=\"flex flex-wrap gap-1 border-b border-neutral-800 pb-2 text-sm\" aria-label=\"生成テスト\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav class=\"flex flex-wrap gap-1 border-b border-border pb-2 text-sm\" aria-label=\"生成テスト\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -53,14 +53,14 @@ func generationNav(current string) templ.Component {
 			{"prompts", "プロンプト履歴", paths.GenerationTestPrompts()},
 		} {
 			if l.Key == current {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"rounded-md bg-neutral-800 px-3 py-1.5 font-medium text-neutral-100\" aria-current=\"page\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"rounded-md bg-accent-soft px-3 py-1.5 font-medium text-ink\" aria-current=\"page\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 25, Col: 114}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 25, Col: 106}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -71,14 +71,14 @@ func generationNav(current string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<a class=\"rounded-md px-3 py-1.5 text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 motion-reduce:transition-none\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<a class=\"rounded-md px-3 py-1.5 text-mute transition-colors hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring motion-reduce:transition-none\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 templ.SafeURL
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(l.Href))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 27, Col: 258}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 27, Col: 188}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -91,7 +91,7 @@ func generationNav(current string) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 27, Col: 270}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 27, Col: 200}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {

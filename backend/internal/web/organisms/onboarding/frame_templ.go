@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	linkClass = "text-sm underline text-indigo-300"
-	codeClass = "rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-sm text-neutral-100"
+	linkClass = "text-sm underline decoration-mute text-accent"
+	codeClass = "rounded bg-accent-soft px-1.5 py-0.5 font-mono text-sm text-ink"
 )
 
 // Layout is the frame of one step: the h1, the progress, the step (its h2 and body, the children) and the buttons that go
@@ -42,7 +42,7 @@ func Layout(f Frame) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"mx-auto max-w-4xl p-8\"><h1 class=\"mb-1 text-xl font-semibold\">はじめに</h1><p class=\"text-sm text-neutral-400\">mam を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"mx-auto max-w-4xl p-8\"><h1 class=\"mb-1 text-xl font-semibold\">はじめに</h1><p class=\"text-sm text-mute\">mam を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -63,14 +63,14 @@ func Layout(f Frame) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><p class=\"text-xs text-neutral-400\">ステップ ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><p class=\"text-xs text-mute\">ステップ ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(f.Number())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/frame.templ`, Line: 22, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/frame.templ`, Line: 22, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -83,7 +83,7 @@ func Layout(f Frame) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(f.Total())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/frame.templ`, Line: 22, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/frame.templ`, Line: 22, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -96,7 +96,7 @@ func Layout(f Frame) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(Group(f.Current()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/frame.templ`, Line: 22, Col: 105}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/frame.templ`, Line: 22, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -177,7 +177,7 @@ func progress(f Frame) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if i == f.Index {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span aria-current=\"step\" class=\"inline-block rounded-md border border-indigo-400 bg-neutral-800 px-2 py-1 font-medium text-neutral-100\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span aria-current=\"step\" class=\"inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 font-medium text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -221,7 +221,7 @@ func progress(f Frame) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-block rounded-md border border-transparent px-2 py-1 text-neutral-300 hover:bg-neutral-800/60 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-block rounded-md border border-transparent px-2 py-1 text-ink hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -288,7 +288,7 @@ func controls(f Frame) templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"mt-8 flex flex-col gap-3 border-t border-neutral-800 pt-4\"><div class=\"flex flex-wrap items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"mt-8 flex flex-col gap-3 border-t border-border pt-4\"><div class=\"flex flex-wrap items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -332,7 +332,7 @@ func controls(f Frame) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.Current().Setup {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-xs text-neutral-400\">「あとで」で飛ばしても、設定画面からいつでも入れられます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-xs text-mute\">「あとで」で飛ばしても、設定画面からいつでも入れられます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

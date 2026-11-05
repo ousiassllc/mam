@@ -18,7 +18,7 @@ templ Easy(e EasyData, card templ.Component) {
 	<input type="hidden" name={ FieldTier } value={ TierEasy }/>
 	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-intents-title" data-testid="gt-intents">
 		@help.Row(help.ID("やりたいこと"), "やりたいこと", help.Text(easyHelp)) {
-			<span id="gt-intents-title" class="text-sm font-medium text-neutral-200">やりたいこと</span>
+			<span id="gt-intents-title" class="text-sm font-medium text-ink">やりたいこと</span>
 		}
 		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 			for _, i := range e.Intents {
@@ -27,13 +27,13 @@ templ Easy(e EasyData, card templ.Component) {
 					"hx-get": paths.GenerationTestPart("easy-pick"), "hx-trigger": "change", "hx-target": "#" + PickID, "hx-swap": "outerHTML",
 					"hx-include": "#" + FormID + " [name=intent]," + "#" + FormID + " [name=ref]," + "#" + FormID + " [name=quality]:checked",
 				}, "flex flex-col gap-0.5 px-3 py-2 text-sm") {
-					<span class="font-medium text-neutral-100">{ i.Label }</span>
-					<span class="text-xs text-neutral-400">{ i.Hint }</span>
+					<span class="font-medium text-ink">{ i.Label }</span>
+					<span class="text-xs text-mute">{ i.Hint }</span>
 				}
 			}
 		</div>
 		if len(e.Recipes) > 0 {
-			<span class="mt-1 text-xs text-neutral-400" id="gt-recipe-choices-title">保存したレシピ（選ぶと、そのモデルと設定で作ります）</span>
+			<span class="mt-1 text-xs text-mute" id="gt-recipe-choices-title">保存したレシピ（選ぶと、そのモデルと設定で作ります）</span>
 			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-labelledby="gt-recipe-choices-title" data-testid="gt-recipe-choices">
 				for _, i := range e.Recipes {
 					@pick.Card(templ.Attributes{
@@ -41,8 +41,8 @@ templ Easy(e EasyData, card templ.Component) {
 						"hx-get": paths.GenerationTestPart("easy-pick"), "hx-trigger": "change", "hx-target": "#" + PickID, "hx-swap": "outerHTML",
 						"hx-include": "#" + FormID + " [name=intent]," + "#" + FormID + " [name=ref]," + "#" + FormID + " [name=quality]:checked",
 					}, "flex flex-col gap-0.5 px-3 py-2 text-sm") {
-						<span class="font-medium text-neutral-100">{ i.Label }</span>
-						<span class="text-xs text-neutral-400">{ i.Hint }</span>
+						<span class="font-medium text-ink">{ i.Label }</span>
+						<span class="text-xs text-mute">{ i.Hint }</span>
 					}
 				}
 			</div>
@@ -51,7 +51,7 @@ templ Easy(e EasyData, card templ.Component) {
 	@EasyPick(e, card)
 	<fieldset class="flex flex-col gap-2" aria-labelledby="gt-prompts-title" data-testid="gt-prompt-fields">
 		@help.Row(help.ID("プロンプトのウェイト"), "プロンプトのウェイト", gentestadv.WeightChosen()) {
-			<span id="gt-prompts-title" class="text-sm font-medium text-neutral-200">プロンプト</span>
+			<span id="gt-prompts-title" class="text-sm font-medium text-ink">プロンプト</span>
 		}
 		for i, p := range e.Prompts {
 			if i == 0 {
@@ -78,7 +78,7 @@ templ Easy(e EasyData, card templ.Component) {
 // size, and choosing it lights that one.
 templ Sizes(sizes []SizeChoice, oob bool) {
 	<fieldset id={ SizesID } class="flex flex-col gap-2" aria-labelledby="gt-size-title" data-testid="gt-sizes" hx-swap-oob?={ oob }>
-		<span id="gt-size-title" class="text-sm font-medium text-neutral-200">サイズ</span>
+		<span id="gt-size-title" class="text-sm font-medium text-ink">サイズ</span>
 		<div class="flex flex-wrap gap-2">
 			for _, s := range sizes {
 				@pick.Card(templ.Attributes{"type": "radio", "name": FieldAspect, "value": s.Value, "checked": s.Selected}, "px-4 py-1.5 text-center text-sm") {
@@ -95,27 +95,27 @@ templ Sizes(sizes []SizeChoice, oob bool) {
 templ EasyPick(e EasyData, card templ.Component) {
 	<div id={ PickID } class="flex flex-col gap-3" data-testid="gt-easy-pick" data-can-estimate={ boolText(e.CanEstimate) }>
 		if e.ModelLabel != "" {
-			<p class="text-xs text-neutral-400" data-testid="gt-easy-model">
-				使うモデル: <span class="text-neutral-200">{ e.ModelLabel }</span>
+			<p class="text-xs text-mute" data-testid="gt-easy-model">
+				使うモデル: <span class="text-ink">{ e.ModelLabel }</span>
 				if e.ModelNote != "" {
-					<span class="block text-amber-300" data-testid="gt-easy-model-note">{ e.ModelNote }</span>
+					<span class="block text-warning" data-testid="gt-easy-model-note">{ e.ModelNote }</span>
 				}
 			</p>
 		} else if e.Reason != "" {
-			<p class="text-sm text-amber-300" role="status" data-testid="gt-easy-nomodel">
+			<p class="text-sm text-warning" role="status" data-testid="gt-easy-nomodel">
 				{ e.Reason }
 				<a class="underline" href={ templ.SafeURL(e.ModelsURL) }>モデルマネージャーを開く</a>
 			</p>
 		}
 		if e.IntentHint != "" {
-			<p class="text-xs text-neutral-400" data-testid="gt-easy-hint">{ e.IntentHint }</p>
+			<p class="text-xs text-mute" data-testid="gt-easy-hint">{ e.IntentHint }</p>
 		}
 		if card != nil {
 			@card
 		}
 		<fieldset class="flex flex-col gap-2" aria-labelledby="gt-quality-title" data-testid="gt-quality">
 			@help.Row(help.ID("品質"), "品質", help.Text(qualityHelp)) {
-				<span id="gt-quality-title" class="text-sm font-medium text-neutral-200">品質</span>
+				<span id="gt-quality-title" class="text-sm font-medium text-ink">品質</span>
 			}
 			if len(e.Qualities) > 0 {
 				<div class="flex flex-wrap gap-2">
@@ -126,7 +126,7 @@ templ EasyPick(e EasyData, card templ.Component) {
 					}
 				</div>
 			} else {
-				<p class="text-xs text-neutral-400" data-testid="gt-quality-reason">{ e.QualityReason }</p>
+				<p class="text-xs text-mute" data-testid="gt-quality-reason">{ e.QualityReason }</p>
 			}
 		</fieldset>
 	</div>
@@ -139,8 +139,8 @@ templ EasyPick(e EasyData, card templ.Component) {
 templ EasyActions(canEstimate bool) {
 	<div class="flex flex-wrap items-center gap-3">
 		@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate", "disabled": !canEstimate, "data-gt-easy-estimate": ""})
-		<span class="text-xs text-neutral-400">実行はまだしません</span>
-		<a class="text-sm text-neutral-300 underline" { SwitchAttrs(TierDetail)... } data-testid="gt-open-detail">詳細設定を開く</a>
+		<span class="text-xs text-mute">実行はまだしません</span>
+		<a class="text-sm text-ink underline" { SwitchAttrs(TierDetail)... } data-testid="gt-open-detail">詳細設定を開く</a>
 		@OpenInComfy()
 	</div>
 	@ComfyOpenResult("")

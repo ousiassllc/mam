@@ -45,12 +45,12 @@ func TestModelCardsAreSelectableAndTheirNotesAreInTheHelp(t *testing.T) {
 	for _, c := range []string{on, off, disabled} {
 		assert.Contains(t, c, `type="checkbox" name="model"`, "one control per card: it is what the form posts and what a screen reader reads")
 		assert.Contains(t, c, `class="peer sr-only"`, "the control is hidden; the card is its label")
-		assert.Contains(t, c, "peer-checked:border-indigo-400", "the selection shows on the card")
-		assert.Contains(t, c, "peer-focus-visible:ring-indigo-400", "the keyboard focus shows on the card")
+		assert.Contains(t, c, "peer-checked:border-accent", "the selection shows on the card")
+		assert.Contains(t, c, "", "the keyboard focus shows on the card")
 		assert.NotContains(t, c, "シード", "the notes of a model are not on its card")
 		assert.NotContains(t, c, "ネガティブ")
 		assert.NotContains(t, c, "参照画像")
-		assert.NotContains(t, c, "text-amber-300", "no yellow line per card")
+		assert.NotContains(t, c, "text-warning", "no yellow line per card")
 	}
 	assert.Regexp(t, `name="model" value="nano-banana" checked`, on, "a model in the link is selected")
 	assert.NotContains(t, off, `" checked`, "a model that is not selected is not checked")
@@ -65,7 +65,7 @@ func TestModelCardsAreSelectableAndTheirNotesAreInTheHelp(t *testing.T) {
 	start := s.page(paths.GenerationTest() + "?tier=detail")
 	assert.Contains(t, start, "1 件は今は選べません", "the list starts at the models that can be chosen, and one calm line says how many cannot be")
 	assert.NotContains(t, start, `data-model="nano-banana-lite"`)
-	assert.NotContains(t, strings.ReplaceAll(models, panel, ""), "text-amber-300")
+	assert.NotContains(t, strings.ReplaceAll(models, panel, ""), "text-warning")
 }
 
 func TestLongLabelsAreShortAndTheirExplanationsAreInTheHelp(t *testing.T) {

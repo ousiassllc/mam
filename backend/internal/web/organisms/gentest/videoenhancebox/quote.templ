@@ -9,18 +9,18 @@ import (
 // and the form that runs exactly this quote once the user ticks that the quote is confirmed (the paid cloud is never started without it). When the quote
 // could not be had it says why and has no button to run.
 templ QuoteBox(q Quote) {
-	<div id={ q.QuoteID() } class="flex flex-col gap-2 rounded-md border border-neutral-800 p-3" data-testid="gt-venh-quote">
+	<div id={ q.QuoteID() } class="flex flex-col gap-2 rounded-md border border-border p-3" data-testid="gt-venh-quote">
 		if q.Error != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="gt-venh-quote-error">{ q.Error }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="gt-venh-quote-error">{ q.Error }</p>
 		} else {
 			<p class="text-sm" data-testid="gt-venh-credits">
 				このくらいのクレジットを使います（上限 { CreditsText(q.Credits) } クレジット）。1 クレジットの金額はプランによります
 			</p>
 			if q.CreditsMin > 0 {
-				<p class="text-xs text-neutral-400" data-testid="gt-venh-credits-min">少なくて { CreditsText(q.CreditsMin) } クレジットです</p>
+				<p class="text-xs text-mute" data-testid="gt-venh-credits-min">少なくて { CreditsText(q.CreditsMin) } クレジットです</p>
 			}
-			<p class="text-xs text-neutral-400" data-testid="gt-venh-output">{ q.ModelLabel }：{ q.Output }</p>
-			<p class="text-xs text-neutral-400">Powered by Topaz Labs</p>
+			<p class="text-xs text-mute" data-testid="gt-venh-output">{ q.ModelLabel }：{ q.Output }</p>
+			<p class="text-xs text-mute">Powered by Topaz Labs</p>
 			<form
 				class="flex flex-col gap-2"
 				hx-post={ paths.GenerationTestPart("results", q.ResultID, "video-enhance") }
@@ -34,7 +34,7 @@ templ QuoteBox(q Quote) {
 					<input type="hidden" name={ h.Name } value={ h.Value }/>
 				}
 				if q.AdultWarning != "" {
-					<p class="rounded-md border border-amber-500/60 p-2 text-sm text-amber-300" role="alert" data-testid="gt-venh-adult-warning">{ q.AdultWarning }</p>
+					<p class="rounded-md border border-warning/60 p-2 text-sm text-warning" role="alert" data-testid="gt-venh-adult-warning">{ q.AdultWarning }</p>
 					<label class="flex items-start gap-2 text-sm">
 						@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAdult, "value": "1", "required": true, "data-testid": "gt-venh-adult-confirm"})
 						<span>上の警告を読みました。成人向けの動画を Topaz に送ってよいです</span>

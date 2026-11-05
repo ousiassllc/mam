@@ -59,7 +59,7 @@ func TakeComparison(d TakeComparisonData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</h2><p class=\"text-sm text-neutral-400\">スコア表で Take を比べ、選択または除外できます。動画のタイムライン上をドラッグするか、「Take A の 0-2秒 + Take B の 2-4秒」のように書いて、複数の Take の区間を合成できます。</p><mam-take-comparator api-url=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</h2><p class=\"text-sm text-mute\">スコア表で Take を比べ、選択または除外できます。動画のタイムライン上をドラッグするか、「Take A の 0-2秒 + Take B の 2-4秒」のように書いて、複数の Take の区間を合成できます。</p><mam-take-comparator api-url=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

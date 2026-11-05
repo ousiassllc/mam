@@ -34,7 +34,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"analytics-panel\" class=\"flex flex-col gap-6\"><section class=\"rounded-md border border-emerald-500/60 bg-emerald-500/10 p-4\" data-testid=\"north-star\"><h2 class=\"text-xs text-neutral-400\">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2><p class=\"text-3xl font-semibold\" data-testid=\"metric-north-star\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"analytics-panel\" class=\"flex flex-col gap-6\"><section class=\"rounded-md border border-success/60 bg-success/10 p-4\" data-testid=\"north-star\"><h2 class=\"text-xs text-mute\">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2><p class=\"text-3xl font-semibold\" data-testid=\"metric-north-star\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -47,14 +47,14 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</p><p class=\"text-xs text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</p><p class=\"text-xs text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fractionText(m.NorthStar))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 13, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 13, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -67,7 +67,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(intText(m.Started))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 13, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 13, Col: 105}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -96,27 +96,27 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, row := range g.Rows {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"rounded-md border border-neutral-700 p-3\" data-testid=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"rounded-md border border-border p-3\" data-testid=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue("metric-" + row.Key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 20, Col: 93}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 20, Col: 88}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"><dt class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"><dt class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(row.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 21, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 21, Col: 48}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -148,14 +148,14 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</dd><dd class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</dd><dd class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(row.Basis)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 23, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/analytics_panel.templ`, Line: 23, Col: 48}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -171,7 +171,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-xs text-neutral-400\">集計はこの端末のデータだけから行い、外部へは送信しません。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-xs text-mute\">集計はこの端末のデータだけから行い、外部へは送信しません。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -39,7 +39,7 @@ function renderMarker(marker: Marker, max: number, seek: (time: number) => void)
   const left = Math.min(range.start / max, 1) * 100;
   const width = Math.max(Math.min((range.end - range.start) / max, 1 - left / 100) * 100, 0.8);
   const color =
-    issue.severity === 'high' ? 'bg-red-500/70' : issue.severity === 'medium' ? 'bg-amber-500/70' : 'bg-sky-500/70';
+    issue.severity === 'high' ? 'bg-danger/70' : issue.severity === 'medium' ? 'bg-warning/70' : 'bg-info/70';
   const label = `${issue.type}（${issue.severity}） ${range.start.toFixed(1)}-${range.end.toFixed(1)}秒`;
   return html`<button
     type="button"
@@ -79,15 +79,15 @@ export function renderTransport(v: TransportView) {
           : nothing
       }
     </div>
-    <div class="flex items-center gap-2 text-xs text-neutral-300">
-      <button type="button" data-action="prev-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ戻る" title="1 コマ戻る" @click=${() => v.step(-1)}>◀|</button>
-      <button type="button" data-action="play" class="rounded border border-neutral-700 px-2 py-0.5" aria-label=${playLabel} title=${playLabel} @click=${v.toggle}>
+    <div class="flex items-center gap-2 text-xs text-ink">
+      <button type="button" data-action="prev-frame" class="rounded border border-border px-2 py-0.5" aria-label="1 コマ戻る" title="1 コマ戻る" @click=${() => v.step(-1)}>◀|</button>
+      <button type="button" data-action="play" class="rounded border border-border px-2 py-0.5" aria-label=${playLabel} title=${playLabel} @click=${v.toggle}>
         ${v.playing ? '❚❚' : '▶'}
       </button>
-      <button type="button" data-action="next-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ進む" title="1 コマ進む" @click=${() => v.step(1)}>|▶</button>
+      <button type="button" data-action="next-frame" class="rounded border border-border px-2 py-0.5" aria-label="1 コマ進む" title="1 コマ進む" @click=${() => v.step(1)}>|▶</button>
       <span class="font-mono" data-timecode>${formatTimecode(v.currentTime, rate)}</span>
-      <span class="font-mono text-neutral-400">/ ${formatTimecode(max, rate)}</span>
-      <span class="text-neutral-400">${rate.toFixed(rate % 1 === 0 ? 0 : 2)} fps${v.rateKnown ? '' : '（仮）'}</span>
+      <span class="font-mono text-mute">/ ${formatTimecode(max, rate)}</span>
+      <span class="text-mute">${rate.toFixed(rate % 1 === 0 ? 0 : 2)} fps${v.rateKnown ? '' : '（仮）'}</span>
     </div>
   `;
 }
@@ -96,7 +96,7 @@ export function renderTransport(v: TransportView) {
 export function renderPlaceholder(progress: ShotProgress | null) {
   const fraction = progressFraction(progress);
   return html`<div
-    class="flex aspect-video flex-col items-center justify-center gap-2 rounded border border-dashed border-neutral-700 bg-neutral-900 text-xs text-neutral-400"
+    class="flex aspect-video flex-col items-center justify-center gap-2 rounded border border-dashed border-border bg-surface text-xs text-mute"
     role="status"
     data-placeholder
     data-stage=${progress?.stage ?? 'idle'}
@@ -105,8 +105,8 @@ export function renderPlaceholder(progress: ShotProgress | null) {
     ${
       fraction === null
         ? nothing
-        : html`<div class="h-1 w-1/2 overflow-hidden rounded bg-neutral-800">
-          <div class="h-full bg-sky-500/70" style="width:${fraction * 100}%" data-progress-bar></div>
+        : html`<div class="h-1 w-1/2 overflow-hidden rounded bg-accent-soft">
+          <div class="h-full bg-info/70" style="width:${fraction * 100}%" data-progress-bar></div>
         </div>`
     }
   </div>`;

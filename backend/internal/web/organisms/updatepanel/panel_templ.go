@@ -155,7 +155,7 @@ func Panel(d Data) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"update-panel\" class=\"flex flex-col gap-3\" aria-labelledby=\"update-version\"><p class=\"text-sm\"><span class=\"text-neutral-400\">現在のバージョン:</span> <span id=\"update-version\" class=\"font-medium\" data-testid=\"update-version\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"update-panel\" class=\"flex flex-col gap-3\" aria-labelledby=\"update-version\"><p class=\"text-sm\"><span class=\"text-mute\">現在のバージョン:</span> <span id=\"update-version\" class=\"font-medium\" data-testid=\"update-version\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -242,7 +242,7 @@ func Panel(d Data) templ.Component {
 			}
 		}
 		if !d.CheckedAt.IsZero() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-xs text-neutral-400\" data-testid=\"update-checked-at\">最終確認: <time datetime=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-xs text-mute\" data-testid=\"update-checked-at\">最終確認: <time datetime=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -311,13 +311,13 @@ func Panel(d Data) templ.Component {
 func statusClass(t Tone) string {
 	switch t {
 	case ToneOK:
-		return "text-sm text-emerald-300"
+		return "text-sm text-success"
 	case ToneWarn:
-		return "text-sm text-amber-300"
+		return "text-sm text-warning"
 	case ToneError:
-		return "text-sm text-red-300"
+		return "text-sm text-danger"
 	}
-	return "text-sm text-neutral-300"
+	return "text-sm text-ink"
 }
 
 // statusRole announces a warning or an error at once, unless the error box does (its own role="alert"): one failure is read out once.

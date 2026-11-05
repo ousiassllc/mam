@@ -87,7 +87,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<section aria-label=\"Style\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Style</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<section aria-label=\"Style\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Style</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -96,12 +96,12 @@ func View(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Series.StyleReferenceAssetID != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-xs text-neutral-400\">Style の参照画像を Episode の Reference Library に引き継ぎます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-xs text-mute\">Style の参照画像を Episode の Reference Library に引き継ぎます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</section><section aria-label=\"Characters\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Characters</h2><p id=\"series-characters-empty\" class=\"text-sm text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</section><section aria-label=\"Characters\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Characters</h2><p id=\"series-characters-empty\" class=\"text-sm text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -111,7 +111,7 @@ func View(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p><details class=\"text-sm\" id=\"series-add-character\"><summary class=\"cursor-pointer text-xs text-neutral-300\">登場人物を追加（AI の企画を待たずに、正本へ直接登録する。次の Episode から使われます）</summary><div class=\"mt-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p><details class=\"text-sm\" id=\"series-add-character\"><summary class=\"cursor-pointer text-xs text-ink\">登場人物を追加（AI の企画を待たずに、正本へ直接登録する。次の Episode から使われます）</summary><div class=\"mt-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -119,7 +119,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></details><p class=\"text-xs text-neutral-400\">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p><div id=\"series-characters\" class=\"flex flex-col gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></details><p class=\"text-xs text-mute\">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p><div id=\"series-characters\" class=\"flex flex-col gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -129,7 +129,7 @@ func View(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div></section><section aria-label=\"Products and Locations\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Products / Locations</h2><ul class=\"flex flex-col gap-1 text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div></section><section aria-label=\"Products and Locations\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Products / Locations</h2><ul class=\"flex flex-col gap-1 text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -171,32 +171,32 @@ func View(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</ul></section><section aria-label=\"Notes\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Notes</h2><a class=\"text-sm text-indigo-300 underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</ul></section><section aria-label=\"Notes\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Notes</h2><a class=\"text-sm text-accent underline decoration-mute\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Series(d.Series.ID, "notes")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 96, Col: 104}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 96, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\">Series の制作メモを開く（Episode 開始時に Project へコピーされます）</a></section><section aria-label=\"Episodes\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Episodes</h2><ul class=\"flex flex-col gap-1 text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\">Series の制作メモを開く（Episode 開始時に Project へコピーされます）</a></section><section aria-label=\"Episodes\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-ink\">Episodes</h2><ul class=\"flex flex-col gap-1 text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, p := range d.Episodes {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<li><a class=\"text-indigo-300 underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<li><a class=\"text-accent underline decoration-mute\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 templ.SafeURL
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Project(p.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -209,7 +209,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(episodeLabel(p))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 116}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -222,7 +222,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 116}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 103, Col: 128}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -246,7 +246,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"series-previous-episode\">前の話（最終 World State を開始状態にする）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"series-previous-episode\">前の話（最終 World State を開始状態にする）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -356,7 +356,7 @@ func seriesVersionLine(d Data, oob bool) templ.Component {
 			templ_7745c5c3_Var12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p id=\"series-version\" class=\"text-xs text-neutral-400\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p id=\"series-version\" class=\"text-xs text-mute\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -418,7 +418,7 @@ func seriesHistory(d Data, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "><h2 class=\"text-sm font-semibold text-neutral-200\">正本の更新履歴</h2><ul class=\"text-xs text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "><h2 class=\"text-sm font-semibold text-ink\">正本の更新履歴</h2><ul class=\"text-xs text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -633,7 +633,7 @@ func seriesCharacterBlock(d Data, c domain.WorldCharacter) templ.Component {
 			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"flex flex-col gap-2 rounded-md border border-border p-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -701,7 +701,7 @@ func CharacterCreated(d Data, characterID string) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<p id=\"series-characters-empty\" class=\"text-sm text-neutral-400\" hx-swap-oob=\"true\"></p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<p id=\"series-characters-empty\" class=\"text-sm text-mute\" hx-swap-oob=\"true\"></p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -778,7 +778,7 @@ func seriesStyleForm(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" hx-target=\"this\" hx-swap=\"outerHTML\"><label class=\"flex min-w-64 flex-1 flex-col gap-1 text-xs text-neutral-400\" for=\"series-style\">スタイル（絵柄・色調・質感など）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" hx-target=\"this\" hx-swap=\"outerHTML\"><label class=\"flex min-w-64 flex-1 flex-col gap-1 text-xs text-mute\" for=\"series-style\">スタイル（絵柄・色調・質感など）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -873,14 +873,14 @@ func seriesCharacterForm(d Data, c domain.WorldCharacter) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, name := range domain.SeriesCharacterFields() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue("series-" + c.ID + "-" + name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 259, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/seriesview/view.templ`, Line: 259, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 			if templ_7745c5c3_Err != nil {

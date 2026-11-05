@@ -42,20 +42,20 @@ templ EndpointModal(f EndpointForm, errMsg string) {
 			}
 			if f.Edit {
 				<p class="text-sm" data-testid="local-endpoint-fixed">
-					<span class="text-neutral-400">名前:</span> <code>{ f.Name }</code>
-					<span class="ml-3 text-neutral-400">種類:</span> { kindLabel(f.Kind) }
+					<span class="text-mute">名前:</span> <code>{ f.Name }</code>
+					<span class="ml-3 text-mute">種類:</span> { kindLabel(f.Kind) }
 				</p>
-				<p class="text-xs text-neutral-400">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
+				<p class="text-xs text-mute">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
 			} else {
 				<div class="flex flex-wrap items-end gap-3">
-					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-name">
+					<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-name">
 						<span>名前（英小文字・数字・. _ -）</span>
 						@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{
 							"id": "local-endpoint-name", "name": FieldName, "type": "text", "value": f.Name, "required": true,
 							"maxlength": itoa(MaxNameLen), "pattern": NamePattern, "autocomplete": "off", "autofocus": errMsg == "",
 						})
 					</label>
-					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-kind">
+					<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-kind">
 						<span>種類</span>
 						@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "local-endpoint-kind", "name": FieldKind}) {
 							<option value={ KindComfyUI } selected?={ f.Kind != KindOpenAICompat }>ComfyUI（画像・動画）</option>
@@ -64,7 +64,7 @@ templ EndpointModal(f EndpointForm, errMsg string) {
 					</label>
 				</div>
 			}
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-url-input">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-url-input">
 				<span>base_url（例: http://127.0.0.1:8188、http://192.168.0.10:1234、http://100.101.102.103:8188）</span>
 				@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 					"id": "local-endpoint-url-input", "name": FieldBaseURL, "type": "url", "value": f.BaseURL, "required": true,
@@ -72,13 +72,13 @@ templ EndpointModal(f EndpointForm, errMsg string) {
 				})
 			</label>
 			<div class="flex flex-wrap items-end gap-3">
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-concurrency">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-concurrency">
 					<span>同時実行数（空: 1）</span>
 					@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{
 						"id": "local-endpoint-concurrency", "name": FieldConcurrency, "type": "number", "min": "1", "step": "1", "value": f.MaxConcurrency,
 					})
 				</label>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-timeout">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-timeout">
 					<span>タイムアウト（秒。ComfyUI は進みが止まってから。空: ComfyUI 10800・互換 900）</span>
 					@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
 						"id": "local-endpoint-timeout", "name": FieldTimeout, "type": "number", "min": "1", "step": "1", "value": f.TimeoutSeconds,
@@ -86,7 +86,7 @@ templ EndpointModal(f EndpointForm, errMsg string) {
 				</label>
 			</div>
 			if !f.Edit {
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-key-input">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-key-input">
 					<span>API キー（任意。保存後は設定済みかどうかと末尾 4 文字だけを表示します）</span>
 					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 						"id": "local-endpoint-key-input", "name": FieldAPIKey, "type": "password", "autocomplete": "new-password", "spellcheck": "false",

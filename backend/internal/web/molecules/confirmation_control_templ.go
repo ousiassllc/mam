@@ -71,7 +71,7 @@ func ConfirmationControl(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-trigger=\"change\" hx-target=\"this\" hx-swap=\"outerHTML\"><label for=\"confirmation-level\" class=\"text-neutral-400\">確認レベル</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-trigger=\"change\" hx-target=\"this\" hx-swap=\"outerHTML\"><label for=\"confirmation-level\" class=\"text-mute\">確認レベル</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -18,7 +18,7 @@ type NewProjectFormData struct {
 // NewProjectForm starts a Project from the first message (F-01): the Creative Brief is
 // extracted from it and the AI asks for what is missing in the new thread.
 templ NewProjectForm(d NewProjectFormData) {
-	<form id="new-project-form" class="rounded-md border border-neutral-800 p-4" hx-post={ paths.Projects() } hx-encoding="multipart/form-data" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+	<form id="new-project-form" class="rounded-md border border-border p-4" hx-post={ paths.Projects() } hx-encoding="multipart/form-data" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 		<label for="new-project-content" class="mb-2 block text-sm font-medium">作りたい動画を教えてください</label>
 		@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
 			"id":          "new-project-content",
@@ -28,13 +28,13 @@ templ NewProjectForm(d NewProjectFormData) {
 			"placeholder": "例: 美容液の縦型15秒CMを作りたい。上品な雰囲気で",
 		}, d.Content)
 		if d.Error != "" {
-			<p class="mt-1 text-sm text-red-300" role="alert">{ d.Error }</p>
+			<p class="mt-1 text-sm text-danger" role="alert">{ d.Error }</p>
 		}
 		<div class="mt-3">
 			@brandtemplate.Select("new-project-brand-template", d.Templates)
 		</div>
 		<div class="mt-3 flex flex-wrap items-center justify-between gap-2">
-			<label class="text-sm text-neutral-300">
+			<label class="text-sm text-ink">
 				添付（商品画像・参考動画）
 				<input type="file" name="attachments" multiple accept={ AcceptedUploads } class="ml-2 text-xs"/>
 			</label>

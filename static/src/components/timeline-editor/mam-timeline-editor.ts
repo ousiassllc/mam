@@ -229,19 +229,19 @@ export class MamTimelineEditor extends LitElement {
   }
 
   protected override render() {
-    if (!this.loaded) return html`<p class="text-sm text-neutral-400" role="status">読み込み中…</p>`;
+    if (!this.loaded) return html`<p class="text-sm text-mute" role="status">読み込み中…</p>`;
     const body = this.body;
     if (!body) {
       // Only a 404 (no error) means "no Rough Cut yet"; a failed first load shows its error alone.
       if (this.error) return this.renderError();
-      return html`<p class="text-sm text-neutral-400" data-empty>
+      return html`<p class="text-sm text-mute" data-empty>
           Rough Cut がまだありません。各 Shot の採用 Take を選んでから「Rough Cut を作成」を押してください。
         </p>`;
     }
     return html`
       <div class="flex flex-col gap-4">
         ${this.renderError()}
-        ${this.notice ? html`<p class="text-xs text-emerald-300" role="status" data-notice>${this.notice}</p>` : nothing}
+        ${this.notice ? html`<p class="text-xs text-success" role="status" data-notice>${this.notice}</p>` : nothing}
         <p class="sr-only" role="status" data-announce>${this.announce}</p>
         <mam-video-player video-src=${body.preview_url}></mam-video-player>
         <ol class="flex flex-col gap-2" data-clips>
@@ -261,7 +261,7 @@ export class MamTimelineEditor extends LitElement {
 
   private renderError() {
     return this.error
-      ? html`<p class="rounded border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-300" role="alert" data-error>${this.error}</p>`
+      ? html`<p class="rounded border border-danger/60 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert" data-error>${this.error}</p>`
       : nothing;
   }
 

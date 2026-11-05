@@ -9,8 +9,8 @@ export function highlight(el: Element, on: boolean, rest: string, active: string
   for (const c of active) el.classList.toggle(c, on);
 }
 
-const ROW_REST = 'border-neutral-700';
-const ROW_ACTIVE = 'border-indigo-400';
+const ROW_REST = 'border-border';
+const ROW_ACTIVE = 'border-accent';
 
 /** The reordering of the thumbnails of `list` by dragging one onto another (HTML5 DnD); `changed` runs after a thumbnail moved. */
 export class RowReorder {

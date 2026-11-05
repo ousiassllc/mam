@@ -13,7 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/facelock"
 )
 
-const thumbButton = "rounded bg-neutral-900 px-1.5 text-xs leading-5 text-neutral-200 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400"
+const thumbButton = "rounded bg-surface px-1.5 text-xs leading-5 text-ink hover:text-ink focus-visible:focus-ring"
 
 // RefRow is a chosen input image as a thumbnail: its number (the order the models get the images in), a × to take it out, buttons
 // to move it, and (for an image) a role and a strength. The hidden field ref is what posts it; the images chosen in the browser
@@ -39,7 +39,7 @@ func RefRow(r Ref, media string, ui RefUI) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<li class=\"flex flex-col gap-1.5 rounded-md border border-neutral-700 bg-neutral-900 p-1.5 text-xs data-[dragging]:opacity-50\" data-testid=\"gt-ref\" data-gt-ref data-ref=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<li class=\"flex flex-col gap-1.5 rounded-md border border-border bg-surface p-1.5 text-xs data-[dragging]:opacity-50\" data-testid=\"gt-ref\" data-gt-ref data-ref=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -78,14 +78,14 @@ func RefRow(r Ref, media string, ui RefUI) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"><div class=\"relative\" draggable=\"true\" data-gt-handle><button type=\"button\" class=\"block w-full cursor-zoom-in focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400\" data-gt-zoom aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"><div class=\"relative\" draggable=\"true\" data-gt-handle><button type=\"button\" class=\"block w-full cursor-zoom-in focus-visible:focus-ring\" data-gt-zoom aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("拡大: " + r.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/refrow.templ`, Line: 22, Col: 187}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/refrow.templ`, Line: 22, Col: 132}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +98,7 @@ func RefRow(r Ref, media string, ui RefUI) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/refrow.templ`, Line: 22, Col: 205}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/refrow.templ`, Line: 22, Col: 150}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -132,7 +132,7 @@ func RefRow(r Ref, media string, ui RefUI) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button> <span class=\"pointer-events-none absolute left-1 top-1 min-w-5 rounded bg-indigo-500 px-1.5 text-center text-xs font-medium leading-5 text-white\" data-gt-badge></span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button> <span class=\"pointer-events-none absolute left-1 top-1 min-w-5 rounded bg-accent px-1.5 text-center text-xs font-medium leading-5 text-bone\" data-gt-badge></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -460,7 +460,7 @@ func strengthSlider(name, label string, value *float64, def float64, marker stri
 			templ_7745c5c3_Var24 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<label class=\"flex items-center gap-1.5 text-neutral-300\"><span>強さ</span> <input type=\"range\" name=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<label class=\"flex items-center gap-1.5 text-ink\"><span>強さ</span> <input type=\"range\" name=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

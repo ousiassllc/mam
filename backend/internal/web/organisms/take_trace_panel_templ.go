@@ -52,7 +52,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" aria-label=\"Generation Trace\" class=\"flex flex-col gap-3 rounded-md border border-neutral-700 p-3 text-sm\"><dl class=\"grid gap-x-4 gap-y-1 md:grid-cols-[10rem_1fr]\"><dt class=\"text-xs text-neutral-400\">Prompt version</dt><dd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" aria-label=\"Generation Trace\" class=\"flex flex-col gap-3 rounded-md border border-border p-3 text-sm\"><dl class=\"grid gap-x-4 gap-y-1 md:grid-cols-[10rem_1fr]\"><dt class=\"text-xs text-mute\">Prompt version</dt><dd>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -65,7 +65,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</dd><dt class=\"text-xs text-neutral-400\">World State version</dt><dd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</dd><dt class=\"text-xs text-mute\">World State version</dt><dd>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -78,7 +78,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</dd><dt class=\"text-xs text-neutral-400\">Model</dt><dd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</dd><dt class=\"text-xs text-mute\">Model</dt><dd>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -91,7 +91,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</dd><dt class=\"text-xs text-neutral-400\">Output</dt><dd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</dd><dt class=\"text-xs text-mute\">Output</dt><dd>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -127,14 +127,14 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</a> <span class=\"text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</a> <span class=\"text-xs text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(t.Output.MimeType)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 28, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 28, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -147,7 +147,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d bytes", t.Output.SizeBytes))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 28, Col: 114}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 28, Col: 107}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -158,7 +158,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</dd><dt class=\"text-xs text-neutral-400\">Repair 元</dt><dd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</dd><dt class=\"text-xs text-mute\">Repair 元</dt><dd>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -196,7 +196,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if t.Routing == nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"text-xs text-neutral-400\">記録なし（Multi-model routing の導入前に作られた Take です）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"text-xs text-mute\">記録なし（Multi-model routing の導入前に作られた Take です）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -222,7 +222,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</span></p><p class=\"text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</span></p><p class=\"text-xs text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -253,7 +253,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(t.Routing.Candidates) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<table class=\"mt-1 w-full text-left text-xs\"><thead><tr class=\"text-neutral-400\"><th class=\"pr-2 font-normal\">候補</th><th class=\"pr-2 font-normal\">実績（Take・平均点・合格率）</th><th class=\"pr-2 font-normal\">コスト/Take</th><th class=\"pr-2 font-normal\">quality</th><th class=\"pr-2 font-normal\">cost</th><th class=\"pr-2 font-normal\">fit</th><th class=\"pr-2 font-normal\">score</th><th class=\"font-normal\">除外理由</th></tr></thead> <tbody>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<table class=\"mt-1 w-full text-left text-xs\"><thead><tr class=\"text-mute\"><th class=\"pr-2 font-normal\">候補</th><th class=\"pr-2 font-normal\">実績（Take・平均点・合格率）</th><th class=\"pr-2 font-normal\">コスト/Take</th><th class=\"pr-2 font-normal\">quality</th><th class=\"pr-2 font-normal\">cost</th><th class=\"pr-2 font-normal\">fit</th><th class=\"pr-2 font-normal\">score</th><th class=\"font-normal\">除外理由</th></tr></thead> <tbody>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -377,14 +377,14 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if t.Routing.AxisWeights != nil {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(routingAxisText(*t.Routing.AxisWeights))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 84, Col: 82}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 84, Col: 75}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
@@ -401,7 +401,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(t.References) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-xs text-neutral-400\">参照画像なし</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-xs text-mute\">参照画像なし</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -432,14 +432,14 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span> <span class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span> <span class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(string(r.Model))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 98, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 98, Col: 56}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 				if templ_7745c5c3_Err != nil {
@@ -455,40 +455,40 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</div><details><summary class=\"cursor-pointer text-xs font-semibold\">Source Shot Spec（Prompt version のスナップショット）</summary><pre class=\"mt-1 overflow-x-auto rounded bg-neutral-950 p-2 text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</div><details><summary class=\"cursor-pointer text-xs font-semibold\">Source Shot Spec（Prompt version のスナップショット）</summary><pre class=\"mt-1 overflow-x-auto rounded bg-bone p-2 text-xs\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(prettyJSON(t.PromptVersion.SpecSnapshot))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 106, Col: 114}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 106, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model parameters</summary><pre class=\"mt-1 overflow-x-auto rounded bg-neutral-950 p-2 text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model parameters</summary><pre class=\"mt-1 overflow-x-auto rounded bg-bone p-2 text-xs\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(prettyJSON(t.ModelParameters))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 110, Col: 103}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 110, Col: 96}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model Adapter output</summary><pre class=\"mt-1 overflow-x-auto rounded bg-neutral-950 p-2 text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model Adapter output</summary><pre class=\"mt-1 overflow-x-auto rounded bg-bone p-2 text-xs\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(prettyJSON(t.PromptVersion.AdapterOutput))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 114, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 114, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -499,7 +499,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(t.Judgements) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<p class=\"text-xs text-neutral-400\">まだ Judge されていません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<p class=\"text-xs text-mute\">まだ Judge されていません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -530,14 +530,14 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</span> <time class=\"text-xs text-neutral-400\" datetime=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</span> <time class=\"text-xs text-mute\" datetime=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(j.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 126, Col: 104}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 126, Col: 97}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 				if templ_7745c5c3_Err != nil {
@@ -550,7 +550,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				var templ_7745c5c3_Var31 string
 				templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(j.CreatedAt.Local().Format("2006/01/02 15:04:05"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 126, Col: 158}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 126, Col: 151}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 				if templ_7745c5c3_Err != nil {
@@ -571,7 +571,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(t.Repairs) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<p class=\"text-xs text-neutral-400\">Repair はありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<p class=\"text-xs text-mute\">Repair はありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

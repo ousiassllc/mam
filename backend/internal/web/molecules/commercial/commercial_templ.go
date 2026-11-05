@@ -332,7 +332,7 @@ func Choice(f ChoiceData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Icon(atoms.IconFilter, "h-4 w-4 shrink-0 text-neutral-400").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Icon(atoms.IconFilter, "h-4 w-4 shrink-0 text-mute").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -373,14 +373,14 @@ func Choice(f ChoiceData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "> <span class=\"inline-block rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "> <span class=\"inline-block rounded-md border border-border px-2 py-1 text-xs text-ink hover:border-mute peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:focus-ring\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/commercial/commercial.templ`, Line: 58, Col: 263}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/commercial/commercial.templ`, Line: 58, Col: 206}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {

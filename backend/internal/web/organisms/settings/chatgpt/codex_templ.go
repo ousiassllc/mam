@@ -166,7 +166,7 @@ func codexBrief(d Data) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"flex min-w-0 flex-col gap-2\" data-testid=\"chatgpt-codex\"><p class=\"text-xs text-amber-300\" data-testid=\"chatgpt-codex-terms-line\">商用・ホスティングでの提供には使えません（詳細に条件があります）。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"flex min-w-0 flex-col gap-2\" data-testid=\"chatgpt-codex\"><p class=\"text-xs text-warning\" data-testid=\"chatgpt-codex-terms-line\">商用・ホスティングでの提供には使えません（詳細に条件があります）。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -183,13 +183,13 @@ func codexBrief(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !d.Codex.Engine.Supported {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-xs text-neutral-400\" data-testid=\"chatgpt-codex-unsupported\">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを、詳細で指定してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-xs text-mute\" data-testid=\"chatgpt-codex-unsupported\">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを、詳細で指定してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if d.Codex.JustSignedIn {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-emerald-300\" data-testid=\"chatgpt-codex-assign-hint\">ログインしました。「LLM の割り当て」で、使う Agent のプロバイダーを「chatgpt-codex」にすると、この方式で動きます（自動では切り替えません）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-success\" data-testid=\"chatgpt-codex-assign-hint\">ログインしました。「LLM の割り当て」で、使う Agent のプロバイダーを「chatgpt-codex」にすると、この方式で動きます（自動では切り替えません）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -225,27 +225,27 @@ func codexDetail(d Data) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-codex-detail\"><p class=\"rounded-md border border-amber-500/60 px-3 py-2 text-sm text-amber-300\" data-testid=\"chatgpt-codex-terms\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-codex-detail\"><p class=\"rounded-md border border-warning/60 px-3 py-2 text-sm text-warning\" data-testid=\"chatgpt-codex-terms\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(codexTerms)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 93, Col: 130}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 93, Col: 126}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p><p class=\"text-sm text-neutral-300\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p><p class=\"text-sm text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(codexExplanation)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 94, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 94, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -268,7 +268,7 @@ func codexDetail(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Codex.EngineReady() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-xs text-neutral-400\">使うには、ワークスペースの所有者が「Codex をローカルで使う」権限（Codex Local）をメンバーに許可している必要があります。デバイスコードでログインするには、デバイスコードのログインも許可されている必要があります（beta）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-xs text-mute\">使うには、ワークスペースの所有者が「Codex をローカルで使う」権限（Codex Local）をメンバーに許可している必要があります。デバイスコードでログインするには、デバイスコードのログインも許可されている必要があります（beta）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -309,7 +309,7 @@ func codexEngine(c Codex) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"flex flex-col gap-2 rounded-md border border-neutral-700 px-3 py-2\" data-testid=\"chatgpt-codex-engine\"><p class=\"text-sm\"><span class=\"font-medium\">エンジン（Codex app-server）</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"flex flex-col gap-2 rounded-md border border-border px-3 py-2\" data-testid=\"chatgpt-codex-engine\"><p class=\"text-sm\"><span class=\"font-medium\">エンジン（Codex app-server）</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -336,14 +336,14 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if c.Engine.Version != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<span class=\"ml-2 text-xs text-neutral-400\" data-testid=\"chatgpt-codex-version\">バージョン: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<span class=\"ml-2 text-xs text-mute\" data-testid=\"chatgpt-codex-version\">バージョン: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(c.Engine.Version)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 125, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 125, Col: 112}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -359,14 +359,14 @@ func codexEngine(c Codex) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if s := engineSource(c.Engine.Source); s != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-xs text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(s)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 129, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 129, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -378,14 +378,14 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if c.Engine.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<pre class=\"whitespace-pre-wrap break-words text-xs text-red-300\" role=\"alert\" data-testid=\"chatgpt-codex-engine-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<pre class=\"whitespace-pre-wrap break-words text-xs text-danger\" role=\"alert\" data-testid=\"chatgpt-codex-engine-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(c.Engine.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 132, Col: 139}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 132, Col: 138}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -397,14 +397,14 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if c.Engine.UpdateAvailable {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"text-xs text-amber-300\" data-testid=\"chatgpt-codex-update\">この mam が確かめた版は ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"text-xs text-warning\" data-testid=\"chatgpt-codex-update\">この mam が確かめた版は ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(c.Engine.PinnedVersion)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 135, Col: 129}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 135, Col: 127}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -417,7 +417,7 @@ func codexEngine(c Codex) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(c.Engine.Version)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 135, Col: 175}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 135, Col: 173}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -429,14 +429,14 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if canInstall(c.Engine) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-xs text-neutral-400\" data-testid=\"chatgpt-codex-download-notice\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-xs text-mute\" data-testid=\"chatgpt-codex-download-notice\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(downloadConfirm(c.Engine))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 138, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 138, Col: 103}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -448,7 +448,7 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if !c.Engine.Supported {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"text-xs text-neutral-400\" data-testid=\"chatgpt-codex-unsupported-note\">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"text-xs text-mute\" data-testid=\"chatgpt-codex-unsupported-note\">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -563,14 +563,14 @@ func codexProgress(e CodexEngine) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else if e.Install.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<p class=\"break-words text-sm text-red-300\" role=\"alert\" data-testid=\"chatgpt-codex-install-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<p class=\"break-words text-sm text-danger\" role=\"alert\" data-testid=\"chatgpt-codex-install-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(e.Install.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 158, Col: 118}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 158, Col: 117}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -709,7 +709,7 @@ func codexPathForm(c Codex) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"text-xs text-neutral-400\" for=\"chatgpt-codex-path\">自分で入れた codex のパス</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"text-xs text-mute\" for=\"chatgpt-codex-path\">自分で入れた codex のパス</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -756,7 +756,7 @@ func codexWho(c Codex) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !c.SignedIn {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"text-neutral-300\">ログインしていません</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"text-ink\">ログインしていません</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -779,14 +779,14 @@ func codexWho(c Codex) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if c.Plan != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<span class=\"ml-2 text-xs text-neutral-400\" data-testid=\"chatgpt-plan\">プラン: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<span class=\"ml-2 text-xs text-mute\" data-testid=\"chatgpt-plan\">プラン: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(c.Plan)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 186, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 186, Col: 88}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 				if templ_7745c5c3_Err != nil {
@@ -862,14 +862,14 @@ func codexAccount(c Codex) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if c.SignedIn {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<p class=\"text-xs text-neutral-400\" data-testid=\"chatgpt-codex-account\">トークンは Codex が自分で保存・更新します（mam は読みも保存もしません）。保存先: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<p class=\"text-xs text-mute\" data-testid=\"chatgpt-codex-account\">トークンは Codex が自分で保存・更新します（mam は読みも保存もしません）。保存先: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(codexStore(c.CredentialsStore))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 203, Col: 221}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 203, Col: 214}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {

@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/navstate"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
 
 // Options are the non-service inputs of New.
@@ -40,7 +41,8 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	engine.Use(
 		middleware.Recovery(logger), middleware.Logger(logger),
 		middleware.LoopbackOnly(), middleware.SecurityHeaders(), middleware.CSRF(), middleware.MaxBody(),
-		navstate.Middleware(), // the side menu's folded state, read from its cookie
+		navstate.Middleware(),   // the side menu's folded state, read from its cookie
+		themestate.Middleware(), // the colour theme the user chose, read from its cookie
 	)
 
 	registerStatic(engine, opts.Static)

@@ -16,13 +16,13 @@ import (
 templ Section(d Data) {
 	<div id={ PanelID } class="flex flex-col gap-6" data-testid="model-assignment">
 		if d.Problem != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-problem">{ d.Problem }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="model-assignment-problem">{ d.Problem }</p>
 		} else {
 			if d.Notice != "" {
-				<p class="text-sm text-emerald-300" role="status" data-testid="model-assignment-notice">{ d.Notice }</p>
+				<p class="text-sm text-success" role="status" data-testid="model-assignment-notice">{ d.Notice }</p>
 			}
 			if d.Error != "" {
-				<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-error">{ d.Error }</p>
+				<p class="text-sm text-danger" role="alert" data-testid="model-assignment-error">{ d.Error }</p>
 			}
 			@Status(d, false)
 			@molecules.SettingsSectionH3("画像モデル（用途ごと）", "代替モデルは、主モデルが使えないとき（連続失敗で遮断中、またはリトライしても失敗したとき）に使われます。「高速版」は、高速版を持つモデルでだけ保存できます。") {
@@ -54,10 +54,10 @@ templ Status(d Data, oob bool) {
 		}
 	>
 		if d.Pinned {
-			<p class="text-sm text-amber-300" role="status" data-testid="model-assignment-pinned">{ d.PinnedNote }</p>
+			<p class="text-sm text-warning" role="status" data-testid="model-assignment-pinned">{ d.PinnedNote }</p>
 		}
 		if len(d.Warnings) > 0 {
-			<ul class="flex flex-col gap-1 text-sm text-amber-300" data-testid="model-assignment-warnings">
+			<ul class="flex flex-col gap-1 text-sm text-warning" data-testid="model-assignment-warnings">
 				for _, w := range d.Warnings {
 					<li data-testid="model-assignment-warning">
 						{ w.Message }
@@ -69,7 +69,7 @@ templ Status(d Data, oob bool) {
 			</ul>
 		}
 		if d.GatedNote != "" {
-			<p class="text-sm text-amber-300" role="status" data-testid="model-assignment-gated">{ d.GatedNote }</p>
+			<p class="text-sm text-warning" role="status" data-testid="model-assignment-gated">{ d.GatedNote }</p>
 		}
 		if !d.Pinned && d.Customized {
 			<div>
@@ -126,9 +126,9 @@ templ imageRow(r ImageRow, pinned, oob bool) {
 	@settingsui.TableRowItem(settingsui.TableRow{ID: ImageRowID(r.Purpose), TestID: "model-assignment-image", Attrs: templ.Attributes{"data-purpose": r.Purpose}, OOB: oob}) {
 		@settingsui.RowHead("max-w-sm") {
 			{ r.Label }
-			<span class="mt-1 block text-xs font-normal text-neutral-400">{ r.Hint }</span>
+			<span class="mt-1 block text-xs font-normal text-mute">{ r.Hint }</span>
 			if r.ReferenceNote != "" {
-				<span class="mt-1 block text-xs font-normal text-amber-300" role="status" data-testid="model-assignment-reference-note">{ r.ReferenceNote }</span>
+				<span class="mt-1 block text-xs font-normal text-warning" role="status" data-testid="model-assignment-reference-note">{ r.ReferenceNote }</span>
 			}
 		}
 		@settingsui.Cell(modelCell) {
@@ -148,10 +148,10 @@ templ imageRow(r ImageRow, pinned, oob bool) {
 templ imageTarget(t ImageTarget) {
 	{ t.Model }
 	if t.Fast {
-		<span class="text-xs text-neutral-400">（高速版）</span>
+		<span class="text-xs text-mute">（高速版）</span>
 	}
 	if t.Unusable {
-		<span class="text-xs text-amber-300">{ UnusableSuffix }</span>
+		<span class="text-xs text-warning">{ UnusableSuffix }</span>
 	}
 }
 
@@ -180,6 +180,6 @@ templ policyRow(r PolicyRow, pinned, oob bool) {
 templ policyTarget(value string, unusable bool) {
 	{ value }
 	if unusable {
-		<span class="text-xs text-amber-300">{ UnusableSuffix }</span>
+		<span class="text-xs text-warning">{ UnusableSuffix }</span>
 	}
 }

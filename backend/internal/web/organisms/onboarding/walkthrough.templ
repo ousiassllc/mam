@@ -2,7 +2,7 @@ package onboarding
 
 // FlowBody is the first page of the walkthrough: what mam does, from the plan to the final QC (spec/spec.md §1).
 templ FlowBody() {
-	<p class="text-sm text-neutral-300">
+	<p class="text-sm text-ink">
 		mam は、作りたい動画を伝えると、AI が制作チームとして最後まで進める映像制作スタジオです。1 つのプロンプトから動画を 1 本出すだけのツールではありません。
 	</p>
 	<ol role="list" class="flex flex-col gap-3" data-testid="onboarding-flow">
@@ -15,29 +15,29 @@ templ FlowBody() {
 }
 
 templ flowStage(number, title, text string) {
-	<li class="flex gap-3 rounded-md border border-neutral-800 px-3 py-2">
-		<span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-neutral-600 text-xs" aria-hidden="true">{ number }</span>
+	<li class="flex gap-3 rounded-md border border-border px-3 py-2">
+		<span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border text-xs" aria-hidden="true">{ number }</span>
 		<div>
 			<h3 class="text-sm font-semibold">{ title }</h3>
-			<p class="text-sm text-neutral-300">{ text }</p>
+			<p class="text-sm text-ink">{ text }</p>
 		</div>
 	</li>
 }
 
 // ModesBody is the second page: AUTO MODE and DIRECTOR MODE (spec/spec.md §3–§5).
 templ ModesBody() {
-	<p class="text-sm text-neutral-300">進め方は 2 つあります。同じプロジェクトで、いつでも切り替えられます。</p>
+	<p class="text-sm text-ink">進め方は 2 つあります。同じプロジェクトで、いつでも切り替えられます。</p>
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="onboarding-modes">
-		<section class="rounded-md border border-neutral-800 px-4 py-3" aria-labelledby="onboarding-mode-auto">
+		<section class="rounded-md border border-border px-4 py-3" aria-labelledby="onboarding-mode-auto">
 			<h3 id="onboarding-mode-auto" class="text-base font-semibold">AUTO MODE（自動生成）</h3>
-			<p class="mt-1 text-sm text-neutral-300">作りたい動画を指定すると、AI が完成まで自律的に進めます。まず初稿を作りたいときに向いています。</p>
+			<p class="mt-1 text-sm text-ink">作りたい動画を指定すると、AI が完成まで自律的に進めます。まず初稿を作りたいときに向いています。</p>
 		</section>
-		<section class="rounded-md border border-neutral-800 px-4 py-3" aria-labelledby="onboarding-mode-director">
+		<section class="rounded-md border border-border px-4 py-3" aria-labelledby="onboarding-mode-director">
 			<h3 id="onboarding-mode-director" class="text-base font-semibold">DIRECTOR MODE（監督）</h3>
-			<p class="mt-1 text-sm text-neutral-300">自分が監督になります。プロンプトを書く代わりに、「もう少し寄って」「この瞬間だけ不安そうな顔にして」のように、自然な言葉で演出を指示します。</p>
+			<p class="mt-1 text-sm text-ink">自分が監督になります。プロンプトを書く代わりに、「もう少し寄って」「この瞬間だけ不安そうな顔にして」のように、自然な言葉で演出を指示します。</p>
 		</section>
 	</div>
-	<p class="text-sm text-neutral-300">
+	<p class="text-sm text-ink">
 		たとえば、AUTO で初稿を 8 割まで作り、気になる Scene だけ DIRECTOR で直し、また AUTO に戻して、編集・音声・最終 QC に進む、という使い方ができます。
 	</p>
 }
@@ -45,8 +45,8 @@ templ ModesBody() {
 // PrepareBody is the third page: what the setup steps that follow ask for. models and mac say that the models step and the
 // macOS step are among them (a configuration without the model assignments has no such step).
 templ PrepareBody(models, mac bool) {
-	<p class="text-sm text-neutral-300">この後のセットアップで、次のものを順に確かめます。どれも「あとで」で飛ばせて、あとから設定画面で入れられます。</p>
-	<ol role="list" class="list-decimal pl-6 text-sm text-neutral-300" data-testid="onboarding-prepare">
+	<p class="text-sm text-ink">この後のセットアップで、次のものを順に確かめます。どれも「あとで」で飛ばせて、あとから設定画面で入れられます。</p>
+	<ol role="list" class="list-decimal pl-6 text-sm text-ink" data-testid="onboarding-prepare">
 		<li><strong>API キーか ChatGPT のログイン</strong>（どちらか 1 つは必要です。どちらも無いと、生成は動きません）</li>
 		if models {
 			<li><strong>モデルの割り当て</strong>（任意です。既定のままでも進めます）</li>

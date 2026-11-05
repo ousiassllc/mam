@@ -14,7 +14,7 @@ type ProjectImportFormData struct {
 templ ProjectImportForm(d ProjectImportFormData) {
 	<form
 		id="project-import-form"
-		class="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-neutral-800 p-3 text-sm"
+		class="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-border p-3 text-sm"
 		hx-post={ paths.ProjectImport() }
 		hx-encoding="multipart/form-data"
 		hx-target="this"
@@ -22,13 +22,13 @@ templ ProjectImportForm(d ProjectImportFormData) {
 		hx-sync="this:drop"
 		hx-disabled-elt="find button[type=submit]"
 	>
-		<label for="project-import-file" class="text-neutral-300">プロジェクトバンドルを読み込む</label>
+		<label for="project-import-file" class="text-ink">プロジェクトバンドルを読み込む</label>
 		<input id="project-import-file" type="file" name="bundle" required accept=".zip,application/zip" class="text-xs"/>
 		@atoms.Button(atoms.ToneNeutral, "読み込む", templ.Attributes{
 			"type": "submit",
 		})
 		if d.Error != "" {
-			<p class="basis-full text-sm text-red-300" role="alert">{ d.Error }</p>
+			<p class="basis-full text-sm text-danger" role="alert">{ d.Error }</p>
 		}
 	</form>
 }

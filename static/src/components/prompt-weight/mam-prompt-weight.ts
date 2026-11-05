@@ -7,9 +7,9 @@ import { adjust, read, WEIGHT_MAX, WEIGHT_MIN, type Direction, type Reading } fr
 const PROMPT = 'textarea[name="prompt"]';
 
 const BUTTON =
-  'inline-flex items-center justify-center rounded-md border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 ' +
+  'inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium text-ink transition hover:bg-accent-soft ' +
   'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 ' +
-  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950';
+  'focus-visible:focus-ring';
 
 /**
  * `<mam-prompt-weight>` is the "強める + / 弱める −" of the words of a prompt (spec/components/gentest-tiers.md, Issues #977 and #972).
@@ -160,15 +160,15 @@ export class MamPromptWeight extends LitElement {
     return html`<div
       role="group"
       aria-label="選んだ語のウェイト"
-      class="flex flex-wrap items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900 p-2 text-xs text-neutral-300"
+      class="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface p-2 text-xs text-ink"
       data-testid="gt-weight-bar"
       @mousedown=${(e: Event) => e.preventDefault()}
     >
-      <span class="text-neutral-400">選んだ語の強さ <output class="tabular-nums text-neutral-100" data-testid="gt-weight-now">${r.weight.toFixed(1)}</output> 倍</span>
+      <span class="text-mute">選んだ語の強さ <output class="tabular-nums text-ink" data-testid="gt-weight-now">${r.weight.toFixed(1)}</output> 倍</span>
       ${this.button('強める +', 1, !facts.usable || !r.canRaise, noteID)} ${this.button('弱める −', -1, !facts.usable || !r.canLower, noteID)}
-      <span class="text-neutral-400">${WEIGHT_MIN}〜${WEIGHT_MAX}。Ctrl/⌘ + ↑ ↓ でも変えられます</span>
+      <span class="text-mute">${WEIGHT_MIN}〜${WEIGHT_MAX}。Ctrl/⌘ + ↑ ↓ でも変えられます</span>
       <div id=${noteID} role="status" class="basis-full" data-testid="gt-weight-note">
-        ${notes.map((n) => html`<p class="text-amber-300">${n}</p>`)}
+        ${notes.map((n) => html`<p class="text-warning">${n}</p>`)}
       </div>
     </div>`;
   }

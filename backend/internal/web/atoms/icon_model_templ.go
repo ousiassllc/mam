@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 // Icons of the model kinds on the cards of the model manager (Lucide v1.61.0, copied as in icon.templ; the file is split from
 // icon_nav.templ to stay under the line limit). They are the pictures of the cards: no image is fetched from the net, so there is
-// nothing to license or to load. iconNav hands every name it does not know to iconModel.
+// nothing to license or to load. iconNav hands every name it does not know to iconModel, which hands the rest to iconStatus (icon_status.templ).
 
 // Icons of the model kinds: a video model, a voice (speech synthesis) runtime and a lip-sync runtime. An image model is IconImage.
 const (
@@ -120,6 +120,11 @@ func iconModel(name IconName, class string) templ.Component {
 				return nil
 			})
 			templ_7745c5c3_Err = iconSVG(class).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		default:
+			templ_7745c5c3_Err = iconStatus(name, class).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

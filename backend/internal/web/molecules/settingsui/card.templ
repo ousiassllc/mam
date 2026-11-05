@@ -57,7 +57,7 @@ templ CardItem(c Card) {
 	<li
 		id={ c.ID }
 		data-testid={ c.testID() }
-		class={ "flex min-w-0 flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4", c.Class }
+		class={ "flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-surface p-4", c.Class }
 		{ c.Attrs... }
 		if c.OOB {
 			hx-swap-oob="true"
@@ -66,9 +66,9 @@ templ CardItem(c Card) {
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<div class="flex min-w-0 items-center gap-2">
 				if c.TitleLevel == 4 {
-					<h4 class="min-w-0 break-words text-sm font-semibold text-neutral-100">{ c.Title }</h4>
+					<h4 class="min-w-0 break-words text-sm font-semibold text-ink">{ c.Title }</h4>
 				} else {
-					<h3 class="min-w-0 break-words text-sm font-semibold text-neutral-100">{ c.Title }</h3>
+					<h3 class="min-w-0 break-words text-sm font-semibold text-ink">{ c.Title }</h3>
 				}
 				if c.Help != nil {
 					@help.Toggle(help.ID(c.ID), c.Title)
@@ -91,16 +91,16 @@ templ CardItem(c Card) {
 			}
 		</div>
 		if c.Description != "" {
-			<p class="break-words text-sm text-neutral-400">{ c.Description }</p>
+			<p class="break-words text-sm text-mute">{ c.Description }</p>
 		}
 		if c.Summary != "" {
-			<p class="break-words text-sm text-neutral-300">{ c.Summary }</p>
+			<p class="break-words text-sm text-ink">{ c.Summary }</p>
 		}
 		if c.Details != nil {
 			@c.Details
 		}
 		if c.Notice != "" {
-			<p class="text-xs text-emerald-300" role="status">{ c.Notice }</p>
+			<p class="text-xs text-success" role="status">{ c.Notice }</p>
 		}
 		<div class="mt-auto flex flex-wrap items-center gap-2 pt-1">
 			{ children... }

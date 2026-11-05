@@ -28,15 +28,15 @@ func badgeClass(tone BadgeTone) string {
 func badgeColors(tone BadgeTone) string {
 	switch tone {
 	case BadgeInfo:
-		return "bg-sky-500/20 text-sky-300"
+		return "bg-info/20 text-info"
 	case BadgeWarn:
-		return "bg-amber-500/20 text-amber-300"
+		return "bg-warning/20 text-warning"
 	case BadgeOK:
-		return "bg-emerald-500/20 text-emerald-300"
+		return "bg-success/20 text-success"
 	case BadgeError:
-		return "bg-red-500/20 text-red-300"
+		return "bg-danger/20 text-danger"
 	}
-	return "bg-neutral-700 text-neutral-300"
+	return "bg-accent-soft text-ink"
 }
 
 // Badge is a small status label.

@@ -62,7 +62,7 @@ func TestCatalog_EachModelIsACardWithAnH3ThatOpensTheDetailAndNoFineText(t *test
 	body := s.Get(paths.ModelManagerPart("models")).Body.String()
 
 	assert.Regexp(t, `<ul id="mm-models" role="list" class="[^"]*\bgrid\b[^"]*" data-testid="mm-models">`, body)
-	assert.Regexp(t, `<li id="mm-model-m-a" class="[^"]*rounded-lg border border-neutral-800 bg-neutral-900[^"]*" data-card`, body, "the surface of a card")
+	assert.Regexp(t, `<li id="mm-model-m-a" class="[^"]*rounded-lg border border-border bg-surface[^"]*" data-card`, body, "the surface of a card")
 	assert.NotContains(t, body, "divide-y", "the models are not a divided list of rows")
 
 	cards := strings.Split(body, `<li id="mm-model-`)[1:]

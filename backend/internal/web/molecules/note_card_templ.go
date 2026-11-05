@@ -61,7 +61,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\"><div class=\"flex flex-wrap items-center gap-2 text-xs text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-2 rounded-md border border-border p-3\"><div class=\"flex flex-wrap items-center gap-2 text-xs text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -121,14 +121,14 @@ func NoteCard(n domain.NoteView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" hx-target=\"#note-list\" hx-swap=\"outerHTML\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" hx-target=\"#note-list\" hx-swap=\"outerHTML\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("note-title-" + n.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/note_card.templ`, Line: 39, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/note_card.templ`, Line: 39, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -149,14 +149,14 @@ func NoteCard(n domain.NoteView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue("note-content-" + n.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/note_card.templ`, Line: 50, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/note_card.templ`, Line: 50, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -176,14 +176,14 @@ func NoteCard(n domain.NoteView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</label><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</label><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue("note-category-" + n.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/note_card.templ`, Line: 61, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/note_card.templ`, Line: 61, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {

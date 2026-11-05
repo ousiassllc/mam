@@ -241,7 +241,7 @@ func HFModelsWithMsgClear(l view.HFModelList) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-swap-oob=\"true\" class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"mm-hfi-msg\"></p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-swap-oob=\"true\" class=\"text-sm text-danger\" role=\"alert\" data-testid=\"mm-hfi-msg\"></p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

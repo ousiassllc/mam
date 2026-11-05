@@ -198,7 +198,7 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
     await el.updateComplete;
     expect(brush?.getAttribute('aria-pressed')).to.equal('false');
     expect(eraser?.getAttribute('aria-pressed')).to.equal('true');
-    expect(eraser?.className).to.contain('focus-visible:ring-2');
+    expect(eraser?.className).to.contain('focus-visible:focus-ring');
   });
 
   describe('inside an htmx form', () => {

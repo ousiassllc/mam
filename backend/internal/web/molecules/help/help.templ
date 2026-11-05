@@ -40,7 +40,7 @@ templ Toggle(id, subject string) {
 		aria-expanded="false"
 		aria-controls={ id }
 		aria-label={ ToggleLabel(subject) }
-		class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[50%] border border-neutral-700 text-neutral-300 transition-colors hover:border-neutral-600 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
+		class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[50%] border border-border text-ink transition-colors hover:border-mute hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
 	>
 		@atoms.Icon(atoms.IconHelp, "h-4 w-4")
 	</button>
@@ -50,7 +50,7 @@ templ Toggle(id, subject string) {
 // a click outside), at most 24rem and never wider than the window; help.ts puts it by the button. Its children are the
 // explanation. It has no display class: the browser hides it while it is closed.
 templ Panel(id, subject string) {
-	<div id={ id } popover role="group" aria-label={ ToggleLabel(subject) } data-help-panel class="inset-auto m-0 max-h-[calc(100dvh-1rem)] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto break-words rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-sm text-neutral-300">
+	<div id={ id } popover role="group" aria-label={ ToggleLabel(subject) } data-help-panel class="inset-auto m-0 max-h-[calc(100dvh-1rem)] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto break-words rounded-lg border border-border bg-surface p-3 text-sm text-ink">
 		{ children... }
 	</div>
 }

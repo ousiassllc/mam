@@ -24,7 +24,7 @@ var tokenColumns = []settingsui.Column{
 templ Section(d Data) {
 	<div id="mcp-panel" class="flex flex-col gap-6" data-testid="mcp-panel">
 		if d.Error != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="mcp-error">{ d.Error }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="mcp-error">{ d.Error }</p>
 		}
 		<ul role="list" class="grid grid-cols-1 gap-4">
 			@BindRow(d, false)
@@ -58,7 +58,7 @@ templ BindRow(d Data, oob bool) {
 
 templ bindDetails(d Data) {
 	<p class="text-sm">
-		<span class="text-neutral-400">待ち受け中のアドレス:</span>
+		<span class="text-mute">待ち受け中のアドレス:</span>
 		if d.Addr != "" {
 			<code class="break-all font-medium" data-testid="mcp-addr">{ "http://" + d.Addr + "/mcp" }</code>
 		} else {
@@ -66,13 +66,13 @@ templ bindDetails(d Data) {
 		}
 	</p>
 	if d.Problem != "" {
-		<p class="text-sm text-amber-300" role="alert" data-testid="mcp-problem">{ d.Problem }</p>
+		<p class="text-sm text-warning" role="alert" data-testid="mcp-problem">{ d.Problem }</p>
 	}
 }
 
 templ noTokensRow() {
 	<tr id={ NoRowsID } data-testid="mcp-no-tokens">
-		<td colspan="5" class="px-3 py-3 text-neutral-400">発行済みのトークンはありません。トークンがないと MCP には接続できません。</td>
+		<td colspan="5" class="px-3 py-3 text-mute">発行済みのトークンはありません。トークンがないと MCP には接続できません。</td>
 	</tr>
 }
 
@@ -84,7 +84,7 @@ templ TokenRowItem(t TokenRow, oob bool) {
 	}) {
 		@settingsui.RowHead("") {
 			{ t.Name }
-			<code class="block text-xs font-normal text-neutral-400">mam_mcp_{ t.Prefix }…</code>
+			<code class="block text-xs font-normal text-mute">mam_mcp_{ t.Prefix }…</code>
 		}
 		@settingsui.Cell("whitespace-nowrap") {
 			{ formatTime(t.CreatedAt) }

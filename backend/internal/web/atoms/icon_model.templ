@@ -2,7 +2,7 @@ package atoms
 
 // Icons of the model kinds on the cards of the model manager (Lucide v1.61.0, copied as in icon.templ; the file is split from
 // icon_nav.templ to stay under the line limit). They are the pictures of the cards: no image is fetched from the net, so there is
-// nothing to license or to load. iconNav hands every name it does not know to iconModel.
+// nothing to license or to load. iconNav hands every name it does not know to iconModel, which hands the rest to iconStatus (icon_status.templ).
 
 // Icons of the model kinds: a video model, a voice (speech synthesis) runtime and a lip-sync runtime. An image model is IconImage.
 const (
@@ -41,5 +41,7 @@ templ iconModel(name IconName, class string) {
 				<path d="M9 9h.01"></path>
 				<path d="M15 9h.01"></path>
 			}
+		default:
+			@iconStatus(name, class)
 	}
 }

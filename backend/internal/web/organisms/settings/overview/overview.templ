@@ -28,9 +28,9 @@ templ Overview(d Data) {
 templ GuideSection() {
 	<section class="mt-8 flex flex-col gap-2" aria-labelledby="settings-guide-title" data-testid="settings-guide">
 		<h3 id="settings-guide-title" class="text-base font-semibold">初期セットアップの案内</h3>
-		<p class="text-sm text-neutral-400">mam でできることの紹介と、API キー・モデル・ffmpeg の順に設定する案内を、もう一度開きます。</p>
+		<p class="text-sm text-mute">mam でできることの紹介と、API キー・モデル・ffmpeg の順に設定する案内を、もう一度開きます。</p>
 		<p>
-			<a href={ templ.SafeURL(paths.Onboarding()) } class="text-sm underline text-indigo-300" data-testid="settings-guide-open">案内をもう一度開く</a>
+			<a href={ templ.SafeURL(paths.Onboarding()) } class="text-sm underline decoration-mute text-accent" data-testid="settings-guide-open">案内をもう一度開く</a>
 		</p>
 	</section>
 }

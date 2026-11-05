@@ -48,10 +48,10 @@ templ DetailSection(d Detail, inModal bool) {
 		}
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="gt-detail-head">
 			@atoms.BadgeWith(resulttile.Tone(d.Card.Status), d.Card.StatusText, templ.Attributes{"data-testid": "gt-card-status"})
-			<span class="text-xs text-neutral-400" data-testid="gt-detail-time">{ d.Card.CreatedAt }</span>
+			<span class="text-xs text-mute" data-testid="gt-detail-time">{ d.Card.CreatedAt }</span>
 			@commercial.Mark(d.Card.Answer)
 			if d.Card.Meta != "" {
-				<span class="text-xs text-neutral-400">{ d.Card.Meta }</span>
+				<span class="text-xs text-mute">{ d.Card.Meta }</span>
 			}
 		</div>
 		if d.Card.Failure != nil {
@@ -59,7 +59,7 @@ templ DetailSection(d Detail, inModal bool) {
 				@errorbox.Box(errorbox.Props{View: *d.Card.Failure, Lang: apperr.LangJa, ID: d.Card.ID})
 			</div>
 		} else if d.Card.Error != "" {
-			<p class="break-words text-sm text-red-300" data-testid="gt-card-error">{ d.Card.Error }</p>
+			<p class="break-words text-sm text-danger" data-testid="gt-card-error">{ d.Card.Error }</p>
 		}
 		if len(d.Unused) > 0 {
 			@inputnotice.UnusedBox(d.Unused)
@@ -68,7 +68,7 @@ templ DetailSection(d Detail, inModal bool) {
 			@detailMedia(d.Card)
 			<dl class="grid grid-cols-[max-content_1fr] content-start gap-x-4 gap-y-1 text-sm" data-testid="gt-params">
 				for _, kv := range d.Params {
-					<dt class="text-xs text-neutral-400">{ kv.Key }</dt>
+					<dt class="text-xs text-mute">{ kv.Key }</dt>
 					<dd class="break-words">{ kv.Value }</dd>
 				}
 			</dl>
@@ -112,28 +112,28 @@ templ DetailSection(d Detail, inModal bool) {
 		@faceswapbox.Box(d.FaceSwap)
 		if d.English != "" || d.EnglishNegative != "" {
 			<div class="flex flex-col gap-1" data-testid="gt-english">
-				<h3 class="text-xs text-neutral-400">英訳（送った英語）</h3>
-				<p class="whitespace-pre-wrap break-words rounded-md border border-neutral-700 p-2 text-sm" data-testid="gt-english-prompt">{ d.English }</p>
+				<h3 class="text-xs text-mute">英訳（送った英語）</h3>
+				<p class="whitespace-pre-wrap break-words rounded-md border border-border p-2 text-sm" data-testid="gt-english-prompt">{ d.English }</p>
 				if d.EnglishNegative != "" {
-					<p class="text-xs text-neutral-400" data-testid="gt-english-negative">ネガティブ: { d.EnglishNegative }</p>
+					<p class="text-xs text-mute" data-testid="gt-english-negative">ネガティブ: { d.EnglishNegative }</p>
 				}
 			</div>
 		}
 		<div class="flex flex-col gap-1">
-			<h3 class="text-xs text-neutral-400">実際に送ったプロンプト</h3>
-			<p class="whitespace-pre-wrap break-words rounded-md border border-neutral-800 p-2 text-sm" data-testid="gt-sent-prompt">{ d.SentPrompt }</p>
+			<h3 class="text-xs text-mute">実際に送ったプロンプト</h3>
+			<p class="whitespace-pre-wrap break-words rounded-md border border-border p-2 text-sm" data-testid="gt-sent-prompt">{ d.SentPrompt }</p>
 			if d.Negative != "" {
-				<p class="text-xs text-neutral-400" data-testid="gt-negative">ネガティブ（{ d.NegMode }）: { d.Negative }</p>
+				<p class="text-xs text-mute" data-testid="gt-negative">ネガティブ（{ d.NegMode }）: { d.Negative }</p>
 			}
 		</div>
 		if len(d.Inputs) > 0 {
 			<div class="flex flex-col gap-2">
-				<h3 class="text-xs text-neutral-400">入力画像</h3>
+				<h3 class="text-xs text-mute">入力画像</h3>
 				<ul class="flex flex-wrap gap-3" data-testid="gt-inputs-list">
 					for _, in := range d.Inputs {
 						<li class="flex w-32 flex-col gap-1 text-xs">
 							<img class="h-24 w-full rounded object-cover" src={ in.URL } alt={ in.Role } loading="lazy"/>
-							<span class="text-neutral-400">{ in.Role }・{ in.Origin }</span>
+							<span class="text-mute">{ in.Role }・{ in.Origin }</span>
 						</li>
 					}
 				</ul>
@@ -141,7 +141,7 @@ templ DetailSection(d Detail, inModal bool) {
 		}
 		if len(d.Imports) > 0 {
 			<div class="flex flex-col gap-1">
-				<h3 class="text-xs text-neutral-400">取り込み済み</h3>
+				<h3 class="text-xs text-mute">取り込み済み</h3>
 				<ul class="text-sm" data-testid="gt-imports">
 					for _, im := range d.Imports {
 						<li>
@@ -163,6 +163,6 @@ templ detailMedia(c resulttile.Card) {
 	} else if c.FileURL != "" {
 		<img class="max-h-[70vh] w-full rounded bg-black object-contain" src={ c.FileURL } alt={ c.Prompt }/>
 	} else {
-		<p class="flex h-40 items-center justify-center rounded bg-neutral-900 text-sm text-neutral-400" data-testid="gt-no-file">ファイルはありません</p>
+		<p class="flex h-40 items-center justify-center rounded bg-surface text-sm text-mute" data-testid="gt-no-file">ファイルはありません</p>
 	}
 }

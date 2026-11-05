@@ -41,7 +41,7 @@ func Fields(a Section) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<details class=\"flex flex-col gap-3 rounded-md border border-neutral-800 p-3 text-sm\" data-gt-advanced data-testid=\"gt-advanced\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<details class=\"flex flex-col gap-3 rounded-md border border-border p-3 text-sm\" data-gt-advanced data-testid=\"gt-advanced\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -51,7 +51,7 @@ func Fields(a Section) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "><summary class=\"cursor-pointer text-sm font-medium text-neutral-200\">詳細設定（シード・ステップ数・CFG・サンプラー）</summary><div class=\"mt-3 flex flex-col gap-3\"><div class=\"flex flex-wrap items-center gap-2\"><span class=\"text-xs text-neutral-400\">モデルごとに受け取る項目が違います</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "><summary class=\"cursor-pointer text-sm font-medium text-ink\">詳細設定（シード・ステップ数・CFG・サンプラー）</summary><div class=\"mt-3 flex flex-col gap-3\"><div class=\"flex flex-wrap items-center gap-2\"><span class=\"text-xs text-mute\">モデルごとに受け取る項目が違います</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -80,14 +80,14 @@ func Fields(a Section) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, l := range a.Lines {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li class=\"break-words\"><span class=\"text-neutral-100\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li class=\"break-words\"><span class=\"text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestadv/fields.templ`, Line: 26, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestadv/fields.templ`, Line: 26, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -100,7 +100,7 @@ func Fields(a Section) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(l.Text)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestadv/fields.templ`, Line: 26, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestadv/fields.templ`, Line: 26, Col: 82}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -121,7 +121,7 @@ func Fields(a Section) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div class=\"flex flex-wrap items-end gap-3\" data-gt-adv-field=\"seed\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-seed\"><span>シード（空欄 = ランダム）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div class=\"flex flex-wrap items-end gap-3\" data-gt-adv-field=\"seed\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-seed\"><span>シード（空欄 = ランダム）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -144,7 +144,7 @@ func Fields(a Section) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-sampler\" data-gt-adv-field=\"sampler\"><span>サンプラー</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-sampler\" data-gt-adv-field=\"sampler\"><span>サンプラー</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -222,7 +222,7 @@ func Fields(a Section) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-scheduler\" data-gt-adv-field=\"scheduler\"><span>スケジューラー</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-scheduler\" data-gt-adv-field=\"scheduler\"><span>スケジューラー</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -308,7 +308,7 @@ func Fields(a Section) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p class=\"text-xs text-amber-300\" data-gt-adv-note hidden data-testid=\"gt-advanced-note\"></p></div></details>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p class=\"text-xs text-warning\" data-gt-adv-note hidden data-testid=\"gt-advanced-note\"></p></div></details>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -352,7 +352,7 @@ func advancedSlider(kind, label, name, value, min, max, step string, def float64
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\"><div class=\"flex flex-wrap items-center gap-3 text-xs text-neutral-300\"><span class=\"w-20 shrink-0\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\"><div class=\"flex flex-wrap items-center gap-3 text-xs text-ink\"><span class=\"w-20 shrink-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -565,7 +565,7 @@ func WeightHelp(all []WeightGroup) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(all) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<details class=\"mt-2\" data-testid=\"gt-weight-all\"><summary class=\"cursor-pointer text-xs text-neutral-400\">すべてのモデルを見る</summary><ul class=\"mt-1 flex flex-col gap-1.5\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<details class=\"mt-2\" data-testid=\"gt-weight-all\"><summary class=\"cursor-pointer text-xs text-mute\">すべてのモデルを見る</summary><ul class=\"mt-1 flex flex-col gap-1.5\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

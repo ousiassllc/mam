@@ -2,8 +2,8 @@
 export type TakeStatus = 'candidate' | 'ai_pick' | 'selected' | 'rejected';
 
 export const STATUS_CLASS: Record<TakeStatus, string> = {
-  candidate: 'border-neutral-600 text-neutral-300',
-  ai_pick: 'border-sky-500/60 text-sky-300',
-  selected: 'border-emerald-500/60 text-emerald-300',
-  rejected: 'border-neutral-700 text-neutral-400 line-through',
+  candidate: 'border-border text-ink',
+  ai_pick: 'border-info/60 text-info',
+  selected: 'border-success/60 text-success',
+  rejected: 'border-border text-mute line-through',
 };

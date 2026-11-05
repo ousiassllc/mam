@@ -28,7 +28,7 @@ templ PolicyForm(d PolicyFormData) {
 				}
 			}
 			if msg := d.Errors["quality_policy"]; msg != "" {
-				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+				<p class="mt-1 text-sm text-danger" role="alert">{ msg }</p>
 			}
 		</div>
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -42,7 +42,7 @@ templ PolicyForm(d PolicyFormData) {
 				"type": "submit",
 			})
 			if d.Saved {
-				<span class="text-sm text-emerald-300" role="status">保存しました</span>
+				<span class="text-sm text-success" role="status">保存しました</span>
 			}
 		</div>
 	</form>
@@ -63,7 +63,7 @@ templ numberField(d PolicyFormData, name, label, lo, hi, stored string, effectiv
 			"placeholder": intValue(&effective),
 		})
 		if msg := d.Errors[name]; msg != "" {
-			<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+			<p class="mt-1 text-sm text-danger" role="alert">{ msg }</p>
 		}
 	</div>
 }
@@ -82,13 +82,13 @@ templ BudgetForm(d PolicyFormData) {
 			@budgetField(d, "project_budget", "Project budget ceiling（USD）", ceilingValue(d.Policy.ProjectBudgetCeiling))
 			@budgetField(d, "shot_budget", "Shot budget ceiling（USD）", ceilingValue(d.Policy.ShotBudgetCeiling))
 		</div>
-		<p class="text-xs text-neutral-400">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p>
+		<p class="text-xs text-mute">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p>
 		<div class="flex items-center gap-3">
 			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{
 				"type": "submit",
 			})
 			if d.Saved {
-				<span class="text-sm text-emerald-300" role="status">保存しました</span>
+				<span class="text-sm text-success" role="status">保存しました</span>
 			}
 		</div>
 	</form>
@@ -106,7 +106,7 @@ templ budgetField(d PolicyFormData, name, label, stored string) {
 			"placeholder": "上限なし",
 		})
 		if msg := d.Errors[name]; msg != "" {
-			<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+			<p class="mt-1 text-sm text-danger" role="alert">{ msg }</p>
 		}
 	</div>
 }

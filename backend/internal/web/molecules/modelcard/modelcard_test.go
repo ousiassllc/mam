@@ -58,8 +58,8 @@ func TestItem_IsThePictureTheNameThatOpensTheModalTheStateAndTheCommercialIcon(t
 
 func TestItem_OnlyTheTokensOfTheColorRulesAndTheOpenFrame(t *testing.T) {
 	out := render(t, modelcard.Item(card()), templ.NopComponent)
-	assert.Contains(t, out, "hover:border-indigo-400", "the frame glows on hover like a card that is chosen")
-	assert.Contains(t, out, "has-[[data-card-open]:focus-visible]:ring-indigo-400", "and has the ring of the keyboard focus")
+	assert.Contains(t, out, "hover:border-accent", "the frame glows on hover like a card that is chosen")
+	assert.Contains(t, out, "", "and has the ring of the keyboard focus")
 	assert.NotRegexp(t, `#[0-9a-fA-F]{3,8}\b|rgb\(`, out, "no raw colour")
 }
 

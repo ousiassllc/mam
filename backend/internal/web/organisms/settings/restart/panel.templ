@@ -43,9 +43,9 @@ templ Slot(d Data) {
 // Panel is the notice with the buttons. It draws nothing when there is nothing to say.
 templ Panel(d Data) {
 	if d.Visible() {
-		<section id="restart-panel" class="mb-4 flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 px-4 py-3" aria-label="再起動して反映" data-testid="restart-panel">
+		<section id="restart-panel" class="mb-4 flex flex-col gap-2 rounded-md border border-warning/60 bg-warning/10 px-4 py-3" aria-label="再起動して反映" data-testid="restart-panel">
 			if len(d.Pending) > 0 {
-				<p class="text-sm text-amber-300" data-testid="restart-pending">
+				<p class="text-sm text-warning" data-testid="restart-pending">
 					保存した設定のうち、再起動すると反映されるものがあります:
 					for i, p := range d.Pending {
 						if i > 0 {
@@ -56,16 +56,16 @@ templ Panel(d Data) {
 				</p>
 			}
 			if d.Restarting {
-				<p class="text-sm text-emerald-300" role="status" data-testid="restart-notice">{ d.Notice }</p>
+				<p class="text-sm text-success" role="status" data-testid="restart-notice">{ d.Notice }</p>
 			} else {
 				if d.Notice != "" {
-					<p class="text-sm text-emerald-300" role="status" data-testid="restart-notice">{ d.Notice }</p>
+					<p class="text-sm text-success" role="status" data-testid="restart-notice">{ d.Notice }</p>
 				}
 				if d.Error != "" {
-					<p class="text-sm text-red-300" role="alert" data-testid="restart-error">{ d.Error }</p>
+					<p class="text-sm text-danger" role="alert" data-testid="restart-error">{ d.Error }</p>
 				}
 				if len(d.Busy) > 0 {
-					<ul class="list-disc pl-5 text-sm text-neutral-300" data-testid="restart-busy">
+					<ul class="list-disc pl-5 text-sm text-ink" data-testid="restart-busy">
 						for _, b := range d.Busy {
 							<li>{ b }</li>
 						}
@@ -80,7 +80,7 @@ templ Panel(d Data) {
 					</div>
 				}
 				if !d.CanRestart {
-					<p class="text-sm text-neutral-300" data-testid="restart-manual">このビルドは自分で再起動できません。アプリを終了して、起動し直してください。</p>
+					<p class="text-sm text-ink" data-testid="restart-manual">このビルドは自分で再起動できません。アプリを終了して、起動し直してください。</p>
 				}
 			}
 		</section>

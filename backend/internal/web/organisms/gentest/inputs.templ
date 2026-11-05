@@ -48,12 +48,12 @@ templ inputFields(c Compose) {
 		<div
 			data-gt-dropzone
 			title={ dropHint(c) }
-			class="flex flex-col items-center gap-2 rounded-md border border-dashed border-neutral-600 p-4 text-center text-sm text-neutral-300 transition-colors motion-reduce:transition-none"
+			class="flex flex-col items-center gap-2 rounded-md border border-dashed border-border p-4 text-center text-sm text-ink transition-colors motion-reduce:transition-none"
 		>
 			<p>画像をドロップ、またはクリック</p>
 			<div class="flex flex-wrap justify-center gap-2">
 				<input id="gt-upload" type="file" name={ FieldUpload } multiple accept="image/png,image/jpeg,image/webp" class="peer sr-only" data-gt-file/>
-				<label for="gt-upload" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400">ファイルを選ぶ</label>
+				<label for="gt-upload" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium text-ink transition hover:bg-accent-soft peer-focus-visible:focus-ring">ファイルを選ぶ</label>
 				@atoms.SmallButton(atoms.ToneNeutral, "プロジェクトの画像から選ぶ", templ.Attributes{"type": "button", "data-gt-open-picker": "project"})
 				@atoms.SmallButton(atoms.ToneNeutral, "履歴の画像から選ぶ", templ.Attributes{
 					"type": "button", "data-gt-open-picker": "history", "hx-get": paths.GenerationTestPart("picker") + "?source=history",
@@ -66,25 +66,25 @@ templ inputFields(c Compose) {
 		</div>
 		if c.Media == "video" {
 			<div class="flex flex-wrap gap-4">
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-first">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="gt-first">
 					<span>最初のフレーム</span>
 					<input id="gt-first" type="file" name={ FieldFirst } accept="image/png,image/jpeg,image/webp" class="text-sm"/>
 				</label>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-last">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="gt-last">
 					<span>最後のフレーム</span>
 					<input id="gt-last" type="file" name={ FieldLast } accept="image/png,image/jpeg,image/webp" class="text-sm"/>
 				</label>
 			</div>
 		}
-		<p class="text-xs text-red-300" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>
-		<p class="text-xs text-amber-300" role="status" data-gt-noref data-testid="gt-noref" hidden?={ c.NoRefNotice() == "" }>{ c.NoRefNotice() }</p>
+		<p class="text-xs text-danger" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>
+		<p class="text-xs text-warning" role="status" data-gt-noref data-testid="gt-noref" hidden?={ c.NoRefNotice() == "" }>{ c.NoRefNotice() }</p>
 		if c.FaceOff != "" {
 			@facelock.OffNotice(c.FaceOff)
 		}
 		if c.Media == "video" {
 			@inputnotice.CheckBox(c.InputCheck)
 		}
-		<div class="flex items-center justify-between text-xs text-neutral-400">
+		<div class="flex items-center justify-between text-xs text-mute">
 			<span data-gt-count data-testid="gt-count" aria-live="polite">{ itoa(len(c.Picked)) } / { itoa(c.MaxReferences) }</span>
 		</div>
 		<ul id={ RefsID } class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5" data-testid="gt-refs" data-gt-list>
@@ -109,7 +109,7 @@ templ lightbox() {
 	<dialog
 		data-gt-lightbox
 		aria-label="入力画像の拡大"
-		class="m-auto max-h-[90vh] max-w-[92vw] rounded-lg border border-neutral-700 bg-neutral-900 p-2 backdrop:bg-black/70"
+		class="m-auto max-h-[90vh] max-w-[92vw] rounded-lg border border-border bg-surface p-2 backdrop:bg-black/70"
 	>
 		<img alt="" class="max-h-[80vh] max-w-full rounded object-contain" data-gt-lightbox-image/>
 		<div class="mt-2 flex justify-end">

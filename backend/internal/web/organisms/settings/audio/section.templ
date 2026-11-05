@@ -12,13 +12,13 @@ import (
 templ Section(d Data) {
 	<div id={ PanelID } class="flex flex-col gap-4" data-testid="audio-panel">
 		if d.Problem != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="audio-problem">{ d.Problem }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="audio-problem">{ d.Problem }</p>
 		} else {
 			if d.Notice != "" {
-				<p class="text-sm text-emerald-300" role="status" data-testid="audio-notice">{ d.Notice }</p>
+				<p class="text-sm text-success" role="status" data-testid="audio-notice">{ d.Notice }</p>
 			}
 			if d.Error != "" {
-				<p class="text-sm text-red-300" role="alert" data-testid="audio-error">{ d.Error }</p>
+				<p class="text-sm text-danger" role="alert" data-testid="audio-error">{ d.Error }</p>
 			}
 			<form class="flex flex-col gap-4" hx-put={ paths.AudioSettings() } hx-target={ "#" + PanelID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="audio-form">
 				@choice(d.Voice)
@@ -27,7 +27,7 @@ templ Section(d Data) {
 					@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldFallback, "value": "1", "checked": d.Fallback, "data-testid": "audio-fallback-input"})
 					<span>
 						ローカルが使えないときは、クラウドに切り替える（API 費用が出ます）
-						<span class="block text-xs text-neutral-400">実行を始める前の検査で、ローカルが使えない（この PC で動かせない・導入されていない・重みが無い・参照音声が無い話者がいる）と分かったときだけ、その実行の全体をクラウドで作ります。実行の途中で切り替えることはなく、切り替えたときはチャットに書きます。オフのときは、理由を出して止まります（クラウドの費用は出ません）。</span>
+						<span class="block text-xs text-mute">実行を始める前の検査で、ローカルが使えない（この PC で動かせない・導入されていない・重みが無い・参照音声が無い話者がいる）と分かったときだけ、その実行の全体をクラウドで作ります。実行の途中で切り替えることはなく、切り替えたときはチャットに書きます。オフのときは、理由を出して止まります（クラウドの費用は出ません）。</span>
 					</span>
 				</label>
 				<div>
@@ -52,7 +52,7 @@ templ choice(p Provider) {
 			}
 		</ul>
 		if p.CloneNotice != "" {
-			<p class="mt-3 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-clone-notice-" + p.Field }>{ p.CloneNotice }</p>
+			<p class="mt-3 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-clone-notice-" + p.Field }>{ p.CloneNotice }</p>
 		}
 	}
 }

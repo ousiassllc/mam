@@ -150,7 +150,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-target=\"#reference-library\" hx-swap=\"outerHTML\"><div><label for=\"ref-q\" class=\"mb-1 block text-xs text-neutral-400\">名前・タグ</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hx-target=\"#reference-library\" hx-swap=\"outerHTML\"><div><label for=\"ref-q\" class=\"mb-1 block text-xs text-mute\">名前・タグ</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -163,7 +163,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><div><label for=\"ref-kind\" class=\"mb-1 block text-xs text-neutral-400\">種別</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><div><label for=\"ref-kind\" class=\"mb-1 block text-xs text-mute\">種別</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -234,7 +234,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div><label for=\"ref-tag\" class=\"mb-1 block text-xs text-neutral-400\">タグ（完全一致）</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div><label for=\"ref-tag\" class=\"mb-1 block text-xs text-mute\">タグ（完全一致）</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -260,7 +260,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Items) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-neutral-400\">該当する参照画像はありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-mute\">該当する参照画像はありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -270,7 +270,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, it := range d.Items {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<li class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\"><img src=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<li class=\"flex flex-col gap-2 rounded-md border border-border p-3\"><img src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -296,7 +296,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" loading=\"lazy\" class=\"aspect-video w-full rounded object-contain bg-neutral-900\"><div class=\"flex items-center gap-2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" loading=\"lazy\" class=\"aspect-video w-full rounded object-contain bg-surface\"><div class=\"flex items-center gap-2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -317,7 +317,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</span></div><p class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</span></div><p class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -403,7 +403,7 @@ func referenceUploadForm(d ReferenceLibraryData, oob bool) templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<form id=\"reference-upload-form\" class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<form id=\"reference-upload-form\" class=\"flex flex-col gap-2 rounded-md border border-border p-3\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -426,7 +426,7 @@ func referenceUploadForm(d ReferenceLibraryData, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "><h2 class=\"text-sm font-semibold\">参照画像を登録</h2><div class=\"grid gap-2 sm:grid-cols-2\"><div><label for=\"ref-file\" class=\"mb-1 block text-xs text-neutral-400\">画像（jpg / png / webp / gif、20MB まで）</label> <input id=\"ref-file\" name=\"file\" type=\"file\" accept=\"image/jpeg,image/png,image/webp,image/gif\" required class=\"w-full text-sm\"></div><div><label for=\"ref-new-kind\" class=\"mb-1 block text-xs text-neutral-400\">種別</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "><h2 class=\"text-sm font-semibold\">参照画像を登録</h2><div class=\"grid gap-2 sm:grid-cols-2\"><div><label for=\"ref-file\" class=\"mb-1 block text-xs text-mute\">画像（jpg / png / webp / gif、20MB まで）</label> <input id=\"ref-file\" name=\"file\" type=\"file\" accept=\"image/jpeg,image/png,image/webp,image/gif\" required class=\"w-full text-sm\"></div><div><label for=\"ref-new-kind\" class=\"mb-1 block text-xs text-mute\">種別</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -484,7 +484,7 @@ func referenceUploadForm(d ReferenceLibraryData, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div><div><label for=\"ref-new-name\" class=\"mb-1 block text-xs text-neutral-400\">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div><div><label for=\"ref-new-name\" class=\"mb-1 block text-xs text-mute\">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -498,7 +498,7 @@ func referenceUploadForm(d ReferenceLibraryData, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div><div><label for=\"ref-new-tags\" class=\"mb-1 block text-xs text-neutral-400\">タグ（カンマ区切り、10 個まで）</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div><div><label for=\"ref-new-tags\" class=\"mb-1 block text-xs text-mute\">タグ（カンマ区切り、10 個まで）</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -31,7 +31,7 @@ func commercialIcon(c modellicense.Commercial) IconName {
 
 func commercialEdge(c modellicense.Commercial) string {
 	if c == modellicense.Unknown || !c.Valid() {
-		return " border border-amber-500/60"
+		return " border border-warning/60"
 	}
 	return ""
 }

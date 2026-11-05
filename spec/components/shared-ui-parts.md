@@ -4,26 +4,26 @@
 
 [overview.md](overview.md) §3 のコンポーネントの階層に、次の部品を足す案。使う画面は [home-screen.md](home-screen.md)（`tool_card`・`atoms.Icon`）と [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)（すべて）。`atoms.Icon`・`molecules.ToolCard` は先に出る #846 が作る（#846 決定事項 1）。**モーダルは #847 で作る**（2 つの Issue の文面が食い違っていたが、オーナーが決定。§6.1）。一覧の行・サイドナビは #847 が作る。
 
-## 1. 見た目の決まり（新しいデザイントークンは作らない）
+## 1. 見た目の決まり（色は Ousiass 共通デザインガイドのトークンだけ）
 
-**用途ごとの許可クラスの網羅した表（と例外・検査）は [color-rules.md](color-rules.md)（#867。2026-10-28 オーナー確認済み）。この節の表はその一部で、食い違うときは color-rules.md が正。**
+**用途ごとの許可クラスの網羅した表（と例外・検査）は [color-rules.md](color-rules.md)（#867 → #1036 でガイドのトークンへ移行）。この節の表はその一部で、食い違うときは color-rules.md が正。**
 
-`static/src/css/app.css` は `@import "tailwindcss"`・スライダーの CSS（`slider.css`。下の表）と `@source` だけで、独自のトークンは無い。既存のパレットだけを使う。コントラスト比は WCAG の式で計算した値（2026-10-25）。
+`static/src/css/app.css` は `@import "tailwindcss"`・トークン（`tokens.css`。ライト / ダークの値と Tailwind の `@theme`、`focus-ring`）・スライダーの CSS（`slider.css`。下の表）と `@source` だけ。色は `tokens.css` のトークン（ガイドの値。独自のパレットは作らない）だけを使い、既定のパレット（`neutral-*` `indigo-*` など）は使えない。
 
 | 用途 | クラス | 備考 |
 |------|--------|------|
-| ページの背景・本文 | `bg-neutral-950 text-neutral-100`（`AppLayout`） | 変えない |
-| カード・モーダルの面 | `bg-neutral-900 border border-neutral-800 rounded-lg`、内側 `p-4` | 既存の `GenerationTest` の選択カードが `bg-neutral-900`、`ProjectList` が `border-neutral-800` |
-| 補助の文字 | `text-neutral-400`（`neutral-900` 上 7.11:1、`neutral-950` 上 7.85:1） | `text-neutral-500` は使わない（`a11y/contrast_test.go`。3.78:1） |
-| 主要な文字 | `text-neutral-100`（`neutral-900` 上 16.44:1） | |
-| アイコンの色 | `text-indigo-300`（`neutral-800` 上 7.59:1、`neutral-900` 上 8.99:1） | 飾りなので 1.4.11 の対象外だが、見える色にしておく |
-| フォーカスの輪 | `focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950`（`indigo-400` は `neutral-950` 上 6.64:1、`neutral-900` 上 6.01:1） | モーダルの中は `ring-offset-neutral-900`。既存の `peer-focus-visible:ring-2 ring-indigo-400`（チャットの添付）と同じ色。輪は box-shadow で Windows のハイコントラスト（`forced-colors`）では消えるため、輪郭は `outline-none`（消す）ではなく `outline-hidden`（通常は透明、`forced-colors` では描かれる）にする |
-| ホバー | `hover:border-neutral-600 hover:bg-neutral-800/60` | 見た目の補助。ホバーだけに意味を持たせない |
-| 動き | `transition-colors motion-reduce:transition-none` のみ。拡大・移動・アニメーションは使わない | #797（`prefers-reduced-motion`）。スピナーの `motion-reduce:animate-none` が先例 |
-| 主ボタンの `bg-indigo-500` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
+| ページの背景・本文 | `bg-bone text-ink`（`AppLayout`） | 変えない |
+| カード・モーダルの面 | `bg-surface border border-border rounded-lg`、内側 `p-4` | 既存の `GenerationTest` の選択カードが `bg-surface`、`ProjectList` が `border-border` |
+| 補助の文字 | `text-mute`（補助・キャプション用。本文の長文には使わない） | 旧パレットの `text-neutral-500` は使わない（`a11y/contrast_test.go`） |
+| 主要な文字 | `text-ink` | |
+| アイコンの色 | `text-accent`（インク色） | 飾りなので 1.4.11 の対象外だが、見える色にしておく |
+| フォーカスの輪 | `focus-visible:focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`。`--focus` はライト `#4a72d0`・ダーク `#60a5fa`） | `peer-focus-visible:focus-ring`（チャットの添付）も同じ。輪は `outline` なので Windows のハイコントラスト（`forced-colors`）でも描かれ、`ring-*` の影の輪は使わない。輪を出さない見出しなどは `focus-visible:outline-none` |
+| ホバー | `hover:border-mute hover:bg-accent-soft/60` | 見た目の補助。ホバーだけに意味を持たせない |
+| 動き | 色・背景の `transition-colors`（`--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。拡大・移動・アニメーションは使わない | #797（`prefers-reduced-motion`）。スピナーは処理中表示なので、reduced-motion でも回す（#1040） |
+| 主ボタンの `bg-accent` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
-| カードの枠 | `border-neutral-800` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
-| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 6px・つまみ 16px の丸。塗り `indigo-500`・残り `neutral-600`・つまみ白）。ホバー（光る縁取り）・ドラッグ中（つまみが `indigo-400`）・`focus-visible`（`indigo-400` の輪）・無効（グレー）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
+| カードの枠 | `border-border` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
+| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 6px・つまみ 16px の丸。塗り `--accent`・残り `--accent-soft`・つまみ `--surface` に `--accent` の縁）。ホバー（つまみの面が `--accent-soft`）・ドラッグ中（つまみが `--accent`）・`focus-visible`（`--focus` の輪）・無効（`--mute`）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
 
 ### 商用利用の可否（Issue #928）
 
@@ -108,15 +108,15 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 <li>
   <a id="tool-<ID>" href="…" data-testid="tool-card" data-tool="<ID>"
      aria-labelledby="tool-<ID>-title" aria-describedby="tool-<ID>-desc tool-<ID>-status"
-     class="flex h-full min-h-36 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 … (§1 のホバー・フォーカス)">
+     class="flex h-full min-h-36 flex-col gap-3 rounded-lg border border-border bg-surface p-4 … (§1 のホバー・フォーカス)">
     <span class="flex items-center gap-3">
-      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-neutral-800 text-indigo-300" aria-hidden="true">{Icon}</span>
-      <span id="tool-<ID>-title" class="text-base font-semibold text-neutral-100">{Title}</span>
+      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent" aria-hidden="true">{Icon}</span>
+      <span id="tool-<ID>-title" class="text-base font-semibold text-ink">{Title}</span>
     </span>
-    <span id="tool-<ID>-desc" class="text-sm text-neutral-400">{Description}</span>
-    <span id="tool-<ID>-status" class="mt-auto flex min-h-6 flex-col gap-1 text-xs text-neutral-300"
+    <span id="tool-<ID>-desc" class="text-sm text-mute">{Description}</span>
+    <span id="tool-<ID>-status" class="mt-auto flex min-h-6 flex-col gap-1 text-xs text-ink"
           hx-get="{StatusURL}" hx-trigger="load" hx-target="this" hx-swap="innerHTML"></span>
-    <span class="inline-flex items-center gap-1 text-sm font-medium text-indigo-300" aria-hidden="true">{CTA}{IconChevronRight}</span>
+    <span class="inline-flex items-center gap-1 text-sm font-medium text-accent" aria-hidden="true">{CTA}{IconChevronRight}</span>
   </a>
 </li>
 ```
@@ -134,9 +134,9 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 
 ```html
 <dialog id="mam-modal" aria-labelledby="mam-modal-title" aria-describedby="mam-modal-desc" data-modal
-        class="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100vh-4rem)] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70">
+        class="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100vh-4rem)] overflow-y-auto rounded-lg border border-border bg-surface p-0 text-ink backdrop:bg-black/70">
   <div id="mam-modal-body"></div>
-  <p id="mam-modal-failure" role="alert" class="px-4 pb-2 text-sm text-red-300" hidden></p>
+  <p id="mam-modal-failure" role="alert" class="px-4 pb-2 text-sm text-danger" hidden></p>
   <button type="button" data-modal-close aria-label="閉じる" class="absolute right-3 top-3 …">{IconClose}</button>
 </dialog>
 ```
@@ -162,15 +162,15 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 
 | 形 | 使う所 | 構造 |
 |----|-------|------|
-| `SettingsCard` | API キー・ChatGPT のログイン・ローカルの接続先・MCP の待ち受け先 | `<li id="<種類>-row-<キー>" data-testid="settings-card">`。名前（`<h3>`。`<h4>` も可）・状態の `Badge`・**リスクの印（`Card.Marks`。「非公式」「商用注意」。状態の前に並べる文字のバッジ）**・1 行の説明・要約・ボタンの行。`ul role="list"`、`grid-cols-2`（1024 px でも 2 列）。`Card.Class` は `<li>` に足す class（音声・口パクの選択中の枠 `has-[:checked]:border-indigo-400`）。**長い説明・注意書き・ライセンスはカードに出さず、「詳細」ボタンで開くモーダルへ置く（#1005。ChatGPT のログインと音声・口パクのカード。API キーと同じ形）**。名前・バッジは長くても折り返す（`break-words`。`Badge` は `max-w-full`） |
+| `SettingsCard` | API キー・ChatGPT のログイン・ローカルの接続先・MCP の待ち受け先 | `<li id="<種類>-row-<キー>" data-testid="settings-card">`。名前（`<h3>`。`<h4>` も可）・状態の `Badge`・**リスクの印（`Card.Marks`。「非公式」「商用注意」。状態の前に並べる文字のバッジ）**・1 行の説明・要約・ボタンの行。`ul role="list"`、`grid-cols-2`（1024 px でも 2 列）。`Card.Class` は `<li>` に足す class（音声・口パクの選択中の枠 `has-[:checked]:border-accent`）。**長い説明・注意書き・ライセンスはカードに出さず、「詳細」ボタンで開くモーダルへ置く（#1005。ChatGPT のログインと音声・口パクのカード。API キーと同じ形）**。名前・バッジは長くても折り返す（`break-words`。`Badge` は `max-w-full`） |
 | `SettingsTable` ＋ `SettingsTableRow` | LLM の割り当て・画像・動画モデル・MCP のトークン | `<table class="w-full text-sm">`、`<caption class="sr-only">`、`<th scope="col">`、行の見出し `<th scope="row">`、`<tr id="<種類>-row-<キー>">`。1 つの行に要約と「編集」 |
 
 - 行のボタンは **`atoms.SmallButtonFor(tone, "編集", 行の名前, attrs)`**（見える文言は「編集」のまま、`aria-label` が「編集: <行の名前>」。#783・#793。`a11y/row_names_*` の検査に足す）。モーダルを開くボタンは `ModalOpen` の属性を持つ。
 - 状態は `Badge` ＋文字（§1）。「変更あり」「既定」のような印も文字のバッジ（色だけにしない）。
-- 説明・要約は `text-neutral-400`、折り返しを許す（`break-words`）。切り詰め（`truncate`）で情報を隠さない。
+- 説明・要約は `text-mute`、折り返しを許す（`break-words`）。切り詰め（`truncate`）で情報を隠さない。
 - 実装（`settingsui/table.templ`）: `SettingsTable(bodyID, caption, []Column)`（`<tbody id=bodyID>` が一覧。新しい行の OOB は `beforeend:#<bodyID>`。広い表はその箱の中で横にスクロールし、ページを広げない）・`TableRowItem(TableRow{ID, TestID, Attrs, OOB})`（`SettingsTableRow` の実体）・`RowHead`（`<th scope="row">`）・`Cell`。`Column.Class` を `<th>` と同じ列の `Cell` に付けて、狭い窓で列を隠す（`hidden lg:table-cell`）。**OOB の `<tr>` は応答の先頭に置く**（HTML のパーサーは先頭の `<tr>` だけを行として読む）。
 - 置き場所: `molecules/settingsui/`（`card.templ`・`table.templ`・`nav.templ`）。`molecules/` の直下に置くと上限（2,000 行）に近づくため、サブパッケージにする（§8 の質問 3）。サイドナビ `SettingsNav` は [settings-screen.md](settings-screen.md) §4。
-- **モデルマネージャーのモデルのカード**（Issue #865）: `SettingsCard` と同じ面（`rounded-lg border border-neutral-800 bg-neutral-900 p-4`・見出しは `<h3>`・状態は文字の `Badge`・`ul role="list"` の `grid`）を使うが、複数のバッジ・メタの表・進捗・`<details>` と、右上の操作（`shrink-0`）が要るため、`CardItem` ではなく `organisms/modelmgr` の `modelCard` として持つ。**#954 で、モデルを並べる所はすべて `molecules/modelcard` の 1 つのカード（名前・アイコン・大きさ・状態・商用利用のアイコン・ボタンだけ。細かい情報はタップで開く詳細モーダル）になった**（`pick.OpenFrame` の枠）。見た目と構造は [model-manager-screen.md](model-manager-screen.md) の「カードと詳細モーダル（#954）」。`ToolCard` はリンクのカードで、使わない。
+- **モデルマネージャーのモデルのカード**（Issue #865）: `SettingsCard` と同じ面（`rounded-lg border border-border bg-surface p-4`・見出しは `<h3>`・状態は文字の `Badge`・`ul role="list"` の `grid`）を使うが、複数のバッジ・メタの表・進捗・`<details>` と、右上の操作（`shrink-0`）が要るため、`CardItem` ではなく `organisms/modelmgr` の `modelCard` として持つ。**#954 で、モデルを並べる所はすべて `molecules/modelcard` の 1 つのカード（名前・アイコン・大きさ・状態・商用利用のアイコン・ボタンだけ。細かい情報はタップで開く詳細モーダル）になった**（`pick.OpenFrame` の枠）。見た目と構造は [model-manager-screen.md](model-manager-screen.md) の「カードと詳細モーダル（#954）」。`ToolCard` はリンクのカードで、使わない。
 
 ## 6. 2 つの Issue の取り合い
 
@@ -222,7 +222,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | # | 質問 | 決定（推奨する既定） |
 |---|------|-------------|
 | 1 | #847 の概要のカードとサイドナビにアイコンを付けるか | カードには付ける（`ToolCard` と同じ部品）。サイドナビは文字だけ（幅 200〜240 px で文字を優先）。付けないなら #847 のアイコンは 2 個で済む |
-| 2 | カードの「開く」を、枠のあるボタン風にするか、文字＋矢印にするか | 文字＋矢印（カード全体がリンクなので、別のボタンに見せない。`bg-indigo-500` は実ボタン専用） |
+| 2 | カードの「開く」を、枠のあるボタン風にするか、文字＋矢印にするか | 文字＋矢印（カード全体がリンクなので、別のボタンに見せない。`bg-accent` は実ボタン専用） |
 | 3 | #847 の部品を `molecules/settingsui/`・`molecules/modal/` のサブパッケージに置くか、`.linterly-baseline` を広げて `molecules/` に置くか | サブパッケージ（`organisms/` が基準値を超えた経緯を繰り返さない）。`ToolCard` だけは `molecules/` の直下 |
 | 4 | モーダルの `<dialog>` を `AppLayout` に置くか、設定のページごとに置くか | 設定のページごと（他の画面に影響しない） |
 | 5 | 背景のクリックでモーダルを閉じるか | 閉じない（`Esc` と「キャンセル」「閉じる」だけ。入力途中の消失を防ぐ） |
@@ -239,7 +239,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 <div class="flex items-center gap-2">
   <h2 class="text-base font-semibold">見出し</h2>
   <button type="button" data-help-toggle popovertarget="help-<ID>" aria-expanded="false" aria-controls="help-<ID>" aria-label="見出しの説明" class="…">{IconHelp}</button>
-  <div id="help-<ID>" popover role="group" aria-label="見出しの説明" data-help-panel class="inset-auto m-0 max-h-[calc(100dvh-1rem)] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto break-words rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-sm text-neutral-300"><p>説明…</p></div>
+  <div id="help-<ID>" popover role="group" aria-label="見出しの説明" data-help-panel class="inset-auto m-0 max-h-[calc(100dvh-1rem)] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto break-words rounded-lg border border-border bg-surface p-3 text-sm text-ink"><p>説明…</p></div>
 </div>
 ```
 
@@ -252,7 +252,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - **フォーカスと `Tab`**（決定）: 開いてもフォーカスは**ボタンに残す**（ダイアログではない。もう一度 `Enter` で閉じられる）。パネルは DOM でボタンのすぐ後ろにあるので、`Tab` でボタンの次にパネルの中のリンクへ進む（読み上げも続きとして読む）。**フォーカスがボタンとパネルの外へ出たら（`Tab`・`Shift+Tab`）閉じる**（外側のクリックのキーボード版。`focusin` で見る）。リンクの無い説明では、`Tab` は次のコントロールへ進んで閉じる。
 - **ARIA**（決定）: ボタンの名前は「<主題>の説明」（`help.ToggleLabel`。ページ中の「?」を一覧で見分けられるよう「ヘルプ」だけにしない）、`aria-expanded`、`aria-controls`。アイコンは飾り（§2）。パネルは `role="dialog"` にしない（ダイアログは開いたらフォーカスを中へ移し、名前と閉じ方を持つもので、非モーダルの説明に合わない）。`role="group"` と `aria-label`（ボタンと同じ「<主題>の説明」）にする（ランドマークを増やさず、読み上げが「<主題>の説明、グループ」と名前を告げる）。閉じている間は `display: none`（ブラウザ）で、読まれず、キーボードでも届かない。そのため**パネルに `flex`・`grid`・`block` などの display のクラスを付けない**（閉じたまま見えてしまう。`help_test`）。
 - **位置と狭い画面（約 375 px）**（`help.ts` の `place`）: パネルは `position: fixed`（top layer はビューポート基準）で、`toggle` で開いた直後に**ボタンの下**（ボタンの左端にそろえ、間 6 px）へ置く。幅は `min(24rem, 100vw − 1rem)`（375 px では 359 px）で、**はみ出すときは左へずらす**（左右とも 8 px の余白。`left = clamp(ボタンの左, 8, ビューポートの幅 − パネルの幅 − 8)`）。**下に高さが足りなければボタンの上へ反転する**（`top = ボタンの上 − 6 − パネルの高さ`。上にも足りなければ、窓の下端から 8 px 上にそろえる）。高さは `max-h-[calc(100dvh-1rem)]` で、超えたらパネルの中がスクロールする。ウィンドウのリサイズとページのスクロール（ボタンが動く）で置き直す。ページを横にスクロールさせない（`fixed` で、幅が窓を超えない）。親の `overflow` で切られない（top layer）。広い画面と同じ部品・同じ出し方で、画面幅による分岐は無い（上の計算だけ）。
-- **見た目**: 新しい色・影は作らない（§1）。ボタンは 28 px 角（`h-7 w-7`。WCAG 2.5.8 の 24 px 以上）の丸（`rounded-[50%]`。`atoms.Badge` の形を手書きしない検査 `badge_test` が `rounded-full` を禁じるため）で、`border-neutral-700 text-neutral-300`（ホバーで `border-neutral-600 text-neutral-100`。[color-rules.md](color-rules.md) §3 の「ホバー面」と §4 の `hover:text-neutral-100`）、輪は §1 のフォーカスの輪、`transition-colors motion-reduce:transition-none`。パネルは §1 のカードと同じ面（`bg-neutral-900`・`border-neutral-700`・`rounded-lg`・`p-3`）で文字は `text-neutral-300`。アイコンは `atoms.IconHelp`（§2。Lucide `circle-question-mark`）。
+- **見た目**: 新しい色・影は作らない（§1）。ボタンは 28 px 角（`h-7 w-7`。WCAG 2.5.8 の 24 px 以上）の丸（`rounded-[50%]`。`atoms.Badge` の形を手書きしない検査 `badge_test` が `rounded-full` を禁じるため）で、`border-border text-ink`（ホバーで `border-border text-ink`。[color-rules.md](color-rules.md) §3 の「ホバー面」と §4 の `hover:text-ink`）、輪は §1 のフォーカスの輪、`transition-colors motion-reduce:transition-none`。パネルは §1 のカードと同じ面（`bg-surface`・`border-border`・`rounded-lg`・`p-3`）で文字は `text-ink`。アイコンは `atoms.IconHelp`（§2。Lucide `circle-question-mark`）。
 - **置き場所**: `backend/internal/web/molecules/help/`（`ID`・`ToggleLabel`・`Toggle`・`Panel`・`Text`・`Row`。サブパッケージにするのは `molecules/` の行数の上限を守るため）と `static/src/components/help/`（`help.ts`・`help.wtest.ts`。Lit ではなく `inline-dialog` と同じ `installHelp()`。`main.ts` が呼ぶ。委譲のイベントなので、後から入った本文の「?」も動く）。`main.ts` では **`installInlineDialog()` より前**に呼ぶ（どちらも `document` の `keydown` で `Esc` を受け、先に走った方が `preventDefault` して取る。ヘルプが先でないと、ヘルプを開いたままフォーカスがページにあるとき `Esc` がヘルプでなく `inline-dialog` を閉じる。`help.wtest.ts` が見張る）。
 
 ### 9.2 画面の部品からの使い方

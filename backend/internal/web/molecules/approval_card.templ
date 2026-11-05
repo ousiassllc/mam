@@ -19,7 +19,7 @@ const approvalCommentMaxRunes = 500
 templ ApprovalCard(m domain.ThreadMessage) {
 	@MessageFrame(m) {
 		<p class="mb-1 flex items-center gap-2">
-			<span class="text-xs text-neutral-400">{ approvalLabel(m.ChatMessage) }</span>
+			<span class="text-xs text-mute">{ approvalLabel(m.ChatMessage) }</span>
 			{{ tone, label := approvalBadge(m.ApprovalStatus) }}
 			@atoms.Badge(tone, label)
 		</p>

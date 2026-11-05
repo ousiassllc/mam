@@ -141,12 +141,12 @@ func Panel(d Data) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if d.Visible() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<section id=\"restart-panel\" class=\"mb-4 flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 px-4 py-3\" aria-label=\"再起動して反映\" data-testid=\"restart-panel\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<section id=\"restart-panel\" class=\"mb-4 flex flex-col gap-2 rounded-md border border-warning/60 bg-warning/10 px-4 py-3\" aria-label=\"再起動して反映\" data-testid=\"restart-panel\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(d.Pending) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-amber-300\" data-testid=\"restart-pending\">保存した設定のうち、再起動すると反映されるものがあります: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-warning\" data-testid=\"restart-pending\">保存した設定のうち、再起動すると反映されるものがあります: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -181,14 +181,14 @@ func Panel(d Data) templ.Component {
 				}
 			}
 			if d.Restarting {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-emerald-300\" role=\"status\" data-testid=\"restart-notice\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"restart-notice\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(d.Notice)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/restart/panel.templ`, Line: 59, Col: 93}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/restart/panel.templ`, Line: 59, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -200,14 +200,14 @@ func Panel(d Data) templ.Component {
 				}
 			} else {
 				if d.Notice != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-emerald-300\" role=\"status\" data-testid=\"restart-notice\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"restart-notice\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(d.Notice)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/restart/panel.templ`, Line: 62, Col: 94}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/restart/panel.templ`, Line: 62, Col: 90}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -223,14 +223,14 @@ func Panel(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if d.Error != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"restart-error\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"restart-error\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/restart/panel.templ`, Line: 65, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/restart/panel.templ`, Line: 65, Col: 86}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -246,7 +246,7 @@ func Panel(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if len(d.Busy) > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<ul class=\"list-disc pl-5 text-sm text-neutral-300\" data-testid=\"restart-busy\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<ul class=\"list-disc pl-5 text-sm text-ink\" data-testid=\"restart-busy\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -303,7 +303,7 @@ func Panel(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if !d.CanRestart {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-sm text-neutral-300\" data-testid=\"restart-manual\">このビルドは自分で再起動できません。アプリを終了して、起動し直してください。</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-sm text-ink\" data-testid=\"restart-manual\">このビルドは自分で再起動できません。アプリを終了して、起動し直してください。</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

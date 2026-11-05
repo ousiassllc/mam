@@ -33,10 +33,10 @@ func ManagerCard() molecules.ToolCard {
 templ Section(d Data) {
 	<div id={ PanelID } class="flex flex-col gap-6" data-testid="local-models">
 		if d.Problem != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="local-models-problem">{ d.Problem }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="local-models-problem">{ d.Problem }</p>
 		} else {
 			if d.Pinned {
-				<p class="text-sm text-amber-300" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
+				<p class="text-sm text-warning" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
 			}
 			<ul role="list" class="grid grid-cols-1 gap-4">
 				@molecules.ToolCardItem(ManagerCard())
@@ -47,7 +47,7 @@ templ Section(d Data) {
 					@atoms.Button(atoms.TonePrimary, "接続先を追加", guard(d.Pinned, d.PinnedNote, modal.OpenAttrs(paths.LocalEndpoints()+"/new", "add-endpoint")))
 				</div>
 				if len(d.Endpoints) == 0 {
-					<p id={ EmptyID } class="text-sm text-neutral-400" data-testid="local-models-empty">接続先はまだ登録されていません。</p>
+					<p id={ EmptyID } class="text-sm text-mute" data-testid="local-models-empty">接続先はまだ登録されていません。</p>
 				}
 				<ul id={ ListID } role="list" class="grid grid-cols-1 gap-4 xl:grid-cols-2" data-testid="local-endpoints">
 					@EndpointCards(d)
@@ -69,7 +69,7 @@ templ EndpointCards(d Data) {
 // deleted. An out-of-band swap that is not a replacement takes the content of its element, so the sentence is in a wrapper.
 templ EmptyNotice() {
 	<div hx-swap-oob={ "beforebegin:" + listSelector }>
-		<p id={ EmptyID } class="text-sm text-neutral-400" data-testid="local-models-empty">接続先はまだ登録されていません。</p>
+		<p id={ EmptyID } class="text-sm text-mute" data-testid="local-models-empty">接続先はまだ登録されていません。</p>
 	</div>
 }
 

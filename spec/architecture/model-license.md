@@ -107,7 +107,7 @@
 - **マーク（`Mark`）**: アイコンだけ。結果のカード・表の細いセルなど、語が入らない所。意味はツールチップと `aria-label`。
 - **ノート（`Note`）**: 場所に余裕がある所（モデルのカード・結果の詳細）で、条件・注意をことばで出す。ライセンス原文へのリンクと「（YYYY-MM-DD に確認）」を付ける。`yes` は何も出さない。`unknown` と `no` は枠つきで目立たせる。
 - アイコン（Lucide）: 商用OK＝`badge-check`、条件つき＝`badge-alert`、不明＝`badge-question-mark`、商用NG＝`ban`。
-- 色は #867 の意味の色（[color-rules.md](../components/color-rules.md) §3.1）に従う: 商用OK＝成功（emerald）、条件つき＝警告（amber）、商用NG＝危険（red）、不明＝警告（amber）に **枠（`border-amber-500/60`）** を足して見落とさせない。新しい色は作らない。
+- 色は #867 の意味の色（[color-rules.md](../components/color-rules.md) §3.1）に従う: 商用OK＝成功（emerald）、条件つき＝警告（amber）、商用NG＝危険（red）、不明＝警告（amber）に **枠（`border-warning/60`）** を足して見落とさせない。新しい色は作らない。
 - `<select>` の `<option>` は文字しか入らないので、`モデル名（商用OK）` のように括弧で答えを続ける（`commercial.OptionLabel`）。
 
 画面ごとの場所:

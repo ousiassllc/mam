@@ -120,7 +120,7 @@ describe('mam-take-comparator: score table', () => {
     const el = await comparator();
 
     const row = el.querySelector('[data-take="t1"]') as HTMLElement;
-    expect(row.classList.contains('text-neutral-400')).to.equal(true);
+    expect(row.classList.contains('text-mute')).to.equal(true);
     expect(row.className).not.to.contain('opacity');
   });
 

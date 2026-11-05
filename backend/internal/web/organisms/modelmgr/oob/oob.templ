@@ -45,7 +45,7 @@ templ CommercialWithList(c view.CommercialPanel, l view.Catalog, t view.TrialPan
 // HFModelsWithMsgClear is the list with the error line above it emptied out of band: an action that worked.
 templ HFModelsWithMsgClear(l view.HFModelList) {
 	@view.HFModelListView(l)
-	<p id={ view.HFMsgID } hx-swap-oob="true" class="text-sm text-red-300" role="alert" data-testid="mm-hfi-msg"></p>
+	<p id={ view.HFMsgID } hx-swap-oob="true" class="text-sm text-danger" role="alert" data-testid="mm-hfi-msg"></p>
 }
 
 // HFModelsWithTrial is the list with the trial section out of band: an import that ended changed the models a trial can use.

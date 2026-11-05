@@ -96,12 +96,12 @@ func List(d Data) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"review-list\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\"><h2 class=\"text-sm font-semibold\">レビューを依頼する</h2><p class=\"text-xs text-neutral-400\">選んだ書き出し（動画 1 本）とメモだけを ZIP（Review Package）にして渡します。Project の内容（Brief・チャット・Notes・参照画像・顔データ・設定）と API キーは含まれません。共有される名前は Project 名です。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"review-list\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2 rounded-md border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビューを依頼する</h2><p class=\"text-xs text-mute\">選んだ書き出し（動画 1 本）とメモだけを ZIP（Review Package）にして渡します。Project の内容（Brief・チャット・Notes・参照画像・顔データ・設定）と API キーは含まれません。共有される名前は Project 名です。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Exports) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-neutral-400\">書き出しがまだありません。編集 / 書き出しで Final Export を作ると、レビューを依頼できます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-mute\">書き出しがまだありません。編集 / 書き出しで Final Export を作ると、レビューを依頼できます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -111,7 +111,7 @@ func List(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</section><section class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\"><h2 class=\"text-sm font-semibold\">レビュアーの応答を取り込む</h2><p class=\"text-xs text-neutral-400\">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</section><section class=\"flex flex-col gap-2 rounded-md border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビュアーの応答を取り込む</h2><p class=\"text-xs text-mute\">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -124,7 +124,7 @@ func List(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Items) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p id=\"review-empty\" class=\"text-sm text-neutral-400\">レビュー依頼はまだありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p id=\"review-empty\" class=\"text-sm text-mute\">レビュー依頼はまだありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -260,7 +260,7 @@ func reviewRequestForm(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"review-export\">書き出し")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"review-export\">書き出し")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -318,7 +318,7 @@ func reviewRequestForm(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"review-note\">レビュアーへのメモ（任意、1000 文字まで）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"review-note\">レビュアーへのメモ（任意、1000 文字まで）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -463,7 +463,7 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"flex flex-col gap-3 rounded-md border border-neutral-700 p-3\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"flex flex-col gap-3 rounded-md border border-border p-3\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -507,14 +507,14 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span> <span class=\"text-xs text-neutral-400\">依頼: ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span> <span class=\"text-xs text-mute\">依頼: ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(it.Item.Request.CreatedAt.Local().Format("2006-01-02 15:04"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 176, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 176, Col: 105}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -525,14 +525,14 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if n := it.Item.OpenComments(); n > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<span class=\"text-xs text-amber-300\">未解決のコメント ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<span class=\"text-xs text-warning\">未解決のコメント ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(n))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 178, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 178, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -556,14 +556,14 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if it.Item.Request.Note != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"whitespace-pre-wrap text-sm text-neutral-300\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"whitespace-pre-wrap text-sm text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(it.Item.Request.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 185, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 185, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -575,20 +575,20 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 			}
 		}
 		if len(it.Item.Responses) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-neutral-400\">応答はまだ取り込まれていません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-mute\">応答はまだ取り込まれていません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		for _, r := range it.Item.Responses {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<section class=\"flex flex-col gap-2 rounded-md bg-neutral-900 p-3\" aria-label=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<section class=\"flex flex-col gap-2 rounded-md bg-surface p-3\" aria-label=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue("応答 " + r.ReviewerName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 191, Col: 109}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 191, Col: 105}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 			if templ_7745c5c3_Err != nil {
@@ -615,14 +615,14 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<span class=\"text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<span class=\"text-xs text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(r.CreatedAt.Local().Format("2006-01-02 15:04"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 195, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 195, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -657,14 +657,14 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				for _, c := range r.Comments {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<li class=\"flex flex-wrap items-start gap-2 text-sm\"><span class=\"w-14 shrink-0 font-mono text-xs text-neutral-400\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<li class=\"flex flex-wrap items-start gap-2 text-sm\"><span class=\"w-14 shrink-0 font-mono text-xs text-mute\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var23 string
 					templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(organisms.TimecodeLabel(c.TimecodeMs))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 204, Col: 110}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 204, Col: 103}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 					if templ_7745c5c3_Err != nil {
@@ -675,14 +675,14 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					if c.Resolved {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"min-w-0 flex-1 whitespace-pre-wrap text-neutral-400 line-through\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"min-w-0 flex-1 whitespace-pre-wrap text-mute line-through\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var24 string
 						templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(c.Body)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 206, Col: 96}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reviewlist/list.templ`, Line: 206, Col: 89}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 						if templ_7745c5c3_Err != nil {

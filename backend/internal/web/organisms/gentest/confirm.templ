@@ -16,8 +16,8 @@ templ ConfirmEmpty() {
 
 // ConfirmFailed is the confirmation of a request that could not be priced: the reason, in the place of the estimate.
 templ ConfirmFailed(msg string) {
-	<div id={ ConfirmID } class="rounded-md border border-red-500/60 p-4" data-testid="gt-confirm-failed">
-		<p class="text-sm text-red-300" role="alert" data-testid="gt-confirm-error">{ msg }</p>
+	<div id={ ConfirmID } class="rounded-md border border-danger/60 p-4" data-testid="gt-confirm-failed">
+		<p class="text-sm text-danger" role="alert" data-testid="gt-confirm-error">{ msg }</p>
 	</div>
 }
 
@@ -30,15 +30,15 @@ templ ConfirmBlocked(v apperr.View) {
 
 // ConfirmNote is a calm notice in the place of the confirmation (words that were added to a match that is running).
 templ ConfirmNote(msg string) {
-	<div id={ ConfirmID } class="rounded-md border border-emerald-500/60 p-4" data-testid="gt-confirm-note">
-		<p class="text-sm text-emerald-300" role="status">{ msg }</p>
+	<div id={ ConfirmID } class="rounded-md border border-success/60 p-4" data-testid="gt-confirm-note">
+		<p class="text-sm text-success" role="status">{ msg }</p>
 	</div>
 }
 
 // ConfirmBox is the estimate of a batch: how many results, what each model costs, what is not priced and the warnings. The
 // batch runs only from this box, with the estimate it shows.
 templ ConfirmBox(c Confirm) {
-	<div id={ ConfirmID } class="flex flex-col gap-3 rounded-md border border-indigo-400 p-4" data-testid="gt-confirm">
+	<div id={ ConfirmID } class="flex flex-col gap-3 rounded-md border border-accent p-4" data-testid="gt-confirm">
 		@notice(c.Message, "gt-confirm")
 		<h2 class="text-sm font-medium">実行の確認</h2>
 		if c.Match {
@@ -47,12 +47,12 @@ templ ConfirmBox(c Confirm) {
 			<p class="text-sm" data-testid="gt-confirm-items">全部で <strong>{ itoa(c.Items) }</strong> 件を生成します。見積り合計は <strong data-testid="gt-confirm-total">{ c.Total }</strong> です。</p>
 		}
 		<table class="w-full text-left text-sm" data-testid="gt-confirm-lines">
-			<thead class="text-xs text-neutral-400">
+			<thead class="text-xs text-mute">
 				<tr><th class="py-1 pr-2 font-normal">モデル</th><th class="py-1 pr-2 font-normal">件数</th><th class="py-1 pr-2 font-normal">単価</th><th class="py-1 font-normal">小計</th></tr>
 			</thead>
 			<tbody>
 				for _, l := range c.Lines {
-					<tr class="border-t border-neutral-800" data-testid="gt-confirm-line">
+					<tr class="border-t border-border" data-testid="gt-confirm-line">
 						<td class="py-1 pr-2">{ l.Label }</td>
 						<td class="py-1 pr-2">{ itoa(l.Items) }</td>
 						<td class="py-1 pr-2">{ l.Unit }</td>
@@ -62,20 +62,20 @@ templ ConfirmBox(c Confirm) {
 			</tbody>
 		</table>
 		if c.Unknown != "" {
-			<p class="text-xs text-amber-300" data-testid="gt-confirm-unknown">{ c.Unknown }</p>
+			<p class="text-xs text-warning" data-testid="gt-confirm-unknown">{ c.Unknown }</p>
 		}
 		if len(c.InputWarnings) > 0 {
 			@inputnotice.Warnings(c.InputWarnings, "gt-confirm-input-warnings")
 		}
 		if len(c.Warnings) > 0 {
-			<ul class="list-disc pl-5 text-xs text-amber-300" data-testid="gt-confirm-warnings">
+			<ul class="list-disc pl-5 text-xs text-warning" data-testid="gt-confirm-warnings">
 				for _, w := range c.Warnings {
 					<li>{ w }</li>
 				}
 			</ul>
 		}
 		if c.OverLimit != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="gt-confirm-over">{ c.OverLimit }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="gt-confirm-over">{ c.OverLimit }</p>
 		}
 		<form
 			class="flex flex-wrap items-center gap-3"

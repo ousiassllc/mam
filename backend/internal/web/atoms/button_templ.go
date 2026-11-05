@@ -27,11 +27,11 @@ func buttonClass(tone ButtonTone, small bool) string {
 	}
 	switch tone {
 	case TonePrimary:
-		return base + "bg-indigo-500 text-white hover:bg-indigo-400"
+		return base + "bg-accent text-bone hover:bg-accent/85"
 	case ToneDanger:
-		return base + "border border-red-500/60 text-red-300 hover:bg-red-500/10"
+		return base + "border border-danger/60 text-danger hover:bg-danger/10"
 	}
-	return base + "border border-neutral-600 text-neutral-200 hover:bg-neutral-800"
+	return base + "border border-border text-ink hover:bg-accent-soft"
 }
 
 // Button is a button element. attrs carry the HTMX attributes, type, name and value.
@@ -279,7 +279,7 @@ func LinkButton(tone ButtonTone, label string, attrs templ.Attributes) templ.Com
 		}
 		ctx = templ.ClearChildren(ctx)
 		if tone == TonePrimary {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<button class=\"text-xs text-indigo-300 underline\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<button class=\"text-xs text-accent underline decoration-mute\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -294,7 +294,7 @@ func LinkButton(tone ButtonTone, label string, attrs templ.Attributes) templ.Com
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 49, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 49, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -305,7 +305,7 @@ func LinkButton(tone ButtonTone, label string, attrs templ.Attributes) templ.Com
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<button class=\"text-xs text-neutral-400 underline hover:text-neutral-100\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<button class=\"text-xs text-mute underline hover:text-ink\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -320,7 +320,7 @@ func LinkButton(tone ButtonTone, label string, attrs templ.Attributes) templ.Com
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 51, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 51, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -358,7 +358,7 @@ func IconButton(glyph string, attrs templ.Attributes) templ.Component {
 			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<button class=\"text-neutral-400 hover:text-neutral-100\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<button class=\"text-mute hover:text-ink\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -373,7 +373,7 @@ func IconButton(glyph string, attrs templ.Attributes) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(glyph)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 58, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 58, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -575,14 +575,14 @@ func LinkButtonFor(label, subject string, attrs templ.Attributes) templ.Componen
 			templ_7745c5c3_Var29 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<button class=\"text-xs text-neutral-400 underline hover:text-neutral-100\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<button class=\"text-xs text-mute underline hover:text-ink\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(RowLabel(label, subject))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 75, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 75, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 		if templ_7745c5c3_Err != nil {
@@ -603,7 +603,7 @@ func LinkButtonFor(label, subject string, attrs templ.Attributes) templ.Componen
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 75, Col: 135}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/button.templ`, Line: 75, Col: 120}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {

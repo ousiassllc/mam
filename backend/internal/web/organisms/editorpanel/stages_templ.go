@@ -47,7 +47,7 @@ func editorEditStage(d Data, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><section class=\"flex flex-col gap-2\" aria-label=\"Rough Cut\"><h3 class=\"text-sm font-semibold\">1. Rough Cut</h3><p class=\"text-xs text-neutral-400\">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p><div class=\"flex items-center gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><section class=\"flex flex-col gap-2\" aria-label=\"Rough Cut\"><h3 class=\"text-sm font-semibold\">1. Rough Cut</h3><p class=\"text-xs text-mute\">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p><div class=\"flex items-center gap-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -68,14 +68,14 @@ func editorEditStage(d Data, oob bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"text-xs text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 30, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 30, Col: 101}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -113,14 +113,14 @@ func editorEditStage(d Data, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, f := range d.Judge.Findings {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<li><span class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<li><span class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(clipPosition(f.ClipIndex))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 49, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 49, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -133,7 +133,7 @@ func editorEditStage(d Data, oob bool) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(f.Issue)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 49, Col: 92}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 49, Col: 85}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -146,7 +146,7 @@ func editorEditStage(d Data, oob bool) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(f.Action)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 49, Col: 109}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 49, Col: 102}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -157,14 +157,14 @@ func editorEditStage(d Data, oob bool) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if f.Need != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span class=\"text-xs text-amber-300\" data-need-shot>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span class=\"text-xs text-warning\" data-need-shot>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(" 追加 Shot: " + needLabel(f.Need))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 51, Col: 98}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 51, Col: 96}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -197,20 +197,20 @@ func editorEditStage(d Data, oob bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<span class=\"text-xs text-neutral-400\">足りない素材を Director に作らせ、できたら編集に戻ります。</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<span class=\"text-xs text-mute\">足りない素材を Director に作らせ、できたら編集に戻ります。</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if d.PendingShots > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-xs text-amber-300\" data-pending-shots>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-xs text-warning\" data-pending-shots>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("追加 Shot を %d 件生成中です。できたら自動で編集タイムラインに入ります。", d.PendingShots))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 67, Col: 193}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 67, Col: 191}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -272,14 +272,14 @@ func editorAudioStage(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Audio != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<span class=\"text-xs text-neutral-400\" data-audio-summary>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<span class=\"text-xs text-mute\" data-audio-summary>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(audioSummary(d.Audio))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 83, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 83, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -295,7 +295,7 @@ func editorAudioStage(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Audio != nil && len(d.Audio.Timeline.Scenes) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<ul class=\"flex flex-col gap-1 text-xs text-neutral-300\" data-audio-scenes>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<ul class=\"flex flex-col gap-1 text-xs text-ink\" data-audio-scenes>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -324,7 +324,7 @@ func editorAudioStage(d Data, oob bool) templ.Component {
 			}
 		}
 		if d.Audio != nil && len(d.Audio.Timeline.Skipped) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<ul class=\"flex flex-col gap-1 text-xs text-amber-300\" data-audio-skipped>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<ul class=\"flex flex-col gap-1 text-xs text-warning\" data-audio-skipped>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -353,7 +353,7 @@ func editorAudioStage(d Data, oob bool) templ.Component {
 			}
 		}
 		if !d.CanRender {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-amber-300\">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-warning\">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -422,7 +422,7 @@ func editorVoiceForm(d Data, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "><label class=\"flex flex-col gap-1 text-xs text-neutral-400\">話者名（脚本の「話者: セリフ」の話者）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "><label class=\"flex flex-col gap-1 text-xs text-mute\">話者名（脚本の「話者: セリフ」の話者）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -435,7 +435,7 @@ func editorVoiceForm(d Data, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\">声のサンプル（10 MB 以下。数十秒の録音） <input type=\"file\" name=\"sample\" required accept=\"audio/*\" class=\"text-sm text-neutral-100\"></label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\">声のサンプル（10 MB 以下。数十秒の録音） <input type=\"file\" name=\"sample\" required accept=\"audio/*\" class=\"text-sm text-ink\"></label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -486,7 +486,7 @@ func editorVoices(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Voices) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<ul class=\"flex flex-col gap-1 text-xs text-neutral-300\" data-audio-voices>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<ul class=\"flex flex-col gap-1 text-xs text-ink\" data-audio-voices>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -573,13 +573,13 @@ func editorFinalQC(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.FinalQCBlockedByTrunk() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<p class=\"text-xs text-amber-300\" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<p class=\"text-xs text-warning\" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if d.BranchID != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<p class=\"text-xs text-neutral-400\" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<p class=\"text-xs text-mute\" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -703,14 +703,14 @@ func editorExports(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.ExportBlocker() != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<p class=\"text-xs text-amber-300\" data-export-blocked>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<p class=\"text-xs text-warning\" data-export-blocked>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(d.ExportBlocker())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 179, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 179, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -727,14 +727,14 @@ func editorExports(d Data, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, e := range d.Exports {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<li class=\"flex flex-wrap items-center gap-2\"><a class=\"text-indigo-300 underline\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<li class=\"flex flex-wrap items-center gap-2\"><a class=\"text-accent underline decoration-mute\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var22 templ.SafeURL
 				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(exportURL(d.Project.ID, e.ID)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 185, Col: 94}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 185, Col: 106}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 				if templ_7745c5c3_Err != nil {
@@ -747,20 +747,20 @@ func editorExports(d Data, oob bool) templ.Component {
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(e.ExportedAt.Local().Format("2006-01-02 15:04") + " の書き出し")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 185, Col: 176}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 185, Col: 188}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</a> <span class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</a> <span class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(e.AspectRatio + " / " + e.Resolution + " / " + e.Codec)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 186, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editorpanel/stages.templ`, Line: 186, Col: 94}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {

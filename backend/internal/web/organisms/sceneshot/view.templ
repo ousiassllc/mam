@@ -22,7 +22,7 @@ templ View(d Data) {
 				}
 			</ol>
 			if len(d.Scenes) == 0 {
-				<p class="text-sm text-neutral-400">Scene はまだありません。企画が進むと AI が作成します。手動でも追加できます。</p>
+				<p class="text-sm text-mute">Scene はまだありません。企画が進むと AI が作成します。手動でも追加できます。</p>
 			}
 			@sceneForm(d, d.currentSceneID())
 		</nav>
@@ -31,7 +31,7 @@ templ View(d Data) {
 				<header>
 					<h2 class="text-lg font-semibold">{ sceneLabel(*d.Scene) }</h2>
 					if sceneSummary(*d.Scene) != "" {
-						<p class="text-sm text-neutral-400">{ sceneSummary(*d.Scene) }</p>
+						<p class="text-sm text-mute">{ sceneSummary(*d.Scene) }</p>
 					}
 					if d.Scene.Objective != "" {
 						<p class="mt-1 text-sm">{ d.Scene.Objective }</p>
@@ -39,7 +39,7 @@ templ View(d Data) {
 				</header>
 				<ol id="shot-list" class="flex flex-col gap-2" aria-label="Shot 一覧">
 					if len(d.Shots) == 0 {
-						<li id="shot-empty" class="text-sm text-neutral-400">この Scene に Shot はまだありません。</li>
+						<li id="shot-empty" class="text-sm text-mute">この Scene に Shot はまだありません。</li>
 					}
 					for _, sh := range d.Shots {
 						@molecules.ShotCard(sh)
@@ -55,7 +55,7 @@ templ View(d Data) {
 templ sceneItem(projectID string, item Item, current bool) {
 	<li>
 		<a
-			class={ "block rounded-md border px-3 py-2 text-sm", templ.KV("border-indigo-400 bg-indigo-500/20", current), templ.KV("border-neutral-700 hover:bg-neutral-800", !current) }
+			class={ "block rounded-md border px-3 py-2 text-sm", templ.KV("border-accent bg-accent-soft", current), templ.KV("border-border hover:bg-accent-soft", !current) }
 			href={ templ.SafeURL(sceneURL(projectID, item.Scene.ID)) }
 			hx-get={ sceneURL(projectID, item.Scene.ID) }
 			hx-target="#scene-shot-view"
@@ -75,7 +75,7 @@ templ sceneItem(projectID string, item Item, current bool) {
 templ shotCount(sceneID string, n int, oob bool) {
 	<span
 		id={ shotCountID(sceneID) }
-		class="block text-xs text-neutral-400"
+		class="block text-xs text-mute"
 		if oob {
 			hx-swap-oob="true"
 		}
@@ -84,7 +84,7 @@ templ shotCount(sceneID string, n int, oob bool) {
 
 templ fieldError(errs map[string]string, field string) {
 	if msg := errs[field]; msg != "" {
-		<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+		<p class="mt-1 text-sm text-danger" role="alert">{ msg }</p>
 	}
 }
 
@@ -92,13 +92,13 @@ templ fieldError(errs map[string]string, field string) {
 // not replaced; currentSceneID is the Scene the page shows. With none, the form is the whole view's only
 // content to keep and the answer is the whole view (sceneFormTarget).
 templ sceneForm(d Data, currentSceneID string) {
-	<form id="scene-form" class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Project(d.Project.ID, "scenes") } hx-target={ sceneFormTarget(currentSceneID) } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+	<form id="scene-form" class="flex flex-col gap-2 rounded-md border border-border p-3" hx-post={ paths.Project(d.Project.ID, "scenes") } hx-target={ sceneFormTarget(currentSceneID) } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 		<p class="text-sm font-medium">Scene を追加</p>
 		if currentSceneID != "" {
 			<input type="hidden" name="current_scene_id" value={ currentSceneID }/>
 		}
 		<div>
-			<label for="scene-title" class="mb-1 block text-xs text-neutral-400">見出し（必須）</label>
+			<label for="scene-title" class="mb-1 block text-xs text-mute">見出し（必須）</label>
 			@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 				"id":        "scene-title",
 				"name":      "title",
@@ -110,7 +110,7 @@ templ sceneForm(d Data, currentSceneID string) {
 			@fieldError(d.SceneErrors, "title")
 		</div>
 		<div>
-			<label for="scene-location" class="mb-1 block text-xs text-neutral-400">場所</label>
+			<label for="scene-location" class="mb-1 block text-xs text-mute">場所</label>
 			@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 				"id":        "scene-location",
 				"name":      "location",
@@ -121,7 +121,7 @@ templ sceneForm(d Data, currentSceneID string) {
 			@fieldError(d.SceneErrors, "location")
 		</div>
 		<div>
-			<label for="scene-time" class="mb-1 block text-xs text-neutral-400">時間帯</label>
+			<label for="scene-time" class="mb-1 block text-xs text-mute">時間帯</label>
 			@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 				"id":        "scene-time",
 				"name":      "time",
@@ -132,7 +132,7 @@ templ sceneForm(d Data, currentSceneID string) {
 			@fieldError(d.SceneErrors, "time")
 		</div>
 		<div>
-			<label for="scene-objective" class="mb-1 block text-xs text-neutral-400">狙い</label>
+			<label for="scene-objective" class="mb-1 block text-xs text-mute">狙い</label>
 			@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 				"id":        "scene-objective",
 				"name":      "objective",
@@ -148,10 +148,10 @@ templ sceneForm(d Data, currentSceneID string) {
 
 // shotForm adds a Shot to the shown Scene. It answers itself, so the Scene form is not replaced.
 templ shotForm(d Data) {
-	<form id="shot-form" class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Scene(d.Scene.ID, "shots") } hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+	<form id="shot-form" class="flex flex-col gap-2 rounded-md border border-border p-3" hx-post={ paths.Scene(d.Scene.ID, "shots") } hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 		<p class="text-sm font-medium">Shot を追加</p>
 		<div>
-			<label for="shot-objective" class="mb-1 block text-xs text-neutral-400">この Shot で見せること（必須）</label>
+			<label for="shot-objective" class="mb-1 block text-xs text-mute">この Shot で見せること（必須）</label>
 			@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 				"id":        "shot-objective",
 				"name":      "objective",
@@ -163,7 +163,7 @@ templ shotForm(d Data) {
 			@fieldError(d.ShotErrors, "objective")
 		</div>
 		<div>
-			<label for="shot-duration" class="mb-1 block text-xs text-neutral-400">長さ（秒）</label>
+			<label for="shot-duration" class="mb-1 block text-xs text-mute">長さ（秒）</label>
 			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
 				"id":       "shot-duration",
 				"name":     "duration_seconds",

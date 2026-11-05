@@ -35,7 +35,7 @@ type Form struct {
 templ Box(f Form) {
 	<form
 		id={ ID }
-		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		class="flex flex-col gap-3 rounded-md border border-border p-4"
 		hx-post={ paths.GenerationTestPart("results", f.ResultID, "import") }
 		hx-target={ "#" + ID }
 		hx-swap="outerHTML"
@@ -45,16 +45,16 @@ templ Box(f Form) {
 	>
 		<h3 class="text-sm font-medium">プロジェクトに取り込む</h3>
 		if f.Notice != "" {
-			<p class="text-sm text-emerald-300" role="status" data-testid="gt-import-notice">{ f.Notice }</p>
+			<p class="text-sm text-success" role="status" data-testid="gt-import-notice">{ f.Notice }</p>
 		}
 		if f.Error != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="gt-import-error">{ f.Error }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="gt-import-error">{ f.Error }</p>
 		}
 		if f.Done != "" {
-			<p class="text-sm text-emerald-300" data-testid="gt-import-done">{ f.Done }</p>
+			<p class="text-sm text-success" data-testid="gt-import-done">{ f.Done }</p>
 		}
 		<div class="flex flex-wrap items-end gap-3">
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-project">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-import-project">
 				<span>プロジェクト</span>
 				@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{"id": "gt-import-project", "name": "project_id", "required": true}) {
 					for _, p := range f.Projects {
@@ -62,7 +62,7 @@ templ Box(f Form) {
 					}
 				}
 			</label>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-as">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-import-as">
 				<span>取り込み先</span>
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-as", "name": "as"}) {
 					if f.Image {
@@ -74,7 +74,7 @@ templ Box(f Form) {
 		</div>
 		if f.Image {
 			<div class="flex flex-wrap items-end gap-3">
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-kind">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="gt-import-kind">
 					<span>参照の種類（参照画像のとき）</span>
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-kind", "name": "kind"}) {
 						<option value="character">キャラクター</option>
@@ -84,16 +84,16 @@ templ Box(f Form) {
 						<option value="lighting">ライティング</option>
 					}
 				</label>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-name">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="gt-import-name">
 					<span>名前（参照画像のとき）</span>
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-name", "name": "name", "type": "text", "maxlength": itoa(MaxNameLen)})
 				</label>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-tags">
+				<label class="flex flex-col gap-1 text-xs text-mute" for="gt-import-tags">
 					<span>タグ（カンマ区切り）</span>
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-tags", "name": "tags", "type": "text"})
 				</label>
 			</div>
-			<fieldset class="flex flex-wrap items-end gap-3 text-xs text-neutral-400">
+			<fieldset class="flex flex-wrap items-end gap-3 text-xs text-mute">
 				<legend class="mb-1">続けてスロットに割り当てる（省略可。種類が合うものだけ。LOCK されたスロットは変えられません）</legend>
 				<label class="flex flex-col gap-1" for="gt-assign-target">
 					<span>対象</span>

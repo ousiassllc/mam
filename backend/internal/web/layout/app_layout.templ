@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
 
 // AppLayout is the shared page shell. The CSRF token is published in a meta tag;
@@ -13,6 +14,9 @@ import (
 // out-of-band toasts of failed actions; #toast-template is the markup that toast.ts clones for
 // the toasts it raises itself, so the toast is defined only in atoms.Toast. The same goes for
 // #connection-notice-template (atoms.ConnectionNotice), cloned by connection-notice.ts.
+//
+// The theme of the page is the data-theme of <html> (Light or Dark, from the cookie that the theme button of the menu writes; none
+// follows the system: static/src/css/tokens.css).
 //
 // The fixed menu on the left (organisms/sidenav) is part of the shell: nav says which entry is the current one and, on a
 // Project's screens, whose views to list. The page's own <main> is in #content, which the skip link before the menu leads to.
@@ -26,7 +30,13 @@ templ AppLayout(title string, csrfToken string, nav sidenav.State) {
 // canonical empty draws none): the page that several URLs show.
 templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 	<!DOCTYPE html>
-	<html lang="ja" class="overscroll-none">
+	<html
+		lang="ja"
+		class="overscroll-none"
+		if themestate.Chosen(ctx) != "" {
+			data-theme={ themestate.Chosen(ctx) }
+		}
+	>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -38,7 +48,7 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 			<link rel="stylesheet" href={ paths.StaticCSS }/>
 			<script type="module" src={ paths.StaticApp }></script>
 		</head>
-		<body class="min-h-screen overscroll-none bg-neutral-950 text-neutral-100">
+		<body class="min-h-screen overscroll-none bg-bone text-ink">
 			@Shell(nav) {
 				{ children... }
 			}
@@ -58,7 +68,7 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 // Off (the guide of the first start) has neither the link nor the menu.
 templ Shell(nav sidenav.State) {
 	if !nav.Hidden {
-		<a href="#content" class="sr-only rounded-md bg-neutral-800 px-3 py-2 text-sm text-neutral-100 focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400">本文へ</a>
+		<a href="#content" class="sr-only rounded-md bg-accent-soft px-3 py-2 text-sm text-ink focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:focus-ring">本文へ</a>
 	}
 	<div class="flex min-h-screen">
 		@sidenav.Nav(nav)

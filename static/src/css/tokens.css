@@ -1,0 +1,98 @@
+/*
+ * The design tokens of the Ousiass UI guide (brand-guide 622ea73; the rules are spec/components/color-rules.md). This is the one
+ * place where a colour is written as a value: every other source names a token (bg-surface, text-mute, border-border, ...), and
+ * a Tailwind palette class or a raw colour anywhere else fails backend/internal/web/a11y/color_allowlist_test.go.
+ *
+ * The theme: Light is `:root`; Dark is `[data-theme="dark"]`, and `prefers-color-scheme: dark` while the page has no data-theme of its
+ * own (the cookie of the theme button, backend/internal/web/themestate, writes one). The values are the guide's, for both.
+ */
+
+:root {
+  color-scheme: light;
+
+  --ink: #050505;
+  --bone: #f5f5f4;
+  --mute: #8b8b8e;
+  --surface: #ffffff;
+  --border: #e7e7e5;
+  --accent: #050505;
+  --accent-soft: #e7e7e5;
+  --focus: #4a72d0;
+
+  --success: #3d5c4a;
+  --warning: #7a6a3a;
+  --danger: #7a4545;
+  --info: #4a5a6a;
+
+  /* Motion (M1): hover is colour / background only, in --motion-base. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 280ms;
+  --motion-fade-in: 320ms;
+  --motion-fade-out: 240ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ink: #ffffff;
+    --bone: #050505;
+    --surface: #141414;
+    --border: #2a2a2a;
+    --accent: #f5f5f4;
+    --accent-soft: #2a2a2a;
+    --focus: #60a5fa;
+
+    --success: #8fafa0;
+    --warning: #c4b87a;
+    --danger: #c49a9a;
+    --info: #9aabbc;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ink: #ffffff;
+  --bone: #050505;
+  --surface: #141414;
+  --border: #2a2a2a;
+  --accent: #f5f5f4;
+  --accent-soft: #2a2a2a;
+  --focus: #60a5fa;
+
+  --success: #8fafa0;
+  --warning: #c4b87a;
+  --danger: #c49a9a;
+  --info: #9aabbc;
+}
+
+/* Tailwind: the guide's tokens are the only colours (the default palette is switched off), so a class of a palette shade
+   (a neutral, an indigo, ...) does not compile. black is the letterbox of a video and the scrim of a modal, which are black in both themes. */
+@theme inline {
+  --color-*: initial;
+  --color-ink: var(--ink);
+  --color-bone: var(--bone);
+  --color-mute: var(--mute);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-black: #000000;
+}
+
+/* The focus ring (C3): 2px solid --focus, offset 2. A utility so that every control says it the same way
+   (focus-visible:focus-ring, peer-focus-visible:focus-ring, ...). */
+@utility focus-ring {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

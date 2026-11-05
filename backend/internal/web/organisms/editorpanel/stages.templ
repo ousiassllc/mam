@@ -14,7 +14,7 @@ templ editorEditStage(d Data, oob bool) {
 	<div id="editor-edit-stage" class="contents" { oobAttr(oob)... }>
 		<section class="flex flex-col gap-2" aria-label="Rough Cut">
 			<h3 class="text-sm font-semibold">1. Rough Cut</h3>
-			<p class="text-xs text-neutral-400">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p>
+			<p class="text-xs text-mute">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p>
 			<div class="flex items-center gap-3">
 				if d.TimelineID == "" {
 					@atoms.Button(atoms.TonePrimary, "Rough Cut を作成", templ.Attributes{
@@ -27,7 +27,7 @@ templ editorEditStage(d Data, oob bool) {
 						"hx-disabled-elt": "this",
 						"hx-confirm":      "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？", "disabled": !d.CanRoughCut(),
 					})
-					<span class="text-xs text-neutral-400">{ fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration) }</span>
+					<span class="text-xs text-mute">{ fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration) }</span>
 				}
 			</div>
 		</section>
@@ -46,9 +46,9 @@ templ editorEditStage(d Data, oob bool) {
 				<ul class="flex flex-col gap-1 text-sm" data-editor-findings>
 					for _, f := range d.Judge.Findings {
 						<li>
-							<span class="text-xs text-neutral-400">{ clipPosition(f.ClipIndex) }</span> { f.Issue } → { f.Action }
+							<span class="text-xs text-mute">{ clipPosition(f.ClipIndex) }</span> { f.Issue } → { f.Action }
 							if f.Need != nil {
-								<span class="text-xs text-amber-300" data-need-shot>{ " 追加 Shot: " + needLabel(f.Need) }</span>
+								<span class="text-xs text-warning" data-need-shot>{ " 追加 Shot: " + needLabel(f.Need) }</span>
 							}
 						</li>
 					}
@@ -60,11 +60,11 @@ templ editorEditStage(d Data, oob bool) {
 						"type": "button", "hx-post": paths.EditTimeline(d.TimelineID, "request-additional-shot"),
 						"hx-disabled-elt": "this",
 					})
-					<span class="text-xs text-neutral-400">足りない素材を Director に作らせ、できたら編集に戻ります。</span>
+					<span class="text-xs text-mute">足りない素材を Director に作らせ、できたら編集に戻ります。</span>
 				</div>
 			}
 			if d.PendingShots > 0 {
-				<p class="text-xs text-amber-300" data-pending-shots>{ fmt.Sprintf("追加 Shot を %d 件生成中です。できたら自動で編集タイムラインに入ります。", d.PendingShots) }</p>
+				<p class="text-xs text-warning" data-pending-shots>{ fmt.Sprintf("追加 Shot を %d 件生成中です。できたら自動で編集タイムラインに入ります。", d.PendingShots) }</p>
 			}
 		</section>
 	</div>
@@ -80,25 +80,25 @@ templ editorAudioStage(d Data, oob bool) {
 				"hx-disabled-elt": "this", "disabled": !d.CanAudio(),
 			})
 			if d.Audio != nil {
-				<span class="text-xs text-neutral-400" data-audio-summary>{ audioSummary(d.Audio) }</span>
+				<span class="text-xs text-mute" data-audio-summary>{ audioSummary(d.Audio) }</span>
 			}
 		</div>
 		if d.Audio != nil && len(d.Audio.Timeline.Scenes) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-neutral-300" data-audio-scenes>
+			<ul class="flex flex-col gap-1 text-xs text-ink" data-audio-scenes>
 				for _, s := range d.Audio.Timeline.Scenes {
 					<li>{ audioSceneText(s) }</li>
 				}
 			</ul>
 		}
 		if d.Audio != nil && len(d.Audio.Timeline.Skipped) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-amber-300" data-audio-skipped>
+			<ul class="flex flex-col gap-1 text-xs text-warning" data-audio-skipped>
 				for _, s := range d.Audio.Timeline.Skipped {
 					<li>{ audioSkippedText(s) }</li>
 				}
 			</ul>
 		}
 		if !d.CanRender {
-			<p class="text-xs text-amber-300">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>
+			<p class="text-xs text-warning">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>
 		}
 	</div>
 }
@@ -106,7 +106,7 @@ templ editorAudioStage(d Data, oob bool) {
 // editorVoiceForm clones the voice of a speaker from a sample. Only a cloned voice replaces it (oob).
 templ editorVoiceForm(d Data, oob bool) {
 	<form id="editor-voice-form" hx-post={ paths.Project(d.Project.ID, "audio", "voices") } hx-encoding="multipart/form-data" hx-sync="this:drop" hx-disabled-elt="find button" hx-vals={ branchVals(d.BranchID) } class="flex flex-wrap items-end gap-3" aria-label="音声クローン" { oobAttr(oob)... }>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400">
+		<label class="flex flex-col gap-1 text-xs text-mute">
 			話者名（脚本の「話者: セリフ」の話者）
 			@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 				"type":      "text",
@@ -115,9 +115,9 @@ templ editorVoiceForm(d Data, oob bool) {
 				"maxlength": strconv.Itoa(domain.MaxSpeakerRunes),
 			})
 		</label>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400">
+		<label class="flex flex-col gap-1 text-xs text-mute">
 			声のサンプル（10 MB 以下。数十秒の録音）
-			<input type="file" name="sample" required accept="audio/*" class="text-sm text-neutral-100"/>
+			<input type="file" name="sample" required accept="audio/*" class="text-sm text-ink"/>
 		</label>
 		@atoms.Button(atoms.ToneNeutral, "声をクローン", templ.Attributes{"type": "submit"})
 	</form>
@@ -127,7 +127,7 @@ templ editorVoiceForm(d Data, oob bool) {
 templ editorVoices(d Data, oob bool) {
 	<div id="editor-voices" class="contents" { oobAttr(oob)... }>
 		if len(d.Voices) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-neutral-300" data-audio-voices>
+			<ul class="flex flex-col gap-1 text-xs text-ink" data-audio-voices>
 				for _, v := range d.Voices {
 					<li>{ v.Speaker + "（クローン音声）" }</li>
 				}
@@ -149,10 +149,10 @@ templ editorFinalQC(d Data, oob bool) {
 			}
 		</div>
 		if d.FinalQCBlockedByTrunk() {
-			<p class="text-xs text-amber-300" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>
+			<p class="text-xs text-warning" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>
 		}
 		if d.BranchID != "" {
-			<p class="text-xs text-neutral-400" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>
+			<p class="text-xs text-mute" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>
 		}
 		if d.QC != nil && len(d.QC.Findings) > 0 {
 			<ul class="flex flex-col gap-1 text-sm" data-qc-findings>
@@ -176,14 +176,14 @@ templ editorExportSubmit(d Data, oob bool) {
 templ editorExports(d Data, oob bool) {
 	<div id="editor-exports" class="contents" { oobAttr(oob)... }>
 		if d.ExportBlocker() != "" {
-			<p class="text-xs text-amber-300" data-export-blocked>{ d.ExportBlocker() }</p>
+			<p class="text-xs text-warning" data-export-blocked>{ d.ExportBlocker() }</p>
 		}
 		if len(d.Exports) > 0 {
 			<ul class="flex flex-col gap-1 text-sm" data-exports>
 				for _, e := range d.Exports {
 					<li class="flex flex-wrap items-center gap-2">
-						<a class="text-indigo-300 underline" href={ templ.SafeURL(exportURL(d.Project.ID, e.ID)) } download>{ e.ExportedAt.Local().Format("2006-01-02 15:04") + " の書き出し" }</a>
-						<span class="text-xs text-neutral-400">{ e.AspectRatio + " / " + e.Resolution + " / " + e.Codec }</span>
+						<a class="text-accent underline decoration-mute" href={ templ.SafeURL(exportURL(d.Project.ID, e.ID)) } download>{ e.ExportedAt.Local().Format("2006-01-02 15:04") + " の書き出し" }</a>
+						<span class="text-xs text-mute">{ e.AspectRatio + " / " + e.Resolution + " / " + e.Codec }</span>
 					</li>
 				}
 			</ul>

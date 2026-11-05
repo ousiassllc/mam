@@ -50,7 +50,7 @@ func AdultCard(a Adult) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\" data-testid=\"mm-adult\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-2 rounded-md border border-border p-3\" data-testid=\"mm-adult\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -85,7 +85,7 @@ func AdultCard(a Adult) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-neutral-300\" data-testid=\"mm-adult-status\">成人向けモデルは表示していません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-ink\" data-testid=\"mm-adult-status\">成人向けモデルは表示していません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -138,7 +138,7 @@ func AdultDialog(d AdultConfirm) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"flex flex-col gap-3 rounded-md border border-amber-500/60 bg-neutral-900 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400\" role=\"dialog\" aria-labelledby=\"mm-adult-title\" tabindex=\"-1\" data-inline-dialog data-return-focus=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"flex flex-col gap-3 rounded-md border border-warning/60 bg-surface p-4 focus-visible:focus-ring\" role=\"dialog\" aria-labelledby=\"mm-adult-title\" tabindex=\"-1\" data-inline-dialog data-return-focus=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -156,14 +156,14 @@ func AdultDialog(d AdultConfirm) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-red-300 focus-visible:outline-none\" role=\"alert\" tabindex=\"-1\" data-testid=\"mm-adult-dialog-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-danger focus-visible:outline-none\" role=\"alert\" tabindex=\"-1\" data-testid=\"mm-adult-dialog-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/adult.templ`, Line: 52, Col: 134}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/adult.templ`, Line: 52, Col: 133}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -174,20 +174,20 @@ func AdultDialog(d AdultConfirm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-sm text-neutral-200\" data-testid=\"mm-adult-notice\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-sm text-ink\" data-testid=\"mm-adult-notice\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(d.Notice)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/adult.templ`, Line: 54, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/adult.templ`, Line: 54, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"text-xs text-neutral-400\">モデルの重みは mam が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は mam では選別しません。ローカルでの利用はあなたの責任です。</p><form class=\"flex flex-col gap-3\" hx-put=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"text-xs text-mute\">モデルの重みは mam が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は mam では選別しません。ローカルでの利用はあなたの責任です。</p><form class=\"flex flex-col gap-3\" hx-put=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -319,7 +319,7 @@ func CommercialCard(c CommercialPanel) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"flex flex-col gap-2 rounded-md border border-neutral-700 p-3\" data-testid=\"mm-commercial-setting\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"flex flex-col gap-2 rounded-md border border-border p-3\" data-testid=\"mm-commercial-setting\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -337,7 +337,7 @@ func CommercialCard(c CommercialPanel) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"flex flex-wrap items-center justify-between gap-2\"><p class=\"text-sm text-neutral-200\">商用利用で絞り込む（一覧の絞り込みの初めの状態）</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"flex flex-wrap items-center justify-between gap-2\"><p class=\"text-sm text-ink\">商用利用で絞り込む（一覧の絞り込みの初めの状態）</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

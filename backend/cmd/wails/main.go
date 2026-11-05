@@ -25,8 +25,8 @@ const (
 	// uniqueID identifies the single running instance (Wails SingleInstance).
 	uniqueID = "com.ousiassllc.mam"
 	// waitingPage is shown until the server is ready: only the background colour of the app layout
-	// (bg-neutral-950), so there is no white flash before the server answers.
-	waitingPage = `<!doctype html><html><body style="margin:0;background:#0a0a0a"></body></html>`
+	// (bg-bone), so there is no white flash before the server answers.
+	waitingPage = `<!doctype html><html><body style="margin:0;background:#050505"></body></html>`
 )
 
 func main() {

@@ -9,7 +9,7 @@ import (
 // where it came from when this result is itself one. A model that cannot run now (no key, not installed) is not offered: the box says how to get it.
 templ Box(f Form) {
 	if f.Show || f.SourceURL != "" {
-		<div id={ ID } class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4" data-testid="gt-venh">
+		<div id={ ID } class="flex flex-col gap-3 rounded-md border border-border p-4" data-testid="gt-venh">
 			if f.SourceURL != "" {
 				<p class="text-sm" data-testid="gt-venh-source">
 					<a class="underline" href={ templ.SafeURL(f.SourceURL) }>{ f.SourceText }</a>
@@ -18,15 +18,15 @@ templ Box(f Form) {
 			if f.Show {
 				<h3 class="text-sm font-medium">動画を大きくする・滑らかにする</h3>
 				if f.Notice != "" {
-					<p class="text-sm text-emerald-300" role="status" data-testid="gt-venh-notice">{ f.Notice }</p>
+					<p class="text-sm text-success" role="status" data-testid="gt-venh-notice">{ f.Notice }</p>
 				}
 				if f.Error != "" {
-					<p class="text-sm text-red-300" role="alert" data-testid="gt-venh-error">{ f.Error }</p>
+					<p class="text-sm text-danger" role="alert" data-testid="gt-venh-error">{ f.Error }</p>
 				}
 				@section(f, f.Upscale)
 				@section(f, f.Interpolate)
 				if f.HasTopaz() {
-					<p class="text-xs text-neutral-400" data-testid="gt-venh-attribution">Powered by Topaz Labs</p>
+					<p class="text-xs text-mute" data-testid="gt-venh-attribution">Powered by Topaz Labs</p>
 				}
 			}
 		</div>
@@ -35,10 +35,10 @@ templ Box(f Form) {
 
 // section is one operation: the form of the models of this PC, the form of the models of Topaz with the place of its quote, and the hints for what is missing.
 templ section(f Form, o Op) {
-	<section id={ o.SectionID() } class="flex flex-col gap-2 border-t border-neutral-800 pt-3" data-testid={ "gt-venh-" + o.Name }>
+	<section id={ o.SectionID() } class="flex flex-col gap-2 border-t border-border pt-3" data-testid={ "gt-venh-" + o.Name }>
 		<h4 class="text-sm font-medium">{ o.Title() }</h4>
 		if len(o.Local) == 0 {
-			<p class="text-sm text-neutral-400" data-testid={ "gt-venh-none-" + o.Name }>
+			<p class="text-sm text-mute" data-testid={ "gt-venh-none-" + o.Name }>
 				この PC で使うモデルが入っていません。
 				<a class="underline" href={ templ.SafeURL(f.ModelsURL) }>モデルマネージャー</a>でモデルを入れてください。
 			</p>
@@ -55,7 +55,7 @@ templ section(f Form, o Op) {
 				<input type="hidden" name={ FieldOp } value={ o.Name }/>
 				@modelSelect(o.Local)
 				@sizeFields(o, false)
-				<p class="text-xs text-neutral-400">この PC で実行します。無料</p>
+				<p class="text-xs text-mute">この PC で実行します。無料</p>
 				@atoms.Button(atoms.TonePrimary, o.LocalButton(), templ.Attributes{"type": "submit", "data-testid": "gt-venh-run-" + o.Name})
 			</form>
 		}
@@ -72,12 +72,12 @@ templ section(f Form, o Op) {
 				<input type="hidden" name={ FieldOp } value={ o.Name }/>
 				@modelSelect(o.Topaz)
 				@sizeFields(o, true)
-				<p class="text-xs text-neutral-400">Topaz（有料のクラウド）で実行します。先にクレジットの見積りを取ります</p>
+				<p class="text-xs text-mute">Topaz（有料のクラウド）で実行します。先にクレジットの見積りを取ります</p>
 				@atoms.Button(atoms.ToneNeutral, "クレジットの見積りを取る", templ.Attributes{"type": "submit", "data-testid": "gt-venh-estimate-" + o.Name})
 			</form>
 			<div id={ o.QuoteID() }></div>
 		} else if o.NoKey {
-			<p class="text-sm text-neutral-400" data-testid={ "gt-venh-nokey-" + o.Name }>
+			<p class="text-sm text-mute" data-testid={ "gt-venh-nokey-" + o.Name }>
 				Topaz のモデルを使うには、<a class="underline" href={ templ.SafeURL(f.SettingsURL) }>設定</a>の「API キー」に Topaz のキーを入れてください。
 			</p>
 		}
@@ -85,7 +85,7 @@ templ section(f Form, o Op) {
 }
 
 templ modelSelect(opts []Option) {
-	<label class="flex flex-col gap-1 text-xs text-neutral-400">
+	<label class="flex flex-col gap-1 text-xs text-mute">
 		<span>モデル</span>
 		@atoms.Select(atoms.FieldMd, "max-w-64", templ.Attributes{"name": FieldModel}) {
 			for _, o := range opts {
@@ -99,7 +99,7 @@ templ modelSelect(opts []Option) {
 // factor of the frames, and at Topaz a frame rate of its own (the models of this PC make whole multiples of the frames only).
 templ sizeFields(o Op, topaz bool) {
 	if o.Name == OpInterpolate {
-		<label class="flex flex-col gap-1 text-xs text-neutral-400">
+		<label class="flex flex-col gap-1 text-xs text-mute">
 			<span>コマ数</span>
 			@atoms.Select(atoms.FieldMd, "", templ.Attributes{"name": FieldInterp}) {
 				<option value={ InterpX2 }>2 倍</option>
@@ -110,17 +110,17 @@ templ sizeFields(o Op, topaz bool) {
 			}
 		</label>
 		if topaz {
-			<label class="flex flex-col gap-1 text-xs text-neutral-400">
+			<label class="flex flex-col gap-1 text-xs text-mute">
 				<span>fps（「fps を決める」のとき。15〜240）</span>
 				@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{"type": "number", "name": FieldFPS, "min": "15", "max": "240", "step": "any", "inputmode": "decimal"})
 			</label>
 		} else {
-			<p class="max-w-xs text-xs text-neutral-400" data-testid="gt-venh-fps-note">
+			<p class="max-w-xs text-xs text-mute" data-testid="gt-venh-fps-note">
 				この PC のモデルは、元の fps の 2 倍か 4 倍（整数倍）にしかできず、出力は 120 fps までです。fps を自分で決めたいときや 120 fps を超えるときは Topaz のモデルを使ってください。
 			</p>
 		}
 	} else {
-		<label class="flex flex-col gap-1 text-xs text-neutral-400">
+		<label class="flex flex-col gap-1 text-xs text-mute">
 			<span>大きさ</span>
 			@atoms.Select(atoms.FieldMd, "", templ.Attributes{"name": FieldSize}) {
 				<option value={ SizeX2 }>2 倍</option>

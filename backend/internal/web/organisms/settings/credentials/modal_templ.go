@@ -61,7 +61,7 @@ func Modal(f Form, maxKeyBytes int) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, " <p class=\"text-sm text-neutral-400\">キーは OS のセキュアストレージに保存され、画面には設定済みかどうかだけが出ます。 ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, " <p class=\"text-sm text-mute\">キーは OS のセキュアストレージに保存され、画面には設定済みかどうかだけが出ます。 ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -82,14 +82,14 @@ func Modal(f Form, maxKeyBytes int) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if f.Provider.KeyURL != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm\"><a class=\"text-indigo-300 underline\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm\"><a class=\"text-accent underline decoration-mute\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 templ.SafeURL
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.Provider.KeyURL))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/credentials/modal.templ`, Line: 33, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/credentials/modal.templ`, Line: 33, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -102,7 +102,7 @@ func Modal(f Form, maxKeyBytes int) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(f.Provider.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/credentials/modal.templ`, Line: 33, Col: 177}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/credentials/modal.templ`, Line: 33, Col: 189}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -173,7 +173,7 @@ func Modal(f Form, maxKeyBytes int) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" role=\"status\" class=\"min-h-5 text-sm text-neutral-300\" data-testid=\"credential-test-result\"></p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" role=\"status\" class=\"min-h-5 text-sm text-ink\" data-testid=\"credential-test-result\"></p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -203,7 +203,7 @@ func Modal(f Form, maxKeyBytes int) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				} else if !f.Provider.CanTest {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"mr-auto text-xs text-neutral-400\" data-testid=\"credential-no-test\">接続テストはありません。保存したあと、最初の生成で確かめられます。</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"mr-auto text-xs text-mute\" data-testid=\"credential-no-test\">接続テストはありません。保存したあと、最初の生成で確かめられます。</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

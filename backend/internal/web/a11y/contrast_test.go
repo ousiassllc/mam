@@ -12,7 +12,7 @@ import (
 )
 
 // text-neutral-500 (#737373) is 3.78:1 on the neutral-900 cards and 4.18:1 on the neutral-950 page:
-// under the 4.5:1 of WCAG 1.4.3. Supporting text is text-neutral-400 (#784).
+// under the 4.5:1 of WCAG 1.4.3. Supporting text is text-mute (#784).
 func TestSources_NoTextOfNeutral500(t *testing.T) {
 	roots := map[string]string{"..": ".templ", "../../../../static/src/components": ".ts"}
 	checked := 0

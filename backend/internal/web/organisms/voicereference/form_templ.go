@@ -51,7 +51,7 @@ func Form(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-2 border-t border-neutral-800 pt-2\" hx-put=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-2 border-t border-border pt-2\" hx-put=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -64,7 +64,7 @@ func Form(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\"><div class=\"flex flex-wrap items-center gap-2\"><p class=\"text-xs font-medium text-neutral-200\">参照音声（声のクローン用）</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\"><div class=\"flex flex-wrap items-center gap-2\"><p class=\"text-xs font-medium text-ink\">参照音声（声のクローン用）</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -110,14 +110,14 @@ func Form(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></audio><p class=\"text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></audio><p class=\"text-xs text-mute\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(d.Current())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicereference/form.templ`, Line: 33, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicereference/form.templ`, Line: 33, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -128,20 +128,20 @@ func Form(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Unmeasured() {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-xs text-amber-300\">長さを確認できていません（ffprobe がないため）。3〜10 秒の音声にしてください。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-xs text-warning\">長さを確認できていません（ffprobe がないため）。3〜10 秒の音声にしてください。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"grid gap-2 sm:grid-cols-2\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"grid gap-2 sm:grid-cols-2\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-file")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicereference/form.templ`, Line: 39, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicereference/form.templ`, Line: 39, Col: 79}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -199,14 +199,14 @@ func Form(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" class=\"text-sm text-neutral-200\"></label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" class=\"text-sm text-ink\"></label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-language")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicereference/form.templ`, Line: 43, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicereference/form.templ`, Line: 43, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -276,14 +276,14 @@ func Form(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</label></div><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</label></div><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-text")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicereference/form.templ`, Line: 52, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicereference/form.templ`, Line: 52, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -303,7 +303,7 @@ func Form(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</label><p class=\"text-xs text-amber-300\" role=\"note\" data-testid=\"voice-ref-consent-notice\">声の持ち主本人の同意を得た音声だけを使ってください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりすることは、Irodori-TTS のモデルカードで禁じられています。</p><p class=\"text-xs text-neutral-400\">ファイルを選ばずに保存すると、いまの音声のまま書き起こしと言語だけ変わります。</p><div class=\"flex flex-wrap gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</label><p class=\"text-xs text-warning\" role=\"note\" data-testid=\"voice-ref-consent-notice\">声の持ち主本人の同意を得た音声だけを使ってください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりすることは、Irodori-TTS のモデルカードで禁じられています。</p><p class=\"text-xs text-mute\">ファイルを選ばずに保存すると、いまの音声のまま書き起こしと言語だけ変わります。</p><div class=\"flex flex-wrap gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

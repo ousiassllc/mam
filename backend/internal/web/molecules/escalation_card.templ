@@ -18,12 +18,12 @@ templ EscalationCard(m domain.ThreadMessage) {
 					@atoms.ButtonFor(atoms.ToneNeutral, option, excerpt(m.ChatMessage), answerAttrs(m, option))
 				}
 			</div>
-			<p class="mt-2 text-xs text-neutral-400">入力欄からの返信でも判断を伝えられます。</p>
+			<p class="mt-2 text-xs text-mute">入力欄からの返信でも判断を伝えられます。</p>
 			<div class="mt-1">
 				@ReplyButton(m)
 			</div>
 		} else {
-			<p class="mt-2 text-xs text-neutral-400">回答済み</p>
+			<p class="mt-2 text-xs text-mute">回答済み</p>
 		}
 	}
 }

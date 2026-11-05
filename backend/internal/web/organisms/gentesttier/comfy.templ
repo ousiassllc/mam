@@ -21,7 +21,7 @@ templ OpenInComfy() {
 templ ComfyOpenResult(msg string) {
 	<div id={ ComfyOpenID } aria-live="polite" data-testid="gt-comfy-open-result">
 		if msg != "" {
-			<p class="text-xs text-amber-300" role="alert">{ msg }</p>
+			<p class="text-xs text-warning" role="alert">{ msg }</p>
 		}
 	</div>
 }

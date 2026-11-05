@@ -87,7 +87,7 @@ func GuideSection() templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<section class=\"mt-8 flex flex-col gap-2\" aria-labelledby=\"settings-guide-title\" data-testid=\"settings-guide\"><h3 id=\"settings-guide-title\" class=\"text-base font-semibold\">初期セットアップの案内</h3><p class=\"text-sm text-neutral-400\">mam でできることの紹介と、API キー・モデル・ffmpeg の順に設定する案内を、もう一度開きます。</p><p><a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<section class=\"mt-8 flex flex-col gap-2\" aria-labelledby=\"settings-guide-title\" data-testid=\"settings-guide\"><h3 id=\"settings-guide-title\" class=\"text-base font-semibold\">初期セットアップの案内</h3><p class=\"text-sm text-mute\">mam でできることの紹介と、API キー・モデル・ffmpeg の順に設定する案内を、もう一度開きます。</p><p><a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -100,7 +100,7 @@ func GuideSection() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"text-sm underline text-indigo-300\" data-testid=\"settings-guide-open\">案内をもう一度開く</a></p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"text-sm underline decoration-mute text-accent\" data-testid=\"settings-guide-open\">案内をもう一度開く</a></p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

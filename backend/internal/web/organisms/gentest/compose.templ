@@ -13,10 +13,10 @@ import (
 // notice is the notice and the error of a section.
 templ notice(m Message, id string) {
 	if m.Notice != "" {
-		<p class="text-sm text-emerald-300" role="status" data-testid={ id + "-notice" }>{ m.Notice }</p>
+		<p class="text-sm text-success" role="status" data-testid={ id + "-notice" }>{ m.Notice }</p>
 	}
 	if m.Error != "" {
-		<p class="text-sm text-red-300" role="alert" data-testid={ id + "-error" }>{ m.Error }</p>
+		<p class="text-sm text-danger" role="alert" data-testid={ id + "-error" }>{ m.Error }</p>
 	}
 }
 
@@ -25,7 +25,7 @@ templ notice(m Message, id string) {
 templ ComposeForm(c Compose) {
 	<form
 		id={ ComposeID }
-		class="flex flex-col gap-5 rounded-md border border-neutral-700 p-4"
+		class="flex flex-col gap-5 rounded-md border border-border p-4"
 		hx-post={ paths.GenerationTestPart("estimate") }
 		hx-encoding="multipart/form-data"
 		hx-target={ "#" + ConfirmID }
@@ -80,7 +80,7 @@ templ ComposeForm(c Compose) {
 			}
 			<div class="flex flex-wrap items-center gap-3">
 				@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate"})
-				<span class="text-xs text-neutral-400">実行はまだしません</span>
+				<span class="text-xs text-mute">実行はまだしません</span>
 				@help.Toggle(help.ID("見積り"), "見積り")
 				@help.Panel(help.ID("見積り"), "見積り") {
 					<p>
@@ -138,7 +138,7 @@ templ promptFields(c Compose) {
 			@help.Panel(help.ID("英訳"), "英訳") {
 				@help.Text(translateHelp)
 			}
-			<span class="text-xs text-neutral-400">ウェイト (語:1.3)</span>
+			<span class="text-xs text-mute">ウェイト (語:1.3)</span>
 			@help.Toggle(help.ID("ウェイト"), "ウェイト")
 			@help.Panel(help.ID("ウェイト"), "ウェイト") {
 				@gentestadv.WeightHelp(c.WeightAll)
@@ -149,11 +149,11 @@ templ promptFields(c Compose) {
 		</div>
 		if len(c.Recent) > 0 {
 			<details class="text-sm" data-testid="gt-recent">
-				<summary class="cursor-pointer text-xs text-neutral-400">過去のプロンプトから追加（<a class="underline" href={ templ.SafeURL(paths.GenerationTestPrompts()) }>履歴を開く</a>）</summary>
+				<summary class="cursor-pointer text-xs text-mute">過去のプロンプトから追加（<a class="underline" href={ templ.SafeURL(paths.GenerationTestPrompts()) }>履歴を開く</a>）</summary>
 				<ul class="mt-2 flex flex-col gap-2">
 					for _, r := range c.Recent {
-						<li class="flex items-start justify-between gap-2 rounded-md border border-neutral-800 p-2">
-							<span class="whitespace-pre-wrap break-words text-xs text-neutral-200">{ r.Text }</span>
+						<li class="flex items-start justify-between gap-2 rounded-md border border-border p-2">
+							<span class="whitespace-pre-wrap break-words text-xs text-ink">{ r.Text }</span>
 							@atoms.SmallButtonFor(atoms.ToneNeutral, "追加", "プロンプト "+r.Text, templ.Attributes{
 								"type": "button", "hx-get": paths.GenerationTestPart("prompt-row") + "?from=" + r.ID, "hx-target": "#" + PromptsID, "hx-swap": "beforeend",
 							})
@@ -167,7 +167,7 @@ templ promptFields(c Compose) {
 
 // PromptRowFields is a prompt and its negative prompt.
 templ PromptRowFields(p PromptText, max int) {
-	<div class="flex flex-col gap-1 rounded-md border border-neutral-800 p-2" data-testid="gt-prompt">
+	<div class="flex flex-col gap-1 rounded-md border border-border p-2" data-testid="gt-prompt">
 		@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{
 			"name": FieldPrompt, "rows": "3", "maxlength": itoa(max), "aria-label": "プロンプト", "placeholder": "プロンプト",
 		}, p.Text)
@@ -180,20 +180,20 @@ templ PromptRowFields(p PromptText, max int) {
 // parameterFields are the count and what the media takes.
 templ parameterFields(c Compose) {
 	<div class="flex flex-wrap items-end gap-3" data-testid="gt-parameters">
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-count">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="gt-count">
 			<span>本数（1〜{ itoa(c.MaxCount) }）</span>
 			@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{
 				"id": "gt-count", "name": FieldCount, "type": "number", "min": "1", "max": itoa(c.MaxCount), "value": c.Count,
 			})
 		</label>
-		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-aspect">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="gt-aspect">
 			<span>縦横比</span>
 			@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{
 				"id": "gt-aspect", "name": FieldAspect, "type": "text", "value": c.Aspect, "pattern": "[1-9][0-9]?:[1-9][0-9]?", "maxlength": itoa(MaxAspectLen), "placeholder": "16:9",
 			})
 		</label>
 		if c.Media == "video" {
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-resolution">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-resolution">
 				<span>解像度</span>
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-resolution", "name": FieldResolution}) {
 					for _, r := range c.Resolutions {
@@ -201,7 +201,7 @@ templ parameterFields(c Compose) {
 					}
 				}
 			</label>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-duration">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-duration">
 				<span>長さ（秒）</span>
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-duration", "name": FieldDuration}) {
 					for _, d := range c.Durations {
@@ -211,7 +211,7 @@ templ parameterFields(c Compose) {
 			</label>
 		}
 		if len(c.SpeedModes) > 0 {
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-speed-mode">
+			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-speed-mode">
 				<span>速さ（対応するモデルだけ）</span>
 				@atoms.Select(atoms.FieldMd, "max-w-64", templ.Attributes{"id": "gt-speed-mode", "name": FieldSpeedMode, "data-testid": "gt-speed-mode"}) {
 					<option value="" selected?={ c.SpeedMode == "" }>モデルの既定</option>

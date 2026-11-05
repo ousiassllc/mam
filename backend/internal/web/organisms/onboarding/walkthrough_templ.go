@@ -30,7 +30,7 @@ func FlowBody() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-neutral-300\">mam は、作りたい動画を伝えると、AI が制作チームとして最後まで進める映像制作スタジオです。1 つのプロンプトから動画を 1 本出すだけのツールではありません。</p><ol role=\"list\" class=\"flex flex-col gap-3\" data-testid=\"onboarding-flow\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-ink\">mam は、作りたい動画を伝えると、AI が制作チームとして最後まで進める映像制作スタジオです。1 つのプロンプトから動画を 1 本出すだけのツールではありません。</p><ol role=\"list\" class=\"flex flex-col gap-3\" data-testid=\"onboarding-flow\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -83,14 +83,14 @@ func flowStage(number, title, text string) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<li class=\"flex gap-3 rounded-md border border-neutral-800 px-3 py-2\"><span class=\"mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-neutral-600 text-xs\" aria-hidden=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<li class=\"flex gap-3 rounded-md border border-border px-3 py-2\"><span class=\"mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border text-xs\" aria-hidden=\"true\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(number)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/walkthrough.templ`, Line: 19, Col: 152}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/walkthrough.templ`, Line: 19, Col: 147}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -109,14 +109,14 @@ func flowStage(number, title, text string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</h3><p class=\"text-sm text-neutral-300\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</h3><p class=\"text-sm text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/walkthrough.templ`, Line: 22, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/walkthrough.templ`, Line: 22, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -152,7 +152,7 @@ func ModesBody() templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-neutral-300\">進め方は 2 つあります。同じプロジェクトで、いつでも切り替えられます。</p><div class=\"grid grid-cols-1 gap-4 md:grid-cols-2\" data-testid=\"onboarding-modes\"><section class=\"rounded-md border border-neutral-800 px-4 py-3\" aria-labelledby=\"onboarding-mode-auto\"><h3 id=\"onboarding-mode-auto\" class=\"text-base font-semibold\">AUTO MODE（自動生成）</h3><p class=\"mt-1 text-sm text-neutral-300\">作りたい動画を指定すると、AI が完成まで自律的に進めます。まず初稿を作りたいときに向いています。</p></section><section class=\"rounded-md border border-neutral-800 px-4 py-3\" aria-labelledby=\"onboarding-mode-director\"><h3 id=\"onboarding-mode-director\" class=\"text-base font-semibold\">DIRECTOR MODE（監督）</h3><p class=\"mt-1 text-sm text-neutral-300\">自分が監督になります。プロンプトを書く代わりに、「もう少し寄って」「この瞬間だけ不安そうな顔にして」のように、自然な言葉で演出を指示します。</p></section></div><p class=\"text-sm text-neutral-300\">たとえば、AUTO で初稿を 8 割まで作り、気になる Scene だけ DIRECTOR で直し、また AUTO に戻して、編集・音声・最終 QC に進む、という使い方ができます。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-ink\">進め方は 2 つあります。同じプロジェクトで、いつでも切り替えられます。</p><div class=\"grid grid-cols-1 gap-4 md:grid-cols-2\" data-testid=\"onboarding-modes\"><section class=\"rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-mode-auto\"><h3 id=\"onboarding-mode-auto\" class=\"text-base font-semibold\">AUTO MODE（自動生成）</h3><p class=\"mt-1 text-sm text-ink\">作りたい動画を指定すると、AI が完成まで自律的に進めます。まず初稿を作りたいときに向いています。</p></section><section class=\"rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-mode-director\"><h3 id=\"onboarding-mode-director\" class=\"text-base font-semibold\">DIRECTOR MODE（監督）</h3><p class=\"mt-1 text-sm text-ink\">自分が監督になります。プロンプトを書く代わりに、「もう少し寄って」「この瞬間だけ不安そうな顔にして」のように、自然な言葉で演出を指示します。</p></section></div><p class=\"text-sm text-ink\">たとえば、AUTO で初稿を 8 割まで作り、気になる Scene だけ DIRECTOR で直し、また AUTO に戻して、編集・音声・最終 QC に進む、という使い方ができます。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -183,7 +183,7 @@ func PrepareBody(models, mac bool) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-neutral-300\">この後のセットアップで、次のものを順に確かめます。どれも「あとで」で飛ばせて、あとから設定画面で入れられます。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-neutral-300\" data-testid=\"onboarding-prepare\"><li><strong>API キーか ChatGPT のログイン</strong>（どちらか 1 つは必要です。どちらも無いと、生成は動きません）</li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-ink\">この後のセットアップで、次のものを順に確かめます。どれも「あとで」で飛ばせて、あとから設定画面で入れられます。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-ink\" data-testid=\"onboarding-prepare\"><li><strong>API キーか ChatGPT のログイン</strong>（どちらか 1 つは必要です。どちらも無いと、生成は動きません）</li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

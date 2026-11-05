@@ -38,7 +38,7 @@ func TestNav_MarksOnlyTheCurrentCategoryAndLinksAreNotBoosted(t *testing.T) {
 	current = current[:strings.Index(current, "</a>")]
 	assert.Contains(t, current, `aria-current="page"`)
 	assert.Contains(t, current, "font-medium")
-	assert.Contains(t, current, "border-indigo-400")
+	assert.Contains(t, current, "border-accent")
 	assert.NotContains(t, html, "text-neutral-500")
 }
 
@@ -90,7 +90,7 @@ func TestCardItem_IsAListItemWithItsIDStateAndButtonsAndReplacesItselfOnlyWhenAs
 	html := renderCard(card)
 	assert.Contains(t, html, `<li id="credential-row-kling" data-testid="credential-row"`)
 	assert.Contains(t, html, `data-provider="kling"`)
-	assert.Contains(t, html, `<h3 class="min-w-0 break-words text-sm font-semibold text-neutral-100">Kling</h3>`)
+	assert.Contains(t, html, `<h3 class="min-w-0 break-words text-sm font-semibold text-ink">Kling</h3>`)
 	assert.Contains(t, html, "設定済み")
 	assert.Contains(t, html, `role="status">保存しました`)
 	assert.Contains(t, html, "<button>操作</button>")
@@ -157,7 +157,7 @@ func TestCardItem_MarksComeBeforeTheStateAndAreBadgesWithWords(t *testing.T) {
 	}
 	html := render(t, settingsui.CardItem(card))
 
-	assert.Contains(t, html, `class="flex min-w-0 flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4 chosen"`)
+	assert.Contains(t, html, `class="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-surface p-4 chosen"`)
 	assert.Less(t, strings.Index(html, "非公式"), strings.Index(html, "商用注意"))
 	assert.Less(t, strings.Index(html, "商用注意"), strings.Index(html, "オフ"))
 

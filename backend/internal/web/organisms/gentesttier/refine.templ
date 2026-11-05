@@ -10,15 +10,15 @@ templ Refine(d Data) {
 	<input type="hidden" name={ FieldTier } value={ TierDetail }/>
 	<input type="hidden" name={ FieldKeepIntent } value={ d.KeepIntent }/>
 	<input type="hidden" name={ FieldKeepQuality } value={ d.KeepQuality }/>
-	<section class="flex flex-col gap-2 rounded-md border border-neutral-800 p-3 text-sm" aria-labelledby="gt-refine-title" data-gt-refine data-testid="gt-refine">
+	<section class="flex flex-col gap-2 rounded-md border border-border p-3 text-sm" aria-labelledby="gt-refine-title" data-gt-refine data-testid="gt-refine">
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<h2 id="gt-refine-title" class="text-sm font-medium text-neutral-200">こだわり</h2>
+			<h2 id="gt-refine-title" class="text-sm font-medium text-ink">こだわり</h2>
 			@atoms.SmallButton(atoms.ToneNeutral, "全部を元に戻す", templ.Attributes{"type": "button", "hidden": true, "data-gt-reset-all": "", "data-testid": "gt-reset-all"})
 		</div>
 		if d.Carried != "" {
-			<p class="text-xs text-neutral-300" data-testid="gt-carried">{ d.Carried }</p>
+			<p class="text-xs text-ink" data-testid="gt-carried">{ d.Carried }</p>
 		}
-		<p class="text-xs text-neutral-400" data-gt-refine-empty data-testid="gt-refine-empty">変えた項目はまだありません。変えると、ここに並び、元に戻せます。</p>
+		<p class="text-xs text-mute" data-gt-refine-empty data-testid="gt-refine-empty">変えた項目はまだありません。変えると、ここに並び、元に戻せます。</p>
 		<ul class="flex flex-col gap-1" data-gt-refine-list data-testid="gt-refine-list" aria-live="polite"></ul>
 	</section>
 }

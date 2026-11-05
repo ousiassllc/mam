@@ -11,7 +11,7 @@ import (
 // it.
 templ sectionTitle(id, title string, explanation templ.Component) {
 	@help.Row(help.ID(title), title, explanation) {
-		<span id={ id } class="text-sm font-medium text-neutral-200">{ title }</span>
+		<span id={ id } class="text-sm font-medium text-ink">{ title }</span>
 	}
 }
 
@@ -52,8 +52,8 @@ templ modelsHelp(c Compose) {
 	<ul class="mt-2 flex flex-col gap-1.5" data-testid="gt-models-help">
 		for _, m := range c.Models {
 			<li class="break-words">
-				<span class="text-neutral-100">{ m.Label }</span>: { modelNote(m) }
-				<span class="block text-neutral-400" data-testid="gt-models-help-license">商用利用: { m.Answer.Level.Label() } ／ { m.Answer.Detail() }</span>
+				<span class="text-ink">{ m.Label }</span>: { modelNote(m) }
+				<span class="block text-mute" data-testid="gt-models-help-license">商用利用: { m.Answer.Level.Label() } ／ { m.Answer.Detail() }</span>
 			</li>
 		}
 	</ul>

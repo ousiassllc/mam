@@ -82,27 +82,27 @@ func Summary(c Card) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"flex min-w-0 flex-1 flex-col gap-0.5\"><span class=\"break-words text-sm font-semibold text-neutral-100\" data-mp-name>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"flex min-w-0 flex-1 flex-col gap-0.5\"><span class=\"break-words text-sm font-semibold text-ink\" data-mp-name>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 24, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 24, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span> <span class=\"break-words text-xs text-neutral-400\" data-testid=\"model-meta\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span> <span class=\"break-words text-xs text-mute\" data-testid=\"model-meta\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(c.Meta)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 25, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 25, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -153,14 +153,14 @@ func Summary(c Card) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if c.Note != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"break-words text-xs text-amber-300\" data-testid=\"model-note\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"break-words text-xs text-warning\" data-testid=\"model-note\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(c.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 45, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 45, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -308,7 +308,7 @@ func PickItem(c Card) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var12 = []any{"flex flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-3 pr-8 text-sm", pick.Glow}
+			var templ_7745c5c3_Var12 = []any{"flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 pr-8 text-sm", pick.Glow}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var12...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -334,12 +334,12 @@ func PickItem(c Card) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span> <span class=\"pointer-events-none absolute right-3 top-3 hidden text-indigo-300 peer-checked:block\" aria-hidden=\"true\" data-card-mark>✓</span></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span> <span class=\"pointer-events-none absolute right-3 top-3 hidden text-accent peer-checked:block\" aria-hidden=\"true\" data-card-mark>✓</span></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			var templ_7745c5c3_Var14 = []any{"flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-shadow hover:border-indigo-400 hover:shadow-[0_0_12px_1px] hover:shadow-indigo-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none", chooseState(c)}
+			var templ_7745c5c3_Var14 = []any{"flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-shadow hover:border-accent focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none", chooseState(c)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var14...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -443,7 +443,7 @@ func PickItem(c Card) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"flex flex-wrap items-center gap-x-2 px-1 text-xs text-neutral-400\" data-testid=\"model-reason\"><span class=\"break-words\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"flex flex-wrap items-center gap-x-2 px-1 text-xs text-mute\" data-testid=\"model-reason\"><span class=\"break-words\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -461,14 +461,14 @@ func PickItem(c Card) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if c.Reason.Route != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<a class=\"underline hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<a class=\"underline hover:text-ink focus-visible:focus-ring\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var21 templ.SafeURL
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(c.Reason.Route))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 92, Col: 163}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 92, Col: 102}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -481,7 +481,7 @@ func PickItem(c Card) templ.Component {
 				var templ_7745c5c3_Var22 string
 				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(c.Reason.RouteLabel())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 92, Col: 222}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 92, Col: 161}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 				if templ_7745c5c3_Err != nil {

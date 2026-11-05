@@ -86,18 +86,18 @@ templ Section(l List) {
 		}
 	>
 		<div class="flex items-center justify-between gap-3">
-			<p class="text-sm text-neutral-300" data-testid="jobs-summary">実行中 { itoa(l.Running) } 件</p>
+			<p class="text-sm text-ink" data-testid="jobs-summary">実行中 { itoa(l.Running) } 件</p>
 			@refresh.Bar(l.Refresh, ListID, l.UpdatedAt)
 		</div>
 		if l.Error != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="jobs-error">{ l.Error }</p>
+			<p class="text-sm text-danger" role="alert" data-testid="jobs-error">{ l.Error }</p>
 		} else if len(l.Rows) == 0 {
-			<p class="text-sm text-neutral-400" data-testid="jobs-empty">ジョブはまだありません。モデルの導入や生成テスト、Shot の生成を始めると、ここに出ます。</p>
+			<p class="text-sm text-mute" data-testid="jobs-empty">ジョブはまだありません。モデルの導入や生成テスト、Shot の生成を始めると、ここに出ます。</p>
 		}
 		if len(l.Rows) > 0 {
 			<ul class="flex flex-col gap-3">
 				for _, r := range l.Rows {
-					<li class="flex flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-3" data-testid="jobs-item" data-state={ r.StateText }>
+					<li class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3" data-testid="jobs-item" data-state={ r.StateText }>
 						@row(r)
 					</li>
 				}
@@ -108,28 +108,28 @@ templ Section(l List) {
 
 templ row(r Row) {
 	<div class="flex flex-wrap items-center gap-2">
-		<span class="text-sm font-medium text-neutral-100" data-testid="jobs-label">{ r.Label }</span>
+		<span class="text-sm font-medium text-ink" data-testid="jobs-label">{ r.Label }</span>
 		@atoms.Badge(r.Tone, r.StateText)
-		<span class="ml-auto text-xs text-neutral-400" data-testid="jobs-started">{ r.StartedAt }</span>
+		<span class="ml-auto text-xs text-mute" data-testid="jobs-started">{ r.StartedAt }</span>
 	</div>
 	if r.Subject != "" {
-		<p class="break-words text-sm text-neutral-300" data-testid="jobs-subject">{ r.Subject }</p>
+		<p class="break-words text-sm text-ink" data-testid="jobs-subject">{ r.Subject }</p>
 	}
 	if r.Progress != nil {
 		<div class="flex flex-col gap-1" data-testid="jobs-progress">
 			if r.Progress.Known() {
 				<progress class="h-2 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
-				<p class="break-words text-xs text-neutral-300">{ itoa(r.Progress.Percent) }%<span class="text-neutral-400">{ progressText(r.Progress.Text) }</span></p>
+				<p class="break-words text-xs text-ink">{ itoa(r.Progress.Percent) }%<span class="text-mute">{ progressText(r.Progress.Text) }</span></p>
 			} else {
-				<p class="break-words text-xs text-neutral-300">{ r.Progress.Text }</p>
+				<p class="break-words text-xs text-ink">{ r.Progress.Text }</p>
 			}
 		</div>
 	}
 	if r.Error != "" {
-		<p class="break-words text-xs text-red-300" data-testid="jobs-failure">{ r.Error }</p>
+		<p class="break-words text-xs text-danger" data-testid="jobs-failure">{ r.Error }</p>
 	}
 	if r.NextSteps != "" {
-		<p class="break-words text-xs text-neutral-300" data-testid="jobs-next-steps">{ r.NextSteps }</p>
+		<p class="break-words text-xs text-ink" data-testid="jobs-next-steps">{ r.NextSteps }</p>
 	}
 	if r.Href != "" {
 		<a
@@ -137,7 +137,7 @@ templ row(r Row) {
 				id={ "jobs-open-" + r.ID }
 			}
 			href={ templ.SafeURL(r.Href) }
-			class="self-start text-sm text-indigo-300 underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+			class="self-start text-sm text-accent underline decoration-mute focus-visible:focus-ring"
 			aria-label={ "開く: " + r.name() }
 			data-testid="jobs-open"
 		>開く</a>

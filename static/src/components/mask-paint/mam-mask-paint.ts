@@ -6,9 +6,9 @@ import { canvasSize } from './mask-size';
 type Point = { x: number; y: number };
 
 const BUTTON =
-  'inline-flex items-center justify-center rounded-md border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 ' +
-  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950';
-const SELECTED = 'border-indigo-400 bg-indigo-500/20';
+  'inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium text-ink transition hover:bg-accent-soft ' +
+  'focus-visible:focus-ring';
+const SELECTED = 'border-accent bg-accent-soft';
 const MAX_SIZE = 128;
 
 /**
@@ -268,7 +268,7 @@ export class MamMaskPaint extends LitElement {
           ${this.toolButton('筆', 'brush')} ${this.toolButton('消しゴム', 'eraser')}
           <button type="button" class=${BUTTON} @click=${() => this.clear()}>全部消す</button>
         </div>
-        <label class="flex items-center gap-2 text-xs text-neutral-400">
+        <label class="flex items-center gap-2 text-xs text-mute">
           太さ
           <input
             type="range"

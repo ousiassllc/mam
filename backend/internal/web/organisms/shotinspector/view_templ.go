@@ -50,7 +50,7 @@ func SpecSection(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Spec == nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-neutral-400\">Shot Spec はまだありません。生成を始めると AI が作成します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-mute\">Shot Spec はまだありません。生成を始めると AI が作成します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -60,14 +60,14 @@ func SpecSection(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, r := range specRows(*d.Spec) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<dt class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<dt class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(r[0])
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shotinspector/view.templ`, Line: 27, Col: 48}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shotinspector/view.templ`, Line: 27, Col: 41}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -110,7 +110,7 @@ func SpecSection(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" hx-target=\"#shot-spec\" hx-swap=\"outerHTML\" class=\"flex flex-col gap-2\"><label for=\"shot-spec-text\" class=\"text-xs text-neutral-400\">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" hx-target=\"#shot-spec\" hx-swap=\"outerHTML\" class=\"flex flex-col gap-2\"><label for=\"shot-spec-text\" class=\"text-xs text-mute\">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -123,14 +123,14 @@ func SpecSection(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.SpecError != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm text-red-300\" role=\"alert\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm text-danger\" role=\"alert\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(d.SpecError)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shotinspector/view.templ`, Line: 41, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shotinspector/view.templ`, Line: 41, Col: 62}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -154,7 +154,7 @@ func SpecSection(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-neutral-400\" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-mute\" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -231,7 +231,7 @@ func ReferencePackSection(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Pack) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-sm text-neutral-400\">Reference Pack はまだありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-sm text-mute\">Reference Pack はまだありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -267,7 +267,7 @@ func ReferencePackSection(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if r.LibraryItem != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<span class=\"text-xs text-neutral-400\">（ライブラリから追加）</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<span class=\"text-xs text-mute\">（ライブラリから追加）</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -283,7 +283,7 @@ func ReferencePackSection(d Data) templ.Component {
 			}
 		}
 		if !d.Shot.State.CanPinReference() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-neutral-400\" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-mute\" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -301,7 +301,7 @@ func ReferencePackSection(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" hx-target=\"#reference-pack\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" class=\"flex flex-wrap items-center gap-2\"><label for=\"pin-reference\" class=\"text-xs text-neutral-400\">ライブラリの参照画像を追加</label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" hx-target=\"#reference-pack\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" class=\"flex flex-wrap items-center gap-2\"><label for=\"pin-reference\" class=\"text-xs text-mute\">ライブラリの参照画像を追加</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -436,7 +436,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</p><p class=\"text-sm text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</p><p class=\"text-sm text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -488,7 +488,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" class=\"mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100\">Branch を作る</a></header><section aria-label=\"AUTO / MANUAL / LOCK\" class=\"flex flex-col gap-2\"><h3 class=\"text-sm font-semibold\">Locks</h3><p class=\"text-xs text-neutral-400\">AUTO は AI が決定、MANUAL はあなたの指定、LOCK は現在値を固定して AI の変更を禁止します。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" class=\"mt-1 inline-block text-xs text-mute underline hover:text-ink\">Branch を作る</a></header><section aria-label=\"AUTO / MANUAL / LOCK\" class=\"flex flex-col gap-2\"><h3 class=\"text-sm font-semibold\">Locks</h3><p class=\"text-xs text-mute\">AUTO は AI が決定、MANUAL はあなたの指定、LOCK は現在値を固定して AI の変更を禁止します。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -523,7 +523,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" hx-target=\"#shot-inspector\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" class=\"flex flex-col gap-2\"><label for=\"director-command\" class=\"text-xs text-neutral-400\">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" hx-target=\"#shot-inspector\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" class=\"flex flex-col gap-2\"><label for=\"director-command\" class=\"text-xs text-mute\">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -566,12 +566,12 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</p><p class=\"text-xs text-neutral-400\">モデル別のプロンプトは各 Take の「生成の経緯」で確認できます。</p></section><section aria-label=\"Take 一覧\" class=\"flex flex-col gap-2\"><h3 class=\"text-sm font-semibold\">Take List / Judge Results</h3>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</p><p class=\"text-xs text-mute\">モデル別のプロンプトは各 Take の「生成の経緯」で確認できます。</p></section><section aria-label=\"Take 一覧\" class=\"flex flex-col gap-2\"><h3 class=\"text-sm font-semibold\">Take List / Judge Results</h3>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Takes) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"text-sm text-neutral-400\">Take はまだありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"text-sm text-mute\">Take はまだありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -602,14 +602,14 @@ func View(d Data) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<span class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<span class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(t.ModelName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shotinspector/view.templ`, Line: 168, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shotinspector/view.templ`, Line: 168, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
@@ -644,7 +644,7 @@ func View(d Data) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					if len(res.Issues) > 0 {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<ul class=\"list-disc pl-5 text-xs text-neutral-300\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<ul class=\"list-disc pl-5 text-xs text-ink\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}

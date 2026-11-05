@@ -29,9 +29,9 @@ body
    └ div#content           … 各ページの <main>
 ```
 
-- 項目は `<a>` のリンク。現在の画面は `aria-current="page"`（強調: 左の `indigo-400` の線・`neutral-800` の面・`indigo-300` のアイコン）。**強調は色だけにしない**（太字と左の線）。
+- 項目は `<a>` のリンク。現在の画面は `aria-current="page"`（強調: 左の `accent` の線・`accent-soft` の面・`accent` のアイコン）。**強調は色だけにしない**（太字と左の線）。
 - たたんだとき、ラベルは `sr-only`（視覚的にだけ隠し、スクリーンリーダーには読まれる）。マウスのために `title` にラベルを持つ。
-- キーボード: Tab でリンクを順に、Enter で開く。たたむボタンは Enter / Space。フォーカスの輪は共通の `indigo-400`（[shared-ui-parts.md](shared-ui-parts.md) §1）。メニューのランドマークは 1 つ（`<nav aria-label="メニュー">`）。Project の一覧は Project 名で名付けた `<ul>`。
+- キーボード: Tab でリンクを順に、Enter で開く。たたむボタンは Enter / Space。フォーカスの輪は共通の `focus-ring`（`--focus`）（[shared-ui-parts.md](shared-ui-parts.md) §1）。メニューのランドマークは 1 つ（`<nav aria-label="メニュー">`）。Project の一覧は Project 名で名付けた `<ul>`。
 - Series の画面は Project ではないので、メニューは「プロジェクト」が現在。Project が Series の Episode のとき（`Project.SeriesID` がある）は、Project の項目の最後に「Series」（その Series のページ）を足す。
 
 ## 3. ページの枠（`molecules/pagehead`）
@@ -41,7 +41,7 @@ body
 | 部品 | 内容 |
 |------|------|
 | `Main` | `<main class="mx-auto flex w-full max-w-… flex-col gap-6 p-4 md:p-8">`。幅は `Narrow`（3xl）・`Medium`（4xl）・`Wide`（5xl）・`Wider`（6xl）・`Full`（7xl）。ブロックの間隔は 1 か所（`gap-6`）。狭い窓では余白 1rem |
-| `Header` | `<h1 class="text-xl font-semibold">`（全画面で 1 つ・同じ大きさ）。副題は `text-sm text-neutral-400`（Project 名など）。説明があれば題の横の「?」（`help.Row`、[shared-ui-parts.md](shared-ui-parts.md) §9） |
+| `Header` | `<h1 class="text-xl font-semibold">`（全画面で 1 つ・同じ大きさ）。副題は `text-sm text-mute`（Project 名など）。説明があれば題の横の「?」（`help.Row`、[shared-ui-parts.md](shared-ui-parts.md) §9） |
 
 - **戻るリンクは持たない**。メニューが戻り道（`atoms.BackLink` は、メニューが持たない上位だけ: レビューの 1 件 → 一覧、Shot の Inspector → Scene / Shot、Series の Notes → Series）。
 - 説明の段落は「?」ヘルプへ移した（ワークフロー・ノード・モデルマネージャー・設定・Project の設定・レビュー・Notes）。画面の文字は減っている。

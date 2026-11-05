@@ -39,19 +39,19 @@ func SeriesMembership(p domain.Project) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section aria-label=\"Series\" class=\"mb-6 flex flex-col gap-2 rounded-md border border-neutral-700 p-3\"><h2 class=\"text-sm font-semibold text-neutral-200\">Series</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section aria-label=\"Series\" class=\"mb-6 flex flex-col gap-2 rounded-md border border-border p-3\"><h2 class=\"text-sm font-semibold text-ink\">Series</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if p.SeriesID != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<a class=\"text-sm text-indigo-300 underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<a class=\"text-sm text-accent underline decoration-mute\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 templ.SafeURL
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Series(p.SeriesID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_membership.templ`, Line: 17, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_membership.templ`, Line: 17, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -64,7 +64,7 @@ func SeriesMembership(p domain.Project) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(p.EpisodeNumber))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_membership.templ`, Line: 17, Col: 189}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_membership.templ`, Line: 17, Col: 201}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -101,7 +101,7 @@ func SeriesMembership(p domain.Project) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"series-name\">Series 名（この Project の Character / Product / Location を正本として登録します）")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"series-name\">Series 名（この Project の Character / Product / Location を正本として登録します）")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

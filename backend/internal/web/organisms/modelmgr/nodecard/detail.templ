@@ -34,43 +34,43 @@ templ NodeDetail(n Node) {
 			@commercial.Badge(n.Commercial)
 		</div>
 		@commercial.Note(n.Commercial)
-		<p class="text-sm text-amber-300" role="note" data-testid="mm-node-security">{ n.SecurityNotice }</p>
+		<p class="text-sm text-warning" role="note" data-testid="mm-node-security">{ n.SecurityNotice }</p>
 		if n.Blocked != "" {
-			<p class="text-sm text-amber-300" data-testid="mm-node-blocked-detail">導入できない理由: { n.Blocked }</p>
+			<p class="text-sm text-warning" data-testid="mm-node-blocked-detail">導入できない理由: { n.Blocked }</p>
 		}
 		if n.Detail != "" {
-			<p class="text-sm text-amber-300">{ n.Detail }</p>
+			<p class="text-sm text-warning">{ n.Detail }</p>
 		}
-		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-neutral-300" data-testid="mm-node-facts">
-			<div class="col-span-2"><dt class="text-neutral-400">取得元（GitHub のコミットに固定）</dt><dd class="break-all"><a class="underline" href={ templ.SafeURL(n.Repo) } target="_blank" rel="noopener noreferrer">{ n.Repo }</a></dd></div>
-			<div class="col-span-2"><dt class="text-neutral-400">コミット</dt><dd class="break-all"><code data-testid="mm-node-commit">{ n.Commit }</code></dd></div>
-			<div class="col-span-2"><dt class="text-neutral-400">アーカイブの SHA-256（{ n.Size }。展開後 { n.Extracted }）</dt><dd class="break-all"><code data-testid="mm-sha256">{ n.ArchiveSHA }</code></dd></div>
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink" data-testid="mm-node-facts">
+			<div class="col-span-2"><dt class="text-mute">取得元（GitHub のコミットに固定）</dt><dd class="break-all"><a class="underline" href={ templ.SafeURL(n.Repo) } target="_blank" rel="noopener noreferrer">{ n.Repo }</a></dd></div>
+			<div class="col-span-2"><dt class="text-mute">コミット</dt><dd class="break-all"><code data-testid="mm-node-commit">{ n.Commit }</code></dd></div>
+			<div class="col-span-2"><dt class="text-mute">アーカイブの SHA-256（{ n.Size }。展開後 { n.Extracted }）</dt><dd class="break-all"><code data-testid="mm-sha256">{ n.ArchiveSHA }</code></dd></div>
 			if n.InstalledCommit != "" {
-				<div class="col-span-2"><dt class="text-neutral-400">導入したコミット（{ n.InstalledAt }）</dt><dd class="break-all"><code>{ n.InstalledCommit }</code></dd></div>
+				<div class="col-span-2"><dt class="text-mute">導入したコミット（{ n.InstalledAt }）</dt><dd class="break-all"><code>{ n.InstalledCommit }</code></dd></div>
 			}
 			<div class="min-w-0">
-				<dt class="text-neutral-400">ライセンス（コード）</dt>
+				<dt class="text-mute">ライセンス（コード）</dt>
 				<dd class="break-words"><a class="underline" href={ templ.SafeURL(n.LicenseURL) } target="_blank" rel="noopener noreferrer">{ n.LicenseName }</a></dd>
 			</div>
-			<div><dt class="text-neutral-400">商用利用</dt><dd data-testid="mm-node-commercial">{ n.LicenseCommercial }</dd></div>
-			<div class="col-span-2"><dt class="text-neutral-400">ライセンスの確認（{ n.CheckedAt }）</dt><dd class="break-words">{ n.LicenseSummary }</dd></div>
-			<div class="col-span-2"><dt class="text-neutral-400">必要な Python パッケージ</dt><dd class="break-words" data-testid="mm-node-python">{ n.PythonRequires }</dd></div>
+			<div><dt class="text-mute">商用利用</dt><dd data-testid="mm-node-commercial">{ n.LicenseCommercial }</dd></div>
+			<div class="col-span-2"><dt class="text-mute">ライセンスの確認（{ n.CheckedAt }）</dt><dd class="break-words">{ n.LicenseSummary }</dd></div>
+			<div class="col-span-2"><dt class="text-mute">必要な Python パッケージ</dt><dd class="break-words" data-testid="mm-node-python">{ n.PythonRequires }</dd></div>
 			if n.PythonOptional != "" {
-				<div class="col-span-2"><dt class="text-neutral-400">一部のノードだけが使うパッケージ（無いとそのノードが動かない）</dt><dd class="break-words">{ n.PythonOptional }</dd></div>
+				<div class="col-span-2"><dt class="text-mute">一部のノードだけが使うパッケージ（無いとそのノードが動かない）</dt><dd class="break-words">{ n.PythonOptional }</dd></div>
 			}
-			<div class="col-span-2"><dt class="text-neutral-400">追加されるノード（ComfyUI の /object_info で確かめるもの）</dt><dd class="break-words">{ n.Classes }</dd></div>
+			<div class="col-span-2"><dt class="text-mute">追加されるノード（ComfyUI の /object_info で確かめるもの）</dt><dd class="break-words">{ n.Classes }</dd></div>
 		</dl>
 		if n.Limits != "" {
-			<p class="text-xs text-amber-300" data-testid="mm-node-limits">{ n.Limits }</p>
+			<p class="text-xs text-warning" data-testid="mm-node-limits">{ n.Limits }</p>
 		}
 		if len(n.Models) > 0 {
-			<p class="text-xs text-neutral-300" data-testid="mm-node-models-detail">このノードを使うモデル: { modelNames(n.Models) }</p>
+			<p class="text-xs text-ink" data-testid="mm-node-models-detail">このノードを使うモデル: { modelNames(n.Models) }</p>
 		}
 		<section class="flex flex-col gap-1" aria-labelledby="mm-node-review-title">
 			<h3 id="mm-node-review-title" class="text-sm font-semibold">ソースの確認（{ n.ReviewedAt }）</h3>
-			<p class="text-xs text-neutral-300" data-testid="mm-node-review">{ n.Review }</p>
+			<p class="text-xs text-ink" data-testid="mm-node-review">{ n.Review }</p>
 		</section>
-		<p class="text-xs text-neutral-400">追加ノードは mam とは別のプログラムで、mam には含まれません。固定のコミットの GitHub のアーカイブを実行時に取得し、SHA-256 を確かめてから、モデルと同じ導入先（comfyui\data\custom_nodes）に展開します。pip は実行せず、同梱の Python 環境にあるパッケージだけで動くノードに限ります。</p>
+		<p class="text-xs text-mute">追加ノードは mam とは別のプログラムで、mam には含まれません。固定のコミットの GitHub のアーカイブを実行時に取得し、SHA-256 を確かめてから、モデルと同じ導入先（comfyui\data\custom_nodes）に展開します。pip は実行せず、同梱の Python 環境にあるパッケージだけで動くノードに限ります。</p>
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
 		}

@@ -71,14 +71,14 @@ func Form(p Page) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if p.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"gt-inpaint-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"gt-inpaint-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(p.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 27, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 27, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -90,14 +90,14 @@ func Form(p Page) templ.Component {
 			}
 		}
 		if p.Notice != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-neutral-200\" role=\"status\" data-testid=\"gt-inpaint-notice\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\" role=\"status\" data-testid=\"gt-inpaint-notice\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Notice)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 30, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 30, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -133,14 +133,14 @@ func Form(p Page) templ.Component {
 		}
 		if p.SourceRef != "" {
 			if p.SourceLabel != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-xs text-neutral-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-xs text-mute\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(p.SourceLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 39, Col: 56}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 39, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -169,7 +169,7 @@ func Form(p Page) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-inpaint-source\"><span>画像ファイル（PNG・JPEG・WebP）。履歴やプロジェクトの画像は、その画面のリンクからも開けます。</span> <input id=\"gt-inpaint-source\" class=\"text-sm text-neutral-200\" type=\"file\" name=\"source\" accept=\"image/png,image/jpeg,image/webp\"></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-inpaint-source\"><span>画像ファイル（PNG・JPEG・WebP）。履歴やプロジェクトの画像は、その画面のリンクからも開けます。</span> <input id=\"gt-inpaint-source\" class=\"text-sm text-ink\" type=\"file\" name=\"source\" accept=\"image/png,image/jpeg,image/webp\"></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -200,7 +200,7 @@ func Form(p Page) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" source-input=\"gt-inpaint-source\" data-testid=\"gt-mask\"></mam-mask-paint> <input type=\"file\" name=\"mask\" accept=\"image/png\" hidden data-testid=\"gt-inpaint-mask\"></div><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-inpaint-prompt\"><span>プロンプト（描き直した部分の内容）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" source-input=\"gt-inpaint-source\" data-testid=\"gt-mask\"></mam-mask-paint> <input type=\"file\" name=\"mask\" accept=\"image/png\" hidden data-testid=\"gt-inpaint-mask\"></div><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-inpaint-prompt\"><span>プロンプト（描き直した部分の内容）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -208,7 +208,7 @@ func Form(p Page) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-inpaint-negative\"><span>ネガティブ（省略可）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-inpaint-negative\"><span>ネガティブ（省略可）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -216,7 +216,7 @@ func Form(p Page) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"gt-inpaint-denoise\"><span>描き直しの強さ（")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-inpaint-denoise\"><span>描き直しの強さ（")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -247,7 +247,7 @@ func Form(p Page) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !p.HasModel {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"text-sm text-neutral-400\" data-testid=\"gt-inpaint-none\">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"text-sm text-mute\" data-testid=\"gt-inpaint-none\">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -334,7 +334,7 @@ func Confirm(c Box) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"flex flex-col gap-3 rounded-md border border-indigo-400 p-4\" data-testid=\"gt-inpaint-confirm\"><h2 class=\"text-sm font-medium\">実行の確認</h2><p class=\"text-sm\">全部で <strong>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"flex flex-col gap-3 rounded-md border border-accent p-4\" data-testid=\"gt-inpaint-confirm\"><h2 class=\"text-sm font-medium\">実行の確認</h2><p class=\"text-sm\">全部で <strong>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -365,7 +365,7 @@ func Confirm(c Box) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(c.Warnings) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<ul class=\"list-disc pl-5 text-xs text-amber-300\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<ul class=\"list-disc pl-5 text-xs text-warning\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -394,14 +394,14 @@ func Confirm(c Box) templ.Component {
 			}
 		}
 		if c.Over != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-sm text-red-300\" role=\"alert\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-sm text-danger\" role=\"alert\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(c.Over)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 96, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 96, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -523,14 +523,14 @@ func Failed(msg string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"rounded-md border border-red-500/60 p-4\" data-testid=\"gt-inpaint-failed\"><p class=\"text-sm text-red-300\" role=\"alert\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"rounded-md border border-danger/60 p-4\" data-testid=\"gt-inpaint-failed\"><p class=\"text-sm text-danger\" role=\"alert\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 118, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 118, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -579,14 +579,14 @@ func Started(history string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"rounded-md border border-emerald-500/60 p-4\" data-testid=\"gt-inpaint-started\"><p class=\"text-sm text-emerald-300\" role=\"status\">描き直しを始めました。結果は履歴に、元の画像とは別のファイルで残ります。</p><a class=\"text-sm text-neutral-300 underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"rounded-md border border-success/60 p-4\" data-testid=\"gt-inpaint-started\"><p class=\"text-sm text-success\" role=\"status\">描き直しを始めました。結果は履歴に、元の画像とは別のファイルで残ります。</p><a class=\"text-sm text-ink underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var29 templ.SafeURL
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(history))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 126, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentestinpaint/form.templ`, Line: 126, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {

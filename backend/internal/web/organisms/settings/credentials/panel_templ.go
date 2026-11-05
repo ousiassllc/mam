@@ -95,20 +95,20 @@ func Panel(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Unavailable {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-amber-300\" role=\"alert\" data-testid=\"credential-unavailable\">キーストアを利用できません。OS のキーチェーン（Secret Service など）を確認してから、画面を再読み込みしてください</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-warning\" role=\"alert\" data-testid=\"credential-unavailable\">キーストアを利用できません。OS のキーチェーン（Secret Service など）を確認してから、画面を再読み込みしてください</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if d.Notice != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-emerald-300\" role=\"status\" data-testid=\"credential-notice\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"credential-notice\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(d.Notice)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/credentials/panel.templ`, Line: 29, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/credentials/panel.templ`, Line: 29, Col: 91}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {

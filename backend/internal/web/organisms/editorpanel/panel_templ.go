@@ -220,7 +220,7 @@ func Actions(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"flex flex-col gap-2\" aria-label=\"Audio\"><h3 class=\"text-sm font-semibold\">3. 音声（Audio Director）</h3><p class=\"text-xs text-neutral-400\">Scene の感情と編集テンポに合わせて、セリフ・ナレーション（ElevenLabs TTS）に加えて Quality Policy の範囲で BGM・Ambience・SE・Foley（ElevenLabs）と Lip Sync（Sync Labs。MAX QUALITY のみ）を作り、 Take の音声とミックスして −14 LUFS に整えます。作るたびに新しい版になり、Branch ごとに版を管理します。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"flex flex-col gap-2\" aria-label=\"Audio\"><h3 class=\"text-sm font-semibold\">3. 音声（Audio Director）</h3><p class=\"text-xs text-mute\">Scene の感情と編集テンポに合わせて、セリフ・ナレーション（ElevenLabs TTS）に加えて Quality Policy の範囲で BGM・Ambience・SE・Foley（ElevenLabs）と Lip Sync（Sync Labs。MAX QUALITY のみ）を作り、 Take の音声とミックスして −14 LUFS に整えます。作るたびに新しい版になり、Branch ごとに版を管理します。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -327,7 +327,7 @@ func exportSelect(label, name, current string, options []string) templ.Component
 			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<label class=\"flex flex-col gap-1 text-xs text-neutral-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<label class=\"flex flex-col gap-1 text-xs text-mute\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

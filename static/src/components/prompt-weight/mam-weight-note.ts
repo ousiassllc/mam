@@ -39,6 +39,6 @@ export class MamWeightNote extends LitElement {
     const text = this.text();
     return text === ''
       ? nothing
-      : html`<p class="text-xs text-amber-300" role="status" data-testid="gt-weight-caution-text">${text}</p>`;
+      : html`<p class="text-xs text-warning" role="status" data-testid="gt-weight-caution-text">${text}</p>`;
   }
 }

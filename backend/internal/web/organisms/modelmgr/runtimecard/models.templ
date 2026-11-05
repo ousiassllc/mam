@@ -28,7 +28,7 @@ templ RuntimeModels(r Runtime) {
 					@runtimeModel(r, m)
 				}
 			</ul>
-			<p class="text-xs text-neutral-400">選ぶとサーバーを止めます。次に起動するときから、選んだモデルで動きます。そのモデルの重みは、カードの「重みを導入」で取得してください。</p>
+			<p class="text-xs text-mute">選ぶとサーバーを止めます。次に起動するときから、選んだモデルで動きます。そのモデルの重みは、カードの「重みを導入」で取得してください。</p>
 			<div class="flex gap-2">
 				@atoms.Button(atoms.TonePrimary, "このモデルにする", templ.Attributes{"type": "submit", "data-testid": "mm-runtime-model-submit"})
 			</div>
@@ -37,7 +37,7 @@ templ RuntimeModels(r Runtime) {
 }
 
 templ runtimeModel(r Runtime, m Model) {
-	<li class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" data-testid="mm-runtime-model" data-model={ m.ID } data-active={ boolText(m.Active) }>
+	<li class="flex flex-col gap-2 rounded-md border border-border p-3" data-testid="mm-runtime-model" data-model={ m.ID } data-active={ boolText(m.Active) }>
 		<label class="flex items-start gap-2 text-sm">
 			@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldModel, "value": m.ID, "checked": m.Active})
 			<span class="flex flex-col gap-1">
@@ -53,18 +53,18 @@ templ runtimeModel(r Runtime, m Model) {
 						@atoms.Badge(atoms.BadgeWarn, "成人向け相当（非検閲）")
 					}
 				</span>
-				<span class="text-xs text-neutral-300">{ m.Description }</span>
+				<span class="text-xs text-ink">{ m.Description }</span>
 			</span>
 		</label>
-		<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-neutral-300">
-			<div><dt class="text-neutral-400">ダウンロード</dt><dd>{ m.Size }</dd></div>
-			<div><dt class="text-neutral-400">言語</dt><dd>{ m.Languages }</dd></div>
-			<div class="col-span-2"><dt class="text-neutral-400">VRAM の目安</dt><dd data-testid="mm-runtime-model-vram">{ m.VRAM }</dd></div>
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink">
+			<div><dt class="text-mute">ダウンロード</dt><dd>{ m.Size }</dd></div>
+			<div><dt class="text-mute">言語</dt><dd>{ m.Languages }</dd></div>
+			<div class="col-span-2"><dt class="text-mute">VRAM の目安</dt><dd data-testid="mm-runtime-model-vram">{ m.VRAM }</dd></div>
 			if m.VRAMFit != "" {
-				<div class="col-span-2 text-amber-300"><dt>この PC の GPU</dt><dd>{ m.VRAMFit }</dd></div>
+				<div class="col-span-2 text-warning"><dt>この PC の GPU</dt><dd>{ m.VRAMFit }</dd></div>
 			}
 			<div class="col-span-2">
-				<dt class="text-neutral-400">ライセンス</dt>
+				<dt class="text-mute">ライセンス</dt>
 				<dd>
 					if m.LicenseURL != "" {
 						<a class="underline" href={ templ.SafeURL(m.LicenseURL) } target="_blank" rel="noopener noreferrer">{ m.License }</a>
@@ -76,17 +76,17 @@ templ runtimeModel(r Runtime, m Model) {
 			</div>
 		</dl>
 		if len(m.Cautions) > 0 {
-			<ul class="list-disc pl-5 text-xs text-amber-300" data-testid="mm-runtime-model-cautions">
+			<ul class="list-disc pl-5 text-xs text-warning" data-testid="mm-runtime-model-cautions">
 				for _, c := range m.Cautions {
 					<li class="break-words">{ c }</li>
 				}
 			</ul>
 		}
 		if m.Consent != nil {
-			<div class="flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-xs" data-testid="mm-runtime-model-consent">
-				<p class="text-neutral-200">{ m.Consent.Text }</p>
+			<div class="flex flex-col gap-2 rounded-md border border-warning/60 bg-warning/10 p-3 text-xs" data-testid="mm-runtime-model-consent">
+				<p class="text-ink">{ m.Consent.Text }</p>
 				if m.Consent.Accepted {
-					<p class="text-neutral-300">同意済みです（{ m.Consent.Version }）</p>
+					<p class="text-ink">同意済みです（{ m.Consent.Version }）</p>
 				} else {
 					<label class="flex items-start gap-2 text-sm">
 						@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAcceptPrefix + m.ID, "value": m.Consent.Version, "data-testid": "mm-runtime-model-agree"})

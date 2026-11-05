@@ -32,13 +32,13 @@ func unneededText(s domain.StorageSummary) string {
 templ StoragePanel(d StoragePanelData) {
 	<section id="storage-panel" class="flex flex-col gap-3">
 		<dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-			<div class="rounded-md border border-neutral-700 p-3">
-				<dt class="text-xs text-neutral-400">Project のファイル</dt>
+			<div class="rounded-md border border-border p-3">
+				<dt class="text-xs text-mute">Project のファイル</dt>
 				<dd class="text-lg font-semibold" data-testid="asset-bytes">{ domain.FormatBytes(d.Storage.AssetBytes) }</dd>
-				<dd class="text-xs text-neutral-400" data-testid="preview-bytes">{ "プレビューのキャッシュ（全 Project 共通）: " + domain.FormatBytes(d.Storage.PreviewBytes) }</dd>
+				<dd class="text-xs text-mute" data-testid="preview-bytes">{ "プレビューのキャッシュ（全 Project 共通）: " + domain.FormatBytes(d.Storage.PreviewBytes) }</dd>
 			</div>
-			<div class="rounded-md border border-neutral-700 p-3">
-				<dt class="text-xs text-neutral-400">ディスクの空き容量</dt>
+			<div class="rounded-md border border-border p-3">
+				<dt class="text-xs text-mute">ディスクの空き容量</dt>
 				<dd class="text-lg font-semibold" data-testid="free-bytes">
 					if d.Storage.FreeKnown {
 						{ domain.FormatBytes(d.Storage.FreeBytes) }
@@ -47,8 +47,8 @@ templ StoragePanel(d StoragePanelData) {
 					}
 				</dd>
 			</div>
-			<div class="rounded-md border border-neutral-700 p-3">
-				<dt class="text-xs text-neutral-400">不要な Take</dt>
+			<div class="rounded-md border border-border p-3">
+				<dt class="text-xs text-mute">不要な Take</dt>
 				<dd class="text-lg font-semibold" data-testid="unneeded">{ unneededText(d.Storage) }</dd>
 			</div>
 		</dl>
@@ -60,14 +60,14 @@ templ StoragePanel(d StoragePanelData) {
 			</form>
 		}
 		if len(d.Storage.Takes) == 0 {
-			<p class="text-sm text-neutral-400">保存されている Take はありません。</p>
+			<p class="text-sm text-mute">保存されている Take はありません。</p>
 		} else {
-			<ul class="flex flex-col divide-y divide-neutral-800 text-sm">
+			<ul class="flex flex-col divide-y divide-border text-sm">
 				for _, t := range d.Storage.Takes {
 					<li class="flex flex-wrap items-center justify-between gap-2 py-2">
 						<span>
 							{ storedTakeName(t) }
-							<span class="text-neutral-400">{ " · " + t.Status.Label() + " · " + domain.FormatBytes(t.SizeBytes) }</span>
+							<span class="text-mute">{ " · " + t.Status.Label() + " · " + domain.FormatBytes(t.SizeBytes) }</span>
 							if t.Unneeded {
 								@atoms.Badge(atoms.BadgeWarn, "不要")
 							}
@@ -81,7 +81,7 @@ templ StoragePanel(d StoragePanelData) {
 								"hx-confirm": "この Take の動画ファイルを削除します。よろしいですか？",
 							})
 						} else {
-							<span class="text-xs text-neutral-400" data-testid="take-in-use">選択中、または編集・音声のタイムラインで使用中のためアーカイブできません</span>
+							<span class="text-xs text-mute" data-testid="take-in-use">選択中、または編集・音声のタイムラインで使用中のためアーカイブできません</span>
 						}
 					</li>
 				}

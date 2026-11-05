@@ -94,7 +94,7 @@ func BatchBox(b Batch) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"flex flex-col gap-3 rounded-md border border-neutral-700 p-4\" data-testid=\"gt-batch\" data-state=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"flex flex-col gap-3 rounded-md border border-border p-4\" data-testid=\"gt-batch\" data-state=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -159,14 +159,14 @@ func BatchBox(b Batch) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"text-xs text-neutral-400\" data-testid=\"gt-batch-progress\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"text-xs text-mute\" data-testid=\"gt-batch-progress\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(b.Done))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 33, Col: 88}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 33, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -179,7 +179,7 @@ func BatchBox(b Batch) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(b.Total))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 33, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 33, Col: 101}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -192,7 +192,7 @@ func BatchBox(b Batch) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(b.Counts)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 33, Col: 127}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 33, Col: 120}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -203,14 +203,14 @@ func BatchBox(b Batch) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if b.Estimate != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<span class=\"text-xs text-neutral-400\">見積り ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<span class=\"text-xs text-mute\">見積り ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(b.Estimate)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 35, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 35, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -284,12 +284,12 @@ func BatchBox(b Batch) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"overflow-x-auto\" data-keep-scroll=\"gt-grid\"><table class=\"w-full min-w-max border-collapse text-sm\" data-testid=\"gt-grid\"><thead><tr><th class=\"p-2 text-left text-xs font-normal text-neutral-400\">モデル ＼ プロンプト</th>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"overflow-x-auto\" data-keep-scroll=\"gt-grid\"><table class=\"w-full min-w-max border-collapse text-sm\" data-testid=\"gt-grid\"><thead><tr><th class=\"p-2 text-left text-xs font-normal text-mute\">モデル ＼ プロンプト</th>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, c := range b.Cols {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<th class=\"max-w-xs p-2 text-left align-top text-xs font-normal text-neutral-300\" data-testid=\"gt-col\"><span class=\"line-clamp-3 whitespace-pre-wrap break-words\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<th class=\"max-w-xs p-2 text-left align-top text-xs font-normal text-ink\" data-testid=\"gt-col\"><span class=\"line-clamp-3 whitespace-pre-wrap break-words\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -307,14 +307,14 @@ func BatchBox(b Batch) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if c.Negative != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span class=\"mt-1 block text-neutral-400\">ネガティブ: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span class=\"mt-1 block text-mute\">ネガティブ: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(c.Negative)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 62, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/batch.templ`, Line: 62, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -326,7 +326,7 @@ func BatchBox(b Batch) templ.Component {
 				}
 			}
 			if c.English != "" || c.EnglishNegative != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<span class=\"mt-1 block text-neutral-200\" data-testid=\"gt-col-english\">英訳: <span class=\"line-clamp-3 whitespace-pre-wrap break-words\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<span class=\"mt-1 block text-ink\" data-testid=\"gt-col-english\">英訳: <span class=\"line-clamp-3 whitespace-pre-wrap break-words\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -377,7 +377,7 @@ func BatchBox(b Batch) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, r := range b.Rows {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<tr class=\"border-t border-neutral-800\" data-testid=\"gt-row\"><th class=\"p-2 text-left align-top text-xs font-medium text-neutral-200\" scope=\"row\"><span class=\"flex flex-col items-start gap-1\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<tr class=\"border-t border-border\" data-testid=\"gt-row\"><th class=\"p-2 text-left align-top text-xs font-medium text-ink\" scope=\"row\"><span class=\"flex flex-col items-start gap-1\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -51,7 +51,7 @@ func CredentialsBody(status CredentialsStatus, keys credentials.Data, login *cha
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-neutral-300\">生成には、外部モデルの API キーか、ChatGPT のログインのどちらか 1 つ（最低 1 つ）が要ります。使うものを入れてください。入れた値は設定画面と同じ場所に保存され、キーは OS のセキュアストレージに入ります。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-ink\">生成には、外部モデルの API キーか、ChatGPT のログインのどちらか 1 つ（最低 1 つ）が要ります。使うものを入れてください。入れた値は設定画面と同じ場所に保存され、キーは OS のセキュアストレージに入ります。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -108,7 +108,7 @@ func CredentialsStatusLine(s CredentialsStatus) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" role=\"status\" class=\"flex items-center gap-2 rounded-md border border-neutral-800 px-3 py-2 text-sm\" hx-get=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" role=\"status\" class=\"flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -160,7 +160,7 @@ func ModelsBody(text llm.Data, images media.Data) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-neutral-300\">既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。</p><p class=\"text-xs text-neutral-400\">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p><details class=\"rounded-md border border-neutral-800 px-3 py-2\" data-testid=\"onboarding-llm\"><summary class=\"cursor-pointer text-sm font-medium\">テキスト生成（LLM）の割り当て</summary><div class=\"mt-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\">既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。</p><p class=\"text-xs text-mute\">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p><details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"onboarding-llm\"><summary class=\"cursor-pointer text-sm font-medium\">テキスト生成（LLM）の割り当て</summary><div class=\"mt-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -168,7 +168,7 @@ func ModelsBody(text llm.Data, images media.Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></details> <details class=\"rounded-md border border-neutral-800 px-3 py-2\" data-testid=\"onboarding-media\"><summary class=\"cursor-pointer text-sm font-medium\">画像・動画モデルの割り当て</summary><div class=\"mt-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></details> <details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"onboarding-media\"><summary class=\"cursor-pointer text-sm font-medium\">画像・動画モデルの割り当て</summary><div class=\"mt-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -230,12 +230,12 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-neutral-300\">ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。設定画面の「ffmpeg」でパスを指定していればそのパスを、無ければ mam を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探し、どこにも無ければ mam でダウンロードして入れたものを使います。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-ink\">ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。設定画面の「ffmpeg」でパスを指定していればそのパスを、無ければ mam を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探し、どこにも無ければ mam でダウンロードして入れたものを使います。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if f.Found() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-1 rounded-md border border-emerald-500/60 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-found\"><p class=\"text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-1 rounded-md border border-success/60 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-found\"><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -243,7 +243,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"ml-2\">ffmpeg と ffprobe を使えます。</span></p><p class=\"text-xs text-neutral-400\">ffmpeg: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"ml-2\">ffmpeg と ffprobe を使えます。</span></p><p class=\"text-xs text-mute\">ffmpeg: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -272,13 +272,13 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(f.FFmpeg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 107, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 107, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</code></p><p class=\"text-xs text-neutral-400\">ffprobe: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</code></p><p class=\"text-xs text-mute\">ffprobe: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -307,18 +307,18 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(f.FFprobe)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 108, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 108, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</code></p><p class=\"text-xs text-neutral-400\">mam を起動したあとに入れたときは、mam を再起動すると反映されます（ffmpeg は起動時に探します）。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</code></p><p class=\"text-xs text-mute\">mam を起動したあとに入れたときは、mam を再起動すると反映されます（ffmpeg は起動時に探します）。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"flex flex-col gap-3 rounded-md border border-amber-500/60 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-missing\"><p class=\"text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"flex flex-col gap-3 rounded-md border border-warning/60 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-missing\"><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -348,7 +348,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"text-sm text-neutral-300\" data-testid=\"onboarding-ffmpeg-manual\">自分で入れるときは、次のとおりです。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"text-sm text-ink\" data-testid=\"onboarding-ffmpeg-manual\">自分で入れるときは、次のとおりです。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -357,7 +357,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"text-sm text-neutral-300\">入れたあとは、mam を一度終了して、起動し直してください（ffmpeg は起動時に探します）。</p><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"text-sm text-ink\">入れたあとは、mam を一度終了して、起動し直してください（ffmpeg は起動時に探します）。</p><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -435,7 +435,7 @@ func installGuide(os OS) templ.Component {
 		ctx = templ.ClearChildren(ctx)
 		switch os {
 		case OSWindows:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"flex flex-col gap-1\" data-testid=\"onboarding-ffmpeg-windows\"><p class=\"text-sm text-neutral-300\">Windows では、PowerShell（またはコマンドプロンプト）で次のコマンドを実行します（winget は Windows 11 と、最近の Windows 10 に入っています）。</p><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"flex flex-col gap-1\" data-testid=\"onboarding-ffmpeg-windows\"><p class=\"text-sm text-ink\">Windows では、PowerShell（またはコマンドプロンプト）で次のコマンドを実行します（winget は Windows 11 と、最近の Windows 10 に入っています）。</p><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -462,7 +462,7 @@ func installGuide(os OS) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		case OSMac:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"flex flex-col gap-1\" data-testid=\"onboarding-ffmpeg-macos\"><p class=\"text-sm text-neutral-300\">Mac では、ターミナルで Homebrew を使って次のコマンドを実行します（ffprobe も一緒に入ります）。Homebrew が無いときは、先に ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"flex flex-col gap-1\" data-testid=\"onboarding-ffmpeg-macos\"><p class=\"text-sm text-ink\">Mac では、ターミナルで Homebrew を使って次のコマンドを実行します（ffprobe も一緒に入ります）。Homebrew が無いときは、先に ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -506,12 +506,12 @@ func installGuide(os OS) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">brew install ffmpeg</code></p><p class=\"text-xs text-neutral-400\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、設定画面の「ffmpeg」でパスを指定してください。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">brew install ffmpeg</code></p><p class=\"text-xs text-mute\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、設定画面の「ffmpeg」でパスを指定してください。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		default:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"flex flex-col gap-1\" data-testid=\"onboarding-ffmpeg-other\"><p class=\"text-sm text-neutral-300\">お使いのパッケージマネージャーで、ffmpeg（ffprobe を含みます）を入れてください。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"flex flex-col gap-1\" data-testid=\"onboarding-ffmpeg-other\"><p class=\"text-sm text-ink\">お使いのパッケージマネージャーで、ffmpeg（ffprobe を含みます）を入れてください。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -558,7 +558,7 @@ func MacBody(m Mac) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if m.Codex {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<section class=\"flex flex-col gap-2 rounded-md border border-neutral-800 px-4 py-3\" aria-labelledby=\"onboarding-codex-title\" data-testid=\"onboarding-codex\"><h3 id=\"onboarding-codex-title\" class=\"text-base font-semibold\">Codex の場所（任意）</h3><p class=\"text-sm text-neutral-300\">ChatGPT の組織のアカウントを Codex 経由で使うとき、自分で入れた codex の実行ファイルの場所を指定します。ターミナルで ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<section class=\"flex flex-col gap-2 rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-codex-title\" data-testid=\"onboarding-codex\"><h3 id=\"onboarding-codex-title\" class=\"text-base font-semibold\">Codex の場所（任意）</h3><p class=\"text-sm text-ink\">ChatGPT の組織のアカウントを Codex 経由で使うとき、自分で入れた codex の実行ファイルの場所を指定します。ターミナルで ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -606,7 +606,7 @@ func MacBody(m Mac) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"text-xs text-neutral-400\" for=\"onboarding-codex-path\">codex のパス</label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"text-xs text-mute\" for=\"onboarding-codex-path\">codex のパス</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -636,7 +636,7 @@ func MacBody(m Mac) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<section class=\"flex flex-col gap-2 rounded-md border border-neutral-800 px-4 py-3\" aria-labelledby=\"onboarding-comfy-title\" data-testid=\"onboarding-comfy\"><h3 id=\"onboarding-comfy-title\" class=\"text-base font-semibold\">ComfyUI は外部のものを使います</h3><p class=\"text-sm text-neutral-300\">mam は ComfyUI を同梱しません。ローカルで画像・動画を作りたいときは、公式の <strong>Comfy Desktop</strong>（macOS 13 以降・Apple Silicon）を入れて、その接続先の URL を mam に入れます。Comfy Desktop は、.dmg から入れるだけで、Python と MPS の設定まで自動で行います。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-neutral-300\"><li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<section class=\"flex flex-col gap-2 rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-comfy-title\" data-testid=\"onboarding-comfy\"><h3 id=\"onboarding-comfy-title\" class=\"text-base font-semibold\">ComfyUI は外部のものを使います</h3><p class=\"text-sm text-ink\">mam は ComfyUI を同梱しません。ローカルで画像・動画を作りたいときは、公式の <strong>Comfy Desktop</strong>（macOS 13 以降・Apple Silicon）を入れて、その接続先の URL を mam に入れます。Comfy Desktop は、.dmg から入れるだけで、Python と MPS の設定まで自動で行います。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-ink\"><li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -728,7 +728,7 @@ func MacBody(m Mac) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" data-testid=\"onboarding-local-models-link\">ローカル・代替モデル</a> で接続先を追加します。種類は ComfyUI、URL は 2 で確かめた値です。</li></ol><p class=\"text-xs text-neutral-400\">これは今すぐでなくても構いません。ガイドを閉じたあとでも、設定画面から入れられます。</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" data-testid=\"onboarding-local-models-link\">ローカル・代替モデル</a> で接続先を追加します。種類は ComfyUI、URL は 2 で確かめた値です。</li></ol><p class=\"text-xs text-mute\">これは今すぐでなくても構いません。ガイドを閉じたあとでも、設定画面から入れられます。</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -759,14 +759,14 @@ func CodexResult(ok bool, message string) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if ok {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<span role=\"status\" class=\"text-emerald-300\" data-testid=\"onboarding-codex-result\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<span role=\"status\" class=\"text-success\" data-testid=\"onboarding-codex-result\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var39 string
 			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 211, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 211, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -777,14 +777,14 @@ func CodexResult(ok bool, message string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<span role=\"alert\" class=\"text-red-300\" data-testid=\"onboarding-codex-result\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<span role=\"alert\" class=\"text-danger\" data-testid=\"onboarding-codex-result\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var40 string
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 213, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 213, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
