@@ -2,6 +2,7 @@ import { expect, waitUntil } from '@open-wc/testing';
 import htmx from 'htmx.org';
 import { stubConfirm } from '../confirm/testkit';
 import '../../main';
+import { swapSettled } from '../testdata/htmx';
 
 // The Review Workspace (organisms/review_workspace.templ): adding or deleting a comment and saving the
 // decision answer with their own part of the screen, so the <video> keeps playing where it is and what
@@ -74,6 +75,7 @@ describe('Review Workspace: actions replace their own part only', () => {
     await waitUntil(() => document.querySelector('#review-comments li'), 'the comment was not listed', {
       timeout: 5000,
     });
+    await swapSettled(); // the delete button of the new list is known to htmx only when the swap settles
   }
 
   it('adds a comment: the list is replaced and the form is emptied; the video and the decision draft stay', async () => {

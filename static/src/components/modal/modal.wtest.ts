@@ -126,6 +126,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     await waitUntil(() => document.getElementById('mam-modal-error') !== null, 'the 422 body was not swapped in', {
       timeout: 2000,
     });
+    await waitUntil(() => !body().inert, 'the swap did not settle', { timeout: 2000 });
 
     expect(dialog().open).to.equal(true);
     expect(byId('mam-modal-error').textContent).to.contain('入力が正しくありません');
