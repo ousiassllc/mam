@@ -188,6 +188,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 - **ライセンス**: Wan 系 3 つは Apache-2.0（商用可・同意不要）。Hunyuan 2 つは既存の 480p と同じ Tencent Hunyuan Community License（EU・英国・韓国では使えない・月間 1 億人超は別途許諾・生成物を他の AI の改良に使えない）で、`commercial = conditional`・`consent_required = true`。**accept_terms は実行していない**（導入時の同意は既存の仕組みのまま）。
 - **ファイルの共有**: 同じ重み（umt5・`wan_2.1_vae`・Hunyuan のエンコーダーと VAE）は、既存のモデルと同じ名前・ハッシュ・サイズのファイルとして持つので、取得は 1 回で、どれかを消しても他が使う間は残る（`catalog_test` の共有のテストに足した）。`wan22-t2v-14b`・`wan21-t2v-1-3b`・`wan21-flf2v-14b-720p` は `wan_2.1_vae` を使い、5B（`wan2.2_vae`）とは別。
 - **入れなかった候補（理由）**: 第 1 弾（2026-11-03）に書いた理由は、第 2 弾（2026-11-04）で一次情報から確かめ直し、下の「第 2 弾」の表に候補ごとの「追加／見送り（理由・確認日）」としてまとめた。
+- **説明欄（Issue #1012・#1014。2026-11-06）**: 標準の動画 16 件（`kind: video`・`traits.uncensored = false`）すべての説明の先頭に【小／中／大ティア・非検閲ではない標準モデル】を付け、本文に「得意」「注意」・音声の有無・「ライセンス:」の要約を書いた（非検閲の動画の説明欄と同じ書き方）。段階はパラメータ数の帯（〜5B が小・〜14B が中・14B 超が大）で、フィルター（#1011）の `params_b` と同じ。Issue #1014 より前からあった 9 件（`ltx-video-2b`・`wan22-ti2v-5b`・`wan22-ti2v-5b-fp8`・`wan22-i2v-14b`・`wan22-i2v-14b-lightx2v`・`hunyuanvideo15-480p`・`ltx-2.5-22b-distilled`・`-dfr`・`-nvfp4`）にも足した（モデル・ファイル・ライセンスの答えは変えていない）。`lightmodelstest/video_description_test.go` が全件を検査する。
 
 **標準の動画モデルの第 2 弾（Issue #1014 の残り。2026-11-04）**。第 1 弾で見送った候補を、HF の API・応答ヘッダー・ComfyUI の公式の資料で確かめ直した。**追加したのは 2 モデルだけ**（`wan21-vace-1-3b`・`ltx-2.3-22b-distilled`）。新しいカスタムノードは許可リスト（`nodecat`）に足していない（許可リストの追加は別の作業。#1016 の ComfyUI-GGUF は別の担当）。
 

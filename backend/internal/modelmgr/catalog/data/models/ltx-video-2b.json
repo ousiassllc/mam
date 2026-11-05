@@ -5,7 +5,7 @@
  "tier": "standard",
  "content_rating": "general",
  "traits": {"params_b": 2, "params_label": "2B", "uncensored": false, "speed": "fast"},
- "description": "軽量で速い動画モデル。チェックポイントと T5 テキストエンコーダー（fp8）の 2 ファイル、合計約 11 GB。24fps。",
+ "description": "【小ティア・非検閲ではない標準モデル】軽量で速い動画モデル（LTX-Video 2B v0.9.5）。チェックポイントと T5 テキストエンコーダー（fp8）の 2 ファイル、合計約 11 GB。24fps・音声なし。テキストから（ltx-video-2b）と先頭フレームから（ltx-video-2b-i2v）の 2 つで使える。得意: 小さくて速い。試し・プレビュー向き。注意: 品質は 5B 以上の Wan 2.2 などより落ちる。音声つきの動画は LTX-2.5（ltx-2.5-22b-distilled）を選ぶ。VRAM 12 GB は mam の見積り（出典なし・実機未検証）。ライセンス: Open RAIL-M で商用を含めて使えるが、違法・有害な用途を禁じる使用制限が付く。",
  "files": [
   {
    "name": "ltx-video-2b-v0.9.5.safetensors",
