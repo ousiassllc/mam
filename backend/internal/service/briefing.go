@@ -17,16 +17,3 @@ func briefFollowUp(b domain.Brief) domain.ChatMessage {
 	}
 	return briefing.Question(missing[0], missing[0].Question())
 }
-
-// templateFor picks the Production Template from the extracted Content Type (UC-7).
-func templateFor(contentType string) domain.ProductionTemplate {
-	switch contentType {
-	case "ドラマ":
-		return domain.TemplateDrama
-	case "アニメ":
-		return domain.TemplateAnime
-	case "SNS/ショート動画":
-		return domain.TemplateSNSShort
-	}
-	return domain.TemplateProductCM
-}

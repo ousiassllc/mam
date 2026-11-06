@@ -53,6 +53,9 @@ func briefText(b domain.Brief, t domain.ProductionTemplate) string {
 		v := b.Get(f)
 		switch {
 		case v != "":
+		case f == domain.BriefSubject:
+			// Never "AI に任せる": a topic the user did not name is not the AI's to choose (#1108).
+			v = "（未指定。追加指示にある題材だけを使い、Brief に無い題材を作らない）"
 		case b.IsDelegated(f):
 			v = "（AI に任せる: 最も妥当なものを選ぶ）"
 		default:

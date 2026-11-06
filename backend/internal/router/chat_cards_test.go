@@ -182,7 +182,7 @@ func TestMessages_AnsweredQuestionCardIsReplacedInPlaceOutOfBand(t *testing.T) {
 // client post and poll /projects//messages, which is a 404, from the second question on.
 func TestMessages_AnswerResponsesNeverBuildURLsWithoutTheProjectID(t *testing.T) {
 	a := newApp(t)
-	id := a.createProject("動画を作りたい")
+	id := a.createProject("美容液の動画を作りたい") // the Subject is taken from it: its question has no buttons (#1108)
 	answers := []string{"商品CM", "Instagram広告", "30代女性"}
 
 	for _, answer := range answers {
@@ -196,8 +196,6 @@ func TestMessages_AnswerResponsesNeverBuildURLsWithoutTheProjectID(t *testing.T)
 		assert.NotContains(t, body, "/projects//", "no URL of the response lacks the Project ID: %s", answer)
 		assert.Contains(t, body, `data-card-url="/projects/`+id+`/messages/`, "the cards of the answer say where they are fetched again")
 		assert.Contains(t, body, `data-next-url="/projects/`+id+`/messages?after=`, "the messages of the answer say where what is newer is fetched")
-		if strings.Contains(body, "data-options") {
-			assert.Contains(t, body, `hx-post="/projects/`+id+`/messages"`, "the buttons of the next question post to the Project")
-		}
+		assert.Contains(t, body, `hx-post="/projects/`+id+`/messages"`, "the buttons of the next question post to the Project")
 	}
 }

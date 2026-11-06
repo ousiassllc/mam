@@ -26,6 +26,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
 	"github.com/ousiassllc/mam/backend/internal/service/broker"
 	"github.com/ousiassllc/mam/backend/internal/service/ffgate"
+	"github.com/ousiassllc/mam/backend/internal/service/mainwait"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 )
 
@@ -145,7 +146,7 @@ func (w *wiring) wirePlan() {
 	d := w.deps
 	w.c.pipeline = orchestrator.New(orchestrator.Deps{
 		Projects: w.c.projects, Plans: w.c.plans, ChatRepo: w.c.chat, Chat: w.chat, Jobs: d.Jobs,
-		LLM: d.LLM, Notes: w.r.notes, Drafts: characterdraft.New(w.c.projects, w.c.assets, w.r.world, w.logger), Logger: w.logger,
+		LLM: d.LLM, Notes: w.r.notes, Drafts: characterdraft.New(w.c.projects, w.c.assets, w.r.world, w.logger), Facts: mainwait.Reader{Plans: w.c.plans, References: w.c.references, World: w.r.world}.Facts, Logger: w.logger,
 	})
 	d.Jobs.Register(domain.JobPlan, w.c.pipeline.Handle, true)
 }
@@ -293,7 +294,7 @@ func (w *wiring) services() *Services {
 		Credentials: NewCredentialService(d.Credentials),
 		Projects:    &ProjectService{c},
 		Chat:        w.chat,
-		Plans:       &PlanService{c},
+		Plans:       &PlanService{c, mainwait.Reader{Plans: c.plans, References: c.references, World: w.r.world}},
 		Generation:  w.generations,
 		World:       w.worlds,
 		Director:    w.director,

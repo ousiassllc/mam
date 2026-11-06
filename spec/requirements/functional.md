@@ -9,7 +9,7 @@
 - **Actor**: エンドユーザー（クリエイター/マーケター）
 - **事前条件**: プロジェクト未作成、またはドラフト状態
 - **フロー**:
-  1. ユーザーがチャットで作りたい動画を伝える。発言から Creative Brief（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood / Assets / References）をルールベース（キーワード・正規表現。LLM による抽出は未実装）で抽出し、不足項目は質問する（「AIに任せる」を選べる）。添付した画像・動画は Assets/References として取り込む
+  1. ユーザーがチャットで作りたい動画を伝える。発言から Creative Brief（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood / Assets / References）をルールベース（キーワード・正規表現。LLM による抽出は未実装）で抽出し、不足項目は質問する（Subject を除き「AIに任せる」を選べる。Subject が空・薄いまま無関係な題材の脚本を作らないため、Subject は答えるまで脚本を作らず質問で止まる。Additional Instruction に題材があればそれを使う。#1108）。添付した画像・動画は Assets/References として取り込む
   2. Confirmation Level（FULL AUTO / KEY CHECK / CUSTOM CHECK）を選択する
   3. Producer → Writer → Director → Storyboard → Art Director → Prompt Planner → Video Generation → AI Video Judge → (Repair/Retake) → AI Editor → Audio Production → Final QC の順に進む。ただし自動実行されるのは Scene/Shot 計画（Storyboard）までで、Art Director 以降（Reference Pack・Keyframe・Video Generation）は Shot 単位でユーザーが起動する（起動した Shot では Judge → Repair → AI Pick が連鎖する）。全 Shot に Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まり、承認カードの回答後（または確認不要の設定）に Audio Production と Final QC が続く。Editor Judge の Re-edit 判定と Final QC の FAIL はユーザーの対応を待って止まる（Editor Judge が `need_shot` のときは、AUTO では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返して上限で Escalation に止まる。MANUAL ではユーザーが要求する）。Export は Final QC を PASS した（READY の）動画へのユーザーの操作で行う
   4. 設定した確認ポイント（脚本・Rough Cut・Final）でのみ、承認カードとしてチャットに提示される。ユーザーはボタンまたは返信で承認/差し戻しを行う
@@ -291,3 +291,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.31 | 2026-11-01 | F-20 と §3.8 に、Dialogue / Narration のローカル TTS（GPT-SoVITS。実行ごとの選択、API 費用 0 円、参照音声の無い話者・使えないときの種類つきエラー）を足した | Issue #922（#912 声と口パクのローカル化）。ローカルの声が要件になかったため |
 | 1.32 | 2026-11-01 | F-20 と §3.8 に、声・口パクのプロバイダーの選択（設定画面・MCP。既定はクラウド）、使えない理由の統一した文、ローカルが使えないときのクラウドへの切り替え（利用者が選んだときだけ。実行の開始前の検査で、その実行の全体）を足した。F-20 の「#924」への参照を、保存の説明に置き換えた | Issue #924（#912 声と口パクのローカル化）。ローカルの声・口パクを利用者が選べ、使えないときにクラウドへ切り替えられることが要件になかったため |
 | 1.33 | 2026-11-03 | F-09 に、Character を手で作る手段と、企画が LLM 未設定で止まったときの Brief の添付画像からの下書きを足した（Issue #1001・#1022） |
+| 1.34 | 2026-11-07 | UC-1 / F-01 に、Subject は「AIに任せる」を選べず空のままでは脚本を作らず質問で止まることを足した。AUTO の Scene/Shot 計画後に全 Shot が PLANNING で止まるのは、生成が有料でユーザーが Shot 単位で起動する明示待機であり、その理由と次に押すものをチャットと Scene / Shot 画面に出すことを `spec/spec.md` §4.3 に足した | Issue #1108。待機の理由が見えず、Brief の Subject が空でも無関係な脚本が計画されうるため |
