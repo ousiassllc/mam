@@ -139,6 +139,12 @@
 - 左メニュー: 概要と全分類ページに `ul#sidenav-mm-views`（見出し `#sidenav-mm`「モデルマネージャー」・「概要」＋各分類）があり、現在のページの項目だけ `aria-current="page"`（分類ページでは画面の項目「モデルマネージャー」は `aria-current="true"`）。それ以外の画面にこの一覧は出ない。`web/sidenavtest` が確かめる。
 - fixture（`scroll-mm-*.html`・`layout-long-names-*.html`）と `scroll.wtest.ts`・`long-names.wtest.ts` は、分類ページごとの描画（`image-video` の一覧・`comfyui` のエンジンのカード・`hf-external` ほか）に合わせて作り直し、通る。`go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
 
+**カードの列数の受け入れ条件（Issue #1102。実装時にこのテストを足す）**:
+
+- カードを並べる `<ul>`（`mm-models`・`mm-external-models`・`mm-hfi-model-list`・`#mm-runtimes` の中・`#mm-nodes` の中）の class はすべて `modelcard.GridClass`（`grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3`）で、`organisms/modelmgr` の下に `GridClass` 以外の `<ul>` の `grid-cols-` が無い（`<dl>` のメタの表と、エンジンのカードの `mm-engine-list`〔`grid grid-cols-1`〕を除く。`grid_test.go`）。
+- 実 Chrome（`model-manager-grid.wtest.ts`）: 639 px で 1 列・640 px と 1279 px で 2 列・1280 px で 3 列。左メニューを開いた 1280 px で 1 枚の幅が 280 px 以上。どの幅でも横にあふれない。カードの一覧を持つ分類ページは `max-w-5xl`。
+- ルート・応答の中身・`id`・ポーリング・`data-testid` は変えない（HTML の class だけが変わる）。
+
 `handler/modelmgr/runtimes` の `runtimes_test.go`（`screentest.NewWithRuntimes`。`service/localruntime/lrtest` の偽のパッケージ・偽の Hugging Face・偽のプロセス）: カードの表示（未導入・導入中・導入済み・重みが不足）、出典・ライセンス・`unclear` の注記とバナー、使えない環境の理由とクラウドの案内、導入・重みの導入・起動・停止・自動起動・削除、重みが不足した起動の 409 と文面、取得元が消えたときの失敗の表示、取り消し、未知の ID の 404、サービスが無い画面にはルートが無いこと、スクリーンリーダー用のラベルと鍵・トークンを出さないこと。
 
 `handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
@@ -164,3 +170,4 @@
 | 1.14 | 2026-11-06 | `GET /model-manager/runtimes/:id/models`（実行環境のモデルの一覧のフィルター。Issue #1015・#1011）を足した | Issue #1015 |
 | 1.15 | 2026-11-06 | 「試し生成」のルート 5 本（`/model-manager/trials`・`trials/form`・`POST trials`・`DELETE trials/:id`・`trials/:id/file`）・`POST /model-manager/trials` のアップロード上限の広げ・区画「試し生成」（§3）・試し生成の英訳をしない判断（1.13。Issue #1068）・試し生成のテストを廃止し、導入の完了・成人向けの切り替え・追加したファイルの導入と削除の応答から「試し生成の区画の描き直し」を外した。区画の並びを実際の順に直した。受け入れ条件を §4 に足した。状態は仕様のみ（未実装） | Issue #1100 |
 | 1.16 | 2026-11-06 | 画面を分類ごとのサブページに分けると決め、概要（`GET /model-manager`・`GET /model-manager/overview`）と分類ページ（`GET /model-manager/<slug>`。6 つ）のルート、§3 の分類の表、§4 の受け入れ条件を足した。`GET /model-manager/engine` の `job` の応答から、モデルの一覧の OOB を外した。区画の部分ルートは変えない。状態は仕様のみ（未実装） | Issue #1101 |
+| 1.17 | 2026-11-06 | §4 に、カードの列数の受け入れ条件（`modelcard.GridClass`・1 → 2 → 3 列の境 640 px・1280 px）を足した。ルート・応答は変えない。状態は仕様のみ（未実装） | Issue #1102 |
