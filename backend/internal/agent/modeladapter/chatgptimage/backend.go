@@ -73,8 +73,9 @@ type Backend struct {
 	stall         time.Duration
 	client        httpclient.Doer
 
-	mu     sync.Mutex
-	picked string // the driver that worked last; "" until one did, and again once it stopped working
+	mu            sync.Mutex
+	picked        string // the driver that worked last for pickedAccount; "" until one did, and again once it stopped working
+	pickedAccount string // the ChatGPT account id picked belongs to
 }
 
 var _ modeladapter.ImageBackend = (*Backend)(nil)
@@ -104,6 +105,7 @@ func New(source CredentialSource, o Options) *Backend {
 func (b *Backend) GenerateImage(ctx context.Context, apiModel string, req modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
 	creds, err := b.source.ImageCredentials(ctx)
 	if err != nil {
+		b.forgetAll() // signed out (or turned off): the next sign-in may be another account, so pick again
 		return modeladapter.ImageResult{}, fmt.Errorf("chatgpt image generation: %w", err)
 	}
 	return b.driverLoop(ctx, creds, func(driver string) (modeladapter.ImageResult, error) {

@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/topaz"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
 
@@ -73,6 +74,8 @@ func TestExplain_ClassifiesTheFailuresOfOutsideServices(t *testing.T) {
 		"LLM 429":                  {&llm.APIError{Provider: llm.ProviderOpenAI, Status: 429}, apperr.CodeRateLimited},
 		"LLM invalid":              {llm.ErrInvalidOutput, apperr.CodeLLMInvalidOutput},
 		"circuit":                  {modeladapter.ErrCircuitOpen, apperr.CodeCircuitOpen},
+		"no image model":           {&modeladapter.ProviderError{Status: 400, Err: chatgpt.ErrNoImageModel}, apperr.CodeImageUnavailable},
+		"pinned image model":       {&modeladapter.ProviderError{Status: 400, Err: chatgpt.ErrImageModelPinned}, apperr.CodeImagePinned},
 		"unsupported input":        {fmt.Errorf("%w: first frame", direct.ErrInputsUnsupported), apperr.CodeInputUnsupported},
 		"stalled":                  {localcfg.MarkStall(30*time.Minute, errors.New("t")), apperr.CodeStalled},
 		"endpoint timeout":         {&localcfg.TimeoutError{After: 15 * time.Minute, Err: errors.New("t")}, apperr.CodeEndpointTimeout},

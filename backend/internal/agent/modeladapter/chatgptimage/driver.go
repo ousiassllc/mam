@@ -23,20 +23,25 @@ import (
 // answers 400 "The 'gpt-5.5' model is not supported when using Codex with a ChatGPT account"). The backend therefore picks
 // the driver by itself:
 //
-//  1. Options.Driver, when set, is used as it is (an explicit override, no fallback).
-//  2. Otherwise the driver that worked last is used again (remembered for the process).
+//  1. Options.Driver, when set, is used as it is (an explicit override, no fallback). When the endpoint refuses it, the
+//     call fails with chatgpt.ErrImageModelPinned (the pin is what to change, not mam's version).
+//  2. Otherwise the driver that worked last for the same ChatGPT account is used again (remembered for the process; it is
+//     forgotten when the credentials cannot be read, for example after a sign-out, and unused for another account).
 //  3. Otherwise, or when the remembered driver is refused (it stopped working), the models of the account are read from
 //     the Codex model list (GET {base}/models?client_version=..., what the Codex CLI reads: models-manager of
 //     github.com/openai/codex) and tried in the list's own order (priority), skipping the ones the picker hides.
-//  4. When the list cannot be read or is empty, FallbackDrivers are tried instead, in order.
+//  4. When the list cannot be read or is empty, the fallback drivers are tried instead, in order.
 //
 // A driver is given up for the next one only when the endpoint says the model is not usable (driverRefused); any other
 // failure (a moderation stop, rate limit, network, ...) ends the call as it is.
 
-// FallbackDrivers are the Codex models tried when the model list of the account is unavailable. They are the replacements
+// fallbackDrivers are the Codex models tried when the model list of the account is unavailable. They are the replacements
 // of the retired GPT-5.5 named by https://developers.openai.com/codex/models (checked 2026-11-01): gpt-6.1-sol for Plus,
 // Pro, Business, Enterprise and Edu, gpt-6-luna for Free and Go, gpt-6.1-terra (Codex 0.159.0 or later), gpt-6-sol.
-var FallbackDrivers = []string{"gpt-6.1-sol", "gpt-6-luna", "gpt-6.1-terra", "gpt-6-sol"}
+var fallbackDrivers = []string{"gpt-6.1-sol", "gpt-6-luna", "gpt-6.1-terra", "gpt-6-sol"}
+
+// FallbackDrivers is a copy of the Codex models tried when the model list of the account is unavailable, in order.
+func FallbackDrivers() []string { return slices.Clone(fallbackDrivers) }
 
 const (
 	// listTimeout bounds the read of the model list.
@@ -51,66 +56,77 @@ const (
 func (b *Backend) driverLoop(ctx context.Context, creds chatgpt.Credentials, call func(driver string) (modeladapter.ImageResult, error)) (modeladapter.ImageResult, error) {
 	var tried []string
 	var last error
-	if d := b.firstDriver(); d != "" {
+	if d := b.firstDriver(creds.AccountID); d != "" {
 		res, err := call(d)
 		if !driverRefused(err, d) {
-			b.note(d, err)
+			b.note(creds.AccountID, d, err)
 			return res, err
 		}
-		b.forget(d)
+		if b.pinned != "" {
+			return modeladapter.ImageResult{}, pinnedRefused(d, err)
+		}
+		b.forget(creds.AccountID, d)
 		tried, last = append(tried, d), err
 	}
-	if b.pinned == "" {
-		for _, d := range b.discover(ctx, creds) {
-			if slices.Contains(tried, d) {
-				continue
-			}
-			res, err := call(d)
-			if !driverRefused(err, d) {
-				b.note(d, err)
-				return res, err
-			}
-			tried, last = append(tried, d), err
+	for _, d := range b.discover(ctx, creds) {
+		if slices.Contains(tried, d) {
+			continue
 		}
+		res, err := call(d)
+		if !driverRefused(err, d) {
+			b.note(creds.AccountID, d, err)
+			return res, err
+		}
+		tried, last = append(tried, d), err
 	}
 	return modeladapter.ImageResult{}, noDriver(tried, last)
 }
 
-// firstDriver is the driver to try first: the pinned one, else the remembered one ("" when there is none).
-func (b *Backend) firstDriver() string {
+// firstDriver is the driver to try first: the pinned one, else the one remembered for the account ("" when there is none).
+func (b *Backend) firstDriver(account string) string {
 	if b.pinned != "" {
 		return b.pinned
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.pickedAccount != account {
+		return ""
+	}
 	return b.picked
 }
 
-// note remembers a driver that worked.
-func (b *Backend) note(driver string, err error) {
+// note remembers a driver that worked for the account.
+func (b *Backend) note(account, driver string, err error) {
 	if err != nil || b.pinned != "" {
 		return
 	}
 	b.mu.Lock()
-	b.picked = driver
+	b.picked, b.pickedAccount = driver, account
 	b.mu.Unlock()
 }
 
-// forget drops the remembered driver when it is still driver.
-func (b *Backend) forget(driver string) {
+// forget drops the driver remembered for the account when it is still driver.
+func (b *Backend) forget(account, driver string) {
 	b.mu.Lock()
-	if b.picked == driver {
-		b.picked = ""
+	if b.picked == driver && b.pickedAccount == account {
+		b.picked, b.pickedAccount = "", ""
 	}
 	b.mu.Unlock()
 }
 
-// discover is the drivers to try, best first: the models of the account, else FallbackDrivers.
+// forgetAll drops the remembered driver whatever the account (the credentials cannot be read: signed out, or turned off).
+func (b *Backend) forgetAll() {
+	b.mu.Lock()
+	b.picked, b.pickedAccount = "", ""
+	b.mu.Unlock()
+}
+
+// discover is the drivers to try, best first: the models of the account, else the fallback drivers.
 func (b *Backend) discover(ctx context.Context, creds chatgpt.Credentials) []string {
 	if models := b.listModels(ctx, creds); len(models) > 0 {
 		return models
 	}
-	return FallbackDrivers
+	return fallbackDrivers
 }
 
 // listModels reads the Codex model list of the account: the slugs of the models the picker shows, by priority. A list that
@@ -215,5 +231,19 @@ func noDriver(tried []string, last error) error {
 	return &modeladapter.ProviderError{
 		Vendor: vendor, Status: http.StatusBadRequest, Err: chatgpt.ErrNoImageModel,
 		Message: fmt.Sprintf("no Codex model that the ChatGPT account may use hosts the image tool call (tried %s)%s", strings.Join(tried, ", "), cause),
+	}
+}
+
+// pinnedRefused is the failure when the endpoint refused the driver pinned by Options.Driver. Like noDriver it is a 400,
+// but it is chatgpt.ErrImageModelPinned: updating mam does not help, only changing the pin does.
+func pinnedRefused(driver string, last error) error {
+	cause := ""
+	var pe *modeladapter.ProviderError
+	if errors.As(last, &pe) {
+		cause = ": " + pe.Message
+	}
+	return &modeladapter.ProviderError{
+		Vendor: vendor, Status: http.StatusBadRequest, Err: chatgpt.ErrImageModelPinned,
+		Message: fmt.Sprintf("the Codex model pinned by Options.Driver (%s) is not usable with the ChatGPT account%s", driver, cause),
 	}
 }

@@ -111,6 +111,9 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"image_unavailable.cause":  "ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。",
 	"image_unavailable.remedy": "mam を最新版に更新して、もう一度実行してください。直らない場合は、設定で ChatGPT 画像生成を OFF にして、API キーで使える画像モデルに切り替えてください。",
 
+	"image_model_pinned.cause":  "画像生成のために固定した Codex のモデル（Options.Driver）を、ChatGPT のアカウントが受け付けませんでした。固定したモデルだけを使う設定なので、ほかのモデルは試していません。",
+	"image_model_pinned.remedy": "mam を更新しても直りません。モデルの固定を外して mam にアカウントで使えるモデルを選ばせるか、アカウントが使えるモデルを固定し直してください。",
+
 	"save_failed.cause":  "設定やデータを保存できませんでした{why}。",
 	"save_failed.remedy": "ディスクの空き容量とフォルダの権限を確かめてから、もう一度保存してください。続くときは mam のログを確認してください。",
 
