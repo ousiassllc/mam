@@ -5,7 +5,8 @@ import { requestFailureMessage, type RequestFailure } from '../lib/errors';
  * data-modal> per page, whose body an HTMX request fills.
  *
  * - A button with `data-modal-open` (molecules/modal OpenAttrs) asks for the body; when it arrives the dialog is
- *   opened with showModal(), which keeps the focus inside it and makes the rest of the page inert.
+ *   opened with showModal(), which keeps the focus inside it and makes the rest of the page inert. Every opening starts at the
+ *   top of the dialog (#1097); the close button and the heading stick to its top while a long body scrolls.
  * - It is closed by Esc (the native `cancel`), by a `data-modal-close` button and by the `modal-close` event that a
  *   saved form's answer sets off (HX-Trigger-After-Swap). A click on the scrim closes it (components/scrim).
  * - When it is closed the body is emptied (a token that was shown, what was typed, must not stay in the DOM) and the
@@ -161,7 +162,12 @@ export function installModal(root: Document = document): void {
       return;
     }
     label(dlg);
-    if (!dlg.open) dlg.showModal();
+    const opening = !dlg.open;
+    if (opening) dlg.showModal();
+    // Every opening starts at the top (#1097). showModal() focuses the autofocus block and scrolls it into view, which for a block taller than
+    // the dialog (a result's detail) leaves the dialog scrolled with the head out of sight; a dialog that was closed also comes back at the place it was
+    // scrolled to. A request of a control that opens the modal (also from inside an open one) is a new content, not the same one again.
+    if (opening || requester?.hasAttribute('data-modal-open')) dlg.scrollTop = 0;
     (body as HTMLElement).inert = true;
   });
 
