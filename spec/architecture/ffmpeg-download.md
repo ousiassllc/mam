@@ -87,7 +87,7 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 ```
 
 - ディレクトリ: Windows は `<mam.exe のディレクトリ>\ffmpeg`（アンインストーラーは `RMDir /r $INSTDIR` で、インストールディレクトリごと消す。`comfyui`・`codex` と同じ）。macOS は `<データディレクトリ>/ffmpeg`（`~/Library/Application Support/mam/ffmpeg`）。`MAM.app` の中には置かない（自動更新が `.app` を丸ごと入れ替えるため）。書き込めない場所（読み取り専用の場所のポータブル版）は、押した時点で「書き込めません」と答える。
-- **置き場所を決めるのに実行ファイルが要るのは Windows だけ**（`internal/app` の `downloadAnchor`）。macOS の置き場所はデータディレクトリなので、実行ファイルの場所（`os.Executable`）が分からなくても取得は無効にならない（ログも出さない）。Windows で分からないとき、macOS でデータディレクトリが分からないときは、取得を無効にしてログに理由を出す（`Supported` が偽。利用者が自分で入れた ffmpeg は使える）。
+- **置き場所を決めるのに実行ファイルが要るのは Windows だけ**（`internal/app/dlwire` の `anchor`）。macOS の置き場所はデータディレクトリなので、実行ファイルの場所（`os.Executable`）が分からなくても取得は無効にならない（ログも出さない）。Windows で分からないとき、macOS でデータディレクトリが分からないときは、取得を無効にしてログに理由を出す（`Supported` が偽。利用者が自分で入れた ffmpeg は使える）。
 - 探す順（[ffmpeg-lookup.md](ffmpeg-lookup.md) §1）: ① 設定したパス ② `PATH` ③ macOS の Homebrew の場所 ④ **ダウンロードして入れたもの**（`locate.Finder.Extra` に `bin/` を入れる）。`ffmpegsettings.Service` が `ffmpegdl.Service.Dirs` を呼ぶたびに読む（`WithManagedDirs`）ので、導入が終わったあとの探索（設定画面・初回ガイド）はすぐ見つけ、アプリの `media.Tools` も、導入の成功・削除の**すぐあと**に探し直して入れ替える（`ffmpegdl.Service.SetOnChange`。再起動は要らない。Issue #1047。[ffmpeg-lookup.md](ffmpeg-lookup.md) §3）。
 - 利用者が自分で入れた ffmpeg が `PATH` や Homebrew にあれば、それが使われ、ダウンロードしたものは使われない。画面は、別の場所の ffmpeg が見つかっているとき、その旨を出す。
 
@@ -100,7 +100,7 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 ## 8. テスト
 
 - `exeinstall/extract_test.go`: zip と tar.gz の展開（名指しのエントリだけ・フラット・パスの拒否・リンク・二重・足りない・サイズ違い・内容違い・途中の失敗で書いたものを消す・上書きしない・取り消し）。Codex のエンジンのテスト（`chatgpt/codex/engine`）は、この共通の展開を通る。
-- `exeinstall/extract_test.go`・`place_test.go`: 引数の誤り（`ErrInvalidRequest`。アーカイブのせいにしない）、tar の読み取りの失敗と壊れたアーカイブの区別、tar・zip のエントリの間での取り消し、`NeedBytes`（`.part`・取得済みのアーカイブを取得済みに数える）。`app/download_layout_test.go`: macOS は実行ファイルが見つからなくても置き場所が決まり、Windows は決まらないと無効。`ffmpegdl/service_retry_test.go`: 再開のログ（`target` = `ffmpeg`）と、上限まで切れたときの文言。
+- `exeinstall/extract_test.go`・`place_test.go`: 引数の誤り（`ErrInvalidRequest`。アーカイブのせいにしない）、tar の読み取りの失敗と壊れたアーカイブの区別、tar・zip のエントリの間での取り消し、`NeedBytes`（`.part`・取得済みのアーカイブを取得済みに数える）。`app/dlwire/dlwire_test.go`: macOS は実行ファイルが見つからなくても置き場所が決まり、Windows は決まらないと無効。`ffmpegdl/service_retry_test.go`: 再開のログ（`target` = `ffmpeg`）と、上限まで切れたときの文言。
 - `ffmpegdl/*_test.go`: カタログの形（実際の固定値・https・`latest` でない・不正なカタログの拒否）、導入（zip 1 つ・2 つ・フェーズ・記録・原子的入れ替え・更新・失敗した更新が前の版を残す）、**アーカイブの SHA-256 が違えば何も入れず何も残さない**、**アーカイブは合っていても中の実行ファイルが違えば入れない**、実行できなければ入れない、記録が無い／壊れている／ファイルが変わった（壊れている）ときは使わない、中断と再開（Range）、容量不足、書き込み不可、途中の入れ替えの復旧（`Installer` と、`New` が起動時に戻す）、入れ替えに失敗してもダウンロード済みのアーカイブを残す（検証に失敗したときだけ消す）、削除（導入と削除は同時に動かない）、`Service`（バックグラウンド・1 つずつ・取り消し・閉じる）。
 - **ffmpeg が無いマシンで、ダウンロードして入れたあと、アプリが使う探索（`ffmpegsettings.Look`）が見つけ、そのツールで `Probe`・`Thumbnail` が動く**こと、**PATH の ffmpeg がダウンロードしたものに勝つ**こと、**SHA-256 が合わないダウンロードは見つからない**こと（`ffmpegdl/lookup_test.go`。マシンの本物の ffmpeg を zip に入れて `httptest` で配る。CI では Linux の `ci` ジョブ（apt の ffmpeg）と macOS の `macos` ジョブ（Homebrew の ffmpeg。`go test` の前の `Ensure ffmpeg` で入れる。[../environment/setup.md](../environment/setup.md)）の両方で動き、ffmpeg が無ければ `CI=true` では失敗になる）。
 - `service/ffmpegsettings`: 入れたものは最後に探す・PATH と設定が勝つ・呼ぶたびに読む。`web/ffmpegscreen/download_test.go`: 画面（ボタン・進み具合・取り消し・チェックサム不一致の表示・削除・CSRF）。`web/handler/onboarding`: 初回ガイドのボタンの出し分け。

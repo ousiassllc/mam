@@ -110,7 +110,7 @@ const gentestResultAnswers = [
   ],
 ];
 
-// The second page of the history (test: gentest/history-pages, #1079): the link of a page asks for it by "?page=2".
+// The second page of the history (test: gentest-history/history-pages, #1079): the link of a page asks for it by "?page=2".
 async function gentestAnswerMiddleware(ctx, next) {
   if (ctx.method === 'GET' && ctx.path === '/generation-test/history' && ctx.query.page === '2') {
     ctx.status = 200;
