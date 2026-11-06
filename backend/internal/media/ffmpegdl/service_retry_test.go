@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
@@ -78,7 +79,7 @@ func TestServiceLogsEachResumeAndTellsAConnectionLostInJapanese(t *testing.T) {
 	s.WaitInstall()
 
 	st := s.Status()
-	assert.Equal(t, ffmpegdl.InstallFailed, st.Install.State)
+	assert.Equal(t, exeinstall.Failed, st.Install.State)
 	assert.Equal(t, "通信が切れました。もう一度導入すると続きから再開します", st.Install.Error)
 	resumes := logs.records("WARN", "download interrupted, resuming from the part file")
 	require.Len(t, resumes, 2, "three transfers: two resumes")
@@ -96,7 +97,7 @@ func TestServiceLogsEachResumeAndTellsAConnectionLostInJapanese(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, started)
 	s.WaitInstall()
-	assert.Equal(t, ffmpegdl.InstallSucceeded, s.Status().Install.State, s.Status().Install.Error)
+	assert.Equal(t, exeinstall.Succeeded, s.Status().Install.State, s.Status().Install.Error)
 }
 
 func TestExplainTellsAConnectionLostAndWhatToDo(t *testing.T) {

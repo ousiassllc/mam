@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
@@ -79,7 +80,7 @@ func TestInstallLogsEachResumeAndTellsAConnectionLostInJapanese(t *testing.T) {
 	ir.install(t)
 
 	st := ir.svc.Status()
-	if st.Install.State != codex.InstallFailed {
+	if st.Install.State != exeinstall.Failed {
 		t.Fatalf("status = %+v", st.Install)
 	}
 	if st.Install.Error != "通信が切れました。もう一度導入すると続きから再開します" {
@@ -100,7 +101,7 @@ func TestInstallLogsEachResumeAndTellsAConnectionLostInJapanese(t *testing.T) {
 
 	cut.Store(false) // the network is back: installing again continues and succeeds
 	ir.install(t)
-	if st := ir.svc.Status(); st.Install.State != codex.InstallSucceeded {
+	if st := ir.svc.Status(); st.Install.State != exeinstall.Succeeded {
 		t.Fatalf("after the retry: %+v", st.Install)
 	}
 }
