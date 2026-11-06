@@ -194,7 +194,8 @@ func TestWithoutFfprobeTheToolSaysHowToFixIt(t *testing.T) {
 
 	assert.Contains(t, msg, `"code":"ffmpeg_missing"`)
 	assert.Contains(t, msg, "ffmpeg")
-	assert.Contains(t, msg, "設定")
+	assert.Contains(t, msg, "付随ソフト", "the remedy names where ffmpeg is set up: the model manager")
+	assert.Contains(t, msg, "/model-manager/companion#mm-ffmpeg")
 }
 
 // An adult result may go to Topaz (Issue #1031, decision of 2026-11-05): the estimate carries the warning, and without adult_confirmed nothing is sent.

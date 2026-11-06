@@ -4,7 +4,7 @@ import { RESTART_PATH, shouldRefresh } from './refresh';
 describe('shouldRefresh', () => {
   it('reads the panel again after a write of the settings screen', () => {
     expect(shouldRefresh('put', '/settings/llm')).toBe(true);
-    expect(shouldRefresh('POST', '/settings/ffmpeg')).toBe(true);
+    expect(shouldRefresh('POST', '/settings/audio')).toBe(true);
     expect(shouldRefresh('delete', '/settings/llm')).toBe(true);
   });
 

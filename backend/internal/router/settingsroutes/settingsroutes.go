@@ -32,7 +32,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	onboardingsvc "github.com/ousiassllc/mam/backend/internal/service/onboarding"
 	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
-	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
@@ -205,18 +204,20 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 }
 
 // registerRetiredCategories sends the old pages of the categories "ffmpeg" and "FaceFusion" of the settings screen (a bookmark, a link in an old message) to the
-// companion software of the model manager (#1106): 303, with no fragment. Their writes (PUT, POST, DELETE) are gone: they are 404, as if the route had never been
-// (not 405, which a path that answers a GET would give).
+// companion software of the model manager (#1106): 303, with no fragment. It is a middleware, not a route, so that no route is left at those paths and their writes
+// (PUT, POST, DELETE, and the download under /settings/ffmpeg) are 404 as if they had never been, not 405.
 func registerRetiredCategories(engine *gin.Engine) {
-	for _, slug := range []string{paths.RetiredSettingsFFmpeg, paths.RetiredSettingsFaceFusion} {
-		path := paths.SettingsCategory(slug)
-		engine.GET(path, func(c *gin.Context) {
-			c.Redirect(http.StatusSeeOther, paths.ModelManagerCategory(paths.MMCompanion))
-		})
-		for _, method := range []string{http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodPatch} {
-			engine.Handle(method, path, handler.NotFound)
-		}
+	retired := map[string]bool{
+		paths.SettingsCategory(paths.RetiredSettingsFFmpeg): true, paths.SettingsCategory(paths.RetiredSettingsFaceFusion): true,
 	}
+	engine.Use(func(c *gin.Context) {
+		if c.Request.Method == http.MethodGet && retired[c.Request.URL.Path] {
+			c.Redirect(http.StatusSeeOther, paths.ModelManagerCategory(paths.MMCompanion))
+			c.Abort()
+			return
+		}
+		c.Next()
+	})
 }
 
 // companionServices are the services of the companion software of the model manager: ffmpeg and its download, FaceFusion and the Codex engine (read for the list).
