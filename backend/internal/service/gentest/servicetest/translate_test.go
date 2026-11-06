@@ -33,7 +33,7 @@ func TestDefaultTranslateIsOn(t *testing.T) {
 	assert.True(t, gentest.DefaultTranslate, "the screen and the MCP tools start with the translation on")
 }
 
-func TestEstimateWithTranslationHasAnUnpricedLineAndCallsNoLLM(t *testing.T) {
+func TestEstimateWithTranslationHasALineOfATargetWithoutAPriceAndCallsNoLLM(t *testing.T) {
 	llmFake := english()
 	r := gentesttest.New(t, gentesttest.WithTranslator(llmFake))
 
@@ -44,7 +44,7 @@ func TestEstimateWithTranslationHasAnUnpricedLineAndCallsNoLLM(t *testing.T) {
 
 	tl := line(t, on, gentest.TranslateLine)
 	assert.Equal(t, 2, tl.Items, "the prompt and the negative prompt")
-	assert.Equal(t, "unknown", tl.Basis, "an LLM call has no unit price: left out of the total, as a model without a price is")
+	assert.Equal(t, "unknown", tl.Basis, "the target of the route (fake-llm) has no checked price: left out of the total, as a model without a price is")
 	assert.Nil(t, tl.UnitUSD)
 	assert.Nil(t, tl.SubtotalUSD)
 	assert.Contains(t, tl.Label, "anthropic / fake-llm", "the LLM of the assignment is named")

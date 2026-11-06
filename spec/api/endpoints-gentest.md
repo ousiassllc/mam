@@ -30,7 +30,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | POST | `/generation-test/poses/install-adult` | 成人向けのポーズ（`sexy`・`duo`。Issue #1020）の導入。`pose_accept=on` が要り、**サービスが年齢確認（model-manager.md §6.2）がオフなら断り**（4xx。何も取得せず、ポーズの名前・枚数にも触れない）、全年齢向けのポーズ集が未導入でも断る。成功は一覧を返す。画面はゲートがオンのときだけこの導入の節を出す |
 | POST | `/generation-test/poses/remove-adult` | 成人向けのポーズだけを削除する（全年齢向けは残る。導入していなくても成功。ゲートの開閉に関わらずできる）。導入中は 409 |
 | GET | `/generation-test/poses/progress` | 導入のダウンロードの進み具合の 1 行（導入の案内が 1 秒ごとに取り直す。「ダウンロード中: x / y（n%）」。導入していないときは空） |
-| POST | `/generation-test/estimate` | 見積り（multipart: `tier`（`easy` のとき、`intent` からモデルを決めて見積もる。`model` は読まない）・`intent`・`quality`（`fast`／`standard`／`high`。steps・cfg を名指ししていない項目にモデルのプリセットを入れる）・`media`・`model`（複数）・`prompt`/`negative`（同じ順で複数）・`count`・`aspect_ratio`・`resolution`・`duration_seconds`・`translate`（`1` のとき英語に訳して送る。チェックボックスなので無いときは OFF。新しい画面は ON で開く）・`ref`（選んだ入力。ブラウザで選んだファイルは `upload::#<n>` = `upload` の n 番目）と `role_<ref>`（`reference`・`face`・`style`・`edit`・`pose`、動画は `first_frame`・`last_frame` も）・`strength_<ref>`（0〜1。無ければ既定 0.7）・`avoid_pose`（`on` でポーズ・構図を真似させない）・`lora`・`lora_strength`（既定 0.4）・ファイル `upload`・`upload_first`・`upload_last`）。アップロードは `_staging/` に置く。**何も実行しない**。200 で確認の区画（件数・モデルごとの内訳（`translate` が `1` のときは、訳す文の数の「プロンプトの英訳」の行が単価なしで入る）・合計・単価なしの注記・警告・上限超過。確認の本文に `estimate_id` と `confirmed_total_usd` を hidden で持つ） |
+| POST | `/generation-test/estimate` | 見積り（multipart: `tier`（`easy` のとき、`intent` からモデルを決めて見積もる。`model` は読まない）・`intent`・`quality`（`fast`／`standard`／`high`。steps・cfg を名指ししていない項目にモデルのプリセットを入れる）・`media`・`model`（複数）・`prompt`/`negative`（同じ順で複数）・`count`・`aspect_ratio`・`resolution`・`duration_seconds`・`translate`（`1` のとき英語に訳して送る。チェックボックスなので無いときは OFF。新しい画面は ON で開く）・`ref`（選んだ入力。ブラウザで選んだファイルは `upload::#<n>` = `upload` の n 番目）と `role_<ref>`（`reference`・`face`・`style`・`edit`・`pose`、動画は `first_frame`・`last_frame` も）・`strength_<ref>`（0〜1。無ければ既定 0.7）・`avoid_pose`（`on` でポーズ・構図を真似させない）・`lora`・`lora_strength`（既定 0.4）・ファイル `upload`・`upload_first`・`upload_last`）。アップロードは `_staging/` に置く。**何も実行しない**。200 で確認の区画（件数・モデルごとの内訳（`translate` が `1` のときは、訳す文の数の「プロンプトの英訳」の行が入る。LLM の単価が分かれば合計に入り、分からなければ単価なしで入る）・合計・単価なしの注記・警告・上限超過。確認の本文に `estimate_id` と `confirmed_total_usd` を hidden で持つ） |
 | POST | `/generation-test/run-notice` | 見積りの警告 `role_unsupported` があるときだけ、確認の区画の実行ボタンが押されて呼ぶ（Issue #959）。確認のフォームをそのまま受け取り、見積りをやり直して、モデルが対応していない役割の参照を全体の参照として使うことを、モデルごとに言うモーダルの本文（HTML の断片。`#mam-modal-body` に入る）を返す。何も実行せず、課金もしない。選択肢は「戻る」（閉じるだけ）と「このまま実行」（`/generation-test/run` へ送る）の 2 つ。受け付けられない入力は 422 の理由の断片 |
 | POST | `/generation-test/run` | 確認の区画のフォームの送信。サーバーが見積りをやり直し、`estimate_id` と合計が違う・上限（`gentest.max_items`・`gentest.max_cost_usd`）を超えるなら 409、入力の誤りは 422、英訳が必要なのに LLM が訳せなければ 502（何も生成しない）。202 で進捗と比較表の区画（`#gt-batch`）を返す |
 | GET | `/generation-test/batches/:id` | 進捗と比較表（行＝モデル、列＝プロンプト）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
@@ -69,7 +69,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | `*InvalidError`（モデル・プロンプト・本数・縦横比・解像度・長さ・入力画像・使えないモデル・取り込みの種類） | 422 | `validation` |
 | `*ConflictError`（見積りの不一致・上限超え・終わっていない結果の削除・終わったバッチの取り消し） | 409 | `conflict` |
 | `*PartialImportError`（取り込み済みで、スロットへの割り当てが LOCK 等で拒否された） | 409（メッセージに「画像は取り込みました」） | `locked` 等（メッセージに ID） |
-| `*UpstreamError`（英訳に LLM が使えない・訳せなかった。何も生成していない。Issue #913） | 502 | `upstream` |
+| `*UpstreamError`（英訳に LLM が使えない・訳せなかった。何も生成していない。Issue #913。リクエストの取り消し・期限切れは対象外: LLM の失敗ではないので 502 にしない。Issue #1072） | 502 | `upstream` |
 | `ErrNotFound` | 404 | `not_found` |
 | `ErrUnavailable`・アプリに生成テストが無い | 503 | `unavailable` |
 | 画像が大きすぎる | 413 | `validation` |
@@ -138,3 +138,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.22 | 2026-11-04 | `POST /generation-test/poses/install-adult`・`/poses/remove-adult` を足した。成人向けのポーズ（`sexy`・`duo`）の画像・一覧・行への追加は、年齢確認がオフの間は 404／出さない。履歴の入力（`GET /generation-test/inputs/:id/file`）は、成人向けのポーズから取った写しをゲートがオフの間は 404 にする | Issue #1020 |
 | 1.23 | 2026-11-04 | `POST /generation-test/results/:id/video-enhance/estimate`・`POST /generation-test/results/:id/video-enhance`（成功した動画の結果を大きくする・コマを増やして滑らかにする。Topaz は見積り → 確認 → 実行）を足した。結果の詳細に動画用の箱 `#gt-video-enhance`、ボタン行に「大きくする」「滑らかにする」、設定の欄に `video_enhance` の行 | Issue #1031 |
 | 1.24 | 2026-11-05 | `POST …/video-enhance` に `adult_confirm`（成人向けの結果を Topaz に送るとき必須）を足した。見積りの画面は警告を出す | Issue #1031（悠太さんの決定 2026-11-05） |
+| 1.25 | 2026-11-06 | 見積りの「プロンプトの英訳」の行は、LLM の単価が分かれば合計に入る（Issue #1069）。英訳中のリクエストの取り消しは 502 にしない（Issue #1072） |
