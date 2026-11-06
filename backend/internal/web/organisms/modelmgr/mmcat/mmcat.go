@@ -17,6 +17,7 @@ const (
 	LocalRuntimes = paths.MMLocalRuntimes
 	FaceCheck     = paths.MMFaceCheck
 	HFExternal    = paths.MMHFExternal
+	Companion     = paths.MMCompanion
 )
 
 // Category is a sub-page of the model manager: its name (the h1, the menu and the card), a one-line description and the sections it holds.
@@ -64,6 +65,11 @@ func All() []Category {
 			Slug: HFExternal, Name: "Hugging Face・外部の ComfyUI", Icon: atoms.IconPackage,
 			Description: "Hugging Face のモデルファイルを探して導入します。トークンと、別のマシンにある ComfyUI の確認もここです。",
 			Sections:    []string{"mm-hfi", "mm-hf", "mm-external"},
+		},
+		{
+			Slug: Companion, Name: "付随ソフト", Icon: atoms.IconPackage,
+			Description: "ffmpeg・FaceFusion など、mam とは別に入れるソフトの入れ方と、今の状態です。ffmpeg は mam でダウンロードして入れられます。",
+			Sections:    []string{"mm-companion-index", "mm-ffmpeg", "mm-facefusion"},
 		},
 	}
 }

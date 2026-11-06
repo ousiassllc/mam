@@ -20,7 +20,6 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
-	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -111,19 +110,15 @@ func (r *downloadRig) release() {
 
 // act sends an htmx request with the CSRF token.
 func (s *ffmpegScreen) act(method, path string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(method, path, nil)
-	req.Header.Set("HX-Request", "true")
-	req.AddCookie(s.cookie)
-	req.Header.Set(middleware.CSRFHeaderName, s.token)
-	return s.send(req)
+	return s.Do(method, path, nil)
 }
 
 func TestFFmpegDownload_NoPanelWhereTheAppOrThePlatformHasNoDownload(t *testing.T) {
-	assert.NotContains(t, newFFmpegScreen(t).get(paths.FFmpegSettings()), `data-testid="ffmpeg-download"`, "no service")
+	assert.NotContains(t, newFFmpegScreen(t).get(paths.CompanionFFmpeg()), `data-testid="ffmpeg-download"`, "no service")
 
 	unsupported := ffmpegdl.New(ffmpegdl.Options{Catalog: ffmpegdl.Default(), GOOS: "linux", GOARCH: "amd64"})
 	s := newFFmpegScreenWith(t, unsupported)
-	assert.NotContains(t, s.get(paths.FFmpegSettings()), `data-testid="ffmpeg-download"`, "a platform with no pinned build keeps today's guidance")
+	assert.NotContains(t, s.get(paths.CompanionFFmpeg()), `data-testid="ffmpeg-download"`, "a platform with no pinned build keeps today's guidance")
 	rec := s.act(http.MethodPost, paths.FFmpegDownload())
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.Contains(t, rec.Body.String(), "ダウンロードできません")
@@ -131,7 +126,7 @@ func TestFFmpegDownload_NoPanelWhereTheAppOrThePlatformHasNoDownload(t *testing.
 
 func TestFFmpegDownload_ThePanelSaysWhatIsFetchedFromWhereAndHowItIsChecked(t *testing.T) {
 	s := newFFmpegScreenWith(t, newDownloadRig(t, "", false).svc)
-	body := s.get(paths.FFmpegSettings())
+	body := s.get(paths.CompanionFFmpeg())
 	assert.Contains(t, body, `data-testid="ffmpeg-download-button"`)
 	assert.Contains(t, body, "test build")
 	assert.Contains(t, body, "Test Publisher")
@@ -146,13 +141,13 @@ func TestFFmpegDownload_ThePanelSaysWhatIsFetchedFromWhereAndHowItIsChecked(t *t
 func TestFFmpegDownload_ButtonDownloadsAndTheAppFindsTheCopy(t *testing.T) {
 	r := newDownloadRig(t, "", true)
 	s := newFFmpegScreenWith(t, r.svc)
-	assert.Contains(t, s.get(paths.FFmpegSettings()), "見つかりません")
+	assert.Contains(t, s.get(paths.CompanionFFmpeg()), "見つかりません")
 
 	rec := s.act(http.MethodPost, paths.FFmpegDownload())
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, `data-testid="ffmpeg-download-progress"`)
-	assert.Contains(t, body, `hx-get="/settings/ffmpeg/download"`)
+	assert.Contains(t, body, `hx-get="/model-manager/companion/ffmpeg/download"`)
 	assert.Contains(t, body, `hx-trigger="every 2s"`, "the panel polls itself while the download runs")
 	assert.Contains(t, body, `data-testid="ffmpeg-download-cancel"`)
 	assert.NotContains(t, body, `data-testid="ffmpeg-download-button"`)
@@ -172,7 +167,7 @@ func TestFFmpegDownload_ButtonDownloadsAndTheAppFindsTheCopy(t *testing.T) {
 	assert.Contains(t, body, `data-testid="ffmpeg-download-remove"`)
 	assert.NotContains(t, body, `hx-trigger="every 2s"`, "it stops polling")
 
-	page := s.get(paths.FFmpegSettings())
+	page := s.get(paths.CompanionFFmpeg())
 	assert.Contains(t, page, "使えます", "the lookup of the section finds the downloaded copy")
 	assert.NotContains(t, page, "見つかりません")
 	assert.Contains(t, page, filepath.Join(r.svc.Status().Dir, "ffmpeg"))
@@ -202,7 +197,7 @@ func TestFFmpegDownload_AWrongChecksumIsShownAndTheCopyIsNotUsed(t *testing.T) {
 	assert.Contains(t, body, "削除しました")
 	assert.Contains(t, body, `data-testid="ffmpeg-download-button"`, "the user can try again")
 	assert.NotContains(t, body, `data-testid="ffmpeg-download-done"`)
-	assert.Contains(t, s.get(paths.FFmpegSettings()), "見つかりません", "a download that does not match is never found")
+	assert.Contains(t, s.get(paths.CompanionFFmpeg()), "見つかりません", "a download that does not match is never found")
 	assert.Empty(t, r.svc.Dirs())
 }
 
@@ -218,7 +213,7 @@ func TestFFmpegDownload_RemoveDeletesTheCopy(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "削除しました")
 	assert.Contains(t, rec.Body.String(), `data-testid="ffmpeg-download-button"`)
 	assert.Empty(t, r.svc.Dirs())
-	assert.Contains(t, s.get(paths.FFmpegSettings()), "見つかりません")
+	assert.Contains(t, s.get(paths.CompanionFFmpeg()), "見つかりません")
 }
 
 func TestFFmpegDownload_RoutesNeedTheCSRFToken(t *testing.T) {
@@ -226,8 +221,7 @@ func TestFFmpegDownload_RoutesNeedTheCSRFToken(t *testing.T) {
 	for _, m := range []string{http.MethodPost, http.MethodDelete} {
 		req := httptest.NewRequest(m, paths.FFmpegDownload(), nil)
 		req.Header.Set("HX-Request", "true")
-		req.AddCookie(s.cookie)
-		assert.Equal(t, http.StatusForbidden, s.send(req).Code, m)
+		assert.Equal(t, http.StatusForbidden, s.Send(req).Code, m)
 	}
 }
 

@@ -1,5 +1,5 @@
-// Package ffmpeg is the handlers of the "ffmpeg" category of the settings screen (spec/components/settings-screen-categories.md
-// §8): the page body and the save of the paths of ffmpeg and ffprobe (PUT /settings/ffmpeg).
+// Package ffmpeg is the handlers of the section "ffmpeg" of the companion software of the model manager (spec/api/endpoints-model-manager.md §1; it was the
+// category "ffmpeg" of the settings screen, #1106): the section and the save of the paths of ffmpeg and ffprobe (PUT /model-manager/companion/ffmpeg).
 package ffmpeg
 
 import (
@@ -12,7 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
-	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/ffmpeg"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 )
 
 // SectionData is the saved paths and what the lookup finds with them. A settings file that cannot be read is the Problem of
-// the category, so that the rest of the screen still works.
+// the section, so that the rest of the screen still works.
 func SectionData(s Services) view.Data {
 	v, err := s.Settings.View()
 	if err != nil {
@@ -49,8 +49,20 @@ func tool(t ffmpegsettings.Tool, field string) view.Tool {
 	return out
 }
 
-// Save sets the paths of the form (PUT /settings/ffmpeg, fields ffmpeg and ffprobe; an empty one clears the path) and answers
-// with the category: 200 with the notice, or 422 with the reason and what was typed when a path cannot be used (nothing is
+// Show answers with the section as it is now (GET /model-manager/companion/ffmpeg): the lookup runs again. A request that is not htmx gets the page.
+func Show(s Services, page gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !settingshttp.IsHTMX(c) {
+			page(c)
+			return
+		}
+		settingshttp.NoStore(c)
+		settingshttp.Render(c, http.StatusOK, view.Section(SectionData(s)))
+	}
+}
+
+// Save sets the paths of the form (PUT /model-manager/companion/ffmpeg, fields ffmpeg and ffprobe; an empty one clears the path) and answers
+// with the section: 200 with the notice, or 422 with the reason and what was typed when a path cannot be used (nothing is
 // then written).
 func Save(s Services) gin.HandlerFunc {
 	svc := s.Settings

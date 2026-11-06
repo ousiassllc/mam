@@ -5,6 +5,7 @@ package settingsroutes
 
 import (
 	"log/slog"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 
@@ -31,18 +32,19 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	onboardingsvc "github.com/ousiassllc/mam/backend/internal/service/onboarding"
 	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
+	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/comfyscreen"
 	jobshandler "github.com/ousiassllc/mam/backend/internal/web/handler/jobs"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
+	companionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/companion"
+	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/companion/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
 	onboardinghandler "github.com/ousiassllc/mam/backend/internal/web/handler/onboarding"
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
-	facefusionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/facefusion"
-	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	llmlocalhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llmlocal"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
@@ -94,12 +96,12 @@ type Services struct {
 	Onboarding *onboardingsvc.Service
 	// Audio is the "音声・口パク" section (the choice of the voice and lip-sync providers). Nil leaves the section and its route out.
 	Audio *audiosettings.Service
-	// FFmpeg is the "ffmpeg" section (the paths of ffmpeg and ffprobe). Nil leaves the section and its route out.
+	// FFmpeg is the section "ffmpeg" of the companion software of the model manager (the paths of ffmpeg and ffprobe; #1106). Nil leaves the section and its routes out.
 	FFmpeg *ffmpegsettings.Service
 	// FFmpegDownload is the download of ffmpeg and ffprobe (the button of the ffmpeg section and of the first-run guide). Nil
 	// leaves the download and its routes out.
 	FFmpegDownload *ffmpegdl.Service
-	// FaceFusion is the "FaceFusion" section (the paths of the external face swapper). Nil leaves the section and its route out.
+	// FaceFusion is the section "FaceFusion" of the companion software (the paths of the external face swapper, and how to install it). Nil leaves the section and its routes out.
 	FaceFusion *facefusionsettings.Service
 	// Gentest is the generation test screen (paths.GenerationTest; service.Services.Gentest) and the face-check models of the model manager
 	// screen. Nil leaves the screen and that section out.
@@ -175,17 +177,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.GET(paths.AudioDetail(":choice", ":provider"), audiohandler.Detail(s.Audio, pages.Page(paths.SettingsAudio)))
 		engine.PUT(paths.AudioSettings(), audiohandler.Save(s.Audio))
 	}
-	registerFaceFusion(engine, s)
-	if s != nil && s.FFmpeg != nil {
-		f := ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload}
-		engine.PUT(paths.FFmpegSettings(), ffmpeghandler.Save(f))
-		if s.FFmpegDownload != nil {
-			engine.GET(paths.FFmpegDownload(), ffmpeghandler.DownloadPanel(f, pages.Page(paths.SettingsFFmpeg)))
-			engine.POST(paths.FFmpegDownload(), ffmpeghandler.StartDownload(f))
-			engine.POST(paths.FFmpegDownloadCancel(), ffmpeghandler.CancelDownload(f))
-			engine.DELETE(paths.FFmpegDownload(), ffmpeghandler.RemoveDownload(f))
-		}
-	}
+	registerRetiredCategories(engine)
 	if s != nil && s.Workflows != nil {
 		registerWorkflows(engine, s.Workflows)
 	}
@@ -196,7 +188,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.GET(paths.LocalModelsHealth(), settingspage.Health(s.LocalModels, 0))
 	}
 	if s != nil && s.ModelManager != nil {
-		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest, s.LocalRuntimes, s.ModelNodes)
+		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest, s.LocalRuntimes, s.ModelNodes, companionServices(s))
 	}
 	if s != nil && s.Gentest != nil {
 		gentesthandler.Register(engine, s.Gentest)
@@ -212,14 +204,33 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 	registerTools(engine, s, logger)
 }
 
-// pageServices are the services the pages of the settings screen are built from (the ones s does not have stay nil).
-// registerFaceFusion adds the PUT of the "FaceFusion" section when there is a service for it (a function of its own to keep Register simple).
-func registerFaceFusion(engine *gin.Engine, s *Services) {
-	if s != nil && s.FaceFusion != nil {
-		engine.PUT(paths.FaceFusionSettings(), facefusionhandler.Save(s.FaceFusion))
+// registerRetiredCategories sends the old pages of the categories "ffmpeg" and "FaceFusion" of the settings screen (a bookmark, a link in an old message) to the
+// companion software of the model manager (#1106): 303, with no fragment. Their writes (PUT, POST, DELETE) are gone: they are 404, as if the route had never been
+// (not 405, which a path that answers a GET would give).
+func registerRetiredCategories(engine *gin.Engine) {
+	for _, slug := range []string{paths.RetiredSettingsFFmpeg, paths.RetiredSettingsFaceFusion} {
+		path := paths.SettingsCategory(slug)
+		engine.GET(path, func(c *gin.Context) {
+			c.Redirect(http.StatusSeeOther, paths.ModelManagerCategory(paths.MMCompanion))
+		})
+		for _, method := range []string{http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodPatch} {
+			engine.Handle(method, path, handler.NotFound)
+		}
 	}
 }
 
+// companionServices are the services of the companion software of the model manager: ffmpeg and its download, FaceFusion and the Codex engine (read for the list).
+func companionServices(s *Services) companionhandler.Services {
+	c := companionhandler.Services{
+		FFmpeg: ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload}, FaceFusion: s.FaceFusion,
+	}
+	if s.ChatGPT != nil {
+		c.Codex = s.ChatGPT.Codex()
+	}
+	return c
+}
+
+// pageServices are the services the pages of the settings screen are built from (the ones s does not have stay nil).
 func pageServices(services *service.Services, s *Services) settingspage.Services {
 	p := settingspage.Services{Keys: services.Credentials}
 	if s != nil {
@@ -229,7 +240,6 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 		p.ChatGPT, p.LLM, p.LLMModels, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.LLMModels, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
 		p.Audio, p.LLMLocal = s.Audio, s.LLMLocal
 		p.Restart = s.Restart
-		p.FFmpegDownload = s.FFmpegDownload
 		p.FaceFusion = s.FaceFusion
 		p.Guide = s.Onboarding != nil
 	}

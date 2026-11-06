@@ -6,8 +6,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/audio"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/facefusion"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/licenses"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llmlocal"
@@ -69,20 +67,6 @@ templ SettingsLocalModelsBody(d local.Data) {
 templ SettingsLocalEndpointBody(d local.Data, e local.Endpoint) {
 	@settingsui.Category("ローカル・代替モデル", nil) {
 		@local.Page(d, e)
-	}
-}
-
-// SettingsFFmpegBody is "ffmpeg".
-templ SettingsFFmpegBody(d ffmpeg.Data) {
-	@settingsui.Category("ffmpeg", help.Text(ffmpeg.Description)) {
-		@ffmpeg.Section(d)
-	}
-}
-
-// SettingsFaceFusionBody is "FaceFusion".
-templ SettingsFaceFusionBody(d facefusion.Data) {
-	@settingsui.Category("FaceFusion", help.Text(facefusion.Description)) {
-		@facefusion.Section(d)
 	}
 }
 

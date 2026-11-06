@@ -35,7 +35,7 @@ func TestMedia_TellsTheWorkAndTheRemedyInJapanese(t *testing.T) {
 		"export":     {"what.export", errors.New("ffmpeg: exit status 1"), apperr.CodeMediaFailed, []string{"動画の書き出しに失敗しました", "空き容量"}},
 		"compose":    {"what.compose", errors.New("ffmpeg: exit status 1"), apperr.CodeMediaFailed, []string{"Take の合成に失敗しました"}},
 		"audio mix":  {"what.audio_mix", errors.New("ffmpeg: exit status 1"), apperr.CodeMediaFailed, []string{"音声のミキシングに失敗しました"}},
-		"no ffmpeg":  {"what.export", media.ErrUnavailable, apperr.CodeFFmpegMissing, []string{"ffmpeg と ffprobe が見つかりません", "設定画面の「ffmpeg」"}},
+		"no ffmpeg":  {"what.export", media.ErrUnavailable, apperr.CodeFFmpegMissing, []string{"ffmpeg と ffprobe が見つかりません", "モデルマネージャーの「付随ソフト」"}},
 		"time limit": {"what.export", fmt.Errorf("%w after 2m", media.ErrTimeout), apperr.CodeMediaTimeout, []string{"制限時間を超えました"}},
 		"disk full":  {"what.compose", fmt.Errorf("write: %w", syscall.ENOSPC), apperr.CodeDiskFull, []string{"ディスクの空き容量が足りません"}},
 	} {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/failbox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -68,6 +69,8 @@ type Data struct {
 	Nodes templ.Component
 	// FaceModels is the section "顔チェック用モデル" (facecard.Section; #1026); nil leaves the section out.
 	FaceModels templ.Component
+	// Companion is the page of the companion software (the list, ffmpeg, FaceFusion; #1106); nil leaves it out.
+	Companion *companion.Data
 }
 
 // Message is the confirmation or the refusal of the last action of a section.

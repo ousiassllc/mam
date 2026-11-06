@@ -10,9 +10,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
+	mmoverview "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/overview"
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
-	facefusionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/facefusion"
-	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
@@ -20,8 +19,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/toolstatus"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	audioview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/audio"
-	facefusionview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/facefusion"
-	ffmpegview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	llmview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	mcpview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
@@ -42,6 +39,9 @@ func overviewBody(c *gin.Context, s Services) templ.Component {
 		cards = append(cards, s.card(c, cat.slug))
 	}
 	cards = append(cards, localview.ManagerCard())
+	if s.FFmpeg != nil || s.FaceFusion != nil {
+		cards = append(cards, s.companionCard())
+	}
 	return pages.SettingsOverviewBody(overview.Data{Cards: cards, Guide: s.Guide})
 }
 
@@ -68,12 +68,6 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 	case paths.SettingsMCP:
 		card.Icon, card.Description = atoms.IconPlug, "エージェントから画面と同じ操作をするための、待ち受け先とトークン。"
 		card.Status = mcpStatus(mcphandler.SectionData(c.Request.Context(), s.MCP))
-	case paths.SettingsFFmpeg:
-		card.Icon, card.Description = atoms.IconMedia, "プレビュー・部分採用・品質判定に使う ffmpeg と ffprobe の場所。"
-		card.Status = ffmpegStatus(ffmpeghandler.SectionData(s.ffmpeg()))
-	case paths.SettingsFaceFusion:
-		card.Icon, card.Description = atoms.IconMedia, "顔の入れ替えに使う、別ソフトの FaceFusion の場所。"
-		card.Status = faceFusionStatus(facefusionhandler.SectionData(s.FaceFusion))
 	case paths.SettingsUpdate:
 		card.Icon, card.Description = atoms.IconUpdate, "いまの版と、新しい版の確認。"
 		card.Status = updateStatus(updatehandler.SectionData(s.Update))
@@ -82,6 +76,24 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 		card.Status = []molecules.StatusLine{line(atoms.BadgeNeutral, "%d 件", s.catalog().Len())}
 	}
 	return card
+}
+
+// companionCard is the card of the companion software (ffmpeg, FaceFusion): another screen, the model manager, where they are installed and set up (#1106). Its state
+// is the one of the card of the overview of the model manager.
+func (s Services) companionCard() molecules.ToolCard {
+	text, state := mmoverview.Companion(s.FFmpeg, s.FaceFusion)
+	tone := atoms.BadgeNeutral
+	switch state {
+	case "full":
+		tone = atoms.BadgeOK
+	case "attention":
+		tone = atoms.BadgeWarn
+	}
+	return molecules.ToolCard{
+		ID: "companion", Href: templ.SafeURL(paths.ModelManagerCategory(paths.MMCompanion)), Icon: atoms.IconPackage, Title: "付随ソフト",
+		Description: "ffmpeg・FaceFusion など、別に入れるソフトの入れ方と場所。モデルマネージャーの画面を開きます。",
+		Status:      []molecules.StatusLine{{Tone: tone, Text: text, Attrs: templ.Attributes{"data-state": state}}},
+	}
 }
 
 // keysStatus is the API keys and the ChatGPT sign-in, as the card of the overview says them.
@@ -199,21 +211,6 @@ func mcpStatus(d mcpview.Data) []molecules.StatusLine {
 	return append(out, line(atoms.BadgeNeutral, "有効なトークン %d 件", active))
 }
 
-// ffmpegStatus is whether ffmpeg and ffprobe are found.
-func ffmpegStatus(d ffmpegview.Data) []molecules.StatusLine {
-	switch {
-	case d.Problem != "":
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "設定ファイルを読めません")}
-	case d.FFmpeg.Problem != "" && d.FFprobe.Problem != "":
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "ffmpeg・ffprobe が見つかりません")}
-	case d.FFmpeg.Problem != "":
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "ffmpeg が見つかりません")}
-	case d.FFprobe.Problem != "":
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "ffprobe が見つかりません")}
-	}
-	return []molecules.StatusLine{line(atoms.BadgeOK, "ffmpeg・ffprobe を使えます")}
-}
-
 // updateStatus is the version and the result of the last check.
 func updateStatus(d updateview.Data) []molecules.StatusLine {
 	out := []molecules.StatusLine{line(atoms.BadgeNeutral, "版: %s", d.Version)}
@@ -233,15 +230,4 @@ func updateTone(t updateview.Tone) atoms.BadgeTone {
 		return atoms.BadgeError
 	}
 	return atoms.BadgeNeutral
-}
-
-// faceFusionStatus is whether FaceFusion is found.
-func faceFusionStatus(d facefusionview.Data) []molecules.StatusLine {
-	switch {
-	case d.Problem != "":
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "設定ファイルを読めません")}
-	case d.Ready:
-		return []molecules.StatusLine{line(atoms.BadgeOK, "FaceFusion を使えます")}
-	}
-	return []molecules.StatusLine{line(atoms.BadgeNeutral, "未設定（使うときだけ入れます）")}
 }

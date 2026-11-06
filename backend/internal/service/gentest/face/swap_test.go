@@ -165,9 +165,9 @@ func TestFaceSwapSaysWhyFaceFusionCannotRun(t *testing.T) {
 	assert.Equal(t, apperr.CodeFaceFusionNone, e.Code)
 	v := e.View(apperr.LangJa)
 	assert.Contains(t, v.Cause, "FaceFusion を使えません")
-	assert.Contains(t, v.Remedy, "設定画面の「FaceFusion」")
+	assert.Contains(t, v.Remedy, "モデルマネージャーの「付随ソフト」")
 	assert.Contains(t, v.Detail, "python not found", "the reason it was not found is the detail")
-	assert.Equal(t, "/settings/facefusion", v.Settings[0].Path)
+	assert.Equal(t, "/model-manager/companion#mm-facefusion", v.Settings[0].Path)
 
 	bare := gentesttest.New(t)
 	err = face.Available(bare.Svc)

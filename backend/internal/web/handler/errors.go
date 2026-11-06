@@ -103,15 +103,19 @@ func toast(c *gin.Context, err error) {
 	render(c, status, atoms.ErrorAlertOOB(message))
 }
 
-// RouteErrors makes a URL without a route (NoRoute) or a method the route does not serve (NoMethod)
-// answer like an unknown target of a page route: the full page, or the toast of an HTMX request.
-// Under /api/v1 it is a Huma-style problem. The message names the URL so the toast says which one failed.
+// RouteErrors makes a URL without a route (NoRoute) or a method the route does not serve (NoMethod) answer like an unknown target of a page route: the full page, or
+// the toast of an HTMX request (a Huma-style problem under /api/v1). The message names the URL so the toast says which one failed.
 func RouteErrors(engine *gin.Engine) {
 	engine.HandleMethodNotAllowed = true
-	engine.NoRoute(func(c *gin.Context) { routeError(c, http.StatusNotFound, "ページが見つかりません") })
+	engine.NoRoute(NotFound)
 	engine.NoMethod(func(c *gin.Context) {
 		routeError(c, http.StatusMethodNotAllowed, "この URL ではこの操作はできません")
 	})
+}
+
+// NotFound is the answer to a URL without a route; a retired route answers with it too (settingsroutes), to look as if it never was (not a 405).
+func NotFound(c *gin.Context) {
+	routeError(c, http.StatusNotFound, "ページが見つかりません")
 }
 
 func routeError(c *gin.Context, status int, message string) {
