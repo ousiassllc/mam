@@ -19,7 +19,7 @@ describe('role notice of the generation test (#959)', () => {
     host = document.createElement('div');
     host.innerHTML = `
       <div id="confirm"></div>
-      <div id="gt-batch"></div>
+      <div id="gt-batches"></div>
       <dialog id="mam-modal" data-modal aria-labelledby="mam-modal-title">
         <div id="mam-modal-body"></div>
         <p id="mam-modal-failure" role="alert" hidden></p>
@@ -110,7 +110,7 @@ describe('role notice of the generation test (#959)', () => {
     }
 
     expect(sent.path).to.equal('/generation-test/run');
-    expect(sent.target).to.equal('gt-batch');
+    expect(sent.target).to.equal('gt-batches');
     expect(sent.values!['estimate_id']).to.equal('abc');
     expect(sent.values!['confirmed_total_usd']).to.equal('0');
   });

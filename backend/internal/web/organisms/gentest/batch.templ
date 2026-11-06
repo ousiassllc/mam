@@ -7,28 +7,37 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// BatchEmpty is the placeholder the batch is drawn into.
-templ BatchEmpty() {
-	<div id={ BatchID } data-testid="gt-batch-empty"></div>
+// BatchList is the list the blocks of the runs are appended to (#1109): each "この内容で実行する" adds a block (BatchBox) at the end and
+// leaves the ones before it.
+templ BatchList() {
+	<div id={ BatchesID } class="flex flex-col gap-4" data-testid="gt-batches"></div>
 }
 
-// BatchBox is the progress and the comparison grid of a batch (rows: models, columns: prompts). While anything waits or runs it
-// asks for itself again every 2 seconds.
+// BatchBox is the block of one run: its progress and the comparison grid of its batch (rows: models, columns: prompts). It has an id of its
+// own (BatchBlockID), and while anything waits or runs it asks for itself, and only itself, again every 2 seconds; a block that is over
+// does not ask. A block with no batch (a run that was refused) has no id and no key.
 templ BatchBox(b Batch) {
 	<section
-		id={ BatchID }
+		if b.ID != "" {
+			id={ BatchBlockID(b.ID) }
+			data-batch={ b.ID }
+		}
 		class="flex flex-col gap-3 rounded-md border border-border p-4"
 		data-testid="gt-batch"
 		data-state={ b.StateTone }
 		if !b.Finished {
 			hx-get={ paths.GenerationTestPart("batches", b.ID) }
 			hx-trigger={ Polling }
+			hx-target="this"
 			hx-swap="outerHTML"
 		}
 	>
 		@notice(b.Message, "gt-batch")
 		<div class="flex flex-wrap items-center gap-3">
 			<h2 class="text-sm font-semibold">生成の結果</h2>
+			if b.ID != "" {
+				<span class="text-xs text-mute" data-testid="gt-batch-key" title={ "履歴のこの実行の結果は、バッチ " + b.ID + " のもの" }>{ b.Started }・ID { shortID(b.ID) }</span>
+			}
 			@atoms.BadgeWith(batchTone(b.StateTone), b.StateText, templ.Attributes{"data-testid": "gt-batch-state"})
 			<span class="text-xs text-mute" data-testid="gt-batch-progress">{ itoa(b.Done) } / { itoa(b.Total) } 件（{ b.Counts }）</span>
 			if b.Estimate != "" {
@@ -37,7 +46,7 @@ templ BatchBox(b Batch) {
 			if !b.Finished {
 				<form
 					hx-post={ paths.GenerationTestPart("batches", b.ID, "cancel") }
-					hx-target={ "#" + BatchID }
+					hx-target={ "#" + BatchBlockID(b.ID) }
 					hx-swap="outerHTML"
 					hx-sync="this:drop"
 					hx-disabled-elt="find button[type=submit]"
@@ -47,6 +56,16 @@ templ BatchBox(b Batch) {
 				</form>
 			}
 		</div>
+		if len(b.Params) > 0 {
+			<dl class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-mute" data-testid="gt-batch-params">
+				for _, kv := range b.Params {
+					<div class="flex gap-1">
+						<dt>{ kv.Key }</dt>
+						<dd class="text-ink">{ kv.Value }</dd>
+					</div>
+				}
+			</dl>
+		}
 		if !b.Finished {
 			<progress class="h-2 w-full" max="100" value={ itoa(b.Percent) } aria-label="生成の進み具合" data-testid="gt-progress"></progress>
 		}
@@ -103,6 +122,14 @@ templ BatchBox(b Batch) {
 			</table>
 		</div>
 	</section>
+}
+
+// shortID is the head of a batch id, enough to read a run by (the whole id is in the title and in data-batch).
+func shortID(id string) string {
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
 }
 
 func batchTone(tone string) atoms.BadgeTone {
