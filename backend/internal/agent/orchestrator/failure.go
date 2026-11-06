@@ -25,7 +25,7 @@ func failureReason(fail *apperr.Error) string {
 	return fail.View(apperr.LangJa).Sentence(apperr.LangJa)
 }
 
-// advanceRecovered is advance that turns a panic into the error of the job: the user is told in the chat and the log line
+// advanceRecovered is stages.Pipeline.Advance that turns a panic into the error of the job: the user is told in the chat and the log line
 // has the project_id, instead of the job record alone saying that the handler panicked (#1107).
 func (o *Orchestrator) advanceRecovered(ctx context.Context, projectID string) (err error) {
 	defer func() {
@@ -34,5 +34,5 @@ func (o *Orchestrator) advanceRecovered(ctx context.Context, projectID string) (
 			err = fmt.Errorf("planning pipeline panicked: %v", r)
 		}
 	}()
-	return o.advance(ctx, projectID)
+	return o.stages.Advance(ctx, projectID)
 }

@@ -9,7 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/locktoggle"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/workflows"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -25,7 +25,7 @@ func TestShotVideoModelFieldShowsTheSavedWorkflowTheShotIsPinnedTo(t *testing.T)
 
 	locks := domain.ParameterLocks{domain.ParamVideoModel: {Mode: domain.LockLocked, Value: []byte(`"` + v1 + `"`)}}
 	var b strings.Builder
-	assert.NoError(t, molecules.LockToggle(locktoggles.LockToggleFor("s1", domain.ParamVideoModel, locks)).Render(context.Background(), &b))
+	assert.NoError(t, locktoggle.Toggle(locktoggles.LockToggleFor("s1", domain.ParamVideoModel, locks)).Render(context.Background(), &b))
 	html := b.String()
 	assert.Contains(t, html, `<input type="hidden" name="value" value="`+v1+`" data-mp-from="value">`)
 	assert.Contains(t, html, "Clip (v1)", "the field shows the model by its name and version")

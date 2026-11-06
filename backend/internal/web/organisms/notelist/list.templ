@@ -6,7 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/notecard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -194,7 +194,7 @@ templ noteWithHistory(d Data, n domain.NoteView) {
 templ noteItem(n domain.NoteView) {
 	<div id={ "note-item-" + n.ID } class="flex flex-col gap-2">
 		<input type="hidden" name={ OnPageField } value={ n.ID }/>
-		@molecules.NoteCard(n)
+		@notecard.Card(n)
 		<details class="pl-3 text-sm">
 			<summary class="cursor-pointer text-xs text-mute">バージョン履歴</summary>
 			<div class="mt-2">

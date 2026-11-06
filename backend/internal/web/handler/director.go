@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/locktoggle"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -28,8 +29,7 @@ func SetMode(svc *service.DirectorService) gin.HandlerFunc {
 	}
 }
 
-// parameterOf reads the parameter of a lock request; target_type is the name the Project locks use
-// in spec/api/endpoints.md §2.1.
+// parameterOf reads the parameter of a lock request; target_type is the name the Project locks use in spec/api/endpoints.md §2.1.
 func parameterOf(c *gin.Context) domain.LockParameter {
 	if p := c.PostForm("parameter"); p != "" {
 		return domain.LockParameter(p)
@@ -46,7 +46,7 @@ func SetProjectLock(svc *service.DirectorService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, molecules.LockToggle(locktoggles.ProjectLockToggle(c.Param("id"), p, locks)))
+		render(c, http.StatusOK, locktoggle.Toggle(locktoggles.ProjectLockToggle(c.Param("id"), p, locks)))
 	}
 }
 
@@ -59,7 +59,7 @@ func SetShotLock(svc *service.DirectorService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, molecules.LockToggle(locktoggles.LockToggleFor(c.Param("id"), p, locks)))
+		render(c, http.StatusOK, locktoggle.Toggle(locktoggles.LockToggleFor(c.Param("id"), p, locks)))
 	}
 }
 
