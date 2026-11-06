@@ -1,6 +1,6 @@
-// Package ffmpeg is the "ffmpeg" category of the global settings screen (spec/components/settings-screen-categories.md §8):
-// where ffmpeg and ffprobe are found and the two paths the user can set, which take priority over the search
-// (spec/architecture/ffmpeg-lookup.md).
+// Package ffmpeg is the section "ffmpeg" of the companion software of the model manager (#1106; it was a category of the settings screen): where ffmpeg and
+// ffprobe are found and the two paths the user can set, which take priority over the search (spec/architecture/ffmpeg-lookup.md). The first-run guide shares its
+// download panel.
 package ffmpeg
 
 // PanelID is what a save replaces.
@@ -24,7 +24,7 @@ type Tool struct {
 	Problem string
 }
 
-// Data is the category. Problem is why the settings file cannot be read (the rest is then not shown). Notice and Error are the
+// Data is the section. Problem is why the settings file cannot be read (the rest is then not shown). Notice and Error are the
 // result of the last save.
 type Data struct {
 	Problem string
@@ -38,7 +38,7 @@ type Data struct {
 	Download *Download
 }
 
-// Description is what the category says under its title.
+// Description is what the section says behind its "?" button.
 const Description = "動画のプレビュー・サムネイル・部分採用・品質判定（Judge）は、ffmpeg と ffprobe を使います。ここでパスを指定するとそれを使い、空のときは、mam を起動した環境の PATH と、Mac では Homebrew の場所（/opt/homebrew/bin と /usr/local/bin）から探し、そのどこにも無ければ、mam でダウンロードして入れたものを使います（Windows と Apple Silicon の Mac で、下のボタンから入れられます）。保存したパスと、ダウンロードして入れたものは、保存・ダウンロードのすぐあとから使われます（mam を再起動する必要はありません）。"
 
 // DownloadID is the id of the panel of the download, which every action of it replaces.

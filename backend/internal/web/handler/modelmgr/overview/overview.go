@@ -9,8 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
+	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
+	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
@@ -25,6 +28,10 @@ type Deps struct {
 	Runtimes *localruntime.Service
 	Nodes    *modelnodes.Service
 	Face     *facemodels.Service
+	// FFmpeg, FaceFusion and Codex are the services of the companion software (#1106); the line and the list read them only.
+	FFmpeg     *ffmpegsettings.Service
+	FaceFusion *facefusionsettings.Service
+	Codex      *codex.Service
 }
 
 // Build is the overview with the cards of categories, in their order.
@@ -45,6 +52,8 @@ func Build(ctx context.Context, d Deps, categories []mmcat.Category) view.Overvi
 			card.Summary, card.State = face(d.Face)
 		case mmcat.HFExternal:
 			card.Summary, card.State = hf(d.Svc)
+		case mmcat.Companion:
+			card.Summary, card.State = companionLine(d)
 		}
 		o.Installing = o.Installing || card.State == view.StateInstalling
 		o.Cards = append(o.Cards, card)

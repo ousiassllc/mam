@@ -14,7 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
-	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/ffmpeg"
 )
 
 // Services are what the download panel reads: the download itself and the lookup (to say whether ffmpeg is found already).
@@ -61,8 +61,8 @@ func panel(c *gin.Context, s Services, status int, notice, errText string) {
 	settingshttp.Render(c, status, view.DownloadPanel(d))
 }
 
-// DownloadPanel answers with the panel (GET /settings/ffmpeg/download): what the panel polls while a download runs. A request
-// that is not htmx gets the page of the section.
+// DownloadPanel answers with the panel (GET /model-manager/companion/ffmpeg/download): what the panel polls while a download runs. A request
+// that is not htmx gets the page of the category.
 func DownloadPanel(s Services, page gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !settingshttp.IsHTMX(c) {
@@ -73,7 +73,7 @@ func DownloadPanel(s Services, page gin.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-// StartDownload starts the download of the pinned ffmpeg (POST /settings/ffmpeg/download). It answers at once: the panel polls
+// StartDownload starts the download of the pinned ffmpeg (POST /model-manager/companion/ffmpeg/download). It answers at once: the panel polls
 // the progress.
 func StartDownload(s Services) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -99,7 +99,7 @@ func StartDownload(s Services) gin.HandlerFunc {
 	}
 }
 
-// CancelDownload stops the download (POST /settings/ffmpeg/download/cancel); downloading again resumes it.
+// CancelDownload stops the download (POST /model-manager/companion/ffmpeg/download/cancel); downloading again resumes it.
 func CancelDownload(s Services) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		s.Download.CancelInstall()
@@ -108,7 +108,7 @@ func CancelDownload(s Services) gin.HandlerFunc {
 	}
 }
 
-// RemoveDownload deletes the downloaded copy (DELETE /settings/ffmpeg/download). mam looks for ffmpeg again at once: it uses
+// RemoveDownload deletes the downloaded copy (DELETE /model-manager/companion/ffmpeg/download). mam looks for ffmpeg again at once: it uses
 // another one when it finds one (PATH, a saved path), and has none otherwise.
 func RemoveDownload(s Services) gin.HandlerFunc {
 	return func(c *gin.Context) {

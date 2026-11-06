@@ -162,7 +162,7 @@
 
 ## 8. ffmpeg（`/settings/ffmpeg`。#1106 で、モデルマネージャーの `companion` の `#mm-ffmpeg` へ移る）
 
-> **#1106 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1106）**: この節の中身（欄・状態・探し方・「mam でダウンロードして入れる」の部品・「?」ヘルプ・結果の文言）は、**そのまま**モデルマネージャーの分類 `companion` の区画 `#mm-ffmpeg` へ移る（ID・`data-testid`・`role` は変えない。ルートは `/model-manager/companion/ffmpeg…`。[model-manager-screen.md](model-manager-screen.md)「付随ソフトの導入（#1106）」・[../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1）。設定の分類「ffmpeg」は外れ、`GET /settings/ffmpeg` は 303 で `/model-manager/companion`。概要のカードは「付随ソフト」の 1 枚（[settings-screen.md](settings-screen.md) §5）。以下は移す前の記述で、移したあとの置き場所だけが変わる。
+> **#1106 の追記（2026-11-06）— 状態: 実装済み（Issue #1106）**: この節の中身（欄・状態・探し方・「mam でダウンロードして入れる」の部品・「?」ヘルプ・結果の文言）は、**そのまま**モデルマネージャーの分類 `companion` の区画 `#mm-ffmpeg` へ移る（ID・`data-testid`・`role` は変えない。ルートは `/model-manager/companion/ffmpeg…`。[model-manager-screen.md](model-manager-screen.md)「付随ソフトの導入（#1106）」・[../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1）。設定の分類「ffmpeg」は外れ、`GET /settings/ffmpeg` は 303 で `/model-manager/companion`。概要のカードは「付随ソフト」の 1 枚（[settings-screen.md](settings-screen.md) §5）。以下は移す前の記述で、移したあとの置き場所だけが変わる。
 
 方式: **フォーム（2 欄）＋ 状態の表示**。モーダルにしない（欄が 2 つで、保存は 1 回。結果をその場で読ませたい）。出す条件: `Services.FFmpeg` がある。探し方と方針は [../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)（Issue #856）。
 
@@ -222,3 +222,4 @@
 | 0.22 | 2026-11-06 | §8 の ffmpeg の反映を、次の起動から → 保存のすぐあと（再起動の欄に出さない）に改めた。概要カードの「使えます」はサービスが動かせるものと一致する | Issue #1047 |
 | 0.23 | 2026-11-06 | §2 のローカル LLM サーバーのカードを、欄を持たないリンクのカードにした（欄はモデルマネージャーの `local-llm` へ移す。状態は仕様のみ） | Issue #1104 |
 | 0.24 | 2026-11-06 | §8 の ffmpeg の分類を、モデルマネージャーの `companion` の `#mm-ffmpeg` へ移すと決めた（中身は変えない。状態は仕様のみ） | Issue #1106 |
+| 0.25 | 2026-11-07 | §8 の ffmpeg の分類の移し替え（#1106）を実装した。中身は `companion` の `#mm-ffmpeg` で同じ。状態は「実装済み」 | | Issue #1106 |

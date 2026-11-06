@@ -19,7 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	svc "github.com/ousiassllc/mam/backend/internal/service/onboarding"
-	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
+	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/companion/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"

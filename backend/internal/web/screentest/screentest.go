@@ -76,19 +76,22 @@ func NewWithNodes(t *testing.T) *Screen {
 	return s
 }
 
-// NewAll opens the screen with every category: the local runtimes, the custom nodes and the face-check models (each over fakes of its own; the actions of the
-// runtimes and the nodes are not run through this screen, only their pages).
+// NewAll opens the screen with every category: the local runtimes, the custom nodes, the face-check models and the companion software (each over fakes of its own;
+// the actions of the runtimes and the nodes are not run through this screen, only their pages).
 func NewAll(t *testing.T) *Screen {
 	t.Helper()
 	rig := mmtest.New(t)
 	rig.Gentest.FaceModels = facemodelstest.New(t).Svc
 	nodes := nodetest.New(t)
-	s := open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall), nodes)
+	ffmpeg, _ := IsolatedFFmpeg(t)
+	faceFusion, _ := IsolatedFaceFusion(t)
+	s := open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall), nodes, companionOf(t, Companion{FFmpeg: ffmpeg, FaceFusion: faceFusion, Codex: true}))
 	s.Nodes = nodes
 	return s
 }
 
-func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *Screen {
+// open is the screen over the rig; with mods changes the services of the settings routes before the router is built.
+func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig, mods ...func(*settingsroutes.Services)) *Screen {
 	t.Helper()
 	db := testdb.Open(t)
 	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
@@ -105,6 +108,9 @@ func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *
 	}
 	if nodes != nil {
 		settings.ModelNodes = nodes.Svc
+	}
+	for _, mod := range mods {
+		mod(settings)
 	}
 	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, Works: works, engine: router.New(svc, router.Options{Settings: settings})}
 

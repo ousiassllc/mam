@@ -116,16 +116,16 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"save_failed.remedy": "Check the free disk space and the permissions of the folder and save again. If it continues, check the log of mam.",
 
 	"ffmpeg_missing.cause":  "ffmpeg and ffprobe were not found.",
-	"ffmpeg_missing.remedy": "In Settings > ffmpeg, download ffmpeg and ffprobe, or give the path of the ones you installed yourself.",
+	"ffmpeg_missing.remedy": "In the model manager > Companion software, download ffmpeg and ffprobe, or give the path of the ones you installed yourself.",
 
 	"media_failed.cause":  "{what} failed. The video / audio processing (ffmpeg) ended with an error.",
 	"media_failed.remedy": "Check that the source video is not broken, and the free space and the write permission of the destination, then run it again. If it continues, report it with the detail (the end of the output of ffmpeg).",
 
 	"facefusion_unavailable.cause":  "FaceFusion cannot be used. It was not found, or the path that is set cannot be used.",
-	"facefusion_unavailable.remedy": "mam does not ship FaceFusion; install it yourself. If it is installed, check the paths of Python and the FaceFusion folder in Settings > FaceFusion. The detail has why it was not found and where mam looked.",
+	"facefusion_unavailable.remedy": "mam does not ship FaceFusion; install it yourself. The steps to install it are in the model manager > Companion software. If it is installed, check the paths of Python and the FaceFusion folder there. The detail has why it was not found and where mam looked.",
 
 	"facefusion_failed.cause":  "FaceFusion could not make the picture. {why}",
-	"facefusion_failed.remedy": "Check that a face is clearly visible in the face picture and in the target picture. FaceFusion refuses adult images. A shortage of GPU memory or a faulty install of FaceFusion can also be the cause. Check the detail (the end of the output of FaceFusion) and the state shown in Settings > FaceFusion.",
+	"facefusion_failed.remedy": "Check that a face is clearly visible in the face picture and in the target picture. FaceFusion refuses adult images. A shortage of GPU memory or a faulty install of FaceFusion can also be the cause. Check the detail (the end of the output of FaceFusion) and the state of FaceFusion shown in the model manager > Companion software.",
 
 	"update_network.cause":  "The update check could not connect to the network.",
 	"update_network.remedy": "Check the network connection. mam checks again by itself after a while.",

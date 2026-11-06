@@ -27,7 +27,7 @@ func TestAllIsTheOneListOfTheCategories(t *testing.T) {
 			sectionSeen[id] = c.Slug
 		}
 	}
-	assert.Equal(t, []string{"comfyui", "image-video", "custom-nodes", "local-runtimes", "face-check", "hf-external"}, slugs)
+	assert.Equal(t, []string{"comfyui", "image-video", "custom-nodes", "local-runtimes", "face-check", "hf-external", "companion"}, slugs)
 }
 
 func TestFindIsTheCategoryOfASlug(t *testing.T) {

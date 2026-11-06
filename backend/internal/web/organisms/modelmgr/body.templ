@@ -6,6 +6,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/facefusion"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -28,6 +31,8 @@ templ Body(category string, d Data) {
 				@faceCheckSections(d)
 			case mmcat.HFExternal:
 				@hfExternalSections(d)
+			case mmcat.Companion:
+				@companionSections(d)
 		}
 		@modal.Host()
 	</div>
@@ -94,6 +99,30 @@ templ hfExternalSections(d Data) {
 	}
 	@molecules.SettingsSection("外部の ComfyUI", "別のマシン（tailnet を含む）や ComfyUI Desktop など、mam が起動していない ComfyUI にあるモデルを確かめます。") {
 		@ExternalCard(d.External)
+	}
+}
+
+// companionSections is the page of the companion software: the list, then ffmpeg and FaceFusion (a section whose service this build lacks is left out; the list never
+// has a row for what is not there).
+templ companionSections(d Data) {
+	if d.Companion != nil {
+		@molecules.SettingsSection("付随ソフトの一覧", companion.IndexHelp) {
+			@companion.IndexView(d.Companion.Index)
+		}
+		if d.Companion.FFmpeg != nil {
+			@molecules.SettingsSection("ffmpeg", ffmpeg.Description) {
+				<div id={ companion.FFmpegID }>
+					@ffmpeg.Section(*d.Companion.FFmpeg)
+				</div>
+			}
+		}
+		if d.Companion.FaceFusion != nil {
+			@molecules.SettingsSection("FaceFusion", facefusion.Description) {
+				<div id={ companion.FaceFusionID }>
+					@facefusion.Section(*d.Companion.FaceFusion)
+				</div>
+			}
+		}
 	}
 }
 

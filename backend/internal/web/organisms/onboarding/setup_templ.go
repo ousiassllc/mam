@@ -10,9 +10,9 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -230,7 +230,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-ink\">ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。設定画面の「ffmpeg」でパスを指定していればそのパスを、無ければ mam を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探し、どこにも無ければ mam でダウンロードして入れたものを使います。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-ink\">ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。モデルマネージャーの「付随ソフト」でパスを指定していればそのパスを、無ければ mam を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探し、どこにも無ければ mam でダウンロードして入れたものを使います。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -506,7 +506,7 @@ func installGuide(os OS) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">brew install ffmpeg</code></p><p class=\"text-sm text-mute\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、設定画面の「ffmpeg」でパスを指定してください。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">brew install ffmpeg</code></p><p class=\"text-sm text-mute\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、モデルマネージャーの「付随ソフト」でパスを指定してください。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

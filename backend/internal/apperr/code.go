@@ -120,7 +120,7 @@ const (
 	PlaceUpdate      Place = "update"
 )
 
-// places is where each Place is (the paths of web/paths: Settings, SettingsCategory, ModelManager, ChatGPTSettings; a test pins it).
+// places is where each Place is (the paths of web/paths: Settings, SettingsCategory, ModelManager, FFmpegSettings, FaceFusionSettings, ChatGPTSettings; a test pins it).
 var places = map[Place]string{ //nolint:gosec // G101 false positive: the path of the API keys screen, not a credential
 	PlaceSettings:    "/settings",
 	PlaceAPIKeys:     "/settings/api-keys",
@@ -128,8 +128,8 @@ var places = map[Place]string{ //nolint:gosec // G101 false positive: the path o
 	PlaceLocalModels: "/settings/local-models",
 	PlaceModelMgr:    "/model-manager",
 	PlaceChatGPT:     "/settings/chatgpt",
-	PlaceFFmpeg:      "/settings/ffmpeg",
-	PlaceFaceFusion:  "/settings/facefusion",
+	PlaceFFmpeg:      "/model-manager/companion#mm-ffmpeg",
+	PlaceFaceFusion:  "/model-manager/companion#mm-facefusion",
 	PlaceUpdate:      "/settings/update",
 }
 

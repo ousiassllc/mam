@@ -10,10 +10,15 @@ const (
 	SettingsLocalModels = "local-models"
 	SettingsAudio       = "audio"
 	SettingsMCP         = "mcp"
-	SettingsFFmpeg      = "ffmpeg"
-	SettingsFaceFusion  = "facefusion"
 	SettingsUpdate      = "update"
 	SettingsLicenses    = "licenses"
+)
+
+// The retired categories "ffmpeg" and "FaceFusion" of the settings screen moved to the model manager (#1106, CompanionFFmpeg and CompanionFaceFusion): their
+// old pages "/settings/<slug>" only send the browser there (a bookmark, a link in an old message).
+const (
+	RetiredSettingsFFmpeg     = "ffmpeg"
+	RetiredSettingsFaceFusion = "facefusion"
 )
 
 // SettingsCategory is the page of a category of the settings screen: "/settings/<slug>", and "/settings" for the

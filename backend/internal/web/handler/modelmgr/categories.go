@@ -5,12 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/overview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	viewcompanion "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
@@ -25,6 +27,8 @@ func (h Handlers) has(slug string) bool {
 		return h.Nodes != nil
 	case mmcat.FaceCheck:
 		return h.Gentest != nil && h.Gentest.FaceModels != nil
+	case mmcat.Companion:
+		return h.Companion.Has()
 	}
 	return true
 }
@@ -48,6 +52,15 @@ func (h Handlers) registerCategories(engine *gin.Engine) {
 	}
 }
 
+// registerCompanion adds the routes of the sections of the companion software; a request of them that is not htmx gets the page of the category.
+func (h Handlers) registerCompanion(engine *gin.Engine) {
+	if cat, ok := mmcat.Find(mmcat.Companion); ok && h.has(mmcat.Companion) {
+		companion.Register(engine, h.Companion, h.Category(cat), func(c *gin.Context) viewcompanion.Index {
+			return overview.CompanionIndex(c.Request.Context(), h.overviewDeps())
+		})
+	}
+}
+
 // isBodyRequest says the request is HTMX's and not the restore of a history entry (which wants the whole page).
 func isBodyRequest(c *gin.Context) bool {
 	return c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true"
@@ -66,11 +79,19 @@ func (h Handlers) Page(c *gin.Context) {
 
 // overview reads the overview: the categories of this build and how each stands.
 func (h Handlers) overview(c *gin.Context) view.Overview {
-	d := overview.Deps{Svc: h.Svc, Runtimes: h.Runtimes, Nodes: h.Nodes}
+	return overview.Build(c.Request.Context(), h.overviewDeps(), h.available())
+}
+
+// overviewDeps are the services the lines of the overview and the list of the companion software are read from.
+func (h Handlers) overviewDeps() overview.Deps {
+	d := overview.Deps{
+		Svc: h.Svc, Runtimes: h.Runtimes, Nodes: h.Nodes,
+		FFmpeg: h.Companion.FFmpeg.Settings, FaceFusion: h.Companion.FaceFusion, Codex: h.Companion.Codex,
+	}
 	if h.Gentest != nil {
 		d.Face = h.Gentest.FaceModels
 	}
-	return overview.Build(c.Request.Context(), d, h.available())
+	return d
 }
 
 // OverviewPart answers GET /model-manager/overview, which the overview polls while an install runs and its refresh button reads: the overview alone.
@@ -107,6 +128,9 @@ func (h Handlers) categoryData(c *gin.Context, slug string) view.Data {
 		d.Runtimes = runtimes.Section(ctx, h.Runtimes)
 	case mmcat.FaceCheck:
 		d.FaceModels = h.faceModels()
+	case mmcat.Companion:
+		comp := companion.Data(h.Companion, overview.CompanionIndex(ctx, h.overviewDeps()))
+		d.Companion = &comp
 	case mmcat.HFExternal:
 		d.HF, d.HFImport, d.External = hfimport.TokenData(h.Svc), hfimport.Panel(ctx, h.Svc), view.External{Endpoints: h.externalEndpoints(c)}
 	}

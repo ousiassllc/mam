@@ -16,6 +16,7 @@ const (
 	MMLocalRuntimes = "local-runtimes"
 	MMFaceCheck     = "face-check"
 	MMHFExternal    = "hf-external"
+	MMCompanion     = "companion"
 )
 
 // ModelManagerCategory is the page of a category of the model manager, "/model-manager/<slug>".
@@ -33,3 +34,28 @@ func ModelManagerPart(rest ...string) string {
 	}
 	return p
 }
+
+// CompanionFFmpeg is "/model-manager/companion/ffmpeg", the ffmpeg section of the companion software (#1106): GET answers the section, PUT saves the paths of ffmpeg and
+// ffprobe.
+func CompanionFFmpeg() string { return ModelManagerPart(MMCompanion, "ffmpeg") }
+
+// FFmpegDownload is "/model-manager/companion/ffmpeg/download": GET answers the panel of the download (it polls itself while one runs), POST downloads the pinned
+// ffmpeg and ffprobe, DELETE removes the downloaded copy.
+func FFmpegDownload() string { return CompanionFFmpeg() + "/download" }
+
+// FFmpegDownloadCancel is "/model-manager/companion/ffmpeg/download/cancel": POST stops the download (it resumes later).
+func FFmpegDownloadCancel() string { return FFmpegDownload() + "/cancel" }
+
+// CompanionFaceFusion is "/model-manager/companion/facefusion": GET looks for FaceFusion again and answers the section (it saves nothing and runs nothing), PUT saves the
+// Python and the folder. mam never fetches FaceFusion, so there is no install route.
+func CompanionFaceFusion() string { return ModelManagerPart(MMCompanion, "facefusion") }
+
+// CompanionIndex is "/model-manager/companion/index", the list of the companion software alone (what its refresh button reads).
+func CompanionIndex() string { return ModelManagerPart(MMCompanion, "index") }
+
+// FFmpegSettings is the place where ffmpeg is set up and fetched: its section on the page of the companion software (the link of an error, of a job and of the
+// first-run guide).
+func FFmpegSettings() string { return ModelManagerCategory(MMCompanion) + "#mm-ffmpeg" }
+
+// FaceFusionSettings is the place where FaceFusion is looked for and its way in is told: its section on the page of the companion software.
+func FaceFusionSettings() string { return ModelManagerCategory(MMCompanion) + "#mm-facefusion" }

@@ -118,16 +118,16 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"save_failed.remedy": "ディスクの空き容量とフォルダの権限を確かめてから、もう一度保存してください。続くときは mam のログを確認してください。",
 
 	"ffmpeg_missing.cause":  "ffmpeg と ffprobe が見つかりません。",
-	"ffmpeg_missing.remedy": "設定画面の「ffmpeg」で、ffmpeg と ffprobe をダウンロードするか、自分で入れたもののパスを指定してください。",
+	"ffmpeg_missing.remedy": "モデルマネージャーの「付随ソフト」で、ffmpeg と ffprobe をダウンロードするか、自分で入れたもののパスを指定してください。",
 
 	"media_failed.cause":  "{what}に失敗しました。動画・音声の処理（ffmpeg）がエラーで終わりました。",
 	"media_failed.remedy": "素材の動画が壊れていないか、保存先の空き容量と書き込み権限を確かめてから、もう一度実行してください。続くときは、詳細（ffmpeg の出力の末尾）を添えて報告してください。",
 
 	"facefusion_unavailable.cause":  "FaceFusion を使えません。見つからないか、設定したパスが使えません。",
-	"facefusion_unavailable.remedy": "FaceFusion は mam に同梱していないので、自分で入れてください。入れてあるときは、設定画面の「FaceFusion」で、Python と FaceFusion のフォルダのパスを確かめてください。詳細に、見つからなかった理由と探した場所があります。",
+	"facefusion_unavailable.remedy": "FaceFusion は mam に同梱していないので、自分で入れてください。入れ方の手順は、モデルマネージャーの「付随ソフト」にあります。入れてあるときは、そこで Python と FaceFusion のフォルダのパスを確かめてください。詳細に、見つからなかった理由と探した場所があります。",
 
 	"facefusion_failed.cause":  "FaceFusion が画像を作れませんでした。{why}",
-	"facefusion_failed.remedy": "顔の画像と入れ替え先の画像に、顔がはっきり写っているか確かめてください。成人向けの画像は FaceFusion が断ります。GPU のメモリ不足や FaceFusion の導入の不備のこともあります。詳細（FaceFusion の出力の末尾）と、設定画面の「FaceFusion」の状態を確かめてください。",
+	"facefusion_failed.remedy": "顔の画像と入れ替え先の画像に、顔がはっきり写っているか確かめてください。成人向けの画像は FaceFusion が断ります。GPU のメモリ不足や FaceFusion の導入の不備のこともあります。詳細（FaceFusion の出力の末尾）と、モデルマネージャーの「付随ソフト」の FaceFusion の状態を確かめてください。",
 
 	"update_network.cause":  "更新の確認で、ネットワークに接続できませんでした。",
 	"update_network.remedy": "ネットワークの接続を確かめてください。mam はしばらくしてから、自動でもう一度確認します。",

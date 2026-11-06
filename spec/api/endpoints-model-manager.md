@@ -4,7 +4,7 @@
 
 > **状態: 実装済み（Issue #1100）**: 「試し生成」（`/model-manager/trials/…`）は廃止した。導入したモデルを試すのは生成テスト画面（`GET /generation-test`。[endpoints-gentest.md](endpoints-gentest.md)）だけ。
 
-> **状態: 実装済み（Issue #1101。`mmcat.All()` の 6 分類。#1104・#1106 が足す `local-llm`・`companion` は未実装）**: 画面を**分類ごとのサブページ**に分けた。`GET /model-manager` は概要になり、区画は `GET /model-manager/<slug>`（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）の分類ページに移る。下の §1 の表に概要と分類ページのルートを足し、§3 の区画の並びを分類の表に直し、§4 に受け入れ条件を足した。区画の部分ルート（`/model-manager/engine/…`・`/models/…` ほか）は、パス・フォームともそのまま。構成は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「分類のサブページ（#1101）」。
+> **状態: 実装済み（Issue #1101。`mmcat.All()` の分類。#1106 が `companion` を足した〔実装済み〕。#1104 が足す `local-llm` は別の Issue）**: 画面を**分類ごとのサブページ**に分けた。`GET /model-manager` は概要になり、区画は `GET /model-manager/<slug>`（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）の分類ページに移る。下の §1 の表に概要と分類ページのルートを足し、§3 の区画の並びを分類の表に直し、§4 に受け入れ条件を足した。区画の部分ルート（`/model-manager/engine/…`・`/models/…` ほか）は、パス・フォームともそのまま。構成は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「分類のサブページ（#1101）」。
 
 `modelmanager.Service` を持たない router（ヘッドレスのテストなど）では、画面もルートも無い。入口は、プロジェクト一覧（`GET /`）の「モデルマネージャー」のリンクと、設定画面（`GET /settings`）の見出しの下のリンク。
 
@@ -237,3 +237,4 @@
 | 1.22 | 2026-11-07 | 「試し生成」の廃止（#1100）を実装した。状態を「実装済み」にした（`handler/modelmgr/trialgonetest`）。仕様の内容は変えない | Issue #1100 |
 | 1.23 | 2026-11-07 | 分類のサブページ（#1101）を実装した。状態を「実装済み」にした。`GET /model-manager/overview`（概要だけの部分ルート）を足した。区画をまたぐ OOB の整理（`oob.EngineWithCatalog` の廃止）・リンクの付け替えも入れた | Issue #1101 |
 | 1.24 | 2026-11-07 | カードの列数（#1102）と追加ノードの説明（#1103）を実装した。§4 の受け入れ条件の「実装時にこのテストを足す」を、テストの置き場所に直した。ルート・応答の中身は変えない（概要の分類のカード `mm-categories` は列数の対象外） | Issue #1102・#1103 |
+| 1.25 | 2026-11-07 | 付随ソフトの導入（#1106）を実装した。状態を「実装済み」にした。`/model-manager/companion/ffmpeg`（`GET`・`PUT`・`…/download`・`…/download/cancel`）・`/model-manager/companion/facefusion`（`GET`・`PUT`。取得・導入のルートは無い）・`/model-manager/companion/index` を足し、`GET /settings/ffmpeg`・`/settings/facefusion` を 303 にして、`PUT`・`POST`・`DELETE /settings/ffmpeg…`・`PUT /settings/facefusion` を 404 にした。受け入れ条件は `handler/modelmgr/companiontest`・`web/ffmpegscreen`・`web/facefusionscreen` ほか | Issue #1106 |

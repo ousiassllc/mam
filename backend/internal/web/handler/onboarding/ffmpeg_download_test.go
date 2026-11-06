@@ -28,7 +28,7 @@ func fakeDownload(t *testing.T, goos, goarch string) *ffmpegdl.Service {
 
 func missing(string) (string, error) { return "", assert.AnError }
 
-// Issue #900: where ffmpeg can be downloaded, the step has the button (the same panel and routes as the settings screen), above
+// Issue #900: where ffmpeg can be downloaded, the step has the button (the same panel and routes as the companion software of the model manager), above
 // the way to install it yourself, which stays.
 func TestFFmpegStep_OffersTheDownloadWhereItIsAvailableAndSomethingIsMissing(t *testing.T) {
 	for name, tc := range map[string]struct {
@@ -40,7 +40,7 @@ func TestFFmpegStep_OffersTheDownloadWhereItIsAvailableAndSomethingIsMissing(t *
 	}{
 		"missing, supported": {
 			"linux", missing, fakeDownload(t, "linux", "amd64"),
-			[]string{`data-testid="ffmpeg-download"`, `data-testid="ffmpeg-download-button"`, "hx-post=\"/settings/ffmpeg/download\"", "SHA-256", "onboarding-ffmpeg-other", "onboarding-ffmpeg-manual"}, nil,
+			[]string{`data-testid="ffmpeg-download"`, `data-testid="ffmpeg-download-button"`, "hx-post=\"/model-manager/companion/ffmpeg/download\"", "SHA-256", "onboarding-ffmpeg-other", "onboarding-ffmpeg-manual"}, nil,
 		},
 		"missing on Windows keeps winget as the manual way": {
 			"windows", missing, fakeDownload(t, "linux", "amd64"),
