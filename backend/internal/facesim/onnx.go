@@ -70,7 +70,7 @@ func NewONNX(cfg ONNXConfig) (*ONNX, error) {
 	if err := checkRuntimeLibrary(lib); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
-	rt, err := ort.NewRuntime(lib, ortAPIVersion)
+	rt, err := newRuntime(lib)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w%s", ErrUnavailable, err, loadFailureHint())
 	}
@@ -93,6 +93,17 @@ func NewONNX(cfg ONNXConfig) (*ONNX, error) {
 		return fail(err)
 	}
 	return e, nil
+}
+
+// newRuntime loads the ONNX Runtime library. The bindings panic (they do not return an error) when the file loads but is not ONNX
+// Runtime, for the symbols it lacks (OrtGetApiBase): that is a library that cannot be used, like a missing one, so it is an error here.
+func newRuntime(lib string) (rt *ort.Runtime, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			rt, err = nil, fmt.Errorf("the library %q is not the ONNX Runtime: %v", lib, r)
+		}
+	}()
+	return ort.NewRuntime(lib, ortAPIVersion)
 }
 
 // Close releases the models and the runtime.

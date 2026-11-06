@@ -65,6 +65,7 @@ test-scripts: ## shell script tests
 	bash scripts/third-party-notices_test.sh
 	bash scripts/check-third-party-notices_test.sh
 	bash scripts/fetch-onnxruntime_test.sh
+	bash scripts/fetch-onnxruntime/extract_test.sh
 	bash scripts/require-tests-passed_test.sh
 	bash scripts/stress-test_test.sh
 
