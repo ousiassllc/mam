@@ -244,7 +244,8 @@ func TestPostMessage_KeepsWorkingWhileTheProjectIsBusyAndDoesNotTouchTheBrief(t 
 	before := f.brief(t, p.ID)
 	setState(t, f, p.ID, domain.StateGenerating)
 	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "10秒にしてほしい"})
-	assert.Len(t, ws.Messages, 1, "input is accepted during generation; interpreting it is the DIRECTOR MODE feature")
+	require.Len(t, ws.Messages, 2, "input is accepted during generation; interpreting it is the DIRECTOR MODE feature, and the thread says so (#1107)")
+	assert.Equal(t, domain.RoleAssistant, ws.Messages[1].Role)
 	assert.Equal(t, before, f.brief(t, p.ID))
 }
 
