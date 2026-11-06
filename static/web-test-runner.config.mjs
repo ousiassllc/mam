@@ -88,7 +88,14 @@ const gentestResultAnswers = [
   ],
 ];
 
+// The second page of the history (test: gentest/history-pages, #1079): the link of a page asks for it by "?page=2".
 async function gentestAnswerMiddleware(ctx, next) {
+  if (ctx.method === 'GET' && ctx.path === '/generation-test/history' && ctx.query.page === '2') {
+    ctx.status = 200;
+    ctx.type = 'text/html';
+    ctx.body = await readFile(new URL('./src/components/testdata/gentest-history-page2.html', import.meta.url));
+    return;
+  }
   const result = gentestResultAnswers.find(([method, path]) => ctx.method === method && path.test(ctx.path));
   const answer = result ? [result[2], 200, result[3]] : gentestAnswers[`${ctx.method} ${ctx.path}`];
   if (!answer) return next();

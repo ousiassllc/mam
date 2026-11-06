@@ -40,7 +40,7 @@ func TestAResultAndTheBatchGridSayWhetherTheModelThatMadeItMayBeUsedCommercially
 	assert.Contains(t, s.htmx(req).Body.String(), `data-commercial-badge="yes"`, "and in the modal that a tile opens")
 }
 
-func TestTheHistoryKeepsTheCommercialFilterInTheNextLink(t *testing.T) {
+func TestTheHistoryKeepsTheCommercialFilterInTheLinksOfThePages(t *testing.T) {
 	s := newScreen(t)
 	form := batchForm("flux-2")
 	form.Set("count", "20")
@@ -49,8 +49,9 @@ func TestTheHistoryKeepsTheCommercialFilterInTheNextLink(t *testing.T) {
 
 	body := s.get(paths.GenerationTestHistory() + "?commercial=ok")
 
-	next := regexp.MustCompile(`hx-get="([^"]*offset=24[^"]*)"`).FindStringSubmatch(body)
+	next := regexp.MustCompile(`id="gt-pager-next" href="([^"]*)"`).FindStringSubmatch(body)
 	require.Len(t, next, 2)
 	assert.Contains(t, next[1], "commercial=ok")
+	assert.Contains(t, next[1], "page=2")
 	assert.Regexp(t, `value="ok"\s+checked`, body)
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagination"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
@@ -71,6 +72,21 @@ func liveHistory(running int, at string) gentest.History {
 	return h
 }
 
+// pagedHistory is the history of 3 pages of 24 results (60 in all) at page, as the handler draws it: the cards of the page are the three of liveHistory.
+func pagedHistory(page int) gentest.History {
+	h := liveHistory(0, "10:00:00")
+	h.Pager = pagination.Props{
+		ID: "gt-pager", Target: gentest.HistoryID, Current: page, Last: 3, Total: 60, PerPage: 24,
+		Href: func(n int) string {
+			if n == 1 {
+				return "/generation-test/history"
+			}
+			return "/generation-test/history?page=" + strconv.Itoa(n)
+		},
+	}
+	return h
+}
+
 // liveDetail is the detail of result r0 as the modal that a tile of the history opens shows it.
 func liveDetail() gentest.Detail {
 	c := liveCard(0, 3)
@@ -84,6 +100,8 @@ func TestGentestLiveFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	checkFixtures(t, map[string]templ.Component{
 		"gentest-history-running.html":   gentest.HistoryList(liveHistory(1, "10:00:00")),
 		"gentest-history-idle.html":      gentest.HistoryList(liveHistory(0, "10:00:00")),
+		"gentest-history-page1.html":     gentest.HistoryList(pagedHistory(1)),
+		"gentest-history-page2.html":     gentest.HistoryList(pagedHistory(2)),
 		"gentest-history-live-done.html": gentest.HistoryLive(liveHistory(0, "10:00:05")),
 		"gentest-export-refused.html":    exportbar.Problem("書き出せる結果がありません（条件に合う、成功してファイルのある結果がありません）"),
 		"gentest-batch-running.html":     gentest.BatchBox(liveBatch(2)),
