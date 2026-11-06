@@ -12,9 +12,9 @@
 
 > **#1105 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1105）**: 分類 `local-llm` に、**Ollama 本体の導入**（ランタイム `ollama`。カード `#mm-runtime-ollama`。`#mm-llm-runtimes` の中）と、**Ollama のモデルの取得**（区画 `#mm-ollama`。`ollama pull`）を足す。Issue 本文の「エルラマ」は Ollama（音声入力の表記ゆれ）。下の節「Ollama の導入とモデルの取得（#1105）」が正。
 
-> **#1103 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1103）**: 区画「追加ノード」のカードから、ノードの説明（カタログの `description`。156〜407 字）を外し、**カードをタップして開く詳細モーダル（`nodecard.NodeDetail`。すでにある）だけ**に出す。新しい部品・新しい「?」は作らない。下の節「追加ノードの説明（#1103）」が正。
+> **#1103 の追記（2026-11-06）— 状態: 実装済み（Issue #1103）**: 区画「追加ノード」のカードから、ノードの説明（カタログの `description`。156〜407 字）を外し、**カードをタップして開く詳細モーダル（`nodecard.NodeDetail`。すでにある）だけ**に出す。新しい部品・新しい「?」は作らない。下の節「追加ノードの説明（#1103）」が正。
 
-> **#1102 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1102）**: モデルを並べる一覧の列数を、**1 列（〜639 px）→ 2 列（640 px〜）→ 3 列（1280 px〜）の 1 通りに統一**する。今は一覧ごとにバラバラ（ランタイム・追加ノードは 1 列→1024 px〜 2 列、モデルの一覧・追加したファイル・外部の ComfyUI のモデルは 1 列→2 列→1024 px〜 3 列）。下の節「カードの列数（#1102）」が正。
+> **#1102 の追記（2026-11-06）— 状態: 実装済み（Issue #1102）**: モデルを並べる一覧の列数を、**1 列（〜639 px）→ 2 列（640 px〜）→ 3 列（1280 px〜）の 1 通りに統一**する。今は一覧ごとにバラバラ（ランタイム・追加ノードは 1 列→1024 px〜 2 列、モデルの一覧・追加したファイル・外部の ComfyUI のモデルは 1 列→2 列→1024 px〜 3 列）。下の節「カードの列数（#1102）」が正。
 
 > **#1101 の追記（2026-11-06）— 状態: 実装済み（Issue #1101）**: 1 枚に積んでいた区画を、**分類ごとのサブページ**に分けた。`GET /model-manager` は概要（各分類への入口と導入状態のまとめ）だけになり、区画は `GET /model-manager/<slug>` の分類ページへ移る。区画の中身（カード・ダイアログ・`#mm-…` の ID・ポーリング・拒否の扱い）は変えず、置き場所だけが変わる。下の「分類のサブページ（#1101）」が正で、これより前の「区画は 1 枚のページに縦に並ぶ」記述はこの節に読み替える。
 
@@ -156,12 +156,12 @@
 
 ## カードの列数（#1102）
 
-> **状態: 仕様のみ（未実装。Issue #1102）**。カードの中身・面・色は変えない（列数と、列が決まる幅だけ）。#1101 で区画が分類ページに移ったあとのページ幅を前提にする。
+> **状態: 実装済み（Issue #1102）**。カードの中身・面・色は変えない（列数と、列が決まる幅だけ）。#1101 で区画が分類ページに移ったあとのページ幅を前提にする。ページ幅は `mmcat.Category.Cards`（一覧を持つ分類は `true`）が決め、`pages.ModelManagerCategoryPage` が `Wide`／`Medium` を選ぶ。
 
 - **共通の 1 か所**: カードを並べる `<ul>` の class は `molecules/modelcard` の定数 `modelcard.GridClass`（新設）= `grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3` だけが持つ（`role="list"` は今のまま `<ul>` に付ける）。列数を変えるときは、この 1 行だけを直す。使う所（今の `grid-cols-` を持つ `<ul>` をすべて置き換える）: モデルの一覧（`organisms/modelmgr/catalog.templ` の `mm-models`）・外部の ComfyUI のモデル（`extras.templ` の `mm-external-models`）・追加したファイル（`hfimport.templ` の `mm-hfi-model-list`）・ローカル音声・口パク・LLM のカード（`runtimecard/card.templ`。今は `lg:grid-cols-2`）・追加ノードのカード（`nodecard/card.templ`。今は `lg:grid-cols-2`）。
 - **ブレークポイント**（ビューポートの幅。Tailwind の `sm`＝640 px・`xl`＝1280 px）: 〜639 px は 1 列、640〜1279 px は 2 列、1280 px〜は 3 列。**`lg`（1024 px）を 3 列の境にしない理由**: 左メニューが開いていると（224 px。[side-menu.md](side-menu.md)）、1024 px のウィンドウ（アプリの最小幅。[../architecture/desktop.md](../architecture/desktop.md)）の本文は 800 px で、3 列にすると 1 枚が約 234 px になり、操作ボタンが縦に積まれて押しにくい。1280 px なら本文の幅が `max-w-5xl`（1024 px。下）に収まり、1 枚は約 309 px。既定のウィンドウ（1440 px）は 3 列。
 - **ページの幅**（`pagehead.Main`）: カードの一覧を持つ分類ページ（`image-video`・`custom-nodes`・`local-runtimes`・`hf-external`）は `pagehead.Wide`（`max-w-5xl`）、一覧の無い `comfyui`・`face-check` と概要は `pagehead.Medium`（`max-w-4xl`）のまま。`max-w-4xl` のままだと 1280 px で本文が 832 px となり、3 列は 1 枚約 266 px になる。
-- **例外（列を分けない区画）**: ①`comfyui` ページのエンジンのカード（`#mm-engine`。GPU の検出と導入フォーム `#mm-gpu`・既存の ComfyUI の検出・起動の失敗のログの末尾を中に持つ、詳細が長い区画）は 1 枚だけなので、`<ul>` に `GridClass` を使わず幅いっぱいに置く（`<ul role="list" class="grid grid-cols-1 gap-4">`。`mm-engine-list`）。②`face-check` の区画（`#mm-face-models`）は 1 枚の `facecard.Section` で、カードの格子ではないので変えない。③カードの**中**の `<dl>`（`grid-cols-2`。メタの表）・詳細モーダル・フィルターバーとモデル選択のモーダルのカードの格子（`molecules/modelpick`。`sm:grid-cols-2`）・設定の `settingsui` のカードは、この節の対象外。
+- **例外（列を分けない区画）**: ①`comfyui` ページのエンジンのカード（`#mm-engine`。GPU の検出と導入フォーム `#mm-gpu`・既存の ComfyUI の検出・起動の失敗のログの末尾を中に持つ、詳細が長い区画）は 1 枚だけなので、`<ul>` に `GridClass` を使わず幅いっぱいに置く（`<ul role="list" class="grid grid-cols-1 gap-4">`。`mm-engine-list`）。②`face-check` の区画（`#mm-face-models`）は 1 枚の `facecard.Section` で、カードの格子ではないので変えない。③カードの**中**の `<dl>`（`grid-cols-2`。メタの表）・詳細モーダル・フィルターバーとモデル選択のモーダルのカードの格子（`molecules/modelpick`。`sm:grid-cols-2`）・設定の `settingsui` のカードは、この節の対象外。④概要（`GET /model-manager`。`Medium` のまま）の分類のカードの `<ul>`（`mm-categories`。モデルのカードではない。`sm:grid-cols-2` のまま）も対象外（`grid_test.go` の例外）。
 - **列が変わっても変えないもの**: カードの高さは内容のまま（`items-start`にしない。同じ行のカードは `grid` の既定で高さが揃う）。名前・説明・メタは `min-w-0 break-words` で折り返し、切り詰めない（#1003）。操作のボタンは `modelcard.Actions` の中で折り返す（`flex-wrap`）。ポーリングで 1 枚が入れ替わっても、ほかの列は動かない（`<li id>` の差し替えは今のまま）。ページを横にスクロールさせない。
 - **テストで見ること**: ①`organisms/modelmgr` の下の `.templ` に、`GridClass` 以外の `<ul>` の `grid-cols-` が無い（`organisms/modelmgr/grid_test.go`。ソースを読んで、`<dl>` と例外の `mm-engine-list` を除く。`badge_test` と同じ作り）。②`modelcard.GridClass` の値が 1 → 2 → 3 列（`grid-cols-1`・`sm:grid-cols-2`・`xl:grid-cols-3`）であること。③実 Chrome の `static/src/components/layout/model-manager-grid.wtest.ts`（新設）が、モデルの一覧・追加ノード・ローカル音声・口パク・LLM・追加したファイルの fixture を 639・640・1279・1280 px で開き、`<ul>` の `getComputedStyle(...).gridTemplateColumns` の列数が 1・2・2・3 であること、左メニューを開いた 1280 px で 1 枚の幅が 280 px 以上であること、横にあふれない（`scrollWidth <= clientWidth`）ことを確かめる。fixture は 1 つの分類ページごとに既存の fixture の作り（`backend/internal/web/*_fixture_test.go`）で作る。
 
@@ -174,7 +174,7 @@
 
 ## 追加ノードの説明（#1103）
 
-> **状態: 仕様のみ（未実装。Issue #1103）**。#1101 の `custom-nodes` ページの中の区画「追加ノード」（`#mm-nodes`）の話。
+> **状態: 実装済み（Issue #1103）**。#1101 の `custom-nodes` ページの中の区画「追加ノード」（`#mm-nodes`）の話。
 
 - **今の形**（コードを確認した）: `nodecard.NodeCard` は、カードの中に `<p data-testid="mm-node-description">{ n.Description }</p>`（`text-sm text-ink`）を常に出す。同じ `n.Description` は、カードが開く詳細モーダル `nodecard.NodeDetail` にも、`modal.Frame(n.Name, n.Description)` の説明（`<p id="mam-modal-desc">`）として、すでに出ている。つまり**説明は 2 か所に出ていて、長いほうをカードから外すだけ**で足りる。
 - **決めたこと（既存の部品 1 つだけを使う）**: 説明は**詳細モーダル**（`molecules/modal`。[shared-ui-parts.md](shared-ui-parts.md) §4。カードの名前のボタンが `modal.OpenAttrs` で開く。#954 の「開く操作」）に置く。「?」ヘルプ（`molecules/help`。§9）は使わない。理由: ①モーダルはすでにあり、説明をそこに出している（新しい部品も新しい文も要らない。§9.3「新しい文を足さない」）。②「?」は見出し・カードのタイトルの横に付く 28 px の丸ボタンで、ノードのカードに付けると 5 枚にそれぞれの「?」が増え、名前のボタン（カード全体のタップの面）と並んで操作が二重になる。③詳細モーダルにはほかの詳細（コミット・SHA-256・ライセンス・ソースの確認）があり、説明はその先頭にあるのが読む順に合う。④「?」のポップオーバーは操作を止めないが、導入の同意（`#mm-nodes-dialog`）の前に読む内容はモーダル側に集まっているほうが読み落とさない。
@@ -317,3 +317,4 @@
 | 1.31 | 2026-11-06 | 新しい分類 `companion`「付随ソフト」（付随ソフトの一覧・ffmpeg・FaceFusion）を足し、設定の「ffmpeg」「FaceFusion」の分類をここへ移すと決めた。FaceFusion は取得せず、入れる手順（公式の conda → clone → `install.py`。推奨版 3.9.2）と「もう一度探す」を出す。取得する場合の案は「決定が要ること」に並べた（節「付随ソフトの導入（#1106）」）。#1101 の分類の表・概要のまとめ・ページをまたぐリンクの表に反映した。状態は仕様のみ（未実装） | Issue #1106 |
 | 1.32 | 2026-11-07 | 区画「試し生成」の廃止（#1100）を実装した。状態を「実装済み」にした。ページ見出しの「?」の説明は「導入したモデルは、生成テストで試せます」に変えた | Issue #1100 |
 | 1.33 | 2026-11-07 | 分類のサブページ（#1101）を実装した。状態を「実装済み」にした。実装の置き場所: 分類の表 `organisms/modelmgr/mmcat`（`All()`・`Find()`。スラッグの定数は `paths.MM*`）・概要 `organisms/modelmgr/overview.templ` と各分類のまとめ `handler/modelmgr/overview`・分類ページ `pages.ModelManagerCategoryPage`・ルート登録 `handler/modelmgr/categories.go`（分類ごとに 1 本。サービスが無い分類は登録しない）。エンジンが未導入・停止のときの案内 `mm-engine-needed` は `image-video` の読み込み時だけ描く | Issue #1101 |
+| 1.34 | 2026-11-07 | カードの列数（#1102）と追加ノードの説明（#1103）を実装した。状態を「実装済み」にした。`modelcard.GridClass`・`mmcat.Category.Cards`（一覧を持つ分類ページは `Wide`）・エンジンのカードの `mm-engine-list`・概要の分類のカード `mm-categories` を対象外にする例外・追加ノードのカードから `mm-node-description` を外し、区画の「?」に「ノードの説明・」を足した | Issue #1102・#1103 |

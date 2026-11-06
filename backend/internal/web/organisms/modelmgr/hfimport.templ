@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -265,7 +266,7 @@ templ HFModelListView(l HFModelList) {
 		if len(l.Models) == 0 && len(l.Installing) == 0 {
 			<p class="text-sm text-ink" data-testid="mm-hfi-none">まだありません。</p>
 		}
-		<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-hfi-model-list">
+		<ul role="list" class={ modelcard.GridClass } data-testid="mm-hfi-model-list">
 			for _, m := range l.Models {
 				@hfModelCard(m)
 			}

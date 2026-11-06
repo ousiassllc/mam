@@ -150,7 +150,7 @@ func ModelManagerCategoryPage(csrfToken string, c mmcat.Category, cats []mmcat.C
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = pagehead.Main(pagehead.Medium).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = pagehead.Main(categoryWidth(c)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -162,6 +162,14 @@ func ModelManagerCategoryPage(csrfToken string, c mmcat.Category, cats []mmcat.C
 		}
 		return nil
 	})
+}
+
+// categoryWidth is Wide for a category with a list of cards (three columns need it, #1102) and Medium for the others.
+func categoryWidth(c mmcat.Category) pagehead.Width {
+	if c.Cards {
+		return pagehead.Wide
+	}
+	return pagehead.Medium
 }
 
 var _ = templruntime.GeneratedTemplate

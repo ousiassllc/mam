@@ -74,3 +74,10 @@ func TestActions_AreRaisedAboveTheClickAreaOfTheCard(t *testing.T) {
 	assert.Contains(t, out, "relative z-raised")
 	assert.Contains(t, out, "<button>x</button>")
 }
+
+// The list of cards is one column up to 639 px, two from 640 px and three from 1280 px, everywhere (#1102). A column count in the middle (lg) would
+// make the 1024 px window with the side menu open draw cards about 234 px wide.
+func TestGridClass_IsOneTwoThreeColumns(t *testing.T) {
+	assert.Equal(t, "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3", modelcard.GridClass)
+	assert.NotContains(t, modelcard.GridClass, "lg:")
+}

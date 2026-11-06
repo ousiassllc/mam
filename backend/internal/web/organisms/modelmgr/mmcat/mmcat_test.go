@@ -37,3 +37,15 @@ func TestFindIsTheCategoryOfASlug(t *testing.T) {
 	_, ok = mmcat.Find("engine")
 	assert.False(t, ok, "the word of a part of the screen is no category")
 }
+
+// The categories that have a list of cards are the four of #1102 (they are drawn at the wide width: three columns need it); the engine, the face-check
+// models and the overview have no list.
+func TestCardsAreTheCategoriesWithAListOfCards(t *testing.T) {
+	var cards []string
+	for _, c := range mmcat.All() {
+		if c.Cards {
+			cards = append(cards, c.Slug)
+		}
+	}
+	assert.Equal(t, []string{"image-video", "custom-nodes", "local-runtimes", "hf-external"}, cards)
+}
