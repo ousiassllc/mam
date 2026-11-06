@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // plannerRewrite is what the Prompt Planner answers to a direction: it changes the character's
@@ -32,7 +33,10 @@ func (f genFixture) specOf(t *testing.T, shotID string) domain.ShotSpec {
 	return spec
 }
 
-func (f genFixture) takes(t require.TestingT) int { return f.count(t, `SELECT COUNT(*) FROM take`) }
+func (f genFixture) takes(t testenv.TestingT) int {
+	t.Helper()
+	return f.count(t, `SELECT COUNT(*) FROM take`)
+}
 
 func (f genFixture) lockRows(t *testing.T) int { return f.count(t, `SELECT COUNT(*) FROM lock`) }
 

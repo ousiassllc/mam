@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // promotionAnswer answers the State Extractor for the notes tests: a memo prompt gets a proposal for
@@ -35,7 +36,8 @@ func promotionAnswer(fields ...string) func(string) string {
 	}
 }
 
-func (f genFixture) promotionCards(t require.TestingT) []domain.ThreadMessage {
+func (f genFixture) promotionCards(t testenv.TestingT) []domain.ThreadMessage {
+	t.Helper()
 	var out []domain.ThreadMessage
 	for _, m := range f.thread(t, f.projectID) {
 		if m.RefType == domain.RefNotePromotion {
@@ -170,7 +172,7 @@ func TestNotes_AVersionWithNothingStructurablePostsNoCard(t *testing.T) {
 
 	_, err := f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "経緯", Content: "過去の火事の話は序盤では出さない"})
 	require.NoError(t, err)
-	time.Sleep(50 * time.Millisecond)
+	f.svc.Notes.WaitProposals() // the proposal ran: the extractor found nothing, so no card follows
 	assert.Empty(t, f.promotionCards(t))
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM note_promotion`))
 }
@@ -238,7 +240,7 @@ func TestNotes_SeriesNotesProposeNothing(t *testing.T) {
 	require.NoError(t, err)
 	_, err = f.svc.Notes.CreateSeriesNote(context.Background(), series.ID, service.NoteInput{Title: "世界観", Content: "近未来の東京", Category: "world"})
 	require.NoError(t, err)
-	time.Sleep(50 * time.Millisecond)
+	f.svc.Notes.WaitProposals()
 	assert.Empty(t, f.promotionCards(t))
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM note_promotion`))
 }

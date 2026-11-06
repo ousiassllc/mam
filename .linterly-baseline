@@ -33,7 +33,6 @@
 429	backend/internal/service/branch.go
 475	backend/internal/service/editor_reshoot.go
 361	backend/internal/service/editor_timeline.go
-371	backend/internal/service/note.go
 440	backend/internal/service/review.go
 2777	backend/internal/web/handler/
 2323	backend/internal/web/organisms/

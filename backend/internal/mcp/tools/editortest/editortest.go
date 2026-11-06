@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -136,21 +135,6 @@ func (f *Fixture) State() string {
 
 // Editors is the repository of the editing stages, for the state a test needs to set up or check.
 func (f *Fixture) Editors() *repository.EditorRepository { return repository.NewEditorRepository(f.DB) }
-
-// WaitJob polls get_job until the job is over (or fails the test after a bound) and returns its status.
-func (f *Fixture) WaitJob(jobID string) mcpkit.JobStatus {
-	f.T.Helper()
-	deadline := time.Now().Add(60 * time.Second)
-	for {
-		st, err := f.Registrar.Jobs.Get(context.Background(), jobID)
-		require.NoError(f.T, err)
-		if st.State.Final() {
-			return st
-		}
-		require.True(f.T, time.Now().Before(deadline), "job %s did not end: %+v", jobID, st)
-		time.Sleep(10 * time.Millisecond)
-	}
-}
 
 // WithScript saves a script whose Scene has two spoken lines, so that the audio has speech to make.
 func (f *Fixture) WithScript() {
