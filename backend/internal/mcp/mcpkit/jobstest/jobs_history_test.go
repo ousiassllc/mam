@@ -2,6 +2,7 @@ package jobstest_test
 
 import (
 	"context"
+	"encoding/json"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -248,4 +249,58 @@ func TestJobs_ConcurrentReadersKeepTheFirstEndOfAnInMemoryJob(t *testing.T) {
 			assert.JSONEq(t, `{"verdict":"pass"}`, string(h.Result))
 		})
 	}
+}
+
+// The same race for a kind whose Probe reads persisted state: a reader that probed just before the end must
+// not write running over the end another reader recorded, and answers with the end.
+func TestJobs_ConcurrentReadersDoNotTakeAPersistedJobBackToRunning(t *testing.T) {
+	ctx := context.Background()
+	hist := jobhistory.New(testdb.Open(t))
+	clock := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	j := startProcess(t, hist, &clock, nil)
+	entered, release := make(chan struct{}), make(chan struct{})
+	work := &memoryWork{}
+	var calls atomic.Int32
+	j.RegisterKind("reference_pack", func(ctx context.Context, info mcpkit.JobInfo) (mcpkit.Progress, error) {
+		if calls.Add(1) == 1 { // the slow reader: it stops inside the probe, having read the work before its end
+			close(entered)
+			<-release
+			return (&memoryWork{state: "run"}).probe(ctx, info)
+		}
+		return work.probe(ctx, info)
+	})
+	ref, err := j.Run(ctx, "reference_pack", "shot-1", func(context.Context) (string, error) { return "", nil })
+	require.NoError(t, err)
+
+	slow := make(chan mcpkit.JobStatus, 1)
+	go func() {
+		st, _ := j.Get(ctx, ref.JobID)
+		slow <- st
+	}()
+	<-entered
+	work.state = "done"
+	clock = clock.Add(time.Minute)
+	first, err := j.Get(ctx, ref.JobID)
+	require.NoError(t, err)
+	require.Equal(t, mcpkit.JobSucceeded, first.State)
+	require.NotNil(t, first.EndedAt)
+
+	clock = clock.Add(time.Minute)
+	close(release)
+	got := <-slow
+	assert.Equal(t, mcpkit.JobSucceeded, got.State, "the answer is the end, not the running the slow reader read")
+	assert.JSONEq(t, `{"verdict":"pass"}`, mustJSON(t, got.Result), "the answer keeps the result the probe reads")
+	require.NotNil(t, got.EndedAt)
+	assert.True(t, first.EndedAt.Equal(*got.EndedAt), "the end is the time the first reader saw it")
+	h, err := hist.Get(ctx, ref.JobID)
+	require.NoError(t, err)
+	assert.Equal(t, "succeeded", h.State)
+	assert.True(t, first.EndedAt.Equal(*h.EndedAt))
+}
+
+func mustJSON(t *testing.T, v any) string {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	return string(b)
 }

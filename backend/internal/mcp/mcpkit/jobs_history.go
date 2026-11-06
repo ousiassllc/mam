@@ -57,7 +57,15 @@ func (j *Jobs) statusOf(ctx context.Context, h jobhistory.Entry) (JobStatus, err
 		}
 		return statusFrom(h), nil
 	}
-	j.record(ctx, h, &st, k)
+	if j.record(ctx, h, &st, k) { // probed just before another reader recorded the end: read the work again, from the history as it is now
+		if h, err = j.history.Get(ctx, h.ID); err != nil {
+			return JobStatus{}, err
+		}
+		if st, _, err = j.live(ctx, &entry{JobInfo: JobInfo{ID: h.ID, Kind: h.Kind, Target: h.Target, StartedAt: h.StartedAt}, queueJobID: h.QueueJobID}); err != nil {
+			return JobStatus{}, err
+		}
+		j.record(ctx, h, &st, k)
+	}
 	return st, nil
 }
 
@@ -88,17 +96,27 @@ func (j *Jobs) RefreshOpen(ctx context.Context) error {
 // Readers of one job run at the same time (a client, list_jobs, and Observe at the end of a stage), and
 // each decides from the row it read before the probe ran. record therefore runs one at a time and goes on
 // from the row as the reader before left it: the end of a job is the time the first reader saw it over (a
-// second reader would write its own, later time), and a job whose Probe only reads memory is not taken
-// back from final to running by a reader that probed just before the end.
-func (j *Jobs) record(ctx context.Context, h jobhistory.Entry, st *JobStatus, k kind) {
+// second reader would write its own, later time), and a job is not taken back from final to running by a
+// reader that probed just before the end: one whose Probe only reads memory is answered with the recorded
+// end; for any other kind record reports it by true, leaving st alone, so that the caller reads the work
+// again (the history keeps the result of an InMemory kind only). A reader that already found the job over
+// and probes it running again is not that race: such a Probe (a later stage of the same work, a Branch whose
+// first Shot appears) is what the row says, so it is recorded as it is.
+func (j *Jobs) record(ctx context.Context, h jobhistory.Entry, st *JobStatus, k kind) (raced bool) {
 	j.recordMu.Lock()
 	defer j.recordMu.Unlock()
+	wasOpen := h.Open()
 	if fresh, err := j.history.Get(ctx, h.ID); err == nil {
 		h = fresh
 	}
-	if k.inMemory && !h.Open() && !st.State.Final() {
-		*st = statusFrom(h)
-		return
+	if !h.Open() && !st.State.Final() {
+		if k.inMemory {
+			*st = statusFrom(h)
+			return false
+		}
+		if wasOpen {
+			return true
+		}
 	}
 	st.ProjectID = h.ProjectID
 	if st.State == JobFailed {
@@ -124,6 +142,7 @@ func (j *Jobs) record(ctx context.Context, h jobhistory.Entry, st *JobStatus, k 
 	if err := j.history.Settle(context.WithoutCancel(ctx), n); err != nil && j.logger != nil && !errors.Is(err, repository.ErrNotFound) {
 		j.logger.Warn("record job history failed", "job_id", h.ID, "err", err)
 	}
+	return false
 }
 
 // infoOf is the failure as the history keeps it: the JSON of the view in words (the history is read by the tools only, in Japanese), "" for none.
