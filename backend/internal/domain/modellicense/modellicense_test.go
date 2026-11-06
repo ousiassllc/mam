@@ -123,14 +123,18 @@ func TestOf_TheResolverAnswersForTheModelsOfTheModelManager(t *testing.T) {
 	assert.Equal(t, modellicense.Yes, modellicense.Of("nano-banana").Commercial, "the cloud table is asked first")
 }
 
+// The tag is the uploader's own declaration (#969): it never makes a file 商用OK. A license that allows commercial use is a condition (the
+// declaration is true; the OpenRAIL family also its use restrictions), and what says non-commercial or nothing at all is not allowed through.
 func TestFromHF_ReadsTheCardsLicenseTag(t *testing.T) {
 	cases := []struct {
 		id, name string
 		want     modellicense.Commercial
 	}{
-		{"apache-2.0", "", modellicense.Yes},
-		{"MIT", "", modellicense.Yes},
-		{"openrail++", "", modellicense.Yes},
+		{"apache-2.0", "", modellicense.Conditional},
+		{"MIT", "", modellicense.Conditional},
+		{"cc-by-4.0", "", modellicense.Conditional},
+		{"openrail++", "", modellicense.Conditional},
+		{"creativeml-openrail-m", "", modellicense.Conditional},
 		{"cc-by-nc-4.0", "", modellicense.No},
 		{"other", "flux-1-dev-non-commercial-license", modellicense.No},
 		{"other", "qwen-research", modellicense.No},
@@ -140,10 +144,22 @@ func TestFromHF_ReadsTheCardsLicenseTag(t *testing.T) {
 	for _, c := range cases {
 		got := modellicense.FromHF(c.id, c.name, "https://huggingface.co/x/y")
 		assert.Equal(t, c.want, got.Commercial, c.id+"/"+c.name)
-		if got.Commercial != modellicense.Yes {
-			assert.NotEmpty(t, got.Notice, "what is not 商用OK says what to watch for")
+		assert.NotEqual(t, modellicense.Yes, got.Commercial, "a tag alone is not 商用OK: "+c.id)
+		assert.NotEmpty(t, got.Notice, "what is not 商用OK says what to watch for")
+		if got.Commercial == modellicense.Conditional {
+			assert.Contains(t, got.Condition, "自己申告", "the condition says the tag is a declaration: "+c.id)
 		}
 	}
+}
+
+func TestFromHF_TheOpenRAILFamilyAlsoNamesItsUseRestrictions(t *testing.T) {
+	plain := modellicense.FromHF("apache-2.0", "", "").Condition
+	for _, id := range []string{"openrail", "openrail++", "creativeml-openrail-m", "bigscience-openrail-m"} {
+		got := modellicense.FromHF(id, "", "")
+		assert.Contains(t, got.Condition, "使用制限", id)
+		assert.NotEqual(t, plain, got.Condition, id)
+	}
+	assert.NotContains(t, plain, "使用制限")
 }
 
 // The link is the card's own text: only an https URL becomes the source link of the badge (which is drawn as an href).
@@ -164,6 +180,6 @@ func TestFromHF_KeepsOnlyAnHTTPSLicenseLink(t *testing.T) {
 	for link, want := range cases {
 		got := modellicense.FromHF("apache-2.0", "", link)
 		assert.Equal(t, want, got.SourceURL, link)
-		assert.Equal(t, modellicense.Yes, got.Commercial, "the link does not change the answer: "+link)
+		assert.Equal(t, modellicense.Conditional, got.Commercial, "the link does not change the answer: "+link)
 	}
 }
