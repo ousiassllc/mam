@@ -27,6 +27,8 @@ type Category struct {
 	Icon        atoms.IconName
 	// Sections are the ids of the sections of the page that are always there (an element of the page, whatever is installed). No other category has any of them.
 	Sections []string
+	// Cards says the page has a list of cards (modelcard.GridClass): it is drawn at the width of a list, wide enough for three columns (#1102).
+	Cards bool
 }
 
 // Href is the page of the category.
@@ -43,17 +45,17 @@ func All() []Category {
 		{
 			Slug: ImageVideo, Name: "画像・動画モデル", Icon: atoms.IconImage,
 			Description: "画像・動画のモデルを導入・削除します。成人向けモデルの表示と、商用OKのモデルだけを使う設定もここです。",
-			Sections:    []string{"mm-adult", "mm-commercial", "mm-catalog", "mm-dialog"},
+			Sections:    []string{"mm-adult", "mm-commercial", "mm-catalog", "mm-dialog"}, Cards: true,
 		},
 		{
 			Slug: CustomNodes, Name: "追加ノード", Icon: atoms.IconNetwork,
 			Description: "ComfyUI に機能を足すカスタムノードを、mam が確認して固定したものだけ導入します。",
-			Sections:    []string{"mm-nodes"},
+			Sections:    []string{"mm-nodes"}, Cards: true,
 		},
 		{
 			Slug: LocalRuntimes, Name: "ローカル音声・口パク", Icon: atoms.IconVoice,
 			Description: "声と口パクをこの PC で作る実行環境を導入して、起動・停止します。",
-			Sections:    []string{"mm-runtimes"},
+			Sections:    []string{"mm-runtimes"}, Cards: true,
 		},
 		{
 			Slug: FaceCheck, Name: "顔チェック用モデル", Icon: atoms.IconLipSync,
@@ -63,7 +65,7 @@ func All() []Category {
 		{
 			Slug: HFExternal, Name: "Hugging Face・外部の ComfyUI", Icon: atoms.IconPackage,
 			Description: "Hugging Face のモデルファイルを探して導入します。トークンと、別のマシンにある ComfyUI の確認もここです。",
-			Sections:    []string{"mm-hfi", "mm-hf", "mm-external"},
+			Sections:    []string{"mm-hfi", "mm-hf", "mm-external"}, Cards: true,
 		},
 	}
 }

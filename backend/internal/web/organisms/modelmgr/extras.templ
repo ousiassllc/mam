@@ -105,7 +105,7 @@ templ externalResult(r ExternalResult) {
 				（ComfyUI { r.Version }）
 			}
 		</p>
-		<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-external-models">
+		<ul role="list" class={ modelcard.GridClass } data-testid="mm-external-models">
 			for _, m := range r.Models {
 				@externalModelCard(r.Endpoint, m)
 			}

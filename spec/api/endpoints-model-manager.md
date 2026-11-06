@@ -159,7 +159,7 @@
 - 左メニュー: 概要と全分類ページに `ul#sidenav-mm-views`（見出し `#sidenav-mm`「モデルマネージャー」・「概要」＋各分類）があり、現在のページの項目だけ `aria-current="page"`（分類ページでは画面の項目「モデルマネージャー」は `aria-current="true"`）。それ以外の画面にこの一覧は出ない。`web/sidenavtest` が確かめる。
 - fixture（`scroll-mm-*.html`・`layout-long-names-*.html`）と `scroll.wtest.ts`・`long-names.wtest.ts` は、分類ページごとの描画（`image-video` の一覧・`comfyui` のエンジンのカード・`hf-external` ほか）に合わせて作り直し、通る。`go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
 
-**カードの列数の受け入れ条件（Issue #1102。実装時にこのテストを足す）**:
+**カードの列数の受け入れ条件（Issue #1102。実装済み。`molecules/modelcard`・`organisms/modelmgr/grid_test.go`・`pages/model_manager_page_test.go`・`model-manager-grid.wtest.ts`）**:
 
 - カードを並べる `<ul>`（`mm-models`・`mm-external-models`・`mm-hfi-model-list`・`#mm-runtimes` の中・`#mm-nodes` の中）の class はすべて `modelcard.GridClass`（`grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3`）で、`organisms/modelmgr` の下に `GridClass` 以外の `<ul>` の `grid-cols-` が無い（`<dl>` のメタの表と、エンジンのカードの `mm-engine-list`〔`grid grid-cols-1`〕を除く。`grid_test.go`）。
 - 実 Chrome（`model-manager-grid.wtest.ts`）: 639 px で 1 列・640 px と 1279 px で 2 列・1280 px で 3 列。左メニューを開いた 1280 px で 1 枚の幅が 280 px 以上。どの幅でも横にあふれない。カードの一覧を持つ分類ページは `max-w-5xl`。
@@ -167,7 +167,7 @@
 
 `handler/modelmgr/runtimes` の `runtimes_test.go`（`screentest.NewWithRuntimes`。`service/localruntime/lrtest` の偽のパッケージ・偽の Hugging Face・偽のプロセス）: カードの表示（未導入・導入中・導入済み・重みが不足）、出典・ライセンス・`unclear` の注記とバナー、使えない環境の理由とクラウドの案内、導入・重みの導入・起動・停止・自動起動・削除、重みが不足した起動の 409 と文面、取得元が消えたときの失敗の表示、取り消し、未知の ID の 404、サービスが無い画面にはルートが無いこと、スクリーンリーダー用のラベルと鍵・トークンを出さないこと。
 
-**追加ノードの説明の受け入れ条件（Issue #1103。実装時にこのテストを足す）**:
+**追加ノードの説明の受け入れ条件（Issue #1103。実装済み。`nodecard_test.go`・`handler/modelmgr/nodes/nodes_test.go`・`model-manager-grid.wtest.ts`）**:
 
 - `nodecat` の全ノード（今は 5 件）で、`GET /model-manager/custom-nodes`（#1101 のあと。それまでは `GET /model-manager`）と `GET /model-manager/nodes`・`GET /model-manager/nodes/:id` の応答に、`data-testid="mm-node-description"` が無く、ノードの `Description` の文字列も含まれない。
 - 同じ全ノードで、`GET /model-manager/nodes/:id/detail` の `#mam-modal-desc` の文字列が `Description` と同じ。応答は今までどおり `modal.Frame`（ページに 1 つの `<dialog id="mam-modal">` の本体に入る）で、未知の ID は 404（理由だけのモーダル）。
@@ -236,3 +236,4 @@
 | 1.21 | 2026-11-06 | §1 に `/model-manager/companion/ffmpeg`（`GET`・`PUT`・`…/download`・`…/download/cancel`）・`/model-manager/companion/facefusion`（`GET`・`PUT`）・`/model-manager/companion/index` を足し、`/settings/ffmpeg`・`/settings/facefusion` を 303 にして `PUT`・`POST`・`DELETE` を廃止した。§3 に分類 `companion` を足し、§4 に受け入れ条件を足した。FaceFusion は取得しない（導入のルートは無い）。状態は仕様のみ（未実装） | Issue #1106 |
 | 1.22 | 2026-11-07 | 「試し生成」の廃止（#1100）を実装した。状態を「実装済み」にした（`handler/modelmgr/trialgonetest`）。仕様の内容は変えない | Issue #1100 |
 | 1.23 | 2026-11-07 | 分類のサブページ（#1101）を実装した。状態を「実装済み」にした。`GET /model-manager/overview`（概要だけの部分ルート）を足した。区画をまたぐ OOB の整理（`oob.EngineWithCatalog` の廃止）・リンクの付け替えも入れた | Issue #1101 |
+| 1.24 | 2026-11-07 | カードの列数（#1102）と追加ノードの説明（#1103）を実装した。§4 の受け入れ条件の「実装時にこのテストを足す」を、テストの置き場所に直した。ルート・応答の中身は変えない（概要の分類のカード `mm-categories` は列数の対象外） | Issue #1102・#1103 |

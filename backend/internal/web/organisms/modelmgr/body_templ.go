@@ -136,7 +136,7 @@ func comfyuiSections(d Data) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<ul role=\"list\" class=\"grid grid-cols-1 gap-4 lg:grid-cols-2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<ul role=\"list\" class=\"grid grid-cols-1 gap-4\" data-testid=\"mm-engine-list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -291,7 +291,7 @@ func customNodesSections(d Data) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = molecules.SettingsSection("追加ノード", "ControlNet の画像前処理や IP-Adapter など、ComfyUI に機能を足すプログラム（カスタムノード）です。mam が確認して固定したものだけが、ここから導入でき、読み込まれます。それ以外のフォルダは読み込みません。導入の前に、注意事項とライセンスへの同意が要ります。カードをタップすると、固定したコミット・SHA-256・ライセンス・商用利用の可否・必要な Python パッケージ・ソースの確認結果が見られます。導入と削除のときは、動いている ComfyUI を一度止めて再起動します。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = molecules.SettingsSection("追加ノード", "ControlNet の画像前処理や IP-Adapter など、ComfyUI に機能を足すプログラム（カスタムノード）です。mam が確認して固定したものだけが、ここから導入でき、読み込まれます。それ以外のフォルダは読み込みません。導入の前に、注意事項とライセンスへの同意が要ります。カードをタップすると、ノードの説明・固定したコミット・SHA-256・ライセンス・商用利用の可否・必要な Python パッケージ・ソースの確認結果が見られます。導入と削除のときは、動いている ComfyUI を一度止めて再起動します。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

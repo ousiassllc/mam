@@ -25,10 +25,18 @@ templ ModelManagerPage(csrfToken string, o modelmgr.Overview) {
 // categories of this build (the side menu lists them).
 templ ModelManagerCategoryPage(csrfToken string, c mmcat.Category, cats []mmcat.Category, d modelmgr.Data) {
 	@layout.AppLayout(c.Name+" - モデルマネージャー", csrfToken, sidenav.InModelManager(c.Slug, cats)) {
-		@pagehead.Main(pagehead.Medium) {
+		@pagehead.Main(categoryWidth(c)) {
 			@atoms.BackLinkWith(paths.ModelManager(), "← モデルマネージャー", templ.Attributes{"data-testid": "mm-back"})
 			@pagehead.Header(c.Name, "モデルマネージャー", "")
 			@modelmgr.Body(c.Slug, d)
 		}
 	}
+}
+
+// categoryWidth is Wide for a category with a list of cards (three columns need it, #1102) and Medium for the others.
+func categoryWidth(c mmcat.Category) pagehead.Width {
+	if c.Cards {
+		return pagehead.Wide
+	}
+	return pagehead.Medium
 }
