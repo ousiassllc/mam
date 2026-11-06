@@ -43,10 +43,12 @@ func textsToTranslate(r Request) []string {
 	return prompttranslate.Select(all)
 }
 
-// addTranslation puts the translation into the estimate (nothing when no text is to be translated): a line of the breakdown,
-// named in UnknownModels (not counted in UnknownItems: it is not a result) with the warning of a model without a price. The LLM has no unit price in the app (a call of
-// the Reasoning LLM is not a Take and is not in the Cost Ledger; the figures of a ChatGPT plan are not per call either), so the
-// basis is unknown and the line is left out of the total, as the line of a model without a price is.
+// addTranslation puts the translation into the estimate (nothing when no text is to be translated): a line of the breakdown, which is
+// not a result (it is not counted in UnknownItems). The call of the Reasoning LLM is priced per token at the price of the target of
+// its route (llm.PriceOf; the tokens are an assumption on the safe side, prompttranslate.UsageOf), so the line is in the total
+// (Items is the texts, UnitUSD the share of one of them in the one call). A target without a checked price (a ChatGPT plan, a model
+// that is not in the table) is left out of the total as the line of a model without a price is: named in UnknownModels with the
+// warning no_price (#1069).
 func (s *Service) addTranslation(est *Estimate, r Request) error {
 	texts := textsToTranslate(r)
 	if len(texts) == 0 {
@@ -55,17 +57,29 @@ func (s *Service) addTranslation(est *Estimate, r Request) error {
 	if s.Translator == nil {
 		return gterr.Invalid("英訳に使う LLM が使えません。英訳を OFF にしてください")
 	}
-	t := s.Translator.Target()
+	t, call := s.Translator.Plan(texts)
 	label := fmt.Sprintf("プロンプトの英訳（%s / %s）", t.Provider, t.Model)
-	est.Breakdown = append(est.Breakdown, ModelEstimate{Model: TranslateLine, Label: label, Items: len(texts), Basis: modelcatalog.BasisUnknown})
-	est.UnknownModels = append(est.UnknownModels, TranslateLine)
-	est.Warnings = append(est.Warnings, Warning{Model: TranslateLine, Code: WarnNoPrice, Message: label + "は LLM の単価が分からないため、見積りの合計に入れません"})
+	line := ModelEstimate{Model: TranslateLine, Label: label, Items: len(texts), Basis: modelcatalog.BasisUnknown}
+	if call == nil {
+		est.UnknownModels = append(est.UnknownModels, TranslateLine)
+		est.Warnings = append(est.Warnings, Warning{Model: TranslateLine, Code: WarnNoPrice, Message: label + "は LLM の単価が分からないため、見積りの合計に入れません"})
+	} else {
+		unit, sub := *call/float64(len(texts)), round4(*call)
+		line.Basis, line.UnitUSD, line.SubtotalUSD = modelcatalog.BasisPriced, &unit, &sub
+		if *call == 0 { // a model of the local server runs on the user's own PC
+			line.Basis = modelcatalog.BasisFree
+		}
+		est.TotalUSD += sub
+	}
+	est.Breakdown = append(est.Breakdown, line)
 	return nil
 }
 
 // translate translates the prompts of the request once, for every model and every result of the batch. Nothing of the batch
-// exists yet: a failure is a *gterr.UpstreamError, and a prompt is never sent in the language it was typed in because the
-// translation failed. A text the LLM returned unchanged (50Ω resistor) is no failure: its prompt is sent as typed and is not
+// exists yet: a failure of the LLM is a *gterr.UpstreamError, and a prompt is never sent in the language it was typed in because the
+// translation failed. A request that was cancelled (or timed out) while the LLM was asked is no failure of the LLM: the error of the
+// context is returned as it is (errors.Is finds context.Canceled), not as an upstream refusal, and it is not logged as a failed
+// translation (#1072). A text the LLM returned unchanged (50Ω resistor) is no failure: its prompt is sent as typed and is not
 // in the returned map.
 func (s *Service) translate(ctx context.Context, r Request) (translated, error) {
 	texts := textsToTranslate(r)
@@ -77,6 +91,9 @@ func (s *Service) translate(ctx context.Context, r Request) (translated, error) 
 	}
 	english, err := s.Translator.Translate(ctx, texts)
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		s.Logger.Warn("translate generation test prompts failed", "err", err)
 		return nil, &gterr.UpstreamError{Message: failtext.Translate(err), Err: err}
 	}

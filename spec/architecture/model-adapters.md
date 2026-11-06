@@ -337,7 +337,7 @@ M1 Issue #9（F-13）の実装仕様。
   2. 写真ディレクトリに `a.jpg`（人物 A）、`a_small.jpg`（人物 A を別のサイズ・明るさで）、`b.jpg`（人物 B）、`none.jpg`（顔のない画像）を置く
   3. `MAM_FACESIM_MODEL_DIR=<DIR> MAM_FACESIM_RUNTIME_LIB=<libonnxruntime のパス> MAM_FACESIM_PHOTOS=<写真ディレクトリ> go test -v -run TestONNX ./backend/internal/facesim/`（`MAM_FACESIM_RUNTIME_LIB` が空ならシステムの標準ライブラリ検索）
 
-  `MAM_FACESIM_MODEL_DIR` と `MAM_FACESIM_PHOTOS` のどちらかが空だとこの 2 つのテストは Skip する。`TestNewONNX_MissingModelsIsUnavailable`（モデル未配置は `ErrUnavailable`）は環境変数なしで常に動く
+  `MAM_FACESIM_MODEL_DIR` と `MAM_FACESIM_PHOTOS` のどちらかが空だとこの 2 つのテストは Skip する。`TestNewONNX_MissingModelsIsUnavailable`（モデル未配置は `ErrUnavailable`）と `TestNewONNX_ALibraryThatIsNotONNXRuntimeIsUnavailableNotAPanic`（OS にあるが ONNX Runtime ではない共有ライブラリを渡しても、バインディングの panic を `ErrUnavailable` に変えて返し、アプリは落ちない。Issue #1073）は環境変数なしで常に動く。`app/facewire` のテストは、Windows で `mam.exe` の場所が分からないとき・DLL がないときも、エンジンが `ErrUnavailable` を返し Judge が定性評価へ落ちることを確かめる
 - **未配置でも動く**: モデルまたはランタイム（Windows は `mam.exe` の隣の `onnxruntime.dll`）が無い、読み込めないとき、起動時に警告ログ（`face identity similarity is off`。`err` に理由: 無いファイルの名前、Windows で読み込めないときは Visual C++ 2015-2022 再頒布可能パッケージが要ること）を残し Face Identity Similarity を無効にする。Take は定性評価のみで判定し、Judge Result の `metrics.face_identity_status` は `unavailable` になる（チャットにも明記する）
 - **ローカル実行**: 顔検出・埋め込みはプロセス内で実行し、顔画像はネットワークに出さない。Reasoning LLM（Gemini）には定性評価用のフレームと Reference Pack を送る（`non-functional.md` §5 の外部送信方針の対象。顔の数値化そのものは送らない）
 

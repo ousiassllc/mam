@@ -97,3 +97,4 @@
 | 1.90 | 2026-11-04 | §10.1: 顔モデル（YuNet・SFace）の配布に、モデルマネージャーの「顔チェック用モデル」からの導入（再起動なし）を足した。同梱しない・学習データの権利が未確認という扱いは変えない | Issue #1026 |
 | 1.91 | 2026-11-04 | §15 に Topaz Video API（動画のアップスケール・フレーム補間。`internal/agent/topaz`）の実装を足した（流れ・見積り・リクエストの本文・6 モデル・エラーの対応・未確認）。`apperr` に `credits_insufficient`・`topaz_*` の 6 コードを足した | Issue #1031 |
 | 1.92 | 2026-11-06 | §10.1: ポータブル版の `onnxruntime.dll` は同梱もアプリ内取得もしない（現状維持）と判断し、理由と、bash なしで入れる手順（zip の `lib\onnxruntime.dll` を `mam.exe` の隣へコピー）を足した。顔がオフのときの理由（`face_runtime_missing`）の文も同じ手順にした | Issue #1066 |
+| 1.93 | 2026-11-06 | §10.1: `NewONNX` が、ONNX Runtime ではない共有ライブラリで起きるバインディングの panic を `ErrUnavailable` に変えること、`app/facewire` のエンジンが `ErrUnavailable` を返すテストを記した | Issue #1073 |
