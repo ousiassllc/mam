@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 func (f genFixture) branch(t *testing.T, in service.BranchInput) service.BranchDetail {
@@ -20,7 +21,8 @@ func (f genFixture) branch(t *testing.T, in service.BranchInput) service.BranchD
 	return d
 }
 
-func (f genFixture) trunkShots(t require.TestingT) int {
+func (f genFixture) trunkShots(t testenv.TestingT) int {
+	t.Helper()
 	return f.count(t, `SELECT COUNT(*) FROM shot sh JOIN scene s ON s.id = sh.scene_id WHERE s.project_id = ? AND s.branch_id IS NULL`, f.projectID)
 }
 

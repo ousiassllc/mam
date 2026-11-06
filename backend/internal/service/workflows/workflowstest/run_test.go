@@ -12,12 +12,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyuitest"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // wait polls the record of a run until it is no longer running.
 func wait(t *testing.T, r *rig, id string) workflows.RunRecord {
 	t.Helper()
-	run := func(c require.TestingT) workflows.RunRecord {
+	run := func(c testenv.TestingT) workflows.RunRecord {
+		c.Helper()
 		rec, err := r.svc.Run(context.Background(), id)
 		require.NoError(c, err)
 		return rec

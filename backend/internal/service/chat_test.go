@@ -51,8 +51,9 @@ func (f fixture) createProject(t *testing.T, content string, uploads ...service.
 	return p
 }
 
-// thread takes a require.TestingT so that an Eventually condition can pass its *assert.CollectT: a failure then retries instead of failing the finished test.
-func (f fixture) thread(t require.TestingT, projectID string) []domain.ThreadMessage {
+// thread takes a testenv.TestingT so that an Eventually condition can pass its *assert.CollectT: a failure then retries instead of failing the finished test.
+func (f fixture) thread(t testenv.TestingT, projectID string) []domain.ThreadMessage {
+	t.Helper()
 	ws, err := f.svc.Chat.Workspace(context.Background(), projectID)
 	require.NoError(t, err)
 	return ws.Messages
@@ -72,7 +73,8 @@ func requireInvalid(t *testing.T, err error, field string) {
 	assert.Equal(t, field, invalid.Field)
 }
 
-func lastMessage(t require.TestingT, msgs []domain.ThreadMessage) domain.ThreadMessage {
+func lastMessage(t testenv.TestingT, msgs []domain.ThreadMessage) domain.ThreadMessage {
+	t.Helper()
 	require.NotEmpty(t, msgs)
 	return msgs[len(msgs)-1]
 }

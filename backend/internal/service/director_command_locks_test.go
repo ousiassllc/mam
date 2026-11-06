@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -121,7 +120,7 @@ func TestDirectorCommand_ChangingALockedPartIsRefusedAndNothingIsDone(t *testing
 
 	_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "寄って")
 	require.ErrorIs(t, err, service.ErrLocked)
-	time.Sleep(50 * time.Millisecond)
+	f.waitJobsIdle(t)
 	assert.Equal(t, 3, f.takes(t), "no regeneration")
 	assert.Equal(t, 1, f.llm.calls(llm.AgentPromptPlanner))
 	assert.Len(t, f.thread(t, f.projectID), threadBefore, "nothing is recorded")

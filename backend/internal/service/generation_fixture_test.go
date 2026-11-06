@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 const (
@@ -219,13 +220,15 @@ func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string)
 	return f
 }
 
-func (f genFixture) shot(t require.TestingT) service.ShotFragment {
+func (f genFixture) shot(t testenv.TestingT) service.ShotFragment {
+	t.Helper()
 	frag, err := f.svc.Generation.Shot(context.Background(), f.shotID)
 	require.NoError(t, err)
 	return frag
 }
 
-func (f genFixture) state(t require.TestingT) domain.ProjectState {
+func (f genFixture) state(t testenv.TestingT) domain.ProjectState {
+	t.Helper()
 	p, err := f.svc.Projects.Get(context.Background(), f.projectID)
 	require.NoError(t, err)
 	return p.State
@@ -254,12 +257,20 @@ func (f genFixture) waitJobsDone(t *testing.T) {
 	}, 30*time.Second, 10*time.Millisecond, "the generate job never finished")
 }
 
+// waitJobsIdle waits until no job is queued or running: whatever a call started has ended, so a count taken
+// afterwards is the final one.
+func (f genFixture) waitJobsIdle(t *testing.T) {
+	t.Helper()
+	f.waitCount(t, 30*time.Second, 0, `SELECT COUNT(*) FROM job WHERE status IN ('queued', 'running')`, "a job never ended")
+}
+
 func (f genFixture) query(t *testing.T, q string, args ...any) *sql.Row {
 	t.Helper()
 	return f.db.Reader().QueryRow(q, args...)
 }
 
-func (f genFixture) count(t require.TestingT, q string, args ...any) int {
+func (f genFixture) count(t testenv.TestingT, q string, args ...any) int {
+	t.Helper()
 	var n int
 	require.NoError(t, f.db.Reader().QueryRow(q, args...).Scan(&n))
 	return n
