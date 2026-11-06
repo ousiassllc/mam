@@ -36,6 +36,7 @@ func Register(engine *gin.Engine, svc *localruntime.Service) {
 	engine.POST(paths.ModelManagerPart("runtimes", ":id", "stop"), h.StopRuntime)
 	engine.PUT(paths.ModelManagerPart("runtimes", ":id", "autostart"), h.SetRuntimeAutoStart)
 	engine.PUT(paths.ModelManagerPart("runtimes", ":id", "model"), h.SetRuntimeModel)
+	engine.GET(paths.ModelManagerPart("runtimes", ":id", "models"), h.RuntimeModels)
 	engine.DELETE(paths.ModelManagerPart("runtimes", ":id"), h.RemoveRuntime)
 }
 
@@ -102,6 +103,7 @@ func (h Handlers) RuntimeDetail(c *gin.Context) {
 		render(c, status, modal.Notice("導入するもの", msg))
 		return
 	}
+	h.filterModels(c, &r)
 	render(c, http.StatusOK, card.RuntimeDetail(r))
 }
 

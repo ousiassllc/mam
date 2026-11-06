@@ -75,7 +75,7 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"face_models_missing.remedy": "Install them with one button from the \"Face check models\" section of the model manager (/model-manager): they go to {dir} (YuNet is MIT, SFace is Apache-2.0; they come from a pinned commit of opencv/opencv_zoo and their SHA-256 is checked). You do not need to restart mam: the next generation test measures. To put them there by hand, copy them to {dir} (scripts/fetch-face-models.sh {dir} in the repository fetches the same pinned files). To use another folder, start mam with --face-model-dir. The face similarity also needs the ONNX Runtime library besides these models (the Windows installer puts it next to mam.exe).",
 
 	"face_runtime_missing.cause":  "The ONNX Runtime library for the face similarity cannot be loaded. The face similarity (SFace) is off.",
-	"face_runtime_missing.remedy": "The face models (YuNet and SFace) are in place; installing them again from the model manager does not fix this (the ONNX Runtime library does). Provide the ONNX Runtime 1.23.x library (on Windows onnxruntime.dll next to mam.exe, which the installer puts there; libonnxruntime elsewhere). --onnxruntime-lib sets its location. If the DLL is there but does not load on Windows, the Microsoft Visual C++ 2015-2022 Redistributable (x64) is needed. Once it is in place the next generation test measures (no restart needed). If the detail shows that a face model file failed to load, remove them in the \"Face check models\" section of the model manager and install them again.",
+	"face_runtime_missing.remedy": "The face models (YuNet and SFace) are in place; installing them again from the model manager does not fix this (the ONNX Runtime library does). Provide the ONNX Runtime 1.23.x library (on Windows onnxruntime.dll next to mam.exe: the installer version has put it there; the portable version does not include it, so open onnxruntime-win-x64-1.23.2.zip of v1.23.2 at https://github.com/microsoft/onnxruntime/releases and copy lib/onnxruntime.dll next to mam.exe, no command needed; libonnxruntime elsewhere). --onnxruntime-lib sets its location. If the DLL is there but does not load on Windows, the Microsoft Visual C++ 2015-2022 Redistributable (x64) is needed. Once it is in place the next generation test measures (no restart needed). If the detail shows that a face model file failed to load, remove them in the \"Face check models\" section of the model manager and install them again.",
 
 	"llm_invalid_output.cause":  "The LLM's answer was not in the requested form.",
 	"llm_invalid_output.remedy": "Run it again. If it continues, change the model of that Agent in Settings > text generation (LLM).",
@@ -92,8 +92,10 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"download_corrupt.cause":  "The downloaded file did not match its fixed SHA-256 or size and was discarded (the source may have been tampered with, or the transfer was corrupted).",
 	"download_corrupt.remedy": "Install it again. If it continues, update mam and try again.",
 
-	"install_failed.cause":  "The install could not be completed.",
-	"install_failed.remedy": "The reason is in the detail. Install it again from the model manager.",
+	"install_failed.cause":     "The install could not be completed.",
+	"install_failed.remedy":    "The reason is in the detail. Install it again from the model manager.",
+	"install_cancelled.cause":  "The install was stopped.",
+	"install_cancelled.remedy": "Install it again to continue from what was already downloaded.",
 
 	"training_failed.cause":  "The voice training could not be completed.",
 	"training_failed.remedy": "Close the other apps that use the GPU (such as a generation of the bundled ComfyUI) and train again. If it keeps failing, read the detail (the end of the training log) or check GPT-SoVITS in the model manager. Nothing of the unfinished run is kept.",
@@ -106,6 +108,9 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 
 	"image_unavailable.cause":  "No Codex model that can host the image generation was found for the ChatGPT subscription (OpenAI may have changed the models a ChatGPT sign-in can use).",
 	"image_unavailable.remedy": "Update mam to the latest version and run it again. If it does not help, turn the ChatGPT image generation OFF in Settings and switch to an image model that works with an API key.",
+
+	"image_model_pinned.cause":  "The ChatGPT account refused the Codex model that was pinned for the image generation (Options.Driver), so no other model was tried.",
+	"image_model_pinned.remedy": "Updating mam does not help. Remove the pin so that mam picks a model of the account by itself, or pin a model the account can use.",
 
 	"save_failed.cause":  "The setting or the data could not be saved{why}.",
 	"save_failed.remedy": "Check the free disk space and the permissions of the folder and save again. If it continues, check the log of mam.",

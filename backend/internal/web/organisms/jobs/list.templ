@@ -5,7 +5,9 @@ package jobs
 import (
 	"strconv"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 )
 
@@ -38,8 +40,10 @@ type Row struct {
 	// StartedAt is "2006-01-02 15:04", when the job started.
 	StartedAt string
 	Progress  *Progress
-	// Error is why the job failed and NextSteps what to do to go on ("" when the failure has no advice).
+	// Error is why the job failed and NextSteps what to do to go on ("" when the failure has no advice). Failure, when the job kept the
+	// failure as the common error (#1010), is drawn as the error box in place of the Error line.
 	Error     string
+	Failure   *apperr.View
 	NextSteps string
 	// Href is the screen the job leads to, "" for none.
 	Href string
@@ -125,7 +129,12 @@ templ row(r Row) {
 			}
 		</div>
 	}
-	if r.Error != "" {
+	if r.Failure != nil {
+		// The box of a failed job does not change any more, so the polling keeps the one on the page: the detail a person opened stays open.
+		<div id={ "jobs-failure-" + r.ID } hx-preserve="true" data-testid="jobs-failure-box">
+			@errorbox.Box(errorbox.Props{View: *r.Failure, Lang: apperr.LangJa, ID: "job-" + r.ID})
+		</div>
+	} else if r.Error != "" {
 		<p class="break-words text-sm text-danger" data-testid="jobs-failure">{ r.Error }</p>
 	}
 	if r.NextSteps != "" {

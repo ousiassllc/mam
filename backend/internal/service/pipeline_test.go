@@ -117,7 +117,8 @@ func (f pipelineFixture) completeBrief(t *testing.T, projectID string) {
 	require.NoError(t, err)
 }
 
-func (f pipelineFixture) state(t require.TestingT, projectID string) domain.ProjectState {
+func (f pipelineFixture) state(t testenv.TestingT, projectID string) domain.ProjectState {
+	t.Helper()
 	p, err := f.svc.Projects.Get(context.Background(), projectID)
 	require.NoError(t, err)
 	return p.State
@@ -125,14 +126,14 @@ func (f pipelineFixture) state(t require.TestingT, projectID string) domain.Proj
 
 func (f pipelineFixture) waitState(t *testing.T, projectID string, want domain.ProjectState) {
 	t.Helper()
-	require.Eventuallyf(t, func() bool {
-		p, err := f.svc.Projects.Get(context.Background(), projectID)
-		return err == nil && p.State == want
-	}, 5*time.Second, 10*time.Millisecond, "the Project never reached %s (now %s)", want, f.state(t, projectID))
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, want, f.state(c, projectID), "the Project never reached %s", want)
+	}, 5*time.Second, 10*time.Millisecond)
 }
 
 // approvalCard returns the newest Approval card of the thread, or nil.
-func (f pipelineFixture) approvalCard(t require.TestingT, projectID string) *domain.ThreadMessage {
+func (f pipelineFixture) approvalCard(t testenv.TestingT, projectID string) *domain.ThreadMessage {
+	t.Helper()
 	msgs := f.thread(t, projectID)
 	for i := len(msgs) - 1; i >= 0; i-- {
 		if msgs[i].Kind == domain.KindApproval {
@@ -142,7 +143,8 @@ func (f pipelineFixture) approvalCard(t require.TestingT, projectID string) *dom
 	return nil
 }
 
-func (f pipelineFixture) hierarchy(t require.TestingT, projectID string) service.SceneView {
+func (f pipelineFixture) hierarchy(t testenv.TestingT, projectID string) service.SceneView {
+	t.Helper()
 	v, err := f.svc.Plans.Hierarchy(context.Background(), projectID, "", "")
 	require.NoError(t, err)
 	return v

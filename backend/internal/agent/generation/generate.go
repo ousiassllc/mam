@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
 	"github.com/ousiassllc/mam/backend/internal/agent/promptplanner"
@@ -147,11 +148,11 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
-	strategy, err := o.decide(ctx, ref, policy, &spec, budget)
+	strategy, err := o.decide(ctx, ref, policy, &spec, budget, sc.images)
 	if err != nil {
 		return Progress{}, err
 	}
-	job, err := o.videoJob(ctx, ref.ProjectID, spec, brief, strategy.DurationSeconds, references)
+	job, err := videoJob(ctx, sc.images, spec, brief, shot.Duration, references)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -197,6 +198,8 @@ type shotContext struct {
 	// notes are the production notes the Prompt Planner is given (spec/spec.md §9.4).
 	notes []domain.NoteView
 	brand domain.BrandConstraints
+	// images reads the images of the Project's References once for the run (decide and the clips share it).
+	images *refimage.Reader
 }
 
 // loadShotContext reads the Policy, Brief, World State, neighbouring spec, Reference Pack, notes and
@@ -227,7 +230,10 @@ func (o *Orchestrator) loadShotContext(ctx context.Context, ref repository.ShotR
 	if err != nil {
 		return shotContext{}, err
 	}
-	return shotContext{policy: policy, brief: brief, world: world, previous: previousSpec(shots, ref.Shot.ID), references: ref.Shot.References(), notes: notes, brand: brand}, nil
+	return shotContext{
+		policy: policy, brief: brief, world: world, previous: previousSpec(shots, ref.Shot.ID), references: ref.Shot.References(),
+		notes: notes, brand: brand, images: o.newImages(ref.ProjectID),
+	}, nil
 }
 
 // brandConstraints are the Safety / Brand Constraints of the Project (none without a repository).

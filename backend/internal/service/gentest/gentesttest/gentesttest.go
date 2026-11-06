@@ -29,6 +29,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/reciperepo"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // PNG is the bytes the fake image backends return: a 1x1 PNG that decodes (a face engine and the picture check of the prompt match
@@ -263,7 +264,8 @@ func (r *Rig) Wait(batchID string) gentest.BatchStatus {
 }
 
 // batchOn reads the batch, failing c: a polling condition passes its *assert.CollectT so that a late poll never fails a finished test.
-func (r *Rig) batchOn(c require.TestingT, id string) gentest.BatchStatus {
+func (r *Rig) batchOn(c testenv.TestingT, id string) gentest.BatchStatus {
+	c.Helper()
 	st, err := r.Svc.Batch(context.Background(), id, true)
 	require.NoError(c, err)
 	return st

@@ -179,7 +179,7 @@ func TestEditor_AutoChainStopsAtAReEditVerdict(t *testing.T) {
 	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
 	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.NotNil(c, e.judgeOn(c)) }, 30*time.Second, 50*time.Millisecond)
 	assert.Equal(t, domain.EditorReEdit, e.judge().Verdict)
-	time.Sleep(300 * time.Millisecond)
+	e.waitEditingIdle()
 	assert.Equal(t, "EDITING", e.state(), "a Re-edit verdict waits for the user")
 	_, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
 	assert.ErrorIs(t, err, repository.ErrNotFound)

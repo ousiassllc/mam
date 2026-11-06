@@ -5,7 +5,7 @@
  "tier": "standard",
  "content_rating": "general",
  "traits": {"params_b": 14, "params_label": "14B", "uncensored": false, "speed": "fast"},
- "description": "wan22-i2v-14b（ベースは共有）に、LightX2V の 4 ステップ蒸留 LoRA（高ノイズ用 0.6 GB・低ノイズ用 0.7 GB）を重ねる構成。通常の 20 ステップ（cfg 3.5）を 4 ステップ（cfg 1）に減らし、生成を数倍速くする代わりに、動きや細部の質は通常よりやや落ちることがある。ベースを導入済みなら、取得するのは LoRA の 1.4 GB だけ。生成テストでは wan22-i2v-14b（通常）とこのモデルを並べて選び、同じプロンプト・同じ先頭フレームで速さと質を比べる。LoRA の強さは 1（作者の指定）。16fps。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。",
+ "description": "【中ティア・非検閲ではない標準モデル】wan22-i2v-14b（ベースは共有）に、LightX2V の 4 ステップ蒸留 LoRA（高ノイズ用 0.6 GB・低ノイズ用 0.7 GB）を重ねる構成（先頭フレームから）。通常の 20 ステップ（cfg 3.5）を 4 ステップ（cfg 1）に減らす。16fps・音声なし。得意: 生成が数倍速い。注意: 動きや細部の質は通常よりやや落ちることがある。ベースを導入済みなら、取得するのは LoRA の 1.4 GB だけ。生成テストでは wan22-i2v-14b（通常）とこのモデルを並べて選び、同じプロンプト・同じ先頭フレームで速さと質を比べる。LoRA の強さは 1（作者の指定）。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。ライセンス: ベースも LoRA も Apache-2.0 で、商用を含めて自由に使える。",
  "files": [
   {
    "name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",

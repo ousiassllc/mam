@@ -4,10 +4,12 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/videoenhance"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 )
 
 // VideoEnhancer is a model that makes a video larger or smoother (Issue #1031): a local workflow (SeedVR2, RIFE: localcfg.Workflow.VideoEnhance)
@@ -63,4 +65,35 @@ func (c Catalog) videoEnhancer(id string, v videoenhance.Spec) VideoEnhancer {
 		out.Available = true
 	}
 	return out
+}
+
+// Item is the video enhancement model as the filter sees it: the kind of its operation (larger or smoother), local (on this PC) or api (Topaz, paid), installed.
+func (v VideoEnhancer) Item() modelfilter.Item {
+	kind, origin, tag := modelfilter.KindVideoUpscale, modelfilter.OriginLocal, "video_upscale"
+	if v.Op == "interpolate" {
+		kind, tag = modelfilter.KindVideoInterpolate, "video_interpolate"
+	}
+	if v.Paid {
+		origin = modelfilter.OriginAPI
+	}
+	return modelfilter.Item{
+		ID: v.ID, Name: v.Label, Kinds: []modelfilter.Kind{kind}, Commercial: v.License.Commercial, Installed: true, Origin: origin, Provider: v.Provider,
+		Tags: []string{tag, v.Op}, Available: v.Available, Reason: v.UnavailableMessage,
+	}
+}
+
+// Availability is whether the model can be chosen now, in the shape every picker shares: a cloud model without its key is "no_backend" with the
+// settings screen of the API keys as its route.
+func (v VideoEnhancer) Availability() modelfilter.Availability {
+	if v.Available {
+		return modelfilter.Usable()
+	}
+	source, code := SourceLocal, modelfilter.Reason(v.Unavailable)
+	switch v.Unavailable {
+	case UnavailableNoKey:
+		source, code = SourceBuiltin, modelfilter.ReasonNoKey
+	case agegate.Excluded:
+		code = modelfilter.ReasonAgeGate
+	}
+	return modelfilter.Unusable(code, v.UnavailableMessage, modelfilter.RouteOf(code, source))
 }

@@ -59,7 +59,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go モジュール | github.com/segmentio/asm | v1.2.1 |
 | Go モジュール | github.com/segmentio/encoding | v0.5.4 |
 | Go モジュール | github.com/sethvargo/go-retry | v0.5.0 |
-| Go モジュール | github.com/shota3506/onnxruntime-purego | v0.0.0-20260315223538-8db8bd7424b2 |
+| Go モジュール | github.com/shota3506/onnxruntime-purego | v0.0.0-20260315223538-8db8bd7424b2（./third_party/onnxruntime-purego に置き換え） |
 | Go モジュール | github.com/ugorji/go/codec | v1.3.1 |
 | Go モジュール | github.com/ulikunitz/xz | v0.5.15 |
 | Go モジュール | github.com/wailsapp/wails/v3 | v3.0.0-beta.34 |
@@ -3255,7 +3255,7 @@ Go モジュール
    limitations under the License.
 ~~~
 
-## github.com/shota3506/onnxruntime-purego v0.0.0-20260315223538-8db8bd7424b2
+## github.com/shota3506/onnxruntime-purego v0.0.0-20260315223538-8db8bd7424b2（./third_party/onnxruntime-purego に置き換え）
 
 Go モジュール
 

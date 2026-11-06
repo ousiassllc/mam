@@ -187,6 +187,9 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 
 	views := make([]domain.ThreadMessage, len(msgs))
 	for i, m := range msgs {
+		// A message the turn just planned is rendered before it is read back and has no ProjectID yet (Apply stamps its own
+		// copy). The card builds its URLs (answer, refetch, newer messages) from it.
+		m.ProjectID = projectID
 		v := domain.ThreadMessage{ChatMessage: m}
 		for _, id := range m.AttachmentAssetIDs {
 			if a, ok := assetByID[id]; ok {

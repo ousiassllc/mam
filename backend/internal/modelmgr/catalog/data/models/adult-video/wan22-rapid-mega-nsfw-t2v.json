@@ -1,6 +1,6 @@
 {
  "id": "wan22-rapid-mega-nsfw-t2v",
- "name": "Wan2.2 Rapid AllInOne Mega NSFW v12.2（Phr00t・テキスト／先頭フレームから動画）",
+ "name": "Wan2.2 Rapid AllInOne Mega NSFW v12.2（Phr00t・テキスト／先頭フレーム／最初と最後のフレームから動画）",
  "kind": "video",
  "tier": "advanced",
  "content_rating": "adult",
@@ -10,7 +10,7 @@
   "uncensored": true,
   "speed": "fast"
  },
- "description": "【中（〜14B）・T2V と I2V・音声なし・作者のメンテ終了】Phr00t の WAN2.2 Rapid AllInOne の Mega NSFW v12.2（成人向け）。Wan 2.2 14B の T2V（低ノイズ）に VACE と加速 LoRA（rCM・LightX2V）、多数の成人向け LoRA を低い強さでマージし、モデル・テキストエンコーダー・VAE を 1 つにした fp8 のチェックポイント（約 23.3 GB・1 ファイル）。得意: 4 ステップ・cfg 1・dpmpp_sde/beta という作者の推奨設定で速く、「何でもそこそこ」の手軽な非検閲 T2V。既存の Remix T2V とは別系統のマージ。16fps。作者は 8 GB の VRAM でも動くと書く（4 ステップ）が、mam の想定は 16 GB の GPU。注意: 作者は「メンテはもうしておらず、これらのモデルは非推奨（deprecated）」と書く。テキストから動画は VACE の制御なし（strength 0）で作る。先頭フレームから作る I2V は、作者の WanVideoVACEStartToEndFrame（カスタムノード）の代わりに、標準ノードだけで同じ制御映像とマスクを作る（作者のノードと数値で一致することを 49・65・81 フレームで確かめた。2026-11-04）。先頭と最後の 2 枚を渡す使い方は、フレーム数ごとに灰色のフレームの数が変わりグラフの形が変わるので、mam の割り当ての仕組みでは作れず載せない。ライセンスはカードが Apache-2.0 と宣言するだけで、マージした成人向け LoRA の出所・ライセンスが確かめられないため、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は未確認（Windows（NVIDIA）を想定）。",
+ "description": "【中（〜14B）・T2V と I2V と最初から最後のフレーム・音声なし・作者のメンテ終了】Phr00t の WAN2.2 Rapid AllInOne の Mega NSFW v12.2（成人向け）。Wan 2.2 14B の T2V（低ノイズ）に VACE と加速 LoRA（rCM・LightX2V）、多数の成人向け LoRA を低い強さでマージし、モデル・テキストエンコーダー・VAE を 1 つにした fp8 のチェックポイント（約 23.3 GB・1 ファイル）。得意: 4 ステップ・cfg 1・dpmpp_sde/beta という作者の推奨設定で速く、「何でもそこそこ」の手軽な非検閲 T2V。既存の Remix T2V とは別系統のマージ。16fps。作者は 8 GB の VRAM でも動くと書く（4 ステップ）が、mam の想定は 16 GB の GPU。注意: 作者は「メンテはもうしておらず、これらのモデルは非推奨（deprecated）」と書く。テキストから動画は VACE の制御なし（strength 0）で作る。先頭フレームから作る I2V は、作者の WanVideoVACEStartToEndFrame（カスタムノード）の代わりに、標準ノードだけで同じ制御映像とマスクを作る（作者のノードと数値で一致することを 49・65・81 フレームで確かめた。2026-11-04）。先頭と最後の 2 枚を渡す FLF2V（Issue #1076）は、間の灰色のフレームの数がフレーム数−2 で変わるので、割り当てのオフセット（フレーム数に足す整数。ここでは −2）で指定し、同じく標準ノードだけで作る（同じ大きさの 2 枚なら作者のノードと数値で完全に一致。49・65・81 フレーム。2026-11-06）。ライセンスはカードが Apache-2.0 と宣言するだけで、マージした成人向け LoRA の出所・ライセンスが確かめられないため、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は未確認（Windows（NVIDIA）を想定）。",
  "files": [
   {
    "name": "wan2.2-rapid-mega-aio-nsfw-v12.2.safetensors",
@@ -59,6 +59,10 @@
   {
    "name": "wan22-rapid-mega-nsfw-i2v",
    "template": "img2video-wan22-14b-rapid-mega"
+  },
+  {
+   "name": "wan22-rapid-mega-nsfw-flf2v",
+   "template": "flf2v-wan22-14b-rapid-mega"
   }
  ]
 }

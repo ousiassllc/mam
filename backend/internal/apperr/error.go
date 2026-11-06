@@ -175,6 +175,17 @@ func Unmarshal(s string) (e *Error, ok bool) {
 	return &Error{Code: r.Code, Args: r.Args, Cause: r.Cause, Detail: r.Detail, ID: r.ID}, true
 }
 
+// ViewOf is the failure a record kept (Marshal), put in words in lang; nil for "" (no failure kept) and for text that is not a record
+// (Unmarshal). It is what a place that read a column (job.error_info, a result's error_info) draws or returns.
+func ViewOf(record string, lang Lang) *View {
+	e, ok := Unmarshal(record)
+	if !ok {
+		return nil
+	}
+	v := e.View(lang)
+	return &v
+}
+
 // Report is the text the copy button of the error box puts on the clipboard, for a bug report: the code, the cause, the remedy,
 // the detail and the error ID, one per line.
 func (v View) Report(lang Lang) string {

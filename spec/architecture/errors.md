@@ -101,10 +101,12 @@ templ Box(p Props)
 | `forbidden` | `forbidden` | Brand / Safety Constraint などの制約に違反しています。 |  |
 | `generation_time_limit` | `upstream` | 生成が制限時間（Max generation time）を超えました。 | /settings |
 | `image_unavailable` | `unavailable` | ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。 | /settings/chatgpt |
+| `image_model_pinned` | `unavailable` | 画像生成のために固定した Codex のモデル（`Options.Driver`）を、ChatGPT のアカウントが受け付けませんでした。固定したモデルだけを使う設定なので、ほかのモデルは試していません。 |  |
 | `input_missing` | `validation` | このモデルが必ず使う入力（）が渡されていません。 |  |
 | `input_unsupported` | `validation` | このモデルは、渡された入力画像や解像度の組み合わせを受け付けません。 |  |
 | `input_unused` | `validation` | 添えた入力画像は、選んだモデルでは使われません。 |  |
 | `install_failed` | `upstream` | 導入を完了できませんでした。 | /model-manager |
+| `install_cancelled` | `conflict` | 導入を中断しました（利用者が止めた。ダウンロード済みの続きから再開できる）。 | /model-manager |
 | `invalid_input` | `validation` | 入力が正しくありません。 |  |
 | `key_missing` | `unavailable` | API キーが設定されていません。 | /settings/api-keys |
 | `license_not_accepted` | `conflict` | このモデルのライセンスに、まだ同意していません。 | /model-manager |
@@ -165,6 +167,7 @@ templ Box(p Props)
 | 429（`modeladapter.RateLimited`） | `rate_limited`（サーキットブレーカーより先。429 が開けた場合も 429 を原因にする） |
 | `ErrCircuitOpen`（モデル・LLM） | `circuit_open` |
 | `chatgpt.ErrNoImageModel` | `image_unavailable`（ベンダーの 400 は症状なので、詳細にだけ残す） |
+| `chatgpt.ErrImageModelPinned` | `image_model_pinned`（固定したモデルの拒否。直し方は更新ではなく固定を直すこと） |
 | `direct.ErrInputsUnsupported` / `ErrInputsConflict` / `ErrResolution` | `input_unsupported` |
 | `llm.ErrInvalidOutput` | `llm_invalid_output` |
 | `localllm.IsUnreachable`（プロバイダー `local` の `APIError`: status 0・原因あり・タイムアウトでもキャンセルでもない） | `local_llm_unreachable`（`net.Error` より先） |
@@ -200,8 +203,8 @@ templ Box(p Props)
 | 生成テスト（`runner/execute.go`） | **載せ替えた** | 失敗を `*apperr.Error` にして、結果の `error`（1 行の日本語）と `error_info`（JSON。`gentest_result.error_info`）に残す。結果の詳細の画面は `errorbox.Box`。`record.ResultView.Failure`（`get_generation_result`・`get_generation_test`・`list_generation_results`）。ベンダーが 422 などで返した英語は `detail` にだけ出る。`gentest/failtext` の `LocalTimeout` は `errmap.LocalTimeout` に移した。テスト: `service/gentest/errtest`、`web/handler/gentest/screentest`（モーダルのエラーボックス）、`mcp/tools/gentest/errtest` |
 | Shot の生成・Reference Pack（`agent/generation/failure.go`） | **載せ替えた** | `generation.Failure(err)` が `*apperr.Error`。チャットの失敗通知は原因 + 直し方（unknown は相関 ID つき）。ジョブの `error_info` に残る。`FailureReason` は `Failure(...).View().Sentence()`。テスト: `agent/generation/failuretest` |
 | 企画・脚本・Shot 計画（`agent/orchestrator/failure.go`） | **載せ替えた** | 同上（`planning.ErrInvalidPlan` は `llm_invalid_output`）。unknown は ID を通知に入れ、ログにも残す。テスト: `agent/orchestrator`（失敗の通知） |
-| ジョブキュー（`agent/jobqueue`） | **載せ替えた** | 失敗したジョブの `job.error_info` に `*apperr.Error` を残す（unknown は ID をログと一緒に）。`Options.Explain` でサービスの拒否を先に聞く。`get_job`・`list_jobs` の `failure`。テスト: `agent/jobqueue/failure_test.go`、`mcp/tools/jobs` |
-| モデルの導入・ダウンロード | **載せ替えた**（ジョブ経由） | `mmview.Failure` → ジョブの `error_info`（空き容量不足は `disk_full`、取得元の認証は `auth_failed`、SHA-256 不一致は `download_corrupt`、ライセンス未同意・エンジン未導入・GPU なしはそれぞれのコード）。モデル管理の画面の導入の失敗は、従来の 1 文（`userFacing`）のまま（`error_info` を画面で読んでエラーボックスにするのは #1011）|
+| ジョブキュー（`agent/jobqueue`） | **載せ替えた** | 失敗したジョブの `job.error_info` に `*apperr.Error` を残す（unknown は ID をログと一緒に）。`Options.Explain` でサービスの拒否を先に聞く。`get_job`・`list_jobs` の `failure`。テスト: `agent/jobqueue/failure_test.go`、`mcp/tools/jobs`。**ジョブ一覧の画面**（`/jobs`）も `error_info`（`jobrecent` が読む）と、メモリ上の作業の `worktrack.Record.ErrorInfo` から、失敗した行を `errorbox.Box` で出す（[../components/jobs-screen.md](../components/jobs-screen.md)） |
+| モデルの導入・ダウンロード（モデル・エンジン・カスタムノード・ローカルランタイム） | **載せ替えた**（ジョブ経由。画面も #1010 で載せ替えた） | `mmview.Failure` → ジョブの `error_info`（空き容量不足は `disk_full`、取得元の認証は `auth_failed`、SHA-256 不一致は `download_corrupt`、ライセンス未同意・エンジン未導入・GPU なしはそれぞれのコード、利用者が止めたのは `install_cancelled`、取得元が消えた・応答しないなど導入の側が言葉にしたものは `install_failed` でその文が原因）。**取得元が消えた**（404）のような導入の側が言葉にした失敗は、ベンダー向けの `remote_not_found`（「接続先の URL とモデル名を確かめてください」）にせず、導入の文を原因に残す（`mmview.Failure`）。**画面**: モデル管理のエンジン・カタログ・Hugging Face の導入・カスタムノード・ローカルランタイムの導入の終わり（`jobview.Ended` / `Ending`）は、`JobStatus.Failure`（`job.error_info` を `apperr.ViewOf` で読んだもの）があれば `modelmgr.Message.Failures` として**エラーボックス**（`organisms/modelmgr/failbox`。タイトル「<名前>の導入に失敗しました」の下。`jobview.Settle` が節のメッセージに足す）で出し、無い古いジョブは従来の 1 行（`Message.Error`）。テスト: `web/handler/modelmgr/jobview`・`web/handler/modelmgr/failuretest`（エンジン・カタログの中断）・`web/handler/modelmgr/runtimes`・`service/modelmanager/mmview/failure_test.go` |
 | 音声（`service/audio.go` の `audioError`） | **載せ替えた** | ElevenLabs のキー未設定・429・5xx・ディスク不足などは errmap の原因 + 直し方。ベンダーの応答は出さない。音声のミキシング（ffmpeg）は `mediaError`（下の行）。テスト: `service/audio_voice_test.go` |
 | 画面のトースト（`web/handler/errors.go` の `statusOf`） | **載せ替えた**（フォールバック） | 既存の業務エラーの後で、`errmap` が知っている失敗（外部サービス・ディスク・ネットワーク）は原因 + 直し方とクラスのステータス、知らない失敗は従来どおり 500「内部エラーが発生しました」（原因はログ）。ハンドラが言葉にしていない外部サービス・ディスク（モデルの導入向けの文）・ネットワークの失敗はここで日本語になる。テスト: `web/handler/failure` |
 | MCP のツールエラー（`mcpkit.MapError`） | **載せ替えた** | `ToolError.Failure`（`apperr.View`）。コードは従来のクラスのまま、メッセージは原因 + 直し方。テキストの 2 行目に View の JSON。`AIError` に包まれた失敗にも付く。テスト: `mcpkit/errors_test.go` |
@@ -245,7 +248,7 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 - 画面に出すとき: ハンドラが `apperr.View` を作り（`apperr.As(err)` か `errmap.Explain(err)` の `View(apperr.LangJa)`）、templ で `@errorbox.Box(errorbox.Props{View: v, Lang: apperr.LangJa, ID: <画面内で一意の id>})`。
 - **#1009 の実装（2026-11-03）**: 実行前の検査が `input_missing`（必須の入力が無い。`param`＝`first_frame` など、原因は「「<モデル>」は最初のフレームの画像が必要です。添えた画像が「参照」になっています。「最初のフレーム」に変えてください」を `WithCause` で上書き）と `input_unused`（添えた画像がどのモデルにも使われない）を、ベンダーに送る前に返す（画面は `errorbox.Box`、MCP は `failure`）。`input_missing.remedy` に「添えた画像が「参照」になっているときは「最初のフレーム」に変えてください」を足した。422 の後追い（`byMessage` の `the workflow needs`）は従来どおり残る（検査をすり抜けた場合の保険）。詳しくは [gentest/gentest.md](gentest/gentest.md) §5.1。
 - **#1009（I2V の first_frame 422）**: 同梱 ComfyUI の「the workflow needs first_frame (12), the request has none」は、すでに `input_missing`（`param=first_frame`、`node=12`）になり、結果の `failure`・詳細のエラーボックスに出る。使われなかった入力の表示は、結果の `used_inputs` と合わせて、この `failure` の `cause` / `remedy` を使うこと。新しい文を足すときは `input_missing.cause` / `.remedy`（カタログ）に足す。
-- **#1011（UI）**: 結果のカードの 1 行（`Card.Error`）は、いまは `error`（原因 + 直し方 + 詳細の先頭）。カードにも `errorbox` を出すなら `Card.Failure`（`resulttile.Card`）がある。モデル管理の導入の失敗は `job.error_info`（`apperr.Unmarshal`）から読める。
+- **#1011（UI）**: 結果のカードの 1 行（`Card.Error`）は、いまは `error`（原因 + 直し方 + 詳細の先頭）。カードにも `errorbox` を出すなら `Card.Failure`（`resulttile.Card`）がある。モデル管理の導入の失敗は、#1010 でエラーボックスにした（`JobStatus.Failure`。§6）。
 - 履歴の古い失敗（`error_info` が空）は `error` の 1 文だけ。`failure` は無い。
 
 ## 10. 未確認
@@ -269,3 +272,5 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 | 1.4 | 2026-11-04 | 載せ替えなかった経路（§6）の見直し: ffmpeg の失敗（書き出し・Rough Cut・Take の合成・音声のミキシング。`media_failed`・`ffmpeg_missing`）、アップデート（`update_*`）、設定の書き込みの失敗（`errmap.SaveFailure`・`web/handler/failure.Save`）、FaceFusion（`facefusion_unavailable`・`facefusion_failed`）を載せ替えた。ChatGPT / Codex などは理由を更新して見送り。i18n（§7）: 言語によって変わる語（時間・Agent の名前・区切り・作業の名前）をカタログのキーにし、英語の辞書が `errmap` の全コードを持つことと、未訳の日本語へのフォールバックをテストで固定した。MCP のツールエラーは、分からない失敗にも 2 行目の `failure`（`unknown`）を付ける | Issue #1010（残り） |
 | 1.5 | 2026-11-04 | `face_models_missing` の直し方を、モデルマネージャーの「顔チェック用モデル」からの導入（ボタン 1 つ・再起動なし）に変え、案内先に `/model-manager` を足した（手で置く方法と `--face-model-dir` は残す）。`face_runtime_missing` の直し方に「モデルを入れ直しても直らない。ONNX Runtime のライブラリを用意する」を足し、2 つの理由を取り違えないようにした。再起動の案内を外した（導入・ライブラリの追加は次の計測から効く。エンジンは読み込めなかった結果を覚えない）。[model-manager/model-manager.md](model-manager/model-manager.md) §5.4 | Issue #1026 |
 | 1.6 | 2026-11-04 | コード `credits_insufficient`（HTTP 402）と `topaz_*` の 7 つ（Topaz Video API の失敗。`topaz_job_interrupted` は受理のあとに mam が止まったときの、リクエスト ID つきの文）を足した | Issue #1031 |
+| 1.7 | 2026-11-06 | モデルの導入の失敗（エンジン・カタログ・Hugging Face・カスタムノード・ローカルランタイム）とジョブ一覧の失敗の行を、共通のエラーボックスで出すようにした（§6）。コード `install_cancelled`（利用者が導入を止めた）を足した。導入の側が言葉にした失敗（取得元が消えた・応答しない）は `install_failed` でその文を原因に残す。`worktrack` が `ErrorInfo` を持つ。`apperr.ViewOf` を足した | Issue #1010 |
+| 1.8 | 2026-11-06 | コード `image_model_pinned` を足した（`Options.Driver` で固定した Codex のモデルが ChatGPT のアカウントに拒否された。`image_unavailable` の「mam を最新版に更新して」は当てはまらない）。`errmap` は `chatgpt.ErrImageModelPinned` で見分ける | Issue #1071 |

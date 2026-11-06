@@ -1,7 +1,6 @@
 package ffmpegsettings
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -141,9 +140,23 @@ func TestConfig_DamagedFileIsAnError(t *testing.T) {
 	require.Error(t, err)
 	_, err = s.Look()
 	require.ErrorIs(t, err, media.ErrUnavailable)
-	// The first-run guide only reports what is found: a damaged file leaves it to the search.
-	_, err = s.Find("ffmpeg")
-	assert.True(t, errors.Is(err, locate.ErrNotFound))
+}
+
+// The first-run guide (Find) and the app (Look) read the file alike: a damaged one is no ffmpeg to both, even where the search
+// would find one (Issue #1055).
+func TestFind_DamagedFileAnswersAsLookDoes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), FileName)
+	require.NoError(t, os.WriteFile(path, []byte(`{`), 0o600))
+	s := New(path, WithFinder(machine("/usr/bin/ffmpeg", "/usr/bin/ffprobe")))
+
+	_, lookErr := s.Look()
+	require.ErrorIs(t, lookErr, media.ErrUnavailable)
+	for _, name := range []string{locate.FFmpeg, locate.FFprobe} {
+		found, err := s.Find(name)
+		require.ErrorIs(t, err, media.ErrUnavailable, name)
+		assert.NotErrorIs(t, err, locate.ErrNotFound, name)
+		assert.Empty(t, found, name)
+	}
 }
 
 func TestConfig_NonStringPathIsAnError(t *testing.T) {
@@ -228,7 +241,7 @@ func TestManagedDirs_DoNotChangeTheFinderOfTheService(t *testing.T) {
 	assert.Equal(t, []string{"/mine/extra"}, s.finder.Extra, "the extra directories are copied, not appended in place")
 }
 
-// A saved path applies from the next start, so the service tells the app that something waits for a restart (#1007); a refused
+// A saved path applies at once: the service tells the app after it wrote the paths (the app looks for ffmpeg again, #1047); a refused
 // path does not.
 func TestSet_TellsTheAppAfterItWroteThePathsAndNotWhenItRefusedThem(t *testing.T) {
 	calls := 0
@@ -240,4 +253,15 @@ func TestSet_TellsTheAppAfterItWroteThePathsAndNotWhenItRefusedThem(t *testing.T
 
 	require.NoError(t, s.Set(locate.Config{FFmpeg: "/opt/mine/ffmpeg"}))
 	assert.Equal(t, 1, calls)
+}
+
+// What View finds is told to the app (#1047), so that the app can make the services run what the screen shows as usable.
+func TestView_TellsTheAppWhatItShows(t *testing.T) {
+	var seen []string
+	s := New(filepath.Join(t.TempDir(), FileName), WithFinder(machine("/usr/bin/ffmpeg", "/usr/bin/ffprobe")), WithOnView(func(a, b string) { seen = append(seen, a, b) }))
+
+	_, err := s.View()
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/usr/bin/ffmpeg", "/usr/bin/ffprobe"}, seen)
 }

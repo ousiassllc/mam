@@ -6,11 +6,15 @@ package jobview
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/failbox"
 )
 
 // BytesText is a size as the screen writes it: GiB with a decimal, or whole MiB (KiB below one MiB).
@@ -62,21 +66,42 @@ func Progress(ctx context.Context, svc *modelmanager.Service, jobID string) *vie
 	return p
 }
 
-// Ended is how a job ended, as a notice or an error line; both are empty while it runs (or when it is unknown).
-func Ended(ctx context.Context, svc *modelmanager.Service, jobID, name string) (notice, failure string) {
+// Ended is how a job ended, as a notice or a failure; both are empty while it runs (or when it is unknown). The failure carries the
+// common error (#1010) the job kept, which the screen draws as the error box.
+func Ended(ctx context.Context, svc *modelmanager.Service, jobID, name string) (notice string, failure failbox.Item) {
 	st, err := svc.JobStatus(ctx, jobID)
 	if err != nil {
-		return "", ""
+		return "", failbox.Item{}
 	}
-	switch st.State {
+	return Ending(st.State, st.Error, st.Failure, name+"を導入しました", name+"の導入に失敗しました")
+}
+
+// Ending is how an install job ended, from its state, the reason it failed with and the common error it kept: the notice of a success (done) or
+// the failure titled title. Both are empty while the job runs.
+func Ending(state domain.JobStatus, reason string, common *apperr.View, done, title string) (notice string, failure failbox.Item) {
+	switch state {
 	case domain.JobSucceeded:
-		return name + "を導入しました", ""
+		return done, failbox.Item{}
 	case domain.JobFailed:
-		reason := st.Error
-		if reason == "" {
+		if reason = strings.TrimSpace(reason); reason == "" {
 			reason = "原因は mam のログを確認してください"
 		}
-		return "", name + "の導入に失敗しました: " + reason
+		return "", failbox.Item{Title: title, Reason: reason, View: common}
 	}
-	return "", ""
+	return "", failbox.Item{}
+}
+
+// Settle adds how a job ended to the message of its section: the notice of a success (joined with the others by "。"), and the failure as an
+// error box when the job kept the common error, else as the line "<title>: <reason>" in Error (one per line). A job that has not ended adds nothing.
+func Settle(m *view.Message, notice string, f failbox.Item) {
+	if notice != "" {
+		m.Notice = strings.Join(slices.DeleteFunc([]string{m.Notice, notice}, func(s string) bool { return s == "" }), "。")
+	}
+	switch {
+	case f.Title == "":
+	case f.View != nil:
+		m.Failures = append(m.Failures, f)
+	default:
+		m.Error = strings.Join(slices.DeleteFunc([]string{m.Error, f.Title + ": " + f.Reason}, func(s string) bool { return s == "" }), "\n")
+	}
 }

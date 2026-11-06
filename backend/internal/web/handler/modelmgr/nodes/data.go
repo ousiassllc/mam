@@ -2,7 +2,6 @@ package nodes
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -13,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/failbox"
 	card "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/nodecard"
 )
 
@@ -66,7 +66,8 @@ func nodeCard(ctx context.Context, svc *modelnodes.Service, v modelnodes.View, j
 		if st, err := svc.JobStatus(ctx, job); err == nil && (st.State == domain.JobQueued || st.State == domain.JobRunning) {
 			n.Install, n.Job = progress(ctx, svc, job), job // the handler is done, the queue has not recorded the end yet
 		} else {
-			n.Notice, n.Error = ended(ctx, svc, job, v.Name)
+			notice, f := ended(ctx, svc, job, v.Name)
+			jobview.Settle(&n.Message, notice, f)
 		}
 	}
 	return n
@@ -118,21 +119,12 @@ func progress(ctx context.Context, svc *modelnodes.Service, jobID string) *view.
 	return p
 }
 
-// ended is how an install job ended, as a notice or an error line; both are empty while it runs (or when it is unknown).
-func ended(ctx context.Context, svc *modelnodes.Service, jobID, name string) (notice, failure string) {
+// ended is how an install job ended, as a notice or a failure (with the common error the job kept, #1010); both are empty while it runs
+// (or when it is unknown).
+func ended(ctx context.Context, svc *modelnodes.Service, jobID, name string) (notice string, failure failbox.Item) {
 	st, err := svc.JobStatus(ctx, jobID)
 	if err != nil {
-		return "", ""
+		return "", failbox.Item{}
 	}
-	switch st.State {
-	case domain.JobSucceeded:
-		return name + " を導入しました", ""
-	case domain.JobFailed:
-		reason := st.Error
-		if reason == "" {
-			reason = "原因は mam のログを確認してください"
-		}
-		return "", fmt.Sprintf("%s の導入に失敗しました: %s", name, strings.TrimSpace(reason))
-	}
-	return "", ""
+	return jobview.Ending(st.State, st.Error, st.Failure, name+" を導入しました", name+" の導入に失敗しました")
 }

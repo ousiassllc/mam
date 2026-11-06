@@ -5,6 +5,7 @@ import { CSRF_HEADER, csrfToken } from './components/lib/api';
 import { lockDownHtmx } from './components/lib/htmx-config';
 import { swapsErrorResponse } from './components/lib/thread';
 import { requestFailureMessage, type RequestFailure } from './components/lib/errors';
+import { refuseMissingId } from './components/lib/request-guard';
 import { showAlert } from './ajax';
 import { installHistorySnapshotHygiene } from './components/lib/history';
 import { installSaveOnChangeRevert } from './components/save-on-change/save-on-change';
@@ -40,6 +41,10 @@ document.addEventListener('htmx:configRequest', (event) => {
   const { headers } = (event as CustomEvent<{ headers: Record<string, string> }>).detail;
   headers[CSRF_HEADER] = csrfToken();
 });
+
+// A request whose path has an empty segment ("/projects//messages") was built from a missing ID and can only be a 404:
+// stop it and say what to do (issue 1034).
+document.addEventListener('htmx:configRequest', (event) => refuseMissingId(event, showAlert));
 
 // Error responses of actions are HTML: an alert (out-of-band, target untouched) or a
 // re-rendered form with its errors (422). htmx does not swap 4xx/5xx by default.

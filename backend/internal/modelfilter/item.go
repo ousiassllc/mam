@@ -31,7 +31,9 @@ type Item struct {
 	Origin    Origin
 	Provider  string
 	// Audio is true for a video model that makes sound.
-	Audio          bool
+	Audio bool
+	// Languages are the languages (ISO 639-1) a model that makes speech speaks (traits.Traits.Languages; a runtime's model: choice.Choice.Languages); none for a model that has no language.
+	Languages      []string
 	Speed, Quality traits.Level
 	// Tags are the words the text search reads besides the name (the tags, the trigger words, the vendor).
 	Tags []string
@@ -50,7 +52,12 @@ func (c Condition) matchesKind(it Item) bool {
 	if len(c.Kinds) > 0 && !slices.ContainsFunc(it.Kinds, func(k Kind) bool { return slices.Contains(c.Kinds, k) }) {
 		return false
 	}
-	return hasAll(it.Inputs, c.Inputs) && (!c.Audio || it.Audio)
+	return hasAll(it.Inputs, c.Inputs) && (!c.Audio || it.Audio) && c.matchesLanguage(it)
+}
+
+// matchesLanguage: the language of a speaking model; a model that has no language (an image or a video model) matches none.
+func (c Condition) matchesLanguage(it Item) bool {
+	return len(c.Languages) == 0 || slices.ContainsFunc(it.Languages, func(l string) bool { return slices.Contains(c.Languages, l) })
 }
 
 // matchesRating: the content rating and the uncensored flag, each three-way.
@@ -149,7 +156,7 @@ func (c Condition) Active() int {
 	for _, set := range []bool{
 		len(c.Kinds) > 0, len(c.Inputs) > 0, c.Adult != "" && c.Adult != AdultAll, c.Uncensored != "" && c.Uncensored != UncensoredAll,
 		len(c.Params) > 0, c.VRAMFit, len(c.CommercialSet()) > 0, c.Installed != "" && c.Installed != InstalledAll, len(c.Origins) > 0, len(c.Providers) > 0,
-		c.Audio, len(c.Speeds) > 0, len(c.Qualities) > 0, strings.TrimSpace(c.Text) != "",
+		c.Audio, len(c.Languages) > 0, len(c.Speeds) > 0, len(c.Qualities) > 0, strings.TrimSpace(c.Text) != "",
 	} {
 		if set {
 			n++

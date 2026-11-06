@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/planadvice"
@@ -179,6 +180,28 @@ func TestRecent_AShotJobLeadsToTheProjectAndAFailureSaysWhy(t *testing.T) {
 	assert.Empty(t, byID[orphan.ID].Subject)
 	assert.Equal(t, "企画・脚本の作成", byID[plan.ID].Label)
 	assert.Equal(t, joblist.Dest{Screen: joblist.ScreenProjectChat, ProjectID: p.ID}, byID[plan.ID].Dest)
+}
+
+// A job that kept its failure as the common error (#1010: job.error_info) hands it on in words, for the screen's error box; a job whose
+// failure is only a sentence (an older row) has none.
+func TestRecent_AFailedJobCarriesItsCommonError(t *testing.T) {
+	w := newWorld(t)
+	kept := w.create(domain.JobModelInstall, map[string]string{"target": "engine"})
+	e := apperr.New(apperr.CodeDiskFull).WithDetail("fetch: no space left on device")
+	require.NoError(t, w.rig.Table.MarkFailedWithInfo(t.Context(), kept.ID, "ディスクの空きが足りません", e.Marshal()))
+	old := w.create(domain.JobModelInstall, map[string]string{"target": "engine"})
+	require.NoError(t, w.rig.Table.MarkFailed(t.Context(), old.ID, "ディスクの空きが足りません"))
+
+	byID := map[string]joblist.Entry{}
+	for _, e := range w.recent() {
+		byID[e.ID] = e
+	}
+	require.NotNil(t, byID[kept.ID].Failure)
+	assert.Equal(t, apperr.CodeDiskFull, byID[kept.ID].Failure.Code)
+	assert.Equal(t, "fetch: no space left on device", byID[kept.ID].Failure.Detail)
+	assert.NotEmpty(t, byID[kept.ID].Failure.Remedy)
+	assert.Equal(t, "ディスクの空きが足りません", byID[kept.ID].Error)
+	assert.Nil(t, byID[old.ID].Failure)
 }
 
 // A planning job that stopped for want of an LLM key carries what to do to go on, in the words of the screen; one that stopped

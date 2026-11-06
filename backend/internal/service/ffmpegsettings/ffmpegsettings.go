@@ -3,7 +3,7 @@
 // takes priority over the search; one that cannot be used is an error, never a silent fall back to another ffmpeg.
 //
 // The service reads the file on every call, so it holds no state and any number of them over the same file agree. The tools
-// the app built at startup do not change when the file does: a saved path applies from the next start.
+// the app runs follow it: the app looks for ffmpeg again (WithOnSet, WithOnView) when a path is saved or what the screen shows differs.
 package ffmpegsettings
 
 import (
@@ -32,8 +32,10 @@ type Service struct {
 	// managed are the directories of the ffmpeg mam downloaded (nil: none); read on every lookup and searched after the
 	// others (locate.SearchDirs), so that an ffmpeg the user installed always wins over the managed copy.
 	managed func() []string
-	// onSet is called after the paths were written: they apply from the next start (nil: nobody is told).
+	// onSet is called after the paths were written (nil: nobody is told).
 	onSet func()
+	// onView is called with the paths View found, "" for one that is not found (nil: nobody is told).
+	onView func(ffmpeg, ffprobe string)
 }
 
 // Option replaces what the service reads from the machine (the tests).
@@ -46,9 +48,13 @@ func WithFinder(f locate.Finder) Option { return func(s *Service) { s.finder = f
 // so a download that finishes is found by the next one.
 func WithManagedDirs(dirs func() []string) Option { return func(s *Service) { s.managed = dirs } }
 
-// WithOnSet sets what is called after Set wrote the paths. The tools the app built at startup keep the ffmpeg they found, so
-// the saved paths wait for a restart: the app wires this to the list of the settings that wait for one (restartpending).
+// WithOnSet sets what is called after Set wrote the paths: the app looks for ffmpeg again there, so that the saved paths apply at once.
 func WithOnSet(f func()) Option { return func(s *Service) { s.onSet = f } }
+
+// WithOnView sets what is called with the paths of every View, which is what the settings screen and its overview card say. The
+// app checks that the ffmpeg its services run is the one shown, and looks again when it is not (ffmpeg put on the PATH while mam runs), so
+// that "usable" on the screen is true now.
+func WithOnView(f func(ffmpeg, ffprobe string)) Option { return func(s *Service) { s.onView = f } }
 
 // New is the service over the file at path (FileName in the data directory).
 func New(path string, opts ...Option) *Service {
@@ -135,9 +141,13 @@ func (s *Service) Look() (media.Tools, error) {
 }
 
 // Find is where the executable called name is with the saved paths, the signature of exec.LookPath: the first-run guide
-// reports it. An unreadable file leaves the paths to the search.
+// reports it. It answers as Look does, so that the guide and the app agree: a file that cannot be read is an error wrapping
+// media.ErrUnavailable (the app starts with no ffmpeg then), never a search that ignores the file.
 func (s *Service) Find(name string) (string, error) {
-	cfg, _ := s.Config()
+	cfg, err := s.Config()
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", media.ErrUnavailable, err)
+	}
 	return s.lookup().Find(name, cfg.Path(name))
 }
 
@@ -171,8 +181,12 @@ func (s *Service) View() (View, error) {
 		t.Path, t.Err = f.Find(name, t.Configured)
 		return t
 	}
-	return View{
+	v := View{
 		FFmpeg: tool(locate.FFmpeg), FFprobe: tool(locate.FFprobe),
 		SearchDirs: locate.SearchDirs(f.GOOS, f.Path, f.Extra),
-	}, nil
+	}
+	if s.onView != nil {
+		s.onView(v.FFmpeg.Path, v.FFprobe.Path)
+	}
+	return v, nil
 }

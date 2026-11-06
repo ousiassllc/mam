@@ -29,11 +29,11 @@ func codexData(svc *codex.Service) view.Codex {
 			PinnedVersion: st.PinnedVersion, UpdateAvailable: st.UpdateAvailable, CustomPath: st.CustomPath,
 			Error: st.EngineError, Dir: st.Dir, License: st.License.Name,
 			Install: view.CodexInstall{
-				Running: st.Install.State == codex.InstallRunning, Percent: st.Install.Percent, Message: st.Install.Message,
+				Running: st.Install.State == exeinstall.Running, Percent: st.Install.Percent, Message: st.Install.Message,
 			},
 		},
 	}
-	if st.Install.State == codex.InstallFailed {
+	if st.Install.State == exeinstall.Failed {
 		c.Engine.Install.Error = st.Install.Error
 	}
 	for _, w := range st.RateLimits {

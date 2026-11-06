@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,6 +37,22 @@ func TestCheckSpaceNamesWhatIsMissing(t *testing.T) {
 	assert.Equal(t, uint64(100), noSpace.Free)
 	boom := errors.New("boom")
 	require.ErrorIs(t, exeinstall.CheckSpace("r", 1, func(string) (uint64, error) { return 0, boom }), boom)
+}
+
+func TestNeedBytesCountsWhatIsDownloadedAlready(t *testing.T) {
+	dir := t.TempDir()
+	a := exeinstall.Archive{Path: filepath.Join(dir, "a.zip"), Size: 100}
+	b := exeinstall.Archive{Path: filepath.Join(dir, "b.zip"), Size: 50}
+	assert.Equal(t, int64(20+100+50), exeinstall.NeedBytes(20, a, b), "nothing is downloaded")
+
+	require.NoError(t, os.WriteFile(fetch.PartPath(a.Path), make([]byte, 30), 0o600))
+	assert.Equal(t, int64(20+70+50), exeinstall.NeedBytes(20, a, b), "a part file counts as downloaded")
+
+	require.NoError(t, os.WriteFile(b.Path, make([]byte, 50), 0o600))
+	assert.Equal(t, int64(20+70), exeinstall.NeedBytes(20, a, b), "so does an archive that was kept whole")
+
+	require.NoError(t, os.WriteFile(fetch.PartPath(a.Path), make([]byte, 500), 0o600))
+	assert.Equal(t, int64(20), exeinstall.NeedBytes(20, a, b), "never more than the archive's size")
 }
 
 func mkdirFile(t *testing.T, dir, content string) {
@@ -74,6 +91,71 @@ func TestSwapPutsThePreviousCopyBackWhenTheNewOneCannotBePlaced(t *testing.T) {
 	dir, oldDir := filepath.Join(root, "bin"), filepath.Join(root, "bin.old")
 	mkdirFile(t, dir, "old")
 	require.Error(t, exeinstall.Swap(filepath.Join(root, "missing"), dir, oldDir))
+	assert.Equal(t, "old", read(t, dir))
+}
+
+// flakyRename fails the first failures renames of from with a lock-like error, then renames for real.
+func flakyRename(from string, failures int, calls *int) func(string, string) error {
+	return func(f, to string) error {
+		if f == from {
+			*calls++
+			if *calls <= failures {
+				return &os.LinkError{Op: "rename", Old: f, New: to, Err: errors.New("used by another process")}
+			}
+		}
+		return os.Rename(f, to)
+	}
+}
+
+func TestSwapTriesAgainWhenARenameIsLockedForAMoment(t *testing.T) {
+	for _, from := range []string{"bin", "bin.new"} { // the old copy being moved aside, the new one being put in place
+		root := t.TempDir()
+		dir, newDir, oldDir := filepath.Join(root, "bin"), filepath.Join(root, "bin.new"), filepath.Join(root, "bin.old")
+		mkdirFile(t, dir, "old")
+		mkdirFile(t, newDir, "new")
+		var calls, waits int
+		sleep := func(time.Duration) { waits++ }
+
+		err := exeinstall.SwapWith(flakyRename(filepath.Join(root, from), exeinstall.SwapAttempts-1, &calls), sleep, newDir, dir, oldDir)
+
+		require.NoError(t, err, from)
+		assert.Equal(t, "new", read(t, dir), from)
+		assert.Equal(t, exeinstall.SwapAttempts, calls, from)
+		assert.Equal(t, exeinstall.SwapAttempts-1, waits, "one wait between two attempts, none after the last: %s", from)
+	}
+}
+
+func TestSwapGivesUpAfterTheLimitAndKeepsTheInstalledCopy(t *testing.T) {
+	for _, from := range []string{"bin", "bin.new"} {
+		root := t.TempDir()
+		dir, newDir, oldDir := filepath.Join(root, "bin"), filepath.Join(root, "bin.new"), filepath.Join(root, "bin.old")
+		mkdirFile(t, dir, "old")
+		mkdirFile(t, newDir, "new")
+		var calls, waits int
+		sleep := func(time.Duration) { waits++ }
+
+		err := exeinstall.SwapWith(flakyRename(filepath.Join(root, from), 1<<30, &calls), sleep, newDir, dir, oldDir)
+
+		require.Error(t, err, from)
+		assert.Contains(t, err.Error(), "another program may be using the files", from)
+		assert.Contains(t, err.Error(), "used by another process", from)
+		assert.Equal(t, "old", read(t, dir), "the installed copy is not broken: %s", from)
+		assert.Equal(t, "new", read(t, newDir), "the new copy is left for the next try: %s", from)
+		assert.Equal(t, exeinstall.SwapAttempts, calls, "the limit is not exceeded: %s", from)
+		assert.Equal(t, exeinstall.SwapAttempts-1, waits, from)
+	}
+}
+
+func TestSwapDoesNotWaitForAMissingDirectory(t *testing.T) {
+	root := t.TempDir()
+	dir, oldDir := filepath.Join(root, "bin"), filepath.Join(root, "bin.old")
+	mkdirFile(t, dir, "old")
+	waited := false
+
+	err := exeinstall.SwapWith(os.Rename, func(time.Duration) { waited = true }, filepath.Join(root, "missing"), dir, oldDir)
+
+	require.Error(t, err)
+	assert.False(t, waited)
 	assert.Equal(t, "old", read(t, dir))
 }
 

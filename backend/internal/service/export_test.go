@@ -10,3 +10,7 @@ func AudioError(err error) error { return audioError(nil, err) }
 
 // EditingWorkerIdle reports whether the worker of ResumeEditing has no run going on or asked for.
 func (s *EditorService) EditingWorkerIdle() bool { return s.resume.Idle() }
+
+// WaitProposals returns when every background promotion proposal started so far has ended. A test that
+// asserts a note proposes nothing calls it first, so the absence is seen after the proposal ran.
+func (s *NoteService) WaitProposals() { s.proposals.Wait() }

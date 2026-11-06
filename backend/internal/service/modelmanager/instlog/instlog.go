@@ -1,23 +1,13 @@
 // Package instlog is what the install jobs of the model manager tell about their downloads: the log lines (with the job and the
-// model, so that a failure can be found in the app log) and the message of a download whose connection was lost.
+// model, so that a failure can be found in the app log).
 package instlog
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
-
-// ConnectionLostMessage is what the user reads when a download broke on every transfer that was allowed. The part file stays.
-const ConnectionLostMessage = "通信が切れました。もう一度導入すると続きから再開します"
-
-// IsLost reports whether err is a download that gave up on a lost connection (fetch.ConnectionLostError).
-func IsLost(err error) bool {
-	var lost *fetch.ConnectionLostError
-	return errors.As(err, &lost)
-}
 
 // jobKey carries the install job to the retry hook of the downloads, which has no other way to know it.
 type jobKey struct{}
@@ -34,8 +24,7 @@ func WithJob(ctx context.Context, id, target string) context.Context {
 func RetryLogger(l *slog.Logger, next func(context.Context, fetch.RetryEvent)) func(context.Context, fetch.RetryEvent) {
 	return func(ctx context.Context, e fetch.RetryEvent) {
 		j, _ := ctx.Value(jobKey{}).(job)
-		l.Warn("download interrupted, resuming from the part file", "job_id", j.id, "target", j.target,
-			"attempt", e.Attempt, "max_attempts", e.Max, "retry_in", e.Wait, "err", e.Err)
+		fetch.LogRetry(l, e, "job_id", j.id, "target", j.target)
 		if next != nil {
 			next(ctx, e)
 		}

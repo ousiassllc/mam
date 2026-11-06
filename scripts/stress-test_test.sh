@@ -55,16 +55,41 @@ for jobs in 5 24 100; do
   check "-j $jobs says why" has "$out" "limit of 4"
   check "-j $jobs starts nothing" eq "$(wc -l <"$work/calls")" 0
 done
+# A number too big for the shell's 64-bit arithmetic must not wrap around the limit (18446744073709551620 is 2^64 + 4).
+for jobs in 99999999999999999999 18446744073709551620 9223372036854775808; do
+  run -j "$jobs" ./x
+  check "-j $jobs is refused" eq "$rc" 2
+  check "-j $jobs says why" has "$out" "limit of 4"
+  check "-j $jobs starts nothing" eq "$(wc -l <"$work/calls")" 0
+done
 for bad in 0 -1 two 1.5 ""; do
   run -j "$bad" ./x
   check "-j '$bad' is refused" eq "$rc" 2
 done
+# A -n past 63 bits would wrap negative and make `jobs <= count` false, which used to raise the jobs to that count.
+for count in 9223372036854775808 99999999999999999999; do
+  run -n "$count" ./x
+  check "-n $count is refused" eq "$rc" 2
+  check "-n $count starts nothing" eq "$(wc -l <"$work/calls")" 0
+done
+run -d -n 9223372036854775807 ./x
+check "the largest -n the arithmetic holds is allowed" has "$out" "jobs=2 count=9223372036854775807"
 run -n 0 ./x
 check "-n 0 is refused" eq "$rc" 2
 run -c "0;rm" ./x
 check "a CPU list with a shell metacharacter is refused" eq "$rc" 2
 run
 check "no package is a usage error" eq "$rc" 2
+
+run ./x ./y
+check "two packages are refused" eq "$rc" 2
+check "two packages say why" has "$out" "exactly one package"
+check "two packages start nothing" eq "$(wc -l <"$work/calls")" 0
+# A pattern such as ./... is one argument that names many packages: `go list` answers one directory per line.
+rc=0
+out="$(PATH="$work/bin:$PATH" STUB_PKG_DIR="$work/pkg"$'\n'"$work/pkg2" STUB_LOG="$work/calls" "$script" -n 2 './...' 2>&1)" || rc=$?
+check "a pattern that matches many packages is refused" eq "$rc" 2
+check "a pattern that matches many packages says why" has "$out" "exactly one package"
 
 run -j 4 -d ./x
 check "the limit itself is allowed" has "$out" "jobs=4"

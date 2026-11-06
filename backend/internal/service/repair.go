@@ -61,8 +61,8 @@ type takeActions struct {
 	// gen decides how the card's 生成 button generates (generation.Orchestrator.UsesCandidates); nil when
 	// generation is not configured.
 	gen *generation.Orchestrator
-	// judgeEnabled is whether the Judge is configured; without it POST /takes/:id/judge is always 503.
-	judgeEnabled bool
+	// judgeOn is whether the Judge can run now (nil: not configured; ffmpeg can be set up while mam runs). Without it POST /takes/:id/judge is 503.
+	judgeOn func() bool
 }
 
 // mark fills Candidates, Repairable and Judgeable of the views of one Project. The Retry Policy is read once, and
@@ -102,7 +102,7 @@ func (r takeActions) mark(ctx context.Context, projectID string, views []*ShotVi
 				}
 				v.Repairable[t.ID] = true
 			}
-			if latest != nil || !r.judgeEnabled || t.Status == domain.TakeRejected { // an excluded Take is not offered a run
+			if latest != nil || r.judgeOn == nil || !r.judgeOn() || t.Status == domain.TakeRejected { // an excluded Take is not offered a run
 				continue
 			}
 			pending, err := r.judges.JudgePending(ctx, t.ID)

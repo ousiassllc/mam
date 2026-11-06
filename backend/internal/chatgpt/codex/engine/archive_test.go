@@ -199,7 +199,7 @@ func TestInstallRefusesAnAssetWithAnUnknownFormat(t *testing.T) {
 	exe := "exe"
 	r := newRig(t, makeZip(t, [2]string{exeName, exe}), exe)
 	r.ins.Asset.Format = "7z"
-	require.ErrorIs(t, r.ins.Install(context.Background(), nil), exeinstall.ErrUnsafeArchive)
+	require.ErrorIs(t, r.ins.Install(context.Background(), nil), exeinstall.ErrInvalidRequest)
 }
 
 // The install resumes and is reported like the zip's: the tar.gz path goes through the same download and swap.

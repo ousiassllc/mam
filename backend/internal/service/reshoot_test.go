@@ -90,6 +90,14 @@ func (f genFixture) waitEditingWorkerIdle(t *testing.T) {
 	require.Eventually(t, f.svc.Editor.EditingWorkerIdle, 15*time.Second, 5*time.Millisecond, "the editing worker goes back to waiting")
 }
 
+// waitEditingIdle waits until no editing stage, AUTO chain or ResumeEditing run is going on. A Take selection wakes
+// the worker before it returns, so what the selection started has settled once this returns, and a state asserted
+// then is the settled one (not a state the run has not reached yet).
+func (f genFixture) waitEditingIdle(t *testing.T) {
+	t.Helper()
+	require.Eventually(t, func() bool { return !f.svc.Editor.Busy() }, 15*time.Second, 5*time.Millisecond, "the editing stage, the AUTO chain and the worker are idle")
+}
+
 // editorView waits until the Editor's view of the trunk is EDITING with the version (0: any) and clips of the round saved: EDITING comes before the round is saved, so the state alone does not say it.
 func (f genFixture) editorView(t *testing.T, version, clips int) (view service.EditorView) {
 	t.Helper()
@@ -186,7 +194,7 @@ func TestEditorReshootLoop_AFinishedShotWaitsForTheBusyStageAndIsPutInWhenItEnds
 	release, err := f.svc.Editor.HoldStage(f.projectID)
 	require.NoError(t, err)
 	f.selectTakeOf(t, newShot)
-	time.Sleep(200 * time.Millisecond)
+	f.waitEditingWorkerIdle(t) // the stage of the user stays held: only the worker that the selection woke has looked at the round
 	assert.Equal(t, domain.StateGenerating, f.state(t), "the busy stage keeps the round waiting")
 
 	// Nothing else will start the Reshoot Loop again: the end of the stage does.
@@ -247,7 +255,7 @@ func TestEditorReshootLoop_AutoStopsAtReEditAfterTheAdditionalShotsAreJudged(t *
 	f, newShot := reshotFixture(t, `{"verdict":"re_edit","findings":[{"clip_index":1,"issue":"長い","action":"短くする"}]}`)
 	f.selectTakeOf(t, newShot)
 	require.Eventually(t, func() bool { return f.llm.calls(llm.AgentEditor) == 2 }, 10*time.Second, 10*time.Millisecond)
-	time.Sleep(200 * time.Millisecond)
+	f.waitEditingIdle(t)
 	assert.Equal(t, 2, f.llm.calls(llm.AgentEditor), "Re-edit is the user's: the Judge does not run again")
 	assert.Equal(t, domain.StateEditing, f.state(t))
 }
@@ -265,7 +273,7 @@ func TestEditorReshootLoop_DirectorProjectIsNotJudgedAutomatically(t *testing.T)
 	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID)
 	f.selectTakeOf(t, newShot)
 	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, domain.StateEditing, f.state(c)) }, 10*time.Second, 10*time.Millisecond)
-	time.Sleep(200 * time.Millisecond)
+	f.waitEditingIdle(t)
 	assert.Equal(t, 1, f.llm.calls(llm.AgentEditor), "only the Judge of the Rough Cut ran")
 	assert.Equal(t, domain.StateEditing, f.state(t))
 }
@@ -284,7 +292,7 @@ func TestEditorReshootLoop_AReadyOrExportedProjectKeepsItsEditTimeline(t *testin
 			f.execSQL(t, `UPDATE project SET state = ? WHERE id = ?`, string(state), f.projectID)
 
 			f.selectTakeOf(t, newShot)
-			time.Sleep(300 * time.Millisecond)
+			f.waitEditingIdle(t)
 			assert.Equal(t, state, f.state(t))
 			view, err := f.svc.Editor.View(ctx, f.projectID, "")
 			require.NoError(t, err)

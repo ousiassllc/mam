@@ -1,4 +1,5 @@
-package generation
+// Package assetfile reads and writes the files of assets under the assets directory for the Generation Orchestrator.
+package assetfile
 
 import (
 	"cmp"
@@ -18,10 +19,10 @@ const (
 	maxInputBytes = 20 << 20 // bounds a stored image handed to a model as input
 )
 
-// fileStore reads and writes the files of assets under the assets directory; media, when set, probes them.
-type fileStore struct {
-	root  string
-	media *media.Tools
+// Store reads and writes the files of assets under the assets directory Root; Media, when set, probes them.
+type Store struct {
+	Root  string
+	Media *media.Tools
 }
 
 var fileExts = map[string]string{"image/jpeg": ".jpg", "image/webp": ".webp", "video/webm": ".webm", "video/quicktime": ".mov", "video/mp4": ".mp4", "image/png": ".png"}
@@ -29,23 +30,23 @@ var fileExts = map[string]string{"image/jpeg": ".jpg", "image/webp": ".webp", "v
 // extFor is the file extension of a generated file's media type.
 func extFor(mime string) string { return cmp.Or(fileExts[mime], ".bin") }
 
-// write stores data as a new asset file of the Project and returns the asset (without size checks
+// Write stores data as a new asset file of the Project and returns the asset (without size checks
 // beyond len(data)). The file is written atomically, so a crash never leaves a partial file.
-func (f fileStore) write(projectID string, typ domain.AssetType, mime string, data []byte) (domain.Asset, error) {
-	return f.store(projectID, typ, mime, modeladapter.BlobOf(data))
+func (f Store) Write(projectID string, typ domain.AssetType, mime string, data []byte) (domain.Asset, error) {
+	return f.Save(projectID, typ, mime, modeladapter.BlobOf(data))
 }
 
-// store makes content a new asset file of the Project and returns the asset. The content is
+// Save makes content a new asset file of the Project and returns the asset. The content is
 // consumed: a staged download is moved into place (or removed on failure), never read into
 // memory. The file only appears at its final path complete.
-func (f fileStore) store(projectID string, typ domain.AssetType, mime string, content modeladapter.Blob) (domain.Asset, error) {
-	if f.root == "" {
+func (f Store) Save(projectID string, typ domain.AssetType, mime string, content modeladapter.Blob) (domain.Asset, error) {
+	if f.Root == "" {
 		content.Discard()
 		return domain.Asset{}, fmt.Errorf("assets directory is not configured")
 	}
 	id := domain.NewID()
 	rel := filepath.Join(projectID, id+extFor(mime))
-	abs := filepath.Join(f.root, rel)
+	abs := filepath.Join(f.Root, rel)
 	if err := os.MkdirAll(filepath.Dir(abs), assetDirPerm); err != nil {
 		content.Discard()
 		return domain.Asset{}, fmt.Errorf("create asset directory: %w", err)
@@ -58,14 +59,14 @@ func (f fileStore) store(projectID string, typ domain.AssetType, mime string, co
 	}, nil
 }
 
-// remove deletes the file of an asset that was not stored in the database.
-func (f fileStore) remove(a domain.Asset) {
-	_ = os.Remove(filepath.Join(f.root, filepath.FromSlash(a.FilePath)))
+// Remove deletes the file of an asset that was not stored in the database.
+func (f Store) Remove(a domain.Asset) {
+	_ = os.Remove(filepath.Join(f.Root, filepath.FromSlash(a.FilePath)))
 }
 
-// read returns the content of an image asset, or an error when it is missing or too large.
-func (f fileStore) read(a domain.Asset) ([]byte, error) {
-	abs := filepath.Join(f.root, filepath.FromSlash(a.FilePath))
+// Read returns the content of an image asset, or an error when it is missing or too large.
+func (f Store) Read(a domain.Asset) ([]byte, error) {
+	abs := filepath.Join(f.Root, filepath.FromSlash(a.FilePath))
 	info, err := os.Stat(abs)
 	if err != nil {
 		return nil, fmt.Errorf("stat asset %s: %w", a.ID, err)
@@ -80,11 +81,11 @@ func (f fileStore) read(a domain.Asset) ([]byte, error) {
 	return data, nil
 }
 
-// frameRate is the frame rate of the asset's video for its Take card; 0 when unknown (the player measures it).
-func (f fileStore) frameRate(ctx context.Context, a domain.Asset) float64 {
-	if f.media == nil {
+// FrameRate is the frame rate of the asset's video for its Take card; 0 when unknown (the player measures it).
+func (f Store) FrameRate(ctx context.Context, a domain.Asset) float64 {
+	if f.Media == nil {
 		return 0
 	}
-	info, _ := f.media.Probe(ctx, filepath.Join(f.root, filepath.FromSlash(a.FilePath))) // no Info on error
+	info, _ := f.Media.Probe(ctx, filepath.Join(f.Root, filepath.FromSlash(a.FilePath))) // no Info on error
 	return info.FPS
 }

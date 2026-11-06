@@ -44,8 +44,10 @@ type BatchStatus struct {
 	AspectRatio  string              `json:"aspect_ratio"`
 	Estimate     *Estimate           `json:"estimate,omitempty"`
 	Results      []record.ResultView `json:"results,omitempty"`
-	CreatedAt    time.Time           `json:"created_at"`
-	FinishedAt   *time.Time          `json:"finished_at,omitempty"`
+	// FaceSummaries reads the face similarities of the results together, one per model (only with results, and only when the batch had a reference of the role "face"): the way to compare a setting by a number (Issue #998).
+	FaceSummaries []record.FaceSummary `json:"face_summaries,omitempty" jsonschema:"役割 face の参照を付けたバッチで、モデルごとの顔の類似度（SFace）の平均・最小・最大・閾値以上の割合。設定（参照の強さ・モデル・プロンプト）の効き目を、結果を 1 枚ずつ見ずに数字で比べる。参照が無いバッチには出ない"`
+	CreatedAt     time.Time            `json:"created_at"`
+	FinishedAt    *time.Time           `json:"finished_at,omitempty"`
 }
 
 // Batch returns a batch with its progress and, with results true, every result in the order they were planned (gterr.ErrNotFound).
@@ -111,6 +113,7 @@ func (s *Service) status(ctx context.Context, b gentestrepo.Batch, results bool)
 			return BatchStatus{}, err
 		}
 		st.Results = record.ViewsOf(list)
+		st.FaceSummaries = record.SummarizeFaces(st.Results)
 	}
 	return st, nil
 }

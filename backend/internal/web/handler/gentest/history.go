@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/redo"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagination"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
@@ -35,11 +36,14 @@ const fieldCommercial = "commercial"
 // historyPage is how many results one page of the history lists.
 const historyPage = 24
 
+// pageParam ("?page=3", from 1) is the page of the history.
+const pageParam = "page"
+
 // liveParam ("?live=1") asks for the part of the history that changes while something runs (view.HistoryLive), not the whole list.
 const liveParam = "live"
 
-// historyQuery is the query of a page of the history: the filter and the offset ("" and 0 are left out).
-func historyQuery(f view.HistoryFilter, offset int) url.Values {
+// historyQuery is the query of a page of the history: the filter and the page ("" and the first page are left out).
+func historyQuery(f view.HistoryFilter, page int) url.Values {
 	q := url.Values{}
 	for k, v := range map[string]string{view.FieldModel: f.Model, view.FieldMedia: f.Media} {
 		if v != "" {
@@ -52,27 +56,45 @@ func historyQuery(f view.HistoryFilter, offset int) url.Values {
 	if f.Commercial != "" {
 		q.Set(fieldCommercial, f.Commercial)
 	}
-	if offset > 0 {
-		q.Set("offset", strconv.Itoa(offset))
+	if page > 1 {
+		q.Set(pageParam, strconv.Itoa(page))
 	}
 	return q
 }
 
-// history builds the history list of the filter in the query ("?model=&media=&favorite=1&offset=").
+// historyURL is the address of a page of the history under the filter.
+func historyURL(f view.HistoryFilter, page int) string {
+	u := paths.GenerationTestHistory()
+	if q := historyQuery(f, page); len(q) > 0 {
+		u += "?" + q.Encode()
+	}
+	return u
+}
+
+// pageOf reads the page of the query ("?page=3", from 1): a value that is missing, not a number or below 1 is the first page. A page past the last one is
+// rounded down to the last by the caller, which knows how many there are.
+func pageOf(raw string) int {
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 1
+	}
+	return max(n, 1)
+}
+
+// lastPage is the number of pages of total results (1 when there are none: the empty list is the first page).
+func lastPage(total int) int { return max(1, (total+historyPage-1)/historyPage) }
+
+// history builds the history list of the filter in the query ("?model=&media=&favorite=1&page="). A page past the last one is the last one (a delete that
+// emptied the last page shows the one before it), and the part that refreshes asks for the page that is shown.
 func (h Handlers) history(ctx context.Context, q url.Values) (view.History, error) {
 	f := view.HistoryFilter{Model: q.Get(view.FieldModel), Media: q.Get(view.FieldMedia), Favorite: q.Get("favorite") == "1", Commercial: q.Get(fieldCommercial)}
-	offset, _ := strconv.Atoi(q.Get("offset"))
-	offset = max(offset, 0)
 	chosen := h.Svc.DefaultFilter()
 	if parsed, ok := modellicense.ParseFilter(f.Commercial); ok && f.Commercial != "" {
 		chosen = parsed
 	}
-	live := historyQuery(f, offset)
-	live.Set(liveParam, "1")
-	out := view.History{
-		Filter: f, Commercial: commercial.NewChoice("gt-history-commercial", fieldCommercial, chosen),
-		Refresh: paths.GenerationTestHistory() + "?" + live.Encode(), UpdatedAt: time.Now().Format(time.TimeOnly),
-	}
+	page := pageOf(q.Get(pageParam))
+	out := view.History{Filter: f, Commercial: commercial.NewChoice("gt-history-commercial", fieldCommercial, chosen), UpdatedAt: time.Now().Format(time.TimeOnly)}
+	out.Refresh = refreshURL(f, page)
 	out.Export = exportbar.Data{URL: paths.GenerationTestExport(), Model: f.Model, Media: f.Media, Favorite: f.Favorite, Commercial: string(chosen)}
 	var err error
 	if out.Models, err = h.Svc.HistoryModels(ctx); err != nil {
@@ -81,15 +103,22 @@ func (h Handlers) history(ctx context.Context, q url.Values) (view.History, erro
 	// The commercial choice narrows by the models whose answer it allows (a result carries the answer of the model that made it).
 	allowed, narrowed := commercialModels(out.Models, chosen)
 	var list []record.ResultView
+	total := 0
 	if !narrowed || len(allowed) > 0 {
-		list, err = h.Svc.History(ctx, history.Filter{Model: f.Model, Models: allowed, Media: f.Media, FavoriteOnly: f.Favorite, Limit: historyPage + 1, Offset: offset})
-		if err != nil {
+		filter := history.Filter{Model: f.Model, Models: allowed, Media: f.Media, FavoriteOnly: f.Favorite}
+		if total, err = h.Svc.CountHistory(ctx, filter); err != nil {
+			return out, err
+		}
+		page = min(page, lastPage(total))
+		out.Refresh = refreshURL(f, page)
+		filter.Limit, filter.Offset = historyPage, (page-1)*historyPage
+		if list, err = h.Svc.History(ctx, filter); err != nil {
 			return out, err
 		}
 	}
-	if len(list) > historyPage {
-		list = list[:historyPage]
-		out.Next = paths.GenerationTestHistory() + "?" + historyQuery(f, offset+historyPage).Encode()
+	out.Pager = pagination.Props{
+		ID: "gt-pager", Target: view.HistoryID, Current: page, Last: lastPage(total), Total: total, PerPage: historyPage,
+		Href: func(n int) string { return historyURL(f, n) },
 	}
 	for _, r := range list {
 		out.Cards = append(out.Cards, cardOf(r, true))
@@ -98,6 +127,13 @@ func (h Handlers) history(ctx context.Context, q url.Values) (view.History, erro
 	s, err := h.Svc.Spend(ctx)
 	out.Spend = spendText(s)
 	return out, err
+}
+
+// refreshURL is the address of the part of the history that refreshes: the page of the filter as it is now, with "live=1".
+func refreshURL(f view.HistoryFilter, page int) string {
+	q := historyQuery(f, page)
+	q.Set(liveParam, "1")
+	return paths.GenerationTestHistory() + "?" + q.Encode()
 }
 
 // commercialModels are the models of the history whose answer the filter allows; narrowed says the filter leaves some out (so that no model at all allowed is

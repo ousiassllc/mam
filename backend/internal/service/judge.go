@@ -6,13 +6,15 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 // JudgeService runs the AI Video Judge on a Take (F-13) and returns its results.
 type JudgeService struct {
 	*core
-	runner      *judge.Runner // nil when the Judge is not configured
+	runner      *judge.Runner     // nil when the Judge is not configured
+	frames      judge.FrameSource // its ffmpeg may not be set up yet
 	judges      *repository.JudgeRepository
 	generations *GenerationService
 }
@@ -21,7 +23,7 @@ type JudgeService struct {
 // adds a result; the earlier ones are kept. domain.CheckJudge refuses (409) a Take without a video,
 // one that is being judged and a Shot that is being generated or repaired.
 func (s *JudgeService) Judge(ctx context.Context, takeID string) (ShotFragment, error) {
-	if s.runner == nil {
+	if s.runner == nil || !gate.Open(s.frames) {
 		return ShotFragment{}, ErrUnavailable
 	}
 	ref, err := s.judges.GetTake(ctx, takeID)

@@ -69,7 +69,7 @@ func TestLLMApplier_ASavedAssignmentIsInEffectAtOnceWithoutARestart(t *testing.T
 	assert.True(t, r.svc.View().Live)
 }
 
-// What only a restart applies is listed, with the words the screen and get_health show; a saved ffmpeg path is one.
+// What only a restart applies is listed, with the words the screen and get_health show.
 func TestLLMApplier_WhatOnlyARestartAppliesIsListedAsPending(t *testing.T) {
 	r := newLLMRig(t)
 	raw, err := json.Marshal(map[string]any{"timeout_seconds": 300}) // llm.json edited by hand
@@ -81,12 +81,9 @@ func TestLLMApplier_WhatOnlyARestartAppliesIsListedAsPending(t *testing.T) {
 	assert.Equal(t, []string{"llm.json のタイムアウト・リトライ・サーキットブレーカー"}, r.pending.Reasons())
 	assert.Equal(t, []string{"タイムアウト・リトライ・サーキットブレーカー"}, r.svc.View().Pending)
 
-	restartwork.FFmpegPaths(r.pending)() // the paths of ffmpeg are found at startup, so a saved one waits too
-	assert.Equal(t, []string{"ffmpeg・ffprobe のパス（起動時に探すため）", "llm.json のタイムアウト・リトライ・サーキットブレーカー"}, r.pending.Reasons(), "in the order of the keys")
-
 	require.NoError(t, os.Remove(r.file)) // the file is back to the defaults: the entry goes
 	require.NoError(t, r.svc.Reset())
-	assert.Equal(t, []string{"ffmpeg・ffprobe のパス（起動時に探すため）"}, r.pending.Reasons())
+	assert.Empty(t, r.pending.Reasons())
 }
 
 // What a restart would interrupt is read from the job table (an install is a download); an idle app has none.

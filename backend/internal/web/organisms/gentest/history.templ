@@ -3,6 +3,7 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagination"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
@@ -17,7 +18,7 @@ const HistoryID = "gt-history"
 // and the results. The filter is outside of it, so that a polling swap never takes a choice the reader is making.
 const HistoryLiveID = "gt-history-live"
 
-// HistoryList is the history (newest first) with its filter, the total spend, a refresh button and a button for the next page.
+// HistoryList is the history (newest first) with its filter, the total spend, a refresh button and the page navigation.
 templ HistoryList(h History) {
 	<section id={ HistoryID } class="flex flex-col gap-4" data-testid="gt-history">
 		<form
@@ -58,7 +59,7 @@ templ HistoryList(h History) {
 }
 
 // HistoryLive is the part of the history that refreshes: the spend, when it was read and the refresh button, then the results
-// and the button for the next page. While a result waits or runs it asks for itself again every 2 seconds, and stops when
+// and the page navigation. While a result waits or runs it asks for itself again every 2 seconds, and stops when
 // none does (the answer that shows the last one finished has no polling).
 templ HistoryLive(h History) {
 	<div
@@ -87,13 +88,7 @@ templ HistoryLive(h History) {
 				</li>
 			}
 		</ul>
-		if h.Next != "" {
-			<div>
-				@atoms.Button(atoms.ToneNeutral, "さらに表示", templ.Attributes{
-					"type": "button", "hx-get": h.Next, "hx-target": "#" + HistoryID, "hx-swap": "outerHTML", "data-testid": "gt-more",
-				})
-			</div>
-		}
+		@pagination.Nav(h.Pager)
 	</div>
 }
 

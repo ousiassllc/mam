@@ -17,8 +17,10 @@ templ BadgeOf(b Badge) {
 
 // Summary is what a card says of a model: the picture, the name, the line of the kind and the price or size, the commercial-use icon, the badges and the one line
 // to watch for. Every card that is chosen (PickItem: the generation test's list, the model picker) says it this way, in the colours of the model manager's cards.
+// A model that cannot be chosen now dims the picture and the words (not the whole card): the badges, "選べません" among them, stay at full strength, as a badge
+// at 60 % on the card's fill is too faint to read.
 templ Summary(c Card) {
-	<span class="flex items-start gap-3" data-mp-summary>
+	<span class={ "flex items-start gap-3", templ.KV("opacity-60", c.Reason != nil) } data-mp-summary>
 		@Tile(c.Icon)
 		<span class="flex min-w-0 flex-1 flex-col gap-1">
 			<span class="break-words text-sm text-ink" data-mp-name>{ c.Name }</span>
@@ -42,7 +44,7 @@ templ Summary(c Card) {
 		}
 	</span>
 	if c.Note != "" {
-		<span class="break-words text-xs text-warning" data-testid="model-note">{ c.Note }</span>
+		<span class={ "break-words text-xs text-warning", templ.KV("opacity-60", c.Reason != nil) } data-testid="model-note">{ c.Note }</span>
 	}
 }
 
@@ -65,7 +67,7 @@ templ PickItem(c Card) {
 						aria-describedby={ c.reasonID() }
 					}
 				/>
-				<span class={ "flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 pr-8 text-sm", pick.Glow }>
+				<span class={ "flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 pr-8 text-sm", pick.GlowFrame }>
 					@Summary(c)
 				</span>
 				<span class="pointer-events-none absolute right-3 top-3 hidden text-accent peer-checked:block" aria-hidden="true" data-card-mark>✓</span>
@@ -73,7 +75,7 @@ templ PickItem(c Card) {
 		} else {
 			<button
 				type="button"
-				class={ "flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-colors hover:border-accent focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none", chooseState(c) }
+				class={ "flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left text-sm transition-colors hover:border-accent focus-visible:focus-ring disabled:cursor-not-allowed motion-reduce:transition-none", chooseState(c) }
 				aria-pressed={ boolText(c.Pick.Current) }
 				disabled?={ c.Reason != nil }
 				data-mp-choose

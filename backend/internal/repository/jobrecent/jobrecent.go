@@ -20,7 +20,7 @@ type Repository struct{ db *repository.DB }
 // New returns a Repository over db.
 func New(db *repository.DB) *Repository { return &Repository{db: db} }
 
-const query = `SELECT id, kind, payload, status, attempts, error, created_at, started_at, finished_at FROM job
+const query = `SELECT id, kind, payload, status, attempts, error, error_info, created_at, started_at, finished_at FROM job
 	WHERE status IN ('queued', 'running') OR id IN (SELECT id FROM job ORDER BY ` + newestFirst + ` LIMIT ?)
 	ORDER BY ` + newestFirst
 
@@ -54,7 +54,7 @@ func scan(rows *sql.Rows) (domain.Job, error) {
 		payload, created  string
 		started, finished sql.NullString
 	)
-	if err := rows.Scan(&job.ID, &job.Kind, &payload, &job.Status, &job.Attempts, &job.Error, &created, &started, &finished); err != nil {
+	if err := rows.Scan(&job.ID, &job.Kind, &payload, &job.Status, &job.Attempts, &job.Error, &job.ErrorInfo, &created, &started, &finished); err != nil {
 		return domain.Job{}, err
 	}
 	job.Payload = json.RawMessage(payload)

@@ -65,7 +65,7 @@ templ DetailSection(d Detail, inModal bool) {
 			@inputnotice.UnusedBox(d.Unused)
 		}
 		<div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-			@detailMedia(d.Card)
+			@detailMedia(d.Card, inModal)
 			<dl class="grid grid-cols-[max-content_1fr] content-start gap-x-4 gap-y-1 text-sm" data-testid="gt-params">
 				for _, kv := range d.Params {
 					<dt class="text-xs text-mute">{ kv.Key }</dt>
@@ -156,12 +156,19 @@ templ DetailSection(d Detail, inModal bool) {
 	</section>
 }
 
-// detailMedia is the large picture of a result (a video plays), or that there is no file.
-templ detailMedia(c resulttile.Card) {
+// detailMedia is the large picture of a result (a video plays), or that there is no file. In the modal a click on the picture closes it (Issue #1078;
+// the modal closes on a `data-modal-close` element). A video is not, because a click on it plays and pauses it; the page has nothing to close.
+templ detailMedia(c resulttile.Card, inModal bool) {
 	if c.FileURL != "" && c.Video {
 		<video class="max-h-[70vh] w-full rounded-md bg-black object-contain" src={ c.FileURL } controls preload="metadata"></video>
 	} else if c.FileURL != "" {
-		<img class="max-h-[70vh] w-full rounded-md bg-black object-contain" src={ c.FileURL } alt={ c.Prompt }/>
+		<img
+			class={ "max-h-[70vh] w-full rounded-md bg-black object-contain", templ.KV("cursor-zoom-out", inModal) }
+			src={ c.FileURL }
+			alt={ c.Prompt }
+			data-modal-close?={ inModal }
+			data-testid="gt-detail-image"
+		/>
 	} else {
 		<p class="flex h-40 items-center justify-center rounded-md bg-surface text-sm text-mute" data-testid="gt-no-file">ファイルはありません</p>
 	}

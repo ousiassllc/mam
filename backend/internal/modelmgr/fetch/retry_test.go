@@ -234,6 +234,18 @@ func TestDownloadDoesNotRetryWhatCannotGetBetter(t *testing.T) {
 		require.ErrorIs(t, err, fetch.ErrChecksum)
 		assert.Len(t, srv.requests(), 1)
 	})
+	t.Run("not enough free disk space", func(t *testing.T) {
+		srv := newFlaky(t)
+		dest := destIn(t)
+		err := fetch.Download(context.Background(), dest, source(srv.URL), fast(5, failOnRetry(t), func(o *fetch.Options) {
+			o.FreeBytes = func(string) (uint64, error) { return uint64(len(payload)) - 1, nil }
+		}))
+		var ns *fetch.NoSpaceError
+		require.ErrorAs(t, err, &ns)
+		assert.False(t, fetch.IsConnectionLost(err))
+		assert.Empty(t, srv.requests(), "no transfer is made, let alone a second one")
+		assert.NoFileExists(t, fetch.PartPath(dest))
+	})
 	t.Run("cancel", func(t *testing.T) {
 		srv := newFlaky(t, step{"stall", 100_000})
 		ctx, cancel := context.WithCancel(context.Background())

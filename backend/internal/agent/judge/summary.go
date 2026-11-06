@@ -13,7 +13,7 @@ import (
 // FailureReason is the user-facing cause of a failed Judge run. Details stay in the log.
 func FailureReason(err error) string {
 	if errors.Is(err, ErrNoFFmpeg) {
-		return "ffmpeg / ffprobe が見つかりません（インストールして PATH に追加してください）"
+		return "ffmpeg / ffprobe が見つかりません（設定画面の「ffmpeg」からダウンロードして入れるか、パスを指定してください。自分でインストールして PATH に追加してもかまいません）"
 	}
 	return generation.FailureReason(err)
 }

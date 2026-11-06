@@ -196,8 +196,9 @@ func (r *Repository) GetResult(ctx context.Context, id string) (Result, error) {
 	return res, notFound(err)
 }
 
-// ListResults returns the results matching the filter, newest first.
-func (r *Repository) ListResults(ctx context.Context, f Filter) ([]Result, error) {
+// where is the WHERE clause of the filter (with its leading space; "" for no condition) and its arguments: what ListResults and CountResults share, so
+// that a count is of the results the list pages through.
+func (f Filter) where() (string, []any) {
 	var where []string
 	var args []any
 	add := func(cond string, arg ...any) { where = append(where, cond); args = append(args, arg...) }
@@ -225,15 +226,28 @@ func (r *Repository) ListResults(ctx context.Context, f Filter) ([]Result, error
 	if f.SucceededOnly {
 		add(`status = 'succeeded' AND file_path <> ''`)
 	}
-	q := `SELECT ` + resultColumns + ` FROM gentest_result`
-	if len(where) > 0 {
-		q += ` WHERE ` + strings.Join(where, ` AND `)
+	if len(where) == 0 {
+		return "", nil
 	}
-	q += ` ORDER BY created_at DESC, batch_id DESC, position, id`
+	return ` WHERE ` + strings.Join(where, ` AND `), args
+}
+
+// ListResults returns the results matching the filter, newest first.
+func (r *Repository) ListResults(ctx context.Context, f Filter) ([]Result, error) {
+	cond, args := f.where()
+	q := `SELECT ` + resultColumns + ` FROM gentest_result` + cond + ` ORDER BY created_at DESC, batch_id DESC, position, id`
 	if f.Limit > 0 {
 		q += fmt.Sprintf(` LIMIT %d OFFSET %d`, f.Limit, max(f.Offset, 0))
 	}
 	return queryAll(ctx, r, scanResult, q, args...) //nolint:gosec // q is assembled from constants; only the arguments are data
+}
+
+// CountResults returns how many results match the filter (Limit and Offset are not applied): the size of the list that ListResults pages through.
+func (r *Repository) CountResults(ctx context.Context, f Filter) (int, error) {
+	cond, args := f.where()
+	var n int
+	err := r.db.Reader().QueryRowContext(ctx, `SELECT COUNT(*) FROM gentest_result`+cond, args...).Scan(&n) //nolint:gosec // cond is assembled from constants; only the arguments are data
+	return n, err
 }
 
 // Models returns the models the history has results of, for the filter.

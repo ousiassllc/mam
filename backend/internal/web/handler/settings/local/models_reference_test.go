@@ -118,3 +118,21 @@ func TestModel_RefusedEditStillShowsAllReferenceRows(t *testing.T) {
 	assert.Equal(t, 10, referenceSlotNames(fieldNames(t, rec.Body.String(), "local-model-form")))
 	assert.Equal(t, "txt2img-qwen-image21", formOf(t, rec.Body.String(), "local-model-form").Get("template"))
 }
+
+// The Mega first-and-last-frame workflow (Issue #1076) puts the frame count minus two into two nodes: the form shows one row for frames, and an edit of
+// something else keeps the other two assignments and their offsets.
+func TestModel_MegaFLF2VKeepsTheFramesOffsetsThroughTheForms(t *testing.T) {
+	const id = "flf2v-wan22-14b-rapid-mega"
+	s := newScreen(t, false, "")
+	require.Equal(t, http.StatusOK, s.addEndpoint("box", "comfyui", "http://127.0.0.1:8188").Code)
+	form := formOf(t, startWith(t, s, "box", id), "local-model-form")
+	form.Set("name", "m")
+	require.Equal(t, http.StatusOK, s.do(http.MethodPost, paths.LocalEndpoint("box", "models"), form).Code)
+	assert.JSONEq(t, templateJSON(t, id), string(savedWorkflow(t, s, "m")), "a model made from the template is the template's")
+
+	edit := s.do(http.MethodGet, paths.LocalEndpoint("box", "models", "m", "edit"), nil)
+	ef := formOf(t, edit.Body.String(), "local-model-form")
+	ef.Set("cost_per_second_usd", "0.5")
+	require.Equal(t, http.StatusOK, s.do(http.MethodPut, paths.LocalEndpoint("box", "models", "m"), ef).Code)
+	assert.JSONEq(t, templateJSON(t, id), string(savedWorkflow(t, s, "m")), "an unrelated edit changes nothing of the workflow, offsets included")
+}

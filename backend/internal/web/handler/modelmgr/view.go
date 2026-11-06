@@ -56,7 +56,8 @@ func engineData(ctx context.Context, svc *modelmanager.Service, job string, star
 		if st, err := svc.JobStatus(ctx, job); err == nil && (st.State == domain.JobQueued || st.State == domain.JobRunning) {
 			e.Install, e.Job = progressOf(ctx, svc, job), job // the handler is done, the queue has not recorded the end yet
 		} else {
-			e.Notice, e.Error = ended(ctx, svc, job, "ComfyUI エンジン")
+			n, f := ended(ctx, svc, job, "ComfyUI エンジン")
+			jobview.Settle(&e.Message, n, f)
 		}
 	}
 	return e
@@ -168,7 +169,6 @@ func catalogData(c *gin.Context, svc *modelmanager.Service, jobs []string) view.
 		cat.Models = append(cat.Models, modelData(ctx, svc, e, free, gpuVRAM, tokenErr == nil && !hasToken))
 	}
 	cat.Filter = pickfilter.Sync(screen.Filter(cond, problem, pickfilter.CountOf(pickfilter.Resolve(cond), all, mmview.Entry.Item)), c)
-	var notices, failures []string
 	for _, id := range jobs {
 		if _, running := names[id]; running {
 			continue
@@ -182,13 +182,9 @@ func catalogData(c *gin.Context, svc *modelmanager.Service, jobs []string) view.
 			continue
 		}
 		name := targetName(svc, st)
-		if n, f := ended(ctx, svc, id, name); n != "" {
-			notices = append(notices, n)
-		} else if f != "" {
-			failures = append(failures, f)
-		}
+		n, f := ended(ctx, svc, id, name)
+		jobview.Settle(&cat.Message, n, f)
 	}
-	cat.Notice, cat.Error = strings.Join(notices, "。"), strings.Join(failures, "\n")
 	return cat
 }
 

@@ -48,7 +48,7 @@ LLM（企画・脚本・Shot 計画など）も、この PC のローカルモ�
 
 インストーラーはユーザー単位のインストールです。`%LocalAppData%\Programs\MAM` に入れるため、管理者権限の確認（UAC）は出ません。WebView2 ランタイムが無い Windows 10 では、インストール中にダウンロードします（インターネット接続が必要）。ポータブル版も WebView2 ランタイムを使います（Windows 11 と最近の Windows 10 には入っています）。
 
-AI Video Judge の顔の一致度（Face Identity Similarity）を数値で出すための ONNX Runtime の DLL（`onnxruntime.dll`、MIT）は、インストーラーが `mam.exe` の隣に置きます（実行時のダウンロードはしません）。顔検出・埋め込みのモデル（約 39 MB）は同梱しないので、モデルマネージャー（`/model-manager`）の「顔チェック用モデル」のボタンで `%AppData%\mam\models` に導入してください（導入後の再起動は要りません。`scripts/fetch-face-models.sh`〔Git Bash など〕で取得することもできます）。DLL かモデルが無いとき（ポータブル版は DLL を含みません。`onnxruntime.dll` を `mam.exe` の隣に置くか `--onnxruntime-lib` で指します）は、定性評価だけで判定し、その理由は起動ログの警告に出ます。
+AI Video Judge の顔の一致度（Face Identity Similarity）を数値で出すための ONNX Runtime の DLL（`onnxruntime.dll`、MIT）は、インストーラーが `mam.exe` の隣に置きます（実行時のダウンロードはしません）。顔検出・埋め込みのモデル（約 39 MB）は同梱しないので、モデルマネージャー（`/model-manager`）の「顔チェック用モデル」のボタンで `%AppData%\mam\models` に導入してください（導入後の再起動は要りません。`scripts/fetch-face-models.sh`〔Git Bash など〕で取得することもできます）。**ポータブル版は DLL を含みません**。bash は要らず、次の手順で入れます。[ONNX Runtime のリリース](https://github.com/microsoft/onnxruntime/releases)の v1.23.2 から `onnxruntime-win-x64-1.23.2.zip` をダウンロードして開き、`lib` フォルダの `onnxruntime.dll` を `mam.exe` と同じフォルダへコピーします（再起動は要りません。次の生成テストから数値で測れます。別の場所に置くときは起動オプション `--onnxruntime-lib` で指します。Git Bash などがあれば `scripts/fetch-onnxruntime.sh <DIR>` で、インストーラーと同じ固定した版を SHA-256 を検証して取得することもできます）。DLL かモデルが無いときは、定性評価だけで判定し、その理由は起動ログの警告と、生成テストの結果・MCP に出ます。
 
 インストーラー版は自動で更新されます。起動時と 6 時間ごとに、この [GitHub Releases](https://github.com/ousiassllc/mam/releases) に新しい版が無いか確認し、見つかるとダウンロードして検証し（SHA-256 と、リリースに添えた ed25519 署名 `checksums.txt.sig`）、アプリを終了してインストーラーを静かに実行し、更新後に自動で起動し直します。この ed25519 署名は更新の改ざんを検出するためのもので、Authenticode のコード署名ではありません（下の SmartScreen の警告は出ます）。ポータブル版も同じように更新を確認し、新しい版が見つかると、ユーザー単位のインストール版に切り替わります（ポータブルの exe 自体は書き換えません）。v0.1.0・v0.1.1 は自動更新を持たず、チェックサムも署名も付いていないので、自動では更新されません。署名付きの最初のリリースを手動でインストールしてください（以後は自動で更新されます）。v0.1.x の管理者権限のインストール（`C:\Program Files\MAM`）は自動更新に移行しません。「設定 > アプリ」からアンインストールしてから、新しいインストーラーを入れてください。
 
@@ -83,7 +83,7 @@ Codex のログイン情報は、MAM 専用の `CODEX_HOME`（Windows は `%AppD
 ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**MAM がボタン 1 つでダウンロードして入れられます**。
 
 1. MAM の設定画面の「ffmpeg」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 110 MB（展開後は約 200 MB）を、配布元の [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) のビルド（GitHub Releases の固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、`mam.exe` と同じ場所の `ffmpeg` フォルダに置きます（アンインストールで消えます）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
-2. 「ffmpeg と ffprobe を入れました。…mam を一度終了して、起動し直してください」と出たら、MAM を起動し直します（PATH などの探索は起動時に一度だけ行うため、起動中の MAM には反映されません）
+2. 「ffmpeg と ffprobe を入れました。すぐに使えます」と出たら、そのまま使えます（MAM の再起動は要りません）
 3. 確認: 設定画面の「ffmpeg」に「使えます」と場所が出れば使えます
 
 自分で入れたい人は、これまでどおりにできます。PowerShell で `winget install Gyan.FFmpeg` を実行する（または [ffmpeg.org](https://ffmpeg.org/download.html) から Windows ビルドを展開して、`ffmpeg.exe` と `ffprobe.exe` があるフォルダを環境変数 `PATH` に追加する）か、設定画面の「ffmpeg」でパスを指定します。**自分で入れた ffmpeg（設定したパス・`PATH`）は、MAM がダウンロードしたものより優先して使います。** MAM がダウンロードしたものは、ほかに見つからないときに使います。
@@ -114,7 +114,7 @@ ffmpeg は同梱していません（次の節）。
 ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**MAM がボタン 1 つでダウンロードして入れられます**（Apple Silicon のみ）。
 
 1. MAM の設定画面の「ffmpeg」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 54 MB（展開後は約 126 MB）を、配布元の [martin-riedl.de](https://ffmpeg.martin-riedl.de/) のビルド（Developer ID で署名された固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、データディレクトリ（既定は `~/Library/Application Support/mam`。`--data-dir` や `MAM_DATA_DIR` で変えたときはそこ）の `ffmpeg` フォルダに置きます（`MAM.app` の中には置かないので、自動更新で消えません）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
-2. 「ffmpeg と ffprobe を入れました。…mam を一度終了して、起動し直してください」と出たら、MAM を起動し直します（ffmpeg は起動時に探すため、起動中の MAM には反映されません）
+2. 「ffmpeg と ffprobe を入れました。すぐに使えます」と出たら、そのまま使えます（MAM の再起動は要りません）
 3. 確認: 設定画面の「ffmpeg」に「使えます」と場所が出れば使えます
 
 自分で入れたい人は、ターミナルで `brew install ffmpeg` を実行します（[Homebrew](https://brew.sh) が無いときは先に入れます。ffprobe も一緒に入ります）。Finder や Dock から起動した MAM は、ターミナルの `PATH` を引き継ぎません。そのため MAM は `PATH` に加えて、Homebrew の既定の場所（Apple Silicon は `/opt/homebrew/bin`、Intel は `/usr/local/bin`）も探します。ほかの場所（MacPorts など）に入れたときは、設定画面の「ffmpeg」で ffmpeg と ffprobe のパスを指定してください。ログインシェルの `PATH` は読みません。**自分で入れた ffmpeg は、MAM がダウンロードしたものより優先して使います。**
@@ -136,11 +136,14 @@ bin/mam       # サーバーを起動して既定ブラウザを開く
 ```sh
 make dev          # air + templ --watch + esbuild/tailwind --watch
 make test         # Go・front-end・スクリプトのテスト
+make stress PKG=./backend/internal/router RUN=TestX COUNT=200   # Go のテストを -race で繰り返す（負荷テストの入口。JOBS 既定 2・上限 4。CPUS=0 で CPU を絞る）
 make lint         # golangci-lint・tsc・Biome lint
 make lint-lines   # 行数上限の超過が .linterly-baseline より悪化していないか
 make vuln         # govulncheck: 到達できる既知の脆弱性（標準ライブラリ・依存）が無いか（Linux と Windows の両ターゲット）
 make fmt          # 整形（Go・templ・TypeScript）
 ```
+
+`make stress` は、たまにだけ落ちるテスト（flake）を追うときに、1 つのテストバイナリを `-race` で何度も回します（`scripts/stress-test.sh`）。`PKG`（対象パッケージ）は必須で、`RUN`（`go test -run` の正規表現）・`COUNT`（合計の実行回数。既定 20）・`JOBS`（同時に動かすプロセス数。**既定 2・上限 4**。上限を超える指定は丸めずにエラーにします）・`CPUS`（`taskset -c` で固定する CPU。`0` など。プロセスを増やさず CPU を絞って負荷を再現します）を指定できます。共有のホストを重くしないため、プロセス数は上限までです。
 
 macOS 版（Apple Silicon・署名なし）は、Apple Silicon の Mac で `scripts/package-macos.sh <version>`（`X.Y.Z`）で作ります（Xcode コマンドラインツール・Go・Node.js が要り、`bin/mam-<version>-darwin-arm64.dmg` ができます。リリースでは GitHub-hosted の `macos-latest`（Apple Silicon の Mac）が作ります）。
 

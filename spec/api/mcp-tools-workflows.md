@@ -17,7 +17,7 @@
 | `get_workflow` | 1 件。入力の割り当て・ノード一覧・版の一覧 | `workflow_id`, `include_graph?`（API 形式のグラフも） | `list_workflows` の 1 件 ＋ `settings`（`assignments[]`, `output_node`, `fps`, `frames_step`, `size_multiple`, `video`）, `nodes[]`（`id`, `class_type`, `inputs[]`）, `versions[]`（`version`, `model_id`, `current`）, `graph?` | はい |
 | `rename_workflow` | 名前を変える（版は上がらない。冪等） | `workflow_id`, `name`（100 文字以内） | ワークフロー | いいえ |
 | `delete_workflow` | 削除する。画像の用途・Quality Policy が選んでいれば `validation` | `workflow_id` | `deleted` | いいえ（破壊的） |
-| `update_workflow_assignment` | 入力の割り当て・出力ノード・動画の設定を変える。変わっていれば版が上がる（冪等） | `workflow_id`, `assignments[]`（`param`, `node`, `input`, `index?`）, `output_node`, `fps?`, `frames_step?`, `size_multiple?`, `video?`（`durations`, `resolutions`, `native_audio`） | ワークフロー ＋ `check` | いいえ |
+| `update_workflow_assignment` | 入力の割り当て・出力ノード・動画の設定を変える。変わっていれば版が上がる（冪等） | `workflow_id`, `assignments[]`（`param`, `node`, `input`, `index?`, `ratio?`, `offset?`）, `output_node`, `fps?`, `frames_step?`, `size_multiple?`, `video?`（`durations`, `resolutions`, `native_audio`） | ワークフロー ＋ `check` | いいえ |
 | `import_workflow_json` | API 形式の JSON（「Save (API Format)」。`{"prompt": …}` も可）を保存する。割り当てを省くと推測する | `name`, `kind`, `endpoint?`（既定 `bundled-comfyui`）, `api_json`（文字列）, `settings?`（`update_workflow_assignment` と同じ） | ワークフロー ＋ `check` | いいえ |
 | `list_comfyui_workflows` | ComfyUI サーバーが持つ保存済みワークフロー（`/userdata`）。同梱版は止まっていれば起動する | `endpoint?` | `workflows[]`: `path`, `name` | はい |
 | `import_workflow_from_comfyui` | ComfyUI のワークフロー（画面の形式）と、その最後の実行の API 形式を取り込む。実行が無ければ `validation`（先に ComfyUI で実行する） | `endpoint?`, `path?`（省略: 最後の実行）, `name?`, `kind?`, `replace_workflow_id?`（既存を更新。版が上がる） | ワークフロー ＋ `check` | いいえ |
@@ -31,7 +31,7 @@
 
 ### 詳細設定（`run_workflow`。Issue #973）
 
-`run_workflow` は `seed`（0〜9007199254740991。省くと実行ごとにランダム）と `sampling`（`steps` 1〜150・`cfg` 0〜30・`sampler`・`scheduler`）を受ける。値は、ワークフローの割り当て（`param` が `steps`・`cfg`・`sampler`・`scheduler`。`update_workflow_assignment` の `assignments[]` に書く。`steps` は `ratio`（0〜1）も付けられ、2 段のサンプラーの切り替えのステップに使う）が指すノードの入力に入る。省いた項目はグラフの値のまま。割り当てが無い項目と、速さのモードがあるワークフローの `steps`・`cfg` は使わず、出力の `warnings[]` に `kind: sampling` で出す。出力と `get_job` の `result` に、使った `seed` と `sampling`（既定を含む）が残る。範囲外は `validation`。
+`run_workflow` は `seed`（0〜9007199254740991。省くと実行ごとにランダム）と `sampling`（`steps` 1〜150・`cfg` 0〜30・`sampler`・`scheduler`）を受ける。値は、ワークフローの割り当て（`param` が `steps`・`cfg`・`sampler`・`scheduler`。`update_workflow_assignment` の `assignments[]` に書く。`steps` は `ratio`（0〜1）も付けられ、2 段のサンプラーの切り替えのステップに使う。`frames` は `offset`〔−64〜64 の整数〕も付けられ、フレーム数に足した値を入れる。`frames-2` は `offset: -2`。Issue #1076）が指すノードの入力に入る。省いた項目はグラフの値のまま。割り当てが無い項目と、速さのモードがあるワークフローの `steps`・`cfg` は使わず、出力の `warnings[]` に `kind: sampling` で出す。出力と `get_job` の `result` に、使った `seed` と `sampling`（既定を含む）が残る。範囲外は `validation`。
 
 ### ジョブ（`run_workflow`）
 
@@ -48,3 +48,4 @@
 | 1.0 | 2026-10-25 | 新規作成。ワークフローの一覧・取得・名前の変更・削除・割り当ての変更・取り込み（JSON・ComfyUI から）・照合・実行・Shot への固定の 11 ツール | Issue #834（#830 の方針: 画面でできることは MCP でもできる。ノード画面そのものは対象外） |
 | 1.1 | 2026-11-03 | `run_workflow` に `seed`・`sampling`、`assignments[]` の `param` に `steps`・`cfg`・`sampler`・`scheduler` と `ratio` を足した | Issue #973 |
 | 1.2 | 2026-11-04 | `settings` に `exposed_inputs`（画面に出す値）を足した（保存・取得・更新。省くと今のまま） | Issue #977（ステージ 2） |
+| 1.3 | 2026-11-06 | `assignments[]` に `offset`（`frames` だけ。フレーム数に足す整数。−64〜64）を足した（`update_workflow_assignment`・`get_workflow`） | Issue #1076 |

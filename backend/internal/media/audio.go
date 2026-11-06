@@ -29,7 +29,11 @@ type Loudness struct {
 
 // AudioDuration is the length of an audio (or any media) file in seconds.
 func (t Tools) AudioDuration(ctx context.Context, path string) (float64, error) {
-	out, _, err := run(ctx, t.limits().probe, t.ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path)
+	e, err := t.ready()
+	if err != nil {
+		return 0, err
+	}
+	out, _, err := run(ctx, e.limits().probe, e.ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path)
 	if err != nil {
 		return 0, fmt.Errorf("ffprobe %s: %w", filepath.Base(path), err)
 	}
@@ -54,7 +58,11 @@ type loudnormJSON struct {
 // has no measurable sound.
 func (t Tools) MeasureLoudness(ctx context.Context, path string, targetLUFS float64) (Loudness, error) {
 	filter := fmt.Sprintf("loudnorm=I=%s:TP=%s:LRA=11:print_format=json", num(targetLUFS), num(TruePeakCeiling))
-	_, stderr, err := run(ctx, t.limits().loudness, t.ffmpeg, "-hide_banner", "-nostats", "-nostdin", "-i", path, "-vn", "-af", filter, "-f", "null", "-")
+	e, err := t.ready()
+	if err != nil {
+		return Loudness{}, err
+	}
+	_, stderr, err := run(ctx, e.limits().loudness, e.ffmpeg, "-hide_banner", "-nostats", "-nostdin", "-i", path, "-vn", "-af", filter, "-f", "null", "-")
 	text := string(stderr)
 	if err != nil {
 		if ctx.Err() != nil || errors.Is(err, ErrTimeout) {

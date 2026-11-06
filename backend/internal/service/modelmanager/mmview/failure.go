@@ -26,14 +26,20 @@ func Failure(err error) *apperr.Error {
 	case errors.Is(err, modelmanager.ErrNoGPU):
 		e = apperr.New(apperr.CodeNoGPU).WithCause(guidance(err))
 	default:
-		if known, ok := errmap.Known(err); ok && known.Code != apperr.CodeUnknown {
+		var worded interface{ UserMessage() string }
+		isWorded := errors.As(err, &worded)
+		if known, ok := errmap.Known(err); ok && known.Code != apperr.CodeUnknown && (!isWorded || !vendorCode(known.Code)) {
 			return known // a disk, a folder or a vendor failure: errmap words it
 		}
 		kind, msg := Refuse(err)
-		var worded interface{ UserMessage() string }
 		switch {
-		case kind == RefusalNone && errors.As(err, &worded):
-			return apperr.New(apperr.CodeInstallFailed).WithCause(worded.UserMessage()).Wrap(err) // an install that the installer worded itself
+		case kind == RefusalNone && isWorded:
+			// an install that the installer worded itself: its sentence is the cause, and what it was worded from (the HTTP status, the file) the detail
+			e := apperr.New(apperr.CodeInstallFailed).WithCause(worded.UserMessage()).Wrap(err)
+			if behind := errors.Unwrap(err); behind != nil {
+				e = e.WithDetail(behind.Error())
+			}
+			return e
 		case kind == RefusalNone:
 			return nil
 		}
@@ -48,4 +54,15 @@ func Failure(err error) *apperr.Error {
 		e.Cause = msg
 	}
 	return e.Wrap(err)
+}
+
+// vendorCode says a code is the answer of a service that mam called (a model vendor, ComfyUI): its words and remedy are about that call. An
+// install that the installer worded itself (the source of a file is gone, the connection was lost) keeps its own sentence over them: the
+// download of a file is not a call to a vendor, and "check the URL of the endpoint" is no remedy for it.
+func vendorCode(c apperr.Code) bool {
+	switch c {
+	case apperr.CodeRemoteNotFound, apperr.CodeConnectionFailed, apperr.CodeTimeout, apperr.CodeServerError, apperr.CodeRequestRejected:
+		return true
+	}
+	return false
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/voiceref"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
+	"github.com/ousiassllc/mam/backend/internal/media"
 )
 
 // store checks the recording (extension, signature, size, length) and writes it below the directory of the
@@ -81,6 +82,9 @@ func (s *Service) check(ctx context.Context, abs string, ref *voiceref.Reference
 	seconds, err := s.probe.AudioDuration(ctx, abs)
 	if ctx.Err() != nil {
 		return ctx.Err()
+	}
+	if errors.Is(err, media.ErrUnavailable) { // ffprobe was not found when mam started and still is not: the length is not known
+		return nil
 	}
 	if err != nil {
 		return invalid("file", "音声として読み取れませんでした（壊れているか、対応していない中身です）")

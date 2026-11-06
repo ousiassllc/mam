@@ -27,6 +27,7 @@
 | `origins` | `local` / `api` の一覧 | ローカル（この PC・登録した接続先）か API（クラウド・サブスク）か |
 | `providers` | 文字列の一覧 | 提供元（`local`・`anthropic`・`openai`・`google`・`chatgpt-subscription`・クラウド画像／動画モデルのベンダー名） |
 | `audio` | 真偽値 | 音声つきの動画モデルだけ |
+| `languages` | ISO 639-1 の小文字 2 字の一覧 | 音声モデルの言語（**どれか**。`ja`・`en`）。言語を持たないモデル（画像・動画など）は入らない（Issue #1015。実行環境のモデル `runtimechoices.View.Item` が `Choice.Languages` を渡す。カタログのモデルは `traits.languages`）。パネルは、その画面のモデルの言語が分かれるときだけ「言語」の欄を出す（`Facets.Languages`） |
 | `speeds` / `qualities` | `fast`・`standard`・`slow` / `basic`・`standard`・`high` の一覧 | 速度・品質の目安（**どれか**）。目安が無いモデルは入らない |
 | `available_only` | 真偽値 | 今選べるものだけ（§5）。画面の「選べるものだけ」。**モデルを選ぶ画面は `modelfilter.Default()`（これがオン）から始め、「使えないものも表示」でオフにする**。ゼロ値（オフ）は使えないものも理由つきで返す（モデルマネージャーのカタログ・MCP） |
 | `q` | 文字列 | テキスト検索。空白で区切った語を**すべて**含む（大文字小文字は区別しない）。名前・ID・提供元・タグ（種別・区分・トリガー語など）を見る |
@@ -96,6 +97,7 @@
 | モデルマネージャーのカタログ（導入済み・未導入） | `mmview.Where(svc, cond) []Entry`。`Entry` は `ModelView` に `traits`・`inputs`・`audio`・`available`・`unavailable`・`unavailable_message`・`settings_route` を足したもの。`mmview.Entries(svc)`（全件）・`mmview.EntryOf(svc, view)`（1 件）。**モデルマネージャーは `cond` のゼロ値から始める**（未導入も見せる）。導入済みだけを選ぶ画面は `installed=installed_only` |
 | 生成テスト・プロジェクト・Shot の生成設定のモデル選択 | `gentest.Service.ModelsWhere(ctx, media, cond)`（`modelcatalog.Info` の一覧。選択画面は `Default()` から）。`Info` に `available`・`unavailable`・`unavailable_message`・`settings_route`・`inputs`・`provider`・`origin`・`catalog`（カタログのモデルの成人向け・`traits`・`vram_min_gb`）。1 件の可否は `Service.Availability(id)` |
 | 割り当て（設定の画像・動画モデル、Quality Policy）の候補 | `modelsettings.View.ImageModels` / `VideoModels` の各候補に `Availability`。`View.ImageModelsWhere(cond)` / `VideoModelsWhere(cond)`。今の割り当てが使えないモデルを指すとき `View.Unusable[]`（§5.3） |
+| ローカルの実行環境のモデル（Irodori-TTS の声・llama.cpp の LLM。#1015） | `runtimechoices.Where(views, cond)`（`View.Item()` が `kind: tts` を `audio`、`llm` を `llm` にし、`languages` を渡す）。MCP は `list_local_runtime_models`（`runtime_id` を省くと実行環境をまたいで絞れる）、画面は実行環境のカードの詳細（`GET /model-manager/runtimes/:id/models`）。[local-runtime.md §14.8](local-runtime.md) |
 | LLM の割り当ての候補 | `llmmodels.Service.Candidates(ctx, cond)`（`Candidate` の一覧。選択画面は `Default()` から）。プロバイダー 1 つの可否は `Availability(provider)`、各 `List` に `Availability` |
 | 入力画像を添えたときのモデルの並べ替え（#1009） | `modelfilter.InputsOfRoles(roles []string) []traits.Input`（添えた画像の役割 `reference`・`face`・`style`・`edit`・`pose`・`first_frame`・`last_frame` から、モデルが受け付けるべき入力 `reference_whole`・`reference_face`・…・`first_frame`・`last_frame` を返す。重複なし）と `modelfilter.PreferForInputs[T](list []T, item func(T) Item, attached []traits.Input) []T`（`Item.Inputs` が `attached` を多く持つモデルを先に並べる**安定ソート**。同じ数ならもとの順。何も隠さない（持たないモデルは最後に残る）。`attached` が空なら並びは変えない。`list` を並べ替えて返す）。生成テストのモデル選択は、添えた画像の役割を `InputsOfRoles` に渡し、`ModelsWhere` の結果を `PreferForInputs` に通す |
 
@@ -165,6 +167,7 @@
 | `model-trial` | モデルマネージャーの試し生成 | 試せるモデル（`model_id`） |
 | `settings-image` | 設定「画像・動画モデル」の画像の用途 | `modelsettings.View.ImageModels` にあるモデル（`image_<用途>_<primary or fallback>_model`） |
 | `settings-video` | 同 Quality Policy | 動画モデルと解像度（`policy_<方針>_<primary or fallback>`。値は `<モデル>@<解像度>`） |
+| `video-enhance` | 生成結果の詳細（動画）「大きくする」「滑らかにする」（Issue #1031・#1011） | その操作（`op=upscale`・`interpolate`）と場所（`cloud=1` は Topaz、無ければこの PC）のモデル（`model`。`modelcatalog.VideoEnhancer.Item`・`Availability`。種類は `video_upscale`・`video_interpolate`。Topaz のキーが無いものは「選べません」で、API キーの設定への導線つき）。パネルは商用利用と選べるものだけ |
 | `upscale` | 生成結果の詳細「大きくする」 | アップスケールのワークフロー（`upscale_model`。今は動かせないものは理由つきで出る） |
 | `settings-llm` | 設定「テキスト生成（LLM）」の Agent | プロバイダーとモデルを**一緒に**（`<role>.provider`・`<role>.model`）。API キーのないプロバイダー・ログインしていないものは「選べません」で、理由と設定画面への導線つき（§5）。一覧にない名前は `<role>.model_custom` に入れる |
 

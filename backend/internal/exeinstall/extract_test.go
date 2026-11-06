@@ -4,10 +4,14 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/flate"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -219,7 +223,8 @@ func TestExtractNeverWritesOutsideTheDirectory(t *testing.T) {
 			dir := filepath.Join(root, "out")
 			err := exeinstall.Extract(context.Background(), makeZip(t, entry{name: "ffmpeg", body: "x"}), exeinstall.FormatZip, dir,
 				[]exeinstall.Member{{Entry: "ffmpeg", Name: name, Size: 1, SHA256: sum("x")}}, exeinstall.Options{})
-			require.ErrorIs(t, err, exeinstall.ErrUnsafeArchive, "a name with a path is refused before anything is written")
+			require.ErrorIs(t, err, exeinstall.ErrInvalidRequest, "a name with a path is refused before anything is written")
+			assert.NotErrorIs(t, err, exeinstall.ErrUnsafeArchive, "the archive is not to blame")
 			assert.Empty(t, files(t, root))
 		})
 	}
@@ -228,9 +233,14 @@ func TestExtractNeverWritesOutsideTheDirectory(t *testing.T) {
 func TestExtractRefusesBadArguments(t *testing.T) {
 	archive := makeZip(t, entry{name: "ffmpeg", body: "x"})
 	m := member("ffmpeg", "ffmpeg", "x")
-	require.ErrorIs(t, exeinstall.Extract(context.Background(), archive, exeinstall.FormatZip, t.TempDir(), nil, exeinstall.Options{}), exeinstall.ErrUnsafeArchive)
-	require.ErrorIs(t, exeinstall.Extract(context.Background(), archive, "7z", t.TempDir(), []exeinstall.Member{m}, exeinstall.Options{}), exeinstall.ErrUnsafeArchive)
-	require.ErrorIs(t, exeinstall.Extract(context.Background(), archive, exeinstall.FormatZip, t.TempDir(), []exeinstall.Member{{Entry: "ffmpeg", Name: "ffmpeg"}}, exeinstall.Options{}), exeinstall.ErrUnsafeArchive, "a member with no size")
+	for name, err := range map[string]error{
+		"no members":                     exeinstall.Extract(context.Background(), archive, exeinstall.FormatZip, t.TempDir(), nil, exeinstall.Options{}),
+		"a format Extract does not know": exeinstall.Extract(context.Background(), archive, "7z", t.TempDir(), []exeinstall.Member{m}, exeinstall.Options{}),
+		"a member with no size":          exeinstall.Extract(context.Background(), archive, exeinstall.FormatZip, t.TempDir(), []exeinstall.Member{{Entry: "ffmpeg", Name: "ffmpeg"}}, exeinstall.Options{}),
+	} {
+		require.ErrorIs(t, err, exeinstall.ErrInvalidRequest, name)
+		assert.NotErrorIs(t, err, exeinstall.ErrUnsafeArchive, "%s: nothing of the archive was read", name)
+	}
 	require.Error(t, exeinstall.Extract(context.Background(), filepath.Join(t.TempDir(), "missing.zip"), exeinstall.FormatZip, t.TempDir(), []exeinstall.Member{m}, exeinstall.Options{}))
 	notGzip := filepath.Join(t.TempDir(), "x.tar.gz")
 	require.NoError(t, os.WriteFile(notGzip, []byte("not gzip at all"), 0o600))
@@ -246,6 +256,54 @@ func TestExtractStopsWhenTheContextIsCancelled(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled)
 		assert.Empty(t, files(t, dir))
 	})
+}
+
+// The loop stops between entries as well: a context cancelled while the pinned file was written ends the extraction at once,
+// not after the rest of the archive (which a tar has to be read through) was walked.
+func TestExtractStopsBetweenEntriesWhenTheContextIsCancelled(t *testing.T) {
+	formats(t, func(t *testing.T, format string, make func(...entry) string) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		dir := filepath.Join(t.TempDir(), "out")
+		archive := make(entry{name: "ffmpeg", body: "x"}, entry{name: "other", body: strings.Repeat("y", 4096)}, entry{name: "more", body: "z"})
+		err := exeinstall.Extract(ctx, archive, format, dir, []exeinstall.Member{member("ffmpeg", "ffmpeg", "x")},
+			exeinstall.Options{Progress: func(_, _ int64) { cancel() }})
+		require.ErrorIs(t, err, context.Canceled)
+		assert.Empty(t, files(t, dir), "what was written is removed again")
+	})
+}
+
+// Only an archive that is broken is ErrUnsafeArchive. A failure of the read itself (the disk, an I/O error) says nothing about the
+// archive, so it is no verdict on it and the downloaded file is kept.
+func TestNextErrorTellsABrokenArchiveFromAFailedRead(t *testing.T) {
+	var corrupt flate.CorruptInputError
+	for name, err := range map[string]error{
+		"a bad tar header":       tar.ErrHeader,
+		"a bad gzip header":      gzip.ErrHeader,
+		"a bad gzip checksum":    gzip.ErrChecksum,
+		"a stream cut off":       io.ErrUnexpectedEOF,
+		"damaged deflate data":   corrupt,
+		"a header and something": fmt.Errorf("x: %w", tar.ErrHeader),
+	} {
+		assert.ErrorIs(t, exeinstall.NextError(err), exeinstall.ErrUnsafeArchive, name)
+	}
+	disk := errors.New("input/output error")
+	got := exeinstall.NextError(disk)
+	require.ErrorIs(t, got, disk)
+	assert.NotErrorIs(t, got, exeinstall.ErrUnsafeArchive)
+	assert.NotErrorIs(t, exeinstall.NextError(context.Canceled), exeinstall.ErrUnsafeArchive)
+}
+
+func TestExtractOfATruncatedTarGzIsAnUnsafeArchive(t *testing.T) {
+	full := makeTarGz(t, entry{name: "other", body: strings.Repeat("y", 8192)}, entry{name: "ffmpeg", body: "x"})
+	b, err := os.ReadFile(full) // #nosec G304 -- a file of the test's temp directory
+	require.NoError(t, err)
+	cut := filepath.Join(t.TempDir(), "cut.tar.gz")
+	require.NoError(t, os.WriteFile(cut, b[:len(b)/2], 0o600))
+
+	err = exeinstall.Extract(context.Background(), cut, exeinstall.FormatTarGz, filepath.Join(t.TempDir(), "out"), []exeinstall.Member{member("ffmpeg", "ffmpeg", "x")}, exeinstall.Options{})
+
+	require.ErrorIs(t, err, exeinstall.ErrUnsafeArchive)
 }
 
 func TestExtractDoesNotOverwriteAFile(t *testing.T) {

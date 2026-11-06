@@ -74,7 +74,7 @@ func (ts *takeSources) take(ctx context.Context, takeID string) (cutSource, bool
 	if !ts.s.fileExists(d.FilePath) {
 		return src, false
 	}
-	if ts.s.tools == nil {
+	if !ts.s.tools.Available() {
 		return src, true
 	}
 	p, done := ts.probed[d.FilePath]

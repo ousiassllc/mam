@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // Env is a connected test client and what it talks to.
@@ -118,7 +119,8 @@ func (e *Env) Call(name string, args any) *mcp.CallToolResult {
 
 // CallOn is Call failing c instead of the test: a polling condition (assert.EventuallyWithT) passes its
 // *assert.CollectT, so that a late condition never fails a finished test.
-func (e *Env) CallOn(c require.TestingT, name string, args any) *mcp.CallToolResult {
+func (e *Env) CallOn(c testenv.TestingT, name string, args any) *mcp.CallToolResult {
+	c.Helper()
 	res, err := e.Client.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})
 	require.NoError(c, err, "protocol error calling %s", name)
 	return res
@@ -131,7 +133,8 @@ func (e *Env) CallOK(name string, args any, out any) {
 }
 
 // CallOKOn is CallOK failing c instead of the test (see CallOn).
-func (e *Env) CallOKOn(c require.TestingT, name string, args any, out any) {
+func (e *Env) CallOKOn(c testenv.TestingT, name string, args any, out any) {
+	c.Helper()
 	res := e.CallOn(c, name, args)
 	require.False(c, res.IsError, "%s failed: %s", name, Text(res))
 	if out == nil {

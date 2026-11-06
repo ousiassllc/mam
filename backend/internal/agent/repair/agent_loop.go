@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -134,7 +135,7 @@ func (a *Agent) regenerate(ctx context.Context, st *step, action domain.RepairAc
 	// A Partial Regeneration whose Issues all name a time range is spliced into the failed Take: only
 	// those ranges of the new Take are used.
 	var ranges []domain.TimeRange
-	if action == domain.RepairPartialRegeneration && a.Splicer != nil {
+	if action == domain.RepairPartialRegeneration && gate.Open(a.Splicer) {
 		if r, ok := domain.IssueRanges(st.res.Issues); ok {
 			ranges = r
 		}

@@ -37,7 +37,7 @@ func TestServiceInstallsInTheBackgroundAndTheCopyIsOfferedToTheSearch(t *testing
 	st := s.Status()
 	assert.True(t, st.Supported)
 	assert.False(t, st.Installed)
-	assert.Equal(t, ffmpegdl.InstallIdle, st.Install.State)
+	assert.Equal(t, exeinstall.Idle, st.Install.State)
 	assert.Equal(t, "9.9.9", st.Pinned.Version)
 	assert.Empty(t, s.Dirs(), "nothing is found before the download")
 
@@ -47,7 +47,7 @@ func TestServiceInstallsInTheBackgroundAndTheCopyIsOfferedToTheSearch(t *testing
 	s.WaitInstall()
 
 	st = s.Status()
-	assert.Equal(t, ffmpegdl.InstallSucceeded, st.Install.State, st.Install.Error)
+	assert.Equal(t, exeinstall.Succeeded, st.Install.State, st.Install.Error)
 	assert.Equal(t, 100, st.Install.Percent)
 	assert.True(t, st.Installed)
 	assert.Equal(t, "9.9.9", st.Version)
@@ -74,7 +74,7 @@ func TestServiceRunsOneInstallAtATimeAndRefusesToRemoveDuringIt(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, started)
 	<-reached
-	assert.Equal(t, ffmpegdl.InstallRunning, s.Status().Install.State)
+	assert.Equal(t, exeinstall.Running, s.Status().Install.State)
 	assert.NotEmpty(t, s.Status().Install.Message)
 
 	started, err = s.StartInstall()
@@ -84,12 +84,12 @@ func TestServiceRunsOneInstallAtATimeAndRefusesToRemoveDuringIt(t *testing.T) {
 
 	close(release)
 	s.WaitInstall()
-	assert.Equal(t, ffmpegdl.InstallSucceeded, s.Status().Install.State)
+	assert.Equal(t, exeinstall.Succeeded, s.Status().Install.State)
 
 	require.NoError(t, s.Remove())
 	st := s.Status()
 	assert.False(t, st.Installed)
-	assert.Equal(t, ffmpegdl.InstallIdle, st.Install.State)
+	assert.Equal(t, exeinstall.Idle, st.Install.State)
 	assert.Empty(t, s.Dirs())
 }
 
@@ -102,7 +102,7 @@ func TestServiceReportsAWrongChecksumAndUsesNothing(t *testing.T) {
 	require.True(t, started)
 	s.WaitInstall()
 	st := s.Status()
-	assert.Equal(t, ffmpegdl.InstallFailed, st.Install.State)
+	assert.Equal(t, exeinstall.Failed, st.Install.State)
 	assert.Contains(t, st.Install.Error, "SHA-256")
 	assert.False(t, st.Install.Cancelled)
 	assert.False(t, st.Installed)
@@ -136,7 +136,7 @@ func TestServiceCancelIsNotAFailureAndInstallingAgainResumes(t *testing.T) {
 	s.CancelInstall()
 	s.WaitInstall()
 	st := s.Status()
-	assert.Equal(t, ffmpegdl.InstallFailed, st.Install.State)
+	assert.Equal(t, exeinstall.Failed, st.Install.State)
 	assert.True(t, st.Install.Cancelled)
 	assert.Empty(t, st.Install.Error, "pressing cancel is not an error")
 	assert.False(t, st.Installed)
@@ -145,7 +145,7 @@ func TestServiceCancelIsNotAFailureAndInstallingAgainResumes(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, started)
 	s.WaitInstall()
-	assert.Equal(t, ffmpegdl.InstallSucceeded, s.Status().Install.State, s.Status().Install.Error)
+	assert.Equal(t, exeinstall.Succeeded, s.Status().Install.State, s.Status().Install.Error)
 	assert.True(t, s.Status().Installed)
 }
 
@@ -158,7 +158,7 @@ func TestServiceRefusesAtOnceWhenTheDirectoryIsNotWritableOrTheDiskIsFull(t *tes
 	started, err := s.StartInstall()
 	require.ErrorIs(t, err, exeinstall.ErrNotWritable)
 	assert.False(t, started)
-	assert.Equal(t, ffmpegdl.InstallIdle, s.Status().Install.State, "a refusal leaves the state as it was")
+	assert.Equal(t, exeinstall.Idle, s.Status().Install.State, "a refusal leaves the state as it was")
 	s.WaitInstall() // returns at once: nothing was started
 
 	r = newRig(t, "9.9.9")
@@ -208,7 +208,7 @@ func TestServiceCloseStopsAnInstallAndRefusesANewOne(t *testing.T) {
 	require.NoError(t, err)
 	<-reached
 	s.Close()
-	assert.Equal(t, ffmpegdl.InstallFailed, s.Status().Install.State)
+	assert.Equal(t, exeinstall.Failed, s.Status().Install.State)
 	_, err = s.StartInstall()
 	require.Error(t, err)
 }
@@ -222,6 +222,7 @@ func TestExplainSaysWhatToDoForEachFailure(t *testing.T) {
 		&fetch.HTTPError{Status: 404}: "更新してください",
 		&fetch.HTTPError{Status: 503}: "しばらくしてから",
 		context.DeadlineExceeded:      "入れられませんでした",
+		&fetch.ConnectionLostError{Attempts: 6, Err: assert.AnError}: "通信が切れました。もう一度導入すると続きから再開します",
 	} {
 		assert.Contains(t, ffmpegdl.Explain(err), want)
 	}
@@ -250,7 +251,7 @@ func TestServiceRefusesToStartAnInstallWhileTheDownloadedCopyIsBeingRemoved(t *t
 	started, err = s.StartInstall()
 	require.ErrorIs(t, err, ffmpegdl.ErrBusy)
 	assert.False(t, started)
-	assert.Equal(t, ffmpegdl.InstallIdle, s.Status().Install.State, "nothing was started")
+	assert.Equal(t, exeinstall.Idle, s.Status().Install.State, "nothing was started")
 	require.ErrorIs(t, s.Remove(), ffmpegdl.ErrBusy, "two removals do not overlap either")
 
 	close(release)
@@ -259,7 +260,7 @@ func TestServiceRefusesToStartAnInstallWhileTheDownloadedCopyIsBeingRemoved(t *t
 	require.NoError(t, err, "installing is possible again once the removal is over")
 	assert.True(t, started)
 	s.WaitInstall()
-	assert.Equal(t, ffmpegdl.InstallSucceeded, s.Status().Install.State)
+	assert.Equal(t, exeinstall.Succeeded, s.Status().Install.State)
 }
 
 func TestNewPutsBackWhatAnInterruptedSwapLeft(t *testing.T) {

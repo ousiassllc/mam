@@ -24,7 +24,7 @@
 |---|---|---|
 | ローカルのカタログのモデル | `backend/internal/modelmgr/catalog/data/models/<id>.json` の `license` | カタログ ID → 導入で作るワークフロー名（`comfyui:bundled-comfyui/<name>`） |
 | クラウド・サブスクの組み込みモデル | `backend/internal/domain/modellicense/data/cloud.json`（ID をキーにした 1 つの表） | 生成テストのモデル ID（`kling-3.0`、`gpt-image-2:chatgpt-subscription`） |
-| Hugging Face から足したファイル | 導入のときにモデルカードの `license` タグを記録（`state.json`）。`modellicense.FromHF` が読む。カードの `license_link` は **https の URL だけ**を原文のリンク（`SourceURL`）にし、相対パス・http・`javascript:`・`file:` などは空にする（href に入るため。カタログの `Info.Validate` と同じ規則） | 作ったモデルの ID |
+| Hugging Face から足したファイル | 導入のときにモデルカードの `license` タグを記録（`state.json`）。`modellicense.FromHF` が読む。**タグは配布者の自己申告なので、タグだけでは商用OKにしない**: 商用を許すタグ（`apache-2.0`・`mit`・`cc-by-4.0` など）は「条件つき」（条件: 申告どおりで、ベース・LoRA など元のモデルのライセンスにも反しない。OpenRAIL 系はさらに使用制限）、非商用・研究用は商用NG、それ以外・タグなしは不明（#969）。カードの `license_link` は **https の URL だけ**を原文のリンク（`SourceURL`）にし、相対パス・http・`javascript:`・`file:` などは空にする（href に入るため。カタログの `Info.Validate` と同じ規則） | 作ったモデルの ID |
 | 利用者が登録した外部エンドポイントのモデル・保存したワークフロー | **持たない** | `unknown`（注意: 「mam は確認できていません」） |
 
 ローカルのカタログの `license`（`catalog.License`）は、同意に使う `id`・`version`・`name`・`url`・`summary`・`notice`・`excluded_regions` に加えて次を持つ。
@@ -95,10 +95,11 @@
 | `upscale-2pass-sdxl-span` | 商用OK | SDXL base（CreativeML Open RAIL++-M）と SPAN（CC BY 4.0）の 2 部品で、どちらも商用OK |
 | `seedvr2-3b-fp8` | 商用OK | SeedVR2（ByteDance-Seed）。配布元 `ByteDance-Seed/SeedVR2-3B` のモデルカードの `license: apache-2.0` と本文「SeedVR and SeedVR2 are licensed under the Apache 2.0.」、再配布の `Comfy-Org/SeedVR2` のカードも `license: apache-2.0`（fp8 の変換は Comfy-Org。2026-11-04 に確認）。共有 VAE も同じリポジトリ。#1031 |
 | `rife-v4.25`・`rife-v4.26` | 商用OK | Practical-RIFE（作者 hzwer）の LICENSE は MIT License（Copyright (c) 2021 hzwer）で、README も「重みのリンクの内容はこのプロジェクトと同じ MIT ライセンス」と書く。再配布の `Comfy-Org/Frame-Interpolation` のカードは `license: other`・`license_name: mit-and-apache-2.0`（RIFE の MIT と FILM の Apache-2.0 を合わせた表記）で、この 2 ファイルは RIFE なので MIT。2026-11-04 に確認。#1031 |
-| クラウド: `nano-banana`・`nano-banana-lite`・`gemini-omni-flash`（Gemini API。「Use of Generated Content」: Google は生成物の所有権を主張しない）、`flux-2`（BFL。生成物の所有権を主張しない）、`gpt-image-2`・ChatGPT サブスク（OpenAI。Output は利用者のもの）、`runway-gen-4.5`（Runway。入力と生成物の所有権を主張しない） | 商用OK | 各社の利用規約を 2026-11-02 に読み、生成物の所有権を主張しない・利用者に帰属させるとしている（出典 URL は `cloud.json`）。ChatGPT サブスクは mam が使う経路が非公式で、注意を付ける |
+| クラウド: `nano-banana`・`nano-banana-lite`・`gemini-omni-flash`（Gemini API。「Use of Generated Content」: Google は生成物の所有権を主張しない）、`flux-2`（BFL。生成物の所有権を主張しない）、`gpt-image-2`（OpenAI API。個人向けの利用規約ではなく OpenAI Services Agreement §4.1: Output は利用者のもの）、`runway-gen-4.5`（Runway。入力と生成物の所有権を主張しない） | 商用OK | 各社の利用規約を 2026-11-02（`gpt-image-2` は 2026-11-06）に読み、生成物の所有権を主張しない・利用者に帰属させるとしている（出典 URL は `cloud.json`） |
 | クラウド: `gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` とそのサブスク経由（`…:chatgpt-subscription`） | 商用OK | OpenAI の利用規約（<https://openai.com/policies/terms-of-use/>、2026-01-01 版。「you … own the Output. We hereby assign to you all our right, title, and interest, if any, in and to Output」）。モデルごとの別の規約は見つからない（2026-11-06 に確認）。サブスク経由は `gpt-image-2:chatgpt-subscription` と同じ注意（非公式の経路）。#1096 |
 | クラウド: `luma-ray-3.2` | 条件つき | 規約 §4: 商用利用を認めるサブスクリプションに限る |
-| クラウド: `kling-3.0`・`kling-4.0`・`minimax-h3`・`minimax-h3-max`・`wan-3.0`・`seedance-2.0`・`seedance-2.5`（BytePlus） | **不明** | 規約の本文を読めなかった、または商用利用を許す文を見つけられなかった（公開ページが JS 描画・地域制限・契約で非公開）。商用の前に契約を確認する |
+| クラウド: `kling-3.0`・`kling-4.0`（Kling API 有料サービス規約 §6.3・§6.4: 生成物は利用者のもので、商用利用は制限されない）、`minimax-h3`・`minimax-h3-max`（MiniMax 規約: 入力と生成物の所有権は利用者に残り、商用を制限する文は無い）、`seedance-2.0`・`seedance-2.5`（BytePlus AI Services 規約 §2.1: 法が許す範囲で利用者が Output を所有）、`wan-3.0`（Alibaba Cloud 国際サイトの製品規約 4.48 Model Studio: Output の知的財産権を主張せず、規約に従う限り使える） | 商用OK | 2026-11-06 に原文を読んだ（#969。出典 URL は `cloud.json`）。入力に無許諾の素材を使う責任は利用者にある（`notice`） |
+| クラウド: `gpt-image-2:chatgpt-subscription` | **不明** | ChatGPT の規約は Output を利用者のものとするが、mam が使う経路（Codex のエンドポイント）は非公式で、OpenAI が認めた使い方か確認できない。規約違反と判断されるとアカウントが制限される恐れがあるので商用OKにしない。商用なら OpenAI API の `gpt-image-2` を使う（#969。2026-11-06） |
 
 ## 4. 表示（モデルを選ぶ・モデルが出てくるすべての画面）
 
@@ -150,7 +151,7 @@
 ## 8. 範囲外・未確認
 
 - 「商用OK」は mam が一次情報を読んだ日の判断で、法的な助言ではない。バッジの `checked_at` と原文へのリンクで確かめられる。
-- クラウドの規約は契約・プラン・地域で変わりうる。`unknown` の 7 モデルは、規約の本文を読めた段階で `cloud.json` を更新する。
+- クラウドの規約は契約・プラン・地域で変わりうる。規約が変わったら `cloud.json` を更新する（`checked_at` が読んだ日）。
 - キャラクター作成（シリーズのキャラ）の画面は、現時点でモデルを選ぶ入力を持たない（モデルの割り当ては設定の画像・動画モデルのモーダルとショットの固定で行う）。選ぶ入力が足されたら、同じ `commercial.Filter` と `OptionLabel` を使う（§4）。
 
 ## 改訂履歴
@@ -175,4 +176,5 @@
 | 1.15 | 2026-11-04 | §3 の答えの表に `wan22-rapid-aio-v10-nsfw-i2v`（不明。宣言だけ）を足した（`checked_at` は 2026-11-04） | Issue #1012 |
 | 1.16 | 2026-11-04 | §3 の答えの表: `nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b` を見直し（`nsfw-anime-wan22-5b` だけ LICENSE の本文があるので不明から商用OK〔注意つき〕。1.3B はカードの宣言だけで不明のまま）、`nsfw-wan21-14b-t2v`（不明）・`wan22-t2v-14b-palingenesis`（不明）を足した。非検閲の動画の 15 件すべての `checked_at` を 2026-11-04 にした | Issue #1028 |
 | 1.17 | 2026-11-04 | §3 の答えの表と確認日に、動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`（Apache-2.0）・`rife-v4.25`・`rife-v4.26`（MIT）を足した（商用OK。`checked_at` は 2026-11-04）。版は main の 1.16 の次 | Issue #1031 |
-| 1.18 | 2026-11-06 | §3 の答えの表と確認日に、`gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` と、それぞれのサブスク経由（`…:chatgpt-subscription`）の 4 件を足した（OpenAI の利用規約 2026-01-01 版。`checked_at` は 2026-11-06） | Issue #1096 |
+| 1.18 | 2026-11-06 | §2: HF のカードの `license` タグだけでは商用OKにしない（`FromHF`: 商用を許すタグは「条件つき」、タグは自己申告）。§3: クラウドの 7 モデル（Kling・MiniMax・Seedance・Wan）を原文で確かめて商用OK、`gpt-image-2` の出典を OpenAI Services Agreement に直し、非公式経路の `gpt-image-2:chatgpt-subscription` を不明にした。§8: 「不明の 7 モデル」の注記を外した | Issue #969 |
+| 1.19 | 2026-11-06 | §3 の答えの表と確認日に、`gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` と、それぞれのサブスク経由（`…:chatgpt-subscription`）の 4 件を足した（OpenAI の利用規約 2026-01-01 版。`checked_at` は 2026-11-06） | Issue #1096 |

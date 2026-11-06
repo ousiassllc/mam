@@ -216,11 +216,11 @@ func (h Handlers) StartTrial(c *gin.Context) {
 	render(c, http.StatusAccepted, view.TrialSection(panel))
 }
 
-// startTrial prices the request as the generation test does and runs it with that estimate.
+// startTrial prices the request as the generation test does and runs it with that estimate; the prompt is sent as typed (no translation: Issue #1068).
 func (h Handlers) startTrial(ctx context.Context, in trialInput) error {
 	req := gentest.Request{
 		Media: in.media, Models: []string{in.modelID}, Prompts: []gentest.PromptInput{{Prompt: in.prompt, Negative: in.negative}},
-		AspectRatio: in.aspect, Resolution: in.resolution, DurationSeconds: in.duration,
+		AspectRatio: in.aspect, Resolution: in.resolution, DurationSeconds: in.duration, TranslateToEnglish: false,
 	}
 	if m, err := h.Gentest.Model(ctx, in.media, in.modelID); err == nil && len(in.picture) > 0 {
 		id, _, err := h.Gentest.StageReference(in.picture)

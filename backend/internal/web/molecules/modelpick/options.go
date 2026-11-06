@@ -30,6 +30,14 @@ func kindOptions(kinds []modelfilter.Kind) []Option {
 	return out
 }
 
+func languageOptions(codes []string) []Option {
+	out := make([]Option, len(codes))
+	for i, c := range codes {
+		out[i] = Option{c, LanguageLabel(c)}
+	}
+	return out
+}
+
 func inputOptions(inputs []traits.Input) []Option {
 	out := make([]Option, len(inputs))
 	for i, in := range inputs {

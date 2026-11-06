@@ -38,9 +38,12 @@ const (
 	defaultMetadataTimeout = 30 * time.Second
 	defaultDownloadTimeout = 10 * time.Minute
 
-	maxReleaseJSONBytes = 1 << 20   // 1 MiB: GET /releases/latest response
-	maxChecksumsBytes   = 1 << 20   // 1 MiB: checksums.txt
-	maxInstallerBytes   = 512 << 20 // 512 MiB: the installer (NSIS exe or dmg)
+	maxReleaseJSONBytes = 1 << 20 // 1 MiB: GET /releases/latest response
+	maxChecksumsBytes   = 1 << 20 // 1 MiB: checksums.txt
+	// 512 MiB: the installer (NSIS exe or dmg). A coarse ceiling against abnormal responses, not a tight fit: the
+	// v0.1.31 Windows installer (with the ~14 MB ONNX Runtime DLLs) is 34,600,511 bytes, ~6% of the cap
+	// (spec/architecture/desktop.md §6.3). Revisit it only if an installer approaches half of it.
+	maxInstallerBytes = 512 << 20
 )
 
 // Release is the subset of GitHub's

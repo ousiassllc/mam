@@ -41,7 +41,7 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 	if field := localvoice.InvalidProvider(opts.VoiceProvider, opts.LipSyncProvider); field != "" {
 		return EditorView{}, invalid(field, "声のプロバイダー（voice_provider）は elevenlabs か local、口パクのプロバイダー（lip_sync_provider）は synclabs か local を指定してください")
 	}
-	if s.audio == nil || s.tools == nil {
+	if s.audio == nil || !s.tools.Available() {
 		return EditorView{}, ErrUnavailable
 	}
 	release, err := s.acquire(projectID)

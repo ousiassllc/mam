@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobrecent"
@@ -150,6 +151,21 @@ func TestRecent_ATrackedWorkGoesFromRunningToItsEnd(t *testing.T) {
 	cancelled.Cancel()
 	assert.Equal(t, joblist.Cancelled, tr.byKind()["codex_install"].State)
 	assert.Empty(t, tr.byKind()["codex_install"].Error)
+}
+
+// A work that failed with the common error (#1010) hands it on in words, as a job of the table does.
+func TestRecent_AFailedWorkCarriesItsCommonError(t *testing.T) {
+	tr := newTracked(t)
+	run := tr.works.Begin(worktrack.Record{Kind: worktrack.KindFFmpegInstall, Subject: "ffmpeg"}, "")
+	run.FailWith("ffmpeg を入れられませんでした", apperr.New(apperr.CodeDiskFull).WithDetail("no space left on device"))
+	plain := tr.works.Begin(worktrack.Record{Kind: worktrack.KindCodexInstall, Subject: "Codex"}, "")
+	plain.Fail("Codex を入れられませんでした")
+
+	got := tr.byKind()
+	require.NotNil(t, got["ffmpeg_install"].Failure)
+	assert.Equal(t, apperr.CodeDiskFull, got["ffmpeg_install"].Failure.Code)
+	assert.Equal(t, "no space left on device", got["ffmpeg_install"].Failure.Detail)
+	assert.Nil(t, got["codex_install"].Failure)
 }
 
 // The works and the rows of the table are one list, the newest start first, and a work of the list ends up in the same Row shape (id,

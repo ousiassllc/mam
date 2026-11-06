@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // noKeySpeech is an ElevenLabs without its API key.
@@ -27,7 +28,8 @@ func (noKeySpeech) Synthesize(context.Context, domain.VoiceLine) (audiodirector.
 
 const autoStopNotice = "自動の編集工程が止まりました"
 
-func (f genFixture) countNotices(t require.TestingT) int {
+func (f genFixture) countNotices(t testenv.TestingT) int {
+	t.Helper()
 	n := 0
 	for _, m := range f.thread(t, f.projectID) {
 		if m.Kind == domain.KindText && m.Role == domain.RoleAssistant && strings.Contains(m.Content, autoStopNotice) {

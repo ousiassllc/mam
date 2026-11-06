@@ -83,9 +83,13 @@ func (d *drivers) reset() {
 }
 
 func (d *drivers) backend(o chatgptimage.Options) *chatgptimage.Backend {
+	return d.backendWith(&source{}, o)
+}
+
+func (d *drivers) backendWith(src *source, o chatgptimage.Options) *chatgptimage.Backend {
 	o.BaseURL = d.URL
 	o.Stall = time.Second
-	return chatgptimage.New(&source{}, o)
+	return chatgptimage.New(src, o)
 }
 
 func draw(b *chatgptimage.Backend) (modeladapter.ImageResult, error) {
@@ -94,11 +98,11 @@ func draw(b *chatgptimage.Backend) (modeladapter.ImageResult, error) {
 
 // The retired model is answered with the 400 of issue #907: the next driver is tried, and the call succeeds.
 func TestDriver_MovesOnWhenTheEndpointSaysTheModelIsNotSupported(t *testing.T) {
-	d := newDrivers(t, chatgptimage.FallbackDrivers[0], chatgptimage.FallbackDrivers[1])
+	d := newDrivers(t, chatgptimage.FallbackDrivers()[0], chatgptimage.FallbackDrivers()[1])
 	res, err := draw(d.backend(chatgptimage.Options{}))
 	require.NoError(t, err)
 	assert.Equal(t, png, res.Data)
-	assert.Equal(t, chatgptimage.FallbackDrivers[:3], d.asked(), "no model list: the fallback drivers in order, until one is accepted")
+	assert.Equal(t, chatgptimage.FallbackDrivers()[:3], d.asked(), "no model list: the fallback drivers in order, until one is accepted")
 	assert.EqualValues(t, 1, d.listed.Load(), "the list was tried first")
 }
 
@@ -126,7 +130,7 @@ func TestDriver_IsPickedFromTheCodexModelList(t *testing.T) {
 	assert.Equal(t, "client_version=0.170.1", query, "the list is asked as the Codex CLI asks it")
 	assert.Equal(t, "Bearer "+token, auth)
 	assert.Equal(t, "acct-7", account)
-	assert.NotContains(t, d.asked(), chatgptimage.FallbackDrivers[0], "a readable list replaces the fallback drivers")
+	assert.NotContains(t, d.asked(), chatgptimage.FallbackDrivers()[0], "a readable list replaces the fallback drivers")
 }
 
 // A list that cannot be used (an error, a broken body, no model the picker shows) is no failure: the fallback drivers serve.
@@ -144,7 +148,7 @@ func TestDriver_AnUnusableModelListLeavesTheFallbackDrivers(t *testing.T) {
 			d.setModels(reply)
 			_, err := draw(d.backend(chatgptimage.Options{}))
 			require.NoError(t, err)
-			assert.Equal(t, chatgptimage.FallbackDrivers[:1], d.asked())
+			assert.Equal(t, chatgptimage.FallbackDrivers()[:1], d.asked())
 		})
 	}
 }
@@ -191,14 +195,14 @@ func TestDriver_ThePinnedOneIsUsedAsItIs(t *testing.T) {
 	d.reset()
 	d.refuse("gpt-pinned")
 	_, err = draw(d.backend(chatgptimage.Options{Driver: "gpt-pinned"}))
-	require.ErrorIs(t, err, chatgpt.ErrNoImageModel)
+	require.ErrorIs(t, err, chatgpt.ErrImageModelPinned)
 	assert.Equal(t, []string{"gpt-pinned"}, d.asked(), "a pinned driver has no fallback")
 	assert.Zero(t, d.listed.Load())
 }
 
 // Every driver refused: one failure that says so, a 400 that is a refusal (no retry helps), with no vendor text to show.
 func TestDriver_AllRefusedIsOneExplainableFailure(t *testing.T) {
-	d := newDrivers(t, chatgptimage.FallbackDrivers...)
+	d := newDrivers(t, chatgptimage.FallbackDrivers()...)
 	_, err := draw(d.backend(chatgptimage.Options{}))
 	require.ErrorIs(t, err, chatgpt.ErrNoImageModel)
 	require.ErrorIs(t, err, modeladapter.ErrRejected)
@@ -206,10 +210,10 @@ func TestDriver_AllRefusedIsOneExplainableFailure(t *testing.T) {
 	var pe *modeladapter.ProviderError
 	require.ErrorAs(t, err, &pe)
 	assert.Equal(t, http.StatusBadRequest, pe.Status)
-	for _, m := range chatgptimage.FallbackDrivers {
+	for _, m := range chatgptimage.FallbackDrivers() {
 		assert.Contains(t, pe.Message, m, "the log says which models were tried")
 	}
 	assert.Contains(t, pe.Message, "is not supported when using Codex with a ChatGPT account", "and what the endpoint said")
 	assert.NotContains(t, err.Error(), token)
-	assert.Equal(t, chatgptimage.FallbackDrivers, d.asked())
+	assert.Equal(t, chatgptimage.FallbackDrivers(), d.asked())
 }

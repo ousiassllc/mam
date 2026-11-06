@@ -212,6 +212,25 @@ func TestInstallResumesAPartFileWithARangeRequest(t *testing.T) {
 	}
 }
 
+func TestNeedBytesCountsThePartFileAsDownloaded(t *testing.T) {
+	exe := strings.Repeat("0123456789abcdef", 64)
+	r := newRig(t, makeZip(t, [2]string{exeName, exe}), exe)
+	full := r.ins.NeedBytes()
+	if want := r.ins.Asset.Size + r.ins.Asset.ExeSize; full != want {
+		t.Fatalf("NeedBytes = %d, want the archive and the executable: %d", full, want)
+	}
+	part := fetch.PartPath(filepath.Join(r.ins.Layout.DownloadsDir(), "codex.zip"))
+	if err := os.MkdirAll(filepath.Dir(part), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(part, make([]byte, 100), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.ins.NeedBytes(); got != full-100 {
+		t.Errorf("NeedBytes with a part file = %d, want %d", got, full-100)
+	}
+}
+
 func TestInstallKeepsThePartFileWhenCancelledSoItCanResume(t *testing.T) {
 	exe := strings.Repeat("0123456789abcdef", 64)
 	zipBytes := makeZip(t, [2]string{exeName, exe})

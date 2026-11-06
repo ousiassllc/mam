@@ -133,3 +133,20 @@ func FromUpscaler(u modelcatalog.Upscaler) modelcard.Card {
 		Commercial: &answer, Note: answer.ShortNote(), Reason: Unavailable(u.Availability()),
 	}
 }
+
+// FromVideoEnhancer is the card of a model that makes a video larger or smoother: the name, what it does and where it runs (the paid cloud says it costs), the
+// commercial-use icon and, when it cannot run now, why.
+func FromVideoEnhancer(v modelcatalog.VideoEnhancer) modelcard.Card {
+	answer := commercial.FromInfo(v.License)
+	where, what := SourceLabel[modelcatalog.SourceLocal]+"（無料）", "大きくする"
+	if v.Paid {
+		where = "Topaz（有料クラウド）"
+	}
+	if v.Op == "interpolate" {
+		what = "滑らかにする（コマを増やす）"
+	}
+	return modelcard.Card{
+		ID: "mp-" + v.ID, Name: v.Label, Icon: atoms.IconVideo, Meta: where + " ・ " + what,
+		Commercial: &answer, Note: answer.ShortNote(), Reason: Unavailable(v.Availability()),
+	}
+}

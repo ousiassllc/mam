@@ -17,13 +17,18 @@ import (
 // mam runs, Issue #1026): --onnxruntime-lib, else onnxruntime.dll next to mam.exe on Windows (the installer puts it there), else the system's standard library
 // search. executable is the running mam executable (the Windows lookup is the only thing that needs it).
 func Engine(cfg config.Config, executable func() (string, error)) *holder.Holder {
+	return engineOn(runtime.GOOS, cfg, executable)
+}
+
+// engineOn is Engine for the operating system goos (a test takes Windows, whose DLL lookup can fail, on any machine).
+func engineOn(goos string, cfg config.Config, executable func() (string, error)) *holder.Holder {
 	models := facesim.ONNXConfig{ModelDir: cfg.FaceModels()}
 	return holder.New(func() (holder.Loaded, error) {
 		exe, err := executable()
 		if err != nil {
 			exe = "" // only the Windows lookup needs it, and RuntimeLibraryPath says so
 		}
-		lib, err := facesim.RuntimeLibraryPath(runtime.GOOS, cfg.ONNXRuntimeLib, exe)
+		lib, err := facesim.RuntimeLibraryPath(goos, cfg.ONNXRuntimeLib, exe)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", facesim.ErrUnavailable, err)
 		}

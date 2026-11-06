@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
@@ -55,6 +56,34 @@ func TestRun_EndWithAnErrorFails(t *testing.T) {
 	r.End(errors.New("llm said no"))
 	assert.Equal(t, worktrack.Failed, tr.Works()[0].State)
 	assert.Equal(t, "llm said no", tr.Works()[0].Error)
+}
+
+// A failure that is the common error (#1010) is kept with the work, so that the job list can draw it as the error box; the line is its
+// words (the cause and the remedy), not the text of the error. Any other failure keeps its text and has no failure.
+func TestRun_EndWithTheCommonErrorKeepsItForTheJobList(t *testing.T) {
+	var tr worktrack.Tracker
+	r := tr.Begin(worktrack.Record{Kind: worktrack.KindExport}, "")
+	r.End(fmt.Errorf("render: %w", apperr.New(apperr.CodeDiskFull).WithDetail("write /out/a.mp4: no space left on device")))
+	w := tr.Works()[0]
+	assert.Equal(t, worktrack.Failed, w.State)
+	assert.Equal(t, apperr.New(apperr.CodeDiskFull).View(apperr.LangJa).Sentence(apperr.LangJa), w.Error)
+	back, ok := apperr.Unmarshal(w.ErrorInfo)
+	require.True(t, ok)
+	assert.Equal(t, apperr.CodeDiskFull, back.Code)
+	assert.Equal(t, "write /out/a.mp4: no space left on device", back.Detail)
+
+	plain := tr.Begin(worktrack.Record{Kind: worktrack.KindAudio}, "")
+	plain.End(errors.New("llm said no"))
+	assert.Empty(t, tr.Works()[0].ErrorInfo)
+
+	with := tr.Begin(worktrack.Record{Kind: worktrack.KindVoiceTrain}, "")
+	with.FailWith("trainer stopped", apperr.New(apperr.CodeTrainFailed))
+	assert.Equal(t, "trainer stopped", tr.Works()[0].Error)
+	assert.NotEmpty(t, tr.Works()[0].ErrorInfo)
+
+	none := tr.Begin(worktrack.Record{Kind: worktrack.KindAudio}, "")
+	none.FailWith("no common error", nil)
+	assert.Empty(t, tr.Works()[0].ErrorInfo)
 }
 
 func TestRun_AnEndedWorkStaysEnded(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/artdirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -63,7 +64,7 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 	}
 	b := &packBuild{
 		ref: ref, plans: plans, world: in.World,
-		uploaded: o.loadInputs(ctx, ref.ProjectID, in.Brief.Assets, maxUploadedInputs),
+		uploaded: o.newImages(ref.ProjectID).Inputs(ctx, in.Brief.Assets, maxUploadedInputs),
 		ratio:    aspectRatio(in.Brief),
 		pinned:   pinnedReferences(ref.Shot),
 		results:  make([]madeReference, len(plans)),
@@ -85,7 +86,7 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 	pack := b.assemblePack()
 	if err := o.gens.SaveReferencePack(context.WithoutCancel(ctx), pack); err != nil {
 		for _, a := range pack.Assets {
-			o.files.remove(a)
+			o.files.Remove(a)
 		}
 		return Progress{}, err
 	}
@@ -147,7 +148,7 @@ func (o *Orchestrator) generateImages(ctx context.Context, b *packBuild) []error
 	var inputs []modeladapter.Input
 	for _, i := range append(slices.Clone(existing), first...) {
 		if k := b.plans[i].Kind; k == domain.RefCharacter || k == domain.RefProduct || k == domain.RefLocation {
-			if data, err := o.files.read(b.results[i].asset); err == nil {
+			if data, err := o.files.Read(b.results[i].asset); err == nil {
 				inputs = append(inputs, modeladapter.Input{Data: data, MimeType: b.results[i].asset.MimeType})
 			}
 		}
@@ -190,7 +191,7 @@ func (o *Orchestrator) generateOne(ctx context.Context, b *packBuild, i int, ext
 	// The provider has charged for the image: the ledger gets it before a later failure (this
 	// image's file, a sibling image, the Keyframe or the Pack) can lose it.
 	o.recordPaid(ctx, projectID, shotID, out.Model, out.EstimatedCost, out.ActualCost)
-	asset, err := o.files.write(projectID, domain.AssetReference, out.MimeType, out.Data)
+	asset, err := o.files.Write(projectID, domain.AssetReference, out.MimeType, out.Data)
 	if err != nil {
 		return err
 	}
@@ -202,7 +203,7 @@ func (o *Orchestrator) generateOne(ctx context.Context, b *packBuild, i int, ext
 func (o *Orchestrator) removeMade(b *packBuild) {
 	for _, r := range b.results {
 		if r.asset.ID != "" && !r.reused {
-			o.files.remove(r.asset)
+			o.files.Remove(r.asset)
 		}
 	}
 }
@@ -263,54 +264,11 @@ func purposeOf(p artdirector.Plan, hasInputs bool) modeladapter.ImagePurpose {
 	return modeladapter.PurposeNewReference
 }
 
-// loadInputs reads up to limit image assets of the Project as model inputs. Missing files are skipped.
-func (o *Orchestrator) loadInputs(ctx context.Context, projectID string, ids []string, limit int) []modeladapter.Input {
-	var out []modeladapter.Input
-	for _, id := range ids {
-		if len(out) == limit {
-			break
-		}
-		a, err := o.assets.Get(ctx, projectID, id)
-		if err != nil {
-			o.logger.Warn("input image unavailable", "asset_id", id, "err", err)
-			continue
-		}
-		data, err := o.files.read(a)
-		if err != nil {
-			o.logger.Warn("input image unavailable", "asset_id", id, "err", err)
-			continue
-		}
-		out = append(out, modeladapter.Input{Data: data, MimeType: a.MimeType})
-	}
-	return out
-}
-
 // worldInputs are the reference images the World State already holds for the kind (a character's
 // face and body, a product's shape and label, a location's layout), so the new reference stays
 // consistent with them (F-11, World State continuity).
 func (o *Orchestrator) worldInputs(ctx context.Context, projectID string, kind domain.ReferenceKind, w domain.WorldContext) []modeladapter.Input {
-	var ids []string
-	switch kind {
-	case domain.RefCharacter:
-		for _, c := range w.Characters {
-			ids = append(ids, c.FaceReferenceAssetID, c.BodyReferenceAssetID)
-		}
-	case domain.RefProduct:
-		for _, p := range w.Products {
-			ids = append(ids, p.GeometryReferenceAssetID, p.LabelReferenceAssetID)
-		}
-	case domain.RefLocation:
-		for _, l := range w.Locations {
-			ids = append(ids, l.LayoutReferenceAssetID)
-		}
-	}
-	var present []string
-	for _, id := range ids {
-		if id != "" {
-			present = append(present, id)
-		}
-	}
-	return o.loadInputs(ctx, projectID, present, maxUploadedInputs)
+	return o.newImages(projectID).Inputs(ctx, refimage.WorldAssetIDs(kind, w), maxUploadedInputs)
 }
 
 // pinnedReferences are the references of the Shot's current Reference Pack that were taken from

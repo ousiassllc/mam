@@ -62,3 +62,14 @@ while IFS= read -r f; do
   [[ "$(git check-attr text -- "$f")" == *'text: unset' ]] || { echo "FAIL: binary file $f is not marked binary in .gitattributes"; exit 1; }
 done < <(git ls-files --eol | awk '$1 == "i/-text" {print $NF}')
 echo "ok: .gitattributes pins text files to LF and marks binary files as binary"
+
+# `make stress` must not repeat the defaults of scripts/stress-test.sh (JOBS, COUNT): an unset variable is not passed on,
+# so the script is the only place that knows them; a set one is passed through.
+stress_default="$(make --no-print-directory -n stress PKG=./x | grep 'scripts/stress-test.sh')"
+if grep -qE -- ' -[jn] ' <<<"$stress_default"; then
+  echo "FAIL: 'make stress' passes a JOBS/COUNT default of its own: $stress_default"
+  exit 1
+fi
+stress_set="$(make --no-print-directory -n stress PKG=./x JOBS=3 COUNT=7 | grep 'scripts/stress-test.sh')"
+grep -qE -- ' -j 3 -n 7 ' <<<"$stress_set" || { echo "FAIL: 'make stress JOBS=3 COUNT=7' does not pass them on: $stress_set"; exit 1; }
+echo "ok: make stress leaves the JOBS/COUNT defaults to scripts/stress-test.sh"

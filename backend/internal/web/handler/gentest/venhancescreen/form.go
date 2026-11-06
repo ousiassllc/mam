@@ -3,12 +3,16 @@ package venhancescreen
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/venhance"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/videoenhance"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/videoenhancebox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -35,15 +39,27 @@ func FormFor(ctx context.Context, svc *gentest.Service, d record.ResultDetail, e
 			op = &f.Interpolate
 		}
 		switch {
-		case m.Available && m.Paid:
-			op.Topaz = append(op.Topaz, videoenhancebox.Option{ID: m.ID, Label: m.Label})
-		case m.Available:
-			op.Local = append(op.Local, videoenhancebox.Option{ID: m.ID, Label: m.Label})
-		case m.Unavailable == modelcatalog.UnavailableNoKey:
+		case m.Available && m.Paid && !op.HasTopaz:
+			op.Topaz, op.HasTopaz = modelField(op.Name, m), true
+		case m.Available && !m.Paid && !op.HasLocal:
+			op.Local, op.HasLocal = modelField(op.Name, m), true
+		case !m.Available && m.Unavailable == modelcatalog.UnavailableNoKey:
 			op.NoKey = true
 		}
 	}
 	return f
+}
+
+// modelField is the model picker of an operation at a place (this PC, or Topaz when m is paid), showing m (the first that can run now) as the model chosen. The
+// picker lists every model of that operation and place, with the reason for one that cannot run now.
+func modelField(op string, m modelcatalog.VideoEnhancer) modelpick.FieldData {
+	place, extra := "local", url.Values{modelpicker.QueryOp: {op}}
+	if m.Paid {
+		place = "topaz"
+		extra.Set(modelpicker.QueryCloud, "1")
+	}
+	return modelpicker.FieldFor(modelpicker.SourceVideoEnhance, "gt-venh-model-"+op+"-"+place, "モデル", extra,
+		[]modelpick.Input{{Name: videoenhancebox.FieldModel, Key: "value", Value: m.ID}}, modelcards.FromVideoEnhancer(m))
 }
 
 // doneText says what an enhancement did, as a verb phrase.
