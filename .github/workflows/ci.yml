@@ -199,8 +199,28 @@ jobs:
       # install of a downloaded executable (Codex app-server, ffmpeg: extraction with the exec bit, the quarantine attribute,
       # running the file, and the lookup of the installed copy with the machine's real ffmpeg), and the extraction of the ComfyUI engine's parts
       # (the tar.gz of the Python and the wheels, with the exec bit; Issue #854).
+      # `go test` exits 0 when a test skips, so a macOS-specific or real-ffmpeg test that did not run would leave this step green
+      # (Issue #1049). The tests below are the ones this job exists for: each must be a PASS line of the output
+      # (scripts/require-tests-passed.sh), as in the `windows` job. spec/environment/setup.md ("どのテストがどの OS で動くか")
+      # lists them and says how to check the skips. `shell: bash` is `bash -eo pipefail`: without pipefail a failing
+      # `go test | tee` would pass.
       - name: Test the update code and the executable install on macOS
-        run: go test -count=1 ./backend/internal/desktop/... ./backend/internal/service/updater/... ./backend/internal/service/appupdate/... ./backend/internal/chatgpt/codex/engine/... ./backend/internal/exeinstall/... ./backend/internal/media/ffmpegdl/... ./backend/internal/modelmgr/extract/...
+        shell: bash
+        run: |
+          go test -count=1 -v ./backend/internal/desktop/... ./backend/internal/service/updater/... ./backend/internal/service/appupdate/... ./backend/internal/chatgpt/codex/engine/... ./backend/internal/exeinstall/... ./backend/internal/media/ffmpegdl/... ./backend/internal/modelmgr/extract/... | tee "$RUNNER_TEMP/macos-test.txt"
+          echo "::group::Skipped tests (only the tests listed below must not skip)"
+          grep -E '^ *--- SKIP: ' "$RUNNER_TEMP/macos-test.txt" || true
+          echo "::endgroup::"
+          bash scripts/require-tests-passed.sh "$RUNNER_TEMP/macos-test.txt" \
+            TestClearQuarantineRemovesTheAttribute \
+            TestExtractWritesTheNamedMembersFromWithinTheArchiveAndSkipsTheRest \
+            TestTarGzExtractsAPythonTreeKeepingTheExecuteBitAndSkippingLinks \
+            TestZipKeepsTheExecuteBitOfAUnixArchive \
+            TestInstallExtractsTheMacOSTarGzAndSetsTheExecutableBit \
+            TestTheDefaultCheckRunsTheExecutableWithVersion \
+            TestAfterTheDownloadTheAppFindsFFmpegAndTheToolsWork \
+            TestAMismatchedDownloadIsNeverFound \
+            TestAnFFmpegOnPathWinsOverTheDownloadedCopy
 
       # The helper that applies an update, against the dmg just built: real hdiutil / ditto / xattr, the new bundle must
       # pass codesign and start (--detect-gpu), and nothing may stay mounted or on disk.
