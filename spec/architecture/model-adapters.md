@@ -36,11 +36,11 @@
 
 | 用途 | プライマリ | 代替 | 選定理由 |
 |------|-----------|------|---------|
-| Character / Product / Location Reference（新規生成、テキスト正確性が必要な素材） | OpenAI GPT Image 2 | Google Nano Banana（Gemini Image） | テキストレンダリング精度・製品写実性が高く、ラベル/ロゴ等 Brand Constraints 適合の素材生成に強い。Google の Imagen 4 は 2026-08-17 に終了し、参照画像を使える Nano Banana が代替になる |
-| Style / Lighting Reference、既存素材の参照ベース編集・差分変更 | Google Nano Banana（Gemini Image） | OpenAI GPT Image 2 | 編集・変換・参照ベース変更・キャラクター一貫性維持に強く、World State継承の再生成に向く。代替の GPT Image 2 も参照画像を受け取れるので、同一性の基準が代替でも保たれる |
+| Character / Product / Location Reference（新規生成、テキスト正確性が必要な素材） | OpenAI GPT Image 2.6 Flare（`gpt-image-2.6-flare`。既定。Issue #1096） | Google Nano Banana（Gemini Image） | テキストレンダリング精度・製品写実性が高く、ラベル/ロゴ等 Brand Constraints 適合の素材生成に強い。Google の Imagen 4 は 2026-08-17 に終了し、参照画像を使える Nano Banana が代替になる。Flare は OpenAI が「速い反復」向けと位置づけるモデルで、従来の GPT Image 2（`gpt-image-2`）と 2.6 Sunburst（`gpt-image-2.6-sunburst`、細部の作り込み向け）も設定で選べる（§9.5） |
+| Style / Lighting Reference、既存素材の参照ベース編集・差分変更 | Google Nano Banana（Gemini Image） | OpenAI GPT Image 2.6 Flare | 編集・変換・参照ベース変更・キャラクター一貫性維持に強く、World State継承の再生成に向く。代替の GPT Image 2.6 Flare も参照画像を受け取れるので、同一性の基準が代替でも保たれる |
 | 高速反復・低コストプレビュー生成 | Black Forest Labs FLUX.2 | Google Nano Banana Lite（Gemini 3.1 Flash Lite Image、1K のみ） | オープンウェイトでセルフホスト可能（ベンダーロックイン回避の保険）、生成速度重視のCandidate Generation向き。代替は低遅延・低価格の Gemini 画像モデル |
-| OpenAI系LLM（GPT-5）と認証・請求を統合したい場合 | OpenAI GPT Image 2 | Google Nano Banana | 品質ベンチマーク最上位、GPT-5系のAgentと同一ベンダーで運用しやすい |
-| ChatGPT のサブスクで描く場合（**非公式・既定 OFF**。設定画面で ON にするときにリスクを確認する） | GPT Image 2（`gpt-image-2:chatgpt-subscription`） | 利用者が割り当てる | API キーなしで ChatGPT のプランの枠を使える。ChatGPT の内部 API（`chatgpt.com/backend-api/codex/responses` の `image_generation`）を使うため、予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、プランの利用上限を消費する（`spec/architecture/chatgpt-signin.md` §5.2） |
+| OpenAI系LLM（GPT-5）と認証・請求を統合したい場合 | OpenAI GPT Image 2.6 Flare | Google Nano Banana | 品質ベンチマーク最上位、GPT-5系のAgentと同一ベンダーで運用しやすい |
+| ChatGPT のサブスクで描く場合（**非公式・既定 OFF**。設定画面で ON にするときにリスクを確認する） | GPT Image 2.6 Flare / 2.6 Sunburst / GPT Image 2（`gpt-image-2.6-flare:chatgpt-subscription` / `gpt-image-2.6-sunburst:chatgpt-subscription` / `gpt-image-2:chatgpt-subscription`） | 利用者が割り当てる | API キーなしで ChatGPT のプランの枠を使える。ChatGPT の内部 API（`chatgpt.com/backend-api/codex/responses` の `image_generation`）を使うため、予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、プランの利用上限を消費する（`spec/architecture/chatgpt-signin.md` §5.2） |
 
 利用者が登録した ComfyUI・OpenAI 互換 API の画像モデルも、上の用途（`new_reference` / `edit_reference` / `preview` / `unified_openai`）の主・代替に割り当てられる（OpenAI 互換は画像のみ。設計は [local-models.md](local-models.md)）。
 
@@ -107,7 +107,7 @@ Jev の利用ルール:
 `architecture/er.md` の `TAKE.model_name`、`COST_LEDGER_ENTRY.provider` に格納する識別子は以下の文字列を正規値とする（Model Adapter実装時のenum定義元）。
 
 ```
-画像: nano-banana, nano-banana-lite, flux-2, gpt-image-2
+画像: nano-banana, nano-banana-lite, flux-2, gpt-image-2.6-flare, gpt-image-2.6-sunburst, gpt-image-2
 動画: kling-3.0, seedance-2.0, runway-gen-4.5, gemini-omni-flash, kling-4.0, seedance-2.5, minimax-h3, minimax-h3-max, wan-3.0, luma-ray-3.2
 音声: elevenlabs-tts, elevenlabs-music, elevenlabs-sfx, sync-labs
 ```
@@ -116,7 +116,7 @@ Jev の利用ルール:
 
 利用者が登録した接続先のモデルは `comfyui:<接続先名>/<モデル名>`、`openai-compat:<接続先名>/<モデル名>` で保存する（例: `comfyui:gpu-box/wan22-i2v`）。接続先名・モデル名は作成後に変えられない（Take と Cost Ledger の識別子が指すため。変えるときは削除して作り直す）。見積コストが 0 USD でも Cost Ledger の行は書く。組み込みの識別子は列挙のまま、登録したモデルを足した開いた集合として扱う（[local-models.md](local-models.md) §2）。
 
-ChatGPT のサブスク経由の画像は `gpt-image-2:chatgpt-subscription`（API キー経由の `gpt-image-2` と区別できる識別子。`take.model_name`・`cost_ledger_entry.provider` に制約はないのでマイグレーション不要。見積もり 0 USD で、台帳には 0 円の行を残す）。上の表は組み込みの識別子で、設定で増える識別子も同じ列に入る。
+ChatGPT のサブスク経由の画像は `gpt-image-2:chatgpt-subscription`・`gpt-image-2.6-flare:chatgpt-subscription`・`gpt-image-2.6-sunburst:chatgpt-subscription`（API キー経由の同名のモデルと区別できる識別子。`take.model_name`・`cost_ledger_entry.provider` に制約はないのでマイグレーション不要。見積もり 0 USD で、台帳には 0 円の行を残す）。上の表は組み込みの識別子で、設定で増える識別子も同じ列に入る。
 
 Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象外（生成物ではなく思考プロセスのため）。将来的にLLM呼び出しコストの可視化が必要になった場合は、別テーブル（例: `AGENT_INVOCATION_LOG`）の追加を別途検討する。
 
@@ -183,6 +183,7 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 | `nano-banana-lite` | `gemini-3.1-flash-lite-image` | 0.0336 | 同「Gemini 3.1 Flash Lite Image」Standard: 1K 画像（1K のみ対応） |
 | `flux-2` | `flux-2-pro` | 0.03 | [BFL の料金表](https://bfl.ai/pricing)「FLUX.2 [pro]」: 生成画像の最初の 1 メガピクセルが $0.03（参照画像は 1 メガピクセルごとに $0.015 加算。mam の出力サイズ 1344×768 などは 1 メガピクセル未満）。参照画像つきの呼び出しではこの値より高くなる |
 | `gpt-image-2` | `gpt-image-2` | 未設定。`quality` とサイズで決まる（既定 `medium` で 1536×1024 / 1024×1536 は 0.041、1024×1024 は 0.053。下の表）。`cost_per_image_usd` を書くとそれが優先される | [OpenAI の料金表](https://developers.openai.com/api/docs/pricing)（画像トークン: 出力 $30 / 100 万トークン、入力は画像 $8・テキスト $5）と、[画像生成ガイド](https://developers.openai.com/api/docs/guides/image-generation)の「Calculating costs」の GPT Image 2 の表（2026-10-25 に取得）。下の「GPT Image 2 の品質プロファイルと価格」 |
+| `gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` | 同名（Issue #1096） | 未設定（価格不明。1 枚の価格表が公開されていない。`cost_per_image_usd` を書くとそれが優先される） | OpenAI の各モデルのページと料金表（トークン単価は `gpt-image-2` と同じ。2026-11-06 に取得）。§9.5 |
 
 #### Kling 3.0・Seedance 2.0 の見積単価（`cost_per_second_usd`。Issue #880）
 
@@ -200,6 +201,8 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 #### GPT Image 2 の品質プロファイルと価格（Issue #843）
 
 `gpt-image-2` の 1 枚の価格は画像出力トークン数（`quality` とサイズで変わる）で決まる。`quality: auto` ではモデルが品質を選び、見積を前もって決められないため、mam は**品質プロファイルを設定として選べる**ようにし、選んだ品質を**毎回明示して**送る（`POST /v1/images/generations` の `quality`、`POST /v1/images/edits` の `quality` フィールド。`auto` は設定できない）。プロファイルは `models.json` の `models.gpt-image-2.quality`（`low` / `medium` / `high`。未知の値と `gpt-image-2` 以外のモデルへの指定は起動時の検査で拒否する）。書かない既存の設定ファイルは既定のプロファイルになる。この項目は設定画面にはまだ出していない（設定画面の「画像・動画モデル」は §9.2 冒頭のとおり `images` と `policies` だけを書く）。今は `models.json` を直接書いて選ぶ。
+
+（Issue #1096 以降、この `quality` の設定・検査・送り方は `gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` にも同じに使う。`models.<識別子>.quality` は 3 つの GPT Image のモデルに指定でき、それ以外のモデルへの指定は検査で拒否する。見積の表は `gpt-image-2` だけの値で、2.6 の見積は §9.5 のとおり価格不明。）
 
 - **既定は `medium`**: 参照画像（Character / Product / Location / Style）の質を落とさず、`high` の約 1/4 の価格（1536×1024 で $0.041 対 $0.165）に収める中間である。`low`（$0.005）は下書き向けで、参照画像の一貫性に響くおそれがあり、`high` は予算の消費が大きい。Issue #843 の例示が `medium` で、ほかに既定を示す記述は無い。送る品質と見積が同じプロファイルから出るため、見積が実際の請求と食い違う主因（`auto` でモデルが品質を選ぶこと）が無くなり、予算の確認が 0 や代替モデルの価格に落ちない（出力トークン分の見積。入力分は下の未検証①）
 - **見積（`estimate`）= プロファイルの 1 枚の価格（サイズ別）**: Cost Ledger の `estimated_cost` と生成テストの単価は、生成する縦横比のサイズの価格。縦横比を指定しない呼び出しの `estimated_cost` は最も高いサイズ（1024×1024）の価格で、実際に送るサイズ（既定の 16:9 → 1536×1024）より多めになる。予算の確認（`Adapter.EstimateImage`）は用途の主・代替のうち高いほうで、サイズは最も高いもの（1024×1024）を使う。Brief の縦横比と OpenAI のサイズの対応は `aspectsize.OpenAI`（16:9 → 1536×1024、9:16 → 1024×1536、1:1 → 1024×1024）
@@ -309,6 +312,18 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 - **単価**: Pay-as-you-go の価格表（「`ray-3.2` — per-video pricing」の Video generation の標準ダイナミックレンジ）は、5 秒が 360p 20 / 540p 50 / 720p 100 / 1080p 400 クレジット、10 秒が 60 / 150 / 300 / 1200 クレジット。**クレジットの USD は公式が固定していない**（価格ページ: ドル価値はアカウントのプランや契約による）。そこで使用量のページ（Credits and dollars）に従い、**公式の既定のリスト価格 1 クレジット = 0.003 USD** で換算する（`lumalabs.ai/api` の USD 目安 540p $0.15・720p $0.30・1080p $1.20（5 秒）とも合う。Runway Gen-4.5 の 1 クレジット = 0.01 USD は Runway 固有で、Luma には使わない）。**10 秒は 5 秒の 3 倍**で秒に比例しないので、`cost_per_second_usd` は「5 秒の動画の 1 秒あたり」（360p 0.012 / 540p 0.03 / 720p 0.06 / 1080p 0.24 USD）とし、`Config.VideoCost` が 5 秒以下は 5 秒分、それより長いときは 5 秒分の 3 倍にする（`lumaCost`）。契約で単価が違うときは `cost_per_second_usd` を書き換える。フレームつきは 5 秒に固定されるので、ルーティングと予算の事前の見積も、First Frame が**実際に付くとき**（Shot に Keyframe があり、そのファイルが読めるとき）だけ 5 秒のクリップとして出す（`Config.ClipSeconds`。`Prepare` と同じ規則）。Keyframe の Reference があってもファイル・Asset が読めず First Frame が付かないときは、Shot の長さのクリップ（10 秒の Shot は 10 秒）を生成し、見積りも同じ長さで出す（生成・Prompt Candidates・Different Model 以外の再生成・ルーティング・予算判定のすべてで、Keyframe が読めないものは First Frame として数えない。Issue #902）。生成テスト・モデル一覧の単価は 5 秒のクリップの 1 秒あたり（上の `cost_per_second_usd` そのまま。`VideoPerSecond`）で、1 秒のクリップの料金（5 秒分）ではない。HDR・EXR・延長・編集は見積に入れない。`actual_cost` は取らない（見積のみ）
 - **ルーティング**: 既定の Quality/Cost Policy・routing の候補には入れない（実機で品質と単価を見てから。§4）
 - **未検証（実際の API キーが要る）**: ① 作成（201）・取得の応答の形（公式の例を読んだだけ。`id`、`state`、`output[].url`）、② `start_frame` / `end_frame` を Base64 の `data` + `media_type` で送って通るか、`end_frame` だけの指定の効き方、③ `aspect_ratio` を送らないフレームつきの出力の縦横比、④ 540p・360p の出力、⑤ 出力のネイティブ音声の有無、⑥ 実際の請求がクレジット表と 1 クレジット = 0.003 USD に合うか（契約・プランで違いうる）、⑦ 同時実行 3 とタイムアウト 900 秒が契約のレート制限・生成時間に合うか
+
+### 9.5 GPT Image 2.6 Flare / Sunburst（Issue #1096）
+
+GPT Image 2.6 の 2 モデルを、API キーの経路とサブスクの経路の両方で選べるようにした。新規・未設定の既定は **Flare**（`new_reference`・`unified_openai` の主、`edit_reference` の代替）。従来の `gpt-image-2` は選択肢に残る。
+
+- **出どころ（2026-11-06 に取得。いずれも OpenAI の公式）**: モデル ID は各モデルのページ（<https://developers.openai.com/api/docs/models/gpt-image-2.6-flare>、<https://developers.openai.com/api/docs/models/gpt-image-2.6-sunburst>）の `Model ID`（`gpt-image-2.6-flare` / `gpt-image-2.6-sunburst`。スナップショットは同名の 1 つだけ）と、Create image の API リファレンス（<https://developers.openai.com/api/reference/resources/images/methods/generate>）の `model` の列挙。対応する経路は同ページの Endpoints（`v1/images/generations`・`v1/images/edits` は対応、`v1/responses` は非対応）。画像生成ガイド（<https://developers.openai.com/api/docs/guides/image-generation>）の「GPT Image 2.6」は、2 モデルとも `complexity`・マークアップ（`markup`）つきの編集・SVG 出力・GIF 出力を Image API で扱うと書く
+- **単価**: 料金表（<https://developers.openai.com/api/docs/pricing>、Standard）は `gpt-image-2` と同じ（画像 入力 $8.00 / 出力 $30.00、テキスト 入力 $5.00、いずれも 100 万トークンあたり）。実コスト（`actual_cost`）は §9.2 と同じく応答の `usage` にこの単価を掛けて記録する（`gptimage.TokenPriced`）
+- **1 枚の見積は無い（価格不明）**: OpenAI は 2.6 の 1 枚あたりの価格表（`quality`・サイズ別）を文書で公開しておらず（ガイドの計算機はスクリプトで、トークン数は「モデルごとに違う」とだけ書く）、mam は値を推測して持たない。`cost_per_image_usd` を書かない限り見積は 0 で、生成テストの単価は「不明」（見積の合計に入れない）、予算の事前の確認は 2.6 を数えない。生成後は `actual_cost` が台帳に入る。実際の価格を `models.gpt-image-2.6-flare.cost_per_image_usd` に書けば、見積と予算の確認に使われる
+- **API キーの経路**: 識別子 `gpt-image-2.6-flare` / `gpt-image-2.6-sunburst`（ベンダー `openai`・同じキー・同じブレーカー）。`gpt-image-2` と同じ `openAIImageBackend` で、リクエストの形は §9.1 のとおり（`model` は設定の API モデル ID）。`quality` は `low` / `medium` / `high`（既定 `medium`、`models.<識別子>.quality`）。公式は 2.6 の `quality` に `xhigh`・`max` も挙げるが、リファレンスの `quality` の説明が 2.5 だけに挙げており食い違うので、mam は 3 モデルに共通の 3 つだけを許す
+- **サブスクの経路（非公式）**: 識別子 `gpt-image-2.6-flare:chatgpt-subscription` / `gpt-image-2.6-sunburst:chatgpt-subscription`（表示名「GPT Image 2.6 Flare / Sunburst (ChatGPT サブスク)」）。Codex の `image_generation` ツールの `model` に、各モデルの API モデル ID をそのまま入れる（`gpt-image-2:chatgpt-subscription` と同じ backend・同じ ON/OFF・同じベンダー `chatgpt-subscription`）。選べるのは ChatGPT の画像生成を ON にしているあいだだけ。**未検証**: Codex のエンドポイントが 2.6 のモデル ID を受け付けるか（公式の文書は ChatGPT と Codex で Images 2.6 が使えると告知するが、この非公式の経路が使うツールの `model` に 2.6 の ID を許す根拠は文書に無い。実際のログインでの確認が要る）。受け付けなければエンドポイントのエラーがそのまま利用者に返り、別のモデル（`gpt-image-2` など）に黙って差し替えない（ドライバーの自動選択は Codex の**ドライバー**のモデルだけを入れ替え、画像モデルは動かさない）
+- **保存済みの設定**: 利用者が `models.json` に保存した割り当てはそのまま使う（書き換えない）。ただし mam は既定と同じ割り当てをファイルに書かない（§9.2）ので、既定だった `gpt-image-2` を選び直して保存していた利用者は、ファイルに記録が無く、新しい既定（Flare）に変わる。`gpt-image-2` を使い続けるには、割り当ての画面で選び直して保存する（既定と違うので記録される）
+- **使わない公式の機能（実装していない）**: `complexity`・マークアップつきの編集（`markup`）・SVG 出力・GIF 出力（`output_format: svg` / `gif`）・`quality` の `xhigh` / `max` を mam はリクエストに入れない（リクエストは §9.1 の項目だけ）。mam の画面と API にこれらの入力が無く、生成物の形式も PNG に固定なので、選んだモデルの ID が通る経路は、生成・参照画像つきの編集・見積り・料金・生成テストの履歴・Cost Ledger になる。これらを使えるようにするのは別の機能で、本 Issue には含めない
 
 ## 10. AI Video Judge と Face Identity Similarity の実装（`internal/agent/judge`、`internal/facesim`）
 

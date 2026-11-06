@@ -54,3 +54,4 @@
 | 1.47 | 2026-11-05 | §3.9: 成人向けの結果も Topaz に送れるようにし、送る前の確認の関門に警告（`venhance.AdultWarning`）と確認（`Request.AdultConfirmed`。なければ送らない）を足した。成人向けの印は処理した結果に引き継ぐ（`video_enhance.adult`） | Issue #1031（悠太さんの決定 2026-11-05） |
 | 1.48 | 2026-11-05 | §3.4・§3.6（やりたいこと）: 「大きくする」を `service/gentest/upscale`（`upscale.Run`・`Scales`・`MaxOutputPixels`）へ、`ApplyIntent` を `service/gentest/intentapply`（`intentapply.Apply`）へ移した（`service/gentest/` 直下が行数の上限に近いため。挙動は変えない）。旧名の `Service.Upscale`・`Service.ApplyIntent`・`UpscaleRequest`・`UpscaleRef`・`UpscaleScales`・`MaxUpscaleOutputPixels` は無い | Issue #1031（行数の上限への対応） |
 | 1.49 | 2026-11-05 | §3.9: 成人向けの印を、結果を作ったときに `ResultParams.adult` へ記録するようにした（モデルをあとで消しても、Topaz に送るときの警告が消えない。印の前に作った結果だけカタログを引く） | Issue #1031（悠太さんの決定: 成人向けの判定の弱点を直す） |
+| 1.50 | 2026-11-06 | §2: 選べる画像モデルに GPT Image 2.6 Flare / Sunburst（API キーの `gpt-image-2.6-flare` / `gpt-image-2.6-sunburst` と、サブスクの `…:chatgpt-subscription`）を足した。1 枚の見積は価格不明（`model-adapters.md` §9.5） | Issue #1096 |

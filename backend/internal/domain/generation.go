@@ -10,32 +10,33 @@ import (
 // MaxInstructionRunes bounds the additional instruction of a generation.
 const MaxInstructionRunes = 1000
 
-// ModelName identifies an image or video generation model. The values are the canonical
-// identifiers of spec/architecture/model-adapters.md §6, stored in take.model_name and
-// cost_ledger_entry.provider.
+// ModelName identifies an image or video generation model: the canonical identifiers of spec/architecture/model-adapters.md §6,
+// stored in take.model_name and cost_ledger_entry.provider.
 type ModelName string
 
-// The built-in image models (the first four), then the video models.
+// The built-in image models (the first four, then the two GPT Image 2.6 models), then the video models.
 const (
-	ModelNanoBanana      ModelName = "nano-banana"
-	ModelNanoBananaLite  ModelName = "nano-banana-lite" // Gemini 3.1 Flash Lite Image: the cheap, fast 1K model
-	ModelFlux2           ModelName = "flux-2"
-	ModelGPTImage2       ModelName = "gpt-image-2"
-	ModelKling3          ModelName = "kling-3.0"
-	ModelSeedance2       ModelName = "seedance-2.0"
-	ModelRunwayGen45     ModelName = "runway-gen-4.5"
-	ModelGeminiOmniFlash ModelName = "gemini-omni-flash" // Gemini Omni Flash (gemini-omni-1.1-flash), the Gemini API's video model
-	ModelKling4          ModelName = "kling-4.0"         // Kling 4.0 on the new API (Bearer API key); ModelKling3 stays on the old one
-	ModelSeedance25      ModelName = "seedance-2.5"      // Seedance 2.5 (dreamina-seedance-2-5-260628), up to 30 seconds
-	ModelMiniMaxH3       ModelName = "minimax-h3"        // MiniMax H3 (MiniMax-H3), 4-15 seconds, 768P / 2K
-	ModelMiniMaxH3Max    ModelName = "minimax-h3-max"    // MiniMax H3 Max (MiniMax-H3-Max), 5-15 seconds, 480P / 768P
-	ModelWan3            ModelName = "wan-3.0"           // Alibaba Cloud Wan 3.0 (wan3.0-video), 2-30 seconds, 480P-1080P
-	ModelLumaRay32       ModelName = "luma-ray-3.2"      // Luma Ray 3.2 (ray-3.2), 5 or 10 seconds, 360p-1080p
+	ModelNanoBanana         ModelName = "nano-banana"
+	ModelNanoBananaLite     ModelName = "nano-banana-lite" // Gemini 3.1 Flash Lite Image: the cheap, fast 1K model
+	ModelFlux2              ModelName = "flux-2"
+	ModelGPTImage2          ModelName = "gpt-image-2"
+	ModelGPTImage26Flare    ModelName = "gpt-image-2.6-flare"    // GPT Image 2.6 Flare: the fast one, for iteration
+	ModelGPTImage26Sunburst ModelName = "gpt-image-2.6-sunburst" // GPT Image 2.6 Sunburst: the one for detailed visual work
+	ModelKling3             ModelName = "kling-3.0"
+	ModelSeedance2          ModelName = "seedance-2.0"
+	ModelRunwayGen45        ModelName = "runway-gen-4.5"
+	ModelGeminiOmniFlash    ModelName = "gemini-omni-flash" // Gemini Omni Flash (gemini-omni-1.1-flash), the Gemini API's video model
+	ModelKling4             ModelName = "kling-4.0"         // Kling 4.0 on the new API (Bearer API key); ModelKling3 stays on the old one
+	ModelSeedance25         ModelName = "seedance-2.5"      // Seedance 2.5 (dreamina-seedance-2-5-260628), up to 30 seconds
+	ModelMiniMaxH3          ModelName = "minimax-h3"        // MiniMax H3 (MiniMax-H3), 4-15 seconds, 768P / 2K
+	ModelMiniMaxH3Max       ModelName = "minimax-h3-max"    // MiniMax H3 Max (MiniMax-H3-Max), 5-15 seconds, 480P / 768P
+	ModelWan3               ModelName = "wan-3.0"           // Alibaba Cloud Wan 3.0 (wan3.0-video), 2-30 seconds, 480P-1080P
+	ModelLumaRay32          ModelName = "luma-ray-3.2"      // Luma Ray 3.2 (ray-3.2), 5 or 10 seconds, 360p-1080p
 )
 
 // ImageModels lists the image models (built-in, then defined on registered endpoints: modelreg).
 func ImageModels() []ModelName {
-	return mr.Image(ModelNanoBanana, ModelNanoBananaLite, ModelFlux2, ModelGPTImage2)
+	return mr.Image(ModelNanoBanana, ModelNanoBananaLite, ModelFlux2, ModelGPTImage26Flare, ModelGPTImage26Sunburst, ModelGPTImage2)
 }
 
 // VideoModels lists the video models that have an adapter (built-in, then defined on registered endpoints).
@@ -46,8 +47,7 @@ func VideoModels() []ModelName {
 // JoinModels renders models separated by sep ("kling-3.0 / seedance-2.0 / runway-gen-4.5" for " / ").
 func JoinModels(models []ModelName, sep string) string { return mr.Join(models, sep) }
 
-// PromptVersion is a row of prompt_version: the Shot Spec a generation started from and what the
-// Model Adapter derived from it.
+// PromptVersion is a row of prompt_version: the Shot Spec a generation started from and what the Model Adapter derived from it.
 type PromptVersion struct {
 	ID            string
 	ShotID        string

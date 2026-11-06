@@ -125,3 +125,50 @@ func TestSubscriptionImageModelHasADisplayName(t *testing.T) {
 	o.Publish(cfg)
 	assert.Equal(t, chatgptid.Label, modelreg.Label(string(chatgptid.Model)), "a batch made while it was on still names it after it is turned off")
 }
+
+// GPT Image 2.6 Flare and Sunburst reach ChatGPT through their own identifiers: each is listed with its label while the switch is on,
+// and each asks the Codex endpoint's image tool for its own model (never another one in its place).
+func TestSubscriptionGPTImage26ModelsAreListedAndAskTheirOwnModel(t *testing.T) {
+	want := map[domain.ModelName]struct{ label, api string }{
+		chatgptid.Flare:    {"GPT Image 2.6 Flare (ChatGPT サブスク)", "gpt-image-2.6-flare"},
+		chatgptid.Sunburst: {"GPT Image 2.6 Sunburst (ChatGPT サブスク)", "gpt-image-2.6-sunburst"},
+	}
+	for model, w := range want {
+		t.Run(string(model), func(t *testing.T) {
+			c := newCodex(t, func(w http.ResponseWriter, _ http.Flusher) {
+				data(w, imageDone("png"), `{"type":"response.completed"}`)
+			})
+			cfg := modeladapter.DefaultConfig()
+			cfg.Images[modeladapter.PurposeNewReference] = modeladapter.ImageRoute{
+				Primary: modeladapter.ImageTarget{Model: model}, Fallback: modeladapter.ImageTarget{Model: domain.ModelNanoBanana},
+			}
+			require.NoError(t, configcheck.Validate(cfg), "the identifier is a valid route target")
+			on := true
+			o := localbackends.Options{
+				StagingDir: t.TempDir(), ChatGPTImageEnabled: func() bool { return on },
+				ChatGPTImage: chatgptimage.New(&source{}, chatgptimage.Options{BaseURL: c.URL, Stall: time.Second}),
+			}
+			t.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
+			a := modeladapter.New(cfg, localbackends.Build(cfg, credentialtest.New(), o), modeladapter.WithSleep(func(context.Context, time.Duration) error { return nil }))
+			o.Publish(cfg)
+
+			info, ok := modelcatalog.Catalog{Adapter: a}.Model("image", string(model))
+			require.True(t, ok, "listed while the switch is on")
+			assert.Equal(t, w.label, info.Label)
+			assert.Equal(t, modelcatalog.BasisUnknown, info.Price.Basis, "the plan pays: no per-image price")
+			assert.True(t, info.AcceptsReferences)
+
+			out, err := a.GenerateImage(context.Background(), modeladapter.PurposeNewReference, modeladapter.ImageRequest{Prompt: "a fox"})
+			require.NoError(t, err)
+			assert.Equal(t, model, out.Model, "the ledger names the model that drew it")
+			assert.False(t, out.FellBack)
+			tool, _ := c.body["tools"].([]any)[0].(map[string]any)
+			assert.Equal(t, w.api, tool["model"], "the image model travels inside the tool")
+
+			on = false
+			o.Publish(cfg)
+			assert.NotContains(t, domain.ImageModels(), model, "hidden again while the switch is off")
+			assert.Equal(t, w.label, modelreg.Label(string(model)))
+		})
+	}
+}

@@ -52,10 +52,10 @@ func TestDefaultImageRoutes(t *testing.T) {
 		purpose         modeladapter.ImagePurpose
 		primary, backup domain.ModelName
 	}{
-		{modeladapter.PurposeNewReference, domain.ModelGPTImage2, domain.ModelNanoBanana},
-		{modeladapter.PurposeEditReference, domain.ModelNanoBanana, domain.ModelGPTImage2},
+		{modeladapter.PurposeNewReference, domain.ModelGPTImage26Flare, domain.ModelNanoBanana},
+		{modeladapter.PurposeEditReference, domain.ModelNanoBanana, domain.ModelGPTImage26Flare},
 		{modeladapter.PurposePreview, domain.ModelFlux2, domain.ModelNanoBananaLite},
-		{modeladapter.PurposeUnifiedOpenAI, domain.ModelGPTImage2, domain.ModelNanoBanana},
+		{modeladapter.PurposeUnifiedOpenAI, domain.ModelGPTImage26Flare, domain.ModelNanoBanana},
 	} {
 		t.Run(string(tt.purpose), func(t *testing.T) {
 			assert.Equal(t, modeladapter.ImageRoute{

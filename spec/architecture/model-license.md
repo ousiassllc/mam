@@ -96,6 +96,7 @@
 | `seedvr2-3b-fp8` | 商用OK | SeedVR2（ByteDance-Seed）。配布元 `ByteDance-Seed/SeedVR2-3B` のモデルカードの `license: apache-2.0` と本文「SeedVR and SeedVR2 are licensed under the Apache 2.0.」、再配布の `Comfy-Org/SeedVR2` のカードも `license: apache-2.0`（fp8 の変換は Comfy-Org。2026-11-04 に確認）。共有 VAE も同じリポジトリ。#1031 |
 | `rife-v4.25`・`rife-v4.26` | 商用OK | Practical-RIFE（作者 hzwer）の LICENSE は MIT License（Copyright (c) 2021 hzwer）で、README も「重みのリンクの内容はこのプロジェクトと同じ MIT ライセンス」と書く。再配布の `Comfy-Org/Frame-Interpolation` のカードは `license: other`・`license_name: mit-and-apache-2.0`（RIFE の MIT と FILM の Apache-2.0 を合わせた表記）で、この 2 ファイルは RIFE なので MIT。2026-11-04 に確認。#1031 |
 | クラウド: `nano-banana`・`nano-banana-lite`・`gemini-omni-flash`（Gemini API。「Use of Generated Content」: Google は生成物の所有権を主張しない）、`flux-2`（BFL。生成物の所有権を主張しない）、`gpt-image-2`・ChatGPT サブスク（OpenAI。Output は利用者のもの）、`runway-gen-4.5`（Runway。入力と生成物の所有権を主張しない） | 商用OK | 各社の利用規約を 2026-11-02 に読み、生成物の所有権を主張しない・利用者に帰属させるとしている（出典 URL は `cloud.json`）。ChatGPT サブスクは mam が使う経路が非公式で、注意を付ける |
+| クラウド: `gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` とそのサブスク経由（`…:chatgpt-subscription`） | 商用OK | OpenAI の利用規約（<https://openai.com/policies/terms-of-use/>、2026-01-01 版。「you … own the Output. We hereby assign to you all our right, title, and interest, if any, in and to Output」）。モデルごとの別の規約は見つからない（2026-11-06 に確認）。サブスク経由は `gpt-image-2:chatgpt-subscription` と同じ注意（非公式の経路）。#1096 |
 | クラウド: `luma-ray-3.2` | 条件つき | 規約 §4: 商用利用を認めるサブスクリプションに限る |
 | クラウド: `kling-3.0`・`kling-4.0`・`minimax-h3`・`minimax-h3-max`・`wan-3.0`・`seedance-2.0`・`seedance-2.5`（BytePlus） | **不明** | 規約の本文を読めなかった、または商用利用を許す文を見つけられなかった（公開ページが JS 描画・地域制限・契約で非公開）。商用の前に契約を確認する |
 
@@ -174,3 +175,4 @@
 | 1.15 | 2026-11-04 | §3 の答えの表に `wan22-rapid-aio-v10-nsfw-i2v`（不明。宣言だけ）を足した（`checked_at` は 2026-11-04） | Issue #1012 |
 | 1.16 | 2026-11-04 | §3 の答えの表: `nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b` を見直し（`nsfw-anime-wan22-5b` だけ LICENSE の本文があるので不明から商用OK〔注意つき〕。1.3B はカードの宣言だけで不明のまま）、`nsfw-wan21-14b-t2v`（不明）・`wan22-t2v-14b-palingenesis`（不明）を足した。非検閲の動画の 15 件すべての `checked_at` を 2026-11-04 にした | Issue #1028 |
 | 1.17 | 2026-11-04 | §3 の答えの表と確認日に、動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`（Apache-2.0）・`rife-v4.25`・`rife-v4.26`（MIT）を足した（商用OK。`checked_at` は 2026-11-04）。版は main の 1.16 の次 | Issue #1031 |
+| 1.18 | 2026-11-06 | §3 の答えの表と確認日に、`gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` と、それぞれのサブスク経由（`…:chatgpt-subscription`）の 4 件を足した（OpenAI の利用規約 2026-01-01 版。`checked_at` は 2026-11-06） | Issue #1096 |

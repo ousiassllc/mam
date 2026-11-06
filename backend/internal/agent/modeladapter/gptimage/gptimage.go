@@ -1,5 +1,5 @@
-// Package gptimage is what the Model Adapter knows about the price of GPT Image 2: the quality profile mam sends,
-// the price of one image by quality and size (the estimate) and the cost of a call computed from the token counts
+// Package gptimage is what the Model Adapter knows about the price of GPT Image 2 and 2.6 (Flare, Sunburst): the quality profile
+// mam sends, the price of one image of GPT Image 2 by quality and size (the estimate) and the cost of a call computed from the token counts
 // of its response (the actual cost). The figures are those of OpenAI's published pricing, with their source and the
 // day they were read in spec/architecture/model-adapters.md §9.2. It is a package of its own because package
 // modeladapter is over its line limit.
@@ -11,7 +11,14 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
+	"github.com/ousiassllc/mam/backend/internal/domain"
 )
+
+// Models lists the models OpenAI's Images API serves through one backend: the quality profile and the token prices of this
+// package apply to them.
+func Models() []domain.ModelName {
+	return []domain.ModelName{domain.ModelGPTImage2, domain.ModelGPTImage26Flare, domain.ModelGPTImage26Sunburst}
+}
 
 // APIModel is the API model ID the price table below belongs to.
 const APIModel = "gpt-image-2"
@@ -46,10 +53,24 @@ func Valid(setting string) bool {
 	return setting == "" || slices.Contains(Qualities(), Quality(setting))
 }
 
-// Priced reports whether the price table applies to the API model: gpt-image-2 and its dated snapshots. Another
-// model ID (a setting of the user) has other prices and gets none here.
+// Priced reports whether the price table below applies to the API model: gpt-image-2 and its dated snapshots. Another
+// model ID (a setting of the user) has other prices and gets none here. GPT Image 2.6 Flare and Sunburst are not in it:
+// OpenAI publishes their prices per token (TokenPriced) and no table per image, so their estimate is the price the user sets.
 func Priced(apiModel string) bool {
 	return apiModel == APIModel || strings.HasPrefix(apiModel, APIModel+"-")
+}
+
+// The API model IDs of GPT Image 2.6 (OpenAI's model pages, https://developers.openai.com/api/docs/models/gpt-image-2.6-flare and
+// .../gpt-image-2.6-sunburst: "Default snapshot", the only one).
+const (
+	APIModelFlare    = "gpt-image-2.6-flare"
+	APIModelSunburst = "gpt-image-2.6-sunburst"
+)
+
+// TokenPriced reports whether the per-token prices below apply to the API model: gpt-image-2 (and its snapshots), Flare and
+// Sunburst. OpenAI's pricing page (https://developers.openai.com/api/docs/pricing, Standard) lists the same rates for the three.
+func TokenPriced(apiModel string) bool {
+	return Priced(apiModel) || apiModel == APIModelFlare || apiModel == APIModelSunburst
 }
 
 // perImage is the price (USD) of one image by quality and size: the "GPT Image 2" rows of the table in OpenAI's image
@@ -74,7 +95,8 @@ func Estimate(setting, aspect string) float64 {
 	return most
 }
 
-// Prices of one million tokens (USD), from the "gpt-image-2" rows of OpenAI's pricing page (Standard).
+// Prices of one million tokens (USD), from the rows of gpt-image-2, gpt-image-2.6-flare and gpt-image-2.6-sunburst of OpenAI's
+// pricing page (Standard, read 2026-11-06): the same for the three.
 const (
 	textInputPerMillion  = 5.0
 	imageInputPerMillion = 8.0
@@ -118,7 +140,7 @@ func within(n, ceiling int) bool { return n >= 0 && n <= ceiling }
 // negative or over its ceiling), or the model is not priced here; the estimate is used then. Input tokens the details
 // do not account for count as text, the cheaper kind of input, so the cost is not overstated.
 func ActualCost(apiModel string, u *Usage) *float64 {
-	if u == nil || !Priced(apiModel) {
+	if u == nil || !TokenPriced(apiModel) {
 		return nil
 	}
 	text, image := u.InputDetails.TextTokens, u.InputDetails.ImageTokens

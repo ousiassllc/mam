@@ -40,7 +40,7 @@ func TestModelSettings_TheScreenListsEveryPurposeAndPolicyAsARowAndTheirModalsOf
 		modal := s.imageModal(string(p))
 		name := media.ImageModelField(string(p), media.SlotPrimary)
 		assert.Equal(t, string(def.Images[p].Primary.Model), selectedOption(t, modal, name), p)
-		assert.ElementsMatch(t, []string{"nano-banana", "nano-banana-lite", "flux-2", "gpt-image-2"}, s.choices(name), "the models that have an image backend")
+		assert.ElementsMatch(t, []string{"nano-banana", "nano-banana-lite", "flux-2", "gpt-image-2.6-flare", "gpt-image-2.6-sunburst", "gpt-image-2"}, s.choices(name), "the models that have an image backend")
 		for _, slot := range []string{media.SlotPrimary, media.SlotFallback} {
 			assert.NotContains(t, modal, `name="`+media.ImageFastField(string(p), slot)+`"`, "no model has a fast variant by default: the checkbox is not offered: %s %s", p, slot)
 		}

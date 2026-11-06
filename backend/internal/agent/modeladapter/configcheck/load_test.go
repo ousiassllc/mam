@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -82,7 +83,27 @@ func TestConfigRejectsAQualityThatIsNotAProfile(t *testing.T) {
 	mc := cfg.Models[domain.ModelFlux2]
 	mc.Quality = "high"
 	cfg.Models[domain.ModelFlux2] = mc
-	assert.ErrorContains(t, configcheck.Validate(cfg), "only gpt-image-2 has one")
+	assert.ErrorContains(t, configcheck.Validate(cfg), "only gpt-image-2, gpt-image-2.6-flare, gpt-image-2.6-sunburst have one")
+}
+
+// GPT Image 2.6 takes the quality profile like GPT Image 2, and routes may name any of the three models, by API key or subscription.
+func TestConfigAcceptsGPTImage26AndItsSubscriptionModels(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	for _, m := range []domain.ModelName{domain.ModelGPTImage26Flare, domain.ModelGPTImage26Sunburst} {
+		mc := cfg.Models[m]
+		mc.Quality = "high"
+		cfg.Models[m] = mc
+	}
+	for _, m := range []domain.ModelName{chatgptid.Flare, chatgptid.Sunburst, domain.ModelGPTImage26Sunburst} {
+		cfg.Images[modeladapter.PurposeNewReference] = modeladapter.ImageRoute{
+			Primary: modeladapter.ImageTarget{Model: m}, Fallback: modeladapter.ImageTarget{Model: domain.ModelGPTImage26Flare},
+		}
+		assert.NoError(t, configcheck.Validate(cfg), m)
+	}
+	sub := cfg.Models[chatgptid.Flare]
+	sub.Quality = "high"
+	cfg.Models[chatgptid.Flare] = sub
+	assert.ErrorContains(t, configcheck.Validate(cfg), "quality", "the subscription path sends none")
 }
 
 func TestLoadWarnsWhenGPTImage2HasNoKnownPrice(t *testing.T) {

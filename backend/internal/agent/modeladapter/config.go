@@ -19,14 +19,13 @@ type ImagePurpose string
 
 // Image purposes.
 const (
-	// PurposeNewReference: new Character / Product / Location references (GPT Image 2, then Nano Banana).
+	// PurposeNewReference: new Character / Product / Location references (GPT Image 2.6 Flare, then Nano Banana).
 	PurposeNewReference ImagePurpose = "new_reference"
-	// PurposeEditReference: Style / Lighting references, Keyframes and edits of existing material
-	// (Nano Banana, then GPT Image 2).
+	// PurposeEditReference: Style / Lighting references, Keyframes, edits of existing material (Nano Banana, then GPT Image 2.6 Flare).
 	PurposeEditReference ImagePurpose = "edit_reference"
 	// PurposePreview: fast, cheap iterations (FLUX.2, then Nano Banana Lite).
 	PurposePreview ImagePurpose = "preview"
-	// PurposeUnifiedOpenAI: one vendor for reasoning and images (GPT Image 2, then Nano Banana).
+	// PurposeUnifiedOpenAI: one vendor for reasoning and images (GPT Image 2.6 Flare, then Nano Banana).
 	PurposeUnifiedOpenAI ImagePurpose = "unified_openai"
 )
 
@@ -100,9 +99,9 @@ type ModelConfig struct {
 	// Model is the vendor's identifier of the model. FastModel is used for ImageTarget.Fast.
 	Model     string `json:"model"`
 	FastModel string `json:"fast_model,omitempty"`
-	// CostPerImage is the estimated cost of one image (USD), for image models. GPT Image 2 without one is priced by Quality.
+	// CostPerImage is the estimated cost of one image (USD), for image models. GPT Image 2 without one is priced by Quality; 2.6 has no table.
 	CostPerImage float64 `json:"cost_per_image_usd,omitempty"`
-	Quality      string  `json:"quality,omitempty"` // the quality profile sent to GPT Image 2 (gptimage.Qualities; empty: gptimage.Default)
+	Quality      string  `json:"quality,omitempty"` // the quality profile sent to a GPT Image model (gptimage.Qualities; empty: gptimage.Default)
 	// CostPerSecond is the estimated cost of one second of video (USD) by resolution.
 	CostPerSecond map[string]float64 `json:"cost_per_second_usd,omitempty"`
 }
@@ -159,10 +158,10 @@ func DefaultConfig() Config {
 		},
 		Models: defaultModels(),
 		Images: map[ImagePurpose]ImageRoute{
-			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
-			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},
+			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelGPTImage26Flare}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
+			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelGPTImage26Flare}},
 			PurposePreview:       {Primary: ImageTarget{Model: domain.ModelFlux2}, Fallback: ImageTarget{Model: domain.ModelNanoBananaLite}},
-			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
+			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage26Flare}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
 		},
 		// model-adapters.md §4. MAX QUALITY uses Runway Gen-4.5 (720p, its only output size); the
 		// alternative ("Different Model") is Kling 3.0.

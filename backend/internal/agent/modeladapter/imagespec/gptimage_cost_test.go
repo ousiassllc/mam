@@ -19,17 +19,25 @@ import (
 
 // GPT Image 2 is priced by the quality that is sent and by the size (spec/architecture/model-adapters.md §9.2).
 
+// pinGPTImage2 routes new references to GPT Image 2: these tests are about its table, and the default route is GPT Image 2.6 Flare.
+func pinGPTImage2(cfg modeladapter.Config) modeladapter.Config {
+	cfg.Images[modeladapter.PurposeNewReference] = modeladapter.ImageRoute{
+		Primary: modeladapter.ImageTarget{Model: domain.ModelGPTImage2}, Fallback: modeladapter.ImageTarget{Model: domain.ModelNanoBanana},
+	}
+	return cfg
+}
+
 func loadModels(t *testing.T, body string) modeladapter.Config {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "models.json")
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
 	cfg, err := modeladapter.LoadConfig(path)
 	require.NoError(t, err)
-	return cfg
+	return pinGPTImage2(cfg)
 }
 
 func TestTheDefaultEstimateOfGPTImage2IsNotZero(t *testing.T) {
-	cfg := modeladapter.DefaultConfig()
+	cfg := pinGPTImage2(modeladapter.DefaultConfig())
 
 	assert.InDelta(t, 0.053, cfg.ImageCost(domain.ModelGPTImage2), 1e-9, "the dearest size of the default profile")
 	assert.InDelta(t, 0.041, cfg.ImageCostFor(domain.ModelGPTImage2, "16:9"), 1e-9)
@@ -71,7 +79,7 @@ func TestTheActualCostComesFromTheUsageOfTheResponse(t *testing.T) {
 			"usage":{"total_tokens":1368,"input_tokens":68,"output_tokens":1300,"input_tokens_details":{"text_tokens":68,"image_tokens":0}}}`))
 	}))
 	defer srv.Close()
-	cfg := modeladapter.DefaultConfig()
+	cfg := pinGPTImage2(modeladapter.DefaultConfig())
 	for v, vc := range cfg.Vendors {
 		vc.BaseURL = srv.URL
 		cfg.Vendors[v] = vc
@@ -122,7 +130,7 @@ func TestAMalformedUsageDoesNotLoseThePaidImage(t *testing.T) {
 				_, _ = w.Write([]byte(`{"data":[{"b64_json":"` + base64.StdEncoding.EncodeToString([]byte("IMG")) + `"}],"usage":` + usage + `}`))
 			}))
 			defer srv.Close()
-			cfg := modeladapter.DefaultConfig()
+			cfg := pinGPTImage2(modeladapter.DefaultConfig())
 			for v, vc := range cfg.Vendors {
 				vc.BaseURL = srv.URL
 				cfg.Vendors[v] = vc

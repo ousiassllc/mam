@@ -213,7 +213,7 @@ func VendorOf(m domain.ModelName) Vendor {
 	switch m {
 	case domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelGeminiOmniFlash:
 		return VendorGoogle
-	case domain.ModelGPTImage2:
+	case domain.ModelGPTImage2, domain.ModelGPTImage26Flare, domain.ModelGPTImage26Sunburst:
 		return VendorOpenAI
 	case domain.ModelFlux2:
 		return VendorFlux
@@ -231,7 +231,7 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorAlibaba
 	case domain.ModelLumaRay32:
 		return VendorLuma
-	case chatgptid.Model:
+	case chatgptid.Model, chatgptid.Flare, chatgptid.Sunburst:
 		return Vendor(chatgptid.Vendor)
 	}
 	if endpoint, ok := localcfg.EndpointOf(string(m)); ok {

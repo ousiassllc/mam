@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/enhancevideo"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -212,7 +213,7 @@ func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 		o(r, &deps)
 	}
 	backends := modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{}, Video: map[domain.ModelName]modeladapter.VideoBackend{}}
-	for _, m := range []domain.ModelName{domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelFlux2, domain.ModelGPTImage2} {
+	for _, m := range append([]domain.ModelName{domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelFlux2}, gptimage.Models()...) {
 		if !r.missing[m] {
 			backends.Image[m] = imageBackend{f, m}
 		}

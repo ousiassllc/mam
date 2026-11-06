@@ -41,7 +41,9 @@ type Options struct {
 func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapter.Backends {
 	b := modeladapter.NewBackends(cfg, keys, nil, o.PollEvery, append([]modeladapter.BackendOption{modeladapter.WithStagingDir(o.StagingDir)}, o.Vendor...)...)
 	if o.ChatGPTImage != nil {
-		b.Image[chatgptid.Model] = o.ChatGPTImage
+		for _, e := range chatgptid.Entries() {
+			b.Image[e.Model] = o.ChatGPTImage
+		}
 	}
 	clients := map[string]*localhttp.Client{}
 	for name, e := range cfg.Endpoints {
@@ -83,18 +85,21 @@ func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapt
 
 // Publish makes the models of cfg selectable everywhere a model name is validated (modelreg, read by
 // domain.ImageModels and domain.VideoModels): the locks of a Shot, the Director's commands, the settings
-// screen. Call it whenever the backends are rebuilt. The ChatGPT subscription's image model is listed only
-// while the user has turned it on, so it is never offered while it would not be called.
+// screen. Call it whenever the backends are rebuilt. The ChatGPT subscription's image models are listed only
+// while the user has turned it on, so they are never offered while they would not be called.
 func (o Options) Publish(cfg modeladapter.Config) {
 	modeladapter.PublishLocal(cfg.Endpoints, cfg.LocalModels, cfg.Workflows)
 	images := localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaImage)
 	savedImages, savedVideos, labels := savedLists(cfg.Workflows)
 	images = append(images, savedImages...)
-	if o.ChatGPTImage != nil && o.ChatGPTImageEnabled != nil && o.ChatGPTImageEnabled() {
-		images = append(images, string(chatgptid.Model))
+	on := o.ChatGPTImage != nil && o.ChatGPTImageEnabled != nil && o.ChatGPTImageEnabled()
+	for _, e := range chatgptid.Entries() {
+		if on {
+			images = append(images, string(e.Model))
+		}
+		// The label is published whether or not the model is on: the batches made while it was on still name it.
+		labels[string(e.Model)] = e.Label
 	}
-	// The label is published whether or not the model is on: the batches made while it was on still name it.
-	labels[string(chatgptid.Model)] = chatgptid.Label
 	modelreg.Set(images, append(localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaVideo), savedVideos...))
 	modelreg.SetLabels(labels)
 }

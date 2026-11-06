@@ -271,7 +271,7 @@ func sourceOf(cfg modeladapter.Config, m domain.ModelName) string {
 	if _, ok := cfg.Workflows[string(m)]; ok {
 		return SourceWorkflow
 	}
-	if m == chatgptid.Model {
+	if chatgptid.Is(m) {
 		return SourceChatGPT
 	}
 	if _, _, ok := cfg.LocalModel(m); ok {
