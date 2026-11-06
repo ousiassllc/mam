@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // seedJudgedTakes gives the Project n Takes of the model that the Judge scored, as if earlier Shots
@@ -57,7 +58,8 @@ func (g *genApp) count(q string, args ...any) int { return g.countOn(g.t, q, arg
 
 // countOn fails c, not the test: the condition of an Eventually runs in its own goroutine, which may outlive the test
 // (c is then the assert.CollectT of an EventuallyWithT, whose failure ends that tick only).
-func (g *genApp) countOn(c require.TestingT, q string, args ...any) int {
+func (g *genApp) countOn(c testenv.TestingT, q string, args ...any) int {
+	c.Helper()
 	var n int
 	require.NoError(c, g.db.Reader().QueryRow(q, args...).Scan(&n))
 	return n

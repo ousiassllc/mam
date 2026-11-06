@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
@@ -14,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/finalframe"
 )
 
 // ContinueService makes the next Shot or Scene after a completed Shot (F-16, UC-4): it analyses
@@ -138,11 +137,10 @@ func storyLines(shots []repository.ShotRef) []string {
 	return lines
 }
 
-// finalFrame returns the last frame of the Take the next Shot continues from (the selected Take,
-// else the AI pick, else the newest one that was not rejected), or nil when there is none: no
-// ffmpeg, no video file, or ffmpeg failed. It never fails Continue: the Agent then works from text.
+// finalFrame returns the last frame of the Take the next Shot continues from, or nil when there is none: no ffmpeg, no video file, or
+// ffmpeg failed. It never fails Continue: the Agent then works from text.
 func (s *ContinueService) finalFrame(ctx context.Context, ref repository.ShotRef) *llm.Image {
-	if s.tools == nil || s.assetsDir == "" {
+	if !s.tools.Available() || s.assetsDir == "" {
 		return nil
 	}
 	takes, err := s.plans.ListTakes(ctx, ref.Scene.ID)
@@ -150,53 +148,7 @@ func (s *ContinueService) finalFrame(ctx context.Context, ref repository.ShotRef
 		s.logger.Error("list takes for the final frame failed", "shot_id", ref.Shot.ID, "err", err)
 		return nil
 	}
-	var from *domain.Take
-	rank := func(t domain.Take) int {
-		switch t.Status {
-		case domain.TakeSelected:
-			return 3
-		case domain.TakeAIPick:
-			return 2
-		case domain.TakeRejected:
-			return 0
-		}
-		return 1
-	}
-	list := takes[ref.Shot.ID]
-	for i, t := range list {
-		if s.assetPath(t.FilePath) == "" || rank(t) == 0 { // no file, or one outside the assets directory (never read)
-			continue
-		}
-		if from == nil || rank(t) >= rank(*from) {
-			from = &list[i]
-		}
-	}
-	if from == nil {
-		return nil
-	}
-	src := s.assetPath(from.FilePath)
-	info, err := s.tools.Probe(ctx, src)
-	if err != nil {
-		s.logger.Error("probe the take for the final frame failed", "take_id", from.ID, "err", err)
-		return nil
-	}
-	dir, err := os.MkdirTemp("", "mam-final-frame-")
-	if err != nil {
-		s.logger.Error("create a directory for the final frame failed", "err", err)
-		return nil
-	}
-	defer func() { _ = os.RemoveAll(dir) }()
-	dst := filepath.Join(dir, "final.jpg")
-	if err := s.tools.Thumbnail(ctx, src, dst, info.Duration-0.1); err != nil {
-		s.logger.Error("take the final frame failed", "take_id", from.ID, "err", err)
-		return nil
-	}
-	data, err := os.ReadFile(dst) // #nosec G304 -- a file this function just wrote
-	if err != nil {
-		s.logger.Error("read the final frame failed", "take_id", from.ID, "err", err)
-		return nil
-	}
-	return &llm.Image{MimeType: "image/jpeg", Data: data}
+	return finalframe.Source{Tools: s.tools, AssetPath: s.assetPath, Logger: s.logger}.Of(ctx, takes[ref.Shot.ID])
 }
 
 // Propose analyses the completed Shot and posts the Continue card: the analysed States and the

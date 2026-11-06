@@ -4,7 +4,9 @@ import (
 	"context"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -21,12 +23,11 @@ func (o *Orchestrator) StartDirected(ctx context.Context, shotID, instruction st
 	return o.start(ctx, shotID, ActionGenerate, instruction, preserve)
 }
 
-// StartCandidates begins Prompt Candidate Generation for the Shot (F-08): the Prompt Planner writes
-// candidate specs with different shooting strategies, each is generated, and the AI Video Judge
-// picks the Best Take, all according to the Generation Mode of the Quality Policy (see
-// generateCandidates). It fails like Start, and with ErrJudgeUnavailable when the Judge is off.
+// StartCandidates begins Prompt Candidate Generation for the Shot (F-08): the Prompt Planner writes candidate specs with different shooting
+// strategies, each is generated, and the AI Video Judge picks the Best Take, all by the Generation Mode of the Quality Policy (see
+// generateCandidates). It fails like Start, and with ErrJudgeUnavailable when the Judge is off (or its ffmpeg is not set up yet).
 func (o *Orchestrator) StartCandidates(ctx context.Context, shotID, instruction string) (domain.Job, error) {
-	if o.judge == nil {
+	if !gate.Open(o.judge) {
 		return domain.Job{}, ErrJudgeUnavailable
 	}
 	return o.start(ctx, shotID, ActionCandidates, instruction, nil)
@@ -38,7 +39,7 @@ func (o *Orchestrator) StartCandidates(ctx context.Context, shotID, instruction 
 // the Judge is off (nothing could pick the Best Take) or the Prompt is LOCKed (Candidates rewrite the
 // spec, so StartCandidates refuses with a 423 and the Shot is made from the spec it has).
 func (o *Orchestrator) UsesCandidates(ctx context.Context, shot domain.Shot) (bool, error) {
-	if o.judge == nil {
+	if !gate.Open(o.judge) {
 		return false, nil
 	}
 	if _, hasSpec := shot.CanonicalSpec(); !hasSpec {
@@ -106,7 +107,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
-	strategy, err := o.decide(ctx, ref, policy, specOf(ref.Shot), budget)
+	strategy, err := o.decide(ctx, ref, policy, specOf(ref.Shot), budget, o.newImages(ref.ProjectID))
 	if err != nil {
 		return domain.Job{}, err
 	}
@@ -134,15 +135,16 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 // decide is the generation strategy of the Shot: the Quality Policy, Multi-model routing (the nature
 // of the Shot, the Judge record of the models, cost, and the state of the vendors), cost and model
 // capabilities, and the Video Model when the user fixed one (Video Model MANUAL or LOCK). spec is the
-// Shot Spec the Shot is generated from (nil when it has none yet).
-func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, policy domain.ProjectPolicy, spec *domain.ShotSpec, budget repository.Budget) (Strategy, error) {
+// Shot Spec the Shot is generated from (nil when it has none yet). images is where the run reads the
+// Reference images: the clip is made from the same reads (#1062).
+func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, policy domain.ProjectPolicy, spec *domain.ShotSpec, budget repository.Budget, images *refimage.Reader) (Strategy, error) {
 	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
 	if err != nil {
 		return Strategy{}, err
 	}
 	cfg, forced := o.adapter.Config(), FixedModel(locks)
 	// in always carries the References the clip is made from, less a Keyframe that cannot be read (no first frame, #902).
-	refs, err := o.attachedReferences(ctx, ref)
+	refs, err := images.Attached(ctx, ref.Shot.References())
 	if err != nil {
 		return Strategy{}, err
 	}

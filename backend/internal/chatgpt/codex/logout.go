@@ -29,14 +29,8 @@ type LogoutResult struct {
 func (s *Service) Logout(ctx context.Context, removeFiles bool) (LogoutResult, error) {
 	if removeFiles {
 		// From here to the end no install may start: it would run on the files the removal deletes (StartInstall).
-		s.mu.Lock()
-		s.removing = true
-		s.mu.Unlock()
-		defer func() {
-			s.mu.Lock()
-			s.removing = false
-			s.mu.Unlock()
-		}()
+		release, _ := s.install.Hold(false)
+		defer release()
 	}
 	res := LogoutResult{WasSignedIn: s.state.get().Account.SignedIn}
 	_, _, exeErr := s.exePath()
@@ -89,8 +83,8 @@ func (s *Service) removeFiles() error {
 			return fmt.Errorf("codex: remove %s: %w", d, err)
 		}
 	}
+	s.install.Reset()
 	s.mu.Lock()
-	s.install = installState{}
 	s.credsStore = ""
 	s.mu.Unlock()
 	return s.state.remove()

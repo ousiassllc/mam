@@ -110,12 +110,12 @@ func (h handlers) probeInstall(context.Context, mcpkit.JobInfo) (mcpkit.Progress
 	st := svc.Codex().InstallStatus()
 	p := mcpkit.Progress{Message: st.Message, Done: st.Percent, Total: 100}
 	switch st.State {
-	case codex.InstallSucceeded:
+	case exeinstall.Succeeded:
 		p.State = mcpkit.JobSucceeded
 		p.Result = map[string]any{"engine": "ready"}
-	case codex.InstallFailed:
+	case exeinstall.Failed:
 		p.State, p.Error = mcpkit.JobFailed, st.Error
-	case codex.InstallRunning:
+	case exeinstall.Running:
 		p.State = mcpkit.JobRunning
 	default:
 		p.State = mcpkit.JobCancelled

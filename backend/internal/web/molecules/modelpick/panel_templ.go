@@ -101,6 +101,12 @@ func Panel(b Filter, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
+		if len(b.Facets.Languages) > 0 {
+			templ_7745c5c3_Err = checks("言語", "languages", languageOptions(b.Facets.Languages), b.Cond.Languages).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
 		if b.Facets.Origins || len(b.Facets.Providers) > 0 {
 			templ_7745c5c3_Err = sourceSection(b).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
@@ -138,7 +144,7 @@ func Panel(b Filter, oob bool) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(b.URL(b.ClearAll()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 65, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 68, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -151,7 +157,7 @@ func Panel(b Filter, oob bool) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(b.clearInclude())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 66, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 69, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -164,7 +170,7 @@ func Panel(b Filter, oob bool) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(b.Target)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 67, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 70, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -207,7 +213,7 @@ func checks(legend, name string, opts []Option, chosen []string) templ.Component
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(legend)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 78, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 81, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -260,7 +266,7 @@ func radios(legend, name string, opts []Option, current string) templ.Component 
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(legend)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 90, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 93, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -313,7 +319,7 @@ func choice(kind, name, value, label string, checked bool) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(kind)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 102, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 105, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
@@ -326,7 +332,7 @@ func choice(kind, name, value, label string, checked bool) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 102, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 105, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -339,7 +345,7 @@ func choice(kind, name, value, label string, checked bool) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 102, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 105, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -352,7 +358,7 @@ func choice(kind, name, value, label string, checked bool) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(FormNone)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 102, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 105, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -397,7 +403,7 @@ func choice(kind, name, value, label string, checked bool) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 103, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 106, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -510,7 +516,7 @@ func switchSection(b Filter) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(FormNone)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 138, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelpick/panel.templ`, Line: 141, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 				if templ_7745c5c3_Err != nil {

@@ -7,12 +7,13 @@
 #
 #   -j JOBS   processes at once. Default 2, at most 4 (more is refused, not rounded down: a stress run that
 #             silently uses fewer processes than asked would not be the run that was asked for).
-#   -n COUNT  runs in total (default 20), split across the jobs.
+#   -n COUNT  runs in total (default 20, at most 9223372036854775807), split across the jobs.
 #   -c CPUS   pin every job to these CPUs (taskset -c; e.g. 0 or 0,1). Squeezing the CPU instead of adding
 #             processes is how a load flake is reproduced here: 2 jobs on 1 CPU starve each other the way
 #             24 packages on a busy machine do.
 #   -r REGEX  tests to run (go test -run). Default: all tests of the package.
 #   -d        print the plan and stop (nothing is built or run).
+#   PACKAGE   exactly one package (go list must name one directory); several, or a pattern such as ./..., are refused.
 #
 # Exit status: 0 when every run passed, 1 when a run failed, 2 on a usage error.
 set -euo pipefail
@@ -33,6 +34,9 @@ die() {
   exit 2
 }
 positive() { [[ "$1" =~ ^[1-9][0-9]*$ ]]; }
+# at_most N LIMIT: N <= LIMIT for positive integers without leading zeros, by length then by digits. Not ((N <= LIMIT)):
+# a number past 64 bits wraps around in the shell's arithmetic and would slip through the limit.
+at_most() { ((${#1} < ${#2})) || { ((${#1} == ${#2})) && [[ ! "$1" > "$2" ]]; }; }
 
 while getopts "j:n:c:r:dh" opt; do
   case "$opt" in
@@ -45,23 +49,27 @@ while getopts "j:n:c:r:dh" opt; do
   esac
 done
 shift $((OPTIND - 1))
-[[ $# -eq 1 ]] || usage
+[[ $# -ge 1 ]] || usage
+[[ $# -eq 1 ]] || die "give exactly one package, got $#: $*"
 pkg="$1"
 
 positive "$jobs" || die "-j must be a positive integer, got '$jobs'"
 positive "$count" || die "-n must be a positive integer, got '$count'"
-((jobs <= max_jobs)) || die "-j $jobs is more than the limit of $max_jobs processes (a stress run must not load a shared machine)"
+at_most "$count" 9223372036854775807 || die "-n $count does not fit in 63 bits" # the arithmetic below would wrap
+at_most "$jobs" "$max_jobs" || die "-j $jobs is more than the limit of $max_jobs processes (a stress run must not load a shared machine)"
 [[ -z "$cpus" || "$cpus" =~ ^[0-9,-]+$ ]] || die "-c must be a CPU list such as 0 or 0,1, got '$cpus'"
 ((jobs <= count)) || jobs="$count"
 
 # Runs per job: COUNT / JOBS, the first COUNT % JOBS jobs take one more.
 per_job() { echo $((count / jobs + ($1 <= count % jobs ? 1 : 0))); }
 
+dir="$(go list -f '{{.Dir}}' "$pkg")"
+[[ "$dir" != *$'\n'* ]] || die "'$pkg' matches more than one package; give exactly one package"
+
 echo "stress-test: package=$pkg jobs=$jobs count=$count run=${run:-<all>} cpus=${cpus:-<any>}" >&2
 ((dry == 0)) || exit 0
 [[ -z "$cpus" ]] || command -v taskset >/dev/null || die "-c needs taskset (Linux)"
 
-dir="$(go list -f '{{.Dir}}' "$pkg")"
 work="$(mktemp -d)"
 pids=()
 cleanup() {

@@ -43,6 +43,18 @@ func TestNeeds(t *testing.T) {
 	}
 }
 
+// #1072: a letter of the Common script is no other script, so a text of nothing else is not asked. The prolonged sound mark ー
+// (U+30FC, a letter of the category Lm) is one; kana, kanji and 々 (Han) are not.
+func TestNeedsAtTheBoundaryOfTheCommonScript(t *testing.T) {
+	for text, want := range map[string]bool{
+		"ー": false, "ーーー": false, "ー ー": false, "ー 4k": false, "〆": false,
+		"コーヒー": true, "ー狐": true, "ー fox 狐": true, "ァ": true, "々": true, "ー Ω": true,
+	} {
+		assert.Equal(t, want, prompttranslate.Needs(text), text)
+		assert.Equal(t, want, len(prompttranslate.Select([]string{text})) == 1, text+" (Select)")
+	}
+}
+
 func TestSelectKeepsTheDistinctNonEnglishTextsInOrder(t *testing.T) {
 	assert.Equal(t, []string{"狐", "猫"}, prompttranslate.Select([]string{"a fox", "狐", "", "猫", "狐", "dog"}))
 	assert.Empty(t, prompttranslate.Select([]string{"a fox", ""}))

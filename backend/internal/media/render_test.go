@@ -16,7 +16,7 @@ import (
 func makeTone(t *testing.T, tools Tools, name string, seconds float64, amplitude float64) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), name)
-	out, err := exec.Command(tools.ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i",
+	out, err := exec.Command(tools.FFmpegPath(), "-v", "error", "-y", "-f", "lavfi", "-i",
 		"sine=frequency=330:duration="+strconv.FormatFloat(seconds, 'f', -1, 64), "-af", "volume="+strconv.FormatFloat(amplitude, 'f', -1, 64), path).CombinedOutput()
 	require.NoError(t, err, string(out))
 	return path

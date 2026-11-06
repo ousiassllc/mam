@@ -10,12 +10,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/runtimechoices"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	card "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/runtimecard"
 )
-
-// languageNames are how the screen names the languages of a model (the codes the catalog holds).
-var languageNames = map[string]string{"ja": "日本語", "en": "英語", "zh": "中国語"}
 
 // modelsOf is the models of a runtime for its card; empty for a runtime that has one only (or when the models cannot be read).
 func modelsOf(ctx context.Context, svc runtimechoices.Service, id string) []card.Model {
@@ -23,18 +21,19 @@ func modelsOf(ctx context.Context, svc runtimechoices.Service, id string) []card
 	if err != nil {
 		return nil
 	}
+	return cardModels(views)
+}
+
+// cardModels is the models as the card shows them: the one in force is the radio that is on.
+func cardModels(views []runtimechoices.View) []card.Model {
 	out := make([]card.Model, 0, len(views))
 	for _, v := range views {
 		var langs []string
 		for _, l := range v.Languages {
-			name, ok := languageNames[l]
-			if !ok {
-				name = l
-			}
-			langs = append(langs, name)
+			langs = append(langs, modelpick.LanguageLabel(l))
 		}
 		m := card.Model{
-			ID: v.ID, Name: v.Name, Description: v.Description, Active: v.Active, Default: v.Default,
+			ID: v.ID, Name: v.Name, Description: v.Description, Active: v.Active, Selected: v.Active, Default: v.Default,
 			Size: jobview.BytesText(v.SizeBytes), Languages: strings.Join(langs, "・"),
 			VRAM:    jobview.ModelVRAMText(catalog.VRAM{MinGB: v.VRAMMinGB, RecommendedGB: v.VRAMRecommendedGB, Source: v.VRAMNote, Estimate: v.VRAMEstimate}),
 			VRAMFit: v.VRAMFit, License: v.LicenseInfo.Name, LicenseURL: v.LicenseInfo.URL, Commercial: v.LicenseInfo.Commercial.Label(),
@@ -68,6 +67,7 @@ func (h Handlers) SetRuntimeModel(c *gin.Context) {
 		render(c, st, card.RuntimesSection(card.Runtimes{Message: view.Message{Error: m}, Items: items(c.Request.Context(), h.svc)}))
 		return
 	}
+	h.filterModels(c, &r)
 	if msg != "" {
 		r.ModelsMessage.Error = msg
 	} else {

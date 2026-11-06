@@ -1,0 +1,29 @@
+// Package failbox draws the installs of the model manager that ended in failure (#1010): each under a title that names what failed, as the
+// error box of the common error (the cause and the remedy first, the detail folded). It is a package of its own because the package of the
+// screen is at its line limit (linterly).
+package failbox
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
+)
+
+// Item is how an install ended in failure: Title says what failed ("「X」の導入に失敗しました"), Reason is the line that was told before the common
+// error (the text of the job's error), and View is the common error in words, nil when the job kept none (a job of an older version).
+type Item struct {
+	Title  string
+	Reason string
+	View   *apperr.View
+}
+
+// List is the boxes of the failures, one per item; ID is unique on the page (the section that holds them).
+templ List(items []Item, id string) {
+	for i, f := range items {
+		<div class="flex flex-col gap-2" data-testid={ id + "-failure" }>
+			<p class="text-sm text-danger">{ f.Title }</p>
+			@errorbox.Box(errorbox.Props{View: *f.View, Lang: apperr.LangJa, ID: id + "-failure-" + strconv.Itoa(i)})
+		</div>
+	}
+}

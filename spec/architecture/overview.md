@@ -117,7 +117,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   ├── require-tests-passed.sh # `go test -v` の出力で、名前を挙げたテストがすべて `PASS` になったことを確かめる（Skip・失敗・欠けは失敗。CI の `windows` ジョブが実モデルのテストの全 Skip を見逃さないために使う）
 │   ├── stress-test.sh      # テストのフレークを追うために Go のテストを `-race` で繰り返す（`make stress`）。同時に走らせるプロセスは既定 2・上限 4（超える指定は断る）で、`-c` で CPU を絞って負荷を再現する。共有のマシンに負荷をかけないため
 │   ├── third-party-notices.sh # `THIRD_PARTY_NOTICES.md` を再生成する（Windows 版 exe にリンクされる Go モジュールと本番フロントエンドバンドルの npm パッケージ、同梱する ONNX Runtime のライセンスファイルを写す。`go`・`node` と `npm ci --prefix static` が要り、ライセンスファイルが無い依存があると失敗する）
-│   └── *_test.sh           # スクリプトのテスト（`linterly-baseline_test.sh`: 行数基準値、`slow-tests_test.sh`: 遅いテストの一覧、`stress-test_test.sh`: 繰り返し実行の上限と既定、`complexity-ratchet_test.sh`: `.golangci.yml` の複雑度の許可リスト、`makefile_test.sh`: `Makefile` のターゲット、`third-party-notices_test.sh`: 表記ファイルの生成、`fetch-onnxruntime_test.sh`: ONNX Runtime の取得の検証。`make test-scripts`）
+│   └── *_test.sh           # スクリプトのテスト（`linterly-baseline_test.sh`: 行数基準値、`slow-tests_test.sh`: 遅いテストの一覧、`stress-test_test.sh`: 繰り返し実行の上限と既定、`complexity-ratchet_test.sh`: `.golangci.yml` の複雑度の許可リスト、`makefile_test.sh`: `Makefile` のターゲット、`third-party-notices_test.sh`: 表記ファイルの生成、`fetch-onnxruntime_test.sh`: ONNX Runtime の取得の検証、`fetch-onnxruntime/extract_test.sh`: 取得の成功経路と zip の展開手段のフォールバック。`make test-scripts`）
 ├── third_party/            # 上流のコードをそのまま写した外部コード（`onnxruntime-purego/`: Windows 対応の PR #17 を足した ONNX Runtime のバインディング。由来は `VENDORED.md`。`go.mod` の `replace` が指す。Linterly の行数チェックから除外。Issue #949）
 ├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`、`onnxruntime/`: 同梱する ONNX Runtime の `LICENSE` と `ThirdPartyNotices.txt` の写し。§11）
 ├── backend/

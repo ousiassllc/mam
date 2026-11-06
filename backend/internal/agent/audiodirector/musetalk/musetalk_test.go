@@ -279,3 +279,21 @@ func TestPrepare_StartsTheRuntimeAndReturnsItsRefusalAsItIs(t *testing.T) {
 	assert.Same(t, refusal, unavailable(t, err))
 	assert.Equal(t, 1, rt.prepared)
 }
+
+// The ffmpeg the runtime is told is read at every clip when the Config gives a function (#1047): ffmpeg can be set up while mam runs.
+func TestSync_TellsTheRuntimeTheFFmpegOfThisClip(t *testing.T) {
+	rt := &fakeRuntime{answer: writes([]byte("x"))}
+	path := ""
+	c := musetalk.New(rt, musetalk.Config{FFmpeg: func() string { return path }, WorkDir: t.TempDir()})
+
+	_, err := c.Sync(context.Background(), request())
+	require.Error(t, err, "no ffmpeg yet")
+	assert.Empty(t, rt.calls)
+
+	path = ffmpeg
+	_, err = c.Sync(context.Background(), request())
+
+	require.NoError(t, err)
+	require.Len(t, rt.calls, 1)
+	assert.Equal(t, ffmpeg, rt.calls[0].req.FFmpegPath)
+}

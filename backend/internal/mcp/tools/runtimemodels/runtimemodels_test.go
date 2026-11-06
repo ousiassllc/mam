@@ -111,3 +111,32 @@ func TestRuntimeModels_UnavailableWithoutTheService(t *testing.T) {
 	assert.Contains(t, env.CallError("list_local_runtime_models", map[string]any{"runtime_id": "irodori-tts"}), "unavailable")
 	assert.Contains(t, env.CallError("select_local_runtime_model", map[string]any{"runtime_id": "irodori-tts", "model_id": "v4.1-small"}), "unavailable")
 }
+
+// 「音声」「日本語」で絞る（Issue #1015・#1011）: the models are narrowed by the conditions every model picker has, across the runtimes when none is named.
+func TestRuntimeModels_ListFiltersByKindLanguageAndTheOtherConditions(t *testing.T) {
+	env, _, _ := newRuntimeEnv(t, choicetest.WithChoices())
+	ids := func(args map[string]any) []string {
+		var out runtimemodels.ListOutput
+		env.CallOK("list_local_runtime_models", args, &out)
+		got := []string{}
+		for _, m := range out.Models {
+			assert.Equal(t, lrtest.ID, m.RuntimeID, "each model says the runtime it belongs to")
+			got = append(got, m.ID)
+		}
+		return got
+	}
+
+	assert.Equal(t, []string{choicetest.SmallChoice, choicetest.LargeChoice}, ids(map[string]any{"kinds": []string{"audio"}, "languages": []string{"ja"}}), "no runtime named: every runtime's models")
+	assert.Equal(t, []string{choicetest.SmallChoice, choicetest.LargeChoice}, ids(map[string]any{"runtime_id": lrtest.ID, "languages": []string{"ja"}}))
+	assert.Empty(t, ids(map[string]any{"languages": []string{"en"}}))
+	assert.Empty(t, ids(map[string]any{"kinds": []string{"llm"}}), "a voice is not a language model")
+	assert.Equal(t, []string{choicetest.LargeChoice}, ids(map[string]any{"runtime_id": lrtest.ID, "q": "large"}))
+	assert.Equal(t, []string{choicetest.SmallChoice}, ids(map[string]any{"runtime_id": lrtest.ID, "vram_fit": true, "q": "small"}))
+}
+
+func TestRuntimeModels_ListRefusesAConditionThatIsNotAWord(t *testing.T) {
+	env, _, _ := newRuntimeEnv(t, choicetest.WithChoices())
+
+	assert.Contains(t, env.CallError("list_local_runtime_models", map[string]any{"languages": []string{"japanese"}}), "languages")
+	assert.Contains(t, env.CallError("list_local_runtime_models", map[string]any{"kinds": []string{"voice"}}), "kinds")
+}

@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -47,13 +48,13 @@ func Busy(services *service.Services, jobs *repository.JobRepository, ffmpegDL *
 		if installs > 0 {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: fmt.Sprintf("モデル・エンジン・ランタイムの導入 %d 件", installs)})
 		}
-		if ffmpegDL.Status().Install.State == ffmpegdl.InstallRunning {
+		if ffmpegDL.Status().Install.State == exeinstall.Running {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "ffmpeg のダウンロード"})
 		}
 		if services.Gentest != nil && services.Gentest.Poses != nil && services.Gentest.Poses.Progress().Running {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "ポーズ集の導入"})
 		}
-		if codexSvc != nil && codexSvc.InstallStatus().State == codex.InstallRunning {
+		if codexSvc != nil && codexSvc.InstallStatus().State == exeinstall.Running {
 			busy = append(busy, apprestart.Busy{Kind: apprestart.KindDownload, Message: "Codex エンジンの導入"})
 		}
 		if services.Editor.Busy() {
@@ -90,11 +91,6 @@ func LLMApplier(client *llm.Client, pending *restartpending.Registry) func(llm.C
 		pending.Set("llm", reasons)
 		return restart
 	}
-}
-
-// FFmpegPaths is what is told when the paths of ffmpeg and ffprobe were saved: the tools found at startup keep the ffmpeg they found.
-func FFmpegPaths(pending *restartpending.Registry) func() {
-	return func() { pending.Set("ffmpeg", []string{"ffmpeg・ffprobe のパス（起動時に探すため）"}) }
 }
 
 // New is the restart service of the app (spec/architecture/restart.md) with the registry of the settings that wait for a restart:

@@ -2,8 +2,6 @@ package runtimes
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/failbox"
 	card "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/runtimecard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/weightlist"
 )
@@ -89,7 +88,8 @@ func runtimeCard(ctx context.Context, svc *localruntime.Service, v localruntime.
 		if st, err := svc.JobStatus(ctx, job); err == nil && (st.State == domain.JobQueued || st.State == domain.JobRunning) {
 			r.Install, r.Job = runtimeProgress(ctx, svc, job), job // the handler is done, the queue has not recorded the end yet
 		} else {
-			r.Notice, r.Error = runtimeEnded(ctx, svc, job, v.Name)
+			notice, f := runtimeEnded(ctx, svc, job, v.Name)
+			jobview.Settle(&r.Message, notice, f)
 		}
 	}
 	return r
@@ -145,21 +145,12 @@ func runtimeProgress(ctx context.Context, svc *localruntime.Service, jobID strin
 	return p
 }
 
-// runtimeEnded is how an install job ended, as a notice or an error line; both are empty while it runs (or when it is unknown).
-func runtimeEnded(ctx context.Context, svc *localruntime.Service, jobID, name string) (notice, failure string) {
+// runtimeEnded is how an install job ended, as a notice or a failure (with the common error the job kept, #1010); both are empty while it
+// runs (or when it is unknown).
+func runtimeEnded(ctx context.Context, svc *localruntime.Service, jobID, name string) (notice string, failure failbox.Item) {
 	st, err := svc.JobStatus(ctx, jobID)
 	if err != nil {
-		return "", ""
+		return "", failbox.Item{}
 	}
-	switch st.State {
-	case domain.JobSucceeded:
-		return name + " を導入しました", ""
-	case domain.JobFailed:
-		reason := st.Error
-		if reason == "" {
-			reason = "原因は mam のログを確認してください"
-		}
-		return "", fmt.Sprintf("%s の導入に失敗しました: %s", name, strings.TrimSpace(reason))
-	}
-	return "", ""
+	return jobview.Ending(st.State, st.Error, st.Failure, name+" を導入しました", name+" の導入に失敗しました")
 }

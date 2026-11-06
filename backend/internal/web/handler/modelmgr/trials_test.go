@@ -2,6 +2,7 @@ package modelmgr_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"html"
 	"mime/multipart"
 	"net/http"
@@ -17,6 +18,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyuitest"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -148,6 +151,26 @@ func TestTrial_RefusalsAreCheckedAgainstTheModelBeforeAnythingIsQueued(t *testin
 	hist, err := s.rig.Gentest.History(t.Context(), history.Filter{})
 	require.NoError(t, err)
 	assert.Empty(t, hist, "nothing started")
+}
+
+// #1068: a trial sends the prompt as typed. The generation test and the MCP tools translate by default (gentest.DefaultTranslate), but a trial is the check that a model
+// works on one prompt, costs nothing (no LLM call in a screen that says "課金は無く"), and does not depend on an LLM assignment, so it has no translation switch.
+func TestTrial_SendsThePromptAsTypedAndNeverTranslatesIt(t *testing.T) {
+	s := newScreen(t)
+	f := s.externalBox()
+	llm := &gentesttest.FakeLLM{}
+	s.rig.Gentest.Translator = prompttranslate.New(llm, gentesttest.Target)
+	assert.NotContains(t, s.get(paths.ModelManagerPart("trials", "form")+"?model_id=comfyui:box/t2i").Body.String(), `name="translate"`, "the form has no switch")
+
+	const prompt = "赤い狐が雪の森を歩く"
+	rec := s.multipartTrial(map[string]string{"model_id": "comfyui:box/t2i", "prompt": prompt, "translate": "1"}, nil)
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	assert.Contains(t, s.settled(), `data-status="succeeded"`)
+
+	assert.Empty(t, llm.Asked(), "no LLM was asked to translate")
+	graph, err := json.Marshal(f.Graph())
+	require.NoError(t, err)
+	assert.Contains(t, string(graph), `"`+prompt+`"`, "the model got the text that was typed")
 }
 
 func TestTrial_AFailedTrialShowsItsReason(t *testing.T) {

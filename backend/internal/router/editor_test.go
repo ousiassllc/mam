@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -126,10 +127,18 @@ func (e *editorApp) setState(state string) {
 	e.execSQL(`UPDATE project SET state = ? WHERE id = ?`, state, e.project)
 }
 
+// waitEditingIdle waits until no editing stage, AUTO chain or ResumeEditing run is going on. A Take selection wakes
+// the worker before its request returns, so what the selection started has settled once this returns.
+func (e *editorApp) waitEditingIdle() {
+	e.t.Helper()
+	require.Eventually(e.t, func() bool { return !e.svc.Editor.Busy() }, 30*time.Second, 5*time.Millisecond, "the editing stage, the AUTO chain and the worker are idle")
+}
+
 func (e *editorApp) state() string { return e.stateOn(e.t) }
 
 // stateOn, timelineFor and judgeOn fail c, not the test: an Eventually condition runs in its own goroutine (see countOn).
-func (e *editorApp) stateOn(c require.TestingT) string {
+func (e *editorApp) stateOn(c testenv.TestingT) string {
+	c.Helper()
 	var s string
 	require.NoError(c, e.db.Reader().QueryRowContext(context.Background(), `SELECT state FROM project WHERE id = ?`, e.project).Scan(&s))
 	return s
@@ -162,7 +171,8 @@ type timelineBody struct {
 
 func (e *editorApp) timeline() timelineBody { return e.timelineFor(e.t) }
 
-func (e *editorApp) timelineFor(c require.TestingT) timelineBody {
+func (e *editorApp) timelineFor(c testenv.TestingT) timelineBody {
+	c.Helper()
 	rec := e.get("/api/v1/projects/"+e.project+"/edit-timeline", false)
 	require.Equal(c, http.StatusOK, rec.Code, rec.Body.String())
 	var b timelineBody
@@ -173,7 +183,8 @@ func (e *editorApp) timelineFor(c require.TestingT) timelineBody {
 // judge is the newest Editor Judge result of the current timeline version (nil: none yet). The
 // result is not part of the timeline API: editorpanel.Actions (Templ) draws it.
 func (e *editorApp) judge() *domain.EditorJudgeResult { return e.judgeOn(e.t) }
-func (e *editorApp) judgeOn(c require.TestingT) *domain.EditorJudgeResult {
+func (e *editorApp) judgeOn(c testenv.TestingT) *domain.EditorJudgeResult {
+	c.Helper()
 	res, err := repository.NewEditorRepository(e.db).LatestEditorJudge(context.Background(), e.timelineFor(c).ID)
 	if errors.Is(err, repository.ErrNotFound) {
 		return nil

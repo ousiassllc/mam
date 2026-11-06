@@ -20,6 +20,8 @@ type FakeLLM struct {
 	Say func(text string) string
 	// Err, when set, is the failure of every call.
 	Err error
+	// OnCall, when set, runs in every call before it answers (a test cancels the request there).
+	OnCall func()
 }
 
 // Asked is one call of the FakeLLM.
@@ -38,8 +40,11 @@ func (f *FakeLLM) Complete(_ context.Context, agent llm.Agent, req llm.Request) 
 	_ = json.Unmarshal([]byte(req.User), &in)
 	f.mu.Lock()
 	f.asked = append(f.asked, Asked{Agent: agent, System: req.System, Texts: slices.Clone(in.Texts)})
-	say, err := f.Say, f.Err
+	say, err, onCall := f.Say, f.Err, f.OnCall
 	f.mu.Unlock()
+	if onCall != nil {
+		onCall()
+	}
 	if err != nil {
 		return llm.Response{}, err
 	}
@@ -67,4 +72,9 @@ var Target = llm.Target{Provider: llm.ProviderAnthropic, Model: "fake-llm"}
 // WithTranslator gives the Service the translation through f.
 func WithTranslator(f *FakeLLM) Option {
 	return func(_ *Rig, d *gentest.Deps) { d.Translator = prompttranslate.New(f, Target) }
+}
+
+// WithTranslatorAt is WithTranslator for a route whose first target is target (the estimate prices the call at its price per token).
+func WithTranslatorAt(f *FakeLLM, target llm.Target) Option {
+	return func(_ *Rig, d *gentest.Deps) { d.Translator = prompttranslate.New(f, target) }
 }

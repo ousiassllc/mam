@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/appserver"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/codextest"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/protocol"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
 
@@ -115,7 +116,7 @@ func TestTwoInstallsCannotRunAtOnceAndTheEngineIsNotStartedWhileOneRuns(t *testi
 	if started, err := ir.svc.StartInstall(); started || err != nil {
 		t.Errorf("a second install during the first: started = %v, err = %v", started, err)
 	}
-	if st := ir.svc.InstallStatus(); st.State != codex.InstallRunning {
+	if st := ir.svc.InstallStatus(); st.State != exeinstall.Running {
 		t.Errorf("install = %+v", st)
 	}
 	if _, err := ir.svc.Refresh(context.Background()); !errors.Is(err, codex.ErrEngineInstalling) {
@@ -130,7 +131,7 @@ func TestTwoInstallsCannotRunAtOnceAndTheEngineIsNotStartedWhileOneRuns(t *testi
 	}
 	ir.svc.WaitInstall()
 	st := ir.svc.Status()
-	if st.Install.State != codex.InstallSucceeded || st.Engine != codex.EngineReady || st.EngineError != "" {
+	if st.Install.State != exeinstall.Succeeded || st.Engine != codex.EngineReady || st.EngineError != "" {
 		t.Fatalf("status = %+v (a start refused during the install must leave no failure behind)", st)
 	}
 }
@@ -145,7 +146,7 @@ func TestARefusedInstallGivesTheStateBackAndAllowsANewOne(t *testing.T) {
 	if _, err := ir.svc.StartInstall(); !errors.As(err, &nospace) {
 		t.Fatalf("err = %v", err)
 	}
-	if st := ir.svc.Status(); st.Install.State == codex.InstallRunning || st.Engine != codex.EngineNotInstalled {
+	if st := ir.svc.Status(); st.Install.State == exeinstall.Running || st.Engine != codex.EngineNotInstalled {
 		t.Fatalf("a refused install must not look running: %+v", st)
 	}
 	ir.svc.WaitInstall() // nothing is left to wait for

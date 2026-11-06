@@ -78,15 +78,37 @@ func TestHistoryStopsPollingWhenTheBatchWasCancelled(t *testing.T) {
 	assert.NotContains(t, body, `data-testid="gt-filter"`)
 }
 
-// The refresh button of a page of the history reads that page again, not the first one.
-func TestHistoryRefreshKeepsTheOffsetOfTheNextPage(t *testing.T) {
+// The refresh button of a page of the history reads that page again, not the first one (#1079).
+func TestHistoryRefreshKeepsThePageThatIsShown(t *testing.T) {
 	s := newScreen(t)
 	for range 2 {
 		s.settled(s.start(fluxForm("20")))
 	}
-	body := s.get(paths.GenerationTestHistory() + "?model=flux-2&offset=24")
+	body := s.get(paths.GenerationTestHistory() + "?model=flux-2&page=2")
 	button := regexp.MustCompile(`<button[^>]*hx-get="([^"]+)"[^>]*data-testid="refresh"`).FindStringSubmatch(body)
 	require.Len(t, button, 2)
-	assert.Equal(t, "/generation-test/history?live=1&amp;model=flux-2&amp;offset=24", button[1])
+	assert.Equal(t, "/generation-test/history?live=1&amp;model=flux-2&amp;page=2", button[1])
 	assert.Equal(t, 16, strings.Count(s.get(strings.ReplaceAll(button[1], "&amp;", "&")), `data-testid="gt-history-item"`))
+}
+
+// While a result of the second page runs, the polling asks for the second page again (it does not fall back to the first), and a page past the last
+// one that the polling is on (the results were deleted) comes back as the last page, with its own address to ask for.
+func TestHistoryPollingOfAPageAsksForThatPage(t *testing.T) {
+	s := newScreen(t)
+	for range 2 {
+		s.settled(s.start(fluxForm("20")))
+	}
+	release := s.rig.Fake.Hold(domain.ModelFlux2)
+	s.start(fluxForm("1")) // the newest result runs: the first page has it, the second page has the older ones
+	<-s.rig.Fake.Started()
+	defer func() { release <- struct{}{} }()
+
+	first := s.get(paths.GenerationTestHistory() + "?model=flux-2")
+	assert.Contains(t, first, `hx-trigger="every 2s"`, "a running result is on the first page")
+	assert.Contains(t, first, `hx-get="/generation-test/history?live=1&amp;model=flux-2"`)
+	second := s.get(paths.GenerationTestHistory() + "?model=flux-2&page=2")
+	assert.NotContains(t, second, `hx-trigger="every 2s"`, "no result of the second page runs: no polling there")
+
+	beyond := s.get(paths.GenerationTestHistory() + "?model=flux-2&page=99&live=1")
+	assert.Contains(t, beyond, `hx-get="/generation-test/history?live=1&amp;model=flux-2&amp;page=2"`, "the refresh reads the last page now")
 }

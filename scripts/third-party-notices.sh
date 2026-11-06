@@ -63,10 +63,13 @@ record 1 "Go standard library" "" "$goroot/LICENSE" "$goroot"
 # internal/webview2 and internal/go-common-file-dialog) has its own LICENSE next to the code, so the
 # directories between the package and the module root count as well.
 go_packages="$(GOOS=windows CGO_ENABLED=0 go list -deps -tags production \
-  -f '{{if .Module}}{{if not .Module.Main}}{{.Module.Path}}|{{.Module.Version}}|{{.Module.Dir}}|{{.Dir}}{{end}}{{end}}' \
+  -f '{{if .Module}}{{if not .Module.Main}}{{.Module.Path}}|{{.Module.Version}}|{{.Module.Dir}}|{{.Dir}}|{{if .Module.Replace}}{{.Module.Replace.Path}}{{end}}{{end}}{{end}}' \
   ./backend/cmd/wails | LC_ALL=C sort -u)"
 [[ -n "$go_packages" ]] || die "go list found no module"
-while IFS='|' read -r path version root pkgdir; do
+while IFS='|' read -r path version root pkgdir replaced; do
+  # A module that go.mod replaces (third_party/onnxruntime-purego) is shown with its replacement: the license files are
+  # the copy's, so the version go.mod requires alone would name code that is not in the binary.
+  [[ -z "$replaced" ]] || version="$version（$replaced に置き換え）"
   [[ -n "$(license_files_in "$root")" ]] || die "no license file in $path@$version ($root)"
   dir="$pkgdir"
   while :; do

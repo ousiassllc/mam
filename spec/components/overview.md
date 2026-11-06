@@ -84,6 +84,8 @@ flowchart TB
 
 `spec/architecture/overview.md` §8 の3コンポーネントと、ノード画面の `<mam-comfy-frame>`（§4.4）について、HATEOAS原則（サーバーがURL・権限をHTML属性で注入、クライアントはURLをハードコードしない）に従ったインターフェースを定義する。
 
+`<mam-timeline-editor>`（§4.2）・`<mam-take-comparator>`（§4.3）の見た目・状態表示・操作・文言の規定（案件ガイド。共通ガイドの P3 の独自ウィジェット）と、`<mam-mask-paint>`（[gentest-screen.md](gentest-screen.md)）の同じ規定は、[lit-widgets-guide.md](lit-widgets-guide.md) に分けて書いた。
+
 ### 4.1 `<mam-video-player>`
 
 ```typescript
@@ -327,3 +329,4 @@ export class MamComfyFrame extends LitElement {
 | 1.101 | 2026-11-03 | §3 の molecules に `character_create`（登場人物を手で作るフォーム）と `progress_card` の「続けるには」の案内を足した | Issue #1001 |
 | 1.102 | 2026-11-03 | §3 の molecules `character_create` の Series の画像の欄（Episode ごとの選択肢）と、`progress_card` の下書きの案内を足した。World State の Character の名前の横に、下書きの「下書き」バッジ（`data-testid="character-draft"`）を出す | Issue #1022 |
 | 1.103 | 2026-11-03 | `voice_reference_form` に、声のコピーには声の持ち主本人の同意を得た音声だけを使う注記（`voice-ref-consent-notice`）を足した | Issue #1015 |
+| 1.104 | 2026-11-06 | §4 に、`<mam-timeline-editor>`・`<mam-take-comparator>`・`<mam-mask-paint>` の案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) への案内を足した | Issues #1043・#1044・#1045 |

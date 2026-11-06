@@ -59,6 +59,9 @@ type Assignment struct {
 	Optional bool `json:"optional,omitempty"`
 	// Ratio (ParamSteps only, 0 < Ratio < 1) puts round(steps * Ratio) there instead of the steps: where a two-stage sampler (Wan 2.2) hands over.
 	Ratio float64 `json:"ratio,omitempty"`
+	// Offset (ParamFrames only) is added to the frame count: -2 for the gray frames between the first and the last frame of a clip (`frames-2`).
+	// 0 is the frame count itself. A value that would be below 1 is put as 1.
+	Offset int `json:"offset,omitempty"`
 }
 
 // Workflow is a ComfyUI workflow in API format with the table that tells mam where its values go.
@@ -297,6 +300,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 		if a.Optional && a.Param != ParamReferenceImage {
 			errs = append(errs, fmt.Errorf("%s: optional applies to reference_image only", at))
 		}
+		errs = append(errs, validateFramesOffset(at, a)...)
 	}
 	if !w.Has(ParamPrompt) && w.Upscale == nil && w.VideoEnhance == nil { // an upscale or video enhancement workflow without sampling has no prompt (validateUpscale, validateVideoEnhance)
 		errs = append(errs, fmt.Errorf("%s: no assignment of the prompt", where))

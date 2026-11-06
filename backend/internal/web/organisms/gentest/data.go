@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagination"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
@@ -213,7 +214,9 @@ type Col struct {
 type Row struct {
 	Model  string
 	Answer commercial.View
-	Cells  [][]resulttile.Card
+	// Face is the face similarity of the results of this model read together ("" when the batch had no reference of the role "face", Issue #998).
+	Face  string
+	Cells [][]resulttile.Card
 }
 
 // Batch is the progress and the comparison grid of a batch.
@@ -250,8 +253,8 @@ type History struct {
 	Commercial commercial.ChoiceData
 	Cards      []resulttile.Card
 	Spend      string
-	// Next is the link to the next page ("" on the last).
-	Next string
+	// Pager is the page navigation under the results (nothing is drawn for a single page).
+	Pager pagination.Props
 	// Refresh is the link to the list as it is now (the page, the filter) with "live=1": the part that the refresh button and the
 	// polling ask for. Active says a result of the page is waiting or running, so the part asks for itself again every 2 s.
 	// UpdatedAt is the time of day this was read ("15:04:05").

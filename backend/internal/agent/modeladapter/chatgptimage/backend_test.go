@@ -25,8 +25,9 @@ import (
 const token = "SECRET-CODEX-ACCESS"
 
 type source struct {
-	err   error
-	calls atomic.Int32
+	err     error
+	account string // the account id of the credentials; "" is acct-7
+	calls   atomic.Int32
 }
 
 func (s *source) ImageCredentials(context.Context) (chatgpt.Credentials, error) {
@@ -34,7 +35,11 @@ func (s *source) ImageCredentials(context.Context) (chatgpt.Credentials, error) 
 	if s.err != nil {
 		return chatgpt.Credentials{}, s.err
 	}
-	return chatgpt.Credentials{AccessToken: token, AccountID: "acct-7"}, nil
+	account := s.account
+	if account == "" {
+		account = "acct-7"
+	}
+	return chatgpt.Credentials{AccessToken: token, AccountID: account}, nil
 }
 
 type codex struct {
@@ -140,7 +145,7 @@ func TestGenerateImage_CallsTheCodexResponsesEndpointWithTheImageTool(t *testing
 
 	assert.Equal(t, true, c.body["stream"])
 	assert.Equal(t, false, c.body["store"])
-	assert.Equal(t, chatgptimage.FallbackDrivers[0], c.body["model"], "no model list: the first fallback driver hosts the call")
+	assert.Equal(t, chatgptimage.FallbackDrivers()[0], c.body["model"], "no model list: the first fallback driver hosts the call")
 	assert.NotEmpty(t, c.body["instructions"], "the endpoint needs instructions to call the tool")
 	assert.Equal(t, map[string]any{"type": "image_generation"}, c.body["tool_choice"])
 	tool := c.body["tools"].([]any)[0].(map[string]any)

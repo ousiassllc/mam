@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
@@ -105,6 +106,28 @@ func TestList_AFailedJobShowsItsReasonAndOffersNoAction(t *testing.T) {
 	for _, attr := range []string{"hx-post", "hx-put", "hx-delete"} {
 		assert.NotContains(t, body, attr)
 	}
+}
+
+// A job that kept its failure as the common error (#1010) shows the one error box of every screen: the cause and the remedy first, the
+// screens that help as links, the detail folded with the copy button. The box is kept by the polling (hx-preserve), so that a detail
+// that was opened stays open.
+func TestList_AFailedJobWithACommonErrorShowsTheErrorBox(t *testing.T) {
+	s := screentest.New(t)
+	job, err := s.Rig.Table.Create(t.Context(), domain.JobModelInstall, []byte(`{"target":"engine"}`))
+	require.NoError(t, err)
+	e := apperr.New(apperr.CodeAuthFailed).WithDetail("HTTP 401: invalid token")
+	require.NoError(t, s.Rig.Table.MarkFailedWithInfo(t.Context(), job.ID, "取得元が認証を求めています", e.Marshal()))
+
+	body := s.Get(paths.JobsList()).Body.String()
+
+	assert.Contains(t, body, `data-testid="error-box" data-error-code="auth_failed"`)
+	assert.Contains(t, body, `data-testid="error-cause"`)
+	assert.Contains(t, body, `data-testid="error-remedy"`)
+	assert.Contains(t, body, `href="/settings/api-keys"`)
+	assert.Contains(t, body, "HTTP 401: invalid token")
+	assert.Contains(t, body, `data-testid="error-copy"`)
+	assert.Contains(t, body, `id="jobs-failure-`+job.ID+`" hx-preserve="true"`)
+	assert.NotContains(t, body, `data-testid="jobs-failure">`, "the box replaces the line")
 }
 
 // A planning job that stopped for want of an LLM key says, under its reason, what to do to go on (the reason itself is not rewritten).

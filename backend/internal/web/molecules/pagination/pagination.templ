@@ -1,0 +1,70 @@
+package pagination
+
+const (
+	linkClass    = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
+	currentClass = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-accent px-2 py-1 text-sm font-semibold text-bone"
+	offClass     = "inline-flex min-h-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-mute opacity-40"
+)
+
+// Nav is the page navigation: a <nav> named "ページ移動" with the line of what is shown and a list of links (the first, previous, the pages around the
+// current one, next, last). The current page is a mark with aria-current="page", not a link; "前へ" on the first page and "次へ" on the last are
+// dimmed and not links. A link is a plain href (it works without a script) that htmx reads into Target and pushes into the browser history, so back,
+// forward, a bookmark and a reload come to the same page. A list of one page has no navigation.
+templ Nav(p Props) {
+	if p.Last > 1 {
+		<nav aria-label="ページ移動" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2" data-testid={ p.ID }>
+			<p class="text-sm text-mute" data-testid={ p.id("summary") }>{ p.Summary() }</p>
+			<ul class="flex flex-wrap items-center gap-1">
+				<li>
+					@step(p, "最初", "first", 1, p.Current > 1)
+				</li>
+				<li>
+					@step(p, "前へ", "prev", p.Current-1, p.Current > 1)
+				</li>
+				for _, n := range Window(p.Current, p.Last) {
+					if n == Gap {
+						<li class="px-1 text-mute" aria-hidden="true">…</li>
+					} else if n == p.Current {
+						<li><span class={ currentClass } aria-current="page" data-testid={ p.id("current") }>{ pageText(n) }</span></li>
+					} else {
+						<li>
+							<a
+								id={ p.pageID(n) }
+								href={ templ.SafeURL(p.Href(n)) }
+								class={ linkClass }
+								aria-label={ pageLabel(n) }
+								hx-get={ p.Href(n) }
+								hx-target={ "#" + p.Target }
+								hx-swap={ swap(p) }
+								hx-push-url="true"
+							>{ pageText(n) }</a>
+						</li>
+					}
+				}
+				<li>
+					@step(p, "次へ", "next", p.Current+1, p.Current < p.Last)
+				</li>
+				<li>
+					@step(p, "最後", "last", p.Last, p.Current < p.Last)
+				</li>
+			</ul>
+		</nav>
+	}
+}
+
+// step is a link to the page, or, when there is none to go to, the same words dimmed.
+templ step(p Props, label, name string, page int, enabled bool) {
+	if enabled {
+		<a
+			id={ p.id(name) }
+			href={ templ.SafeURL(p.Href(page)) }
+			class={ linkClass }
+			hx-get={ p.Href(page) }
+			hx-target={ "#" + p.Target }
+			hx-swap={ swap(p) }
+			hx-push-url="true"
+		>{ label }</a>
+	} else {
+		<span class={ offClass } aria-disabled="true">{ label }</span>
+	}
+}

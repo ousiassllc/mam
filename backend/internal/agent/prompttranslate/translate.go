@@ -1,7 +1,8 @@
 // Package prompttranslate turns the prompts of a generation test into English with the Reasoning LLM, so that the
 // generation models get the language they are trained on (spec/requirements/non-functional.md "モデル向けプロンプトは英語を基本とする"; spec/architecture/gentest/gentest.md §3.1).
 // It reasons through the route of the Prompt Planner (the "LLM の割り当て" of the settings screen), which already writes the
-// model-facing prompts of a Project in English: the assignment screen has no role of its own for it.
+// model-facing prompts of a Project in English: the assignment screen has no role of its own for it. The call is priced per token
+// at the price of the target of that route (llm.PriceOf, Plan), so the estimate of a batch has the translation in its total (#1069).
 //
 // A text that has no letter outside the Latin script counts as English and is never sent to the LLM (Needs). Texts that need
 // a translation go in one call, and every answer is checked: a text that came back empty is not a translation, and that is
@@ -27,8 +28,10 @@ const Agent = llm.AgentPromptPlanner
 var ErrNotTranslated = errors.New("prompttranslate: the answer is not a translation of every text")
 
 // Needs reports whether a text has to be translated: it has a letter of a script other than Latin (Japanese, Chinese,
-// Korean, Cyrillic, Greek, ...). Letters of the Common script (µ U+00B5, ʼ U+02BC, ...) belong to no script, so they are
-// English enough, like accented Latin letters, fullwidth Latin letters, digits, punctuation and emoji.
+// Korean, Cyrillic, Greek, ...). Letters of the Common script (µ U+00B5, ʼ U+02BC, the prolonged sound mark ー U+30FC, ...)
+// belong to no script, so they are English enough, like accented Latin letters, fullwidth Latin letters, digits, punctuation and
+// emoji. A text made of nothing but such letters ("ー", "ーーー") is therefore not translated, while one with a kana or a kanji
+// next to it ("コーヒー") is. A Greek letter counts (50Ω resistor is asked), and an answer that leaves such a text as it is is no failure.
 func Needs(text string) bool {
 	for _, r := range text {
 		if unicode.IsLetter(r) && !unicode.Is(unicode.Latin, r) && !unicode.Is(unicode.Common, r) {

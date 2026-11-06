@@ -5,7 +5,7 @@
  "tier": "standard",
  "content_rating": "general",
  "traits": {"params_b": 5, "params_label": "5B", "uncensored": false, "speed": "standard"},
- "description": "wan22-ti2v-5b の拡散モデルを fp8（e4m3fn のスケール付き）にした軽い版。テキストからも先頭フレーム 1 枚からも動画を作れる（拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 13.4 GB。fp16 版は約 18.1 GB）。拡散モデルの重みが約 10.0 GB から約 5.3 GB になるので、VRAM 16 GB の PC で fp16 版より余裕を持って載り、ダウンロードも小さい。720p・24fps。fp8 のファイルは Kijai（コミュニティ）が Wan-AI の Wan2.2-TI2V-5B を変換して公開しているもので、ComfyUI 標準の UNETLoader（weight_dtype は default）がそのまま読む形式。画質が fp16 版からどれだけ落ちるかと、生成の時間・VRAM は mam では測っていない。生成テストのモデルは 2 つで、wan22-ti2v-5b-fp8（テキストから）と wan22-ti2v-5b-fp8-i2v（先頭フレームから）。テキストエンコーダーと VAE は wan22-ti2v-5b と同じファイルで共有する。macOS（Apple Silicon）は ComfyUI の MPS が fp8 を扱えない既知の問題があり、Windows のみの対応。",
+ "description": "【小ティア・非検閲ではない標準モデル】wan22-ti2v-5b の拡散モデルを fp8（e4m3fn のスケール付き）にした軽い版。テキストからも先頭フレーム 1 枚からも動画を作れる（拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 13.4 GB。fp16 版は約 18.1 GB）。拡散モデルの重みが約 10.0 GB から約 5.3 GB になるので、VRAM 16 GB の PC で fp16 版より余裕を持って載り、ダウンロードも小さい。720p・24fps・音声なし。得意: 5B の中でいちばん軽い。注意: fp8 のファイルは Kijai（コミュニティ）が Wan-AI の Wan2.2-TI2V-5B を変換して公開しているもので、ComfyUI 標準の UNETLoader（weight_dtype は default）がそのまま読む形式。画質が fp16 版からどれだけ落ちるかと、生成の時間・VRAM は mam では測っていない。生成テストのモデルは 2 つで、wan22-ti2v-5b-fp8（テキストから）と wan22-ti2v-5b-fp8-i2v（先頭フレームから）。テキストエンコーダーと VAE は wan22-ti2v-5b と同じファイルで共有する。macOS（Apple Silicon）は ComfyUI の MPS が fp8 を扱えない既知の問題があり、Windows のみの対応。ライセンス: Apache-2.0 で商用を含めて自由に使える。",
  "files": [
   {
    "name": "Wan2_2-TI2V-5B_fp8_e4m3fn_scaled_KJ.safetensors",

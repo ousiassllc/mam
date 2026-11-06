@@ -2,6 +2,7 @@ package editorstage_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,9 +31,15 @@ func toAudio(t *testing.T, f *editortest.Fixture) string {
 	id := v.Timeline.ID
 	var ref editorstage.Ref
 	f.CallOK("judge_edit_timeline", map[string]any{"timeline_id": id}, &ref)
-	require.Equal(t, mcpkit.JobSucceeded, f.WaitJob(ref.JobID).State)
+	require.Equal(t, mcpkit.JobSucceeded, waitJob(f, ref.JobID).State)
 	require.Equal(t, "AUDIO", f.State())
 	return id
+}
+
+// waitJob polls get_job until the stage's job is over, so a stage that never ends fails the test after a minute.
+func waitJob(f *editortest.Fixture, id string) mcpkit.JobStatus {
+	f.T.Helper()
+	return f.WaitJob(id, time.Minute, 10*time.Millisecond, "job %s did not end", id)
 }
 
 // getJob asks the job the way an agent does, through the get_job tool.
@@ -53,7 +60,7 @@ func TestEditingStages_FromJudgeToExportReportThroughGetJob(t *testing.T) {
 	f.CallOK("judge_edit_timeline", map[string]any{"timeline_id": timelineID}, &judge)
 	assert.Equal(t, mcpkit.JobQueued, judge.State)
 	assert.True(t, len(judge.JobID) > 0)
-	st := f.WaitJob(judge.JobID)
+	st := waitJob(f, judge.JobID)
 	require.Equal(t, mcpkit.JobSucceeded, st.State, st.Error)
 	assert.Equal(t, "pass", st.Result["verdict"])
 	assert.Equal(t, "AUDIO", st.Result["project_state"])
@@ -62,7 +69,7 @@ func TestEditingStages_FromJudgeToExportReportThroughGetJob(t *testing.T) {
 
 	var audio editorstage.Ref
 	f.CallOK("generate_audio", map[string]any{"project_id": f.ProjectID}, &audio)
-	st = f.WaitJob(audio.JobID)
+	st = waitJob(f, audio.JobID)
 	require.Equal(t, mcpkit.JobSucceeded, st.State, st.Error)
 	assert.EqualValues(t, 2, st.Result["speech_lines"])
 	assert.NotEmpty(t, st.Result["audio_timeline_id"])
@@ -78,7 +85,7 @@ func TestEditingStages_FromJudgeToExportReportThroughGetJob(t *testing.T) {
 
 	var export editorstage.Ref
 	f.CallOK("export_video", map[string]any{"project_id": f.ProjectID, "aspect_ratio": "9:16", "resolution": "720p", "codec": "vp9"}, &export)
-	st = f.WaitJob(export.JobID)
+	st = waitJob(f, export.JobID)
 	require.Equal(t, mcpkit.JobSucceeded, st.State, st.Error)
 	assert.Equal(t, "EXPORTED", st.Result["project_state"])
 	assert.Equal(t, "vp9", st.Result["codec"])
@@ -125,7 +132,7 @@ func TestJudgeEditTimeline_ReEditVerdictLeavesProjectEditingAndNeedsNoShot(t *te
 
 	var ref editorstage.Ref
 	f.CallOK("judge_edit_timeline", map[string]any{"timeline_id": v.Timeline.ID}, &ref)
-	st := f.WaitJob(ref.JobID)
+	st := waitJob(f, ref.JobID)
 	require.Equal(t, mcpkit.JobSucceeded, st.State, st.Error)
 	assert.Equal(t, "re_edit", st.Result["verdict"])
 	assert.Equal(t, "EDITING", f.State())
@@ -166,7 +173,7 @@ func TestExportVideo_ChecksTheOptionsAndThatTheAudioIsOfTheLatestEdit(t *testing
 	f.Exec(`UPDATE project SET state = 'AUDIO' WHERE id = ?`, f.ProjectID)
 	var audio editorstage.Ref
 	f.CallOK("generate_audio", map[string]any{"project_id": f.ProjectID}, &audio)
-	require.Equal(t, mcpkit.JobSucceeded, f.WaitJob(audio.JobID).State)
+	require.Equal(t, mcpkit.JobSucceeded, waitJob(f, audio.JobID).State)
 
 	// The cut is edited again: the audio belongs to the version before.
 	f.CallOK("save_edit_timeline", map[string]any{"timeline_id": timelineID, "clips": []map[string]any{{"shot_id": f.ShotID, "take_id": f.TakeID, "in_point": 0, "out_point": 2}}}, nil)
@@ -185,12 +192,12 @@ func TestEditingStages_TheirJobsAreAnsweredAfterARestart(t *testing.T) {
 	f.CallOK("create_rough_cut", map[string]any{"project_id": f.ProjectID}, &rc)
 	var judge editorstage.Ref
 	f.CallOK("judge_edit_timeline", map[string]any{"timeline_id": rc.Timeline.ID}, &judge)
-	before := f.WaitJob(judge.JobID)
+	before := waitJob(f, judge.JobID)
 	require.Equal(t, mcpkit.JobSucceeded, before.State, before.Error)
 	require.NotNil(t, before.EndedAt)
 	var audio editorstage.Ref
 	f.CallOK("generate_audio", map[string]any{"project_id": f.ProjectID}, &audio)
-	audioBefore := f.WaitJob(audio.JobID)
+	audioBefore := waitJob(f, audio.JobID)
 	require.Equal(t, mcpkit.JobSucceeded, audioBefore.State, audioBefore.Error)
 
 	after := f.Restart(func(env *mcptest.Env, r *mcpkit.Registrar) {

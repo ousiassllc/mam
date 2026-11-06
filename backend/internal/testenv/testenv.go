@@ -11,7 +11,18 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
+
+// TestingT is what a helper takes when an Eventually condition calls it: a *testing.T or the
+// *assert.CollectT of assert.EventuallyWithT. A bare require.TestingT has no Helper, so a failure
+// would be reported at the line inside the helper; with Helper the helper calls t.Helper() and the
+// failure points at the caller.
+type TestingT interface {
+	require.TestingT
+	Helper()
+}
 
 // EndsAfterFirstRequest returns a context that ends grace after requests first counts a request,
 // not grace after the test started: on a busy machine the first request may arrive late, and a

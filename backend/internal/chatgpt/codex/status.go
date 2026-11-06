@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/appserver"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/protocol"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 )
 
 // EngineState is where the engine stands.
@@ -62,7 +63,7 @@ type Status struct {
 	CustomPath string
 	// EngineError says why the engine is Failed (a crash, a start that did not complete).
 	EngineError string
-	Install     InstallStatus
+	Install     exeinstall.Status
 	// CredentialsStore is keyring or auto ("" before the first start).
 	CredentialsStore string
 	Account          AccountView
@@ -103,7 +104,7 @@ func (s *Service) Status() Status {
 	}
 	srv := s.srv.Status()
 	switch {
-	case st.Install.State == InstallRunning:
+	case st.Install.State == exeinstall.Running:
 		st.Engine = EngineInstalling
 	case srv.State == appserver.StateRunning:
 		st.Engine = EngineRunning

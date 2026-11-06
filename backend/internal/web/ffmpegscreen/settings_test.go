@@ -120,7 +120,7 @@ func TestFFmpegSettings_SavedPathsAreShownAndWrittenAndClearedAgain(t *testing.T
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `id="ffmpeg-panel"`, "the answer is the section, to swap in place")
-	assert.Contains(t, rec.Body.String(), "次に mam を起動したときから使われます")
+	assert.Contains(t, rec.Body.String(), "すぐに使われます")
 	assert.Contains(t, rec.Body.String(), `value="`+ffmpeg+`"`)
 	b, err := os.ReadFile(s.file) // #nosec G304 -- a file of the test's temp directory
 	require.NoError(t, err)

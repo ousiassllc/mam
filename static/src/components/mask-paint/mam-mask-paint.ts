@@ -21,8 +21,10 @@ const MAX_SIZE = 128;
  * would answer twice).
  *
  * Memory (#999): the two canvases are the picture's size, or scaled down to `MAX_EDGE` on the longer side (mask-size.ts) when the
- * picture is bigger; the server and ComfyUI take a mask of another size (the nodes stretch it to the picture). `mask-src` is a mask to
- * start from (the black/white picture of an earlier redraw, "この設定でもう一度"): it is drawn on the canvases once the picture is.
+ * picture is bigger; the server and ComfyUI take a mask of another size (the nodes stretch it to the picture). The picture itself is
+ * shown as a copy of the canvases' size (a third canvas under the view), not as an `<img>`: Chrome kept an `<img>` of an 8192 × 8192
+ * picture decoded at its own size (about 256 MiB more for the tab), the copy is 16 MiB. `mask-src` is a mask to start from (the
+ * black/white picture of an earlier redraw, "この設定でもう一度"): it is drawn on the canvases once the picture is.
  *
  * A drag draws a round-capped line from the previous position, so a fast drag leaves no gaps.
  * Keyboard: B brush, E eraser, [ ] thickness, arrows draw a line one thickness long from the cursor (kept inside
@@ -40,6 +42,7 @@ export class MamMaskPaint extends LitElement {
   @state() private size = 16;
 
   private view?: HTMLCanvasElement;
+  private picture?: HTMLCanvasElement;
   private mask?: HTMLCanvasElement;
   private form: HTMLFormElement | null = null;
   private objectURL = '';
@@ -67,7 +70,9 @@ export class MamMaskPaint extends LitElement {
   }
 
   protected override updated(): void {
+    // The view is the first canvas; it is positioned, so it is painted over the picture that follows it.
     this.view = this.renderRoot.querySelector('canvas') ?? undefined;
+    this.picture = this.renderRoot.querySelector<HTMLCanvasElement>('canvas[data-picture]') ?? undefined;
     if (!this.mask) this.mask = document.createElement('canvas');
     if (this.src && this.builtFor !== this.src) this.load(this.src);
     else if (!this.src && this.builtFor !== 'blank') this.resize(this.width, this.height, 'blank');
@@ -88,9 +93,21 @@ export class MamMaskPaint extends LitElement {
       if (this.src !== src) return;
       const size = canvasSize(img.naturalWidth || this.width, img.naturalHeight || this.height);
       this.resize(size.width, size.height, src);
+      this.showPicture(img);
       this.applyMask(src);
     };
     img.src = src;
+  }
+
+  /** Draws the picture, scaled to the canvases' size, on the canvas under the view. */
+  private showPicture(img: HTMLImageElement): void {
+    if (!this.picture || !this.view) return;
+    this.picture.width = this.view.width;
+    this.picture.height = this.view.height;
+    const g = this.picture.getContext('2d');
+    if (!g) return;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, 0, 0, this.picture.width, this.picture.height);
   }
 
   /** Draws the mask to start from on the canvases: white (what the picture says is redrawn) becomes red on the view. */
@@ -281,7 +298,6 @@ export class MamMaskPaint extends LitElement {
           />
         </label>
         <div class="relative inline-block max-w-full">
-          ${this.src ? html`<img src=${this.src} alt="" class="block max-w-full" />` : ''}
           <canvas
             tabindex="0"
             aria-label="描き直す部分。白く塗ったところが描き直されます"
@@ -293,6 +309,7 @@ export class MamMaskPaint extends LitElement {
             @pointercancel=${this.up}
             @keydown=${this.key}
           ></canvas>
+          ${this.src ? html`<canvas data-picture aria-hidden="true" class="block max-w-full"></canvas>` : ''}
         </div>
       </div>
     `;

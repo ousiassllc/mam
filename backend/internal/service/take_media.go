@@ -37,7 +37,7 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 	}
 	a, _ := s.assets.Get(ctx, d.ProjectID, d.AssetID) // a zero Asset when it is missing
 	original := MediaFile{Path: src, MimeType: cmp.Or(a.MimeType, "video/mp4")}
-	if s.tools == nil {
+	if !s.tools.Available() {
 		return original, nil
 	}
 	proxied := d.Proxied()
@@ -76,7 +76,7 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 	if d.FilePath == "" {
 		return MediaFile{}, ErrNotFound
 	}
-	if s.tools == nil {
+	if !s.tools.Available() {
 		return MediaFile{}, ErrUnavailable
 	}
 	src := s.assetPath(d.FilePath)

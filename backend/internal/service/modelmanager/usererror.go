@@ -8,7 +8,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
-	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/instlog"
 )
 
 // userFacing turns a failure into the message the screen shows. A cancelled context stays as it is: the queue
@@ -20,8 +19,8 @@ func userFacing(ctx context.Context, err error) error {
 	var ns *fetch.NoSpaceError
 	var he *fetch.HTTPError
 	switch {
-	case instlog.IsLost(err):
-		return &userError{instlog.ConnectionLostMessage, err}
+	case fetch.IsConnectionLost(err):
+		return &userError{fetch.ConnectionLostMessage, err}
 	case errors.As(err, &ns):
 		return &userError{fmt.Sprintf("空き容量が足りません（必要 %s、空き %s、場所 %s）", fetch.HumanBytes(ns.Need), fetch.HumanBytes(ns.Free), ns.Path), err}
 	case errors.Is(err, fetch.ErrChecksum):

@@ -51,7 +51,6 @@ async function modalAnswerMiddleware(ctx, next) {
 // which the dev server does not serve; the files are what the handlers render (backend/internal/web/scroll_fixture_test.go).
 const modelManagerAnswers = {
   'POST /model-manager/models/model-5/install': ['scroll-mm-install-answer.html', 202],
-  'POST /model-manager/models/model-8/install': ['scroll-mm-consent-answer.html', 202],
   'GET /model-manager/models/model-8/consent': ['scroll-mm-consent.html', 200],
   'GET /model-manager/dialog': ['', 200], // what "閉じる" swaps in: nothing (handlers.CloseDialog)
   'GET /model-manager/models': ['scroll-mm-poll-done.html', 200],
@@ -59,7 +58,30 @@ const modelManagerAnswers = {
   'GET /model-manager/engine': ['mm-engine-done.html', 200],
 };
 
+// A license that is not the one of the catalog is refused (422) into the dialog again, as handlers.InstallModel does
+// (the test sends the stale version "0": scroll.wtest.ts).
+async function readBody(req) {
+  let body = '';
+  for await (const chunk of req) body += chunk;
+  return body;
+}
+
 async function modelManagerAnswerMiddleware(ctx, next) {
+  if (ctx.method === 'POST' && ctx.path === '/model-manager/models/model-8/install') {
+    const form = new URLSearchParams(await readBody(ctx.req));
+    if (form.get('license_version') === '0') {
+      ctx.status = 422;
+      ctx.type = 'text/html';
+      ctx.set('HX-Retarget', '#mm-dialog');
+      ctx.set('HX-Reswap', 'innerHTML');
+      ctx.body = await readFile(new URL('./src/components/testdata/scroll-mm-consent-refused.html', import.meta.url));
+      return;
+    }
+    ctx.status = 202;
+    ctx.type = 'text/html';
+    ctx.body = await readFile(new URL('./src/components/testdata/scroll-mm-consent-answer.html', import.meta.url));
+    return;
+  }
   const answer = modelManagerAnswers[`${ctx.method} ${ctx.path}`];
   if (!answer) return next();
   const [file, status] = answer;
@@ -88,7 +110,14 @@ const gentestResultAnswers = [
   ],
 ];
 
+// The second page of the history (test: gentest-history/history-pages, #1079): the link of a page asks for it by "?page=2".
 async function gentestAnswerMiddleware(ctx, next) {
+  if (ctx.method === 'GET' && ctx.path === '/generation-test/history' && ctx.query.page === '2') {
+    ctx.status = 200;
+    ctx.type = 'text/html';
+    ctx.body = await readFile(new URL('./src/components/testdata/gentest-history-page2.html', import.meta.url));
+    return;
+  }
   const result = gentestResultAnswers.find(([method, path]) => ctx.method === method && path.test(ctx.path));
   const answer = result ? [result[2], 200, result[3]] : gentestAnswers[`${ctx.method} ${ctx.path}`];
   if (!answer) return next();

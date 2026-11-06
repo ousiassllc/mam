@@ -259,9 +259,8 @@ func TestListModelsSaysWhetherEachModelMayBeUsedCommercially(t *testing.T) {
 	assert.Equal(t, modellicense.Yes, by["flux-2"].License.Commercial)
 	assert.Equal(t, modellicense.Conditional, by["luma-ray-3.2"].License.Commercial)
 	assert.NotEmpty(t, by["luma-ray-3.2"].License.Condition)
-	assert.Equal(t, modellicense.Unknown, by["kling-3.0"].License.Commercial)
-	assert.NotEmpty(t, by["kling-3.0"].License.Notice, "an unknown answer says what to do")
-	assert.Equal(t, "https://openai.com/policies/terms-of-use/", by["gpt-image-2"].License.SourceURL)
+	assert.Equal(t, modellicense.Yes, by["kling-3.0"].License.Commercial, "#969: Kling's API terms (§6.4) do not restrict commercial use")
+	assert.Equal(t, "https://openai.com/policies/services-agreement/", by["gpt-image-2"].License.SourceURL, "the API is under the services agreement, not the consumer terms of use")
 }
 
 func TestListModelsNarrowsByTheCommercialArgument(t *testing.T) {
@@ -273,6 +272,7 @@ func TestListModelsNarrowsByTheCommercialArgument(t *testing.T) {
 	require.NotEmpty(t, ok.Models)
 	for _, m := range ok.Models {
 		assert.Equal(t, modellicense.Yes, m.License.Commercial, m.ID)
+		assert.NotEqual(t, "luma-ray-3.2", m.ID, "条件つき is out of 商用OKのみ")
 	}
 
 	var cond mcpgentest.ListModelsOutput
@@ -283,7 +283,7 @@ func TestListModelsNarrowsByTheCommercialArgument(t *testing.T) {
 		assert.NotEqual(t, modellicense.Unknown, m.License.Commercial, m.ID)
 	}
 	assert.True(t, ids["luma-ray-3.2"], "条件つき is in")
-	assert.False(t, ids["kling-3.0"], "不明 is out")
+	assert.True(t, ids["kling-3.0"], "商用OK is in")
 
 	assert.Contains(t, r.CallError("list_generation_models", map[string]any{"commercial": "yes"}), "validation")
 }

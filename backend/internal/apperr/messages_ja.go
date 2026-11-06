@@ -77,7 +77,7 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"face_models_missing.remedy": "モデルマネージャー（/model-manager）の「顔チェック用モデル」から、ボタン 1 つで {dir} に導入できます（YuNet は MIT・SFace は Apache-2.0。取得元は opencv/opencv_zoo の固定したコミットで、SHA-256 を確かめます。導入したあと mam を再起動する必要はなく、次の生成テストから測れます）。手で置くときは {dir} に置いてください（リポジトリの scripts/fetch-face-models.sh {dir} が、同じ固定したコミットから取得して置きます）。置き場所を変えるときは起動オプション --face-model-dir を使います。顔の類似度を測るには、このモデルのほかに ONNX Runtime のライブラリも要ります（Windows のインストーラー版は mam.exe と同じフォルダに入れます）。",
 
 	"face_runtime_missing.cause":  "顔の類似度を測る ONNX Runtime のライブラリを読み込めません。顔の類似度（SFace）はオフです。",
-	"face_runtime_missing.remedy": "顔モデル（YuNet・SFace）は置いてあります。モデルマネージャーの「顔チェック用モデル」から導入し直しても直りません（直すのは ONNX Runtime のライブラリです）。ONNX Runtime 1.23.x のライブラリ（Windows は mam.exe と同じフォルダの onnxruntime.dll。インストーラーが置きます。ほかの OS は libonnxruntime）を用意してください。場所は起動オプション --onnxruntime-lib で指定できます。Windows で DLL があるのに読めないときは、Microsoft Visual C++ 2015-2022 Redistributable (x64) が必要です。置いたあとは、次の生成テストから測れます（再起動は要りません）。詳細に顔モデルのファイルの読み込みの失敗が出ているときは、モデルマネージャーの「顔チェック用モデル」で削除してから入れ直してください。",
+	"face_runtime_missing.remedy": "顔モデル（YuNet・SFace）は置いてあります。モデルマネージャーの「顔チェック用モデル」から導入し直しても直りません（直すのは ONNX Runtime のライブラリです）。ONNX Runtime 1.23.x のライブラリ（Windows は mam.exe と同じフォルダの onnxruntime.dll。インストーラー版は置いてあります。ポータブル版は含まないので、https://github.com/microsoft/onnxruntime/releases の v1.23.2 の onnxruntime-win-x64-1.23.2.zip を開き、lib フォルダの onnxruntime.dll を mam.exe と同じフォルダへコピーしてください。コマンドは要りません。ほかの OS は libonnxruntime）を用意してください。場所は起動オプション --onnxruntime-lib で指定できます。Windows で DLL があるのに読めないときは、Microsoft Visual C++ 2015-2022 Redistributable (x64) が必要です。置いたあとは、次の生成テストから測れます（再起動は要りません）。詳細に顔モデルのファイルの読み込みの失敗が出ているときは、モデルマネージャーの「顔チェック用モデル」で削除してから入れ直してください。",
 
 	"llm_invalid_output.cause":  "LLM の答えが、求めた形式になっていませんでした。",
 	"llm_invalid_output.remedy": "もう一度実行してください。続くときは、設定画面の「テキスト生成（LLM）」で、その Agent のモデルを変えてみてください。",
@@ -94,8 +94,10 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"download_corrupt.cause":  "ダウンロードしたファイルが、固定した SHA-256 または大きさと一致しませんでした。破棄しました（取得元の改ざんか、転送の破損の可能性があります）。",
 	"download_corrupt.remedy": "もう一度導入してください。続くときは、mam を更新してから試してください。",
 
-	"install_failed.cause":  "導入を完了できませんでした。",
-	"install_failed.remedy": "原因は詳細にあります。モデル管理の画面から、もう一度導入してください。",
+	"install_failed.cause":     "導入を完了できませんでした。",
+	"install_failed.remedy":    "原因は詳細にあります。モデル管理の画面から、もう一度導入してください。",
+	"install_cancelled.cause":  "導入を中断しました。",
+	"install_cancelled.remedy": "もう一度導入すると、ダウンロード済みの続きから再開します。",
 
 	"training_failed.cause":  "声の学習を完了できませんでした。",
 	"training_failed.remedy": "ほかに GPU を使うアプリ（同梱の ComfyUI の生成など）を閉じて、もう一度学習してください。続くときは、詳細（学習のログの末尾）を確かめるか、モデル管理で GPT-SoVITS の状態を確かめてください。途中までの結果は残していません。",
@@ -108,6 +110,9 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 
 	"image_unavailable.cause":  "ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。",
 	"image_unavailable.remedy": "mam を最新版に更新して、もう一度実行してください。直らない場合は、設定で ChatGPT 画像生成を OFF にして、API キーで使える画像モデルに切り替えてください。",
+
+	"image_model_pinned.cause":  "画像生成のために固定した Codex のモデル（Options.Driver）を、ChatGPT のアカウントが受け付けませんでした。固定したモデルだけを使う設定なので、ほかのモデルは試していません。",
+	"image_model_pinned.remedy": "mam を更新しても直りません。モデルの固定を外して mam にアカウントで使えるモデルを選ばせるか、アカウントが使えるモデルを固定し直してください。",
 
 	"save_failed.cause":  "設定やデータを保存できませんでした{why}。",
 	"save_failed.remedy": "ディスクの空き容量とフォルダの権限を確かめてから、もう一度保存してください。続くときは mam のログを確認してください。",

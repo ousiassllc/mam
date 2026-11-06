@@ -2,6 +2,7 @@ package videoenhancebox
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -37,7 +38,7 @@ templ Box(f Form) {
 templ section(f Form, o Op) {
 	<section id={ o.SectionID() } class="flex flex-col gap-2 border-t border-border pt-3" data-testid={ "gt-venh-" + o.Name }>
 		<h4 class="text-sm font-semibold">{ o.Title() }</h4>
-		if len(o.Local) == 0 {
+		if !o.HasLocal {
 			<p class="text-sm text-mute" data-testid={ "gt-venh-none-" + o.Name }>
 				この PC で使うモデルが入っていません。
 				<a class="underline" href={ templ.SafeURL(f.ModelsURL) }>モデルマネージャー</a>でモデルを入れてください。
@@ -59,7 +60,7 @@ templ section(f Form, o Op) {
 				@atoms.Button(atoms.TonePrimary, o.LocalButton(), templ.Attributes{"type": "submit", "data-testid": "gt-venh-run-" + o.Name})
 			</form>
 		}
-		if len(o.Topaz) > 0 {
+		if o.HasTopaz {
 			<form
 				class="flex flex-wrap items-end gap-3"
 				hx-post={ paths.GenerationTestPart("results", f.ResultID, "video-enhance", "estimate") }
@@ -84,15 +85,11 @@ templ section(f Form, o Op) {
 	</section>
 }
 
-templ modelSelect(opts []Option) {
-	<label class="flex flex-col gap-1 text-xs text-mute">
+templ modelSelect(f modelpick.FieldData) {
+	<div class="flex min-w-48 max-w-md flex-col gap-1 text-xs text-mute">
 		<span>モデル</span>
-		@atoms.Select(atoms.FieldMd, "max-w-64", templ.Attributes{"name": FieldModel}) {
-			for _, o := range opts {
-				<option value={ o.ID }>{ o.Label }</option>
-			}
-		}
-	</label>
+		@modelpick.Field(f)
+	</div>
 }
 
 // sizeFields are the choice of the operation: the size of an upscale (a factor of 2 or the short side at 720 / 1080), or for an interpolation the

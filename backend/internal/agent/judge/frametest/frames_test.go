@@ -1,10 +1,11 @@
-package judge_test
+package frametest_test
 
 import (
 	"bytes"
 	"context"
 	"image"
 	_ "image/jpeg" // decoder of the sampled frames
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -74,7 +75,7 @@ func TestFFmpeg_ALongTakeIsSampledMoreSparselyThanTheFrameLimit(t *testing.T) {
 func TestFFmpeg_AFileThatIsNotAVideoIsAnError(t *testing.T) {
 	ff := lookFFmpeg(t)
 	bad := filepath.Join(t.TempDir(), "bad.mp4")
-	require.NoError(t, writeFile(bad, []byte("\x00\x00\x00\x18ftypisom")))
+	require.NoError(t, os.WriteFile(bad, []byte("\x00\x00\x00\x18ftypisom"), 0o600))
 	_, err := ff.Sample(context.Background(), bad, judge.SampleSpec{FPS: 4, MaxFrames: 10, MaxWidth: 100})
 	assert.Error(t, err)
 }

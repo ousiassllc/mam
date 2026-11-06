@@ -128,7 +128,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 		r.db = testdb.Open(t)
 	}
 	r.Table = repository.NewJobRepository(r.db)
-	r.Queue = jobqueue.New(r.Table, jobqueue.Options{Workers: 2})
+	r.Queue = jobqueue.New(r.Table, jobqueue.Options{Workers: 2, Explain: mmview.Failure}) // the app's queue explains the refusals of the services the same way (app/services.go)
 
 	modelsPath := filepath.Join(t.TempDir(), "models.json")
 	if r.pinned {

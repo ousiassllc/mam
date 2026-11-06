@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Downloads the face models of the AI Video Judge's Face Identity Similarity (OpenCV Zoo:
-# YuNet, MIT, and SFace, Apache-2.0) into a directory and verifies their SHA-256.
+# YuNet, MIT, and SFace, Apache-2.0) into a directory and verifies their SHA-256. The app's model manager (the button of
+# "顔チェック用モデル", Issue #1026) does the same download inside the app; this script is for a manual setup and CI's windows job.
 # Usage: scripts/fetch-face-models.sh [DIR]
-#   DIR defaults to $MAM_FACE_MODEL_DIR, then $MAM_DATA_DIR/models, then <user config dir>/mam/models.
-# The ONNX Runtime library (1.23.x) is a separate download: https://github.com/microsoft/onnxruntime/releases
+#   DIR defaults to $MAM_FACE_MODEL_DIR, then $MAM_DATA_DIR/models, then ~/Library/Application Support/mam/models (macOS) or
+#   ${XDG_CONFIG_HOME:-~/.config}/mam/models (anything else, Git Bash on Windows included: pass DIR for %AppData%\mam\models).
+# The ONNX Runtime library (1.23.x) is a separate download. Windows: scripts/fetch-onnxruntime.sh <DIR> (the version the
+# installer bundles, SHA-256 checked). macOS / Linux: https://github.com/microsoft/onnxruntime/releases
 # See spec/architecture/model-adapters.md §10.1.
 set -euo pipefail
 

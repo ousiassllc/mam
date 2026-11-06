@@ -136,7 +136,7 @@ func (s *Service) AddClip(ctx context.Context, o voicerefsvc.Owner, characterID 
 		return Clip{}, err
 	}
 	if s.Probe == nil {
-		return Clip{}, conflictf("音声の長さを測る ffprobe が見つからないため、学習に使う音声を受け付けられません。設定の「ffmpeg」からダウンロードするか、インストールしてください")
+		return Clip{}, noFFprobe()
 	}
 	ext, err := checkFile(f)
 	if err != nil {
@@ -170,9 +170,9 @@ func (s *Service) AddClip(ctx context.Context, o voicerefsvc.Owner, characterID 
 			}
 		}
 	}()
-	secs, err := s.Probe.AudioDuration(ctx, abs)
+	secs, err := s.length(ctx, abs, f.Name)
 	if err != nil {
-		return Clip{}, invalidf("音声として読み取れませんでした（%s の長さを測れません）", filepath.Base(f.Name))
+		return Clip{}, err
 	}
 	if secs < MinClipSeconds || secs > MaxClipSeconds {
 		return Clip{}, invalidf("1 つの音声は %d〜%d 秒にしてください（この音声は %.1f 秒です）", MinClipSeconds, MaxClipSeconds, secs)

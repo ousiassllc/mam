@@ -14,9 +14,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/ousiassllc/mam/backend/internal/media/locate"
 )
 
 // ErrUnavailable means ffmpeg / ffprobe cannot be used: they are not installed, or the path the user set is not one.
@@ -38,34 +35,6 @@ const MaxPreviewHeight = 1080
 const jpegFullRange = "out_range=full"
 
 var jpegEncoding = []string{"-q:v", "3", "-strict", "unofficial"}
-
-// Tools is the ffmpeg and ffprobe executables.
-type Tools struct {
-	ffmpeg, ffprobe string
-	lim             limits // the zero value means defaultLimits
-}
-
-// FFmpegPath is the ffmpeg executable found: what a local runtime, which ships none, is told to run.
-func (t Tools) FFmpegPath() string { return t.ffmpeg }
-
-// Look finds ffmpeg and ffprobe with no path set by the user: the search of locate.Find (PATH, then the Homebrew
-// directories on macOS). It returns an error wrapping ErrUnavailable when either is missing.
-func Look() (Tools, error) { return LookWith(locate.Config{}) }
-
-// LookWith finds ffmpeg and ffprobe on this machine: the path in cfg when it is set, else the search (LookIn of the
-// machine's Finder).
-func LookWith(cfg locate.Config) (Tools, error) { return LookIn(locate.DefaultFinder(), cfg) }
-
-// LookIn finds ffmpeg and ffprobe with f. It returns an error wrapping ErrUnavailable that says, for each of the two that
-// is missing, where it looked or which configured path cannot be used (errors.As finds a *locate.PathError).
-func LookIn(f locate.Finder, cfg locate.Config) (Tools, error) {
-	ffmpeg, err1 := f.Find(locate.FFmpeg, cfg.FFmpeg)
-	ffprobe, err2 := f.Find(locate.FFprobe, cfg.FFprobe)
-	if err := errors.Join(err1, err2); err != nil {
-		return Tools{}, fmt.Errorf("%w: %w", ErrUnavailable, err)
-	}
-	return Tools{ffmpeg: ffmpeg, ffprobe: ffprobe, lim: defaultLimits}, nil
-}
 
 // Info describes the first video stream of a file.
 type Info struct {
@@ -101,7 +70,11 @@ type probeOutput struct {
 
 // Probe reads the length, frame rate, size and audio of the video file.
 func (t Tools) Probe(ctx context.Context, path string) (Info, error) {
-	out, _, err := run(ctx, t.limits().probe, t.ffprobe, "-v", "error",
+	e, err := t.ready()
+	if err != nil {
+		return Info{}, err
+	}
+	out, _, err := run(ctx, e.limits().probe, e.ffprobe, "-v", "error",
 		"-show_entries", "stream=codec_type,r_frame_rate,duration,nb_frames,width,height:format=duration", "-of", "json", path)
 	if err != nil {
 		return Info{}, fmt.Errorf("ffprobe %s: %w", filepath.Base(path), err)
@@ -228,13 +201,17 @@ func (t Tools) Proxy(ctx context.Context, src, dst string) error {
 func (t Tools) Frames(ctx context.Context, src, pattern, filter string, maxFrames int, seconds float64) error {
 	args := []string{"-v", "error", "-i", src, "-an", "-vf", filter + ",scale=" + jpegFullRange,
 		"-frames:v", strconv.Itoa(maxFrames)}
-	return t.runFFmpeg(ctx, t.limits().writeLimit(seconds), append(append(args, jpegEncoding...), pattern)...)
+	return t.runFFmpeg(ctx, seconds, append(append(args, jpegEncoding...), pattern)...)
 }
 
-// runFFmpeg runs ffmpeg with the arguments for at most limit. Cancelling ctx or running past the
+// runFFmpeg runs ffmpeg with the arguments, which handle seconds of media, for at most the time limit of that. Cancelling ctx or running past the
 // limit (ErrTimeout) returns that error as it is; a failure of ffmpeg carries its stderr.
-func (t Tools) runFFmpeg(ctx context.Context, limit time.Duration, args ...string) error {
-	_, stderr, err := run(ctx, limit, t.ffmpeg, args...)
+func (t Tools) runFFmpeg(ctx context.Context, seconds float64, args ...string) error {
+	e, err := t.ready()
+	if err != nil {
+		return err
+	}
+	_, stderr, err := run(ctx, e.limits().writeLimit(seconds), e.ffmpeg, args...)
 	if err != nil && ctx.Err() == nil && !errors.Is(err, ErrTimeout) {
 		return fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(string(stderr)))
 	}
@@ -261,7 +238,7 @@ func (t Tools) write(ctx context.Context, dst, format string, seconds float64, a
 	tmp := filepath.Join(dir, tempPrefix+base+tempSuffix) // a crash leaves it behind: the next run to the same dst overwrites it, and fsutil.RemoveStaleTemp removes it at startup (a leading dot and a .tmp ending)
 	full := append([]string{"-v", "error", "-y", "-nostdin"}, args...)
 	full = append(full, "-f", format, tmp)
-	if err := t.runFFmpeg(ctx, t.limits().writeLimit(seconds), full...); err != nil {
+	if err := t.runFFmpeg(ctx, seconds, full...); err != nil {
 		_ = os.Remove(tmp)
 		return err
 	}

@@ -190,7 +190,8 @@ func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 }
 
 // results counts the Judge Results of the Take; c fails instead of the test (see countOn).
-func (j *judgeApp) results(c require.TestingT, takeID string) int {
+func (j *judgeApp) results(c testenv.TestingT, takeID string) int {
+	c.Helper()
 	return j.countOn(c, `SELECT COUNT(*) FROM judge_result WHERE take_id = ?`, takeID)
 }
 

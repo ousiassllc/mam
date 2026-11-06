@@ -41,6 +41,9 @@ templ Panel(b Filter, oob bool) {
 			if b.Facets.Commercial {
 				@radios("商用利用", "commercial", b.commercialOptions(), b.commercialCurrent())
 			}
+			if len(b.Facets.Languages) > 0 {
+				@checks("言語", "languages", languageOptions(b.Facets.Languages), b.Cond.Languages)
+			}
 			if b.Facets.Origins || len(b.Facets.Providers) > 0 {
 				@sourceSection(b)
 			}

@@ -36,8 +36,8 @@ func DownloadData(s Services) view.Download {
 	d.Build, d.Publisher, d.SourceURL, d.SourceCodeURL = st.Pinned.Build, st.Pinned.Publisher, st.Pinned.SourceURL, st.Pinned.SourceCodeURL
 	d.License, d.LicenseURL = st.Pinned.License.Name, st.Pinned.License.URL
 	d.Install = view.DownloadInstall{
-		Running: st.Install.State == ffmpegdl.InstallRunning, Percent: st.Install.Percent, Message: st.Install.Message,
-		Error: st.Install.Error, Cancelled: st.Install.Cancelled, Succeeded: st.Install.State == ffmpegdl.InstallSucceeded,
+		Running: st.Install.State == exeinstall.Running, Percent: st.Install.Percent, Message: st.Install.Message,
+		Error: st.Install.Error, Cancelled: st.Install.Cancelled, Succeeded: st.Install.State == exeinstall.Succeeded,
 	}
 	if s.Settings != nil {
 		if v, err := s.Settings.View(); err == nil {
@@ -108,14 +108,14 @@ func CancelDownload(s Services) gin.HandlerFunc {
 	}
 }
 
-// RemoveDownload deletes the downloaded copy (DELETE /settings/ffmpeg/download). mam keeps using the copy it started with until
-// it is started again.
+// RemoveDownload deletes the downloaded copy (DELETE /settings/ffmpeg/download). mam looks for ffmpeg again at once: it uses
+// another one when it finds one (PATH, a saved path), and has none otherwise.
 func RemoveDownload(s Services) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		err := s.Download.Remove()
 		switch {
 		case err == nil:
-			panel(c, s, http.StatusOK, "削除しました。起動中の mam は、次に起動し直すまで、これまでの ffmpeg を使い続けます", "")
+			panel(c, s, http.StatusOK, "削除しました。ほかの場所の ffmpeg が見つかればそれを使い、無ければ、ffmpeg が要る機能（プレビュー・部分採用・Judge・書き出し）は使えなくなります", "")
 		case errors.Is(err, ffmpegdl.ErrBusy):
 			panel(c, s, http.StatusConflict, "", "ダウンロード中は削除できません。中断してからもう一度お試しください")
 		case errors.Is(err, ffmpegdl.ErrUnsupported):

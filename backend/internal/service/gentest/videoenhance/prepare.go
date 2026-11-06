@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/cloudenhance"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -108,7 +109,7 @@ func adultSource(g *gentest.Service, res gentestrepo.Result) bool {
 	return ok && info.Adult
 }
 
-// probe reads the facts of the video file. Without ffprobe (no ffmpeg found) it is the common error ffmpeg_missing: where to set ffmpeg.
+// probe reads the facts of the video file. Without ffprobe (no ffmpeg found yet) it is the common error ffmpeg_missing: where to set ffmpeg.
 func probe(ctx context.Context, g *gentest.Service, path string) (cloudenhance.Source, error) {
 	if g.Probe == nil {
 		return cloudenhance.Source{}, apperr.New(apperr.CodeFFmpegMissing)
@@ -118,6 +119,9 @@ func probe(ctx context.Context, g *gentest.Service, path string) (cloudenhance.S
 		return cloudenhance.Source{}, invalid("元の動画のファイルが見つかりません（履歴から消えたか、壊れています）")
 	}
 	info, err := g.Probe.Probe(ctx, path)
+	if errors.Is(err, media.ErrUnavailable) { // ffprobe was not found when mam started and still is not
+		return cloudenhance.Source{}, apperr.New(apperr.CodeFFmpegMissing)
+	}
 	if err != nil {
 		return cloudenhance.Source{}, invalid("元の動画を調べられませんでした: %v", err)
 	}

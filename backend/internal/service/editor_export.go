@@ -16,7 +16,7 @@ import (
 // rough returns the rendered Rough Cut of the Edit Timeline (a draft with the sound of the Takes),
 // made on first use. It is also what the preview plays; a seek asks again, so see previewcache.Cache.Make.
 func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersion) (string, error) {
-	if s.tools == nil {
+	if !s.tools.Available() {
 		return "", ErrUnavailable
 	}
 	dst := s.previews.Path("edit-" + ver.ID + ".mp4")
@@ -106,7 +106,7 @@ type ExportInput struct {
 // chosen aspect ratio, resolution and codec and moves the Project to EXPORTED. The Project must be
 // READY (or EXPORTED, to export again). The file appears only once it is complete.
 func (s *EditorService) Export(ctx context.Context, projectID string, in ExportInput) (EditorView, error) {
-	if s.tools == nil {
+	if !s.tools.Available() {
 		return EditorView{}, ErrUnavailable
 	}
 	release, err := s.acquire(projectID)

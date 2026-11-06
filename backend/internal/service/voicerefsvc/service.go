@@ -55,7 +55,7 @@ type Deps struct {
 	Projects  *repository.ProjectRepository
 	World     *repository.WorldRepository
 	AssetsDir string
-	// Media is ffprobe; nil: the length of a recording is not checked. Probe, when set, is used instead (tests).
+	// Media is ffprobe (it may find ffmpeg later: while it has none, the length of a recording is not checked); nil: the length is never checked. Probe, when set, is used instead (tests).
 	Media  *media.Tools
 	Probe  Prober
 	Logger *slog.Logger

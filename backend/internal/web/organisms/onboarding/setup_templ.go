@@ -313,7 +313,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</code></p><p class=\"text-sm text-mute\">mam を起動したあとに入れたときは、mam を再起動すると反映されます（ffmpeg は起動時に探します）。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</code></p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -333,7 +333,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(missingText(f))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 115, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 114, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -357,7 +357,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"text-sm text-ink\">入れたあとは、mam を一度終了して、起動し直してください（ffmpeg は起動時に探します）。</p><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"text-sm text-ink\">入れたあとは、下の「もう一度確認する」を押してください。mam を再起動する必要はありません。</p><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -373,7 +373,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			var templ_7745c5c3_Var15 templ.SafeURL
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.OnboardingStep(paths.OnboardingFFmpeg)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 123, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 122, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -587,7 +587,7 @@ func MacBody(m Mac) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.OnboardingCodexPath())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 180, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 179, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 			if templ_7745c5c3_Err != nil {
@@ -600,7 +600,7 @@ func MacBody(m Mac) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + CodexResultID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 180, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 179, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 			if templ_7745c5c3_Err != nil {
@@ -625,7 +625,7 @@ func MacBody(m Mac) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue(CodexResultID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 185, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 184, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 			if templ_7745c5c3_Err != nil {
@@ -665,7 +665,7 @@ func MacBody(m Mac) templ.Component {
 		var templ_7745c5c3_Var32 templ.SafeURL
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(comfyDesktopDocs))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 195, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 194, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -722,7 +722,7 @@ func MacBody(m Mac) templ.Component {
 		var templ_7745c5c3_Var37 templ.SafeURL
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.LocalModels()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 200, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 199, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
@@ -766,7 +766,7 @@ func CodexResult(ok bool, message string) templ.Component {
 			var templ_7745c5c3_Var39 string
 			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 211, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 210, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -784,7 +784,7 @@ func CodexResult(ok bool, message string) templ.Component {
 			var templ_7745c5c3_Var40 string
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 213, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/onboarding/setup.templ`, Line: 212, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {

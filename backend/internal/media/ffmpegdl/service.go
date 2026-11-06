@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
@@ -20,30 +19,6 @@ var ErrUnsupported = errors.New("ffmpegdl: no ffmpeg download for this platform"
 // ErrBusy means an install or a removal is running: a removal refuses to start under an install, and an install refuses to
 // start while the downloaded copy is being removed.
 var ErrBusy = errors.New("ffmpegdl: an install or a removal is running")
-
-// InstallState is where the download stands.
-type InstallState string
-
-// The states of an install.
-const (
-	InstallIdle      InstallState = "idle"
-	InstallRunning   InstallState = "running"
-	InstallSucceeded InstallState = "succeeded"
-	InstallFailed    InstallState = "failed"
-)
-
-// InstallStatus is the progress of the download.
-type InstallStatus struct {
-	State   InstallState
-	Phase   Phase
-	Percent int
-	Done    int64
-	Total   int64
-	Message string
-	// Error says why the install failed, for the user. Cancelled: the user stopped it (not a failure; Error is then empty).
-	Error     string
-	Cancelled bool
-}
 
 // Options of New.
 type Options struct {
@@ -68,19 +43,12 @@ type Service struct {
 	supported bool
 	logger    *slog.Logger
 
-	// works is the record of the installs for the job list (worktrack: memory only; Works).
-	works worktrack.Tracker
-
-	mu      sync.Mutex
-	install InstallStatus
-	cancel  context.CancelFunc
-	closed  bool
-	// removing: Remove is deleting the files; StartInstall refuses (ErrBusy) so that no install starts under the deletion.
-	removing bool
-	wg       sync.WaitGroup
+	// install is the download in the background (exeinstall: shared with Codex); Remove holds it while the files are deleted.
+	install *exeinstall.Runner
 
 	// removeFiles deletes the downloaded copy (the installer's Remove; tests replace it to hold a removal in the middle).
 	removeFiles func() error
+	onChange    func() // see SetOnChange
 }
 
 // New is the service. A platform with no pinned build is a service that is not Supported: StartInstall refuses, and Dirs is empty.
@@ -88,6 +56,7 @@ func New(o Options) *Service {
 	if o.Logger == nil {
 		o.Logger = slog.New(slog.DiscardHandler)
 	}
+	o.Fetch.OnRetry = exeinstall.RetryLogger(o.Logger, "ffmpeg", o.Fetch.OnRetry) // an automatic resume of a download is logged
 	p, ok := o.Catalog.For(o.GOOS, o.GOARCH)
 	layout := o.Layout
 	if !ok || layout.Root == "" {
@@ -101,6 +70,7 @@ func New(o Options) *Service {
 		},
 	}
 	s.removeFiles = s.installer.Remove
+	s.install = s.newInstall()
 	if ok {
 		// What an interrupted install left (a half-extracted bin.new, or a swap that stopped between its two renames) is
 		// cleaned, or put back, at startup (spec/architecture/ffmpeg-download.md §4.6).
@@ -123,25 +93,19 @@ type Status struct {
 	Version         string
 	UpdateAvailable bool
 	Broken          bool
-	Install         InstallStatus
+	Install         exeinstall.Status
 }
 
 // Status reads what is installed and the progress of the install in hand.
 func (s *Service) Status() Status {
 	if !s.supported {
-		return Status{Install: InstallStatus{State: InstallIdle}}
+		return Status{Install: exeinstall.Status{State: exeinstall.Idle}}
 	}
 	st := s.installer.Status()
 	p := s.installer.Platform
-	s.mu.Lock()
-	in := s.install
-	s.mu.Unlock()
-	if in.State == "" {
-		in.State = InstallIdle
-	}
 	return Status{
 		Supported: true, Pinned: p, DownloadBytes: p.DownloadBytes(), ExtractedBytes: p.ExtractedBytes(), Dir: s.installer.Layout.BinDir(),
-		Installed: st.Installed, Version: st.Version, UpdateAvailable: st.UpdateAvailable, Broken: st.Broken, Install: in,
+		Installed: st.Installed, Version: st.Version, UpdateAvailable: st.UpdateAvailable, Broken: st.Broken, Install: s.install.Status(),
 	}
 }
 
@@ -163,44 +127,44 @@ func (s *Service) StartInstall() (started bool, err error) {
 	if !s.supported {
 		return false, ErrUnsupported
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
-	if s.closed {
-		s.mu.Unlock()
-		cancel()
-		return false, errors.New("ffmpegdl: mam is shutting down")
-	}
-	if s.removing {
-		s.mu.Unlock()
-		cancel()
-		return false, ErrBusy
-	}
-	if s.install.State == InstallRunning {
-		s.mu.Unlock()
-		cancel()
-		return false, nil
-	}
-	prev := s.install
-	s.install = InstallStatus{State: InstallRunning, Phase: PhaseDownload, Message: "ffmpeg をダウンロードしています"}
-	s.cancel = cancel
-	s.wg.Add(1)
-	s.mu.Unlock()
-	abort := func(err error) (bool, error) {
-		s.mu.Lock()
-		s.install, s.cancel = prev, nil
-		s.mu.Unlock()
-		s.wg.Done()
-		cancel()
-		return false, err
-	}
-	if err := s.installer.Layout.CheckWritable(); err != nil {
-		return abort(err)
-	}
-	if err := s.installer.CheckSpace(); err != nil {
-		return abort(err)
-	}
-	go s.run(ctx, s.works.Begin(worktrack.Record{Kind: worktrack.KindFFmpegInstall, Subject: "ffmpeg"}, phaseMessage[PhaseDownload]))
-	return true, nil
+	return s.install.Start()
+}
+
+// newInstall is the install of ffmpeg: the start, the stop and the progress of it are the Runner's (exeinstall), shared with the
+// download of Codex; what is ffmpeg's own is the checks before it, the progress it reports and the words of its ending.
+func (s *Service) newInstall() *exeinstall.Runner {
+	return exeinstall.NewRunner(exeinstall.RunnerConfig{
+		Kind:        worktrack.KindFFmpegInstall,
+		Subject:     "ffmpeg",
+		Starting:    exeinstall.Status{Phase: string(PhaseDownload), Message: phaseMessage[PhaseDownload]},
+		ErrClosed:   errors.New("ffmpegdl: mam is shutting down"),
+		ErrRemoving: ErrBusy,
+		Preflight: func() error {
+			if err := s.installer.Layout.CheckWritable(); err != nil {
+				return err
+			}
+			return s.installer.CheckSpace()
+		},
+		Install: func(ctx context.Context, report func(exeinstall.Status)) error {
+			err := s.installer.Install(ctx, func(p Phase, done, total int64) {
+				share := phaseShare[p]
+				pct := share[0]
+				if total > 0 {
+					pct += int(float64(done) / float64(total) * float64(share[1]-share[0]))
+				}
+				report(exeinstall.Status{Phase: string(p), Percent: pct, Done: done, Total: total, Message: phaseMessage[p]})
+			})
+			if err == nil && s.onChange != nil {
+				s.onChange() // before the screen says it is installed: what it says is then true
+			}
+			return err
+		},
+		Succeeded: "ffmpeg を入れました",
+		Failed: func(err error) string {
+			s.logger.Warn("ffmpeg download failed", "err", err)
+			return Explain(err)
+		},
+	})
 }
 
 // phaseShare is how much of the bar each phase fills.
@@ -212,44 +176,16 @@ var phaseMessage = map[Phase]string{
 	PhaseCheck:    "ffmpeg が動くか確かめています",
 }
 
-func (s *Service) run(ctx context.Context, work *worktrack.Run) {
-	defer s.wg.Done()
-	err := s.installer.Install(ctx, func(p Phase, done, total int64) {
-		share := phaseShare[p]
-		pct := share[0]
-		if total > 0 {
-			pct += int(float64(done) / float64(total) * float64(share[1]-share[0]))
-		}
-		s.mu.Lock()
-		s.install = InstallStatus{State: InstallRunning, Phase: p, Percent: pct, Done: done, Total: total, Message: phaseMessage[p]}
-		s.mu.Unlock()
-		work.Progress(pct, phaseMessage[p])
-	})
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.cancel = nil
-	switch {
-	case err == nil:
-		s.install = InstallStatus{State: InstallSucceeded, Percent: 100, Message: "ffmpeg を入れました"}
-		work.Succeed()
-	case errors.Is(err, context.Canceled):
-		s.install = InstallStatus{State: InstallFailed, Cancelled: true}
-		work.Cancel()
-	default:
-		s.logger.Warn("ffmpeg download failed", "err", err)
-		s.install = InstallStatus{State: InstallFailed, Error: Explain(err)}
-		work.Fail(s.install.Error)
-	}
-}
-
 // Works is the installs of this process, for the job list (worktrack.Source): the one that runs and the latest that ended. It is
 // memory only: a restart forgets them.
-func (s *Service) Works() []worktrack.Record { return s.works.Works() }
+func (s *Service) Works() []worktrack.Record { return s.install.Works() }
 
 // Explain is why an install failed, in words for the user.
 func Explain(err error) string {
 	var herr *fetch.HTTPError
 	switch {
+	case fetch.IsConnectionLost(err):
+		return fetch.ConnectionLostMessage
 	case errors.Is(err, fetch.ErrChecksum), errors.Is(err, fetch.ErrSize):
 		return "ダウンロードしたファイルが、mam が確かめた版と一致しませんでした（SHA-256 またはサイズの不一致）。ファイルは使わずに削除しました。配布元が差し替わったか、通信の途中で書き換わった可能性があります"
 	case errors.Is(err, exeinstall.ErrMismatch), errors.Is(err, exeinstall.ErrUnsafeArchive):
@@ -266,17 +202,10 @@ func Explain(err error) string {
 }
 
 // CancelInstall stops an install in progress; the part file stays, so that installing again resumes.
-func (s *Service) CancelInstall() {
-	s.mu.Lock()
-	cancel := s.cancel
-	s.mu.Unlock()
-	if cancel != nil {
-		cancel()
-	}
-}
+func (s *Service) CancelInstall() { s.install.Cancel() }
 
 // WaitInstall waits for the install in progress to end (tests and shutdown).
-func (s *Service) WaitInstall() { s.wg.Wait() }
+func (s *Service) WaitInstall() { s.install.Wait() }
 
 // Remove deletes the downloaded ffmpeg. It refuses (ErrBusy) while an install runs or another removal is in progress, and while
 // it deletes, StartInstall refuses (ErrBusy): the files are never deleted under a running install.
@@ -284,30 +213,22 @@ func (s *Service) Remove() error {
 	if !s.supported {
 		return ErrUnsupported
 	}
-	s.mu.Lock()
-	if s.install.State == InstallRunning || s.removing {
-		s.mu.Unlock()
+	release, ok := s.install.Hold(true)
+	if !ok {
 		return ErrBusy
 	}
-	s.removing = true
-	s.install = InstallStatus{State: InstallIdle}
-	s.mu.Unlock()
-	defer func() {
-		s.mu.Lock()
-		s.removing = false
-		s.mu.Unlock()
-	}()
-	return s.removeFiles()
+	defer release()
+	s.install.Reset()
+	err := s.removeFiles()
+	if s.onChange != nil {
+		s.onChange()
+	}
+	return err
 }
 
+// SetOnChange sets what is called when the downloaded copy changes: a successful install (before the screen says so) and a removal (done or
+// not). The app looks for ffmpeg again there, so that the change applies with no restart. Set it before the first install.
+func (s *Service) SetOnChange(f func()) { s.onChange = f }
+
 // Close stops an install in progress and refuses new ones (shutdown).
-func (s *Service) Close() {
-	s.mu.Lock()
-	s.closed = true
-	cancel := s.cancel
-	s.mu.Unlock()
-	if cancel != nil {
-		cancel()
-	}
-	s.wg.Wait()
-}
+func (s *Service) Close() { s.install.Close() }

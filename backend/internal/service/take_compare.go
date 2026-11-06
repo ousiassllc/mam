@@ -43,7 +43,7 @@ func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, e
 	out := Comparison{Project: project, Shot: ref.Shot, Takes: make([]TakeView, len(takes))}
 	for i, t := range takes {
 		v := TakeView{TakeInfo: t, Label: domain.TakeLabel(i)}
-		if abs := s.assetPath(t.FilePath); s.tools != nil && abs != "" {
+		if abs := s.assetPath(t.FilePath); s.tools.Available() && abs != "" {
 			if info, err := s.tools.Probe(ctx, abs); err == nil {
 				v.FPS = info.FPS
 				if v.Resolution == "" && info.Height > 0 {
@@ -55,7 +55,7 @@ func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, e
 			}
 		}
 		out.Takes[i] = v
-		out.PartialUse = out.PartialUse || (s.tools != nil && t.Usable())
+		out.PartialUse = out.PartialUse || (s.tools.Available() && t.Usable())
 	}
 	return out, nil
 }

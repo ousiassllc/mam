@@ -10,12 +10,16 @@ package modelfilter
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 )
+
+// languagePattern is a language code of the languages condition: ISO 639-1, two lower-case letters (as traits.Traits.Languages).
+var languagePattern = regexp.MustCompile(`^[a-z]{2}$`)
 
 // Kind is what a model makes or does. A model has one or more: an editing image model is both image and image_edit.
 type Kind string
@@ -144,6 +148,7 @@ type Condition struct {
 	Origins    []Origin         `json:"origins,omitempty" jsonschema:"ローカルか API か（どれか）: local / api"`
 	Providers  []string         `json:"providers,omitempty" jsonschema:"提供元（プロバイダー。どれか。例: local, anthropic, openai, google, chatgpt-subscription）"`
 	Audio      bool             `json:"audio,omitempty" jsonschema:"true なら、音声つきの動画モデルだけ"`
+	Languages  []string         `json:"languages,omitempty" jsonschema:"音声モデルの話す言語（どれか。ISO 639-1 の 2 字。例: ja, en）。言語が分からないモデル（画像・動画など）は入らない"`
 	Speeds     []traits.Level   `json:"speeds,omitempty" jsonschema:"速度の目安（どれか）: fast / standard / slow。目安が無いモデルは入らない"`
 	Qualities  []traits.Level   `json:"qualities,omitempty" jsonschema:"品質の目安（どれか）: basic / standard / high。目安が無いモデルは入らない"`
 	// AvailableOnly hides what cannot be chosen now (no API key, not signed in, not installed...). The zero value shows everything with its
@@ -256,6 +261,11 @@ func (c Condition) Validate() error {
 	for _, o := range c.Origins {
 		if !slices.Contains(Origins(), o) {
 			return fmt.Errorf("origins: %q is not local or api", o)
+		}
+	}
+	for _, l := range c.Languages {
+		if !languagePattern.MatchString(l) {
+			return fmt.Errorf("languages: %q is not a two-letter language code (ja, en)", l)
 		}
 	}
 	for _, l := range c.Speeds {

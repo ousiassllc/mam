@@ -17,8 +17,8 @@ import (
 
 const (
 	unreadable    = "設定ファイル（ffmpeg.json）を読めません。壊れていれば、直すか削除してください"
-	savedNotice   = "保存しました。次に mam を起動したときから使われます"
-	clearedNotice = "パスの指定を解除しました。次に mam を起動したときから、自動で探します"
+	savedNotice   = "保存しました。すぐに使われます（mam を再起動する必要はありません）"
+	clearedNotice = "パスの指定を解除しました。すぐに、自動で探した ffmpeg に切り替わります"
 )
 
 // SectionData is the saved paths and what the lookup finds with them. A settings file that cannot be read is the Problem of

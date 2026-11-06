@@ -18,7 +18,7 @@ func hangingTools(t *testing.T) Tools {
 	exe := filepath.Join(t.TempDir(), "hang")
 	require.NoError(t, os.WriteFile(exe, []byte("#!/bin/sh\nexec sleep 60\n"), 0o700)) // #nosec G306 -- a test executable
 	short := 200 * time.Millisecond
-	return Tools{ffmpeg: exe, ffprobe: exe, lim: limits{probe: short, loudness: short, writeBase: short, writePerSecond: 0}}
+	return newTools(exes{ffmpeg: exe, ffprobe: exe, lim: limits{probe: short, loudness: short, writeBase: short, writePerSecond: 0}})
 }
 
 func requireTimedOut(t *testing.T, started time.Time, err error) {
@@ -82,5 +82,5 @@ func TestWriteLimitGrowsWithTheMedia(t *testing.T) {
 }
 
 func TestZeroToolsUseDefaultLimits(t *testing.T) {
-	assert.Equal(t, defaultLimits, Tools{}.limits())
+	assert.Equal(t, defaultLimits, (&exes{}).limits())
 }

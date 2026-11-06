@@ -102,3 +102,28 @@ func TestRunDoesNotMeasureWithoutAFaceReferenceOrWithoutTheModels(t *testing.T) 
 	require.NoError(t, err)
 	assert.Nil(t, got.FaceSimilarity, "the face models are not installed: no number")
 }
+
+// The numbers of a batch are read together per model (Issue #998), so that the effect of a setting is a number to compare between two batches: the batch with a face
+// reference carries the mean, the spread and the share over the line of its model; a batch without one carries nothing.
+func TestBatchReadsTheFaceSimilaritiesOfItsModelTogether(t *testing.T) {
+	r, d := scored(t, &scorer{cmp: facesim.Comparison{Cosine: 0.52}}, "face")
+
+	b, err := r.Svc.Batch(context.Background(), d.BatchID, true)
+	require.NoError(t, err)
+	require.Len(t, b.FaceSummaries, 1)
+	got := b.FaceSummaries[0]
+	assert.Equal(t, d.Model, got.Model)
+	assert.Equal(t, 1, got.Measured)
+	assert.InDelta(t, 0.52, got.MeanCosine, 1e-9)
+	assert.Equal(t, 1, got.SamePerson)
+	assert.InDelta(t, 1, got.SamePersonRate, 1e-9)
+
+	plain, err := r.Svc.Batch(context.Background(), d.BatchID, false)
+	require.NoError(t, err)
+	assert.Empty(t, plain.FaceSummaries, "the summary is read from the results: a status without them has none")
+
+	other, noFace := scored(t, &scorer{}, "reference")
+	nb, err := other.Svc.Batch(context.Background(), noFace.BatchID, true)
+	require.NoError(t, err)
+	assert.Empty(t, nb.FaceSummaries, "no reference of the role face: nothing to read")
+}

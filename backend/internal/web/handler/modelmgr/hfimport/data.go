@@ -103,7 +103,6 @@ func ListData(ctx context.Context, svc *modelmanager.Service, jobs []string) vie
 		l.Jobs = append(l.Jobs, active[t])
 		l.Installing = append(l.Installing, view.HFJob{Name: fileName(t), Progress: *jobview.Progress(ctx, svc, active[t])})
 	}
-	var notices, failures []string
 	for _, id := range jobs {
 		st, err := svc.JobStatus(ctx, id)
 		if running[id] || err != nil || !strings.HasPrefix(st.Target, "hf:") {
@@ -114,13 +113,9 @@ func ListData(ctx context.Context, svc *modelmanager.Service, jobs []string) vie
 			l.Installing = append(l.Installing, view.HFJob{Name: fileName(st.Target), Progress: *jobview.Progress(ctx, svc, id)})
 			continue
 		}
-		if n, f := jobview.Ended(ctx, svc, id, "「"+fileName(st.Target)+"」"); n != "" {
-			notices = append(notices, n)
-		} else if f != "" {
-			failures = append(failures, f)
-		}
+		n, f := jobview.Ended(ctx, svc, id, "「"+fileName(st.Target)+"」")
+		jobview.Settle(&l.Message, n, f)
 	}
-	l.Notice, l.Error = strings.Join(notices, "。"), strings.Join(failures, "\n")
 	for _, um := range svc.UserModels() {
 		l.Models = append(l.Models, modelOf(um))
 	}

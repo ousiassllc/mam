@@ -259,5 +259,5 @@ func (r *candidateRun) strategy(ctx context.Context) (Strategy, error) {
 	if err != nil {
 		return Strategy{}, err
 	}
-	return r.o.decide(ctx, r.ref, r.sc.policy, specOf(r.ref.Shot), budget)
+	return r.o.decide(ctx, r.ref, r.sc.policy, specOf(r.ref.Shot), budget, r.sc.images)
 }
