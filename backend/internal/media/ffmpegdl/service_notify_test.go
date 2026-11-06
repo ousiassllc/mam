@@ -23,7 +23,6 @@ func TestServiceTellsTheAppWhenTheDownloadedCopyChanges(t *testing.T) {
 		require.True(t, started)
 		s.WaitInstall()
 	}
-
 	good := r.ins.Platform.Archives[0].SHA256
 	r.ins.Platform.Archives[0].SHA256 = strings.Repeat("0", 64)
 	install()
@@ -31,6 +30,5 @@ func TestServiceTellsTheAppWhenTheDownloadedCopyChanges(t *testing.T) {
 	r.ins.Platform.Archives[0].SHA256 = good
 	install()
 	require.NoError(t, s.Remove())
-	bin := r.ins.Layout.BinDir()
-	assert.Equal(t, []string{bin + "|" + string(exeinstall.Running), "|" + string(exeinstall.Idle)}, seen)
+	assert.Equal(t, []string{r.ins.Layout.BinDir() + "|" + string(exeinstall.Running), "|" + string(exeinstall.Idle)}, seen)
 }
