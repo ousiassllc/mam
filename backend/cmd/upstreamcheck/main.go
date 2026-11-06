@@ -1,7 +1,7 @@
 // Command upstreamcheck asks the upstream of every URL that the model catalog pins (weights, packages, engine builds) whether it is still
 // there with the pinned size and, where the upstream says so without a download, the pinned SHA-256
 // (spec/architecture/model-manager/local-runtime.md §12.10). The files behind a Hugging Face login are asked only when HF_TOKEN is set. It exits 1 when a pin no longer holds. The scheduled workflow
-// .github/workflows/upstream-check.yml runs it; it runs the same way on a developer's machine (scripts/upstream-check.sh).
+// .github/workflows/upstream-check.yml runs it; it runs the same way on a developer's machine (make upstream-check).
 package main
 
 import (
