@@ -46,23 +46,19 @@ templ ModelResultsAnswer(c Compose) {
 }
 
 // modelsHelp is the explanation of the models: how to choose, and for each model what it takes (the seed, the negative
-// prompt, reference images) or why it cannot be chosen.
+// prompt, reference images) and, for one that cannot be chosen now, also why. What a model takes is told for every model
+// (a model that cannot be chosen today is one the user may fix and choose tomorrow), so the reason is a line of its own.
 templ modelsHelp(c Compose) {
 	<p>複数選べます。代替のモデルへは切り替えません。</p>
 	<ul class="mt-2 flex flex-col gap-2" data-testid="gt-models-help">
 		for _, m := range c.Models {
 			<li class="break-words">
-				<span class="text-ink">{ m.Label }</span>: { modelNote(m) }
+				<span class="text-ink">{ m.Label }</span>: { m.Features }
+				if m.Reason != "" {
+					<span class="block text-mute" data-testid="gt-models-help-reason">今は選べません: { m.Reason }</span>
+				}
 				<span class="block text-mute" data-testid="gt-models-help-license">商用利用: { m.Answer.Level.Label() } ／ { m.Answer.Detail() }</span>
 			</li>
 		}
 	</ul>
-}
-
-// modelNote is what the help says of a model: why it cannot be chosen, else what it takes.
-func modelNote(m ModelChoice) string {
-	if m.Reason != "" {
-		return m.Reason
-	}
-	return m.Features
 }
