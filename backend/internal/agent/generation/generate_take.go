@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -16,12 +16,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
-// videoJob assembles the model-independent video request of the Shot: the spec, the Keyframe as
-// first frame and the other references in priority order.
-func (o *Orchestrator) videoJob(ctx context.Context, projectID string, spec domain.ShotSpec, brief domain.Brief, seconds float64, refs []domain.Reference) (modeladapter.VideoJob, error) {
+// videoJob assembles the model-independent video request of the Shot: the spec, the Keyframe as first frame and the other references
+// in priority order, from the images images read. seconds is the length of the Shot, not the clip of the primary model: Prepare sizes
+// the clip for each model (a Luma Ray 3.2 clip with a frame is 5 seconds), so a model that takes over makes the clip of the Shot.
+func videoJob(ctx context.Context, images *refimage.Reader, spec domain.ShotSpec, brief domain.Brief, seconds float64, refs []domain.Reference) (modeladapter.VideoJob, error) {
 	job := modeladapter.VideoJob{Spec: spec, DurationSeconds: seconds, AspectRatio: aspectRatio(brief)}
 	for _, r := range refs {
-		in, ok, err := o.referenceInput(ctx, projectID, r)
+		in, ok, err := images.Input(ctx, r)
 		if err != nil {
 			return job, err
 		}
@@ -36,50 +37,9 @@ func (o *Orchestrator) videoJob(ctx context.Context, projectID string, spec doma
 	return job, nil
 }
 
-// referenceInput is the image of the Reference as a model input. ok is false when the image is not
-// there to read: the Reference Pack can be rebuilt, so a missing or unreadable image is not fatal.
-func (o *Orchestrator) referenceInput(ctx context.Context, projectID string, r domain.Reference) (in modeladapter.Input, ok bool, err error) {
-	asset, err := o.assets.Get(ctx, projectID, r.AssetID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return in, false, nil
-	}
-	if err != nil {
-		return in, false, err
-	}
-	data, err := o.files.read(asset)
-	if err != nil {
-		o.logger.Warn("reference image unavailable", "asset_id", r.AssetID, "err", err)
-		return in, false, nil
-	}
-	return modeladapter.Input{Data: data, MimeType: asset.MimeType}, true, nil
-}
-
-// keyframeRead reports whether a Keyframe of the Shot can be read, that is whether videoJob gives
-// the clip a first frame.
-func (o *Orchestrator) keyframeRead(ctx context.Context, ref repository.ShotRef) (bool, error) {
-	for _, r := range ref.Shot.References() {
-		if r.Kind != domain.RefKeyframe {
-			continue
-		}
-		if _, ok, err := o.referenceInput(ctx, ref.ProjectID, r); ok || err != nil {
-			return ok, err
-		}
-	}
-	return false, nil
-}
-
-// attachedReferences is the References of the Shot less its Keyframe when none can be read (videoJob then gives the clip no first
-// frame): decide plans the clip (length, cost, routing) from these, so the plan is the clip Prepare makes (#902).
-func (o *Orchestrator) attachedReferences(ctx context.Context, ref repository.ShotRef) ([]domain.Reference, error) {
-	refs := ref.Shot.References()
-	if !hasKeyframe(refs) {
-		return refs, nil
-	}
-	read, err := o.keyframeRead(ctx, ref)
-	if err != nil || read {
-		return refs, err
-	}
-	return slices.DeleteFunc(refs, func(r domain.Reference) bool { return r.Kind == domain.RefKeyframe }), nil
+// newImages reads the Reference images of the Project for one run.
+func (o *Orchestrator) newImages(projectID string) *refimage.Reader {
+	return refimage.New(projectID, o.assets, o.files.Read, o.logger)
 }
 
 // recordOf renders the job for both models of the strategy and returns the JSON kept in
@@ -152,7 +112,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 			o.recordPaid(ctx, ref.ProjectID, ref.Shot.ID, out.Model, out.EstimatedCost, out.ActualCost)
 		}
 	}()
-	asset, err := o.files.store(ref.ProjectID, domain.AssetVideo, out.MimeType, out.File)
+	asset, err := o.files.Save(ref.ProjectID, domain.AssetVideo, out.MimeType, out.File)
 	if err != nil {
 		return "", err
 	}
@@ -162,7 +122,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		Routing: s.routing(),
 	})
 	if err != nil {
-		o.files.remove(asset)
+		o.files.Remove(asset)
 		return "", err
 	}
 	takeID, err := o.gens.CreateReservedTake(context.WithoutCancel(ctx), repository.NewTake{
@@ -170,7 +130,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		Parameters: params, Asset: asset, EstimatedCost: out.EstimatedCost, ActualCost: out.ActualCost,
 	}, release) // the hold goes as the cost reaches the ledger: a Reserve in between would count it twice
 	if err != nil {
-		o.files.remove(asset)
+		o.files.Remove(asset)
 		return "", err
 	}
 	taken = true
@@ -182,7 +142,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
 			Title:    title,
 			Summary:  fmt.Sprintf("%s（%s・%.0f 秒）", out.Model, out.Resolution, out.DurationSeconds),
-			VideoURL: domain.TakeVideoURL(takeID), PosterURL: domain.TakeThumbnailURL(takeID), ShotID: ref.Shot.ID, FPS: o.files.frameRate(context.WithoutCancel(ctx), asset),
+			VideoURL: domain.TakeVideoURL(takeID), PosterURL: domain.TakeThumbnailURL(takeID), ShotID: ref.Shot.ID, FPS: o.files.FrameRate(context.WithoutCancel(ctx), asset),
 		}),
 	}
 	if err := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {

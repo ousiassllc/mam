@@ -17,7 +17,7 @@ const bytesPerVideoSecond = 2 << 20
 // (non-functional.md §4 "警告してから生成を開始する").
 func (o *Orchestrator) warnLowDisk(ctx context.Context, ref repository.ShotRef, s Strategy) {
 	need := uint64(float64(s.Takes) * s.DurationSeconds * bytesPerVideoSecond)
-	free, err := o.freeDisk(o.files.root)
+	free, err := o.freeDisk(o.files.Root)
 	if err != nil {
 		o.logger.Warn("read free disk space failed", "err", err)
 		return

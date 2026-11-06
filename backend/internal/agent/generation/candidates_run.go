@@ -1,8 +1,8 @@
 package generation
 
 import (
-	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -43,7 +43,7 @@ func (r *candidateRun) plan(ctx context.Context, strategy domain.CandidateStrate
 // the Judge could not evaluate is kept, without a verdict.
 func (r *candidateRun) take(ctx context.Context, s Strategy, strategy domain.CandidateStrategy, spec domain.ShotSpec, number int) (judged, error) {
 	o := r.o
-	job, err := o.videoJob(ctx, r.ref.ProjectID, spec, r.sc.brief, s.DurationSeconds, r.sc.references)
+	job, err := videoJob(ctx, r.sc.images, spec, r.sc.brief, r.ref.Shot.Duration, r.sc.references)
 	if err != nil {
 		return judged{}, err
 	}
@@ -150,9 +150,18 @@ func (r *candidateRun) mayRetry(ctx context.Context, eff domain.EffectivePolicy,
 		r.o.logger.Warn("read budget failed", "shot_id", r.ref.Shot.ID, "err", err)
 		return Strategy{}, false
 	}
-	s, err := r.o.decide(ctx, r.ref, r.sc.policy, specOf(r.ref.Shot), budget)
-	if err != nil {
-		r.stop(cmp.Or(agegate.Reason(err), "予算上限に達したため、追加の生成は行いませんでした")) // the gate closed meanwhile, else the budget
+	s, err := r.o.decide(ctx, r.ref, r.sc.policy, specOf(r.ref.Shot), budget, r.sc.images)
+	switch {
+	case err == nil:
+	case errors.Is(err, ErrBudgetExceeded):
+		r.stop("予算上限に達したため、追加の生成は行いませんでした")
+		return Strategy{}, false
+	case agegate.Reason(err) != "": // the gate closed meanwhile
+		r.stop(agegate.Reason(err))
+		return Strategy{}, false
+	default: // not a verdict on the budget: say so, and keep the cause in the log
+		r.o.logger.Warn("plan next take failed", "shot_id", r.ref.Shot.ID, "err", err)
+		r.stop("次の生成を計画できなかったため、追加の生成は行いませんでした")
 		return Strategy{}, false
 	}
 	switch eff.CanRetry(retriesDone, budget.ShotSpent, budget.ProjectSpent, s.CostPerTake) {
