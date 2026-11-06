@@ -28,7 +28,6 @@ func TestComposeShowsTheCommercialBadgeOnEveryModelCardAndTheFilter(t *testing.T
 	assert.Contains(t, page, `data-testid="model-pick-bar"`, "the same filter bar as every list of models")
 	assert.NotContains(t, page, `name="commercial" value="all"`, "すべて is the setting's while it is off: the screen follows the setting")
 	assert.Contains(t, card(t, page, "luma-ray-3.2"), "サブスクリプション・契約", "a conditional card says its condition in words")
-	assert.Contains(t, card(t, page, "kling-3.0"), "ライセンスを確認できていません", "an unknown answer is said in words, not only by the badge")
 }
 
 // With the setting 商用OKのモデルだけを使う on the filter starts at 「商用OKのみ」: the server narrows the list to the models that are commercial OK.
@@ -41,7 +40,8 @@ func TestComposeDrawsTheFilterAtTheSettingsDefault(t *testing.T) {
 
 	assert.NotContains(t, page, `name="commercial" value="ok"`, "商用OKのみ is the setting's: sent as the empty word")
 	assert.Contains(t, page, `name="commercial" value="all"`, "すべて is a choice of its own now")
-	assert.NotContains(t, page, `data-model="kling-3.0"`, "a model whose license is unknown is not listed")
+	assert.NotContains(t, page, `data-model="luma-ray-3.2"`, "a model whose answer is not 商用OK is not listed")
+	assert.Contains(t, page, `data-model="kling-3.0"`, "a 商用OK model is")
 }
 
 func TestTheModelCardsOfTheLocalModelsSayUnknownUntilTheModelManagerKnowsTheirLicense(t *testing.T) {

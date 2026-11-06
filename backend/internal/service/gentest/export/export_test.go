@@ -184,7 +184,7 @@ func TestSelectionNarrowsByFavoriteModelMediaAndCommercialUse(t *testing.T) {
 	ex := export.New(r.Svc)
 	flux := images(t, r, "flux-2", "fox", "cat")
 	banana := images(t, r, "nano-banana", "dog")
-	clip := video(t, r, "kling-3.0", "waves")
+	clip := video(t, r, "luma-ray-3.2", "waves")
 	require.NoError(t, r.Svc.SetFavorite(ctx, flux[1].ID, true))
 	require.NoError(t, r.Svc.SetFavorite(ctx, clip.ID, true))
 
@@ -199,8 +199,8 @@ func TestSelectionNarrowsByFavoriteModelMediaAndCommercialUse(t *testing.T) {
 	assert.ElementsMatch(t, []string{flux[0].ID, flux[1].ID, banana[0].ID}, pick(export.Selection{Media: "image"}))
 	assert.Equal(t, []string{clip.ID}, pick(export.Selection{Media: "video"}))
 	assert.ElementsMatch(t, []string{flux[1].ID}, pick(export.Selection{FavoriteOnly: true, Media: "image"}), "conditions add up")
-	assert.ElementsMatch(t, []string{flux[0].ID, flux[1].ID, banana[0].ID}, pick(export.Selection{Commercial: "ok"}), "kling-3.0 is unknown: not commercial OK")
-	assert.Len(t, pick(export.Selection{Commercial: "ok_or_conditional"}), 3)
+	assert.ElementsMatch(t, []string{flux[0].ID, flux[1].ID, banana[0].ID}, pick(export.Selection{Commercial: "ok"}), "luma-ray-3.2 is conditional: not commercial OK")
+	assert.Len(t, pick(export.Selection{Commercial: "ok_or_conditional"}), 4)
 	assert.Len(t, pick(export.Selection{Commercial: "all"}), 4)
 	assert.Len(t, pick(export.Selection{}), 4, "no commercial condition leaves everything in: an export is not narrowed by the setting")
 
