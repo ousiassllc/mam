@@ -125,6 +125,7 @@ func New(o Options) *Service {
 			o.DataDir = abs
 		}
 	}
+	o.Fetch.OnRetry = exeinstall.RetryLogger(o.Logger, "codex", o.Fetch.OnRetry) // an automatic resume of the engine download is logged
 	s := &Service{opts: o, cat: cat, home: filepath.Join(o.DataDir, codexHomeDir), work: filepath.Join(o.DataDir, workDirName),
 		state: openState(filepath.Join(o.DataDir, StateFile))}
 	s.install = s.newInstall()

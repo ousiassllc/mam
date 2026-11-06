@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
 	"github.com/ousiassllc/mam/backend/internal/exeinstall"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
@@ -34,7 +35,7 @@ func (s *Service) newInstall() *exeinstall.Runner {
 		Cancelled: exeinstall.Status{Error: "中断しました。もう一度導入すると、ダウンロード済みの分から再開します"},
 		Failed: func(err error) string {
 			s.opts.Logger.Warn("codex engine install failed", "err", sanitize(err.Error()))
-			return fmt.Sprintf("Codex を導入できませんでした: %s", sanitize(err.Error()))
+			return installFailure(err)
 		},
 	})
 }
@@ -57,6 +58,15 @@ func (s *Service) runInstall(ctx context.Context, report func(exeinstall.Status)
 	// Starts are refused while the state is running: this clears the failed status those refusals left.
 	s.srv.Stop()
 	return err
+}
+
+// installFailure is why an install failed, in words for the user. A download that broke on every transfer that was allowed is
+// told as such (the part file stays and installing again continues from it), not as the English error of the connection.
+func installFailure(err error) string {
+	if fetch.IsConnectionLost(err) {
+		return fetch.ConnectionLostMessage
+	}
+	return fmt.Sprintf("Codex を導入できませんでした: %s", sanitize(err.Error()))
 }
 
 // InstallStatus is the progress of the engine download (State idle when none was started).

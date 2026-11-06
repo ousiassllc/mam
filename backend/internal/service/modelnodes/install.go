@@ -275,8 +275,8 @@ func userFacing(ctx context.Context, err error) error {
 		return &userError{"取得したアーカイブが ComfyUI のノードの形（__init__.py）ではありません。導入しませんでした", err}
 	case errors.As(err, &he) && he.Definitive():
 		return &userError{fmt.Sprintf("取得元が応答しません（HTTP %d）。取得元のリポジトリが移動または削除された可能性があります", he.Status), err}
-	case instlog.IsLost(err):
-		return &userError{instlog.ConnectionLostMessage, err}
+	case fetch.IsConnectionLost(err):
+		return &userError{fetch.ConnectionLostMessage, err}
 	case errors.Is(err, store.ErrNotWritable):
 		return &userError{"導入先のフォルダ（Windows は mam.exe のあるフォルダ、macOS は mam のデータフォルダ）に書き込めません。書き込める場所に置いてください", err}
 	}

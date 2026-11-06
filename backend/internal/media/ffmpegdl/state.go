@@ -11,7 +11,6 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
-	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
 
 // File is one installed executable as it was verified.
@@ -109,17 +108,11 @@ func (i *Installer) archivePath(a Archive) string {
 // NeedBytes is the free space an install needs: the part of the archives that is not downloaded yet, and the executables
 // (which exist next to the archives until these are deleted).
 func (i *Installer) NeedBytes() int64 {
-	need := i.Platform.ExtractedBytes()
-	for _, a := range i.Platform.Archives {
-		have := int64(0)
-		if st, err := os.Stat(fetch.PartPath(i.archivePath(a))); err == nil {
-			have = min(st.Size(), a.Size)
-		} else if st, err := os.Stat(i.archivePath(a)); err == nil {
-			have = min(st.Size(), a.Size)
-		}
-		need += a.Size - have
+	archives := make([]exeinstall.Archive, len(i.Platform.Archives))
+	for k, a := range i.Platform.Archives {
+		archives[k] = exeinstall.Archive{Path: i.archivePath(a), Size: a.Size}
 	}
-	return need
+	return exeinstall.NeedBytes(i.Platform.ExtractedBytes(), archives...)
 }
 
 // CheckSpace returns a *fetch.NoSpaceError when the disk cannot hold the install.

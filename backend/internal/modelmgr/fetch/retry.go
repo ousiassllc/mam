@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
@@ -71,6 +72,22 @@ func (e *ConnectionLostError) Error() string {
 }
 
 func (e *ConnectionLostError) Unwrap() error { return e.Err }
+
+// ConnectionLostMessage is what the user reads when a download broke on every transfer that was allowed (every download of mam
+// that goes through Download says it). The part file stays.
+const ConnectionLostMessage = "通信が切れました。もう一度導入すると続きから再開します"
+
+// IsConnectionLost reports whether err is a download that gave up on a lost connection (*ConnectionLostError).
+func IsConnectionLost(err error) bool {
+	var lost *ConnectionLostError
+	return errors.As(err, &lost)
+}
+
+// LogRetry logs the resume that e announces (WARN), with attrs (what the download is for: the job and the model, the program).
+func LogRetry(l *slog.Logger, e RetryEvent, attrs ...any) {
+	l.Warn("download interrupted, resuming from the part file", append(attrs,
+		"attempt", e.Attempt, "max_attempts", e.Max, "retry_in", e.Wait, "err", e.Err)...)
+}
 
 // Transient reports whether the same request may answer differently later: a server error, a request timeout or a rate limit.
 func (e *HTTPError) Transient() bool {
