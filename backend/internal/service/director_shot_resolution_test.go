@@ -136,7 +136,9 @@ func TestChat_DirectorModeCanSwitchBackToAutoAndReportsWhatIsNotSupported(t *tes
 	assert.NotContains(t, all, "見つかりませんでした", "a switch alone is an executable direction")
 
 	ws = f.say(t, "こんにちは", "")
-	assert.Len(t, ws.Messages, 1, "in AUTO the message is not a direction")
+	require.Len(t, ws.Messages, 2, "in AUTO the message is not a direction, and the thread says so (#1107)")
+	assert.Equal(t, domain.RoleAssistant, ws.Messages[1].Role)
+	assert.Contains(t, ws.Messages[1].Content, "DIRECTOR モード")
 }
 
 func TestChat_AutoModeMessagesAreNotInterpreted(t *testing.T) {

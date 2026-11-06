@@ -23,8 +23,8 @@ templ Frame(notes []Note, fields []Field) {
 		<form
 			class="contents"
 			hx-post={ paths.GenerationTestPart("run") }
-			hx-target="#gt-batch"
-			hx-swap="outerHTML"
+			hx-target="#gt-batches"
+			hx-swap="beforeend"
 			hx-sync="this:drop"
 			hx-disabled-elt="find button[type=submit]"
 		>

@@ -148,7 +148,7 @@ func (s *screen) confirmed(form url.Values) url.Values {
 }
 
 // start posts the confirmed form to run and returns the 202 response with the id of the batch it started. The id is read
-// from the service, not from the response: the progress section names the batch only while it is still running.
+// from the service, not from the response (a refused run has no batch).
 func (s *screen) start(form url.Values) (*httptest.ResponseRecorder, string) {
 	s.t.Helper()
 	known := map[string]bool{}
