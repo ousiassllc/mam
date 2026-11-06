@@ -197,3 +197,4 @@
 | 1.190 | 2026-11-04 | Series 正本・Project の Character の声の学習（GPT-SoVITS の fine-tune）のルート `/series/:id/characters/:characterId/voice-training`・`/projects/:id/characters/:characterId/voice-training`（欄の表示・開始・中止・音声の追加と削除・学習済みの声の削除）を足した | Issue #936 |
 | 1.191 | 2026-11-06 | §1 の `/model-manager/…` の行から「試し生成」を外した（`/model-manager/trials/…` の 5 本を廃止。仕様は [endpoints-model-manager.md](endpoints-model-manager.md) 1.15。状態は仕様のみ） | Issue #1100 |
 | 1.192 | 2026-11-06 | §1 の `/model-manager/…` の行に、概要と分類ごとのサブページ（`GET /model-manager/<slug>`）を足した（仕様は [endpoints-model-manager.md](endpoints-model-manager.md) 1.16。状態は仕様のみ） | Issue #1101 |
+| 1.193 | 2026-11-06 | `/settings/ffmpeg…`・`/settings/facefusion` の行に、モデルマネージャーの `companion`（`/model-manager/companion/ffmpeg…`・`…/facefusion`）へ移ることを書いた。`/model-manager/…` の行の分類に `companion` を足した（仕様は [endpoints-model-manager.md](endpoints-model-manager.md) 1.21。状態は仕様のみ） | Issue #1106 |

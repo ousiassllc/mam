@@ -6,6 +6,8 @@
 
 > **#1100 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1100）**: モデルマネージャーから区画「試し生成」（`#mm-trial`・`#mm-trials`。`TrialSection`・`TrialFormView`・`TrialList`）と、そのルート `/model-manager/trials/…` を**廃止する**。導入したモデルを試す場所は、**生成テスト画面（`GET /generation-test`。Issue の「`/gentest`」は誤記で、実在するルートはこちら）だけ**になる。生成テスト画面・`/generation-test/…`・MCP の生成テストのツール・履歴は変えない。これまでの試し生成の結果は生成テストの履歴にそのまま残る（データの移行・削除はしない）。区画の並びは「ComfyUI エンジン → ローカル音声・口パク・LLM → 追加ノード → 顔チェック用モデル → モデル → Hugging Face から導入 → Hugging Face のトークン → 外部の ComfyUI」になる。区画「モデル」の「?」ヘルプの末尾に、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。行き先は `paths.GenerationTest()`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つ置く。「導入したモデルは生成テストで試せます」だけで、試し生成のフォーム・結果の一覧・削除は画面に残さない。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
 
+> **#1106 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1106）**: 「FaceFusion のインストールがわかりにくい」。FaceFusion に限らず、追加のインストールが要る付随ソフト（ffmpeg・FaceFusion・Ollama・顔チェック用モデルほか）の入口を、モデルマネージャーに集める。新しい分類 `companion`「付随ソフト」（`#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion`）を足し、設定の「ffmpeg」「FaceFusion」の分類（パスの手入力）をここへ**移す**。**FaceFusion は mam が取得しない決定（[face-swap.md](../architecture/gentest/face-swap.md) §1）を覆さない**: 画面は「入れる手順」と「見つかったかの確認」を出す。取得する場合の案は、下の節「決定が要ること」（CTO の判断待ち）。下の節「付随ソフトの導入（#1106）」が正。
+
 > **#1104 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1104）**: 設定「テキスト生成（LLM）」のカード「ローカル LLM サーバー」を、モデルマネージャーの新しい分類 `local-llm`「ローカル LLM」へ**移す**。llama.cpp（mam が導入・起動）・Ollama（#1105）・別のサーバー（LM Studio など。URL を指定）を、1 つの導線（「使うサーバー」の選択）にまとめる。設定のカードは、モデルマネージャーへのリンクだけになる。下の節「ローカル LLM の統合（#1104）」が正で、#1101 の分類の表の `local-runtimes`（llama.cpp を含む）はこの節に読み替える。
 
 > **#1105 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1105）**: 分類 `local-llm` に、**Ollama 本体の導入**（ランタイム `ollama`。カード `#mm-runtime-ollama`。`#mm-llm-runtimes` の中）と、**Ollama のモデルの取得**（区画 `#mm-ollama`。`ollama pull`）を足す。Issue 本文の「エルラマ」は Ollama（音声入力の表記ゆれ）。下の節「Ollama の導入とモデルの取得（#1105）」が正。
@@ -99,6 +101,7 @@
   | `local-llm`（#1104 で足した） | ローカル LLM | 使うサーバー `#mm-llm-use`・llama.cpp とそのほかの LLM のランタイム `#mm-llm-runtimes`（カード `#mm-runtime-llama-cpp`・`#mm-runtime-ollama`）・Ollama のモデル `#mm-ollama`（#1105）・別のサーバー `#mm-llm-connection` | `IconNetwork` |
   | `face-check` | 顔チェック用モデル | `#mm-face-models` | `IconLipSync` |
   | `hf-external` | Hugging Face・外部の ComfyUI | Hugging Face から導入 `#mm-hfi`（`#mm-hfi-msg`・`#mm-hfi-result`・`#mm-hfi-models`）・トークン `#mm-hf`・外部の ComfyUI `#mm-external` | `IconPackage` |
+  | `companion`（#1106 で足した） | 付随ソフト | `#mm-companion-index`（一覧）・ffmpeg `#mm-ffmpeg`・FaceFusion `#mm-facefusion` | `IconPackage` |
 
   `slug` は既存の部分ルート（`engine`・`models`・`runtimes`・`nodes`・`face-models`・`hf`・`external` ほか。[endpoints-model-manager.md](../api/endpoints-model-manager.md) §1）と**同じ文字列にしない**（それらは HTMX が区画だけを取り直す断片で、同じ URL を分類ページと断片で兼ねると、`HX-Request` の分岐が区画の取り直しとぶつかる）。`runtimes`・`nodes`・`face-models` の区画を持つサービスが無い（`Data.Runtimes`・`Nodes`・`FaceModels` が nil）構成では、その分類のルートを登録せず（404）、概要にもカードを出さず、左メニューにも出さない。#1106 が「付随ソフト」（FaceFusion・ffmpeg・Ollama など）の分類を足すときも、`All()` に 1 行足すだけにする。
 - **概要**（`GET /model-manager`。`Overview`。`#mm-overview`）: h1「モデルマネージャー」の下に、分類ごとのカードを `mmcat.All()` の順に並べる（`molecules.ToolCardItem`〔`molecules.ToolCard`。設定の「概要」・[settings-screen.md](settings-screen.md) と同じ「リンクのカード」〕の面を使う。新しい部品は作らない。`<ul role="list" data-testid="mm-categories">`）。1 枚は `<li data-testid="mm-category" data-category="<slug>" data-state="…">`: アイコン・名前（`<h2>`）・1 行の説明・**導入状態のまとめ**（`data-testid="mm-category-summary"`）・開くリンク（`data-testid="mm-category-open"`。`aria-label` は「<名前>を開く」。カード全体がリンクの面）。まとめは文字（色だけで伝えない）で、各分類の今の読み取りだけから作る（新しい保存は無い）:
@@ -109,6 +112,7 @@
   - `local-llm`（#1104）: 「使うサーバー: この PC の llama.cpp（導入済み・停止中）」「使うサーバー: Ollama（起動中・モデル 2 件）」「使うサーバー: 別のサーバー（http://localhost:1234）」「使うサーバー: 未設定」。URL にユーザー情報・キーは出さない。`data-state` は `ready`（今の向き先が使える）・`attention`（向き先が使えない: 未導入・非対応・起動に失敗）・`installing`・`empty`（何も導入せず、URL も既定のまま）。
   - `face-check`: 「導入済み」「ファイルあり（SHA-256 は未確認）」「未導入」（`data-state` は区画の `installed` / `unverified` / `missing`）。
   - `hf-external`: 「トークン: 設定済み（末尾 4 文字）」または「未設定」・「追加したファイル 2 件」。トークンの値は出さない。
+  - `companion`（#1106）: 「ffmpeg: 使えます・FaceFusion: 未設定」のように 2 つの状態を並べる（パスは出さない）。`data-state` は `full`（両方使える）・`partial`（ffmpeg は使え、FaceFusion は未設定。**普通の状態**で、警告にしない。FaceFusion は使うときだけ入れる）・`attention`（ffmpeg が見つからない・どちらかの設定ファイルが読めない）。
 
   `data-state` は上のほか `empty`（0 件）・`partial`（一部）・`full`（すべて）・`installing`・`attention` を使う。概要は `modal.Host` を持たない（詳細モーダルが無い）。**ポーリング**: 動いている導入（`model_install`。エンジン・モデル・実行環境・ノード・顔チェック・HF のどれでも）が 1 つでもあるときだけ、`#mm-overview` が `hx-get="/model-manager/overview"` と `hx-trigger="every 2s"` を持つ（なくなると属性が消えて止まる。他の区画と同じ）。更新ボタン（`molecules/refresh.Bar`。`id` は `mm-overview-refresh`）を持つ。「動いている導入」を一度に聞く照会が今のサービスに無ければ、各区画が自分のポーリングのために持つ読み取りを束ねる（照会の形は実装 Issue で決める。新設なら `view.Overview` に閉じる）。
 - **分類ページ**（`GET /model-manager/<slug>`）: `pagehead.Main(Medium)`（幅は今のまま `max-w-4xl`。列数は #1102）。上から、**戻るリンク**（`atoms.BackLink`「← モデルマネージャー」。`data-testid="mm-back"`。行き先は `paths.ModelManager()`。[settings-screen-categories.md](settings-screen-categories.md) の接続先のサブページの「パンくず」と同じ作法）・h1（分類の名前。副題に「モデルマネージャー」）・その分類の区画（`<div id="model-manager-body" data-testid="model-manager" data-category="<slug>">`。`id` は今の `#model-manager-body` のまま）・ページに 1 つの `modal.Host()`（詳細モーダル。区画の外）。`<title>` は「<名前> - モデルマネージャー」。HTMX のリクエスト（`HX-Request: true` かつ履歴の復元でないもの）には、ページの枠なしの `#model-manager-body` だけを返す（今の `GET /model-manager` と同じ。`Vary: HX-Request, HX-History-Restore-Request`）。
@@ -135,6 +139,7 @@
   | 設定「音声・口パク」のカードと詳細の「モデルマネージャーを開く」（`settings/audio`） | `paths.ModelManager()` | `local-runtimes` |
   | 設定「テキスト生成（LLM）」の `llm-local-managed-link`（`settings/llmlocal`）と、同じ設定の「ローカル LLM サーバー」のカード全体 | `paths.ModelManager()`（カードに欄があった） | カードは `llm-local-link`（`paths.ModelManagerPart("local-llm")`）だけになる（節「ローカル LLM の統合（#1104）」）。`modelfilter.RouteOf` の `ReasonEndpoint`（`endpoint_unusable`）で `source == SourceLocalLLM`（プロバイダー `local` に接続できない）の行き先は、今の `/settings/llm`（`paths.SettingsCategory(paths.SettingsLLM)`）から `local-llm` に変わる（ほかのソースの `ReasonEndpoint` は「ローカル・代替モデル」のまま） |
   | プロジェクト一覧・設定画面・設定の概要の「モデルマネージャー」・メニューの項目・生成テストの作成画面のタブ（`gt-comfy-models`）・ワークフロー画面の `ModelManagerURL` | `paths.ModelManager()` | 変えない（概要が行き先） |
+  | 設定の概要の「ffmpeg」「FaceFusion」のカード・分類（`/settings/ffmpeg`・`/settings/facefusion`）と、そこへ向かうリンクすべて（`apperr` の `Place` の行き先の表〔`apperr/code.go` の `PlaceFFmpeg`・`PlaceFaceFusion`。共通エラー `ffmpeg_missing`・`facefusion_unavailable`・`facefusion_failed` の導線〕・`handler/jobs/jobs.go` の `paths.FFmpegSettings()`・`faceswapscreen` の `SettingsURL`〔`paths.FaceFusionSettings()`〕） | `/settings/ffmpeg`・`/settings/facefusion` | `paths.ModelManagerPart("companion") + "#mm-ffmpeg"` / `"#mm-facefusion"`（`paths.FFmpegSettings()`・`FaceFusionSettings()` は新しい行き先を返す関数に置き換える。節「付随ソフトの導入（#1106）」） |
 
   古い `/model-manager#mm-…` のブックマークは、概要に着く（フラグメントはサーバーに届かず、リダイレクトできない。何もしない）。
 - **変えないもの**: 各区画の見た目・文言・`data-testid`・ルート（`/model-manager/engine/…`・`/models/…`・`/runtimes/…`・`/nodes/…`・`/face-models/…`・`/hf/…`・`/external/…`）・CSRF・拒否の扱い・MCP。区画の「?」ヘルプの中身も同じ（#1103 は追加ノードの説明の置き場所を変える）。
@@ -209,6 +214,45 @@
 - **LM Studio を mam が導入するか**（既定: しない。配布は GUI のインストーラーで、再配布・自動導入の条件を確かめていない。「別のサーバー」に URL を書いてつなぐ形のまま。手順は local-llm.md §8.2）。
 - **左メニュー・概要のアイコン**（既定: `IconNetwork`。`custom-nodes` と同じになるが、名前の文字で区別できる。専用のアイコンを足すなら、Iconoir から 1 つ選んで `atoms` に足す別の作業）。
 
+## 付随ソフトの導入（#1106）
+
+> **状態: 仕様のみ（未実装。Issue #1106）**。#1101（分類）のあとに作る。FaceFusion の方針（取得しない）は [../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md) §1、ffmpeg の取得は [../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md) §7、ルートと受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
+
+- **今の形**（コードで確かめた）: 追加のインストールが要るものの入口が 3 か所に散っている。①ffmpeg・FaceFusion は設定の分類（`/settings/ffmpeg`・`/settings/facefusion`。`organisms/settings/ffmpeg`〔`DownloadPanel` を含む〕・`organisms/settings/facefusion`）で、パスを手で打つ（ffmpeg は「ダウンロードして入れる」ボタンもある。初回ガイドにも同じ部品）。②Ollama は #1105 でモデルマネージャーに入る。③顔チェック用モデルは `face-check`。**FaceFusion は入れ方が画面のどこにも無い**（`organisms/settings/facefusion/section.templ` に出るのは conda の環境名 `facefusion` の言及だけ。`facefusion.FirstRunNote` は「初めて使うモデルは FaceFusion 自身が取得する」だけ）。mam は FaceFusion を取得・配布しない（OpenRAIL-AS。face-swap.md §1）ので、利用者は「見つかりません」を見て、公式の手順を自分で探すことになる。
+- **やること**（既定の案。決定が要ること参照）: ①入口を 1 つにする（モデルマネージャーの分類 `companion`。ほかの分類にあるものは一覧からリンク）。②ffmpeg の導入（既存の取得）とパス、FaceFusion の見つけ方とパスを設定からここへ移す。③FaceFusion は取得せず、**入れる手順を画面に出し、入れたあとに「もう一度探す」で確かめられる**ようにする。
+- **区画の並び**（上から）: `#mm-companion-index`（付随ソフトの一覧）→ `#mm-ffmpeg` → `#mm-facefusion`。分類ページの作りは #1101 のとおり（戻るリンク・h1「付随ソフト」・`modal.Host()`・`<div id="model-manager-body" data-category="companion">`）。
+- **付随ソフトの一覧**（`molecules.SettingsSection("付随ソフトの一覧", help)`。`<ul role="list" data-testid="mm-companion-index">`。1 行が `<li data-testid="mm-companion-row" data-tool="<id>" data-state="…">`）: 追加のインストールが要る**すべて**を、何のためか・どこで入れるか・今の状態で並べる。名前（`<h3>`）・1 行の用途・状態の文字つきバッジ・「入れる」リンク（`data-testid="mm-companion-open"`。`aria-label` は「<名前>を入れる」）。行は次の順。状態は各所有者の読み取りだけから作る（新しい保存は無い）:
+
+  | `data-tool` | 名前 | 用途（1 行） | 入れる場所（リンク先） | 状態の出どころ |
+  |---|---|---|---|---|
+  | `ffmpeg` | ffmpeg・ffprobe | 動画の書き出し・プレビュー・サムネイル・Judge | この分類の `#mm-ffmpeg` | `ffmpegsettings.Service` の探した結果 |
+  | `facefusion` | FaceFusion | 生成した画像の顔の入れ替え（任意） | この分類の `#mm-facefusion` | `facefusionsettings.Service` の探した結果 |
+  | `ollama` | Ollama | ローカルの文章生成（LLM） | `local-llm` の `#mm-runtime-ollama`（#1105） | `localruntime.Service.Status("ollama")` |
+  | `face-models` | 顔チェック用モデル（YuNet・SFace） | 顔の類似度の測定 | `face-check` の `#mm-face-models` | 区画の `installed` / `unverified` / `missing` |
+  | `comfyui` | ComfyUI エンジン | 画像・動画の生成 | `comfyui` の `#mm-engine` | エンジンのカードの `data-engine` |
+  | `local-runtimes` | ローカル音声・口パク | GPT-SoVITS・Irodori-TTS・MuseTalk | `local-runtimes` の `#mm-runtimes` | 導入済みの件数 |
+  | `custom-nodes` | 追加ノード | ComfyUI のカスタムノード | `custom-nodes` の `#mm-nodes` | 導入済みの件数 |
+  | `codex` | Codex エンジン（ChatGPT でログイン） | ChatGPT 経由のテキスト生成 | 設定「API キーとログイン」（ここでは入れない。`/settings/api-keys`） | `chatgpt` の Codex の状態 |
+
+  一覧の行は、その部品を持たない構成（`Data.Runtimes`・`Nodes`・`FaceModels`・`Services.FFmpeg`・`FaceFusion` が nil）では出さない（#1101 の分類と同じ規則）。Codex は、取得がログインの流れの一部（[chatgpt-signin.md](../architecture/chatgpt-signin.md)）なので設定に残す。
+- **ffmpeg（`#mm-ffmpeg`）**: 設定の分類「ffmpeg」（[settings-screen-categories.md](settings-screen-categories.md) §8）の中身を**そのまま移す**（欄・状態・探し方・「mam でダウンロードして入れる」の `DownloadPanel`〔`#ffmpeg-download`〕・「?」ヘルプ・結果の文言・`role` は変えない）。ID・`data-testid`（`ffmpeg-state-*`・`ffmpeg-download-*`）は今のまま。ルートだけ `/model-manager/companion/ffmpeg…` に変わる（取得・検証・置き場所・優先順位は ffmpeg-download.md・ffmpeg-lookup.md のまま）。初回ガイド（[onboarding-screen.md](onboarding-screen.md) §4.3）の同じ部品も、新しいルートを向く。
+- **FaceFusion（`#mm-facefusion`）**: 設定の分類「FaceFusion」の中身（Python とフォルダの欄・探した結果・版と自己申告のライセンス・モデルの表・標準の注意・出典のリンク。face-swap.md §2）を移し、**次の 2 つを足す**。
+  - **入れる手順**（`<details data-testid="mm-facefusion-steps">`。未導入のときは最初から開く）: FaceFusion の公式の手順（<https://docs.facefusion.io/installation>）を、番号つきの 5 つに写す。①conda を入れる（`conda init --all`）②`conda create --name facefusion python=3.12 pip=25.0` と `conda activate facefusion`③`git clone https://github.com/facefusion/facefusion` と `cd facefusion`、**mam が確かめた版に固定する `git checkout 3.9.2`**（`facefusion.RecommendedTag`〔新設〕。2026-11-07 に GitHub のタグで確認した最新の安定タグ。`v4-beta` は選ばない）④`python install.py <accelerator>`（NVIDIA の GPU は `cuda@12`、GPU なしは `default`、Windows の AMD・Intel は `directml`。公式の表）⑤`conda deactivate` → `conda activate facefusion`。**コマンドは 1 本ずつ `<pre><code>`**（`data-testid="mm-facefusion-cmd"`。選択しやすい。コピーのボタンは既存の部品があれば使い、なければ作らない）。手順の前に「mam は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読む）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は公式のページの手順に従ってください」と書く。Python の欄の例は「conda の環境 `facefusion` の `python`」、フォルダの欄の例は「`git clone` したフォルダ」と、欄の下に出す（探す場所は今のとおり）。
+  - **「もう一度探す」**（`<button data-testid="mm-facefusion-refind" hx-get="/model-manager/companion/facefusion">`）: パスを保存せずに、探し直して区画を取り直す。見つかれば状態が「使えます」に変わる。実行はしない（face-swap.md §2「FaceFusion を実行して確かめない」のまま）。
+  - **版の注記**（`data-testid="mm-facefusion-version-note"`）: 見つかった FaceFusion の版（`facefusion/metadata.py` の `version`）が `3.` で始まらないとき、「mam が確かめたのは 3.x の選択肢（モデルの名前）です。この版では入れ替えが動かないことがあります」を出す（断らない。表示だけ）。
+- **設定の側**: 設定の分類「ffmpeg」「FaceFusion」と概要のカード 2 枚を**外し**（設定は 11 枚 → 10 枚）、代わりに概要へ 1 枚「付随ソフト」（`molecules.ToolCardItem`。状態は上の分類の概要のまとめと同じ。行き先は `paths.ModelManagerPart("companion")`）を置く。`GET /settings/ffmpeg`・`GET /settings/facefusion` は、古いブックマークとエラーの導線のため、**303 で `/model-manager/companion` へ**（フラグメントは付けない）。`PUT /settings/ffmpeg`・`/settings/ffmpeg/download…`・`PUT /settings/facefusion` は廃止（404）。
+- **a11y**: 一覧の行はカード全体が 1 つのリンク（名前のテキストが accessible name。#1101 の概要のカードと同じ作り）、状態は文字つき（色だけにしない）。手順は番号つきリスト（`<ol>`）、コマンドのブロックに `tabindex="0"` と `aria-label`（「コマンド: …」）。「もう一度探す」は結果を `role="status"` で読み上げる。
+- **テストで見ること**: `GET /model-manager/companion` が 200・`data-category="companion"`・`#mm-companion-index` の行が上の表の順・`#mm-ffmpeg` と `#mm-facefusion` の `id` がちょうど 1 つずつ。FaceFusion が見つからないとき、`mm-facefusion-steps` が `open` で、5 つの手順に `git checkout 3.9.2` が含まれる。見つかったとき（偽のフォルダ）は閉じていて、版が `4.0.0` なら `mm-facefusion-version-note` が出る。`GET /settings/ffmpeg`・`/settings/facefusion` が 303。ffmpeg の取得・取り消し・削除・パスの保存が新しいルートで今と同じ応答を返す（`ffmpegdl` の偽の配布元）。`facefusion_unavailable`・ffmpeg の失敗の導線が新しい URL を向く（`apperr` のテスト）。概要の `companion` のまとめと `data-state`。
+
+### 決定が要ること
+
+- **FaceFusion を mam が取得するか**（**既定: 取得しない**。face-swap.md §1 の決定を維持し、入口と手順だけモデルマネージャーに移す。理由: OpenRAIL-AS は利用の制限が使う人に直接かかり、条文の全文がリポジトリに無く、mam が取得・配布すると mam の側の条件が変わりうる。FaceFusion は初回に ArcFace などのモデルを自分で取得する）。**取得する案**: ①導入先 `<exe のディレクトリ>\localai\facefusion\`（ランタイムの基盤〔[local-runtime.md](../architecture/model-manager/local-runtime.md)〕に載せる）②GitHub のタグ `3.9.2` のコミットを固定した zip（URL・SHA-256・サイズ。実装時に測る）③Python の環境: 公式は conda 前提で、mam は Python を持たない。mam が Python 3.12 の埋め込み版と `install.py` が引く wheel（onnxruntime-gpu など。数 GB）を固定するか、利用者に conda を求めるかを決める（前者は固定すべき wheel が多く、Windows の実機での検証が要る）④**同意のダイアログ**: OpenRAIL-AS（条文へのリンク）・成人向けの画像には使えない・ArcFace は非商用（既定の組み合わせでも商用の作品に使えるとは確かめられない）・初回に FaceFusion がモデルを取得する・本体のライセンス。同意の版を保存する（追加ノードの同意と同じ形）⑤OS: Windows x64 ＋ NVIDIA を先に。macOS（CoreML）・AMD（DirectML）は理由つきで対応外。⑥削除・更新・ジョブ（`model_install`、`target=facefusion`）・MCP。この案は face-swap.md §1 の「mam は取得しない」を書き換える。
+- **設定の「ffmpeg」「FaceFusion」を外すか**（既定: 外して概要の 1 枚に。別案: 設定に分類を残し、状態とモデルマネージャーへのリンクだけにする〔ffmpeg のパスの上書きは上級者向けで、設定にあるほうが探しやすい、という見方〕）。
+- **顔チェック用モデルを `companion` へ寄せるか**（既定: 寄せない。`face-check` のまま、一覧からリンクする。モデルのファイルを mam が SHA-256 つきで取得するもので、#1101 のとおり独立させた。寄せるなら `All()` の 1 行と `#mm-face-models` の移動だけだが、生成テストのリンク〔`paths.ModelManagerFaceModels()`〕とテストを変える）。
+- **Codex エンジンの取得を `companion` に出すか**（既定: 出さない。ChatGPT のログインの流れの一部なので設定に残し、一覧の 1 行からリンクだけ。別案: ffmpeg と同じ形で `#mm-codex` を足す〔取得の部品 `chatgpt/codex/engine` は同じ作り〕）。
+- **FaceFusion の推奨版**（既定: `3.9.2`。`facefusion.RecommendedTag`。mam のモデルの表は 3.x の `choices` に合わせてある〔face-swap.md §2・§4〕。4.x〔`v4-beta`〕の選択肢は未確認）。
+- **MCP**（既定: 変えない。パスは MCP から設定しない〔[mcp-tools-settings-policy.md](../api/mcp-tools-settings-policy.md)〕。FaceFusion の状態は既存の `get_facefusion_status`）。付随ソフトの状態を 1 回で返す読み取りのツールを足すかは別の判断。
+
 ## Ollama の導入とモデルの取得（#1105）
 
 > **状態: 仕様のみ（未実装。Issue #1105）**。#1104（分類 `local-llm`）のあとに作る。意味・取得の流れ・認証・照合は [../architecture/model-manager/local-runtime.md](../architecture/model-manager/local-runtime.md) §19、ルートと受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4、MCP は [../api/mcp-tools-model-manager.md](../api/mcp-tools-model-manager.md)。
@@ -270,3 +314,4 @@
 | 1.28 | 2026-11-06 | 区画「追加ノード」のカードからノードの説明（`mm-node-description`）を外し、すでに説明を出している詳細モーダル（`nodecard.NodeDetail`）だけに出すと決めた。新しい部品は作らず、区画の「?」の文に「ノードの説明」を足す（節「追加ノードの説明（#1103）」）。状態は仕様のみ（未実装） | Issue #1103 |
 | 1.29 | 2026-11-06 | 設定「テキスト生成（LLM）」の「ローカル LLM サーバー」を、モデルマネージャーの新しい分類 `local-llm`（「使うサーバー」`#mm-llm-use`・「ローカルで動かすサーバー」`#mm-llm-runtimes`・「別のサーバーにつなぐ」`#mm-llm-connection`）へ統合すると決めた。llama.cpp のカードを `local-runtimes` から `local-llm` へ移し、設定のカードはリンクだけにする（節「ローカル LLM の統合（#1104）」）。#1101 の分類の表・概要のまとめ・ページをまたぐリンクの表に反映した。状態は仕様のみ（未実装） | Issue #1104 |
 | 1.30 | 2026-11-06 | 分類 `local-llm` に、Ollama 本体のカード（`#mm-runtime-ollama`。`#mm-llm-runtimes` の中）と、区画「Ollama のモデル」（`#mm-ollama`。厳選した 3 つのカードの取得・中断・削除、そのほかのモデルの表示、詳細モーダル、ポーリング）を足すと決めた（節「Ollama の導入とモデルの取得（#1105）」）。状態は仕様のみ（未実装） | Issue #1105 |
+| 1.31 | 2026-11-06 | 新しい分類 `companion`「付随ソフト」（付随ソフトの一覧・ffmpeg・FaceFusion）を足し、設定の「ffmpeg」「FaceFusion」の分類をここへ移すと決めた。FaceFusion は取得せず、入れる手順（公式の conda → clone → `install.py`。推奨版 3.9.2）と「もう一度探す」を出す。取得する場合の案は「決定が要ること」に並べた（節「付随ソフトの導入（#1106）」）。#1101 の分類の表・概要のまとめ・ページをまたぐリンクの表に反映した。状態は仕様のみ（未実装） | Issue #1106 |

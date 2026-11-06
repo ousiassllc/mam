@@ -16,7 +16,7 @@
 |--------|------|------|
 | GET | `/model-manager` | 概要（#1101。`Overview`: 分類ごとのカードと導入状態のまとめ。`#mm-overview`）。HTMX のリクエスト（履歴の復元でないもの）には、ページの枠なしの本体 `#model-manager-body`（概要では `#mm-overview` を含む） |
 | GET | `/model-manager/overview` | 概要の区画 `#mm-overview` だけ（#1101。更新ボタンとポーリング用）。動いている導入があるあいだだけ自分で取り直す（`every 2s`）。常に 200 |
-| GET | `/model-manager/<slug>` | 分類ページ（#1101）。`<slug>` は `comfyui`（`#mm-engine` ほか）・`image-video`（`#mm-adult`・`#mm-catalog` ほか）・`custom-nodes`（`#mm-nodes`）・`local-runtimes`（`#mm-runtimes`）・`face-check`（`#mm-face-models`）・`hf-external`（`#mm-hfi`・`#mm-hf`・`#mm-external`）。登録は `mmcat.All()`（新設）の一覧から 1 本ずつ（`:slug` のパラメーターのルートにしない）。HTMX のリクエスト（履歴の復元でないもの）には `#model-manager-body` だけ。実行環境・ノード・顔チェックのサービスが無い構成では、その `<slug>` を登録しない（404）。`<slug>` は下の部分ルートの名前と重ねない |
+| GET | `/model-manager/<slug>` | 分類ページ（#1101）。`<slug>` は `comfyui`（`#mm-engine` ほか）・`image-video`（`#mm-adult`・`#mm-catalog` ほか）・`custom-nodes`（`#mm-nodes`）・`local-runtimes`（`#mm-runtimes`）・`face-check`（`#mm-face-models`）・`hf-external`（`#mm-hfi`・`#mm-hf`・`#mm-external`）・`companion`（`#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion`。#1106。ffmpeg と FaceFusion のサービスのどちらかがあるとき）。登録は `mmcat.All()`（新設）の一覧から 1 本ずつ（`:slug` のパラメーターのルートにしない）。HTMX のリクエスト（履歴の復元でないもの）には `#model-manager-body` だけ。実行環境・ノード・顔チェックのサービスが無い構成では、その `<slug>` を登録しない（404）。`<slug>` は下の部分ルートの名前と重ねない |
 | GET | `/model-manager/engine` | エンジンのカード（`#mm-engine`）。導入中・起動中は自分で取り直す。クエリ `job` は報告する導入ジョブで、終わったら結果（導入した／失敗の理由）を出す（#1101 で、モデルの一覧の `hx-swap-oob` は廃止。一覧は別のページ） |
 | GET | `/model-manager/engine/detail` | エンジンのカードが開く詳細モーダルの本体（Issue #970）。説明・この PC で使えない理由（Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけ・書き込めない・ファイルが見つからない）・導入済みの版と build・待ち受け（起動中だけ）・導入先と空き・出典とライセンス。応答は `modal.Frame` で、ページに 1 つの `<dialog>` に入る |
 | GET | `/model-manager/engine/gpu` | GPU の検出結果と導入フォーム（`#mm-gpu`）。未導入のカードが読み込み時に取る |
@@ -75,6 +75,14 @@
 | DELETE | `/model-manager/hf/models` | 追加したファイルの削除。クエリ `path`（`models/<folder>/<name>`）。作ったモデルも消える。使用中は 422、導入中・記録に無いのは 409。カタログのモデルと共有するファイルは、そのモデルが残る間は残る |
 | GET | `/model-manager/external` | 外部の ComfyUI の確認（`#mm-external`）。クエリ `endpoint`（種類 ComfyUI の接続先の名前）を渡すと、その ComfyUI が持つモデルファイルと、カタログのモデルに足りないファイルを出す（読むだけ。導入の操作は無い）。同梱の `bundled-comfyui` は 422、未登録は 404、到達できないときは 502 |
 | GET | `/model-manager/external/detail` | 外部の ComfyUI のモデルのカードが開く詳細モーダルの本体（Issue #954）。クエリ `endpoint`・`name`。ComfyUI に聞き直して、あるファイルと足りないファイルを出す。接続できなければ 502、接続先が不正なら 422、`name` が無ければ 404（理由だけのモーダル） |
+| GET | `/model-manager/companion/ffmpeg` | ffmpeg の区画全体（`#mm-ffmpeg`。#1106。`GET /settings/ffmpeg` の中身の移し替え）。欄・探した結果・ダウンロードの部品。常に 200（`ffmpegsettings.Service` が無い構成ではルートが無い） |
+| PUT | `/model-manager/companion/ffmpeg` | ffmpeg・ffprobe のパスの保存（#1106。`PUT /settings/ffmpeg` の移し替え。意味・状態コード・文言は [ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)・[endpoints-settings.md](endpoints-settings.md) §5.2 のまま）。フォーム `ffmpeg`・`ffprobe`（空は指定なし）。200: 区画（`role="status"`）、422: 区画（`role="alert"` の理由と入力値。書かない）、500: 書き込みの失敗 |
+| GET・POST・DELETE | `/model-manager/companion/ffmpeg/download` | ffmpeg のダウンロードの部品（`#ffmpeg-download`。#1106。`/settings/ffmpeg/download` の移し替え。取得・検証・409 の理由・`Cache-Control: no-store`・進行中の `every 2s` は §5.2.1 のまま）。初回ガイドの同じ部品もこのルートを向く |
+| POST | `/model-manager/companion/ffmpeg/download/cancel` | ダウンロードの中断（#1106。`/settings/ffmpeg/download/cancel` の移し替え） |
+| GET | `/model-manager/companion/facefusion` | FaceFusion の区画全体（`#mm-facefusion`。#1106）。Python とフォルダの欄・探した結果・版と自己申告のライセンス・入れる手順・モデルの表・標準の注意。クエリなしで**探し直す**（保存しない・FaceFusion を実行しない）。常に 200（`facefusionsettings.Service` が無い構成ではルートが無い） |
+| PUT | `/model-manager/companion/facefusion` | Python とフォルダのパスの保存（#1106。`PUT /settings/facefusion` の移し替え。意味・状態コードは [face-swap.md](../architecture/gentest/face-swap.md) §2 のまま）。フォーム `python`・`path`（空は指定なし）。200: 区画（`role="status"`）、422: 区画（`role="alert"` の理由と入力値）、500 |
+| GET | `/model-manager/companion/index` | 付随ソフトの一覧（`#mm-companion-index`。#1106）だけ。更新ボタンが取り直す。常に 200 |
+| GET | `/settings/ffmpeg`・`/settings/facefusion` | **303 で `/model-manager/companion`**（#1106。古いブックマークとエラーの導線のため。フラグメントは付けない）。`PUT`・`POST`・`DELETE /settings/ffmpeg…`・`PUT /settings/facefusion` は廃止（404） |
 
 ## 2. エラーの対応
 
@@ -106,6 +114,7 @@
 | `local-llm`（#1104） | ローカル LLM | `#mm-llm-use`・`#mm-llm-runtimes`（llama.cpp・Ollama のカード）・`#mm-ollama`（#1105）・`#mm-llm-connection` |
 | `face-check` | 顔チェック用モデル | `#mm-face-models` |
 | `hf-external` | Hugging Face・外部の ComfyUI | Hugging Face から導入（`#mm-hfi`）・トークン（`#mm-hf`）・外部の ComfyUI（`#mm-external`） |
+| `companion`（#1106） | 付随ソフト | `#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion` |
 
 「試し生成」（`#mm-trial`・`#mm-trials`）は #1100 で廃止。
 
@@ -121,6 +130,7 @@
 - **ローカル音声・口パク・LLM**（区画 `#mm-runtimes`。llama.cpp〔`llm`〕のカードを含む。local-runtime.md §17）（区画 `#mm-runtimes`、Issue #920。ハンドラーは `handler/modelmgr/runtimes`、見た目は `organisms/modelmgr/runtimecard`・`weightlist`。`localruntime.Service` を持つときだけ。意味は [local-runtime.md](../architecture/model-manager/local-runtime.md) §12）: ランタイムごとに 1 枚のカード（`data-testid="mm-runtime"`）。状態（未導入 / 導入中 / 導入済み + 停止中・起動中・失敗）、導入中の進捗バーと「中断する」（`hx-confirm`。`POST /model-manager/jobs/:job/cancel` がジョブの `target=runtime:<id>` を見て振り分ける）、版・導入先・空き容量、起動の失敗はログの末尾つき。**この PC で使えないとき**（macOS ほか）は、導入・起動のボタンの代わりに**理由**（`mm-runtime-reason`）と**クラウドの案内**（`mm-runtime-fallback`。ElevenLabs / Sync Labs を選べる）を枠で出す。**重み**（`<details data-testid="mm-runtime-weights">`）は、asset ごとに名前・大きさ・必須か・状態（あり / なし / 未確認）・出典のリンク・ライセンスのリンク・商用利用のバッジ（「商用利用: 可」/「不可」/「**はっきりしません**」）を出す。`unclear` / `no` の asset は、その行に琥珀色の枠で `notice`、一覧の前に「商用利用がはっきりしない重みを含みます（N 件）」の枠を出し、一覧を最初から開く。導入済みでも必須の重みが足りないときは「導入済み（重みが不足）」を出し、起動の代わりに「重みを導入」を出す。削除は `hx-confirm`、導入・起動・重みの導入は `hx-sync` と `hx-disabled-elt`（二重送信の防止）。
 - **ローカル LLM**（区画 `#mm-llm-use`・`#mm-llm-runtimes`・`#mm-llm-connection`。#1104。見た目は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「ローカル LLM の統合（#1104）」）: 上の `#mm-runtimes` の記述のうち llama.cpp のカードに関するものは、`#mm-llm-runtimes` の中で今のまま成り立つ（`data-testid="mm-runtime"`・`mm-runtime-reason`・`mm-runtime-fallback`・重み・使うモデルの選択・導入と起動の `hx-sync`・`hx-confirm`）。ルート `/model-manager/runtimes/:id/…` は用途に関わらず同じ。
 - **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードには導入ボタンが無く、理由を出す。**カードにノードの説明は出さず**（#1103。`mm-node-description` は無い）、固定のコミットとともに詳細モーダル（`GET /model-manager/nodes/:id/detail`。説明は `#mam-modal-desc`）に出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。
+- **付随ソフト**（区画 `#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion`。#1106。見た目と意味は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「付随ソフトの導入（#1106）」。ハンドラーは `handler/modelmgr/companion`〔新設。`handler/settings/ffmpeg`・`handler/settings/facefusion` から移す〕）: 一覧の行は `data-testid="mm-companion-row"`（`data-tool`・`data-state`）、FaceFusion の手順は `mm-facefusion-steps`・`mm-facefusion-cmd`・`mm-facefusion-refind`・`mm-facefusion-version-note`。**mam は FaceFusion を取得しない**（face-swap.md §1）ので、導入のルート・ジョブ・同意のダイアログは無い。
 
 ## 4. テスト
 
@@ -188,6 +198,16 @@
 
 `handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
 
+**付随ソフトの導入の受け入れ条件（Issue #1106。実装時にこのテストを足す。#1101 のあと）**:
+
+- `GET /model-manager/companion` が 200 で、`data-category="companion"`、`#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion` がちょうど 1 つずつ。一覧の `mm-companion-row` が `ffmpeg`・`facefusion`・`ollama`・`face-models`・`comfyui`・`local-runtimes`・`custom-nodes`・`codex` の順（その部品を持たない構成の行は無い）。`ollama`・`face-models` ほかの行の `href` が `/model-manager/local-llm#mm-runtime-ollama`・`/model-manager/face-check#mm-face-models` など各分類を向く。`codex` の行は `/settings/api-keys`。
+- ffmpeg: 取得・中断・削除・パスの保存（200・422・500）が、`/model-manager/companion/ffmpeg…` で `/settings/ffmpeg…` と同じ本文・状態コード・`role`・`data-testid` を返す（`ffmpegdl` の偽の配布元。チェックサムの不一致でファイルが消えること・409 の理由も同じ）。初回ガイドの部品の `hx-post` が新しいルート。ffmpeg が無い PC で、取得したあとに探索が見つけ、`Probe`・`Thumbnail` が動く既存のテストは新しいルートで通る。
+- FaceFusion: 見つからないとき `mm-facefusion-steps` が `open` で、番号つきの 5 つの手順を含み、`git checkout 3.9.2`（`facefusion.RecommendedTag`）・`conda create --name facefusion python=3.12 pip=25.0`・`python install.py cuda@12` を含む。**取得するボタン・導入のジョブは無い**（`install`・`pull` に当たる要素・ルートが無いことを確かめる）。見つかったとき（偽のフォルダ・`metadata.py`）は閉じていて、版 `3.9.2` では `mm-facefusion-version-note` が無く、`4.0.0` では出る。`mm-facefusion-refind`（`GET …/companion/facefusion`）が探し直して状態を変える（FaceFusion を実行しない）。保存した欄・422 の入力値の保持は今と同じ。
+- `GET /settings/ffmpeg`・`GET /settings/facefusion` が 303 で `/model-manager/companion`。`PUT /settings/ffmpeg`・`PUT /settings/facefusion`・`/settings/ffmpeg/download…` は 404。設定の左メニューと概要に「ffmpeg」「FaceFusion」が無く（11 → 10 枚）、概要に「付随ソフト」のカード（`href` が `/model-manager/companion`）が 1 枚ある。
+- 導線: `apperr.PlaceFFmpeg`・`PlaceFaceFusion`・`handler/jobs` の ffmpeg のジョブの行・`faceswapscreen` の `SettingsURL` が `/model-manager/companion#mm-ffmpeg`・`#mm-facefusion` を向く（`paths/apperr_test.go` の対応表を新しい URL に更新）。
+- 概要（`GET /model-manager`）の `companion` のカードの `data-state` が `full`・`partial`・`attention` を、ffmpeg の有無と FaceFusion の有無の 4 通りで返す。FaceFusion が未設定でも `attention` にならない。
+- `web/sidenavtest`・`a11y`（一覧の行の名前・手順の `<ol>`・コマンドのブロックの `aria-label`）・`go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -213,3 +233,4 @@
 | 1.18 | 2026-11-06 | §3 の「追加ノード」と §4 に、カードにノードの説明を出さず詳細モーダルだけに出すこと（`mm-node-description` の廃止）と、その受け入れ条件を足した。ルートは変えない。状態は仕様のみ（未実装） | Issue #1103 |
 | 1.19 | 2026-11-06 | §1 に `GET`・`PUT /model-manager/local-llm/use`・`PUT /model-manager/local-llm/connection`・`POST …/connection/test` を足し、`GET /model-manager/runtimes` に `purpose=llm` を足した。§3 の分類の表に `local-llm` を足し、`local-runtimes` から llama.cpp を外した。受け入れ条件を §4 に足した。設定の `PUT /settings/llm/local`・`POST …/test` は廃止（[endpoints-settings.md](endpoints-settings.md)）。状態は仕様のみ（未実装） | Issue #1104 |
 | 1.20 | 2026-11-06 | §1 に `GET /model-manager/ollama`・`GET …/ollama/models/detail`・`POST …/ollama/models/pull`・`DELETE …/ollama/models` を足し、§4 に Ollama の導入とモデルの取得の受け入れ条件を足した。Ollama 本体は既存の `/model-manager/runtimes/ollama/…` で扱う。状態は仕様のみ（未実装） | Issue #1105 |
+| 1.21 | 2026-11-06 | §1 に `/model-manager/companion/ffmpeg`（`GET`・`PUT`・`…/download`・`…/download/cancel`）・`/model-manager/companion/facefusion`（`GET`・`PUT`）・`/model-manager/companion/index` を足し、`/settings/ffmpeg`・`/settings/facefusion` を 303 にして `PUT`・`POST`・`DELETE` を廃止した。§3 に分類 `companion` を足し、§4 に受け入れ条件を足した。FaceFusion は取得しない（導入のルートは無い）。状態は仕様のみ（未実装） | Issue #1106 |

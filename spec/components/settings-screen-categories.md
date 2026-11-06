@@ -160,7 +160,9 @@
 | 6 | ログイン方式のカードの順（公式 → 画像生成（非公式）→ Codex） | その順（#845 が 3 つ目と書いている） |
 | 7 | 概要・各分類の「再起動で反映」の印を、LLM の行ごとに出すか（保存済みで実行中のモデルと違うことを示す） | 出さない（#1006: LLM の割り当ては保存するとすぐ反映されるので、行の印は要らない。再起動が要る設定は、全分類の上の「再起動して反映」の欄が言う。当初は「保存した直後の行だけ出す」だった） |
 
-## 8. ffmpeg（`/settings/ffmpeg`）
+## 8. ffmpeg（`/settings/ffmpeg`。#1106 で、モデルマネージャーの `companion` の `#mm-ffmpeg` へ移る）
+
+> **#1106 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1106）**: この節の中身（欄・状態・探し方・「mam でダウンロードして入れる」の部品・「?」ヘルプ・結果の文言）は、**そのまま**モデルマネージャーの分類 `companion` の区画 `#mm-ffmpeg` へ移る（ID・`data-testid`・`role` は変えない。ルートは `/model-manager/companion/ffmpeg…`。[model-manager-screen.md](model-manager-screen.md)「付随ソフトの導入（#1106）」・[../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1）。設定の分類「ffmpeg」は外れ、`GET /settings/ffmpeg` は 303 で `/model-manager/companion`。概要のカードは「付随ソフト」の 1 枚（[settings-screen.md](settings-screen.md) §5）。以下は移す前の記述で、移したあとの置き場所だけが変わる。
 
 方式: **フォーム（2 欄）＋ 状態の表示**。モーダルにしない（欄が 2 つで、保存は 1 回。結果をその場で読ませたい）。出す条件: `Services.FFmpeg` がある。探し方と方針は [../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)（Issue #856）。
 
@@ -219,3 +221,4 @@
 | 0.21 | 2026-11-04 | §1.1 の表に `topaz`（Topaz Video API。接続テストは `GET /account/v1/credits/balance`）を足した | Issue #1031 |
 | 0.22 | 2026-11-06 | §8 の ffmpeg の反映を、次の起動から → 保存のすぐあと（再起動の欄に出さない）に改めた。概要カードの「使えます」はサービスが動かせるものと一致する | Issue #1047 |
 | 0.23 | 2026-11-06 | §2 のローカル LLM サーバーのカードを、欄を持たないリンクのカードにした（欄はモデルマネージャーの `local-llm` へ移す。状態は仕様のみ） | Issue #1104 |
+| 0.24 | 2026-11-06 | §8 の ffmpeg の分類を、モデルマネージャーの `companion` の `#mm-ffmpeg` へ移すと決めた（中身は変えない。状態は仕様のみ） | Issue #1106 |

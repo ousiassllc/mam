@@ -2,6 +2,8 @@
 
 生成した画像の顔を、別の画像の顔に入れ替える。入れ替えは **FaceFusion**（<https://github.com/facefusion/facefusion>）が行い、mam は **ffmpeg と同じように「同梱しない外部ツール」** として扱う。mam のバイナリにもインストーラーにも FaceFusion とそのモデルは入れない。利用者が別に入れたものを、mam が別のプロセスとして `facefusion.py headless-run`（FaceFusion の非対話モード）で呼ぶだけにする。**この方式は Issue #995 の方針で、変えない**（拡散モデルでの入れ替えなど別の方式は [../local-models.md](../local-models.md) §4.6 の「顔入れ替え」の整理と #960 のとおり別の話）。
 
+> **#1106 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1106）**: 上の「mam は取得しない」は**変えない**。変わるのは**入口**だけで、FaceFusion のパスの欄・探した結果（§2）は設定の分類「FaceFusion」から、モデルマネージャーの分類 `companion`「付随ソフト」の区画 `#mm-facefusion` へ移り、そこに**入れる手順**（公式の conda → `git clone` → `python install.py`。推奨版 `facefusion.RecommendedTag` = `3.9.2`）と「もう一度探す」が加わる（[../../components/model-manager-screen.md](../../components/model-manager-screen.md)「付随ソフトの導入（#1106）」）。**mam が取得する案への変更は CTO の判断待ち**（同節「決定が要ること」。条文の確認・同意の画面・Python の環境の固定が要る）。§2 の「画面」「反映」、§4 の設定へのリンクは、この追記のとおり読み替える。
+
 関連: [gentest.md](gentest.md)（生成テスト。結果は履歴とジョブ一覧に並ぶ）、[../ffmpeg-lookup.md](../ffmpeg-lookup.md)（検出と設定のお手本）、[../local-models.md](../local-models.md) §4.6・§4.9（顔固定と顔の類似度の計測）。
 
 ## 1. 方針
@@ -28,7 +30,7 @@
 | 反映 | **保存するとすぐ**使われる（ffmpeg も同じ。ffmpeg は保存のすぐあとに探し直して全サービスの `media.Tools` を入れ替える。FaceFusion は入れ替えのたびに探す） |
 | FaceFusion を実行して確かめない | 状態の表示は、ファイルの有無と `metadata.py` の読み取りだけ（`facefusion.py --version` も走らせない。モデルのランタイムを読み込むので数秒かかる） |
 
-画面は設定の分類「FaceFusion」（`/settings/facefusion`。ffmpeg の次）。概要のカードは「FaceFusion を使えます」（ok）／「未設定（使うときだけ入れます）」（neutral）／「設定ファイルを読めません」（warn）。表に、入れ替え・顔検出・復元の各モデルの ID・ライセンスの級（バッジ）・FaceFusion の一覧の表記・既定・注を並べ、標準の注意（§1）とライセンスの出典へのリンクを付ける。ルートは `PUT /settings/facefusion`（フォーム `python`・`path`。空は指定なし。200 は分類の本文（`#facefusion-panel`）と通知、使えない値は 422 で入力を残す）。`settingsroutes.Services.FaceFusion` があるときだけ分類とルートがある（ない構成では 404）。
+画面は設定の分類「FaceFusion」（`/settings/facefusion`。ffmpeg の次。**#1106 で、モデルマネージャーの `companion` の `#mm-facefusion` へ移る**。`GET /settings/facefusion` は 303。状態: 仕様のみ）。概要のカードは「FaceFusion を使えます」（ok）／「未設定（使うときだけ入れます）」（neutral）／「設定ファイルを読めません」（warn）。表に、入れ替え・顔検出・復元の各モデルの ID・ライセンスの級（バッジ）・FaceFusion の一覧の表記・既定・注を並べ、標準の注意（§1）とライセンスの出典へのリンクを付ける。ルートは `PUT /settings/facefusion`（#1106 のあと `PUT /model-manager/companion/facefusion`。フォーム `python`・`path`。空は指定なし。200 は分類の本文（`#facefusion-panel`）と通知、使えない値は 422 で入力を残す）。`settingsroutes.Services.FaceFusion` があるときだけ分類とルートがある（ない構成では 404）。#1106 のあと、見つけた版が `3.` で始まらないときは「mam が確かめたのは 3.x の選択肢です」の注記だけを出す（断らない）。
 
 ## 3. 入れ替えの実行
 
@@ -114,3 +116,4 @@
 | 1.1 | 2026-11-03 | §2・§5: MCP の `set_facefusion_paths` を外した。パスの設定は設定画面だけ（パスは後で起動される実行ファイルを決めるので、MCP のクライアントに決めさせない。ffmpeg のパスに MCP ツールが無いのと同じ）。MCP は `get_facefusion_status`（読み取り）と `swap_generation_face` の 2 つ | 統合後レビューの指摘 |
 | 1.2 | 2026-11-04 | 失敗を共通エラーにした: FaceFusion が使えないときは `facefusion_unavailable`（503。従来は 422 の入力エラー）、実行の失敗は `facefusion_failed`（出力の末尾は詳細）。結果の `failure`・画面のエラーボックス・MCP の `failure` で同じコード | Issue #1010 |
 | 1.3 | 2026-11-06 | §5: `swap_generation_face` で FaceFusion が見つからないときの答えを、実装（1.2 から）どおり `unavailable`（`facefusion_unavailable`）に直した（`validation` のままだった）。ツールの説明文も同じに直した | 仕様と実装の乖離（Issue #995 の見直し） |
+| 1.4 | 2026-11-06 | 冒頭に #1106 の追記: FaceFusion の画面（パスの欄・探した結果）を設定からモデルマネージャーの `companion` へ移し、入れる手順と「もう一度探す」を足す。「mam は取得しない」は変えず、取得する案は CTO の判断待ち。状態は仕様のみ（未実装） | Issue #1106 |
