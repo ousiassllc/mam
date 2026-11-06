@@ -71,8 +71,8 @@ func validateModels(c modeladapter.Config) []error {
 		if !slices.Contains(domain.ImageModels(), m) && !video && !chatgptid.Is(m) {
 			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
 		}
-		if q := c.Models[m].Quality; !gptimage.Valid(q) || (q != "" && !slices.Contains(gptimage.Models(), m)) {
-			errs = append(errs, fmt.Errorf("models %s: quality %q is not one of %v (only %s have one)", m, q, gptimage.Qualities(), domain.JoinModels(gptimage.Models(), ", ")))
+		if q := c.Models[m].Quality; !gptimage.ValidFor(m, q) || (q != "" && !slices.Contains(gptimage.Models(), m)) {
+			errs = append(errs, fmt.Errorf("models %s: quality %q is not one of %v (only %s have one)", m, q, gptimage.QualitiesFor(m), domain.JoinModels(gptimage.Models(), ", ")))
 		}
 		for _, res := range slices.Sorted(maps.Keys(c.Models[m].CostPerSecond)) {
 			if video && !caps.SupportsResolution(res) {

@@ -26,6 +26,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
@@ -102,6 +103,9 @@ func New(source CredentialSource, o Options) *Backend {
 // GenerateImage implements modeladapter.ImageBackend. apiModel is the image model of the tool ("gpt-image-2"). The Codex
 // model that hosts the tool call is chosen by driverLoop.
 func (b *Backend) GenerateImage(ctx context.Context, apiModel string, req modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
+	if !req.GPT.Zero() || req.Markup != nil {
+		return modeladapter.ImageResult{}, errors.New(gptimage.SubscriptionRefusal) // never sent as a plain PNG request that looks as if they were used
+	}
 	creds, err := b.source.ImageCredentials(ctx)
 	if err != nil {
 		return modeladapter.ImageResult{}, fmt.Errorf("chatgpt image generation: %w", err)

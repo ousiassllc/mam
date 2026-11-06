@@ -48,9 +48,28 @@ func Effective(setting string) Quality {
 	return Quality(setting)
 }
 
+// The two profiles above High that OpenAI's image generation guide lists for GPT Image 2.6 ("Calculating costs": "For GPT Image 2.6 and 2.5 Sunburst and
+// Flare, the quality options are low, medium, high, xhigh, and max"). The API reference's `quality` field names only 2.5 for them, so the two pages
+// disagree about 2.6: mam offers them and, if the API refuses one, shows its answer (it never sends another quality in its place).
+const (
+	XHigh Quality = "xhigh"
+	Max   Quality = "max"
+)
+
+// QualitiesFor lists the profiles the model takes: the three of GPT Image 2, and for Flare and Sunburst also XHigh and Max.
+func QualitiesFor(m domain.ModelName) []Quality {
+	if TakesOptions(m) {
+		return []Quality{Low, Medium, High, XHigh, Max}
+	}
+	return Qualities()
+}
+
 // Valid reports whether the setting is empty (Default) or one of Qualities.
-func Valid(setting string) bool {
-	return setting == "" || slices.Contains(Qualities(), Quality(setting))
+func Valid(setting string) bool { return ValidFor(domain.ModelGPTImage2, setting) }
+
+// ValidFor reports whether the setting is empty (Default) or one of the profiles of the model (QualitiesFor).
+func ValidFor(m domain.ModelName, setting string) bool {
+	return setting == "" || slices.Contains(QualitiesFor(m), Quality(setting))
 }
 
 // Priced reports whether the price table below applies to the API model: gpt-image-2 and its dated snapshots. Another

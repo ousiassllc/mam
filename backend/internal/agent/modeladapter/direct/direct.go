@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/shotprompt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -26,6 +28,8 @@ var (
 	ErrInputsUnsupported = errors.New("direct: the model cannot use the input images")
 	// ErrInputsConflict: input images that cannot be combined (first frame and free references, a last frame alone).
 	ErrInputsConflict = errors.New("direct: the input images cannot be combined")
+	// ErrOptionsUnsupported: complexity, GIF / SVG output or a markup image (gptimage.Options) for a model that does not take them. They are never dropped.
+	ErrOptionsUnsupported = errors.New("direct: the model does not take the GPT Image 2.6 options")
 	// ErrResolution: the model does not produce the resolution.
 	ErrResolution = errors.New("direct: the model does not produce the resolution")
 )
@@ -44,6 +48,12 @@ func Image(ctx context.Context, a *modeladapter.Adapter, model domain.ModelName,
 	}
 	if len(req.Inputs) > 0 && !cfg.AcceptsImages(model) {
 		return modeladapter.ImageOutput{}, fmt.Errorf("%w: %s", ErrInputsUnsupported, model)
+	}
+	if (!req.GPT.Zero() || req.Markup != nil) && !gptimage.TakesOptions(model) {
+		if chatgptid.Is(model) {
+			return modeladapter.ImageOutput{}, fmt.Errorf("%w: %s", ErrOptionsUnsupported, gptimage.SubscriptionRefusal)
+		}
+		return modeladapter.ImageOutput{}, fmt.Errorf("%w: %s", ErrOptionsUnsupported, model)
 	}
 	if req.AspectRatio == "" {
 		req.AspectRatio = domain.DefaultAspectRatio

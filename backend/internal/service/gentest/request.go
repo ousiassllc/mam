@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
@@ -93,6 +94,10 @@ type Request struct {
 	Exposed map[string]any `json:"exposed,omitempty"`
 	// Mask is the inpaint mask (white redraws, black keeps), in the same shape as a reference. Nil: not a partial redraw.
 	Mask *RefInput `json:"mask,omitempty"`
+	// GPTImage are the settings only GPT Image 2.6 Flare and Sunburst take (gptimage.Options: complexity, GIF / SVG output); Markup is a transparent PNG laid over the first
+	// input image of an edit (the same shape as a reference). A request that sets either needs every chosen model to take them (modelcatalog.Info.GPTImage), else it is refused.
+	GPTImage gptimage.Options `json:"gpt_image,omitzero"`
+	Markup   *RefInput        `json:"markup,omitempty"`
 	// Denoise is the redraw strength (above 0 through 1). Nil uses each model's template default (modelcatalog.Info.DenoiseDefault).
 	Denoise *float64 `json:"denoise,omitempty"`
 	// TranslateToEnglish translates the prompts and the negative prompts that are not English with the Reasoning LLM before
