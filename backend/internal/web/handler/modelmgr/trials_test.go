@@ -2,6 +2,7 @@ package modelmgr_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"html"
 	"mime/multipart"
 	"net/http"
@@ -167,13 +168,9 @@ func TestTrial_SendsThePromptAsTypedAndNeverTranslatesIt(t *testing.T) {
 	assert.Contains(t, s.settled(), `data-status="succeeded"`)
 
 	assert.Empty(t, llm.Asked(), "no LLM was asked to translate")
-	var sent []string
-	for _, n := range f.Graph() {
-		for _, raw := range n.Inputs {
-			sent = append(sent, string(raw))
-		}
-	}
-	assert.Contains(t, sent, `"`+prompt+`"`, "the model got the text that was typed")
+	graph, err := json.Marshal(f.Graph())
+	require.NoError(t, err)
+	assert.Contains(t, string(graph), `"`+prompt+`"`, "the model got the text that was typed")
 }
 
 func TestTrial_AFailedTrialShowsItsReason(t *testing.T) {

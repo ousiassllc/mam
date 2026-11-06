@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"runtime"
 
+	"github.com/ousiassllc/mam/backend/internal/app/dlwire"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
@@ -15,17 +16,8 @@ import (
 // no data directory on macOS), the download is off and the service is not Supported; an ffmpeg the user installed still works.
 func newFFmpegDownloader(cfg config.Config, logger *slog.Logger) *ffmpegdl.Service {
 	return ffmpegdl.New(ffmpegdl.Options{
-		Layout: ffmpegLayoutFor(runtime.GOOS, executablePath, logger, cfg.DataDir), Catalog: ffmpegdl.Default(), GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, Logger: logger,
+		Layout: dlwire.FFmpeg(runtime.GOOS, executablePath, logger, cfg.DataDir), Catalog: ffmpegdl.Default(), GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, Logger: logger,
 	})
-}
-
-func ffmpegLayoutFor(goos string, find func() (string, error), logger *slog.Logger, dataDir string) ffmpegdl.Layout {
-	exe, err := downloadAnchor(goos, find)
-	if err != nil {
-		logger.Warn("the ffmpeg download is off", "err", err)
-		return ffmpegdl.Layout{}
-	}
-	return ffmpegdl.For(goos, exe, dataDir)
 }
 
 // newFFmpegSettings is the ffmpeg settings (ffmpeg.json) with the lookup that ends in the downloaded copy: it is searched after

@@ -5,8 +5,7 @@
 415	backend/internal/agent/generation/orchestrator_candidates_test.go
 384	backend/internal/agent/generation/orchestrator_refpack_regen_test.go
 354	backend/internal/agent/jobqueue/queue_test.go
-3061	backend/internal/agent/judge/
-430	backend/internal/agent/judge/judge_test.go
+3009	backend/internal/agent/judge/
 3300	backend/internal/agent/modeladapter/
 2948	backend/internal/agent/repair/
 428	backend/internal/agent/repair/agent_flow_fixture_test.go
@@ -24,11 +23,11 @@
 362	backend/internal/repository/reference_test.go
 402	backend/internal/repository/series_test.go
 391	backend/internal/repository/versioning.go
-7779	backend/internal/router/
+7766	backend/internal/router/
 442	backend/internal/router/brand_test.go
 383	backend/internal/router/bundle_test.go
 450	backend/internal/router/review_test.go
-15106	backend/internal/service/
+15084	backend/internal/service/
 429	backend/internal/service/branch.go
 475	backend/internal/service/editor_reshoot.go
 361	backend/internal/service/editor_timeline.go

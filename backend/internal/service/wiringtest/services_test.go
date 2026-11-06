@@ -1,4 +1,4 @@
-package service_test
+package wiringtest_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -17,6 +18,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
+
+// silentLLM is a Reasoning LLM that is never asked: the wiring only checks that it is set.
+type silentLLM struct{}
+
+func (silentLLM) Complete(context.Context, llm.Agent, llm.Request) (llm.Response, error) {
+	return llm.Response{}, errors.New("not used")
+}
 
 // noFrames is a judge.FrameSource that is never asked: the wiring only checks that it is set.
 type noFrames struct{}
@@ -49,7 +57,7 @@ func TestNew_RegistersJobKindsByDeps(t *testing.T) {
 			db := testdb.Open(t)
 			jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 			deps := service.Deps{
-				DB: db, Jobs: jobs, LLM: &genReasoner{}, Frames: noFrames{}, AssetsDir: t.TempDir(),
+				DB: db, Jobs: jobs, LLM: silentLLM{}, Frames: noFrames{}, AssetsDir: t.TempDir(),
 				Models: modeladapter.New(modeladapter.DefaultConfig(), modeladapter.Backends{}),
 			}
 			tc.tweak(&deps)
@@ -67,7 +75,7 @@ func TestNew_RegistersJobKindsByDeps(t *testing.T) {
 func TestNew_NoJobsWiresNoAgent(t *testing.T) {
 	db := testdb.Open(t)
 
-	svc := servicetest.New(t, service.Deps{DB: db, LLM: &genReasoner{}, Frames: noFrames{}, AssetsDir: t.TempDir()})
+	svc := servicetest.New(t, service.Deps{DB: db, LLM: silentLLM{}, Frames: noFrames{}, AssetsDir: t.TempDir()})
 
 	_, err := svc.Judge.Judge(context.Background(), "missing")
 	assert.ErrorIs(t, err, service.ErrUnavailable)

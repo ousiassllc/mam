@@ -14,9 +14,11 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"runtime"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/app/dlwire"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
@@ -107,7 +109,7 @@ func Run(ctx context.Context, opts Options) error {
 func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Options) error {
 	gpt := chatgpt.New(chatgpt.Options{
 		Keys: credential.NewKeyring(), DataDir: cfg.DataDir, Open: opts.OpenBrowser, Logger: logger,
-		CodexLayout: codexLayout(logger, cfg.DataDir), Version: version.Version,
+		CodexLayout: dlwire.Codex(runtime.GOOS, executablePath, logger, cfg.DataDir), Version: version.Version,
 	})
 	defer gpt.Close() // the Codex app-server is a child process of mam
 	ffmpegDL := newFFmpegDownloader(cfg, logger)

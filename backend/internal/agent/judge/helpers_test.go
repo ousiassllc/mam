@@ -7,7 +7,6 @@ import (
 	"image/color"
 	"image/jpeg"
 	"math"
-	"os"
 	"sync"
 	"testing"
 
@@ -119,5 +118,3 @@ func (f *fakeLLM) Complete(_ context.Context, agent llm.Agent, req llm.Request) 
 	}
 	return llm.Response{Text: f.text, Provider: llm.ProviderGoogle, Model: "fake"}, nil
 }
-
-func writeFile(path string, data []byte) error { return os.WriteFile(path, data, 0o600) }
