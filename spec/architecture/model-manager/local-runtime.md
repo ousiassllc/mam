@@ -10,7 +10,7 @@
 | MuseTalk 1.5 のランタイム（環境の組み立て・起動・口パクの入口） | **#921（§13）** |
 | Irodori-TTS のランタイム（環境の組み立て・起動）、モデルの選択、Gemma Terms の同意 | **#1015（§14）** |
 | llama.cpp のランタイム（ローカル LLM。GGUF の重み 6 系統 8 本の選択、同梱ランタイムとしての起動、プロバイダー `local` への結びつき） | **#1008（後半。§17）** |
-| Ollama のランタイムと、Ollama のモデルの取得（`ollama pull`。厳選 3 つ。認証なし・クラウド機能は無効。状態: 仕様のみ・未実装） | **#1105（§19）** |
+| Ollama のランタイムと、Ollama のモデルの取得（`ollama pull`。厳選 3 つ。認証なし・クラウド機能は無効。状態: 実装済み） | **#1105（§19）** |
 | Irodori-TTS の声のプロバイダー（Audio Director。参照音声・キャプション・絵文字・GPU の扱い） | **#1015**（[model-adapters-m3.md §14.11・§14.12](../model-adapters-m3.md)。この文書の範囲外） |
 | MuseTalk の口パクプロバイダー（Audio Director。実行ごとの選択の入口まで） | **#923**（[model-adapters-m3.md §14.9](../model-adapters-m3.md)。この文書の範囲外） |
 | プロバイダーの選択の保存・クラウドへのフォールバック・利用者向けの文言 | #924（この文書の範囲外） |
@@ -861,7 +861,7 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 
 ## 19. Ollama のランタイムと、Ollama のモデルの取得（ローカル LLM。Issue #1105）
 
-> **状態: 仕様のみ（未実装。Issue #1105）**。#1104（ローカル LLM の統合。[../local-llm.md](../local-llm.md) §11）と同じ分類 `local-llm` に載る。Issue 本文の「エルラマ」は **Ollama**（音声入力の表記ゆれ。llama.cpp は §17 で導入済み）。コードの現状（確認済み）: Ollama を導入・起動・更新する部品は **無い**（`providers.local` の URL に、利用者が別に入れた Ollama を書くだけ。Ollama のメモリ降ろし `/api/ps`・`keep_alive: 0` は `service/llmlocal` が持つ）。`grep` で `ollama` を含む実装は `llmlocal`・`localllm`・設定の文言だけ。
+> **状態: 実装済み（Issue #1105。実機〔Windows での実際の導入・起動・モデルの取得〕は未確認。§19.7）**。#1104（ローカル LLM の統合。[../local-llm.md](../local-llm.md) §11）と同じ分類 `local-llm` に載る。Issue 本文の「エルラマ」は **Ollama**（音声入力の表記ゆれ。llama.cpp は §17 で導入済み）。実装の置き場所: ランタイム `catalog/data/runtimes/ollama.json`（`own_models`・`launch.listen_env`・`launch.home_files`・`support.cpu_ok`）、モデルの一覧 `catalog/ollamamodels` と `catalog/data/ollama/models.json`（`Catalog.OllamaModels`）、取得・照合・削除 `service/ollamapull`（偽の Ollama の `ollamatest`）、管理サーバーとしての呼び出し `service/llamaserver`（`ID`・`NoKey`・`Models`）、画面 `handler/modelmgr/ollama`・`organisms/modelmgr/ollamacard`、MCP `mcp/tools/modelmgr/ollamatools`。
 
 ### 19.1 実行環境（`data/runtimes/ollama.json`。新設）
 
@@ -871,7 +871,7 @@ llama.cpp（§17.1）と同じ「ネイティブのサーバー」のランタ�
 |---|---|
 | id・用途・名前 | `ollama`・`llm`・「Ollama」 |
 | 取得 | GitHub の公式リリース（`github.com/ollama/ollama/releases/download/<タグ>/…`。許可ホストは増えない）。固定する版は **v0.40.15**（2026-11-03 公開。GitHub API で確かめた）。タグはリリースのアセットで、コミット固定の URL ではない（llama.cpp §17.1・ComfyUI のエンジンと同じ扱い。URL・サイズ・SHA-256 を固定する） |
-| 対応と変種 | **Windows x64 のみ**。`nvidia`（GPU が NVIDIA、または GPU なし〔CPU 実行〕）→ `ollama-windows-amd64.zip`、1,614,941,966 B、SHA-256 `9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6`（GitHub のアセットの `digest`。**ダウンロードして測り直すのは実装時**）。展開後のサイズは実装時に測る。AMD（Radeon）は別アセット `ollama-windows-amd64-rocm.zip`（258,790,357 B。標準の zip に重ねて展開する形。公式の windows.mdx の記述）で、**この Issue では扱わない**（「この PC では使えません。AMD の GPU は未対応です」の理由。決定が要ること）。Windows arm64（`ollama-windows-arm64.zip`）・MLX 版も扱わない |
+| 対応と変種 | **Windows x64 のみ**。`nvidia`（GPU が NVIDIA、または GPU なし〔CPU 実行〕）→ `ollama-windows-amd64.zip`、1,614,941,966 B、SHA-256 `9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6`（GitHub のアセットの `digest`。**2026-11-07 に実物をダウンロードして測り直し、SHA-256・サイズが一致した**）。展開後は 80 ファイル・2,263,717,391 B（`ollama.exe` と `lib\…`。必要な空き容量はこれと zip の合計）。AMD（Radeon）は別アセット `ollama-windows-amd64-rocm.zip`（258,790,357 B。標準の zip に重ねて展開する形。公式の windows.mdx の記述）で、**この Issue では扱わない**（「この PC では使えません。AMD の GPU は未対応です」の理由。決定が要ること）。Windows arm64（`ollama-windows-arm64.zip`）・MLX 版も扱わない |
 | ライセンス | **MIT**（GitHub API の `license`、リポジトリの `LICENSE`）。商用利用: 可（`yes`）。カードの詳細のソース・ライセンスのリンクは `github.com/ollama/ollama` |
 | 置き場所 | `<mam.exe のあるディレクトリ>\localai\ollama\`（§2 と同じ。`env\`・`downloads\`・`cache\`・`tmp\`・`models\`〔Ollama のモデル。下記〕・`state.json`・ログ）。Ollama 自身のホーム（`%USERPROFILE%\.ollama`）には**書かせない**: 環境変数 `OLLAMA_MODELS` を `localai\ollama\models` にし、`HOME`・`USERPROFILE` を `localai\ollama\home` にして、利用者が別に入れた Ollama のモデル・設定と混ざらないようにする（`USERPROFILE` の付け替えが Windows の Ollama で効くことは**未確認**。効かなければ利用者の `.ollama` に `history` などが書かれる。§19.7） |
 | 起動 | `env\ollama.exe serve` を**直接**起動する。引数は `serve` だけ（任意の引数・実行ファイルは受け付けない。利用者・MCP・設定が渡せるのはモデルの名前だけ）。環境変数: `OLLAMA_HOST=127.0.0.1:{port}`（**`127.0.0.1` だけ**。カタログの検証が、`OLLAMA_HOST` に `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::`・`[` を含まないことを確かめる）・`OLLAMA_MODELS`・`OLLAMA_KEEP_ALIVE=15m`（llama.cpp の `--sleep-idle-seconds 900` と同じ長さ。§17.1）・`OLLAMA_NOPRUNE`・`OLLAMA_ORIGINS` は既定のまま（既定は localhost 系のみ）。**Ollama のクラウド機能（クラウドのモデル・Web 検索）は無効にする**: `server.json` の `disable_ollama_cloud: true`（公式の faq.mdx の手順。置き場所は上の `home` の下の `.ollama\server.json`。mam が起動のたびに書く）。クラウドのモデルは、プロンプトを Ollama のサーバーへ送るので、「ローカルで動く」という Issue の前提に反する |
@@ -881,7 +881,9 @@ llama.cpp（§17.1）と同じ「ネイティブのサーバー」のランタ�
 
 導入・起動・停止・自動起動（既定オフ。最初の LLM の呼び出しで起動）・削除・状態・排他・`View` は §5〜§8 と同じ。`Remove` は `env\`・`downloads\`・`cache\`・`tmp\`・`home\` を消し、**`models\`（取得したモデル。数十 GB）は消す前に確認する**（`hx-confirm`「取得した Ollama のモデルも消えます」。他のランタイムの `Remove`〔重みも消す〕と同じ振る舞いで、確認の文だけが違う）。更新（固定版が上がった）は導入し直しで、`models\` は残す。
 
-### 19.2 Ollama のモデル（`data/assets/ollama.json`。新設）
+### 19.2 Ollama のモデル（`data/ollama/models.json`。新設）
+
+> 置き場所は、当初の想定の `data/assets/ollama.json` ではなく `data/ollama/models.json`: `data/assets/` は重みの集合（`ResourceSet`）のスキーマの置き場で、Ollama のモデルは層・manifest の形が違うため。ランタイム `ollama` は `own_models: true`（`data/assets/ollama.json` を持たない。検証が、持つものには要求し、持たないものには禁じる）。
 
 Ollama のモデルは、**mam の `fetch` ではなく、管理している Ollama 自身の `POST /api/pull` で取得する**（Ollama のモデルは複数の blob と manifest の組で、置き場所の規則・再開・重複排除は Ollama が持つ。mam が直接書くと、`OLLAMA_MODELS` の内部形式に依存する）。mam が持つのは、**厳選した名前の一覧**（カタログ）と、取得後の照合だけ。
 
@@ -903,7 +905,7 @@ Ollama のモデルは、**mam の `fetch` ではなく、管理している Oll
 - **空き容量**: 取得の前に、`models\` のあるドライブの空きが、合計のサイズ＋ 1 GiB に足りなければ、ジョブを作らず 409（`*fetch.NoSpaceError`。他のモデルの導入と同じ文面「必要量・空き・場所」）。
 - **中断**: `POST /model-manager/jobs/:job/cancel`（`target` が `ollama:` なら管理している Ollama への `/api/pull` の接続を閉じる）。Ollama は途中の層を残すので、取り直すと続きから進む想定（**未確認**。§19.7）。
 - **照合**（`success` のあと）: `OLLAMA_MODELS` の `manifests\registry.ollama.ai\library\<名前>\<タグ>` を読み、`model` の層の digest・サイズがカタログと同じかを確かめる。**同じ → 状態 `verified`**。**違う → 状態 `changed`**（バッジ「上流で更新されています」と注記。「モデルの内容がカタログに記録した版と違います。使えますが、mam は確かめていません。出典のページで内容を確認してください」。**削除も使用の禁止もしない**: Ollama が自分で digest を検証して書いた正規のファイルで、タグが更新されただけの場合が多いため）。manifest が読めない（形式が変わった）ときも `changed`。Ollama 自身が各層の SHA-256 を manifest の digest と照合する（`verifying sha256 digest`）ので、**転送の破損は Ollama が検出する**。mam の固定との違いは、**「どの内容を取得するか」を mam が固定できない**（タグが動く）点で、これは llama.cpp・ComfyUI のモデル（コミット固定）より弱い。決定が要ること。
-- **削除**: `DELETE /model-manager/ollama/models/<名前>:<タグ>`（管理している Ollama の `DELETE /api/delete`）。使われている LLM の割り当て（`llmassign` が `local` の `model` に指している）があれば 422（使われている Agent の名前を出す。HF の導入の削除と同じ）。取得中は 409。未取得は 409。Ollama が止まっていれば、削除の間だけ起動する。
+- **削除**: `DELETE /model-manager/ollama/models?name=<名前>:<タグ>`（名前にコロンがあるのでクエリ。管理している Ollama の `DELETE /api/delete`）。使われている LLM の割り当て（`llmassign` が `local` の `model` に指している）があれば 422（使われている Agent の名前を出す。HF の導入の削除と同じ）。取得中は 409。未取得は 409。Ollama が止まっていれば、削除の間だけ起動する。
 - **一覧と状態**: `GET /api/tags`（Ollama が持つモデル）とカタログを合わせる。状態: `missing`（未取得）・`pulling`・`installed`（取得済み・`verified`）・`changed`・`unavailable`（Ollama が未導入・起動できない）。**カタログに無いモデル**（利用者が自分で `ollama pull` したもの）は、`GET /api/tags` にあれば「そのほかのモデル」として名前・サイズだけを一覧の末尾に出す（取得・削除はしない。削除は利用者の `ollama` で）。自由入力の取得は決定が要ること（既定: しない）。
 - **LLM の割り当て**: 割り当ての `model` は `<名前>:<タグ>`（`gemma4:12b`）。`use` が `ollama` の間、モデルの選択（`GET /model-picker/…` の `llm`）には、`GET /api/tags` の取得済みのモデルだけが出る（llama.cpp の「選んだ 1 つだけ」〔local-llm.md §10.1〕と違い、Ollama は複数のモデルを持てるので、すべて出す）。**モデルを切り替えても Ollama は止まらない**（呼び出しの `model` で決まる）。
 - **ComfyUI との取り合い（VRAM）**: llama.cpp と同じ規則（§19.5）。
@@ -922,5 +924,5 @@ llama.cpp（local-llm.md §10.3）と同じ `gpufree.Guard` に載せる: LLM �
 
 ### 19.7 テスト・未確認
 
-- **テスト（実装時）**: `catalog/ollamatest`（ピン: URL が `github.com/ollama/ollama/releases/download/` のアセットだけ・SHA-256・サイズ・`OLLAMA_HOST` が `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::` を含まない・引数が `serve` だけ・`disable_ollama_cloud`・モデルの名前が `library` で `cloud` を含まない・ライセンスの答えが 3 つとも `yes`）、`service/ollamapull`（新設。偽の Ollama〔NDJSON を返す HTTP サーバー〕で、進捗の合計・層の切り替え・`error` の行・中断・`success` 後の照合〔`verified`・`changed`・manifest が読めない〕・空き容量不足・削除〔使用中の 422・取得中の 409〕）、`handler/modelmgr/ollama`（画面・ルート・CSRF・状態コード）、`runtimes_test.go`（Ollama のカードの表示・非対応の理由）。実物の Ollama・GPU・レジストリは使わない。
-- **未確認**: 実物の Windows での導入（zip の取得・展開・`ollama.exe serve`・`/api/version`）・`/api/pull` の実際の応答（`total`・`completed` の動き）・中断後の再開・`USERPROFILE` の付け替えの効き方・`server.json` の `disable_ollama_cloud` が起動の前に置いて効くこと・展開後のサイズ・認証が無いことの実際の危険（§19.4）・VRAM と ComfyUI の同居。この開発環境は Linux で GPU が無い。公式の `docs/api.md`・`windows.mdx`・`faq.mdx`・GitHub のリリースの API・レジストリの manifest は読んで確かめた。
+- **テスト（実装済み）**: `catalog/ollamatest`（ピン: URL が `github.com/ollama/ollama/releases/download/` のアセットだけ・SHA-256・サイズ・`OLLAMA_HOST` が `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::` を含まない・引数が `serve` だけ・`disable_ollama_cloud`・モデルの名前が `library` で `cloud` を含まない・ライセンスの答えが 3 つとも `yes`）、`service/ollamapull`（新設。偽の Ollama〔NDJSON を返す HTTP サーバー〕で、進捗の合計・層の切り替え・`error` の行・中断・`success` 後の照合〔`verified`・`changed`・manifest が読めない〕・空き容量不足・削除〔使用中の 422・取得中の 409〕）、`handler/modelmgr/ollama`（画面・ルート・CSRF・状態コード）、`runtimes_test.go`（Ollama のカードの表示・非対応の理由）。実物の Ollama・GPU・レジストリは使わない。
+- **未確認**: 実物の Windows での導入（zip の取得・展開・`ollama.exe serve`・`/api/version`）・`/api/pull` の実際の応答（`total`・`completed` の動き）・中断後の再開・`USERPROFILE` の付け替えの効き方・`server.json` の `disable_ollama_cloud` が起動の前に置いて効くこと・認証が無いことの実際の危険（§19.4）・VRAM と ComfyUI の同居（以上は `device_only`。この開発環境は Linux で GPU が無く、テストは偽の Ollama で行った。展開後のサイズ〔2,263,717,391 B〕と zip の SHA-256 は実物で確かめた）。公式の `docs/api.md`・`windows.mdx`・`faq.mdx`・GitHub のリリースの API・レジストリの manifest は読んで確かめた。

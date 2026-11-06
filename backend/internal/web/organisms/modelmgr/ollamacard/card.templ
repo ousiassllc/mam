@@ -1,0 +1,140 @@
+package ollamacard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Section is the models of the Ollama of mam side by side like the other models, with the line that says where the server stands. A fetch swaps the section whole (its
+// answers are the section), and the section polls itself while a pull runs (?jobs=). The pull buttons are off, with the reason, while the server is not installed or cannot run here.
+templ OllamaSection(s Section) {
+	<div
+		id={ SectionID }
+		class="flex flex-col gap-3"
+		data-testid={ SectionID }
+		data-server={ s.Server }
+		if s.OOB {
+			hx-swap-oob="true"
+		}
+		if s.Polling() {
+			hx-get={ s.url() }
+			hx-trigger={ view.Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		@refresh.Bar(paths.ModelManagerPart("ollama"), SectionID, "")
+		@view.Notice(s.Message, SectionID)
+		<p id={ StateID } class="text-sm text-ink" aria-live="polite" data-testid={ StateID }>
+			{ s.StateText() }
+			if s.RuntimeHint() != "" {
+				<a class="underline" href={ templ.SafeURL(RuntimeAnchor) } data-testid="mm-ollama-runtime-link">上のカード</a>{ s.RuntimeHint() }
+			}
+		</p>
+		<ul role="list" class={ modelcard.GridClass } data-testid="mm-ollama-models">
+			for _, m := range s.Items {
+				@ModelCard(m)
+			}
+		</ul>
+		if len(s.Others) > 0 {
+			@others(s.Others)
+		}
+	</div>
+}
+
+templ others(items []Other) {
+	<div class="flex flex-col gap-1" data-testid="mm-ollama-others">
+		<h3 class="text-sm font-semibold text-ink">そのほかのモデル</h3>
+		<p class="text-xs text-mute">この Ollama に、ほかの手段で入れたモデルです。mam はここから消したり、取得したりしません。</p>
+		<ul role="list" class="flex flex-col gap-1 text-sm text-ink">
+			for _, o := range items {
+				<li data-testid="mm-ollama-other" data-model={ o.Name }>{ o.Name }（{ o.Size }）</li>
+			}
+		</ul>
+	</div>
+}
+
+// badge is the one badge that sums a model up.
+func badge(m Model) (atoms.BadgeTone, string) {
+	switch m.State {
+	case StatePulling:
+		return atoms.BadgeInfo, "取得中"
+	case StateInstalled:
+		return atoms.BadgeOK, "取得済み"
+	case StateChanged:
+		return atoms.BadgeWarn, "上流で更新されています"
+	case StateUnavailable:
+		return atoms.BadgeNeutral, "取得できません"
+	}
+	return atoms.BadgeNeutral, "未取得"
+}
+
+func card(m Model) modelcard.Card {
+	tone, label := badge(m)
+	c := modelcard.Card{
+		ID: ModelID(m.Name), Name: m.DisplayName, Icon: atoms.IconPackage, Meta: "Ollama: " + m.Name + "・" + m.Size, DetailURL: detailURL(m.Name),
+		State: modelcard.Badge{Tone: tone, Label: label, Attrs: templ.Attributes{"data-testid": "mm-ollama-badge"}}, Commercial: &m.Commercial,
+		Attrs: templ.Attributes{"data-testid": "mm-ollama-model", "data-model": m.Name, "data-state": m.State, "data-commercial": m.Commercial.Answer()},
+	}
+	if m.NoSpace {
+		c.Badges = append(c.Badges, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "導入先の空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-ollama-nospace"}})
+	}
+	return c
+}
+
+func detailURL(name string) string {
+	return paths.ModelManagerPart("ollama", "models", "detail") + "?name=" + name
+}
+
+// ModelCard is the card of a model: its name, size, state and commercial-use icon, what it is, the progress of a running pull and the buttons. The layers, the SHA-256
+// and the license are in its detail modal (ModelDetail).
+templ ModelCard(m Model) {
+	@modelcard.Item(card(m)) {
+		<p class="text-sm text-mute">{ m.Description }</p>
+		@view.Notice(m.Message, ModelID(m.Name))
+		switch m.State {
+			case StatePulling:
+				if m.Install != nil {
+					@view.ProgressBar(*m.Install, m.DisplayName+" の取得の進み具合")
+					@modelcard.Actions() {
+						@atoms.SmallButtonFor(atoms.ToneNeutral, "中断する", m.DisplayName, templ.Attributes{
+							"type": "button", "hx-post": paths.ModelManagerPart("jobs", m.Install.JobID, "cancel"), "hx-target": "#" + SectionID, "hx-swap": "outerHTML",
+							"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-ollama-cancel",
+							"hx-confirm": m.DisplayName + " の取得を中断します。取得済みの分は残り、もう一度取得すると続きから再開します。よろしいですか？",
+						})
+					}
+				}
+			case StateInstalled, StateChanged:
+				if m.State == StateChanged {
+					<p class="text-sm text-warning" data-testid="mm-ollama-changed">取得元のタグが、記録したものと違う内容に書き換わっています。そのまま使えますが、内容は固定されていません。</p>
+				}
+				@modelcard.Actions() {
+					@atoms.SmallButtonFor(atoms.ToneDanger, "削除", m.DisplayName, templ.Attributes{
+						"type": "button", "hx-delete": paths.ModelManagerPart("ollama", "models") + "?name=" + m.Name, "hx-target": "#" + SectionID, "hx-swap": "outerHTML",
+						"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-ollama-delete",
+						"hx-confirm": m.DisplayName + "（" + m.Name + "）を削除します。ディスクから消え、使うには取得し直します。よろしいですか？",
+					})
+				}
+			default:
+				@modelcard.Actions() {
+					@atoms.SmallButtonFor(atoms.TonePrimary, "取得", m.DisplayName, pullAttrs(m))
+				}
+				if m.Blocked != "" {
+					<p id={ ModelID(m.Name) + "-blocked" } class="text-xs text-mute" data-testid="mm-ollama-blocked">{ m.Blocked }</p>
+				}
+		}
+	}
+}
+
+func pullAttrs(m Model) templ.Attributes {
+	a := templ.Attributes{
+		"type": "button", "hx-post": paths.ModelManagerPart("ollama", "models", "pull"), "hx-vals": atoms.HxVals(map[string]string{"name": m.Name}),
+		"hx-target": "#" + SectionID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-ollama-pull",
+	}
+	if m.Blocked != "" {
+		a["disabled"], a["aria-describedby"] = true, ModelID(m.Name)+"-blocked"
+	}
+	return a
+}

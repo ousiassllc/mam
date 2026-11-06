@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 )
@@ -31,6 +32,8 @@ type Deps struct {
 	Nodes    *modelnodes.Service
 	Face     *facemodels.Service
 	LLM      *llmlocal.Service
+	// Ollama fetches the models of the Ollama of mam (#1105); the line of "ローカル LLM" counts them.
+	Ollama *ollamapull.Service
 	// FFmpeg, FaceFusion and Codex are the services of the companion software (#1106); the line and the list read them only.
 	FFmpeg     *ffmpegsettings.Service
 	FaceFusion *facefusionsettings.Service
@@ -52,7 +55,7 @@ func Build(ctx context.Context, d Deps, categories []mmcat.Category) view.Overvi
 		case mmcat.LocalRuntimes:
 			card.Summary, card.State = runtimes(ctx, d.Runtimes)
 		case mmcat.LocalLLM:
-			card.Summary, card.State = localLLM(ctx, d.LLM, d.Runtimes)
+			card.Summary, card.State = localLLM(ctx, d.LLM, d.Runtimes, d.Ollama)
 		case mmcat.FaceCheck:
 			card.Summary, card.State = face(d.Face)
 		case mmcat.HFExternal:

@@ -108,6 +108,11 @@ func CompanionIndex(ctx context.Context, d Deps) companion.Index {
 	if d.FaceFusion != nil {
 		add(companion.ToolFaceFusion, "FaceFusion", "生成した画像の顔の入れ替え（任意）", paths.FaceFusionSettings(), func() (string, string) { return faceFusionLine(d.FaceFusion) })
 	}
+	if d.Runtimes != nil {
+		if text, state, ok := ollamaLine(ctx, d.Runtimes, d.Ollama); ok {
+			add(companion.ToolOllama, "Ollama（ローカル LLM）", "ローカルの LLM（Gemma 4・Qwen3.8・DeepSeek-R1）", paths.ModelManagerCategory(paths.MMLocalLLM)+"#mm-runtime-ollama", func() (string, string) { return text, state })
+		}
+	}
 	if d.Face != nil {
 		add(companion.ToolFaceModels, "顔チェック用モデル（YuNet・SFace）", "顔の類似度の測定", paths.ModelManagerFaceModels(), func() (string, string) { return face(d.Face) })
 	}

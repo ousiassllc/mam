@@ -82,3 +82,4 @@
 | 1.75 | 2026-11-07 | §8「試し生成（廃止）」を実装した（画面側の区画・ルート・`SourceTrial`・`mmview.TrialModels` を消した）。状態を「実装済み」にした | Issue #1100 |
 | 1.76 | 2026-11-07 | [custom-nodes.md](custom-nodes.md) §7: 追加ノードの説明をカードから外し、詳細モーダルだけに出すことを実装した（#1103）。状態を「実装済み」にした | Issue #1103 |
 | 1.77 | 2026-11-07 | [local-runtime.md](local-runtime.md) §17.5: llama.cpp のカードの置き場所を、分類 `local-llm` の「ローカルで動かすサーバー」（`GET /model-manager/runtimes?purpose=llm`）に実装した（#1104）。`local-runtimes` には用途が `llm` のカードを出さない。状態を「実装済み」にした | Issue #1104 |
+| 1.78 | 2026-11-07 | [local-runtime.md](local-runtime.md) §19（Ollama のランタイムと、Ollama のモデルの取得）を実装した。状態を「実装済み」にした。ランタイム `ollama`（v0.40.15・`own_models`・`listen_env`・`home_files`・`cpu_ok`。zip は実物で測り直し、展開後 80 ファイル 2,263,717,391 B）、モデルの一覧は `data/assets/ollama.json` ではなく `data/ollama/models.json`（`Catalog.OllamaModels`）、取得は `service/ollamapull`（Ollama の `/api/pull`・照合・削除）。実機での起動・取得・`USERPROFILE` の付け替え・`server.json` の効き・中断後の再開・VRAM は未確認（`device_only`） | Issue #1105 |

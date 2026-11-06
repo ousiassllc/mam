@@ -26,6 +26,9 @@ const (
 // PurposeLLM is the value of the query "purpose" (GET /model-manager/runtimes?purpose=llm) and of Runtime.PurposeID for a runtime that makes text.
 const PurposeLLM = "llm"
 
+// OllamaID is the runtime of the Ollama of mam (the catalog's id): its card says what its removal takes along, and its detail that the server has no authentication.
+const OllamaID = "ollama"
+
 // Runtime is the card of a local runtime (GPT-SoVITS, MuseTalk): the same surface as the card of the engine.
 type Runtime struct {
 	view.Message

@@ -99,8 +99,8 @@ func (s *Service) testManaged(ctx context.Context) TestResult {
 	if name := cmp.Or(info.ModelName, info.Model); name != "" {
 		named = "（モデル: " + name + "）"
 	}
-	var models []string
-	if info.Model != "" {
+	models := info.Models
+	if len(models) == 0 && info.Model != "" {
 		models = []string{info.Model}
 	}
 	switch info.State {

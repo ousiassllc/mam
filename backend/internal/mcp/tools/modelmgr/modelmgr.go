@@ -2,8 +2,7 @@
 // catalog of local image and video models with its license acceptance, the import of .safetensors files from Hugging Face
 // (hf.go: search_hf_models, get_hf_model_files, install_hf_file, list_user_models, delete_user_model; the service pins the
 // commit and checks the terms, the age gate and the SHA-256), the optional Hugging Face token and the read-only
-// view of an external ComfyUI, the custom nodes of the allowlist (nodetools: list_custom_nodes, install_custom_node, remove_custom_node) and the local voice and lip-sync runtimes (runtimes.go: list_local_runtimes, install_local_runtime,
-// install_local_runtime_weights, start/stop/remove_local_runtime; weights with their source and license) (spec/api/mcp-tools-model-manager.md, spec/architecture/model-manager/model-manager.md).
+// view of an external ComfyUI, the custom nodes of the allowlist (nodetools: list_custom_nodes, install_custom_node, remove_custom_node), the models of the Ollama of mam (ollamatools: list_ollama_models, pull_ollama_model, delete_ollama_model) and the local voice and lip-sync runtimes (runtimes.go: list_local_runtimes, install_local_runtime, install_local_runtime_weights, start/stop/remove_local_runtime; weights with their source and license) (spec/api/mcp-tools-model-manager.md, spec/architecture/model-manager/model-manager.md).
 // The generation test (which the trial generations of the model manager screen run through) is package gentest.
 //
 // The tools call the same modelmanager.Service as the screen, so the same checks hold: a model whose license needs an
@@ -21,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr/nodetools"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr/ollamatools"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
@@ -29,8 +29,7 @@ import (
 // KindModelInstall is the job kind of the engine install and of a model install (domain.JobModelInstall).
 const KindModelInstall = string(domain.JobModelInstall)
 
-// Register adds the tools and the Probe of this package. They answer "unavailable" when the app has no model manager
-// (svc.ModelManager is nil); the tools of the local runtimes (runtimes.go) when it has no runtime manager (svc.LocalRuntimes is nil).
+// Register adds the tools and the Probe of this package. They answer "unavailable" when the app has no model manager (svc.ModelManager is nil); the tools of the local runtimes (runtimes.go) when it has no runtime manager (svc.LocalRuntimes is nil).
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc, registrar: r}
 	r.Jobs.RegisterKind(KindModelInstall, h.probe)
@@ -42,6 +41,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	registerHF(r, h)
 	registerRuntimes(r, h)
 	nodetools.Register(r, svc)
+	ollamatools.Register(r, svc)
 }
 
 type handlers struct {
@@ -89,8 +89,10 @@ func (h handlers) probe(ctx context.Context, job mcpkit.JobInfo) (mcpkit.Progres
 	if p, ok, err := h.runtimeJob(ctx, job.ID, st); ok { // the job of a local runtime: its progress is kept by its own manager
 		return p, err
 	}
-	if p, ok, err := nodetools.JobProbe(ctx, h.svc, job.ID, st.Target); ok { // the job of a custom node: its progress is kept by the node manager
-		return p, err
+	for _, jobProbe := range [...]func(context.Context, *service.Services, string, string) (mcpkit.Progress, bool, error){nodetools.JobProbe, ollamatools.JobProbe} {
+		if p, ok, err := jobProbe(ctx, h.svc, job.ID, st.Target); ok { // the job of a custom node or of a pull of the Ollama of mam: its progress is kept by that manager
+			return p, err
+		}
 	}
 	p := ProgressOf(st)
 	p.Result = map[string]any{"target": st.Target, "phase": st.Progress.Phase, "done_bytes": st.Progress.DoneBytes, "total_bytes": st.Progress.TotalBytes}

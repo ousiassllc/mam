@@ -116,7 +116,7 @@ func TestUse_TheCallsGoToTheServerInUse(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, svc.BeforeGeneration(ctx))
 	assert.Equal(t, [2]int{0, 1}, [2]int{llama.endpoints, ollama.endpoints})
-	assert.Equal(t, [2]int{0, 1}, [2]int{llama.stopped, ollama.stopped}, "the server of mam in use gives its memory back before a generation")
+	assert.Equal(t, [2]int{0, 0}, [2]int{llama.stopped, ollama.stopped}, "the Ollama of mam is not stopped before a generation: the switch of the Ollama decides (#1105, unload_ollama_test.go)")
 
 	require.NoError(t, svc.SetUse(llmlocal.UseCustom))
 	assert.False(t, svc.InUse())

@@ -38,6 +38,10 @@ type ManagedInfo struct {
 	Model, ModelName string
 	// Installing says an install of the server (or of its weights) is running: the state is then NotInstalled, and it is not a problem to be fixed.
 	Installing bool
+	// URL is the address the server answers at while it runs ("" otherwise); the managed Ollama is unloaded through it (BeforeGeneration).
+	URL string
+	// Models are the models the server answers to, when it holds several (the managed Ollama: every model it fetched); empty for a server that answers to Model only.
+	Models []string
 }
 
 // Managed is a server that mam installs, starts and stops itself (package llamaserver, the local runtime "llama-cpp"; the local runtime "ollama" of #1105):
@@ -110,15 +114,19 @@ func (s *Service) ManagedInfo(ctx context.Context) (ManagedInfo, bool) {
 	return m.Info(ctx), true
 }
 
-// ManagedModels is the model the managed server answers to, when the user chose it (managed false: the calls go to the address of the settings,
-// so the model list asks that server). It lists the model in force even while the server is stopped: it starts at the first call.
+// ManagedModels are the models the managed server answers to, when the user chose it (managed false: the calls go to the address of the settings,
+// so the model list asks that server): the model in force of llama.cpp, every model the managed Ollama holds. It lists them even while the server is stopped: it starts at the first call.
 func (s *Service) ManagedModels(ctx context.Context) (models []string, managed bool) {
 	if !s.InUse() {
 		return nil, false
 	}
 	info, _ := s.ManagedInfo(ctx)
-	if info.Model == "" || info.State == ManagedUnsupported || info.State == ManagedNotInstalled {
+	models = info.Models
+	if len(models) == 0 && info.Model != "" {
+		models = []string{info.Model}
+	}
+	if len(models) == 0 || info.State == ManagedUnsupported || info.State == ManagedNotInstalled {
 		return nil, true
 	}
-	return []string{info.Model}, true
+	return models, true
 }

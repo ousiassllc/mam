@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/ollama"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/overview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -92,7 +93,7 @@ func (h Handlers) overview(c *gin.Context) view.Overview {
 // overviewDeps are the services the lines of the overview and the list of the companion software are read from.
 func (h Handlers) overviewDeps() overview.Deps {
 	d := overview.Deps{
-		Svc: h.Svc, Runtimes: h.Runtimes, Nodes: h.Nodes, LLM: h.LLMLocal,
+		Svc: h.Svc, Runtimes: h.Runtimes, Nodes: h.Nodes, LLM: h.LLMLocal, Ollama: h.Ollama,
 		FFmpeg: h.Companion.FFmpeg.Settings, FaceFusion: h.Companion.FaceFusion, Codex: h.Companion.Codex,
 	}
 	if h.Gentest != nil {
@@ -134,7 +135,7 @@ func (h Handlers) categoryData(c *gin.Context, slug string) view.Data {
 	case mmcat.LocalRuntimes:
 		d.Runtimes = runtimes.Section(ctx, h.Runtimes, false)
 	case mmcat.LocalLLM:
-		d.LLMUse, d.LLMRuntimes, d.LLMConnection = llmSections(ctx, h)
+		d.LLMUse, d.LLMRuntimes, d.LLMOllama, d.LLMConnection = llmSections(ctx, h)
 	case mmcat.FaceCheck:
 		d.FaceModels = h.faceModels()
 	case mmcat.Companion:
@@ -152,7 +153,7 @@ func engineNeeded(h Handlers) bool {
 	return !ev.Installed || ev.Broken || string(ev.Process.State) != "running"
 }
 
-// llmSections are the sections of the page "ローカル LLM": the server in use, the servers of mam (their cards; left out when the app has no runtimes) and "別のサーバー".
-func llmSections(ctx context.Context, h Handlers) (use, servers, connection templ.Component) {
-	return llmcard.UseSection(localllm.UseData(ctx, h.LLMLocal)), runtimes.Section(ctx, h.Runtimes, true), llmcard.ConnectionSection(localllm.ConnectionData(h.LLMLocal))
+// llmSections are the sections of the page "ローカル LLM": the server in use, the servers of mam (their cards; left out when the app has no runtimes), the models of its Ollama and "別のサーバー".
+func llmSections(ctx context.Context, h Handlers) (use, servers, models, connection templ.Component) {
+	return llmcard.UseSection(localllm.UseData(ctx, h.LLMLocal)), runtimes.Section(ctx, h.Runtimes, true), ollama.Section(ctx, h.Ollama), llmcard.ConnectionSection(localllm.ConnectionData(h.LLMLocal))
 }

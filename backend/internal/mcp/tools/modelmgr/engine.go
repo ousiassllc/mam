@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr/nodetools"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr/ollamatools"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/detect"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
@@ -189,7 +190,7 @@ func (h handlers) cancelInstall(_ context.Context, in CancelInput) (CancelOutput
 			return CancelOutput{JobID: in.JobID, Cancelled: true}, nil
 		}
 	}
-	if errors.Is(err, modelmanager.ErrNotFound) && nodetools.Cancel(h.svc, in.JobID) == nil { // the job of a custom node
+	if errors.Is(err, modelmanager.ErrNotFound) && (nodetools.Cancel(h.svc, in.JobID) == nil || ollamatools.Cancel(h.svc, in.JobID) == nil) { // the job of a custom node, or the pull of a model of the Ollama of mam
 		return CancelOutput{JobID: in.JobID, Cancelled: true}, nil
 	}
 	if err != nil {

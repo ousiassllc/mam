@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
 )
 
 // reader is one reading of the list: what it learned of a Project is kept for the jobs after it.
@@ -46,9 +47,9 @@ func (r *reader) install(ctx context.Context, e *Entry, p payload) error {
 }
 
 // llmRuntimeTargets are the install targets of the runtimes of a language model: their page is "ローカル LLM", not "ローカル音声・口パク" (#1104).
-var llmRuntimeTargets = map[string]bool{"runtime:llama-cpp": true}
+var llmRuntimeTargets = map[string]bool{"runtime:llama-cpp": true, "runtime:ollama": true}
 
-// installCategory is the page of the model manager that works on the target of an install: "engine", "model:<id>", "runtime:<id>", "node:<id>" or "hf:…" ("" for
+// installCategory is the page of the model manager that works on the target of an install: "engine", "model:<id>", "runtime:<id>", "node:<id>", "ollama:<name>:<tag>" or "hf:…" ("" for
 // a target that says nothing: the overview).
 func installCategory(target string) string {
 	switch {
@@ -62,6 +63,8 @@ func installCategory(target string) string {
 		return CategoryLocalRuntimes
 	case strings.HasPrefix(target, "node:"):
 		return CategoryCustomNodes
+	case strings.HasPrefix(target, ollamapull.TargetPrefix):
+		return CategoryLocalLLM // a model fetched by the Ollama of mam (#1105)
 	case strings.HasPrefix(target, "hf:"):
 		return CategoryHFExternal
 	}
@@ -80,6 +83,9 @@ func installSubject(mm *modelmanager.Service, p payload) string {
 			return m.Name
 		}
 		return ""
+	}
+	if name, ok := strings.CutPrefix(p.Target, ollamapull.TargetPrefix); ok {
+		return "Ollama: " + name
 	}
 	if rest, ok := strings.CutPrefix(p.Target, "hf:"); ok {
 		if p.HF != nil && p.HF.NFAA && !mm.AdultContentEnabled() {

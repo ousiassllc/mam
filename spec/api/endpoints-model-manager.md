@@ -183,7 +183,7 @@
 - `joblist.Dest`・`modelfilter.RouteOf`（`ReasonEndpoint` ＋ `SourceLocalLLM`）の行き先が `/model-manager/local-llm`。MCP の `set_local_llm_server`（`use_managed_ollama` の入出力）・`test_local_llm_server`・`get_global_settings` の `llm.local_server` が同じ保存を読み書きする（`use` の 3 値と矛盾する組み合わせを MCP から保存しようとすると 422 / `validation`）。
 - `go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。`web/sidenavtest`・`a11y`（ラジオの `fieldset`・`legend`）。
 
-**Ollama の導入とモデルの取得の受け入れ条件（Issue #1105。実装時にこのテストを足す。#1104 のあと）**:
+**Ollama の導入とモデルの取得の受け入れ条件（Issue #1105。実装済み。テストは `handler/modelmgr/ollama`〔`screentest.NewWithOllama`〕・`catalog/ollamatest`・`runtime/ollamatest`・`service/ollamapull`・`mcp/tools/modelmgr/ollamatools`・`companiontest`・`service/joblist`。実機での起動・取得は `device_only`）**:
 
 - カタログ（`ollama` ランタイムの定義。`catalog/ollamatest`）: 取得先は `github.com/ollama/ollama/releases/download/` のアセットだけで、URL・サイズ・SHA-256 が固定されている（v0.40.15 の `ollama-windows-amd64.zip`）。`launch` の `OLLAMA_HOST` が `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::`・`[` を含まない。引数は `serve` だけ。起動前に `server.json` へ `disable_ollama_cloud: true` を書く。ライセンスは MIT・商用 `yes`。
 - `GET /model-manager/local-llm` に `#mm-ollama` がちょうど 1 つ、`#mm-runtime-ollama` が `#mm-llm-runtimes` の中に 1 つ。`#mm-ollama` の `mm-ollama-model` が 3 つで、`data-model` が `gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b`（カタログと同じ順）。カードの `<ul>` は `modelcard.GridClass`。ライセンスの本文・digest はカードに出ず、詳細モーダルにある。
@@ -239,3 +239,4 @@
 | 1.24 | 2026-11-07 | カードの列数（#1102）と追加ノードの説明（#1103）を実装した。§4 の受け入れ条件の「実装時にこのテストを足す」を、テストの置き場所に直した。ルート・応答の中身は変えない（概要の分類のカード `mm-categories` は列数の対象外） | Issue #1102・#1103 |
 | 1.25 | 2026-11-07 | 付随ソフトの導入（#1106）を実装した。状態を「実装済み」にした。`/model-manager/companion/ffmpeg`（`GET`・`PUT`・`…/download`・`…/download/cancel`）・`/model-manager/companion/facefusion`（`GET`・`PUT`。取得・導入のルートは無い）・`/model-manager/companion/index` を足し、`GET /settings/ffmpeg`・`/settings/facefusion` を 303 にして、`PUT`・`POST`・`DELETE /settings/ffmpeg…`・`PUT /settings/facefusion` を 404 にした。受け入れ条件は `handler/modelmgr/companiontest`・`web/ffmpegscreen`・`web/facefusionscreen` ほか | Issue #1106 |
 | 1.26 | 2026-11-07 | ローカル LLM の統合（#1104）を実装した。§1 の `local-llm/use`・`local-llm/connection`・`…/connection/test`・`runtimes?purpose=llm` と §3 の分類の表の `local-llm` は実装済み（受け入れ条件のテストを足した）。`GET /model-manager/local-llm/use` に `part=state`（状態の行だけ）を足した。`ollama` は、アプリが管理する Ollama を持つまで選べない（409。ラジオも出さない。#1105） | Issue #1104 |
+| 1.27 | 2026-11-07 | Ollama の導入とモデルの取得（#1105）を実装した。§1 の `ollama` のルート 4 つと §4 の受け入れ条件は実装済み（テストを足した）。取得・削除・中断の答えは区画全体で、`#mm-llm-use-state` を `hx-swap-oob` で添える。Ollama のランタイムのカードの答えは `#mm-ollama` を `hx-swap-oob` で添える | Issue #1105 |

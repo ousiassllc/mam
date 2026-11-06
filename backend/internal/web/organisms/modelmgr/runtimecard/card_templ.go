@@ -141,6 +141,14 @@ func meta(r Runtime) string {
 	return r.Purpose + "・" + r.Need
 }
 
+// removeConfirm is the question of the delete button: what goes with the runtime (its weights; for the Ollama also the models it fetched, which it keeps in its own folder).
+func removeConfirm(r Runtime) string {
+	if r.ID == OllamaID {
+		return r.Name + " を削除します（環境と、取得した Ollama のモデルも消えます。再び使うには導入と、モデルの取得をやり直します）。よろしいですか？"
+	}
+	return r.Name + " を削除します（環境と、取得した重みも消えます。再び使うには導入し直します）。よろしいですか？"
+}
+
 // autoStartLabel is the label of the autostart button; what it means is in the help of the section.
 func autoStartLabel(on bool) string {
 	if on {
@@ -308,7 +316,7 @@ func runtimeInstalled(r Runtime) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(r.ProcessError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 108, Col: 166}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 116, Col: 166}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -373,7 +381,7 @@ func runtimeInstalled(r Runtime) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.ModelManagerPart("runtimes", r.ID, "install"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 131, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 139, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 				if templ_7745c5c3_Err != nil {
@@ -386,7 +394,7 @@ func runtimeInstalled(r Runtime) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + RuntimeID(r.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 132, Col: 37}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/runtimecard/card.templ`, Line: 140, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 				if templ_7745c5c3_Err != nil {
@@ -420,7 +428,7 @@ func runtimeInstalled(r Runtime) templ.Component {
 			templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneDanger, "削除", r.Name, templ.Attributes{
 				"type": "button", "hx-delete": paths.ModelManagerPart("runtimes", r.ID), "hx-target": "#" + RuntimeID(r.ID), "hx-swap": "outerHTML",
 				"hx-sync": "this:drop", "hx-disabled-elt": "this",
-				"hx-confirm": r.Name + " を削除します（環境と、取得した重みも消えます。再び使うには導入し直します）。よろしいですか？",
+				"hx-confirm": removeConfirm(r),
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

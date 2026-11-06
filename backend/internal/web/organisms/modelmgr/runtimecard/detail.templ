@@ -26,6 +26,9 @@ templ RuntimeDetail(r Runtime) {
 					<p class="text-sm">{ r.WritableError }</p>
 				</div>
 		}
+		if r.ID == OllamaID {
+			<p class="text-sm text-warning" role="note" data-testid="mm-ollama-noauth">このサーバーには認証がありません。信用できないソフトを同じ PC で動かさないでください（待ち受けはこの PC の中だけです）。Ollama のクラウド機能は無効にしています。</p>
+		}
 		@runtimeFacts(r)
 		if r.Weights.Message != "" {
 			<p class="text-sm text-warning" data-testid="mm-runtime-weights-message">{ r.Weights.Message }</p>
@@ -55,7 +58,12 @@ templ runtimeUnsupported(r Runtime) {
 	<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid="mm-runtime-unsupported">
 		<p data-testid="mm-runtime-reason">{ r.Reason }</p>
 		if r.Fallback != "" {
-			<p data-testid="mm-runtime-fallback">{ r.Fallback }</p>
+			<p data-testid="mm-runtime-fallback">
+				{ r.Fallback }
+				if r.PurposeID == PurposeLLM {
+					<a class="underline" href="#mm-llm-use" data-modal-close data-testid="mm-runtime-fallback-link">「使うサーバー」で「別のサーバー」を選ぶ</a>
+				}
+			</p>
 		}
 	</div>
 }

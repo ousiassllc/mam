@@ -164,7 +164,7 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 
 `llamaservertest`（偽の llama-server。local-runtime.md §17.6）・`localllm`（管理サーバーへの結びつき・キーの扱い）・`llmlocal`（`use_managed_runtime` の保存・固定・停止）・`llmmodels`・`gpufree`・設定画面（`llmsettingstest`）・MCP。**device_only**: 実機での導入・起動・推論、ComfyUI との同居、`--sleep-idle-seconds` での VRAM の解放、各モデルの質と JSON の守り方。
 
-## 11. モデルマネージャーとの統合（Issue #1104。状態: 実装済み。管理する Ollama〔`use` が `ollama`〕の実体は #1105）
+## 11. モデルマネージャーとの統合（Issue #1104。状態: 実装済み。管理する Ollama〔`use` が `ollama`〕は #1105 で実装済み）
 
 ローカル LLM を、モデルマネージャーの分類 `local-llm`「ローカル LLM」の 1 つの導線にする。画面の構成・ID・テストは [../components/model-manager-screen.md](../components/model-manager-screen.md) の「ローカル LLM の統合（#1104）」、ルートは [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md)。
 
@@ -182,3 +182,4 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 | 1.2 | 2026-11-06 | §11 を足した（モデルマネージャーとの統合。向き先 `use` を `llama-cpp`・`ollama`・`custom` の 1 つにし、`use_managed_ollama` を足す）。§5.1・§10.1 に、設定のカードがモデルマネージャーの `local-llm` へ移ることを書いた。状態は仕様のみ（未実装） | Issue #1104 |
 | 1.0 | 2026-11-03 | 新規作成。プロバイダー `local`、モデル一覧・使えるか、JSON の扱い、エラー、設定画面・MCP、VRAM の取り合い、推奨モデルの調査、Ollama / LM Studio / llama.cpp server の使い方 | Issue #1008（前半） |
 | 1.3 | 2026-11-07 | §11 を実装した。状態を「実装済み」にした。`llm.ProviderConfig.UseManagedOllama`（`use_managed_ollama`。`llm.ParseConfig` が `use_managed_runtime` との両方真を拒む）・`llmlocal.Service` の `Use`・`SetUse`・`Status`・`SetManagedOllama`（管理する Ollama を持つ app だけ `ollama` を選べる。#1105 がつなぐ）。使っている管理サーバーは、画像・動画の生成の前に止める（llama.cpp と同じ）。Ollama のモデルの一覧・メモリ降ろしの `/api/ps` 経路の管理 Ollama への適用は #1105 | Issue #1104 |
+| 1.4 | 2026-11-07 | 管理する Ollama（`use` が `ollama`。#1105）を実装した。呼び出しは `llamaserver.Server{ID: "ollama", NoKey: true}`（認証ヘッダーなし）。モデルの選択は `GET /api/tags` の取得済みのモデルをすべて出す（`ManagedInfo.Models`）。画像・動画の生成の前は、llama.cpp のように止めず、スイッチ `unload_before_generation` がオンのときだけ `/api/ps` と `keep_alive: 0` で降ろす（`BeforeGeneration`。動いていなければ何もしない）。LLM の割り当てが使うモデルは、モデルマネージャーの削除が 422（`llmassign.UsedBy`）。実機での降ろしの効きは未確認（`device_only`） | Issue #1105 |

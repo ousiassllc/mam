@@ -21,6 +21,7 @@ const (
 const (
 	ToolFFmpeg       = "ffmpeg"
 	ToolFaceFusion   = "facefusion"
+	ToolOllama       = "ollama"
 	ToolFaceModels   = "face-models"
 	ToolComfyUI      = "comfyui"
 	ToolLocalRuntime = "local-runtimes"

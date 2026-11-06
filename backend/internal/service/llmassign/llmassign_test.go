@@ -307,3 +307,20 @@ func TestSave_ALocalModelNameIsCheckedLikeAnyOther(t *testing.T) {
 		assert.Equal(t, "primary", invalid.Role, name)
 	}
 }
+
+// UsedBy names the Agents whose route chooses a model of a provider, as the primary or the fallback: what the delete of a model of the Ollama of mam refuses with (#1105).
+func TestUsedBy_NamesTheAgentsThatChooseTheModelAsPrimaryOrFallback(t *testing.T) {
+	svc := llmassign.New(settingsPath(t), false)
+	require.NoError(t, svc.Save(map[string]llmassign.Route{
+		string(llm.AgentDirector): {Primary: llmassign.Target{Provider: "local", Model: "gemma4:12b"}, Fallback: llmassign.Target{Provider: "openai", Model: "gpt-x"}},
+		string(llm.AgentWriter):   {Primary: llmassign.Target{Provider: "openai", Model: "gpt-x"}, Fallback: llmassign.Target{Provider: "local", Model: "gemma4:12b"}},
+		string(llm.AgentProducer): {Primary: llmassign.Target{Provider: "openai", Model: "gemma4:12b"}, Fallback: llmassign.Target{Provider: "local", Model: "qwen3.8:27b"}},
+	}))
+
+	used := svc.UsedBy("local", "gemma4:12b")
+
+	assert.ElementsMatch(t, []string{entry(t, svc.View(), llm.AgentDirector).Label, entry(t, svc.View(), llm.AgentWriter).Label}, used,
+		"the provider counts: a model of that name at another provider is another model")
+	assert.Equal(t, []string{entry(t, svc.View(), llm.AgentProducer).Label}, svc.UsedBy("local", "qwen3.8:27b"))
+	assert.Empty(t, svc.UsedBy("local", "deepseek-r1:14b"))
+}
