@@ -47,7 +47,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET ほか | `/nodes`・`/workflows/…` | ノード画面（ComfyUI の UI の埋め込み）と、保存した ComfyUI ワークフローの画面。一覧と仕様は [endpoints-workflows.md](endpoints-workflows.md) |
 | （各種） | `/settings/audio/…` | 設定画面「音声・口パク」（声と口パクのプロバイダーの選択・ローカルの状態・「詳細」のモーダル）のルート。一覧と仕様は [endpoints-settings.md](endpoints-settings.md)（Issue #1005）。`/settings/ffmpeg/…` も同じ文書にある | フルページ / フラグメント |
 | （各種） | `/settings/local-models/…` | 設定画面「ローカル・代替モデル」の接続先・モデル・API キー・接続テストのルート。一覧と仕様は [endpoints-local-models.md](endpoints-local-models.md) |
-| （各種） | `/model-manager/…` | モデルマネージャー画面（ComfyUI エンジン・モデルのカタログと導入・ライセンスの同意。「試し生成」は #1100 で廃止し、生成テスト画面に一本化）。入口はプロジェクト一覧と設定画面のリンク。ルートと仕様は [endpoints-model-manager.md](endpoints-model-manager.md)（`GET /model-manager` が画面） |
+| （各種） | `/model-manager/…` | モデルマネージャー画面（ComfyUI エンジン・モデルのカタログと導入・ライセンスの同意。「試し生成」は #1100 で廃止し、生成テスト画面に一本化。#1101 で、概要 `GET /model-manager` と分類ごとのサブページ `GET /model-manager/<slug>`〔`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`〕に分ける）。入口はプロジェクト一覧と設定画面のリンク。ルートと仕様は [endpoints-model-manager.md](endpoints-model-manager.md)（`GET /model-manager` が画面） |
 | GET | `/jobs`・`/jobs/list` | ジョブ一覧の画面と、その一覧の区画だけ（更新ボタン・2 秒ごとの取り直しが使う）。読み取り専用。常に 200。ルートと挙動は [endpoints-jobs.md](endpoints-jobs.md)（#980） |
 | （各種） | `/generation-test/…` | 生成テスト画面（プロジェクトに属さない画像・動画の比較生成。モデル × プロンプト × 本数の見積り確認・実行・進捗と比較表・履歴・プロンプト履歴・プロジェクトへの取り込み）。入口はプロジェクト一覧のリンク。ルートと仕様は [endpoints-gentest.md](endpoints-gentest.md)（`GET /generation-test` が画面） |
 | GET | `/tools/model-manager/status` | 設定画面のモデルマネージャーのカードの状態の断片（#978 でトップ画面のカードと一緒にほかの `tool` は削除）。常に 200（読めないときは空）、`Cache-Control: no-store`、外部の API は呼ばない。仕様は [endpoints-home.md](endpoints-home.md) |

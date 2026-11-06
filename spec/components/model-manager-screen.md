@@ -6,12 +6,14 @@
 
 > **#1100 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1100）**: モデルマネージャーから区画「試し生成」（`#mm-trial`・`#mm-trials`。`TrialSection`・`TrialFormView`・`TrialList`）と、そのルート `/model-manager/trials/…` を**廃止する**。導入したモデルを試す場所は、**生成テスト画面（`GET /generation-test`。Issue の「`/gentest`」は誤記で、実在するルートはこちら）だけ**になる。生成テスト画面・`/generation-test/…`・MCP の生成テストのツール・履歴は変えない。これまでの試し生成の結果は生成テストの履歴にそのまま残る（データの移行・削除はしない）。区画の並びは「ComfyUI エンジン → ローカル音声・口パク・LLM → 追加ノード → 顔チェック用モデル → モデル → Hugging Face から導入 → Hugging Face のトークン → 外部の ComfyUI」になる。区画「モデル」の「?」ヘルプの末尾に、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。行き先は `paths.GenerationTest()`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つ置く。「導入したモデルは生成テストで試せます」だけで、試し生成のフォーム・結果の一覧・削除は画面に残さない。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
 
+> **#1101 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1101）**: 1 枚に積んでいた区画を、**分類ごとのサブページ**に分ける。`GET /model-manager` は概要（各分類への入口と導入状態のまとめ）だけになり、区画は `GET /model-manager/<slug>` の分類ページへ移る。区画の中身（カード・ダイアログ・`#mm-…` の ID・ポーリング・拒否の扱い）は変えず、置き場所だけが変わる。下の「分類のサブページ（#1101）」が正で、これより前の「区画は 1 枚のページに縦に並ぶ」記述はこの節に読み替える。
+
 [overview.md](overview.md) §3 のコンポーネントの階層に、モデルマネージャーの画面（Issue #833）を足す。ルートと挙動は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md)、ComfyUI エンジンとモデルの仕組みは [../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md)。
 
 | 区分 | コンポーネント | 責務 |
 |------|---------------|------|
-| pages | `model_manager_page`（`ModelManagerPage`） | `GET /model-manager` の全ページ。戻るリンク・見出し・説明（Issue #866 でも動かさない。h1 に「?」は付けない）と `modelmgr.Body` |
-| organisms（`organisms/modelmgr/`） | `Body` | 区画を `molecules.SettingsSection` で包んで縦に並べる。各区画の説明は、見出しの横の「?」ヘルプ（ポップオーバー）の中（Issue #866。契約は [shared-ui-parts.md](shared-ui-parts.md) §9）。区画の本体には操作・状態・結果・エラーだけを残す |
+| pages | `model_manager_page`（`ModelManagerPage`）・`model_manager_category_page`（新設。`ModelManagerCategoryPage`） | 前者は `GET /model-manager`（概要。#1101 で `Overview` だけを出す）、後者は `GET /model-manager/<slug>`（分類ページ。戻るリンク・見出し・説明と、その分類の区画）。見出しの扱い（h1 に「?」は付けない。Issue #866）は変えない |
+| organisms（`organisms/modelmgr/`） | `Body`（分類ごとに `Body(category, d)`。#1101） | その分類の区画を `molecules.SettingsSection` で包んで縦に並べる（区画の割り当ては「分類のサブページ（#1101）」の表）。各区画の説明は、見出しの横の「?」ヘルプ（ポップオーバー）の中（Issue #866。契約は [shared-ui-parts.md](shared-ui-parts.md) §9）。区画の本体には操作・状態・結果・エラーだけを残す。概要は `Overview`（新設。`#mm-overview`） |
 | 〃 | `EngineCard`・`GPUBlock`・`DetectBlock`（詳細モーダルは `modeldetail.EngineDetail`） | エンジンのカード（#970: `modelcard.Item` のカード。導入の進捗・起動の状態・起動の失敗の理由・自動起動・更新・削除・更新ボタン）、GPU の検出結果と導入フォーム、既存の ComfyUI の検出結果 |
 | 〃 | `CommercialCard`（設定「商用OKのモデルだけを使う」と、モデルの一覧のフィルター。#928） | 一覧の上の区画。スイッチ（`PUT /model-manager/commercial`）と、モデルの一覧のフィルターバー（`molecules/modelpick`。商用利用の 3 択は詳細パネルの 1 項目）は一覧の見出しの下にある。スイッチを切り替えると、一覧とバーを同じ既定で描き直す（out-of-band） |
 | 〃 | `CatalogList`・`ConsentDialog`・`DialogClear` | モデルの一覧（1 つのモデルが 1 枚のカード `modelCard` = `molecules/modelcard.Item`。アイコン・名前・種類と大きさ・状態・商用利用のアイコン・成人向け／HF トークン／空き不足／VRAM 不足のバッジ・導入の進捗とボタン）と、同意が要るモデルのライセンスのダイアログ（成人向けは注意書きも）。ライセンス・ファイル・SHA-256 などは `modeldetail.Detail`（カードが開くモーダル） |
@@ -21,7 +23,7 @@
 | 〃（`organisms/modelmgr/facecard`。行数の上限のため別のパッケージ） | `facecard.Section`・`facecard.ProgressLine` | 区画「顔チェック用モデル」（Issue #1026。`#mm-face-models`。YuNet・SFace の導入・削除）。状態のバッジ（未導入 / ファイルあり〔SHA-256 は未確認〕/ 導入済み）・導入先・2 つのファイル（取得元のリンク）・ライセンスと商用の答えと注意（導入の前に出す）・同意のチェック・導入・削除のボタン・進捗の行（導入のボタンを押した 0.5 秒後から 1 秒ごとに取り直す）。モデルは入っているが ONNX Runtime が使えないときは、その旨と直し方の枠を出す。ハンドラーは `handler/modelmgr/facemodels`（ルートは [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md)） |
 | 〃 | `HFCard`・`ExternalCard` | Hugging Face のトークンの状態（値は出さない）、外部の ComfyUI の確認 |
 | `molecules/modelcard` | `Item`・`Actions`・`Tile`・`Card`・`Badge` | モデルを並べるすべての所が使う 1 つのカード（#954）。`pick.OpenFrame`（開くカードの枠）と `commercial.Mark`（商用利用のアイコン）を使う |
-| 〃（`organisms/modelmgr/oob`。行数の上限のため別のパッケージ） | `oob.EngineWithCatalog`・`oob.CatalogWithDialogClear`・`oob.AdultWithCatalog`・`oob.CommercialWithList` | 1 つの操作が複数の区画に及ぶときの応答（片方は `hx-swap-oob`）。`oob.CatalogWithTrial` は #1100 で廃止（試し生成の区画が無くなったため、導入の完了の応答は一覧だけ） |
+| 〃（`organisms/modelmgr/oob`。行数の上限のため別のパッケージ） | `oob.CatalogWithDialogClear`・`oob.AdultWithCatalog`・`oob.CommercialWithList`（`oob.EngineWithCatalog` は #1101 で廃止） | 1 つの操作が同じ分類ページの複数の区画に及ぶときの応答（片方は `hx-swap-oob`）。`oob.CatalogWithTrial` は #1100 で廃止（試し生成の区画が無くなったため、導入の完了の応答は一覧だけ） |
 | 〃 | `HFImportSection`・`HFResultView`・`HFModelListView`・`oob.HFModelsWithMsgClear`・`HFMsg` | 区画「Hugging Face から導入」（Issue #842）: 検索・URL のフォーム、ヒット・リポジトリのファイルの一覧（導入できないファイルは理由を出してフォームを出さない・ファイルごとの導入フォーム）、追加したモデルと進行中の導入（進捗・中断・削除）、導入の拒否のエラーの行。`oob.HFModelsWithTrial` は #1100 で廃止（導入の完了・削除は「追加したモデル」だけを描き直す） |
 | handler（`web/handler/modelmgr/hfimport/`） | `Handlers` | 上の区画のルート（`Register`。`hf-token` の保存・削除も）。`ListData`・`RepoOf`・`HitsOf` が `modelmanager` の型を画面のデータに写す。親のパッケージが行数の上限に近いため別パッケージ（#1100 で、親の `trialPanel` を引数で受ける形は無くなる）。`jobview`（バイト数の表記・進捗・終了の文言）は親と子で共有する。画面テストの共通の部品は `web/screentest`（handler の外。テスト用の DB を開くため） |
 | handler（`web/handler/modelmgr/`） | `Handlers` | ルート（`Register`）。`modelmanager.Service` を呼び、`mmview.Refuse` で拒否を状態とメッセージに写す。`view.go` がサービスの型を画面のデータ（`organisms/modelmgr` の `Data`）に写す。organism はサービスを import しない |
@@ -74,6 +76,67 @@
 - **説明文は「?」ヘルプに**: 区画「ComfyUI エンジン」の「?」に、カードをタップすると詳細が見られること・GPL-3.0・自動起動と削除の意味・導入の中断と再開・Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけであることを入れた。GPU の導入フォームの下の注意書きも、この「?」へ移した。
 
 
+## 分類のサブページ（#1101）
+
+> **状態: 仕様のみ（未実装。Issue #1101）**。Issue #1100（試し生成の廃止）のあとの区画の並びを分けるもの。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §4「分類のサブページの受け入れ条件」。
+
+- **分類**（`organisms/modelmgr/mmcat`〔新設〕の `All()` が唯一の一覧。ルート・左メニュー・概要のカード・テストはすべてこの一覧から作る）:
+
+  | `<slug>` | 名前（h1・メニュー・カード） | 入れる区画（`id` は今のまま） | アイコン（#954 の既存のもの） |
+  |---|---|---|---|
+  | `comfyui` | ComfyUI エンジン | エンジンのカード `#mm-engine`・GPU の検出と導入フォーム `#mm-gpu`・既存の ComfyUI の検出 `#mm-detect` | `IconWorkflow` |
+  | `image-video` | 画像・動画モデル | 成人向けモデル `#mm-adult`・商用OKのモデルだけ `CommercialCard`・フィルターバー・一覧 `#mm-catalog`・ダイアログ `#mm-dialog`・`#mm-consent` | `IconImage` |
+  | `custom-nodes` | 追加ノード | `#mm-nodes`・同意のダイアログ `#mm-nodes-dialog` | `IconNetwork` |
+  | `local-runtimes` | ローカル音声・口パク・LLM | `#mm-runtimes`（GPT-SoVITS・Irodori-TTS・MuseTalk・llama.cpp のカード `#mm-runtime-<id>`） | `IconVoice` |
+  | `face-check` | 顔チェック用モデル | `#mm-face-models` | `IconLipSync` |
+  | `hf-external` | Hugging Face・外部の ComfyUI | Hugging Face から導入 `#mm-hfi`（`#mm-hfi-msg`・`#mm-hfi-result`・`#mm-hfi-models`）・トークン `#mm-hf`・外部の ComfyUI `#mm-external` | `IconPackage` |
+
+  `slug` は既存の部分ルート（`engine`・`models`・`runtimes`・`nodes`・`face-models`・`hf`・`external` ほか。[endpoints-model-manager.md](../api/endpoints-model-manager.md) §1）と**同じ文字列にしない**（それらは HTMX が区画だけを取り直す断片で、同じ URL を分類ページと断片で兼ねると、`HX-Request` の分岐が区画の取り直しとぶつかる）。`runtimes`・`nodes`・`face-models` の区画を持つサービスが無い（`Data.Runtimes`・`Nodes`・`FaceModels` が nil）構成では、その分類のルートを登録せず（404）、概要にもカードを出さず、左メニューにも出さない。#1106 が「付随ソフト」（FaceFusion・ffmpeg・Ollama など）の分類を足すときも、`All()` に 1 行足すだけにする。
+- **概要**（`GET /model-manager`。`Overview`。`#mm-overview`）: h1「モデルマネージャー」の下に、分類ごとのカードを `mmcat.All()` の順に並べる（`molecules.ToolCardItem`〔`molecules.ToolCard`。設定の「概要」・[settings-screen.md](settings-screen.md) と同じ「リンクのカード」〕の面を使う。新しい部品は作らない。`<ul role="list" data-testid="mm-categories">`）。1 枚は `<li data-testid="mm-category" data-category="<slug>" data-state="…">`: アイコン・名前（`<h2>`）・1 行の説明・**導入状態のまとめ**（`data-testid="mm-category-summary"`）・開くリンク（`data-testid="mm-category-open"`。`aria-label` は「<名前>を開く」。カード全体がリンクの面）。まとめは文字（色だけで伝えない）で、各分類の今の読み取りだけから作る（新しい保存は無い）:
+  - `comfyui`: 「未導入」「導入中（42%）」「導入済み（ComfyUI 0.3.10・NVIDIA・起動中）」「導入済み（停止中）」「この PC では使えません」「導入先に書き込めません」（`data-state` はエンジンのカードの `data-engine` と同じ値）。
+  - `image-video`: 「導入済み 3 / 12 件」（導入中があれば「導入中 1 件」を足す）。成人向けのゲートが閉じている間は、隠しているモデルを**数に入れない**（Service が隠す。数えると存在が分かるため）。
+  - `custom-nodes`: 「導入済み 2 / 5 件」（「更新が必要」「内容が変わっています」があれば「要確認 1 件」。`data-state="attention"`）。
+  - `local-runtimes`: 「導入済み 1 / 4 件・起動中 1 件」。
+  - `face-check`: 「導入済み」「ファイルあり（SHA-256 は未確認）」「未導入」（`data-state` は区画の `installed` / `unverified` / `missing`）。
+  - `hf-external`: 「トークン: 設定済み（末尾 4 文字）」または「未設定」・「追加したファイル 2 件」。トークンの値は出さない。
+
+  `data-state` は上のほか `empty`（0 件）・`partial`（一部）・`full`（すべて）・`installing`・`attention` を使う。概要は `modal.Host` を持たない（詳細モーダルが無い）。**ポーリング**: 動いている導入（`model_install`。エンジン・モデル・実行環境・ノード・顔チェック・HF のどれでも）が 1 つでもあるときだけ、`#mm-overview` が `hx-get="/model-manager/overview"` と `hx-trigger="every 2s"` を持つ（なくなると属性が消えて止まる。他の区画と同じ）。更新ボタン（`molecules/refresh.Bar`。`id` は `mm-overview-refresh`）を持つ。「動いている導入」を一度に聞く照会が今のサービスに無ければ、各区画が自分のポーリングのために持つ読み取りを束ねる（照会の形は実装 Issue で決める。新設なら `view.Overview` に閉じる）。
+- **分類ページ**（`GET /model-manager/<slug>`）: `pagehead.Main(Medium)`（幅は今のまま `max-w-4xl`。列数は #1102）。上から、**戻るリンク**（`atoms.BackLink`「← モデルマネージャー」。`data-testid="mm-back"`。行き先は `paths.ModelManager()`。[settings-screen-categories.md](settings-screen-categories.md) の接続先のサブページの「パンくず」と同じ作法）・h1（分類の名前。副題に「モデルマネージャー」）・その分類の区画（`<div id="model-manager-body" data-testid="model-manager" data-category="<slug>">`。`id` は今の `#model-manager-body` のまま）・ページに 1 つの `modal.Host()`（詳細モーダル。区画の外）。`<title>` は「<名前> - モデルマネージャー」。HTMX のリクエスト（`HX-Request: true` かつ履歴の復元でないもの）には、ページの枠なしの `#model-manager-body` だけを返す（今の `GET /model-manager` と同じ。`Vary: HX-Request, HX-History-Restore-Request`）。
+- **左メニュー**（[side-menu.md](side-menu.md) §1 の 2 の「Project の下に項目を足す」と同じ形）: 概要と分類ページでは、画面の項目の下に `<ul id="sidenav-mm-views" aria-labelledby="sidenav-mm" data-testid="sidenav-mm-views">`（見出し「モデルマネージャー」〔`id="sidenav-mm"`〕の下に「概要」と各分類。`mmcat.All()` の順・上の表のアイコン）を足す。現在のページの項目は `aria-current="page"`（概要では「概要」、分類ページではその分類）。画面の項目「モデルマネージャー」は、概要では `aria-current="page"`、分類ページでは `aria-current="true"`（同じ強調。色だけにしない: 太字と左の線）。幅 768 px 未満はアイコンだけ（ラベルは `sr-only`）。新しい生の色・アイコンは足さない。
+- **HTMX のターゲット・ポーリング・OOB**: ID は変えない（`hx-target="#mm-…"`・`outerHTML`）。区画は分類ページの中で完結し、**区画をまたぐ `hx-swap-oob` は同じ分類ページの中のものだけ**にする。応答の `hx-swap-oob` の `id` は、その応答を取った分類ページに必ずあること（無い ID への OOB は htmx が捨てて警告するため）。ポーリング（`every 2s`・`?job=`・`?jobs=`）・更新ボタン・`poll-guard` の扱いは区画ごとに今のまま。分類ページを離れるとその区画のポーリングも止まる（ページごとに作り直す）。
+
+  | 今の応答 | #1101 のあと |
+  |---|---|
+  | `oob.EngineWithCatalog`（エンジンの導入の完了・削除でモデルの一覧を描き直す） | 廃止。`comfyui` ページにはモデルの一覧が無いので、エンジンのカードだけを返す。`image-video` ページは読み込み時にエンジンの状態を読み、エンジンが無い・止まっているときは、一覧の上に 1 行の案内（`data-testid="mm-engine-needed"`。「ComfyUI エンジンが未導入です」＋ `comfyui` ページへのリンク）を出して、導入ボタンの無効の理由と並べる |
+  | `oob.AdultWithCatalog`・`oob.CommercialWithList`・`oob.CatalogWithDialogClear` | そのまま（すべて `image-video` ページの中） |
+  | `oob.HFModelsWithMsgClear` | そのまま（`hf-external` ページの中） |
+  | 成人向けの切り替え・商用OKのスイッチが、ほかの分類ページ（`hf-external` の検索結果・`local-runtimes` のフィルターの既定）に及ぶこと | OOB しない。ほかのページは開いたときに今の設定を読む（成人向けのゲート・`commercial_only` は Service が持つ） |
+
+- **ページをまたぐリンク**（区画の中の `#mm-…` のページ内リンクは、行き先が別の分類ページになったら `paths.ModelManagerPart(slug)`〔既存。`/model-manager/<slug>`。`paths/modelmgr.go`〕＋ `#id` に付け替える。表は付け替えるものの全部）:
+
+  | 場所 | 今 | #1101 のあと |
+  |---|---|---|
+  | 生成テストの「顔チェック用モデルを入れる」・「状態と直し方を見る」（`gt-face-off-install`・`gt-face-off-status`。`organisms/gentest/facelock/off.templ`） | `paths.ModelManagerFaceModels()` = `/model-manager#mm-face-models` | `/model-manager/face-check#mm-face-models`（関数の名前と `#mm-face-models` は変えない） |
+  | 「HF トークンが必要」のカードの案内（`mm-token-guide`）のトークンの区画へのリンク | `#mm-hf`（同じページ） | `/model-manager/hf-external#mm-hf`（`image-video` ページから別ページへ） |
+  | 「追加ノードが必要」のバッジと説明（モデルのカード） | リンクなし | 説明の末尾に `/model-manager/custom-nodes#mm-nodes` へのリンク（`data-testid="mm-node-needed-link"`） |
+  | ジョブ一覧（`/jobs`）の導入のジョブの行 `jobs-open`（`handler/jobs/jobs.go` の `href`） | `paths.ModelManager()` | ジョブの `target` で決める: `engine` → `comfyui`・`model:<id>` → `image-video`・`runtime:<id>` → `local-runtimes`・`node:<id>` → `custom-nodes`・`hf:…` → `hf-external`（`joblist.Dest` に分類を足す） |
+  | `modelfilter.RouteOf`（モデルが選べない理由の行き先。`ReasonAgeGate`・`ReasonNotInstalled`・`ReasonMissingNode`） | `paths.ModelManager()` | `ReasonAgeGate`・`ReasonNotInstalled` → `image-video`、`ReasonMissingNode` → `custom-nodes` |
+  | 生成テストの「モデルを導入」（`tierform`・`upscale`・`venhancescreen` の `ModelsURL`） | `paths.ModelManager()` | `image-video` |
+  | 設定「音声・口パク」のカードと詳細の「モデルマネージャーを開く」（`settings/audio`）・設定「テキスト生成（LLM）」の `llm-local-managed-link`（`settings/llmlocal`） | `paths.ModelManager()` | `local-runtimes` |
+  | プロジェクト一覧・設定画面・設定の概要の「モデルマネージャー」・メニューの項目・生成テストの作成画面のタブ（`gt-comfy-models`）・ワークフロー画面の `ModelManagerURL` | `paths.ModelManager()` | 変えない（概要が行き先） |
+
+  古い `/model-manager#mm-…` のブックマークは、概要に着く（フラグメントはサーバーに届かず、リダイレクトできない。何もしない）。
+- **変えないもの**: 各区画の見た目・文言・`data-testid`・ルート（`/model-manager/engine/…`・`/models/…`・`/runtimes/…`・`/nodes/…`・`/face-models/…`・`/hf/…`・`/external/…`）・CSRF・拒否の扱い・MCP。区画の「?」ヘルプの中身も同じ（#1103 は追加ノードの説明の置き場所を変える）。
+- **テストで見ること**: `mmcat.All()` の全 slug を実際のルーターで GET して 200・`data-category` が一致・そこに載る区画の `id` がちょうど 1 つずつあり、ほかの分類の区画の `id` が無い。HTMX の GET は `#model-manager-body` だけ。登録していない slug は 404。概要のカードの数と順が `All()` と同じ。応答の `hx-swap-oob` の `id` がすべて同じ分類ページにあること（各 POST・PUT・DELETE・ポーリングの応答で）。`web/sidenavtest` が概要と全分類ページで、現在の項目の `aria-current` を確かめる。`a11y`（カードの名前・戻るリンク・見出しの順序 h1 → h2）。
+
+### 決定が要ること
+
+- **分類の分け方**（既定: 上の 6 つ）: Hugging Face と外部の ComfyUI を 1 ページにまとめた点、顔チェック用モデルを独立させた点は Issue の例に従った案。#1106 で FaceFusion・ffmpeg・Ollama などの「付随ソフト」を足すとき、顔チェック用モデルをそちらへ寄せるかを、そこで決める。
+- **概要にエンジンの小さなカードを残すか**（既定: 残さない。概要は入口と導入状態のまとめだけ）。
+- **左メニューに 2 階層目を足すか**（既定: 足す。Project の項目と同じ形。足さない案は、概要と戻るリンクだけで行き来する）。
+- **ルートの形**（既定: `/model-manager/<slug>`。既存の断片のルートと重ならない slug にした。`/model-manager/c/<slug>` のように接頭辞をつける案は、URL が長くなる代わりに断片と重ならないことが構造で保証される）。
+- **古いブックマーク `/model-manager#mm-…` の扱い**（既定: 概要に着く）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -104,3 +167,4 @@
 | 1.23 | 2026-11-04 | 区画「顔チェック用モデル」（`facecard`・`#mm-face-models`）を足した。生成テストの入力画像の欄は、顔の類似度がオフの間、この区画へのリンクを出す（[gentest-screen.md](gentest-screen.md)）。意味は [../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md) §5.4 | Issue #1026 |
 | 1.24 | 2026-11-06 | 「使うモデルの選択」にフィルターバーを足した（実行環境のモデルの絞り込み） | Issue #1015・#1011 |
 | 1.25 | 2026-11-06 | 区画「試し生成」（`TrialSection`・`TrialFormView`・`TrialList`。`#mm-trial`・`#mm-trials`）を廃止すると決め、コンポーネント表・ポーリング・OOB・スクロール位置・更新ボタンの記述から試し生成を外した（冒頭の「#1100 の追記」）。`oob.CatalogWithTrial`・`oob.HFModelsWithTrial` は一覧だけの応答になる。区画「モデル」の「?」ヘルプに生成テスト画面へのリンク（`mm-open-gentest`）を置く。状態は仕様のみ（未実装） | Issue #1100 |
+| 1.26 | 2026-11-06 | 1 枚のページの区画を、分類ごとのサブページに分けると決めた。概要（`GET /model-manager`。分類のカードと導入状態のまとめ）・分類 6 つのページ（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）・左メニューの 2 階層目・戻るリンク・OOB の整理（`oob.EngineWithCatalog` の廃止）・ページをまたぐリンクの付け替えを足した（節「分類のサブページ（#1101）」）。状態は仕様のみ（未実装） | Issue #1101 |

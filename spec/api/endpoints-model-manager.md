@@ -4,6 +4,8 @@
 
 > **状態: 仕様のみ（未実装。Issue #1100）**: 「試し生成」（`/model-manager/trials/…`）は廃止する。導入したモデルを試すのは生成テスト画面（`GET /generation-test`。[endpoints-gentest.md](endpoints-gentest.md)）だけ。下の表・§3・§4 からは試し生成を外してある（実装が追いつくまで、コードには残っている）。
 
+> **状態: 仕様のみ（未実装。Issue #1101）**: 画面を**分類ごとのサブページ**に分ける。`GET /model-manager` は概要になり、区画は `GET /model-manager/<slug>`（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）の分類ページに移る。下の §1 の表に概要と分類ページのルートを足し、§3 の区画の並びを分類の表に直し、§4 に受け入れ条件を足した。区画の部分ルート（`/model-manager/engine/…`・`/models/…` ほか）は、パス・フォームともそのまま。構成は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「分類のサブページ（#1101）」。
+
 `modelmanager.Service` を持たない router（ヘッドレスのテストなど）では、画面もルートも無い。入口は、プロジェクト一覧（`GET /`）の「モデルマネージャー」のリンクと、設定画面（`GET /settings`）の見出しの下のリンク。
 
 ## 1. ルート
@@ -12,8 +14,10 @@
 
 | Method | Path | 内容 |
 |--------|------|------|
-| GET | `/model-manager` | 画面（HTMX のリクエストには、ページの枠なしの本体 `#model-manager-body`） |
-| GET | `/model-manager/engine` | エンジンのカード（`#mm-engine`）。導入中・起動中は自分で取り直す。クエリ `job` は報告する導入ジョブで、終わったら結果（導入した／失敗の理由）を出し、モデルの一覧を `hx-swap-oob` で描き直す |
+| GET | `/model-manager` | 概要（#1101。`Overview`: 分類ごとのカードと導入状態のまとめ。`#mm-overview`）。HTMX のリクエスト（履歴の復元でないもの）には、ページの枠なしの本体 `#model-manager-body`（概要では `#mm-overview` を含む） |
+| GET | `/model-manager/overview` | 概要の区画 `#mm-overview` だけ（#1101。更新ボタンとポーリング用）。動いている導入があるあいだだけ自分で取り直す（`every 2s`）。常に 200 |
+| GET | `/model-manager/<slug>` | 分類ページ（#1101）。`<slug>` は `comfyui`（`#mm-engine` ほか）・`image-video`（`#mm-adult`・`#mm-catalog` ほか）・`custom-nodes`（`#mm-nodes`）・`local-runtimes`（`#mm-runtimes`）・`face-check`（`#mm-face-models`）・`hf-external`（`#mm-hfi`・`#mm-hf`・`#mm-external`）。登録は `mmcat.All()`（新設）の一覧から 1 本ずつ（`:slug` のパラメーターのルートにしない）。HTMX のリクエスト（履歴の復元でないもの）には `#model-manager-body` だけ。実行環境・ノード・顔チェックのサービスが無い構成では、その `<slug>` を登録しない（404）。`<slug>` は下の部分ルートの名前と重ねない |
+| GET | `/model-manager/engine` | エンジンのカード（`#mm-engine`）。導入中・起動中は自分で取り直す。クエリ `job` は報告する導入ジョブで、終わったら結果（導入した／失敗の理由）を出す（#1101 で、モデルの一覧の `hx-swap-oob` は廃止。一覧は別のページ） |
 | GET | `/model-manager/engine/detail` | エンジンのカードが開く詳細モーダルの本体（Issue #970）。説明・この PC で使えない理由（Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけ・書き込めない・ファイルが見つからない）・導入済みの版と build・待ち受け（起動中だけ）・導入先と空き・出典とライセンス。応答は `modal.Frame` で、ページに 1 つの `<dialog>` に入る |
 | GET | `/model-manager/engine/gpu` | GPU の検出結果と導入フォーム（`#mm-gpu`）。未導入のカードが読み込み時に取る |
 | POST | `/model-manager/engine/install` | エンジンの導入（ジョブ）。フォーム `variant`（省くと GPU の推奨）・`cpu=1`（GPU が無いときの明示的な CPU 実行）。202 |
@@ -83,7 +87,18 @@
 
 ## 3. 画面
 
-区画は上から: **ComfyUI エンジン**（カード `#mm-engine`）・**ローカル音声・口パク・LLM**（`#mm-runtimes`）・**追加ノード**（`#mm-nodes`）・**顔チェック用モデル**（`#mm-face-models`）・**モデル**（一覧 `#mm-catalog` とダイアログ `#mm-dialog`）・**Hugging Face から導入**（`#mm-hfi`）・**Hugging Face のトークン（任意）**（`#mm-hf`）・**外部の ComfyUI**（`#mm-external`）。「試し生成」（`#mm-trial`・`#mm-trials`）は #1100 で廃止。
+分類ページは `mmcat.All()` の順に: 
+
+| `<slug>` | 名前 | 区画（`id`） |
+|---|---|---|
+| `comfyui` | ComfyUI エンジン | エンジンのカード（`#mm-engine`）・GPU の検出（`#mm-gpu`）・既存の ComfyUI の検出（`#mm-detect`） |
+| `image-video` | 画像・動画モデル | 成人向けの設定（`#mm-adult`）・商用OKのモデルだけ・一覧（`#mm-catalog`）・ダイアログ（`#mm-dialog`・`#mm-consent`）。エンジンが無い・止まっているときは一覧の上に案内（`mm-engine-needed`）と `comfyui` へのリンク |
+| `custom-nodes` | 追加ノード | `#mm-nodes`・同意のダイアログ（`#mm-nodes-dialog`） |
+| `local-runtimes` | ローカル音声・口パク・LLM | `#mm-runtimes` |
+| `face-check` | 顔チェック用モデル | `#mm-face-models` |
+| `hf-external` | Hugging Face・外部の ComfyUI | Hugging Face から導入（`#mm-hfi`）・トークン（`#mm-hf`）・外部の ComfyUI（`#mm-external`） |
+
+「試し生成」（`#mm-trial`・`#mm-trials`）は #1100 で廃止。
 
 - **エンジンのカード**: 状態は 未導入 / 導入中（進捗バー・バイト数・「中断する」）/ 導入済み（版・ビルド・CPU 実行か）+ 停止中 / 起動しています / 起動中（`127.0.0.1:<port>`）/ 起動に失敗（理由とログの末尾）。導入済みの版が固定版と違えば「更新する」。ボタン: 起動・停止・自動起動の切り替え・エンジンを削除。**Windows 以外（ブラウザ版・サーバー版）では導入のボタンを出さず**、外部の ComfyUI の URL の案内を出す。`mam.exe` のあるフォルダに書き込めないときも同じ（理由を出す）。導入先 `<exe のディレクトリ>\comfyui` と空き容量を出し、「アンインストールするとここも消える」と書く。ComfyUI は GPL-3.0 の別プログラムで mam に含まれないこと、取得元（ソース）とライセンスの URL を出す。
 - **GPU の検出**（未導入のとき、読み込み時に取る）: アダプターの名前と VRAM、推奨するビルド（確度が低いときは「推定です」）。ビルドの選択（サイズと必要な空き容量）。**対応する GPU が無いとき**は推奨が空で、案内（外部の ComfyUI を使う）を出し、CPU 実行はチェックボックスの明示的な選択にだけ表示する（自動では何も入れない）。
@@ -111,6 +126,19 @@
 - `/generation-test` と `/generation-test/…`・MCP の生成テストのツール・生成テストの履歴は変わらない。履歴に、試し生成で作った結果が今までどおり出る。`GET /model-picker/model-trial` は 404（`modelpicker.SourceTrial`・`trialModels`・`mmview.TrialModels` とそのテストを消す。ほかに使う所は無い）。
 - `go build`・`go vet`・`make test` が通り、`templ generate` の差分が無い。fixture（`scroll-mm-*.html`・`layout-long-names-*.html`）は試し生成の区画を含まない形で作り直し、`scroll.wtest.ts`・`long-names.wtest.ts` が通る。
 
+**分類のサブページの受け入れ条件（Issue #1101。実装時にこのテストを足す）**:
+
+- `mmcat.All()`（`organisms/modelmgr/mmcat`。新設）の全 `<slug>` を実際のルーターで `GET /model-manager/<slug>` すると 200 で、本文に `data-testid="model-manager"` かつ `data-category="<slug>"` の要素が 1 つ。§3 の表のその分類の区画の `id` が**ちょうど 1 つずつ**あり、ほかの分類の区画の `id`（たとえば `image-video` に `#mm-nodes`）は無い。戻るリンク `data-testid="mm-back"` の `href` は `/model-manager`。
+- `GET /model-manager`（概要）の `data-testid="mm-category"` の数と順が `mmcat.All()` と同じ。各カードのリンク `mm-category-open` の `href` は `/model-manager/<slug>`。まとめ（`mm-category-summary`）は文字で、`data-state` を持つ。トークンの値・成人向けのゲートが閉じている間の隠しているモデルの数は出ない。概要に区画（`#mm-engine`・`#mm-catalog` ほか）の `id` が無い。
+- 動いている導入が無いとき `#mm-overview` に `hx-trigger` が無く、あるとき `every 2s`（`hx-get="/model-manager/overview"`）。`GET /model-manager/overview` は常に 200 で、詳細モーダルを含まない。
+- HTMX のリクエスト（`HX-Request: true`・`HX-History-Restore-Request` なし）の `GET /model-manager`・`GET /model-manager/<slug>` は `#model-manager-body` だけを返し、`HX-History-Restore-Request: true` ならページ全体を返す。どちらも `Vary: HX-Request, HX-History-Restore-Request`。
+- 実行環境・ノード・顔チェックのサービスを持たない構成では、`local-runtimes`・`custom-nodes`・`face-check` は 404 で、概要にもメニューにも出ない。
+- **応答の `hx-swap-oob` の `id` は、その応答を取った分類ページにある**: `POST /model-manager/engine/install`・`DELETE /model-manager/engine`・`GET /model-manager/engine?job=…` の応答に `#mm-catalog` の OOB が無い（`oob.EngineWithCatalog` は無い）。モデルの導入・削除・成人向けの切り替え・商用OKのスイッチ・追加したファイルの導入と削除の応答の OOB は、すべて `image-video`・`hf-external` のそれぞれ同じページの `id` だけを指す。各 POST・PUT・DELETE と、ポーリングの GET で確かめる。
+- `image-video` ページは、エンジンが未導入・停止中のとき一覧の上に `data-testid="mm-engine-needed"`（`comfyui` へのリンクつき）を出し、導入済みで起動しているときは出さない。「HF トークンが必要」のカードの案内のリンクの `href` は `/model-manager/hf-external#mm-hf`。「追加ノードが必要」のカードに `mm-node-needed-link`（`/model-manager/custom-nodes#mm-nodes`）がある。
+- 生成テストの `gt-face-off-install`・`gt-face-off-status` の `href` は `/model-manager/face-check#mm-face-models`（`paths.ModelManagerFaceModels()`）。ジョブ一覧の導入のジョブの `jobs-open` の `href` は、`target` の種類に応じた分類ページ（`engine`→`comfyui`・`model:` →`image-video`・`runtime:` →`local-runtimes`・`node:` →`custom-nodes`・`hf:` →`hf-external`）。`modelfilter.RouteOf` の行き先は `image-video`（`ReasonAgeGate`・`ReasonNotInstalled`）・`custom-nodes`（`ReasonMissingNode`）。
+- 左メニュー: 概要と全分類ページに `ul#sidenav-mm-views`（見出し `#sidenav-mm`「モデルマネージャー」・「概要」＋各分類）があり、現在のページの項目だけ `aria-current="page"`（分類ページでは画面の項目「モデルマネージャー」は `aria-current="true"`）。それ以外の画面にこの一覧は出ない。`web/sidenavtest` が確かめる。
+- fixture（`scroll-mm-*.html`・`layout-long-names-*.html`）と `scroll.wtest.ts`・`long-names.wtest.ts` は、分類ページごとの描画（`image-video` の一覧・`comfyui` のエンジンのカード・`hf-external` ほか）に合わせて作り直し、通る。`go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
+
 `handler/modelmgr/runtimes` の `runtimes_test.go`（`screentest.NewWithRuntimes`。`service/localruntime/lrtest` の偽のパッケージ・偽の Hugging Face・偽のプロセス）: カードの表示（未導入・導入中・導入済み・重みが不足）、出典・ライセンス・`unclear` の注記とバナー、使えない環境の理由とクラウドの案内、導入・重みの導入・起動・停止・自動起動・削除、重みが不足した起動の 409 と文面、取得元が消えたときの失敗の表示、取り消し、未知の ID の 404、サービスが無い画面にはルートが無いこと、スクリーンリーダー用のラベルと鍵・トークンを出さないこと。
 
 `handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
@@ -135,3 +163,4 @@
 | 1.13 | 2026-11-06 | 試し生成に英訳のスイッチは付けないと判断し、理由とテストを §3 の「試し生成」に書いた（動作は今のまま。`startTrial` が `TranslateToEnglish: false` を明示する） | Issue #1068 |
 | 1.14 | 2026-11-06 | `GET /model-manager/runtimes/:id/models`（実行環境のモデルの一覧のフィルター。Issue #1015・#1011）を足した | Issue #1015 |
 | 1.15 | 2026-11-06 | 「試し生成」のルート 5 本（`/model-manager/trials`・`trials/form`・`POST trials`・`DELETE trials/:id`・`trials/:id/file`）・`POST /model-manager/trials` のアップロード上限の広げ・区画「試し生成」（§3）・試し生成の英訳をしない判断（1.13。Issue #1068）・試し生成のテストを廃止し、導入の完了・成人向けの切り替え・追加したファイルの導入と削除の応答から「試し生成の区画の描き直し」を外した。区画の並びを実際の順に直した。受け入れ条件を §4 に足した。状態は仕様のみ（未実装） | Issue #1100 |
+| 1.16 | 2026-11-06 | 画面を分類ごとのサブページに分けると決め、概要（`GET /model-manager`・`GET /model-manager/overview`）と分類ページ（`GET /model-manager/<slug>`。6 つ）のルート、§3 の分類の表、§4 の受け入れ条件を足した。`GET /model-manager/engine` の `job` の応答から、モデルの一覧の OOB を外した。区画の部分ルートは変えない。状態は仕様のみ（未実装） | Issue #1101 |
