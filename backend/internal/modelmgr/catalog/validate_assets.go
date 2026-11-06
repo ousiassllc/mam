@@ -46,7 +46,10 @@ func validateResourceSets(c *Catalog) []error {
 		errs = append(errs, validateResourceSet(where, s)...)
 	}
 	for _, r := range c.Runtimes {
-		if !seen[r.ID] {
+		switch {
+		case r.OwnModels && seen[r.ID]:
+			errs = append(errs, fmt.Errorf("runtime %s: it fetches its own models, so it has no weights and dependencies (data/assets/%s.json)", r.ID, r.ID))
+		case !r.OwnModels && !seen[r.ID]:
 			errs = append(errs, fmt.Errorf("runtime %s: no weights and dependencies (data/assets/%s.json)", r.ID, r.ID))
 		}
 		set, _ := c.ResourceSet(r.ID)

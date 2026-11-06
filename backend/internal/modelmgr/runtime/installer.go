@@ -263,10 +263,10 @@ func (i *Installer) swap(tmp string) error {
 	return nil
 }
 
-// Remove deletes the environment, what was downloaded and the caches, and the record of the install (the setting of the auto start and
-// the log stay). A runtime that is not installed is removed without an error.
+// Remove deletes the environment, what was downloaded, the caches, the home directory and the models the runtime fetched itself (Ollama's; none for the
+// others), and the record of the install (the setting of the auto start and the log stay). A runtime that is not installed is removed without an error.
 func (i *Installer) Remove() error {
-	for _, dir := range []string{i.Layout.EnvDir(), i.Layout.EnvNewDir(), i.Layout.EnvOldDir(), i.Layout.DownloadsDir(), i.Layout.CacheDir(), i.Layout.TempDir()} {
+	for _, dir := range []string{i.Layout.EnvDir(), i.Layout.EnvNewDir(), i.Layout.EnvOldDir(), i.Layout.DownloadsDir(), i.Layout.CacheDir(), i.Layout.TempDir(), i.Layout.HomeDir(), i.Layout.ModelsDir()} {
 		if err := os.RemoveAll(dir); err != nil {
 			return fmt.Errorf("runtime: remove: %w", err)
 		}

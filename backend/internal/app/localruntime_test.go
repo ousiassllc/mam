@@ -23,11 +23,12 @@ func TestBuildServices_TheLocalRuntimesAreWired(t *testing.T) {
 	require.NotNil(t, services.LocalRuntimes)
 
 	views := services.LocalRuntimes.List(context.Background())
-	require.Len(t, views, 4)
+	require.Len(t, views, 5)
 	assert.Equal(t, "gpt-sovits", views[0].ID)
 	assert.Equal(t, "irodori-tts", views[1].ID)
 	assert.Equal(t, "llama-cpp", views[2].ID)
 	assert.Equal(t, "musetalk", views[3].ID)
+	assert.Equal(t, "ollama", views[4].ID)
 	if runtime.GOOS != "windows" {
 		assert.False(t, views[0].Support.Supported)
 		assert.Contains(t, views[0].Support.Message(), "ElevenLabs")
@@ -45,6 +46,10 @@ func TestBuildServices_TheLocalRuntimesAreWired(t *testing.T) {
 		assert.Contains(t, views[3].Support.Message(), "Sync Labs")
 		_, err = services.LocalRuntimes.Install(context.Background(), "musetalk")
 		assert.ErrorContains(t, err, "自動導入")
+		assert.False(t, views[4].Support.Supported)
+		assert.Contains(t, views[4].Support.Message(), "別のサーバー")
+		_, err = services.LocalRuntimes.Install(context.Background(), "ollama")
+		assert.ErrorContains(t, err, "自動導入に対応していません")
 	}
 }
 
