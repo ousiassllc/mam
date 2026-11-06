@@ -48,7 +48,7 @@
 
 結果（`results[]`）: `result_id`, `batch_id`, `position`, `media`, `model`, `model_label`, `api_model`, `prompt`, `sent_prompt`, `translated`, `translated_prompt`, `translated_negative_prompt`, `negative_prompt`, `negative_mode`, `aspect_ratio`, `resolution`, `duration_seconds`, `seed`, `seed_sent`, `status`（queued / running / succeeded / failed / cancelled）, `error`, `has_file`, `mime_type`, `size_bytes`, `cost_basis`, `estimated_cost_usd`, `actual_cost_usd`（ベンダーが返したときだけ）, `favorite`, `used_inputs`, `avoid_reference_pose`, `lora`（`name`, `strength`。使ったときだけ）, `created_at`, `finished_at`。
 | `get_facefusion_status` | 顔の入れ替え（FaceFusion。mam に同梱しない外部ツール）の状態（Issue #995。[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md)）。`ready`（Python とフォルダが見つかった）・保存したパスと探した結果・FaceFusion の版と自己申告のライセンス・探した場所・選べるモデル（`swappers`・`detectors`・`enhancers`。それぞれ `class`: open / conditional / noncommercial / research / unknown とライセンス名）・既定・標準の注意 `notes`（ArcFace が非商用・成人向けの画像は断られる・本体は OpenRAIL-AS・モデルは FaceFusion が取得する）・出典の URL |
-| `swap_generation_face` | `target`（顔を入れ替えられる側の画像）の顔を `face`（顔の画像）の顔に入れ替える（Issue #995）。`{source, id}` で指す。任意の `swapper`・`detector`・`enhancer`（既定 ghost_2_256・yunet・gfpgan_1.4。`none` で復元しない）。結果は別の結果（`model: facefusion`）で、`face_swap`（元の結果・モデル・ライセンスの警告）と `face_similarity` が付く。見積り・確認なし。非商用・研究用・商用不明のモデルは `warnings` で知らせて実行する。FaceFusion が見つからない・未知のモデルは `validation`。`job_id`・`batch_id`・`result_id`・`warnings` |
+| `swap_generation_face` | `target`（顔を入れ替えられる側の画像）の顔を `face`（顔の画像）の顔に入れ替える（Issue #995）。`{source, id}` で指す。任意の `swapper`・`detector`・`enhancer`（既定 ghost_2_256・yunet・gfpgan_1.4。`none` で復元しない）。結果は別の結果（`model: facefusion`）で、`face_swap`（元の結果・モデル・ライセンスの警告）と `face_similarity` が付く。見積り・確認なし。非商用・研究用・商用不明のモデルは `warnings` で知らせて実行する。FaceFusion が見つからないときは `unavailable`（`failure.code` が `facefusion_unavailable`）、未知のモデルは `validation`。`job_id`・`batch_id`・`result_id`・`warnings` |
 
 ### アップロードの用途とダウンロードの種類
 
@@ -207,3 +207,4 @@
 | 1.29 | 2026-11-05 | `estimate_generation_video_enhance` の出力に `adult`・`adult_warning`、`enhance_generation_video` の入力に `adult_confirmed` を足した。成人向けの結果も Topaz に送れるが、警告を見せて確認が取れたときだけ送る | Issue #1031（悠太さんの決定 2026-11-05） |
 | 1.30 | 2026-11-06 | `get_generation_test` に `face_summaries`（役割 `face` の参照を付けたバッチのモデルごとの顔の類似度〔SFace〕の測れた数・測れなかった数・平均・最小・最大・目安以上の数と割合。参照が無いバッチには出ない）を足した。新しいツールは足さない | Issue #998 |
 | 1.31 | 2026-11-06 | `estimate_generation_test` の英訳の行（`translate`）を、LLM の単価が分かれば `priced` で `total_usd` に入れる（分からなければ従来どおり `unknown`。Issue #1069）。英訳中の取り消しは `upstream` にしない（Issue #1072） |
+| 1.32 | 2026-11-06 | `swap_generation_face` で FaceFusion が見つからないときの答えを、実装（Issue #1010 から）どおり `unavailable`（`failure.code` が `facefusion_unavailable`）に直した（`validation` のままだった）。ツールの説明文も同じに直した | Issue #995 の見直し（仕様と実装の乖離） |
