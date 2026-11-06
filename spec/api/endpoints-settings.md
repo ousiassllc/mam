@@ -18,8 +18,8 @@
 | `/settings/local-models/endpoints/:name` | 接続先のサブページ（接続先のカードと、そのモデルの表。モデルの追加・編集のフォームはこのページの中に開く）。タイトルは「設定: ローカル・代替モデル: <名前>」、ナビの現在の分類は「ローカル・代替モデル」。無い接続先は 404。名前が `new` の接続先（古い設定ファイルにだけある）は、追加フォームの URL に隠れるのでページが無い（一覧のカードがそう書く） | 同上 |
 | `/settings/audio` | 音声・口パク（声と口パクのプロバイダー・ローカルの状態・この PC で動かせない理由・出典とライセンス・フォールバックのチェック。§5.3） | `audiosettings.Service` があるとき |
 | `/settings/mcp` | MCP サーバー（今の区画をそのまま） | `app` が MCP サーバーを起動したとき |
-| `/settings/facefusion` | FaceFusion（Python とフォルダのパス・探した結果・モデルのライセンス。§5.2.2） | `facefusionsettings.Service` があるとき |
-| `/settings/ffmpeg` | ffmpeg（ffmpeg と ffprobe のパスの欄と、探した結果。§5.2） | `ffmpegsettings.Service` があるとき |
+| `/settings/facefusion` | FaceFusion（Python とフォルダのパス・探した結果・モデルのライセンス。§5.2.2）。**#1106 で、モデルマネージャーの `/model-manager/companion` の `#mm-facefusion` へ移る**（`GET` は 303。状態: 仕様のみ） | `facefusionsettings.Service` があるとき |
+| `/settings/ffmpeg` | ffmpeg（ffmpeg と ffprobe のパスの欄と、探した結果。§5.2）。**#1106 で、`/model-manager/companion` の `#mm-ffmpeg` へ移る**（`GET` は 303。ダウンロード §5.2.1 のルートも移る。状態: 仕様のみ） | `ffmpegsettings.Service` があるとき |
 | `/settings/update` | バージョンとアップデート（今の区画をそのまま） | 常に |
 | `/settings/licenses` | 第三者のライセンス（`THIRD_PARTY_NOTICES.md` を埋め込んだ文字列を項目に分けた、グループごとの `<details>` の一覧。全文はページに入れない。§5.4） | 常に |
 | `/settings/chatgpt` | HTMX: 今の区画の断片（`#chatgpt-panel`。クエリ `method` は読まない。ログイン中・ダウンロード中は区画が 2 秒ごとにこの URL を取り直す）。HTMX でなければ `/settings/api-keys` のページ全体で、`<link rel="canonical" href="/settings/api-keys">` を付ける（`/settings/chatgpt/models` も同じ） | ChatGPT のサービスがあるとき |
@@ -73,8 +73,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | GET | `/settings/restart` | 欄 `#restart-panel`（再起動で反映される設定の一覧とボタン）だけを返す。保存のあとに、本文の上の `#restart-slot` が読み直す。待っている設定が無く、答える内容も無いときは空 |
 | PUT | `/settings/llm/agents/:agent` | 1 つの Agent の保存。フォーム `primary.provider`・`primary.model`・`primary.model_custom`・`fallback.provider`・`fallback.model`・`fallback.model_custom`（`*.model_custom` が空でなければ `*.model` より優先。前後の空白は落とす）。**保存済みの他の Agent と合わせて**検証して書く（`llmassign.Service.Save` に 1 件だけの `map`）。成功は 200、行（`<tr id="llm-row-<agent>" hx-swap-oob="true">`。**応答の先頭**。HTML のパーサーは先頭の `<tr>` だけを行として読む）・成功のトースト・`HX-Trigger-After-Swap: modal-close`。行に「再起動で反映」の印は出さない（#1006: 保存した割り当てはすぐ反映される）。422 は `InvalidError.Message`（例「Writer（脚本） のプライマリ: モデル名を入力してください」）をモーダルの `role="alert"` に出し、入力を残し、問題の欄に `aria-invalid` と `autofocus`。固定は 409、未知の Agent は 404、書き込みの失敗は 500 |
 | DELETE | `/settings/llm/agents/:agent` | その Agent を既定に戻す（`Save` に既定の route を渡す。既定と同じ route は設定ファイルから消える）。`hx-confirm` は付けない（モーダルの中の操作で、いつでもやり直せる。オーナー決定）。応答は PUT と同じ |
-| PUT | `/settings/llm/local` | カード「ローカル LLM サーバー」の保存（`local-llm.md` §5.1）。フォーム `base_url`・`api_key`（空は変更なし）・`clear_key`（`1` でキーを削除）・`unload`＋`unload_present`（`1` のとき、スイッチをフォームの値にする）。200: カード（「保存しました…」）、422: カード（理由・打った内容・`aria-invalid`。キーは返さない）、409: 設定ファイルが固定（キーだけの変更は固定でも保存できる）、503: キーストア。`llm.json` の `providers.local` を書き、稼働中のクライアントにすぐ渡す |
-| POST | `/settings/llm/local/test` | ローカル LLM サーバーの接続テスト（`GET /v1/models`）。フォーム `base_url`・`api_key`（空は保存したもの。保存しない）。200: 結果（モデル名の一覧、または共通のエラー表示 `local_llm_unreachable` など）、422: 拒否されるアドレス |
+| （廃止） | `/settings/llm/local`・`/settings/llm/local/test` | **#1104 で廃止**（状態: 仕様のみ・未実装。ルートを登録しない。404）。カード「ローカル LLM サーバー」の保存と接続テストは、モデルマネージャーの `PUT /model-manager/local-llm/connection`・`POST /model-manager/local-llm/connection/test` に移った（フォーム・状態コード・文言は同じ。[endpoints-model-manager.md](endpoints-model-manager.md) §1）。`GET /settings/llm` には、入力欄のない「ローカル LLM サーバー」のリンクのカード（`llm-local-link`・`llm-local-state`）だけが残る |
 | PUT | `/settings/models/images/:purpose` | 1 つの画像の用途の保存。フォームは全体の保存と同じ欄の名前（`image_<用途>_<primary\|fallback>_model`・`…_fast`）。**その行だけ**検査して書く（`modelsettings.Service.SaveImage`。他の行は保存済みのまま。他の行が年齢確認で使えないモデルを指していても、この行の保存は止まらない）。成功は 200、行（`media-image-<purpose>`）・`#model-status`（注意とすべて既定に戻すの置き場。保存で変わるので同じ応答で OOB）・トースト・`modal-close`。**すぐに反映される**（再起動は要らない）。422・409・404・500 は上と同じ形（422 は選択を残す） |
 | PUT | `/settings/models/policies/:policy` | 1 つの Quality Policy の保存（`policy_<…>_<primary\|fallback>`・`policy_<…>_takes`。`SavePolicy`）。応答は上と同じ（行は `media-policy-<policy>`） |
 
@@ -132,7 +131,9 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 行（`<tr>`）と表の本体（`<tbody>`）を OOB で足す・置き換えるときは、`<template>` に包む（HTML の構文解析は、`<tr>` を表の外で読むと捨てるため。htmx は `<template>` の中の OOB を読む）。`<ul>` に足すときは `<ul hx-swap-oob="beforeend:#…">` の子として、置き換えでない OOB は要素の**中身**が入ることに注意する。
 
-## 5.2 ffmpeg の保存（Issue #856）
+## 5.2 ffmpeg の保存（Issue #856。#1106 で `/model-manager/companion/ffmpeg` へ移る）
+
+> **#1106（状態: 仕様のみ・未実装）**: この節（§5.2・§5.2.1）の `PUT /settings/ffmpeg` と `/settings/ffmpeg/download…` は、`PUT`・`POST`・`DELETE /model-manager/companion/ffmpeg`・`…/download`・`…/download/cancel` に**そのまま移る**（本文・状態コード・文言・`data-testid` は変えない。ルートは [endpoints-model-manager.md](endpoints-model-manager.md) §1）。`GET /settings/ffmpeg` は 303 で `/model-manager/companion`。設定画面の分類・概要のカードは外れ、概要に「付随ソフト」のカード 1 枚になる（[../components/settings-screen-categories.md](../components/settings-screen-categories.md) §8）。
 
 | 操作 | 成功の本文 | 失敗 |
 |------|-----------|------|
@@ -153,7 +154,9 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 取得の失敗は、部品の `role="alert"`（`data-testid=ffmpeg-download-install-error`）に出る: SHA-256・サイズの不一致（**ファイルは削除し、使わない**）、アーカイブの中身の不一致、実行できない、配布元が 404（mam を更新する）・そのほかの HTTP エラー、通信の失敗。取得に失敗しても、前に入れた版はそのまま残る。CSRF の対象（`POST`・`DELETE`）。
 
-## 5.2.2 FaceFusion の保存（Issue #995）
+## 5.2.2 FaceFusion の保存（Issue #995。#1106 で `/model-manager/companion/facefusion` へ移る）
+
+> **#1106（状態: 仕様のみ・未実装）**: `PUT /settings/facefusion` は `PUT /model-manager/companion/facefusion` に**そのまま移る**（フォーム・状態コード・文言は変えない）。`GET /settings/facefusion` は 303 で `/model-manager/companion`（モデルマネージャーの `GET …/companion/facefusion` が探し直しの取り直しを兼ねる）。mam は FaceFusion を取得しない（[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md) §1。変えない）。
 
 | 操作 | 成功の本文 | 失敗 |
 |------|-----------|------|
@@ -208,3 +211,5 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.12 | 2026-11-03 | §5.2 に `GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider`（カードの「詳細」のモーダル）を足し、ChatGPT の操作を詳細のモーダルから送ったときの答え（`HX-Target` が `mam-modal-body`）を足した | Issue #1005 |
 | 1.13 | 2026-11-03 | §5.2 に `PUT /settings/llm/local`・`POST /settings/llm/local/test` を足した（「ローカル LLM サーバー」のカード） | Issue #1008 |
 | 1.14 | 2026-11-04 | LLM の Agent のモーダルの 2 つの `<select>` をモデル選択の欄（`GET /model-picker/:source`）にし、`GET /settings/llm/agents/:agent/models/:role` を廃止した。`PUT` のフィールド名は変えていない | Issue #1011 |
+| 1.15 | 2026-11-06 | §5 の `PUT /settings/llm/local`・`POST /settings/llm/local/test` を廃止し、モデルマネージャーの `local-llm` へ移した（`GET /settings/llm` はリンクのカードだけ。状態は仕様のみ） | Issue #1104 |
+| 1.16 | 2026-11-06 | §5.2・§5.2.1・§5.2.2 の ffmpeg・FaceFusion のルートを、モデルマネージャーの `companion` へ移した（`GET /settings/ffmpeg`・`/settings/facefusion` は 303。分類と概要のカードは外れる。状態は仕様のみ） | Issue #1106 |

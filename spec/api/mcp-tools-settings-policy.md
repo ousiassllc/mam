@@ -50,6 +50,7 @@
 | `set_llm_assignment` | 指定した Agent の LLM（主・代替）を保存する。冪等。モデル名がそのプロバイダーの一覧（`list_llm_models`）にないときは**拒否せず保存し**、`warnings[]` で知らせる | `routes[]`: `agent`, `primary`, `fallback`（`provider`, `model`） | `get_global_settings` の `llm` に `warnings[]`（`kind`（`unlisted_model`）, `agent`, `role`（`primary` / `fallback`）, `provider`, `model`, `message`。無ければ空配列） | いいえ |
 | `reset_llm_assignment` | LLM の割り当てを既定に戻す（上書きをすべて消す。冪等） | なし | 同上 | いいえ（破壊的） |
 | `set_local_llm_server` | （`use_managed_runtime`〔true で「この PC の llama.cpp を使う」。mam が導入・起動する llama.cpp にアドレスなしで向かう。`get_global_settings` の `llm.local_server.managed_runtime` に状態〕は [local-llm.md §10](../architecture/local-llm.md)）ローカルの OpenAI 互換 LLM サーバー（Ollama・LM Studio・llama.cpp server。プロバイダー `local`。[`local-llm.md`](../architecture/local-llm.md)）のアドレス・任意の API キー・画像／動画の生成前に Ollama のモデルを降ろすスイッチを保存する。指定した項目だけ変わる。次の LLM 呼び出しからすぐ効く。リンクローカル等のアドレス・スキームの違う URL は `validation`、設定ファイルが固定されているときは `conflict`。キーの値は返さない（OS のセキュアストレージの `local`）。冪等 | `base_url?`（末尾の `/v1` は外して保存）, `use_managed_runtime?`, `api_key?`, `clear_api_key?`, `unload_before_generation?`。1 つ以上 | `available`, `base_url`, `default_base_url`, `key_configured`, `unload_before_generation`, `pinned`, `problem?`（`get_global_settings` の `llm.local_server` と同じ） | いいえ |
+| `set_local_llm_server`（#1104 の追記。状態: 仕様のみ・未実装） | 上の `set_local_llm_server` に、`use_managed_ollama?`（true で mam が導入・起動する Ollama に向かう。`use_managed_runtime` と同時に true にはできず、矛盾する組み合わせは `validation`）を足す。`get_global_settings` の `llm.local_server` に `use_managed_ollama` と、どれに向かうかを示す `use`（`llama-cpp`・`ollama`・`custom`）を足す。ほかは変えない（[local-llm.md §11](../architecture/local-llm.md)）。対応する画面は設定ではなくモデルマネージャーの `PUT /model-manager/local-llm/use`・`PUT /model-manager/local-llm/connection` | `use_managed_ollama?` | `use_managed_ollama`, `use` | いいえ（冪等） |
 | `test_local_llm_server` | ローカル LLM サーバーへの接続を確かめる（`GET /v1/models`）。引数を省くと保存した設定で試す（`api_key` を省いて別の `base_url` を試すときは、保存済みのキーを送らない）。接続できないときはツールのエラーにせず `ok: false` と `failure`（共通エラー [`errors.md`](../architecture/errors.md) の `local_llm_unreachable`: 原因・直し方・設定画面への導線）を返す | `base_url?`, `api_key?`（保存はしない） | `ok`, `message`, `model_count`, `models[]`（先頭 20 件）, `failure?`（`apperr.View`） | はい（openWorld） |
 | `set_model_assignment` | 指定した画像の用途・Quality Policy のモデルを保存する。冪等 | `images?[]`: `purpose`（`new_reference` / `edit_reference` / `preview` / `unified_openai`）, `primary`, `fallback`（`model`, `fast?`）。`policies?[]`: `quality_policy`, `primary`, `fallback`（`model`, `resolution`）, `takes`（1 以上）。どちらかは必須 | `get_global_settings` の `models` | いいえ |
 | `reset_model_assignment` | 画像・動画モデルの割り当てを既定に戻す（冪等） | なし | 同上 | いいえ（破壊的） |
@@ -90,8 +91,9 @@
 | `PUT /settings/llm` | `set_llm_assignment` |
 | `GET /settings/llm/agents/:agent/models/:role` | `list_llm_models`（画面のモデルのプルダウンの中身と同じ一覧。`provider` を指定する） |
 | `DELETE /settings/llm` | `reset_llm_assignment` |
-| `PUT /settings/llm/local` | `set_local_llm_server`（画面のカード「ローカル LLM サーバー」の保存） |
-| `POST /settings/llm/local/test` | `test_local_llm_server` |
+| `PUT /model-manager/local-llm/connection` | `set_local_llm_server`（画面の区画「別のサーバーにつなぐ」の保存。#1104。旧 `PUT /settings/llm/local`） |
+| `PUT /model-manager/local-llm/use` | `set_local_llm_server`（use_managed_runtime・use_managed_ollama の保存。#1104 で新設） |
+| `POST /model-manager/local-llm/connection/test` | `test_local_llm_server`（#1104。旧 `POST /settings/llm/local/test`） |
 | `PUT /settings/models` | `set_model_assignment` |
 | `DELETE /settings/models` | `reset_model_assignment` |
 | `GET /settings/audio` | `get_audio_providers` |
@@ -119,3 +121,4 @@
 | 1.8 | 2026-11-03 | `set_local_llm_server`・`test_local_llm_server` と、`get_global_settings` の `llm.local_server` を足した。`set_llm_assignment` / `list_llm_models` はプロバイダー `local` を受ける（モデルはサーバーが持つもの。接続できないと `available: false`・`unavailable_message: ローカルサーバーに接続できません`・`settings_route: /settings/llm`） | Issue #1008 |
 | 1.9 | 2026-11-04 | `set_local_llm_server` に `use_managed_runtime`、`get_global_settings` の `llm.local_server` に `use_managed_runtime`・`managed_runtime`（`state`・`reason`・`model`）を足した。管理サーバーを選んでいる間、`list_llm_models` の `local` はそのモデル 1 つ | Issue #1008（後半） |
 | 1.10 | 2026-11-04 | `get_update_status`・`check_for_update`・`get_global_settings`（`update`）に、確認の失敗の `failure`（共通エラーの `update_*`）を足した。設定の保存の失敗（ディスク・権限）は `disk_full`・`not_writable`・`save_failed`（共通エラー）で返る | Issue #1010 |
+| 1.11 | 2026-11-06 | `set_local_llm_server` に `use_managed_ollama`、`get_global_settings` の `llm.local_server` に `use_managed_ollama`・`use` を足し、対応表の画面側のルートをモデルマネージャーの `local-llm` に直した（状態は仕様のみ） | Issue #1104 |

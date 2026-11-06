@@ -23,7 +23,7 @@
   comfyui.pid    起動中のエンジンの PID・起動時刻・コマンドライン（Linux・macOS。終了で消える。前回の mam が残した子を次回起動で片付ける。§3.4）
 ```
 
-- ジョブの結果（試し生成）は MAM のデータディレクトリ（`<data-dir>/gentest/<バッチ ID>/`）に置く。`comfyui` の中ではない（アンインストールでもデータは残す、という既存の方針）。
+- ジョブの結果（生成テスト）は MAM のデータディレクトリ（`<data-dir>/gentest/<バッチ ID>/`）に置く。`comfyui` の中ではない（アンインストールでもデータは残す、という既存の方針）。
 - `store.Layout.CheckWritable` が作成と書き込みを試し、できなければ `ErrNotWritable`（`EngineView.Writable=false`）。
 - `store.For(goos, exe, dataDir)`（`store.ForSystem`）が `Layout` を作る。Windows などは exe の実体（シンボリックリンクは解決）の隣、**macOS はデータディレクトリの中**（`exeinstall.Root`。Codex のエンジン・ffmpeg と同じ規則。exe は `MAM.app` の中にあり、自動更新が `.app` を丸ごと入れ替えるので、そこに置いたものは更新で消える）。macOS でデータディレクトリが空なら `Layout` は空で、同梱エンジンは使えない（`engine.Supported` が偽）。
 
@@ -95,7 +95,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 
 エンジンを入れるとき、`localmodels` に kind `comfyui` の接続先 `bundled-comfyui`（`http://127.0.0.1:<port>`）を作り、モデルの導入・削除でその `local_models`（local-models.md §2。識別子は `comfyui:bundled-comfyui/<名前>`）を作る・消す。接続先の URL はエンジンのポートに従う。
 
-- 起動したポートが接続先と違うときは、`Prepare` が URL を更新して `ErrEndpointMoved` を返す（呼び出し中のバックエンドは古い URL を持つため。もう一度実行すると新しいポートに届く）。試し生成は `Prepare` を通らず、自分でエンジンを起動して最新の設定を読むので影響を受けない。
+- 起動したポートが接続先と違うときは、`Prepare` が URL を更新して `ErrEndpointMoved` を返す（呼び出し中のバックエンドは古い URL を持つため。もう一度実行すると新しいポートに届く）。生成テスト（#1100 より前は試し生成）は `Prepare` を通らず、自分でエンジンを起動して最新の設定を読むので影響を受けない。
 - 呼び出しの前処理 `localbackends.Options.Prepare` が、`Adapter` の画像・動画バックエンドに接続先ごとに挟まる（エンジンが止まっていれば起動する）。`--model-config` で固定した `models.json` では接続先を書けないので、導入は `ErrPinned`。
 
 ### 3.6 既存の ComfyUI の検出（`modelmgr/detect`）
@@ -135,7 +135,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | フィールド | 内容 |
 |---|---|
 | `id` / `name` / `kind` / `tier` / `description` | `kind` は `image`・`video`・`upscale`（生成した画像を大きくするアップスケール用のモデル。Issue #975。下の「アップスケール用モデル」）。`tier` は `standard` か `advanced`（同意が要る） |
-| `content_rating` | `general` か `adult`。`adult` は年齢確認（§6.2）が済むまで一覧・導入・試し生成に出ない。**`adult` は `tier = advanced`（同意必須）** |
+| `content_rating` | `general` か `adult`。`adult` は年齢確認（§6.2）が済むまで一覧・導入・生成テストのモデルの選択肢に出ない。**`adult` は `tier = advanced`（同意必須）** |
 | `traits` | **必須**（Issue #1011）。フィルターが使う構造化データ: `params_b`（パラメータ数。十億単位の数値）・`params_label`（表示用。`14B`・`2.6B（UNet）`。`params_b` とセット。確かな値だけで、不明は省く）・`uncensored`（**必須の真偽値**。非検閲の LoRA・テキストエンコーダー・マージを使う、または非検閲として配られているモデル。**成人向けとは別**で、`uncensored` なら必ず `content_rating: adult`）・`speed`（`fast`・`standard`・`slow`）・`quality`（`basic`・`standard`・`high`）・`languages[]`（音声つきのモデルだけ）。入力の種類（`t2i`・`i2v`・`first_frame`・`reference_face` など）と音声つきかは**書かず**、ワークフローから導く（`catalog.Model.Derived`）。意味・条件・既存の全カタログの埋め方は [model-filter.md](model-filter.md) §3 |
 | `trigger_words[]` | LoRA を含むモデルのトリガー語（プロンプトに入れる語）。`loras` のファイルを持つモデルだけ |
 | `files[]` | `name`・`folder`（`checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras`・`latent_upscale_models`・`controlnet`・`clip_vision`・`ipadapter`・`upscale_models`。`controlnet`・`clip_vision`・`ipadapter` は Issue #976、`upscale_models`（アップスケール用モデル）は Issue #975）・`url`（**コミット固定の** Hugging Face の URL、https）・`sha256`・`size`・`source_note`（第三者のミラーのとき: 原本の場所と、SHA-256 が一致することを確かめた日付。省略可）・`optional`（省略可。`true` は、無くてもモデルは使えるファイル。**速さのモードの Lightning LoRA** など。Issue #1025。全部が `optional` のモデルは検査で断る） |
@@ -580,7 +580,7 @@ GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒
 | 種別 | 再開 | 内容 |
 |---|---|---|
 | `model_install` | **する**（`resumable=true`） | `target` は `engine` か `model:<id>`（ローカルランタイムは `runtime:<id>`。[local-runtime.md](local-runtime.md) §6。追加ノードは `node:<id>`。[custom-nodes.md](custom-nodes.md) §4）。ファイルを順に `downloads\` の `.part` へ取得（`Range` で再開）→ SHA-256 を再検証 → `data\models\<folder>\` へ移す。冪等で、検証済みのファイルは取り直さない |
-| `gentest` | しない（`resumable=false`） | 試し生成（§8）。生成テストのバッチ（[../gentest/gentest.md](../gentest/gentest.md)）として動く。MAM が落ちたら、終わっていない結果は失敗になる |
+| `gentest` | しない（`resumable=false`） | 生成テスト（§8。モデルマネージャーの試し生成は #1100 で廃止し、試すのは生成テスト画面だけ）。生成テストのバッチ（[../gentest/gentest.md](../gentest/gentest.md)）として動く。MAM が落ちたら、終わっていない結果は失敗になる |
 
 - 再起動のたびに再開するのは `jobqueue.DefaultMaxAttempts`（3）回まで。それを超えると失敗として残り、利用者が導入をやり直す。
 - ジョブの再開（上）とは別に、**1 回の取得の中の通信切断は、ジョブの中で自動的に `.part` から取り直す**（§3.3「通信が切れたときの自動再開」）。上限まで切れたジョブは失敗で終わり、再起動の再開の回数には数えない（ハンドラーがエラーを返すと、キューは再開せず失敗にする）。
@@ -588,7 +588,7 @@ GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒
 - 同じ対象のジョブが動いている間の再実行は、新しいジョブを作らずそのジョブを返す（`JobRef.Existing`）。対象ごとに直列化する。**書き込み先（`models/<folder>/<name>`）ごとにも直列化する**（対象が違っても同じ宛先なら 1 つずつ動き、ロックを取った後に宛先を調べ直す。`model:<id>` の導入は、利用者が HF から足した別の SHA-256 のファイルを上書きせず `*InvalidError` で断る。[model-manager-hf.md](model-manager-hf.md) §4）。
 - 他のモデルが検証済みの同じファイル（パス・SHA-256・サイズが同じ。VAE・テキストエンコーダーなど）は、再ハッシュせず信用する。
 - 2 つの種別は 1 つのマイグレーション（`20261025090000_job_kind_model.sql`）で `job.kind` の CHECK に加える（[er-model-manager.md](er-model-manager.md)）。
-- 更新の安全ゲート（desktop.md §6.2）は種別を見ずに `running`・`queued` の `job` を数えるので、導入と試し生成の間は自動更新が保留される。
+- 更新の安全ゲート（desktop.md §6.2）は種別を見ずに `running`・`queued` の `job` を数えるので、導入と生成テストの間は自動更新が保留される。
 
 ### 5.2 インストール後
 
@@ -671,7 +671,7 @@ GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒
 | `Catalog()` | 成人向けのモデルを返さない |
 | `Model(id)`・`AcceptLicense`・`InstallModel` | `ErrAdultNotConfirmed`（導入は何もダウンロードせず、同意も記録しない。画面・MCP は 409 / `conflict`） |
 | 導入のジョブ（`runModelInstall`） | 待っている間に閉じられたら、始めに同じ理由で失敗する |
-| 試し生成のモデルの一覧（`mmview.TrialModels`、生成テストの `Models`・`Model`） | 導入済みの成人向けモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）も出さず、名指しの要求は不明なモデルとして断る（`gentest.Deps.Hidden` = `HidesModel`） |
+| 生成テストのモデルの一覧（生成テストの `Models`・`Model`） | 導入済みの成人向けモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）も出さず、名指しの要求は不明なモデルとして断る（`gentest.Deps.Hidden` = `HidesModel`）。#1100 より前は、モデルマネージャーの試し生成の一覧（`mmview.TrialModels`）も同じ述語を使っていた |
 | 画像・動画モデルの割り当て（`modelsettings`、画面・MCP） | 導入済みの成人向けモデルを選択肢に出さず、それを指す割り当ては保存できない（`HidesModel` = `modelsettings.Service.SetHidden`）。§6.1 |
 | 生成（Shot・Reference Pack・生成テスト・Adapter の直接呼び出し） | 割り当てが指していても断る（`agegate.ErrRefused`。何も呼ばず、代替にも回さない）。§6.1 |
 | ポーズ集の成人向けのシリーズ（Shisei の `sexy`・`duo`。Issue #1020。[local-runtime.md](local-runtime.md) §12.9） | **同じゲートを使う**（`AdultContentEnabled`。新しい確認の方法は足さない）。導入は `ErrAdultGateClosed`、一覧・画像・参照・履歴の入力・ジョブ一覧には出さず、走り出す前のバッチは失敗にする |
@@ -692,11 +692,15 @@ func (*Service) HidesModel(id string) bool                 // 試し生成・割
 
 **削除**（`DeleteModel`）: 使われている画像用途・Quality Policy があれば `*InvalidError` で断る（`localmodels` の `UsedBy`）。`local_models` を消し、**他の導入済みモデルが使っていないファイルだけ**を消す（共有する VAE・テキストエンコーダーは、使うモデルが残る間は残す。参照数は記録した導入済みファイルから数える）。
 
-## 8. 試し生成（`gentest`）
+## 8. 試し生成（廃止。Issue #1100）
 
-試し生成は**生成テスト（[../gentest/gentest.md](../gentest/gentest.md)）の 1 モデル・1 プロンプト・1 本のバッチ**として動く。実装は 1 つ（`service/gentest`。このサービスにはもう試し生成のコードも保存場所もない）。画面（`handler/modelmgr`）は `gentest.Service` の `Estimate`→`Run` を呼び、一覧は履歴のうち「この画面のローカルのモデル」の結果を新しい順に出す。モデル（`comfyui:bundled-comfyui/...`、外部の ComfyUI、OpenAI 互換）はモデル名を指定した直接呼び出し（代替なし。[../gentest/gentest-adapter.md](../gentest/gentest-adapter.md)）で呼ぶ。同梱エンジンのモデルは、`localbackends.Options.Prepare`（`Service.Prepare`）が呼び出しの前にエンジンを起動する。結果は `<data-dir>/gentest/<バッチ ID>/` に置き、`take`・`cost_ledger_entry`・アセットには書かない。参照画像は `gentest/_staging/` に置いてバッチの作成時に入力として複製する（24 時間以上前の取りこぼしは起動時に消す）。
+> **状態: 仕様のみ（未実装。Issue #1100）**: モデルマネージャーの区画「試し生成」は**廃止する**。導入したモデルを試すのは、生成テスト画面（`GET /generation-test`。[../gentest/gentest.md](../gentest/gentest.md)）だけになる。このサービス（`modelmanager.Service`）には、もともと試し生成のコードも保存場所も無い（1.2 で生成テストに一本化した）ので、**Service API・データ・ジョブの種別（`gentest`）は変えない**。
 
-**音声つきのモデル（Issue #927）**: `native_audio` のモデル（LTX-2.5）を選ぶと、フォームに「映像と同期した音声も作ります。結果は音声つきの mp4 で、下のプレーヤーで音が出ます」と注記を出し（`data-testid="mm-trial-audio-note"`）、結果には「音声つき」バッジ（`mm-trial-audio-badge`）を付け、`<video>` の `aria-label` を「試し生成の結果（音声つきの動画）: …」にする。保存したファイルは再エンコードせずそのまま `video/mp4` で配信する（`TestTrial_AVideoModelWithSoundSaysSoAndServesTheFileItSaved`）。
+- **消すもの（画面側だけ）**: `handler/modelmgr/trials.go`（`Trials`・`TrialForm`・`StartTrial`・`DeleteTrial`・`TrialFile`）と `trialPanel`、`organisms/modelmgr/trial.templ`（`TrialSection`・`TrialFormView`・`TrialList`。`Data.Trial`）、`oob.CatalogWithTrial`・`oob.HFModelsWithTrial`、`middleware/bodylimit.go` の `POST /model-manager/trials`（21 MiB への広げ）、モデル選択のソース `modelpicker.SourceTrial`（`model-trial`。`GET /model-picker/model-trial`）と、その専用の `trialModels`（`handler/modelpicker/sources_gentest.go`）・`mmview.TrialModels`（`service/modelmanager/mmview/trialmodels.go`。試し生成のほかに使う所は無いことを確認済み）とそれぞれのテスト（[model-filter.md](model-filter.md) §8.3 の表の行は削除済み）、試し生成だけの表示（音声つきの注記 `mm-trial-audio-note`・バッジ `mm-trial-audio-badge`。Issue #927 で足したもの）。生成テスト画面の表示は変えない。
+- **残すもの**: 生成テストの履歴にあるこれまでの試し生成の結果（データの移行・削除はしない）。`gentest.Deps.Hidden`（= `HidesModel`。§6.2）による、生成テストのモデルの一覧からの成人向けの除外。`GET /model-manager/trials/:id/file` を直接開いていた外部のリンクは 404 になる（アプリの中のリンクは無い）。
+- **英訳**: 「試し生成は英訳しない」（#1068）は、試し生成が無くなるので不要になる。生成テストの既定（`gentest.DefaultTranslate`）は変えない。
+- **導線**: 区画「モデル」の「?」ヘルプに、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つだけ置く。
+- **他の節の「試し生成」**: §4.5・§4.6・§4.7・§6.1・§6.2・§10 の「試し生成」（一覧に出ない・成人向けを隠す・音声つきの再生）は、#1100 の実装後は「生成テスト」（`GET /generation-test`）に読み替える。振る舞い（隠す対象・ゲート）は変わらない。
 
 ## 9. 起動・連携（`internal/app`）
 
@@ -807,11 +811,11 @@ func (*Service) DeleteUserModel(ctx, path string) error
 ## 12. 画面と MCP ツール
 
 - **画面**: `GET /model-manager`（`web/handler/modelmgr`・`organisms/modelmgr`）。仕様は [endpoints-model-manager.md](../../api/endpoints-model-manager.md)・[model-manager-screen.md](../../components/model-manager-screen.md)。入口はプロジェクト一覧と設定画面のリンク。進捗は HTMX のポーリング（2 秒）。
-- **MCP ツール**: `mcp/tools/modelmgr`（エンジン・カタログ・トークン・外部）と 生成テストの `mcp/tools/gentest`（試し生成もこれで行う）。仕様は [mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)・[mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)。ジョブの種別 `model_install` の Probe はこの画面側、`gentest` の Probe は生成テスト側にあり、`get_job` が状態・進捗・結果・失敗の理由を返す。
-- **共有**: サービスの拒否は `service/modelmanager/mmview.Refuse`（種類とメッセージ）で、画面の HTTP 状態と MCP のエラーコードに写す（`ErrConsentRequired`・`ErrBusy`・`ErrPinned`・`ErrUnsupported` は 409 / `conflict`、`ErrNoGPU`・`*InvalidError` は 422 / `validation`）。`mmview.TrialModels` は試し生成の選択肢（モデルの識別子・動画の解像度と長さ・参照画像を使えるか）。
+- **MCP ツール**: `mcp/tools/modelmgr`（エンジン・カタログ・トークン・外部）と 生成テストの `mcp/tools/gentest`（導入したモデルを試すのはこれ。#1100 で画面の試し生成は廃止）。仕様は [mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)・[mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)。ジョブの種別 `model_install` の Probe はこの画面側、`gentest` の Probe は生成テスト側にあり、`get_job` が状態・進捗・結果・失敗の理由を返す。
+- **共有**: サービスの拒否は `service/modelmanager/mmview.Refuse`（種類とメッセージ）で、画面の HTTP 状態と MCP のエラーコードに写す（`ErrConsentRequired`・`ErrBusy`・`ErrPinned`・`ErrUnsupported` は 409 / `conflict`、`ErrNoGPU`・`*InvalidError` は 422 / `validation`）。`mmview.TrialModels`（試し生成のモデルの選択肢）は #1100 で消す（§8）。
 - **導入の中断**: `CancelInstall`。ジョブは失敗で終わり（理由に「導入を中断しました」）、`.part` は残るので、導入し直すと続きから再開する。
 - **通信切断での失敗**: 切断が続いて自動再開の上限を超えたジョブも、`.part` は残る。理由は「通信が切れました。もう一度導入すると続きから再開します」で、導入し直すと続きから再開する（§3.3）。
-- **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。**年齢確認も同じ**（§6.2）: 画面のダイアログ（`PUT /model-manager/adult`）と MCP の `set_adult_content` は確認を渡す手段で、`Catalog`・`InstallModel`・試し生成の一覧は Service が閉じる。`ErrAdultNotConfirmed` は 409 / `conflict`（`mmview.Refuse`）。
+- **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。**年齢確認も同じ**（§6.2）: 画面のダイアログ（`PUT /model-manager/adult`）と MCP の `set_adult_content` は確認を渡す手段で、`Catalog`・`InstallModel`・生成テストのモデルの一覧は Service が閉じる。`ErrAdultNotConfirmed` は 409 / `conflict`（`mmview.Refuse`）。
 - **テスト用の部品**: `service/modelmanager/mmtest` は偽の GitHub / Hugging Face（`Range`・保留 `Hold` つき）・偽のエンジンのプロセス・ジョブキューつきの `Service` を作る（画面と MCP のテストが共有する）。
 - **切断のまね**: `mmtest.Host.Drop(file, bytes, times)` が、そのファイルの次の `times` 回の要求を `bytes` バイトで切る。`mmtest.FetchRetry` が再開の待ちを決める（既定は数ミリ秒）。`service/modelmanager/retrytest` が、再開して完了・上限で失敗して次の導入で完了・404 は再開しない、を確かめる。`fetch` の単体テスト（`retry_test.go`）が、切断（FIN・RST）・アイドル・5xx・取り消し・待ちの途中の取り消しを確かめる。
 - **Hugging Face からの導入**（Issue #842）: カタログに無い `.safetensors` を HF のリポジトリから導入する経路。意味・固定・フォルダ・年齢ゲート・記録・未検証は [model-manager-hf.md](model-manager-hf.md)。画面は `web/handler/modelmgr/hfimport`、MCP は `mcp/tools/modelmgr/hf.go` の 5 ツール。

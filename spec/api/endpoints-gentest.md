@@ -1,6 +1,6 @@
 # エンドポイント: 生成テスト画面
 
-プロジェクトに属さない画像・動画の比較生成の画面 `GET /generation-test`（Issue #835）。意味・見積り・ジョブ・失敗の扱いは [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md)、テーブルは [../architecture/gentest/er-gentest.md](../architecture/gentest/er-gentest.md)。画面の全操作は、同じサービス（`gentest.Service`）を呼ぶ MCP ツールでもできる（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）。入口はプロジェクト一覧（分析・設定の隣）のリンクと、モデルマネージャーの試し生成の区画のリンク。
+プロジェクトに属さない画像・動画の比較生成の画面 `GET /generation-test`（Issue #835）。意味・見積り・ジョブ・失敗の扱いは [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md)、テーブルは [../architecture/gentest/er-gentest.md](../architecture/gentest/er-gentest.md)。画面の全操作は、同じサービス（`gentest.Service`）を呼ぶ MCP ツールでもできる（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）。入口はプロジェクト一覧（分析・設定の隣）のリンクと、モデルマネージャーの区画「モデル」の「?」ヘルプの中のリンク（#1100 で、試し生成の区画のリンクから移った）。
 
 POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジョブの進捗は 2 秒ごとに取り直す（`hx-trigger="every 2s"`。終わると止まる。WebSocket は使わない）。拒否はページのトーストではなく区画の中のメッセージで返す（下の「エラーの対応」）。
 
@@ -139,3 +139,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.23 | 2026-11-04 | `POST /generation-test/results/:id/video-enhance/estimate`・`POST /generation-test/results/:id/video-enhance`（成功した動画の結果を大きくする・コマを増やして滑らかにする。Topaz は見積り → 確認 → 実行）を足した。結果の詳細に動画用の箱 `#gt-video-enhance`、ボタン行に「大きくする」「滑らかにする」、設定の欄に `video_enhance` の行 | Issue #1031 |
 | 1.24 | 2026-11-05 | `POST …/video-enhance` に `adult_confirm`（成人向けの結果を Topaz に送るとき必須）を足した。見積りの画面は警告を出す | Issue #1031（悠太さんの決定 2026-11-05） |
 | 1.25 | 2026-11-06 | 見積りの「プロンプトの英訳」の行は、LLM の単価が分かれば合計に入る（Issue #1069）。英訳中のリクエストの取り消しは 502 にしない（Issue #1072） |
+| 1.26 | 2026-11-06 | 入口の記述から「モデルマネージャーの試し生成の区画のリンク」を外し、「?」ヘルプのリンクにした（ルート・フィールドは変えない。状態は仕様のみ） | Issue #1100 |

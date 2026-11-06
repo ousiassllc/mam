@@ -6,7 +6,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 1. 方針
 
-- **実装は 1 つ**: #833 のモデルマネージャーの「試し生成」は、この仕組みの 1 モデル・1 プロンプト・1 本のバッチ（[../model-manager/model-manager.md](../model-manager/model-manager.md) §8）。ジョブ種別 `gentest`（`resumable=false`）・保存先 `<data-dir>/gentest/`・テーブルは共通。
+- **実装は 1 つ**: #833 のモデルマネージャーにあった「試し生成」は、この仕組みの 1 モデル・1 プロンプト・1 本のバッチだった（[../model-manager/model-manager.md](../model-manager/model-manager.md) §8）。**#1100 で試し生成の区画は廃止し、導入したモデルを試す場所はこの画面だけ**になる（状態: 仕様のみ。未実装）。ジョブ種別 `gentest`（`resumable=false`）・保存先 `<data-dir>/gentest/`・テーブルは変えない。
 - **モデルは指定どおり呼ぶ**: モデル識別子を指定して Model Adapter を直接呼び（`modeladapter/direct`）、プロンプトは補正しない（英訳が OFF のときは入力のまま。ON（既定）のときは §3.1 の英訳だけを加えて送る）。落ちても代替モデルへは切り替えない（その結果が `failed`）。ブレーカー・ベンダーごとの同時実行数・再試行・タイムアウトは通常の呼び出しと同じ共有の経路（`modeladapter.Call`）を通る。
 - **見積りの確認が先**: バッチはまず `Estimate`（実行しない）で本数と見積りを出し、利用者が確認した `estimate_id` と合計でだけ `Run` できる。`Run` はサーバーで見積りをやり直し、違えば 409。
 - **履歴はプロジェクトから独立**: テーブルは Project のテーブルを参照しない（ID は TEXT）。プロジェクトを削除しても履歴は消えず、プロジェクトの書き出し（bundle）にも含めない。入力画像は履歴の側へ複製して持つ。
@@ -52,7 +52,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **履歴には両方残す**: 結果の `prompt`・`negative_prompt` は入力した文のまま、訳した英語は結果の `params.translation`（`prompt`・`negative_prompt`）に残し、`ResultView` の `translated`・`translated_prompt`・`translated_negative_prompt` として出す。`sent_prompt` は実際に送った文（英語。ネガティブの欄が無いモデルは英語のネガティブを「Avoid: …」として書き足したもの）、ネガティブの欄があるモデルへは英語のネガティブを送る。バッチの `params` に `translate_to_english` を残す。プロンプト履歴（`gentest_prompt`）は入力した文で重複排除する。
 - **ウェイト構文は残す**（Issue #972）: 英訳の指示に「`(token:weight)`・`(word)`・`((word))`・`[word]` は括弧・コロン・数字をそのまま残し、中の語だけを訳す。各語は自分のかっこと数字の中に置き、消す・足す・動かす・数字を変えることはしない」と、例（`(赤い狐:1.3), 夕暮れ` → `(red fox:1.3), sunset`）を入れてある（`agent/prompttranslate`）。LLM の答えは機械でも確かめる: 英訳のあとで、元の文にあった重みの数字と丸括弧が欠けていないかを調べ（`prompttranslate.LostWeights`）、欠けていたら**止めずに**結果の `params.translation.lost_weights` に残す（`ResultView.lost_weights`・結果の詳細の「英訳で消えたウェイト」。補正はしない: LLM が語を入れ替えたかっこは、機械では直せない）。英語だけの文は英訳にかからず、ウェイトごとそのまま届く。ComfyUI が読むのは `(…)` と `(…:数字)` で、`[…]` は読まない（ただの文字。§ [local-models.md](../local-models.md) §4.4）。
 - **ウェイトの効き方の警告**: プロンプトに `(…)` があり、選んだモデルの `prompt_weight` が `unsupported`（Qwen-Image 系・FLUX.2 klein など。かっこと数字が文として読まれる）または `weak`（T5 系。効かないかもしれない）のとき、そのモデルに警告 `prompt_weight` を出す（代わりに文で強調する案内つき）。`unknown`（クラウド・自作）には出さない。
-- モデルマネージャーの試し生成（1 モデル・1 プロンプト）は英訳しない（OFF。ローカルのモデルを入力のまま試す用途）。
+- 英訳の既定は、画面・MCP とも ON（`gentest.DefaultTranslate`）のまま。モデルマネージャーの試し生成（英訳しない）は #1100 で廃止する。
 
 ## 3.3 生成の詳細設定（シード・ステップ数・CFG・サンプラー・スケジューラー。Issue #973）
 

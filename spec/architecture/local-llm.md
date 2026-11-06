@@ -41,6 +41,8 @@ Issue #1008（前半）。LLM のプロバイダーに、自分の PC や LAN �
 
 ### 5.1 設定画面のカード「ローカル LLM サーバー（OpenAI 互換）」
 
+> **#1104 で、このカードはモデルマネージャーの分類 `local-llm` の区画「別のサーバーにつなぐ」（`#mm-llm-connection`）へ移る**（状態: 仕様のみ。§11）。以下の欄・保存・接続テストの意味は変わらず、置き場所と URL だけが変わる（`PUT /model-manager/local-llm/connection`・`POST /model-manager/local-llm/connection/test`。設定の `PUT /settings/llm/local`・`POST /settings/llm/local/test` は廃止）。設定「テキスト生成（LLM）」に残るのは、モデルマネージャーへのリンクのカード 1 枚だけ。
+
 「テキスト生成（LLM）」（`/settings/llm`）の Agent の表の下に、`settingsui.CardItem` のカード（`organisms/settings/llmlocal`、`service/llmlocal`）。API キーのカード（「API キーとログイン」）は隠さない・変えない（`local` のキーはこのカードで扱い、`CredentialProviders` には足さない）。
 
 - 欄: ベース URL（既定のプレースホルダー `http://localhost:11434`・例の説明）、API キー（任意。`type=password`・保存済みなら「設定済み（末尾 4 文字）。空欄なら変更しません」・画面に値は出さない）、「保存したキーを削除する」（保存済みのときだけ）、スイッチ「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」（§5.3）。ボタン「保存」「接続テスト」。
@@ -127,7 +129,7 @@ ComfyUI と同じ GPU（16GB 級）でローカル LLM を動かすと、LLM の
 
 ### 10.1 「この PC の llama.cpp を使う」（管理されたサーバー）
 
-- 設定「テキスト生成（LLM）」のカード「ローカル LLM サーバー」に、チェックボックス「この PC の llama.cpp を使う」（`providers.local.use_managed_runtime`。既定オフ）。オンの間、プロバイダー `local` の呼び出しは**ベース URL・API キーを使わず**、管理サーバーの `http://127.0.0.1:<ポート>` に向かう。起動中はそのポートを自動で使い（ポートは起動のたびに mam が決める。前回のポートを優先）、ベース URL の欄は別のサーバー（Ollama など）用にそのまま残る。オフにすれば元のアドレスに戻る。
+- 設定「テキスト生成（LLM）」のカード「ローカル LLM サーバー」に、チェックボックス「この PC の llama.cpp を使う」（`providers.local.use_managed_runtime`。既定オフ）。**#1104 のあと、これはモデルマネージャーの「使うサーバー」（`#mm-llm-use`）のラジオ `llama-cpp` になる**（§11）。オンの間、プロバイダー `local` の呼び出しは**ベース URL・API キーを使わず**、管理サーバーの `http://127.0.0.1:<ポート>` に向かう。起動中はそのポートを自動で使い（ポートは起動のたびに mam が決める。前回のポートを優先）、ベース URL の欄は別のサーバー（Ollama など）用にそのまま残る。オフにすれば元のアドレスに戻る。
 - カードは、サーバーの状態（`unsupported` この PC では使えない／`not_installed` 未導入か重みが不足／`stopped` 導入済み（最初の呼び出しで起動）／`starting`／`running`／`failed`）と、使うモデル名、理由と何をすればよいか、モデルマネージャーへのリンクを出す。管理サーバーが無い PC（macOS など）では、理由とクラウド・Ollama への案内。モデルの導入と選択はモデルマネージャーでする（カードは選ばない）。
 - **モデル名**: 管理サーバーが答えるモデル名は、選んだモデルの id（`--alias`。例 `gemma-4-12b-it`・`qwen3.8-27b`）。`list_llm_models` の `local` と LLM の割り当てのモデル選択には、管理サーバーを選んでいる間は**そのモデル 1 つだけ**が出る（止まっていても出る。未導入・非対応は 0 件）。割り当ての `model` にその id を指定する。モデルを切り替える（モデルマネージャー・MCP の `select_local_runtime_model`）とサーバーが止まり、次の呼び出しで新しいモデルが起動する。
 - **起動**: 最初の LLM の呼び出し（`localllm` のバックエンドが `Endpoint` を呼ぶ）でサーバーが止まっていれば起動し、`/health` が 200 になるまで待つ（モデルの読み込みで数十秒〜数分。起動は呼び出しのものではなく、ランタイムの `start_timeout_sec`（llama.cpp は 900 秒）だけが区切る。呼び出しは完了を待つだけで、`timeout_seconds` が先に切れても読み込み中のサーバーは止められず、その呼び出しだけが失敗する。次の呼び出しが同じ起動に合流する。同時の呼び出しでも起動は 1 回。大きなモデルでは、最初の呼び出しが失敗しても 2 回目以降で使えるようになる）。自動起動（モデルマネージャーのカードのスイッチ）をオンにすれば mam の起動時に起動する（既定オフ）。起動できないとき（非対応・未導入・重みが不足・ComfyUI が生成中のまま・起動の失敗）は、理由つきのエラーで、**黙って別のアドレスに切り替えない**。エージェントの呼び出しからは「ローカルサーバーが応答しない」と同じ扱い（`local_llm_unreachable`。再試行・代替プロバイダーへの切り替えの対象）。
@@ -162,9 +164,20 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 
 `llamaservertest`（偽の llama-server。local-runtime.md §17.6）・`localllm`（管理サーバーへの結びつき・キーの扱い）・`llmlocal`（`use_managed_runtime` の保存・固定・停止）・`llmmodels`・`gpufree`・設定画面（`llmsettingstest`）・MCP。**device_only**: 実機での導入・起動・推論、ComfyUI との同居、`--sleep-idle-seconds` での VRAM の解放、各モデルの質と JSON の守り方。
 
+## 11. モデルマネージャーとの統合（Issue #1104。状態: 仕様のみ・未実装）
+
+ローカル LLM を、モデルマネージャーの分類 `local-llm`「ローカル LLM」の 1 つの導線にする。画面の構成・ID・テストは [../components/model-manager-screen.md](../components/model-manager-screen.md) の「ローカル LLM の統合（#1104）」、ルートは [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md)。
+
+- **向き先は 1 つ（`use`）**: プロバイダー `local` の呼び出しは、次の 3 つのどれか 1 つだけに行く。`llama-cpp`（mam が導入・起動する llama.cpp。§10）・`ollama`（mam が導入・起動する Ollama。[model-manager/local-runtime.md](model-manager/local-runtime.md) §19。#1105）・`custom`（別のサーバー。LM Studio・自分で入れた Ollama・llama-server など。`providers.local.base_url`。§1）。保存は `llm.json` の `providers.local` の 2 つのブール値: `use_managed_runtime`（llama.cpp。今のまま）と `use_managed_ollama`（Ollama。新設。既定偽）。2 つは同時に真にならない（`llm.ParseConfig` が検査し、両方真は `InvalidError`。`llmlocal.Service.SetUse` が片方を真にするときもう片方を偽にする）。両方偽が `custom`。
+- **管理サーバーでの呼び出し**: `ollama` のときは llama.cpp と同じく**ベース URL・API キーを使わず**、管理している Ollama の `http://127.0.0.1:<ポート>` に向かう。Ollama には API キーの仕組みが無いので、`Authorization` は付けない（llama.cpp の合言葉〔§10.2〕に当たるものが無い。理由と受け入れる危険は local-runtime.md §19.4）。モデルの一覧（§2）は、そのサーバーの `GET /v1/models`（Ollama に取得済みのモデル）。割り当ての `model` は Ollama のモデル名（`gemma4:12b` など）。
+- **状態の言い方**: `use` の状態は 1 つの `Info`（`state`・`reason`・`model`）にまとめ、設定のカード（`llm-local-state`）・モデルマネージャーの概要・`#mm-llm-use-state`・MCP の `get_global_settings` の `llm.local_server.managed_runtime`（今は llama.cpp だけ。`ollama` のときもこの名前で同じ形を返し、どちらのサーバーかは新設の `llm.local_server.use`〔`llama-cpp`・`ollama`・`custom`〕で分かる）が同じ文を出す。
+- **Ollama のメモリ降ろし（§5.3）**: 降ろす相手は `use` が `custom` のとき `base_url`、`ollama` のとき管理している Ollama（`/api/ps`・`keep_alive: 0`）。`llama-cpp` のときは今のとおり llama.cpp を止める（§10.3）。スイッチ `unload_before_generation` は `ollama`・`custom` のときだけ意味を持つ。
+- **VRAM の取り合い**: `ollama`（管理）は llama.cpp と同じ扱い（LLM の起動の前に ComfyUI が生成中なら待つ・画像・動画の生成の前に止める・アイドルで降ろす）。詳細は local-runtime.md §19.5。
+
 ## 改訂履歴
 
 | 版 | 日付 | 内容 | 理由 |
 |---|---|---|---|
 | 1.1 | 2026-11-04 | §10 を足した: mam が管理する llama.cpp（GGUF の 8 モデル）を「この PC の llama.cpp を使う」でプロバイダー `local` に結びつける。VRAM の調停（ComfyUI が生成中なら待つ・生成の前に止める・アイドルで降ろす） | Issue #1008（後半） |
+| 1.2 | 2026-11-06 | §11 を足した（モデルマネージャーとの統合。向き先 `use` を `llama-cpp`・`ollama`・`custom` の 1 つにし、`use_managed_ollama` を足す）。§5.1・§10.1 に、設定のカードがモデルマネージャーの `local-llm` へ移ることを書いた。状態は仕様のみ（未実装） | Issue #1104 |
 | 1.0 | 2026-11-03 | 新規作成。プロバイダー `local`、モデル一覧・使えるか、JSON の扱い、エラー、設定画面・MCP、VRAM の取り合い、推奨モデルの調査、Ollama / LM Studio / llama.cpp server の使い方 | Issue #1008（前半） |
