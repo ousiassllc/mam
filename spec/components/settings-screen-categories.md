@@ -93,7 +93,7 @@
 - 使われていない Agent（`Unused`: Orchestrator・Final QC）は、今と同じく折りたたみ（`<details>`「現在は使われません」）に入れ、表の下に置く。折りたたみの中の表も同じ列・同じ編集。
 - 14 行で、1440×900 では 1 画面に収まらず main がスクロールする。「用途」列は `xl:`（1280 px）以上でだけ出し、狭いときは行見出しの下に 1 行で出す（実装で変更: 当初は `lg:` の案だったが、サイドナビで表が約 700 px に狭まる 1024×700 の実画面で、`lg:` ではモデル名が割れて読みにくかった。2026-10-25 に両方を撮って比べた）。
 - 実装（2026-10-25）: 全体の「既定に戻す」は「すべて既定に戻す」（`hx-confirm`。`DELETE /settings/llm`）。モーダルの 422 は `llmassign.InvalidError` の `Role`・`Field` で問題の欄に `aria-invalid`・`autofocus`。「再起動で反映」の印（`Badge` warn）は保存した直後の行だけ。『この Agent を既定に戻す』の確認なしは `destructive_confirm_test` の例外に理由つきで足した。用途の 1 行（§7 の質問 2）は `model-adapters.md` §2 の選定理由から要約した（`handler/settings/llm/purposes.go`）。`PUT /settings/llm`（全体）は MCP のツールとテストのために残し、応答は表の区画（`#llm-assignment-panel`）。
-- ローカル LLM サーバー（#1008）: 表の下に、カード（`organisms/settings/llmlocal`、`settingsui.CardItem`）「ローカル LLM サーバー（OpenAI 互換）」を置く。欄はベース URL・API キー（任意・`type=password`・値は出さない）・「保存したキーを削除する」・スイッチ「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」、ボタン「保存」（`PUT /settings/llm/local`）「接続テスト」（`POST /settings/llm/local/test`。結果は共通のエラー表示）。「API キーとログイン」のカードは変えない。**カードの先頭に、チェックボックス「この PC の llama.cpp を使う」**（`use_managed`・`use_managed_present`。管理サーバーのある app だけ。状態 `data-state`・理由・モデル名・モデルマネージャーへのリンク。オンの間はベース URL・API キーを使わない。`spec/architecture/local-llm.md` §10）。詳細は `spec/architecture/local-llm.md` §5
+- ローカル LLM サーバー（#1008。**#1104 で、欄はモデルマネージャーへ移る**。状態: 仕様のみ・未実装）: 表の下に、欄を持たない `molecules.ToolCardItem` のカード 1 枚「ローカル LLM サーバー」を置く。1 行の状態（`data-testid="llm-local-state"`。「今は <名前> に呼び出します」。`use` の読み取りだけ。値は local-llm.md §11）と、「モデルマネージャーで設定する」のリンク（`data-testid="llm-local-link"`。`paths.ModelManagerPart("local-llm")`）。ベース URL・API キー・キーの削除・Ollama のメモリ降ろし・「この PC の llama.cpp を使う」・接続テストの欄とルート（`PUT /settings/llm/local`・`POST /settings/llm/local/test`）は、モデルマネージャーの `local-llm`（`#mm-llm-connection`・`#mm-llm-use`）へ移して設定からは外す（[model-manager-screen.md](model-manager-screen.md)「ローカル LLM の統合（#1104）」）。「API キーとログイン」のカードは変えない。#1008 当時の記述（欄・`use_managed`・`use_managed_present`）は `spec/architecture/local-llm.md` §5.1・§10.1 の移し先の欄に読み替える。詳細は `spec/architecture/local-llm.md` §5・§11
 
 モーダル（`GET /settings/llm/agents/:agent/edit`。`:agent` は `llmassign.Agents()` の名前。未知は 404）:
 
@@ -218,3 +218,4 @@
 | 0.20 | 2026-11-04 | §2 のローカル LLM サーバーのカードに「この PC の llama.cpp を使う」を足した | Issue #1008（後半） |
 | 0.21 | 2026-11-04 | §1.1 の表に `topaz`（Topaz Video API。接続テストは `GET /account/v1/credits/balance`）を足した | Issue #1031 |
 | 0.22 | 2026-11-06 | §8 の ffmpeg の反映を、次の起動から → 保存のすぐあと（再起動の欄に出さない）に改めた。概要カードの「使えます」はサービスが動かせるものと一致する | Issue #1047 |
+| 0.23 | 2026-11-06 | §2 のローカル LLM サーバーのカードを、欄を持たないリンクのカードにした（欄はモデルマネージャーの `local-llm` へ移す。状態は仕様のみ） | Issue #1104 |

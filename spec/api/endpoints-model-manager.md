@@ -43,7 +43,7 @@
 | DELETE | `/model-manager/hf-token` | トークンの削除（未設定でもエラーにならない） |
 | GET | `/model-manager/hf` | Hugging Face の検索と、リポジトリのファイルの一覧（`#mm-hfi-result`）。クエリ `q` が URL（`://` を含む）か `owner/repo` ならそのリポジトリをコミットに固定して一覧し（`Service.HFRepo`）、それ以外はキーワード検索（`Service.SearchHF`、`kind` で絞る）。`q` が空・形式が不正（`hf.co`・http・他のホスト・`datasets/`）は 422、NFAA（コミットのタグか、リポジトリの今の先頭のタグ）を年齢確認の前に開くと 409（古いコミットの URL でも同じ）、gated でトークン・アクセス権が無いのは 422、無いリポジトリは 422 |
 | POST | `/model-manager/hf/install` | ファイル 1 つの導入（ジョブ）。フォーム `repo`・`commit`・`path`・`folder`・`name`・`agree=1`・`terms_version`。202 で「追加したモデル」を返す（導入中の進捗つき）。拒否は `HX-Retarget: #mm-hfi-msg`・`HX-Reswap: innerHTML` でエラーの行に出す: terms の確認が無ければ 409、版違い・GGUF・pickle・名前の衝突（同じ宛先の別ファイル、別のフォルダ・名前で導入中の同じファイルを含む）・gated・フォルダ不明は 422、NFAA を年齢確認の前に導入しようとすると 409。SHA-256・サイズは送らない（Service が HF から読み直す） |
-| GET | `/model-manager/runtimes` | ローカルの実行環境の区画全体（`#mm-runtimes`）。区画の更新ボタン（Issue #962）が取り直す。各カードは自分のポーリングを持つので、時刻は出さない |
+| GET | `/model-manager/runtimes` | ローカルの実行環境の区画全体。クエリ `purpose` なしは `#mm-runtimes`（用途が `llm` でないもの。GPT-SoVITS・Irodori-TTS・MuseTalk）、`purpose=llm`（#1104）は `#mm-llm-runtimes`（llama.cpp・Ollama）。区画の更新ボタン（Issue #962）が取り直す。各カードは自分のポーリングを持つので、時刻は出さない。`purpose` が `llm` 以外の値は 422 |
 | GET | `/model-manager/runtimes/:id` | ローカルの実行環境（GPT-SoVITS・MuseTalk）のカード（`#mm-runtime-<id>`。Issue #920）。導入中・起動中は自分で取り直す。未知の ID は 404 |
 | GET | `/model-manager/runtimes/:id/detail` | ランタイムのカードが開く詳細モーダルの本体（Issue #954）。説明・この PC で使えない理由とクラウドの案内・導入先・出典とライセンス・重み・依存ファイルごとの出典・ライセンス・商用利用・ファイルと SHA-256。未知の ID は 404（理由だけのモーダル） |
 | POST | `/model-manager/runtimes/:id/install` | 環境の導入・更新（ジョブ。Python 環境・本体・重みまで）。この PC で使えなければ 409（理由とクラウドの案内つき）。202 |
@@ -54,6 +54,10 @@
 | GET | `/model-manager/runtimes/:id/models` | 実行環境のモデルの一覧を、フィルターバーの条件（クエリ。`modelfilter.Condition` のキー。`languages` も）で絞って返す（`#mm-runtime-model-list-<id>` の差し替えと、漏斗の件数の OOB）。押していたラジオ `model` と同意のチェック `accept_<モデル>` は、クエリで受けて描き直した一覧に残す（同意は表示した版と同じときだけ。代わりにチェックはしない）。条件は実行環境ごとに Cookie（`mam_mf_runtime-models-<id>`）へ覚える。条件が不正: 200（理由を出し、始めの状態に戻す）、環境が無い: 404 |
 | PUT | `/model-manager/runtimes/:id/model` | 複数のモデルを持つ環境（Irodori-TTS）のモデルの選択。フォーム `model`、同意が要るモデルは `accept_<モデルの id>`（値は表示したテキストの版）。応答はモデルの選択のフォーム（選んだ・拒否の理由つき）。同意が無い・版が違う: 409、知らないモデル: 422、環境が無い: 404 |
 | DELETE | `/model-manager/runtimes/:id` | 環境と取得した重みの削除（設定は残る）。導入中は 409。`hx-confirm` つき |
+| GET | `/model-manager/local-llm/use` | 「使うサーバー」（`#mm-llm-use`。#1104）。ラジオ（`use`: `llama-cpp`・`ollama`・`custom`）と状態の行 `#mm-llm-use-state`。`use` が管理サーバーで `starting`・導入中の間だけ自分で取り直す（`every 2s`）。常に 200 |
+| PUT | `/model-manager/local-llm/use` | 使うサーバーの保存（#1104）。フォーム `use`。`llama-cpp` は `providers.local.use_managed_runtime=true`・`use_managed_ollama=false`、`ollama` は `use_managed_ollama=true`・`use_managed_runtime=false`、`custom` は両方 `false`（`base_url` に呼び出す）。200: 区画（「今は <名前> に呼び出します」）。422: `use` が上の 3 値でない（区画に理由を出し、保存しない）。409: 設定ファイルが `--llm-config` で固定、または管理サーバーを持たない app で `llama-cpp`・`ollama` を選んだ。導入・起動はしない。稼働中のクライアントにすぐ渡す（再起動は要らない） |
+| PUT | `/model-manager/local-llm/connection` | 「別のサーバー」の保存（#1104。`PUT /settings/llm/local` の移し替え。意味は [local-llm.md](../architecture/local-llm.md) §5.1）。フォーム `base_url`・`api_key`（空は変更なし）・`clear_key`（`1` でキーを削除）・`unload`＋`unload_present`。200: 区画（「保存しました。次の LLM の呼び出しからすぐ使われます」）、422: 区画（理由・打った内容・`aria-invalid`。キーは返さない）、409: 設定ファイルが固定（キーだけの変更は固定でも保存できる）、503: キーストア。`use` は変えない |
+| POST | `/model-manager/local-llm/connection/test` | 接続テスト（`GET /v1/models`。#1104。`POST /settings/llm/local/test` の移し替え）。フォーム `base_url`・`api_key`（空は保存したもの。保存しない）。`use` が `llama-cpp`・`ollama` の間は URL を試さず、そのサーバーの状態を言う（起動しない）。200: 結果、422: 拒否されるアドレス |
 | GET | `/model-manager/nodes` | 追加ノードの区画全体（`#mm-nodes`。Issue #976）。区画の更新ボタンが取り直す |
 | GET | `/model-manager/nodes/:id` | 追加ノードのカード（`#mm-node-<id>`）。導入中は自分で取り直す（クエリ `job` は報告するジョブ。終わったら結果を 1 度出す）。未知の ID は 404 |
 | GET | `/model-manager/nodes/:id/detail` | カードが開く詳細モーダルの本体。固定したコミット・アーカイブの SHA-256・ライセンスと商用利用の答え・必要な Python パッケージ・ソースの確認結果・注意事項。未知の ID は 404（理由だけのモーダル） |
@@ -94,7 +98,8 @@
 | `comfyui` | ComfyUI エンジン | エンジンのカード（`#mm-engine`）・GPU の検出（`#mm-gpu`）・既存の ComfyUI の検出（`#mm-detect`） |
 | `image-video` | 画像・動画モデル | 成人向けの設定（`#mm-adult`）・商用OKのモデルだけ・一覧（`#mm-catalog`）・ダイアログ（`#mm-dialog`・`#mm-consent`）。エンジンが無い・止まっているときは一覧の上に案内（`mm-engine-needed`）と `comfyui` へのリンク |
 | `custom-nodes` | 追加ノード | `#mm-nodes`・同意のダイアログ（`#mm-nodes-dialog`） |
-| `local-runtimes` | ローカル音声・口パク・LLM | `#mm-runtimes` |
+| `local-runtimes` | ローカル音声・口パク | `#mm-runtimes`（用途が `llm` のものは含まない。#1104） |
+| `local-llm`（#1104） | ローカル LLM | `#mm-llm-use`・`#mm-llm-runtimes`（llama.cpp・Ollama のカード）・`#mm-ollama`（#1105）・`#mm-llm-connection` |
 | `face-check` | 顔チェック用モデル | `#mm-face-models` |
 | `hf-external` | Hugging Face・外部の ComfyUI | Hugging Face から導入（`#mm-hfi`）・トークン（`#mm-hf`）・外部の ComfyUI（`#mm-external`） |
 
@@ -110,6 +115,7 @@
 - **外部の ComfyUI**: 接続先の選択と「導入済みのモデルを確認」。結果は、カタログのモデルごとに「そろっています」／「足りないファイルがあります（足りない: …）」、フォルダごとのファイル（`loras` を含む）。成人向けのモデルは、年齢確認が済むまで出ない。「外部の ComfyUI へのモデルの導入は、その ComfyUI の側で」と書く。
 
 - **ローカル音声・口パク・LLM**（区画 `#mm-runtimes`。llama.cpp〔`llm`〕のカードを含む。local-runtime.md §17）（区画 `#mm-runtimes`、Issue #920。ハンドラーは `handler/modelmgr/runtimes`、見た目は `organisms/modelmgr/runtimecard`・`weightlist`。`localruntime.Service` を持つときだけ。意味は [local-runtime.md](../architecture/model-manager/local-runtime.md) §12）: ランタイムごとに 1 枚のカード（`data-testid="mm-runtime"`）。状態（未導入 / 導入中 / 導入済み + 停止中・起動中・失敗）、導入中の進捗バーと「中断する」（`hx-confirm`。`POST /model-manager/jobs/:job/cancel` がジョブの `target=runtime:<id>` を見て振り分ける）、版・導入先・空き容量、起動の失敗はログの末尾つき。**この PC で使えないとき**（macOS ほか）は、導入・起動のボタンの代わりに**理由**（`mm-runtime-reason`）と**クラウドの案内**（`mm-runtime-fallback`。ElevenLabs / Sync Labs を選べる）を枠で出す。**重み**（`<details data-testid="mm-runtime-weights">`）は、asset ごとに名前・大きさ・必須か・状態（あり / なし / 未確認）・出典のリンク・ライセンスのリンク・商用利用のバッジ（「商用利用: 可」/「不可」/「**はっきりしません**」）を出す。`unclear` / `no` の asset は、その行に琥珀色の枠で `notice`、一覧の前に「商用利用がはっきりしない重みを含みます（N 件）」の枠を出し、一覧を最初から開く。導入済みでも必須の重みが足りないときは「導入済み（重みが不足）」を出し、起動の代わりに「重みを導入」を出す。削除は `hx-confirm`、導入・起動・重みの導入は `hx-sync` と `hx-disabled-elt`（二重送信の防止）。
+- **ローカル LLM**（区画 `#mm-llm-use`・`#mm-llm-runtimes`・`#mm-llm-connection`。#1104。見た目は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「ローカル LLM の統合（#1104）」）: 上の `#mm-runtimes` の記述のうち llama.cpp のカードに関するものは、`#mm-llm-runtimes` の中で今のまま成り立つ（`data-testid="mm-runtime"`・`mm-runtime-reason`・`mm-runtime-fallback`・重み・使うモデルの選択・導入と起動の `hx-sync`・`hx-confirm`）。ルート `/model-manager/runtimes/:id/…` は用途に関わらず同じ。
 - **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードには導入ボタンが無く、理由を出す。**カードにノードの説明は出さず**（#1103。`mm-node-description` は無い）、固定のコミットとともに詳細モーダル（`GET /model-manager/nodes/:id/detail`。説明は `#mam-modal-desc`）に出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。
 
 ## 4. テスト
@@ -154,6 +160,15 @@
 - `install_blocked` のノードのカードに `mm-node-blocked`（導入できない理由）が残り、導入ボタンが無い。`mm-node-detail-note`・`mm-node-models`・進捗・導入／中断／削除のボタンは変わらない。
 - 区画の「?」ヘルプに「ノードの説明」の語があり、ヘルプのほかの文は変わらない。
 
+**ローカル LLM の統合の受け入れ条件（Issue #1104。実装時にこのテストを足す。#1101 のあと）**:
+
+- `GET /model-manager/local-llm` が 200 で、`#mm-llm-use`・`#mm-llm-runtimes`・`#mm-llm-connection` がちょうど 1 つずつ。`GET /model-manager/local-runtimes` に用途 `llm` のカード（`#mm-runtime-llama-cpp`・`#mm-runtime-ollama`）が無い。`GET /model-manager/runtimes`（`purpose` なし）に `#mm-runtime-llama-cpp` が無く、`?purpose=llm` に有る。`?purpose=x` は 422。
+- `PUT /model-manager/local-llm/use`: `llama-cpp`・`ollama`・`custom` の 3 値を保存すると、`llm.json` の `providers.local` の `use_managed_runtime`・`use_managed_ollama` が仕様の表のとおりになり、2 つが同時に真にならない。応答の `mm-llm-use-state` に選んだ名前。`x` は 422 で保存しない。`--llm-config` で固定は 409。管理サーバーを持たない app（`Data.Runtimes` が nil）では、ラジオに `llama-cpp`・`ollama` が出ず（理由の 1 行）、直接 PUT しても 409。導入・起動は始まらない（`localruntime.Service` の呼び出しが 0 回）。
+- `PUT /model-manager/local-llm/connection` と `POST …/test` が、旧 `PUT /settings/llm/local`・`POST /settings/llm/local/test` と同じ状態コード・文言・キーを応答に出さないこと（`llmsettingstest` の移し替え）。`use` が `llama-cpp` のとき、接続テストはフォームの URL に接続しない（偽のサーバーへの要求が 0 回）。
+- `PUT /settings/llm/local`・`POST /settings/llm/local/test` は 404。`GET /settings/llm` の「ローカル LLM サーバー」のカードに `<input>` が無く、`data-testid="llm-local-link"` の `href` が `/model-manager/local-llm`、`llm-local-state` に `use` の今の状態。
+- `joblist.Dest`・`modelfilter.RouteOf`（`ReasonEndpoint` ＋ `SourceLocalLLM`）の行き先が `/model-manager/local-llm`。MCP の `set_local_llm_server`（`use_managed_ollama` の入出力）・`test_local_llm_server`・`get_global_settings` の `llm.local_server` が同じ保存を読み書きする（`use` の 3 値と矛盾する組み合わせを MCP から保存しようとすると 422 / `validation`）。
+- `go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。`web/sidenavtest`・`a11y`（ラジオの `fieldset`・`legend`）。
+
 `handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
 
 ## 改訂履歴
@@ -179,3 +194,4 @@
 | 1.16 | 2026-11-06 | 画面を分類ごとのサブページに分けると決め、概要（`GET /model-manager`・`GET /model-manager/overview`）と分類ページ（`GET /model-manager/<slug>`。6 つ）のルート、§3 の分類の表、§4 の受け入れ条件を足した。`GET /model-manager/engine` の `job` の応答から、モデルの一覧の OOB を外した。区画の部分ルートは変えない。状態は仕様のみ（未実装） | Issue #1101 |
 | 1.17 | 2026-11-06 | §4 に、カードの列数の受け入れ条件（`modelcard.GridClass`・1 → 2 → 3 列の境 640 px・1280 px）を足した。ルート・応答は変えない。状態は仕様のみ（未実装） | Issue #1102 |
 | 1.18 | 2026-11-06 | §3 の「追加ノード」と §4 に、カードにノードの説明を出さず詳細モーダルだけに出すこと（`mm-node-description` の廃止）と、その受け入れ条件を足した。ルートは変えない。状態は仕様のみ（未実装） | Issue #1103 |
+| 1.19 | 2026-11-06 | §1 に `GET`・`PUT /model-manager/local-llm/use`・`PUT /model-manager/local-llm/connection`・`POST …/connection/test` を足し、`GET /model-manager/runtimes` に `purpose=llm` を足した。§3 の分類の表に `local-llm` を足し、`local-runtimes` から llama.cpp を外した。受け入れ条件を §4 に足した。設定の `PUT /settings/llm/local`・`POST …/test` は廃止（[endpoints-settings.md](endpoints-settings.md)）。状態は仕様のみ（未実装） | Issue #1104 |

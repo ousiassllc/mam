@@ -741,7 +741,7 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 
 ### 17.5 表示（画面・MCP・docs）
 
-- **画面**: モデルマネージャーの区画「ローカル音声・口パク・LLM」に、llama.cpp のカード（種類「文章（LLM）」）。状態・導入・起動・停止・自動起動・削除・重み一覧（出典・ライセンス・商用利用）・**使うモデルの選択**（名前・説明・取得量・言語・VRAM の目安と GPU との比較・ライセンス・商用利用・注意）。**`unknown`（商用不明）の重みは琥珀色の枠**（§12.5）。非検閲のモデルは「成人向け相当（非検閲）」のバッジと注記。
+- **画面**: モデルマネージャーの区画に、llama.cpp のカード（種類「文章（LLM）」）。**#1104 のあと、置き場所は分類 `local-llm` の区画「ローカルで動かすサーバー」（`#mm-llm-runtimes`）で、`local-runtimes`（声・口パク）には出ない**（[../../components/model-manager-screen.md](../../components/model-manager-screen.md)「ローカル LLM の統合（#1104）」。状態: 仕様のみ）。状態・導入・起動・停止・自動起動・削除・重み一覧（出典・ライセンス・商用利用）・**使うモデルの選択**（名前・説明・取得量・言語・VRAM の目安と GPU との比較・ライセンス・商用利用・注意）。**`unknown`（商用不明）の重みは琥珀色の枠**（§12.5）。非検閲のモデルは「成人向け相当（非検閲）」のバッジと注記。
 - **MCP**: `list_local_runtimes`・`get_local_runtime_status`・`install_local_runtime`・`install_local_runtime_weights`・`start_local_runtime`・`stop_local_runtime`・`list_local_runtime_models`・`select_local_runtime_model` が、**既存のまま**このランタイムを扱う（カタログのランタイム一覧に載る）。
 - **docs**: [THIRD_PARTY_NOTICES.md](../../../THIRD_PARTY_NOTICES.md) の「利用者が取得する別プログラム」に llama.cpp と 8 つの重みの一覧（出典・ライセンス・商用利用）。README の表と手順。
 

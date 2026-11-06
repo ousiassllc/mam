@@ -6,6 +6,7 @@
 
 > **#1100 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1100）**: モデルマネージャーから区画「試し生成」（`#mm-trial`・`#mm-trials`。`TrialSection`・`TrialFormView`・`TrialList`）と、そのルート `/model-manager/trials/…` を**廃止する**。導入したモデルを試す場所は、**生成テスト画面（`GET /generation-test`。Issue の「`/gentest`」は誤記で、実在するルートはこちら）だけ**になる。生成テスト画面・`/generation-test/…`・MCP の生成テストのツール・履歴は変えない。これまでの試し生成の結果は生成テストの履歴にそのまま残る（データの移行・削除はしない）。区画の並びは「ComfyUI エンジン → ローカル音声・口パク・LLM → 追加ノード → 顔チェック用モデル → モデル → Hugging Face から導入 → Hugging Face のトークン → 外部の ComfyUI」になる。区画「モデル」の「?」ヘルプの末尾に、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。行き先は `paths.GenerationTest()`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つ置く。「導入したモデルは生成テストで試せます」だけで、試し生成のフォーム・結果の一覧・削除は画面に残さない。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
 
+> **#1104 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1104）**: 設定「テキスト生成（LLM）」のカード「ローカル LLM サーバー」を、モデルマネージャーの新しい分類 `local-llm`「ローカル LLM」へ**移す**。llama.cpp（mam が導入・起動）・Ollama（#1105）・別のサーバー（LM Studio など。URL を指定）を、1 つの導線（「使うサーバー」の選択）にまとめる。設定のカードは、モデルマネージャーへのリンクだけになる。下の節「ローカル LLM の統合（#1104）」が正で、#1101 の分類の表の `local-runtimes`（llama.cpp を含む）はこの節に読み替える。
 > **#1103 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1103）**: 区画「追加ノード」のカードから、ノードの説明（カタログの `description`。156〜407 字）を外し、**カードをタップして開く詳細モーダル（`nodecard.NodeDetail`。すでにある）だけ**に出す。新しい部品・新しい「?」は作らない。下の節「追加ノードの説明（#1103）」が正。
 
 > **#1102 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1102）**: モデルを並べる一覧の列数を、**1 列（〜639 px）→ 2 列（640 px〜）→ 3 列（1280 px〜）の 1 通りに統一**する。今は一覧ごとにバラバラ（ランタイム・追加ノードは 1 列→1024 px〜 2 列、モデルの一覧・追加したファイル・外部の ComfyUI のモデルは 1 列→2 列→1024 px〜 3 列）。下の節「カードの列数（#1102）」が正。
@@ -91,7 +92,8 @@
   | `comfyui` | ComfyUI エンジン | エンジンのカード `#mm-engine`・GPU の検出と導入フォーム `#mm-gpu`・既存の ComfyUI の検出 `#mm-detect` | `IconWorkflow` |
   | `image-video` | 画像・動画モデル | 成人向けモデル `#mm-adult`・商用OKのモデルだけ `CommercialCard`・フィルターバー・一覧 `#mm-catalog`・ダイアログ `#mm-dialog`・`#mm-consent` | `IconImage` |
   | `custom-nodes` | 追加ノード | `#mm-nodes`・同意のダイアログ `#mm-nodes-dialog` | `IconNetwork` |
-  | `local-runtimes` | ローカル音声・口パク・LLM | `#mm-runtimes`（GPT-SoVITS・Irodori-TTS・MuseTalk・llama.cpp のカード `#mm-runtime-<id>`） | `IconVoice` |
+  | `local-runtimes` | ローカル音声・口パク | `#mm-runtimes`（GPT-SoVITS・Irodori-TTS・MuseTalk のカード `#mm-runtime-<id>`。用途 `llm` のランタイムは #1104 で `local-llm` へ移る） | `IconVoice` |
+  | `local-llm`（#1104 で足した） | ローカル LLM | 使うサーバー `#mm-llm-use`・llama.cpp とそのほかの LLM のランタイム `#mm-llm-runtimes`（カード `#mm-runtime-llama-cpp`・`#mm-runtime-ollama`）・Ollama のモデル `#mm-ollama`（#1105）・別のサーバー `#mm-llm-connection` | `IconNetwork` |
   | `face-check` | 顔チェック用モデル | `#mm-face-models` | `IconLipSync` |
   | `hf-external` | Hugging Face・外部の ComfyUI | Hugging Face から導入 `#mm-hfi`（`#mm-hfi-msg`・`#mm-hfi-result`・`#mm-hfi-models`）・トークン `#mm-hf`・外部の ComfyUI `#mm-external` | `IconPackage` |
 
@@ -100,7 +102,8 @@
   - `comfyui`: 「未導入」「導入中（42%）」「導入済み（ComfyUI 0.3.10・NVIDIA・起動中）」「導入済み（停止中）」「この PC では使えません」「導入先に書き込めません」（`data-state` はエンジンのカードの `data-engine` と同じ値）。
   - `image-video`: 「導入済み 3 / 12 件」（導入中があれば「導入中 1 件」を足す）。成人向けのゲートが閉じている間は、隠しているモデルを**数に入れない**（Service が隠す。数えると存在が分かるため）。
   - `custom-nodes`: 「導入済み 2 / 5 件」（「更新が必要」「内容が変わっています」があれば「要確認 1 件」。`data-state="attention"`）。
-  - `local-runtimes`: 「導入済み 1 / 4 件・起動中 1 件」。
+  - `local-runtimes`: 「導入済み 1 / 3 件・起動中 1 件」（#1104 のあと。llama.cpp は数えない）。
+  - `local-llm`（#1104）: 「使うサーバー: この PC の llama.cpp（導入済み・停止中）」「使うサーバー: Ollama（起動中・モデル 2 件）」「使うサーバー: 別のサーバー（http://localhost:1234）」「使うサーバー: 未設定」。URL にユーザー情報・キーは出さない。`data-state` は `ready`（今の向き先が使える）・`attention`（向き先が使えない: 未導入・非対応・起動に失敗）・`installing`・`empty`（何も導入せず、URL も既定のまま）。
   - `face-check`: 「導入済み」「ファイルあり（SHA-256 は未確認）」「未導入」（`data-state` は区画の `installed` / `unverified` / `missing`）。
   - `hf-external`: 「トークン: 設定済み（末尾 4 文字）」または「未設定」・「追加したファイル 2 件」。トークンの値は出さない。
 
@@ -123,10 +126,11 @@
   | 生成テストの「顔チェック用モデルを入れる」・「状態と直し方を見る」（`gt-face-off-install`・`gt-face-off-status`。`organisms/gentest/facelock/off.templ`） | `paths.ModelManagerFaceModels()` = `/model-manager#mm-face-models` | `/model-manager/face-check#mm-face-models`（関数の名前と `#mm-face-models` は変えない） |
   | 「HF トークンが必要」のカードの案内（`mm-token-guide`）のトークンの区画へのリンク | `#mm-hf`（同じページ） | `/model-manager/hf-external#mm-hf`（`image-video` ページから別ページへ） |
   | 「追加ノードが必要」のバッジと説明（モデルのカード） | リンクなし | 説明の末尾に `/model-manager/custom-nodes#mm-nodes` へのリンク（`data-testid="mm-node-needed-link"`） |
-  | ジョブ一覧（`/jobs`）の導入のジョブの行 `jobs-open`（`handler/jobs/jobs.go` の `href`） | `paths.ModelManager()` | ジョブの `target` で決める: `engine` → `comfyui`・`model:<id>` → `image-video`・`runtime:<id>` → `local-runtimes`・`node:<id>` → `custom-nodes`・`hf:…` → `hf-external`（`joblist.Dest` に分類を足す） |
+  | ジョブ一覧（`/jobs`）の導入のジョブの行 `jobs-open`（`handler/jobs/jobs.go` の `href`） | `paths.ModelManager()` | ジョブの `target` で決める: `engine` → `comfyui`・`model:<id>` → `image-video`・`runtime:<id>` → `local-runtimes`（用途が `llm` の `runtime:llama-cpp`・`runtime:ollama` は `local-llm`）・`ollama:<id>`（#1105）→ `local-llm`・`node:<id>` → `custom-nodes`・`hf:…` → `hf-external`（`joblist.Dest` に分類を足す） |
   | `modelfilter.RouteOf`（モデルが選べない理由の行き先。`ReasonAgeGate`・`ReasonNotInstalled`・`ReasonMissingNode`） | `paths.ModelManager()` | `ReasonAgeGate`・`ReasonNotInstalled` → `image-video`、`ReasonMissingNode` → `custom-nodes` |
   | 生成テストの「モデルを導入」（`tierform`・`upscale`・`venhancescreen` の `ModelsURL`） | `paths.ModelManager()` | `image-video` |
-  | 設定「音声・口パク」のカードと詳細の「モデルマネージャーを開く」（`settings/audio`）・設定「テキスト生成（LLM）」の `llm-local-managed-link`（`settings/llmlocal`） | `paths.ModelManager()` | `local-runtimes` |
+  | 設定「音声・口パク」のカードと詳細の「モデルマネージャーを開く」（`settings/audio`） | `paths.ModelManager()` | `local-runtimes` |
+  | 設定「テキスト生成（LLM）」の `llm-local-managed-link`（`settings/llmlocal`）と、同じ設定の「ローカル LLM サーバー」のカード全体 | `paths.ModelManager()`（カードに欄があった） | カードは `llm-local-link`（`paths.ModelManagerPart("local-llm")`）だけになる（節「ローカル LLM の統合（#1104）」）。`modelfilter.RouteOf` の `ReasonEndpoint`（`endpoint_unusable`）で `source == SourceLocalLLM`（プロバイダー `local` に接続できない）の行き先は、今の `/settings/llm`（`paths.SettingsCategory(paths.SettingsLLM)`）から `local-llm` に変わる（ほかのソースの `ReasonEndpoint` は「ローカル・代替モデル」のまま） |
   | プロジェクト一覧・設定画面・設定の概要の「モデルマネージャー」・メニューの項目・生成テストの作成画面のタブ（`gt-comfy-models`）・ワークフロー画面の `ModelManagerURL` | `paths.ModelManager()` | 変えない（概要が行き先） |
 
   古い `/model-manager#mm-…` のブックマークは、概要に着く（フラグメントはサーバーに届かず、リダイレクトできない。何もしない）。
@@ -178,6 +182,30 @@
 - **カードに 1 行の短い説明を残すか**（既定: 残さない。残すには、カタログ JSON に `summary` のような短い項目を足し、5 件分の文を書く必要があり、「新しい仕組みは作らない」に反するため。名前と「追加ノード・<大きさ>」と状態で足りる）。
 - **「このノードを使うモデル」の行もモーダルへ移すか**（既定: 残す。どのモデルのために入れるかは導入の判断に要る。長いと感じたら `mm-node-models` を詳細へ移す案）。
 
+## ローカル LLM の統合（#1104）
+
+> **状態: 仕様のみ（未実装。Issue #1104）**。#1101（分類のサブページ）のあとに作る。意味・保存・VRAM は [../architecture/local-llm.md](../architecture/local-llm.md)（§5.1 を #1104 で書き換え、§11 を新設）、ルートと受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
+
+- **今の形**（コードで確かめた）: 設定「テキスト生成（LLM）」の Agent の表の下に、`organisms/settings/llmlocal` のカード「ローカル LLM サーバー」（ベース URL・API キー・保存したキーの削除・Ollama のメモリ降ろしのスイッチ・「この PC の llama.cpp を使う」・接続テスト。`PUT /settings/llm/local`・`POST /settings/llm/local/test`）。モデルマネージャーには、区画「ローカル音声・口パク・LLM」の llama.cpp のカード（導入・起動・使うモデルの選択）。この 2 つは同じ `providers.local` を動かす別々の画面で、Ollama・LM Studio・自分で立てた llama-server は URL を手で書いてつなぐだけ（mam は導入しない）。
+- **決めたこと（1 つの導線）**: 分類 `local-llm`「ローカル LLM」（`GET /model-manager/local-llm`）に、上から次の区画を置く。区画の本文は今のカードの部品（`runtimecard.RuntimeCard`・`modelcard.Item`・`settingsui` の欄）をそのまま使い、新しい部品・新しい色は作らない。
+  1. **使うサーバー**（`#mm-llm-use`。`molecules.SettingsSection`。「?」に、LLM の割り当て〔設定の「テキスト生成（LLM）」〕で provider を `local` にしたとき、どのサーバーに呼び出しが行くかを書く）: ラジオ 3 つ（`name=use`、値 `llama-cpp`・`ollama`・`custom`）。①「この PC の llama.cpp」（mam が導入・起動。状態の語は llama.cpp のカードと同じ）②「Ollama」（mam が導入・起動する Ollama。#1105。導入前は選べるが、状態は「未導入」）③「別のサーバー」（LM Studio・自分で入れた Ollama・llama-server など。下の `#mm-llm-connection` の URL に呼び出す）。ボタン「このサーバーを使う」（`PUT /model-manager/local-llm/use`）。**保存先**: ①は `providers.local.use_managed_runtime=true`（今のまま）、②は `providers.local.use_managed_ollama=true`（新設。①と同時には真にならない。②を保存すると①を偽にし、①を保存すると②を偽にする）、③は両方偽（`base_url` に呼び出す。今と同じ）。1 行の状態（`data-testid="mm-llm-use-state"`・`aria-live="polite"`）: 「今は <名前> に呼び出します」と、使えない理由（未導入・この PC では使えない・起動に失敗・URL に接続できない）。ラジオの変更でも、導入・起動を勝手に始めない（起動は最初の呼び出しのとき。llama.cpp は今と同じ）。
+  2. **ローカルで動かすサーバー**（`#mm-llm-runtimes`。`runtimecard.RuntimesSection` を用途で絞って出す。`GET /model-manager/runtimes?purpose=llm`）: llama.cpp のカードと Ollama のカード（#1105）。カードの `id`（`#mm-runtime-<id>`）・導入／起動／停止／自動起動／削除・使うモデルの選択（llama.cpp）・詳細モーダル・商用利用と注記は今のまま。`local-runtimes` の `#mm-runtimes` は用途が `llm` のものを含まなくなる。
+  3. **Ollama のモデル**（`#mm-ollama`。#1105 の節）。
+  4. **別のサーバーにつなぐ**（`#mm-llm-connection`）: 欄は今のカードのまま: ベース URL（`base_url`。プレースホルダー `http://localhost:11434`）・API キー（`api_key`。`type=password`・値は出さない・保存済みなら「設定済み（末尾 4 文字）。空欄なら変更しません」）・「保存したキーを削除する」（`clear_key`）・スイッチ「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」（`unload`＋`unload_present`。`BeforeGeneration` が降ろす相手は、`use` が `custom` のとき `base_url`、`ollama` のとき管理している Ollama。`llama-cpp` のときは今と同じく llama.cpp を止める）・ボタン「保存」（`PUT /model-manager/local-llm/connection`）「接続テスト」（`POST /model-manager/local-llm/connection/test`）。応答の形・状態コード（200・422・409〔`--llm-config` で固定〕・503）・文言・共通のエラー表示（`local_llm_unreachable`）は今のカードと同じ。`use` が `llama-cpp`・`ollama` の間は、この区画の欄を無効にはせず（`disabled` にすると値が送られない）、見出しの下に「今は別のサーバーを使っています。ここに書いた URL は『別のサーバー』を選んだときに使われます」の 1 行（`data-testid="mm-llm-connection-note"`）を出す。接続テストは、`use` が管理サーバーの間はフォームの URL を試さず、そのサーバーの状態を言う（今の `use_managed_runtime` のときの動きを `ollama` にも広げる）。
+- **設定の側**: 設定「テキスト生成（LLM）」の `organisms/settings/llmlocal` は、欄を持たない `ToolCard`（`molecules.ToolCardItem`）1 枚になる: 名前「ローカル LLM サーバー」・1 行（`use` の今の状態。`data-testid="llm-local-state"`）・「モデルマネージャーで設定する」のリンク（`data-testid="llm-local-link"`。`paths.ModelManagerPart("local-llm")`）。`PUT /settings/llm/local`・`POST /settings/llm/local/test` は**廃止**（ルートを登録しない。404）。保存の中身（`llmlocal.Service`・`llm.json` の `providers.local`・キーの保存先 `local`）は変えない。MCP も変えない（`set_local_llm_server`・`test_local_llm_server`・`get_global_settings` の `llm.local_server`。`use_managed_ollama` の入出力を足す）。
+- **VRAM・起動の扱いは変えない**: 管理サーバー（llama.cpp・Ollama）の起動・ComfyUI との取り合い（生成中は待つ・生成の前に止める・アイドルで降ろす）は [local-llm.md](../architecture/local-llm.md) §10.3 のまま。Ollama のメモリ降ろしのスイッチ（§5.3）も同じ意味で、置き場所だけが変わる。
+- **ポーリングと OOB**: `#mm-llm-use` の状態は、`use` が管理サーバーのとき、そのサーバーが `starting`・導入中の間だけ自分で取り直す（`every 2s`。`GET /model-manager/local-llm/use`）。ラジオの保存・接続の保存の応答は、自分の区画だけを返し、ほかの区画を `hx-swap-oob` で描き直さない（`mm-llm-use-state` は `#mm-llm-use` の中。接続の保存で `use` が変わることはない）。導入・起動・削除（カードの操作）が終わったとき、`#mm-llm-use` の状態の行が古くなるので、カードの応答に `hx-swap-oob` で `#mm-llm-use-state`（状態の行だけ。ラジオは触らない）を足す（同じ分類ページの中だけ）。
+- **a11y**: ラジオは `<fieldset>`＋`<legend>`「使うサーバー」。状態の語は文字（色だけで伝えない）。接続テストの結果は `role="status"`（失敗は `role="alert"`）。
+- **テストで見ること**: `GET /model-manager/local-llm` に `#mm-llm-use`・`#mm-llm-runtimes`・`#mm-llm-connection` がちょうど 1 つずつあり、`local-runtimes` ページに用途 `llm` のカードが無い。`use` の 3 値の保存が `llm.json` の 2 つのブール値に正しく写り、排他になる（`ollama` を保存すると `use_managed_runtime` が偽）。管理サーバーが無い app（`Data.Runtimes` が nil）では、①②のラジオが無く（理由の 1 行）、③だけが選べる。`PUT /settings/llm/local` が 404。設定のカードに入力欄が無く、リンクが `/model-manager/local-llm`。接続の保存・テストは旧ルートと同じ状態コードと文言（`llmsettingstest` の移し替え）。API キーの値が応答に出ない。`web/sidenavtest`（`local-llm` の項目）。
+
+### 決定が要ること
+
+- **分類を新設して llama.cpp を `local-runtimes` から移すか**（既定: 移す。「声・口パク」と「LLM」は使う場面も画面の語も別で、LLM の導線を 1 ページに集める。別案: `local-runtimes` に残し、Ollama のカードと「別のサーバー」だけを足す〔llama.cpp と Ollama が別のページに分かれる〕）。
+- **保存の形**（既定: 既存の `use_managed_runtime` はそのまま、`use_managed_ollama` を足して排他。MCP・設定ファイルの互換が保てる。別案: 1 つの列挙 `managed`〔`""`・`llama-cpp`・`ollama`〕に置き換える。`get_global_settings` の `llm.local_server.managed_runtime`〔状態のオブジェクト〕と名前が近く、MCP の入出力と `llm.json` を作り直すことになる）。
+- **設定のカードを廃止して、リンクだけにするか**（既定: 廃止。2 か所に同じ欄があると、どちらが効くか分からなくなる。別案: 設定にも欄を残す〔画面が 2 つ、テストも 2 つ〕）。
+- **LM Studio を mam が導入するか**（既定: しない。配布は GUI のインストーラーで、再配布・自動導入の条件を確かめていない。「別のサーバー」に URL を書いてつなぐ形のまま。手順は local-llm.md §8.2）。
+- **左メニュー・概要のアイコン**（既定: `IconNetwork`。`custom-nodes` と同じになるが、名前の文字で区別できる。専用のアイコンを足すなら、Iconoir から 1 つ選んで `atoms` に足す別の作業）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -211,3 +239,4 @@
 | 1.26 | 2026-11-06 | 1 枚のページの区画を、分類ごとのサブページに分けると決めた。概要（`GET /model-manager`。分類のカードと導入状態のまとめ）・分類 6 つのページ（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）・左メニューの 2 階層目・戻るリンク・OOB の整理（`oob.EngineWithCatalog` の廃止）・ページをまたぐリンクの付け替えを足した（節「分類のサブページ（#1101）」）。状態は仕様のみ（未実装） | Issue #1101 |
 | 1.27 | 2026-11-06 | モデルを並べる一覧の列数を、1 列（〜639 px）・2 列（640 px〜）・3 列（1280 px〜）に統一すると決めた（`modelcard.GridClass`。ランタイム・追加ノードの `lg:grid-cols-2`、モデルの一覧・追加したファイル・外部の ComfyUI のモデルの `lg:grid-cols-3` を置き換える）。カードの一覧を持つ分類ページは `max-w-5xl`。エンジンのカードは例外で幅いっぱい（節「カードの列数（#1102）」）。状態は仕様のみ（未実装） | Issue #1102 |
 | 1.28 | 2026-11-06 | 区画「追加ノード」のカードからノードの説明（`mm-node-description`）を外し、すでに説明を出している詳細モーダル（`nodecard.NodeDetail`）だけに出すと決めた。新しい部品は作らず、区画の「?」の文に「ノードの説明」を足す（節「追加ノードの説明（#1103）」）。状態は仕様のみ（未実装） | Issue #1103 |
+| 1.29 | 2026-11-06 | 設定「テキスト生成（LLM）」の「ローカル LLM サーバー」を、モデルマネージャーの新しい分類 `local-llm`（「使うサーバー」`#mm-llm-use`・「ローカルで動かすサーバー」`#mm-llm-runtimes`・「別のサーバーにつなぐ」`#mm-llm-connection`）へ統合すると決めた。llama.cpp のカードを `local-runtimes` から `local-llm` へ移し、設定のカードはリンクだけにする（節「ローカル LLM の統合（#1104）」）。#1101 の分類の表・概要のまとめ・ページをまたぐリンクの表に反映した。状態は仕様のみ（未実装） | Issue #1104 |
