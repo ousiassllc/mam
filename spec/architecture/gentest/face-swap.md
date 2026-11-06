@@ -70,7 +70,7 @@
 | ツール | 内容 |
 |---|---|
 | `get_facefusion_status` | 見つかったか・保存したパス・版とライセンスの自己申告・探した場所・選べるモデルと級・既定・標準の注意（`notes`）・出典の URL |
-| `swap_generation_face` | `target`・`face`（どちらも `{source, id}`）と任意の `swapper`・`detector`・`enhancer`。`job_id`・`batch_id`・`result_id`・`warnings` を返す。FaceFusion が見つからない・未知のモデルは `validation` |
+| `swap_generation_face` | `target`・`face`（どちらも `{source, id}`）と任意の `swapper`・`detector`・`enhancer`。`job_id`・`batch_id`・`result_id`・`warnings` を返す。FaceFusion が見つからないときは `unavailable`（`failure.code` が `facefusion_unavailable`）、未知のモデルは `validation` |
 
 ## 6. モデルのライセンス表（一次情報）
 
@@ -113,3 +113,4 @@
 | 1.0 | 2026-11-03 | 新規。FaceFusion を同梱しない外部ツールとして扱う方針、検出と設定（`facefusion.json`）、`headless-run` での入れ替え（既定 ghost＋yunet＋gfpgan）、画面・MCP、モデルのライセンス表（FaceFusion の公式一覧が一次情報）、ArcFace の注意、実機が要る項目 | Issue #995 |
 | 1.1 | 2026-11-03 | §2・§5: MCP の `set_facefusion_paths` を外した。パスの設定は設定画面だけ（パスは後で起動される実行ファイルを決めるので、MCP のクライアントに決めさせない。ffmpeg のパスに MCP ツールが無いのと同じ）。MCP は `get_facefusion_status`（読み取り）と `swap_generation_face` の 2 つ | 統合後レビューの指摘 |
 | 1.2 | 2026-11-04 | 失敗を共通エラーにした: FaceFusion が使えないときは `facefusion_unavailable`（503。従来は 422 の入力エラー）、実行の失敗は `facefusion_failed`（出力の末尾は詳細）。結果の `failure`・画面のエラーボックス・MCP の `failure` で同じコード | Issue #1010 |
+| 1.3 | 2026-11-06 | §5: `swap_generation_face` で FaceFusion が見つからないときの答えを、実装（1.2 から）どおり `unavailable`（`facefusion_unavailable`）に直した（`validation` のままだった）。ツールの説明文も同じに直した | 仕様と実装の乖離（Issue #995 の見直し） |
