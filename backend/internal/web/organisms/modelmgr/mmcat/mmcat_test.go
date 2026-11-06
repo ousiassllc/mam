@@ -9,7 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 )
 
-// All is the one list: the six categories of Issue #1101 in their order, each with a name, a description, an icon and its sections; a slug and a section are in one category only.
+// All is the one list: the categories of Issues #1101 and #1104 in their order, each with a name, a description, an icon and its sections; a slug and a section are in one category only.
 func TestAllIsTheOneListOfTheCategories(t *testing.T) {
 	var slugs []string
 	slugSeen, sectionSeen := map[string]bool{}, map[string]string{}
@@ -27,7 +27,7 @@ func TestAllIsTheOneListOfTheCategories(t *testing.T) {
 			sectionSeen[id] = c.Slug
 		}
 	}
-	assert.Equal(t, []string{"comfyui", "image-video", "custom-nodes", "local-runtimes", "face-check", "hf-external"}, slugs)
+	assert.Equal(t, []string{"comfyui", "image-video", "custom-nodes", "local-runtimes", "local-llm", "face-check", "hf-external"}, slugs)
 }
 
 func TestFindIsTheCategoryOfASlug(t *testing.T) {

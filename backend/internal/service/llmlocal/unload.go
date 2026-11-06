@@ -18,19 +18,19 @@ const unloadTimeout = 10 * time.Second
 // maxUnloadBytes bounds an answer of the server to the unload.
 const maxUnloadBytes = 1 << 20
 
-// BeforeGeneration is what runs before a local image or video generation starts (the Prepare hook of the local backends): while the calls go to the
-// llama.cpp server of mam, it stops that server (spec/architecture/local-llm.md §10.4); otherwise, when the switch
-// "生成の前に Ollama のモデルを降ろす" is on, it asks the Ollama server to unload the models it holds in memory, so that they do not share the GPU
+// BeforeGeneration is what runs before a local image or video generation starts (the Prepare hook of the local backends): while the calls go to a
+// server that mam manages (llama.cpp, Ollama of #1105), it stops that server (spec/architecture/local-llm.md §10.4, §11); otherwise, when the switch
+// "生成の前に Ollama のモデルを降ろす" is on, it asks the Ollama server at the address to unload the models it holds in memory, so that they do not share the GPU
 // memory with the generation (spec/architecture/local-llm.md §5). It does nothing when the switch is off. The result is best effort: a failure
 // is returned for the caller to log and never stops the generation.
 func (s *Service) BeforeGeneration(ctx context.Context) error {
-	if m := s.managedServer(); m != nil && s.InUse() {
-		// The llama.cpp server of mam always gives its video memory back (the 27B models cannot share a 16 GB GPU with ComfyUI, and the next call of
-		// an Agent starts it again); no switch decides it. Ollama is not touched in that mode: the calls do not go there.
+	if m := s.activeManaged(); m != nil {
+		// A server of mam always gives its video memory back (the 27B models cannot share a 16 GB GPU with ComfyUI, and the next call of
+		// an Agent starts it again); no switch decides it. The server at the address is not touched in that mode: the calls do not go there.
 		return m.Stop(ctx)
 	}
-	baseURL, on := s.Settings()
-	if !on {
+	baseURL, unload := s.Settings()
+	if !unload {
 		return nil
 	}
 	_, err := s.UnloadModels(ctx, baseURL)

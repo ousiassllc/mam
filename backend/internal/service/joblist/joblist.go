@@ -64,6 +64,7 @@ const (
 	CategoryComfyUI       = "comfyui"
 	CategoryImageVideo    = "image-video"
 	CategoryLocalRuntimes = "local-runtimes"
+	CategoryLocalLLM      = "local-llm"
 	CategoryCustomNodes   = "custom-nodes"
 	CategoryHFExternal    = "hf-external"
 )

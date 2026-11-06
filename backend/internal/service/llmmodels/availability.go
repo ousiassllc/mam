@@ -16,7 +16,7 @@ func (f Fallback) availability() modelfilter.Availability {
 	case FallbackNoKey:
 		return modelfilter.Unusable(modelfilter.ReasonNoKey, f.Message()+"（設定の「API キー」で登録します）", modelfilter.RouteOf(modelfilter.ReasonNoKey, modelfilter.SourceBuiltin))
 	case FallbackLocalDown:
-		return modelfilter.Unusable(modelfilter.ReasonEndpoint, f.Message()+"（設定の「テキスト生成（LLM）」の「ローカル LLM サーバー」で確かめます）", modelfilter.RouteOf(modelfilter.ReasonEndpoint, modelfilter.SourceLocalLLM))
+		return modelfilter.Unusable(modelfilter.ReasonEndpoint, f.Message()+"（モデルマネージャーの「ローカル LLM」で確かめます）", modelfilter.RouteOf(modelfilter.ReasonEndpoint, modelfilter.SourceLocalLLM))
 	case FallbackNotSignedIn:
 		return modelfilter.Unusable(modelfilter.ReasonNotSignedIn, f.Message()+"（設定の「ChatGPT でログイン」からログインします）", modelfilter.RouteOf(modelfilter.ReasonNotSignedIn, modelfilter.SourceChatGPT))
 	}

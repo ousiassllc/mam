@@ -44,7 +44,6 @@ import (
 	facefusionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/facefusion"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
-	llmlocalhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llmlocal"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
@@ -59,7 +58,7 @@ type Services struct {
 	// LLMModels are the models the LLM pull-downs offer for each provider (the API's list, else the candidates of mam). New
 	// builds one that knows no key and no sign-in (the candidates only); the app replaces it.
 	LLMModels *llmmodels.Service
-	// LLMLocal is the card "ローカル LLM サーバー" (the address and key of the local OpenAI-compatible LLM server, #1008). New builds one that has no key
+	// LLMLocal is the local OpenAI-compatible LLM server (its address and key, #1008; the server the calls of the provider "local" go to, #1104): the page "ローカル LLM" of the model manager and the card of the settings that links to it. New builds one that has no key
 	// store (the key cannot be kept); the app replaces it.
 	LLMLocal *llmlocal.Service
 	Models   *modelsettings.Service
@@ -164,10 +163,6 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 	}
 	if s != nil {
 		llmhandler.Register(engine, s.LLM, s.LLMModels, pages.Page(paths.SettingsLLM))
-		if s.LLMLocal != nil {
-			engine.PUT(paths.LLMLocal(), llmlocalhandler.Save(s.LLMLocal))
-			engine.POST(paths.LLMLocalTest(), llmlocalhandler.Test(s.LLMLocal))
-		}
 		mediahandler.Register(engine, s.Models, mediahandler.Cards{Gentest: s.Gentest}, pages.Page(paths.SettingsModels))
 		modelpicker.Register(engine, modelpicker.Services{Gentest: s.Gentest, Settings: s.Models, LLM: s.LLMModels, ModelManager: s.ModelManager})
 	}
@@ -196,7 +191,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.GET(paths.LocalModelsHealth(), settingspage.Health(s.LocalModels, 0))
 	}
 	if s != nil && s.ModelManager != nil {
-		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest, s.LocalRuntimes, s.ModelNodes)
+		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest, s.LocalRuntimes, s.ModelNodes, s.LLMLocal)
 	}
 	if s != nil && s.Gentest != nil {
 		gentesthandler.Register(engine, s.Gentest)

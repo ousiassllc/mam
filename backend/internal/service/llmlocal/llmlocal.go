@@ -9,9 +9,7 @@
 package llmlocal
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -53,8 +51,8 @@ type Service struct {
 	keys   credential.Store
 	client httpclient.Doer
 	apply  func(llm.Config) []string
-	// managed is the llama.cpp server mam runs itself (nil: none).
-	managed Managed
+	// managed is the llama.cpp server mam runs itself, ollama the Ollama server (#1105) (nil: none).
+	managed, ollama Managed
 }
 
 // New returns a Service over the settings file at path (pinned: the screen must not write it) and the key store. keys may be nil (no key can
@@ -86,9 +84,11 @@ type View struct {
 	KeyUnreadable bool
 	// UnloadBeforeGeneration is whether mam asks an Ollama server to unload its models before a local image or video generation.
 	UnloadBeforeGeneration bool
-	// UseManaged is whether the calls go to the llama.cpp server that mam installs and starts itself (the address above is then not used).
-	UseManaged bool
-	Pinned     bool
+	// UseManaged is whether the calls go to the llama.cpp server that mam installs and starts itself (the address above is then not used);
+	// UseManagedOllama whether they go to the Ollama server that mam installs and starts itself (#1105). At most one is true. Use is the one they make.
+	UseManaged, UseManagedOllama bool
+	Use                          Use
+	Pinned                       bool
 	// Problem is why the settings file could not be read; the view then shows the defaults and a save is refused until it is repaired.
 	Problem string
 }
@@ -113,7 +113,8 @@ func (s *Service) settingsView() View {
 		v.Problem = err.Error()
 	} else {
 		pc := cfg.Providers[llm.ProviderLocal]
-		v.BaseURL, v.UnloadBeforeGeneration, v.UseManaged = pc.BaseURL, pc.UnloadBeforeGeneration, pc.UseManagedRuntime
+		v.BaseURL, v.UnloadBeforeGeneration, v.UseManaged, v.UseManagedOllama = pc.BaseURL, pc.UnloadBeforeGeneration, pc.UseManagedRuntime, pc.UseManagedOllama
+		v.Use = UseOf(pc.UseManagedRuntime, pc.UseManagedOllama)
 	}
 	return v
 }
@@ -154,6 +155,9 @@ type SaveInput struct {
 	Unload *bool
 	// UseManaged sets UseManaged (the llama.cpp server of mam instead of an address); nil keeps it. Choosing it with no such server in the app is ErrManagedUnavailable.
 	UseManaged *bool
+	// UseManagedOllama sets UseManagedOllama (the Ollama server of mam, #1105); nil keeps it. It is never true together with UseManaged: choosing one clears the other
+	// (both true in one save is an *InvalidError). Choosing it with no such server in the app is ErrManagedOllamaUnavailable.
+	UseManagedOllama *bool
 }
 
 // Save stores the address and the switch in llm.json (the rest of the file is kept; an address equal to the default is dropped, so that a later
@@ -177,17 +181,24 @@ func (s *Service) Save(in SaveInput) error {
 		}
 		key = clean
 	}
-	if (baseURL != "" || in.Unload != nil || in.UseManaged != nil) && s.pinned {
+	if (baseURL != "" || in.Unload != nil || in.UseManaged != nil || in.UseManagedOllama != nil) && s.pinned {
 		return ErrPinned
 	}
-	if in.UseManaged != nil && *in.UseManaged && s.managedServer() == nil {
+	useManaged, useOllama, err := exclusive(in.UseManaged, in.UseManagedOllama)
+	if err != nil {
+		return err
+	}
+	switch {
+	case on(useManaged) && s.managedFor(UseLlamaCpp) == nil:
 		return ErrManagedUnavailable
+	case on(useOllama) && s.managedFor(UseOllama) == nil:
+		return ErrManagedOllamaUnavailable
 	}
 	if (key != "" || in.ClearKey) && s.keys == nil {
 		return &InvalidError{Message: "キーストアを利用できません", Field: "api_key"}
 	}
-	if baseURL != "" || in.Unload != nil || in.UseManaged != nil {
-		if err := s.write(baseURL, in.Unload, in.UseManaged); err != nil {
+	if e := (edit{baseURL: baseURL, unload: in.Unload, useManaged: useManaged, useOllama: useOllama}); e != (edit{}) {
+		if err := s.write(e); err != nil {
 			return err
 		}
 	}
@@ -207,98 +218,5 @@ func (s *Service) saveKey(key string, clear bool) error {
 		}
 		return err
 	}
-	return nil
-}
-
-// write sets providers.local of the settings file.
-func (s *Service) write(baseURL string, unload, useManaged *bool) error {
-	defer settingsfile.Lock(s.path)()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	obj, err := settingsfile.Read(s.path)
-	if err != nil {
-		return &InvalidError{Message: "設定ファイル " + s.path + " を読み込めません。直すか削除してからやり直してください（" + err.Error() + "）"}
-	}
-	providers := map[string]json.RawMessage{}
-	if raw, ok := obj["providers"]; ok {
-		if err := json.Unmarshal(raw, &providers); err != nil || providers == nil {
-			return &InvalidError{Message: "設定ファイル " + s.path + " の providers が読み込めません。直すか削除してからやり直してください"}
-		}
-	}
-	local := map[string]json.RawMessage{}
-	if raw, ok := providers[provider]; ok {
-		if err := json.Unmarshal(raw, &local); err != nil || local == nil {
-			return &InvalidError{Message: "設定ファイル " + s.path + " の providers.local が読み込めません。直すか削除してからやり直してください"}
-		}
-	}
-	if baseURL != "" {
-		if err := setKey(local, "base_url", baseURL, baseURL != llm.LocalDefaultBaseURL); err != nil {
-			return err
-		}
-	}
-	if unload != nil {
-		if err := setKey(local, "unload_before_generation", *unload, *unload); err != nil {
-			return err
-		}
-	}
-	if useManaged != nil {
-		if err := setKey(local, "use_managed_runtime", *useManaged, *useManaged); err != nil {
-			return err
-		}
-	}
-	if _, ok := local["base_url"]; !ok && len(local) > 0 {
-		// llm.Config reads providers.local as a whole: an entry with another key and no base_url would have an empty one.
-		if err := setKey(local, "base_url", llm.LocalDefaultBaseURL, true); err != nil {
-			return err
-		}
-	}
-	if err := put(providers, provider, local); err != nil {
-		return err
-	}
-	if err := put(obj, "providers", providers); err != nil {
-		return err
-	}
-	data, err := settingsfile.Marshal(obj)
-	if err != nil {
-		return err
-	}
-	cfg, err := llm.ParseConfig(data)
-	if err != nil {
-		return &InvalidError{Message: "この設定は保存できません: " + err.Error()}
-	}
-	if err := settingsfile.Write(s.path, obj); err != nil {
-		return err
-	}
-	if s.apply != nil {
-		s.apply(cfg)
-	}
-	return nil
-}
-
-// setKey sets the key of the object to value when keep, else drops it.
-func setKey(obj map[string]json.RawMessage, key string, value any, keep bool) error {
-	if !keep {
-		delete(obj, key)
-		return nil
-	}
-	raw, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Errorf("encode %s: %w", key, err)
-	}
-	obj[key] = raw
-	return nil
-}
-
-// put stores the object under key, or drops the key when the object is empty (an object with nothing to say is the default).
-func put[M ~map[string]json.RawMessage](parent M, key string, obj map[string]json.RawMessage) error {
-	if len(obj) == 0 {
-		delete(parent, key)
-		return nil
-	}
-	raw, err := json.Marshal(obj)
-	if err != nil {
-		return fmt.Errorf("encode %s: %w", key, err)
-	}
-	parent[key] = raw
 	return nil
 }

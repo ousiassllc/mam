@@ -15,12 +15,14 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -35,11 +37,13 @@ type Handlers struct {
 	Runtimes *localruntime.Service
 	// Nodes are the custom nodes of the allowlist (section "追加ノード"). Nil leaves the section and its routes out.
 	Nodes *modelnodes.Service
+	// LLMLocal is the server the calls of the provider "local" go to (page "ローカル LLM", #1104). Nil leaves the page and its routes out.
+	LLMLocal *llmlocal.Service
 }
 
 // Register adds the routes of the screen to the engine.
-func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service) {
-	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds}
+func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service, llm *llmlocal.Service) {
+	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds, LLMLocal: llm}
 	engine.GET(paths.ModelManager(), h.Page)
 	engine.GET(paths.ModelManagerPart("overview"), h.OverviewPart)
 	h.registerCategories(engine)
@@ -57,7 +61,10 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	engine.POST(paths.ModelManagerPart("jobs", ":job", "cancel"), h.CancelJob)
 
 	if rts != nil {
-		runtimes.Register(engine, rts)
+		runtimes.Register(engine, rts, llm)
+	}
+	if llm != nil {
+		localllm.Register(engine, llm)
 	}
 	if nds != nil {
 		nodes.Register(engine, nds)

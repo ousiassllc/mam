@@ -158,13 +158,13 @@ func Explain(err error) string {
 	case errors.Is(err, localruntime.ErrBusy):
 		return "llama.cpp を導入している最中です。終わってから、もう一度実行してください"
 	case errors.Is(err, localruntime.ErrNotInstalled), errors.Is(err, localruntime.ErrNotFound):
-		return "llama.cpp が導入されていません。モデルマネージャーの「ローカル」で llama.cpp を導入してください"
+		return "llama.cpp が導入されていません。モデルマネージャーの「ローカル LLM」で llama.cpp を導入してください"
 	case errors.As(err, &weights):
 		names := make([]string, 0, len(weights.Assets))
 		for _, a := range weights.Assets {
 			names = append(names, a.Name)
 		}
-		return "モデルの重みが足りません（" + strings.Join(names, "、") + "）。モデルマネージャーの「ローカル」の llama.cpp で「重みを導入」を実行してください"
+		return "モデルの重みが足りません（" + strings.Join(names, "、") + "）。モデルマネージャーの「ローカル LLM」の llama.cpp で「重みを導入」を実行してください"
 	}
 	return err.Error()
 }
@@ -178,7 +178,7 @@ func (s Server) Info(ctx context.Context) llmlocal.ManagedInfo {
 	if err != nil {
 		return llmlocal.ManagedInfo{State: llmlocal.ManagedNotInstalled, Reason: Explain(err)}
 	}
-	info := llmlocal.ManagedInfo{}
+	info := llmlocal.ManagedInfo{Installing: v.InstallJob != ""}
 	if v.Choice != nil {
 		info.Model, info.ModelName = v.Choice.ID, v.Choice.Name
 	}
@@ -188,10 +188,10 @@ func (s Server) Info(ctx context.Context) llmlocal.ManagedInfo {
 	case !v.Installed:
 		info.State, info.Reason = llmlocal.ManagedNotInstalled, Explain(localruntime.ErrNotInstalled)
 		if v.Broken {
-			info.Reason = "llama.cpp のファイルが見つかりません（削除されたようです）。モデルマネージャーの「ローカル」で導入し直してください"
+			info.Reason = "llama.cpp のファイルが見つかりません（削除されたようです）。モデルマネージャーの「ローカル LLM」で導入し直してください"
 		}
 	case v.Weights.State != localruntime.WeightsReady:
-		info.State, info.Reason = llmlocal.ManagedNotInstalled, fmt.Sprintf("モデル（%s）の重みがそろっていません。モデルマネージャーの「ローカル」の llama.cpp で「重みを導入」を実行してください", info.ModelName)
+		info.State, info.Reason = llmlocal.ManagedNotInstalled, fmt.Sprintf("モデル（%s）の重みがそろっていません。モデルマネージャーの「ローカル LLM」の llama.cpp で「重みを導入」を実行してください", info.ModelName)
 	default:
 		info.State = managedState(v.Process)
 		info.Reason = v.Process.Error

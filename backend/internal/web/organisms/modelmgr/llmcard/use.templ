@@ -1,0 +1,92 @@
+package llmcard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// UseSection is the section "使うサーバー": the radios (llama-cpp, ollama, custom) and the line of the state of the one in force. Saving only writes the choice: nothing is installed or
+// started (a server of mam starts at the first call). Its answer is the section alone; what an install or a start of a server changes is the line (StateOOB).
+templ UseSection(u Use) {
+	<div id={ UseID } class="flex flex-col gap-3" data-testid="mm-llm-use">
+		@useNotice(u)
+		<form
+			class="flex flex-col gap-3"
+			hx-put={ paths.ModelManagerLocalLLMUse() }
+			hx-target={ "#" + UseID }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			data-testid="mm-llm-use-form"
+		>
+			<fieldset class="flex flex-col gap-2" disabled?={ u.Pinned }>
+				<legend class="sr-only">使うサーバー</legend>
+				for _, c := range u.Choices {
+					<label class="flex items-start gap-2 rounded-lg border border-border p-3 text-sm text-ink has-[:checked]:border-accent" data-testid="mm-llm-use-choice" data-use={ c.Use }>
+						@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldUse, "value": c.Use, "checked": c.Use == u.Selected})
+						<span>
+							{ c.Name }
+							if c.State != "" {
+								<span class="text-mute">（{ c.State }）</span>
+							}
+							<span class="block text-xs text-mute">{ c.About }</span>
+						</span>
+					</label>
+				}
+			</fieldset>
+			if u.NoManaged != "" {
+				<p class="text-sm text-mute" data-testid="mm-llm-use-nomanaged">{ u.NoManaged }</p>
+			}
+			if u.Pinned {
+				<p class="text-sm text-warning" data-testid="mm-llm-use-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で設定ファイルが固定されているため、使うサーバーはこの画面では変えられません。</p>
+			}
+			<div class="flex flex-wrap items-center gap-2">
+				@atoms.Button(atoms.TonePrimary, "このサーバーを使う", templ.Attributes{"type": "submit", "disabled": u.Pinned, "data-testid": "mm-llm-use-save"})
+			</div>
+		</form>
+		@UseState(u.State, false)
+	</div>
+}
+
+// useNotice is what the last save did, or why it was refused (a status line; an error is an alert).
+templ useNotice(u Use) {
+	switch  {
+		case u.Error != "":
+			<p class="text-sm text-danger" role="alert" data-testid="mm-llm-use-error">{ u.Error }</p>
+		case u.Problem != "":
+			<p class="text-sm text-warning" role="alert" data-testid="mm-llm-use-problem">保存済みの設定ファイルを読み込めません（表示は既定値です）: { u.Problem }</p>
+		case u.Notice != "":
+			<p class="text-sm text-success" role="status" data-testid="mm-llm-use-notice">{ u.Notice }</p>
+	}
+}
+
+// UseState is the line of the state of the server in use: "今は <名前> に呼び出します" and why it cannot be used. While the server installs or starts it asks for itself again
+// (GET ?part=state, the line alone: the radios the user is choosing from are not drawn again).
+templ UseState(s State, oob bool) {
+	<p
+		id={ UseStateID }
+		class="text-sm text-ink"
+		aria-live="polite"
+		data-testid="mm-llm-use-state"
+		data-state={ s.Kind }
+		if oob {
+			hx-swap-oob="outerHTML"
+		}
+		if s.Polling {
+			hx-get={ paths.ModelManagerLocalLLMUse() + "?part=state" }
+			hx-trigger={ view.Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		{ s.Line }
+		if s.Problem != "" {
+			<span class="block whitespace-pre-wrap break-words text-warning" data-testid="mm-llm-use-state-problem">{ s.Problem }</span>
+		}
+	</p>
+}
+
+// StateOOB is the line of the state drawn out of band into the page: what the answer of a card of a server of mam adds, because an install, a start or a removal changes it.
+templ StateOOB(s State) {
+	@UseState(s, true)
+}

@@ -32,7 +32,7 @@ LLM（企画・脚本・Shot 計画など）も、この PC のローカルモ�
 | DeepSeek-R1-Distill-Qwen-14B（約 8.4 GiB。常に考える過程が出るので、mam が取り除いて読みます） | [deepseek-ai/DeepSeek-R1-Distill-Qwen-14B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) の GGUF | [huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2](https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2) の GGUF | 純正は MIT（商用可）。**非検閲版は派生側にライセンスの表示が無く、商用不明**です |
 
 - GGUF は [mradermacher](https://huggingface.co/mradermacher) が変換したもの（コミット固定。2026-11-03 に Hugging Face の API で確認。gated ではなく、利用規約への同意は要りません）。使うモデルは、モデルマネージャーの llama.cpp のカードの「使うモデルの選択」で 1 つ選びます（選んだものだけ取得します。非検閲のモデルには「成人向け相当」の注記が出ます）。
-- 設定の「テキスト生成（LLM）」の「ローカル LLM サーバー」で「この PC の llama.cpp を使う」を選ぶと、導入した llama.cpp が自動でその LLM プロバイダー `local` になります（起動中はそのポートを自動で使います。モデルの id〔例 `gemma-4-12b-it`〕を「LLM の割り当て」の model に指定します）。Ollama・LM Studio など別のサーバーにも、ベース URL で接続できます。
+- モデルマネージャーの「ローカル LLM」で、llama.cpp を導入して「使うサーバー」に「この PC の llama.cpp」を選ぶと、導入した llama.cpp が自動でその LLM プロバイダー `local` になります（起動中はそのポートを自動で使います。モデルの id〔例 `gemma-4-12b-it`〕を「LLM の割り当て」の model に指定します）。Ollama・LM Studio など別のサーバーにも、同じページの「別のサーバーにつなぐ」でベース URL を指定して接続できます（設定の「ローカル LLM サーバー」のカードは、このページへのリンクです）。
 - ComfyUI と同じ GPU で動かすときは、画像・動画を作る前に llama.cpp を止めて VRAM を空け、LLM を起動するときに ComfyUI が生成中なら待ちます（15 分使わないと llama-server がモデルを降ろします）。
 - この PC で動かせないとき（macOS〔Apple Silicon は対応外〕・NVIDIA の GPU が無い・ビデオメモリが足りない）は、理由と代わりの案内（Ollama・LM Studio に接続する、またはクラウドの LLM）が出ます。
 - **未確認**: 実機（Windows + NVIDIA）での導入・起動・推論、ComfyUI との同居、各モデルの質は、まだ確かめていません（[`spec/architecture/model-manager/local-runtime.md`](spec/architecture/model-manager/local-runtime.md) §17.7）。
