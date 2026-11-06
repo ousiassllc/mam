@@ -1,5 +1,5 @@
 // Package modelmgr is the model manager screen (paths.ModelManager): the bundled ComfyUI engine, the catalog of local
-// image and video models, the Hugging Face token, the view of an external ComfyUI, and the trial generations
+// image and video models, the Hugging Face token and the view of an external ComfyUI
 // (spec/architecture/model-manager/model-manager.md, spec/api/endpoints-model-manager.md). Every action answers with the
 // section it changed (outerHTML of its element); a section that has a job running polls itself. The presentation
 // layer only knows what the handler hands it: nothing here imports the service layer, and no value here is a key or
@@ -24,12 +24,9 @@ const (
 	DialogID     = "mm-dialog"
 	HFID         = "mm-hf"
 	ExternalID   = "mm-external"
-	TrialID      = "mm-trial"
 	AdultID      = "mm-adult"
 	CommercialID = "mm-commercial"
 	ModelsID     = "mm-models"
-	TrialFmID    = "mm-trial-form"
-	TrialsID     = "mm-trials"
 )
 
 // Names of the form fields (the handler reads the same names).
@@ -43,20 +40,10 @@ const (
 	FieldAgree     = "agree"
 	FieldNoticeV   = "notice_version"
 	FieldEndpoint  = "endpoint"
-	FieldModelID   = "model_id"
-	FieldPrompt    = "prompt"
-	FieldNegative  = "negative_prompt"
-	FieldAspect    = "aspect_ratio"
-	FieldResol     = "resolution"
-	FieldDuration  = "duration_seconds"
-	FieldReference = "reference"
 )
 
-// Limits of the fields of the forms: the token (what the service accepts) and "16:9".
-const (
-	MaxTokenLen  = 512
-	MaxAspectLen = 5
-)
+// MaxTokenLen is the limit of the token field (what the service accepts).
+const MaxTokenLen = 512
 
 // Polling is how often a section with a running job asks for itself again.
 const Polling = "every 2s"
@@ -70,7 +57,6 @@ type Data struct {
 	Catalog    Catalog
 	HF         HFToken
 	External   External
-	Trial      TrialPanel
 	HFImport   HFImport
 	// Runtimes is the section of the local voice and lip-sync runtimes (runtimecard.RuntimesSection); nil leaves the section out.
 	Runtimes templ.Component
@@ -189,6 +175,9 @@ const engineHelp = "画像・動画のモデルを動かす ComfyUI を、mam �
 	"カードをタップすると、版・待ち受け・導入先・出典・ライセンスが見られます。ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース（Mac 版は、ソースと Python・PyTorch などの各パッケージを個別に）を実行時に取得し、SHA-256 を確かめてから使います。\n" +
 	"「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。削除すると導入先も一緒に消えます（導入したモデルのファイルは残ります）。導入は固定した版を取得し、SHA-256 が合わなければ破棄します。中断しても続きから再開できます。\n" +
 	"同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。ブラウザ版・サーバー版や Intel Mac では、別に動かしている ComfyUI の URL を設定の「ローカル・代替モデル」に登録してください。"
+
+// modelsHelpText is the help of the models section (the link to the generation test follows it, body.templ).
+const modelsHelpText = "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。カードをタップすると、出典・ライセンス・ファイル一覧・SHA-256 が見られます。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。導入先の空きが足りないときや、GPU のメモリが足りない見込みのときは、カードにそう出ます。成人向けモデル（非検閲のモデル・LoRA）は、18 歳以上の確認と注意書きへの同意の後に、一覧・導入・生成テストに出ます。"
 
 // EngineName is the name of the engine card (the title of its modal and the subject of its buttons).
 const EngineName = "ComfyUI エンジン"

@@ -1,5 +1,5 @@
 // Package oob is the answers of the model manager screen that draw several sections at once: the section the action was on, and the ones it changed
-// out of band (the model list, the choices of the trial generation, the closed dialog). It is a package of its own because the package of the screen
+// out of band (the model list, the closed dialog). It is a package of its own because the package of the screen
 // is at its line budget (linterly).
 package oob
 
@@ -12,13 +12,6 @@ templ EngineWithCatalog(e view.Engine, c view.Catalog) {
 	@view.CatalogList(c)
 }
 
-// CatalogWithTrial is the model list with the trial section out of band: installing or deleting a model changed the
-// models a trial can use.
-templ CatalogWithTrial(c view.Catalog, t view.TrialPanel) {
-	@view.CatalogList(c)
-	@view.TrialSection(t)
-}
-
 // CatalogWithDialogClear is the model list with the (answered) license dialog emptied out of band.
 templ CatalogWithDialogClear(c view.Catalog) {
 	@view.CatalogList(c)
@@ -26,30 +19,22 @@ templ CatalogWithDialogClear(c view.Catalog) {
 }
 
 // AdultWithCatalog is the answer of turning the setting on or off: the card, and what it changes out of band (the model list,
-// the choices of the trial generation, the closed dialog).
-templ AdultWithCatalog(a view.Adult, c view.Catalog, t view.TrialPanel) {
+// the closed dialog).
+templ AdultWithCatalog(a view.Adult, c view.Catalog) {
 	@view.AdultCard(a)
 	@view.CatalogList(c)
-	@view.TrialSection(t)
 	@view.DialogClear()
 }
 
-// CommercialWithList is the card with the model list and the trial section out of band: the setting changed what the commercial-use choice of their filters starts at
+// CommercialWithList is the card with the model list out of band: the setting changed what the commercial-use choice of its filter starts at
 // (the list's own bar and panel come with it, drawn at the new start).
-templ CommercialWithList(c view.CommercialPanel, l view.Catalog, t view.TrialPanel) {
+templ CommercialWithList(c view.CommercialPanel, l view.Catalog) {
 	@view.CommercialCard(c)
 	@view.CatalogWithBar(l)
-	@view.TrialSection(t)
 }
 
 // HFModelsWithMsgClear is the list with the error line above it emptied out of band: an action that worked.
 templ HFModelsWithMsgClear(l view.HFModelList) {
 	@view.HFModelListView(l)
 	<p id={ view.HFMsgID } hx-swap-oob="true" class="text-sm text-danger" role="alert" data-testid="mm-hfi-msg"></p>
-}
-
-// HFModelsWithTrial is the list with the trial section out of band: an import that ended changed the models a trial can use.
-templ HFModelsWithTrial(l view.HFModelList, t view.TrialPanel) {
-	@view.HFModelListView(l)
-	@view.TrialSection(t)
 }

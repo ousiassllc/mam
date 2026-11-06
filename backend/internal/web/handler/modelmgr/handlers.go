@@ -1,13 +1,12 @@
 // Package modelmgr holds the handlers of the model manager screen (paths.ModelManager, spec/api/endpoints-model-manager.md):
 // the ComfyUI engine, the model catalog with the license consent, the view of an external
-// ComfyUI and the trial generations (the import from Hugging Face and its token are the child package hfimport). It is a package of its own because handler is at its size limit; like handler it
+// ComfyUI (the import from Hugging Face and its token are the child package hfimport). It is a package of its own because handler is at its size limit; like handler it
 // depends on the service layer and the web layer only. Every action calls modelmanager.Service (the same
 // service the MCP tools call), answers with the section it changed, and turns the service's refusals into a status
 // and a message with modelmanager.Refuse. view.go builds what the screen draws.
 package modelmgr
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -33,8 +32,7 @@ import (
 // Handlers answer the routes of the screen.
 type Handlers struct {
 	Svc *modelmanager.Service
-	// Gentest runs the trial generations (a batch of one result of the generation test) and keeps their results. Nil
-	// leaves the trial panel without a form.
+	// Gentest is the generation test service; its face-check models are the section "顔チェック用モデル". Nil leaves the section out.
 	Gentest *gentest.Service
 	// Runtimes are the local voice and lip-sync runtimes (section "ローカル音声・口パク"). Nil leaves the section and its routes out.
 	Runtimes *localruntime.Service
@@ -80,15 +78,20 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	engine.POST(paths.ModelManagerPart("models", ":id", "install"), h.InstallModel)
 	engine.DELETE(paths.ModelManagerPart("models", ":id"), h.DeleteModel)
 
-	hfimport.Register(engine, svc, func(ctx context.Context) view.TrialPanel { return h.trialPanel(ctx, view.TrialForm{}, "", "") })
+	hfimport.Register(engine, svc)
 	engine.GET(paths.ModelManagerPart("external"), h.External)
 	engine.GET(paths.ModelManagerPart("external", "detail"), h.ExternalDetail)
+}
 
-	engine.GET(paths.ModelManagerPart("trials"), h.Trials)
-	engine.GET(paths.ModelManagerPart("trials", "form"), h.TrialForm)
-	engine.POST(paths.ModelManagerPart("trials"), h.StartTrial)
-	engine.DELETE(paths.ModelManagerPart("trials", ":id"), h.DeleteTrial)
-	engine.GET(paths.ModelManagerPart("trials", ":id", "file"), h.TrialFile)
+// data is the whole screen.
+func (h Handlers) data(c *gin.Context) view.Data {
+	ctx := c.Request.Context()
+	return view.Data{
+		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Commercial: commercialData(h.Svc), Catalog: catalogData(c, h.Svc, nil),
+		HF: hfimport.TokenData(h.Svc), HFImport: hfimport.Panel(ctx, h.Svc),
+		External: view.External{Endpoints: h.externalEndpoints(c)},
+		Runtimes: runtimes.Section(ctx, h.Runtimes), Nodes: nodes.Section(ctx, h.Nodes), FaceModels: h.faceModels(),
+	}
 }
 
 // Page answers GET /model-manager: the page, or the body alone for an HTMX request (a history restore wants the page).

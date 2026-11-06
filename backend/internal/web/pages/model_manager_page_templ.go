@@ -16,7 +16,7 @@ import (
 )
 
 // ModelManagerPage is GET /model-manager: the bundled ComfyUI engine, the local image and video models to install,
-// and the trial generations. It belongs to no Project.
+// and the Hugging Face import. It belongs to no Project.
 func ModelManagerPage(csrfToken string, d modelmgr.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -62,7 +62,7 @@ func ModelManagerPage(csrfToken string, d modelmgr.Data) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入して、すぐに試し生成できます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

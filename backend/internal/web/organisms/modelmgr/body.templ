@@ -3,12 +3,13 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// Body is the screen without the page frame: the engine, the models, the trial generations, the Hugging Face token
+// Body is the screen without the page frame: the engine, the models, the Hugging Face token
 // and the external ComfyUI, one section each (molecules.SettingsSection). engineHelp (data.go) is the help of the engine section.
 templ Body(d Data) {
 	<div id="model-manager-body" class="flex flex-col gap-8" data-testid="model-manager">
@@ -39,15 +40,12 @@ templ Body(d Data) {
 				@d.FaceModels
 			}
 		}
-		@molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。カードをタップすると、出典・ライセンス・ファイル一覧・SHA-256 が見られます。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。導入先の空きが足りないときや、GPU のメモリが足りない見込みのときは、カードにそう出ます。成人向けモデル（非検閲のモデル・LoRA）は、18 歳以上の確認と注意書きへの同意の後に、一覧・導入・試し生成に出ます。") {
+		@molecules.SettingsSectionHelp(molecules.HeadingH2, "モデル", modelsHelp()) {
 			@AdultCard(d.Adult)
 			@CommercialCard(d.Commercial)
 			@modal.InlineHost(DialogID, "mm-dialog")
 			@modelpick.Bar(d.Catalog.Filter)
 			@CatalogList(d.Catalog)
-		}
-		@molecules.SettingsSection("試し生成", "導入したモデル（登録済みの外部の ComfyUI のモデルも）で、プロジェクトの外で 1 枚・1 本だけ試します。") {
-			@TrialSection(d.Trial)
 		}
 		@molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。") {
 			@HFImportSection(d.HFImport)
@@ -60,4 +58,14 @@ templ Body(d Data) {
 		}
 		@modal.Host()
 	</div>
+}
+
+// modelsHelp is the "?" help of the models section: what the cards do, and where an installed model is tried (the generation test screen; Issue #1100).
+templ modelsHelp() {
+	@help.Text(modelsHelpText)
+	<p class="mt-2">
+		導入したモデルを試すには、
+		<a class="underline" href={ templ.SafeURL(paths.GenerationTest()) } data-testid="mm-open-gentest">生成テスト画面</a>
+		を使います。
+	</p>
 }

@@ -694,7 +694,7 @@ func (*Service) HidesModel(id string) bool                 // 試し生成・割
 
 ## 8. 試し生成（廃止。Issue #1100）
 
-> **状態: 仕様のみ（未実装。Issue #1100）**: モデルマネージャーの区画「試し生成」は**廃止する**。導入したモデルを試すのは、生成テスト画面（`GET /generation-test`。[../gentest/gentest.md](../gentest/gentest.md)）だけになる。このサービス（`modelmanager.Service`）には、もともと試し生成のコードも保存場所も無い（1.2 で生成テストに一本化した）ので、**Service API・データ・ジョブの種別（`gentest`）は変えない**。
+> **状態: 実装済み（Issue #1100）**: モデルマネージャーの区画「試し生成」は**廃止した**。導入したモデルを試すのは、生成テスト画面（`GET /generation-test`。[../gentest/gentest.md](../gentest/gentest.md)）だけになる。このサービス（`modelmanager.Service`）には、もともと試し生成のコードも保存場所も無い（1.2 で生成テストに一本化した）ので、**Service API・データ・ジョブの種別（`gentest`）は変えない**。
 
 - **消すもの（画面側だけ）**: `handler/modelmgr/trials.go`（`Trials`・`TrialForm`・`StartTrial`・`DeleteTrial`・`TrialFile`）と `trialPanel`、`organisms/modelmgr/trial.templ`（`TrialSection`・`TrialFormView`・`TrialList`。`Data.Trial`）、`oob.CatalogWithTrial`・`oob.HFModelsWithTrial`、`middleware/bodylimit.go` の `POST /model-manager/trials`（21 MiB への広げ）、モデル選択のソース `modelpicker.SourceTrial`（`model-trial`。`GET /model-picker/model-trial`）と、その専用の `trialModels`（`handler/modelpicker/sources_gentest.go`）・`mmview.TrialModels`（`service/modelmanager/mmview/trialmodels.go`。試し生成のほかに使う所は無いことを確認済み）とそれぞれのテスト（[model-filter.md](model-filter.md) §8.3 の表の行は削除済み）、試し生成だけの表示（音声つきの注記 `mm-trial-audio-note`・バッジ `mm-trial-audio-badge`。Issue #927 で足したもの）。生成テスト画面の表示は変えない。
 - **残すもの**: 生成テストの履歴にあるこれまでの試し生成の結果（データの移行・削除はしない）。`gentest.Deps.Hidden`（= `HidesModel`。§6.2）による、生成テストのモデルの一覧からの成人向けの除外。`GET /model-manager/trials/:id/file` を直接開いていた外部のリンクは 404 になる（アプリの中のリンクは無い）。

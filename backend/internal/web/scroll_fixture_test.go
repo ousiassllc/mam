@@ -54,14 +54,6 @@ func scrollCatalog(installing int, jobs []string) modelmgr.Catalog {
 	return c
 }
 
-func scrollTrial(oob bool) modelmgr.TrialPanel {
-	p := modelmgr.TrialPanel{OOB: oob, Form: modelmgr.TrialForm{Media: "image", MaxPrompt: 2000, Aspect: "16:9", ModelID: "model-1", HasModels: true}}
-	for i := 1; i <= 3; i++ {
-		p.Trials.Items = append(p.Trials.Items, modelmgr.Trial{ID: "t" + strconv.Itoa(i), ModelID: "model-1", Prompt: "試し生成 " + strconv.Itoa(i), Status: "succeeded", StatusText: "完了", CreatedAt: "2026-11-01 10:00", Deletable: true})
-	}
-	return p
-}
-
 func TestScrollFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	started := scrollCatalog(5, []string{"job-1"})
 	started.Notice = "導入を始めました。この画面を閉じても続きます"
@@ -83,8 +75,8 @@ func TestScrollFixtures_AreWhatTheComponentsRender(t *testing.T) {
 		"scroll-mm-consent.html":         modelmgr.ConsentDialog(consent),
 		"scroll-mm-consent-answer.html":  oob.CatalogWithDialogClear(startedConsent),
 		"scroll-mm-consent-refused.html": modelmgr.ConsentDialog(refused),
-		"scroll-mm-page.html":            modelmgr.Body(modelmgr.Data{Catalog: scrollCatalog(0, nil), Trial: scrollTrial(false), HFImport: modelmgr.HFImport{Kind: "text-to-image"}}),
+		"scroll-mm-page.html":            modelmgr.Body(modelmgr.Data{Catalog: scrollCatalog(0, nil), HFImport: modelmgr.HFImport{Kind: "text-to-image"}}),
 		"scroll-mm-install-answer.html":  oob.CatalogWithDialogClear(started),
-		"scroll-mm-poll-done.html":       oob.CatalogWithTrial(finished, scrollTrial(true)),
+		"scroll-mm-poll-done.html":       modelmgr.CatalogList(finished),
 	})
 }

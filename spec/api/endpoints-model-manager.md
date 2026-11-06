@@ -2,7 +2,7 @@
 
 ローカルの画像・動画モデルの導入の画面 `GET /model-manager`（Issue #833）。ComfyUI エンジン・モデルのカタログ・ライセンスの同意の意味は [../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md)。画面の操作は、同じサービス（`modelmanager.Service`）を呼ぶ MCP ツールでもできる（[mcp-tools-model-manager.md](mcp-tools-model-manager.md)）。画面の構成は [../components/model-manager-screen.md](../components/model-manager-screen.md)。
 
-> **状態: 仕様のみ（未実装。Issue #1100）**: 「試し生成」（`/model-manager/trials/…`）は廃止する。導入したモデルを試すのは生成テスト画面（`GET /generation-test`。[endpoints-gentest.md](endpoints-gentest.md)）だけ。下の表・§3・§4 からは試し生成を外してある（実装が追いつくまで、コードには残っている）。
+> **状態: 実装済み（Issue #1100）**: 「試し生成」（`/model-manager/trials/…`）は廃止した。導入したモデルを試すのは生成テスト画面（`GET /generation-test`。[endpoints-gentest.md](endpoints-gentest.md)）だけ。
 
 > **状態: 仕様のみ（未実装。Issue #1101）**: 画面を**分類ごとのサブページ**に分ける。`GET /model-manager` は概要になり、区画は `GET /model-manager/<slug>`（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）の分類ページに移る。下の §1 の表に概要と分類ページのルートを足し、§3 の区画の並びを分類の表に直し、§4 に受け入れ条件を足した。区画の部分ルート（`/model-manager/engine/…`・`/models/…` ほか）は、パス・フォームともそのまま。構成は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「分類のサブページ（#1101）」。
 
@@ -138,7 +138,7 @@
 
 `handler/modelmgr/hfimport` の画面テスト（`mmtest` の偽の HF `hftest`。`web/screentest` の `Screen` で送る）: キーワード検索・URL（`blob` を含む）と ID・短縮 URL／http／他のホストの 422、GGUF・pickle の理由と導入の 422、terms の確認が無い 409・版違いの 422、導入の進捗→完了→削除、NFAA の検索からの除外と 409、gated のトークンの案内と 422。実物の HF・GPU は使わない。
 
-**試し生成の廃止の受け入れ条件（Issue #1100。実装時にこのテストを足す）**:
+**試し生成の廃止の受け入れ条件（Issue #1100。`handler/modelmgr/trialgonetest` のテストで確かめる）**:
 
 - `GET /model-manager` の本文に `#mm-trial`・`#mm-trials`・`#mm-trial-form`・`mm-trial-*` の `data-testid` が無い。区画「モデル」の「?」ヘルプの中に `data-testid="mm-open-gentest"` のリンクが 1 つあり、`href` は `paths.GenerationTest()`（`/generation-test`）。
 - `GET /model-manager/trials`・`GET /model-manager/trials/form`・`POST /model-manager/trials`・`DELETE /model-manager/trials/:id`・`GET /model-manager/trials/:id/file` は 404（ルートを登録しない）。`middleware.MaxBody` のアップロード用ルートの一覧から `/model-manager/trials` が消えている（21 MiB への広げが残っていない）。
@@ -234,3 +234,4 @@
 | 1.19 | 2026-11-06 | §1 に `GET`・`PUT /model-manager/local-llm/use`・`PUT /model-manager/local-llm/connection`・`POST …/connection/test` を足し、`GET /model-manager/runtimes` に `purpose=llm` を足した。§3 の分類の表に `local-llm` を足し、`local-runtimes` から llama.cpp を外した。受け入れ条件を §4 に足した。設定の `PUT /settings/llm/local`・`POST …/test` は廃止（[endpoints-settings.md](endpoints-settings.md)）。状態は仕様のみ（未実装） | Issue #1104 |
 | 1.20 | 2026-11-06 | §1 に `GET /model-manager/ollama`・`GET …/ollama/models/detail`・`POST …/ollama/models/pull`・`DELETE …/ollama/models` を足し、§4 に Ollama の導入とモデルの取得の受け入れ条件を足した。Ollama 本体は既存の `/model-manager/runtimes/ollama/…` で扱う。状態は仕様のみ（未実装） | Issue #1105 |
 | 1.21 | 2026-11-06 | §1 に `/model-manager/companion/ffmpeg`（`GET`・`PUT`・`…/download`・`…/download/cancel`）・`/model-manager/companion/facefusion`（`GET`・`PUT`）・`/model-manager/companion/index` を足し、`/settings/ffmpeg`・`/settings/facefusion` を 303 にして `PUT`・`POST`・`DELETE` を廃止した。§3 に分類 `companion` を足し、§4 に受け入れ条件を足した。FaceFusion は取得しない（導入のルートは無い）。状態は仕様のみ（未実装） | Issue #1106 |
+| 1.22 | 2026-11-07 | 「試し生成」の廃止（#1100）を実装した。状態を「実装済み」にした（`handler/modelmgr/trialgonetest`）。仕様の内容は変えない | Issue #1100 |

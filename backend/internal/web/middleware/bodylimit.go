@@ -30,7 +30,6 @@ var uploadRoutes = map[string]struct{}{
 	"POST /projects/:id/reviews/feedback":                             {},
 	"POST /reviews/import":                                            {},
 	"POST /workflows/import":                                          {},
-	"POST /model-manager/trials":                                      {},
 	"POST /generation-test/estimate":                                  {},
 	"POST /generation-test/match/estimate":                            {},
 }

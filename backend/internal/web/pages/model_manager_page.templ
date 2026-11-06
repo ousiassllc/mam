@@ -8,11 +8,11 @@ import (
 )
 
 // ModelManagerPage is GET /model-manager: the bundled ComfyUI engine, the local image and video models to install,
-// and the trial generations. It belongs to no Project.
+// and the Hugging Face import. It belongs to no Project.
 templ ModelManagerPage(csrfToken string, d modelmgr.Data) {
 	@layout.AppLayout("モデルマネージャー", csrfToken, sidenav.At(sidenav.ModelManager)) {
 		@pagehead.Main(pagehead.Medium) {
-			@pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入して、すぐに試し生成できます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。")
+			@pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。")
 			@modelmgr.Body(d)
 		}
 	}

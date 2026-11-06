@@ -30,9 +30,8 @@ func (h Handlers) AdultConfirm(c *gin.Context) {
 // SetAdult turns "show adult models" on or off (PUT /model-manager/adult; fields on = 1 or 0, and for the first turning on
 // notice_version with agree=1: the confirmation of the age and of the notice the dialog showed). Turning it on without a
 // confirmation on record is 409, one that does not say it is 18 or over is 422: no request can skip the confirmation.
-// The answer is the card, with the model list and the trial choices drawn again out of band.
+// The answer is the card, with the model list drawn again out of band.
 func (h Handlers) SetAdult(c *gin.Context) {
-	ctx := c.Request.Context()
 	on := c.PostForm(view.FieldOn) == "1"
 	var confirmation *modelmanager.AdultConfirmation
 	version, fromDialog := c.GetPostForm(view.FieldNoticeV)
@@ -60,9 +59,7 @@ func (h Handlers) SetAdult(c *gin.Context) {
 	}
 	cat := catalogData(c, h.Svc, nil)
 	cat.OOB = true
-	trial := h.trialPanel(ctx, view.TrialForm{}, "", "")
-	trial.OOB = true
-	render(c, http.StatusOK, oob.AdultWithCatalog(a, cat, trial))
+	render(c, http.StatusOK, oob.AdultWithCatalog(a, cat))
 }
 
 // commercialData is the setting "商用OKのモデルだけを使う": what the commercial-use choice of the filters starts at.
@@ -71,9 +68,8 @@ func commercialData(svc *modelmanager.Service) view.CommercialPanel {
 }
 
 // SetCommercial turns "商用OKのモデルだけを使う" on or off (PUT /model-manager/commercial; field on = 1 or 0). The answer is the card, and out of band the model list
-// (with its bar and panel, whose commercial-use choice starts at the new default) and the trial section.
+// (with its bar and panel, whose commercial-use choice starts at the new default).
 func (h Handlers) SetCommercial(c *gin.Context) {
-	ctx := c.Request.Context()
 	on := c.PostForm(view.FieldOn) == "1"
 	if err := h.Svc.SetCommercialOnly(on); err != nil {
 		status, msg := refuse(c, err)
@@ -89,7 +85,5 @@ func (h Handlers) SetCommercial(c *gin.Context) {
 	}
 	cat := catalogData(c, h.Svc, nil)
 	cat.OOB, cat.Filter.Sync = true, true
-	trial := h.trialPanel(ctx, view.TrialForm{}, "", "")
-	trial.OOB = true
-	render(c, http.StatusOK, oob.CommercialWithList(p, cat, trial))
+	render(c, http.StatusOK, oob.CommercialWithList(p, cat))
 }

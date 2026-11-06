@@ -107,14 +107,14 @@ for (const anchoring of [true, false]) {
       ).to.deep.equal([]);
     });
 
-    it('does not move the page when the polling ends and the list and the trial section are drawn again', async function () {
+    it('does not move the page when the polling ends and the list is drawn again', async function () {
       this.timeout(20_000);
       const before = await scrollToInstall();
       installButton().click();
       await waitUntil(() => card('model-5')?.getAttribute('data-state') === 'installing', 'the install did not start');
       seen = [];
 
-      // The list asks for itself every 2 s; the answer is the finished list with the trial section out of band.
+      // The list asks for itself every 2 s; the answer is the finished list.
       await waitUntil(() => card('model-5')?.getAttribute('data-state') === 'installed', 'the polling did not end', {
         timeout: 8000,
       });

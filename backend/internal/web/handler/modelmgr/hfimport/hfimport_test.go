@@ -151,7 +151,7 @@ func TestInstallingAFileShowsProgressThenTheModelAndDeletingItRemovesIt(t *testi
 	body := rec.Body.String()
 	assert.Contains(t, body, `data-path="models/checkpoints/pony.safetensors"`)
 	assert.Contains(t, body, "導入しました")
-	assert.Contains(t, body, `data-testid="mm-trial"`, "the trial choices are drawn again with the new model")
+	assert.NotContains(t, body, `hx-swap-oob`, "only the list is answered: no section is drawn out of band")
 	assert.NotContains(t, body, `hx-trigger="every 2s"`)
 	assert.Contains(t, s.Page(), `data-path="models/checkpoints/pony.safetensors"`)
 

@@ -36,7 +36,6 @@ func longNamesPage() templ.Component {
 	return modelmgr.Body(modelmgr.Data{
 		Engine:  modelmgr.Engine{Supported: true, Writable: true, Install: &modelmgr.Progress{JobID: "job-e", Percent: 12, Message: "ComfyUI_windows_portable_nvidia_cu128_" + longHash + ".7z", Bytes: "1.2 GiB / 2.1 GiB"}},
 		Catalog: catalog,
-		Trial:   scrollTrial(false),
 		HFImport: modelmgr.HFImport{
 			Kind: "text-to-image",
 			Result: modelmgr.HFResult{

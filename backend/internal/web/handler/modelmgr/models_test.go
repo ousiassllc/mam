@@ -34,9 +34,9 @@ func TestInstallModel_RunsAsAJobWithProgressAndThenIsInstalled(t *testing.T) {
 	assert.Contains(t, done.Body.String(), "「A」を導入しました")
 	assert.Contains(t, done.Body.String(), `data-state="installed"`)
 	assert.NotContains(t, done.Body.String(), `hx-trigger="every 2s"`)
-	assert.Contains(t, done.Body.String(), `id="mm-trial"`, "the trial choices are refreshed out of band")
+	assert.NotContains(t, done.Body.String(), `hx-swap-oob`, "only the list is answered")
 	assert.FileExists(t, s.rig.ModelFile(mmtest.CkptA))
-	assert.Contains(t, done.Body.String(), "comfyui:bundled-comfyui/wf-a")
+	assert.NotContains(t, done.Body.String(), "mm-trial", "no trial section is drawn out of band")
 
 	again := s.do(http.MethodPost, installURL("m-a"), nil)
 	assert.Equal(t, http.StatusConflict, again.Code)
@@ -183,7 +183,6 @@ func TestCSRF_AnActionWithoutTheTokenIsRefusedAndChangesNothing(t *testing.T) {
 		{http.MethodDelete, paths.ModelManagerPart("engine")},
 		{http.MethodPost, paths.ModelManagerPart("engine", "stop")},
 		{http.MethodPut, paths.ModelManagerPart("hf-token")},
-		{http.MethodPost, paths.ModelManagerPart("trials")},
 	} {
 		req := httptest.NewRequest(c.method, c.path, strings.NewReader("token=hf_x"))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

@@ -116,31 +116,25 @@ func mustView(t *testing.T, s *screen, id string) modelmanager.ModelView {
 	return m
 }
 
-// An installed adult model is a choice of the trial generation only while the gate is open: the trial form and the
-// generation test's model list leave it out, and a request that names it is refused as an unknown model.
-func TestAdult_TrialGenerationDoesNotOfferOrRunAnAdultModelWhileTheGateIsClosed(t *testing.T) {
+// An installed adult model is a choice of the generation test only while the gate is open: the model list of the screen and the
+// generation test's model list leave it out while it is closed.
+func TestAdult_GenerationTestDoesNotOfferAnAdultModelWhileTheGateIsClosed(t *testing.T) {
 	s := newScreen(t)
 	s.rig.InstallEngine()
 	s.rig.ConfirmAdult()
 	require.Equal(t, "succeeded", string(s.rig.InstallModel("m-d").State))
 	const id = "comfyui:bundled-comfyui/wf-d"
 
-	form := s.get(paths.ModelManagerPart("trials", "form")).Body.String()
-	assert.Contains(t, form, id, "open: it is a choice")
 	_, err := s.rig.Gentest.Model(t.Context(), "image", id)
-	require.NoError(t, err)
+	require.NoError(t, err, "open: it is a choice")
 
 	require.NoError(t, s.rig.Svc.SetAdultContent(false, nil))
-	form = s.get(paths.ModelManagerPart("trials", "form")).Body.String()
-	assert.NotContains(t, form, id, "closed: the trial form does not offer it")
 	assert.NotContains(t, s.page(), id)
 	_, err = s.rig.Gentest.Model(t.Context(), "image", id)
-	require.ErrorIs(t, err, gterr.ErrNotFound, "the generation test does not list it either")
+	require.ErrorIs(t, err, gterr.ErrNotFound, "closed: the generation test does not list it")
 	for _, m := range s.rig.Gentest.Models(t.Context(), "") {
 		assert.NotEqual(t, id, m.ID)
 	}
-	rec := s.multipartTrial(map[string]string{"model_id": id, "prompt": "x"}, nil)
-	assert.Equal(t, http.StatusNotFound, rec.Code, "and a request that names it is refused")
 }
 
 // The setting is CSRF protected like every other action: without the header it is refused and the gate stays closed.

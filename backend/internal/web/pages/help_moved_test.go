@@ -45,8 +45,8 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 		visible []string
 	}{
 		{"model manager", pages.ModelManagerPage("tok", modelmgr.Data{}),
-			[]string{"ローカルの画像・動画モデルを導入して、すぐに試し生成できます", "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します", "ダウンロードは取得元から直接で、SHA-256 を確かめます", "コミットに固定し、LFS の SHA-256 とサイズを確かめます"},
-			[]string{"モデルマネージャー", "ComfyUI エンジン", "試し生成", "外部の ComfyUI"}},
+			[]string{"ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます", "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します", "ダウンロードは取得元から直接で、SHA-256 を確かめます", "コミットに固定し、LFS の SHA-256 とサイズを確かめます"},
+			[]string{"モデルマネージャー", "ComfyUI エンジン", "外部の ComfyUI"}},
 		{"api keys and login", pages.SettingsAPIKeysBody(credentials.Data{}, &chatgpt.Data{}),
 			[]string{"保存したキーは再起動なしで次の呼び出しから使われます", "個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT"},
 			[]string{"API キー", "ChatGPT でログイン"}},

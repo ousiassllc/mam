@@ -1,5 +1,5 @@
 // Package mmview holds what the screen of the model manager and its MCP tools share beyond modelmanager.Service: how a
-// refusal of the service is told to the user (Refuse) and the models a trial generation can use (TrialModels). It is a
+// refusal of the service is told to the user (Refuse) It is a
 // package of its own because package modelmanager is at its size limit.
 package mmview
 
@@ -25,7 +25,7 @@ const (
 	// RefusalConflict: the state does not allow it now (409): a missing consent, age confirmation or engine, a running install, a
 	// pinned setting file, an OS without the bundled engine.
 	RefusalConflict
-	// RefusalNotFound: no such model, job or trial (404).
+	// RefusalNotFound: no such model or job (404).
 	RefusalNotFound
 )
 

@@ -101,8 +101,8 @@ type Services struct {
 	FFmpegDownload *ffmpegdl.Service
 	// FaceFusion is the "FaceFusion" section (the paths of the external face swapper). Nil leaves the section and its route out.
 	FaceFusion *facefusionsettings.Service
-	// Gentest is the generation test screen (paths.GenerationTest) and the trial generations of the model manager screen
-	// (service.Services.Gentest). Nil leaves the screen out and the trial panel without a form.
+	// Gentest is the generation test screen (paths.GenerationTest; service.Services.Gentest) and the face-check models of the model manager
+	// screen. Nil leaves the screen and that section out.
 	Gentest *gentest.Service
 	// JobList is the job list screen (paths.Jobs): the jobs that run and the latest that ended. Nil leaves the screen out.
 	JobList *joblist.Service
