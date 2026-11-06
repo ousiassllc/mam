@@ -99,7 +99,7 @@ func TestLocal_ADownServerIsUnusableWithTheReasonAndTheScreenThatFixesIt(t *test
 	assert.False(t, got.Availability.Available)
 	assert.Equal(t, modelfilter.ReasonEndpoint, got.Availability.Reason)
 	assert.Contains(t, got.Availability.Message, "ローカルサーバーに接続できません")
-	assert.Equal(t, "/settings/llm", got.Availability.Route)
+	assert.Equal(t, "/model-manager/local-llm", got.Availability.Route, "the page of the local LLM server (#1104)")
 
 	a, err := svc.Availability("local")
 	require.NoError(t, err)
@@ -156,5 +156,5 @@ func TestLocal_AnAssignmentAtADownServerIsAWarning(t *testing.T) {
 
 	require.Len(t, got, 1)
 	assert.Contains(t, got[0].Message, "ローカルサーバーに接続できません")
-	assert.Equal(t, "/settings/llm", got[0].Availability.Route)
+	assert.Equal(t, "/model-manager/local-llm", got[0].Availability.Route)
 }

@@ -306,6 +306,7 @@ func TestRecent_AnInstallLeadsToThePageOfItsCategory(t *testing.T) {
 		"engine":                   joblist.CategoryComfyUI,
 		"model:m-a":                joblist.CategoryImageVideo,
 		"runtime:gpt-sovits":       joblist.CategoryLocalRuntimes,
+		"runtime:llama-cpp":        joblist.CategoryLocalLLM,
 		"node:ipadapter-plus":      joblist.CategoryCustomNodes,
 		"hf:o/m@0123456789ab/x.sf": joblist.CategoryHFExternal,
 		"":                         "",

@@ -9,7 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 )
 
-// All is the one list: the six categories of Issue #1101 in their order, each with a name, a description, an icon and its sections; a slug and a section are in one category only.
+// All is the one list: the categories of Issues #1101 and #1104 in their order, each with a name, a description, an icon and its sections; a slug and a section are in one category only.
 func TestAllIsTheOneListOfTheCategories(t *testing.T) {
 	var slugs []string
 	slugSeen, sectionSeen := map[string]bool{}, map[string]string{}
@@ -27,7 +27,7 @@ func TestAllIsTheOneListOfTheCategories(t *testing.T) {
 			sectionSeen[id] = c.Slug
 		}
 	}
-	assert.Equal(t, []string{"comfyui", "image-video", "custom-nodes", "local-runtimes", "face-check", "hf-external", "companion"}, slugs)
+	assert.Equal(t, []string{"comfyui", "image-video", "custom-nodes", "local-runtimes", "local-llm", "face-check", "hf-external", "companion"}, slugs)
 }
 
 func TestFindIsTheCategoryOfASlug(t *testing.T) {
@@ -38,8 +38,8 @@ func TestFindIsTheCategoryOfASlug(t *testing.T) {
 	assert.False(t, ok, "the word of a part of the screen is no category")
 }
 
-// The categories that have a list of cards are the four of #1102 (they are drawn at the wide width: three columns need it); the engine, the face-check
-// models and the overview have no list.
+// The categories that have a list of cards are the four of #1102 and the page of the local LLM (#1104: the cards of the servers of mam). They are drawn at the wide
+// width: three columns need it. The engine, the face-check models, the companion software and the overview have no list.
 func TestCardsAreTheCategoriesWithAListOfCards(t *testing.T) {
 	var cards []string
 	for _, c := range mmcat.All() {
@@ -47,5 +47,5 @@ func TestCardsAreTheCategoriesWithAListOfCards(t *testing.T) {
 			cards = append(cards, c.Slug)
 		}
 	}
-	assert.Equal(t, []string{"image-video", "custom-nodes", "local-runtimes", "hf-external"}, cards)
+	assert.Equal(t, []string{"image-video", "custom-nodes", "local-runtimes", "local-llm", "hf-external"}, cards)
 }

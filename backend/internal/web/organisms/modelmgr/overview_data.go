@@ -16,6 +16,8 @@ const (
 	StateFull       = "full"
 	StateInstalling = "installing"
 	StateAttention  = "attention"
+	// StateReady is the line of "ローカル LLM": the server the calls go to can be used.
+	StateReady = "ready"
 )
 
 // CategoryCard is the card of a category on the overview: where it leads and how it stands, in words (what is read of the category now: nothing is stored).

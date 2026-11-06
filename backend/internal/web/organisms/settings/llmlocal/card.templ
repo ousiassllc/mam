@@ -1,165 +1,29 @@
 package llmlocal
 
 import (
-	"strconv"
-
-	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-const (
-	description = "Ollama・LM Studio・llama.cpp server など、OpenAI 互換の API（/v1/chat/completions・/v1/models）を出すサーバーを LLM のプロバイダー「local」として使います。API キーは要りません（サーバーが求めるときだけ入れます）。モデルは、サーバーが持っているものから「LLM の割り当て」で選びます。"
-	managedHelp = "mam が導入・管理する llama.cpp（モデルマネージャーの「ローカル」）で LLM を動かします。選ぶとベース URL と API キーは使わず、起動した llama.cpp のポートを自動で使います。モデルを変えると再起動します。"
-	baseURLHelp = "例: Ollama は http://localhost:11434、LM Studio は http://localhost:1234、llama.cpp server は http://localhost:8080。同じ PC か LAN・tailnet のサーバーを指定します（http も使えます。リンクローカルのアドレスは使えません）。末尾の /v1 は付けても付けなくても構いません。"
-)
+const description = "Ollama・LM Studio・llama.cpp server など、OpenAI 互換の API を出すサーバーを LLM のプロバイダー「local」として使うための設定です。使うサーバーの選択・llama.cpp の導入と起動・別のサーバーの URL は、モデルマネージャーでまとめて設定します。"
 
-// Card is the card, in a list of one (settingsui.CardItem is a list item). A save replaces it whole.
+// Card is the card, in a list of one: the state of the server in use and the link to where it is set. The whole card is the link.
 templ Card(d Data) {
 	<ul role="list" class="grid grid-cols-1 gap-4">
-		@settingsui.CardItem(d.card()) {
-			<form id="llm-local-form" class="flex w-full flex-col gap-3" hx-put={ paths.LLMLocal() } hx-target={ "#" + CardID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="llm-local-form">
-				if d.Managed != nil {
-					<div class="flex flex-col gap-1 rounded-lg border border-border p-3" data-testid="llm-local-managed">
-						<label class="flex items-start gap-2 text-sm text-ink">
-							@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": "use_managed", "value": "1", "checked": d.UseManaged, "disabled": d.Pinned, "data-testid": "llm-local-use-managed"})
-							<span>この PC の llama.cpp を使う<span class="block text-xs text-mute">{ managedHelp }</span></span>
-						</label>
-						<p class="text-sm text-ink" data-testid="llm-local-managed-state" data-state={ d.Managed.State }>{ d.Managed.stateText() }</p>
-						if d.Managed.Reason != "" && d.Managed.State != "running" && d.Managed.State != "stopped" {
-							<p class="whitespace-pre-wrap break-words text-sm text-warning" data-testid="llm-local-managed-reason">{ d.Managed.Reason }</p>
-						}
-						<a class="w-fit text-xs text-info underline" href={ templ.SafeURL(paths.ModelManagerCategory(paths.MMLocalRuntimes)) } data-testid="llm-local-managed-link">モデルマネージャーで導入・モデルを選ぶ</a>
-					</div>
-					if !d.Pinned {
-						<input type="hidden" name="use_managed_present" value="1"/>
-					}
-				}
-				<div class="flex flex-col gap-1">
-					<label class="text-sm text-ink" for="llm-local-base-url">ベース URL</label>
-					@atoms.Input(atoms.FieldSm, "w-full", templ.Attributes{
-						"id": "llm-local-base-url", "name": "base_url", "type": "text", "value": d.BaseURL, "placeholder": d.DefaultBaseURL,
-						"autocomplete": "off", "spellcheck": "false", "disabled": d.Pinned, "data-testid": "llm-local-base-url",
-						"aria-invalid": invalid(d.Blame == "base_url"), "aria-describedby": "llm-local-base-url-help",
-					})
-					<p id="llm-local-base-url-help" class="text-sm text-mute">{ baseURLHelp }</p>
-				</div>
-				<div class="flex flex-col gap-1">
-					<label class="text-sm text-ink" for="llm-local-api-key">API キー（任意）</label>
-					@atoms.Input(atoms.FieldSm, "w-full", templ.Attributes{
-						"id": "llm-local-api-key", "name": "api_key", "type": "password", "value": "", "placeholder": keyPlaceholder(d),
-						"autocomplete": "off", "spellcheck": "false", "data-testid": "llm-local-api-key", "aria-invalid": invalid(d.Blame == "api_key"),
-					})
-					if d.KeyConfigured {
-						<label class="flex items-center gap-2 text-xs text-ink">
-							@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": "clear_key", "value": "1", "data-testid": "llm-local-clear-key"})
-							保存したキーを削除する
-						</label>
-					}
-				</div>
-				<label class="flex items-start gap-2 text-sm text-ink">
-					@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": "unload", "value": "1", "checked": d.Unload, "disabled": d.Pinned, "data-testid": "llm-local-unload"})
-					<span>画像・動画を作る前に、Ollama のモデルをメモリから降ろす<span class="block text-xs text-mute">ComfyUI と GPU を取り合わないためのスイッチです（Ollama の keep_alive=0）。Ollama 以外のサーバーでは何もしません。使うときは、次の LLM の呼び出しでモデルを読み込み直すため少し待ちます。</span></span>
-				</label>
-				if !d.Pinned {
-					<input type="hidden" name="unload_present" value="1"/>
-				}
-				<div class="flex flex-wrap items-center gap-2">
-					@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit", "data-testid": "llm-local-save"})
-					@atoms.Button(atoms.ToneNeutral, "接続テスト", templ.Attributes{
-						"type": "button", "hx-post": paths.LLMLocalTest(), "hx-include": "#llm-local-form", "hx-target": "#" + ResultID, "hx-swap": "innerHTML",
-						"hx-sync": "this:replace", "hx-disabled-elt": "this", "data-testid": "llm-local-test",
-					})
-				</div>
-			</form>
-			<div id={ ResultID } class="w-full" aria-live="polite" data-testid="llm-local-result"></div>
-		}
+		@molecules.ToolCardItem(d.card())
 	</ul>
 }
 
-// invalid is the value of aria-invalid: "true" for the field to blame, absent for the others (a bare attribute is read as false).
-func invalid(yes bool) any {
-	if yes {
-		return "true"
+func (d Data) card() molecules.ToolCard {
+	tone := atoms.BadgeNeutral
+	text := d.State
+	if d.Problem != "" {
+		tone, text = atoms.BadgeWarn, d.State+"（"+d.Problem+"）"
 	}
-	return false
-}
-
-// stateText says where the managed llama.cpp stands, in a sentence.
-func (m Managed) stateText() string {
-	model := m.Model
-	if model == "" {
-		model = "モデル未選択"
-	}
-	switch m.State {
-	case "running":
-		return "動いています（モデル: " + model + "）。画像・動画を作る前に止まり、次の LLM の呼び出しで自動で起動します"
-	case "starting":
-		return "起動しています（モデル: " + model + "。読み込みに時間がかかります）"
-	case "stopped":
-		return "導入済みです（モデル: " + model + "）。最初の LLM の呼び出しで自動で起動します（モデルの読み込みに少し待ちます）"
-	case "failed":
-		return "起動に失敗しました（モデル: " + model + "）"
-	case "unsupported":
-		return "この PC では使えません"
-	}
-	return "まだ使えません"
-}
-
-func keyPlaceholder(d Data) string {
-	switch {
-	case d.KeyUnreadable:
-		return "キーストアを読めません"
-	case d.KeyConfigured && d.KeyHint != "":
-		return "設定済み（末尾 " + d.KeyHint + "）。空欄なら変更しません"
-	case d.KeyConfigured:
-		return "設定済み。空欄なら変更しません"
-	}
-	return "空欄（キー不要のサーバー）"
-}
-
-func (d Data) card() settingsui.Card {
-	c := settingsui.Card{
-		ID: CardID, TestID: "llm-local-card", Title: "ローカル LLM サーバー（OpenAI 互換）", Description: description,
-		Tone: atoms.BadgeNeutral, State: "プロバイダー local",
-	}
-	if d.KeyConfigured {
-		c.Marks = []settingsui.Mark{{Tone: atoms.BadgeOK, Text: "キーあり"}}
-	}
-	switch {
-	case d.Pinned:
-		c.Summary = "起動オプション（--llm-config / MAM_LLM_CONFIG）で設定ファイルが固定されているため、ベース URL とスイッチはこの画面では変えられません。"
-	case d.Problem != "":
-		c.Summary = "保存済みの設定ファイルを読み込めません（表示は既定値です）: " + d.Problem
-	case d.Error != "":
-		c.Summary = d.Error
-	case d.Notice != "":
-		c.Notice = d.Notice
-	}
-	return c
-}
-
-// Result is the answer of a connection test: what happened, the models the server has, or the common error of the failure.
-templ Result(r TestResult) {
-	if r.OK {
-		<div class="flex flex-col gap-1 rounded-lg border border-success/60 bg-success/10 p-3 text-sm text-ink" role="status" data-testid="llm-local-test-ok">
-			<p>{ r.Message }</p>
-			if len(r.Models) > 0 {
-				<ul class="list-inside list-disc text-xs text-ink" data-testid="llm-local-models">
-					for _, m := range r.Models {
-						<li class="break-all">{ m }</li>
-					}
-				</ul>
-				if r.Count > len(r.Models) {
-					<p class="text-sm text-mute">ほか { strconv.Itoa(r.Count - len(r.Models)) } 件</p>
-				}
-			}
-		</div>
-	} else if r.Failure != nil {
-		@errorbox.Box(errorbox.Props{View: *r.Failure, Lang: apperr.LangJa, ID: "llm-local-test"})
-	} else {
-		<p class="text-sm text-danger" role="alert" data-testid="llm-local-test-failed">{ r.Message }</p>
+	return molecules.ToolCard{
+		ID: "llm-local", Href: templ.SafeURL(paths.ModelManagerCategory(paths.MMLocalLLM)), Icon: atoms.IconNetwork, Title: "ローカル LLM サーバー", Description: description,
+		CTA: "モデルマネージャーで設定する", TestID: "llm-local-link", ItemAttrs: templ.Attributes{"data-testid": "llm-local-card"},
+		Status: []molecules.StatusLine{{Tone: tone, Text: text, Attrs: templ.Attributes{"data-testid": "llm-local-state"}}},
 	}
 }

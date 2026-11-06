@@ -14,6 +14,7 @@ const (
 	MMImageVideo    = "image-video"
 	MMCustomNodes   = "custom-nodes"
 	MMLocalRuntimes = "local-runtimes"
+	MMLocalLLM      = "local-llm"
 	MMFaceCheck     = "face-check"
 	MMHFExternal    = "hf-external"
 	MMCompanion     = "companion"
@@ -21,6 +22,18 @@ const (
 
 // ModelManagerCategory is the page of a category of the model manager, "/model-manager/<slug>".
 func ModelManagerCategory(slug string) string { return ModelManagerPart(slug) }
+
+// ModelManagerLocalLLMUse is "/model-manager/local-llm/use": PUT saves the server the calls of the provider "local" go to (field use: llama-cpp, ollama, custom) and answers
+// with the section "使うサーバー"; GET reads it again (?part=state: the line of its state alone, which the section polls while a server installs or starts).
+func ModelManagerLocalLLMUse() string { return ModelManagerPart(MMLocalLLM, "use") }
+
+// ModelManagerLocalLLMConnection is "/model-manager/local-llm/connection": PUT saves the address, the optional API key and the unload switch of "別のサーバー" (fields base_url,
+// api_key, clear_key, unload) and answers with the section.
+func ModelManagerLocalLLMConnection() string { return ModelManagerPart(MMLocalLLM, "connection") }
+
+// ModelManagerLocalLLMConnectionTest is "/model-manager/local-llm/connection/test": POST tries the server of the form (the typed base URL and key, else the saved ones) with
+// GET /v1/models and answers with the result alone.
+func ModelManagerLocalLLMConnectionTest() string { return ModelManagerLocalLLMConnection() + "/test" }
 
 // ModelManagerFaceModels is the section "顔チェック用モデル" of the model manager, on the page of its category (the link the generation test shows while the face
 // similarity is off, #1026).

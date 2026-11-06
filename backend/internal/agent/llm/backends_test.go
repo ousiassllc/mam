@@ -178,6 +178,7 @@ func TestLoadConfig_RejectsBadFiles(t *testing.T) {
 		"unknown agent":        `{"routes": {"writter": {"primary": {"provider": "openai", "model": "m"}, "fallback": {"provider": "google", "model": "m"}}}}`,
 		"unknown provider key": `{"providers": {"opneai": {"base_url": "http://x"}}}`,
 		"bad retry":            `{"retry": {"max_attempts": 0, "base_delay_ms": 1, "max_delay_ms": 1}}`,
+		"both managed servers": `{"providers": {"local": {"base_url": "http://localhost:11434", "use_managed_runtime": true, "use_managed_ollama": true}}}`,
 		"not json":             `nope`,
 	} {
 		path := filepath.Join(t.TempDir(), "llm.json")
@@ -187,6 +188,17 @@ func TestLoadConfig_RejectsBadFiles(t *testing.T) {
 	}
 	_, err := llm.LoadConfig(filepath.Join(t.TempDir(), "missing.json"))
 	assert.Error(t, err)
+}
+
+// use_managed_ollama is read, and it is exclusive with use_managed_runtime: the calls of the provider local go to one server (#1104).
+func TestParseConfig_UseManagedOllamaIsReadAndExcludesTheManagedRuntime(t *testing.T) {
+	cfg, err := llm.ParseConfig([]byte(`{"providers": {"local": {"base_url": "http://localhost:11434", "use_managed_ollama": true}}}`))
+	require.NoError(t, err)
+	assert.True(t, cfg.Providers[llm.ProviderLocal].UseManagedOllama)
+	assert.False(t, cfg.Providers[llm.ProviderLocal].UseManagedRuntime)
+
+	_, err = llm.ParseConfig([]byte(`{"providers": {"local": {"base_url": "http://localhost:11434", "use_managed_runtime": true, "use_managed_ollama": true}}}`))
+	assert.ErrorContains(t, err, "cannot both be true")
 }
 
 // images are what the AI Video Judge attaches: a captioned reference and a frame.

@@ -223,6 +223,7 @@ func TestList_AnInstallOpensThePageOfItsCategory(t *testing.T) {
 	s := screentest.New(t)
 	for target, slug := range map[string]string{
 		"engine": paths.MMComfyUI, "model:m-a": paths.MMImageVideo, "runtime:gpt-sovits": paths.MMLocalRuntimes,
+		"runtime:llama-cpp":   paths.MMLocalLLM,
 		"node:ipadapter-plus": paths.MMCustomNodes, "hf:o/m@0123456789ab/x.sf": paths.MMHFExternal,
 	} {
 		_, err := s.Rig.Table.Create(t.Context(), domain.JobModelInstall, []byte(`{"target":"`+target+`"}`))

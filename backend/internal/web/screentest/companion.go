@@ -30,7 +30,7 @@ type Companion struct {
 // NewWithCompanion opens the screen with the companion software c (and none of the other categories' optional services).
 func NewWithCompanion(t *testing.T, c Companion) *Screen {
 	t.Helper()
-	return open(t, mmtest.New(t), nil, nil, companionOf(t, c))
+	return open(t, mmtest.New(t), nil, nil, false, companionOf(t, c))
 }
 
 // companionOf puts the companion software into the settings routes the screen is built over.

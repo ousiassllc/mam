@@ -17,8 +17,14 @@ import (
 // RuntimeID is the id of the card of a local runtime (the element the actions of the card swap).
 func RuntimeID(id string) string { return "mm-runtime-" + id }
 
-// RuntimesID is the section of the local runtimes.
-const RuntimesID = "mm-runtimes"
+// RuntimesID is the section of the local voice and lip-sync runtimes, LLMRuntimesID the one of the runtimes of a language model (llama.cpp, Ollama; the page "ローカル LLM", #1104).
+const (
+	RuntimesID    = "mm-runtimes"
+	LLMRuntimesID = "mm-llm-runtimes"
+)
+
+// PurposeLLM is the value of the query "purpose" (GET /model-manager/runtimes?purpose=llm) and of Runtime.PurposeID for a runtime that makes text.
+const PurposeLLM = "llm"
 
 // Runtime is the card of a local runtime (GPT-SoVITS, MuseTalk): the same surface as the card of the engine.
 type Runtime struct {
@@ -26,6 +32,8 @@ type Runtime struct {
 	ID      string
 	Name    string
 	Purpose string
+	// PurposeID is what the runtime is for as the catalog says it ("tts", "lip_sync", "llm"): the card of an "llm" runtime is on the page "ローカル LLM", the others on "ローカル音声・口パク".
+	PurposeID string
 	// Icon is the picture of the card (the tile of the purpose: a voice, a lip sync).
 	Icon        atoms.IconName
 	Description string
@@ -78,10 +86,27 @@ type Runtime struct {
 // Polling reports whether the card has something in progress (an install, a start).
 func (r Runtime) Polling() bool { return r.Install != nil || r.State == "starting" }
 
-// Runtimes is the section "ローカル音声・口パク".
+// Runtimes is the section "ローカル音声・口パク", or with LLM the section "ローカルで動かすサーバー" of the page "ローカル LLM": the cards are those of the other purposes.
 type Runtimes struct {
 	view.Message
 	Items []Runtime
+	LLM   bool
+}
+
+// sectionID is the id of the section.
+func (r Runtimes) sectionID() string {
+	if r.LLM {
+		return LLMRuntimesID
+	}
+	return RuntimesID
+}
+
+// sectionURL is what the refresh button of the section reads.
+func (r Runtimes) sectionURL() string {
+	if r.LLM {
+		return paths.ModelManagerPart("runtimes") + "?purpose=" + PurposeLLM
+	}
+	return paths.ModelManagerPart("runtimes")
 }
 
 // detailURL is what the card opens: the modal with the sources, licenses, files and SHA-256 of the runtime.
