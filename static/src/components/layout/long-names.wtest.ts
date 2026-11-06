@@ -63,7 +63,9 @@ describe('long names stay inside their boxes (#1003)', () => {
 
   for (const width of [375, 1280]) {
     const screens: [string, string][] = [
-      ['the model manager (install progress, files, Hugging Face)', 'layout-long-names-model-manager.html'],
+      ['the model manager: the engine (#1101)', 'layout-long-names-mm-comfyui.html'],
+      ['the model manager: the models (#1101)', 'layout-long-names-mm-image-video.html'],
+      ['the model manager: Hugging Face (#1101)', 'layout-long-names-mm-hf-external.html'],
       ['the job list', 'layout-long-names-jobs.html'],
       ['the cards of the ChatGPT login (#1005)', 'layout-long-names-chatgpt-cards.html'],
       ['the cards of the voice and the lip sync (#1005)', 'layout-long-names-audio-cards.html'],
@@ -82,7 +84,7 @@ describe('long names stay inside their boxes (#1003)', () => {
 
   it('shows the whole progress line of an install: the file name wraps instead of being cut', async () => {
     await setViewport({ width: 375, height: 800 });
-    await show('layout-long-names-model-manager.html');
+    await show('layout-long-names-mm-image-video.html');
 
     const line = host.querySelector<HTMLElement>('[data-model] [data-testid=mm-progress] p')!;
     expect(line.textContent).to.contain('Wan2.2_Remix_NSFW_t2v_14b_high_lighting_v2.0.safetensors（1/4）');

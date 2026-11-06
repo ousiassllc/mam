@@ -31,14 +31,13 @@ func refreshOf(t *testing.T, body, target string) string {
 	return strings.ReplaceAll(m[1], "&amp;", "&")
 }
 
-// The engine, the model list, the files added from Hugging Face and the trial results have a refresh button that reads just its own part again, with when it was read.
-// What the reader types (the trial form) and the modal that is open are outside of the parts the button swaps.
+// The engine, the model list and the files added from Hugging Face have a refresh button that reads just its own part again, with when it was read.
+// The modal that is open is outside of the parts the button swaps.
 func TestRefresh_EveryPartThatChangesByItselfHasAButtonThatReadsItAgain(t *testing.T) {
 	s := screentest.New(t)
 	s.Rig.InstallEngine()
-	page := s.Page()
-	for _, target := range []string{"mm-engine", "mm-catalog", "mm-trials", "mm-hfi-models"} {
-		url := refreshOf(t, page, target)
+	for target, slug := range map[string]string{"mm-engine": paths.MMComfyUI, "mm-catalog": paths.MMImageVideo, "mm-hfi-models": paths.MMHFExternal} {
+		url := refreshOf(t, s.PageOf(slug), target)
 		rec := s.Get(url)
 		require.Equal(t, http.StatusOK, rec.Code, target)
 		body := rec.Body.String()
@@ -46,7 +45,6 @@ func TestRefresh_EveryPartThatChangesByItselfHasAButtonThatReadsItAgain(t *testi
 		assert.Contains(t, body, `id="`+target+`-refresh"`, "and brings the button back")
 		assert.Regexp(t, `最終更新 <time>\d\d:\d\d:\d\d</time>`, body)
 		assert.NotContains(t, body, "<dialog", "the modal that is open is not in an answer")
-		assert.NotContains(t, body, `id="mm-trial-form"`, "nor the form that is being typed in")
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 
 // IDs and fields of the section.
 const (
-	// SectionID is the section (the anchor the links of the generation test point to: /model-manager#mm-face-models).
+	// SectionID is the section (the anchor the links of the generation test point to: /model-manager/face-check#mm-face-models).
 	SectionID = "mm-face-models"
 	// ProgressID is the line the install's progress is written to while it runs; InstallID the install button that starts its polling.
 	ProgressID = "mm-face-models-progress"

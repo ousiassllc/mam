@@ -35,7 +35,7 @@ func consent() url.Values {
 // need it. Nothing of the pins is on the card; the modal has them.
 func TestNodes_ThePageListsTheAllowlistWithTheAnswerForCommercialUseAndWhyOneCannotBeInstalled(t *testing.T) {
 	s := screentest.NewWithNodes(t)
-	body := s.Page()
+	body := s.PageOf(paths.MMCustomNodes)
 	assert.Contains(t, body, `id="mm-nodes"`)
 	assert.Equal(t, 2, strings.Count(body, `data-testid="mm-node"`), "a card for each node of the allowlist")
 	assert.Contains(t, body, `data-node="pack" data-state="not_installed"`)
@@ -100,7 +100,7 @@ func TestNodes_InstallThenRemoveChangesWhatTheEngineIsToldToLoad(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `data-state="installed"`)
 	assert.Contains(t, rec.Body.String(), "Pack を導入しました")
 	assert.Equal(t, []string{"pack"}, s.Nodes.Nodes.Enabled())
-	assert.Contains(t, s.Page(), "このノードを使うモデル: Uses pack（未導入）")
+	assert.Contains(t, s.PageOf(paths.MMCustomNodes), "このノードを使うモデル: Uses pack（未導入）")
 
 	rec = s.Do(http.MethodDelete, nodePart("pack"), nil)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -124,7 +124,7 @@ func TestNodes_ANodeMamDoesNotInstallIsRefusedWithTheReason(t *testing.T) {
 func TestNodes_WithoutTheEngineTheInstallIsRefusedAtOnce(t *testing.T) {
 	s := screentest.NewWithNodes(t)
 	s.Nodes.Engine.View.Installed = false
-	body := s.Page()
+	body := s.PageOf(paths.MMCustomNodes)
 	assert.Contains(t, body, "先に ComfyUI エンジンを導入してください")
 	rec := s.Do(http.MethodPost, nodePart("pack", "install"), consent())
 	assert.Equal(t, http.StatusConflict, rec.Code)

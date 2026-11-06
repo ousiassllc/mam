@@ -131,7 +131,7 @@ func DetailModal(p Provider, which string) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = atoms.ButtonLink(atoms.ToneNeutral, "モデルマネージャーを開く", templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-detail-open-manager-" + p.Field}).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = atoms.ButtonLink(atoms.ToneNeutral, "モデルマネージャーを開く", templ.SafeURL(paths.ModelManagerCategory(paths.MMLocalRuntimes)), templ.Attributes{"data-testid": "audio-detail-open-manager-" + p.Field}).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

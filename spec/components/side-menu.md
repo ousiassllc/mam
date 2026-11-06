@@ -95,3 +95,4 @@ body
 | 1.0 | 2026-11-02 | 新規作成（実装済み） | Issue #915 |
 | 1.1 | 2026-11-03 | 主な画面を 8 つから 9 つ（「ジョブ」を足した）にし、§5 に行を足した。左メニューの見本（`layout-sidenav.html`）を作り直した | Issue #980 |
 | 1.2 | 2026-11-06 | §2 の構成に、モデルマネージャーの概要と分類ページだけに出る 2 階層目（`ul#sidenav-mm-views`）を足した。状態は仕様のみ（未実装） | Issue #1101 |
+| 1.3 | 2026-11-07 | モデルマネージャーの 2 階層目（`ul#sidenav-mm-views`。概要と `mmcat.All()` の分類）を実装した（`sidenav.InModelManager`）。画面の項目は、概要では `aria-current="page"`、分類ページでは `aria-current="true"`。各リストに `data-testid`（`sidenav-screens`・`sidenav-views`・`sidenav-mm-views`）を付けた | Issue #1101 |

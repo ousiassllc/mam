@@ -17,17 +17,20 @@ import (
 
 func TestPage_ShowsTheEngineCardGPUAndTheCatalogBeforeAnInstall(t *testing.T) {
 	s := newScreen(t)
-	body := s.page()
+	body := s.pageOf(paths.MMComfyUI)
 	assert.Contains(t, body, `data-engine="missing"`)
 	assert.Contains(t, body, "未導入")
 	assert.Contains(t, body, `hx-get="`+paths.ModelManagerPart("engine", "gpu")+`"`, "the GPU is detected on load")
-	assert.Contains(t, body, `data-testid="mm-catalog-blocked"`)
-	assert.Contains(t, body, "先に ComfyUI エンジンを導入してください")
-	for _, name := range []string{">A<", ">B<", ">C<"} {
-		assert.Contains(t, body, name)
-	}
 	assert.Contains(t, body, "ComfyUI エンジンの説明", "the explanation is behind the ? of the section")
 	assert.Contains(t, body, `hx-get="`+paths.ModelManagerPart("engine", "detail")+`"`, "the card opens its modal")
+	assert.NotContains(t, body, `id="mm-catalog"`, "the models are on the page of the models")
+
+	models := s.pageOf(paths.MMImageVideo)
+	assert.Contains(t, models, `data-testid="mm-catalog-blocked"`)
+	assert.Contains(t, models, "先に ComfyUI エンジンを導入してください")
+	for _, name := range []string{">A<", ">B<", ">C<"} {
+		assert.Contains(t, models, name)
+	}
 
 	gpuBody := s.get(paths.ModelManagerPart("engine", "gpu")).Body.String()
 	assert.Contains(t, gpuBody, `data-testid="mm-gpu-recommended"`)
@@ -68,9 +71,9 @@ func TestInstallEngine_ShowsProgressThenTheInstalledCardAndEnablesTheCatalog(t *
 	assert.Contains(t, done, `data-testid="mm-engine-state"`)
 	assert.Contains(t, done, `data-state="stopped"`)
 	assert.NotContains(t, done, `hx-trigger="every 2s"`, "polling stops once the install ended")
-	assert.Contains(t, done, `id="mm-catalog"`, "the model list is drawn again, out of band")
-	assert.Contains(t, done, `hx-swap-oob="true"`)
-	assert.NotContains(t, s.page(), `data-testid="mm-catalog-blocked"`)
+	assert.NotContains(t, done, `id="mm-catalog"`, "the model list is on another page: it is not drawn out of band")
+	assert.NotContains(t, done, `hx-swap-oob`)
+	assert.NotContains(t, s.pageOf(paths.MMImageVideo), `data-testid="mm-catalog-blocked"`)
 }
 
 func TestEngine_StartStopAutoStartAndRemove(t *testing.T) {
@@ -109,7 +112,7 @@ func TestEngine_StartStopAutoStartAndRemove(t *testing.T) {
 func TestEngine_RefusalsOfTheOSAndTheState(t *testing.T) {
 	t.Run("not Windows: the card explains and every action is refused", func(t *testing.T) {
 		s := newScreen(t, mmtest.NotWindows())
-		body := s.page()
+		body := s.pageOf(paths.MMComfyUI)
 		assert.Contains(t, body, `data-engine="unsupported"`)
 		assert.Contains(t, body, "この PC では使えません")
 		detail := s.get(paths.ModelManagerPart("engine", "detail")).Body.String()

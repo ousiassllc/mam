@@ -31,7 +31,7 @@ templ Card(d Data) {
 						if d.Managed.Reason != "" && d.Managed.State != "running" && d.Managed.State != "stopped" {
 							<p class="whitespace-pre-wrap break-words text-sm text-warning" data-testid="llm-local-managed-reason">{ d.Managed.Reason }</p>
 						}
-						<a class="w-fit text-xs text-info underline" href={ templ.SafeURL(paths.ModelManager()) } data-testid="llm-local-managed-link">モデルマネージャーで導入・モデルを選ぶ</a>
+						<a class="w-fit text-xs text-info underline" href={ templ.SafeURL(paths.ModelManagerCategory(paths.MMLocalRuntimes)) } data-testid="llm-local-managed-link">モデルマネージャーで導入・モデルを選ぶ</a>
 					</div>
 					if !d.Pinned {
 						<input type="hidden" name="use_managed_present" value="1"/>

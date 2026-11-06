@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/installbtn"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -126,7 +127,10 @@ templ modelCard(m Model, blocked bool) {
 			@progressBar(*m.Install, m.Name+" の導入の進み具合")
 		}
 		if m.NeedsNodes != "" && m.State != "installed" {
-			<p class="text-sm text-warning" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
+			<p class="text-sm text-warning" data-testid="mm-nodes-note">
+				{ m.NeedsNodes }
+				<a class="underline" href={ templ.SafeURL(paths.ModelManagerPart(mmcat.CustomNodes) + "#" + NodesID) } data-testid="mm-node-needed-link">追加ノードの区画へ</a>
+			</p>
 		}
 		@modelcard.Actions() {
 			@modelActions(m, blocked)

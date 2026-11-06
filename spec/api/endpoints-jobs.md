@@ -19,3 +19,4 @@
 | 1.0 | 2026-11-03 | 新規作成 | Issue #980 |
 | 1.1 | 2026-11-03 | 読む対象に、`job` の行を持たない 6 種の作業のメモリ上の記録を足した。ルートは変わらない | Issue #1019 |
 | 1.2 | 2026-11-06 | 導入のジョブの行の行き先を、`target` に応じたモデルマネージャーの分類ページにすると決めた（ルートは変わらない。状態は仕様のみ） | Issue #1101 |
+| 1.3 | 2026-11-07 | 導入のジョブの行の行き先（`joblist.Dest.Category`）を実装した。`engine`→`comfyui`・`model:`→`image-video`・`runtime:`→`local-runtimes`・`node:`→`custom-nodes`・`hf:`→`hf-external`、ほかは概要 | Issue #1101 |

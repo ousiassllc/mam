@@ -22,7 +22,7 @@ import (
 // key, or not installed, is not offered), and the link to the source when d is itself an enhancement. errMsg is the red line.
 func FormFor(ctx context.Context, svc *gentest.Service, d record.ResultDetail, errMsg string) videoenhancebox.Form {
 	f := videoenhancebox.Form{
-		Error: errMsg, ResultID: d.ID, ModelsURL: paths.ModelManager(), SettingsURL: paths.Settings(),
+		Error: errMsg, ResultID: d.ID, ModelsURL: paths.ModelManagerCategory(paths.MMImageVideo), SettingsURL: paths.Settings(),
 		Upscale: videoenhancebox.Op{Name: videoenhancebox.OpUpscale}, Interpolate: videoenhancebox.Op{Name: videoenhancebox.OpInterpolate},
 	}
 	if v := d.VideoEnhance; v != nil {

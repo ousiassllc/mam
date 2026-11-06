@@ -1,7 +1,7 @@
 // Package modelpick is how every screen that lists models narrows them and chooses one (#1011): the filter bar (the search box and the funnel that opens the
 // panel of detailed filters, with the number of filters in force on the funnel), the panel, the chips of the filters in force (each with an ×, and "すべてクリア"), the note
 // that says how many models cannot be chosen now, and the model picker (a field that shows the model chosen and a dialog that lists the models as cards, with the same
-// bar). The model manager's catalog, the generation test's list and every field that chooses a model (the generation test's prompt match, trial and inpaint, the
+// bar). The model manager's catalog, the generation test's list and every field that chooses a model (the generation test's prompt match and inpaint, the
 // image and video assignment, the LLM assignment, a Shot's video model) draw these, so that they look and work the same.
 //
 // The filtering is not done here, nor by a script: a changed condition is sent to the server as a query string (modelfilter's keys), which answers the list of the

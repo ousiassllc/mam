@@ -116,7 +116,7 @@ Ollama 本体の導入・起動・停止・削除は、上の `install_local_run
 
 ## 試し生成（廃止。Issue #1100）
 
-モデルマネージャーの「試し生成」の区画は #1100 で廃止する（状態: 仕様のみ。未実装）。もともと専用のツールは無く（1.1 で削除）、ローカルのモデルを試すには `list_generation_models`・`estimate_generation_test`・`run_generation_test`（参照画像は用途 `gentest_reference`、結果のファイルは `get_generation_result` の URL）を使う。これは今までどおりで、**このファイルのツールは増減しない**。**導入済みの成人向けモデルは、年齢確認のゲートが閉じている間は `list_generation_models` に出ず、名指しても不明なモデルとして断られる**（Service が強制する。[model-manager.md](../architecture/model-manager/model-manager.md) §6.2）。1.0 の `list_trial_models`・`start_model_trial`・`list_model_trials`・`get_model_trial`・`get_model_trial_file_url`・`delete_model_trial`、アップロードの用途 `model_trial_reference`、ダウンロードの種類 `model_trial_file` は 1.1 で削除済み。
+モデルマネージャーの「試し生成」の区画は #1100 で廃止する（実装済み）。もともと専用のツールは無く（1.1 で削除）、ローカルのモデルを試すには `list_generation_models`・`estimate_generation_test`・`run_generation_test`（参照画像は用途 `gentest_reference`、結果のファイルは `get_generation_result` の URL）を使う。これは今までどおりで、**このファイルのツールは増減しない**。**導入済みの成人向けモデルは、年齢確認のゲートが閉じている間は `list_generation_models` に出ず、名指しても不明なモデルとして断られる**（Service が強制する。[model-manager.md](../architecture/model-manager/model-manager.md) §6.2）。1.0 の `list_trial_models`・`start_model_trial`・`list_model_trials`・`get_model_trial`・`get_model_trial_file_url`・`delete_model_trial`、アップロードの用途 `model_trial_reference`、ダウンロードの種類 `model_trial_file` は 1.1 で削除済み。
 
 ## ジョブ（`get_job`）
 
@@ -155,3 +155,4 @@ Ollama 本体の導入・起動・停止・削除は、上の `install_local_run
 | 1.18 | 2026-11-06 | `list_local_runtime_models` の `runtime_id` を省略可にし（省略するとモデルを持つすべての実行環境のモデル。各モデルに `runtime_id`）、フィルターの条件（`kinds`・`languages`・`uncensored`・`vram_fit`・`commercial`・`q` ほか）で絞れるようにした。日本語の声は `kinds=["audio"]`・`languages=["ja"]` | Issue #1015・#1011 |
 | 1.19 | 2026-11-06 | 「試し生成」の節を、区画の廃止（#1100）に合わせて書き直した（ツールの増減なし。状態は仕様のみ） | Issue #1100 |
 | 1.20 | 2026-11-06 | `list_ollama_models`・`pull_ollama_model`・`delete_ollama_model` を足し、ジョブの `target` に `ollama:<name>` を足した。Ollama 本体は既存の `*_local_runtime` で扱う（`runtime_id=ollama`）。状態は仕様のみ（未実装） | Issue #1105 |
+| 1.21 | 2026-11-07 | 「試し生成」の節の状態を「実装済み」にした（#1100。ツールの増減なし） | Issue #1100 |

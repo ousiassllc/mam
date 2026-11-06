@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/facemodels/facemodelstest"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
@@ -75,6 +76,18 @@ func NewWithNodes(t *testing.T) *Screen {
 	return s
 }
 
+// NewAll opens the screen with every category: the local runtimes, the custom nodes and the face-check models (each over fakes of its own; the actions of the
+// runtimes and the nodes are not run through this screen, only their pages).
+func NewAll(t *testing.T) *Screen {
+	t.Helper()
+	rig := mmtest.New(t)
+	rig.Gentest.FaceModels = facemodelstest.New(t).Svc
+	nodes := nodetest.New(t)
+	s := open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall), nodes)
+	s.Nodes = nodes
+	return s
+}
+
 func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *Screen {
 	t.Helper()
 	db := testdb.Open(t)
@@ -116,6 +129,9 @@ func (s *Screen) send(req *http.Request) *httptest.ResponseRecorder {
 	return rec
 }
 
+// Send sends the request as a client of the screen (the host and the address of a local one; no cookie or header is added).
+func (s *Screen) Send(req *http.Request) *httptest.ResponseRecorder { return s.send(req) }
+
 // Do sends an HTMX request with the form (nil: none).
 func (s *Screen) Do(method, path string, form url.Values) *httptest.ResponseRecorder {
 	s.T.Helper()
@@ -138,10 +154,16 @@ func (s *Screen) Visit(path string) *httptest.ResponseRecorder {
 	return s.send(req)
 }
 
-// Page is GET /model-manager (the whole page).
-func (s *Screen) Page() string {
+// Page is GET /model-manager (the whole page: the overview).
+func (s *Screen) Page() string { return s.PageAt(paths.ModelManager()) }
+
+// PageOf is GET /model-manager/<slug> (the whole page of a category).
+func (s *Screen) PageOf(slug string) string { return s.PageAt(paths.ModelManagerCategory(slug)) }
+
+// PageAt is the whole page at path.
+func (s *Screen) PageAt(path string) string {
 	s.T.Helper()
-	req := httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil)
+	req := httptest.NewRequest(http.MethodGet, path, nil)
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.T, http.StatusOK, rec.Code)

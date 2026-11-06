@@ -4,7 +4,7 @@
 
 > **#954 の追記（2026-11-02）**: モデルを並べる所（ローカル音声・口パク、カタログのモデル、Hugging Face から追加したファイル、外部の ComfyUI のモデル）は、すべて同じ 1 つのカード（`molecules/modelcard`）＋詳細モーダルになった。カードには名前・アイコン・大きさ・状態・導入ボタンなどだけが出て、出典・ライセンス・ファイル一覧・SHA-256 は、カードをタップして開くモーダルにある。下の「カードと詳細モーダル（#954）」が正で、それより前に書いてある「モデルの一覧はカード」「ローカル音声・口パクの区画」の見た目・構造の記述は、この節に読み替える（ルート・ポーリング・拒否の扱いは変わらない）。
 
-> **#1100 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1100）**: モデルマネージャーから区画「試し生成」（`#mm-trial`・`#mm-trials`。`TrialSection`・`TrialFormView`・`TrialList`）と、そのルート `/model-manager/trials/…` を**廃止する**。導入したモデルを試す場所は、**生成テスト画面（`GET /generation-test`。Issue の「`/gentest`」は誤記で、実在するルートはこちら）だけ**になる。生成テスト画面・`/generation-test/…`・MCP の生成テストのツール・履歴は変えない。これまでの試し生成の結果は生成テストの履歴にそのまま残る（データの移行・削除はしない）。区画の並びは「ComfyUI エンジン → ローカル音声・口パク・LLM → 追加ノード → 顔チェック用モデル → モデル → Hugging Face から導入 → Hugging Face のトークン → 外部の ComfyUI」になる。区画「モデル」の「?」ヘルプの末尾に、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。行き先は `paths.GenerationTest()`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つ置く。「導入したモデルは生成テストで試せます」だけで、試し生成のフォーム・結果の一覧・削除は画面に残さない。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
+> **#1100 の追記（2026-11-06）— 状態: 実装済み（Issue #1100）**: モデルマネージャーから区画「試し生成」（`#mm-trial`・`#mm-trials`。`TrialSection`・`TrialFormView`・`TrialList`）と、そのルート `/model-manager/trials/…` を**廃止した**。導入したモデルを試す場所は、**生成テスト画面（`GET /generation-test`。Issue の「`/gentest`」は誤記で、実在するルートはこちら）だけ**になる。生成テスト画面・`/generation-test/…`・MCP の生成テストのツール・履歴は変えない。これまでの試し生成の結果は生成テストの履歴にそのまま残る（データの移行・削除はしない）。区画の並びは「ComfyUI エンジン → ローカル音声・口パク・LLM → 追加ノード → 顔チェック用モデル → モデル → Hugging Face から導入 → Hugging Face のトークン → 外部の ComfyUI」になる。区画「モデル」の「?」ヘルプの末尾に、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。行き先は `paths.GenerationTest()`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つ置く。「導入したモデルは生成テストで試せます」だけで、試し生成のフォーム・結果の一覧・削除は画面に残さない。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
 
 > **#1106 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1106）**: 「FaceFusion のインストールがわかりにくい」。FaceFusion に限らず、追加のインストールが要る付随ソフト（ffmpeg・FaceFusion・Ollama・顔チェック用モデルほか）の入口を、モデルマネージャーに集める。新しい分類 `companion`「付随ソフト」（`#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion`）を足し、設定の「ffmpeg」「FaceFusion」の分類（パスの手入力）をここへ**移す**。**FaceFusion は mam が取得しない決定（[face-swap.md](../architecture/gentest/face-swap.md) §1）を覆さない**: 画面は「入れる手順」と「見つかったかの確認」を出す。取得する場合の案は、下の節「決定が要ること」（CTO の判断待ち）。下の節「付随ソフトの導入（#1106）」が正。
 
@@ -16,7 +16,7 @@
 
 > **#1102 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1102）**: モデルを並べる一覧の列数を、**1 列（〜639 px）→ 2 列（640 px〜）→ 3 列（1280 px〜）の 1 通りに統一**する。今は一覧ごとにバラバラ（ランタイム・追加ノードは 1 列→1024 px〜 2 列、モデルの一覧・追加したファイル・外部の ComfyUI のモデルは 1 列→2 列→1024 px〜 3 列）。下の節「カードの列数（#1102）」が正。
 
-> **#1101 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1101）**: 1 枚に積んでいた区画を、**分類ごとのサブページ**に分ける。`GET /model-manager` は概要（各分類への入口と導入状態のまとめ）だけになり、区画は `GET /model-manager/<slug>` の分類ページへ移る。区画の中身（カード・ダイアログ・`#mm-…` の ID・ポーリング・拒否の扱い）は変えず、置き場所だけが変わる。下の「分類のサブページ（#1101）」が正で、これより前の「区画は 1 枚のページに縦に並ぶ」記述はこの節に読み替える。
+> **#1101 の追記（2026-11-06）— 状態: 実装済み（Issue #1101）**: 1 枚に積んでいた区画を、**分類ごとのサブページ**に分けた。`GET /model-manager` は概要（各分類への入口と導入状態のまとめ）だけになり、区画は `GET /model-manager/<slug>` の分類ページへ移る。区画の中身（カード・ダイアログ・`#mm-…` の ID・ポーリング・拒否の扱い）は変えず、置き場所だけが変わる。下の「分類のサブページ（#1101）」が正で、これより前の「区画は 1 枚のページに縦に並ぶ」記述はこの節に読み替える。
 
 [overview.md](overview.md) §3 のコンポーネントの階層に、モデルマネージャーの画面（Issue #833）を足す。ルートと挙動は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md)、ComfyUI エンジンとモデルの仕組みは [../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md)。
 
@@ -88,7 +88,7 @@
 
 ## 分類のサブページ（#1101）
 
-> **状態: 仕様のみ（未実装。Issue #1101）**。Issue #1100（試し生成の廃止）のあとの区画の並びを分けるもの。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §4「分類のサブページの受け入れ条件」。
+> **状態: 実装済み（Issue #1101）**。Issue #1100（試し生成の廃止）のあとの区画の並びを分けるもの。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §4「分類のサブページの受け入れ条件」。
 
 - **分類**（`organisms/modelmgr/mmcat`〔新設〕の `All()` が唯一の一覧。ルート・左メニュー・概要のカード・テストはすべてこの一覧から作る）:
 
@@ -315,3 +315,5 @@
 | 1.29 | 2026-11-06 | 設定「テキスト生成（LLM）」の「ローカル LLM サーバー」を、モデルマネージャーの新しい分類 `local-llm`（「使うサーバー」`#mm-llm-use`・「ローカルで動かすサーバー」`#mm-llm-runtimes`・「別のサーバーにつなぐ」`#mm-llm-connection`）へ統合すると決めた。llama.cpp のカードを `local-runtimes` から `local-llm` へ移し、設定のカードはリンクだけにする（節「ローカル LLM の統合（#1104）」）。#1101 の分類の表・概要のまとめ・ページをまたぐリンクの表に反映した。状態は仕様のみ（未実装） | Issue #1104 |
 | 1.30 | 2026-11-06 | 分類 `local-llm` に、Ollama 本体のカード（`#mm-runtime-ollama`。`#mm-llm-runtimes` の中）と、区画「Ollama のモデル」（`#mm-ollama`。厳選した 3 つのカードの取得・中断・削除、そのほかのモデルの表示、詳細モーダル、ポーリング）を足すと決めた（節「Ollama の導入とモデルの取得（#1105）」）。状態は仕様のみ（未実装） | Issue #1105 |
 | 1.31 | 2026-11-06 | 新しい分類 `companion`「付随ソフト」（付随ソフトの一覧・ffmpeg・FaceFusion）を足し、設定の「ffmpeg」「FaceFusion」の分類をここへ移すと決めた。FaceFusion は取得せず、入れる手順（公式の conda → clone → `install.py`。推奨版 3.9.2）と「もう一度探す」を出す。取得する場合の案は「決定が要ること」に並べた（節「付随ソフトの導入（#1106）」）。#1101 の分類の表・概要のまとめ・ページをまたぐリンクの表に反映した。状態は仕様のみ（未実装） | Issue #1106 |
+| 1.32 | 2026-11-07 | 区画「試し生成」の廃止（#1100）を実装した。状態を「実装済み」にした。ページ見出しの「?」の説明は「導入したモデルは、生成テストで試せます」に変えた | Issue #1100 |
+| 1.33 | 2026-11-07 | 分類のサブページ（#1101）を実装した。状態を「実装済み」にした。実装の置き場所: 分類の表 `organisms/modelmgr/mmcat`（`All()`・`Find()`。スラッグの定数は `paths.MM*`）・概要 `organisms/modelmgr/overview.templ` と各分類のまとめ `handler/modelmgr/overview`・分類ページ `pages.ModelManagerCategoryPage`・ルート登録 `handler/modelmgr/categories.go`（分類ごとに 1 本。サービスが無い分類は登録しない）。エンジンが未導入・停止のときの案内 `mm-engine-needed` は `image-video` の読み込み時だけ描く | Issue #1101 |

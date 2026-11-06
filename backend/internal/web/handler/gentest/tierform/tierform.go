@@ -158,7 +158,7 @@ func easy(ctx context.Context, svc *gentest.Service, in In) (gentesttier.EasyDat
 		id = intent.All()[0].ID // the recipe is not among the choices (taken out, or deleted): the first of the intents
 	}
 	e := gentesttier.EasyData{
-		Prompts: in.Prompts, Translate: in.Translate, Count: in.Count, MaxPrompt: in.MaxPrompt, Sizes: sizes(in.Aspect), ModelsURL: paths.ModelManager(),
+		Prompts: in.Prompts, Translate: in.Translate, Count: in.Count, MaxPrompt: in.MaxPrompt, Sizes: sizes(in.Aspect), ModelsURL: paths.ModelManagerCategory(paths.MMImageVideo),
 	}
 	e.Recipes = recipes
 	for _, i := range intent.All() {

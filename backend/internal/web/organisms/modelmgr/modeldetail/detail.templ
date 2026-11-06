@@ -8,6 +8,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 func joinNames(names []string) string { return strings.Join(names, "、") }
@@ -31,7 +33,7 @@ templ Detail(m view.Model) {
 			@commercial.Badge(m.License.Answer)
 		</div>
 		if view.ShowsTokenGuide(m) {
-			<p class="text-sm text-warning" data-testid="mm-token-guide">{ m.TokenGuide } <a class="underline" href={ "#" + view.HFID } data-modal-close>トークンの区画へ</a></p>
+			<p class="text-sm text-warning" data-testid="mm-token-guide">{ m.TokenGuide } <a class="underline" href={ templ.SafeURL(paths.ModelManagerPart(mmcat.HFExternal) + "#" + view.HFID) } data-modal-close>トークンの区画へ</a></p>
 		}
 		if m.NeedsNodes != "" && m.State != "installed" {
 			<p class="text-sm text-warning" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>

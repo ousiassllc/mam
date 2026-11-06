@@ -66,7 +66,7 @@ func TestList_ARunningInstallIsListedAndTheRefreshButtonReadsItAgain(t *testing.
 	assert.Contains(t, page, `data-testid="jobs-subject">A<`, "the name of the model")
 	assert.Contains(t, page, `data-testid="jobs-progress"`)
 	assert.Regexp(t, `<progress[^>]*aria-label="導入 A（[^"]*）の進み具合"`, page)
-	assert.Regexp(t, `href="`+paths.ModelManager()+`"[^>]*aria-label="開く: 導入 A（`, page)
+	assert.Regexp(t, `href="`+paths.ModelManagerCategory(paths.MMImageVideo)+`"[^>]*aria-label="開く: 導入 A（`, page)
 	assert.Contains(t, page, `data-active="true"`)
 	assert.Contains(t, page, `hx-trigger="every 2s"`)
 	assert.Contains(t, page, "実行中 1 件")
@@ -216,4 +216,17 @@ func TestList_AVoiceTrainingLeadsToTheScreenOfTheCharacter(t *testing.T) {
 	assert.Contains(t, page, "声の学習")
 	assert.Regexp(t, `href="`+paths.Project("p1", "world-state")+`"[^>]*aria-label="開く: 声の学習 ユイ`, page)
 	assert.Regexp(t, `href="`+paths.Series("s1")+`"[^>]*aria-label="開く: 声の学習 ハル`, page)
+}
+
+// The row of an install opens the page of the model manager that holds what the install works on (#1101).
+func TestList_AnInstallOpensThePageOfItsCategory(t *testing.T) {
+	s := screentest.New(t)
+	for target, slug := range map[string]string{
+		"engine": paths.MMComfyUI, "model:m-a": paths.MMImageVideo, "runtime:gpt-sovits": paths.MMLocalRuntimes,
+		"node:ipadapter-plus": paths.MMCustomNodes, "hf:o/m@0123456789ab/x.sf": paths.MMHFExternal,
+	} {
+		_, err := s.Rig.Table.Create(t.Context(), domain.JobModelInstall, []byte(`{"target":"`+target+`"}`))
+		require.NoError(t, err)
+		assert.Contains(t, s.Visit(paths.Jobs()).Body.String(), `href="`+paths.ModelManagerCategory(slug)+`"`, target)
+	}
 }

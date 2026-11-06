@@ -1,13 +1,12 @@
 // Package modelmgr holds the handlers of the model manager screen (paths.ModelManager, spec/api/endpoints-model-manager.md):
 // the ComfyUI engine, the model catalog with the license consent, the view of an external
-// ComfyUI and the trial generations (the import from Hugging Face and its token are the child package hfimport). It is a package of its own because handler is at its size limit; like handler it
+// ComfyUI (the import from Hugging Face and its token are the child package hfimport). It is a package of its own because handler is at its size limit; like handler it
 // depends on the service layer and the web layer only. Every action calls modelmanager.Service (the same
 // service the MCP tools call), answers with the section it changed, and turns the service's refusals into a status
 // and a message with modelmanager.Refuse. view.go builds what the screen draws.
 package modelmgr
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -24,17 +23,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
-	"github.com/ousiassllc/mam/backend/internal/web/middleware"
-	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
-	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // Handlers answer the routes of the screen.
 type Handlers struct {
 	Svc *modelmanager.Service
-	// Gentest runs the trial generations (a batch of one result of the generation test) and keeps their results. Nil
-	// leaves the trial panel without a form.
+	// Gentest is the generation test service; its face-check models are the section "顔チェック用モデル". Nil leaves the section out.
 	Gentest *gentest.Service
 	// Runtimes are the local voice and lip-sync runtimes (section "ローカル音声・口パク"). Nil leaves the section and its routes out.
 	Runtimes *localruntime.Service
@@ -46,6 +41,8 @@ type Handlers struct {
 func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service) {
 	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds}
 	engine.GET(paths.ModelManager(), h.Page)
+	engine.GET(paths.ModelManagerPart("overview"), h.OverviewPart)
+	h.registerCategories(engine)
 	engine.GET(paths.ModelManagerPart("dialog"), h.CloseDialog)
 
 	engine.GET(paths.ModelManagerPart("engine"), h.Engine)
@@ -80,26 +77,9 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	engine.POST(paths.ModelManagerPart("models", ":id", "install"), h.InstallModel)
 	engine.DELETE(paths.ModelManagerPart("models", ":id"), h.DeleteModel)
 
-	hfimport.Register(engine, svc, func(ctx context.Context) view.TrialPanel { return h.trialPanel(ctx, view.TrialForm{}, "", "") })
+	hfimport.Register(engine, svc)
 	engine.GET(paths.ModelManagerPart("external"), h.External)
 	engine.GET(paths.ModelManagerPart("external", "detail"), h.ExternalDetail)
-
-	engine.GET(paths.ModelManagerPart("trials"), h.Trials)
-	engine.GET(paths.ModelManagerPart("trials", "form"), h.TrialForm)
-	engine.POST(paths.ModelManagerPart("trials"), h.StartTrial)
-	engine.DELETE(paths.ModelManagerPart("trials", ":id"), h.DeleteTrial)
-	engine.GET(paths.ModelManagerPart("trials", ":id", "file"), h.TrialFile)
-}
-
-// Page answers GET /model-manager: the page, or the body alone for an HTMX request (a history restore wants the page).
-func (h Handlers) Page(c *gin.Context) {
-	data := h.data(c)
-	c.Writer.Header().Add("Vary", "HX-Request, HX-History-Restore-Request")
-	if c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true" {
-		render(c, http.StatusOK, view.Body(data))
-		return
-	}
-	render(c, http.StatusOK, pages.ModelManagerPage(middleware.CSRFToken(c), data))
 }
 
 // CloseDialog answers with nothing: what "閉じる" swaps into the dialog area.

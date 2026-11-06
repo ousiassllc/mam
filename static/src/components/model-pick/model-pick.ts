@@ -15,7 +15,7 @@ import { requestFailureMessage, type RequestFailure } from '../lib/errors';
  *   (`dialog[data-model-pick-dialog]`) and is opened with showModal(). A card of the picker (`[data-mp-choose]`) puts the model it
  *   stands for into the hidden inputs of the field (`[data-mp-from="<key>"]`, the values in the card's `data-mp-values`), shows the
  *   card in the field, closes the dialog and sends `change` from the first input, so that the form that holds the field follows
- *   (a trial form that is drawn again for the model). The card of the model that is in the field now is marked (aria-pressed).
+ *   (a form that is drawn again for the model). The card of the model that is in the field now is marked (aria-pressed).
  * - Closing the dialog empties it and gives the focus back to the button that opened it.
  */
 
