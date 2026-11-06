@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 )
 
 // fakeArchive is the archive of the platform's asset holding one file, name: a zip for Windows, a tar.gz for macOS.
@@ -57,7 +58,7 @@ func TestMacOSArm64DownloadsInstallsAndRunsTheTarGzEngineOutsideTheApp(t *testin
 	st = ir.svc.Status()
 	require.Equal(t, codex.EngineReady, st.Engine, "%+v", st)
 	assert.Equal(t, codex.SourceDownload, st.Source)
-	assert.Equal(t, codex.InstallSucceeded, st.Install.State)
+	assert.Equal(t, exeinstall.Succeeded, st.Install.State)
 	engineExe := filepath.Join(root, "engine", fakeMacExeName)
 	got, err := os.ReadFile(engineExe)
 	require.NoError(t, err)

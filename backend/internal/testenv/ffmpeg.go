@@ -11,6 +11,18 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media/locate"
 )
 
+// FFmpegPath is where ffmpeg is: the search of locate.Find (PATH, then the Homebrew directories on macOS), the one the app
+// itself uses, so a test does not exec the bare name "ffmpeg" that only PATH resolves. A machine without ffmpeg ends the
+// test as MissingFFmpeg does.
+func FFmpegPath(t testing.TB) string {
+	t.Helper()
+	ffmpeg, err := locate.Find(locate.FFmpeg, "")
+	if err != nil {
+		MissingFFmpeg(t, "ffmpeg is not installed")
+	}
+	return ffmpeg
+}
+
 // madeFile is one ffmpeg result of the process: made once, read by every test that asks for it.
 type madeFile struct {
 	once sync.Once
@@ -29,10 +41,7 @@ var madeFiles sync.Map // key (extension + arguments) -> *madeFile
 // A machine without ffmpeg ends the test as MissingFFmpeg does.
 func FFmpegFile(t testing.TB, ext string, args ...string) []byte {
 	t.Helper()
-	ffmpeg, err := locate.Find(locate.FFmpeg, "")
-	if err != nil {
-		MissingFFmpeg(t, "ffmpeg is not installed")
-	}
+	ffmpeg := FFmpegPath(t)
 	v, _ := madeFiles.LoadOrStore(ext+"\x00"+strings.Join(args, "\x00"), &madeFile{})
 	m := v.(*madeFile)
 	m.once.Do(func() { m.data, m.err = encode(ffmpeg, ext, args) })

@@ -36,8 +36,8 @@ func DownloadData(s Services) view.Download {
 	d.Build, d.Publisher, d.SourceURL, d.SourceCodeURL = st.Pinned.Build, st.Pinned.Publisher, st.Pinned.SourceURL, st.Pinned.SourceCodeURL
 	d.License, d.LicenseURL = st.Pinned.License.Name, st.Pinned.License.URL
 	d.Install = view.DownloadInstall{
-		Running: st.Install.State == ffmpegdl.InstallRunning, Percent: st.Install.Percent, Message: st.Install.Message,
-		Error: st.Install.Error, Cancelled: st.Install.Cancelled, Succeeded: st.Install.State == ffmpegdl.InstallSucceeded,
+		Running: st.Install.State == exeinstall.Running, Percent: st.Install.Percent, Message: st.Install.Message,
+		Error: st.Install.Error, Cancelled: st.Install.Cancelled, Succeeded: st.Install.State == exeinstall.Succeeded,
 	}
 	if s.Settings != nil {
 		if v, err := s.Settings.View(); err == nil {

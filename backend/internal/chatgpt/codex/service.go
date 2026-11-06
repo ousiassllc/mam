@@ -21,8 +21,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/protocol"
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
-	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
 // InstructionMode says where the system prompt of an Agent goes.
@@ -92,13 +92,9 @@ type Service struct {
 	mu          sync.Mutex
 	rateWindows []Window
 	models      modelCache
-	install     installState
-	works       worktrack.Tracker // the installs, for the job list (Works)
-	credsStore  string            // keyring or auto, decided on the first start
+	credsStore  string // keyring or auto, decided on the first start
 
-	closed bool
-	// removing: Logout is deleting the engine and mam's files; StartInstall refuses (ErrEngineRemoving).
-	removing bool
+	install *exeinstall.Runner // the download of the engine; Logout holds it while the files are deleted (ErrEngineRemoving)
 
 	// bg counts the background refreshes of the account: a logout and Close wait for them.
 	bg sync.WaitGroup
@@ -131,6 +127,7 @@ func New(o Options) *Service {
 	}
 	s := &Service{opts: o, cat: cat, home: filepath.Join(o.DataDir, codexHomeDir), work: filepath.Join(o.DataDir, workDirName),
 		state: openState(filepath.Join(o.DataDir, StateFile))}
+	s.install = s.newInstall()
 	if asset, ok := cat.AssetFor(o.Platform, o.Arch); ok && o.Layout.Root != "" {
 		s.supported = true
 		s.installer = &engine.Installer{Layout: o.Layout, Version: cat.Version, Asset: asset, Fetch: o.Fetch, FreeBytes: o.FreeBytes, Now: o.Now}
@@ -166,10 +163,7 @@ func (s *Service) exePath() (path string, custom bool, err error) {
 
 // startProcess is the start function of the app-server: it prepares mam's own directories and launches the engine.
 func (s *Service) startProcess() (appserver.Process, error) {
-	s.mu.Lock()
-	installing := s.install.State == InstallRunning
-	s.mu.Unlock()
-	if installing { // the files are being replaced
+	if s.install.Status().State == exeinstall.Running { // the files are being replaced
 		return nil, ErrEngineInstalling
 	}
 	exe, _, err := s.exePath()
@@ -212,13 +206,7 @@ func (s *Service) session(ctx context.Context) (*appserver.Session, error) {
 
 // Close stops the app-server for good (mam shuts down) and cancels an install in progress.
 func (s *Service) Close() {
-	s.mu.Lock()
-	s.closed = true
-	cancel := s.install.cancel
-	s.mu.Unlock()
-	if cancel != nil {
-		cancel()
-	}
+	s.install.Close()
 	s.srv.Close()
 	s.bg.Wait()
 }

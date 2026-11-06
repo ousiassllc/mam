@@ -2,6 +2,7 @@ import { expect, waitUntil } from '@open-wc/testing';
 import { sendKeys } from '@web/test-runner-commands';
 import htmx from 'htmx.org';
 import '../../main';
+import { swapSettled } from '../testdata/htmx';
 
 const DATA = '/src/components/testdata';
 
@@ -26,6 +27,7 @@ describe('inline dialog of the model manager (#841: age confirmation)', () => {
     byId('opener').focus();
     byId('opener').click();
     await waitUntil(() => dialog() !== null, 'the dialog did not arrive', { timeout: 2000 });
+    await swapSettled();
   }
 
   beforeEach(render);
@@ -61,6 +63,7 @@ describe('inline dialog of the model manager (#841: age confirmation)', () => {
     await waitUntil(() => document.getElementById('dlg-error') !== null, 'the refusal was not drawn', {
       timeout: 2000,
     });
+    await swapSettled();
     expect(document.activeElement === byId('dlg-error')).to.equal(true);
 
     await sendKeys({ press: 'Escape' });

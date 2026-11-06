@@ -94,7 +94,7 @@ func TestInstallDownloadsInTheBackgroundAndTheEngineIsReady(t *testing.T) {
 	}
 	ir.install(t)
 	st := ir.svc.Status()
-	if st.Engine != codex.EngineReady || st.Source != codex.SourceDownload || st.Version != catalog.Default().Version || st.Install.State != codex.InstallSucceeded || st.Install.Percent != 100 {
+	if st.Engine != codex.EngineReady || st.Source != codex.SourceDownload || st.Version != catalog.Default().Version || st.Install.State != exeinstall.Succeeded || st.Install.Percent != 100 {
 		t.Fatalf("after: %+v", st)
 	}
 	if st.License.ID != "apache-2.0" || st.SourceURL == "" || st.Dir != ir.layout.Root {
@@ -128,7 +128,7 @@ func TestInstallFailureIsShownAndNothingIsLeft(t *testing.T) {
 	}
 	wrong.svc.WaitInstall()
 	st := wrong.svc.Status()
-	if st.Install.State != codex.InstallFailed || st.Install.Error == "" || st.Engine != codex.EngineNotInstalled {
+	if st.Install.State != exeinstall.Failed || st.Install.Error == "" || st.Engine != codex.EngineNotInstalled {
 		t.Fatalf("status = %+v", st)
 	}
 }
