@@ -47,8 +47,8 @@ func (b bundledComfyUI) URL(ctx context.Context) string {
 	return ""
 }
 
-// New is the training service over the local runtime, the voices of the Characters and ffprobe (tools may be nil: then no clip is accepted, the length
-// cannot be known). A training never runs together with the bundled ComfyUI: an idle one is asked to let go of its models, a generating one refuses it.
+// New is the training service over the local runtime, the voices of the Characters and ffprobe (tools may be nil, or hold no ffprobe yet: then no clip is
+// accepted, the length cannot be known; tools follows an ffmpeg that is set up while mam runs). A training never runs together with the bundled ComfyUI: an idle one is asked to let go of its models, a generating one refuses it.
 func New(rts *localruntime.Service, mgr *modelmanager.Service, voices *voicerefsvc.Service, tools *media.Tools, assetsDir string, logger *slog.Logger) *voicetrain.Service {
 	d := voicetrain.Deps{
 		Voices: voices, Runtime: voicetrain.OverRuntime(rts), GPU: gpufree.Guard{Engine: bundledComfyUI{mgr}}, AssetsDir: assetsDir, Logger: logger,

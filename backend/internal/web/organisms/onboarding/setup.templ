@@ -106,7 +106,6 @@ templ FFmpegBody(f FFmpeg) {
 			</p>
 			<p class="text-sm text-mute">ffmpeg: <code class={ codeClass }>{ f.FFmpeg }</code></p>
 			<p class="text-sm text-mute">ffprobe: <code class={ codeClass }>{ f.FFprobe }</code></p>
-			<p class="text-sm text-mute">mam を起動したあとに入れたときは、mam を再起動すると反映されます（ffmpeg は起動時に探します）。</p>
 		</div>
 	} else {
 		<div class="flex flex-col gap-3 rounded-md border border-warning/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-missing">
@@ -119,7 +118,7 @@ templ FFmpegBody(f FFmpeg) {
 				<p class="text-sm text-ink" data-testid="onboarding-ffmpeg-manual">自分で入れるときは、次のとおりです。</p>
 			}
 			@installGuide(f.OS)
-			<p class="text-sm text-ink">入れたあとは、mam を一度終了して、起動し直してください（ffmpeg は起動時に探します）。</p>
+			<p class="text-sm text-ink">入れたあとは、下の「もう一度確認する」を押してください。mam を再起動する必要はありません。</p>
 			<p><a href={ templ.SafeURL(paths.OnboardingStep(paths.OnboardingFFmpeg)) } class={ linkClass } data-testid="onboarding-ffmpeg-recheck">もう一度確認する</a></p>
 		</div>
 	}

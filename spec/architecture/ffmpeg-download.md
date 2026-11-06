@@ -74,7 +74,7 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 - 入れてある版と mam の固定した版が違うとき、画面は「この mam が確かめた版は X です。入れてある Y は、そのまま使えます」と出し、ボタンを「新しい版をダウンロード」にする。**入れてある版は使い続ける**（古くても ffmpeg として動く。勝手に消さない・勝手に取らない）。もう一度ボタンを押すと、同じ手順（§4）で入れ替わる。失敗しても、前の版が残る。
 - Windows では、動いている ffmpeg（Judge・書き出し・プレビューが使っている最中）のあるフォルダは改名できず、ウイルス対策ソフトが書いたばかりのファイルを調べている間も改名が失敗することがある。そのときは導入が失敗して前の版が残るので、少し待ってからもう一度押す（実機で確かめる項目。§9）。
 - **自動の更新確認・バックグラウンドの通信は無い**。ネットワークに出るのは、利用者が「ダウンロード」を押した間だけ。
-- 「削除」ボタンで、入れた ffmpeg を消せる（`bin/`・記録・ダウンロードの残りを消す）。起動中の mam は、再起動するまで、起動時に見つけた ffmpeg を使い続ける。
+- 「削除」ボタンで、入れた ffmpeg を消せる（`bin/`・記録・ダウンロードの残りを消す）。削除のすぐあとに、mam は ffmpeg を探し直す（ほかの場所の ffmpeg があればそれを使い、無ければ ffmpeg が要る機能は使えなくなる）。
 
 ## 6. 置き場所と探す順
 
@@ -88,13 +88,13 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 
 - ディレクトリ: Windows は `<mam.exe のディレクトリ>\ffmpeg`（アンインストーラーは `RMDir /r $INSTDIR` で、インストールディレクトリごと消す。`comfyui`・`codex` と同じ）。macOS は `<データディレクトリ>/ffmpeg`（`~/Library/Application Support/mam/ffmpeg`）。`MAM.app` の中には置かない（自動更新が `.app` を丸ごと入れ替えるため）。書き込めない場所（読み取り専用の場所のポータブル版）は、押した時点で「書き込めません」と答える。
 - **置き場所を決めるのに実行ファイルが要るのは Windows だけ**（`internal/app` の `downloadAnchor`）。macOS の置き場所はデータディレクトリなので、実行ファイルの場所（`os.Executable`）が分からなくても取得は無効にならない（ログも出さない）。Windows で分からないとき、macOS でデータディレクトリが分からないときは、取得を無効にしてログに理由を出す（`Supported` が偽。利用者が自分で入れた ffmpeg は使える）。
-- 探す順（[ffmpeg-lookup.md](ffmpeg-lookup.md) §1）: ① 設定したパス ② `PATH` ③ macOS の Homebrew の場所 ④ **ダウンロードして入れたもの**（`locate.Finder.Extra` に `bin/` を入れる）。`ffmpegsettings.Service` が `ffmpegdl.Service.Dirs` を呼ぶたびに読む（`WithManagedDirs`）ので、導入が終わったあとの探索（設定画面・初回ガイド）はすぐ見つけ、アプリの `media.Tools` は**次の起動から**使う（起動時に一度だけ探す）。
+- 探す順（[ffmpeg-lookup.md](ffmpeg-lookup.md) §1）: ① 設定したパス ② `PATH` ③ macOS の Homebrew の場所 ④ **ダウンロードして入れたもの**（`locate.Finder.Extra` に `bin/` を入れる）。`ffmpegsettings.Service` が `ffmpegdl.Service.Dirs` を呼ぶたびに読む（`WithManagedDirs`）ので、導入が終わったあとの探索（設定画面・初回ガイド）はすぐ見つけ、アプリの `media.Tools` も、導入の成功・削除の**すぐあと**に探し直して入れ替える（`ffmpegdl.Service.SetOnChange`。再起動は要らない。Issue #1047。[ffmpeg-lookup.md](ffmpeg-lookup.md) §3）。
 - 利用者が自分で入れた ffmpeg が `PATH` や Homebrew にあれば、それが使われ、ダウンロードしたものは使われない。画面は、別の場所の ffmpeg が見つかっているとき、その旨を出す。
 
 ## 7. 画面とルート
 
 - 設定画面の「ffmpeg」（`/settings/ffmpeg`）の下と、初回ガイドの「ffmpeg の確認」（ffmpeg か ffprobe が見つからないとき）に、同じ部品（`organisms/settings/ffmpeg.DownloadPanel`）を置く。**ダウンロードできる環境（Windows x64・macOS arm64）だけ**に出す。ほかの環境は、これまでの案内（`winget`・`brew`・汎用）だけ。初回ガイドでは、ボタンの下に「自分で入れるときは」として従来の案内を残す。
-- ボタン「ffmpeg をダウンロードして入れる」（新しい版があるときは「新しい版をダウンロード」）、進み具合（バーと %。ダウンロード → 展開 → 動作確認）、「中断」（部分ファイルを残し、もう一度押すと続きから）、「削除」。進行中は 2 秒ごとに自分を取り直す（Codex の取得と同じ）。成功すると「mam を一度終了して、起動し直してください」を出す。
+- ボタン「ffmpeg をダウンロードして入れる」（新しい版があるときは「新しい版をダウンロード」）、進み具合（バーと %。ダウンロード → 展開 → 動作確認）、「中断」（部分ファイルを残し、もう一度押すと続きから）、「削除」。進行中は 2 秒ごとに自分を取り直す（Codex の取得と同じ）。成功すると「すぐに使えます（mam を再起動する必要はありません）」を出す（入れ替えは、これを出す前に済んでいる）。
 - ルート（[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.2）: `GET` / `POST` / `DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`。
 
 ## 8. テスト
@@ -108,8 +108,8 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 
 ## 9. 実機で確かめること（Linux では確かめられない）
 
-- **Windows 11 x64**: ffmpeg の無い PC で、設定の「ffmpeg をダウンロードして入れる」を押し、約 110 MiB を取得して「ffmpeg を入れました」になること。mam を再起動して、Judge・Take のプレビュー・Export が動くこと。`<mam.exe のディレクトリ>\ffmpeg\bin` に `ffmpeg.exe`・`ffprobe.exe` ができ、**Windows Defender・SmartScreen が止めないこと**（Authenticode 署名は無い）。PATH に別の ffmpeg を入れたら、そちらが使われること。
-- **macOS（Apple Silicon）**: 同様に、約 54 MiB を取得して再起動後に Judge・プレビュー・Export が動くこと。`~/Library/Application Support/mam/ffmpeg/bin/ffmpeg` が **Gatekeeper に止められず**、`codesign -dv --verbose=4` で Developer ID の署名が出ること。Finder から起動した MAM.app で動くこと。`brew install ffmpeg` した ffmpeg があれば、そちらが使われること。
+- **Windows 11 x64**: ffmpeg の無い PC で、設定の「ffmpeg をダウンロードして入れる」を押し、約 110 MiB を取得して「ffmpeg を入れました」になること。mam を再起動せずに、Judge・Take のプレビュー・Export が動くこと。`<mam.exe のディレクトリ>\ffmpeg\bin` に `ffmpeg.exe`・`ffprobe.exe` ができ、**Windows Defender・SmartScreen が止めないこと**（Authenticode 署名は無い）。PATH に別の ffmpeg を入れたら、そちらが使われること。
+- **macOS（Apple Silicon）**: 同様に、約 54 MiB を取得して、再起動せずに Judge・プレビュー・Export が動くこと。`~/Library/Application Support/mam/ffmpeg/bin/ffmpeg` が **Gatekeeper に止められず**、`codesign -dv --verbose=4` で Developer ID の署名が出ること。Finder から起動した MAM.app で動くこと。`brew install ffmpeg` した ffmpeg があれば、そちらが使われること。
 - **Windows の入れ替え**: ダウンロードのあとの `bin.new` → `bin` の改名が、ウイルス対策ソフトに止められても、§4 6 のやり直し（最大 5 回）で入れ替わること。上限を超えて失敗したときに、画面のエラーが分かる文言であり、前の `bin` が使えること。
 - **9.0.2 の ffmpeg での mam の動作**（mam の CI は Ubuntu（apt）と macOS（Homebrew）の ffmpeg で動く）。同じ 9.0.2 の Linux 版ではテストが通ることを確かめたが、Windows・macOS のビルドでの Export（H.264・HEVC・VP9）・字幕（drawtext の既定フォント）は実機で確かめる。
 
@@ -120,3 +120,4 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 | 1.0 | 2026-11-01 | 新規作成。Windows x64（gyan.dev 9.0.2）と macOS arm64（martin-riedl.de 9.0.2）の ffmpeg / ffprobe を、ボタンでダウンロードして入れる。取得元・SHA-256 の固定・検証・GPL v3 の方針・更新の扱い（自動なし）・探す順（利用者の ffmpeg が先）を決めた | Issue #900 |
 | 1.1 | 2026-11-06 | 展開の失敗の分け方（`ErrInvalidRequest`・読み取りの失敗は `ErrUnsafeArchive` にしない・tar の展開は取り消しで止まる）、通信が切れたときの再開のログと利用者向けの文言、macOS は実行ファイルが見つからなくても取得を無効にしないことを書いた | Issue #1054 #1055 #1056 |
 | 1.2 | 2026-11-06 | §4 手順 6 に、入れ替えの改名を一時的なファイルロックで失敗しても上限つき（最大 5 回・200 ms 間隔）でやり直し、上限を超えたら前の `bin/` を戻して分かるエラーで失敗することを足した。§9 の Windows の入れ替えの確認項目を、やり直しで入れ替わることの確認に直した | Issue #1048。Windows ではウイルス対策ソフトなどが開いているファイルのせいで `bin.new` → `bin` の改名が一時的に失敗し得る |
+| 1.3 | 2026-11-06 | 導入の成功・削除のあとに、再起動せず `media.Tools` を入れ替える（§4・§5 の「次の起動から」をなくした）。§9 の確認を、再起動なしで Judge・プレビュー・Export が動くことに直した | Issue #1047 |

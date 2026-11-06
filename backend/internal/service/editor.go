@@ -175,7 +175,7 @@ func (s *EditorService) View(ctx context.Context, projectID, branchID string) (E
 	if err != nil {
 		return EditorView{}, err
 	}
-	v := EditorView{Project: project, BranchID: branchID, Defaults: defaults, CanRender: s.tools != nil}
+	v := EditorView{Project: project, BranchID: branchID, Defaults: defaults, CanRender: s.tools.Available()}
 	pending, err := s.editors.PendingReshoots(ctx, projectID)
 	if err != nil {
 		return EditorView{}, err

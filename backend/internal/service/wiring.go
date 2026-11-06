@@ -19,11 +19,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/characterdraft"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/previewcache"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
 	"github.com/ousiassllc/mam/backend/internal/service/broker"
+	"github.com/ousiassllc/mam/backend/internal/service/ffgate"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 )
 
@@ -118,7 +120,7 @@ func newWiring(deps Deps) *wiring {
 	c.takeActions = takeActions{judges: r.judges, policies: r.policies}
 	chat := &ChatService{c}
 	generations := &GenerationService{core: c, shots: r.gens, progress: broker.New[generation.Progress]()}
-	judges := &JudgeService{core: c, judges: r.judges, generations: generations}
+	judges := &JudgeService{core: c, judges: r.judges, generations: generations, frames: deps.Frames}
 	return &wiring{
 		deps: deps, logger: logger, r: r, c: c, chat: chat,
 		generations: generations,
@@ -168,8 +170,8 @@ func (w *wiring) wireJudge() {
 	})
 	// Resumable: judging is repeatable and cheap, so an interrupted run is run again.
 	d.Jobs.Register(domain.JobJudge, w.judges.runner.Handle, true)
-	w.c.takeActions.judgeEnabled = true
-	w.takeJudge = w.judges.runner
+	w.c.takeActions.judgeOn = func() bool { return gate.Open(d.Frames) }
+	w.takeJudge = ffgate.Judger{Judger: w.judges.runner, Frames: d.Frames}
 }
 
 // wireGeneration sets up the generation of Shot Takes (job "generate"): needs the queue, the LLM
@@ -203,7 +205,7 @@ func (w *wiring) wireRepair() {
 		Notify: w.notifyProgress,
 	}
 	if d.Media != nil { // splicing a Partial Regeneration into its Take needs ffmpeg
-		repairDeps.Splicer, repairDeps.Judge = w.takes, w.judges.runner
+		repairDeps.Splicer, repairDeps.Judge = ffgate.Splicer{Splicer: w.takes, Tools: d.Media}, w.judges.runner
 	}
 	w.repairs.agent = repair.New(repairDeps)
 	// Not resumable: a repair costs money, so an interrupted one is failed, not repeated.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -58,7 +59,7 @@ func (a *Agent) StartPartial(ctx context.Context, takeID string, req PartialRequ
 	}
 	// What can be refused without the Prompt Planner (a paid LLM call) is refused first: StartRepair
 	// below still decides who owns the Shot.
-	if a.Splicer == nil {
+	if !gate.Open(a.Splicer) { // none, or its ffmpeg is not set up yet
 		return domain.Job{}, ErrSpliceUnavailable
 	}
 	if shot.Shot.State.Busy() {

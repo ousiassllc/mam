@@ -48,6 +48,7 @@ type Service struct {
 
 	// removeFiles deletes the downloaded copy (the installer's Remove; tests replace it to hold a removal in the middle).
 	removeFiles func() error
+	onChange    func() // see SetOnChange
 }
 
 // New is the service. A platform with no pinned build is a service that is not Supported: StartInstall refuses, and Dirs is empty.
@@ -145,7 +146,7 @@ func (s *Service) newInstall() *exeinstall.Runner {
 			return s.installer.CheckSpace()
 		},
 		Install: func(ctx context.Context, report func(exeinstall.Status)) error {
-			return s.installer.Install(ctx, func(p Phase, done, total int64) {
+			err := s.installer.Install(ctx, func(p Phase, done, total int64) {
 				share := phaseShare[p]
 				pct := share[0]
 				if total > 0 {
@@ -153,6 +154,10 @@ func (s *Service) newInstall() *exeinstall.Runner {
 				}
 				report(exeinstall.Status{Phase: string(p), Percent: pct, Done: done, Total: total, Message: phaseMessage[p]})
 			})
+			if err == nil && s.onChange != nil {
+				s.onChange() // before the screen says it is installed: what it says is then true
+			}
+			return err
 		},
 		Succeeded: "ffmpeg を入れました",
 		Failed: func(err error) string {
@@ -214,8 +219,16 @@ func (s *Service) Remove() error {
 	}
 	defer release()
 	s.install.Reset()
-	return s.removeFiles()
+	err := s.removeFiles()
+	if s.onChange != nil {
+		s.onChange()
+	}
+	return err
 }
+
+// SetOnChange sets what is called when the downloaded copy changes: a successful install (before the screen says so) and a removal (done or
+// not). The app looks for ffmpeg again there, so that the change applies with no restart. Set it before the first install.
+func (s *Service) SetOnChange(f func()) { s.onChange = f }
 
 // Close stops an install in progress and refuses new ones (shutdown).
 func (s *Service) Close() { s.install.Close() }

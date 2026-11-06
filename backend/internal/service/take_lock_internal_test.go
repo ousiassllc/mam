@@ -12,7 +12,8 @@ import (
 )
 
 func TestTakeService_UsePartialStopsWaitingForTheShotWhenCancelled(t *testing.T) {
-	s := &TakeService{tools: &media.Tools{}}
+	tools := media.At("/bin/ffmpeg", "/bin/ffprobe") // "found": UsePartial gets as far as the lock
+	s := &TakeService{tools: &tools}
 	unlock, err := s.compose.Lock(context.Background(), "shot-1") // a composition of the Shot is running
 	require.NoError(t, err)
 	defer unlock()

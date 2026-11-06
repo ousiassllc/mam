@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 	"github.com/ousiassllc/mam/backend/internal/service/voicetrain"
 )
@@ -121,6 +122,26 @@ func TestAddClip_WithoutFFprobeNothingIsAccepted(t *testing.T) {
 	assert.Equal(t, apperr.CodeConflict, failureCode(t, err))
 	assert.Contains(t, cause(t, err), "ffprobe")
 	assert.Empty(t, f.files(filepath.Join(f.assets, "voicetrain")))
+}
+
+// ffprobe handed over at startup is still missing when the clip comes (set up while mam runs, #1047): the same refusal as having none, not "not audio",
+// and nothing is left behind.
+func TestAddClip_FFprobeThatIsNotFoundYetRefusesLikeNoFFprobe(t *testing.T) {
+	f := newFixture(t, "ok")
+	f.reference()
+	svc := voicetrain.New(voicetrain.Deps{Voices: f.voices, Runtime: f.rt, AssetsDir: f.assets, Probe: unavailableProbe{}})
+
+	_, err := svc.AddClip(context.Background(), f.project, "c1", file("a.wav", wavOf(5)), "x")
+
+	assert.Equal(t, apperr.CodeConflict, failureCode(t, err))
+	assert.Contains(t, cause(t, err), "ffprobe")
+	assert.Empty(t, f.files(filepath.Join(f.assets, "voicetrain")))
+}
+
+type unavailableProbe struct{}
+
+func (unavailableProbe) AudioDuration(context.Context, string) (float64, error) {
+	return 0, fmt.Errorf("%w: not found", media.ErrUnavailable)
 }
 
 func TestRemoveClips_DeletesOneOrAll(t *testing.T) {

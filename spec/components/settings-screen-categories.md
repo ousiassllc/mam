@@ -164,13 +164,13 @@
 
 方式: **フォーム（2 欄）＋ 状態の表示**。モーダルにしない（欄が 2 つで、保存は 1 回。結果をその場で読ませたい）。出す条件: `Services.FFmpeg` がある。探し方と方針は [../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)（Issue #856）。
 
-- 見出し（`h2`）は「ffmpeg」。「?」ヘルプ: 何に使うか（Take のプレビュー・サムネイル・部分採用・Judge）・パスを空にしたときの探し方・保存したパスは次の起動から使われること。
+- 見出し（`h2`）は「ffmpeg」。「?」ヘルプ: 何に使うか（Take のプレビュー・サムネイル・部分採用・Judge）・パスを空にしたときの探し方・保存したパスとダウンロードしたものは、すぐに使われる（再起動は要らない）こと。
 - 欄（`<label>` つき、`type=text autocomplete=off`）: 「ffmpeg のパス」（`name=ffmpeg`）・「ffprobe のパス」（`name=ffprobe`）。空は「自動で探す」（`placeholder`）。保存済みの値が入る。
 - 欄ごとの状態（`data-testid=ffmpeg-state-<欄>`）: 使えるときは `Badge`「使えます」とそのファイルのパス（指定があればそれ、無ければ探して見つけたもの）。使えないときは `Badge`（warn）「見つかりません」と理由（指定したパスが使えない: 絶対パスでない／実在する実行ファイルでない、または探した場所のどこにも無い）。
 - 欄の下に「パスを空にしたときの探し方」として、探すディレクトリを順に並べる（`PATH` の各項目 → macOS は `/opt/homebrew/bin`・`/usr/local/bin` → **mam がダウンロードして入れた `ffmpeg` フォルダの `bin/`**（最後。入れた記録があり、ファイルがそろっているときだけ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md) §1））。
-- ボタン: 「保存」（`PUT /settings/ffmpeg`）。成功は `role="status"`「保存しました。次に mam を起動したときから使われます」（両方空にしたときは「パスの指定を解除しました。…自動で探します」）。**パスが使えないときは 422 で書かず**、`role="alert"` に「ffmpeg のパス（…）を保存できませんでした。<理由>」を出し、入力を残す（探し直しに切り替えない。ffmpeg-lookup.md §2）。保存の失敗は 500。
+- ボタン: 「保存」（`PUT /settings/ffmpeg`）。成功は `role="status"`「保存しました。すぐに使われます（mam を再起動する必要はありません）」（両方空にしたときは「パスの指定を解除しました。すぐに、自動で探した ffmpeg に切り替わります」）。**パスが使えないときは 422 で書かず**、`role="alert"` に「ffmpeg のパス（…）を保存できませんでした。<理由>」を出し、入力を残す（探し直しに切り替えない。ffmpeg-lookup.md §2）。保存の失敗は 500。
 - 設定ファイル（`ffmpeg.json`）が読めないときは、分類の `role="alert"` の 1 文だけを出す（ほかの分類は使える）。概要のカードは「ffmpeg・ffprobe を使えます」（ok）／「ffmpeg が見つかりません」などの警告（warn）／「設定ファイルを読めません」。
-- 反映は次の起動から（動いている mam のツールは替えない）。保存すると、全分類の上の「再起動して反映」の欄に「ffmpeg・ffprobe のパス」が出る（[../architecture/restart.md](../architecture/restart.md) §2・§4）。
+- **反映は保存のすぐあと**（Issue #1047）。保存・ダウンロード・削除のあとに、mam は ffmpeg を探し直して全サービスの `media.Tools` を入れ替える。「使えます」は、Judge・プレビュー・Export がいま動かせるものと一致する（表示した探索の結果がサービスの持つものと違えば、その場で入れ替える。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md) §3）。「再起動して反映」の欄には出ない（[../architecture/restart.md](../architecture/restart.md) §2）。
 - **ダウンロードの部品（Issue #900）**: フォームの下に、`Services.FFmpegDownload` があり、この環境（Windows x64・macOS arm64）で取得できるときだけ `DownloadPanel`（`#ffmpeg-download`）を出す。見出し「mam でダウンロードして入れる」と状態（`Badge`: 未取得／入れてあります／ダウンロード中／壊れています）、バージョン。ボタンの前に、**ビルド名・配布元・大きさ（取得と展開後）・SHA-256 で確かめて一致しなければ削除すること・ライセンス（リンク）・この版のソース（リンク）・置き場所・「ボタンを押したときだけ通信します（自動の更新確認はしません）」**を書く。別の場所の ffmpeg が見つかっているときは、そちらが優先されるのでダウンロードは要らない、と添える。ボタン「ffmpeg をダウンロードして入れる」（新しい版があるときは「新しい版をダウンロード」と、入れてある版は使えるという注意）。進行中は `<progress>`・段階の文・「中断」、2 秒ごとに取り直す。中断は失敗として赤く出さない。成功は「mam を一度終了して、起動し直してください」。入れてあれば「削除」（確認つき）。探すディレクトリの一覧の最後が、入れたもの。ルートは [../api/endpoints-settings.md](../api/endpoints-settings.md) §5.2.1、方針は [../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)。
 
 ## 9. 音声・口パク（`/settings/audio`）
@@ -217,3 +217,4 @@
 | 0.19 | 2026-11-04 | §2 の LLM のモデル欄を、プロバイダーとモデルを一緒に選ぶモデル選択の欄にした。使えないプロバイダーを指す割り当ての警告を足した | Issue #1011・#1013 |
 | 0.20 | 2026-11-04 | §2 のローカル LLM サーバーのカードに「この PC の llama.cpp を使う」を足した | Issue #1008（後半） |
 | 0.21 | 2026-11-04 | §1.1 の表に `topaz`（Topaz Video API。接続テストは `GET /account/v1/credits/balance`）を足した | Issue #1031 |
+| 0.22 | 2026-11-06 | §8 の ffmpeg の反映を、次の起動から → 保存のすぐあと（再起動の欄に出さない）に改めた。概要カードの「使えます」はサービスが動かせるものと一致する | Issue #1047 |

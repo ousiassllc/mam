@@ -59,7 +59,7 @@ Issue #863 の本文で決まっていること（オーナー指示を含む）
 ### 4.3 `ffmpeg` — ffmpeg の確認
 
 - `ffmpeg` と `ffprobe` を、設定画面で指定したパス（`/settings/ffmpeg`）があればそれで、無ければ `PATH`・macOS の Homebrew の場所（`/opt/homebrew/bin`・`/usr/local/bin`）・mam がダウンロードして入れたもの（#900）の順に探す（mam が実際に使う探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)）。実行はしない。
-- **見つかった**: 「見つかりました」（緑）と「ffmpeg と ffprobe を使えます」、それぞれのパス。入れ方の案内は出さない。mam 本体は起動時にしか探さないので、「mam を起動したあとに入れたときは、mam を再起動すると反映されます」と添える。
+- **見つかった**: 「見つかりました」（緑）と「ffmpeg と ffprobe を使えます」、それぞれのパス。入れ方の案内は出さない。mam は ffmpeg を探し直して使うので、再起動の案内は出さない（Issue #1047）。
 - **見つからない**: どちらが無いかを書き（警告）、無いと何が縮退するかを 1 文（Judge・Take のプレビュー・部分採用）、そして **OS ごとの入れ方**を出す。OS は mam が動いている OS（`runtime.GOOS`）。
 
 | OS | 案内 |
@@ -68,8 +68,8 @@ Issue #863 の本文で決まっていること（オーナー指示を含む）
 | macOS | Homebrew で `brew install ffmpeg` を実行する（`ffprobe` も入る）。Homebrew の `/opt/homebrew/bin`・`/usr/local/bin` は自動で探すと書き、ほかの場所に入れたときは設定画面の「ffmpeg」でパスを指定する、と書く（#856） |
 | ほか（Linux） | お使いのパッケージマネージャーで ffmpeg（ffprobe を含む）を入れる、と書く |
 
-- **ダウンロードのボタン（Issue #900）**: Windows x64 と macOS（Apple Silicon）では、「見つからない」の枠の中、OS ごとの案内の**上**に、設定画面の「ffmpeg」と同じ部品（`DownloadPanel`。ボタン「ffmpeg をダウンロードして入れる」・進み具合・中断・削除。ビルド名・配布元・ライセンス・SHA-256 で確かめること・大きさ・置き場所・「ボタンを押したときだけ通信します」を、ボタンの前に表示）を置く。ルートは設定画面のもの（`POST /settings/ffmpeg/download` ほか。[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.2）。その下に「自分で入れるときは、次のとおりです。」と従来の案内（上の表）を残す。ダウンロードできない環境（Linux・Windows arm64・macOS の Intel）とダウンロードのサービスが無い構成は、従来の案内だけ。見つかっているときは出さない。入れ終わると部品が「mam を一度終了して、起動し直してください」を出す（ffmpeg は起動時に探すため）。方針は [../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)。
-- どの OS でも「入れたあとは mam を一度終了して起動し直してください（ffmpeg は起動時に探します）」と書き、「もう一度確認する」のリンク（同じ URL の GET）を置く。
+- **ダウンロードのボタン（Issue #900）**: Windows x64 と macOS（Apple Silicon）では、「見つからない」の枠の中、OS ごとの案内の**上**に、設定画面の「ffmpeg」と同じ部品（`DownloadPanel`。ボタン「ffmpeg をダウンロードして入れる」・進み具合・中断・削除。ビルド名・配布元・ライセンス・SHA-256 で確かめること・大きさ・置き場所・「ボタンを押したときだけ通信します」を、ボタンの前に表示）を置く。ルートは設定画面のもの（`POST /settings/ffmpeg/download` ほか。[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.2）。その下に「自分で入れるときは、次のとおりです。」と従来の案内（上の表）を残す。ダウンロードできない環境（Linux・Windows arm64・macOS の Intel）とダウンロードのサービスが無い構成は、従来の案内だけ。見つかっているときは出さない。入れ終わると部品が「すぐに使えます（mam を再起動する必要はありません）」を出す（入れ終わったすぐあとに mam が ffmpeg を探し直すため）。方針は [../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)。
+- どの OS でも「入れたあとは、下の「もう一度確認する」を押してください。mam を再起動する必要はありません。」と書き、「もう一度確認する」のリンク（同じ URL の GET）を置く。
 - コマンドは `<code>` で、コピーしやすい 1 行にする。
 
 ### 4.4 `mac` — Mac の準備（Codex・ComfyUI）。macOS のときだけ
@@ -141,3 +141,4 @@ macOS 以外ではこのステップはない（ナビにも出ず、URL は 404
 | 1.2 | 2026-10-28 | §2 のフラグを立てるページを実装に合わせた（最後以外の「ガイドを閉じる」）。§5 の枠の図を実装の nav（平らな一覧）に合わせた。`models` の有無で「使い始める前に」の一覧を変えること、状態の行の取り直しの契機（非 GET の完了）と「状態を確認できません」の範囲、ffmpeg が見つかったときの文言、壊れたフラグのファイルの上書き、コードのパスの保存失敗は 500 を追記 | Issue #879（#869 のレビューの残り） |
 | 1.3 | 2026-11-01 | §4.3 の ffmpeg の探し方を、設定で指定したパス → `PATH` → macOS の Homebrew の場所に直し、macOS の案内を「自動で探す。ほかの場所は設定で指定」にした | Issue #856 |
 | 1.4 | 2026-11-01 | §4.3 に、ダウンロードできる環境（Windows x64・macOS arm64）で見つからないときに、設定画面と同じ「ffmpeg をダウンロードして入れる」の部品を案内の上に置くことを足した | Issue #900 |
+| 1.5 | 2026-11-06 | §4.3 の ffmpeg の案内から、再起動の求め（「見つかった」の添え書き・「入れたあと」の文・ダウンロードの完了の文）をなくした（入れたあとは「もう一度確認する」で足りる。ダウンロードの完了・パスの保存のすぐあとから mam が使う） | Issue #1047 |

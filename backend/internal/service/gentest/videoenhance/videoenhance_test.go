@@ -2,6 +2,7 @@ package videoenhance_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/cloudenhance"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
@@ -171,6 +173,18 @@ func TestWithoutFfprobeTheEnhancementIsRefusedWithTheFix(t *testing.T) {
 	v := e.View(apperr.LangJa)
 	assert.Contains(t, v.Cause, "ffmpeg")
 	assert.NotEmpty(t, v.Remedy, "it says where to set ffmpeg")
+}
+
+// ffprobe handed over at startup can still be missing when the video comes (set up while mam runs, #1047): the same refusal, not "cannot read the video".
+func TestFfprobeThatIsNotFoundYetIsRefusedWithTheFix(t *testing.T) {
+	r := gentesttest.New(t, gentesttest.WithVideoEnhanceModels(), gentesttest.WithProbe(gentesttest.FakeProbe{Err: fmt.Errorf("%w: not found", media.ErrUnavailable)}))
+	src := aVideo(t, r)
+
+	_, err := videoenhance.Enhance(ctx, r.Svc, upscale(src, ""))
+
+	e, ok := apperr.As(err)
+	require.True(t, ok, "the common error: %v", err)
+	assert.Equal(t, apperr.CodeFFmpegMissing, e.Code)
 }
 
 func TestBadValuesAreRefused(t *testing.T) {

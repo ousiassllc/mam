@@ -47,6 +47,8 @@ type Runner interface {
 type Config struct {
 	// FFmpegPath is the ffmpeg the runtime runs (the runtime ships none): the one mam found (spec/architecture/ffmpeg-lookup.md).
 	FFmpegPath string
+	// FFmpeg, when set, gives the ffmpeg path at every clip instead of FFmpegPath: ffmpeg can be set up while mam runs (media.Tools.FFmpegPath).
+	FFmpeg func() string
 	// WorkDir is where the clip and the speech are put for the runtime to read ("" is the temporary directory).
 	WorkDir string
 	// BaseTimeout, PerSecondTimeout and MaxTimeout bound one clip: BaseTimeout + PerSecondTimeout per second of video, at most MaxTimeout.
@@ -95,6 +97,14 @@ func (c *Client) timeout(seconds float64) time.Duration {
 	return min(c.cfg.BaseTimeout+time.Duration(max(seconds, 0)*float64(c.cfg.PerSecondTimeout)), c.cfg.MaxTimeout)
 }
 
+// ffmpegPath is the ffmpeg the runtime runs for the clip made now ("" when there is none).
+func (c *Client) ffmpegPath() string {
+	if c.cfg.FFmpeg != nil {
+		return c.cfg.FFmpeg()
+	}
+	return c.cfg.FFmpegPath
+}
+
 // Sync puts the clip and the speech where the runtime can read them, has it make the mouth follow the speech and returns the mp4
 // (audiodirector.LipSyncer). req.Model is not used: MuseTalk 1.5 is the only model. A failure is an *localvoice.UnavailableError (no face,
 // out of video memory, too large, not installed, did not answer, over the time limit, an empty answer); the caller's own cancellation
@@ -104,6 +114,7 @@ func (c *Client) timeout(seconds float64) time.Duration {
 // itself (every frame is a frame of the picture, and the speech is cut at that rate), turns the speech into 16 kHz mono itself, and any
 // picture size is accepted up to what fits in memory (a video that does not is KindTooLarge, with a sentence to shorten it).
 func (c *Client) Sync(ctx context.Context, req audiodirector.LipSyncRequest) ([]byte, error) {
+	ffmpegPath := c.ffmpegPath() // read once: it can change while mam runs
 	switch {
 	case len(req.Video.Data) == 0 || len(req.Audio.Data) == 0:
 		return nil, errors.New("musetalk: the clip or the speech is empty")
@@ -111,10 +122,10 @@ func (c *Client) Sync(ctx context.Context, req audiodirector.LipSyncRequest) ([]
 		return nil, c.unavailable(localvoice.KindTooLarge, fmt.Sprintf("動画が %d MB を超えています", c.cfg.MaxVideoBytes>>20), nil)
 	case len(req.Audio.Data) > c.cfg.MaxAudioBytes:
 		return nil, c.unavailable(localvoice.KindTooLarge, fmt.Sprintf("音声が %d MB を超えています", c.cfg.MaxAudioBytes>>20), nil)
-	case c.cfg.FFmpegPath == "":
+	case ffmpegPath == "":
 		return nil, errors.New("musetalk: the path of ffmpeg is not set")
 	}
-	ffmpeg, err := filepath.Abs(c.cfg.FFmpegPath)
+	ffmpeg, err := filepath.Abs(ffmpegPath)
 	if err != nil {
 		return nil, fmt.Errorf("musetalk: ffmpeg path: %w", err)
 	}

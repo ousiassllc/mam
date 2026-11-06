@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -232,10 +233,9 @@ func (c *counter) first() string {
 	return c.firstID
 }
 
-// judgeTake has the AI Video Judge look at a Take that was just made. The Take is kept whether or
-// not it can be judged: the user can run the Judge again.
+// judgeTake has the AI Video Judge look at a Take that was just made. The Take is kept even if it cannot be judged: the user can run the Judge again.
 func (o *Orchestrator) judgeTake(ctx context.Context, takeID string) {
-	if o.judge == nil {
+	if !gate.Open(o.judge) { // no Judge, or its ffmpeg is not set up yet
 		return
 	}
 	if _, err := o.judge.Start(context.WithoutCancel(ctx), takeID); err != nil {

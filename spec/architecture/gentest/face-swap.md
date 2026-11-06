@@ -25,7 +25,7 @@
 | `path` | FaceFusion のフォルダ（`facefusion.py` と `facefusion/metadata.py` があるところ。`facefusion.py` のパスを書いても、その親として扱う）の絶対パス。空なら `~/facefusion`・`~/Documents/facefusion`・`~/Desktop/facefusion` を順に |
 | 使えないパス | 絶対パスでない・実行ファイルでない・`facefusion.py` が無い・FaceFusion のフォルダでない（`facefusion/metadata.py` が無い）は `*facefusion.ConfigError`（保存せず、画面は 422）。**保存済みのパスが後で使えなくなっても、探索には切り替えない**（別のものを起動しないため。ffmpeg と同じ） |
 | 状態の表示 | Python とフォルダのそれぞれの「見つかりました（パス）／見つかりません（理由）」、見つかった FaceFusion の版とライセンス（`facefusion/metadata.py` の `version`・`license` の自己申告）、フォルダを探す場所 |
-| 反映 | **保存するとすぐ**使われる（ffmpeg は次の起動から。ffmpeg は起動時にツールを組み立てるが、FaceFusion は入れ替えのたびに探すため） |
+| 反映 | **保存するとすぐ**使われる（ffmpeg も同じ。ffmpeg は保存のすぐあとに探し直して全サービスの `media.Tools` を入れ替える。FaceFusion は入れ替えのたびに探す） |
 | FaceFusion を実行して確かめない | 状態の表示は、ファイルの有無と `metadata.py` の読み取りだけ（`facefusion.py --version` も走らせない。モデルのランタイムを読み込むので数秒かかる） |
 
 画面は設定の分類「FaceFusion」（`/settings/facefusion`。ffmpeg の次）。概要のカードは「FaceFusion を使えます」（ok）／「未設定（使うときだけ入れます）」（neutral）／「設定ファイルを読めません」（warn）。表に、入れ替え・顔検出・復元の各モデルの ID・ライセンスの級（バッジ）・FaceFusion の一覧の表記・既定・注を並べ、標準の注意（§1）とライセンスの出典へのリンクを付ける。ルートは `PUT /settings/facefusion`（フォーム `python`・`path`。空は指定なし。200 は分類の本文（`#facefusion-panel`）と通知、使えない値は 422 で入力を残す）。`settingsroutes.Services.FaceFusion` があるときだけ分類とルートがある（ない構成では 404）。

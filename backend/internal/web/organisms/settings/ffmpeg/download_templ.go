@@ -277,7 +277,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Install.Succeeded {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"ffmpeg-download-done\">ffmpeg と ffprobe を入れました。mam は起動時に ffmpeg を探すので、<strong>mam を一度終了して、起動し直してください</strong>。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"ffmpeg-download-done\">ffmpeg と ffprobe を入れました。<strong>すぐに使えます</strong>（mam を再起動する必要はありません）。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

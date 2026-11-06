@@ -32,8 +32,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
-	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
+	"github.com/ousiassllc/mam/backend/internal/media/ffwire"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
@@ -153,14 +153,8 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		Path: modelPath, Pinned: modelPinned, Keys: keys, Adapter: models, Backends: backendOpts, Logger: logger,
 	})
 
-	// ffmpeg for the Take previews, Partial Take Use and the AI Video Judge: the path set in the settings, else the search
-	// (spec/architecture/ffmpeg-lookup.md). nil when missing; a saved path takes effect from the next start.
-	var previews *media.Tools
-	if tools, err := newFFmpegSettings(cfg, ffmpegDL).Look(); err != nil {
-		logger.Warn("Take previews are limited: ffmpeg / ffprobe not found (4K Takes play as they are, Partial Take Use is off)", "err", err)
-	} else {
-		previews = &tools
-	}
+	// The one ffmpeg of every service: empty while it is missing, looked for again when a path is saved or ffmpeg is downloaded (ffwire).
+	previews := ffwire.Start(newFFmpegSettings(cfg, ffmpegDL).Look, ffmpegDL.SetOnChange, logger)
 
 	judging, err := newJudgeSetup(cfg, previews, logger)
 	if err != nil {
@@ -217,6 +211,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		AudioSettings: newAudioSettings(cfg, rts, keys), // read at every run
 	})
 	services.LocalModels = localModels
+	services.FFmpeg = previews
 	services.LLMClient, services.LLMLocal = reasoning, llmLocal
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
 	services.ModelManager = mgr

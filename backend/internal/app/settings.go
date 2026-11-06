@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
+	"github.com/ousiassllc/mam/backend/internal/media/ffwire"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -43,7 +44,8 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 		}
 	}
 	settings.LLMLocal = services.LLMLocal
-	ffmpeg := newFFmpegSettings(cfg, ffmpegDL, ffmpegsettings.WithOnSet(restartwork.FFmpegPaths(pending)))
+	look := newFFmpegSettings(cfg, ffmpegDL).Look
+	ffmpeg := newFFmpegSettings(cfg, ffmpegDL, ffmpegsettings.WithOnSet(func() { ffwire.Reload(services.FFmpeg, look, logger) }), ffmpegsettings.WithOnView(ffwire.Shown(services.FFmpeg, look, logger)))
 	settings.FFmpeg, settings.FFmpegDownload = ffmpeg, ffmpegDL
 	settings.FaceFusion = facefusionsettings.Default(cfg.DataDir) // the external face swapper (#995); the generation test reads the same file
 	settings.Keys = credential.NewKeyring()                       // the OS secure storage: the connection test of an API key reads a saved key from it

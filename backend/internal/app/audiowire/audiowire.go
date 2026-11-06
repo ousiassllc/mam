@@ -19,7 +19,7 @@ import (
 // Providers are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects; API key "elevenlabs"),
 // Sync Labs (Lip Sync; API key "synclabs") and the local voices and lip sync, GPT-SoVITS, Irodori-TTS and MuseTalk 1.5 of the local runtime
 // manager, which a run may choose instead of ElevenLabs' TTS and Sync Labs. A runtime need not be installed: the local provider reports that when
-// a run chooses it. The lip sync is told the ffmpeg of tools, the one the Director runs (nil: none; the Director is not available then either).
+// a run chooses it. The lip sync is told the ffmpeg of tools, the one the Director runs, at every clip (nil: none; the Director is not available then either).
 func Providers(keys credential.Store, rts *localruntime.Service, mgr *modelmanager.Service, tools *media.Tools) audiodirector.Providers {
 	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
 	p.LipSync = synclabs.New(synclabs.Config{}, keys, nil)
@@ -27,7 +27,7 @@ func Providers(keys credential.Store, rts *localruntime.Service, mgr *modelmanag
 	p.LocalIrodori = irodoriwire.Voice(rts, mgr)
 	lip := musetalk.Config{}
 	if tools != nil {
-		lip.FFmpegPath = tools.FFmpegPath()
+		lip.FFmpeg = tools.FFmpegPath
 	}
 	p.LocalLipSync = musetalk.New(locallipsync.Runner{Runtime: rts}, lip)
 	return p
