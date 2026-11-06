@@ -113,6 +113,8 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
       const el = await fixture<MamMaskPaint>(html`<mam-mask-paint src=${picture(320, 200)}></mam-mask-paint>`);
       await waitUntil(() => el.querySelector('canvas')!.width === 320, 'the picture was not read');
       expect(el.querySelector('canvas')!.height).to.equal(200);
+      const shown = el.querySelector<HTMLCanvasElement>('canvas[data-picture]')!;
+      expect([shown.width, shown.height], 'the picture is shown at its own size').to.deep.equal([320, 200]);
       const bmp = await createImageBitmap(await el.maskPNG());
       expect([bmp.width, bmp.height], 'the mask is the size of the picture').to.deep.equal([320, 200]);
     });
@@ -124,6 +126,21 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
       expect([view.width, view.height], 'the view is scaled').to.deep.equal([2048, 512]);
       const bmp = await createImageBitmap(await el.maskPNG());
       expect([bmp.width, bmp.height], 'the mask is scaled').to.deep.equal([2048, 512]);
+    });
+
+    it('shows a picture over the limit as a copy scaled down to the limit, not as the picture itself', async () => {
+      const src = picture(4200, 1050, (g) => {
+        g.fillStyle = '#ff0000';
+        g.fillRect(0, 0, 2100, 1050);
+      });
+      const el = await fixture<MamMaskPaint>(html`<mam-mask-paint src=${src}></mam-mask-paint>`);
+      await waitUntil(() => el.querySelector('canvas')!.width === 2048, 'the picture was not read');
+      expect(el.querySelectorAll('img').length, 'an <img> would keep the picture decoded at its own size').to.equal(0);
+      const shown = el.querySelector<HTMLCanvasElement>('canvas[data-picture]')!;
+      expect([shown.width, shown.height], 'the shown picture is scaled').to.deep.equal([2048, 512]);
+      const g = shown.getContext('2d')!;
+      expect([...g.getImageData(10, 256, 1, 1).data], 'the left half').to.deep.equal([0xff, 0, 0, 0xff]);
+      expect([...g.getImageData(2040, 256, 1, 1).data], 'the right half').to.deep.equal([0x33, 0x66, 0x99, 0xff]);
     });
 
     it('still paints where the pointer is on a scaled canvas', async () => {
