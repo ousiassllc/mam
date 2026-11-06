@@ -28,6 +28,7 @@ const (
 	keyOrigins       = "origins"
 	keyProviders     = "providers"
 	keyAudio         = "audio"
+	keyLanguages     = "languages"
 	keySpeeds        = "speeds"
 	keyQualities     = "qualities"
 	keyAvailableOnly = "available_only"
@@ -36,7 +37,7 @@ const (
 
 // Keys lists the query keys of the condition; a form that posts the filter, and the handler that stores a screen's choice, use them.
 func Keys() []string {
-	return []string{keyKinds, keyInputs, keyAdult, keyUncensored, keyParams, keyVRAMFit, keyCommercial, keyInstalled, keyOrigins, keyProviders, keyAudio, keySpeeds, keyQualities, keyAvailableOnly, keyText}
+	return []string{keyKinds, keyInputs, keyAdult, keyUncensored, keyParams, keyVRAMFit, keyCommercial, keyInstalled, keyOrigins, keyProviders, keyAudio, keyLanguages, keySpeeds, keyQualities, keyAvailableOnly, keyText}
 }
 
 // words is a list of the values of key: the repeated key and the comma-separated words, trimmed, lower case, empty ones left out.
@@ -65,7 +66,7 @@ func ParseQuery(v url.Values) (Condition, error) {
 		Adult: AdultFilter(strings.ToLower(strings.TrimSpace(v.Get(keyAdult)))), Uncensored: UncensoredFilter(strings.ToLower(strings.TrimSpace(v.Get(keyUncensored)))),
 		Commercial: strings.Join(words(v, keyCommercial), ","), Installed: InstalledFilter(strings.ToLower(strings.TrimSpace(v.Get(keyInstalled)))),
 		VRAMFit: flag(v, keyVRAMFit), Audio: flag(v, keyAudio), AvailableOnly: flag(v, keyAvailableOnly), Text: strings.TrimSpace(v.Get(keyText)),
-		Providers: words(v, keyProviders),
+		Providers: words(v, keyProviders), Languages: words(v, keyLanguages),
 	}
 	for _, w := range words(v, keyKinds) {
 		c.Kinds = append(c.Kinds, Kind(w))
@@ -133,6 +134,7 @@ func (c Condition) Query(start Condition) url.Values {
 	if c.Audio {
 		v.Set(keyAudio, "1")
 	}
+	set(keyLanguages, c.Languages)
 	set(keySpeeds, strs(c.Speeds))
 	set(keyQualities, strs(c.Qualities))
 	switch {
@@ -186,6 +188,7 @@ func (c Condition) Normalize() Condition {
 	c.Params = sorted(lower(c.Params), Bands())
 	c.Origins = sorted(lower(c.Origins), Origins())
 	c.Providers = uniq(lower(c.Providers))
+	c.Languages = uniq(lower(c.Languages))
 	c.Speeds = sorted(lower(c.Speeds), []traits.Level{traits.Fast, traits.Standard, traits.Slow})
 	c.Qualities = sorted(lower(c.Qualities), []traits.Level{traits.Basic, traits.Standard, traits.High})
 	if c.Adult = AdultFilter(strings.ToLower(strings.TrimSpace(string(c.Adult)))); c.Adult == AdultAll {

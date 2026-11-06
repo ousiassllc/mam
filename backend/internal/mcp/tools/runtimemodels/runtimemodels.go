@@ -6,10 +6,13 @@
 package runtimemodels
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/runtimechoices"
@@ -19,7 +22,7 @@ import (
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc}
 	mcpkit.Read(r, "list_local_runtime_models",
-		"ローカルの実行環境で選べるモデルの一覧（Irodori-TTS: v4.1-Small・v4.1-Small-MF・v4-Large・v4-Large の int8 / int4 / fp8。llama-cpp: Gemma 4 12B・Qwen3.8-27B・DeepSeek-R1-Distill-Qwen-14B の純正と非検閲〔uncensored: true。成人向け相当〕）。各モデルの種類（kind: tts・llm）・言語（languages）・ライセンスと商用利用の可否・倫理上の制限（cautions）・必要なビデオメモリ（この PC の GPU との判定つき）・取得するサイズ・使用中か・同意が要るか（consent_needed。同意の本文と版は consent）を返す。モデルを持たない実行環境は空 / The models of a local runtime with their license, restrictions, VRAM and whether the license has to be accepted.",
+		"ローカルの実行環境で選べるモデルの一覧（Irodori-TTS: v4.1-Small・v4.1-Small-MF・v4-Large・v4-Large の int8 / int4 / fp8。llama-cpp: Gemma 4 12B・Qwen3.8-27B・DeepSeek-R1-Distill-Qwen-14B の純正と非検閲〔uncensored: true。成人向け相当〕）。各モデルの種類（kind: tts・llm）・言語（languages）・ライセンスと商用利用の可否・倫理上の制限（cautions）・必要なビデオメモリ（この PC の GPU との判定つき）・取得するサイズ・使用中か・同意が要るか（consent_needed。同意の本文と版は consent）を返す。モデルを持たない実行環境は空。runtime_id を省くとモデルを持つすべての実行環境のモデルを返し、kinds（audio=声・llm）・languages（ja・en）・uncensored・vram_fit・commercial・q で絞れる（例: 日本語の声は kinds=[audio]・languages=[ja]） / The models of a local runtime with their license, restrictions, VRAM and whether the license has to be accepted.",
 		h.list)
 	mcpkit.Write(r, "select_local_runtime_model",
 		"ローカルの実行環境が使うモデルを選ぶ（動いているサーバーは止める。重みは、モデルを選んだあとに install_local_runtime_weights で取得する）。ライセンスの同意が要るモデル（Gemma Terms の v4-Large 系。list_local_runtime_models の consent_needed）は、ユーザーに consent.text を見せ、ユーザーが同意した後にだけ accept_license_version に consent.version を渡す。エージェントが代わりに渡してはならない（渡さなければ conflict で拒否され、何も記録しない）/ Choose the model of a runtime; a model with a license to accept needs accept_license_version, which only the user's own agreement may supply.",
@@ -54,19 +57,50 @@ type RuntimeInput struct {
 	RuntimeID string `json:"runtime_id" jsonschema:"list_local_runtimes の id（irodori-tts など）"`
 }
 
-// ListOutput is the models of a runtime.
-type ListOutput struct {
-	RuntimeID string                `json:"runtime_id"`
-	Models    []runtimechoices.View `json:"models"`
+// ListInput names a runtime (or, left out, every runtime that has models) and narrows its models by the conditions every model picker has
+// (modelfilter.Condition, #1011): kinds (audio: tts の声 / llm), languages (ja・en), uncensored, vram_fit, commercial, speeds, qualities and q. A runtime with models
+// has models of one kind, so kinds and languages tell the models of different runtimes apart when runtime_id is left out.
+type ListInput struct {
+	RuntimeID string `json:"runtime_id,omitempty" jsonschema:"list_local_runtimes の id（irodori-tts など）。省略すると、モデルを持つすべての実行環境のモデルを返す（kinds・languages で横断して絞れる）"`
+	modelfilter.Condition
 }
 
-func (h handlers) list(ctx context.Context, in RuntimeInput) (ListOutput, error) {
+// ListOutput is the models of a runtime (of every runtime that has models when none was named; each model says its runtime_id).
+type ListOutput struct {
+	RuntimeID        string                `json:"runtime_id,omitempty"`
+	Models           []runtimechoices.View `json:"models"`
+	CommercialFilter string                `json:"commercial_filter,omitempty" jsonschema:"適用した商用利用の絞り込み。commercial を省くと設定「商用OKのモデルだけを使う」に従う"`
+}
+
+func (h handlers) list(ctx context.Context, in ListInput) (ListOutput, error) {
 	s, err := h.choices()
 	if err != nil {
 		return ListOutput{}, err
 	}
-	views, err := s.Views(ctx, in.RuntimeID)
-	return ListOutput{RuntimeID: in.RuntimeID, Models: views}, mapError(err)
+	cond := in.Normalize()
+	if err := cond.Validate(); err != nil {
+		return ListOutput{}, &service.ValidationError{Message: err.Error()}
+	}
+	if cond.Commercial == "" { // without commercial the setting "商用OKのモデルだけを使う" decides, as list_model_catalog does
+		cond.Commercial = string(modellicense.DefaultFilter())
+		cond = cond.Normalize()
+	}
+	out := ListOutput{RuntimeID: in.RuntimeID, Models: []runtimechoices.View{}, CommercialFilter: cmp.Or(cond.Commercial, string(modellicense.FilterAll))}
+	ids := []string{in.RuntimeID}
+	if in.RuntimeID == "" {
+		ids = ids[:0]
+		for _, v := range h.svc.LocalRuntimes.List(ctx) {
+			ids = append(ids, v.ID)
+		}
+	}
+	for _, id := range ids {
+		views, err := s.Views(ctx, id)
+		if err != nil {
+			return ListOutput{}, mapError(err)
+		}
+		out.Models = append(out.Models, runtimechoices.Where(views, cond)...)
+	}
+	return out, nil
 }
 
 // SelectInput names the model to use.
@@ -88,5 +122,5 @@ func (h handlers) selectModel(ctx context.Context, in SelectInput) (ListOutput, 
 	if err := s.Select(ctx, in.RuntimeID, in.ModelID, accept); err != nil {
 		return ListOutput{}, mapError(err)
 	}
-	return h.list(ctx, RuntimeInput{RuntimeID: in.RuntimeID})
+	return h.list(ctx, ListInput{RuntimeID: in.RuntimeID})
 }

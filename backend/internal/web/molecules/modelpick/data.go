@@ -45,6 +45,8 @@ type Facets struct {
 	Origins           bool // ローカル / クラウド
 	// Providers are the providers the screen's models come from (none: no section).
 	Providers []Option
+	// Languages are the language codes (ISO 639-1) the screen's speaking models speak (none: no section); each is labelled by LanguageLabel.
+	Languages []string
 	Installed bool // すべて / 導入済みのみ / 未導入のみ
 	Audio     bool
 	Speed     bool

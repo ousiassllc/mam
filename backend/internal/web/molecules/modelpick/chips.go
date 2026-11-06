@@ -101,6 +101,21 @@ func (b Filter) providerLabel(v string) string {
 	return v
 }
 
+// LanguageLabel is how the screens name a language code of a model (ISO 639-1): the codes the catalog holds, and the code itself for any other.
+func LanguageLabel(code string) string {
+	switch code {
+	case "ja":
+		return "日本語"
+	case "en":
+		return "英語"
+	case "zh":
+		return "中国語"
+	case "ko":
+		return "韓国語"
+	}
+	return code
+}
+
 // URL is the address that draws the results for the condition c: the bar's action with the condition's words and the markers that say the request states the
 // condition (so that the remembered one is not read) and asks for the panel to be drawn again (the request came from a chip or a button, not from the panel,
 // so the panel does not show it yet).
@@ -136,7 +151,7 @@ func (b Filter) ClearAll() modelfilter.Condition {
 // without is c with the part dropped by edit (on a copy: the lists are cloned first).
 func without(c modelfilter.Condition, edit func(*modelfilter.Condition)) modelfilter.Condition {
 	c.Kinds, c.Inputs, c.Params = slices.Clone(c.Kinds), slices.Clone(c.Inputs), slices.Clone(c.Params)
-	c.Origins, c.Providers, c.Speeds, c.Qualities = slices.Clone(c.Origins), slices.Clone(c.Providers), slices.Clone(c.Speeds), slices.Clone(c.Qualities)
+	c.Origins, c.Providers, c.Languages, c.Speeds, c.Qualities = slices.Clone(c.Origins), slices.Clone(c.Providers), slices.Clone(c.Languages), slices.Clone(c.Speeds), slices.Clone(c.Qualities)
 	edit(&c)
 	return c
 }
@@ -182,6 +197,9 @@ func (b Filter) Chips() []Chip {
 	}
 	for _, p := range c.Providers {
 		add("提供元: "+b.providerLabel(p), func(x *modelfilter.Condition) { x.Providers = dropValue(x.Providers, p) })
+	}
+	for _, l := range c.Languages {
+		add("言語: "+LanguageLabel(l), func(x *modelfilter.Condition) { x.Languages = dropValue(x.Languages, l) })
 	}
 	if c.Audio {
 		add("音声つき", func(x *modelfilter.Condition) { x.Audio = false })
