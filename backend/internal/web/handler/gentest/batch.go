@@ -32,6 +32,10 @@ func batchView(b gentest.BatchStatus) view.Batch {
 	if b.EstimatedUSD > 0 {
 		v.Estimate = gtshare.USD(b.EstimatedUSD)
 	}
+	faces := map[string]string{}
+	for _, s := range b.FaceSummaries {
+		faces[s.Model] = faceSummaryText(s)
+	}
 	type key struct{ prompt, negative string }
 	col := map[key]int{}
 	row := map[string]int{}
@@ -43,7 +47,7 @@ func batchView(b gentest.BatchStatus) view.Batch {
 		}
 		if _, ok := row[r.Model]; !ok {
 			row[r.Model] = len(v.Rows)
-			v.Rows = append(v.Rows, view.Row{Model: r.ModelLabel, Answer: commercial.Of(r.Model)})
+			v.Rows = append(v.Rows, view.Row{Model: r.ModelLabel, Answer: commercial.Of(r.Model), Face: faces[r.Model]})
 		}
 	}
 	for i := range v.Rows {

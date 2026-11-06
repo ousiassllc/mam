@@ -213,7 +213,9 @@ type Col struct {
 type Row struct {
 	Model  string
 	Answer commercial.View
-	Cells  [][]resulttile.Card
+	// Face is the face similarity of the results of this model read together ("" when the batch had no reference of the role "face", Issue #998).
+	Face  string
+	Cells [][]resulttile.Card
 }
 
 // Batch is the progress and the comparison grid of a batch.

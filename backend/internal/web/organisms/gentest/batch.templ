@@ -81,6 +81,9 @@ templ BatchBox(b Batch) {
 								<span class="flex flex-col items-start gap-1">
 									<span>{ r.Model }</span>
 									@commercial.Badge(r.Answer)
+									if r.Face != "" {
+										<span class="font-normal text-mute" data-testid="gt-row-face">{ r.Face }</span>
+									}
 								</span>
 							</th>
 							for _, cell := range r.Cells {

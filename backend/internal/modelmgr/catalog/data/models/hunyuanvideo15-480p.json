@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "general",
  "traits": {"params_b": 8.3, "params_label": "8.3B", "uncensored": false, "speed": "slow"},
- "description": "HunyuanVideo 1.5 のテキストから動画（480p、cfg 蒸留版の fp8）。拡散モデル・テキストエンコーダー 2 つ・VAE の 4 ファイル、合計約 21 GB。24fps。",
+ "description": "【中ティア・非検閲ではない標準モデル】HunyuanVideo 1.5（8.3B）のテキストから動画（480p、cfg 蒸留版の fp8）。拡散モデル・テキストエンコーダー 2 つ・VAE の 4 ファイル、合計約 21 GB。24fps・音声なし。得意: 480p で品質の高いテキストからの動画（上位の 720p は hunyuanvideo15-720p-t2v、先頭フレームから作るのは hunyuanvideo15-720p-i2v）。注意: 先頭フレームの画像は使わない。VRAM は ComfyUI の公式ガイドの 24 GB を目安にした（16 GB では offload が前提で遅い）。ライセンス: Tencent Hunyuan Community License。EU・英国・韓国では使えない（導入しない）。月間アクティブユーザーが 1 億を超える製品は Tencent の許諾が要る。生成物を他の AI モデルの改良に使うことは禁止。同意が要る（導入時に確認）。",
  "files": [
   {
    "name": "hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors",

@@ -5,7 +5,7 @@
  "tier": "standard",
  "content_rating": "general",
  "traits": {"params_b": 5, "params_label": "5B", "uncensored": false, "speed": "standard"},
- "description": "テキストからも先頭フレーム 1 枚からも動画を作れる、いちばん小さい Wan 2.2（T2V と I2V を 1 つの 5B でこなす。拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 18 GB）。720p・24fps。速さと軽さを優先するならこちら、動きの質と映像の作り込みを優先するなら wan22-i2v-14b（先頭フレームだけ・16fps・約 36 GB）を選ぶ。生成テストのモデルは 2 つで、wan22-ti2v-5b（テキストから）と wan22-ti2v-5b-i2v（先頭フレームから）。ComfyUI のネイティブ offload で VRAM 16 GB の GPU を想定。macOS（Apple Silicon）は未確認で、Windows のみの対応。",
+ "description": "【小ティア・非検閲ではない標準モデル】テキストからも先頭フレーム 1 枚からも動画を作れる、いちばん小さい Wan 2.2（T2V と I2V を 1 つの 5B でこなす。拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 18 GB）。720p・24fps・音声なし。得意: 速さと軽さ。動きの質と映像の作り込みを優先するなら wan22-i2v-14b（先頭フレームだけ・16fps・約 36 GB）を選ぶ。注意: 14B より品質は落ちる。生成テストのモデルは 2 つで、wan22-ti2v-5b（テキストから）と wan22-ti2v-5b-i2v（先頭フレームから）。ComfyUI のネイティブ offload で VRAM 16 GB の GPU を想定。macOS（Apple Silicon）は未確認で、Windows のみの対応。ライセンス: Apache-2.0 で商用を含めて自由に使える。",
  "files": [
   {
    "name": "wan2.2_ti2v_5B_fp16.safetensors",

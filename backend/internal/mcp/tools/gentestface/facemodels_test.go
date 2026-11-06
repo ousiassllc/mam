@@ -28,6 +28,8 @@ type facesRig struct {
 	env *mcptest.Env
 	gt  *gentesttest.Rig
 	fm  *facemodelstest.Rig
+	// last is the batch get_generation_test returned for the latest run.
+	last gentest.BatchStatus
 }
 
 func newFacesRig(t *testing.T) *facesRig {
@@ -82,6 +84,7 @@ func (r *facesRig) run(t *testing.T) *record.FaceSimilarity {
 	var b gentest.BatchStatus
 	r.env.CallOK("get_generation_test", map[string]any{"batch_id": out.BatchID}, &b)
 	require.Len(t, b.Results, 1)
+	r.last = b
 	var res record.ResultDetail
 	r.env.CallOK("get_generation_result", map[string]any{"result_id": b.Results[0].ID}, &res)
 	return res.FaceSimilarity
@@ -143,6 +146,11 @@ func TestFromNotInstalledToInstalledTheSameGenerationTestGetsAFaceSimilarityNumb
 	assert.InDelta(t, 1.0, scored.Cosine, 1e-6, "the fake engine gives every face the same embedding")
 	assert.True(t, scored.SamePerson)
 	assert.Equal(t, facesim.SameFaceThreshold, scored.Threshold)
+	// get_generation_test reads the numbers of the batch together per model (Issue #998)
+	require.Len(t, r.last.FaceSummaries, 1)
+	assert.Equal(t, 1, r.last.FaceSummaries[0].Measured)
+	assert.InDelta(t, 1.0, r.last.FaceSummaries[0].MeanCosine, 1e-6)
+	assert.Equal(t, 1, r.last.FaceSummaries[0].SamePerson)
 
 	// removing turns it off again, and says so in the same words
 	var removed facemodels.View
