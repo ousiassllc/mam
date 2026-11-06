@@ -91,9 +91,9 @@
 | `PUT /settings/llm` | `set_llm_assignment` |
 | `GET /settings/llm/agents/:agent/models/:role` | `list_llm_models`（画面のモデルのプルダウンの中身と同じ一覧。`provider` を指定する） |
 | `DELETE /settings/llm` | `reset_llm_assignment` |
-| `PUT /model-manager/local-llm/connection`（#1104。旧 `PUT /settings/llm/local`） | `set_local_llm_server`（画面の区画「別のサーバーにつなぐ」の保存） |
-| `PUT /model-manager/local-llm/use`（#1104。新設） | `set_local_llm_server`（`use_managed_runtime`・`use_managed_ollama`） |
-| `POST /model-manager/local-llm/connection/test`（#1104。旧 `POST /settings/llm/local/test`） | `test_local_llm_server` |
+| `PUT /model-manager/local-llm/connection` | `set_local_llm_server`（画面の区画「別のサーバーにつなぐ」の保存。#1104。旧 `PUT /settings/llm/local`） |
+| `PUT /model-manager/local-llm/use` | `set_local_llm_server`（use_managed_runtime・use_managed_ollama の保存。#1104 で新設） |
+| `POST /model-manager/local-llm/connection/test` | `test_local_llm_server`（#1104。旧 `POST /settings/llm/local/test`） |
 | `PUT /settings/models` | `set_model_assignment` |
 | `DELETE /settings/models` | `reset_model_assignment` |
 | `GET /settings/audio` | `get_audio_providers` |
