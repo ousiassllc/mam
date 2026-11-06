@@ -1,4 +1,5 @@
-package molecules
+// Package notecard is the card of one note (F-31). It is a package of its own so that molecules stays inside its line limit.
+package notecard
 
 import (
 	"strconv"
@@ -15,11 +16,11 @@ func sourceNoteLabel(s domain.NoteSource) string {
 	return "手入力"
 }
 
-// NoteCard shows one note (F-31): its latest text in an edit form, the category and pin, the archive
+// Card shows one note (F-31): its latest text in an edit form, the category and pin, the archive
 // button, and the version history with a restore button per earlier version. Saving with a changed
 // title or text appends a version; the category and pin do not. Every action answers with the note
 // list (#note-list) in which the other notes the page has are placeholders (notelist.Data.Only).
-templ NoteCard(n domain.NoteView) {
+templ Card(n domain.NoteView) {
 	<article id={ "note-" + n.ID } class="flex flex-col gap-2 rounded-lg border border-border p-3">
 		<div class="flex flex-wrap items-center gap-2 text-xs text-mute">
 			@atoms.Badge(atoms.BadgeNeutral, n.Category.Label())
