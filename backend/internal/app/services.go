@@ -182,7 +182,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	manager.Store(mgr)
 	nodeSvc, installNext := nodewire.New(jobs, jobTable, mgr, logger) // the custom nodes' jobs first, the runtimes' wrap them
 	var voiceRoot atomic.Pointer[string]                              // the directory of the trained voices, known once the services are built
-	rts, err := newLocalRuntimes(jobs, jobTable, installNext, voicetrainwire.Env(func() string {
+	rts, ollama, err := newLocalRuntimes(jobs, jobTable, installNext, voicetrainwire.Env(func() string {
 		if p := voiceRoot.Load(); p != nil {
 			return *p
 		}
@@ -191,7 +191,10 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	llmLocal.SetManaged(llamaserver.Server{Runtime: rts, MakeRoom: irodoriwire.Guard(mgr).MakeRoom}) // "この PC の llama.cpp を使う" (#1008)
+	guard := irodoriwire.Guard(mgr).MakeRoom
+	// "この PC の llama.cpp を使う" (#1008) and "Ollama" (#1105): the servers the provider "local" can be sent to; the Ollama answers to every model it holds, and has no key
+	llmLocal.SetManaged(llamaserver.Server{Runtime: rts, MakeRoom: guard})
+	llmLocal.SetManagedOllama(llamaserver.Server{Runtime: rts, ID: llamaserver.OllamaID, Label: "Ollama", NoKey: true, MakeRoom: guard, Models: ollama.Names})
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
 	services := service.New(service.Deps{
@@ -210,7 +213,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		Audio:         audiowire.Providers(keys, rts, mgr, previews),
 		AudioSettings: newAudioSettings(cfg, rts, keys), // read at every run
 	})
-	services.LocalModels = localModels
+	services.LocalModels, services.Ollama = localModels, ollama
 	services.FFmpeg = previews
 	services.LLMClient, services.LLMLocal = reasoning, llmLocal
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more

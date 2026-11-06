@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 	"github.com/ousiassllc/mam/backend/internal/service/voicetrain"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -89,6 +90,7 @@ type Services struct {
 	LocalModels   *localmodels.Service  // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
 	ModelManager  *modelmanager.Service // bundled ComfyUI engine, model catalog; the app sets it
 	LocalRuntimes *localruntime.Service // local AI runtimes (GPT-SoVITS): install, start, stop, status; the app sets it
+	Ollama        *ollamapull.Service   // the models of the Ollama that mam manages (#1105): list, pull, delete; the app sets it
 	ModelNodes    *modelnodes.Service   // custom nodes of the allowlist for the bundled ComfyUI: install, remove, status; the app sets it
 	Gentest       *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
 	Workflows     *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it

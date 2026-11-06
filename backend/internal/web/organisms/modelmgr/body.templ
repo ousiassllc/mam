@@ -95,6 +95,11 @@ templ localLLMSections(d Data) {
 			@d.LLMRuntimes
 		}
 	}
+	if d.LLMOllama != nil {
+		@molecules.SettingsSection("Ollama のモデル", llmOllamaHelp) {
+			@d.LLMOllama
+		}
+	}
 	if d.LLMConnection != nil {
 		@molecules.SettingsSection("別のサーバーにつなぐ", llmConnectionHelp) {
 			@d.LLMConnection

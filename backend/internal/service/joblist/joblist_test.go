@@ -105,6 +105,7 @@ func TestRecent_AnInstallNamesItsModelAndSaysHowFarItIs(t *testing.T) {
 func TestRecent_TheEngineHasANameAndAnUnknownModelHasNone(t *testing.T) {
 	w := newWorld(t)
 	engine := w.create(domain.JobModelInstall, map[string]string{"target": "engine"})
+	ollama := w.create(domain.JobModelInstall, map[string]string{"target": "ollama:gemma4:12b"})
 	gone := w.create(domain.JobModelInstall, map[string]string{"target": "model:no-such-model"})
 	blank := w.create(domain.JobModelInstall, map[string]string{})
 
@@ -115,6 +116,7 @@ func TestRecent_TheEngineHasANameAndAnUnknownModelHasNone(t *testing.T) {
 		assert.Nil(t, e.Progress, "a job that waits has no progress")
 	}
 	assert.Equal(t, "ComfyUI エンジン", subjects[engine.ID])
+	assert.Equal(t, "Ollama: gemma4:12b", subjects[ollama.ID], "the model that the Ollama of mam fetches (#1105)")
 	assert.Empty(t, subjects[gone.ID])
 	assert.Empty(t, subjects[blank.ID])
 }
@@ -307,6 +309,8 @@ func TestRecent_AnInstallLeadsToThePageOfItsCategory(t *testing.T) {
 		"model:m-a":                joblist.CategoryImageVideo,
 		"runtime:gpt-sovits":       joblist.CategoryLocalRuntimes,
 		"runtime:llama-cpp":        joblist.CategoryLocalLLM,
+		"runtime:ollama":           joblist.CategoryLocalLLM,
+		"ollama:gemma4:12b":        joblist.CategoryLocalLLM,
 		"node:ipadapter-plus":      joblist.CategoryCustomNodes,
 		"hf:o/m@0123456789ab/x.sf": joblist.CategoryHFExternal,
 		"":                         "",

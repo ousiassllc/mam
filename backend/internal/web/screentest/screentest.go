@@ -24,10 +24,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/facemodels/facemodelstest"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
+	"github.com/ousiassllc/mam/backend/internal/service/llamaserver"
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes/nodetest"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull/ollamatest"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -51,6 +53,8 @@ type Screen struct {
 	LLM     *llmlocal.Service
 	LLMFile string
 	LLMKeys *credentialtest.Memory
+	// Ollama is the Ollama of mam and its fakes (NewWithOllama); nil for a screen without it.
+	Ollama *ollamatest.Rig
 	// Works are the works that have no row in the job table (worktrack), which the job list reads next to the table.
 	Works  *worktrack.Tracker
 	engine http.Handler
@@ -70,6 +74,25 @@ func NewWithLLM(t *testing.T, pinned bool) *Screen {
 	t.Helper()
 	rig := mmtest.New(t)
 	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, lrtest.WithLLMRuntime()), nil, pinned)
+}
+
+// NewWithOllama opens the page "ローカル LLM" with the Ollama of mam over the fakes of ollamatest (a fake server of the models, a fake runtime that is installed and stopped unless a test says another), on the
+// queue of the model manager. The local runtimes have the llama.cpp and the Ollama of lrtest, so that the page has their cards.
+func NewWithOllama(t *testing.T, opts ...ollamatest.Option) *Screen {
+	t.Helper()
+	rig := mmtest.New(t)
+	ol := ollamatest.New(t, append([]ollamatest.Option{ollamatest.Shared(rig.Queue, rig.Table)}, opts...)...)
+	return withOllama(t, rig, ol, nil)
+}
+
+// withOllama opens the screen over rig with the Ollama ol (on rig's queue) and its runtime.
+func withOllama(t *testing.T, rig *mmtest.Rig, ol *ollamatest.Rig, nodes *nodetest.Rig, mods ...func(*settingsroutes.Services)) *Screen {
+	t.Helper()
+	rts := lrtest.New(t, rig.Queue, rig.Table, ol.Svc.Handler(rig.Svc.HandleInstall), lrtest.WithLLMRuntime(), lrtest.WithOllamaRuntime())
+	s := open(t, rig, rts, nodes, false, append([]func(*settingsroutes.Services){func(sr *settingsroutes.Services) { sr.Ollama = ol.Svc }}, mods...)...)
+	s.Ollama = ol
+	s.LLM.SetManagedOllama(llamaserver.Server{Runtime: ol.Runtime, ID: llamaserver.OllamaID, Label: "Ollama", NoKey: true, Models: ol.Svc.Names})
+	return s
 }
 
 // NewWithRuntimes opens the screen with the local runtimes over fakes (a fake package and weights, a fake process; a Windows PC with an RTX
@@ -98,7 +121,8 @@ func NewAll(t *testing.T) *Screen {
 	nodes := nodetest.New(t)
 	ffmpeg, _ := IsolatedFFmpeg(t)
 	faceFusion, _ := IsolatedFaceFusion(t)
-	s := open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, lrtest.WithLLMRuntime()), nodes, false, companionOf(t, Companion{FFmpeg: ffmpeg, FaceFusion: faceFusion, Codex: true}))
+	ol := ollamatest.New(t, ollamatest.Shared(rig.Queue, rig.Table))
+	s := withOllama(t, rig, ol, nodes, companionOf(t, Companion{FFmpeg: ffmpeg, FaceFusion: faceFusion, Codex: true}))
 	s.Nodes = nodes
 	return s
 }

@@ -37,6 +37,23 @@ LLM（企画・脚本・Shot 計画など）も、この PC のローカルモ�
 - この PC で動かせないとき（macOS〔Apple Silicon は対応外〕・NVIDIA の GPU が無い・ビデオメモリが足りない）は、理由と代わりの案内（Ollama・LM Studio に接続する、またはクラウドの LLM）が出ます。
 - **未確認**: 実機（Windows + NVIDIA）での導入・起動・推論、ComfyUI との同居、各モデルの質は、まだ確かめていません（[`spec/architecture/model-manager/local-runtime.md`](spec/architecture/model-manager/local-runtime.md) §17.7）。
 
+### ローカル LLM（Ollama）
+
+llama.cpp のほかに、モデルマネージャーの「ローカル LLM」から Ollama（[ollama/ollama](https://github.com/ollama/ollama)。MIT。固定版 v0.40.15）も導入・起動・停止できます（Windows。NVIDIA の GPU・Intel の GPU・GPU なしで導入できます。AMD の GPU だけの PC は、別のサーバーにつなぎます）。公式の GitHub リリースの zip を、固定した SHA-256 を確かめて取得します（`localai\ollama` に展開。`127.0.0.1` だけで待ち受け、Ollama のクラウド機能は無効にします）。
+
+- モデルは、同じページの「Ollama のモデル」から、次の 3 つだけを Ollama 自身で取得します（`gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b`。cloud のモデルや、一覧にない名前は取得できません）。
+
+| モデル（Ollama のタグ） | 取得量 | 出典 | ライセンス |
+|---|---|---|---|
+| Gemma 4 12B（`gemma4:12b`） | 約 7.5 GiB | [ollama.com/library/gemma4](https://ollama.com/library/gemma4) | Apache-2.0（商用可） |
+| Qwen3.8 27B（`qwen3.8:27b`） | 約 16.5 GiB | [ollama.com/library/qwen3.8](https://ollama.com/library/qwen3.8) | Apache-2.0（商用可） |
+| DeepSeek-R1 14B（`deepseek-r1:14b`） | 約 8.4 GiB | [ollama.com/library/deepseek-r1](https://ollama.com/library/deepseek-r1) | MIT（商用可） |
+
+- Ollama のタグは書き換えられるため、取得する内容は固定できません（llama.cpp の GGUF はコミットと SHA-256 を固定します）。取得のあとで、Ollama が書いた重みの層の SHA-256 を、確認した時点の記録と比べ、違えば「上流で更新されています」と知らせます（そのまま使えます）。
+- 「使うサーバー」に「この PC の Ollama」を選ぶと、取得したモデルを「LLM の割り当て」の model に指定できます。LLM の割り当てが使っているモデルは削除できません。
+- **Ollama には認証がありません。** 信用できないソフトを同じ PC で動かさないでください（待ち受けは `127.0.0.1` だけです）。
+- **未確認**: 実機での Ollama の起動・モデルの取得（`/api/pull`）・`USERPROFILE` の付け替えと `server.json`（クラウド機能の無効化）の効き・VRAM（ComfyUI との同居）は、まだ確かめていません（[`spec/architecture/model-manager/local-runtime.md`](spec/architecture/model-manager/local-runtime.md) §19）。
+
 ## Windows でインストールする
 
 [GitHub Releases](https://github.com/ousiassllc/mam/releases) の最新版から、次のどちらかをダウンロードします（Windows 10 / 11、x64）。

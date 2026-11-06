@@ -14,7 +14,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/ollama"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	card "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/runtimecard"
@@ -27,11 +29,14 @@ type Handlers struct {
 	// llm is the server the calls of the provider "local" go to (nil: no such setting). The card of a runtime of a language model (llama.cpp) is on the page that shows it
 	// ("使うサーバー"), so its answers carry that line out of band: an install, a start or a removal changes what it says.
 	llm *llmlocal.Service
+	// ollama fetches the models of the Ollama runtime (nil: none). The section of its models is on the same page as its card, so the answers of that card carry the section out of band: installing
+	// or starting the server changes what the pull buttons can do.
+	ollama *ollamapull.Service
 }
 
-// Register adds the routes of the section to the engine. llm may be nil.
-func Register(engine *gin.Engine, svc *localruntime.Service, llm *llmlocal.Service) {
-	h := Handlers{svc: svc, llm: llm}
+// Register adds the routes of the section to the engine. llm and ol may be nil.
+func Register(engine *gin.Engine, svc *localruntime.Service, llm *llmlocal.Service, ol *ollamapull.Service) {
+	h := Handlers{svc: svc, llm: llm, ollama: ol}
 	engine.GET(paths.ModelManagerPart("runtimes"), h.Section)
 	engine.GET(paths.ModelManagerPart("runtimes", ":id"), h.Runtime)
 	engine.GET(paths.ModelManagerPart("runtimes", ":id", "detail"), h.RuntimeDetail)
@@ -81,6 +86,9 @@ func (h Handlers) runtimeCard(c *gin.Context, status int, id, job string, starti
 	out := card.RuntimeCard(r)
 	if h.llm != nil && r.PurposeID == card.PurposeLLM {
 		out = templ.Join(out, localllm.StateOOB(c.Request.Context(), h.llm))
+	}
+	if h.ollama != nil && r.ID == ollamapull.RuntimeID {
+		out = templ.Join(out, ollama.SectionOOB(c.Request.Context(), h.ollama))
 	}
 	render(c, status, out)
 }

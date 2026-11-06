@@ -1,0 +1,48 @@
+package ollamacard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+)
+
+// TagNote says what a tag of the registry is: it can be moved, so what is fetched cannot be pinned.
+const TagNote = "タグは書き換えられるため、取得する内容を固定できません。取得後に、Ollama が書いた内容を、確認した時点の記録と比べます。"
+
+// ModelDetail is the modal a card of a model opens: what it is, the layers it is made of with their sizes, the SHA-256 of the weights, the result of the check of the manifest, and the
+// license with the answer for commercial use. The card shows none of it.
+templ ModelDetail(d Detail) {
+	@modal.Frame(d.DisplayName, d.Description) {
+		<div class={ "flex flex-wrap items-center gap-2", modal.StartClass } tabindex="-1" autofocus data-testid="mm-ollama-detail" data-model={ d.Name }>
+			@atoms.Badge(atoms.BadgeInfo, "Ollama のモデル")
+			@commercial.Badge(d.Commercial)
+		</div>
+		@commercial.Note(d.Commercial)
+		<p class="text-sm text-warning" role="note" data-testid="mm-ollama-tag-note">{ TagNote }</p>
+		if d.Check != "" {
+			<p class={ "text-sm", templ.KV("text-warning", d.Changed), templ.KV("text-ink", !d.Changed) } data-testid="mm-ollama-check">{ d.Check }</p>
+		}
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink" data-testid="mm-ollama-facts">
+			<div class="col-span-2">
+				<dt class="text-mute">取得元（Ollama のライブラリ。{ d.CheckedAt } に確認）</dt>
+				<dd class="break-all"><a class="underline" href={ templ.SafeURL(d.SourceURL) } target="_blank" rel="noopener noreferrer">{ d.SourceURL }</a></dd>
+			</div>
+			<div class="col-span-2"><dt class="text-mute">重みの SHA-256</dt><dd class="break-all"><code data-testid="mm-sha256">{ d.Digest }</code></dd></div>
+			<div class="col-span-2">
+				<dt class="text-mute">取得するもの（合計 { d.Size }）</dt>
+				<dd>
+					<ul role="list" class="flex flex-col gap-1" data-testid="mm-ollama-layers">
+						for _, l := range d.Layers {
+							<li data-kind={ l.Kind }>{ l.Kind }（{ l.Size }）<code class="break-all text-mute">{ l.Digest }</code></li>
+						}
+					</ul>
+				</dd>
+			</div>
+			<div class="min-w-0"><dt class="text-mute">ライセンス</dt><dd class="break-words"><a class="underline" href={ templ.SafeURL(d.LicenseURL) } target="_blank" rel="noopener noreferrer">{ d.LicenseName }</a></dd></div>
+			<div class="col-span-2"><dt class="text-mute">ライセンスの確認</dt><dd class="break-words">{ d.LicenseSummary }</dd></div>
+		</dl>
+		@modal.Actions() {
+			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
+		}
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/kind"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/ollamamodels"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 )
 
@@ -65,6 +66,7 @@ var loaderInputs = map[string]map[string]string{
 func Validate(c *Catalog, template func(id string) (localcfg.Template, bool)) []error {
 	errs := append(validateEngine(c.Engine), validateRuntimes(c)...)
 	errs = append(errs, validateResourceSets(c)...)
+	errs = append(errs, ollamamodels.Check(c.OllamaModels)...)
 	seenModel, seenWorkflow := map[string]bool{}, map[string]bool{}
 	shared := map[string]File{}
 	for _, m := range c.Models {

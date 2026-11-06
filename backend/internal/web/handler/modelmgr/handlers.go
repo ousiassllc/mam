@@ -20,11 +20,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/ollama"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -40,13 +42,15 @@ type Handlers struct {
 	Nodes *modelnodes.Service
 	// LLMLocal is the server the calls of the provider "local" go to (page "ローカル LLM", #1104). Nil leaves the page and its routes out.
 	LLMLocal *llmlocal.Service
+	// Ollama fetches the models of the Ollama of mam (section "Ollama のモデル" of the page "ローカル LLM", #1105). Nil leaves the section and its routes out.
+	Ollama *ollamapull.Service
 	// Companion is the companion software (ffmpeg, FaceFusion; #1106). Without ffmpeg and FaceFusion the category and its routes are left out.
 	Companion companion.Services
 }
 
 // Register adds the routes of the screen to the engine.
-func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service, llm *llmlocal.Service, comp companion.Services) {
-	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds, LLMLocal: llm, Companion: comp}
+func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service, llm *llmlocal.Service, ol *ollamapull.Service, comp companion.Services) {
+	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds, LLMLocal: llm, Ollama: ol, Companion: comp}
 	engine.GET(paths.ModelManager(), h.Page)
 	engine.GET(paths.ModelManagerPart("overview"), h.OverviewPart)
 	h.registerCategories(engine)
@@ -65,7 +69,10 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	engine.POST(paths.ModelManagerPart("jobs", ":job", "cancel"), h.CancelJob)
 
 	if rts != nil {
-		runtimes.Register(engine, rts, llm)
+		runtimes.Register(engine, rts, llm, ol)
+	}
+	if ol != nil {
+		ollama.Register(engine, ol, llm)
 	}
 	if llm != nil {
 		localllm.Register(engine, llm)

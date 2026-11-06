@@ -10,6 +10,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/ollama"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
@@ -146,6 +148,10 @@ func (h Handlers) CancelJob(c *gin.Context) {
 	st, stErr := h.Svc.JobStatus(ctx, id)
 	if rid, ok := strings.CutPrefix(st.Target, localruntime.TargetPrefix); ok && stErr == nil && h.Runtimes != nil {
 		runtimes.Cancel(c, h.Runtimes, rid, id)
+		return
+	}
+	if strings.HasPrefix(st.Target, ollamapull.TargetPrefix) && stErr == nil && h.Ollama != nil {
+		ollama.Cancel(c, h.Ollama, h.LLMLocal, id)
 		return
 	}
 	err := h.Svc.CancelInstall(id)

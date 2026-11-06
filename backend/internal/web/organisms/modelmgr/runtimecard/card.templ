@@ -50,6 +50,14 @@ func meta(r Runtime) string {
 	return r.Purpose + "・" + r.Need
 }
 
+// removeConfirm is the question of the delete button: what goes with the runtime (its weights; for the Ollama also the models it fetched, which it keeps in its own folder).
+func removeConfirm(r Runtime) string {
+	if r.ID == OllamaID {
+		return r.Name + " を削除します（環境と、取得した Ollama のモデルも消えます。再び使うには導入と、モデルの取得をやり直します）。よろしいですか？"
+	}
+	return r.Name + " を削除します（環境と、取得した重みも消えます。再び使うには導入し直します）。よろしいですか？"
+}
+
 // autoStartLabel is the label of the autostart button; what it means is in the help of the section.
 func autoStartLabel(on bool) string {
 	if on {
@@ -146,7 +154,7 @@ templ runtimeInstalled(r Runtime) {
 		@atoms.SmallButtonFor(atoms.ToneDanger, "削除", r.Name, templ.Attributes{
 			"type": "button", "hx-delete": paths.ModelManagerPart("runtimes", r.ID), "hx-target": "#" + RuntimeID(r.ID), "hx-swap": "outerHTML",
 			"hx-sync": "this:drop", "hx-disabled-elt": "this",
-			"hx-confirm": r.Name + " を削除します（環境と、取得した重みも消えます。再び使うには導入し直します）。よろしいですか？",
+			"hx-confirm": removeConfirm(r),
 		})
 	}
 }

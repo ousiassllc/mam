@@ -19,6 +19,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/ollamamodels"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/platform"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 )
@@ -209,6 +210,8 @@ type Catalog struct {
 	Models       []Model
 	Runtimes     []Runtime
 	ResourceSets []ResourceSet
+	// OllamaModels are the models of the registry of Ollama that mam fetches (data/ollama/models.json; #1105).
+	OllamaModels []ollamamodels.Model
 	// Overlays are the files of data/overlays by name: the scripts mam writes into the environment of a runtime (the server of an assembled
 	// runtime, which the vendor does not ship; the guarded launcher of an archive runtime). They are compiled into mam, so they need no pin.
 	Overlays map[string][]byte
@@ -293,6 +296,9 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		c.ResourceSets = append(c.ResourceSets, a)
 	}
 	sortResourceSets(c.ResourceSets)
+	if err := loadOllamaModels(fsys, &c); err != nil {
+		return nil, err
+	}
 	if c.Overlays, err = loadOverlays(fsys); err != nil {
 		return nil, err
 	}

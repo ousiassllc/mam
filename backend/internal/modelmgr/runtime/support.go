@@ -7,6 +7,7 @@ package runtime
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -66,6 +67,9 @@ func Evaluate(rt catalog.Runtime, p Platform, rep gpu.Report) Support {
 	if p.Arch != s.Arch {
 		return refuse(CodeArch, s.ArchReason)
 	}
+	if s.CPUOK {
+		return evaluateWithCPU(rt, rep, refuse)
+	}
 	if len(rep.Adapters) == 0 {
 		return refuse(CodeNoGPU, s.NoGPUReason)
 	}
@@ -82,6 +86,19 @@ func Evaluate(rt catalog.Runtime, p Platform, rep gpu.Report) Support {
 		).Replace(s.LowVRAMReason))
 	}
 	return Support{Supported: true, Code: CodeOK, Variant: ChooseVariant(rt, best.ComputeCap), GPU: best.Name}
+}
+
+// evaluateWithCPU is Evaluate for a runtime that also runs on the CPU (Support.CPUOK, Ollama): a machine with no adapter, with an Intel one or with an NVIDIA one is
+// supported (the video memory is no gate: the server puts what does not fit on the CPU); an AMD adapter without an NVIDIA one is refused, because the build for it
+// is another archive that mam does not install (NotNVIDIAReason). Without an NVIDIA adapter the build is the base one and the GPU is "" (the CPU runs it).
+func evaluateWithCPU(rt catalog.Runtime, rep gpu.Report, refuse func(Code, string) Support) Support {
+	if best := bestNVIDIA(rep.Adapters); best != nil {
+		return Support{Supported: true, Code: CodeOK, Variant: ChooseVariant(rt, best.ComputeCap), GPU: best.Name}
+	}
+	if slices.ContainsFunc(rep.Adapters, func(a gpu.Adapter) bool { return a.VendorID == gpu.VendorAMD && !a.Software }) {
+		return refuse(CodeNotNVIDIA, rt.Support.NotNVIDIAReason)
+	}
+	return Support{Supported: true, Code: CodeOK, Variant: ChooseVariant(rt, 0)}
 }
 
 // bestNVIDIA is the NVIDIA adapter with the most dedicated memory (nil for none; a software adapter never counts).

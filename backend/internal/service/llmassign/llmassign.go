@@ -125,6 +125,19 @@ func (s *Service) View() View {
 	return v
 }
 
+// UsedBy names (by their label on the screen) the Agents whose saved route chooses the model of the provider, as the primary or as the fallback: a model that is deleted would
+// leave them without it. An Agent that no code reads today (unused) counts too: its route is kept for the day it does.
+func (s *Service) UsedBy(provider, model string) []string {
+	var names []string
+	want := Target{Provider: provider, Model: model}
+	for _, e := range s.View().Entries {
+		if e.Route.Primary == want || e.Route.Fallback == want {
+			names = append(names, e.Label)
+		}
+	}
+	return names
+}
+
 func providers() []string {
 	var out []string
 	for _, p := range llm.Providers() {

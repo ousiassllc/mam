@@ -21,6 +21,12 @@ const (
 	Choice = "choice" // the id of the model in force
 )
 
+// The placeholders of the environment of a start (Runtime.Launch.Env) besides Port: the directories a runtime keeps its own state in (Ollama's home and models).
+const (
+	Home   = "home"   // the runtime's own home directory (store.RuntimeLayout.HomeDir)
+	Models = "models" // the runtime's models directory (store.RuntimeLayout.ModelsDir)
+)
+
 // RoleModel is the Resource.Role of the asset that is the file the server loads.
 const RoleModel = "model"
 

@@ -52,13 +52,19 @@ type RuntimeLaunch struct {
 	Args []string `json:"args"`
 	// ReadyPath is the path that answers 200 once the server is ready (the models are loaded before the port opens).
 	ReadyPath string `json:"ready_path"`
-	// Env is added to the environment ("NAME=value"); it turns the automatic downloads of the libraries off (offline mode).
+	// Env is added to the environment ("NAME=value"); it turns the automatic downloads of the libraries off (offline mode). The placeholders "{port}", "{home}"
+	// (the runtime's own home directory) and "{models}" (its models directory) are replaced when it starts.
 	Env []string `json:"env"`
 	// StartTimeoutSec bounds the wait for the server to answer (the first start loads the models).
 	StartTimeoutSec int `json:"start_timeout_sec"`
 	// TokenEnv names the environment variable that carries the random token of this start ("" for none): a server that writes files
 	// on request answers only the caller that has it (a web page cannot send it).
 	TokenEnv string `json:"token_env,omitempty"`
+	// ListenEnv names the environment variable that tells the server where to listen when the Args do not (Ollama's OLLAMA_HOST): the validation then reads
+	// that variable's value in Env for 127.0.0.1 and {port}, never for every interface.
+	ListenEnv string `json:"listen_env,omitempty"`
+	// HomeFiles are the files mam writes below the runtime's home directory before every start (Ollama's server.json that turns its cloud features off).
+	HomeFiles []parts.File `json:"home_files,omitempty"`
 }
 
 // RuntimeSupport says where a runtime can be installed and, when it cannot, why (Japanese, shown by the screen, the MCP tools and the
@@ -75,6 +81,9 @@ type RuntimeSupport struct {
 	NoGPUReason     string `json:"no_gpu_reason"`
 	NotNVIDIAReason string `json:"not_nvidia_reason"`
 	LowVRAMReason   string `json:"low_vram_reason"`
+	// CPUOK: the runtime also runs without an NVIDIA GPU (on the CPU): no adapter or only an Intel one is supported, the video memory is no gate, and only
+	// an AMD adapter without an NVIDIA one is refused (NotNVIDIAReason). NoGPUReason and LowVRAMReason are then not needed.
+	CPUOK bool `json:"cpu_ok,omitempty"`
 	// MaxComputeCap, when set, is the first NVIDIA compute capability the runtime does not support (its libraries are built for the
 	// older GPUs); ComputeCapReason says why (it names {gpu}). A GPU whose capability is unknown is not refused.
 	MaxComputeCap    float64 `json:"max_compute_cap,omitempty"`
@@ -111,6 +120,8 @@ type Runtime struct {
 	// Installer.Tool writes them before it starts one. They are not checked by Status, so an environment installed before a script was added
 	// is not "broken" for want of it.
 	ToolFiles []parts.File `json:"tool_files,omitempty"`
+	// OwnModels: the runtime fetches its models itself (Ollama's pull, catalog.OllamaModels), so it has no weights and dependencies of its own (no data/assets file).
+	OwnModels bool `json:"own_models,omitempty"`
 	// Variants are the pinned builds by the GPU generation they are for.
 	Variants map[Variant]RuntimeVariant `json:"variants"`
 }

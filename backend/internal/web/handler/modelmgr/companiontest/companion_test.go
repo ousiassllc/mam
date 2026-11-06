@@ -82,10 +82,10 @@ func TestThePageHasTheListAndTheSectionsOnceAndTheRowsInOrder(t *testing.T) {
 	}
 	assert.Contains(t, page, `<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="mm-companion-index">`)
 	rows := rowsOf(t, page)
-	assert.Equal(t, []string{"ffmpeg", "facefusion", "face-models", "comfyui", "local-runtimes", "custom-nodes", "codex"}, tools(rows), "the order of the spec; ollama is #1105's")
+	assert.Equal(t, []string{"ffmpeg", "facefusion", "ollama", "face-models", "comfyui", "local-runtimes", "custom-nodes", "codex"}, tools(rows), "the order of the spec")
 	wantHref := map[string]string{
 		"ffmpeg": "/model-manager/companion#mm-ffmpeg", "facefusion": "/model-manager/companion#mm-facefusion",
-		"face-models": "/model-manager/face-check#mm-face-models", "comfyui": "/model-manager/comfyui#mm-engine",
+		"face-models": "/model-manager/face-check#mm-face-models", "ollama": "/model-manager/local-llm#mm-runtime-ollama", "comfyui": "/model-manager/comfyui#mm-engine",
 		"local-runtimes": "/model-manager/local-runtimes#mm-runtimes", "custom-nodes": "/model-manager/custom-nodes#mm-nodes",
 		"codex": "/settings/api-keys",
 	}
@@ -94,7 +94,7 @@ func TestThePageHasTheListAndTheSectionsOnceAndTheRowsInOrder(t *testing.T) {
 		assert.True(t, strings.HasSuffix(r["label"], "を入れる"), r["tool"])
 		assert.NotEmpty(t, r["state"], r["tool"])
 	}
-	assert.Equal(t, 7, strings.Count(page, `data-testid="mm-companion-state"`), "each row says its state in words")
+	assert.Equal(t, 8, strings.Count(page, `data-testid="mm-companion-state"`), "each row says its state in words")
 	assert.Regexp(t, `(?s)<h2[^>]*>付随ソフトの一覧</h2>.*<h3[^>]*>ffmpeg・ffprobe</h3>`, page, "the headings go h1, h2 of the section, h3 of a row")
 	assert.Regexp(t, `(?s)<h1[^>]*>付随ソフト</h1>`, page)
 	assert.Contains(t, page, `id="mm-companion-index-refresh"`, "the list has its refresh button")

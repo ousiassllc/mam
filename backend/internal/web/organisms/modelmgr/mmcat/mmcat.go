@@ -61,8 +61,8 @@ func All() []Category {
 		},
 		{
 			Slug: LocalLLM, Name: "ローカル LLM", Icon: atoms.IconNetwork,
-			Description: "ローカルの LLM を使う導線です。使うサーバーを選び、llama.cpp を導入・起動し、LM Studio など別のサーバーにつなぎます。",
-			Sections:    []string{"mm-llm-use", "mm-llm-runtimes", "mm-llm-connection"}, Cards: true,
+			Description: "ローカルの LLM を使う導線です。使うサーバーを選び、llama.cpp・Ollama を導入・起動してモデルを取得し、LM Studio など別のサーバーにつなぎます。",
+			Sections:    []string{"mm-llm-use", "mm-llm-runtimes", "mm-ollama", "mm-llm-connection"}, Cards: true,
 		},
 		{
 			Slug: FaceCheck, Name: "顔チェック用モデル", Icon: atoms.IconLipSync,

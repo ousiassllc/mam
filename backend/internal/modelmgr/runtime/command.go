@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/choice"
@@ -52,7 +53,10 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 	if err != nil {
 		return proc.Spec{}, err
 	}
-	spec, err := i.spec(args, nil)
+	if err := i.writeFiles(i.Layout.HomeDir(), l.HomeFiles); err != nil { // Ollama's server.json that turns its cloud features off: written at every start
+		return proc.Spec{}, err
+	}
+	spec, err := i.spec(args, nil, port)
 	if err != nil {
 		return proc.Spec{}, err
 	}
@@ -78,7 +82,7 @@ func (i *Installer) Tool(script string, args, env []string) (proc.Spec, error) {
 	if err := i.writeFiles(i.Layout.EnvDir(), i.Runtime.ToolFiles); err != nil { // all of them: a tool may import another of mam's own
 		return proc.Spec{}, err
 	}
-	spec, err := i.spec(append([]string{"-I", "-u", "-X", "utf8", script}, args...), env)
+	spec, err := i.spec(append([]string{"-I", "-u", "-X", "utf8", script}, args...), env, 0)
 	if err != nil {
 		return proc.Spec{}, err
 	}
@@ -88,8 +92,9 @@ func (i *Installer) Tool(script string, args, env []string) (proc.Spec, error) {
 
 // spec is the launch of the runtime's interpreter with args: the vendor's own recipe (its launcher puts the runtime directory in front of
 // PATH and starts `runtime\python.exe -I <script>` in the package directory), the caches and temporary files below the runtime
-// directory, and the catalog's environment that switches the automatic downloads of the libraries off.
-func (i *Installer) spec(args, extraEnv []string) (proc.Spec, error) {
+// directory, and the catalog's environment that switches the automatic downloads of the libraries off. port is the one of the server (0 for a
+// job that is no server: an environment that names the "{port}" is then refused).
+func (i *Installer) spec(args, extraEnv []string, port int) (proc.Spec, error) {
 	l := i.Runtime.Launch
 	dirs := make([]string, 0, len(l.PathDirs)+1)
 	for _, d := range l.PathDirs {
@@ -108,14 +113,27 @@ func (i *Installer) spec(args, extraEnv []string) (proc.Spec, error) {
 			return proc.Spec{}, err
 		}
 	}
+	catalogEnv, err := launchargs.Expand(l.Env, i.envValues(port))
+	if err != nil {
+		return proc.Spec{}, err
+	}
 	env := append([]string{
 		"PATH=" + strings.Join(dirs, string(os.PathListSeparator)),
 		"HF_HOME=" + filepath.Join(cache, "huggingface"), "TORCH_HOME=" + filepath.Join(cache, "torch"),
 		"MODELSCOPE_CACHE=" + filepath.Join(cache, "modelscope"), "XDG_CACHE_HOME=" + cache,
 		"TEMP=" + tmp, "TMP=" + tmp, "TMPDIR=" + tmp,
-	}, l.Env...)
+	}, catalogEnv...)
 	env = append(env, extraEnv...)
 	return proc.Spec{
 		Command: i.ProgramPath(), Args: args, Dir: i.Layout.EnvDir(), LogPath: i.Layout.LogPath(), Env: env, DropEnv: foreignEnv,
 	}, nil
+}
+
+// envValues are the placeholders of the catalog's environment: the port of the server (none for a job that is no server) and the home and models directories of the runtime.
+func (i *Installer) envValues(port int) map[string]string {
+	values := map[string]string{launchargs.Home: i.Layout.HomeDir(), launchargs.Models: i.Layout.ModelsDir()}
+	if port > 0 {
+		values[launchargs.Port] = strconv.Itoa(port)
+	}
+	return values
 }
