@@ -33,9 +33,11 @@ type madeFile struct {
 var madeFiles sync.Map // key (extension + arguments) -> *madeFile
 
 // FFmpegFile is a media file that ffmpeg makes from args (the input and codec arguments, without
-// "-v", "-y" and the output file): the bytes of "ffmpeg -v error -y <args> out<ext>". The same ext
-// and args are encoded once per test process and every test gets the same bytes, so a fixture that
-// every test needs (a colour pattern video, a sine tone) costs one ffmpeg run, not one per test.
+// "-nostdin", "-v", "-y" and the output file): the bytes of "ffmpeg -nostdin -v error -y <args> out<ext>".
+// -nostdin keeps ffmpeg from polling stdin for interactive commands, which on a busy host holds a
+// fixture up. The same ext and args are encoded once per test process and every test gets the same
+// bytes, so a fixture that every test needs (a colour pattern video, a sine tone) costs one ffmpeg
+// run, not one per test.
 // The returned slice is shared: do not modify it. ext includes the dot (".mp4").
 //
 // A machine without ffmpeg ends the test as MissingFFmpeg does.
@@ -58,7 +60,7 @@ func encode(ffmpeg, ext string, args []string) ([]byte, string) {
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 	out := dir + string(os.PathSeparator) + "out" + ext
-	cmd := exec.Command(ffmpeg, append(append([]string{"-v", "error", "-y"}, args...), out)...) // #nosec G204 -- test fixtures
+	cmd := exec.Command(ffmpeg, ffmpegArgs(args, out)...) // #nosec G204 -- test fixtures
 	if b, err := cmd.CombinedOutput(); err != nil {
 		return nil, err.Error() + ": " + string(b)
 	}
@@ -67,6 +69,12 @@ func encode(ffmpeg, ext string, args []string) ([]byte, string) {
 		return nil, err.Error()
 	}
 	return data, ""
+}
+
+// ffmpegArgs is the command line of one fixture: -nostdin first so ffmpeg never polls stdin for interactive
+// commands (on a busy host that polling holds the fixture up), then the fixed flags, args and the output file.
+func ffmpegArgs(args []string, out string) []string {
+	return append(append([]string{"-nostdin", "-v", "error", "-y"}, args...), out)
 }
 
 // PatternVideo is a 10 fps mp4 of a colour test pattern (size "320x240") with a 440 Hz tone, seconds
