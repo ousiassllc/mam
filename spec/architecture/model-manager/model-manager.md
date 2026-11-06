@@ -537,6 +537,7 @@ GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒
 | `ltx-2.5-22b-distilled-dfr`（`ltx-2-5-dfr-i2v-enhanced`。拡張のぶん） | — | — | — | — |
 | `ltx-2.5-22b-distilled-nvfp4`（Blackwell の GPU のみ） | — | — | — | — |
 | `ltx-2.5-22b-distilled-nvfp4`（`ltx-2-5-nvfp4-i2v-enhanced`。Blackwell の GPU のみ・拡張のぶん） | — | — | — | — |
+| `qwen-image-21-vnccs-pose`（`txt2img-qwen-image21-vnccs-pose`。Issue #985。LoRA の作者の手順は最低 12 GB・推奨 24 GB） | — | — | — | — |
 
 ### 4.6 GPU の世代・OS の欄と警告（Issue #979）
 
