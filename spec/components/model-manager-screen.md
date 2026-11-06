@@ -7,6 +7,9 @@
 > **#1100 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1100）**: モデルマネージャーから区画「試し生成」（`#mm-trial`・`#mm-trials`。`TrialSection`・`TrialFormView`・`TrialList`）と、そのルート `/model-manager/trials/…` を**廃止する**。導入したモデルを試す場所は、**生成テスト画面（`GET /generation-test`。Issue の「`/gentest`」は誤記で、実在するルートはこちら）だけ**になる。生成テスト画面・`/generation-test/…`・MCP の生成テストのツール・履歴は変えない。これまでの試し生成の結果は生成テストの履歴にそのまま残る（データの移行・削除はしない）。区画の並びは「ComfyUI エンジン → ローカル音声・口パク・LLM → 追加ノード → 顔チェック用モデル → モデル → Hugging Face から導入 → Hugging Face のトークン → 外部の ComfyUI」になる。区画「モデル」の「?」ヘルプの末尾に、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。行き先は `paths.GenerationTest()`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つ置く。「導入したモデルは生成テストで試せます」だけで、試し生成のフォーム・結果の一覧・削除は画面に残さない。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
 
 > **#1104 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1104）**: 設定「テキスト生成（LLM）」のカード「ローカル LLM サーバー」を、モデルマネージャーの新しい分類 `local-llm`「ローカル LLM」へ**移す**。llama.cpp（mam が導入・起動）・Ollama（#1105）・別のサーバー（LM Studio など。URL を指定）を、1 つの導線（「使うサーバー」の選択）にまとめる。設定のカードは、モデルマネージャーへのリンクだけになる。下の節「ローカル LLM の統合（#1104）」が正で、#1101 の分類の表の `local-runtimes`（llama.cpp を含む）はこの節に読み替える。
+
+> **#1105 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1105）**: 分類 `local-llm` に、**Ollama 本体の導入**（ランタイム `ollama`。カード `#mm-runtime-ollama`。`#mm-llm-runtimes` の中）と、**Ollama のモデルの取得**（区画 `#mm-ollama`。`ollama pull`）を足す。Issue 本文の「エルラマ」は Ollama（音声入力の表記ゆれ）。下の節「Ollama の導入とモデルの取得（#1105）」が正。
+
 > **#1103 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1103）**: 区画「追加ノード」のカードから、ノードの説明（カタログの `description`。156〜407 字）を外し、**カードをタップして開く詳細モーダル（`nodecard.NodeDetail`。すでにある）だけ**に出す。新しい部品・新しい「?」は作らない。下の節「追加ノードの説明（#1103）」が正。
 
 > **#1102 の追記（2026-11-06）— 状態: 仕様のみ（未実装。Issue #1102）**: モデルを並べる一覧の列数を、**1 列（〜639 px）→ 2 列（640 px〜）→ 3 列（1280 px〜）の 1 通りに統一**する。今は一覧ごとにバラバラ（ランタイム・追加ノードは 1 列→1024 px〜 2 列、モデルの一覧・追加したファイル・外部の ComfyUI のモデルは 1 列→2 列→1024 px〜 3 列）。下の節「カードの列数（#1102）」が正。
@@ -206,6 +209,32 @@
 - **LM Studio を mam が導入するか**（既定: しない。配布は GUI のインストーラーで、再配布・自動導入の条件を確かめていない。「別のサーバー」に URL を書いてつなぐ形のまま。手順は local-llm.md §8.2）。
 - **左メニュー・概要のアイコン**（既定: `IconNetwork`。`custom-nodes` と同じになるが、名前の文字で区別できる。専用のアイコンを足すなら、Iconoir から 1 つ選んで `atoms` に足す別の作業）。
 
+## Ollama の導入とモデルの取得（#1105）
+
+> **状態: 仕様のみ（未実装。Issue #1105）**。#1104（分類 `local-llm`）のあとに作る。意味・取得の流れ・認証・照合は [../architecture/model-manager/local-runtime.md](../architecture/model-manager/local-runtime.md) §19、ルートと受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4、MCP は [../api/mcp-tools-model-manager.md](../api/mcp-tools-model-manager.md)。
+
+- **今の形**（コードで確かめた）: Ollama を導入・起動する部品は無い。設定の URL 入力のカードに、別に入れた Ollama のアドレスを書くだけで、モデルの取得も利用者の `ollama pull`。
+- **Ollama 本体**: ランタイム（`runtimecard.RuntimeCard`。`modelcard.Item`）の 1 枚として `#mm-llm-runtimes` に並ぶ（`#mm-runtime-ollama`。アイコン `IconNetwork`〔llama.cpp のカードと同じ〕・名前「Ollama」・用途「文章（LLM）」と必要な空き容量・状態・商用利用のアイコン〔MIT = 可〕・導入／中断／起動／停止／自動起動／削除）。導入・起動・停止・削除の操作とルート `/model-manager/runtimes/ollama/…` は他のランタイムと同じ。**詳細モーダル**（`GET /model-manager/runtimes/ollama/detail`）に、説明・導入先・出典（`github.com/ollama/ollama`）とライセンス（MIT）・**「このサーバーには認証がありません。信用できないソフトを同じ PC で動かさないでください」**（`data-testid="mm-ollama-noauth"`。`role="note"`）・「Ollama のクラウド機能は無効にしています」。削除の `hx-confirm` は「取得した Ollama のモデルも消えます」を含む。この PC で使えないとき（macOS・AMD の GPU・Windows arm64）は、導入・起動のボタンの代わりに理由（`mm-runtime-reason`）を出し、macOS では「Ollama の公式のアプリを入れて『別のサーバー』につないでください」の案内（`mm-runtime-fallback`。`#mm-llm-use` の「別のサーバー」へのリンクつき）。
+- **Ollama のモデル**（区画 `#mm-ollama`。`molecules.SettingsSection("Ollama のモデル", help)`。`#mm-llm-runtimes` の次）:
+  - 先頭に状態の 1 行（`data-testid="mm-ollama-state"`・`aria-live="polite"`）: 「Ollama は未導入です。上のカードから導入してください」（未導入。`#mm-runtime-ollama` へのページ内リンク）／「Ollama は停止中です。取得のボタンを押すと起動します」／「Ollama は起動中です」／「Ollama は使えません: <理由>」。
+  - カードの `<ul role="list" class="…GridClass…" data-testid="mm-ollama-models">`（列数は #1102 の `modelcard.GridClass`）。1 枚は `<li id="mm-ollama-<名前の `:`・`.` を `-` にしたもの>" data-testid="mm-ollama-model" data-model="gemma4:12b" data-state="…">`（`modelcard.Item`）: アイコン（`IconPackage`）・名前（`<h3>`。画面の名前「Gemma 4 12B（純正）」）・名前の下の 1 行「Ollama: gemma4:12b・約 8.0 GB」・商用利用のアイコン（`commercial.Mark`。カタログの答え）・状態のバッジ（未取得 `missing`／取得中 `pulling`／取得済み `installed`／**上流で更新されています** `changed`／使えません `unavailable`。色だけで伝えない）・取得中の進捗バーと段階の文（「manifest を取得しています」「データを取得しています（42%・3.2 / 8.0 GB）」「検証しています」。`role="status"`）・ボタン（取得／中断する／削除。`aria-label` は「<操作>: <画面の名前>」）・直前の結果とエラー。空き不足は「導入先の空きが足りません」のバッジ（他のモデルのカードと同じ）。
+  - カードに出さない: ライセンスの本文・層ごとの digest・出典の URL（詳細モーダルへ。#954 と同じ方針）。**詳細モーダル**（`GET /model-manager/ollama/models/detail?name=gemma4:12b`。`modal.Frame`）: 説明・Ollama の名前・出典（`ollama.com/library/<名前>`）・ライセンス（Apache-2.0・商用可。カタログの答え）・取得量の内訳（model・projector・draft の層のサイズ。`<code data-testid="mm-sha256">` に model の層の digest）・照合の結果（`verified`「カタログに記録した内容と同じです」／`changed`「内容がカタログに記録した版と違います。使えますが、mam は確かめていません。出典のページで内容を確認してください」）・確認日（2026-11-07）・「Ollama のタグは書き換えられるため、mam は取得する内容を固定できません」（`data-testid="mm-ollama-tag-note"`）。未知の名前は 404（理由だけのモーダル）。
+  - **そのほかのモデル**: 管理している Ollama が持つモデルのうちカタログに無いもの（利用者が自分で取得したもの）を、一覧の末尾の別の見出し「そのほかのモデル」（`data-testid="mm-ollama-others"`）に名前とサイズだけで並べる（取得・削除のボタンは出さない。削除は利用者の `ollama rm`）。Ollama が止まっている間は出さない（取得のボタンを押さずに起動しない）。
+  - 取得は管理している Ollama が未導入なら押せない（ボタンを `disabled`＋理由）。止まっているときは押せる（取得のジョブが起動する）。`hx-sync="this:drop"`・`hx-disabled-elt`・削除と中断は `hx-confirm`。
+- **ポーリング**: 取得中のカードがあるとき、`#mm-ollama` が `hx-get="/model-manager/ollama?jobs=<job>,…"`・`hx-trigger="every 2s"` を持つ（なくなると止まる）。終わった取り直しで結果（「取得しました」／失敗の理由）を 1 度出す。更新ボタン（`molecules/refresh.Bar`。`id` は `mm-ollama-refresh`）。取得の完了・削除は、同じページの `#mm-llm-use-state`（取得済みのモデル数が変わるとき。状態の行だけ）を `hx-swap-oob` で描き直す。ほかのページの区画は描き直さない。
+- **LLM の割り当てとの関係**: `use` が `ollama` の間、設定の LLM のモデル選択に、取得済みのモデルがすべて出る（local-runtime.md §19.3）。使われている割り当てのモデルは、削除が 422（使っている Agent の名前を出す）。取得を始めても割り当てを自動では変えない。
+- **a11y**: 状態は文字。進捗は `role="status"`。ボタンの名前に画面の名前。未導入・停止中の理由は `aria-describedby` で取得のボタンに結ぶ。
+- **テストで見ること**: `GET /model-manager/local-llm` に `#mm-ollama` がちょうど 1 つ。カタログの 3 つのカードが `data-model` と一致し、`modelcard.GridClass`。未導入で取得のボタンが `disabled`・理由の行が出る。偽の Ollama（NDJSON の `/api/pull`）で、進捗が合計に対する割合になり、層が切り替わっても戻らない・`success` のあと `verified`／`changed`・`error` の行で失敗の理由・中断・空き不足の 409。削除（使用中の 422・取得中の 409・未取得の 409）。そのほかのモデルの表示。`cloud` を含む名前・`library` 以外の名前を、どのルートに送っても 422（実行されない）。CSRF のトークンが無い要求は 403。`mm-ollama-noauth` が詳細に出る。macOS・AMD の理由と案内。
+
+### 決定が要ること
+
+- **自由入力の `ollama pull`**（既定: しない。厳選した 3 つのカードだけ。自由入力は、①ライセンスと成人向けの扱いを mam が確かめられない〔レジストリに HF のようなタグの API が無い〕②`cloud` タグ〔プロンプトを外へ送る〕を避ける必要がある。入れるなら: 名前の欄＋同意のチェック〔「mam はこのモデルのライセンスと内容を確認していません」。HF の導入と同じ形〕・`library` の名前だけ・`cloud` を拒否・商用は `unknown`・年齢確認が済むまで出さない）。
+- **取得の方式**（既定: Ollama 自身の `/api/pull`。層の digest の検証は Ollama が行い、mam は取得後に manifest を照合して `verified`／`changed` を出すだけ。別案: mam がレジストリの blob を `fetch`〔Range 再開・SHA-256 固定〕で取得して `OLLAMA_MODELS` に書く。mam の固定は強くなるが、Ollama の内部形式〔blob と manifest の置き場所〕に依存し、Ollama の更新で壊れうる）。
+- **`changed` のときの扱い**（既定: 使えるまま・注記だけ。別案: 使用を止める〔タグが正規に更新された場合も使えなくなる〕、または取得後の内容を固定のカタログの digest と合わなければ消す）。
+- **認証が無いことの扱い**（既定: 注意書きだけ〔local-runtime.md §19.4〕。別案: mam が認証つきのループバックのプロキシを前に置く〔新しいプロセスと仕組みが要る〕）。
+- **AMD の GPU・macOS・Windows arm64**（既定: 対応しない。理由と案内を出す。AMD は `ollama-windows-amd64-rocm.zip` を重ねる形で足せるが、実機で確かめられない）。
+- **厳選する名前**（既定: `gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b`。llama.cpp の純正モデルと同じ系統。非検閲の派生は載せない）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -240,3 +269,4 @@
 | 1.27 | 2026-11-06 | モデルを並べる一覧の列数を、1 列（〜639 px）・2 列（640 px〜）・3 列（1280 px〜）に統一すると決めた（`modelcard.GridClass`。ランタイム・追加ノードの `lg:grid-cols-2`、モデルの一覧・追加したファイル・外部の ComfyUI のモデルの `lg:grid-cols-3` を置き換える）。カードの一覧を持つ分類ページは `max-w-5xl`。エンジンのカードは例外で幅いっぱい（節「カードの列数（#1102）」）。状態は仕様のみ（未実装） | Issue #1102 |
 | 1.28 | 2026-11-06 | 区画「追加ノード」のカードからノードの説明（`mm-node-description`）を外し、すでに説明を出している詳細モーダル（`nodecard.NodeDetail`）だけに出すと決めた。新しい部品は作らず、区画の「?」の文に「ノードの説明」を足す（節「追加ノードの説明（#1103）」）。状態は仕様のみ（未実装） | Issue #1103 |
 | 1.29 | 2026-11-06 | 設定「テキスト生成（LLM）」の「ローカル LLM サーバー」を、モデルマネージャーの新しい分類 `local-llm`（「使うサーバー」`#mm-llm-use`・「ローカルで動かすサーバー」`#mm-llm-runtimes`・「別のサーバーにつなぐ」`#mm-llm-connection`）へ統合すると決めた。llama.cpp のカードを `local-runtimes` から `local-llm` へ移し、設定のカードはリンクだけにする（節「ローカル LLM の統合（#1104）」）。#1101 の分類の表・概要のまとめ・ページをまたぐリンクの表に反映した。状態は仕様のみ（未実装） | Issue #1104 |
+| 1.30 | 2026-11-06 | 分類 `local-llm` に、Ollama 本体のカード（`#mm-runtime-ollama`。`#mm-llm-runtimes` の中）と、区画「Ollama のモデル」（`#mm-ollama`。厳選した 3 つのカードの取得・中断・削除、そのほかのモデルの表示、詳細モーダル、ポーリング）を足すと決めた（節「Ollama の導入とモデルの取得（#1105）」）。状態は仕様のみ（未実装） | Issue #1105 |

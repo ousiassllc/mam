@@ -78,3 +78,4 @@
 | 1.71 | 2026-11-06 | §4.6「埋めたもの」の Wan 2.2 の項に残っていた「同梱エンジンは Windows 版だけで、macOS は外部の ComfyUI の URL を使う場合の話」を、同梱エンジンが macOS（Apple Silicon）にも入る（§3.7）実態に合わせて直した | Issue #854（受け入れ条件「Windows 版だけ」の文言を実態に合わせる、の残り） |
 | 1.72 | 2026-11-06 | §8「試し生成」を「廃止」の節に書き直した（画面側だけを消す。Service API・ジョブ種別 `gentest`・データは変えない。試し生成の専用の `mmview.TrialModels`・`modelpicker.SourceTrial` も消す）。§1・§5.1・§6 の表・§12 の「試し生成」の言及を生成テストに改めた。状態は仕様のみ | Issue #1100 |
 | 1.73 | 2026-11-06 | [custom-nodes.md](custom-nodes.md) §7: 追加ノードの説明はカードに出さず、詳細モーダルだけに出すと決めた（#1103） | Issue #1103 |
+| 1.74 | 2026-11-06 | [local-runtime.md](local-runtime.md) §19 を新設: Ollama のランタイム（v0.40.15 の `ollama-windows-amd64.zip`。MIT。`127.0.0.1` だけ・認証なし・クラウド機能は無効）と、Ollama のモデルの取得（厳選 3 つ。Ollama 自身の `/api/pull`・取得後の manifest の照合・削除・ジョブの `target=ollama:<name>`）。状態は仕様のみ | Issue #1105 |

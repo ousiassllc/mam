@@ -58,6 +58,10 @@
 | PUT | `/model-manager/local-llm/use` | 使うサーバーの保存（#1104）。フォーム `use`。`llama-cpp` は `providers.local.use_managed_runtime=true`・`use_managed_ollama=false`、`ollama` は `use_managed_ollama=true`・`use_managed_runtime=false`、`custom` は両方 `false`（`base_url` に呼び出す）。200: 区画（「今は <名前> に呼び出します」）。422: `use` が上の 3 値でない（区画に理由を出し、保存しない）。409: 設定ファイルが `--llm-config` で固定、または管理サーバーを持たない app で `llama-cpp`・`ollama` を選んだ。導入・起動はしない。稼働中のクライアントにすぐ渡す（再起動は要らない） |
 | PUT | `/model-manager/local-llm/connection` | 「別のサーバー」の保存（#1104。`PUT /settings/llm/local` の移し替え。意味は [local-llm.md](../architecture/local-llm.md) §5.1）。フォーム `base_url`・`api_key`（空は変更なし）・`clear_key`（`1` でキーを削除）・`unload`＋`unload_present`。200: 区画（「保存しました。次の LLM の呼び出しからすぐ使われます」）、422: 区画（理由・打った内容・`aria-invalid`。キーは返さない）、409: 設定ファイルが固定（キーだけの変更は固定でも保存できる）、503: キーストア。`use` は変えない |
 | POST | `/model-manager/local-llm/connection/test` | 接続テスト（`GET /v1/models`。#1104。`POST /settings/llm/local/test` の移し替え）。フォーム `base_url`・`api_key`（空は保存したもの。保存しない）。`use` が `llama-cpp`・`ollama` の間は URL を試さず、そのサーバーの状態を言う（起動しない）。200: 結果、422: 拒否されるアドレス |
+| GET | `/model-manager/ollama` | 区画「Ollama のモデル」（`#mm-ollama`。#1105）。状態の行・厳選した 3 つのカード・「そのほかのモデル」。クエリ `jobs`（カンマ区切り）は報告する取得のジョブで、終わったら結果（取得した／失敗の理由）を 1 度出す。動いている取得があるあいだ自分で取り直す（`every 2s`）。常に 200（Ollama が未導入・停止中でもカードと理由を出す） |
+| GET | `/model-manager/ollama/models/detail` | カードが開く詳細モーダルの本体（#1105）。クエリ `name`（`gemma4:12b` など。名前にコロンがあるので、パスではなくクエリ）。説明・出典・ライセンス・層ごとのサイズ・model の層の digest・照合の結果・確認日・タグが動く注記。カタログに無い名前は 404（理由だけのモーダル） |
+| POST | `/model-manager/ollama/models/pull` | Ollama のモデルの取得（ジョブ。#1105）。フォーム `name`（カタログの名前だけ。`library` 以外の名前空間・`cloud` を含むタグ・形式の不正・カタログに無い名前は 422 でジョブを作らない）。Ollama が未導入・非対応なら 409（理由つき）。空きが `models\` のドライブで合計＋ 1 GiB に足りなければ 409（必要量・空き・場所）。取得中の同じ名前は同じジョブ（`existing`）。止まっている Ollama はジョブが起動する。202 で区画を返す |
+| DELETE | `/model-manager/ollama/models` | 取得したモデルの削除（#1105）。クエリ `name`。LLM の割り当てが指していれば 422（使っている Agent の名前）、取得中・未取得は 409、カタログに無い名前は 422、Ollama が未導入は 409。`hx-confirm` つき。止まっている Ollama は削除の間だけ起動する。区画を返す |
 | GET | `/model-manager/nodes` | 追加ノードの区画全体（`#mm-nodes`。Issue #976）。区画の更新ボタンが取り直す |
 | GET | `/model-manager/nodes/:id` | 追加ノードのカード（`#mm-node-<id>`）。導入中は自分で取り直す（クエリ `job` は報告するジョブ。終わったら結果を 1 度出す）。未知の ID は 404 |
 | GET | `/model-manager/nodes/:id/detail` | カードが開く詳細モーダルの本体。固定したコミット・アーカイブの SHA-256・ライセンスと商用利用の答え・必要な Python パッケージ・ソースの確認結果・注意事項。未知の ID は 404（理由だけのモーダル） |
@@ -169,6 +173,19 @@
 - `joblist.Dest`・`modelfilter.RouteOf`（`ReasonEndpoint` ＋ `SourceLocalLLM`）の行き先が `/model-manager/local-llm`。MCP の `set_local_llm_server`（`use_managed_ollama` の入出力）・`test_local_llm_server`・`get_global_settings` の `llm.local_server` が同じ保存を読み書きする（`use` の 3 値と矛盾する組み合わせを MCP から保存しようとすると 422 / `validation`）。
 - `go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。`web/sidenavtest`・`a11y`（ラジオの `fieldset`・`legend`）。
 
+**Ollama の導入とモデルの取得の受け入れ条件（Issue #1105。実装時にこのテストを足す。#1104 のあと）**:
+
+- カタログ（`ollama` ランタイムの定義。`catalog/ollamatest`）: 取得先は `github.com/ollama/ollama/releases/download/` のアセットだけで、URL・サイズ・SHA-256 が固定されている（v0.40.15 の `ollama-windows-amd64.zip`）。`launch` の `OLLAMA_HOST` が `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::`・`[` を含まない。引数は `serve` だけ。起動前に `server.json` へ `disable_ollama_cloud: true` を書く。ライセンスは MIT・商用 `yes`。
+- `GET /model-manager/local-llm` に `#mm-ollama` がちょうど 1 つ、`#mm-runtime-ollama` が `#mm-llm-runtimes` の中に 1 つ。`#mm-ollama` の `mm-ollama-model` が 3 つで、`data-model` が `gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b`（カタログと同じ順）。カードの `<ul>` は `modelcard.GridClass`。ライセンスの本文・digest はカードに出ず、詳細モーダルにある。
+- Ollama が未導入のとき、取得のボタンが `disabled` で `mm-ollama-state` に「未導入」と `#mm-runtime-ollama` へのリンク。macOS・AMD の GPU の PC は、Ollama のカードに導入のボタンが無く、理由（`mm-runtime-reason`）と案内（`mm-runtime-fallback`）。`POST …/models/pull` は 409。
+- `POST /model-manager/ollama/models/pull`（偽の Ollama。NDJSON の `/api/pull`）: 進捗が「確定した層の合計＋今の層の `completed`」をカタログの合計で割った値になり、層が切り替わっても前の値に戻らない。`success` のあと manifest（`OLLAMA_MODELS`）の model の層がカタログと同じなら `data-state="installed"`、違う・読めないなら `data-state="changed"`（バッジ「上流で更新されています」。モデルは消えず、使える）。`error` の行は日本語の失敗の理由。`POST /model-manager/jobs/:job/cancel`（`target=ollama:<名前>`）で `/api/pull` の接続を閉じる。空き不足は 409 でジョブを作らない。名前が `qwen3.8:27b-cloud`・`someone/model:latest`・`../x` は 422（偽の Ollama への要求が 0 回）。
+- `DELETE /model-manager/ollama/models?name=…`: 取得済みは `DELETE /api/delete` を呼び、LLM の割り当てが指していれば 422 で何も消えない。取得中・未取得は 409。
+- 「そのほかのモデル」: 偽の Ollama の `GET /api/tags` にカタログ外のモデルがあれば `mm-ollama-others` に名前とサイズだけが出て、ボタンは無い。Ollama が止まっている間は出ない。
+- 詳細モーダル: `mm-sha256` に model の層の digest（カタログと同じ）、`mm-ollama-tag-note`、Ollama のカードの詳細に `mm-ollama-noauth`。
+- ポーリング: 取得中があるとき `#mm-ollama` に `hx-trigger="every 2s"` と `?jobs=`、なくなると属性が消える。取得の完了は `#mm-llm-use-state` だけを `hx-swap-oob` で描き直す（その `id` が同じページにある）。CSRF のトークンが無い POST・DELETE は 403。
+- MCP（[mcp-tools-model-manager.md](mcp-tools-model-manager.md)）: `list_ollama_models`・`pull_ollama_model`・`delete_ollama_model` が同じサービスを呼び、同じ拒否（422 / `validation`・409 / `conflict`・404 / `not_found`）を返す。`install_local_runtime`（`runtime_id=ollama`）で本体を導入できる。
+- `go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
+
 `handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
 
 ## 改訂履歴
@@ -195,3 +212,4 @@
 | 1.17 | 2026-11-06 | §4 に、カードの列数の受け入れ条件（`modelcard.GridClass`・1 → 2 → 3 列の境 640 px・1280 px）を足した。ルート・応答は変えない。状態は仕様のみ（未実装） | Issue #1102 |
 | 1.18 | 2026-11-06 | §3 の「追加ノード」と §4 に、カードにノードの説明を出さず詳細モーダルだけに出すこと（`mm-node-description` の廃止）と、その受け入れ条件を足した。ルートは変えない。状態は仕様のみ（未実装） | Issue #1103 |
 | 1.19 | 2026-11-06 | §1 に `GET`・`PUT /model-manager/local-llm/use`・`PUT /model-manager/local-llm/connection`・`POST …/connection/test` を足し、`GET /model-manager/runtimes` に `purpose=llm` を足した。§3 の分類の表に `local-llm` を足し、`local-runtimes` から llama.cpp を外した。受け入れ条件を §4 に足した。設定の `PUT /settings/llm/local`・`POST …/test` は廃止（[endpoints-settings.md](endpoints-settings.md)）。状態は仕様のみ（未実装） | Issue #1104 |
+| 1.20 | 2026-11-06 | §1 に `GET /model-manager/ollama`・`GET …/ollama/models/detail`・`POST …/ollama/models/pull`・`DELETE …/ollama/models` を足し、§4 に Ollama の導入とモデルの取得の受け入れ条件を足した。Ollama 本体は既存の `/model-manager/runtimes/ollama/…` で扱う。状態は仕様のみ（未実装） | Issue #1105 |
