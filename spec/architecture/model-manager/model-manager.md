@@ -671,7 +671,7 @@ GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒
 | `Catalog()` | 成人向けのモデルを返さない |
 | `Model(id)`・`AcceptLicense`・`InstallModel` | `ErrAdultNotConfirmed`（導入は何もダウンロードせず、同意も記録しない。画面・MCP は 409 / `conflict`） |
 | 導入のジョブ（`runModelInstall`） | 待っている間に閉じられたら、始めに同じ理由で失敗する |
-| 生成テストのモデルの一覧（`mmview.TrialModels`。生成テストの `Models`・`Model` と、`handler/modelpicker/sources_gentest.go` のモデル選択が使う） | 導入済みの成人向けモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）も出さず、名指しの要求は不明なモデルとして断る（`gentest.Deps.Hidden` = `HidesModel`） |
+| 生成テストのモデルの一覧（生成テストの `Models`・`Model`） | 導入済みの成人向けモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）も出さず、名指しの要求は不明なモデルとして断る（`gentest.Deps.Hidden` = `HidesModel`）。#1100 より前は、モデルマネージャーの試し生成の一覧（`mmview.TrialModels`）も同じ述語を使っていた |
 | 画像・動画モデルの割り当て（`modelsettings`、画面・MCP） | 導入済みの成人向けモデルを選択肢に出さず、それを指す割り当ては保存できない（`HidesModel` = `modelsettings.Service.SetHidden`）。§6.1 |
 | 生成（Shot・Reference Pack・生成テスト・Adapter の直接呼び出し） | 割り当てが指していても断る（`agegate.ErrRefused`。何も呼ばず、代替にも回さない）。§6.1 |
 | ポーズ集の成人向けのシリーズ（Shisei の `sexy`・`duo`。Issue #1020。[local-runtime.md](local-runtime.md) §12.9） | **同じゲートを使う**（`AdultContentEnabled`。新しい確認の方法は足さない）。導入は `ErrAdultGateClosed`、一覧・画像・参照・履歴の入力・ジョブ一覧には出さず、走り出す前のバッチは失敗にする |
@@ -696,8 +696,8 @@ func (*Service) HidesModel(id string) bool                 // 試し生成・割
 
 > **状態: 仕様のみ（未実装。Issue #1100）**: モデルマネージャーの区画「試し生成」は**廃止する**。導入したモデルを試すのは、生成テスト画面（`GET /generation-test`。[../gentest/gentest.md](../gentest/gentest.md)）だけになる。このサービス（`modelmanager.Service`）には、もともと試し生成のコードも保存場所も無い（1.2 で生成テストに一本化した）ので、**Service API・データ・ジョブの種別（`gentest`）は変えない**。
 
-- **消すもの（画面側だけ）**: `handler/modelmgr/trials.go`（`Trials`・`TrialForm`・`StartTrial`・`DeleteTrial`・`TrialFile`）と `trialPanel`、`organisms/modelmgr/trial.templ`（`TrialSection`・`TrialFormView`・`TrialList`。`Data.Trial`）、`oob.CatalogWithTrial`・`oob.HFModelsWithTrial`、`middleware/bodylimit.go` の `POST /model-manager/trials`（21 MiB への広げ）、試し生成だけの表示（音声つきの注記 `mm-trial-audio-note`・バッジ `mm-trial-audio-badge`。Issue #927 で足したもの）。生成テスト画面の表示は変えない。
-- **残すもの**: `mmview.TrialModels` は生成テストのモデルの選択（`handler/modelpicker/sources_gentest.go`）が使うので**残す**（名前の変更は別の Issue）。生成テストの履歴にあるこれまでの試し生成の結果も残す（データの移行・削除はしない）。`GET /model-manager/trials/:id/file` を直接開いていた外部のリンクは 404 になる（アプリの中のリンクは無い）。
+- **消すもの（画面側だけ）**: `handler/modelmgr/trials.go`（`Trials`・`TrialForm`・`StartTrial`・`DeleteTrial`・`TrialFile`）と `trialPanel`、`organisms/modelmgr/trial.templ`（`TrialSection`・`TrialFormView`・`TrialList`。`Data.Trial`）、`oob.CatalogWithTrial`・`oob.HFModelsWithTrial`、`middleware/bodylimit.go` の `POST /model-manager/trials`（21 MiB への広げ）、モデル選択のソース `modelpicker.SourceTrial`（`model-trial`。`GET /model-picker/model-trial`）と、その専用の `trialModels`（`handler/modelpicker/sources_gentest.go`）・`mmview.TrialModels`（`service/modelmanager/mmview/trialmodels.go`。試し生成のほかに使う所は無いことを確認済み）とそれぞれのテスト（[model-filter.md](model-filter.md) §8.3 の表の行は削除済み）、試し生成だけの表示（音声つきの注記 `mm-trial-audio-note`・バッジ `mm-trial-audio-badge`。Issue #927 で足したもの）。生成テスト画面の表示は変えない。
+- **残すもの**: 生成テストの履歴にあるこれまでの試し生成の結果（データの移行・削除はしない）。`gentest.Deps.Hidden`（= `HidesModel`。§6.2）による、生成テストのモデルの一覧からの成人向けの除外。`GET /model-manager/trials/:id/file` を直接開いていた外部のリンクは 404 になる（アプリの中のリンクは無い）。
 - **英訳**: 「試し生成は英訳しない」（#1068）は、試し生成が無くなるので不要になる。生成テストの既定（`gentest.DefaultTranslate`）は変えない。
 - **導線**: 区画「モデル」の「?」ヘルプに、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つだけ置く。
 - **他の節の「試し生成」**: §4.5・§4.6・§4.7・§6.1・§6.2・§10 の「試し生成」（一覧に出ない・成人向けを隠す・音声つきの再生）は、#1100 の実装後は「生成テスト」（`GET /generation-test`）に読み替える。振る舞い（隠す対象・ゲート）は変わらない。
@@ -812,7 +812,7 @@ func (*Service) DeleteUserModel(ctx, path string) error
 
 - **画面**: `GET /model-manager`（`web/handler/modelmgr`・`organisms/modelmgr`）。仕様は [endpoints-model-manager.md](../../api/endpoints-model-manager.md)・[model-manager-screen.md](../../components/model-manager-screen.md)。入口はプロジェクト一覧と設定画面のリンク。進捗は HTMX のポーリング（2 秒）。
 - **MCP ツール**: `mcp/tools/modelmgr`（エンジン・カタログ・トークン・外部）と 生成テストの `mcp/tools/gentest`（導入したモデルを試すのはこれ。#1100 で画面の試し生成は廃止）。仕様は [mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)・[mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)。ジョブの種別 `model_install` の Probe はこの画面側、`gentest` の Probe は生成テスト側にあり、`get_job` が状態・進捗・結果・失敗の理由を返す。
-- **共有**: サービスの拒否は `service/modelmanager/mmview.Refuse`（種類とメッセージ）で、画面の HTTP 状態と MCP のエラーコードに写す（`ErrConsentRequired`・`ErrBusy`・`ErrPinned`・`ErrUnsupported` は 409 / `conflict`、`ErrNoGPU`・`*InvalidError` は 422 / `validation`）。`mmview.TrialModels` は生成テストのモデルの選択肢（モデルの識別子・動画の解像度と長さ・参照画像を使えるか。§8）。
+- **共有**: サービスの拒否は `service/modelmanager/mmview.Refuse`（種類とメッセージ）で、画面の HTTP 状態と MCP のエラーコードに写す（`ErrConsentRequired`・`ErrBusy`・`ErrPinned`・`ErrUnsupported` は 409 / `conflict`、`ErrNoGPU`・`*InvalidError` は 422 / `validation`）。`mmview.TrialModels`（試し生成のモデルの選択肢）は #1100 で消す（§8）。
 - **導入の中断**: `CancelInstall`。ジョブは失敗で終わり（理由に「導入を中断しました」）、`.part` は残るので、導入し直すと続きから再開する。
 - **通信切断での失敗**: 切断が続いて自動再開の上限を超えたジョブも、`.part` は残る。理由は「通信が切れました。もう一度導入すると続きから再開します」で、導入し直すと続きから再開する（§3.3）。
 - **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。**年齢確認も同じ**（§6.2）: 画面のダイアログ（`PUT /model-manager/adult`）と MCP の `set_adult_content` は確認を渡す手段で、`Catalog`・`InstallModel`・生成テストのモデルの一覧は Service が閉じる。`ErrAdultNotConfirmed` は 409 / `conflict`（`mmview.Refuse`）。

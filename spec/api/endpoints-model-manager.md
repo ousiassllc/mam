@@ -108,7 +108,7 @@
 - `GET /model-manager` の本文に `#mm-trial`・`#mm-trials`・`#mm-trial-form`・`mm-trial-*` の `data-testid` が無い。区画「モデル」の「?」ヘルプの中に `data-testid="mm-open-gentest"` のリンクが 1 つあり、`href` は `paths.GenerationTest()`（`/generation-test`）。
 - `GET /model-manager/trials`・`GET /model-manager/trials/form`・`POST /model-manager/trials`・`DELETE /model-manager/trials/:id`・`GET /model-manager/trials/:id/file` は 404（ルートを登録しない）。`middleware.MaxBody` のアップロード用ルートの一覧から `/model-manager/trials` が消えている（21 MiB への広げが残っていない）。
 - モデルの導入の完了（`GET /model-manager/models?jobs=…`）・成人向けの切り替え（`PUT /model-manager/adult`）・追加したファイルの導入の完了と削除（`GET`・`DELETE /model-manager/hf/models`）の応答に、`hx-swap-oob` の試し生成の区画が含まれない（一覧・カードだけ）。
-- `/generation-test` と `/generation-test/…`・MCP の生成テストのツール・生成テストの履歴は変わらない。履歴に、試し生成で作った結果が今までどおり出る。
+- `/generation-test` と `/generation-test/…`・MCP の生成テストのツール・生成テストの履歴は変わらない。履歴に、試し生成で作った結果が今までどおり出る。`GET /model-picker/model-trial` は 404（`modelpicker.SourceTrial`・`trialModels`・`mmview.TrialModels` とそのテストを消す。ほかに使う所は無い）。
 - `go build`・`go vet`・`make test` が通り、`templ generate` の差分が無い。fixture（`scroll-mm-*.html`・`layout-long-names-*.html`）は試し生成の区画を含まない形で作り直し、`scroll.wtest.ts`・`long-names.wtest.ts` が通る。
 
 `handler/modelmgr/runtimes` の `runtimes_test.go`（`screentest.NewWithRuntimes`。`service/localruntime/lrtest` の偽のパッケージ・偽の Hugging Face・偽のプロセス）: カードの表示（未導入・導入中・導入済み・重みが不足）、出典・ライセンス・`unclear` の注記とバナー、使えない環境の理由とクラウドの案内、導入・重みの導入・起動・停止・自動起動・削除、重みが不足した起動の 409 と文面、取得元が消えたときの失敗の表示、取り消し、未知の ID の 404、サービスが無い画面にはルートが無いこと、スクリーンリーダー用のラベルと鍵・トークンを出さないこと。
