@@ -1222,7 +1222,7 @@ EXPORTED
 
 # 24. Natural Language Director Commands
 
-自然言語入力をCommand Interpreterが構造化操作へ変換する。入力はチャット画面（§23.1）の発言で、対象 Scene/Shot/Take はカードへの返信または直前の文脈から解決し、解決できない場合は聞き返す（通常のテキストで返す。§23.2）。チャットの発言を解釈するのは DIRECTOR MODE（企画が始まった後 = Project の状態が DRAFT でないとき。DRAFT の間は対象になる Scene/Shot が無いので解釈せず、Brief が揃っても DIRECTOR のままなら AUTO に切り替えるまで企画は始まらない）と、どのモードでもメモの依頼語を含む発言だけで、AUTO MODE の指示は受けない（AI は返信しない。DIRECTOR MODE への切替は画面のモード切替から行う）。
+自然言語入力をCommand Interpreterが構造化操作へ変換する。入力はチャット画面（§23.1）の発言で、対象 Scene/Shot/Take はカードへの返信または直前の文脈から解決し、解決できない場合は聞き返す（通常のテキストで返す。§23.2）。チャットの発言を解釈するのは DIRECTOR MODE（企画が始まった後 = Project の状態が DRAFT でないとき。DRAFT の間は対象になる Scene/Shot が無いので解釈せず、Brief が揃っても DIRECTOR のままなら AUTO に切り替えるまで企画は始まらない）と、どのモードでもメモの依頼語を含む発言だけで、AUTO MODE の指示は受けない（指示としては解釈しないが、保存した発言をスレッドで放置せず、処理を始められない理由を AI が一言返す（#1107）。DIRECTOR MODE への切替は画面のモード切替から行う）。
 
 ### Example 1
 

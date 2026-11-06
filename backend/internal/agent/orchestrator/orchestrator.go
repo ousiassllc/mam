@@ -226,7 +226,7 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	}()
 
 	for {
-		if err := o.advance(ctx, id); err != nil {
+		if err := o.advanceRecovered(ctx, id); err != nil {
 			return o.report(ctx, id, err)
 		}
 		if !o.finish(id) {
