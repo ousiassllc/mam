@@ -241,7 +241,7 @@ func TestManagedDirs_DoNotChangeTheFinderOfTheService(t *testing.T) {
 	assert.Equal(t, []string{"/mine/extra"}, s.finder.Extra, "the extra directories are copied, not appended in place")
 }
 
-// A saved path applies from the next start, so the service tells the app that something waits for a restart (#1007); a refused
+// A saved path applies at once: the service tells the app after it wrote the paths (the app looks for ffmpeg again, #1047); a refused
 // path does not.
 func TestSet_TellsTheAppAfterItWroteThePathsAndNotWhenItRefusedThem(t *testing.T) {
 	calls := 0
@@ -253,4 +253,15 @@ func TestSet_TellsTheAppAfterItWroteThePathsAndNotWhenItRefusedThem(t *testing.T
 
 	require.NoError(t, s.Set(locate.Config{FFmpeg: "/opt/mine/ffmpeg"}))
 	assert.Equal(t, 1, calls)
+}
+
+// What View finds is told to the app (#1047), so that the app can make the services run what the screen shows as usable.
+func TestView_TellsTheAppWhatItShows(t *testing.T) {
+	var seen []string
+	s := New(filepath.Join(t.TempDir(), FileName), WithFinder(machine("/usr/bin/ffmpeg", "/usr/bin/ffprobe")), WithOnView(func(a, b string) { seen = append(seen, a, b) }))
+
+	_, err := s.View()
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/usr/bin/ffmpeg", "/usr/bin/ffprobe"}, seen)
 }

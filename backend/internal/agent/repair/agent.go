@@ -86,9 +86,7 @@ type Deps struct {
 	// Shadow, when set, is asked the same question as the Repair Agent whenever the Repair Agent
 	// chooses. Its answer is only recorded.
 	Shadow Shadow
-	// Splicer, when set, splices the new Take of a Partial Regeneration into the Take it repairs
-	// (it needs ffmpeg). Without it Partial Regeneration only adds the new Take of the whole Shot, and
-	// a Partial Regeneration the director asks for by time range is not available.
+	// Splicer, when set and Available if it says so (it needs ffmpeg, which can be set up while mam runs), splices a Partial Regeneration into its Take; without it one by time range is not available.
 	Splicer Splicer
 	// Judge judges the spliced Take. Required with Splicer.
 	Judge TakeJudge

@@ -99,7 +99,7 @@ type PartialInput struct {
 // Take (POST /shots/:id/takes/partial). The joints are cross-faded so that the cut is not seen
 // (UC-3). The new Take is announced in the chat.
 func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialInput) (ShotFragment, error) {
-	if s.tools == nil {
+	if !s.tools.Available() {
 		return ShotFragment{}, ErrUnavailable
 	}
 	unlock, err := s.compose.Lock(ctx, shotID)
@@ -218,7 +218,7 @@ func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, t
 // added Take is a candidate: it does not take the place of the Shot's selected Take. It returns ""
 // when no splice is worth making (see domain.SpliceSegments), and ErrUnavailable without ffmpeg.
 func (s *TakeService) SpliceRegenerated(ctx context.Context, shotID, baseTakeID, regeneratedTakeID string, ranges []domain.TimeRange) (string, error) {
-	if s.tools == nil {
+	if !s.tools.Available() {
 		return "", ErrUnavailable
 	}
 	unlock, err := s.compose.Lock(ctx, shotID)

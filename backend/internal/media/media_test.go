@@ -35,7 +35,7 @@ func makeVideo(t *testing.T, tools Tools, name string, w, h int, fps float64, se
 		args = append(args, "-f", "lavfi", "-i", "sine=frequency=440:duration="+strconv.FormatFloat(seconds, 'f', -1, 64), "-c:a", "aac")
 	}
 	args = append(args, "-c:v", "libx264", "-pix_fmt", "yuv420p", path)
-	out, err := exec.Command(tools.ffmpeg, args...).CombinedOutput()
+	out, err := exec.Command(tools.FFmpegPath(), args...).CombinedOutput()
 	require.NoError(t, err, string(out))
 	return path
 }
@@ -155,7 +155,7 @@ func TestProxy_ScalesA4KVideoDownTo1080AndThumbnailWritesAJPEG(t *testing.T) {
 func makeVideoWithLongerAudio(t *testing.T, tools Tools, name string, videoSeconds, audioSeconds float64) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), name)
-	out, err := exec.Command(tools.ffmpeg, "-v", "error", "-y",
+	out, err := exec.Command(tools.FFmpegPath(), "-v", "error", "-y",
 		"-f", "lavfi", "-i", "testsrc=size=64x64:rate=10:duration="+strconv.FormatFloat(videoSeconds, 'f', -1, 64),
 		"-f", "lavfi", "-i", "sine=frequency=440:duration="+strconv.FormatFloat(audioSeconds, 'f', -1, 64),
 		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", path).CombinedOutput()
@@ -202,7 +202,7 @@ func makeChangingVideo(t *testing.T, tools Tools, name string, audioSeconds floa
 		args = append(args, "-f", "lavfi", "-i", "sine=frequency=440:duration="+strconv.FormatFloat(audioSeconds, 'f', -1, 64), "-c:a", "aac")
 	}
 	args = append(args, "-c:v", "libx264", "-pix_fmt", "yuv420p", path)
-	out, err := exec.Command(tools.ffmpeg, args...).CombinedOutput()
+	out, err := exec.Command(tools.FFmpegPath(), args...).CombinedOutput()
 	require.NoError(t, err, string(out))
 	return path
 }
@@ -251,7 +251,7 @@ func TestThumbnail_ASecondPastTheEndTakesTheLastFrameOfAMatroskaVideo(t *testing
 func makeSolidVideo(t *testing.T, tools Tools, colour string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), colour+".mp4")
-	out, err := exec.Command(tools.ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i",
+	out, err := exec.Command(tools.FFmpegPath(), "-v", "error", "-y", "-f", "lavfi", "-i",
 		"color=c="+colour+":size=64x64:rate=10:duration=1", "-c:v", "libx264", "-pix_fmt", "yuv420p", path).CombinedOutput()
 	require.NoError(t, err, string(out))
 	return path

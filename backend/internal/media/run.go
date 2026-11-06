@@ -37,12 +37,12 @@ var defaultLimits = limits{
 	writePerSecond: 5 * time.Second,
 }
 
-// limits returns the time limits of the tools; the zero Tools gets the defaults.
-func (t Tools) limits() limits {
-	if t.lim == (limits{}) {
+// limits returns the time limits of the executables; the zero value gets the defaults.
+func (e *exes) limits() limits {
+	if e.lim == (limits{}) {
 		return defaultLimits
 	}
-	return t.lim
+	return e.lim
 }
 
 // writeLimit is the time limit of an ffmpeg run on seconds of media.

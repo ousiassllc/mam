@@ -222,6 +222,7 @@ func TestExplainSaysWhatToDoForEachFailure(t *testing.T) {
 		&fetch.HTTPError{Status: 404}: "更新してください",
 		&fetch.HTTPError{Status: 503}: "しばらくしてから",
 		context.DeadlineExceeded:      "入れられませんでした",
+		&fetch.ConnectionLostError{Attempts: 6, Err: assert.AnError}: "通信が切れました。もう一度導入すると続きから再開します",
 	} {
 		assert.Contains(t, ffmpegdl.Explain(err), want)
 	}

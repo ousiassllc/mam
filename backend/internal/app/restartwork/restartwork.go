@@ -93,11 +93,6 @@ func LLMApplier(client *llm.Client, pending *restartpending.Registry) func(llm.C
 	}
 }
 
-// FFmpegPaths is what is told when the paths of ffmpeg and ffprobe were saved: the tools found at startup keep the ffmpeg they found.
-func FFmpegPaths(pending *restartpending.Registry) func() {
-	return func() { pending.Set("ffmpeg", []string{"ffmpeg・ffprobe のパス（起動時に探すため）"}) }
-}
-
 // New is the restart service of the app (spec/architecture/restart.md) with the registry of the settings that wait for a restart:
 // restart asks the front to quit and start the app again (app.Options.Restart; nil in the browser build, which cannot), and what a
 // restart would break is read by Busy.

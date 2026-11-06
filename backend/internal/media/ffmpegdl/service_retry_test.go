@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,12 +50,10 @@ func (l *logBuf) records(level, msg string) []map[string]any {
 func TestServiceLogsEachResumeAndTellsAConnectionLostInJapanese(t *testing.T) {
 	r := newRig(t, "9.9.9")
 	body := r.bodies["/dl/9.9.9/ffmpeg.zip"]
-	var mu sync.Mutex
-	cut := true
+	var cut atomic.Bool
+	cut.Store(true)
 	r.onServe = func(w http.ResponseWriter, _ *http.Request) bool {
-		mu.Lock()
-		defer mu.Unlock()
-		if !cut {
+		if !cut.Load() {
 			return false
 		}
 		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
@@ -73,10 +72,13 @@ func TestServiceLogsEachResumeAndTellsAConnectionLostInJapanese(t *testing.T) {
 	})
 	t.Cleanup(s.Close)
 
-	started, err := s.StartInstall()
-	require.NoError(t, err)
-	require.True(t, started)
-	s.WaitInstall()
+	install := func() {
+		started, err := s.StartInstall()
+		require.NoError(t, err)
+		require.True(t, started)
+		s.WaitInstall()
+	}
+	install()
 
 	st := s.Status()
 	assert.Equal(t, exeinstall.Failed, st.Install.State)
@@ -90,17 +92,7 @@ func TestServiceLogsEachResumeAndTellsAConnectionLostInJapanese(t *testing.T) {
 		assert.NotEmpty(t, rec["err"])
 	}
 
-	mu.Lock()
-	cut = false // the network is back
-	mu.Unlock()
-	started, err = s.StartInstall()
-	require.NoError(t, err)
-	require.True(t, started)
-	s.WaitInstall()
+	cut.Store(false) // the network is back
+	install()
 	assert.Equal(t, exeinstall.Succeeded, s.Status().Install.State, s.Status().Install.Error)
-}
-
-func TestExplainTellsAConnectionLostAndWhatToDo(t *testing.T) {
-	assert.Equal(t, "通信が切れました。もう一度導入すると続きから再開します",
-		ffmpegdl.Explain(&fetch.ConnectionLostError{Attempts: 6, Err: assert.AnError}))
 }

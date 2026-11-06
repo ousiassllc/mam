@@ -76,7 +76,7 @@ func TestLayoutCaption_KeepsTheShortSideSizeWhenTheTextFits(t *testing.T) {
 // caption is drawn.
 func bottomStrip(t *testing.T, tools Tools, path, at string) []byte {
 	t.Helper()
-	out, err := exec.Command(tools.ffmpeg, "-v", "error", "-ss", at, "-i", path, "-frames:v", "1", "-vf", "crop=iw:ih/3:0:2*ih/3,format=gray", "-f", "rawvideo", "-").Output()
+	out, err := exec.Command(tools.FFmpegPath(), "-v", "error", "-ss", at, "-i", path, "-frames:v", "1", "-vf", "crop=iw:ih/3:0:2*ih/3,format=gray", "-f", "rawvideo", "-").Output()
 	require.NoError(t, err)
 	return out
 }

@@ -167,7 +167,8 @@ func TestFFmpegDownload_ButtonDownloadsAndTheAppFindsTheCopy(t *testing.T) {
 	require.Equal(t, http.StatusOK, polled.Code)
 	body = polled.Body.String()
 	assert.Contains(t, body, `data-testid="ffmpeg-download-done"`)
-	assert.Contains(t, body, "起動し直してください")
+	assert.Contains(t, body, "すぐに使えます")
+	assert.NotContains(t, body, "起動し直してください")
 	assert.Contains(t, body, `data-testid="ffmpeg-download-remove"`)
 	assert.NotContains(t, body, `hx-trigger="every 2s"`, "it stops polling")
 

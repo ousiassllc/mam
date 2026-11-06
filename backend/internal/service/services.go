@@ -96,6 +96,7 @@ type Services struct {
 	VoiceTrain    *voicetrain.Service   // the fine-tuning of a Character's voice (#936): its clips, its trainings; the app sets it
 	LLMLocal      *llmlocal.Service     // the local OpenAI-compatible LLM server's address and key (#1008); the app sets it
 	LLMClient     *llm.Client           // the Reasoning LLM Adapter the Agents call; the app sets it (a saved LLM assignment is applied to it at once)
+	FFmpeg        *media.Tools          // the ffmpeg / ffprobe of every service (Deps.Media); the app sets it and Reloads it when ffmpeg is set up
 }
 
 // Close stops the background workers and kills the running Take preview conversions. Call it on shutdown, after the job queue stopped.
