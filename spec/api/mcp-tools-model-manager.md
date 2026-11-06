@@ -109,9 +109,9 @@
 | `install_custom_node` | 固定のコミットのアーカイブを取得して導入する（ジョブ。SHA-256 を検証。動いている ComfyUI は再起動し、読み込まれたことを確かめる）。同意が無い・許可リストにない（`not_found`）・`install_blocked`・同梱エンジンが無い（`conflict`）・空き容量不足は始めずに拒否 | `node_id` | `job_id`, `state`, `existing`, `target`（`node:<id>`） | いいえ |
 | `remove_custom_node` | 導入したノードを削除する（動いている ComfyUI は再起動）。導入中・未導入は `conflict` | `node_id` | `node_id`, `removed` | いいえ（冪等・破壊的） |
 
-## 試し生成
+## 試し生成（廃止。Issue #1100）
 
-モデルマネージャーの「試し生成」は、生成テスト（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）の 1 件のバッチとして動く。専用のツールは無い。ローカルのモデルを試すには `list_generation_models`・`estimate_generation_test`・`run_generation_test`（参照画像は用途 `gentest_reference`、結果のファイルは `get_generation_result` の URL）を使う。**導入済みの成人向けモデルは、年齢確認のゲートが閉じている間は `list_generation_models` に出ず、名指しても不明なモデルとして断られる**（Service が強制する。[model-manager.md](../architecture/model-manager/model-manager.md) §6.2）。1.0 の `list_trial_models`・`start_model_trial`・`list_model_trials`・`get_model_trial`・`get_model_trial_file_url`・`delete_model_trial`、アップロードの用途 `model_trial_reference`、ダウンロードの種類 `model_trial_file` は削除した。
+モデルマネージャーの「試し生成」の区画は #1100 で廃止する（状態: 仕様のみ。未実装）。もともと専用のツールは無く（1.1 で削除）、ローカルのモデルを試すには `list_generation_models`・`estimate_generation_test`・`run_generation_test`（参照画像は用途 `gentest_reference`、結果のファイルは `get_generation_result` の URL）を使う。これは今までどおりで、**このファイルのツールは増減しない**。**導入済みの成人向けモデルは、年齢確認のゲートが閉じている間は `list_generation_models` に出ず、名指しても不明なモデルとして断られる**（Service が強制する。[model-manager.md](../architecture/model-manager/model-manager.md) §6.2）。1.0 の `list_trial_models`・`start_model_trial`・`list_model_trials`・`get_model_trial`・`get_model_trial_file_url`・`delete_model_trial`、アップロードの用途 `model_trial_reference`、ダウンロードの種類 `model_trial_file` は 1.1 で削除済み。
 
 ## ジョブ（`get_job`）
 
@@ -148,3 +148,4 @@
 | 1.16 | 2026-11-04 | `list_model_catalog`・`get_catalog_model` の各モデルに `missing_optional_files[]`・`partial_note`・`files_in_place`、`files[].optional` を足した（必須のファイルが揃えば `installed`。生成テストの `available` と同じ答え） | Issue #1025 |
 | 1.17 | 2026-11-04 | `list_model_catalog`・`get_catalog_model`: 任意ファイルの取得中も、必須が揃うモデルは `state: installed`（`install_job` が付く）。`install_blocked` のノードを要るモデルの `available:false` の `message` はその理由（行き止まりの案内にしない）。導入は任意ファイルの取得に失敗しても失敗にしない | Issue #1025・#1016 |
 | 1.18 | 2026-11-06 | `list_local_runtime_models` の `runtime_id` を省略可にし（省略するとモデルを持つすべての実行環境のモデル。各モデルに `runtime_id`）、フィルターの条件（`kinds`・`languages`・`uncensored`・`vram_fit`・`commercial`・`q` ほか）で絞れるようにした。日本語の声は `kinds=["audio"]`・`languages=["ja"]` | Issue #1015・#1011 |
+| 1.19 | 2026-11-06 | 「試し生成」の節を、区画の廃止（#1100）に合わせて書き直した（ツールの増減なし。状態は仕様のみ） | Issue #1100 |

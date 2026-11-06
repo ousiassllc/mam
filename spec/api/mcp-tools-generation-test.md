@@ -85,7 +85,7 @@
 
 `progress`（`get_job` と `get_generation_test` の両方。Issue #966・#1002）: バッチが `running` の間、バッチのジョブ（`job_id`）が呼んでいるローカルの ComfyUI の呼び出しが報告した最新のステップ（`node`・`step` / `max_step`・`percent`・`elapsed_seconds`・`eta_seconds`。意味は [mcp-tools.md](mcp-tools.md)）。同時に複数の呼び出しが動くときは、最後に進んだもの 1 つ。クラウドのモデル・読み込み中・終わったバッチ・mam の再起動後は**フィールドごと省く**。`done` / `total` の件数は変わらない。
 
-`state`: 結果に動いているものがあれば `running`（まだ何も始まっていなければ `queued`）、終わっていて 1 件でも成功なら `succeeded`、全部失敗なら `failed`（`error` はジョブの理由）、取り消された結果があれば `cancelled`。バッチが削除されると `cancelled`。モデルマネージャーの画面の試し生成も同じ種別のジョブなので、`get_job` で読める。
+`state`: 結果に動いているものがあれば `running`（まだ何も始まっていなければ `queued`）、終わっていて 1 件でも成功なら `succeeded`、全部失敗なら `failed`（`error` はジョブの理由）、取り消された結果があれば `cancelled`。バッチが削除されると `cancelled`。モデルマネージャーの画面の試し生成は #1100 で廃止するので、種別 `gentest` のジョブは生成テスト画面と MCP から始まったものだけになる（`get_job` の読み方は変わらない）。
 
 ## テスト
 
@@ -210,3 +210,4 @@
 | 1.31 | 2026-11-06 | `estimate_generation_test` の英訳の行（`translate`）を、LLM の単価が分かれば `priced` で `total_usd` に入れる（分からなければ従来どおり `unknown`。Issue #1069）。英訳中の取り消しは `upstream` にしない（Issue #1072） |
 | 1.32 | 2026-11-06 | `swap_generation_face` で FaceFusion が見つからないときの答えを、実装（Issue #1010 から）どおり `unavailable`（`failure.code` が `facefusion_unavailable`）に直した（`validation` のままだった）。ツールの説明文も同じに直した | Issue #995 の見直し（仕様と実装の乖離） |
 | 1.33 | 2026-11-06 | `gpt_image`（GPT Image 2.6 の複雑さ・GIF / SVG）と `references[].role` の `markup` を足し、`list_generation_models` に `gpt_image`・`gpt_image_unsupported` を足した | Issue #1096 |
+| 1.34 | 2026-11-06 | `get_job` の種別 `gentest` の説明から、モデルマネージャーの試し生成を外した（区画の廃止。ツール・引数は変えない。状態は仕様のみ） | Issue #1100 |

@@ -76,3 +76,4 @@
 | 1.69 | 2026-11-06 | §4.5: 16 GB 実機での計測の表に `qwen-image-21-vnccs-pose`（VNCCS PoseStudio の LoRA。LoRA の作者の手順は最低 12 GB・推奨 24 GB）の行を足した（未計測） | Issue #985 |
 | 1.70 | 2026-11-06 | 実行環境のモデル（Irodori-TTS・llama.cpp）をフィルターに載せた: `Condition` に `languages` を足し、`runtimechoices.View.Item` が `kind: tts` を `audio`、`llm` を `llm` にする。[local-runtime.md §14.8](local-runtime.md)・[model-filter.md §2](model-filter.md) | Issue #1015・#1011 |
 | 1.71 | 2026-11-06 | §4.6「埋めたもの」の Wan 2.2 の項に残っていた「同梱エンジンは Windows 版だけで、macOS は外部の ComfyUI の URL を使う場合の話」を、同梱エンジンが macOS（Apple Silicon）にも入る（§3.7）実態に合わせて直した | Issue #854（受け入れ条件「Windows 版だけ」の文言を実態に合わせる、の残り） |
+| 1.72 | 2026-11-06 | §8「試し生成」を「廃止」の節に書き直した（画面側だけを消す。Service API・ジョブ種別 `gentest`・データは変えない。`mmview.TrialModels` は生成テストのモデルの選択が使うので残す）。§1・§5.1・§6 の表・§12 の「試し生成」の言及を生成テストに改めた。状態は仕様のみ | Issue #1100 |
