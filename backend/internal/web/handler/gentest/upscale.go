@@ -26,7 +26,7 @@ import (
 // upscaleForm is the "make it larger" box of the result d: the workflows installed when d is a picture that can be enlarged, and the link to
 // the source when d is an enlargement.
 func (h Handlers) upscaleForm(ctx context.Context, d record.ResultDetail, errMsg string) upscalebox.Form {
-	f := upscalebox.Form{Error: errMsg, ResultID: d.ID, ModelsURL: paths.ModelManager(), Scales: upscale.Scales}
+	f := upscalebox.Form{Error: errMsg, ResultID: d.ID, ModelsURL: paths.ModelManagerCategory(paths.MMImageVideo), Scales: upscale.Scales}
 	if u := d.Upscale; u != nil {
 		f.SourceURL = paths.GenerationTestPart("results", u.SourceResultID)
 		f.SourceText = fmt.Sprintf("%d 倍に大きくした結果です。元の結果を見る", u.Scale)

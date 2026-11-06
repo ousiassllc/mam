@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
+
 	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,9 +46,18 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 		moved   []string
 		visible []string
 	}{
-		{"model manager", pages.ModelManagerPage("tok", modelmgr.Data{}),
-			[]string{"ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます", "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します", "ダウンロードは取得元から直接で、SHA-256 を確かめます", "コミットに固定し、LFS の SHA-256 とサイズを確かめます"},
-			[]string{"モデルマネージャー", "ComfyUI エンジン", "外部の ComfyUI"}},
+		{"model manager", pages.ModelManagerPage("tok", modelmgr.Overview{}),
+			[]string{"ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます"},
+			[]string{"モデルマネージャー"}},
+		{"model manager: the engine", pages.ModelManagerCategoryPage("tok", mmcatOf(mmcat.ComfyUI), nil, modelmgr.Data{}),
+			[]string{"画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します"},
+			[]string{"ComfyUI エンジン"}},
+		{"model manager: the models", pages.ModelManagerCategoryPage("tok", mmcatOf(mmcat.ImageVideo), nil, modelmgr.Data{}),
+			[]string{"ダウンロードは取得元から直接で、SHA-256 を確かめます"},
+			[]string{"画像・動画モデル", "モデル"}},
+		{"model manager: Hugging Face", pages.ModelManagerCategoryPage("tok", mmcatOf(mmcat.HFExternal), nil, modelmgr.Data{}),
+			[]string{"コミットに固定し、LFS の SHA-256 とサイズを確かめます"},
+			[]string{"外部の ComfyUI"}},
 		{"api keys and login", pages.SettingsAPIKeysBody(credentials.Data{}, &chatgpt.Data{}),
 			[]string{"保存したキーは再起動なしで次の呼び出しから使われます", "個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT"},
 			[]string{"API キー", "ChatGPT でログイン"}},
@@ -85,4 +96,10 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 			}
 		})
 	}
+}
+
+// mmcatOf is the category of the slug.
+func mmcatOf(slug string) mmcat.Category {
+	c, _ := mmcat.Find(slug)
+	return c
 }

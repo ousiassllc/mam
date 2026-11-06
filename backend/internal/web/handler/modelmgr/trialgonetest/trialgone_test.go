@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 	"github.com/ousiassllc/mam/backend/internal/web/screentest"
 )
@@ -25,19 +26,23 @@ func TestMain(m *testing.M) {
 
 // The page has no trial section, form or list: no id and no data-testid that starts with mm-trial.
 func TestThePageHasNoTrialSection(t *testing.T) {
-	s := screentest.New(t)
+	s := screentest.NewAll(t)
 	s.Rig.InstallEngine()
-	page := s.Page()
-
-	assert.NotContains(t, page, "mm-trial", "no #mm-trial, #mm-trials, #mm-trial-form or mm-trial-* test id")
-	assert.NotContains(t, page, "試し生成")
-	assert.NotContains(t, page, paths.ModelManager()+"/trials")
+	pages := []string{s.Page()}
+	for _, c := range mmcat.All() {
+		pages = append(pages, s.PageOf(c.Slug))
+	}
+	for _, page := range pages {
+		assert.NotContains(t, page, "mm-trial", "no #mm-trial, #mm-trials, #mm-trial-form or mm-trial-* test id")
+		assert.NotContains(t, page, "試し生成")
+		assert.NotContains(t, page, paths.ModelManager()+"/trials")
+	}
 }
 
 // The help of the models section links to the generation test screen, once.
 func TestTheHelpOfTheModelsSectionLinksToTheGenerationTest(t *testing.T) {
 	s := screentest.New(t)
-	page := s.Page()
+	page := s.PageOf(mmcat.ImageVideo)
 
 	assert.Len(t, regexp.MustCompile(`data-testid="mm-open-gentest"`).FindAllString(page, -1), 1, "exactly one link")
 	assert.Regexp(t, `<a[^>]*href="`+regexp.QuoteMeta(paths.GenerationTest())+`"[^>]*data-testid="mm-open-gentest"`, page)

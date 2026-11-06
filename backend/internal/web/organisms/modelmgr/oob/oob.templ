@@ -5,13 +5,6 @@ package oob
 
 import view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 
-// EngineWithCatalog is the engine card with the model list out of band: an action of the engine changed what can be
-// installed.
-templ EngineWithCatalog(e view.Engine, c view.Catalog) {
-	@view.EngineCard(e)
-	@view.CatalogList(c)
-}
-
 // CatalogWithDialogClear is the model list with the (answered) license dialog emptied out of band.
 templ CatalogWithDialogClear(c view.Catalog) {
 	@view.CatalogList(c)

@@ -36,9 +36,8 @@ func refreshOf(t *testing.T, body, target string) string {
 func TestRefresh_EveryPartThatChangesByItselfHasAButtonThatReadsItAgain(t *testing.T) {
 	s := screentest.New(t)
 	s.Rig.InstallEngine()
-	page := s.Page()
-	for _, target := range []string{"mm-engine", "mm-catalog", "mm-hfi-models"} {
-		url := refreshOf(t, page, target)
+	for target, slug := range map[string]string{"mm-engine": paths.MMComfyUI, "mm-catalog": paths.MMImageVideo, "mm-hfi-models": paths.MMHFExternal} {
+		url := refreshOf(t, s.PageOf(slug), target)
 		rec := s.Get(url)
 		require.Equal(t, http.StatusOK, rec.Code, target)
 		body := rec.Body.String()

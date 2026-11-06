@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
+
 	"github.com/a-h/templ"
 
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
@@ -16,7 +18,7 @@ import (
 // (backend/internal/web/handler/modelmgr/models.go), so the test measures the real markup:
 // `MAM_UPDATE_FIXTURES=1 go test ./backend/internal/web -run TestScrollFixtures` writes them again.
 const (
-	scrollModels = 8
+	scrollModels = 24
 	consentModel = 8
 )
 
@@ -75,7 +77,7 @@ func TestScrollFixtures_AreWhatTheComponentsRender(t *testing.T) {
 		"scroll-mm-consent.html":         modelmgr.ConsentDialog(consent),
 		"scroll-mm-consent-answer.html":  oob.CatalogWithDialogClear(startedConsent),
 		"scroll-mm-consent-refused.html": modelmgr.ConsentDialog(refused),
-		"scroll-mm-page.html":            modelmgr.Body(modelmgr.Data{Catalog: scrollCatalog(0, nil), HFImport: modelmgr.HFImport{Kind: "text-to-image"}}),
+		"scroll-mm-page.html":            modelmgr.Body(mmcat.ImageVideo, modelmgr.Data{Catalog: scrollCatalog(0, nil)}),
 		"scroll-mm-install-answer.html":  oob.CatalogWithDialogClear(started),
 		"scroll-mm-poll-done.html":       modelmgr.CatalogList(finished),
 	})

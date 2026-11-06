@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,7 +49,9 @@ func TestTheInputImagesLinkToTheFaceModelsWhileTheSimilarityIsOff(t *testing.T) 
 	body := newScreen(t, gentesttest.WithFaceOff(modelsOff)).page(paths.GenerationTest())
 	assert.Contains(t, body, `data-testid="gt-face-off"`)
 	assert.Contains(t, body, "顔チェック用モデルを入れる")
-	assert.Contains(t, body, `href="`+paths.ModelManagerFaceModels()+`"`)
+	assert.Contains(t, body, `href="/model-manager/face-check#mm-face-models"`, "the section is on the page of the face-check models")
+	assert.Equal(t, paths.ModelManagerFaceModels(), "/model-manager/face-check#mm-face-models")
+	assert.Equal(t, 1, strings.Count(body, `data-testid="gt-face-off-install"`))
 
 	runtimeOff := face.OffRecord(&facesim.Off{Reason: facesim.ReasonRuntimeMissing, ModelDir: "/data/models", Detail: "onnxruntime.dll: not found"})
 	body = newScreen(t, gentesttest.WithFaceOff(runtimeOff)).page(paths.GenerationTest())

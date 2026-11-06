@@ -82,11 +82,17 @@ templ menu(s State, folded bool) {
 			</button>
 		</div>
 		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden">
-			@list(Screens(), s.Current, "sidenav-screens", "")
+			@list(Screens(), s.mark, "sidenav-screens", "")
+			if s.ModelManager != nil {
+				<div class="flex flex-col gap-1 border-t border-border pt-3">
+					<p id="sidenav-mm" class="truncate px-3 text-xs text-mute max-md:sr-only group-data-[folded=true]:sr-only">モデルマネージャー</p>
+					@mmList(*s.ModelManager)
+				</div>
+			}
 			if s.Project != nil {
 				<div class="flex flex-col gap-1 border-t border-border pt-3">
 					<p id="sidenav-project" class="truncate px-3 text-xs text-mute max-md:sr-only group-data-[folded=true]:sr-only" title={ s.Project.Name }>{ s.Project.Name }</p>
-					@list(Views(*s.Project), s.Current, "sidenav-views", "sidenav-project")
+					@list(Views(*s.Project), s.mark, "sidenav-views", "sidenav-project")
 				</div>
 			}
 		</div>
@@ -106,10 +112,22 @@ templ menu(s State, folded bool) {
 	</nav>
 }
 
-// list is one list of entries; labelledBy names it by the heading above (empty for the first, which the landmark names).
-templ list(items []Item, current Key, id, labelledBy string) {
+// mmList is the second level of the model manager: the overview and the categories.
+templ mmList(m ModelManagerMenu) {
+	@list(ModelManagerViews(m), func(k Key) string {
+		if k == m.current() {
+			return markPage
+		}
+		return ""
+	}, "sidenav-mm-views", "sidenav-mm")
+}
+
+// list is one list of entries; labelledBy names it by the heading above (empty for the first, which the landmark names). mark is what an entry
+// says of itself (markPage, markScreen or "" for none).
+templ list(items []Item, mark func(Key) string, id, labelledBy string) {
 	<ul
 		id={ id }
+		data-testid={ id }
 		role="list"
 		class="flex flex-col gap-2"
 		if labelledBy != "" {
@@ -118,26 +136,26 @@ templ list(items []Item, current Key, id, labelledBy string) {
 	>
 		for _, it := range items {
 			<li>
-				@entry(it, it.Key == current)
+				@entry(it, mark(it.Key))
 			</li>
 		}
 	</ul>
 }
 
-templ entry(it Item, current bool) {
+templ entry(it Item, mark string) {
 	<a
 		href={ templ.SafeURL(it.Href) }
 		title={ it.Label }
 		data-testid="sidenav-item"
 		data-key={ string(it.Key) }
-		if current {
-			aria-current="page"
+		if mark != "" {
+			aria-current={ mark }
 			class={ itemClass + activeClass }
 		} else {
 			class={ itemClass + idleClass }
 		}
 	>
-		<span class={ iconClass(current) }>
+		<span class={ iconClass(mark != "") }>
 			@atoms.Icon(it.Icon, "h-5 w-5")
 		</span>
 		<span class={ labelClass }>{ it.Label }</span>

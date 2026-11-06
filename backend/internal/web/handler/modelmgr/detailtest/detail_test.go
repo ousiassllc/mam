@@ -146,7 +146,7 @@ func TestModelDetail_ARefusalIsTheReasonInTheModalAndNeverNamesAHiddenModel(t *t
 func TestModelDetail_TheModalIsOutsideEverythingAPollSwaps(t *testing.T) {
 	s := screentest.New(t)
 	s.Rig.InstallEngine()
-	page := s.Page()
+	page := s.PageOf(paths.MMImageVideo)
 	assert.Equal(t, 1, strings.Count(page, `<dialog id="mam-modal"`))
 	assert.Contains(t, page, `aria-modal="true"`)
 	catalog := strings.Index(page, `id="mm-catalog"`)

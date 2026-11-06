@@ -27,7 +27,7 @@ templ DetailModal(p Provider, which string) {
 				@providerNote(p)
 			</div>
 			@modal.Actions() {
-				@atoms.ButtonLink(atoms.ToneNeutral, "モデルマネージャーを開く", templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-detail-open-manager-" + p.Field})
+				@atoms.ButtonLink(atoms.ToneNeutral, "モデルマネージャーを開く", templ.SafeURL(paths.ModelManagerCategory(paths.MMLocalRuntimes)), templ.Attributes{"data-testid": "audio-detail-open-manager-" + p.Field})
 				@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true, "autofocus": true})
 			}
 		}

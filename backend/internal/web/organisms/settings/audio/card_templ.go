@@ -236,7 +236,7 @@ func localCard(p Provider) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデルマネージャーを開く", p.LocalLabel, templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field + localSuffix(p)}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデルマネージャーを開く", p.LocalLabel, templ.SafeURL(paths.ModelManagerCategory(paths.MMLocalRuntimes)), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field + localSuffix(p)}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

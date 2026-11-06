@@ -3,6 +3,8 @@ package web_test
 import (
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
+
 	"github.com/a-h/templ"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
@@ -28,14 +30,25 @@ func longNamesProgress() *modelmgr.Progress {
 	return &modelmgr.Progress{JobID: "job-1", Percent: 0, Message: longFile + "（1/4）", Bytes: "107 MiB / 33.1 GiB"}
 }
 
-func longNamesPage() templ.Component {
+// longNamesComfyUI is the page "ComfyUI エンジン" of the model manager: the engine that downloads a file with a long name.
+func longNamesComfyUI() templ.Component {
+	return modelmgr.Body(mmcat.ComfyUI, modelmgr.Data{
+		Engine: modelmgr.Engine{Supported: true, Writable: true, Install: &modelmgr.Progress{JobID: "job-e", Percent: 12, Message: "ComfyUI_windows_portable_nvidia_cu128_" + longHash + ".7z", Bytes: "1.2 GiB / 2.1 GiB"}},
+	})
+}
+
+// longNamesImageVideo is the page "画像・動画モデル": a model with a long name that installs a long file.
+func longNamesImageVideo() templ.Component {
 	catalog := scrollCatalog(1, []string{"job-1"})
 	catalog.Models[0].Name = longModel
 	catalog.Models[0].Install = longNamesProgress()
+	return modelmgr.Body(mmcat.ImageVideo, modelmgr.Data{Catalog: catalog})
+}
+
+// longNamesHFExternal is the page "Hugging Face・外部の ComfyUI": a repository and files with long names.
+func longNamesHFExternal() templ.Component {
 	hfFile := modelmgr.HFFile{Path: longPath, Name: longFile, Size: "33.1 GiB", SHA256: longHash, Format: "safetensors", Installable: true, Fit: "fits", Need: "24 GiB", Security: "safe"}
-	return modelmgr.Body(modelmgr.Data{
-		Engine:  modelmgr.Engine{Supported: true, Writable: true, Install: &modelmgr.Progress{JobID: "job-e", Percent: 12, Message: "ComfyUI_windows_portable_nvidia_cu128_" + longHash + ".7z", Bytes: "1.2 GiB / 2.1 GiB"}},
-		Catalog: catalog,
+	return modelmgr.Body(mmcat.HFExternal, modelmgr.Data{
 		HFImport: modelmgr.HFImport{
 			Kind: "text-to-image",
 			Result: modelmgr.HFResult{
@@ -91,9 +104,11 @@ func longNamesAudio() templ.Component {
 
 func TestLongNamesFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	checkFixtures(t, map[string]templ.Component{
-		"layout-long-names-model-manager.html": longNamesPage(),
-		"layout-long-names-jobs.html":          longNamesJobs(),
-		"layout-long-names-chatgpt-cards.html": longNamesChatGPT(),
-		"layout-long-names-audio-cards.html":   longNamesAudio(),
+		"layout-long-names-mm-comfyui.html":     longNamesComfyUI(),
+		"layout-long-names-mm-image-video.html": longNamesImageVideo(),
+		"layout-long-names-mm-hf-external.html": longNamesHFExternal(),
+		"layout-long-names-jobs.html":           longNamesJobs(),
+		"layout-long-names-chatgpt-cards.html":  longNamesChatGPT(),
+		"layout-long-names-audio-cards.html":    longNamesAudio(),
 	})
 }

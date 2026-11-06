@@ -85,10 +85,10 @@ func (s *screen) do(method, path string, form url.Values) *httptest.ResponseReco
 
 func (s *screen) get(path string) *httptest.ResponseRecorder { return s.do(http.MethodGet, path, nil) }
 
-// page is GET /model-manager.
+// page is GET /model-manager/image-video, the page of the models.
 func (s *screen) page() string {
 	s.t.Helper()
-	req := httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil)
+	req := httptest.NewRequest(http.MethodGet, paths.ModelManagerCategory(paths.MMImageVideo), nil)
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.t, http.StatusOK, rec.Code)

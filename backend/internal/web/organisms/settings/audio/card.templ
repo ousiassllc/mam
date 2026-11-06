@@ -59,7 +59,7 @@ templ localCard(p Provider) {
 	@settingsui.CardItem(localCardOf(p)) {
 		@chooser(p, p.value(), p.LocalLabel, p.ChosenLocal(), !p.Local.Supported, "audio-"+p.Field+"-"+p.slug())
 		@atoms.SmallButtonFor(atoms.ToneNeutral, "詳細", p.LocalLabel, detailAttrs(p, p.slug()))
-		@atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデルマネージャーを開く", p.LocalLabel, templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field + localSuffix(p)})
+		@atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデルマネージャーを開く", p.LocalLabel, templ.SafeURL(paths.ModelManagerCategory(paths.MMLocalRuntimes)), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field + localSuffix(p)})
 	}
 }
 

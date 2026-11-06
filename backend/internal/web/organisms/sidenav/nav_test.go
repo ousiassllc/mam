@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/navstate"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
@@ -106,4 +107,23 @@ func TestNav_EveryEntryHasAUniqueKeyAndHref(t *testing.T) {
 		assert.NotEmpty(t, it.Label)
 		assert.NotEmpty(t, it.Icon)
 	}
+}
+
+// The model manager's pages carry the second level under the screens: the heading names the list, the overview and the categories are entries, and an entry of the
+// page that is shown is "page" (the screen's own entry says "true" on a category).
+func TestNav_TheModelManagerHasASecondLevel(t *testing.T) {
+	cats := mmcat.All()
+	overview := render(t.Context(), t, sidenav.InModelManager("", cats))
+	assert.Contains(t, overview, `id="sidenav-mm"`)
+	assert.Contains(t, overview, `aria-labelledby="sidenav-mm"`)
+	assert.Equal(t, len(sidenav.Screens())+1+len(cats), strings.Count(overview, `data-testid="sidenav-item"`))
+	assert.Regexp(t, `data-key="model-manager" aria-current="page"`, overview)
+	assert.Regexp(t, `data-key="model-manager:overview" aria-current="page"`, overview)
+	assert.Equal(t, 2, strings.Count(overview, `aria-current="page"`))
+
+	page := render(t.Context(), t, sidenav.InModelManager(mmcat.FaceCheck, cats))
+	assert.Regexp(t, `data-key="model-manager" aria-current="true"`, page)
+	assert.Regexp(t, `data-key="model-manager:face-check" aria-current="page"`, page)
+	assert.Equal(t, 1, strings.Count(page, `aria-current="page"`))
+	assert.NotContains(t, render(t.Context(), t, sidenav.At(sidenav.Projects)), `id="sidenav-mm"`)
 }

@@ -74,7 +74,7 @@ func TestInstallModel_RefusalsBeforeAnythingIsDownloaded(t *testing.T) {
 		rec := s.do(http.MethodPost, installURL("m-a"), nil)
 		assert.Equal(t, http.StatusConflict, rec.Code)
 		assert.Contains(t, rec.Body.String(), "--model-config")
-		assert.Contains(t, s.page(), "固定されているため、モデルを導入・削除できません")
+		assert.Contains(t, s.pageOf(paths.MMImageVideo), "固定されているため、モデルを導入・削除できません")
 	})
 	t.Run("not Windows", func(t *testing.T) {
 		s := newScreen(t, mmtest.NotWindows())
@@ -223,7 +223,7 @@ func TestCatalog_AModelBehindTheLoginHasABadgeAndTheGuidanceWhileThereIsNoToken(
 	gd := detailOf(mmtest.GatedModelID)
 	assert.Contains(t, gd, `data-testid="mm-token-guide"`)
 	assert.Contains(t, gd, hfguide.NoToken, "the same words as the refusal")
-	assert.Contains(t, gd, `href="#mm-hf"`, "the link to the card of the token")
+	assert.Contains(t, gd, `href="/model-manager/hf-external#mm-hf"`, "the link to the card of the token, on its own page")
 	assert.Contains(t, gd, "HF トークンが必要")
 	description := strings.Index(gd, ">d</p>")
 	assert.Greater(t, description, 0)
@@ -232,7 +232,7 @@ func TestCatalog_AModelBehindTheLoginHasABadgeAndTheGuidanceWhileThereIsNoToken(
 	assert.NotContains(t, a, "mm-token-badge")
 	assert.NotContains(t, detailOf("m-a"), "mm-token-guide")
 
-	page := s.page()
+	page := s.pageOf(paths.MMHFExternal)
 	assert.Contains(t, page, `id="mm-hf"`)
 	assert.Contains(t, page, "ログインや同意が要るモデル（例: LTX-2.5）")
 	assert.NotContains(t, page, "いまのカタログのモデルは、トークンなしで取得できます")

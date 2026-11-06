@@ -24,6 +24,7 @@ const (
 	DialogID     = "mm-dialog"
 	HFID         = "mm-hf"
 	ExternalID   = "mm-external"
+	NodesID      = "mm-nodes" // the section of the custom nodes (nodecard.SectionID): the link of a model that needs a node
 	AdultID      = "mm-adult"
 	CommercialID = "mm-commercial"
 	ModelsID     = "mm-models"
@@ -58,6 +59,9 @@ type Data struct {
 	HF         HFToken
 	External   External
 	HFImport   HFImport
+	// EngineNeeded says the bundled engine is not installed or not running: the page of the models says so above the list (an action of the engine
+	// is on another page: the list is not drawn again from there).
+	EngineNeeded bool
 	// Runtimes is the section of the local voice and lip-sync runtimes (runtimecard.RuntimesSection); nil leaves the section out.
 	Runtimes templ.Component
 	// Nodes is the section of the custom nodes (nodecard.NodesSection); nil leaves the section out.

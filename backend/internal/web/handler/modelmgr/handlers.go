@@ -23,9 +23,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
-	"github.com/ousiassllc/mam/backend/internal/web/middleware"
-	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
-	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -44,6 +41,8 @@ type Handlers struct {
 func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service) {
 	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds}
 	engine.GET(paths.ModelManager(), h.Page)
+	engine.GET(paths.ModelManagerPart("overview"), h.OverviewPart)
+	h.registerCategories(engine)
 	engine.GET(paths.ModelManagerPart("dialog"), h.CloseDialog)
 
 	engine.GET(paths.ModelManagerPart("engine"), h.Engine)
@@ -81,28 +80,6 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 	hfimport.Register(engine, svc)
 	engine.GET(paths.ModelManagerPart("external"), h.External)
 	engine.GET(paths.ModelManagerPart("external", "detail"), h.ExternalDetail)
-}
-
-// data is the whole screen.
-func (h Handlers) data(c *gin.Context) view.Data {
-	ctx := c.Request.Context()
-	return view.Data{
-		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Commercial: commercialData(h.Svc), Catalog: catalogData(c, h.Svc, nil),
-		HF: hfimport.TokenData(h.Svc), HFImport: hfimport.Panel(ctx, h.Svc),
-		External: view.External{Endpoints: h.externalEndpoints(c)},
-		Runtimes: runtimes.Section(ctx, h.Runtimes), Nodes: nodes.Section(ctx, h.Nodes), FaceModels: h.faceModels(),
-	}
-}
-
-// Page answers GET /model-manager: the page, or the body alone for an HTMX request (a history restore wants the page).
-func (h Handlers) Page(c *gin.Context) {
-	data := h.data(c)
-	c.Writer.Header().Add("Vary", "HX-Request, HX-History-Restore-Request")
-	if c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true" {
-		render(c, http.StatusOK, view.Body(data))
-		return
-	}
-	render(c, http.StatusOK, pages.ModelManagerPage(middleware.CSRFToken(c), data))
 }
 
 // CloseDialog answers with nothing: what "閉じる" swaps into the dialog area.

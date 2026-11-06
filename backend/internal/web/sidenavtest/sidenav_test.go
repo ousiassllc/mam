@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 	"github.com/ousiassllc/mam/backend/internal/web/screentest"
 )
 
@@ -34,6 +36,9 @@ func TestSideMenu_EveryEntryLeadsToAPageThatMarksItAsCurrent(t *testing.T) {
 	for _, it := range sidenav.Screens() {
 		if it.Key == sidenav.Workflows || it.Key == sidenav.Nodes {
 			continue // only with the workflows service: handler/workflows/sidenav_test.go
+		}
+		if it.Key == sidenav.ModelManager {
+			continue // two entries are current on its pages (the screen and the overview): TestSideMenu_TheModelManagerListsItsCategories
 		}
 		t.Run("screen "+string(it.Key), func(t *testing.T) {
 			rec := s.Visit(it.Href)
@@ -83,4 +88,55 @@ func TestSideMenu_ErrorPageHasNoCurrentEntry(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Body.String(), `data-testid="sidenav"`)
 	assert.Empty(t, currentEntries(rec.Body.String()))
+}
+
+// The model manager's overview and every category page list the second level (the overview and the categories, in the order of mmcat.All) under the screen's entry,
+// and mark the entry of the page that is shown: "page" on the overview or the category, and the screen's own entry is "page" on the overview and "true" on a category.
+func TestSideMenu_TheModelManagerListsItsCategories(t *testing.T) {
+	s := screentest.NewAll(t)
+	entries := func(html string) map[string]string {
+		got := map[string]string{}
+		for _, m := range regexp.MustCompile(`<a href="[^"]*" title="[^"]*" data-testid="sidenav-item" data-key="([^"]*)"(?: aria-current="([^"]*)")?`).FindAllStringSubmatch(html, -1) {
+			got[m[1]] = m[2]
+		}
+		return got
+	}
+	pages := map[string]string{"": paths.ModelManager()}
+	for _, c := range mmcat.All() {
+		pages[c.Slug] = c.Href()
+	}
+	for slug, href := range pages {
+		html := s.Visit(href).Body.String()
+		require.Equal(t, 1, strings.Count(html, ` id="sidenav-mm-views"`), href)
+		assert.Contains(t, html, `id="sidenav-mm"`, href)
+		assert.Contains(t, html, `aria-labelledby="sidenav-mm"`, href)
+		got := entries(html)
+
+		wantCurrent, screen := "model-manager:overview", "page"
+		if slug != "" {
+			wantCurrent, screen = "model-manager:"+slug, "true"
+		}
+		assert.Equal(t, screen, got["model-manager"], href+": the screen's entry")
+		for key, current := range got {
+			if key == "model-manager" {
+				continue
+			}
+			if key == wantCurrent {
+				assert.Equal(t, "page", current, href+": "+key)
+			} else {
+				assert.Empty(t, current, href+": "+key+" is not the page that is shown")
+			}
+		}
+		// the order of the second level is the order of mmcat.All
+		last := strings.Index(html, `data-key="model-manager:overview"`)
+		require.Positive(t, last, href)
+		for _, c := range mmcat.All() {
+			at := strings.Index(html, `data-key="model-manager:`+c.Slug+`"`)
+			require.Greater(t, at, last, "%s: %s is after the one before it", href, c.Slug)
+			last = at
+		}
+	}
+	for _, other := range []string{paths.Home(), paths.Jobs(), paths.GenerationTest()} {
+		assert.NotContains(t, s.Visit(other).Body.String(), `id="sidenav-mm-views"`, other+": the second level is the model manager's own")
+	}
 }

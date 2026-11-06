@@ -11,7 +11,7 @@ import (
 // with the form that installs one) and the files the user added. The server enforces every rule (formats, terms, the age
 // gate); the forms are only how a user asks.
 templ HFImportSection(h HFImport) {
-	<div class="flex flex-col gap-4" data-testid="mm-hfi">
+	<div id={ HFImportID } class="flex flex-col gap-4" data-testid="mm-hfi">
 		<form
 			class="flex flex-wrap items-end gap-2"
 			hx-get={ paths.ModelManagerPart("hf") }
@@ -189,7 +189,7 @@ templ hfInstallForm(r HFRepo, f HFFile) {
 			<p class="text-mute" data-testid="mm-hfi-folder-note">{ f.FolderNote }</p>
 		}
 		if f.Family == "sdxl" {
-			<p class="text-success" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として試し生成で選べます。</p>
+			<p class="text-success" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として生成テストで選べます。</p>
 		} else {
 			<p class="text-mute">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
 		}

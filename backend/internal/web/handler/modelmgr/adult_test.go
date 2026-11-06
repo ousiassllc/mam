@@ -27,7 +27,7 @@ func confirmForm() url.Values {
 func TestAdult_HiddenAndRefusedUntilConfirmed(t *testing.T) {
 	s := newScreen(t)
 	s.rig.InstallEngine()
-	page := s.page()
+	page := s.pageOf(paths.MMImageVideo)
 	assert.Contains(t, page, `data-testid="mm-adult-open"`, "the setting is off and asks the confirmation first")
 	assert.NotContains(t, page, `data-model="m-d"`)
 	assert.NotContains(t, s.get(paths.ModelManagerPart("models")).Body.String(), `data-model="m-d"`)
@@ -129,7 +129,7 @@ func TestAdult_GenerationTestDoesNotOfferAnAdultModelWhileTheGateIsClosed(t *tes
 	require.NoError(t, err, "open: it is a choice")
 
 	require.NoError(t, s.rig.Svc.SetAdultContent(false, nil))
-	assert.NotContains(t, s.page(), id)
+	assert.NotContains(t, s.pageOf(paths.MMImageVideo), id)
 	_, err = s.rig.Gentest.Model(t.Context(), "image", id)
 	require.ErrorIs(t, err, gterr.ErrNotFound, "closed: the generation test does not list it")
 	for _, m := range s.rig.Gentest.Models(t.Context(), "") {

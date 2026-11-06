@@ -6,58 +6,95 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// Body is the screen without the page frame: the engine, the models, the Hugging Face token
-// and the external ComfyUI, one section each (molecules.SettingsSection). engineHelp (data.go) is the help of the engine section.
-templ Body(d Data) {
-	<div id="model-manager-body" class="flex flex-col gap-8" data-testid="model-manager">
-		@molecules.SettingsSection("ComfyUI エンジン", engineHelp) {
-			<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-				@EngineCard(d.Engine)
-			</ul>
-			<div class="flex flex-col gap-2">
-				@atoms.Button(atoms.ToneNeutral, "すでに動いている ComfyUI を検出", templ.Attributes{
-					"type": "button", "hx-post": paths.ModelManagerPart("engine", "detect"), "hx-target": "#" + DetectID, "hx-swap": "outerHTML",
-					"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-detect-button",
-				})
-				<div id={ DetectID }></div>
-			</div>
-		}
-		if d.Runtimes != nil {
-			@molecules.SettingsSection("ローカル音声・口パク・LLM", "声（GPT-SoVITS・Irodori-TTS）と口パク（MuseTalk）と文章（llama.cpp の LLM）をこの PC で作る実行環境を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。カードをタップすると、重みと依存ファイルの出典・ライセンス・ファイル一覧・SHA-256 が見られます。実行環境は mam とは別のプログラムで、公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。アンインストールすると、導入先も一緒に消えます。この PC で使えないときは、クラウド（ElevenLabs・Sync Labs）を選べます。") {
-				@d.Runtimes
-			}
-		}
-		if d.Nodes != nil {
-			@molecules.SettingsSection("追加ノード", "ControlNet の画像前処理や IP-Adapter など、ComfyUI に機能を足すプログラム（カスタムノード）です。mam が確認して固定したものだけが、ここから導入でき、読み込まれます。それ以外のフォルダは読み込みません。導入の前に、注意事項とライセンスへの同意が要ります。カードをタップすると、固定したコミット・SHA-256・ライセンス・商用利用の可否・必要な Python パッケージ・ソースの確認結果が見られます。導入と削除のときは、動いている ComfyUI を一度止めて再起動します。") {
-				@d.Nodes
-			}
-		}
-		if d.FaceModels != nil {
-			@molecules.SettingsSection("顔チェック用モデル", "生成した画像の顔が、参照の顔にどれだけ似ているかを数字で測る小さなモデル（YuNet・SFace）です。ボタン 1 つで導入でき、導入したあとの再起動は要りません。") {
-				@d.FaceModels
-			}
-		}
-		@molecules.SettingsSectionHelp(molecules.HeadingH2, "モデル", modelsHelp()) {
-			@AdultCard(d.Adult)
-			@CommercialCard(d.Commercial)
-			@modal.InlineHost(DialogID, "mm-dialog")
-			@modelpick.Bar(d.Catalog.Filter)
-			@CatalogList(d.Catalog)
-		}
-		@molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。") {
-			@HFImportSection(d.HFImport)
-		}
-		@molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインや同意が必要なモデル（LTX-2.5 など）を取得するときだけ使います。") {
-			@HFCard(d.HF)
-		}
-		@molecules.SettingsSection("外部の ComfyUI", "別のマシン（tailnet を含む）や ComfyUI Desktop など、mam が起動していない ComfyUI にあるモデルを確かめます。") {
-			@ExternalCard(d.External)
+// Body is the page of a category without the page frame: the sections of the category (the table in spec/components/model-manager-screen.md, "分類のサブページ（#1101）"),
+// one each (molecules.SettingsSection), and the one modal host of the page. engineHelp (data.go) is the help of the engine section. A category is a case of the switch and
+// one templ below; its row in mmcat.All is what makes it a page.
+templ Body(category string, d Data) {
+	<div id="model-manager-body" class="flex flex-col gap-8" data-testid="model-manager" data-category={ category }>
+		switch category {
+			case mmcat.ComfyUI:
+				@comfyuiSections(d)
+			case mmcat.ImageVideo:
+				@imageVideoSections(d)
+			case mmcat.CustomNodes:
+				@customNodesSections(d)
+			case mmcat.LocalRuntimes:
+				@localRuntimesSections(d)
+			case mmcat.FaceCheck:
+				@faceCheckSections(d)
+			case mmcat.HFExternal:
+				@hfExternalSections(d)
 		}
 		@modal.Host()
 	</div>
+}
+
+templ comfyuiSections(d Data) {
+	@molecules.SettingsSection("ComfyUI エンジン", engineHelp) {
+		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+			@EngineCard(d.Engine)
+		</ul>
+		<div class="flex flex-col gap-2">
+			@atoms.Button(atoms.ToneNeutral, "すでに動いている ComfyUI を検出", templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("engine", "detect"), "hx-target": "#" + DetectID, "hx-swap": "outerHTML",
+				"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-detect-button",
+			})
+			<div id={ DetectID }></div>
+		</div>
+	}
+}
+
+templ imageVideoSections(d Data) {
+	if d.EngineNeeded {
+		@engineNeeded()
+	}
+	@molecules.SettingsSectionHelp(molecules.HeadingH2, "モデル", modelsHelp()) {
+		@AdultCard(d.Adult)
+		@CommercialCard(d.Commercial)
+		@modal.InlineHost(DialogID, "mm-dialog")
+		@modelpick.Bar(d.Catalog.Filter)
+		@CatalogList(d.Catalog)
+	}
+}
+
+templ customNodesSections(d Data) {
+	if d.Nodes != nil {
+		@molecules.SettingsSection("追加ノード", "ControlNet の画像前処理や IP-Adapter など、ComfyUI に機能を足すプログラム（カスタムノード）です。mam が確認して固定したものだけが、ここから導入でき、読み込まれます。それ以外のフォルダは読み込みません。導入の前に、注意事項とライセンスへの同意が要ります。カードをタップすると、固定したコミット・SHA-256・ライセンス・商用利用の可否・必要な Python パッケージ・ソースの確認結果が見られます。導入と削除のときは、動いている ComfyUI を一度止めて再起動します。") {
+			@d.Nodes
+		}
+	}
+}
+
+templ localRuntimesSections(d Data) {
+	if d.Runtimes != nil {
+		@molecules.SettingsSection("ローカル音声・口パク・LLM", "声（GPT-SoVITS・Irodori-TTS）と口パク（MuseTalk）と文章（llama.cpp の LLM）をこの PC で作る実行環境を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。カードをタップすると、重みと依存ファイルの出典・ライセンス・ファイル一覧・SHA-256 が見られます。実行環境は mam とは別のプログラムで、公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。「自動起動」をオンにすると、mam の起動時に自動で起動します（オフのときは、最初に使うときに起動）。アンインストールすると、導入先も一緒に消えます。この PC で使えないときは、クラウド（ElevenLabs・Sync Labs）を選べます。") {
+			@d.Runtimes
+		}
+	}
+}
+
+templ faceCheckSections(d Data) {
+	if d.FaceModels != nil {
+		@molecules.SettingsSection("顔チェック用モデル", "生成した画像の顔が、参照の顔にどれだけ似ているかを数字で測る小さなモデル（YuNet・SFace）です。ボタン 1 つで導入でき、導入したあとの再起動は要りません。") {
+			@d.FaceModels
+		}
+	}
+}
+
+templ hfExternalSections(d Data) {
+	@molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。") {
+		@HFImportSection(d.HFImport)
+	}
+	@molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインや同意が必要なモデル（LTX-2.5 など）を取得するときだけ使います。") {
+		@HFCard(d.HF)
+	}
+	@molecules.SettingsSection("外部の ComfyUI", "別のマシン（tailnet を含む）や ComfyUI Desktop など、mam が起動していない ComfyUI にあるモデルを確かめます。") {
+		@ExternalCard(d.External)
+	}
 }
 
 // modelsHelp is the "?" help of the models section: what the cards do, and where an installed model is tried (the generation test screen; Issue #1100).
@@ -67,5 +104,14 @@ templ modelsHelp() {
 		導入したモデルを試すには、
 		<a class="underline" href={ templ.SafeURL(paths.GenerationTest()) } data-testid="mm-open-gentest">生成テスト画面</a>
 		を使います。
+	</p>
+}
+
+// engineNeeded is the line above the model list while the bundled engine is not installed or not running: what the buttons below wait for, and where it is.
+templ engineNeeded() {
+	<p class="text-sm text-warning" role="status" data-testid="mm-engine-needed">
+		ComfyUI エンジンが未導入か、停止しています。モデルを使うには
+		<a class="underline" href={ templ.SafeURL(paths.ModelManagerPart(mmcat.ComfyUI)) } data-testid="mm-engine-needed-link">ComfyUI エンジン</a>
+		を導入して起動してください。
 	</p>
 }

@@ -25,7 +25,7 @@ const maxModels = 3
 // install is a model install: it leads to the model manager, works on the engine or a model, and tells how far the download is
 // while it runs (the tracker of the model manager keeps that in memory: a job from before a restart has none).
 func (r *reader) install(ctx context.Context, e *Entry, p payload) error {
-	e.Dest = Dest{Screen: ScreenModelManager}
+	e.Dest = Dest{Screen: ScreenModelManager, Category: installCategory(p.Target)}
 	mm := r.ModelManager
 	if mm == nil {
 		return nil
@@ -43,6 +43,24 @@ func (r *reader) install(ctx context.Context, e *Entry, p payload) error {
 	}
 	e.Progress = &Progress{Percent: st.Progress.Percent, Text: st.Progress.Message}
 	return nil
+}
+
+// installCategory is the page of the model manager that works on the target of an install: "engine", "model:<id>", "runtime:<id>", "node:<id>" or "hf:…" ("" for
+// a target that says nothing: the overview).
+func installCategory(target string) string {
+	switch {
+	case target == "engine":
+		return CategoryComfyUI
+	case strings.HasPrefix(target, "model:"):
+		return CategoryImageVideo
+	case strings.HasPrefix(target, "runtime:"):
+		return CategoryLocalRuntimes
+	case strings.HasPrefix(target, "node:"):
+		return CategoryCustomNodes
+	case strings.HasPrefix(target, "hf:"):
+		return CategoryHFExternal
+	}
+	return ""
 }
 
 // installSubject is the name of what an install works on: "engine", "model:<catalog id>" or "hf:<repo>@<commit>/<path>". A model

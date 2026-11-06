@@ -42,7 +42,7 @@ func TestListModelCatalog_CarriesTheTraitsAndTheInputsOfEachModel(t *testing.T) 
 	assert.False(t, b.Audio)
 	assert.False(t, a.Available, "not installed: not available yet")
 	assert.Equal(t, "not_installed", string(a.Reason))
-	assert.Equal(t, "/model-manager", a.Route)
+	assert.Equal(t, "/model-manager/image-video", a.Route)
 }
 
 func TestListModelCatalog_FiltersByTheConditionsOfTheFilterPanel(t *testing.T) {

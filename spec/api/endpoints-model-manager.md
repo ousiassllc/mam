@@ -4,7 +4,7 @@
 
 > **状態: 実装済み（Issue #1100）**: 「試し生成」（`/model-manager/trials/…`）は廃止した。導入したモデルを試すのは生成テスト画面（`GET /generation-test`。[endpoints-gentest.md](endpoints-gentest.md)）だけ。
 
-> **状態: 仕様のみ（未実装。Issue #1101）**: 画面を**分類ごとのサブページ**に分ける。`GET /model-manager` は概要になり、区画は `GET /model-manager/<slug>`（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）の分類ページに移る。下の §1 の表に概要と分類ページのルートを足し、§3 の区画の並びを分類の表に直し、§4 に受け入れ条件を足した。区画の部分ルート（`/model-manager/engine/…`・`/models/…` ほか）は、パス・フォームともそのまま。構成は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「分類のサブページ（#1101）」。
+> **状態: 実装済み（Issue #1101。`mmcat.All()` の 6 分類。#1104・#1106 が足す `local-llm`・`companion` は未実装）**: 画面を**分類ごとのサブページ**に分けた。`GET /model-manager` は概要になり、区画は `GET /model-manager/<slug>`（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）の分類ページに移る。下の §1 の表に概要と分類ページのルートを足し、§3 の区画の並びを分類の表に直し、§4 に受け入れ条件を足した。区画の部分ルート（`/model-manager/engine/…`・`/models/…` ほか）は、パス・フォームともそのまま。構成は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「分類のサブページ（#1101）」。
 
 `modelmanager.Service` を持たない router（ヘッドレスのテストなど）では、画面もルートも無い。入口は、プロジェクト一覧（`GET /`）の「モデルマネージャー」のリンクと、設定画面（`GET /settings`）の見出しの下のリンク。
 
@@ -146,7 +146,7 @@
 - `/generation-test` と `/generation-test/…`・MCP の生成テストのツール・生成テストの履歴は変わらない。履歴に、試し生成で作った結果が今までどおり出る。`GET /model-picker/model-trial` は 404（`modelpicker.SourceTrial`・`trialModels`・`mmview.TrialModels` とそのテストを消す。ほかに使う所は無い）。
 - `go build`・`go vet`・`make test` が通り、`templ generate` の差分が無い。fixture（`scroll-mm-*.html`・`layout-long-names-*.html`）は試し生成の区画を含まない形で作り直し、`scroll.wtest.ts`・`long-names.wtest.ts` が通る。
 
-**分類のサブページの受け入れ条件（Issue #1101。実装時にこのテストを足す）**:
+**分類のサブページの受け入れ条件（Issue #1101。`handler/modelmgr/categorytest`・`web/sidenavtest`・`organisms/sidenav`・`organisms/modelmgr/mmcat` のテストで確かめる）**:
 
 - `mmcat.All()`（`organisms/modelmgr/mmcat`。新設）の全 `<slug>` を実際のルーターで `GET /model-manager/<slug>` すると 200 で、本文に `data-testid="model-manager"` かつ `data-category="<slug>"` の要素が 1 つ。§3 の表のその分類の区画の `id` が**ちょうど 1 つずつ**あり、ほかの分類の区画の `id`（たとえば `image-video` に `#mm-nodes`）は無い。戻るリンク `data-testid="mm-back"` の `href` は `/model-manager`。
 - `GET /model-manager`（概要）の `data-testid="mm-category"` の数と順が `mmcat.All()` と同じ。各カードのリンク `mm-category-open` の `href` は `/model-manager/<slug>`。まとめ（`mm-category-summary`）は文字で、`data-state` を持つ。トークンの値・成人向けのゲートが閉じている間の隠しているモデルの数は出ない。概要に区画（`#mm-engine`・`#mm-catalog` ほか）の `id` が無い。
@@ -235,3 +235,4 @@
 | 1.20 | 2026-11-06 | §1 に `GET /model-manager/ollama`・`GET …/ollama/models/detail`・`POST …/ollama/models/pull`・`DELETE …/ollama/models` を足し、§4 に Ollama の導入とモデルの取得の受け入れ条件を足した。Ollama 本体は既存の `/model-manager/runtimes/ollama/…` で扱う。状態は仕様のみ（未実装） | Issue #1105 |
 | 1.21 | 2026-11-06 | §1 に `/model-manager/companion/ffmpeg`（`GET`・`PUT`・`…/download`・`…/download/cancel`）・`/model-manager/companion/facefusion`（`GET`・`PUT`）・`/model-manager/companion/index` を足し、`/settings/ffmpeg`・`/settings/facefusion` を 303 にして `PUT`・`POST`・`DELETE` を廃止した。§3 に分類 `companion` を足し、§4 に受け入れ条件を足した。FaceFusion は取得しない（導入のルートは無い）。状態は仕様のみ（未実装） | Issue #1106 |
 | 1.22 | 2026-11-07 | 「試し生成」の廃止（#1100）を実装した。状態を「実装済み」にした（`handler/modelmgr/trialgonetest`）。仕様の内容は変えない | Issue #1100 |
+| 1.23 | 2026-11-07 | 分類のサブページ（#1101）を実装した。状態を「実装済み」にした。`GET /model-manager/overview`（概要だけの部分ルート）を足した。区画をまたぐ OOB の整理（`oob.EngineWithCatalog` の廃止）・リンクの付け替えも入れた | Issue #1101 |

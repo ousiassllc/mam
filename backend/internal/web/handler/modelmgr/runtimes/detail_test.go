@@ -24,7 +24,7 @@ func TestRuntimes_ThePollingCardKeepsItsIdAndNeverCarriesTheModal(t *testing.T) 
 		assert.Contains(t, body, `hx-trigger="every 2s"`)
 		assert.NotContains(t, body, "<dialog")
 	}
-	page := s.Page()
+	page := s.PageOf(paths.MMLocalRuntimes)
 	assert.Equal(t, 1, strings.Count(page, `<dialog id="mam-modal"`))
 	assert.Greater(t, strings.Index(page, `<dialog id="mam-modal"`), strings.Index(page, `id="mm-runtimes"`))
 	s.waitRuntimeJob(screentest.JobID(t, rec.Body.String()))
@@ -42,7 +42,7 @@ func TestRuntimes_TheDetailOfARuntimeThatIsNotThereIsTheReasonInTheModal(t *test
 // time (the cards poll on their own and are read at different times) and no modal.
 func TestRuntimes_TheRefreshButtonReadsTheWholeSectionAgain(t *testing.T) {
 	s := newRuntimeScreen(t)
-	page := s.Page()
+	page := s.PageOf(paths.MMLocalRuntimes)
 	assert.Contains(t, page, `id="mm-runtimes-refresh"`)
 	assert.Contains(t, page, `hx-get="`+paths.ModelManagerPart("runtimes")+`"`)
 

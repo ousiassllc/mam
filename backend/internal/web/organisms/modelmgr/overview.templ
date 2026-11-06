@@ -1,0 +1,70 @@
+package modelmgr
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
+)
+
+// OverviewView is the entrance of the model manager: a card for each category with how it stands. While an install is running it polls itself.
+templ OverviewView(o Overview) {
+	<div
+		id={ OverviewID }
+		class="flex flex-col gap-4"
+		data-testid="mm-overview"
+		if o.Installing {
+			hx-get={ overviewURL() }
+			hx-trigger={ Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		@refresh.Bar(overviewURL(), OverviewID, o.UpdatedAt)
+		<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="mm-categories">
+			for _, c := range o.Cards {
+				@molecules.ToolCardItem(categoryCard(c))
+			}
+		</ul>
+	</div>
+}
+
+// OverviewBody is the overview as the page and an HTMX request of it answer: the element that replaces the screen's body (#model-manager-body).
+templ OverviewBody(o Overview) {
+	<div id="model-manager-body" class="flex flex-col gap-8" data-testid="model-manager">
+		@OverviewView(o)
+	</div>
+}
+
+// Categories are the categories of the cards, in their order: what the side menu lists under the screen.
+func (o Overview) Categories() []mmcat.Category {
+	out := make([]mmcat.Category, 0, len(o.Cards))
+	for _, c := range o.Cards {
+		out = append(out, c.Category)
+	}
+	return out
+}
+
+// categoryCard is the card of a category: the whole card is the link (molecules.ToolCard), with the summary as its status.
+func categoryCard(c CategoryCard) molecules.ToolCard {
+	return molecules.ToolCard{
+		ID: "mm-" + c.Slug, Href: templ.SafeURL(c.Href()), Icon: c.Icon, Title: c.Name, Description: c.Description,
+		TestID: "mm-category-open", Label: c.Name + "を開く", Heading: true,
+		ItemAttrs: templ.Attributes{"data-testid": "mm-category", "data-category": c.Slug, "data-state": c.State},
+		Status: []molecules.StatusLine{{
+			Tone: summaryTone(c.State), Text: c.Summary,
+			Attrs: templ.Attributes{"data-testid": "mm-category-summary", "data-state": c.State},
+		}},
+	}
+}
+
+func summaryTone(state string) atoms.BadgeTone {
+	switch state {
+	case StateFull, "installed":
+		return atoms.BadgeOK
+	case StateInstalling:
+		return atoms.BadgeInfo
+	case StateAttention, "broken", "readonly", "unverified":
+		return atoms.BadgeWarn
+	}
+	return atoms.BadgeNeutral
+}

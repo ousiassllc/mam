@@ -3,7 +3,7 @@ import { sendMouse, setViewport } from '@web/test-runner-commands';
 import htmx from 'htmx.org';
 import '../../main';
 
-// #908: pressing 導入 in /model-manager threw the page to the bottom. The page is the real screen, drawn with the real
+// #908: pressing 導入 in the model manager (now the page /model-manager/image-video, #1101) threw the page to the bottom. The page is the real screen, drawn with the real
 // Tailwind CSS, and the answers are what the handlers render (backend/internal/web/scroll_fixture_test.go keeps them
 // current), so what moves the page here is what moves it for a reader.
 //

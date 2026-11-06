@@ -58,7 +58,7 @@ type Info struct {
 	Available          bool   `json:"available"`
 	Unavailable        string `json:"unavailable,omitempty"`
 	UnavailableMessage string `json:"unavailable_message,omitempty"`
-	// SettingsRoute is the screen that fixes the reason ("/settings/api-keys", "/settings/local-models", "/model-manager"); empty while Available and for a reason
+	// SettingsRoute is the screen that fixes the reason ("/settings/api-keys", "/settings/local-models", "/model-manager/image-video"); empty while Available and for a reason
 	// that fixes itself (the circuit breaker). A screen links it from "選べません" (#1013).
 	SettingsRoute string `json:"settings_route,omitempty"`
 	// AcceptsReferences: an image model uses reference images.
