@@ -15,6 +15,9 @@ const FieldMaxRunes = 200
 // ValueProblem says why value cannot be the Brief item f ("" when it can). It is the rule of the
 // Brief form (PUT /projects/:id/brief) and of the answers given to the questions in the chat.
 func ValueProblem(f domain.BriefField, value string) string {
+	if value == domain.DelegateOption && !f.CanDelegate() {
+		return "「" + domain.DelegateOption + "」は選べません。AI が題材を決めると、指定と無関係な内容になるためです"
+	}
 	if utf8.RuneCountInString(value) > FieldMaxRunes {
 		return fmt.Sprintf("%d 文字以内で入力してください", FieldMaxRunes)
 	}
@@ -46,7 +49,7 @@ func ReferenceProblem(u string) string {
 // ApplyAnswer stores an answer; the Brief form's rule refuses it with the question again and the reason.
 func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.ChatMessage {
 	text = strings.TrimSpace(text)
-	if text == domain.DelegateOption {
+	if text == domain.DelegateOption && f.CanDelegate() {
 		brief.Delegate(f)
 	} else if problem := ValueProblem(f, text); problem != "" {
 		again := Question(f, f.Label()+": "+problem+"\n"+f.Question())

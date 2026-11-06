@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/editorpanel"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sceneshot"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/overview"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
@@ -43,4 +44,15 @@ func TestAuxiliaryPages_HaveOneH1(t *testing.T) {
 			assert.Contains(t, sb.String(), ">"+tc.h1+"</h1>")
 		})
 	}
+}
+
+// #1108: the generation test says it is a trial path whose videos do not become Takes of the project's Shots.
+func TestGenerationTestPage_SaysItIsNotTheMainLine(t *testing.T) {
+	var sb strings.Builder
+	require.NoError(t, pages.GenerationTestPage("tok", gentest.Compose{Prompts: []gentest.PromptText{{}}}).Render(context.Background(), &sb))
+
+	html := sb.String()
+	assert.Contains(t, html, `id="gentest-vs-main-line"`)
+	assert.Contains(t, html, "Take にはなりません")
+	assert.Contains(t, html, "「生成」を押して作ります")
 }
