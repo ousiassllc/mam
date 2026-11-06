@@ -64,7 +64,7 @@ openai-compat:lmstudio/flux-schnell
 
 ## 4. ComfyUI
 
-- **割り当て表（`assignments`）**: `param` の値をノード `node` の入力 `input` に入れる。使える `param`: `prompt`、`negative_prompt`、`seed`（実行ごとに乱数。生成テストと `run_workflow` は固定もできる）、`steps`・`cfg`・`sampler`・`scheduler`（§4.3）、`width`、`height`、`frames`、`fps`、`reference_image`（`index` で何枚目か。`optional: true` なら、その枚数が無い実行ではノードごと外れる）、`reference_denoise`（画像のみ。§4.2）、`first_frame`、`last_frame`。画像は `frames`・`fps`・`first_frame`・`last_frame` を使えない。幅・高さは縦横比と解像度から決め、`size_multiple` の倍数に丸める。
+- **割り当て表（`assignments`）**: `param` の値をノード `node` の入力 `input` に入れる。使える `param`: `prompt`、`negative_prompt`、`seed`（実行ごとに乱数。生成テストと `run_workflow` は固定もできる）、`steps`・`cfg`・`sampler`・`scheduler`（§4.3）、`width`、`height`、`frames`（`offset` でフレーム数に整数を足せる。§4.3.1）、`fps`、`reference_image`（`index` で何枚目か。`optional: true` なら、その枚数が無い実行ではノードごと外れる）、`reference_denoise`（画像のみ。§4.2）、`first_frame`、`last_frame`。画像は `frames`・`fps`・`first_frame`・`last_frame` を使えない。幅・高さは縦横比と解像度から決め、`size_multiple` の倍数に丸める。
 - **入力画像**: 参照画像・最初／最後のフレームは `POST /upload/image` に**元の拡張子のまま**アップロードし、返った名前を入力に入れる。
 - **実行**: `/ws?clientId=…` を開いてから `POST /prompt`（`prompt_id` と `client_id` は mam が決める）。`/ws` の `progress`・`executing` から割合を求め、`/history/<id>` を確認して完了を待つ。結果は `GET /view` で取る（動画は `.mp4`・`.m4v`・`.webm`・`.mov` のみ。それ以外は投入後のエラー）。
 - **進捗**: 割合は Shot の進捗（`/ws/shots/:id`、チャットの進捗カード、Take カード）のメッセージに「動画を生成しています（42%）」の形で入る。モデル呼び出しの文脈に進捗の関数を持たせ（`modeladapter/progress`）、`generation/relay` が Orchestrator の通知（Take 数など）のメッセージに割合を足して配信する（`Progress` の型は変えない）。
@@ -89,6 +89,13 @@ openai-compat:lmstudio/flux-schnell
 - **`sampling.Caps`（`localcfg/sampling`）**: ワークフローが受け取る値と既定（`Workflow.SamplingCaps()`）。`modelcatalog.Info.Sampling`・MCP の `list_generation_models` が返す。範囲は steps 1〜150・cfg 0〜30（`MinSteps` ほか。画面のスライダーと同じ）。サンプラー・スケジューラー名は ComfyUI の `comfy/samplers.py` の一覧（`sampling.Samplers`・`Schedulers`）。
 - **検証**: 保存時（`validateSampling`）、`ratio` は `steps` だけで 0〜1 の間、`steps`・`cfg` は数値の入力、`sampler`・`scheduler` は文字の入力に割り当てる。
 - **品質のプリセット（`quality_presets`。Issue #977）**: ワークフローの `quality_presets` = `{"fast": {"steps": N, "cfg": C}, "high": {…}}`（各項目は省ける）は、画面の「速い／きれい」と MCP の `quality` が使う steps・cfg。**標準は書かない**（標準 = グラフが持つ値のまま）。`steps`・`cfg` の割り当てを持つワークフローにだけ書け、速さのモード（`speed_modes`）を持つものには書けない（モードが steps・cfg を決める）。速いは steps が少なく、きれいは多い。値は mam の目安で GPU では確かめていない。ワークフローの steps から変えていない導入済みのコピーは、起動時に `wfrefresh` が更新する。詳しくは [gentest/gentest.md](gentest/gentest.md) §3.6。
+
+
+#### 4.3.1 フレーム数のオフセット（`frames` の割り当ての `offset`。Issue #1076）
+
+- **`offset`（`frames` の割り当てだけ。整数、−64〜64、省略は 0）**: フレーム数そのものではなく **フレーム数＋offset** を入れる（1 未満になるときは 1。`Assignment.FramesFor`）。フレーム数は、長さ × `fps` を `frames_step`（Wan は 4n+1）で丸めた値（`Workflow.Frames`）。式は「frames に足す整数」だけで、掛け算・別のパラメーターは使わない（`frames-2` は `offset: -2`）。
+- **使いどころ**: 最初と最後のフレームを渡す動画で、間の灰色のフレームの数が `frames-2` になるグラフ（Phr00t の Mega の FLF2V テンプレート `flf2v-wan22-14b-rapid-mega`。[model-manager/model-manager.md](model-manager/model-manager.md) §4.2 の #1076）。同じ `frames` を複数のノードに割り当てられる（`WanVaceToVideo` の `length` は offset 0、`RepeatImageBatch` の `amount` は offset −2）。
+- **検証**: 保存時（`validateWorkflow`）、`offset` は `frames` だけで、−64〜64（`maxFramesOffset`）。ほかの `param` に付けるとエラー（`offset applies to frames only`）。MCP の割り当て（`localmodels` の `assignments`・`workflows` の割り当て）も `offset` を持ち、`update_local_model` が `offset` を省いた割り当ては、保存済みの同じ割り当て（param・index・node・input が同じもの）の値を引き継ぐ（`ratio` と同じ）。
 
 ### 4.4 プロンプトのウェイト（`prompt_weight`。Issue #972）
 

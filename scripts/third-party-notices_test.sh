@@ -30,13 +30,14 @@ export PATH="$work/bin:$PATH" FAKE_GOROOT="$work/goroot" FAKE_GO_LIST="$work/go-
 # Components. a: plain LICENSE (no final newline, CRLF). b: LICENSE, a vendored copy with its own LICENSE, files that are not licenses.
 # c: a license text that contains a ~~~~ line.
 printf 'Stdlib license text\n' >"$work/goroot/LICENSE"
-mkdir -p "$work/mods/a" "$work/mods/b/internal/vendored/pkg" "$work/mods/c"
+mkdir -p "$work/mods/a" "$work/mods/b/internal/vendored/pkg" "$work/mods/c" "$work/mods/d"
 printf 'License of a\r\nsecond line' >"$work/mods/a/LICENSE"
 printf 'License of b\n' >"$work/mods/b/LICENSE"
 printf 'License of b/vendored\n' >"$work/mods/b/internal/vendored/LICENSE"
 printf 'logo license\n' >"$work/mods/b/LICENSE-LOGO"
 printf 'patent grant\n' >"$work/mods/b/PATENTS"
 printf 'License of c\n~~~~\nafter\n' >"$work/mods/c/LICENSE.md"
+printf 'License of d (the replacement)\n' >"$work/mods/d/LICENSE"
 mkdir -p "$work/npm/node_modules/lib"
 # The copied Iconoir icons: the release comes from icon.templ, the license text from atoms/icons/LICENSE.
 mkdir -p "$work/repo/backend/internal/web/atoms/icons"
@@ -52,7 +53,9 @@ write_lists() {
     echo "example.com/a|v1.0.0|$work/mods/a|$work/mods/a"
     echo "example.com/b|v2.0.0|$work/mods/b|$work/mods/b/internal/vendored/pkg"
     echo "example.com/b|v2.0.0|$work/mods/b|$work/mods/b"
-    echo "example.com/c|v3.0.0|$work/mods/c|$work/mods/c"
+    echo "example.com/c|v3.0.0|$work/mods/c|$work/mods/c|"
+    # d: go.mod replaces it with a directory of the repository (the version in the notices names the replacement too)
+    echo "example.com/d|v0.0.0-20260101000000-abcdef123456|$work/mods/d|$work/mods/d|./third_party/d"
   } >"$FAKE_GO_LIST"
   echo "lib|1.2.3|$work/npm/node_modules/lib" >"$FAKE_NPM_LIST"
 }
@@ -81,7 +84,11 @@ check "lists the bundled ONNX Runtime with the pinned version, its license and M
     has '### ThirdPartyNotices.txt' && has 'THIRD PARTY SOFTWARE NOTICES' && has 'line two' && echo 0 || echo 1
 )"
 check "lists the table row of every component" "$(
-  [[ "$(grep -c '^| \(Go\|npm\)' "$out")" -eq 5 ]] && echo 0 || echo 1
+  [[ "$(grep -c '^| \(Go\|npm\)' "$out")" -eq 6 ]] && echo 0 || echo 1
+)"
+check "a module that go.mod replaces is listed with its replacement, and the license is the replacement's" "$(
+  v='v0.0.0-20260101000000-abcdef123456（./third_party/d に置き換え）'
+  has "## example.com/d $v" && grep -qxF "| Go モジュール | example.com/d | $v |" "$out" && has 'License of d (the replacement)' && echo 0 || echo 1
 )"
 check "vendored license is shown by its path in the module" "$(has '### internal/vendored/LICENSE' && echo 0 || echo 1)"
 check "module root license is kept next to the vendored one" "$(has 'License of b' && has 'License of b/vendored' && echo 0 || echo 1)"

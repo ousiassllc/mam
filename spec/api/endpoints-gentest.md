@@ -66,7 +66,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 
 | サービスのエラー | HTTP | MCP |
 |---|---|---|
-| `*InvalidError`（モデル・プロンプト・本数・縦横比・解像度・長さ・入力画像・使えないモデル・取り込みの種類） | 422 | `validation` |
+| `*InvalidError`（モデル・プロンプト・本数・縦横比・解像度・長さ・入力画像・使えないモデル・取り込みの種類・英訳に使う LLM が無い〔Translator が nil で、英訳 ON のまま英訳する文があるとき〕） | 422 | `validation` |
 | `*ConflictError`（見積りの不一致・上限超え・終わっていない結果の削除・終わったバッチの取り消し） | 409 | `conflict` |
 | `*PartialImportError`（取り込み済みで、スロットへの割り当てが LOCK 等で拒否された） | 409（メッセージに「画像は取り込みました」） | `locked` 等（メッセージに ID） |
 | `*UpstreamError`（英訳に LLM が使えない・訳せなかった。何も生成していない。Issue #913。リクエストの取り消し・期限切れは対象外: LLM の失敗ではないので 502 にしない。Issue #1072） | 502 | `upstream` |

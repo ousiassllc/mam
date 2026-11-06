@@ -180,7 +180,7 @@ func workflowOf(f view.ModelForm, base *service.Workflow) (*service.Workflow, er
 	return w, nil
 }
 
-// withKept adds to the rows of the table what the stored assignments say that the table cannot: the optional flag of a row
+// withKept adds to the rows of the table what the stored assignments say that the table cannot: the optional flag and the frames offset of a row
 // that puts a value where a stored one did, and the stored assignments of a value beyond its first (the result's width and
 // the reference scale's width are two) as long as the table still uses that value.
 func withKept(rows, stored []service.Assignment) []service.Assignment {
@@ -190,6 +190,7 @@ func withKept(rows, stored []service.Assignment) []service.Assignment {
 	for i, r := range rows {
 		if j := slices.IndexFunc(stored, func(s service.Assignment) bool { return same(r, s) }); j >= 0 {
 			rows[i].Optional = stored[j].Optional
+			rows[i].Offset = stored[j].Offset
 		}
 	}
 	type value struct {

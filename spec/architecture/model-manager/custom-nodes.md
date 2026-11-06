@@ -146,6 +146,18 @@ PuLID-Flux-Chroma を mam から導入できる経路は、**作らない**。�
 
 **カタログのスキーマの変更との関係**: カタログのモデルの絞り込み用のフィールド（`traits`）は、GGUF の 2 モデルに `uncensored: true`・`speed: standard` だけを足した（int8 版と同じ。パラメータ数など確かめていないものは足していない）。
 
+### 5.6 `ComfyUI-UMT5-Extended`（HF のモデルのリポジトリの中だけのノード）は許可リストに入れない（Issue #1077）
+
+NSFW-Wan-UMT5-XXL-V2（`rzgar/NSFW-Wan-UMT5-XXL-V2`、`vocab_size` 257067）は、`ComfyUI-UMT5-Extended` が `comfy.sd.load_text_encoder_state_dicts` を差し替えて語彙を広げてはじめて `CLIPLoader`（type `wan`）で読める。このノードは **GitHub に無く**、HF のモデルのリポジトリの `ComfyUI-UMT5-Extended/__init__.py`（2,131 B、コミット `f89480ab…`）にだけある。ホスト方法を比べて、**載せない**と決めた（2026-11-06）:
+
+| 案 | 判断と理由 |
+|---|---|
+| mam 側でホストする | しない。許可リストの取得元は GitHub のコミットのアーカイブ（§2）で、mam はホスト先（リポジトリ・配布）を持たない。新設すると更新と配布の責任が mam に移る。HF のノードにはコードの LICENSE が無く（カードの `license: apache-2.0` はモデルの宣言）、再配布してよいと確かめられない |
+| 許可リストの条件を広げる（HF のコミット固定のファイルを許可する） | しない。取得元の種類（`archive_url` の形・展開・`archive_sha256` の検証）が 1 件のために増え、信頼の範囲が広がる。ノードはプロセス全体の関数を差し替える（グラフに置いたときだけ効く既存のノードと違い、このモデルを使わないテキストエンコーダーの読み込みも通る）うえ、関数の引数は ComfyUI の版で変わりうる（エンジンを更新するたびに読み直す） |
+| 載せない | **選ぶ**。V1 相当の `rzgar/NSFW-Wan-UMT5-XXL-Fixed`（標準形式。ノード不要）は既にカタログにある（`wan22-t2v-14b-palingenesis`）。V2 の効果を確かめた記録も無い |
+
+ソースの確認（2026-11-06）: `__init__.py` は `comfy.sd` を import し、`shared.weight` の行数が 256384（標準）と違うとき `umt5xxl_model_config.vocab_size` を書き換えて元の関数を呼ぶだけ。ネットワーク・pip・subprocess・`exec`・`eval` は無い。`nodecat/data/nodes/` は変更しない。**再検討の条件**: ①コードの LICENSE のある GitHub のリポジトリに同じノードが公開される、または ComfyUI 本体が拡張語彙に対応する（ノードが不要になる）、②その上で V2 の効果を確かめた記録が出る。決定の全体は [model-manager.md](model-manager.md) §4.2 の #1076・#1077 の節。
+
 ## 6. ノードを必要とするモデル（`requires_nodes`）
 
 - テンプレートの `model.workflow.requires_nodes`（`localcfg.Workflow.RequiresNodes`）に、必要な許可リストの id を書く。テンプレートの全クラスは、コアのノードか、その `requires_nodes` のノードの `node_classes` でなければならない（`localcfg_test.go`）。

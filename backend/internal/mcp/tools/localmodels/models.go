@@ -44,6 +44,8 @@ type Assignment struct {
 	Optional *bool `json:"optional,omitempty" jsonschema:"reference_image だけ: 使わない枚があってもよい（その枚のノードは外され、つないでいたほかのノードの入力も外される）。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
 	// Ratio is a pointer for the same reason as Optional.
 	Ratio *float64 `json:"ratio,omitempty" jsonschema:"steps だけ（0 と 1 の間）: ステップ数そのものではなく round(steps × ratio) を入れる。2 段のサンプラー（Wan 2.2 の高ノイズ・低ノイズ）の切り替えのステップ（KSamplerAdvanced の end_at_step・start_at_step）に使う。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
+	// Offset is a pointer for the same reason as Optional.
+	Offset *int `json:"offset,omitempty" jsonschema:"frames だけ（-64〜64 の整数）: フレーム数そのものではなく フレーム数＋offset を入れる。最初と最後のフレームを渡す動画で、間の灰色のフレーム数（frames-2）に使う。1 未満になるときは 1。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
 }
 
 // VideoCapabilities is what a video model can make.
@@ -81,6 +83,9 @@ func assignmentsOf(w *localcfg.Workflow) []Assignment {
 		}
 		if a.Ratio != 0 {
 			item.Ratio = &a.Ratio
+		}
+		if a.Offset != 0 {
+			item.Offset = &a.Offset
 		}
 		out = append(out, item)
 	}
