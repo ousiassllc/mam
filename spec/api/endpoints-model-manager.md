@@ -110,7 +110,7 @@
 - **外部の ComfyUI**: 接続先の選択と「導入済みのモデルを確認」。結果は、カタログのモデルごとに「そろっています」／「足りないファイルがあります（足りない: …）」、フォルダごとのファイル（`loras` を含む）。成人向けのモデルは、年齢確認が済むまで出ない。「外部の ComfyUI へのモデルの導入は、その ComfyUI の側で」と書く。
 
 - **ローカル音声・口パク・LLM**（区画 `#mm-runtimes`。llama.cpp〔`llm`〕のカードを含む。local-runtime.md §17）（区画 `#mm-runtimes`、Issue #920。ハンドラーは `handler/modelmgr/runtimes`、見た目は `organisms/modelmgr/runtimecard`・`weightlist`。`localruntime.Service` を持つときだけ。意味は [local-runtime.md](../architecture/model-manager/local-runtime.md) §12）: ランタイムごとに 1 枚のカード（`data-testid="mm-runtime"`）。状態（未導入 / 導入中 / 導入済み + 停止中・起動中・失敗）、導入中の進捗バーと「中断する」（`hx-confirm`。`POST /model-manager/jobs/:job/cancel` がジョブの `target=runtime:<id>` を見て振り分ける）、版・導入先・空き容量、起動の失敗はログの末尾つき。**この PC で使えないとき**（macOS ほか）は、導入・起動のボタンの代わりに**理由**（`mm-runtime-reason`）と**クラウドの案内**（`mm-runtime-fallback`。ElevenLabs / Sync Labs を選べる）を枠で出す。**重み**（`<details data-testid="mm-runtime-weights">`）は、asset ごとに名前・大きさ・必須か・状態（あり / なし / 未確認）・出典のリンク・ライセンスのリンク・商用利用のバッジ（「商用利用: 可」/「不可」/「**はっきりしません**」）を出す。`unclear` / `no` の asset は、その行に琥珀色の枠で `notice`、一覧の前に「商用利用がはっきりしない重みを含みます（N 件）」の枠を出し、一覧を最初から開く。導入済みでも必須の重みが足りないときは「導入済み（重みが不足）」を出し、起動の代わりに「重みを導入」を出す。削除は `hx-confirm`、導入・起動・重みの導入は `hx-sync` と `hx-disabled-elt`（二重送信の防止）。
-- **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードには導入ボタンが無く、理由を出す。カードに固定のコミットは出さず、詳細モーダルに出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。
+- **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードには導入ボタンが無く、理由を出す。**カードにノードの説明は出さず**（#1103。`mm-node-description` は無い）、固定のコミットとともに詳細モーダル（`GET /model-manager/nodes/:id/detail`。説明は `#mam-modal-desc`）に出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。
 
 ## 4. テスト
 
@@ -147,6 +147,13 @@
 
 `handler/modelmgr/runtimes` の `runtimes_test.go`（`screentest.NewWithRuntimes`。`service/localruntime/lrtest` の偽のパッケージ・偽の Hugging Face・偽のプロセス）: カードの表示（未導入・導入中・導入済み・重みが不足）、出典・ライセンス・`unclear` の注記とバナー、使えない環境の理由とクラウドの案内、導入・重みの導入・起動・停止・自動起動・削除、重みが不足した起動の 409 と文面、取得元が消えたときの失敗の表示、取り消し、未知の ID の 404、サービスが無い画面にはルートが無いこと、スクリーンリーダー用のラベルと鍵・トークンを出さないこと。
 
+**追加ノードの説明の受け入れ条件（Issue #1103。実装時にこのテストを足す）**:
+
+- `nodecat` の全ノード（今は 5 件）で、`GET /model-manager/custom-nodes`（#1101 のあと。それまでは `GET /model-manager`）と `GET /model-manager/nodes`・`GET /model-manager/nodes/:id` の応答に、`data-testid="mm-node-description"` が無く、ノードの `Description` の文字列も含まれない。
+- 同じ全ノードで、`GET /model-manager/nodes/:id/detail` の `#mam-modal-desc` の文字列が `Description` と同じ。応答は今までどおり `modal.Frame`（ページに 1 つの `<dialog id="mam-modal">` の本体に入る）で、未知の ID は 404（理由だけのモーダル）。
+- `install_blocked` のノードのカードに `mm-node-blocked`（導入できない理由）が残り、導入ボタンが無い。`mm-node-detail-note`・`mm-node-models`・進捗・導入／中断／削除のボタンは変わらない。
+- 区画の「?」ヘルプに「ノードの説明」の語があり、ヘルプのほかの文は変わらない。
+
 `handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
 
 ## 改訂履歴
@@ -171,3 +178,4 @@
 | 1.15 | 2026-11-06 | 「試し生成」のルート 5 本（`/model-manager/trials`・`trials/form`・`POST trials`・`DELETE trials/:id`・`trials/:id/file`）・`POST /model-manager/trials` のアップロード上限の広げ・区画「試し生成」（§3）・試し生成の英訳をしない判断（1.13。Issue #1068）・試し生成のテストを廃止し、導入の完了・成人向けの切り替え・追加したファイルの導入と削除の応答から「試し生成の区画の描き直し」を外した。区画の並びを実際の順に直した。受け入れ条件を §4 に足した。状態は仕様のみ（未実装） | Issue #1100 |
 | 1.16 | 2026-11-06 | 画面を分類ごとのサブページに分けると決め、概要（`GET /model-manager`・`GET /model-manager/overview`）と分類ページ（`GET /model-manager/<slug>`。6 つ）のルート、§3 の分類の表、§4 の受け入れ条件を足した。`GET /model-manager/engine` の `job` の応答から、モデルの一覧の OOB を外した。区画の部分ルートは変えない。状態は仕様のみ（未実装） | Issue #1101 |
 | 1.17 | 2026-11-06 | §4 に、カードの列数の受け入れ条件（`modelcard.GridClass`・1 → 2 → 3 列の境 640 px・1280 px）を足した。ルート・応答は変えない。状態は仕様のみ（未実装） | Issue #1102 |
+| 1.18 | 2026-11-06 | §3 の「追加ノード」と §4 に、カードにノードの説明を出さず詳細モーダルだけに出すこと（`mm-node-description` の廃止）と、その受け入れ条件を足した。ルートは変えない。状態は仕様のみ（未実装） | Issue #1103 |
