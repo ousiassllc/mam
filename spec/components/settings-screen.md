@@ -223,4 +223,4 @@
 | 0.15 | 2026-11-03 | §2 の分類の表に「FaceFusion」（`/settings/facefusion`。ffmpeg の次、バージョンの前）を足して順を 1 つずつ後ろにし、§5 の概要のカードの表に「FaceFusion」を足した（10 枚 → 11 枚） | Issue #995。顔の入れ替えの外部ツールの場所を設定する分類 |
 | 0.16 | 2026-11-03 | §9 の部品の表に、ChatGPT のログインの「詳細」のモーダル（`organisms/settings/chatgpt/detail.templ`）を足した。「API キーとログイン」の ChatGPT と「音声・口パク」のカード化の詳細は [settings-screen-categories.md](settings-screen-categories.md) §1.3・§9 | Issue #1005 |
 | 0.17 | 2026-11-06 | §2 の分類「ffmpeg」「FaceFusion」と §5 の概要のカード 2 枚を、モデルマネージャーの `companion` へ移すと決め、概要に「付随ソフト」の 1 枚を足した（状態は仕様のみ） | Issue #1106 |
-| 0.18 | 2026-11-07 | §2 の分類「ffmpeg」「FaceFusion」と §5 の概要のカード 2 枚を外し、概要に「付随ソフト」の 1 枚を足した（#1106）。状態は「実装済み」 | | Issue #1106 |
+| 0.18 | 2026-11-07 | §2 の分類「ffmpeg」「FaceFusion」と §5 の概要のカード 2 枚を外し、概要に「付随ソフト」の 1 枚を足した（#1106）。状態は「実装済み」 | Issue #1106 |

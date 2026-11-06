@@ -1,5 +1,5 @@
 // Package mmview holds what the screen of the model manager and its MCP tools share beyond modelmanager.Service: how a
-// refusal of the service is told to the user (Refuse) It is a
+// refusal of the service is told to the user (Refuse). It is a
 // package of its own because package modelmanager is at its size limit.
 package mmview
 

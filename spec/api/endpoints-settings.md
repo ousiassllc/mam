@@ -213,5 +213,5 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.14 | 2026-11-04 | LLM の Agent のモーダルの 2 つの `<select>` をモデル選択の欄（`GET /model-picker/:source`）にし、`GET /settings/llm/agents/:agent/models/:role` を廃止した。`PUT` のフィールド名は変えていない | Issue #1011 |
 | 1.15 | 2026-11-06 | §5 の `PUT /settings/llm/local`・`POST /settings/llm/local/test` を廃止し、モデルマネージャーの `local-llm` へ移した（`GET /settings/llm` はリンクのカードだけ。状態は仕様のみ） | Issue #1104 |
 | 1.16 | 2026-11-06 | §5.2・§5.2.1・§5.2.2 の ffmpeg・FaceFusion のルートを、モデルマネージャーの `companion` へ移した（`GET /settings/ffmpeg`・`/settings/facefusion` は 303。分類と概要のカードは外れる。状態は仕様のみ） | Issue #1106 |
-| 1.17 | 2026-11-07 | §5.2・§5.2.1・§5.2.2 の ffmpeg・FaceFusion のルートの移し替え（#1106）を実装した。状態を「実装済み」にした（`GET /settings/ffmpeg`・`/settings/facefusion` は 303、`PUT`・`POST`・`DELETE` は 404） | | Issue #1106 |
+| 1.17 | 2026-11-07 | §5.2・§5.2.1・§5.2.2 の ffmpeg・FaceFusion のルートの移し替え（#1106）を実装した。状態を「実装済み」にした（`GET /settings/ffmpeg`・`/settings/facefusion` は 303、`PUT`・`POST`・`DELETE` は 404） | Issue #1106 |
 | 1.18 | 2026-11-07 | §5 の `PUT /settings/llm/local`・`POST /settings/llm/local/test` の廃止（#1104）を実装した。状態を「実装済み」にした（ルートは登録しない。404。`GET /settings/llm` はリンクのカード） | Issue #1104 |
