@@ -186,7 +186,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │           ├── paths/       # ルート URL の組み立て（ハンドラーとテンプレートで共有）
 │           ├── selector/    # `hx-target` の ID セレクタの組み立て（`selector.ID`。外部由来の ID を CSS エスケープする。手で `#shot-` + ID と連結しない。`paths/` の隣）
 │           ├── atoms/       # button, badge, field, spinner, toast 等
-│           ├── molecules/   # shot_card, lock_toggle(AUTO/MANUAL/LOCK), take_card, world_state_field, approval_card, escalation_card 等
+│           ├── molecules/   # shot_card, locktoggle/(AUTO/MANUAL/LOCK), notecard/, take_card, world_state_field, approval_card, escalation_card 等
 │           ├── organisms/   # chat_workspace, shot_inspector, take_comparison, brief_form 等。編集画面の部品はサブパッケージ `editorpanel/`（`panel.templ`・`stages.templ`・`data.go`・`audio.go`）、World State の画面部品はサブパッケージ `worldstate/`（`view.templ`・`responses.templ`・`data.go`）、Series 画面の部品はサブパッケージ `seriesview/`（`view.templ`）、Scene / Shot 画面の部品はサブパッケージ `sceneshot/`（`view.templ`・`responses.templ`・`data.go`）、メモ一覧は `notelist/`（`list.templ`・`onpage.go`）、オーナー側のレビュー一覧は `reviewlist/`（`list.templ`）、Shot Inspector は `shotinspector/`（`view.templ`・`data.go`）、Brand Template は `brandtemplate/`（`panel.templ`）、API キーのパネルは `credentialpanel/`（`panel.templ`）、画像・動画モデルの割り当ては `settings/media/`（`section.templ`・`modal.templ`）、LLM の割り当ては `settings/llm/`（`section.templ`・`modal.templ`）、テスト専用の `a11y/`（非テストの `.go` は無い・本番コードから import しない。organisms 直下から移した a11y・Branch ツリー（tree ロールを付けない入れ子の `<ul>`・`aria-current`）の描画テストで、行数基準値のために分けてある）。設定画面の「バージョンとアップデート」は `updatepanel/`
 │           ├── pages/       # projects_page, chat_workspace_page, brief_page, editor_page 等
 │           └── layout/      # レイアウトラッパー

@@ -8,7 +8,8 @@
 //
 // Every move is persisted (repository.ProjectRepository.Transition) before the next Agent runs,
 // and every step derives what is left to do from what is stored, so an interrupted run is
-// resumed by running the same job again.
+// resumed by running the same job again. The stages themselves are in orchestrator/stages; this package is the job around them
+// (one job per Project, rerun, the notice of a failure).
 package orchestrator
 
 import (
@@ -21,7 +22,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
-	"github.com/ousiassllc/mam/backend/internal/agent/planning"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/stages"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/characterdraft"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -29,15 +30,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
-
-// Chat is what the Orchestrator needs from the chat thread. *service.ChatService implements it.
-type Chat interface {
-	// RequestApproval posts the Approval card of a checkpoint when the Confirmation Level asks
-	// for one and holds the Project in AWAITING_APPROVAL. It reports whether a card was posted.
-	RequestApproval(ctx context.Context, projectID string, cp domain.Checkpoint, summary, refID string) (bool, error)
-	// Announce posts an AI message that does not block the Project (text or progress card).
-	Announce(ctx context.Context, projectID string, m domain.ChatMessage) error
-}
 
 // Jobs is the background job queue. *jobqueue.Queue implements it.
 type Jobs interface {
@@ -54,7 +46,7 @@ type Deps struct {
 	Projects *repository.ProjectRepository
 	Plans    *repository.PlanRepository
 	ChatRepo *repository.ChatRepository
-	Chat     Chat
+	Chat     stages.Chat
 	Jobs     Jobs
 	// LLM is the Reasoning LLM Adapter every planning Agent reasons through.
 	LLM llm.Completer
@@ -72,19 +64,11 @@ type Deps struct {
 // Orchestrator drives the planning pipeline. It is safe for concurrent use.
 type Orchestrator struct {
 	projects *repository.ProjectRepository
-	plans    *repository.PlanRepository
-	chatRepo *repository.ChatRepository
-	notes    *repository.NoteRepository
+	stages   *stages.Pipeline
 	drafts   Drafts
-	facts    func(ctx context.Context, projectID string) (references, characters int, err error)
-	chat     Chat
+	chat     stages.Chat
 	jobs     Jobs
 	logger   *slog.Logger
-
-	producer     *planning.Producer
-	writer       *planning.Writer
-	director     *planning.Director
-	storyboarder *planning.Storyboarder
 
 	mu     sync.Mutex
 	active map[string]bool // a plan job of the Project is queued or running
@@ -99,13 +83,12 @@ func New(d Deps) *Orchestrator {
 		logger = slog.New(slog.DiscardHandler)
 	}
 	return &Orchestrator{
-		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, drafts: d.Drafts, facts: d.Facts, chat: d.Chat, jobs: d.Jobs, logger: logger,
-		producer:     planning.NewProducer(d.LLM),
-		writer:       planning.NewWriter(d.LLM),
-		director:     planning.NewDirector(d.LLM),
-		storyboarder: planning.NewStoryboarder(d.LLM),
-		active:       make(map[string]bool),
-		rerun:        make(map[string]bool),
+		projects: d.Projects, drafts: d.Drafts, chat: d.Chat, jobs: d.Jobs, logger: logger,
+		stages: stages.New(stages.Deps{
+			Projects: d.Projects, Plans: d.Plans, ChatRepo: d.ChatRepo, Chat: d.Chat, LLM: d.LLM, Notes: d.Notes, Facts: d.Facts, Logger: logger,
+		}),
+		active: make(map[string]bool),
+		rerun:  make(map[string]bool),
 	}
 }
 
@@ -127,7 +110,7 @@ func (o *Orchestrator) Kick(ctx context.Context, projectID string) error {
 	if err != nil {
 		return err
 	}
-	ready, err := o.needsWork(ctx, p)
+	ready, err := o.stages.NeedsWork(ctx, p)
 	if err != nil || !ready {
 		return err
 	}
@@ -151,27 +134,6 @@ func (o *Orchestrator) Kick(ctx context.Context, projectID string) error {
 		o.logger.Error("post progress card failed", "project_id", projectID, "job_id", job.ID, "err", err)
 	}
 	return nil
-}
-
-// needsWork reports whether the pipeline has anything to do for the Project right now.
-func (o *Orchestrator) needsWork(ctx context.Context, p domain.Project) (bool, error) {
-	if p.Mode != domain.ModeAuto {
-		return false, nil
-	}
-	switch p.State {
-	case domain.StateDraft:
-		brief, err := o.projects.GetBrief(ctx, p.ID)
-		if err != nil {
-			return false, err
-		}
-		return len(brief.Missing()) == 0, nil
-	case domain.StatePlanning:
-		return true, nil
-	case domain.StateVisualDesign:
-		has, err := o.plans.HasScenes(ctx, p.ID)
-		return !has, err
-	}
-	return false, nil
 }
 
 // finish ends the job's claim on the Project. It reports whether a decision came in meanwhile,

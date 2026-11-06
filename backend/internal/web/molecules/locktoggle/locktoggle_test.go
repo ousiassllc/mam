@@ -1,22 +1,31 @@
-package molecules_test
+package locktoggle_test
 
 import (
+	"context"
 	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/locktoggle"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 )
 
+func render(t *testing.T, c templ.Component) string {
+	t.Helper()
+	var sb strings.Builder
+	require.NoError(t, c.Render(context.Background(), &sb))
+	return sb.String()
+}
+
 func TestLockToggle_MarksTheCurrentModeAndPutsToTheURL(t *testing.T) {
-	html := render(t, molecules.LockToggle(molecules.LockToggleData{
+	html := render(t, locktoggle.Toggle(locktoggle.Data{
 		DOMID: "lock-s1-camera", URL: "/shots/s1/locks", Parameter: domain.ParamCamera, Mode: domain.LockLocked,
 	}))
 
@@ -32,7 +41,7 @@ func TestLockToggle_MarksTheCurrentModeAndPutsToTheURL(t *testing.T) {
 
 func TestLockToggle_OffersTheVideoModelOfManualAndLockInTheSharedFieldLook(t *testing.T) {
 	for _, mode := range []domain.LockMode{domain.LockManual, domain.LockLocked} {
-		html := render(t, molecules.LockToggle(molecules.LockToggleData{
+		html := render(t, locktoggle.Toggle(locktoggle.Data{
 			DOMID: "lock-s1-video_model", URL: "/shots/s1/locks", Parameter: domain.ParamVideoModel, Mode: mode,
 			Model: modelpick.FieldData{
 				ID: "lock-model-s1", Label: "Video Model", URL: "/model-picker/shot-video",
@@ -49,10 +58,10 @@ func TestLockToggle_OffersTheVideoModelOfManualAndLockInTheSharedFieldLook(t *te
 }
 
 func TestLockToggle_CarriesTheHiddenFieldsOfAWorldStateSwitchAndReplacesOnlyItself(t *testing.T) {
-	html := render(t, molecules.LockToggle(molecules.LockToggleData{
+	html := render(t, locktoggle.Toggle(locktoggle.Data{
 		DOMID: "lock-wa", URL: "/projects/p1/world-state/locks", Parameter: domain.ParamStory, Mode: domain.LockAuto,
 		Label: "Mood", Modes: []domain.LockMode{domain.LockAuto, domain.LockLocked},
-		Hidden: []molecules.HiddenField{{Name: "target_type", Value: "scene"}, {Name: "target_id", Value: "sc1"}},
+		Hidden: []locktoggle.HiddenField{{Name: "target_type", Value: "scene"}, {Name: "target_id", Value: "sc1"}},
 	}))
 
 	assert.Contains(t, html, `hx-target="this"`, "only the switch is replaced, never the view around it")
@@ -72,7 +81,7 @@ func TestLockToggle_OnlyTheCurrentModeLooksSet(t *testing.T) {
 		domain.LockManual: "bg-accent-soft text-accent",
 		domain.LockLocked: "bg-warning/20 text-warning",
 	} {
-		html := render(t, molecules.LockToggle(molecules.LockToggleData{
+		html := render(t, locktoggle.Toggle(locktoggle.Data{
 			DOMID: "lock-s1-camera", URL: "/shots/s1/locks", Parameter: domain.ParamCamera, Mode: mode,
 		}))
 

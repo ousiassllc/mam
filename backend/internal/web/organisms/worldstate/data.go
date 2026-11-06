@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/voiceref"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/locktoggle"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -167,16 +168,16 @@ func entityFields(d Data, target domain.WorldTarget, id string, values map[strin
 
 // fieldLockToggle is the AUTO / LOCK switch of one attribute (PUT /projects/:id/world-state/locks).
 // The switch replaces itself only (LockSwitched carries what else the LOCK changes).
-func (d Data) fieldLockToggle(target domain.WorldTarget, id, field string) molecules.LockToggleData {
+func (d Data) fieldLockToggle(target domain.WorldTarget, id, field string) locktoggle.Data {
 	mode := domain.LockAuto
 	if d.Locks.Locked(target, id, field) {
 		mode = domain.LockLocked
 	}
-	hidden := []molecules.HiddenField{{Name: "target_type", Value: string(target)}}
+	hidden := []locktoggle.HiddenField{{Name: "target_type", Value: string(target)}}
 	if id != "" {
-		hidden = append(hidden, molecules.HiddenField{Name: "target_id", Value: id})
+		hidden = append(hidden, locktoggle.HiddenField{Name: "target_id", Value: id})
 	}
-	return molecules.LockToggleData{
+	return locktoggle.Data{
 		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: paths.WithBranch(paths.Project(d.Project.ID, "world-state", "locks"), d.branchID()),
 		Parameter: domain.LockParameter(field), Label: lockLabel(field), Mode: mode,
 		Modes: []domain.LockMode{domain.LockAuto, domain.LockLocked}, Hidden: hidden,
