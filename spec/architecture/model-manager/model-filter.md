@@ -165,6 +165,7 @@
 | `model-trial` | モデルマネージャーの試し生成 | 試せるモデル（`model_id`） |
 | `settings-image` | 設定「画像・動画モデル」の画像の用途 | `modelsettings.View.ImageModels` にあるモデル（`image_<用途>_<primary or fallback>_model`） |
 | `settings-video` | 同 Quality Policy | 動画モデルと解像度（`policy_<方針>_<primary or fallback>`。値は `<モデル>@<解像度>`） |
+| `video-enhance` | 生成結果の詳細（動画）「大きくする」「滑らかにする」（Issue #1031・#1011） | その操作（`op=upscale`・`interpolate`）と場所（`cloud=1` は Topaz、無ければこの PC）のモデル（`model`。`modelcatalog.VideoEnhancer.Item`・`Availability`。種類は `video_upscale`・`video_interpolate`。Topaz のキーが無いものは「選べません」で、API キーの設定への導線つき）。パネルは商用利用と選べるものだけ |
 | `upscale` | 生成結果の詳細「大きくする」 | アップスケールのワークフロー（`upscale_model`。今は動かせないものは理由つきで出る） |
 | `settings-llm` | 設定「テキスト生成（LLM）」の Agent | プロバイダーとモデルを**一緒に**（`<role>.provider`・`<role>.model`）。API キーのないプロバイダー・ログインしていないものは「選べません」で、理由と設定画面への導線つき（§5）。一覧にない名前は `<role>.model_custom` に入れる |
 
