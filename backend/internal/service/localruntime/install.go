@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	rtm "github.com/ousiassllc/mam/backend/internal/modelmgr/runtime"
@@ -32,7 +33,7 @@ type installPayload struct {
 
 // errCancelled is why an install the user stopped failed. The job is failed, not requeued: the user starts the install again, which
 // continues from the .part file.
-var errCancelled = errors.New("導入を中断しました。もう一度導入すると、ダウンロード済みの続きから再開します")
+var errCancelled = apperr.WithText("導入を中断しました。もう一度導入すると、ダウンロード済みの続きから再開します", apperr.New(apperr.CodeInstallCancelled))
 
 // Install downloads the pinned package of the runtime for this machine's GPU and installs it, as a job (JobStatus). It refuses at
 // once on a machine that cannot run the runtime (a *SupportError with the reason and the cloud provider to use instead), when the

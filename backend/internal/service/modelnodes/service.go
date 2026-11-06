@@ -11,13 +11,13 @@ package modelnodes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
@@ -32,7 +32,7 @@ const TargetPrefix = "node:"
 // ErrEngineNotInstalled, ErrNotInstalled).
 var (
 	// errCancelled is why an install the user stopped failed. The download stays for a resume.
-	errCancelled = errors.New("導入を中断しました。もう一度導入すると、ダウンロード済みの続きから再開します")
+	errCancelled = apperr.WithText("導入を中断しました。もう一度導入すると、ダウンロード済みの続きから再開します", apperr.New(apperr.CodeInstallCancelled))
 )
 
 // InvalidError is a refused input; Message is shown to the user.

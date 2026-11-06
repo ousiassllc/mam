@@ -14,6 +14,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
@@ -94,6 +95,9 @@ type Entry struct {
 	Progress *Progress
 	// Error is why a job that failed failed, with the secrets hidden.
 	Error string
+	// Failure is the failure as the common error in words (#1010: the cause, the remedy, the screens that help and the detail), when the job
+	// or the work kept one (job.error_info, worktrack.Record.ErrorInfo); nil otherwise: the screen then shows Error as a line.
+	Failure *apperr.View
 	// NextSteps is what to do to go on, when a planning job stopped for want of an LLM API key (planadvice.For); "" otherwise.
 	NextSteps string
 	Dest      Dest
@@ -173,7 +177,7 @@ func (r *reader) entry(ctx context.Context, row domain.Job) (Entry, error) {
 	_ = json.Unmarshal(row.Payload, &p)
 	e := Entry{
 		ID: row.ID, Kind: string(row.Kind), Label: label(row.Kind), State: State(row.Status), StartedAt: row.CreatedAt, FinishedAt: row.FinishedAt,
-		Error: logging.Redact(row.Error), NextSteps: planadvice.For(row, false),
+		Error: logging.Redact(row.Error), Failure: failureOf(row.ErrorInfo), NextSteps: planadvice.For(row, false),
 	}
 	if row.StartedAt != nil {
 		e.StartedAt = *row.StartedAt
@@ -215,3 +219,6 @@ func label(k domain.JobKind) string {
 func missing(err error) bool {
 	return errors.Is(err, repository.ErrNotFound) || errors.Is(err, service.ErrNotFound)
 }
+
+// failureOf is the failure a job or a work kept as the common error (apperr.Error.Marshal), in words; nil for "" and for text that is no failure.
+func failureOf(info string) *apperr.View { return apperr.ViewOf(info, apperr.LangJa) }

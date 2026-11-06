@@ -209,7 +209,7 @@ func TestRuntimes_AWeightWhoseSourceIsGoneIsToldWithWhereTheOriginalIs(t *testin
 	job := screentest.JobID(t, rec.Body.String())
 	s.waitRuntimeJob(job)
 	failed := s.Get(runtimePart(lrtest.ID) + "?job=" + job).Body.String()
-	assert.Contains(t, failed, `role="alert"`)
+	assert.Contains(t, failed, `data-testid="error-box" data-error-code="install_failed"`) // the common error of the job (#1010), not the words of a vendor call
 	assert.Contains(t, failed, "取得元が消えています（extra、HTTP 404）")
 	assert.Contains(t, failed, "原本は x。2026-11-01 に SHA-256 の一致を確認した")
 }

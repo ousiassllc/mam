@@ -30,7 +30,7 @@ func (s *Service) userFacing(ctx context.Context, inst *instance, err error) err
 	case errors.Is(err, fetch.ErrSize):
 		return fmt.Errorf("ダウンロードしたファイルの大きさが固定した値と違います。ダウンロードを破棄しました: %w", err)
 	case errors.As(err, &he) && he.Definitive():
-		return fmt.Errorf("取得元が応答しません（HTTP %d）。取得元のファイルが移動または削除された可能性があります: %w", he.Status, err)
+		return &userError{fmt.Sprintf("取得元が応答しません（HTTP %d）。取得元のファイルが移動または削除された可能性があります", he.Status), err}
 	case errors.Is(err, store.ErrNotWritable):
 		return fmt.Errorf("mam.exe のあるフォルダに書き込めません。書き込める場所に置いてください: %w", err)
 	}
@@ -43,8 +43,9 @@ type userError struct {
 	err error
 }
 
-func (e *userError) Error() string { return e.msg }
-func (e *userError) Unwrap() error { return e.err }
+func (e *userError) Error() string       { return e.msg }
+func (e *userError) UserMessage() string { return e.msg } // mmview.Failure words the failure with it (#1010)
+func (e *userError) Unwrap() error       { return e.err }
 
 // sourceGone is the failure of a weight whose pinned URL no longer exists. The message names the file and where its original is
 // (the source note of a mirror, else the source page), so the user knows it was taken down rather than that mam is broken.

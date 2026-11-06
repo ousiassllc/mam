@@ -4,7 +4,7 @@
 // or Run.End when it ends; the job list reads Tracker.Works. Nothing is persisted: a restart of the process ends the record, as it ends
 // the work (none of them is resumable).
 //
-// It is a leaf package (it imports domain only) so that every owner, from the media layer to the services, can use it.
+// It is a leaf package (it imports domain and apperr only) so that every owner, from the media layer to the services, can use it.
 package worktrack
 
 import (
@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -66,6 +67,9 @@ type Record struct {
 	Text    string
 	// Error is why a failed work failed, as the owner words it for the user.
 	Error string
+	// ErrorInfo is the failure of a failed work as the common error (apperr.Error.Marshal, #1010), "" when the owner has none: the job list
+	// reads it to draw the error box (the cause, the remedy and the detail) in place of the plain sentence.
+	ErrorInfo string
 }
 
 // Source is what the job list reads: the works of an owner, the running ones and the latest that ended.
@@ -105,7 +109,7 @@ func (t *Tracker) Begin(r Record, text string) *Run {
 	if r.ID == "" {
 		r.ID = domain.NewID()
 	}
-	r.State, r.StartedAt, r.FinishedAt, r.Percent, r.Text, r.Error = Running, t.now(), nil, NoPercent, text, ""
+	r.State, r.StartedAt, r.FinishedAt, r.Percent, r.Text, r.Error, r.ErrorInfo = Running, t.now(), nil, NoPercent, text, "", ""
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.recs = append(t.recs, &r)
@@ -155,15 +159,26 @@ func (r *Run) Text(text string) {
 }
 
 // Succeed ends the work as done.
-func (r *Run) Succeed() { r.end(Succeeded, "") }
+func (r *Run) Succeed() { r.end(Succeeded, "", "") }
 
 // Fail ends the work as failed for the reason (words for the user).
-func (r *Run) Fail(reason string) { r.end(Failed, reason) }
+func (r *Run) Fail(reason string) { r.end(Failed, reason, "") }
+
+// FailWith ends the work as failed for the reason, and keeps the failure as the common error (#1010) for the job list to draw. A nil
+// failure is Fail.
+func (r *Run) FailWith(reason string, failure *apperr.Error) {
+	info := ""
+	if failure != nil {
+		info = failure.Marshal()
+	}
+	r.end(Failed, reason, info)
+}
 
 // Cancel ends the work as stopped by the user: not a failure.
-func (r *Run) Cancel() { r.end(Cancelled, "") }
+func (r *Run) Cancel() { r.end(Cancelled, "", "") }
 
-// End ends the work by the error its owner got: none is a success, a cancelled context is a cancel, anything else a failure.
+// End ends the work by the error its owner got: none is a success, a cancelled context is a cancel, anything else a failure (with the
+// common error in it kept, when there is one: apperr.As).
 func (r *Run) End(err error) {
 	switch {
 	case err == nil:
@@ -171,7 +186,12 @@ func (r *Run) End(err error) {
 	case errors.Is(err, context.Canceled):
 		r.Cancel()
 	default:
-		r.Fail(err.Error())
+		failure, ok := apperr.As(err)
+		if !ok {
+			r.Fail(err.Error())
+			return
+		}
+		r.FailWith(failure.View(apperr.LangJa).Sentence(apperr.LangJa), failure) // the sentence in words, not "ai request failed: …"
 	}
 }
 
@@ -186,7 +206,7 @@ func (r *Run) update(f func(*Record)) {
 	}
 }
 
-func (r *Run) end(state State, reason string) {
+func (r *Run) end(state State, reason, info string) {
 	if r == nil {
 		return
 	}
@@ -196,6 +216,6 @@ func (r *Run) end(state State, reason string) {
 		return
 	}
 	now := r.t.now()
-	r.rec.State, r.rec.FinishedAt, r.rec.Error, r.rec.Percent, r.rec.Text = state, &now, reason, NoPercent, ""
+	r.rec.State, r.rec.FinishedAt, r.rec.Error, r.rec.ErrorInfo, r.rec.Percent, r.rec.Text = state, &now, reason, info, NoPercent, ""
 	r.t.trim()
 }

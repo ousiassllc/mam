@@ -47,6 +47,7 @@ const (
 	CodeMediaTimeout     Code = "media_timeout"          // ffmpeg / ffprobe ran past its limit
 	CodeDownloadCorrupt  Code = "download_corrupt"       // the downloaded file does not match its checksum or size
 	CodeInstallFailed    Code = "install_failed"         // an install of a model, a node or a runtime stopped for a reason the installer worded
+	CodeInstallCancelled Code = "install_cancelled"      // the user stopped an install (the job ends as failed so that the next install continues from the .part files)
 	CodeNotWritable      Code = "not_writable"           // the folder cannot be written
 	CodeNoGPU            Code = "no_gpu"                 // no supported GPU
 	CodeFaceModels       Code = "face_models_missing"    // the face models (YuNet, SFace) of the face similarity are not in the model folder (#1026)
@@ -167,6 +168,7 @@ var specs = map[Code]spec{
 	CodeMediaTimeout:     {ClassUpstream, nil},
 	CodeDownloadCorrupt:  {ClassUpstream, []Place{PlaceModelMgr}},
 	CodeInstallFailed:    {ClassUpstream, []Place{PlaceModelMgr}},
+	CodeInstallCancelled: {ClassConflict, []Place{PlaceModelMgr}},
 	CodeTrainFailed:      {ClassUpstream, []Place{PlaceModelMgr}},
 	CodeNotWritable:      {ClassUnavailable, []Place{PlaceModelMgr}},
 	CodeNoGPU:            {ClassUnavailable, []Place{PlaceModelMgr, PlaceLocalModels}},

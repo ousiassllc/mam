@@ -38,7 +38,7 @@
 | `plan` | 企画・脚本の作成 | Project の名前 | なし | Project のチャット（`/projects/:id`） |
 
 - 状態は文字のバッジ（待機中・実行中・完了・失敗・中止。色だけで伝えない）。`中止` は生成テストのバッチが取り消されたとき。生成テストの状態は**バッチの状態**を使う（キューの行は取り消しを知らない）。
-- 失敗は理由を 1 行（`logging.Redact` で鍵などを伏せる）。企画（`plan`）のジョブが LLM の API キー未設定で失敗したときだけ、理由の下に「続けるには」の案内（`data-testid="jobs-next-steps"`。`planadvice.For`。Issue #1001）を足す: (1) 設定で鍵を登録するか ChatGPT にログインしてチャットに何か送る、(2) World State・Series の「登場人物を追加」で登場人物を直接作る。理由に「登場人物の下書き」の文（Brief の添付画像から下書きを作ったとき。`planadvice.DraftNote`。Issue #1022）があるときは、(2) が「World State の登場人物のうち『下書き』の印がついたものに髪型・衣装などを書き足す（書き足すと印は消える）。足りない登場人物は『登場人物を追加』で作る」になる。理由の文面（`agent/llm/failmsg` のもの）は書き換えない。チャットの進捗カードにも同じ案内が出る。
+- 失敗は、そのジョブ・作業が**共通のエラー**（`job.error_info`・`worktrack.Record.ErrorInfo`。[../architecture/errors.md](../architecture/errors.md)）を残していれば、**エラーボックス**（`errorbox.Box`。日本語の原因と直し方が先、導線のリンク、英語の詳細は「詳細を見る」で開き、コピーボタンつき。`data-testid="jobs-failure-box"`、ポーリングで開いた詳細が閉じないよう `hx-preserve`）で出す（Issue #1010）。残していない古い行・理由の文だけの失敗は、従来どおり理由を 1 行（`logging.Redact` で鍵などを伏せる。`data-testid="jobs-failure"`）。企画（`plan`）のジョブが LLM の API キー未設定で失敗したときだけ、理由の下に「続けるには」の案内（`data-testid="jobs-next-steps"`。`planadvice.For`。Issue #1001）を足す: (1) 設定で鍵を登録するか ChatGPT にログインしてチャットに何か送る、(2) World State・Series の「登場人物を追加」で登場人物を直接作る。理由に「登場人物の下書き」の文（Brief の添付画像から下書きを作ったとき。`planadvice.DraftNote`。Issue #1022）があるときは、(2) が「World State の登場人物のうち『下書き』の印がついたものに髪型・衣装などを書き足す（書き足すと印は消える）。足りない登場人物は『登場人物を追加』で作る」になる。理由の文面（`agent/llm/failmsg` のもの）は書き換えない。チャットの進捗カードにも同じ案内が出る。
 - 対象の Project・Shot・バッチ・モデルが**もう無い**とき（Project の削除・カタログに無いモデル・年齢確認がオフの成人向けモデル）は、対象と「開く」を出さない。一覧全体は壊さない。
 - 年齢確認がオフの間、成人向けモデルの名前は対象に出さない（Issue #992）。カタログのモデルの導入（`model:`）は `Model` が隠し、Hugging Face の導入（`hf:`）は、ジョブのピン（`hf.nfaa`＝NFAA のリポジトリ。導入そのものもこの印で断る）が立っているとき、リポジトリ名を出さない。生成テストのバッチは、`Hidden`（`HidesModel`）に当たるモデルを名前の列から外す（全部が当たれば対象は空）。ゲートを開くと、同じ一覧にまた名前が出る。
 
@@ -54,7 +54,7 @@
 | `ffmpeg_install` | ffmpeg のダウンロード | `ffmpegdl.Service.StartInstall` | `ffmpeg` | ダウンロード 0〜85 %・展開 85〜98 %・確認 98〜99 %（設定の導入カードと同じ値）・いまの段階の文 | `/settings/ffmpeg` |
 | `voice_train` | 声の学習 | `voicetrain.Service.Start` | 登場人物の名前 | 段階 0〜98 %（text 0〜5・hubert 5〜15・semantic 15〜20・sovits 20〜60・gpt 60〜98。見た目だけの値）・いまの段階の文（エポック n/m・経過・その段階の残り時間） | Project の登場人物は `/projects/:id/world-state`、Series の正本の登場人物は `/series/:id`（[local-runtime.md §18](../architecture/model-manager/local-runtime.md)） |
 
-- 状態は `実行中`・`完了`・`失敗`・`中止`（`待機中` は無い: 記録は動き出してから始まる）。`中止` は Codex・ffmpeg の「中断する」と、書き出し・音声・判定で要求が取り消されたとき（ワークフローの実行は要求から切り離して動くので、時間切れは失敗）。ほかの失敗は持ち主が使う人向けに書いた文（`Explain`・`audioError`・`aiError`・`workflows.reasonOf`）のまま `Entry.Error` に入れ、`logging.Redact` で鍵を伏せる（共通のエラー表示は別の Issue #1010。ここでは変えない）。
+- 状態は `実行中`・`完了`・`失敗`・`中止`（`待機中` は無い: 記録は動き出してから始まる）。`中止` は Codex・ffmpeg の「中断する」と、書き出し・音声・判定で要求が取り消されたとき（ワークフローの実行は要求から切り離して動くので、時間切れは失敗）。ほかの失敗は持ち主が使う人向けに書いた文（`Explain`・`audioError`・`aiError`・`workflows.reasonOf`）のまま `Entry.Error` に入れ、`logging.Redact` で鍵を伏せる。持ち主が共通のエラー（`*apperr.Error`）を持っている失敗（`Run.End(err)` が `apperr.As` で見つけたもの・声の学習・書き出し・音声・ffmpeg の失敗）は、`Run.FailWith(理由, failure)` で `ErrorInfo` に残り、`Entry.Failure`（`apperr.View`）としてエラーボックスで出る（Issue #1010）。
 - `%` を言えない作業（書き出し・音声・判定は ffmpeg や LLM の 1 回の呼び出しで、数える段が無い）は、`<progress>` の棒を出さず、いま何をしているかの文と**動き出してからの経過時間**（`経過 3分20秒`）を出す。2 秒ごとの取り直しで時間が進むので、長い作業が止まっていないと分かる。値は作らない（`Progress.Percent` が負 = 不明。organism の `Progress.Known()`）。
 - **対象の Project が無い・年齢確認でモデルが隠れる**ときの扱いは、上の共通の箇条書きと同じ（対象と、Project の行き先は出さない。ワークフローの「開く」は `/workflows` で、Project を持たないので残す）。
 - **永続化しない・再起動で消える**: 記録は持ち主のメモリにあり、mam を再起動すると 6 種とも一覧から消える（作業そのものも再起動で中断され、再開しない）。`job` テーブルの 6 種は再起動後も出る。ワークフローの実行はディスク上の `run.json`（`workflows.Service.Run`）が別にあるが、一覧は読まない（メモリ上の記録だけ）。
@@ -135,3 +135,4 @@
 | 1.7 | 2026-11-03 | 企画の失敗の理由に登場人物の下書きの文があるときは、「続けるには」の (2) を「下書きを直す」案内にする（§2 の失敗の行） | Issue #1022 |
 | 1.8 | 2026-11-03 | 動画の書き出し・音声の作成・Editor の判定・ワークフローの実行・Codex の導入・ffmpeg のダウンロードを一覧に出す（決定 2 の変更）。`job` テーブルには書かず、持ち主のメモリ上の記録（`internal/worktrack`）を `joblist.Deps.Works` が読み、テーブルの行と混ぜる。`%` を言えない作業は棒を出さず、いまの作業と経過時間を出す（`Progress.Percent` が負）。再起動で消えることを明記 | Issue #1019 |
 | 1.9 | 2026-11-04 | 声の学習（`voice_train`）を、メモリ上の追跡の種類に足した（Issue #936）。再起動をまたがず、ジョブ一覧から開くと登場人物の画面へ行く | GPT-SoVITS の fine-tune |
+| 1.10 | 2026-11-06 | 失敗した行を共通のエラーボックスで出す（Issue #1010）: `job` テーブルの行は `job.error_info`（`jobrecent` が読むようにした）、メモリ上の作業は `worktrack.Record.ErrorInfo`（`Run.FailWith`・`Run.End` が `*apperr.Error` を残す）から `Entry.Failure` を作り、`organisms/jobs` の行が `errorbox.Box` を出す。共通のエラーを持たない失敗は従来の 1 行 | Issue #1010 |

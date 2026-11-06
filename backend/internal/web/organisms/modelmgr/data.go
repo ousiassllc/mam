@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/failbox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -80,9 +81,11 @@ type Data struct {
 }
 
 // Message is the confirmation or the refusal of the last action of a section.
+// Failures are the installs that ended in a failure the job kept as the common error (#1010): each is drawn as an error box (failbox).
 type Message struct {
-	Notice string
-	Error  string
+	Notice   string
+	Error    string
+	Failures []failbox.Item
 }
 
 // Progress is a running install: the job, how far it is and what it does.

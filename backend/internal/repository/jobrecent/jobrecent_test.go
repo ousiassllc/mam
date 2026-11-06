@@ -74,3 +74,20 @@ func TestListRecent_IsInTheOrderOfTheStartNotOfTheQueue(t *testing.T) {
 	require.Len(t, got, 3)
 	assert.Equal(t, []string{"a-queued-first-started-last", "c-waiting", "b-queued-second-started-first"}, []string{got[0].ID, got[1].ID, got[2].ID})
 }
+
+// The list reads the failure a job kept as the common error (#1010), so that the job list screen can draw the error box for it.
+func TestListRecent_ReadsTheCommonErrorOfAFailedJob(t *testing.T) {
+	ctx := context.Background()
+	db := testdb.Open(t)
+	jobs := repository.NewJobRepository(db)
+	failed, err := jobs.Create(ctx, domain.JobGenerate, nil)
+	require.NoError(t, err)
+	require.NoError(t, jobs.MarkFailedWithInfo(ctx, failed.ID, "ディスクの空きが足りません", `{"code":"disk_full","detail":"no space left on device"}`))
+
+	got, err := jobrecent.New(db).ListRecent(ctx, 10)
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "ディスクの空きが足りません", got[0].Error)
+	assert.JSONEq(t, `{"code":"disk_full","detail":"no space left on device"}`, got[0].ErrorInfo)
+}
