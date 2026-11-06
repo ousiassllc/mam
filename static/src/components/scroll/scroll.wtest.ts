@@ -11,7 +11,8 @@ import '../../main';
 // page where it is (Chrome's scroll anchoring holds the reader's place while the list above and below is redrawn), and
 // the first two tests keep it so. What moved the page was the license question: its dialog stands above the list, the
 // focus that went into it (and back to the card afterwards) had no `preventScroll`, so closing it threw the page from the
-// dialog at the top of the list to the card at the bottom of it. The last two tests fail without the fix.
+// dialog at the top of the list to the card at the bottom of it. The tests of the question fail without the fix; the last one
+// also holds the page when the answer is a refusal, which draws the question again with its reason.
 const TESTDATA = '/src/components/testdata/';
 
 // A browser without scroll anchoring (Safari's WKWebView, which the macOS app uses) keeps no place for the reader by itself, so
@@ -156,7 +157,7 @@ for (const anchoring of [true, false]) {
         await frames();
       });
 
-      it('opens the question over the page, in sight, and leaves the page where it was when it is closed', async () => {
+      it('opens the license question in sight over a page that stays where it was, and leaves it there when 閉じる is pressed', async () => {
         expect(inView(dialog()!), 'the question is out of sight').to.equal(true);
         expect(window.scrollY, 'the page behind the modal moved').to.equal(before);
 
@@ -168,7 +169,7 @@ for (const anchoring of [true, false]) {
         expect(document.activeElement === opener || opener.isConnected === false).to.equal(true);
       });
 
-      it('puts the page back where it was when the license is accepted and the install starts', async () => {
+      it('leaves the page where it was when the license is accepted and the install starts', async () => {
         const agree = host.querySelector<HTMLInputElement>('[data-testid="mm-agree"]')!;
         await press(agree);
         const done = settled();
@@ -179,6 +180,34 @@ for (const anchoring of [true, false]) {
 
         expect(dialog()).to.equal(null);
         expect(window.scrollY, 'the page moved to the card, or stayed at the emptied dialog').to.equal(before);
+      });
+
+      it('leaves the page where it was when the license is refused and the question is drawn again with the reason', async () => {
+        const agree = host.querySelector<HTMLInputElement>('[data-testid="mm-agree"]')!;
+        await press(agree);
+        // The license of the catalog changed after the question was drawn: the server refuses the version that was shown.
+        host.querySelector<HTMLInputElement>('[data-testid="mm-consent-form"] input[name="license_version"]')!.value =
+          '0';
+        seen = [];
+        const done = settled();
+        await press(host.querySelector<HTMLButtonElement>('[data-testid="mm-consent-form"] button[type="submit"]')!);
+        await done;
+        await waitUntil(() => byTestId(host, 'mm-consent-error') !== null, 'the reason was not drawn');
+        await frames();
+
+        expect(byTestId(host, 'mm-consent-error').textContent).to.contain('同意するライセンスが違います');
+        expect(card('model-8')?.getAttribute('data-state'), 'a refused install started').to.equal('not_installed');
+        expect(inView(dialog()!), 'the question is out of sight').to.equal(true);
+        expect(window.scrollY, `the page moved from ${before} (positions seen: ${seen.join(', ')})`).to.equal(before);
+        expect(
+          seen.filter((y) => y !== before),
+          'the page moved on the way',
+        ).to.deep.equal([]);
+
+        // The question is closed by the reader, as the other tests end: the dialog keeps what it remembers of where the page was
+        // until it is gone, and that must not reach the next test.
+        await press(host.querySelector<HTMLButtonElement>('[data-inline-dialog-close]')!);
+        await waitUntil(() => dialog() === null, 'the dialog did not close');
       });
     });
   });

@@ -11,8 +11,9 @@ import (
 )
 
 // The wtest static/src/components/scroll/scroll.wtest.ts draws the model manager from these files and checks that the page
-// stays where the reader is when the install button is pressed and while the list polls (#908). They are the real screen and
-// the real answers of the handlers (backend/internal/web/handler/modelmgr/models.go), so the test measures the real markup:
+// stays where the reader is when the install button is pressed, while the list polls and when the license question is
+// answered or refused (#908). They are the real screen and the real answers of the handlers
+// (backend/internal/web/handler/modelmgr/models.go), so the test measures the real markup:
 // `MAM_UPDATE_FIXTURES=1 go test ./backend/internal/web -run TestScrollFixtures` writes them again.
 const (
 	scrollModels = 8
@@ -74,12 +75,16 @@ func TestScrollFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	}
 	startedConsent := scrollCatalog(consentModel, []string{"job-2"})
 	startedConsent.Notice = started.Notice
+	// What the handler answers (422, into the dialog) when the accepted license is not the one of the catalog (service AcceptLicense).
+	refused := consent
+	refused.Error = "同意するライセンスが違います（custom 1 が必要です）"
 
 	checkFixtures(t, map[string]templ.Component{
-		"scroll-mm-consent.html":        modelmgr.ConsentDialog(consent),
-		"scroll-mm-consent-answer.html": oob.CatalogWithDialogClear(startedConsent),
-		"scroll-mm-page.html":           modelmgr.Body(modelmgr.Data{Catalog: scrollCatalog(0, nil), Trial: scrollTrial(false), HFImport: modelmgr.HFImport{Kind: "text-to-image"}}),
-		"scroll-mm-install-answer.html": oob.CatalogWithDialogClear(started),
-		"scroll-mm-poll-done.html":      oob.CatalogWithTrial(finished, scrollTrial(true)),
+		"scroll-mm-consent.html":         modelmgr.ConsentDialog(consent),
+		"scroll-mm-consent-answer.html":  oob.CatalogWithDialogClear(startedConsent),
+		"scroll-mm-consent-refused.html": modelmgr.ConsentDialog(refused),
+		"scroll-mm-page.html":            modelmgr.Body(modelmgr.Data{Catalog: scrollCatalog(0, nil), Trial: scrollTrial(false), HFImport: modelmgr.HFImport{Kind: "text-to-image"}}),
+		"scroll-mm-install-answer.html":  oob.CatalogWithDialogClear(started),
+		"scroll-mm-poll-done.html":       oob.CatalogWithTrial(finished, scrollTrial(true)),
 	})
 }
