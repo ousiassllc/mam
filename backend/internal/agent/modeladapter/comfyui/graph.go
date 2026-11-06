@@ -181,6 +181,9 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 	}
 	for i, a := range b.Model.Workflow.Assignments {
 		value := v.scalar(a.Param)
+		if a.Param == localcfg.ParamFrames {
+			value = a.FramesFor(v.frames) // the frame count with the assignment's offset (frames-2)
+		}
 		if sv, named, isSampling := sampled.Value(a, v.sampling); isSampling {
 			if !named {
 				continue // the request names no value: the graph's own stays

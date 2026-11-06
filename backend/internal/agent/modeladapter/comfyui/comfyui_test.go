@@ -278,3 +278,21 @@ func TestImportedGraphIsNotModified(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, before, string(b.Model.Workflow.Graph), "each run builds its own copy")
 }
+
+// A frames assignment with an offset (Issue #1076) puts the frame count plus the offset: the gray gap of the Mega first-and-last-frame workflow is frames-2.
+func TestFramesAssignmentWithAnOffsetPutsTheFrameCountPlusTheOffset(t *testing.T) {
+	f := comfyuitest.New(t)
+	f.OutputFile, f.OutputNode, f.OutputBody = "clip.mp4", "58", []byte("mp4-bytes")
+	b := backend(t, f, "flf2v-wan22-14b-rapid-mega", nil)
+	frame := &modeladapter.Input{Data: comfyuitest.PNG, MimeType: "image/png"}
+	_, err := b.GenerateVideo(ctx(t), "", modeladapter.VideoRequest{
+		Prompt: "pan", DurationSeconds: 3, Resolution: "480p", AspectRatio: "16:9", FirstFrame: frame, LastFrame: frame,
+	})
+	require.NoError(t, err)
+	g := f.Graph()
+	assert.Equal(t, 49.0, num(g["28"].Inputs["length"]), "3 s at 16 fps is 4n+1 = 49 frames")
+	assert.Equal(t, 47.0, num(g["67"].Inputs["amount"]), "the white gap of the mask: frames - 2")
+	assert.Equal(t, 47.0, num(g["68"].Inputs["amount"]), "the gray gap of the control video: frames - 2")
+	assert.Equal(t, 1, f.Count("POST /prompt"))
+	assert.Equal(t, 2, f.Count("POST /upload/image"), "the first and the last frame")
+}

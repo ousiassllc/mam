@@ -134,6 +134,12 @@ func assignmentsFrom(given []Assignment, saved []localcfg.Assignment) []localcfg
 		case kept >= 0:
 			out[i].Ratio = saved[kept].Ratio
 		}
+		switch {
+		case a.Offset != nil:
+			out[i].Offset = *a.Offset
+		case kept >= 0:
+			out[i].Offset = saved[kept].Offset
+		}
 	}
 	return out
 }

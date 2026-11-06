@@ -33,7 +33,7 @@
 | `import_local_workflow` | 「Save (API Format)」の JSON を読み、ノードとその入力の一覧を返す（保存しない）。エディタ形式は `validation`（書き出し方を案内） | `workflow_json` | `nodes[]`（`id`, `class_type`, `inputs[]`: `name`, `linked`, `value`）, `image_params[]`, `video_params[]` | はい |
 | `list_local_models` | 登録済みのモデルの一覧 | なし | `pinned`, `models[]`（`endpoint`, `name`, `id`, `kind`, `media`, `model_id`, `accepts_references`, `reference_mode`（ComfyUI の画像: `edit` / `img2img`）, `supports_lora`, `assignments[]`, `output_node`, `fps`, `frames_step`, `size_multiple`, `video`（`durations`, `resolutions`, `native_audio`）, `max_reference_images`（動画に加え、ComfyUI の画像モデルも参照画像の上限）, `first_frame`, `last_frame`, `cost_per_image_usd`, `cost_per_second_usd`, `used_by[]`） | はい |
 | `get_local_model` | モデル 1 件 | `endpoint`, `name` | `list_local_models` の 1 件 | はい |
-| `create_local_model` | 接続先にモデルを定義する。ComfyUI は `template_id`（その能力・割り当てから始め、渡した項目で上書き）か、`workflow_json`＋`assignments`＋`output_node`。互換は `model_id`（`media` は `image`）。動画は `durations`・`resolutions` が必要 | `endpoint`, `name`, `template_id?`, `media?`, `workflow_json?`, `assignments?[]`（`param`, `node`, `input`, `index?`）, `output_node?`, `fps?`, `frames_step?`, `size_multiple?`, `model_id?`, `accepts_references?`, `durations?`, `resolutions?`, `native_audio?`, `cost_per_image_usd?`, `cost_per_second_usd?` | モデル | いいえ |
+| `create_local_model` | 接続先にモデルを定義する。ComfyUI は `template_id`（その能力・割り当てから始め、渡した項目で上書き）か、`workflow_json`＋`assignments`＋`output_node`。互換は `model_id`（`media` は `image`）。動画は `durations`・`resolutions` が必要 | `endpoint`, `name`, `template_id?`, `media?`, `workflow_json?`, `assignments?[]`（`param`, `node`, `input`, `index?`, `offset?`）, `output_node?`, `fps?`, `frames_step?`, `size_multiple?`, `model_id?`, `accepts_references?`, `durations?`, `resolutions?`, `native_audio?`, `cost_per_image_usd?`, `cost_per_second_usd?` | モデル | いいえ |
 | `update_local_model` | モデルの定義を変える。渡した項目だけが変わり、`workflow_json` を替えるときは `assignments` も渡す（`template_id` は使えない）。冪等 | `endpoint`, `name`, 以降は `create_local_model` と同じ | モデル | いいえ |
 | `delete_local_model` | モデルを削除する（使用中は `validation`） | `endpoint`, `name` | `name`（`<接続先>/<モデル>`） | いいえ（破壊的） |
 
@@ -56,3 +56,4 @@
 | 1.4 | 2026-11-02 | `create_local_endpoint` の `timeout_seconds` の既定（ComfyUI）を 3600 から 10800 に変えた | Issue #917 |
 | 1.5 | 2026-11-02 | `create_local_endpoint` の `timeout_seconds` は、ComfyUI では進みが止まってから打ち切るまでの時間（既定は 10800 のまま）と書いた | Issue #961 |
 | 1.6 | 2026-11-04 | `create_local_model`・`update_local_model` と取得に `exposed_inputs`（画面に出す値）を足した | Issue #977（ステージ 2） |
+| 1.7 | 2026-11-06 | `assignments[]` に `offset`（`frames` だけ。フレーム数に足す整数。−64〜64。省くと保存済みの同じ割り当ての値のまま）を足した | Issue #1076 |
