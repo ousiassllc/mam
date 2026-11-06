@@ -4,7 +4,11 @@
 // package of its own (like upscalebox) so that organisms/gentest stays under the line limit; the handlers build its Form.
 package videoenhancebox
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+)
 
 // DOM ids: the box, the section of each operation (the anchors of the buttons under the video) and the place of the quote of an operation.
 const (
@@ -43,14 +47,14 @@ const (
 	InterpFPS     = "fps"
 )
 
-// Option is a model that can be run now.
-type Option struct{ ID, Label string }
-
-// Op is one operation of the box: the models of this PC and of Topaz that can run now (a model that cannot is not offered).
+// Op is one operation of the box: the model pickers of this PC and of Topaz. A picker is there only when a model of its place can run now (a model that
+// cannot is not the first choice; the picker lists it with the reason).
 type Op struct {
 	// Name is OpUpscale or OpInterpolate.
-	Name         string
-	Local, Topaz []Option
+	Name string
+	// Local and Topaz choose the model (the model picker, the same as every screen's); HasLocal and HasTopaz say whether there is one that can run now.
+	Local, Topaz       modelpick.FieldData
+	HasLocal, HasTopaz bool
 	// NoKey says a model of Topaz exists for this operation but its API key is not registered.
 	NoKey bool
 }
@@ -97,7 +101,7 @@ type Form struct {
 }
 
 // HasTopaz says a model of Topaz is offered (the attribution it asks for is then shown).
-func (f Form) HasTopaz() bool { return len(f.Upscale.Topaz) > 0 || len(f.Interpolate.Topaz) > 0 }
+func (f Form) HasTopaz() bool { return f.Upscale.HasTopaz || f.Interpolate.HasTopaz }
 
 // Pair is a hidden field of the form that runs a quote.
 type Pair struct{ Name, Value string }
