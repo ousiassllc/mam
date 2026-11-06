@@ -21,7 +21,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go 標準ライブラリ | Go standard library | - |
 | Go モジュール | github.com/a-h/templ | v0.3.1070 |
 | Go モジュール | github.com/adrg/xdg | v0.5.3 |
-| Go モジュール | github.com/andybalholm/brotli | v1.2.6 |
+| Go モジュール | github.com/andybalholm/brotli | v1.2.7 |
 | Go モジュール | github.com/bodgit/plumbing | v1.3.0 |
 | Go モジュール | github.com/bodgit/sevenzip | v1.6.0 |
 | Go モジュール | github.com/bodgit/windows | v1.0.1 |
@@ -44,7 +44,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go モジュール | github.com/hashicorp/errwrap | v1.0.0 |
 | Go モジュール | github.com/hashicorp/go-multierror | v1.1.1 |
 | Go モジュール | github.com/hashicorp/golang-lru/v2 | v2.0.7 |
-| Go モジュール | github.com/klauspost/compress | v1.20.1 |
+| Go モジュール | github.com/klauspost/compress | v1.20.2 |
 | Go モジュール | github.com/leodido/go-urn | v1.4.0 |
 | Go モジュール | github.com/mattn/go-isatty | v0.0.24 |
 | Go モジュール | github.com/mfridman/interpolate | v0.0.2 |
@@ -191,7 +191,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~
 
-## github.com/andybalholm/brotli v1.2.6
+## github.com/andybalholm/brotli v1.2.7
 
 Go モジュール
 
@@ -2100,7 +2100,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## github.com/klauspost/compress v1.20.1
+## github.com/klauspost/compress v1.20.2
 
 Go モジュール
 
