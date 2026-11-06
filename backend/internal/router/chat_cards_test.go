@@ -176,3 +176,28 @@ func TestMessages_AnsweredQuestionCardIsReplacedInPlaceOutOfBand(t *testing.T) {
 // The media type of Content-Type is case-insensitive. MaxBody hands a "Multipart/Form-Data" body of
 // this route to the handler's own limit, so the handler must read it as multipart (and apply that
 // limit) too, not as a plain form that gin parses unbounded and whose attachments are dropped.
+
+// Issue 1034: a message planned by the turn is rendered before it is read back. The cards of the answer
+// (and the replies to them) have to carry the Project ID in every URL they build: an empty one made the
+// client post and poll /projects//messages, which is a 404, from the second question on.
+func TestMessages_AnswerResponsesNeverBuildURLsWithoutTheProjectID(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("動画を作りたい")
+	answers := []string{"商品CM", "Instagram広告", "30代女性"}
+
+	for _, answer := range answers {
+		thread := a.get("/projects/"+id+"/messages", true).Body.String()
+		question := lastID(t, thread)
+
+		rec := a.form(http.MethodPost, "/projects/"+id+"/messages", url.Values{"content": {answer}, "reply_to_message_id": {question}})
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		body := rec.Body.String()
+
+		assert.NotContains(t, body, "/projects//", "no URL of the response lacks the Project ID: %s", answer)
+		assert.Contains(t, body, `data-card-url="/projects/`+id+`/messages/`, "the cards of the answer say where they are fetched again")
+		assert.Contains(t, body, `data-next-url="/projects/`+id+`/messages?after=`, "the messages of the answer say where what is newer is fetched")
+		if strings.Contains(body, "data-options") {
+			assert.Contains(t, body, `hx-post="/projects/`+id+`/messages"`, "the buttons of the next question post to the Project")
+		}
+	}
+}
