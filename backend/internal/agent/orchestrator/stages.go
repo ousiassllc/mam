@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -52,11 +55,32 @@ func (o *Orchestrator) startPlanning(ctx context.Context, p domain.Project) (boo
 	return true, o.projects.Transition(ctx, p.ID, domain.StatePlanning)
 }
 
+// subjectNotice is the question that holds the script back until the Brief says what the video is about.
+const subjectNotice = "Brief の Subject（題材）がまだ決まっていません。決まるまで脚本は作りません。何（商品・題材）を主役にするか、返信か Brief の Subject で教えてください。"
+
+// subjectKnown reports whether the Brief names what the video is about (domain.Brief.Missing). When it does not, it asks with a
+// Subject question card (once: while that card is open nothing is posted again) and the caller stops: a script written without a
+// topic is about something the user never asked for (#1108).
+func (o *Orchestrator) subjectKnown(ctx context.Context, projectID string) (bool, error) {
+	brief, err := o.projects.GetBrief(ctx, projectID)
+	if err != nil || !slices.Contains(brief.Missing(), domain.BriefSubject) {
+		return err == nil, err
+	}
+	open, err := o.chatRepo.LatestOpenQuestion(ctx, projectID)
+	if err != nil || (open != nil && open.RefID == string(domain.BriefSubject)) {
+		return false, err
+	}
+	return false, o.chat.Announce(ctx, projectID, briefing.Question(domain.BriefSubject, subjectNotice+"\n"+domain.BriefSubject.Question()))
+}
+
 // scriptStage is PLANNING: Producer → Writer make a script version; the script checkpoint decides
 // whether the user must approve it before the Project moves to VISUAL_DESIGN.
 func (o *Orchestrator) scriptStage(ctx context.Context, p domain.Project) (bool, error) {
 	latest, err := o.plans.LatestScript(ctx, p.ID)
 	if errors.Is(err, repository.ErrNotFound) {
+		if known, err := o.subjectKnown(ctx, p.ID); err != nil || !known {
+			return false, err // no script is written about a topic the user never named
+		}
 		return true, o.writeScript(ctx, p, nil, "")
 	}
 	if err != nil {
@@ -156,10 +180,26 @@ func (o *Orchestrator) shotPlanStage(ctx context.Context, p domain.Project) (boo
 		return false, err
 	}
 	done := fmt.Sprintf("Scene / Shot の計画ができました（%d Scene / %d Shot）。補助ビューの「Scene / Shot」で構成を確認できます。", len(plan.Scenes), plan.ShotCount())
-	if err := o.chat.Announce(ctx, p.ID, assistantText(done)); err != nil {
+	if err := o.chat.Announce(ctx, p.ID, assistantText(done+"\n"+o.mainLineWait(ctx, p.ID, plan.ShotCount()).Text())); err != nil {
 		o.logger.Error("post plan notice failed", "project_id", p.ID, "err", err)
 	}
-	return false, nil // Art Director and the later stages take over from here
+	return false, nil // generation is started per Shot by the user (a generation costs money): the notice says what to press
+}
+
+// mainLineWait is what the main line waits for once shots Shots are planned. A failure to count the Library and the Characters is logged and
+// leaves them out of the sentence: the wait reason is told either way.
+func (o *Orchestrator) mainLineWait(ctx context.Context, projectID string, shots int) mainline.Wait {
+	wait := mainline.Wait{Shots: shots}
+	if o.facts == nil {
+		return wait
+	}
+	refs, chars, err := o.facts(ctx, projectID)
+	if err != nil {
+		o.logger.Error("count references and characters failed", "project_id", projectID, "err", err)
+		return wait
+	}
+	wait.Counted, wait.References, wait.Characters = true, refs, chars
+	return wait
 }
 
 // projectNotes chooses the production notes the Writer or Director is given (spec/spec.md §9.4): the

@@ -216,7 +216,7 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	brief.AttachAssets(attached)
 
 	var refused *domain.ChatMessage
-	if project.State == domain.StateDraft && len(brief.Missing()) > 0 {
+	if (project.State == domain.StateDraft || project.State == domain.StatePlanning) && len(brief.Missing()) > 0 { // PLANNING too: a script held back for the Subject (#1108)
 		if refused, err = s.answerBrief(ctx, project.ID, &brief, target, replied, user.Content); err != nil {
 			return turn, nil, err
 		}
@@ -269,7 +269,7 @@ func (s *ChatService) answerBrief(ctx context.Context, projectID string, brief *
 		return nil, err
 	}
 	f := domain.BriefField(open.RefID)
-	if brief.Get(f) != "" || brief.IsDelegated(f) {
+	if !slices.Contains(brief.Missing(), f) {
 		return nil, nil
 	}
 	return applyAnswer(brief, f, text), nil
@@ -278,7 +278,7 @@ func (s *ChatService) answerBrief(ctx context.Context, projectID string, brief *
 // applyAnswer stores an answer; the Brief form's rule refuses it with the question again and the reason.
 func applyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.ChatMessage {
 	text = strings.TrimSpace(text)
-	if text == domain.DelegateOption {
+	if text == domain.DelegateOption && f.CanDelegate() {
 		brief.Delegate(f)
 	} else if problem := briefing.ValueProblem(f, text); problem != "" {
 		again := briefing.Question(f, f.Label()+": "+problem+"\n"+f.Question())

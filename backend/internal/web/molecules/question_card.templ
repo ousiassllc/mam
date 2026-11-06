@@ -15,7 +15,9 @@ templ QuestionCard(m domain.ThreadMessage) {
 				for _, option := range domain.DecodeCardBody(m.Content).Options {
 					@atoms.ButtonFor(atoms.ToneNeutral, option, excerpt(m.ChatMessage), answerAttrs(m, option))
 				}
-				@atoms.ButtonFor(atoms.TonePrimary, domain.DelegateOption, excerpt(m.ChatMessage), answerAttrs(m, domain.DelegateOption))
+				if m.RefType != domain.RefBriefField || domain.BriefField(m.RefID).CanDelegate() {
+					@atoms.ButtonFor(atoms.TonePrimary, domain.DelegateOption, excerpt(m.ChatMessage), answerAttrs(m, domain.DelegateOption))
+				}
 				if m.RefType == domain.RefContinue {
 					// a free direction of Continue is the composer's reply to this card (spec/spec.md §23.2)
 					@ReplyButton(m)

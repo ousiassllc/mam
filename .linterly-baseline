@@ -23,11 +23,11 @@
 362	backend/internal/repository/reference_test.go
 402	backend/internal/repository/series_test.go
 391	backend/internal/repository/versioning.go
-7766	backend/internal/router/
+7764	backend/internal/router/
 442	backend/internal/router/brand_test.go
 383	backend/internal/router/bundle_test.go
 450	backend/internal/router/review_test.go
-15084	backend/internal/service/
+15082	backend/internal/service/
 429	backend/internal/service/branch.go
 475	backend/internal/service/editor_reshoot.go
 361	backend/internal/service/editor_timeline.go

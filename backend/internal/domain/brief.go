@@ -164,20 +164,20 @@ func (b *Brief) Delegate(f BriefField) {
 // IsDelegated reports whether the user left the field to the AI.
 func (b Brief) IsDelegated(f BriefField) bool { return slices.Contains(b.Delegated, string(f)) }
 
-// Missing returns the required fields that are neither set nor delegated, in question order.
+// CanDelegate reports whether the field may be left to the AI: every one but the Subject (#1108).
+func (f BriefField) CanDelegate() bool { return f != BriefSubject }
+
+// Missing returns the required fields neither set nor delegated, in question order. A delegated Subject is still missing (the AI would invent an unrelated topic) unless Additional Instruction names one (#1108).
 func (b Brief) Missing() []BriefField {
-	var missing []BriefField
-	for _, f := range RequiredBriefFields() {
-		if b.Get(f) == "" && !b.IsDelegated(f) {
-			missing = append(missing, f)
+	return slices.DeleteFunc(RequiredBriefFields(), func(f BriefField) bool {
+		if f == BriefSubject {
+			return strings.TrimSpace(b.Subject+b.AdditionalInstruction) != ""
 		}
-	}
-	return missing
+		return b.Get(f) != "" || b.IsDelegated(f)
+	})
 }
 
-// Merge copies every value set in extracted into b without overwriting fields
-// the user already decided (set or delegated). Assets and References are appended
-// without duplicates.
+// Merge copies every value set in extracted into b without overwriting what the user decided. Assets and References are appended without duplicates.
 func (b *Brief) Merge(extracted Brief) {
 	for _, f := range RequiredBriefFields() {
 		if v := extracted.Get(f); v != "" && b.Get(f) == "" && !b.IsDelegated(f) {
