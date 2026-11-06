@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/runparams"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -20,7 +21,7 @@ var stateText = map[string]string{
 // combination in the cell.
 func batchView(b gentest.BatchStatus) view.Batch {
 	v := view.Batch{
-		ID: b.BatchID, StateText: stateText[b.State], StateTone: b.State, Total: b.Total, Done: b.Done, Finished: b.Finished,
+		ID: b.BatchID, Started: runparams.Started(b.CreatedAt), Params: runparams.Of(b), StateText: stateText[b.State], StateTone: b.State, Total: b.Total, Done: b.Done, Finished: b.Finished,
 		Counts: fmt.Sprintf("成功 %d・失敗 %d・取り消し %d", b.Succeeded, b.Failed, b.Cancelled),
 	}
 	if b.Total > 0 {

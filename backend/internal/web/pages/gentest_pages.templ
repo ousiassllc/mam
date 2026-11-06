@@ -51,7 +51,7 @@ templ GenerationTestPage(csrfToken string, c gentest.Compose) {
 		} else {
 			@gentest.ComposeForm(c)
 			@gentest.ConfirmEmpty()
-			@gentest.BatchEmpty()
+			@gentest.BatchList()
 			@modal.Host()
 		}
 	}

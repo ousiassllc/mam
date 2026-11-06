@@ -238,7 +238,7 @@ func GenerationTestPage(csrfToken string, c gentest.Compose) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = gentest.BatchEmpty().Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = gentest.BatchList().Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
