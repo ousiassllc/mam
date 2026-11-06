@@ -9,10 +9,15 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
+	"github.com/ousiassllc/mam/backend/internal/service/mainwait"
 )
 
 // PlanService shows and edits the Scene / Shot / Take hierarchy of a Project (F-04).
-type PlanService struct{ *core }
+type PlanService struct {
+	*core
+	wait mainwait.Reader
+}
 
 // SceneNav is one entry of the Scene list.
 type SceneNav struct {
@@ -41,6 +46,7 @@ type SceneView struct {
 	Scenes  []SceneNav
 	Scene   *domain.Scene // nil when the Project has no Scene
 	Shots   []ShotView
+	Wait    mainline.Wait // what the main line waits for after the Scene / Shot plan (#1108)
 }
 
 // Hierarchy returns the view with the Scene selected. An empty sceneID selects the first Scene.
@@ -59,6 +65,9 @@ func (s *PlanService) Hierarchy(ctx context.Context, projectID, sceneID, shotID 
 		return SceneView{}, err
 	}
 	view := SceneView{Project: project, Scenes: make([]SceneNav, len(scenes))}
+	if view.Wait, err = s.wait.Wait(ctx, project); err != nil {
+		return SceneView{}, err
+	}
 	for i, sc := range scenes {
 		view.Scenes[i] = SceneNav{Scene: sc, ShotCount: counts[sc.ID]}
 	}

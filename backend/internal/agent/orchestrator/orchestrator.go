@@ -63,6 +63,9 @@ type Deps struct {
 	Notes *repository.NoteRepository
 	// Drafts is asked for the draft Characters when the pipeline stops for want of an LLM API key (#1022). Nil: none are made.
 	Drafts Drafts
+	// Facts counts the Reference Library items and the Characters of a Project, for the sentence that says what the main line waits for
+	// after the Scene / Shot plan (#1108). Nil: the sentence leaves them out.
+	Facts  func(ctx context.Context, projectID string) (references, characters int, err error)
 	Logger *slog.Logger
 }
 
@@ -73,6 +76,7 @@ type Orchestrator struct {
 	chatRepo *repository.ChatRepository
 	notes    *repository.NoteRepository
 	drafts   Drafts
+	facts    func(ctx context.Context, projectID string) (references, characters int, err error)
 	chat     Chat
 	jobs     Jobs
 	logger   *slog.Logger
@@ -95,7 +99,7 @@ func New(d Deps) *Orchestrator {
 		logger = slog.New(slog.DiscardHandler)
 	}
 	return &Orchestrator{
-		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, drafts: d.Drafts, chat: d.Chat, jobs: d.Jobs, logger: logger,
+		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, drafts: d.Drafts, facts: d.Facts, chat: d.Chat, jobs: d.Jobs, logger: logger,
 		producer:     planning.NewProducer(d.LLM),
 		writer:       planning.NewWriter(d.LLM),
 		director:     planning.NewDirector(d.LLM),
