@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -128,11 +129,36 @@ func TestLoadWarnsWhenGPTImage2HasNoKnownPrice(t *testing.T) {
 
 			require.NoError(t, err, "a warning, not a refusal")
 			if tc.warn {
-				assert.Contains(t, logs.String(), "level=WARN")
-				assert.Contains(t, logs.String(), "cost_per_image_usd")
+				assert.Contains(t, logs.String(), "models.gpt-image-2.model is not gpt-image-2")
 				return
 			}
-			assert.Empty(t, logs.String())
+			assert.NotContains(t, logs.String(), "models.gpt-image-2.model is not gpt-image-2")
+		})
+	}
+}
+
+// OpenAI publishes no price per image for GPT Image 2.6, so a routed 2.6 model without cost_per_image_usd (the default Flare included)
+// is said to be unpriced; a price that the user sets, or a model no route uses, is not.
+func TestLoadWarnsWhenARoutedGPTImage26ModelHasNoPrice(t *testing.T) {
+	for name, tc := range map[string]struct {
+		models string
+		warn   bool
+	}{
+		"the default routes Flare": {`{}`, true},
+		"Flare with a price":       {`{"models":{"gpt-image-2.6-flare":{"cost_per_image_usd":0.07}}}`, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var logs bytes.Buffer
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+			t.Cleanup(func() { slog.SetDefault(previous) })
+			path := filepath.Join(t.TempDir(), "models.json")
+			require.NoError(t, os.WriteFile(path, []byte(tc.models), 0o600))
+
+			_, err := configcheck.Load(path)
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.warn, strings.Contains(logs.String(), "a GPT Image 2.6 model is routed and has no cost_per_image_usd"))
 		})
 	}
 }

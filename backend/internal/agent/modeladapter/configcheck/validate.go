@@ -30,6 +30,7 @@ func Load(path string) (modeladapter.Config, error) {
 		return modeladapter.Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
 	warnUnpricedGPTImage2(cfg)
+	warnUnpricedGPTImage26(cfg)
 	return cfg, nil
 }
 

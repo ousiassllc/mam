@@ -57,7 +57,7 @@ func Host() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"mam-modal\" data-modal aria-modal=\"true\" aria-labelledby=\"mam-modal-title\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink\"><div class=\"sticky top-0 z-sticky h-0\"><button type=\"button\" data-modal-close data-ripple aria-label=\"閉じる\" class=\"absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"mam-modal\" data-modal aria-modal=\"true\" aria-labelledby=\"mam-modal-title\" class=\"m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] scroll-pt-16 overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink\"><div class=\"sticky top-0 z-sticky h-0\"><button type=\"button\" data-modal-close data-ripple aria-label=\"閉じる\" class=\"absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -238,7 +238,7 @@ func InlineHostOOB(id, testID string) templ.Component {
 }
 
 const (
-	frameClass      = "m-auto max-h-[calc(100vh-4rem)] overflow-y-auto rounded-xl border border-border bg-surface p-0 text-ink shadow-modal"
+	frameClass      = "m-auto max-h-[calc(100vh-4rem)] scroll-pt-16 overflow-y-auto rounded-xl border border-border bg-surface p-0 text-ink shadow-modal"
 	inlineHostClass = frameClass + " w-[min(40rem,calc(100vw-2rem))]"
 	confirmClass    = frameClass + " w-[min(28rem,calc(100vw-2rem))]"
 )

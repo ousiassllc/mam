@@ -26,7 +26,7 @@ type Options struct {
 	StagingDir string
 	// Vendor are the options of the built-in vendors' backends.
 	Vendor []modeladapter.BackendOption
-	// ChatGPTImage is the backend of chatgptid.Model (image generation with a ChatGPT subscription); nil leaves
+	// ChatGPTImage is the backend of the chatgptid models (image generation with a ChatGPT subscription); nil leaves
 	// the model without a backend. It is offered for selection (Publish) only while ChatGPTImageEnabled is true.
 	ChatGPTImage        modeladapter.ImageBackend
 	ChatGPTImageEnabled func() bool

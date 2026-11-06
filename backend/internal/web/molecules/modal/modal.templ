@@ -30,7 +30,7 @@ templ Host() {
 		data-modal
 		aria-modal="true"
 		aria-labelledby="mam-modal-title"
-		class="m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink"
+		class="m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] has-[[data-modal-wide]]:w-[min(64rem,calc(100vw-2rem))] scroll-pt-16 overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink"
 	>
 		<div class="sticky top-0 z-sticky h-0">
 			<button
@@ -62,7 +62,7 @@ templ InlineHostOOB(id, testID string) {
 }
 
 const (
-	frameClass      = "m-auto max-h-[calc(100vh-4rem)] overflow-y-auto rounded-xl border border-border bg-surface p-0 text-ink shadow-modal"
+	frameClass      = "m-auto max-h-[calc(100vh-4rem)] scroll-pt-16 overflow-y-auto rounded-xl border border-border bg-surface p-0 text-ink shadow-modal"
 	inlineHostClass = frameClass + " w-[min(40rem,calc(100vw-2rem))]"
 	confirmClass    = frameClass + " w-[min(28rem,calc(100vw-2rem))]"
 )
