@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/artdirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/assetfile"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/promptplanner"
@@ -116,7 +117,7 @@ type Orchestrator struct {
 	world     *repository.WorldRepository
 	notes     *repository.NoteRepository
 	extractor *stateextractor.Extractor
-	files     fileStore
+	files     assetfile.Store
 	judge     Judger
 	freeDisk  func(path string) (uint64, error)
 	notify    func(Progress)
@@ -128,7 +129,7 @@ func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
 		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, repairs: d.Repairs, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
-		files: fileStore{root: d.AssetsDir, media: d.Media}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
+		files: assetfile.Store{Root: d.AssetsDir, Media: d.Media}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}
 	if o.freeDisk == nil {
 		o.freeDisk = fsutil.FreeBytes

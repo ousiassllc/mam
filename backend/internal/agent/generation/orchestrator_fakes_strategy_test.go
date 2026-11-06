@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"path/filepath"
 	"testing"
 	"time"
@@ -41,6 +42,7 @@ type options struct {
 	freeBytes   func(string) (uint64, error)
 	limits      *domain.PolicyLimits
 	config      func(*modeladapter.Config) // changes the Model Adapter setting
+	logger      *slog.Logger               // the Orchestrator's logger; nil: its default
 }
 
 // fixture is one Project with one Shot and an Orchestrator wired to fakes and a temp SQLite DB.
@@ -127,7 +129,7 @@ func newFixture(t *testing.T, opt options) *fixture {
 		Generations: gens, World: repository.NewWorldRepository(db), Projects: projects, Policies: policies,
 		Assets: repository.NewAssetRepository(db), Repairs: repository.NewRepairRepository(db), Chat: f.chat, Jobs: f.jobs, LLM: f.llm,
 		Adapter:   f.adapter,
-		AssetsDir: f.assetsDir, FreeBytes: freeBytes, Notify: f.progress.add,
+		AssetsDir: f.assetsDir, FreeBytes: freeBytes, Notify: f.progress.add, Logger: opt.logger,
 	}
 	if opt.withJudge {
 		f.judge = &judgeFake{}

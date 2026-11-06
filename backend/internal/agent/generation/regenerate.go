@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/repairspec"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -61,6 +62,11 @@ func (r Regeneration) repair() repairspec.Repair {
 // Take fits the budget, and with ErrNoOtherModel when Different Model has nowhere to go. CostPerTake
 // is the estimate the Retry Policy weighs (Max cost per Shot).
 func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.ShotRef, r Regeneration) (Strategy, error) {
+	return o.regenerationStrategy(ctx, ref, r, o.newImages(ref.ProjectID))
+}
+
+// regenerationStrategy is RegenerationStrategy reading the Reference images through images, which the clip of Regenerate reads too.
+func (o *Orchestrator) regenerationStrategy(ctx context.Context, ref repository.ShotRef, r Regeneration, images *refimage.Reader) (Strategy, error) {
 	policy, err := o.policies.Get(ctx, ref.ProjectID)
 	if err != nil {
 		return Strategy{}, err
@@ -74,7 +80,7 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 		return Strategy{}, err
 	}
 	cfg := o.adapter.Config()
-	s, err := o.decide(ctx, ref, policy, specOf(ref.Shot), budget)
+	s, err := o.decide(ctx, ref, policy, specOf(ref.Shot), budget, images)
 	if err != nil {
 		return Strategy{}, err
 	}
@@ -98,7 +104,7 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 	}
 	s.Primary, s.Fallback = primary, fallback
 	// The clip is as long as Prepare makes it: only a frame that is really read shortens a Luma clip.
-	framed, err := o.keyframeRead(ctx, ref)
+	framed, err := images.KeyframeRead(ctx, ref.Shot.References())
 	if err != nil {
 		return Strategy{}, err
 	}
@@ -153,7 +159,8 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err := brand.CheckText(r.Direction); err != nil {
 		return "", err
 	}
-	strategy, err := o.RegenerationStrategy(ctx, ref, r)
+	images := o.newImages(ref.ProjectID) // read once for the strategy and the clip
+	strategy, err := o.regenerationStrategy(ctx, ref, r, images)
 	if err != nil {
 		return "", err
 	}
@@ -187,7 +194,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
-	job, err := o.videoJob(ctx, ref.ProjectID, spec, brief, strategy.DurationSeconds, references)
+	job, err := videoJob(ctx, images, spec, brief, shot.Duration, references)
 	if err != nil {
 		return "", err
 	}
