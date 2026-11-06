@@ -17,9 +17,6 @@ func TestSettingsCategory_SlugsAreThePrefixOfTheWritePaths(t *testing.T) {
 	assert.Equal(t, paths.ModelSettings(), paths.SettingsCategory(paths.SettingsModels))
 	assert.Equal(t, paths.LocalModels(), paths.SettingsCategory(paths.SettingsLocalModels))
 	assert.Equal(t, paths.MCPSettings(), paths.SettingsCategory(paths.SettingsMCP))
-	assert.Equal(t, paths.FFmpegSettings(), paths.SettingsCategory(paths.SettingsFFmpeg))
-	assert.Equal(t, "/settings/ffmpeg/download", paths.FFmpegDownload())
-	assert.Equal(t, "/settings/ffmpeg/download/cancel", paths.FFmpegDownloadCancel())
 	assert.Equal(t, "/settings/update", paths.SettingsCategory(paths.SettingsUpdate))
 	assert.Equal(t, "/settings/a%2Fb", paths.SettingsCategory("a/b"))
 }
@@ -43,4 +40,18 @@ func TestLicensePaths_AreUnderTheirCategoryAndEscapeTheID(t *testing.T) {
 	assert.Equal(t, "/settings/licenses", paths.SettingsCategory(paths.SettingsLicenses))
 	assert.Equal(t, "/settings/licenses/12", paths.LicenseText("12"))
 	assert.Equal(t, "/settings/licenses/a%2Fb", paths.LicenseText("a/b"))
+}
+
+// ffmpeg and FaceFusion are set up in the model manager (#1106): the routes are under /model-manager/companion, the places the links point at are the sections of
+// its page, and the old settings pages are only the retired slugs.
+func TestCompanionPaths_AreUnderTheCategoryOfTheCompanionSoftware(t *testing.T) {
+	assert.Equal(t, "/model-manager/companion/ffmpeg", paths.CompanionFFmpeg())
+	assert.Equal(t, "/model-manager/companion/ffmpeg/download", paths.FFmpegDownload())
+	assert.Equal(t, "/model-manager/companion/ffmpeg/download/cancel", paths.FFmpegDownloadCancel())
+	assert.Equal(t, "/model-manager/companion/facefusion", paths.CompanionFaceFusion())
+	assert.Equal(t, "/model-manager/companion/index", paths.CompanionIndex())
+	assert.Equal(t, "/model-manager/companion#mm-ffmpeg", paths.FFmpegSettings())
+	assert.Equal(t, "/model-manager/companion#mm-facefusion", paths.FaceFusionSettings())
+	assert.Equal(t, "/settings/ffmpeg", paths.SettingsCategory(paths.RetiredSettingsFFmpeg))
+	assert.Equal(t, "/settings/facefusion", paths.SettingsCategory(paths.RetiredSettingsFaceFusion))
 }

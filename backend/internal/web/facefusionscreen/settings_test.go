@@ -6,34 +6,33 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/media/locate"
-	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
-	"github.com/ousiassllc/mam/backend/internal/router"
-	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
-	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
-	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
-	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/screentest"
 )
 
-// screen is the settings screen with the FaceFusion section over files of the test's temporary directory only.
+// TestMain starts the fake engine the model manager rig needs.
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.ReleaseMode)
+	mmtest.Main(m)
+}
+
+// screen is the page of the companion software of the model manager with the FaceFusion section over files of the test's temporary directory only.
 type screen struct {
-	t      *testing.T
-	file   string
-	engine http.Handler
-	cookie *http.Cookie
-	token  string
+	*screentest.Screen
+	t    *testing.T
+	file string
 }
 
 func newScreen(t *testing.T) *screen {
@@ -41,51 +40,31 @@ func newScreen(t *testing.T) *screen {
 	if runtime.GOOS == "windows" {
 		t.Skip("the layout uses POSIX paths")
 	}
+	svc, file := screentest.IsolatedFaceFusion(t)
+	return &screen{Screen: screentest.NewWithCompanion(t, screentest.Companion{FaceFusion: svc}), t: t, file: file}
+}
+
+// newScreenSearching is the screen whose lookup searches dir for FaceFusion and tries python first (nothing else on the machine counts): what is put in them later is
+// found the next time the section is read.
+func newScreenSearching(t *testing.T, dir, python string) *screen {
+	t.Helper()
 	file := filepath.Join(t.TempDir(), facefusionsettings.FileName)
-	// Only the files of the temporary directory count: the machine's own python and FaceFusion, if it has them, are not found.
 	finder := facefusion.Finder{Finder: locate.Finder{GOOS: "linux", Path: "/nowhere", Usable: func(p string) bool {
 		return strings.HasPrefix(p, os.TempDir()) && locate.IsExecutable(p)
-	}}, Dirs: []string{"/nowhere/facefusion"}}
-	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
-	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "models.json"), false)
-	settings.FaceFusion = facefusionsettings.New(file, "", facefusionsettings.WithFinder(finder))
-	s := &screen{t: t, file: file, engine: router.New(svc, router.Options{Settings: settings})}
-	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
-	require.Equal(t, http.StatusOK, rec.Code)
-	for _, c := range rec.Result().Cookies() {
-		if c.Name == middleware.CSRFCookieName {
-			s.cookie = c
-		}
-	}
-	require.NotNil(t, s.cookie)
-	m := regexp.MustCompile(`<meta name="csrf-token" content="([^"]+)"`).FindStringSubmatch(rec.Body.String())
-	require.Len(t, m, 2)
-	s.token = m[1]
-	return s
+	}}, Dirs: []string{dir}, Pythons: []string{python}}
+	svc := facefusionsettings.New(file, "", facefusionsettings.WithFinder(finder))
+	return &screen{Screen: screentest.NewWithCompanion(t, screentest.Companion{FaceFusion: svc}), t: t, file: file}
 }
 
-func (s *screen) send(req *http.Request) *httptest.ResponseRecorder {
-	req.Host, req.RemoteAddr = "127.0.0.1:8787", "127.0.0.1:54321"
-	rec := httptest.NewRecorder()
-	s.engine.ServeHTTP(rec, req)
-	return rec
-}
-
+// get is the section as the page's htmx reads it (GET /model-manager/companion/facefusion: it looks again).
 func (s *screen) get(path string) string {
-	req := httptest.NewRequest(http.MethodGet, path, nil)
-	req.AddCookie(s.cookie)
-	rec := s.send(req)
+	rec := s.Get(path)
 	require.Equal(s.t, http.StatusOK, rec.Code)
 	return rec.Body.String()
 }
 
 func (s *screen) put(form url.Values) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPut, paths.FaceFusionSettings(), strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("HX-Request", "true")
-	req.AddCookie(s.cookie)
-	req.Header.Set(middleware.CSRFHeaderName, s.token)
-	return s.send(req)
+	return s.Do(http.MethodPut, paths.CompanionFaceFusion(), form)
 }
 
 // install writes a FaceFusion folder and a python in a temporary directory and returns their paths.
@@ -105,7 +84,7 @@ func install(t *testing.T) (dir, python string) {
 func TestPageSaysNothingIsFoundListsTheModelsWithTheirLicensesAndTheCautions(t *testing.T) {
 	s := newScreen(t)
 
-	body := s.get(paths.FaceFusionSettings())
+	body := s.get(paths.CompanionFaceFusion())
 
 	assert.Contains(t, body, `data-testid="facefusion-state-python"`)
 	assert.Contains(t, body, "見つかりません")
@@ -120,7 +99,7 @@ func TestPageSaysNothingIsFoundListsTheModelsWithTheirLicensesAndTheCautions(t *
 	assert.Contains(t, body, facefusion.ArcFaceNote)
 	assert.Contains(t, body, "OpenRAIL-AS")
 	assert.Contains(t, body, facefusion.LicensesURL, "the primary source of the licenses")
-	assert.Contains(t, s.get(paths.Settings()), `href="/settings/facefusion"`, "the overview has the card")
+	assert.Contains(t, s.PageOf("companion"), `id="mm-facefusion"`, "the page of the companion software has the section")
 }
 
 func TestSavedPathsAreShownWrittenAndUsedAtOnceAndClearedAgain(t *testing.T) {
@@ -134,7 +113,7 @@ func TestSavedPathsAreShownWrittenAndUsedAtOnceAndClearedAgain(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "次の顔の入れ替えから使われます")
 	assert.Contains(t, rec.Body.String(), "使えます")
 	assert.Contains(t, rec.Body.String(), "FaceFusion 3.9.2（OpenRAIL-AS）")
-	assert.Contains(t, s.get(paths.Settings()), "FaceFusion を使えます")
+	assert.Contains(t, s.Page(), "FaceFusion: 使えます", "the overview of the model manager says it")
 	b, err := os.ReadFile(s.file) // #nosec G304 -- a file of the test's temp directory
 	require.NoError(t, err)
 	assert.Contains(t, string(b), dir)
@@ -175,6 +154,6 @@ func TestADamagedFileIsTheProblemOfTheSectionOnly(t *testing.T) {
 	s := newScreen(t)
 	require.NoError(t, os.WriteFile(s.file, []byte("{"), 0o600))
 
-	assert.Contains(t, s.get(paths.FaceFusionSettings()), `data-testid="facefusion-problem"`)
-	assert.Contains(t, s.get(paths.Settings()), "設定ファイルを読めません")
+	assert.Contains(t, s.get(paths.CompanionFaceFusion()), `data-testid="facefusion-problem"`)
+	assert.Contains(t, s.Page(), "FaceFusion: 設定ファイルを読めません", "the overview of the model manager says it")
 }

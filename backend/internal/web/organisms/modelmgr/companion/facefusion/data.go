@@ -1,6 +1,7 @@
-// Package facefusion is the "FaceFusion" category of the global settings screen: where the external face swapper is found and the two paths the
-// user can set (the Python of its environment and its folder), with the models it can use and what their licenses allow
-// (spec/architecture/gentest/face-swap.md). It sits beside the ffmpeg category, which is the same kind of tool.
+// Package facefusion is the section "FaceFusion" of the companion software of the model manager (#1106): where the external face swapper is found, the two paths the
+// user can set (the Python of its environment and its folder), how to install it by hand, and the models it can use with what their licenses allow
+// (spec/architecture/gentest/face-swap.md). mam never fetches FaceFusion: the section tells the way in and looks again, it has no install button. It sits beside the
+// ffmpeg section, which is the same kind of tool.
 package facefusion
 
 import (
@@ -18,8 +19,14 @@ const (
 	FieldPath   = "path"
 )
 
-// Description is what the category says under its title.
-const Description = "FaceFusion（https://facefusion.io）は、顔の入れ替えをする別のソフトです。mam には同梱せず、自分で入れたものを、mam が別のプロセスとして `facefusion.py headless-run` で呼びます。ここで Python（FaceFusion の環境のもの）と FaceFusion のフォルダを指定すると、生成テストの結果の画面から顔を入れ替えられます。保存したパスは次の入れ替えからすぐ使われます。"
+// Description is what the section says behind its "?" button.
+const Description = "FaceFusion（https://facefusion.io）は、顔の入れ替えをする別のソフトです。mam は取得せず、同梱もしません。自分で入れたものを、mam が別のプロセスとして `facefusion.py headless-run` で呼びます。入れ方は下の手順のとおりです。入れたあとは「もう一度探す」で見つかるか確かめるか、Python（FaceFusion の環境のもの）と FaceFusion のフォルダを指定すると、生成テストの結果の画面から顔を入れ替えられます。保存したパスは次の入れ替えからすぐ使われます。"
+
+// StepsID is the id of the instructions to install FaceFusion by hand, and FindAgainID of the button that looks for it again.
+const (
+	StepsID     = "mm-facefusion-steps"
+	FindAgainID = "mm-facefusion-refind"
+)
 
 // Part is one of the two things that are looked for: the Python and the FaceFusion folder.
 type Part struct {
@@ -61,7 +68,11 @@ type Data struct {
 	Version, License string
 	// SearchDirs are the folders searched for FaceFusion when no path is set, in order.
 	SearchDirs []string
-	Groups     []ModelGroup
+	// Tag is the tag of the repository the instructions check out (facefusion.RecommendedTag).
+	Tag string
+	// VersionNote is said when the FaceFusion found has a version that mam did not check the models against ("" for none).
+	VersionNote string
+	Groups      []ModelGroup
 	// Notes are the standing cautions: its license, the ArcFace it always uses, the adult pictures it declines, the models it fetches itself.
 	Notes []string
 	// LicensesURL and DisclaimerURL are the primary sources of the model licenses and of the adult-content policy.

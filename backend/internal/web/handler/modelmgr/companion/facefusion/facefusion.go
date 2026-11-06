@@ -1,10 +1,12 @@
-// Package facefusion is the handlers of the "FaceFusion" category of the settings screen (spec/architecture/gentest/face-swap.md §2): the page
-// body and the save of the Python and the FaceFusion folder (PUT /settings/facefusion).
+// Package facefusion is the handlers of the section "FaceFusion" of the companion software of the model manager (spec/architecture/gentest/face-swap.md §2; it was the
+// category "FaceFusion" of the settings screen, #1106): the section (which looks again), and the save of the Python and the FaceFusion folder (PUT
+// /model-manager/companion/facefusion). mam never fetches FaceFusion, so there is no handler that installs it.
 package facefusion
 
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -14,7 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/failure"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
-	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/facefusion"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/facefusion"
 )
 
 const (
@@ -24,7 +26,8 @@ const (
 )
 
 // SectionData is the saved paths, what the lookup finds with them, the models with their licenses and the standing cautions. A settings file
-// that cannot be read is the Problem of the category, so that the rest of the screen still works.
+// that cannot be read is the Problem of the section, so that the rest of the screen still works. It runs the lookup every time (nothing is saved, FaceFusion is not
+// run: only its files are read).
 func SectionData(s *facefusionsettings.Service) view.Data {
 	v, err := s.View()
 	if err != nil {
@@ -34,13 +37,29 @@ func SectionData(s *facefusionsettings.Service) view.Data {
 	d.Python = part(v.Python, "Python のパス（FaceFusion の環境のもの）", view.FieldPython, "空: conda 環境 facefusion の python、なければ PATH の python3 / python")
 	d.Path = part(v.Path, "FaceFusion のフォルダ（facefusion.py があるところ）", view.FieldPath, "空: 自動で探す")
 	d.Ready, d.Version, d.License, d.SearchDirs = v.Ready(), v.Version, v.License, v.SearchDirs
+	if v.Version != "" && !strings.HasPrefix(v.Version, facefusion.ConfirmedSeries) {
+		d.VersionNote = facefusion.VersionNote
+	}
 	return d
+}
+
+// Show answers with the section as it is now (GET /model-manager/companion/facefusion): the user installed it and looks again. Nothing is saved. A request that is
+// not htmx gets the page.
+func Show(s *facefusionsettings.Service, page gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !settingshttp.IsHTMX(c) {
+			page(c)
+			return
+		}
+		settingshttp.NoStore(c)
+		settingshttp.Render(c, http.StatusOK, view.Section(SectionData(s)))
+	}
 }
 
 // base is what does not depend on the installation: the models and the cautions.
 func base() view.Data {
 	d := view.Data{
-		LicensesURL: facefusion.LicensesURL, DisclaimerURL: facefusion.DisclaimerURL,
+		LicensesURL: facefusion.LicensesURL, DisclaimerURL: facefusion.DisclaimerURL, Tag: facefusion.RecommendedTag,
 		Notes: []string{facefusion.LicenseNote, facefusion.ArcFaceNote, facefusion.AdultNote, facefusion.FirstRunNote},
 	}
 	d.Groups = []view.ModelGroup{
@@ -86,8 +105,8 @@ func part(p facefusionsettings.Part, label, field, placeholder string) view.Part
 	return out
 }
 
-// Save sets the paths of the form (PUT /settings/facefusion, fields python and path; an empty one clears the path) and answers with the
-// category: 200 with the notice, or 422 with the reason and what was typed when a path cannot be used (nothing is then written).
+// Save sets the paths of the form (PUT /model-manager/companion/facefusion, fields python and path; an empty one clears the path) and answers with the
+// section: 200 with the notice, or 422 with the reason and what was typed when a path cannot be used (nothing is then written).
 func Save(s *facefusionsettings.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cfg := facefusion.Config{Python: c.PostForm(view.FieldPython), Path: c.PostForm(view.FieldPath)}

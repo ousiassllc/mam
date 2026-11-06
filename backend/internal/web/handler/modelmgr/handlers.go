@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
@@ -39,14 +40,17 @@ type Handlers struct {
 	Nodes *modelnodes.Service
 	// LLMLocal is the server the calls of the provider "local" go to (page "ローカル LLM", #1104). Nil leaves the page and its routes out.
 	LLMLocal *llmlocal.Service
+	// Companion is the companion software (ffmpeg, FaceFusion; #1106). Without ffmpeg and FaceFusion the category and its routes are left out.
+	Companion companion.Services
 }
 
 // Register adds the routes of the screen to the engine.
-func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service, llm *llmlocal.Service) {
-	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds, LLMLocal: llm}
+func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service, nds *modelnodes.Service, llm *llmlocal.Service, comp companion.Services) {
+	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts, Nodes: nds, LLMLocal: llm, Companion: comp}
 	engine.GET(paths.ModelManager(), h.Page)
 	engine.GET(paths.ModelManagerPart("overview"), h.OverviewPart)
 	h.registerCategories(engine)
+	h.registerCompanion(engine)
 	engine.GET(paths.ModelManagerPart("dialog"), h.CloseDialog)
 
 	engine.GET(paths.ModelManagerPart("engine"), h.Engine)

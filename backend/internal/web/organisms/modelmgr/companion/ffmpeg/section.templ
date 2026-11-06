@@ -7,7 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// Section is the category: the two tools with what the lookup finds for each, and the form of the paths. The answer of a save
+// Section is the section: the two tools with what the lookup finds for each, and the form of the paths. The answer of a save
 // replaces it by PanelID.
 templ Section(d Data) {
 	<div id={ PanelID } class="flex flex-col gap-4" data-testid="ffmpeg-panel">
@@ -20,7 +20,7 @@ templ Section(d Data) {
 			if d.Error != "" {
 				<p class="text-sm text-danger" role="alert" data-testid="ffmpeg-error">{ d.Error }</p>
 			}
-			<form class="flex flex-col gap-4" hx-put={ paths.FFmpegSettings() } hx-target={ "#" + PanelID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="ffmpeg-form">
+			<form class="flex flex-col gap-4" hx-put={ paths.CompanionFFmpeg() } hx-target={ "#" + PanelID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="ffmpeg-form">
 				@toolField(d.FFmpeg)
 				@toolField(d.FFprobe)
 				<div>

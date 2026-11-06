@@ -15,7 +15,7 @@ templ RuntimesSection(r Runtimes) {
 	<div id={ r.sectionID() } class="flex flex-col gap-3" data-testid={ r.sectionID() }>
 		@refresh.Bar(r.sectionURL(), r.sectionID(), "")
 		@view.Notice(r.Message, r.sectionID())
-		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<ul role="list" class={ modelcard.GridClass }>
 			for _, item := range r.Items {
 				@RuntimeCard(item)
 			}

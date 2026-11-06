@@ -33,7 +33,7 @@ templ CatalogList(c Catalog) {
 			<p class="text-sm text-warning" data-testid="mm-catalog-blocked">{ c.Blocked }</p>
 		}
 		@modelpick.Summary(c.Filter)
-		<ul id={ ModelsID } role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-models">
+		<ul id={ ModelsID } role="list" class={ modelcard.GridClass } data-testid="mm-models">
 			for _, m := range c.Models {
 				@modelCard(m, c.Blocked != "")
 			}

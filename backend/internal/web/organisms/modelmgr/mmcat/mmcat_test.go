@@ -27,7 +27,7 @@ func TestAllIsTheOneListOfTheCategories(t *testing.T) {
 			sectionSeen[id] = c.Slug
 		}
 	}
-	assert.Equal(t, []string{"comfyui", "image-video", "custom-nodes", "local-runtimes", "local-llm", "face-check", "hf-external"}, slugs)
+	assert.Equal(t, []string{"comfyui", "image-video", "custom-nodes", "local-runtimes", "local-llm", "face-check", "hf-external", "companion"}, slugs)
 }
 
 func TestFindIsTheCategoryOfASlug(t *testing.T) {
@@ -36,4 +36,16 @@ func TestFindIsTheCategoryOfASlug(t *testing.T) {
 	assert.Equal(t, "顔チェック用モデル", c.Name)
 	_, ok = mmcat.Find("engine")
 	assert.False(t, ok, "the word of a part of the screen is no category")
+}
+
+// The categories that have a list of cards are the four of #1102 and the page of the local LLM (#1104: the cards of the servers of mam). They are drawn at the wide
+// width: three columns need it. The engine, the face-check models, the companion software and the overview have no list.
+func TestCardsAreTheCategoriesWithAListOfCards(t *testing.T) {
+	var cards []string
+	for _, c := range mmcat.All() {
+		if c.Cards {
+			cards = append(cards, c.Slug)
+		}
+	}
+	assert.Equal(t, []string{"image-video", "custom-nodes", "local-runtimes", "local-llm", "hf-external"}, cards)
 }

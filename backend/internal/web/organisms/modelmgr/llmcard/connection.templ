@@ -18,7 +18,7 @@ const (
 
 // ConnectionSection is the section "別のサーバーにつなぐ": the card of the address, the key, the switch of the unload, and the save and the connection test. A save replaces it whole.
 templ ConnectionSection(d Connection) {
-	<ul id={ ConnectionID } role="list" class="grid grid-cols-1 gap-4" data-testid="mm-llm-connection">
+	<ul id={ ConnectionID } role="list" class="flex flex-col gap-4" data-testid="mm-llm-connection">
 		@settingsui.CardItem(d.card()) {
 			if d.Note {
 				<p class="text-sm text-mute" data-testid="mm-llm-connection-note">{ noteText }</p>

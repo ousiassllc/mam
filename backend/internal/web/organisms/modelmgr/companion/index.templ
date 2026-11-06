@@ -1,0 +1,52 @@
+package companion
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// IndexHelp is the "?" help of the list.
+const IndexHelp = "mam とは別に入れるものを、何のためか・どこで入れるか・今の状態で並べます。行を開くと、入れる場所へ移ります。ffmpeg は、mam でダウンロードして入れられます。FaceFusion は mam では取得しません（入れ方は FaceFusion の区画にあります）。状態は、それぞれの場所の今の読み取りで、ここには何も保存しません。"
+
+// IndexView is the list: a card for each software, each one link to the place it is installed in. It is swapped whole by its refresh button.
+templ IndexView(i Index) {
+	<div id={ IndexID } class="flex flex-col gap-3">
+		@refresh.Bar(paths.CompanionIndex(), IndexID, i.UpdatedAt)
+		<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="mm-companion-index">
+			for _, r := range i.Rows {
+				@row(r)
+			}
+		</ul>
+	</div>
+}
+
+templ row(r Row) {
+	<li data-testid="mm-companion-row" data-tool={ r.Tool } data-state={ r.State }>
+		<a
+			href={ templ.SafeURL(r.Href) }
+			data-testid="mm-companion-open"
+			aria-label={ r.Name + "を入れる" }
+			class="flex h-full min-h-28 flex-col gap-2 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft/60 focus-visible:focus-ring motion-reduce:transition-none"
+		>
+			<h3 class="text-base font-semibold text-ink">{ r.Name }</h3>
+			<span class="text-pretty text-sm text-mute">{ r.Purpose }</span>
+			<span class="mt-auto flex flex-col items-start gap-1 text-xs text-ink">
+				@atoms.BadgeWith(tone(r.State), r.Label, templ.Attributes{"data-testid": "mm-companion-state", "data-state": r.State})
+			</span>
+		</a>
+	</li>
+}
+
+// tone is the colour of the badge of a state; the label always says it too.
+func tone(state string) atoms.BadgeTone {
+	switch state {
+	case StateInstalled, "full":
+		return atoms.BadgeOK
+	case StateInstalling:
+		return atoms.BadgeInfo
+	case StateAttention, "broken", "readonly", "unverified":
+		return atoms.BadgeWarn
+	}
+	return atoms.BadgeNeutral
+}

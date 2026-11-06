@@ -59,7 +59,7 @@ func ConnectionSection(d Connection) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" role=\"list\" class=\"grid grid-cols-1 gap-4\" data-testid=\"mm-llm-connection\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" role=\"list\" class=\"flex flex-col gap-4\" data-testid=\"mm-llm-connection\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

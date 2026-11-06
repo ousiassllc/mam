@@ -10,7 +10,7 @@ import (
 
 // noFFprobe is the refusal of a clip while ffprobe, which measures its length, is not found.
 func noFFprobe() error {
-	return conflictf("音声の長さを測る ffprobe が見つからないため、学習に使う音声を受け付けられません。設定の「ffmpeg」からダウンロードするか、インストールしてください")
+	return conflictf("音声の長さを測る ffprobe が見つからないため、学習に使う音声を受け付けられません。モデルマネージャーの「付随ソフト」からダウンロードするか、インストールしてください")
 }
 
 // length is the length of the clip file abs in seconds (name is what the user called it). ffprobe can be set up while mam runs: one that
