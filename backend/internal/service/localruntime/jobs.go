@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -19,14 +20,16 @@ type JobStatus struct {
 	JobID string         `json:"job_id"`
 	Kind  domain.JobKind `json:"kind"`
 	// Target is "runtime:<id>".
-	Target     string           `json:"target"`
-	State      domain.JobStatus `json:"state"`
-	Progress   track.Update     `json:"progress"`
-	Error      string           `json:"error,omitempty"`
-	Attempts   int              `json:"attempts"`
-	CreatedAt  time.Time        `json:"created_at"`
-	StartedAt  *time.Time       `json:"started_at,omitempty"`
-	FinishedAt *time.Time       `json:"finished_at,omitempty"`
+	Target   string           `json:"target"`
+	State    domain.JobStatus `json:"state"`
+	Progress track.Update     `json:"progress"`
+	Error    string           `json:"error,omitempty"`
+	// Failure is the failure as the common error in words (#1010), when the job kept one (job.error_info); nil otherwise.
+	Failure    *apperr.View `json:"failure,omitempty"`
+	Attempts   int          `json:"attempts"`
+	CreatedAt  time.Time    `json:"created_at"`
+	StartedAt  *time.Time   `json:"started_at,omitempty"`
+	FinishedAt *time.Time   `json:"finished_at,omitempty"`
 }
 
 // JobStatus reads the install job of a runtime (ErrNotFound for any other job).
@@ -43,7 +46,7 @@ func (s *Service) JobStatus(ctx context.Context, jobID string) (JobStatus, error
 		return JobStatus{}, ErrNotFound
 	}
 	st := JobStatus{
-		JobID: job.ID, Kind: job.Kind, Target: p.Target, State: job.Status, Error: job.Error, Attempts: job.Attempts,
+		JobID: job.ID, Kind: job.Kind, Target: p.Target, State: job.Status, Error: job.Error, Failure: apperr.ViewOf(job.ErrorInfo, apperr.LangJa), Attempts: job.Attempts,
 		CreatedAt: job.CreatedAt, StartedAt: job.StartedAt, FinishedAt: job.FinishedAt,
 	}
 	if e, ok := s.tracker.Get(jobID); ok {

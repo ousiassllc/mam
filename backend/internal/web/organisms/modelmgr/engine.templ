@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/failbox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -18,6 +19,7 @@ templ notice(m Message, id string) {
 	if m.Error != "" {
 		<p class="text-sm text-danger" role="alert" data-testid={ id + "-error" }>{ m.Error }</p>
 	}
+	@failbox.List(m.Failures, id)
 }
 
 // progressBar is the progress of a running install.

@@ -94,8 +94,10 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"download_corrupt.cause":  "ダウンロードしたファイルが、固定した SHA-256 または大きさと一致しませんでした。破棄しました（取得元の改ざんか、転送の破損の可能性があります）。",
 	"download_corrupt.remedy": "もう一度導入してください。続くときは、mam を更新してから試してください。",
 
-	"install_failed.cause":  "導入を完了できませんでした。",
-	"install_failed.remedy": "原因は詳細にあります。モデル管理の画面から、もう一度導入してください。",
+	"install_failed.cause":     "導入を完了できませんでした。",
+	"install_failed.remedy":    "原因は詳細にあります。モデル管理の画面から、もう一度導入してください。",
+	"install_cancelled.cause":  "導入を中断しました。",
+	"install_cancelled.remedy": "もう一度導入すると、ダウンロード済みの続きから再開します。",
 
 	"training_failed.cause":  "声の学習を完了できませんでした。",
 	"training_failed.remedy": "ほかに GPU を使うアプリ（同梱の ComfyUI の生成など）を閉じて、もう一度学習してください。続くときは、詳細（学習のログの末尾）を確かめるか、モデル管理で GPT-SoVITS の状態を確かめてください。途中までの結果は残していません。",

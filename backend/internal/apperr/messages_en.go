@@ -92,8 +92,10 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"download_corrupt.cause":  "The downloaded file did not match its fixed SHA-256 or size and was discarded (the source may have been tampered with, or the transfer was corrupted).",
 	"download_corrupt.remedy": "Install it again. If it continues, update mam and try again.",
 
-	"install_failed.cause":  "The install could not be completed.",
-	"install_failed.remedy": "The reason is in the detail. Install it again from the model manager.",
+	"install_failed.cause":     "The install could not be completed.",
+	"install_failed.remedy":    "The reason is in the detail. Install it again from the model manager.",
+	"install_cancelled.cause":  "The install was stopped.",
+	"install_cancelled.remedy": "Install it again to continue from what was already downloaded.",
 
 	"training_failed.cause":  "The voice training could not be completed.",
 	"training_failed.remedy": "Close the other apps that use the GPU (such as a generation of the bundled ComfyUI) and train again. If it keeps failing, read the detail (the end of the training log) or check GPT-SoVITS in the model manager. Nothing of the unfinished run is kept.",

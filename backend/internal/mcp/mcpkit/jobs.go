@@ -280,14 +280,7 @@ func (j *Jobs) live(ctx context.Context, e *entry) (_ JobStatus, gone bool, _ er
 // applyRow lets the job table override the probe where it knows better: a queued, running or failed
 // row decides (a failed row has the reason), a succeeded row decides only when no Probe reads the work.
 // failureOf is the common error a failed job row kept (apperr.Error.Marshal), nil when it kept none.
-func failureOf(info string) *apperr.View {
-	e, ok := apperr.Unmarshal(info)
-	if !ok {
-		return nil
-	}
-	v := e.View(apperr.LangJa)
-	return &v
-}
+func failureOf(info string) *apperr.View { return apperr.ViewOf(info, apperr.LangJa) }
 
 func applyRow(st *JobStatus, row domain.Job, probed bool) {
 	switch row.Status {

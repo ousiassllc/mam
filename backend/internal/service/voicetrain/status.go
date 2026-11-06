@@ -110,6 +110,6 @@ func (r *run) finish(state worktrack.State, err error, failure *apperr.Error, tr
 	case worktrack.Cancelled:
 		r.work.Cancel()
 	default:
-		r.work.Fail(r.snapshot(now).Error)
+		r.work.FailWith(r.snapshot(now).Error, failure)
 	}
 }

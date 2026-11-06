@@ -30,7 +30,7 @@ func (r *reader) tracked(ctx context.Context) ([]Entry, error) {
 func (r *reader) work(ctx context.Context, w worktrack.Record) (Entry, error) {
 	e := Entry{
 		ID: w.ID, Kind: string(w.Kind), Label: workLabel(w.Kind), State: State(w.State), StartedAt: w.StartedAt, FinishedAt: w.FinishedAt,
-		Error: logging.Redact(w.Error),
+		Error: logging.Redact(w.Error), Failure: failureOf(w.ErrorInfo),
 	}
 	var err error
 	switch w.Kind {
