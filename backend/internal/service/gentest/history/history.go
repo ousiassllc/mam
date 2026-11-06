@@ -40,16 +40,34 @@ type Filter struct {
 	Offset       int
 }
 
+// repoFilter is the filter of the repository (the media is checked here: an unknown kind is a refusal, not an empty list).
+func (f Filter) repoFilter() (gentestrepo.Filter, error) {
+	if f.Media != "" && f.Media != gentestrepo.MediaImage && f.Media != gentestrepo.MediaVideo {
+		return gentestrepo.Filter{}, gterr.Invalid("種類は image か video にしてください")
+	}
+	return gentestrepo.Filter{Model: f.Model, Models: f.Models, Media: f.Media, FavoriteOnly: f.FavoriteOnly, Limit: f.Limit, Offset: f.Offset}, nil
+}
+
 // History lists the results, newest first.
 func (s *Store) History(ctx context.Context, f Filter) ([]record.ResultView, error) {
-	if f.Media != "" && f.Media != gentestrepo.MediaImage && f.Media != gentestrepo.MediaVideo {
-		return nil, gterr.Invalid("種類は image か video にしてください")
-	}
 	if f.Limit <= 0 {
 		f.Limit = 100
 	}
-	list, err := s.repo.ListResults(ctx, gentestrepo.Filter{Model: f.Model, Models: f.Models, Media: f.Media, FavoriteOnly: f.FavoriteOnly, Limit: f.Limit, Offset: f.Offset})
+	rf, err := f.repoFilter()
+	if err != nil {
+		return nil, err
+	}
+	list, err := s.repo.ListResults(ctx, rf)
 	return record.ViewsOf(list), err
+}
+
+// CountHistory is how many results the filter matches (Limit and Offset are ignored): the size of the list that History pages through.
+func (s *Store) CountHistory(ctx context.Context, f Filter) (int, error) {
+	rf, err := f.repoFilter()
+	if err != nil {
+		return 0, err
+	}
+	return s.repo.CountResults(ctx, rf)
 }
 
 // HistoryModels lists the models the history has results of (the choices of the model filter).
