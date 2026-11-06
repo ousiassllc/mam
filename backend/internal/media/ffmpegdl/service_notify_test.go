@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 )
 
 // Issue #1047: a finished install is told to the app (SetOnChange) with the copy in place and before the screen says so, so the app can look
@@ -32,5 +32,5 @@ func TestServiceTellsTheAppWhenTheDownloadedCopyChanges(t *testing.T) {
 	install()
 	require.NoError(t, s.Remove())
 	bin := r.ins.Layout.BinDir()
-	assert.Equal(t, []string{bin + "|" + string(ffmpegdl.InstallRunning), "|" + string(ffmpegdl.InstallIdle)}, seen)
+	assert.Equal(t, []string{bin + "|" + string(exeinstall.Running), "|" + string(exeinstall.Idle)}, seen)
 }
