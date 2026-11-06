@@ -265,6 +265,7 @@ func TestRoutesOfTheReasons(t *testing.T) {
 	assert.Equal(t, "/settings/api-keys", modelfilter.RouteOf(modelfilter.ReasonNotSignedIn, modelfilter.SourceChatGPT))
 	assert.Equal(t, "/settings/local-models", modelfilter.RouteOf(modelfilter.ReasonNoKey, modelfilter.SourceLocal), "a registered endpoint is fixed under the local models")
 	assert.Equal(t, "/settings/local-models", modelfilter.RouteOf(modelfilter.ReasonEndpoint, modelfilter.SourceWorkflow))
+	assert.Equal(t, "/model-manager/local-llm", modelfilter.RouteOf(modelfilter.ReasonEndpoint, modelfilter.SourceLocalLLM), "the local LLM server is set on its page of the model manager (#1104)")
 	assert.Equal(t, "/model-manager/image-video", modelfilter.RouteOf(modelfilter.ReasonNotInstalled, modelfilter.SourceLocal))
 	assert.Equal(t, "/model-manager/image-video", modelfilter.RouteOf(modelfilter.ReasonAgeGate, modelfilter.SourceLocal))
 	assert.Equal(t, "/model-manager/custom-nodes", modelfilter.RouteOf(modelfilter.ReasonMissingNode, modelfilter.SourceLocal), "a node is installed on its own page")

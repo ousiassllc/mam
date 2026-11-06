@@ -65,6 +65,9 @@ type Data struct {
 	EngineNeeded bool
 	// Runtimes is the section of the local voice and lip-sync runtimes (runtimecard.RuntimesSection); nil leaves the section out.
 	Runtimes templ.Component
+	// LLMUse, LLMRuntimes and LLMConnection are the sections of the page "ローカル LLM" (#1104): the server the calls go to (llmcard.UseSection), the servers of mam
+	// (runtimecard.RuntimesSection of the runtimes of a language model; nil when the app has no local runtimes) and "別のサーバー" (llmcard.ConnectionSection). nil leaves a section out.
+	LLMUse, LLMRuntimes, LLMConnection templ.Component
 	// Nodes is the section of the custom nodes (nodecard.NodesSection); nil leaves the section out.
 	Nodes templ.Component
 	// FaceModels is the section "顔チェック用モデル" (facecard.Section; #1026); nil leaves the section out.

@@ -81,3 +81,4 @@
 | 1.74 | 2026-11-06 | [local-runtime.md](local-runtime.md) §19 を新設: Ollama のランタイム（v0.40.15 の `ollama-windows-amd64.zip`。MIT。`127.0.0.1` だけ・認証なし・クラウド機能は無効）と、Ollama のモデルの取得（厳選 3 つ。Ollama 自身の `/api/pull`・取得後の manifest の照合・削除・ジョブの `target=ollama:<name>`）。状態は仕様のみ | Issue #1105 |
 | 1.75 | 2026-11-07 | §8「試し生成（廃止）」を実装した（画面側の区画・ルート・`SourceTrial`・`mmview.TrialModels` を消した）。状態を「実装済み」にした | Issue #1100 |
 | 1.76 | 2026-11-07 | [custom-nodes.md](custom-nodes.md) §7: 追加ノードの説明をカードから外し、詳細モーダルだけに出すことを実装した（#1103）。状態を「実装済み」にした | Issue #1103 |
+| 1.77 | 2026-11-07 | [local-runtime.md](local-runtime.md) §17.5: llama.cpp のカードの置き場所を、分類 `local-llm` の「ローカルで動かすサーバー」（`GET /model-manager/runtimes?purpose=llm`）に実装した（#1104）。`local-runtimes` には用途が `llm` のカードを出さない。状態を「実装済み」にした | Issue #1104 |

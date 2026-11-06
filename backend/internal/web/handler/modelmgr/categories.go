@@ -1,28 +1,35 @@
 package modelmgr
 
 import (
+	"context"
 	"net/http"
+
+	"github.com/a-h/templ"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/overview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	viewcompanion "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/llmcard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
-// has says whether this build has the category: the categories of the local runtimes, the custom nodes and the face-check models need their service. A category
+// has says whether this build has the category: the categories of the local runtimes, the local LLM, the custom nodes and the face-check models need their service. A category
 // that is not here has no route (404), no card on the overview and no entry in the menu.
 func (h Handlers) has(slug string) bool {
 	switch slug {
 	case mmcat.LocalRuntimes:
 		return h.Runtimes != nil
+	case mmcat.LocalLLM:
+		return h.LLMLocal != nil
 	case mmcat.CustomNodes:
 		return h.Nodes != nil
 	case mmcat.FaceCheck:
@@ -85,7 +92,7 @@ func (h Handlers) overview(c *gin.Context) view.Overview {
 // overviewDeps are the services the lines of the overview and the list of the companion software are read from.
 func (h Handlers) overviewDeps() overview.Deps {
 	d := overview.Deps{
-		Svc: h.Svc, Runtimes: h.Runtimes, Nodes: h.Nodes,
+		Svc: h.Svc, Runtimes: h.Runtimes, Nodes: h.Nodes, LLM: h.LLMLocal,
 		FFmpeg: h.Companion.FFmpeg.Settings, FaceFusion: h.Companion.FaceFusion, Codex: h.Companion.Codex,
 	}
 	if h.Gentest != nil {
@@ -125,7 +132,9 @@ func (h Handlers) categoryData(c *gin.Context, slug string) view.Data {
 	case mmcat.CustomNodes:
 		d.Nodes = nodes.Section(ctx, h.Nodes)
 	case mmcat.LocalRuntimes:
-		d.Runtimes = runtimes.Section(ctx, h.Runtimes)
+		d.Runtimes = runtimes.Section(ctx, h.Runtimes, false)
+	case mmcat.LocalLLM:
+		d.LLMUse, d.LLMRuntimes, d.LLMConnection = llmSections(ctx, h)
 	case mmcat.FaceCheck:
 		d.FaceModels = h.faceModels()
 	case mmcat.Companion:
@@ -141,4 +150,9 @@ func (h Handlers) categoryData(c *gin.Context, slug string) view.Data {
 func engineNeeded(h Handlers) bool {
 	ev := h.Svc.Engine()
 	return !ev.Installed || ev.Broken || string(ev.Process.State) != "running"
+}
+
+// llmSections are the sections of the page "ローカル LLM": the server in use, the servers of mam (their cards; left out when the app has no runtimes) and "別のサーバー".
+func llmSections(ctx context.Context, h Handlers) (use, servers, connection templ.Component) {
+	return llmcard.UseSection(localllm.UseData(ctx, h.LLMLocal)), runtimes.Section(ctx, h.Runtimes, true), llmcard.ConnectionSection(localllm.ConnectionData(h.LLMLocal))
 }

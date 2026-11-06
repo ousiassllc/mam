@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/facemodels/facemodelstest"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes/nodetest"
@@ -46,6 +47,10 @@ type Screen struct {
 	Rts *lrtest.Rig
 	// Nodes are the custom nodes (NewWithNodes); nil for a screen without them.
 	Nodes *nodetest.Rig
+	// LLM is the local LLM server of the page "ローカル LLM" (llm.json at LLMFile; its keys are in LLMKeys). It has no server of mam: a test sets them with SetManaged / SetManagedOllama.
+	LLM     *llmlocal.Service
+	LLMFile string
+	LLMKeys *credentialtest.Memory
 	// Works are the works that have no row in the job table (worktrack), which the job list reads next to the table.
 	Works  *worktrack.Tracker
 	engine http.Handler
@@ -56,7 +61,15 @@ type Screen struct {
 // New opens the screen: it loads the page for the CSRF cookie and token.
 func New(t *testing.T, opts ...mmtest.Option) *Screen {
 	t.Helper()
-	return open(t, mmtest.New(t, opts...), nil, nil)
+	return open(t, mmtest.New(t, opts...), nil, nil, false)
+}
+
+// NewWithLLM opens the screen with the local LLM server over the key store LLMKeys; pinned says the operator named the settings file (--llm-config), which the screen must not write.
+// The runtimes have the llama.cpp of lrtest.WithLLMRuntime, so that the page "ローカル LLM" has its cards.
+func NewWithLLM(t *testing.T, pinned bool) *Screen {
+	t.Helper()
+	rig := mmtest.New(t)
+	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, lrtest.WithLLMRuntime()), nil, pinned)
 }
 
 // NewWithRuntimes opens the screen with the local runtimes over fakes (a fake package and weights, a fake process; a Windows PC with an RTX
@@ -64,14 +77,14 @@ func New(t *testing.T, opts ...mmtest.Option) *Screen {
 func NewWithRuntimes(t *testing.T, opts ...lrtest.Option) *Screen {
 	t.Helper()
 	rig := mmtest.New(t)
-	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, opts...), nil)
+	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, opts...), nil, false)
 }
 
 // NewWithNodes opens the screen with the custom nodes of the allowlist over fakes (see nodetest): a fake host for the archive and a fake bundled engine.
 func NewWithNodes(t *testing.T) *Screen {
 	t.Helper()
 	nodes := nodetest.New(t)
-	s := open(t, mmtest.New(t), nil, nodes)
+	s := open(t, mmtest.New(t), nil, nodes, false)
 	s.Nodes = nodes
 	return s
 }
@@ -85,17 +98,20 @@ func NewAll(t *testing.T) *Screen {
 	nodes := nodetest.New(t)
 	ffmpeg, _ := IsolatedFFmpeg(t)
 	faceFusion, _ := IsolatedFaceFusion(t)
-	s := open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall), nodes, companionOf(t, Companion{FFmpeg: ffmpeg, FaceFusion: faceFusion, Codex: true}))
+	s := open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, lrtest.WithLLMRuntime()), nodes, false, companionOf(t, Companion{FFmpeg: ffmpeg, FaceFusion: faceFusion, Codex: true}))
 	s.Nodes = nodes
 	return s
 }
 
-// open is the screen over the rig; with mods changes the services of the settings routes before the router is built.
-func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig, mods ...func(*settingsroutes.Services)) *Screen {
+// open is the screen over the rig (llmPinned: the settings file of the LLM is the one a start option named); with mods changes the services of the settings routes before the router is built.
+func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig, llmPinned bool, mods ...func(*settingsroutes.Services)) *Screen {
 	t.Helper()
 	db := testdb.Open(t)
 	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
-	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "m.json"), false)
+	llmFile := filepath.Join(t.TempDir(), "llm.json")
+	settings := settingsroutes.New(llmFile, llmPinned, filepath.Join(t.TempDir(), "m.json"), false)
+	keys := credentialtest.New()
+	settings.LLMLocal = llmlocal.New(llmFile, llmPinned, keys, nil)
 	settings.ModelManager, settings.Gentest = rig.Svc, rig.Gentest
 	// The jobs of the model manager and of the generation test are in the rig's table; the Projects and Shots in the services'.
 	works := &worktrack.Tracker{}
@@ -112,7 +128,7 @@ func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig, m
 	for _, mod := range mods {
 		mod(settings)
 	}
-	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, Works: works, engine: router.New(svc, router.Options{Settings: settings})}
+	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, Works: works, LLM: settings.LLMLocal, LLMFile: llmFile, LLMKeys: keys, engine: router.New(svc, router.Options{Settings: settings})}
 
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)

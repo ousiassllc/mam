@@ -1,0 +1,14 @@
+package modelmgr
+
+// The help ("?") of the sections of the page "ローカル LLM" (#1104; spec/components/model-manager-screen.md, "ローカル LLM の統合（#1104）").
+const (
+	llmUseHelp = "設定の「テキスト生成（LLM）」で、ある Agent の provider を「local」にしたとき、呼び出しがどのサーバーに行くかを選びます。\n" +
+		"「この PC の llama.cpp」は mam が導入・起動します（下の「ローカルで動かすサーバー」）。「別のサーバー」は、LM Studio・自分で入れた Ollama・llama-server などで、下の URL に呼び出します。\n" +
+		"選ぶだけでは、導入も起動も始まりません（mam が管理するサーバーは、最初の LLM の呼び出しで起動します）。モデルは、設定の「LLM の割り当て」で選びます。"
+	llmRuntimesHelp = "LLM をこの PC で動かすプログラム（llama.cpp の llama-server）を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。" +
+		"カードをタップすると、重みと依存ファイルの出典・ライセンス・ファイル一覧・SHA-256 が見られ、使うモデルを選べます（モデルを変えるとサーバーを止め、次の起動から反映されます）。" +
+		"実行環境は mam とは別のプログラムで、公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。「自動起動」をオンにすると、mam の起動時に起動します（オフのときは、最初に使うときに起動）。" +
+		"画像・動画の生成の前には、GPU を空けるために止まります。"
+	llmConnectionHelp = "LM Studio・自分で入れた Ollama・llama.cpp server など、OpenAI 互換の API を出すサーバーの URL と、サーバーが求めるときだけ API キーを指定します。" +
+		"「使うサーバー」で「別のサーバー」を選んだときに使われます。保存した内容は、次の LLM の呼び出しからすぐ使われます（再起動は要りません）。"
+)

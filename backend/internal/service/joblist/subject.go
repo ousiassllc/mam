@@ -45,6 +45,9 @@ func (r *reader) install(ctx context.Context, e *Entry, p payload) error {
 	return nil
 }
 
+// llmRuntimeTargets are the install targets of the runtimes of a language model: their page is "ローカル LLM", not "ローカル音声・口パク" (#1104).
+var llmRuntimeTargets = map[string]bool{"runtime:llama-cpp": true}
+
 // installCategory is the page of the model manager that works on the target of an install: "engine", "model:<id>", "runtime:<id>", "node:<id>" or "hf:…" ("" for
 // a target that says nothing: the overview).
 func installCategory(target string) string {
@@ -53,6 +56,8 @@ func installCategory(target string) string {
 		return CategoryComfyUI
 	case strings.HasPrefix(target, "model:"):
 		return CategoryImageVideo
+	case llmRuntimeTargets[target]:
+		return CategoryLocalLLM
 	case strings.HasPrefix(target, "runtime:"):
 		return CategoryLocalRuntimes
 	case strings.HasPrefix(target, "node:"):

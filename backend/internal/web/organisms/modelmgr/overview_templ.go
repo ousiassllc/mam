@@ -174,7 +174,7 @@ func categoryCard(c CategoryCard) molecules.ToolCard {
 
 func summaryTone(state string) atoms.BadgeTone {
 	switch state {
-	case StateFull, "installed":
+	case StateFull, StateReady, "installed":
 		return atoms.BadgeOK
 	case StateInstalling:
 		return atoms.BadgeInfo

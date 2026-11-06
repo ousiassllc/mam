@@ -51,7 +51,7 @@ func Unusable(reason Reason, message, route string) Availability {
 }
 
 // RouteOf is the screen that fixes a reason for a model of the source (the Source* words): the API key and the ChatGPT sign-in are on the settings
-// screen's "API キーとログイン" (a subscription model is the sign-in's section, but the same page), a local endpoint on "ローカル・代替モデル", an uninstalled
+// screen's "API キーとログイン" (a subscription model is the sign-in's section, but the same page), a local endpoint on "ローカル・代替モデル" (the local LLM server on the model manager's page "ローカル LLM", #1104), an uninstalled
 // or gated local model in the model manager's page of the image and video models (a missing node: the page of the custom nodes). A reason that fixes itself (the circuit breaker) has no route.
 func RouteOf(reason Reason, source string) string {
 	switch reason {
@@ -63,7 +63,7 @@ func RouteOf(reason Reason, source string) string {
 		return paths.ModelManagerCategory(paths.MMCustomNodes)
 	case ReasonEndpoint:
 		if source == SourceLocalLLM {
-			return paths.SettingsCategory(paths.SettingsLLM)
+			return paths.ModelManagerCategory(paths.MMLocalLLM)
 		}
 		return paths.SettingsCategory(paths.SettingsLocalModels)
 	case ReasonNotSignedIn:

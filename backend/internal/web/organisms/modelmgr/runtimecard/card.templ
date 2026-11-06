@@ -12,9 +12,9 @@ import (
 // all again (#962). Each card swaps itself and polls while it has an install or a start in progress, so the button shows no time: the cards
 // are read at different times.
 templ RuntimesSection(r Runtimes) {
-	<div id={ RuntimesID } class="flex flex-col gap-3" data-testid="mm-runtimes">
-		@refresh.Bar(paths.ModelManagerPart("runtimes"), RuntimesID, "")
-		@view.Notice(r.Message, "mm-runtimes")
+	<div id={ r.sectionID() } class="flex flex-col gap-3" data-testid={ r.sectionID() }>
+		@refresh.Bar(r.sectionURL(), r.sectionID(), "")
+		@view.Notice(r.Message, r.sectionID())
 		<ul role="list" class={ modelcard.GridClass }>
 			for _, item := range r.Items {
 				@RuntimeCard(item)

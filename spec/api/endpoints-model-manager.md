@@ -4,7 +4,7 @@
 
 > **状態: 実装済み（Issue #1100）**: 「試し生成」（`/model-manager/trials/…`）は廃止した。導入したモデルを試すのは生成テスト画面（`GET /generation-test`。[endpoints-gentest.md](endpoints-gentest.md)）だけ。
 
-> **状態: 実装済み（Issue #1101。`mmcat.All()` の分類。#1106 が `companion` を足した〔実装済み〕。#1104 が足す `local-llm` は別の Issue）**: 画面を**分類ごとのサブページ**に分けた。`GET /model-manager` は概要になり、区画は `GET /model-manager/<slug>`（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）の分類ページに移る。下の §1 の表に概要と分類ページのルートを足し、§3 の区画の並びを分類の表に直し、§4 に受け入れ条件を足した。区画の部分ルート（`/model-manager/engine/…`・`/models/…` ほか）は、パス・フォームともそのまま。構成は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「分類のサブページ（#1101）」。
+> **状態: 実装済み（Issue #1101。`mmcat.All()` の分類。#1106 が `companion` を足した〔実装済み〕。#1104 の `local-llm` は実装済み〔下の「ローカル LLM の統合の受け入れ条件」〕）**: 画面を**分類ごとのサブページ**に分けた。`GET /model-manager` は概要になり、区画は `GET /model-manager/<slug>`（`comfyui`・`image-video`・`custom-nodes`・`local-runtimes`・`face-check`・`hf-external`）の分類ページに移る。下の §1 の表に概要と分類ページのルートを足し、§3 の区画の並びを分類の表に直し、§4 に受け入れ条件を足した。区画の部分ルート（`/model-manager/engine/…`・`/models/…` ほか）は、パス・フォームともそのまま。構成は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「分類のサブページ（#1101）」。
 
 `modelmanager.Service` を持たない router（ヘッドレスのテストなど）では、画面もルートも無い。入口は、プロジェクト一覧（`GET /`）の「モデルマネージャー」のリンクと、設定画面（`GET /settings`）の見出しの下のリンク。
 
@@ -54,7 +54,7 @@
 | GET | `/model-manager/runtimes/:id/models` | 実行環境のモデルの一覧を、フィルターバーの条件（クエリ。`modelfilter.Condition` のキー。`languages` も）で絞って返す（`#mm-runtime-model-list-<id>` の差し替えと、漏斗の件数の OOB）。押していたラジオ `model` と同意のチェック `accept_<モデル>` は、クエリで受けて描き直した一覧に残す（同意は表示した版と同じときだけ。代わりにチェックはしない）。条件は実行環境ごとに Cookie（`mam_mf_runtime-models-<id>`）へ覚える。条件が不正: 200（理由を出し、始めの状態に戻す）、環境が無い: 404 |
 | PUT | `/model-manager/runtimes/:id/model` | 複数のモデルを持つ環境（Irodori-TTS）のモデルの選択。フォーム `model`、同意が要るモデルは `accept_<モデルの id>`（値は表示したテキストの版）。応答はモデルの選択のフォーム（選んだ・拒否の理由つき）。同意が無い・版が違う: 409、知らないモデル: 422、環境が無い: 404 |
 | DELETE | `/model-manager/runtimes/:id` | 環境と取得した重みの削除（設定は残る）。導入中は 409。`hx-confirm` つき |
-| GET | `/model-manager/local-llm/use` | 「使うサーバー」（`#mm-llm-use`。#1104）。ラジオ（`use`: `llama-cpp`・`ollama`・`custom`）と状態の行 `#mm-llm-use-state`。`use` が管理サーバーで `starting`・導入中の間だけ自分で取り直す（`every 2s`）。常に 200 |
+| GET | `/model-manager/local-llm/use` | 「使うサーバー」（`#mm-llm-use`。#1104）。ラジオ（`use`: `llama-cpp`・`ollama`・`custom`）と状態の行 `#mm-llm-use-state`。`use` が管理サーバーで `starting`・導入中の間だけ自分で取り直す（`every 2s`。取り直すのは状態の行だけ: クエリ `part=state` で `#mm-llm-use-state` のみ返す。ラジオは描き直さない）。常に 200 |
 | PUT | `/model-manager/local-llm/use` | 使うサーバーの保存（#1104）。フォーム `use`。`llama-cpp` は `providers.local.use_managed_runtime=true`・`use_managed_ollama=false`、`ollama` は `use_managed_ollama=true`・`use_managed_runtime=false`、`custom` は両方 `false`（`base_url` に呼び出す）。200: 区画（「今は <名前> に呼び出します」）。422: `use` が上の 3 値でない（区画に理由を出し、保存しない）。409: 設定ファイルが `--llm-config` で固定、または管理サーバーを持たない app で `llama-cpp`・`ollama` を選んだ。導入・起動はしない。稼働中のクライアントにすぐ渡す（再起動は要らない） |
 | PUT | `/model-manager/local-llm/connection` | 「別のサーバー」の保存（#1104。`PUT /settings/llm/local` の移し替え。意味は [local-llm.md](../architecture/local-llm.md) §5.1）。フォーム `base_url`・`api_key`（空は変更なし）・`clear_key`（`1` でキーを削除）・`unload`＋`unload_present`。200: 区画（「保存しました。次の LLM の呼び出しからすぐ使われます」）、422: 区画（理由・打った内容・`aria-invalid`。キーは返さない）、409: 設定ファイルが固定（キーだけの変更は固定でも保存できる）、503: キーストア。`use` は変えない |
 | POST | `/model-manager/local-llm/connection/test` | 接続テスト（`GET /v1/models`。#1104。`POST /settings/llm/local/test` の移し替え）。フォーム `base_url`・`api_key`（空は保存したもの。保存しない）。`use` が `llama-cpp`・`ollama` の間は URL を試さず、そのサーバーの状態を言う（起動しない）。200: 結果、422: 拒否されるアドレス |
@@ -174,7 +174,7 @@
 - `install_blocked` のノードのカードに `mm-node-blocked`（導入できない理由）が残り、導入ボタンが無い。`mm-node-detail-note`・`mm-node-models`・進捗・導入／中断／削除のボタンは変わらない。
 - 区画の「?」ヘルプに「ノードの説明」の語があり、ヘルプのほかの文は変わらない。
 
-**ローカル LLM の統合の受け入れ条件（Issue #1104。実装時にこのテストを足す。#1101 のあと）**:
+**ローカル LLM の統合の受け入れ条件（Issue #1104。状態: 実装済み。テストは `handler/modelmgr/localllm`・`llmsettingstest`・`service/llmlocal`・`mcp/tools/settings`・`joblist`・`modelfilter`。#1101 のあと）**:
 
 - `GET /model-manager/local-llm` が 200 で、`#mm-llm-use`・`#mm-llm-runtimes`・`#mm-llm-connection` がちょうど 1 つずつ。`GET /model-manager/local-runtimes` に用途 `llm` のカード（`#mm-runtime-llama-cpp`・`#mm-runtime-ollama`）が無い。`GET /model-manager/runtimes`（`purpose` なし）に `#mm-runtime-llama-cpp` が無く、`?purpose=llm` に有る。`?purpose=x` は 422。
 - `PUT /model-manager/local-llm/use`: `llama-cpp`・`ollama`・`custom` の 3 値を保存すると、`llm.json` の `providers.local` の `use_managed_runtime`・`use_managed_ollama` が仕様の表のとおりになり、2 つが同時に真にならない。応答の `mm-llm-use-state` に選んだ名前。`x` は 422 で保存しない。`--llm-config` で固定は 409。管理サーバーを持たない app（`Data.Runtimes` が nil）では、ラジオに `llama-cpp`・`ollama` が出ず（理由の 1 行）、直接 PUT しても 409。導入・起動は始まらない（`localruntime.Service` の呼び出しが 0 回）。
@@ -238,3 +238,4 @@
 | 1.23 | 2026-11-07 | 分類のサブページ（#1101）を実装した。状態を「実装済み」にした。`GET /model-manager/overview`（概要だけの部分ルート）を足した。区画をまたぐ OOB の整理（`oob.EngineWithCatalog` の廃止）・リンクの付け替えも入れた | Issue #1101 |
 | 1.24 | 2026-11-07 | カードの列数（#1102）と追加ノードの説明（#1103）を実装した。§4 の受け入れ条件の「実装時にこのテストを足す」を、テストの置き場所に直した。ルート・応答の中身は変えない（概要の分類のカード `mm-categories` は列数の対象外） | Issue #1102・#1103 |
 | 1.25 | 2026-11-07 | 付随ソフトの導入（#1106）を実装した。状態を「実装済み」にした。`/model-manager/companion/ffmpeg`（`GET`・`PUT`・`…/download`・`…/download/cancel`）・`/model-manager/companion/facefusion`（`GET`・`PUT`。取得・導入のルートは無い）・`/model-manager/companion/index` を足し、`GET /settings/ffmpeg`・`/settings/facefusion` を 303 にして、`PUT`・`POST`・`DELETE /settings/ffmpeg…`・`PUT /settings/facefusion` を 404 にした。受け入れ条件は `handler/modelmgr/companiontest`・`web/ffmpegscreen`・`web/facefusionscreen` ほか | Issue #1106 |
+| 1.26 | 2026-11-07 | ローカル LLM の統合（#1104）を実装した。§1 の `local-llm/use`・`local-llm/connection`・`…/connection/test`・`runtimes?purpose=llm` と §3 の分類の表の `local-llm` は実装済み（受け入れ条件のテストを足した）。`GET /model-manager/local-llm/use` に `part=state`（状態の行だけ）を足した。`ollama` は、アプリが管理する Ollama を持つまで選べない（409。ラジオも出さない。#1105） | Issue #1104 |

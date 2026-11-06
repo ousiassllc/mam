@@ -64,7 +64,7 @@ func (h Handlers) SetRuntimeModel(c *gin.Context) {
 	r, err := runtimeData(c.Request.Context(), h.svc, id, "", false)
 	if err != nil {
 		st, m := refuseRuntime(c, err)
-		render(c, st, card.RuntimesSection(card.Runtimes{Message: view.Message{Error: m}, Items: items(c.Request.Context(), h.svc)}))
+		render(c, st, card.RuntimesSection(card.Runtimes{Message: view.Message{Error: m}, Items: items(c.Request.Context(), h.svc, false)}))
 		return
 	}
 	h.filterModels(c, &r)

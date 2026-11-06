@@ -15,6 +15,7 @@ const (
 	ImageVideo    = paths.MMImageVideo
 	CustomNodes   = paths.MMCustomNodes
 	LocalRuntimes = paths.MMLocalRuntimes
+	LocalLLM      = paths.MMLocalLLM
 	FaceCheck     = paths.MMFaceCheck
 	HFExternal    = paths.MMHFExternal
 	Companion     = paths.MMCompanion
@@ -57,6 +58,11 @@ func All() []Category {
 			Slug: LocalRuntimes, Name: "ローカル音声・口パク", Icon: atoms.IconVoice,
 			Description: "声と口パクをこの PC で作る実行環境を導入して、起動・停止します。",
 			Sections:    []string{"mm-runtimes"}, Cards: true,
+		},
+		{
+			Slug: LocalLLM, Name: "ローカル LLM", Icon: atoms.IconNetwork,
+			Description: "ローカルの LLM を使う導線です。使うサーバーを選び、llama.cpp を導入・起動し、LM Studio など別のサーバーにつなぎます。",
+			Sections:    []string{"mm-llm-use", "mm-llm-runtimes", "mm-llm-connection"}, Cards: true,
 		},
 		{
 			Slug: FaceCheck, Name: "顔チェック用モデル", Icon: atoms.IconLipSync,

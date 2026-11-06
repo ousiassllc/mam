@@ -41,7 +41,7 @@ Issue #1008（前半）。LLM のプロバイダーに、自分の PC や LAN �
 
 ### 5.1 設定画面のカード「ローカル LLM サーバー（OpenAI 互換）」
 
-> **#1104 で、このカードはモデルマネージャーの分類 `local-llm` の区画「別のサーバーにつなぐ」（`#mm-llm-connection`）へ移る**（状態: 仕様のみ。§11）。以下の欄・保存・接続テストの意味は変わらず、置き場所と URL だけが変わる（`PUT /model-manager/local-llm/connection`・`POST /model-manager/local-llm/connection/test`。設定の `PUT /settings/llm/local`・`POST /settings/llm/local/test` は廃止）。設定「テキスト生成（LLM）」に残るのは、モデルマネージャーへのリンクのカード 1 枚だけ。
+> **#1104 で、このカードはモデルマネージャーの分類 `local-llm` の区画「別のサーバーにつなぐ」（`#mm-llm-connection`）へ移る**（状態: 実装済み。§11）。以下の欄・保存・接続テストの意味は変わらず、置き場所と URL だけが変わる（`PUT /model-manager/local-llm/connection`・`POST /model-manager/local-llm/connection/test`。設定の `PUT /settings/llm/local`・`POST /settings/llm/local/test` は廃止）。設定「テキスト生成（LLM）」に残るのは、モデルマネージャーへのリンクのカード 1 枚だけ。
 
 「テキスト生成（LLM）」（`/settings/llm`）の Agent の表の下に、`settingsui.CardItem` のカード（`organisms/settings/llmlocal`、`service/llmlocal`）。API キーのカード（「API キーとログイン」）は隠さない・変えない（`local` のキーはこのカードで扱い、`CredentialProviders` には足さない）。
 
@@ -164,7 +164,7 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 
 `llamaservertest`（偽の llama-server。local-runtime.md §17.6）・`localllm`（管理サーバーへの結びつき・キーの扱い）・`llmlocal`（`use_managed_runtime` の保存・固定・停止）・`llmmodels`・`gpufree`・設定画面（`llmsettingstest`）・MCP。**device_only**: 実機での導入・起動・推論、ComfyUI との同居、`--sleep-idle-seconds` での VRAM の解放、各モデルの質と JSON の守り方。
 
-## 11. モデルマネージャーとの統合（Issue #1104。状態: 仕様のみ・未実装）
+## 11. モデルマネージャーとの統合（Issue #1104。状態: 実装済み。管理する Ollama〔`use` が `ollama`〕の実体は #1105）
 
 ローカル LLM を、モデルマネージャーの分類 `local-llm`「ローカル LLM」の 1 つの導線にする。画面の構成・ID・テストは [../components/model-manager-screen.md](../components/model-manager-screen.md) の「ローカル LLM の統合（#1104）」、ルートは [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md)。
 
@@ -181,3 +181,4 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 | 1.1 | 2026-11-04 | §10 を足した: mam が管理する llama.cpp（GGUF の 8 モデル）を「この PC の llama.cpp を使う」でプロバイダー `local` に結びつける。VRAM の調停（ComfyUI が生成中なら待つ・生成の前に止める・アイドルで降ろす） | Issue #1008（後半） |
 | 1.2 | 2026-11-06 | §11 を足した（モデルマネージャーとの統合。向き先 `use` を `llama-cpp`・`ollama`・`custom` の 1 つにし、`use_managed_ollama` を足す）。§5.1・§10.1 に、設定のカードがモデルマネージャーの `local-llm` へ移ることを書いた。状態は仕様のみ（未実装） | Issue #1104 |
 | 1.0 | 2026-11-03 | 新規作成。プロバイダー `local`、モデル一覧・使えるか、JSON の扱い、エラー、設定画面・MCP、VRAM の取り合い、推奨モデルの調査、Ollama / LM Studio / llama.cpp server の使い方 | Issue #1008（前半） |
+| 1.3 | 2026-11-07 | §11 を実装した。状態を「実装済み」にした。`llm.ProviderConfig.UseManagedOllama`（`use_managed_ollama`。`llm.ParseConfig` が `use_managed_runtime` との両方真を拒む）・`llmlocal.Service` の `Use`・`SetUse`・`Status`・`SetManagedOllama`（管理する Ollama を持つ app だけ `ollama` を選べる。#1105 がつなぐ）。使っている管理サーバーは、画像・動画の生成の前に止める（llama.cpp と同じ）。Ollama のモデルの一覧・メモリ降ろしの `/api/ps` 経路の管理 Ollama への適用は #1105 | Issue #1104 |
