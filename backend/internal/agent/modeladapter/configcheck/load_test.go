@@ -92,7 +92,7 @@ func TestConfigAcceptsGPTImage26AndItsSubscriptionModels(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
 	for _, m := range []domain.ModelName{domain.ModelGPTImage26Flare, domain.ModelGPTImage26Sunburst} {
 		mc := cfg.Models[m]
-		mc.Quality = "high"
+		mc.Quality = "xhigh" // OpenAI's image generation guide lists xhigh and max for 2.6
 		cfg.Models[m] = mc
 	}
 	for _, m := range []domain.ModelName{chatgptid.Flare, chatgptid.Sunburst, domain.ModelGPTImage26Sunburst} {
@@ -105,6 +105,23 @@ func TestConfigAcceptsGPTImage26AndItsSubscriptionModels(t *testing.T) {
 	sub.Quality = "high"
 	cfg.Models[chatgptid.Flare] = sub
 	assert.ErrorContains(t, configcheck.Validate(cfg), "quality", "the subscription path sends none")
+}
+
+// xhigh and max are offered for GPT Image 2.6 only: OpenAI lists low / medium / high for gpt-image-2.
+func TestQualityXHighAndMaxAreForGPTImage26Only(t *testing.T) {
+	for _, q := range []string{"xhigh", "max"} {
+		cfg := modeladapter.DefaultConfig()
+		mc := cfg.Models[domain.ModelGPTImage2]
+		mc.Quality = q
+		cfg.Models[domain.ModelGPTImage2] = mc
+		assert.ErrorContains(t, configcheck.Validate(cfg), "quality", q)
+
+		mc = cfg.Models[domain.ModelGPTImage26Flare]
+		mc.Quality = q
+		cfg.Models[domain.ModelGPTImage26Flare] = mc
+		cfg.Models[domain.ModelGPTImage2] = modeladapter.DefaultConfig().Models[domain.ModelGPTImage2]
+		assert.NoError(t, configcheck.Validate(cfg), q)
+	}
 }
 
 func TestLoadWarnsWhenGPTImage2HasNoKnownPrice(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
 
@@ -25,6 +26,9 @@ func KVs(d record.ResultDetail) []view.KV {
 	}
 	if d.SpeedMode != "" {
 		kv = append(kv, view.KV{Key: "速さのモード", Value: d.SpeedMode})
+	}
+	for _, l := range gptform.Lines(d.ResultView) {
+		kv = append(kv, view.KV{Key: l.Key, Value: l.Value})
 	}
 	for _, k := range slices.Sorted(maps.Keys(d.Exposed)) {
 		kv = append(kv, view.KV{Key: "画面に出した値 " + k, Value: fmt.Sprint(d.Exposed[k])})

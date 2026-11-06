@@ -14,6 +14,7 @@ const (
 	RoleStyle      = "style"
 	RoleEdit       = "edit"
 	RolePose       = "pose"
+	RoleMarkup     = "markup"
 	RoleFirstFrame = "first_frame"
 	RoleLastFrame  = "last_frame"
 )
@@ -40,7 +41,10 @@ const UploadPlaceholder = "upload::#"
 type roleOption struct{ Value, Label string }
 
 // imageRoles are the roles of a reference of an image model, in the order the select lists them.
-var imageRoles = []roleOption{{RoleReference, "全体"}, {RoleFace, "顔だけ"}, {RoleStyle, "画風だけ"}, {RoleEdit, "編集対象"}, {RolePose, "ポーズだけ"}}
+var imageRoles = []roleOption{
+	{RoleReference, "全体"}, {RoleFace, "顔だけ"}, {RoleStyle, "画風だけ"}, {RoleEdit, "編集対象"}, {RolePose, "ポーズだけ"},
+	{RoleMarkup, "マークアップ（透明 PNG を 1 枚目に重ねる）"},
+}
 
 var videoRoles = []roleOption{{RoleReference, "参照"}, {RoleFirstFrame, "最初のフレーム"}, {RoleLastFrame, "最後のフレーム"}}
 

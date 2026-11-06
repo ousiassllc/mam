@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
@@ -271,4 +273,41 @@ func TestARecipeFollowsThePlatformCheckOfTheEasyTier(t *testing.T) {
 	got, _ := svc.Get(ctx(), v.ID)
 	assert.False(t, got.Usable)
 	assert.Contains(t, got.Reason, "OS・GPU")
+}
+
+// #1096: the complexity and the GIF settings of GPT Image 2.6 are part of a recipe, so that using it again does not silently drop them; a request's own wins.
+func TestARecipeKeepsTheGPTImageSettingsAndApplyingItGivesThemBack(t *testing.T) {
+	r := gentesttest.New(t)
+	svc := recipe.New(r.Svc)
+	flare := string(domain.ModelGPTImage26Flare)
+	o := gptimage.Options{Complexity: gptimage.ComplexityLow, Format: gptimage.FormatGIF, FrameCount: 6, FrameDurationMS: 120}
+	save := request(flare)
+	save.GPTImage = o
+	v, err := svc.Save(ctx(), "Loop", save, false)
+	require.NoError(t, err)
+	require.NotNil(t, v.Params.GPT)
+	assert.Equal(t, o, *v.Params.GPT)
+
+	list, err := svc.List(ctx())
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.NotNil(t, list[0].Params.GPT, "it comes back after a restart")
+	assert.Equal(t, o, *list[0].Params.GPT)
+
+	got, _, err := svc.Apply(ctx(), gentest.Request{Media: "image", Prompts: []gentest.PromptInput{{Prompt: "a cat"}}}, v.ID)
+	require.NoError(t, err)
+	assert.Equal(t, o, got.GPTImage)
+
+	own := gptimage.Options{Complexity: gptimage.ComplexityHigh}
+	got, _, err = svc.Apply(ctx(), gentest.Request{Media: "image", Prompts: []gentest.PromptInput{{Prompt: "a cat"}}, GPTImage: own}, v.ID)
+	require.NoError(t, err)
+	assert.Equal(t, own, got.GPTImage, "what the request names wins")
+
+	// a recipe of a model that does not take them is not saved without them
+	bad := request(string(domain.ModelGPTImage2))
+	bad.GPTImage = o
+	_, err = svc.Save(ctx(), "Nope", bad, false)
+	var inv *gterr.InvalidError
+	require.ErrorAs(t, err, &inv)
+	assert.Contains(t, inv.Message, "対応していません")
 }

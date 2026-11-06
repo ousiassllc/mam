@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/recipe"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 )
 
 // OfRecipe reads the settings of a recipe in the terms of the form (Issue #977: "使う" puts a recipe into the detail tier). A text field is "" when the
@@ -26,6 +27,9 @@ func OfRecipe(p recipe.Params) Restored {
 		r.Exposed[k] = textOf(v)
 	}
 	r.RefStrength = p.ReferenceStrength
+	if o := p.GPT; o != nil { // #1096: the complexity and the output format of GPT Image 2.6
+		r.GPT = gptform.Of(o.Complexity, o.Format, o.FrameCount, o.FrameDurationMS)
+	}
 	return r
 }
 

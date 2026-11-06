@@ -32,6 +32,9 @@ templ Row(a Actions) {
 				@atoms.ButtonLink(atoms.ToneNeutral, "この設定でもう一度", templ.SafeURL(a.ReplayURL), templ.Attributes{"data-testid": "gt-next-replay"})
 			}
 		</div>
+		if a.Note != "" {
+			<p class="text-xs text-mute" data-testid="gt-next-note">{ a.Note }</p>
+		}
 	}
 }
 

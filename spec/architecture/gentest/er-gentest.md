@@ -16,7 +16,7 @@
 
 ## gentest_input（バッチに渡した入力画像）
 
-`batch_id`（FK → `gentest_batch`、削除でカスケード）・`role`（`reference` / `face` / `style` / `edit` / `pose` / `first_frame` / `last_frame` / `mask`。画像モデルの参照は `first_frame` の前の 5 つ（`pose` は Issue #986）、動画は `reference` / `first_frame` / `last_frame`、`mask` は一部だけ描き直すマスクで参照ではない）・`file_path`（`<バッチ ID>/` 以下の相対パス。**入力は履歴の側へ複製**するので、元のプロジェクトや結果を消しても残る）・`mime_type`・`size_bytes`・`origin`（JSON: `kind` = `upload` / `project_asset` / `reference_item` / `history` / `pose_library`、`id`、`project_id`）・`position`・`strength`（REAL、NULL 許容、CHECK 0〜1。画像モデルの参照を**どれだけ強く反映するか**。NULL は既定（0.7）と、強さのないフレーム）。
+`batch_id`（FK → `gentest_batch`、削除でカスケード）・`role`（`reference` / `face` / `style` / `edit` / `pose` / `markup` / `first_frame` / `last_frame` / `mask`。画像モデルの参照は `first_frame` の前の 5 つ（`pose` は Issue #986）、動画は `reference` / `first_frame` / `last_frame`、`mask` は一部だけ描き直すマスクで参照ではない）・`file_path`（`<バッチ ID>/` 以下の相対パス。**入力は履歴の側へ複製**するので、元のプロジェクトや結果を消しても残る）・`mime_type`・`size_bytes`・`origin`（JSON: `kind` = `upload` / `project_asset` / `reference_item` / `history` / `pose_library`、`id`、`project_id`）・`position`・`strength`（REAL、NULL 許容、CHECK 0〜1。画像モデルの参照を**どれだけ強く反映するか**。NULL は既定（0.7）と、強さのないフレーム）。
 
 ## gentest_result（1 件の生成）
 
@@ -25,7 +25,7 @@
 | `id`・`batch_id`・`position` | PK・FK（カスケード）・バッチ内の計画順（モデル → プロンプト → 本数） |
 | `media`・`model`・`api_model` | 種類・**正規のモデル識別子（代替しないので実際に使ったモデル）**・ベンダーの識別子 |
 | `prompt`・`negative_prompt`・`sent_prompt`・`negative_mode` | 入力・実際に送った文・`none` / `field`（モデルの欄）/ `folded`（「Avoid: …」としてプロンプトに書き足した） |
-| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・顔の入れ替え（[face-swap.md](face-swap.md)）の結果は `face_swap`（元の結果・モデル・ライセンスの警告）を、役割 `face` の入力があった結果は `face_similarity`（SFace の顔の類似度。[../local-models.md](../local-models.md) §4.9）を持つ。`unused_inputs`（このモデルに渡さなかった入力画像: `input_id`・`role`・`reason`。使われなかった入力があったときだけ。#1009）・`avoid_pose`（参照を使うモデルのネガティブに「ポーズ・構図を真似ない」を足したとき true）・`lora`（`name`・`strength`。使ったときだけ）・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
+| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・顔の入れ替え（[face-swap.md](face-swap.md)）の結果は `face_swap`（元の結果・モデル・ライセンスの警告）を、役割 `face` の入力があった結果は `gpt_image`（GPT Image 2.6 に頼んだ複雑さ・出力形式・フレーム数・フレームの長さ。`gptimage.Options`。無いときは頼んでいない。Issue #1096）・`face_similarity`（SFace の顔の類似度。[../local-models.md](../local-models.md) §4.9）を持つ。`unused_inputs`（このモデルに渡さなかった入力画像: `input_id`・`role`・`reason`。使われなかった入力があったときだけ。#1009）・`avoid_pose`（参照を使うモデルのネガティブに「ポーズ・構図を真似ない」を足したとき true）・`lora`（`name`・`strength`。使ったときだけ）・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
 | `seed`・`seed_sent` | 送ったシード（対応しないモデルは NULL・0）。実際に送った値を保存する |
 | `status`・`error`・`error_info` | `queued` / `running` / `succeeded` / `failed` / `cancelled`・失敗の理由（原因 + 直し方 + 詳細の先頭の 1 行）・失敗を共通のエラーにした JSON（`apperr.Record`: `code`・`args`・`cause`・`detail`・`id`。`` は失敗していない結果と、この列より前に失敗した結果。[共通のエラー](../errors.md)） |
 | `file_path`・`mime_type`・`size_bytes` | 結果のファイル（成功したときだけ） |

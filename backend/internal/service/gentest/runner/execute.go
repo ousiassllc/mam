@@ -82,6 +82,11 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	}
 	roles := modelcatalog.ReferenceCapsOf(br.s.Adapter.Config(), domain.ModelName(r.Model)).Roles
 	for _, in := range br.inputsOf(r) {
+		if in.role == gentestrepo.RoleMarkup { // laid over the first of the other inputs, not one of them (GPT Image 2.6)
+			markup := in.in
+			req.Markup = &markup
+			continue
+		}
 		role, strength := refs.InputOf(roles, in.role, in.strength)
 		req.Inputs = append(req.Inputs, in.forRole(role))
 		req.Options.Refs = append(req.Options.Refs, localcfg.RefOption{Role: role, Strength: strength})
@@ -92,6 +97,9 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	}
 	if p.Sampling != nil {
 		req.Options.Sampling = *p.Sampling
+	}
+	if p.GPT != nil {
+		req.GPT = *p.GPT
 	}
 	req.Options.Exposed, req.Options.SpeedMode = p.Exposed, p.SpeedMode
 	if p.Inpaint != nil {
@@ -110,7 +118,9 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p record.Re
 	if err := fsutil.WriteFileAtomic(filepath.Join(br.dir, file), out.Data, 0o600); err != nil {
 		return "", "", 0, nil, fmt.Errorf("store the image: %w", err)
 	}
-	br.scoreFace(ctx, r, out.Data)
+	if isRaster(out.MimeType) { // an SVG or a GIF has no face to compare: it is not scored, and not failed
+		br.scoreFace(ctx, r, out.Data)
+	}
 	return file, out.MimeType, int64(len(out.Data)), out.ActualCost, nil
 }
 
@@ -161,6 +171,10 @@ func extensionFor(mime string) string {
 		return ".jpg"
 	case "image/webp":
 		return ".webp"
+	case "image/gif":
+		return ".gif"
+	case "image/svg+xml":
+		return ".svg"
 	case "video/mp4":
 		return ".mp4"
 	case "video/webm":
@@ -169,6 +183,11 @@ func extensionFor(mime string) string {
 		return ".mov"
 	}
 	return ".png"
+}
+
+// isRaster says the image is one a face detector reads (PNG, JPEG, WebP): not a GIF (GPT Image 2.6's animation) or an SVG (its drawing).
+func isRaster(mime string) bool {
+	return mime == "image/png" || mime == "image/jpeg" || mime == "image/webp"
 }
 
 // maxErrorRunes bounds the sentence of a failure kept in the history.

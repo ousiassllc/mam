@@ -28,11 +28,13 @@ type Actions struct {
 	FaceURL string
 	// UpscaleAgainURL opens the result an enlargement came from, with the scale and the workflow of this one already chosen in the box.
 	UpscaleAgainURL string
+	// Note says why the pixel tools (the redraw, the enlargement, the face) are not offered for this result (a GIF or an SVG).
+	Note string
 }
 
 // Show says there is a button to draw.
 func (a Actions) Show() bool {
-	return a.InpaintURL != "" || a.RedrawFrom != "" || a.Upscale || a.VideoEnhance || a.SimilarURL != "" || a.ReplayURL != "" || a.FaceURL != "" || a.UpscaleAgainURL != ""
+	return a.InpaintURL != "" || a.RedrawFrom != "" || a.Upscale || a.VideoEnhance || a.SimilarURL != "" || a.ReplayURL != "" || a.FaceURL != "" || a.UpscaleAgainURL != "" || a.Note != ""
 }
 
 // Line is a line of the settings panel.

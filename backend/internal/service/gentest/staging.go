@@ -126,6 +126,9 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 		if err != nil {
 			return Source{}, err
 		}
+		if _, ok := inputTypes[res.MimeType]; !ok { // a GIF or an SVG of GPT Image 2.6: no model of mam takes it as an input, and the face and upscale tools read pixels
+			return Source{}, gterr.Invalid("履歴の結果 %q は %s のため入力画像にできません（入力にできるのは PNG・JPEG・WebP の結果だけ）", ref.ID, mimeLabel(res.MimeType))
+		}
 		path, mime = filepath.Join(s.dir(), res.FilePath), res.MimeType
 	case FromBatchInput:
 		in, err := s.Repo.GetInput(ctx, ref.ID)
@@ -149,6 +152,17 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 	}
 	origin, _ := json.Marshal(map[string]string{"kind": ref.Source, "id": ref.ID, "project_id": ref.ProjectID})
 	return Source{Path: path, Mime: mime, Size: info.Size(), Origin: origin}, nil
+}
+
+// mimeLabel names the type of a result file for a refusal: GIF and SVG are the ones a model can make besides the three input types.
+func mimeLabel(mime string) string {
+	switch mime {
+	case "image/gif":
+		return "GIF"
+	case "image/svg+xml":
+		return "SVG"
+	}
+	return mime
 }
 
 // poseFile finds the picture of the pose library (a refusal that says what to do when the library is not installed).

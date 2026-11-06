@@ -56,10 +56,19 @@ func Refs(v url.Values, media string) []gentest.RefInput {
 		if media == gentest.MediaVideo {
 			out = append(out, Input(r, videoRole(role), nil))
 		} else {
-			out = append(out, Input(r, imageRole(role), strengthOf(v.Get(view.FieldStrengthPrefix+raw))))
+			out = append(out, Input(r, imageRole(role), strengthFor(imageRole(role), v.Get(view.FieldStrengthPrefix+raw))))
 		}
 	}
 	return out
+}
+
+// strengthFor is the strength of the slider of an input of the role. A markup layer has none (it is laid over the picture as it is), but the browser posts the
+// slider of every row, so its value is not read for that role.
+func strengthFor(role, v string) *float64 {
+	if role == gentest.RoleMarkup {
+		return nil
+	}
+	return strengthOf(v)
 }
 
 func videoRole(v string) string {
@@ -73,7 +82,7 @@ func videoRole(v string) string {
 func ImageRole(v string) string { return imageRole(v) }
 
 func imageRole(v string) string {
-	if slices.Contains([]string{gentest.RoleFace, gentest.RoleStyle, gentest.RoleEdit, gentest.RolePose}, v) {
+	if slices.Contains([]string{gentest.RoleFace, gentest.RoleStyle, gentest.RoleEdit, gentest.RolePose, gentest.RoleMarkup}, v) {
 		return v
 	}
 	return gentest.RoleReference

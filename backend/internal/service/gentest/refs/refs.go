@@ -34,11 +34,12 @@ func (l LoRA) Sent() localcfg.LoRA {
 	return localcfg.LoRA{Name: l.Name, Strength: max(l.Strength, MinStrength)}
 }
 
-// ImageRoles are the roles a reference of an image model may have (the whole picture first).
-var ImageRoles = []string{gentestrepo.RoleReference, gentestrepo.RoleFace, gentestrepo.RoleStyle, gentestrepo.RoleEdit, gentestrepo.RolePose}
+// ImageRoles are the roles a reference of an image model may have (the whole picture first). The markup layer of GPT Image 2.6 is the role of a few
+// models only (modelcatalog.ReferenceCapsOf), so it is not one of the roles of a workflow's model: it is listed after them.
+var ImageRoles = []string{gentestrepo.RoleReference, gentestrepo.RoleFace, gentestrepo.RoleStyle, gentestrepo.RoleEdit, gentestrepo.RolePose, gentestrepo.RoleMarkup}
 
 // CheckRole fills the role ("" is the whole picture) and refuses a role the media has not (first / last frame are video
-// only, face / style / edit / pose image only) and a strength that is out of range, or given to a video input.
+// only, face / style / edit / pose / markup image only) and a strength that is out of range, or given to a video input.
 func CheckRole(media, role string, strength *float64) (string, error) {
 	if role == "" {
 		role = gentestrepo.RoleReference
@@ -54,8 +55,15 @@ func CheckRole(media, role string, strength *float64) (string, error) {
 		if isVideo {
 			return role, gterr.Invalid("顔・スタイル・編集・ポーズの役割は画像だけで使えます")
 		}
+	case gentestrepo.RoleMarkup:
+		if isVideo {
+			return role, gterr.Invalid("マークアップは画像だけで使えます")
+		}
+		if strength != nil {
+			return role, gterr.Invalid("マークアップに強さは指定できません（元の画像の上に重ねるだけです）")
+		}
 	default:
-		return role, gterr.Invalid("入力画像の役割が正しくありません: %q（reference / face / style / edit / pose / first_frame / last_frame）", role)
+		return role, gterr.Invalid("入力画像の役割が正しくありません: %q（reference / face / style / edit / pose / markup / first_frame / last_frame）", role)
 	}
 	if strength != nil {
 		if isVideo {

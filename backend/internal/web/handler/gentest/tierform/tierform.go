@@ -53,7 +53,7 @@ func Read(v url.Values) State {
 
 // droppedLabels are the words for the keys the detail tier names in FieldDropped, in the order the notice lists them.
 var droppedLabels = []struct{ Key, Label string }{
-	{"seed", "シード"}, {"steps", "ステップ数"}, {"cfg", "CFG"}, {"sampler", "サンプラー"}, {"scheduler", "スケジューラー"}, {"exposed", "画面に出した値"},
+	{"seed", "シード"}, {"steps", "ステップ数"}, {"cfg", "CFG"}, {"sampler", "サンプラー"}, {"scheduler", "スケジューラー"}, {"exposed", "画面に出した値"}, {"gpt", "GPT Image 2.6 の設定"},
 }
 
 // DroppedNotice is the line the easy tier opens with after a switch from the detail tier that lost settings (Issue #1000), "" when nothing was lost (or the

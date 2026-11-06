@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 )
 
 // Query names of the page that opens the form with a result's settings.
@@ -39,6 +40,8 @@ type Restored struct {
 	LoRA        *gentest.LoRAInput
 	// SpeedMode is the speed mode the model was asked for ("": its default).
 	SpeedMode string
+	// GPT are the settings of GPT Image 2.6 the result was asked for (#1096): complexity, output format, the frames of a GIF.
+	GPT gptform.Fields
 	// Notes say what could not be put back, and why.
 	Notes []string
 }
@@ -47,7 +50,7 @@ type Restored struct {
 func Of(d record.ResultDetail, sameSeed bool) Restored {
 	r := Restored{
 		Model: d.Model, Prompt: d.Prompt, Negative: d.NegativePrompt, Translate: d.TranslateToEnglish, Aspect: d.AspectRatio,
-		AvoidPose: d.AvoidReferencePose, SpeedMode: d.SpeedMode,
+		AvoidPose: d.AvoidReferencePose, SpeedMode: d.SpeedMode, GPT: gptform.OfResult(d.ResultView),
 	}
 	if d.LoRA != nil {
 		s := d.LoRA.Strength

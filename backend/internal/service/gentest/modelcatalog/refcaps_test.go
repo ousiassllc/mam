@@ -50,3 +50,16 @@ func TestReferenceCapsAndLoRAOfAModel(t *testing.T) {
 	assert.False(t, modelcatalog.SupportsLoRA(cfg, domain.ModelNanoBanana))
 	assert.True(t, cfg.AcceptsImages(domain.ModelNanoBanana))
 }
+
+// GPT Image 2.6 (API key) takes the markup layer besides the whole picture; no other model lists the role (the subscription twins and GPT Image 2 included).
+func TestReferenceRolesOfGPTImage26(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	for _, m := range []domain.ModelName{domain.ModelGPTImage26Flare, domain.ModelGPTImage26Sunburst} {
+		caps := modelcatalog.ReferenceCapsOf(cfg, m)
+		assert.Equal(t, []string{"reference", "markup"}, caps.Roles, m)
+		assert.Zero(t, caps.Max, "the number of images is not described: it is not guessed")
+	}
+	for _, m := range []domain.ModelName{domain.ModelGPTImage2, domain.ModelNanoBanana, domain.ModelFlux2} {
+		assert.NotContains(t, modelcatalog.ReferenceCapsOf(cfg, m).Roles, "markup", m)
+	}
+}

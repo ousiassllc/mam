@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/face"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -50,7 +51,7 @@ func FormFor(svc *gentest.Service, d record.ResultDetail, sel facefusion.Selecti
 		f.SourceURL = paths.GenerationTestPart("results", s.SourceResultID)
 		f.SourceText = "この結果は、元の結果の顔を入れ替えたものです。元の結果を見る"
 	}
-	if d.Media != gentest.MediaImage || !d.HasFile {
+	if d.Media != gentest.MediaImage || !d.HasFile || gptform.Animated(d.MimeType) {
 		return f
 	}
 	f.Show = true

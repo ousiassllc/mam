@@ -129,6 +129,9 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	if err != nil {
 		return ImageResult{}, err
 	}
+	if err := req.GPT.CheckOutput(img); err != nil {
+		return ImageResult{}, &ProviderError{Vendor: string(b.vendor), Status: http.StatusOK, Message: err.Error()}
+	}
 	res := ImageResult{Data: img, MimeType: orDefault(req.GPT.MIME(), "image/png")}
 	if req.GPT.CostKnown() {
 		res.ActualCost = gptimage.ActualCost(apiModel, gptimage.ParseUsage(out.Usage))

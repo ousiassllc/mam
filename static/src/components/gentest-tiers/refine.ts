@@ -228,7 +228,8 @@ function renderAll(root: ParentNode = document): void {
 function droppedOnEasy(form: HTMLElement): string[] {
   if (!form.querySelector(ROOT)) return [];
   const exposed = [...form.querySelectorAll<Field>('[name^="exposed."]:not(:disabled)')].some((el) => el.value !== '');
-  return droppedKeys(changedItems(all(form).map((t) => t.item)), exposed);
+  const gpt = [...form.querySelectorAll<Field>('[data-gt-gpt-control]:not(:disabled)')].some((el) => el.value !== '');
+  return droppedKeys(changedItems(all(form).map((t) => t.item)), exposed, gpt);
 }
 
 /** Installs the marks and the way back. Call it once (main.ts). */

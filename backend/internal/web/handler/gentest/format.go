@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
@@ -91,8 +92,8 @@ func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice
 		out[i] = view.ModelChoice{
 			ID: m.ID, Label: m.Label, Source: modelcards.SourceLabel[m.Source], Price: gtshare.PriceText(m.Price), Features: featuresText(m),
 			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA,
-			RequiresFirstFrame: slices.Contains(m.RequiresInputs, gentest.RoleFirstFrame),
-			Answer:             commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m), Card: modelcards.FromInfo(m),
+			RequiresFirstFrame: slices.Contains(m.RequiresInputs, gentest.RoleFirstFrame), GPTImage: m.GPTImage != nil, GPTRefusal: m.GPTImageRefusal,
+			Answer: commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m), Card: gptform.CardOf(modelcards.FromInfo(m), m),
 		}
 		if !m.Available {
 			out[i].Reason = m.UnavailableMessage

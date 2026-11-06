@@ -1,6 +1,7 @@
 package gptimage
 
 import (
+	"bytes"
 	"fmt"
 	"slices"
 	"strconv"
@@ -14,12 +15,12 @@ import (
 // GPT Image 2 (spec/architecture/model-adapters.md §9.5).
 type Options struct {
 	// Complexity is how much the model plans before it renders (`complexity`: low / medium / high). "" omits it: OpenAI's default (high).
-	Complexity string `json:"complexity,omitempty"`
+	Complexity string `json:"complexity,omitempty" jsonschema:"複雑さ（描く前にどれだけ考えるか）: low / medium / high。省くと OpenAI の既定（high）。追加料金なし。新規の生成・編集のどちらでも使える"`
 	// Format is the output format that is not PNG (`output_format`): FormatGIF (generations and edits) or FormatSVG (generations only). "" is PNG.
-	Format string `json:"output_format,omitempty"`
+	Format string `json:"output_format,omitempty" jsonschema:"gif か svg（省くと PNG）。gif は生成・編集のどちらでも使え、アカウントに GIF プレビューの利用権限が要る（無ければ OpenAI のエラーをそのまま返す）。svg は新規の生成だけ（入力画像・マークアップがあると validation。OpenAI の編集は SVG に対応しない）。svg は費用が見積もれず（画像モデルの料金に SVG を書くモデルのトークン料金が加わる）、結果の費用も記録しない"`
 	// FrameCount and FrameDurationMS are the frames of a GIF (`frame_count` 2-16, `frame_duration_ms` 20-2000); 0 omits them (OpenAI's 9 and 200).
-	FrameCount      int `json:"frame_count,omitempty"`
-	FrameDurationMS int `json:"frame_duration_ms,omitempty"`
+	FrameCount      int `json:"frame_count,omitempty" jsonschema:"GIF のフレーム数（2〜16。省くと OpenAI の既定の 9）。output_format が gif のときだけ"`
+	FrameDurationMS int `json:"frame_duration_ms,omitempty" jsonschema:"GIF の 1 フレームの長さ（ミリ秒。20〜2000。省くと OpenAI の既定の 200）。output_format が gif のときだけ"`
 }
 
 // The values of Options.
@@ -104,6 +105,22 @@ func (o Options) MIME() string {
 		return "image/svg+xml"
 	}
 	return ""
+}
+
+// CheckOutput checks that the bytes OpenAI returned are in the format that was asked for (a GIF starts with its "GIF8" signature, an SVG has an <svg element), so
+// that a result is never stored and shown under a type it does not have. "" format (PNG) is not looked at.
+func (o Options) CheckOutput(data []byte) error {
+	switch o.Format {
+	case FormatGIF:
+		if !bytes.HasPrefix(data, []byte("GIF8")) {
+			return fmt.Errorf("OpenAI の答えが GIF ではありませんでした（GIF を頼みましたが、別の形式の画像が返りました）")
+		}
+	case FormatSVG:
+		if !bytes.Contains(data, []byte("<svg")) {
+			return fmt.Errorf("OpenAI の答えが SVG ではありませんでした（SVG を頼みましたが、別の形式のデータが返りました）")
+		}
+	}
+	return nil
 }
 
 // JSONFields puts the options into the body of a generations request.

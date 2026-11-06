@@ -5,6 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
@@ -94,16 +96,39 @@ func (s *Service) paramsOf(ctx context.Context, req gentest.Request) (Params, er
 	if p.SpeedMode, err = speedModeOf(m, req.SpeedMode); err != nil {
 		return Params{}, err
 	}
-	if a := strings.TrimSpace(req.AspectRatio); a != "" {
-		if !aspectPattern.MatchString(a) {
-			return Params{}, gterr.Invalid("縦横比は 16:9 のように指定してください")
-		}
-		p.AspectRatio = a
+	if p.AspectRatio, err = aspectOf(req.AspectRatio); err != nil {
+		return Params{}, err
 	}
 	if p.Exposed, err = exposedreq.Check([]modelcatalog.Info{m}, req.Exposed); err != nil {
 		return Params{}, err
 	}
+	if p.GPT, err = gptOf(m, req.GPTImage); err != nil {
+		return Params{}, err
+	}
 	return p, nil
+}
+
+// aspectOf is the aspect ratio a recipe keeps ("" for none); one that is not "W:H" is refused.
+func aspectOf(v string) (string, error) {
+	a := strings.TrimSpace(v)
+	if a != "" && !aspectPattern.MatchString(a) {
+		return "", gterr.Invalid("縦横比は 16:9 のように指定してください")
+	}
+	return a, nil
+}
+
+// gptOf is the GPT Image 2.6 settings a recipe keeps (nil for none), as asked: a model that cannot take them is refused, not saved without them.
+func gptOf(m modelcatalog.Info, o gptimage.Options) (*gptimage.Options, error) {
+	if o.Zero() {
+		return nil, nil
+	}
+	if m.GPTImage == nil {
+		return nil, gterr.Invalid("モデル「%s」は複雑さ・GIF・SVG の指定に対応していません（GPT Image 2.6 の API キー経由のモデルだけ）", m.Label)
+	}
+	if err := o.Check(); err != nil {
+		return nil, gterr.Invalid("%s", err.Error())
+	}
+	return &o, nil
 }
 
 // speedModeOf is the speed mode a recipe keeps: the one the request names, when the model has it ("" for none). A mode the model does not have is refused,

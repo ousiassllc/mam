@@ -262,6 +262,9 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 			mi.ReferenceMode, mi.MaxReferenceImages, mi.ReferenceRoles = string(caps.Mode), caps.Max, slices.Clone(caps.Roles)
 		} else if mi.AcceptsReferences {
 			mi.ReferenceRoles = []string{localcfg.RoleWhole} // a model whose references are not described: the whole picture
+			if mi.GPTImage != nil {
+				mi.ReferenceRoles = slices.Clone(caps.Roles) // GPT Image 2.6: the whole picture and the markup layer
+			}
 		}
 		mi.Inputs = inputsOf(mi)
 		return mi

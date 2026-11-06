@@ -12,15 +12,13 @@ func defaultModels() map[domain.ModelName]ModelConfig {
 	return map[domain.ModelName]ModelConfig{
 		// Prices: Google's Gemini API pricing page (1K image, the size an unset image_size gives), BFL's pricing page (FLUX.2 [pro], text
 		// only, up to 1 megapixel). GPT Image 2 is priced by its quality profile and the size (package gptimage; spec §9.2); 2.6 has no table.
-		domain.ModelNanoBanana:         {Model: "gemini-nano-banana-2.1", CostPerImage: 0.0336},
-		domain.ModelNanoBananaLite:     {Model: "gemini-3.1-flash-lite-image", CostPerImage: 0.0336},
-		domain.ModelFlux2:              {Model: "flux-2-pro", CostPerImage: 0.03},
-		domain.ModelGPTImage2:          {Model: gptimage.APIModel, Quality: string(gptimage.Default)},
-		domain.ModelGPTImage26Flare:    {Model: gptimage.APIModelFlare, Quality: string(gptimage.Default)},
-		domain.ModelGPTImage26Sunburst: {Model: gptimage.APIModelSunburst, Quality: string(gptimage.Default)},
-		chatgptid.Model:                {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
-		chatgptid.Flare:                {Model: gptimage.APIModelFlare},
-		chatgptid.Sunburst:             {Model: gptimage.APIModelSunburst},
+		domain.ModelNanoBanana:      {Model: "gemini-nano-banana-2.1", CostPerImage: 0.0336},
+		domain.ModelNanoBananaLite:  {Model: "gemini-3.1-flash-lite-image", CostPerImage: 0.0336},
+		domain.ModelFlux2:           {Model: "flux-2-pro", CostPerImage: 0.03},
+		domain.ModelGPTImage2:       {Model: gptimage.APIModel, Quality: string(gptimage.Default)},
+		domain.ModelGPTImage26Flare: {Model: gptimage.APIModelFlare, Quality: string(gptimage.Default)}, domain.ModelGPTImage26Sunburst: {Model: gptimage.APIModelSunburst, Quality: string(gptimage.Default)},
+		chatgptid.Model: {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
+		chatgptid.Flare: {Model: gptimage.APIModelFlare}, chatgptid.Sunburst: {Model: gptimage.APIModelSunburst},
 		// Kling 3.0 prices in units (1 unit = USD 0.14 list price). klingBackend sends no sound (the legacy API defaults it to
 		// off), so it is the "No Native Audio" row: 0.6 units per second at 720p, 0.8 at 1080p (Kling pricing page, spec §9.2).
 		domain.ModelKling3: {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.084, "1080p": 0.112}},

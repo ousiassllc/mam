@@ -60,6 +60,9 @@ func (s *Service) Run(ctx context.Context, r Request, c Confirmation) (RunRef, e
 			return RunRef{}, err
 		}
 	}
+	if err := checkMarkupFiles(r, sources); err != nil {
+		return RunRef{}, err
+	}
 	var mask *Source
 	if r.Mask != nil {
 		src, err := s.ResolveInput(ctx, *r.Mask)

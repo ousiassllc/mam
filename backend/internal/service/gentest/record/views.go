@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
@@ -62,6 +63,7 @@ type ResultView struct {
 	SpeedMode          string     `json:"speed_mode,omitempty" jsonschema:"このモデルに頼んだ速さのモード（fast / standard / lightning-4 など。無ければモデルの既定）"`
 	// Sampling is what the model ran with: with seed (above) and the other fields, enough to make the result again.
 	Sampling *sampling.Settings `json:"sampling,omitempty" jsonschema:"このモデルが使ったステップ数・CFG・サンプラー・スケジューラー（上書きしなかった項目はモデルの既定）。seed と合わせて同じ条件で作り直せる。受け取らないモデルは無い"`
+	GPT      *gptimage.Options  `json:"gpt_image,omitempty" jsonschema:"GPT Image 2.6 に頼んだ複雑さ（complexity）・GIF / SVG 出力（output_format・frame_count・frame_duration_ms）。無ければ PNG・OpenAI の既定の複雑さ。リクエストの gpt_image に渡せば同じ条件で作り直せる"`
 	Exposed  map[string]any     `json:"exposed,omitempty" jsonschema:"このモデルの画面に出す値（ComfyUI のノードの入力）が使った値（key は <ノード ID>.<入力名>。指定しなかった項目はグラフが持つ値）。リクエストの exposed に渡せば同じ条件で作り直せる"`
 	Inpaint  *Inpaint           `json:"inpaint,omitempty" jsonschema:"一部だけ描き直したとき。denoise は使った強さ、source_kind / source_id は元画像（history なら結果の ID）"`
 	// Upscale is set for a result of "make it larger": the result it enlarged and the scale, mode and model it used.
@@ -86,7 +88,7 @@ func ViewOf(r gentestrepo.Result) ResultView {
 		AspectRatio: p.AspectRatio, Resolution: p.Resolution, DurationSeconds: p.DurationSeconds, Seed: r.Seed, SeedSent: r.SeedSent,
 		Status: r.Status, Error: r.Error, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "", MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
-		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, Inpaint: p.Inpaint, Upscale: p.Upscale, VideoEnhance: p.VideoEnhance,
+		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA, SpeedMode: p.SpeedMode, Sampling: p.Sampling, Exposed: p.Exposed, GPT: p.GPT, Inpaint: p.Inpaint, Upscale: p.Upscale, VideoEnhance: p.VideoEnhance,
 		FaceSwap: p.FaceSwap, FaceSimilarity: p.FaceSimilarity, UnusedInputs: p.UnusedInputs,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}
@@ -113,7 +115,7 @@ func ViewsOf(list []gentestrepo.Result) []ResultView {
 // InputView is an input image of a batch.
 type InputView struct {
 	ID        string `json:"input_id"`
-	Role      string `json:"role" jsonschema:"reference / face / style / edit / pose / first_frame / last_frame"`
+	Role      string `json:"role" jsonschema:"reference / face / style / edit / pose / markup（GPT Image 2.6 の編集で、1 枚目の入力画像に重ねる透明な PNG）/ first_frame / last_frame"`
 	MimeType  string `json:"mime_type"`
 	SizeBytes int64  `json:"size_bytes"`
 	// Strength is how strongly an image model was asked to show the reference; absent when the default was used.

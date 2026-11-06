@@ -168,7 +168,7 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 	if err := exposedreq.Refuse(s.HiddenWith, models, r.Exposed); err != nil {
 		return r, nil, err
 	}
-	if err := checkInpaint(r, models); err != nil {
+	if err := checkImageSettings(r, models); err != nil {
 		return r, nil, err
 	}
 	if n := len(models) * len(r.Prompts) * r.Count; n > s.maxItems() {

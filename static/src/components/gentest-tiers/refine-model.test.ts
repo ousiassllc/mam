@@ -41,6 +41,10 @@ describe('what the switch to the easy tier loses (#1000)', () => {
     expect(droppedKeys(items.filter(changed), false)).toEqual(['seed', 'steps']);
     expect(droppedKeys(items.filter(changed), true)).toEqual(['seed', 'steps', 'exposed']);
     expect(droppedKeys([], true)).toEqual(['exposed']);
+    expect(droppedKeys([], false, true), 'the settings of GPT Image 2.6 go with the switch too (#1096)').toEqual([
+      'gpt',
+    ]);
+    expect(droppedKeys(items.filter(changed), true, true)).toEqual(['seed', 'steps', 'exposed', 'gpt']);
   });
 
   it('leaves out what the easy tier keeps: the negative prompts, the LoRA and the strengths of the input images', () => {

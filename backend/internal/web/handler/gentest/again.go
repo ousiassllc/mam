@@ -25,6 +25,7 @@ func (h Handlers) restoreAgain(ctx context.Context, c *gin.Context, f *formState
 	f.media, f.models, f.translate, f.aspect = gentest.MediaImage, []string{r.Model}, r.Translate, r.Aspect
 	f.prompts = []view.PromptText{{Text: r.Prompt, Negative: r.Negative}}
 	f.adv = advform.Fields{Seed: r.Seed, Steps: r.Steps, CFG: r.CFG, Sampler: r.Sampler, Scheduler: r.Scheduler, Exposed: r.Exposed}
+	f.gpt = r.GPT
 	f.opts = refform.Opts{AvoidPose: r.AvoidPose, LoRA: r.LoRA, SpeedMode: r.SpeedMode}
 	notes := r.Notes
 	for _, in := range r.Refs {

@@ -1,7 +1,7 @@
 // Package recipe is the recipes of the generation test (Issue #977): "今の設定" of an image kept under a name, to be used again from the form (the detail
 // tier restores it, the easy tier lists it among "やりたいこと") and from the MCP tools (a request's recipe). A recipe is the model (the name of its
 // workflow) and the settings of the image: the steps, cfg, sampler, scheduler, the seed (fixed), the negative prompt, the LoRA and its strength, the
-// strength of the input images, the size, the quality, the speed mode and the values of the exposed inputs. It keeps no prompt text and no input image.
+// strength of the input images, the size, the quality, the speed mode, the values of the exposed inputs and the settings of GPT Image 2.6 (complexity, GIF / SVG output). It keeps no prompt text and no input image.
 //
 // A recipe names its model by identifier and is kept when the model is gone or not installed: it is listed with the reason it cannot be used. The
 // models that may be used follow the rules of the easy tier's choice (the age gate, the commercial filter, this PC's OS and GPU, intent.Excluded).
@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -49,6 +50,8 @@ type Params struct {
 	AspectRatio       string             `json:"aspect_ratio,omitempty"`
 	SpeedMode         string             `json:"speed_mode,omitempty"`
 	Exposed           map[string]any     `json:"exposed,omitempty"`
+	// GPT are the settings of GPT Image 2.6 (complexity, GIF / SVG output); nil for any other model.
+	GPT *gptimage.Options `json:"gpt_image,omitempty"`
 }
 
 // Recipe is a saved recipe. Easy says it is among the choices of the easy tier.

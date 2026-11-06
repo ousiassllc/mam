@@ -25,6 +25,9 @@ func TestCheckRole(t *testing.T) {
 		{"edge strengths", "image", "style", f64(1), "style", true},
 		{"zero strength", "image", "edit", f64(0), "edit", true},
 		{"pose", "image", "pose", f64(0.8), "pose", true},
+		{"markup", "image", "markup", nil, "markup", true},
+		{"markup with a strength", "image", "markup", f64(0.5), "markup", false},
+		{"markup on video", "video", "markup", nil, "markup", false},
 		{"unknown", "image", "mask", nil, "mask", false},
 		{"pose on video", "video", "pose", nil, "pose", false},
 		{"frame on image", "image", "first_frame", nil, "first_frame", false},
@@ -137,4 +140,31 @@ func TestDecideDoesNotAskToAvoidThePoseOfAPoseReference(t *testing.T) {
 	assert.True(t, d.AvoidPose, "the chart is used as a whole picture here")
 	assert.Equal(t, refs.WarnRoleUnsupported, d.Warnings[0].Code)
 	assert.Contains(t, d.Warnings[0].Message, "ポーズ")
+}
+
+// A markup image is laid over another picture: a model that cannot take it is never given it as a picture, and says so (the request is refused before this
+// for a model that is chosen; this is what the form's notice shows while the request is being filled in).
+func TestDecideKeepsAMarkupAwayFromAModelThatCannotTakeIt(t *testing.T) {
+	roles := []string{"reference", "markup"}
+	plain := refs.Model{Label: "Plain", AcceptsReferences: true, Roles: []string{"reference"}}
+	d := refs.Decide(plain, roles, false, false)
+	assert.Equal(t, []int{0}, d.Used, "the markup is not used as a whole picture")
+	if assert.Len(t, d.Warnings, 1) {
+		assert.Equal(t, refs.WarnMarkupUnsupported, d.Warnings[0].Code)
+		assert.Contains(t, d.Warnings[0].Message, "Plain")
+		assert.Contains(t, d.Warnings[0].Message, "マークアップ")
+	}
+
+	sub := plain
+	sub.MarkupRefusal = "サブスクの理由"
+	assert.Contains(t, refs.Decide(sub, roles, false, false).Warnings[0].Message, "サブスクの理由")
+
+	gpt := refs.Model{Label: "GPT", AcceptsReferences: true, Roles: []string{"reference", "markup"}}
+	d = refs.Decide(gpt, roles, false, false)
+	assert.Equal(t, []int{0, 1}, d.Used, "a model that takes it is given it, in order")
+	assert.Empty(t, d.Warnings)
+
+	limited := refs.Model{Label: "L", AcceptsReferences: true, MaxReferences: 1, Roles: []string{"reference"}}
+	d = refs.Decide(limited, []string{"markup", "reference", "reference"}, false, false)
+	assert.Equal(t, []int{1}, d.Used, "the limit counts the pictures, not the markup")
 }

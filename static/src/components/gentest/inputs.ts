@@ -111,6 +111,9 @@ class Inputs {
       const slider = select
         .closest<HTMLElement>('[data-gt-ref]')
         ?.querySelector<HTMLInputElement>('[data-gt-strength]');
+      // A markup layer has no strength: its slider is hidden and not posted.
+      slider?.toggleAttribute('disabled', select.value === 'markup');
+      slider?.closest('label')?.toggleAttribute('hidden', select.value === 'markup');
       if (!slider || slider.dataset.touched !== undefined) return;
       slider.value = String(defaultStrength(select.value));
       const out = slider.closest('label')?.querySelector('output');

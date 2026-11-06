@@ -88,6 +88,9 @@ func (l *Link) Import(ctx context.Context, req ImportRequest) (ImportOutcome, er
 	if res.Status != gentestrepo.StatusSucceeded || res.FilePath == "" {
 		return ImportOutcome{}, gterr.Conflict("取り込めるのは成功した結果だけです（この結果は %s）", res.Status)
 	}
+	if res.MimeType == "image/gif" || res.MimeType == "image/svg+xml" { // the Project's images are PNG, JPEG and WebP (upload types); its pipeline reads pixels
+		return ImportOutcome{}, gterr.Invalid("GIF・SVG の結果はプロジェクトに取り込めません（プロジェクトの画像は PNG・JPEG・WebP です）。履歴の画面からダウンロードしてください")
+	}
 	if _, err := l.Projects.Get(ctx, req.ProjectID); errors.Is(err, repository.ErrNotFound) {
 		return ImportOutcome{}, gterr.ErrNotFound
 	} else if err != nil {

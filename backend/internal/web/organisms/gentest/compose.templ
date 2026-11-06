@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -70,6 +71,7 @@ templ ComposeForm(c Compose) {
 			@promptFields(c)
 			@parameterFields(c)
 			@gentestadv.Fields(c.Section)
+			@gentestgpt.Section(c.GPT)
 			@inputFields(c)
 			if c.Tier.IsDetail() {
 				@gentesttier.RecipeSection(c.Tier.Recipes)

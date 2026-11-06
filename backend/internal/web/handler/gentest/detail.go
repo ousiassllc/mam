@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/faceswapscreen"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/settingstext"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/venhancescreen"
@@ -38,7 +39,7 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f importbox
 		Params: append(append(append(append(params(d), upscaleKVs(d)...), venhancescreen.KVs(ctx, h.Svc, d)...), faceKVs(d)...), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
 	}
 	inpaintURL, redrawFrom := "", ""
-	if d.Media == gentest.MediaImage && d.HasFile {
+	if d.Media == gentest.MediaImage && d.HasFile && !gptform.Animated(d.MimeType) { // a GIF or an SVG is no input for the pixel tools (#1096)
 		ref := refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
 		v.UseURL = paths.GenerationTest() + "?ref=" + ref
 		v.MatchURL = paths.GenerationTestMatch() + "?ref=" + ref
@@ -84,7 +85,7 @@ func (h Handlers) takesSampling(ctx context.Context, d record.ResultDetail) bool
 
 var roleNames = map[string]string{
 	gentest.RoleReference: "参照", gentest.RoleFirstFrame: "最初のフレーム", gentest.RoleLastFrame: "最後のフレーム",
-	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象", gentest.RoleMask: "マスク", gentest.RolePose: "ポーズだけ",
+	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象", gentest.RoleMask: "マスク", gentest.RolePose: "ポーズだけ", gentest.RoleMarkup: "マークアップ",
 }
 
 // roleText is the role of an input with the strength it was given (none was when the default was used).
@@ -142,10 +143,12 @@ func params(d record.ResultDetail) []view.KV {
 }
 
 func costText(d record.ResultDetail) string {
-	switch d.CostBasis {
-	case modelcatalog.BasisFree:
+	switch {
+	case d.MimeType == "image/svg+xml":
+		return "見積れません（SVG は画像モデルの分と SVG を書く分の料金がかかり、後者は単価が公表されていません）"
+	case d.CostBasis == modelcatalog.BasisFree:
 		return "無料（ローカル）"
-	case modelcatalog.BasisPriced:
+	case d.CostBasis == modelcatalog.BasisPriced:
 		return gtshare.USDPtr(d.EstimatedUSD)
 	}
 	return "単価なし"
