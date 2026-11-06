@@ -21,6 +21,9 @@ var (
 	// call with ("The 'gpt-5.5' model is not supported when using Codex with a ChatGPT account"): OpenAI changed the models
 	// a ChatGPT sign-in may use. ImageModelUnavailableMessage says it to the user.
 	ErrNoImageModel = errors.New("chatgpt: no Codex model of the ChatGPT account hosts the image generation")
+	// ErrImageModelPinned means the Codex endpoint refused the model that Options.Driver of the image backend pins. Unlike
+	// ErrNoImageModel, updating mam does not help: the pin has to change.
+	ErrImageModelPinned = errors.New("chatgpt: the Codex model pinned for the image generation is not usable with the ChatGPT account")
 )
 
 // ImageModelUnavailableMessage is what the user is told for ErrNoImageModel (what happened and what to do).

@@ -101,6 +101,7 @@ templ Box(p Props)
 | `forbidden` | `forbidden` | Brand / Safety Constraint などの制約に違反しています。 |  |
 | `generation_time_limit` | `upstream` | 生成が制限時間（Max generation time）を超えました。 | /settings |
 | `image_unavailable` | `unavailable` | ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。 | /settings/chatgpt |
+| `image_model_pinned` | `unavailable` | 画像生成のために固定した Codex のモデル（`Options.Driver`）を、ChatGPT のアカウントが受け付けませんでした。固定したモデルだけを使う設定なので、ほかのモデルは試していません。 |  |
 | `input_missing` | `validation` | このモデルが必ず使う入力（）が渡されていません。 |  |
 | `input_unsupported` | `validation` | このモデルは、渡された入力画像や解像度の組み合わせを受け付けません。 |  |
 | `input_unused` | `validation` | 添えた入力画像は、選んだモデルでは使われません。 |  |
@@ -166,6 +167,7 @@ templ Box(p Props)
 | 429（`modeladapter.RateLimited`） | `rate_limited`（サーキットブレーカーより先。429 が開けた場合も 429 を原因にする） |
 | `ErrCircuitOpen`（モデル・LLM） | `circuit_open` |
 | `chatgpt.ErrNoImageModel` | `image_unavailable`（ベンダーの 400 は症状なので、詳細にだけ残す） |
+| `chatgpt.ErrImageModelPinned` | `image_model_pinned`（固定したモデルの拒否。直し方は更新ではなく固定を直すこと） |
 | `direct.ErrInputsUnsupported` / `ErrInputsConflict` / `ErrResolution` | `input_unsupported` |
 | `llm.ErrInvalidOutput` | `llm_invalid_output` |
 | `localllm.IsUnreachable`（プロバイダー `local` の `APIError`: status 0・原因あり・タイムアウトでもキャンセルでもない） | `local_llm_unreachable`（`net.Error` より先） |
@@ -271,3 +273,4 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 | 1.5 | 2026-11-04 | `face_models_missing` の直し方を、モデルマネージャーの「顔チェック用モデル」からの導入（ボタン 1 つ・再起動なし）に変え、案内先に `/model-manager` を足した（手で置く方法と `--face-model-dir` は残す）。`face_runtime_missing` の直し方に「モデルを入れ直しても直らない。ONNX Runtime のライブラリを用意する」を足し、2 つの理由を取り違えないようにした。再起動の案内を外した（導入・ライブラリの追加は次の計測から効く。エンジンは読み込めなかった結果を覚えない）。[model-manager/model-manager.md](model-manager/model-manager.md) §5.4 | Issue #1026 |
 | 1.6 | 2026-11-04 | コード `credits_insufficient`（HTTP 402）と `topaz_*` の 7 つ（Topaz Video API の失敗。`topaz_job_interrupted` は受理のあとに mam が止まったときの、リクエスト ID つきの文）を足した | Issue #1031 |
 | 1.7 | 2026-11-06 | モデルの導入の失敗（エンジン・カタログ・Hugging Face・カスタムノード・ローカルランタイム）とジョブ一覧の失敗の行を、共通のエラーボックスで出すようにした（§6）。コード `install_cancelled`（利用者が導入を止めた）を足した。導入の側が言葉にした失敗（取得元が消えた・応答しない）は `install_failed` でその文を原因に残す。`worktrack` が `ErrorInfo` を持つ。`apperr.ViewOf` を足した | Issue #1010 |
+| 1.8 | 2026-11-06 | コード `image_model_pinned` を足した（`Options.Driver` で固定した Codex のモデルが ChatGPT のアカウントに拒否された。`image_unavailable` の「mam を最新版に更新して」は当てはまらない）。`errmap` は `chatgpt.ErrImageModelPinned` で見分ける | Issue #1071 |

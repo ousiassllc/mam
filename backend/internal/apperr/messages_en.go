@@ -109,6 +109,9 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"image_unavailable.cause":  "No Codex model that can host the image generation was found for the ChatGPT subscription (OpenAI may have changed the models a ChatGPT sign-in can use).",
 	"image_unavailable.remedy": "Update mam to the latest version and run it again. If it does not help, turn the ChatGPT image generation OFF in Settings and switch to an image model that works with an API key.",
 
+	"image_model_pinned.cause":  "The ChatGPT account refused the Codex model that was pinned for the image generation (Options.Driver), so no other model was tried.",
+	"image_model_pinned.remedy": "Updating mam does not help. Remove the pin so that mam picks a model of the account by itself, or pin a model the account can use.",
+
 	"save_failed.cause":  "The setting or the data could not be saved{why}.",
 	"save_failed.remedy": "Check the free disk space and the permissions of the folder and save again. If it continues, check the log of mam.",
 

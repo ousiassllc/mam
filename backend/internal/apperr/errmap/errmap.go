@@ -127,6 +127,8 @@ func classify(err error) *apperr.Error {
 		return apperr.New(apperr.CodeCircuitOpen)
 	case errors.Is(err, chatgpt.ErrNoImageModel):
 		return apperr.New(apperr.CodeImageUnavailable)
+	case errors.Is(err, chatgpt.ErrImageModelPinned):
+		return apperr.New(apperr.CodeImagePinned)
 	case errors.Is(err, direct.ErrInputsUnsupported), errors.Is(err, direct.ErrInputsConflict), errors.Is(err, direct.ErrResolution):
 		return apperr.New(apperr.CodeInputUnsupported)
 	case errors.Is(err, llm.ErrInvalidOutput):

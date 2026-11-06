@@ -54,7 +54,7 @@ func TestDriver_OtherFailuresDoNotMoveOn(t *testing.T) {
 // does. Another model (the image tool's own gpt-image-2, issue #907 review), or one whose name only starts with the
 // driver's, ends the call with the endpoint's own text instead of hiding it behind ErrNoImageModel.
 func TestDriver_OnlyARefusalNamingTheDriverMovesOn(t *testing.T) {
-	first := chatgptimage.FallbackDrivers[0]
+	first := chatgptimage.FallbackDrivers()[0]
 	for _, tc := range []struct {
 		name    string
 		status  int
@@ -73,6 +73,21 @@ func TestDriver_OnlyARefusalNamingTheDriverMovesOn(t *testing.T) {
 			return "The model ‘" + d + "’ does not exist or you do not have access to it"
 		}, true},
 		{"404 does not exist", http.StatusNotFound, func(d string) string { return "The model '" + d + "' does not exist" }, true},
+		{"curly double quotes", http.StatusBadRequest, func(d string) string {
+			return "The “" + d + "” model is not supported when using Codex with a ChatGPT account"
+		}, true},
+		{"curly single quotes", http.StatusBadRequest, func(d string) string {
+			return "The ‘" + d + "’ model is not supported when using Codex with a ChatGPT account"
+		}, true},
+		{"the apostrophe of doesn't opens no quote", http.StatusBadRequest, func(d string) string {
+			return "The model doesn't allow it: the '" + d + "' model is not supported when using Codex with a ChatGPT account"
+		}, true},
+		{"doesn't after the name", http.StatusBadRequest, func(d string) string {
+			return "Model '" + d + "' not found; it doesn't match any model of the account"
+		}, true},
+		{"curly quotes of another model", http.StatusBadRequest, func(string) string {
+			return "The “gpt-image-2” model is not supported when using Codex with a ChatGPT account"
+		}, false},
 		{"upper case name", http.StatusBadRequest, func(d string) string {
 			return "The '" + strings.ToUpper(d) + "' model is not supported when using Codex with a ChatGPT account"
 		}, true},
@@ -135,13 +150,74 @@ func TestDriver_OnlyARefusalNamingTheDriverMovesOn(t *testing.T) {
 			if tc.moveOn {
 				require.NoError(t, err)
 				assert.Equal(t, png, res.Data)
-				assert.Equal(t, chatgptimage.FallbackDrivers[:2], asked, "the next driver was tried")
+				assert.Equal(t, chatgptimage.FallbackDrivers()[:2], asked, "the next driver was tried")
 				return
 			}
 			var pe *modeladapter.ProviderError
 			require.ErrorAs(t, err, &pe)
 			require.NotErrorIs(t, err, chatgpt.ErrNoImageModel, "the endpoint's own error is not hidden")
 			assert.Equal(t, tc.status, pe.Status)
+			assert.Equal(t, []string{first}, asked, "no other driver is tried")
+		})
+	}
+}
+
+// The refusal may also arrive in a 200 stream (response.failed or error): it is read as a 400, so it moves on only when it
+// names the driver that was tried.
+func TestDriver_ARefusalInTheStreamIsReadLikeTheStatusOne(t *testing.T) {
+	first := chatgptimage.FallbackDrivers()[0]
+	for _, tc := range []struct {
+		name    string
+		event   func(model string) string
+		moveOn  bool
+		message string
+	}{
+		{"response.failed", func(m string) string {
+			return `{"type":"response.failed","response":{"error":{"message":"The '` + m + `' model is not supported when using Codex with a ChatGPT account"}}}`
+		}, true, ""},
+		{"error event", func(m string) string {
+			return `{"type":"error","error":{"message":"The '` + m + `' model is not supported when using Codex with a ChatGPT account"}}`
+		}, true, ""},
+		{"response.failed of another model", func(string) string {
+			return `{"type":"response.failed","response":{"error":{"message":"The 'gpt-image-2' model is not supported when using Codex with a ChatGPT account"}}}`
+		}, false, "gpt-image-2"},
+		{"response.failed, not a refusal", func(string) string {
+			return `{"type":"response.failed","response":{"error":{"message":"The server had an error while processing your request"}}}`
+		}, false, "server had an error"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var asked []string
+			c := newCodexWith(t, func(_ *codex, w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Model string `json:"model"`
+				}
+				_ = json.NewDecoder(r.Body).Decode(&body)
+				mu.Lock()
+				asked = append(asked, body.Model)
+				n := len(asked)
+				mu.Unlock()
+				w.Header().Set("Content-Type", "text/event-stream")
+				if n == 1 {
+					data(w, `{"type":"response.created"}`, tc.event(body.Model))
+					return
+				}
+				data(w, `{"type":"response.created"}`, imageDone("png"), `{"type":"response.completed"}`)
+			})
+			res, err := chatgptimage.New(&source{}, chatgptimage.Options{BaseURL: c.URL, Stall: time.Second}).
+				GenerateImage(context.Background(), "gpt-image-2", modeladapter.ImageRequest{Prompt: "x"})
+			mu.Lock()
+			defer mu.Unlock()
+			if tc.moveOn {
+				require.NoError(t, err)
+				assert.Equal(t, png, res.Data)
+				assert.Equal(t, chatgptimage.FallbackDrivers()[:2], asked, "the next driver was tried")
+				return
+			}
+			var pe *modeladapter.ProviderError
+			require.ErrorAs(t, err, &pe)
+			require.NotErrorIs(t, err, chatgpt.ErrNoImageModel, "the endpoint's own error is not hidden")
+			assert.Contains(t, pe.Message, tc.message)
 			assert.Equal(t, []string{first}, asked, "no other driver is tried")
 		})
 	}
