@@ -5,6 +5,7 @@
 package record
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 )
@@ -40,6 +41,8 @@ type ResultParams struct {
 	Sampling *sampling.Settings `json:"sampling,omitempty"`
 	// Exposed are the values the model's exposed inputs ran with (by key "<node>.<input>"; the request's value, else the graph's own). Absent: it has none.
 	Exposed map[string]any `json:"exposed,omitempty"`
+	// GPT are the options the result was asked for (GPT Image 2.6: complexity, GIF / SVG output). Absent: none was (a PNG at OpenAI's default complexity).
+	GPT *gptimage.Options `json:"gpt_image,omitempty"`
 	// Inpaint is set when the result redrew part of a picture. Absent for every other result.
 	Inpaint *Inpaint `json:"inpaint,omitempty"`
 	// Adult says the model that made the result is an adult model of the model manager's catalog, as it was when the result was made (so that deleting the model

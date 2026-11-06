@@ -28,6 +28,8 @@ const (
 	RoleMask = "mask"
 	// RolePose is a pose reference (a mannequin or pose chart): only the body pose and camera angle are taken from the picture.
 	RolePose = "pose"
+	// RoleMarkup is the markup layer of GPT Image 2.6 (a transparent PNG laid over the first other input image of an edit: circles and sketches that show where to change).
+	RoleMarkup = "markup"
 )
 
 // Status of a result. queued -> running -> succeeded | failed; a queued result can also be cancelled.
