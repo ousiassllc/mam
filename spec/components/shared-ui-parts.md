@@ -88,6 +88,34 @@
 | 対応が要る | `BadgeWarn` | ComfyUI が必要です・再ログインが必要・キーストアを利用できません | 文言に「必要」「できません」など**理由の言葉**を含める |
 | 失敗 | `BadgeError` | 起動に失敗・接続できなかった | 理由は文字で添える |
 
+### プロンプトの重み調整（`mam-prompt-weight`。Issue #1046）
+
+`<mam-prompt-weight>`（Lit。`static/src/components/prompt-weight/`）は、プロンプトの語を選ぶと出る「強める + / 弱める −」のバー。**動き（語を 0.1 刻みで `(語:1.2)` にする・範囲 0.5〜1.5・ComfyUI の読み方・モデルごとの「効く・効かない」）は [gentest-tiers.md](gentest-tiers.md) §4「語のウェイト」が決めている**。ここには、バーを **Ousiass 共通デザインガイドの形で描く**ための、色・状態・操作・キーボード・文言の決まりを置く（モデルごとの注意を出す `mam-weight-note`・「?」の `mam-weight-help` も同じ決まりに従う）。バーは templ の `atoms` を使えない（Lit が描く）ので、同じ意味には `atoms.SmallButton`・`atoms.Badge` と**同じクラス**を書く（[color-rules.md](color-rules.md) §1「共通部品が表の正」）。
+
+| 項目 | 決まり |
+|------|--------|
+| 面・枠（色。W1） | バーの面は `bg-surface`・枠は `border border-border`・角は `rounded-md`・内側は `p-2`・並びは `gap-2`（S1・S2。`.5` の値は使わない）。**影・光らせる・アクセントの塗りは使わない**（S3。バーは入力欄の補助で、主役ではない）。文字は `text-ink`、範囲・ショートカットの 1 行は `text-mute`、モデルの注は `text-warning`（色だけで伝えない: 注は必ず文で言う。W5） |
+| 文字（T1〜T5。W2） | 全体 `text-xs`（補助の部品なので 12px）。ボタンの文字は `font-semibold`。**いまの強さ（`1.2 倍`）は桁を揃える数値なので `font-mono tabular-nums`**（T5）、小数 1 桁（`toFixed(1)`）。ボタンの文言は「強める +」「弱める −」（`−` は U+2212。ハイフンにしない）。数値の後ろに必ず「倍」を付け、単位なしの数字にしない |
+| ボタン（O7・M1・M4。W3） | `atoms.SmallButton`（`ToneNeutral`）と同じ: `inline-flex items-center justify-center rounded-md border border-border font-semibold text-ink hover:bg-accent-soft transition-colors motion-reduce:transition-none`、高さは **32 以上**（`min-h-8`）、`data-ripple`（M4）。**押せないときは `aria-disabled="true"`＋不透明度 .4（`aria-disabled:opacity-40`）＋ `aria-disabled:cursor-not-allowed`**。`disabled` 属性にしない（フォーカスを残し、注の理由を読めるようにするため）。フォーカスは `focus-visible:focus-ring`（輪は色のクラスでない。[color-rules.md](color-rules.md) §1） |
+| 出る・消える（状態。W4） | **語を選んだときだけ**出て（`hidden` を外す）、選びを外す・フォーカスがバーとプロンプト欄の外へ移る・`Esc` で消える。**消えるときに動かさない**（M5 は `<dialog>`・popover・トーストの決まり。バーはフェードも移動もさせない。レイアウトが動くことの補足は下の「フォーカス」）。ネガティブプロンプトには出さない。動画のフォーム（段が無い）には付けない |
+| 状態の見せ方（W5） | 状態は **文で言う**（色だけにしない）: ①強めても弱めても変えられない端（0.5・1.5）は、そのボタンが押せない（W3）＋範囲の 1 行「0.5〜1.5」 ②選ばれたモデルが全部 `unsupported` ならボタンは両方押せず、注は `text-warning` で「（モデル名）では、ウェイト (語:1.3) は効きません。強調したい語は、文で言い換えてください…」（`weight-facts.ts` の `cautionOf`。名前は表示名で、識別子は出さない） ③一部だけ効きが弱いモデルは、その行を注に足す（「名前: 効きが弱いかも」） ④文字数の上限を超えるときは、変えずに「文字数の上限（N 文字）を超えるので、ウェイトは付けられません」を注に出す（`text-warning`）。注は 1 つの領域（`data-testid="gt-weight-note"`）に並べ、複数でも 1 つの `role="status"` の中に入れる。エラーの `atoms.Alert`（O3）にはしない（入力の補助で、業務エラーではない） |
+| 操作（W6） | マウス: ボタンを 1 回押すと 0.1 変わる。**押しても、プロンプト欄の選びとフォーカスを失わない**（`mousedown` の既定動作を止める）ので、続けて押せる。押したあとは、変えた部分全体（`(語:1.2)`）が選ばれたまま。元に戻すは、フォーカスがプロンプト欄にあるときはブラウザの「元に戻す」（`Ctrl/⌘+Z`）で 1 回分ずつ（`execCommand("insertText")`）。確認のモーダルは出さない（元に戻せるため。O2 の対象外） |
+| キーボード（W7） | **プロンプト欄の中で `Ctrl/⌘ + ↑` が強める、`Ctrl/⌘ + ↓` が弱める**（ComfyUI の画面と同じ。バーの 1 行の説明にもこの順で書く）。`Esc` でバーを消す。ボタンは本物の `<button>`（`Tab` で届き、`Enter`・`Space` で押せる）。**バーの中（ボタンにフォーカスがあるとき）でも `Esc` で消え、フォーカスはプロンプト欄へ戻る**。矢印キー単独は、プロンプト欄の本来の動き（カーソル移動）を奪わない |
+| アクセシビリティ（W8） | バーは `role="group"` と `aria-label="選んだ語のウェイト"`。注は `role="status"`（スクリーンリーダーに伝える領域。**バーが現れる前から DOM にあり、中身だけが変わる**ようにする。現れると同時に作った領域は、読み上げられないことがある）。ボタンは `aria-describedby` で注に結ぶ。タッチの的は高さ 32 以上（W3）、WCAG 2.5.8 の 24 を超える。ダーク・ライトとも `tokens.css` のトークンだけで、`prefers-reduced-motion` で変わる動きは無い（動かさないため） |
+
+**実装との差分（2026-11-06 時点。直すのは #1094・#1095。#1046 では実装を変えない）**: 上の表に対し、`mam-prompt-weight.ts`（`BUTTON` の定数とバーの描画）は次の点で違う。
+
+| # | 決まり | いまの実装 | 直し方 |
+|---|--------|-----------|--------|
+| 1 | W3: 高さ 32 以上（`min-h-8`） | ボタンは `px-2 py-1 text-xs` で、高さは文字の高さ＋余白まで（12px × 行間 1.6 + 8 + 枠 2 ≒ 29px）。`min-h-8` が無い | `BUTTON` に `min-h-8` を足す |
+| 2 | W3 / M1: `motion-reduce:transition-none` | `transition-colors` だけで、`prefers-reduced-motion` で止めない | `BUTTON` に `motion-reduce:transition-none` を足す |
+| 3 | W3 / M4: `data-ripple` | 付いていない（ほかのボタンは押すと波紋が出る） | ボタンに `data-ripple` を足す（`ripple.ts` は `:disabled, [aria-disabled="true"]` には波紋を出さないので、押せないボタンでも動きは出ない） |
+| 4 | W2 / T5: 数値は `font-mono tabular-nums` | `<output>` は `tabular-nums` だけで、`font-mono` が無い | `<output>` に `font-mono` を足す |
+| 5 | W7: バーの中の `Esc` | `Esc` を受けるのは区画の `keydown` のうちプロンプト欄が対象のものだけ（`onKey` の `promptBox(event.target)`）。ボタンにフォーカスがあると、`Esc` で消えない | `onKey` の対象にバーの中を加え、消したあとフォーカスを直前のプロンプト欄へ戻す |
+| 6 | W8: 注の `role="status"` | 領域（`gt-weight-note`）はバーと一緒に描かれるため、バーが現れた時点で中身がすでにある（読み上げの対象になりにくい） | 領域だけは常に DOM に置き（`hidden` のバーの中に空で持つ）、中身だけを更新する |
+
+差分は 2 件の Issue に分けて起票した: 見た目（1〜4）は #1094、操作・アクセシビリティ（5・6）は #1095（#1046 の受け入れ条件「差分が洗い出されている」を満たす）。`mam-weight-note`（`text-xs text-warning`・`role="status"`）と `mam-weight-help` は、この表のとおりで差分は無い。
+
 ## 2. `atoms.Icon`
 
 - 署名の案: `templ Icon(name IconName, class string)`。`IconName` は文字列型の定数（綴りの間違いはコンパイルで落ちる）。未知の名前は描かない。
@@ -266,6 +294,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.18 | 2026-11-03 | §4 に `modal.OpenLinkAttrs`（リンク版の開く属性）と `data-modal-wide`（本文が広いダイアログを求める）を足した | Issue #1004（生成テストの結果の詳細を、一覧のタイルからモーダルで開く） |
 | 0.19 | 2026-11-03 | §5 の `SettingsCard` に、リスクの印（`Card.Marks`）・`Card.Class`・折り返し、長い説明は「詳細」のモーダルへ置く決まりを足した。§9.2 の `Card.Help` の行を、ChatGPT のカードが「?」をやめたことに合わせた | Issue #1005 |
 | 0.20 | 2026-11-06 | §1「部品・オーバーレイ」の表に、独自ウィジェット（Lit）の案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) への案内の行を足した | Issues #1043・#1044・#1045 |
+| 0.21 | 2026-11-06 | §1 に「プロンプトの重み調整（`mam-prompt-weight`）」を足した（面・文字・ボタン・出る・消える・状態の見せ方・操作・キーボード・アクセシビリティの 8 項目 W1〜W8）。動きは gentest-tiers.md §4 が決めたままで、ここは描き方だけ。実装との差分 6 件を表にし、#1094・#1095 に分けた（修正は別 Issue） | Issue #1046。`mam-prompt-weight` の見た目・操作が案件ガイドに載っていなかった |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

@@ -104,6 +104,8 @@
 
 **WebKit（macOS の WKWebView）には、塗りの部分を指す疑似要素が無い**ので、レールは `linear-gradient(to right, 塗り var(--stop), 残り var(--stop))` で描く。`--fill`（0〜1）は値から `static/src/components/slider/slider.ts` が書く（読み込み・HTMX の差し替え・`input` のたび）。Lit が描くスライダーは `sliderStyle()`（`slider-model.ts`）で `style` に書く。`appearance: none` でブラウザの標準の見た目に頼らないので、Chromium（Windows の WebView2）と WebKit で同じ形になる。値・範囲・刻み・矢印キー・ドラッグは `<input type=range>` のままで、変えない。値の表示は各画面の `<output>`（スライダーの横か上）が持つ。
 
+- **プロンプトの重み調整（`mam-prompt-weight`・`mam-weight-note`。Issue #1046）**: バーの色は上の表の既存のクラスだけ（面 `bg-surface`・枠 `border-border`・文字 `text-ink` / `text-mute`・押せる所のホバー `hover:bg-accent-soft`・モデルの注 `text-warning`）。新しいクラスを足さない。用途ごとの決まり（W1〜W8）は [shared-ui-parts.md](shared-ui-parts.md) §1「プロンプトの重み調整」。
+
 ## 5. #865・#866 の UI もこの表に従う
 
 #865（モデルマネージャーのモデルのカード。`organisms/modelmgr/catalog.templ`・`settingsui.Card`）と #866（「?」ヘルプ。`molecules/help`・ポップオーバーのパネル・`atoms.IconHelp`・`SettingsSection` のヘルプ）で足した UI は、この表に従う。カードの面は `bg-surface border-border`、状態は `Badge`、同意の注意は `text-warning`、「?」ボタンは `border-border text-ink`・ホバー `hover:border-mute`・フォーカス輪 `focus-visible:focus-ring`。**これから足す画面・部品も同じ**（表に無い色が要るなら §1 の方針に従って表を変える）。
@@ -118,4 +120,4 @@
 | 1.3 | 2026-11-02 | §4.1 を足した（スライダーの色・状態。`static/src/css/slider.css`）。§1 の `app.css` の書き方に `slider.css` の import を足した。新しい色相・シェードは足していない（表の indigo・neutral・white だけ） | Issue #955 |
 | 2.0 | 2026-11-05 | 色を Ousiass 共通デザインガイド（brand-guide `622ea73`）のトークンへ移した。§1 を「トークンだけ。`static/src/css/tokens.css` が値を書く唯一の場所」に改め、§3・§4 の許可クラスを `bg-bone` `text-ink` `border-border` などへ、フォーカスの輪を `focus-ring` へ、§4.1 のスライダーをトークンの変数へ置き換えた。ライト / ダークの切り替え（`data-theme`）を足した。テストの許可表・入力欄の枠のコントラスト検査も同じ版で改めた | Issue #1036 |
 | 2.1 | 2026-11-06 | §3 の「ホバー面」に `peer-not-checked:hover:border-mute` を足した（選ぶカードのホバーの枠は、選んでいないカードだけ。`hover:border-mute` は `peer-checked:border-accent` より後に描かれて、選んだカードの枠をホバーで灰色に戻していた）。新しい色は足していない | Issue #1061 |
-
+| 2.2 | 2026-11-06 | §5 に、プロンプトの重み調整（`mam-prompt-weight`）が既存のクラスだけで描かれることと、決まりの置き場所（shared-ui-parts.md §1）を足した。許可クラスの表（§3・§4）は変えていない | Issue #1046 |
