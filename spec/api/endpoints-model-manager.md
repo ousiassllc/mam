@@ -45,6 +45,7 @@
 | POST | `/model-manager/runtimes/:id/start` | 起動。必須の重みが足りなければ 409「…の重みが不足しています（<名前>）。「重みを導入」を実行してください」（起動しない） |
 | POST | `/model-manager/runtimes/:id/stop` | 停止 |
 | PUT | `/model-manager/runtimes/:id/autostart` | 自動起動。フォーム `on`（`1` / `0`） |
+| GET | `/model-manager/runtimes/:id/models` | 実行環境のモデルの一覧を、フィルターバーの条件（クエリ。`modelfilter.Condition` のキー。`languages` も）で絞って返す（`#mm-runtime-model-list-<id>` の差し替えと、漏斗の件数の OOB）。押していたラジオ `model` と同意のチェック `accept_<モデル>` は、クエリで受けて描き直した一覧に残す（同意は表示した版と同じときだけ。代わりにチェックはしない）。条件は実行環境ごとに Cookie（`mam_mf_runtime-models-<id>`）へ覚える。条件が不正: 200（理由を出し、始めの状態に戻す）、環境が無い: 404 |
 | PUT | `/model-manager/runtimes/:id/model` | 複数のモデルを持つ環境（Irodori-TTS）のモデルの選択。フォーム `model`、同意が要るモデルは `accept_<モデルの id>`（値は表示したテキストの版）。応答はモデルの選択のフォーム（選んだ・拒否の理由つき）。同意が無い・版が違う: 409、知らないモデル: 422、環境が無い: 404 |
 | DELETE | `/model-manager/runtimes/:id` | 環境と取得した重みの削除（設定は残る）。導入中は 409。`hx-confirm` つき |
 | GET | `/model-manager/nodes` | 追加ノードの区画全体（`#mm-nodes`。Issue #976）。区画の更新ボタンが取り直す |
@@ -130,3 +131,4 @@
 | 1.11 | 2026-11-03 | `PUT /model-manager/runtimes/:id/model`（モデルの選択と Gemma Terms の同意）を足した。ランタイムのカードの詳細モーダルに「使うモデルの選択」を出す | Issue #1015。意味は [../architecture/model-manager/local-runtime.md §14.5・§14.6](../architecture/model-manager/local-runtime.md) |
 | 1.12 | 2026-11-04 | 区画「顔チェック用モデル」のルート（`GET /model-manager/face-models`・`POST …/install`・`GET …/progress`・`DELETE /model-manager/face-models`）を足した。意味は [../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md) §5.4 | Issue #1026 |
 | 1.13 | 2026-11-06 | 試し生成に英訳のスイッチは付けないと判断し、理由とテストを §3 の「試し生成」に書いた（動作は今のまま。`startTrial` が `TranslateToEnglish: false` を明示する） | Issue #1068 |
+| 1.14 | 2026-11-06 | `GET /model-manager/runtimes/:id/models`（実行環境のモデルの一覧のフィルター。Issue #1015・#1011）を足した | Issue #1015 |

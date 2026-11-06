@@ -30,6 +30,8 @@ type Service struct {
 // GPU, whether it is the one in force, and whether its license still has to be accepted.
 type View struct {
 	choice.Choice
+	// RuntimeID is the runtime the model belongs to (the list of every runtime's models says which each one is of).
+	RuntimeID string `json:"runtime_id"`
 	// Active: the runtime runs with this model.
 	Active bool `json:"active"`
 	// SizeBytes is the weights to fetch for the model (its own files and what every model shares).
@@ -60,7 +62,7 @@ func (s Service) Views(ctx context.Context, runtimeID string) ([]View, error) {
 	out := make([]View, 0, len(set.Choices))
 	for _, c := range set.Choices {
 		lic, _ := set.License(c.License)
-		v := View{Choice: c, Active: c.ID == chosen, SizeBytes: sizeOf(set, c.ID), LicenseInfo: lic}
+		v := View{Choice: c, RuntimeID: runtimeID, Active: c.ID == chosen, SizeBytes: sizeOf(set, c.ID), LicenseInfo: lic}
 		if c.Consent != nil {
 			v.Accepted = st.Consents[c.License].Version == c.Consent.Version
 			v.ConsentNeeded = !v.Accepted

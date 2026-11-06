@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/weightlist"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -68,6 +69,8 @@ type Runtime struct {
 	// Models are the models of a runtime that has several (empty for one that has not); ModelsMessage is the answer to the last choice.
 	Models        []Model
 	ModelsMessage view.Message
+	// ModelFilter is the filter of the list of models (#1011; the models in Models are the ones that pass it): its ID is empty when the list has no filter.
+	ModelFilter modelpick.Filter
 	// Commercial is the strictest answer of the weights and dependencies: the icon of the card (the list is in its detail).
 	Commercial commercial.View
 }

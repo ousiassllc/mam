@@ -566,9 +566,25 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 - `catalog/choice`（スキーマの検証）、`modelmgr/runtime/choicetest`（選択中のモデルの重みだけを数え・取得すること、起動の環境変数）、`service/runtimechoices`（同意の流れ。版が違う・無い・知らないモデルは何も記録しない）、`mcp/tools/runtimemodels`、`web/handler/modelmgr/runtimes`（モデルの選択の画面）。
 - 実物の Windows ＋ NVIDIA での導入・起動・合成は、この開発環境（Linux・GPU 無し）では確かめられない（§14.9）。
 
-### 14.8 #1011 との関係
+### 14.8 #1011 との関係（フィルター）
 
-モデル一覧の絞り込み（パラメーター数・成人向け・入力・言語など。Issue #1011）は、別の作業で `catalog.go` の `Model` に項目を足している。この節の `choice.Choice` には、そのフィルターが読む `kind`・`languages` だけを持たせた。**フィルター用の項目は #1011 の作業と統合時に合わせる**（`Model` に足された項目の名前・値の語彙に、`Choice` の項目を合わせる。統合の作業で調整する）。
+モデルの絞り込み（Issue #1011。[model-filter.md](model-filter.md)）に、実行環境のモデル（`choice.Choice`）を載せた。**フィルターの語彙は #1011 のものに合わせ、`Choice` の `kind` は変えない**: `runtimechoices.View.Item()` が `Choice` を `modelfilter.Item` にする。
+
+| `Item` の項目 | 値 |
+|---|---|
+| `Kinds` | `kind: tts` は `audio`（「音声」）、`kind: llm` は `llm` |
+| `Languages` | `Choice.Languages`（ISO 639-1。Irodori-TTS の 6 モデルはすべて `ja`。llama.cpp の 8 モデルは `ja`・`en`） |
+| `Adult`・`Uncensored` | `Choice.Uncensored`（非検閲は成人向けでもある） |
+| `VRAMMinGB`・`Commercial` | `Choice.VRAMMinGB`・ライセンスの `commercial` |
+| `Origin`・`Provider` | `local`・`local`（この PC で動く） |
+| `Installed`・`Available` | どちらも `true`（モデルはどれでも選べる。重みは選んだあとに取得する。使用中でないモデルの重みは追跡しないので、「導入済み」では絞らない） |
+| `Tags` | `kind` とライセンス名（テキスト検索が読む） |
+
+#1011 の `Condition` には、このために **`languages`**（音声モデルの言語。どれか。ISO 639-1 の 2 字。言語を持たないモデル＝画像・動画は入らない）を足した（[model-filter.md §2](model-filter.md)）。`kinds`（`audio`・`llm`）は #1011 で定義済みの語。`runtimechoices.Where(views, cond)` が絞る。
+
+- **MCP**: `list_local_runtime_models` は `runtime_id` を**省略可**にし、`Condition` の引数（`kinds`・`languages`・`uncensored`・`vram_fit`・`commercial`・`q` ほか）を取る。省略すると、モデルを持つすべての実行環境のモデルを返す（各モデルに `runtime_id`）。**日本語の声**は `kinds=["audio"]`・`languages=["ja"]`。`commercial` を省くと、設定「商用OKのモデルだけを使う」に従う（`list_model_catalog` と同じ。適用した値は `commercial_filter`）。不正な語は `validation`（キー名つき）。
+- **画面**: 実行環境のカードの詳細の「使うモデルの選択」に、モデルマネージャーの一覧と同じフィルターバー（検索・漏斗・条件のチップ・件数。`modelpick`）を付けた。`GET /model-manager/runtimes/:id/models`（クエリは `Condition` のキー）が、条件に合うモデルの一覧と漏斗の件数（OOB）を返す。条件は実行環境ごとに覚える（Cookie `mam_mf_runtime-models-<id>`）。パネルに出すのは、その実行環境のモデルを見分ける項目だけ: VRAM（16GB で動く）・商用利用は常に、**種類・言語は、実行環境のモデルの間で違うときだけ**（Irodori-TTS の 6 モデルはすべて日本語の声なので、その一覧に「音声」「日本語」の欄を出しても何も絞れない。実行環境をまたぐ絞り込みは MCP）、非検閲は 1 つでも持つとき。フィルターで一覧を描き直しても、ユーザーが押していたラジオと、チェックした同意（`accept_<モデル>`。表示した版と同じときだけ）は残る（同意を代わりにチェックすることはしない）。絞り込みで一覧に出ないモデルは、フォームにも載らないので選べない。設定「商用OKのモデルだけを使う」がオンのときは、他の一覧と同じく商用 OK でないモデル（Gemma Terms の Large 系）は始めの状態では出ず、チップで条件が分かる（「すべてクリア」で全部出る）。
+- テスト: `modelfilter`（`languages` の一致・クエリ・JSON・不正な語）、`runtimechoices`（`Item`・`Where`）、`web/handler/modelmgr/runtimes`（バー・パネルの項目・テキスト絞り込みとチップ・不正な条件・ラジオと同意の維持）、`web/molecules/modelpick`（言語の欄とチップ）、`mcp/tools/runtimemodels`（実行環境をまたぐ絞り込み・不正な語）。
 
 ### 14.9 未確認
 

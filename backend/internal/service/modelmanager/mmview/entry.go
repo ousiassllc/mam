@@ -84,7 +84,7 @@ func (e Entry) Item() modelfilter.Item {
 	it := modelfilter.Item{
 		ID: e.ID, Name: e.Name, Inputs: e.Inputs, Adult: e.ContentRating == catalog.RatingAdult, Uncensored: e.Traits.Uncensored, ParamsB: e.Traits.ParamsB,
 		VRAMMinGB: e.VRAM.MinGB, Commercial: e.License.Commercial, Installed: e.State == modelmanager.ModelInstalled, Origin: modelfilter.OriginLocal, Provider: "local",
-		Audio: e.Audio, Speed: e.Traits.Speed, Quality: e.Traits.Quality, Tags: append([]string{string(e.Kind), string(e.Tier)}, e.TriggerWords...),
+		Audio: e.Audio, Languages: e.Traits.Languages, Speed: e.Traits.Speed, Quality: e.Traits.Quality, Tags: append([]string{string(e.Kind), string(e.Tier)}, e.TriggerWords...),
 		Available: e.Available, Reason: e.Message,
 	}
 	switch e.Kind {
