@@ -25,6 +25,7 @@ import { installModelPick } from './components/model-pick/model-pick';
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
 import { initGentestAdvanced } from './components/gentest/advanced';
+import { initGentestGptImage } from './components/gentest-gpt/gpt-image';
 import { initGentestRefine } from './components/gentest-tiers/refine';
 import { initGentestEasy } from './components/gentest-tiers/easy';
 import { initGentestExposed } from './components/gentest-tiers/exposed';
@@ -109,6 +110,7 @@ installCopy();
 initGentestMatch();
 // The detailed settings of the generation test (seed, steps, cfg, sampler, scheduler): shown while a ticked model takes them.
 initGentestAdvanced();
+initGentestGptImage();
 initGentestRefine();
 initGentestEasy();
 initGentestExposed();

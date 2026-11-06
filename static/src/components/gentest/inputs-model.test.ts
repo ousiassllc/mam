@@ -17,6 +17,11 @@ describe('the rules of the input images of the generation test', () => {
     expect(unionRoles([['style', 'reference'], ['reference']])).toEqual(['reference', 'style']);
     expect(unionRoles([['edit'], ['face', 'reference']])).toEqual(['reference', 'face', 'edit']);
     expect(unionRoles([['pose', 'edit'], ['reference']])).toEqual(['reference', 'edit', 'pose']);
+    expect(unionRoles([['markup', 'reference'], ['edit']])).toEqual(['reference', 'edit', 'markup']);
+    expect(
+      unionRoles([['reference'], ['edit']]),
+      'markup is offered only to a model that lists it (#1096)',
+    ).not.toContain('markup');
     expect(unionRoles([[], []])).toEqual([]);
     expect(unionRoles([])).toEqual([]);
   });

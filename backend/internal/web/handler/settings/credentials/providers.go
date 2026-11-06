@@ -13,7 +13,7 @@ type info struct {
 // providerInfo is the purpose of each key (spec/architecture/model-adapters.md) by provider ID.
 var providerInfo = map[string]info{
 	"anthropic":  {"テキスト生成（Claude。Agent の LLM）", "https://platform.claude.com/settings/keys"},
-	"openai":     {"テキスト生成（GPT-5 系）と画像生成（GPT Image 2）", ""},
+	"openai":     {"テキスト生成（GPT-5 系）と画像生成（GPT Image 2.6 Flare・Sunburst、GPT Image 2）", ""},
 	"google":     {"テキスト生成（Gemini）・画像生成（Nano Banana）・動画生成（Gemini Omni Flash）", "https://aistudio.google.com/apikey"},
 	"flux":       {"画像生成（FLUX.2）", "https://dashboard.bfl.ai"},
 	"kling":      {"動画生成（Kling 3.0。キーは ACCESS_KEY:SECRET_KEY の形。Kling 4.0 は次の「Kling 4.0」に API キーを入れる）", ""},

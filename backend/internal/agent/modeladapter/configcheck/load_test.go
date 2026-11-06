@@ -5,12 +5,14 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -82,7 +84,44 @@ func TestConfigRejectsAQualityThatIsNotAProfile(t *testing.T) {
 	mc := cfg.Models[domain.ModelFlux2]
 	mc.Quality = "high"
 	cfg.Models[domain.ModelFlux2] = mc
-	assert.ErrorContains(t, configcheck.Validate(cfg), "only gpt-image-2 has one")
+	assert.ErrorContains(t, configcheck.Validate(cfg), "only gpt-image-2, gpt-image-2.6-flare, gpt-image-2.6-sunburst have one")
+}
+
+// GPT Image 2.6 takes the quality profile like GPT Image 2, and routes may name any of the three models, by API key or subscription.
+func TestConfigAcceptsGPTImage26AndItsSubscriptionModels(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	for _, m := range []domain.ModelName{domain.ModelGPTImage26Flare, domain.ModelGPTImage26Sunburst} {
+		mc := cfg.Models[m]
+		mc.Quality = "xhigh" // OpenAI's image generation guide lists xhigh and max for 2.6
+		cfg.Models[m] = mc
+	}
+	for _, m := range []domain.ModelName{chatgptid.Flare, chatgptid.Sunburst, domain.ModelGPTImage26Sunburst} {
+		cfg.Images[modeladapter.PurposeNewReference] = modeladapter.ImageRoute{
+			Primary: modeladapter.ImageTarget{Model: m}, Fallback: modeladapter.ImageTarget{Model: domain.ModelGPTImage26Flare},
+		}
+		assert.NoError(t, configcheck.Validate(cfg), m)
+	}
+	sub := cfg.Models[chatgptid.Flare]
+	sub.Quality = "high"
+	cfg.Models[chatgptid.Flare] = sub
+	assert.ErrorContains(t, configcheck.Validate(cfg), "quality", "the subscription path sends none")
+}
+
+// xhigh and max are offered for GPT Image 2.6 only: OpenAI lists low / medium / high for gpt-image-2.
+func TestQualityXHighAndMaxAreForGPTImage26Only(t *testing.T) {
+	for _, q := range []string{"xhigh", "max"} {
+		cfg := modeladapter.DefaultConfig()
+		mc := cfg.Models[domain.ModelGPTImage2]
+		mc.Quality = q
+		cfg.Models[domain.ModelGPTImage2] = mc
+		assert.ErrorContains(t, configcheck.Validate(cfg), "quality", q)
+
+		mc = cfg.Models[domain.ModelGPTImage26Flare]
+		mc.Quality = q
+		cfg.Models[domain.ModelGPTImage26Flare] = mc
+		cfg.Models[domain.ModelGPTImage2] = modeladapter.DefaultConfig().Models[domain.ModelGPTImage2]
+		assert.NoError(t, configcheck.Validate(cfg), q)
+	}
 }
 
 func TestLoadWarnsWhenGPTImage2HasNoKnownPrice(t *testing.T) {
@@ -107,11 +146,36 @@ func TestLoadWarnsWhenGPTImage2HasNoKnownPrice(t *testing.T) {
 
 			require.NoError(t, err, "a warning, not a refusal")
 			if tc.warn {
-				assert.Contains(t, logs.String(), "level=WARN")
-				assert.Contains(t, logs.String(), "cost_per_image_usd")
+				assert.Contains(t, logs.String(), "models.gpt-image-2.model is not gpt-image-2")
 				return
 			}
-			assert.Empty(t, logs.String())
+			assert.NotContains(t, logs.String(), "models.gpt-image-2.model is not gpt-image-2")
+		})
+	}
+}
+
+// OpenAI publishes no price per image for GPT Image 2.6, so a routed 2.6 model without cost_per_image_usd (the default Flare included)
+// is said to be unpriced; a price that the user sets, or a model no route uses, is not.
+func TestLoadWarnsWhenARoutedGPTImage26ModelHasNoPrice(t *testing.T) {
+	for name, tc := range map[string]struct {
+		models string
+		warn   bool
+	}{
+		"the default routes Flare": {`{}`, true},
+		"Flare with a price":       {`{"models":{"gpt-image-2.6-flare":{"cost_per_image_usd":0.07}}}`, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var logs bytes.Buffer
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+			t.Cleanup(func() { slog.SetDefault(previous) })
+			path := filepath.Join(t.TempDir(), "models.json")
+			require.NoError(t, os.WriteFile(path, []byte(tc.models), 0o600))
+
+			_, err := configcheck.Load(path)
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.warn, strings.Contains(logs.String(), "a GPT Image 2.6 model is routed and has no cost_per_image_usd"))
 		})
 	}
 }

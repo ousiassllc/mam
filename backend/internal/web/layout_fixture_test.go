@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
@@ -19,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
@@ -125,7 +127,14 @@ func gentestRefsCompose() gentest.Compose {
 		{ID: "edit", Label: "Qwen Image Edit", Source: "ローカル", Price: "無料（ローカル）", Selected: true, Media: "image", RefMode: "edit", RefRoles: []string{"reference", "face", "style", "edit", "pose"}, CanLoRA: true},
 		{ID: "i2i", Label: "SDXL", Source: "ローカル", Price: "無料（ローカル）", Media: "image", RefMode: "img2img", RefRoles: []string{"reference"}},
 		{ID: "plain", Label: "FLUX.1 schnell", Source: "ローカル", Price: "無料（ローカル）", Media: "image"},
+		// #1096: GPT Image 2.6 through the API key takes complexity, GIF / SVG and the markup role; its ChatGPT-subscription twin is refused them.
+		{ID: "gpt", Label: "GPT Image 2.6 Flare", Source: "クラウド", Price: "単価なし（見積りの合計に入りません）", Media: "image", RefMode: "edit", RefRoles: []string{"reference", "edit", "markup"}, GPTImage: true},
+		{ID: "gpt-sub", Label: "GPT Image 2.6 Flare（ChatGPT）", Source: "ChatGPT サブスク", Price: "単価なし（見積りの合計に入りません）", Media: "image", RefMode: "edit", RefRoles: []string{"reference", "edit"}, GPTRefusal: gptimage.SubscriptionRefusal},
 	})
+	c.GPT = gentestgpt.Data{
+		Offered: true, Complexities: gptimage.Complexities(), Formats: []string{gptimage.FormatGIF, gptimage.FormatSVG},
+		MinFrames: gptimage.MinFrameCount, MaxFrames: gptimage.MaxFrameCount, MinMS: gptimage.MinFrameDurationMS, MaxMS: gptimage.MaxFrameDurationMS,
+	}
 	c.MaxImageBytes, c.LoRAs, c.Poses = 20<<20, []string{"face-a.safetensors", "style-b.safetensors"}, true // #986: the pose picker is offered
 	strength := func(v float64) *float64 { return &v }
 	c.Picked = []gentest.Ref{

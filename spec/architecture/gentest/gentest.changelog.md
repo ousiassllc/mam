@@ -58,3 +58,5 @@
 | 1.51 | 2026-11-06 | §3.1: 英訳の見積りを、LLM の単価表（`llm.PriceOf`）による値付けにして合計に入れた（単価が分からないターゲットは従来どおり `unknown`・警告 `no_price`。英訳専用の役割は足さない。Issue #1069）。リクエストの取り消し・期限切れは 502 `upstream` にせず `ctx` のエラーをそのまま返す。Common の文字だけの文（`ー` U+30FC など）は訳さない境界を明記（Issue #1072） |
 | 1.52 | 2026-11-06 | §6: VNCCS PoseStudio のルート ③ の LoRA の版を、カタログが取得する V1.1（`VNCCS_QI2_PoseStudioV1.1.safetensors`）に直した（「V2」と書いていた） | Issue #985 |
 | 1.53 | 2026-11-06 | §3.5: マスク部品の元画像を `<img>` から、キャンバスと同じ大きさ（長辺 2048 まで）に縮めた写しのキャンバスに替えた。ヘッドレス Chrome での 8192 × 8192 の実測（タブの増え 約 400 MiB → 約 120 MiB）を書き、Safari・実機は未実施と残した | Issue #999 |
+| 1.54 | 2026-11-06 | §2: 選べる画像モデルに GPT Image 2.6 Flare / Sunburst（API キーの `gpt-image-2.6-flare` / `gpt-image-2.6-sunburst` と、サブスクの `…:chatgpt-subscription`）を足した。1 枚の見積は価格不明（`model-adapters.md` §9.5） | Issue #1096 |
+| 1.55 | 2026-11-06 |§2 の後に「GPT Image 2.6 の設定」を足した（`gpt_image`・役割 `markup`・GIF / SVG の結果の扱い・見積りは不明のまま）|Issue #1096|

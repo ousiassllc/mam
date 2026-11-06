@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
@@ -36,6 +37,10 @@ func ActionsOf(d record.ResultDetail, inpaintURL, redrawFrom string, boxShown bo
 	default:
 		a.SimilarURL = againURL(d.ID, false)
 		a.ReplayURL = againURL(d.ID, true)
+	}
+	if gptform.Animated(d.MimeType) { // a GIF or an SVG is no picture for the pixel tools: say so instead of offering buttons that are refused (#1096)
+		a.InpaintURL, a.Upscale, a.Note = "", false, gptform.NoPixelToolsNote
+		return a
 	}
 	face := url.Values{gentesttier.FieldTier: {gentesttier.TierEasy}, gentesttier.FieldIntent: {"face"}, "ref": {refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()}, "ref_role": {gentest.RoleFace}}
 	a.FaceURL = paths.GenerationTest() + "?" + face.Encode()
@@ -111,7 +116,11 @@ func UsedOf(d record.ResultDetail, takesSampling bool) gentestresult.Used {
 	for _, k := range slices.Sorted(maps.Keys(d.Exposed)) {
 		rows = append(rows, gentestresult.Line{Key: "画面に出した値 " + k, Value: fmt.Sprint(d.Exposed[k])})
 	}
-	return gentestresult.Used{Rows: append(rows, gentestresult.Line{Key: "シード", Value: seed}, gentestresult.Line{Key: "LoRA", Value: lora}, gentestresult.Line{Key: "サイズ", Value: SizeText(d.AspectRatio)})}
+	rows = append(rows, gentestresult.Line{Key: "シード", Value: seed}, gentestresult.Line{Key: "LoRA", Value: lora}, gentestresult.Line{Key: "サイズ", Value: SizeText(d.AspectRatio)})
+	for _, l := range gptform.Lines(d.ResultView) {
+		rows = append(rows, gentestresult.Line{Key: l.Key, Value: l.Value})
+	}
+	return gentestresult.Used{Rows: rows}
 }
 
 // SizeText is the size in the words of the buttons: 縦 / 横 / 正方形 with the aspect ratio.

@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
@@ -107,6 +108,10 @@ type Info struct {
 	// Inputs are what the model takes as input (traits.Input: t2i, i2i, t2v, i2v, first_frame, reference_face...), derived from the same capabilities as
 	// reference_mode, reference_roles and video, so the two never disagree.
 	Inputs []traits.Input `json:"inputs" jsonschema:"入力の種類（t2i / i2i / inpaint / edit / t2v / i2v / first_frame / last_frame / reference_whole / reference_face / reference_style / reference_pose / reference_control）。参照の使い方・動画の能力と同じ元から導く"`
+	// GPTImage is what GPT Image 2.6 Flare and Sunburst (API key) take beyond the other image models: complexity, GIF / SVG output and markup edits; nil for any
+	// other model. GPTImageRefusal is why a model of the family does not (the ChatGPT-subscription path); empty otherwise.
+	GPTImage        *gptimage.Caps `json:"gpt_image,omitempty" jsonschema:"GPT Image 2.6（API キー経由）だけ: 複雑さ・GIF / SVG 出力・マークアップ編集に対応する範囲。リクエストの gpt_image と markup はこれを持つモデルだけに使える"`
+	GPTImageRefusal string         `json:"gpt_image_unsupported,omitempty" jsonschema:"GPT Image 2.6 のサブスク経由のモデルだけ: gpt_image と markup が使えない理由"`
 	// Catalog is what the model manager's catalog says of a model it installed (adult, the traits, the VRAM guideline); nil for any other model.
 	Catalog *CatalogTraits `json:"catalog,omitempty" jsonschema:"モデルマネージャーのカタログのモデルだけ。成人向けか・非検閲か・パラメータ数・速度と品質の目安・VRAM の目安"`
 }
@@ -247,12 +252,19 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 		}
 	}
 	if media == gentestrepo.MediaImage {
+		mi.GPTImage = gptimage.CapsOf(m)
+		if m == chatgptid.Flare || m == chatgptid.Sunburst {
+			mi.GPTImageRefusal = gptimage.SubscriptionRefusal
+		}
 		mi.AcceptsReferences = cfg.AcceptsImages(m)
 		mi.SupportsLoRA = SupportsLoRA(cfg, m)
 		if caps := ReferenceCapsOf(cfg, m); caps.Max > 0 {
 			mi.ReferenceMode, mi.MaxReferenceImages, mi.ReferenceRoles = string(caps.Mode), caps.Max, slices.Clone(caps.Roles)
 		} else if mi.AcceptsReferences {
 			mi.ReferenceRoles = []string{localcfg.RoleWhole} // a model whose references are not described: the whole picture
+			if mi.GPTImage != nil {
+				mi.ReferenceRoles = slices.Clone(caps.Roles) // GPT Image 2.6: the whole picture and the markup layer
+			}
 		}
 		mi.Inputs = inputsOf(mi)
 		return mi
@@ -271,7 +283,7 @@ func sourceOf(cfg modeladapter.Config, m domain.ModelName) string {
 	if _, ok := cfg.Workflows[string(m)]; ok {
 		return SourceWorkflow
 	}
-	if m == chatgptid.Model {
+	if chatgptid.Is(m) {
 		return SourceChatGPT
 	}
 	if _, _, ok := cfg.LocalModel(m); ok {

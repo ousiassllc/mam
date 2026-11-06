@@ -1,4 +1,5 @@
 import { expect, waitUntil } from '@open-wc/testing';
+import { setViewport } from '@web/test-runner-commands';
 import htmx from 'htmx.org';
 import { stubConfirm } from '../confirm/testkit';
 import '../../main';
@@ -151,6 +152,109 @@ describe('a tile of the history opens the detail of the result in the modal (#10
       modalBox().click();
       expect(count()).to.equal('1');
       expect(host.querySelector<HTMLInputElement>('[data-gt-pick="r0"] input')!.checked).to.equal(true);
+    });
+  });
+
+  // #1097: the detail is taller than the dialog, which scrolls (the dialog is the scroller). It was opened scrolled down, with the model, the state and the
+  // close button above the top edge: showModal() scrolls the autofocus block into view, and a closed dialog comes back at the place it was scrolled to.
+  // These tests draw the real markup with the real Tailwind CSS in a window that is low (a phone held sideways), and the answer is made long.
+  describe('the head of a long detail (#1097)', () => {
+    let stylesheet: HTMLLinkElement;
+    const padLong = (event: Event) => {
+      const detail = (event as CustomEvent<{ serverResponse: string }>).detail;
+      const rows = Array.from(
+        { length: 30 },
+        (_, i) => `<p class="rounded-md border p-2 text-sm">行 ${i + 1}</p>`,
+      ).join('');
+      detail.serverResponse = detail.serverResponse.replace('</section>', `${rows}</section>`);
+    };
+    const inView = (el: Element) => {
+      const box = el.getBoundingClientRect();
+      const frame = dialog().getBoundingClientRect();
+      return box.top >= frame.top - 0.5 && box.bottom <= frame.bottom + 0.5;
+    };
+    const head = () => ({
+      title: dialog().querySelector<HTMLElement>('#mam-modal-title')!,
+      close: dialog().querySelector<HTMLElement>('[data-modal-close]')!,
+    });
+    const expectHeadInView = (when: string) => {
+      expect(dialog().scrollTop, `${when}: where the dialog is scrolled to`).to.equal(0);
+      expect(inView(head().title), `${when}: the title`).to.equal(true);
+      expect(inView(head().close), `${when}: the close button`).to.equal(true);
+    };
+
+    beforeEach(async () => {
+      await setViewport({ width: 1280, height: 400 });
+      stylesheet = document.createElement('link');
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = '/__tailwind.css';
+      await new Promise<void>((resolve, reject) => {
+        stylesheet.onload = () => resolve();
+        stylesheet.onerror = () => reject(new Error('the Tailwind CSS could not be built'));
+        document.head.append(stylesheet);
+      });
+      document.addEventListener('htmx:beforeSwap', padLong);
+    });
+    afterEach(async () => {
+      document.removeEventListener('htmx:beforeSwap', padLong);
+      stylesheet.remove();
+      await setViewport({ width: 800, height: 600 });
+    });
+
+    it('has the title and the close button in view right after it opens', async () => {
+      await show();
+      await open('r0');
+      expect(dialog().scrollHeight, 'the detail must be taller than the dialog for this test').to.be.greaterThan(
+        dialog().clientHeight + 200,
+      );
+      expectHeadInView('opened');
+    });
+
+    it('starts from the top again when the same dialog opens another result after it was scrolled', async () => {
+      await show();
+      await open('r0');
+      dialog().scrollTop = 500;
+      expect(dialog().scrollTop, 'the body scrolls').to.be.greaterThan(0);
+      // `close` is fired in a task of its own: wait for it, or it could empty the body of the next opening.
+      const closed = new Promise((resolve) => dialog().addEventListener('close', resolve, { once: true }));
+      dialog().close();
+      await closed;
+
+      await open('r1');
+      expectHeadInView('opened again');
+    });
+
+    it('starts from the top when a control of the open dialog asks for another opening', async () => {
+      await show();
+      await open('r0');
+      dialog().scrollTop = 500;
+
+      const next = document.createElement('a');
+      next.setAttribute('hx-get', '/generation-test/results/r2');
+      next.setAttribute('hx-target', '#mam-modal-body');
+      next.setAttribute('hx-swap', 'innerHTML');
+      next.setAttribute('data-modal-open', '');
+      dialog().querySelector('#mam-modal-body')!.append(next);
+      htmx.process(next);
+      const swapped = new Promise((resolve) => host.addEventListener('htmx:afterSettle', resolve, { once: true }));
+      next.click();
+      await swapped;
+      expectHeadInView('swapped in place');
+    });
+
+    it('keeps the title and the close button at the top while the body scrolls', async () => {
+      await show();
+      await open('r0');
+
+      dialog().scrollTop = 500;
+      expect(dialog().scrollTop, 'the long body scrolls').to.equal(500);
+      expect(inView(head().title), 'the title').to.equal(true);
+      expect(inView(head().close), 'the close button').to.equal(true);
+
+      dialog().scrollTop = dialog().scrollHeight;
+      expect(dialog().scrollTop, 'the end of the body is reachable').to.be.greaterThan(500);
+      expect(inView(head().title), 'the title at the end').to.equal(true);
+      expect(inView(head().close), 'the close button at the end').to.equal(true);
     });
   });
 });

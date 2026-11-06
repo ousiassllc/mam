@@ -190,10 +190,10 @@ func (f *fixture) storedFiles(t *testing.T) int {
 	return n
 }
 
-// pricedConfig is the default Model Adapter setting with a price for GPT Image 2, which has none by default
-// (model-adapters.md §9.2): the tests count the Cost Ledger rows that carry an estimated cost.
+// pricedConfig is the default Model Adapter setting with a price for GPT Image 2.6 Flare and GPT Image 2, which have none by default (§9.2): the tests count the Cost Ledger rows with an estimate.
 func pricedConfig() modeladapter.Config {
 	cfg := modeladapter.DefaultConfig()
 	cfg.Models[domain.ModelGPTImage2] = modeladapter.ModelConfig{Model: "gpt-image-2", CostPerImage: 0.05}
+	cfg.Models[domain.ModelGPTImage26Flare] = modeladapter.ModelConfig{Model: "gpt-image-2.6-flare", CostPerImage: 0.05}
 	return cfg
 }

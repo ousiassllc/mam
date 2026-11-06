@@ -19,4 +19,5 @@ const (
 	RoleEdit        = gentestrepo.RoleEdit
 	RoleMask        = gentestrepo.RoleMask
 	RolePose        = gentestrepo.RolePose
+	RoleMarkup      = gentestrepo.RoleMarkup
 )

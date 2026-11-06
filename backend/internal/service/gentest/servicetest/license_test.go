@@ -32,7 +32,10 @@ func TestEveryBuiltInModelHasItsCommercialUseLicense(t *testing.T) {
 // The entries of data/cloud.json are models of the adapter: a typo in an id would leave the real model without an answer (it would be
 // "unknown") and the entry unused.
 func TestEveryEntryOfTheCloudLicensesIsAModel(t *testing.T) {
-	known := map[string]bool{string(chatgptid.Model): true}
+	known := map[string]bool{}
+	for _, e := range chatgptid.Entries() {
+		known[string(e.Model)] = true
+	}
 	for _, m := range domain.ImageModels() {
 		known[string(m)] = true
 	}

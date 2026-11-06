@@ -64,10 +64,14 @@ func (s *Service) Estimate(ctx context.Context, r Request) (Estimate, error) {
 	if err != nil {
 		return Estimate{}, err
 	}
-	for _, ref := range est.Request.References { // an input that is gone is refused now, not after the confirmation
-		if _, err := s.ResolveInput(ctx, ref); err != nil {
+	sources := make([]Source, len(est.Request.References))
+	for i, ref := range est.Request.References { // an input that is gone is refused now, not after the confirmation
+		if sources[i], err = s.ResolveInput(ctx, ref); err != nil {
 			return Estimate{}, err
 		}
+	}
+	if err := checkMarkupFiles(est.Request, sources); err != nil { // a markup image the Image API would refuse is stopped here, with the reason
+		return Estimate{}, err
 	}
 	if est.Request.Mask != nil {
 		src, err := s.ResolveInput(ctx, *est.Request.Mask)

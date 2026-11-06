@@ -38,6 +38,8 @@ func modelCardOf(m ModelChoice) modelcard.Card {
 		"data-default-cfg":          strconv.FormatFloat(m.Use.CFGDefault, 'f', -1, 64),
 		"data-prompt-weight":        m.Weight,
 		"data-prompt-weight-title":  m.WeightTitle,
+		"data-gpt-image":            boolText(m.GPTImage),
+		"data-gpt-refusal":          m.GPTRefusal,
 	}
 	return card
 }

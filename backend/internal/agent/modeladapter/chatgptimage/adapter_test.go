@@ -16,6 +16,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
@@ -124,4 +126,79 @@ func TestSubscriptionImageModelHasADisplayName(t *testing.T) {
 	on = false
 	o.Publish(cfg)
 	assert.Equal(t, chatgptid.Label, modelreg.Label(string(chatgptid.Model)), "a batch made while it was on still names it after it is turned off")
+}
+
+// GPT Image 2.6 Flare and Sunburst reach ChatGPT through their own identifiers: each is listed with its label while the switch is on,
+// and each asks the Codex endpoint's image tool for its own model (never another one in its place).
+func TestSubscriptionGPTImage26ModelsAreListedAndAskTheirOwnModel(t *testing.T) {
+	want := map[domain.ModelName]struct{ label, api string }{
+		chatgptid.Flare:    {"GPT Image 2.6 Flare (ChatGPT サブスク)", "gpt-image-2.6-flare"},
+		chatgptid.Sunburst: {"GPT Image 2.6 Sunburst (ChatGPT サブスク)", "gpt-image-2.6-sunburst"},
+	}
+	for model, w := range want {
+		t.Run(string(model), func(t *testing.T) {
+			c := newCodex(t, func(w http.ResponseWriter, _ http.Flusher) {
+				data(w, imageDone("png"), `{"type":"response.completed"}`)
+			})
+			cfg := modeladapter.DefaultConfig()
+			cfg.Images[modeladapter.PurposeNewReference] = modeladapter.ImageRoute{
+				Primary: modeladapter.ImageTarget{Model: model}, Fallback: modeladapter.ImageTarget{Model: domain.ModelNanoBanana},
+			}
+			require.NoError(t, configcheck.Validate(cfg), "the identifier is a valid route target")
+			on := true
+			o := localbackends.Options{
+				StagingDir: t.TempDir(), ChatGPTImageEnabled: func() bool { return on },
+				ChatGPTImage: chatgptimage.New(&source{}, chatgptimage.Options{BaseURL: c.URL, Stall: time.Second}),
+			}
+			t.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
+			a := modeladapter.New(cfg, localbackends.Build(cfg, credentialtest.New(), o), modeladapter.WithSleep(func(context.Context, time.Duration) error { return nil }))
+			o.Publish(cfg)
+
+			info, ok := modelcatalog.Catalog{Adapter: a}.Model("image", string(model))
+			require.True(t, ok, "listed while the switch is on")
+			assert.Equal(t, w.label, info.Label)
+			assert.Equal(t, modelcatalog.BasisUnknown, info.Price.Basis, "the plan pays: no per-image price")
+			assert.True(t, info.AcceptsReferences)
+
+			out, err := a.GenerateImage(context.Background(), modeladapter.PurposeNewReference, modeladapter.ImageRequest{Prompt: "a fox"})
+			require.NoError(t, err)
+			assert.Equal(t, model, out.Model, "the ledger names the model that drew it")
+			assert.False(t, out.FellBack)
+			tool, _ := c.body["tools"].([]any)[0].(map[string]any)
+			assert.Equal(t, w.api, tool["model"], "the image model travels inside the tool")
+
+			on = false
+			o.Publish(cfg)
+			assert.NotContains(t, domain.ImageModels(), model, "hidden again while the switch is off")
+			assert.Equal(t, w.label, modelreg.Label(string(model)))
+		})
+	}
+}
+
+// Complexity, GIF / SVG output and markup are not documented by OpenAI for the unofficial Codex endpoint (gptimage.SubscriptionRefusal): the subscription
+// models refuse them with that reason before anything is sent, and never produce a plain PNG that looks as if they had been used.
+func TestSubscriptionModelsRefuseGPTImage26OptionsAndMarkup(t *testing.T) {
+	for _, model := range []domain.ModelName{chatgptid.Model, chatgptid.Flare, chatgptid.Sunburst} {
+		t.Run(string(model), func(t *testing.T) {
+			c := newCodex(t, func(w http.ResponseWriter, _ http.Flusher) { data(w, imageDone("png")) })
+			var fbHits atomic.Int32
+			a := subscriptionAdapter(t, c.URL, fallbackServer(t, &fbHits).URL, &source{})
+			t.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
+			for name, req := range map[string]modeladapter.ImageRequest{
+				"complexity": {Prompt: "p", GPT: gptimage.Options{Complexity: "low"}},
+				"gif":        {Prompt: "p", GPT: gptimage.Options{Format: gptimage.FormatGIF}},
+				"svg":        {Prompt: "p", GPT: gptimage.Options{Format: gptimage.FormatSVG}},
+				"markup": {
+					Prompt: "p", Inputs: []modeladapter.Input{{Data: []byte{1}, MimeType: "image/png"}}, Markup: &modeladapter.Input{Data: []byte{2}, MimeType: "image/png"},
+				},
+			} {
+				_, err := direct.Image(context.Background(), a, model, req)
+
+				require.ErrorIs(t, err, direct.ErrOptionsUnsupported, name)
+				assert.Contains(t, err.Error(), "Codex", name)
+			}
+			assert.Zero(t, c.n.Load(), "nothing is sent to chatgpt.com")
+			assert.Zero(t, fbHits.Load(), "and no other model draws in its place")
+		})
+	}
 }

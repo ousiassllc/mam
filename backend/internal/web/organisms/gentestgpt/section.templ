@@ -1,0 +1,62 @@
+package gentestgpt
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// Section is the "GPT Image 2.6 の設定": the complexity and the output format, and for a GIF its frames. The script (gentest/gpt-image.ts) shows it while a
+// ticked model takes the settings (or is refused them, with the reason under it) and disables the fields that are not shown, so that they post nothing. A
+// value that is given stays posted even when the ticked model cannot take it: the service refuses it, with the reason, and never leaves it out.
+templ Section(d Data) {
+	if d.Offered {
+		<fieldset class="flex flex-col gap-3 rounded-lg border border-border p-3 text-sm" hidden?={ !d.Shown } data-gt-gpt data-testid="gt-gpt">
+			<legend class="px-1 text-sm font-semibold text-ink">GPT Image 2.6 の設定</legend>
+			<div class="flex flex-col gap-3" hidden?={ !d.Fields } data-gt-gpt-fields>
+				<div class="flex flex-wrap items-end gap-3">
+					<label class="flex flex-col gap-1 text-xs text-mute" for="gt-gpt-complexity">
+						<span>複雑さ</span>
+						@atoms.Select(atoms.FieldMd, "max-w-64", templ.Attributes{"id": "gt-gpt-complexity", "name": FieldComplexity, "disabled": !d.Fields, "data-gt-gpt-control": "", "data-testid": "gt-gpt-complexity"}) {
+							<option value="" selected?={ d.Complexity == "" }>指定なし（OpenAI の既定: high）</option>
+							for _, c := range d.Complexities {
+								<option value={ c } selected?={ c == d.Complexity }>{ c }</option>
+							}
+						}
+					</label>
+					<label class="flex flex-col gap-1 text-xs text-mute" for="gt-gpt-format">
+						<span>出力形式</span>
+						@atoms.Select(atoms.FieldMd, "max-w-64", templ.Attributes{"id": "gt-gpt-format", "name": FieldFormat, "disabled": !d.Fields, "data-gt-gpt-control": "", "data-gt-gpt-format": "", "data-testid": "gt-gpt-format"}) {
+							<option value="" selected?={ d.Format == "" }>{ formatLabel("") }</option>
+							for _, f := range []string{FormatGIF, FormatSVG} {
+								if d.Offers(f) {
+									<option value={ f } selected?={ f == d.Format }>{ formatLabel(f) }</option>
+								}
+							}
+						}
+					</label>
+					<div class="flex flex-wrap items-end gap-3" hidden?={ !d.GIF() } data-gt-gpt-frames>
+						<label class="flex flex-col gap-1 text-xs text-mute" for="gt-gpt-frames">
+							<span>フレーム数（{ itoa(d.MinFrames) }〜{ itoa(d.MaxFrames) }）</span>
+							@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{
+								"id": "gt-gpt-frames", "name": FieldFrameCount, "type": "number", "inputmode": "numeric", "min": itoa(d.MinFrames), "max": itoa(d.MaxFrames), "step": "1",
+								"value": d.FrameCount, "placeholder": "9", "disabled": !d.Fields || !d.GIF(), "data-gt-gpt-control": "", "data-testid": "gt-gpt-frames",
+							})
+						</label>
+						<label class="flex flex-col gap-1 text-xs text-mute" for="gt-gpt-duration">
+							<span>フレームの長さ（ms, { itoa(d.MinMS) }〜{ itoa(d.MaxMS) }）</span>
+							@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
+								"id": "gt-gpt-duration", "name": FieldFrameDuration, "type": "number", "inputmode": "numeric", "min": itoa(d.MinMS), "max": itoa(d.MaxMS), "step": "10",
+								"value": d.FrameDuration, "placeholder": "200", "disabled": !d.Fields || !d.GIF(), "data-gt-gpt-control": "", "data-testid": "gt-gpt-duration",
+							})
+						</label>
+					</div>
+				</div>
+				<p class="text-xs text-mute" hidden?={ !d.GIF() } data-gt-gpt-hint="gif" data-testid="gt-gpt-gif-hint">{ GIFHint }</p>
+				<p class="text-xs text-mute" hidden?={ d.Format != FormatSVG } data-gt-gpt-hint="svg" data-testid="gt-gpt-svg-hint">{ SVGHint }</p>
+				<p class="text-xs text-mute" data-testid="gt-gpt-markup-hint">{ MarkupHint }</p>
+			</div>
+			<ul class="flex flex-col gap-1 text-sm text-warning" hidden?={ len(d.Notes) == 0 } role="status" data-gt-gpt-notes data-testid="gt-gpt-notes">
+				for _, n := range d.Notes {
+					<li class="break-words">{ n }</li>
+				}
+			</ul>
+		</fieldset>
+	}
+}

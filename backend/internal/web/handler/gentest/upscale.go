@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/upscale"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelpicker"
@@ -30,7 +31,7 @@ func (h Handlers) upscaleForm(ctx context.Context, d record.ResultDetail, errMsg
 		f.SourceURL = paths.GenerationTestPart("results", u.SourceResultID)
 		f.SourceText = fmt.Sprintf("%d 倍に大きくした結果です。元の結果を見る", u.Scale)
 	}
-	if d.Media != gentest.MediaImage || !d.HasFile {
+	if d.Media != gentest.MediaImage || !d.HasFile || gptform.Animated(d.MimeType) {
 		return f
 	}
 	f.Show = true

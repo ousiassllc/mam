@@ -6,14 +6,20 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 )
 
 // ReferenceCapsOf reports how an image model uses reference images: the mode, how many images and the roles of an image. The
 // zero value (Max 0) is a model that takes none and a cloud model, whose references are not described any further
-// (modeladapter.Config.AcceptsImages says whether it takes them at all). It agrees with AcceptsImages for a ComfyUI model.
+// (modeladapter.Config.AcceptsImages says whether it takes them at all). It agrees with AcceptsImages for a ComfyUI model. GPT Image 2.6 Flare and Sunburst
+// (API key) are cloud models that are described by their roles alone (Max 0): the whole picture, and the markup layer of an edit.
 func ReferenceCapsOf(cfg modeladapter.Config, m domain.ModelName) localcfg.ReferenceCaps {
+	if gptimage.TakesOptions(m) {
+		return localcfg.ReferenceCaps{Roles: []string{localcfg.RoleWhole, gentestrepo.RoleMarkup}}
+	}
 	if lm, _, ok := cfg.LocalModel(m); ok {
 		return lm.ReferenceCaps()
 	}

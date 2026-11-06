@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/exposedreq"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
@@ -93,6 +94,10 @@ type Request struct {
 	Exposed map[string]any `json:"exposed,omitempty"`
 	// Mask is the inpaint mask (white redraws, black keeps), in the same shape as a reference. Nil: not a partial redraw.
 	Mask *RefInput `json:"mask,omitempty"`
+	// GPTImage are the settings only GPT Image 2.6 Flare and Sunburst take (gptimage.Options: complexity, GIF / SVG output). A markup image is a reference with
+	// the role "markup" (a transparent PNG laid over the first other input image of an edit). A request that sets either needs every chosen model to take them
+	// (modelcatalog.Info.GPTImage), else it is refused with the reason: they are never dropped.
+	GPTImage gptimage.Options `json:"gpt_image,omitzero"`
 	// Denoise is the redraw strength (above 0 through 1). Nil uses each model's template default (modelcatalog.Info.DenoiseDefault).
 	Denoise *float64 `json:"denoise,omitempty"`
 	// TranslateToEnglish translates the prompts and the negative prompts that are not English with the Reasoning LLM before
@@ -163,7 +168,7 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 	if err := exposedreq.Refuse(s.HiddenWith, models, r.Exposed); err != nil {
 		return r, nil, err
 	}
-	if err := checkInpaint(r, models); err != nil {
+	if err := checkImageSettings(r, models); err != nil {
 		return r, nil, err
 	}
 	if n := len(models) * len(r.Prompts) * r.Count; n > s.maxItems() {

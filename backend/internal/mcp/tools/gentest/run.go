@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
@@ -73,7 +74,7 @@ type ReferenceInput struct {
 	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（生成テストの成功した画像結果の result_id）/ pose_library（ポーズ集 Shisei の画像。id は std_P001_front のような画像 ID で、導入済みのときだけ。役割 pose と使う）/ batch_input（過去のバッチの入力画像。id は結果の詳細の inputs[].input_id。アップロードした画像を同じ条件で使い直すとき）"`
 	ID        string `json:"id" jsonschema:"source に応じた ID"`
 	ProjectID string `json:"project_id,omitempty" jsonschema:"project_asset / reference_item のとき"`
-	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）/ pose（ポーズだけ。ポーズ集 Shisei の画像や人形の写真。list_generation_models の reference_roles に pose があるモデルだけ）。動画: reference / first_frame / last_frame。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`
+	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）/ pose（ポーズだけ。ポーズ集 Shisei の画像や人形の写真。list_generation_models の reference_roles に pose があるモデルだけ）/ markup（GPT Image 2.6〔API キー〕の編集だけ。1 枚目の入力画像に重ねる透明な PNG で、直したい場所の丸や書き込みを描く。元画像と同じ画素数で、透明な部分があること。1 枚まで、ほかに編集する元の画像が要り、一部だけ描き直すマスクとは一緒に使えない。reference_roles に markup があるモデルだけ。使えないモデルは警告ではなく validation で拒否する）。動画: reference / first_frame / last_frame。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`
 	// Strength is a pointer: omitted means the default (0.7), 0 is a deliberate "barely".
 	Strength *float64 `json:"strength,omitempty" jsonschema:"画像モデルだけ。参照画像をどれだけ強く反映するか（0〜1、既定 0.7）。モデルごとの実現方法は隠す。動画では指定できない（validation）。強さを実現できるのは同梱 ComfyUI の参照対応モデルだけで、クラウドの画像モデルなどでは無視され、警告も出ない"`
 }
@@ -114,8 +115,9 @@ type RequestInput struct {
 	Quality string `json:"quality,omitempty" jsonschema:"画像だけ。品質: fast（速い）/ standard（標準。省略と同じ: モデルの既定の値）/ high（きれい）。モデルの sampling.quality_presets にあるステップ数・CFG で作る（sampling に steps・cfg を書けばそちらが優先）。プリセットの無いモデルは警告 quality_ignored で標準の値で作る"`
 	Intent  string `json:"intent,omitempty" jsonschema:"画像だけ。やりたいこと: photo（人物写真）/ anime（アニメ）/ landscape（風景）/ face（同じ顔で。references に顔の写真が要る）。導入済みで使えるモデルを mam が選ぶ（models は省く。list_generation_models の intents に今選ばれるモデルが出る）。合うモデルが無いときは理由つきで validation"`
 	// Recipe takes the model and the settings of a saved recipe (list_generation_recipes); Exposed gives the values of the models' exposed inputs.
-	Recipe  string         `json:"recipe,omitempty" jsonschema:"画像だけ。保存したレシピの id（list_generation_recipes）。レシピのモデルと設定（ステップ数・CFG・サンプラー・スケジューラー・シード・ネガティブ・LoRA・入力画像の強さ・サイズ・品質・画面に出す値）で作る。models・intent とは同時に指定できない。このリクエストで名指しした項目（sampling・seed・exposed など）が勝つ。使えないレシピ（モデルの削除・未導入・成人ゲート・商用の絞り込み）は理由つきで validation"`
-	Exposed map[string]any `json:"exposed,omitempty" jsonschema:"画像だけ。モデルの画面に出す値（list_generation_models の exposed）の値。キーは <ノード ID>.<入力名>。型（int / float / string / enum）と範囲・選択肢の外は validation。どのモデルにも無いキーも validation。そのキーを持たないモデルは警告 exposed_ignored。結果の exposed に使った値が残る"`
+	Recipe   string            `json:"recipe,omitempty" jsonschema:"画像だけ。保存したレシピの id（list_generation_recipes）。レシピのモデルと設定（ステップ数・CFG・サンプラー・スケジューラー・シード・ネガティブ・LoRA・入力画像の強さ・サイズ・品質・画面に出す値・GPT Image 2.6 の gpt_image）で作る。models・intent とは同時に指定できない。このリクエストで名指しした項目（sampling・seed・exposed など）が勝つ。使えないレシピ（モデルの削除・未導入・成人ゲート・商用の絞り込み）は理由つきで validation"`
+	Exposed  map[string]any    `json:"exposed,omitempty" jsonschema:"画像だけ。モデルの画面に出す値（list_generation_models の exposed）の値。キーは <ノード ID>.<入力名>。型（int / float / string / enum）と範囲・選択肢の外は validation。どのモデルにも無いキーも validation。そのキーを持たないモデルは警告 exposed_ignored。結果の exposed に使った値が残る"`
+	GPTImage *gptimage.Options `json:"gpt_image,omitempty" jsonschema:"画像だけ。GPT Image 2.6（API キー）だけの指定: 複雑さ・GIF / SVG 出力。GPT Image 2.6（API キー）以外のモデル（GPT Image 2・他社・サブスク経由の GPT Image 2.6）が 1 つでも models に入っていると、警告ではなく validation で拒否する（黙って外さない・別のモデルに替えない）。list_generation_models の gpt_image に対応範囲が出る。結果の gpt_image に頼んだ値が残る。SVG は費用が見積もれず、結果の費用も記録されない"`
 	// Mask is the inpaint mask (same shape as a reference; white redraws). Every model must support inpaint. Denoise nil uses denoise_default.
 	Mask    *ReferenceInput `json:"mask,omitempty" jsonschema:"一部だけ描き直すときのマスク。references と同じ形式（source / id / project_id。role と strength は使わない）。白が描き直す部分、黒が残す部分。元画像は references に 1 枚だけ。supports_inpaint でないモデルは validation で拒否する"`
 	Denoise *float64        `json:"denoise,omitempty" jsonschema:"描き直しの強さ（0 より大きく 1 以下）。省くと各モデルの denoise_default。マスクが無いときは指定できない"`
@@ -150,6 +152,9 @@ func (in RequestInput) request() gentest.Request {
 	}
 	r.Denoise = in.Denoise
 	r.Exposed = in.Exposed
+	if in.GPTImage != nil {
+		r.GPTImage = *in.GPTImage
+	}
 	return r
 }
 

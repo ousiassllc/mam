@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/tierform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
@@ -36,6 +37,8 @@ type formState struct {
 	// opts are the options of the batch besides its inputs (refform.Options); adv the detailed settings (advform).
 	opts refform.Opts
 	adv  advform.Fields
+	// gpt are the settings of GPT Image 2.6 (gptform): complexity, output format and the frames of a GIF.
+	gpt gptform.Fields
 	// tier is the tier of the image form (tierform): the easy tier picks the model from its intent when it is estimated.
 	tier tierform.State
 	// pick is the filter of the model list the form is drawn with (nil: the screen's start): the page reads it from the request's query and the cookie of the screen.
@@ -68,6 +71,7 @@ func readForm(c *gin.Context, stage bool) (formState, error) {
 	f.refs = refform.Refs(v, f.media)
 	f.opts = refform.Options(v)
 	f.adv = advform.Read(v)
+	f.gpt = gptform.Read(v)
 	f.tier = tierform.Read(v)
 	return f, nil
 }
@@ -93,6 +97,9 @@ func (f formState) request() (gentest.Request, error) {
 		AvoidReferencePose: f.opts.AvoidPose, LoRA: f.opts.LoRA, SpeedMode: f.opts.SpeedMode,
 	}
 	if err := f.adv.Apply(&r); err != nil {
+		return r, err
+	}
+	if err := f.gpt.Apply(&r); err != nil {
 		return r, err
 	}
 	for _, p := range f.prompts {
@@ -136,5 +143,6 @@ func hidden(f formState, req gentest.Request, estimateID, total string) []view.H
 		view.Hidden{Name: view.FieldResolution, Value: f.resol}, view.Hidden{Name: view.FieldDuration, Value: f.duration})
 	h = append(h, refform.Hidden(req)...)
 	h = append(h, advform.Hidden(req)...)
+	h = append(h, gptform.Hidden(req)...)
 	return append(h, view.Hidden{Name: view.FieldEstimateID, Value: estimateID}, view.Hidden{Name: view.FieldTotal, Value: total})
 }

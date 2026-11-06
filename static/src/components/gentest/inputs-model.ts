@@ -2,7 +2,7 @@
 // chosen models take, which files are taken, and where a dragged image is dropped. inputs.ts draws them.
 
 /** The roles of an image reference, in the order the select lists them. */
-export const ROLE_ORDER = ['reference', 'face', 'style', 'edit', 'pose'] as const;
+export const ROLE_ORDER = ['reference', 'face', 'style', 'edit', 'pose', 'markup'] as const;
 
 /**
  * The strength a slider of an image starts at for its role: a face stays in the sampling longer than the whole picture (#960; the same

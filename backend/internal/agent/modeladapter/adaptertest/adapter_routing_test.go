@@ -21,11 +21,11 @@ func TestPreferOpenAIRoutesNewReferencesThroughGPTImage(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
 	cfg.PreferOpenAI = true
 	a := newAdapter(cfg, modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{
-		domain.ModelGPTImage2: gpt, domain.ModelNanoBanana: &fakeImage{},
+		domain.ModelGPTImage26Flare: gpt, domain.ModelNanoBanana: &fakeImage{},
 	}})
 	out, err := a.GenerateImage(context.Background(), modeladapter.PurposeNewReference, modeladapter.ImageRequest{Prompt: "p"})
 	require.NoError(t, err)
-	assert.Equal(t, domain.ModelGPTImage2, out.Model)
+	assert.Equal(t, domain.ModelGPTImage26Flare, out.Model)
 }
 
 func TestMaxQualityUsesRunwayAndDifferentModelSwitchesToKling(t *testing.T) {

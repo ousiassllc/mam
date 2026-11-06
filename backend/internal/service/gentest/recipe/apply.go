@@ -81,6 +81,9 @@ func Fill(r gentest.Request, p Params) gentest.Request {
 	if r.SpeedMode == "" {
 		r.SpeedMode = p.SpeedMode
 	}
+	if r.GPTImage.Zero() && p.GPT != nil {
+		r.GPTImage = *p.GPT
+	}
 	r.Prompts = slices.Clone(r.Prompts)
 	for i := range r.Prompts {
 		if r.Prompts[i].Negative == "" {

@@ -19,3 +19,24 @@ func warnUnpricedGPTImage2(c modeladapter.Config) {
 			"model", mc.Model)
 	}
 }
+
+// warnUnpricedGPTImage26 says so when a GPT Image 2.6 model that a route uses has no cost_per_image_usd: OpenAI publishes no price
+// per image for it (spec/architecture/model-adapters.md §9.5), so its estimate is 0, the budget check does not hold it and the cost
+// ledger records the real cost (from the usage of the response) only after the call. It is a warning: the default setting is in this case.
+func warnUnpricedGPTImage26(c modeladapter.Config) {
+	for _, m := range []domain.ModelName{domain.ModelGPTImage26Flare, domain.ModelGPTImage26Sunburst} {
+		if c.ModelSettings(m).CostPerImage == 0 && routed(c, m) {
+			slog.Warn("a GPT Image 2.6 model is routed and has no cost_per_image_usd: OpenAI publishes no price per image for it, so the budget check does not count it before the call; set models.<model>.cost_per_image_usd",
+				"model", m)
+		}
+	}
+}
+
+func routed(c modeladapter.Config, m domain.ModelName) bool {
+	for _, r := range c.Images {
+		if r.Primary.Model == m || r.Fallback.Model == m {
+			return true
+		}
+	}
+	return false
+}

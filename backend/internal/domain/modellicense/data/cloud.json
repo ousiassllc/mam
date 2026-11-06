@@ -34,6 +34,34 @@
   "checked_at": "2026-11-06",
   "notice": "ChatGPT の利用規約では生成物（Output）は利用者のもの。ただし mam が使う経路は非公式（Codex）で、OpenAI が認めた使い方かどうかは確認できていない。規約違反と判断されるとアカウントが制限される恐れがあるため、商用OKとはしない。商用で使う前に、OpenAI の API（gpt-image-2）を使うか、規約を確認してください。"
  },
+ "gpt-image-2.6-flare": {
+  "commercial": "yes",
+  "license_name": "OpenAI Terms of Use",
+  "source_url": "https://openai.com/policies/terms-of-use/",
+  "checked_at": "2026-11-06",
+  "notice": "規約は、生成物（Output）を利用者が所有し、OpenAI の権利を利用者へ譲渡するとしている（2026-01-01 版。モデルごとの規約はない）。"
+ },
+ "gpt-image-2.6-sunburst": {
+  "commercial": "yes",
+  "license_name": "OpenAI Terms of Use",
+  "source_url": "https://openai.com/policies/terms-of-use/",
+  "checked_at": "2026-11-06",
+  "notice": "規約は、生成物（Output）を利用者が所有し、OpenAI の権利を利用者へ譲渡するとしている（2026-01-01 版。モデルごとの規約はない）。"
+ },
+ "gpt-image-2.6-flare:chatgpt-subscription": {
+  "commercial": "yes",
+  "license_name": "OpenAI Terms of Use（ChatGPT）",
+  "source_url": "https://openai.com/policies/terms-of-use/",
+  "checked_at": "2026-11-06",
+  "notice": "ChatGPT の利用規約では生成物（Output）は利用者のもの。ただし mam が使う経路は非公式（Codex）で、OpenAI が認めた使い方かどうかは確認できていない。"
+ },
+ "gpt-image-2.6-sunburst:chatgpt-subscription": {
+  "commercial": "yes",
+  "license_name": "OpenAI Terms of Use（ChatGPT）",
+  "source_url": "https://openai.com/policies/terms-of-use/",
+  "checked_at": "2026-11-06",
+  "notice": "ChatGPT の利用規約では生成物（Output）は利用者のもの。ただし mam が使う経路は非公式（Codex）で、OpenAI が認めた使い方かどうかは確認できていない。"
+ },
  "kling-3.0": {
   "commercial": "yes",
   "license_name": "Kling AI Terms of API Paid Service",

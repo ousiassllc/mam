@@ -33,6 +33,7 @@ const (
 	WarnResolution       = "resolution"                  // the model does not make the resolution: its results fail
 	WarnAspect           = "aspect_ratio"                // the model refuses the aspect ratio: its results fail
 	WarnNoPrice          = "no_price"                    // the price is unknown: the model is left out of the total
+	WarnSVGCost          = "svg_cost_unknown"            // an SVG of GPT Image 2.6 has no estimate: left out of the total, its cost is not recorded
 	WarnNegativeFolded   = "negative_folded"             // the model has no negative prompt field: it is written into the prompt
 	WarnSeedUnsupported  = "seed_unsupported"            // the model takes no seed: the n results are the same call n times
 	WarnFramesOverFree   = inputcheck.WarnFramesOverFree // first / last frames and free references cannot be used together
@@ -93,8 +94,11 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 		unit := cfg.ImageCostFor(domain.ModelName(info.ID), r.AspectRatio)
 		p.unit = &unit
 	}
-	if p.basis == modelcatalog.BasisUnknown {
-		warn(WarnNoPrice, "%s は単価が分からないため、見積りの合計に入れません", info.Label)
+	if svgRequested(r, info) { // a price the user set is a part of the cost of an SVG at most
+		p.unit, p.basis = nil, modelcatalog.BasisUnknown
+		warn(WarnSVGCost, "%s: SVG の費用は、画像モデルの料金に SVG を書くモデルのトークン料金が加わるため見積もれません。見積りの合計に入れず、結果の費用も記録しません", info.Label)
+	} else if p.basis == modelcatalog.BasisUnknown {
+		warn(WarnNoPrice, "%s", noPriceMessage(info))
 	}
 	if (hasNegative(r) || p.avoidPose) && !info.NegativeField {
 		warn(WarnNegativeFolded, "%s にはネガティブプロンプトの欄が無いため、プロンプトに「Avoid: …」として書き足して送ります", info.Label)
@@ -171,6 +175,10 @@ func resultParamsOf(r Request, mp modelPlan, translation *record.SentText, maskI
 	if r.Mask != nil && len(r.References) == 1 {
 		p.Inpaint = &record.Inpaint{Denoise: mp.denoise, SourceKind: r.References[0].Source, SourceID: r.References[0].ID, MaskInput: maskID}
 	}
+	if !r.GPTImage.Zero() {
+		gpt := r.GPTImage
+		p.GPT = &gpt
+	}
 	if mp.lora {
 		p.LoRA = &refs.LoRA{Name: r.LoRA.Name, Strength: *r.LoRA.Strength}
 	}
@@ -205,7 +213,7 @@ func (s *Service) planImage(r Request, p *modelPlan) {
 	info := p.info
 	d := refs.Decide(refs.Model{
 		Label: info.Label, AcceptsReferences: info.AcceptsReferences, MaxReferences: info.MaxReferenceImages, Roles: info.ReferenceRoles,
-		SupportsLoRA: info.SupportsLoRA,
+		SupportsLoRA: info.SupportsLoRA, MarkupRefusal: info.GPTImageRefusal,
 	}, roles, r.LoRA != nil, r.AvoidReferencePose)
 	p.used, p.lora, p.avoidPose = d.Used, d.LoRA, d.AvoidPose
 	for _, w := range d.Warnings {

@@ -42,6 +42,7 @@ func (h Handlers) applyRecipe(ctx context.Context, f *formState, id string) stri
 		f.aspect = r.Aspect
 	}
 	f.adv = advform.Fields{Seed: r.Seed, Steps: r.Steps, CFG: r.CFG, Sampler: r.Sampler, Scheduler: r.Scheduler, Exposed: r.Exposed}
+	f.gpt = r.GPT
 	if r.LoRA != nil {
 		f.opts.LoRA = r.LoRA
 	}

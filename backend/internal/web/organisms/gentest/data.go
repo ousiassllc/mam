@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/upscalebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/videoenhancebox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestresult"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -88,6 +89,8 @@ type ModelChoice struct {
 	CanLoRA  bool
 	// RequiresFirstFrame: the model cannot run without a first frame (an I2V model). The card's data-requires-first-frame: the browser starts a picture as the first frame while one is ticked (#1009).
 	RequiresFirstFrame bool
+	GPTImage           bool            // the model takes the settings of GPT Image 2.6 (complexity, GIF / SVG output, markup): the card's data-gpt-image
+	GPTRefusal         string          // why a model of that family does not (the ChatGPT-subscription path): the card's data-gpt-refusal
 	Answer             commercial.View // whether the model may be used commercially (#928): the card's icon and note
 	// Card is what every list of models says of the model the same way (#1011: handler/modelcards): the name, price, icon, badges and the reason it cannot be chosen.
 	// Reason, above, is the one the form acts on (the model is not offered while it is set); the card's reason also carries where to fix it.
@@ -156,6 +159,7 @@ type Compose struct {
 	SpeedModes         []SpeedChoice
 	SpeedMode          string
 	gentestadv.Section                   // the "詳細設定" and the "?" of the prompt weights
+	GPT                gentestgpt.Data   // the "GPT Image 2.6 の設定"
 	InputCheck         inputnotice.Check // the notice of the input images (a video form; #1009)
 	Tier               gentesttier.Data  // the tiers of an image form (かんたん / こだわり / ComfyUI; Issue #977)
 }

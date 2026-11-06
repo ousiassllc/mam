@@ -19,7 +19,7 @@ type Price struct {
 // priceOf is the unit price: a local model is free unless the user priced it, the ChatGPT subscription's model has no price
 // (the plan pays), and a cloud model without a price in models.json is unknown.
 func priceOf(cfg modeladapter.Config, m domain.ModelName, media string) Price {
-	if m == chatgptid.Model {
+	if chatgptid.Is(m) {
 		return Price{Basis: BasisUnknown}
 	}
 	lm, _, local := cfg.LocalModel(m)

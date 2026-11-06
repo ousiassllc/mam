@@ -63,6 +63,31 @@ func TestHost_IsWideWhileTheBodyAsksForIt(t *testing.T) {
 	assert.Contains(t, render(t, modal.Host()), "has-[["+modal.WideAttr+"]]:w-[min(64rem")
 }
 
+// The dialog is what scrolls, and the head must stay in reach while a long body scrolls under it (Issue #1097): the close button is the first child in a
+// sticky box that takes no room, so that it is neither below the body nor scrolled away.
+func TestHost_KeepsTheCloseButtonStuckAtTheTopOfTheScrollingDialog(t *testing.T) {
+	html := render(t, modal.Host())
+
+	assert.Contains(t, html, "overflow-y-auto", "the dialog is the scroller")
+	sticky := strings.Index(html, `class="sticky top-0 z-sticky h-0"`)
+	require.GreaterOrEqual(t, sticky, 0, "the close button sits in a zero-height sticky box")
+	assert.Less(t, sticky, strings.Index(html, `data-modal-close`), "the button is inside the sticky box")
+	assert.Less(t, strings.Index(html, `data-modal-close`), strings.Index(html, `id="mam-modal-body"`), "the button comes before the body")
+}
+
+// The name of the dialog sticks to the top of the scrolling dialog, so that the title is still seen when the body is long (Issue #1097).
+func TestFrame_KeepsItsTitleStuckAtTheTopOfTheScrollingDialog(t *testing.T) {
+	var sb strings.Builder
+	require.NoError(t, modal.Frame("結果", "").Render(templ.WithChildren(context.Background(), templ.Raw("<p>本文</p>")), &sb))
+	html := sb.String()
+
+	h2 := html[strings.Index(html, `<h2 id="mam-modal-title"`):]
+	h2 = h2[:strings.Index(h2, ">")]
+	assert.Contains(t, h2, "sticky top-0")
+	assert.Contains(t, h2, "bg-surface", "the body scrolls under an opaque title")
+	assert.Less(t, strings.Index(html, "結果"), strings.Index(html, "<p>本文</p>"))
+}
+
 // The frame names the dialog (an h2 with the id the dialog is labelled by) and describes it only when asked to.
 func TestFrame_IsNamedByItsHeadingAndDescribedOnlyWhenItHasADescription(t *testing.T) {
 	ctx := templ.WithChildren(context.Background(), templ.Raw("<form>F</form>"))

@@ -45,3 +45,9 @@ func TestFileNameIsNumberTimeModelAndTheEndOfTheID(t *testing.T) {
 	assert.Equal(t, "mp4", extension("noext", "video/mp4; codecs=avc1"))
 	assert.Equal(t, "bin", extension("a.p/ng$", ""), "an extension with odd characters is not used")
 }
+
+func TestExtensionOfAGIFAndAnSVGResult(t *testing.T) {
+	assert.Equal(t, "gif", extension("", "image/gif"))
+	assert.Equal(t, "svg", extension("", "image/svg+xml"))
+	assert.Equal(t, "svg", extension("b/r.svg", "image/svg+xml"))
+}

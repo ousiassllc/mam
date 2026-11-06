@@ -30,6 +30,7 @@ func Load(path string) (modeladapter.Config, error) {
 		return modeladapter.Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
 	warnUnpricedGPTImage2(cfg)
+	warnUnpricedGPTImage26(cfg)
 	return cfg, nil
 }
 
@@ -67,11 +68,11 @@ func validateModels(c modeladapter.Config) []error {
 	var errs []error
 	for _, m := range slices.Sorted(maps.Keys(c.Models)) {
 		caps, video := modeladapter.Capabilities(m)
-		if !slices.Contains(domain.ImageModels(), m) && !video && m != chatgptid.Model {
+		if !slices.Contains(domain.ImageModels(), m) && !video && !chatgptid.Is(m) {
 			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
 		}
-		if q := c.Models[m].Quality; !gptimage.Valid(q) || (q != "" && m != domain.ModelGPTImage2) {
-			errs = append(errs, fmt.Errorf("models %s: quality %q is not one of %v (only %s has one)", m, q, gptimage.Qualities(), domain.ModelGPTImage2))
+		if q := c.Models[m].Quality; !gptimage.ValidFor(m, q) || (q != "" && !slices.Contains(gptimage.Models(), m)) {
+			errs = append(errs, fmt.Errorf("models %s: quality %q is not one of %v (only %s have one)", m, q, gptimage.QualitiesFor(m), domain.JoinModels(gptimage.Models(), ", ")))
 		}
 		for _, res := range slices.Sorted(maps.Keys(c.Models[m].CostPerSecond)) {
 			if video && !caps.SupportsResolution(res) {
@@ -168,7 +169,7 @@ func checkImageTarget(c modeladapter.Config, where string, t modeladapter.ImageT
 		mc, ok := c.Models[t.Model]
 		fast, configured = mc.FastModel, slices.Contains(domain.ImageModels(), t.Model) && ok && mc.Model != ""
 		// Valid while image generation by subscription is off, too: a route that names it then fails over.
-		configured = configured || t.Model == chatgptid.Model
+		configured = configured || chatgptid.Is(t.Model)
 	}
 	if !configured {
 		errs = append(errs, fmt.Errorf("%s: %q is not a configured image model", where, t.Model))

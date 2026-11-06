@@ -32,6 +32,8 @@ type ImageRequest struct {
 	Seed           *int64
 	Options        localcfg.ImageOptions // role and strength of Inputs, and a LoRA
 	Inpaint        *Inpaint              // nil: not a partial redraw
+	GPT            gptimage.Options      // GPT Image 2.6 only (direct.Image refuses it for any other model)
+	Markup         *Input                // GPT Image 2.6 only: a transparent PNG laid over Inputs[0]
 }
 
 // Inpaint is the mask (white redraws, black keeps) and the denoise (nil: the workflow's own) of a partial redraw.
@@ -213,7 +215,7 @@ func VendorOf(m domain.ModelName) Vendor {
 	switch m {
 	case domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelGeminiOmniFlash:
 		return VendorGoogle
-	case domain.ModelGPTImage2:
+	case domain.ModelGPTImage2, domain.ModelGPTImage26Flare, domain.ModelGPTImage26Sunburst:
 		return VendorOpenAI
 	case domain.ModelFlux2:
 		return VendorFlux
@@ -231,7 +233,7 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorAlibaba
 	case domain.ModelLumaRay32:
 		return VendorLuma
-	case chatgptid.Model:
+	case chatgptid.Model, chatgptid.Flare, chatgptid.Sunburst:
 		return Vendor(chatgptid.Vendor)
 	}
 	if endpoint, ok := localcfg.EndpointOf(string(m)); ok {

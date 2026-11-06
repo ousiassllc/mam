@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/posescreen"
 
@@ -64,6 +65,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	}
 	c.SpeedModes, c.SpeedMode = refform.SpeedChoices(models), f.opts.SpeedMode
 	c.Section = advform.SectionOf(f.adv, models, f.models)
+	c.GPT = gptform.SectionOf(f.gpt, models, f.models)
 	if list, err := h.Svc.Prompts(ctx); err == nil {
 		for _, p := range list[:min(len(list), recentPrompts)] {
 			c.Recent = append(c.Recent, view.RecentPrompt{ID: p.ID, Text: p.Prompt, Negative: p.NegativePrompt, Uses: p.UseCount})
@@ -226,7 +228,9 @@ func (h Handlers) Picker(c *gin.Context) {
 		}
 		empty = "履歴に画像がありません"
 		for _, r := range list {
-			rows = append(rows, historyRef(r))
+			if !gptform.Animated(r.MimeType) { // a GIF or an SVG is not an input image (PNG, JPEG, WebP)
+				rows = append(rows, historyRef(r))
+			}
 		}
 	case c.Query("project") != "":
 		list, err := h.Svc.ProjectImages(ctx, c.Query("project"))

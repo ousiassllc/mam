@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/enhancevideo"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -62,6 +63,7 @@ type Fake struct {
 	err   map[domain.ModelName]error
 	block map[domain.ModelName]chan struct{}
 	start chan struct{}
+	image map[domain.ModelName]modeladapter.ImageResult
 }
 
 // Calls returns the requests received so far.
@@ -87,6 +89,13 @@ func (f *Fake) FailWith(m domain.ModelName, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.err[m] = err
+}
+
+// ReturnImage makes every call of the model return res instead of the PNG (a GIF or an SVG of GPT Image 2.6, with or without a cost).
+func (f *Fake) ReturnImage(m domain.ModelName, res modeladapter.ImageResult) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.image[m] = res
 }
 
 // Hold makes the calls of the model wait for a receive on the returned channel; Started receives once per call that began.
@@ -125,6 +134,12 @@ type imageBackend struct {
 func (b imageBackend) GenerateImage(ctx context.Context, _ string, req modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
 	if err := b.f.enter(ctx, b.m, Call{Model: string(b.m), Owner: live.OwnerOf(ctx), Image: &req}); err != nil {
 		return modeladapter.ImageResult{}, err
+	}
+	b.f.mu.Lock()
+	res, ok := b.f.image[b.m]
+	b.f.mu.Unlock()
+	if ok {
+		return res, nil
 	}
 	return modeladapter.ImageResult{Data: PNG, MimeType: "image/png"}, nil
 }
@@ -198,7 +213,7 @@ func New(t testing.TB, opts ...Option) *Rig { return NewOn(t, testdb.Open(t), op
 // NewOn is New over a database that exists already (the MCP and screen tests build the rest of the services on it).
 func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 	t.Helper()
-	f := &Fake{err: map[domain.ModelName]error{}, block: map[domain.ModelName]chan struct{}{}, start: make(chan struct{}, 64)}
+	f := &Fake{err: map[domain.ModelName]error{}, block: map[domain.ModelName]chan struct{}{}, image: map[domain.ModelName]modeladapter.ImageResult{}, start: make(chan struct{}, 64)}
 	r := &Rig{T: t, Fake: f, DB: db, DataDir: t.TempDir(), AssetsDir: t.TempDir(), Config: modeladapter.DefaultConfig(), Assigned: new([]string), missing: map[domain.ModelName]bool{}}
 	deps := gentest.Deps{
 		Repo: gentestrepo.New(db), Recipes: reciperepo.New(db), JobTable: repository.NewJobRepository(db), Projects: repository.NewProjectRepository(db),
@@ -213,7 +228,7 @@ func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 		o(r, &deps)
 	}
 	backends := modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{}, Video: map[domain.ModelName]modeladapter.VideoBackend{}}
-	for _, m := range []domain.ModelName{domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelFlux2, domain.ModelGPTImage2} {
+	for _, m := range append([]domain.ModelName{domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelFlux2}, gptimage.Models()...) {
 		if !r.missing[m] {
 			backends.Image[m] = imageBackend{f, m}
 		}

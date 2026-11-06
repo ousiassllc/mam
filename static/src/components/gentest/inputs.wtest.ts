@@ -135,6 +135,23 @@ describe('the input images of the generation test (spec/components/gentest-scree
     );
   });
 
+  it('offers the markup role only while a chosen model takes it (GPT Image 2.6, #1096)', () => {
+    const select = rows()[0]!.querySelector<HTMLSelectElement>('[data-gt-role]')!;
+    const option = () => select.querySelector<HTMLOptionElement>('option[value="markup"]')!;
+    expect(option().textContent).to.contain('マークアップ');
+    expect(option().disabled, 'the editing model of the fixture does not list it').to.equal(true);
+
+    tick('gpt', true);
+    expect(option().disabled).to.equal(false);
+    select.value = 'markup';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(select.value).to.equal('markup');
+
+    tick('gpt', false);
+    expect(option().disabled, 'a role no chosen model takes is no longer offered').to.equal(true);
+    expect(select.value, 'and a row that held it is put back').to.not.equal('markup');
+  });
+
   it('tells at once that a chosen model does not use the images', () => {
     const notice = q('[data-gt-noref]');
     expect(notice.hidden).to.equal(true);
