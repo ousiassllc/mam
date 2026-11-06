@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -23,12 +24,17 @@ type Data struct {
 	Scenes  []Item
 	Scene   *domain.Scene // nil when the Project has no Scene
 	Shots   []molecules.ShotCardData
+	// Wait is what the main line waits for after the Scene / Shot plan; shown above the Scenes when active (#1108).
+	Wait mainline.Wait
 
 	SceneErrors map[string]string
 	SceneInput  SceneInput
 	ShotErrors  map[string]string
 	ShotInput   ShotInput
 }
+
+// mainLineNote says how the Shots here differ from the generation test: only a generation started from a Shot card makes a Take of it.
+const mainLineNote = "この画面の Shot が制作の本線です。生成テスト（/generation-test）の結果は、Take・コスト台帳に入らず、ここの Shot にも載りません。"
 
 // SceneInput is the Scene form's rejected input.
 type SceneInput struct{ Title, Location, Time, Objective string }

@@ -45,7 +45,7 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 	project := domain.Project{
 		ID: projectID, State: domain.StateDraft, Mode: domain.ModeAuto,
 		ConfirmationLevel:  domain.ConfirmKeyCheck,
-		ProductionTemplate: templateFor(brief.ContentType),
+		ProductionTemplate: briefing.TemplateFor(brief.ContentType),
 		QualityPolicy:      domain.QualityBalanced,
 	}
 	err = s.projects.Create(ctx, repository.NewProject{Project: project, Brief: brief, Assets: assets, Messages: withProject(messages, projectID), BrandTemplateID: strings.TrimSpace(in.BrandTemplateID)})

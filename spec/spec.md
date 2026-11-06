@@ -140,7 +140,7 @@ DELIVERY
 | References | URL / Image / Video |
 | Additional Instruction | 任意 |
 
-必須 7 項目（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood）が不足している場合、AI は自動補完せず 1 つずつ質問し、ユーザーが値を答えるか「AIに任せる」を選ぶまで PLANNING は始まらない。チャットでの回答も編集フォームと同じ値域（Aspect Ratio は 9:16 / 16:9 / 1:1、各項目 200 文字以内）で、範囲外の回答は保存せず同じ質問を聞き直す。発言から抜き出す URL も編集フォームと同じ規則（200 文字以内・空白を含まない）で、外れた URL は References に入れない。Assets / References / Additional Instruction は任意（§23.1）。
+必須 7 項目（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood）が不足している場合、AI は自動補完せず 1 つずつ質問し、ユーザーが値を答えるか「AIに任せる」を選ぶまで PLANNING は始まらない。ただし **Subject は「AIに任せる」を選べない**: 題材をAIが決めると、ユーザーの指定と無関係な脚本になるため、Subject の質問カードには「AIに任せる」ボタンを出さず、その答えは受け付けずに同じ質問を理由つきで聞き直す。Subject が空でも、Additional Instruction にユーザーが書いた題材があればそれを題材として扱う（どちらも空なら PLANNING で脚本を作らず、Subject の質問カードを 1 度だけ出して止まる。答えると続きから再開する。Producer / Writer / Director のプロンプトも、Subject 未指定を「AIに任せる」とは書かず「Brief に無い題材を作らない」と伝える。#1108）。チャットでの回答も編集フォームと同じ値域（Aspect Ratio は 9:16 / 16:9 / 1:1、各項目 200 文字以内）で、範囲外の回答は保存せず同じ質問を聞き直す。発言から抜き出す URL も編集フォームと同じ規則（200 文字以内・空白を含まない）で、外れた URL は References に入れない。Assets / References / Additional Instruction は任意（§23.1）。
 
 ## 4.3 AUTO Pipeline
 
@@ -190,7 +190,7 @@ Final QC
 Delivery
 ```
 
-> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）までである。Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）は Shot 単位でユーザーが起動し、起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。Project 全体を一括で生成する段は持たない。
+> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）までである。Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）は Shot 単位でユーザーが起動し、起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。**VISUAL_DESIGN で全 Shot が PLANNING・Take 0 のまま止まるのは、この意図した明示待機であり、待機の理由は見える**（#1108）: 計画完了のチャット通知と Scene / Shot 画面の上部が「Shot N 件が PLANNING のまま生成の開始を待っている」「生成は有料なので自動では始まらない」「確認レベルは脚本・Rough Cut・Final の承認カードだけを決め、生成の開始は止めていない」「Reference Library・World State の Character が 0 件（生成はできるが顔や見た目の一貫性を保つ参照が無い）」「次に押すもの（Shot を選び、必要なら先に Reference Pack、続けて生成。起動した生成は Job と進捗で追える）」を示し、PLANNING のままの Shot のカードにも「生成待ち」を出す。承認・料金（予算）のゲートは回避しない。生成テスト（`/generation-test`）は試用の経路で、その結果はプロジェクトの Shot の Take にならず、画面にもそう書く。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。Project 全体を一括で生成する段は持たない。
 
 ---
 
