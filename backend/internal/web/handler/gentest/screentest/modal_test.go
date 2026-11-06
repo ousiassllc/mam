@@ -60,6 +60,38 @@ func TestATileOpensTheDetailInTheModalWithEverythingTheCardHad(t *testing.T) {
 	assert.Contains(t, gone.Body.String(), "data-modal-close")
 }
 
+// #1078: in the modal a click on the large picture closes it (the modal closes on `data-modal-close`). The page of the result has nothing to close; a video
+// is played and paused by a click; the rest of the detail (the settings, the buttons, the pictures of the inputs) does not close it.
+func TestAClickOnThePictureInTheModalClosesItButNotOnThePageOrOnAVideo(t *testing.T) {
+	s := videoScreen(t, aCloud(false))
+	picture := s.results(s.run(batchForm("flux-2")))[0].ID
+	video := s.aVideo()
+
+	modal := s.inModal(http.MethodGet, paths.GenerationTestPart("results", picture), nil).Body.String()
+	img := tagOf(t, modal, `data-testid="gt-detail-image"`)
+	assert.Contains(t, img, "<img", "the large picture")
+	assert.Contains(t, img, "data-modal-close", "a click on it closes the modal")
+	assert.Equal(t, 1, strings.Count(modal, "data-modal-close"), "nothing else of the detail closes the modal on a click")
+
+	page := s.page(paths.GenerationTestPart("results", picture))
+	assert.Contains(t, tagOf(t, page, `data-testid="gt-detail-image"`), "<img")
+	assert.NotContains(t, page, "data-modal-close", "the page has nothing to close")
+
+	clip := s.inModal(http.MethodGet, paths.GenerationTestPart("results", video), nil).Body.String()
+	assert.Contains(t, clip, "<video", "a video")
+	assert.NotContains(t, clip, "data-modal-close", "a click on a video plays and pauses it")
+}
+
+// tagOf is the opening tag of the element that has attr.
+func tagOf(t *testing.T, html, attr string) string {
+	t.Helper()
+	at := strings.Index(html, attr)
+	require.GreaterOrEqual(t, at, 0, attr)
+	start := strings.LastIndex(html[:at], "<")
+	end := at + strings.Index(html[at:], ">")
+	return html[start : end+1]
+}
+
 // 失敗した結果もモーダルで見られる: 状態のバッジと失敗の理由が出て、ファイルが無いことが書いてある。
 func TestAFailedResultsDetailInTheModalSaysWhyAndThatThereIsNoFile(t *testing.T) {
 	s := newScreen(t)
