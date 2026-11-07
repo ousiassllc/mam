@@ -95,6 +95,9 @@ func (s *DirectorService) SetShotLock(ctx context.Context, shotID string, p doma
 	if mode != domain.LockAuto {
 		s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, Kind: domain.InterventionLockChange})
 	}
+	if ref, err := s.gens.GetShot(ctx, shotID); err == nil {
+		s.kick(ctx, ref.ProjectID) // a fixed video model changes the plan of the generation approval
+	}
 	return s.locks.ShotLocks(ctx, shotID)
 }
 

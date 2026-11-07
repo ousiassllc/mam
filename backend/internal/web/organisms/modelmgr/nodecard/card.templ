@@ -16,7 +16,7 @@ templ NodesSection(s Section) {
 		@refresh.Bar(paths.ModelManagerPart("nodes"), SectionID, "")
 		@view.Notice(s.Message, SectionID)
 		@modal.InlineHost(DialogID, "mm-nodes-dialog")
-		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<ul role="list" class={ modelcard.GridClass }>
 			for _, n := range s.Items {
 				@NodeCard(n)
 			}
@@ -59,7 +59,6 @@ func card(n Node) modelcard.Card {
 templ NodeCard(n Node) {
 	@modelcard.Item(card(n)) {
 		@view.Notice(n.Message, NodeID(n.ID))
-		<p class="text-sm text-ink" data-testid="mm-node-description">{ n.Description }</p>
 		if n.Blocked != "" {
 			<p class="text-sm text-warning" role="note" data-testid="mm-node-blocked">導入できない理由: { n.Blocked }</p>
 		}

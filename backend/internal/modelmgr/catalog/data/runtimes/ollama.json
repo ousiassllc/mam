@@ -1,0 +1,66 @@
+{
+ "id": "ollama",
+ "name": "Ollama",
+ "purpose": "llm",
+ "version": "v0.40.15",
+ "source_url": "https://github.com/ollama/ollama/tree/v0.40.15",
+ "description": "ローカルで動かす LLM のサーバー Ollama（ollama/ollama。MIT）の実行環境です。公式の GitHub リリース（v0.40.15）のビルド済みの zip（Windows x64。NVIDIA 用の CUDA 12・13 と CPU のライブラリを含む）を、固定の URL と SHA-256 で取得して展開します。起動は mam が決めた固定の引数（ollama serve だけ）で、127.0.0.1 だけで待ち受けます。Ollama のクラウド機能（クラウドのモデル・Web 検索。プロンプトを Ollama のサーバーへ送る）は、起動のたびに無効にします。モデルは区画「Ollama のモデル」から取得し、mam の導入先（localai\\ollama\\models）に置きます。別に入れた Ollama のモデル・設定（%USERPROFILE%\\.ollama）には書きません。このサーバーには認証がありません（同じ PC のほかのプログラムが 127.0.0.1 から呼べます）。",
+ "own_models": true,
+ "build": {"files": []},
+ "launch": {
+  "program": "ollama.exe",
+  "args": ["serve"],
+  "ready_path": "/api/version",
+  "env": ["OLLAMA_HOST=127.0.0.1:{port}", "OLLAMA_MODELS={models}", "OLLAMA_KEEP_ALIVE=15m", "HOME={home}", "USERPROFILE={home}"],
+  "listen_env": "OLLAMA_HOST",
+  "drop_env_prefixes": ["OLLAMA_"],
+  "home_files": [{"dest": ".ollama/server.json", "lines": ["{\"disable_ollama_cloud\": true}"]}],
+  "start_timeout_sec": 60
+ },
+ "vram": {
+  "min_gb": 8,
+  "source": "mam の推定（最小のモデル Gemma 4 12B は重みが約 7 GiB で、GPU に載せるには 8 GB 前後が要る）。GPU が無い・足りない PC でも、Ollama は CPU や一部の層だけを GPU に載せて動く（遅くなる）ので、これは導入の条件ではない。実機では未確認。",
+  "estimate": true
+ },
+ "support": {
+  "os": "windows",
+  "arch": "amd64",
+  "os_reasons": {
+   "darwin": "macOS（Apple Silicon）では Ollama の自動導入に対応していません。公式のリリースには macOS 用の ollama-darwin.tgz がありますが、mam はこの開発環境で macOS の実機を使えず、展開後の構成・実行権限・Gatekeeper（未署名の実行ファイルの扱い）・Metal の動作を確かめられないため、自動導入の対象にしていません。",
+   "linux": "Linux では Ollama の自動導入に対応していません。mam が自動で導入するのは Windows（x64）だけです。",
+   "default": "この OS では Ollama の自動導入に対応していません。mam が自動で導入するのは Windows（x64）だけです。"
+  },
+  "arch_reason": "この CPU（64 ビットの x86 以外。Windows arm64 など）では Ollama の自動導入に対応していません。mam が自動で導入するのは Windows の x64 だけです。",
+  "no_gpu_reason": "",
+  "not_nvidia_reason": "AMD の GPU が見つかり、NVIDIA の GPU が見つからないため、Ollama を導入しません。AMD の GPU には別のビルド（ROCm 版）を重ねて展開する必要がありますが、mam は実機で確かめられないため、AMD の GPU は対応していません。",
+  "low_vram_reason": "",
+  "cpu_ok": true,
+  "fallback": "代わりに、Ollama の公式のアプリ（ollama.com）を自分で入れて、「使うサーバー」の「別のサーバー」（http://localhost:11434）につないでください。クラウドの LLM（Anthropic・OpenAI・Google）も使えます。"
+ },
+ "license": {
+  "id": "mit-ollama",
+  "version": "v0.40.15",
+  "name": "MIT License",
+  "url": "https://github.com/ollama/ollama/blob/v0.40.15/LICENSE",
+  "summary": "Ollama（ollama/ollama）はリポジトリの LICENSE と GitHub のライセンス表示が MIT（2026-11-07 に GitHub の API で確認）。mam は Ollama のバイトを同梱・配布せず、利用者の PC に公式の GitHub リリース（タグ v0.40.15）の zip を取得する。zip には Ollama のプログラムのほか、推論の部品（ggml・llama.cpp 由来。MIT）と、NVIDIA の CUDA ランタイム（cudart・cuBLAS の DLL）・Microsoft の Visual C++ ランタイムの DLL が入る。モデルのライセンスは、モデルごとの一覧（出典・ライセンス）に従う。",
+  "commercial": "yes",
+  "checked_at": "2026-11-07"
+ },
+ "variants": {
+  "nvidia": {
+   "label": "Windows x64（NVIDIA の GPU は CUDA 12・13。GPU が無い PC は CPU で動く）",
+   "size": 1614941966,
+   "extracted_size": 2263717391,
+   "parts": [
+    {
+     "name": "ollama-windows-amd64",
+     "kind": "zip",
+     "url": "https://github.com/ollama/ollama/releases/download/v0.40.15/ollama-windows-amd64.zip",
+     "sha256": "9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6",
+     "size": 1614941966,
+     "extracted_size": 2263717391
+    }
+   ]
+  }
+ }
+}

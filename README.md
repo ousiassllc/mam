@@ -32,10 +32,27 @@ LLM（企画・脚本・Shot 計画など）も、この PC のローカルモ�
 | DeepSeek-R1-Distill-Qwen-14B（約 8.4 GiB。常に考える過程が出るので、mam が取り除いて読みます） | [deepseek-ai/DeepSeek-R1-Distill-Qwen-14B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) の GGUF | [huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2](https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2) の GGUF | 純正は MIT（商用可）。**非検閲版は派生側にライセンスの表示が無く、商用不明**です |
 
 - GGUF は [mradermacher](https://huggingface.co/mradermacher) が変換したもの（コミット固定。2026-11-03 に Hugging Face の API で確認。gated ではなく、利用規約への同意は要りません）。使うモデルは、モデルマネージャーの llama.cpp のカードの「使うモデルの選択」で 1 つ選びます（選んだものだけ取得します。非検閲のモデルには「成人向け相当」の注記が出ます）。
-- 設定の「テキスト生成（LLM）」の「ローカル LLM サーバー」で「この PC の llama.cpp を使う」を選ぶと、導入した llama.cpp が自動でその LLM プロバイダー `local` になります（起動中はそのポートを自動で使います。モデルの id〔例 `gemma-4-12b-it`〕を「LLM の割り当て」の model に指定します）。Ollama・LM Studio など別のサーバーにも、ベース URL で接続できます。
+- モデルマネージャーの「ローカル LLM」で、llama.cpp を導入して「使うサーバー」に「この PC の llama.cpp」を選ぶと、導入した llama.cpp が自動でその LLM プロバイダー `local` になります（起動中はそのポートを自動で使います。モデルの id〔例 `gemma-4-12b-it`〕を「LLM の割り当て」の model に指定します）。Ollama・LM Studio など別のサーバーにも、同じページの「別のサーバーにつなぐ」でベース URL を指定して接続できます（設定の「ローカル LLM サーバー」のカードは、このページへのリンクです）。
 - ComfyUI と同じ GPU で動かすときは、画像・動画を作る前に llama.cpp を止めて VRAM を空け、LLM を起動するときに ComfyUI が生成中なら待ちます（15 分使わないと llama-server がモデルを降ろします）。
 - この PC で動かせないとき（macOS〔Apple Silicon は対応外〕・NVIDIA の GPU が無い・ビデオメモリが足りない）は、理由と代わりの案内（Ollama・LM Studio に接続する、またはクラウドの LLM）が出ます。
 - **未確認**: 実機（Windows + NVIDIA）での導入・起動・推論、ComfyUI との同居、各モデルの質は、まだ確かめていません（[`spec/architecture/model-manager/local-runtime.md`](spec/architecture/model-manager/local-runtime.md) §17.7）。
+
+### ローカル LLM（Ollama）
+
+llama.cpp のほかに、モデルマネージャーの「ローカル LLM」から Ollama（[ollama/ollama](https://github.com/ollama/ollama)。MIT。固定版 v0.40.15）も導入・起動・停止できます（Windows。NVIDIA の GPU・Intel の GPU・GPU なしで導入できます。AMD の GPU だけの PC は、別のサーバーにつなぎます）。公式の GitHub リリースの zip を、固定した SHA-256 を確かめて取得します（`localai\ollama` に展開。`127.0.0.1` だけで待ち受け、Ollama のクラウド機能は無効にします）。
+
+- モデルは、同じページの「Ollama のモデル」から、次の 3 つだけを Ollama 自身で取得します（`gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b`。cloud のモデルや、一覧にない名前は取得できません）。
+
+| モデル（Ollama のタグ） | 取得量 | 出典 | ライセンス |
+|---|---|---|---|
+| Gemma 4 12B（`gemma4:12b`） | 約 7.5 GiB | [ollama.com/library/gemma4](https://ollama.com/library/gemma4) | Apache-2.0（商用可） |
+| Qwen3.8 27B（`qwen3.8:27b`） | 約 16.5 GiB | [ollama.com/library/qwen3.8](https://ollama.com/library/qwen3.8) | Apache-2.0（商用可） |
+| DeepSeek-R1 14B（`deepseek-r1:14b`） | 約 8.4 GiB | [ollama.com/library/deepseek-r1](https://ollama.com/library/deepseek-r1) | MIT（商用可） |
+
+- Ollama のタグは書き換えられるため、取得する内容は固定できません（llama.cpp の GGUF はコミットと SHA-256 を固定します）。取得のあとで、Ollama が書いた重みの層の SHA-256 を、確認した時点の記録と比べ、違えば「上流で更新されています」と知らせます（そのまま使えます）。
+- 「使うサーバー」に「この PC の Ollama」を選ぶと、取得したモデルを「LLM の割り当て」の model に指定できます。LLM の割り当てが使っているモデルは削除できません。
+- **Ollama には認証がありません。** 信用できないソフトを同じ PC で動かさないでください（待ち受けは `127.0.0.1` だけです）。
+- **未確認**: 実機での Ollama の起動・モデルの取得（`/api/pull`）・`USERPROFILE` の付け替えと `server.json`（クラウド機能の無効化）の効き・VRAM（ComfyUI との同居）は、まだ確かめていません（[`spec/architecture/model-manager/local-runtime.md`](spec/architecture/model-manager/local-runtime.md) §19）。
 
 ## Windows でインストールする
 
@@ -82,9 +99,9 @@ Codex のログイン情報は、MAM 専用の `CODEX_HOME`（Windows は `%AppD
 
 ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**MAM がボタン 1 つでダウンロードして入れられます**。
 
-1. MAM の設定画面の「ffmpeg」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 110 MB（展開後は約 200 MB）を、配布元の [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) のビルド（GitHub Releases の固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、`mam.exe` と同じ場所の `ffmpeg` フォルダに置きます（アンインストールで消えます）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
+1. MAM のモデルマネージャーの「付随ソフト」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 110 MB（展開後は約 200 MB）を、配布元の [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) のビルド（GitHub Releases の固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、`mam.exe` と同じ場所の `ffmpeg` フォルダに置きます（アンインストールで消えます）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
 2. 「ffmpeg と ffprobe を入れました。すぐに使えます」と出たら、そのまま使えます（MAM の再起動は要りません）
-3. 確認: 設定画面の「ffmpeg」に「使えます」と場所が出れば使えます
+3. 確認: モデルマネージャーの「付随ソフト」の ffmpeg に「使えます」と場所が出れば使えます
 
 自分で入れたい人は、これまでどおりにできます。PowerShell で `winget install Gyan.FFmpeg` を実行する（または [ffmpeg.org](https://ffmpeg.org/download.html) から Windows ビルドを展開して、`ffmpeg.exe` と `ffprobe.exe` があるフォルダを環境変数 `PATH` に追加する）か、設定画面の「ffmpeg」でパスを指定します。**自分で入れた ffmpeg（設定したパス・`PATH`）は、MAM がダウンロードしたものより優先して使います。** MAM がダウンロードしたものは、ほかに見つからないときに使います。
 
@@ -113,9 +130,9 @@ ffmpeg は同梱していません（次の節）。
 
 ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**MAM がボタン 1 つでダウンロードして入れられます**（Apple Silicon のみ）。
 
-1. MAM の設定画面の「ffmpeg」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 54 MB（展開後は約 126 MB）を、配布元の [martin-riedl.de](https://ffmpeg.martin-riedl.de/) のビルド（Developer ID で署名された固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、データディレクトリ（既定は `~/Library/Application Support/mam`。`--data-dir` や `MAM_DATA_DIR` で変えたときはそこ）の `ffmpeg` フォルダに置きます（`MAM.app` の中には置かないので、自動更新で消えません）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
+1. MAM のモデルマネージャーの「付随ソフト」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 54 MB（展開後は約 126 MB）を、配布元の [martin-riedl.de](https://ffmpeg.martin-riedl.de/) のビルド（Developer ID で署名された固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、データディレクトリ（既定は `~/Library/Application Support/mam`。`--data-dir` や `MAM_DATA_DIR` で変えたときはそこ）の `ffmpeg` フォルダに置きます（`MAM.app` の中には置かないので、自動更新で消えません）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
 2. 「ffmpeg と ffprobe を入れました。すぐに使えます」と出たら、そのまま使えます（MAM の再起動は要りません）
-3. 確認: 設定画面の「ffmpeg」に「使えます」と場所が出れば使えます
+3. 確認: モデルマネージャーの「付随ソフト」の ffmpeg に「使えます」と場所が出れば使えます
 
 自分で入れたい人は、ターミナルで `brew install ffmpeg` を実行します（[Homebrew](https://brew.sh) が無いときは先に入れます。ffprobe も一緒に入ります）。Finder や Dock から起動した MAM は、ターミナルの `PATH` を引き継ぎません。そのため MAM は `PATH` に加えて、Homebrew の既定の場所（Apple Silicon は `/opt/homebrew/bin`、Intel は `/usr/local/bin`）も探します。ほかの場所（MacPorts など）に入れたときは、設定画面の「ffmpeg」で ffmpeg と ffprobe のパスを指定してください。ログインシェルの `PATH` は読みません。**自分で入れた ffmpeg は、MAM がダウンロードしたものより優先して使います。**
 

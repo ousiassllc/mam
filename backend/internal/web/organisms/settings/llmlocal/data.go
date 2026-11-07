@@ -1,49 +1,10 @@
-// Package llmlocal is the card "ローカル LLM サーバー" of the category "テキスト生成（LLM）" of the settings screen (#1008): the base URL of the
-// local OpenAI-compatible LLM server (Ollama, LM Studio, llama.cpp server), its optional API key, the connection test and the switch that unloads the Ollama
-// models before a local image or video generation. It shows whether a key is set and never the key.
+// Package llmlocal is the card "ローカル LLM サーバー" of the category "テキスト生成（LLM）" of the settings screen: a link to the page "ローカル LLM" of the model manager (#1104),
+// where the server the calls of the provider "local" go to is chosen and its address and key are set, and one line that says where the calls go now. It has no field of its own:
+// the settings of the local LLM server were moved to the model manager, so that there is one place for them.
 package llmlocal
-
-import "github.com/ousiassllc/mam/backend/internal/apperr"
 
 // Data is what the card is drawn from.
 type Data struct {
-	BaseURL        string
-	DefaultBaseURL string
-	KeyConfigured  bool
-	// KeyHint is the last characters of the stored key ("" without a key).
-	KeyHint       string
-	KeyUnreadable bool
-	Unload        bool
-	// UseManaged is whether the calls go to the llama.cpp server mam manages itself. Managed is where that server stands (nil: this app has none).
-	UseManaged bool
-	Managed    *Managed
-	Pinned     bool
-	// Problem is why the settings file could not be read (a save is refused until it is repaired).
-	Problem string
-	// Notice is what the last save did; Error is why it was refused, and Blame the field it is about ("base_url" / "api_key").
-	Notice, Error, Blame string
+	// State is where the calls go now ("今は この PC の llama.cpp に呼び出します"); Problem is in a few words why that server cannot be used ("未導入"), empty when it can.
+	State, Problem string
 }
-
-// Managed is the llama.cpp server mam installs and starts itself, as the card shows it.
-type Managed struct {
-	// State is the llmlocal.ManagedState; Reason says (Japanese) why it cannot be used or failed; Model is the name of the model in force ("" for none).
-	State, Reason, Model string
-}
-
-// TestResult is the outcome of a connection test, drawn under the form.
-type TestResult struct {
-	OK      bool
-	Message string
-	// Failure is the common error of a failed test (apperr.View): the cause and the remedy.
-	Failure *apperr.View
-	Models  []string
-	Count   int
-}
-
-// The ids the card and its script share.
-const (
-	// CardID is the id of the card: what a save replaces.
-	CardID = "llm-local-card"
-	// ResultID is where the answer of the connection test is put.
-	ResultID = "llm-local-result"
-)

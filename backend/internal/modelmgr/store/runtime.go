@@ -54,6 +54,13 @@ func (l RuntimeLayout) CacheDir() string { return filepath.Join(l.Root, "cache")
 // TempDir is where the program writes temporary files (TEMP, TMP, TMPDIR), below Root for the same reason.
 func (l RuntimeLayout) TempDir() string { return filepath.Join(l.Root, "tmp") }
 
+// HomeDir is the home directory (HOME, USERPROFILE) a runtime that keeps settings in its user's home is started with, so that it never writes to the profile of the
+// person who uses mam (Ollama's .ollama).
+func (l RuntimeLayout) HomeDir() string { return filepath.Join(l.Root, "home") }
+
+// ModelsDir is where a runtime that fetches its models itself keeps them (Ollama's OLLAMA_MODELS). Removing the runtime removes them with it.
+func (l RuntimeLayout) ModelsDir() string { return filepath.Join(l.Root, "models") }
+
 // PIDPath is the pid file of the runtime process (see Layout.PIDPath).
 func (l RuntimeLayout) PIDPath() string { return filepath.Join(l.Root, "runtime.pid") }
 

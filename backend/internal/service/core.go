@@ -96,15 +96,20 @@ func (c *core) generationRecorder(ctx context.Context, shotID string) func() {
 // (a finished Brief, an answered Approval card, a message after a failure). It never fails
 // the user's action: the pipeline can be kicked again by the next change.
 func (c *core) kick(ctx context.Context, projectID string) {
+	if err := c.startPipeline(ctx, projectID); err != nil {
+		c.logger.Error("start the AUTO pipeline failed", "project_id", projectID, "err", err)
+	}
+}
+
+// startPipeline is kick that hands the failure to the caller, which can tell the user (PostMessage).
+func (c *core) startPipeline(ctx context.Context, projectID string) error {
 	if c.afterAnswer != nil {
 		c.afterAnswer(projectID)
 	}
 	if c.pipeline == nil {
-		return
+		return nil
 	}
-	if err := c.pipeline.Kick(context.WithoutCancel(ctx), projectID); err != nil {
-		c.logger.Error("start the AUTO pipeline failed", "project_id", projectID, "err", err)
-	}
+	return c.pipeline.Kick(context.WithoutCancel(ctx), projectID)
 }
 
 // publishCreated tells the Project's clients that messages up to lastID exist.

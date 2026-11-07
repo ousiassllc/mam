@@ -222,5 +222,16 @@ const AdultNote = "FaceFusion は、ヌード・成人向けの画像の処理�
 // the user. mam has not read its clauses in full (the repository has no full text), so it only names it.
 const LicenseNote = "FaceFusion 本体のライセンスは OpenRAIL-AS（2025-02 に MIT から変更）です。利用の制限が使う人に直接かかります。条項は使う前に読んでください"
 
+// RecommendedTag is the tag of the FaceFusion repository that the screen tells the user to check out when installing it by hand: the latest stable tag on GitHub on
+// 2026-11-07 (the "v4-beta" line is not chosen). The tables of the models here follow the choices of the 3.x line, so mam does not know that a later one works.
+// mam never fetches FaceFusion (spec/architecture/gentest/face-swap.md §1): this is a line of the instructions, not a download.
+const RecommendedTag = "3.9.2"
+
+// ConfirmedSeries is the start of the versions whose choices (the names of the models) the tables here were checked against.
+const ConfirmedSeries = "3."
+
+// VersionNote is what the screen says about a FaceFusion whose version does not start with ConfirmedSeries (it only says it: nothing is refused).
+const VersionNote = "mam が確かめたのは 3.x の選択肢（モデルの名前）です。この版では入れ替えが動かないことがあります"
+
 // FirstRunNote says what FaceFusion does by itself the first time a model is used: it fetches the model files, not mam.
 const FirstRunNote = "初めて使うモデルは、FaceFusion 自身が配布元から取得します（mam は取得しません）。初回は時間がかかり、ディスクを使います"

@@ -3,7 +3,7 @@ import { sendMouse, setViewport } from '@web/test-runner-commands';
 import htmx from 'htmx.org';
 import '../../main';
 
-// #908: pressing 導入 in /model-manager threw the page to the bottom. The page is the real screen, drawn with the real
+// #908: pressing 導入 in the model manager (now the page /model-manager/image-video, #1101) threw the page to the bottom. The page is the real screen, drawn with the real
 // Tailwind CSS, and the answers are what the handlers render (backend/internal/web/scroll_fixture_test.go keeps them
 // current), so what moves the page here is what moves it for a reader.
 //
@@ -107,14 +107,14 @@ for (const anchoring of [true, false]) {
       ).to.deep.equal([]);
     });
 
-    it('does not move the page when the polling ends and the list and the trial section are drawn again', async function () {
+    it('does not move the page when the polling ends and the list is drawn again', async function () {
       this.timeout(20_000);
       const before = await scrollToInstall();
       installButton().click();
       await waitUntil(() => card('model-5')?.getAttribute('data-state') === 'installing', 'the install did not start');
       seen = [];
 
-      // The list asks for itself every 2 s; the answer is the finished list with the trial section out of band.
+      // The list asks for itself every 2 s; the answer is the finished list.
       await waitUntil(() => card('model-5')?.getAttribute('data-state') === 'installed', 'the polling did not end', {
         timeout: 8000,
       });

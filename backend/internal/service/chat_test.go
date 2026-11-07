@@ -217,7 +217,7 @@ func TestPostMessage_FreeInputAnswersTheNewestOpenQuestionAndExtractsOtherItems(
 
 func TestPostMessage_DelegatingLeavesTheItemToTheAIAndMovesOn(t *testing.T) {
 	f := newFixture(t)
-	p := f.createProject(t, "動画を作りたい")
+	p := f.createProject(t, "美容液の動画を作りたい") // the Subject is taken from it: it cannot be left to the AI (#1108)
 
 	var last domain.ThreadMessage
 	for range domain.RequiredBriefFields() {
@@ -230,7 +230,7 @@ func TestPostMessage_DelegatingLeavesTheItemToTheAIAndMovesOn(t *testing.T) {
 
 	brief := f.brief(t, p.ID)
 	assert.Empty(t, brief.Missing())
-	assert.Len(t, brief.Delegated, len(domain.RequiredBriefFields()))
+	assert.Len(t, brief.Delegated, len(domain.RequiredBriefFields())-1)
 	done := lastMessage(t, f.thread(t, p.ID))
 	assert.Equal(t, domain.KindText, done.Kind)
 	assert.Contains(t, done.Content, "Brief が揃いました")
@@ -244,7 +244,8 @@ func TestPostMessage_KeepsWorkingWhileTheProjectIsBusyAndDoesNotTouchTheBrief(t 
 	before := f.brief(t, p.ID)
 	setState(t, f, p.ID, domain.StateGenerating)
 	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "10秒にしてほしい"})
-	assert.Len(t, ws.Messages, 1, "input is accepted during generation; interpreting it is the DIRECTOR MODE feature")
+	require.Len(t, ws.Messages, 2, "input is accepted during generation; interpreting it is the DIRECTOR MODE feature, and the thread says so (#1107)")
+	assert.Equal(t, domain.RoleAssistant, ws.Messages[1].Role)
 	assert.Equal(t, before, f.brief(t, p.ID))
 }
 

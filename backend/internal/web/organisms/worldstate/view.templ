@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/locktoggle"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
@@ -29,7 +30,7 @@ templ entityForm(d Data, e entityView) {
 			<summary class="cursor-pointer text-xs text-mute">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
 			<div class="mt-2 flex flex-col gap-1">
 				for _, f := range domain.LockableFields(e.Target) {
-					@molecules.LockToggle(d.fieldLockToggle(e.Target, e.ID, f))
+					@locktoggle.Toggle(d.fieldLockToggle(e.Target, e.ID, f))
 				}
 			</div>
 		</details>
@@ -102,7 +103,7 @@ templ View(d Data) {
 		<section aria-label="Story / Music" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-ink">Story / Music</h2>
 			for _, p := range domain.ProjectLockParameters() {
-				@molecules.LockToggle(locktoggles.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
+				@locktoggle.Toggle(locktoggles.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
 			}
 		</section>
 		<p id="world-state-empty" class="text-sm text-mute">
@@ -156,7 +157,7 @@ templ singletonLocks(d Data, target domain.WorldTarget) {
 		<summary class="cursor-pointer text-xs text-mute">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
 		<div class="mt-2 flex flex-col gap-1">
 			for _, f := range domain.LockableFields(target) {
-				@molecules.LockToggle(d.fieldLockToggle(target, "", f))
+				@locktoggle.Toggle(d.fieldLockToggle(target, "", f))
 			}
 		</div>
 	</details>

@@ -47,5 +47,10 @@ type Card struct {
 	Attrs templ.Attributes
 }
 
+// GridClass is the class of every <ul> that lays cards side by side: one column up to 639 px, two from 640 px (sm), three from 1280 px (xl: with the
+// side menu open a 1024 px window leaves 800 px, and three columns there are cards too narrow for their buttons). It is the one place that
+// knows the number of columns (#1102): change it here. The card of the engine, which holds a form and a log, is the one list that does not use it.
+const GridClass = "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+
 // FocusKey is the key of the control that opens the detail of the card (modal.OpenAttrs).
 func (c Card) FocusKey() string { return "open-" + c.ID }

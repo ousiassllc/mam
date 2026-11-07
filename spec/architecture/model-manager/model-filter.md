@@ -164,7 +164,6 @@
 | `match` | 生成テスト「画像から似せる」 | 画像モデル（`model`） |
 | `inpaint` | 「一部だけ描き直す」 | 描き直せる画像モデル（`model`。描き直せないモデルは理由つきで出る） |
 | `shot-video` | Shot の Video Model（MANUAL・LOCK） | 動画モデル（`value`。保存したワークフローも出る） |
-| `model-trial` | モデルマネージャーの試し生成 | 試せるモデル（`model_id`） |
 | `settings-image` | 設定「画像・動画モデル」の画像の用途 | `modelsettings.View.ImageModels` にあるモデル（`image_<用途>_<primary or fallback>_model`） |
 | `settings-video` | 同 Quality Policy | 動画モデルと解像度（`policy_<方針>_<primary or fallback>`。値は `<モデル>@<解像度>`） |
 | `video-enhance` | 生成結果の詳細（動画）「大きくする」「滑らかにする」（Issue #1031・#1011） | その操作（`op=upscale`・`interpolate`）と場所（`cloud=1` は Topaz、無ければこの PC）のモデル（`model`。`modelcatalog.VideoEnhancer.Item`・`Availability`。種類は `video_upscale`・`video_interpolate`。Topaz のキーが無いものは「選べません」で、API キーの設定への導線つき）。パネルは商用利用と選べるものだけ |
@@ -180,6 +179,6 @@
 | モデルマネージャー（カタログ・導入済み） | `GET /model-manager/models`（`mmview.Where`。ジョブ中の導入は条件に関わらず報告する） | — |
 | 生成テスト | `GET /generation-test/models?media=image\|video`（`gentest.Service.ModelsWhere`。添えた入力画像を受け付けるモデルを先に並べる） | モデルは一覧のカード（複数選択）。カードの `<li>` は `data-requires-first-frame`（最初のフレームが無いと動かない I2V。#1009）ほか、入力欄・詳細設定のスクリプトが読む `data-*` を持つ。動画の入力欄の通知 `#gt-input-check`（#1009）は、一覧を描き直しても残る。かんたんは一覧を持たず、選んだ 1 つを隠しカードで送る |
 | 生成テスト「履歴」 | `GET /generation-test/history`（商用利用の 3 択を `commercial` で送り、サーバーが答えのモデルで絞る） | モデルの `<select>` は履歴にあるモデルの名前の絞り込みで残す（モデルを**選ぶ**のではない） |
-| 設定の画像・動画モデル・LLM、Shot の Video Model、「画像から似せる」・「一部だけ描き直す」・試し生成・「大きくする」 | §8.3 | §8.3 |
+| 設定の画像・動画モデル・LLM、Shot の Video Model、「画像から似せる」・「一部だけ描き直す」・「大きくする」 | §8.3 | §8.3 |
 
 モデルを探す・選ぶ画面ではない選択（履歴のモデル名の絞り込み、ポーズの分類、倍率、FaceFusion の部品（swapper・detector・enhancer））は `<select>` のままにする。

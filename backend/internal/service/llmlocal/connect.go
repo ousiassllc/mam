@@ -1,6 +1,7 @@
 package llmlocal
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -89,22 +90,27 @@ func (s *Service) isSavedAddress(baseURL string) bool {
 	return err == nil && saved == baseURL
 }
 
-// testManaged is the test while the calls go to the llama.cpp server of mam: it says where the server stands, and never starts it (loading a model
-// takes much longer than a test; the first call starts it).
+// testManaged is the test while the calls go to a server that mam manages (llama.cpp, Ollama): it says where the server stands, and never starts it
+// (loading a model takes much longer than a test; the first call starts it).
 func (s *Service) testManaged(ctx context.Context) TestResult {
+	who := s.settingsView().Use.Name()
 	info, _ := s.ManagedInfo(ctx)
-	name := info.ModelName
-	if name == "" {
-		name = info.Model
+	named := ""
+	if name := cmp.Or(info.ModelName, info.Model); name != "" {
+		named = "（モデル: " + name + "）"
+	}
+	models := info.Models
+	if len(models) == 0 && info.Model != "" {
+		models = []string{info.Model}
 	}
 	switch info.State {
 	case ManagedRunning:
-		return TestResult{OK: true, Message: "この PC の llama.cpp が動いています（モデル: " + name + "）", Models: []string{info.Model}, Count: 1}
+		return TestResult{OK: true, Message: who + " が動いています" + named, Models: models, Count: len(models)}
 	case ManagedStopped, ManagedStarting:
-		return TestResult{OK: true, Message: "この PC の llama.cpp を使います（モデル: " + name + "）。いまは止まっていて、最初の LLM の呼び出しで自動で起動します（モデルの読み込みに時間がかかります）", Models: []string{info.Model}, Count: 1}
+		return TestResult{OK: true, Message: who + " を使います" + named + "。いまは止まっていて、最初の LLM の呼び出しで自動で起動します（モデルの読み込みに時間がかかります）", Models: models, Count: len(models)}
 	}
 	e := apperr.New(apperr.CodeLocalLLMDown).WithDetail(info.Reason)
-	return TestResult{Message: "この PC の llama.cpp を使えません: " + info.Reason, Error: e}
+	return TestResult{Message: who + " を使えません: " + info.Reason, Error: e}
 }
 
 // failure is a failed test as a result that says why in words the user can act on.

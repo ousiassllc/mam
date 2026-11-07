@@ -57,7 +57,11 @@ func (f fixture) askUntil(t *testing.T, projectID string, field domain.BriefFiel
 		if q.RefID == string(field) {
 			return q
 		}
-		f.post(t, projectID, domain.DelegateOption, q.ID)
+		answer := domain.DelegateOption
+		if q.RefID == string(domain.BriefSubject) {
+			answer = "美容液" // the Subject cannot be left to the AI (#1108)
+		}
+		f.post(t, projectID, answer, q.ID)
 	}
 	require.FailNow(t, "the AI never asked about "+string(field))
 	return domain.ThreadMessage{}

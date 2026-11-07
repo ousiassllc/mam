@@ -148,7 +148,7 @@ func TestListLLMModels_ADownLocalServerIsUnusableWithTheReason(t *testing.T) {
 	assert.Equal(t, "default", p.Source)
 	assert.Equal(t, "ローカルサーバーに接続できません", p.Reason)
 	assert.False(t, p.Available)
-	assert.Equal(t, "/settings/llm", p.SettingsRoute)
+	assert.Equal(t, "/model-manager/local-llm", p.SettingsRoute)
 	assert.Empty(t, p.Models)
 
 	env.CallOK("list_llm_models", map[string]any{"available_only": true}, &models)
@@ -207,4 +207,59 @@ func TestSetLocalLLMServer_UseManagedRuntimeNeedsTheManagedServerAndShowsItsStat
 	ready.CallOK("list_llm_models", map[string]any{"provider": "local"}, &list)
 	require.Len(t, list.Providers[0].Models, 1)
 	assert.Equal(t, "gemma-4-12b-it", list.Providers[0].Models[0].ID, "the picker offers the model of the managed server, while it is stopped too")
+}
+
+// use_managed_ollama points the provider "local" at mam's Ollama (#1104): the tool reads and writes the same switches as the page of the model manager, `use` says which server it is,
+// and the two switches are never both true (a save of one clears the other; both in one call is a validation error).
+func TestSetLocalLLMServer_UseManagedOllamaIsExclusiveWithTheManagedRuntimeAndShowsTheUse(t *testing.T) {
+	env, _, _ := withLocal(t, false)
+	assert.Contains(t, env.CallError("set_local_llm_server", map[string]any{"use_managed_ollama": true}), "validation:", "no managed Ollama in this app")
+
+	keys := credentialtest.New()
+	s, f := newFiles(t, false)
+	s.LLMLocal = llmlocal.New(f.llm, false, keys, nil)
+	s.LLMLocal.SetManaged(managedStub{llmlocal.ManagedInfo{State: llmlocal.ManagedStopped, Model: "gemma-4-12b-it"}})
+	s.LLMLocal.SetManagedOllama(managedStub{llmlocal.ManagedInfo{State: llmlocal.ManagedNotInstalled, Reason: "Ollama が導入されていません"}})
+	both := newEnv(t, s)
+
+	assert.Contains(t, both.CallError("set_local_llm_server", map[string]any{"use_managed_runtime": true, "use_managed_ollama": true}), "validation:", "a contradictory pair")
+	assert.Equal(t, llmlocal.UseCustom, s.LLMLocal.View().Use, "nothing was saved")
+
+	var local settings.LocalServer
+	both.CallOK("set_local_llm_server", map[string]any{"use_managed_runtime": true}, &local)
+	assert.Equal(t, "llama-cpp", local.Use)
+	assert.True(t, local.UseManagedRuntime)
+	assert.False(t, local.UseManagedOllama)
+
+	local = settings.LocalServer{} // a field the answer leaves out must not keep the value of the last one
+	both.CallOK("set_local_llm_server", map[string]any{"use_managed_ollama": true}, &local)
+	assert.Equal(t, "ollama", local.Use)
+	assert.False(t, local.UseManagedRuntime, "choosing Ollama clears llama.cpp")
+	assert.True(t, local.UseManagedOllama)
+	require.NotNil(t, local.ManagedRuntime, "the state of the server in use has the same shape")
+	assert.Equal(t, "not_installed", local.ManagedRuntime.State)
+
+	var ov settings.Overview
+	both.CallOK("get_global_settings", map[string]any{}, &ov)
+	assert.Equal(t, local, ov.LLM.LocalServer, "get_global_settings reads what the tool saved")
+
+	both.CallOK("set_local_llm_server", map[string]any{"use_managed_ollama": false}, &local)
+	assert.Equal(t, "custom", local.Use)
+}
+
+// test_local_llm_server is unchanged for the address, and says where the server stands while one of mam is in use (Ollama too).
+func TestTestLocalLLMServer_WhileOllamaOfMamIsInUseItSaysWhereItStands(t *testing.T) {
+	keys := credentialtest.New()
+	s, f := newFiles(t, false)
+	s.LLMLocal = llmlocal.New(f.llm, false, keys, nil)
+	s.LLMLocal.SetManagedOllama(managedStub{llmlocal.ManagedInfo{State: llmlocal.ManagedStopped, Model: "gemma4:12b", ModelName: "Gemma 4 12B"}})
+	env := newEnv(t, s)
+	env.CallOK("set_local_llm_server", map[string]any{"use_managed_ollama": true}, new(settings.LocalServer))
+
+	var out settings.TestLocalServerOutput
+	env.CallOK("test_local_llm_server", map[string]any{"base_url": "http://127.0.0.1:1"}, &out)
+
+	assert.True(t, out.OK)
+	assert.Contains(t, out.Message, "Ollama を使います")
+	assert.Equal(t, []string{"gemma4:12b"}, out.Models)
 }

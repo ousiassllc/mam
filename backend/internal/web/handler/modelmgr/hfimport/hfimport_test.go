@@ -62,7 +62,7 @@ func install(path string, extra url.Values) url.Values {
 
 func TestThePageHasTheImportSectionAndTheTokenStaysOutOfIt(t *testing.T) {
 	s := newScreen(t)
-	body := s.Page()
+	body := s.PageOf(paths.MMHFExternal)
 	assert.Contains(t, body, `data-testid="mm-hfi-form"`)
 	assert.Contains(t, body, `data-testid="mm-hfi-none"`)
 	assert.Contains(t, body, `id="mm-hfi-msg"`)
@@ -151,9 +151,9 @@ func TestInstallingAFileShowsProgressThenTheModelAndDeletingItRemovesIt(t *testi
 	body := rec.Body.String()
 	assert.Contains(t, body, `data-path="models/checkpoints/pony.safetensors"`)
 	assert.Contains(t, body, "導入しました")
-	assert.Contains(t, body, `data-testid="mm-trial"`, "the trial choices are drawn again with the new model")
+	assert.NotContains(t, body, `hx-swap-oob`, "only the list is answered: no section is drawn out of band")
 	assert.NotContains(t, body, `hx-trigger="every 2s"`)
-	assert.Contains(t, s.Page(), `data-path="models/checkpoints/pony.safetensors"`)
+	assert.Contains(t, s.PageOf(paths.MMHFExternal), `data-path="models/checkpoints/pony.safetensors"`)
 
 	// The card is the card of the catalog's models (#954): the name, folder, size, state and the delete button; the repository, commit, license and
 	// SHA-256 are in the modal it opens.

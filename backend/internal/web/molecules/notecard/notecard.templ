@@ -1,0 +1,108 @@
+// Package notecard is the card of one note (F-31). It is a package of its own so that molecules stays inside its line limit.
+package notecard
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+func sourceNoteLabel(s domain.NoteSource) string {
+	if s == domain.NoteSourceChat {
+		return "チャットから"
+	}
+	return "手入力"
+}
+
+// Card shows one note (F-31): its latest text in an edit form, the category and pin, the archive
+// button, and the version history with a restore button per earlier version. Saving with a changed
+// title or text appends a version; the category and pin do not. Every action answers with the note
+// list (#note-list) in which the other notes the page has are placeholders (notelist.Data.Only).
+templ Card(n domain.NoteView) {
+	<article id={ "note-" + n.ID } class="flex flex-col gap-2 rounded-lg border border-border p-3">
+		<div class="flex flex-wrap items-center gap-2 text-xs text-mute">
+			@atoms.Badge(atoms.BadgeNeutral, n.Category.Label())
+			@atoms.Badge(atoms.BadgeInfo, "v"+strconv.Itoa(n.Version.Number))
+			<span>{ sourceNoteLabel(n.Version.Source) }</span>
+			if n.Pinned {
+				@atoms.Badge(atoms.BadgeWarn, "ピン留め")
+			}
+			if n.OriginID != "" {
+				<span>Series のメモから引き継ぎ</span>
+			}
+			if n.Archived() {
+				@atoms.Badge(atoms.BadgeNeutral, "アーカイブ済み")
+			}
+		</div>
+		<form class="flex flex-col gap-2" hx-put={ paths.Note(n.ID) } hx-target="#note-list" hx-swap="outerHTML">
+			<label class="flex flex-col gap-1 text-xs text-mute" for={ "note-title-" + n.ID }>
+				タイトル
+				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+					"id":        "note-title-" + n.ID,
+					"name":      "title",
+					"type":      "text",
+					"value":     n.Version.Title,
+					"maxlength": strconv.Itoa(domain.MaxNoteTitleRunes),
+					"required":  true,
+				})
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-mute" for={ "note-content-" + n.ID }>
+				本文
+				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+					"id":        "note-content-" + n.ID,
+					"name":      "content",
+					"rows":      "4",
+					"maxlength": strconv.Itoa(domain.MaxNoteContentRunes),
+					"required":  true,
+				}, n.Version.Content)
+			</label>
+			<div class="flex flex-wrap items-end gap-3">
+				<label class="flex flex-col gap-1 text-xs text-mute" for={ "note-category-" + n.ID }>
+					カテゴリ
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"id":   "note-category-" + n.ID,
+						"name": "category",
+					}) {
+						for _, c := range domain.NoteCategories() {
+							<option value={ string(c) } selected?={ c == n.Category }>{ c.Label() }</option>
+						}
+					}
+				</label>
+				<label class="flex items-center gap-1 text-sm">
+					<input type="hidden" name="pinned" value="false"/>
+					@atoms.Choice("", templ.Attributes{
+						"type":    "checkbox",
+						"name":    "pinned",
+						"value":   "true",
+						"checked": n.Pinned,
+					})
+					ピン留め（常に推論の文脈に渡す）
+				</label>
+				@atoms.ButtonFor(atoms.TonePrimary, "保存", n.Version.Title, templ.Attributes{"type": "submit", "data-focus-key": "save-" + n.ID})
+			</div>
+		</form>
+		<div class="flex flex-wrap gap-2">
+			if n.Archived() {
+				@atoms.ButtonFor(atoms.ToneNeutral, "アーカイブを解除", n.Version.Title, templ.Attributes{
+					"type":           "button",
+					"data-focus-key": "archive-" + n.ID,
+					"hx-put":         paths.Note(n.ID),
+					"hx-vals":        atoms.HxVals(map[string]string{"archived": "false"}),
+					"hx-target":      "#note-list",
+					"hx-swap":        "outerHTML",
+				})
+			} else {
+				@atoms.ButtonFor(atoms.ToneDanger, "アーカイブ", n.Version.Title, templ.Attributes{
+					"type":           "button",
+					"data-focus-key": "archive-" + n.ID,
+					"hx-delete":      paths.Note(n.ID),
+					"hx-target":      "#note-list",
+					"hx-swap":        "outerHTML",
+					"hx-confirm":     "アーカイブしますか？（メモは残りますが、以降の推論には渡されません）",
+				})
+			}
+		</div>
+	</article>
+}

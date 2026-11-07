@@ -166,6 +166,10 @@ func generationShell(title, csrfToken, current, lead string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p id=\"gentest-vs-main-line\" class=\"text-xs text-mute\">生成テストは試用の経路です。ここで作った動画は、プロジェクトの Scene / Shot（制作の本線）の Take にはなりません。本線の Shot は、プロジェクトの「Scene / Shot」から「生成」を押して作ります。</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 				templ_7745c5c3_Err = templ_7745c5c3_Var5.Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -238,7 +242,7 @@ func GenerationTestPage(csrfToken string, c gentest.Compose) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = gentest.BatchEmpty().Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = gentest.BatchList().Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

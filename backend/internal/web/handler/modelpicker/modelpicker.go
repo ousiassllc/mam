@@ -3,8 +3,7 @@
 // answers the dialog's body, and GET /model-picker/<source>?part=results the cards alone for a changed filter. The list is narrowed by the server's
 // modelfilter (a Source calls it on its own service); each source remembers its condition (pickfilter) under its own key, so a screen opens as it was left.
 //
-// The sources are the screens that choose one model: the prompt match and the partial redraw of the generation test, a Shot's video model, the trial of the model
-// manager, the image and video assignment of the settings and the LLM assignment. The generation test's form, which chooses several, and the model manager's
+// The sources are the screens that choose one model: the prompt match and the partial redraw of the generation test, a Shot's video model, the image and video assignment of the settings and the LLM assignment. The generation test's form, which chooses several, and the model manager's
 // catalog, which lists, draw the same bar and panel in their own pages (handler/gentest, handler/modelmgr) and are not sources.
 package modelpicker
 
@@ -32,7 +31,6 @@ const (
 	SourceMatch         = "match"          // the model of the prompt match
 	SourceInpaint       = "inpaint"        // the model of the partial redraw
 	SourceShotVideo     = "shot-video"     // the video model a Shot keeps with MANUAL or LOCK
-	SourceTrial         = "model-trial"    // the model of the model manager's trial generation
 	SourceSettingsImage = "settings-image" // an image model of an image purpose of the settings
 	SourceSettingsVideo = "settings-video" // a video model (at a resolution) of a Quality Policy of the settings
 	SourceLLM           = "settings-llm"   // the provider and the model of an Agent's LLM

@@ -92,3 +92,5 @@
 | 1.85 | 2026-11-03 | `gentest_result` に `started_at`（`running` にした時刻。NULL 許容）を足した（[gentest/er-gentest.md](gentest/er-gentest.md)。マイグレーション `20261105090000_gentest_result_started_at.sql`） | Issue #1002。ローカルモデルの所要時間の見積りの根拠（実行時間）が残っていなかった |
 | 1.86 | 2026-11-03 | `character` に `draft`（INTEGER NOT NULL DEFAULT 0。1=企画が LLM の API キー未設定で止まったとき、Brief の添付画像から LLM なしで作った下書き。編集で 0 に戻る）を足した（マイグレーション `20261106100000_character_draft.sql`） | Issue #1022（#1001 の残り） |
 | 1.87 | 2026-11-04 | `character.voice_reference`（JSON）に `finetune`（GPT-SoVITS の学習した声。重みはユーザーデータ側のファイル）を足した。列・マイグレーションは足さない。バンドルは書き出さず取り込みは拒否する | Issue #936 |
+| 1.88 | 2026-11-06 | [er-model-manager.md](model-manager/er-model-manager.md) の `gentest` の行の「試し生成を含む」を、モデルマネージャーの試し生成の廃止に合わせて直した（テーブル・CHECK は変えない） | Issue #1100 |
+| 1.89 | 2026-11-07 | `generation_approval`・`generation_launch` を追加（マイグレーション `20261107130000_generation_approval.sql`）。`chat_message.ref_type` に `generation`（生成の承認カード。`ref_id` は計画の指紋）を足した。両テーブルはプロジェクトのバンドルには含めない（この環境のモデル・単価に対する承認と、起動の記録なので） | Issue #1108（A 方針）。生成の承認が何を承認したか（Shot ごとの内容と見積）と、承認のあとに Orchestrator が何を起動したかを記録し、範囲の変更・見積の増加での再承認と、同じ承認での二重起動の防止（プロセス再起動後も）に使う |

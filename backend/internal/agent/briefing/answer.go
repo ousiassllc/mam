@@ -2,6 +2,7 @@ package briefing
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -14,6 +15,9 @@ const FieldMaxRunes = 200
 // ValueProblem says why value cannot be the Brief item f ("" when it can). It is the rule of the
 // Brief form (PUT /projects/:id/brief) and of the answers given to the questions in the chat.
 func ValueProblem(f domain.BriefField, value string) string {
+	if value == domain.DelegateOption && !f.CanDelegate() {
+		return "「" + domain.DelegateOption + "」は選べません。AI が題材を決めると、指定と無関係な内容になるためです"
+	}
 	if utf8.RuneCountInString(value) > FieldMaxRunes {
 		return fmt.Sprintf("%d 文字以内で入力してください", FieldMaxRunes)
 	}
@@ -40,4 +44,25 @@ func ReferenceProblem(u string) string {
 		return fmt.Sprintf("URL が %d 文字を超えているか、空白を含んでいます", FieldMaxRunes)
 	}
 	return ""
+}
+
+// ApplyAnswer stores an answer; the Brief form's rule refuses it with the question again and the reason.
+func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.ChatMessage {
+	text = strings.TrimSpace(text)
+	if text == domain.DelegateOption && f.CanDelegate() {
+		brief.Delegate(f)
+	} else if problem := ValueProblem(f, text); problem != "" {
+		again := Question(f, f.Label()+": "+problem+"\n"+f.Question())
+		return &again
+	} else if text != "" {
+		brief.Set(f, text)
+	}
+	return nil
+}
+
+// Changed reports whether b holds something a does not: a required item, a delegation, an attachment or the additional instruction.
+func Changed(a, b domain.Brief) bool {
+	return !slices.Equal(a.Assets, b.Assets) || !slices.Equal(a.References, b.References) ||
+		!slices.Equal(a.Delegated, b.Delegated) || a.AdditionalInstruction != b.AdditionalInstruction ||
+		slices.ContainsFunc(domain.RequiredBriefFields(), func(f domain.BriefField) bool { return a.Get(f) != b.Get(f) })
 }

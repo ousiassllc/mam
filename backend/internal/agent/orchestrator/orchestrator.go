@@ -1,14 +1,16 @@
 // Package orchestrator is the Orchestrator Agent: it drives the Core State Machine of a Project
 // (spec/spec.md §22) and decides which Agent runs next (§20.1). This package runs the planning
-// part of the AUTO pipeline (spec/spec.md §4.3):
+// and the generation part of the AUTO pipeline (spec/spec.md §4.3):
 //
 //	DRAFT ──Brief complete──▶ PLANNING ──Producer → Writer──▶ script_version
 //	        ──(script approval card, when the Confirmation Level asks)──▶ VISUAL_DESIGN
 //	        ──Director → Storyboard──▶ scene / shot
+//	        ──generation approval (every Confirmation Level)──▶ Reference Pack → Shot generation
 //
 // Every move is persisted (repository.ProjectRepository.Transition) before the next Agent runs,
 // and every step derives what is left to do from what is stored, so an interrupted run is
-// resumed by running the same job again.
+// resumed by running the same job again. The stages are in orchestrator/stages and the generation approval in orchestrator/genstage; this
+// package is the job around them (one job per Project, rerun, the notice of a failure).
 package orchestrator
 
 import (
@@ -21,7 +23,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
-	"github.com/ousiassllc/mam/backend/internal/agent/planning"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/genstage"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/stages"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/characterdraft"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -29,15 +32,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
-
-// Chat is what the Orchestrator needs from the chat thread. *service.ChatService implements it.
-type Chat interface {
-	// RequestApproval posts the Approval card of a checkpoint when the Confirmation Level asks
-	// for one and holds the Project in AWAITING_APPROVAL. It reports whether a card was posted.
-	RequestApproval(ctx context.Context, projectID string, cp domain.Checkpoint, summary, refID string) (bool, error)
-	// Announce posts an AI message that does not block the Project (text or progress card).
-	Announce(ctx context.Context, projectID string, m domain.ChatMessage) error
-}
 
 // Jobs is the background job queue. *jobqueue.Queue implements it.
 type Jobs interface {
@@ -54,7 +48,7 @@ type Deps struct {
 	Projects *repository.ProjectRepository
 	Plans    *repository.PlanRepository
 	ChatRepo *repository.ChatRepository
-	Chat     Chat
+	Chat     stages.Chat
 	Jobs     Jobs
 	// LLM is the Reasoning LLM Adapter every planning Agent reasons through.
 	LLM llm.Completer
@@ -63,24 +57,22 @@ type Deps struct {
 	Notes *repository.NoteRepository
 	// Drafts is asked for the draft Characters when the pipeline stops for want of an LLM API key (#1022). Nil: none are made.
 	Drafts Drafts
+	// Facts counts the Reference Library items and the Characters of a Project, for the sentence that says what the main line waits for
+	// after the Scene / Shot plan (#1108). Nil: the sentence leaves them out.
+	Facts func(ctx context.Context, projectID string) (references, characters int, err error)
+	// Gate is the generation approval that follows the Scene / Shot plan (spec/spec.md §4.3). Nil: off; the user starts each Shot.
+	Gate   *genstage.Gate
 	Logger *slog.Logger
 }
 
 // Orchestrator drives the planning pipeline. It is safe for concurrent use.
 type Orchestrator struct {
 	projects *repository.ProjectRepository
-	plans    *repository.PlanRepository
-	chatRepo *repository.ChatRepository
-	notes    *repository.NoteRepository
+	stages   *stages.Pipeline
 	drafts   Drafts
-	chat     Chat
+	chat     stages.Chat
 	jobs     Jobs
 	logger   *slog.Logger
-
-	producer     *planning.Producer
-	writer       *planning.Writer
-	director     *planning.Director
-	storyboarder *planning.Storyboarder
 
 	mu     sync.Mutex
 	active map[string]bool // a plan job of the Project is queued or running
@@ -95,13 +87,12 @@ func New(d Deps) *Orchestrator {
 		logger = slog.New(slog.DiscardHandler)
 	}
 	return &Orchestrator{
-		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, drafts: d.Drafts, chat: d.Chat, jobs: d.Jobs, logger: logger,
-		producer:     planning.NewProducer(d.LLM),
-		writer:       planning.NewWriter(d.LLM),
-		director:     planning.NewDirector(d.LLM),
-		storyboarder: planning.NewStoryboarder(d.LLM),
-		active:       make(map[string]bool),
-		rerun:        make(map[string]bool),
+		projects: d.Projects, drafts: d.Drafts, chat: d.Chat, jobs: d.Jobs, logger: logger,
+		stages: stages.New(stages.Deps{
+			Projects: d.Projects, Plans: d.Plans, ChatRepo: d.ChatRepo, Chat: d.Chat, LLM: d.LLM, Notes: d.Notes, Facts: d.Facts, Gate: d.Gate, Logger: logger,
+		}),
+		active: make(map[string]bool),
+		rerun:  make(map[string]bool),
 	}
 }
 
@@ -110,8 +101,9 @@ type planPayload struct {
 	ProjectID string `json:"project_id"`
 }
 
-// progressText is the content of the progress card of a plan job.
-const progressText = "企画・脚本・Scene/Shot 計画を作成しています"
+// progressText is the content of the progress card of a plan job. The job plans, and once the user approved the generation it also carries it on
+// (the Reference Packs and the Shots it starts), so the words say neither that an approval exists nor that the job is only the plan.
+const progressText = "企画・脚本・Scene/Shot 計画と生成の進行を進めています"
 
 // Kick makes sure the Project is moving: it starts a plan job when the Project is in AUTO mode,
 // waits in a state the planning pipeline drives (DRAFT with a complete Brief, PLANNING,
@@ -123,7 +115,7 @@ func (o *Orchestrator) Kick(ctx context.Context, projectID string) error {
 	if err != nil {
 		return err
 	}
-	ready, err := o.needsWork(ctx, p)
+	ready, err := o.stages.NeedsWork(ctx, p)
 	if err != nil || !ready {
 		return err
 	}
@@ -147,27 +139,6 @@ func (o *Orchestrator) Kick(ctx context.Context, projectID string) error {
 		o.logger.Error("post progress card failed", "project_id", projectID, "job_id", job.ID, "err", err)
 	}
 	return nil
-}
-
-// needsWork reports whether the pipeline has anything to do for the Project right now.
-func (o *Orchestrator) needsWork(ctx context.Context, p domain.Project) (bool, error) {
-	if p.Mode != domain.ModeAuto {
-		return false, nil
-	}
-	switch p.State {
-	case domain.StateDraft:
-		brief, err := o.projects.GetBrief(ctx, p.ID)
-		if err != nil {
-			return false, err
-		}
-		return len(brief.Missing()) == 0, nil
-	case domain.StatePlanning:
-		return true, nil
-	case domain.StateVisualDesign:
-		has, err := o.plans.HasScenes(ctx, p.ID)
-		return !has, err
-	}
-	return false, nil
 }
 
 // finish ends the job's claim on the Project. It reports whether a decision came in meanwhile,
@@ -226,7 +197,7 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	}()
 
 	for {
-		if err := o.advance(ctx, id); err != nil {
+		if err := o.advanceRecovered(ctx, id); err != nil {
 			return o.report(ctx, id, err)
 		}
 		if !o.finish(id) {

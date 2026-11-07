@@ -93,9 +93,9 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 
 ## 7. 画面とルート
 
-- 設定画面の「ffmpeg」（`/settings/ffmpeg`）の下と、初回ガイドの「ffmpeg の確認」（ffmpeg か ffprobe が見つからないとき）に、同じ部品（`organisms/settings/ffmpeg.DownloadPanel`）を置く。**ダウンロードできる環境（Windows x64・macOS arm64）だけ**に出す。ほかの環境は、これまでの案内（`winget`・`brew`・汎用）だけ。初回ガイドでは、ボタンの下に「自分で入れるときは」として従来の案内を残す。
+- 設定画面の「ffmpeg」（`/settings/ffmpeg`。**#1106 で、モデルマネージャーの分類 `companion` の `#mm-ffmpeg` へ移った**。状態: 実装済み）の下と、初回ガイドの「ffmpeg の確認」（ffmpeg か ffprobe が見つからないとき）に、同じ部品（`organisms/settings/ffmpeg.DownloadPanel`）を置く。**ダウンロードできる環境（Windows x64・macOS arm64）だけ**に出す。ほかの環境は、これまでの案内（`winget`・`brew`・汎用）だけ。初回ガイドでは、ボタンの下に「自分で入れるときは」として従来の案内を残す。
 - ボタン「ffmpeg をダウンロードして入れる」（新しい版があるときは「新しい版をダウンロード」）、進み具合（バーと %。ダウンロード → 展開 → 動作確認）、「中断」（部分ファイルを残し、もう一度押すと続きから）、「削除」。進行中は 2 秒ごとに自分を取り直す（Codex の取得と同じ）。成功すると「すぐに使えます（mam を再起動する必要はありません）」を出す（入れ替えは、これを出す前に済んでいる）。
-- ルート（[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.2）: `GET` / `POST` / `DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`。
+- ルート（[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.2）: `GET` / `POST` / `DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`。**#1106 のあと**は `/model-manager/companion/ffmpeg/download`（同じ 3 つのメソッド）と `…/download/cancel`（[../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1）。
 
 ## 8. テスト
 
@@ -121,3 +121,5 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 | 1.1 | 2026-11-06 | 展開の失敗の分け方（`ErrInvalidRequest`・読み取りの失敗は `ErrUnsafeArchive` にしない・tar の展開は取り消しで止まる）、通信が切れたときの再開のログと利用者向けの文言、macOS は実行ファイルが見つからなくても取得を無効にしないことを書いた | Issue #1054 #1055 #1056 |
 | 1.2 | 2026-11-06 | §4 手順 6 に、入れ替えの改名を一時的なファイルロックで失敗しても上限つき（最大 5 回・200 ms 間隔）でやり直し、上限を超えたら前の `bin/` を戻して分かるエラーで失敗することを足した。§9 の Windows の入れ替えの確認項目を、やり直しで入れ替わることの確認に直した | Issue #1048。Windows ではウイルス対策ソフトなどが開いているファイルのせいで `bin.new` → `bin` の改名が一時的に失敗し得る |
 | 1.3 | 2026-11-06 | 導入の成功・削除のあとに、再起動せず `media.Tools` を入れ替える（§4・§5 の「次の起動から」をなくした）。§9 の確認を、再起動なしで Judge・プレビュー・Export が動くことに直した | Issue #1047 |
+| 1.4 | 2026-11-06 | §7: 画面とルートを、設定画面からモデルマネージャーの `companion` へ移すと決めた（`/model-manager/companion/ffmpeg/download` ほか。取得・検証・置き場所・探す順は変えない。状態は仕様のみ） | Issue #1106 |
+| 1.5 | 2026-11-07 | §7 の画面とルートの移し替え（#1106）を実装した（`/model-manager/companion/ffmpeg/download` ほか）。取得・検証・置き場所・探す順は変えていない。状態は「実装済み」 | Issue #1106 |

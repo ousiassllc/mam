@@ -1,0 +1,162 @@
+package facefusion
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Section is the section: the two things looked for with what the lookup finds (and the button that looks again), how to install FaceFusion by hand, the form of
+// the paths, the models with their licenses and the standing cautions. The answer of a save and of the search replaces it by PanelID.
+templ Section(d Data) {
+	<div id={ PanelID } class="flex flex-col gap-4" data-testid="facefusion-panel">
+		if d.Problem != "" {
+			<p class="text-sm text-danger" role="alert" data-testid="facefusion-problem">{ d.Problem }</p>
+		} else {
+			if d.Notice != "" {
+				<p class="text-sm text-success" role="status" data-testid="facefusion-notice">{ d.Notice }</p>
+			}
+			if d.Error != "" {
+				<p class="text-sm text-danger" role="alert" data-testid="facefusion-error">{ d.Error }</p>
+			}
+			<div class="flex flex-wrap items-center gap-3">
+				<p class="text-sm" role="status" data-testid="facefusion-state">
+					if d.Ready {
+						@atoms.Badge(atoms.BadgeOK, "使えます")
+						if d.Version != "" {
+							<span class="ml-2 text-xs text-mute" data-testid="facefusion-version">FaceFusion { d.Version }（{ d.License }）</span>
+						}
+					} else {
+						@atoms.Badge(atoms.BadgeWarn, "未設定")
+					}
+				</p>
+				<button
+					type="button"
+					id={ FindAgainID }
+					class="rounded-md border border-border px-3 py-1 text-sm text-ink hover:border-mute focus-visible:focus-ring"
+					hx-get={ paths.CompanionFaceFusion() }
+					hx-target={ "#" + PanelID }
+					hx-swap="outerHTML"
+					hx-sync="this:drop"
+					hx-disabled-elt="this"
+					data-testid="mm-facefusion-refind"
+				>もう一度探す</button>
+			</div>
+			if d.VersionNote != "" {
+				<p class="text-sm text-warning" role="note" data-testid="mm-facefusion-version-note">{ d.VersionNote }</p>
+			}
+			@installSteps(d)
+			<form class="flex flex-col gap-4" hx-put={ paths.CompanionFaceFusion() } hx-target={ "#" + PanelID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="facefusion-form">
+				@partField(d.Python)
+				@partField(d.Path)
+				<div>
+					@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit", "data-testid": "facefusion-save"})
+				</div>
+			</form>
+			if len(d.SearchDirs) > 0 {
+				<p class="text-sm text-mute" data-testid="facefusion-search-dirs">フォルダを空にしたときの探し方: { joinDirs(d.SearchDirs) }（この順）。Python は、FaceFusion の公式手順の conda 環境 facefusion、次に PATH の python3 / python を探します。</p>
+			}
+			for _, g := range d.Groups {
+				<section class="flex flex-col gap-1" data-testid={ "facefusion-models-" + g.Title }>
+					<h3 class="text-sm font-semibold text-ink">{ g.Title }</h3>
+					<ul class="flex flex-col gap-1 text-xs">
+						for _, m := range g.Models {
+							<li class="flex flex-wrap items-center gap-2" data-testid={ "facefusion-model-" + m.ID }>
+								<code>{ m.ID }</code>
+								@atoms.Badge(m.Tone, m.Class)
+								<span class="text-mute">{ m.License }</span>
+								if m.Default {
+									@atoms.Badge(atoms.BadgeNeutral, "既定")
+								}
+								if m.Note != "" {
+									<span class="text-mute">{ m.Note }</span>
+								}
+							</li>
+						}
+					</ul>
+				</section>
+			}
+			<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-warning" data-testid="facefusion-notes">
+				for _, n := range d.Notes {
+					<li>{ n }</li>
+				}
+			</ul>
+			<p class="text-sm text-mute">
+				ライセンスの出典:
+				<a class="underline" href={ templ.SafeURL(d.LicensesURL) } target="_blank" rel="noopener noreferrer">FaceFusion のライセンス一覧</a>、
+				<a class="underline" href={ templ.SafeURL(d.DisclaimerURL) } target="_blank" rel="noopener noreferrer">免責事項（成人向けの扱い）</a>
+			</p>
+		}
+	</div>
+}
+
+templ partField(p Part) {
+	<div class="flex flex-col gap-1" data-testid={ "facefusion-part-" + p.Field }>
+		<label class="text-sm text-ink" for={ "facefusion-path-" + p.Field }>{ p.Label }</label>
+		@atoms.Input(atoms.FieldSm, "w-full", templ.Attributes{
+			"id": "facefusion-path-" + p.Field, "name": p.Field, "type": "text", "value": p.Configured,
+			"placeholder": p.Placeholder, "autocomplete": "off", "spellcheck": "false", "data-testid": "facefusion-path-" + p.Field,
+		})
+		if p.Problem != "" {
+			<p class="text-sm text-warning" role="status" data-testid={ "facefusion-state-" + p.Field }>
+				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
+				<span class="ml-2">{ p.Problem }</span>
+			</p>
+		} else {
+			<p class="text-sm text-mute" data-testid={ "facefusion-state-" + p.Field }>
+				@atoms.Badge(atoms.BadgeOK, "見つかりました")
+				<code class="ml-2 break-all">{ p.Found }</code>
+			</p>
+		}
+	</div>
+}
+
+// installSteps is how to install FaceFusion by hand: the five steps of its official guide (https://docs.facefusion.io/installation), each command in a block of its
+// own. It is open while FaceFusion is not found. mam fetches nothing: it says so before the steps.
+templ installSteps(d Data) {
+	<details id={ StepsID } class="rounded-md border border-border px-3 py-2" data-testid="mm-facefusion-steps" open?={ !d.Ready }>
+		<summary class="cursor-pointer text-sm font-semibold text-ink">FaceFusion の入れ方</summary>
+		<div class="mt-2 flex flex-col gap-3 text-sm">
+			<p class="text-mute">
+				mam は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、
+				<a class="underline" href="https://docs.facefusion.io/installation" target="_blank" rel="noopener noreferrer">公式のページ</a>の手順に従ってください。
+			</p>
+			<ol class="flex list-decimal flex-col gap-3 pl-5">
+				<li class="flex flex-col gap-1">
+					<span>conda を入れて、端末で使えるようにします。</span>
+					@command("conda init --all")
+				</li>
+				<li class="flex flex-col gap-1">
+					<span>FaceFusion 用の環境を作って、入ります。</span>
+					@command("conda create --name facefusion python=3.12 pip=25.0")
+					@command("conda activate facefusion")
+				</li>
+				<li class="flex flex-col gap-1">
+					<span>FaceFusion を取得して、mam が確かめた版（{ d.Tag }）にします。</span>
+					@command("git clone https://github.com/facefusion/facefusion")
+					@command("cd facefusion")
+					@command("git checkout " + d.Tag)
+				</li>
+				<li class="flex flex-col gap-1">
+					<span>アクセラレーターに合わせて、次のどれか 1 つを実行します（公式の表）。</span>
+					<span class="text-mute">NVIDIA の GPU:</span>
+					@command("python install.py cuda@12")
+					<span class="text-mute">GPU なし:</span>
+					@command("python install.py default")
+					<span class="text-mute">Windows の AMD・Intel の GPU:</span>
+					@command("python install.py directml")
+				</li>
+				<li class="flex flex-col gap-1">
+					<span>環境を入り直します。</span>
+					@command("conda deactivate")
+					@command("conda activate facefusion")
+				</li>
+			</ol>
+			<p class="text-mute">入れたら、上の「もう一度探す」を押してください。Python の欄の例は conda の環境 <code>facefusion</code> の <code>python</code>、フォルダの欄の例は <code>git clone</code> したフォルダです。</p>
+		</div>
+	</details>
+}
+
+// command is one command to copy: a block of its own that can be reached by the keyboard and read by its name.
+templ command(text string) {
+	<pre class="overflow-x-auto rounded-md bg-surface px-3 py-2 text-xs" tabindex="0" aria-label={ "コマンド: " + text } data-testid="mm-facefusion-cmd"><code>{ text }</code></pre>
+}

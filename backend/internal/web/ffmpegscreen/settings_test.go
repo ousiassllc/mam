@@ -6,33 +6,30 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
-	"github.com/ousiassllc/mam/backend/internal/media/locate"
-	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
-	"github.com/ousiassllc/mam/backend/internal/router"
-	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
-	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
-	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
-	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/screentest"
 )
 
-// ffmpegScreen is the settings screen with the ffmpeg section, over a Mac whose PATH has no Homebrew (the Finder launch).
+// TestMain starts the fake engine the model manager rig needs.
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.ReleaseMode)
+	mmtest.Main(m)
+}
+
+// ffmpegScreen is the page of the companion software of the model manager with the ffmpeg section, over a Mac whose PATH has no Homebrew (the Finder launch).
 type ffmpegScreen struct {
-	t      *testing.T
-	file   string
-	engine http.Handler
-	cookie *http.Cookie
-	token  string
+	*screentest.Screen
+	t    *testing.T
+	file string
 }
 
 func newFFmpegScreen(t *testing.T) *ffmpegScreen { return newFFmpegScreenWith(t, nil) }
@@ -40,56 +37,23 @@ func newFFmpegScreen(t *testing.T) *ffmpegScreen { return newFFmpegScreenWith(t,
 // newFFmpegScreenWith is the screen with the download of ffmpeg (nil: the app has none, as the headless server).
 func newFFmpegScreenWith(t *testing.T, download *ffmpegdl.Service) *ffmpegScreen {
 	t.Helper()
-	file := filepath.Join(t.TempDir(), ffmpegsettings.FileName)
-	// Only the files of the temporary directory count: the machine's own ffmpeg, if it has one, is not found.
-	finder := locate.Finder{GOOS: "darwin", Path: "/usr/bin:/bin", Usable: func(p string) bool {
-		return strings.HasPrefix(p, os.TempDir()) && locate.IsExecutable(p)
-	}}
-	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
-	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "models.json"), false)
-	opts := []ffmpegsettings.Option{ffmpegsettings.WithFinder(finder)}
+	var opts []ffmpegsettings.Option
 	if download != nil {
-		settings.FFmpegDownload = download
 		opts = append(opts, ffmpegsettings.WithManagedDirs(download.Dirs))
 	}
-	settings.FFmpeg = ffmpegsettings.New(file, opts...)
-	s := &ffmpegScreen{t: t, file: file, engine: router.New(svc, router.Options{Settings: settings})}
-	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
-	require.Equal(t, http.StatusOK, rec.Code)
-	for _, c := range rec.Result().Cookies() {
-		if c.Name == middleware.CSRFCookieName {
-			s.cookie = c
-		}
-	}
-	require.NotNil(t, s.cookie)
-	m := regexp.MustCompile(`<meta name="csrf-token" content="([^"]+)"`).FindStringSubmatch(rec.Body.String())
-	require.Len(t, m, 2)
-	s.token = m[1]
-	return s
+	svc, file := screentest.IsolatedFFmpeg(t, opts...)
+	return &ffmpegScreen{Screen: screentest.NewWithCompanion(t, screentest.Companion{FFmpeg: svc, Download: download}), t: t, file: file}
 }
 
-func (s *ffmpegScreen) send(req *http.Request) *httptest.ResponseRecorder {
-	req.Host, req.RemoteAddr = "127.0.0.1:8787", "127.0.0.1:54321"
-	rec := httptest.NewRecorder()
-	s.engine.ServeHTTP(rec, req)
-	return rec
-}
-
+// get is the section as the page's htmx reads it (GET /model-manager/companion/ffmpeg); path is where.
 func (s *ffmpegScreen) get(path string) string {
-	req := httptest.NewRequest(http.MethodGet, path, nil)
-	req.AddCookie(s.cookie)
-	rec := s.send(req)
+	rec := s.Get(path)
 	require.Equal(s.t, http.StatusOK, rec.Code)
 	return rec.Body.String()
 }
 
 func (s *ffmpegScreen) put(form url.Values) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPut, paths.FFmpegSettings(), strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("HX-Request", "true")
-	req.AddCookie(s.cookie)
-	req.Header.Set(middleware.CSRFHeaderName, s.token)
-	return s.send(req)
+	return s.Do(http.MethodPut, paths.CompanionFFmpeg(), form)
 }
 
 // executable writes an executable file and returns its path.
@@ -104,12 +68,12 @@ func executable(t *testing.T, name string) string {
 func TestFFmpegSettings_PageSaysWhereItSearchesAndThatNothingIsFound(t *testing.T) {
 	s := newFFmpegScreen(t)
 
-	body := s.get(paths.FFmpegSettings())
+	body := s.get(paths.CompanionFFmpeg())
 
 	assert.Contains(t, body, `data-testid="ffmpeg-state-ffmpeg"`)
 	assert.Contains(t, body, "見つかりません")
 	assert.Contains(t, body, "/opt/homebrew/bin、/usr/local/bin", "the Homebrew directories are searched after PATH")
-	assert.Contains(t, s.get(paths.Settings()), `href="/settings/ffmpeg"`, "the overview has the card")
+	assert.Contains(t, s.PageOf("companion"), `id="mm-ffmpeg"`, "the page of the companion software has the section")
 }
 
 func TestFFmpegSettings_SavedPathsAreShownAndWrittenAndClearedAgain(t *testing.T) {
@@ -125,7 +89,7 @@ func TestFFmpegSettings_SavedPathsAreShownAndWrittenAndClearedAgain(t *testing.T
 	b, err := os.ReadFile(s.file) // #nosec G304 -- a file of the test's temp directory
 	require.NoError(t, err)
 	assert.Contains(t, string(b), ffmpeg)
-	assert.Contains(t, s.get(paths.FFmpegSettings()), "使えます", "the next visit finds them with the saved paths")
+	assert.Contains(t, s.get(paths.CompanionFFmpeg()), "使えます", "the next visit finds them with the saved paths")
 
 	rec = s.put(url.Values{"ffmpeg": {""}, "ffprobe": {""}})
 
@@ -156,10 +120,11 @@ func TestFFmpegSettings_ADamagedFileIsTheProblemOfTheSectionOnly(t *testing.T) {
 	s := newFFmpegScreen(t)
 	require.NoError(t, os.WriteFile(s.file, []byte("{"), 0o600))
 
-	body := s.get(paths.FFmpegSettings())
+	body := s.get(paths.CompanionFFmpeg())
 
 	assert.Contains(t, body, `data-testid="ffmpeg-problem"`)
-	assert.Contains(t, s.get(paths.Settings()), "設定ファイルを読めません")
+	assert.Contains(t, s.Page(), "ffmpeg: 設定ファイルを読めません", "the overview of the model manager says it")
+	assert.Contains(t, s.PageOf("companion"), `data-testid="mm-companion-row" data-tool="ffmpeg" data-state="attention"`, "and so does the list")
 }
 
 // A path that cannot be written because the folder of the settings is read-only is told as the common error (#1010): the cause is the folder, the

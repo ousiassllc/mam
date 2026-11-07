@@ -16,7 +16,7 @@ import (
 )
 
 // Section is where the nodes are installed: the section "追加ノード" of the model manager screen.
-const Section = "/model-manager#mm-nodes"
+const Section = "/model-manager/custom-nodes#mm-nodes"
 
 // templateNodes is the nodes each template requires, by template ID. Reading the templates parses them all, so it is done once.
 var templateNodes = sync.OnceValue(func() map[string][]string {

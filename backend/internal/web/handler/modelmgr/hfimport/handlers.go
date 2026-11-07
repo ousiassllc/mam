@@ -28,13 +28,11 @@ const searchLimit = 20
 // Handlers answer the routes of the import.
 type Handlers struct {
 	svc *modelmanager.Service
-	// trial draws the trial section again: an import that ended (or a model that was deleted) changed the models a trial can use.
-	trial func(ctx context.Context) view.TrialPanel
 }
 
 // Register adds the routes of the import to the engine.
-func Register(engine *gin.Engine, svc *modelmanager.Service, trial func(ctx context.Context) view.TrialPanel) {
-	h := Handlers{svc: svc, trial: trial}
+func Register(engine *gin.Engine, svc *modelmanager.Service) {
+	h := Handlers{svc: svc}
 	engine.GET(paths.ModelManagerPart("hf"), h.Search)
 	engine.POST(paths.ModelManagerPart("hf", "install"), h.Install)
 	engine.GET(paths.ModelManagerPart("hf", "models"), h.Models)
@@ -145,12 +143,6 @@ func (h Handlers) Models(c *gin.Context) {
 		ids = strings.Split(q, ",")
 	}
 	l := ListData(ctx, h.svc, ids)
-	if !l.Polling() && len(ids) > 0 {
-		trial := h.trial(ctx)
-		trial.OOB = true
-		render(c, http.StatusOK, oob.HFModelsWithTrial(l, trial))
-		return
-	}
 	render(c, http.StatusOK, view.HFModelListView(l))
 }
 
@@ -194,9 +186,7 @@ func (h Handlers) DeleteModel(c *gin.Context) {
 		return
 	}
 	l.Notice = "削除しました。カタログのモデルと共有しているファイルは、そのモデルが残る間は残ります"
-	trial := h.trial(ctx)
-	trial.OOB = true
-	render(c, http.StatusOK, oob.HFModelsWithTrial(l, trial))
+	render(c, http.StatusOK, view.HFModelListView(l))
 }
 
 // TokenData is the state of the Hugging Face token: whether it is set and its last characters, never the token.

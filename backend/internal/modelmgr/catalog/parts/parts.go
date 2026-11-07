@@ -72,6 +72,8 @@ var urlPatterns = []*regexp.Regexp{
 	// llama.cpp's prebuilt Windows CUDA build and the CUDA runtime DLLs that go with it (release assets of ggml-org/llama.cpp; the tag can be
 	// moved, so the SHA-256 is the pin). Nothing else of that repository is fetched as a part.
 	regexp.MustCompile(`^https://github\.com/ggml-org/llama\.cpp/releases/download/b[0-9]+/(llama-b[0-9]+-bin-win-cuda-[0-9]+\.[0-9]+-x64|cudart-llama-bin-win-cuda-[0-9]+\.[0-9]+-x64)\.zip$`),
+	// Ollama's prebuilt Windows x64 build (a release asset of ollama/ollama; the tag can be moved, so the SHA-256 is the pin). Nothing else of that repository is fetched.
+	regexp.MustCompile(`^https://github\.com/ollama/ollama/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/ollama-windows-amd64\.zip$`),
 	// The vendor's source at a commit of a GitHub repository.
 	regexp.MustCompile(`^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/archive/[0-9a-f]{40}\.zip$`),
 }

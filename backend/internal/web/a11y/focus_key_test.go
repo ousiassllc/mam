@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/notecard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/reviewlist"
 )
@@ -36,7 +36,7 @@ func TestReviewList_ResolveToggleKeepsItsFocusKeyWhenTheLabelFlips(t *testing.T)
 func TestNoteCard_ArchiveToggleKeepsItsFocusKeyWhenTheLabelFlips(t *testing.T) {
 	archived := time.Now()
 	card := func(archivedAt *time.Time) string {
-		return render(t, molecules.NoteCard(domain.NoteView{
+		return render(t, notecard.Card(domain.NoteView{
 			Note:    domain.Note{ID: "n1", ArchivedAt: archivedAt},
 			Version: domain.NoteVersion{Number: 1, Title: "世界観"},
 		}))
@@ -50,7 +50,7 @@ func TestNoteCard_ArchiveToggleKeepsItsFocusKeyWhenTheLabelFlips(t *testing.T) {
 // changes the button's accessible name, so the focus must not be found again by its place or its label (#809).
 func TestNoteCard_SaveKeepsItsFocusKeyWhenTheTitleChanges(t *testing.T) {
 	card := func(id, title string) string {
-		return render(t, molecules.NoteCard(domain.NoteView{
+		return render(t, notecard.Card(domain.NoteView{
 			Note:    domain.Note{ID: id},
 			Version: domain.NoteVersion{Number: 1, Title: title},
 		}))

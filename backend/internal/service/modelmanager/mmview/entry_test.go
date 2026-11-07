@@ -35,7 +35,7 @@ func TestEntries_AvailabilityFollowsTheInstallState(t *testing.T) {
 	assert.Empty(t, by["m-b"].Message)
 	assert.False(t, by["m-a"].Available)
 	assert.Equal(t, modelfilter.ReasonNotInstalled, by["m-a"].Reason)
-	assert.Equal(t, "/model-manager", by["m-a"].Route)
+	assert.Equal(t, "/model-manager/image-video", by["m-a"].Route)
 
 	assert.Equal(t, []string{"m-b"}, ids(mmview.Where(rig.Svc, modelfilter.Condition{Installed: modelfilter.InstalledOnly})))
 	assert.Equal(t, []string{"m-b"}, ids(mmview.Where(rig.Svc, modelfilter.Default())), "a picker's default shows what can be chosen")

@@ -58,7 +58,9 @@ func (h Handlers) confirm(_ context.Context, f formState, est gentest.Estimate) 
 }
 
 // Run answers POST /generation-test/run: the confirmation's form. The service prices the batch again and refuses (409) when the
-// estimate is not the confirmed one or is over the limits; otherwise the batch is queued and the progress is shown.
+// estimate is not the confirmed one or is over the limits; otherwise the batch is queued and its block (a batch and an id of its own)
+// is added to the end of the list of runs (the form's hx-swap is beforeend), under the blocks of the earlier runs (#1109). A refusal is a
+// block without an id, added the same way.
 func (h Handlers) Run(c *gin.Context) {
 	c.Header("HX-Trigger-After-Swap", modal.CloseEvent) // a run from the role notice (#959) closes it; with none open this does nothing
 	ctx := c.Request.Context()
@@ -81,7 +83,7 @@ func (h Handlers) Run(c *gin.Context) {
 		return
 	}
 	c.Header("HX-Push-Url", "false")
-	h.renderBatch(c, http.StatusAccepted, ref.BatchID, "生成を始めました。この下に結果が並びます")
+	h.renderBatch(c, http.StatusAccepted, ref.BatchID, "生成を始めました。この枠に結果が並びます")
 }
 
 // Batch answers GET /generation-test/batches/:id, which the progress asks for every 2 seconds until the batch is over.
@@ -109,7 +111,7 @@ func (h Handlers) renderBatchWith(c *gin.Context, status int, id string, msg vie
 	b, err := h.Svc.Batch(c.Request.Context(), id, true)
 	if err != nil {
 		st, text := refuse(c, err)
-		gtshare.Render(c, st, view.BatchBox(view.Batch{Message: view.Message{Error: text}, StateText: "見つかりません", StateTone: "failed", Finished: true}))
+		gtshare.Render(c, st, view.BatchBox(view.Batch{ID: id, Message: view.Message{Error: text}, StateText: "見つかりません", StateTone: "failed", Finished: true}))
 		return
 	}
 	v := batchView(b)

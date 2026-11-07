@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -11,7 +12,7 @@ import (
 // with the form that installs one) and the files the user added. The server enforces every rule (formats, terms, the age
 // gate); the forms are only how a user asks.
 templ HFImportSection(h HFImport) {
-	<div class="flex flex-col gap-4" data-testid="mm-hfi">
+	<div id={ HFImportID } class="flex flex-col gap-4" data-testid="mm-hfi">
 		<form
 			class="flex flex-wrap items-end gap-2"
 			hx-get={ paths.ModelManagerPart("hf") }
@@ -189,7 +190,7 @@ templ hfInstallForm(r HFRepo, f HFFile) {
 			<p class="text-mute" data-testid="mm-hfi-folder-note">{ f.FolderNote }</p>
 		}
 		if f.Family == "sdxl" {
-			<p class="text-success" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として試し生成で選べます。</p>
+			<p class="text-success" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として生成テストで選べます。</p>
 		} else {
 			<p class="text-mute">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
 		}
@@ -265,7 +266,7 @@ templ HFModelListView(l HFModelList) {
 		if len(l.Models) == 0 && len(l.Installing) == 0 {
 			<p class="text-sm text-ink" data-testid="mm-hfi-none">まだありません。</p>
 		}
-		<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-hfi-model-list">
+		<ul role="list" class={ modelcard.GridClass } data-testid="mm-hfi-model-list">
 			for _, m := range l.Models {
 				@hfModelCard(m)
 			}

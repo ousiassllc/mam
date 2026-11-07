@@ -99,6 +99,9 @@ func stateBadge(s joblist.State) (string, atoms.BadgeTone) {
 func href(d joblist.Dest) string {
 	switch d.Screen {
 	case joblist.ScreenModelManager:
+		if d.Category != "" {
+			return paths.ModelManagerCategory(d.Category)
+		}
 		return paths.ModelManager()
 	case joblist.ScreenGenerationTest:
 		return paths.GenerationTestHistory()

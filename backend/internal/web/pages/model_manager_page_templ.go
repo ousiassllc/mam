@@ -9,15 +9,18 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// ModelManagerPage is GET /model-manager: the bundled ComfyUI engine, the local image and video models to install,
-// and the trial generations. It belongs to no Project.
-func ModelManagerPage(csrfToken string, d modelmgr.Data) templ.Component {
+// ModelManagerPage is GET /model-manager: the overview of the model manager, a card for each category (the engine, the models, the custom nodes, the
+// local runtimes, the face-check models, Hugging Face and the external ComfyUI) with how it stands. It belongs to no Project.
+func ModelManagerPage(csrfToken string, o modelmgr.Overview) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -62,11 +65,11 @@ func ModelManagerPage(csrfToken string, d modelmgr.Data) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入して、すぐに試し生成できます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = modelmgr.Body(d).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = modelmgr.OverviewBody(o).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -78,12 +81,95 @@ func ModelManagerPage(csrfToken string, d modelmgr.Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.AppLayout("モデルマネージャー", csrfToken, sidenav.At(sidenav.ModelManager)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.AppLayout("モデルマネージャー", csrfToken, sidenav.InModelManager("", o.Categories())).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
+}
+
+// ModelManagerCategoryPage is GET /model-manager/<slug>: one category with its sections, the way back to the overview above them. cats are the
+// categories of this build (the side menu lists them).
+func ModelManagerCategoryPage(csrfToken string, c mmcat.Category, cats []mmcat.Category, d modelmgr.Data) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var4 == nil {
+			templ_7745c5c3_Var4 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Var5 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Var6 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+				if !templ_7745c5c3_IsBuffer {
+					defer func() {
+						templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err == nil {
+							templ_7745c5c3_Err = templ_7745c5c3_BufErr
+						}
+					}()
+				}
+				ctx = templ.InitializeContext(ctx)
+				templ_7745c5c3_Err = atoms.BackLinkWith(paths.ModelManager(), "← モデルマネージャー", templ.Attributes{"data-testid": "mm-back"}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = pagehead.Header(c.Name, "モデルマネージャー", "").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = modelmgr.Body(c.Slug, d).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				return nil
+			})
+			templ_7745c5c3_Err = pagehead.Main(categoryWidth(c)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = layout.AppLayout(c.Name+" - モデルマネージャー", csrfToken, sidenav.InModelManager(c.Slug, cats)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// categoryWidth is Wide for a category with a list of cards (three columns need it, #1102) and Medium for the others.
+func categoryWidth(c mmcat.Category) pagehead.Width {
+	if c.Cards {
+		return pagehead.Wide
+	}
+	return pagehead.Medium
 }
 
 var _ = templruntime.GeneratedTemplate

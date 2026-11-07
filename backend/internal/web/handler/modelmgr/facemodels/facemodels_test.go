@@ -84,9 +84,13 @@ func (s *screen) do(method, path string, form url.Values) *httptest.ResponseReco
 	return s.send(req)
 }
 
-func (s *screen) page() string {
+// page is GET /model-manager/face-check, the page of the face-check models.
+func (s *screen) page(at ...string) string {
 	s.t.Helper()
-	req := httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil)
+	req := httptest.NewRequest(http.MethodGet, paths.ModelManagerCategory(paths.MMFaceCheck), nil)
+	if len(at) > 0 {
+		req = httptest.NewRequest(http.MethodGet, at[0], nil)
+	}
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.t, http.StatusOK, rec.Code)
@@ -122,7 +126,10 @@ func TestTheScreenOffersTheFaceCheckModelsWithTheirLicensesBeforeTheInstall(t *t
 // An app without the face models service leaves the section out.
 func TestTheSectionIsLeftOutWithoutTheService(t *testing.T) {
 	s := newScreen(t, false)
-	assert.NotContains(t, s.page(), "mm-face-models")
+	assert.Equal(t, http.StatusNotFound, s.send(httptest.NewRequest(http.MethodGet, paths.ModelManagerCategory(paths.MMFaceCheck), nil)).Code, "no page")
+	overview := s.page(paths.ModelManager())
+	assert.NotContains(t, overview, `data-category="face-check"`, "no card on the overview")
+	assert.NotContains(t, overview, "mm-face-models")
 }
 
 // The install button installs: without the box ticked the section comes back with the refusal and nothing is fetched; ticked, the files are in place, the section says

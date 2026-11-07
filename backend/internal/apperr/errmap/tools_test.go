@@ -31,13 +31,13 @@ func TestExplain_ClassifiesTheFailuresOfTheExternalTools(t *testing.T) {
 		remedy string
 		link   string
 	}{
-		"no ffmpeg":            {fmt.Errorf("render: %w", media.ErrUnavailable), apperr.CodeFFmpegMissing, "ffmpeg と ffprobe が見つかりません", "設定画面の「ffmpeg」", "/settings/ffmpeg"},
+		"no ffmpeg":            {fmt.Errorf("render: %w", media.ErrUnavailable), apperr.CodeFFmpegMissing, "ffmpeg と ffprobe が見つかりません", "モデルマネージャーの「付随ソフト」", "/model-manager/companion#mm-ffmpeg"},
 		"ffmpeg timeout":       {fmt.Errorf("render: %w after 2m", media.ErrTimeout), apperr.CodeMediaTimeout, "ffmpeg）が制限時間を超えました", "素材ファイル", ""},
-		"facefusion not found": {fmt.Errorf("facefusion %w (searched /home/me)", facefusion.ErrNotFound), apperr.CodeFaceFusionNone, "FaceFusion を使えません", "同梱していない", "/settings/facefusion"},
-		"facefusion bad path":  {cfg, apperr.CodeFaceFusionNone, "FaceFusion を使えません", "パスを確かめて", "/settings/facefusion"},
-		"facefusion exit":      {&facefusion.RunError{Err: errors.New("exit status 1"), Output: "Traceback"}, apperr.CodeFaceFusionFailed, "FaceFusion が途中でエラーを出して終わりました", "顔がはっきり写っているか", "/settings/facefusion"},
-		"facefusion timeout":   {&facefusion.RunError{Err: context.DeadlineExceeded}, apperr.CodeFaceFusionFailed, "決められた時間内に終わらなかった", "成人向けの画像", "/settings/facefusion"},
-		"facefusion no output": {&facefusion.RunError{}, apperr.CodeFaceFusionFailed, "出力の画像がありません", "FaceFusion が断ります", "/settings/facefusion"},
+		"facefusion not found": {fmt.Errorf("facefusion %w (searched /home/me)", facefusion.ErrNotFound), apperr.CodeFaceFusionNone, "FaceFusion を使えません", "同梱していない", "/model-manager/companion#mm-facefusion"},
+		"facefusion bad path":  {cfg, apperr.CodeFaceFusionNone, "FaceFusion を使えません", "パスを確かめて", "/model-manager/companion#mm-facefusion"},
+		"facefusion exit":      {&facefusion.RunError{Err: errors.New("exit status 1"), Output: "Traceback"}, apperr.CodeFaceFusionFailed, "FaceFusion が途中でエラーを出して終わりました", "顔がはっきり写っているか", "/model-manager/companion#mm-facefusion"},
+		"facefusion timeout":   {&facefusion.RunError{Err: context.DeadlineExceeded}, apperr.CodeFaceFusionFailed, "決められた時間内に終わらなかった", "成人向けの画像", "/model-manager/companion#mm-facefusion"},
+		"facefusion no output": {&facefusion.RunError{}, apperr.CodeFaceFusionFailed, "出力の画像がありません", "FaceFusion が断ります", "/model-manager/companion#mm-facefusion"},
 		"facefusion GPU":       {&facefusion.RunError{Err: errors.New("exit status 1"), Output: "torch.OutOfMemoryError: CUDA out of memory"}, apperr.CodeVRAM, "VRAM", "解像度", ""},
 	} {
 		t.Run(name, func(t *testing.T) {

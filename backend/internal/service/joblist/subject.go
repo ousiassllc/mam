@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
 )
 
 // reader is one reading of the list: what it learned of a Project is kept for the jobs after it.
@@ -25,7 +26,7 @@ const maxModels = 3
 // install is a model install: it leads to the model manager, works on the engine or a model, and tells how far the download is
 // while it runs (the tracker of the model manager keeps that in memory: a job from before a restart has none).
 func (r *reader) install(ctx context.Context, e *Entry, p payload) error {
-	e.Dest = Dest{Screen: ScreenModelManager}
+	e.Dest = Dest{Screen: ScreenModelManager, Category: installCategory(p.Target)}
 	mm := r.ModelManager
 	if mm == nil {
 		return nil
@@ -45,6 +46,31 @@ func (r *reader) install(ctx context.Context, e *Entry, p payload) error {
 	return nil
 }
 
+// llmRuntimeTargets are the install targets of the runtimes of a language model: their page is "ローカル LLM", not "ローカル音声・口パク" (#1104).
+var llmRuntimeTargets = map[string]bool{"runtime:llama-cpp": true, "runtime:ollama": true}
+
+// installCategory is the page of the model manager that works on the target of an install: "engine", "model:<id>", "runtime:<id>", "node:<id>", "ollama:<name>:<tag>" or "hf:…" ("" for
+// a target that says nothing: the overview).
+func installCategory(target string) string {
+	switch {
+	case target == "engine":
+		return CategoryComfyUI
+	case strings.HasPrefix(target, "model:"):
+		return CategoryImageVideo
+	case llmRuntimeTargets[target]:
+		return CategoryLocalLLM
+	case strings.HasPrefix(target, "runtime:"):
+		return CategoryLocalRuntimes
+	case strings.HasPrefix(target, "node:"):
+		return CategoryCustomNodes
+	case strings.HasPrefix(target, ollamapull.TargetPrefix):
+		return CategoryLocalLLM // a model fetched by the Ollama of mam (#1105)
+	case strings.HasPrefix(target, "hf:"):
+		return CategoryHFExternal
+	}
+	return ""
+}
+
 // installSubject is the name of what an install works on: "engine", "model:<catalog id>" or "hf:<repo>@<commit>/<path>". A model
 // that is hidden (adult, while the age confirmation is off: the catalog's model, a Hugging Face file of an NFAA repository, which the install
 // itself refuses on the same flag: hfplan.Payload.NFAA) or not in the catalog has no name here.
@@ -57,6 +83,9 @@ func installSubject(mm *modelmanager.Service, p payload) string {
 			return m.Name
 		}
 		return ""
+	}
+	if name, ok := strings.CutPrefix(p.Target, ollamapull.TargetPrefix); ok {
+		return "Ollama: " + name
 	}
 	if rest, ok := strings.CutPrefix(p.Target, "hf:"); ok {
 		if p.HF != nil && p.HF.NFAA && !mm.AdultContentEnabled() {

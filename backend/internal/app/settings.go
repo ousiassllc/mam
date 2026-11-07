@@ -67,7 +67,8 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	}
 	settings.LLMModels = llmmodels.New(models)
 	settings.ModelManager, settings.LocalRuntimes = services.ModelManager, services.LocalRuntimes
-	settings.ModelNodes = services.ModelNodes
+	settings.ModelNodes, settings.Ollama = services.ModelNodes, services.Ollama
+	services.Ollama.UsedBy = func(model string) []string { return settings.LLM.UsedBy(string(llm.ProviderLocal), model) } // a model an Agent chooses is not deleted (#1105)
 	settings.Audio = newAudioSettings(cfg, services.LocalRuntimes, settings.Keys)
 	settings.Models.SetHidden(services.ModelManager.HidesModel)
 	settings.Gentest = services.Gentest

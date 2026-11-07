@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/launchargs"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/parts"
 )
 
@@ -73,6 +74,7 @@ func validateRuntime(c *Catalog, r Runtime) []error {
 		errs = append(errs, fmt.Errorf("%s: an assembled runtime has no tool_files", where))
 	}
 	errs = append(errs, parts.CheckFiles(where+" tool_files", r.ToolFiles, c.Overlays)...)
+	errs = append(errs, parts.CheckFiles(where+" home_files", r.Launch.HomeFiles, c.Overlays)...)
 	return append(errs, validateRuntimeVariants(where, r)...)
 }
 
@@ -91,8 +93,13 @@ func validateLaunch(where string, l RuntimeLaunch) []error {
 	if slices.ContainsFunc(l.PathDirs, func(d string) bool { return !relativeSlashPath(d) }) {
 		errs = append(errs, fmt.Errorf("%s: launch path_dirs must be relative slash paths", where))
 	}
-	if !slices.Contains(l.Args, "{port}") || !slices.Contains(l.Args, "127.0.0.1") || slices.Contains(l.Args, "0.0.0.0") || slices.Contains(l.Args, "::") {
-		errs = append(errs, fmt.Errorf("%s: launch args must listen on 127.0.0.1 and the {port}, never on every interface", where))
+	if !listensOnLoopback(l) {
+		errs = append(errs, fmt.Errorf("%s: launch args (or the env named by listen_env) must listen on 127.0.0.1 and the {port}, never on every interface", where))
+	}
+	for _, name := range launchargs.Names(l.Env) {
+		if !slices.Contains([]string{launchargs.Port, launchargs.Home, launchargs.Models}, name) {
+			errs = append(errs, fmt.Errorf("%s: launch env uses {%s}, which only {port}, {home} and {models} are", where, name))
+		}
 	}
 	if l.StartTimeoutSec <= 0 || len(l.Env) == 0 {
 		errs = append(errs, fmt.Errorf("%s: launch needs start_timeout_sec and the offline env", where))
@@ -105,9 +112,25 @@ func validateLaunch(where string, l RuntimeLaunch) []error {
 	return errs
 }
 
+// listensOnLoopback reports whether the launch binds 127.0.0.1 and the port only: its arguments name them, or the value of the environment variable that listen_env names does.
+func listensOnLoopback(l RuntimeLaunch) bool {
+	if l.ListenEnv == "" {
+		return slices.Contains(l.Args, "{port}") && slices.Contains(l.Args, "127.0.0.1") && !slices.Contains(l.Args, "0.0.0.0") && !slices.Contains(l.Args, "::")
+	}
+	for _, e := range l.Env {
+		if v, ok := strings.CutPrefix(e, l.ListenEnv+"="); ok {
+			return strings.Contains(v, "127.0.0.1:{port}") && !strings.ContainsAny(v, "[") && !strings.Contains(v, "0.0.0.0") && !strings.Contains(v, "::")
+		}
+	}
+	return false
+}
+
 func validateSupport(where string, s RuntimeSupport) []error {
 	var errs []error
-	reasons := []string{s.ArchReason, s.NoGPUReason, s.NotNVIDIAReason, s.LowVRAMReason, s.Fallback, s.OSReasons["default"]}
+	reasons := []string{s.ArchReason, s.NotNVIDIAReason, s.Fallback, s.OSReasons["default"]}
+	if !s.CPUOK { // a runtime that also runs on the CPU has no use for the reason of a machine without a usable GPU
+		reasons = append(reasons, s.NoGPUReason, s.LowVRAMReason)
+	}
 	if s.OS == "" || s.Arch == "" || slices.ContainsFunc(reasons, func(t string) bool { return strings.TrimSpace(t) == "" }) {
 		errs = append(errs, fmt.Errorf("%s: support needs os, arch, the reasons (os_reasons.default too) and the fallback", where))
 	}

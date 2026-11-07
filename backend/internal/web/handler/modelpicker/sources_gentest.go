@@ -3,12 +3,10 @@ package modelpicker
 import (
 	"context"
 	"net/url"
-	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
-	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelcards"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/pickfilter"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
@@ -47,45 +45,6 @@ func init() {
 			return cards, pickfilter.CountOf(cond, all, modelcatalog.Upscaler.Item), nil
 		},
 	}
-	sources[SourceTrial] = source{
-		title: "試すモデル", empty: "条件に合うモデルがありません。絞り込みを外すか、モデルマネージャーでモデルを導入してください。",
-		facets: func(ctx context.Context, svc Services) modelpick.Facets {
-			f := modelcards.Facets(gentest.MediaImage, svc.allModels(ctx))
-			f.Kinds = []modelfilter.Kind{modelfilter.KindImage, modelfilter.KindVideo, modelfilter.KindImageEdit}
-			f.Inputs = append(f.Inputs, modelcards.Facets(gentest.MediaVideo, nil).Inputs...)
-			f.Audio = true
-			return f
-		},
-		list: func(ctx context.Context, svc Services, _ url.Values, cond modelfilter.Condition) ([]modelcard.Card, pickfilter.Counts, error) {
-			return cardsOf(trialModels(ctx, svc), cond, modelcatalog.Info.Item)
-		},
-	}
-}
-
-// allModels are the generation test's models of both media (nil without the service).
-func (svc Services) allModels(ctx context.Context) []modelcatalog.Info {
-	if svc.Gentest == nil {
-		return nil
-	}
-	return append(svc.Gentest.Models(ctx, gentest.MediaImage), svc.Gentest.Models(ctx, gentest.MediaVideo)...)
-}
-
-// trialModels are the models a trial can run: those the model manager lists for it (the models of the running setting).
-func trialModels(ctx context.Context, svc Services) []modelcatalog.Info {
-	if svc.ModelManager == nil {
-		return nil
-	}
-	var ids []string
-	for _, m := range mmview.TrialModels(svc.ModelManager) {
-		ids = append(ids, m.ID)
-	}
-	var out []modelcatalog.Info
-	for _, m := range svc.allModels(ctx) {
-		if slices.Contains(ids, m.ID) {
-			out = append(out, m)
-		}
-	}
-	return out
 }
 
 // inpaintOnly says a model that cannot redraw part of a picture cannot be chosen there: it is listed with the reason.

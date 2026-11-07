@@ -88,7 +88,7 @@ func TestRecent_AnInstallNamesItsModelAndSaysHowFarItIs(t *testing.T) {
 	assert.Equal(t, ref.JobID, running.ID)
 	assert.Equal(t, "導入", running.Label)
 	assert.Equal(t, "A", running.Subject, "the name of the model in the catalog")
-	assert.Equal(t, joblist.Dest{Screen: joblist.ScreenModelManager}, running.Dest)
+	assert.Equal(t, joblist.Dest{Screen: joblist.ScreenModelManager, Category: joblist.CategoryImageVideo}, running.Dest)
 	assert.Equal(t, joblist.Running, running.State)
 	require.NotNil(t, running.Progress, "a running install says how far it is")
 	assert.GreaterOrEqual(t, running.Progress.Percent, 0)
@@ -105,6 +105,7 @@ func TestRecent_AnInstallNamesItsModelAndSaysHowFarItIs(t *testing.T) {
 func TestRecent_TheEngineHasANameAndAnUnknownModelHasNone(t *testing.T) {
 	w := newWorld(t)
 	engine := w.create(domain.JobModelInstall, map[string]string{"target": "engine"})
+	ollama := w.create(domain.JobModelInstall, map[string]string{"target": "ollama:gemma4:12b"})
 	gone := w.create(domain.JobModelInstall, map[string]string{"target": "model:no-such-model"})
 	blank := w.create(domain.JobModelInstall, map[string]string{})
 
@@ -115,6 +116,7 @@ func TestRecent_TheEngineHasANameAndAnUnknownModelHasNone(t *testing.T) {
 		assert.Nil(t, e.Progress, "a job that waits has no progress")
 	}
 	assert.Equal(t, "ComfyUI エンジン", subjects[engine.ID])
+	assert.Equal(t, "Ollama: gemma4:12b", subjects[ollama.ID], "the model that the Ollama of mam fetches (#1105)")
 	assert.Empty(t, subjects[gone.ID])
 	assert.Empty(t, subjects[blank.ID])
 }
@@ -296,4 +298,30 @@ func TestRecent_ReturnsTheFailureOfTheTable(t *testing.T) {
 	list := joblist.New(joblist.Deps{Table: failingTable{}})
 	_, err := list.Recent(t.Context())
 	assert.ErrorContains(t, err, "disk is gone")
+}
+
+// An install leads to the page of the model manager that works on its target: the engine, a model, a runtime, a node, a Hugging Face file; a target that
+// says nothing leads to the overview (no category).
+func TestRecent_AnInstallLeadsToThePageOfItsCategory(t *testing.T) {
+	w := newWorld(t)
+	for target, category := range map[string]string{
+		"engine":                   joblist.CategoryComfyUI,
+		"model:m-a":                joblist.CategoryImageVideo,
+		"runtime:gpt-sovits":       joblist.CategoryLocalRuntimes,
+		"runtime:llama-cpp":        joblist.CategoryLocalLLM,
+		"runtime:ollama":           joblist.CategoryLocalLLM,
+		"ollama:gemma4:12b":        joblist.CategoryLocalLLM,
+		"node:ipadapter-plus":      joblist.CategoryCustomNodes,
+		"hf:o/m@0123456789ab/x.sf": joblist.CategoryHFExternal,
+		"":                         "",
+	} {
+		job := w.create(domain.JobModelInstall, map[string]string{"target": target})
+		var got joblist.Dest
+		for _, e := range w.recent() {
+			if e.ID == job.ID {
+				got = e.Dest
+			}
+		}
+		assert.Equal(t, joblist.Dest{Screen: joblist.ScreenModelManager, Category: category}, got, "target %q", target)
+	}
 }

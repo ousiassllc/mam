@@ -95,9 +95,9 @@ templ Box(p Props)
 | `download_corrupt` | `upstream` | ダウンロードしたファイルが、固定した SHA-256 または大きさと一致しませんでした。破棄しました（取得元の改ざんか、転送の破損の可能性があります）。 | /model-manager |
 | `endpoint_timeout` | `upstream` | ローカルの生成が接続先の待ち時間（）を超えたため打ち切りました。 | /settings/local-models |
 | `engine_not_installed` | `unavailable` | ComfyUI エンジンが導入されていません。 | /model-manager<br>/settings/local-models |
-| `facefusion_failed` | `upstream` | FaceFusion が画像を作れませんでした。（時間切れ・異常終了・出力なしのどれかを続けて言う） | /settings/facefusion |
-| `facefusion_unavailable` | `unavailable` | FaceFusion を使えません。見つからないか、設定したパスが使えません。 | /settings/facefusion |
-| `ffmpeg_missing` | `unavailable` | ffmpeg と ffprobe が見つかりません。 | /settings/ffmpeg |
+| `facefusion_failed` | `upstream` | FaceFusion が画像を作れませんでした。（時間切れ・異常終了・出力なしのどれかを続けて言う） | `/model-manager/companion#mm-facefusion`（#1106 で、設定の「FaceFusion」から移った） |
+| `facefusion_unavailable` | `unavailable` | FaceFusion を使えません。見つからないか、設定したパスが使えません。 | `/model-manager/companion#mm-facefusion`（#1106 で、設定の「FaceFusion」から移った。直し方の文は「モデルマネージャーの「付随ソフト」」で、入れ方の手順がそこにあることを言う） |
+| `ffmpeg_missing` | `unavailable` | ffmpeg と ffprobe が見つかりません。 | `/model-manager/companion#mm-ffmpeg`（#1106 で、設定の「ffmpeg」から移った。直し方の文は「モデルマネージャーの「付随ソフト」」） |
 | `forbidden` | `forbidden` | Brand / Safety Constraint などの制約に違反しています。 |  |
 | `generation_time_limit` | `upstream` | 生成が制限時間（Max generation time）を超えました。 | /settings |
 | `image_unavailable` | `unavailable` | ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。 | /settings/chatgpt |
@@ -274,3 +274,5 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 | 1.6 | 2026-11-04 | コード `credits_insufficient`（HTTP 402）と `topaz_*` の 7 つ（Topaz Video API の失敗。`topaz_job_interrupted` は受理のあとに mam が止まったときの、リクエスト ID つきの文）を足した | Issue #1031 |
 | 1.7 | 2026-11-06 | モデルの導入の失敗（エンジン・カタログ・Hugging Face・カスタムノード・ローカルランタイム）とジョブ一覧の失敗の行を、共通のエラーボックスで出すようにした（§6）。コード `install_cancelled`（利用者が導入を止めた）を足した。導入の側が言葉にした失敗（取得元が消えた・応答しない）は `install_failed` でその文を原因に残す。`worktrack` が `ErrorInfo` を持つ。`apperr.ViewOf` を足した | Issue #1010 |
 | 1.8 | 2026-11-06 | コード `image_model_pinned` を足した（`Options.Driver` で固定した Codex のモデルが ChatGPT のアカウントに拒否された。`image_unavailable` の「mam を最新版に更新して」は当てはまらない）。`errmap` は `chatgpt.ErrImageModelPinned` で見分ける | Issue #1071 |
+| 1.9 | 2026-11-06 | `facefusion_failed`・`facefusion_unavailable`・`ffmpeg_missing` の導線を、設定画面からモデルマネージャーの `companion`（`#mm-facefusion`・`#mm-ffmpeg`）へ移すと決めた。直し方の文の「設定画面の…」を「モデルマネージャーの「付随ソフト」」に改める（`apperr` の `Place` の行き先と `messages_ja.go`・`messages_en.go`。状態は仕様のみ） | Issue #1106 |
+| 1.10 | 2026-11-07 | `facefusion_failed`・`facefusion_unavailable`・`ffmpeg_missing` の導線を、モデルマネージャーの `companion`（`#mm-facefusion`・`#mm-ffmpeg`）へ移した（#1106）。直し方の文を「モデルマネージャーの「付随ソフト」」に改め、`facefusion_unavailable` は入れ方の手順がそこにあることを言う（`apperr` の `Place` の行き先と `messages_ja.go`・`messages_en.go`）。状態は「実装済み」 | Issue #1106 |

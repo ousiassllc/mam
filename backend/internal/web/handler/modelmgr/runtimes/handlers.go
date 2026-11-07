@@ -11,8 +11,12 @@ import (
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/ollama"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	card "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/runtimecard"
@@ -22,11 +26,17 @@ import (
 // Handlers answer the routes of the section.
 type Handlers struct {
 	svc *localruntime.Service
+	// llm is the server the calls of the provider "local" go to (nil: no such setting). The card of a runtime of a language model (llama.cpp) is on the page that shows it
+	// ("使うサーバー"), so its answers carry that line out of band: an install, a start or a removal changes what it says.
+	llm *llmlocal.Service
+	// ollama fetches the models of the Ollama runtime (nil: none). The section of its models is on the same page as its card, so the answers of that card carry the section out of band: installing
+	// or starting the server changes what the pull buttons can do.
+	ollama *ollamapull.Service
 }
 
-// Register adds the routes of the section to the engine.
-func Register(engine *gin.Engine, svc *localruntime.Service) {
-	h := Handlers{svc: svc}
+// Register adds the routes of the section to the engine. llm and ol may be nil.
+func Register(engine *gin.Engine, svc *localruntime.Service, llm *llmlocal.Service, ol *ollamapull.Service) {
+	h := Handlers{svc: svc, llm: llm, ollama: ol}
 	engine.GET(paths.ModelManagerPart("runtimes"), h.Section)
 	engine.GET(paths.ModelManagerPart("runtimes", ":id"), h.Runtime)
 	engine.GET(paths.ModelManagerPart("runtimes", ":id", "detail"), h.RuntimeDetail)
@@ -67,13 +77,20 @@ func (h Handlers) runtimeCard(c *gin.Context, status int, id, job string, starti
 	r, err := runtimeData(c.Request.Context(), h.svc, id, job, starting)
 	if err != nil {
 		st, msg := refuseRuntime(c, err)
-		render(c, st, card.RuntimesSection(card.Runtimes{Message: view.Message{Error: msg}, Items: items(c.Request.Context(), h.svc)}))
+		render(c, st, card.RuntimesSection(card.Runtimes{Message: view.Message{Error: msg}, Items: items(c.Request.Context(), h.svc, false)}))
 		return
 	}
 	if edit != nil {
 		edit(&r)
 	}
-	render(c, status, card.RuntimeCard(r))
+	out := card.RuntimeCard(r)
+	if h.llm != nil && r.PurposeID == card.PurposeLLM {
+		out = templ.Join(out, localllm.StateOOB(c.Request.Context(), h.llm))
+	}
+	if h.ollama != nil && r.ID == ollamapull.RuntimeID {
+		out = templ.Join(out, ollama.SectionOOB(c.Request.Context(), h.ollama))
+	}
+	render(c, status, out)
 }
 
 // failed answers a refused action: the card with the reason (409 / 404).
@@ -82,9 +99,17 @@ func (h Handlers) failed(c *gin.Context, id string, err error) {
 	h.runtimeCard(c, status, id, "", false, func(r *card.Runtime) { r.Error = msg })
 }
 
-// Section answers GET /model-manager/runtimes with every card read again: the refresh button of the section (#962).
+// Section answers GET /model-manager/runtimes with every card read again: the refresh button of the section (#962). Without the query purpose the cards are those of
+// the voice and lip-sync runtimes (the section "ローカル音声・口パク"); purpose=llm (#1104) the runtimes of a language model (the section "ローカルで動かすサーバー"); another
+// value is 422.
 func (h Handlers) Section(c *gin.Context) {
-	render(c, http.StatusOK, card.RuntimesSection(card.Runtimes{Items: items(c.Request.Context(), h.svc)}))
+	switch c.Query("purpose") {
+	case "", card.PurposeLLM:
+		llm := c.Query("purpose") == card.PurposeLLM
+		render(c, http.StatusOK, card.RuntimesSection(card.Runtimes{Items: items(c.Request.Context(), h.svc, llm), LLM: llm}))
+	default:
+		render(c, http.StatusUnprocessableEntity, card.RuntimesSection(card.Runtimes{Message: view.Message{Error: "purpose には llm だけを指定できます"}}))
+	}
 }
 
 // Runtime answers GET /model-manager/runtimes/:id, which the card polls while an install or a start is in progress. job is the

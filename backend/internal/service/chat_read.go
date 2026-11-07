@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -211,7 +212,7 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 			if m.RefType == domain.RefContinue {
 				v.Open = !replied[m.ID]
 			} else {
-				v.Open = !replied[m.ID] && brief.Get(f) == "" && !brief.IsDelegated(f)
+				v.Open = !replied[m.ID] && slices.Contains(brief.Missing(), f)
 			}
 		case domain.KindEscalation:
 			v.Open = !replied[m.ID]

@@ -16,7 +16,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
 	"github.com/ousiassllc/mam/backend/internal/licenses"
-	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/apprestart"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
@@ -33,8 +32,6 @@ import (
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
-	facefusionhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/facefusion"
-	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	licenseshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/licenses"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	llmlocalhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llmlocal"
@@ -69,10 +66,8 @@ type Services struct {
 	Audio  *audiosettings.Service
 	MCP    *mcpsettings.Service
 	FFmpeg *ffmpegsettings.Service
-	// FFmpegDownload is the download of ffmpeg shown in the ffmpeg category; nil leaves the download out.
-	FFmpegDownload *ffmpegdl.Service
-	Update         *appupdate.Service
-	// FaceFusion is the "FaceFusion" category (the paths of the external face swapper). Nil leaves the category out.
+	Update *appupdate.Service
+	// FaceFusion is the external face swapper; with FFmpeg it is the state the card "付随ソフト" of the overview says (the sections are in the model manager). Nil leaves it out.
 	FaceFusion *facefusionsettings.Service
 	// Restart is the "再起動して反映" panel at the top of every page; nil leaves it out.
 	Restart *apprestart.Service
@@ -97,11 +92,6 @@ func (s Services) localLLM() *llmlocalview.Data {
 	}
 	d := llmlocalhandler.CardData(s.LLMLocal)
 	return &d
-}
-
-// ffmpeg is what the ffmpeg category reads.
-func (s Services) ffmpeg() ffmpeghandler.Services {
-	return ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload}
 }
 
 // category is one entry of the navigation: where it is, what it is called and what it needs.
@@ -138,12 +128,6 @@ func init() {
 		}},
 		{paths.SettingsMCP, "MCP サーバー", func(s Services) bool { return s.MCP != nil }, func(c *gin.Context, s Services) templ.Component {
 			return pages.SettingsMCPBody(mcphandler.SectionData(c.Request.Context(), s.MCP))
-		}},
-		{paths.SettingsFFmpeg, "ffmpeg", func(s Services) bool { return s.FFmpeg != nil }, func(_ *gin.Context, s Services) templ.Component {
-			return pages.SettingsFFmpegBody(ffmpeghandler.SectionData(s.ffmpeg()))
-		}},
-		{paths.SettingsFaceFusion, "FaceFusion", func(s Services) bool { return s.FaceFusion != nil }, func(_ *gin.Context, s Services) templ.Component {
-			return pages.SettingsFaceFusionBody(facefusionhandler.SectionData(s.FaceFusion))
 		}},
 		{paths.SettingsUpdate, "バージョンとアップデート", always, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsUpdateBody(updatehandler.SectionData(s.Update))

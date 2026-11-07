@@ -57,7 +57,7 @@ func (s *screen) waitRuntimeJob(id string) {
 // the card opens (#954), where the weights are listed before the install (the user sees what comes from where).
 func TestRuntimes_ThePageShowsTheCardAndItsModalTheWeightsSourceLicenseAndTheUnclearNote(t *testing.T) {
 	s := newRuntimeScreen(t)
-	body := s.Page()
+	body := s.PageOf(paths.MMLocalRuntimes)
 	assert.Contains(t, body, "ローカル音声・口パク")
 	assert.Contains(t, body, `data-testid="mm-runtime"`)
 	assert.Contains(t, body, `data-runtime="gpt-sovits"`)
@@ -121,7 +121,7 @@ func TestRuntimes_AMachineThatCannotRunItSeesWhyAndTheCloudProviderToUse(t *test
 	} {
 		t.Run(name, func(t *testing.T) {
 			s := newRuntimeScreen(t, tc.opts...)
-			body := s.Page()
+			body := s.PageOf(paths.MMLocalRuntimes)
 			assert.Contains(t, body, "この PC では使えません", "the card says it in its badge")
 			assert.NotContains(t, body, `data-testid="mm-runtime-install"`, "no install button where it cannot be installed")
 			assert.NotContains(t, body, tc.reason, "the reason is in the modal of the card")
@@ -313,7 +313,7 @@ func TestRuntimes_CancellingAJobThatIsNotRunningIsNotFound(t *testing.T) {
 
 func TestRuntimes_AScreenWithoutTheServiceHasNoSectionAndNoRoutes(t *testing.T) {
 	s := &screen{screentest.New(t)}
-	assert.NotContains(t, s.Page(), "ローカル音声・口パク")
+	assert.NotContains(t, s.Page(), "ローカル音声・口パク", "no card on the overview (and no page: categorytest)")
 	assert.Equal(t, http.StatusNotFound, s.Do(http.MethodPost, runtimePart(lrtest.ID, "install"), nil).Code)
 }
 

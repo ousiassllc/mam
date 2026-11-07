@@ -105,6 +105,9 @@ type ProviderConfig struct {
 	// UseManagedRuntime is for ProviderLocal only: when true, the calls go to the llama.cpp server that mam installs and starts itself (the local
 	// runtime "llama-cpp"), whatever BaseURL says (spec/architecture/local-llm.md §10).
 	UseManagedRuntime bool `json:"use_managed_runtime,omitempty"`
+	// UseManagedOllama is for ProviderLocal only: when true, the calls go to the Ollama server that mam installs and starts itself (#1104, #1105),
+	// whatever BaseURL says. It is never true together with UseManagedRuntime (Validate): the calls go to one server (spec/architecture/local-llm.md §11).
+	UseManagedOllama bool `json:"use_managed_ollama,omitempty"`
 }
 
 // RetryConfig is the exponential backoff of one target: a failed attempt is repeated after
@@ -281,6 +284,9 @@ func (c Config) Validate() error {
 			if err := localcfg.CheckBaseURL(pc.BaseURL); err != nil {
 				errs = append(errs, fmt.Errorf("provider %s: base_url: %w", p, err))
 			}
+		}
+		if pc.UseManagedRuntime && pc.UseManagedOllama {
+			errs = append(errs, fmt.Errorf("provider %s: use_managed_runtime and use_managed_ollama cannot both be true (the calls go to one server)", p))
 		}
 	}
 	if c.TimeoutSeconds <= 0 || c.Retry.MaxAttempts <= 0 || c.Retry.BaseDelayMillis <= 0 ||

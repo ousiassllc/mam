@@ -1,0 +1,59 @@
+package ollamapull
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"strings"
+	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
+	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+)
+
+// JobStatus is the state of the job of a pull: the job table says queued, running, succeeded or failed; Progress is what the running job reported (in memory). It has the shape of
+// modelmanager.JobStatus.
+type JobStatus struct {
+	JobID string         `json:"job_id"`
+	Kind  domain.JobKind `json:"kind"`
+	// Target is "ollama:<name>:<tag>".
+	Target   string           `json:"target"`
+	State    domain.JobStatus `json:"state"`
+	Progress track.Update     `json:"progress"`
+	Error    string           `json:"error,omitempty"`
+	// Failure is the failure as the common error in words (#1010), when the job kept one (job.error_info); nil otherwise.
+	Failure    *apperr.View `json:"failure,omitempty"`
+	Attempts   int          `json:"attempts"`
+	CreatedAt  time.Time    `json:"created_at"`
+	StartedAt  *time.Time   `json:"started_at,omitempty"`
+	FinishedAt *time.Time   `json:"finished_at,omitempty"`
+}
+
+// JobStatus reads the job of a pull (modelmanager.ErrNotFound for any other job).
+func (s *Service) JobStatus(ctx context.Context, jobID string) (JobStatus, error) {
+	job, err := s.JobTable.Get(ctx, jobID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return JobStatus{}, modelmanager.ErrNotFound
+	}
+	if err != nil {
+		return JobStatus{}, err
+	}
+	var p payload
+	if job.Kind != domain.JobModelInstall || json.Unmarshal(job.Payload, &p) != nil || !strings.HasPrefix(p.Target, TargetPrefix) {
+		return JobStatus{}, modelmanager.ErrNotFound
+	}
+	st := JobStatus{
+		JobID: job.ID, Kind: job.Kind, Target: p.Target, State: job.Status, Error: job.Error, Failure: apperr.ViewOf(job.ErrorInfo, apperr.LangJa), Attempts: job.Attempts,
+		CreatedAt: job.CreatedAt, StartedAt: job.StartedAt, FinishedAt: job.FinishedAt,
+	}
+	if e, ok := s.tracker.Get(jobID); ok {
+		st.Progress = e.Update
+	}
+	if job.Status == domain.JobSucceeded {
+		st.Progress.Percent = 100
+	}
+	return st, nil
+}

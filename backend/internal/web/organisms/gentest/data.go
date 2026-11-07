@@ -29,11 +29,14 @@ import (
 const (
 	ComposeID = "gt-compose"
 	ConfirmID = "gt-confirm"
-	BatchID   = "gt-batch"
-	RefsID    = "gt-refs"
-	PickerID  = "gt-picker"
-	PromptsID = "gt-prompts"
-	ListID    = "gt-list"
+	// BatchesID is the list the blocks of the runs are appended to, one per run (#1109); the run of a batch is BatchBlockID.
+	BatchesID = "gt-batches"
+	// MatchSlotID is the one place the prompt match draws its timeline in (a match goes on in its own batch).
+	MatchSlotID = "gt-batch"
+	RefsID      = "gt-refs"
+	PickerID    = "gt-picker"
+	PromptsID   = "gt-prompts"
+	ListID      = "gt-list"
 	// Polling is the hx-trigger of a section that asks for itself again while something runs.
 	Polling = "every 2s"
 )
@@ -198,45 +201,27 @@ type Confirm struct {
 	RoleNotes []rolenotice.Note // models that use a reference as a whole picture (#959); the run button then opens their modal first.
 }
 
+// runTarget and runSwap are where the answer of the run goes: a run of a batch adds its block to the end of the list and leaves the
+// earlier ones (#1109); a prompt match draws its timeline in its one place, which the next round of the same match replaces.
+func (c Confirm) runTarget() string {
+	if c.Match {
+		return "#" + MatchSlotID
+	}
+	return "#" + BatchesID
+}
+
+func (c Confirm) runSwap() string {
+	if c.Match {
+		return "outerHTML"
+	}
+	return "beforeend"
+}
+
 func (c Confirm) runPath() string {
 	if c.RunPath != "" {
 		return c.RunPath
 	}
 	return paths.GenerationTestPart("run")
-}
-
-// Col is a column of the comparison grid: one prompt, and the English it was sent as when it was translated.
-type Col struct {
-	Text     string
-	Negative string
-	// English and EnglishNegative are the translation ("" when it was sent as typed).
-	English         string
-	EnglishNegative string
-}
-
-// Row is a row of the comparison grid: one model with the results of every prompt.
-type Row struct {
-	Model  string
-	Answer commercial.View
-	// Face is the face similarity of the results of this model read together ("" when the batch had no reference of the role "face", Issue #998).
-	Face  string
-	Cells [][]resulttile.Card
-}
-
-// Batch is the progress and the comparison grid of a batch.
-type Batch struct {
-	Message
-	ID        string
-	StateText string
-	StateTone string
-	Total     int
-	Done      int
-	Percent   int
-	Counts    string // "成功 3・失敗 1・取り消し 0"
-	Finished  bool
-	Estimate  string
-	Cols      []Col
-	Rows      []Row
 }
 
 // HistoryFilter is the filter of the history as the form shows it.

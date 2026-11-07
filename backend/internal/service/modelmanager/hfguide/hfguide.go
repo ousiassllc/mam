@@ -20,7 +20,7 @@ import (
 )
 
 // TokenSection is where the token is entered on the screen: the card "Hugging Face のトークン" of the model manager.
-const TokenSection = "/model-manager#mm-hf"
+const TokenSection = "/model-manager/hf-external#mm-hf"
 
 // NoToken is what a model that needs the token says while none is stored (message A).
 const NoToken = "このモデルの取得には Hugging Face のトークンが要ります。モデルマネージャーの「Hugging Face のトークン（任意）」の区画（" +

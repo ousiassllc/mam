@@ -45,7 +45,7 @@ var (
 	ErrUnsupported = errors.New("localruntime: this machine cannot run the runtime")
 	// ErrNotInstalled: the runtime is not installed (or its files are gone).
 	ErrNotInstalled = errors.New("localruntime: the runtime is not installed")
-	// ErrBusy: an install of the runtime is queued or running.
+	// ErrBusy: an install of the runtime is queued or running, or a model is being fetched into it (a *BusyError carries the reason).
 	ErrBusy = errors.New("localruntime: an install is running")
 	// ErrTraining: a fine-tuning (BeginTool) holds the runtime: it is not installed, updated, removed or started for the server meanwhile.
 	ErrTraining = errors.New("localruntime: a fine-tuning is running")
@@ -123,6 +123,10 @@ type Deps struct {
 	// Env adds environment variables to the start of a runtime's server (nil: none): the app names the directory of the trained voices
 	// of GPT-SoVITS (MAM_VOICE_WEIGHTS_DIR), which lies below the assets directory and not in the runtime's own.
 	Env func(id string) []string
+	// HeldBy names what uses the runtime's server besides an install, "" when nothing does (nil: nothing ever does): the Ollama of mam answers with the
+	// models being fetched into it ("gemma4:12b"). While it names something, Remove, Install, InstallWeights and Stop are refused with ErrBusy and that reason.
+	// It is a hook of the app because the fetch (package ollamapull) is built on this package.
+	HeldBy func(id string) string
 	// HTTP sends the requests to a runtime's server (nil: a client without a timeout and without a proxy).
 	HTTP httpclient.Doer
 	// Ready probes the server at a url (default: GET of the runtime's ready_path answers 200).

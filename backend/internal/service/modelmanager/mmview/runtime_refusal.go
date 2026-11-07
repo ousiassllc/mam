@@ -13,6 +13,7 @@ import (
 // own sentence (the reason and the cloud provider to use instead); one that Refuse knows (no disk space, a place that cannot be
 // written) is told as Refuse tells it. An error that is none of them is RefusalNone.
 func RefuseRuntime(err error) (RefusalKind, string) {
+	var busy *localruntime.BusyError
 	switch {
 	case err == nil:
 		return RefusalNone, ""
@@ -26,6 +27,8 @@ func RefuseRuntime(err error) (RefusalKind, string) {
 		return RefusalInvalid, "そのモデルは選べません。画面を読み込み直してください"
 	case errors.Is(err, localruntime.ErrNotInstalled):
 		return RefusalConflict, "導入されていません。先に導入してください"
+	case errors.As(err, &busy):
+		return RefusalConflict, busy.Reason
 	case errors.Is(err, localruntime.ErrBusy):
 		return RefusalConflict, "導入が実行中です。終わってから、または中断してからやり直してください"
 	case errors.Is(err, localruntime.ErrTraining):

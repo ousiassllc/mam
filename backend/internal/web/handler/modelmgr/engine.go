@@ -10,29 +10,18 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/ollama"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
 )
 
-// engineWithCatalog answers an action of the engine: the card, and the model list out of band (what can be
-// installed depends on the engine).
-func (h Handlers) engineWithCatalog(c *gin.Context, status int, e view.Engine) {
-	cat := catalogData(c, h.Svc, nil)
-	cat.OOB = true
-	render(c, status, oob.EngineWithCatalog(e, cat))
-}
-
 // Engine answers GET /model-manager/engine, which the card polls while an install or a start is in progress. job is
-// the install it reports on: once that ended, the card says how and the model list is drawn again.
+// the install it reports on: once that ended, the card says how (the model list is on another page and is read when that page is opened).
 func (h Handlers) Engine(c *gin.Context) {
 	job := c.Query("job")
 	e := engineData(c.Request.Context(), h.Svc, job, false)
-	if job != "" && e.Install == nil {
-		h.engineWithCatalog(c, http.StatusOK, e)
-		return
-	}
 	render(c, http.StatusOK, view.EngineCard(e))
 }
 
@@ -134,7 +123,7 @@ func (h Handlers) RemoveEngine(c *gin.Context) {
 	} else {
 		e.Notice = "ComfyUI エンジンを削除しました（導入したモデルのファイルは残っています）"
 	}
-	h.engineWithCatalog(c, status, e)
+	render(c, status, view.EngineCard(e))
 }
 
 // DetectComfyUI looks for a ComfyUI that is already running on this machine (POST /model-manager/engine/detect).
@@ -159,6 +148,10 @@ func (h Handlers) CancelJob(c *gin.Context) {
 	st, stErr := h.Svc.JobStatus(ctx, id)
 	if rid, ok := strings.CutPrefix(st.Target, localruntime.TargetPrefix); ok && stErr == nil && h.Runtimes != nil {
 		runtimes.Cancel(c, h.Runtimes, rid, id)
+		return
+	}
+	if strings.HasPrefix(st.Target, ollamapull.TargetPrefix) && stErr == nil && h.Ollama != nil {
+		ollama.Cancel(c, h.Ollama, h.LLMLocal, id)
 		return
 	}
 	err := h.Svc.CancelInstall(id)

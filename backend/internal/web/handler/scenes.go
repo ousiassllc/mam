@@ -77,13 +77,13 @@ func CreateShot(svc *service.PlanService) gin.HandlerFunc {
 }
 
 func sceneShotData(v service.SceneView) sceneshot.Data {
-	d := sceneshot.Data{Project: v.Project, Scene: v.Scene}
+	d := sceneshot.Data{Project: v.Project, Scene: v.Scene, Wait: v.Wait}
 	for _, s := range v.Scenes {
 		d.Scenes = append(d.Scenes, sceneshot.Item{Scene: s.Scene, ShotCount: s.ShotCount})
 	}
 	for _, sh := range v.Shots {
 		d.Shots = append(d.Shots, molecules.ShotCardData{
-			ProjectID: v.Project.ID, Shot: sh.Shot, Storyboard: sh.Storyboard, Takes: sh.Takes, Selected: sh.Selected, Repairable: sh.Repairable, Judgeable: sh.Judgeable, Candidates: sh.Candidates,
+			ProjectID: v.Project.ID, Shot: sh.Shot, Storyboard: sh.Storyboard, Takes: sh.Takes, Selected: sh.Selected, Repairable: sh.Repairable, Judgeable: sh.Judgeable, Candidates: sh.Candidates, WaitLabel: sh.WaitLabel,
 		})
 	}
 	return d

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
 )
 
 // The wtest static/src/components/poll/model-manager-refresh.wtest.ts (#962: the engine card asks for itself every 2 s while an install runs and has
@@ -36,7 +35,7 @@ func TestEngineFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	for name, c := range map[string]templ.Component{
 		"mm-engine-installing.html": modelmgr.EngineCard(installing),
 		"mm-engine-idle.html":       modelmgr.EngineCard(engine("10:00:00")),
-		"mm-engine-done.html":       oob.EngineWithCatalog(done, modelmgr.Catalog{OOB: true}),
+		"mm-engine-done.html":       modelmgr.EngineCard(done),
 	} {
 		var sb strings.Builder
 		require.NoError(t, c.Render(context.Background(), &sb))

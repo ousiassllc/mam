@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/notecard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
@@ -96,9 +97,9 @@ func TestNoteCard_ButtonsAreNamedAfterTheirNote(t *testing.T) {
 	card := func(id, title string, archivedAt *time.Time) domain.NoteView {
 		return domain.NoteView{Note: domain.Note{ID: id, ArchivedAt: archivedAt}, Version: domain.NoteVersion{Number: 1, Title: title}}
 	}
-	html := render(t, molecules.NoteCard(card("n1", "世界観", nil))) +
-		render(t, molecules.NoteCard(card("n2", "口調", nil))) +
-		render(t, molecules.NoteCard(card("n3", "禁止事項", &archived)))
+	html := render(t, notecard.Card(card("n1", "世界観", nil))) +
+		render(t, notecard.Card(card("n2", "口調", nil))) +
+		render(t, notecard.Card(card("n3", "禁止事項", &archived)))
 
 	assert.Equal(t, []string{"保存: 世界観", "保存: 口調", "保存: 禁止事項"}, buttonNames(html, "保存"))
 	assert.Equal(t, []string{"アーカイブ: 世界観", "アーカイブ: 口調"}, buttonNames(html, "アーカイブ"))

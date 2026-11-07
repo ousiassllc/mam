@@ -13580,6 +13580,24 @@ MAM のローカルランタイム管理（Issue #1008）は、利用者の操�
 | DeepSeek-R1-Distill-Qwen-14B（純正・Q4_K_M） | <https://huggingface.co/mradermacher/DeepSeek-R1-Distill-Qwen-14B-GGUF> | `f5a17506` | 8,988,110,432 | [MIT License（DeepSeek-R1-Distill-Qwen-14B）](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) | 可 |
 | DeepSeek-R1-Distill-Qwen-14B 非検閲（Huihui abliterated-v2・Q4_K_M）（非検閲・成人向け相当） | <https://huggingface.co/mradermacher/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2-GGUF> | `39e97fd1` | 8,988,110,912 | [ライセンスの表示なし（DeepSeek-R1-Distill-Qwen-14B-abliterated-v2）](https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2) | **はっきりしない（商用不明）** |
 
+
+## Ollama と Ollama のモデル（利用者が取得する別プログラム）
+
+MAM のローカルランタイム管理（Issue #1105）は、利用者の操作で Ollama（ローカルの LLM サーバー。ollama/ollama）を、MAM の実行ファイルと同じ場所の `localai\ollama` ディレクトリに取得して展開し、そのモデルを Ollama 自身の `/api/pull` で `localai\ollama\models` に取得します。**MAM のインストーラー・リリースには含まれません**（MAM は Ollama のバイトも、モデルのバイトも配布しません）。`ollama.exe serve` は MAM が決めた固定の設定だけで起動し、`127.0.0.1` だけで待ち受けます（クラウド機能は `disable_ollama_cloud` で無効にしています）。
+
+- Ollama のライセンス（MIT）とソースコード: <https://github.com/ollama/ollama/tree/v0.40.15>（ライセンス文は <https://github.com/ollama/ollama/blob/v0.40.15/LICENSE>）。取得するのは公式の GitHub リリース `v0.40.15`（<https://github.com/ollama/ollama/releases/tag/v0.40.15>）の Windows x64 のビルド済みバイナリ `ollama-windows-amd64.zip`（1,614,941,966 バイト）で、SHA-256 `9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6` を MAM のカタログに固定して検証します（GitHub の API の digest と一致することを 2026-11-07 に確かめました）。zip には、ライセンス文のほかに、CUDA などの同梱ライブラリが入っています（**同梱ライブラリの再配布の条件は確認していません（未確認）**）。
+- 取得したものを再配布するときは、取得した zip に入っているライセンス文を添えてください。
+- **Ollama には認証がありません**。待ち受けは `127.0.0.1` だけですが、同じ PC で動く信用できないソフトも呼び出せます。
+
+### Ollama のモデル
+
+取得できるのは次の 3 つだけです（Ollama のライブラリ <https://ollama.com/library> のタグ。**タグは書き換えられるため、取得する内容を固定できません**。MAM は取得のあとで、Ollama が書いたマニフェストの重みの層の SHA-256 を、2026-11-07 に読んだ記録と比べ、違えば「上流で更新されています」と知らせます）。ライセンスは、レジストリの license の層の本文と、元のモデルカードの表記で、**法的な保証ではありません**（商用で使う前にライセンス全文を確認してください）。
+
+| 名前 | 出典 | 取得量（バイト） | ライセンス | 商用利用 |
+|---|---|---|---|---|
+| Gemma 4 12B（`gemma4:12b`） | <https://ollama.com/library/gemma4:12b> | 8,021,618,941 | [Apache License 2.0（Gemma 4）](https://ai.google.dev/gemma/docs/gemma_4_license) | 可 |
+| Qwen3.8 27B（`qwen3.8:27b`） | <https://ollama.com/library/qwen3.8:27b> | 17,741,872,154 | [Apache License 2.0（Qwen3.8-27B）](https://huggingface.co/Qwen/Qwen3.8-27B) | 可 |
+| DeepSeek-R1 14B（`deepseek-r1:14b`） | <https://ollama.com/library/deepseek-r1:14b> | 8,988,112,209 | [MIT License（DeepSeek-R1-Distill-Qwen-14B）](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) | 可 |
 ## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
 
 MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS の統合パッケージに入っている重みと依存ファイル、および MuseTalk 1.5 が使う重みと依存ファイルを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM はこれらを同梱せず再配布しません**。足りない・壊れたファイルだけを、利用者の操作で取得元から取得します。出典・ライセンス・商用利用の可否はモデルマネージャーの画面（「ローカル音声・口パク」）と MCP（`list_local_runtimes`）にも表示します。固定の一覧はソースの `backend/internal/modelmgr/catalog/data/assets/` にあり、意味は `spec/architecture/model-manager/local-runtime.md` の §12 です。**法的な助言ではありません**。再配布や商用利用の前に、配布元の条件を確認してください。
@@ -13626,7 +13644,7 @@ MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS 
 
 ## ffmpeg と ffprobe（利用者が取得する別プログラム）
 
-MAM の設定画面の「ffmpeg」と初回ガイドには、利用者がボタンを押したときだけ ffmpeg と ffprobe（バージョン 9.0.2。Windows 版（x64）と macOS 版（Apple Silicon）のみ）を配布元から取得し、データの置き場（Windows 版は MAM の実行ファイルと同じ場所の `ffmpeg` ディレクトリ、macOS 版はデータディレクトリの中）に展開するボタンがあります。ffmpeg は **GPL v3 以降**のビルドで、**MAM のインストーラー・ポータブル版・リリースには ffmpeg のバイトを一切含めません**。MAM は ffmpeg のコードをリンクせず、別のプロセスとして起動するだけです。ボタンを押さない限り、通信も取得もしません（自動の更新確認はありません）。
+MAM のモデルマネージャーの「付随ソフト」と初回ガイドには、利用者がボタンを押したときだけ ffmpeg と ffprobe（バージョン 9.0.2。Windows 版（x64）と macOS 版（Apple Silicon）のみ）を配布元から取得し、データの置き場（Windows 版は MAM の実行ファイルと同じ場所の `ffmpeg` ディレクトリ、macOS 版はデータディレクトリの中）に展開するボタンがあります。ffmpeg は **GPL v3 以降**のビルドで、**MAM のインストーラー・ポータブル版・リリースには ffmpeg のバイトを一切含めません**。MAM は ffmpeg のコードをリンクせず、別のプロセスとして起動するだけです。ボタンを押さない限り、通信も取得もしません（自動の更新確認はありません）。
 
 - ffmpeg のライセンス（GPL v3 以降）と対応するソースコード: Windows 版は <https://github.com/FFmpeg/FFmpeg/commit/946fcce07b>（取得するのは gyan.dev のビルド <https://www.gyan.dev/ffmpeg/builds/> のうち、<https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2> のアセット `ffmpeg-9.0.2-essentials_build.zip`）、macOS 版は <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>（取得するのは Martin Riedl のビルドサーバー <https://ffmpeg.martin-riedl.de/> の release 9.0.2 の `ffmpeg.zip` と `ffprobe.zip`）。アーカイブと展開した 2 つの実行ファイルの SHA-256 とサイズを MAM のカタログに固定して検証し、一致しなければ使いません。
 - 取得したビルドは `libx264`・`libx265`・`libvpx`・`libopus` ほか多数の GPL・LGPL・BSD などのライブラリを静的に含みます。**その一覧とライセンス文は調べていません（未確認）**。取得したものを再配布するときは、配布元の README・LICENSE（アーカイブの中にあります）に従い、対応するソースを提供してください。

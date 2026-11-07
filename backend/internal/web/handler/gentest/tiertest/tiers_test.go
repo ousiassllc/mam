@@ -147,7 +147,7 @@ func TestWithoutAnInstalledModelTheEasyTierSaysWhyAndWhereToInstall(t *testing.T
 
 	none := testid(body, "gt-easy-nomodel")
 	require.NotEmpty(t, none)
-	assert.Contains(t, none, `href="`+paths.ModelManager()+`"`)
+	assert.Contains(t, none, `href="`+paths.ModelManagerCategory(paths.MMImageVideo)+`"`)
 	assert.Regexp(t, `data-testid="gt-estimate"[^>]*disabled|disabled[^>]*data-testid="gt-estimate"`, body, "there is nothing to estimate")
 	assert.NotContains(t, body, `data-testid="gt-model"`)
 }
@@ -250,7 +250,7 @@ func TestTheComfyTierLinksToTheScreensThatExist(t *testing.T) {
 	require.NotEmpty(t, comfy)
 	assert.Contains(t, comfy, `href="`+paths.Nodes()+`"`)
 	assert.Contains(t, comfy, `href="`+paths.Workflows()+`"`)
-	assert.Contains(t, comfy, `href="`+paths.ModelManager()+`"`)
+	assert.Contains(t, comfy, `href="`+paths.ModelManager()+`"`, "the overview of the model manager")
 	assert.NotContains(t, body, `data-testid="gt-form"`, "no form: nothing here is made")
 }
 

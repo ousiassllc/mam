@@ -251,7 +251,7 @@ func TestTheManagedServerThatIsNotInstalledOrNotSupportedSaysSo(t *testing.T) {
 	_, err := w.backend.Complete(ctx(), "gemma-4-12b-it", llm.Request{User: "u"})
 	require.Error(t, err)
 	assert.True(t, localllm.IsUnreachable(err))
-	assert.ErrorContains(t, err, "llama.cpp が導入されていません。モデルマネージャーの「ローカル」で llama.cpp を導入してください")
+	assert.ErrorContains(t, err, "llama.cpp が導入されていません。モデルマネージャーの「ローカル LLM」で llama.cpp を導入してください")
 	info, _ := w.settings.ManagedInfo(ctx())
 	assert.Equal(t, llmlocal.ManagedNotInstalled, info.State)
 	assert.Equal(t, "gemma-4-12b-it", info.Model)

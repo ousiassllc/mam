@@ -24,7 +24,7 @@ const Description = "自分の PC や tailnet 上のサーバーで動かして�
 func ManagerCard() molecules.ToolCard {
 	return molecules.ToolCard{
 		ID: "model-manager", Href: templ.SafeURL(paths.ModelManager()), Icon: atoms.IconPackage, Title: "モデルマネージャー",
-		Description: "ComfyUI とローカルモデルの導入・試し生成。別の画面を開きます。", StatusURL: paths.ToolStatus(paths.ToolModelManager),
+		Description: "ComfyUI とローカルモデルの導入。別の画面を開きます。", StatusURL: paths.ToolStatus(paths.ToolModelManager),
 	}
 }
 

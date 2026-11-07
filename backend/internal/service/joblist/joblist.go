@@ -59,10 +59,22 @@ const (
 	ScreenSeries         Screen = "series"           // the Series page, where the canon's Characters' voices are (Dest.SeriesID)
 )
 
+// The categories of the model manager that an install leads to (Dest.Category; the slugs of the pages "/model-manager/<slug>", paths.MM*).
+const (
+	CategoryComfyUI       = "comfyui"
+	CategoryImageVideo    = "image-video"
+	CategoryLocalRuntimes = "local-runtimes"
+	CategoryLocalLLM      = "local-llm"
+	CategoryCustomNodes   = "custom-nodes"
+	CategoryHFExternal    = "hf-external"
+)
+
 // Dest is where the job is worked on: the screen, and the Project when it is a screen of a Project.
 type Dest struct {
 	Screen    Screen
 	ProjectID string
+	// Category is the page of the model manager a ScreenModelManager job leads to ("" for the overview: a job whose target says nothing).
+	Category string
 	// SeriesID is the Series of a ScreenSeries.
 	SeriesID string
 }

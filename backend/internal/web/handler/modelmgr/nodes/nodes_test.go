@@ -1,8 +1,10 @@
 package nodes_test
 
 import (
+	"html"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodecat"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -35,7 +38,7 @@ func consent() url.Values {
 // need it. Nothing of the pins is on the card; the modal has them.
 func TestNodes_ThePageListsTheAllowlistWithTheAnswerForCommercialUseAndWhyOneCannotBeInstalled(t *testing.T) {
 	s := screentest.NewWithNodes(t)
-	body := s.Page()
+	body := s.PageOf(paths.MMCustomNodes)
 	assert.Contains(t, body, `id="mm-nodes"`)
 	assert.Equal(t, 2, strings.Count(body, `data-testid="mm-node"`), "a card for each node of the allowlist")
 	assert.Contains(t, body, `data-node="pack" data-state="not_installed"`)
@@ -100,7 +103,7 @@ func TestNodes_InstallThenRemoveChangesWhatTheEngineIsToldToLoad(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `data-state="installed"`)
 	assert.Contains(t, rec.Body.String(), "Pack を導入しました")
 	assert.Equal(t, []string{"pack"}, s.Nodes.Nodes.Enabled())
-	assert.Contains(t, s.Page(), "このノードを使うモデル: Uses pack（未導入）")
+	assert.Contains(t, s.PageOf(paths.MMCustomNodes), "このノードを使うモデル: Uses pack（未導入）")
 
 	rec = s.Do(http.MethodDelete, nodePart("pack"), nil)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -124,9 +127,44 @@ func TestNodes_ANodeMamDoesNotInstallIsRefusedWithTheReason(t *testing.T) {
 func TestNodes_WithoutTheEngineTheInstallIsRefusedAtOnce(t *testing.T) {
 	s := screentest.NewWithNodes(t)
 	s.Nodes.Engine.View.Installed = false
-	body := s.Page()
+	body := s.PageOf(paths.MMCustomNodes)
 	assert.Contains(t, body, "先に ComfyUI エンジンを導入してください")
 	rec := s.Do(http.MethodPost, nodePart("pack", "install"), consent())
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.Empty(t, s.Nodes.Nodes.Enabled())
+}
+
+var modalDesc = regexp.MustCompile(`id="mam-modal-desc"[^>]*>([^<]*)</p>`)
+
+// The description of a node is in its detail modal and nowhere on the card: for every node of the allowlist, the section, the list and the card
+// a poll swaps in carry neither the element nor the text of the description, and the modal says it as its description (#mam-modal-desc, which modal.ts
+// points aria-describedby at when the modal opens). A node that is not in the allowlist gets the modal of the reason only (#1103).
+func TestNodes_TheDescriptionIsInTheModalAndNotOnTheCard(t *testing.T) {
+	s := screentest.NewWithNodes(t)
+	all := nodecat.Default()
+	s.Nodes.Nodes.Catalog = all
+	s.Nodes.Engine.Needing = nil
+	require.Len(t, all.Nodes, 5, "the allowlist has five nodes")
+
+	page := s.PageOf(paths.MMCustomNodes)
+	list := s.Get(paths.ModelManagerPart("nodes")).Body.String()
+	require.Equal(t, len(all.Nodes), strings.Count(page, `data-testid="mm-node"`))
+	for _, n := range all.Nodes {
+		cards := map[string]string{"the page": page, "the list": list, "the card": s.Get(nodePart(n.ID)).Body.String()}
+		for name, body := range cards {
+			assert.NotContains(t, body, "mm-node-description", "%s of %s", name, n.ID)
+			assert.NotContains(t, body, n.Description, "%s of %s", name, n.ID)
+			assert.NotContains(t, body, html.EscapeString(n.Description), "%s of %s", name, n.ID)
+		}
+
+		rec := s.Get(nodePart(n.ID, "detail"))
+		require.Equal(t, http.StatusOK, rec.Code, n.ID)
+		m := modalDesc.FindStringSubmatch(rec.Body.String())
+		require.Len(t, m, 2, "the modal of %s has a description", n.ID)
+		assert.Equal(t, n.Description, html.UnescapeString(m[1]), n.ID)
+	}
+
+	rec := s.Get(nodePart("nope", "detail"))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "mm-node-detail")
 }

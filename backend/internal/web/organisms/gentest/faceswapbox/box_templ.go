@@ -187,7 +187,7 @@ func Box(f Form) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\">設定の「FaceFusion」</a>で、入れた場所を指定してください。</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\">モデルマネージャーの「付随ソフト」</a>で、入れ方を確かめて、入れた場所を指定してください。</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

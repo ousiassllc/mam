@@ -21,15 +21,15 @@ var (
 	// is the same PUT again (idempotent) and cannot make a second row. A form of any other file has the guards, or
 	// is added here with its reason.
 	idempotentPutForms = map[string]string{
-		"molecules/lock_toggle.templ":        "a toggle: the same lock is set again",
-		"molecules/note_card.templ":          "an edit of one note: the same text is saved again",
-		"organisms/branch_view.templ":        "an edit of one branch: the same values are saved again",
-		"organisms/brief_form.templ":         "the brief: the same text is saved again",
-		"organisms/policy_form.templ":        "the quality policy: the same values are saved again",
-		"organisms/review_workspace.templ":   "the decision of a review: the same decision is saved again",
-		"organisms/seriesview/view.templ":    "the series: the same values are saved again",
-		"organisms/shotinspector/view.templ": "the shot spec: the same values are saved again",
-		"organisms/worldstate/view.templ":    "the world state: the same values are saved again",
+		"molecules/locktoggle/locktoggle.templ": "a toggle: the same lock is set again",
+		"molecules/notecard/notecard.templ":     "an edit of one note: the same text is saved again",
+		"organisms/branch_view.templ":           "an edit of one branch: the same values are saved again",
+		"organisms/brief_form.templ":            "the brief: the same text is saved again",
+		"organisms/policy_form.templ":           "the quality policy: the same values are saved again",
+		"organisms/review_workspace.templ":      "the decision of a review: the same decision is saved again",
+		"organisms/seriesview/view.templ":       "the series: the same values are saved again",
+		"organisms/shotinspector/view.templ":    "the shot spec: the same values are saved again",
+		"organisms/worldstate/view.templ":       "the world state: the same values are saved again",
 	}
 	requiredGuards = []string{`hx-sync="this:drop"`, `hx-disabled-elt=`}
 )

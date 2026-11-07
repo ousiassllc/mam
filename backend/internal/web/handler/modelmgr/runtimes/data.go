@@ -25,23 +25,26 @@ var purposeLabels = map[catalog.Purpose]string{catalog.PurposeTTS: "声（音声
 // purposeIcons are the pictures of the cards: the tile of what the runtime is for.
 var purposeIcons = map[catalog.Purpose]atoms.IconName{catalog.PurposeTTS: atoms.IconVoice, catalog.PurposeLipSync: atoms.IconLipSync, catalog.PurposeLLM: atoms.IconText}
 
-// Section is the section of the screen: a card for every runtime of the catalog. Nil (the section is left out) when there is no
-// service or no runtime.
-func Section(ctx context.Context, svc *localruntime.Service) templ.Component {
-	cards := items(ctx, svc)
+// Section is the section of the screen: a card for every runtime of the catalog that makes voice or lip sync, or with llm (#1104: the page "ローカル LLM")
+// the cards of the runtimes of a language model and no other. Nil (the section is left out) when there is no service or no such runtime.
+func Section(ctx context.Context, svc *localruntime.Service, llm bool) templ.Component {
+	cards := items(ctx, svc, llm)
 	if len(cards) == 0 {
 		return nil
 	}
-	return card.RuntimesSection(card.Runtimes{Items: cards})
+	return card.RuntimesSection(card.Runtimes{Items: cards, LLM: llm})
 }
 
-func items(ctx context.Context, svc *localruntime.Service) []card.Runtime {
+// items are the cards of the runtimes of the section: the ones whose purpose is llm, or the others.
+func items(ctx context.Context, svc *localruntime.Service, llm bool) []card.Runtime {
 	if svc == nil {
 		return nil
 	}
 	var out []card.Runtime
 	for _, v := range svc.List(ctx) {
-		out = append(out, runtimeCard(ctx, svc, v, "", false))
+		if (v.Purpose == catalog.PurposeLLM) == llm {
+			out = append(out, runtimeCard(ctx, svc, v, "", false))
+		}
 	}
 	return out
 }
@@ -58,7 +61,7 @@ func runtimeData(ctx context.Context, svc *localruntime.Service, id, job string,
 
 func runtimeCard(ctx context.Context, svc *localruntime.Service, v localruntime.View, job string, starting bool) card.Runtime {
 	r := card.Runtime{
-		ID: v.ID, Name: v.Name, Purpose: purposeLabels[v.Purpose], Icon: purposeIcons[v.Purpose], Description: v.Description, SourceURL: v.SourceURL,
+		ID: v.ID, Name: v.Name, Purpose: purposeLabels[v.Purpose], PurposeID: string(v.Purpose), Icon: purposeIcons[v.Purpose], Description: v.Description, SourceURL: v.SourceURL,
 		Supported: v.Support.Supported, Reason: v.Support.Reason, Fallback: v.Support.Fallback, GPU: v.Support.GPU,
 		Writable: v.Writable, WritableError: v.WritableError, Dir: v.Dir, Free: jobview.BytesText(int64(min(v.FreeBytes, 1<<62))), //nolint:gosec // bounded above
 		VRAM:      jobview.VRAMText(v.VRAM.MinGB, v.VRAM.Source, v.VRAM.Estimate),

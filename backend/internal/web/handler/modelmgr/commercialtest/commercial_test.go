@@ -16,15 +16,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyuitest"
-	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -88,24 +85,14 @@ func (s *screen) do(method, path string, form url.Values) *httptest.ResponseReco
 
 func (s *screen) get(path string) *httptest.ResponseRecorder { return s.do(http.MethodGet, path, nil) }
 
-// page is GET /model-manager.
+// page is GET /model-manager/image-video, the page of the models.
 func (s *screen) page() string {
 	s.t.Helper()
-	req := httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil)
+	req := httptest.NewRequest(http.MethodGet, paths.ModelManagerCategory(paths.MMImageVideo), nil)
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.t, http.StatusOK, rec.Code)
 	return rec.Body.String()
-}
-
-// externalBox registers a ComfyUI endpoint "box" with a text-to-image model: a model the user defined, which mam did not check.
-func (s *screen) externalBox() {
-	s.t.Helper()
-	f := comfyuitest.New(s.t)
-	require.NoError(s.t, s.rig.Models.CreateEndpoint(s.t.Context(), localmodels.EndpointInput{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: f.URL()}))
-	tm, ok := localcfg.TemplateByID("txt2img-sdxl")
-	require.True(s.t, ok)
-	require.NoError(s.t, s.rig.Models.CreateModel(s.t.Context(), localmodels.ModelInput{Endpoint: "box", Name: "t2i", Model: tm.Model}))
 }
 
 func commercialURL() string { return paths.ModelManagerPart("commercial") }
@@ -166,7 +153,7 @@ func TestPageHasTheSettingAndTheFilterBarOfTheModelList(t *testing.T) {
 	assert.Contains(t, page, `id="mm-models"`)
 }
 
-// The setting is kept in state.json; turning it on makes the commercial-use choice of the filter start at 商用OKのみ, for the list here and for the trial's model choice.
+// The setting is kept in state.json; turning it on makes the commercial-use choice of the filter start at 商用OKのみ, for the list here.
 func TestSetCommercialOnlyKeepsTheSettingAndTheListStartsAtItsDefault(t *testing.T) {
 	s := newScreen(t)
 	require.False(t, s.rig.Svc.CommercialOnly())
@@ -176,7 +163,7 @@ func TestSetCommercialOnlyKeepsTheSettingAndTheListStartsAtItsDefault(t *testing
 	require.Equal(t, http.StatusOK, on.Code, on.Body.String())
 	assert.True(t, s.rig.Svc.CommercialOnly())
 	assert.Contains(t, on.Body.String(), `aria-pressed="true"`)
-	assert.Contains(t, on.Body.String(), `hx-swap-oob`, "the model list (with its filter) and the trial's model choice are drawn again at the new default")
+	assert.Contains(t, on.Body.String(), `hx-swap-oob`, "the model list (with its filter) is drawn again at the new default")
 	assert.Contains(t, on.Body.String(), `name="commercial" value="all"`, "the filter of the list starts at 商用OKのみ: すべて is now a choice of its own")
 	assert.NotContains(t, on.Body.String(), `name="commercial" value="ok"`, "商用OKのみ is the setting's: sent as the empty word")
 	assert.NotContains(t, s.page(), `name="commercial" value="ok"`, "the page starts at 商用OKのみ")
@@ -202,15 +189,4 @@ func TestTheListIsNarrowedByTheServerByTheCommercialChoice(t *testing.T) {
 	assert.NotContains(t, ok, `data-model="m-c"`, "商用NG is not 商用OK")
 	assert.Contains(t, ok, `data-testid="model-pick-chip"`)
 	assert.Contains(t, ok, "商用OKのみ")
-}
-
-// The trial's model is a field of the model picker: a model of an endpoint the user registered is in the picker, 不明 until someone checks it.
-func TestTrialModelIsAFieldOfTheModelPickerAndTheLicenseIsOnTheCard(t *testing.T) {
-	s := newScreen(t)
-	s.externalBox()
-
-	form := s.get(paths.ModelManagerPart("trials", "form")).Body.String()
-	assert.Contains(t, form, `hx-get="/model-picker/model-trial"`)
-	assert.NotContains(t, form, "<select")
-	assert.Contains(t, form, `name="model_id"`)
 }

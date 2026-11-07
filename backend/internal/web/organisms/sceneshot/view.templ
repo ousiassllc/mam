@@ -15,6 +15,14 @@ import (
 // what is typed into the other form survives (#733).
 templ View(d Data) {
 	<div id="scene-shot-view" class="grid gap-6 md:grid-cols-[16rem_1fr]">
+		<div class="flex flex-col gap-2 md:col-span-2">
+			if d.Wait.Active() {
+				<div data-testid="main-line-wait" data-phase={ string(d.Wait.Phase) }>
+					@atoms.Alert(atoms.AlertInfo, d.Wait.Title(), d.Wait.Text())
+				</div>
+			}
+			<p id="gentest-vs-main-line" class="text-xs text-mute">{ mainLineNote }</p>
+		</div>
 		<nav aria-label="Scene 一覧" class="flex flex-col gap-3">
 			<ol id="scene-list" class="flex flex-col gap-1">
 				for _, item := range d.Scenes {

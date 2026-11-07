@@ -22,10 +22,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/facemodels/facemodelstest"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
+	"github.com/ousiassllc/mam/backend/internal/service/llamaserver"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes/nodetest"
+	"github.com/ousiassllc/mam/backend/internal/service/ollamapull/ollamatest"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -45,6 +49,12 @@ type Screen struct {
 	Rts *lrtest.Rig
 	// Nodes are the custom nodes (NewWithNodes); nil for a screen without them.
 	Nodes *nodetest.Rig
+	// LLM is the local LLM server of the page "ローカル LLM" (llm.json at LLMFile; its keys are in LLMKeys). It has no server of mam: a test sets them with SetManaged / SetManagedOllama.
+	LLM     *llmlocal.Service
+	LLMFile string
+	LLMKeys *credentialtest.Memory
+	// Ollama is the Ollama of mam and its fakes (NewWithOllama); nil for a screen without it.
+	Ollama *ollamatest.Rig
 	// Works are the works that have no row in the job table (worktrack), which the job list reads next to the table.
 	Works  *worktrack.Tracker
 	engine http.Handler
@@ -55,7 +65,34 @@ type Screen struct {
 // New opens the screen: it loads the page for the CSRF cookie and token.
 func New(t *testing.T, opts ...mmtest.Option) *Screen {
 	t.Helper()
-	return open(t, mmtest.New(t, opts...), nil, nil)
+	return open(t, mmtest.New(t, opts...), nil, nil, false)
+}
+
+// NewWithLLM opens the screen with the local LLM server over the key store LLMKeys; pinned says the operator named the settings file (--llm-config), which the screen must not write.
+// The runtimes have the llama.cpp of lrtest.WithLLMRuntime, so that the page "ローカル LLM" has its cards.
+func NewWithLLM(t *testing.T, pinned bool) *Screen {
+	t.Helper()
+	rig := mmtest.New(t)
+	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, lrtest.WithLLMRuntime()), nil, pinned)
+}
+
+// NewWithOllama opens the page "ローカル LLM" with the Ollama of mam over the fakes of ollamatest (a fake server of the models, a fake runtime that is installed and stopped unless a test says another), on the
+// queue of the model manager. The local runtimes have the llama.cpp and the Ollama of lrtest, so that the page has their cards.
+func NewWithOllama(t *testing.T, opts ...ollamatest.Option) *Screen {
+	t.Helper()
+	rig := mmtest.New(t)
+	ol := ollamatest.New(t, append([]ollamatest.Option{ollamatest.Shared(rig.Queue, rig.Table)}, opts...)...)
+	return withOllama(t, rig, ol, nil)
+}
+
+// withOllama opens the screen over rig with the Ollama ol (on rig's queue) and its runtime.
+func withOllama(t *testing.T, rig *mmtest.Rig, ol *ollamatest.Rig, nodes *nodetest.Rig, mods ...func(*settingsroutes.Services)) *Screen {
+	t.Helper()
+	rts := lrtest.New(t, rig.Queue, rig.Table, ol.Svc.Handler(rig.Svc.HandleInstall), lrtest.WithLLMRuntime(), lrtest.WithOllamaRuntime())
+	s := open(t, rig, rts, nodes, false, append([]func(*settingsroutes.Services){func(sr *settingsroutes.Services) { sr.Ollama = ol.Svc }}, mods...)...)
+	s.Ollama = ol
+	s.LLM.SetManagedOllama(llamaserver.Server{Runtime: ol.Runtime, ID: llamaserver.OllamaID, Label: "Ollama", NoKey: true, Models: ol.Svc.Names})
+	return s
 }
 
 // NewWithRuntimes opens the screen with the local runtimes over fakes (a fake package and weights, a fake process; a Windows PC with an RTX
@@ -63,23 +100,42 @@ func New(t *testing.T, opts ...mmtest.Option) *Screen {
 func NewWithRuntimes(t *testing.T, opts ...lrtest.Option) *Screen {
 	t.Helper()
 	rig := mmtest.New(t)
-	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, opts...), nil)
+	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, opts...), nil, false)
 }
 
 // NewWithNodes opens the screen with the custom nodes of the allowlist over fakes (see nodetest): a fake host for the archive and a fake bundled engine.
 func NewWithNodes(t *testing.T) *Screen {
 	t.Helper()
 	nodes := nodetest.New(t)
-	s := open(t, mmtest.New(t), nil, nodes)
+	s := open(t, mmtest.New(t), nil, nodes, false)
 	s.Nodes = nodes
 	return s
 }
 
-func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *Screen {
+// NewAll opens the screen with every category: the local runtimes, the custom nodes, the face-check models and the companion software (each over fakes of its own;
+// the actions of the runtimes and the nodes are not run through this screen, only their pages).
+func NewAll(t *testing.T) *Screen {
+	t.Helper()
+	rig := mmtest.New(t)
+	rig.Gentest.FaceModels = facemodelstest.New(t).Svc
+	nodes := nodetest.New(t)
+	ffmpeg, _ := IsolatedFFmpeg(t)
+	faceFusion, _ := IsolatedFaceFusion(t)
+	ol := ollamatest.New(t, ollamatest.Shared(rig.Queue, rig.Table))
+	s := withOllama(t, rig, ol, nodes, companionOf(t, Companion{FFmpeg: ffmpeg, FaceFusion: faceFusion, Codex: true}))
+	s.Nodes = nodes
+	return s
+}
+
+// open is the screen over the rig (llmPinned: the settings file of the LLM is the one a start option named); with mods changes the services of the settings routes before the router is built.
+func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig, llmPinned bool, mods ...func(*settingsroutes.Services)) *Screen {
 	t.Helper()
 	db := testdb.Open(t)
 	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
-	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "m.json"), false)
+	llmFile := filepath.Join(t.TempDir(), "llm.json")
+	settings := settingsroutes.New(llmFile, llmPinned, filepath.Join(t.TempDir(), "m.json"), false)
+	keys := credentialtest.New()
+	settings.LLMLocal = llmlocal.New(llmFile, llmPinned, keys, nil)
 	settings.ModelManager, settings.Gentest = rig.Svc, rig.Gentest
 	// The jobs of the model manager and of the generation test are in the rig's table; the Projects and Shots in the services'.
 	works := &worktrack.Tracker{}
@@ -93,7 +149,10 @@ func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *
 	if nodes != nil {
 		settings.ModelNodes = nodes.Svc
 	}
-	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, Works: works, engine: router.New(svc, router.Options{Settings: settings})}
+	for _, mod := range mods {
+		mod(settings)
+	}
+	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, Works: works, LLM: settings.LLMLocal, LLMFile: llmFile, LLMKeys: keys, engine: router.New(svc, router.Options{Settings: settings})}
 
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -115,6 +174,9 @@ func (s *Screen) send(req *http.Request) *httptest.ResponseRecorder {
 	s.engine.ServeHTTP(rec, req)
 	return rec
 }
+
+// Send sends the request as a client of the screen (the host and the address of a local one; no cookie or header is added).
+func (s *Screen) Send(req *http.Request) *httptest.ResponseRecorder { return s.send(req) }
 
 // Do sends an HTMX request with the form (nil: none).
 func (s *Screen) Do(method, path string, form url.Values) *httptest.ResponseRecorder {
@@ -138,10 +200,16 @@ func (s *Screen) Visit(path string) *httptest.ResponseRecorder {
 	return s.send(req)
 }
 
-// Page is GET /model-manager (the whole page).
-func (s *Screen) Page() string {
+// Page is GET /model-manager (the whole page: the overview).
+func (s *Screen) Page() string { return s.PageAt(paths.ModelManager()) }
+
+// PageOf is GET /model-manager/<slug> (the whole page of a category).
+func (s *Screen) PageOf(slug string) string { return s.PageAt(paths.ModelManagerCategory(slug)) }
+
+// PageAt is the whole page at path.
+func (s *Screen) PageAt(path string) string {
 	s.T.Helper()
-	req := httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil)
+	req := httptest.NewRequest(http.MethodGet, path, nil)
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.T, http.StatusOK, rec.Code)

@@ -158,6 +158,34 @@ func GPUs(a ...gpu.Adapter) Option {
 	return func(r *Rig, _ *localruntime.Deps) { r.GPU = gpu.Report{Adapters: a} }
 }
 
+// LLMRuntimeID is the runtime that WithLLMRuntime adds: the one that the page "ローカル LLM" of the model manager lists (purpose llm). It is the same package and weights as the
+// runtime of the rig, under the id of the llama.cpp of the real catalog.
+const LLMRuntimeID = "llama-cpp"
+
+// WithLLMRuntime adds a second runtime to the catalog, whose purpose is llm (a language model), so that a screen test sees the cards of the page "ローカル LLM".
+func WithLLMRuntime() Option {
+	return func(_ *Rig, d *localruntime.Deps) {
+		rt, set := d.Catalog.Runtimes[0], d.Catalog.ResourceSets[0]
+		rt.ID, rt.Name, rt.Purpose, set.Runtime = LLMRuntimeID, "llama.cpp", catalog.PurposeLLM, LLMRuntimeID
+		d.Catalog.Runtimes = append(d.Catalog.Runtimes, rt)
+		d.Catalog.ResourceSets = append(d.Catalog.ResourceSets, set)
+	}
+}
+
+// OllamaRuntimeID is the runtime that WithOllamaRuntime adds: the id of the Ollama of the real catalog.
+const OllamaRuntimeID = "ollama"
+
+// WithOllamaRuntime adds a runtime under the id of the Ollama of the real catalog (purpose llm), so that a screen test sees its card on the page "ローカル LLM". Like WithLLMRuntime it is the
+// package and weights of the rig's runtime under another id; the models of that Ollama are fetched by ollamapull, over its own fakes.
+func WithOllamaRuntime() Option {
+	return func(_ *Rig, d *localruntime.Deps) {
+		rt, set := d.Catalog.Runtimes[0], d.Catalog.ResourceSets[0]
+		rt.ID, rt.Name, rt.Purpose, set.Runtime = OllamaRuntimeID, "Ollama", catalog.PurposeLLM, OllamaRuntimeID
+		d.Catalog.Runtimes = append(d.Catalog.Runtimes, rt)
+		d.Catalog.ResourceSets = append(d.Catalog.ResourceSets, set)
+	}
+}
+
 // NVIDIA is an NVIDIA adapter with vramGiB GiB.
 func NVIDIA(name string, vramGiB uint64, cc float64) gpu.Adapter {
 	return gpu.Adapter{Name: name, VendorID: gpu.VendorNVIDIA, VRAMBytes: vramGiB << 30, ComputeCap: cc}

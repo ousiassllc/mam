@@ -9,10 +9,15 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
+	"github.com/ousiassllc/mam/backend/internal/service/mainwait"
 )
 
 // PlanService shows and edits the Scene / Shot / Take hierarchy of a Project (F-04).
-type PlanService struct{ *core }
+type PlanService struct {
+	*core
+	wait mainwait.Reader
+}
 
 // SceneNav is one entry of the Scene list.
 type SceneNav struct {
@@ -33,6 +38,8 @@ type ShotView struct {
 	Candidates bool
 	// Judgeable holds the unjudged Takes (by ID) whose Judge run is accepted now (domain.CheckJudge).
 	Judgeable map[string]bool
+	// WaitLabel is what the Shot waits for while it is PLANNING with no Take (mainline.Wait.ShotLabel); "" when it does not wait.
+	WaitLabel string
 }
 
 // SceneView is the hierarchy page: the Project's Scenes, the selected Scene with its Shots and Takes.
@@ -41,6 +48,7 @@ type SceneView struct {
 	Scenes  []SceneNav
 	Scene   *domain.Scene // nil when the Project has no Scene
 	Shots   []ShotView
+	Wait    mainline.Wait // what the main line waits for after the Scene / Shot plan (#1108)
 }
 
 // Hierarchy returns the view with the Scene selected. An empty sceneID selects the first Scene.
@@ -59,6 +67,9 @@ func (s *PlanService) Hierarchy(ctx context.Context, projectID, sceneID, shotID 
 		return SceneView{}, err
 	}
 	view := SceneView{Project: project, Scenes: make([]SceneNav, len(scenes))}
+	if view.Wait, err = s.wait.Wait(ctx, project); err != nil {
+		return SceneView{}, err
+	}
 	for i, sc := range scenes {
 		view.Scenes[i] = SceneNav{Scene: sc, ShotCount: counts[sc.ID]}
 	}
@@ -87,6 +98,9 @@ func (s *PlanService) Hierarchy(ctx context.Context, projectID, sceneID, shotID 
 	}
 	for _, sh := range shots {
 		v := ShotView{Shot: sh, Takes: takes[sh.ID], Selected: sh.ID == shotID}
+		if view.Wait.Active() && sh.State == domain.ShotPlanning && len(v.Takes) == 0 {
+			v.WaitLabel = view.Wait.ShotLabel()
+		}
 		if frame, ok := sh.Storyboard(); ok {
 			v.Storyboard = &frame
 		}
@@ -173,6 +187,7 @@ func (s *PlanService) CreateShot(ctx context.Context, sceneID string, form ShotF
 		return SceneView{}, notFound(err)
 	}
 	s.announce(ctx, scene.ProjectID, "Scene「"+scene.Title+"」に Shot を追加しました: "+objective)
+	s.kick(ctx, scene.ProjectID) // the plan of the generation approval changed
 	return s.Hierarchy(ctx, scene.ProjectID, scene.ID, shot.ID)
 }
 
