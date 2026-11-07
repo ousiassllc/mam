@@ -99,7 +99,6 @@ func TestGenerationApproval_AChangeInTheMiddleHoldsEvenTheShotsWhosePackIsMade(t
 // The price: a rise after the approval asks again, a fall does not. The estimate is compared for the part that is still to be made.
 func TestGenerationApproval_ARisingPriceAsksAgainAndAFallingOneDoesNot(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	rise := func(r *rig, to float64) {
 		r.prices.edit(func(c modeladapter.Config) { c.Models[domain.ModelSeedance2].CostPerSecond["720p"] = to })
 	}
@@ -130,7 +129,7 @@ func TestGenerationApproval_ARisingPriceAsksAgainAndAFallingOneDoesNot(t *testin
 		assert.Equal(t, 1, r.cards(id), "a lower price needs no new approval")
 		assert.Equal(t, 3, r.gen.count(genapprovalrepo.StageReferencePack))
 	})
-	t.Run("rises after the Reference Packs were started", func(t *testing.T) {
+	t.Run("rises after the Reference Packs were made", func(t *testing.T) {
 		t.Parallel()
 		r := newRig(t)
 		r.prices.pricesKnown()
@@ -139,9 +138,13 @@ func TestGenerationApproval_ARisingPriceAsksAgainAndAFallingOneDoesNot(t *testin
 		for _, s := range r.shotIDs(id) {
 			r.endJob(s, false)
 		}
-		r.handle(id) // the generations are started at the approved price
-		require.Equal(t, 6, len(r.gen.started()))
-		_ = ctx
+
+		rise(r, 0.30) // the generations are still to be made, and they cost more than were approved
+		r.handle(id)
+
+		assert.Equal(t, 2, r.cards(id), "the part still to be made is compared: a rise before the generations asks again")
+		assert.Equal(t, 0, r.gen.count(genapprovalrepo.StageGenerate), "no generation is started at a price that was not approved")
+		assert.Equal(t, 3, r.gen.count(genapprovalrepo.StageReferencePack), "the Reference Packs that were made are not started again")
 	})
 }
 
