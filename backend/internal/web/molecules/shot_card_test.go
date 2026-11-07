@@ -183,3 +183,20 @@ func TestShotCard_TakeButtonsAreNamedAfterTheirTake(t *testing.T) {
 		assert.Contains(t, html, `aria-label="`+want+`"`)
 	}
 }
+
+// A Shot that is still PLANNING with no Take is waiting for the user to start its generation (a generation costs
+// money, so nothing starts it for them): the card says so in words next to the state (#1108, spec/spec.md §4.3).
+func TestShotCard_APlanningShotWithoutATakeSaysItWaitsForItsGeneration(t *testing.T) {
+	waiting := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotPlanning}}))
+	assert.Contains(t, waiting, "生成待ち")
+	assert.Contains(t, waiting, "計画中", "the state label stays")
+
+	take := []domain.Take{{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: domain.TakeCandidate}}
+	for name, d := range map[string]molecules.ShotCardData{
+		"a Shot that has a Take": {ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotPlanning}, Takes: take},
+		"a Shot being generated": {ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotGenerating}},
+		"a Shot being edited":    {ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotEditing}},
+	} {
+		assert.NotContains(t, render(t, molecules.ShotCard(d)), "生成待ち", name)
+	}
+}

@@ -236,6 +236,9 @@ templ ShotCard(d ShotCardData) {
 				if d.Shot.State == domain.ShotRepairing {
 					@atoms.Spinner("Repair 中")
 				}
+				if d.Shot.State == domain.ShotPlanning && len(d.Takes) == 0 {
+					@atoms.Badge(atoms.BadgeWarn, "生成待ち")
+				}
 				@atoms.Badge(atoms.BadgeNeutral, ShotStateLabel(d.Shot.State))
 			</span>
 		</div>
