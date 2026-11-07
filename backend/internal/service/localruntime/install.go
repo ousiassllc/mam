@@ -47,6 +47,9 @@ func (s *Service) Install(ctx context.Context, id string) (JobRef, error) {
 	if inst.tool.Load() {
 		return JobRef{}, ErrTraining
 	}
+	if err := s.heldBy(id); err != nil {
+		return JobRef{}, err
+	}
 	sup, err := s.refuse(ctx, inst)
 	if err != nil {
 		return JobRef{}, err
@@ -82,6 +85,9 @@ func (s *Service) InstallWeights(ctx context.Context, id string) (JobRef, error)
 	}
 	if inst.tool.Load() {
 		return JobRef{}, ErrTraining
+	}
+	if err := s.heldBy(id); err != nil {
+		return JobRef{}, err
 	}
 	if _, err := s.refuse(ctx, inst); err != nil {
 		return JobRef{}, err
@@ -156,6 +162,9 @@ const (
 // run.
 func (s *Service) runInstall(ctx context.Context, inst *instance, p installPayload, set func(track.Update)) error {
 	if _, err := s.refuse(ctx, inst); err != nil {
+		return err
+	}
+	if err := s.heldBy(inst.rt.ID); err != nil { // a pull began after the job was queued
 		return err
 	}
 	if err := inst.proc.Stop(); err != nil { // the files are replaced: the runtime must not be running
@@ -239,7 +248,7 @@ func (s *Service) CancelInstall(jobID string) error {
 }
 
 // Remove stops the runtime and deletes its environment (with the weights in it) and downloads (its auto-start setting and log stay). An install that is
-// queued or running is ErrBusy. A runtime that is not installed is removed without an error.
+// queued or running, or a model being fetched into it, is ErrBusy. A runtime that is not installed is removed without an error.
 func (s *Service) Remove(_ context.Context, id string) error {
 	inst, err := s.instance(id)
 	if err != nil {
@@ -250,6 +259,9 @@ func (s *Service) Remove(_ context.Context, id string) error {
 	}
 	if s.activeJob(TargetPrefix+id) != "" {
 		return ErrBusy
+	}
+	if err := s.heldBy(id); err != nil {
+		return err
 	}
 	inst.work.Lock()
 	defer inst.work.Unlock()

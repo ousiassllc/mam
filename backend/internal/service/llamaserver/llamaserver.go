@@ -179,10 +179,13 @@ func explain(label string, err error) string {
 	var (
 		support *localruntime.SupportError
 		weights *localruntime.WeightsError
+		busy    *localruntime.BusyError
 	)
 	switch {
 	case errors.As(err, &support):
 		return support.Error()
+	case errors.As(err, &busy):
+		return busy.Reason
 	case errors.Is(err, localruntime.ErrBusy):
 		return label + " を導入している最中です。終わってから、もう一度実行してください"
 	case errors.Is(err, localruntime.ErrNotInstalled), errors.Is(err, localruntime.ErrNotFound):

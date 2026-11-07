@@ -27,7 +27,7 @@ func newLocalRuntimes(jobs *jobqueue.Queue, table *repository.JobRepository, nex
 	}
 	root := store.LocalAIRoot(exe)
 	ollama := ollamapull.New(ollamapull.Deps{Root: root, Queue: jobs, JobTable: table, Logger: logger})
-	rts, err := localruntime.New(localruntime.Deps{Root: root, Queue: jobs, JobTable: table, Env: env, Logger: logger})
+	rts, err := localruntime.New(localruntime.Deps{Root: root, Queue: jobs, JobTable: table, Env: env, Logger: logger, HeldBy: ollama.HeldBy})
 	if err != nil {
 		return nil, nil, fmt.Errorf("local runtimes: %w", err)
 	}

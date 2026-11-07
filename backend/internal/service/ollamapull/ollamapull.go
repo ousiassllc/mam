@@ -14,6 +14,7 @@ package ollamapull
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -124,6 +125,28 @@ func (s *Service) activeJob(target string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.active[target]
+}
+
+// Pulling names the models whose pull is queued or running, in the order of the list: the Ollama of mam is held while there is one (localruntime.Deps.HeldBy),
+// so that it is neither removed nor replaced nor stopped under the fetch.
+func (s *Service) Pulling() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var names []string
+	for _, m := range s.Models {
+		if s.active[TargetPrefix+m.Name] != "" {
+			names = append(names, m.Name)
+		}
+	}
+	return names
+}
+
+// HeldBy is localruntime.Deps.HeldBy: the Ollama of mam is held by the models being fetched into it ("gemma4:12b、qwen3:8b"), no other runtime by anything.
+func (s *Service) HeldBy(id string) string {
+	if id != RuntimeID {
+		return ""
+	}
+	return strings.Join(s.Pulling(), "、")
 }
 
 func (s *Service) release(target, jobID string) {

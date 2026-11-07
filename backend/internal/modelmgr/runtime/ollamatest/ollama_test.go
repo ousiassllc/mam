@@ -122,6 +122,7 @@ func TestOllamaIsStartedWithServeOnLoopbackAndItsOwnModelsAndHome(t *testing.T) 
 	assert.Equal(t, home, envOf(spec.Env, "HOME"))
 	assert.Equal(t, home, envOf(spec.Env, "USERPROFILE"), "the profile of the user who runs mam is never written")
 	assert.Empty(t, envOf(spec.Env, "OLLAMA_ORIGINS"), "the default of Ollama: localhost only")
+	assert.Equal(t, []string{"OLLAMA_"}, spec.DropEnvPrefixes, "the OLLAMA_ variables of the user (OLLAMA_ORIGINS, OLLAMA_NOPRUNE, ...) are not inherited")
 }
 
 // The file that turns the cloud features off is written at every start, also over one that was edited or removed.

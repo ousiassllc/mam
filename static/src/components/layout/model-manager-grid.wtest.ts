@@ -138,3 +138,42 @@ describe('the page of the custom nodes (#1103)', () => {
     expect(text).to.contain('追加ノード・1 MiB');
   });
 });
+
+// #1110: the name of a card is a button whose click area covers the whole card, so the link in the card's body (to the page of the custom nodes) is
+// pressed only when it is raised above it. A click at the middle of the link must reach the link, and no other control of the card.
+describe('the link in the body of a card (#1110)', () => {
+  let host: HTMLElement;
+  let stylesheet: HTMLLinkElement;
+
+  beforeEach(async function () {
+    this.timeout(60_000); // the first request waits for the build of the CSS
+    stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = '/__tailwind.css';
+    const loaded = new Promise<void>((resolve, reject) => {
+      stylesheet.onload = () => resolve();
+      stylesheet.onerror = () => reject(new Error('the Tailwind CSS could not be built'));
+    });
+    document.head.append(stylesheet);
+    await loaded;
+  });
+
+  afterEach(() => {
+    host?.remove();
+    stylesheet.remove();
+  });
+
+  it('is what a click at its middle lands on, not the name button that covers the card', async () => {
+    await setViewport({ width: 1280, height: 800 });
+    const html = await (await fetch(`${TESTDATA}layout-mm-card-node-needed.html`)).text();
+    host = document.createElement('div');
+    host.innerHTML = `<main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-8">${html}</main>`;
+    document.body.append(host);
+    const link = host.querySelector<HTMLAnchorElement>('[data-testid=mm-node-needed-link]')!;
+
+    expect(link, 'the fixture has no link to the nodes').to.not.equal(null);
+    const box = link.getClientRects()[0]!; // the link may wrap over lines: its first line box is all link
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    expect(hit === link || link.contains(hit), 'the link is covered by another element of the card').to.equal(true);
+  });
+});

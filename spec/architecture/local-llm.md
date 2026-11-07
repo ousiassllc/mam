@@ -173,6 +173,7 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 - **状態の言い方**: `use` の状態は 1 つの `Info`（`state`・`reason`・`model`）にまとめ、設定のカード（`llm-local-state`）・モデルマネージャーの概要・`#mm-llm-use-state`・MCP の `get_global_settings` の `llm.local_server.managed_runtime`（今は llama.cpp だけ。`ollama` のときもこの名前で同じ形を返し、どちらのサーバーかは新設の `llm.local_server.use`〔`llama-cpp`・`ollama`・`custom`〕で分かる）が同じ文を出す。
 - **Ollama のメモリ降ろし（§5.3）**: 降ろす相手は `use` が `custom` のとき `base_url`、`ollama` のとき管理している Ollama（`/api/ps`・`keep_alive: 0`）。`llama-cpp` のときは今のとおり llama.cpp を止める（§10.3）。スイッチ `unload_before_generation` は `ollama`・`custom` のときだけ意味を持つ。
 - **VRAM の取り合い**: `ollama`（管理）は llama.cpp と同じ扱い（LLM の起動の前に ComfyUI が生成中なら待つ・画像・動画の生成の前に止める・アイドルで降ろす）。詳細は local-runtime.md §19.5。
+- **取得中は止めない**: 管理している Ollama でモデルを取得（`ollama pull`）している間は、サーバーの停止（カードの「停止」）・削除・導入し直しを `ErrBusy`（409。理由に取得中のモデル名）で断る（取得が途中で失敗するため。local-runtime.md §19.1）。LLM の呼び出しの前の起動と、生成の前のメモリ降ろし（止めずに `keep_alive: 0`。§5.3）は影響を受けない。管理する Ollama は、利用者自身の `OLLAMA_*`（`OLLAMA_ORIGINS` など）を継承しない（local-runtime.md §19.1）。
 
 ## 改訂履歴
 
@@ -183,3 +184,4 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 | 1.0 | 2026-11-03 | 新規作成。プロバイダー `local`、モデル一覧・使えるか、JSON の扱い、エラー、設定画面・MCP、VRAM の取り合い、推奨モデルの調査、Ollama / LM Studio / llama.cpp server の使い方 | Issue #1008（前半） |
 | 1.3 | 2026-11-07 | §11 を実装した。状態を「実装済み」にした。`llm.ProviderConfig.UseManagedOllama`（`use_managed_ollama`。`llm.ParseConfig` が `use_managed_runtime` との両方真を拒む）・`llmlocal.Service` の `Use`・`SetUse`・`Status`・`SetManagedOllama`（管理する Ollama を持つ app だけ `ollama` を選べる。#1105 がつなぐ）。使っている管理サーバーは、画像・動画の生成の前に止める（llama.cpp と同じ）。Ollama のモデルの一覧・メモリ降ろしの `/api/ps` 経路の管理 Ollama への適用は #1105 | Issue #1104 |
 | 1.4 | 2026-11-07 | 管理する Ollama（`use` が `ollama`。#1105）を実装した。呼び出しは `llamaserver.Server{ID: "ollama", NoKey: true}`（認証ヘッダーなし）。モデルの選択は `GET /api/tags` の取得済みのモデルをすべて出す（`ManagedInfo.Models`）。画像・動画の生成の前は、llama.cpp のように止めず、スイッチ `unload_before_generation` がオンのときだけ `/api/ps` と `keep_alive: 0` で降ろす（`BeforeGeneration`。動いていなければ何もしない）。LLM の割り当てが使うモデルは、モデルマネージャーの削除が 422（`llmassign.UsedBy`）。実機での降ろしの効きは未確認（`device_only`） | Issue #1105 |
+| 1.5 | 2026-11-07 | §11 に、管理する Ollama の取得中は停止・削除・導入し直しを 409 で断ること、利用者の `OLLAMA_*` を継承しないことを足した（実装済み） | PR #1110 のレビュー |
