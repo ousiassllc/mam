@@ -190,7 +190,19 @@ Final QC
 Delivery
 ```
 
-> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）までである。Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）は Shot 単位でユーザーが起動し、起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。**VISUAL_DESIGN で全 Shot が PLANNING・Take 0 のまま止まるのは、この意図した明示待機であり、待機の理由は見える**（#1108）: 計画完了のチャット通知と Scene / Shot 画面の上部が「Shot N 件が PLANNING のまま生成の開始を待っている」「生成は有料なので自動では始まらない」「確認レベルは脚本・Rough Cut・Final の承認カードだけを決め、生成の開始は止めていない」「Reference Library・World State の Character が 0 件（生成はできるが顔や見た目の一貫性を保つ参照が無い）」「次に押すもの（Shot を選び、必要なら先に Reference Pack、続けて生成。起動した生成は Job と進捗で追える）」を示し、PLANNING のままの Shot のカードにも「生成待ち」を出す。承認・料金（予算）のゲートは回避しない。生成テスト（`/generation-test`）は試用の経路で、その結果はプロジェクトの Shot の Take にならず、画面にもそう書く。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。Project 全体を一括で生成する段は持たない。
+> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）と、その直後の**生成の承認**、承認後の Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）の本線である。AUTO MODE では、Scene / Shot 計画のあとに**生成する内容と費用をユーザーが承認**し、承認されたら Reference Pack → Shot 生成を本線で自動進行する（#1108・#1111）。起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。**承認なしに Project 全体を一括で生成する段は持たない**。生成テスト（`/generation-test`）は試用の経路で、その結果はプロジェクトの Shot の Take にならず、画面にもそう書く。
+>
+> **生成の承認（`generation`。実装済み）**: 有料の生成を始める前の必須ゲートである。**確認レベル（FULL AUTO・KEY CHECK・CUSTOM CHECK）に関わらず必ず出す**（FULL AUTO の「Finalまで原則確認しない」への例外。承認なしに課金を始めないため）。CUSTOM CHECK の選択肢には出さない（常にオン）。脚本・Rough Cut・Final の承認は従来どおりで、この承認はそれらに足される。DIRECTOR MODE と MANUAL では出さず、Shot 単位でユーザーが起動する従来どおりである（手動の Shot カードの「生成」「Reference Pack」、Continue・Branch・DIRECTOR の再生成・Reshoot はこの承認を要求しない）。
+>
+> - **カードの中身**: 生成する内容（Shot 数、Reference Pack を作る Shot（Keyframe の無い Shot）、使うモデル（動画モデルと解像度、Reference Pack の画像モデル）、Shot ごとのおおよその本数）と、費用の見積を載せる。見積は Reference Pack（Shot ごとに最大 6 枚。Art Director が実際に何枚作るかは実行時に決まるので上限）と動画（Shot ごとの本数 × 1 本の見積。Quality Policy と固定した動画モデルで決める。Multi-model routing が実行時にモデルを入れ替える分は含めない）の合計で、Judge・Prompt Planner・Art Director など LLM の費用と Repair の再生成は含まない。単価が分からないモデル（`models.json` に価格が無いクラウドモデル、ChatGPT の定額枠のモデル）が含まれるときは、その分を**「不明」**と書き、でっち上げの数字は出さない（確認できる分だけを併記する）。単価を設定していないローカルモデルは 0 USD（無料）として数える。予算上限（Project・Shot）が設定されていれば併記する。
+> - **承認されるまで何も始めない**: 承認前は Reference Pack・Keyframe・Video を一切起動しない。Scene / Shot 画面の上部とチャットが「生成の承認待ち」を示し、PLANNING のままの Shot のカードに「承認待ち」を出す。
+> - **否認（差戻し）**: カードの「修正を依頼」または文章での返信で否認すると、Project は VISUAL_DESIGN に戻り、生成は始まらない。カードは差戻しのまま残る。次の行動はチャットに示す: ①計画を直す（Shot の追加・削除、動画モデルの固定、Quality Policy の変更）、②範囲を狭める（Shot を減らす）。範囲か見積が変わると、改めて承認を求める。③そのままもう一度承認を求めるには、チャットに何かメッセージを送る（カードへの返信は除く）。
+> - **再承認**: 承認のあと、(a) 範囲の指紋（fingerprint。Shot の集合、Shot ごとの Reference Pack の要否、動画モデル・解像度・本数）が承認時と違うとき、(b) 見積が承認時より増えたとき、(c) 見積の「不明」の有無が変わったとき（不明→数字、数字→不明。不明→不明で確認できる合計が増えていなければ変わらない扱い）は、新しい承認カードを出し、再承認されるまで生成を進めない。すでに起動した Shot は比較から外す。新しいカードは次の機会（チャットへの発言・承認への回答・Job の完了・Shot の追加／削除・モデルや Quality Policy の変更）に出る。
+> - **重複しない（冪等）**: 起動した Shot と段階（`reference_pack` / `generate`）を `generation_launch` に記録し、同じ承認で何回評価しても、プロセスを再起動しても、同じ Shot の同じ段階を再び起動しない。すでに Take がある Shot、Job が走っている Shot（`ErrShotBusy`）は起動しない。Reference Pack の Job が失敗した Shot は自動では生成しない（失敗はチャットに通知済みで、手動で起動できる）。
+> - **予算上限は承認の代わりにならない**: 予算上限は承認後も Reference Pack・Shot ごとの起動で引き続き効き、`ErrBudgetExceeded` は Escalation（Retry Policy の上限と同じ扱い）で人間に判断を求める。
+> - **進め方**: 承認されたら、Orchestrator が、Reference Pack が要る Shot の Reference Pack を起動し（`StartReferencePack`）、その Job が成功した Shot から Quality Policy に従う生成（`StartByPolicy`）を起動する。Reference Pack が要らない Shot はすぐ生成する。順序と同時実行数は Shot 単位の仕組みとジョブキューに従い、起動した生成は Job と Progress で追える。
+>
+> 待機の理由は見える（#1108）: 計画完了のチャット通知と Scene / Shot 画面の上部は、承認待ち（「Shot N 件が生成の承認を待っている」「承認するまで生成は始まらない」「承認すると Reference Pack → Shot 生成が自動で進む」「確認レベルが FULL AUTO でもこの承認は必ず求める」）、差戻し後（生成は始まらない・次の行動）、承認後の自動進行（「自動で進めている」）、自動では進められない Shot（Reference Pack の失敗・予算上限・起動の失敗。手動で起動する）を示し、Reference Library・World State の Character が 0 件のときは「生成はできるが顔や見た目の一貫性を保つ参照が無い」も示す。PLANNING のままで Take の無い Shot のカードには「承認待ち」（承認後は「自動開始待ち」、DIRECTOR・MANUAL は従来どおり「生成待ち」）を出す。
 
 ---
 
@@ -200,7 +212,7 @@ AUTO MODEでは、人間が確認する頻度を選択できる。
 
 ### FULL AUTO
 
-制作開始後、Finalまで原則確認しない。
+制作開始後、Finalまで原則確認しない。ただし**有料の生成を始める前の「生成の承認」（`generation`）だけは例外で、FULL AUTO でも必ず出す**（§4.3）。
 
 ### KEY CHECK
 
@@ -212,11 +224,13 @@ AUTO MODEでは、人間が確認する頻度を選択できる。
 2. Rough Cut
 3. Final
 
-> Main Visual / Character / Product の確認は、Art Director 以降が Shot 単位の手動起動であり、承認カードを出す箇所が無いため標準ポイントに含めない。
+標準ポイントに加えて、生成の承認（`generation`）が Scene / Shot 計画の直後に必ず出る（確認レベルに関わらない）。
+
+> Main Visual / Character / Product の確認は、該当する成果物の完了を検知して承認を求める段が無いため標準ポイントに含めない（生成する内容と費用の確認は、確認レベルに関わらず出る「生成の承認」が担う）。
 
 ### CUSTOM CHECK
 
-ユーザーが確認ポイントを自由設定する。選べるのは、パイプラインが承認カードを出す Script・Rough Cut・Final（`script` / `rough_cut` / `final`）。
+ユーザーが確認ポイントを自由設定する。選べるのは、パイプラインが承認カードを出す Script・Rough Cut・Final（`script` / `rough_cut` / `final`）。生成の承認（`generation`）は常にオンで、選択肢には出さない。
 
 例：
 
@@ -224,7 +238,7 @@ AUTO MODEでは、人間が確認する頻度を選択できる。
 - Rough Cutのみ確認
 - Finalのみ確認
 
-> キャラクターデザイン・商品Key Visual・各Scene完成時の確認（`character_design` / `product_key_visual` / `scene_complete`）と Main Visual（`main_visual`）は、該当する成果物の完了を検知して承認を求める段が無いため、選択肢に出さない。Art Director 以降の自動実行を実装する際に追加する。
+> キャラクターデザイン・商品Key Visual・各Scene完成時の確認（`character_design` / `product_key_visual` / `scene_complete`）と Main Visual（`main_visual`）は、該当する成果物の完了を検知して承認を求める段が無いため、選択肢に出さない（`domain.Checkpoint` に定義だけがあり、承認を出す段は実装していない。Reference Pack・Keyframe を作る前の確認は、生成の承認が Shot 全体の内容と費用として一括で担う）。成果物ごとの確認を足すときは、完了を検知して承認を求める段を実装して選択肢に加える。
 
 ---
 
@@ -767,6 +781,7 @@ PASS
 ### Retry Policy の適用（M1）
 
 - Max retries per Shot は、新しい Take を作った再生成系の Repair の数と、Prompt Candidate Generation が作った Take の数（最初の 1 本を除く）の合計で数える。Max cost per Shot は Shot の予算上限（`shot_budget_ceiling`）で、その Shot のコスト台帳の累計（それまでの Take・Reference Pack・Keyframe の分を含む）に次の再生成の見積りを足した額が上限を超えるなら再生成しない（Project の予算上限も、Project の累計に見積りを足した額で同じように検査する）。上限に達したら Escalation（チャットのカード）で人間に判断を求める
+- 予算上限は「生成の承認」（§4.3）の代わりにならない。上限が無い（nil）か、見積が上限に収まっていても、AUTO MODE の自動進行はユーザーが内容と費用を承認するまで始まらない。上限は承認のあとも Reference Pack・Shot ごとの起動で効き、超えるなら `ErrBudgetExceeded`（402）でその起動を止め、Escalation で人間に判断を求める
 - Minimum acceptance score は、Judge が付けた Production Template の軸別点数の総合点と各軸の最低点に適用する。LOCK 違反・Critical constraints・上限判定は決定的ルールで行い、LLM や Jev を経由しない
 - 戦略は決定的ルールで候補を絞り、決まらないときだけ Repair Agent（LLM）が選ぶ（`face_identity_drift` は Reference Reinforcement を優先）。Jev は M1 ではシャドー実行のみ（`spec/architecture/model-adapters.md` §4.5・§11）
 - Partial Regeneration は、Judge の `preserve`（良かった部分）とLOCK された部分を保ったまま Shot 全体を作り直す（M1・実装済み）。M2 ではこれに、問題のあった時間範囲だけを差し替える「つなぎ込み」を加える。動画生成モデルはクリップ全体しか作れないため、区間だけの再生成は「Shot 全体を新しい Take として作る → 修復元の Take の問題区間だけをその Take の同じ区間に差し替えた Take を、もう 1 本新しい Take として足す」ことで実現する。判定は §13 の下の「Partial Regeneration の範囲（M1 と M2）」を正とする
@@ -854,6 +869,8 @@ E. AIに任せる
 
 選択後、World Stateを引き継いで次Shot / Sceneを生成する。
 
+> この選択（Continue）は、ユーザーが次の展開を選んで生成を始める操作なので、§4.3 の「生成の承認」は要求しない（承認は Scene / Shot 計画の直後の自動進行にだけ出る）。生成は Quality Policy と予算上限に従う。
+
 ---
 
 # 16. Branch — 別展開を作る
@@ -882,6 +899,8 @@ Shot 12
 - ターゲット別クリエイティブ
 
 Branch作成時ではなく分岐点（Branch Point）のWorld StateをSnapshotとして保存し、Branch専用のWorld Stateの版として持つ。
+
+> Branch の生成の起動も、ユーザーが Branch を作る・選ぶ操作なので、§4.3 の「生成の承認」は要求しない。予算上限は従来どおり効く。
 
 ---
 
@@ -1121,6 +1140,8 @@ AWAITING_APPROVAL (optional: 脚本の確認ポイント)
  ↓
 VISUAL_DESIGN
  ↓
+AWAITING_APPROVAL (必須: 生成する内容と費用の承認。確認レベルに関わらない。AUTO MODE のみ)
+ ↓
 GENERATING
  ↓
 JUDGING
@@ -1151,9 +1172,9 @@ EXPORTED
 
 ユーザーは任意の段階でDIRECTOR MODEに入り、状態を修正できる。
 
-> **Project 状態と Shot 状態（実装の範囲）**: 上の状態遷移のうち、Project の状態として実際に遷移するのは DRAFT → PLANNING → VISUAL_DESIGN（Orchestrator）、確認ポイントでの AWAITING_APPROVAL、および EDITING 以降（EDIT_JUDGING・AUDIO・FINAL_QC・READY・EXPORTED）である。EDITING の開始は `POST /projects/:id/edit/rough-cut` だけではない。ユーザーが Rough Cut を作る／編集したときに加え、AUTO MODE ではトランクの全 Shot に Selected Take が揃った時点で Rough Cut と Editor Judge が自動で始まり EDITING に入る。開始時、VISUAL_DESIGN からは GENERATING → JUDGING → EDITING を一括で辿る（全 Shot に Selected Take があることが前提）。確認ポイント通過後の AUDIO と Final QC も AUTO MODE では自動で進み、Export はユーザー操作である。GENERATING / JUDGING / REPAIRING は Shot 単位（`shot.state`、§13）で進み、Shot の生成・Judge・Repair は Shot ごとに並行して起動されるため、Project 全体の状態としては遷移させない（Project は VISUAL_DESIGN のまま）。例外は Reshoot Loop の追加 Shot（Project を GENERATING にする）と、Escalation への回答後（Project は REPAIRING になり、Editor Judge／編集操作で EDITING へ戻る）である。
+> **Project 状態と Shot 状態（実装の範囲）**: 上の状態遷移のうち、Project の状態として実際に遷移するのは DRAFT → PLANNING → VISUAL_DESIGN（Orchestrator）、確認ポイントと生成の承認での AWAITING_APPROVAL、および EDITING 以降（EDIT_JUDGING・AUDIO・FINAL_QC・READY・EXPORTED）である。EDITING の開始は `POST /projects/:id/edit/rough-cut` だけではない。ユーザーが Rough Cut を作る／編集したときに加え、AUTO MODE ではトランクの全 Shot に Selected Take が揃った時点で Rough Cut と Editor Judge が自動で始まり EDITING に入る。開始時、VISUAL_DESIGN からは GENERATING → JUDGING → EDITING を一括で辿る（全 Shot に Selected Take があることが前提）。確認ポイント通過後の AUDIO と Final QC も AUTO MODE では自動で進み、Export はユーザー操作である。GENERATING / JUDGING / REPAIRING は Shot 単位（`shot.state`、§13）で進み、Shot の生成・Judge・Repair は Shot ごとに並行して起動されるため、Project 全体の状態としては遷移させない（Project は VISUAL_DESIGN のまま。生成の承認が承認されたときも、否認されたときも、Project は AWAITING_APPROVAL から VISUAL_DESIGN に戻り、承認後の Reference Pack・Shot 生成は Shot 単位で進む）。例外は Reshoot Loop の追加 Shot（Project を GENERATING にする）と、Escalation への回答後（Project は REPAIRING になり、Editor Judge／編集操作で EDITING へ戻る）である。
 
-図の AWAITING_APPROVAL は確認ポイント（脚本・Rough Cut・Final）の位置を示す。AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。ただし Escalation カードで AWAITING_APPROVAL に入れるのは、PLANNING・VISUAL_DESIGN・GENERATING・JUDGING・REPAIRING・EDITING・EDIT_JUDGING・FINAL_QC のいずれかにいるときだけである（`domain.stateTransitions` はこれと一致させる。AWAITING_APPROVAL から戻れるのは PLANNING・VISUAL_DESIGN・GENERATING・REPAIRING・EDITING・AUDIO・READY で、確認ポイントの承認 / 修正依頼と Escalation の再開先から決まる）。DRAFT・AUDIO・READY・EXPORTED で出た Shot 単位の Escalation（書き出し後の Repair 上限到達など）はカードを投稿するだけで Project の状態を変えず、そのカードは確認ポイントを待たせず、回答しても REPAIRING にはならない。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
+図の AWAITING_APPROVAL は確認ポイント（脚本・Rough Cut・Final）と生成の承認（`generation`）の位置を示す。AWAITING_APPROVAL に遷移するのは、確認ポイントと生成の承認の Approval カードと Escalation カードのみとする。ただし Escalation カードで AWAITING_APPROVAL に入れるのは、PLANNING・VISUAL_DESIGN・GENERATING・JUDGING・REPAIRING・EDITING・EDIT_JUDGING・FINAL_QC のいずれかにいるときだけである（`domain.stateTransitions` はこれと一致させる。AWAITING_APPROVAL から戻れるのは PLANNING・VISUAL_DESIGN・GENERATING・REPAIRING・EDITING・AUDIO・READY で、確認ポイントの承認 / 修正依頼と Escalation の再開先から決まる）。DRAFT・AUDIO・READY・EXPORTED で出た Shot 単位の Escalation（書き出し後の Repair 上限到達など）はカードを投稿するだけで Project の状態を変えず、そのカードは確認ポイントを待たせず、回答しても REPAIRING にはならない。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
 
 ---
 
@@ -1205,7 +1226,7 @@ EXPORTED
 | カード | 内容 | 操作 |
 |--------|------|------|
 | Question | Brief 補完・Continue の次の方向の確認。DIRECTOR MODE の曖昧な指示の聞き返し（対象 Shot が決まらないなど）は Question カードにせず通常のテキストで返し、ユーザーは Take カードへの返信か「Scene 1 の Shot 2」のような次の発言で答える | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
-| Approval | 確認ポイントの成果物（脚本・Rough Cut・Final）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
+| Approval | 確認ポイントの成果物（脚本・Rough Cut・Final）と、Scene / Shot 計画の直後に確認レベルに関わらず出る生成の承認（生成する内容と費用の見積。§4.3）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
 | Take | 動画プレーヤー（Judge の Issue を時間軸のマーカーで表示）と生成の要約（モデル・解像度・秒数）。スレッドは追記のみなので、Judge が結果を保存するとサーバーはその Take のカードの更新（`card.updated`）を通知して、ライブ中のスレッドでもマーカーを描き直す。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードには載せず、Judge が結果を保存するたびに別の発言として投稿する（「Shot N · Take X の Judge 結果: PASS/FAIL（信頼度）」と、AI Pick が変わったときの「AI Pick: Take X を採用/おすすめ」）。Take ごとの最新の状態は Take 比較で確認する | 再生、返信で指示、Take比較を開く |
 | Progress | 生成・Repair の進捗（Judge の進捗は Shot カード側、結果は発言で通知） | なし（自動更新） |

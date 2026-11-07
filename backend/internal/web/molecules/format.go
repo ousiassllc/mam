@@ -87,7 +87,15 @@ func replyAttrs(m domain.ThreadMessage) templ.Attributes {
 }
 
 func submitAttrs(decision string) templ.Attributes {
-	return templ.Attributes{"type": "submit", "name": "decision", "value": decision}
+	return templ.Attributes{"type": "submit", "name": "decision", "value": decision, "data-testid": "approval-" + decision}
+}
+
+// approvalTestID is the data-testid of an approval card: the generation approval has one of its own.
+func approvalTestID(m domain.ChatMessage) string {
+	if cp, ok := domain.CheckpointForRefType(m.RefType); ok && cp == domain.CheckpointGeneration {
+		return "generation-approval-card"
+	}
+	return "approval-card"
 }
 
 // approvalLabel names what the approval card asks to confirm.

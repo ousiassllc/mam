@@ -137,7 +137,7 @@ func TestHandle_PlanNoticeSaysWhyNothingGeneratesAndWhatToPressNext(t *testing.T
 	assert.Contains(t, notice, "Scene / Shot の計画ができました")
 	assert.Contains(t, notice, "Shot 3 件が PLANNING")
 	assert.Contains(t, notice, "生成の開始を待っています")
-	assert.Contains(t, notice, "確認レベルは脚本・Rough Cut・Final の承認カードだけを決め")
+	assert.Contains(t, notice, "「生成の承認」は出さず", "without the generation gate (DIRECTOR / MANUAL, or no generation wired) nothing is asked and the user starts each Shot")
 	assert.Contains(t, notice, "Reference Library が 0 件")
 	assert.Contains(t, notice, "Character）が 0 人")
 	assert.Contains(t, notice, "次に押すもの")

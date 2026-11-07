@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/relay"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/genstage"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/bgwork"
@@ -23,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/previewcache"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
+	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
 	"github.com/ousiassllc/mam/backend/internal/service/broker"
 	"github.com/ousiassllc/mam/backend/internal/service/ffgate"
@@ -72,6 +74,7 @@ type wiring struct {
 	r      repos
 	c      *core
 	chat   *ChatService
+	gate   *genstage.Gate // the generation approval; nil until wirePlan
 
 	generations *GenerationService
 	judges      *JudgeService
@@ -144,8 +147,9 @@ func (w *wiring) wirePlan() {
 		return
 	}
 	d := w.deps
+	w.gate = genstage.New(genstage.Deps{Projects: w.c.projects, Plans: w.c.plans, Gens: w.r.gens, Policies: w.r.policies, Jobs: w.c.jobs, Repo: genapprovalrepo.New(d.DB), Chat: w.chat, Logger: w.logger})
 	w.c.pipeline = orchestrator.New(orchestrator.Deps{
-		Projects: w.c.projects, Plans: w.c.plans, ChatRepo: w.c.chat, Chat: w.chat, Jobs: d.Jobs,
+		Projects: w.c.projects, Plans: w.c.plans, ChatRepo: w.c.chat, Chat: w.chat, Jobs: d.Jobs, Gate: w.gate,
 		LLM: d.LLM, Notes: w.r.notes, Drafts: characterdraft.New(w.c.projects, w.c.assets, w.r.world, w.logger), Facts: mainwait.Reader{Plans: w.c.plans, References: w.c.references, World: w.r.world}.Facts, Logger: w.logger,
 	})
 	d.Jobs.Register(domain.JobPlan, w.c.pipeline.Handle, true)
@@ -191,6 +195,7 @@ func (w *wiring) wireGeneration() {
 	// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 	d.Jobs.Register(domain.JobGenerate, progress.Wrap(w.generations.gen.Handle), false)
 	w.c.takeActions.gen = w.generations.gen
+	w.gate.SetGenerator(w.generations.gen, d.Models.Config) // the Orchestrator carries an approved plan on through it
 }
 
 // wireRepair sets up the Repair Agent (job "repair"): needs generation and the Judge, so everything
@@ -276,8 +281,10 @@ func (w *wiring) watchJobs() {
 		// callback must not block, and a panic must not end the server).
 		repairLoop = bgwork.Async(w.logger, "repair loop", func(jobID string) { agent.JobChanged(context.Background(), jobID) })
 	}
+	follow := bgwork.Async(w.logger, "generation follow-up", func(jobID string) { w.gate.JobChanged(context.Background(), jobID, w.c.kick) })
 	w.deps.Jobs.OnChange(func(jobID string) {
 		w.chat.JobChanged(context.Background(), jobID)
+		follow(jobID) // the Reference Pack of a Shot the gate started has ended: its generation is next
 		if repairLoop != nil {
 			repairLoop(jobID)
 		}
@@ -294,7 +301,7 @@ func (w *wiring) services() *Services {
 		Credentials: NewCredentialService(d.Credentials),
 		Projects:    &ProjectService{c},
 		Chat:        w.chat,
-		Plans:       &PlanService{c, mainwait.Reader{Plans: c.plans, References: c.references, World: w.r.world}},
+		Plans:       &PlanService{c, mainwait.Reader{Plans: c.plans, References: c.references, World: w.r.world, Gate: w.gate}},
 		Generation:  w.generations,
 		World:       w.worlds,
 		Director:    w.director,

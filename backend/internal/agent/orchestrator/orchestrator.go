@@ -1,15 +1,16 @@
 // Package orchestrator is the Orchestrator Agent: it drives the Core State Machine of a Project
 // (spec/spec.md §22) and decides which Agent runs next (§20.1). This package runs the planning
-// part of the AUTO pipeline (spec/spec.md §4.3):
+// and the generation part of the AUTO pipeline (spec/spec.md §4.3):
 //
 //	DRAFT ──Brief complete──▶ PLANNING ──Producer → Writer──▶ script_version
 //	        ──(script approval card, when the Confirmation Level asks)──▶ VISUAL_DESIGN
 //	        ──Director → Storyboard──▶ scene / shot
+//	        ──generation approval (every Confirmation Level)──▶ Reference Pack → Shot generation
 //
 // Every move is persisted (repository.ProjectRepository.Transition) before the next Agent runs,
 // and every step derives what is left to do from what is stored, so an interrupted run is
-// resumed by running the same job again. The stages themselves are in orchestrator/stages; this package is the job around them
-// (one job per Project, rerun, the notice of a failure).
+// resumed by running the same job again. The stages are in orchestrator/stages and the generation approval in orchestrator/genstage; this
+// package is the job around them (one job per Project, rerun, the notice of a failure).
 package orchestrator
 
 import (
@@ -22,6 +23,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/genstage"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/stages"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/characterdraft"
@@ -57,7 +59,9 @@ type Deps struct {
 	Drafts Drafts
 	// Facts counts the Reference Library items and the Characters of a Project, for the sentence that says what the main line waits for
 	// after the Scene / Shot plan (#1108). Nil: the sentence leaves them out.
-	Facts  func(ctx context.Context, projectID string) (references, characters int, err error)
+	Facts func(ctx context.Context, projectID string) (references, characters int, err error)
+	// Gate is the generation approval that follows the Scene / Shot plan (spec/spec.md §4.3). Nil: off; the user starts each Shot.
+	Gate   *genstage.Gate
 	Logger *slog.Logger
 }
 
@@ -85,7 +89,7 @@ func New(d Deps) *Orchestrator {
 	return &Orchestrator{
 		projects: d.Projects, drafts: d.Drafts, chat: d.Chat, jobs: d.Jobs, logger: logger,
 		stages: stages.New(stages.Deps{
-			Projects: d.Projects, Plans: d.Plans, ChatRepo: d.ChatRepo, Chat: d.Chat, LLM: d.LLM, Notes: d.Notes, Facts: d.Facts, Logger: logger,
+			Projects: d.Projects, Plans: d.Plans, ChatRepo: d.ChatRepo, Chat: d.Chat, LLM: d.LLM, Notes: d.Notes, Facts: d.Facts, Gate: d.Gate, Logger: logger,
 		}),
 		active: make(map[string]bool),
 		rerun:  make(map[string]bool),

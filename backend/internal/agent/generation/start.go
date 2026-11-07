@@ -126,7 +126,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 		return domain.Job{}, err
 	}
 	if action == ActionCandidates {
-		strategy.Takes = plannedTakes(domain.ModeOf(policy.Quality), policy.Effective(), strategy)
+		strategy.Takes = PlannedTakes(domain.ModeOf(policy.Quality), policy.Effective(), strategy)
 	}
 	o.warnLowDisk(ctx, ref, strategy)
 	return job, nil

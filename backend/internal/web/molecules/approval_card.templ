@@ -18,35 +18,37 @@ const approvalCommentMaxRunes = 500
 // submit button; when it is disabled implicit submission does nothing) instead of approving.
 templ ApprovalCard(m domain.ThreadMessage) {
 	@MessageFrame(m) {
-		<p class="mb-1 flex items-center gap-2">
-			<span class="text-xs text-mute">{ approvalLabel(m.ChatMessage) }</span>
-			{{ tone, label := approvalBadge(m.ApprovalStatus) }}
-			@atoms.Badge(tone, label)
-		</p>
-		<p class="whitespace-pre-wrap break-words">{ m.Content }</p>
-		if m.ApprovalStatus == domain.ApprovalPending {
-			<form
-				class="mt-3 flex flex-wrap items-center gap-2"
-				hx-post={ approvalURL(m.ProjectID, m.ID) }
-				hx-target={ selector.ID("msg-", m.ID) }
-				hx-swap="outerHTML"
-				hx-sync="this:drop"
-				hx-disabled-elt="find button[value=approve], find button[value=request_changes]"
-			>
-				<button type="submit" disabled hidden tabindex="-1" aria-hidden="true"></button>
-				@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
-					"type":        "text",
-					"name":        "comment",
-					"maxlength":   strconv.Itoa(approvalCommentMaxRunes),
-					"placeholder": "コメント（任意）",
-					"aria-label":  atoms.RowLabel("コメント", excerpt(m.ChatMessage)),
-				})
-				@atoms.ButtonFor(atoms.TonePrimary, "承認", excerpt(m.ChatMessage), submitAttrs("approve"))
-				@atoms.ButtonFor(atoms.ToneNeutral, "修正を依頼", excerpt(m.ChatMessage), submitAttrs("request_changes"))
-			</form>
-			<div class="mt-1">
-				@ReplyButton(m)
-			</div>
-		}
+		<div data-testid={ approvalTestID(m.ChatMessage) } data-approval-status={ string(m.ApprovalStatus) }>
+			<p class="mb-1 flex items-center gap-2">
+				<span class="text-xs text-mute">{ approvalLabel(m.ChatMessage) }</span>
+				{{ tone, label := approvalBadge(m.ApprovalStatus) }}
+				@atoms.Badge(tone, label)
+			</p>
+			<p class="whitespace-pre-wrap break-words" data-testid="approval-summary">{ m.Content }</p>
+			if m.ApprovalStatus == domain.ApprovalPending {
+				<form
+					class="mt-3 flex flex-wrap items-center gap-2"
+					hx-post={ approvalURL(m.ProjectID, m.ID) }
+					hx-target={ selector.ID("msg-", m.ID) }
+					hx-swap="outerHTML"
+					hx-sync="this:drop"
+					hx-disabled-elt="find button[value=approve], find button[value=request_changes]"
+				>
+					<button type="submit" disabled hidden tabindex="-1" aria-hidden="true"></button>
+					@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
+						"type":        "text",
+						"name":        "comment",
+						"maxlength":   strconv.Itoa(approvalCommentMaxRunes),
+						"placeholder": "コメント（任意）",
+						"aria-label":  atoms.RowLabel("コメント", excerpt(m.ChatMessage)),
+					})
+					@atoms.ButtonFor(atoms.TonePrimary, "承認", excerpt(m.ChatMessage), submitAttrs("approve"))
+					@atoms.ButtonFor(atoms.ToneNeutral, "修正を依頼", excerpt(m.ChatMessage), submitAttrs("request_changes"))
+				</form>
+				<div class="mt-1">
+					@ReplyButton(m)
+				</div>
+			}
+		</div>
 	}
 }

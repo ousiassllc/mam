@@ -2,14 +2,14 @@ package domain
 
 import "slices"
 
-// Checkpoint is a point of the pipeline where a human may be asked to confirm
-// (spec/spec.md §4.4). Whether an approval card is shown depends on the
-// Project's ConfirmationLevel.
+// Checkpoint is a point of the pipeline where a human may be asked to confirm (spec/spec.md §4.4). Whether an approval card is
+// shown depends on the Project's ConfirmationLevel.
 type Checkpoint string
 
 // Checkpoints.
 const (
 	CheckpointScript           Checkpoint = "script"             // Concept / Script
+	CheckpointGeneration       Checkpoint = "generation"         // What the paid generation makes and costs (AUTO only)
 	CheckpointCharacterDesign  Checkpoint = "character_design"   // Character design
 	CheckpointMainVisual       Checkpoint = "main_visual"        // Main Visual / Character / Product
 	CheckpointProductKeyVisual Checkpoint = "product_key_visual" // Product key visual
@@ -21,21 +21,18 @@ const (
 // Checkpoints lists every checkpoint in pipeline order.
 func Checkpoints() []Checkpoint {
 	return []Checkpoint{
-		CheckpointScript, CheckpointCharacterDesign, CheckpointMainVisual,
+		CheckpointScript, CheckpointGeneration, CheckpointCharacterDesign, CheckpointMainVisual,
 		CheckpointProductKeyVisual, CheckpointSceneComplete, CheckpointRoughCut, CheckpointFinal,
 	}
 }
 
-// SelectableCheckpoints are the checkpoints the pipeline actually posts an Approval card at: the
-// script (Orchestrator), the Rough Cut and the Final (Editor). The other stages come after the
-// Scene/Shot plan and are started per Shot by hand, so nothing asks there (spec/spec.md §4.4). Only
-// the selectable ones are offered for CUSTOM CHECK.
+// SelectableCheckpoints are the checkpoints the Confirmation Level decides, and the only ones offered for CUSTOM CHECK. The generation
+// checkpoint is asked at every level; character_design, main_visual, product_key_visual and scene_complete have no stage (spec/spec.md §4.4).
 func SelectableCheckpoints() []Checkpoint {
 	return []Checkpoint{CheckpointScript, CheckpointRoughCut, CheckpointFinal}
 }
 
-// KeyCheckpoints are the standard points of KEY CHECK: Concept/Script, Rough Cut and Final
-// (spec/spec.md §4.4).
+// KeyCheckpoints are the standard points of KEY CHECK: Concept/Script, Rough Cut and Final (spec/spec.md §4.4).
 func KeyCheckpoints() []Checkpoint {
 	return []Checkpoint{CheckpointScript, CheckpointRoughCut, CheckpointFinal}
 }
@@ -51,6 +48,8 @@ func (c Checkpoint) Label() string {
 	switch c {
 	case CheckpointScript:
 		return "コンセプト / 脚本"
+	case CheckpointGeneration:
+		return "生成する内容と費用"
 	case CheckpointCharacterDesign:
 		return "キャラクターデザイン"
 	case CheckpointMainVisual:
@@ -67,8 +66,7 @@ func (c Checkpoint) Label() string {
 	return string(c)
 }
 
-// RefType is the chat_message.ref_type of the approval card of this checkpoint:
-// the type of the artifact being approved (er.md §4).
+// RefType is the chat_message.ref_type of the approval card of this checkpoint: the type of the artifact approved (er.md §4).
 func (c Checkpoint) RefType() string {
 	switch c {
 	case CheckpointScript:
@@ -80,7 +78,7 @@ func (c Checkpoint) RefType() string {
 	case CheckpointFinal:
 		return "export"
 	}
-	return string(c) // character_design, main_visual, product_key_visual
+	return string(c) // generation, character_design, main_visual, product_key_visual
 }
 
 // CheckpointForRefType is the inverse of Checkpoint.RefType.
@@ -97,8 +95,8 @@ func CheckpointForRefType(refType string) (Checkpoint, bool) {
 // checkpoint is approved (spec/spec.md §22).
 func (c Checkpoint) ApprovedState() ProjectState {
 	switch c {
-	case CheckpointScript, CheckpointCharacterDesign, CheckpointProductKeyVisual:
-		return StateVisualDesign
+	case CheckpointScript, CheckpointGeneration, CheckpointCharacterDesign, CheckpointProductKeyVisual:
+		return StateVisualDesign // generation: Reference Pack and Shot generation go on per Shot, the Project stays in VISUAL_DESIGN
 	case CheckpointMainVisual, CheckpointSceneComplete:
 		return StateGenerating
 	case CheckpointRoughCut:
@@ -112,7 +110,7 @@ func (c Checkpoint) ChangesRequestedState() ProjectState {
 	switch c {
 	case CheckpointScript:
 		return StatePlanning
-	case CheckpointCharacterDesign, CheckpointMainVisual, CheckpointProductKeyVisual:
+	case CheckpointGeneration, CheckpointCharacterDesign, CheckpointMainVisual, CheckpointProductKeyVisual:
 		return StateVisualDesign
 	case CheckpointSceneComplete:
 		return StateRepairing
@@ -125,13 +123,15 @@ func (c Checkpoint) ChangesRequestedState() ProjectState {
 // limit, adopting a Take, fixing the Shot), and the Editor Judge or an edit brings the Project back to EDITING.
 const EscalationResumeState = StateRepairing
 
-// RequiresApproval reports whether an approval card is shown at cp for this level.
-// custom is the user's selection and only matters for CUSTOM CHECK.
+// RequiresApproval reports whether an approval card is shown at cp for this level; custom is the CUSTOM CHECK selection. The
+// generation approval is shown at every level: a paid generation never starts without it (spec/spec.md §4.3).
 func (l ConfirmationLevel) RequiresApproval(cp Checkpoint, custom []Checkpoint) bool {
-	switch l {
-	case ConfirmKeyCheck:
+	switch {
+	case cp == CheckpointGeneration:
+		return true
+	case l == ConfirmKeyCheck:
 		return slices.Contains(KeyCheckpoints(), cp)
-	case ConfirmCustomCheck:
+	case l == ConfirmCustomCheck:
 		return slices.Contains(custom, cp)
 	}
 	return false // FULL AUTO: only Escalation asks the user
