@@ -102,11 +102,14 @@ func (g *Gate) decide(ctx context.Context, p domain.Project, a *Assessment) erro
 		a.Verdict = VerdictPending
 		return nil
 	}
-	approved, ok, err := g.record(ctx, p.ID, card, a.Plan)
+	approved, ok, err := g.d.Repo.Approval(ctx, card.ID)
 	if err != nil {
 		return err
 	}
-	if !ok { // the card has no record of what it stood for and the plan is not what it was posted for: it cannot stand for the plan
+	// An answered card with no record of what it stood for never stands for the plan, whatever the plan is: the record is written when the card is
+	// posted, so a card without one came from elsewhere (an imported bundle carries the cards but not the records, and the approval is of this
+	// instance's models and prices) or the process ended between the post and the record. Either way the approval is asked for again.
+	if !ok || approved.ProjectID != p.ID {
 		a.Verdict, a.Reason = VerdictAsk, "前の承認カードが何を承認するものか確かめられません"
 		return nil
 	}
@@ -149,20 +152,6 @@ func (g *Gate) decideDeclined(ctx context.Context, p domain.Project, a *Assessme
 		}
 	}
 	return nil
-}
-
-// record is what the card stood for. A card posted just before a crash has none yet: it is written from the plan when the plan is the one
-// the card was posted for (its fingerprint), and ok is false otherwise.
-func (g *Gate) record(ctx context.Context, projectID string, card *genapprovalrepo.Card, plan genplan.Plan) (genapprovalrepo.Approval, bool, error) {
-	a, ok, err := g.d.Repo.Approval(ctx, card.ID)
-	if err != nil || ok {
-		return a, ok, err
-	}
-	if card.Fingerprint != plan.Fingerprint() {
-		return genapprovalrepo.Approval{}, false, nil
-	}
-	a = approvalOf(projectID, card.ID, plan)
-	return a, true, g.d.Repo.SaveApproval(ctx, a)
 }
 
 func approvalOf(projectID, messageID string, plan genplan.Plan) genapprovalrepo.Approval {
