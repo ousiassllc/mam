@@ -46,11 +46,12 @@ type Assessment struct {
 	Stuck map[string]bool
 }
 
-// inScope reports whether the Project is at a state where the generation is the gate's business: the plan is made (VISUAL_DESIGN), a card is
-// waiting (AWAITING_APPROVAL) or Shots are being made (GENERATING, JUDGING, REPAIRING; a Project stays in VISUAL_DESIGN while they are, spec/spec.md §22).
+// inScope reports whether the Project is at a state where the generation is the gate's business: the plan is made (VISUAL_DESIGN, where a Project stays
+// while its Shots are made, spec/spec.md §22), a card is waiting (AWAITING_APPROVAL), or an Escalation was answered (REPAIRING: the budget stopped a start and
+// the user decided). GENERATING and JUDGING are the Reshoot Loop's and the director's, never the gate's.
 func inScope(s domain.ProjectState) bool {
 	switch s {
-	case domain.StateVisualDesign, domain.StateAwaitingApproval, domain.StateGenerating, domain.StateJudging, domain.StateRepairing:
+	case domain.StateVisualDesign, domain.StateAwaitingApproval, domain.StateRepairing:
 		return true
 	}
 	return false

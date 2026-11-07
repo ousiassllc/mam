@@ -96,7 +96,7 @@ func (s *Pipeline) NeedsWork(ctx context.Context, p domain.Project) (bool, error
 			return !has, err
 		}
 		return s.gate.NeedsWork(ctx, p)
-	case domain.StateGenerating, domain.StateJudging, domain.StateRepairing:
+	case domain.StateRepairing:
 		return s.gate.NeedsWork(ctx, p) // Shots the user approved are being made: the gate starts what is left
 	}
 	return false, nil
@@ -124,7 +124,7 @@ func (s *Pipeline) Advance(ctx context.Context, projectID string) error {
 			progressed, err = s.scriptStage(ctx, p)
 		case domain.StateVisualDesign:
 			progressed, err = s.shotPlanStage(ctx, p)
-		case domain.StateGenerating, domain.StateJudging, domain.StateRepairing:
+		case domain.StateRepairing:
 			progressed, err = s.gate.Step(ctx, p)
 		}
 		if err != nil || !progressed {
