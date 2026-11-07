@@ -101,9 +101,9 @@ type planPayload struct {
 	ProjectID string `json:"project_id"`
 }
 
-// progressText is the content of the progress card of a plan job: the plan job also carries an approved generation on (the Reference Packs and
-// the Shots it starts), so the words do not say it is only the plan.
-const progressText = "企画・脚本・Scene/Shot 計画と、承認済みの生成の進行を確認しています"
+// progressText is the content of the progress card of a plan job. The job plans, and once the user approved the generation it also carries it on
+// (the Reference Packs and the Shots it starts), so the words say neither that an approval exists nor that the job is only the plan.
+const progressText = "企画・脚本・Scene/Shot 計画と生成の進行を進めています"
 
 // Kick makes sure the Project is moving: it starts a plan job when the Project is in AUTO mode,
 // waits in a state the planning pipeline drives (DRAFT with a complete Brief, PLANNING,
