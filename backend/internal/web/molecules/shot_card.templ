@@ -26,6 +26,16 @@ type ShotCardData struct {
 	Candidates bool
 	// Judgeable holds the unjudged Takes (by ID) whose Judge run the server accepts now (domain.CheckJudge).
 	Judgeable map[string]bool
+	// WaitLabel is the badge of a Shot that is PLANNING with no Take: what it waits for (mainline.Wait.ShotLabel). "" is 生成待ち.
+	WaitLabel string
+}
+
+// shotWaitLabel is the badge of a Shot that waits to be generated.
+func shotWaitLabel(d ShotCardData) string {
+	if d.WaitLabel == "" {
+		return "生成待ち"
+	}
+	return d.WaitLabel
 }
 
 func secondsText(d float64) string { return fmt.Sprintf("%.1f 秒", d) }
@@ -237,7 +247,7 @@ templ ShotCard(d ShotCardData) {
 					@atoms.Spinner("Repair 中")
 				}
 				if d.Shot.State == domain.ShotPlanning && len(d.Takes) == 0 {
-					@atoms.Badge(atoms.BadgeWarn, "生成待ち")
+					@atoms.Badge(atoms.BadgeWarn, shotWaitLabel(d))
 				}
 				@atoms.Badge(atoms.BadgeNeutral, ShotStateLabel(d.Shot.State))
 			</span>

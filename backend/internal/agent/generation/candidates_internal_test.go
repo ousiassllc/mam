@@ -131,7 +131,7 @@ func TestSevere_OnlyAFailWithAHighSeverityIssueOrALockViolationIsSevere(t *testi
 func TestPlannedTakes_FollowsTheModeAndTheRetryPolicyOfTheQualityPolicy(t *testing.T) {
 	plan := func(q domain.QualityPolicy, takes int) int {
 		eff := domain.ProjectPolicy{Quality: q}.Effective()
-		return plannedTakes(domain.ModeOf(q), eff, Strategy{Takes: takes})
+		return PlannedTakes(domain.ModeOf(q), eff, Strategy{Takes: takes})
 	}
 	// MAX QUALITY (Quality Mode): every strategy at once, fewer when the budget allows fewer Takes.
 	assert.Equal(t, 3, plan(domain.QualityMaxQuality, 4))

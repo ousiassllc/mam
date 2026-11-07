@@ -15,9 +15,9 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/genstage"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -42,7 +42,9 @@ type Deps struct {
 	Notes *repository.NoteRepository
 	// Facts counts the Reference Library items and the Characters of a Project, for the sentence that says what the main line waits for
 	// after the Scene / Shot plan (#1108). Nil: the sentence leaves them out.
-	Facts  func(ctx context.Context, projectID string) (references, characters int, err error)
+	Facts func(ctx context.Context, projectID string) (references, characters int, err error)
+	// Gate is the generation approval that follows the Scene / Shot plan (spec/spec.md §4.3). Nil: off; the user starts each Shot.
+	Gate   *genstage.Gate
 	Logger *slog.Logger
 }
 
@@ -54,6 +56,7 @@ type Pipeline struct {
 	notes    *repository.NoteRepository
 	facts    func(ctx context.Context, projectID string) (references, characters int, err error)
 	chat     Chat
+	gate     *genstage.Gate
 	logger   *slog.Logger
 
 	producer     *planning.Producer
@@ -65,7 +68,7 @@ type Pipeline struct {
 // New returns a Pipeline. Deps.Logger must be set.
 func New(d Deps) *Pipeline {
 	return &Pipeline{
-		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, facts: d.Facts, chat: d.Chat, logger: d.Logger,
+		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, facts: d.Facts, chat: d.Chat, gate: d.Gate, logger: d.Logger,
 		producer:     planning.NewProducer(d.LLM),
 		writer:       planning.NewWriter(d.LLM),
 		director:     planning.NewDirector(d.LLM),
@@ -89,7 +92,12 @@ func (s *Pipeline) NeedsWork(ctx context.Context, p domain.Project) (bool, error
 		return true, nil
 	case domain.StateVisualDesign:
 		has, err := s.plans.HasScenes(ctx, p.ID)
-		return !has, err
+		if err != nil || !has {
+			return !has, err
+		}
+		return s.gate.NeedsWork(ctx, p)
+	case domain.StateGenerating, domain.StateJudging, domain.StateRepairing:
+		return s.gate.NeedsWork(ctx, p) // Shots the user approved are being made: the gate starts what is left
 	}
 	return false, nil
 }
@@ -116,6 +124,8 @@ func (s *Pipeline) Advance(ctx context.Context, projectID string) error {
 			progressed, err = s.scriptStage(ctx, p)
 		case domain.StateVisualDesign:
 			progressed, err = s.shotPlanStage(ctx, p)
+		case domain.StateGenerating, domain.StateJudging, domain.StateRepairing:
+			progressed, err = s.gate.Step(ctx, p)
 		}
 		if err != nil || !progressed {
 			return err
@@ -229,12 +239,15 @@ func (s *Pipeline) writeScript(ctx context.Context, p domain.Project, previous *
 	return err
 }
 
-// shotPlanStage is VISUAL_DESIGN before any Scene exists: Director → Storyboard plan the Scenes and
-// Shots of the approved script.
+// shotPlanStage is VISUAL_DESIGN: before any Scene exists, Director → Storyboard plan the Scenes and Shots of the approved script; once they
+// exist, the generation approval (genstage) takes over.
 func (s *Pipeline) shotPlanStage(ctx context.Context, p domain.Project) (bool, error) {
 	has, err := s.plans.HasScenes(ctx, p.ID)
-	if err != nil || has {
+	if err != nil {
 		return false, err
+	}
+	if has {
+		return s.gate.Step(ctx, p)
 	}
 	script, err := s.plans.LatestScript(ctx, p.ID)
 	if err != nil {
@@ -263,23 +276,7 @@ func (s *Pipeline) shotPlanStage(ctx context.Context, p domain.Project) (bool, e
 	if err := s.chat.Announce(ctx, p.ID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: done + "\n" + s.mainLineWait(ctx, p.ID, plan.ShotCount()).Text()}); err != nil {
 		s.logger.Error("post plan notice failed", "project_id", p.ID, "err", err)
 	}
-	return false, nil // generation is started per Shot by the user (a generation costs money): the notice says what to press
-}
-
-// mainLineWait is what the main line waits for once shots Shots are planned. A failure to count the Library and the Characters is logged and
-// leaves them out of the sentence: the wait reason is told either way.
-func (s *Pipeline) mainLineWait(ctx context.Context, projectID string, shots int) mainline.Wait {
-	wait := mainline.Wait{Shots: shots}
-	if s.facts == nil {
-		return wait
-	}
-	refs, chars, err := s.facts(ctx, projectID)
-	if err != nil {
-		s.logger.Error("count references and characters failed", "project_id", projectID, "err", err)
-		return wait
-	}
-	wait.Counted, wait.References, wait.Characters = true, refs, chars
-	return wait
+	return true, nil // the generation approval is next (the gate does nothing while it is off: the user starts each Shot)
 }
 
 // projectNotes chooses the production notes the Writer or Director is given (spec/spec.md §9.4): the

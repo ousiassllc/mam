@@ -13,7 +13,7 @@ import (
 // without it there is no way to pick the Best Take (503).
 var ErrJudgeUnavailable = errors.New("generation: the AI Video Judge is not available")
 
-// plannedTakes is the most Takes Prompt Candidate Generation makes for a Shot in the mode:
+// PlannedTakes is the most Takes Prompt Candidate Generation makes for a Shot in the mode (the generation approval estimates with it):
 //
 //   - Quality Mode makes one Take per Candidate strategy at the same time, as many as the budget
 //     of the strategy allows.
@@ -23,7 +23,7 @@ var ErrJudgeUnavailable = errors.New("generation: the AI Video Judge is not avai
 //
 // Balanced and Economy Mode spend one Take at a time and check the budget before each (mayRetry),
 // so the count is an upper bound there.
-func plannedTakes(mode domain.GenerationMode, eff domain.EffectivePolicy, s Strategy) int {
+func PlannedTakes(mode domain.GenerationMode, eff domain.EffectivePolicy, s Strategy) int {
 	candidates := len(domain.CandidateStrategies())
 	n := 0
 	switch mode {
@@ -161,7 +161,7 @@ func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.Sho
 	}
 	n := 1
 	if mode := domain.ModeOf(sc.policy.Quality); mode == domain.ModeQuality {
-		n = min(len(domain.CandidateStrategies()), plannedTakes(mode, sc.policy.Effective(), strategy))
+		n = min(len(domain.CandidateStrategies()), PlannedTakes(mode, sc.policy.Effective(), strategy))
 	}
 	var current *domain.ShotSpec
 	if spec, ok := ref.Shot.CanonicalSpec(); ok {
@@ -210,7 +210,7 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 		return Progress{}, err
 	}
 	mode, eff := domain.ModeOf(sc.policy.Quality), sc.policy.Effective()
-	run.total = plannedTakes(mode, eff, first)
+	run.total = PlannedTakes(mode, eff, first)
 	o.notify(Progress{ShotID: ref.Shot.ID, Action: ActionCandidates, Stage: StageGenerating, Message: mode.Label() + "で候補を生成しています", TakesTotal: run.total})
 
 	var errs []error

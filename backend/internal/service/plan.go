@@ -38,6 +38,8 @@ type ShotView struct {
 	Candidates bool
 	// Judgeable holds the unjudged Takes (by ID) whose Judge run is accepted now (domain.CheckJudge).
 	Judgeable map[string]bool
+	// WaitLabel is what the Shot waits for while it is PLANNING with no Take (mainline.Wait.ShotLabel); "" when it does not wait.
+	WaitLabel string
 }
 
 // SceneView is the hierarchy page: the Project's Scenes, the selected Scene with its Shots and Takes.
@@ -96,6 +98,9 @@ func (s *PlanService) Hierarchy(ctx context.Context, projectID, sceneID, shotID 
 	}
 	for _, sh := range shots {
 		v := ShotView{Shot: sh, Takes: takes[sh.ID], Selected: sh.ID == shotID}
+		if view.Wait.Active() && sh.State == domain.ShotPlanning && len(v.Takes) == 0 {
+			v.WaitLabel = view.Wait.ShotLabel()
+		}
 		if frame, ok := sh.Storyboard(); ok {
 			v.Storyboard = &frame
 		}
@@ -182,6 +187,7 @@ func (s *PlanService) CreateShot(ctx context.Context, sceneID string, form ShotF
 		return SceneView{}, notFound(err)
 	}
 	s.announce(ctx, scene.ProjectID, "Scene「"+scene.Title+"」に Shot を追加しました: "+objective)
+	s.kick(ctx, scene.ProjectID) // the plan of the generation approval changed
 	return s.Hierarchy(ctx, scene.ProjectID, scene.ID, shot.ID)
 }
 

@@ -200,3 +200,15 @@ func TestShotCard_APlanningShotWithoutATakeSaysItWaitsForItsGeneration(t *testin
 		assert.NotContains(t, render(t, molecules.ShotCard(d)), "生成待ち", name)
 	}
 }
+
+// The badge says what the Shot waits for: the generation approval (DIRECTOR / MANUAL and no gate keep 生成待ち), and "自動開始待ち" once it was given.
+func TestShotCard_APlanningShotSaysWhichApprovalOrStartItWaitsFor(t *testing.T) {
+	shot := domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotPlanning}
+	for label, want := range map[string]string{"承認待ち": "承認待ち", "自動開始待ち": "自動開始待ち", "": "生成待ち"} {
+		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: shot, WaitLabel: label}))
+		assert.Contains(t, html, want)
+		if label != "" {
+			assert.NotContains(t, html, "生成待ち")
+		}
+	}
+}

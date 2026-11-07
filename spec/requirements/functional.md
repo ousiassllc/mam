@@ -11,8 +11,8 @@
 - **フロー**:
   1. ユーザーがチャットで作りたい動画を伝える。発言から Creative Brief（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood / Assets / References）をルールベース（キーワード・正規表現。LLM による抽出は未実装）で抽出し、不足項目は質問する（Subject を除き「AIに任せる」を選べる。Subject が空・薄いまま無関係な題材の脚本を作らないため、Subject は答えるまで脚本を作らず質問で止まる。Additional Instruction に題材があればそれを使う。#1108）。添付した画像・動画は Assets/References として取り込む
   2. Confirmation Level（FULL AUTO / KEY CHECK / CUSTOM CHECK）を選択する
-  3. Producer → Writer → Director → Storyboard → Art Director → Prompt Planner → Video Generation → AI Video Judge → (Repair/Retake) → AI Editor → Audio Production → Final QC の順に進む。ただし自動実行されるのは Scene/Shot 計画（Storyboard）までで、Art Director 以降（Reference Pack・Keyframe・Video Generation）は Shot 単位でユーザーが起動する（起動した Shot では Judge → Repair → AI Pick が連鎖する）。全 Shot に Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まり、承認カードの回答後（または確認不要の設定）に Audio Production と Final QC が続く。Editor Judge の Re-edit 判定と Final QC の FAIL はユーザーの対応を待って止まる（Editor Judge が `need_shot` のときは、AUTO では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返して上限で Escalation に止まる。MANUAL ではユーザーが要求する）。Export は Final QC を PASS した（READY の）動画へのユーザーの操作で行う
-  4. 設定した確認ポイント（脚本・Rough Cut・Final）でのみ、承認カードとしてチャットに提示される。ユーザーはボタンまたは返信で承認/差し戻しを行う
+  3. Producer → Writer → Director → Storyboard → Art Director → Prompt Planner → Video Generation → AI Video Judge → (Repair/Retake) → AI Editor → Audio Production → Final QC の順に進む。自動実行されるのは Scene/Shot 計画（Storyboard）までで、その直後に、生成する内容（Shot 数・Reference Pack を作る Shot・使うモデル・おおよその本数）と費用の見積（出せないときは「不明」）をチャットの承認カード（`generation`）に出す。この承認は有料の生成を始める前の必須ゲートで、確認レベル（FULL AUTO を含む）に関わらず必ず出る。承認されたら、Art Director 以降（Reference Pack・Keyframe・Video Generation）を本線で自動進行する（Reference Pack → Shot 生成。起動した Shot では Judge → Repair → AI Pick が連鎖する）。承認されるまで、否認（差戻し）のあとも、生成は一切始まらない。承認後に範囲（Shot の追加・削除・モデル変更）が変わったとき、見積が承認時より増えたときは、再承認を求める。DIRECTOR / MANUAL では承認を出さず、従来どおり Shot 単位でユーザーが起動する。全 Shot に Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まり、承認カードの回答後（または確認不要の設定）に Audio Production と Final QC が続く。Editor Judge の Re-edit 判定と Final QC の FAIL はユーザーの対応を待って止まる（Editor Judge が `need_shot` のときは、AUTO では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返して上限で Escalation に止まる。MANUAL ではユーザーが要求する）。Export は Final QC を PASS した（READY の）動画へのユーザーの操作で行う
+  4. 設定した確認ポイント（脚本・Rough Cut・Final）と、確認レベルに関わらず出る生成の承認が、承認カードとしてチャットに提示される。ユーザーはボタンまたは返信で承認/差し戻しを行う
 - **事後条件**: Final QC を PASS した動画が Export 可能な状態になる
 
 ### UC-2: DIRECTOR MODE で特定 Shot の演技/カメラを修正する
@@ -125,7 +125,7 @@
 |----|---------|------|------|-----|
 | F-01 | Brief | Creative Brief 入力 | チャットでの発言・添付から Content Type/Objective/Subject/Target/Duration/Aspect Ratio/Mood/Assets/References をルールベース（キーワード・正規表現。LLM 抽出は未実装）で抽出し、不足を質問して補完する。「AIに任せる」を選択可 | M1 |
 | F-02 | Mode | AUTO ⇄ DIRECTOR 切替 | 同一プロジェクト上でモードをいつでも切替 | M1 |
-| F-03 | Confirmation | Confirmation Level 設定 | FULL AUTO / KEY CHECK / CUSTOM CHECK | M1 |
+| F-03 | Confirmation | Confirmation Level 設定 | FULL AUTO / KEY CHECK / CUSTOM CHECK。選べる確認ポイントは script / rough_cut / final。これに加えて、AUTO の Scene/Shot 計画後に生成する内容と費用を承認する「生成の承認」（`generation`）が、確認レベルに関わらず必ず出る（常にオン。選択肢には出さない。FULL AUTO の「Final まで原則確認しない」への例外） | M1 |
 | F-04 | Hierarchy | Scene/Shot/Take 階層管理 | 階層構造の表示・選択・生成状態管理 | M1 |
 | F-05 | Control | AUTO/MANUAL/LOCK 粒度制御 | Story/Dialogue/Character Identity/Acting/Camera/Lighting/Product Geometry/Prompt/Video Model/Take Selection/Editing/Music 等パラメータ単位の制御 | M1 |
 | F-06 | Prompt | Prompt Autopilot | 自然言語指示 → Canonical Shot Spec（YAML）への変換 | M1 |
@@ -292,3 +292,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.32 | 2026-11-01 | F-20 と §3.8 に、声・口パクのプロバイダーの選択（設定画面・MCP。既定はクラウド）、使えない理由の統一した文、ローカルが使えないときのクラウドへの切り替え（利用者が選んだときだけ。実行の開始前の検査で、その実行の全体）を足した。F-20 の「#924」への参照を、保存の説明に置き換えた | Issue #924（#912 声と口パクのローカル化）。ローカルの声・口パクを利用者が選べ、使えないときにクラウドへ切り替えられることが要件になかったため |
 | 1.33 | 2026-11-03 | F-09 に、Character を手で作る手段と、企画が LLM 未設定で止まったときの Brief の添付画像からの下書きを足した（Issue #1001・#1022） |
 | 1.34 | 2026-11-07 | UC-1 / F-01 に、Subject は「AIに任せる」を選べず空のままでは脚本を作らず質問で止まることを足した。AUTO の Scene/Shot 計画後に全 Shot が PLANNING で止まるのは、生成が有料でユーザーが Shot 単位で起動する明示待機であり、その理由と次に押すものをチャットと Scene / Shot 画面に出すことを `spec/spec.md` §4.3 に足した | Issue #1108。待機の理由が見えず、Brief の Subject が空でも無関係な脚本が計画されうるため |
+| 1.35 | 2026-11-07 | UC-1 と F-03 を、AUTO の Scene/Shot 計画のあとに「生成の承認」（生成する内容と費用の見積。確認レベルに関わらず必ず出る）を求め、承認されたら Reference Pack → Shot 生成を自動で進める仕様に改めた。承認前・差戻しでは生成しないこと、範囲の変更・見積の増加で再承認すること、起動の重複を防ぐこと、予算上限は承認の代わりにならないことを `spec/spec.md` §4.3・§4.4 に書いた。UC-1 の「Art Director 以降は Shot 単位の手動起動」（1.14・1.34）は、DIRECTOR / MANUAL のときと手動の Shot カードに限る | Issue #1108（A 方針: 承認後に自動進行する仕様に変更）。生成が有料なので、ユーザーの承認なしに自動で始めず、承認したら止まらず進めるため |
