@@ -129,7 +129,7 @@ templ modelCard(m Model, blocked bool) {
 		if m.NeedsNodes != "" && m.State != "installed" {
 			<p class="text-sm text-warning" data-testid="mm-nodes-note">
 				{ m.NeedsNodes }
-				<a class="underline" href={ templ.SafeURL(paths.ModelManagerPart(mmcat.CustomNodes) + "#" + NodesID) } data-testid="mm-node-needed-link">追加ノードの区画へ</a>
+				<a class="relative z-raised underline" href={ templ.SafeURL(paths.ModelManagerPart(mmcat.CustomNodes) + "#" + NodesID) } data-testid="mm-node-needed-link">追加ノードの区画へ</a>
 			</p>
 		}
 		@modelcard.Actions() {

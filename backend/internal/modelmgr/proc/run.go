@@ -70,7 +70,7 @@ func launch(spec Spec, logger *slog.Logger, pipes *childPipes) (*run, error) {
 	if pipes != nil {
 		cmd.Stdin, cmd.Stdout = pipes.childIn, pipes.childOut
 	}
-	cmd.Env = append(inherited(spec.DropEnv), spec.Env...)
+	cmd.Env = append(inherited(spec.DropEnv, spec.DropEnvPrefixes), spec.Env...)
 	cmd.WaitDelay = 2 * time.Second // a grandchild that keeps the pipe open must not hold Wait
 	prepare(cmd)
 	grp, err := newGroup()
@@ -189,20 +189,30 @@ func (t *tail) String() string {
 	return strings.ToValidUTF8(string(t.buf), "")
 }
 
-// inherited is the environment of mam without the variables in drop.
-func inherited(drop []string) []string {
+// inherited is the environment of mam without the variables in drop and those whose name starts with one of the prefixes.
+func inherited(drop, prefixes []string) []string {
 	env := os.Environ()
-	if len(drop) == 0 {
+	if len(drop) == 0 && len(prefixes) == 0 {
 		return env
 	}
 	out := env[:0:0]
 	for _, kv := range env {
 		name, _, _ := strings.Cut(kv, "=")
-		if !slices.ContainsFunc(drop, func(d string) bool { return sameEnvName(d, name) }) {
-			out = append(out, kv)
+		if slices.ContainsFunc(drop, func(d string) bool { return sameEnvName(d, name) }) ||
+			slices.ContainsFunc(prefixes, func(p string) bool { return hasEnvPrefix(name, p) }) {
+			continue
 		}
+		out = append(out, kv)
 	}
 	return out
+}
+
+// hasEnvPrefix reports whether the variable name starts with prefix: without case on Windows, where the environment has none.
+func hasEnvPrefix(name, prefix string) bool {
+	if runtime.GOOS == "windows" {
+		return len(name) >= len(prefix) && strings.EqualFold(name[:len(prefix)], prefix)
+	}
+	return strings.HasPrefix(name, prefix)
 }
 
 // sameEnvName compares two variable names: without case on Windows, where the environment has none.

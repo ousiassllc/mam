@@ -52,10 +52,14 @@ func (s *Service) Start(ctx context.Context, id string) (proc.Status, error) {
 	return st, nil
 }
 
-// Stop stops the runtime's server and everything it started; a stopped one is a no-op.
+// Stop stops the runtime's server and everything it started; a stopped one is a no-op. While a model is being fetched into the runtime (Deps.HeldBy)
+// it is ErrBusy and the server keeps running: the fetch would fail half way. Close is the one that stops it regardless.
 func (s *Service) Stop(id string) error {
 	inst, err := s.instance(id)
 	if err != nil {
+		return err
+	}
+	if err := s.heldBy(id); err != nil {
 		return err
 	}
 	return inst.proc.Stop()

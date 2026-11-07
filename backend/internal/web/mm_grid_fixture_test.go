@@ -72,9 +72,20 @@ func gridNodeDescriptions(t *testing.T) templ.Component {
 	return templ.Raw(string(b))
 }
 
+// gridNodeNeededModel is a model that waits for a custom node: its card has the link to the nodes' page in its body (mm-node-needed-link, #1110).
+func gridNodeNeededModel() modelmgr.Catalog {
+	return modelmgr.Catalog{Models: []modelmgr.Model{{
+		ID: "model-node", Name: "ノードが要るモデル", KindLabel: "画像", Description: "試験用のモデルです。", Size: "6.5 GiB", Need: "6.5 GiB", VRAM: "12 GiB 以上",
+		License: modelmgr.License{ID: "apache-2.0", Version: "1", Name: "Apache-2.0", URL: "https://example.com/license", Commercial: "可"},
+		State:   "not_installed", NeedsNodes: "追加ノード「試験用ノード」が必要です", Files: []modelmgr.File{{Path: "checkpoints/model-node.safetensors", Size: "6.5 GiB"}},
+		ModelIDs: []string{"model-node"}, WorkflowCheck: "ワークフロー確認済み",
+	}}}
+}
+
 func TestModelManagerGridFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	checkFixtures(t, map[string]templ.Component{
 		"layout-mm-grid-node-descriptions.json": gridNodeDescriptions(t),
+		"layout-mm-card-node-needed.html":       modelmgr.Body(mmcat.ImageVideo, modelmgr.Data{Catalog: gridNodeNeededModel()}),
 		"layout-mm-grid-custom-nodes.html":      modelmgr.Body(mmcat.CustomNodes, modelmgr.Data{Nodes: nodecard.NodesSection(nodecard.Section{Items: gridNodes()})}),
 		"layout-mm-grid-local-runtimes.html":    modelmgr.Body(mmcat.LocalRuntimes, modelmgr.Data{Runtimes: runtimecard.RuntimesSection(runtimecard.Runtimes{Items: gridRuntimes()})}),
 		"layout-mm-grid-hf-external.html":       modelmgr.Body(mmcat.HFExternal, modelmgr.Data{HFImport: modelmgr.HFImport{Kind: "text-to-image", Models: modelmgr.HFModelList{Models: gridHFModels()}}}),

@@ -65,6 +65,9 @@ type RuntimeLaunch struct {
 	ListenEnv string `json:"listen_env,omitempty"`
 	// HomeFiles are the files mam writes below the runtime's home directory before every start (Ollama's server.json that turns its cloud features off).
 	HomeFiles []parts.File `json:"home_files,omitempty"`
+	// DropEnvPrefixes are the prefixes of the variables of mam's own environment that the server does not inherit (Ollama's "OLLAMA_": the user's own
+	// OLLAMA_ORIGINS, OLLAMA_NOPRUNE and the like are those of another Ollama); Env is added after, so what mam sets (OLLAMA_HOST, OLLAMA_MODELS) stays.
+	DropEnvPrefixes []string `json:"drop_env_prefixes,omitempty"`
 }
 
 // RuntimeSupport says where a runtime can be installed and, when it cannot, why (Japanese, shown by the screen, the MCP tools and the

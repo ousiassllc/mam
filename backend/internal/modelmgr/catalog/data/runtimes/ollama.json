@@ -13,6 +13,7 @@
   "ready_path": "/api/version",
   "env": ["OLLAMA_HOST=127.0.0.1:{port}", "OLLAMA_MODELS={models}", "OLLAMA_KEEP_ALIVE=15m", "HOME={home}", "USERPROFILE={home}"],
   "listen_env": "OLLAMA_HOST",
+  "drop_env_prefixes": ["OLLAMA_"],
   "home_files": [{"dest": ".ollama/server.json", "lines": ["{\"disable_ollama_cloud\": true}"]}],
   "start_timeout_sec": 60
  },
