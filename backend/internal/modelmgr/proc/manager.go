@@ -50,6 +50,9 @@ type Spec struct {
 	Env     []string
 	// DropEnv names variables of mam's own environment that the child must not inherit (compared without case on Windows).
 	DropEnv []string
+	// DropEnvPrefixes drop every variable of mam's own environment whose name starts with one of them (Ollama's "OLLAMA_": the user's own
+	// settings of another Ollama are not those of the one mam runs). What Env names is added after, so mam's own values stay.
+	DropEnvPrefixes []string
 	// LogPath receives the output of the child ("" discards it).
 	LogPath string
 	// Name is the child's name in the log (default "comfyui"); Manager sets it from Config.Name.

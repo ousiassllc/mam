@@ -303,5 +303,10 @@ func TestAModelThatNeedsANodeLinksToThePageOfTheNodes(t *testing.T) {
 
 	list := s.Get(paths.ModelManagerPart("models")).Body.String()
 	assert.Contains(t, list, `href="/model-manager/custom-nodes#mm-nodes" data-testid="mm-node-needed-link"`)
+	// The name of the card is a button whose click area covers the card: the link is raised above it, or a click on it opens the detail instead (#1110).
+	link := regexp.MustCompile(`<a [^>]*data-testid="mm-node-needed-link"[^>]*>`).FindString(list)
+	require.NotEmpty(t, link)
+	assert.Regexp(t, `class="[^"]*\brelative\b[^"]*"`, link)
+	assert.Regexp(t, `class="[^"]*\bz-raised\b[^"]*"`, link)
 	assert.Contains(t, s.PageOf(mmcat.ImageVideo), `data-testid="mm-node-needed-link"`)
 }

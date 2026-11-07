@@ -125,7 +125,7 @@ func (i *Installer) spec(args, extraEnv []string, port int) (proc.Spec, error) {
 	}, catalogEnv...)
 	env = append(env, extraEnv...)
 	return proc.Spec{
-		Command: i.ProgramPath(), Args: args, Dir: i.Layout.EnvDir(), LogPath: i.Layout.LogPath(), Env: env, DropEnv: foreignEnv,
+		Command: i.ProgramPath(), Args: args, Dir: i.Layout.EnvDir(), LogPath: i.Layout.LogPath(), Env: env, DropEnv: foreignEnv, DropEnvPrefixes: l.DropEnvPrefixes,
 	}, nil
 }
 

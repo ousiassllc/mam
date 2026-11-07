@@ -256,3 +256,24 @@ func TestCancellingAPullClosesTheConnectionAndEndsTheJobAsStopped(t *testing.T) 
 	assert.ErrorIs(t, r.Svc.Cancel(ref.JobID), modelmanager.ErrNotFound, "a job that ended cannot be cancelled")
 	assert.ErrorIs(t, r.Svc.Cancel("nope"), modelmanager.ErrNotFound)
 }
+
+// Pulling names the models whose pull is queued or running (the Ollama of mam is held by them, localruntime.Deps.HeldBy) and is empty before and after it.
+func TestPullingNamesTheModelsBeingFetched(t *testing.T) {
+	r := ollamatest.New(t, ollamatest.WithModels(tiny()))
+	r.Fake.Lines = successLines()
+	release := r.Fake.HoldAt(1)
+	t.Cleanup(release)
+	assert.Empty(t, r.Svc.Pulling())
+	ref, err := r.Svc.Pull(context.Background(), "tiny:1b")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"tiny:1b"}, r.Svc.Pulling(), "queued is held already")
+	assert.Equal(t, "tiny:1b", r.Svc.HeldBy("ollama"))
+	assert.Empty(t, r.Svc.HeldBy("gpt-sovits"), "no other runtime is held by a pull")
+	r.Start()
+	r.Fake.Reached()
+	assert.Equal(t, []string{"tiny:1b"}, r.Svc.Pulling())
+
+	release()
+	require.Equal(t, domain.JobSucceeded, r.Wait(ref.JobID).State)
+	require.Eventually(t, func() bool { return len(r.Svc.Pulling()) == 0 }, 10*time.Second, 10*time.Millisecond)
+}
