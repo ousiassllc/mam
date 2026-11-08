@@ -82,11 +82,11 @@ var (
 	predicate   = regexp.MustCompile(`(?:ない|まま|かも)$`)
 	sentenceEnd = regexp.MustCompile(`[。.!！?？\n]`)
 	// unfit is in a phrase that is a list, a guess, a hedge or a placeholder, not one Subject: "犬か猫", "犬かな", "犬w", "犬のはず", "犬など".
-	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|とか|など|あたり|以外|つもり|はず|[wｗ?？()（）]|[ねよ]$|(?:^|[^A-Za-z])(?i:or|and)(?:$|[^A-Za-z])`)
+	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|とか|など|あたり|以外|つもり|はず|[wｗ?？()（）]|[ねよ]$|(?:^|[^A-Za-z])(?i:or|and)(?:$|[^A-Za-z])|保留|確認|調整|相談|検討|次第|未確定|未入力|後日|上記|下記|以下|それぞれ|両者|全員|みんな|別の|他の|例の|前の|前回|候補|番目|^\p{Nd}+$|(?i:pending|tba|tbc|later|temp|lorem|dummy|sample|default|generic|blank|empty|any|random|undefined|todo)|[〇●○]`)
 	// placeholder is a word that points at something else instead of naming it, or marks nothing filled in.
 	placeholder = regexp.MustCompile(`^(?:[こそあど](?:れ|こ|ちら|っち|んな)|ぜんぶ|すべて|りょうほう|てきとう|ランダム|任意|両方|全部|前者|後者|逆|元|適当|保留|仮|ダミー|サンプル|テスト|未設定|白紙|空|デフォルト|標準|(?i:or|and|tbd|null|none|na|test|x+))$`)
-	// hedgeLead begins a denied value that is a hedge about the whole statement, not the old Subject.
-	hedgeLead = regexp.MustCompile(`^(?:多分|たぶん|もし|できれば|とりあえず|一応|仮に|念のため|まあ|まぁ|なんとなく|だいたい|ほぼ|ちょっと|嘘|うそ)`)
+	// hedgeLead begins a value (the new Subject or the denied one) that is a hedge or a time word about the whole statement, not a Subject.
+	hedgeLead = regexp.MustCompile(`^(?i:多分|たぶん|もし|できれば|とりあえず|一応|仮に|念のため|まあ|まぁ|なんとなく|だいたい|ほぼ|ちょっと|嘘|うそ|暫定|一旦|万一|ワンチャン|明日|来週|今週|来月|次回|maybe)`)
 	hiragana  = regexp.MustCompile(`^\p{Hiragana}+$`)
 	runs      = regexp.MustCompile(`\p{Hiragana}+|[^\p{Hiragana}]+`)
 	wordChars = regexp.MustCompile(`^[\p{Han}\p{Katakana}A-Za-z0-9ー々]+$`)
@@ -126,7 +126,7 @@ func Plausible(v string) bool {
 // v that is not in the text (the reader rewrote it) is no evidence.
 func Committed(text, v string) bool {
 	text = strings.TrimSpace(text)
-	i := strings.LastIndex(text, v)
+	i := strings.Index(text, v) // the first place v stands: a later sentence that repeats it ("…変更しようか迷う。犬") does not hide the first
 	if !Plausible(v) || i < 0 {
 		return false
 	}
@@ -138,7 +138,7 @@ func Committed(text, v string) bool {
 	if m == nil || !back.MatchString(text[i+len(v):]) {
 		return false
 	}
-	return m[1] == "" || (Plausible(m[1]) && !hedgeLead.MatchString(m[1]))
+	return !hedgeLead.MatchString(v) && (m[1] == "" || (Plausible(m[1]) && !hedgeLead.MatchString(m[1])))
 }
 
 // Proposal is v when it can be proposed as the other Subject, else "".
