@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/limitclock"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/usable"
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -54,6 +55,8 @@ type Adapter struct {
 	// timeLimit maps the limit of a video job to the one that is applied; nil applies it as given.
 	timeLimit func(time.Duration) time.Duration
 	logger    *slog.Logger
+	// Usable is what the application tells about the models (usable now, adult, pinned): modelroute reads it before a generation starts.
+	Usable usable.Source
 }
 
 // Option customises an Adapter.
@@ -146,19 +149,15 @@ func Call[T any](ctx context.Context, a *Adapter, v Vendor, clock *limitclock.Cl
 	return call(ctx, a, a.state.Load(), v, clock, fn, model)
 }
 
-// EstimateImage is the most one image of the purpose can cost: the dearer of the primary model and
-// the alternative the call falls back to. It is what a budget check holds before the call.
-func (a *Adapter) EstimateImage(purpose ImagePurpose) float64 {
-	cfg := a.Config()
-	route := cfg.ImageRouteFor(purpose)
-	return max(cfg.ImageCost(route.Primary.Model), cfg.ImageCost(route.Fallback.Model))
+// GenerateImage is GenerateImageVia on the route the assignment gives the purpose.
+func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req ImageRequest) (ImageOutput, error) {
+	return a.GenerateImageVia(ctx, a.Config().ImageRouteFor(purpose), purpose, req)
 }
 
-// GenerateImage makes an image with the primary model of the purpose, and with the alternative
+// GenerateImageVia makes an image with the primary model of the route (modelroute chose it), and with the alternative
 // when the primary is unavailable (its breaker is open, or it failed after the retries).
-func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req ImageRequest) (ImageOutput, error) {
+func (a *Adapter) GenerateImageVia(ctx context.Context, route ImageRoute, purpose ImagePurpose, req ImageRequest) (ImageOutput, error) {
 	st := a.state.Load()
-	route := st.cfg.ImageRouteFor(purpose)
 	if err := a.Gate.Check(route.Primary.Model, route.Fallback.Model); err != nil {
 		return ImageOutput{}, err
 	}

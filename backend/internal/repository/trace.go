@@ -68,16 +68,16 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 
 	var lineage domain.TakeLineage
 	_ = json.Unmarshal([]byte(params), &lineage) // parameters written before the lineage was recorded lack it
-	tr.WorldStateVersion = lineage.WorldStateVersion
-	tr.References = lineage.References
+	tr.WorldStateVersion, tr.References = lineage.WorldStateVersion, lineage.References
 	if tr.References == nil {
 		tr.References = domain.Shot{ShotSpec: pv.SpecSnapshot}.References()
 	}
 	var routed struct {
-		Routing *domain.RoutingDecision `json:"routing"`
+		Routing  *domain.RoutingDecision `json:"routing"`
+		ModelUse *domain.ModelUse        `json:"model_use"`
 	}
-	_ = json.Unmarshal([]byte(params), &routed) // parameters written before Multi-model routing lack it
-	tr.Routing = routed.Routing
+	_ = json.Unmarshal([]byte(params), &routed) // parameters written before Multi-model routing or #1113 lack them
+	tr.Routing, tr.ModelUse = routed.Routing, routed.ModelUse
 	if assetID.Valid {
 		tr.Output = &domain.TraceOutput{AssetID: assetID.String, FilePath: filePath, MimeType: mime.String, SizeBytes: size.Int64}
 	}

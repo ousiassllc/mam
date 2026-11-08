@@ -227,9 +227,12 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
 	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
 	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
+	models.Usable.SetAdult(mmview.Adult(mgr)) // what a generation reads to choose its models (#1113): who is an adult model, whether the file is pinned
+	models.Usable.SetPinned(modelPinned)
 	modellicense.SetResolver(mgr.LicenseOf) // what the screens and tools say of a local model's commercial use (#928)
 	modellicense.SetDefaultFilter(mgr.DefaultFilter)
 	services.Gentest = newGentest(cfg, db, jobs, models, services, prompttranslate.FromClient(reasoning), imagematch.FromClient(reasoning, judging.engine(), models.Config().Gentest.Face()), judging.faces, videoenhance.Wire(keys, previews), logger)
+	models.Usable.SetAvailability(services.Gentest.Availability) // the judgement the model lists and the assignment screen show: no key, not signed in, not installed (#1013)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
 	// Before any job runs: a runtime install that the queue resumes is using the directories this cleans.

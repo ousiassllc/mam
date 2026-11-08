@@ -16,8 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
-// seedJudgedTakes gives the Project n Takes of the model that the Judge scored, as if earlier Shots
-// had been generated and judged (Multi-model routing weighs this record).
+// seedJudgedTakes gives the Project n Takes of the model that the Judge scored, as if earlier Shots had been generated and judged (Multi-model routing weighs this).
 func (g *genApp) seedJudgedTakes(model domain.ModelName, n int, score int, verdict domain.JudgeVerdict) {
 	g.t.Helper()
 	g.execSQL(`INSERT INTO shot (id, scene_id, order_index, objective, duration_seconds) VALUES ('seed-shot', ?, 9, 'seed', 4)`, g.sceneID)
@@ -34,8 +33,7 @@ func (g *genApp) seedJudgedTakes(model domain.ModelName, n int, score int, verdi
 func (g *genApp) routingOf(model domain.ModelName) domain.RoutingDecision {
 	g.t.Helper()
 	var params string
-	require.NoError(g.t, g.db.Reader().QueryRow(
-		`SELECT model_parameters FROM take WHERE model_name = ? AND id NOT LIKE 'seed-%' ORDER BY created_at DESC LIMIT 1`, string(model)).Scan(&params))
+	require.NoError(g.t, g.db.Reader().QueryRow(`SELECT model_parameters FROM take WHERE model_name = ? AND id NOT LIKE 'seed-%' ORDER BY created_at DESC LIMIT 1`, string(model)).Scan(&params))
 	var stored struct {
 		Routing *domain.RoutingDecision `json:"routing"`
 	}
@@ -56,8 +54,7 @@ func (g *genApp) generateAfterSeed(seeded int) {
 
 func (g *genApp) count(q string, args ...any) int { return g.countOn(g.t, q, args...) }
 
-// countOn fails c, not the test: the condition of an Eventually runs in its own goroutine, which may outlive the test
-// (c is then the assert.CollectT of an EventuallyWithT, whose failure ends that tick only).
+// countOn fails c, not the test: the condition of an Eventually runs in its own goroutine, which may outlive the test (c is then an assert.CollectT).
 func (g *genApp) countOn(c testenv.TestingT, q string, args ...any) int {
 	c.Helper()
 	var n int
@@ -86,6 +83,7 @@ func TestRouting_WithoutJudgeRecordTheQualityPolicyStaysAndTheTakeSaysSo(t *test
 	assert.Contains(t, body, "Model routing")
 	assert.Contains(t, body, "Quality Policy のまま")
 	assert.Contains(t, body, "実績不足", "the challengers are listed with the reason they were not chosen")
+	assert.Regexp(t, "API・従量課金.*割り当てのモデルです", body, "the route, the cost basis and why the model was used (Issue #1113)")
 }
 
 func TestRouting_AModelWithAGoodJudgeRecordTakesOverAndTheTraceExplainsWhy(t *testing.T) {

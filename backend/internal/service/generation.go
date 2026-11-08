@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/broker"
@@ -32,16 +33,13 @@ type ShotFragment struct {
 	JobID string // the queued job row when the action queued one (the screen ignores it; the MCP tools hand it out)
 }
 
-// GenerateShot queues the generation of the Shot and returns it in the GENERATING state (202).
-// instruction is an optional additional direction ("もう少しカメラを寄せて").
+// GenerateShot queues the generation of the Shot and returns it in the GENERATING state (202); instruction is an optional additional direction.
 func (s *GenerationService) GenerateShot(ctx context.Context, shotID, instruction string) (ShotFragment, error) {
 	return s.begin(ctx, shotID, instruction, s.generationRecorder(ctx, shotID), func() (domain.Job, error) { return s.gen.Start(ctx, shotID, instruction) })
 }
 
-// GenerateCandidates queues Prompt Candidate Generation for the Shot (F-08) and returns it in the
-// GENERATING state (202). The Generation Mode follows from the Quality Policy of the Project.
-// instruction is an optional additional direction. ErrUnavailable means generation or the AI Video
-// Judge (which picks the Best Take) is not configured.
+// GenerateCandidates queues Prompt Candidate Generation for the Shot (F-08) and returns it in the GENERATING state (202). The Generation Mode follows from the
+// Quality Policy of the Project. ErrUnavailable means generation or the AI Video Judge (which picks the Best Take) is not configured.
 func (s *GenerationService) GenerateCandidates(ctx context.Context, shotID, instruction string) (ShotFragment, error) {
 	return s.begin(ctx, shotID, instruction, s.generationRecorder(ctx, shotID), func() (domain.Job, error) { return s.gen.StartCandidates(ctx, shotID, instruction) })
 }
@@ -51,8 +49,7 @@ func (s *GenerationService) BuildReferencePack(ctx context.Context, shotID strin
 	return s.begin(ctx, shotID, "", func() {}, func() (domain.Job, error) { return s.gen.StartReferencePack(ctx, shotID) })
 }
 
-// begin runs start, which queues the work, when generation is configured and instruction is short enough.
-// record is called once the work is queued (the intervention of the user for the Production Analytics).
+// begin runs start, which queues the work, when generation is configured and instruction is short enough; record is called once it is queued (Production Analytics).
 func (s *GenerationService) begin(ctx context.Context, shotID, instruction string, record func(), start func() (domain.Job, error)) (ShotFragment, error) {
 	if s.gen == nil {
 		return ShotFragment{}, ErrUnavailable
@@ -145,6 +142,8 @@ func mapGenerationError(err error) error {
 		return ErrBudgetExceeded
 	case errors.Is(err, agegate.ErrRefused): // an adult model while the age confirmation is off: tell the user how to go on
 		return conflict("%s", agegate.Reason(err))
+	case errors.Is(err, modelroute.ErrNoUsableModel): // no model can be used now: the cause and the ways out, as the chat says them
+		return conflict("%s", generation.FailureReason(err))
 	case errors.Is(err, generation.ErrJudgeUnavailable):
 		return ErrUnavailable
 	case errors.Is(err, repository.ErrLocked):

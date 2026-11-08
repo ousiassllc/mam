@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -56,6 +57,8 @@ func Failure(err error) *apperr.Error {
 	switch {
 	case errors.Is(err, agegate.ErrRefused):
 		return own(apperr.CodeForbidden, agegate.Reason(err))
+	case errors.Is(err, modelroute.ErrNoUsableModel): // before the job is queued, or in the job when the models were gone: the cause names the models and the candidates
+		return own(apperr.CodeNoUsableModel, modelroute.CauseOf(err))
 	case errors.Is(err, ErrBudgetExceeded):
 		return own(apperr.CodeBudget, "予算上限を超えるため生成できません。")
 	case errors.Is(err, domain.ErrBrandViolation):

@@ -165,4 +165,9 @@ func TestGetTakeTrace_ReturnsSpecModelJudgeAndRepairHistory(t *testing.T) {
 	require.NotEmpty(t, tr.Judgements)
 	assert.Equal(t, "fail", string(tr.Judgements[0].Result))
 	assert.NotNil(t, tr.Repairs, "an empty list, not null")
+	require.NotNil(t, tr.ModelUse, "every new Take records the model that made it, its route and why (#1113)")
+	assert.Equal(t, tr.Take.ModelName, tr.ModelUse.Model)
+	assert.Equal(t, "api", string(tr.ModelUse.Route))
+	assert.Equal(t, "assignment", string(tr.ModelUse.Selection))
+	assert.Equal(t, "priced", string(tr.ModelUse.CostBasis))
 }

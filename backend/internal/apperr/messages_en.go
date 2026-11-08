@@ -106,6 +106,8 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"no_gpu.cause":  "No supported GPU was found.",
 	"no_gpu.remedy": "Set the URL of an external ComfyUI, or choose CPU execution explicitly.",
 
+	"no_usable_model.cause":    "No model can be used to generate the image or the video.",
+	"no_usable_model.remedy":   "Register an API key (Settings > API keys), sign in to ChatGPT, install a local model (model manager), or change the assignment in Settings > Image and video models to a model that can be used.",
 	"image_unavailable.cause":  "No Codex model that can host the image generation was found for the ChatGPT subscription (OpenAI may have changed the models a ChatGPT sign-in can use).",
 	"image_unavailable.remedy": "Update mam to the latest version and run it again. If it does not help, turn the ChatGPT image generation OFF in Settings and switch to an image model that works with an API key.",
 

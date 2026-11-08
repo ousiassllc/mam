@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/fanout"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -85,7 +86,7 @@ func (r *candidateRun) take(ctx context.Context, s Strategy, strategy domain.Can
 // quality plans every Candidate and generates them at the same time.
 func (r *candidateRun) quality(ctx context.Context, s Strategy) []error {
 	strategies := domain.CandidateStrategies()[:r.total]
-	return parallel(r.o.logger, len(strategies), func(i int) error {
+	return fanout.Run(r.o.logger, len(strategies), func(i int) error {
 		spec, err := r.plan(ctx, strategies[i])
 		if err != nil {
 			return err

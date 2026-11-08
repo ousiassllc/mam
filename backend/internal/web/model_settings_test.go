@@ -18,6 +18,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
+	"github.com/ousiassllc/mam/backend/internal/modelfilter"
+	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -227,4 +229,24 @@ func TestModelSettings_AnAdultModelOfTheSavedAssignmentIsShownAsUnusableWhileThe
 	closed = false
 	assert.Contains(t, s.choices(media.ImageModelField("preview", media.SlotPrimary)), noRefLocalModel, "a choice again")
 	assert.NotContains(t, s.page(), `data-testid="model-assignment-gated"`)
+}
+
+// #1113: the screen says what a generation would do with a route whose saved models cannot be used: run on a model that matches the conditions (a default
+// route), or be refused (a route the user set), and names the screen that fixes it.
+func TestModelSettings_ARouteThatCannotBeUsedSaysWhatAGenerationWouldDo(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "data", "models.json")
+	s := newConfiguredModelScreen(t, file, false, func(settings *settingsroutes.Services) {
+		settings.Models.SetAvailability(func(id string) (modelfilter.Availability, bool) {
+			if id == "flux-2" {
+				return modelfilter.Usable(), true
+			}
+			return modelfilter.Unusable(modelfilter.ReasonNoKey, "API キーが登録されていません（設定の「API キー」）", "/settings/api-keys"), true
+		})
+	})
+
+	html := s.page()
+
+	assert.Contains(t, html, "新規リファレンス の画像モデル: 割り当てが使えないため、生成は条件に合う利用可能なモデル flux-2（API・従量課金）で行います。品質で選んだモデルではありません")
+	assert.Contains(t, html, domain.QualityBalanced.Label()+" の動画モデル: 動画（Quality Policy: balanced）に使えるモデルがありません", "no video model can be used: the note says the generation is refused")
+	assert.NotContains(t, html, "プレビュー の画像モデル: ", "the purposes no generation asks for are left out")
 }
