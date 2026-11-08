@@ -175,25 +175,11 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		assetByID[a.ID] = a
 	}
 
-	var replied map[string]bool
-	var brief domain.Brief
-	var state domain.ProjectState
-	var latestConfirm string
+	var open chatbrief.OpenState
 	if needsAnswer {
-		if latestConfirm, err = chatbrief.LatestSummaryID(ctx, s.chat, projectID); err != nil {
-			return nil, err
-		}
-		if replied, err = s.chat.RepliedMessageIDs(ctx, projectID); err != nil {
-			return nil, err
-		}
-		if brief, err = s.projects.GetBrief(ctx, projectID); err != nil {
+		if open, err = chatbrief.LoadOpenState(ctx, s.chat, s.projects, projectID); err != nil {
 			return nil, notFound(err)
 		}
-		project, err := s.projects.Get(ctx, projectID)
-		if err != nil {
-			return nil, notFound(err)
-		}
-		state = project.State
 	}
 
 	views := make([]domain.ThreadMessage, len(msgs))
@@ -219,12 +205,12 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		switch m.Kind {
 		case domain.KindQuestion:
 			if m.RefType == domain.RefContinue {
-				v.Open = !replied[m.ID]
+				v.Open = !open.Replied[m.ID]
 			} else {
-				v.Open = chatbrief.Open(m, replied[m.ID], brief, state, latestConfirm)
+				v.Open = chatbrief.Open(m, open.Replied[m.ID], open.Brief, open.State, open.LatestConfirm)
 			}
 		case domain.KindEscalation:
-			v.Open = !replied[m.ID]
+			v.Open = !open.Replied[m.ID]
 		case domain.KindProgress:
 			if job, ok := jobs[m.RefID]; ok {
 				v.Job = &job

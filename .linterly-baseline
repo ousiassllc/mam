@@ -27,7 +27,7 @@
 442	backend/internal/router/brand_test.go
 383	backend/internal/router/bundle_test.go
 450	backend/internal/router/review_test.go
-14991	backend/internal/service/
+14977	backend/internal/service/
 429	backend/internal/service/branch.go
 475	backend/internal/service/editor_reshoot.go
 361	backend/internal/service/editor_timeline.go
