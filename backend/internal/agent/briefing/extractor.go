@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing/constraint"
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/declined"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -114,7 +115,8 @@ func labelled(text string, f domain.BriefField) string {
 	return ""
 }
 
-// instruction is the theme and the constraints the text states, one per line: "テーマ: …", "制約: 成人・架空".
+// instruction is the theme and the constraints the text states, one per line: "テーマ: …", "制約: 成人・架空". The constraint line also keeps the safety refusals
+// the Subject was read without ("制約: 成人・暴力は出さない", declined.Refusals), so that a stated constraint is shown on the confirmation card and can be deleted.
 func instruction(text string) string {
 	var lines []string
 	if m := themeRe.FindStringSubmatch(text); m != nil {
@@ -122,8 +124,8 @@ func instruction(text string) string {
 			lines = append(lines, ThemePrefix+theme)
 		}
 	}
-	if labels := constraint.Stated(text); len(labels) > 0 {
-		lines = append(lines, ConstraintPrefix+strings.Join(labels, "・"))
+	if items := append(constraint.Stated(text), declined.Refusals(text)...); len(items) > 0 {
+		lines = append(lines, ConstraintPrefix+strings.Join(items, "・"))
 	}
 	return strings.Join(lines, "\n")
 }

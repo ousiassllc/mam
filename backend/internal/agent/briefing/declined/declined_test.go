@@ -140,8 +140,8 @@ func TestExtract_ARefusalRunningOnFromTheRequestKeepsTheSubject(t *testing.T) {
 		"お酒は出さない前提で猫の動画を作りたい":  "猫",
 		"猫の動画を作りたい。暴力は出さない方向で": "猫",
 		"お酒は出さない予定で猫の動画を作って":   "猫",
-		// the relative clause on a nominalizer noun is no part of the Subject
-		"酒を出さない人の動画": "人",
+		// the relative clause on a nominalizer noun is no part of the Subject (a safety word in it is not cut: safety_test.go)
+		"宣伝を出さない人の動画": "人",
 	} {
 		t.Run(text, func(t *testing.T) {
 			assert.Equal(t, want, briefing.RuleExtractor{}.Extract(text).Subject)
@@ -169,18 +169,19 @@ func TestExtract_AWholeRefusalStatesNoSubject(t *testing.T) {
 
 // A relative clause of an absence verb in front of the head noun is no part of the Subject (#1114).
 // Every path that reads the Subject drops it: "…を主人公にした", "主人公は…" and "題材は…" give the head noun too.
+// Changed from the earlier round: the rows used 暴力 / お酒 as the object; a safety word is never cut (#1114, safety_test.go), so the rows use 宣伝 / 広告.
 func TestExtract_ARelativeClauseThatRefusesIsNotTheSubject(t *testing.T) {
 	for text, want := range map[string]string{
-		"暴力を出さない猫の動画を作りたい":   "猫",
-		"暴力を出さない猫を主人公にした動画":  "猫",
-		"お酒を出さない人物を主人公にした動画": "人物",
-		"暴力を出さない猫が主人公":       "猫",
-		"主人公は暴力を出さない猫":       "猫",
-		"題材は暴力を出さない猫":        "猫",
-		"暴力を作らない猫の動画を作りたい":   "猫",
-		"暴力を作りません猫を主人公にして":   "猫",
-		"暴力は出さない猫の動画を作りたい":   "猫",
-		"暴力を出しません猫を主人公にして":   "猫",
+		"宣伝を出さない猫の動画を作りたい":   "猫",
+		"宣伝を出さない猫を主人公にした動画":  "猫",
+		"広告を出さない人物を主人公にした動画": "人物",
+		"宣伝を出さない猫が主人公":       "猫",
+		"主人公は宣伝を出さない猫":       "猫",
+		"題材は宣伝を出さない猫":        "猫",
+		"宣伝を作らない猫の動画を作りたい":   "猫",
+		"宣伝を作りません猫を主人公にして":   "猫",
+		"宣伝は出さない猫の動画を作りたい":   "猫",
+		"宣伝を出しません猫を主人公にして":   "猫",
 	} {
 		t.Run(text, func(t *testing.T) {
 			assert.Equal(t, want, briefing.RuleExtractor{}.Extract(text).Subject)
@@ -190,7 +191,7 @@ func TestExtract_ARelativeClauseThatRefusesIsNotTheSubject(t *testing.T) {
 
 // A relative clause on a nominalizer noun (人, 形 …) is no refusal of the clause: the answer keeps its words.
 func TestApplyAnswer_ARelativeClauseOnANominalizerNounIsNoRefusal(t *testing.T) {
-	for _, text := range []string{"お酒を出さない人の話を作りたい", "暴力を出さない形の動画を作りたい", "酒を出さない人の動画"} {
+	for _, text := range []string{"広告を出さない人の話を作りたい", "宣伝を出さない形の動画を作りたい", "宣伝を出さない人の動画"} {
 		t.Run(text, func(t *testing.T) {
 			var b domain.Brief
 			assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))

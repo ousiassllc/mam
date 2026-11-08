@@ -27,6 +27,8 @@ var (
 	// subject when it is all that is left of a text once the filler is taken away AND the text holds such a word (concrete): "AIにお任せします" hands
 	// the decision over, while "AI", "AI動画" or "AIがいい" name the AI as what the video is about.
 	handOverRe = regexp.MustCompile(`任せ|まかせ|決め|考え|お願い|ください|下さい|思い(?:つ|浮か)|浮か(?:ば|び)`)
+	// requestTailRe is the request that ends in a connective or a hedge ("動画を作りたいけど", "動画を作りたいと思います"): no subject, like the bare request. It is cut before the fillers.
+	requestTailRe = regexp.MustCompile(`(?:作りたい|作りたく|撮りたい|撮りたく|したい|したく)(?:けれども|けれど|けど|んですけど|のですけど|んです|のです|と思っています|と思います|なと思って(?:い)?(?:ます)?|なと思う|て|で)`)
 )
 
 // buildFillers is the words that carry no subject, longest first: the stripping removes them in this order. A text left with nothing
@@ -82,7 +84,7 @@ func concrete(s string) string {
 	if asks(s) || interrogativeRe.MatchString(strings.ReplaceAll(s, "何気", "")) || (barePredicateRe.MatchString(s) && !phraseParticleRe.MatchString(s)) {
 		return ""
 	}
-	rest := s
+	rest := requestTailRe.ReplaceAllString(s, "")
 	if handOverRe.MatchString(s) {
 		rest = addresseeRe.ReplaceAllString(rest, "") // first: the filler "な" would cut "あなた" into pieces
 	}
