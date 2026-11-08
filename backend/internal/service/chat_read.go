@@ -178,7 +178,11 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 	var replied map[string]bool
 	var brief domain.Brief
 	var state domain.ProjectState
+	var latestConfirm string
 	if needsAnswer {
+		if latestConfirm, err = chatbrief.LatestSummaryID(ctx, s.chat, projectID); err != nil {
+			return nil, err
+		}
 		if replied, err = s.chat.RepliedMessageIDs(ctx, projectID); err != nil {
 			return nil, err
 		}
@@ -217,7 +221,7 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 			if m.RefType == domain.RefContinue {
 				v.Open = !replied[m.ID]
 			} else {
-				v.Open = chatbrief.Open(m, replied[m.ID], brief, state)
+				v.Open = chatbrief.Open(m, replied[m.ID], brief, state, latestConfirm)
 			}
 		case domain.KindEscalation:
 			v.Open = !replied[m.ID]

@@ -107,6 +107,9 @@ type BriefForm struct {
 	// update by a client that did not show the user the whole Brief. Saved from the Brief form, the user saw every value, so all of them
 	// become the user's (#1114).
 	KeepProposals bool
+	// Given lists the items the client set explicitly (update_brief): they become the user's even when the value equals the recommended or
+	// extracted one. A Subject in Given also settles the open contradiction.
+	Given []domain.BriefField
 }
 
 // UpdateBrief validates and saves the edited Brief and records the change in the thread.
@@ -118,7 +121,7 @@ func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form
 		return BriefView{}, err
 	}
 	edited := briefing.Clone(view.Brief)
-	briefing.ApplyEdit(&edited, form.Values, form.AdditionalInstruction, !form.KeepProposals)
+	briefing.ApplyEdit(&edited, form.Values, form.AdditionalInstruction, form.Given, !form.KeepProposals)
 	urls, err := ParseReferenceURLs(form.References)
 	if err != nil {
 		view.Brief = edited

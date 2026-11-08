@@ -48,14 +48,3 @@ func TestProjectName_PrefersSubjectThenFirstMessageAndTruncates(t *testing.T) {
 	assert.Equal(t, 41, len([]rune(long)))
 	assert.Equal(t, "…", string([]rune(long)[40:]))
 }
-
-// #1114: constraints the extractor read from the request are no topic, a line the user wrote may be one (#1108).
-func TestBrief_InferredAdditionalInstructionNamesNoSubject(t *testing.T) {
-	b := domain.Brief{AdditionalInstruction: "制約: 成人", Sources: map[string]string{string(domain.BriefAdditionalInstruction): domain.BriefSourceInferred}}
-	assert.Contains(t, b.Missing(), domain.BriefSubject)
-	b.Sources = nil
-	assert.NotContains(t, b.Missing(), domain.BriefSubject)
-	b.Duration, b.Sources = "15秒", map[string]string{string(domain.BriefDuration): domain.BriefSourceRecommended}
-	b.Set(domain.BriefDuration, "30秒")
-	assert.Equal(t, domain.BriefSourceUser, b.SourceOf(domain.BriefDuration), "a value the user sets is the user's")
-}

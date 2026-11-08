@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/projectcore"
@@ -37,4 +38,18 @@ func TestBrief_SourcesAreReportedAndOnlyGivenFieldsBecomeTheUsers(t *testing.T) 
 		assert.Equal(t, domain.BriefSourceUser, source, field)
 	}
 	assert.Equal(t, "架空の30代女性インフルエンサー", out.Fields["subject"])
+}
+
+// update_brief with confirm=true makes the extractor's theme and constraint lines the user's, but they never stand in for the Subject (#1114).
+func TestBrief_ConfirmingAnInferredInstructionLeavesTheSubjectMissing(t *testing.T) {
+	env := newEnv(t)
+	p := create(t, env, map[string]any{"content": "成人で架空の設定。テーマは朝の散歩"})
+	require.Contains(t, brief(t, env, p.ID).Missing, "subject")
+
+	var out projectcore.BriefOutput
+	env.CallOK("update_brief", map[string]any{"project_id": p.ID, "confirm": true}, &out)
+
+	assert.Equal(t, domain.BriefSourceUser, out.Sources["additional_instruction"])
+	assert.Equal(t, "テーマ: 朝の散歩\n制約: 成人・架空", out.AdditionalInstruction)
+	assert.Contains(t, out.Missing, "subject")
 }

@@ -10,8 +10,8 @@ import (
 
 // Prefixes of the lines the extractor writes into the Additional Instruction (spec/spec.md §4.2).
 const (
-	ThemePrefix      = "テーマ: "
-	ConstraintPrefix = "制約: "
+	ThemePrefix      = domain.InstructionThemePrefix
+	ConstraintPrefix = domain.InstructionConstraintPrefix
 )
 
 // ConfirmOption is the quick-answer button of the batch summary.
@@ -94,14 +94,14 @@ func ReadyToPlan(b domain.Brief, level domain.ConfirmationLevel) bool {
 // Absorb folds what a free message says into the Brief (extracted is what the extractor read from text):
 //   - an item nobody decided, left to the AI, or only proposed takes the stated value as inferred from the request, so an explicit value always replaces a recommendation;
 //   - a value read from an earlier message is replaced by the newer statement;
-//   - a value the user decided is replaced only when the text says it changes it (an explicit change, e.g. "…に変更して");
+//   - a value the user decided is replaced only when the clause that states the new value says it changes it (an explicit change, e.g. "…に変更して"; a change word elsewhere in the text, "30秒にして。主人公はロボット", does not count for the Subject);
 //   - a different Subject without such a word never replaces the Subject: it is kept as ProposedSubject and the user is asked about that point alone.
 //
 // A text that states nothing concrete (the extractor read nothing) changes nothing.
 func Absorb(b *domain.Brief, extracted domain.Brief, text string) {
-	explicit := changes(text)
 	for _, f := range domain.RequiredBriefFields() {
 		v, cur, source := extracted.Get(f), b.Get(f), b.SourceOf(f)
+		explicit := v != "" && v != cur && explicitChange(text, f, v)
 		switch {
 		case v == "" || v == cur:
 		case cur == "" || source == domain.BriefSourceRecommended:
@@ -117,12 +117,12 @@ func Absorb(b *domain.Brief, extracted domain.Brief, text string) {
 			b.ProposedSubject = ""
 		}
 	}
-	if extra := missingLines(b.AdditionalInstruction, extracted.AdditionalInstruction); extra != "" {
-		source := b.SourceOf(domain.BriefAdditionalInstruction)
-		if b.AdditionalInstruction == "" {
-			source = domain.BriefSourceInferred
-		}
-		b.AdditionalInstruction = strings.TrimSpace(b.AdditionalInstruction + "\n" + extra)
+	source := b.SourceOf(domain.BriefAdditionalInstruction)
+	if b.AdditionalInstruction == "" {
+		source = domain.BriefSourceInferred
+	}
+	if merged := mergeInstruction(b.AdditionalInstruction, extracted.AdditionalInstruction, source == domain.BriefSourceInferred); merged != b.AdditionalInstruction {
+		b.AdditionalInstruction = merged
 		markSource(b, domain.BriefAdditionalInstruction, source)
 	}
 	for _, a := range extracted.References {
@@ -132,15 +132,43 @@ func Absorb(b *domain.Brief, extracted domain.Brief, text string) {
 	}
 }
 
-// missingLines are the lines of extra that current does not hold yet.
-func missingLines(current, extra string) string {
-	var out []string
+// mergeInstruction adds the lines of extra that current does not hold yet. While the instruction is only what the extractor read from the
+// request (inferred), a later theme replaces the earlier one and later constraints join the earlier ones; a line the user wrote or confirmed is
+// kept and the new lines are added after it.
+func mergeInstruction(current, extra string, inferred bool) string {
+	lines := strings.Split(current, "\n")
 	for line := range strings.SplitSeq(extra, "\n") {
-		if line = strings.TrimSpace(line); line != "" && !strings.Contains(current, line) {
-			out = append(out, line)
+		line = strings.TrimSpace(line)
+		if line == "" || strings.Contains(current, line) {
+			continue
+		}
+		i := -1
+		if inferred {
+			i = slices.IndexFunc(lines, func(l string) bool {
+				return (strings.HasPrefix(line, ThemePrefix) && strings.HasPrefix(l, ThemePrefix)) || (strings.HasPrefix(line, ConstraintPrefix) && strings.HasPrefix(l, ConstraintPrefix))
+			})
+		}
+		switch {
+		case i < 0:
+			lines = append(lines, line)
+		case strings.HasPrefix(line, ConstraintPrefix):
+			lines[i] = joinConstraints(lines[i], line)
+		default:
+			lines[i] = line
 		}
 	}
-	return strings.Join(out, "\n")
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+// joinConstraints is the constraint line holding the labels of both, in the order of constraintRules.
+func joinConstraints(a, b string) string {
+	var labels []string
+	for _, r := range constraintRules {
+		if strings.Contains(a, r.value) || strings.Contains(b, r.value) {
+			labels = append(labels, r.value)
+		}
+	}
+	return ConstraintPrefix + strings.Join(labels, "・")
 }
 
 // NeedsConfirmation reports whether the batch summary is waiting for the user: the Brief is drafted, the Subject is settled, and
@@ -156,21 +184,24 @@ func Clone(b domain.Brief) domain.Brief {
 	return b
 }
 
-// ApplyEdit puts an edited Brief form into b (the Brief form and update_brief). Only an item whose value differs becomes the user's, so
-// saving a form that leaves a recommended value alone keeps it marked as recommended, unless confirm says the user accepted every
-// value that is shown. The edit also settles the contradiction: the form shows the Subject that stays.
-func ApplyEdit(b *domain.Brief, values map[domain.BriefField]string, instruction string, confirm bool) {
+// ApplyEdit puts an edited Brief form into b (the Brief form and update_brief). An item whose value differs becomes the user's, and so does
+// an item in given even when its value equals the recommended or inferred one: the user stated it. Saving a form that leaves a recommended
+// value alone keeps it marked as recommended, unless confirm says the user accepted every value that is shown. The contradiction on the
+// Subject is settled by confirm and by a given Subject: the form shows the Subject that stays.
+func ApplyEdit(b *domain.Brief, values map[domain.BriefField]string, instruction string, given []domain.BriefField, confirm bool) {
 	for _, f := range domain.RequiredBriefFields() {
 		// A field edited to empty is "not decided" again: the AI asks about it unless it was delegated.
-		if v := strings.TrimSpace(values[f]); v != b.Get(f) {
+		if v := strings.TrimSpace(values[f]); v != b.Get(f) || (v != "" && slices.Contains(given, f)) {
 			b.Set(f, v)
 		}
 	}
-	if instruction = strings.TrimSpace(instruction); instruction != b.AdditionalInstruction {
+	if instruction = strings.TrimSpace(instruction); instruction != b.AdditionalInstruction || (instruction != "" && slices.Contains(given, domain.BriefAdditionalInstruction)) {
 		b.AdditionalInstruction = instruction
 		delete(b.Sources, string(domain.BriefAdditionalInstruction))
 	}
-	b.ProposedSubject = ""
+	if confirm || slices.Contains(given, domain.BriefSubject) {
+		b.ProposedSubject = ""
+	}
 	if confirm {
 		Adopt(b)
 	}
