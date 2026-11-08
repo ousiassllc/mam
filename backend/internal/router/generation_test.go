@@ -171,6 +171,8 @@ func TestGenerate_UnknownShotIs404AndMissingConfigurationIs503(t *testing.T) {
 	g := newGenApp(t, true)
 	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/shots/nope/generate", nil).Code)
 	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/shots/nope/reference-pack", nil).Code)
+	refused := g.form(http.MethodPost, "/shots/"+g.shotID+"/reference-pack", nil) // no image model can be used here: refused with the cause (#1113)
+	assert.True(t, refused.Code == http.StatusConflict && strings.Contains(refused.Body.String(), "使えるモデルがありません"), refused.Body.String())
 
 	off := newGenApp(t, false)
 	assert.Equal(t, http.StatusServiceUnavailable, off.form(http.MethodPost, "/shots/"+off.shotID+"/generate", nil).Code)

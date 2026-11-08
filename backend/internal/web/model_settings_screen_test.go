@@ -44,9 +44,15 @@ func newModelScreen(t *testing.T, file string, pinned bool) *modelScreen {
 // age confirmation is off (nil: none).
 func newGatedModelScreen(t *testing.T, file string, pinned bool, hidden func(modelID string) bool) *modelScreen {
 	t.Helper()
+	return newConfiguredModelScreen(t, file, pinned, func(s *settingsroutes.Services) { s.Models.SetHidden(hidden) })
+}
+
+// newConfiguredModelScreen is newModelScreen with configure applied to the settings services before the screen is used.
+func newConfiguredModelScreen(t *testing.T, file string, pinned bool, configure func(*settingsroutes.Services)) *modelScreen {
+	t.Helper()
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
 	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, file, pinned)
-	settings.Models.SetHidden(hidden)
+	configure(settings)
 	s := &modelScreen{t: t, file: file, engine: router.New(svc, router.Options{Settings: settings})}
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
