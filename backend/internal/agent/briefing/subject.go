@@ -44,6 +44,12 @@ var (
 	changeRe = regexp.MustCompile(`変更|変えて|変えたい|変える|に替え|に直し|に差し替え|訂正|やっぱり|やはり|にして|にしたい|にします|ではなく|じゃなく`)
 	// itemLabelRe is a word that names another item of the Brief: "ターゲットは学生ではなく社会人" contrasts the target, not the Subject.
 	itemLabelRe = regexp.MustCompile(`ターゲット|対象|Target|雰囲気|ムード|トーン|Mood|Tone|目的|用途|Objective|長さ|尺|秒数|Duration|比率|アスペクト|縦横|Aspect|サイズ|テイスト`)
+	// itemTopicRe is such a label that opens the next item of the sentence ("主人公は猫でターゲットは社会人"): what follows it is no part of the Subject.
+	itemTopicRe = regexp.MustCompile(`(?:` + itemLabelRe.String() + `)[はもが：:]`)
+	// contrastAnchorRe is a word that says the sentence is about what the video shows: only with one a bare "A ではなく B" changes the Subject.
+	contrastAnchorRe = regexp.MustCompile(`主人公|主役|題材|テーマ|の(?:動画|CM|広告)`)
+	// personOrProductRe ends a phrase that names a person or a product ("男性", "30代の女性", "インフルエンサー", "新商品", "美容液").
+	personOrProductRe = regexp.MustCompile(`(?:人|人物|男|女|性|子|子供|さん|くん|ちゃん|キャラ|キャラクター|インフルエンサー|モデル|員|学生|先生|主婦|客|者|商品|製品|サービス|アプリ|ブランド|品|液|剤|グッズ|アイテム)$`)
 	// styleWordRe is a word of length or pace: "短めじゃなくて長め" is about the duration, not the Subject.
 	styleWordRe    = regexp.MustCompile(`短め|長め|短い|長い|短く|長く|速め|遅め|早め|ゆっくり|テンポ`)
 	sentenceRe     = regexp.MustCompile(`[。！!？?\n]`)
@@ -63,8 +69,10 @@ type denial struct {
 
 // readSubject is the concrete subject the text names ("" when none) and whether the clause that names it also says it is a change: a
 // protagonist or subject said outright ("Xを主人公にした", "主人公は X", "題材は X"), the noun in front of "の縦型 / の15秒 / のCM ...", or
-// what a bare contrast points at ("商品ではなく猫の日常": only when no other item is named and what is denied could be a subject). What a
-// text denies ("猫じゃなくて", "男性ではなく"), refuses ("主人公にしてほしくない") or asks ("主人公は何がいいですか") never is the subject.
+// what a bare contrast points at ("商品ではなく猫の日常": only when no other item is named and what is denied could be a subject). A bare
+// contrast is a change only when the text says what the video is about or both sides are persons or products (contrastChanges): "赤ではなく
+// 青の服にして" names a Subject but does not replace one. What a text denies ("猫じゃなくて", "男性ではなく"), refuses ("主人公にしてほしくない")
+// or asks ("主人公は何がいいですか") never is the subject.
 func readSubject(text string) (subject string, explicit bool) {
 	sentences := statedSentences(text)
 	for _, sentence := range sentences {
@@ -76,14 +84,14 @@ func readSubject(text string) (subject string, explicit bool) {
 		resolved, _ := positiveSide(sentence)
 		if m := subjectRe.FindStringSubmatch(resolved); m != nil {
 			if s := usable(m[1]); s != "" && !isContentType(s) && !isPlatformPhrase(s) {
-				_, ok := bareContrast(sentence)
-				return s, ok
+				_, c, ok := bareContrast(sentence)
+				return s, ok && contrastChanges(sentence, c.phrase, s)
 			}
 		}
 	}
 	for _, sentence := range sentences {
-		if s := contrastSubject(sentence); s != "" {
-			return s, true
+		if s, explicit := contrastSubject(sentence); s != "" {
+			return s, explicit
 		}
 	}
 	return "", false
@@ -114,40 +122,73 @@ func dropRefused(sentence string) string {
 }
 
 // patternSubject is the subject a sentence states outright with one of the subjectPatterns, and whether it says it is a change: the clause
-// has a word of change or holds a denial ("主人公は男性ではなく女性").
+// has a word of change or holds a denial ("主人公は男性ではなく女性"). A phrase that runs on into another item ("主人公は猫でターゲットは社会人")
+// stops in front of that item, and the clause is no change: the denial or the change word may belong to the other item.
 func patternSubject(sentence string) (string, bool) {
 	resolved, cuts := positiveSide(sentence)
 	for _, p := range subjectPatterns {
 		if loc := p.re.FindStringSubmatchIndex(resolved); loc != nil {
-			if s := usable(subjectPhrase(resolved[loc[2]:loc[3]], p.before)); s != "" && !strings.ContainsAny(resolved[loc[3]:], "？?") {
+			phrase, ranOn := untilNextItem(resolved[loc[2]:loc[3]], p.before)
+			if s := usable(subjectPhrase(phrase, p.before)); s != "" && !strings.ContainsAny(resolved[loc[3]:], "？?") {
 				from, to := clauseAround(resolved, loc[0], loc[1])
-				return s, changes(resolved[from:to]) || slices.ContainsFunc(cuts, func(c denial) bool { return from <= c.at && c.at <= to })
+				return s, !ranOn && (changes(resolved[from:to]) || slices.ContainsFunc(cuts, func(c denial) bool { return from <= c.at && c.at <= to }))
 			}
 		}
 	}
 	return "", false
 }
 
-// contrastSubject is what a bare "A ではなく B" of a sentence means as the Subject: B ("" when it is not one, see bareContrast).
-func contrastSubject(sentence string) string {
-	if kept, ok := bareContrast(sentence); ok {
-		return usable(subjectPhrase(kept, true))
+// untilNextItem cuts the phrase a pattern captured in front of the label of another item ("猫でターゲットは社会人" → "猫でターゲットは"), and
+// reports that it did. A phrase that stands in front of its marker and has such a label in it ("ターゲットは学生で猫を主人公に") is not read at all.
+func untilNextItem(phrase string, before bool) (string, bool) {
+	loc := itemTopicRe.FindStringIndex(phrase)
+	switch {
+	case loc == nil:
+		return phrase, false
+	case before:
+		return "", true
 	}
-	return ""
+	return phrase[:loc[0]], true
 }
 
-// bareContrast reports whether the sentence is a bare "A ではなく B" that changes the Subject, and gives what is left of it with A taken
-// away. It is one only when the sentence names no other item ("ターゲットは学生ではなく社会人" is the target) and A could be a subject itself
+// contrastSubject is what a bare "A ではなく B" of a sentence means as the Subject: B ("" when it is not one, see bareContrast), and whether
+// it changes the Subject (contrastChanges).
+func contrastSubject(sentence string) (string, bool) {
+	kept, c, ok := bareContrast(sentence)
+	if !ok {
+		return "", false
+	}
+	s := usable(subjectPhrase(kept, true))
+	return s, s != "" && contrastChanges(sentence, c.phrase, s)
+}
+
+// contrastChanges reports whether the bare contrast "A ではなく B" (denied A, meant B) changes the Subject for sure: the sentence says what the
+// video is about ("主人公", "題材", "…の動画"), or A and B are both persons or products ("男性ではなく女性"). "赤ではなく青の服にして" and "朝じゃなくて
+// 夕方にして" may as well be about the color or the time of day, so they never replace a decided Subject.
+func contrastChanges(sentence, denied, meant string) bool {
+	return contrastAnchorRe.MatchString(sentence) || (isPersonOrProduct(denied) && isPersonOrProduct(meant))
+}
+
+// isPersonOrProduct reports whether the phrase names a person or a product by its last noun (up to the particle that ends it: "女性に変えて" → "女性").
+func isPersonOrProduct(s string) bool {
+	if i := strings.IndexAny(s, "にをではが"); i > 0 {
+		s = s[:i]
+	}
+	return personOrProductRe.MatchString(s)
+}
+
+// bareContrast reports whether the sentence is a bare "A ではなく B" that may name the Subject, and gives what is left of it with A taken
+// away, and A. It is one only when the sentence names no other item ("ターゲットは学生ではなく社会人" is the target) and A could be a subject itself
 // (not a duration, a mood, a target or a platform: "派手でなく地味", "短めじゃなくて長め"). The looser reading is for an answer to the
 // Subject question only (subjectAnswer).
-func bareContrast(sentence string) (kept string, ok bool) {
+func bareContrast(sentence string) (kept string, denied denial, ok bool) {
 	kept, cuts := positiveSide(sentence)
 	i := slices.IndexFunc(cuts, func(c denial) bool { return c.contrast })
 	if i < 0 || itemLabelRe.MatchString(sentence) {
-		return "", false
+		return "", denial{}, false
 	}
 	c := cuts[i]
-	return kept[c.at:], subjectLike(c.phrase)
+	return kept[c.at:], c, subjectLike(c.phrase)
 }
 
 // subjectLike reports whether s, a phrase that was denied, could have been the Subject: it is no duration, ratio, kind of video, platform,

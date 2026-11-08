@@ -129,3 +129,86 @@ func TestApplyAnswer_ARefusalIsReadPerClause(t *testing.T) {
 		})
 	}
 }
+
+// A clause that runs on into another item's label ends in front of it: the denial, the contrast or the change word of the other item is no change of the Subject (#1114).
+func TestExtract_ASubjectStopsInFrontOfTheNextItem(t *testing.T) {
+	const text = "主人公は猫でターゲットは学生ではなく社会人"
+	got := briefing.RuleExtractor{}.Extract(text)
+	assert.Equal(t, "猫", got.Subject)
+	assert.Equal(t, "社会人", got.Target)
+
+	var b domain.Brief
+	assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))
+	assert.Equal(t, "猫", b.Subject)
+
+	for text, want := range map[string]string{
+		"主人公は猫で雰囲気はポップ":         "猫",
+		"題材は夏の海辺で長さは15秒":        "夏の海辺",
+		"主人公は猫で、ターゲットは社会人":      "猫",
+		"ターゲットは学生で猫を主人公にして":     "", // a label in front of the marker: nothing is guessed
+		"主人公は雰囲気は高級ではなくポップ":     "",
+		"主人公は猫でターゲットは学生にして":     "猫",
+		"主人公は猫でターゲットは学生ではなく社会人": "猫",
+	} {
+		t.Run(text, func(t *testing.T) {
+			assert.Equal(t, want, briefing.RuleExtractor{}.Extract(text).Subject)
+		})
+	}
+}
+
+// What the clause says about another item never replaces a decided Subject: the Subject read from it is only proposed.
+func TestAbsorb_AClauseThatRunsOnIntoAnotherItemNeverReplacesTheDecidedSubject(t *testing.T) {
+	for _, text := range []string{"主人公は猫でターゲットは学生ではなく社会人", "主人公は猫でターゲットは社会人にして"} {
+		t.Run(text, func(t *testing.T) {
+			b := intake(firstRequest)
+			b.Set(domain.BriefSubject, b.Subject)
+			subject := b.Subject
+
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+
+			assert.Equal(t, subject, b.Subject)
+			assert.Equal(t, "猫", b.ProposedSubject)
+			assert.Equal(t, "社会人", b.Target)
+		})
+	}
+}
+
+// "A ではなく B" replaces a decided Subject only when the text says what the video is about or both sides are persons or products: "赤ではなく青の服にして"
+// and "朝じゃなくて夕方にして" may be about the color or the time of day, so the Subject is only proposed and stays (#1114).
+func TestAbsorb_AContrastThatMayBeAboutAnotherThingNeverReplacesTheDecidedSubject(t *testing.T) {
+	for text, proposed := range map[string]string{
+		"赤ではなく青の服にして":     "青の服",
+		"朝ではなく夕方にして":      "夕方",
+		"朝じゃなくて夕方のシーンにして": "夕方のシーン",
+	} {
+		t.Run(text, func(t *testing.T) {
+			b := intake(firstRequest)
+			b.Set(domain.BriefSubject, b.Subject)
+			subject := b.Subject
+
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+
+			assert.Equal(t, subject, b.Subject)
+			assert.Equal(t, proposed, b.ProposedSubject)
+		})
+	}
+}
+
+func TestAbsorb_AContrastThatSaysWhatTheVideoIsAboutReplacesTheDecidedSubject(t *testing.T) {
+	for text, want := range map[string]string{
+		"猫ではなく犬の動画にして":    "犬",
+		"赤ではなく青の動画にして":    "青",
+		"男性じゃなくて女性にして":    "女性",
+		"商品ではなく新商品のCMにして": "新商品",
+	} {
+		t.Run(text, func(t *testing.T) {
+			b := intake(firstRequest)
+			b.Set(domain.BriefSubject, b.Subject)
+
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+
+			assert.Equal(t, want, b.Subject)
+			assert.Empty(t, b.ProposedSubject)
+		})
+	}
+}

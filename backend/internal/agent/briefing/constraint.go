@@ -8,8 +8,9 @@ import (
 
 // constraintRules are the constraints the extractor keeps in the Additional Instruction under their canonical label, so that the
 // Producer, Writer and Director are told them as fixed conditions (#1114). A constraint is a safety condition: dropping one is invisible,
-// while a kept one that was not meant shows on the confirmation card and can be deleted. So a keyword counts as stated unless its own
-// predicate negates it (constraintScan), and a negation elsewhere in the sentence never removes it.
+// while a kept one that was not meant shows on the confirmation card and can be deleted. So a keyword counts as stated unless a negation
+// directly follows it (constraintScan): a negation elsewhere in the sentence, or one inside a restriction ("成人しか出ない",
+// "成人以外は出さない", "成人でない人物は出さない"), never removes it.
 var constraintRules = []keywordRule{
 	{"成人", []string{"成人", "18歳以上", "20歳以上"}},
 	{"架空", []string{"架空", "フィクション", "実在しない", "実在の人物ではない"}},
@@ -21,17 +22,16 @@ var (
 	notStatedAfterRe = regexp.MustCompile(`^(?:向け|式|替)`)
 	// notStatedBeforeRe: the keyword is the end of a word that negates it ("ノンフィクション", "非実在").
 	notStatedBeforeRe = regexp.MustCompile(`(?:ノン|非|未)$`)
-	// attachedNegationRe: the keyword is itself denied ("成人ではない", "架空じゃなく", "成人でもない").
-	attachedNegationRe = regexp.MustCompile(`^(?:では|じゃ|でも|で)(?:ない|なく|ありません)`)
-	// negationRe is a negation in the predicate of the keyword ("服は着ていない設定", "着衣なし").
-	negationRe = regexp.MustCompile(`ない|ません|なし|なく`)
-	// predicateEndRe ends the predicate of the keyword: a blank, punctuation, or the particle that opens another phrase
-	// ("成人女性が主人公 商品は出てこない", "成人で誰もいない": the negation belongs to something else).
-	predicateEndRe = regexp.MustCompile(`[\s、,，。\n]|[がをへともや]`)
+	// directNegationRe is a negation that directly follows the keyword or its copula: the keyword is itself denied ("成人ではない"), absent
+	// ("着衣なし", "着衣はなし") or the verb the keyword ends in is negated ("服は着ていない", "服を着ません").
+	directNegationRe = regexp.MustCompile(`^(?:(?:では|じゃ|でも|で)(?:ない|なく|ありません)|(?:は|も)?(?:なし|なく)|(?:て(?:い|おら)?|せ|させ|られ)?(?:ない|ません|なかっ))`)
+	// restrictiveRe is what follows a keyword that restricts the sentence to it: "成人しか出ない", "成人以外は出さない", "成人だけ", "成人のみ".
+	// The negation behind it denies the others, so the keyword is stated.
+	restrictiveRe = regexp.MustCompile(`^(?:しか|以外|だけ|のみ|限定)`)
+	// restrictiveRelativeRe is the keyword denied inside a noun phrase that the sentence then refuses ("成人でない人物は出さない", "成人ではない人は
+	// 登場させない"): the negation belongs to the noun it modifies, and the sentence restricts the video to the keyword.
+	restrictiveRelativeRe = regexp.MustCompile(`^(?:では|じゃ|でも|で)ない[\p{Han}\p{Katakana}][^\s、。,，はがをもにでの]{0,9}[はもを](?:出さ(?:ない|ず)|出しません|登場させ(?:ない|ず|ません)|出演させ(?:ない|ず|ません)|使わ(?:ない|ず)|使いません|含め(?:ない|ず|ません))`)
 )
-
-// predicateWindow is how many characters after the keyword may hold the negation of its own predicate.
-const predicateWindow = 8
 
 // constraintScan reads every occurrence of the keywords: stated when one is not negated, negated when one is ("成人ではない").
 // An occurrence that is the end of a negating word or the start of another word is neither.
@@ -58,20 +58,13 @@ func constraintScan(text string, keywords []string) (stated, negated bool) {
 	return stated, negated
 }
 
-// predicateNegates reports whether rest, what follows a keyword, negates the keyword: the negation is attached to it, or stands within its
-// own predicate (up to the first particle that opens another phrase or the end of the clause, and a short window).
+// predicateNegates reports whether rest, what follows a keyword, negates the keyword: a negation directly follows it (directNegationRe), unless
+// it only restricts the sentence to the keyword (restrictiveRe, restrictiveRelativeRe).
 func predicateNegates(rest string) bool {
-	if attachedNegationRe.MatchString(rest) {
-		return true
+	if restrictiveRe.MatchString(rest) || restrictiveRelativeRe.MatchString(rest) {
+		return false
 	}
-	rest = strings.TrimPrefix(rest, "は")
-	if loc := predicateEndRe.FindStringIndex(rest); loc != nil {
-		rest = rest[:loc[0]]
-	}
-	if r := []rune(rest); len(r) > predicateWindow {
-		rest = string(r[:predicateWindow])
-	}
-	return negationRe.MatchString(rest)
+	return directNegationRe.MatchString(rest)
 }
 
 // constraintHit reports whether the text states the constraint of one of the keywords.
