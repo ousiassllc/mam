@@ -24,12 +24,12 @@ func (r *ChatRepository) LatestApprovalCard(ctx context.Context, projectID, refT
 	return &m, nil
 }
 
-// LatestUserReply returns the text of the newest user message that replies to the message,
+// LatestUserReply returns the text of the newest (by rowid, see List) user message that replies to the message,
 // or "" when nobody replied.
 func (r *ChatRepository) LatestUserReply(ctx context.Context, projectID, messageID string) (string, error) {
 	var content string
 	err := r.db.Reader().QueryRowContext(ctx,
-		`SELECT content FROM chat_message WHERE project_id = ? AND reply_to_message_id = ? AND role = 'user' ORDER BY id DESC LIMIT 1`,
+		`SELECT content FROM chat_message WHERE project_id = ? AND reply_to_message_id = ? AND role = 'user' ORDER BY rowid DESC LIMIT 1`,
 		projectID, messageID).Scan(&content)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
