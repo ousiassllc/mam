@@ -86,6 +86,7 @@ var (
 	predicate    = regexp.MustCompile(`(?:ない|まま|かも)$`)
 	itemWord     = regexp.MustCompile(`^[\p{Han}\p{Katakana}A-Za-z0-9:：.ー×]+(?:で|に|にして|にする|にします|です|でお願い(?:します)?|が(?:いい|良い)(?:です)?)?$`)
 	itemParticle = regexp.MustCompile(`(?:にして|にする|にします|でお願い(?:します)?|が(?:いい|良い)(?:です)?|です|で|に)$`)
+	labelled     = regexp.MustCompile(`[^\d][:：]`) // "雰囲気:ポップ": a labelled value takes any text in it; only a ratio ("16:9") has a colon between digits
 	commaRe      = regexp.MustCompile(`[、,，]`)
 	sentenceEnd  = regexp.MustCompile(`[。.!！?？\n]`)
 	// unfit is in a phrase that is a list, a guess, a hedge or a placeholder, not one Subject: "犬か猫", "犬かな", "犬w", "犬のはず", "犬など".
@@ -161,7 +162,7 @@ func Committed(text, v string) bool {
 // StripItems is text without the clauses that only state another item of the Brief ("…に変更して、30秒で"): the statement is judged without them, so an item that is not a
 // Subject is no second sentence. Only a clause of the FIRST sentence, joined by a comma after its first clause, and only one that IS the item value and nothing else: one word
 // of kanji, katakana or digits with at most a particle after it ("30秒で", "縦型にして") whose stem is minimal for what the extractor reads from it (read returns the item values
-// it reads, "" when it reads none or a Subject): dropping its first or its last character changes what is read, so no take-back, negation or noun is glued to the item
+// it reads, "" when it reads none or a Subject): dropping any one character changes what is read, so no take-back, negation or noun is glued to the item
 // ("30秒却下", "縦型禁止", "30秒猫", "猫30秒で" keep the clause). A clause with anything more in it ("30秒でやっぱりやめます", "30秒は迷う") stays, and so does every later sentence.
 func StripItems(text string, read func(clause string) string) string {
 	end := sentenceEnd.FindStringIndex(text)
@@ -186,7 +187,15 @@ func pureItem(clause string, read func(string) string) bool {
 	stem := itemParticle.ReplaceAllString(clause, "")
 	rs := []rune(stem)
 	full := read(stem)
-	return full != "" && len(rs) > 1 && read(string(rs[1:])) != full && read(string(rs[:len(rs)-1])) != full
+	if full == "" || len(rs) < 2 || labelled.MatchString(stem) {
+		return false
+	}
+	for i := range rs { // every character counts: a take-back or a noun between two values is redundant and keeps the clause
+		if read(string(rs[:i])+string(rs[i+1:])) == full {
+			return false
+		}
+	}
+	return true
 }
 
 // Proposal is v when it can be proposed as the other Subject (it is no fragment), else "".
