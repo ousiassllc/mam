@@ -191,7 +191,8 @@ func pureItem(clause string, read func(string) string) bool {
 		return false
 	}
 	for i := range rs { // every character counts: a take-back or a noun between two values is redundant and keeps the clause
-		if read(string(rs[:i])+string(rs[i+1:])) == full {
+		// deleting a character joins its neighbours ("16:9猫30秒" → "16:930秒", "CM猫TikTok" → "CMTikTok"), which can change what is read for the worse: separate them instead too
+		if read(string(rs[:i])+string(rs[i+1:])) == full || read(string(rs[:i])+"、"+string(rs[i+1:])) == full {
 			return false
 		}
 	}
