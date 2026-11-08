@@ -203,3 +203,4 @@
 | 1.196 | 2026-11-07 | `/model-manager/…` の概要と分類ごとのサブページ（#1101）を実装した。`GET /model-manager/overview` を足した | Issue #1101 |
 | 1.197 | 2026-11-07 | `/settings/ffmpeg…`・`/settings/facefusion` の移し替え（#1106）を実装した（状態は「実装済み」。仕様は [endpoints-model-manager.md](endpoints-model-manager.md) 1.24） | Issue #1106 |
 | 1.198 | 2026-11-07 | `POST /projects/:id/approvals/:messageId` に、生成の承認（`ref_type=generation`）の承認・差戻しの動作を足した。`GET /projects/:id/scenes` の待機の表示（`data-testid="main-line-wait"`・`data-phase`）と Shot カードのバッジを足した（確認レベルの選択肢（`script`/`rough_cut`/`final`）は変えない。生成の承認は常にオンで選べない） | Issue #1108（A 方針）。詳細は `spec/spec.md` §4.3 |
+| 1.199 | 2026-11-11 | `GET /takes/:id/trace` の Model に、使ったモデルの経路・費用の扱い・選んだ理由を足した | Issue #1113 |

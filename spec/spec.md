@@ -401,6 +401,8 @@ Model A  Model B  Model C
 
 これにより生成モデルを交換しても、プロジェクト構造を維持できる。
 
+> **使えるモデルの選択（実装）**: 生成の開始前に、割り当てのモデルが今使えるか（API キー・ログイン・導入）を確認する。既定の割り当てが使えないときは、条件（用途・入力・解像度と長さ・成人向けでないこと・ライセンス・Quality Policy）に合う、今使えるモデルで生成する。利用者が選んだ割り当てと Shot で固定したモデルは、使えなくても別のモデルへ替えず、原因と直し方を添えて断る。使ったモデルとその経路・理由・費用の扱いは Take から辿れる。詳細は `spec/architecture/model-adapters.md` §3.1。
+
 ---
 
 # 8. Prompt Candidate Generation
@@ -1334,6 +1336,8 @@ Preserve character / acting / environment
 - 必要に応じてモデル切替
 - Editorによる追加撮影を積極許可
 
+> **コストの扱い（モデルの経路別）**: ローカルモデルは無料（0 USD）、ChatGPT サブスクは単価不明（0 とは扱わず、合計にも足さない）、API は単価で見積もる。予算上限は、単価が分かるモデルに従来どおり効く。既定の割り当てが使えず別のモデルへ切り替わったときも、切り替え後のモデルで見積もる（`spec/architecture/model-adapters.md` §3.1）。
+
 追加設定：
 
 - Project budget ceiling
@@ -1616,6 +1620,7 @@ Promptはそれらから生成される一時的な実行形式とする。
 - Prompt version
 - Model
 - Model parameters
+- 使ったモデルの経路（API / ChatGPT サブスク / ローカル）と選んだ理由（割り当て、または条件に合うモデルの自動選択）・費用の扱い
 - Model routing（選択理由、M3）
 - References
 - Output

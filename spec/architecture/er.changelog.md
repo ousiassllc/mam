@@ -94,3 +94,4 @@
 | 1.87 | 2026-11-04 | `character.voice_reference`（JSON）に `finetune`（GPT-SoVITS の学習した声。重みはユーザーデータ側のファイル）を足した。列・マイグレーションは足さない。バンドルは書き出さず取り込みは拒否する | Issue #936 |
 | 1.88 | 2026-11-06 | [er-model-manager.md](model-manager/er-model-manager.md) の `gentest` の行の「試し生成を含む」を、モデルマネージャーの試し生成の廃止に合わせて直した（テーブル・CHECK は変えない） | Issue #1100 |
 | 1.89 | 2026-11-07 | `generation_approval`・`generation_launch` を追加（マイグレーション `20261107130000_generation_approval.sql`）。`chat_message.ref_type` に `generation`（生成の承認カード。`ref_id` は計画の指紋）を足した。両テーブルはプロジェクトのバンドルには含めない（この環境のモデル・単価に対する承認と、起動の記録なので） | Issue #1108（A 方針）。生成の承認が何を承認したか（Shot ごとの内容と見積）と、承認のあとに Orchestrator が何を起動したかを記録し、範囲の変更・見積の増加での再承認と、同じ承認での二重起動の防止（プロセス再起動後も）に使う |
+| 1.90 | 2026-11-11 | `take.model_parameters.model_use` と、`shot.shot_spec.references[].model_use`（実際に使った画像・動画モデルの経路・選んだ理由・費用の扱い）を足した。列・マイグレーションの追加はない（既存の JSON に項目を足すだけ。無い旧データは記録なし） | Issue #1113（使ったモデルと経路を Take・Reference から辿れるようにするため） |

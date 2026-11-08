@@ -131,6 +131,7 @@
 - **フィルター（Issue #1011 で変更）**: 商用利用の絞り込みは、**共通のモデルのフィルターバーの詳細パネルの 1 項目**（すべて / 商用OKのみ / 条件つきまで。`commercial` キー。[model-manager/model-filter.md](model-manager/model-filter.md) §2・§8）。絞るのはサーバー（`modelfilter`）で、スクリプトの `data-commercial` の隠しはなくなった（`static/src/components/commercial-filter` は削除）。履歴（結果は作ったモデルの答えを持つ）は、`molecules/commercial.Choice`（3 択のラジオ。`commercial` をクエリに持ち、ページ送りで保つ）の答えが許すモデルの結果だけを、サーバーが `history.Filter.Models` で絞って返す。選んだモデルは、カード・バッジ（アイコン）で答えを言う。
 - **フィルターを置く画面**: 生成テストのモデルの一覧・プロンプトマッチ・描き直し・設定の画像・動画モデルの欄（モデル選択のモーダル）、モデルマネージャーのモデルの一覧、履歴。
 - **設定「商用OKのモデルだけを使う」**（既定はオフ。`state.json` の `commercial_only`）: オンの間、どの画面のフィルターも商用利用の選択だけ「商用OKのみ」から始まり、MCP の `list_generation_models`・`list_model_catalog` は `commercial` 引数を省くと商用OKだけを返す（`modellicense.DefaultFilter`）。**一覧を絞るだけで、生成そのものは止めない**（ほかの答えのモデルを画面で広げて選べる。名指しの生成も断らない。代替のモデルへは切り替えない）。画面はモデルマネージャーの「商用利用で絞り込む」の区画のスイッチ（`PUT /model-manager/commercial`）、MCP は `get_commercial_only` / `set_commercial_only`。
+- **生成が選ぶモデル（Issue #1113）**: 既定の割り当てが使えず、生成が条件に合うモデルへ切り替えるとき、ライセンスが「不可」のモデルと、上の設定（`commercial_only`）が許さないモデルは候補にしない（[model-adapters.md](model-adapters.md) §3.1）。利用者が選んだ割り当てには、この条件で別のモデルを当てない。
 
 ## 6. MCP
 
@@ -178,3 +179,4 @@
 | 1.18 | 2026-11-06 | §2: HF のカードの `license` タグだけでは商用OKにしない（`FromHF`: 商用を許すタグは「条件つき」、タグは自己申告）。§3: クラウドの 7 モデル（Kling・MiniMax・Seedance・Wan）を原文で確かめて商用OK、`gpt-image-2` の出典を OpenAI Services Agreement に直し、非公式経路の `gpt-image-2:chatgpt-subscription` を不明にした。§8: 「不明の 7 モデル」の注記を外した | Issue #969 |
 | 1.19 | 2026-11-06 | §3 の答えの表と確認日に、`gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` と、それぞれのサブスク経由（`…:chatgpt-subscription`）の 4 件を足した（OpenAI の利用規約 2026-01-01 版。`checked_at` は 2026-11-06） | Issue #1096 |
 | 1.20 | 2026-11-06 | §4 の「モデルマネージャー: 試し生成」の行を消した（試し生成の区画の廃止。生成テストの行は変えない。状態は仕様のみ） | Issue #1100 |
+| 1.21 | 2026-11-11 | §5 に、生成が既定の割り当ての代わりにモデルを選ぶときのライセンスの条件を足した | Issue #1113 |

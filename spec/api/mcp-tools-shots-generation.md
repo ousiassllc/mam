@@ -34,7 +34,7 @@
 
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
-| `generate_shot` | 単発の生成を始める（予算超過 `budget_exceeded`・生成中 `conflict`・LOCK Prompt + 指示 `locked`・Brand 違反 `forbidden`・未構成 `unavailable`） | `shot_id`, `additional_instruction`（1000 文字以内） | `job_id`, `state`, `shot_id`, `shot_state` | いいえ |
+| `generate_shot` | 単発の生成を始める（予算超過 `budget_exceeded`・生成中 `conflict`・使えるモデルがない `conflict`（原因と直し方が文に入る。[model-adapters.md](../architecture/model-adapters.md) §3.1）・LOCK Prompt + 指示 `locked`・Brand 違反 `forbidden`・未構成 `unavailable`） | `shot_id`, `additional_instruction`（1000 文字以内） | `job_id`, `state`, `shot_id`, `shot_state` | いいえ |
 | `generate_shot_candidates` | Prompt Candidate Generation（Judge が Best Take を選ぶ。Judge 未構成は `unavailable`） | 同上 | 同上 | いいえ |
 | `build_reference_pack` | Reference Pack の（再）生成 | `shot_id` | 同上 | いいえ |
 | `propose_continue` | 完了した Shot の続きの候補を、チャットの質問カードとして提案（同期。Take が無ければ `conflict`） | `shot_id` | `project_id`, `message_id`, `text`, `options[]` | いいえ |
@@ -65,7 +65,7 @@
 | `use_partial_takes` | 複数の Take の区間をつないで新しい Take（Partial Take Use。2〜8 区間・各 0.3 秒以上。ffmpeg が無いと `unavailable`） | `shot_id`, `segments[]`（`take_id`, `start`, `end`）または `instruction`（"Take A の 0-2秒 + Take B の 2-4秒"） | `shot` | いいえ |
 | `get_take_video_url` | プレビュー動画の URL（種別 `take_video`。4K は 1080p プロキシ。アーカイブ済みは `not_found`） | `take_id` | `take_id`, `url`, `expires_at`, `file_name` | はい |
 | `get_take_thumbnail_url` | 先頭フレームの JPEG の URL（種別 `take_thumbnail`。ffmpeg が無いと `unavailable`） | `take_id` | 同上 | はい |
-| `get_take_trace` | Generation Traceability（元の Shot Spec・Prompt・World State 版・モデルとパラメータ・Routing・Reference・出力・Judge・Repair） | `take_id` | `project_id`, `take`, `model_parameters`, `routing`, `prompt_version`, `world_state_version`, `references[]`, `output`, `judgements[]`, `repairs[]`, `produced_by` | はい |
+| `get_take_trace` | Generation Traceability（元の Shot Spec・Prompt・World State 版・モデルとパラメータ・Routing・Reference・出力・Judge・Repair） | `take_id` | `project_id`, `take`, `model_parameters`, `routing`, `model_use`（使ったモデルの経路 `route`・選んだ理由・費用の扱い。旧 Take は `null`）, `prompt_version`, `world_state_version`, `references[]`, `output`, `judgements[]`, `repairs[]`, `produced_by` | はい |
 
 `get_take_video_url` / `get_take_thumbnail_url` の URL は 15 分有効の GET（Range 可）で、動画は画面のプレイヤーと同じファイル（`TakeService.Video`）。
 
@@ -113,3 +113,4 @@
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。Scene / Shot・Director・生成・Continue・Judge・Repair・Take のツール 27 個、ジョブ種別 `build_reference_pack`・`judge_take`・`repair_take`、ダウンロード種別 `take_video`・`take_thumbnail` | Issue #830。画面の全操作を MCP ツールにする（Scene / Shot / 生成 / Take の担当分） |
 | 1.1 | 2026-11-02 | `generate_shot` のジョブで、ローカルの ComfyUI が動いている間は `get_job` に `progress`（ステップ・%・残りの見積り）が付くことを書いた | Issue #966 |
+| 1.2 | 2026-11-11 | `generate_shot` の失敗に「使えるモデルがない `conflict`」を、`get_take_trace` の出力に `model_use` を足した | Issue #1113 |
