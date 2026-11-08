@@ -1,6 +1,7 @@
 package briefing_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,11 +14,18 @@ import (
 var deferrals = []string{
 	"なんでもいい", "何でもいいです", "どちらでもいい", "どっちでもいいよ", "お任せします", "おまかせで", "任せる", "まだ決めてない", "まだ決めていません", "未定", "未定です",
 	"特にありません", "特になし", "思いつかない", "分からない", "検討中", "決まってない", "どちらでもOK",
+	"わかりません", "分かりません", "わかりません。", "任せます", "決まっていません", "決まってません", "まだ何も決まっていません",
+}
+
+// questions are counter-questions: they ask for a Subject, so none of them is one (#1114). The rule is the form, not a list of words.
+var questions = []string{
+	"何がいいですか？", "何がいいですか", "誰がいいですか", "主人公は何がいいですか", "主人公は誰がいいですか？", "おすすめありますか", "おすすめはありますか？",
+	"どんな主人公がいいですか", "どういう題材がありますか", "どれがいいかな？", "主人公はどちらにしますか",
 }
 
 // A reply to the open Subject card, and free text while that card is open, never turn a deferral into the Subject.
 func TestApplyAnswer_ADeferralIsNotASubject(t *testing.T) {
-	for _, text := range append([]string{vagueAnswer, "商品ではなく", "猫じゃなくて", "猫を主人公にしてほしくない"}, deferrals...) {
+	for _, text := range slices.Concat([]string{vagueAnswer, "商品ではなく", "猫じゃなくて", "猫を主人公にしてほしくない"}, deferrals, questions) {
 		t.Run(text, func(t *testing.T) {
 			var b domain.Brief
 			again := briefing.ApplyAnswer(&b, domain.BriefSubject, text)
@@ -29,8 +37,8 @@ func TestApplyAnswer_ADeferralIsNotASubject(t *testing.T) {
 	}
 }
 
-func TestExtract_ADeferralStatesNoSubject(t *testing.T) {
-	for _, text := range deferrals {
+func TestExtract_ADeferralOrAQuestionStatesNoSubject(t *testing.T) {
+	for _, text := range slices.Concat(deferrals, questions) {
 		t.Run(text, func(t *testing.T) {
 			assert.Empty(t, briefing.RuleExtractor{}.Extract(text).Subject)
 		})
@@ -90,7 +98,7 @@ func TestExtract_SubjectTable(t *testing.T) {
 
 // Free text never replaces a Subject the user knows when it only defers or refuses; it is a contradiction or a change only when it names something.
 func TestAbsorb_DeferralsAndRefusalsLeaveTheDecidedSubjectAlone(t *testing.T) {
-	for _, text := range append([]string{"この動画は猫を主人公にしてほしくない", "犬はいらない", "犬を主人公にするのはやめて"}, deferrals...) {
+	for _, text := range slices.Concat([]string{"この動画は猫を主人公にしてほしくない", "犬はいらない", "犬を主人公にするのはやめて"}, deferrals, questions) {
 		t.Run(text, func(t *testing.T) {
 			b := intake(firstRequest)
 			b.Set(domain.BriefSubject, b.Subject)
