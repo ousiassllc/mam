@@ -39,7 +39,11 @@ var (
 	phrasePrefixRe = regexp.MustCompile(`(?:向け|用|として)[にでの]|ため[にの]|ので|けど|から`)
 	// denyRe is a refusal: the clause that holds it states nothing wanted ("猫を主人公にしてほしくない"). 不要 counts only as the refusal
 	// ("猫は不要です"), not inside a word ("不要品回収のCM").
-	denyRe = regexp.MustCompile(`ほしくない|欲しくない|いらない|要らない|不要(?:です|だ|で|$)|やめて|やめたい|やめる|したくない|しないで|にしない|避けて|避けたい`)
+	denyRe = regexp.MustCompile(`ほしくない|欲しくない|いらない|要らない|不要(?:です|だ|で|$)|やめて|やめたい|やめる|したくない|しないで|にしない|にはしない|にしません|にはしません|避けて|避けたい`)
+	// absenceRe is a refusal to make or show something ("猫の動画は作らない", "猫は出しません"). It refuses a clause that names no protagonist only: "猫を主人公にして成人は
+	// 出さない" has the constraint in the same clause and still states the Subject.
+	absenceRe                 = regexp.MustCompile(`作らない|作りません|作りたくない|出さない|出しません`)
+	protagonistWordInClauseRe = regexp.MustCompile(`主人公|主役|題材`)
 	// changeRe is a word that says the clause changes something: only such a clause may replace a decided value.
 	changeRe = regexp.MustCompile(`変更|変えて|変えたい|変える|に替え|に直し|に差し替え|訂正|やっぱり|やはり|にして|にしたい|にします|ではなく|じゃなく`)
 	// itemLabelRe is a word that names another item of the Brief: "ターゲットは学生ではなく社会人" contrasts the target, not the Subject.
@@ -122,7 +126,12 @@ func statedSentences(text string) []string {
 // dropRefused removes the clauses of the sentence that refuse something ("この動画は猫を主人公にしてほしくない").
 func dropRefused(sentence string) string {
 	clauses := clauseRe.Split(sentence, -1)
-	return strings.Join(slices.DeleteFunc(clauses, denyRe.MatchString), "、")
+	return strings.Join(slices.DeleteFunc(clauses, refuses), "、")
+}
+
+// refuses reports whether the clause refuses something (denyRe, absenceRe).
+func refuses(clause string) bool {
+	return denyRe.MatchString(clause) || (absenceRe.MatchString(clause) && !protagonistWordInClauseRe.MatchString(clause))
 }
 
 // patternSubject is the subject a sentence states outright with one of the subjectPatterns, and whether it says it is a change: the clause
@@ -133,7 +142,7 @@ func patternSubject(sentence string) (string, bool) {
 	for _, p := range subjectPatterns {
 		if loc := p.re.FindStringSubmatchIndex(resolved); loc != nil {
 			phrase, ranOn := untilNextItem(resolved[loc[2]:loc[3]], p.before)
-			if s := usable(subjectPhrase(phrase, p.before)); s != "" && !strings.ContainsAny(resolved[loc[3]:], "？?") {
+			if s := subjectOf(phrase, p.before); s != "" && !strings.ContainsAny(resolved[loc[3]:], "？?") {
 				from, to := clauseAround(resolved, loc[0], loc[1])
 				return s, !ranOn && (changes(resolved[from:to]) || slices.ContainsFunc(cuts, func(c denial) bool { return from <= c.at && c.at <= to }))
 			}
@@ -153,58 +162,6 @@ func untilNextItem(phrase string, before bool) (string, bool) {
 		return "", true
 	}
 	return phrase[:loc[0]], true
-}
-
-// contrastSubject is what a bare "A ではなく B" of a sentence means as the Subject: B ("" when it is not one, see bareContrast), and whether
-// it changes the Subject (contrastChanges).
-func contrastSubject(sentence string) (string, bool) {
-	kept, c, ok := bareContrast(sentence)
-	if !ok {
-		return "", false
-	}
-	s := usable(subjectPhrase(kept, true))
-	return s, s != "" && contrastChanges(sentence, c.phrase, s)
-}
-
-// contrastChanges reports whether the bare contrast "A ではなく B" (denied A, meant B) changes the Subject for sure: its clause says "主人公", "主役", "題材"
-// or "テーマ", or "…の動画 / CM / 広告" with A or B a person or a product ("猫ではなく犬の動画"), or A and B are both ("男性ではなく女性"). "赤ではなく青の
-// 動画にして" and "朝じゃなくて夕方にして" may be about the color or the time of day, so they never replace a decided Subject.
-func contrastChanges(sentence, denied, meant string) bool {
-	clause := sentence
-	if loc := contrastRe.FindStringIndex(sentence); loc != nil {
-		from, to := clauseAround(sentence, loc[0], loc[1])
-		clause = sentence[from:to]
-	}
-	d, m := isPersonOrProduct(denied), isPersonOrProduct(meant)
-	return contrastAnchorRe.MatchString(clause) || (videoOfRe.MatchString(clause) && (d || m)) || (d && m)
-}
-
-// isPersonOrProduct reports whether the phrase names a person or a product by its last noun (up to the particle that ends it: "女性に変えて" → "女性").
-func isPersonOrProduct(s string) bool {
-	if i := strings.IndexAny(s, "にをではが"); i > 0 {
-		s = s[:i]
-	}
-	return personOrProductRe.MatchString(s)
-}
-
-// bareContrast reports whether the sentence is a bare "A ではなく B" that may name the Subject, and gives what is left of it with A taken
-// away, and A. It is one only when the sentence names no other item ("ターゲットは学生ではなく社会人" is the target) and A could be a subject itself
-// (not a duration, a mood, a target or a platform: "派手でなく地味", "短めじゃなくて長め"). The looser reading is for an answer to the
-// Subject question only (subjectAnswer).
-func bareContrast(sentence string) (kept string, denied denial, ok bool) {
-	kept, cuts := positiveSide(sentence)
-	i := slices.IndexFunc(cuts, func(c denial) bool { return c.contrast })
-	if i < 0 || itemLabelRe.MatchString(sentence) {
-		return "", denial{}, false
-	}
-	c := cuts[i]
-	return kept[c.at:], c, subjectLike(c.phrase)
-}
-
-// subjectLike reports whether s, a phrase that was denied, could have been the Subject: it is no duration, ratio, kind of video, platform,
-// target or mood.
-func subjectLike(s string) bool {
-	return s != "" && !isFormat(s) && !styleWordRe.MatchString(s) && target(s) == "" && mood(s) == ""
 }
 
 // positiveSide drops every denied phrase with its negator ("猫じゃなくて犬を主人公に" → "犬を主人公に") and returns where in the result
@@ -251,6 +208,15 @@ func subjectPhrase(s string, before bool) string {
 	return s
 }
 
+// subjectOf is the Subject the captured phrase names (subjectPhrase, then usable), "" when it is none. The deferral is looked for in the phrase as it was
+// captured: subjectPhrase keeps only what follows a connective ("決めてないのでTikTok" → "TikTok"), which would hide it.
+func subjectOf(captured string, before bool) string {
+	if undecidedRe.MatchString(captured) {
+		return ""
+	}
+	return usable(subjectPhrase(captured, before))
+}
+
 // clauseAround is the extent of the comma separated clause of s that holds s[start:end] (the match may carry the change word: "…を犬に変更して").
 func clauseAround(s string, start, end int) (from, to int) {
 	from, to = 0, len(s)
@@ -275,7 +241,7 @@ func explicitChange(text string, f domain.BriefField, v string) bool {
 	text = changeLeadRe.ReplaceAllString(text, "$1")
 	for _, sentence := range sentenceRe.Split(text, -1) {
 		for _, clause := range clauseRe.Split(sentence, -1) {
-			if changes(clause) && !denyRe.MatchString(clause) && (RuleExtractor{}).Extract(clause).Get(f) == v {
+			if changes(clause) && !refuses(clause) && (RuleExtractor{}).Extract(clause).Get(f) == v {
 				return true
 			}
 		}
@@ -320,7 +286,7 @@ func subjectAnswer(text string) string {
 	}
 	kept, cuts := positiveSide(strings.Join(sentences, "。"))
 	if len(cuts) > 0 {
-		kept = subjectPhrase(kept, true)
+		return subjectOf(kept, true)
 	}
 	return usable(kept)
 }

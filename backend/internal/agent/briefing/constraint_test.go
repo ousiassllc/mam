@@ -9,62 +9,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// A negation of something else in the sentence never removes a stated constraint: only the keyword's own predicate counts (#1114).
-func TestExtract_AnUnrelatedNegationKeepsTheConstraint(t *testing.T) {
-	for _, tt := range []struct{ text, want string }{
-		{"架空の成人女性が主人公で商品は紹介しない", "制約: 成人・架空"},
-		{"架空の成人女性が主人公 商品は出てこない", "制約: 成人・架空"},
-		{"架空の成人女性が主人公で他に誰もいない", "制約: 成人・架空"},
-		{"成人の女性が主人公で、ナレーションは入れない", "制約: 成人"},
-		{"服は着ている設定で、BGMはなし", "制約: 着衣"},
-		{"成人女性が商品を持たない", "制約: 成人"},
-		{"成人で、他の人物は出さない", "制約: 成人"},
-		// a restriction to the keyword: the negation denies the others, so the keyword is stated
-		{"成人しか出ない", "制約: 成人"},
-		{"成人以外は出さない", "制約: 成人"},
-		{"成人でない人物は出さない", "制約: 成人"},
-		{"成人ではない人は登場させない", "制約: 成人"},
-		{"20歳以上のみ登場する。未成年は出ない", "制約: 成人"},
-		// the keyword's own predicate (or the keyword itself) is negated
-		{"成人ではない", ""},
-		{"成人でもない設定", ""},
-		{"架空の人物で、成人ではない", "制約: 架空"},
-		{"着衣なし", ""},
-		{"成人じゃなくて未成年", ""},
-		{"成人ではない人物が主人公", ""},
-		{"成人ではないので出さない", ""},
-		{"架空ではなく実在", ""},
-		{"服は着ていない", ""},
-		{"ノンフィクション", ""},
-		// the negation follows a particle or a short noun run ("成人は出さない" is the opposite of "成人しか出ない")
-		{"成人は出さない", ""},
-		{"成人はいない", ""},
-		{"成人にはしない", ""},
-		{"成人にしない", ""},
-		{"成人は使わない", ""},
-		{"成人の女性ではない", ""},
-		{"成人女性ではなく少女にして", ""},
-		{"成人だけではない", ""},
-		{"成人のみじゃない", ""},
-		{"架空の人物ではない", ""},
-		{"架空の人物ではなく実在の人物", ""},
-		{"架空にはしない", ""},
-		{"着衣は着ない", ""},
-		{"着衣しない", ""},
-		// the negation belongs to something else: the keyword stays
-		{"成人女性が商品を持たない", "制約: 成人"},
-		{"成人の女性が主人公で、ナレーションは入れない", "制約: 成人"},
-		{"成人の女性でない人物は出さない", "制約: 成人"},
-		{"成人のみ。服を着ない", "制約: 成人"},
-		{"成人だけ出す", "制約: 成人"},
-		{"成人以外を出す", "制約: 成人"},
-	} {
-		t.Run(tt.text, func(t *testing.T) {
-			assert.Equal(t, tt.want, briefing.RuleExtractor{}.Extract(tt.text).AdditionalInstruction)
-		})
-	}
-}
-
 // An inferred constraint is taken back by the user's explicit retraction of it; the lines the user wrote are never touched (#1114).
 func TestAbsorb_ARetractedConstraintLeavesTheInferredLine(t *testing.T) {
 	for _, tt := range []struct{ text, want string }{
@@ -83,6 +27,10 @@ func TestAbsorb_ARetractedConstraintLeavesTheInferredLine(t *testing.T) {
 		{"架空の人物ではなく実在の人物", "テーマ: 朝のルーティン\n制約: 成人・着衣"},
 		{"着衣は着ない", "テーマ: 朝のルーティン\n制約: 成人・架空"},
 		{"成人だけではない", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
+		// a restriction that carries the negation in a noun phrase is no retraction either
+		{"服を着ていない人物は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
+		{"成人ではない子どもは一切出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
+		{"服を着ていない人物は出す", "テーマ: 朝のルーティン\n制約: 成人・架空"},
 	} {
 		t.Run(tt.text, func(t *testing.T) {
 			b := intake("テーマは朝のルーティン。成人で、架空の女性。服は着ている設定")

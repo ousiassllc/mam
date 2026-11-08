@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/constraint"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -33,6 +34,9 @@ var (
 	whitespaceRe = regexp.MustCompile(`\s+`)
 	urlRe        = regexp.MustCompile(`https?://[^\s、。」）)]+`)
 	platformRe   = regexp.MustCompile(`\b(Instagram|YouTube|TikTok|Facebook|LINE|Twitter|Reels|Shorts)\s*(広告|投稿|リール|ショート|CM)?`)
+	// shortFormRe is the short video format of a platform the Brief proposes a format for ("YouTube Shorts", "InstagramのReels", "YouTubeのショート動画",
+	// "Instagramリール"): it names more than the bare platform does, so objective prefers it. "Instagram広告" is none: it has no table row.
+	shortFormRe = regexp.MustCompile(`(?i)(?:(YouTube)\s*(?:の|で|に|向けの?|用の?)?\s*(Shorts|ショート)|(Instagram)\s*(?:の|で|に|向けの?|用の?)?\s*(Reels|リール))`)
 	// labelledRe reads "ターゲット: 主婦", "雰囲気は ゆるい": a value the user names by its item, whatever the value is. The item may follow a clause that
 	// runs on into it ("主人公は猫でターゲットは社会人").
 	labelledRe = regexp.MustCompile(`(?:^|[\s、。,]|[でて])(ターゲット|対象|Target|雰囲気|トーン|Mood|目的|用途|Objective)(?:は|：|:)\s*([^\s。、,]{1,60})`)
@@ -118,13 +122,7 @@ func instruction(text string) string {
 			lines = append(lines, ThemePrefix+theme)
 		}
 	}
-	var labels []string
-	for _, r := range constraintRules {
-		if constraintHit(text, r.keywords) {
-			labels = append(labels, r.value)
-		}
-	}
-	if len(labels) > 0 {
+	if labels := constraint.Stated(text); len(labels) > 0 {
 		lines = append(lines, ConstraintPrefix+strings.Join(labels, "・"))
 	}
 	return strings.Join(lines, "\n")
@@ -141,9 +139,35 @@ func firstRule(text string, rules []keywordRule) string {
 	return ""
 }
 
+// shortForm is the name of the short video format the text names ("YouTube Shorts", "Instagram Reels"; "YouTubeショート", "Instagramリール" as the user wrote
+// the format), and where it starts in the text ("" and -1 when the text names none).
+func shortForm(text string) (name string, at int) {
+	m := shortFormRe.FindStringSubmatchIndex(text)
+	if m == nil {
+		return "", -1
+	}
+	platform, format := "Instagram", ""
+	if m[2] >= 0 {
+		platform, format = "YouTube", text[m[4]:m[5]]
+	} else {
+		format = text[m[8]:m[9]]
+	}
+	switch strings.ToLower(format) {
+	case "shorts":
+		format = " Shorts"
+	case "reels":
+		format = " Reels"
+	}
+	return platform + format, m[0]
+}
+
 func objective(text string) string {
-	if m := platformRe.FindStringSubmatch(text); m != nil {
-		return m[1] + m[2]
+	loc := platformRe.FindStringSubmatchIndex(text)
+	if name, at := shortForm(text); name != "" && (loc == nil || at <= loc[0]) {
+		return name
+	}
+	if loc != nil {
+		return text[loc[2]:loc[3]] + text[max(loc[4], 0):max(loc[5], 0)]
 	}
 	for _, k := range objectiveKeywords {
 		if strings.Contains(text, k) {

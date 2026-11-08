@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/constraint"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -124,7 +125,7 @@ func Absorb(b *domain.Brief, extracted domain.Brief, text string) {
 	inferred := source == domain.BriefSourceInferred
 	current := b.AdditionalInstruction
 	if inferred {
-		current = retractConstraints(current, retractedConstraints(text))
+		current = constraint.Retract(current, constraint.Retracted(text))
 	}
 	if merged := mergeInstruction(current, extracted.AdditionalInstruction, inferred); merged != b.AdditionalInstruction {
 		b.AdditionalInstruction = merged
@@ -165,12 +166,12 @@ func mergeInstruction(current, extra string, inferred bool) string {
 	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
-// joinConstraints is the constraint line holding the labels of both, in the order of constraintRules.
+// joinConstraints is the constraint line holding the labels of both, in the order of constraint.Labels.
 func joinConstraints(a, b string) string {
 	var labels []string
-	for _, r := range constraintRules {
-		if strings.Contains(a, r.value) || strings.Contains(b, r.value) {
-			labels = append(labels, r.value)
+	for _, l := range constraint.Labels {
+		if strings.Contains(a, l) || strings.Contains(b, l) {
+			labels = append(labels, l)
 		}
 	}
 	return ConstraintPrefix + strings.Join(labels, "・")

@@ -66,6 +66,45 @@ func TestRecommend_TableByPlatform(t *testing.T) {
 	}
 }
 
+// The platform names users write for the short formats ("YouTube Shorts", "InstagramのReels") reach the table through the extractor: they read as the format,
+// not as the bare platform, which has no proposal of its own.
+func TestAbsorb_ShortFormPlatformsAreProposedTheirFormat(t *testing.T) {
+	tests := []struct {
+		text, objective, duration string
+	}{
+		{"YouTube Shortsに投稿したい", "YouTube Shorts", "30秒"},
+		{"youtube shortsに出す", "YouTube Shorts", "30秒"},
+		{"YouTubeのショート動画", "YouTubeショート", "30秒"},
+		{"YouTubeショートで公開", "YouTubeショート", "30秒"},
+		{"Instagram Reels向け", "Instagram Reels", "15秒"},
+		{"InstagramのReels", "Instagram Reels", "15秒"},
+		{"Instagramのリール動画", "Instagramリール", "15秒"},
+		{"Reels向け", "Reels", "15秒"},
+		{"Shortsに出す", "Shorts", "30秒"},
+		{"TikTokに出す", "TikTok", "15秒"},
+		{"TikTokとYouTube Shortsに出す", "TikTok", "15秒"},
+		{"YouTube Shortsと、TikTokにも出す", "YouTube Shorts", "30秒"},
+		// no row of the table: nothing is proposed
+		{"Instagram広告にしたい", "Instagram広告", ""},
+		{"YouTube広告にしたい", "YouTube広告", ""},
+		{"Instagramに投稿したい", "Instagram", ""},
+		{"YouTubeにアップしたい", "YouTube", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			b := intake(tt.text)
+			assert.Equal(t, tt.objective, b.Objective)
+			assert.Equal(t, tt.duration, b.Duration)
+			if tt.duration == "" {
+				assert.Empty(t, b.AspectRatio, "an unknown platform gets no proposal")
+			} else {
+				assert.Equal(t, "9:16", b.AspectRatio)
+				assert.Equal(t, domain.BriefSourceRecommended, b.SourceOf(domain.BriefDuration))
+			}
+		})
+	}
+}
+
 func TestRecommend_NeverReplacesAValueTheUserStatedAndFollowsThePlatform(t *testing.T) {
 	b := domain.Brief{Objective: "TikTok", Duration: "45秒"}
 	briefing.Recommend(&b)
