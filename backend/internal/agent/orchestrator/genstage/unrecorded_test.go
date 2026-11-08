@@ -2,6 +2,8 @@ package genstage_test
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,40 +18,103 @@ import (
 // hugeID sorts after every message ID this instance issues (UUIDv7): the ID a bundle can carry.
 const hugeID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
-// A bundle carries the chat cards of a Project but not generation_approval. A card with no record is never an approval (#1108, kept by #1116): outside
-// AUTO nothing starts by itself whatever such a card says, and the answer on the card does not start a Shot or ask for a new card.
-func TestGenerationApproval_AnApprovedCardWithoutARecordIsNeverTheApproval(t *testing.T) {
-	t.Parallel()
-	r := newRig(t)
-	id := r.planned(domain.ConfirmFullAuto)
-	cardID := r.legacyCard(id, domain.ApprovalApproved)
-	r.withoutRecord(cardID)
-	r.setMode(id, domain.ModeDirector)
-
+// seen is what the gate finds and does for a Project at one look (the verdict, the phase, the starts it would make, the stuck Shots) and what the Orchestrator
+// then started, with every Shot named by its number: the Shot IDs differ between two Projects.
+func (r *rig) seen(id string) string {
+	r.t.Helper()
+	ctx := context.Background()
+	number := map[string]int{}
+	for i, shotID := range r.shotIDs(id) {
+		number[shotID] = i + 1
+	}
+	a, err := r.gate.Assess(ctx, r.project1(id))
+	require.NoError(r.t, err)
+	phase, stuck, err := r.gate.Phase(ctx, r.project1(id))
+	require.NoError(r.t, err)
+	var next, stuckNumbers, started []string
+	for _, st := range a.Next {
+		next = append(next, fmt.Sprintf("%s#%d", st.Stage, number[st.Line.ShotID]))
+	}
+	for shotID := range stuck {
+		stuckNumbers = append(stuckNumbers, fmt.Sprint(number[shotID]))
+	}
+	slices.Sort(stuckNumbers)
+	before := len(r.gen.started())
 	r.handle(id)
-	r.handle(id)
-
-	assert.Empty(t, r.gen.started(), "an approval that nobody can show starts no Reference Pack, Keyframe or Video")
-	assert.Equal(t, 1, r.cards(id), "no new card is asked for")
-	assert.Zero(t, r.announcements())
-	phase, _, err := r.gate.Phase(context.Background(), r.project1(id))
-	require.NoError(t, err)
-	assert.Equal(t, mainline.PhaseManual, phase, "the screen says the user starts each Shot")
+	for _, c := range r.gen.started()[before:] {
+		started = append(started, fmt.Sprintf("%s#%d", c.stage, number[c.shotID]))
+	}
+	return fmt.Sprintf("verdict=%d phase=%q next=%v stuck=%v started=%v", a.Verdict, phase, next, stuckNumbers, started)
 }
 
-// In an AUTO Project the same card changes nothing either: what starts the generation is AUTO (the consent), so the Project goes on exactly as one that
-// never had a card, and no new card is asked for.
-func TestUnrecordedCard_AnApprovedCardIsNotWhatStartsTheGenerationInAuto(t *testing.T) {
+// budgetStop leaves the first Shot of the Project stopped by the budget ceiling, as the gate does when a start would pass it.
+func (r *rig) budgetStop(id string) {
+	r.t.Helper()
+	shotID := r.shotIDs(id)[0]
+	claimed, err := r.launches.Claim(context.Background(), shotID, genapprovalrepo.StageReferencePack)
+	require.NoError(r.t, err)
+	require.True(r.t, claimed)
+	require.NoError(r.t, r.launches.Stopped(context.Background(), shotID, genapprovalrepo.StageReferencePack, genapprovalrepo.OutcomeBudget))
+}
+
+// addShot adds a Shot to the Scene / Shot plan of the Project.
+func (r *rig) addShot(id string) {
+	r.t.Helper()
+	scenes, err := r.plans.ListScenes(context.Background(), id)
+	require.NoError(r.t, err)
+	_, err = r.plans.CreateShot(context.Background(), domain.Shot{SceneID: scenes[0].ID, Objective: "追加", Duration: 4})
+	require.NoError(r.t, err)
+}
+
+// A bundle carries the chat cards of a Project but not generation_approval. This pins the invariant that a card is never the start condition (#1108, kept
+// by #1116): a card with no record, whatever it says, is not an approval that anybody can show.
+//
+// In AUTO the Project must go on exactly as one that never had a card: the same verdict, the same phase, the same starts, the same stuck Shots, and no new
+// card is asked for. This is compared with a twin Project that has no card, so the test fails when the card changes anything (it would, were it to start
+// the generation by itself, hold it back, or stand in for the consent). Outside AUTO, where the gate returns an empty assessment anyway, the same card
+// starts nothing and asks for nothing either.
+func TestGenerationApproval_AnApprovedCardWithoutARecordIsNeverTheApproval(t *testing.T) {
 	t.Parallel()
-	r := newRig(t)
-	id := r.planned(domain.ConfirmFullAuto)
-	r.withoutRecord(r.legacyCard(id, domain.ApprovalApproved))
+	prepare := map[string]func(r *rig, id string){
+		"the plan as the card was made":        func(*rig, string) {},
+		"a Shot stopped by the budget ceiling": (*rig).budgetStop,
+		"a changed plan":                       (*rig).addShot,
+	}
+	for name, change := range prepare {
+		t.Run("AUTO, "+name, func(t *testing.T) {
+			t.Parallel()
+			r := newRig(t)
+			bare := r.planned(domain.ConfirmFullAuto)
+			carded := r.planned(domain.ConfirmFullAuto)
+			r.withoutRecord(r.legacyCard(carded, domain.ApprovalApproved))
+			change(r, bare)
+			change(r, carded)
 
-	r.handle(id)
+			want := r.seen(bare)
+			got := r.seen(carded)
 
-	assert.Equal(t, 3, r.gen.count(genapprovalrepo.StageReferencePack))
-	assert.Equal(t, 1, r.cards(id), "no new card is asked for")
-	assert.Equal(t, 1, r.announcements(), "the start is announced as the AUTO consent")
+			require.NotContains(t, want, "next=[]", "the twin has starts to make: the comparison has something to compare")
+			assert.Equal(t, want, got, "a card with no record changes nothing")
+			assert.Equal(t, 1, r.cards(carded), "no new card is asked for")
+		})
+	}
+
+	t.Run("DIRECTOR", func(t *testing.T) {
+		t.Parallel()
+		r := newRig(t)
+		id := r.planned(domain.ConfirmFullAuto)
+		r.withoutRecord(r.legacyCard(id, domain.ApprovalApproved))
+		r.setMode(id, domain.ModeDirector)
+
+		r.handle(id)
+		r.handle(id)
+
+		assert.Empty(t, r.gen.started(), "an approval that nobody can show starts no Reference Pack, Keyframe or Video")
+		assert.Equal(t, 1, r.cards(id), "no new card is asked for")
+		phase, _, err := r.gate.Phase(context.Background(), r.project1(id))
+		require.NoError(t, err)
+		assert.Equal(t, mainline.PhaseManual, phase, "the screen says the user starts each Shot")
+	})
 }
 
 // A pending card with no record in an AUTO Project is closed by the system like any other pending card of v0.1.34 (no answer of the user is made up);

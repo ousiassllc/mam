@@ -3,9 +3,10 @@ package genstage
 import "github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 
 // A start refused because no model can be used (modelroute.ErrNoUsableModel) is the state of the models, not of a Shot, and it lasts until the user
-// registers a key or changes the assignment. The gate tells the cause once and remembers it (in memory, per Project): while the same cause comes back
-// the later looks try the next Shot, give its claim back and say nothing, so that each look neither marks another Shot nor posts the notice again.
-// A start that succeeds, or another cause, ends the silence. A process started again tells the cause once more.
+// registers a key or changes the assignment. The gate tells each cause once and remembers the causes (in memory, per Project). A round goes on past a
+// refusal: another Shot may need another purpose or media (a Keyframe-only Shot can run without the Reference Pack's image model). Of the Shots refused
+// for one cause only the first is marked failed and told; the others get their claim back and the later looks try them again, saying nothing. The causes
+// a round meets replace those of the looks before; a round that started something and met no refusal ends the silence. A restart tells them once more.
 
 // causeKey is what tells two refusals apart: the cause the user is told.
 func causeKey(err error) string {
@@ -15,22 +16,21 @@ func causeKey(err error) string {
 	return err.Error()
 }
 
-// noModelTold reports whether the cause of err was told already and nothing has changed since.
+// noModelTold reports whether the cause of err was told by a look before and nothing has changed since.
 func (g *Gate) noModelTold(projectID string, err error) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	told, ok := g.noModel[projectID]
-	return ok && told == causeKey(err)
+	return g.noModel[projectID][causeKey(err)]
 }
 
-// noModelTell remembers the cause of err as told.
-func (g *Gate) noModelTell(projectID string, err error) {
+// noModelRemember keeps the causes a round met as the ones told (they replace those of the looks before).
+func (g *Gate) noModelRemember(projectID string, causes map[string]bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.noModel[projectID] = causeKey(err)
+	g.noModel[projectID] = causes
 }
 
-// noModelCleared forgets the cause told for the Project: a start was made, so the models can be used again.
+// noModelCleared forgets the causes told for the Project: a round made a start and met no refusal, so the models can be used again.
 func (g *Gate) noModelCleared(projectID string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()

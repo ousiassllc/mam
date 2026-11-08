@@ -65,20 +65,28 @@ type refused struct {
 // round is what the starts of one look came to.
 type round struct {
 	started []Step
-	// budget is the start the budget ceiling refused and noModel the start refused because no model can be used: each ends the round. failed are the
-	// starts that failed for another reason, each its own.
-	budget, noModel *refused
-	failed          []refused
+	// budget is the start the budget ceiling refused: it ends the round. noModel are the first starts of each cause (not told before) refused because no
+	// model can be used, and causes all the causes the round met. failed are the starts that failed for another reason, each its own.
+	budget  *refused
+	noModel []refused
+	causes  map[string]bool
+	failed  []refused
 }
 
 // launch makes the starts of the plan. Each is claimed first: a claim that exists already (a look before, a process before) is skipped, so a Shot is
 // never started twice. A Shot that is busy (started by hand) is left for the next look. The first start the budget ceiling refuses ends the round:
-// nothing more is started until the user answers the Escalation. So does the first start refused because no model can be used
-// (modelroute.ErrNoUsableModel): that is the state of the models and not of the Shot, so the Shots after it would be refused for the same cause;
-// they stay unclaimed for a later look.
+// nothing more is started until the user answers the Escalation. A start refused because no model can be used (modelroute.ErrNoUsableModel) is the
+// state of the models and not of the Shot, so it does not end the round: a Shot that needs another purpose or media may still run. Of the Shots
+// refused for one cause only the first is marked and told; the others are released, for a later look (nomodel.go).
 func (g *Gate) launch(ctx context.Context, p domain.Project, a Assessment) (bool, error) {
-	var r round
+	r := round{causes: map[string]bool{}}
 	err := g.run(ctx, p, a, &r)
+	switch {
+	case len(r.causes) > 0:
+		g.noModelRemember(p.ID, r.causes)
+	case len(r.started) > 0:
+		g.noModelCleared(p.ID)
+	}
 	done := context.WithoutCancel(ctx) // what was started is announced and what was refused is told, even when the job is cancelled
 	g.announce(done, p, a, r.started)
 	if rerr := g.report(done, p, r); err == nil {
@@ -104,7 +112,6 @@ func (g *Gate) run(ctx context.Context, p domain.Project, a Assessment, r *round
 		switch {
 		case err == nil:
 			r.started = append(r.started, s)
-			g.noModelCleared(p.ID)
 			if err := g.d.Repo.Started(ctx, s.Line.ShotID, s.Stage, job.ID); err != nil {
 				return err
 			}
@@ -116,16 +123,26 @@ func (g *Gate) run(ctx context.Context, p domain.Project, a Assessment, r *round
 			r.budget = &refused{s, err}
 			return nil
 		case errors.Is(err, modelroute.ErrNoUsableModel):
-			if g.noModelTold(p.ID, err) { // the user was told this cause and nothing changed since: the Shot is not marked, a later look tries it again
-				return g.d.Repo.Release(context.WithoutCancel(ctx), s.Line.ShotID, s.Stage)
+			if rerr := g.refuseNoModel(ctx, p, s, err, r); rerr != nil {
+				return rerr
 			}
-			r.noModel = &refused{s, err}
-			return nil
 		default:
 			r.failed = append(r.failed, refused{s, err})
 		}
 	}
 	return nil
+}
+
+// refuseNoModel handles a start refused because no model can be used. The first Shot of a cause that nobody was told yet is marked and told (report); a
+// Shot refused for a cause that was told already, by a look before or by this round, is not marked: it is given its claim back and tried again later.
+func (g *Gate) refuseNoModel(ctx context.Context, p domain.Project, s Step, err error, r *round) error {
+	first := !r.causes[causeKey(err)]
+	r.causes[causeKey(err)] = true
+	if first && !g.noModelTold(p.ID, err) {
+		r.noModel = append(r.noModel, refused{s, err})
+		return nil
+	}
+	return g.d.Repo.Release(context.WithoutCancel(ctx), s.Line.ShotID, s.Stage)
 }
 
 func (g *Gate) start(ctx context.Context, s Step) (domain.Job, error) {
@@ -137,8 +154,8 @@ func (g *Gate) start(ctx context.Context, s Step) (domain.Job, error) {
 
 // report tells the user about the starts that did not happen and keeps them from being tried again by themselves: the budget ceiling goes
 // to an Escalation (like the Retry Policy's limit), anything else to a notice. The Shot is left to the user. A start that was refused for a model
-// that cannot be used (the preflight of the Generation Orchestrator) is reported with its reason like any other failed start, but once for the round
-// (the Shots after it were not tried) and, for the same cause, once until a start succeeds (noModelTold).
+// that cannot be used (the preflight of the Generation Orchestrator) is reported with its reason like any other failed start, but once for each cause (the
+// Shots refused for the same cause are released, not marked: refuseNoModel) and, for the same cause, not again by the looks after it (noModelTold).
 func (g *Gate) report(ctx context.Context, p domain.Project, r round) error {
 	for _, f := range r.failed {
 		if err := g.markFailed(ctx, p, f); err != nil {
@@ -146,14 +163,14 @@ func (g *Gate) report(ctx context.Context, p domain.Project, r round) error {
 		}
 		g.tell(ctx, p, fmt.Sprintf("%s を自動では始められませんでした: %s\nこの Shot は自動では進めません。Shot を選んで手動で起動してください。", f.step.name(), generation.FailureReason(f.err)))
 	}
-	if r.noModel != nil {
-		if err := g.markFailed(ctx, p, *r.noModel); err != nil {
+	for _, f := range r.noModel {
+		if err := g.markFailed(ctx, p, f); err != nil {
 			return err
 		}
-		g.noModelTell(p.ID, r.noModel.err)
 		g.tell(ctx, p, fmt.Sprintf("%s を自動では始められませんでした: %s\nこの Shot は自動では進めません。Shot を選んで手動で起動してください。\n"+
-			"これは Shot ではなくモデルの状態が原因なので、ほかの Shot はまだ始めていません。モデルを使えるようにすると（API キーの登録・割り当ての変更）、次の確認で自動で続けます。同じ原因のお知らせは繰り返しません。",
-			r.noModel.step.name(), generation.FailureReason(r.noModel.err)))
+			"これは Shot ではなくモデルの状態が原因なので、同じ原因で始められない Shot は、失敗とは記録せずそのまま残しています。"+
+			"API キーを登録するか割り当てを直したあと、チャットに何かメッセージを送ると、残りの Shot を続けます。同じ原因のお知らせは繰り返しません。",
+			f.step.name(), generation.FailureReason(f.err)))
 	}
 	if r.budget == nil {
 		return nil

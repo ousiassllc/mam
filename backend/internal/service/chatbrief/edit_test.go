@@ -7,8 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/chatbrief"
 )
 
 // A request that states a theme and constraints but no Subject: the Additional Instruction holds only the extractor's lines.
@@ -108,4 +111,35 @@ func TestPostMessage_ReturnsTheQuestionCardsItClosed(t *testing.T) {
 	require.Len(t, ws.Updated, 1)
 	assert.Equal(t, open.ID, ws.Updated[0].ID)
 	assert.False(t, ws.Updated[0].Open)
+}
+
+// An imported summary card keeps the ID of its bundle, which can sort after every ID made here: "newest" is the order of this instance (rowid), so the
+// summary made here later is the one that can be answered, and the imported one is closed.
+func TestSummaryCards_AnImportedCardWithAHugeIDIsNotTheNewest(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	p, err := f.svc.Projects.Create(ctx, service.CreateProjectInput{Content: "美容液の縦型15秒CMを作りたい。上品な雰囲気で"})
+	require.NoError(t, err)
+	imported := domain.ChatMessage{
+		ID: "ffffffff-ffff-ffff-ffff-ffffffffffff", Role: domain.RoleAssistant, Kind: domain.KindQuestion,
+		RefType: domain.RefBriefConfirm, RefID: domain.RefBriefConfirm,
+		Content: domain.EncodeCardBody(domain.CardBody{Text: "Brief をまとめました。この内容でよいですか？", Options: []string{briefing.ConfirmOption}}),
+	}
+	require.NoError(t, repository.NewProjectRepository(f.db).Apply(ctx, repository.Turn{ProjectID: p.ID, Messages: []domain.ChatMessage{imported}}))
+
+	f.post(t, p.ID, "やっぱりミニマルな雰囲気にして", "") // changes the Brief: a new summary, made here after the imported one
+
+	latest, err := chatbrief.LatestSummaryID(ctx, repository.NewChatRepository(f.db), p.ID)
+	require.NoError(t, err)
+	assert.NotEqual(t, imported.ID, latest, "the card made here later is the newest, whatever IDs they bear")
+	thread, err := f.svc.Chat.Workspace(ctx, p.ID)
+	require.NoError(t, err)
+	last := thread.Messages[len(thread.Messages)-1]
+	require.Equal(t, domain.RefBriefConfirm, last.RefType)
+	assert.True(t, last.Open, "the summary made here can be answered")
+	for _, m := range thread.Messages {
+		if m.ID == imported.ID {
+			assert.False(t, m.Open, "the imported summary is older")
+		}
+	}
 }

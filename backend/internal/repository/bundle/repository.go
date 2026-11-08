@@ -222,6 +222,9 @@ func (r *Repository) Import(ctx context.Context, data domain.BundleData) error {
 		if err := checkBundleOwnership(ctx, tx, data); err != nil {
 			return err
 		}
+		if err := dropImportedAuto(ctx, tx, data.ProjectID); err != nil {
+			return err
+		}
 		return warnMissingWorkflows(ctx, tx, data.ProjectID)
 	})
 	if errors.Is(err, repository.ErrConflict) || errors.Is(err, ErrInvalid) {

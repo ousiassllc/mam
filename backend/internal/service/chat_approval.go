@@ -29,9 +29,8 @@ func (s *ChatService) approvalTurn(ctx context.Context, project domain.Project, 
 		status, ack = domain.ApprovalChangesRequested, approvalack.ChangesRequested(card, project.Mode, unrecorded)
 	}
 	turn := repository.Turn{
-		ProjectID: project.ID,
-		Approval:  &repository.ApprovalUpdate{MessageID: card.ID, Status: status},
-		Messages:  []domain.ChatMessage{user, assistantText(ack)},
+		ProjectID: project.ID, Approval: &repository.ApprovalUpdate{MessageID: card.ID, Status: status},
+		Messages: []domain.ChatMessage{user, assistantText(ack)},
 	}
 	if card.IsBlockingApproval() {
 		next := approvalack.ResumeState(card, decision == DecisionApprove)
@@ -40,7 +39,8 @@ func (s *ChatService) approvalTurn(ctx context.Context, project domain.Project, 
 			turn.CheckpointChanges = true
 		}
 	}
-	return turn, s.settlePromotion(ctx, card, &turn)
+	err = s.settlePromotion(ctx, card, &turn) // settlePromotion fills turn: read it after the call
+	return turn, err
 }
 
 // RespondApproval answers an Approval card with a button (POST /projects/:id/approvals/:messageId).

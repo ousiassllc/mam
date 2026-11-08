@@ -75,12 +75,17 @@ func TestChangesRequested_ALegacyGenerationCardSaysWhatLiftsTheDecline(t *testin
 	recorded := approvalack.ChangesRequested(card, domain.ModeAuto, false)
 	unrecorded := approvalack.ChangesRequested(card, domain.ModeAuto, true)
 	director := approvalack.ChangesRequested(card, domain.ModeDirector, false)
+	directorUnrecorded := approvalack.ChangesRequested(card, domain.ModeDirector, true)
 
 	assert.Equal(t, mainline.DeclinedAck, recorded)
 	assert.Contains(t, recorded, "計画（")
 	assert.Equal(t, mainline.DeclinedAckUnrecorded, unrecorded)
 	assert.Contains(t, unrecorded, "メッセージを送ってください")
 	assert.NotContains(t, unrecorded, "計画（", "a change of the plan does not lift a decline that has no record")
-	assert.Equal(t, mainline.DeclinedAckNotAuto, director)
+	assert.Equal(t, mainline.DeclinedAckNotAuto(false), director)
 	assert.Contains(t, director, "AUTO ではない")
+	assert.Contains(t, director, "計画（", "a decline with a record is lifted by a change of the plan after the switch to AUTO as well as by a message")
+	assert.Equal(t, mainline.DeclinedAckNotAuto(true), directorUnrecorded)
+	assert.Contains(t, directorUnrecorded, "メッセージを送る")
+	assert.NotContains(t, directorUnrecorded, "計画（", "without a record only a message lifts it")
 }

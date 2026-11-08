@@ -54,8 +54,8 @@ type Deps struct {
 	Logger   *slog.Logger
 }
 
-// Gate is the automatic start of the generation. What it does is derived from what is stored; the one thing it keeps in memory is the cause of a
-// refusal for a model that cannot be used that the user was told (nomodel.go). Until a Generator is set (SetGenerator) it is off: the Orchestrator
+// Gate is the automatic start of the generation. What it does is derived from what is stored; the one thing it keeps in memory is the causes of the
+// refusals for a model that cannot be used that the user was told (nomodel.go). Until a Generator is set (SetGenerator) it is off: the Orchestrator
 // stops after the Scene / Shot plan and the user starts each Shot by hand.
 type Gate struct {
 	d       Deps
@@ -63,7 +63,7 @@ type Gate struct {
 	builder genplan.Builder
 
 	mu      sync.Mutex
-	noModel map[string]string // Project ID -> the cause of the refusal for a model that cannot be used, as told
+	noModel map[string]map[string]bool // Project ID -> the causes of the refusals for a model that cannot be used, as told
 }
 
 // New returns a Gate that is off.
@@ -71,7 +71,7 @@ func New(d Deps) *Gate {
 	if d.Logger == nil {
 		d.Logger = slog.New(slog.DiscardHandler)
 	}
-	return &Gate{d: d, noModel: map[string]string{}}
+	return &Gate{d: d, noModel: map[string]map[string]bool{}}
 }
 
 // SetGenerator turns the gate on. config is the Model Adapter's current setting (the prices). Call it while the application is wired, before the job

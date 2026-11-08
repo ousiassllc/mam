@@ -76,7 +76,7 @@ func ChangesRequested(card domain.ChatMessage, mode domain.Mode, unrecorded bool
 	case cp == domain.CheckpointScript:
 		return "修正依頼を受け付けました。コメントを反映して脚本を作り直します。"
 	case cp == domain.CheckpointGeneration && mode != domain.ModeAuto:
-		return mainline.DeclinedAckNotAuto
+		return mainline.DeclinedAckNotAuto(unrecorded)
 	case cp == domain.CheckpointGeneration && unrecorded:
 		return mainline.DeclinedAckUnrecorded
 	case cp == domain.CheckpointGeneration:
