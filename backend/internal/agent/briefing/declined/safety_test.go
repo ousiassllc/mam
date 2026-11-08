@@ -55,6 +55,7 @@ func TestSubject_AProtagonistWithARefusalThatEndsInANominalizerKeepsTheSubject(t
 var bareRequestsWithATail = []string{
 	"動画を作りたいけど", "動画を作りたくて", "動画を作りたいんですけど", "動画を作りたいなと思っています", "動画を作りたいと思います", "動画を作りたいけど暴力は出さない",
 	"動画を作りたいけれど", "動画を作りたいけれども", "動画を作りたいのですけど", "動画を作りたいなと思う", "動画を作りたいなと思ってます", "動画を撮りたくて", "動画を作りたいんです",
+	"動画を作りたいです", "動画を作りたいです。", "動画を作りたいです！", "動画を撮りたいです", "動画を作成したいです", "ビデオを作りたいです", "動画を作りたいですが",
 }
 
 func TestSubject_ABareRequestWithAConnectiveOrHedgeTailIsAskedAgain(t *testing.T) {
