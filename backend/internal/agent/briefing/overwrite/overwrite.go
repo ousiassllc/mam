@@ -179,6 +179,17 @@ func StripItems(text string, read func(clause string) string) string {
 	return strings.Join(kept, "、") + text[end[0]:]
 }
 
+// fillsEmpty reports whether got reads a value in a place (a "|"-separated field of the read) where full reads none.
+func fillsEmpty(full, got string) bool {
+	g := strings.Split(got, "|")
+	for i, f := range strings.Split(full, "|") {
+		if f == "" && i < len(g) && g[i] != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // pureItem reports whether the clause is exactly an item value with at most a particle (see StripItems).
 func pureItem(clause string, read func(string) string) bool {
 	if !itemWord.MatchString(clause) {
@@ -190,10 +201,13 @@ func pureItem(clause string, read func(string) string) bool {
 	if full == "" || len(rs) < 2 || labelled.MatchString(stem) {
 		return false
 	}
-	for i := range rs { // every character counts: a take-back or a noun between two values is redundant and keeps the clause
-		// deleting a character joins its neighbours ("16:9猫30秒" → "16:930秒", "CM猫TikTok" → "CMTikTok"), which can change what is read for the worse: separate them instead too
-		if read(string(rs[:i])+string(rs[i+1:])) == full || read(string(rs[:i])+"、"+string(rs[i+1:])) == full {
-			return false
+	for i := range rs {
+		// deleting a character joins its neighbours ("16:9猫30秒" → "16:930秒", "CM猫TikTok" → "CMTikTok"), which can change what is read for the worse: separate them instead too.
+		// A character the clause cannot do without loses a value when it goes; one whose going FILLS a value that was empty ("30秒xTikTok") was hiding it.
+		for _, edit := range []string{string(rs[:i]) + string(rs[i+1:]), string(rs[:i]) + "、" + string(rs[i+1:])} {
+			if got := read(edit); got == full || fillsEmpty(full, got) {
+				return false
+			}
 		}
 	}
 	return true
