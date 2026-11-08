@@ -187,3 +187,29 @@ func TestApplyAnswer_AButtonAlwaysPicksItsOwnValue(t *testing.T) {
 		})
 	}
 }
+
+// A plain noun that merely CONTAINS a piece of a fragment word ("泣いている赤ちゃん", "たらこ", "Twitter", "ミケ（猫）") is no fragment: the change is not dropped silently
+// (review: the user got "読み取れる内容がありませんでした" and no card). Replaced or proposed, never lost.
+func TestAbsorb_ANounThatContainsAFragmentPieceIsNotDropped(t *testing.T) {
+	for _, v := range []string{"泣いている赤ちゃん", "歌っている猫", "笑っている女の子", "ミケ（猫）", "Twitter", "Tiffany", "Newjeans", "たらこ", "とかげ", "はずかしがり屋の犬"} {
+		text := "主人公を" + v + "に変更して"
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.True(t, b.Subject == v || b.ProposedSubject == v, "replaced or proposed, not lost: S=%q P=%q", b.Subject, b.ProposedSubject)
+		})
+	}
+}
+
+// A list made with a symbol is no candidate either.
+func TestAbsorb_ASymbolListIsNotProposed(t *testing.T) {
+	for _, v := range []string{"犬・猫", "犬/猫", "犬／猫", "犬&猫", "犬+猫"} {
+		text := "主人公を" + v + "に変更して"
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+			assert.Empty(t, b.ProposedSubject)
+		})
+	}
+}

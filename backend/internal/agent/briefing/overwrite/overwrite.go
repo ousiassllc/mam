@@ -86,7 +86,7 @@ var (
 	predicate   = regexp.MustCompile(`(?:ない|まま|かも)$`)
 	sentenceEnd = regexp.MustCompile(`[。.!！?？\n]`)
 	// unfit is in a phrase that is a list, a guess, a hedge or a placeholder, not one Subject: "犬か猫", "犬かな", "犬w", "犬のはず", "犬など".
-	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|とか|など|あたり|以外|つもり|はず|[wｗ?？()（）]|[ねよ]$|(?:^|[^A-Za-z])(?i:or|and)(?:$|[^A-Za-z])|\p{Han}[うくぐすつぶむる]$|なくて|ません|ました|ている|ていた|たい$|[、,。\s]|(?:にして|にする|にします|して|します|なら|たら|けど|ので|から|場合)|保留|確認|調整|相談|検討|次第|未確定|未入力|後日|上記|下記|以下|それぞれ|両者|全員|みんな|別の|他の|例の|前の|前回|候補|番目|^\p{Nd}+$|(?i:pending|tba|tbc|later|temp|lorem|dummy|sample|default|generic|blank|empty|any|random|undefined|todo)|[〇●○]`)
+	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|[\p{Han}\p{Katakana}]とか|とか$|など|あたり|以外|つもり|はず$|[?？]|[wｗ]$|[・/／&+]|[ねよ]$|(?:^|[^A-Za-z])(?i:or|and)(?:$|[^A-Za-z])|\p{Han}[うくぐすつぶむる]$|なくて|ません|ました|たい$|[、,。\s]|(?:にして|にする|にします|して$|して[^い]|します|なら$|たら$|けど|ので|から$|場合)|保留|確認|調整|相談|検討|次第|未確定|未入力|後日|上記|下記|以下|それぞれ|両者|全員|みんな|別の|他の|例の|前の|前回|候補|番目|^\p{Nd}+$|^(?i:pending|tba|tbc|later|temp|lorem|dummy|sample|default|generic|blank|empty|any|anything|random|undefined|todo)$|[〇●○]`)
 	// placeholder is a word that points at something else instead of naming it, or marks nothing filled in.
 	placeholder = regexp.MustCompile(`^(?:[こそあど](?:れ|こ|ちら|っち|んな)|ぜんぶ|すべて|りょうほう|てきとう|ランダム|任意|両方|全部|前者|後者|逆|元|適当|保留|仮|ダミー|サンプル|テスト|未設定|白紙|空|デフォルト|標準|(?i:or|and|tbd|null|none|na|test|x+))$`)
 	// hedgeLead begins a value (the new Subject or the denied one) that is a hedge or a time word about the whole statement, not a Subject.
