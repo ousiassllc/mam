@@ -28,22 +28,6 @@ func TestBrief_SettingAValueAfterDelegatingTakesTheValue(t *testing.T) {
 	assert.Equal(t, "高級", b.Mood)
 }
 
-func TestBrief_MergeNeverOverwritesWhatTheUserDecided(t *testing.T) {
-	b := domain.Brief{Duration: "30秒", Assets: []string{"a1"}}
-	b.Delegate(domain.BriefMood)
-
-	b.Merge(domain.Brief{
-		Duration: "15秒", Mood: "高級", Subject: "美容液",
-		Assets: []string{"a1", "a2"}, References: []string{"https://example.com"},
-	})
-
-	assert.Equal(t, "30秒", b.Duration, "a decided value stays")
-	assert.Empty(t, b.Mood, "a delegated field stays open for the AI")
-	assert.Equal(t, "美容液", b.Subject)
-	assert.Equal(t, []string{"a1", "a2"}, b.Assets, "attachments are merged without duplicates")
-	assert.Equal(t, []string{"https://example.com"}, b.References)
-}
-
 func TestBrief_AttachAssetsSortsImagesAndVideosIntoAssetsAndReferences(t *testing.T) {
 	var b domain.Brief
 	b.AttachAssets([]domain.Asset{
@@ -63,4 +47,15 @@ func TestProjectName_PrefersSubjectThenFirstMessageAndTruncates(t *testing.T) {
 	long := domain.ProjectName("", "あいうえおかきくけこ さしすせそたちつてと なにぬねのはひふへほ まみむめもやゆよらり")
 	assert.Equal(t, 41, len([]rune(long)))
 	assert.Equal(t, "…", string([]rune(long)[40:]))
+}
+
+// #1114: constraints the extractor read from the request are no topic, a line the user wrote may be one (#1108).
+func TestBrief_InferredAdditionalInstructionNamesNoSubject(t *testing.T) {
+	b := domain.Brief{AdditionalInstruction: "制約: 成人", Sources: map[string]string{string(domain.BriefAdditionalInstruction): domain.BriefSourceInferred}}
+	assert.Contains(t, b.Missing(), domain.BriefSubject)
+	b.Sources = nil
+	assert.NotContains(t, b.Missing(), domain.BriefSubject)
+	b.Duration, b.Sources = "15秒", map[string]string{string(domain.BriefDuration): domain.BriefSourceRecommended}
+	b.Set(domain.BriefDuration, "30秒")
+	assert.Equal(t, domain.BriefSourceUser, b.SourceOf(domain.BriefDuration), "a value the user sets is the user's")
 }

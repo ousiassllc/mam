@@ -111,7 +111,7 @@ func (r *ChatRepository) LatestOpenQuestion(ctx context.Context, projectID strin
 	return &m, nil
 }
 
-// ListBriefQuestions returns the Brief question cards asking about the given fields, in thread order.
+// ListBriefQuestions returns the Brief question cards asking about the given fields (the summary card of the Brief is asked about as domain.RefBriefConfirm), in thread order.
 func (r *ChatRepository) ListBriefQuestions(ctx context.Context, projectID string, fields []string) ([]domain.ChatMessage, error) {
 	if len(fields) == 0 {
 		return nil, nil
@@ -121,7 +121,7 @@ func (r *ChatRepository) ListBriefQuestions(ctx context.Context, projectID strin
 		args = append(args, f)
 	}
 	messages, err := queryAll(ctx, r.db.Reader(), scanMessage,
-		messageSelect+` WHERE project_id = ? AND kind = 'question' AND ref_type = 'brief_field' AND ref_id IN (`+
+		messageSelect+` WHERE project_id = ? AND kind = 'question' AND ref_type IN ('brief_field', 'brief_confirm') AND ref_id IN (`+
 			placeholders(len(fields))+`) ORDER BY id`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list brief questions: %w", err)

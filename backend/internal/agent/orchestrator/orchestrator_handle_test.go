@@ -174,10 +174,11 @@ func TestHandle_VisualDesignWithScenesIsANoOp(t *testing.T) {
 	assert.Equal(t, "Keep", scenes[0].Title)
 }
 
+// Below FULL AUTO the Brief must be confirmed (#1114): an item nobody decided is settled by the user before PLANNING starts.
 func TestHandle_DraftWithAMissingBriefItemDoesNotStart(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
-	id := f.project(t, seed{brief: domain.Brief{Subject: "美容液"}})
+	id := f.project(t, seed{level: domain.ConfirmKeyCheck, brief: domain.Brief{Subject: "美容液"}})
 
 	require.NoError(t, f.handle(context.Background(), id))
 

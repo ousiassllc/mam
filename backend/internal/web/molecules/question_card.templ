@@ -15,7 +15,7 @@ templ QuestionCard(m domain.ThreadMessage) {
 				for _, option := range domain.DecodeCardBody(m.Content).Options {
 					@atoms.ButtonFor(atoms.ToneNeutral, option, excerpt(m.ChatMessage), answerAttrs(m, option))
 				}
-				if m.RefType != domain.RefBriefField || domain.BriefField(m.RefID).CanDelegate() {
+				if offersDelegate(m) {
 					@atoms.ButtonFor(atoms.TonePrimary, domain.DelegateOption, excerpt(m.ChatMessage), answerAttrs(m, domain.DelegateOption))
 				}
 				if m.RefType == domain.RefContinue {

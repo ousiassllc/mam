@@ -14,6 +14,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/briefform"
 )
 
 var maxlengthLiteral = regexp.MustCompile(`maxlength"?\s*[:=]\s*"\d+"`)
@@ -64,7 +65,7 @@ func TestBranchView_LimitsTheDirection(t *testing.T) {
 }
 
 func TestBriefForm_LimitsTheAdditionalInstruction(t *testing.T) {
-	html := renderHTML(t, organisms.BriefForm(organisms.BriefFormData{Project: domain.Project{ID: "p1"}}))
+	html := renderHTML(t, briefform.Form(briefform.Data{Project: domain.Project{ID: "p1"}}))
 
 	assert.Equal(t, strconv.Itoa(domain.MaxMessageRunes), maxlengthOf(html, `id="brief-additional-instruction"`))
 }

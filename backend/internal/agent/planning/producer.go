@@ -39,6 +39,7 @@ const producerSystem = systemPrefix + `あなたは Producer Agent です。Crea
   "logline": "一文で言う企画の要約",
   "concept": "コンセプトの説明（狙い・見せ方・訴求の軸）",
   "tone": "映像のトーン",
+  "protagonist": "この動画の主人公・題材（Brief の Subject と同じ人物・題材。性別・年齢・設定を変えない）",
   "structure": [
     {"name": "パートの名前（例: フック）", "description": "そのパートで見せること", "duration_seconds": 3}
   ]
@@ -52,7 +53,10 @@ func (p *Producer) Develop(ctx context.Context, in ConceptInput) (domain.Concept
 	if err != nil {
 		return domain.Concept{}, fmt.Errorf("producer: %w", err)
 	}
-	c.Title, c.Concept = strings.TrimSpace(c.Title), strings.TrimSpace(c.Concept)
+	c.Title, c.Concept, c.Protagonist = strings.TrimSpace(c.Title), strings.TrimSpace(c.Concept), strings.TrimSpace(c.Protagonist)
+	if problem := protagonistProblem(in.Brief, c.Protagonist); problem != "" {
+		return domain.Concept{}, fmt.Errorf("producer: %w", invalidf("%s", problem))
+	}
 	switch {
 	case c.Title == "":
 		return domain.Concept{}, fmt.Errorf("producer: %w", invalidf("title is empty"))
