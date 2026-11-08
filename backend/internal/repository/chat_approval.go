@@ -9,11 +9,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// LatestApprovalCard returns the newest approval card of the Project that points at the
-// artifact (ref_type, ref_id), or nil when none was posted.
+// LatestApprovalCard returns the newest approval card of the Project that points at the artifact (ref_type, ref_id), or nil
+// when none was posted. Newest is rowid, the order this instance issued the rows in: an imported card keeps the ID of its bundle.
 func (r *ChatRepository) LatestApprovalCard(ctx context.Context, projectID, refType, refID string) (*domain.ChatMessage, error) {
 	m, err := scanMessage(r.db.Reader().QueryRowContext(ctx, messageSelect+`
-		WHERE project_id = ? AND kind = 'approval' AND ref_type = ? AND ref_id = ? ORDER BY id DESC LIMIT 1`,
+		WHERE project_id = ? AND kind = 'approval' AND ref_type = ? AND ref_id = ? ORDER BY rowid DESC LIMIT 1`,
 		projectID, refType, refID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil

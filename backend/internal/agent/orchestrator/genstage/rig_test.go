@@ -141,12 +141,18 @@ func (r *rig) shotIDs(projectID string) []string {
 // Project holds in AWAITING_APPROVAL while it is pending. No code of this version posts one.
 func (r *rig) legacyCard(projectID string, status domain.ApprovalStatus) string {
 	r.t.Helper()
+	return r.legacyCardWithID(projectID, status, "")
+}
+
+// legacyCardWithID is legacyCard with the message ID given ("" is a new one): the card of an imported bundle keeps the ID it was made with.
+func (r *rig) legacyCardWithID(projectID string, status domain.ApprovalStatus, id string) string {
+	r.t.Helper()
 	ctx := context.Background()
 	plan, err := r.gate.Assess(ctx, domain.Project{ID: projectID, Mode: domain.ModeAuto, State: domain.StateVisualDesign}) // what the card showed
 	require.NoError(r.t, err)
 	state := domain.StateAwaitingApproval
 	card := domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindApproval, Content: "生成の承認: 旧方針のカード",
+		ID: id, Role: domain.RoleAssistant, Kind: domain.KindApproval, Content: "生成の承認: 旧方針のカード",
 		RefType: domain.CheckpointGeneration.RefType(), RefID: "fingerprint", ApprovalStatus: domain.ApprovalPending,
 	}
 	require.NoError(r.t, r.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: []domain.ChatMessage{card}, State: &state}))
@@ -161,6 +167,15 @@ func (r *rig) legacyCard(projectID string, status domain.ApprovalStatus) string 
 		r.answer(projectID, status)
 	}
 	return c.ID
+}
+
+// withoutRecord deletes the record of the card, which a bundle does not carry (generation_approval is not bundled): the card is left as an imported one.
+func (r *rig) withoutRecord(cardID string) {
+	r.t.Helper()
+	require.NoError(r.t, r.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM generation_approval WHERE message_id = ?`, cardID)
+		return err
+	}))
 }
 
 // card is the newest generation approval card of the Project (nil when none).

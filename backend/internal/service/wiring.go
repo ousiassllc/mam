@@ -121,6 +121,7 @@ func newWiring(deps Deps) *wiring {
 
 		brandTemplates: repository.NewBrandTemplateRepository(deps.DB),
 		analytics:      repository.NewAnalyticsRepository(deps.DB),
+		genApprovals:   genapprovalrepo.New(deps.DB),
 	}
 	c.takeActions = takeActions{judges: r.judges, policies: r.policies}
 	chat := &ChatService{c}
@@ -148,7 +149,7 @@ func (w *wiring) wirePlan() {
 		return
 	}
 	d := w.deps
-	w.gate = genstage.New(genstage.Deps{Projects: w.c.projects, Plans: w.c.plans, Gens: w.r.gens, Policies: w.r.policies, Jobs: w.c.jobs, Repo: genapprovalrepo.New(d.DB), Chat: w.chat, Logger: w.logger})
+	w.gate = genstage.New(genstage.Deps{Projects: w.c.projects, Plans: w.c.plans, Gens: w.r.gens, Policies: w.r.policies, Jobs: w.c.jobs, Repo: w.c.genApprovals, Chat: w.chat, Logger: w.logger})
 	w.c.pipeline = orchestrator.New(orchestrator.Deps{
 		Projects: w.c.projects, Plans: w.c.plans, ChatRepo: w.c.chat, Chat: w.chat, Jobs: d.Jobs, Gate: w.gate,
 		LLM: d.LLM, Notes: w.r.notes, Drafts: characterdraft.New(w.c.projects, w.c.assets, w.r.world, w.logger), Facts: mainwait.Reader{Plans: w.c.plans, References: w.c.references, World: w.r.world}.Facts, Logger: w.logger,

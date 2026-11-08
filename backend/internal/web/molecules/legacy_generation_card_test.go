@@ -38,3 +38,21 @@ func TestApprovalCard_AnsweredLegacyGenerationCardHasNoButtons(t *testing.T) {
 		assert.NotContains(t, html, `data-testid="approval-approve"`)
 	}
 }
+
+// A card with no record (it came with an imported bundle) says so, whatever its answer is: it is never an approval. A card with its record says nothing
+// about it.
+func TestApprovalCard_LegacyGenerationCardWithoutARecordSaysItIsNotAnApproval(t *testing.T) {
+	for _, status := range []domain.ApprovalStatus{domain.ApprovalPending, domain.ApprovalApproved, domain.ApprovalChangesRequested} {
+		card := domain.ThreadMessage{ChatMessage: domain.ChatMessage{
+			ID: "a1", ProjectID: "p1", Role: domain.RoleAssistant, Kind: domain.KindApproval, Content: "x",
+			RefType: domain.CheckpointGeneration.RefType(), ApprovalStatus: status,
+		}}
+
+		assert.NotContains(t, render(t, molecules.ApprovalCard(card)), `data-testid="approval-unrecorded"`, string(status))
+		card.Unrecorded = true
+		html := render(t, molecules.ApprovalCard(card))
+
+		assert.Contains(t, html, `data-testid="approval-unrecorded"`, string(status))
+		assert.Contains(t, html, "承認としては扱いません", string(status))
+	}
+}

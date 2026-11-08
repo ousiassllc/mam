@@ -56,6 +56,7 @@ type Message struct {
 	RefType          string       `json:"ref_type,omitempty" jsonschema:"カードが指す対象の種類（brief_field, brief_confirm, take, job, shot, script_version ...）"`
 	RefID            string       `json:"ref_id,omitempty" jsonschema:"ref_type の対象の ID。question(brief_field) では聞いている Brief の項目名、question(brief_confirm)（Brief 全体の「この内容でよいですか？」）では brief_confirm、keyframe では asset_id"`
 	ApprovalStatus   string       `json:"approval_status,omitempty" jsonschema:"approval: pending, approved or changes_requested"`
+	Unrecorded       bool         `json:"unrecorded,omitempty" jsonschema:"旧「生成の承認」カード（approval で ref_type は generation）に記録が無い（取り込んだ Project など）。承認としては扱われず、生成を始めない"`
 	Open             bool         `json:"open" jsonschema:"question / escalation が回答を待っている"`
 	Pending          bool         `json:"pending" jsonschema:"このカードがまだ変わりうる（回答待ち・未承認・ジョブ実行中）。get_chat_message で最新を取り直す"`
 	Attachments      []Attachment `json:"attachments,omitempty"`
@@ -80,7 +81,7 @@ func messageOf(m domain.ThreadMessage) Message {
 	out := Message{
 		ID: m.ID, Role: string(m.Role), Kind: string(m.Kind), Text: m.Content,
 		ReplyToMessageID: m.ReplyToMessageID, RefType: m.RefType, RefID: m.RefID,
-		ApprovalStatus: string(m.ApprovalStatus), Open: m.Open, Pending: m.Pending(), CreatedAt: m.CreatedAt,
+		ApprovalStatus: string(m.ApprovalStatus), Unrecorded: m.Unrecorded, Open: m.Open, Pending: m.Pending(), CreatedAt: m.CreatedAt,
 	}
 	switch m.Kind {
 	case domain.KindQuestion, domain.KindEscalation:

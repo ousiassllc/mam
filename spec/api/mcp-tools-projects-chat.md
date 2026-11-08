@@ -35,7 +35,7 @@
 | `list_chat_messages` | チャットのメッセージ・カードを時系列で返す。`after` を渡すとそれ以降だけ（進捗の確認はこのポーリング）。画面の Chat Workspace・`GET /projects/:id/messages` と同じ内容 | `project_id`, `after`（メッセージ ID。省略で全件） | `project`（`id`, `state`, `mode`, `confirmation_level`）, `messages[]`, `updated[]`（返したメッセージが答えた以前のカードの最新）, `last_message_id`（次の `after`。新着がなければ渡した `after`） | はい |
 | `get_chat_message` | カード 1 件の今の状態 | `project_id`, `message_id` | `project`, `message` | はい |
 | `post_chat_message` | チャットに発言する。Brief の質問・Continue・Escalation への回答、自由な指示、DIRECTOR MODE の指示になる。返信先は `reply_to_message_id`。AI の返答は同じ応答の `messages` に入り、生成を始める返答の後続のカードは `list_chat_messages` で読む | `project_id`, `content`（添付だけなら省略可）, `reply_to_message_id`, `attachment_asset_ids[]`（既存アセットの再利用）, `attachment_upload_ids[]`（`chat_attachment` のもの。既存と合わせて 8 件まで） | `list_chat_messages` と同じ（発言とその返答の `messages`、`updated[]`、`last_message_id`） | いいえ |
-| `respond_approval` | 承認カードに答える。カードは 1 回だけ答えられ（2 回目は `conflict`）、最後の承認待ちなら次の工程へ進む。AUTO は生成の承認を求めないが、v0.1.34 の旧「生成の承認」カード（`ref_type=generation`）が残っていれば同じように答えられ（エラーにしない）、昇格提案カード（Notes）は World State へ書き込む | `project_id`, `message_id`, `decision`（`approve` / `request_changes`）, `comment`（4000 文字まで） | `project`, `message`（答えた後のカード） | いいえ |
+| `respond_approval` | 承認カードに答える。カードは 1 回だけ答えられ（2 回目は `conflict`）、最後の承認待ちなら次の工程へ進む。AUTO は生成の承認を求めないが、v0.1.34 の旧「生成の承認」カード（`ref_type=generation`）が残っていれば同じように答えられ（エラーにしない）、記録（`generation_approval`）の無い旧カード（取り込んだ Project のもの。`message.unrecorded`＝true）は、どの答えでも承認として扱わず、返答もそう書く（`spec/spec.md` §4.3）。昇格提案カード（Notes）は World State へ書き込む | `project_id`, `message_id`, `decision`（`approve` / `request_changes`）, `comment`（4000 文字まで） | `project`, `message`（答えた後のカード） | いいえ |
 
 ### `message`（`messages[]` の要素）
 
@@ -66,3 +66,4 @@
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。Project・Brief・確認レベル・バンドルの書き出し・チャットのツール、アップロードの用途 `chat_attachment`・`new_project_attachment`、ダウンロードの種別 `project_bundle` | Issue #830。画面の全操作を MCP ツールにする。添付は発言と同じリクエストでは送れないため、先に上げて `upload_id` で参照する形にした |
 | 1.1 | 2026-11-08 | `get_brief` の出力に項目ごとの出どころ（`sources`）と Subject の食い違い（`proposed_subject`）、`update_brief` の入力に `confirm` を足し、渡した項目だけが `user` になることを明記した | Issue #1114。推奨値（仮）と利用者が確定した値を MCP でも区別し、確認を MCP からもできるようにするため |
+| 1.2 | 2026-11-08 | `respond_approval`・`list_chat_messages`・`get_chat_message` の `message` に `unrecorded`（記録の無い旧「生成の承認」カードのとき true）を足し、`respond_approval` の説明に、記録の無い旧カードはどの答えでも承認として扱わないことを足した | Issue #1116: 画面・チャット・MCP で、記録の無い旧カードの扱いを揃える |
