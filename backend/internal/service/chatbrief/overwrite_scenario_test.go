@@ -27,3 +27,17 @@ func TestScenario_AnUnlistedPhrasingOnTheContradictionCardKeepsTheSubject(t *tes
 		assert.Equal(t, "ロボット", b.ProposedSubject, "still open: %s", text)
 	}
 }
+
+// A plain change in chat still replaces the Subject, whatever finished verb it ends in, and a noun outside the shape is asked about, not dropped.
+func TestScenario_APlainChangeInChatStillWorks(t *testing.T) {
+	f := newPipelineFixture(t)
+	p := f.create(t, firstRequest)
+	f.post(t, p.ID, "主人公を猫に変えて", "")
+	assert.Equal(t, "猫", f.brief(t, p.ID).Subject)
+	assert.Empty(t, f.brief(t, p.ID).ProposedSubject)
+
+	f.post(t, p.ID, "主人公を空飛ぶ犬に変更して", "")
+	b := f.brief(t, p.ID)
+	assert.Equal(t, "猫", b.Subject)
+	assert.Equal(t, "空飛ぶ犬", b.ProposedSubject, "asked about, with the card")
+}

@@ -55,6 +55,10 @@ func Decide(current, proposed, answer, stated string, explicit bool) (Action, st
 	named := func(v string) bool { return v != "" && (answer == v || Committed(answer, v)) }
 	if proposed != "" {
 		switch {
+		case answer == proposed: // the buttons: the exact string decides before any shape does ("猫の動画" is the current Subject, not "猫" + "の動画")
+			return Replace, proposed
+		case answer == current:
+			return Settle, current
 		case named(proposed):
 			return Replace, proposed
 		case named(current):
@@ -65,8 +69,8 @@ func Decide(current, proposed, answer, stated string, explicit bool) (Action, st
 		return Ask, ""
 	}
 	switch {
-	case stated == "" || stated == current || !Plausible(stated):
-		return Keep, "" // no Subject, the one that is set, or a fragment that is no noun phrase ("迷う", "そのまま"): not even proposed
+	case stated == "" || stated == current || Fragment(stated):
+		return Keep, "" // no Subject, the one that is set, or a fragment that is no Subject at all ("迷う", "そのまま", "犬か猫"): not even proposed
 	case explicit && Committed(answer, stated):
 		return Replace, stated
 	}
@@ -75,14 +79,14 @@ func Decide(current, proposed, answer, stated string, explicit bool) (Action, st
 
 var (
 	// front is all that may stand in front of the Subject: a filler, a label of the role, the denied Subject (group 1).
-	front = regexp.MustCompile(`^(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:(?:この)?動画(?:は|の))?(?:(?:主人公|主役|題材|主題)(?:は|を|が|も)?)?(?:([^、,。.!！?？\n]{1,20}?)(?:ではなく|じゃなくて|ではなくて|じゃなく)[、,]?)?$`)
+	front = regexp.MustCompile(`^(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:(?:この)?動画(?:は|の))?(?:(?:主人公|主役|題材|主題)(?:は|を|が|も)?)?(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:([^、,。.!！?？\n]{1,20}?)(?:ではなく|じゃなくて|ではなくて|じゃなく|でなく|から)[、,]?)?$`)
 	// back is all that may stand behind it: particles, a label, a change verb in a finished form, a polite ending.
-	back = regexp.MustCompile(`^(?:の(?:動画|ビデオ|映像|話|CM))?(?:を|が|は|で)?(?:主人公|主役|題材|主題)?(?:に|へ)?(?:(?:変更|変え|替え|代え)?(?:して|します|しました|する|した|したい))?(?:の)?(?:動画|ビデオ|映像|CM)?(?:(?:の方が|が)?(?:いい|良い|よい|お願い(?:します)?|ください)(?:です)?|です|で進めて(?:ください)?|を選(?:ぶ|びます))?[。.!！ ]*$`)
+	back = regexp.MustCompile(`^(?:の(?:動画|ビデオ|映像|話|CM))?(?:を|が|は|で)?(?:主人公|主役|題材|主題)?(?:に|へ)?(?:(?:(?:変更|変え|替え|差し替え|代え|切り替え|直)(?:して|します|ました|ます|る|た|たい|て(?:ください)?|でお願い(?:します)?|でいい(?:です)?)?)|して|します|しました|する|した|したい)?(?:の)?(?:動画|ビデオ|映像|CM)?(?:(?:の方が|が)?(?:いい|良い|よい|お願い(?:します)?|ください)(?:です)?|です|で進めて(?:ください)?|を選(?:ぶ|びます))?[。.!！ ]*$`)
 	// predicate ends a phrase that is a negation or a hedge, not a noun: "そのまま", "変えなくていい", "犬かもしれない".
 	predicate   = regexp.MustCompile(`(?:ない|まま|かも)$`)
 	sentenceEnd = regexp.MustCompile(`[。.!！?？\n]`)
 	// unfit is in a phrase that is a list, a guess, a hedge or a placeholder, not one Subject: "犬か猫", "犬かな", "犬w", "犬のはず", "犬など".
-	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|とか|など|あたり|以外|つもり|はず|[wｗ?？()（）]|[ねよ]$|(?:^|[^A-Za-z])(?i:or|and)(?:$|[^A-Za-z])|保留|確認|調整|相談|検討|次第|未確定|未入力|後日|上記|下記|以下|それぞれ|両者|全員|みんな|別の|他の|例の|前の|前回|候補|番目|^\p{Nd}+$|(?i:pending|tba|tbc|later|temp|lorem|dummy|sample|default|generic|blank|empty|any|random|undefined|todo)|[〇●○]`)
+	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|とか|など|あたり|以外|つもり|はず|[wｗ?？()（）]|[ねよ]$|(?:^|[^A-Za-z])(?i:or|and)(?:$|[^A-Za-z])|\p{Han}[うくぐすつぶむる]$|なくて|ません|ました|ている|ていた|たい$|[、,。\s]|(?:にして|にする|にします|して|します|なら|たら|けど|ので|から|場合)|保留|確認|調整|相談|検討|次第|未確定|未入力|後日|上記|下記|以下|それぞれ|両者|全員|みんな|別の|他の|例の|前の|前回|候補|番目|^\p{Nd}+$|(?i:pending|tba|tbc|later|temp|lorem|dummy|sample|default|generic|blank|empty|any|random|undefined|todo)|[〇●○]`)
 	// placeholder is a word that points at something else instead of naming it, or marks nothing filled in.
 	placeholder = regexp.MustCompile(`^(?:[こそあど](?:れ|こ|ちら|っち|んな)|ぜんぶ|すべて|りょうほう|てきとう|ランダム|任意|両方|全部|前者|後者|逆|元|適当|保留|仮|ダミー|サンプル|テスト|未設定|白紙|空|デフォルト|標準|(?i:or|and|tbd|null|none|na|test|x+))$`)
 	// hedgeLead begins a value (the new Subject or the denied one) that is a hedge or a time word about the whole statement, not a Subject.
@@ -97,6 +101,9 @@ var (
 // Plausible reports whether v can be a Subject at all: a NOUN PHRASE by its characters (a positive shape, not a list of bad words): words of kanji, katakana,
 // Latin letters and digits, joined by "の", with at most a modifier in hiragana in front of a word ("かわいい猫"); never a particle, a verb or a hedge, a list or a placeholder.
 func Plausible(v string) bool {
+	if Fragment(v) {
+		return false
+	}
 	parts := runs.FindAllString(v, -1)
 	for i, r := range parts {
 		last := i == len(parts)-1
@@ -117,7 +124,14 @@ func Plausible(v string) bool {
 			return false
 		}
 	}
-	return len(parts) > 0 && !predicate.MatchString(v) && !unfit.MatchString(v) && !placeholder.MatchString(v)
+	return len(parts) > 0
+}
+
+// Fragment reports whether v is no Subject at all, whatever its shape: empty, a negation or a hedge, a list or a guess, a placeholder, or a clause with a
+// verb or a connective in it ("迷う", "そのまま", "犬か猫", "これ", "犬にして、30秒"). A value that is no fragment but not a noun by shape either ("空飛ぶ猫", "お母さん")
+// is never replaced at once: it is proposed, and the user taps it.
+func Fragment(v string) bool {
+	return v == "" || predicate.MatchString(v) || unfit.MatchString(v) || placeholder.MatchString(v)
 }
 
 // Committed reports whether the text has the shape of a decided statement of the Subject v as its LAST sentence (see the package comment): v with only the
@@ -141,9 +155,9 @@ func Committed(text, v string) bool {
 	return !hedgeLead.MatchString(v) && (m[1] == "" || (Plausible(m[1]) && !hedgeLead.MatchString(m[1])))
 }
 
-// Proposal is v when it can be proposed as the other Subject, else "".
+// Proposal is v when it can be proposed as the other Subject (it is no fragment), else "".
 func Proposal(v string) string {
-	if Plausible(v) {
+	if !Fragment(v) {
 		return v
 	}
 	return ""

@@ -141,3 +141,49 @@ func TestApplyAnswerAndAbsorb_ARepeatedValueOrAFusedHedgeIsNoEvidence(t *testing
 		})
 	}
 }
+
+// A plain explicit change in chat is applied whatever finished verb it ends in (review: "主人公を猫に変えて" regressed to a question card).
+func TestAbsorb_PlainChangeVerbsReplaceTheSubject(t *testing.T) {
+	for text, want := range map[string]string{
+		"主人公を犬に変えて": "犬", "主人公を犬に変えたい": "犬", "主人公を犬に差し替えて": "犬",
+		"題材を犬に変えて": "犬", "主人公を猫から犬に変更して": "犬", "主人公をやっぱり犬に変更して": "犬", "主人公を犬に変更でお願いします": "犬", "猫でなく犬にして": "犬",
+		"主人公を犬に変更してください": "犬", "主人公を犬にして": "犬",
+	} {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, want, b.Subject)
+		})
+	}
+}
+
+// A value that is no fragment but not a noun by shape (a modifier verb, a hiragana noun) is never replaced at once but is proposed: the user taps it. A chat
+// change with it is not dropped (review: "主人公を空飛ぶ猫に変更して" got no card at all).
+func TestAbsorb_ANounOutsideTheShapeIsProposedNotDropped(t *testing.T) {
+	for _, v := range []string{"空飛ぶ猫", "お母さん", "ぞう", "ふわふわの猫", "喋る犬", "猫と犬", "お姫様"} {
+		text := "主人公を" + v + "に変更して"
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject, "not replaced at once")
+			assert.Equal(t, v, b.ProposedSubject, "proposed, so the card is asked")
+		})
+	}
+}
+
+// The buttons: the exact text of a button picks that value, whatever shape the other value has ("猫の動画" is the Subject, not "猫" + "の動画").
+func TestApplyAnswer_AButtonAlwaysPicksItsOwnValue(t *testing.T) {
+	for _, c := range []struct{ current, proposed string }{
+		{"猫の動画", "猫"}, {"猫動画", "猫"}, {"猫のCM", "猫"}, {"猫の話", "猫"}, {"動画の猫", "猫"}, {"猫", "猫の動画"},
+	} {
+		t.Run(c.current+"/"+c.proposed, func(t *testing.T) {
+			b := decided(c.current, c.proposed)
+			assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, c.current))
+			assert.Equal(t, c.current, b.Subject)
+			assert.Empty(t, b.ProposedSubject)
+			b = decided(c.current, c.proposed)
+			assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, c.proposed))
+			assert.Equal(t, c.proposed, b.Subject)
+		})
+	}
+}
