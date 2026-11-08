@@ -220,7 +220,7 @@ const noBlockingCard = `NOT EXISTS (
 const projectSelect = `
 SELECT p.id, p.state, p.mode, p.confirmation_level, p.custom_checkpoints, p.production_template, p.quality_policy, p.created_at,
        COALESCE(json_extract(b.content, '$.subject'), ''),
-       COALESCE((SELECT m.content FROM chat_message m WHERE m.project_id = p.id AND m.role = 'user' ORDER BY m.id LIMIT 1), ''),
+       COALESCE((SELECT m.content FROM chat_message m WHERE m.project_id = p.id AND m.role = 'user' ORDER BY m.rowid /* written order; an imported id sorts anywhere */ LIMIT 1), ''),
        COALESCE(p.series_id, ''), COALESCE(p.episode_number, 0), COALESCE(s.name, '')
 FROM project p LEFT JOIN brief b ON b.project_id = p.id LEFT JOIN series s ON s.id = p.series_id`
 

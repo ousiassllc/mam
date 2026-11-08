@@ -79,3 +79,30 @@ func TestChatThread_NewestAndAfterFollowTheOrderOfThisInstanceNotTheID(t *testin
 	require.NotNil(t, last)
 	assert.Equal(t, local.ID, last.ID)
 }
+
+// The first user message that names a Project without a Subject is the first one this instance wrote (rowid), not the one with the smallest ID:
+// an imported message keeps the ID of its bundle, which here sorts after the ID made later.
+func TestProjectName_TheFirstUserMessageIsTheFirstWrittenNotTheSmallestID(t *testing.T) {
+	ctx := context.Background()
+	const hugeID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+	db := testdb.Open(t)
+	repo := repository.NewProjectRepository(db)
+	id := domain.NewID()
+	require.NoError(t, repo.Create(ctx, repository.NewProject{
+		Project: domain.Project{ID: id, State: domain.StateDraft, Mode: domain.ModeDirector, ConfirmationLevel: domain.ConfirmKeyCheck,
+			ProductionTemplate: domain.TemplateProductCM, QualityPolicy: domain.QualityBalanced},
+	}))
+	user := func(msgID, text string) domain.ChatMessage {
+		return domain.ChatMessage{ID: msgID, Role: domain.RoleUser, Kind: domain.KindText, Content: text}
+	}
+	require.NoError(t, repo.Apply(ctx, repository.Turn{ProjectID: id, Messages: []domain.ChatMessage{user(hugeID, "取り込んだ最初の依頼")}}))
+	require.NoError(t, repo.Apply(ctx, repository.Turn{ProjectID: id, Messages: []domain.ChatMessage{user(domain.NewID(), "あとから書いた依頼")}}))
+
+	p, err := repo.Get(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, "取り込んだ最初の依頼", p.Name)
+	listed, err := repo.List(ctx)
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, "取り込んだ最初の依頼", listed[0].Name)
+}
