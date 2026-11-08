@@ -270,3 +270,28 @@ func TestApplyAnswer_AContrastWithAnItemClauseReplacesTheSubject(t *testing.T) {
 	briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
 	assert.Equal(t, "猫", b.Subject)
 }
+
+// An item clause that also carries a take-back, a hedge, a question or another Subject is not a plain item: it stays, so the Subject is kept (review of 1b4d12d9).
+// So does a later sentence after an item clause: it may take the change back, however plain the first sentence is.
+func TestAbsorbAndApplyAnswer_ACarryingClauseOrALaterSentenceIsNotStripped(t *testing.T) {
+	for _, text := range []string{
+		"主人公を犬に変更して、やっぱり30秒でやめます", "主人公を犬に変更して、30秒でやっぱり猫のままで", "主人公を犬に変更して、30秒でいや猫で", "主人公を犬に変更して、30秒に変えるのはやめます",
+		"主人公を犬に変更して、30秒にしないで", "主人公を犬に変更して、30秒でやめて", "主人公を犬に変更して、30秒は迷う", "主人公を犬に変更して、30秒にするか迷う",
+		"主人公を犬に変更して、30秒かも", "主人公を犬に変更して、縦型は無し", "主人公を犬に変更して、30秒は保留", "主人公を犬に変更して、30秒で猫も出して",
+		"主人公を犬に変更して、30秒でロボットも", "主人公を犬に変更して、30秒で。猫に戻して", "主人公を犬に変更して、30秒で。迷っています", "主人公を犬に変更して、縦型で。やっぱりやめます",
+		"主人公を犬に変更して、縦型で。猫の方がいいかも", "主人公を犬に変更して、30秒で。猫も出して", "主人公を犬に変更して、30秒で？",
+	} {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+			b = decided("猫", "")
+			briefing.ApplyAnswer(&b, domain.BriefSubject, text)
+			assert.Equal(t, "猫", b.Subject)
+		})
+	}
+	b := decided("猫", "ロボット")
+	briefing.ApplyAnswer(&b, domain.BriefSubject, "主人公を犬に変更して、30秒で。ロボットにして")
+	assert.Equal(t, "ロボット", b.Subject, "the last sentence names the proposed value: that is the user's choice, and 犬 (named in the stripped first sentence) is not applied")
+	assert.Empty(t, b.ProposedSubject)
+}

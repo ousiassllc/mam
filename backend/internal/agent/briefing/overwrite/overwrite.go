@@ -84,6 +84,7 @@ var (
 	back = regexp.MustCompile(`^(?:の(?:動画|ビデオ|映像|話|CM))?(?:を|が|は|で)?(?:主人公|主役|題材|主題)?(?:に|へ)?(?:(?:変更し|変え|替え|差し替え|代え|切り替え|直し|し)(?:て(?:ください|下さい)?|ます|ました|たい(?:です)?|ようと思います)|(?:変更)?(?:する|した)|(?:変え|替え|差し替え|代え|切り替え)(?:る|た)|直す|変更(?:でお願い(?:します)?|でいい(?:です)?))?(?:の)?(?:動画|ビデオ|映像|CM)?(?:(?:の方が|が)?(?:いい|良い|よい|お願い(?:します)?|ください|下さい)(?:です)?|です|で進めて(?:ください)?|を選(?:ぶ|びます))?[。.!！ ]*$`)
 	// predicate ends a phrase that is a negation or a hedge, not a noun: "そのまま", "変えなくていい", "犬かもしれない".
 	predicate   = regexp.MustCompile(`(?:ない|まま|かも)$`)
+	itemWord    = regexp.MustCompile(`^[\p{Han}\p{Katakana}A-Za-z0-9:：.ー×]+(?:で|に|にして|にする|にします|です|でお願い(?:します)?|が(?:いい|良い)(?:です)?)?$`)
 	commaRe     = regexp.MustCompile(`[、,，]`)
 	sentenceEnd = regexp.MustCompile(`[。.!！?？\n]`)
 	// unfit is in a phrase that is a list, a guess, a hedge or a placeholder, not one Subject: "犬か猫", "犬かな", "犬w", "犬のはず", "犬など".
@@ -156,17 +157,23 @@ func Committed(text, v string) bool {
 	return !hedgeLead.MatchString(v) && (m[1] == "" || (Plausible(m[1]) && !hedgeLead.MatchString(m[1])))
 }
 
-// StripItems is text without the clauses, joined by a comma after the first, that carry another item of the Brief and no Subject ("…に変更して、30秒で"):
-// item says whether a clause does (the extractor read a value from it). The statement is judged without them, so an item that is not a Subject is not a second sentence.
+// StripItems is text without the clauses that only state another item of the Brief ("…に変更して、30秒で"): the statement is judged without them, so an item that is not a
+// Subject is no second sentence. Only a clause of the FIRST sentence, joined by a comma after its first clause, and only one of a positive plain shape: one word of kanji,
+// katakana or digits with at most a particle after it ("30秒で", "縦型にして"), which the extractor reads a value from (item). A clause with anything more in it
+// ("30秒でやっぱりやめます", "30秒は迷う", "30秒で猫も出して") stays, and so does every later sentence: a take-back, a hedge, a question or another Subject may be in it.
 func StripItems(text string, item func(clause string) bool) string {
-	clauses := commaRe.Split(text, -1)
+	end := sentenceEnd.FindStringIndex(text)
+	if end == nil {
+		end = []int{len(text), len(text)}
+	}
+	clauses := commaRe.Split(text[:end[0]], -1)
 	kept := clauses[:1]
 	for _, c := range clauses[1:] {
-		if !item(c) {
+		if c = strings.TrimSpace(c); !itemWord.MatchString(c) || !item(c) {
 			kept = append(kept, c)
 		}
 	}
-	return strings.Join(kept, "、")
+	return strings.Join(kept, "、") + text[end[0]:]
 }
 
 // Proposal is v when it can be proposed as the other Subject (it is no fragment), else "".
