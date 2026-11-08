@@ -67,9 +67,6 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 	if card != nil && card.Status == domain.ApprovalPending {
 		return Assessment{Verdict: VerdictSupersede, Card: card}, nil // an obsolete card holds the Project: nothing else is looked at before it is settled
 	}
-	if p.State == domain.StateAwaitingApproval {
-		return Assessment{}, nil // another card holds the Project (an Escalation): it is the user's
-	}
 	launches, err := g.d.Repo.Launches(ctx, p.ID)
 	if err != nil {
 		return Assessment{}, err
@@ -84,8 +81,8 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 			a.Stuck[shotID] = a.Stuck[shotID] || l.Outcome != genapprovalrepo.OutcomeStarted
 		}
 	}
-	if len(plan.Lines) == 0 {
-		return a, nil
+	if len(plan.Lines) == 0 || p.State == domain.StateAwaitingApproval {
+		return a, nil // under an Escalation (it is the user's) nothing starts, but the Shots the gate refused or failed still show: the Project is AUTO
 	}
 	if card != nil && card.Status == domain.ApprovalChangesRequested {
 		declined, err := g.declined(ctx, p, a)

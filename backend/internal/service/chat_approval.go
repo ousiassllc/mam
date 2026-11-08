@@ -26,7 +26,7 @@ func (s *ChatService) planApprovalReply(project domain.Project, card, user domai
 
 // approvalTurn builds the turn that records the user's answer to card.
 func approvalTurn(project domain.Project, card domain.ChatMessage, decision Decision, user domain.ChatMessage) repository.Turn {
-	status, ack := domain.ApprovalApproved, approvalack.Approved(card)
+	status, ack := domain.ApprovalApproved, approvalack.Approved(card, project.Mode)
 	if decision == DecisionRequestChanges {
 		status, ack = domain.ApprovalChangesRequested, approvalack.ChangesRequested(card)
 	}

@@ -110,6 +110,7 @@ type fakeGen struct {
 
 	mu         sync.Mutex
 	calls      []call
+	tried      []string         // the Shots a start was asked for, whatever came of it
 	errs       map[string]error // by Shot ID
 	cancelOn   string           // the Shot whose start cancels the context of the Gate (the user cancelled the job)
 	cancel     context.CancelFunc
@@ -132,6 +133,7 @@ func (g *fakeGen) UsesCandidates(context.Context, domain.Shot) (bool, error) {
 func (g *fakeGen) start(ctx context.Context, stage genapprovalrepo.Stage, shotID string) (domain.Job, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.tried = append(g.tried, shotID)
 	if err := g.errs[shotID]; err != nil {
 		return domain.Job{}, err
 	}
@@ -220,4 +222,10 @@ func (p *prices) price(m domain.ModelName, perImage float64) {
 func (p *prices) pricesKnown() {
 	p.price(domain.ModelGPTImage26Flare, 0.05)
 	p.price(domain.ModelNanoBanana, 0.0336)
+}
+
+func (g *fakeGen) attempts() []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]string(nil), g.tried...)
 }

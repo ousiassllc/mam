@@ -36,9 +36,13 @@ func labels(cps []domain.Checkpoint) string {
 	return strings.Join(out, " / ")
 }
 
-// Approved tells what an approval does.
-func Approved(card domain.ChatMessage) string {
+// Approved tells what an approval does. The generation approval card is the card of v0.1.34: only an AUTO Project goes on by itself; a DIRECTOR Project
+// starts nothing (it never had such a card asked, and the user starts each Shot by hand).
+func Approved(card domain.ChatMessage, mode domain.Mode) string {
 	if cp, _ := domain.CheckpointForRefType(card.RefType); cp == domain.CheckpointGeneration {
+		if mode != domain.ModeAuto {
+			return "承認されました。この「生成の承認」は旧方針のカードです。この Project は AUTO ではないため、生成は自動では始まりません。Shot を選んで手動で起動してください。"
+		}
 		return "承認されました。この「生成の承認」は旧方針のカードです。AUTO では承認を求めずに、Reference Pack → Shot 生成を自動で進めます。起動した生成は Job と Progress で追えます。"
 	}
 	return "承認されました。次の工程に進みます。"
