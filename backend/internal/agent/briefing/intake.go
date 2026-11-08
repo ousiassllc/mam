@@ -180,8 +180,7 @@ func joinConstraints(a, b string) string {
 	return ConstraintPrefix + strings.Join(joined, "・")
 }
 
-// NeedsConfirmation reports whether the batch summary is waiting for the user: the Brief is drafted, the Subject is settled, and
-// something tentative or open is left.
+// NeedsConfirmation reports whether the batch summary is waiting for the user: the Brief is drafted, the Subject is settled, and something tentative or open is left.
 func NeedsConfirmation(b domain.Brief) bool {
 	return !slices.Contains(b.Missing(), domain.BriefSubject) && b.ProposedSubject == "" && !Confirmed(b)
 }

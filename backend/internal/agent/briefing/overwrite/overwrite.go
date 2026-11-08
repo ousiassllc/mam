@@ -81,9 +81,10 @@ var (
 	// front is all that may stand in front of the Subject: a filler, a label of the role, the denied Subject (group 1).
 	front = regexp.MustCompile(`^(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:(?:この)?動画(?:は|の))?(?:(?:主人公|主役|題材|主題)(?:は|を|が|も)?)?(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:([^、,。.!！?？\n]{1,20}?)(?:ではなく|じゃなくて|ではなくて|じゃなく|でなく|から)[、,]?)?$`)
 	// back is all that may stand behind it: particles, a label, a change verb in a finished form, a polite ending.
-	back = regexp.MustCompile(`^(?:の(?:動画|ビデオ|映像|話|CM))?(?:を|が|は|で)?(?:主人公|主役|題材|主題)?(?:に|へ)?(?:(?:(?:変更|変え|替え|差し替え|代え|切り替え|直)(?:して|します|ました|ます|る|た|たい|て(?:ください)?|でお願い(?:します)?|でいい(?:です)?)?)|して|します|しました|する|した|したい)?(?:の)?(?:動画|ビデオ|映像|CM)?(?:(?:の方が|が)?(?:いい|良い|よい|お願い(?:します)?|ください)(?:です)?|です|で進めて(?:ください)?|を選(?:ぶ|びます))?[。.!！ ]*$`)
+	back = regexp.MustCompile(`^(?:の(?:動画|ビデオ|映像|話|CM))?(?:を|が|は|で)?(?:主人公|主役|題材|主題)?(?:に|へ)?(?:(?:変更し|変え|替え|差し替え|代え|切り替え|直し|し)(?:て(?:ください|下さい)?|ます|ました|たい(?:です)?|ようと思います)|(?:変更)?(?:する|した)|(?:変え|替え|差し替え|代え|切り替え)(?:る|た)|直す|変更(?:でお願い(?:します)?|でいい(?:です)?))?(?:の)?(?:動画|ビデオ|映像|CM)?(?:(?:の方が|が)?(?:いい|良い|よい|お願い(?:します)?|ください|下さい)(?:です)?|です|で進めて(?:ください)?|を選(?:ぶ|びます))?[。.!！ ]*$`)
 	// predicate ends a phrase that is a negation or a hedge, not a noun: "そのまま", "変えなくていい", "犬かもしれない".
 	predicate   = regexp.MustCompile(`(?:ない|まま|かも)$`)
+	commaRe     = regexp.MustCompile(`[、,，]`)
 	sentenceEnd = regexp.MustCompile(`[。.!！?？\n]`)
 	// unfit is in a phrase that is a list, a guess, a hedge or a placeholder, not one Subject: "犬か猫", "犬かな", "犬w", "犬のはず", "犬など".
 	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|[\p{Han}\p{Katakana}]とか|とか$|など|あたり|以外|つもり|はず$|[?？]|(?:^|[^A-Za-z])[wｗ]+$|[\p{Han}\p{Hiragana}][・/／&+＆][\p{Han}\p{Hiragana}\p{Katakana}]|[\p{Han}\p{Katakana}][/／＆][\p{Han}\p{Katakana}]|[ねよ]$|(?:^|[^A-Za-z])(?i:or|and)(?:$|[^A-Za-z])|\p{Han}[うくぐすつぶむる]$|なくて|ません|ました|たい$|[、,。\s]|(?:にして|にする|にします|して$|して[^い]|します|なら$|たら$|けど|ので|から$|場合)|保留|確認|調整|相談|検討|次第|未確定|未入力|後日|上記|下記|以下|それぞれ|両者|全員|みんな|別の|他の|例の|前の|前回|候補|番目|^\p{Nd}+$|^(?i:pending|tba|tbc|later|temp|lorem|dummy|sample|default|generic|blank|empty|any|anything|random|undefined|todo)$|[〇●○]`)
@@ -153,6 +154,19 @@ func Committed(text, v string) bool {
 		return false
 	}
 	return !hedgeLead.MatchString(v) && (m[1] == "" || (Plausible(m[1]) && !hedgeLead.MatchString(m[1])))
+}
+
+// StripItems is text without the clauses, joined by a comma after the first, that carry another item of the Brief and no Subject ("…に変更して、30秒で"):
+// item says whether a clause does (the extractor read a value from it). The statement is judged without them, so an item that is not a Subject is not a second sentence.
+func StripItems(text string, item func(clause string) bool) string {
+	clauses := commaRe.Split(text, -1)
+	kept := clauses[:1]
+	for _, c := range clauses[1:] {
+		if !item(c) {
+			kept = append(kept, c)
+		}
+	}
+	return strings.Join(kept, "、")
 }
 
 // Proposal is v when it can be proposed as the other Subject (it is no fragment), else "".

@@ -71,7 +71,7 @@ func TestPlausible(t *testing.T) {
 // and no evidence (review: "猫ではなく犬にして、30秒にして" gave "犬にして、30秒"). Same for a hedge or a third party in front of the denied value.
 func TestApplyAnswerAndAbsorb_AContrastThatIsNotAPlainStatementKeepsTheSubject(t *testing.T) {
 	for _, text := range []string{
-		"猫ではなく犬にして、30秒にして", "猫ではなく犬にするなら", "猫ではなく犬にしてません", "猫ではなく犬にしても", "猫ではなく犬を希望", "猫ではなく犬を検討中",
+		"猫ではなく犬にするなら", "猫ではなく犬にしてません", "猫ではなく犬にしても", "猫ではなく犬を希望", "猫ではなく犬を検討中",
 		"猫ではなく犬でしたっけ", "猫ではなく犬にしたかったけど", "猫ではなく犬にしたら", "猫ではなく犬にした場合", "猫ではなく犬にしますが", "猫ではなく犬にしますけど",
 		"猫ではなく犬にして30秒", "猫ではなく犬にして、猫も出して", "猫ではなく犬でも可",
 		"多分猫ではなく犬にします", "たぶん猫ではなく犬に変更して", "もし猫ではなく犬にします", "できれば猫ではなく犬にします", "嘘だけど猫ではなく犬にします",
@@ -224,4 +224,49 @@ func TestAbsorb_ASymbolListIsNotProposed(t *testing.T) {
 			assert.Empty(t, b.ProposedSubject)
 		})
 	}
+}
+
+// Plain explicit changes in a polite, past or wishing form replace the Subject as they did before (review of 1b9df5c5: "…変更しました" fell to a card),
+// also when a clause of another item follows the statement ("…変更して、30秒で": the extractor reads Duration from it, so it is no second sentence).
+func TestAbsorbAndApplyAnswer_PoliteAndPastChangesStillReplaceTheSubject(t *testing.T) {
+	for _, text := range []string{
+		"主人公を犬に変更しました", "主人公を犬に変更したいです", "主人公を犬に変更して下さい", "主人公を犬に変更してください", "主人公を犬に変更して、30秒で",
+		"主人公を犬に変更して、縦型で", "主人公を犬に変更しました、30秒で", "主人公を犬に変更します", "主人公を犬に変更したい",
+	} {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "犬", b.Subject)
+			assert.Empty(t, b.ProposedSubject)
+			b = decided("猫", "")
+			assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))
+			assert.Equal(t, "犬", b.Subject)
+		})
+	}
+}
+
+// A clause after the statement that is NOT another item still stops it: the second clause may take it back.
+func TestAbsorbAndApplyAnswer_AClauseThatIsNoItemStillKeepsTheSubject(t *testing.T) {
+	for _, text := range []string{"主人公を犬に変更して、やっぱりやめます", "主人公を犬に変更して、迷っています", "主人公を犬に変更して、猫も出して", "主人公を犬に変更しました、でも後で"} {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+			b = decided("猫", "")
+			briefing.ApplyAnswer(&b, domain.BriefSubject, text)
+			assert.Equal(t, "猫", b.Subject)
+		})
+	}
+}
+
+// In the "A ではなく B" form with an item clause after it, the answer to a card is read without the item clause; a free message keeps the Subject (the extractor
+// takes the tail for the value, which is a fragment): the safe side, a known limit.
+func TestApplyAnswer_AContrastWithAnItemClauseReplacesTheSubject(t *testing.T) {
+	b := decided("猫", "")
+	assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, "猫ではなく犬にして、30秒にして"))
+	assert.Equal(t, "犬", b.Subject)
+	b = decided("猫", "")
+	text := "猫ではなく犬にして、30秒にして"
+	briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+	assert.Equal(t, "猫", b.Subject)
 }

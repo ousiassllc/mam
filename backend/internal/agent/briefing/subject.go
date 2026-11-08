@@ -74,8 +74,7 @@ type denial struct {
 // protagonist or subject said outright ("Xを主人公にした", "主人公は X", "題材は X"), the noun in front of "の縦型 / の15秒 / のCM ...", or
 // what a bare contrast points at ("商品ではなく猫の日常": only when no other item is named and what is denied could be a subject). A bare
 // contrast is a change only when the text says what the video is about or both sides are persons or products (contrastChanges): "赤ではなく
-// 青の服にして" names a Subject but does not replace one. What a text denies ("猫じゃなくて", "男性ではなく"), refuses ("主人公にしてほしくない")
-// or asks ("主人公は何がいいですか") never is the subject.
+// 青の服にして" names a Subject but does not replace one. What a text denies ("猫じゃなくて", "男性ではなく"), refuses ("主人公にしてほしくない") or asks ("主人公は何がいいですか") never is the subject.
 func readSubject(text string) (subject string, explicit bool) {
 	sentences := statedSentences(text)
 	for _, sentence := range sentences {
@@ -106,8 +105,7 @@ func statedSubject(text string) string {
 	return s
 }
 
-// statedSentences are the sentences of the text (a question mark stays with its sentence) without the clauses that refuse something
-// ("この動画は猫を主人公にしてほしくない").
+// statedSentences are the sentences of the text (a question mark stays with its sentence) without the clauses that refuse something ("この動画は猫を主人公にしてほしくない").
 func statedSentences(text string) []string {
 	var stated []string
 	for _, sentence := range sentenceKeepRe.FindAllString(text, -1) {
@@ -220,7 +218,7 @@ func clauseAround(s string, start, end int) (from, to int) {
 func explicitChange(text string, f domain.BriefField, v string) bool {
 	if f == domain.BriefSubject {
 		s, explicit := readSubject(text)
-		return explicit && s == v && overwrite.Committed(text, v) // the user's evidence has a shape (overwrite)
+		return explicit && s == v && overwrite.Committed(overwrite.StripItems(text, otherItem), v) // the user's evidence has a shape (overwrite)
 	}
 	text = changeLeadRe.ReplaceAllString(text, "$1")
 	for _, sentence := range sentenceRe.Split(text, -1) {
@@ -231,6 +229,12 @@ func explicitChange(text string, f domain.BriefField, v string) bool {
 		}
 	}
 	return false
+}
+
+// otherItem reports whether the clause states another item of the Brief and no Subject (the extractor reads a value from it): a clause of a change sentence like "30秒で".
+func otherItem(clause string) bool {
+	b := RuleExtractor{}.Extract(clause)
+	return b.Subject == "" && slices.ContainsFunc(domain.RequiredBriefFields(), func(f domain.BriefField) bool { return b.Get(f) != "" })
 }
 
 // isFormat reports whether s is a duration, a ratio or the name of a kind of video, which "A ではなく B" changes but which is no subject.
@@ -255,8 +259,7 @@ func isContentType(s string) bool {
 }
 
 // subjectAnswer is the Subject a chat answer gives: a Subject said outright ("主人公は猫ではなく犬" is 犬) or "A ではなく B" (B), while an
-// answer that is a refusal, a deferral ("お任せします", "未定"), a question ("何がいいですか？") or only filler gives "". A refusal is read
-// per clause: "犬を主人公に。猫はいらない" is 犬.
+// answer that is a refusal, a deferral ("お任せします", "未定"), a question ("何がいいですか？") or only filler gives "". A refusal is read per clause: "犬を主人公に。猫はいらない" is 犬.
 func subjectAnswer(text string) string {
 	text = strings.TrimSpace(text)
 	if IsConfirmation(text) {

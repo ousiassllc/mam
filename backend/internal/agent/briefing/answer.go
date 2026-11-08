@@ -15,8 +15,7 @@ import (
 // FieldMaxRunes is the longest value of a required Brief item.
 const FieldMaxRunes = 200
 
-// ValueProblem says why value cannot be the Brief item f ("" when it can). It is the rule of the
-// Brief form (PUT /projects/:id/brief) and of the answers given to the questions in the chat.
+// ValueProblem says why value cannot be the Brief item f ("" when it can). It is the rule of the Brief form (PUT /projects/:id/brief) and of the answers given to the questions in the chat.
 func ValueProblem(f domain.BriefField, value string) string {
 	if value == domain.DelegateOption && !f.CanDelegate() {
 		return "「" + domain.DelegateOption + "」は選べません。AI が題材を決めると、指定と無関係な内容になるためです"
@@ -40,8 +39,7 @@ func Question(f domain.BriefField, text string) domain.ChatMessage {
 }
 
 // ReferenceProblem says why the URL u cannot be a Brief Reference ("" when it can). It is the rule of
-// the Brief form (PUT /projects/:id/brief) and of the URLs RuleExtractor takes from the chat, so a URL
-// pasted in the chat never blocks saving the form.
+// the Brief form (PUT /projects/:id/brief) and of the URLs RuleExtractor takes from the chat, so a URL pasted in the chat never blocks saving the form.
 func ReferenceProblem(u string) string {
 	if utf8.RuneCountInString(u) > FieldMaxRunes || strings.ContainsAny(u, " \t") {
 		return fmt.Sprintf("URL が %d 文字を超えているか、空白を含んでいます", FieldMaxRunes)
@@ -66,7 +64,7 @@ func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.
 			Absorb(brief, domain.Brief{AdditionalInstruction: ConstraintPrefix + strings.Join(refusals, "・")}, "")
 		}
 		if brief.Subject != "" { // keep by default: only a stated change or the choice of the contradiction replaces it (overwrite)
-			return overwrite.Apply(brief, text, readSubject, func(reason string) *domain.ChatMessage { again := SubjectConflict(*brief, reason); return &again })
+			return overwrite.Apply(brief, overwrite.StripItems(text, otherItem), readSubject, func(reason string) *domain.ChatMessage { again := SubjectConflict(*brief, reason); return &again })
 		}
 		if text = subjectAnswer(text); text == "" {
 			problem = vagueSubjectProblem

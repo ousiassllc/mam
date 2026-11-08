@@ -53,8 +53,7 @@ func hasAny(s string, words ...string) bool {
 
 // Recommend fills Duration and Aspect Ratio from the platform in the Objective as tentative proposals
 // (domain.BriefSourceRecommended). It only writes an item nobody gave a value (and did not leave to the AI) or
-// one that is itself a proposal, so a value the user stated or confirmed always wins; a proposal whose platform is
-// gone is taken back.
+// one that is itself a proposal, so a value the user stated or confirmed always wins; a proposal whose platform is gone is taken back.
 func Recommend(b *domain.Brief) {
 	p, known := PlatformOf(b.Objective)
 	for f, v := range map[domain.BriefField]string{domain.BriefDuration: p.Duration, domain.BriefAspectRatio: p.AspectRatio} {
