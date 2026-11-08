@@ -37,6 +37,8 @@ type Assessment struct {
 	// Card is the newest generation card of v0.1.34 (nil when there is none).
 	Card     *genapprovalrepo.Card
 	Launches map[string]map[genapprovalrepo.Stage]genapprovalrepo.Launch
+	// Unrecorded is set with VerdictDeclined when the declined card has no record of what it showed: only a message of the user lifts that decline.
+	Unrecorded bool
 	// Next are the starts to make now (VerdictStart).
 	Next []Step
 	// Stuck holds the Shots the gate cannot carry on by itself: a start that was refused or failed, and a Reference Pack that failed.
@@ -85,7 +87,7 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 		return a, nil // under an Escalation (it is the user's) nothing starts, but the Shots the gate refused or failed still show: the Project is AUTO
 	}
 	if card != nil && card.Status == domain.ApprovalChangesRequested {
-		declined, err := g.declined(ctx, p, a)
+		declined, err := g.declined(ctx, p, &a)
 		if err != nil {
 			return Assessment{}, err
 		}
@@ -100,13 +102,15 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 
 // declined reports whether the card the user declined (under the policy of v0.1.34) still keeps the generation from starting: it does until the
 // plan changed from what the card showed, or the user wrote to the thread after the decline (not as a reply to the card). A card with no record of
-// what it showed (an imported bundle carries the cards but not the records) is lifted by a message only.
-func (g *Gate) declined(ctx context.Context, p domain.Project, a Assessment) (bool, error) {
+// what it showed (an imported bundle carries the cards but not the records) is lifted by a message only: a.Unrecorded says so, for the words that
+// tell the user what to do.
+func (g *Gate) declined(ctx context.Context, p domain.Project, a *Assessment) (bool, error) {
 	approved, ok, err := g.d.Repo.Approval(ctx, a.Card.ID)
 	if err != nil {
 		return false, err
 	}
-	if ok && approved.ProjectID == p.ID {
+	a.Unrecorded = !ok || approved.ProjectID != p.ID
+	if !a.Unrecorded {
 		lines, err := genplan.ScopeLines(approved.Scope)
 		if err != nil {
 			return false, err
@@ -180,6 +184,9 @@ func (g *Gate) Phase(ctx context.Context, p domain.Project) (mainline.Phase, map
 	}
 	switch a.Verdict {
 	case VerdictDeclined:
+		if a.Unrecorded {
+			return mainline.PhaseDeclinedUnrecorded, a.Stuck, nil
+		}
 		return mainline.PhaseDeclined, a.Stuck, nil
 	case VerdictSupersede, VerdictStart:
 		return mainline.PhaseAuto, a.Stuck, nil

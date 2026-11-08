@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -11,24 +10,23 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
 )
 
-// approveWords are the replies that count as an approval when the user answers an
-// Approval card in words instead of pressing the button. Anything else is a request for changes.
-var approveWords = []string{"承認", "承認します", "承認です", "ok", "okay", "はい", "いいね", "いいです", "問題ない", "問題なし", "lgtm", "お願いします"}
-
-func (s *ChatService) planApprovalReply(project domain.Project, card, user domain.ChatMessage) repository.Turn {
-	normalized := strings.ToLower(strings.Trim(strings.TrimSpace(user.Content), "。.!！ "))
+func (s *ChatService) planApprovalReply(ctx context.Context, project domain.Project, card, user domain.ChatMessage) (repository.Turn, error) {
 	decision := DecisionRequestChanges
-	if slices.Contains(approveWords, normalized) {
+	if approvalack.IsApproval(user.Content) {
 		decision = DecisionApprove
 	}
-	return approvalTurn(project, card, decision, user)
+	return s.approvalTurn(ctx, project, card, decision, user)
 }
 
-// approvalTurn builds the turn that records the user's answer to card.
-func approvalTurn(project domain.Project, card domain.ChatMessage, decision Decision, user domain.ChatMessage) repository.Turn {
-	status, ack := domain.ApprovalApproved, approvalack.Approved(card, project.Mode)
+// approvalTurn builds the turn that records the user's answer to card. The answer to a generation card of v0.1.34 that has no record is worded as such.
+func (s *ChatService) approvalTurn(ctx context.Context, project domain.Project, card domain.ChatMessage, decision Decision, user domain.ChatMessage) (repository.Turn, error) {
+	unrecorded, err := s.genApprovals.Unrecorded(ctx, project.ID, card)
+	if err != nil {
+		return repository.Turn{}, err
+	}
+	status, ack := domain.ApprovalApproved, approvalack.Approved(card, project.Mode, unrecorded)
 	if decision == DecisionRequestChanges {
-		status, ack = domain.ApprovalChangesRequested, approvalack.ChangesRequested(card)
+		status, ack = domain.ApprovalChangesRequested, approvalack.ChangesRequested(card, project.Mode, unrecorded)
 	}
 	turn := repository.Turn{
 		ProjectID: project.ID,
@@ -36,26 +34,13 @@ func approvalTurn(project domain.Project, card domain.ChatMessage, decision Deci
 		Messages:  []domain.ChatMessage{user, assistantText(ack)},
 	}
 	if card.IsBlockingApproval() {
-		next := resumeStateAfter(card, decision)
+		next := approvalack.ResumeState(card, decision == DecisionApprove)
 		turn.ResumeState = &next
 		if decision == DecisionRequestChanges {
 			turn.CheckpointChanges = true
 		}
 	}
-	return turn
-}
-
-func resumeStateAfter(card domain.ChatMessage, decision Decision) domain.ProjectState {
-	cp, known := domain.CheckpointForRefType(card.RefType)
-	switch {
-	case known && decision == DecisionApprove:
-		return cp.ApprovedState()
-	case known:
-		return cp.ChangesRequestedState()
-	case decision == DecisionApprove:
-		return domain.StateGenerating
-	}
-	return domain.StatePlanning
+	return turn, s.settlePromotion(ctx, card, &turn)
 }
 
 // RespondApproval answers an Approval card with a button (POST /projects/:id/approvals/:messageId).
@@ -94,8 +79,8 @@ func (s *ChatService) RespondApproval(ctx context.Context, projectID, messageID 
 	} else if comment != "" {
 		text = "承認しました。" + comment
 	}
-	turn := approvalTurn(project, card, decision, userText(text, card.ID, nil))
-	if err := s.settlePromotion(ctx, card, &turn); err != nil {
+	turn, err := s.approvalTurn(ctx, project, card, decision, userText(text, card.ID, nil))
+	if err != nil {
 		return domain.Project{}, domain.ThreadMessage{}, err
 	}
 	turn.Messages = assignIDs(turn.Messages)
@@ -159,7 +144,10 @@ func (s *ChatService) Supersede(ctx context.Context, projectID, cardID, notice s
 	if card.Kind != domain.KindApproval || card.ApprovalStatus != domain.ApprovalPending {
 		return false, nil
 	}
-	turn := approvalTurn(domain.Project{ID: projectID}, card, DecisionApprove, domain.ChatMessage{})
+	turn, err := s.approvalTurn(ctx, domain.Project{ID: projectID}, card, DecisionApprove, domain.ChatMessage{})
+	if err != nil {
+		return false, err
+	}
 	turn.Messages = assignIDs([]domain.ChatMessage{assistantText(notice)})
 	if err := s.commit(ctx, turn); errors.Is(err, ErrConflict) {
 		return false, nil

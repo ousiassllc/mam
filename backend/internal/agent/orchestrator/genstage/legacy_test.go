@@ -2,7 +2,6 @@ package genstage_test
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -157,10 +156,7 @@ func TestLegacyCard_ADeclinedCardWithoutARecordIsLiftedByAMessageOnly(t *testing
 	r := newRig(t)
 	id := r.planned(domain.ConfirmFullAuto)
 	cardID := r.legacyCard(id, domain.ApprovalChangesRequested)
-	require.NoError(t, r.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `DELETE FROM generation_approval WHERE message_id = ?`, cardID)
-		return err
-	}))
+	r.withoutRecord(cardID)
 	scenes, err := r.plans.ListScenes(context.Background(), id)
 	require.NoError(t, err)
 	_, err = r.plans.CreateShot(context.Background(), domain.Shot{SceneID: scenes[0].ID, Objective: "追加", Duration: 4})

@@ -62,12 +62,14 @@ type Repository struct{ db *repository.DB }
 // New returns a Repository over db.
 func New(db *repository.DB) *Repository { return &Repository{db: db} }
 
-// LatestCard returns the newest legacy generation approval card of the Project, or nil when it has none.
+// LatestCard returns the newest legacy generation approval card of the Project, or nil when it has none. "Newest" is the order this instance
+// issued the rows in (rowid), never the message ID or created_at: a bundle brings both with it, so a card with a huge ID would stay "the newest" for ever
+// (spec/spec.md §4.3). A bundle cannot set the rowid (the import refuses a column the schema does not have).
 func (r *Repository) LatestCard(ctx context.Context, projectID string) (*Card, error) {
 	var c Card
 	err := r.db.Reader().QueryRowContext(ctx,
 		`SELECT id, COALESCE(approval_status, '') FROM chat_message
-		  WHERE project_id = ? AND kind = 'approval' AND ref_type = ? ORDER BY id DESC LIMIT 1`,
+		  WHERE project_id = ? AND kind = 'approval' AND ref_type = ? ORDER BY rowid DESC LIMIT 1`,
 		projectID, domain.CheckpointGeneration.RefType()).Scan(&c.ID, &c.Status)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -92,6 +94,16 @@ func (r *Repository) Approval(ctx context.Context, messageID string) (a Approval
 	}
 	a.Scope = json.RawMessage(scope)
 	return a, true, nil
+}
+
+// Unrecorded reports whether m is a generation approval card that has no record of what it showed in the Project. A bundle does not carry
+// generation_approval, so every such card of an imported Project is unrecorded; it is never taken as an approval (spec/spec.md §4.3). Any other message is not.
+func (r *Repository) Unrecorded(ctx context.Context, projectID string, m domain.ChatMessage) (bool, error) {
+	if m.Kind != domain.KindApproval || m.RefType != domain.CheckpointGeneration.RefType() {
+		return false, nil
+	}
+	a, ok, err := r.Approval(ctx, m.ID)
+	return !ok || a.ProjectID != projectID, err
 }
 
 // LaunchProject returns the Project of a Shot that has a claimed stage: the Shots started by hand have none. ok is false when it has none.
@@ -176,11 +188,12 @@ func (r *Repository) update(ctx context.Context, query string, args ...any) erro
 }
 
 // AskedAgainAfter reports whether the user wrote a message in the thread after the message afterID that is not a reply to it: after a
-// declined legacy approval, that is the user telling the Orchestrator to go on (spec/spec.md §4.3).
+// declined legacy approval, that is the user telling the Orchestrator to go on (spec/spec.md §4.3). "After" is the order this instance issued the
+// rows in (rowid, as in LatestCard), so that the ID of an imported card does not decide it.
 func (r *Repository) AskedAgainAfter(ctx context.Context, projectID, afterID string) (bool, error) {
 	var n int
 	err := r.db.Reader().QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM chat_message WHERE project_id = ? AND role = 'user' AND id > ? AND COALESCE(reply_to_message_id, '') <> ?`,
+		`SELECT COUNT(*) FROM chat_message WHERE project_id = ? AND role = 'user' AND rowid > (SELECT rowid FROM chat_message WHERE id = ?) AND COALESCE(reply_to_message_id, '') <> ?`,
 		projectID, afterID, afterID).Scan(&n)
 	if err != nil {
 		return false, fmt.Errorf("find a message after the approval: %w", err)

@@ -161,10 +161,9 @@ type ThreadMessage struct {
 	ChatMessage
 	Attachments []Asset
 	ReplyTo     *ChatMessage // the message this one answers, nil when not a reply
-	// Open is true while a question / escalation card still waits for an answer.
-	Open bool
-	// Job is the live job of a progress card (nil when unknown).
-	Job *Job
+	Open        bool         // true while a question / escalation card still waits for an answer
+	Job         *Job         // the live job of a progress card (nil when unknown)
+	Unrecorded  bool         // a generation approval card of v0.1.34 with no record of what it showed (a bundle does not carry it): never taken as an approval (spec/spec.md §4.3)
 }
 
 // Pending reports whether the card can still change in place (card.updated): a question or

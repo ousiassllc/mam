@@ -8,18 +8,23 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
-type fixture struct{ svc *service.Services }
+type fixture struct {
+	svc *service.Services
+	db  *repository.DB
+}
 
 func newFixture(t *testing.T) fixture {
 	t.Helper()
 	testenv.Parallel(t)
-	return fixture{svc: servicetest.New(t, service.Deps{DB: testdb.Open(t), AssetsDir: filepath.Join(t.TempDir(), "assets")})}
+	db := testdb.Open(t)
+	return fixture{svc: servicetest.New(t, service.Deps{DB: db, AssetsDir: filepath.Join(t.TempDir(), "assets")}), db: db}
 }
 
 func (f fixture) createProject(t *testing.T, content string) domain.Project {

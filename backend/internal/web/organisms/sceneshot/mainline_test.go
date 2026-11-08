@@ -42,9 +42,10 @@ func TestView_TellsTheGenerationTestApartFromTheMainLine(t *testing.T) {
 // for no approval, and a decline of a card of v0.1.34 says how to lift it.
 func TestView_SaysWhichPhaseTheAutomaticStartIsIn(t *testing.T) {
 	for phase, wants := range map[mainline.Phase][]string{
-		mainline.PhaseDeclined: {`data-phase="declined"`, "差し戻されています", "メッセージを送ってください"},
-		mainline.PhaseAuto:     {`data-phase="auto"`, "承認を待たずに", "自動で生成を進めます"},
-		mainline.PhaseManual:   {`data-testid="main-line-wait"`, "自動では始まりません"},
+		mainline.PhaseDeclined:           {`data-phase="declined"`, "差し戻されています", "メッセージを送ってください"},
+		mainline.PhaseDeclinedUnrecorded: {`data-phase="declined_unrecorded"`, "差し戻されています", "メッセージを送ってください", "記録が無い"},
+		mainline.PhaseAuto:               {`data-phase="auto"`, "承認を待たずに", "自動で生成を進めます"},
+		mainline.PhaseManual:             {`data-testid="main-line-wait"`, "自動では始まりません"},
 	} {
 		d := data()
 		d.Wait = mainline.Wait{Shots: 3, Counted: true, Phase: phase}

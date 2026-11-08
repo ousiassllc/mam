@@ -185,8 +185,8 @@ func (s *ChatService) commit(ctx context.Context, turn repository.Turn) error {
 func (s *ChatService) planTurn(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage, attached []domain.Asset) (repository.Turn, []domain.BriefField, error) {
 	turn := repository.Turn{ProjectID: project.ID, Messages: []domain.ChatMessage{user}}
 	if target != nil && target.Kind == domain.KindApproval && target.ApprovalStatus == domain.ApprovalPending {
-		turn := s.planApprovalReply(project, *target, user)
-		if err := s.settlePromotion(ctx, *target, &turn); err != nil {
+		turn, err := s.planApprovalReply(ctx, project, *target, user)
+		if err != nil {
 			return turn, nil, err
 		}
 		if err := s.attachToBrief(ctx, &turn, attached); err != nil {

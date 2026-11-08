@@ -40,13 +40,47 @@ func TestAutoSettings_TheServiceCallsBothPathsShareSayThatAutoStartsTheGeneratio
 func TestApproved_ALegacyGenerationCardSaysWhatTheModeDoesNext(t *testing.T) {
 	card := domain.ChatMessage{Kind: domain.KindApproval, RefType: domain.CheckpointGeneration.RefType()}
 
-	auto := approvalack.Approved(card, domain.ModeAuto)
-	director := approvalack.Approved(card, domain.ModeDirector)
+	auto := approvalack.Approved(card, domain.ModeAuto, false)
+	director := approvalack.Approved(card, domain.ModeDirector, false)
 
 	assert.Contains(t, auto, "自動で進めます")
 	assert.Contains(t, director, "AUTO ではない")
 	assert.Contains(t, director, "手動で起動")
 	assert.NotContains(t, director, "自動で進めます")
-	other := approvalack.Approved(domain.ChatMessage{Kind: domain.KindApproval, RefType: domain.CheckpointScript.RefType()}, domain.ModeDirector)
+	assert.NotContains(t, auto, "承認としては扱いません", "a card with its record is not worded as one without")
+	other := approvalack.Approved(domain.ChatMessage{Kind: domain.KindApproval, RefType: domain.CheckpointScript.RefType()}, domain.ModeDirector, true)
 	assert.Equal(t, "承認されました。次の工程に進みます。", other)
+}
+
+// A card with no record (it came with a bundle) is never taken as an approval, and the reply says so: in AUTO what goes on is AUTO's own start, not the
+// card's; outside AUTO nothing starts.
+func TestApproved_ACardWithoutARecordIsSaidNotToBeTheApproval(t *testing.T) {
+	card := domain.ChatMessage{Kind: domain.KindApproval, RefType: domain.CheckpointGeneration.RefType()}
+
+	auto := approvalack.Approved(card, domain.ModeAuto, true)
+	director := approvalack.Approved(card, domain.ModeDirector, true)
+
+	assert.Contains(t, auto, "承認としては扱いません")
+	assert.Contains(t, auto, "承認の有無にかかわらず")
+	assert.Contains(t, director, "承認としては扱いません")
+	assert.Contains(t, director, "生成は自動では始まりません")
+	assert.NotContains(t, director, "自動で進めます")
+}
+
+// A declined card says what lifts the decline: with its record a change of the plan does; without one (the plan cannot be compared) only a message does;
+// outside AUTO nothing starts by itself anyway, and the reply does not promise that a message starts it.
+func TestChangesRequested_ALegacyGenerationCardSaysWhatLiftsTheDecline(t *testing.T) {
+	card := domain.ChatMessage{Kind: domain.KindApproval, RefType: domain.CheckpointGeneration.RefType()}
+
+	recorded := approvalack.ChangesRequested(card, domain.ModeAuto, false)
+	unrecorded := approvalack.ChangesRequested(card, domain.ModeAuto, true)
+	director := approvalack.ChangesRequested(card, domain.ModeDirector, false)
+
+	assert.Equal(t, mainline.DeclinedAck, recorded)
+	assert.Contains(t, recorded, "計画（")
+	assert.Equal(t, mainline.DeclinedAckUnrecorded, unrecorded)
+	assert.Contains(t, unrecorded, "メッセージを送ってください")
+	assert.NotContains(t, unrecorded, "計画（", "a change of the plan does not lift a decline that has no record")
+	assert.Equal(t, mainline.DeclinedAckNotAuto, director)
+	assert.Contains(t, director, "AUTO ではない")
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/previewcache"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
 )
 
 // core is what ProjectService and ChatService share.
@@ -51,6 +52,8 @@ type core struct {
 	// instead of making a second Shot and a second paid generation, or putting the answer into
 	// the next item of the Brief. It also holds the Shots a Continue card is proposed or confirmed for (Shot ID) and the Branch requests being served ("branch" + Shot ID + input).
 	answering sync.Map
+	// genApprovals reads the records of the generation approval cards of v0.1.34 (read-only).
+	genApprovals *genapprovalrepo.Repository
 	// takeActions decides which Takes may be repaired (domain.CheckRepair) or judged (domain.CheckJudge); set by New.
 	takeActions takeActions
 }
