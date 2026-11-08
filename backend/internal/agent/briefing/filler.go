@@ -21,6 +21,13 @@ var (
 	phraseParticleRe = regexp.MustCompile(`[をがはにでとへのも]`)
 	// addresseeRe is who a delegation is addressed to ("AIにお任せします", "あなたにお任せします", "そちらで決めてください").
 	addresseeRe = regexp.MustCompile(`(?i)あなた|貴方|そちら|こちら|そっち|こっち|AI|ＡＩ|ChatGPT|アシスタント|お前|おまえ|君|きみ`)
+	// undecidedRe is a word that says the Subject is not decided, is put off or is handed over ("まだ決まっていないけど…", "未定だが縦型動画", "お任せでTikTok向け",
+	// "特にありませんがTikTok", "後で決める"). A candidate Subject that holds one anywhere is the clause of that deferral, never a Subject: the text
+	// may run on past the word into another item, so it is not enough that the word is all that is left.
+	undecidedRe = regexp.MustCompile(`まだ決まっ|まだ決めて|決まって(?:い)?な|決まって(?:い)?ませ|決めて(?:い)?な|決めて(?:い)?ませ|決めかね|決めら?れな|決められ|未定|未決定|` +
+		`分からな|わからな|分かりませ|わかりませ|分かんな|わかんな|思い(?:つ|浮か)かな|思い(?:つ|浮か)きませ|思い浮かば|浮かば|浮かびませ|` +
+		`特にありません|特になし|特に希望|(?:何|なん)でも(?:いい|よい|OK|ok)|(?:どちら|どっち|どれ)でも|後で|あとで|後ほど|` +
+		`(?:お?任せ|おまかせ)(?:で|に|し|す|ま|た|くだ|下)`)
 	// handOverRe is a word that hands a decision over or puts it off ("お任せ", "決めて", "考え", "お願い", "ください", "思い浮かば"). An addressee is no
 	// subject when it is all that is left of a text once the filler is taken away AND the text holds such a word (concrete): "AIにお任せします" hands
 	// the decision over, while "AI", "AI動画" or "AIがいい" name the AI as what the video is about.
@@ -35,6 +42,9 @@ func buildFillers() []string {
 		"なんでもいい", "何でもいい", "どちらでもいい", "どっちでもいい", "どれでもいい", "お任せします", "おまかせします", "お任せ", "おまかせ", "任せます", "任せる", "任せ",
 		"まだ決めていない", "まだ決めてない", "決めていない", "決めてない", "決めていません", "決めてません", "決まっていない", "決まってない", "決まっていません", "決まってません",
 		"決めかねて", "決めて", "未決定", "未定", "検討中", "考え中", "考えさせて", "考えさせ", "考えて", "考え", "思いつかない", "思いつきません", "思い浮かばない", "思い浮かびません", "浮かばない", "浮かびません",
+		// a change or a decision that is only announced ("主人公は変えたい", "後で変更します"): a predicate, no noun
+		"変更したい", "変更します", "変更する", "変更", "変えたい", "変えます", "変える", "変えて", "変え", "替えたい", "替える", "替え", "し直したい", "し直します", "し直す", "し直して", "し直し",
+		"やめたい", "やめます", "やめる", "やめて", "やめ", "決めたい", "決めます", "決める", "決め", "やっぱり", "やはり",
 		"特にありません", "特になし", "特に希望", "希望", "ありません", "おすすめ", "ほしい", "欲しい",
 		// hedging and fumbling
 		"うーん", "んー", "えーと", "えっと", "ええと", "ちょっと",
@@ -51,9 +61,9 @@ func buildFillers() []string {
 	return words
 }
 
-// usable returns s when it is a concrete subject: filler and the words that point at the request are not.
+// usable returns s when it is a concrete subject: filler, the words that point at the request and a phrase that holds a deferral (undecidedRe) are not.
 func usable(s string) string {
-	if slices.Contains(notSubject, strings.TrimSpace(s)) {
+	if slices.Contains(notSubject, strings.TrimSpace(s)) || undecidedRe.MatchString(s) {
 		return ""
 	}
 	return concrete(s)

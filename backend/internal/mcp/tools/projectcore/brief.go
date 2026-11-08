@@ -102,7 +102,7 @@ type UpdateBriefInput struct {
 	Mood                  *string   `json:"mood,omitempty" jsonschema:"200 文字まで"`
 	AdditionalInstruction *string   `json:"additional_instruction,omitempty" jsonschema:"4000 文字まで"`
 	References            *[]string `json:"references,omitempty" jsonschema:"参照の URL（http:// か https://）の全件。動画アセットの参照はそのまま残る"`
-	Confirm               bool      `json:"confirm,omitempty" jsonschema:"true で、Brief にある推奨・読み取りの値をすべて利用者の確定した値にする（チャットの「この内容でよいですか？」への承認と同じ）"`
+	Confirm               bool      `json:"confirm,omitempty" jsonschema:"true で、Brief にある推奨・読み取りの値をすべて利用者の確定した値にする（チャットの「この内容でよいですか？」への承認と違い、未設定の項目は残り、確認カードも開いたまま）"`
 }
 
 func updateBrief(svc *service.ProjectService) mcpkit.Handler[UpdateBriefInput, BriefOutput] {
