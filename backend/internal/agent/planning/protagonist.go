@@ -1,6 +1,7 @@
 package planning
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -12,7 +13,7 @@ import (
 // script is about somebody else: the gender and the adult constraint. It does not judge whether the script then follows the
 // protagonist; that stays in the prompts (the Subject is given as a fixed constraint).
 func protagonistProblem(b domain.Brief, protagonist string) string {
-	brief, who := b.Subject+"\n"+b.AdditionalInstruction, strings.TrimSpace(protagonist)
+	brief, who := withoutContext(b.Subject+"\n"+b.AdditionalInstruction), withoutContext(strings.TrimSpace(protagonist))
 	if who == "" {
 		return ""
 	}
@@ -21,7 +22,7 @@ func protagonistProblem(b domain.Brief, protagonist string) string {
 			return "the protagonist " + quote(who) + " is " + g.opposite().name + " but the Brief says " + g.name
 		}
 	}
-	if containsAny(b.AdditionalInstruction+"\n"+b.Subject, adultWords) && containsAny(who, minorWords) {
+	if containsAny(brief, adultWords) && containsAny(who, minorWords) {
 		return "the protagonist " + quote(who) + " is a minor but the Brief requires an adult"
 	}
 	return ""
@@ -38,9 +39,17 @@ var (
 	// genders are both ways round: the Subject states one and the protagonist the other.
 	genders = []gender{female, male}
 
-	adultWords = []string{"成人", "大人", "18歳以上", "20歳以上"}
+	// adultWords state that the protagonist is an adult: "大人" alone is not ("大人っぽい雰囲気", "大人向け").
+	adultWords = []string{"成人", "18歳以上", "20歳以上", "大人の男性", "大人の女性", "大人の人物"}
 	minorWords = []string{"未成年", "子供", "子ども", "少女", "少年", "小学生", "中学生", "高校生", "10代", "幼児", "赤ちゃん"}
 )
+
+// contextRe is a word that holds a gender or an age word without describing the protagonist: the audience ("女性向け", "男性層"), the word
+// "成人" in another sense ("成人式", "成人向け") and a negated adult ("成人ではない").
+var contextRe = regexp.MustCompile(`(?:女性|男性|女の子|男の子|少女|少年|子供|子ども|大人|成人)(?:向け|層|ユーザー|客|だけ)|成人式|成人(?:ではな|じゃな)`)
+
+// withoutContext removes the words contextRe finds, so that only what describes the protagonist is compared.
+func withoutContext(s string) string { return contextRe.ReplaceAllString(s, "") }
 
 func (g gender) opposite() gender {
 	if g.name == female.name {

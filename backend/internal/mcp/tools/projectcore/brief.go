@@ -124,13 +124,15 @@ func updateBrief(svc *service.ProjectService) mcpkit.Handler[UpdateBriefInput, B
 			domain.BriefContentType: in.ContentType, domain.BriefObjective: in.Objective, domain.BriefSubject: in.Subject,
 			domain.BriefTarget: in.Target, domain.BriefDuration: in.Duration, domain.BriefAspectRatio: in.AspectRatio, domain.BriefMood: in.Mood,
 		}
-		for f, v := range set {
-			if v != nil {
+		for _, f := range domain.RequiredBriefFields() {
+			if v := set[f]; v != nil {
 				form.Values[f] = *v
+				form.Given = append(form.Given, f)
 			}
 		}
 		if in.AdditionalInstruction != nil {
 			form.AdditionalInstruction = *in.AdditionalInstruction
+			form.Given = append(form.Given, domain.BriefAdditionalInstruction)
 		}
 		if in.References != nil {
 			form.References = strings.Join(*in.References, "\n")

@@ -76,6 +76,12 @@ func TestProducer_AcceptsAProtagonistThatMatchesOrIsNotChecked(t *testing.T) {
 		"both genders are in the Brief":  {domain.Brief{Subject: "男性と女性の二人組"}, "女性"},
 		"an adult constraint, an adult":  {protagonistBrief(), "30代の女性"},
 		"no adult constraint, a student": {domain.Brief{Subject: "学園もの"}, "高校生"},
+		// Words that hold a gender or an age without describing the protagonist (#1114).
+		"a female audience, a male presenter":  {domain.Brief{Subject: "20代女性向けの美容液の紹介"}, "男性のスタイリスト"},
+		"a male audience, a female presenter":  {domain.Brief{AdditionalInstruction: "テーマ: 男性向けスキンケア"}, "女性の美容部員"},
+		"an adult mood is no adult constraint": {domain.Brief{Subject: "大人っぽい雰囲気の街歩き"}, "高校生の男の子"},
+		"a coming-of-age ceremony":             {domain.Brief{Subject: "成人式の振袖"}, "高校生の少女"},
+		"not an adult":                         {domain.Brief{Subject: "成人ではない設定のキャラクター"}, "高校生"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			f := &fakeLLM{answers: []string{conceptWith(tc.protagonist)}}

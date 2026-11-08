@@ -34,25 +34,15 @@ var briefLabels = map[BriefField]string{
 // Label is the display name of the field.
 func (f BriefField) Label() string { return cmp.Or(briefLabels[f], string(f)) }
 
+var briefQuestions = map[BriefField]string{
+	BriefContentType: "確認です。どの種類の動画を作りますか？", BriefObjective: "確認です。動画の目的（掲載先・用途）は何ですか？",
+	BriefSubject: "確認です。何（商品・題材）を主役にしますか？", BriefTarget: "確認です。ターゲットは誰ですか？",
+	BriefDuration: "確認です。動画の長さはどれくらいにしますか？", BriefAspectRatio: "確認です。アスペクト比はどれにしますか？", BriefMood: "確認です。どんな雰囲気にしますか？",
+}
+
 // Question is the sentence the AI asks when the field is missing.
 func (f BriefField) Question() string {
-	switch f {
-	case BriefContentType:
-		return "確認です。どの種類の動画を作りますか？"
-	case BriefObjective:
-		return "確認です。動画の目的（掲載先・用途）は何ですか？"
-	case BriefSubject:
-		return "確認です。何（商品・題材）を主役にしますか？"
-	case BriefTarget:
-		return "確認です。ターゲットは誰ですか？"
-	case BriefDuration:
-		return "確認です。動画の長さはどれくらいにしますか？"
-	case BriefAspectRatio:
-		return "確認です。アスペクト比はどれにしますか？"
-	case BriefMood:
-		return "確認です。どんな雰囲気にしますか？"
-	}
-	return "確認です。" + f.Label() + " を教えてください。"
+	return cmp.Or(briefQuestions[f], "確認です。"+f.Label()+" を教えてください。")
 }
 
 // Options are the quick-answer buttons of the Question card. Fields without a
@@ -98,6 +88,12 @@ const (
 	BriefSourceInferred        = "inferred_from_request" // read from the user's words by the extractor; not yet confirmed
 	BriefSourceRecommended     = "recommended"           // a tentative proposal derived from the purpose; an explicit value replaces it
 	BriefAdditionalInstruction = BriefField("additional_instruction")
+)
+
+// Prefixes of the lines the extractor writes into the Additional Instruction; such a line is no topic of the user (Missing).
+const (
+	InstructionThemePrefix      = "テーマ: "
+	InstructionConstraintPrefix = "制約: "
 )
 
 // Brief is the Creative Brief stored in brief.content as JSON (F-01, F-25).
@@ -182,13 +178,21 @@ func (b Brief) IsDelegated(f BriefField) bool { return slices.Contains(b.Delegat
 // CanDelegate reports whether the field may be left to the AI: every one but the Subject (#1108).
 func (f BriefField) CanDelegate() bool { return f != BriefSubject }
 
-// Missing returns the required fields neither set nor delegated, in question order. A delegated Subject is still missing (the AI would invent an unrelated topic) unless Additional Instruction written by the user names one (#1108); constraints the extractor read from the request are not a topic (#1114).
+// Missing returns the required fields neither set nor delegated, in question order. A delegated Subject is still missing (the AI would invent an unrelated topic) unless Additional Instruction written by the user names one (#1108); the "テーマ: …" and "制約: …" lines the extractor read from the request are not a topic, saved or confirmed or not (#1114).
 func (b Brief) Missing() []BriefField {
 	return slices.DeleteFunc(RequiredBriefFields(), func(f BriefField) bool {
 		if f == BriefSubject {
-			return strings.TrimSpace(b.Subject) != "" || (strings.TrimSpace(b.AdditionalInstruction) != "" && b.SourceOf(BriefAdditionalInstruction) == BriefSourceUser)
+			return strings.TrimSpace(b.Subject) != "" || b.namesTopic()
 		}
 		return b.Get(f) != "" || b.IsDelegated(f)
+	})
+}
+
+// namesTopic reports whether the user's Additional Instruction has a line that is not one of the extractor's theme or constraint lines.
+func (b Brief) namesTopic() bool {
+	return b.SourceOf(BriefAdditionalInstruction) == BriefSourceUser && slices.ContainsFunc(strings.Split(b.AdditionalInstruction, "\n"), func(l string) bool {
+		l = strings.TrimSpace(l)
+		return l != "" && !strings.HasPrefix(l, InstructionThemePrefix) && !strings.HasPrefix(l, InstructionConstraintPrefix)
 	})
 }
 

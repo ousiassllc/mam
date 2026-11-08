@@ -52,17 +52,36 @@ func (s Planner) Plan(ctx context.Context, project domain.Project, turn *reposit
 	}
 	// The AI speaks again only when the message moved the Brief forward (a refused answer asks again).
 	beforeMissing, nowMissing := before.Missing(), brief.Missing()
+	summarised := false
 	if refused == nil && (reasked || (drafting && briefing.Changed(attachedOnly, brief)) || (!drafting && !slices.Equal(beforeMissing, nowMissing))) {
-		turn.Messages = append(turn.Messages, briefing.FollowUp(brief, project.ConfirmationLevel, drafting))
+		followUp := briefing.FollowUp(brief, project.ConfirmationLevel, drafting)
+		turn.Messages = append(turn.Messages, followUp)
+		summarised = followUp.RefType == domain.RefBriefConfirm // it closes the earlier summary cards: they show a Brief that has changed
 	}
-	decided := slices.DeleteFunc(slices.Clone(beforeMissing), func(f domain.BriefField) bool { return slices.Contains(nowMissing, f) })
-	if briefing.NeedsConfirmation(before) && !briefing.NeedsConfirmation(brief) {
-		decided = append(decided, domain.BriefField(domain.RefBriefConfirm)) // the summary was answered in words
+	return decidedBy(before, brief, summarised), nil
+}
+
+// decidedBy lists the items the message decided, whose question cards are closed: the Brief items that are no longer missing, the summary
+// (answered in words, or replaced by a new one), and the Subject when the contradiction was settled.
+func decidedBy(before, brief domain.Brief, summarised bool) []domain.BriefField {
+	nowMissing := brief.Missing()
+	decided := slices.DeleteFunc(before.Missing(), func(f domain.BriefField) bool { return slices.Contains(nowMissing, f) })
+	if summarised || (briefing.NeedsConfirmation(before) && !briefing.NeedsConfirmation(brief)) {
+		decided = append(decided, domain.BriefField(domain.RefBriefConfirm))
 	}
 	if before.ProposedSubject != "" && brief.ProposedSubject == "" {
-		decided = append(decided, domain.BriefSubject) // the contradiction was settled
+		decided = append(decided, domain.BriefSubject)
 	}
-	return decided, nil
+	return decided
+}
+
+// LatestSummaryID is the ID of the newest summary card of the Brief ("この内容でよいですか？") of the Project, or "".
+func LatestSummaryID(ctx context.Context, chat *repository.ChatRepository, projectID string) (string, error) {
+	summaries, err := chat.ListBriefQuestions(ctx, projectID, []string{domain.RefBriefConfirm})
+	if err != nil || len(summaries) == 0 {
+		return "", err
+	}
+	return summaries[len(summaries)-1].ID, nil
 }
 
 // answerBrief applies a message received while the Brief is drafted (or the Subject is missing); it returns the question again for an answer the Brief cannot hold.
@@ -100,13 +119,14 @@ func (s Planner) answerBrief(ctx context.Context, project domain.Project, brief 
 }
 
 // Open reports whether the Brief question card m can still be answered: nobody replied to it and what it asks is still open — the item
-// is missing, the Subject is contradicted, or (the summary card) the Project still drafts a Brief that waits for the confirmation.
-func Open(m domain.ChatMessage, replied bool, b domain.Brief, state domain.ProjectState) bool {
+// is missing, the Subject is contradicted, or (the summary card) the Project still drafts a Brief that waits for the confirmation. Only
+// the newest summary card (latestConfirm is its ID) is open: an older one shows a Brief that has changed since.
+func Open(m domain.ChatMessage, replied bool, b domain.Brief, state domain.ProjectState, latestConfirm string) bool {
 	if replied {
 		return false
 	}
 	if m.RefType == domain.RefBriefConfirm {
-		return state == domain.StateDraft && briefing.NeedsConfirmation(b)
+		return m.ID == latestConfirm && state == domain.StateDraft && briefing.NeedsConfirmation(b)
 	}
 	f := domain.BriefField(m.RefID)
 	return slices.Contains(b.Missing(), f) || (f == domain.BriefSubject && b.ProposedSubject != "")
