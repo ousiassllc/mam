@@ -16,7 +16,7 @@ func (o *Orchestrator) routes() modelroute.Env { return modelroute.ForAdapter(o.
 // reads state only, so a start asks it before the job is queued; the job chooses again as it makes each image. It returns the least one image of the pack costs
 // (0 when a model of the chosen routes is free or has no price: an unknown price is not counted against a ceiling) and the models the progress card names.
 func (o *Orchestrator) checkPackModels() (cheapest float64, models string, err error) {
-	env, cheapest := o.routes(), math.Inf(1)
+	env, cheapest := o.routes().Memoised(), math.Inf(1)
 	for _, p := range []modeladapter.ImagePurpose{modeladapter.PurposeNewReference, modeladapter.PurposeEditReference} {
 		pick, err := env.Image(p)
 		if err != nil {

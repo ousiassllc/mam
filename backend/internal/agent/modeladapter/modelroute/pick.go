@@ -2,7 +2,6 @@ package modelroute
 
 import (
 	"slices"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -28,15 +27,6 @@ const (
 
 // conditionReason is the sentence of a model chosen in place of the assignment. It claims a match of conditions, never a better model.
 const conditionReason = "既定の割当が使えないため、条件に合う利用可能なモデルを選びました"
-
-// Detail is Reason with why each model of the assignment was passed over, for the record of the Prompt version.
-func (s Selected) Detail() string {
-	parts := make([]string, len(s.Passed))
-	for i, p := range s.Passed {
-		parts[i] = string(p.Model) + "＝" + p.Message
-	}
-	return s.Reason + "（割当が使えない理由: " + strings.Join(parts, "、") + "）"
-}
 
 // Use is what Selected says of the model that made an output: its route, its cost basis and the reason. fellBack is the Adapter's own fail-over to the
 // assignment's alternative model.
@@ -75,6 +65,7 @@ type ImagePick struct {
 // Image chooses the models for an image of the purpose. It returns *NoUsableError (ErrNoUsableModel) when none of the assignment can be used and none may be
 // chosen in its place.
 func (e Env) Image(p modeladapter.ImagePurpose) (ImagePick, error) {
+	e = e.Memoised()
 	route := e.Config.ImageRouteFor(p)
 	pair := pairOf(route.Primary.Model, route.Fallback.Model)
 	pick := ImagePick{Purpose: p, Route: route, Selected: Selected{Selection: modelreg.SelectionAssignment, Reason: assignmentReason}}
@@ -118,6 +109,7 @@ type VideoPick struct {
 
 // Video chooses the models for the video of a Shot under the Quality Policy; see Image for the error.
 func (e Env) Video(q domain.QualityPolicy, vn VideoNeed) (VideoPick, error) {
+	e = e.Memoised()
 	route, ok := e.Config.Policies[q]
 	pick := VideoPick{Policy: q, Route: route, Selected: Selected{Selection: modelreg.SelectionAssignment, Reason: assignmentReason}}
 	if !ok {

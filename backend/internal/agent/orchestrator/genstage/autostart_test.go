@@ -164,8 +164,8 @@ func TestAutoStart_AnUnknownPriceStartsAndTheOneAnnouncementSaysUnknown(t *testi
 		"Reference Pack を作る Shot: 3 件", "gpt-image-2.6-flare / nano-banana",
 		"seedance-2.0（720p）", "合計最大 9 本",
 		"費用の見積: 不明", "単価が不明でも止めずに始めます",
-		"予算上限: Project 設定なし / Shot あたり 設定なし", "予算上限が未設定で、単価が分からない分があります",
-		"止めるには", "予算上限", "DIRECTOR",
+		"予算上限: Project 設定なし / Shot あたり 設定なし", "単価が分からない分があります",
+		"単価が分かるモデルの呼び出しだけ", "DIRECTOR",
 	} {
 		assert.Contains(t, text, want)
 	}
@@ -189,8 +189,19 @@ func TestAutoStart_AKnownPriceShowsNumbersAndTheBudgetCeilings(t *testing.T) {
 	} {
 		assert.Contains(t, text, want)
 	}
-	assert.NotContains(t, text, "予算上限が未設定", "a ceiling is set: the risk is not the open-ended one")
-	assert.NotContains(t, text, "不明")
+	assert.NotContains(t, text, "単価が分からない分があります", "every price is known: no risk line")
+}
+
+// A ceiling does not count a call whose price is unknown: the announcement keeps the risk line and names DIRECTOR as the sure way to stop.
+func TestAutoStart_AnUnknownPriceKeepsTheRiskLineEvenWithABudgetCeiling(t *testing.T) {
+	t.Parallel()
+	r := newRig(t)
+	id := r.planned(domain.ConfirmFullAuto)
+	require.NoError(t, r.policies.SetBudget(context.Background(), id, new(50.0), new(5.0)))
+	r.handle(id)
+	for _, want := range []string{"費用の見積: 不明", "予算上限: Project 50.0000 USD", "単価が分からない分があります", "止まりません", "DIRECTOR"} {
+		assert.Contains(t, r.announcement(), want)
+	}
 }
 
 // The announcement is made for the Shots the Orchestrator starts for the first time: the generations that follow the Reference Packs, and a restart in the
@@ -211,10 +222,7 @@ func TestAutoStart_AnnouncesOncePerStartAndAgainOnlyForNewShots(t *testing.T) {
 	require.Equal(t, 3, r.gen.count(genapprovalrepo.StageGenerate))
 	assert.Equal(t, 1, r.announcements(), "the generations of the Shots whose pack is made are the same start")
 
-	scenes, err := r.plans.ListScenes(context.Background(), id)
-	require.NoError(t, err)
-	_, err = r.plans.CreateShot(context.Background(), domain.Shot{SceneID: scenes[0].ID, Objective: "追加", Duration: 4})
-	require.NoError(t, err)
+	r.addShot(id)
 	r.handle(id)
 
 	assert.Equal(t, 2, r.announcements(), "a Shot added to the plan is a new start")

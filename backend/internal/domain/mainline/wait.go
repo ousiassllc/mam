@@ -136,7 +136,7 @@ func (w Wait) NextAction() string {
 		if w.Stuck > 0 {
 			return "次にするもの: 進められない Shot は、Shot を選んで「Reference Pack」「生成」を押してください。ほかは何も要りません。起動した生成は Job と Progress で追えます。"
 		}
-		return "次にするもの: ありません。止めたいときは、設定で予算上限を決めるか、MODE を DIRECTOR にしてください。起動した生成は Job と Progress で追えます。"
+		return "次にするもの: ありません。" + BudgetCeilingScope + StopAuto + "起動した生成は Job と Progress で追えます。"
 	}
 	return "次に押すもの: Scene / Shot で Shot を選び、必要なら先に「Reference Pack」、続けて「生成」を押してください。起動した生成は Job と Progress で追えます。"
 }

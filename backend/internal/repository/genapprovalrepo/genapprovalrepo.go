@@ -187,16 +187,21 @@ func (r *Repository) update(ctx context.Context, query string, args ...any) erro
 	})
 }
 
-// AskedAgainAfter reports whether the user wrote a message in the thread after the message afterID that is not a reply to it: after a
-// declined legacy approval, that is the user telling the Orchestrator to go on (spec/spec.md §4.3). "After" is the order this instance issued the
-// rows in (rowid, as in LatestCard), so that the ID of an imported card does not decide it.
-func (r *Repository) AskedAgainAfter(ctx context.Context, projectID, afterID string) (bool, error) {
+// AskedAgainAfter reports whether the user wrote a message in the thread after the decline of the card that is not a reply to the card: after a
+// declined legacy approval, that is the user telling the Orchestrator to go on (spec/spec.md §4.3). The decline is the user's newest reply to the
+// card (the answer that declined it), or the card itself when nobody replied; a message written before the decline (between the card and the
+// answer) is part of the conversation that led to it and lifts nothing. "After" is the order this instance issued the rows in (rowid, as in
+// LatestCard), so that the ID of an imported card does not decide it.
+func (r *Repository) AskedAgainAfter(ctx context.Context, projectID, cardID string) (bool, error) {
 	var n int
 	err := r.db.Reader().QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM chat_message WHERE project_id = ? AND role = 'user' AND rowid > (SELECT rowid FROM chat_message WHERE id = ?) AND COALESCE(reply_to_message_id, '') <> ?`,
-		projectID, afterID, afterID).Scan(&n)
+		`SELECT COUNT(*) FROM chat_message WHERE project_id = ? AND role = 'user' AND COALESCE(reply_to_message_id, '') <> ?
+		AND rowid > COALESCE(
+			(SELECT MAX(rowid) FROM chat_message WHERE project_id = ? AND role = 'user' AND reply_to_message_id = ?),
+			(SELECT rowid FROM chat_message WHERE id = ?))`,
+		projectID, cardID, projectID, cardID, cardID).Scan(&n)
 	if err != nil {
-		return false, fmt.Errorf("find a message after the approval: %w", err)
+		return false, fmt.Errorf("find a message after the decline: %w", err)
 	}
 	return n > 0, nil
 }

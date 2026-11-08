@@ -100,6 +100,11 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 	return a, g.next(ctx, &a)
 }
 
+// SupersededNotice is what the chat says when the Orchestrator settles a generation approval card of v0.1.34 that was still pending: the card is closed
+// by the system, never as the user's answer.
+const SupersededNotice = "旧方針（v0.1.34）の「生成の承認」カードが未回答のまま残っていました。AUTO では生成の承認を求めない仕様に変わったため、システムがこのカードを閉じました" +
+	"（あなたの回答ではありません）。AUTO を選んでいるので、続けて生成を自動で始めます。" + mainline.BudgetCeilingScope + mainline.StopAuto
+
 // declined reports whether the card the user declined (under the policy of v0.1.34) still keeps the generation from starting: it does until the
 // plan changed from what the card showed, or the user wrote to the thread after the decline (not as a reply to the card). A card with no record of
 // what it showed (an imported bundle carries the cards but not the records) is lifted by a message only: a.Unrecorded says so, for the words that

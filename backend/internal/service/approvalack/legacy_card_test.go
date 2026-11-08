@@ -12,7 +12,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
 )
 
 // legacyGenerationCard puts a pending generation approval card of v0.1.34 into the thread (nothing posts one any more), holding the Project in
@@ -58,7 +57,21 @@ func TestRespondApproval_AnUnrecordedLegacyGenerationCardIsAnsweredAsNotBeingAnA
 		assert.Equal(t, domain.StateVisualDesign, project.State, "the Project leaves AWAITING_APPROVAL")
 		assert.Equal(t, domain.ApprovalApproved, updated.ApprovalStatus)
 		assert.Equal(t, !tc.withRecord, updated.Unrecorded)
-		assert.Equal(t, approvalack.Approved(card, tc.mode, !tc.withRecord), lastMessage(t, f.thread(t, p.ID)).Content, "%+v", tc)
+		reply := lastMessage(t, f.thread(t, p.ID)).Content
+		assert.Contains(t, reply, "旧方針のカードです", "%+v", tc)
+		if tc.withRecord {
+			assert.NotContains(t, reply, "承認としては扱いません", "%+v", tc)
+		} else {
+			assert.Contains(t, reply, "承認としては扱いません", "%+v", tc)
+		}
+		switch {
+		case tc.mode != domain.ModeAuto:
+			assert.Contains(t, reply, "生成は自動では始まりません", "%+v", tc)
+		case tc.withRecord:
+			assert.Contains(t, reply, "AUTO では承認を求めずに", "%+v", tc)
+		default:
+			assert.Contains(t, reply, "承認の有無にかかわらず", "%+v", tc)
+		}
 	}
 }
 

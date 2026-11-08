@@ -126,27 +126,12 @@ func TestLegacyCard_ADeclinedCardIsLiftedWhenThePlanChanges(t *testing.T) {
 	r.legacyCard(id, domain.ApprovalChangesRequested)
 	r.handle(id)
 	require.Empty(t, r.gen.started())
-	scenes, err := r.plans.ListScenes(context.Background(), id)
-	require.NoError(t, err)
-	_, err = r.plans.CreateShot(context.Background(), domain.Shot{SceneID: scenes[0].ID, Objective: "追加", Duration: 4})
-	require.NoError(t, err)
+	r.addShot(id)
 
 	r.handle(id)
 
 	assert.Equal(t, 4, r.gen.count(genapprovalrepo.StageReferencePack))
 	assert.Equal(t, 1, r.cards(id))
-}
-
-// Answering the reply to the card is not "writing again": the decline's own answer does not lift it.
-func TestLegacyCard_TheAnswerToTheCardItselfDoesNotLiftTheDecline(t *testing.T) {
-	t.Parallel()
-	r := newRig(t)
-	id := r.planned(domain.ConfirmFullAuto)
-	r.legacyCard(id, domain.ApprovalChangesRequested) // the helper answers with a reply to the card
-
-	r.handle(id)
-
-	assert.Empty(t, r.gen.started())
 }
 
 // A bundle carries the chat cards of a Project but not generation_approval (the record is of this instance's models and prices). A declined card that
@@ -157,10 +142,7 @@ func TestLegacyCard_ADeclinedCardWithoutARecordIsLiftedByAMessageOnly(t *testing
 	id := r.planned(domain.ConfirmFullAuto)
 	cardID := r.legacyCard(id, domain.ApprovalChangesRequested)
 	r.withoutRecord(cardID)
-	scenes, err := r.plans.ListScenes(context.Background(), id)
-	require.NoError(t, err)
-	_, err = r.plans.CreateShot(context.Background(), domain.Shot{SceneID: scenes[0].ID, Objective: "追加", Duration: 4})
-	require.NoError(t, err)
+	r.addShot(id)
 
 	r.handle(id)
 	assert.Empty(t, r.gen.started(), "no record to compare: the plan changing says nothing")
@@ -168,4 +150,30 @@ func TestLegacyCard_ADeclinedCardWithoutARecordIsLiftedByAMessageOnly(t *testing
 	r.userWrites(id, "進めて")
 	r.handle(id)
 	assert.Equal(t, 4, r.gen.count(genapprovalrepo.StageReferencePack))
+}
+
+// A message written between the card and the decline (a "wait") is part of the talk that led to it: only one after the decline lifts it.
+func TestLegacyCard_AMessageBeforeTheDeclineDoesNotLiftIt(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		cardID   string
+		noRecord bool
+	}{"record": {}, "no record": {"", true}, "huge ID": {hugeID, true}} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := newRig(t)
+			id := r.planned(domain.ConfirmFullAuto)
+			cardID := r.legacyCardWithID(id, domain.ApprovalPending, tc.cardID)
+			if tc.noRecord {
+				r.withoutRecord(cardID)
+			}
+			r.userWrites(id, "ちょっと待って")
+			r.answer(id, domain.ApprovalChangesRequested)
+			r.handle(id)
+			require.Empty(t, r.gen.started(), "nothing starts until a message after the decline")
+			r.userWrites(id, "やっぱり進めて")
+			r.handle(id)
+			assert.Equal(t, 3, r.gen.count(genapprovalrepo.StageReferencePack))
+		})
+	}
 }

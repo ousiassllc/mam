@@ -25,6 +25,8 @@ type Env struct {
 	// Refuse is the age gate: it returns *agegate.RefusedError when a model of the route is an adult model while the age confirmation is off. The route is
 	// refused whole and never replaced by another model. nil: none is refused.
 	Refuse func(models ...domain.ModelName) error
+	// memo is set on the Env whose Check is already memoised (Memoised).
+	memo bool
 }
 
 // ForAdapter is the Env of the Adapter's running setting: its age gate, the judgement the application installed (Adapter.Usable) and, where there is
@@ -52,10 +54,12 @@ func (e Env) WithConfig(cfg modeladapter.Config) Env {
 	return e
 }
 
-// memoised is the Env whose Check answers once per model (the copy keeps its own cache): the availability check reads credentials and the disk, and one
-// Report or Effective asks about the same model many times. The cache lives as long as the copy, so it is used for one call only, never kept.
-func (e Env) memoised() Env {
-	if e.Check == nil {
+// Memoised is the Env whose Check answers once per model (the copy keeps its own cache): the availability check reads credentials and the disk, and one
+// decision (a Report, Effective, or a start that asks for several routes) asks about the same model many times. Image and Video memoise for their own call;
+// a caller that asks for more than one route in one decision memoises the Env first so that the routes share the answers. The cache lives as long as the
+// copy and is not safe for concurrent use, so a copy is used for one decision only, never kept.
+func (e Env) Memoised() Env {
+	if e.Check == nil || e.memo {
 		return e
 	}
 	check, seen := e.Check, map[domain.ModelName]modelfilter.Availability{}
@@ -67,6 +71,7 @@ func (e Env) memoised() Env {
 		}
 		return av
 	}
+	e.memo = true
 	return e
 }
 

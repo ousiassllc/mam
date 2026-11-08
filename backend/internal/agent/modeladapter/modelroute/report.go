@@ -50,7 +50,7 @@ type RouteReport struct {
 // Report is the RouteReport of every image purpose and every Quality Policy of the assignment, images first. The conditions that belong to one Shot (its length) are not
 // known here: a video route is judged for a Shot that has a Keyframe, by the Quality Policy's resolution alone.
 func (e Env) Report() []RouteReport {
-	e = e.memoised()
+	e = e.Memoised()
 	var out []RouteReport
 	for _, p := range modeladapter.ImagePurposes() {
 		r := e.Config.ImageRouteFor(p)
