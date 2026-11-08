@@ -18,7 +18,7 @@ const approvalCommentMaxRunes = 500
 // submit button; when it is disabled implicit submission does nothing) instead of approving.
 templ ApprovalCard(m domain.ThreadMessage) {
 	@MessageFrame(m) {
-		<div data-testid={ approvalTestID(m.ChatMessage) } data-approval-status={ string(m.ApprovalStatus) }>
+		<div data-testid="approval-card" data-approval-status={ string(m.ApprovalStatus) }>
 			<p class="mb-1 flex items-center gap-2">
 				<span class="text-xs text-mute">{ approvalLabel(m.ChatMessage) }</span>
 				{{ tone, label := approvalBadge(m.ApprovalStatus) }}

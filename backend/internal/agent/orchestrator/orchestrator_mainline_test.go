@@ -102,9 +102,9 @@ func TestKick_DraftWithoutSubjectDoesNotStart(t *testing.T) {
 	assert.Equal(t, domain.StateDraft, f.state(t, id))
 }
 
-// #1108: after the Scene / Shot plan, the Project stands in VISUAL_DESIGN with every Shot PLANNING. That is deliberate (a generation costs money and
-// is started per Shot), so the reason must be said, with what is missing and what to press next. The Confirmation Level (KEY CHECK) is not the
-// reason, and the approval and budget gates are not bypassed: no generation job is queued.
+// #1108: after the Scene / Shot plan, the Project stands in VISUAL_DESIGN with every Shot PLANNING. Without a generation wired (the Orchestrator of this
+// test has no Gate: the same as a DIRECTOR / MANUAL Project) that is deliberate, so the reason must be said, with what is missing and what to press next.
+// The Confirmation Level (KEY CHECK) is not the reason, and nothing is bypassed: no generation job is queued.
 func TestHandle_PlanNoticeSaysWhyNothingGeneratesAndWhatToPressNext(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -137,10 +137,10 @@ func TestHandle_PlanNoticeSaysWhyNothingGeneratesAndWhatToPressNext(t *testing.T
 	assert.Contains(t, notice, "Scene / Shot の計画ができました")
 	assert.Contains(t, notice, "Shot 3 件が PLANNING")
 	assert.Contains(t, notice, "生成の開始を待っています")
-	assert.Contains(t, notice, "「生成の承認」は出さず", "without the generation gate (DIRECTOR / MANUAL, or no generation wired) nothing is asked and the user starts each Shot")
+	assert.Contains(t, notice, "自動では始まりません", "without the generation gate (DIRECTOR / MANUAL, or no generation wired) the user starts each Shot")
 	assert.Contains(t, notice, "Reference Library が 0 件")
 	assert.Contains(t, notice, "Character）が 0 人")
 	assert.Contains(t, notice, "次に押すもの")
 	assert.Contains(t, notice, "「生成」")
-	assert.Zero(t, f.jobs.count(), "the gates stay: no generation is queued behind the user's back")
+	assert.Zero(t, f.jobs.count(), "no generation is queued behind the user's back")
 }

@@ -1,24 +1,17 @@
-// Package genplan is what the generation approval of the AUTO pipeline shows and compares (spec/spec.md §4.3): the plan of the paid generation
-// (which Shots get a Reference Pack, which video model makes how many Takes of each) and its estimated cost. The plan has a fingerprint of its
-// scope, so that a change of the Shots or of the models after the approval is told from a change of the price; the estimate says "unknown"
-// for what it cannot price instead of making a number up.
+// Package genplan is what the AUTO pipeline tells before it starts the paid generation (spec/spec.md §4.3): the plan of the generation (which Shots
+// get a Reference Pack, which video model makes how many Takes of each) and its estimated cost. The estimate says "unknown" for what it cannot price
+// instead of making a number up. A plan can be compared with the scope of a legacy approval card (Changed).
 package genplan
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math"
-	"strings"
+	"slices"
 )
 
 // packImages is the most images a Reference Pack has: a Character, a Product, a Location, a Style, a Lighting and a Keyframe (the Art Director
 // designs which of them a Shot gets while the job runs, so the estimate is this bound).
 const packImages = 6
-
-// epsilon is the tolerance of a comparison of two sums of prices.
-const epsilon = 1e-9
 
 // Cost is an estimate: the sum of the prices that are known, and whether some price is not.
 type Cost struct {
@@ -47,26 +40,17 @@ type Line struct {
 	VideoCost   Cost    `json:"video_cost"`
 }
 
-// key is what of a Line the approval is about: the price is compared on its own.
-type key struct {
-	Pack       bool
-	PackModels string
-	VideoModel string
-	Resolution string
-	Takes      int
-}
-
-func (l Line) key() key { return key{l.Pack, l.PackModels, l.VideoModel, l.Resolution, l.Takes} }
-
 // Plan is the plan of the generation of a Project.
 type Plan struct {
 	Lines []Line
-	// Exists holds the ID of every Shot of the trunk, made or not: a Shot of an approval that is gone from it was deleted.
+	// Exists holds the ID of every Shot of the trunk, made or not: a Shot of a declined card that is gone from it was deleted.
 	Exists map[string]bool
 	// Candidates is whether some Shot goes through Prompt Candidate Generation (the Judge picks the best Take).
 	Candidates bool
 	// Unpriced names the models whose price is not known.
 	Unpriced []string
+	// packUnpriced is the image models of the Reference Pack whose price is not known.
+	packUnpriced []string
 	// PackImageModels is the image models of the Reference Pack ("" when no Shot gets one).
 	PackImageModels string
 	// ProjectCeiling and ShotCeiling are the budget ceilings (nil: none); ProjectSpent is what the ledger and the generations in flight hold.
@@ -104,28 +88,42 @@ func (p Plan) VideoCost() (c Cost) {
 // Total is the estimate of the whole plan.
 func (p Plan) Total() Cost { return p.PackCost().Add(p.VideoCost()) }
 
-// Fingerprint identifies the scope of the plan: the Shots, whether each gets a Reference Pack and with which models, and the video model,
-// resolution and number of Takes of each. The price is not in it.
-func (p Plan) Fingerprint() string {
-	keys := make([]struct {
-		ShotID string
-		Key    key
-	}, len(p.Lines))
-	for i, l := range p.Lines {
-		keys[i].ShotID, keys[i].Key = l.ShotID, l.key()
+// Only returns the plan of the lines keep accepts: its totals, models and unknown prices are those of these lines.
+func (p Plan) Only(keep func(Line) bool) Plan {
+	q := p
+	q.Lines, q.PackImageModels = nil, ""
+	for _, l := range p.Lines {
+		if !keep(l) {
+			continue
+		}
+		q.Lines = append(q.Lines, l)
+		if l.Pack {
+			q.PackImageModels = p.PackImageModels
+		}
 	}
-	raw, _ := json.Marshal(keys) // strings, bools and ints: Marshal cannot fail
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:16])
+	q.Unpriced = q.unpriced()
+	return q
 }
 
-// Scope is the JSON of the lines, as the approval stores them.
-func (p Plan) Scope() json.RawMessage {
-	raw, _ := json.Marshal(p.Lines) // Marshal cannot fail for these fields
-	return raw
+// unpriced names the models of the lines whose price is not known: the image models of the Reference Pack (when a Shot gets one) and the video models.
+func (p Plan) unpriced() []string {
+	var out []string
+	if p.PackImageModels != "" {
+		out = append(out, p.packUnpriced...)
+	}
+	for _, l := range p.Lines {
+		name := "動画: " + l.VideoModel
+		if l.VideoModel == "" {
+			name = "動画モデルを決められない Shot"
+		}
+		if l.VideoCost.Unknown && !slices.Contains(out, name) {
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
-// ScopeLines reads the lines back from a stored scope.
+// ScopeLines reads the lines of a legacy approval card back from the scope it was stored with.
 func ScopeLines(scope json.RawMessage) ([]Line, error) {
 	var lines []Line
 	if err := json.Unmarshal(scope, &lines); err != nil {
@@ -134,74 +132,24 @@ func ScopeLines(scope json.RawMessage) ([]Line, error) {
 	return lines, nil
 }
 
-// Changed says what of the plan differs from what was approved ("" when nothing does): a Shot that was added, was deleted or has other
-// models or another number of Takes, or a Reference Pack that is now wanted and was not approved. A Shot that has a Take or is being made
-// since is left out of the plan, and a Reference Pack that is no longer wanted (a Keyframe exists, or it was started) costs less: neither is a change.
-func Changed(approved []Line, current Plan) string {
+// Changed reports whether the plan differs from the scope of a legacy approval card that was declined: a Shot that was added, was deleted or has other
+// models or another number of Takes, or a Reference Pack that is now wanted and was not on the card. A Shot that has a Take or is being made since
+// is left out of the plan, and a Reference Pack that is no longer wanted (a Keyframe exists, or it was started) is not a change.
+func Changed(approved []Line, current Plan) bool {
 	byShot := make(map[string]Line, len(approved))
 	for _, a := range approved {
 		byShot[a.ShotID] = a
 	}
-	var added, removed, changed []int
 	for _, c := range current.Lines {
 		a, ok := byShot[c.ShotID]
-		switch {
-		case !ok:
-			added = append(added, c.Number)
-		case a.VideoModel != c.VideoModel || a.Resolution != c.Resolution || a.Takes != c.Takes || (c.Pack && (!a.Pack || a.PackModels != c.PackModels)):
-			changed = append(changed, c.Number)
+		if !ok || a.VideoModel != c.VideoModel || a.Resolution != c.Resolution || a.Takes != c.Takes || (c.Pack && (!a.Pack || a.PackModels != c.PackModels)) {
+			return true
 		}
 	}
 	for _, a := range approved {
 		if !current.Exists[a.ShotID] {
-			removed = append(removed, a.Number)
+			return true
 		}
 	}
-	var parts []string
-	for _, p := range []struct {
-		nums []int
-		what string
-	}{{added, "追加された Shot"}, {removed, "削除された Shot"}, {changed, "モデルや本数が変わった Shot"}} {
-		if len(p.nums) > 0 {
-			parts = append(parts, p.what+"（"+numbers(p.nums)+"）")
-		}
-	}
-	return strings.Join(parts, "、")
+	return false
 }
-
-// Priced is what the approval priced for the part of the plan that is still to be made: the video of each Shot that is still planned, and the Reference
-// Pack of the ones that still get one. What was started since (the Reference Packs, the Shots) is not in it, so that the estimate is compared with the same part.
-func Priced(approved []Line, current Plan) (c Cost) {
-	byShot := make(map[string]Line, len(approved))
-	for _, a := range approved {
-		byShot[a.ShotID] = a
-	}
-	for _, l := range current.Lines {
-		a, ok := byShot[l.ShotID]
-		if !ok {
-			continue
-		}
-		c = c.Add(a.VideoCost)
-		if l.Pack && a.Pack {
-			c = c.Add(a.PackCost)
-		}
-	}
-	return c
-}
-
-// Increased says why the estimate cannot stand for the approved one ("" when it can): the price rose, or a price that was known no longer is
-// (or the other way round), so what was agreed to is not what is asked now.
-func Increased(approved, current Cost) string {
-	switch {
-	case current.Unknown != approved.Unknown && current.Unknown:
-		return "見積が数字から「不明」に変わりました（承認時の金額を確かめられません）"
-	case current.Unknown != approved.Unknown:
-		return "見積が「不明」から数字に変わりました"
-	case current.USD > approved.USD+epsilon:
-		return fmt.Sprintf("見積が承認時の %s USD から %s USD に増えました", usd(approved.USD), usd(current.USD))
-	}
-	return ""
-}
-
-// Differs reports whether the estimate is not the one that was shown, in either direction: a declined plan is asked again when its price changed.
-func Differs(a, b Cost) bool { return a.Unknown != b.Unknown || math.Abs(a.USD-b.USD) > epsilon }

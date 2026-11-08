@@ -201,10 +201,10 @@ func TestShotCard_APlanningShotWithoutATakeSaysItWaitsForItsGeneration(t *testin
 	}
 }
 
-// The badge says what the Shot waits for: the generation approval (DIRECTOR / MANUAL and no gate keep 生成待ち), and "自動開始待ち" once it was given.
-func TestShotCard_APlanningShotSaysWhichApprovalOrStartItWaitsFor(t *testing.T) {
+// The badge says what the Shot waits for: the automatic start (DIRECTOR / MANUAL and no gate keep 生成待ち), or a decline of a card of v0.1.34 that holds it back.
+func TestShotCard_APlanningShotSaysWhatItWaitsFor(t *testing.T) {
 	shot := domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotPlanning}
-	for label, want := range map[string]string{"承認待ち": "承認待ち", "自動開始待ち": "自動開始待ち", "": "生成待ち"} {
+	for label, want := range map[string]string{"自動開始を保留": "自動開始を保留", "自動開始待ち": "自動開始待ち", "": "生成待ち"} {
 		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: shot, WaitLabel: label}))
 		assert.Contains(t, html, want)
 		if label != "" {

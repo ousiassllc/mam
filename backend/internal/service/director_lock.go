@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
 )
 
 // SetMode switches the Project between AUTO and DIRECTOR (PUT /projects/:id/mode) and tells the
@@ -33,19 +34,12 @@ func (s *DirectorService) SetMode(ctx context.Context, projectID string, mode do
 	return s.getProject(ctx, projectID)
 }
 
-func modeNotice(mode domain.Mode) string {
-	if mode == domain.ModeDirector {
-		return "DIRECTOR MODE にしました。指示した箇所だけを直して待機します（AI が先に進めることはありません）。"
-	}
-	return "AUTO MODE に戻しました。この先の工程は AI が続けます。"
-}
-
 // applyMode switches the mode and, when announce, posts the notice of it. A direction that carries
 // the switch reports it in its own reply instead (announce false), so that the thread says it once.
 func (s *DirectorService) applyMode(ctx context.Context, projectID string, mode domain.Mode, announce bool) error {
 	var msgs []domain.ChatMessage
 	if announce {
-		msgs = assignIDs([]domain.ChatMessage{assistantText(modeNotice(mode))})
+		msgs = assignIDs([]domain.ChatMessage{assistantText(approvalack.ModeNotice(mode))})
 	}
 	if err := s.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: msgs, Mode: &mode}); err != nil {
 		return notFound(err)
@@ -96,7 +90,7 @@ func (s *DirectorService) SetShotLock(ctx context.Context, shotID string, p doma
 		s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, Kind: domain.InterventionLockChange})
 	}
 	if ref, err := s.gens.GetShot(ctx, shotID); err == nil {
-		s.kick(ctx, ref.ProjectID) // a fixed video model changes the plan of the generation approval
+		s.kick(ctx, ref.ProjectID) // a fixed video model changes the plan of the automatic start
 	}
 	return s.locks.ShotLocks(ctx, shotID)
 }

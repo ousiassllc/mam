@@ -22,8 +22,8 @@ type Builder struct {
 	Candidates func(ctx context.Context, shot domain.Shot) (bool, error)
 }
 
-// Build plans the Shots of the trunk that have no Take, are not being made and have not had their generation started: a Shot that has been
-// started for the approval, or whose start was refused, is not part of what is still to be approved. launches are the stages that were claimed.
+// Build plans the Shots of the trunk that have no Take, are not being made and have not had their generation started: a Shot whose generation was
+// started, or whose start was refused or failed, is not part of what is still to be started. launches are the stages that were claimed.
 func (b Builder) Build(ctx context.Context, projectID string, launches map[string]map[genapprovalrepo.Stage]genapprovalrepo.Launch) (Plan, error) {
 	policy, err := b.Policies.Get(ctx, projectID)
 	if err != nil {
@@ -35,7 +35,7 @@ func (b Builder) Build(ctx context.Context, projectID string, launches map[strin
 	}
 	cfg := b.Config()
 	pack, packModels, packUnpriced := packCost(cfg)
-	plan := Plan{Exists: map[string]bool{}, ProjectCeiling: budget.ProjectCeiling, ShotCeiling: budget.ShotCeiling, ProjectSpent: budget.ProjectSpent}
+	plan := Plan{Exists: map[string]bool{}, packUnpriced: packUnpriced, ProjectCeiling: budget.ProjectCeiling, ShotCeiling: budget.ShotCeiling, ProjectSpent: budget.ProjectSpent}
 	scenes, err := b.Plans.ListScenes(ctx, projectID)
 	if err != nil {
 		return Plan{}, err
@@ -59,10 +59,7 @@ func (b Builder) Build(ctx context.Context, projectID string, launches map[strin
 			line := Line{ShotID: shot.ID, Number: number, Seconds: shot.Duration}
 			if _, started := launches[shot.ID][genapprovalrepo.StageReferencePack]; !started && !hasKeyframe(shot) {
 				line.Pack, line.PackModels, line.PackCost = true, packModels, pack
-				if plan.PackImageModels == "" {
-					plan.PackImageModels = packModels
-					plan.Unpriced = append(plan.Unpriced, packUnpriced...)
-				}
+				plan.PackImageModels = packModels
 			}
 			candidates, err := b.video(ctx, cfg, policy, shot, &line)
 			if err != nil {
@@ -72,19 +69,11 @@ func (b Builder) Build(ctx context.Context, projectID string, launches map[strin
 			plan.Lines = append(plan.Lines, line)
 		}
 	}
-	for _, l := range plan.Lines {
-		name := "動画: " + l.VideoModel
-		if l.VideoModel == "" {
-			name = "動画モデルを決められない Shot"
-		}
-		if l.VideoCost.Unknown && !slices.Contains(plan.Unpriced, name) {
-			plan.Unpriced = append(plan.Unpriced, name)
-		}
-	}
+	plan.Unpriced = plan.unpriced()
 	return plan, nil
 }
 
-// planned reports whether the Shot is still to be made: it is PLANNING with no Take and nothing of it was started or refused for the approval.
+// planned reports whether the Shot is still to be made: it is PLANNING with no Take and no stage of it was refused or failed, nor was its generation started.
 func planned(shot domain.Shot, takes []domain.Take, launched map[genapprovalrepo.Stage]genapprovalrepo.Launch) bool {
 	if shot.State != domain.ShotPlanning || len(takes) > 0 {
 		return false

@@ -101,8 +101,8 @@ var unbundledTables = map[string]string{ // #nosec G101 -- table names with the 
 	"comfy_workflow_version":    "the version history of a ComfyUI workflow (see comfy_workflow)",
 	"mcp_token":                 "the MCP server's bearer tokens (spec/architecture/mcp.md): credentials of this instance, never to leave it in a bundle",
 	"mcp_job_history":           "the history of the long operations the MCP server started (spec/architecture/mcp.md §6): operational records of this instance, never to leave it in a bundle",
-	"generation_approval":       "what a generation approval card stood for (spec/spec.md §4.3): the approval is of this instance's models and prices; an imported Project has its cards but no record, so the Orchestrator asks for the approval again",
-	"generation_launch":         "the generations the Orchestrator started after an approval: runtime state of this instance, like the job queue they started",
+	"generation_approval":       "what a generation approval card of v0.1.34 stood for (spec/spec.md §4.3; nothing writes it since #1115): the record is of this instance's models and prices; an imported Project has its legacy cards but no record, so a declined card is lifted by a message of the user only",
+	"generation_launch":         "the stages of the generation the Orchestrator started by itself (AUTO): runtime state of this instance, like the job queue they started",
 }
 
 // Repository reads the Project Data Model of a Project out of the database and writes it into

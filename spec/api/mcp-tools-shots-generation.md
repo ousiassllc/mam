@@ -23,7 +23,7 @@
 
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
-| `set_project_mode` | AUTO / DIRECTOR の切り替え（冪等。チャットに記録） | `project_id`, `mode`（`auto` / `director`） | `project_id`, `mode`, `state` | いいえ |
+| `set_project_mode` | AUTO / DIRECTOR の切り替え（冪等。チャットに記録）。AUTO を選ぶことは、Scene / Shot 計画のあと承認を待たずに有料の生成を自動で始める同意で、チャットの通知とツールの説明もそう言う（`PUT /projects/:id/mode` と同じ。費用がかかる・単価が不明でも始める・止めるのは予算上限か DIRECTOR。`spec/spec.md` §4.3） | `project_id`, `mode`（`auto` / `director`） | `project_id`, `mode`, `state` | いいえ |
 | `get_project_locks` | Story / Music の設定 | `project_id` | `locks`（`story`, `music`） | はい |
 | `set_project_lock` | Story / Music を AUTO / MANUAL / LOCK に | `project_id`, `parameter`（`story` / `music`）, `mode` | `locks` | いいえ |
 | `set_shot_lock` | Shot のパラメータ 1 つを AUTO / MANUAL / LOCK に。`video_model` は `value`（モデル名。LOCK で省略は最新 Take のモデル） | `shot_id`, `parameter`（`dialogue` / `character_identity` / `acting` / `camera` / `lighting` / `product_geometry` / `prompt` / `video_model` / `take_selection` / `editing`）, `mode`, `value` | `locks`（全 10 パラメータ） | いいえ |

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 
@@ -146,6 +147,27 @@ func (s *ChatService) RequestApproval(ctx context.Context, projectID string, cp 
 		RefType: cp.RefType(), RefID: refID, ApprovalStatus: domain.ApprovalPending,
 	}
 	return true, s.postBlocking(ctx, projectID, card)
+}
+
+// Supersede settles a generation approval card of v0.1.34 that is still pending, now that AUTO starts without asking (spec/spec.md §4.3): the system posts
+// notice (no message of the user is made up), marks the card approved and returns the Project from AWAITING_APPROVAL. false: the card was answered meanwhile.
+func (s *ChatService) Supersede(ctx context.Context, projectID, cardID, notice string) (bool, error) {
+	card, err := s.chat.Get(ctx, projectID, cardID)
+	if err != nil {
+		return false, notFound(err)
+	}
+	if card.Kind != domain.KindApproval || card.ApprovalStatus != domain.ApprovalPending {
+		return false, nil
+	}
+	turn := approvalTurn(domain.Project{ID: projectID}, card, DecisionApprove, domain.ChatMessage{})
+	turn.Messages = assignIDs([]domain.ChatMessage{assistantText(notice)})
+	if err := s.commit(ctx, turn); errors.Is(err, ErrConflict) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	s.hub.Publish(projectID, Event{Type: EventCardUpdated, MessageID: cardID})
+	return true, nil
 }
 
 // RaiseEscalation asks the user for a decision the AI cannot make (Retry Policy limit
