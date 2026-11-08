@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/declined"
 )
 
 var (
@@ -21,13 +23,6 @@ var (
 	phraseParticleRe = regexp.MustCompile(`[をがはにでとへのも]`)
 	// addresseeRe is who a delegation is addressed to ("AIにお任せします", "あなたにお任せします", "そちらで決めてください").
 	addresseeRe = regexp.MustCompile(`(?i)あなた|貴方|そちら|こちら|そっち|こっち|AI|ＡＩ|ChatGPT|アシスタント|お前|おまえ|君|きみ`)
-	// undecidedRe is a word that says the Subject is not decided, is put off or is handed over ("まだ決まっていないけど…", "未定だが縦型動画", "お任せでTikTok向け",
-	// "特にありませんがTikTok", "後で決める"). A candidate Subject that holds one anywhere is the clause of that deferral, never a Subject: the text
-	// may run on past the word into another item, so it is not enough that the word is all that is left.
-	undecidedRe = regexp.MustCompile(`まだ決まっ|まだ決めて|決まって(?:い)?な|決まって(?:い)?ませ|決めて(?:い)?な|決めて(?:い)?ませ|決めかね|決めら?れな|決められ|未定|未決定|` +
-		`分からな|わからな|分かりませ|わかりませ|分かんな|わかんな|思い(?:つ|浮か)かな|思い(?:つ|浮か)きませ|思い浮かば|浮かば|浮かびませ|` +
-		`特にありません|特になし|特に希望|(?:何|なん)でも(?:いい|よい|OK|ok)|(?:どちら|どっち|どれ)でも|後で|あとで|後ほど|` +
-		`(?:お?任せ|おまかせ)(?:で|に|し|す|ま|た|くだ|下)`)
 	// handOverRe is a word that hands a decision over or puts it off ("お任せ", "決めて", "考え", "お願い", "ください", "思い浮かば"). An addressee is no
 	// subject when it is all that is left of a text once the filler is taken away AND the text holds such a word (concrete): "AIにお任せします" hands
 	// the decision over, while "AI", "AI動画" or "AIがいい" name the AI as what the video is about.
@@ -61,9 +56,9 @@ func buildFillers() []string {
 	return words
 }
 
-// usable returns s when it is a concrete subject: filler, the words that point at the request and a phrase that holds a deferral (undecidedRe) are not.
+// usable returns s when it is a concrete subject: filler, the words that point at the request and a phrase that holds a deferral (declined.Deferred) are not.
 func usable(s string) string {
-	if slices.Contains(notSubject, strings.TrimSpace(s)) || undecidedRe.MatchString(s) {
+	if slices.Contains(notSubject, strings.TrimSpace(s)) || declined.Deferred(s) {
 		return ""
 	}
 	return concrete(s)
