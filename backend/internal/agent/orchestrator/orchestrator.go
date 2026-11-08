@@ -5,11 +5,11 @@
 //	DRAFT ──Brief complete──▶ PLANNING ──Producer → Writer──▶ script_version
 //	        ──(script approval card, when the Confirmation Level asks)──▶ VISUAL_DESIGN
 //	        ──Director → Storyboard──▶ scene / shot
-//	        ──generation approval (every Confirmation Level)──▶ Reference Pack → Shot generation
+//	        ──(no approval card: AUTO is the consent)──▶ Reference Pack → Shot generation
 //
 // Every move is persisted (repository.ProjectRepository.Transition) before the next Agent runs,
 // and every step derives what is left to do from what is stored, so an interrupted run is
-// resumed by running the same job again. The stages are in orchestrator/stages and the generation approval in orchestrator/genstage; this
+// resumed by running the same job again. The stages are in orchestrator/stages and the automatic start of the generation in orchestrator/genstage; this
 // package is the job around them (one job per Project, rerun, the notice of a failure).
 package orchestrator
 
@@ -60,7 +60,7 @@ type Deps struct {
 	// Facts counts the Reference Library items and the Characters of a Project, for the sentence that says what the main line waits for
 	// after the Scene / Shot plan (#1108). Nil: the sentence leaves them out.
 	Facts func(ctx context.Context, projectID string) (references, characters int, err error)
-	// Gate is the generation approval that follows the Scene / Shot plan (spec/spec.md §4.3). Nil: off; the user starts each Shot.
+	// Gate starts the generation by itself after the Scene / Shot plan (spec/spec.md §4.3). Nil: off; the user starts each Shot.
 	Gate   *genstage.Gate
 	Logger *slog.Logger
 }
@@ -101,8 +101,8 @@ type planPayload struct {
 	ProjectID string `json:"project_id"`
 }
 
-// progressText is the content of the progress card of a plan job. The job plans, and once the user approved the generation it also carries it on
-// (the Reference Packs and the Shots it starts), so the words say neither that an approval exists nor that the job is only the plan.
+// progressText is the content of the progress card of a plan job. The job plans, and it also carries the generation on (the Reference Packs and the
+// Shots it starts), so the words do not say that the job is only the plan.
 const progressText = "企画・脚本・Scene/Shot 計画と生成の進行を進めています"
 
 // Kick makes sure the Project is moving: it starts a plan job when the Project is in AUTO mode,

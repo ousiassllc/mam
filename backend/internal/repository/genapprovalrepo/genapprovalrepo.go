@@ -1,5 +1,7 @@
-// Package genapprovalrepo stores what the generation approval of the AUTO pipeline stands for (spec/spec.md §4.3): the scope and the estimate that
-// were shown on the approval card (generation_approval) and the generations the Orchestrator started after the approval (generation_launch).
+// Package genapprovalrepo stores what the Orchestrator started of the generation of a Project (spec/spec.md §4.3): the stages it claimed for a Shot
+// (generation_launch), and reads the generation approval cards that v0.1.34 left behind (chat_message with ref_type = generation, and the scope each
+// stood for in generation_approval). Since #1115 AUTO asks for no approval, so nothing writes a card or a scope any more; the legacy rows are read
+// to settle a card that is still pending and to honour a card the user declined.
 // It sits beside the per-aggregate repositories of the parent package, which are over their line limit.
 package genapprovalrepo
 
@@ -33,20 +35,20 @@ const (
 	OutcomeFailed  Outcome = "failed"
 )
 
-// Approval is what an approval card of the generation checkpoint stands for.
+// Approval is what a legacy approval card of the generation checkpoint stood for (read-only).
 type Approval struct {
-	MessageID, ProjectID, Fingerprint string
+	MessageID, ProjectID string
 	// Scope is the JSON of the planned Shots shown on the card, each with its estimate.
 	Scope json.RawMessage
 }
 
-// Card is the newest approval card of the generation checkpoint.
+// Card is the newest legacy approval card of the generation checkpoint.
 type Card struct {
-	ID, Fingerprint string
-	Status          domain.ApprovalStatus
+	ID     string
+	Status domain.ApprovalStatus
 }
 
-// Launch is a stage of a Shot that was claimed for an approval. JobID is "" until the job exists, and for a stage that was refused.
+// Launch is a stage of a Shot that the Orchestrator claimed. JobID is "" until the job exists, and for a stage that was refused.
 type Launch struct {
 	ShotID  string
 	Stage   Stage
@@ -54,19 +56,19 @@ type Launch struct {
 	Outcome Outcome
 }
 
-// Repository reads and writes generation_approval and generation_launch.
+// Repository reads the legacy generation approval cards and writes generation_launch.
 type Repository struct{ db *repository.DB }
 
 // New returns a Repository over db.
 func New(db *repository.DB) *Repository { return &Repository{db: db} }
 
-// LatestCard returns the newest generation approval card of the Project, or nil when none was posted.
+// LatestCard returns the newest legacy generation approval card of the Project, or nil when it has none.
 func (r *Repository) LatestCard(ctx context.Context, projectID string) (*Card, error) {
 	var c Card
 	err := r.db.Reader().QueryRowContext(ctx,
-		`SELECT id, COALESCE(ref_id, ''), COALESCE(approval_status, '') FROM chat_message
+		`SELECT id, COALESCE(approval_status, '') FROM chat_message
 		  WHERE project_id = ? AND kind = 'approval' AND ref_type = ? ORDER BY id DESC LIMIT 1`,
-		projectID, domain.CheckpointGeneration.RefType()).Scan(&c.ID, &c.Fingerprint, &c.Status)
+		projectID, domain.CheckpointGeneration.RefType()).Scan(&c.ID, &c.Status)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -76,25 +78,12 @@ func (r *Repository) LatestCard(ctx context.Context, projectID string) (*Card, e
 	return &c, nil
 }
 
-// SaveApproval records what the card stands for. A card that has a record already keeps it.
-func (r *Repository) SaveApproval(ctx context.Context, a Approval) error {
-	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx,
-			`INSERT OR IGNORE INTO generation_approval (message_id, project_id, fingerprint, scope) VALUES (?, ?, ?, ?)`,
-			a.MessageID, a.ProjectID, a.Fingerprint, string(a.Scope))
-		if err != nil {
-			return fmt.Errorf("save generation approval: %w", err)
-		}
-		return nil
-	})
-}
-
 // Approval returns the record of the card; ok is false when it has none.
 func (r *Repository) Approval(ctx context.Context, messageID string) (a Approval, ok bool, err error) {
 	var scope string
 	err = r.db.Reader().QueryRowContext(ctx,
-		`SELECT message_id, project_id, fingerprint, scope FROM generation_approval WHERE message_id = ?`, messageID).
-		Scan(&a.MessageID, &a.ProjectID, &a.Fingerprint, &scope)
+		`SELECT message_id, project_id, scope FROM generation_approval WHERE message_id = ?`, messageID).
+		Scan(&a.MessageID, &a.ProjectID, &scope)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Approval{}, false, nil
 	}
@@ -144,11 +133,11 @@ func (r *Repository) Launches(ctx context.Context, projectID string) (map[string
 	return out, nil
 }
 
-// Claim takes the stage of the Shot for the approval. It reports whether this call took it: false means it was taken before (a start is never repeated).
-func (r *Repository) Claim(ctx context.Context, shotID string, stage Stage, messageID string) (bool, error) {
+// Claim takes the stage of the Shot. It reports whether this call took it: false means it was taken before (a start is never repeated).
+func (r *Repository) Claim(ctx context.Context, shotID string, stage Stage) (bool, error) {
 	var claimed bool
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO generation_launch (shot_id, stage, message_id) VALUES (?, ?, ?)`, shotID, stage, messageID)
+		res, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO generation_launch (shot_id, stage) VALUES (?, ?)`, shotID, stage)
 		if err != nil {
 			return err
 		}
@@ -187,7 +176,7 @@ func (r *Repository) update(ctx context.Context, query string, args ...any) erro
 }
 
 // AskedAgainAfter reports whether the user wrote a message in the thread after the message afterID that is not a reply to it: after a
-// declined approval, that is the user asking for the approval once more (spec/spec.md §4.3).
+// declined legacy approval, that is the user telling the Orchestrator to go on (spec/spec.md §4.3).
 func (r *Repository) AskedAgainAfter(ctx context.Context, projectID, afterID string) (bool, error) {
 	var n int
 	err := r.db.Reader().QueryRowContext(ctx,

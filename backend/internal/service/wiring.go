@@ -74,7 +74,7 @@ type wiring struct {
 	r      repos
 	c      *core
 	chat   *ChatService
-	gate   *genstage.Gate // the generation approval; nil until wirePlan
+	gate   *genstage.Gate // the automatic start of the generation; nil until wirePlan
 
 	generations *GenerationService
 	judges      *JudgeService
@@ -195,7 +195,7 @@ func (w *wiring) wireGeneration() {
 	// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 	d.Jobs.Register(domain.JobGenerate, progress.Wrap(w.generations.gen.Handle), false)
 	w.c.takeActions.gen = w.generations.gen
-	w.gate.SetGenerator(w.generations.gen, d.Models.Config) // the Orchestrator carries an approved plan on through it
+	w.gate.SetGenerator(w.generations.gen, d.Models.Config) // the Orchestrator starts the generation of the plan through it
 }
 
 // wireRepair sets up the Repair Agent (job "repair"): needs generation and the Judge, so everything

@@ -3,6 +3,7 @@ package genstage_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
@@ -28,6 +29,7 @@ type fakeChat struct {
 	announced   []domain.ChatMessage
 	checkpoints []domain.Checkpoint // the checkpoints an Approval card was requested at
 	escalations []string
+	superseded  []string // the IDs of the legacy cards the system closed
 }
 
 func (c *fakeChat) RequestApproval(ctx context.Context, projectID string, cp domain.Checkpoint, summary, refID string) (bool, error) {
@@ -47,6 +49,25 @@ func (c *fakeChat) RequestApproval(ctx context.Context, projectID string, cp dom
 		RefType: cp.RefType(), RefID: refID, ApprovalStatus: domain.ApprovalPending,
 	}
 	return true, c.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: []domain.ChatMessage{card}, State: &state})
+}
+
+// Supersede behaves like service.ChatService.Supersede: the card is closed as approved by a message of the assistant (no message of the user), and the
+// Project returns from AWAITING_APPROVAL.
+func (c *fakeChat) Supersede(ctx context.Context, projectID, cardID, notice string) (bool, error) {
+	resume := domain.CheckpointGeneration.ApprovedState()
+	err := c.projects.Apply(ctx, repository.Turn{
+		ProjectID: projectID, Approval: &repository.ApprovalUpdate{MessageID: cardID, Status: domain.ApprovalApproved}, ResumeState: &resume,
+		Messages: []domain.ChatMessage{{Role: domain.RoleAssistant, Kind: domain.KindText, Content: notice}},
+	})
+	if errors.Is(err, repository.ErrConflict) {
+		return false, nil
+	}
+	if err == nil {
+		c.mu.Lock()
+		c.superseded = append(c.superseded, cardID)
+		c.mu.Unlock()
+	}
+	return err == nil, err
 }
 
 func (c *fakeChat) Announce(_ context.Context, _ string, m domain.ChatMessage) error {
@@ -90,6 +111,8 @@ type fakeGen struct {
 	mu         sync.Mutex
 	calls      []call
 	errs       map[string]error // by Shot ID
+	cancelOn   string           // the Shot whose start cancels the context of the Gate (the user cancelled the job)
+	cancel     context.CancelFunc
 	candidates bool
 	jobOf      map[string]string // Shot ID -> its latest job
 }
@@ -111,6 +134,10 @@ func (g *fakeGen) start(ctx context.Context, stage genapprovalrepo.Stage, shotID
 	defer g.mu.Unlock()
 	if err := g.errs[shotID]; err != nil {
 		return domain.Job{}, err
+	}
+	if shotID == g.cancelOn && g.cancel != nil {
+		g.cancel()
+		return domain.Job{}, ctx.Err()
 	}
 	claimed, err := g.gens.StartShot(ctx, shotID)
 	if err != nil {

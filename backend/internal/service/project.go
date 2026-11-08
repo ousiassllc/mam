@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
 )
 
 // ProjectService manages Projects, their Brief, the Confirmation Level and assets.
@@ -217,7 +218,7 @@ func (s *ProjectService) SetConfirmationLevel(ctx context.Context, projectID str
 	}
 	selected = sortedCheckpoints(selected)
 
-	msgs := assignIDs([]domain.ChatMessage{assistantText(confirmationNotice(level, selected))})
+	msgs := assignIDs([]domain.ChatMessage{assistantText(approvalack.ConfirmationNotice(level, selected))})
 	err = s.projects.Apply(ctx, repository.Turn{
 		ProjectID: projectID, Messages: msgs,
 		Confirmation: &repository.Confirmation{Level: level, Checkpoints: selected},
@@ -237,24 +238,6 @@ func sortedCheckpoints(in []domain.Checkpoint) []domain.Checkpoint {
 		}
 	}
 	return out
-}
-
-func confirmationNotice(level domain.ConfirmationLevel, custom []domain.Checkpoint) string {
-	switch level {
-	case domain.ConfirmFullAuto:
-		return "確認レベルを FULL AUTO にしました。Final まで原則確認せずに進めます（判断が必要な場合のみ相談します）。"
-	case domain.ConfirmKeyCheck:
-		labels := make([]string, 0, len(domain.KeyCheckpoints()))
-		for _, c := range domain.KeyCheckpoints() {
-			labels = append(labels, c.Label())
-		}
-		return "確認レベルを KEY CHECK にしました。" + strings.Join(labels, " / ") + " で確認します。"
-	}
-	labels := make([]string, len(custom))
-	for i, c := range custom {
-		labels[i] = c.Label()
-	}
-	return "確認レベルを CUSTOM CHECK にしました。" + strings.Join(labels, " / ") + " で確認します。"
 }
 
 // AssetFile is an asset with the absolute path of its file.

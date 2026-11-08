@@ -18,14 +18,13 @@ type Verdict int
 
 // Verdicts.
 const (
-	VerdictNone     Verdict = iota // nothing to approve or make (not AUTO, no Shot left, the gate is off)
-	VerdictAsk                     // an approval card must be posted: there is none, or the one there is cannot stand for the plan
-	VerdictPending                 // the card waits for an answer
-	VerdictDeclined                // the card was declined and nothing asks again yet
-	VerdictApproved                // the plan was approved: Next are the starts to make
+	VerdictNone      Verdict = iota // nothing to start (not AUTO, no Shot left, the gate is off)
+	VerdictSupersede                // a generation card of v0.1.34 is still pending: the gate settles it, then goes on
+	VerdictDeclined                 // a card of v0.1.34 was declined: nothing starts until the user writes or the plan changes
+	VerdictStart                    // the generation starts by itself: Next are the starts to make
 )
 
-// Step is one start the gate makes for an approved plan.
+// Step is one start the gate makes.
 type Step struct {
 	Line  genplan.Line
 	Stage genapprovalrepo.Stage
@@ -34,21 +33,20 @@ type Step struct {
 // Assessment is what Assess found.
 type Assessment struct {
 	Verdict Verdict
-	// Reason is why a new card is asked for ("" for the first card).
-	Reason string
-	Plan   genplan.Plan
-	// Card is the newest generation card (nil when there is none).
+	Plan    genplan.Plan
+	// Card is the newest generation card of v0.1.34 (nil when there is none).
 	Card     *genapprovalrepo.Card
 	Launches map[string]map[genapprovalrepo.Stage]genapprovalrepo.Launch
-	// Next are the starts to make now (VerdictApproved).
+	// Next are the starts to make now (VerdictStart).
 	Next []Step
 	// Stuck holds the Shots the gate cannot carry on by itself: a start that was refused or failed, and a Reference Pack that failed.
 	Stuck map[string]bool
 }
 
 // inScope reports whether the Project is at a state where the generation is the gate's business: the plan is made (VISUAL_DESIGN, where a Project stays
-// while its Shots are made, spec/spec.md §22), a card is waiting (AWAITING_APPROVAL), or an Escalation was answered (REPAIRING: the budget stopped a start and
-// the user decided). GENERATING and JUDGING are the Reshoot Loop's and the director's, never the gate's.
+// while its Shots are made, spec/spec.md §22), a card is waiting (AWAITING_APPROVAL: the legacy card the gate settles, or an Escalation it waits for),
+// or an Escalation was answered (REPAIRING: the budget stopped a start and the user decided). GENERATING and JUDGING are the Reshoot Loop's and
+// the director's, never the gate's.
 func inScope(s domain.ProjectState) bool {
 	switch s {
 	case domain.StateVisualDesign, domain.StateAwaitingApproval, domain.StateRepairing:
@@ -57,13 +55,20 @@ func inScope(s domain.ProjectState) bool {
 	return false
 }
 
-// canAct reports whether the gate may post a card or start a Shot: not while the Project waits for the user at another card.
-func canAct(s domain.ProjectState) bool { return inScope(s) && s != domain.StateAwaitingApproval }
-
 // Assess looks at the Project and says what the gate has to do. It changes nothing.
 func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error) {
 	if !g.On() || p.Mode != domain.ModeAuto || !inScope(p.State) {
 		return Assessment{}, nil
+	}
+	card, err := g.d.Repo.LatestCard(ctx, p.ID)
+	if err != nil {
+		return Assessment{}, err
+	}
+	if card != nil && card.Status == domain.ApprovalPending {
+		return Assessment{Verdict: VerdictSupersede, Card: card}, nil // an obsolete card holds the Project: nothing else is looked at before it is settled
+	}
+	if p.State == domain.StateAwaitingApproval {
+		return Assessment{}, nil // another card holds the Project (an Escalation): it is the user's
 	}
 	launches, err := g.d.Repo.Launches(ctx, p.ID)
 	if err != nil {
@@ -73,7 +78,7 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 	if err != nil {
 		return Assessment{}, err
 	}
-	a := Assessment{Plan: plan, Launches: launches, Stuck: map[string]bool{}}
+	a := Assessment{Plan: plan, Card: card, Launches: launches, Stuck: map[string]bool{}}
 	for shotID, stages := range launches {
 		for _, l := range stages {
 			a.Stuck[shotID] = a.Stuck[shotID] || l.Outcome != genapprovalrepo.OutcomeStarted
@@ -82,84 +87,43 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 	if len(plan.Lines) == 0 {
 		return a, nil
 	}
-	if a.Card, err = g.d.Repo.LatestCard(ctx, p.ID); err != nil {
-		return Assessment{}, err
-	}
-	if err := g.decide(ctx, p, &a); err != nil {
-		return Assessment{}, err
-	}
-	return a, nil
-}
-
-// decide fills the verdict from the newest card.
-func (g *Gate) decide(ctx context.Context, p domain.Project, a *Assessment) error {
-	card := a.Card
-	if card == nil {
-		a.Verdict = VerdictAsk
-		return nil
-	}
-	if card.Status == domain.ApprovalPending {
-		a.Verdict = VerdictPending
-		return nil
-	}
-	approved, ok, err := g.d.Repo.Approval(ctx, card.ID)
-	if err != nil {
-		return err
-	}
-	// An answered card with no record of what it stood for never stands for the plan, whatever the plan is: the record is written when the card is
-	// posted, so a card without one came from elsewhere (an imported bundle carries the cards but not the records, and the approval is of this
-	// instance's models and prices) or the process ended between the post and the record. Either way the approval is asked for again.
-	if !ok || approved.ProjectID != p.ID {
-		a.Verdict, a.Reason = VerdictAsk, "前の承認カードが何を承認するものか確かめられません"
-		return nil
-	}
-	lines, err := genplan.ScopeLines(approved.Scope)
-	if err != nil {
-		return err
-	}
-	paid := genplan.Priced(lines, a.Plan)
-	if card.Status == domain.ApprovalChangesRequested {
-		return g.decideDeclined(ctx, p, a, lines, paid)
-	}
-	switch change, rise := genplan.Changed(lines, a.Plan), genplan.Increased(paid, a.Plan.Total()); {
-	case change != "":
-		a.Verdict, a.Reason = VerdictAsk, "承認のあとに計画が変わりました: "+change
-	case rise != "":
-		a.Verdict, a.Reason = VerdictAsk, rise
-	default:
-		a.Verdict = VerdictApproved
-		return g.next(ctx, a)
-	}
-	return nil
-}
-
-// decideDeclined is the verdict for a card the user declined: it asks again when the plan or its price changed, or when the user wrote to the
-// thread after the decline (not as a reply to the card), and waits otherwise.
-func (g *Gate) decideDeclined(ctx context.Context, p domain.Project, a *Assessment, lines []genplan.Line, paid genplan.Cost) error {
-	switch change := genplan.Changed(lines, a.Plan); {
-	case change != "":
-		a.Verdict, a.Reason = VerdictAsk, "差戻しのあとに計画が変わりました: "+change
-	case genplan.Differs(paid, a.Plan.Total()):
-		a.Verdict, a.Reason = VerdictAsk, "差戻しのあとに見積が変わりました"
-	default:
-		again, err := g.d.Repo.AskedAgainAfter(ctx, p.ID, a.Card.ID)
+	if card != nil && card.Status == domain.ApprovalChangesRequested {
+		declined, err := g.declined(ctx, p, a)
 		if err != nil {
-			return err
+			return Assessment{}, err
 		}
-		a.Verdict = VerdictDeclined
-		if again {
-			a.Verdict, a.Reason = VerdictAsk, "もう一度承認を求めます（差戻しのあとにメッセージが届きました）"
+		if declined {
+			a.Verdict = VerdictDeclined
+			return a, nil
 		}
 	}
-	return nil
+	a.Verdict = VerdictStart
+	return a, g.next(ctx, &a)
 }
 
-func approvalOf(projectID, messageID string, plan genplan.Plan) genapprovalrepo.Approval {
-	return genapprovalrepo.Approval{MessageID: messageID, ProjectID: projectID, Fingerprint: plan.Fingerprint(), Scope: plan.Scope()}
+// declined reports whether the card the user declined (under the policy of v0.1.34) still keeps the generation from starting: it does until the
+// plan changed from what the card showed, or the user wrote to the thread after the decline (not as a reply to the card). A card with no record of
+// what it showed (an imported bundle carries the cards but not the records) is lifted by a message only.
+func (g *Gate) declined(ctx context.Context, p domain.Project, a Assessment) (bool, error) {
+	approved, ok, err := g.d.Repo.Approval(ctx, a.Card.ID)
+	if err != nil {
+		return false, err
+	}
+	if ok && approved.ProjectID == p.ID {
+		lines, err := genplan.ScopeLines(approved.Scope)
+		if err != nil {
+			return false, err
+		}
+		if genplan.Changed(lines, a.Plan) {
+			return false, nil
+		}
+	}
+	again, err := g.d.Repo.AskedAgainAfter(ctx, p.ID, a.Card.ID)
+	return !again, err
 }
 
-// next lists the starts to make for the approved plan, in the order of the Shots. A Shot that needs a Reference Pack gets it first; its
-// generation is started when that job has succeeded (a job that failed leaves the Shot to the user). A Shot that needs none is generated at once.
+// next lists the starts to make for the plan, in the order of the Shots. A Shot that needs a Reference Pack gets it first; its generation is
+// started when that job has succeeded (a job that failed leaves the Shot to the user). A Shot that needs none is generated at once.
 func (g *Gate) next(ctx context.Context, a *Assessment) error {
 	for _, line := range a.Plan.Lines {
 		pack, packClaimed := a.Launches[line.ShotID][genapprovalrepo.StageReferencePack]
@@ -183,7 +147,7 @@ func (g *Gate) next(ctx context.Context, a *Assessment) error {
 
 // packDone reports whether the Reference Pack of the line has been made, so that the Shot is generated next. A job that is still queued or
 // running is waited for; one that failed marks the Shot as stuck (the user was told when it failed). A claim whose job was never recorded
-// (the process ended between the claim and the start) counts as done: it is never started again, and the generation the user approved goes on.
+// (the process ended between the claim and the start) counts as done: it is never started again, and the generation goes on.
 func (g *Gate) packDone(ctx context.Context, pack genapprovalrepo.Launch, line genplan.Line, a *Assessment) (bool, error) {
 	if pack.JobID == "" {
 		return true, nil
@@ -204,13 +168,10 @@ func (g *Gate) packDone(ctx context.Context, pack genapprovalrepo.Launch, line g
 	return false, nil
 }
 
-// NeedsWork reports whether the gate has anything to do for the Project right now: a card to post, or a start to make.
+// NeedsWork reports whether the gate has anything to do for the Project right now: a legacy card to settle, or a start to make.
 func (g *Gate) NeedsWork(ctx context.Context, p domain.Project) (bool, error) {
-	if !canAct(p.State) {
-		return false, nil
-	}
 	a, err := g.Assess(ctx, p)
-	return err == nil && (a.Verdict == VerdictAsk || len(a.Next) > 0), err
+	return err == nil && (a.Verdict == VerdictSupersede || (a.Verdict == VerdictStart && len(a.Next) > 0)), err
 }
 
 // Phase is what the main line of the Project waits for, for the notice on the Scene / Shot screen, and the Shots that cannot be carried on by
@@ -221,11 +182,9 @@ func (g *Gate) Phase(ctx context.Context, p domain.Project) (mainline.Phase, map
 		return mainline.PhaseManual, nil, err
 	}
 	switch a.Verdict {
-	case VerdictAsk, VerdictPending:
-		return mainline.PhaseApproval, a.Stuck, nil
 	case VerdictDeclined:
 		return mainline.PhaseDeclined, a.Stuck, nil
-	case VerdictApproved:
+	case VerdictSupersede, VerdictStart:
 		return mainline.PhaseAuto, a.Stuck, nil
 	}
 	if len(a.Launches) > 0 {
@@ -245,7 +204,7 @@ func shotOf(job domain.Job) (string, bool) {
 	return p.ShotID, true
 }
 
-// stepName is how the chat names a start.
+// name is how the chat names a start.
 func (s Step) name() string {
 	if s.Stage == genapprovalrepo.StageReferencePack {
 		return fmt.Sprintf("Shot %d の Reference Pack", s.Line.Number)

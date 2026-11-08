@@ -8,20 +8,21 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// The generation approval is asked at every Confirmation Level, FULL AUTO included, whatever CUSTOM CHECK chose; it is not a choice.
-func TestCheckpointGeneration_IsAskedAtEveryLevelAndIsNotSelectable(t *testing.T) {
+// The generation checkpoint is the legacy of v0.1.34: it is never asked, at any level, and CUSTOM CHECK cannot choose it. The others follow their level.
+func TestCheckpointGeneration_IsNeverAskedAndIsNotSelectable(t *testing.T) {
 	for _, level := range []domain.ConfirmationLevel{domain.ConfirmFullAuto, domain.ConfirmKeyCheck, domain.ConfirmCustomCheck} {
-		assert.True(t, level.RequiresApproval(domain.CheckpointGeneration, nil), level)
-		assert.True(t, level.RequiresApproval(domain.CheckpointGeneration, []domain.Checkpoint{domain.CheckpointFinal}), level)
+		assert.False(t, level.RequiresApproval(domain.CheckpointGeneration, nil), level)
+		assert.False(t, level.RequiresApproval(domain.CheckpointGeneration, []domain.Checkpoint{domain.CheckpointGeneration, domain.CheckpointFinal}), level)
 	}
 	assert.False(t, domain.CheckpointGeneration.Selectable())
 	assert.NotContains(t, domain.KeyCheckpoints(), domain.CheckpointGeneration)
-	assert.True(t, domain.CheckpointGeneration.Valid())
-	// Answering leaves the Project in VISUAL_DESIGN either way: the Shots go on one by one, a decline waits.
-	assert.Equal(t, domain.StateVisualDesign, domain.CheckpointGeneration.ApprovedState())
+	assert.True(t, domain.CheckpointGeneration.Valid(), "the cards of v0.1.34 are still read")
+	assert.Equal(t, domain.CheckpointGeneration, func() domain.Checkpoint {
+		cp, _ := domain.CheckpointForRefType(domain.CheckpointGeneration.RefType())
+		return cp
+	}())
+	assert.Equal(t, domain.StateVisualDesign, domain.CheckpointGeneration.ApprovedState(), "answering a legacy card returns the Project to VISUAL_DESIGN")
 	assert.Equal(t, domain.StateVisualDesign, domain.CheckpointGeneration.ChangesRequestedState())
-	assert.True(t, domain.CanTransition(domain.StateAwaitingApproval, domain.StateVisualDesign))
-	// The other checkpoints are unchanged.
 	assert.False(t, domain.ConfirmFullAuto.RequiresApproval(domain.CheckpointScript, nil))
 	assert.True(t, domain.ConfirmKeyCheck.RequiresApproval(domain.CheckpointRoughCut, nil))
 }

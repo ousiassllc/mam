@@ -27,7 +27,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"チャットに発言する。Brief の質問への回答・自由な指示・DIRECTOR MODE の指示になり、AI の返答も同じ結果に入る。ファイルは create_upload_ticket（purpose=chat_attachment）で上げてから attachment_upload_ids で渡す / Post a message; attach files uploaded with purpose chat_attachment.",
 		postMessage(svc.Chat, files))
 	mcpkit.Write(r, "respond_approval",
-		"承認カードに答える（approve または request_changes）。カードは 1 回だけ答えられ、答えると次の工程へ進む / Answer an Approval card.",
+		"承認カードに答える（approve または request_changes）。カードは 1 回だけ答えられ、答えると次の工程へ進む。AUTO は生成の承認を求めないが、旧方針（v0.1.34）の「生成の承認」カードが残っていれば同じように答えられる / Answer an Approval card (a generation approval card of v0.1.34 can still be answered).",
 		respondApproval(svc.Chat))
 }
 

@@ -13,11 +13,11 @@ import (
 
 // When a job the Gate started changes, the Orchestrator is asked to look at the Project again (the Reference Pack that ended is followed by its
 // generation); a job somebody started by hand, or one that is not a generation, asks nothing.
-func TestGenerationApproval_AJobTheGateStartedCallsForAnotherLookAndAManualOneDoesNot(t *testing.T) {
+func TestAutoStart_AJobTheGateStartedCallsForAnotherLookAndAManualOneDoesNot(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	r := newRig(t)
-	id := r.approved(domain.ConfirmFullAuto)
+	id := r.planned(domain.ConfirmFullAuto)
 	shots := r.shotIDs(id)
 	r.handle(id)
 	var kicked []string

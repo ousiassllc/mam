@@ -1,10 +1,14 @@
-// Package genstage is the generation approval of the AUTO pipeline (spec/spec.md §4.3). After the Scene / Shot plan it asks the user to approve what
-// the paid generation will make and cost, and only after the approval does it start the Reference Packs and the Shots, by itself, through the
-// Generation Orchestrator. Nothing is started before the approval or after a decline; a change of the plan or a rise of the price asks again;
-// every start is claimed in the database first, so that a Shot is never started twice for the same approval, whatever the number of looks
-// and restarts. The budget ceilings are not an approval: they go on applying to each start.
+// Package genstage is the automatic start of the generation of the AUTO pipeline (spec/spec.md §4.3). After the Scene / Shot plan it starts the Reference
+// Packs and the Shots, by itself, through the Generation Orchestrator: choosing AUTO is the consent, so no approval card is asked for, at any Confirmation
+// Level. It announces once what it starts (the models, the estimate with "不明" for a price it does not know, the budget ceilings, how to stop it); every
+// start is claimed in the database first, so that a Shot is never started twice, whatever the number of looks and restarts. The budget ceilings
+// are not an approval and go on applying to each start: a start one refuses is an Escalation and nothing more is started until the user answers.
 //
-// The package derives what to do from what is stored (the approval cards, the launches, the Shots), like the stages of the planning pipeline.
+// The generation approval cards of v0.1.34 (#1108) are the legacy of the policy this replaces: a card that is still pending is settled by the
+// Orchestrator (a system answer, not the user's), and a card the user declined keeps the generation from starting by itself until the user writes
+// to the thread or the Scene / Shot plan changes.
+//
+// The package derives what to do from what is stored (the launches, the Shots, the legacy cards), like the stages of the planning pipeline.
 package genstage
 
 import (
@@ -21,8 +25,9 @@ import (
 
 // Chat is what the gate needs from the chat thread. *service.ChatService implements it.
 type Chat interface {
-	// RequestApproval posts the Approval card of a checkpoint and holds the Project in AWAITING_APPROVAL. It reports whether a card was posted.
-	RequestApproval(ctx context.Context, projectID string, cp domain.Checkpoint, summary, refID string) (bool, error)
+	// Supersede settles a generation approval card of v0.1.34 that is still pending, as the system and not as the user: it posts notice, closes the
+	// card and returns the Project from AWAITING_APPROVAL (when no other card holds it). It reports whether it did: false means the card was answered meanwhile.
+	Supersede(ctx context.Context, projectID, cardID, notice string) (bool, error)
 	// Announce posts an AI message that does not block the Project.
 	Announce(ctx context.Context, projectID string, m domain.ChatMessage) error
 	// RaiseEscalation asks the user for a decision the AI cannot make (the budget ceiling).
@@ -48,8 +53,8 @@ type Deps struct {
 	Logger   *slog.Logger
 }
 
-// Gate is the generation approval. It holds no per-Project state. Until a Generator is set (SetGenerator) it is off: the Orchestrator stops after
-// the Scene / Shot plan, as before, and the user starts each Shot by hand.
+// Gate is the automatic start of the generation. It holds no per-Project state. Until a Generator is set (SetGenerator) it is off: the Orchestrator
+// stops after the Scene / Shot plan and the user starts each Shot by hand.
 type Gate struct {
 	d       Deps
 	gen     Generator

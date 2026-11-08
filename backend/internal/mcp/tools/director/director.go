@@ -18,7 +18,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"Shot Inspector の内容（Shot Spec・Take・各パラメータの AUTO/MANUAL/LOCK・Reference Pack・Library・バージョン・Judge 結果）/ The Shot Inspector data.",
 		getInspector(svc.Director))
 	mcpkit.Write(r, "set_project_mode",
-		"Project のモードを AUTO / DIRECTOR に切り替える（冪等）/ Switch a Project between AUTO and DIRECTOR mode.",
+		"Project のモードを AUTO / DIRECTOR に切り替える（冪等）。AUTO にすることが有料の生成を始める同意で、Scene / Shot の計画のあと承認を待たずに Reference Pack → Shot 生成を自動で始める（費用がかかる。単価が不明でも始める）。止めるのは予算上限か DIRECTOR / Switch a Project between AUTO and DIRECTOR mode; AUTO is the consent to start the paid generation by itself, with no approval.",
 		setMode(svc.Director), mcpkit.Idempotent())
 	mcpkit.Read(r, "get_project_locks",
 		"Project の Story / Music の AUTO・MANUAL・LOCK 設定 / The AUTO / MANUAL / LOCK setting of Story and Music.",

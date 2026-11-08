@@ -15,7 +15,7 @@ type Reader struct {
 	Plans      *repository.PlanRepository
 	References *repository.ReferenceRepository
 	World      *repository.WorldRepository
-	// Gate is the generation approval; nil (or off): the main line waits for the user to start each Shot.
+	// Gate starts the generation by itself; nil (or off): the main line waits for the user to start each Shot.
 	Gate *genstage.Gate
 }
 
@@ -33,8 +33,8 @@ func (r Reader) Facts(ctx context.Context, projectID string) (references, charac
 }
 
 // Wait is what the main line of the Project waits for: it is inactive unless the Project is in VISUAL_DESIGN (or waits at a card) with Shots that
-// are PLANNING and have no Take. Phase says whether the generation approval is awaited, was declined, or was given and the Orchestrator
-// carries the Shots on; Stuck counts the Shots it cannot carry on (they are started by hand).
+// are PLANNING and have no Take. Phase says whether the Orchestrator carries the Shots on by itself, or holds them back for a card of v0.1.34 that was
+// declined; Stuck counts the Shots it cannot carry on (they are started by hand).
 func (r Reader) Wait(ctx context.Context, p domain.Project) (mainline.Wait, error) {
 	if p.State != domain.StateVisualDesign && p.State != domain.StateAwaitingApproval {
 		return mainline.Wait{}, nil

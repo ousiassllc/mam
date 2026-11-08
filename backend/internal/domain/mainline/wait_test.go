@@ -17,7 +17,6 @@ func TestWait_SaysWhatIsWaitedForAndWhatToPressNext(t *testing.T) {
 	text := w.Text()
 	assert.Contains(t, text, "Shot 9 件が PLANNING")
 	assert.Contains(t, text, "自動では始まりません")
-	assert.Contains(t, text, "「生成の承認」は出さず")
 	assert.Contains(t, text, "Reference Library が 0 件")
 	assert.Contains(t, text, "Character）が 0 人")
 	assert.Contains(t, text, "次に押すもの")
@@ -49,35 +48,25 @@ func TestBrief_SubjectIsNeverLeftToTheAI(t *testing.T) {
 	assert.NotContains(t, b.Missing(), domain.BriefSubject)
 }
 
-// The generation approval changes what the main line says (spec/spec.md §4.3): an approval that is awaited says nothing starts before it and that
-// the answer carries the Shots on by itself, even at FULL AUTO; a decline says what to do next; an approved plan says it is carried on and which
-// Shots the user must start.
-func TestWait_SaysWhichPhaseTheGenerationApprovalIsIn(t *testing.T) {
-	asking := mainline.Wait{Shots: 3, Phase: mainline.PhaseApproval}
-	text := asking.Text()
-	assert.Contains(t, text, "生成の承認を待っています")
-	assert.Contains(t, text, "承認するまで Reference Pack・Keyframe・Video は一切始まりません")
-	assert.Contains(t, text, "Reference Pack → Shot 生成が自動で進みます")
-	assert.Contains(t, text, "FULL AUTO でも、この承認は必ず求めます")
-	assert.Equal(t, "承認待ち", asking.ShotLabel())
-	assert.Contains(t, asking.Title(), "生成の承認")
-
-	declined := mainline.Wait{Shots: 3, Phase: mainline.PhaseDeclined}
-	assert.Contains(t, declined.Text(), "差し戻された")
-	assert.Contains(t, declined.Text(), "生成は始まりません")
-	assert.Contains(t, declined.Text(), "計画を直す")
-	assert.Contains(t, declined.Text(), "メッセージを送ってください")
-	assert.Equal(t, "承認待ち", declined.ShotLabel())
-	assert.Contains(t, mainline.DeclinedAck, "③そのままもう一度承認を求めるには")
-
+// The main line says what the automatic start does (spec/spec.md §4.3): AUTO starts by itself and asks nothing; a card of v0.1.34 that was declined holds the
+// start back and says how to lift it; the Shots the Orchestrator cannot carry on are the user's to start.
+func TestWait_SaysWhichPhaseTheAutomaticStartIsIn(t *testing.T) {
 	auto := mainline.Wait{Shots: 2, Phase: mainline.PhaseAuto}
-	assert.Contains(t, auto.Text(), "自動で進めています")
+	assert.Contains(t, auto.Text(), "承認を待たずに")
+	assert.NotContains(t, auto.Text(), "承認するまで", "AUTO waits for no approval")
 	assert.NotContains(t, auto.Text(), "進められません")
 	assert.Equal(t, "自動開始待ち", auto.ShotLabel())
 
 	stuck := mainline.Wait{Shots: 2, Stuck: 1, Phase: mainline.PhaseAuto}
 	assert.Contains(t, stuck.Text(), "うち 1 件は自動では進められません")
 	assert.Contains(t, stuck.NextAction(), "押してください")
+
+	declined := mainline.Wait{Shots: 3, Phase: mainline.PhaseDeclined}
+	assert.Contains(t, declined.Text(), "自動では始めません")
+	assert.Contains(t, declined.NextAction(), "メッセージを送ってください")
+	assert.Contains(t, declined.NextAction(), "計画を直す")
+	assert.Contains(t, mainline.DeclinedAck, "メッセージを送ってください")
+	assert.NotEqual(t, auto.ShotLabel(), declined.ShotLabel())
 
 	assert.Equal(t, "生成待ち", mainline.Wait{Shots: 1}.ShotLabel(), "the manual wait keeps its words")
 }

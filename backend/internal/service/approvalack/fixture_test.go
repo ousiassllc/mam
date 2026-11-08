@@ -41,9 +41,3 @@ func lastMessage(t *testing.T, msgs []domain.ThreadMessage) domain.ThreadMessage
 	require.NotEmpty(t, msgs)
 	return msgs[len(msgs)-1]
 }
-
-func postMessage(t *testing.T, svc *service.Services, projectID string, in service.PostMessageInput) {
-	t.Helper()
-	_, err := svc.Chat.PostMessage(context.Background(), projectID, in)
-	require.NoError(t, err)
-}

@@ -2,6 +2,7 @@ package molecules
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -28,7 +29,7 @@ func hasCheckpoint(p domain.Project, c domain.Checkpoint) bool {
 }
 
 // ConfirmationControl switches the Confirmation Level (F-03). Choosing CUSTOM CHECK
-// shows the checkpoint selection. Every change is saved at once (no save button).
+// shows the checkpoint selection. Every change is saved at once (no save button). In AUTO it says that no level asks before the generation starts.
 templ ConfirmationControl(p domain.Project) {
 	<form
 		id="confirmation-control"
@@ -56,6 +57,9 @@ templ ConfirmationControl(p domain.Project) {
 					}
 				}
 			</fieldset>
+		}
+		if p.Mode == domain.ModeAuto {
+			<p class="basis-full text-mute" data-testid="auto-start-level-notice">{ mainline.AutoStartAtAnyLevel }</p>
 		}
 	</form>
 }

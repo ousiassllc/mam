@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
 )
 
 // execute carries out the operations of a Command: settings first (so that "カメラは固定して、表情だけ
@@ -98,7 +99,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			if err := s.applyMode(ctx, project.ID, op.ProjectMode, false); err != nil {
 				return out, err
 			}
-			out.lines = append(out.lines, modeNotice(op.ProjectMode))
+			out.lines = append(out.lines, approvalack.ModeNotice(op.ProjectMode))
 			if op.ProjectMode == domain.ModeAuto {
 				s.kick(ctx, project.ID)
 			}

@@ -10,19 +10,19 @@ import (
 // Phase is what the main line is waiting for after the Scene / Shot plan.
 type Phase string
 
-// Phases. In PhaseManual nothing starts the generation but the user (DIRECTOR / MANUAL mode, or no generation wired); in the others the
-// Orchestrator carries the Project on by itself once the generation approval is given (spec/spec.md §4.3).
+// Phases. In PhaseManual nothing starts the generation but the user (DIRECTOR / MANUAL mode, or no generation wired); in PhaseAuto the Orchestrator
+// starts the Reference Packs and the Shots by itself, without asking: choosing AUTO is the consent (spec/spec.md §4.3).
 const (
 	PhaseManual   Phase = ""
-	PhaseApproval Phase = "approval" // the approval card is waiting for an answer (or is about to be posted)
-	PhaseDeclined Phase = "declined" // the approval was declined: nothing is made until the plan changes or the user asks again
-	PhaseAuto     Phase = "auto"     // approved: the Orchestrator starts the Reference Packs and the Shots
+	PhaseDeclined Phase = "declined" // a generation approval card of v0.1.34 was declined: nothing starts by itself until the user writes or the plan changes
+	PhaseAuto     Phase = "auto"     // the Orchestrator starts the Reference Packs and the Shots
 )
 
-// DeclinedAck is what the chat says when the generation approval is declined: nothing is made, and what to do next.
-const DeclinedAck = "差し戻しを受け付けました。生成は始めません（承認されるまで、Reference Pack・Keyframe・Video は一切始まりません）。" +
-	"次の行動: ①計画を直す（Shot の追加、動画モデルの固定、Quality Policy の変更）、②範囲を狭める（Shot を減らす）。範囲や見積が変わると、改めて承認を求めます。" +
-	"③そのままもう一度承認を求めるには、チャットに何かメッセージを送ってください。"
+// DeclinedAck is what the chat says when a generation approval card of v0.1.34 is declined (an old card; no new one is posted): nothing starts by
+// itself for now, and what to do next.
+const DeclinedAck = "差し戻しを受け付けました。この「生成の承認」は旧方針のカードで、いまは AUTO では承認を求めません。差し戻されたので、自動では生成を始めません。" +
+	"次の行動: ①自動で始めるには、チャットに何かメッセージを送ってください。②計画（Shot の追加、動画モデルの固定、Quality Policy の変更）を直すと、直した計画で自動で始めます。" +
+	"③自分で始めるなら、Shot を選んで手動で起動してください。"
 
 // Wait is what the main line waits for. A Shot that stays PLANNING with no Take is an intended wait, and this says why and what the user does.
 type Wait struct {
@@ -47,12 +47,10 @@ func (w Wait) Active() bool { return w.Shots > 0 }
 // Title is the heading of the notice on the Scene / Shot screen.
 func (w Wait) Title() string {
 	switch w.Phase {
-	case PhaseApproval:
-		return "本線は生成の承認を待っています"
 	case PhaseDeclined:
-		return "生成の承認は差し戻されました。生成は始まりません"
+		return "旧方針の生成の承認が差し戻されています。自動では始めません"
 	case PhaseAuto:
-		return "承認済みです。本線が自動で生成を進めています"
+		return "AUTO のため、本線が自動で生成を進めます"
 	}
 	return "本線は Shot の生成開始を待っています"
 }
@@ -60,8 +58,8 @@ func (w Wait) Title() string {
 // ShotLabel is the badge of a Shot that is PLANNING with no Take.
 func (w Wait) ShotLabel() string {
 	switch w.Phase {
-	case PhaseApproval, PhaseDeclined:
-		return "承認待ち"
+	case PhaseDeclined:
+		return "自動開始を保留"
 	case PhaseAuto:
 		return "自動開始待ち"
 	}
@@ -87,19 +85,15 @@ func (w Wait) Gaps() []string {
 func (w Wait) Reason() string {
 	var text string
 	switch w.Phase {
-	case PhaseApproval:
-		text = fmt.Sprintf("Shot %d 件が PLANNING（Take なし）のまま、生成の承認を待っています。生成は有料なので、承認するまで Reference Pack・Keyframe・Video は一切始まりません。"+
-			"承認すると、Reference Pack → Shot 生成が自動で進みます。確認レベルが FULL AUTO でも、この承認は必ず求めます。", w.Shots)
 	case PhaseDeclined:
-		text = fmt.Sprintf("生成の承認が差し戻されたため、Shot %d 件は PLANNING（Take なし）のままで、生成は始まりません。", w.Shots)
+		text = fmt.Sprintf("旧方針で出た「生成の承認」カードを差し戻したため、Shot %d 件は PLANNING（Take なし）のままで、自動では始めません。", w.Shots)
 	case PhaseAuto:
-		text = fmt.Sprintf("生成を承認済みです。まだ始まっていない Shot %d 件の Reference Pack → 生成を、Orchestrator が自動で進めています。", w.Shots)
+		text = fmt.Sprintf("AUTO を選んでいるため、承認を待たずに、まだ始まっていない Shot %d 件の Reference Pack → 生成を Orchestrator が自動で進めます。生成は有料で、費用がかかります（始めるときに、見積と止め方をチャットでお知らせします）。", w.Shots)
 		if w.Stuck > 0 {
 			text += fmt.Sprintf("うち %d 件は自動では進められません（Reference Pack の失敗・予算上限・起動の失敗。理由はチャットにあります）。", w.Stuck)
 		}
 	default:
-		text = fmt.Sprintf("Shot %d 件が PLANNING（Take なし）のまま、生成の開始を待っています。生成は有料なので自動では始まりません。"+
-			"DIRECTOR / MANUAL（または生成の仕組みが未設定）では「生成の承認」は出さず、Shot ごとに起動します。", w.Shots)
+		text = fmt.Sprintf("Shot %d 件が PLANNING（Take なし）のまま、生成の開始を待っています。生成は有料なので自動では始まりません。DIRECTOR / MANUAL（または生成の仕組みが未設定）では、Shot ごとに起動します。", w.Shots)
 	}
 	if gaps := w.Gaps(); len(gaps) > 0 {
 		text += "現在は " + strings.Join(gaps, "、") + "です。生成はできますが、顔や見た目の一貫性を保つ参照がありません。"
@@ -110,15 +104,13 @@ func (w Wait) Reason() string {
 // NextAction is what to do next.
 func (w Wait) NextAction() string {
 	switch w.Phase {
-	case PhaseApproval:
-		return "次にするもの: チャットの「生成の承認」カードで、内容と費用の見積を確かめて、承認か修正の依頼（差戻し）を選んでください。"
 	case PhaseDeclined:
-		return "次にするもの: 計画を直す（Shot の追加、動画モデルの固定、Quality Policy の変更）か Shot を減らすと、改めて承認を求めます。そのままもう一度求めるには、チャットに何かメッセージを送ってください。"
+		return "次にするもの: 自動で始めるには、チャットに何かメッセージを送ってください。計画を直す（Shot の追加、動画モデルの固定、Quality Policy の変更）と、直した計画で自動で始めます。"
 	case PhaseAuto:
 		if w.Stuck > 0 {
 			return "次にするもの: 進められない Shot は、Shot を選んで「Reference Pack」「生成」を押してください。ほかは何も要りません。起動した生成は Job と Progress で追えます。"
 		}
-		return "次にするもの: ありません。起動した生成は Job と Progress で追えます。"
+		return "次にするもの: ありません。止めたいときは、設定で予算上限を決めるか、MODE を DIRECTOR にしてください。起動した生成は Job と Progress で追えます。"
 	}
 	return "次に押すもの: Scene / Shot で Shot を選び、必要なら先に「Reference Pack」、続けて「生成」を押してください。起動した生成は Job と Progress で追えます。"
 }

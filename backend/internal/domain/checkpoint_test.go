@@ -9,7 +9,7 @@ import (
 )
 
 func TestConfirmationLevel_RequiresApproval(t *testing.T) {
-	custom := []domain.Checkpoint{domain.CheckpointCharacterDesign}
+	custom := []domain.Checkpoint{domain.CheckpointCharacterDesign, domain.CheckpointGeneration}
 	tests := []struct {
 		level domain.ConfirmationLevel
 		cp    domain.Checkpoint

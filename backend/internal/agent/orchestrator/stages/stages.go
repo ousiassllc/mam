@@ -43,7 +43,7 @@ type Deps struct {
 	// Facts counts the Reference Library items and the Characters of a Project, for the sentence that says what the main line waits for
 	// after the Scene / Shot plan (#1108). Nil: the sentence leaves them out.
 	Facts func(ctx context.Context, projectID string) (references, characters int, err error)
-	// Gate is the generation approval that follows the Scene / Shot plan (spec/spec.md §4.3). Nil: off; the user starts each Shot.
+	// Gate starts the generation by itself after the Scene / Shot plan (spec/spec.md §4.3). Nil: off; the user starts each Shot.
 	Gate   *genstage.Gate
 	Logger *slog.Logger
 }
@@ -97,7 +97,9 @@ func (s *Pipeline) NeedsWork(ctx context.Context, p domain.Project) (bool, error
 		}
 		return s.gate.NeedsWork(ctx, p)
 	case domain.StateRepairing:
-		return s.gate.NeedsWork(ctx, p) // Shots the user approved are being made: the gate starts what is left
+		return s.gate.NeedsWork(ctx, p) // an Escalation was answered: the gate starts what is left
+	case domain.StateAwaitingApproval:
+		return s.gate.NeedsWork(ctx, p) // a generation card of v0.1.34 is the gate's to settle; any other card is the user's
 	}
 	return false, nil
 }
@@ -124,7 +126,7 @@ func (s *Pipeline) Advance(ctx context.Context, projectID string) error {
 			progressed, err = s.scriptStage(ctx, p)
 		case domain.StateVisualDesign:
 			progressed, err = s.shotPlanStage(ctx, p)
-		case domain.StateRepairing:
+		case domain.StateRepairing, domain.StateAwaitingApproval:
 			progressed, err = s.gate.Step(ctx, p)
 		}
 		if err != nil || !progressed {
@@ -240,7 +242,7 @@ func (s *Pipeline) writeScript(ctx context.Context, p domain.Project, previous *
 }
 
 // shotPlanStage is VISUAL_DESIGN: before any Scene exists, Director → Storyboard plan the Scenes and Shots of the approved script; once they
-// exist, the generation approval (genstage) takes over.
+// exist, the automatic start of the generation (genstage) takes over.
 func (s *Pipeline) shotPlanStage(ctx context.Context, p domain.Project) (bool, error) {
 	has, err := s.plans.HasScenes(ctx, p.ID)
 	if err != nil {
@@ -276,7 +278,7 @@ func (s *Pipeline) shotPlanStage(ctx context.Context, p domain.Project) (bool, e
 	if err := s.chat.Announce(ctx, p.ID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: done + "\n" + s.mainLineWait(ctx, p.ID, plan.ShotCount()).Text()}); err != nil {
 		s.logger.Error("post plan notice failed", "project_id", p.ID, "err", err)
 	}
-	return true, nil // the generation approval is next (the gate does nothing while it is off: the user starts each Shot)
+	return true, nil // the generation starts next (the gate does nothing while it is off: the user starts each Shot)
 }
 
 // projectNotes chooses the production notes the Writer or Director is given (spec/spec.md §9.4): the

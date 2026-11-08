@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Text is what a cost reads on the card: the most it can be, "不明" when a price is not known (with the part that is known, if any).
+// Text is what a cost reads in the announcement: the most it can be, "不明" when a price is not known (with the part that is known, if any).
 func (c Cost) Text() string {
 	switch {
 	case c.Unknown && c.USD > 0:
@@ -16,14 +16,12 @@ func (c Cost) Text() string {
 	return fmt.Sprintf("最大 %s USD", usd(c.USD))
 }
 
-// CardText is the body of the approval card: what will be made and what it is estimated to cost, and what answering does. reason is why this
-// card replaces an earlier one ("" for the first card).
-func (p Plan) CardText(reason string) string {
+// AnnounceText is the announcement the Orchestrator posts once when it starts the generation of the plan (spec/spec.md §4.3): what is started, what
+// it is estimated to cost ("不明" when a price is not known, never a made-up number), the budget ceilings, and how to stop it. Nothing waits for an
+// answer: choosing AUTO is the consent to start.
+func (p Plan) AnnounceText() string {
 	var b strings.Builder
-	b.WriteString("生成の承認: 次の内容で、Reference Pack → Shot 生成を自動で進めます。承認するまで、Reference Pack・Keyframe・Video は一切始めません。\n")
-	if reason != "" {
-		fmt.Fprintf(&b, "承認し直しが必要です: %s。\n", reason)
-	}
+	b.WriteString("AUTO のため、承認を待たずに生成を始めます（AUTO を選ぶことが、生成を始める同意です）。Reference Pack → Shot 生成を自動で進めます。有料の生成が含まれ、費用がかかります。\n")
 	fmt.Fprintf(&b, "・対象: Shot %d 件（%s）\n", len(p.Lines), p.shotNumbers())
 	b.WriteString(p.packText())
 	for _, g := range p.videoGroups() {
@@ -31,11 +29,14 @@ func (p Plan) CardText(reason string) string {
 	}
 	fmt.Fprintf(&b, "・費用の見積: %s（Reference Pack %s、動画 %s）\n", p.Total().Text(), p.PackCost().Text(), p.VideoCost().Text())
 	if len(p.Unpriced) > 0 {
-		fmt.Fprintf(&b, "・単価が分からないもの（「不明」にしています）: %s\n", strings.Join(p.Unpriced, "、"))
+		fmt.Fprintf(&b, "・単価が分からないもの（「不明」にしています。単価が不明でも止めずに始めます）: %s\n", strings.Join(p.Unpriced, "、"))
 	}
 	b.WriteString("・" + p.budgetText() + "\n")
+	if p.ProjectCeiling == nil && p.ShotCeiling == nil && p.Total().Unknown {
+		b.WriteString("・予算上限が未設定で、単価が分からない分があります。費用の上限は保証できません。\n")
+	}
 	b.WriteString("・見積に含まれないもの: Judge・Prompt Planner・Art Director など LLM の費用、Repair の再生成、Multi-model routing が実行時に入れ替えるモデルの差\n")
-	b.WriteString("承認すると自動で進めます（予算上限は承認のあとも効き、超えるなら相談します）。「修正を依頼」で差し戻すと、生成は始まりません。")
+	b.WriteString("止めるには: ①設定で予算上限を決める（超えるなら始めず、相談します）、②MODE を DIRECTOR にする（まだ始めていない Shot は自動では始まりません。始めた生成は終わるまで続きます）。")
 	return b.String()
 }
 
