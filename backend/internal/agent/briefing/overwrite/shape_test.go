@@ -201,6 +201,18 @@ func TestAbsorb_ANounThatContainsAFragmentPieceIsNotDropped(t *testing.T) {
 	}
 }
 
+// A name written with a symbol ("ドナルド・ダック", "AT&T", "C++") is a noun: it is proposed (a card), never silently dropped (review of 770ee0b9).
+func TestAbsorb_ANameWithASymbolIsNotDropped(t *testing.T) {
+	for _, v := range []string{"ドナルド・ダック", "ミッキー・マウス", "ジョン・レノン", "ハリー・ポッター", "AT&T", "Tom&Jerry", "AC/DC", "C++", "ミッキー&ミニー", "Meow", "Snow", "Show"} {
+		text := "主人公を" + v + "に変更して"
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.True(t, b.Subject == v || b.ProposedSubject == v, "replaced or proposed, not lost: S=%q P=%q", b.Subject, b.ProposedSubject)
+		})
+	}
+}
+
 // A list made with a symbol is no candidate either.
 func TestAbsorb_ASymbolListIsNotProposed(t *testing.T) {
 	for _, v := range []string{"犬・猫", "犬/猫", "犬／猫", "犬&猫", "犬+猫"} {
