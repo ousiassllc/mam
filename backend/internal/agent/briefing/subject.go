@@ -85,7 +85,7 @@ func readSubject(text string) (subject string, explicit bool) {
 	for _, sentence := range sentences {
 		resolved, _ := positiveSide(sentence)
 		if m := subjectRe.FindStringSubmatch(resolved); m != nil {
-			if s := usable(m[1]); s != "" && !isContentType(s) && !isPlatformPhrase(s) {
+			if s := usable(declined.Head(m[1])); s != "" && !isContentType(s) && !isPlatformPhrase(s) {
 				_, c, ok := bareContrast(sentence)
 				return s, ok && contrastChanges(sentence, c.phrase, s)
 			}

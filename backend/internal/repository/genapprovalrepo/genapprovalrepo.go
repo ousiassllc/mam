@@ -189,18 +189,20 @@ func (r *Repository) update(ctx context.Context, query string, args ...any) erro
 
 // AskedAgainAfter reports whether the user wrote a message in the thread after the decline of the card that is not a reply to the card: after a
 // declined legacy approval, that is the user telling the Orchestrator to go on (spec/spec.md §4.3). The decline is the user's FIRST reply to the
-// card (RespondApproval and the chat both write the answer that declined it as the first one; a reply that comes later is an ordinary message and does
-// not move it), or the card itself when nobody replied, and never before the card (a bundle brings the rows in any order). A message written before
+// card that was written after it (RespondApproval and the chat both write the answer that declined it as the first one; a reply that comes later is an
+// ordinary message and does not move it), or the card itself when nobody replied after it: a reply with a rowid below the card's (a bundle brings the
+// rows in any order) is no decline of the card, and the real decline after it still is. A message written before
 // the decline (between the card and the answer) is part of the conversation that led to it and lifts nothing. "After" is the order this instance issued
 // the rows in (rowid, as in LatestCard), so that the ID of an imported card does not decide it.
 func (r *Repository) AskedAgainAfter(ctx context.Context, projectID, cardID string) (bool, error) {
 	var n int
 	err := r.db.Reader().QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM chat_message WHERE project_id = ? AND role = 'user' AND COALESCE(reply_to_message_id, '') <> ?
-		AND rowid > MAX(
-			(SELECT rowid FROM chat_message WHERE id = ?),
-			COALESCE((SELECT MIN(rowid) FROM chat_message WHERE project_id = ? AND role = 'user' AND reply_to_message_id = ?), 0))`,
-		projectID, cardID, cardID, projectID, cardID).Scan(&n)
+		AND rowid > COALESCE(
+			(SELECT MIN(rowid) FROM chat_message WHERE project_id = ? AND role = 'user' AND reply_to_message_id = ?
+				AND rowid > (SELECT rowid FROM chat_message WHERE id = ?)),
+			(SELECT rowid FROM chat_message WHERE id = ?))`,
+		projectID, cardID, projectID, cardID, cardID, cardID).Scan(&n)
 	if err != nil {
 		return false, fmt.Errorf("find a message after the decline: %w", err)
 	}

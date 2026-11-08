@@ -31,6 +31,8 @@ func TestAskedAgainAfter(t *testing.T) {
 		"a late reply alone lifts nothing":               {[]msg{{"card", "assistant", ""}, {"decline", "user", "card"}, {"late", "user", "card"}}, false},
 		"a reply that came before the card is no baseline above the card": {
 			[]msg{{"decline", "user", "card"}, {"card", "assistant", ""}, {"free", "user", ""}}, true},
+		"an early reply below the card does not hide the later decline": {
+			[]msg{{"early", "user", "card"}, {"card", "assistant", ""}, {"free", "user", ""}, {"decline", "user", "card"}}, false},
 		"a message before the card and its early reply lifts nothing": {
 			[]msg{{"free", "user", ""}, {"decline", "user", "card"}, {"card", "assistant", ""}}, false},
 	} {
