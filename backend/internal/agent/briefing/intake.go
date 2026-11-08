@@ -121,7 +121,12 @@ func Absorb(b *domain.Brief, extracted domain.Brief, text string) {
 	if b.AdditionalInstruction == "" {
 		source = domain.BriefSourceInferred
 	}
-	if merged := mergeInstruction(b.AdditionalInstruction, extracted.AdditionalInstruction, source == domain.BriefSourceInferred); merged != b.AdditionalInstruction {
+	inferred := source == domain.BriefSourceInferred
+	current := b.AdditionalInstruction
+	if inferred {
+		current = retractConstraints(current, retractedConstraints(text))
+	}
+	if merged := mergeInstruction(current, extracted.AdditionalInstruction, inferred); merged != b.AdditionalInstruction {
 		b.AdditionalInstruction = merged
 		markSource(b, domain.BriefAdditionalInstruction, source)
 	}

@@ -9,8 +9,8 @@ import (
 )
 
 // The Subject rules (spec/spec.md §4.2, #1114). They are conservative on purpose: a text names a subject only when something concrete is
-// left of it after what denies, defers or merely describes a video in general ("ただの投稿動画", "お任せします", "猫じゃなくて") is taken
-// away. A subject that is missed costs one edit in the batch confirmation; a wrong one replaces what the user decided.
+// left of it after what denies, defers, asks or merely describes a video in general ("ただの投稿動画", "お任せします", "猫じゃなくて",
+// "何がいいですか") is taken away. A subject that is missed costs one edit in the batch confirmation; a wrong one replaces what the user decided.
 var (
 	// np is a noun phrase: no blank, punctuation, quotation mark or を.
 	np = `([^\s、。,，！!？?「」を]{1,60})`
@@ -33,77 +33,57 @@ var (
 	// deniedBoundaryRe ends the denied phrase when it is looked for backwards from the negator: a blank, punctuation, or the particle that
 	// closes the item in front ("主人公は男性ではなく女性": 男性 is denied, 主人公は stays).
 	deniedBoundaryRe = regexp.MustCompile(`[\s、。,，！!？?「」をはが]|(?:向け|用|として)[にでの]`)
+	// protagonistWordRe is a denied phrase that is only the word of the role ("猫が主人公ではなく犬が主人公"): the whole "X が主人公" is denied.
+	protagonistWordRe = regexp.MustCompile(`^(?:主人公|主役|題材)$`)
 	// phrasePrefixRe is where a phrase starts when it carries where the video goes in front of it ("TikTok向けに架空の女性").
 	phrasePrefixRe = regexp.MustCompile(`(?:向け|用|として)[にでの]|ため[にの]|ので|けど|から`)
-	// denyRe is a refusal: the clause that holds it states nothing wanted ("猫を主人公にしてほしくない").
-	denyRe = regexp.MustCompile(`ほしくない|欲しくない|いらない|要らない|不要|やめて|やめたい|やめる|したくない|しないで|にしない|避けて|避けたい`)
+	// denyRe is a refusal: the clause that holds it states nothing wanted ("猫を主人公にしてほしくない"). 不要 counts only as the refusal
+	// ("猫は不要です"), not inside a word ("不要品回収のCM").
+	denyRe = regexp.MustCompile(`ほしくない|欲しくない|いらない|要らない|不要(?:です|だ|で|$)|やめて|やめたい|やめる|したくない|しないで|にしない|避けて|避けたい`)
 	// changeRe is a word that says the clause changes something: only such a clause may replace a decided value.
-	changeRe     = regexp.MustCompile(`変更|変えて|変えたい|変える|に替え|に直し|に差し替え|訂正|やっぱり|やはり|にして|にしたい|にします|ではなく|じゃなく`)
-	sentenceRe   = regexp.MustCompile(`[。！!？?\n]`)
-	clauseRe     = regexp.MustCompile(`[、,，]`)
-	changeLeadRe = regexp.MustCompile(`(やっぱり|やはり|訂正)[、,，]`)
-	tailRe       = regexp.MustCompile(`(?:を作りたい|を作って|でお願いします|でお願い|に(?:して|した|する|します|したい)(?:ください|ほしい|欲しい)?|です|だ|で|の動画)+$`)
-	punctRe      = regexp.MustCompile(`[\s、。,.，！!？?「」]+`)
-	fillerSet    = buildFillers()
-	// notSubject are words that look like a subject in front of "の動画" but point at the request or its author: "今回の動画", "弊社のCM".
-	notSubject = []string{
-		"こ", "そ", "あ", "ど", "この", "その", "あの", "どの", "今回", "今度", "前回", "次回", "次", "今", "毎回", "今月", "来月", "先月", "今週", "来週",
-		"今日", "明日", "昨日", "弊社", "当社", "自社", "我が社", "うち", "私", "私たち", "例の", "例", "新", "最新", "最初", "最後", "最近", "他", "別", "同じ",
-	}
+	changeRe = regexp.MustCompile(`変更|変えて|変えたい|変える|に替え|に直し|に差し替え|訂正|やっぱり|やはり|にして|にしたい|にします|ではなく|じゃなく`)
+	// itemLabelRe is a word that names another item of the Brief: "ターゲットは学生ではなく社会人" contrasts the target, not the Subject.
+	itemLabelRe = regexp.MustCompile(`ターゲット|対象|Target|雰囲気|ムード|トーン|Mood|Tone|目的|用途|Objective|長さ|尺|秒数|Duration|比率|アスペクト|縦横|Aspect|サイズ|テイスト`)
+	// styleWordRe is a word of length or pace: "短めじゃなくて長め" is about the duration, not the Subject.
+	styleWordRe    = regexp.MustCompile(`短め|長め|短い|長い|短く|長く|速め|遅め|早め|ゆっくり|テンポ`)
+	sentenceRe     = regexp.MustCompile(`[。！!？?\n]`)
+	sentenceKeepRe = regexp.MustCompile(`[^。！!？?\n]+[？?]*`)
+	clauseRe       = regexp.MustCompile(`[、,，]`)
+	changeLeadRe   = regexp.MustCompile(`(やっぱり|やはり|訂正)[、,，]`)
+	tailRe         = regexp.MustCompile(`(?:を作りたい|を作って|でお願いします|でお願い|に(?:して|した|する|します|したい)(?:ください|ほしい|欲しい)?|です|だ|で|の動画)+$`)
+	punctRe        = regexp.MustCompile(`[\s、。,.，！!？?「」]+`)
 )
 
-// buildFillers is the words that carry no subject, longest first: the stripping removes them in this order. A text left with nothing
-// after them is a denial, a deferral ("なんでもいい", "お任せします", "まだ決めてない", "未定", "特にありません") or a general phrase.
-func buildFillers() []string {
-	words := []string{
-		// deferral, indecision, "no preference"
-		"なんでもいい", "何でもいい", "どちらでもいい", "どっちでもいい", "どれでもいい", "お任せします", "おまかせします", "お任せ", "おまかせ", "任せる", "任せ",
-		"まだ決めていない", "まだ決めてない", "決めていない", "決めてない", "決めていません", "決めてません", "決まっていない", "決まってない", "決めかねて", "決めて",
-		"未決定", "未定", "検討中", "考え中", "思いつかない", "思いつきません", "特にありません", "特になし", "特に希望", "希望", "ありません", "おすすめ",
-		"分からない", "わからない", "不明", "不問", "どちらでも", "どっちでも", "どれでも", "何でも", "なんでも", "どちら", "どっち", "どれ", "何", "なに",
-		"いまのところ", "今のところ", "とりあえず", "あとで", "後で", "まだ", "いいです", "よいです", "いい", "よい", "します", "ません", "お願い", "ください", "OK", "ok",
-		// a video in general
-		"ごく普通", "一般的な", "投稿動画", "ショート", "ふつうの", "ふつう", "普通の", "普通", "通常の", "いつもの", "ただの", "ただ",
-		"ムービー", "映像", "動画", "投稿", "商品", "SNS", "もの", "こと", "感じ", "特に", "なし", "ない",
-		"でいい", "でよい", "で十分", "でOK", "ですよ", "ですね", "です", "かな", "みたいな", "ような", "とか", "のみ", "だけ",
-		"の", "な", "を", "は", "が", "に", "で", "と", "も", "よ", "ね",
-	}
-	slices.SortStableFunc(words, func(a, b string) int { return len([]rune(b)) - len([]rune(a)) })
-	return words
+// denial is a phrase the text denies and where it was in the text without it.
+type denial struct {
+	at       int    // the position in the text left after the denial
+	phrase   string // "猫" of "猫じゃなくて犬"
+	contrast bool   // "A ではなく B" (B is meant), not "A ではない"
 }
 
 // readSubject is the concrete subject the text names ("" when none) and whether the clause that names it also says it is a change: a
 // protagonist or subject said outright ("Xを主人公にした", "主人公は X", "題材は X"), the noun in front of "の縦型 / の15秒 / のCM ...", or
-// what a negation points at ("商品ではなく猫の日常"). What a text denies ("猫じゃなくて", "男性ではなく") and what it refuses
-// ("主人公にしてほしくない") never is the subject.
+// what a bare contrast points at ("商品ではなく猫の日常": only when no other item is named and what is denied could be a subject). What a
+// text denies ("猫じゃなくて", "男性ではなく"), refuses ("主人公にしてほしくない") or asks ("主人公は何がいいですか") never is the subject.
 func readSubject(text string) (subject string, explicit bool) {
-	sentences := sentenceRe.Split(text, -1)
-	for i, sentence := range sentences {
-		sentences[i] = dropRefused(changeLeadRe.ReplaceAllString(sentence, "$1"))
-	}
+	sentences := statedSentences(text)
 	for _, sentence := range sentences {
-		resolved, cuts := positiveSide(sentence)
-		for _, p := range subjectPatterns {
-			if loc := p.re.FindStringSubmatchIndex(resolved); loc != nil {
-				if s := usable(subjectPhrase(resolved[loc[2]:loc[3]], p.before)); s != "" {
-					from, to := clauseAround(resolved, loc[0], loc[1])
-					return s, changes(resolved[from:to]) || slices.ContainsFunc(cuts, func(c int) bool { return from <= c && c <= to })
-				}
-			}
+		if s, explicit := patternSubject(sentence); s != "" {
+			return s, explicit
 		}
 	}
 	for _, sentence := range sentences {
-		if m := subjectRe.FindStringSubmatch(sentence); m != nil {
+		resolved, _ := positiveSide(sentence)
+		if m := subjectRe.FindStringSubmatch(resolved); m != nil {
 			if s := usable(m[1]); s != "" && !isContentType(s) && !isPlatformPhrase(s) {
-				return s, false
+				_, ok := bareContrast(sentence)
+				return s, ok
 			}
 		}
 	}
 	for _, sentence := range sentences {
-		if loc := contrastRe.FindAllStringIndex(sentence, -1); loc != nil {
-			if s := usable(subjectPhrase(sentence[loc[len(loc)-1][1]:], true)); s != "" && !isFormat(s) {
-				return s, true
-			}
+		if s := contrastSubject(sentence); s != "" {
+			return s, true
 		}
 	}
 	return "", false
@@ -115,29 +95,94 @@ func statedSubject(text string) string {
 	return s
 }
 
+// statedSentences are the sentences of the text (a question mark stays with its sentence) without the clauses that refuse something
+// ("この動画は猫を主人公にしてほしくない").
+func statedSentences(text string) []string {
+	var stated []string
+	for _, sentence := range sentenceKeepRe.FindAllString(text, -1) {
+		if sentence = dropRefused(changeLeadRe.ReplaceAllString(sentence, "$1")); sentence != "" {
+			stated = append(stated, sentence)
+		}
+	}
+	return stated
+}
+
 // dropRefused removes the clauses of the sentence that refuse something ("この動画は猫を主人公にしてほしくない").
 func dropRefused(sentence string) string {
 	clauses := clauseRe.Split(sentence, -1)
 	return strings.Join(slices.DeleteFunc(clauses, denyRe.MatchString), "、")
 }
 
+// patternSubject is the subject a sentence states outright with one of the subjectPatterns, and whether it says it is a change: the clause
+// has a word of change or holds a denial ("主人公は男性ではなく女性").
+func patternSubject(sentence string) (string, bool) {
+	resolved, cuts := positiveSide(sentence)
+	for _, p := range subjectPatterns {
+		if loc := p.re.FindStringSubmatchIndex(resolved); loc != nil {
+			if s := usable(subjectPhrase(resolved[loc[2]:loc[3]], p.before)); s != "" && !strings.ContainsAny(resolved[loc[3]:], "？?") {
+				from, to := clauseAround(resolved, loc[0], loc[1])
+				return s, changes(resolved[from:to]) || slices.ContainsFunc(cuts, func(c denial) bool { return from <= c.at && c.at <= to })
+			}
+		}
+	}
+	return "", false
+}
+
+// contrastSubject is what a bare "A ではなく B" of a sentence means as the Subject: B ("" when it is not one, see bareContrast).
+func contrastSubject(sentence string) string {
+	if kept, ok := bareContrast(sentence); ok {
+		return usable(subjectPhrase(kept, true))
+	}
+	return ""
+}
+
+// bareContrast reports whether the sentence is a bare "A ではなく B" that changes the Subject, and gives what is left of it with A taken
+// away. It is one only when the sentence names no other item ("ターゲットは学生ではなく社会人" is the target) and A could be a subject itself
+// (not a duration, a mood, a target or a platform: "派手でなく地味", "短めじゃなくて長め"). The looser reading is for an answer to the
+// Subject question only (subjectAnswer).
+func bareContrast(sentence string) (kept string, ok bool) {
+	kept, cuts := positiveSide(sentence)
+	i := slices.IndexFunc(cuts, func(c denial) bool { return c.contrast })
+	if i < 0 || itemLabelRe.MatchString(sentence) {
+		return "", false
+	}
+	c := cuts[i]
+	return kept[c.at:], subjectLike(c.phrase)
+}
+
+// subjectLike reports whether s, a phrase that was denied, could have been the Subject: it is no duration, ratio, kind of video, platform,
+// target or mood.
+func subjectLike(s string) bool {
+	return s != "" && !isFormat(s) && !styleWordRe.MatchString(s) && target(s) == "" && mood(s) == ""
+}
+
 // positiveSide drops every denied phrase with its negator ("猫じゃなくて犬を主人公に" → "犬を主人公に") and returns where in the result
-// the denial was: the clause that holds such a position is the one that changes something.
-func positiveSide(s string) (string, []int) {
+// the denials were: the clause that holds such a position is the one that changes something. A denied "X が主人公" goes whole.
+func positiveSide(s string) (string, []denial) {
 	var kept strings.Builder
-	var cuts []int
+	var cuts []denial
 	last := 0
 	for _, loc := range negatorRe.FindAllStringIndex(s, -1) {
-		start := last
-		if b := deniedBoundaryRe.FindAllStringIndex(s[last:loc[0]], -1); b != nil {
-			start = last + b[len(b)-1][1]
-		}
+		start := last + deniedStart(s[last:loc[0]])
 		kept.WriteString(s[last:start])
-		cuts = append(cuts, kept.Len())
+		cuts = append(cuts, denial{kept.Len(), s[start:loc[0]], contrastRe.MatchString(s[loc[0]:loc[1]])})
 		last = loc[1]
 	}
 	kept.WriteString(s[last:])
 	return kept.String(), cuts
+}
+
+// deniedStart is where in s, the text in front of a negator, the denied phrase starts.
+func deniedStart(s string) int {
+	start := 0
+	if b := deniedBoundaryRe.FindAllStringIndex(s, -1); b != nil {
+		start = b[len(b)-1][1]
+	}
+	// "猫が主人公ではなく犬が主人公": it is "猫が主人公" that is denied, not only the word of the role.
+	if protagonistWordRe.MatchString(s[start:]) && start > 0 && strings.ContainsAny(s[start-len("が"):start], "がはを") {
+		return deniedStart(s[:start-len("が")])
+	}
+	return start
 }
 
 // subjectPhrase is the noun phrase a pattern captured: the last one, without the topic or the platform in front ("この動画は猫", "TikTok向けに
@@ -192,30 +237,9 @@ func isFormat(s string) bool {
 	return durationRe.MatchString(s) || ratioRe.MatchString(s) || isContentType(s) || isPlatformPhrase(s) || aspectRatio(s) != ""
 }
 
-// usable returns s when it is a concrete subject: filler and the words that point at the request are not.
-func usable(s string) string {
-	if slices.Contains(notSubject, strings.TrimSpace(s)) {
-		return ""
-	}
-	return concrete(s)
-}
-
 // isPlatformPhrase reports whether s names where the video goes ("TikTok向け", "Instagram広告用"), not what it is about.
 func isPlatformPhrase(s string) bool {
 	return platformRe.MatchString(s) || strings.HasSuffix(s, "向け") || strings.HasSuffix(s, "用")
-}
-
-// concrete returns s when it names something, "" when it is only filler: negation, deferral, "ただの動画", "特になし" ...
-func concrete(s string) string {
-	s = strings.TrimSpace(s)
-	rest := s
-	for _, w := range fillerSet {
-		rest = strings.ReplaceAll(rest, w, "")
-	}
-	if punctRe.ReplaceAllString(rest, "") == "" {
-		return ""
-	}
-	return s
 }
 
 func trimTail(s string) string {
@@ -229,15 +253,25 @@ func isContentType(s string) bool {
 	})
 }
 
-// subjectAnswer is the Subject a chat answer gives: "A ではなく B" means B, and an answer that is a refusal, a deferral
-// ("お任せします", "未定") or only filler gives "".
+// subjectAnswer is the Subject a chat answer gives: a Subject said outright ("主人公は猫ではなく犬" is 犬) or "A ではなく B" (B), while an
+// answer that is a refusal, a deferral ("お任せします", "未定"), a question ("何がいいですか？") or only filler gives "". A refusal is read
+// per clause: "犬を主人公に。猫はいらない" is 犬.
 func subjectAnswer(text string) string {
 	text = strings.TrimSpace(text)
-	if IsConfirmation(text) || denyRe.MatchString(text) {
-		return "" // "はい" answers the summary, a refusal says what is not wanted: neither is a subject
+	if IsConfirmation(text) {
+		return "" // "はい" answers the summary: it is no subject
 	}
-	text, _ = positiveSide(text)
-	return usable(text)
+	sentences := statedSentences(text)
+	for _, sentence := range sentences {
+		if s, _ := patternSubject(sentence); s != "" {
+			return s
+		}
+	}
+	kept, cuts := positiveSide(strings.Join(sentences, "。"))
+	if len(cuts) > 0 {
+		kept = subjectPhrase(kept, true)
+	}
+	return usable(kept)
 }
 
 // changes reports whether the clause says that it changes something (an explicit change).

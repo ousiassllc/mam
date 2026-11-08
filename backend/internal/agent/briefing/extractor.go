@@ -53,48 +53,6 @@ var contentTypeRules = []keywordRule{
 
 var objectiveKeywords = []string{"ブランドサイト", "Webサイト", "店頭", "展示会", "採用", "ECサイト", "認知拡大", "集客", "宣伝", "ファン獲得", "フォロワー獲得"}
 
-// constraintRules are the constraints the extractor keeps in the Additional Instruction under their canonical label, so that the
-// Producer, Writer and Director are told them as fixed conditions (#1114). A constraint is a safety condition: a keyword counts only
-// when constraintHit finds it stated, never when it may be negated, so an uncertain one is not recorded.
-var constraintRules = []keywordRule{
-	{"成人", []string{"成人", "18歳以上", "20歳以上"}},
-	{"架空", []string{"架空", "フィクション", "実在しない", "実在の人物ではない"}},
-	{"着衣", []string{"着衣", "服を着", "服は着", "服装あり", "露出なし", "露出しない"}},
-}
-
-var (
-	// notStatedAfterRe: what follows the keyword makes it another word ("成人式", "成人向け", "服を着替える").
-	notStatedAfterRe = regexp.MustCompile(`^(?:向け|式|替)`)
-	// negationRe is a negation in the rest of the clause ("成人ではない", "服は着ていない設定", "着衣なし").
-	negationRe = regexp.MustCompile(`ない|ません|なし|なく`)
-	// notStatedBeforeRe: the keyword is the end of a word that negates it ("ノンフィクション", "非実在").
-	notStatedBeforeRe = regexp.MustCompile(`(?:ノン|非|未)$`)
-	clauseEndRe       = regexp.MustCompile(`[、,，。\n]`)
-)
-
-// constraintHit reports whether the text states the constraint of one of the keywords: some occurrence is neither the end of a word that
-// negates it nor followed, in its clause, by a negation.
-func constraintHit(text string, keywords []string) bool {
-	for _, k := range keywords {
-		for from := 0; from < len(text); {
-			i := strings.Index(text[from:], k)
-			if i < 0 {
-				break
-			}
-			start := from + i
-			from = start + len(k)
-			rest := text[from:]
-			if loc := clauseEndRe.FindStringIndex(rest); loc != nil {
-				rest = rest[:loc[0]]
-			}
-			if !notStatedBeforeRe.MatchString(text[:start]) && !notStatedAfterRe.MatchString(rest) && !negationRe.MatchString(rest) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 var targetKeywords = []string{"ファミリー層", "ファミリー", "学生", "主婦", "ビジネスパーソン", "経営者"}
 
 var moodKeywords = []string{
@@ -111,18 +69,20 @@ var ratioKeywords = []struct {
 	{domain.AspectRatio1x1, []string{"正方形", "スクエア"}},
 }
 
-// Extract implements Extractor.
+// Extract implements Extractor. What the text denies ("学生ではなく社会人", "雰囲気は派手でなく地味", "15秒ではなく30秒") is never read: every
+// item but the Subject and the constraints is read from the text without its denied phrases.
 func (RuleExtractor) Extract(text string) domain.Brief {
 	var b domain.Brief
-	b.ContentType = firstRule(text, contentTypeRules)
-	b.Objective = cmp.Or(labelled(text, domain.BriefObjective), objective(text))
 	b.Subject = statedSubject(text)
-	// The age and gender of the protagonist ("30代女性インフルエンサーを主人公に") are not the audience.
-	b.Target = cmp.Or(labelled(text, domain.BriefTarget), target(strings.Replace(text, b.Subject, "", 1)))
-	b.Duration = duration(text)
-	b.AspectRatio = aspectRatio(text)
-	b.Mood = cmp.Or(labelled(text, domain.BriefMood), mood(text))
 	b.AdditionalInstruction = instruction(text)
+	pos, _ := positiveSide(text)
+	b.ContentType = firstRule(pos, contentTypeRules)
+	b.Objective = cmp.Or(labelled(pos, domain.BriefObjective), objective(pos))
+	// The age and gender of the protagonist ("30代女性インフルエンサーを主人公に") are not the audience.
+	b.Target = cmp.Or(labelled(pos, domain.BriefTarget), target(strings.Replace(pos, b.Subject, "", 1)))
+	b.Duration = duration(pos)
+	b.AspectRatio = aspectRatio(pos)
+	b.Mood = cmp.Or(labelled(pos, domain.BriefMood), mood(pos))
 	for _, u := range urlRe.FindAllString(text, -1) {
 		// A URL the Brief form would refuse stays out, or it would block saving the form later.
 		if u = strings.TrimRight(u, ".,;"); ReferenceProblem(u) == "" {
