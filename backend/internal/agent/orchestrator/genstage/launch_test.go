@@ -2,8 +2,6 @@ package genstage_test
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -49,11 +47,7 @@ func TestAutoStart_AShotWithAKeyframeIsGeneratedWithoutAPack(t *testing.T) {
 	r := newRig(t)
 	id := r.planned(domain.ConfirmFullAuto)
 	shots := r.shotIDs(id)
-	spec, _ := json.Marshal(map[string]any{"references": []domain.Reference{{Kind: domain.RefKeyframe, AssetID: "a", Prompt: "p"}}})
-	require.NoError(t, r.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(spec), shots[0])
-		return err
-	}))
+	r.withKeyframe(shots[0])
 
 	r.handle(id)
 
