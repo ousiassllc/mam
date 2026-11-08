@@ -132,8 +132,10 @@ func TestView_AnAssignmentTheUserSetIsReportedAsBlockedNotReplaced(t *testing.T)
 	v, err := svc.View()
 	require.NoError(t, err)
 
+	found := false
 	for _, r := range v.Routes {
 		if r.Media == "image" && r.Key == "new_reference" {
+			found = true
 			assert.True(t, r.Explicit, "the route was changed from the default")
 			assert.Equal(t, "blocked", r.Status)
 			assert.Nil(t, r.Use)
@@ -142,6 +144,7 @@ func TestView_AnAssignmentTheUserSetIsReportedAsBlockedNotReplaced(t *testing.T)
 			assert.Contains(t, r.Message, "自動で替えません")
 		}
 	}
+	require.True(t, found, "the report has the route of image/new_reference")
 }
 
 func TestView_AdultModelsAreNeverCandidatesOfTheReport(t *testing.T) {
@@ -156,10 +159,13 @@ func TestView_AdultModelsAreNeverCandidatesOfTheReport(t *testing.T) {
 	v, err := svc.View()
 	require.NoError(t, err)
 
+	found := false
 	for _, r := range v.Routes {
 		if r.Media == "image" && r.Key == "new_reference" {
+			found = true
 			assert.Equal(t, "blocked", r.Status, "the only usable model is an adult one: it is not chosen on its own")
 			assert.Empty(t, r.Candidates)
 		}
 	}
+	require.True(t, found, "the report has the route of image/new_reference")
 }

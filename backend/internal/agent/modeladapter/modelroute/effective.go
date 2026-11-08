@@ -12,7 +12,7 @@ import (
 // used and may not be replaced is left as it is (the start refuses it). The conditions that belong to one Shot (its length, its Keyframe) are not known
 // here: a video route is judged for a Shot that has a Keyframe and by the Quality Policy's resolution alone, and a Shot whose length no chosen model holds is refused when it starts.
 func (e Env) Effective() modeladapter.Config {
-	e = e.memoised()
+	e = e.Memoised()
 	cfg := e.Config
 	cfg.Images, cfg.Policies = maps.Clone(cfg.Images), maps.Clone(cfg.Policies)
 	for _, p := range modeladapter.ImagePurposes() {
