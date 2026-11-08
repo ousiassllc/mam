@@ -71,6 +71,7 @@ func TestWait_SaysWhichPhaseTheAutomaticStartIsIn(t *testing.T) {
 	unrecorded := mainline.Wait{Shots: 3, Phase: mainline.PhaseDeclinedUnrecorded}
 	assert.Contains(t, unrecorded.NextAction(), "メッセージを送ってください")
 	assert.NotContains(t, unrecorded.NextAction(), "計画を直す（", "a decline with no record is not lifted by the plan")
+	assert.Contains(t, unrecorded.NextAction(), "自分で始めるなら、Shot を選んで手動で起動してください", "the manual start is offered, as the reply says")
 	assert.Contains(t, mainline.DeclinedAckUnrecorded, "メッセージを送ってください")
 	assert.NotContains(t, mainline.DeclinedAckUnrecorded, "計画（")
 	assert.Equal(t, declined.ShotLabel(), unrecorded.ShotLabel())

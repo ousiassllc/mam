@@ -36,9 +36,17 @@ const DeclinedAckUnrecorded = "差し戻しを受け付けました。この「�
 	"計画を直しても差し戻しは解けません。差し戻されたので、自動では生成を始めません。" +
 	"次の行動: ①自動で始めるには、チャットに何かメッセージを送ってください。②自分で始めるなら、Shot を選んで手動で起動してください。"
 
-// DeclinedAckNotAuto is what the chat says when the card is declined in a Project that is not AUTO: nothing starts by itself there anyway, and the decline stays.
-const DeclinedAckNotAuto = "差し戻しを受け付けました。この「生成の承認」は旧方針のカードです。この Project は AUTO ではないため、生成はもともと自動では始まりません。" +
-	"Shot を選んで手動で起動してください。差し戻しは残るので、あとで AUTO にしても、このあとにチャットへメッセージを送るまでは自動で始まりません。"
+// DeclinedAckNotAuto is what the chat says when the card is declined in a Project that is not AUTO: nothing starts by itself there anyway, and the decline
+// stays. After a switch to AUTO a message of the user lifts it; for a card with a record a change of the plan does too, for one without (unrecorded) it
+// does not.
+func DeclinedAckNotAuto(unrecorded bool) string {
+	lifts := "チャットへメッセージを送るか、計画（Shot の追加、動画モデルの固定、Quality Policy の変更）を直す"
+	if unrecorded {
+		lifts = "チャットへメッセージを送る（このカードには記録が無いため、計画を直しても解けません）"
+	}
+	return "差し戻しを受け付けました。この「生成の承認」は旧方針のカードです。この Project は AUTO ではないため、生成はもともと自動では始まりません。" +
+		"Shot を選んで手動で起動してください。差し戻しは残るので、あとで AUTO にしても、このあとに" + lifts + "までは自動で始まりません。"
+}
 
 // Wait is what the main line waits for. A Shot that stays PLANNING with no Take is an intended wait, and this says why and what the user does.
 type Wait struct {
@@ -123,7 +131,7 @@ func (w Wait) NextAction() string {
 	case PhaseDeclined:
 		return "次にするもの: 自動で始めるには、チャットに何かメッセージを送ってください。計画を直す（Shot の追加、動画モデルの固定、Quality Policy の変更）と、直した計画で自動で始めます。"
 	case PhaseDeclinedUnrecorded:
-		return "次にするもの: 自動で始めるには、チャットに何かメッセージを送ってください。この差し戻しのカードには記録が無い（取り込んだ Project など）ため、計画を直しても自動では始まりません。"
+		return "次にするもの: 自動で始めるには、チャットに何かメッセージを送ってください。この差し戻しのカードには記録が無い（取り込んだ Project など）ため、計画を直しても自動では始まりません。自分で始めるなら、Shot を選んで手動で起動してください。"
 	case PhaseAuto:
 		if w.Stuck > 0 {
 			return "次にするもの: 進められない Shot は、Shot を選んで「Reference Pack」「生成」を押してください。ほかは何も要りません。起動した生成は Job と Progress で追えます。"
