@@ -75,11 +75,21 @@ func TestStated_OnlyTheKeywordsOwnPredicateNegatesIt(t *testing.T) {
 		{"成人ではない人物はぜひ出さないで", "成人"},
 		{"成人ではない人物、出さない", "成人"},
 		{"成人ではない人物は、出さない", "成人"},
-		{"成人ではない。人物は出さない", "成人"},
 		{"服を着ていない人物はもちろん出さない", "着衣"},
 		// a verb of another clause ends the run: the noun is not left out
 		{"成人ではない人物は出すが他は出さない", ""},
 		{"成人ではない。人物は出す", ""},
+		// a full stop ends the negation of the keyword: the next sentence is another one
+		{"成人ではない。人物は出さない", ""},
+		{"主人公は成人ではない。人物は出さない", ""},
+		{"主人公は動物で成人ではない。人間は出さない", ""},
+		// the verb must end its clause: a word that takes the refusal back leaves the keyword denied
+		{"成人ではない人物は出さないわけではない", ""},
+		{"成人ではない人物は出さないとは言っていない", ""},
+		{"成人ではない人物は出さないことはない", ""},
+		{"成人ではない人物は出さないとは限らない", ""},
+		{"成人ではない人物は出さない。", "成人"},
+		{"成人ではない人物は出さないので", "成人"},
 		{"成人ではない。人物が主人公", ""},
 		// the same negation, but the sentence does not leave the noun out: the keyword is denied
 		{"服を着ていない人物は出す", ""},
