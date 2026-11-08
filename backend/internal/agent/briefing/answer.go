@@ -53,8 +53,7 @@ func ReferenceProblem(u string) string {
 const vagueSubjectProblem = "題材（主役）として読み取れませんでした。「ただの投稿動画」や「商品ではなく」のような否定・一般的な言い方では、Subject は決まりません。主役・題材を具体的に教えてください"
 
 // ApplyAnswer stores an answer the user gave to the question about f; the Brief form's rule refuses it with the question again and the reason.
-// A Subject answer is the Subject only when it names something concrete ("A ではなく B" is B; a denial, a general phrase or a deferral is refused). A Subject
-// already set is replaced only by the user's evidence (overwrite), whatever the wording; a Subject answer also closes the open contradiction.
+// A Subject answer must name something concrete ("A ではなく B" is B; a denial, a general phrase or a deferral is refused). A Subject already set is replaced only by the user's evidence (overwrite).
 func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.ChatMessage {
 	text = strings.TrimSpace(text)
 	if text == domain.DelegateOption && f.CanDelegate() {
@@ -67,8 +66,8 @@ func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.
 			Absorb(brief, domain.Brief{AdditionalInstruction: ConstraintPrefix + strings.Join(refusals, "・")}, "")
 		}
 		if brief.Subject != "" { // keep by default: only a stated change or the choice of the contradiction replaces it (overwrite)
-			if stated, explicit := readSubject(text); overwrite.Apply(brief, text, stated, explicit) {
-				again := SubjectConflict(*brief, "")
+			if act := overwrite.Apply(brief, text, readSubject); act.Asks() {
+				again := SubjectConflict(*brief, act.Reason())
 				return &again
 			}
 			return nil

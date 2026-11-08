@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing/declined"
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/overwrite"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -219,7 +220,7 @@ func clauseAround(s string, start, end int) (from, to int) {
 func explicitChange(text string, f domain.BriefField, v string) bool {
 	if f == domain.BriefSubject {
 		s, explicit := readSubject(text)
-		return explicit && s == v
+		return explicit && s == v && overwrite.Committed(text, v) // the user's evidence has a shape (overwrite)
 	}
 	text = changeLeadRe.ReplaceAllString(text, "$1")
 	for _, sentence := range sentenceRe.Split(text, -1) {

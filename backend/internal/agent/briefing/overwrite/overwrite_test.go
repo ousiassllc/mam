@@ -128,3 +128,71 @@ func TestApplyAnswer_WithoutASubjectTheAnswerIsReadAsBefore(t *testing.T) {
 	assert.NotNil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, "お任せします"))
 	assert.Empty(t, b.Subject)
 }
+
+// The evidence has a shape: a change that is hedged, undecided or deferred is no evidence, in state A (no contradiction) and in state B (the card
+// is open), as an answer and as a free message (#1114, review: "主人公を犬に変更するかも" replaced 猫).
+var hedgedChanges = []string{
+	"主人公は犬にしたいけど迷う", "主人公を犬に変更するかも", "主人公を犬に変更するかどうか考え中", "題材を犬に変更したいが後で",
+	"もし犬にするなら主人公を犬に変更して", "主人公を犬に変更するかもしれません", "主人公を犬に変更しようか悩んでいます",
+}
+
+func TestApplyAnswer_AHedgedChangeNeverReplacesTheSubject(t *testing.T) {
+	for _, text := range hedgedChanges {
+		for _, proposed := range []string{"", "ロボット"} {
+			t.Run(text+"/"+proposed, func(t *testing.T) {
+				b := decided("猫", proposed)
+				briefing.ApplyAnswer(&b, domain.BriefSubject, text)
+				assert.Equal(t, "猫", b.Subject)
+				assert.Equal(t, proposed, b.ProposedSubject, "nothing is proposed, and an open contradiction stays open as it was")
+			})
+		}
+	}
+}
+
+func TestAbsorb_AHedgedChangeNeverReplacesTheSubject(t *testing.T) {
+	for _, text := range hedgedChanges {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+		})
+	}
+}
+
+// A remark about the Subject that is not a new Subject proposes nothing.
+func TestApplyAnswer_ARemarkAboutTheSubjectProposesNothing(t *testing.T) {
+	for _, text := range []string{"主人公はそのままで", "主人公は変えなくていいです", "主人公は犬かもしれない"} {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.ApplyAnswer(&b, domain.BriefSubject, text)
+			assert.Equal(t, "猫", b.Subject)
+			assert.Empty(t, b.ProposedSubject)
+		})
+	}
+}
+
+// On the open card the value named in a short sentence settles it, and an answer that names neither value says why it asks again.
+func TestApplyAnswer_ANameInAShortSentenceSettlesTheCard(t *testing.T) {
+	for text, want := range map[string]string{
+		"ロボットがいいです": "ロボット", "ロボットで": "ロボット", "ロボットです": "ロボット", "ロボットにします": "ロボット", "ロボット。": "ロボット",
+		"やっぱりロボット": "ロボット", "猫で": "猫", "猫です": "猫", "猫がいいです": "猫", "猫！": "猫",
+	} {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "ロボット")
+			assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))
+			assert.Equal(t, want, b.Subject)
+			assert.Empty(t, b.ProposedSubject)
+		})
+	}
+	b := decided("猫", "ロボット")
+	again := briefing.ApplyAnswer(&b, domain.BriefSubject, "どちらでもいいですw")
+	require.NotNil(t, again)
+	assert.Contains(t, domain.DecodeCardBody(again.Content).Text, overwrite.AskReason)
+
+	for _, text := range []string{"ロボットにしたいけど迷う", "ロボットは出さない", "猫はいらない", "ロボットでもいいかも"} {
+		b := decided("猫", "ロボット")
+		briefing.ApplyAnswer(&b, domain.BriefSubject, text)
+		assert.Equal(t, "ロボット", b.ProposedSubject, "%s decides nothing", text)
+		assert.Equal(t, "猫", b.Subject, text)
+	}
+}
