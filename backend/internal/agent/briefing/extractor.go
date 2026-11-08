@@ -75,8 +75,7 @@ var ratioKeywords = []struct {
 	{domain.AspectRatio1x1, []string{"正方形", "スクエア"}},
 }
 
-// Extract implements Extractor. What the text denies ("学生ではなく社会人", "雰囲気は派手でなく地味", "15秒ではなく30秒") is never read: every
-// item but the Subject and the constraints is read from the text without its denied phrases.
+// Extract implements Extractor. What the text denies ("学生ではなく社会人", "雰囲気は派手でなく地味", "15秒ではなく30秒") is never read: every item but the Subject and the constraints is read from the text without its denied phrases.
 func (RuleExtractor) Extract(text string) domain.Brief {
 	var b domain.Brief
 	b.Subject = statedSubject(text)

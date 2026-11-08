@@ -218,7 +218,7 @@ func clauseAround(s string, start, end int) (from, to int) {
 func explicitChange(text string, f domain.BriefField, v string) bool {
 	if f == domain.BriefSubject {
 		s, explicit := readSubject(text)
-		return explicit && s == v && overwrite.Committed(overwrite.StripItems(text, otherItem), v) // the user's evidence has a shape (overwrite)
+		return explicit && s == v && overwrite.Committed(overwrite.StripItems(text, otherItems), v) // the user's evidence has a shape (overwrite)
 	}
 	text = changeLeadRe.ReplaceAllString(text, "$1")
 	for _, sentence := range sentenceRe.Split(text, -1) {
@@ -231,10 +231,14 @@ func explicitChange(text string, f domain.BriefField, v string) bool {
 	return false
 }
 
-// otherItem reports whether the clause states another item of the Brief and no Subject (the extractor reads a value from it): a clause of a change sentence like "30秒で".
-func otherItem(clause string) bool {
+// otherItems are the item values the extractor reads from the clause, "" when it reads none or a Subject: what a clause of a change sentence like "30秒で" states.
+func otherItems(clause string) string {
 	b := RuleExtractor{}.Extract(clause)
-	return b.Subject == "" && slices.ContainsFunc(domain.RequiredBriefFields(), func(f domain.BriefField) bool { return b.Get(f) != "" })
+	values := []string{b.Duration, b.AspectRatio, b.Objective, b.ContentType, b.Target, b.Mood}
+	if b.Subject != "" || !slices.ContainsFunc(values, func(v string) bool { return v != "" }) {
+		return ""
+	}
+	return strings.Join(values, "|")
 }
 
 // isFormat reports whether s is a duration, a ratio or the name of a kind of video, which "A ではなく B" changes but which is no subject.

@@ -85,8 +85,7 @@ func Confirmed(b domain.Brief) bool {
 }
 
 // ReadyToPlan reports whether PLANNING may start (spec/spec.md §4.2). The Subject must be known and not contradicted. At FULL AUTO that is
-// all: the recommended values are adopted and the open items are left to the AI. At the other levels the Brief must also be confirmed
-// (the batch summary answered, or every item decided by the user).
+// all: the recommended values are adopted and the open items are left to the AI. At the other levels the Brief must also be confirmed (the batch summary answered, or every item decided by the user).
 func ReadyToPlan(b domain.Brief, level domain.ConfirmationLevel) bool {
 	if slices.Contains(b.Missing(), domain.BriefSubject) || b.ProposedSubject != "" {
 		return false

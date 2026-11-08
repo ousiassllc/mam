@@ -64,7 +64,7 @@ func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.
 			Absorb(brief, domain.Brief{AdditionalInstruction: ConstraintPrefix + strings.Join(refusals, "・")}, "")
 		}
 		if brief.Subject != "" { // keep by default: only a stated change or the choice of the contradiction replaces it (overwrite)
-			return overwrite.Apply(brief, overwrite.StripItems(text, otherItem), readSubject, func(reason string) *domain.ChatMessage { again := SubjectConflict(*brief, reason); return &again })
+			return overwrite.Apply(brief, overwrite.StripItems(text, otherItems), readSubject, func(reason string) *domain.ChatMessage { again := SubjectConflict(*brief, reason); return &again })
 		}
 		if text = subjectAnswer(text); text == "" {
 			problem = vagueSubjectProblem
