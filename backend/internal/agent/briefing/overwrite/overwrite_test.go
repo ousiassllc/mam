@@ -143,7 +143,11 @@ func TestApplyAnswer_AHedgedChangeNeverReplacesTheSubject(t *testing.T) {
 				b := decided("猫", proposed)
 				briefing.ApplyAnswer(&b, domain.BriefSubject, text)
 				assert.Equal(t, "猫", b.Subject)
-				assert.Equal(t, proposed, b.ProposedSubject, "nothing is proposed, and an open contradiction stays open as it was")
+				if proposed != "" {
+					assert.Equal(t, proposed, b.ProposedSubject, "an open contradiction stays open as it was")
+				} else {
+					assert.Contains(t, []string{"", "犬"}, b.ProposedSubject, "at most the noun is proposed (one tap), never a fragment")
+				}
 			})
 		}
 	}
@@ -194,5 +198,62 @@ func TestApplyAnswer_ANameInAShortSentenceSettlesTheCard(t *testing.T) {
 		briefing.ApplyAnswer(&b, domain.BriefSubject, text)
 		assert.Equal(t, "ロボット", b.ProposedSubject, "%s decides nothing", text)
 		assert.Equal(t, "猫", b.Subject, text)
+	}
+}
+
+// A later sentence that takes the change back, or any sentence after the statement, keeps the Subject; so does a question (review: "…に変更して。やっぱりやめます").
+var takenBackChanges = []string{
+	"主人公を犬に変更して。やっぱりやめます", "主人公を犬に変更して。いや、やっぱり猫のまま", "主人公を犬に変更して。いや待って", "主人公は犬にします。でも迷っています",
+	"主人公を犬に変更して。後で相談", "主人公を犬に変更して。ただし後で決める", "主人公を犬に変更してください。あ、でも猫のままで", "主人公を犬に変更して。取り消し",
+	"主人公を犬に変更して\nやっぱりやめる", "主人公を犬に変更して？", "主人公を犬に変更して。30秒にして。やっぱり迷う",
+}
+
+func TestApplyAnswerAndAbsorb_ATakenBackOrQuestionedChangeKeepsTheSubject(t *testing.T) {
+	for _, text := range takenBackChanges {
+		for _, proposed := range []string{"", "ロボット"} {
+			t.Run("answer "+text+"/"+proposed, func(t *testing.T) {
+				b := decided("猫", proposed)
+				briefing.ApplyAnswer(&b, domain.BriefSubject, text)
+				assert.Equal(t, "猫", b.Subject)
+			})
+		}
+		t.Run("absorb "+text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+		})
+	}
+}
+
+// A sentence about another item in front of the change does not matter: the change is the last word.
+func TestApplyAnswer_AnEarlierSentenceAboutAnotherItemDoesNotHideTheChange(t *testing.T) {
+	b := decided("猫", "")
+	text := "30秒にして。主人公を犬に変更して"
+	assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))
+	assert.Equal(t, "犬", b.Subject)
+}
+
+// A fragment that is no noun phrase is neither the Subject nor a one-click proposal, on the free-text path too.
+func TestAbsorb_AFragmentIsNotProposedAsTheSubject(t *testing.T) {
+	for _, text := range []string{"主人公はそのままで", "主人公は犬にしたいけど迷う", "主人公は犬かな", "主人公は犬w", "主人公は犬のはず", "主人公は犬か猫", "題材は猫のままで"} {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+			assert.Empty(t, b.ProposedSubject)
+		})
+	}
+	b := decided("猫", "")
+	text := "ロボットを主人公にした動画も作りたい"
+	briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+	assert.Equal(t, "ロボット", b.ProposedSubject, "a noun phrase is still a contradiction to ask about")
+}
+
+func TestPlausible(t *testing.T) {
+	for v, want := range map[string]bool{
+		"猫": true, "ロボット": true, "架空の30代女性インフルエンサー": true, "かわいい猫": true, "ミュージカル": true,
+		"迷う": false, "そのまま": false, "犬かな": false, "犬w": false, "犬のはず": false, "犬か猫": false, "変えなくていい": false, "": false,
+	} {
+		assert.Equal(t, want, overwrite.Plausible(v), v)
 	}
 }

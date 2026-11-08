@@ -1,11 +1,13 @@
 package briefing
 
 import (
+	"cmp"
 	"maps"
 	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing/constraint"
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/overwrite"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -108,7 +110,7 @@ func Absorb(b *domain.Brief, extracted domain.Brief, text string) {
 		case cur == "" || source == domain.BriefSourceRecommended:
 			SetFrom(b, f, v, domain.BriefSourceInferred)
 		case f == domain.BriefSubject && !explicit:
-			b.ProposedSubject = v
+			b.ProposedSubject = cmp.Or(overwrite.Proposal(v), b.ProposedSubject) // a fragment that is no noun phrase is not even proposed
 		case explicit:
 			b.Set(f, v)
 		case source == domain.BriefSourceInferred:
