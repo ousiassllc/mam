@@ -169,3 +169,39 @@ func TestLegacyCard_ADeclinedCardWithoutARecordIsLiftedByAMessageOnly(t *testing
 	r.handle(id)
 	assert.Equal(t, 4, r.gen.count(genapprovalrepo.StageReferencePack))
 }
+
+// A message the user wrote between the card and the decline (a question, a "wait") is part of the talk that led to the decline: it does not lift it.
+// Only a message after the decline does, whether the card has its record, has none, or bears an imported ID.
+func TestLegacyCard_AMessageBeforeTheDeclineDoesNotLiftIt(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		cardID   string
+		noRecord bool
+	}{
+		"with a record":             {},
+		"without a record":          {noRecord: true},
+		"without a record, huge ID": {cardID: hugeID, noRecord: true},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := newRig(t)
+			id := r.planned(domain.ConfirmFullAuto)
+			cardID := r.legacyCardWithID(id, domain.ApprovalPending, tc.cardID)
+			if tc.noRecord {
+				r.withoutRecord(cardID)
+			}
+			r.userWrites(id, "ちょっと待って")
+			r.answer(id, domain.ApprovalChangesRequested)
+
+			r.handle(id)
+			r.restart()
+			r.handle(id)
+			assert.Empty(t, r.gen.started(), "the message before the decline is not a request to go on")
+
+			r.userWrites(id, "やっぱり進めて")
+			r.handle(id)
+			assert.Equal(t, 3, r.gen.count(genapprovalrepo.StageReferencePack))
+		})
+	}
+}
