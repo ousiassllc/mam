@@ -57,11 +57,12 @@ func buildFillers() []string {
 }
 
 // usable returns s when it is a concrete subject: filler, the words that point at the request and a phrase that holds a deferral (declined.Deferred) are not.
+// It is the head of the phrase, without the relative clause of an absence verb in front of it ("出さない猫" → "猫"): every path that reads a Subject ends here.
 func usable(s string) string {
 	if slices.Contains(notSubject, strings.TrimSpace(s)) || declined.Deferred(s) {
 		return ""
 	}
-	return concrete(s)
+	return concrete(declined.Head(strings.TrimSpace(s)))
 }
 
 // asks reports whether s is a question: it ends in か or a question mark, or has a question mark in it.

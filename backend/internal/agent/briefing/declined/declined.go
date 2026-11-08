@@ -4,6 +4,7 @@ package declined
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -12,15 +13,24 @@ import (
 // nominalizer is a noun that turns the absence verb in front of it into the end of a statement ("作らない方向で", "出さない予定です"), not a head noun.
 const nominalizer = `予定|方針|方向|方|事|こと|つもり|形|人|場合|前提|条件|約束|旨|意向|感じ|様`
 
+// absenceVerb is a verb that refuses to make or show something.
+const absenceVerb = `作らない|作りません|作りたくない|出さない|出しません`
+
 var (
 	// denyRe is a refusal: the clause that holds it states nothing wanted ("猫を主人公にしてほしくない"). 不要 counts only as the refusal
 	// ("猫は不要です"), not inside a word ("不要品回収のCM").
 	denyRe = regexp.MustCompile(`ほしくない|欲しくない|いらない|要らない|不要(?:です|だ|で|$)|やめて|やめたい|やめる|したくない|しないで|にしない|にはしない|にしません|にはしません|避けて|避けたい`)
 	// absenceRe is a refusal to make or show something ("猫の動画は作らない", "猫は出しません"): the verb ends the part. Followed by a noun phrase it is only a
-	// description of it ("成人しか出さない猫の動画"); followed by a nominalizer ("作らない方向で", "出さない予定です", "出さない事にした") it is still the refusal.
-	absenceRe = regexp.MustCompile(`(?:作らない|作りません|作りたくない|出さない|出しません)(?:$|[^\p{Han}\p{Katakana}A-Za-z0-9]|` + nominalizer + `(?:$|[^\p{Han}\p{Katakana}A-Za-z0-9]))`)
+	// description of it ("成人しか出さない猫の動画"); followed by a nominalizer ("作らない方向で", "出さない予定です", "出さない事にした") it is still the refusal,
+	// unless the nominalizer goes on as the head of a noun phrase ("出さない人の話", "出さない人物"): it fails closed, so the refusal is whatever does not go on with の or a noun.
+	absenceRe = regexp.MustCompile(`(?:` + absenceVerb + `)(?:$|[^\p{Han}\p{Katakana}A-Za-z0-9]|(?:` + nominalizer + `)(?:$|[^のA-Za-z0-9\p{Han}\p{Katakana}]))`)
+	// nominalizerConnectiveRe ends the part that refuses when the request follows in the same clause ("暴力は出さない方向で猫の動画を作りたい"): the で after the nominalizer
+	// joins it to the request, like a connective does.
+	nominalizerConnectiveRe = regexp.MustCompile(`(?:` + absenceVerb + `)(?:` + nominalizer + `)で`)
+	// requestRe is a word that says what is asked for after such a で ("作りたい", "作って", "描いて", "撮って", "お願いします").
+	requestRe = regexp.MustCompile(`作|描|撮|お願い`)
 	// absenceLeadRe is such a verb in front of the head noun of a phrase ("出さない猫"): the relative clause is no part of what the phrase names.
-	absenceLeadRe = regexp.MustCompile(`^(?:作らない|作りません|作りたくない|出さない|出しません)([\p{Han}\p{Katakana}A-Za-z0-9].*)$`)
+	absenceLeadRe = regexp.MustCompile(`^(?:` + absenceVerb + `)([\p{Han}\p{Katakana}A-Za-z0-9].*)$`)
 	// protagonistRe is a clause that names the protagonist: "猫を主人公にして成人は出さない" has the constraint in the same clause and still states the Subject.
 	protagonistRe = regexp.MustCompile(`主人公|主役|題材`)
 	// connectiveRe ends a part of a clause: a predicate that runs on into the next one ("作りたいが", "作りたくて", "出さないので"). The case particle が ("猫の動画が")
@@ -40,39 +50,59 @@ var (
 var (
 	laterRe     = regexp.MustCompile(`後で|あとで`)
 	clauseEndRe = regexp.MustCompile(`[、,，。！!？?\n]`)
-	laterLeadRe = regexp.MustCompile(`^(?:\s|また|やっぱり|やはり|ちょっと|えーと|えっと|うーん|まあ|じゃあ|とりあえず)*$`)
-	politeEndRe = regexp.MustCompile(`(?:ます|ません|ました|です|でした|ください|下さい|ましょう|ますか|ませんか)(?:[ねよわ]|かな|かも)*$`)
-	plainEndRe  = regexp.MustCompile(`(?:[うくぐすつぬぶむる]|ない|たい|よう)(?:[ねよわ]|かな|かも)*$`)
-	// modifierEndRe is a plain verb that modifies the noun ending the phrase ("見返したくなる猫", "見返したくなる猫の動画を作りたい"): the noun is followed by a particle or nothing, not by more verb.
-	modifierEndRe = regexp.MustCompile(`(?:る|た|ない|たい)[\p{Han}\p{Katakana}A-Za-z0-9]+(?:$|[のをがはにでとも])`)
-	laterFillerRe = regexp.MustCompile(`^(?:また|やっぱり|やはり|ちょっと|えーと|えっと|うーん|まあ|じゃあ|とりあえず)+`)
+	// modifierRe is a plain verb that modifies the noun ending the phrase ("見返したくなる猫", "泣く猫の動画を作りたい"): the verb ending (う く ぐ す つ ぬ ぶ む る, た, だ, ない, たい)
+	// is followed by a noun (kanji, katakana, latin, digit) and then a particle or the end. The noun is group 1.
+	modifierRe = regexp.MustCompile(`(?:[うくぐすつぬぶむる]|た|だ|ない|たい)([\p{Han}\p{Katakana}A-Za-z0-9]+)(?:$|[のをがはにでとも])`)
+	// nominalizedRe is a noun that turns the verb before it into the end of a statement ("決める予定", "決める方向", "決めるつもり"), not a head noun.
+	nominalizedRe = regexp.MustCompile(`^(?:予定|方針|方向|つもり|こと|事|形|前提|条件|約束|旨|意向|感じ|様|場合|もの|物|の)`)
+	// aboutTheSubjectRe is a word that says a sentence is about the Subject itself ("題材は後で相談", "それは後で相談", "何にするかは後で"), not another matter.
+	aboutTheSubjectRe = regexp.MustCompile(`主人公|主役|題材|テーマ|お題|主題|それ|これ|あれ|どれ|どちら|どっち|何|なに|誰`)
 )
 
 // Deferred reports whether s holds a word that says the Subject is not decided, is put off or is handed over.
 func Deferred(s string) bool { return undecidedRe.MatchString(s) || deferredLater(s) }
 
-// deferredLater reports whether a clause of s puts the decision off with 後で / あとで. The form tells it from "afterwards" inside a noun phrase
-// ("後で見返したくなる猫"): the word is a deferral when it opens the clause or when the clause ends in a predicate ("後でやります", "主人公は後で選ぶ"),
-// whatever follows it, and only a verb that modifies the noun that ends the clause is none. A 後 that follows a Han character is part of a word ("放課後で", "食後で").
+// deferredLater reports whether a clause of s puts the decision off with 後で / あとで. It fails closed: after the word, the clause is a deferral
+// whatever follows ("題材は後で相談", "主人公は後で決めて", "後で決める予定", "後でやります"), unless it is a plain verb that modifies the noun ending the phrase
+// ("後で見返したくなる猫", "後で泣く猫の動画を作りたい"), where the 後で only says when. A noun that nominalizes the verb ("決める予定", "決める方向で") is none.
+// A 後 that follows a Han character is part of a word ("放課後で", "食後で").
 func deferredLater(s string) bool {
 	for _, clause := range clauseEndRe.Split(s, -1) {
-		for _, loc := range laterRe.FindAllStringIndex(clause, -1) {
-			head, rest := clause[:loc[0]], strings.TrimSpace(clause[loc[1]:])
-			if strings.HasPrefix(clause[loc[0]:], "後") && endsInHan(head) {
-				continue
-			}
-			rest = laterFillerRe.ReplaceAllString(strings.TrimRight(rest, "。.!！ \t"), "")
-			switch {
-			case rest == "" || politeEndRe.MatchString(rest):
-				return true
-			case modifierEndRe.MatchString(rest):
-				continue
-			case laterLeadRe.MatchString(head) || plainEndRe.MatchString(rest):
-				return true
-			}
+		if clauseDefers(clause) {
+			return true
 		}
 	}
 	return false
+}
+
+func clauseDefers(clause string) bool {
+	for _, loc := range laterRe.FindAllStringIndex(clause, -1) {
+		if strings.HasPrefix(clause[loc[0]:], "後") && endsInHan(clause[:loc[0]]) {
+			continue
+		}
+		if !modifiesANoun(clause[loc[1]:]) {
+			return true
+		}
+	}
+	return false
+}
+
+// modifiesANoun reports whether rest is a plain verb that modifies a head noun that is no nominalizer.
+func modifiesANoun(rest string) bool {
+	return slices.ContainsFunc(modifierRe.FindAllStringSubmatch(rest, -1), func(m []string) bool { return !nominalizedRe.MatchString(m[1]) })
+}
+
+// WithoutOtherDeferrals drops the sentences after the first that put another matter off with 後で / あとで ("猫の動画を作りたい。後で見返したい"): a deferral
+// is judged per sentence, so it does not veto the Subject another sentence names. A sentence about the Subject itself ("題材は後で相談") and the first sentence stay.
+func WithoutOtherDeferrals(sentences []string) []string {
+	kept := make([]string, 0, len(sentences))
+	for i, s := range sentences {
+		if i > 0 && deferredLater(s) && !undecidedRe.MatchString(s) && !aboutTheSubjectRe.MatchString(s) {
+			continue
+		}
+		kept = append(kept, s)
+	}
+	return kept
 }
 
 func endsInHan(s string) bool {
@@ -115,16 +145,38 @@ func dropAbsence(clause string) string {
 	}
 	var kept strings.Builder
 	rest := clause
-	for _, loc := range connectiveRe.FindAllStringIndex(clause, -1) {
-		keepUnlessAbsent(&kept, clause[len(clause)-len(rest):loc[1]])
-		rest = clause[loc[1]:]
+	for _, end := range partEnds(clause) {
+		keepUnlessAbsent(&kept, clause[len(clause)-len(rest):end])
+		rest = clause[end:]
 	}
 	keepUnlessAbsent(&kept, rest)
 	return kept.String()
 }
 
+// partEnds are the positions where a part of the clause ends: after each connective, and after the で that follows a refusal ending in a nominalizer when the
+// request comes after it ("暴力は出さない方向で|猫の動画を作りたい").
+func partEnds(clause string) []int {
+	var ends []int
+	for _, loc := range connectiveRe.FindAllStringIndex(clause, -1) {
+		ends = append(ends, loc[1])
+	}
+	for _, loc := range nominalizerConnectiveRe.FindAllStringIndex(clause, -1) {
+		if requestRe.MatchString(clause[loc[1]:]) {
+			ends = append(ends, loc[1])
+		}
+	}
+	slices.Sort(ends)
+	return slices.Compact(ends)
+}
+
+// keepUnlessAbsent keeps the part unless it refuses to make or show something. A refusal that names its own topic after the object of the request
+// ("猫の動画を暴力は出さない形で") leaves that object: it ends at the を that comes before the topic.
 func keepUnlessAbsent(kept *strings.Builder, part string) {
 	if !absenceRe.MatchString(part) {
 		kept.WriteString(part)
+		return
+	}
+	if i := strings.LastIndex(part, "を"); i >= 0 && strings.Contains(part[i:], "は") {
+		kept.WriteString(part[:i+len("を")])
 	}
 }
