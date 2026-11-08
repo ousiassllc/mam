@@ -1,14 +1,24 @@
-package web_test
+package briefform_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/briefform"
 )
+
+func renderHTML(t *testing.T, c templ.Component) string {
+	t.Helper()
+	var sb strings.Builder
+	require.NoError(t, c.Render(context.Background(), &sb))
+	return sb.String()
+}
 
 // #1114: the Brief form says which values are only a proposal; the user's own values carry no mark.
 func TestBriefForm_MarksRecommendedAndInferredValues(t *testing.T) {

@@ -10,7 +10,7 @@
 2948	backend/internal/agent/repair/
 428	backend/internal/agent/repair/agent_flow_fixture_test.go
 1016	backend/internal/agent/repair/agent_flow_test.go
-7636	backend/internal/domain/
+7635	backend/internal/domain/
 359	backend/internal/domain/brand.go
 509	backend/internal/domain/editor.go
 332	backend/internal/domain/judge.go
@@ -27,10 +27,10 @@
 442	backend/internal/router/brand_test.go
 383	backend/internal/router/bundle_test.go
 450	backend/internal/router/review_test.go
-15081	backend/internal/service/
+15009	backend/internal/service/
 429	backend/internal/service/branch.go
 475	backend/internal/service/editor_reshoot.go
 361	backend/internal/service/editor_timeline.go
 440	backend/internal/service/review.go
 2777	backend/internal/web/handler/
-2323	backend/internal/web/organisms/
+2217	backend/internal/web/organisms/
