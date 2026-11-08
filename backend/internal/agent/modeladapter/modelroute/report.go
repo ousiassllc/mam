@@ -50,6 +50,7 @@ type RouteReport struct {
 // Report is the RouteReport of every image purpose and every Quality Policy of the assignment, images first. The conditions that belong to one Shot (its length) are not
 // known here: a video route is judged for a Shot that has a Keyframe, by the Quality Policy's resolution alone.
 func (e Env) Report() []RouteReport {
+	e = e.memoised()
 	var out []RouteReport
 	for _, p := range modeladapter.ImagePurposes() {
 		r := e.Config.ImageRouteFor(p)
@@ -88,13 +89,24 @@ func (e Env) report(media, key, res string, explicit bool, assigned []domain.Mod
 		r.Status = StatusCondition
 	} else {
 		r.Status = StatusAssignment
-		for _, a := range r.Assigned {
-			if a.Available {
-				first = domain.ModelName(a.Model)
-				break
-			}
-		}
+		first = e.FirstUsable(first, assigned[len(assigned)-1])
 	}
 	r.Use = &Candidate{Model: first, Route: modelreg.RouteOf(string(first)), Basis: BasisOf(e.Config, first, media), Resolution: res}
 	return r
+}
+
+// FirstUsable is the model the Adapter calls first for a route: the primary, or the alternative when the primary cannot be used (the Adapter skips it by
+// itself). When neither can be used it is the primary.
+func (e Env) FirstUsable(primary, fallback domain.ModelName) domain.ModelName {
+	if !e.check(primary).Available && e.check(fallback).Available {
+		return fallback
+	}
+	return primary
+}
+
+// Named is the model a progress card names for a route, with its route and why it was chosen: the model FirstUsable says, not the assignment's primary
+// when the Adapter will run the alternative (fellBack is then true).
+func (e Env) Named(sel Selected, primary, fallback domain.ModelName, media string) string {
+	m := e.FirstUsable(primary, fallback)
+	return string(m) + "（" + sel.Use(e.Config, m, media, m != primary).Label() + "）"
 }

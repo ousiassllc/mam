@@ -190,9 +190,11 @@ func (e Env) explicitImage(p modeladapter.ImagePurpose) bool {
 	return e.Config.Images[p] != modeladapter.DefaultConfig().Images[p]
 }
 
-// explicitVideo reports whether the assignment of the Quality Policy is the user's: the operator pinned the file or the route is not the default one.
+// explicitVideo reports whether the assignment of the Quality Policy is the user's: the operator pinned the file or the models of the route (primary and
+// alternative, with their resolution) are not the default ones. The number of Takes is not a choice of model, so changing it alone changes nothing here.
 func (e Env) explicitVideo(q domain.QualityPolicy) bool {
-	return e.Pinned || e.Config.Policies[q] != modeladapter.DefaultConfig().Policies[q]
+	r, d := e.Config.Policies[q], modeladapter.DefaultConfig().Policies[q]
+	return e.Pinned || r.Primary != d.Primary || r.Fallback != d.Fallback
 }
 
 // BasisOf is how the price of the model is known: a model on this PC is free unless the user priced it, the ChatGPT subscription's model has no price (the plan
