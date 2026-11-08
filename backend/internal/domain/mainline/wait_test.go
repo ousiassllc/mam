@@ -56,6 +56,8 @@ func TestWait_SaysWhichPhaseTheAutomaticStartIsIn(t *testing.T) {
 	assert.NotContains(t, auto.Text(), "承認するまで", "AUTO waits for no approval")
 	assert.NotContains(t, auto.Text(), "進められません")
 	assert.Equal(t, "自動開始待ち", auto.ShotLabel())
+	assert.Contains(t, auto.NextAction(), mainline.BudgetCeilingScope, "a ceiling does not count an unknown price: the text says so")
+	assert.Contains(t, auto.NextAction(), "DIRECTOR")
 
 	stuck := mainline.Wait{Shots: 2, Stuck: 1, Phase: mainline.PhaseAuto}
 	assert.Contains(t, stuck.Text(), "うち 1 件は自動では進められません")

@@ -23,7 +23,7 @@
 
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
-| `set_project_mode` | AUTO / DIRECTOR の切り替え（冪等。チャットに記録）。AUTO を選ぶことは、Scene / Shot 計画のあと承認を待たずに有料の生成を自動で始める同意で、チャットの通知とツールの説明もそう言う（`PUT /projects/:id/mode` と同じ。費用がかかる・単価が不明でも始める・止めるのは予算上限か DIRECTOR。`spec/spec.md` §4.3） | `project_id`, `mode`（`auto` / `director`） | `project_id`, `mode`, `state` | いいえ |
+| `set_project_mode` | AUTO / DIRECTOR の切り替え（冪等。チャットに記録）。AUTO を選ぶことは、Scene / Shot 計画のあと承認を待たずに有料の生成を自動で始める同意で、チャットの通知とツールの説明もそう言う（`PUT /projects/:id/mode` と同じ。費用がかかる・単価が不明でも始める・予算上限が数えるのは単価が分かる呼び出しだけで不明な分は止まらない・確実に止めるのは DIRECTOR。`spec/spec.md` §4.3） | `project_id`, `mode`（`auto` / `director`） | `project_id`, `mode`, `state` | いいえ |
 | `get_project_locks` | Story / Music の設定 | `project_id` | `locks`（`story`, `music`） | はい |
 | `set_project_lock` | Story / Music を AUTO / MANUAL / LOCK に | `project_id`, `parameter`（`story` / `music`）, `mode` | `locks` | いいえ |
 | `set_shot_lock` | Shot のパラメータ 1 つを AUTO / MANUAL / LOCK に。`video_model` は `value`（モデル名。LOCK で省略は最新 Take のモデル） | `shot_id`, `parameter`（`dialogue` / `character_identity` / `acting` / `camera` / `lighting` / `product_geometry` / `prompt` / `video_model` / `take_selection` / `editing`）, `mode`, `value` | `locks`（全 10 パラメータ） | いいえ |
@@ -65,7 +65,7 @@
 | `use_partial_takes` | 複数の Take の区間をつないで新しい Take（Partial Take Use。2〜8 区間・各 0.3 秒以上。ffmpeg が無いと `unavailable`） | `shot_id`, `segments[]`（`take_id`, `start`, `end`）または `instruction`（"Take A の 0-2秒 + Take B の 2-4秒"） | `shot` | いいえ |
 | `get_take_video_url` | プレビュー動画の URL（種別 `take_video`。4K は 1080p プロキシ。アーカイブ済みは `not_found`） | `take_id` | `take_id`, `url`, `expires_at`, `file_name` | はい |
 | `get_take_thumbnail_url` | 先頭フレームの JPEG の URL（種別 `take_thumbnail`。ffmpeg が無いと `unavailable`） | `take_id` | 同上 | はい |
-| `get_take_trace` | Generation Traceability（元の Shot Spec・Prompt・World State 版・モデルとパラメータ・Routing・Reference・出力・Judge・Repair） | `take_id` | `project_id`, `take`, `model_parameters`, `routing`, `model_use`（使ったモデルの経路 `route`・選んだ理由・費用の扱い。旧 Take は `null`）, `prompt_version`, `world_state_version`, `references[]`, `output`, `judgements[]`, `repairs[]`, `produced_by` | はい |
+| `get_take_trace` | Generation Traceability（元の Shot Spec・Prompt・World State 版・モデルとパラメータ・Routing・Reference・出力・Judge・Repair） | `take_id` | `project_id`, `take`, `model_parameters`, `routing`, `model_use`（使ったモデルの経路 `route_kind`・選んだ理由・費用の扱い。旧 Take は `null`）, `prompt_version`, `world_state_version`, `references[]`, `output`, `judgements[]`, `repairs[]`, `produced_by` | はい |
 
 `get_take_video_url` / `get_take_thumbnail_url` の URL は 15 分有効の GET（Range 可）で、動画は画面のプレイヤーと同じファイル（`TakeService.Video`）。
 
@@ -114,3 +114,4 @@
 | 1.0 | 2026-10-24 | 新規作成。Scene / Shot・Director・生成・Continue・Judge・Repair・Take のツール 27 個、ジョブ種別 `build_reference_pack`・`judge_take`・`repair_take`、ダウンロード種別 `take_video`・`take_thumbnail` | Issue #830。画面の全操作を MCP ツールにする（Scene / Shot / 生成 / Take の担当分） |
 | 1.1 | 2026-11-02 | `generate_shot` のジョブで、ローカルの ComfyUI が動いている間は `get_job` に `progress`（ステップ・%・残りの見積り）が付くことを書いた | Issue #966 |
 | 1.2 | 2026-11-08 | `generate_shot` の失敗に「使えるモデルがない `conflict`」を、`get_take_trace` の出力に `model_use` を足した | Issue #1113 |
+| 1.3 | 2026-11-08 | `get_take_trace` の `model_use` の経路のフィールド名を `route` から実際の `route_kind` に直した。`set_project_mode` の説明を、予算上限が数えるのは単価が分かる呼び出しだけで、不明な分は止まらず、確実に止めるのは DIRECTOR であることに改めた | Issue #1115: 仕様の `route` は実装の `route_kind` と違っていた。予算上限は単価が不明の呼び出しを数えないのに、止める手段として単独で勧めていた |

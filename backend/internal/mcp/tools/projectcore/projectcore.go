@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/stage"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -31,7 +32,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"新規プロジェクトに適用できる Brand Template の一覧（create_project の brand_template_id に使う）/ Brand Templates a new Project can start from.",
 		listTemplates(svc.Projects))
 	mcpkit.Write(r, "set_confirmation_level",
-		"確認レベル（full_auto / key_check / custom_check）を変える。custom_check では確認ポイント（script / rough_cut / final）も選べる。AUTO の生成の開始は、どの確認レベルでも確認しない。変更はチャットにも記録される / Set the Confirmation Level; no level asks before AUTO starts the generation.",
+		"確認レベル（full_auto / key_check / custom_check）を変える。custom_check では確認ポイント（script / rough_cut / final）も選べる。AUTO の生成の開始は、どの確認レベルでも確認しない。"+mainline.AutoStartNotice+"変更はチャットにも記録される / Set the Confirmation Level; no level asks before AUTO starts the generation.",
 		setConfirmationLevel(svc.Projects), mcpkit.Idempotent())
 	registerBrief(r, svc)
 }

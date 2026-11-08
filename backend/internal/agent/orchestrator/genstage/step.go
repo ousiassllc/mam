@@ -13,11 +13,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
 )
 
-// SupersededNotice is what the chat says when the Orchestrator settles a generation approval card of v0.1.34 that was still pending: the card is closed
-// by the system, never as the user's answer.
-const SupersededNotice = "旧方針（v0.1.34）の「生成の承認」カードが未回答のまま残っていました。AUTO では生成の承認を求めない仕様に変わったため、システムがこのカードを閉じました" +
-	"（あなたの回答ではありません）。AUTO を選んでいるので、続けて生成を自動で始めます。止めるには、設定で予算上限を決めるか、MODE を DIRECTOR にしてください。"
-
 // Step looks at the Project once and does what the gate has to do: it settles a legacy card that is still pending, or starts the Reference Packs and
 // Shots of the plan. It reports whether it did something that can leave more to do (the caller looks again).
 func (g *Gate) Step(ctx context.Context, p domain.Project) (bool, error) {

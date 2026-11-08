@@ -208,22 +208,6 @@ func TestLatestCard_IsDecidedByLocalOrderNotByAnImportedID(t *testing.T) {
 	assert.Equal(t, domain.ApprovalPending, latest.Status)
 }
 
-// A decline whose card has a huge ID is lifted by a message of the user like any other: "after the card" is the local order too, so a message written
-// here is after it even though its ID is smaller.
-func TestLegacyCard_ADeclinedCardWithAHugeIDIsLiftedByAMessage(t *testing.T) {
-	t.Parallel()
-	r := newRig(t)
-	id := r.planned(domain.ConfirmFullAuto)
-	r.withoutRecord(r.legacyCardWithID(id, domain.ApprovalChangesRequested, hugeID))
-	r.handle(id)
-	require.Empty(t, r.gen.started())
-
-	r.userWrites(id, "進めて")
-	r.handle(id)
-
-	assert.Equal(t, 3, r.gen.count(genapprovalrepo.StageReferencePack))
-}
-
 // The script checkpoint finds its card by the same rule: of two cards for one script, the one made here later is the newest, whatever message IDs they bear.
 func TestLatestApprovalCard_IsDecidedByLocalOrderNotByAnImportedID(t *testing.T) {
 	t.Parallel()

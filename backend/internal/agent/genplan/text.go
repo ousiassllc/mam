@@ -3,6 +3,8 @@ package genplan
 import (
 	"fmt"
 	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
 )
 
 // Text is what a cost reads in the announcement: the most it can be, "不明" when a price is not known (with the part that is known, if any).
@@ -32,11 +34,11 @@ func (p Plan) AnnounceText() string {
 		fmt.Fprintf(&b, "・単価が分からないもの（「不明」にしています。単価が不明でも止めずに始めます）: %s\n", strings.Join(p.Unpriced, "、"))
 	}
 	b.WriteString("・" + p.budgetText() + "\n")
-	if p.ProjectCeiling == nil && p.ShotCeiling == nil && p.Total().Unknown {
-		b.WriteString("・予算上限が未設定で、単価が分からない分があります。費用の上限は保証できません。\n")
+	if len(p.Unpriced) > 0 || p.Total().Unknown {
+		b.WriteString("・単価が分からない分があります。この分は予算上限に数えられず、上限を決めていても止まらないため、費用の上限は保証できません。\n")
 	}
 	b.WriteString("・見積に含まれないもの: Judge・Prompt Planner・Art Director など LLM の費用、Repair の再生成、Multi-model routing が実行時に入れ替えるモデルの差\n")
-	b.WriteString("止めるには: ①設定で予算上限を決める（超えるなら始めず、相談します）、②MODE を DIRECTOR にする（まだ始めていない Shot は自動では始まりません。始めた生成は終わるまで続きます）。")
+	b.WriteString(mainline.BudgetCeilingScope + mainline.StopAuto)
 	return b.String()
 }
 
