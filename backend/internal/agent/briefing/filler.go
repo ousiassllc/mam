@@ -46,8 +46,10 @@ func buildFillers() []string {
 		"分からない", "わからない", "分かりません", "わかりません", "分かり", "わかり", "不明", "不問", "どちらでも", "どっちでも", "どれでも", "何でも", "なんでも",
 		"どちら", "どっち", "どれ", "何", "なに", "いまのところ", "今のところ", "とりあえず", "あとで", "後で", "まだ", "いいです", "よいです", "いい", "よい",
 		"します", "ます", "ません", "お願い", "ください", "OK", "ok",
+		// the request itself ("動画を作りたい", "ショート動画を作ってください"): it says what is asked for, not what the video is about
+		"作りたい", "作って", "作る", "撮りたい", "撮って", "撮る", "したい", "作成",
 		// a video in general
-		"ごく普通", "一般的な", "投稿動画", "ショート", "ふつうの", "ふつう", "普通の", "普通", "通常の", "いつもの", "ただの", "ただ",
+		"ごく普通", "一般的な", "投稿動画", "ショート", "ビデオ", "作品", "CM", "ふつうの", "ふつう", "普通の", "普通", "通常の", "いつもの", "ただの", "ただ",
 		"ムービー", "映像", "動画", "投稿", "商品", "SNS", "もの", "こと", "感じ", "特に", "なし", "ない",
 		"でいい", "でよい", "で十分", "でOK", "ですよ", "ですね", "です", "かな", "みたいな", "ような", "とか", "のみ", "だけ",
 		"の", "な", "を", "は", "が", "に", "で", "と", "も", "よ", "ね",
@@ -57,12 +59,12 @@ func buildFillers() []string {
 }
 
 // usable returns s when it is a concrete subject: filler, the words that point at the request and a phrase that holds a deferral (declined.Deferred) are not.
-// It is the head of the phrase, without the relative clause of an absence verb in front of it ("出さない猫" → "猫"): every path that reads a Subject ends here.
+// A refusal in front of its noun ("作りたくない猫", declined.BareRefusal) is none either: every path that reads a Subject ends here.
 func usable(s string) string {
-	if slices.Contains(notSubject, strings.TrimSpace(s)) || declined.Deferred(s) {
+	if slices.Contains(notSubject, strings.TrimSpace(s)) || declined.Deferred(s) || declined.BareRefusal(s) {
 		return ""
 	}
-	return concrete(declined.Head(strings.TrimSpace(s)))
+	return concrete(s)
 }
 
 // asks reports whether s is a question: it ends in か or a question mark, or has a question mark in it.
