@@ -54,6 +54,7 @@ const (
 	CodeFaceRuntime      Code = "face_runtime_missing"   // the ONNX Runtime library of the face similarity is missing or does not load (#1026)
 	CodeImageUnavailable Code = "image_unavailable"      // the ChatGPT account hosts no model for the image generation
 	CodeImagePinned      Code = "image_model_pinned"     // the Codex model pinned for the image generation (Options.Driver) is refused by the ChatGPT account
+	CodeNoUsableModel    Code = "no_usable_model"        // no image / video model of the assignment can be used now (no key, no sign-in, not installed), and none may be chosen in its place (#1113)
 	CodeSaveFailed       Code = "save_failed"            // a setting or a file could not be saved
 	CodeTrainFailed      Code = "training_failed"        // the fine-tuning of a Character's voice stopped for a reason the trainer worded (#936)
 	CodeFFmpegMissing    Code = "ffmpeg_missing"         // ffmpeg / ffprobe are not installed (#1010: the export, the Rough Cut, the composing of a Take)
@@ -177,6 +178,7 @@ var specs = map[Code]spec{
 	CodeFaceRuntime:      {ClassUnavailable, nil},
 	CodeImageUnavailable: {ClassUnavailable, []Place{PlaceChatGPT}},
 	CodeImagePinned:      {ClassUnavailable, nil},
+	CodeNoUsableModel:    {ClassUnavailable, []Place{PlaceAPIKeys, PlaceChatGPT, PlaceModelMgr}},
 	CodeSaveFailed:       {ClassInternal, nil},
 	CodeFFmpegMissing:    {ClassUnavailable, []Place{PlaceFFmpeg}},
 	CodeMediaFailed:      {ClassUpstream, nil},

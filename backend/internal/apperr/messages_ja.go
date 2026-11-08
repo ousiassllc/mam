@@ -108,6 +108,8 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"no_gpu.cause":  "対応する GPU が見つかりません。",
 	"no_gpu.remedy": "外部の ComfyUI の URL を設定するか、CPU 実行を明示的に選んでください。",
 
+	"no_usable_model.cause":    "画像・動画の生成に使えるモデルがありません。",
+	"no_usable_model.remedy":   "API キーを登録する（設定の「API キー」）、ChatGPT にログインする、ローカルモデルを導入する（モデル管理）、または設定の「画像・動画モデル」で割り当てを使えるモデルに変えてください。",
 	"image_unavailable.cause":  "ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。",
 	"image_unavailable.remedy": "mam を最新版に更新して、もう一度実行してください。直らない場合は、設定で ChatGPT 画像生成を OFF にして、API キーで使える画像モデルに切り替えてください。",
 

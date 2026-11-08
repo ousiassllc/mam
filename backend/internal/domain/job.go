@@ -19,9 +19,9 @@ const (
 )
 
 // JobKinds lists every valid JobKind.
-func JobKinds() []JobKind { return append([]JobKind(nil), jobKinds...) }
-
-var jobKinds = []JobKind{JobGenerate, JobJudge, JobRepair, JobPlan, JobModelInstall, JobGentest}
+func JobKinds() []JobKind {
+	return []JobKind{JobGenerate, JobJudge, JobRepair, JobPlan, JobModelInstall, JobGentest}
+}
 
 // JobStatus is the lifecycle state of a background job.
 type JobStatus string

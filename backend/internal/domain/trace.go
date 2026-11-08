@@ -2,12 +2,10 @@ package domain
 
 import "encoding/json"
 
-// TakeLineage is the part of take.model_parameters that records what the Take was generated from
-// besides its Shot Spec (F-27, spec/spec.md §29.3): the World State version the spec was planned
-// against and the References the model received. Generation writes it beside the model parameters.
+// TakeLineage is the part of take.model_parameters that records what the Take was generated from besides its Shot Spec (F-27, spec/spec.md §29.3): the
+// World State version the spec was planned against and the References the model received. Generation writes it beside the model parameters.
 type TakeLineage struct {
-	// WorldStateVersion is the number of the latest world_state_version when the Take was made; 0
-	// when no Shot had completed yet (or the Take predates the record).
+	// WorldStateVersion is the number of the latest world_state_version when the Take was made; 0 when no Shot had completed yet (or the Take predates the record).
 	WorldStateVersion int         `json:"world_state_version"`
 	References        []Reference `json:"references,omitempty"`
 }
@@ -31,6 +29,8 @@ type TakeTrace struct {
 	// Routing is why the video model was chosen (Multi-model routing, M3); nil for a Take that
 	// predates the record.
 	Routing *RoutingDecision
+	// ModelUse is the model that made the Take, its route and why it was chosen (#1113); nil for a Take that predates the record.
+	ModelUse *ModelUse
 	// PromptVersion holds the Source Shot Spec (SpecSnapshot) and what the Model Adapter derived from it.
 	PromptVersion PromptVersion
 	// WorldStateVersion is 0 when unknown or when no World State version existed yet.

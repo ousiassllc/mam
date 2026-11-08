@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -70,7 +71,7 @@ func TestSubscriptionImageModelIsRoutedThroughTheAdapter(t *testing.T) {
 	assert.Equal(t, chatgptid.Model, out.Model, "the ledger names the model by its identifier")
 	assert.False(t, out.FellBack)
 	assert.Zero(t, out.EstimatedCost, "the plan pays: the ledger row is written with 0 USD")
-	assert.InDelta(t, 0.01, a.EstimateImage(modeladapter.PurposeNewReference), 1e-9, "the budget holds the dearer of the two models")
+	assert.InDelta(t, 0.01, modelroute.EstimateImage(a.Config(), a.Config().ImageRouteFor(modeladapter.PurposeNewReference)), 1e-9, "the budget holds the dearer of the two models")
 	assert.Equal(t, int32(1), c.n.Load())
 	assert.Zero(t, fbHits.Load())
 	assert.Len(t, c.body["input"], 1)
