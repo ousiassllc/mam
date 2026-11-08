@@ -29,8 +29,15 @@ var (
 	nominalizerConnectiveRe = regexp.MustCompile(`(?:` + absenceVerb + `)(?:` + nominalizer + `)で`)
 	// requestRe is a word that says what is asked for after such a で ("作りたい", "作って", "描いて", "撮って", "お願いします").
 	requestRe = regexp.MustCompile(`作|描|撮|お願い`)
-	// absenceLeadRe is such a verb in front of the head noun of a phrase ("出さない猫"): the relative clause is no part of what the phrase names.
-	absenceLeadRe = regexp.MustCompile(`^(?:` + absenceVerb + `)([\p{Han}\p{Katakana}A-Za-z0-9].*)$`)
+	// ownClauseRe is the relative clause of an absence verb that has its own object or topic in front of the verb and stands in front of its head noun
+	// ("暴力を出さない猫", "お酒は作りません人物"): what it refuses is no part of what the phrase names. The noun is group 2; group 1 is the object or topic, which is no
+	// label of the Subject itself ("題材は出さない猫").
+	ownClauseRe = regexp.MustCompile(`([^\s、。,，をは]+)[をは](?:出さない|出しません|作らない|作りません)([\p{Han}\p{Katakana}A-Za-z0-9])`)
+	// subjectLabelRe is a word that names the Subject itself: it is no object of the clause that follows.
+	subjectLabelRe = regexp.MustCompile(`^(?:主人公|主役|題材|テーマ|お題|主題)$`)
+	// bareRefusalRe is a refusal in front of the noun it refuses, with no object or topic of its own in front of the verb ("作りたくない猫", "作らない人物", "題材は出さない猫"):
+	// it opens the phrase or follows the label of the Subject. 作りたくない refuses with or without an object ("暴力を作りたくない猫").
+	bareRefusalRe = regexp.MustCompile(`(?:^|(?:主人公|主役|題材|テーマ|お題|主題)[はがをも：:]\s*)(?:` + absenceVerb + `)[\p{Han}\p{Katakana}A-Za-z0-9]|作りたくない[\p{Han}\p{Katakana}A-Za-z0-9]`)
 	// protagonistRe is a clause that names the protagonist: "猫を主人公にして成人は出さない" has the constraint in the same clause and still states the Subject.
 	protagonistRe = regexp.MustCompile(`主人公|主役|題材`)
 	// connectiveRe ends a part of a clause: a predicate that runs on into the next one ("作りたいが", "作りたくて", "出さないので"). The case particle が ("猫の動画が")
@@ -57,6 +64,8 @@ var (
 	nominalizedRe = regexp.MustCompile(`^(?:予定|方針|方向|つもり|こと|事|形|前提|条件|約束|旨|意向|感じ|様|場合|もの|物|の)`)
 	// aboutTheSubjectRe is a word that says a sentence is about the Subject itself ("題材は後で相談", "それは後で相談", "何にするかは後で"), not another matter.
 	aboutTheSubjectRe = regexp.MustCompile(`主人公|主役|題材|テーマ|お題|主題|それ|これ|あれ|どれ|どちら|どっち|何|なに|誰`)
+	// otherMatterRe is a closed list of the objects a deferral names when it is about something other than the Subject ("後で見返したい", "後で詳細を決める", "BGMは後で").
+	otherMatterRe = regexp.MustCompile(`見返|見直|送|確認|チェック|共有|詳細|細かい|細部|BGM|音楽|尺|長さ|秒数|ナレーション|字幕|テロップ|サムネ|公開|投稿日|予算|納期|スケジュール|日程|修正|編集|提出`)
 )
 
 // Deferred reports whether s holds a word that says the Subject is not decided, is put off or is handed over.
@@ -93,11 +102,13 @@ func modifiesANoun(rest string) bool {
 }
 
 // WithoutOtherDeferrals drops the sentences after the first that put another matter off with 後で / あとで ("猫の動画を作りたい。後で見返したい"): a deferral
-// is judged per sentence, so it does not veto the Subject another sentence names. A sentence about the Subject itself ("題材は後で相談") and the first sentence stay.
+// is judged per sentence, so it does not veto the Subject another sentence names. It fails closed: a sentence goes only when every clause of it that defers positively
+// names another matter (otherMatterRe), and it is not about the Subject itself ("題材は後で相談") nor vague ("まだ決まっていない"). A deferral that names none
+// ("ネタは後で考える", "後で決める", "後で猫にする") may be the Subject put off: it stays, and vetoes. The first sentence stays.
 func WithoutOtherDeferrals(sentences []string) []string {
 	kept := make([]string, 0, len(sentences))
 	for i, s := range sentences {
-		if i > 0 && deferredLater(s) && !undecidedRe.MatchString(s) && !aboutTheSubjectRe.MatchString(s) {
+		if i > 0 && deferredLater(s) && !undecidedRe.MatchString(s) && namesOtherMatter(s) {
 			continue
 		}
 		kept = append(kept, s)
@@ -105,19 +116,24 @@ func WithoutOtherDeferrals(sentences []string) []string {
 	return kept
 }
 
+// namesOtherMatter reports whether every clause of s that puts something off with 後で names another matter than the Subject.
+func namesOtherMatter(s string) bool {
+	for _, clause := range clauseEndRe.Split(s, -1) {
+		if clauseDefers(clause) && (!otherMatterRe.MatchString(clause) || aboutTheSubjectRe.MatchString(clause)) {
+			return false
+		}
+	}
+	return true
+}
+
 func endsInHan(s string) bool {
 	r, _ := utf8.DecodeLastRuneInString(s)
 	return unicode.Is(unicode.Han, r)
 }
 
-// Head is the phrase without the relative clause of an absence verb that stands in front of its head noun ("出さない猫" → "猫"): what the clause refuses is
-// no part of what the phrase names.
-func Head(phrase string) string {
-	if m := absenceLeadRe.FindStringSubmatch(phrase); m != nil {
-		return m[1]
-	}
-	return phrase
-}
+// BareRefusal reports whether the phrase opens with a refusal of the noun that follows ("作りたくない猫", "作らない人物", "題材は出さない猫"): it is no Subject. A clause that has an
+// object or topic of its own in front of the verb ("暴力を出さない猫") is a description of the noun, and Drop leaves the noun.
+func BareRefusal(phrase string) bool { return bareRefusalRe.MatchString(strings.TrimSpace(phrase)) }
 
 // Refused reports whether the clause refuses everything it says (Drop leaves nothing).
 func Refused(clause string) bool { return Drop(clause) == "" }
@@ -131,11 +147,22 @@ func Drop(sentence string) string {
 		if denyRe.MatchString(clause) {
 			continue
 		}
-		if clause = dropAbsence(clause); clause != "" {
+		if clause = withoutOwnClauses(dropAbsence(clause)); clause != "" {
 			kept = append(kept, clause)
 		}
 	}
 	return strings.Join(kept, "、")
+}
+
+// withoutOwnClauses removes the relative clause of an absence verb that has its own object or topic in front of its head noun ("暴力を出さない猫の動画" → "猫の動画").
+func withoutOwnClauses(clause string) string {
+	return ownClauseRe.ReplaceAllStringFunc(clause, func(m string) string {
+		sub := ownClauseRe.FindStringSubmatch(m)
+		if subjectLabelRe.MatchString(sub[1]) {
+			return m
+		}
+		return sub[2]
+	})
 }
 
 // dropAbsence removes the parts of the clause that refuse to make or show something, each ending at a connective.
