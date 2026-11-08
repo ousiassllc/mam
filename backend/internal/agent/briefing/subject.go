@@ -85,7 +85,7 @@ func readSubject(text string) (subject string, explicit bool) {
 	for _, sentence := range sentences {
 		resolved, _ := positiveSide(sentence)
 		if m := subjectRe.FindStringSubmatch(resolved); m != nil {
-			if s := usable(declined.Head(m[1])); s != "" && !isContentType(s) && !isPlatformPhrase(s) {
+			if s := usable(m[1]); s != "" && !isContentType(s) && !isPlatformPhrase(s) {
 				_, c, ok := bareContrast(sentence)
 				return s, ok && contrastChanges(sentence, c.phrase, s)
 			}
@@ -267,6 +267,8 @@ func subjectAnswer(text string) string {
 			return s
 		}
 	}
+	// a deferral of another matter in a later sentence ("猫の動画を作りたい。後で見返したい") does not veto the Subject the rest names
+	sentences = declined.WithoutOtherDeferrals(sentences)
 	kept, cuts := positiveSide(strings.Join(sentences, "。"))
 	if len(cuts) > 0 {
 		return subjectOf(kept, true)

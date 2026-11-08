@@ -41,14 +41,14 @@ const (
 	// restrictionGap is the short run of words that may stand in front of the refusing verb ("人物は一切出さない", "人物は画面に出さない", "人物はもちろん出さない",
 	// "人物は、出さない"): no particle が・は・を, so that a verb of another clause ("人物は出すが他は出さない") does not end the run.
 	restrictionGap = `[^\s、。,，はがを]{0,5}[、,，]?`
-	// restrictionEnd is what ends the clause of the refusing verb: the end, a punctuation mark or blank, "出さないので", "出さないから", "出さないように", "出さないでください".
-	// "出さないわけではない", "出さないとは言っていない", "出さないことはない" go on with a word that takes the refusal back.
-	restrictionEnd = `(?:$|[、。,，\s]|ので|から|よう|で)`
 	// absentVerb is a verb that says the keyword's person does not appear ("成人は出さない", "成人はいない").
 	absentVerb = `(?:いない|いません|出ない|出ません|出さ(?:ない|ず)|出しません|使わ(?:ない|ず)|使いません|登場させ(?:ない|ず|ません)|出演させ(?:ない|ず|ません)|含め(?:ない|ず|ません)|入れ(?:ない|ません))`
 )
 
 var (
+	// takeBackRe is what follows the refusing verb and takes the refusal back ("出さないわけではない", "出さないとは言っていない", "出さないことはない", "出さないとは限らない",
+	// "出さないのではない", "出さないかもしれない"). Any other ending leaves the refusal stated ("出さないよ", "出さない予定", "出さないと思う", "出さない！", "出さないが"): it fails closed.
+	takeBackRe = regexp.MustCompile(`^(?:わけ|訳|とは|ことは|ことも|こともある|のでは|ってわけ|というわけ|という訳|とも限|とは限|なんて|かもしれない|かも)`)
 	// notStatedAfterRe: what follows the keyword makes it another word ("成人式", "成人向け", "服を着替える").
 	notStatedAfterRe = regexp.MustCompile(`^(?:向け|式|替)`)
 	// notStatedBeforeRe: the keyword is the end of a word that negates it ("ノンフィクション", "非実在").
@@ -68,8 +68,8 @@ var (
 	// "服を着ていない人物は出さない", "成人ではない子どもは一切出さない"): the negation belongs to the noun it modifies, and the sentence restricts the video to the
 	// keyword. A negation that is a relative clause on the keyword's own verb ("服を着ない人物") or on the copula follows the keyword; a comma may follow it, a full
 	// stop may not ("成人ではない。人物は出さない" negates the keyword and starts a new sentence), and a short run (restrictionGap) may stand between the particle of
-	// the noun and the verb that refuses it. The verb must end its clause (restrictionEnd): "成人ではない人物は出さないわけではない" refuses nothing.
-	restrictiveRelativeRe = regexp.MustCompile(`^` + keywordTail + relativeNegation + `[、,，]?[\p{Han}\p{Katakana}][^\s、。,，はがをにでの]{0,9}?(?:[はもを]|[、,，])` + restrictionGap + absentVerb + restrictionEnd)
+	// the noun and the verb that refuses it. The refusal must not be taken back (takeBackRe): "成人ではない人物は出さないわけではない" refuses nothing.
+	restrictiveRelativeRe = regexp.MustCompile(`^` + keywordTail + relativeNegation + `[、,，]?[\p{Han}\p{Katakana}][^\s、。,，はがをにでの]{0,9}?(?:[はもを]|[、,，])` + restrictionGap + absentVerb)
 )
 
 // scan reads every occurrence of the keywords: stated when one is not negated, negated when one is ("成人ではない").
@@ -103,10 +103,16 @@ func predicateNegates(rest string) bool {
 	if restrictionDeniedRe.MatchString(rest) {
 		return true
 	}
-	if restrictiveRe.MatchString(rest) || restrictiveRelativeRe.MatchString(rest) {
+	if restrictiveRe.MatchString(rest) || refusesTheRest(rest) {
 		return false
 	}
 	return negationRe.MatchString(rest)
+}
+
+// refusesTheRest reports whether rest, what follows a keyword, is a negation of the keyword inside a noun phrase that the sentence then refuses, and does not take the refusal back.
+func refusesTheRest(rest string) bool {
+	loc := restrictiveRelativeRe.FindStringIndex(rest)
+	return loc != nil && !takeBackRe.MatchString(rest[loc[1]:])
 }
 
 // Stated are the labels of the constraints the text states, in the order of Labels.
