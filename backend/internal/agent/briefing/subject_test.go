@@ -203,3 +203,43 @@ func TestExtract_WordsThatPointAtTheRequestAreNoSubject(t *testing.T) {
 		})
 	}
 }
+
+// An addressee word is filler only in a text that hands the decision over: the AI as what the video is about stays a Subject (#1114).
+func TestApplyAnswer_AnAddresseeWordWithoutADeferralIsASubject(t *testing.T) {
+	for _, text := range []string{"AI", "ChatGPT", "AI動画", "AIの動画", "AIアシスタント", "AIショート", "AIがいい", "AIの縦型動画"} {
+		t.Run(text, func(t *testing.T) {
+			var b domain.Brief
+			assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))
+			assert.Equal(t, text, b.Subject)
+		})
+	}
+	for _, text := range []string{"AIで決めて", "AIに任せる", "あなたにお願いします", "AIが考えて", "AIアシスタントにお任せ"} {
+		t.Run("deferral "+text, func(t *testing.T) {
+			var b domain.Brief
+			assert.NotNil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))
+			assert.Empty(t, b.Subject)
+			assert.Empty(t, briefing.RuleExtractor{}.Extract(text).Subject)
+		})
+	}
+	for text, want := range map[string]string{
+		"AIを主人公にした動画を作りたい": "AI", "AIの動画を作りたい": "AI", "ChatGPTを主人公にした動画": "ChatGPT", "AIの縦型動画": "AI",
+		"主人公はAIアシスタント": "AIアシスタント", "AIにお任せします。猫を主人公にした動画": "猫", "AIを主人公にした動画。あとはお任せします": "AI",
+	} {
+		assert.Equal(t, want, briefing.RuleExtractor{}.Extract(text).Subject, text)
+	}
+}
+
+// "に変えて / に変更して" ends the clause and is no part of the Subject; テーマ opens the next item as a label does (#1114).
+func TestExtract_ASubjectEndsInFrontOfTheChangeWordAndTheThemeLabel(t *testing.T) {
+	for text, want := range map[string]string{
+		"主人公は女性に変えて":        "女性",
+		"主人公は男性に変更して":       "男性",
+		"主人公は男性ではなく女性に変えて":  "女性",
+		"主人公は猫でテーマは朝のルーティン": "猫",
+		"題材は夏の海辺でテーマは涼しさ":   "夏の海辺",
+	} {
+		t.Run(text, func(t *testing.T) {
+			assert.Equal(t, want, briefing.RuleExtractor{}.Extract(text).Subject)
+		})
+	}
+}
