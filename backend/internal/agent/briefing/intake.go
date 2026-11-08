@@ -166,15 +166,16 @@ func mergeInstruction(current, extra string, inferred bool) string {
 	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
-// joinConstraints is the constraint line holding the labels of both, in the order of constraint.Labels.
+// joinConstraints is the constraint line holding the items of both: the labels in the order of constraint.Labels, then the stated refusals ("暴力は出さない") in the order they came.
 func joinConstraints(a, b string) string {
-	var labels []string
-	for _, l := range constraint.Labels {
-		if strings.Contains(a, l) || strings.Contains(b, l) {
-			labels = append(labels, l)
+	items := strings.Split(strings.TrimPrefix(a, ConstraintPrefix)+"・"+strings.TrimPrefix(b, ConstraintPrefix), "・")
+	joined := slices.DeleteFunc(slices.Clone(constraint.Labels), func(l string) bool { return !slices.Contains(items, l) })
+	for _, item := range items {
+		if item != "" && !slices.Contains(joined, item) && !slices.Contains(constraint.Labels, item) {
+			joined = append(joined, item)
 		}
 	}
-	return ConstraintPrefix + strings.Join(labels, "・")
+	return ConstraintPrefix + strings.Join(joined, "・")
 }
 
 // NeedsConfirmation reports whether the batch summary is waiting for the user: the Brief is drafted, the Subject is settled, and

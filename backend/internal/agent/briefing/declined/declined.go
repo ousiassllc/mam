@@ -13,8 +13,14 @@ import (
 // nominalizer is a noun that turns the absence verb in front of it into the end of a statement ("作らない方向で", "出さない予定です"), not a head noun.
 const nominalizer = `予定|方針|方向|方|事|こと|つもり|形|人|場合|前提|条件|約束|旨|意向|感じ|様`
 
+// safetyWords are the words of a safety condition: age, nudity, a real person, violence, drink, smoke.
+const safetyWords = `未成年|子供|子ども|こども|児童|少女|少年|裸|ヌード|露出|実在|成人|性的|暴力|流血|グロ|過激|酒|飲酒|タバコ|喫煙`
+
 // absenceVerb is a verb that refuses to make or show something.
 const absenceVerb = `作らない|作りません|作りたくない|出さない|出しません`
+
+// nominalizerEnd is a nominalizer that ends the statement: not followed by の or a noun ("作らない方向で", "出さない予定です"), unlike the head noun "人物" or "人の話".
+const nominalizerEnd = `(?:` + nominalizer + `)(?:$|[^のA-Za-z0-9\p{Han}\p{Katakana}])`
 
 var (
 	// denyRe is a refusal: the clause that holds it states nothing wanted ("猫を主人公にしてほしくない"). 不要 counts only as the refusal
@@ -23,7 +29,7 @@ var (
 	// absenceRe is a refusal to make or show something ("猫の動画は作らない", "猫は出しません"): the verb ends the part. Followed by a noun phrase it is only a
 	// description of it ("成人しか出さない猫の動画"); followed by a nominalizer ("作らない方向で", "出さない予定です", "出さない事にした") it is still the refusal,
 	// unless the nominalizer goes on as the head of a noun phrase ("出さない人の話", "出さない人物"): it fails closed, so the refusal is whatever does not go on with の or a noun.
-	absenceRe = regexp.MustCompile(`(?:` + absenceVerb + `)(?:$|[^\p{Han}\p{Katakana}A-Za-z0-9]|(?:` + nominalizer + `)(?:$|[^のA-Za-z0-9\p{Han}\p{Katakana}]))`)
+	absenceRe = regexp.MustCompile(`(?:` + absenceVerb + `)(?:$|[^\p{Han}\p{Katakana}A-Za-z0-9]|` + nominalizerEnd + `)`)
 	// nominalizerConnectiveRe ends the part that refuses when the request follows in the same clause ("暴力は出さない方向で猫の動画を作りたい"): the で after the nominalizer
 	// joins it to the request, like a connective does.
 	nominalizerConnectiveRe = regexp.MustCompile(`(?:` + absenceVerb + `)(?:` + nominalizer + `)で`)
@@ -35,6 +41,14 @@ var (
 	ownClauseRe = regexp.MustCompile(`([^\s、。,，をは]+)[をは](?:出さない|出しません|作らない|作りません)([\p{Han}\p{Katakana}A-Za-z0-9])`)
 	// subjectLabelRe is a word that names the Subject itself: it is no object of the clause that follows.
 	subjectLabelRe = regexp.MustCompile(`^(?:主人公|主役|題材|テーマ|お題|主題)$`)
+	// nominalizerEndRe is a refusal that ends in a nominalizer ("方向で", "予定です", "事にして") at the start of what follows the verb.
+	nominalizerEndRe = regexp.MustCompile(`^` + nominalizerEnd)
+	// nominalizerStatementRe is the end of such a refusal: the nominalizer with the で, です or にして that closes it ("方向で", "予定です", "事にして").
+	nominalizerStatementRe = regexp.MustCompile(`^(?:` + nominalizer + `)(?:です|にして|にする|にした|で)?`)
+	// safetyRe is a word of a safety condition (age, nudity, a real person, violence, drink, smoke): a refusal that names one is a stated constraint, never cut away without trace.
+	safetyRe = regexp.MustCompile(safetyWords)
+	// safetyRefusalRe is a refusal of a safety word, from the word on ("暴力は出さない", "実在の人物は出さない", "子供を出さない").
+	safetyRefusalRe = regexp.MustCompile(`(?:` + safetyWords + `)[^\s、。,，をは]*[をは](?:` + absenceVerb + `)`)
 	// bareRefusalRe is a refusal in front of the noun it refuses, with no object or topic of its own in front of the verb ("作りたくない猫", "作らない人物", "題材は出さない猫"):
 	// it opens the phrase or follows the label of the Subject. 作りたくない refuses with or without an object ("暴力を作りたくない猫").
 	bareRefusalRe = regexp.MustCompile(`(?:^|(?:主人公|主役|題材|テーマ|お題|主題)[はがをも：:]\s*)(?:` + absenceVerb + `)[\p{Han}\p{Katakana}A-Za-z0-9]|作りたくない[\p{Han}\p{Katakana}A-Za-z0-9]`)
@@ -140,29 +154,113 @@ func Refused(clause string) bool { return Drop(clause) == "" }
 
 // Drop removes what the sentence refuses and keeps the rest: a clause that holds a refusal (denyRe) goes whole; one that refuses to make or show something
 // (absenceRe) goes whole when it names no protagonist and has no connective, and only the part that refuses otherwise ("猫の動画を作りたいが暴力は出さない"
-// keeps the request and drops "暴力は出さない").
+// keeps the request and drops "暴力は出さない"). A clause whose noun carries a refusal of a safety word of its own ("未成年は出さない猫の動画") goes whole: the
+// refusal is no part of the noun and must not vanish with it, so no Subject is read there (Refusals keeps it as a constraint).
 func Drop(sentence string) string {
+	kept, _ := drop(sentence)
+	return kept
+}
+
+// drop is Drop, and whether a clause went whole for the refusal of a safety word it holds.
+func drop(sentence string) (string, bool) {
 	var kept []string
+	var dropped bool
 	for _, clause := range clauseRe.Split(sentence, -1) {
 		if denyRe.MatchString(clause) {
 			continue
 		}
-		if clause = withoutOwnClauses(dropAbsence(clause)); clause != "" {
+		clause, safety := withoutOwnClauses(dropAbsence(clause))
+		if dropped = dropped || safety; !safety && clause != "" {
 			kept = append(kept, clause)
 		}
 	}
-	return strings.Join(kept, "、")
+	return strings.Join(kept, "、"), dropped
+}
+
+// Refusals are the refusals of a safety word the text states next to a request ("暴力は出さない" of "猫の動画を作りたいが暴力は出さない"; "未成年は出さない" of "未成年は出さない猫の動画を作りたい"),
+// so that the constraint the Subject is read without is kept apart from it (spec/spec.md §4.2). A text that states nothing else (nothing is left of it, no request is cut with it)
+// holds no constraint of a request and gives none. A clause that denies something (denyRe) is no statement of a constraint and is not read.
+func Refusals(text string) []string {
+	var refusals []string
+	var left, dropped bool
+	for sentence := range strings.FieldsFuncSeq(text, func(r rune) bool { return strings.ContainsRune("。！!？?\n", r) }) {
+		kept, safety := drop(sentence)
+		left, dropped = left || kept != "", dropped || safety
+		for _, clause := range clauseRe.Split(sentence, -1) {
+			if !denyRe.MatchString(clause) {
+				refusals = append(refusals, safetyRefusalRe.FindAllString(clause, -1)...)
+			}
+		}
+	}
+	if !left && !dropped {
+		return nil
+	}
+	slices.Sort(refusals)
+	return slices.Compact(refusals)
+}
+
+// ownClause is the relative clause of an absence verb that has its own object or topic in front of its head noun: clause[from:to] holds the object, the particle
+// and the verb; the head noun (the rest) follows.
+type ownClause struct {
+	from, to int
+	object   string
+	rest     string
+}
+
+func ownClauses(clause string) []ownClause {
+	var found []ownClause
+	for _, m := range ownClauseRe.FindAllStringSubmatchIndex(clause, -1) {
+		found = append(found, ownClause{from: m[0], to: m[4], object: clause[m[2]:m[3]], rest: clause[m[4]:]})
+	}
+	return found
+}
+
+// describes reports whether the clause describes its head noun: it does not end the statement in a nominalizer ("暴力は出さない方向で"), has no label of the Subject in front of
+// the verb ("題材は出さない猫": a bare refusal) and does not hold the protagonist in its object ("猫を主人公にして暴力は出さない人物": the object starts after 主人公にして).
+func (o ownClause) describes() bool {
+	return !nominalizerEndRe.MatchString(o.rest) && !o.holdsProtagonist()
+}
+
+func (o ownClause) holdsProtagonist() bool {
+	return subjectLabelRe.MatchString(o.object) || protagonistRe.MatchString(o.object)
+}
+
+// statementStart is where the refusal that ends the statement starts: after the で that closes what the clause says before it ("主人公は猫で|暴力は出さない方向で").
+func (o ownClause) statementStart() int {
+	if i := strings.LastIndex(o.object, "で"); i >= 0 {
+		return o.from + i + len("で")
+	}
+	return o.from
 }
 
 // withoutOwnClauses removes the relative clause of an absence verb that has its own object or topic in front of its head noun ("暴力を出さない猫の動画" → "猫の動画").
-func withoutOwnClauses(clause string) string {
-	return ownClauseRe.ReplaceAllStringFunc(clause, func(m string) string {
-		sub := ownClauseRe.FindStringSubmatch(m)
-		if subjectLabelRe.MatchString(sub[1]) {
-			return m
+// It never cuts one of a safety word: the clause is left as it is and reported, for the caller to drop it whole ("未成年は出さない猫の動画"). A refusal that ends the statement in a
+// nominalizer ("主人公は猫で暴力は出さない方向で") goes with the nominalizer, as the part that refuses does in dropAbsence; one whose object holds the protagonist
+// ("猫を主人公にして暴力は出さない方向で") is no relative clause: it stays and the protagonist is read in front of it.
+func withoutOwnClauses(clause string) (kept string, safety bool) {
+	var out strings.Builder
+	last := 0
+	for _, o := range ownClauses(clause) {
+		switch {
+		case o.holdsProtagonist():
+		case safetyRe.MatchString(o.object):
+			if o.describes() {
+				return clause, true
+			}
+			// a refusal of a safety word that ends the statement: it is cut like any other (it is kept as a constraint by Refusals)
+			fallthrough
+		case nominalizerEndRe.MatchString(o.rest):
+			if start := o.statementStart(); start >= last {
+				out.WriteString(clause[last:start])
+				last = o.to + len(nominalizerStatementRe.FindString(o.rest))
+			}
+		default:
+			out.WriteString(clause[last:o.from])
+			last = o.to
 		}
-		return sub[2]
-	})
+	}
+	out.WriteString(clause[last:])
+	return out.String(), false
 }
 
 // dropAbsence removes the parts of the clause that refuse to make or show something, each ending at a connective.

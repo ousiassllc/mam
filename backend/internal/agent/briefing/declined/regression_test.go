@@ -106,7 +106,7 @@ func TestExtract_ANounNextToARequestIsStillTheSubject(t *testing.T) {
 	for text, want := range map[string]string{
 		"猫の動画を作りたい":           "猫",
 		"暴力は出さない方向で猫の動画を作りたい": "猫",
-		"暴力を出さない猫を主人公にした動画":   "猫",
+		"宣伝を出さない猫を主人公にした動画":   "猫", // changed from 暴力を…: a safety word is never cut (safety_test.go)
 	} {
 		t.Run(text, func(t *testing.T) {
 			assert.Equal(t, want, briefing.RuleExtractor{}.Extract(text).Subject)

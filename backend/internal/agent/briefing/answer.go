@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/declined"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -61,6 +62,10 @@ func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.
 	}
 	problem := ValueProblem(f, text)
 	if f == domain.BriefSubject && problem == "" && text != "" {
+		// The safety refusals the Subject is read without stay as a constraint, also when the answer is asked again.
+		if refusals := declined.Refusals(text); len(refusals) > 0 {
+			Absorb(brief, domain.Brief{AdditionalInstruction: ConstraintPrefix + strings.Join(refusals, "・")}, "")
+		}
 		if text = subjectAnswer(text); text == "" {
 			problem = vagueSubjectProblem
 		}
