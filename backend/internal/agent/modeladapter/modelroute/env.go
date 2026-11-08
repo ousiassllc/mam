@@ -52,6 +52,24 @@ func (e Env) WithConfig(cfg modeladapter.Config) Env {
 	return e
 }
 
+// memoised is the Env whose Check answers once per model (the copy keeps its own cache): the availability check reads credentials and the disk, and one
+// Report or Effective asks about the same model many times. The cache lives as long as the copy, so it is used for one call only, never kept.
+func (e Env) memoised() Env {
+	if e.Check == nil {
+		return e
+	}
+	check, seen := e.Check, map[domain.ModelName]modelfilter.Availability{}
+	e.Check = func(m domain.ModelName) modelfilter.Availability {
+		av, ok := seen[m]
+		if !ok {
+			av = check(m)
+			seen[m] = av
+		}
+		return av
+	}
+	return e
+}
+
 func (e Env) check(m domain.ModelName) modelfilter.Availability {
 	if e.Check == nil {
 		return modelfilter.Usable()

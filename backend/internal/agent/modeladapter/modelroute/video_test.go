@@ -1,6 +1,7 @@
 package modelroute_test
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -133,4 +134,21 @@ func TestVideo_AUsableModelOfThePolicyIsKeptAndTheAdapterMovesOnToIt(t *testing.
 	require.NoError(t, err)
 	assert.False(t, pick.Substituted())
 	assert.Equal(t, env.Config.Policies[domain.QualityBalanced], pick.Route)
+}
+
+// The number of Takes is not a choice of model: a Policy whose models are the default's stays a default assignment, so an unusable one is still replaced.
+func TestVideo_ChangingOnlyTheNumberOfTakesIsNotAnExplicitModelChoice(t *testing.T) {
+	env := observed(t)
+	policies := maps.Clone(env.Config.Policies)
+	route := policies[domain.QualityBalanced]
+	route.Takes++
+	policies[domain.QualityBalanced] = route
+	env.Config.Policies = policies
+
+	pick, err := env.Video(domain.QualityBalanced, modelroute.VideoNeed{Seconds: 4, Keyframe: true})
+
+	require.NoError(t, err)
+	assert.True(t, pick.Substituted(), "the models are the default's, so they may be replaced")
+	assert.Equal(t, route.Takes, pick.Route.Takes, "the user's number of Takes is kept")
+	assert.False(t, reportOf(t, env, "video", string(domain.QualityBalanced)).Explicit)
 }

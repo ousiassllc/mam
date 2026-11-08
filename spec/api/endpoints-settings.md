@@ -217,4 +217,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.16 | 2026-11-06 | §5.2・§5.2.1・§5.2.2 の ffmpeg・FaceFusion のルートを、モデルマネージャーの `companion` へ移した（`GET /settings/ffmpeg`・`/settings/facefusion` は 303。分類と概要のカードは外れる。状態は仕様のみ） | Issue #1106 |
 | 1.17 | 2026-11-07 | §5.2・§5.2.1・§5.2.2 の ffmpeg・FaceFusion のルートの移し替え（#1106）を実装した。状態を「実装済み」にした（`GET /settings/ffmpeg`・`/settings/facefusion` は 303、`PUT`・`POST`・`DELETE` は 404） | Issue #1106 |
 | 1.18 | 2026-11-07 | §5 の `PUT /settings/llm/local`・`POST /settings/llm/local/test` の廃止（#1104）を実装した。状態を「実装済み」にした（ルートは登録しない。404。`GET /settings/llm` はリンクのカード） | Issue #1104 |
-| 1.19 | 2026-11-11 | §6 に、割り当てが使えない行の注意（生成が条件に合うモデルで行われるか、断られるか）を足した | Issue #1113 |
+| 1.19 | 2026-11-08 | §6 に、割り当てが使えない行の注意（生成が条件に合うモデルで行われるか、断られるか）を足した | Issue #1113 |

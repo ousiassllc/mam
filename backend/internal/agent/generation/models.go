@@ -23,12 +23,12 @@ func (o *Orchestrator) checkPackModels() (cheapest float64, models string, err e
 			return 0, "", err
 		}
 		cheapest = min(cheapest, modelroute.EstimateImage(env.Config, pick.Route))
-		models += "、" + string(p) + "＝" + string(pick.Route.Primary.Model) + "（" + pick.Use(env.Config, pick.Route.Primary.Model, "image", false).Label() + "）"
+		models += "、" + string(p) + "＝" + env.Named(pick.Selected, pick.Route.Primary.Model, pick.Route.Fallback.Model, "image")
 	}
 	return cheapest, "使う画像モデル: " + strings.TrimPrefix(models, "、"), nil
 }
 
-// videoModels is the models the progress card of a generation names: the one that is tried first, with its route and why it was chosen.
+// videoModels is the models the progress card of a generation names: the one that is tried first (the alternative when the primary cannot be used), with its route and why it was chosen.
 func (o *Orchestrator) videoModels(s Strategy) string {
-	return "使う動画モデル: " + string(s.Primary.Model) + "（" + s.Models.Use(o.adapter.Config(), s.Primary.Model, "video", false).Label() + "）"
+	return "使う動画モデル: " + o.routes().Named(s.Models, s.Primary.Model, s.Fallback.Model, "video")
 }

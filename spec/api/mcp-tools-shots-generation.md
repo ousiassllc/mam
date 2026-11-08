@@ -113,4 +113,4 @@
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。Scene / Shot・Director・生成・Continue・Judge・Repair・Take のツール 27 個、ジョブ種別 `build_reference_pack`・`judge_take`・`repair_take`、ダウンロード種別 `take_video`・`take_thumbnail` | Issue #830。画面の全操作を MCP ツールにする（Scene / Shot / 生成 / Take の担当分） |
 | 1.1 | 2026-11-02 | `generate_shot` のジョブで、ローカルの ComfyUI が動いている間は `get_job` に `progress`（ステップ・%・残りの見積り）が付くことを書いた | Issue #966 |
-| 1.2 | 2026-11-11 | `generate_shot` の失敗に「使えるモデルがない `conflict`」を、`get_take_trace` の出力に `model_use` を足した | Issue #1113 |
+| 1.2 | 2026-11-08 | `generate_shot` の失敗に「使えるモデルがない `conflict`」を、`get_take_trace` の出力に `model_use` を足した | Issue #1113 |
