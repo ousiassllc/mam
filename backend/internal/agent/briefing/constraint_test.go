@@ -36,6 +36,28 @@ func TestExtract_AnUnrelatedNegationKeepsTheConstraint(t *testing.T) {
 		{"架空ではなく実在", ""},
 		{"服は着ていない", ""},
 		{"ノンフィクション", ""},
+		// the negation follows a particle or a short noun run ("成人は出さない" is the opposite of "成人しか出ない")
+		{"成人は出さない", ""},
+		{"成人はいない", ""},
+		{"成人にはしない", ""},
+		{"成人にしない", ""},
+		{"成人は使わない", ""},
+		{"成人の女性ではない", ""},
+		{"成人女性ではなく少女にして", ""},
+		{"成人だけではない", ""},
+		{"成人のみじゃない", ""},
+		{"架空の人物ではない", ""},
+		{"架空の人物ではなく実在の人物", ""},
+		{"架空にはしない", ""},
+		{"着衣は着ない", ""},
+		{"着衣しない", ""},
+		// the negation belongs to something else: the keyword stays
+		{"成人女性が商品を持たない", "制約: 成人"},
+		{"成人の女性が主人公で、ナレーションは入れない", "制約: 成人"},
+		{"成人の女性でない人物は出さない", "制約: 成人"},
+		{"成人のみ。服を着ない", "制約: 成人"},
+		{"成人だけ出す", "制約: 成人"},
+		{"成人以外を出す", "制約: 成人"},
 	} {
 		t.Run(tt.text, func(t *testing.T) {
 			assert.Equal(t, tt.want, briefing.RuleExtractor{}.Extract(tt.text).AdditionalInstruction)
@@ -54,6 +76,13 @@ func TestAbsorb_ARetractedConstraintLeavesTheInferredLine(t *testing.T) {
 		{"成人しか出ない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
 		{"成人以外は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
 		{"成人でない人物は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
+		// a negation after a particle or a short noun run is a retraction
+		{"成人女性ではなく少女にして", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
+		{"成人は出さない", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
+		{"成人にはしない", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
+		{"架空の人物ではなく実在の人物", "テーマ: 朝のルーティン\n制約: 成人・着衣"},
+		{"着衣は着ない", "テーマ: 朝のルーティン\n制約: 成人・架空"},
+		{"成人だけではない", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
 	} {
 		t.Run(tt.text, func(t *testing.T) {
 			b := intake("テーマは朝のルーティン。成人で、架空の女性。服は着ている設定")

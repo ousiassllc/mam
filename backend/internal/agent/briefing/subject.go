@@ -44,19 +44,23 @@ var (
 	changeRe = regexp.MustCompile(`変更|変えて|変えたい|変える|に替え|に直し|に差し替え|訂正|やっぱり|やはり|にして|にしたい|にします|ではなく|じゃなく`)
 	// itemLabelRe is a word that names another item of the Brief: "ターゲットは学生ではなく社会人" contrasts the target, not the Subject.
 	itemLabelRe = regexp.MustCompile(`ターゲット|対象|Target|雰囲気|ムード|トーン|Mood|Tone|目的|用途|Objective|長さ|尺|秒数|Duration|比率|アスペクト|縦横|Aspect|サイズ|テイスト`)
-	// itemTopicRe is such a label that opens the next item of the sentence ("主人公は猫でターゲットは社会人"): what follows it is no part of the Subject.
-	itemTopicRe = regexp.MustCompile(`(?:` + itemLabelRe.String() + `)[はもが：:]`)
-	// contrastAnchorRe is a word that says the sentence is about what the video shows: only with one a bare "A ではなく B" changes the Subject.
-	contrastAnchorRe = regexp.MustCompile(`主人公|主役|題材|テーマ|の(?:動画|CM|広告)`)
-	// personOrProductRe ends a phrase that names a person or a product ("男性", "30代の女性", "インフルエンサー", "新商品", "美容液").
-	personOrProductRe = regexp.MustCompile(`(?:人|人物|男|女|性|子|子供|さん|くん|ちゃん|キャラ|キャラクター|インフルエンサー|モデル|員|学生|先生|主婦|客|者|商品|製品|サービス|アプリ|ブランド|品|液|剤|グッズ|アイテム)$`)
+	// itemTopicRe is such a label (or テーマ) that opens the next item of the sentence ("主人公は猫でターゲットは社会人"): what follows is no Subject.
+	itemTopicRe = regexp.MustCompile(`(?:` + itemLabelRe.String() + `|テーマ)[はもが：:]`)
+	// contrastAnchorRe is a word that says the clause is about what the video shows: only with one a bare "A ではなく B" changes the Subject.
+	contrastAnchorRe = regexp.MustCompile(`主人公|主役|題材|テーマ`)
+	// videoOfRe is "…の動画 / CM / 広告": it says what the video is about only when A or B names a person or a product ("猫ではなく犬の動画にして"), not
+	// with a season, a time or a color ("冬ではなく夏の動画にして").
+	videoOfRe = regexp.MustCompile(`の(?:動画|CM|広告)`)
+	// personOrProductRe ends a phrase that names a person, an animal or a product ("30代の女性", "インフルエンサー", "新商品", "猫"): whole words, not the last
+	// character alone ("個性", "様子", "作品", "作者" are none).
+	personOrProductRe = regexp.MustCompile(`(?:人物|女性|男性|男の子|女の子|子供|子ども|お子さん|さん|くん|ちゃん|キャラクター|キャラ|インフルエンサー|モデル|学生|先生|主婦|社員|店員|お客|顧客|商品|製品|化粧品|食品|サービス|アプリ|ブランド|美容液|グッズ|アイテム|ペット|動物|ロボット|猫|犬)$|^(?:人|男|女|子)$`)
 	// styleWordRe is a word of length or pace: "短めじゃなくて長め" is about the duration, not the Subject.
 	styleWordRe    = regexp.MustCompile(`短め|長め|短い|長い|短く|長く|速め|遅め|早め|ゆっくり|テンポ`)
 	sentenceRe     = regexp.MustCompile(`[。！!？?\n]`)
 	sentenceKeepRe = regexp.MustCompile(`[^。！!？?\n]+[？?]*`)
 	clauseRe       = regexp.MustCompile(`[、,，]`)
 	changeLeadRe   = regexp.MustCompile(`(やっぱり|やはり|訂正)[、,，]`)
-	tailRe         = regexp.MustCompile(`(?:を作りたい|を作って|でお願いします|でお願い|に(?:して|した|する|します|したい)(?:ください|ほしい|欲しい)?|です|だ|で|の動画)+$`)
+	tailRe         = regexp.MustCompile(`(?:を作りたい|を作って|でお願いします|でお願い|に(?:して|した|する|します|したい)(?:ください|ほしい|欲しい)?|に(?:変更し|変更|変え|替え)(?:て|る|たい|ます|ください)?|です|だ|で|の動画)+$`)
 	punctRe        = regexp.MustCompile(`[\s、。,.，！!？?「」]+`)
 )
 
@@ -162,11 +166,17 @@ func contrastSubject(sentence string) (string, bool) {
 	return s, s != "" && contrastChanges(sentence, c.phrase, s)
 }
 
-// contrastChanges reports whether the bare contrast "A ではなく B" (denied A, meant B) changes the Subject for sure: the sentence says what the
-// video is about ("主人公", "題材", "…の動画"), or A and B are both persons or products ("男性ではなく女性"). "赤ではなく青の服にして" and "朝じゃなくて
-// 夕方にして" may as well be about the color or the time of day, so they never replace a decided Subject.
+// contrastChanges reports whether the bare contrast "A ではなく B" (denied A, meant B) changes the Subject for sure: its clause says "主人公", "主役", "題材"
+// or "テーマ", or "…の動画 / CM / 広告" with A or B a person or a product ("猫ではなく犬の動画"), or A and B are both ("男性ではなく女性"). "赤ではなく青の
+// 動画にして" and "朝じゃなくて夕方にして" may be about the color or the time of day, so they never replace a decided Subject.
 func contrastChanges(sentence, denied, meant string) bool {
-	return contrastAnchorRe.MatchString(sentence) || (isPersonOrProduct(denied) && isPersonOrProduct(meant))
+	clause := sentence
+	if loc := contrastRe.FindStringIndex(sentence); loc != nil {
+		from, to := clauseAround(sentence, loc[0], loc[1])
+		clause = sentence[from:to]
+	}
+	d, m := isPersonOrProduct(denied), isPersonOrProduct(meant)
+	return contrastAnchorRe.MatchString(clause) || (videoOfRe.MatchString(clause) && (d || m)) || (d && m)
 }
 
 // isPersonOrProduct reports whether the phrase names a person or a product by its last noun (up to the particle that ends it: "女性に変えて" → "女性").

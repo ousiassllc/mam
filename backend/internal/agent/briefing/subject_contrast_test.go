@@ -173,13 +173,23 @@ func TestAbsorb_AClauseThatRunsOnIntoAnotherItemNeverReplacesTheDecidedSubject(t
 	}
 }
 
-// "A ではなく B" replaces a decided Subject only when the text says what the video is about or both sides are persons or products: "赤ではなく青の服にして"
-// and "朝じゃなくて夕方にして" may be about the color or the time of day, so the Subject is only proposed and stays (#1114).
+// "A ではなく B" replaces a decided Subject only when its clause says what the video is about ("主人公" ...), or says "…の動画" and A or B is a person or a product,
+// or both sides are persons or products: "赤ではなく青の服にして", "朝じゃなくて夕方にして", "冬ではなく夏の動画にして" may be about the color, the time of day or
+// the season, so the Subject is only proposed and stays (#1114).
 func TestAbsorb_AContrastThatMayBeAboutAnotherThingNeverReplacesTheDecidedSubject(t *testing.T) {
 	for text, proposed := range map[string]string{
 		"赤ではなく青の服にして":     "青の服",
 		"朝ではなく夕方にして":      "夕方",
 		"朝じゃなくて夕方のシーンにして": "夕方のシーン",
+		"朝ではなく夜の動画にして":    "夜",
+		"冬ではなく夏の動画にして":    "夏",
+		"屋内ではなく屋外の動画にして":  "屋外",
+		"赤ではなく青の動画にして":    "青",
+		"黒ではなく白のCMにして":    "白",
+		// "個性", "様子", "作品", "作者" only end like a person or a product
+		"個性ではなく様子の動画にして":  "様子",
+		"作品ではなく作者の動画にして":  "作者",
+		"機能性ではなく個性の動画にして": "個性",
 	} {
 		t.Run(text, func(t *testing.T) {
 			b := intake(firstRequest)
@@ -197,8 +207,9 @@ func TestAbsorb_AContrastThatMayBeAboutAnotherThingNeverReplacesTheDecidedSubjec
 func TestAbsorb_AContrastThatSaysWhatTheVideoIsAboutReplacesTheDecidedSubject(t *testing.T) {
 	for text, want := range map[string]string{
 		"猫ではなく犬の動画にして":    "犬",
-		"赤ではなく青の動画にして":    "青",
 		"男性じゃなくて女性にして":    "女性",
+		"猫ではなく、犬の動画にして":   "犬",
+		"赤ではなく青を主人公にして":   "青",
 		"商品ではなく新商品のCMにして": "新商品",
 	} {
 		t.Run(text, func(t *testing.T) {
