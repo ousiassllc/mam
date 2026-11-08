@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/relay"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/genstage"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
@@ -192,10 +193,9 @@ func (w *wiring) wireGeneration() {
 		Repairs: w.r.repairs, LLM: d.LLM, Adapter: d.Models, AssetsDir: d.AssetsDir, Logger: w.logger, Judge: w.takeJudge, Brands: w.r.brands, Media: d.Media,
 		Notify: progress.Notify,
 	})
-	// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
-	d.Jobs.Register(domain.JobGenerate, progress.Wrap(w.generations.gen.Handle), false)
+	d.Jobs.Register(domain.JobGenerate, progress.Wrap(w.generations.gen.Handle), false) // not resumable: a generation costs money, so an interrupted one is failed
 	w.c.takeActions.gen = w.generations.gen
-	w.gate.SetGenerator(w.generations.gen, d.Models.Config) // the Orchestrator carries an approved plan on through it
+	w.gate.SetGenerator(w.generations.gen, modelroute.Effective(d.Models)) // the Orchestrator carries an approved plan on through it; the plan names the models a start would use
 }
 
 // wireRepair sets up the Repair Agent (job "repair"): needs generation and the Judge, so everything

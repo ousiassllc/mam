@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/onboarding"
 	"github.com/ousiassllc/mam/backend/internal/service/restartpending"
 )
@@ -71,6 +72,7 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	services.Ollama.UsedBy = func(model string) []string { return settings.LLM.UsedBy(string(llm.ProviderLocal), model) } // a model an Agent chooses is not deleted (#1105)
 	settings.Audio = newAudioSettings(cfg, services.LocalRuntimes, settings.Keys)
 	settings.Models.SetHidden(services.ModelManager.HidesModel)
+	settings.Models.SetAdult(mmview.Adult(services.ModelManager)) // the routes it reports choose models by the rule a generation does (#1113)
 	settings.Gentest = services.Gentest
 	if services.Gentest != nil { // the choices of the assignment say which models cannot be used now (#1013), by the judgement the generation test lists them with
 		settings.Models.SetAvailability(services.Gentest.Availability)

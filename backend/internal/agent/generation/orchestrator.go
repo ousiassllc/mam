@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"runtime/debug"
-	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/artdirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/assetfile"
@@ -159,10 +157,16 @@ type payload struct {
 	// CandidateSpecs are the Prompt Candidate specs already checked, in CandidateStrategies order.
 	// The job uses these instead of planning them again; strategies past the end are planned in the job.
 	CandidateSpecs []domain.ShotSpec `json:"candidate_specs,omitempty"`
+	// models names the models a start chose, for the progress card (#1113); it is not kept with the job.
+	models string
 }
 
 // progressText is the content of the progress card of a job.
-func progressText(a Action, shot domain.Shot) string {
+func progressText(a Action, shot domain.Shot, models string) string {
+	return progressLine(a, shot) + "\n" + models
+}
+
+func progressLine(a Action, shot domain.Shot) string {
 	switch a {
 	case ActionReferencePack:
 		return fmt.Sprintf("Shot %d の Reference Pack（キャラクター・商品・場所・スタイル・ライティング・Keyframe）を作成しています", shot.OrderIndex+1)
@@ -185,7 +189,7 @@ func (o *Orchestrator) enqueue(ctx context.Context, ref repository.ShotRef, p pa
 		o.release(ctx, ref.Shot.ID)
 		return domain.Job{}, fmt.Errorf("enqueue generate job: %w", err)
 	}
-	card := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindProgress, Content: progressText(p.Action, ref.Shot), RefID: job.ID}
+	card := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindProgress, Content: progressText(p.Action, ref.Shot, p.models), RefID: job.ID}
 	if err := o.chat.Announce(ctx, ref.ProjectID, card); err != nil {
 		o.logger.Error("post progress card failed", "shot_id", ref.Shot.ID, "job_id", job.ID, "err", err)
 	}
@@ -243,26 +247,4 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	done.ShotID, done.Action, done.Stage = p.ShotID, p.Action, StageDone
 	o.notify(done)
 	return nil
-}
-
-// parallel runs fn for i in [0, n) concurrently and returns the errors in order. A panic in fn is
-// not propagated (it would end the goroutine, and the whole server, outside the job queue's
-// recover): it is logged with its stack and becomes the error of that index, while the others
-// finish.
-func parallel(logger *slog.Logger, n int, fn func(i int) error) []error {
-	errs := make([]error, n)
-	var wg sync.WaitGroup
-	for i := range n {
-		wg.Go(func() {
-			defer func() {
-				if r := recover(); r != nil {
-					logger.Error("parallel task panicked", "index", i, "panic", r, "stack", string(debug.Stack()))
-					errs[i] = fmt.Errorf("task %d panicked: %v", i, r)
-				}
-			}()
-			errs[i] = fn(i)
-		})
-	}
-	wg.Wait()
-	return errs
 }

@@ -10,6 +10,7 @@ import (
 	"math"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -31,6 +32,8 @@ type Strategy struct {
 	// Routing is why these models were chosen (Multi-model routing); its Mode is empty when the
 	// strategy was decided without it.
 	Routing domain.RoutingDecision
+	// Models says whether the models are the assignment's or were chosen because they match the Shot (modelroute), and why; the Takes record it.
+	Models modelroute.Selected
 }
 
 // Decide chooses the strategy for a Shot of the given duration.

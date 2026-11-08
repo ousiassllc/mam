@@ -121,4 +121,10 @@ func TestGetGlobalSettings_SaysWhetherEachImageAndVideoChoiceCanBeUsed(t *testin
 		assert.Equal(t, "flux-2", u.Model, "only that model cannot be used")
 	}
 	assert.True(t, routed, "the shipped routes name flux-2")
+
+	// #1113: every route says what a generation would run on now; flux-2 is only the primary of one, so the assignments are used as they are.
+	require.NotEmpty(t, ov.Models.Routes)
+	for _, r := range ov.Models.Routes {
+		assert.Equal(t, "assignment_usable", r.Status, r.Media+"/"+r.Key)
+	}
 }

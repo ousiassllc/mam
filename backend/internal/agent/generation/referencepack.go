@@ -7,24 +7,17 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/artdirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/fanout"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 // maxUploadedInputs bounds how many uploaded images go to a model with one reference.
 const maxUploadedInputs = 4
-
-// kindLabel names a reference kind in the cards of the chat.
-var kindLabel = map[domain.ReferenceKind]string{
-	domain.RefCharacter: "Character Reference",
-	domain.RefProduct:   "Product Reference",
-	domain.RefLocation:  "Location Reference",
-	domain.RefStyle:     "Style Reference",
-	domain.RefLighting:  "Lighting Reference",
-	domain.RefKeyframe:  "Keyframe",
-}
 
 // madeReference is one planned image of the Reference Pack once it has been resolved.
 type madeReference struct {
@@ -35,6 +28,7 @@ type madeReference struct {
 	// World State reference slot): nothing was generated, so nothing is paid or stored.
 	reused  bool
 	pinning domain.Reference // the reference kept for a reused image
+	use     *modelreg.Use    // the model, its route and why it was chosen (nil for a reused image)
 }
 
 // packBuild is the state of one buildReferencePack run: the design and what each plan became.
@@ -135,7 +129,7 @@ func (o *Orchestrator) generateImages(ctx context.Context, b *packBuild) []error
 	}
 	shotID := b.ref.Shot.ID
 	o.notify(Progress{ShotID: shotID, Action: ActionReferencePack, Stage: StageGenerating, Message: "参照画像を生成しています", TakesTotal: len(b.plans)})
-	errs := parallel(o.logger, len(first), func(k int) error { return o.generateOne(ctx, b, first[k], nil) })
+	errs := fanout.Run(o.logger, len(first), func(k int) error { return o.generateOne(ctx, b, first[k], nil) })
 	var failed []error
 	for _, e := range errs {
 		if e != nil {
@@ -174,9 +168,14 @@ func (o *Orchestrator) generateOne(ctx context.Context, b *packBuild, i int, ext
 	inputs = append(inputs, o.worldInputs(ctx, projectID, p.Kind, b.world)...)
 	inputs = append(inputs, extra...)
 	purpose := purposeOf(p, len(inputs) > 0)
+	env := o.routes()
+	pick, err := env.Image(purpose)
+	if err != nil {
+		return fmt.Errorf("%s: %w", p.Kind, err)
+	}
 	// The estimate is held until the image is on the ledger, so images that run at the same time
 	// (here and in other jobs) cannot together pass the budget ceilings.
-	release, ok, err := o.gens.Reserve(ctx, projectID, shotID, o.adapter.EstimateImage(purpose))
+	release, ok, err := o.gens.Reserve(ctx, projectID, shotID, modelroute.EstimateImage(env.Config, pick.Route))
 	if err != nil {
 		return err
 	}
@@ -184,7 +183,7 @@ func (o *Orchestrator) generateOne(ctx context.Context, b *packBuild, i int, ext
 		return fmt.Errorf("%s: %w", p.Kind, ErrBudgetExceeded)
 	}
 	defer release()
-	out, err := o.adapter.GenerateImage(ctx, purpose, modeladapter.ImageRequest{Prompt: p.Prompt, AspectRatio: b.ratio, Inputs: inputs})
+	out, err := o.adapter.GenerateImageVia(ctx, pick.Route, purpose, modeladapter.ImageRequest{Prompt: p.Prompt, AspectRatio: b.ratio, Inputs: inputs})
 	if err != nil {
 		return fmt.Errorf("%s: %w", p.Kind, err)
 	}
@@ -195,7 +194,8 @@ func (o *Orchestrator) generateOne(ctx context.Context, b *packBuild, i int, ext
 	if err != nil {
 		return err
 	}
-	b.results[i] = madeReference{plan: p, output: out, asset: asset}
+	use := pick.Use(env.Config, out.Model, "image", out.FellBack)
+	b.results[i] = madeReference{plan: p, output: out, asset: asset, use: &use}
 	return nil
 }
 
@@ -218,7 +218,7 @@ func (b *packBuild) assemblePack() repository.NewReferencePack {
 			continue
 		}
 		pack.References = append(pack.References, domain.Reference{
-			Kind: r.plan.Kind, Name: r.plan.Name, AssetID: r.asset.ID, Prompt: r.plan.Prompt, Model: r.output.Model,
+			Kind: r.plan.Kind, Name: r.plan.Name, AssetID: r.asset.ID, Prompt: r.plan.Prompt, Model: r.output.Model, Use: r.use,
 		})
 		pack.Assets = append(pack.Assets, r.asset)
 	}
@@ -228,26 +228,6 @@ func (b *packBuild) assemblePack() repository.NewReferencePack {
 		}
 	}
 	return pack
-}
-
-// announceKeyframes posts a card to the chat for each image this run generated.
-func (o *Orchestrator) announceKeyframes(ctx context.Context, b *packBuild) {
-	for _, r := range b.results {
-		if r.reused {
-			continue
-		}
-		label := kindLabel[r.plan.Kind]
-		if r.plan.Name != "" {
-			label += "（" + r.plan.Name + "）"
-		}
-		card := domain.ChatMessage{
-			Role: domain.RoleAssistant, Kind: domain.KindKeyframe, RefID: r.asset.ID,
-			Content: fmt.Sprintf("Shot %d: %s", b.ref.Shot.OrderIndex+1, label),
-		}
-		if err := o.chat.Announce(context.WithoutCancel(ctx), b.ref.ProjectID, card); err != nil {
-			o.logger.Error("post keyframe card failed", "asset_id", r.asset.ID, "err", err)
-		}
-	}
 }
 
 // purposeOf picks the image model row of model-adapters.md §3: material the user provided and

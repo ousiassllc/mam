@@ -2,9 +2,11 @@ package generation
 
 import (
 	"context"
+	"maps"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -111,7 +113,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
-	p := payload{Action: action, ShotID: shotID, Instruction: instruction, Preserve: preserve}
+	p := payload{Action: action, ShotID: shotID, Instruction: instruction, Preserve: preserve, models: o.videoModels(strategy)}
 	switch action {
 	case ActionCandidates:
 		p.CandidateSpecs, err = o.prepareCandidates(ctx, ref, instruction, preserve, strategy)
@@ -142,14 +144,25 @@ func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, polic
 	if err != nil {
 		return Strategy{}, err
 	}
-	cfg, forced := o.adapter.Config(), FixedModel(locks)
+	forced := FixedModel(locks)
 	// in always carries the References the clip is made from, less a Keyframe that cannot be read (no first frame, #902).
 	refs, err := images.Attached(ctx, ref.Shot.References())
 	if err != nil {
 		return Strategy{}, err
 	}
+	// A model that can be used now: the assignment's, else (a default assignment only) one that matches the Shot; none is ErrNoUsableModel.
+	env := o.routes()
+	pick, err := env.Video(policy.Quality, modelroute.VideoNeed{Seconds: ref.Shot.Duration, Keyframe: hasKeyframe(refs), Forced: forced})
+	if err != nil {
+		return Strategy{}, err
+	}
+	cfg := env.Config
+	if pick.Substituted() { // the chosen model alone: Multi-model routing does not move the Shot to a dearer route again
+		cfg.Policies = maps.Clone(cfg.Policies)
+		cfg.Policies[policy.Quality] = pick.Route
+	}
 	in := &RoutingInput{References: refs}
-	if forced == "" && cfg.Routing.Enabled {
+	if forced == "" && !pick.Substituted() && cfg.Routing.Enabled {
 		records, err := o.gens.ModelRecords(ctx, ref.ProjectID)
 		if err != nil {
 			return Strategy{}, err
@@ -160,6 +173,7 @@ func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, polic
 		}
 	}
 	s, err := DecideRouted(cfg, policy.Quality, ref.Shot.Duration, budget, forced, in)
+	s.Models = pick.Selected
 	if err == nil { // an adult model while the age confirmation is off: refused whole, never replaced by the alternative
 		err = o.adapter.Gate.Check(s.Primary.Model, s.Fallback.Model)
 	}
@@ -183,29 +197,18 @@ func (o *Orchestrator) StartReferencePack(ctx context.Context, shotID string) (d
 	if err != nil {
 		return domain.Job{}, err
 	}
-	if err := o.checkPackModels(); err != nil {
+	cheapest, models, err := o.checkPackModels()
+	if err != nil {
 		return domain.Job{}, err
 	}
 	budget, err := o.gens.Budget(ctx, ref.ProjectID, shotID)
 	if err != nil {
 		return domain.Job{}, err
 	}
-	if affordable(budget.Remaining(), o.cheapestImageCost()) == 0 {
+	if affordable(budget.Remaining(), cheapest) == 0 {
 		return domain.Job{}, ErrBudgetExceeded
 	}
-	return o.enqueue(ctx, ref, payload{Action: ActionReferencePack, ShotID: shotID})
-}
-
-// cheapestImageCost is the estimated cost of one image of the cheapest priced image model (0 when
-// none is priced).
-func (o *Orchestrator) cheapestImageCost() float64 {
-	cfg, cheapest := o.adapter.Config(), 0.0
-	for _, m := range domain.ImageModels() {
-		if c := cfg.ImageCost(m); c > 0 && (cheapest == 0 || c < cheapest) {
-			cheapest = c
-		}
-	}
-	return cheapest
+	return o.enqueue(ctx, ref, payload{Action: ActionReferencePack, ShotID: shotID, models: models})
 }
 
 // refuseBusy is ErrShotBusy for a Shot that is being generated or repaired. enqueue's claim stays
