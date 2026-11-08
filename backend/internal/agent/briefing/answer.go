@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing/declined"
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/overwrite"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -52,8 +53,8 @@ func ReferenceProblem(u string) string {
 const vagueSubjectProblem = "題材（主役）として読み取れませんでした。「ただの投稿動画」や「商品ではなく」のような否定・一般的な言い方では、Subject は決まりません。主役・題材を具体的に教えてください"
 
 // ApplyAnswer stores an answer the user gave to the question about f; the Brief form's rule refuses it with the question again and the reason.
-// An answer to the Subject question is the Subject only when it names something concrete: "A ではなく B" is B, while a denial or a general
-// phrase ("商品ではなく、ただの投稿動画") is refused and never replaces the Subject (#1114). A Subject answer also closes the open contradiction.
+// A Subject answer is the Subject only when it names something concrete ("A ではなく B" is B; a denial, a general phrase or a deferral is refused). A Subject
+// already set is replaced only by the user's evidence (overwrite), whatever the wording; a Subject answer also closes the open contradiction.
 func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.ChatMessage {
 	text = strings.TrimSpace(text)
 	if text == domain.DelegateOption && f.CanDelegate() {
@@ -61,10 +62,16 @@ func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.
 		return nil
 	}
 	problem := ValueProblem(f, text)
-	if f == domain.BriefSubject && problem == "" && text != "" {
-		// The safety refusals the Subject is read without stay as a constraint, also when the answer is asked again.
+	if f == domain.BriefSubject && problem == "" && text != "" { // the safety refusals the Subject is read without stay as a constraint, also when asked again
 		if refusals := declined.Refusals(text); len(refusals) > 0 {
 			Absorb(brief, domain.Brief{AdditionalInstruction: ConstraintPrefix + strings.Join(refusals, "・")}, "")
+		}
+		if brief.Subject != "" { // keep by default: only a stated change or the choice of the contradiction replaces it (overwrite)
+			if stated, explicit := readSubject(text); overwrite.Apply(brief, text, stated, explicit) {
+				again := SubjectConflict(*brief, "")
+				return &again
+			}
+			return nil
 		}
 		if text = subjectAnswer(text); text == "" {
 			problem = vagueSubjectProblem
