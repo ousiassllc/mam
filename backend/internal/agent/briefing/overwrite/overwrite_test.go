@@ -257,3 +257,56 @@ func TestPlausible(t *testing.T) {
 		assert.Equal(t, want, overwrite.Plausible(v), v)
 	}
 }
+
+// In the "A ではなく B" form the value is the noun phrase only: a tail that is a verb, a condition, a hedge, a request or a second clause is no Subject
+// and no evidence (review: "猫ではなく犬にして、30秒にして" gave "犬にして、30秒"). Same for a hedge or a third party in front of the denied value.
+func TestApplyAnswerAndAbsorb_AContrastThatIsNotAPlainStatementKeepsTheSubject(t *testing.T) {
+	for _, text := range []string{
+		"猫ではなく犬にして、30秒にして", "猫ではなく犬にするなら", "猫ではなく犬にしてません", "猫ではなく犬にしても", "猫ではなく犬を希望", "猫ではなく犬を検討中",
+		"猫ではなく犬でしたっけ", "猫ではなく犬にしたかったけど", "猫ではなく犬にしたら", "猫ではなく犬にした場合", "猫ではなく犬にしますが", "猫ではなく犬にしますけど",
+		"猫ではなく犬にして30秒", "猫ではなく犬にして、猫も出して", "猫ではなく犬でも可",
+		"多分猫ではなく犬にします", "たぶん猫ではなく犬に変更して", "もし猫ではなく犬にします", "できれば猫ではなく犬にします", "嘘だけど猫ではなく犬にします",
+		"迷うけど猫ではなく犬にします", "友達は猫ではなく犬にします", "上司は猫ではなく犬に変更して", "AIは猫ではなく犬にします", "昨日は猫ではなく犬にします",
+	} {
+		for _, proposed := range []string{"", "ロボット"} {
+			t.Run("answer "+text+"/"+proposed, func(t *testing.T) {
+				b := decided("猫", proposed)
+				briefing.ApplyAnswer(&b, domain.BriefSubject, text)
+				assert.Equal(t, "猫", b.Subject)
+			})
+		}
+		t.Run("absorb "+text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+		})
+	}
+}
+
+// A value that is a list, an alternative, a pointer or a placeholder is no Subject: a plain "…に変更して" with it keeps the decided one.
+func TestApplyAnswerAndAbsorb_APlaceholderOrAListIsNoSubject(t *testing.T) {
+	for _, v := range []string{"犬or猫", "犬または猫", "犬あるいは猫", "犬もしくは猫", "犬/猫", "犬・猫", "犬とロボット", "犬や猫", "これ", "それ", "前者", "両方", "全部", "適当", "ランダム", "デフォルト", "TBD", "null", "XX", "-", "未設定", "ダミー"} {
+		text := "主人公を" + v + "に変更して"
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.ApplyAnswer(&b, domain.BriefSubject, text)
+			assert.Equal(t, "猫", b.Subject)
+			b = decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+		})
+	}
+}
+
+// Nouns of every script still replace it by an explicit change.
+func TestApplyAnswer_NounsOfEveryScriptStillReplaceByAnExplicitChange(t *testing.T) {
+	for v, ok := range map[string]bool{"犬": true, "ロボット": true, "ねこ": true, "かわいい犬": true, "小さな犬": true, "架空の30代女性インフルエンサー": true, "AIキャラクター": true, "iPhone": true, "うさぎ": true, "ミュージカル": true} {
+		text := "主人公を" + v + "に変更して"
+		t.Run(text, func(t *testing.T) {
+			assert.Equal(t, ok, overwrite.Plausible(v))
+			b := decided("猫", "")
+			assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))
+			assert.Equal(t, v, b.Subject)
+		})
+	}
+}

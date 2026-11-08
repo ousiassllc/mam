@@ -27,6 +27,7 @@ package overwrite
 import (
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -73,23 +74,56 @@ func Decide(current, proposed, answer, stated string, explicit bool) (Action, st
 }
 
 var (
-	// front is all that may stand in front of the Subject: a filler, a label of the role, the denied Subject.
-	front = regexp.MustCompile(`^(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:(?:この)?動画(?:は|の))?(?:(?:主人公|主役|題材|主題)(?:は|を|が|も)?)?(?:[^、,。.!！?？\n]{1,20}?(?:ではなく|じゃなくて|ではなくて|じゃなく)[、,]?)?$`)
+	// front is all that may stand in front of the Subject: a filler, a label of the role, the denied Subject (group 1).
+	front = regexp.MustCompile(`^(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:(?:この)?動画(?:は|の))?(?:(?:主人公|主役|題材|主題)(?:は|を|が|も)?)?(?:([^、,。.!！?？\n]{1,20}?)(?:ではなく|じゃなくて|ではなくて|じゃなく)[、,]?)?$`)
 	// back is all that may stand behind it: particles, a label, a change verb in a finished form, a polite ending.
 	back = regexp.MustCompile(`^(?:の(?:動画|ビデオ|映像|話|CM))?(?:を|が|は|で)?(?:主人公|主役|題材|主題)?(?:に|へ)?(?:(?:変更|変え|替え|代え)?(?:して|します|しました|する|した|したい))?(?:の)?(?:動画|ビデオ|映像|CM)?(?:(?:の方が|が)?(?:いい|良い|よい|お願い(?:します)?|ください)(?:です)?|です|で進めて(?:ください)?|を選(?:ぶ|びます))?[。.!！ ]*$`)
-	// predicate ends a phrase that is a verb, an adjective, a negation or a hedge, not a noun: "そのまま", "変えなくていい", "犬かもしれない".
+	// predicate ends a phrase that is a negation or a hedge, not a noun: "そのまま", "変えなくていい", "犬かもしれない".
+	predicate   = regexp.MustCompile(`(?:ない|まま|かも)$`)
 	sentenceEnd = regexp.MustCompile(`[。.!！?？\n]`)
-	predicate   = regexp.MustCompile(`(?:ない|まま|かも|[いうくぐすつぬぶむるただ])$`)
 	// unfit is in a phrase that is a list, a guess, a hedge or a placeholder, not one Subject: "犬か猫", "犬かな", "犬w", "犬のはず", "犬など".
-	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|とか|など|あたり|以外|つもり|はず|[wｗ?？()（）]|[ねよ]$`)
+	unfit = regexp.MustCompile(`[\p{Han}\p{Katakana}]か[\p{Han}\p{Katakana}]|か[なねよ]|とか|など|あたり|以外|つもり|はず|[wｗ?？()（）]|[ねよ]$|(?:^|[^A-Za-z])(?i:or|and)(?:$|[^A-Za-z])`)
+	// placeholder is a word that points at something else instead of naming it, or marks nothing filled in.
+	placeholder = regexp.MustCompile(`^(?:[こそあど](?:れ|こ|ちら|っち|んな)|ぜんぶ|すべて|りょうほう|てきとう|ランダム|任意|両方|全部|前者|後者|逆|元|適当|保留|仮|ダミー|サンプル|テスト|未設定|白紙|空|デフォルト|標準|(?i:or|and|tbd|null|none|na|test|x+))$`)
+	// hedgeLead begins a denied value that is a hedge about the whole statement, not the old Subject.
+	hedgeLead = regexp.MustCompile(`^(?:多分|たぶん|もし|できれば|とりあえず|一応|仮に|念のため|まあ|まぁ|なんとなく|だいたい|ほぼ|ちょっと|嘘|うそ)`)
+	hiragana  = regexp.MustCompile(`^\p{Hiragana}+$`)
+	runs      = regexp.MustCompile(`\p{Hiragana}+|[^\p{Hiragana}]+`)
+	wordChars = regexp.MustCompile(`^[\p{Han}\p{Katakana}A-Za-z0-9ー々]+$`)
+	particle  = regexp.MustCompile(`^[をにでがはとやもへ]`)
+	verbEnd   = regexp.MustCompile(`[うくぐすつぶむる]$`)
 )
 
-// Plausible reports whether v can be a Subject at all: a noun phrase, not a verb, a hedge, a list or a placeholder.
-func Plausible(v string) bool { return v != "" && !predicate.MatchString(v) && !unfit.MatchString(v) }
+// Plausible reports whether v can be a Subject at all: a NOUN PHRASE by its characters (a positive shape, not a list of bad words): words of kanji, katakana,
+// Latin letters and digits, joined by "の", with at most a modifier in hiragana in front of a word ("かわいい猫"); never a particle, a verb or a hedge, a list or a placeholder.
+func Plausible(v string) bool {
+	parts := runs.FindAllString(v, -1)
+	for i, r := range parts {
+		last := i == len(parts)-1
+		switch {
+		case !hiragana.MatchString(r):
+			if !wordChars.MatchString(r) || placeholder.MatchString(r) {
+				return false
+			}
+		case len(parts) == 1:
+			if utf8.RuneCountInString(r) < 2 || verbEnd.MatchString(r) || placeholder.MatchString(r) {
+				return false
+			}
+		case r == "の":
+			if i == 0 || last {
+				return false
+			}
+		case last || particle.MatchString(r) || (!strings.HasSuffix(r, "い") && !strings.HasSuffix(r, "な")):
+			return false
+		}
+	}
+	return len(parts) > 0 && !predicate.MatchString(v) && !unfit.MatchString(v) && !placeholder.MatchString(v)
+}
 
 // Committed reports whether the text has the shape of a decided statement of the Subject v as its LAST sentence (see the package comment): v with only the
 // labels, particles and endings of the shape around it. Nothing may follow it, because a later sentence may take it back ("…に変更して。やっぱりやめます"),
-// and a question is no statement. v that is not in the text (the reader rewrote it) is no evidence.
+// and a question is no statement. A denied value in front ("猫ではなく") must itself be a noun phrase (Plausible) that does not begin with a hedge ("多分猫ではなく…").
+// v that is not in the text (the reader rewrote it) is no evidence.
 func Committed(text, v string) bool {
 	text = strings.TrimSpace(text)
 	i := strings.LastIndex(text, v)
@@ -100,7 +134,11 @@ func Committed(text, v string) bool {
 	if loc := sentenceEnd.FindAllStringIndex(text[:i], -1); loc != nil {
 		start = loc[len(loc)-1][1]
 	}
-	return front.MatchString(strings.TrimSpace(text[start:i])) && back.MatchString(text[i+len(v):])
+	m := front.FindStringSubmatch(strings.TrimSpace(text[start:i]))
+	if m == nil || !back.MatchString(text[i+len(v):]) {
+		return false
+	}
+	return m[1] == "" || (Plausible(m[1]) && !hedgeLead.MatchString(m[1]))
 }
 
 // Proposal is v when it can be proposed as the other Subject, else "".
