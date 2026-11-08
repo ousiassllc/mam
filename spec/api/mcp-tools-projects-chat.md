@@ -70,3 +70,4 @@
 | 1.3 | 2026-11-08 | `message` のフィールド一覧に `unrecorded` を足した。`list_chat_messages` の `after` の「それ以降」が、メッセージ ID の大小ではなく、この環境が行を作った順（`rowid`）であることを足した | Issue #1116: 1.2 で足した `unrecorded` が一覧に無かった。取り込んだ巨大な ID のメッセージが新着の判定を壊さないため |
 | 1.4 | 2026-11-08 | `message` の `id` の説明を、「返す順が時系列で、`after` には返された ID を渡す。ID の大小は時系列ではない」に改めた（MCP の入出力スキーマの説明も同じ） | Issue #1116: 「ID は時系列順に増える」と読めたが、取り込んだメッセージは元の ID を持つので大小は順を表さない |
 | 1.5 | 2026-11-08 | `set_confirmation_level`・`respond_approval` のツール説明が、`set_project_mode` と同じ同意の文面（予算上限が数えるのは単価が分かる呼び出しだけ・確実に止めるのは DIRECTOR）を言うことを足した | Issue #1115: 画面・チャット・MCP のツール説明で、止め方の文面を揃える（`spec/spec.md` §4.3） |
+| 1.6 | 2026-11-08 | `update_brief` の `confirm` の説明（行の表と MCP の入力の説明）を実装どおりに直した。`confirm=true` は、チャットの承認と違い、未設定の項目を残し、確認カードも閉じない（Brief と記録のメモだけを書く） | Issue #1114 のレビュー指摘: 実装は `ProjectService.UpdateBrief` が Brief とメモだけを書き、カードを閉じない |

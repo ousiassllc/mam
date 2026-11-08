@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/declined"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -37,13 +38,6 @@ var (
 	protagonistWordRe = regexp.MustCompile(`^(?:主人公|主役|題材)$`)
 	// phrasePrefixRe is where a phrase starts when it carries where the video goes in front of it ("TikTok向けに架空の女性").
 	phrasePrefixRe = regexp.MustCompile(`(?:向け|用|として)[にでの]|ため[にの]|ので|けど|から`)
-	// denyRe is a refusal: the clause that holds it states nothing wanted ("猫を主人公にしてほしくない"). 不要 counts only as the refusal
-	// ("猫は不要です"), not inside a word ("不要品回収のCM").
-	denyRe = regexp.MustCompile(`ほしくない|欲しくない|いらない|要らない|不要(?:です|だ|で|$)|やめて|やめたい|やめる|したくない|しないで|にしない|にはしない|にしません|にはしません|避けて|避けたい`)
-	// absenceRe is a refusal to make or show something ("猫の動画は作らない", "猫は出しません"). It refuses a clause that names no protagonist only: "猫を主人公にして成人は
-	// 出さない" has the constraint in the same clause and still states the Subject.
-	absenceRe                 = regexp.MustCompile(`作らない|作りません|作りたくない|出さない|出しません`)
-	protagonistWordInClauseRe = regexp.MustCompile(`主人公|主役|題材`)
 	// changeRe is a word that says the clause changes something: only such a clause may replace a decided value.
 	changeRe = regexp.MustCompile(`変更|変えて|変えたい|変える|に替え|に直し|に差し替え|訂正|やっぱり|やはり|にして|にしたい|にします|ではなく|じゃなく`)
 	// itemLabelRe is a word that names another item of the Brief: "ターゲットは学生ではなく社会人" contrasts the target, not the Subject.
@@ -116,22 +110,11 @@ func statedSubject(text string) string {
 func statedSentences(text string) []string {
 	var stated []string
 	for _, sentence := range sentenceKeepRe.FindAllString(text, -1) {
-		if sentence = dropRefused(changeLeadRe.ReplaceAllString(sentence, "$1")); sentence != "" {
+		if sentence = declined.Drop(changeLeadRe.ReplaceAllString(sentence, "$1")); sentence != "" {
 			stated = append(stated, sentence)
 		}
 	}
 	return stated
-}
-
-// dropRefused removes the clauses of the sentence that refuse something ("この動画は猫を主人公にしてほしくない").
-func dropRefused(sentence string) string {
-	clauses := clauseRe.Split(sentence, -1)
-	return strings.Join(slices.DeleteFunc(clauses, refuses), "、")
-}
-
-// refuses reports whether the clause refuses something (denyRe, absenceRe).
-func refuses(clause string) bool {
-	return denyRe.MatchString(clause) || (absenceRe.MatchString(clause) && !protagonistWordInClauseRe.MatchString(clause))
 }
 
 // patternSubject is the subject a sentence states outright with one of the subjectPatterns, and whether it says it is a change: the clause
@@ -211,7 +194,7 @@ func subjectPhrase(s string, before bool) string {
 // subjectOf is the Subject the captured phrase names (subjectPhrase, then usable), "" when it is none. The deferral is looked for in the phrase as it was
 // captured: subjectPhrase keeps only what follows a connective ("決めてないのでTikTok" → "TikTok"), which would hide it.
 func subjectOf(captured string, before bool) string {
-	if undecidedRe.MatchString(captured) {
+	if declined.Deferred(captured) {
 		return ""
 	}
 	return usable(subjectPhrase(captured, before))
@@ -241,7 +224,7 @@ func explicitChange(text string, f domain.BriefField, v string) bool {
 	text = changeLeadRe.ReplaceAllString(text, "$1")
 	for _, sentence := range sentenceRe.Split(text, -1) {
 		for _, clause := range clauseRe.Split(sentence, -1) {
-			if changes(clause) && !refuses(clause) && (RuleExtractor{}).Extract(clause).Get(f) == v {
+			if changes(clause) && !declined.Refused(clause) && (RuleExtractor{}).Extract(clause).Get(f) == v {
 				return true
 			}
 		}

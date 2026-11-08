@@ -38,8 +38,9 @@ const (
 	copulaNegation = `(?:では|じゃ|でも|で)(?:ない|なく|ありません)`
 	// relativeNegation is the negation that modifies the noun after it ("成人ではない人物", "服を着ていない人物", "服を着ない人物", "着衣しない人物").
 	relativeNegation = `(?:(?:では|じゃ|でも|で)ない|し?(?:てい|ておら)?ない|し?(?:てい|ており)ません)`
-	// restrictionAdverb is a short word that may stand in front of the refusing verb ("人物は一切出さない", "人物は画面に出さない").
-	restrictionAdverb = `(?:(?:一切|いっさい|絶対に?|決して|全く|まったく|画面に|映像に|動画に|作中に){1,2})?`
+	// restrictionGap is the short run of words that may stand in front of the refusing verb ("人物は一切出さない", "人物は画面に出さない", "人物はもちろん出さない",
+	// "人物は、出さない"): no particle が・は・を, so that a verb of another clause ("人物は出すが他は出さない") does not end the run.
+	restrictionGap = `[^\s、。,，はがを]{0,5}[、,，]?`
 	// absentVerb is a verb that says the keyword's person does not appear ("成人は出さない", "成人はいない").
 	absentVerb = `(?:いない|いません|出ない|出ません|出さ(?:ない|ず)|出しません|使わ(?:ない|ず)|使いません|登場させ(?:ない|ず|ません)|出演させ(?:ない|ず|ません)|含め(?:ない|ず|ません)|入れ(?:ない|ません))`
 )
@@ -62,9 +63,9 @@ var (
 	restrictionDeniedRe = regexp.MustCompile(`^(?:だけ|のみ)` + copulaNegation)
 	// restrictiveRelativeRe is the keyword denied inside a noun phrase that the sentence then refuses ("成人でない人物は出さない", "成人ではない人は登場させない",
 	// "服を着ていない人物は出さない", "成人ではない子どもは一切出さない"): the negation belongs to the noun it modifies, and the sentence restricts the video to the
-	// keyword. A negation that is a relative clause on the keyword's own verb ("服を着ない人物") or on the copula follows the keyword; a short adverb may stand
-	// between the particle of the noun and the verb that refuses it.
-	restrictiveRelativeRe = regexp.MustCompile(`^` + keywordTail + relativeNegation + `[\p{Han}\p{Katakana}][^\s、。,，はがをにでの]{0,9}?[はもを]` + restrictionAdverb + absentVerb)
+	// keyword. A negation that is a relative clause on the keyword's own verb ("服を着ない人物") or on the copula follows the keyword; a punctuation mark may follow
+	// it ("成人ではない。人物は出さない"), and a short run (restrictionGap) may stand between the particle of the noun and the verb that refuses it.
+	restrictiveRelativeRe = regexp.MustCompile(`^` + keywordTail + relativeNegation + `[、。,，]?[\p{Han}\p{Katakana}][^\s、。,，はがをにでの]{0,9}?(?:[はもを]|[、,，])` + restrictionGap + absentVerb)
 )
 
 // scan reads every occurrence of the keywords: stated when one is not negated, negated when one is ("成人ではない").
