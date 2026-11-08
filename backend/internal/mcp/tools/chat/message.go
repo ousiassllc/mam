@@ -46,7 +46,7 @@ type Job struct {
 
 // Message is one entry of the thread.
 type Message struct {
-	ID               string       `json:"id" jsonschema:"時系列順に増える。list_chat_messages の after に渡せる"`
+	ID               string       `json:"id" jsonschema:"メッセージの ID。list_chat_messages が返す順が時系列で、after にはその返された ID を続きの目印として渡す。ID の大小は時系列ではない（取り込んだメッセージは元の ID を持つ）"`
 	Role             string       `json:"role" jsonschema:"user or assistant"`
 	Kind             string       `json:"kind" jsonschema:"text, question, approval, keyframe, take, progress or escalation"`
 	Text             string       `json:"text" jsonschema:"本文。question / escalation は質問・相談の文面、take はタイトル、approval は確認する内容の要約"`

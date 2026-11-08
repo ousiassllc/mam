@@ -15,6 +15,8 @@ var deferrals = []string{
 	"なんでもいい", "何でもいいです", "どちらでもいい", "どっちでもいいよ", "お任せします", "おまかせで", "任せる", "まだ決めてない", "まだ決めていません", "未定", "未定です",
 	"特にありません", "特になし", "思いつかない", "分からない", "検討中", "決まってない", "どちらでもOK",
 	"わかりません", "分かりません", "わかりません。", "任せます", "決まっていません", "決まってません", "まだ何も決まっていません",
+	// delegated to someone, or hedged: what is left once the filler is gone is the addressee, or nothing
+	"AIにお任せします", "あなたにお任せします", "そちらで決めてください", "ちょっと考えさせてください", "うーん、特に思いつかない",
 }
 
 // questions are counter-questions: they ask for a Subject, so none of them is one (#1114). The rule is the form, not a list of words.

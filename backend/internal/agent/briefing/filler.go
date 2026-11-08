@@ -19,6 +19,9 @@ var (
 	barePredicateRe = regexp.MustCompile(`(?:ます|ません|ない)$`)
 	// phraseParticleRe is a particle that links a noun to a predicate: a text with one has something in front of it.
 	phraseParticleRe = regexp.MustCompile(`[をがはにでとへのも]`)
+	// addresseeRe is who a delegation is addressed to ("AIにお任せします", "あなたにお任せします", "そちらで決めてください"). Such a word is no subject
+	// when it is all that is left of a text once the filler is taken away: the text then only hands the decision over (concrete).
+	addresseeRe = regexp.MustCompile(`(?i)あなた|貴方|そちら|こちら|そっち|こっち|AI|ＡＩ|ChatGPT|アシスタント|お前|おまえ|君|きみ`)
 )
 
 // buildFillers is the words that carry no subject, longest first: the stripping removes them in this order. A text left with nothing
@@ -28,7 +31,10 @@ func buildFillers() []string {
 		// deferral, indecision, "no preference"
 		"なんでもいい", "何でもいい", "どちらでもいい", "どっちでもいい", "どれでもいい", "お任せします", "おまかせします", "お任せ", "おまかせ", "任せます", "任せる", "任せ",
 		"まだ決めていない", "まだ決めてない", "決めていない", "決めてない", "決めていません", "決めてません", "決まっていない", "決まってない", "決まっていません", "決まってません",
-		"決めかねて", "決めて", "未決定", "未定", "検討中", "考え中", "思いつかない", "思いつきません", "特にありません", "特になし", "特に希望", "希望", "ありません", "おすすめ",
+		"決めかねて", "決めて", "未決定", "未定", "検討中", "考え中", "考えさせて", "考えさせ", "考え", "思いつかない", "思いつきません", "思い浮かばない", "思い浮かびません", "浮かばない", "浮かびません",
+		"特にありません", "特になし", "特に希望", "希望", "ありません", "おすすめ", "ほしい", "欲しい",
+		// hedging and fumbling
+		"うーん", "んー", "えーと", "えっと", "ええと", "ちょっと",
 		"分からない", "わからない", "分かりません", "わかりません", "分かり", "わかり", "不明", "不問", "どちらでも", "どっちでも", "どれでも", "何でも", "なんでも",
 		"どちら", "どっち", "どれ", "何", "なに", "いまのところ", "今のところ", "とりあえず", "あとで", "後で", "まだ", "いいです", "よいです", "いい", "よい",
 		"します", "ます", "ません", "お願い", "ください", "OK", "ok",
@@ -57,13 +63,14 @@ func asks(s string) bool {
 }
 
 // concrete returns s when it names something, "" when it is not a noun phrase that says what the video is about: a question
-// ("何がいいですか", "おすすめありますか"), a bare predicate ("わかりません"), or only filler (negation, deferral, "ただの動画", "特になし" ...).
+// ("何がいいですか", "おすすめありますか"), a bare predicate ("わかりません"), or only filler (negation, deferral, hedging, "ただの動画", "特になし" ...).
+// A delegation to someone ("AIにお任せします", "そちらで決めてください") leaves only the addressee once the filler is gone: that is no subject either.
 func concrete(s string) string {
 	s = strings.TrimRight(strings.TrimSpace(s), "。.!！")
 	if asks(s) || interrogativeRe.MatchString(strings.ReplaceAll(s, "何気", "")) || (barePredicateRe.MatchString(s) && !phraseParticleRe.MatchString(s)) {
 		return ""
 	}
-	rest := s
+	rest := addresseeRe.ReplaceAllString(s, "") // first: the filler "な" would cut "あなた" into pieces
 	for _, w := range fillerSet {
 		rest = strings.ReplaceAll(rest, w, "")
 	}

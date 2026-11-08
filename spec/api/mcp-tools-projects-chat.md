@@ -39,7 +39,7 @@
 
 ### `message`（`messages[]` の要素）
 
-`id`, `role`（`user` / `assistant`）, `kind`（`text` / `question` / `approval` / `keyframe` / `take` / `progress` / `escalation`）, `text`（本文。question・escalation は文面、take はタイトル）, `options[]`（question・escalation のクイック回答）, `non_blocking`, `reply_to_message_id`, `ref_type`, `ref_id`, `approval_status`（`pending` / `approved` / `changes_requested`）, `unrecorded`（記録の無い旧「生成の承認」カードのとき true。承認としては扱わない）, `open`（回答待ち）, `pending`（まだ変わりうる）, `attachments[]`（`asset_id`, `type`, `mime_type`, `size_bytes`）, `take`（`take_id`, `shot_id`, `title`, `badge`, `score`, `summary`）, `job`（progress: `id`, `kind`, `status`, `error`, `next_steps`。`next_steps` は企画のジョブが LLM の API キー未設定で失敗したときだけ。[mcp-tools.md](mcp-tools.md) の `list_jobs` の補足）, `created_at`。
+`id`（返す順が時系列で、`after` には返された ID を続きの目印として渡す。ID の大小は時系列ではない。取り込んだメッセージは元の ID を持つ）, `role`（`user` / `assistant`）, `kind`（`text` / `question` / `approval` / `keyframe` / `take` / `progress` / `escalation`）, `text`（本文。question・escalation は文面、take はタイトル）, `options[]`（question・escalation のクイック回答）, `non_blocking`, `reply_to_message_id`, `ref_type`, `ref_id`, `approval_status`（`pending` / `approved` / `changes_requested`）, `unrecorded`（記録の無い旧「生成の承認」カードのとき true。承認としては扱わない）, `open`（回答待ち）, `pending`（まだ変わりうる）, `attachments[]`（`asset_id`, `type`, `mime_type`, `size_bytes`）, `take`（`take_id`, `shot_id`, `title`, `badge`, `score`, `summary`）, `job`（progress: `id`, `kind`, `status`, `error`, `next_steps`。`next_steps` は企画のジョブが LLM の API キー未設定で失敗したときだけ。[mcp-tools.md](mcp-tools.md) の `list_jobs` の補足）, `created_at`。
 
 ## ルートとの対応
 
@@ -68,3 +68,4 @@
 | 1.1 | 2026-11-08 | `get_brief` の出力に項目ごとの出どころ（`sources`）と Subject の食い違い（`proposed_subject`）、`update_brief` の入力に `confirm` を足し、渡した項目だけが `user` になることを明記した | Issue #1114。推奨値（仮）と利用者が確定した値を MCP でも区別し、確認を MCP からもできるようにするため |
 | 1.2 | 2026-11-08 | `respond_approval`・`list_chat_messages`・`get_chat_message` の `message` に `unrecorded`（記録の無い旧「生成の承認」カードのとき true）を足し、`respond_approval` の説明に、記録の無い旧カードはどの答えでも承認として扱わないことを足した | Issue #1116: 画面・チャット・MCP で、記録の無い旧カードの扱いを揃える |
 | 1.3 | 2026-11-08 | `message` のフィールド一覧に `unrecorded` を足した。`list_chat_messages` の `after` の「それ以降」が、メッセージ ID の大小ではなく、この環境が行を作った順（`rowid`）であることを足した | Issue #1116: 1.2 で足した `unrecorded` が一覧に無かった。取り込んだ巨大な ID のメッセージが新着の判定を壊さないため |
+| 1.4 | 2026-11-08 | `message` の `id` の説明を、「返す順が時系列で、`after` には返された ID を渡す。ID の大小は時系列ではない」に改めた（MCP の入出力スキーマの説明も同じ） | Issue #1116: 「ID は時系列順に増える」と読めたが、取り込んだメッセージは元の ID を持つので大小は順を表さない |

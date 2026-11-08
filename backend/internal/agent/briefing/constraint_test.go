@@ -19,12 +19,20 @@ func TestExtract_AnUnrelatedNegationKeepsTheConstraint(t *testing.T) {
 		{"服は着ている設定で、BGMはなし", "制約: 着衣"},
 		{"成人女性が商品を持たない", "制約: 成人"},
 		{"成人で、他の人物は出さない", "制約: 成人"},
+		// a restriction to the keyword: the negation denies the others, so the keyword is stated
+		{"成人しか出ない", "制約: 成人"},
+		{"成人以外は出さない", "制約: 成人"},
+		{"成人でない人物は出さない", "制約: 成人"},
+		{"成人ではない人は登場させない", "制約: 成人"},
+		{"20歳以上のみ登場する。未成年は出ない", "制約: 成人"},
 		// the keyword's own predicate (or the keyword itself) is negated
 		{"成人ではない", ""},
 		{"成人でもない設定", ""},
 		{"架空の人物で、成人ではない", "制約: 架空"},
 		{"着衣なし", ""},
 		{"成人じゃなくて未成年", ""},
+		{"成人ではない人物が主人公", ""},
+		{"成人ではないので出さない", ""},
 		{"架空ではなく実在", ""},
 		{"服は着ていない", ""},
 		{"ノンフィクション", ""},
@@ -42,6 +50,10 @@ func TestAbsorb_ARetractedConstraintLeavesTheInferredLine(t *testing.T) {
 		{"やっぱり架空ではない。着衣なしで", "テーマ: 朝のルーティン\n制約: 成人"},
 		{"成人ではなく架空の女性", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
 		{"商品は紹介しない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
+		// a restriction to the keyword is no retraction of it
+		{"成人しか出ない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
+		{"成人以外は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
+		{"成人でない人物は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
 	} {
 		t.Run(tt.text, func(t *testing.T) {
 			b := intake("テーマは朝のルーティン。成人で、架空の女性。服は着ている設定")

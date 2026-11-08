@@ -33,8 +33,9 @@ var (
 	whitespaceRe = regexp.MustCompile(`\s+`)
 	urlRe        = regexp.MustCompile(`https?://[^\s、。」）)]+`)
 	platformRe   = regexp.MustCompile(`\b(Instagram|YouTube|TikTok|Facebook|LINE|Twitter|Reels|Shorts)\s*(広告|投稿|リール|ショート|CM)?`)
-	// labelledRe reads "ターゲット: 主婦", "雰囲気は ゆるい": a value the user names by its item, whatever the value is.
-	labelledRe = regexp.MustCompile(`(?:^|[\s、。,])(ターゲット|対象|Target|雰囲気|トーン|Mood|目的|用途|Objective)(?:は|：|:)\s*([^\s。、,]{1,60})`)
+	// labelledRe reads "ターゲット: 主婦", "雰囲気は ゆるい": a value the user names by its item, whatever the value is. The item may follow a clause that
+	// runs on into it ("主人公は猫でターゲットは社会人").
+	labelledRe = regexp.MustCompile(`(?:^|[\s、。,]|[でて])(ターゲット|対象|Target|雰囲気|トーン|Mood|目的|用途|Objective)(?:は|：|:)\s*([^\s。、,]{1,60})`)
 	themeRe    = regexp.MustCompile(`テーマ(?:は|：|:)\s*([^。\n]{1,80})`)
 )
 
