@@ -76,7 +76,7 @@ func QuestionCard(m domain.ThreadMessage) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				if m.RefType != domain.RefBriefField || domain.BriefField(m.RefID).CanDelegate() {
+				if offersDelegate(m) {
 					templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, domain.DelegateOption, excerpt(m.ChatMessage), answerAttrs(m, domain.DelegateOption)).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err

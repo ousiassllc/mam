@@ -2,6 +2,7 @@ package briefing
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -46,23 +47,44 @@ func ReferenceProblem(u string) string {
 	return ""
 }
 
-// ApplyAnswer stores an answer; the Brief form's rule refuses it with the question again and the reason.
+// vagueSubjectProblem is why a Subject answer is refused when it names nothing concrete (#1114).
+const vagueSubjectProblem = "題材（主役）として読み取れませんでした。「ただの投稿動画」や「商品ではなく」のような否定・一般的な言い方では、Subject は決まりません。主役・題材を具体的に教えてください"
+
+// ApplyAnswer stores an answer the user gave to the question about f; the Brief form's rule refuses it with the question again and the reason.
+// An answer to the Subject question is the Subject only when it names something concrete: "A ではなく B" is B, while a denial or a general
+// phrase ("商品ではなく、ただの投稿動画") is refused and never replaces the Subject (#1114). A Subject answer also closes the open contradiction.
 func ApplyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.ChatMessage {
 	text = strings.TrimSpace(text)
 	if text == domain.DelegateOption && f.CanDelegate() {
 		brief.Delegate(f)
-	} else if problem := ValueProblem(f, text); problem != "" {
+		return nil
+	}
+	problem := ValueProblem(f, text)
+	if f == domain.BriefSubject && problem == "" && text != "" {
+		if text = subjectAnswer(text); text == "" {
+			problem = vagueSubjectProblem
+		}
+	}
+	if problem != "" {
 		again := Question(f, f.Label()+": "+problem+"\n"+f.Question())
+		if f == domain.BriefSubject && brief.ProposedSubject != "" {
+			again = SubjectConflict(*brief, f.Label()+": "+problem)
+		}
 		return &again
-	} else if text != "" {
+	}
+	if text != "" {
 		brief.Set(f, text)
+		if f == domain.BriefSubject {
+			brief.ProposedSubject = ""
+		}
 	}
 	return nil
 }
 
-// Changed reports whether b holds something a does not: a required item, a delegation, an attachment or the additional instruction.
+// Changed reports whether b holds something a does not: a required item, a delegation, an attachment, the additional instruction, where an item came from or the open contradiction.
 func Changed(a, b domain.Brief) bool {
 	return !slices.Equal(a.Assets, b.Assets) || !slices.Equal(a.References, b.References) ||
 		!slices.Equal(a.Delegated, b.Delegated) || a.AdditionalInstruction != b.AdditionalInstruction ||
+		!maps.Equal(a.Sources, b.Sources) || a.ProposedSubject != b.ProposedSubject ||
 		slices.ContainsFunc(domain.RequiredBriefFields(), func(f domain.BriefField) bool { return a.Get(f) != b.Get(f) })
 }

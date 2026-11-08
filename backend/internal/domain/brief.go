@@ -92,6 +92,14 @@ func BriefAspectRatios() []string { return []string{AspectRatio9x16, AspectRatio
 // IsBriefAspectRatio reports whether r is one of BriefAspectRatios.
 func IsBriefAspectRatio(r string) bool { return slices.Contains(BriefAspectRatios(), r) }
 
+// Where a Brief value came from (Brief.Sources, #1114); a value with no entry was decided by the user. BriefAdditionalInstruction keys the Additional Instruction.
+const (
+	BriefSourceUser            = "user"                  // typed, answered, edited or confirmed by the user
+	BriefSourceInferred        = "inferred_from_request" // read from the user's words by the extractor; not yet confirmed
+	BriefSourceRecommended     = "recommended"           // a tentative proposal derived from the purpose; an explicit value replaces it
+	BriefAdditionalInstruction = BriefField("additional_instruction")
+)
+
 // Brief is the Creative Brief stored in brief.content as JSON (F-01, F-25).
 type Brief struct {
 	ContentType           string `json:"content_type,omitempty"`
@@ -107,7 +115,13 @@ type Brief struct {
 	Assets     []string `json:"assets,omitempty"`     // image asset IDs
 	References []string `json:"references,omitempty"` // URLs or video asset IDs
 	Delegated  []string `json:"delegated,omitempty"`  // fields the user left to the AI
+	// Sources maps a field to its BriefSource*; ProposedSubject is the open contradiction: the user's words name another Subject than the one decided, without saying it is a change (the Brief keeps its Subject until the user picks).
+	Sources         map[string]string `json:"sources,omitempty"`
+	ProposedSubject string            `json:"proposed_subject,omitempty"`
 }
+
+// SourceOf is where the value of f came from: BriefSourceUser unless Sources says otherwise.
+func (b Brief) SourceOf(f BriefField) string { return cmp.Or(b.Sources[string(f)], BriefSourceUser) }
 
 // Get returns the value of a required field ("" when unset).
 func (b Brief) Get(f BriefField) string {
@@ -130,9 +144,10 @@ func (b Brief) Get(f BriefField) string {
 	return ""
 }
 
-// Set stores a value (trimmed) and clears any earlier delegation of the field.
+// Set stores a value the user decided (trimmed), which also clears its source and any earlier delegation of the field.
 func (b *Brief) Set(f BriefField, value string) {
 	value = strings.TrimSpace(value)
+	delete(b.Sources, string(f))
 	switch f {
 	case BriefContentType:
 		b.ContentType = value
@@ -167,28 +182,14 @@ func (b Brief) IsDelegated(f BriefField) bool { return slices.Contains(b.Delegat
 // CanDelegate reports whether the field may be left to the AI: every one but the Subject (#1108).
 func (f BriefField) CanDelegate() bool { return f != BriefSubject }
 
-// Missing returns the required fields neither set nor delegated, in question order. A delegated Subject is still missing (the AI would invent an unrelated topic) unless Additional Instruction names one (#1108).
+// Missing returns the required fields neither set nor delegated, in question order. A delegated Subject is still missing (the AI would invent an unrelated topic) unless Additional Instruction written by the user names one (#1108); constraints the extractor read from the request are not a topic (#1114).
 func (b Brief) Missing() []BriefField {
 	return slices.DeleteFunc(RequiredBriefFields(), func(f BriefField) bool {
 		if f == BriefSubject {
-			return strings.TrimSpace(b.Subject+b.AdditionalInstruction) != ""
+			return strings.TrimSpace(b.Subject) != "" || (strings.TrimSpace(b.AdditionalInstruction) != "" && b.SourceOf(BriefAdditionalInstruction) == BriefSourceUser)
 		}
 		return b.Get(f) != "" || b.IsDelegated(f)
 	})
-}
-
-// Merge copies every value set in extracted into b without overwriting what the user decided. Assets and References are appended without duplicates.
-func (b *Brief) Merge(extracted Brief) {
-	for _, f := range RequiredBriefFields() {
-		if v := extracted.Get(f); v != "" && b.Get(f) == "" && !b.IsDelegated(f) {
-			b.Set(f, v)
-		}
-	}
-	if b.AdditionalInstruction == "" {
-		b.AdditionalInstruction = extracted.AdditionalInstruction
-	}
-	b.Assets = appendUnique(b.Assets, extracted.Assets...)
-	b.References = appendUnique(b.References, extracted.References...)
 }
 
 // AttachAssets takes uploaded images into Assets and videos into References (UC-1).

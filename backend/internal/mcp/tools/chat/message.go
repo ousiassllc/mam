@@ -53,8 +53,8 @@ type Message struct {
 	Options          []string     `json:"options,omitempty" jsonschema:"question / escalation のクイック回答（そのまま post_chat_message の content にできる）"`
 	NonBlocking      bool         `json:"non_blocking,omitempty" jsonschema:"escalation: プロジェクトを止めていない相談"`
 	ReplyToMessageID string       `json:"reply_to_message_id,omitempty"`
-	RefType          string       `json:"ref_type,omitempty" jsonschema:"カードが指す対象の種類（brief_field, take, job, shot, script_version ...）"`
-	RefID            string       `json:"ref_id,omitempty" jsonschema:"ref_type の対象の ID。question(brief_field) では聞いている Brief の項目名、keyframe では asset_id"`
+	RefType          string       `json:"ref_type,omitempty" jsonschema:"カードが指す対象の種類（brief_field, brief_confirm, take, job, shot, script_version ...）"`
+	RefID            string       `json:"ref_id,omitempty" jsonschema:"ref_type の対象の ID。question(brief_field) では聞いている Brief の項目名、question(brief_confirm)（Brief 全体の「この内容でよいですか？」）では brief_confirm、keyframe では asset_id"`
 	ApprovalStatus   string       `json:"approval_status,omitempty" jsonschema:"approval: pending, approved or changes_requested"`
 	Open             bool         `json:"open" jsonschema:"question / escalation が回答を待っている"`
 	Pending          bool         `json:"pending" jsonschema:"このカードがまだ変わりうる（回答待ち・未承認・ジョブ実行中）。get_chat_message で最新を取り直す"`

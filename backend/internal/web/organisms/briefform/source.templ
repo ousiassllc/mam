@@ -1,0 +1,26 @@
+package briefform
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// hasTentative reports whether the Brief holds a value the user did not decide yet.
+func hasTentative(b domain.Brief) bool {
+	for _, source := range b.Sources {
+		if source != domain.BriefSourceUser {
+			return true
+		}
+	}
+	return false
+}
+
+// sourceBadge tells a value that is not the user's own: a recommended one is tentative, one read from the request is unconfirmed.
+templ sourceBadge(source string) {
+	switch source {
+		case domain.BriefSourceRecommended:
+			@atoms.BadgeWith(atoms.BadgeWarn, "推奨（仮）", templ.Attributes{"data-source": source})
+		case domain.BriefSourceInferred:
+			@atoms.BadgeWith(atoms.BadgeInfo, "依頼文から（未確認）", templ.Attributes{"data-source": source})
+	}
+}

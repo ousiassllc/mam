@@ -24,7 +24,7 @@ var (
 		"molecules/locktoggle/locktoggle.templ": "a toggle: the same lock is set again",
 		"molecules/notecard/notecard.templ":     "an edit of one note: the same text is saved again",
 		"organisms/branch_view.templ":           "an edit of one branch: the same values are saved again",
-		"organisms/brief_form.templ":            "the brief: the same text is saved again",
+		"organisms/briefform/form.templ":        "the brief: the same text is saved again",
 		"organisms/policy_form.templ":           "the quality policy: the same values are saved again",
 		"organisms/review_workspace.templ":      "the decision of a review: the same decision is saved again",
 		"organisms/seriesview/view.templ":       "the series: the same values are saved again",

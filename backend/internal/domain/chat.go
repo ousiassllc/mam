@@ -45,11 +45,12 @@ const (
 
 // chat_message.ref_type values understood by the chat. Cards refer to an entity (er.md §4); Approval cards use CheckpointRefType.
 const (
-	RefBriefField     = "brief_field" // Question card: ref_id is the BriefField being asked
-	RefAsset          = "asset"       // Keyframe card: ref_id is the asset ID
-	RefTake           = "take"        // Take card: ref_id is the take ID
-	RefJob            = "job"         // Progress card: ref_id is the job ID (status is read live)
-	RefShot           = "shot"        // Escalation card: ref_id is the shot ID (optional)
+	RefBriefField     = "brief_field"   // Question card: ref_id is the BriefField being asked
+	RefBriefConfirm   = "brief_confirm" // Question card: the batch summary "この内容でよいですか？" of the Brief (ref_id is RefBriefConfirm itself; #1114)
+	RefAsset          = "asset"         // Keyframe card: ref_id is the asset ID
+	RefTake           = "take"          // Take card: ref_id is the take ID
+	RefJob            = "job"           // Progress card: ref_id is the job ID (status is read live)
+	RefShot           = "shot"          // Escalation card: ref_id is the shot ID (optional)
 	RefNotePromotion  = "note_promotion"
 	RefContinue       = "continue"        // Question card of Continue: ref_id is the completed shot ID
 	RefExport         = "export"          // Text notice of a finished export: ref_id is the export ID (the chat draws its download link)

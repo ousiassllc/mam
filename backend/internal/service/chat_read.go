@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/chatbrief"
 )
 
 // ChatService runs the chat thread of a Project (F-30): the user's messages, the
@@ -75,9 +75,9 @@ func (s *ChatService) workspaceOf(ctx context.Context, projectID string, msgs []
 	return ws, nil
 }
 
-// isBriefQuestion reports whether m is the question card of a Brief item.
+// isBriefQuestion reports whether m is the question card of a Brief item or the summary card of the Brief.
 func isBriefQuestion(m domain.ChatMessage) bool {
-	return m.Kind == domain.KindQuestion && m.RefType == domain.RefBriefField
+	return m.Kind == domain.KindQuestion && (m.RefType == domain.RefBriefField || m.RefType == domain.RefBriefConfirm)
 }
 
 func isAnswerable(k domain.MessageKind) bool {
@@ -177,6 +177,7 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 
 	var replied map[string]bool
 	var brief domain.Brief
+	var state domain.ProjectState
 	if needsAnswer {
 		if replied, err = s.chat.RepliedMessageIDs(ctx, projectID); err != nil {
 			return nil, err
@@ -184,6 +185,11 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		if brief, err = s.projects.GetBrief(ctx, projectID); err != nil {
 			return nil, notFound(err)
 		}
+		project, err := s.projects.Get(ctx, projectID)
+		if err != nil {
+			return nil, notFound(err)
+		}
+		state = project.State
 	}
 
 	views := make([]domain.ThreadMessage, len(msgs))
@@ -208,11 +214,10 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		}
 		switch m.Kind {
 		case domain.KindQuestion:
-			f := domain.BriefField(m.RefID)
 			if m.RefType == domain.RefContinue {
 				v.Open = !replied[m.ID]
 			} else {
-				v.Open = !replied[m.ID] && slices.Contains(brief.Missing(), f)
+				v.Open = chatbrief.Open(m, replied[m.ID], brief, state)
 			}
 		case domain.KindEscalation:
 			v.Open = !replied[m.ID]

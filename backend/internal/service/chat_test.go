@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
@@ -79,7 +80,7 @@ func lastMessage(t testenv.TestingT, msgs []domain.ThreadMessage) domain.ThreadM
 	return msgs[len(msgs)-1]
 }
 
-func TestCreateProject_ExtractsBriefAndAsksForTheFirstMissingItem(t *testing.T) {
+func TestCreateProject_ExtractsBriefAndShowsOneSummaryToConfirm(t *testing.T) {
 	f := newFixture(t)
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
 	assert.Equal(t, domain.StateDraft, p.State)
@@ -97,9 +98,9 @@ func TestCreateProject_ExtractsBriefAndAsksForTheFirstMissingItem(t *testing.T) 
 	assert.Equal(t, domain.RoleUser, msgs[0].Role)
 	q := msgs[1]
 	assert.Equal(t, domain.KindQuestion, q.Kind)
-	assert.Equal(t, string(domain.BriefObjective), q.RefID, "Content Type and Subject were extracted; Objective is next")
+	assert.Equal(t, domain.RefBriefConfirm, q.RefType, "the Subject was extracted: one summary to confirm, not a chain of questions (#1114)")
 	assert.True(t, q.Open)
-	assert.NotEmpty(t, domain.DecodeCardBody(q.Content).Options)
+	assert.Equal(t, []string{briefing.ConfirmOption}, domain.DecodeCardBody(q.Content).Options)
 }
 
 func TestCreateProject_TakesAttachmentsIntoAssetsAndReferences(t *testing.T) {
@@ -172,19 +173,21 @@ func TestCreateProject_AcceptsEveryAllowedFormat(t *testing.T) {
 	assert.Len(t, f.thread(t, p.ID)[0].Attachments, 7)
 }
 
-func TestPostMessage_AnswersTheOpenQuestionAndAsksTheNextOne(t *testing.T) {
+// Confirming the summary makes the Brief the user's: what nobody decided is left to the AI, and nothing is asked again.
+func TestPostMessage_ConfirmingTheSummaryLeavesOpenItemsToTheAI(t *testing.T) {
 	f := newFixture(t)
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
-	q := lastMessage(t, f.thread(t, p.ID)) // Objective
+	q := lastMessage(t, f.thread(t, p.ID)) // the summary
 
-	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
-	require.Len(t, ws.Messages, 2, "the user's answer and the next question")
+	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: briefing.ConfirmOption, ReplyToMessageID: q.ID})
+	require.Len(t, ws.Messages, 2, "the user's answer and the notice")
 	assert.Equal(t, q.ID, ws.Messages[0].ReplyTo.ID)
-	assert.Equal(t, "Instagram広告", f.brief(t, p.ID).Objective)
-	assert.Equal(t, string(domain.BriefTarget), ws.Messages[1].RefID)
-	thread := f.thread(t, p.ID)
-	assert.False(t, thread[1].Open, "the answered question is closed")
-	assert.True(t, thread[len(thread)-1].Open)
+	b := f.brief(t, p.ID)
+	assert.Empty(t, b.Missing())
+	assert.ElementsMatch(t, []string{"objective", "target"}, b.Delegated)
+	assert.Equal(t, domain.BriefSourceUser, b.SourceOf(domain.BriefSubject), "the confirmed values are the user's")
+	assert.Contains(t, ws.Messages[1].Content, "Brief が揃いました")
+	assert.False(t, f.thread(t, p.ID)[1].Open, "the answered summary is closed")
 }
 
 // A stale screen (or a double click) answers a card that was answered already: the text must not
@@ -193,12 +196,12 @@ func TestPostMessage_ReplyToAnAnsweredQuestionIsAConflictAndWritesNothing(t *tes
 	ctx := context.Background()
 	f := newFixture(t)
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
-	q := lastMessage(t, f.thread(t, p.ID)) // Objective
-	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
+	q := lastMessage(t, f.thread(t, p.ID)) // the summary
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: briefing.ConfirmOption, ReplyToMessageID: q.ID})
 	before := f.brief(t, p.ID)
 	messages := len(f.thread(t, p.ID))
 
-	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "YouTube広告", ReplyToMessageID: q.ID})
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "ターゲット: 主婦", ReplyToMessageID: q.ID})
 	assert.ErrorIs(t, err, service.ErrConflict)
 	assert.Equal(t, before, f.brief(t, p.ID), "the Brief is unchanged")
 	assert.Len(t, f.thread(t, p.ID), messages, "nothing is added to the thread")
@@ -213,27 +216,6 @@ func TestPostMessage_FreeInputAnswersTheNewestOpenQuestionAndExtractsOtherItems(
 	assert.Equal(t, "商品CM", b.ContentType)
 	assert.Equal(t, "美容液", b.Subject)
 	assert.Equal(t, "20〜30代女性", b.Target)
-}
-
-func TestPostMessage_DelegatingLeavesTheItemToTheAIAndMovesOn(t *testing.T) {
-	f := newFixture(t)
-	p := f.createProject(t, "美容液の動画を作りたい") // the Subject is taken from it: it cannot be left to the AI (#1108)
-
-	var last domain.ThreadMessage
-	for range domain.RequiredBriefFields() {
-		last = lastMessage(t, f.thread(t, p.ID))
-		if last.Kind != domain.KindQuestion {
-			break
-		}
-		postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: domain.DelegateOption, ReplyToMessageID: last.ID})
-	}
-
-	brief := f.brief(t, p.ID)
-	assert.Empty(t, brief.Missing())
-	assert.Len(t, brief.Delegated, len(domain.RequiredBriefFields())-1)
-	done := lastMessage(t, f.thread(t, p.ID))
-	assert.Equal(t, domain.KindText, done.Kind)
-	assert.Contains(t, done.Content, "Brief が揃いました")
 }
 
 func TestPostMessage_KeepsWorkingWhileTheProjectIsBusyAndDoesNotTouchTheBrief(t *testing.T) {

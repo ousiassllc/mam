@@ -7,6 +7,7 @@
 package briefing
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"sort"
@@ -31,7 +32,10 @@ var (
 	subjectRe    = regexp.MustCompile(`(?:^|[\s、。,を])([^\s、。,！!？?「」のを]{1,30})の(?:縦型|横型|縦長|横長|正方形|\d+\s*秒|CM|動画|広告|PV|ショート|アニメ|ドラマ|ムービー)`)
 	whitespaceRe = regexp.MustCompile(`\s+`)
 	urlRe        = regexp.MustCompile(`https?://[^\s、。」）)]+`)
-	platformRe   = regexp.MustCompile(`\b(Instagram|YouTube|TikTok|Facebook|LINE|Twitter)\s*(広告|投稿|リール|ショート|CM)?`)
+	platformRe   = regexp.MustCompile(`\b(Instagram|YouTube|TikTok|Facebook|LINE|Twitter|Reels|Shorts)\s*(広告|投稿|リール|ショート|CM)?`)
+	// labelledRe reads "ターゲット: 主婦", "雰囲気は ゆるい": a value the user names by its item, whatever the value is.
+	labelledRe = regexp.MustCompile(`(?:^|[\s、。,])(ターゲット|対象|Target|雰囲気|トーン|Mood|目的|用途|Objective)(?:は|：|:)\s*([^\s。、,]{1,60})`)
+	themeRe    = regexp.MustCompile(`テーマ(?:は|：|:)\s*([^。\n]{1,80})`)
 )
 
 type keywordRule struct {
@@ -47,7 +51,15 @@ var contentTypeRules = []keywordRule{
 	{"SNS/ショート動画", []string{"SNS", "ショート動画", "リール", "Reels", "Shorts", "TikTok"}},
 }
 
-var objectiveKeywords = []string{"ブランドサイト", "Webサイト", "店頭", "展示会", "採用", "ECサイト"}
+var objectiveKeywords = []string{"ブランドサイト", "Webサイト", "店頭", "展示会", "採用", "ECサイト", "認知拡大", "集客", "宣伝", "ファン獲得", "フォロワー獲得"}
+
+// constraintRules are the constraints the extractor keeps in the Additional Instruction under their canonical label, so that the
+// Producer, Writer and Director are told them as fixed conditions (#1114).
+var constraintRules = []keywordRule{
+	{"成人", []string{"成人", "大人の", "18歳以上", "20歳以上"}},
+	{"架空", []string{"架空", "フィクション", "実在しない", "実在の人物ではない"}},
+	{"着衣", []string{"着衣", "服を着", "服は着", "服装あり", "露出なし", "露出しない"}},
+}
 
 var targetKeywords = []string{"ファミリー層", "ファミリー", "学生", "主婦", "ビジネスパーソン", "経営者"}
 
@@ -69,12 +81,14 @@ var ratioKeywords = []struct {
 func (RuleExtractor) Extract(text string) domain.Brief {
 	var b domain.Brief
 	b.ContentType = firstRule(text, contentTypeRules)
-	b.Objective = objective(text)
-	b.Subject = subject(text)
-	b.Target = target(text)
+	b.Objective = cmp.Or(labelled(text, domain.BriefObjective), objective(text))
+	b.Subject = statedSubject(text)
+	// The age and gender of the protagonist ("30代女性インフルエンサーを主人公に") are not the audience.
+	b.Target = cmp.Or(labelled(text, domain.BriefTarget), target(strings.Replace(text, b.Subject, "", 1)))
 	b.Duration = duration(text)
 	b.AspectRatio = aspectRatio(text)
-	b.Mood = mood(text)
+	b.Mood = cmp.Or(labelled(text, domain.BriefMood), mood(text))
+	b.AdditionalInstruction = instruction(text)
 	for _, u := range urlRe.FindAllString(text, -1) {
 		// A URL the Brief form would refuse stays out, or it would block saving the form later.
 		if u = strings.TrimRight(u, ".,;"); ReferenceProblem(u) == "" {
@@ -84,21 +98,41 @@ func (RuleExtractor) Extract(text string) domain.Brief {
 	return b
 }
 
-// subject is the noun in front of "の縦型 / の15秒 / のCM ..."; a content-type word
-// there ("アニメの動画") names the kind of video, not the subject.
-func subject(text string) string {
-	m := subjectRe.FindStringSubmatch(text)
-	if m == nil {
-		return ""
-	}
-	for _, r := range contentTypeRules {
-		for _, k := range r.keywords {
-			if strings.Contains(m[1], k) {
-				return ""
-			}
+// labelledFields maps the labels labelledRe reads to the Brief item they name.
+var labelledFields = map[string]domain.BriefField{
+	"ターゲット": domain.BriefTarget, "対象": domain.BriefTarget, "Target": domain.BriefTarget,
+	"雰囲気": domain.BriefMood, "トーン": domain.BriefMood, "Mood": domain.BriefMood,
+	"目的": domain.BriefObjective, "用途": domain.BriefObjective, "Objective": domain.BriefObjective,
+}
+
+// labelled is the value the text gives to the item f by name ("ターゲット: 主婦"), or "".
+func labelled(text string, f domain.BriefField) string {
+	for _, m := range labelledRe.FindAllStringSubmatch(text, -1) {
+		if labelledFields[m[1]] == f {
+			return trimTail(m[2])
 		}
 	}
-	return m[1]
+	return ""
+}
+
+// instruction is the theme and the constraints the text states, one per line: "テーマ: …", "制約: 成人・架空".
+func instruction(text string) string {
+	var lines []string
+	if m := themeRe.FindStringSubmatch(text); m != nil {
+		if theme := strings.TrimSpace(m[1]); theme != "" {
+			lines = append(lines, ThemePrefix+theme)
+		}
+	}
+	var labels []string
+	for _, r := range constraintRules {
+		if firstRule(text, []keywordRule{r}) != "" {
+			labels = append(labels, r.value)
+		}
+	}
+	if len(labels) > 0 {
+		lines = append(lines, ConstraintPrefix+strings.Join(labels, "・"))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func firstRule(text string, rules []keywordRule) string {

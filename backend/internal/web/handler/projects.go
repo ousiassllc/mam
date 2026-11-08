@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/briefform"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -101,15 +102,14 @@ func BriefPage(svc *service.ProjectService) gin.HandlerFunc {
 		}
 		data := briefFormData(view, nil, false)
 		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.BriefForm(data))
+			render(c, http.StatusOK, briefform.Form(data))
 			return
 		}
 		render(c, http.StatusOK, pages.BriefPage(middleware.CSRFToken(c), data))
 	}
 }
 
-// UpdateBrief saves the edited Brief (PUT /projects/:id/brief). Invalid input
-// re-renders the form with the user's input and the error (422).
+// UpdateBrief saves the edited Brief (PUT /projects/:id/brief); invalid input re-renders the form with the input and the error (422).
 func UpdateBrief(svc *service.ProjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		form := service.BriefForm{
@@ -122,21 +122,21 @@ func UpdateBrief(svc *service.ProjectService) gin.HandlerFunc {
 		}
 		view, err := svc.UpdateBrief(c.Request.Context(), c.Param("id"), form)
 		if err == nil {
-			render(c, http.StatusOK, organisms.BriefForm(briefFormData(view, nil, true)))
+			render(c, http.StatusOK, briefform.Form(briefFormData(view, nil, true)))
 			return
 		}
 		if invalid := asValidation(err); invalid != nil {
 			data := briefFormData(view, invalid, false)
 			data.ReferencesText = form.References
-			render(c, http.StatusUnprocessableEntity, organisms.BriefForm(data))
+			render(c, http.StatusUnprocessableEntity, briefform.Form(data))
 			return
 		}
 		toast(c, err)
 	}
 }
 
-func briefFormData(view service.BriefView, invalid *service.ValidationError, saved bool) organisms.BriefFormData {
-	d := organisms.BriefFormData{Project: view.Project, Brief: view.Brief, Assets: view.Assets, Saved: saved}
+func briefFormData(view service.BriefView, invalid *service.ValidationError, saved bool) briefform.Data {
+	d := briefform.Data{Project: view.Project, Brief: view.Brief, Assets: view.Assets, Saved: saved}
 	if invalid != nil {
 		d.Errors = map[string]string{invalid.Field: invalid.Message}
 	}

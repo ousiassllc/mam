@@ -19,7 +19,9 @@ import (
 const systemPrefix = "あなたは AI 動画制作チームの一員です。" +
 	"与えられた Creative Brief に忠実に、指示された JSON オブジェクトだけを返してください。" +
 	"説明文・前置き・コードフェンスは付けないでください。" +
-	"値の文章は日本語で書き、Brief に無い固有名詞や事実（商品の効能・価格・受賞歴など）を作らないでください。\n\n"
+	"値の文章は日本語で書き、Brief に無い固有名詞や事実（商品の効能・価格・受賞歴など）を作らないでください。" +
+	"Brief の Subject（主人公・題材）と、追加指示にある制約（成人・架空・着衣など）は固定の制約です。" +
+	"別の人物・商品・題材に置き換えたり、性別や年齢などの設定を変えたり、制約を省いたりしないでください。\n\n"
 
 // templateGuide is the emphasis of each Production Template (spec/spec.md §19) followed by its
 // evaluation axes from the highest priority to the lowest.
@@ -63,8 +65,14 @@ func briefText(b domain.Brief, t domain.ProductionTemplate) string {
 		}
 		fmt.Fprintf(&sb, "- %s: %s\n", f.Label(), v)
 	}
+	if b.Subject != "" {
+		fmt.Fprintf(&sb, "- 固定の制約: 主人公・題材は「%s」。脚本・構成・Scene / Shot はこの主人公・題材で作り、別の人物・商品・題材に変えない\n", b.Subject)
+	}
 	if b.AdditionalInstruction != "" {
-		fmt.Fprintf(&sb, "- 追加指示: %s\n", b.AdditionalInstruction)
+		fmt.Fprintf(&sb, "- 追加指示（テーマや制約を含む。固定）: %s\n", strings.ReplaceAll(b.AdditionalInstruction, "\n", " / "))
+	}
+	if r := recommendedText(b); r != "" {
+		fmt.Fprintf(&sb, "- 仮の値（目的から決めた推奨値。ユーザーが明示した指定ではない）: %s\n", r)
 	}
 	if b.Style != "" {
 		fmt.Fprintf(&sb, "- スタイル（Series 正本。全話で統一する）: %s\n", b.Style)
@@ -77,6 +85,17 @@ func briefText(b domain.Brief, t domain.ProductionTemplate) string {
 	}
 	fmt.Fprintf(&sb, "- 制作テンプレート: %s\n", templateGuide(t))
 	return sb.String()
+}
+
+// recommendedText names the items whose value is only a recommendation, for the prompt ("" when none is).
+func recommendedText(b domain.Brief) string {
+	var names []string
+	for _, f := range domain.RequiredBriefFields() {
+		if b.Get(f) != "" && b.SourceOf(f) == domain.BriefSourceRecommended {
+			names = append(names, f.Label())
+		}
+	}
+	return strings.Join(names, "・")
 }
 
 // feedbackText is the user's change request and the version it applies to, or "".

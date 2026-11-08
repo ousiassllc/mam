@@ -43,7 +43,7 @@ func TestListChatMessages_ReadsTheThreadAndFollowsItWithACursor(t *testing.T) {
 	assert.Equal(t, "user", all.Messages[0].Role)
 	q := all.Messages[1]
 	assert.Equal(t, "question", q.Kind)
-	assert.Equal(t, "objective", q.RefID, "the first item the extraction left open")
+	assert.Equal(t, "brief_confirm", q.RefID, "the Brief summary the extraction led to (#1114)")
 	assert.True(t, q.Open)
 	assert.True(t, q.Pending)
 	assert.NotEmpty(t, q.Options, "the quick answers are returned decoded, not as the stored JSON")
@@ -56,7 +56,7 @@ func TestListChatMessages_ReadsTheThreadAndFollowsItWithACursor(t *testing.T) {
 	assert.Equal(t, all.LastMessageID, idle.LastMessageID, "nothing new: the cursor stays")
 
 	var posted chat.ThreadOutput
-	env.CallOK("post_chat_message", map[string]any{"project_id": p.ID, "content": "Instagram広告", "reply_to_message_id": q.ID}, &posted)
+	env.CallOK("post_chat_message", map[string]any{"project_id": p.ID, "content": "この内容で進める", "reply_to_message_id": q.ID}, &posted)
 	fresh := list(t, env, p.ID, all.LastMessageID)
 	require.NotEmpty(t, fresh.Messages)
 	assert.Equal(t, fresh.Messages[0].ID, posted.Messages[0].ID, "only what is after the cursor")

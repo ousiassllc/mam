@@ -24,8 +24,8 @@ type CreateProjectInput struct {
 }
 
 // Create starts a Project from the user's first message: the Brief is extracted from
-// it, attachments become Assets/References, and the AI answers in the new thread
-// (the next Question card, or the completion notice).
+// it (with where each value came from and the recommended Duration / Aspect Ratio of the platform), attachments become
+// Assets/References, and the AI answers in the new thread (the Subject question, or the Brief summary to confirm; #1114).
 func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (domain.Project, error) {
 	content := strings.TrimSpace(in.Content)
 	if err := validateMessage(content, len(in.Uploads) > 0); err != nil {
@@ -38,10 +38,12 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 	}
 	assets := assetsOf(stored)
 
-	brief := s.extractor.Extract(content)
+	var brief domain.Brief
+	briefing.Absorb(&brief, s.extractor.Extract(content), content)
+	briefing.Recommend(&brief)
 	brief.AttachAssets(assets)
 
-	messages := assignIDs([]domain.ChatMessage{userText(content, "", assetIDs(assets)), briefFollowUp(brief)})
+	messages := assignIDs([]domain.ChatMessage{userText(content, "", assetIDs(assets)), briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)})
 	project := domain.Project{
 		ID: projectID, State: domain.StateDraft, Mode: domain.ModeAuto,
 		ConfirmationLevel:  domain.ConfirmKeyCheck,
@@ -100,6 +102,10 @@ type BriefForm struct {
 	Values                map[domain.BriefField]string
 	AdditionalInstruction string
 	References            string
+	// KeepProposals leaves the values the form does not change as they are (recommended or extracted ones stay unconfirmed): a partial
+	// update by a client that did not show the user the whole Brief. Saved from the Brief form, the user saw every value, so all of them
+	// become the user's (#1114).
+	KeepProposals bool
 }
 
 // UpdateBrief validates and saves the edited Brief and records the change in the thread.
@@ -110,12 +116,8 @@ func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form
 	if err != nil {
 		return BriefView{}, err
 	}
-	edited := view.Brief
-	// A field edited to empty is "not decided" again: the AI asks about it unless it was delegated.
-	for _, f := range domain.RequiredBriefFields() {
-		edited.Set(f, form.Values[f])
-	}
-	edited.AdditionalInstruction = strings.TrimSpace(form.AdditionalInstruction)
+	edited := briefing.Clone(view.Brief)
+	briefing.ApplyEdit(&edited, form.Values, form.AdditionalInstruction, !form.KeepProposals)
 	urls, err := ParseReferenceURLs(form.References)
 	if err != nil {
 		view.Brief = edited
@@ -226,6 +228,7 @@ func (s *ProjectService) SetConfirmationLevel(ctx context.Context, projectID str
 		return domain.Project{}, notFound(err)
 	}
 	s.publishCreated(projectID, msgs)
+	s.kick(ctx, projectID) // a Brief waiting for confirmation does not wait at FULL AUTO (#1114)
 	return s.getProject(ctx, projectID)
 }
 

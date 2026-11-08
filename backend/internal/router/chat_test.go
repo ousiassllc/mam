@@ -110,9 +110,9 @@ func TestCreateProject_StartsTheThreadWithBriefQuestionAndAttachments(t *testing
 	assert.Contains(t, body, `data-next-url="/projects/`+id+`/messages?after=`, "every message says where what is newer is fetched")
 	assert.Contains(t, body, "美容液の縦型15秒CMを作りたい")
 	assert.Contains(t, body, `data-kind="question"`)
-	assert.Contains(t, body, "確認です。動画の目的")
-	assert.Contains(t, body, ">Instagram広告<", "option buttons")
-	assert.Contains(t, body, ">AIに任せる<", "the delegate button")
+	assert.Contains(t, body, "この内容でよいですか？", "the Brief summary is asked once (#1114)")
+	assert.Contains(t, body, ">この内容で進める<", "the confirm button")
+	assert.NotContains(t, body, ">AIに任せる<", "the summary is not a question that can be left to the AI")
 	assert.Contains(t, body, `/projects/`+id+`/assets/`, "the attachment is shown")
 	assert.Contains(t, body, "下書き（Brief 入力中）")
 
