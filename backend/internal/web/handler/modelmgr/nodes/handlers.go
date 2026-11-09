@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	card "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/nodecard"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/reason"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -31,6 +32,7 @@ func Register(engine *gin.Engine, svc *modelnodes.Service) {
 	engine.GET(paths.ModelManagerPart("nodes"), h.Section)
 	engine.GET(paths.ModelManagerPart("nodes", ":id"), h.Node)
 	engine.GET(paths.ModelManagerPart("nodes", ":id", "detail"), h.Detail)
+	engine.GET(paths.ModelManagerPart("nodes", ":id", "blocked"), h.Reason)
 	engine.GET(paths.ModelManagerPart("nodes", ":id", "consent"), h.Consent)
 	engine.POST(paths.ModelManagerPart("nodes", ":id", "install"), h.Install)
 	engine.POST(paths.ModelManagerPart("nodes", ":id", "cancel"), h.Cancel)
@@ -87,6 +89,27 @@ func (h Handlers) Section(c *gin.Context) {
 // that ended, the card says how.
 func (h Handlers) Node(c *gin.Context) {
 	h.nodeCard(c, http.StatusOK, c.Param("id"), c.Query("job"), nil)
+}
+
+// Reason answers GET /model-manager/nodes/:id/blocked with the popup of why mam does not install the node (install_blocked, in the words of the allowlist) and what
+// that means for the models that need it (#1118). It only explains: the install of the node stays refused by the service whatever is asked here. A node mam can
+// install has no such reason, so it is 404.
+func (h Handlers) Reason(c *gin.Context) {
+	n, err := nodeData(c.Request.Context(), h.svc, c.Param("id"), "")
+	if err != nil {
+		status, msg := refuse(c, err)
+		render(c, status, modal.Notice("追加ノード", msg))
+		return
+	}
+	if n.Blocked == "" {
+		render(c, http.StatusNotFound, modal.Notice(n.Name, "このノードには、導入できない理由がありません"))
+		return
+	}
+	render(c, http.StatusOK, reason.Body(reason.Popup{
+		Title: "「" + n.Name + "」を導入できない理由と対処", Lead: "このノードは、今の mam では導入できません。",
+		Items:  []reason.Item{{Text: n.Blocked}},
+		Remedy: "mam は Python の依存を自動で入れません。導入できるようになるまで、このノードと、このノードを必要とするモデルは導入できません。",
+	}))
 }
 
 // Detail answers GET /model-manager/nodes/:id/detail with the modal of the card: the pinned commit and SHA-256, the license and the answer

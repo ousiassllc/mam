@@ -8,12 +8,16 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/catalogfilter"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/licenseview"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/modeldetail"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/oob"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/reason"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // Models answers GET /model-manager/models, which the list polls while an install runs. The jobs it asks about
@@ -45,6 +49,44 @@ func (h Handlers) ModelDetail(c *gin.Context) {
 	hasToken, tokenErr := h.Svc.HasHuggingFaceToken()
 	md := modelData(ctx, h.Svc, mmview.EntryOf(h.Svc, m), h.Svc.Engine().FreeBytes, mmview.GPUVRAM(ctx, h.Svc), tokenErr == nil && !hasToken)
 	render(c, http.StatusOK, modeldetail.Detail(md))
+}
+
+// ModelReason answers GET /model-manager/models/:id/blocked with the popup of why the model cannot be installed now and what to do (#1118): the custom
+// nodes its workflows need that the engine does not load, each with what is wrong with it, and the link to the screen of the nodes. It only explains: it
+// starts nothing, and the install of the model stays refused (InstallModel) whatever is asked here. A model that nothing is in the way of is 404, so the
+// popup never invents a reason.
+func (h Handlers) ModelReason(c *gin.Context) {
+	m, err := h.Svc.Model(c.Param("id"))
+	if err != nil {
+		status, msg := refuse(c, err)
+		render(c, status, modal.Notice("モデル", msg))
+		return
+	}
+	problems := nodegate.Problems(h.Svc.Nodes, m.RequiresNodes)
+	if len(problems) == 0 || m.State == "installed" {
+		render(c, http.StatusNotFound, modal.Notice(m.Name, "このモデルには、導入できない理由がありません"))
+		return
+	}
+	render(c, http.StatusOK, reason.Body(nodesPopup(m.Name, problems)))
+}
+
+// nodesPopup is the popup of a model that waits for custom nodes: a node mam does not install at all says why in the words of the allowlist, and the
+// others are to be installed on the screen of the nodes. Nothing here says a dependency is resolved or that mam will install one by itself.
+func nodesPopup(model string, problems []nodegate.Problem) reason.Popup {
+	p := reason.Popup{
+		Title: "「" + model + "」を導入できない理由と対処", Lead: "このモデルを使うには、追加ノードが要ります。",
+		Link: &reason.Link{Href: paths.ModelManagerPart(mmcat.CustomNodes) + "#" + view.NodesID, Label: "追加ノードの画面へ"},
+	}
+	p.Remedy = "「追加ノード」の画面で、足りないノードを導入してください。導入が終わると、このモデルを導入できます。"
+	for _, pr := range problems {
+		text := "導入されていません。"
+		if pr.Blocked != "" {
+			text = "今の mam では導入できません。" + pr.Blocked
+			p.Remedy = "このモデルが必要とする追加ノードは、今の mam では導入できません。mam は Python の依存を自動で入れません。導入できるようになるまで、このモデルは導入できません。ノードごとの状態は「追加ノード」の画面で確かめられます。"
+		}
+		p.Items = append(p.Items, reason.Item{Name: "追加ノード「" + pr.Name + "」", Text: text})
+	}
+	return p
 }
 
 // Consent answers GET /model-manager/models/:id/consent with the license dialog (what the install button of a model that

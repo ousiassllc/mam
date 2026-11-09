@@ -296,17 +296,20 @@ func TestLinksBetweenCategoriesPointToThePageOfTheSection(t *testing.T) {
 	assert.NotContains(t, gated, `href="#mm-hf"`)
 }
 
-// A model that needs a custom node says so on its card and links to the page of the custom nodes, where the node is installed.
+// A model that needs a custom node says so with the badge on its card and has the button of the popup that links to the page of the custom nodes, where the
+// node is installed (#1118: the long text and the link are in the popup, not on the card).
 func TestAModelThatNeedsANodeLinksToThePageOfTheNodes(t *testing.T) {
 	s := screentest.New(t, mmtest.WithGGUFModel(nodes.New(store.Layout{Root: filepath.Join(t.TempDir(), "comfyui")})))
 	s.Rig.InstallEngine()
 
 	list := s.Get(paths.ModelManagerPart("models")).Body.String()
-	assert.Contains(t, list, `href="/model-manager/custom-nodes#mm-nodes" data-testid="mm-node-needed-link"`)
-	// The name of the card is a button whose click area covers the card: the link is raised above it, or a click on it opens the detail instead (#1110).
-	link := regexp.MustCompile(`<a [^>]*data-testid="mm-node-needed-link"[^>]*>`).FindString(list)
-	require.NotEmpty(t, link)
-	assert.Regexp(t, `class="[^"]*\brelative\b[^"]*"`, link)
-	assert.Regexp(t, `class="[^"]*\bz-raised\b[^"]*"`, link)
-	assert.Contains(t, s.PageOf(mmcat.ImageVideo), `data-testid="mm-node-needed-link"`)
+	assert.NotContains(t, list, `data-testid="mm-node-needed-link"`, "the link is in the popup")
+	// The name of the card is a button whose click area covers the card: the button is in the row of the card's buttons, which is raised above it, or a
+	// click on it opens the detail instead (#1110).
+	row := regexp.MustCompile(`<div class="relative z-raised mt-auto[^"]*">(?:[^<]|<[^/]|</[^d])*data-testid="mm-reason-open"`).FindString(list)
+	assert.NotEmpty(t, row, "the reason button is in the raised row of buttons")
+	assert.Contains(t, s.PageOf(mmcat.ImageVideo), `data-testid="mm-reason-open"`)
+
+	popup := s.Get(paths.ModelManagerPart("models", mmtest.GGUFModelID, "blocked")).Body.String()
+	assert.Contains(t, popup, `href="/model-manager/custom-nodes#mm-nodes"`)
 }

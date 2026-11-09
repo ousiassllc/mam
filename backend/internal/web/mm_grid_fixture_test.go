@@ -10,9 +10,11 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/nodecat"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/nodecard"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/reason"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/runtimecard"
 )
 
@@ -82,10 +84,29 @@ func gridNodeNeededModel() modelmgr.Catalog {
 	}}}
 }
 
+// gridReasonPopup is the popup the reason button of gridNodeNeededModel opens (#1118): the longest reason of the allowlist (ComfyUI-GGUF, which mam does not install) and
+// the link to the nodes.
+func gridReasonPopup() reason.Popup {
+	var long string
+	for _, c := range nodecat.Default().Nodes {
+		if c.ID == "comfyui-gguf" {
+			long = c.InstallBlocked
+		}
+	}
+	return reason.Popup{
+		Title: "「ノードが要るモデル」を導入できない理由と対処", Lead: "このモデルを使うには、追加ノードが要ります。",
+		Items:  []reason.Item{{Name: "追加ノード「ComfyUI-GGUF」", Text: "今の mam では導入できません。" + long}},
+		Remedy: "このモデルが必要とする追加ノードは、今の mam では導入できません。mam は Python の依存を自動で入れません。導入できるようになるまで、このモデルは導入できません。",
+		Link:   &reason.Link{Href: "/model-manager/custom-nodes#mm-nodes", Label: "追加ノードの画面へ"},
+	}
+}
+
 func TestModelManagerGridFixtures_AreWhatTheComponentsRender(t *testing.T) {
 	checkFixtures(t, map[string]templ.Component{
 		"layout-mm-grid-node-descriptions.json": gridNodeDescriptions(t),
 		"layout-mm-card-node-needed.html":       modelmgr.Body(mmcat.ImageVideo, modelmgr.Data{Catalog: gridNodeNeededModel()}),
+		"mm-reason-popup.html":                  reason.Body(gridReasonPopup()),
+		"mm-reason-host.html":                   modal.Host(),
 		"layout-mm-grid-custom-nodes.html":      modelmgr.Body(mmcat.CustomNodes, modelmgr.Data{Nodes: nodecard.NodesSection(nodecard.Section{Items: gridNodes()})}),
 		"layout-mm-grid-local-runtimes.html":    modelmgr.Body(mmcat.LocalRuntimes, modelmgr.Data{Runtimes: runtimecard.RuntimesSection(runtimecard.Runtimes{Items: gridRuntimes()})}),
 		"layout-mm-grid-hf-external.html":       modelmgr.Body(mmcat.HFExternal, modelmgr.Data{HFImport: modelmgr.HFImport{Kind: "text-to-image", Models: modelmgr.HFModelList{Models: gridHFModels()}}}),
