@@ -1,6 +1,8 @@
-package organisms
+// Package briefform is the form that confirms and edits the Creative Brief (auxiliary view).
+package briefform
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -9,8 +11,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// BriefFormData is the state of the Brief editing form. Errors are keyed by form field name.
-type BriefFormData struct {
+// Data is the state of the Brief editing form. Errors are keyed by form field name.
+type Data struct {
 	Project domain.Project
 	Brief   domain.Brief
 	Assets  []domain.Asset
@@ -20,7 +22,7 @@ type BriefFormData struct {
 	ReferencesText string
 }
 
-func referencesText(d BriefFormData) string {
+func referencesText(d Data) string {
 	if d.ReferencesText != "" {
 		return d.ReferencesText
 	}
@@ -34,8 +36,9 @@ func referencesText(d BriefFormData) string {
 	return strings.Join(urls, "\n")
 }
 
-// BriefForm confirms and edits the Creative Brief (auxiliary view; the Brief is normally built in the chat).
-templ BriefForm(d BriefFormData) {
+// Form confirms and edits the Creative Brief (the Brief is normally built in the chat). A value that is only a proposal
+// (recommended, or read from the request) says so next to its label; saving accepts every value shown (#1114).
+templ Form(d Data) {
 	<form
 		id="brief-form"
 		class="flex flex-col gap-4"
@@ -49,6 +52,9 @@ templ BriefForm(d BriefFormData) {
 					{ f.Label() }
 					if d.Brief.Get(f) == "" && d.Brief.IsDelegated(f) {
 						@atoms.Badge(atoms.BadgeNeutral, "AIに任せる")
+					}
+					if d.Brief.Get(f) != "" {
+						@sourceBadge(d.Brief.SourceOf(f))
 					}
 				</label>
 				@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
@@ -66,12 +72,17 @@ templ BriefForm(d BriefFormData) {
 			<p class="text-sm text-mute">スタイル（Series 正本）: { d.Brief.Style }</p>
 		}
 		<div>
-			<label for="brief-additional-instruction" class="mb-1 block text-sm">Additional Instruction</label>
+			<label for="brief-additional-instruction" class="mb-1 flex items-center gap-2 text-sm">
+				Additional Instruction
+				if d.Brief.AdditionalInstruction != "" {
+					@sourceBadge(d.Brief.SourceOf(domain.BriefAdditionalInstruction))
+				}
+			</label>
 			@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
 				"id":        "brief-additional-instruction",
 				"name":      "additional_instruction",
 				"rows":      "3",
-				"maxlength": intText(domain.MaxMessageRunes),
+				"maxlength": strconv.Itoa(domain.MaxMessageRunes),
 			}, d.Brief.AdditionalInstruction)
 			if msg := d.Errors["additional_instruction"]; msg != "" {
 				<p class="mt-1 text-sm text-danger" role="alert">{ msg }</p>
@@ -98,6 +109,9 @@ templ BriefForm(d BriefFormData) {
 			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{
 				"type": "submit",
 			})
+			if hasTentative(d.Brief) {
+				<span class="text-sm text-mute">保存すると、表示中の値（推奨・未確認の値を含む）をすべて確定します</span>
+			}
 			if d.Saved {
 				<span class="text-sm text-success" role="status">保存しました</span>
 			}

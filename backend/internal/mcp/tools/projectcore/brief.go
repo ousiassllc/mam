@@ -12,10 +12,10 @@ import (
 
 func registerBrief(r *mcpkit.Registrar, svc *service.Services) {
 	mcpkit.Read(r, "get_brief",
-		"Creative Brief（Content Type・Objective・Subject・Target・Duration・Aspect Ratio・Mood と添付・参照・追加指示）と、まだ決まっていない項目 / The Creative Brief and what is still missing.",
+		"Creative Brief（Content Type・Objective・Subject・Target・Duration・Aspect Ratio・Mood と添付・参照・追加指示）と、まだ決まっていない項目・各項目の出どころ（user / inferred_from_request / recommended。recommended は目的から決めた仮の値）/ The Creative Brief, what is still missing and where each value came from.",
 		getBrief(svc.Projects))
 	mcpkit.Write(r, "update_brief",
-		"Creative Brief を更新する。渡した項目だけ変わり、空文字は「未決定」に戻す（AI がまた質問する）。値は画面の編集フォームと同じ検証（Aspect Ratio は 9:16・16:9・1:1 など）。保存するとチャットに記録され、パイプラインが再開する / Update the Brief; omitted fields keep their value, an empty string makes a field undecided.",
+		"Creative Brief を更新する。渡した項目だけ変わり、空文字は「未決定」に戻す（AI がまた質問する）。値は画面の編集フォームと同じ検証（Aspect Ratio は 9:16・16:9・1:1 など）。渡した項目は user の値になり、渡さなかった項目の出どころ（recommended など）は変わらない。confirm=true で、いま Brief にある推奨・読み取りの値をすべて確定する。保存するとチャットに記録され、パイプラインが再開する / Update the Brief; omitted fields keep their value and source, an empty string makes a field undecided, confirm=true accepts every recommended or inferred value.",
 		updateBrief(svc.Projects), mcpkit.Idempotent())
 }
 
@@ -33,6 +33,8 @@ type BriefOutput struct {
 	Fields                map[string]string `json:"fields" jsonschema:"content_type, objective, subject, target, duration, aspect_ratio, mood（未決定は空文字）"`
 	Missing               []string          `json:"missing" jsonschema:"まだ決まっておらず、AI に任せてもいない項目"`
 	Delegated             []string          `json:"delegated" jsonschema:"AI に任せた項目"`
+	Sources               map[string]string `json:"sources" jsonschema:"項目ごとの出どころ: user（利用者が決めた・確定した）/ inferred_from_request（依頼文から読み取った未確認の値）/ recommended（目的から決めた仮の値。利用者が明示した値が常に優先される）。additional_instruction も含む"`
+	ProposedSubject       string            `json:"proposed_subject,omitempty" jsonschema:"Subject が食い違って利用者の判断待ちのとき、もう一方の候補（Subject はそのまま）"`
 	AdditionalInstruction string            `json:"additional_instruction"`
 	Style                 string            `json:"style,omitempty" jsonschema:"Series の Episode が引き継ぐ Style"`
 	Assets                []BriefAsset      `json:"assets" jsonschema:"添付の画像"`
@@ -44,11 +46,17 @@ func briefOf(v service.BriefView) BriefOutput {
 	b := v.Brief
 	out := BriefOutput{
 		ProjectID: v.Project.ID, State: string(v.Project.State), Fields: map[string]string{},
-		Missing: []string{}, Delegated: nonNil(b.Delegated), AdditionalInstruction: b.AdditionalInstruction, Style: b.Style,
+		Missing: []string{}, Delegated: nonNil(b.Delegated), AdditionalInstruction: b.AdditionalInstruction, Style: b.Style, Sources: map[string]string{}, ProposedSubject: b.ProposedSubject,
 		Assets: []BriefAsset{}, References: nonNil(b.References), ReferenceAssets: []BriefAsset{},
 	}
 	for _, f := range domain.RequiredBriefFields() {
 		out.Fields[string(f)] = b.Get(f)
+		if b.Get(f) != "" {
+			out.Sources[string(f)] = b.SourceOf(f)
+		}
+	}
+	if b.AdditionalInstruction != "" {
+		out.Sources[string(domain.BriefAdditionalInstruction)] = b.SourceOf(domain.BriefAdditionalInstruction)
 	}
 	for _, f := range b.Missing() {
 		out.Missing = append(out.Missing, string(f))
@@ -94,6 +102,7 @@ type UpdateBriefInput struct {
 	Mood                  *string   `json:"mood,omitempty" jsonschema:"200 文字まで"`
 	AdditionalInstruction *string   `json:"additional_instruction,omitempty" jsonschema:"4000 文字まで"`
 	References            *[]string `json:"references,omitempty" jsonschema:"参照の URL（http:// か https://）の全件。動画アセットの参照はそのまま残る"`
+	Confirm               bool      `json:"confirm,omitempty" jsonschema:"true で、Brief にある推奨・読み取りの値をすべて利用者の確定した値にする（チャットの「この内容でよいですか？」への承認と違い、未設定の項目は残り、確認カードも開いたまま）"`
 }
 
 func updateBrief(svc *service.ProjectService) mcpkit.Handler[UpdateBriefInput, BriefOutput] {
@@ -106,6 +115,7 @@ func updateBrief(svc *service.ProjectService) mcpkit.Handler[UpdateBriefInput, B
 			Values:                map[domain.BriefField]string{},
 			AdditionalInstruction: current.Brief.AdditionalInstruction,
 			References:            strings.Join(slices.DeleteFunc(slices.Clone(current.Brief.References), isAssetID), "\n"),
+			KeepProposals:         !in.Confirm,
 		}
 		for _, f := range domain.RequiredBriefFields() {
 			form.Values[f] = current.Brief.Get(f)
@@ -114,13 +124,15 @@ func updateBrief(svc *service.ProjectService) mcpkit.Handler[UpdateBriefInput, B
 			domain.BriefContentType: in.ContentType, domain.BriefObjective: in.Objective, domain.BriefSubject: in.Subject,
 			domain.BriefTarget: in.Target, domain.BriefDuration: in.Duration, domain.BriefAspectRatio: in.AspectRatio, domain.BriefMood: in.Mood,
 		}
-		for f, v := range set {
-			if v != nil {
+		for _, f := range domain.RequiredBriefFields() {
+			if v := set[f]; v != nil {
 				form.Values[f] = *v
+				form.Given = append(form.Given, f)
 			}
 		}
 		if in.AdditionalInstruction != nil {
 			form.AdditionalInstruction = *in.AdditionalInstruction
+			form.Given = append(form.Given, domain.BriefAdditionalInstruction)
 		}
 		if in.References != nil {
 			form.References = strings.Join(*in.References, "\n")

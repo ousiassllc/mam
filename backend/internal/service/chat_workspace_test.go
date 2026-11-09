@@ -104,26 +104,6 @@ func TestCreateProject_StopsCopyingAnUploadThatIsLargerThanItClaims(t *testing.T
 	}
 }
 
-func TestPostMessage_ReturnsTheQuestionCardsItClosed(t *testing.T) {
-	f := newFixture(t)
-	p := f.createProject(t, "動画を作りたい") // asks Content Type
-	q := lastMessage(t, f.thread(t, p.ID))
-
-	// A reply closes the card it targets ...
-	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "商品CM", ReplyToMessageID: q.ID})
-	require.Len(t, ws.Updated, 1)
-	assert.Equal(t, q.ID, ws.Updated[0].ID)
-	assert.False(t, ws.Updated[0].Open)
-
-	// ... and a free-text answer closes the card of the field it decided, although nothing was replied to.
-	open := lastMessage(t, ws.Messages)
-	require.Equal(t, domain.KindQuestion, open.Kind)
-	ws = postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "Instagram広告"})
-	require.Len(t, ws.Updated, 1)
-	assert.Equal(t, open.ID, ws.Updated[0].ID)
-	assert.False(t, ws.Updated[0].Open)
-}
-
 func TestMessages_ManyProgressCardsAndRepliesOutsideTheBatchAreAllResolved(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)

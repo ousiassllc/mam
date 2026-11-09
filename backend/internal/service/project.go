@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
 )
 
 // ProjectService manages Projects, their Brief, the Confirmation Level and assets.
@@ -24,8 +25,8 @@ type CreateProjectInput struct {
 }
 
 // Create starts a Project from the user's first message: the Brief is extracted from
-// it, attachments become Assets/References, and the AI answers in the new thread
-// (the next Question card, or the completion notice).
+// it (with where each value came from and the recommended Duration / Aspect Ratio of the platform), attachments become
+// Assets/References, and the AI answers in the new thread (the Subject question, or the Brief summary to confirm; #1114).
 func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (domain.Project, error) {
 	content := strings.TrimSpace(in.Content)
 	if err := validateMessage(content, len(in.Uploads) > 0); err != nil {
@@ -38,10 +39,12 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 	}
 	assets := assetsOf(stored)
 
-	brief := s.extractor.Extract(content)
+	var brief domain.Brief
+	briefing.Absorb(&brief, s.extractor.Extract(content), content)
+	briefing.Recommend(&brief)
 	brief.AttachAssets(assets)
 
-	messages := assignIDs([]domain.ChatMessage{userText(content, "", assetIDs(assets)), briefFollowUp(brief)})
+	messages := assignIDs([]domain.ChatMessage{userText(content, "", assetIDs(assets)), briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)})
 	project := domain.Project{
 		ID: projectID, State: domain.StateDraft, Mode: domain.ModeAuto,
 		ConfirmationLevel:  domain.ConfirmKeyCheck,
@@ -100,6 +103,13 @@ type BriefForm struct {
 	Values                map[domain.BriefField]string
 	AdditionalInstruction string
 	References            string
+	// KeepProposals leaves the values the form does not change as they are (recommended or extracted ones stay unconfirmed): a partial
+	// update by a client that did not show the user the whole Brief. Saved from the Brief form, the user saw every value, so all of them
+	// become the user's (#1114).
+	KeepProposals bool
+	// Given lists the items the client set explicitly (update_brief): they become the user's even when the value equals the recommended or
+	// extracted one. A Subject in Given also settles the open contradiction.
+	Given []domain.BriefField
 }
 
 // UpdateBrief validates and saves the edited Brief and records the change in the thread.
@@ -110,12 +120,8 @@ func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form
 	if err != nil {
 		return BriefView{}, err
 	}
-	edited := view.Brief
-	// A field edited to empty is "not decided" again: the AI asks about it unless it was delegated.
-	for _, f := range domain.RequiredBriefFields() {
-		edited.Set(f, form.Values[f])
-	}
-	edited.AdditionalInstruction = strings.TrimSpace(form.AdditionalInstruction)
+	edited := briefing.Clone(view.Brief)
+	briefing.ApplyEdit(&edited, form.Values, form.AdditionalInstruction, form.Given, !form.KeepProposals)
 	urls, err := ParseReferenceURLs(form.References)
 	if err != nil {
 		view.Brief = edited
@@ -217,7 +223,7 @@ func (s *ProjectService) SetConfirmationLevel(ctx context.Context, projectID str
 	}
 	selected = sortedCheckpoints(selected)
 
-	msgs := assignIDs([]domain.ChatMessage{assistantText(confirmationNotice(level, selected))})
+	msgs := assignIDs([]domain.ChatMessage{assistantText(approvalack.ConfirmationNotice(level, selected))})
 	err = s.projects.Apply(ctx, repository.Turn{
 		ProjectID: projectID, Messages: msgs,
 		Confirmation: &repository.Confirmation{Level: level, Checkpoints: selected},
@@ -226,6 +232,7 @@ func (s *ProjectService) SetConfirmationLevel(ctx context.Context, projectID str
 		return domain.Project{}, notFound(err)
 	}
 	s.publishCreated(projectID, msgs)
+	s.kick(ctx, projectID) // a Brief waiting for confirmation does not wait at FULL AUTO (#1114)
 	return s.getProject(ctx, projectID)
 }
 
@@ -237,24 +244,6 @@ func sortedCheckpoints(in []domain.Checkpoint) []domain.Checkpoint {
 		}
 	}
 	return out
-}
-
-func confirmationNotice(level domain.ConfirmationLevel, custom []domain.Checkpoint) string {
-	switch level {
-	case domain.ConfirmFullAuto:
-		return "確認レベルを FULL AUTO にしました。Final まで原則確認せずに進めます（判断が必要な場合のみ相談します）。"
-	case domain.ConfirmKeyCheck:
-		labels := make([]string, 0, len(domain.KeyCheckpoints()))
-		for _, c := range domain.KeyCheckpoints() {
-			labels = append(labels, c.Label())
-		}
-		return "確認レベルを KEY CHECK にしました。" + strings.Join(labels, " / ") + " で確認します。"
-	}
-	labels := make([]string, len(custom))
-	for i, c := range custom {
-		labels[i] = c.Label()
-	}
-	return "確認レベルを CUSTOM CHECK にしました。" + strings.Join(labels, " / ") + " で確認します。"
 }
 
 // AssetFile is an asset with the absolute path of its file.

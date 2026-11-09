@@ -4,52 +4,53 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
+	"github.com/ousiassllc/mam/backend/internal/agent/genplan"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
 )
 
-// Step looks at the Project once and does what the gate has to do: it posts the approval card, or starts the Reference Packs and Shots of an
-// approved plan. It reports whether it did something that can leave more to do (the caller looks again).
+// Step looks at the Project once and does what the gate has to do: it settles a legacy card that is still pending, or starts the Reference Packs and Shots of the plan. It reports whether it did something that can leave more to do (the caller looks again).
 func (g *Gate) Step(ctx context.Context, p domain.Project) (bool, error) {
-	if !canAct(p.State) {
-		return false, nil
-	}
 	a, err := g.Assess(ctx, p)
 	if err != nil {
 		return false, err
 	}
 	switch {
-	case a.Verdict == VerdictAsk:
-		return true, g.ask(ctx, p, a)
-	case a.Verdict == VerdictApproved && len(a.Next) > 0:
+	case a.Verdict == VerdictSupersede:
+		if !g.stillAuto(ctx, p.ID) {
+			return true, nil // switched to DIRECTOR since the look: the notice promises a start that would not happen; the next look settles nothing
+		}
+		_, err := g.d.Chat.Supersede(ctx, p.ID, a.Card.ID, SupersededNotice) // false: the user answered it meanwhile; either way the next look goes on
+		return true, err
+	case a.Verdict == VerdictStart && len(a.Next) > 0:
 		return g.launch(ctx, p, a)
 	}
 	return false, nil
 }
 
-// ask posts the approval card of the plan and records what it stands for. The card holds the Project in AWAITING_APPROVAL: nothing is started
-// until it is answered, at any Confirmation Level.
-func (g *Gate) ask(ctx context.Context, p domain.Project, a Assessment) error {
-	fingerprint := a.Plan.Fingerprint()
-	posted, err := g.d.Chat.RequestApproval(ctx, p.ID, domain.CheckpointGeneration, a.Plan.CardText(a.Reason), fingerprint)
-	if err != nil {
-		return err
+// announce tells the user once what the Orchestrator has started, for the Shots it started for the first time: a Shot that has a launch already
+// belongs to an announcement made before, so looking again, a restart and the generation that follows a Reference Pack post nothing more. It is posted
+// after the starts of the round and only when one was made: a look whose every start ended busy or gone (the claims were given back) announces nothing,
+// so the announcement is made at most once for a start that was made. A process that ended between a start and this post leaves the start unannounced.
+func (g *Gate) announce(ctx context.Context, p domain.Project, a Assessment, started []Step) {
+	first := map[string]bool{}
+	for _, s := range started {
+		if len(a.Launches[s.Line.ShotID]) == 0 {
+			first[s.Line.ShotID] = true
+		}
 	}
-	if !posted {
-		return errors.New("the generation approval card was not posted")
+	if len(first) == 0 {
+		return
 	}
-	card, err := g.d.Repo.LatestCard(ctx, p.ID)
-	if err != nil {
-		return err
+	plan := a.Plan.Only(func(l genplan.Line) bool { return first[l.ShotID] })
+	msg := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: plan.AnnounceText()}
+	if err := g.d.Chat.Announce(ctx, p.ID, msg); err != nil {
+		g.d.Logger.Error("post the announcement of the automatic start failed", "project_id", p.ID, "err", err)
 	}
-	if card == nil || card.Fingerprint != fingerprint {
-		return errors.New("the generation approval card that was posted is not the newest one")
-	}
-	return g.d.Repo.SaveApproval(ctx, approvalOf(p.ID, card.ID, a.Plan))
 }
 
 // refused is a start the budget ceiling or an error stopped, for the notice.
@@ -58,18 +59,51 @@ type refused struct {
 	err  error
 }
 
-// launch makes the starts of an approved plan. Each is claimed first: a claim that exists already (a look before, a process before) is skipped, so
-// a Shot is never started twice for the approval. A Shot that is busy (started by hand) is left for the next look.
+// round is what the starts of one look came to.
+type round struct {
+	started []Step
+	// budget is the start the budget ceiling refused: it ends the round. noModel are the first starts of each cause (not told before) refused because no
+	// model can be used, and causes all the causes the round met. failed are the starts that failed for another reason, each its own.
+	budget  *refused
+	noModel []refused
+	causes  map[string]bool
+	failed  []refused
+}
+
+// launch makes the starts of the plan. Each is claimed first: a claim that exists already (a look before, a process before) is skipped, so a Shot is
+// never started twice. A Shot that is busy (started by hand) is left for the next look. The first start the budget ceiling refuses ends the round:
+// nothing more is started until the user answers the Escalation. A start refused because no model can be used (modelroute.ErrNoUsableModel) is the
+// state of the models and not of the Shot, so it does not end the round: a Shot that needs another purpose or media may still run. Of the Shots
+// refused for one cause only the first is marked and told; the others are released, for a later look (nomodel.go).
 func (g *Gate) launch(ctx context.Context, p domain.Project, a Assessment) (bool, error) {
-	var started bool
-	var budget, failed []refused
+	r := round{causes: map[string]bool{}}
+	err := g.run(ctx, p, a, &r)
+	switch {
+	case len(r.causes) > 0:
+		g.noModelRemember(p.ID, r.causes)
+	case len(r.started) > 0:
+		g.noModelCleared(p.ID)
+	}
+	done := context.WithoutCancel(ctx) // what was started is announced and what was refused is told, even when the job is cancelled
+	g.announce(done, p, a, r.started)
+	if rerr := g.report(done, p, r); err == nil {
+		err = rerr
+	}
+	return len(r.started) > 0, err
+}
+
+// run makes the starts of the plan into r until one of them ends the round.
+func (g *Gate) run(ctx context.Context, p domain.Project, a Assessment, r *round) error {
 	for _, s := range a.Next {
 		if err := ctx.Err(); err != nil {
-			return started, err
+			return err
 		}
-		claimed, err := g.d.Repo.Claim(ctx, s.Line.ShotID, s.Stage, a.Card.ID)
+		if !g.stillAuto(ctx, p.ID) { // DIRECTOR is the sure stop: a Shot whose start is still ahead is not started once the user has switched
+			return nil
+		}
+		claimed, err := g.d.Repo.Claim(ctx, s.Line.ShotID, s.Stage)
 		if err != nil {
-			return started, err
+			return err
 		}
 		if !claimed {
 			continue
@@ -77,21 +111,45 @@ func (g *Gate) launch(ctx context.Context, p domain.Project, a Assessment) (bool
 		job, err := g.start(ctx, s)
 		switch {
 		case err == nil:
-			started = true
+			r.started = append(r.started, s)
 			if err := g.d.Repo.Started(ctx, s.Line.ShotID, s.Stage, job.ID); err != nil {
-				return started, err
+				return err
 			}
 		case ctx.Err() != nil || errors.Is(err, generation.ErrShotBusy) || errors.Is(err, repository.ErrNotFound):
 			if rerr := g.d.Repo.Release(context.WithoutCancel(ctx), s.Line.ShotID, s.Stage); rerr != nil {
-				return started, rerr
+				return rerr
 			}
 		case errors.Is(err, generation.ErrBudgetExceeded):
-			budget = append(budget, refused{s, err})
+			r.budget = &refused{s, err}
+			return nil
+		case errors.Is(err, modelroute.ErrNoUsableModel):
+			if rerr := g.refuseNoModel(ctx, p, s, err, r); rerr != nil {
+				return rerr
+			}
 		default:
-			failed = append(failed, refused{s, err})
+			r.failed = append(r.failed, refused{s, err})
 		}
 	}
-	return started, g.report(ctx, p, budget, failed)
+	return nil
+}
+
+// stillAuto reports whether the Project is still AUTO now (the Assessment of the round was made some starts ago). A Project that cannot be read is not started
+// (the next look decides).
+func (g *Gate) stillAuto(ctx context.Context, projectID string) bool {
+	p, err := g.d.Projects.Get(ctx, projectID)
+	return err == nil && p.Mode == domain.ModeAuto
+}
+
+// refuseNoModel handles a start refused because no model can be used. The first Shot of a cause that nobody was told yet is marked and told (report); a
+// Shot refused for a cause that was told already, by a look before or by this round, is not marked: it is given its claim back and tried again later.
+func (g *Gate) refuseNoModel(ctx context.Context, p domain.Project, s Step, err error, r *round) error {
+	first := !r.causes[causeKey(err)]
+	r.causes[causeKey(err)] = true
+	if first && !g.noModelTold(p.ID, err) {
+		r.noModel = append(r.noModel, refused{s, err})
+		return nil
+	}
+	return g.d.Repo.Release(context.WithoutCancel(ctx), s.Line.ShotID, s.Stage)
 }
 
 func (g *Gate) start(ctx context.Context, s Step) (domain.Job, error) {
@@ -102,34 +160,52 @@ func (g *Gate) start(ctx context.Context, s Step) (domain.Job, error) {
 }
 
 // report tells the user about the starts that did not happen and keeps them from being tried again by themselves: the budget ceiling goes
-// to an Escalation (like the Retry Policy's limit), anything else to a notice. The Shot is left to the user.
-func (g *Gate) report(ctx context.Context, p domain.Project, budget, failed []refused) error {
-	ctx = context.WithoutCancel(ctx)
-	for _, r := range failed {
-		if err := g.d.Repo.Stopped(ctx, r.step.Line.ShotID, r.step.Stage, genapprovalrepo.OutcomeFailed); err != nil {
+// to an Escalation (like the Retry Policy's limit), anything else to a notice. The Shot is left to the user. A start that was refused for a model
+// that cannot be used (the preflight of the Generation Orchestrator) is reported with its reason like any other failed start, but once for each cause (the
+// Shots refused for the same cause are released, not marked: refuseNoModel) and, for the same cause, not again by the looks after it (noModelTold).
+func (g *Gate) report(ctx context.Context, p domain.Project, r round) error {
+	for _, f := range r.failed {
+		if err := g.markFailed(ctx, p, f); err != nil {
 			return err
 		}
-		g.d.Logger.Error("start a generation after the approval failed", "project_id", p.ID, "shot_id", r.step.Line.ShotID, "stage", r.step.Stage, "err", r.err)
-		text := fmt.Sprintf("%s を自動では始められませんでした: %s\nこの Shot は自動では進めません。Shot を選んで手動で起動してください。", r.step.name(), generation.FailureReason(r.err))
-		if err := g.d.Chat.Announce(ctx, p.ID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: text}); err != nil {
-			g.d.Logger.Error("post the notice of a failed start failed", "project_id", p.ID, "err", err)
-		}
+		g.tell(ctx, p, fmt.Sprintf("%s を自動では始められませんでした: %s\nこの Shot は自動では進めません。Shot を選んで手動で起動してください。", f.step.name(), generation.FailureReason(f.err)))
 	}
-	if len(budget) == 0 {
+	for _, f := range r.noModel {
+		if err := g.markFailed(ctx, p, f); err != nil {
+			return err
+		}
+		g.tell(ctx, p, fmt.Sprintf("%s を自動では始められませんでした: %s\nこの Shot は自動では進めません。Shot を選んで手動で起動してください。\n"+
+			"これは Shot ではなくモデルの状態が原因なので、同じ原因で始められない Shot は、失敗とは記録せずそのまま残しています。"+
+			"API キーを登録するか割り当てを直したあと、チャットに何かメッセージを送ると、残りの Shot を続けます。同じ原因のお知らせは繰り返しません。",
+			f.step.name(), generation.FailureReason(f.err)))
+	}
+	if r.budget == nil {
 		return nil
 	}
-	names := make([]string, len(budget))
-	for i, r := range budget {
-		if err := g.d.Repo.Stopped(ctx, r.step.Line.ShotID, r.step.Stage, genapprovalrepo.OutcomeBudget); err != nil {
-			return err
-		}
-		names[i] = r.step.name()
+	if err := g.d.Repo.Stopped(ctx, r.budget.step.Line.ShotID, r.budget.step.Stage, genapprovalrepo.OutcomeBudget); err != nil {
+		return err
 	}
-	text := fmt.Sprintf("承認された生成のうち、次は予算上限に達するため始めませんでした: %s。\n上限は承認の代わりにはならず、承認のあとも効いています。", strings.Join(names, "、"))
+	text := fmt.Sprintf("AUTO で進めている生成のうち、次は予算上限に達するため始めませんでした: %s。\n予算上限は AUTO を選んでいても効いています。この相談に答えるまで、ほかの Shot も新しくは始めません。", r.budget.step.name())
 	options := []string{
 		"設定で予算上限を引き上げてから、Shot を選んで手動で生成する",
 		"Shot を減らす・Quality Policy を下げるなど、計画を直してから進める",
 		"この Shot は作らない",
 	}
 	return g.d.Chat.RaiseEscalation(ctx, p.ID, text, options, "")
+}
+
+// markFailed records that the start of f failed, so that it is not tried again by itself.
+func (g *Gate) markFailed(ctx context.Context, p domain.Project, f refused) error {
+	if err := g.d.Repo.Stopped(ctx, f.step.Line.ShotID, f.step.Stage, genapprovalrepo.OutcomeFailed); err != nil {
+		return err
+	}
+	g.d.Logger.Error("start a generation by itself failed", "project_id", p.ID, "shot_id", f.step.Line.ShotID, "stage", f.step.Stage, "err", f.err)
+	return nil
+}
+
+// tell posts a notice of the assistant; a notice that could not be posted is logged (the starts it is about were recorded).
+func (g *Gate) tell(ctx context.Context, p domain.Project, text string) {
+	if err := g.d.Chat.Announce(ctx, p.ID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: text}); err != nil {
+		g.d.Logger.Error("post the notice of a failed start failed", "project_id", p.ID, "err", err)
+	}
 }

@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -76,6 +76,8 @@ type takeParameters struct {
 	Candidate domain.CandidateStrategy `json:"candidate_strategy,omitempty"`
 	// Routing is why the Take's video model was chosen (Multi-model routing, F-27).
 	Routing *domain.RoutingDecision `json:"routing,omitempty"`
+	// ModelUse is the model that made the Take, its route and why it was chosen (#1113).
+	ModelUse modelreg.Use `json:"model_use"`
 }
 
 // makeTake generates one Take, stores its file, the Take row and cost, and posts its card, whose
@@ -116,10 +118,11 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	if err != nil {
 		return "", err
 	}
+	use := s.Models.Use(o.adapter.Config(), out.Model, "video", out.FellBack)
 	params, err := json.Marshal(takeParameters{
 		Policy: s.Policy, Resolution: out.Resolution, DurationSeconds: out.DurationSeconds,
 		AspectRatio: out.Request.AspectRatio, FellBack: out.FellBack, Prompt: out.Request.Prompt, Candidate: candidate, TakeLineage: lineage,
-		Routing: s.routing(),
+		Routing: s.routing(), ModelUse: use,
 	})
 	if err != nil {
 		o.files.Remove(asset)
@@ -141,7 +144,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		Role: domain.RoleAssistant, Kind: domain.KindTake, RefID: takeID,
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
 			Title:    title,
-			Summary:  fmt.Sprintf("%s（%s・%.0f 秒）", out.Model, out.Resolution, out.DurationSeconds),
+			Summary:  fmt.Sprintf("%s（%s・%.0f 秒・%s）", out.Model, out.Resolution, out.DurationSeconds, use.Label()),
 			VideoURL: domain.TakeVideoURL(takeID), PosterURL: domain.TakeThumbnailURL(takeID), ShotID: ref.Shot.ID, FPS: o.files.FrameRate(context.WithoutCancel(ctx), asset),
 		}),
 	}
@@ -161,36 +164,6 @@ func (o *Orchestrator) recordPaid(ctx context.Context, projectID, shotID string,
 	if err != nil {
 		o.logger.Error("record cost failed", "shot_id", shotID, "model", model, "err", err)
 	}
-}
-
-// counter counts finished Takes from concurrent goroutines and remembers the first one.
-type counter struct {
-	mu      sync.Mutex
-	n       int
-	firstID string
-}
-
-func (c *counter) add(takeID string) int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.n == 0 {
-		c.firstID = takeID
-	}
-	c.n++
-	return c.n
-}
-
-func (c *counter) value() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.n
-}
-
-// first is the ID of the Take that was finished first ("" when none).
-func (c *counter) first() string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.firstID
 }
 
 // judgeTake has the AI Video Judge look at a Take that was just made. The Take is kept even if it cannot be judged: the user can run the Judge again.

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -57,7 +58,7 @@ func (g Guard) Answer(ctx context.Context, projectID string, msgs []domain.ChatM
 	}
 	log.Warn("a message was stored with no answer, progress or failure; told in the thread",
 		"state", project.State, "mode", project.Mode, "pipeline", g.PipelineOn)
-	return g.post(ctx, projectID, Notice(project, g.PipelineOn, len(brief.Missing()) == 0))
+	return g.post(ctx, projectID, Notice(project, g.PipelineOn, briefing.ReadyToPlan(brief, project.ConfirmationLevel)))
 }
 
 // post records the AI message whatever happened to the request since.
@@ -72,7 +73,7 @@ func text(content string) domain.ChatMessage {
 }
 
 // Notice tells why a message of the user starts nothing: what the Project waits for, or which part of the
-// setup is missing. It names the state the Project is in, never a model.
+// setup is missing. briefComplete is whether PLANNING may start (briefing.ReadyToPlan). It names the state the Project is in, never a model.
 func Notice(p domain.Project, pipelineOn, briefComplete bool) domain.ChatMessage {
 	driven := p.State == domain.StatePlanning || p.State == domain.StateVisualDesign || (p.State == domain.StateDraft && briefComplete)
 	switch {
@@ -83,7 +84,7 @@ func Notice(p domain.Project, pipelineOn, briefComplete bool) domain.ChatMessage
 	case p.State == domain.StateAwaitingApproval:
 		return text("メッセージは保存しました。いまは承認待ちです。承認カードで承認または修正依頼を伝えると、続きから進みます。")
 	case p.State == domain.StateDraft && !briefComplete:
-		return text("メッセージは保存しましたが、Brief の項目として読み取れる内容がありませんでした。質問カードに返信するか、Brief の画面から入力してください。")
+		return text("メッセージは保存しましたが、Brief の項目として読み取れる内容がありませんでした（これまでの Brief は変えていません）。質問カードか「この内容でよいですか？」のカードに返信するか、Brief の画面から入力・確定してください。")
 	}
 	hint := "Shot や Take への指示は、DIRECTOR モードに切り替えてから送ってください。"
 	if p.Mode == domain.ModeDirector {

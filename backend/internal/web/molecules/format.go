@@ -90,14 +90,6 @@ func submitAttrs(decision string) templ.Attributes {
 	return templ.Attributes{"type": "submit", "name": "decision", "value": decision, "data-testid": "approval-" + decision}
 }
 
-// approvalTestID is the data-testid of an approval card: the generation approval has one of its own.
-func approvalTestID(m domain.ChatMessage) string {
-	if cp, ok := domain.CheckpointForRefType(m.RefType); ok && cp == domain.CheckpointGeneration {
-		return "generation-approval-card"
-	}
-	return "approval-card"
-}
-
 // approvalLabel names what the approval card asks to confirm.
 func approvalLabel(m domain.ChatMessage) string {
 	if m.RefType == domain.RefNotePromotion {
@@ -185,4 +177,15 @@ func refLinkOf(m domain.ThreadMessage) (refLink, bool) {
 		return refLink{Label: label, Href: templ.SafeURL(paths.SettingsCategory(slug))}, true
 	}
 	return refLink{}, false
+}
+
+// offersDelegate reports whether the question card has the "AIに任せる" button: not the Subject (#1108) and not the Brief summary (#1114).
+func offersDelegate(m domain.ThreadMessage) bool {
+	switch m.RefType {
+	case domain.RefBriefConfirm:
+		return false
+	case domain.RefBriefField:
+		return domain.BriefField(m.RefID).CanDelegate()
+	}
+	return true
 }

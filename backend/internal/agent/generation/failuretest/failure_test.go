@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -33,6 +34,7 @@ func TestFailureReason(t *testing.T) {
 			{Target: llm.Target{Provider: llm.ProviderGoogle, Model: "gemini-x"}, Err: llm.ErrNoAPIKey},
 		}}, "Prompt Planner（Shot Spec）"},
 		{"budget", fmt.Errorf("x: %w", generation.ErrBudgetExceeded), "予算上限"},
+		{"no usable model", fmt.Errorf("x: %w", &modelroute.NoUsableError{Media: "image", Key: "new_reference", Assigned: []modelroute.Problem{{Model: "nano-banana", Message: "API キーが登録されていません"}}}), "使えるモデルがありません"},
 		{"brand", domain.ErrBrandViolation, "Brand"},
 		{"judge off", generation.ErrJudgeUnavailable, "AI Video Judge"},
 		{"time limit", fmt.Errorf("%w (1s)", generation.ErrGenerationTimeLimit), "制限時間"},

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -42,7 +43,7 @@ func TestTheDefaultEstimateOfGPTImage2IsNotZero(t *testing.T) {
 	assert.InDelta(t, 0.053, cfg.ImageCost(domain.ModelGPTImage2), 1e-9, "the dearest size of the default profile")
 	assert.InDelta(t, 0.041, cfg.ImageCostFor(domain.ModelGPTImage2, "16:9"), 1e-9)
 	adapter := modeladapter.New(cfg, modeladapter.Backends{})
-	assert.InDelta(t, 0.053, adapter.EstimateImage(modeladapter.PurposeNewReference), 1e-9,
+	assert.InDelta(t, 0.053, modelroute.EstimateImage(adapter.Config(), adapter.Config().ImageRouteFor(modeladapter.PurposeNewReference)), 1e-9,
 		"the budget check holds GPT Image 2's price, not the alternative's $0.0336")
 }
 

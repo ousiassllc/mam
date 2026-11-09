@@ -3,6 +3,7 @@ package genstage_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
@@ -28,6 +29,7 @@ type fakeChat struct {
 	announced   []domain.ChatMessage
 	checkpoints []domain.Checkpoint // the checkpoints an Approval card was requested at
 	escalations []string
+	superseded  []string // the IDs of the legacy cards the system closed
 }
 
 func (c *fakeChat) RequestApproval(ctx context.Context, projectID string, cp domain.Checkpoint, summary, refID string) (bool, error) {
@@ -47,6 +49,24 @@ func (c *fakeChat) RequestApproval(ctx context.Context, projectID string, cp dom
 		RefType: cp.RefType(), RefID: refID, ApprovalStatus: domain.ApprovalPending,
 	}
 	return true, c.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: []domain.ChatMessage{card}, State: &state})
+}
+
+// Supersede behaves like service.ChatService.Supersede: the card is closed as approved by a message of the assistant (no message of the user), and the Project returns from AWAITING_APPROVAL.
+func (c *fakeChat) Supersede(ctx context.Context, projectID, cardID, notice string) (bool, error) {
+	resume := domain.CheckpointGeneration.ApprovedState()
+	err := c.projects.Apply(ctx, repository.Turn{
+		ProjectID: projectID, Approval: &repository.ApprovalUpdate{MessageID: cardID, Status: domain.ApprovalApproved}, ResumeState: &resume,
+		Messages: []domain.ChatMessage{{Role: domain.RoleAssistant, Kind: domain.KindText, Content: notice}},
+	})
+	if errors.Is(err, repository.ErrConflict) {
+		return false, nil
+	}
+	if err == nil {
+		c.mu.Lock()
+		c.superseded = append(c.superseded, cardID)
+		c.mu.Unlock()
+	}
+	return err == nil, err
 }
 
 func (c *fakeChat) Announce(_ context.Context, _ string, m domain.ChatMessage) error {
@@ -81,15 +101,17 @@ type call struct {
 	shotID string
 }
 
-// fakeGen stands in for generation.Orchestrator: a start claims the Shot and queues a real job row (so that its status can be set), as the
-// real one does, and is recorded. errs make a start of a Shot fail.
+// fakeGen stands in for generation.Orchestrator: a start claims the Shot and queues a real job row (so that its status can be set), as the real one does, and is recorded. errs make a start of a Shot fail.
 type fakeGen struct {
 	gens *repository.GenerationRepository
 	jobs *repository.JobRepository
 
 	mu         sync.Mutex
 	calls      []call
+	tried      []string         // the Shots a start was asked for, whatever came of it
 	errs       map[string]error // by Shot ID
+	cancelOn   string           // the Shot whose start cancels the context of the Gate (the user cancelled the job)
+	cancel     context.CancelFunc
 	candidates bool
 	jobOf      map[string]string // Shot ID -> its latest job
 }
@@ -109,8 +131,13 @@ func (g *fakeGen) UsesCandidates(context.Context, domain.Shot) (bool, error) {
 func (g *fakeGen) start(ctx context.Context, stage genapprovalrepo.Stage, shotID string) (domain.Job, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.tried = append(g.tried, shotID)
 	if err := g.errs[shotID]; err != nil {
 		return domain.Job{}, err
+	}
+	if shotID == g.cancelOn && g.cancel != nil {
+		g.cancel()
+		return domain.Job{}, ctx.Err()
 	}
 	claimed, err := g.gens.StartShot(ctx, shotID)
 	if err != nil {
@@ -193,4 +220,10 @@ func (p *prices) price(m domain.ModelName, perImage float64) {
 func (p *prices) pricesKnown() {
 	p.price(domain.ModelGPTImage26Flare, 0.05)
 	p.price(domain.ModelNanoBanana, 0.0336)
+}
+
+func (g *fakeGen) attempts() []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]string(nil), g.tried...)
 }

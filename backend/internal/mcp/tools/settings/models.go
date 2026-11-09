@@ -48,10 +48,13 @@ type ImageOption struct {
 
 // ModelAvailability is whether a model of the assignment can be used now (#1013), with the reason and the screen that fixes it.
 type ModelAvailability struct {
-	Available          bool   `json:"available" jsonschema:"このモデルを今使えるか。API キー未登録・未ログイン・ベンダーの停止中・成人向けのゲートなら false（割り当てはできるが、その生成は断られる）"`
+	Available          bool   `json:"available" jsonschema:"このモデルを今使えるか。API キー未登録・未ログイン・ベンダーの停止中・成人向けのゲートなら false（割り当てはできる。その生成は、既定の割り当てなら条件に合う使えるモデルに替わり、利用者が選んだ割り当て・固定した割り当て・成人向けのゲートなら断られる。実際の扱いは routes）"`
 	UnavailableMessage string `json:"unavailable_message,omitempty" jsonschema:"使えない理由"`
 	SettingsRoute      string `json:"settings_route,omitempty" jsonschema:"直す画面の道すじ（例 /settings/api-keys）"`
 }
+
+// RouteReport is what a generation would run on for one route (modelroute.RouteReport).
+type RouteReport = modelsettings.RouteReport
 
 func modelAvailabilityOf(a modelfilter.Availability) ModelAvailability {
 	return ModelAvailability{Available: a.Available, UnavailableMessage: a.Message, SettingsRoute: a.Route}
@@ -84,7 +87,8 @@ type ModelsSection struct {
 	Policies    []PolicyRoute   `json:"policies"`
 	ImageModels []ImageOption   `json:"image_models"`
 	VideoModels []VideoOption   `json:"video_models"`
-	Unusable    []UnusableRoute `json:"unusable_routes" jsonschema:"今の割り当てが、使えないモデル（API キー未登録・未ログインなど）を指しているもの。保存はできるが、その生成は断られる（#1013）"`
+	Unusable    []UnusableRoute `json:"unusable_routes" jsonschema:"今の割り当てが、使えないモデル（API キー未登録・未ログインなど）を指しているもの。保存はできる。その生成は、既定の割り当てなら条件に合う使えるモデルに替わり、利用者が選んだ割り当て・固定した割り当てなら断られる（#1013・#1113）。実際の扱いは routes"`
+	Routes      []RouteReport   `json:"routes" jsonschema:"割り当ての各ルート（画像の用途・Quality Policy）について、いま生成を始めたら何で作るか（#1113）。status: assignment_usable（割り当てを使える）/ condition_match（既定の割当が使えないため、条件に合う利用可能なモデルで作る。品質の優劣で選んだのではない）/ blocked（使えるモデルが無く、生成は断られる。explicit が true なら、割り当てを変えてあるため自動では替えない）。use に使うモデルと経路・費用の基準、candidates に条件に合って今使えるモデル、assigned に割り当てのモデルごとの使える・使えない理由"`
 	GatedModels []string        `json:"gated_models" jsonschema:"年齢確認がオフのため使えない成人向けモデルで、割り当てがまだ指しているもの。選べず、生成は断られる。年齢確認をオンにするか、別のモデルに割り当て直す"`
 }
 
@@ -104,7 +108,7 @@ func modelsSection(svc *modelsettings.Service) ModelsSection {
 func sectionOf(v modelsettings.View) ModelsSection {
 	out := ModelsSection{
 		Available: true, Pinned: v.Pinned, Customized: v.Customized,
-		Images: []ImageRoute{}, Policies: []PolicyRoute{}, ImageModels: []ImageOption{}, VideoModels: []VideoOption{}, GatedModels: []string{}, Unusable: []UnusableRoute{},
+		Images: []ImageRoute{}, Policies: []PolicyRoute{}, ImageModels: []ImageOption{}, VideoModels: []VideoOption{}, GatedModels: []string{}, Unusable: []UnusableRoute{}, Routes: append([]RouteReport{}, v.Routes...),
 	}
 	for _, m := range v.Gated {
 		out.GatedModels = append(out.GatedModels, string(m))

@@ -16,11 +16,13 @@ type Beat struct {
 
 // Concept is the output of the Producer Agent: the concept and structure developed from the Creative Brief (spec/spec.md §4.3).
 type Concept struct {
-	Title     string `json:"title"`
-	Logline   string `json:"logline"`
-	Concept   string `json:"concept"`
-	Tone      string `json:"tone,omitempty"`
-	Structure []Beat `json:"structure"`
+	Title   string `json:"title"`
+	Logline string `json:"logline"`
+	Concept string `json:"concept"`
+	Tone    string `json:"tone,omitempty"`
+	// Protagonist is who or what the video is about, as the Producer read it from the Brief Subject (#1114); the plan is checked against the Brief with it.
+	Protagonist string `json:"protagonist,omitempty"`
+	Structure   []Beat `json:"structure"`
 }
 
 // ScriptScene is one scene of the script written by the Writer Agent.

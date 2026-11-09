@@ -2,8 +2,10 @@ package genstage_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,9 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
-// The test rig runs the real Orchestrator, Gate and repositories over a test database. The LLM, the chat and the Generation Orchestrator are
-// fakes: nothing is generated, and the fake Generation Orchestrator only records what it was asked to start (and makes the job and the Shot claim a
-// real one would).
+// The test rig runs the real Orchestrator, Gate and repositories over a test database. The LLM, the chat and the Generation Orchestrator are fakes: nothing is generated, and the fake Generation Orchestrator only records what it was asked to start (and makes the job and the Shot claim a real one would).
 
 const (
 	conceptJSON = `{"title":"朝の一滴","logline":"肌が目覚める","concept":"朝の光と美容液","tone":"上品","structure":[{"name":"フック","description":"光","duration_seconds":3}]}`
@@ -135,6 +135,46 @@ func (r *rig) shotIDs(projectID string) []string {
 	return ids
 }
 
+// legacyCard posts a generation approval card of v0.1.34 (#1108) the way that version did: a card with its record (the scope it showed), and the Project holds in AWAITING_APPROVAL while it is pending. No code of this version posts one.
+func (r *rig) legacyCard(projectID string, status domain.ApprovalStatus) string {
+	r.t.Helper()
+	return r.legacyCardWithID(projectID, status, "")
+}
+
+// legacyCardWithID is legacyCard with the message ID given ("" is a new one): the card of an imported bundle keeps the ID it was made with.
+func (r *rig) legacyCardWithID(projectID string, status domain.ApprovalStatus, id string) string {
+	r.t.Helper()
+	ctx := context.Background()
+	plan, err := r.gate.Assess(ctx, domain.Project{ID: projectID, Mode: domain.ModeAuto, State: domain.StateVisualDesign}) // what the card showed
+	require.NoError(r.t, err)
+	state := domain.StateAwaitingApproval
+	card := domain.ChatMessage{
+		ID: id, Role: domain.RoleAssistant, Kind: domain.KindApproval, Content: "生成の承認: 旧方針のカード",
+		RefType: domain.CheckpointGeneration.RefType(), RefID: "fingerprint", ApprovalStatus: domain.ApprovalPending,
+	}
+	require.NoError(r.t, r.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: []domain.ChatMessage{card}, State: &state}))
+	c := r.card(projectID)
+	require.NotNil(r.t, c)
+	require.NoError(r.t, r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		scope, _ := json.Marshal(plan.Plan.Lines)
+		_, err := tx.ExecContext(ctx, `INSERT INTO generation_approval (message_id, project_id, fingerprint, scope) VALUES (?, ?, 'fingerprint', ?)`, c.ID, projectID, string(scope))
+		return err
+	}))
+	if status != domain.ApprovalPending {
+		r.answer(projectID, status)
+	}
+	return c.ID
+}
+
+// withoutRecord deletes the record of the card, which a bundle does not carry (generation_approval is not bundled): the card is left as an imported one.
+func (r *rig) withoutRecord(cardID string) {
+	r.t.Helper()
+	require.NoError(r.t, r.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM generation_approval WHERE message_id = ?`, cardID)
+		return err
+	}))
+}
+
 // card is the newest generation approval card of the Project (nil when none).
 func (r *rig) card(projectID string) *genapprovalrepo.Card {
 	r.t.Helper()
@@ -143,6 +183,7 @@ func (r *rig) card(projectID string) *genapprovalrepo.Card {
 	return c
 }
 
+// cards counts the generation approval cards of the Project: this version posts none.
 func (r *rig) cards(projectID string) int {
 	r.t.Helper()
 	var n int
@@ -167,13 +208,45 @@ func (r *rig) answer(projectID string, status domain.ApprovalStatus) {
 	}))
 }
 
-// approve plans the Project into a pending card and approves it: the Gate has not started anything yet.
-func (r *rig) approved(level domain.ConfirmationLevel) string {
+// approveCard answers a card of another checkpoint (the script) as the chat service does, resuming the Project in resume.
+func (r *rig) approveCard(projectID, cardID string, resume domain.ProjectState) {
 	r.t.Helper()
-	id := r.planned(level)
-	r.handle(id)
-	r.answer(id, domain.ApprovalApproved)
-	return id
+	require.NoError(r.t, r.projects.Apply(context.Background(), repository.Turn{
+		ProjectID: projectID, Approval: &repository.ApprovalUpdate{MessageID: cardID, Status: domain.ApprovalApproved}, ResumeState: &resume,
+	}))
+}
+
+// setMode switches the mode of the Project.
+func (r *rig) setMode(projectID string, mode domain.Mode) {
+	r.t.Helper()
+	require.NoError(r.t, r.projects.Apply(context.Background(), repository.Turn{ProjectID: projectID, Mode: &mode}))
+}
+
+// userWrites is a message of the user in the thread that does not answer a card.
+func (r *rig) userWrites(projectID, text string) {
+	r.t.Helper()
+	require.NoError(r.t, r.projects.Apply(context.Background(), repository.Turn{ProjectID: projectID,
+		Messages: []domain.ChatMessage{{Role: domain.RoleUser, Kind: domain.KindText, Content: text}}}))
+}
+
+// announcements counts the announcements of the automatic start in the thread.
+func (r *rig) announcements() (n int) {
+	for _, text := range r.chat.notices() {
+		if strings.Contains(text, "承認を待たずに生成を始めます") {
+			n++
+		}
+	}
+	return n
+}
+
+// announcement is the text of the (first) announcement of the automatic start.
+func (r *rig) announcement() string {
+	for _, text := range r.chat.notices() {
+		if strings.Contains(text, "承認を待たずに生成を始めます") {
+			return text
+		}
+	}
+	return ""
 }
 
 // endJob ends the latest job of the Shot the way the generation does: the Shot is released, the job succeeded or failed.

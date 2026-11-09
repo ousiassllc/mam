@@ -111,6 +111,8 @@ type View struct {
 	Gated []domain.ModelName
 	// Unusable are the saved routes that name a model that cannot be used now (no API key, not signed in...): the screen warns about them (#1013).
 	Unusable []UnusableRoute
+	// Routes say, for every route, what a generation would run on now: the assignment, a model that matches the conditions in its place, or nothing (#1113).
+	Routes []RouteReport
 }
 
 // Service edits the image / video part of one Model Adapter setting file.
@@ -123,6 +125,8 @@ type Service struct {
 	hidden func(modelID string) bool
 	// availability, when set, says whether a model can be used now (SetAvailability).
 	availability func(modelID string) (modelfilter.Availability, bool)
+	// adult, when set, says which models are adult ones (SetAdult).
+	adult func(modelID string) bool
 }
 
 // SetOnChange registers f to run after Save or Reset wrote the file: the app applies the saved assignment
@@ -158,6 +162,7 @@ func (s *Service) View() (View, error) {
 		VideoModels: videoOptions(cfg, s.gated),
 		Gated:       s.gatedRoutes(cfg),
 		Unusable:    s.unusableRoutes(cfg),
+		Routes:      s.routes(cfg),
 	}
 	s.withAvailability(v.ImageModels, v.VideoModels)
 	return v, nil

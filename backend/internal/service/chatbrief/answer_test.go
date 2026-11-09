@@ -10,20 +10,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
-type fixture struct{ svc *service.Services }
+type fixture struct {
+	svc *service.Services
+	db  *repository.DB
+}
 
 func newFixture(t *testing.T) fixture {
 	t.Helper()
 	testenv.Parallel(t)
 	db := testdb.Open(t)
-	return fixture{svc: servicetest.New(t, service.Deps{DB: db, AssetsDir: filepath.Join(t.TempDir(), "assets")})}
+	return fixture{db: db, svc: servicetest.New(t, service.Deps{DB: db, AssetsDir: filepath.Join(t.TempDir(), "assets")})}
 }
 
 func (f fixture) post(t *testing.T, projectID, content, replyTo string) service.Workspace {
@@ -48,23 +53,13 @@ func (f fixture) lastMessage(t *testing.T, projectID string) domain.ThreadMessag
 	return ws.Messages[len(ws.Messages)-1]
 }
 
-// askUntil delegates the Brief items one by one until the AI asks about field, and returns that card.
-func (f fixture) askUntil(t *testing.T, projectID string, field domain.BriefField) domain.ThreadMessage {
+// ask puts the question card of a Brief item into the thread, as a thread made before the summary of #1114 holds it.
+func (f fixture) ask(t *testing.T, projectID string, field domain.BriefField) domain.ThreadMessage {
 	t.Helper()
-	for range domain.RequiredBriefFields() {
-		q := f.lastMessage(t, projectID)
-		require.Equal(t, domain.KindQuestion, q.Kind)
-		if q.RefID == string(field) {
-			return q
-		}
-		answer := domain.DelegateOption
-		if q.RefID == string(domain.BriefSubject) {
-			answer = "美容液" // the Subject cannot be left to the AI (#1108)
-		}
-		f.post(t, projectID, answer, q.ID)
-	}
-	require.FailNow(t, "the AI never asked about "+string(field))
-	return domain.ThreadMessage{}
+	card := briefing.Question(field, field.Question())
+	card.ID = domain.NewID()
+	require.NoError(t, repository.NewProjectRepository(f.db).Apply(context.Background(), repository.Turn{ProjectID: projectID, Messages: []domain.ChatMessage{card}}))
+	return f.lastMessage(t, projectID)
 }
 
 // The chat answer takes the same Aspect Ratios as the Brief form (9:16 / 16:9 / 1:1): another value is
@@ -75,7 +70,7 @@ func TestAspectRatioAnswerOutsideTheBriefRatiosIsAskedAgain(t *testing.T) {
 			f := newFixture(t)
 			p, err := f.svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: "動画を作りたい"})
 			require.NoError(t, err)
-			q := f.askUntil(t, p.ID, domain.BriefAspectRatio)
+			q := f.ask(t, p.ID, domain.BriefAspectRatio)
 
 			// A reply to the card.
 			ws := f.post(t, p.ID, answer, q.ID)
@@ -104,13 +99,13 @@ func TestAnswerLongerThanTheFormLimitIsAskedAgain(t *testing.T) {
 	f := newFixture(t)
 	p, err := f.svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: "動画を作りたい"})
 	require.NoError(t, err)
-	q := f.askUntil(t, p.ID, domain.BriefContentType)
+	q := f.lastMessage(t, p.ID) // the Subject question
 
 	ws := f.post(t, p.ID, strings.Repeat("あ", 201), q.ID)
 
-	assert.Empty(t, f.brief(t, p.ID).ContentType)
+	assert.Empty(t, f.brief(t, p.ID).Subject)
 	require.Len(t, ws.Messages, 2)
-	assert.Equal(t, string(domain.BriefContentType), ws.Messages[1].RefID)
+	assert.Equal(t, string(domain.BriefSubject), ws.Messages[1].RefID)
 	assert.Contains(t, domain.DecodeCardBody(ws.Messages[1].Content).Text, "200 文字以内")
 }
 
@@ -135,4 +130,11 @@ func TestURLLongerThanTheFormLimitIsNotTakenFromTheChatSoTheFormStaysSavable(t *
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "ポップ", f.brief(t, p.ID).Mood)
+}
+
+func (f fixture) state(t *testing.T, projectID string) domain.ProjectState {
+	t.Helper()
+	p, err := f.svc.Projects.Get(context.Background(), projectID)
+	require.NoError(t, err)
+	return p.State
 }

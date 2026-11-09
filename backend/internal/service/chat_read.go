@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/chatbrief"
 )
 
 // ChatService runs the chat thread of a Project (F-30): the user's messages, the
@@ -75,9 +75,9 @@ func (s *ChatService) workspaceOf(ctx context.Context, projectID string, msgs []
 	return ws, nil
 }
 
-// isBriefQuestion reports whether m is the question card of a Brief item.
+// isBriefQuestion reports whether m is the question card of a Brief item or the summary card of the Brief.
 func isBriefQuestion(m domain.ChatMessage) bool {
-	return m.Kind == domain.KindQuestion && m.RefType == domain.RefBriefField
+	return m.Kind == domain.KindQuestion && (m.RefType == domain.RefBriefField || m.RefType == domain.RefBriefConfirm)
 }
 
 func isAnswerable(k domain.MessageKind) bool {
@@ -175,13 +175,9 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		assetByID[a.ID] = a
 	}
 
-	var replied map[string]bool
-	var brief domain.Brief
+	var open chatbrief.OpenState
 	if needsAnswer {
-		if replied, err = s.chat.RepliedMessageIDs(ctx, projectID); err != nil {
-			return nil, err
-		}
-		if brief, err = s.projects.GetBrief(ctx, projectID); err != nil {
+		if open, err = chatbrief.LoadOpenState(ctx, s.chat, s.projects, projectID); err != nil {
 			return nil, notFound(err)
 		}
 	}
@@ -208,18 +204,20 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		}
 		switch m.Kind {
 		case domain.KindQuestion:
-			f := domain.BriefField(m.RefID)
 			if m.RefType == domain.RefContinue {
-				v.Open = !replied[m.ID]
+				v.Open = !open.Replied[m.ID]
 			} else {
-				v.Open = !replied[m.ID] && slices.Contains(brief.Missing(), f)
+				v.Open = chatbrief.Open(m, open.Replied[m.ID], open.Brief, open.State, open.LatestConfirm)
 			}
 		case domain.KindEscalation:
-			v.Open = !replied[m.ID]
+			v.Open = !open.Replied[m.ID]
 		case domain.KindProgress:
 			if job, ok := jobs[m.RefID]; ok {
 				v.Job = &job
 			}
+		}
+		if v.Unrecorded, err = s.genApprovals.Unrecorded(ctx, projectID, m); err != nil {
+			return nil, err
 		}
 		views[i] = v
 	}

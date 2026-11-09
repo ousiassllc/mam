@@ -1,5 +1,4 @@
-// Package briefing extracts a Creative Brief from what the user writes in the chat
-// (F-01, spec/spec.md §4.2).
+// Package briefing extracts a Creative Brief from what the user writes in the chat (F-01, spec/spec.md §4.2).
 //
 // RuleExtractor is deterministic and needs no external API, so the chat works before
 // a Reasoning LLM Adapter is configured. An LLM-backed Extractor can replace it
@@ -7,11 +6,14 @@
 package briefing
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/constraint"
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/declined"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -31,7 +33,14 @@ var (
 	subjectRe    = regexp.MustCompile(`(?:^|[\s、。,を])([^\s、。,！!？?「」のを]{1,30})の(?:縦型|横型|縦長|横長|正方形|\d+\s*秒|CM|動画|広告|PV|ショート|アニメ|ドラマ|ムービー)`)
 	whitespaceRe = regexp.MustCompile(`\s+`)
 	urlRe        = regexp.MustCompile(`https?://[^\s、。」）)]+`)
-	platformRe   = regexp.MustCompile(`\b(Instagram|YouTube|TikTok|Facebook|LINE|Twitter)\s*(広告|投稿|リール|ショート|CM)?`)
+	platformRe   = regexp.MustCompile(`\b(Instagram|YouTube|TikTok|Facebook|LINE|Twitter|Reels|Shorts)\s*(広告|投稿|リール|ショート|CM)?`)
+	// shortFormRe is the short video format of a platform the Brief proposes a format for ("YouTube Shorts", "InstagramのReels", "YouTubeのショート動画",
+	// "Instagramリール"): it names more than the bare platform does, so objective prefers it. "Instagram広告" is none: it has no table row.
+	shortFormRe = regexp.MustCompile(`(?i)(?:(YouTube)\s*(?:の|で|に|向けの?|用の?)?\s*(Shorts|ショート)|(Instagram)\s*(?:の|で|に|向けの?|用の?)?\s*(Reels|リール))`)
+	// labelledRe reads "ターゲット: 主婦", "雰囲気は ゆるい": a value the user names by its item, whatever the value is. The item may follow a clause that
+	// runs on into it ("主人公は猫でターゲットは社会人").
+	labelledRe = regexp.MustCompile(`(?:^|[\s、。,]|[でて])(ターゲット|対象|Target|雰囲気|トーン|Mood|目的|用途|Objective)(?:は|：|:)\s*([^\s。、,]{1,60})`)
+	themeRe    = regexp.MustCompile(`テーマ(?:は|：|:)\s*([^。\n]{1,80})`)
 )
 
 type keywordRule struct {
@@ -47,7 +56,7 @@ var contentTypeRules = []keywordRule{
 	{"SNS/ショート動画", []string{"SNS", "ショート動画", "リール", "Reels", "Shorts", "TikTok"}},
 }
 
-var objectiveKeywords = []string{"ブランドサイト", "Webサイト", "店頭", "展示会", "採用", "ECサイト"}
+var objectiveKeywords = []string{"ブランドサイト", "Webサイト", "店頭", "展示会", "採用", "ECサイト", "認知拡大", "集客", "宣伝", "ファン獲得", "フォロワー獲得"}
 
 var targetKeywords = []string{"ファミリー層", "ファミリー", "学生", "主婦", "ビジネスパーソン", "経営者"}
 
@@ -65,16 +74,19 @@ var ratioKeywords = []struct {
 	{domain.AspectRatio1x1, []string{"正方形", "スクエア"}},
 }
 
-// Extract implements Extractor.
+// Extract implements Extractor. What the text denies ("学生ではなく社会人", "雰囲気は派手でなく地味", "15秒ではなく30秒") is never read: every item but the Subject and the constraints is read from the text without its denied phrases.
 func (RuleExtractor) Extract(text string) domain.Brief {
 	var b domain.Brief
-	b.ContentType = firstRule(text, contentTypeRules)
-	b.Objective = objective(text)
-	b.Subject = subject(text)
-	b.Target = target(text)
-	b.Duration = duration(text)
-	b.AspectRatio = aspectRatio(text)
-	b.Mood = mood(text)
+	b.Subject = statedSubject(text)
+	b.AdditionalInstruction = instruction(text)
+	pos, _ := positiveSide(text)
+	b.ContentType = firstRule(pos, contentTypeRules)
+	b.Objective = cmp.Or(labelled(pos, domain.BriefObjective), objective(pos))
+	// The age and gender of the protagonist ("30代女性インフルエンサーを主人公に") are not the audience.
+	b.Target = cmp.Or(labelled(pos, domain.BriefTarget), target(strings.Replace(pos, b.Subject, "", 1)))
+	b.Duration = duration(pos)
+	b.AspectRatio = aspectRatio(pos)
+	b.Mood = cmp.Or(labelled(pos, domain.BriefMood), mood(pos))
 	for _, u := range urlRe.FindAllString(text, -1) {
 		// A URL the Brief form would refuse stays out, or it would block saving the form later.
 		if u = strings.TrimRight(u, ".,;"); ReferenceProblem(u) == "" {
@@ -84,21 +96,36 @@ func (RuleExtractor) Extract(text string) domain.Brief {
 	return b
 }
 
-// subject is the noun in front of "の縦型 / の15秒 / のCM ..."; a content-type word
-// there ("アニメの動画") names the kind of video, not the subject.
-func subject(text string) string {
-	m := subjectRe.FindStringSubmatch(text)
-	if m == nil {
-		return ""
-	}
-	for _, r := range contentTypeRules {
-		for _, k := range r.keywords {
-			if strings.Contains(m[1], k) {
-				return ""
-			}
+// labelledFields maps the labels labelledRe reads to the Brief item they name.
+var labelledFields = map[string]domain.BriefField{
+	"ターゲット": domain.BriefTarget, "対象": domain.BriefTarget, "Target": domain.BriefTarget,
+	"雰囲気": domain.BriefMood, "トーン": domain.BriefMood, "Mood": domain.BriefMood,
+	"目的": domain.BriefObjective, "用途": domain.BriefObjective, "Objective": domain.BriefObjective,
+}
+
+// labelled is the value the text gives to the item f by name ("ターゲット: 主婦"), or "".
+func labelled(text string, f domain.BriefField) string {
+	for _, m := range labelledRe.FindAllStringSubmatch(text, -1) {
+		if labelledFields[m[1]] == f {
+			return trimTail(m[2])
 		}
 	}
-	return m[1]
+	return ""
+}
+
+// instruction is the theme and the constraints the text states, one per line: "テーマ: …", "制約: 成人・架空". The constraint line also keeps the safety refusals
+// the Subject was read without ("制約: 成人・暴力は出さない", declined.Refusals), so that a stated constraint is shown on the confirmation card and can be deleted.
+func instruction(text string) string {
+	var lines []string
+	if m := themeRe.FindStringSubmatch(text); m != nil {
+		if theme := strings.TrimSpace(m[1]); concrete(theme) != "" {
+			lines = append(lines, ThemePrefix+theme)
+		}
+	}
+	if items := append(constraint.Stated(text), declined.Refusals(text)...); len(items) > 0 {
+		lines = append(lines, ConstraintPrefix+strings.Join(items, "・"))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func firstRule(text string, rules []keywordRule) string {
@@ -112,9 +139,35 @@ func firstRule(text string, rules []keywordRule) string {
 	return ""
 }
 
+// shortForm is the name of the short video format the text names ("YouTube Shorts", "Instagram Reels"; "YouTubeショート", "Instagramリール" as the user wrote
+// the format), and where it starts in the text ("" and -1 when the text names none).
+func shortForm(text string) (name string, at int) {
+	m := shortFormRe.FindStringSubmatchIndex(text)
+	if m == nil {
+		return "", -1
+	}
+	platform, format := "Instagram", ""
+	if m[2] >= 0 {
+		platform, format = "YouTube", text[m[4]:m[5]]
+	} else {
+		format = text[m[8]:m[9]]
+	}
+	switch strings.ToLower(format) {
+	case "shorts":
+		format = " Shorts"
+	case "reels":
+		format = " Reels"
+	}
+	return platform + format, m[0]
+}
+
 func objective(text string) string {
-	if m := platformRe.FindStringSubmatch(text); m != nil {
-		return m[1] + m[2]
+	loc := platformRe.FindStringSubmatchIndex(text)
+	if name, at := shortForm(text); name != "" && (loc == nil || at <= loc[0]) {
+		return name
+	}
+	if loc != nil {
+		return text[loc[2]:loc[3]] + text[max(loc[4], 0):max(loc[5], 0)]
 	}
 	for _, k := range objectiveKeywords {
 		if strings.Contains(text, k) {

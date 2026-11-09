@@ -51,6 +51,11 @@ func Data(v modelsettings.View) media.Data {
 	for _, u := range v.Unusable {
 		d.Warnings = append(d.Warnings, media.Warning{Message: unusableNote(u), Route: u.Availability.Route})
 	}
+	for _, r := range v.Routes {
+		if w, ok := routeNote(r); ok {
+			d.Warnings = append(d.Warnings, w)
+		}
+	}
 	for _, p := range modelsettings.ImagePurposes() {
 		d.Images = append(d.Images, imageRow(v, p, v.Images[p]))
 	}

@@ -23,7 +23,7 @@ func TestKick_StartsAPlanJobOnlyWhereThePipelineHasWork(t *testing.T) {
 		want bool
 	}{
 		{"DRAFT with a complete Brief", seed{brief: completeBrief()}, true},
-		{"DRAFT with a missing Brief item", seed{brief: incomplete}, false},
+		{"DRAFT with a missing Brief item", seed{level: domain.ConfirmKeyCheck, brief: incomplete}, false},
 		{"PLANNING", seed{state: domain.StatePlanning, brief: completeBrief()}, true},
 		{"VISUAL_DESIGN without Scenes", seed{state: domain.StateVisualDesign, brief: completeBrief()}, true},
 		{"AWAITING_APPROVAL", seed{state: domain.StateAwaitingApproval, brief: completeBrief()}, false},

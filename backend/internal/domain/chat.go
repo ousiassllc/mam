@@ -45,11 +45,12 @@ const (
 
 // chat_message.ref_type values understood by the chat. Cards refer to an entity (er.md §4); Approval cards use CheckpointRefType.
 const (
-	RefBriefField     = "brief_field" // Question card: ref_id is the BriefField being asked
-	RefAsset          = "asset"       // Keyframe card: ref_id is the asset ID
-	RefTake           = "take"        // Take card: ref_id is the take ID
-	RefJob            = "job"         // Progress card: ref_id is the job ID (status is read live)
-	RefShot           = "shot"        // Escalation card: ref_id is the shot ID (optional)
+	RefBriefField     = "brief_field"   // Question card: ref_id is the BriefField being asked
+	RefBriefConfirm   = "brief_confirm" // Question card: the batch summary "この内容でよいですか？" of the Brief (ref_id is RefBriefConfirm itself; #1114)
+	RefAsset          = "asset"         // Keyframe card: ref_id is the asset ID
+	RefTake           = "take"          // Take card: ref_id is the take ID
+	RefJob            = "job"           // Progress card: ref_id is the job ID (status is read live)
+	RefShot           = "shot"          // Escalation card: ref_id is the shot ID (optional)
 	RefNotePromotion  = "note_promotion"
 	RefContinue       = "continue"        // Question card of Continue: ref_id is the completed shot ID
 	RefExport         = "export"          // Text notice of a finished export: ref_id is the export ID (the chat draws its download link)
@@ -160,10 +161,9 @@ type ThreadMessage struct {
 	ChatMessage
 	Attachments []Asset
 	ReplyTo     *ChatMessage // the message this one answers, nil when not a reply
-	// Open is true while a question / escalation card still waits for an answer.
-	Open bool
-	// Job is the live job of a progress card (nil when unknown).
-	Job *Job
+	Open        bool         // true while a question / escalation card still waits for an answer
+	Job         *Job         // the live job of a progress card (nil when unknown)
+	Unrecorded  bool         // a generation approval card of v0.1.34 with no record of what it showed (a bundle does not carry it): never taken as an approval (spec/spec.md §4.3)
 }
 
 // Pending reports whether the card can still change in place (card.updated): a question or

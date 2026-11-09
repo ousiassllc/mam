@@ -119,6 +119,7 @@ templ Box(p Props)
 | `media_failed` | `upstream` | （書き出し・Rough Cut・Take の合成・音声のミキシングのどれか）に失敗しました。動画・音声の処理（ffmpeg）がエラーで終わりました。 |  |
 | `media_timeout` | `upstream` | 動画・音声の処理（ffmpeg）が制限時間を超えました。 |  |
 | `model_not_installed` | `unavailable` | 必要なモデルのファイルが見つかりません。 | /model-manager |
+| `no_usable_model` | `unavailable` | 画像・動画の生成に使えるモデルがありません。割り当てのモデルごとの使えない理由と、条件に合って今使えるモデル（あれば）は、`modelroute.CauseOf(err)` が原因の末尾に足す。生成の開始前に断る（[model-adapters.md](model-adapters.md) §3.1）。HTTP は 409（`conflict`）で同じ文を返す | /settings/api-keys<br>/settings/chatgpt<br>/model-manager |
 | `no_gpu` | `unavailable` | 対応する GPU が見つかりません。 | /model-manager<br>/settings/local-models |
 | `node_missing` | `unavailable` | ワークフローが使うカスタムノードが、ComfyUI にありません。 | /model-manager |
 | `not_found` | `not_found` | 対象が見つかりません。 |  |
@@ -166,6 +167,7 @@ templ Box(p Props)
 | `media.ErrUnavailable`（ffmpeg・ffprobe が無い） | `ffmpeg_missing` |
 | 429（`modeladapter.RateLimited`） | `rate_limited`（サーキットブレーカーより先。429 が開けた場合も 429 を原因にする） |
 | `ErrCircuitOpen`（モデル・LLM） | `circuit_open` |
+| `*modelroute.NoUsableError`（`modelroute.ErrNoUsableModel`） | `no_usable_model`（`generation.FailureReason` が原因に `Cause()` を使う） |
 | `chatgpt.ErrNoImageModel` | `image_unavailable`（ベンダーの 400 は症状なので、詳細にだけ残す） |
 | `chatgpt.ErrImageModelPinned` | `image_model_pinned`（固定したモデルの拒否。直し方は更新ではなく固定を直すこと） |
 | `direct.ErrInputsUnsupported` / `ErrInputsConflict` / `ErrResolution` | `input_unsupported` |
@@ -276,3 +278,4 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 | 1.8 | 2026-11-06 | コード `image_model_pinned` を足した（`Options.Driver` で固定した Codex のモデルが ChatGPT のアカウントに拒否された。`image_unavailable` の「mam を最新版に更新して」は当てはまらない）。`errmap` は `chatgpt.ErrImageModelPinned` で見分ける | Issue #1071 |
 | 1.9 | 2026-11-06 | `facefusion_failed`・`facefusion_unavailable`・`ffmpeg_missing` の導線を、設定画面からモデルマネージャーの `companion`（`#mm-facefusion`・`#mm-ffmpeg`）へ移すと決めた。直し方の文の「設定画面の…」を「モデルマネージャーの「付随ソフト」」に改める（`apperr` の `Place` の行き先と `messages_ja.go`・`messages_en.go`。状態は仕様のみ） | Issue #1106 |
 | 1.10 | 2026-11-07 | `facefusion_failed`・`facefusion_unavailable`・`ffmpeg_missing` の導線を、モデルマネージャーの `companion`（`#mm-facefusion`・`#mm-ffmpeg`）へ移した（#1106）。直し方の文を「モデルマネージャーの「付随ソフト」」に改め、`facefusion_unavailable` は入れ方の手順がそこにあることを言う（`apperr` の `Place` の行き先と `messages_ja.go`・`messages_en.go`）。状態は「実装済み」 | Issue #1106 |
+| 1.11 | 2026-11-08 | コード `no_usable_model`（クラス `unavailable`。画像・動画の生成に使えるモデルがない）と、`*modelroute.NoUsableError` の対応を足した。直し方は API キーの登録・ChatGPT のログイン・ローカルモデルの導入・割り当ての変更 | Issue #1113（既定の割り当てが API キーのないモデルだけを指すと、Reference Pack がすべて失敗し、原因がチャットに出なかった） |

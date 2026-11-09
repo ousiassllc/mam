@@ -16,14 +16,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
 )
 
-// seedDeepProject inserts a Project with rows in every table that hangs off a Project through
+// seedDeepProject inserts a DIRECTOR Project (an import turns AUTO into DIRECTOR: consent_test.go) with rows in every table that hangs off a Project through
 // another table (Take → Judge result → Repair action → shadow, Shot → State diff, timeline →
 // Editor Judge result), every ID is 'P' or starts with "'P-", which the helper replaces with p.
 func seedDeepProject(t *testing.T, db *repository.DB, p string) {
 	t.Helper()
 	require.NoError(t, db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
 		for _, q := range []string{
-			`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('P', 'auto', 'full_auto', 'product_cm', 'balanced')`,
+			`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('P', 'director', 'full_auto', 'product_cm', 'balanced')`,
 			`INSERT INTO scene (id, project_id, order_index) VALUES ('P-sc', 'P', 0)`,
 			`INSERT INTO shot (id, scene_id, order_index) VALUES ('P-sh', 'P-sc', 0)`,
 			`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot) VALUES ('P-pv', 'P-sh', 1, '{}')`,

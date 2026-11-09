@@ -134,7 +134,7 @@ func (s *PolicyService) SetQualityPolicy(ctx context.Context, projectID string, 
 	e := view.Effective
 	s.announce(ctx, projectID, fmt.Sprintf("Quality Policy を %s にしました（Max retries %d / Max generation time %d 秒 / 合格スコア %d・軸ごと %d 以上）。",
 		q.Label(), e.MaxRetries, int(e.MaxGenerationTime.Seconds()), e.MinAcceptanceScore, e.MinAxisScore))
-	s.kick(ctx, projectID) // the plan of the generation approval (models, Takes) may have changed
+	s.kick(ctx, projectID) // the plan of the automatic start (models, Takes) may have changed
 	return view, nil
 }
 

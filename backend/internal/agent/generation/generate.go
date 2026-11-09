@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/fanout"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
@@ -167,24 +168,24 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 
 	// Takes (F-12). They run at the same time; the Model Adapter limits calls per vendor.
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
-	var made counter
-	errs := parallel(o.logger, strategy.Takes, func(i int) error {
+	var made fanout.Counter
+	errs := fanout.Run(o.logger, strategy.Takes, func(i int) error {
 		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, domain.TakeLineage{WorldStateVersion: sc.world.Version, References: references}, fmt.Sprintf("Shot %d · Take %d", shot.OrderIndex+1, i+1), policy.Effective().MaxGenerationTime, "")
 		if err != nil {
 			return err
 		}
-		o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesDone: made.add(takeID), TakesTotal: strategy.Takes})
+		o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesDone: made.Add(takeID), TakesTotal: strategy.Takes})
 		o.judgeTake(ctx, takeID)
 		return nil
 	})
-	done := made.value()
+	done := made.Value()
 	if done == 0 {
 		return Progress{}, errors.Join(errs...)
 	}
 	if err := errors.Join(errs...); err != nil {
 		o.logger.Warn("some takes failed", "shot_id", shot.ID, "made", done, "wanted", strategy.Takes, "err", err)
 	}
-	o.updateWorldState(ctx, ref, spec, made.first())
+	o.updateWorldState(ctx, ref, spec, made.First())
 	return Progress{TakesDone: done, TakesTotal: strategy.Takes}, nil
 }
 

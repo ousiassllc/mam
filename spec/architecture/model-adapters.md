@@ -46,6 +46,65 @@
 
 > **注（Imagen 4 の終了と、参照画像を捨てる場合）**: Imagen 4（`imagen-4.0-*-001`）は Google が 2026-08-17 に終了した（後継は `gemini-nano-banana-2.1`。<https://ai.google.dev/gemini-api/docs/deprecations>）ため、識別子 `imagen-4` ごと組み込みから外した。保存済みの `models.json` が `imagen-4` を指していれば、起動時に Nano Banana へ読み替える（§6）。組み込みの 4 モデル（Nano Banana・Nano Banana Lite・GPT Image 2・FLUX.2）はどれも参照画像を受け取れるので、組み込み同士の代替では参照画像は捨てられない。参照画像を受け取れない登録モデル（`accepts_image_inputs` が偽のローカルモデル。[local-models.md](local-models.md)）が `edit_reference` などの主・代替に回ったときは、参照画像は警告ログを残して**黙って捨てられ**、プロンプトだけの新規生成になる（利用者への通知や失敗扱いはなく、画像の結果にも代替に回ったことは残らない）。その画像ではアップロード素材・World State の見た目やキャラクターの同一性は保たれず、以降の Judge の Identity 評価も参照なしで作られた画像が基準になる。同一性を保ちたい用途では、そのモデルを主・代替に割り当てない。
 
+### 3.1 使えるモデルの選択（生成の開始前の確認・条件に合うモデルへの切り替え・実際に使ったモデルの記録。Issue #1113）
+
+画像・動画の割り当て（§3・§4・§9.2）が、API キーのないモデルだけを指していても、使えるモデル（ChatGPT サブスクの画像、ローカルの ComfyUI の画像、ローカルの動画モデルなど）が他にあるなら、生成は止まらずにそれで進む。使えるモデルが 1 つもないときは、ジョブを積む前に、原因と直し方を添えて断る（Reference Pack がすべての Shot で失敗する・動画ジョブが始まらない、を起こさない）。
+
+**「使える」の判定**: モデル一覧・生成テスト（[gentest.md](gentest/gentest.md)）と同じ判定（API キーの登録・ChatGPT のログイン・ローカルモデルの導入と起動・[model-filter.md](model-manager/model-filter.md) の絞り込み）。生成のために別の判定は持たない。
+
+**開始前の確認（preflight）**: Reference Pack の開始（`StartReferencePack`）と動画生成の開始（`start`。MANUAL / AUTO / MCP / 再生成 / 自動修復のどの入口も同じ）は、ジョブを積む前に次を確認する。確認はファイルとメモリの設定を読むだけで、ネットワークも課金も DB の書き込みも起こさない。
+
+- 画像: Reference Pack が作る画像の用途（`new_reference` / `edit_reference`）のそれぞれに、使えるモデルがある
+- 動画: Shot の Quality Policy・解像度・長さ・First Frame の有無に合う、使えるモデルがある
+- ない場合は `ErrNoUsableModel`（エラーコード `no_usable_model`。[errors.md](errors.md)）で断る。理由は `generation.FailureReason(err)` が日本語で返す。割り当てのモデルごとの使えない理由と直す画面、条件に合って今使えるモデル（あれば）、直し方（API キーの登録・ChatGPT のログイン・ローカルモデルの導入・割り当ての変更）を含む。HTTP は 409、チャット・AUTO の自動起動の失敗通知・MCP も同じ文を返す
+- ジョブが積まれてから実行までの間にモデルが使えなくなったとき（キーの削除など）は、ジョブが同じ判定を実行時にやり直し、同じ原因を失敗としてチャットに残す（Shot は PLANNING へ戻る）
+
+**割り当てをどう扱うか**:
+
+| 状況 | 既定の割り当て（利用者が変えていない役割） | 利用者が変えた割り当て・`PreferOpenAI`・起動オプションで固定した割り当て | Shot で固定した動画モデル |
+|------|------|------|------|
+| 主か代替のどちらかが使える | 割り当てのまま（主が使えなければ代替へ。§7・§9.3） | 同じ | 固定したモデルのまま |
+| 主も代替も使えず、条件に合う使えるモデルがある | **条件に合う使えるモデル 1 つで生成する**（理由と通過しなかった割り当てを記録し、チャットと進捗に出す） | **替えない**。`ErrNoUsableModel` で断り、条件に合う使えるモデルを提案として添える | 替えない。同じく断る |
+| 主も代替も使えず、条件に合うモデルもない | `ErrNoUsableModel` で断る | 同じ | 同じ |
+| 割り当てが成人向けモデルで年齢確認がオフ | 経路ごと断る（[model-filter.md](model-manager/model-filter.md)）。成人向けモデル（カタログの成人向け・無検閲、Hugging Face から入れた NFAA のモデル、成人向けのファイルを読むワークフロー。年齢確認がオンでも）は自動では選ばない | 同じ | 同じ |
+
+「利用者が変えた」とは、役割（画像の用途・Quality Policy）の経路が組み込みの既定（`DefaultConfig`）と違うこと、または起動オプションで割り当てを固定していること（`pinned`）。経路の違いは、使うモデルの選択（主・代替のモデル、動画は解像度を含む）だけで見る。Quality Policy の Take 数だけを変えても、モデルを選んだことにはならない（既定のモデルが使えなければ、条件に合うモデルへ替える）。設定画面の「既定に戻す」で既定に戻した役割は、また既定として扱う。**利用者が選んだものを黙って別のモデルに替えない**。替えるのは、利用者が選んでいない既定が、使えないときだけである。
+
+**候補の条件**（すべて満たすものだけが候補。満たさない使えるモデルは「条件に合わない理由」を断りの文に出す）:
+
+- 今使える（上の判定）。成人向けモデルでない。ライセンスが「不可」でなく、「商用 OK のモデルだけを使う」設定（[model-license.md](model-license.md)）を通る
+- 用途: 画像は `edit_reference` なら参照画像を受け取れるモデルだけ。入力の画像がないと動かないワークフローは、画像には自動では選ばない（すべての画像に入力があるとは限らないため）。動画は動画モデルだけ
+- 入力: Shot に Keyframe（First Frame）があるなら First Frame を受け取れる動画モデルだけ。First Frame を必須とするワークフローは Keyframe があるときだけ。Last Frame・参照画像を必須とするワークフローは自動では選ばない
+- 解像度・長さ: Quality Policy の解像度に対応し、最長のクリップが Shot の長さ以上の動画モデルだけ
+- Quality Policy: 解像度は Quality Policy が決める（上の「解像度」）。Policy ごとに別の割り当てを持つので、切り替えは Policy の経路が使えないときだけ働く
+
+**選ぶ規則**（決定的。同じ設定・同じ入力なら同じモデルになる）: 候補を次の順に並べ、先頭の 1 つを使う。
+
+1. 経路: ローカル（この PC。無料）→ ChatGPT サブスク（プランの枠。従量課金なし）→ API（従量課金）。思いがけない課金を避けるための順で、品質の順ではない
+2. 同じ経路の中では、単価（動画は秒あたり、画像は 1 枚あたり）が分かるものを先に、安い順。単価が分からないものは後
+3. モデル ID の辞書順
+
+これは**条件への一致**で選ぶ規則であって、品質の順位づけではない。画面・チャット・MCP の文言も「条件に合うモデルを自動選択」とだけ言い、「おすすめ」「より高品質」とは言わない。切り替えた経路は主・代替が同じ 1 つのモデルで、他の経路へのフェイルオーバーはしない（途中で課金の経路が変わらないようにするため）。Multi-model routing（[model-adapters-m3.md](model-adapters-m3.md)）も切り替えたときは使わない。
+
+**費用**: 経路ごとに次のとおり。
+
+| 経路 | 見積・記録 | 上限（Shot・Project の予算） |
+|------|------|------|
+| ローカル | 無料（0 USD。モデルに単価を登録していれば、その単価） | 数えない（0 なので上限を超えない） |
+| ChatGPT サブスク | **不明**（0 ではない。Cost Ledger の合計にも足さない。画面には「単価不明」と出す） | 数えない（既存の「価格が分からないモデルは数えない」規則。§9.5） |
+| API | `models.json` の単価で見積もる | 上限を適用する。1 Take も収まらなければ従来どおり 402 で開始しない |
+
+切り替え後は、**切り替え後のモデル**の単価で見積もる（genplan の見積も、`agent/genplan` に渡す設定が同じ判定を通すので、切り替え後のモデルで出る。Shot の特性は問わず Keyframe ありとして見る）。
+
+**使ったモデルの記録と見え方**: 画像と動画のどちらも、使ったモデル・経路（`api` / `chatgpt-subscription` / `local`）・選んだ理由（割り当て / 条件に合う自動選択、通過しなかった割り当てとその理由）・費用の扱い（従量課金 / 無料 / 単価不明）を残す。
+
+- Take: `take.model_parameters.model_use`。Reference Pack の画像: `shot.shot_spec.references[].model_use`（[er.md](er.md)）
+- 進捗カード・Take / Keyframe カード: 使うモデルと経路（「ローカル・無料」「ChatGPT サブスク・単価不明」「API・従量課金」）、切り替えたときは「条件に合うモデルを自動選択」
+- Take の Trace パネル（`GET /takes/:id/trace`。[endpoints.md](../api/endpoints.md)）と MCP `get_take_trace` の `model_use`
+- 設定画面・MCP `get_global_settings`（`models.routes`）は、保存してある割り当てを今実行したらどうなるか（`assignment_usable` / `condition_match` / `blocked`）を、生成せずに（読み取りだけで）示す。API は [mcp-tools-settings-policy.md](../api/mcp-tools-settings-policy.md)
+
+実装は `internal/agent/modeladapter/modelroute`（判定・選択・見積）、`internal/agent/modeladapter/usable`（使えるかの判定の供給）、`internal/agent/generation`（開始前の確認と実行）。
+
 ## 4. 動画生成 Model Adapter（Take生成）
 
 | Quality/Cost Policy | プライマリ | 代替（Different Model） | 選定理由 |
@@ -226,7 +285,7 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 - **ベンダー応答の URL の扱い**: API キーを付けるリクエストは、ベンダーのベース URL と同じスキーム・ポートで、同じホスト（FLUX だけは、公式がリージョンのホストで答えるため、ベースホストの親ドメイン配下の例 `api.bfl.ai` → `api.eu.bfl.ai` も）の URL にだけ送る。親ドメインの規則を使うのは FLUX だけで、`googleapis.com` のように親ドメインを他者と共有するベンダー（Google）には使わない（`storage.googleapis.com` のバケットなどへキーを送らないため）。FLUX の `polling_url` がそれ以外を指すときは、キーを送らずエラーにする。API キーを付けるダウンロード（Gemini Omni Flash）は、ダウンロード先をベース URL から組み立て、リダイレクトされたときはベンダーのホスト以外ではキーのヘッダーを外す（§9.4）。生成結果のダウンロード（Sync Labs の `outputUrl` を含む。登録した接続先の例外は次の項目）は https の URL だけを受け付け、公開インターネットのアドレス以外へは接続しない（許可リスト型。`localhost`、ループバック、リンクローカル（クラウドのメタデータサービス `169.254.169.254` など）、プライベート、未指定、マルチキャストに加え、IANA の特殊用途範囲 — キャリアグレード NAT `100.64.0.0/10`・`0.0.0.0/8`・ドキュメント用・ベンチマーク用・予約済みクラス E・6to4 リレー anycast・Teredo など — は全て拒否する。IPv4 互換・6to4・NAT64 の IPv6 アドレスは埋め込まれた IPv4 アドレスで判定する。ホスト名の解決後のアドレスも検査する。リダイレクト先も同じ規則。プロキシ設定は使わない）。ローカルの常駐アプリがベンダー応答を経由して内部ネットワークを読み出さないための制限である。ベンダー API を呼ぶ既定の HTTP クライアント（LLM・Model Adapter・Audio Director・Jev 共通、`internal/httpclient`）は、別ホストへのリダイレクトと https から http へのリダイレクトを拒否し（独自ヘッダーの API キーを別ホストへ転送しない）、接続・TLS ハンドシェイク・レスポンスヘッダーの待ちにタイムアウトを持つ。ベンダーの JSON 応答は 64 MiB まで読み、超えると失敗扱いにする（画像は base64 で JSON に入って返るため）。生成動画のダウンロード（上限 300 MB）は本文をメモリに載せずアセットディレクトリ配下の一時ファイル（`<assets>/.staging/`）へストリーム書き込みし、保存時にアセットのパスへリネームする（失敗・サイズ超過時は一時ファイルを削除し、異常終了で残った分は起動時に掃除する）。画像は小さいためメモリ上で扱う
 - **登録した接続先（ローカルモデル）の URL の扱い**: 組み込みベンダーの規則をゆるめるのは、登録した接続先の `base_url` と**同じスキーム・ホスト・ポート**の URL に対してだけで、http・`localhost`・プライベート・`100.64.0.0/10` へ接続できる。それ以外の URL（第三者ベンダーの応答 URL を含む）は上の規則のまま拒否する。ホスト違いと https から http へのリダイレクトは拒否し、API キーは接続先の `base_url` 配下にだけ付ける。**リンクローカル（`169.254.0.0/16`、`fe80::/10`）は登録した接続先でも常に拒否**し、判断は接続時に解決した IP（ダイヤラの `Control`）で行う（DNS リバインディング対策。`local-models.md` §6）
 - **同時実行数（`non-functional.md` §4）**: ベンダーごとの上限を Model Adapter が持つ。429 を受けると上限を半分（最小 1）にし、成功が上限回数続くごとに 1 ずつ戻す。上限を超える呼び出しはスロットが空くまで待つ。Prompt Candidate Generation（F-08）が Candidate を並列に生成しても、外部 API への同時呼び出し数はこの上限（Runway は既定 2）で抑えられる
-- **Generation Orchestrator（F-12）**: Quality Policy でモデル・解像度・Take 数を決め、(1) Shot が主モデルの最長クリップを超え代替モデルなら収まる場合は入れ替え、(2) Shot/Project の予算上限（残額）に Take 数が収まらなければ Take 数を減らし、主モデルが 1 Take も収まらず代替なら収まるなら代替を主にし、(3) 1 Take も収まらなければ 402 で開始しない。決定理由は `prompt_version.model_adapter_output`（`reasons`）に残る。Take は並列に生成し、1 つ以上成功すれば成功とする
+- **Generation Orchestrator（F-12）**: Quality Policy でモデル・解像度・Take 数を決め（その前に、割り当てのモデルが使えるかを確認し、既定の割り当てが使えなければ条件に合うモデルへ切り替える。§3.1）、(1) Shot が主モデルの最長クリップを超え代替モデルなら収まる場合は入れ替え、(2) Shot/Project の予算上限（残額）に Take 数が収まらなければ Take 数を減らし、主モデルが 1 Take も収まらず代替なら収まるなら代替を主にし、(3) 1 Take も収まらなければ 402 で開始しない。決定理由は `prompt_version.model_adapter_output`（`reasons`）に残る。Take は並列に生成し、1 つ以上成功すれば成功とする
 - **Prompt Autopilot（F-06）**: Prompt Planner（Reasoning LLM）が Shot の指示と World State・直前 Shot の Spec・Reference Pack から Canonical Shot Spec（JSON、英語）を作る。検証（目的・フレーミングあり、Acting が Shot 内で時系列順、日本語などを含まない）に失敗した回答は保存しない。既存 Spec は、追加指示がある場合だけ改訂し、無ければ再利用する。生成のたびに `prompt_version` が 1 行増え、`shot_spec_snapshot` に保存時点の Spec、`model_adapter_output` に各モデルへ渡す内容（プロンプト・解像度・参照枚数）を記録する
 - **Reference Pack（F-11）**: Art Director（Reasoning LLM）が Character/Product/Location/Style/Lighting/Keyframe の各画像のプロンプトを決め、画像 Model Adapter が生成する。Character/Product/Location/Style/Lighting を先に並列生成し、Keyframe は先行する 3 種を入力にして最後に生成する。全画像が揃ったときだけ `shot.shot_spec.references` を置き換え（途中で失敗したら旧 Pack を残し、作成済みファイルも削除する）。Keyframe は動画生成の First Frame になる。画像モデルへ入力として渡す参照画像は、Brief に添付したアップロード素材も、World State の参照（Character の顔・体、Product の形・ラベル、Location のレイアウト）も、種類ごとに読み込めた先頭の 4 枚までで、5 枚目以降は通知なしで使われない。1 枚 20 MiB を超える保存済み画像は入力にせず、警告ログを残すだけで除外する（AI Video Judge に渡す参照画像も同じ 20 MiB で、超えるものは黙って渡さない）
 - **ジョブ**: 生成・Reference Pack 作成は `job.kind = generate` の非再開ジョブ（課金を伴うため、異常終了後と、シャットダウン（Ctrl+C など）で実行中に中断された場合は、キューに戻さず失敗として扱い、Shot を PLANNING へ戻す）。開始時に Shot を GENERATING にし、同じ Shot の二重実行は 409 とする。進捗は `/ws/shots/:id`、チャットの進捗カードと Take/Keyframe カードで通知する

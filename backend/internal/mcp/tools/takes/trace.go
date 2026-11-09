@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
@@ -16,6 +17,7 @@ type TraceOutput struct {
 	Take              TraceTake            `json:"take"`
 	ModelParameters   any                  `json:"model_parameters,omitempty" jsonschema:"保存されているモデルのパラメータ（JSON）"`
 	Routing           any                  `json:"routing,omitempty" jsonschema:"動画モデルを選んだ理由（Multi-model routing）。古い Take では省略"`
+	ModelUse          *modelreg.Use        `json:"model_use,omitempty" jsonschema:"この Take を作ったモデルと経路（route_kind: api / chatgpt-subscription / local）・費用の基準（cost_basis: priced 従量課金 / free 無料 / unknown 単価不明）・選んだ理由（selection: assignment 割り当てどおり / condition_match 既定の割当が使えないため条件に合うモデルを選んだ。品質の優劣ではない）。古い Take では省略"`
 	PromptVersion     TracePrompt          `json:"prompt_version"`
 	WorldStateVersion int                  `json:"world_state_version" jsonschema:"0 は不明、または World State の版がまだ無かった"`
 	References        []domain.Reference   `json:"references" jsonschema:"モデルに渡した Reference"`
@@ -67,7 +69,7 @@ func getTrace(svc *service.TraceService) mcpkit.Handler[TakeInput, TraceOutput] 
 		out := TraceOutput{
 			ProjectID:       tr.ProjectID,
 			Take:            TraceTake{ID: tr.Take.ID, ShotID: tr.Take.ShotID, ModelName: tr.Take.ModelName, Status: string(tr.Take.Status), CreatedAt: tr.Take.CreatedAt},
-			ModelParameters: jsonValue(tr.ModelParameters), Routing: asValue(tr.Routing),
+			ModelParameters: jsonValue(tr.ModelParameters), Routing: asValue(tr.Routing), ModelUse: tr.ModelUse,
 			PromptVersion: TracePrompt{
 				VersionNumber: tr.PromptVersion.VersionNumber, SpecSnapshot: jsonValue(tr.PromptVersion.SpecSnapshot),
 				AdapterOutput: jsonValue(tr.PromptVersion.AdapterOutput), CreatedAt: tr.PromptVersion.CreatedAt,

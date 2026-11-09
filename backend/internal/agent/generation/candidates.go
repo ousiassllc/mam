@@ -13,7 +13,7 @@ import (
 // without it there is no way to pick the Best Take (503).
 var ErrJudgeUnavailable = errors.New("generation: the AI Video Judge is not available")
 
-// PlannedTakes is the most Takes Prompt Candidate Generation makes for a Shot in the mode (the generation approval estimates with it):
+// PlannedTakes is the most Takes Prompt Candidate Generation makes for a Shot in the mode (the announcement of the automatic start estimates with it):
 //
 //   - Quality Mode makes one Take per Candidate strategy at the same time, as many as the budget
 //     of the strategy allows.

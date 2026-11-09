@@ -72,10 +72,10 @@ func (r *ChatRepository) ListByIDs(ctx context.Context, projectID string, ids []
 	return messages, nil
 }
 
-// List returns the thread in order. With after set, only messages newer than that
-// message ID are returned (IDs are time-ordered UUIDv7, so the ID order is the thread order).
+// List returns the thread in order: the order of rowid, the order this instance wrote the rows in, and not of the ID (an imported message keeps the ID of its
+// bundle, which can sort after every ID made here). With after set, only the messages that follow that message; a cursor that is no message of the Project returns none.
 func (r *ChatRepository) List(ctx context.Context, projectID, after string) ([]domain.ChatMessage, error) {
-	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE project_id = ? AND id > ? ORDER BY id`, projectID, after)
+	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE project_id = ?1 AND rowid > CASE WHEN ?2 = '' THEN 0 ELSE COALESCE((SELECT rowid FROM chat_message WHERE project_id = ?1 AND id = ?2), 9223372036854775807) END ORDER BY rowid`, projectID, after)
 	if err != nil {
 		return nil, fmt.Errorf("list messages: %w", err)
 	}
@@ -96,12 +96,12 @@ func (r *ChatRepository) RepliedMessageIDs(ctx context.Context, projectID string
 	return replied, nil
 }
 
-// LatestOpenQuestion returns the newest Brief question card nobody replied to, or nil.
+// LatestOpenQuestion returns the newest Brief question card nobody replied to, or nil. Newest is rowid (see List): an imported card keeps its ID.
 func (r *ChatRepository) LatestOpenQuestion(ctx context.Context, projectID string) (*domain.ChatMessage, error) {
 	m, err := scanMessage(r.db.Reader().QueryRowContext(ctx, messageSelect+` AS m
 		WHERE m.project_id = ? AND m.kind = 'question' AND m.ref_type = 'brief_field'
 		  AND NOT EXISTS (SELECT 1 FROM chat_message r WHERE r.reply_to_message_id = m.id)
-		ORDER BY m.id DESC LIMIT 1`, projectID))
+		ORDER BY m.rowid DESC LIMIT 1`, projectID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -111,7 +111,7 @@ func (r *ChatRepository) LatestOpenQuestion(ctx context.Context, projectID strin
 	return &m, nil
 }
 
-// ListBriefQuestions returns the Brief question cards asking about the given fields, in thread order.
+// ListBriefQuestions returns the Brief question cards asking about the given fields (the summary card of the Brief is asked about as domain.RefBriefConfirm), in thread order (rowid, see List).
 func (r *ChatRepository) ListBriefQuestions(ctx context.Context, projectID string, fields []string) ([]domain.ChatMessage, error) {
 	if len(fields) == 0 {
 		return nil, nil
@@ -121,8 +121,8 @@ func (r *ChatRepository) ListBriefQuestions(ctx context.Context, projectID strin
 		args = append(args, f)
 	}
 	messages, err := queryAll(ctx, r.db.Reader(), scanMessage,
-		messageSelect+` WHERE project_id = ? AND kind = 'question' AND ref_type = 'brief_field' AND ref_id IN (`+
-			placeholders(len(fields))+`) ORDER BY id`, args...)
+		messageSelect+` WHERE project_id = ? AND kind = 'question' AND ref_type IN ('brief_field', 'brief_confirm') AND ref_id IN (`+
+			placeholders(len(fields))+`) ORDER BY rowid`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list brief questions: %w", err)
 	}
@@ -131,7 +131,7 @@ func (r *ChatRepository) ListBriefQuestions(ctx context.Context, projectID strin
 
 // ListByRef returns the messages (of any Project) that point at the given entity.
 func (r *ChatRepository) ListByRef(ctx context.Context, refType, refID string) ([]domain.ChatMessage, error) {
-	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE ref_type = ? AND ref_id = ? ORDER BY id`, refType, refID)
+	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE ref_type = ? AND ref_id = ? ORDER BY rowid`, refType, refID)
 	if err != nil {
 		return nil, fmt.Errorf("list messages by ref: %w", err)
 	}
@@ -260,9 +260,9 @@ func (r *AssetRepository) ListByIDs(ctx context.Context, projectID string, ids [
 	return assets, nil
 }
 
-// LatestOfKind returns the newest message of the Project of the given kind, or nil when there is none.
+// LatestOfKind returns the newest message of the Project of the given kind (by rowid, see List), or nil when there is none.
 func (r *ChatRepository) LatestOfKind(ctx context.Context, projectID string, kind domain.MessageKind) (*domain.ChatMessage, error) {
-	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE project_id = ? AND kind = ? ORDER BY id DESC LIMIT 1`, projectID, kind)
+	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE project_id = ? AND kind = ? ORDER BY rowid DESC LIMIT 1`, projectID, kind)
 	if err != nil {
 		return nil, fmt.Errorf("get latest message: %w", err)
 	}

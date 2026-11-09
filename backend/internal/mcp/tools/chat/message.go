@@ -46,16 +46,17 @@ type Job struct {
 
 // Message is one entry of the thread.
 type Message struct {
-	ID               string       `json:"id" jsonschema:"時系列順に増える。list_chat_messages の after に渡せる"`
+	ID               string       `json:"id" jsonschema:"メッセージの ID。list_chat_messages が返す順が時系列で、after にはその返された ID を続きの目印として渡す。ID の大小は時系列ではない（取り込んだメッセージは元の ID を持つ）"`
 	Role             string       `json:"role" jsonschema:"user or assistant"`
 	Kind             string       `json:"kind" jsonschema:"text, question, approval, keyframe, take, progress or escalation"`
 	Text             string       `json:"text" jsonschema:"本文。question / escalation は質問・相談の文面、take はタイトル、approval は確認する内容の要約"`
 	Options          []string     `json:"options,omitempty" jsonschema:"question / escalation のクイック回答（そのまま post_chat_message の content にできる）"`
 	NonBlocking      bool         `json:"non_blocking,omitempty" jsonschema:"escalation: プロジェクトを止めていない相談"`
 	ReplyToMessageID string       `json:"reply_to_message_id,omitempty"`
-	RefType          string       `json:"ref_type,omitempty" jsonschema:"カードが指す対象の種類（brief_field, take, job, shot, script_version ...）"`
-	RefID            string       `json:"ref_id,omitempty" jsonschema:"ref_type の対象の ID。question(brief_field) では聞いている Brief の項目名、keyframe では asset_id"`
+	RefType          string       `json:"ref_type,omitempty" jsonschema:"カードが指す対象の種類（brief_field, brief_confirm, take, job, shot, script_version ...）"`
+	RefID            string       `json:"ref_id,omitempty" jsonschema:"ref_type の対象の ID。question(brief_field) では聞いている Brief の項目名、question(brief_confirm)（Brief 全体の「この内容でよいですか？」）では brief_confirm、keyframe では asset_id"`
 	ApprovalStatus   string       `json:"approval_status,omitempty" jsonschema:"approval: pending, approved or changes_requested"`
+	Unrecorded       bool         `json:"unrecorded,omitempty" jsonschema:"旧「生成の承認」カード（approval で ref_type は generation）に記録が無い（取り込んだ Project など）。承認としては扱われず、生成を始めない"`
 	Open             bool         `json:"open" jsonschema:"question / escalation が回答を待っている"`
 	Pending          bool         `json:"pending" jsonschema:"このカードがまだ変わりうる（回答待ち・未承認・ジョブ実行中）。get_chat_message で最新を取り直す"`
 	Attachments      []Attachment `json:"attachments,omitempty"`
@@ -80,7 +81,7 @@ func messageOf(m domain.ThreadMessage) Message {
 	out := Message{
 		ID: m.ID, Role: string(m.Role), Kind: string(m.Kind), Text: m.Content,
 		ReplyToMessageID: m.ReplyToMessageID, RefType: m.RefType, RefID: m.RefID,
-		ApprovalStatus: string(m.ApprovalStatus), Open: m.Open, Pending: m.Pending(), CreatedAt: m.CreatedAt,
+		ApprovalStatus: string(m.ApprovalStatus), Unrecorded: m.Unrecorded, Open: m.Open, Pending: m.Pending(), CreatedAt: m.CreatedAt,
 	}
 	switch m.Kind {
 	case domain.KindQuestion, domain.KindEscalation:

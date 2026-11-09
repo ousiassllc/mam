@@ -3,16 +3,16 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/briefform"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // BriefPage is GET /projects/:id/brief: the Creative Brief in an auxiliary view.
-templ BriefPage(csrfToken string, d organisms.BriefFormData) {
+templ BriefPage(csrfToken string, d briefform.Data) {
 	@layout.AppLayout("Brief: "+d.Project.Name, csrfToken, sidenav.InProject(sidenav.Brief, d.Project)) {
 		@pagehead.Main(pagehead.Narrow) {
 			@pagehead.Header("Creative Brief", d.Project.Name, "")
-			@organisms.BriefForm(d)
+			@briefform.Form(d)
 		}
 	}
 }

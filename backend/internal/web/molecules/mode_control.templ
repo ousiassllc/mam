@@ -2,17 +2,18 @@ package molecules
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ModeControl switches AUTO ⇄ DIRECTOR at any time (F-02). The choice is saved at once and the
 // state is kept: in DIRECTOR the AI only changes what the user directs and waits; back in AUTO
-// the pipeline continues.
+// the pipeline continues. While AUTO is chosen the control says that it starts the paid generation by itself (the consent, spec/spec.md §4.3).
 templ ModeControl(p domain.Project) {
 	<form
 		id="mode-control"
-		class="flex items-center gap-2"
+		class="flex flex-wrap items-center gap-2"
 		hx-put={ paths.Project(p.ID, "mode") }
 		hx-trigger="change"
 		hx-target="this"
@@ -28,5 +29,8 @@ templ ModeControl(p domain.Project) {
 				DIRECTOR
 			}
 		</fieldset>
+		if p.Mode == domain.ModeAuto {
+			<p class="basis-full text-mute" data-testid="auto-start-notice">{ mainline.AutoStartNotice }</p>
+		}
 	</form>
 }

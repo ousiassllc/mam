@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/chatbrief"
 	"github.com/ousiassllc/mam/backend/internal/service/silence"
 )
 
@@ -184,8 +185,8 @@ func (s *ChatService) commit(ctx context.Context, turn repository.Turn) error {
 func (s *ChatService) planTurn(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage, attached []domain.Asset) (repository.Turn, []domain.BriefField, error) {
 	turn := repository.Turn{ProjectID: project.ID, Messages: []domain.ChatMessage{user}}
 	if target != nil && target.Kind == domain.KindApproval && target.ApprovalStatus == domain.ApprovalPending {
-		turn := s.planApprovalReply(project, *target, user)
-		if err := s.settlePromotion(ctx, *target, &turn); err != nil {
+		turn, err := s.planApprovalReply(ctx, project, *target, user)
+		if err != nil {
 			return turn, nil, err
 		}
 		if err := s.attachToBrief(ctx, &turn, attached); err != nil {
@@ -215,33 +216,8 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 		return turn, nil, nil
 	}
 
-	brief, err := s.projects.GetBrief(ctx, project.ID)
-	if err != nil {
-		return turn, nil, notFound(err)
-	}
-	before := brief
-	brief.AttachAssets(attached)
-
-	var refused *domain.ChatMessage
-	if (project.State == domain.StateDraft || project.State == domain.StatePlanning) && len(brief.Missing()) > 0 { // PLANNING too: a script held back for the Subject (#1108)
-		if refused, err = s.answerBrief(ctx, project.ID, &brief, target, replied, user.Content); err != nil {
-			return turn, nil, err
-		}
-	}
-	if refused != nil {
-		turn.Messages = append(turn.Messages, *refused)
-	}
-	if !briefing.Changed(before, brief) {
-		return turn, nil, nil
-	}
-	turn.Brief = &brief
-	// The AI speaks again only when the answer moved the Brief forward (a refused answer asks again).
-	beforeMissing, nowMissing := before.Missing(), brief.Missing()
-	if refused == nil && !slices.Equal(beforeMissing, nowMissing) {
-		turn.Messages = append(turn.Messages, briefFollowUp(brief))
-	}
-	decided := slices.DeleteFunc(slices.Clone(beforeMissing), func(f domain.BriefField) bool { return slices.Contains(nowMissing, f) })
-	return turn, decided, nil
+	decided, err := chatbrief.Planner{Projects: s.projects, Chat: s.chat, Extractor: s.extractor}.Plan(ctx, project, &turn, target, replied, user.Content, attached)
+	return turn, decided, notFound(err)
 }
 
 // attachToBrief puts the files a message carries into the Brief (images into Assets, videos into
@@ -261,23 +237,4 @@ func (s *ChatService) attachToBrief(ctx context.Context, turn *repository.Turn, 
 		turn.Brief = &brief
 	}
 	return nil
-}
-
-// answerBrief applies a message received while the Brief is incomplete; it returns the question again for an answer the Brief cannot hold.
-func (s *ChatService) answerBrief(ctx context.Context, projectID string, brief *domain.Brief, target *domain.ChatMessage, replied map[string]bool, text string) (*domain.ChatMessage, error) {
-	if target != nil && target.Kind == domain.KindQuestion && target.RefType == domain.RefBriefField && !replied[target.ID] {
-		return briefing.ApplyAnswer(brief, domain.BriefField(target.RefID), text), nil
-	}
-	// Free input: take what the text says about the Brief, then treat the rest as the
-	// answer to the newest open question.
-	brief.Merge(s.extractor.Extract(text))
-	open, err := s.chat.LatestOpenQuestion(ctx, projectID)
-	if err != nil || open == nil {
-		return nil, err
-	}
-	f := domain.BriefField(open.RefID)
-	if !slices.Contains(brief.Missing(), f) {
-		return nil, nil
-	}
-	return briefing.ApplyAnswer(brief, f, text), nil
 }

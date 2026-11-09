@@ -6,14 +6,15 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 )
 
-// ShotSpec is the Canonical Shot Spec (spec/spec.md §7.1): the model-independent description of
-// one Shot. It is stored as JSON in shot.shot_spec, next to the keys of other writers
-// ("storyboard", "references"), and as a snapshot in prompt_version.shot_spec_snapshot.
+// ShotSpec is the Canonical Shot Spec (spec/spec.md §7.1): the model-independent description of one Shot. It is stored as JSON in shot.shot_spec,
+// next to the keys of other writers ("storyboard", "references"), and as a snapshot in prompt_version.shot_spec_snapshot.
 //
-// Every free-text value is English: the spec is what the Model Adapter turns into prompts
-// (spec/requirements/non-functional.md §9). Identifiers such as "inherit_previous" are English too.
+// Every free-text value is English: the spec is what the Model Adapter turns into prompts (spec/requirements/non-functional.md §9).
+// Identifiers such as "inherit_previous" are English too.
 type ShotSpec struct {
 	ShotObjective string         `json:"shot_objective"`
 	Duration      string         `json:"duration"` // "4.0s"
@@ -230,10 +231,11 @@ func (k ReferenceKind) Valid() bool {
 	return false
 }
 
-// Reference is one image of a Shot's Reference Pack, stored in the "references" key of shot.shot_spec.
-// AssetID is the asset row holding the image; Prompt is the English prompt it was made from and Model
-// the image model that made it. LibraryItem is the Reference Library entry the image was taken from
-// ("" for an image made for this Shot): a Reference Pack rebuild keeps such a reference.
+// ModelUse is the model a generation used, its route and why it was chosen (#1113).
+type ModelUse = modelreg.Use
+
+// Reference is one image of a Shot's Reference Pack (the "references" key of shot.shot_spec): its asset, the English prompt and the image model
+// that made it, and how that model was chosen (Use; nil before #1113). LibraryItem is the Library entry it was taken from: a rebuild keeps such a reference.
 type Reference struct {
 	Kind        ReferenceKind `json:"kind"`
 	Name        string        `json:"name,omitempty"` // e.g. the character or product name
@@ -241,6 +243,7 @@ type Reference struct {
 	Prompt      string        `json:"prompt"`
 	Model       ModelName     `json:"model"`
 	LibraryItem string        `json:"library_item,omitempty"`
+	Use         *ModelUse     `json:"model_use,omitempty"`
 }
 
 // References returns the Reference Pack stored in the Shot, in priority order of kind.

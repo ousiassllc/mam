@@ -187,7 +187,7 @@ func (s *PlanService) CreateShot(ctx context.Context, sceneID string, form ShotF
 		return SceneView{}, notFound(err)
 	}
 	s.announce(ctx, scene.ProjectID, "Scene「"+scene.Title+"」に Shot を追加しました: "+objective)
-	s.kick(ctx, scene.ProjectID) // the plan of the generation approval changed
+	s.kick(ctx, scene.ProjectID) // the plan of the automatic start changed
 	return s.Hierarchy(ctx, scene.ProjectID, scene.ID, shot.ID)
 }
 

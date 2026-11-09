@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/relay"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/genstage"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
@@ -74,7 +75,7 @@ type wiring struct {
 	r      repos
 	c      *core
 	chat   *ChatService
-	gate   *genstage.Gate // the generation approval; nil until wirePlan
+	gate   *genstage.Gate // the automatic start of the generation; nil until wirePlan
 
 	generations *GenerationService
 	judges      *JudgeService
@@ -120,6 +121,7 @@ func newWiring(deps Deps) *wiring {
 
 		brandTemplates: repository.NewBrandTemplateRepository(deps.DB),
 		analytics:      repository.NewAnalyticsRepository(deps.DB),
+		genApprovals:   genapprovalrepo.New(deps.DB),
 	}
 	c.takeActions = takeActions{judges: r.judges, policies: r.policies}
 	chat := &ChatService{c}
@@ -147,7 +149,7 @@ func (w *wiring) wirePlan() {
 		return
 	}
 	d := w.deps
-	w.gate = genstage.New(genstage.Deps{Projects: w.c.projects, Plans: w.c.plans, Gens: w.r.gens, Policies: w.r.policies, Jobs: w.c.jobs, Repo: genapprovalrepo.New(d.DB), Chat: w.chat, Logger: w.logger})
+	w.gate = genstage.New(genstage.Deps{Projects: w.c.projects, Plans: w.c.plans, Gens: w.r.gens, Policies: w.r.policies, Jobs: w.c.jobs, Repo: w.c.genApprovals, Chat: w.chat, Logger: w.logger})
 	w.c.pipeline = orchestrator.New(orchestrator.Deps{
 		Projects: w.c.projects, Plans: w.c.plans, ChatRepo: w.c.chat, Chat: w.chat, Jobs: d.Jobs, Gate: w.gate,
 		LLM: d.LLM, Notes: w.r.notes, Drafts: characterdraft.New(w.c.projects, w.c.assets, w.r.world, w.logger), Facts: mainwait.Reader{Plans: w.c.plans, References: w.c.references, World: w.r.world}.Facts, Logger: w.logger,
@@ -192,10 +194,9 @@ func (w *wiring) wireGeneration() {
 		Repairs: w.r.repairs, LLM: d.LLM, Adapter: d.Models, AssetsDir: d.AssetsDir, Logger: w.logger, Judge: w.takeJudge, Brands: w.r.brands, Media: d.Media,
 		Notify: progress.Notify,
 	})
-	// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
-	d.Jobs.Register(domain.JobGenerate, progress.Wrap(w.generations.gen.Handle), false)
+	d.Jobs.Register(domain.JobGenerate, progress.Wrap(w.generations.gen.Handle), false) // not resumable: a generation costs money, so an interrupted one is failed
 	w.c.takeActions.gen = w.generations.gen
-	w.gate.SetGenerator(w.generations.gen, d.Models.Config) // the Orchestrator carries an approved plan on through it
+	w.gate.SetGenerator(w.generations.gen, modelroute.Effective(d.Models)) // the Orchestrator starts the generation of the plan through it; the plan names the models a start would use
 }
 
 // wireRepair sets up the Repair Agent (job "repair"): needs generation and the Judge, so everything

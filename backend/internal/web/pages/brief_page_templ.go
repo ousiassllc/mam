@@ -11,12 +11,12 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/briefform"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
 // BriefPage is GET /projects/:id/brief: the Creative Brief in an auxiliary view.
-func BriefPage(csrfToken string, d organisms.BriefFormData) templ.Component {
+func BriefPage(csrfToken string, d briefform.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -65,7 +65,7 @@ func BriefPage(csrfToken string, d organisms.BriefFormData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = organisms.BriefForm(d).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = briefform.Form(d).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

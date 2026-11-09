@@ -82,3 +82,90 @@ func TestView_ChoicesCanBeNarrowedByTheFilter(t *testing.T) {
 	assert.NotEmpty(t, v.ImageModelsWhere(modelfilter.Condition{Origins: []modelfilter.Origin{modelfilter.OriginAPI}}))
 	assert.Empty(t, v.ImageModelsWhere(modelfilter.Condition{Origins: []modelfilter.Origin{modelfilter.OriginLocal}}), "no local model is registered in this setting")
 }
+
+// #1113: the saved assignment is reported route by route by the rule a generation chooses its models with: a default route that cannot be used is shown with the
+// model that would be used in its place (a match of conditions, not a ranking), a route the user set is shown as blocked with the candidates, and a pin blocks all.
+func TestView_ReportsWhatEachRouteWouldRunOn(t *testing.T) {
+	svc, _ := newService(t)
+	svc.SetAvailability(func(id string) (modelfilter.Availability, bool) {
+		if id == string(domain.ModelFlux2) || id == string(domain.ModelNanoBananaLite) {
+			return modelfilter.Usable(), true // the preview purpose can be used; every other API model has no key
+		}
+		return modelfilter.Unusable(modelfilter.ReasonNoKey, "API キーが登録されていません", "/settings/api-keys"), true
+	})
+	v, err := svc.View()
+	require.NoError(t, err)
+
+	byKey := map[string]modelsettings.RouteReport{}
+	for _, r := range v.Routes {
+		byKey[r.Media+"/"+r.Key] = r
+	}
+	require.Len(t, v.Routes, len(modelsettings.ImagePurposes())+len(domain.QualityPolicies()))
+	preview := byKey["image/preview"]
+	assert.Equal(t, "assignment_usable", preview.Status)
+	require.NotNil(t, preview.Use)
+	assert.Equal(t, domain.ModelFlux2, preview.Use.Model)
+	fresh := byKey["image/new_reference"]
+	assert.Equal(t, "condition_match", fresh.Status, "the default assignment cannot be used: the usable model that matches is named")
+	require.NotNil(t, fresh.Use)
+	assert.Contains(t, []domain.ModelName{domain.ModelFlux2, domain.ModelNanoBananaLite}, fresh.Use.Model)
+	assert.Contains(t, fresh.Reason, "条件に合う利用可能なモデルを選びました")
+	assert.False(t, fresh.Explicit)
+	video := byKey["video/balanced"]
+	assert.Equal(t, "blocked", video.Status, "no video model can be used")
+	assert.Nil(t, video.Use)
+	assert.Contains(t, video.Message, "使えるモデルがありません")
+	assert.Equal(t, "/settings/api-keys", fresh.Assigned[0].SettingsRoute)
+}
+
+func TestView_AnAssignmentTheUserSetIsReportedAsBlockedNotReplaced(t *testing.T) {
+	svc, _ := newService(t)
+	in := defaults()
+	in.Images[modelsettings.PurposeNewReference] = modelsettings.ImageRoute{Primary: modelsettings.ImageTarget{Model: domain.ModelFlux2}, Fallback: modelsettings.ImageTarget{Model: domain.ModelFlux2}}
+	require.NoError(t, svc.Save(in))
+	svc.SetAvailability(func(id string) (modelfilter.Availability, bool) {
+		if id == string(domain.ModelNanoBanana) {
+			return modelfilter.Usable(), true
+		}
+		return modelfilter.Unusable(modelfilter.ReasonNoKey, "API キーが登録されていません", "/settings/api-keys"), true
+	})
+	v, err := svc.View()
+	require.NoError(t, err)
+
+	found := false
+	for _, r := range v.Routes {
+		if r.Media == "image" && r.Key == "new_reference" {
+			found = true
+			assert.True(t, r.Explicit, "the route was changed from the default")
+			assert.Equal(t, "blocked", r.Status)
+			assert.Nil(t, r.Use)
+			require.NotEmpty(t, r.Candidates)
+			assert.Equal(t, domain.ModelNanoBanana, r.Candidates[0].Model)
+			assert.Contains(t, r.Message, "自動で替えません")
+		}
+	}
+	require.True(t, found, "the report has the route of image/new_reference")
+}
+
+func TestView_AdultModelsAreNeverCandidatesOfTheReport(t *testing.T) {
+	svc, _ := newService(t)
+	svc.SetAvailability(func(id string) (modelfilter.Availability, bool) {
+		if id == string(domain.ModelFlux2) {
+			return modelfilter.Usable(), true
+		}
+		return modelfilter.Unusable(modelfilter.ReasonNoKey, "API キーが登録されていません", "/settings/api-keys"), true
+	})
+	svc.SetAdult(func(id string) bool { return id == string(domain.ModelFlux2) })
+	v, err := svc.View()
+	require.NoError(t, err)
+
+	found := false
+	for _, r := range v.Routes {
+		if r.Media == "image" && r.Key == "new_reference" {
+			found = true
+			assert.Equal(t, "blocked", r.Status, "the only usable model is an adult one: it is not chosen on its own")
+			assert.Empty(t, r.Candidates)
+		}
+	}
+	require.True(t, found, "the report has the route of image/new_reference")
+}

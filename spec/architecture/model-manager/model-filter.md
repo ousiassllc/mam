@@ -124,6 +124,7 @@
 
 - **LLM**: `llmmodels.Service.Warnings(targets)` が、保存した割り当てのうち API キーが無い・ログインしていないプロバイダーを指すものを `Warning`（Agent・役割 primary / fallback・プロバイダー・理由・`Availability.Route`・利用者向けの文）で返す。割り当て画面が出す。保存は拒まない（キーは後から入れられる）。MCP は `get_global_settings` の `llm.route_warnings[]`。
 - **画像・動画モデル**: `modelsettings.View.Unusable[]`（`Media`・`Key`（用途か Quality Policy）・`Role`・`Model`・`Availability`）。MCP は `models.unusable_routes[]`。年齢確認で外れたモデルを指す `Gated`（`gated_models`）とは別。
+- **生成が実行されるとき**: 保存した割り当てが使えないモデルだけを指していても、生成は「使えない」まま失敗しない。既定の割り当てなら条件に合う使えるモデルへ切り替えて進み、利用者が選んだ割り当てなら断る（[../model-adapters.md](../model-adapters.md) §3.1）。割り当て画面と MCP の `models.routes[]` は、保存した割り当てを今実行したらどうなるか（`assignment_usable` / `condition_match` / `blocked`）を、生成せずに示す。切り替えの判定に使う「使える」は、この §5.1 の `Availability` と同じ判定で、成人向けモデル（年齢確認オフ）・ライセンス（`commercial` の絞り込み）も同じ設定を読む。
 - 可否の判定は 1 か所: 画像・動画は `gentest.Service.Availability`（`modelcatalog.Catalog.availability`: アダプターの理由→追加ノードの不足）を `modelsettings.Service.SetAvailability` に渡す（`internal/app/settings.go`）。LLM は `llmmodels.Service.Availability`（キーの有無・ログインの有無だけを読む。ネットワークは使わない）。
 
 ## 6. MCP

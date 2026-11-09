@@ -18,7 +18,7 @@ templ TakeTracePanel(t domain.TakeTrace) {
 			<dt class="text-xs text-mute">World State version</dt>
 			<dd>{ worldVersionText(t.WorldStateVersion) }</dd>
 			<dt class="text-xs text-mute">Model</dt>
-			<dd>{ commercial.OptionLabel(t.Take.ModelName, commercial.Of(t.Take.ModelName)) }</dd>
+			<dd id={ "take-model-use-" + t.Take.ID }>{ commercial.OptionLabel(t.Take.ModelName, commercial.Of(t.Take.ModelName)) + t.ModelUse.Suffix() }<span class="block text-xs text-mute">{ t.ModelUse.Explain() }</span></dd>
 			<dt class="text-xs text-mute">Output</dt>
 			<dd>
 				if t.Output == nil {
@@ -95,7 +95,7 @@ templ TakeTracePanel(t domain.TakeTrace) {
 						<li class="flex flex-wrap items-center gap-2">
 							@atoms.Badge(atoms.BadgeNeutral, r.Kind.Label())
 							<span>{ r.Name }</span>
-							<span class="text-xs text-mute">{ string(r.Model) }</span>
+							<span class="text-xs text-mute">{ string(r.Model) + r.Use.Suffix() }</span>
 						</li>
 					}
 				</ul>
