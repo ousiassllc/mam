@@ -146,9 +146,9 @@ func TestSubject_ASafetyRefusalCutAtAConnectiveIsKeptAsAConstraint(t *testing.T)
 	}
 }
 
-// A refusal that is all the text says holds no constraint of a request: nothing is kept.
-func TestRefusals_AloneIsNoConstraint(t *testing.T) {
-	for _, text := range []string{"暴力は出さない", "暴力は出さない方向で", "猫の動画は作らない", "暴力は出したくないので、猫の動画は作りません"} {
+// A refusal of something that is no safety word holds no constraint.
+func TestRefusals_OfNoSafetyWordIsNoConstraint(t *testing.T) {
+	for _, text := range []string{"猫の動画は作らない", "暴力は出したくないので、猫の動画は作りません"} {
 		assert.Empty(t, declined.Refusals(text), text)
 	}
 	assert.Equal(t, []string{"暴力は出さない"}, declined.Refusals("猫の動画を作りたいが暴力は出さない"))

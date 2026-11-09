@@ -16,13 +16,13 @@ func TestAbsorb_ARetractedConstraintLeavesTheInferredLine(t *testing.T) {
 		{"やっぱり架空ではない。着衣なしで", "テーマ: 朝のルーティン\n制約: 成人"},
 		{"成人ではなく架空の女性", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
 		{"商品は紹介しない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
-		// a restriction to the keyword is no retraction of it
+		// a restriction to the keyword is no retraction of it (the refusal of the safety word 成人 is kept as stated, as it is next to a request: #1124)
 		{"成人しか出ない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
-		{"成人以外は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
-		{"成人でない人物は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣"},
+		{"成人以外は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣・成人以外は出さない"},
+		{"成人でない人物は出さない", "テーマ: 朝のルーティン\n制約: 成人・架空・着衣・成人でない人物は出さない"},
 		// a negation after a particle or a short noun run is a retraction
 		{"成人女性ではなく少女にして", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
-		{"成人は出さない", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
+		{"成人は出さない", "テーマ: 朝のルーティン\n制約: 架空・着衣・成人は出さない"},
 		{"成人にはしない", "テーマ: 朝のルーティン\n制約: 架空・着衣"},
 		{"架空の人物ではなく実在の人物", "テーマ: 朝のルーティン\n制約: 成人・着衣"},
 		{"着衣は着ない", "テーマ: 朝のルーティン\n制約: 成人・架空"},
