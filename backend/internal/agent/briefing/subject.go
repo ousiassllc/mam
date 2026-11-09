@@ -243,8 +243,7 @@ func otherItems(clause string) string {
 	return b.Duration + "|" + b.AspectRatio + "|" + b.Objective
 }
 
-// nounItem reports whether the clause states a Target, a Mood or a Content Type that no platform brings ("学生にして", "アニメにして"): another clause of the request, so what is in front
-// of it ("犬にして、学生にして") is read on its own and not as a part of this one.
+// nounItem reports whether the clause states a noun item ("学生にして", "アニメにして"): another clause of the request, so what is in front of it ("犬にして、学生にして") is read on its own.
 func nounItem(clause string) bool { return statesNoun(RuleExtractor{}.Extract(clause)) }
 
 // statesNoun reports whether b holds a Target, a Mood or a Content Type that no platform brings: the Content Type a platform brings ("TikTok" → ショート動画) is no noun.
