@@ -47,7 +47,7 @@ func All() []Category {
 		{
 			Slug: ImageVideo, Name: "画像・動画モデル", Icon: atoms.IconImage,
 			Description: "画像・動画のモデルを導入・削除します。成人向けモデルの表示と、商用OKのモデルだけを使う設定もここです。",
-			Sections:    []string{"mm-adult", "mm-commercial", "mm-catalog", "mm-dialog"}, Cards: true,
+			Sections:    []string{"mm-adult", "mm-commercial", "mm-catalog", "mm-dialog", "mm-lora"}, Cards: true,
 		},
 		{
 			Slug: CustomNodes, Name: "追加ノード", Icon: atoms.IconNetwork,

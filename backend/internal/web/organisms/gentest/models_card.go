@@ -6,6 +6,7 @@ import (
 
 	"github.com/a-h/templ"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/lorafamily"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 )
 
@@ -29,6 +30,8 @@ func modelCardOf(m ModelChoice) modelcard.Card {
 		"data-reference-mode":       m.RefMode,
 		"data-reference-roles":      strings.Join(m.RefRoles, " "),
 		"data-supports-lora":        boolText(m.CanLoRA),
+		"data-lora-family":          m.LoRAFamily,
+		"data-lora-family-label":    lorafamily.Label(m.LoRAFamily),
 		"data-requires-first-frame": boolText(m.RequiresFirstFrame),
 		"data-sampling":             m.Use.Names(),
 		"data-sampling-locked":      boolText(m.Use.Locked),

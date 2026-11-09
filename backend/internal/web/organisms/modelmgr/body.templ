@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/ffmpeg"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/loraimport"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -65,6 +66,11 @@ templ imageVideoSections(d Data) {
 		@modal.InlineHost(DialogID, "mm-dialog")
 		@modelpick.Bar(d.Catalog.Filter)
 		@CatalogList(d.Catalog)
+	}
+	if d.LoRAImport != nil {
+		@molecules.SettingsSection("LoRA を追加", loraimport.Help) {
+			@d.LoRAImport
+		}
 	}
 }
 
