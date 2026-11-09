@@ -12,7 +12,10 @@ import (
 
 // A word of the form of the video (a length, an aspect ratio, a kind, a platform, a style, a Mood) is no Subject, in front of "の動画" or as the side that is meant
 // of "A ではなく B": the Subject stays unasked-for and unchanged (#1114, review of the whole PR).
-var formatNouns = []string{"30秒", "縦型", "15秒のCM", "16:9", "1分", "短め", "ゆるい雰囲気", "TikTok"}
+var formatNouns = []string{
+	"30秒", "縦型", "15秒のCM", "16:9", "1分", "短め", "ゆるい雰囲気", "TikTok", "15秒くらい", "約15秒", "15秒程度", "1分前後", "30秒以内", "3分ぐらい", "縦型動画", "レトロ風", "感動系", "アニメ風",
+	"TikTok用", "TikTok向け", "YouTube用", "スマホ用", "SNS向け", "Web広告", "商品紹介動画", "15秒の縦型動画",
+}
 
 func TestAbsorb_AFormatWordInFrontOfNoDougaIsNoSubjectOfAFirstRequest(t *testing.T) {
 	for _, f := range formatNouns {
@@ -88,11 +91,30 @@ func TestAbsorb_AContrastToASubjectThatContainsAKeywordReplacesOrProposesIt(t *t
 
 // The clause of a length, a ratio or a platform after the change is another item on a free message too, as it is on a card answer.
 func TestAbsorb_AContrastWithAMeasureClauseAfterItReplacesTheSubject(t *testing.T) {
-	for _, text := range []string{"猫ではなく犬にして、30秒で", "猫じゃなくて犬にして、縦型で", "猫ではなく犬にして、TikTokで"} {
+	for _, text := range []string{
+		"猫ではなく犬にして、30秒で", "猫じゃなくて犬にして、縦型で", "猫ではなく犬にして、TikTokで",
+	} {
 		t.Run(text, func(t *testing.T) {
 			b := decided("猫", "")
 			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
 			assert.Equal(t, "犬", b.Subject)
+		})
+	}
+}
+
+// A clause that holds more than the bare item ("30秒くらいで", "約30秒で", "Instagram向けで") is not stripped when a decided Subject is judged (the safe side): the Subject
+// is kept and 犬 is proposed in one card, never lost. On an empty Brief the clause is no part of the Subject: it is 犬.
+func TestAbsorb_AHedgedMeasureClauseAfterAContrastNeverEndsUpInTheSubject(t *testing.T) {
+	for _, tail := range []string{"30秒くらいで", "約30秒で", "30秒以内で", "Instagram向けで", "スマホ向けで", "YouTube用で"} {
+		text := "猫ではなく犬にして、" + tail
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+			assert.Equal(t, "犬", b.ProposedSubject)
+			var e domain.Brief
+			briefing.Absorb(&e, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "犬", e.Subject)
 		})
 	}
 }
