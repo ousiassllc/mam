@@ -62,6 +62,14 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 - 再開は WARN（`download interrupted, resuming from the part file`。`job_id`・`target`・`attempt`・`max_attempts`・`retry_in`・`err`）、導入ジョブの結末は成功が INFO（`install succeeded`）、利用者の中断が INFO（`install cancelled by the user`）、シャットダウンでの中断が WARN（`install interrupted`）、失敗が ERROR（`install failed`。原因の `err` つき）で、いずれも `job_id` と対象（`target` = `engine`・`model:<id>`・`hf:…`）を持つ。
 - Codex のエンジンと ffmpeg の取得も、再開のたびに同じ WARN を出す（`job_id` は持たず、`target` = `codex`・`ffmpeg`。`exeinstall.RetryLogger`）。上限まで切れ続けたときの利用者向けの文言も同じ「通信が切れました。もう一度導入すると続きから再開します」（`fetch.ConnectionLostMessage`。Codex は `Install.Error`、ffmpeg は `ffmpegdl.Explain`）。
 
+**同じホストへの同時ダウンロードの上限**（`fetch.HostLimiter`・`fetch.Options.Limiter`。Issue #1060）:
+
+- **同じホストへは同時に 2 本まで**（`fetch.MaxPerHost`）。3 本目以降は、先の 1 本が終わる（成功・失敗・取り消し）まで枠の空きを待つ。枠は `fetch.Download` を呼ぶ全部（エンジン・カタログのモデル・HF からの導入・Codex のエンジン・ffmpeg・ローカルランタイムの部品）でプロセス全体に共有する（`Options.Limiter` が nil のとき。テストは自分の `HostLimiter` を渡す）。
+- **ホストの数え方**: 最初に要求した URL のホスト名（小文字、ポートと末尾のドットは無視）。**リダイレクト先の CDN（`cdn-lfs*.huggingface.co`・`*.githubusercontent.com` など）は数えない**（カタログのファイルは 1 つのホストを指し、上限が守りたいのはそこに集まる接続のため）。ホストが違えば枠も別で、互いを待たない。
+- **待つあいだ**: 枠を待つことは失敗ではない（エラーにも再開の回数にもならず、アイドルの中断も枠を取った後の取得から数える）。進捗は動かず、ジョブは `running` で待つ（待ちを示す専用の表示は無い）。待つあいだも `ctx` の取り消しが効き、取り消しは枠を取らずに `ctx` の理由で返る（取っていない枠は返さない）。
+- **枠を持つ時間**: 1 回の通信（要求から本体の書き込み・検証の終わりまで）だけ。通信が切れて次の再開まで待つ（`Retry` の待ち時間。上の「自動再開」）あいだは枠を返し、再開のたびに取り直す。空き容量の確認・検証済みファイルの判定・最後のリネームは枠の外。
+- 全体の同時実行数はジョブのワーカー数（`jobqueue.DefaultWorkers` = 4）が上限で、ホストごとの上限はその中でさらに絞る。
+
 取得できるホストは `huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com` だけで、リダイレクト先も同じ規則で調べる（`fetch.AllowedURL`。Windows のエンジンのアーカイブとカタログのモデルの取得）。**macOS のエンジンの部品だけ**は、これに `python.org`・`pythonhosted.org`・`pytorch.org`・`openmmlab.com` を足した `fetch.PackageURL` を使う（PyTorch ほかの wheel は `files.pythonhosted.org`。ローカルランタイムの MuseTalk と同じ。§3.7）。**Hugging Face の導入経路（`hf` のクライアントと導入したファイルの取得）は `huggingface.co` と `*.hf.co` だけ**（`fetch.HFAllowedURL`。GitHub へのリダイレクトは断る。[model-manager-hf.md](model-manager-hf.md) §2）。`Authorization` は最初の要求の宛先ホストにだけ付け、ホストが変わると外す（§5.3）。
 
 **7z の方式**: 公式パッケージは LZMA2＋BCJ2（`-m0=lzma2 -mf=BCJ2 -md=768m`）。`bodgit/sevenzip` v1.6.0 が同じ方式で作った合成アーカイブ（`extract/testdata/bcj2.7z`、1.5 GB のものでも）を読めることを確かめた。展開時の最大メモリは 1.5 GB のアーカイブで約 1.6 GB。実物の約 2 GB を丸ごと取得・展開した検証は未実施（§11）。
@@ -584,7 +592,7 @@ GPU のメモリの検出は子プロセス（DXGI・`nvidia-smi`。最大 5 秒
 
 - 再起動のたびに再開するのは `jobqueue.DefaultMaxAttempts`（3）回まで。それを超えると失敗として残り、利用者が導入をやり直す。
 - ジョブの再開（上）とは別に、**1 回の取得の中の通信切断は、ジョブの中で自動的に `.part` から取り直す**（§3.3「通信が切れたときの自動再開」）。上限まで切れたジョブは失敗で終わり、再起動の再開の回数には数えない（ハンドラーがエラーを返すと、キューは再開せず失敗にする）。
-- 同時に流す導入（ダウンロード）の数は絞っていない（ワーカー数の分だけ並ぶ）。絞るかどうかは未決定（Issue #909 の質問）。
+- **同時に流すダウンロードの数（Issue #1060 で決めた）**: **同じホストへは同時に 2 本まで**（`fetch.MaxPerHost`）。上限は `fetch.Download` の中で、プロセス全体で共有するホスト単位の枠（`fetch.HostLimiter`）で守るので、ジョブが違っても（エンジン・カタログのモデル・HF からの導入・Codex のエンジン・ffmpeg の取得など、`fetch.Download` を通るもの全部）数える。ジョブ全体の同時実行数は、従来どおりジョブのワーカー数（`jobqueue.DefaultWorkers` = 4）で押さえる（枠はこれに足す条件で、ワーカー数は変えない）。ホストが違うダウンロード（例: `huggingface.co` と `github.com`）は互いを待たない。詳細は §3.3「同じホストへの同時ダウンロードの上限」。
 - 同じ対象のジョブが動いている間の再実行は、新しいジョブを作らずそのジョブを返す（`JobRef.Existing`）。対象ごとに直列化する。**書き込み先（`models/<folder>/<name>`）ごとにも直列化する**（対象が違っても同じ宛先なら 1 つずつ動き、ロックを取った後に宛先を調べ直す。`model:<id>` の導入は、利用者が HF から足した別の SHA-256 のファイルを上書きせず `*InvalidError` で断る。[model-manager-hf.md](model-manager-hf.md) §4）。
 - 他のモデルが検証済みの同じファイル（パス・SHA-256・サイズが同じ。VAE・テキストエンコーダーなど）は、再ハッシュせず信用する。
 - 2 つの種別は 1 つのマイグレーション（`20261025090000_job_kind_model.sql`）で `job.kind` の CHECK に加える（[er-model-manager.md](er-model-manager.md)）。
