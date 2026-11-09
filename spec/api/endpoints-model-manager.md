@@ -136,7 +136,7 @@
 
 - **ローカル音声・口パク・LLM**（区画 `#mm-runtimes`。llama.cpp〔`llm`〕のカードを含む。local-runtime.md §17）（区画 `#mm-runtimes`、Issue #920。ハンドラーは `handler/modelmgr/runtimes`、見た目は `organisms/modelmgr/runtimecard`・`weightlist`。`localruntime.Service` を持つときだけ。意味は [local-runtime.md](../architecture/model-manager/local-runtime.md) §12）: ランタイムごとに 1 枚のカード（`data-testid="mm-runtime"`）。状態（未導入 / 導入中 / 導入済み + 停止中・起動中・失敗）、導入中の進捗バーと「中断する」（`hx-confirm`。`POST /model-manager/jobs/:job/cancel` がジョブの `target=runtime:<id>` を見て振り分ける）、版・導入先・空き容量、起動の失敗はログの末尾つき。**この PC で使えないとき**（macOS ほか）は、導入・起動のボタンの代わりに**理由**（`mm-runtime-reason`）と**クラウドの案内**（`mm-runtime-fallback`。ElevenLabs / Sync Labs を選べる）を枠で出す。**重み**（`<details data-testid="mm-runtime-weights">`）は、asset ごとに名前・大きさ・必須か・状態（あり / なし / 未確認）・出典のリンク・ライセンスのリンク・商用利用のバッジ（「商用利用: 可」/「不可」/「**はっきりしません**」）を出す。`unclear` / `no` の asset は、その行に琥珀色の枠で `notice`、一覧の前に「商用利用がはっきりしない重みを含みます（N 件）」の枠を出し、一覧を最初から開く。導入済みでも必須の重みが足りないときは「導入済み（重みが不足）」を出し、起動の代わりに「重みを導入」を出す。削除は `hx-confirm`、導入・起動・重みの導入は `hx-sync` と `hx-disabled-elt`（二重送信の防止）。
 - **ローカル LLM**（区画 `#mm-llm-use`・`#mm-llm-runtimes`・`#mm-llm-connection`。#1104。見た目は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「ローカル LLM の統合（#1104）」）: 上の `#mm-runtimes` の記述のうち llama.cpp のカードに関するものは、`#mm-llm-runtimes` の中で今のまま成り立つ（`data-testid="mm-runtime"`・`mm-runtime-reason`・`mm-runtime-fallback`・重み・使うモデルの選択・導入と起動の `hx-sync`・`hx-confirm`）。ルート `/model-manager/runtimes/:id/…` は用途に関わらず同じ。
-- **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードには導入ボタンが無く、理由を出す。**カードにノードの説明は出さず**（#1103。`mm-node-description` は無い）、固定のコミットとともに詳細モーダル（`GET /model-manager/nodes/:id/detail`。説明は `#mam-modal-desc`）に出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。
+- **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードの導入ボタンは押せるが、押すと導入せずに理由のポップアップを開く（#1118）。**カードにノードの説明は出さず**（#1103。`mm-node-description` は無い）、固定のコミットとともに詳細モーダル（`GET /model-manager/nodes/:id/detail`。説明は `#mam-modal-desc`）に出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジを出し、導入ボタンを押すと理由のポップアップが開く（導入は走らない。#1118）。
 - **付随ソフト**（区画 `#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion`。#1106。見た目と意味は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「付随ソフトの導入（#1106）」。ハンドラーは `handler/modelmgr/companion`〔新設。`handler/settings/ffmpeg`・`handler/settings/facefusion` から移す〕）: 一覧の行は `data-testid="mm-companion-row"`（`data-tool`・`data-state`）、FaceFusion の手順は `mm-facefusion-steps`・`mm-facefusion-cmd`・`mm-facefusion-refind`・`mm-facefusion-version-note`。**mam は FaceFusion を取得しない**（face-swap.md §1）ので、導入のルート・ジョブ・同意のダイアログは無い。
 
 ## 4. テスト
@@ -178,7 +178,7 @@
 
 - `nodecat` の全ノード（今は 5 件）で、`GET /model-manager/custom-nodes`（#1101 のあと。それまでは `GET /model-manager`）と `GET /model-manager/nodes`・`GET /model-manager/nodes/:id` の応答に、`data-testid="mm-node-description"` が無く、ノードの `Description` の文字列も含まれない。
 - 同じ全ノードで、`GET /model-manager/nodes/:id/detail` の `#mam-modal-desc` の文字列が `Description` と同じ。応答は今までどおり `modal.Frame`（ページに 1 つの `<dialog id="mam-modal">` の本体に入る）で、未知の ID は 404（理由だけのモーダル）。
-- `install_blocked` のノードのカードに導入ボタンが無い（導入できない理由の長文 `mm-node-blocked` は #1118 でカードから外れ、ポップアップに移った）。`mm-node-detail-note`・`mm-node-models`・進捗・導入／中断／削除のボタンは変わらない。
+- `install_blocked` のノードのカードの導入ボタンは押せて、押すと理由のポップアップが開く（導入できない理由の長文 `mm-node-blocked` は #1118 でカードから外れ、ポップアップに移った）。`mm-node-detail-note`・`mm-node-models`・進捗・導入／中断／削除のボタンは変わらない。
 - 区画の「?」ヘルプに「ノードの説明」の語があり、ヘルプのほかの文は変わらない。
 
 **ローカル LLM の統合の受け入れ条件（Issue #1104。状態: 実装済み。テストは `handler/modelmgr/localllm`・`llmsettingstest`・`service/llmlocal`・`mcp/tools/settings`・`joblist`・`modelfilter`。#1101 のあと）**:
@@ -203,7 +203,7 @@
 - MCP（[mcp-tools-model-manager.md](mcp-tools-model-manager.md)）: `list_ollama_models`・`pull_ollama_model`・`delete_ollama_model` が同じサービスを呼び、同じ拒否（422 / `validation`・409 / `conflict`・404 / `not_found`）を返す。`install_local_runtime`（`runtime_id=ollama`）で本体を導入できる。
 - `go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
 
-`handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
+`handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが押せて理由のポップアップを開くこと（導入は走らない）とバッジが出ること、内容が変わったノードが「導入済み」と出ないこと。
 
 **付随ソフトの導入の受け入れ条件（Issue #1106。実装時にこのテストを足す。#1101 のあと）**:
 
@@ -217,7 +217,7 @@
 
 **導入できない理由のポップアップの受け入れ条件（Issue #1118。実装済み。`ggufblockedtest/reason_test.go`・`categorytest`・`nodes_test.go`・`nodecard_test.go`・`modal/reason.wtest.ts`）**:
 
-- 導入できないモデル（追加ノードが要るが、エンジンが読み込まない。`NeedsNodes` が空でなく、導入済みでない）のカードに、長い技術説明（理由・対処・仕様のルート。以前の `mm-nodes-note`）を出さない。短い状態のバッジ「追加ノードが必要」（`mm-nodes-badge`）は残る。導入ボタンは今までどおり無効（`disabled`）のままで、押せない。
+- 導入できないモデル（追加ノードが要るが、エンジンが読み込まない。`NeedsNodes` が空でなく、導入済みでない）のカードに、長い技術説明（理由・対処・仕様のルート。以前の `mm-nodes-note`）を出さない。短い状態のバッジ「追加ノードが必要」（`mm-nodes-badge`）は残る。導入ボタンは押せて、押すと理由のポップアップが開く（次の項。導入は走らない）。
 - 同じカードの操作の行（カード全体の押す面より上に出る `modelcard.Actions`）の **導入ボタンが有効**で、押すと「理由と対処」のポップアップが開く（`data-testid="mm-reason-open"`。`reason.OpenAttrs`。`GET /model-manager/models/:id/blocked` を `#mam-modal-body` に開く。`aria-haspopup="dialog"`。名前は「導入: <モデル名>」のまま）。別のボタンは置かない（1.31 で、1.28 の別ボタンをやめた）。押しても導入は走らない（POST は 1 本も飛ばない。`POST …/install` は今までどおり 422）。ボタンの出し分けの順は、一覧ぜんたいが導入できない（`blocked`）→ 無効のボタン、追加ノードが要る（`NeedsNodes`。導入済みを除く）→ ポップアップを開く、空きが足りない（`LowDisk`）→ 無効のボタン。年齢確認で閉じているモデルは一覧に出ず、ルートも 409 でポップアップは開かない。導入できるモデルのカードは変わらず、導入ボタンは今までどおり POST する。
 - ポップアップは、ページに 1 つの `<dialog id="mam-modal">`（`modal.Host`）を使うので、中でスクロールでき、閉じるボタン（右上と末尾の「閉じる」）・Esc で閉じ、開くとフォーカスはダイアログの中（先頭のブロック）に入って外へ出せず、閉じるとフォーカスは開いたボタンへ戻る。狭い画面（幅 390 px・高さ 420 px）でもタイトルと閉じるボタンが見切れない（#1097 と同じ作り）。
 - 追加ノードの画面への案内は、ポップアップの中のリンク（`mm-reason-link`。`href="/model-manager/custom-nodes#mm-nodes"`。`data-modal-close` つき。押すとダイアログを閉じて移る）。

@@ -31,7 +31,7 @@ func TestAModelThatNeedsTheBlockedGGUFNodeShowsTheReasonAndCannotBeInstalled(t *
 
 	list := s.Get(paths.ModelManagerPart("models")).Body.String()
 	assert.Contains(t, list, `data-testid="mm-nodes-badge"`)
-	assert.Contains(t, list, `data-testid="mm-reason-open"`, "the reason is one button away (#1118: the long text is not on the card)")
+	assert.Contains(t, list, `data-testid="mm-reason-open"`, "the install button opens the reason (#1118: the long text is not on the card)")
 
 	before := s.Rig.Host.Requests()
 	rec := s.Do(http.MethodPost, paths.ModelManagerPart("models", mmtest.GGUFModelID, "install"), nil)
