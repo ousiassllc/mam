@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/reason"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -53,15 +54,12 @@ func card(n Node) modelcard.Card {
 	}
 }
 
-// NodeCard is the card of one custom node: its picture, name, size, state and commercial-use icon, what it is, what is wrong with it, the
-// progress of a running install, and the buttons. The rest (the commit and the SHA-256 it is pinned to, the license, the dependencies and
+// NodeCard is the card of one custom node: its picture, name, size, state and commercial-use icon, what is wrong with it, the
+// progress of a running install, and the buttons (a node mam does not install has the button of the popup with the reason, #1118). The rest (the commit and the SHA-256 it is pinned to, the license, the dependencies and
 // the review) is in its detail modal (NodeDetail).
 templ NodeCard(n Node) {
 	@modelcard.Item(card(n)) {
 		@view.Notice(n.Message, NodeID(n.ID))
-		if n.Blocked != "" {
-			<p class="text-sm text-warning" role="note" data-testid="mm-node-blocked">導入できない理由: { n.Blocked }</p>
-		}
 		if n.Detail != "" {
 			<p class="text-sm text-warning" role="note" data-testid="mm-node-detail-note">{ n.Detail }</p>
 		}
@@ -86,6 +84,7 @@ templ nodeActions(n Node) {
 				"hx-confirm": "「" + n.Name + "」の導入を中断します。ダウンロード済みの分は残り、導入し直すと続きから再開します。よろしいですか？",
 			})
 		case n.State == "blocked":
+			@reason.OpenButton(n.Name, paths.ModelManagerPart("nodes", n.ID, "blocked"), "reason-"+NodeID(n.ID))
 		case n.Unavailable != "":
 			@atoms.SmallButtonFor(atoms.ToneNeutral, installLabel(n), n.Name, templ.Attributes{"type": "button", "disabled": true, "title": n.Unavailable})
 			<p class="text-sm text-warning" data-testid="mm-node-unavailable">{ n.Unavailable }</p>

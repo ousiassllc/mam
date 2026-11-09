@@ -173,7 +173,7 @@ NSFW-Wan-UMT5-XXL-V2（`rzgar/NSFW-Wan-UMT5-XXL-V2`、`vocab_size` 257067）は�
 
 ## 7. 画面・MCP
 
-- 画面: モデルマネージャーの区画「追加ノード」（`#mm-nodes`）。ノードごとのカード（状態・商用利用のアイコン・導入できない理由・このノードを使うモデル。**ノードの説明はカードに出さず、詳細モーダルだけ**に出す。#1103）と、詳細モーダル（ノードの説明・固定したコミット・アーカイブの SHA-256・ライセンスと商用利用の答え・必要な Python パッケージ・追加されるクラス・ソースの確認結果・注意事項）。導入ボタンは同意のダイアログ（注意事項・ライセンス・コミットと SHA-256 の予告・同意のチェック）を開く。ルートは [../../api/endpoints-model-manager.md](../../api/endpoints-model-manager.md)、見た目は [../../components/model-manager-screen.md](../../components/model-manager-screen.md)。
+- 画面: モデルマネージャーの区画「追加ノード」（`#mm-nodes`）。ノードごとのカード（状態・商用利用のアイコン・このノードを使うモデル。mam が導入しないノードの**導入できない理由の長文もカードには出さず**、ボタン「理由と対処」が開くポップアップに出す。#1118。**ノードの説明はカードに出さず、詳細モーダルだけ**に出す。#1103）と、詳細モーダル（ノードの説明・固定したコミット・アーカイブの SHA-256・ライセンスと商用利用の答え・必要な Python パッケージ・追加されるクラス・ソースの確認結果・注意事項）。導入ボタンは同意のダイアログ（注意事項・ライセンス・コミットと SHA-256 の予告・同意のチェック）を開く。ルートは [../../api/endpoints-model-manager.md](../../api/endpoints-model-manager.md)、見た目は [../../components/model-manager-screen.md](../../components/model-manager-screen.md)。
 - MCP: `list_custom_nodes`・`get_custom_node_status`・`accept_custom_node_license`・`install_custom_node`・`remove_custom_node`（[../../api/mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）。MCP のエージェントが同意を記録できる（`accept_custom_node_license`。`accept_model_license` と同じ扱いで、ユーザーが内容を確認した後にだけ呼ぶ）。ただし同意が記録されていなければ `install_custom_node` は何も取得せずに拒否する。
 
 ## 8. ノードの足し方（#960 PuLID・#985 PoseStudio など）

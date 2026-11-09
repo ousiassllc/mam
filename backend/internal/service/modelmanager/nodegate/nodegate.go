@@ -39,19 +39,6 @@ func Required(m catalog.Model) []string {
 	return slices.Compact(out)
 }
 
-// missingNames is the nodes of ids that the engine does not load now, with their names (an ID of the allowlist's gives its name).
-func missingNames(mgr *nodes.Manager, ids []string) []string {
-	var names []string
-	for _, id := range mgr.Missing(ids) {
-		name := id
-		if n, ok := mgr.Allowlist().Node(id); ok {
-			name = n.Name
-		}
-		names = append(names, name)
-	}
-	return names
-}
-
 // message is the sentence for a workflow, or a model, that needs nodes that are not installed ("" when there is none missing).
 func message(missing []string) string {
 	if len(missing) == 0 {
@@ -60,20 +47,44 @@ func message(missing []string) string {
 	return fmt.Sprintf("追加ノード「%s」が導入されていないため使えません。モデルマネージャーの「追加ノード」の節（%s）で導入してください", strings.Join(missing, "」「"), Section)
 }
 
+// Problem is one node a workflow, or a model, needs that the engine does not load: its name and, when mam does not install it at all (install_blocked), why.
+type Problem struct {
+	Name    string
+	Blocked string
+}
+
+// Problems is the nodes of ids that the engine does not load now (nil when every one is installed). The screens show them in the popup of the reason a
+// model cannot be installed (#1118); Reason is the same facts as one sentence.
+func Problems(mgr *nodes.Manager, ids []string) []Problem {
+	var out []Problem
+	for _, id := range mgr.Missing(ids) {
+		p := Problem{Name: id}
+		if n, ok := mgr.Allowlist().Node(id); ok {
+			p.Name = n.Name
+			if !n.Installable() {
+				p.Blocked = n.InstallBlocked
+			}
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
 // Reason is why a workflow, or a model, that needs the nodes ids cannot be used or installed now ("" when every node is installed). A node that mam
 // cannot install at all (install_blocked: ComfyUI-GGUF without its Python package, #1016) is said so, with the reason the section of the nodes
 // shows, instead of the advice to install it, which would lead nowhere.
 func Reason(mgr *nodes.Manager, ids []string) string {
-	var blocked []string
-	for _, id := range mgr.Missing(ids) {
-		if n, ok := mgr.Allowlist().Node(id); ok && !n.Installable() {
-			blocked = append(blocked, fmt.Sprintf("「%s」: %s", n.Name, n.InstallBlocked))
+	var names, blocked []string
+	for _, p := range Problems(mgr, ids) {
+		names = append(names, p.Name)
+		if p.Blocked != "" {
+			blocked = append(blocked, fmt.Sprintf("「%s」: %s", p.Name, p.Blocked))
 		}
 	}
 	if len(blocked) > 0 {
 		return fmt.Sprintf("追加ノードが今の mam では導入できないため使えません（モデルマネージャーの「追加ノード」の節 %s に理由があります）。%s", Section, strings.Join(blocked, " "))
 	}
-	return message(missingNames(mgr, ids))
+	return message(names)
 }
 
 // Check is nil when every node the model's workflows need is installed; else an *InvalidError (the refusal of the install, before a job is made).

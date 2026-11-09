@@ -54,6 +54,8 @@ const modelManagerAnswers = {
   'GET /model-manager/models/model-8/consent': ['scroll-mm-consent.html', 200],
   'GET /model-manager/dialog': ['', 200], // what "閉じる" swaps in: nothing (handlers.CloseDialog)
   'GET /model-manager/models': ['scroll-mm-poll-done.html', 200],
+  // The popup of the reason a model cannot be installed (test: modal/reason, #1118): what handlers.ModelReason renders for the model of layout-mm-card-node-needed.html.
+  'GET /model-manager/models/model-node/blocked': ['mm-reason-popup.html', 200],
   // The engine card (test: poll/model-manager-refresh): its poll and its refresh button get the card of the finished install, and the list out of band.
   'GET /model-manager/engine': ['mm-engine-done.html', 200],
 };

@@ -28,12 +28,14 @@ func TestAModelThatNeedsAMissingNodeHasADisabledInstallAndTheReason(t *testing.T
 	m := view.Model{ID: "m", Name: "M", State: "not_installed", NeedsNodes: "追加ノード「IPAdapter plus」が導入されていません"}
 	html := render(t, view.CatalogList(view.Catalog{Models: []view.Model{m}}))
 	assert.Contains(t, html, `data-testid="mm-nodes-badge"`)
-	assert.Contains(t, html, "追加ノード「IPAdapter plus」が導入されていません")
+	assert.NotContains(t, html, "IPAdapter plus", "the long explanation is not on the card (#1118)")
+	assert.Contains(t, html, `data-testid="mm-reason-open"`)
 	assert.NotContains(t, html, `data-testid="mm-install"`)
 
 	m.NeedsNodes = ""
 	html = render(t, view.CatalogList(view.Catalog{Models: []view.Model{m}}))
 	assert.NotContains(t, html, `data-testid="mm-nodes-badge"`)
+	assert.NotContains(t, html, `data-testid="mm-reason-open"`)
 	assert.Contains(t, html, `data-testid="mm-install"`)
 }
 
@@ -76,7 +78,9 @@ func TestNodeCard_HasNoDescriptionButKeepsWhatDecidesTheInstall(t *testing.T) {
 		assert.Contains(t, card, `data-testid="mm-node-badge"`, n.ID)
 		assert.Contains(t, card, `data-testid="mm-node-models"`, "the models that use the node stay on the card: %s", n.ID)
 		if n.Blocked != "" {
-			assert.Contains(t, card, `data-testid="mm-node-blocked"`, "why the node cannot be installed is not hidden: %s", n.ID)
+			assert.NotContains(t, card, `data-testid="mm-node-blocked"`, "the long reason is not on the card (#1118): %s", n.ID)
+			assert.NotContains(t, card, html.EscapeString(n.Blocked), n.ID)
+			assert.Contains(t, card, `data-testid="mm-reason-open"`, "the reason is one button away: %s", n.ID)
 			assert.NotContains(t, card, `data-testid="mm-node-install"`, n.ID)
 		} else {
 			assert.Contains(t, card, `data-testid="mm-node-install"`, n.ID)
