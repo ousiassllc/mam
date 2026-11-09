@@ -16,8 +16,7 @@ type Platform struct {
 	UsualRange  string // the range the platform usually takes (documentation of the proposal; never stored)
 }
 
-// platforms is the deterministic table of the proposals. A destination that is not in it (Instagram広告,
-// YouTube広告, a web site, nothing at all) gets no proposal: both items stay open for the batch summary.
+// platforms is the deterministic table of the proposals. A destination that is not in it (Instagram広告, YouTube広告, a web site, nothing at all) gets no proposal: both items stay open for the batch summary.
 var platforms = []struct {
 	Platform
 	matches func(objective string) bool

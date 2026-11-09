@@ -32,8 +32,7 @@ func (r *rig) told() (n int) {
 	return n
 }
 
-// The announcement is made for a start that was made. A start that ends busy or gone (the claim is given back) is looked at again later; it must not
-// announce each time, only when a Shot is started.
+// The announcement is made for a start that was made. A start that ends busy or gone (the claim is given back) is looked at again later; it must not announce each time, only when a Shot is started.
 func TestAutoStart_NoAnnouncementForLooksWhoseEveryStartEndsBusy(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)

@@ -1,5 +1,4 @@
-// Package briefing extracts a Creative Brief from what the user writes in the chat
-// (F-01, spec/spec.md §4.2).
+// Package briefing extracts a Creative Brief from what the user writes in the chat (F-01, spec/spec.md §4.2).
 //
 // RuleExtractor is deterministic and needs no external API, so the chat works before
 // a Reasoning LLM Adapter is configured. An LLM-backed Extractor can replace it

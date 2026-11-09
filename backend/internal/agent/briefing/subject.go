@@ -85,7 +85,7 @@ func readSubject(text string) (subject string, explicit bool) {
 	for _, sentence := range sentences {
 		resolved, _ := positiveSide(sentence)
 		if m := subjectRe.FindStringSubmatch(resolved); m != nil {
-			if s := usable(m[1]); s != "" && !isContentType(s) && !isPlatformPhrase(s) {
+			if s := usable(m[1]); s != "" && !isContentType(s) && !isPlatformPhrase(s) && subjectLike(s) {
 				_, c, ok := bareContrast(sentence)
 				return s, ok && contrastChanges(sentence, c.phrase, s)
 			}
@@ -175,8 +175,7 @@ func deniedStart(s string) int {
 	return start
 }
 
-// subjectPhrase is the noun phrase a pattern captured: the last one, without the topic or the platform in front ("この動画は猫", "TikTok向けに
-// 架空の女性") and without the words that end the clause ("ロボットにして").
+// subjectPhrase is the noun phrase a pattern captured: the last one, without the topic or the platform in front ("この動画は猫", "TikTok向けに 架空の女性") and without the words that end the clause ("ロボットにして").
 func subjectPhrase(s string, before bool) string {
 	s = strings.TrimSpace(trimTail(strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(s), "やっぱり"), "やはり")))
 	if locs := phrasePrefixRe.FindAllStringIndex(s, -1); locs != nil {

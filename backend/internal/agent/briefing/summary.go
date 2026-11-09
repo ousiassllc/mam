@@ -65,8 +65,7 @@ func summaryHint(b domain.Brief) string {
 	return hint
 }
 
-// SubjectConflict is the question about the Subject alone when the user's words named another one than the Subject decided: the
-// buttons are the two values; the Brief keeps its Subject until one is picked.
+// SubjectConflict is the question about the Subject alone when the user's words named another one than the Subject decided: the buttons are the two values; the Brief keeps its Subject until one is picked.
 func SubjectConflict(b domain.Brief, reason string) domain.ChatMessage {
 	q := "Subject は「" + b.Subject + "」ですが、「" + b.ProposedSubject + "」とも読み取れました。どちらを主役にしますか？\n（変更するときは、「…に変更して」のように変更と分かる言い方でも伝えられます）"
 	if reason != "" {

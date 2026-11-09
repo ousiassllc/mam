@@ -14,8 +14,7 @@ import (
 )
 
 // A Project of v0.1.34 can hold a generation approval card that was never answered. The Orchestrator settles it as the system (a notice of the assistant,
-// no message of the user), the Project returns from AWAITING_APPROVAL to VISUAL_DESIGN, and the generation starts in the same run: an AUTO Project is
-// never left stuck on an obsolete card.
+// no message of the user), the Project returns from AWAITING_APPROVAL to VISUAL_DESIGN, and the generation starts in the same run: an AUTO Project is never left stuck on an obsolete card.
 func TestLegacyCard_APendingCardIsSettledBySystemAndTheGenerationStarts(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)

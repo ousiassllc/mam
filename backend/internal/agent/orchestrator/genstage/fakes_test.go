@@ -51,8 +51,7 @@ func (c *fakeChat) RequestApproval(ctx context.Context, projectID string, cp dom
 	return true, c.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: []domain.ChatMessage{card}, State: &state})
 }
 
-// Supersede behaves like service.ChatService.Supersede: the card is closed as approved by a message of the assistant (no message of the user), and the
-// Project returns from AWAITING_APPROVAL.
+// Supersede behaves like service.ChatService.Supersede: the card is closed as approved by a message of the assistant (no message of the user), and the Project returns from AWAITING_APPROVAL.
 func (c *fakeChat) Supersede(ctx context.Context, projectID, cardID, notice string) (bool, error) {
 	resume := domain.CheckpointGeneration.ApprovedState()
 	err := c.projects.Apply(ctx, repository.Turn{
@@ -102,8 +101,7 @@ type call struct {
 	shotID string
 }
 
-// fakeGen stands in for generation.Orchestrator: a start claims the Shot and queues a real job row (so that its status can be set), as the
-// real one does, and is recorded. errs make a start of a Shot fail.
+// fakeGen stands in for generation.Orchestrator: a start claims the Shot and queues a real job row (so that its status can be set), as the real one does, and is recorded. errs make a start of a Shot fail.
 type fakeGen struct {
 	gens *repository.GenerationRepository
 	jobs *repository.JobRepository

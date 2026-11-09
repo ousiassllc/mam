@@ -1,4 +1,4 @@
-package genstage_test
+package mainline_test
 
 import (
 	"testing"

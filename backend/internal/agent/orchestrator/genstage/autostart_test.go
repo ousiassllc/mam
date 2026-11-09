@@ -2,6 +2,7 @@ package genstage_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,8 +40,7 @@ func TestAutoStart_NoApprovalCardAndTheGenerationStartsAtAnyConfirmationLevel(t 
 	}
 }
 
-// The whole path at FULL AUTO: Brief → script (no card at this level) → Scene / Shot plan → the Reference Packs, in one run of the Orchestrator.
-// The notice of the plan says that the Orchestrator goes on by itself.
+// The whole path at FULL AUTO: Brief → script (no card at this level) → Scene / Shot plan → the Reference Packs, in one run of the Orchestrator. The notice of the plan says that the Orchestrator goes on by itself.
 func TestAutoStart_FullAutoPlansAndStartsInOneRun(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)
@@ -227,4 +227,30 @@ func TestAutoStart_AnnouncesOncePerStartAndAgainOnlyForNewShots(t *testing.T) {
 
 	assert.Equal(t, 2, r.announcements(), "a Shot added to the plan is a new start")
 	assert.Contains(t, r.chat.notices()[len(r.chat.notices())-1], "対象: Shot 1 件（Shot 4）", "the announcement is of the Shot that is new")
+}
+
+// DIRECTOR is the sure stop: a user who switches while a round is running is not billed for the Shots whose start was still ahead (review of #1115).
+type switchingGen struct {
+	*fakeGen
+	onFirst func()
+	once    sync.Once
+}
+
+func (g *switchingGen) StartReferencePack(ctx context.Context, shotID string) (domain.Job, error) {
+	j, err := g.fakeGen.StartReferencePack(ctx, shotID)
+	g.once.Do(g.onFirst)
+	return j, err
+}
+
+func TestAutoStart_SwitchingToDirectorDuringARoundStopsTheStartsThatAreStillAhead(t *testing.T) {
+	t.Parallel()
+	r := newRig(t)
+	id := r.planned(domain.ConfirmFullAuto)
+	g := &switchingGen{fakeGen: r.gen, onFirst: func() { r.setMode(id, domain.ModeDirector) }}
+	r.gate.SetGenerator(g, r.prices.get)
+
+	r.handle(id)
+
+	assert.Equal(t, 1, r.gen.count(genapprovalrepo.StageReferencePack), "only the start that was under way when the user switched")
+	assert.Equal(t, domain.ModeDirector, r.project1(id).Mode)
 }

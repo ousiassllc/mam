@@ -15,8 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
 )
 
-// The Orchestrator goes on by itself, in order: every Shot without a Keyframe gets its Reference Pack first; a Shot's generation is started when its
-// Reference Pack job has succeeded, and not before.
+// The Orchestrator goes on by itself, in order: every Shot without a Keyframe gets its Reference Pack first; a Shot's generation is started when its Reference Pack job has succeeded, and not before.
 func TestAutoStart_ReferencePacksThenShotsStartByThemselves(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)
@@ -172,8 +171,7 @@ func TestAutoStart_TheBudgetCeilingStopsTheStartWithOneEscalationAndNothingFurth
 	assert.Len(t, r.chat.escalations, 1)
 }
 
-// Cancelling while the Gate starts (the job is cancelled, the process stops) starts nothing more and gives the claim back, so that the next look starts
-// the Shot, once.
+// Cancelling while the Gate starts (the job is cancelled, the process stops) starts nothing more and gives the claim back, so that the next look starts the Shot, once.
 func TestAutoStart_CancellationStopsTheStartAndReleasesTheClaim(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)

@@ -5,8 +5,7 @@
 // are not an approval and go on applying to each start: a start one refuses is an Escalation and nothing more is started until the user answers.
 //
 // The generation approval cards of v0.1.34 (#1108) are the legacy of the policy this replaces: a card that is still pending is settled by the
-// Orchestrator (a system answer, not the user's), and a card the user declined keeps the generation from starting by itself until the user writes
-// to the thread or the Scene / Shot plan changes.
+// Orchestrator (a system answer, not the user's), and a card the user declined keeps the generation from starting by itself until the user writes to the thread or the Scene / Shot plan changes.
 //
 // The package derives what to do from what is stored (the launches, the Shots, the legacy cards), like the stages of the planning pipeline.
 package genstage
@@ -55,8 +54,7 @@ type Deps struct {
 }
 
 // Gate is the automatic start of the generation. What it does is derived from what is stored; the one thing it keeps in memory is the causes of the
-// refusals for a model that cannot be used that the user was told (nomodel.go). Until a Generator is set (SetGenerator) it is off: the Orchestrator
-// stops after the Scene / Shot plan and the user starts each Shot by hand.
+// refusals for a model that cannot be used that the user was told (nomodel.go). Until a Generator is set (SetGenerator) it is off: the Orchestrator stops after the Scene / Shot plan and the user starts each Shot by hand.
 type Gate struct {
 	d       Deps
 	gen     Generator
@@ -74,8 +72,7 @@ func New(d Deps) *Gate {
 	return &Gate{d: d, noModel: map[string]map[string]bool{}}
 }
 
-// SetGenerator turns the gate on. config is the Model Adapter's current setting (the prices). Call it while the application is wired, before the job
-// queue starts.
+// SetGenerator turns the gate on. config is the Model Adapter's current setting (the prices). Call it while the application is wired, before the job queue starts.
 func (g *Gate) SetGenerator(gen Generator, config func() modeladapter.Config) {
 	g.gen = gen
 	g.builder = genplan.Builder{Plans: g.d.Plans, Gens: g.d.Gens, Policies: g.d.Policies, Config: config, Candidates: gen.UsesCandidates}

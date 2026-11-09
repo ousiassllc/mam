@@ -47,8 +47,7 @@ type Assessment struct {
 
 // inScope reports whether the Project is at a state where the generation is the gate's business: the plan is made (VISUAL_DESIGN, where a Project stays
 // while its Shots are made, spec/spec.md §22), a card is waiting (AWAITING_APPROVAL: the legacy card the gate settles, or an Escalation it waits for),
-// or an Escalation was answered (REPAIRING: the budget stopped a start and the user decided). GENERATING and JUDGING are the Reshoot Loop's and
-// the director's, never the gate's.
+// or an Escalation was answered (REPAIRING: the budget stopped a start and the user decided). GENERATING and JUDGING are the Reshoot Loop's and the director's, never the gate's.
 func inScope(s domain.ProjectState) bool {
 	switch s {
 	case domain.StateVisualDesign, domain.StateAwaitingApproval, domain.StateRepairing:
@@ -100,15 +99,13 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 	return a, g.next(ctx, &a)
 }
 
-// SupersededNotice is what the chat says when the Orchestrator settles a generation approval card of v0.1.34 that was still pending: the card is closed
-// by the system, never as the user's answer.
+// SupersededNotice is what the chat says when the Orchestrator settles a generation approval card of v0.1.34 that was still pending: the card is closed by the system, never as the user's answer.
 const SupersededNotice = "旧方針（v0.1.34）の「生成の承認」カードが未回答のまま残っていました。AUTO では生成の承認を求めない仕様に変わったため、システムがこのカードを閉じました" +
 	"（あなたの回答ではありません）。AUTO を選んでいるので、続けて生成を自動で始めます。" + mainline.BudgetCeilingScope + mainline.StopAuto
 
 // declined reports whether the card the user declined (under the policy of v0.1.34) still keeps the generation from starting: it does until the
 // plan changed from what the card showed, or the user wrote to the thread after the decline (not as a reply to the card). A card with no record of
-// what it showed (an imported bundle carries the cards but not the records) is lifted by a message only: a.Unrecorded says so, for the words that
-// tell the user what to do.
+// what it showed (an imported bundle carries the cards but not the records) is lifted by a message only: a.Unrecorded says so, for the words that tell the user what to do.
 func (g *Gate) declined(ctx context.Context, p domain.Project, a *Assessment) (bool, error) {
 	approved, ok, err := g.d.Repo.Approval(ctx, a.Card.ID)
 	if err != nil {
@@ -180,8 +177,7 @@ func (g *Gate) NeedsWork(ctx context.Context, p domain.Project) (bool, error) {
 	return err == nil && (a.Verdict == VerdictSupersede || (a.Verdict == VerdictStart && len(a.Next) > 0)), err
 }
 
-// Phase is what the main line of the Project waits for, for the notice on the Scene / Shot screen, and the Shots that cannot be carried on by
-// the gate.
+// Phase is what the main line of the Project waits for, for the notice on the Scene / Shot screen, and the Shots that cannot be carried on by the gate.
 func (g *Gate) Phase(ctx context.Context, p domain.Project) (mainline.Phase, map[string]bool, error) {
 	a, err := g.Assess(ctx, p)
 	if err != nil {

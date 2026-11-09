@@ -7,15 +7,17 @@ import (
 
 // The bare contrast "A ではなく B" as a Subject (spec/spec.md §4.2, #1114): what it means, and whether it changes a decided Subject.
 
-// contrastSubject is what a bare "A ではなく B" of a sentence means as the Subject: B ("" when it is not one, see bareContrast), and whether
-// it changes the Subject (contrastChanges).
+// contrastSubject is what a bare "A ではなく B" of a sentence means as the Subject: B ("" when it is not one, see bareContrast), and whether it changes the Subject (contrastChanges).
 func contrastSubject(sentence string) (string, bool) {
 	kept, c, ok := bareContrast(sentence)
 	if !ok {
 		return "", false
 	}
 	s := subjectOf(kept, true)
-	return s, s != "" && contrastChanges(sentence, c.phrase, s)
+	if isFormat(s) || styleWordRe.MatchString(s) || itemLabelRe.MatchString(s) { // the meant side is a format: "猫ではなく30秒の動画にして" changes the length, not the Subject
+		return "", false
+	}
+	return s, s != "" && subjectLike(s) && contrastChanges(sentence, c.phrase, s) // "夜" or "学生" may be the mood or the target: proposed, never replaced
 }
 
 // contrastChanges reports whether the bare contrast "A ではなく B" (denied A, meant B) changes the Subject for sure: its clause says "主人公", "主役", "題材"
@@ -41,7 +43,7 @@ func isPersonOrProduct(s string) bool {
 
 // bareContrast reports whether the sentence is a bare "A ではなく B" that may name the Subject, and gives what is left of it with A taken
 // away, and A. It is one only when the sentence names no other item ("ターゲットは学生ではなく社会人" is the target) and A could be a subject itself
-// (not a duration, a mood, a target or a platform: "派手でなく地味", "短めじゃなくて長め"). The looser reading is for an answer to the
+// (not a duration, a mood, a target, a platform or a word of an item label like "雰囲気": "派手でなく地味", "短めじゃなくて長め"). The looser reading is for an answer to the
 // Subject question only (subjectAnswer).
 func bareContrast(sentence string) (kept string, denied denial, ok bool) {
 	kept, cuts := positiveSide(sentence)
@@ -53,8 +55,7 @@ func bareContrast(sentence string) (kept string, denied denial, ok bool) {
 	return kept[c.at:], c, subjectLike(c.phrase)
 }
 
-// subjectLike reports whether s, a phrase that was denied, could have been the Subject: it is no duration, ratio, kind of video, platform,
-// target or mood.
+// subjectLike reports whether s, a phrase that was denied, could have been the Subject: it is no duration, ratio, kind of video, platform, target or mood, and names no item (「雰囲気」「テイスト」).
 func subjectLike(s string) bool {
-	return s != "" && !isFormat(s) && !styleWordRe.MatchString(s) && target(s) == "" && mood(s) == ""
+	return s != "" && !isFormat(s) && !styleWordRe.MatchString(s) && !itemLabelRe.MatchString(s) && target(s) == "" && mood(s) == ""
 }

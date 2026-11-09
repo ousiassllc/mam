@@ -22,6 +22,9 @@ func (g *Gate) Step(ctx context.Context, p domain.Project) (bool, error) {
 	}
 	switch {
 	case a.Verdict == VerdictSupersede:
+		if !g.stillAuto(ctx, p.ID) {
+			return true, nil // switched to DIRECTOR since the look: the notice promises a start that would not happen; the next look settles nothing
+		}
 		_, err := g.d.Chat.Supersede(ctx, p.ID, a.Card.ID, SupersededNotice) // false: the user answered it meanwhile; either way the next look goes on
 		return true, err
 	case a.Verdict == VerdictStart && len(a.Next) > 0:
@@ -92,9 +95,12 @@ func (g *Gate) launch(ctx context.Context, p domain.Project, a Assessment) (bool
 
 // run makes the starts of the plan into r until one of them ends the round.
 func (g *Gate) run(ctx context.Context, p domain.Project, a Assessment, r *round) error {
-	for _, s := range a.Next {
+	for i, s := range a.Next {
 		if err := ctx.Err(); err != nil {
 			return err
+		}
+		if i > 0 && !g.stillAuto(ctx, p.ID) { // DIRECTOR is the sure stop: a Shot whose start is still ahead is not started once the user has switched
+			return nil
 		}
 		claimed, err := g.d.Repo.Claim(ctx, s.Line.ShotID, s.Stage)
 		if err != nil {
@@ -126,6 +132,13 @@ func (g *Gate) run(ctx context.Context, p domain.Project, a Assessment, r *round
 		}
 	}
 	return nil
+}
+
+// stillAuto reports whether the Project is still AUTO now (the Assessment of the round was made some starts ago). A Project that cannot be read is not started
+// (the next look decides).
+func (g *Gate) stillAuto(ctx context.Context, projectID string) bool {
+	p, err := g.d.Projects.Get(ctx, projectID)
+	return err == nil && p.Mode == domain.ModeAuto
 }
 
 // refuseNoModel handles a start refused because no model can be used. The first Shot of a cause that nobody was told yet is marked and told (report); a
