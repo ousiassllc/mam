@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 }
 
 // #1016: a model that needs the blocked ComfyUI-GGUF is on the screen with the reason in words for the user in the popup of its card (the Python package gguf is missing and mam
-// runs no pip), its install button is disabled, and a request to install it is refused before anything is downloaded.
+// runs no pip), its install button opens that popup and installs nothing, and a request to install it is refused before anything is downloaded.
 func TestAModelThatNeedsTheBlockedGGUFNodeShowsTheReasonAndCannotBeInstalled(t *testing.T) {
 	s := screentest.New(t, mmtest.WithGGUFModel(nodes.New(store.Layout{Root: filepath.Join(t.TempDir(), "comfyui")})))
 	s.Rig.InstallEngine()

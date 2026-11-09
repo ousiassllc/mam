@@ -24,7 +24,7 @@ func render(t *testing.T, c templ.Component) string {
 }
 
 // A model that needs a node the engine does not have says so with a badge on its card; its install button opens the popup with the reason (#1118) and
-// posts nothing. Another thing that stops an install (nothing can be installed now, a full disk) keeps a disabled button that opens nothing.
+// posts nothing. Another thing that stops an install (nothing can be installed now, or a full disk with no node needed) keeps a disabled button that opens nothing.
 func TestAModelThatNeedsAMissingNodeHasAnInstallButtonThatOpensTheReason(t *testing.T) {
 	m := view.Model{ID: "m", Name: "M", State: "not_installed", NeedsNodes: "追加ノード「IPAdapter plus」が導入されていません"}
 	html := render(t, view.CatalogList(view.Catalog{Models: []view.Model{m}}))
