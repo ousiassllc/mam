@@ -32,6 +32,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
+// VideoNouns are the nouns that say what a video is about when they follow "の" ("犬の動画", "犬のCM", "犬の広告"). The contrast "A ではなく B の○○" reads B as the Subject
+// with these (briefing.videoOfRe), and the evidence for a change (back) lets them stand behind it: one list, so that no noun is a change in one reader and a card in the other (#1127).
+const VideoNouns = "動画|CM|広告"
+
 // Action is what happens to the Subject.
 type Action int
 
@@ -81,7 +85,7 @@ var (
 	// front is all that may stand in front of the Subject: a filler, a label of the role, the denied Subject (group 1).
 	front = regexp.MustCompile(`^(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:(?:この)?動画(?:は|の))?(?:(?:主人公|主役|題材|主題)(?:は|を|が|も)?)?(?:(?:やっぱり|やはり|やっぱ)[、,]?)?(?:([^、,。.!！?？\n]{1,20}?)(?:ではなく|じゃなくて|ではなくて|じゃなく|でなく|から)[、,]?)?$`)
 	// back is all that may stand behind it: particles, a label, a change verb in a finished form, a polite ending.
-	back = regexp.MustCompile(`^(?:の(?:動画|ビデオ|映像|話|CM))?(?:を|が|は|で)?(?:主人公|主役|題材|主題)?(?:に|へ)?(?:(?:変更し|変え|替え|差し替え|代え|切り替え|直し|し)(?:て(?:ください|下さい)?|ます|ました|たい(?:です)?|ようと思います)|(?:変更)?(?:する|した)|(?:変え|替え|差し替え|代え|切り替え)(?:る|た)|直す|変更(?:でお願い(?:します)?|でいい(?:です)?))?(?:の)?(?:動画|ビデオ|映像|CM)?(?:(?:の方が|が)?(?:いい|良い|よい|お願い(?:します)?|ください|下さい)(?:です)?|です|で進めて(?:ください)?|を選(?:ぶ|びます))?[。.!！ ]*$`)
+	back = regexp.MustCompile(`^(?:の(?:` + VideoNouns + `|ビデオ|映像|話))?(?:を|が|は|で)?(?:主人公|主役|題材|主題)?(?:に|へ)?(?:(?:変更し|変え|替え|差し替え|代え|切り替え|直し|し)(?:て(?:ください|下さい)?|ます|ました|たい(?:です)?|ようと思います)|(?:変更)?(?:する|した)|(?:変え|替え|差し替え|代え|切り替え)(?:る|た)|直す|変更(?:でお願い(?:します)?|でいい(?:です)?))?(?:の)?(?:動画|ビデオ|映像|CM)?(?:(?:の方が|が)?(?:いい|良い|よい|お願い(?:します)?|ください|下さい)(?:です)?|です|で進めて(?:ください)?|を選(?:ぶ|びます))?[。.!！ ]*$`)
 	// predicate ends a phrase that is a negation or a hedge, not a noun: "そのまま", "変えなくていい", "犬かもしれない".
 	predicate    = regexp.MustCompile(`(?:ない|まま|かも)$`)
 	itemWord     = regexp.MustCompile(`^[\p{Han}\p{Katakana}A-Za-z0-9:：.ー×]+(?:で|に|にして|にする|にします|です|でお願い(?:します)?|が(?:いい|良い)(?:です)?)?$`)

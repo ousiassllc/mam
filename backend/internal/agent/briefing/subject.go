@@ -47,9 +47,9 @@ var (
 	itemTopicRe = regexp.MustCompile(`(?:` + itemLabelRe.String() + `|テーマ)[はもが：:]`)
 	// contrastAnchorRe is a word that says the clause is about what the video shows: only with one a bare "A ではなく B" changes the Subject.
 	contrastAnchorRe = regexp.MustCompile(`主人公|主役|題材|テーマ`)
-	// videoOfRe is "…の動画 / CM / 広告": it says what the video is about only when A or B names a person or a product ("猫ではなく犬の動画にして"), not
+	// videoOfRe is "…の動画 / CM / 広告" (overwrite.VideoNouns): it says what the video is about only when A or B names a person or a product ("猫ではなく犬の動画にして"), not
 	// with a season, a time or a color ("冬ではなく夏の動画にして").
-	videoOfRe = regexp.MustCompile(`の(?:動画|CM|広告)`)
+	videoOfRe = regexp.MustCompile(`の(?:` + overwrite.VideoNouns + `)`)
 	// personOrProductRe ends a phrase that names a person, an animal or a product ("30代の女性", "インフルエンサー", "新商品", "猫"): whole words, not the last
 	// character alone ("個性", "様子", "作品", "作者" are none).
 	personOrProductRe = regexp.MustCompile(`(?:人物|女性|男性|男の子|女の子|子供|子ども|お子さん|さん|くん|ちゃん|キャラクター|キャラ|インフルエンサー|モデル|学生|先生|主婦|社員|店員|お客|顧客|商品|製品|化粧品|食品|サービス|アプリ|ブランド|美容液|グッズ|アイテム|ペット|動物|ロボット|猫|犬)$|^(?:人|男|女|子)$`)
