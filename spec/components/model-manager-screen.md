@@ -281,6 +281,18 @@
 - **AMD の GPU・macOS・Windows arm64**（既定: 対応しない。理由と案内を出す。AMD は `ollama-windows-amd64-rocm.zip` を重ねる形で足せるが、実機で確かめられない）。
 - **厳選する名前**（既定: `gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b`。llama.cpp の純正モデルと同じ系統。非検閲の派生は載せない）。
 
+## 手元の LoRA の取り込み（#1119）
+
+区画 `#mm-lora`「LoRA を追加」は `image-video` ページの「モデルの一覧」の下に置く（`mmcat` の `Sections` に `mm-lora`）。部品は `organisms/modelmgr/loraimport`（`Section`・`PanelView`・`ListView`・`ListOOB`）。意味と検査は [model-manager-lora.md](../architecture/model-manager/model-manager-lora.md)、ルートは [endpoints-model-manager.md](../api/endpoints-model-manager.md)。
+
+- **見出しの横の「?」**: 見出しは `molecules.SettingsSection("LoRA を追加", loraimport.Help)`。説明（ベースモデルとの対応・強さ・トリガー語・ライセンス）は「?」の中に置き、画面に長い文を並べない。
+- **選ぶ**（`data-testid="mm-lora-pick"`）: ファイルの選択（`accept=".safetensors"`）と、ドロップの領域（`mm-lora-zone`）。ドロップしたファイルも同じ入力に入れて送る。ブラウザ側で拡張子と大きさ（4 GiB）を先に確かめ、通らないものは送らずに理由を出す（`mm-lora-client-error`）。送っている間は進捗（`mm-lora-progress`。割合とバイト）を出し、`htmx:xhr:progress` で更新する。
+- **確認**（`mm-lora-staged`）: ファイルの情報（大きさ・テンソルの数・SHA-256）、名前（使えない文字を置き換えたときは理由）、ベースモデルの選択（ファイルから読めたときは「ファイルの情報から読み取りました」、無いときは「未設定」）、推奨の強さ、トリガー語（学習で多く使われたタグは候補として別に出し、欄には入れない）、ライセンスの名前と商用利用の答え（不明・条件つき（自己申告）・商用NG。「商用OK」の選択肢は無い）。「追加する」（`mm-lora-commit`）と「やめる」（`mm-lora-discard`）。同名があるときは確認の上に案内の箱（`mm-lora-conflict`）を出し、別の名前の提案を欄に入れる。
+- **結果**: 追加できたら確認の文（`mm-lora-notice`。生成テストの「LoRA と強さ」で選べること）、拒否は入力欄の上（`mm-lora-msg`）に理由を出す。入力は消えない。上の検査に通らないファイルは、置かずに理由だけを出す（`mm-lora-error`）。
+- **追加した LoRA の一覧**（`#mm-lora-list`）: 1 つが 1 枚のカード。名前・大きさ・ベースモデル・強さ・トリガー語・ライセンス（空は「不明」）。編集のフォームと削除のボタン。空のときは「まだ追加していません。」（`mm-lora-empty`）。
+- **この PC で使えないとき**（バンドルのエンジンが動かない環境）は、区画に理由（`mm-lora-unsupported`）だけを出し、選ぶフォームを出さない。
+- **生成テスト・レシピ側**: `molecules/loraselect`（`Select`・`Note`）が「LoRA と強さ」の選択と注意を描く。注意（`data-testid="gt-lora-note"`）は、選んだ LoRA の未設定の項目、ワークフローのベースモデル（`data-lora-family`）との食い違い、`commercial_only` のときの商用の注意を出す。`static/src/components/gentest-lora` が、モデルの切り替え・LoRA の選び直しで注意を更新する。止めはしない。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -324,3 +336,4 @@
 | 1.36 | 2026-11-07 | ローカル LLM の統合（#1104）を実装した。状態を「実装済み」にした。分類 `local-llm`（`mmcat.All()`。`local-runtimes` と `face-check` の間）に「使うサーバー」`#mm-llm-use`・「ローカルで動かすサーバー」`#mm-llm-runtimes`（`GET /model-manager/runtimes?purpose=llm`。llama.cpp は `local-runtimes` から移った）・「別のサーバーにつなぐ」`#mm-llm-connection` を置いた。設定のカードはリンクだけ（`llm-local-link`・`llm-local-state`）。`ollama` のラジオ・カードは、アプリが管理する Ollama を持つまで出さない（#1105）。状態の行の「URL に接続できない」は、描くたびには試さず接続テストで確かめる形にした。概要のまとめの Ollama のモデルの件数は #1105 に回した | Issue #1104 |
 | 1.37 | 2026-11-07 | Ollama の導入とモデルの取得（#1105）を実装した。状態を「実装済み」にした。区画 `#mm-ollama`（`mm-ollama-state`・`mm-ollama-models`・`mm-ollama-model`・`mm-ollama-others`・取得／中断する／削除・詳細モーダルの `mm-sha256`・`mm-ollama-tag-note`）、Ollama のカードの詳細に `mm-ollama-noauth`、削除の確認に「取得した Ollama のモデルも消えます」、概要のモデル件数、付随ソフトの一覧の `ollama` の行、joblist の行き先を足した。実機での起動・取得は未確認（`device_only`） | Issue #1105 |
 | 1.38 | 2026-11-09 | 導入できないモデル・ノードのカードの長い技術説明を、導入ボタンと別の「理由と対処」ボタンが開くポップアップに移した（#1118）。新しい部品 `organisms/modelmgr/reason`（`OpenButton`・`Body`）を足し、モデルのカード（`catalog.templ` の `modelActions`）とノードのカード（`nodecard.NodeCard`）が使う。#1110 の `mm-node-needed-link`・#1103 の `mm-node-blocked` はカードからポップアップの中へ移った | Issue #1118。長い文がカードに常時並び縦に伸びる |
+| 1.39 | 2026-11-09 | 手元の LoRA の取り込み（#1119）の区画 `#mm-lora`「LoRA を追加」を足した（`image-video` ページの「モデルの一覧」の下。選ぶ・確認・結果・追加した LoRA の一覧。生成テスト・レシピの「LoRA と強さ」の注意）。部品は `organisms/modelmgr/loraimport`・`molecules/loraselect`。既存の区画の ID は変えない | Issue #1119 |

@@ -461,6 +461,8 @@ Dynamic Camera
 
 > **起動の経路（実装）**: モードは Quality Policy で決まる（MAX QUALITY→Quality、BALANCED→Balanced、FAST→Economy）。Shot カードの「生成」、Continue、Branch、追加撮影（Editor）、Director の再生成は、AI Video Judge が構成済みで Prompt が LOCK されていなければ Candidate 生成（`POST /shots/:id/generate/candidates` と同じ処理）を起動する。Judge が無い、または Spec 済みの Shot の Prompt が LOCK されているときは、Best Take を選べない／Spec を作り直せないため単発の生成（`POST /shots/:id/generate`）になる。`/shots/:id/generate` を直接呼ぶと、常に単発の生成である。 Candidate は撮影戦略ごとに Spec を書き直すが、LOCK の部分と指示で保持する部分に加えて、指示が無いときは MANUAL の部分（ユーザーが指定した値）も変えない（指示があるときの MANUAL は、指示が変えない限り保持するようプランナーに伝える）。戦略の指示は MANUAL の部分には及ばない。
 
+> **手元の LoRA の取り込み（#1119）**: 利用者が Civitai などから自分でダウンロードした LoRA（`.safetensors`）は、モデルの管理（画像・動画モデルの「LoRA を追加」）にファイルの選択かドラッグ＆ドロップで取り込める（この PC の中への取り込みで、公開ではない）。先にファイルを検査し（ヘッダーの形・4 GiB の上限・LoRA のテンソル・名前の安全性・`.safetensors` 以外の拒否）、読み取れた情報を見せてから `data/models/loras/` へ置く。同じ名前は上書きしない。ベースモデルとトリガー語はファイルに書いてあるときだけ候補に出し、無ければ「未設定」とする（強さは読まず、推測もしない。どれも編集できる）。ライセンスは任意で、空は「不明」とし、商用OK にはしない。取り込んだ LoRA は生成テスト・レシピの「LoRA と強さ」で選べ、ワークフローのベースモデルと食い違うときは警告する。取り込みは生成を始めない。画面だけでなく MCP にも同じ操作を持たせる（`spec/architecture/model-manager/model-manager-lora.md`）。
+
 ---
 
 # 9. World State / Continuity Memory

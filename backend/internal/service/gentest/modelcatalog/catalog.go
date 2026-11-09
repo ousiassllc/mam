@@ -71,8 +71,10 @@ type Info struct {
 	// ReferenceRoles are the roles a reference of the model may have (localcfg.Role*; "reference" is the whole picture).
 	ReferenceRoles []string `json:"reference_roles,omitempty"`
 	// SupportsLoRA: a LoRA can be applied to the model.
-	SupportsLoRA bool       `json:"supports_lora,omitempty"`
-	Video        *VideoCaps `json:"video,omitempty"`
+	SupportsLoRA bool `json:"supports_lora,omitempty"`
+	// LoRAFamily is the family of base model a LoRA has to be made for (lorafamily key; "" when not said).
+	LoRAFamily string     `json:"lora_family,omitempty"`
+	Video      *VideoCaps `json:"video,omitempty"`
 	// SpeedModes are the ways the model can sample, the default first (a ComfyUI workflow with localcfg.Workflow.SpeedModes: the distilled
 	// LoRA of Wan 2.2 14B or Qwen-Image-Edit 2511); empty for a model with one way. A request's speed_mode names one of them.
 	SpeedModes []SpeedMode `json:"speed_modes,omitempty" jsonschema:"速さのモード（蒸留 LoRA など）。先頭が既定（default: true）。リクエストの speed_mode に id を渡せる。持たないモデルは警告 speed_mode_unsupported で既定のまま作る。モードがあるモデルのステップ数・cfg はモードが決める（sampling の locked が speed_mode）"`
@@ -257,7 +259,7 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 			mi.GPTImageRefusal = gptimage.SubscriptionRefusal
 		}
 		mi.AcceptsReferences = cfg.AcceptsImages(m)
-		mi.SupportsLoRA = SupportsLoRA(cfg, m)
+		mi.SupportsLoRA, mi.LoRAFamily = SupportsLoRA(cfg, m), LoRAFamily(cfg, m)
 		if caps := ReferenceCapsOf(cfg, m); caps.Max > 0 {
 			mi.ReferenceMode, mi.MaxReferenceImages, mi.ReferenceRoles = string(caps.Mode), caps.Max, slices.Clone(caps.Roles)
 		} else if mi.AcceptsReferences {

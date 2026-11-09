@@ -78,6 +78,16 @@
 | `list_user_models` | 利用者が HF から足したファイル（NFAA は年齢確認が済むまで出ない） | なし | `models[]`（`path`, `name`, `folder`, `repo`, `commit`, `repo_path`, `sha256`, `size`, `license`, `gated`, `nfaa`, `family`, `workflows[]`, `model_ids[]`, `shared_with[]`, `present`, `installed_at`） | はい |
 | `delete_user_model` | 足したファイルと、作ったモデルを削除する（使用中の用途・Policy があれば `validation`、導入中は `conflict`、記録に無ければ `conflict`）。カタログのモデルと共有しているファイルは、そのモデルが残る間は消えない | `path`（`list_user_models` の `path`） | `path`, `deleted` | いいえ（破壊的） |
 
+### 手元の LoRA の取り込み（Issue #1119）
+
+意味は [model-manager-lora.md](../architecture/model-manager/model-manager-lora.md)。画面（`#mm-lora`）と同じ操作を MCP にも持たせる（#830）。ファイルは `create_upload_ticket`（`purpose=model_lora_import`）で得たチケットへ multipart で 1 回 POST する（手元のパスや URL は受け取らない）。上限は 4 GiB。ヘッダー・LoRA のテンソル・名前の検査と、同名を上書きしないことは画面と同じ Service が行う（同名で別の中身は `conflict`、検査に通らないものは `validation`）。ファイルの `__metadata__` が書くベースモデル・トリガー語は `adopt_metadata=true` のときだけ、与えなかった項目に記録する。強さとライセンスはファイルから取らない。`commercial` は `conditional`・`no` のどちらかで、商用OK にはできない。取り込みは生成を始めない。
+
+| ツール | 説明 | 入力 | 出力 | readOnly |
+|--------|------|------|------|----------|
+| `list_user_loras` | 取り込んだ LoRA の一覧 | なし | `loras[]`（`name`, `path`, `size`, `sha256`, `base_models`, `strength`, `trigger_words`, `license_name`, `commercial`, `present`） | はい |
+| `update_user_lora` | 取り込んだ LoRA の記録（ベースモデル・強さ・トリガー語・ライセンス）を置き換える。ファイルには触れない。ユーザーが指示したときだけ呼ぶ | `path`, `base_models`, `strength`, `trigger_words`, `license_name`, `commercial` | 更新後の 1 件 | いいえ |
+| `delete_user_lora` | 取り込んだ LoRA の記録と、他が持たないファイルを削除する | `path` | `deleted` | いいえ（破壊的） |
+
 ## ローカルの実行環境（声・口パク。Issue #920）
 
 意味は [local-runtime.md](../architecture/model-manager/local-runtime.md)（§12 が重みと依存ファイルの固定カタログ）。GPT-SoVITS・Irodori-TTS（声。Irodori-TTS のモデルの選択は local-runtime.md §14）と MuseTalk 1.5（口パク。環境の組み立て・起動・口パクの入口は local-runtime.md §13）と llama.cpp（ローカル LLM。`llama-cpp`。GGUF の 8 モデルの選択・非検閲は `uncensored`・商用不明の注記は local-runtime.md §17。非対応の PC の理由は macOS を含む。使う側は local-llm.md §10）を、mam が自動で導入・起動・停止する。MuseTalk の `support.fallback` は「代わりに、クラウドの口パク（Sync Labs）を使ってください。」、macOS の理由は「公式の PyTorch 版が使えない（CUDA 前提。mmcv 2.0.1 の Apple Silicon 向けの事前ビルドも無い）。第三者の MLX 版は顔の検出・貼り戻しを含むサーバーが無く、mam の自動導入の対象にしていない」（GPT-SoVITS は別の文: pyopenjtalk・jieba_fast・jieba が Apple Silicon 向けの部品に無い。local-runtime.md §16）、RTX 50 シリーズは `support.code=compute_cap`（PyTorch 2.0.1 が対応していない）。`install_local_runtime` の導入は、MuseTalk では部品 84 個の取得・展開（約 2.9 GB・展開後約 5.7 GB）と重み（約 6 GB）の取得までを 1 つのジョブで行う。画面（[endpoints-model-manager.md](endpoints-model-manager.md) §3「ローカル音声・口パク」）と同じ `localruntime.Service`（`service.Services.LocalRuntimes`）を呼ぶ。サービスが無いアプリでは `unavailable`。拒否は `mmview.RefuseRuntime` で画面と同じ文面になる（重みの不足・取得元が消えた・この PC で使えない（理由とクラウドの案内）・導入中・未導入は `conflict`、未知の ID は `not_found`）。**自動導入は Windows ＋ NVIDIA だけ**（同梱の ComfyUI と同じ）。使えない PC では導入・起動が `conflict` で、`support.reason`・`support.fallback`（ElevenLabs / Sync Labs を選ぶ案内）が分かる。クラウドへの切り替えは利用者が設定で選ぶもので、このツールでは黙って切り替えない。
@@ -157,3 +167,4 @@ Ollama 本体の導入・起動・停止・削除は、上の `install_local_run
 | 1.20 | 2026-11-06 | `list_ollama_models`・`pull_ollama_model`・`delete_ollama_model` を足し、ジョブの `target` に `ollama:<name>` を足した。Ollama 本体は既存の `*_local_runtime` で扱う（`runtime_id=ollama`）。状態は仕様のみ（未実装） | Issue #1105 |
 | 1.21 | 2026-11-07 | 「試し生成」の節の状態を「実装済み」にした（#1100。ツールの増減なし） | Issue #1100 |
 | 1.27 | 2026-11-07 | `list_ollama_models`・`pull_ollama_model`・`delete_ollama_model`（`mcp/tools/modelmgr/ollamatools`）を実装した。状態を「実装済み」にした。`list_ollama_models` は `server`（Ollama の状態）・`reason`・`models[]`（`name`・`display_name`・`state`・`size_bytes`・`license`・`verified`・`changed`・`pull_job`）・`others[]`・`noauth: true`・`notice` を返す。ジョブの `target=ollama:<name>` は `get_job` の Probe と `cancel_model_install` が扱う | Issue #1105 |
+| 1.28 | 2026-11-09 | 手元の LoRA の取り込み（#1119）を足した。アップロードの目的 `model_lora_import`（`create_upload_ticket` の `purpose`。パラメーター `name`・`base_models`・`strength`・`trigger_words`・`license_name`・`commercial`・`adopt_metadata`。上限 4 GiB。手元のパスは受け取らない）と、`list_user_loras`・`update_user_lora`・`delete_user_lora`（`mcp/tools/modelmgr/loratools`）。ファイルの `__metadata__` のベースモデル・トリガー語は `adopt_metadata=true` のときだけ記録し、強さとライセンスはファイルから取らない。`commercial` は `conditional`・`no` だけ（商用OK にはできない）。状態は実装済み | Issue #1119。画面と同じ操作を MCP にも持たせる（#830）。意味は [../architecture/model-manager/model-manager-lora.md](../architecture/model-manager/model-manager-lora.md) |

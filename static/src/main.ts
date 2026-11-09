@@ -24,6 +24,8 @@ import { installRipple } from './components/ripple/ripple';
 import { installModelPick } from './components/model-pick/model-pick';
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
+import { initGentestLoRA } from './components/gentest-lora/lora-note';
+import { initLoRAImport } from './components/lora-import/lora-import';
 import { initGentestAdvanced } from './components/gentest/advanced';
 import { initGentestGptImage } from './components/gentest-gpt/gpt-image';
 import { initGentestRefine } from './components/gentest-tiers/refine';
@@ -108,6 +110,8 @@ installCopy();
 
 // The prompt match form of the generation test: the chosen image, the fields of the way to go on, the slider's value.
 initGentestMatch();
+initGentestLoRA();
+initLoRAImport();
 // The detailed settings of the generation test (seed, steps, cfg, sampler, scheduler): shown while a ticked model takes them.
 initGentestAdvanced();
 initGentestGptImage();

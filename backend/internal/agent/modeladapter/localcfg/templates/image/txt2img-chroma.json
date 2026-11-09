@@ -47,6 +47,7 @@
    "reference_denoise_min": 0.6,
    "no_reference": [{"node": "747", "input": "latent_image", "value": ["737", 0]}, {"node": "747", "input": "sigmas", "value": ["751", 0]}],
    "lora_model_node": "731",
+   "lora_family": "chroma",
    "output_node": "740"
   }
  }

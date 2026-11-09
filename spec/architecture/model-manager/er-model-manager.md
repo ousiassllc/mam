@@ -10,3 +10,7 @@
 | `gentest` | しない（`resumable=false`。再起動で、終わっていない結果は `failed`） | 生成テスト（[../gentest/gentest.md](../gentest/gentest.md)。モデルマネージャーの試し生成は #1100 で廃止）のバッチ。`payload` は `{"batch_id": ...}` だけで、要求・結果・入力は `gentest_*` のテーブル（[../gentest/er-gentest.md](../gentest/er-gentest.md)）と `<data-dir>/gentest/<バッチ ID>/` にある。`take`・`cost_ledger_entry`・アセットには書かない |
 
 `job` に Project の列は無く、どちらも Project に属さない。マイグレーションの down は 2 種別の行を消して、元の CHECK に戻す。`domain.JobKinds()` が 6 値を返し、スキーマのテストはこの関数から期待値を作る。進捗（割合・メッセージ）は DB に書かず、メモリ上の記録（`modelmgr/track`）と `payload` で表す。
+
+## `state.json` の `local_loras`（Issue #1119）
+
+利用者が手元から追加した LoRA（[model-manager-lora.md](model-manager-lora.md) §5）。鍵は `models/loras/<名前>`、値は `path`・`name`・`original_name`・`sha256`・`size`・`base_models[]`・`strength`・`trigger_words[]`・`license_name`・`commercial`（`""` 不明 / `conditional` / `no`）・`added_at`。`user_models`（HF から導入したファイル）とは別の表で、`job` テーブルは使わない（取り込みはジョブではない）。

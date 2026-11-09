@@ -1,0 +1,327 @@
+package loraimport
+
+import (
+	"fmt"
+	"net/url"
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+)
+
+// Section is the whole section: the panel and the list of what was added.
+templ Section(p Panel, l List) {
+	<div id={ SectionID } class="flex flex-col gap-4" data-testid="mm-lora">
+		@PanelView(p)
+		<h3 class="text-sm font-semibold">追加した LoRA</h3>
+		@ListView(l)
+	</div>
+}
+
+// PanelView is the choose-a-file form, or (while a file waits) the form that completes it.
+templ PanelView(p Panel) {
+	<div id={ PanelID } class="flex flex-col gap-3" data-testid="mm-lora-panel" data-max-bytes={ fmt.Sprint(p.MaxBytes) }>
+		if p.Notice != "" {
+			<p class="text-sm text-success" role="status" data-testid="mm-lora-notice">
+				{ p.Notice }
+				if p.GentestHref != "" {
+					<a class="underline" href={ templ.SafeURL(p.GentestHref) }>生成テストを開く</a>
+				}
+			</p>
+		}
+		if p.Error != "" {
+			<p class="text-sm text-danger" role="alert" data-testid="mm-lora-error">{ p.Error }</p>
+		}
+		switch  {
+			case p.Unsupported != "":
+				<p class="text-sm text-mute" data-testid="mm-lora-unsupported">{ p.Unsupported }</p>
+			case p.Staged != nil:
+				@stagedForm(*p.Staged)
+			default:
+				@pickForm(p)
+		}
+	</div>
+}
+
+// pickForm is the "ファイルを追加" form: a button that opens the file chooser, and a zone the file can be dropped on. The browser sends the file when it is
+// chosen (static/src/components/lora-import/lora-import.ts), and shows the progress of the transfer.
+templ pickForm(p Panel) {
+	<form
+		hx-post={ InspectURL }
+		hx-encoding="multipart/form-data"
+		hx-target={ "#" + PanelID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find input[type=file]"
+		autocomplete="off"
+		data-lora-pick
+		data-testid="mm-lora-pick"
+	>
+		<input id="mm-lora-file" type="file" name={ FieldFile } accept=".safetensors" class="peer sr-only" data-lora-file data-testid="mm-lora-file"/>
+		<div
+			class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink transition-colors peer-focus-visible:focus-ring motion-reduce:transition-none"
+			data-lora-zone
+			data-testid="mm-lora-zone"
+		>
+			<label for="mm-lora-file" class="inline-flex cursor-pointer items-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone hover:bg-accent/85" data-testid="mm-lora-choose">ファイルを追加</label>
+			<span class="text-mute">またはここに .safetensors のファイルをドロップ（{ p.MaxText } まで）</span>
+			<span class="text-xs text-mute">手元に保存した LoRA を、この PC の中の mam に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span>
+		</div>
+		<p class="mt-2 text-sm text-danger" role="alert" data-lora-error data-testid="mm-lora-client-error" hidden></p>
+		<div class="mt-2 flex flex-col gap-1" role="status" aria-live="polite" data-lora-progress data-testid="mm-lora-progress" hidden>
+			<progress class="w-full" max="100" value="0" aria-label="アップロードの進み具合"></progress>
+			<p class="text-sm text-ink" data-lora-progress-text></p>
+		</div>
+	</form>
+}
+
+// stagedForm completes a file that was checked: its facts, the name, and what is known of it (editable; what the file does not say is empty).
+templ stagedForm(s Staged) {
+	<form
+		hx-post={ LoRAsURL }
+		hx-target={ "#" + PanelID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		autocomplete="off"
+		class="flex flex-col gap-4"
+		data-testid="mm-lora-staged"
+	>
+		<input type="hidden" name={ FieldToken } value={ s.Token }/>
+		<div class="flex flex-col gap-1 rounded-md border border-border p-3 text-sm" data-testid="mm-lora-file-facts">
+			<p class="break-all">{ s.OriginalName }</p>
+			<p class="text-xs text-mute">{ s.Size }・SHA-256 { s.SHA256 }…</p>
+			if s.Title != "" {
+				<p class="text-xs text-mute">ファイルのタイトル: { s.Title }</p>
+			}
+			if len(s.BaseRaw) > 0 {
+				<p class="text-xs text-mute" data-testid="mm-lora-base-raw">ファイルに書かれたベースモデル: { strings.Join(s.BaseRaw, " / ") }</p>
+			}
+			if s.Network != "" {
+				<p class="text-xs text-mute">{ s.Network }</p>
+			}
+			if s.Renamed {
+				<p class="text-xs text-warning" data-testid="mm-lora-renamed">使えない文字を置き換えたため、{ s.SavedAs } の名前で保存します。</p>
+			}
+		</div>
+		if s.Conflict != nil {
+			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-ink" role="alert" data-testid="mm-lora-conflict" data-same?={ s.Conflict.Same }>
+				if s.Conflict.Same {
+					<p>同じ内容のファイルが、すでに <code class="break-all">{ s.Conflict.Name }</code> として loras フォルダにあります。追加は要りません（取り消してください）。</p>
+				} else {
+					<p><code class="break-all">{ s.Conflict.Name }</code> という名前のファイルがすでに loras フォルダにあります。上書きしません。</p>
+					<p>下の「保存するファイル名」を別の名前にして追加するか、取り消してください（別の名前の案を入れました）。</p>
+				}
+			</div>
+		}
+		<p id={ MsgID } class="text-sm text-danger" role="alert" data-testid="mm-lora-msg"></p>
+		<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-name">
+			<span>保存するファイル名（loras フォルダの中の名前。英数字と . _ + - の .safetensors）</span>
+			@atoms.Input(atoms.FieldMd, "w-full max-w-md", templ.Attributes{"id": "mm-lora-name", "name": FieldName, "type": "text", "value": s.Name, "maxlength": fmt.Sprint(NameMaxLen), "required": true, "data-testid": "mm-lora-name"})
+		</label>
+		@metaFields(s)
+		<div class="flex flex-wrap gap-2">
+			if s.Conflict == nil || !s.Conflict.Same {
+				@atoms.Button(atoms.TonePrimary, "追加する", templ.Attributes{"type": "submit", "data-testid": "mm-lora-commit"})
+			}
+			@atoms.Button(atoms.ToneNeutral, "取り消す", templ.Attributes{
+				"type": "button", "hx-post": DiscardURL, "hx-vals": fmt.Sprintf(`{"%s": %q}`, FieldToken, s.Token), "hx-target": "#" + PanelID, "hx-swap": "outerHTML",
+				"hx-sync": "closest form:drop", "hx-disabled-elt": "this", "data-testid": "mm-lora-discard",
+			})
+		</div>
+	</form>
+}
+
+// metaFields are the fields of what is known of a LoRA: the base model, the recommended strength, the trigger words and the license. Each starts at what the
+// file says, or is empty ("未設定"); nothing is filled in by a guess.
+templ metaFields(s Staged) {
+	<fieldset class="flex flex-col gap-1" data-testid="mm-lora-base">
+		<legend class="text-xs text-mute">対応するベースモデル（合わないモデルで使うと警告します。複数選べます）</legend>
+		<div class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+			for _, f := range s.Families {
+				<label class="flex items-center gap-1">
+					@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldBase, "value": f.Key, "checked": f.Checked})
+					<span>{ f.Label }</span>
+				</label>
+			}
+		</div>
+		if s.FromFile {
+			<p class="text-xs text-mute" data-testid="mm-lora-base-note">ファイルの情報から読み取りました。違うときは直してください。</p>
+		} else {
+			<p class="text-xs text-mute" data-testid="mm-lora-base-note">ファイルに書かれていないため、未設定です（選ばなければ未設定のまま追加します）。</p>
+		}
+	</fieldset>
+	<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-strength">
+		<span>推奨の強さ（0.05〜1。空欄は未設定。選ぶと生成テストの強さの初期値になります）</span>
+		@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{"id": "mm-lora-strength", "name": FieldStrength, "type": "number", "min": "0.05", "max": "1", "step": "0.05", "placeholder": "未設定", "inputmode": "decimal", "data-testid": "mm-lora-strength"})
+	</label>
+	<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-triggers">
+		<span>トリガー語（プロンプトに入れる言葉。カンマか改行で区切る。空欄は未設定）</span>
+		@atoms.Textarea(atoms.FieldMd, "w-full max-w-md", templ.Attributes{"id": "mm-lora-triggers", "name": FieldTriggers, "rows": "2", "maxlength": fmt.Sprint(TriggersMaxLen), "placeholder": "未設定", "data-testid": "mm-lora-triggers"}, s.Triggers)
+		if len(s.Candidates) > 0 {
+			<span data-testid="mm-lora-candidates">学習で多く使われたタグ（候補です。トリガー語かどうかは分かりません）: { strings.Join(s.Candidates, "、") }</span>
+		}
+	</label>
+	<div class="flex flex-wrap items-end gap-3">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-license">
+			<span>ライセンス（任意。空欄は「不明」と表示します）</span>
+			@atoms.Input(atoms.FieldMd, "w-72 max-w-full", templ.Attributes{"id": "mm-lora-license", "name": FieldLicense, "type": "text", "value": s.License, "maxlength": fmt.Sprint(LicenseMaxLen), "placeholder": "不明", "data-testid": "mm-lora-license"})
+		</label>
+		@commercialSelect("mm-lora-commercial", "")
+	</div>
+}
+
+// commercialSelect is the answer to "商用利用は？": the unknown answer first. There is no 商用OK to pick: what a user types is a declaration, and a declaration alone
+// is never 商用OK in mam (the answer is 条件つき).
+templ commercialSelect(id, current string) {
+	<label class="flex flex-col gap-1 text-xs text-mute" for={ id }>
+		<span>商用利用（既定は不明）</span>
+		@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": id, "name": FieldCommercial, "data-testid": id}) {
+			<option value="" selected?={ current == "" }>不明（確認していない）</option>
+			<option value="conditional" selected?={ current == "conditional" }>条件つき（配布元で商用可と確認した・自己申告）</option>
+			<option value="no" selected?={ current == "no" }>商用NG</option>
+		}
+	</label>
+}
+
+// ListView is the list of the LoRAs that were added.
+templ ListView(l List) {
+	@list(l, false)
+}
+
+// ListOOB is the list drawn out of band: the answer of an action that is on the panel above it.
+templ ListOOB(l List) {
+	@list(l, true)
+}
+
+templ list(l List, oob bool) {
+	<div
+		id={ ListID }
+		class="flex flex-col gap-3"
+		data-testid="mm-lora-list"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		if l.Notice != "" {
+			<p class="text-sm text-success" role="status" data-testid="mm-lora-list-notice">{ l.Notice }</p>
+		}
+		if l.Error != "" {
+			<p class="text-sm text-danger" role="alert" data-testid="mm-lora-list-error">{ l.Error }</p>
+		}
+		if len(l.Items) == 0 {
+			<p class="text-sm text-mute" data-testid="mm-lora-empty">まだ追加していません。</p>
+		} else {
+			<ul class="flex flex-col gap-3" role="list">
+				for _, it := range l.Items {
+					@itemCard(it)
+				}
+			</ul>
+		}
+	</div>
+}
+
+func familyWords(fs []Family) string {
+	var out []string
+	for _, f := range fs {
+		if f.Checked {
+			out = append(out, f.Label)
+		}
+	}
+	if len(out) == 0 {
+		return "未設定"
+	}
+	return strings.Join(out, "、")
+}
+
+func orUnset(s string) string {
+	if s == "" {
+		return "未設定"
+	}
+	return s
+}
+
+func licenseWords(it Item) string {
+	if it.LicenseName == "" && it.License.Level == modellicense.Unknown {
+		return "不明"
+	}
+	return it.License.LicenseName
+}
+
+// itemCard is one LoRA the user added: what is known of it (未設定 / 不明 where nothing is), the form that edits it, and the delete button.
+templ itemCard(it Item) {
+	<li class="flex flex-col gap-2 rounded-lg border border-border p-3" data-testid="mm-lora-item" data-path={ it.Path } data-commercial={ it.License.Answer() }>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<span class="flex flex-wrap items-center gap-2">
+				<strong class="break-all text-sm">{ it.Name }</strong>
+				if it.Present {
+					@atoms.BadgeWith(atoms.BadgeOK, "追加済み", templ.Attributes{"data-testid": "mm-lora-state"})
+				} else {
+					@atoms.BadgeWith(atoms.BadgeWarn, "ファイルが見つかりません", templ.Attributes{"data-testid": "mm-lora-state"})
+				}
+				@commercial.Badge(it.License)
+			</span>
+			<span class="text-xs text-mute">{ it.Size }・{ it.AddedAt }</span>
+		</div>
+		<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm" data-testid="mm-lora-facts">
+			<dt class="text-mute">ベースモデル</dt>
+			<dd data-testid="mm-lora-item-base">{ familyWords(it.Families) }</dd>
+			<dt class="text-mute">推奨の強さ</dt>
+			<dd data-testid="mm-lora-item-strength">{ orUnset(it.Strength) }</dd>
+			<dt class="text-mute">トリガー語</dt>
+			<dd class="break-words" data-testid="mm-lora-item-triggers">{ orUnset(it.Triggers) }</dd>
+			<dt class="text-mute">ライセンス</dt>
+			<dd class="break-words" data-testid="mm-lora-item-license">{ licenseWords(it) }</dd>
+		</dl>
+		<details class="text-sm" data-testid="mm-lora-edit">
+			<summary class="cursor-pointer text-xs text-accent underline decoration-mute">情報を編集</summary>
+			<form
+				class="mt-2 flex flex-col gap-3"
+				hx-put={ LoRAsURL + "?" + FieldPath + "=" + url.QueryEscape(it.Path) }
+				hx-target={ "#" + ListID }
+				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
+				autocomplete="off"
+			>
+				<fieldset class="flex flex-col gap-1">
+					<legend class="text-xs text-mute">対応するベースモデル</legend>
+					<div class="flex flex-wrap gap-x-4 gap-y-1">
+						for _, f := range it.Families {
+							<label class="flex items-center gap-1">
+								@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldBase, "value": f.Key, "checked": f.Checked})
+								<span>{ f.Label }</span>
+							</label>
+						}
+					</div>
+				</fieldset>
+				<label class="flex flex-col gap-1 text-xs text-mute">
+					<span>推奨の強さ（0.05〜1。空欄は未設定）</span>
+					@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{"name": FieldStrength, "type": "number", "min": "0.05", "max": "1", "step": "0.05", "value": it.Strength, "placeholder": "未設定", "inputmode": "decimal"})
+				</label>
+				<label class="flex flex-col gap-1 text-xs text-mute">
+					<span>トリガー語（カンマか改行で区切る。空欄は未設定）</span>
+					@atoms.Textarea(atoms.FieldMd, "w-full max-w-md", templ.Attributes{"name": FieldTriggers, "rows": "2", "maxlength": fmt.Sprint(TriggersMaxLen), "placeholder": "未設定"}, it.Triggers)
+				</label>
+				<div class="flex flex-wrap items-end gap-3">
+					<label class="flex flex-col gap-1 text-xs text-mute">
+						<span>ライセンス（任意）</span>
+						@atoms.Input(atoms.FieldMd, "w-72 max-w-full", templ.Attributes{"name": FieldLicense, "type": "text", "value": it.LicenseName, "maxlength": fmt.Sprint(LicenseMaxLen), "placeholder": "不明"})
+					</label>
+					@commercialSelect("", it.CommercialV)
+				</div>
+				<div>
+					@atoms.SmallButton(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+				</div>
+			</form>
+		</details>
+		<div class="flex flex-wrap gap-2">
+			@atoms.SmallButtonFor(atoms.ToneDanger, "削除", it.Name, templ.Attributes{
+				"type": "button", "hx-delete": LoRAsURL + "?" + FieldPath + "=" + url.QueryEscape(it.Path), "hx-target": "#" + ListID, "hx-swap": "outerHTML",
+				"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-lora-delete",
+				"hx-confirm": "「" + it.Name + "」のファイルを削除します。よろしいですか？",
+			})
+		</div>
+	</li>
+}

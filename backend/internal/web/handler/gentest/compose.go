@@ -10,10 +10,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/loraopts"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/posescreen"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
@@ -88,7 +90,8 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	if fs := h.Svc.FaceSimilarity(); media != gentest.MediaVideo && fs.Off != nil {
 		c.FaceOff = fs.Off.Skipped
 	}
-	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.opts.AvoidPose, h.Svc.LoRAs(ctx, media)
+	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.opts.AvoidPose, loraopts.Of(h.Svc.LoRAChoices(ctx, media))
+	c.CommercialOnly = h.Svc.DefaultFilter() != modellicense.FilterAll
 	if f.opts.LoRA != nil {
 		c.LoRA, c.LoRAStrength = f.opts.LoRA.Name, f.opts.LoRA.Strength
 	}

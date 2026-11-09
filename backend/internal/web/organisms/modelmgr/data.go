@@ -63,6 +63,8 @@ type Data struct {
 	// EngineNeeded says the bundled engine is not installed or not running: the page of the models says so above the list (an action of the engine
 	// is on another page: the list is not drawn again from there).
 	EngineNeeded bool
+	// LoRAImport is the section "LoRA を追加" of the models page (loraimport.Section, #1119); nil leaves it out.
+	LoRAImport templ.Component
 	// Runtimes is the section of the local voice and lip-sync runtimes (runtimecard.RuntimesSection); nil leaves the section out.
 	Runtimes templ.Component
 	// LLMUse, LLMRuntimes, LLMOllama and LLMConnection are the sections of the page "ローカル LLM" (#1104): the server the calls go to (llmcard.UseSection), the servers of mam

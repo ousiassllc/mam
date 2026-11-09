@@ -40,6 +40,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/instlog"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/loraimport"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmlicense"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/vramcache"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -146,7 +147,8 @@ type Service struct {
 	targets    map[string]*sync.Mutex
 	cancels    map[string]context.CancelCauseFunc // job id -> cancel of a running install
 	hf         *hf.Client
-	VRAM       vramcache.Cache // the memory of the GPU for the judgement of a model (mmview.GPUVRAM)
+	VRAM       vramcache.Cache     // the memory of the GPU for the judgement of a model (mmview.GPUVRAM)
+	LoRAs      *loraimport.Service // the LoRA files the user adds from their own PC (#1119)
 }
 
 // New returns the Service. It reads the record (a broken one is an error).
@@ -179,6 +181,7 @@ func New(d Deps) (*Service, error) {
 	}
 	s := &Service{Deps: d, Book: mmlicense.New(d.Catalog, st, BundledEndpoint), cat: d.Catalog, state: st, bundled: engine.Supported(d.Catalog.Engine, d.Platform, d.Arch, d.Layout.Root, d.MacOSMajor), tracker: track.New(),
 		active: map[string]string{}, activeDest: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
+	s.LoRAs = loraimport.New(loraimport.Deps{Layout: d.Layout, State: st, Now: d.Now, Free: s.free, Supported: s.bundled, Lock: s.lockDests})
 	s.hf = hf.New(hf.Options{Base: d.HFBase, HTTP: d.Fetch.Client, CheckURL: d.Fetch.CheckURL, AuthHost: d.Fetch.AuthHost, Token: s.huggingFaceToken})
 	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now, CustomNodes: d.Nodes.Enabled}
 	build := d.Command

@@ -169,7 +169,7 @@ func (s *Service) DeleteUserModel(ctx context.Context, path string) error {
 		}
 	}
 	var failed error
-	if dest := s.Layout.ModelPath(um.Path); len(s.catalogHolders(st, um.Path)) == 0 && !s.activeFiles("")[um.Path] {
+	if dest := s.Layout.ModelPath(um.Path); len(s.catalogHolders(st, um.Path)) == 0 && !st.HoldsLoRA(um.Path) && !s.activeFiles("")[um.Path] {
 		for _, p := range []string{dest, fetch.PartPath(dest)} {
 			if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
 				failed = errors.Join(failed, err)

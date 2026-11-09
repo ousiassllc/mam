@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
@@ -107,7 +106,9 @@ func (s *Service) InstallHFFile(ctx context.Context, in HFInstallInput) (JobRef,
 	pl := hfplan.PayloadOf(p)
 	checks := []func() error{ // in this order: the terms are recorded last, once nothing else refuses
 		func() error { return s.hfError(hfplan.CheckDest(s.Layout.ModelPath(pl.Rel()), pl, s.recordedAt)) },
-		s.Layout.CheckWritable, func() error { return s.checkHFSpace(pl) }, func() error { return s.acceptHFTerms(in, pl) },
+		s.Layout.CheckWritable, func() error {
+			return diskfile.CheckSpace(s.Layout.ModelPath(pl.Rel()), pl.Size, s.Layout.DataDir(), s.free)
+		}, func() error { return s.acceptHFTerms(in, pl) },
 	}
 	for _, check := range checks {
 		if err := check(); err != nil {
@@ -151,17 +152,10 @@ func (s *Service) recordedAt(rel string) (sha string, size int64, ok bool) {
 			return um.SHA256, um.Size, true
 		}
 	}
-	return "", 0, false
-}
-
-func (s *Service) checkHFSpace(p hfplan.Payload) error {
-	dest := s.Layout.ModelPath(p.Rel())
-	if need := p.Size - diskfile.PartSize(dest, p.Size); !diskfile.IsThere(dest, p.Size) && need > 0 {
-		if have := s.free(s.Layout.DataDir()); uint64(need) > have {
-			return &fetch.NoSpaceError{Need: uint64(need), Free: have, Path: s.Layout.DataDir()}
-		}
+	if l, held := st.LocalLoRAs[rel]; held { // a LoRA the user added from their PC (#1119)
+		return l.SHA256, l.Size, true
 	}
-	return nil
+	return "", 0, false
 }
 
 // ActiveHFJobs are the imports that are queued or running: the job target ("hf:<repo>@<commit>/<path>") to its job id.

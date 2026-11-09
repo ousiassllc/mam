@@ -91,7 +91,7 @@ func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice
 	for i, m := range models {
 		out[i] = view.ModelChoice{
 			ID: m.ID, Label: m.Label, Source: modelcards.SourceLabel[m.Source], Price: gtshare.PriceText(m.Price), Features: featuresText(m),
-			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA,
+			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA, LoRAFamily: m.LoRAFamily,
 			RequiresFirstFrame: slices.Contains(m.RequiresInputs, gentest.RoleFirstFrame), GPTImage: m.GPTImage != nil, GPTRefusal: m.GPTImageRefusal,
 			Answer: commercial.FromInfo(m.License), ModelFacts: advform.FactsOf(m), Card: gptform.CardOf(modelcards.FromInfo(m), m),
 		}

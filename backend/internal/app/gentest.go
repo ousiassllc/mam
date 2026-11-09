@@ -48,6 +48,7 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		CatalogInfo:     mmview.InfoOf(services.ModelManager),                                          // the catalog's adult flag and traits, for the filter of the model list
 		PlatformWarning: mmview.PlatformWarningFor(services.ModelManager),
 		BundledEndpoint: modelmanager.BundledEndpoint,
+		LoRAMeta:        mmview.LoRAMeta(services.ModelManager), // the base model, strength, trigger words and license of the LoRAs the user added (#1119)
 		Translator:      translator,
 		Poses:           newPoseLibrary(services.ModelManager.AdultContentEnabled, logger),
 		FaceCrop:        face.Crop(faces),
