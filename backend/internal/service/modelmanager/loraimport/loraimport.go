@@ -34,6 +34,8 @@ const (
 	staleAfter = time.Hour
 	// maxStaged bounds the files that wait at once (each may be gigabytes).
 	maxStaged = 3
+	// maxOriginalRunes bounds the file name of the picked file that is kept in the record.
+	maxOriginalRunes = 255
 )
 
 // Deps are what the importer needs from the Service.
@@ -56,6 +58,8 @@ type Service struct {
 	Deps
 	mu     sync.Mutex
 	staged map[string]*entry
+	// pending is the files being written: they hold a place among the files that wait (maxStaged) before they are staged.
+	pending int
 }
 
 type entry struct {

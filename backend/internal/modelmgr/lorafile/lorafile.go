@@ -5,6 +5,7 @@
 package lorafile
 
 import (
+	"cmp"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -94,8 +95,8 @@ type tensorEntry struct {
 	Offsets [2]int64 `json:"data_offsets"`
 }
 
-// checkHeader parses the header JSON and checks that its tensors lie inside the data (dataLen bytes) and cover it exactly, as the
-// safetensors library requires: a file that fails would not load in ComfyUI either.
+// checkHeader parses the header JSON and checks that its tensors lie inside the data (dataLen bytes) and cover it exactly (in the order of their
+// offsets, with no gap and no overlap), which is what the safetensors format asks of a file. It cannot tell that the data itself is sound.
 func checkHeader(raw []byte, dataLen int64) (names []string, meta map[string]string, err error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &top); err != nil {
@@ -118,7 +119,8 @@ func checkHeader(raw []byte, dataLen int64) (names []string, meta map[string]str
 	if len(names) == 0 {
 		return nil, nil, reject("%s（テンソルがありません）", notSafetensors)
 	}
-	sort.Slice(spans, func(i, j int) bool { return spans[i].begin < spans[j].begin })
+	// By end as well: a zero-length tensor shares its begin with the next tensor and must come first, whatever the order the map was read in.
+	slices.SortFunc(spans, func(a, b span) int { return cmp.Or(cmp.Compare(a.begin, b.begin), cmp.Compare(a.end, b.end)) })
 	var next int64
 	for _, s := range spans {
 		if s.begin != next {

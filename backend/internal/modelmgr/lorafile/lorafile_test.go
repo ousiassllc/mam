@@ -52,6 +52,17 @@ func TestReadMetadata_AnUnknownBaseModelIsNotGuessed(t *testing.T) {
 	assert.Equal(t, []string{"something-new", "flux2_dev"}, m.BaseRaw)
 }
 
+// Zero-length tensors share the offset of the tensor that follows them: the order of the ranges must not depend on the (random) order the header
+// is read in, or a valid file is refused at random.
+func TestInspect_AcceptsZeroLengthTensorsWhateverTheirOrder(t *testing.T) {
+	p := write(t, lorafiletest.WithEmptyTensors())
+	for range 200 {
+		info, err := lorafile.Inspect(p)
+		require.NoError(t, err)
+		assert.Equal(t, len(lorafiletest.LoRATensors)+8, info.Tensors)
+	}
+}
+
 func TestInspect_RejectsWhatIsNotAWellFormedLoRA(t *testing.T) {
 	for name, tc := range map[string]struct {
 		body []byte

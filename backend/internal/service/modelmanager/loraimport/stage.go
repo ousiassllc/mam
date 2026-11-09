@@ -39,6 +39,12 @@ func (s *Service) Stage(ctx context.Context, originalName string, declared int64
 	if err := s.reserve(); err != nil {
 		return Staged{}, err
 	}
+	registered := false
+	defer func() {
+		if !registered {
+			s.release()
+		}
+	}()
 	file := filepath.Join(s.Layout.ImportsDir(), token+".part")
 	sum, size, err := s.write(ctx, file, r)
 	if err != nil {
@@ -49,11 +55,13 @@ func (s *Service) Stage(ctx context.Context, originalName string, declared int64
 		_ = os.Remove(file)
 		return Staged{}, refusal(err)
 	}
-	st := Staged{Token: token, OriginalName: originalName, Name: name, Renamed: renamed, Size: size, SHA256: sum, Meta: info.Metadata}
+	st := Staged{Token: token, OriginalName: truncateRunes(originalName, maxOriginalRunes), Name: name, Renamed: renamed, Size: size, SHA256: sum, Meta: info.Metadata}
 	st.Conflict = s.conflictOf(name, sum, size)
 	s.mu.Lock()
+	s.pending--
 	s.staged[token] = &entry{Staged: st, file: file, created: s.Now()}
 	s.mu.Unlock()
+	registered = true
 	return st, nil
 }
 
@@ -68,19 +76,43 @@ func (s *Service) CheckRoom(size int64) error {
 	return nil
 }
 
-// reserve makes the imports folder and drops the files that waited too long; it refuses when too many wait.
+// reserve makes the imports folder and drops the files that waited too long; it refuses when too many wait. The files being written count too:
+// the place is taken here, under the lock and before the first byte is written, so that requests in flight together cannot pass the limit. A
+// place that was taken is given back by release (the file was refused or failed) or turns into the staged entry (Stage).
 func (s *Service) reserve() error {
 	s.mu.Lock()
 	s.dropStaleLocked()
-	n := len(s.staged)
-	s.mu.Unlock()
+	n := len(s.staged) + s.pending
 	if n >= maxStaged {
+		s.mu.Unlock()
 		return invalid("確認待ちのファイルが %d 個あります。先にそれを追加するか取り消してください", n)
 	}
+	s.pending++
+	s.mu.Unlock()
 	if err := s.Layout.CheckWritable(); err != nil {
+		s.release()
 		return err
 	}
-	return os.MkdirAll(s.Layout.ImportsDir(), 0o750)
+	if err := os.MkdirAll(s.Layout.ImportsDir(), 0o750); err != nil {
+		s.release()
+		return err
+	}
+	return nil
+}
+
+// release gives back a place that reserve took.
+func (s *Service) release() {
+	s.mu.Lock()
+	s.pending--
+	s.mu.Unlock()
+}
+
+// truncateRunes cuts s to at most n characters (the name of the picked file is stored as it was sent; it must not be of any length).
+func truncateRunes(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n])
+	}
+	return s
 }
 
 func (s *Service) dropStaleLocked() {

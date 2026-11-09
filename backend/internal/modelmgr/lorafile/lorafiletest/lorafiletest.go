@@ -5,6 +5,7 @@ package lorafiletest
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"sort"
 )
 
@@ -29,6 +30,27 @@ func Padded(tensors []string, meta map[string]string, extra int) []byte {
 		hdr["__metadata__"] = meta
 	}
 	return assemble(hdr, off+extra)
+}
+
+// WithEmptyTensors is a well-formed LoRA file that also holds zero-length tensors (shape [0]), one at the start of the data, one after each tensor and
+// one more at each of those places: several tensors share the offset where the next real one begins. safetensors allows them.
+func WithEmptyTensors() []byte {
+	names := append([]string(nil), LoRATensors...)
+	sort.Strings(names)
+	hdr := map[string]any{}
+	off := 0
+	empty := func() {
+		for range 2 {
+			hdr[fmt.Sprintf("empty_%d", len(hdr))] = map[string]any{"dtype": "F32", "shape": []int{0}, "data_offsets": []int{off, off}}
+		}
+	}
+	empty()
+	for _, n := range names {
+		hdr[n] = map[string]any{"dtype": "F32", "shape": []int{2}, "data_offsets": []int{off, off + 8}}
+		off += 8
+		empty()
+	}
+	return assemble(hdr, off)
 }
 
 // LoRA is a well-formed LoRA file with the metadata.
