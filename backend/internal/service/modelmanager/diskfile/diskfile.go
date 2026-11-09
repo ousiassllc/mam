@@ -21,3 +21,14 @@ func PartSize(dest string, total int64) int64 {
 	}
 	return 0
 }
+
+// CheckSpace refuses a download of size bytes to dest when the disk below dir has not the room for what is still to come (nothing when the file is already there, and a
+// partial download counts for the part it has). free is the free space at a path.
+func CheckSpace(dest string, size int64, dir string, free func(string) uint64) error {
+	if need := size - PartSize(dest, size); !IsThere(dest, size) && need > 0 {
+		if have := free(dir); uint64(need) > have {
+			return &fetch.NoSpaceError{Need: uint64(need), Free: have, Path: dir}
+		}
+	}
+	return nil
+}

@@ -32,6 +32,15 @@ func SupportsLoRA(cfg modeladapter.Config, m domain.ModelName) bool {
 	return ok && lm.Media == localcfg.MediaImage && lm.SupportsLoRA()
 }
 
+// LoRAFamily is the family of base model (lorafamily key) of a local image model's workflow, "" when it does not say: a LoRA made for another
+// family is warned about on the screen (#1119).
+func LoRAFamily(cfg modeladapter.Config, m domain.ModelName) string {
+	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil && SupportsLoRA(cfg, m) {
+		return lm.Workflow.LoraFamily
+	}
+	return ""
+}
+
 // SpeedMode is a way a model can sample (localcfg.SpeedMode): the ID a request names and the label shown.
 type SpeedMode struct {
 	ID      string `json:"id"`

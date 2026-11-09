@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/loras"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 )
 
@@ -71,6 +72,12 @@ func (s *Service) Availability(modelID string) (modelfilter.Availability, bool) 
 // Upscalers lists the upscale workflows the running setting has installed (an upscale model of the model manager that is not installed has none),
 // with what each is and whether it can run now. upscale.Run enlarges a result with one of them.
 func (s *Service) Upscalers(_ context.Context) []modelcatalog.Upscaler { return s.catalog.Upscalers() }
+
+// LoRAChoices is LoRAs with what the model manager knows of each (the files the user added from their own PC: base model, strength, trigger
+// words, license; #1119).
+func (s *Service) LoRAChoices(ctx context.Context, media string) []loras.Choice {
+	return loras.Choices(s.LoRAs(ctx, media), s.LoRAMeta)
+}
 
 // LoRAs lists the LoRA files of the bundled ComfyUI engine, sorted: the names a request's LoRA may take
 // (modelcatalog.Info.SupportsLoRA says which models use it). Empty when the engine is not running or has none, and always

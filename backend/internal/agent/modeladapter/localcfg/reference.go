@@ -6,6 +6,7 @@ import (
 	"math"
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/lorafamily"
 	"github.com/ousiassllc/mam/backend/internal/imgprep"
 )
 
@@ -99,10 +100,19 @@ func validateReferenceMode(where string, w Workflow, g Graph) []error {
 			errs = append(errs, fmt.Errorf("%s: no_reference[%d] must name an input of a node of the workflow and a JSON value", where, i))
 		}
 	}
+	return append(errs, validateLoRA(where, w, g)...)
+}
+
+// validateLoRA checks LoraModelNode and LoraFamily.
+func validateLoRA(where string, w Workflow, g Graph) []error {
+	var errs []error
 	if w.LoraModelNode != "" {
 		if _, ok := g[w.LoraModelNode]; !ok {
 			errs = append(errs, fmt.Errorf("%s: lora_model_node %q is not a node of the workflow", where, w.LoraModelNode))
 		}
+	}
+	if w.LoraFamily != "" && (w.LoraModelNode == "" || !lorafamily.Valid(w.LoraFamily)) {
+		errs = append(errs, fmt.Errorf("%s: lora_family %q must be a family of package lorafamily and needs lora_model_node", where, w.LoraFamily))
 	}
 	return errs
 }

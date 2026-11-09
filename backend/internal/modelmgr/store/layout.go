@@ -54,6 +54,10 @@ func (l Layout) NodesPath() string { return filepath.Join(l.Root, "nodes.json") 
 // DownloadsDir holds the engine archive while it is downloaded and extracted.
 func (l Layout) DownloadsDir() string { return filepath.Join(l.Root, "downloads") }
 
+// ImportsDir holds the files the user picked (a LoRA) while they are checked and before they are moved into the models folder: below Root, so
+// that the move is a rename on one volume.
+func (l Layout) ImportsDir() string { return filepath.Join(l.Root, "imports") }
+
 // LogPath is the log of the engine process.
 func (l Layout) LogPath() string { return filepath.Join(l.Root, "logs", "comfyui.log") }
 

@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/logs"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr/loratools"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/policy"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/projectbundle"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/projectcore"
@@ -66,6 +67,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	settings.Register(r, svc)
 	localmodels.Register(r, svc)
 	modelmgr.Register(r, svc)
+	loratools.Register(r, svc) // LoRA を追加 (#1119): the package is below modelmgr, which is at its size limit
 	runtimemodels.Register(r, svc)
 	gentest.Register(r, svc)
 	gentestface.Register(r, svc)
