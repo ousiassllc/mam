@@ -102,9 +102,12 @@ func (s *Service) allowed(m catalog.Model) bool { return !m.Adult() || s.AdultCo
 //
 // A built-in model, a model of an OpenAI-compatible server and a workflow that reads only files of general models are never hidden.
 func (s *Service) HidesModel(id string) bool {
-	if s.AdultContentEnabled() {
-		return false
-	}
+	return !s.AdultContentEnabled() && s.IsAdultModel(id)
+}
+
+// IsAdultModel is what HidesModel judges, whatever the age confirmation says: a model made for adult use is one when the gate is open too (a Model Adapter that
+// chooses models on its own never chooses it, #1113).
+func (s *Service) IsAdultModel(id string) bool {
 	if kind, endpoint, name, ok := localcfg.ParseID(id); ok && kind == localcfg.KindComfyUI && endpoint == BundledEndpoint && adult.Workflows(s.cat, s.state.Get())[name] {
 		return true
 	}

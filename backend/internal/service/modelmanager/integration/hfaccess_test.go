@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf/hftest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 )
 
 func TestADifferentFileAtTheSamePlaceIsNeverOverwritten(t *testing.T) {
@@ -154,6 +155,8 @@ func TestAnAdultRepositoryIsHiddenAndRefusedUntilTheAgeIsConfirmed(t *testing.T)
 	require.Len(t, r.svc.UserModels(), 1)
 	wf := r.svc.UserModels()[0].ModelIDs[0]
 	assert.False(t, r.svc.HidesModel(wf), "the gate is open")
+	assert.True(t, r.svc.IsAdultModel(wf), "an adult model is one with the gate open too")
+	assert.True(t, mmview.Adult(r.svc)(wf), "so a generation never chooses it on its own, whatever the age confirmation says (#1113)")
 
 	require.NoError(t, r.svc.SetAdultContent(false, nil))
 	assert.Empty(t, r.svc.UserModels(), "an NFAA file is not listed while the gate is closed")
