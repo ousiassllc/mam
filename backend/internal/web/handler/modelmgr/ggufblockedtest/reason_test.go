@@ -3,6 +3,7 @@ package ggufblockedtest_test
 import (
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -32,10 +33,18 @@ func gguf(t *testing.T) *screentest.Screen {
 	return s
 }
 
+// actionsOf is the row of buttons of a card (the one raised above the click area of the card).
+func actionsOf(t *testing.T, card string) string {
+	t.Helper()
+	_, row, ok := strings.Cut(card, `relative z-raised mt-auto`)
+	require.True(t, ok, "the card has its row of buttons")
+	return row
+}
+
 // #1118: the card of a model that cannot be installed keeps the short badge and has no long explanation (the reason, the remedy, the route of the spec):
-// those are in the popup its "導入できない理由と対処" button opens. The install button stays disabled, and the card of a model that can be installed is
-// what it was: an install button that posts, no reason button.
-func TestTheCardOfAModelThatCannotBeInstalledHasNoLongExplanationButAButtonToIt(t *testing.T) {
+// those are in the popup its 導入 button opens. That button is enabled and is the only one in the row: it asks for the popup and posts nothing. The card of a
+// model that can be installed is what it was: an install button that posts.
+func TestTheInstallButtonOfAModelThatCannotBeInstalledOpensThePopupAndTheCardHasNoLongExplanation(t *testing.T) {
 	s := gguf(t)
 	list := s.Get(paths.ModelManagerPart("models")).Body.String()
 
@@ -45,17 +54,21 @@ func TestTheCardOfAModelThatCannotBeInstalledHasNoLongExplanationButAButtonToIt(
 		assert.NotContains(t, blocked, long, "the card carries no long explanation, no remedy and no route: they are in the popup")
 	}
 	assert.NotContains(t, blocked, `hx-post=`, "nothing on the card installs the model")
-	assert.Regexp(t, `<button[^>]*disabled[^>]*>導入</button>`, blocked, "the install button is disabled")
-	assert.Contains(t, blocked, `data-testid="mm-reason-open"`)
-	assert.Contains(t, blocked, `hx-get="`+paths.ModelManagerPart("models", mmtest.GGUFModelID, "blocked")+`"`)
-	assert.Contains(t, blocked, `data-modal-open`)
+	row := actionsOf(t, blocked)
+	assert.Equal(t, 1, strings.Count(row, "<button"), "one button: the install button, not a second one for the reason")
+	button := regexp.MustCompile(`<button[^>]*data-testid="mm-reason-open"[^>]*>導入</button>`).FindString(row)
+	require.NotEmpty(t, button, "the install button is the one that opens the reason")
+	assert.NotRegexp(t, `\sdisabled[\s>=]`, button, "and it can be pressed")
+	assert.Contains(t, button, `hx-get="`+paths.ModelManagerPart("models", mmtest.GGUFModelID, "blocked")+`"`)
+	assert.Contains(t, button, `data-modal-open`)
+	assert.Contains(t, button, `aria-haspopup="dialog"`)
 
-	ok := cardOf(t, list, "m-a")
+	ok := actionsOf(t, cardOf(t, list, "m-a"))
 	assert.NotContains(t, ok, `data-testid="mm-reason-open"`)
 	assert.Contains(t, ok, `hx-post="`+paths.ModelManagerPart("models", "m-a", "install")+`"`, "a model that can be installed is unchanged")
 }
 
-// #1118: the button opens a modal with the reason and the remedy, a link to the screen of the nodes that the dialog closes with, and no way to install;
+// #1118: the install button opens a modal with the reason and the remedy, a link to the screen of the nodes that the dialog closes with, and no way to install;
 // the install itself stays refused and nothing is downloaded.
 func TestTheReasonPopupOpensWithTheReasonAndALinkAndInstallsNothing(t *testing.T) {
 	s := gguf(t)

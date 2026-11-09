@@ -140,9 +140,9 @@ describe('the page of the custom nodes (#1103)', () => {
 });
 
 // #1110: the name of a card is a button whose click area covers the whole card, so a control in the card's body is pressed only when it is raised above it. A click
-// at the middle of the button that opens the reason a model cannot be installed (#1118: it replaced the long text and the link) must reach that button, and no other
+// at the middle of the 導入 button that opens the reason a model cannot be installed (#1118: it replaced the long text and the link) must reach that button, and no other
 // control of the card.
-describe('the button that opens the reason, on the card of a model that needs a node (#1110, #1118)', () => {
+describe('the 導入 button that opens the reason, on the card of a model that needs a node (#1110, #1118)', () => {
   let host: HTMLElement;
   let stylesheet: HTMLLinkElement;
 

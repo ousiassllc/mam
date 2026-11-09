@@ -1,17 +1,14 @@
-// Package reason is the popup that gives the reason a model or a custom node cannot be installed, and what to do about it (#1118), and the button that
-// opens it. The card keeps the short badge; the long explanation (the reason, the remedy, the route of the spec) is here, in the one modal of the page
-// (molecules/modal), so Esc, the close button, the focus (into the dialog, and back to the button) and a narrow screen are what every modal has, and the
-// head of the dialog stays in reach (#1097). The button only opens the explanation: nothing in the popup installs, and the install button of the card is
-// not the one that opens it.
+// Package reason is the popup that gives the reason a model or a custom node cannot be installed, and what to do about it (#1118), and the attributes of the
+// install button that opens it. The card keeps the short badge; the long explanation (the reason, the remedy, the route of the spec) is here, in the one modal of
+// the page (molecules/modal), so Esc, the close button, the focus (into the dialog, and back to the button) and a narrow screen are what every modal has, and the
+// head of the dialog stays in reach (#1097). Pressing 導入 on such a card only opens the explanation: nothing in the popup installs, and the install itself is
+// refused by the service whatever is asked here.
 package reason
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 )
-
-// ButtonLabel is the text of the button on a card that opens the popup.
-const ButtonLabel = "理由と対処"
 
 // Item is one cause of the refusal: the name of what is in the way and what is wrong with it.
 type Item struct {
@@ -34,13 +31,10 @@ type Popup struct {
 	Link   *Link
 }
 
-// OpenButton is the button of a card that opens the popup at url. subject is the name of the card (the accessible name says which card it acts on).
-// key names the button so that the focus goes back to it when the card is swapped while the popup is open.
-templ OpenButton(subject, url, key string) {
-	@atoms.SmallButtonFor(atoms.ToneNeutral, ButtonLabel, subject, openAttrs(url, key))
-}
-
-func openAttrs(url, key string) templ.Attributes {
+// OpenAttrs are the attributes that turn the install button of a card into the one that opens the popup at url, in place of posting an install: it asks for the
+// body of the modal (modal.OpenAttrs: the one <dialog> of the page, so Esc, the focus into the dialog and back to this button, and the top that stays in view are
+// the modal's), and a click installs nothing. key names the button so that the focus goes back to it when the card is swapped while the popup is open.
+func OpenAttrs(url, key string) templ.Attributes {
 	attrs := modal.OpenAttrs(url, key)
 	attrs["aria-haspopup"] = "dialog"
 	attrs["data-testid"] = "mm-reason-open"

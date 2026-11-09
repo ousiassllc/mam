@@ -165,16 +165,18 @@ templ modelActions(m Model, blocked bool) {
 			})
 		default:
 			@installButton(m, blocked)
-			if m.NeedsNodes != "" {
-				@reason.OpenButton(m.Name, ModelReasonURL(m.ID), "reason-"+ModelCardID(m.ID))
-			}
 	}
 }
 
 templ installButton(m Model, blocked bool) {
 	{{ label := installLabel(m) }}
 	switch  {
-		case blocked || m.LowDisk || m.NeedsNodes != "":
+		case blocked:
+			@atoms.SmallButtonFor(atoms.ToneNeutral, label, m.Name, templ.Attributes{"type": "button", "disabled": true})
+		case m.NeedsNodes != "" && m.State != "installed":
+			// a model that waits for custom nodes: 導入 explains why it cannot be installed (the popup) and installs nothing (#1118)
+			@atoms.SmallButtonFor(atoms.TonePrimary, label, m.Name, reason.OpenAttrs(ModelReasonURL(m.ID), "reason-"+ModelCardID(m.ID)))
+		case m.LowDisk || m.NeedsNodes != "":
 			@atoms.SmallButtonFor(atoms.ToneNeutral, label, m.Name, templ.Attributes{"type": "button", "disabled": true})
 		case m.Consent && !m.Accepted:
 			@atoms.SmallButtonFor(atoms.TonePrimary, "ライセンスを確認して導入", m.Name, templ.Attributes{

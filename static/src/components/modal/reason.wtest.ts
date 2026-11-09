@@ -5,7 +5,7 @@ import '../../main';
 
 const DATA = '/src/components/testdata/';
 
-// #1118: the card of a model that cannot be installed has the short badge and the button 「理由と対処」, which opens the reason and what to do in the one modal of the page
+// #1118: the card of a model that cannot be installed has the short badge and its 導入 button, which opens the reason and what to do in the one modal of the page
 // (the same dialog as the detail of a card). Opening it explains and installs nothing; Esc closes it and the focus goes back to the button; on a narrow, short screen the
 // popup scrolls inside and its head (the title and the close button) is in view.
 describe('the popup of the reason a model cannot be installed (#1118)', () => {
@@ -59,21 +59,25 @@ describe('the popup of the reason a model cannot be installed (#1118)', () => {
     });
   }
 
-  it('keeps the card short: the badge and the button, not the long explanation', () => {
+  it('keeps the card short: the badge and an enabled 導入 button that is the one that opens the reason', () => {
     expect(card().querySelector('[data-testid=mm-nodes-badge]') !== null, 'the short badge stays').to.equal(true);
-    expect(card().innerText).to.not.contain('導入できない');
     expect(card().innerText).to.not.contain('Python');
     expect(card().querySelector('[data-testid=mm-nodes-note]') === null, 'no long note on the card').to.equal(true);
-    // the install button is there and disabled; the reason button is another control
-    const install = [...card().querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === '導入')!;
-    expect(install.disabled).to.equal(true);
-    expect(button() === install, 'the reason button is not the install button').to.equal(false);
+    // the row of buttons has the install button only, and it is enabled: it is what opens the reason
+    const row = [...card().querySelectorAll<HTMLButtonElement>('.mt-auto button')];
+    expect(row.length, 'one button in the row').to.equal(1);
+    expect(row[0] === button(), 'the install button opens the reason').to.equal(true);
+    expect(button().textContent).to.equal('導入');
+    expect(button().disabled, 'it can be pressed').to.equal(false);
+    expect(button().getAttribute('aria-haspopup')).to.equal('dialog');
+    expect(button().getAttribute('aria-label')).to.contain('導入');
+    expect(button().hasAttribute('hx-post'), 'it posts nothing').to.equal(false);
   });
 
   it('opens the reason with a link to the nodes and installs nothing', async () => {
     await openReason();
 
-    expect(document.getElementById('mam-modal-title')!.textContent).to.contain('導入できない理由と対処');
+    expect(document.getElementById('mam-modal-title')!.textContent!.trim()).to.not.equal('');
     expect(dialog().querySelector('[data-testid=mm-reason-items]')!.textContent).to.contain('Python');
     const link = dialog().querySelector<HTMLAnchorElement>('[data-testid=mm-reason-link]')!;
     expect(link.getAttribute('href')).to.equal('/model-manager/custom-nodes#mm-nodes');

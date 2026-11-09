@@ -55,7 +55,7 @@ func card(n Node) modelcard.Card {
 }
 
 // NodeCard is the card of one custom node: its picture, name, size, state and commercial-use icon, what is wrong with it, the
-// progress of a running install, and the buttons (a node mam does not install has the button of the popup with the reason, #1118). The rest (the commit and the SHA-256 it is pinned to, the license, the dependencies and
+// progress of a running install, and the buttons (the 導入 of a node mam does not install opens the popup with the reason, #1118). The rest (the commit and the SHA-256 it is pinned to, the license, the dependencies and
 // the review) is in its detail modal (NodeDetail).
 templ NodeCard(n Node) {
 	@modelcard.Item(card(n)) {
@@ -84,7 +84,8 @@ templ nodeActions(n Node) {
 				"hx-confirm": "「" + n.Name + "」の導入を中断します。ダウンロード済みの分は残り、導入し直すと続きから再開します。よろしいですか？",
 			})
 		case n.State == "blocked":
-			@reason.OpenButton(n.Name, paths.ModelManagerPart("nodes", n.ID, "blocked"), "reason-"+NodeID(n.ID))
+			// mam does not install the node: 導入 explains why (the popup) and installs nothing (#1118)
+			@atoms.SmallButtonFor(atoms.TonePrimary, installLabel(n), n.Name, reason.OpenAttrs(paths.ModelManagerPart("nodes", n.ID, "blocked"), "reason-"+NodeID(n.ID)))
 		case n.Unavailable != "":
 			@atoms.SmallButtonFor(atoms.ToneNeutral, installLabel(n), n.Name, templ.Attributes{"type": "button", "disabled": true, "title": n.Unavailable})
 			<p class="text-sm text-warning" data-testid="mm-node-unavailable">{ n.Unavailable }</p>
