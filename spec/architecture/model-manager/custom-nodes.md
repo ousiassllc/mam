@@ -7,7 +7,7 @@
 - **許可リストにないノードは、読み込まない**。同梱の ComfyUI は `--disable-all-custom-nodes` のまま起動し、`--whitelist-custom-nodes <フォルダ名…>` に「導入済みで、固定した内容のままのノード」のフォルダだけを渡す（§3）。`custom_nodes` に手でフォルダを置いても、リストの外は読み込まれない（テスト: `engine/engine_nodes_test.go`、`nodes/nodes_test.go` の `TestAFolderMamDidNotInstallIsNeverEnabled`）。
 - **ノードは任意のコード**: ComfyUI の中で mam を動かすアカウントの権限のまま動く（ファイル・ネットワークを使える）。だから、①許可リストの 1 件ごとに**ソースを読んだ記録**（`review`）と固定したコミット・SHA-256 を持ち、②導入の前に、ライセンスに加えて**注意事項（`modelnodes.SecurityNotice`）への同意**を必ず取る。確認は開発時の 1 度きりで、コードの安全を保証するものではない、と画面にも書く。
 - **コアのノードで済むものは、ノードを入れない**。ControlNet は ComfyUI のコアの `ControlNetLoader`・`ControlNetApplyAdvanced` で動くので、追加ノード無しで使える（§6）。画像の前処理は、重みの要らない **Canny だけを mam の中（Go。`backend/internal/imgprep`）で行い**、`controlnet_aux` は導入しない（§5.2。Issue #993）。
-- **pip を実行しない・git を使わない**。ノードが import するのは、同梱の Python 環境（ComfyUI 公式のポータブル版）に**既にあるパッケージだけ**（`nodecat/data/python.json`。v0.42.1 の `requirements.txt` から作った一覧）。足りないものがあるノードは、一覧に載せたまま `install_blocked` を付け、導入ボタンを出さない。
+- **pip を実行しない・git を使わない**。ノードが import するのは、同梱の Python 環境（ComfyUI 公式のポータブル版）に**既にあるパッケージだけ**（`nodecat/data/python.json`。v0.42.1 の `requirements.txt` から作った一覧）。足りないものがあるノードは、一覧に載せたまま `install_blocked` を付け、導入ボタンを押しても導入せず理由のポップアップを開く（#1118）。
 - **置き場所**: ノードは `<data>\custom_nodes\<folder>\`（`store.Layout.CustomNodesDir()`。ComfyUI の `--base-directory` の下。エンジンの更新で消えない）。導入の記録は `<comfyui>\nodes.json`（`Layout.NodesPath()`。`state.json` とは別のファイル: 同じファイルを 2 つの `store.Store` が書かないため）。アンインストールで `comfyui` ごと消える。
 
 ## 2. 許可リスト（`nodecat/data/nodes/*.json`）
@@ -22,7 +22,7 @@
 | `folder` | `custom_nodes` の下のフォルダ名（`--whitelist-custom-nodes` に渡す名前） |
 | `license` | ノードの**コード**のライセンス（リポジトリの LICENSE の本文を読んだ結果）。`commercial`（yes / conditional / no / unknown）・`checked_at`・URL・要約。モデルのライセンスと同じ型（`catalog.License`）で、モデルマネージャーの画面に商用利用の可否が出る |
 | `python_requires`・`python_optional` | 読み込み時に import するパッケージ／一部のノードだけが import するパッケージ。`python.json` に無いものがあれば `install_blocked` が必須 |
-| `install_blocked` | 導入しない理由（あれば、導入ボタンは無く、`Install` は理由つきで拒否） |
+| `install_blocked` | 導入しない理由（あれば、導入ボタンは押しても導入せず理由のポップアップを開き、`Install` は理由つきで拒否） |
 | `node_classes` | このノードが足すクラス。導入後、動いている ComfyUI の `GET /object_info/<class>` で読み込まれたことを確かめる |
 | `model_folders` | ノードが登録するモデルのフォルダ（`ipadapter` など） |
 | `limits` | 同梱の環境で動かないノード（FaceID など）の説明 |
@@ -162,7 +162,7 @@ NSFW-Wan-UMT5-XXL-V2（`rzgar/NSFW-Wan-UMT5-XXL-V2`、`vocab_size` 257067）は�
 
 - テンプレートの `model.workflow.requires_nodes`（`localcfg.Workflow.RequiresNodes`）に、必要な許可リストの id を書く。テンプレートの全クラスは、コアのノードか、その `requires_nodes` のノードの `node_classes` でなければならない（`localcfg_test.go`）。
 - `nodegate.Check` が `InstallModel` の入口で、ノードが読み込まれていなければ `InvalidError`（「追加ノード「…」が導入されていないため使えません。モデルマネージャーの「追加ノード」の節…」）で拒否し、ジョブを作らない。同じ理由で、生成テストの一覧（`gentest/modelcatalog`）はそのモデルを `Available=false`・`Unavailable=missing_node` にして、メッセージを付ける。**ノードが `install_blocked`（mam が導入できない。ComfyUI-GGUF など）のときは、「導入してください」という案内ではなく、導入できない理由（`install_blocked` の文）を同じ位置に出す**（`nodegate.Reason`。画面の各モデルのカード・`install_model` の拒否〔MCP〕・生成テストの一覧がすべて同じ文を使う）。`install_blocked` のノードを `requires_nodes` に書いたテンプレートのモデル（GGUF の 2 件）は、ノードが導入できるようになるまで、導入も選択もできない（`TestAModelThatNeedsTheBlockedGGUFNodeIsNeitherInstalledNorChosen`）。**同梱エンジン（`bundled-comfyui`）のモデルだけが対象**で、外部の ComfyUI は自分のノードを持つので止めない。
-- 画面のモデルのカードには「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。モデル選択のモーダル・MCP の `list_model_catalog`／`get_catalog_model`（`available`・`message`）・生成テストの一覧にも同じ理由（`nodegate.Reason`。GGUF なら「導入できないため使えません…」）を出し、既定の「モデルマネージャーで導入します」（行き止まりの案内）にはしない（Issue #1016）。
+- 画面のモデルのカードには「追加ノードが必要」のバッジを出し、導入ボタンを押すと理由と対処のポップアップが開く（導入は走らない。#1118）。モデル選択のモーダル・MCP の `list_model_catalog`／`get_catalog_model`（`available`・`message`）・生成テストの一覧にも同じ理由（`nodegate.Reason`。GGUF なら「導入できないため使えません…」）を出し、既定の「モデルマネージャーで導入します」（行き止まりの案内）にはしない（Issue #1016）。
 
 ### 6.1 コアのノードだけの ControlNet と IP-Adapter
 
@@ -173,7 +173,7 @@ NSFW-Wan-UMT5-XXL-V2（`rzgar/NSFW-Wan-UMT5-XXL-V2`、`vocab_size` 257067）は�
 
 ## 7. 画面・MCP
 
-- 画面: モデルマネージャーの区画「追加ノード」（`#mm-nodes`）。ノードごとのカード（状態・商用利用のアイコン・導入できない理由・このノードを使うモデル。**ノードの説明はカードに出さず、詳細モーダルだけ**に出す。#1103）と、詳細モーダル（ノードの説明・固定したコミット・アーカイブの SHA-256・ライセンスと商用利用の答え・必要な Python パッケージ・追加されるクラス・ソースの確認結果・注意事項）。導入ボタンは同意のダイアログ（注意事項・ライセンス・コミットと SHA-256 の予告・同意のチェック）を開く。ルートは [../../api/endpoints-model-manager.md](../../api/endpoints-model-manager.md)、見た目は [../../components/model-manager-screen.md](../../components/model-manager-screen.md)。
+- 画面: モデルマネージャーの区画「追加ノード」（`#mm-nodes`）。ノードごとのカード（状態・商用利用のアイコン・このノードを使うモデル。mam が導入しないノードの**導入できない理由の長文もカードには出さず**、導入ボタンを押すと開くポップアップ（「理由と対処」）に出す。#1118。**ノードの説明はカードに出さず、詳細モーダルだけ**に出す。#1103）と、詳細モーダル（ノードの説明・固定したコミット・アーカイブの SHA-256・ライセンスと商用利用の答え・必要な Python パッケージ・追加されるクラス・ソースの確認結果・注意事項）。導入ボタンは同意のダイアログ（注意事項・ライセンス・コミットと SHA-256 の予告・同意のチェック）を開く。ルートは [../../api/endpoints-model-manager.md](../../api/endpoints-model-manager.md)、見た目は [../../components/model-manager-screen.md](../../components/model-manager-screen.md)。
 - MCP: `list_custom_nodes`・`get_custom_node_status`・`accept_custom_node_license`・`install_custom_node`・`remove_custom_node`（[../../api/mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）。MCP のエージェントが同意を記録できる（`accept_custom_node_license`。`accept_model_license` と同じ扱いで、ユーザーが内容を確認した後にだけ呼ぶ）。ただし同意が記録されていなければ `install_custom_node` は何も取得せずに拒否する。
 
 ## 8. ノードの足し方（#960 PuLID・#985 PoseStudio など）

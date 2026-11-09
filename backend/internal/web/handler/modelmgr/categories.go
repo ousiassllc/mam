@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/loraimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/ollama"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/overview"
@@ -129,7 +130,7 @@ func (h Handlers) categoryData(c *gin.Context, slug string) view.Data {
 		d.Engine = engineData(ctx, h.Svc, "", false)
 	case mmcat.ImageVideo:
 		d.Adult, d.Commercial, d.Catalog = adultData(h.Svc), commercialData(h.Svc), catalogData(c, h.Svc, nil)
-		d.EngineNeeded = engineNeeded(h)
+		d.EngineNeeded, d.LoRAImport = engineNeeded(h), loraimport.Section(h.Svc)
 	case mmcat.CustomNodes:
 		d.Nodes = nodes.Section(ctx, h.Nodes)
 	case mmcat.LocalRuntimes:

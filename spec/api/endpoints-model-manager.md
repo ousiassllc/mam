@@ -29,6 +29,7 @@
 | POST | `/model-manager/jobs/:job/cancel` | 動いている導入の中断（エンジンのカードか一覧を返す）。ジョブは失敗で終わり、ダウンロード済みの分は残って再開できる。動いていないジョブは 404 |
 | GET | `/model-manager/models` | モデルの一覧（`#mm-catalog`）。導入中は自分で取り直す。クエリ `jobs`（カンマ区切り）は報告するジョブ。終わったら「導入しました」／失敗の理由を出す（ほかの区画は描き直さない） |
 | GET | `/model-manager/models/:id/detail` | カードが開く詳細モーダルの本体（`modal.Frame`。ページに 1 つの `<dialog id="mam-modal">` の本体に入れる。Issue #954）。説明・状態・商用利用の注意・ライセンス・VRAM・原本の場所・ファイルごとの大きさと SHA-256。未知の ID は 404、年齢確認前の成人向けは 409（どちらも理由だけのモーダル。隠しているモデルの中身は出さない） |
+| GET | `/model-manager/models/:id/blocked` | 導入できないモデルの「理由と対処」のポップアップの本体（`reason.Body`。`modal.Frame`。ページに 1 つの `<dialog id="mam-modal">` の本体に入る。#1118）。説明するだけで、導入は始めない（導入は `POST …/install` が今までどおり断る）。理由は、モデルのワークフローが要る追加ノードのうちエンジンが読み込まないもの（`nodegate.Problems`）と、mam が導入しないノードの `install_blocked`。対処と、追加ノードの画面へのリンク（`mm-reason-link`。`/model-manager/custom-nodes#mm-nodes`）つき。理由が無いモデル（導入できる・導入済み）と未知の ID は 404（理由だけのモーダル） |
 | GET | `/model-manager/models/:id/consent` | ライセンスの確認ダイアログ（`#mm-dialog` に差し込む）。同意が要らないモデルは 404 |
 | GET | `/model-manager/adult/confirm` | 成人向けモデルの年齢確認と注意書きのダイアログ（`#mm-dialog` に差し込む） |
 | PUT | `/model-manager/adult` | 設定「成人向けモデルを表示する」（既定オフ）。フォーム `on`（`1` / `0`）。**オンにする最初の 1 回**は、ダイアログの `notice_version`（`Service.AdultContent().NoticeVersion`）と `agree=1`（18 歳以上の確認と注意書きへの同意）が要る。確認の記録（日時・注意書きの版）が `state.json` に残り、以後のオン／オフは `on` だけでよい。確認の記録が無く `notice_version` も無いオンは 409、`agree` が無い・版が違うのは 422（ダイアログに理由を出し、ゲートは開かない）。200 でカード（`#mm-adult`）を返し、モデルの一覧を `hx-swap-oob` で描き直し、ダイアログを閉じる。**確認が無い間は、一覧（`GET /model-manager/models`）に成人向けのモデルが出ず、生成テストのモデルの選択肢にも導入済みの成人向けモデルが出ず、名指しの要求は 404** |
@@ -65,6 +66,7 @@
 | GET | `/model-manager/nodes` | 追加ノードの区画全体（`#mm-nodes`。Issue #976）。区画の更新ボタンが取り直す |
 | GET | `/model-manager/nodes/:id` | 追加ノードのカード（`#mm-node-<id>`）。導入中は自分で取り直す（クエリ `job` は報告するジョブ。終わったら結果を 1 度出す）。未知の ID は 404 |
 | GET | `/model-manager/nodes/:id/detail` | カードが開く詳細モーダルの本体。固定したコミット・アーカイブの SHA-256・ライセンスと商用利用の答え・必要な Python パッケージ・ソースの確認結果・注意事項。未知の ID は 404（理由だけのモーダル） |
+| GET | `/model-manager/nodes/:id/blocked` | mam が導入しないノード（`install_blocked`）の「理由と対処」のポップアップの本体（`reason.Body`。#1118）。許可リストの理由をそのまま出す。導入できるノード・未知の ID は 404（理由だけのモーダル）。導入は始めない |
 | GET | `/model-manager/nodes/:id/consent` | 導入ボタンが `#mm-nodes-dialog` に開く同意のダイアログ（注意事項・ライセンス・コミットと SHA-256 の予告） |
 | POST | `/model-manager/nodes/:id/install` | 導入（ジョブ）。フォーム `license_id`・`license_version`・`notice_version`・`agree=1` が同意。同意が無い・版違いは 422（同意のダイアログを理由つきで返す）、導入できないノード（`install_blocked`）は 422、同梱エンジンが無い・Windows 以外は 409、未知は 404。202 |
 | POST | `/model-manager/nodes/:id/cancel` | 導入の中断（フォーム `job`）。カードを返す |
@@ -73,6 +75,11 @@
 | GET | `/model-manager/hf/models/detail` | 追加したファイルのカードが開く詳細モーダルの本体（Issue #954）。クエリ `path`。リポジトリとコミット・ライセンス・SHA-256・作ったモデル。記録に無い `path` は 404（理由だけのモーダル） |
 | POST | `/model-manager/hf/jobs/:job/cancel` | 動いている導入の中断（「追加したモデル」を返す。ダウンロード済みの分は残り、導入し直すと続きから再開する） |
 | DELETE | `/model-manager/hf/models` | 追加したファイルの削除。クエリ `path`（`models/<folder>/<name>`）。作ったモデルも消える。使用中は 422、導入中・記録に無いのは 409。カタログのモデルと共有するファイルは、そのモデルが残る間は残る |
+| POST | `/model-manager/loras/inspect` | 手元の LoRA の取り込みの 1 段目（Issue #1119）。`multipart/form-data` の `file`（1 つ。ストリームで一時の場所 `<root>/imports/` へ保存しながら SHA-256 を取る。ファイル名は Content-Disposition の生の値）。ヘッダー・上限（4 GiB）・LoRA のテンソル・名前を検査し、通れば「取り込みの確認」（ファイルの情報・名前・ベースモデル・強さ・トリガー語・ライセンスの欄・同名の案内）を `#mm-lora-panel` に返す。通らないファイルは 422（理由つき。置かない）、上限を超えるのは 413。`bodylimit` の `uploadRoutes` に入る |
+| POST | `/model-manager/loras/discard` | 一時のファイルの破棄（フォーム `token`）。選び直しとやめるで使う |
+| POST | `/model-manager/loras` | 取り込みの 2 段目。フォーム `token`・`name`・`base_models`（複数）・`strength`・`trigger_words`・`license_name`・`commercial`（空 = 不明・`conditional`・`no`。`yes` は無く、`unknown` と書いても 422）。一時のファイルを `data/models/loras/<name>` へ 1 回の rename で置いて記録し、201 で確認の文と、一覧 `#mm-lora-list` の OOB を返す。拒否（同名で別の中身は 409・名前・入力の不正は 422）は `HX-Retarget: #mm-lora-msg`・`HX-Reswap: innerHTML` で入力欄の上に出し、入力は残る。上書きはしない |
+| PUT | `/model-manager/loras` | 追加した LoRA の記録の編集。クエリ `path`（`models/loras/<name>`）、フォームは上と同じ項目。ファイルには触れない。記録に無い `path` は 404 |
+| DELETE | `/model-manager/loras` | 追加した LoRA の削除。クエリ `path`。記録とファイルを消す（カタログのモデル・Hugging Face から足した記録が同じファイルを持つ間はファイルを残す）。記録に無い `path` は 404（手で置いたファイルには触れない） |
 | GET | `/model-manager/external` | 外部の ComfyUI の確認（`#mm-external`）。クエリ `endpoint`（種類 ComfyUI の接続先の名前）を渡すと、その ComfyUI が持つモデルファイルと、カタログのモデルに足りないファイルを出す（読むだけ。導入の操作は無い）。同梱の `bundled-comfyui` は 422、未登録は 404、到達できないときは 502 |
 | GET | `/model-manager/external/detail` | 外部の ComfyUI のモデルのカードが開く詳細モーダルの本体（Issue #954）。クエリ `endpoint`・`name`。ComfyUI に聞き直して、あるファイルと足りないファイルを出す。接続できなければ 502、接続先が不正なら 422、`name` が無ければ 404（理由だけのモーダル） |
 | GET | `/model-manager/companion/ffmpeg` | ffmpeg の区画全体（`#mm-ffmpeg`。#1106。`GET /settings/ffmpeg` の中身の移し替え）。欄・探した結果・ダウンロードの部品。常に 200（`ffmpegsettings.Service` が無い構成ではルートが無い） |
@@ -129,7 +136,7 @@
 
 - **ローカル音声・口パク・LLM**（区画 `#mm-runtimes`。llama.cpp〔`llm`〕のカードを含む。local-runtime.md §17）（区画 `#mm-runtimes`、Issue #920。ハンドラーは `handler/modelmgr/runtimes`、見た目は `organisms/modelmgr/runtimecard`・`weightlist`。`localruntime.Service` を持つときだけ。意味は [local-runtime.md](../architecture/model-manager/local-runtime.md) §12）: ランタイムごとに 1 枚のカード（`data-testid="mm-runtime"`）。状態（未導入 / 導入中 / 導入済み + 停止中・起動中・失敗）、導入中の進捗バーと「中断する」（`hx-confirm`。`POST /model-manager/jobs/:job/cancel` がジョブの `target=runtime:<id>` を見て振り分ける）、版・導入先・空き容量、起動の失敗はログの末尾つき。**この PC で使えないとき**（macOS ほか）は、導入・起動のボタンの代わりに**理由**（`mm-runtime-reason`）と**クラウドの案内**（`mm-runtime-fallback`。ElevenLabs / Sync Labs を選べる）を枠で出す。**重み**（`<details data-testid="mm-runtime-weights">`）は、asset ごとに名前・大きさ・必須か・状態（あり / なし / 未確認）・出典のリンク・ライセンスのリンク・商用利用のバッジ（「商用利用: 可」/「不可」/「**はっきりしません**」）を出す。`unclear` / `no` の asset は、その行に琥珀色の枠で `notice`、一覧の前に「商用利用がはっきりしない重みを含みます（N 件）」の枠を出し、一覧を最初から開く。導入済みでも必須の重みが足りないときは「導入済み（重みが不足）」を出し、起動の代わりに「重みを導入」を出す。削除は `hx-confirm`、導入・起動・重みの導入は `hx-sync` と `hx-disabled-elt`（二重送信の防止）。
 - **ローカル LLM**（区画 `#mm-llm-use`・`#mm-llm-runtimes`・`#mm-llm-connection`。#1104。見た目は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「ローカル LLM の統合（#1104）」）: 上の `#mm-runtimes` の記述のうち llama.cpp のカードに関するものは、`#mm-llm-runtimes` の中で今のまま成り立つ（`data-testid="mm-runtime"`・`mm-runtime-reason`・`mm-runtime-fallback`・重み・使うモデルの選択・導入と起動の `hx-sync`・`hx-confirm`）。ルート `/model-manager/runtimes/:id/…` は用途に関わらず同じ。
-- **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードには導入ボタンが無く、理由を出す。**カードにノードの説明は出さず**（#1103。`mm-node-description` は無い）、固定のコミットとともに詳細モーダル（`GET /model-manager/nodes/:id/detail`。説明は `#mam-modal-desc`）に出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。
+- **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードの導入ボタンは押せるが、押すと導入せずに理由のポップアップを開く（#1118）。**カードにノードの説明は出さず**（#1103。`mm-node-description` は無い）、固定のコミットとともに詳細モーダル（`GET /model-manager/nodes/:id/detail`。説明は `#mam-modal-desc`）に出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジを出し、導入ボタンを押すと理由のポップアップが開く（導入は走らない。#1118）。
 - **付随ソフト**（区画 `#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion`。#1106。見た目と意味は [../components/model-manager-screen.md](../components/model-manager-screen.md) の「付随ソフトの導入（#1106）」。ハンドラーは `handler/modelmgr/companion`〔新設。`handler/settings/ffmpeg`・`handler/settings/facefusion` から移す〕）: 一覧の行は `data-testid="mm-companion-row"`（`data-tool`・`data-state`）、FaceFusion の手順は `mm-facefusion-steps`・`mm-facefusion-cmd`・`mm-facefusion-refind`・`mm-facefusion-version-note`。**mam は FaceFusion を取得しない**（face-swap.md §1）ので、導入のルート・ジョブ・同意のダイアログは無い。
 
 ## 4. テスト
@@ -154,7 +161,7 @@
 - HTMX のリクエスト（`HX-Request: true`・`HX-History-Restore-Request` なし）の `GET /model-manager`・`GET /model-manager/<slug>` は `#model-manager-body` だけを返し、`HX-History-Restore-Request: true` ならページ全体を返す。どちらも `Vary: HX-Request, HX-History-Restore-Request`。
 - 実行環境・ノード・顔チェックのサービスを持たない構成では、`local-runtimes`・`custom-nodes`・`face-check` は 404 で、概要にもメニューにも出ない。
 - **応答の `hx-swap-oob` の `id` は、その応答を取った分類ページにある**: `POST /model-manager/engine/install`・`DELETE /model-manager/engine`・`GET /model-manager/engine?job=…` の応答に `#mm-catalog` の OOB が無い（`oob.EngineWithCatalog` は無い）。モデルの導入・削除・成人向けの切り替え・商用OKのスイッチ・追加したファイルの導入と削除の応答の OOB は、すべて `image-video`・`hf-external` のそれぞれ同じページの `id` だけを指す。各 POST・PUT・DELETE と、ポーリングの GET で確かめる。
-- `image-video` ページは、エンジンが未導入・停止中のとき一覧の上に `data-testid="mm-engine-needed"`（`comfyui` へのリンクつき）を出し、導入済みで起動しているときは出さない。「HF トークンが必要」のカードの案内のリンクの `href` は `/model-manager/hf-external#mm-hf`。「追加ノードが必要」のカードに `mm-node-needed-link`（`/model-manager/custom-nodes#mm-nodes`）がある。
+- `image-video` ページは、エンジンが未導入・停止中のとき一覧の上に `data-testid="mm-engine-needed"`（`comfyui` へのリンクつき）を出し、導入済みで起動しているときは出さない。「HF トークンが必要」のカードの案内のリンクの `href` は `/model-manager/hf-external#mm-hf`。「追加ノードが必要」のカードの追加ノードの画面へのリンク `mm-node-needed-link` は、#1118 でカードから「理由と対処」のポップアップの中へ移った（下の「導入できない理由のポップアップの受け入れ条件」）。
 - 生成テストの `gt-face-off-install`・`gt-face-off-status` の `href` は `/model-manager/face-check#mm-face-models`（`paths.ModelManagerFaceModels()`）。ジョブ一覧の導入のジョブの `jobs-open` の `href` は、`target` の種類に応じた分類ページ（`engine`→`comfyui`・`model:` →`image-video`・`runtime:` →`local-runtimes`・`node:` →`custom-nodes`・`hf:` →`hf-external`）。`modelfilter.RouteOf` の行き先は `image-video`（`ReasonAgeGate`・`ReasonNotInstalled`）・`custom-nodes`（`ReasonMissingNode`）。
 - 左メニュー: 概要と全分類ページに `ul#sidenav-mm-views`（見出し `#sidenav-mm`「モデルマネージャー」・「概要」＋各分類）があり、現在のページの項目だけ `aria-current="page"`（分類ページでは画面の項目「モデルマネージャー」は `aria-current="true"`）。それ以外の画面にこの一覧は出ない。`web/sidenavtest` が確かめる。
 - fixture（`scroll-mm-*.html`・`layout-long-names-*.html`）と `scroll.wtest.ts`・`long-names.wtest.ts` は、分類ページごとの描画（`image-video` の一覧・`comfyui` のエンジンのカード・`hf-external` ほか）に合わせて作り直し、通る。`go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
@@ -171,7 +178,7 @@
 
 - `nodecat` の全ノード（今は 5 件）で、`GET /model-manager/custom-nodes`（#1101 のあと。それまでは `GET /model-manager`）と `GET /model-manager/nodes`・`GET /model-manager/nodes/:id` の応答に、`data-testid="mm-node-description"` が無く、ノードの `Description` の文字列も含まれない。
 - 同じ全ノードで、`GET /model-manager/nodes/:id/detail` の `#mam-modal-desc` の文字列が `Description` と同じ。応答は今までどおり `modal.Frame`（ページに 1 つの `<dialog id="mam-modal">` の本体に入る）で、未知の ID は 404（理由だけのモーダル）。
-- `install_blocked` のノードのカードに `mm-node-blocked`（導入できない理由）が残り、導入ボタンが無い。`mm-node-detail-note`・`mm-node-models`・進捗・導入／中断／削除のボタンは変わらない。
+- `install_blocked` のノードのカードの導入ボタンは押せて、押すと理由のポップアップが開く（導入できない理由の長文 `mm-node-blocked` は #1118 でカードから外れ、ポップアップに移った）。`mm-node-detail-note`・`mm-node-models`・進捗・導入／中断／削除のボタンは変わらない。
 - 区画の「?」ヘルプに「ノードの説明」の語があり、ヘルプのほかの文は変わらない。
 
 **ローカル LLM の統合の受け入れ条件（Issue #1104。状態: 実装済み。テストは `handler/modelmgr/localllm`・`llmsettingstest`・`service/llmlocal`・`mcp/tools/settings`・`joblist`・`modelfilter`。#1101 のあと）**:
@@ -196,7 +203,7 @@
 - MCP（[mcp-tools-model-manager.md](mcp-tools-model-manager.md)）: `list_ollama_models`・`pull_ollama_model`・`delete_ollama_model` が同じサービスを呼び、同じ拒否（422 / `validation`・409 / `conflict`・404 / `not_found`）を返す。`install_local_runtime`（`runtime_id=ollama`）で本体を導入できる。
 - `go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
 
-`handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
+`handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが押せて理由のポップアップを開くこと（導入は走らない）とバッジが出ること、内容が変わったノードが「導入済み」と出ないこと。
 
 **付随ソフトの導入の受け入れ条件（Issue #1106。実装時にこのテストを足す。#1101 のあと）**:
 
@@ -207,6 +214,15 @@
 - 導線: `apperr.PlaceFFmpeg`・`PlaceFaceFusion`・`handler/jobs` の ffmpeg のジョブの行・`faceswapscreen` の `SettingsURL` が `/model-manager/companion#mm-ffmpeg`・`#mm-facefusion` を向く（`paths/apperr_test.go` の対応表を新しい URL に更新）。
 - 概要（`GET /model-manager`）の `companion` のカードの `data-state` が `full`・`partial`・`attention` を、ffmpeg の有無と FaceFusion の有無の 4 通りで返す。FaceFusion が未設定でも `attention` にならない。
 - `web/sidenavtest`・`a11y`（一覧の行の名前・手順の `<ol>`・コマンドのブロックの `aria-label`）・`go build`・`go vet`・`make test`・`templ generate` の差分なし・lint がクリーン。
+
+**導入できない理由のポップアップの受け入れ条件（Issue #1118。実装済み。`ggufblockedtest/reason_test.go`・`categorytest`・`nodes_test.go`・`nodecard_test.go`・`modal/reason.wtest.ts`）**:
+
+- 導入できないモデル（追加ノードが要るが、エンジンが読み込まない。`NeedsNodes` が空でなく、導入済みでない）のカードに、長い技術説明（理由・対処・仕様のルート。以前の `mm-nodes-note`）を出さない。短い状態のバッジ「追加ノードが必要」（`mm-nodes-badge`）は残る。導入ボタンは押せて、押すと理由のポップアップが開く（次の項。導入は走らない）。
+- 同じカードの操作の行（カード全体の押す面より上に出る `modelcard.Actions`）の **導入ボタンが有効**で、押すと「理由と対処」のポップアップが開く（`data-testid="mm-reason-open"`。`reason.OpenAttrs`。`GET /model-manager/models/:id/blocked` を `#mam-modal-body` に開く。`aria-haspopup="dialog"`。名前は「導入: <モデル名>」のまま）。別のボタンは置かない（1.31 で、1.28 の別ボタンをやめた）。押しても導入は走らない（POST は 1 本も飛ばない。`POST …/install` は今までどおり 422）。ボタンの出し分けの順は、一覧ぜんたいが導入できない（`blocked`）→ 無効のボタン、追加ノードが要る（`NeedsNodes`。導入済みを除く）→ ポップアップを開く、空きが足りない（`LowDisk`）→ 無効のボタン。年齢確認で閉じているモデルは一覧に出ず、ルートも 409 でポップアップは開かない。導入できるモデルのカードは変わらず、導入ボタンは今までどおり POST する。
+- ポップアップは、ページに 1 つの `<dialog id="mam-modal">`（`modal.Host`）を使うので、中でスクロールでき、閉じるボタン（右上と末尾の「閉じる」）・Esc で閉じ、開くとフォーカスはダイアログの中（先頭のブロック）に入って外へ出せず、閉じるとフォーカスは開いたボタンへ戻る。狭い画面（幅 390 px・高さ 420 px）でもタイトルと閉じるボタンが見切れない（#1097 と同じ作り）。
+- 追加ノードの画面への案内は、ポップアップの中のリンク（`mm-reason-link`。`href="/model-manager/custom-nodes#mm-nodes"`。`data-modal-close` つき。押すとダイアログを閉じて移る）。
+- mam が導入しないノード（`install_blocked`）のカードも同じ作りにする: 長い理由 `mm-node-blocked` をカードから外し、導入ボタンを有効にして、押すと「理由と対処」のポップアップが開く（`GET /model-manager/nodes/:id/blocked`。押しても導入は走らない）。バッジ「導入できません」は残る。GGUF だけの特例ではなく、「導入できない理由」「追加ノードの長い説明」全般で同じ部品（`organisms/modelmgr/reason`）を使う。
+- 依存が解決したようには見せない・pip を自動で実行しない・安全上の制約（許可リスト・封印）は変えない。ポップアップは説明だけで、導入できるかの判定（`nodegate`・`modelnodes`）は変わらない。
 
 ## 改訂履歴
 
@@ -240,3 +256,7 @@
 | 1.25 | 2026-11-07 | 付随ソフトの導入（#1106）を実装した。状態を「実装済み」にした。`/model-manager/companion/ffmpeg`（`GET`・`PUT`・`…/download`・`…/download/cancel`）・`/model-manager/companion/facefusion`（`GET`・`PUT`。取得・導入のルートは無い）・`/model-manager/companion/index` を足し、`GET /settings/ffmpeg`・`/settings/facefusion` を 303 にして、`PUT`・`POST`・`DELETE /settings/ffmpeg…`・`PUT /settings/facefusion` を 404 にした。受け入れ条件は `handler/modelmgr/companiontest`・`web/ffmpegscreen`・`web/facefusionscreen` ほか | Issue #1106 |
 | 1.26 | 2026-11-07 | ローカル LLM の統合（#1104）を実装した。§1 の `local-llm/use`・`local-llm/connection`・`…/connection/test`・`runtimes?purpose=llm` と §3 の分類の表の `local-llm` は実装済み（受け入れ条件のテストを足した）。`GET /model-manager/local-llm/use` に `part=state`（状態の行だけ）を足した。`ollama` は、アプリが管理する Ollama を持つまで選べない（409。ラジオも出さない。#1105） | Issue #1104 |
 | 1.27 | 2026-11-07 | Ollama の導入とモデルの取得（#1105）を実装した。§1 の `ollama` のルート 4 つと §4 の受け入れ条件は実装済み（テストを足した）。取得・削除・中断の答えは区画全体で、`#mm-llm-use-state` を `hx-swap-oob` で添える。Ollama のランタイムのカードの答えは `#mm-ollama` を `hx-swap-oob` で添える | Issue #1105 |
+| 1.28 | 2026-11-09 | 導入できないモデル・ノードのカードの長い技術説明を、導入ボタンと別の「理由と対処」ボタンが開くポップアップに移した（#1118）。§1 に `GET /model-manager/models/:id/blocked`・`GET /model-manager/nodes/:id/blocked` を足し、§4 に受け入れ条件を足した。#1110 の `mm-node-needed-link` と #1103 の `mm-node-blocked` は、カードからポップアップの中へ移った | Issue #1118。長い文がカードに常時並び縦に伸びる。説明を開く操作と導入の実行を分け、導入はできないままにする |
+| 1.29 | 2026-11-09 | 手元の LoRA の取り込み（#1119）のルートを足した。`POST /model-manager/loras/inspect`（ファイル 1 つを `multipart/form-data` の `file` で流して一時の場所に保存・検査し、取り込みの確認の部分を返す。4 GiB を超えるのは 413、読み取れない・LoRA でない・拡張子違いは 422 で理由を返す）、`POST /model-manager/loras/discard`（一時のファイルの破棄）、`POST /model-manager/loras`（`token`・`name`・`base_models`・`strength`・`trigger_words`・`license_name`・`commercial`。201 で置いて記録し、一覧を `#mm-lora-list` へ OOB で返す。拒否は 422・409 を `HX-Retarget: #mm-lora-msg` で）、`PUT /model-manager/loras?path=`（記録の編集）、`DELETE /model-manager/loras?path=`（記録と、他が持たないファイルの削除）。区画 `#mm-lora`（`#mm-lora-panel`・`#mm-lora-list`・`#mm-lora-msg`）は `image-video` ページの「モデルの一覧」の下。`POST …/loras/inspect` は `bodylimit` の `uploadRoutes` に入れた | Issue #1119。意味は [../architecture/model-manager/model-manager-lora.md](../architecture/model-manager/model-manager-lora.md) |
+| 1.30 | 2026-11-09 | `POST /model-manager/loras` の `commercial` を実装に合わせた（空 = 不明・`conditional`・`no`。`unknown` は 422）| #1119 の独立レビュー |
+| 1.31 | 2026-11-09 | 導入できないモデル・ノードのカードの「理由と対処」を、別のボタンではなく**導入ボタンを押すと開く**形に直した（#1118。利用者の指示「導入ボタンを押したら開く形に直して」）。導入ボタンは有効で、`reason.OpenAttrs`（`modal.OpenAttrs` ＋ `aria-haspopup="dialog"` ＋ `data-testid="mm-reason-open"`）が付く。別ボタンと `reason.OpenButton`・`ButtonLabel` は削除した。ルート・ポップアップの中身・導入の拒否（422）は変えていない | Issue #1118。「導入をクリックした後にポップアップで表示するぐらいでいい」。1.28 の別ボタンは、押したいボタンが無効のままで分かりにくかった |

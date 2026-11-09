@@ -82,7 +82,7 @@ func TestAbsorbAndApplyAnswer_AMeasureOrAPlatformClauseIsStillAnotherItem(t *tes
 
 // "A ではなく B にして、学生にして": B is not lost (it is proposed, one card) and the noun clause is read as its own item; the Subject is kept on a free message and on a card answer.
 func TestAbsorbAndApplyAnswer_ANounClauseAfterAContrastNeitherLosesBNorReplacesTheSubject(t *testing.T) {
-	for _, tail := range []string{"学生にして", "アニメにして", "学生で", "ドラマにして"} {
+	for _, tail := range []string{"学生にして", "アニメにして", "学生で", "ドラマにして", "夜にして", "20代にして", "主婦にして", "夜の街で"} {
 		text := "猫ではなく犬にして、" + tail
 		t.Run(text, func(t *testing.T) {
 			b := decided("猫", "")
@@ -95,4 +95,30 @@ func TestAbsorbAndApplyAnswer_ANounClauseAfterAContrastNeitherLosesBNorReplacesT
 			assert.Equal(t, "犬", c.ProposedSubject)
 		})
 	}
+}
+
+// The same on an empty Brief: nothing is decided, so B is the Subject whatever clause follows (the clause is no part of it).
+func TestAbsorb_AnEmptyBriefReadsBAsTheSubjectBeforeANounClause(t *testing.T) {
+	for _, tail := range []string{"学生にして", "アニメにして", "学生で", "ドラマにして", "夜にして", "20代にして", "主婦にして", "夜の街で"} {
+		text := "猫ではなく犬にして、" + tail
+		t.Run(text, func(t *testing.T) {
+			var e domain.Brief
+			briefing.Absorb(&e, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "犬", e.Subject)
+			assert.Empty(t, e.ProposedSubject)
+		})
+	}
+}
+
+// "と" joins two nouns of one B ("犬と学生"): the whole list is proposed, not "犬" with "学生" read as the Target, and the decided Subject stays.
+func TestAbsorbAndApplyAnswer_AListInBIsProposedWholeAndTheSubjectStays(t *testing.T) {
+	text := "猫ではなく、犬と学生にして"
+	b := decided("猫", "")
+	briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+	assert.Equal(t, "猫", b.Subject)
+	assert.Equal(t, "犬と学生", b.ProposedSubject)
+	a := decided("猫", "")
+	assert.NotNil(t, briefing.ApplyAnswer(&a, domain.BriefSubject, text), "asked once")
+	assert.Equal(t, "猫", a.Subject)
+	assert.Equal(t, "犬と学生", a.ProposedSubject)
 }

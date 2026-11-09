@@ -38,6 +38,7 @@ func WithReferenceModels(baseURL string) Option {
 		return w
 	}
 	edit := workflow(localcfg.ModeEdit, 3, "7")
+	edit.LoraFamily = "qwen-image" // a LoRA made for another family of base model is warned about (#1119)
 	edit.Assignments = append(edit.Assignments, localcfg.Assignment{Param: localcfg.ParamNegativePrompt, Node: "2", Input: "text"})
 	return func(r *Rig, d *gentest.Deps) {
 		r.Config.Endpoints = map[string]localcfg.Endpoint{EndpointName: {Kind: localcfg.KindComfyUI, BaseURL: baseURL}}

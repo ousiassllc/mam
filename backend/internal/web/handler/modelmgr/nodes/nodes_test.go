@@ -43,10 +43,26 @@ func TestNodes_ThePageListsTheAllowlistWithTheAnswerForCommercialUseAndWhyOneCan
 	assert.Equal(t, 2, strings.Count(body, `data-testid="mm-node"`), "a card for each node of the allowlist")
 	assert.Contains(t, body, `data-node="pack" data-state="not_installed"`)
 	assert.Contains(t, body, `data-node="needs-pip" data-state="blocked"`)
-	assert.Contains(t, body, "導入できない理由: needs opencv")
+	assert.NotContains(t, body, "needs opencv", "the long reason is not on the card (#1118): the popup of its button has it")
+	assert.Equal(t, 1, strings.Count(body, `data-testid="mm-reason-open"`), "the install button of the node mam does not install opens the reason")
+	assert.Regexp(t, `<button(?:[^>]*)data-testid="mm-reason-open"(?:[^>]*)>導入</button>`, body)
+	assert.NotRegexp(t, `<button[^>]*\sdisabled[\s>=][^>]*data-testid="mm-reason-open"|<button[^>]*data-testid="mm-reason-open"[^>]*\sdisabled[\s>=]`, body, "it can be pressed")
 	assert.Contains(t, body, "このノードを使うモデル: Uses pack（未導入）")
 	assert.NotContains(t, body, screentest.NodeCommitForTest, "the card does not carry the commit")
-	assert.Equal(t, 1, strings.Count(body, `data-testid="mm-node-install"`), "the node mam does not install has no install button")
+	assert.Equal(t, 1, strings.Count(body, `data-testid="mm-node-install"`), "the node mam does not install does not post an install: its button asks for the reason")
+}
+
+// #1118: the install button on the card of a node that mam does not install opens a popup with the reason; a node that can be installed has no reason to give.
+func TestNodes_TheReasonPopupOfANodeMamDoesNotInstallHasTheReason(t *testing.T) {
+	s := screentest.NewWithNodes(t)
+	rec := s.Get(nodePart("needs-pip", "blocked"))
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "needs opencv")
+	assert.Contains(t, rec.Body.String(), `id="mam-modal-title"`)
+	assert.Contains(t, rec.Body.String(), `data-modal-close`)
+	assert.NotContains(t, rec.Body.String(), `hx-post=`, "the popup cannot install")
+	assert.Equal(t, http.StatusNotFound, s.Get(nodePart("pack", "blocked")).Code)
+	assert.Equal(t, http.StatusNotFound, s.Get(nodePart("nope", "blocked")).Code)
 }
 
 func TestNodes_TheModalHasThePinsTheLicenseTheDependenciesAndTheReview(t *testing.T) {

@@ -12,6 +12,8 @@
 
 > **#1105 の追記（2026-11-06）— 状態: 実装済み（Issue #1105。実機での Ollama の起動・取得は未確認）**: 分類 `local-llm` に、**Ollama 本体の導入**（ランタイム `ollama`。カード `#mm-runtime-ollama`。`#mm-llm-runtimes` の中）と、**Ollama のモデルの取得**（区画 `#mm-ollama`。`ollama pull`）を足す。Issue 本文の「エルラマ」は Ollama（音声入力の表記ゆれ）。下の節「Ollama の導入とモデルの取得（#1105）」が正。
 
+> **#1118 の追記（2026-11-09）— 状態: 実装済み（Issue #1118）**: 導入できないモデルのカードに長い技術説明（追加ノードの Python の依存が無い、という理由・手順・仕様のルート）が常時並んで縦に伸びていた。**カードは短い状態表示（バッジ「追加ノードが必要」「導入できません」）だけにし、長文は、有効にした導入ボタン（`mm-reason-open`）を押すと開く「理由と対処」のポップアップに移した（別のボタンは置かない。1.41）**。導入ボタンは押せるが、押しても導入は走らず、ポップアップは説明するだけ（依存が解決したようには見せない・pip を自動で実行しない・許可リスト／封印は変えない）。ポップアップは新しい部品を作らず、ページに 1 つの `modal.Host`（`<dialog id="mam-modal">`）に `reason.Body` を入れる（Esc・閉じる・フォーカスの移動と戻り・狭い画面・上端の見切れなしは、すべての詳細モーダルと同じで #1097 の作り）。追加ノードの画面へのリンクはポップアップの中に置く。モデルのカード（`GET /model-manager/models/:id/blocked`）と、mam が導入しないノードのカード（`GET /model-manager/nodes/:id/blocked`）で同じ部品 `organisms/modelmgr/reason` を使い、GGUF の特例にしない。詳細は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §4「導入できない理由のポップアップの受け入れ条件」。
+
 > **#1103 の追記（2026-11-06）— 状態: 実装済み（Issue #1103）**: 区画「追加ノード」のカードから、ノードの説明（カタログの `description`。156〜407 字）を外し、**カードをタップして開く詳細モーダル（`nodecard.NodeDetail`。すでにある）だけ**に出す。新しい部品・新しい「?」は作らない。下の節「追加ノードの説明（#1103）」が正。
 
 > **#1102 の追記（2026-11-06）— 状態: 実装済み（Issue #1102）**: モデルを並べる一覧の列数を、**1 列（〜639 px）→ 2 列（640 px〜）→ 3 列（1280 px〜）の 1 通りに統一**する。今は一覧ごとにバラバラ（ランタイム・追加ノードは 1 列→1024 px〜 2 列、モデルの一覧・追加したファイル・外部の ComfyUI のモデルは 1 列→2 列→1024 px〜 3 列）。下の節「カードの列数（#1102）」が正。
@@ -132,7 +134,7 @@
   |---|---|---|
   | 生成テストの「顔チェック用モデルを入れる」・「状態と直し方を見る」（`gt-face-off-install`・`gt-face-off-status`。`organisms/gentest/facelock/off.templ`） | `paths.ModelManagerFaceModels()` = `/model-manager#mm-face-models` | `/model-manager/face-check#mm-face-models`（関数の名前と `#mm-face-models` は変えない） |
   | 「HF トークンが必要」のカードの案内（`mm-token-guide`）のトークンの区画へのリンク | `#mm-hf`（同じページ） | `/model-manager/hf-external#mm-hf`（`image-video` ページから別ページへ） |
-  | 「追加ノードが必要」のバッジと説明（モデルのカード） | リンクなし | 説明の末尾に `/model-manager/custom-nodes#mm-nodes` へのリンク（`data-testid="mm-node-needed-link"`） |
+  | 「追加ノードが必要」のバッジと説明（モデルのカード） | リンクなし | 説明の末尾に `/model-manager/custom-nodes#mm-nodes` へのリンク（`data-testid="mm-node-needed-link"`）。**#1118 で、説明とリンクはカードから「理由と対処」のポップアップの中へ移った**（`mm-reason-link`）。カードにはバッジ「追加ノードが必要」と、押すとポップアップが開く導入ボタンが残る |
   | ジョブ一覧（`/jobs`）の導入のジョブの行 `jobs-open`（`handler/jobs/jobs.go` の `href`） | `paths.ModelManager()` | ジョブの `target` で決める: `engine` → `comfyui`・`model:<id>` → `image-video`・`runtime:<id>` → `local-runtimes`（用途が `llm` の `runtime:llama-cpp`・`runtime:ollama` は `local-llm`）・`ollama:<id>`（#1105）→ `local-llm`・`node:<id>` → `custom-nodes`・`hf:…` → `hf-external`（`joblist.Dest` に分類を足す） |
   | `modelfilter.RouteOf`（モデルが選べない理由の行き先。`ReasonAgeGate`・`ReasonNotInstalled`・`ReasonMissingNode`） | `paths.ModelManager()` | `ReasonAgeGate`・`ReasonNotInstalled` → `image-video`、`ReasonMissingNode` → `custom-nodes` |
   | 生成テストの「モデルを導入」（`tierform`・`upscale`・`venhancescreen` の `ModelsURL`） | `paths.ModelManager()` | `image-video` |
@@ -178,7 +180,7 @@
 
 - **今の形**（コードを確認した）: `nodecard.NodeCard` は、カードの中に `<p data-testid="mm-node-description">{ n.Description }</p>`（`text-sm text-ink`）を常に出す。同じ `n.Description` は、カードが開く詳細モーダル `nodecard.NodeDetail` にも、`modal.Frame(n.Name, n.Description)` の説明（`<p id="mam-modal-desc">`）として、すでに出ている。つまり**説明は 2 か所に出ていて、長いほうをカードから外すだけ**で足りる。
 - **決めたこと（既存の部品 1 つだけを使う）**: 説明は**詳細モーダル**（`molecules/modal`。[shared-ui-parts.md](shared-ui-parts.md) §4。カードの名前のボタンが `modal.OpenAttrs` で開く。#954 の「開く操作」）に置く。「?」ヘルプ（`molecules/help`。§9）は使わない。理由: ①モーダルはすでにあり、説明をそこに出している（新しい部品も新しい文も要らない。§9.3「新しい文を足さない」）。②「?」は見出し・カードのタイトルの横に付く 28 px の丸ボタンで、ノードのカードに付けると 5 枚にそれぞれの「?」が増え、名前のボタン（カード全体のタップの面）と並んで操作が二重になる。③詳細モーダルにはほかの詳細（コミット・SHA-256・ライセンス・ソースの確認）があり、説明はその先頭にあるのが読む順に合う。④「?」のポップオーバーは操作を止めないが、導入の同意（`#mm-nodes-dialog`）の前に読む内容はモーダル側に集まっているほうが読み落とさない。
-- **カードに残すもの**（変えない）: アイコン（`IconPackage`）・名前（`<h3>`）・1 行「追加ノード・<大きさ>」・状態のバッジ・商用利用のアイコン・**導入できない理由**（`mm-node-blocked`。操作の可否に関わる理由なので、[shared-ui-parts.md](shared-ui-parts.md) §9.3 の「入れない（見えたままにする）」に当たる）・状態の注意（`mm-node-detail-note`。更新が必要・内容が変わっています）・このノードを使うモデル（`mm-node-models`）・導入の進捗・ボタン。**カードから外すのは `mm-node-description` だけ**。
+- **カードに残すもの**（変えない）: アイコン（`IconPackage`）・名前（`<h3>`）・1 行「追加ノード・<大きさ>」・状態のバッジ・商用利用のアイコン・**導入できない理由**（`mm-node-blocked`。操作の可否に関わる理由なので、[shared-ui-parts.md](shared-ui-parts.md) §9.3 の「入れない（見えたままにする）」に当たる。**#1118 で長文はカードから外れ、導入ボタンを押すと開くポップアップに移った**。バッジ「導入できません」は残る）・状態の注意（`mm-node-detail-note`。更新が必要・内容が変わっています）・このノードを使うモデル（`mm-node-models`）・導入の進捗・ボタン。**カードから外すのは `mm-node-description` だけ**。
 - **モーダルに出すもの**（変えない。`NodeDetail`）: 説明は先頭の `<p id="mam-modal-desc" class="text-sm text-mute">`（`aria-describedby` の先。`modal.Frame` の第 2 引数）。続けて、状態・商用利用・注意事項・固定したコミットほか（今のまま）。説明が長くてもモーダルの中でスクロールする（見出しと閉じるボタンは上端に貼り付く。#1097）。
 - **区画の「?」ヘルプ**（`SettingsSection("追加ノード", …)` の説明）: 「カードをタップすると、固定したコミット・SHA-256・…が見られます」の文に「ノードの説明・」を足す（説明がカードからモーダルへ移ったことを言う。これ以外の語は足さない）。
 - **a11y**: カードの名前のボタン（`<button data-card-open aria-haspopup="dialog">`）の名前は「<ノード名>」のまま。モーダルを開くと、説明は `aria-describedby="mam-modal-desc"` で読まれる。説明がカードから消えても、カードの導入・削除ボタンの `aria-label`（「<操作>: <ノード名>」）は変わらない。
@@ -279,6 +281,18 @@
 - **AMD の GPU・macOS・Windows arm64**（既定: 対応しない。理由と案内を出す。AMD は `ollama-windows-amd64-rocm.zip` を重ねる形で足せるが、実機で確かめられない）。
 - **厳選する名前**（既定: `gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b`。llama.cpp の純正モデルと同じ系統。非検閲の派生は載せない）。
 
+## 手元の LoRA の取り込み（#1119）
+
+区画 `#mm-lora`「LoRA を追加」は `image-video` ページの「モデルの一覧」の下に置く（`mmcat` の `Sections` に `mm-lora`）。部品は `organisms/modelmgr/loraimport`（`Section`・`PanelView`・`ListView`・`ListOOB`）。意味と検査は [model-manager-lora.md](../architecture/model-manager/model-manager-lora.md)、ルートは [endpoints-model-manager.md](../api/endpoints-model-manager.md)。
+
+- **見出しの横の「?」**: 見出しは `molecules.SettingsSection("LoRA を追加", loraimport.Help)`。説明（ベースモデルとの対応・強さ・トリガー語・ライセンス）は「?」の中に置き、画面に長い文を並べない。
+- **選ぶ**（`data-testid="mm-lora-pick"`）: ファイルの選択（`accept=".safetensors"`）と、ドロップの領域（`mm-lora-zone`）。ドロップしたファイルも同じ入力に入れて送る。ブラウザ側で拡張子と大きさ（4 GiB）を先に確かめ、通らないものは送らずに理由を出す（`mm-lora-client-error`）。送っている間は進捗（`mm-lora-progress`。割合とバイト）を出し、`htmx:xhr:progress` で更新する。
+- **確認**（`mm-lora-staged`）: ファイルの情報（大きさ・SHA-256）、名前（使えない文字を置き換えたときは理由）、ベースモデルの選択（ファイルから読めたときは「ファイルの情報から読み取りました」、無いときは「未設定」）、推奨の強さ、トリガー語（学習で多く使われたタグは候補として別に出し、欄には入れない）、ライセンスの名前と商用利用の答え（不明・条件つき（自己申告）・商用NG。「商用OK」の選択肢は無い）。「追加する」（`mm-lora-commit`）と「取り消す」（`mm-lora-discard`）。同名があるときは確認の上に案内の箱（`mm-lora-conflict`）を出し、別の名前の提案を欄に入れる。
+- **結果**: 追加できたら確認の文（`mm-lora-notice`。生成テストの「LoRA と強さ」で選べること）、拒否は入力欄の上（`mm-lora-msg`）に理由を出す。入力は消えない。上の検査に通らないファイルは、置かずに理由だけを出す（`mm-lora-error`）。
+- **追加した LoRA の一覧**（`#mm-lora-list`）: 1 つが 1 枚のカード。名前・大きさ・ベースモデル・強さ・トリガー語・ライセンス（空は「不明」）。編集のフォームと削除のボタン。空のときは「まだ追加していません。」（`mm-lora-empty`）。
+- **この PC で使えないとき**（バンドルのエンジンが動かない環境）は、区画に理由（`mm-lora-unsupported`）だけを出し、選ぶフォームを出さない。
+- **生成テスト・レシピ側**: `molecules/loraselect`（`Select`・`Note`）が「LoRA と強さ」の選択と注意を描く。注意（`data-testid="gt-lora-note"`）は、選んだ LoRA の未設定の項目、ワークフローのベースモデル（`data-lora-family`）との食い違い、`commercial_only` のときの商用の注意を出す。`static/src/components/gentest-lora` が、モデルの切り替え・LoRA の選び直しで注意を更新する。止めはしない。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -321,3 +335,7 @@
 | 1.35 | 2026-11-07 | 分類 `companion`「付随ソフト」（付随ソフトの一覧・ffmpeg・FaceFusion。#1106）を実装した。状態を「実装済み」にした。設定の「ffmpeg」「FaceFusion」の分類を外して中身を移し（`organisms/modelmgr/companion/ffmpeg`・`organisms/modelmgr/companion/facefusion`・`handler/modelmgr/companion`）、FaceFusion の区画に入れる手順（`mm-facefusion-steps`・`facefusion.RecommendedTag` = `3.9.2`）・「もう一度探す」（`mm-facefusion-refind`）・版の注記（`mm-facefusion-version-note`）を足した。**FaceFusion の取得ボタン・導入のジョブは作っていない**（face-swap.md §1 のとおり） | Issue #1106 |
 | 1.36 | 2026-11-07 | ローカル LLM の統合（#1104）を実装した。状態を「実装済み」にした。分類 `local-llm`（`mmcat.All()`。`local-runtimes` と `face-check` の間）に「使うサーバー」`#mm-llm-use`・「ローカルで動かすサーバー」`#mm-llm-runtimes`（`GET /model-manager/runtimes?purpose=llm`。llama.cpp は `local-runtimes` から移った）・「別のサーバーにつなぐ」`#mm-llm-connection` を置いた。設定のカードはリンクだけ（`llm-local-link`・`llm-local-state`）。`ollama` のラジオ・カードは、アプリが管理する Ollama を持つまで出さない（#1105）。状態の行の「URL に接続できない」は、描くたびには試さず接続テストで確かめる形にした。概要のまとめの Ollama のモデルの件数は #1105 に回した | Issue #1104 |
 | 1.37 | 2026-11-07 | Ollama の導入とモデルの取得（#1105）を実装した。状態を「実装済み」にした。区画 `#mm-ollama`（`mm-ollama-state`・`mm-ollama-models`・`mm-ollama-model`・`mm-ollama-others`・取得／中断する／削除・詳細モーダルの `mm-sha256`・`mm-ollama-tag-note`）、Ollama のカードの詳細に `mm-ollama-noauth`、削除の確認に「取得した Ollama のモデルも消えます」、概要のモデル件数、付随ソフトの一覧の `ollama` の行、joblist の行き先を足した。実機での起動・取得は未確認（`device_only`） | Issue #1105 |
+| 1.38 | 2026-11-09 | 導入できないモデル・ノードのカードの長い技術説明を、導入ボタンと別の「理由と対処」ボタンが開くポップアップに移した（#1118）。新しい部品 `organisms/modelmgr/reason`（`OpenButton`・`Body`）を足し、モデルのカード（`catalog.templ` の `modelActions`）とノードのカード（`nodecard.NodeCard`）が使う。#1110 の `mm-node-needed-link`・#1103 の `mm-node-blocked` はカードからポップアップの中へ移った | Issue #1118。長い文がカードに常時並び縦に伸びる |
+| 1.39 | 2026-11-09 | 手元の LoRA の取り込み（#1119）の区画 `#mm-lora`「LoRA を追加」を足した（`image-video` ページの「モデルの一覧」の下。選ぶ・確認・結果・追加した LoRA の一覧。生成テスト・レシピの「LoRA と強さ」の注意）。部品は `organisms/modelmgr/loraimport`・`molecules/loraselect`。既存の区画の ID は変えない | Issue #1119 |
+| 1.40 | 2026-11-09 | 「LoRA を追加」の確認の記述を実装に合わせた（ファイルの情報は大きさと SHA-256 で、テンソルの数は出さない。取り下げのボタンは「取り消す」）| #1119 の独立レビュー |
+| 1.41 | 2026-11-09 | 導入できないモデル・ノードのカードの「理由と対処」を、別のボタンから**導入ボタンを押すと開く**形に直した（#1118。利用者の指示）。`organisms/modelmgr/reason` は `OpenButton`・`ButtonLabel` をやめて `OpenAttrs`（導入ボタンに付ける属性）だけにし、`catalog.templ` の `installButton`（`blocked` → 無効、`NeedsNodes` かつ導入済みでない → ポップアップ、`LowDisk` → 無効の順）と `nodecard.nodeActions` の `blocked` の導入ボタンが使う | Issue #1118。押したいボタンが無効のままで分かりにくい |

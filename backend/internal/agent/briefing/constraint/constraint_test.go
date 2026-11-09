@@ -138,3 +138,13 @@ func TestStated_OnlyTheKeywordsOwnPredicateNegatesIt(t *testing.T) {
 		})
 	}
 }
+
+// What follows the verb of a refusal takes it back when it denies or softens the refusal; blanks in front of it do not matter. Any other ending leaves the refusal stated (#1125).
+func TestTakenBack(t *testing.T) {
+	for _, rest := range []string{"わけではない", " わけではない", "　わけではない", "のは違う", "でもいい", "でもよい", "とは言っていない", "かもしれない"} {
+		assert.True(t, constraint.TakenBack(rest), rest)
+	}
+	for _, rest := range []string{"", "よ", " 予定", "と思う", "！", "が酒は出す", "でください", "なくてもいい"} {
+		assert.False(t, constraint.TakenBack(rest), rest)
+	}
+}

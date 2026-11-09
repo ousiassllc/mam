@@ -23,17 +23,15 @@ func TestMain(m *testing.M) {
 	mmtest.Main(m)
 }
 
-// #1016: a model that needs the blocked ComfyUI-GGUF is on the screen with the reason in words for the user (the Python package gguf is missing and mam
-// runs no pip), its install button is disabled, and a request to install it is refused before anything is downloaded.
+// #1016: a model that needs the blocked ComfyUI-GGUF is on the screen with the reason in words for the user in the popup of its card (the Python package gguf is missing and mam
+// runs no pip), its install button opens that popup and installs nothing, and a request to install it is refused before anything is downloaded.
 func TestAModelThatNeedsTheBlockedGGUFNodeShowsTheReasonAndCannotBeInstalled(t *testing.T) {
 	s := screentest.New(t, mmtest.WithGGUFModel(nodes.New(store.Layout{Root: filepath.Join(t.TempDir(), "comfyui")})))
 	s.Rig.InstallEngine()
 
 	list := s.Get(paths.ModelManagerPart("models")).Body.String()
 	assert.Contains(t, list, `data-testid="mm-nodes-badge"`)
-	assert.Contains(t, list, `data-testid="mm-nodes-note"`)
-	assert.Contains(t, list, "導入できないため使えません")
-	assert.Contains(t, list, "pip を実行しません")
+	assert.Contains(t, list, `data-testid="mm-reason-open"`, "the install button opens the reason (#1118: the long text is not on the card)")
 
 	before := s.Rig.Host.Requests()
 	rec := s.Do(http.MethodPost, paths.ModelManagerPart("models", mmtest.GGUFModelID, "install"), nil)

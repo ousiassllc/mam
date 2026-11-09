@@ -92,6 +92,8 @@ type Workflow struct {
 	ReferenceDenoiseMin float64 `json:"reference_denoise_min,omitempty"`
 	// LoraModelNode is the node whose output 0 is the model: a LoRA of a request is inserted behind it. Empty: no LoRA.
 	LoraModelNode string `json:"lora_model_node,omitempty"`
+	// LoraFamily is the family of base model (lorafamily key) the workflow's checkpoint is: the screen warns when a LoRA made for another family is chosen (#1119). Empty: not said, no warning.
+	LoraFamily string `json:"lora_family,omitempty"`
 	// PromptWeight says whether the model reads the weights of a prompt, "(word:1.3)" (package promptweight); empty: not said (unknown).
 	PromptWeight promptweight.Level `json:"prompt_weight,omitempty"`
 	// SpeedModes are the ways a workflow can sample (SpeedMode); the first is the graph as it stands and the default. Empty: one way.

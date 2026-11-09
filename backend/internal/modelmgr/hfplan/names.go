@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// maxNameLen is the longest file name that is installed.
-const maxNameLen = 120
+// MaxNameLen is the longest file name that is installed.
+const MaxNameLen = 120
 
 var (
 	// namePattern is the characters of an installed file name: the set the catalog's file names use, plus nothing else.
@@ -21,7 +21,7 @@ var (
 // ValidName reports whether name can be the file name of an install: a .safetensors or .sft name of the allowed
 // characters, not a Windows device name, at most 120 characters.
 func ValidName(name string) bool {
-	if len(name) > maxNameLen || !namePattern.MatchString(name) || FormatOf(name) != FormatSafetensors {
+	if len(name) > MaxNameLen || !namePattern.MatchString(name) || FormatOf(name) != FormatSafetensors {
 		return false
 	}
 	stem, _, _ := strings.Cut(name, ".")
@@ -41,8 +41,8 @@ func SanitizeName(repoPath string) string {
 	if first, _, _ := strings.Cut(stem, "."); windowsReserved.MatchString(first) {
 		stem = "m_" + stem
 	}
-	if len(stem)+len(ext) > maxNameLen {
-		stem = stem[:maxNameLen-len(ext)]
+	if len(stem)+len(ext) > MaxNameLen {
+		stem = stem[:MaxNameLen-len(ext)]
 	}
 	return stem + ext
 }
@@ -52,8 +52,8 @@ func SanitizeName(repoPath string) string {
 func SuggestName(name, sha256 string) string {
 	ext := path.Ext(name)
 	stem := strings.TrimSuffix(name, ext)
-	if len(stem) > maxNameLen-len(ext)-9 {
-		stem = stem[:maxNameLen-len(ext)-9]
+	if len(stem) > MaxNameLen-len(ext)-9 {
+		stem = stem[:MaxNameLen-len(ext)-9]
 	}
 	return stem + "-" + sha256[:min(8, len(sha256))] + ext
 }

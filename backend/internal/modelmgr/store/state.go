@@ -84,6 +84,25 @@ type UserModel struct {
 	InstalledAt time.Time `json:"installed_at"`
 }
 
+// LocalLoRA is a LoRA file the user picked on their own PC and added (Issue #1119; spec model-manager.md §14), kept by its Path
+// (models/loras/<name>), which is also the key in State.LocalLoRAs. What the user confirmed on the screen is what is recorded
+// (the file's own metadata only fills the form in): BaseModels are lorafamily keys, Strength and TriggerWords are empty when
+// not set, and LicenseName "" with Commercial "" means the license is unknown (never commercial use OK). Commercial is "conditional" (the
+// user declares commercial use is allowed), "no", or "" (unknown).
+type LocalLoRA struct {
+	Path         string    `json:"path"`
+	Name         string    `json:"name"`
+	OriginalName string    `json:"original_name,omitempty"`
+	SHA256       string    `json:"sha256"`
+	Size         int64     `json:"size"`
+	BaseModels   []string  `json:"base_models,omitempty"`
+	Strength     *float64  `json:"strength,omitempty"`
+	TriggerWords []string  `json:"trigger_words,omitempty"`
+	LicenseName  string    `json:"license_name,omitempty"`
+	Commercial   string    `json:"commercial,omitempty"`
+	AddedAt      time.Time `json:"added_at"`
+}
+
 // HFConsent is the user's confirmation of the terms of an import (the license shown and "the choice to fetch is yours, mam
 // did not check the content") for one repository at one commit: TermsVersion is the wording that was shown.
 type HFConsent struct {
@@ -110,6 +129,14 @@ type State struct {
 	// "<repo>@<commit>".
 	UserModels map[string]UserModel `json:"user_models,omitempty"`
 	HFConsents map[string]HFConsent `json:"hf_consents,omitempty"`
+	// LocalLoRAs are the LoRA files the user added from their own PC, by Path.
+	LocalLoRAs map[string]LocalLoRA `json:"local_loras,omitempty"`
+}
+
+// HoldsLoRA reports whether a LoRA the user added is recorded at the path (models/loras/<name>): a delete of another record leaves such a file.
+func (s State) HoldsLoRA(rel string) bool {
+	_, ok := s.LocalLoRAs[rel]
+	return ok
 }
 
 // clone copies the maps, so that a caller cannot change what the store holds.
@@ -118,6 +145,7 @@ func (s State) clone() State {
 	s.Models = maps.Clone(s.Models)
 	s.UserModels = maps.Clone(s.UserModels)
 	s.HFConsents = maps.Clone(s.HFConsents)
+	s.LocalLoRAs = maps.Clone(s.LocalLoRAs)
 	if s.Engine != nil {
 		e := *s.Engine
 		s.Engine = &e

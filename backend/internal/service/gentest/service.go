@@ -96,6 +96,8 @@ type Deps struct {
 	Poses *poses.Library
 	// BundledEndpoint is the name of the registered endpoint of the bundled ComfyUI engine, whose LoRA files LoRAs lists ("": none).
 	BundledEndpoint string
+	// LoRAMeta says what the model manager knows of a LoRA the user added by its file name (#1119). Nil: nothing is known of any.
+	LoRAMeta loras.Lookup
 	// FaceCrop cuts the face out of a reference of the role "face" before an editing model reads it (nil: the picture goes as it is).
 	FaceCrop runner.FaceCropFunc
 	// FaceScore measures the face of a result against the reference of the role "face" with SFace (nil: no number).

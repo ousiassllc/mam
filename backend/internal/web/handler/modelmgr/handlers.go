@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/facemodels"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/localllm"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/loraimport"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/nodes"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/ollama"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
@@ -91,11 +92,13 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service,
 
 	engine.GET(paths.ModelManagerPart("models"), h.Models)
 	engine.GET(paths.ModelManagerPart("models", ":id", "detail"), h.ModelDetail)
+	engine.GET(paths.ModelManagerPart("models", ":id", "blocked"), h.ModelReason)
 	engine.GET(paths.ModelManagerPart("models", ":id", "consent"), h.Consent)
 	engine.POST(paths.ModelManagerPart("models", ":id", "install"), h.InstallModel)
 	engine.DELETE(paths.ModelManagerPart("models", ":id"), h.DeleteModel)
 
 	hfimport.Register(engine, svc)
+	loraimport.Register(engine, svc) // LoRA を追加 (#1119)
 	engine.GET(paths.ModelManagerPart("external"), h.External)
 	engine.GET(paths.ModelManagerPart("external", "detail"), h.ExternalDetail)
 }

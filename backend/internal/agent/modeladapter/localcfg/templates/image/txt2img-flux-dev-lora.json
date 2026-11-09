@@ -39,6 +39,7 @@
    "reference_mode": "img2img",
    "no_reference": [{"node": "3", "input": "latent_image", "value": ["5", 0]}],
    "lora_model_node": "12",
+   "lora_family": "flux",
    "output_node": "9"
   }
  }

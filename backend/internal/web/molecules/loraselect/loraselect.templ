@@ -1,0 +1,21 @@
+package loraselect
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// Select is the select of the LoRA files ("なし" first). name is the field it posts; the options carry what the note reads.
+templ Select(name, selected string, options []Option, disabled bool) {
+	<label class="flex items-center gap-2" for="gt-lora-name">
+		<span>LoRA</span>
+		@atoms.Select(atoms.FieldSm, "max-w-56", templ.Attributes{"id": "gt-lora-name", "name": name, "disabled": disabled}) {
+			<option value="" selected?={ selected == "" }>なし</option>
+			for _, o := range options {
+				<option value={ o.Name } selected?={ o.Name == selected } { o.Attrs()... }>{ o.Label() }</option>
+			}
+		}
+	</label>
+}
+
+// Note is the place of the note under the select: the browser fills it. commercialOnly says the setting "商用OKのモデルだけを使う" is on.
+templ Note(commercialOnly bool) {
+	<ul class="flex w-full flex-col gap-1 text-xs" data-gt-lora-note data-commercial-only?={ commercialOnly } data-testid="gt-lora-note" aria-live="polite" hidden></ul>
+}

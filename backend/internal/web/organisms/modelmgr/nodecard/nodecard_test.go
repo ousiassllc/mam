@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"html"
+	"strings"
 	"testing"
 
 	"github.com/a-h/templ"
@@ -22,18 +23,40 @@ func render(t *testing.T, c templ.Component) string {
 	return b.String()
 }
 
-// A model that needs a node the engine does not have says so on its card and cannot be installed from it: the button is disabled and the badge
-// says why, instead of an install that the service refuses.
-func TestAModelThatNeedsAMissingNodeHasADisabledInstallAndTheReason(t *testing.T) {
+// A model that needs a node the engine does not have says so with a badge on its card; its install button opens the popup with the reason (#1118) and
+// posts nothing. Another thing that stops an install (nothing can be installed now, or a full disk with no node needed) keeps a disabled button that opens nothing.
+func TestAModelThatNeedsAMissingNodeHasAnInstallButtonThatOpensTheReason(t *testing.T) {
 	m := view.Model{ID: "m", Name: "M", State: "not_installed", NeedsNodes: "追加ノード「IPAdapter plus」が導入されていません"}
 	html := render(t, view.CatalogList(view.Catalog{Models: []view.Model{m}}))
 	assert.Contains(t, html, `data-testid="mm-nodes-badge"`)
-	assert.Contains(t, html, "追加ノード「IPAdapter plus」が導入されていません")
+	assert.NotContains(t, html, "IPAdapter plus", "the long explanation is not on the card (#1118)")
 	assert.NotContains(t, html, `data-testid="mm-install"`)
+	assert.NotContains(t, html, `hx-post=`, "nothing posts an install")
+	assert.Equal(t, 1, strings.Count(html, `data-testid="mm-reason-open"`), "one button opens the reason")
+	assert.Regexp(t, `<button[^>]*data-testid="mm-reason-open"[^>]*>導入</button>`, html)
+	assert.NotRegexp(t, `<button[^>]*\sdisabled[\s>=][^>]*>導入</button>`, html, "the install button can be pressed")
+	_, row, _ := strings.Cut(html, "relative z-raised mt-auto")
+	assert.Equal(t, 1, strings.Count(row, "<button"), "one button in the row: the install button, no second one for the reason")
 
+	for name, c := range map[string]view.Catalog{
+		"nothing can be installed now": {Models: []view.Model{m}, Blocked: "先に ComfyUI エンジンを導入してください"},
+	} {
+		html = render(t, view.CatalogList(c))
+		assert.NotContains(t, html, `data-testid="mm-reason-open"`, name)
+		assert.Regexp(t, `<button[^>]*\sdisabled[\s>=][^>]*>導入</button>`, html, name)
+	}
+	m.LowDisk = true
+	html = render(t, view.CatalogList(view.Catalog{Models: []view.Model{m}}))
+	assert.Contains(t, html, `data-testid="mm-reason-open"`, "a full disk does not take the reason away: the install button still explains")
 	m.NeedsNodes = ""
 	html = render(t, view.CatalogList(view.Catalog{Models: []view.Model{m}}))
+	assert.NotContains(t, html, `data-testid="mm-reason-open"`)
+	assert.Regexp(t, `<button[^>]*\sdisabled[\s>=][^>]*>導入</button>`, html, "a full disk alone keeps the button disabled")
+
+	m.LowDisk = false
+	html = render(t, view.CatalogList(view.Catalog{Models: []view.Model{m}}))
 	assert.NotContains(t, html, `data-testid="mm-nodes-badge"`)
+	assert.NotContains(t, html, `data-testid="mm-reason-open"`)
 	assert.Contains(t, html, `data-testid="mm-install"`)
 }
 
@@ -76,7 +99,11 @@ func TestNodeCard_HasNoDescriptionButKeepsWhatDecidesTheInstall(t *testing.T) {
 		assert.Contains(t, card, `data-testid="mm-node-badge"`, n.ID)
 		assert.Contains(t, card, `data-testid="mm-node-models"`, "the models that use the node stay on the card: %s", n.ID)
 		if n.Blocked != "" {
-			assert.Contains(t, card, `data-testid="mm-node-blocked"`, "why the node cannot be installed is not hidden: %s", n.ID)
+			assert.NotContains(t, card, `data-testid="mm-node-blocked"`, "the long reason is not on the card (#1118): %s", n.ID)
+			assert.NotContains(t, card, html.EscapeString(n.Blocked), n.ID)
+			assert.Regexp(t, `<button[^>]*data-testid="mm-reason-open"[^>]*>導入</button>`, card, "the install button opens the reason: %s", n.ID)
+			assert.NotRegexp(t, `<button[^>]*\sdisabled[\s>=][^>]*>導入</button>`, card, "and can be pressed: %s", n.ID)
+			assert.NotContains(t, card, `hx-post=`, n.ID)
 			assert.NotContains(t, card, `data-testid="mm-node-install"`, n.ID)
 		} else {
 			assert.Contains(t, card, `data-testid="mm-node-install"`, n.ID)

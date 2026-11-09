@@ -1,0 +1,74 @@
+// Package reason is the popup that gives the reason a model or a custom node cannot be installed, and what to do about it (#1118), and the attributes of the
+// install button that opens it. The card keeps the short badge; the long explanation (the reason, the remedy, the route of the spec) is here, in the one modal of
+// the page (molecules/modal), so Esc, the close button, the focus (into the dialog, and back to the button) and a narrow screen are what every modal has, and the
+// head of the dialog stays in reach (#1097). Pressing 導入 on such a card only opens the explanation: nothing in the popup installs, and the install itself is
+// refused by the service whatever is asked here.
+package reason
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+)
+
+// Item is one cause of the refusal: the name of what is in the way and what is wrong with it.
+type Item struct {
+	Name string
+	Text string
+}
+
+// Link is where the popup sends the reader to fix it (the screen of the custom nodes).
+type Link struct {
+	Href  string
+	Label string
+}
+
+// Popup is what the modal says: a title, a short lead, the causes, the remedy and, when there is one, the link to where it is done.
+type Popup struct {
+	Title  string
+	Lead   string
+	Items  []Item
+	Remedy string
+	Link   *Link
+}
+
+// OpenAttrs are the attributes that turn the install button of a card into the one that opens the popup at url, in place of posting an install: it asks for the
+// body of the modal (modal.OpenAttrs: the one <dialog> of the page, so Esc, the focus into the dialog and back to this button, and the top that stays in view are
+// the modal's), and a click installs nothing. key names the button so that the focus goes back to it when the card is swapped while the popup is open.
+func OpenAttrs(url, key string) templ.Attributes {
+	attrs := modal.OpenAttrs(url, key)
+	attrs["aria-haspopup"] = "dialog"
+	attrs["data-testid"] = "mm-reason-open"
+	return attrs
+}
+
+// Body is the body of the modal: the first block takes the focus (a long read starts at its top), the causes follow, then the remedy, the link and the
+// close button. It has no form and no install control.
+templ Body(p Popup) {
+	@modal.Frame(p.Title, p.Lead) {
+		<div class={ "flex flex-col gap-4", modal.StartClass } tabindex="-1" autofocus data-testid="mm-reason">
+			<section class="flex flex-col gap-2" aria-labelledby="mm-reason-why">
+				<h3 id="mm-reason-why" class="text-sm font-semibold">理由</h3>
+				<ul class="flex flex-col gap-2 text-sm text-ink" role="list" data-testid="mm-reason-items">
+					for _, it := range p.Items {
+						<li class="break-words rounded-lg border border-border p-2">
+							if it.Name != "" {
+								<span class="block font-semibold">{ it.Name }</span>
+							}
+							<span class="block text-warning">{ it.Text }</span>
+						</li>
+					}
+				</ul>
+			</section>
+			<section class="flex flex-col gap-2" aria-labelledby="mm-reason-todo">
+				<h3 id="mm-reason-todo" class="text-sm font-semibold">対処</h3>
+				<p class="break-words text-sm text-ink" data-testid="mm-reason-remedy">{ p.Remedy }</p>
+				if p.Link != nil {
+					<p class="text-sm"><a class="underline" href={ templ.SafeURL(p.Link.Href) } data-modal-close data-testid="mm-reason-link">{ p.Link.Label }</a></p>
+				}
+			</section>
+		</div>
+		@modal.Actions() {
+			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
+		}
+	}
+}

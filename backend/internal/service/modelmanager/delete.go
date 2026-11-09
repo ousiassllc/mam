@@ -50,7 +50,7 @@ func (s *Service) DeleteModel(ctx context.Context, modelID string) error {
 	}
 	var failed error
 	for _, f := range inst.Files {
-		if keep[f.Path] {
+		if keep[f.Path] || st.HoldsLoRA(f.Path) { // a file a LoRA the user added is recorded at stays too (#1119)
 			continue
 		}
 		dest := s.Layout.ModelPath(f.Path)

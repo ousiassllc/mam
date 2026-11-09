@@ -52,6 +52,7 @@
    ],
    "reference_mode": "edit",
    "lora_model_node": "50",
+   "lora_family": "qwen-image",
    "output_node": "9"
   }
  }
