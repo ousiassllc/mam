@@ -2,6 +2,7 @@ package joblist_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,11 +44,16 @@ func TestRecent_ABatchNamesItsModelsAndCountsItsResults(t *testing.T) {
 	release <- struct{}{}
 	release <- struct{}{}
 	rig.Wait(ref.BatchID)
-	done, err := list.Recent(t.Context())
-	require.NoError(t, err)
-	require.Len(t, done, 1)
+	// The batch is over when its results are; the job row gets its end time a moment later, when the runner returns to the queue.
+	var done []joblist.Entry
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		var err error
+		done, err = list.Recent(t.Context())
+		require.NoError(c, err)
+		require.Len(c, done, 1)
+		assert.NotNil(c, done[0].FinishedAt)
+	}, 20*time.Second, 10*time.Millisecond, "the job did not get its end time")
 	assert.Equal(t, joblist.Succeeded, done[0].State)
-	assert.NotNil(t, done[0].FinishedAt)
 }
 
 // The age gate closed (Issue #992): a batch of the generation test does not name a model that is hidden (as the install of a catalog model does not);
