@@ -14,7 +14,7 @@ func contrastSubject(sentence string) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	if loc := clauseRe.FindStringIndex(kept); loc != nil && (otherItems(kept[loc[1]:]) != "" || descriptorRe.MatchString(trimTail(kept[loc[1]:]))) { // "犬にして、30秒くらいで", "…、スマホ向けで": the clause of a measure is another item
+	if loc := clauseRe.FindStringIndex(kept); loc != nil && (otherItems(kept[loc[1]:]) != "" || formatOnly(trimTail(kept[loc[1]:]))) { // "犬にして、30秒くらいで", "…、スマホ向けで": the clause of a measure is another item
 		kept = kept[:loc[0]]
 	}
 	s := subjectOf(kept, true)
@@ -34,7 +34,7 @@ func contrastChanges(sentence, denied, meant string) bool {
 		clause = sentence[from:to]
 	}
 	d, m := isPersonOrProduct(denied), isPersonOrProduct(meant)
-	return contrastAnchorRe.MatchString(clause) || (videoOfRe.MatchString(clause) && (d || m)) || (d && m)
+	return contrastAnchorRe.MatchString(clause) || (videoOfRe.MatchString(clause) && m) || (d && m)
 }
 
 // isPersonOrProduct reports whether the phrase names a person or a product by its last noun (up to the particle that ends it: "女性に変えて" → "女性").

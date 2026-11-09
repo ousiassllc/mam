@@ -118,3 +118,27 @@ func TestAbsorb_AHedgedMeasureClauseAfterAContrastNeverEndsUpInTheSubject(t *tes
 		})
 	}
 }
+
+// The clause of a kind of video after a contrast is another item too ("30秒のCMにして", "ショート動画で", "アニメで"); and a B that is not a person or a product itself is never a sure change
+// whatever word it is made of ("実写", "縦画面", "インスタ", "一分", "15sec", "説明動画"): no list of formats is needed, the Subject is kept and B is proposed.
+func TestAbsorb_AContrastWithAKindClauseAfterItReplacesAndAnUnknownFormatIsOnlyProposed(t *testing.T) {
+	for _, tail := range []string{"30秒のCMにして", "15秒のCMで", "ショート動画で", "アニメで", "SNSで", "広告で", "商品紹介動画で", "宣伝動画で", "採用動画で"} {
+		text := "猫ではなく犬にして、" + tail
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.True(t, b.Subject == "犬" || (b.Subject == "猫" && b.ProposedSubject == "犬"), "犬 is taken or proposed, never lost: S=%q P=%q", b.Subject, b.ProposedSubject)
+			var e domain.Brief
+			briefing.Absorb(&e, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "犬", e.Subject)
+		})
+	}
+	for _, v := range []string{"実写", "イラスト", "3D", "縦画面", "インスタ", "一分", "15sec", "説明動画", "ドキュメンタリー", "ミュージックビデオ"} {
+		text := "猫ではなく" + v + "の動画にして"
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject, "kept: B is not a person or a product")
+		})
+	}
+}

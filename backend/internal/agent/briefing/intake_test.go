@@ -151,7 +151,10 @@ func TestAbsorb_OnlyAnExplicitChangeReplacesTheSubject(t *testing.T) {
 
 	c := intake(firstRequest)
 	briefing.Absorb(&c, briefing.RuleExtractor{}.Extract("商品ではなく、犬の散歩の動画にして"), "商品ではなく、犬の散歩の動画にして")
-	assert.Equal(t, "犬の散歩", c.Subject, "\"A ではなく B\" names B")
+	assert.Equal(t, "犬の散歩", c.ProposedSubject, "\"A ではなく B\" names B; a B that is not a person or a product itself (it may be a style or a format) is asked, not taken")
+	d := intake(firstRequest)
+	briefing.Absorb(&d, briefing.RuleExtractor{}.Extract("商品ではなく、犬の動画にして"), "商品ではなく、犬の動画にして")
+	assert.Equal(t, "犬", d.Subject, "B is a person or a product itself: a sure change")
 }
 
 func TestAbsorb_AnotherSubjectWithoutAChangeWordIsAContradictionAskedAlone(t *testing.T) {
