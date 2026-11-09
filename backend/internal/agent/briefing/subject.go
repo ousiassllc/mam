@@ -83,6 +83,9 @@ func readSubject(text string) (subject string, explicit bool) {
 		}
 	}
 	for _, sentence := range sentences {
+		if s, _ := contrastSubject(sentence); s != "" { // B of "犬にして、実写の動画で" is 犬: a later clause is no second Subject
+			continue
+		}
 		resolved, _ := positiveSide(sentence)
 		if m := subjectRe.FindStringSubmatch(resolved); m != nil {
 			if s := usable(m[1]); s != "" && !isContentType(s) && !isPlatformPhrase(s) && subjectLike(s) {
@@ -281,6 +284,9 @@ func subjectAnswer(text string) string {
 	// a deferral of another matter in a later sentence ("猫の動画を作りたい。後で見返したい") does not veto the Subject the rest names
 	sentences = declined.WithoutOtherDeferrals(sentences)
 	kept, cuts := positiveSide(strings.Join(sentences, "。"))
+	if i := slices.IndexFunc(cuts, func(c denial) bool { return c.contrast }); i >= 0 {
+		kept = kept[:cuts[i].at] + listComma.Replace(contrastB(kept[cuts[i].at:])) // "猫ではなく犬にして、お願いします" is 犬
+	}
 	if len(cuts) > 0 {
 		return subjectOf(kept, true)
 	}
