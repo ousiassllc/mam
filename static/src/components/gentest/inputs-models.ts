@@ -28,11 +28,11 @@ export function chosenModels(form: HTMLElement): Chosen[] {
   );
 }
 
-/** Shows or hides a control and disables what is inside it while it is hidden. */
+/** Shows or hides a control and disables what is inside it while it is hidden (a model picker's field: its inputs and its button). */
 export function toggle(el: HTMLElement | null, show: boolean): void {
   if (!el) return;
   el.hidden = !show;
-  for (const field of el.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input,select')) field.disabled = !show;
+  for (const f of el.querySelectorAll<HTMLInputElement>('input,select,[data-mp-open]')) f.disabled = !show;
 }
 
 /** Offers only `roles` in a role select, and moves it to the first one offered when its own is not. */

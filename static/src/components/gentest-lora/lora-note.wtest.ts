@@ -1,19 +1,23 @@
 import { expect } from '@open-wc/testing';
 import { initGentestLoRA, refreshLoRANote } from './lora-note';
 
-// The note under the LoRA choice of the generation test (#1119): drawn from the data attributes of the chosen <option> and of the ticked model cards
-// (backend/internal/web/molecules/loraselect and organisms/gentest/models_card.go write them), and the recommended strength goes on the slider until
+// The note under the LoRA choice of the generation test (#1119): drawn from the hidden inputs of the model picker's field (backend/internal/web/handler/modelcards/lora.go writes them) and the data attributes of the
+// ticked model cards (organisms/gentest/models_card.go), and the recommended strength goes on the slider until
 // the user moves it.
 const FORM = `
 <form>
   <div data-model="m-sdxl" data-label="SDXL" data-supports-lora="true" data-lora-family="sdxl" data-lora-family-label="SDXL"><input type="checkbox" name="model" value="m-sdxl" checked></div>
   <div data-model="m-qwen" data-label="Qwen-Image 2.1" data-supports-lora="true" data-lora-family="qwen-image" data-lora-family-label="Qwen-Image"><input type="checkbox" name="model" value="m-qwen"></div>
   <div data-gt-lora>
-    <select id="gt-lora-name" name="lora">
-      <option value="">なし</option>
-      <option value="mine.safetensors" data-known="true" data-families="sdxl" data-family-labels="SDXL" data-strength="0.7" data-triggers="mychar, red dress" data-commercial="unknown">mine</option>
-      <option value="hand.safetensors" data-known="false" data-families="" data-family-labels="" data-strength="" data-triggers="" data-commercial="unknown">hand</option>
-    </select>
+    <div id="gt-lora-name" data-model-pick-field>
+      <input type="hidden" name="lora" value="" data-mp-from="value">
+      <input type="hidden" value="" data-mp-from="known">
+      <input type="hidden" value="" data-mp-from="families">
+      <input type="hidden" value="" data-mp-from="family_labels">
+      <input type="hidden" value="" data-mp-from="strength">
+      <input type="hidden" value="" data-mp-from="triggers">
+      <input type="hidden" value="" data-mp-from="commercial">
+    </div>
     <label><output>0.40</output><input type="range" name="lora_strength" min="0" max="1" step="0.05" value="0.4" data-gt-lora-strength></label>
   </div>
   <ul data-gt-lora-note hidden></ul>
@@ -22,10 +26,31 @@ const FORM = `
 describe('the note under the LoRA choice (#1119)', () => {
   let host: HTMLElement;
   const q = <T extends Element>(selector: string) => host.querySelector<T>(selector) as T;
+  // What choosing a card sets in the field (modelcards.LoRAValues), then the change the picker script fires from the first input.
+  const LORAS: Record<string, Record<string, string>> = {
+    '': { value: '', known: '', families: '', family_labels: '', strength: '', triggers: '', commercial: '' },
+    'mine.safetensors': {
+      value: 'mine.safetensors',
+      known: 'true',
+      families: 'sdxl',
+      family_labels: 'SDXL',
+      strength: '0.7',
+      triggers: 'mychar, red dress',
+      commercial: 'unknown',
+    },
+    'hand.safetensors': {
+      value: 'hand.safetensors',
+      known: 'false',
+      families: '',
+      family_labels: '',
+      strength: '',
+      triggers: '',
+      commercial: 'unknown',
+    },
+  };
   const choose = (value: string) => {
-    const select = q<HTMLSelectElement>('#gt-lora-name');
-    select.value = value;
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    for (const [key, v] of Object.entries(LORAS[value] ?? {})) q<HTMLInputElement>(`[data-mp-from="${key}"]`).value = v;
+    q<HTMLInputElement>('[data-mp-from="value"]').dispatchEvent(new Event('change', { bubbles: true }));
   };
   const note = () => [...q('[data-gt-lora-note]').querySelectorAll('li')].map((li) => li.textContent);
 

@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 )
 
 // The roles of an input image as the form posts them (role_<ref>): the same values as the service's roles and
@@ -84,9 +86,16 @@ func RefUIOf(models []ModelChoice) RefUI {
 	return u
 }
 
+// LoRAFieldData is the LoRA field as it is drawn now: unusable (and so not posted) while no chosen model takes a LoRA.
+func (c Compose) LoRAFieldData() modelpick.FieldData {
+	f := *c.LoRAField
+	f.Disabled = !c.CanLoRA()
+	return f
+}
+
 // CanLoRA says a LoRA can be chosen: a chosen model takes one and the engine has some.
 func (c Compose) CanLoRA() bool {
-	return len(c.LoRAs) > 0 && slices.ContainsFunc(c.chosen(), func(m ModelChoice) bool { return m.CanLoRA })
+	return c.LoRAField != nil && slices.ContainsFunc(c.chosen(), func(m ModelChoice) bool { return m.CanLoRA })
 }
 
 // NoRefNotice is the notice that a chosen model does not use the input images ("" when there is none to say).

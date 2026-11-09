@@ -169,7 +169,7 @@ describe('the input images of the generation test (spec/components/gentest-scree
     tick('i2i', true);
     expect(q('[data-gt-avoid]').hidden).to.equal(false);
     expect(q('[data-gt-lora]').hidden, 'the img2img model does not').to.equal(true);
-    expect(q<HTMLSelectElement>('[data-gt-lora] select').disabled).to.equal(true);
+    expect(q('[data-gt-lora]').querySelectorAll(':disabled')).to.have.length(3); // the picker field's input and button, and the strength
     tick('i2i', false);
     expect(q('[data-gt-avoid]').hidden).to.equal(true);
     expect(q<HTMLInputElement>('[data-gt-avoid] input').disabled).to.equal(true);

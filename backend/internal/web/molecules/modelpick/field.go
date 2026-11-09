@@ -18,7 +18,7 @@ const (
 )
 
 // Input is a hidden input of a field: the name the form posts, the key of the value in what a card sets (modelcard.Pick.Values; "value" for the main one) and the
-// value held now.
+// value held now. An input with no Name is not posted: it holds what the script of the screen reads of the choice (the LoRA note's base model).
 type Input struct{ Name, Key, Value string }
 
 // FieldData is what the control that chooses one model (Field) is drawn from: it shows the model chosen (the same summary as its card) and opens the picker when pressed. The value is in hidden
@@ -34,6 +34,8 @@ type FieldData struct {
 	Current modelcard.Card
 	// URL is the address of the picker (GET), which answers PickerBody for the field.
 	URL string
+	// Disabled makes the field unusable and keeps it out of the form (the control it belongs to is not offered now).
+	Disabled bool
 	// Invalid marks the field a refusal is about (aria-invalid, described by DescribedBy) and takes the focus (Autofocus).
 	Invalid, Autofocus bool
 	DescribedBy        string

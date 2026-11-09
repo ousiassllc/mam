@@ -84,6 +84,37 @@ function control(el: Field, key: string, label: string, empty: string, host: HTM
   };
 }
 
+/** What a model picker's field holds when it is first seen: its inputs and the card it shows, to put back. */
+interface FieldState {
+  values: Map<HTMLInputElement, string>;
+  shown: Node[];
+}
+const fieldStates = new WeakMap<Element, FieldState>();
+
+/**
+ * The LoRA is the field of the model picker (#1011): the file name is in a hidden input and the card is only what the field shows, so putting the first LoRA
+ * back puts every input of the field and its card back (the note under it follows the change).
+ */
+function loraControl(el: HTMLInputElement, form: HTMLElement): Tracked {
+  const field = el.closest<HTMLElement>('[data-model-pick-field]');
+  const current = field?.querySelector('[data-mp-current]');
+  if (field && current && !fieldStates.has(field)) {
+    fieldStates.set(field, {
+      values: new Map([...field.querySelectorAll<HTMLInputElement>('[data-mp-from]')].map((i) => [i, i.value])),
+      shown: [...current.childNodes].map((n) => n.cloneNode(true)),
+    });
+  }
+  const t = control(el, 'lora', 'LoRA', 'なし', el.closest<HTMLElement>('[data-gt-lora]') ?? form);
+  t.write = () => {
+    const state = field ? fieldStates.get(field) : undefined;
+    if (!field || !state) return;
+    for (const [input, value] of state.values) input.value = value;
+    current?.replaceChildren(...state.shown.map((n) => n.cloneNode(true)));
+    fire(el, 'change');
+  };
+  return t;
+}
+
 /** Every control of the form that the tier tracks. */
 function tracked(form: HTMLElement): Tracked[] {
   const out: Tracked[] = [];
@@ -100,8 +131,8 @@ function tracked(form: HTMLElement): Tracked[] {
   form.querySelectorAll<HTMLTextAreaElement>('textarea[name="negative"]').forEach((el, i) => {
     out.push(control(el, `negative:${i}`, 'ネガティブプロンプト', 'なし', el, true));
   });
-  const lora = form.querySelector<HTMLSelectElement>('select[name="lora"]');
-  if (lora) out.push(control(lora, 'lora', 'LoRA', 'なし', lora.closest<HTMLElement>('[data-gt-lora]') ?? form));
+  const lora = form.querySelector<HTMLInputElement>('input[name="lora"]');
+  if (lora) out.push(loraControl(lora, form));
   const strength = form.querySelector<HTMLInputElement>('input[name="lora_strength"]');
   if (strength) out.push(control(strength, 'lora:strength', 'LoRA の強さ', '既定', strength.parentElement ?? form));
   form.querySelectorAll<HTMLInputElement>('input[type="range"][name^="strength_"]').forEach((el, i) => {

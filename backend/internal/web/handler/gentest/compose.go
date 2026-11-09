@@ -90,11 +90,13 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	if fs := h.Svc.FaceSimilarity(); media != gentest.MediaVideo && fs.Off != nil {
 		c.FaceOff = fs.Off.Skipped
 	}
-	c.MaxImageBytes, c.AvoidPose, c.LoRAs = gentest.MaxImageBytes, f.opts.AvoidPose, loraopts.Of(h.Svc.LoRAChoices(ctx, media))
+	c.MaxImageBytes, c.AvoidPose = gentest.MaxImageBytes, f.opts.AvoidPose
 	c.CommercialOnly = h.Svc.DefaultFilter() != modellicense.FilterAll
+	var chosenLoRA string
 	if f.opts.LoRA != nil {
-		c.LoRA, c.LoRAStrength = f.opts.LoRA.Name, f.opts.LoRA.Strength
+		chosenLoRA, c.LoRAStrength = f.opts.LoRA.Name, f.opts.LoRA.Strength
 	}
+	c.LoRAField = loraopts.Field(view.FieldLoRA, chosenLoRA, media, h.Svc.LoRAChoices(ctx, media))
 	if s, err := h.Svc.Spend(ctx); err == nil {
 		c.Spend = spendText(s)
 	}

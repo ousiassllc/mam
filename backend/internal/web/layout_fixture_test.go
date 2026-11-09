@@ -17,7 +17,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/loraselect"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
@@ -136,7 +135,8 @@ func gentestRefsCompose() gentest.Compose {
 		Offered: true, Complexities: gptimage.Complexities(), Formats: []string{gptimage.FormatGIF, gptimage.FormatSVG},
 		MinFrames: gptimage.MinFrameCount, MaxFrames: gptimage.MaxFrameCount, MinMS: gptimage.MinFrameDurationMS, MaxMS: gptimage.MaxFrameDurationMS,
 	}
-	c.MaxImageBytes, c.LoRAs, c.Poses = 20<<20, []loraselect.Option{{Name: "face-a.safetensors"}, {Name: "style-b.safetensors"}}, true // #986: the pose picker is offered
+	c.MaxImageBytes, c.Poses = 20<<20, true                                                                                                                                                                                                                 // #986: the pose picker is offered
+	c.LoRAField = &modelpick.FieldData{ID: "gt-lora-name", Label: "LoRA", URL: "/model-picker/lora?media=image", Inputs: []modelpick.Input{{Name: "lora", Key: "value", Value: "face-a.safetensors"}}, Current: modelcard.Card{Name: "face-a.safetensors"}} // #1011
 	strength := func(v float64) *float64 { return &v }
 	c.Picked = []gentest.Ref{
 		{Value: "history::r1", Label: "FLUX・a red fox", ThumbURL: thumb("#c0392b"), Role: "reference", Strength: strength(0.7)},
