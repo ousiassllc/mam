@@ -145,6 +145,21 @@ func TestTheLoRAPickerListsTheFilesAsCardsAndNarrowsThem(t *testing.T) {
 	assert.Contains(t, conditional, "LoRA を使わない", "なし is a choice, not a model: the filters do not hide it")
 }
 
+// The setting 「商用OKのモデルだけを使う」 does not take the LoRAs out of the choices: the page warns about an unconfirmed one (the old select kept them all too), and only a
+// commercial-use choice the user states narrows the list.
+func TestTheCommercialOnlySettingDoesNotEmptyTheLoRAPicker(t *testing.T) {
+	modellicense.SetDefaultFilter(func() modellicense.Filter { return modellicense.FilterOK })
+	t.Cleanup(func() { modellicense.SetDefaultFilter(nil) })
+	s := newScreen(t, gentesttest.WithReferenceModels(enginesLoRAs(t).URL), gentesttest.WithLoRAMeta(meta))
+
+	all := s.page(paths.ModelPickerSource("lora") + "?media=image")
+	for _, name := range []string{"bare.safetensors", "by-hand.safetensors", "mine.safetensors"} {
+		assert.Contains(t, all, name, "the setting leaves the LoRAs in")
+	}
+	stated := s.page(paths.ModelPickerSource("lora") + "?media=image&mf=1&commercial=ok")
+	assert.NotContains(t, stated, "by-hand.safetensors", "a stated choice still narrows")
+}
+
 // The picker remembers its condition under its own key, as every source does (mam_mf_lora).
 func TestTheLoRAPickerRemembersItsCondition(t *testing.T) {
 	s := newScreen(t, gentesttest.WithReferenceModels(enginesLoRAs(t).URL), gentesttest.WithLoRAMeta(meta))

@@ -22,7 +22,7 @@ const QueryMedia = "media"
 
 func init() {
 	sources[SourceLoRA] = source{
-		title: "LoRA", empty: "条件に合う LoRA がありません。絞り込みを外してください。",
+		title: "LoRA", keepAll: true, empty: "条件に合う LoRA がありません。絞り込みを外してください。",
 		facets: func(context.Context, Services) modelpick.Facets { return modelpick.Facets{Commercial: true} },
 		list: func(ctx context.Context, svc Services, q url.Values, cond modelfilter.Condition) ([]modelcard.Card, pickfilter.Counts, error) {
 			if svc.Gentest == nil {
