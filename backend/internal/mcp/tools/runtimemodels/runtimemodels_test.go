@@ -1,11 +1,14 @@
 package runtimemodels_test
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/runtimemodels"
@@ -139,4 +142,19 @@ func TestRuntimeModels_ListRefusesAConditionThatIsNotAWord(t *testing.T) {
 
 	assert.Contains(t, env.CallError("list_local_runtime_models", map[string]any{"languages": []string{"japanese"}}), "languages")
 	assert.Contains(t, env.CallError("list_local_runtime_models", map[string]any{"kinds": []string{"voice"}}), "kinds")
+}
+
+// A condition that is no word is told as the common error (#1010): the sentence is the Japanese cause and remedy, and the filter's own English
+// message is the detail of the failure, not the text the agent reads first.
+func TestRuntimeModels_ListTellsABadConditionAsTheCommonError(t *testing.T) {
+	env, _, _ := newRuntimeEnv(t, choicetest.WithChoices())
+
+	sentence, failureLine, found := strings.Cut(env.CallError("list_local_runtime_models", map[string]any{"kinds": []string{"voice"}}), "\n")
+	require.True(t, found, "the second line has the failure: %s", sentence)
+	var failure apperr.View
+	require.NoError(t, json.Unmarshal([]byte(failureLine), &failure))
+	assert.Equal(t, apperr.CodeInvalidInput, failure.Code)
+	assert.Equal(t, "validation: "+failure.Cause+failure.Remedy, sentence, "the sentence is the cause and the remedy")
+	assert.NotContains(t, sentence, "is not a kind", "the English message of the filter is not the sentence")
+	assert.Contains(t, failure.Detail, `kinds: "voice" is not a kind`, "the English message is kept as the detail")
 }

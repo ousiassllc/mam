@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/failreport"
 	"github.com/ousiassllc/mam/backend/internal/mcp/bind"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 )
@@ -81,7 +82,7 @@ func (m *Manager) Start() error {
 	defer m.mu.Unlock()
 	saved, err := bind.Load(m.opts.SettingsPath)
 	if err != nil {
-		m.problem = "mcp.json を読み込めないため、127.0.0.1 で待ち受けています: " + err.Error()
+		m.problem = "mcp.json を読み込めないため、127.0.0.1 で待ち受けています: " + m.reason("mcp.json could not be read", err)
 		saved = bind.Default
 	}
 	m.saved = saved
@@ -96,7 +97,7 @@ func (m *Manager) Start() error {
 		r, err = m.open(bind.Default)
 	}
 	if err != nil {
-		m.problem = "MCP サーバーを起動できません: " + err.Error()
+		m.problem = "MCP サーバーを起動できません: " + m.reason("mcp server could not listen on any address", err)
 		return err
 	}
 	m.cur = r
@@ -105,6 +106,12 @@ func (m *Manager) Start() error {
 		m.opts.Logger.Warn("mcp server is not on the saved address", "saved", saved, "problem", m.problem)
 	}
 	return nil
+}
+
+// reason is why the listener is not where it should be, as the common error (#1010): the cause and the remedy in Japanese and the start of the
+// original message as the detail, never the message alone. A failure nobody knows carries an error ID that the log line msg shares.
+func (m *Manager) reason(msg string, err error) string {
+	return failreport.Line(m.opts.Logger, msg, err)
 }
 
 func (m *Manager) validate(host string) (netip.Addr, error) {

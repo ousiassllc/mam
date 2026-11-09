@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/recipe"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -169,7 +170,7 @@ func easy(ctx context.Context, svc *gentest.Service, in In) (gentesttier.EasyDat
 	}
 	rec, err := svc.Recommend(ctx, id, in.Refs > 0)
 	if err != nil {
-		e.Reason = err.Error()
+		e.Reason = gtshare.Problem(svc.Logger, "easy tier could not recommend a model", err)
 		return e, nil
 	}
 	if rec.Intent.NeedsReferences && in.Refs == 0 {

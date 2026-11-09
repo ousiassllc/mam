@@ -6,6 +6,7 @@ package gtshare
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/failreport"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
@@ -131,4 +133,19 @@ func ConfirmFailure(c *gin.Context, err error) {
 	}
 	status, msg := Refuse(c, err)
 	Render(c, status, view.ConfirmFailed(msg))
+}
+
+// Problem is the reason of a refusal that a part of a screen shows as a line (the box of the face swap, the picker of the exposed values, the hint of
+// the easy tier): the cause and the remedy of the common error (#1010), else the message of an *gterr.InvalidError, else the failure as the
+// common error that errmap makes of it (the cause and the remedy in Japanese, the start of the original message as the detail, and for a failure
+// nobody knows the error ID that the log line msg shares). The text of the error itself is never the line.
+func Problem(logger *slog.Logger, msg string, err error) string {
+	var invalid *gterr.InvalidError
+	if e, ok := apperr.As(err); ok {
+		return e.View(apperr.LangJa).Sentence(apperr.LangJa)
+	}
+	if errors.As(err, &invalid) {
+		return invalid.Message
+	}
+	return failreport.Line(logger, msg, err)
 }

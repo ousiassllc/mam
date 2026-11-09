@@ -69,3 +69,22 @@ func TestMedia_AnUnknownCauseIsLoggedUnderTheErrorIDOfTheSentence(t *testing.T) 
 	_, _ = failreport.Media(log, "what.export", context.Canceled)
 	assert.Empty(t, logs.String())
 }
+
+// Line is the sentence of a failure that no handler worded: the cause and the remedy, the start of the original message as the detail, and for a
+// failure nobody knows the error ID of its log line; never the raw text alone.
+func TestLine_IsTheCauseAndTheRemedyNotTheRawText(t *testing.T) {
+	log, logs := logger()
+
+	assert.Empty(t, failreport.Line(log, "x", nil))
+
+	got := failreport.Line(log, "x", errors.New("boom: raw english text"))
+	assert.Contains(t, got, "原因がわかりませんでした")
+	assert.Contains(t, got, "詳細: boom: raw english text")
+	assert.Contains(t, got, "エラー ID: err_")
+	assert.Contains(t, logs.String(), "error_id=err_")
+
+	logs.Reset()
+	known := failreport.Line(log, "x", media.ErrUnavailable)
+	assert.NotContains(t, known, "エラー ID")
+	assert.Empty(t, logs.String(), "a known failure has its code, not a log line")
+}
