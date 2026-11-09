@@ -237,8 +237,7 @@ func explicitChange(text string, f domain.BriefField, v string) bool {
 // Target, a Content Type or a Mood reads "" (also when it reads nothing or a Subject): those are nouns, as good a Subject ("学生にして", "アニメにして") as another item, so the clause stays part of the statement.
 func otherItems(clause string) string {
 	b := RuleExtractor{}.Extract(clause)
-	derived := b.Objective != "" && b.ContentType == (RuleExtractor{}.Extract(b.Objective)).ContentType // the Content Type a platform brings ("TikTok" → ショート動画) is no noun
-	if b.Subject != "" || b.Target != "" || b.Mood != "" || (b.ContentType != "" && !derived) || (b.Duration == "" && b.AspectRatio == "" && b.Objective == "") {
+	if b.Subject != "" || statesNoun(b) || (b.Duration == "" && b.AspectRatio == "" && b.Objective == "") {
 		return ""
 	}
 	return b.Duration + "|" + b.AspectRatio + "|" + b.Objective
@@ -246,8 +245,10 @@ func otherItems(clause string) string {
 
 // nounItem reports whether the clause states a Target, a Mood or a Content Type that no platform brings ("学生にして", "アニメにして"): another clause of the request, so what is in front
 // of it ("犬にして、学生にして") is read on its own and not as a part of this one.
-func nounItem(clause string) bool {
-	b := RuleExtractor{}.Extract(clause)
+func nounItem(clause string) bool { return statesNoun(RuleExtractor{}.Extract(clause)) }
+
+// statesNoun reports whether b holds a Target, a Mood or a Content Type that no platform brings: the Content Type a platform brings ("TikTok" → ショート動画) is no noun.
+func statesNoun(b domain.Brief) bool {
 	derived := b.Objective != "" && b.ContentType == (RuleExtractor{}.Extract(b.Objective)).ContentType
 	return b.Target != "" || b.Mood != "" || (b.ContentType != "" && !derived)
 }
