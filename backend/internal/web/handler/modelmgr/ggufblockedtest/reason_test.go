@@ -41,8 +41,8 @@ func TestTheCardOfAModelThatCannotBeInstalledHasNoLongExplanationButAButtonToIt(
 
 	blocked := cardOf(t, list, mmtest.GGUFModelID)
 	assert.Contains(t, blocked, `data-testid="mm-nodes-badge"`, "the short badge stays")
-	for _, long := range []string{`data-testid="mm-nodes-note"`, "pip を実行しません", "導入できないため使えません", "/model-manager/custom-nodes#mm-nodes", "gguf"} {
-		assert.NotContains(t, blocked, long, "the card carries no long explanation")
+	for _, long := range []string{`data-testid="mm-nodes-note"`, `data-testid="mm-reason"`, `data-testid="mm-reason-items"`, `data-testid="mm-reason-remedy"`, "/model-manager/custom-nodes#mm-nodes"} {
+		assert.NotContains(t, blocked, long, "the card carries no long explanation, no remedy and no route: they are in the popup")
 	}
 	assert.NotContains(t, blocked, `hx-post=`, "nothing on the card installs the model")
 	assert.Regexp(t, `<button[^>]*disabled[^>]*>導入</button>`, blocked, "the install button is disabled")
@@ -65,14 +65,13 @@ func TestTheReasonPopupOpensWithTheReasonAndALinkAndInstallsNothing(t *testing.T
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	body := rec.Body.String()
 	assert.Contains(t, body, `id="mam-modal-title"`)
-	assert.Contains(t, body, "導入できない理由と対処")
-	assert.Contains(t, body, "pip を実行しません", "the reason is in the popup")
+	assert.Regexp(t, `(?s)data-testid="mm-reason-items".*?<li`, body, "the reason is in the popup")
+	assert.Contains(t, body, `data-testid="mm-reason-remedy"`, "and the remedy")
 	assert.Contains(t, body, `href="`+paths.ModelManagerPart(paths.MMCustomNodes)+`#mm-nodes"`, "the screen of the nodes is a link")
 	assert.Contains(t, body, `data-testid="mm-reason-link"`)
 	assert.Contains(t, body, `data-modal-close`, "a close button")
 	assert.Contains(t, body, `autofocus`, "the focus starts inside the dialog")
 	assert.NotContains(t, body, `hx-post=`, "the popup cannot install")
-	assert.NotContains(t, body, "導入済み", "the dependency is not shown as resolved")
 
 	rec = s.Do(http.MethodPost, paths.ModelManagerPart("models", mmtest.GGUFModelID, "install"), nil)
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "the install is still refused")
@@ -85,6 +84,6 @@ func TestTheReasonPopupOfAModelThatCanBeInstalledIsRefused(t *testing.T) {
 	s := gguf(t)
 	rec := s.Get(paths.ModelManagerPart("models", "m-a", "blocked"))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
-	assert.NotContains(t, rec.Body.String(), "pip")
+	assert.NotContains(t, rec.Body.String(), `data-testid="mm-reason`, "no reason is given for a model that has none")
 	assert.Equal(t, http.StatusNotFound, s.Get(paths.ModelManagerPart("models", "nope", "blocked")).Code)
 }
