@@ -231,14 +231,15 @@ func explicitChange(text string, f domain.BriefField, v string) bool {
 	return false
 }
 
-// otherItems are the item values the extractor reads from the clause, "" when it reads none or a Subject: what a clause of a change sentence like "30秒で" states.
+// otherItems are the values of the items that can never name a Subject, read from the clause: a duration, an aspect ratio, a platform ("30秒で", "縦型で", "TikTokで"). A clause with a
+// Target, a Content Type or a Mood reads "" (also when it reads nothing or a Subject): those are nouns, as good a Subject ("学生にして", "アニメにして") as another item, so the clause stays part of the statement.
 func otherItems(clause string) string {
 	b := RuleExtractor{}.Extract(clause)
-	values := []string{b.Duration, b.AspectRatio, b.Objective, b.ContentType, b.Target, b.Mood}
-	if b.Subject != "" || !slices.ContainsFunc(values, func(v string) bool { return v != "" }) {
+	derived := b.Objective != "" && b.ContentType == (RuleExtractor{}.Extract(b.Objective)).ContentType // the Content Type a platform brings ("TikTok" → ショート動画) is no noun
+	if b.Subject != "" || b.Target != "" || b.Mood != "" || (b.ContentType != "" && !derived) || (b.Duration == "" && b.AspectRatio == "" && b.Objective == "") {
 		return ""
 	}
-	return strings.Join(values, "|")
+	return b.Duration + "|" + b.AspectRatio + "|" + b.Objective
 }
 
 // isFormat reports whether s is a duration, a ratio or the name of a kind of video, which "A ではなく B" changes but which is no subject.
