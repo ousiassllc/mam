@@ -19,8 +19,8 @@ func (m Meta) check() (families []string, words []string, err error) {
 	if len(families) != len(slices.Compact(slices.Sorted(slices.Values(m.BaseModels)))) {
 		return nil, nil, invalid("対応するベースモデルの値が正しくありません")
 	}
-	if m.Strength != nil && (*m.Strength <= 0 || *m.Strength > 1) {
-		return nil, nil, invalid("推奨の強さは 0 より大きく 1 以下にしてください（生成テストの LoRA の強さの範囲です）")
+	if m.Strength != nil && !(*m.Strength > 0 && *m.Strength <= 1) { // false for NaN too, which every comparison passes otherwise
+		return nil, nil, invalid("推奨の強さは 0 より大きく 1 以下の数にしてください（生成テストの LoRA の強さの範囲です）")
 	}
 	if words, err = lorafile.ParseWords(m.TriggerWords); err != nil {
 		return nil, nil, invalid("%s", err.Error())
@@ -88,7 +88,14 @@ func (s *Service) Commit(_ context.Context, in Input) (Model, error) {
 		}
 		st.LocalLoRAs[rel] = rec
 	}); err != nil {
-		_ = os.Remove(dest) // not recorded: leave nothing behind
+		// Not recorded: leave nothing in the loras folder. The file goes back to the staged place so that the user can commit again without
+		// uploading it once more; when it cannot, the staged entry is dropped (its file is gone) so that a retry says so instead of failing.
+		if rerr := os.Rename(dest, e.file); rerr != nil {
+			_ = os.Remove(dest)
+			s.mu.Lock()
+			delete(s.staged, in.Token)
+			s.mu.Unlock()
+		}
 		return Model{}, err
 	}
 	s.mu.Lock()

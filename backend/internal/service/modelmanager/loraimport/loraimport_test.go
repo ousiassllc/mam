@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -217,4 +218,46 @@ func TestLicense_IsOptionalAndNeverDefaultsToCommercialOK(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "CreativeML OpenRAIL-M", m.LicenseName)
 	assert.Equal(t, "conditional", m.Commercial)
+}
+
+// A strength that is not a number or not finite (NaN, ±Inf: strconv.ParseFloat accepts them, and JSON cannot carry them) is refused as a bad value
+// before anything is moved, so the staged file still waits and a retry works.
+func TestCommit_RefusesAStrengthThatIsNotFinite(t *testing.T) {
+	r := newRig(t, nil)
+	st := r.mustStage("a.safetensors", lorafiletest.LoRA(nil))
+	for _, v := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+		_, err := r.svc.Commit(context.Background(), loraimport.Input{Token: st.Token, Meta: loraimport.Meta{Strength: &v}})
+		assert.Contains(t, refusal(t, err), "推奨の強さ", "%v", v)
+		_, err = r.svc.Update(context.Background(), "models/loras/a.safetensors", loraimport.Meta{Strength: &v})
+		assert.Contains(t, refusal(t, err), "推奨の強さ", "%v", v)
+	}
+	assert.Empty(t, r.files(), "nothing was placed")
+	_, still := r.svc.Staged(st.Token)
+	require.True(t, still)
+	_, err := r.svc.Commit(context.Background(), loraimport.Input{Token: st.Token})
+	require.NoError(t, err)
+}
+
+// When the record cannot be written after the file was placed, nothing is left in the loras folder and the staged file is back where it was, so that
+// the same token can be committed again once the disk is fine (no new upload of gigabytes).
+func TestCommit_AFailedRecordKeepsTheStagedFileForARetry(t *testing.T) {
+	r := newRig(t, nil)
+	body := lorafiletest.LoRA(nil)
+	st := r.mustStage("a.safetensors", body)
+	require.NoError(t, os.MkdirAll(r.layout.StatePath(), 0o750)) // a directory where state.json goes: the write fails
+
+	_, err := r.svc.Commit(context.Background(), loraimport.Input{Token: st.Token})
+	require.Error(t, err)
+	assert.Empty(t, r.files(), "an unrecorded file is not left in the loras folder")
+	assert.Empty(t, r.state.Get().LocalLoRAs)
+	_, still := r.svc.Staged(st.Token)
+	require.True(t, still)
+	assert.Len(t, r.leftovers(), 1, "the staged file is back in the imports folder")
+
+	require.NoError(t, os.Remove(r.layout.StatePath()))
+	m, err := r.svc.Commit(context.Background(), loraimport.Input{Token: st.Token})
+	require.NoError(t, err)
+	got, err := os.ReadFile(r.layout.ModelPath(m.Path))
+	require.NoError(t, err)
+	assert.Equal(t, body, got)
 }
