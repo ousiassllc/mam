@@ -32,7 +32,7 @@ func (s *Source) Availability(modelID string) (modelfilter.Availability, bool) {
 	return modelfilter.Availability{}, false
 }
 
-// SetAdult installs the predicate that says a model is an adult one (rated adult or uncensored by the model manager's catalog): such a model is
+// SetAdult installs the predicate that says a model is an adult one (mmview.Adult: rated adult or uncensored by the catalog, and whatever the age gate treats as adult: an NFAA model, a model or workflow that reads an adult-only file): such a model is
 // never chosen on its own, whatever the age confirmation says. nil removes it.
 func (s *Source) SetAdult(f func(modelID string) bool) { s.adult.Store(&f) }
 

@@ -59,7 +59,7 @@ var (
 	sentenceKeepRe = regexp.MustCompile(`[^。！!？?\n]+[？?]*`)
 	clauseRe       = regexp.MustCompile(`[、,，]`)
 	changeLeadRe   = regexp.MustCompile(`(やっぱり|やはり|訂正)[、,，]`)
-	tailRe         = regexp.MustCompile(`(?:を作りたい|を作って|でお願いします|でお願い|に(?:して|した|する|します|したい)(?:ください|ほしい|欲しい)?|に(?:変更し|変更|変え|替え)(?:て|る|たい|ます|ください)?|です|だ|で|の動画)+$`)
+	tailRe         = regexp.MustCompile(`(?:を作りたい|を作って|でお願いします|でお願い|に(?:して|した|する|します|したい)(?:ください|ほしい|欲しい)?|に(?:変更し|変更|変え|替え)(?:て|る|たい|ます|ください)?|です|だ|で|の(?:動画|CM))+$`)
 	punctRe        = regexp.MustCompile(`[\s、。,.，！!？?「」]+`)
 )
 
@@ -239,11 +239,6 @@ func otherItems(clause string) string {
 		return ""
 	}
 	return b.Duration + "|" + b.AspectRatio + "|" + b.Objective
-}
-
-// isFormat reports whether s is a duration, a ratio or the name of a kind of video, which "A ではなく B" changes but which is no subject.
-func isFormat(s string) bool {
-	return durationRe.MatchString(s) || ratioRe.MatchString(s) || isContentType(s) || isPlatformPhrase(s) || aspectRatio(s) != ""
 }
 
 // isPlatformPhrase reports whether s names where the video goes ("TikTok向け", "Instagram広告用"), not what it is about.

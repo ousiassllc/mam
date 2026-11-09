@@ -19,9 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
-// The test rig runs the real Orchestrator, Gate and repositories over a test database. The LLM, the chat and the Generation Orchestrator are
-// fakes: nothing is generated, and the fake Generation Orchestrator only records what it was asked to start (and makes the job and the Shot claim a
-// real one would).
+// The test rig runs the real Orchestrator, Gate and repositories over a test database. The LLM, the chat and the Generation Orchestrator are fakes: nothing is generated, and the fake Generation Orchestrator only records what it was asked to start (and makes the job and the Shot claim a real one would).
 
 const (
 	conceptJSON = `{"title":"朝の一滴","logline":"肌が目覚める","concept":"朝の光と美容液","tone":"上品","structure":[{"name":"フック","description":"光","duration_seconds":3}]}`
@@ -137,8 +135,7 @@ func (r *rig) shotIDs(projectID string) []string {
 	return ids
 }
 
-// legacyCard posts a generation approval card of v0.1.34 (#1108) the way that version did: a card with its record (the scope it showed), and the
-// Project holds in AWAITING_APPROVAL while it is pending. No code of this version posts one.
+// legacyCard posts a generation approval card of v0.1.34 (#1108) the way that version did: a card with its record (the scope it showed), and the Project holds in AWAITING_APPROVAL while it is pending. No code of this version posts one.
 func (r *rig) legacyCard(projectID string, status domain.ApprovalStatus) string {
 	r.t.Helper()
 	return r.legacyCardWithID(projectID, status, "")

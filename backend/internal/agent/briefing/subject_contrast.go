@@ -1,6 +1,7 @@
 package briefing
 
 import (
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -13,11 +14,14 @@ func contrastSubject(sentence string) (string, bool) {
 	if !ok {
 		return "", false
 	}
+	if loc := clauseRe.FindStringIndex(kept); loc != nil && formatOnly(trimTail(kept[loc[1]:])) { // "犬にして、30秒で": the clause of a length is another item
+		kept = kept[:loc[0]]
+	}
 	s := subjectOf(kept, true)
-	if isFormat(s) || styleWordRe.MatchString(s) || itemLabelRe.MatchString(s) { // the meant side is a format: "猫ではなく30秒の動画にして" changes the length, not the Subject
+	if formatOnly(s) { // "猫ではなく30秒の動画にして" changes the length, not the Subject
 		return "", false
 	}
-	return s, s != "" && subjectLike(s) && contrastChanges(sentence, c.phrase, s) // "夜" or "学生" may be the mood or the target: proposed, never replaced
+	return s, subjectLike(s) && contrastChanges(sentence, c.phrase, s) // "夜" or "学生" may be the mood or the target: proposed, never replaced
 }
 
 // contrastChanges reports whether the bare contrast "A ではなく B" (denied A, meant B) changes the Subject for sure: its clause says "主人公", "主役", "題材"
@@ -55,7 +59,41 @@ func bareContrast(sentence string) (kept string, denied denial, ok bool) {
 	return kept[c.at:], c, subjectLike(c.phrase)
 }
 
-// subjectLike reports whether s, a phrase that was denied, could have been the Subject: it is no duration, ratio, kind of video, platform, target or mood, and names no item (「雰囲気」「テイスト」).
-func subjectLike(s string) bool {
-	return s != "" && !isFormat(s) && !styleWordRe.MatchString(s) && !itemLabelRe.MatchString(s) && target(s) == "" && mood(s) == ""
+var (
+	itemLabelTailRe = regexp.MustCompile(`(?:` + itemLabelRe.String() + `)$`)
+	particleRe      = regexp.MustCompile(`[のなにでをはがもと\s、,・]+`)
+)
+
+// subjectLike reports whether s could be the Subject: something concrete is left once the words of the form of the video (a length, a ratio, a kind, a platform, a
+// style) and of the other items (a target, a mood) are taken away. "かわいい猫", "高級車" and "学生寮" are Subjects; "30秒", "短め", "夜", "学生" and "ゆるい雰囲気" are not.
+func subjectLike(s string) bool { return leftOf(s, true) != "" }
+
+// formatOnly reports whether s holds nothing but words of the form of the video, which a Subject never is ("30秒", "縦型", "15秒のCM", "TikTok", "ゆるい雰囲気"). A word of a
+// mood or a target alone may be a Subject ("夜", "学生"), so it is not.
+func formatOnly(s string) bool { return leftOf(s, false) == "" }
+
+// leftOf is s without those words, the particles and the punctuation. A phrase that ends in the name of an item ("雰囲気", "テイスト") is that item whole.
+func leftOf(s string, items bool) string {
+	if itemLabelTailRe.MatchString(s) {
+		return ""
+	}
+	for _, re := range []*regexp.Regexp{durationRe, ratioRe, platformRe, styleWordRe} {
+		s = re.ReplaceAllString(s, "")
+	}
+	var words []string
+	for _, r := range contentTypeRules {
+		words = append(words, r.keywords...)
+	}
+	for _, r := range ratioKeywords {
+		words = append(words, r.keywords...)
+	}
+	if items {
+		s = targetRe.ReplaceAllString(s, "")
+		words = append(words, moodKeywords...)
+		words = append(words, targetKeywords...)
+	}
+	for _, w := range words {
+		s = strings.ReplaceAll(s, w, "")
+	}
+	return particleRe.ReplaceAllString(s, "")
 }

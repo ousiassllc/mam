@@ -125,8 +125,7 @@ func (g *Gate) declined(ctx context.Context, p domain.Project, a *Assessment) (b
 	return !again, err
 }
 
-// next lists the starts to make for the plan, in the order of the Shots. A Shot that needs a Reference Pack gets it first; its generation is
-// started when that job has succeeded (a job that failed leaves the Shot to the user). A Shot that needs none is generated at once.
+// next lists the starts to make for the plan, in the order of the Shots. A Shot that needs a Reference Pack gets it first; its generation is started when that job has succeeded (a job that failed leaves the Shot to the user). A Shot that needs none is generated at once.
 func (g *Gate) next(ctx context.Context, a *Assessment) error {
 	for _, line := range a.Plan.Lines {
 		pack, packClaimed := a.Launches[line.ShotID][genapprovalrepo.StageReferencePack]

@@ -13,8 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
 )
 
-// AUTO is the consent: right after the Scene / Shot plan the Orchestrator starts the Reference Packs by itself, at every Confirmation Level, and posts
-// no approval card (spec/spec.md §4.3). The Project stays in VISUAL_DESIGN, where the Shots are made.
+// AUTO is the consent: right after the Scene / Shot plan the Orchestrator starts the Reference Packs by itself, at every Confirmation Level, and posts no approval card (spec/spec.md §4.3). The Project stays in VISUAL_DESIGN, where the Shots are made.
 func TestAutoStart_NoApprovalCardAndTheGenerationStartsAtAnyConfirmationLevel(t *testing.T) {
 	t.Parallel()
 	for name, level := range map[string]domain.ConfirmationLevel{
@@ -143,8 +142,7 @@ func TestAutoStart_StartsTheShotsOfTheScenesInOrder(t *testing.T) {
 	assert.Equal(t, want, r.gen.started())
 }
 
-// The announcement is posted once, when the Orchestrator starts: it says what is started, what it is estimated to cost ("不明" for a price it does not
-// know, never a made-up number), that an unknown price does not stop it, that no budget ceiling is set, and how to stop it.
+// The announcement is posted once, when the Orchestrator starts: it says what is started, what it is estimated to cost ("不明" for a price it does not know, never a made-up number), that an unknown price does not stop it, that no budget ceiling is set, and how to stop it.
 func TestAutoStart_AnUnknownPriceStartsAndTheOneAnnouncementSaysUnknown(t *testing.T) {
 	t.Parallel()
 	r := newRig(t) // GPT Image 2.6 has no price in the default setting: the Reference Pack cannot be priced
@@ -204,8 +202,7 @@ func TestAutoStart_AnUnknownPriceKeepsTheRiskLineEvenWithABudgetCeiling(t *testi
 	}
 }
 
-// The announcement is made for the Shots the Orchestrator starts for the first time: the generations that follow the Reference Packs, and a restart in the
-// middle, do not announce again; a Shot that was added later is announced when it is started.
+// The announcement is made for the Shots the Orchestrator starts for the first time: the generations that follow the Reference Packs, and a restart in the middle, do not announce again; a Shot that was added later is announced when it is started.
 func TestAutoStart_AnnouncesOncePerStartAndAgainOnlyForNewShots(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)
@@ -253,4 +250,22 @@ func TestAutoStart_SwitchingToDirectorDuringARoundStopsTheStartsThatAreStillAhea
 
 	assert.Equal(t, 1, r.gen.count(genapprovalrepo.StageReferencePack), "only the start that was under way when the user switched")
 	assert.Equal(t, domain.ModeDirector, r.project1(id).Mode)
+}
+
+// A look made with a snapshot that says AUTO starts nothing, and settles no legacy card, when the user has switched to DIRECTOR since (even the first start is read again).
+func TestAutoStart_AStaleAutoSnapshotStartsNothingAndSettlesNothingOnceDirectorIsStored(t *testing.T) {
+	t.Parallel()
+	r := newRig(t)
+	id := r.planned(domain.ConfirmFullAuto)
+	stale := r.project1(id)
+	r.setMode(id, domain.ModeDirector)
+	_, err := r.gate.Step(context.Background(), stale)
+	require.NoError(t, err)
+	assert.Empty(t, r.gen.started())
+
+	r.legacyCard(id, domain.ApprovalPending)
+	_, err = r.gate.Step(context.Background(), stale)
+	require.NoError(t, err)
+	assert.Empty(t, r.chat.superseded)
+	assert.Equal(t, domain.ApprovalPending, r.card(id).Status)
 }

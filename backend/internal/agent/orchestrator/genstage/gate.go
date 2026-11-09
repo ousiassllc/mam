@@ -4,8 +4,7 @@
 // start is claimed in the database first, so that a Shot is never started twice, whatever the number of looks and restarts. The budget ceilings
 // are not an approval and go on applying to each start: a start one refuses is an Escalation and nothing more is started until the user answers.
 //
-// The generation approval cards of v0.1.34 (#1108) are the legacy of the policy this replaces: a card that is still pending is settled by the
-// Orchestrator (a system answer, not the user's), and a card the user declined keeps the generation from starting by itself until the user writes to the thread or the Scene / Shot plan changes.
+// The generation approval cards of v0.1.34 (#1108) are the legacy of the policy this replaces: a card that is still pending is settled by the Orchestrator (a system answer, not the user's), and a card the user declined keeps the generation from starting by itself until the user writes to the thread or the Scene / Shot plan changes.
 //
 // The package derives what to do from what is stored (the launches, the Shots, the legacy cards), like the stages of the planning pipeline.
 package genstage
@@ -53,8 +52,7 @@ type Deps struct {
 	Logger   *slog.Logger
 }
 
-// Gate is the automatic start of the generation. What it does is derived from what is stored; the one thing it keeps in memory is the causes of the
-// refusals for a model that cannot be used that the user was told (nomodel.go). Until a Generator is set (SetGenerator) it is off: the Orchestrator stops after the Scene / Shot plan and the user starts each Shot by hand.
+// Gate is the automatic start of the generation. What it does is derived from what is stored; the one thing it keeps in memory is the causes of the refusals for a model that cannot be used that the user was told (nomodel.go). Until a Generator is set (SetGenerator) it is off: the Orchestrator stops after the Scene / Shot plan and the user starts each Shot by hand.
 type Gate struct {
 	d       Deps
 	gen     Generator
@@ -81,8 +79,7 @@ func (g *Gate) SetGenerator(gen Generator, config func() modeladapter.Config) {
 // On reports whether the gate can start generations.
 func (g *Gate) On() bool { return g != nil && g.gen != nil }
 
-// JobChanged looks at the Project of a generation job that changed: when the job is the start of a stage of this gate, kick asks the Orchestrator to
-// look at the Project again (the Reference Pack of a Shot that has ended starts its generation). It does nothing for a job started by hand.
+// JobChanged looks at the Project of a generation job that changed: when the job is the start of a stage of this gate, kick asks the Orchestrator to look at the Project again (the Reference Pack of a Shot that has ended starts its generation). It does nothing for a job started by hand.
 func (g *Gate) JobChanged(ctx context.Context, jobID string, kick func(ctx context.Context, projectID string)) {
 	if !g.On() {
 		return

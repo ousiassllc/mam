@@ -106,9 +106,7 @@ func TestAutoStart_NoUsableModelIsToldOncePerCauseAndTheRoundGoesOn(t *testing.T
 		"the Shots that were left go on; the one that failed stays the user's")
 }
 
-// One missing model does not stop a Shot that needs another: of three Shots, two need a Reference Pack (the image model is missing) and one only a video
-// (it has a Keyframe). The video is started; the first pack is marked and told, the second is released, and the looks after it, whose round meets the
-// refusal again and starts nothing new, say nothing more.
+// One missing model does not stop a Shot that needs another: of three Shots, two need a Reference Pack (the image model is missing) and one only a video (it has a Keyframe). The video is started; the first pack is marked and told, the second is released, and the looks after it, whose round meets the refusal again and starts nothing new, say nothing more.
 func TestAutoStart_AMissingImageModelDoesNotStopAVideoOnlyShot(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)
@@ -131,8 +129,7 @@ func TestAutoStart_AMissingImageModelDoesNotStopAVideoOnlyShot(t *testing.T) {
 	assert.Equal(t, 1, r.told(), "a start in the round does not end the silence about a cause the round met again")
 }
 
-// Each cause is told once, even when one round meets two (another purpose is another cause). A cause that comes back after a round that started
-// something and met no refusal is told again (the user fixed it and it broke again).
+// Each cause is told once, even when one round meets two (another purpose is another cause). A cause that comes back after a round that started something and met no refusal is told again (the user fixed it and it broke again).
 func TestAutoStart_NoUsableModelIsToldAgainForAnotherCauseOrAfterAStartSucceeded(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)

@@ -259,16 +259,15 @@ func TestAbsorbAndApplyAnswer_AClauseThatIsNoItemStillKeepsTheSubject(t *testing
 	}
 }
 
-// In the "A ではなく B" form with an item clause after it, the answer to a card is read without the item clause; a free message keeps the Subject (the extractor
-// takes the tail for the value, which is a fragment): the safe side, a known limit.
-func TestApplyAnswer_AContrastWithAnItemClauseReplacesTheSubject(t *testing.T) {
+// In the "A ではなく B" form with an item clause after it, a card answer and a free message are read the same way: the item clause (a length) is another item, so B replaces A.
+func TestApplyAnswerAndAbsorb_AContrastWithAnItemClauseReplacesTheSubjectOnBothPaths(t *testing.T) {
+	text := "猫ではなく犬にして、30秒にして"
 	b := decided("猫", "")
-	assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, "猫ではなく犬にして、30秒にして"))
+	assert.Nil(t, briefing.ApplyAnswer(&b, domain.BriefSubject, text))
 	assert.Equal(t, "犬", b.Subject)
 	b = decided("猫", "")
-	text := "猫ではなく犬にして、30秒にして"
 	briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
-	assert.Equal(t, "猫", b.Subject)
+	assert.Equal(t, "犬", b.Subject)
 }
 
 // An item clause that also carries a take-back, a hedge, a question or another Subject is not a plain item: it stays, so the Subject is kept (review of 1b4d12d9).

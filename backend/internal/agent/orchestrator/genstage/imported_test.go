@@ -25,8 +25,7 @@ func (r *rig) reimport(projectID string) {
 	require.NoError(r.t, bundle.New(r.db).Import(context.Background(), data))
 }
 
-// Choosing AUTO is the consent to the paid generation on the instance where it was chosen (#1115): a bundle must not carry it. An imported AUTO Project
-// is DIRECTOR, so nothing starts for it, whatever legacy card it holds, until the user chooses AUTO here; then the legacy rules apply as before.
+// Choosing AUTO is the consent to the paid generation on the instance where it was chosen (#1115): a bundle must not carry it. An imported AUTO Project is DIRECTOR, so nothing starts for it, whatever legacy card it holds, until the user chooses AUTO here; then the legacy rules apply as before.
 func TestImportedAutoProject_StartsNothingUntilTheUserChoosesAutoHere(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

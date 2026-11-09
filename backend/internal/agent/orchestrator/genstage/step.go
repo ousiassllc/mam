@@ -13,8 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
 )
 
-// Step looks at the Project once and does what the gate has to do: it settles a legacy card that is still pending, or starts the Reference Packs and
-// Shots of the plan. It reports whether it did something that can leave more to do (the caller looks again).
+// Step looks at the Project once and does what the gate has to do: it settles a legacy card that is still pending, or starts the Reference Packs and Shots of the plan. It reports whether it did something that can leave more to do (the caller looks again).
 func (g *Gate) Step(ctx context.Context, p domain.Project) (bool, error) {
 	a, err := g.Assess(ctx, p)
 	if err != nil {
@@ -95,11 +94,11 @@ func (g *Gate) launch(ctx context.Context, p domain.Project, a Assessment) (bool
 
 // run makes the starts of the plan into r until one of them ends the round.
 func (g *Gate) run(ctx context.Context, p domain.Project, a Assessment, r *round) error {
-	for i, s := range a.Next {
+	for _, s := range a.Next {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if i > 0 && !g.stillAuto(ctx, p.ID) { // DIRECTOR is the sure stop: a Shot whose start is still ahead is not started once the user has switched
+		if !g.stillAuto(ctx, p.ID) { // DIRECTOR is the sure stop: a Shot whose start is still ahead is not started once the user has switched
 			return nil
 		}
 		claimed, err := g.d.Repo.Claim(ctx, s.Line.ShotID, s.Stage)

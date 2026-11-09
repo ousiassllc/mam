@@ -13,8 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
 )
 
-// A Project of v0.1.34 can hold a generation approval card that was never answered. The Orchestrator settles it as the system (a notice of the assistant,
-// no message of the user), the Project returns from AWAITING_APPROVAL to VISUAL_DESIGN, and the generation starts in the same run: an AUTO Project is never left stuck on an obsolete card.
+// A Project of v0.1.34 can hold a generation approval card that was never answered. The Orchestrator settles it as the system (a notice of the assistant, no message of the user), the Project returns from AWAITING_APPROVAL to VISUAL_DESIGN, and the generation starts in the same run: an AUTO Project is never left stuck on an obsolete card.
 func TestLegacyCard_APendingCardIsSettledBySystemAndTheGenerationStarts(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)
@@ -133,8 +132,7 @@ func TestLegacyCard_ADeclinedCardIsLiftedWhenThePlanChanges(t *testing.T) {
 	assert.Equal(t, 1, r.cards(id))
 }
 
-// A bundle carries the chat cards of a Project but not generation_approval (the record is of this instance's models and prices). A declined card that
-// arrives without its record cannot be compared with the plan, so a change of the plan does not lift it; only a message of the user does.
+// A bundle carries the chat cards of a Project but not generation_approval (the record is of this instance's models and prices). A declined card that arrives without its record cannot be compared with the plan, so a change of the plan does not lift it; only a message of the user does.
 func TestLegacyCard_ADeclinedCardWithoutARecordIsLiftedByAMessageOnly(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)

@@ -1,4 +1,4 @@
-package briefing_test
+package overwrite_test
 
 import (
 	"testing"
@@ -8,6 +8,16 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
+
+// firstRequest is an invented first message that already holds the protagonist, the platform, the format and the tone.
+const firstRequest = "架空の30代女性インフルエンサーを主人公にした、TikTok向けの縦型動画を作りたい。テーマは朝のルーティン。成人で、服は着ている設定。落ち着いた雰囲気で"
+
+func intake(text string) domain.Brief {
+	var b domain.Brief
+	briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+	briefing.Recommend(&b)
+	return b
+}
 
 // A clause that only announces a change or a deferral ("主人公は変えたい", "主人公はまだ決まっていないけど…") names no Subject: it never replaces the decided one
 // and never becomes the Subject of a first request, even when the text runs on into another item (#1114).

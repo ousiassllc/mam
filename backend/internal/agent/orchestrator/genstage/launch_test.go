@@ -107,8 +107,7 @@ func TestAutoStart_ABusyShotAndAShotWithATakeAreLeftAlone(t *testing.T) {
 	assert.Equal(t, []call{{genapprovalrepo.StageReferencePack, shots[2]}}, r.gen.started(), "only the Shot nobody is on and that has no Take")
 }
 
-// A Reference Pack that failed, and a start that fails (a model that cannot be used is refused at the start like this), leave that Shot to the user: the
-// reason is told once, it is not tried again, and the Shots beside it go on.
+// A Reference Pack that failed, and a start that fails (a model that cannot be used is refused at the start like this), leave that Shot to the user: the reason is told once, it is not tried again, and the Shots beside it go on.
 func TestAutoStart_AFailedStartIsToldWithItsReasonAndLeavesThatShotToTheUser(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)
@@ -138,8 +137,7 @@ func TestAutoStart_AFailedStartIsToldWithItsReasonAndLeavesThatShotToTheUser(t *
 	assert.True(t, stuck[shots[0]] && stuck[shots[1]], "both are the user's to start")
 }
 
-// The budget ceiling is not an approval, and AUTO does not lift it: the first start it refuses is an Escalation (once), the Shot is not tried again by itself,
-// and nothing further starts while the Project waits for the answer. After the answer the Shots that were not started yet go on.
+// The budget ceiling is not an approval, and AUTO does not lift it: the first start it refuses is an Escalation (once), the Shot is not tried again by itself, and nothing further starts while the Project waits for the answer. After the answer the Shots that were not started yet go on.
 func TestAutoStart_TheBudgetCeilingStopsTheStartWithOneEscalationAndNothingFurtherStarts(t *testing.T) {
 	t.Parallel()
 	r := newRig(t)

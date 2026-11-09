@@ -11,8 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// When a job the Gate started changes, the Orchestrator is asked to look at the Project again (the Reference Pack that ended is followed by its
-// generation); a job somebody started by hand, or one that is not a generation, asks nothing.
+// When a job the Gate started changes, the Orchestrator is asked to look at the Project again (the Reference Pack that ended is followed by its generation); a job somebody started by hand, or one that is not a generation, asks nothing.
 func TestAutoStart_AJobTheGateStartedCallsForAnotherLookAndAManualOneDoesNot(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

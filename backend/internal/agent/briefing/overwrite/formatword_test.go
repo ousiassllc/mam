@@ -1,6 +1,7 @@
 package overwrite_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,6 +49,50 @@ func TestAbsorb_ASubjectInFrontOfNoDougaIsStillRead(t *testing.T) {
 			}
 			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
 			assert.Equal(t, want, b.Subject)
+		})
+	}
+}
+
+// A Subject that merely CONTAINS a word of a Mood, a Target, a style or an item name is a Subject: only a phrase with nothing concrete left once those words are taken away
+// is not ("かわいい猫" is, "夜" and "ゆるい雰囲気" are not). Said first, it is not asked again; said as a change, it is the Subject (review of the format-word rule).
+var subjectsWithKeywords = []string{
+	"かわいい猫", "高級車", "ファミリーレストラン", "学生寮", "夜景", "明るい未来", "温かいスープ", "ミニマルなデスク", "ナチュラルコスメ", "長い髪の女性", "高級時計", "ゆっくり歩く犬",
+}
+
+func TestAbsorb_ASubjectThatContainsAKeywordIsStillASubject(t *testing.T) {
+	for _, v := range subjectsWithKeywords {
+		if strings.Contains(v, "の") {
+			continue // a phrase with a の in it is not read in front of "の動画" (the noun is the last piece): a limit that was there before
+		}
+		t.Run(v, func(t *testing.T) {
+			var b domain.Brief
+			text := v + "の動画を作りたい"
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, v, b.Subject, "stated once, not asked again: %+v", b)
+		})
+	}
+}
+
+func TestAbsorb_AContrastToASubjectThatContainsAKeywordReplacesOrProposesIt(t *testing.T) {
+	for _, v := range subjectsWithKeywords {
+		for _, tail := range []string{"の動画にして", "のCMにして"} {
+			text := "猫ではなく" + v + tail
+			t.Run(text, func(t *testing.T) {
+				b := decided("猫", "")
+				briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+				assert.True(t, b.Subject == v || b.ProposedSubject == v, "replaced or proposed, never lost: S=%q P=%q", b.Subject, b.ProposedSubject)
+			})
+		}
+	}
+}
+
+// The clause of a length, a ratio or a platform after the change is another item on a free message too, as it is on a card answer.
+func TestAbsorb_AContrastWithAMeasureClauseAfterItReplacesTheSubject(t *testing.T) {
+	for _, text := range []string{"猫ではなく犬にして、30秒で", "猫じゃなくて犬にして、縦型で", "猫ではなく犬にして、TikTokで"} {
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "犬", b.Subject)
 		})
 	}
 }
