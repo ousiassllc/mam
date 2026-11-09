@@ -1,12 +1,15 @@
 package server
 
 import (
+	"bytes"
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
@@ -26,6 +29,7 @@ type managerEnv struct {
 	local    []netip.Addr
 	failOpen map[string]error
 	opened   []string
+	logs     bytes.Buffer
 }
 
 func newManagerEnv(t *testing.T, preferredPort int) *managerEnv {
@@ -36,6 +40,7 @@ func newManagerEnv(t *testing.T, preferredPort int) *managerEnv {
 		failOpen: map[string]error{},
 	}
 	e.m = NewManager(ManagerOptions{
+		Logger:       slog.New(slog.NewTextHandler(&e.logs, nil)),
 		Handler:      http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) }),
 		SettingsPath: e.path, PreferredPort: preferredPort,
 		LocalAddrs: func() ([]netip.Addr, error) { return e.local, nil },
@@ -165,6 +170,36 @@ func TestManager_StartKeepsTheSavedAddressWhenItIsAvailableAndReadsAnUnreadableF
 	require.NoError(t, broken.m.Start())
 	assert.Equal(t, "127.0.0.1", hostOf(broken.m.Addr()))
 	assert.Contains(t, broken.m.Status().Problem, bind.FileName)
+}
+
+// A failure nobody knows is not shown as the text of the error (#1010): the person reads that the cause is not known with an error ID, the original
+// message is the start of the detail, and the log line has the same ID.
+func TestManager_StartTellsAnUnknownFailureWithoutItsRawMessage(t *testing.T) {
+	broken := newManagerEnv(t, 0)
+	require.NoError(t, os.WriteFile(broken.path, []byte("{not json"), 0o600))
+	require.NoError(t, broken.m.Start())
+	problem := broken.m.Status().Problem
+	assert.Contains(t, problem, "mcp.json を読み込めないため")
+	assert.Contains(t, problem, "原因がわかりませんでした")
+	id := errorID(t, problem)
+	assert.Contains(t, broken.logs.String(), "error_id="+id)
+
+	dead := newManagerEnv(t, 0)
+	dead.failOpen["127.0.0.1"] = errors.New("socket: too many open files")
+	require.Error(t, dead.m.Start())
+	problem = dead.m.Status().Problem
+	assert.Contains(t, problem, "MCP サーバーを起動できません")
+	assert.Contains(t, problem, "原因がわかりませんでした")
+	assert.Contains(t, problem, "詳細: listen on 127.0.0.1: socket: too many open files", "the original message is kept as the detail")
+	assert.Contains(t, dead.logs.String(), "error_id="+errorID(t, problem))
+}
+
+// errorID is the error ID (err_…) that the sentence tells.
+func errorID(t *testing.T, sentence string) string {
+	t.Helper()
+	id := regexp.MustCompile(`err_[0-9a-f-]+`).FindString(sentence)
+	require.NotEmpty(t, id, sentence)
+	return id
 }
 
 func TestManager_CloseStopsServingAndForbidsRebind(t *testing.T) {

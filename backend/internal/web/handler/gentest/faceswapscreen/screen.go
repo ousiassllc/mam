@@ -5,13 +5,11 @@
 package faceswapscreen
 
 import (
-	"errors"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/face"
@@ -56,7 +54,7 @@ func FormFor(svc *gentest.Service, d record.ResultDetail, sel facefusion.Selecti
 	}
 	f.Show = true
 	if err := face.Available(svc); err != nil {
-		f.Problem = problemOf(err)
+		f.Problem = gtshare.Problem(svc.Logger, "face swap box could not tell why FaceFusion is not usable", err)
 		return f
 	}
 	sel = sel.WithDefaults()
@@ -65,19 +63,6 @@ func FormFor(svc *gentest.Service, d record.ResultDetail, sel facefusion.Selecti
 	f.Enhancers = choices(facefusion.Enhancers, sel.Enhancer, true)
 	f.Warnings, _ = sel.Warnings()
 	return f
-}
-
-// problemOf is the reason of a refusal in words (the cause and the remedy of the common error, #1010, else the message of an
-// *gterr.InvalidError, else the error's own text).
-func problemOf(err error) string {
-	var invalid *gterr.InvalidError
-	if e, ok := apperr.As(err); ok {
-		return e.View(apperr.LangJa).Sentence(apperr.LangJa)
-	}
-	if errors.As(err, &invalid) {
-		return invalid.Message
-	}
-	return err.Error()
 }
 
 // choices are the models of a list as the options of a select, each with what its license allows; none adds "復元しない".
