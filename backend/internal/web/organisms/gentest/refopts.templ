@@ -16,9 +16,9 @@ templ refOptions(c Compose) {
 				@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldAvoidPose, "value": "on", "checked": c.AvoidPose, "disabled": !c.RefUI().Show(), "data-testid": "gt-avoid-pose"})
 				<span>参照画像のポーズ・構図を真似させない</span>
 			</label>
-			if len(c.LoRAs) > 0 {
+			if c.LoRAField != nil {
 				<div class="flex flex-wrap items-center gap-3 text-xs text-mute" data-gt-lora hidden?={ !c.CanLoRA() } data-testid="gt-lora">
-					@loraselect.Select(FieldLoRA, c.LoRA, c.LoRAs, !c.CanLoRA())
+					@loraselect.Field(c.LoRAFieldData())
 					<div class="w-48">
 						@strengthSlider(FieldLoRAStrength, "LoRA の強さ", c.LoRAStrength, DefaultLoRAStrength, "data-gt-lora-strength", !c.CanLoRA())
 					</div>

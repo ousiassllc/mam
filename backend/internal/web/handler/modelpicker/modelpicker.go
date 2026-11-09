@@ -3,7 +3,7 @@
 // answers the dialog's body, and GET /model-picker/<source>?part=results the cards alone for a changed filter. The list is narrowed by the server's
 // modelfilter (a Source calls it on its own service); each source remembers its condition (pickfilter) under its own key, so a screen opens as it was left.
 //
-// The sources are the screens that choose one model: the prompt match and the partial redraw of the generation test, a Shot's video model, the image and video assignment of the settings and the LLM assignment. The generation test's form, which chooses several, and the model manager's
+// The sources are the screens that choose one model: the prompt match and the partial redraw of the generation test, a Shot's video model, the image and video assignment of the settings, the LLM assignment and the LoRA of the generation test's form (sources_lora.go). The generation test's form, which chooses several, and the model manager's
 // catalog, which lists, draw the same bar and panel in their own pages (handler/gentest, handler/modelmgr) and are not sources.
 package modelpicker
 

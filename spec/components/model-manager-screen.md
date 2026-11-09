@@ -291,7 +291,7 @@
 - **結果**: 追加できたら確認の文（`mm-lora-notice`。生成テストの「LoRA と強さ」で選べること）、拒否は入力欄の上（`mm-lora-msg`）に理由を出す。入力は消えない。上の検査に通らないファイルは、置かずに理由だけを出す（`mm-lora-error`）。
 - **追加した LoRA の一覧**（`#mm-lora-list`）: 1 つが 1 枚のカード。名前・大きさ・ベースモデル・強さ・トリガー語・ライセンス（空は「不明」）。編集のフォームと削除のボタン。空のときは「まだ追加していません。」（`mm-lora-empty`）。
 - **この PC で使えないとき**（バンドルのエンジンが動かない環境）は、区画に理由（`mm-lora-unsupported`）だけを出し、選ぶフォームを出さない。
-- **生成テスト・レシピ側**: `molecules/loraselect`（`Select`・`Note`）が「LoRA と強さ」の選択と注意を描く。注意（`data-testid="gt-lora-note"`）は、選んだ LoRA の未設定の項目、ワークフローのベースモデル（`data-lora-family`）との食い違い、`commercial_only` のときの商用の注意を出す。`static/src/components/gentest-lora` が、モデルの切り替え・LoRA の選び直しで注意を更新する。止めはしない。
+- **生成テスト・レシピ側**: `molecules/loraselect`（`Field`・`Note`。`Field` はモデル選択の欄 `modelpick.Field` の枠で、選ぶ UI はモデルと同じ（ソース `lora`。#1011））が「LoRA と強さ」の選択と注意を描く。注意（`data-testid="gt-lora-note"`）は、選んだ LoRA の未設定の項目、ワークフローのベースモデル（`data-lora-family`）との食い違い、`commercial_only` のときの商用の注意を出す。`static/src/components/gentest-lora` が、モデルの切り替え・LoRA の選び直しで注意を更新する。止めはしない。
 
 ## 改訂履歴
 
@@ -339,3 +339,4 @@
 | 1.39 | 2026-11-09 | 手元の LoRA の取り込み（#1119）の区画 `#mm-lora`「LoRA を追加」を足した（`image-video` ページの「モデルの一覧」の下。選ぶ・確認・結果・追加した LoRA の一覧。生成テスト・レシピの「LoRA と強さ」の注意）。部品は `organisms/modelmgr/loraimport`・`molecules/loraselect`。既存の区画の ID は変えない | Issue #1119 |
 | 1.40 | 2026-11-09 | 「LoRA を追加」の確認の記述を実装に合わせた（ファイルの情報は大きさと SHA-256 で、テンソルの数は出さない。取り下げのボタンは「取り消す」）| #1119 の独立レビュー |
 | 1.41 | 2026-11-09 | 導入できないモデル・ノードのカードの「理由と対処」を、別のボタンから**導入ボタンを押すと開く**形に直した（#1118。利用者の指示）。`organisms/modelmgr/reason` は `OpenButton`・`ButtonLabel` をやめて `OpenAttrs`（導入ボタンに付ける属性）だけにし、`catalog.templ` の `installButton`（`blocked` → 無効、`NeedsNodes` かつ導入済みでない → ポップアップ、`LowDisk` → 無効の順）と `nodecard.nodeActions` の `blocked` の導入ボタンが使う | Issue #1118。押したいボタンが無効のままで分かりにくい |
+| 1.42 | 2026-11-10 | 生成テスト・レシピ側の LoRA の選択を `molecules/loraselect.Select`（`<select>`）から `loraselect.Field`（モデル選択の欄。ソース `lora`）に替えたことを書いた | Issue #1011 |

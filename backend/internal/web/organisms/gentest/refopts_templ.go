@@ -61,7 +61,7 @@ func refOptions(c Compose) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(c.LoRAs) > 0 {
+			if c.LoRAField != nil {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex flex-wrap items-center gap-3 text-xs text-mute\" data-gt-lora")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -76,7 +76,7 @@ func refOptions(c Compose) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = loraselect.Select(FieldLoRA, c.LoRA, c.LoRAs, !c.CanLoRA()).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = loraselect.Field(c.LoRAFieldData()).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

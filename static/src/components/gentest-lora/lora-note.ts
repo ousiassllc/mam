@@ -1,7 +1,8 @@
 /**
  * The note under the LoRA choice of the generation test (#1119): what is known of the chosen LoRA, a warning when its base model does not fit a
- * ticked model, and the recommended strength put on the slider until the user moves it. The rules are in lora-note-model.ts. The listeners are on the
- * document: the form may arrive in a swapped body.
+ * ticked model, and the recommended strength put on the slider until the user moves it. The rules are in lora-note-model.ts. The choice is the field of the
+ * model picker (#1011, backend/internal/web/molecules/modelpick): what is known of the file is in its hidden inputs (data-mp-from), which the card that is chosen
+ * sets. The listeners are on the document: the form may arrive in a swapped body.
  */
 
 import { syncSliders } from '../slider/slider';
@@ -14,7 +15,7 @@ import {
   type NoteLine,
 } from './lora-note-model';
 
-const SELECT = '#gt-lora-name';
+const FIELD = '#gt-lora-name';
 const NOTE = '[data-gt-lora-note]';
 
 function split(value: string | undefined, sep: string): string[] {
@@ -24,17 +25,24 @@ function split(value: string | undefined, sep: string): string[] {
     .filter(Boolean);
 }
 
-function factsOf(select: HTMLSelectElement): LoRAFacts | null {
-  const option = select.selectedOptions[0];
-  if (!option || option.value === '') return null;
-  const d = option.dataset;
+/** What the hidden inputs of the field hold of the chosen file, by the key of the card (modelcards.LoRAKey*). */
+function valuesOf(field: HTMLElement): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const input of field.querySelectorAll<HTMLInputElement>('[data-mp-from]'))
+    out[input.dataset.mpFrom ?? ''] = input.value;
+  return out;
+}
+
+function factsOf(field: HTMLElement): LoRAFacts | null {
+  const v = valuesOf(field);
+  if (!v.value) return null;
   return {
-    known: d.known === 'true',
-    families: split(d.families, ' '),
-    familyLabels: d.familyLabels ?? '',
-    strength: d.strength ?? '',
-    triggers: split(d.triggers, ','),
-    commercial: commercialOf(d.commercial),
+    known: v.known === 'true',
+    families: split(v.families, ' '),
+    familyLabels: v.family_labels ?? '',
+    strength: v.strength ?? '',
+    triggers: split(v.triggers, ','),
+    commercial: commercialOf(v.commercial),
   };
 }
 
@@ -68,19 +76,19 @@ function draw(note: HTMLElement, lines: NoteLine[]): void {
   note.hidden = lines.length === 0;
 }
 
-/** Draws the note of the form that holds `select`. */
-export function refreshLoRANote(select: HTMLSelectElement): void {
-  const scope = select.closest('form') ?? document;
+/** Draws the note of the form that holds the LoRA `field`. */
+export function refreshLoRANote(field: HTMLElement): void {
+  const scope = field.closest('form') ?? document;
   const note = scope.querySelector<HTMLElement>(NOTE);
   if (!note) return;
-  draw(note, loraNote(factsOf(select), modelsOf(scope), note.hasAttribute('data-commercial-only')));
+  draw(note, loraNote(factsOf(field), modelsOf(scope), note.hasAttribute('data-commercial-only')));
 }
 
 /** Puts the recommended strength of the chosen LoRA on its slider while the user has not moved it. */
-function applyStrength(select: HTMLSelectElement): void {
-  const slider = select.closest('[data-gt-lora]')?.querySelector<HTMLInputElement>('[data-gt-lora-strength]');
+function applyStrength(field: HTMLElement): void {
+  const slider = field.closest('[data-gt-lora]')?.querySelector<HTMLInputElement>('[data-gt-lora-strength]');
   if (!slider) return;
-  const recommended = select.selectedOptions[0]?.dataset.strength ?? '';
+  const recommended = valuesOf(field).strength ?? '';
   const next = strengthFor(recommended, slider.dataset.touched !== undefined, slider.value, slider.defaultValue);
   if (next === slider.value) return;
   slider.value = next;
@@ -90,7 +98,7 @@ function applyStrength(select: HTMLSelectElement): void {
 }
 
 function refreshAll(root: ParentNode): void {
-  for (const select of root.querySelectorAll<HTMLSelectElement>(SELECT)) refreshLoRANote(select);
+  for (const field of root.querySelectorAll<HTMLElement>(FIELD)) refreshLoRANote(field);
 }
 
 /** Installs the note. Call it once (main.ts). */
@@ -98,9 +106,10 @@ export function initGentestLoRA(root: Document = document): void {
   root.addEventListener('change', (event) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
-    if (el.matches(SELECT)) {
-      applyStrength(el as HTMLSelectElement);
-      refreshLoRANote(el as HTMLSelectElement);
+    const field = el.matches('[data-mp-from]') ? el.closest<HTMLElement>(FIELD) : null;
+    if (field) {
+      applyStrength(field);
+      refreshLoRANote(field);
     } else if (el.matches('input[name="model"]')) {
       refreshAll(el.closest('form') ?? root);
     }
