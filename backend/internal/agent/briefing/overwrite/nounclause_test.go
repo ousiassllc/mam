@@ -79,3 +79,20 @@ func TestAbsorbAndApplyAnswer_AMeasureOrAPlatformClauseIsStillAnotherItem(t *tes
 		})
 	}
 }
+
+// "A ではなく B にして、学生にして": B is not lost (it is proposed, one card) and the noun clause is read as its own item; the Subject is kept on a free message and on a card answer.
+func TestAbsorbAndApplyAnswer_ANounClauseAfterAContrastNeitherLosesBNorReplacesTheSubject(t *testing.T) {
+	for _, tail := range []string{"学生にして", "アニメにして", "学生で", "ドラマにして"} {
+		text := "猫ではなく犬にして、" + tail
+		t.Run(text, func(t *testing.T) {
+			b := decided("猫", "")
+			briefing.Absorb(&b, briefing.RuleExtractor{}.Extract(text), text)
+			assert.Equal(t, "猫", b.Subject)
+			assert.Equal(t, "犬", b.ProposedSubject)
+			c := decided("猫", "")
+			assert.NotNil(t, briefing.ApplyAnswer(&c, domain.BriefSubject, text), "asked once")
+			assert.Equal(t, "猫", c.Subject)
+			assert.Equal(t, "犬", c.ProposedSubject)
+		})
+	}
+}

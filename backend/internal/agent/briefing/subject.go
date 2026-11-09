@@ -241,6 +241,14 @@ func otherItems(clause string) string {
 	return b.Duration + "|" + b.AspectRatio + "|" + b.Objective
 }
 
+// nounItem reports whether the clause states a Target, a Mood or a Content Type that no platform brings ("学生にして", "アニメにして"): another clause of the request, so what is in front
+// of it ("犬にして、学生にして") is read on its own and not as a part of this one.
+func nounItem(clause string) bool {
+	b := RuleExtractor{}.Extract(clause)
+	derived := b.Objective != "" && b.ContentType == (RuleExtractor{}.Extract(b.Objective)).ContentType
+	return b.Target != "" || b.Mood != "" || (b.ContentType != "" && !derived)
+}
+
 // isPlatformPhrase reports whether s names where the video goes ("TikTok向け", "Instagram広告用"), not what it is about.
 func isPlatformPhrase(s string) bool {
 	return platformRe.MatchString(s) || strings.HasSuffix(s, "向け") || strings.HasSuffix(s, "用")
