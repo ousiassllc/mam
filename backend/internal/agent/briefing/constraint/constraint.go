@@ -47,8 +47,9 @@ const (
 
 var (
 	// takeBackRe is what follows the refusing verb and takes the refusal back ("出さないわけではない", "出さないとは言っていない", "出さないことはない", "出さないとは限らない",
-	// "出さないのではない", "出さないかもしれない"). Any other ending leaves the refusal stated ("出さないよ", "出さない予定", "出さないと思う", "出さない！", "出さないが"): it fails closed.
-	takeBackRe = regexp.MustCompile(`^(?:わけ|訳|とは|ことは|ことも|こともある|のでは|ってわけ|というわけ|という訳|とも限|とは限|なんて|かもしれない|かも)`)
+	// "出さないのではない", "出さないのは違う", "出さないでもいい", "出さないかもしれない"). Any other ending leaves the refusal stated ("出さないよ", "出さない予定", "出さないと思う",
+	// "出さない！", "出さないが"): it fails closed.
+	takeBackRe = regexp.MustCompile(`^(?:わけ|訳|とは|ことは|ことも|こともある|のでは|のは違|ってわけ|というわけ|という訳|とも限|とは限|なんて|でもいい|でもよい|かもしれない|かも)`)
 	// notStatedAfterRe: what follows the keyword makes it another word ("成人式", "成人向け", "服を着替える").
 	notStatedAfterRe = regexp.MustCompile(`^(?:向け|式|替)`)
 	// notStatedBeforeRe: the keyword is the end of a word that negates it ("ノンフィクション", "非実在").
@@ -109,10 +110,16 @@ func predicateNegates(rest string) bool {
 	return negationRe.MatchString(rest)
 }
 
+// TakenBack reports whether rest, what follows the verb of a refusal ("出さない"), takes the refusal back ("わけではない", "のは違う", "でもいい"). Blanks in front of it do not matter
+// ("出さない わけではない"). It is shared with the refusals of a safety word (declined.Refusals): a refusal that is taken back is no constraint.
+func TakenBack(rest string) bool {
+	return takeBackRe.MatchString(strings.TrimLeft(rest, " \t　"))
+}
+
 // refusesTheRest reports whether rest, what follows a keyword, is a negation of the keyword inside a noun phrase that the sentence then refuses, and does not take the refusal back.
 func refusesTheRest(rest string) bool {
 	loc := restrictiveRelativeRe.FindStringIndex(rest)
-	return loc != nil && !takeBackRe.MatchString(rest[loc[1]:])
+	return loc != nil && !TakenBack(rest[loc[1]:])
 }
 
 // Stated are the labels of the constraints the text states, in the order of Labels.

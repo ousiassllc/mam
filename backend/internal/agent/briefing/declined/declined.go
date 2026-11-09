@@ -8,6 +8,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing/constraint"
 )
 
 // nominalizer is a noun that turns the absence verb in front of it into the end of a statement ("作らない方向で", "出さない予定です"), not a head noun.
@@ -177,26 +179,31 @@ func drop(sentence string) (string, bool) {
 	return strings.Join(kept, "、"), dropped
 }
 
-// Refusals are the refusals of a safety word the text states next to a request ("暴力は出さない" of "猫の動画を作りたいが暴力は出さない"; "未成年は出さない" of "未成年は出さない猫の動画を作りたい"),
-// so that the constraint the Subject is read without is kept apart from it (spec/spec.md §4.2). A text that states nothing else (nothing is left of it, no request is cut with it)
-// holds no constraint of a request and gives none. A clause that denies something (denyRe) is no statement of a constraint and is not read.
+// Refusals are the refusals of a safety word the text states ("暴力は出さない" of "猫の動画を作りたいが暴力は出さない"; "未成年は出さない" of "未成年は出さない猫の動画を作りたい"; "暴力は出さない" alone),
+// so that the constraint the Subject is read without is kept apart from it (spec/spec.md §4.2). A refusal that is taken back ("暴力は出さないわけではない", constraint.TakenBack) states
+// the opposite and is none. A clause that denies something (denyRe) is no statement of a constraint and is not read.
 func Refusals(text string) []string {
 	var refusals []string
-	var left, dropped bool
 	for sentence := range strings.FieldsFuncSeq(text, func(r rune) bool { return strings.ContainsRune("。！!？?\n", r) }) {
-		kept, safety := drop(sentence)
-		left, dropped = left || kept != "", dropped || safety
 		for _, clause := range clauseRe.Split(sentence, -1) {
 			if !denyRe.MatchString(clause) {
-				refusals = append(refusals, safetyRefusalRe.FindAllString(clause, -1)...)
+				refusals = append(refusals, statedSafetyRefusals(clause)...)
 			}
 		}
 	}
-	if !left && !dropped {
-		return nil
-	}
 	slices.Sort(refusals)
 	return slices.Compact(refusals)
+}
+
+// statedSafetyRefusals are the refusals of a safety word the clause holds and does not take back with what follows them.
+func statedSafetyRefusals(clause string) []string {
+	var refusals []string
+	for _, loc := range safetyRefusalRe.FindAllStringIndex(clause, -1) {
+		if !constraint.TakenBack(clause[loc[1]:]) {
+			refusals = append(refusals, clause[loc[0]:loc[1]])
+		}
+	}
+	return refusals
 }
 
 // ownClause is the relative clause of an absence verb that has its own object or topic in front of its head noun: clause[from:to] holds the object, the particle
