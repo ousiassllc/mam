@@ -2,6 +2,7 @@ package bind
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -13,12 +14,21 @@ const FileName = "mcp.json"
 
 const keyBindAddress = "bind_address"
 
+// ErrMalformed matches (errors.Is) a settings file whose content cannot be read: the JSON is invalid or is not an object, or bind_address is not a string.
+// The person can fix it by editing the file.
+var ErrMalformed = errors.New("mcp.json is malformed")
+
 // Load returns the saved bind address, or Default when there is no file or no such key. A file that
 // cannot be read is an error. The address is not validated here: the interface may not exist yet when
 // the app starts (Tailscale starts later), which the caller handles.
 func Load(path string) (string, error) {
 	obj, err := settingsfile.Read(path)
 	if err != nil {
+		var syntax *json.SyntaxError
+		var typed *json.UnmarshalTypeError
+		if errors.As(err, &syntax) || errors.As(err, &typed) {
+			return "", fmt.Errorf("%w: %w", ErrMalformed, err)
+		}
 		return "", err
 	}
 	raw, ok := obj[keyBindAddress]
@@ -27,7 +37,7 @@ func Load(path string) (string, error) {
 	}
 	var addr string
 	if err := json.Unmarshal(raw, &addr); err != nil || strings.TrimSpace(addr) == "" {
-		return "", fmt.Errorf("%s: %q must be a string", path, keyBindAddress)
+		return "", fmt.Errorf("%s: %q must be a string: %w", path, keyBindAddress, ErrMalformed)
 	}
 	return strings.TrimSpace(addr), nil
 }

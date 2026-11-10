@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
+	"github.com/ousiassllc/mam/backend/internal/logging"
 )
 
 // Media is a failed run of ffmpeg (the Rough Cut, the export, composing a Take, the audio mix) on the work that what names (the catalog key
@@ -32,9 +33,18 @@ func Line(logger *slog.Logger, msg string, err error) string {
 		return ""
 	}
 	if settle(logger, e, msg) && logger != nil {
-		logger.Warn(msg, "code", string(e.Code), "err", e.Unwrap())
+		logger.Warn(msg, "code", string(e.Code), "err", Logged(e.Unwrap()))
 	}
 	return reason(e, false)
+}
+
+// Logged is err as the text a log line carries: the secrets in it hidden (logging.Redact), because the file handler writes what it is given and only the
+// reader hides a secret. nil gives "".
+func Logged(err error) string {
+	if err == nil {
+		return ""
+	}
+	return logging.Redact(err.Error())
 }
 
 // settle gives a failure nobody could put a cause to (unknown, media_failed) an error ID and writes its cause to the log under it. The other
@@ -52,7 +62,7 @@ func settle(logger *slog.Logger, e *apperr.Error, msg string) (known bool) {
 	}
 	e.ID = apperr.NewID()
 	if logger != nil {
-		logger.Error(msg, "error_id", e.ID, "code", string(e.Code), "err", e.Unwrap())
+		logger.Error(msg, "error_id", e.ID, "code", string(e.Code), "err", Logged(e.Unwrap()))
 	}
 	return false
 }

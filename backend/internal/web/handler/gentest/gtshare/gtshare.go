@@ -137,8 +137,8 @@ func ConfirmFailure(c *gin.Context, err error) {
 
 // Problem is the reason of a refusal that a part of a screen shows as a line (the box of the face swap, the picker of the exposed values, the hint of
 // the easy tier): the cause and the remedy of the common error (#1010), else the message of an *gterr.InvalidError, else the failure as the
-// common error that errmap makes of it (the cause and the remedy in Japanese, the start of the original message as the detail, and for a failure
-// nobody knows the error ID that the log line msg shares). The text of the error itself is never the line.
+// common error that errmap makes of it (the cause and the remedy in Japanese, and for a failure nobody knows the error ID that the log line msg shares).
+// The original message is only in the log, with its secrets hidden; the text of the error itself is never the line.
 func Problem(logger *slog.Logger, msg string, err error) string {
 	var invalid *gterr.InvalidError
 	if e, ok := apperr.As(err); ok {

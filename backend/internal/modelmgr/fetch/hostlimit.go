@@ -15,14 +15,15 @@ const MaxPerHost = 2
 // HostLimiter caps the concurrent transfers per host: at most n at a time to one host, none across hosts. The zero value
 // is not usable; make one with NewHostLimiter.
 type HostLimiter struct {
-	n     int
-	mu    sync.Mutex
-	slots map[string]chan struct{}
+	n       int
+	mu      sync.Mutex
+	slots   map[string]chan struct{}
+	waiting map[string]int
 }
 
 // NewHostLimiter returns a limiter that lets n transfers (at least 1) run against one host at the same time.
 func NewHostLimiter(n int) *HostLimiter {
-	return &HostLimiter{n: max(n, 1), slots: map[string]chan struct{}{}}
+	return &HostLimiter{n: max(n, 1), slots: map[string]chan struct{}{}, waiting: map[string]int{}}
 }
 
 // sharedLimiter is the limiter of every Download that sets no Options.Limiter: the process-wide MaxPerHost cap.
@@ -43,6 +44,19 @@ func (l *HostLimiter) slot(host string) chan struct{} {
 	return ch
 }
 
+// Waiting is how many Acquire calls are parked for a slot of host right now (a full host; a call that found a free slot never counts).
+func (l *HostLimiter) Waiting(host string) int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.waiting[hostKey(host)]
+}
+
+func (l *HostLimiter) wait(host string, delta int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.waiting[hostKey(host)] += delta
+}
+
 // Acquire waits for a free slot of host and returns the function that gives it back (call it exactly once). A cancelled
 // ctx ends the wait at once with its cause and takes no slot, so there is nothing to give back.
 func (l *HostLimiter) Acquire(ctx context.Context, host string) (release func(), err error) {
@@ -50,10 +64,20 @@ func (l *HostLimiter) Acquire(ctx context.Context, host string) (release func(),
 		return nil, context.Cause(ctx)
 	}
 	ch := l.slot(host)
+	take := func() func() {
+		var once sync.Once
+		return func() { once.Do(func() { <-ch }) }
+	}
 	select {
 	case ch <- struct{}{}:
-		var once sync.Once
-		return func() { once.Do(func() { <-ch }) }, nil
+		return take(), nil
+	default:
+	}
+	l.wait(host, 1)
+	defer l.wait(host, -1)
+	select {
+	case ch <- struct{}{}:
+		return take(), nil
 	case <-ctx.Done():
 		return nil, context.Cause(ctx)
 	}

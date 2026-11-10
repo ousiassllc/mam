@@ -98,6 +98,27 @@ func TestLine_IsTheCauseAndTheRemedyNotTheRawText(t *testing.T) {
 	assert.Empty(t, logs.String(), "a caller that went away is not logged")
 }
 
+// The log line carries the original message with its secrets hidden (the file handler writes what it is given; only the reader hides a secret), for a known
+// failure (WARN) and for an unknown one (ERROR with the error ID) and for a failed ffmpeg run.
+func TestTheLogLinesDoNotCarrySecrets(t *testing.T) {
+	const secret = "hf_abcdefghijklmnop1234"
+	raw := func(what string) error {
+		return errors.New(what + " https://h.example/x?key=SECRETVALUE12345 Authorization: Bearer " + secret)
+	}
+
+	log, logs := logger()
+	_ = failreport.Line(log, "x", raw("boom"))
+	assert.Contains(t, logs.String(), "boom", "the unknown failure: the original message is in the log")
+	_ = failreport.Line(log, "x", fmt.Errorf("%w: %w", media.ErrUnavailable, raw("known")))
+	assert.Contains(t, logs.String(), "known", "the known failure: the original message is in the log")
+	_, _ = failreport.Media(log, "what.export", raw("ffmpeg"))
+	assert.Contains(t, logs.String(), "ffmpeg", "the failed run: the original message is in the log")
+
+	assert.NotContains(t, logs.String(), "SECRETVALUE12345")
+	assert.NotContains(t, logs.String(), secret)
+	assert.NotContains(t, logs.String(), "Bearer hf_", "the credential of a header")
+}
+
 func sentenceOf(code apperr.Code) string {
 	return apperr.New(code).View(apperr.LangJa).Sentence(apperr.LangJa)
 }

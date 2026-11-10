@@ -109,22 +109,45 @@ func (m *Manager) Start() error {
 	return nil
 }
 
+// The sentences of the failures of the machine that this listener says itself (the table of errmap has remedies for a vendor, the bundled ComfyUI and a
+// folder that cannot be written, none of which is about the listener).
+const (
+	sentenceListen    = "アドレスとポートを開けませんでした。そのアドレスがこの PC にあるか、ほかのアプリがポートを使っていないか、ファイアウォールの設定を確かめてください。"
+	sentenceFile      = "ファイルを開けませんでした。ファイルの場所と、読む権限があるかを確かめてください。"
+	sentenceMalformed = "中身を読めませんでした。書き直すか、ファイルを削除すると既定（127.0.0.1）に戻ります。"
+	sentenceLocal     = "このマシンのネットワークの一覧を調べられませんでした。ネットワークの接続を確かめて、mam を起動し直してください。"
+)
+
+// localAddrsError is a failure of listing the network interfaces (bind.Validate needs them): not a failure of opening an address, although
+// net.InterfaceAddrs reports it as a *net.OpError.
+type localAddrsError struct{ err error }
+
+func (e *localAddrsError) Error() string { return e.err.Error() }
+func (e *localAddrsError) Unwrap() error { return e.err }
+
 // reason is why the listener is not where it should be, as the common error (#1010): the cause and the remedy in Japanese, and the original message only in
-// the log. A failure of the machine (the address or the port cannot be opened, mcp.json cannot be opened) has a sentence of its own here: errmap's
-// remedies for a connection or a folder that cannot be written are about a vendor or the bundled ComfyUI, not about this listener. Any other failure
-// nobody knows is told as unknown, with an error ID that the log line msg shares.
+// the log (secrets hidden). A failure of the machine has a sentence of its own here (see the sentences above): a mcp.json that cannot be read as JSON, the
+// interface list, an address or a port that cannot be opened, a file that cannot be opened. Any other failure nobody knows is told as unknown, with an
+// error ID that the log line msg shares.
 func (m *Manager) reason(msg string, err error) string {
 	var op *net.OpError
 	var path *fs.PathError
+	var local *localAddrsError
+	sentence := ""
 	switch {
+	case errors.Is(err, bind.ErrMalformed):
+		sentence = sentenceMalformed
+	case errors.As(err, &local):
+		sentence = sentenceLocal
 	case errors.As(err, &op):
-		m.opts.Logger.Warn(msg, "err", err)
-		return "アドレスとポートを開けませんでした。そのアドレスがこの PC にあるか、ほかのアプリがポートを使っていないか、ファイアウォールの設定を確かめてください。"
+		sentence = sentenceListen
 	case errors.As(err, &path):
-		m.opts.Logger.Warn(msg, "err", err)
-		return "ファイルを開けませんでした。ファイルの場所と、読む権限があるかを確かめてください。"
+		sentence = sentenceFile
+	default:
+		return failreport.Line(m.opts.Logger, msg, err)
 	}
-	return failreport.Line(m.opts.Logger, msg, err)
+	m.opts.Logger.Warn(msg, "err", failreport.Logged(err))
+	return sentence
 }
 
 // why is reason, except for the refusal of bind.Validate: that is a Japanese sentence of its own (which address, and why it is not allowed).
@@ -138,7 +161,7 @@ func (m *Manager) why(msg string, err error) string {
 func (m *Manager) validate(host string) (netip.Addr, error) {
 	local, err := m.opts.LocalAddrs()
 	if err != nil {
-		return netip.Addr{}, err
+		return netip.Addr{}, &localAddrsError{err: err}
 	}
 	return bind.Validate(host, local)
 }

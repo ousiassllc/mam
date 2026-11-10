@@ -19,8 +19,7 @@ import (
 const (
 	hfURL     = "https://huggingface.co/"
 	githubURL = "https://github.com/"
-	within    = 10 * time.Second       // an event that must happen
-	quiet     = 100 * time.Millisecond // an event that must not happen (a wrong pass is possible, a wrong failure is not)
+	within    = 10 * time.Second // an event that must happen
 )
 
 // gated answers every request with the payload, but only after the test lets it through (gate) and tells the test when
@@ -87,12 +86,26 @@ func (g *gated) awaitStart(t *testing.T, host string) {
 	}
 }
 
-func (g *gated) requireNoStart(t *testing.T) {
+// requireWaiting waits until n downloads are parked for a slot of host (bounded: they are parked in Acquire, which the limiter counts), then checks that
+// no request started: a parked download cannot have started, so nothing is waited for by the clock.
+func (g *gated) requireWaiting(t *testing.T, l *fetch.HostLimiter, host string, n int) {
 	t.Helper()
+	awaitWaiting(t, l, host, n)
 	select {
-	case host := <-g.started:
-		t.Fatalf("a request to %s started although no slot was free", host)
-	case <-time.After(quiet):
+	case got := <-g.started:
+		t.Fatalf("a request to %s started although no slot was free", got)
+	default:
+	}
+}
+
+func awaitWaiting(t *testing.T, l *fetch.HostLimiter, host string, n int) {
+	t.Helper()
+	deadline := time.Now().Add(within)
+	for l.Waiting(host) != n {
+		if time.Now().After(deadline) {
+			t.Fatalf("%d downloads wait for a slot of %s, want %d", l.Waiting(host), host, n)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 
@@ -116,7 +129,7 @@ func TestDownloadWaitsForASlotOfItsHost(t *testing.T) {
 	g.awaitStart(t, "huggingface.co")
 	g.awaitStart(t, "huggingface.co")
 	done = append(done, g.run(ctx, t, l, hfURL, "c"))
-	g.requireNoStart(t)
+	g.requireWaiting(t, l, "huggingface.co", 1)
 
 	g.gate <- struct{}{} // one of the first two ends: the third takes its slot
 	g.awaitStart(t, "huggingface.co")
@@ -156,12 +169,12 @@ func TestDownloadStopsWaitingForASlotWhenCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	waiter := g.run(ctx, t, l, hfURL, "b")
-	g.requireNoStart(t)
+	g.requireWaiting(t, l, "huggingface.co", 1)
 	cancel()
 	require.ErrorIs(t, awaitDone(t, waiter), context.Canceled)
 
 	next := g.run(context.Background(), t, l, hfURL, "c")
-	g.requireNoStart(t) // the cancelled download did not free the holder's slot
+	g.requireWaiting(t, l, "huggingface.co", 1) // the cancelled download did not free the holder's slot
 	g.gate <- struct{}{}
 	require.NoError(t, awaitDone(t, holder))
 	g.awaitStart(t, "huggingface.co")
@@ -184,10 +197,19 @@ func TestAcquireWithACancelledContextTakesNoSlot(t *testing.T) {
 	first, err := l.Acquire(context.Background(), "huggingface.co")
 	require.NoError(t, err)
 	defer first()
-	short, stop := context.WithTimeout(context.Background(), quiet)
+	waiter, stop := context.WithCancel(context.Background())
 	defer stop()
-	_, err = l.Acquire(short, "huggingface.co")
-	require.ErrorIs(t, err, context.DeadlineExceeded)
+	waited := make(chan error, 1)
+	go func() { _, err := l.Acquire(waiter, "huggingface.co"); waited <- err }()
+	awaitWaiting(t, l, "huggingface.co", 1)
+	stop()
+	select {
+	case err := <-waited:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(within):
+		t.Fatal("the wait for the slot did not end with the cancel")
+	}
+	assert.Zero(t, l.Waiting("huggingface.co"), "a cancelled wait is not counted any more")
 }
 
 // A download that fails gives its slot back.

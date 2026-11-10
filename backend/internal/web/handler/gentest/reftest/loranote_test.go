@@ -1,6 +1,7 @@
 package reftest_test
 
 import (
+	"encoding/json"
 	"html"
 	"net/http"
 	"net/http/httptest"
@@ -70,6 +71,33 @@ func tagsOf(markup, el string) []map[string]string {
 	return tags
 }
 
+// cardValues are the values each card of a picker sets (its data-mp-values, in the order the cards are listed): "value" is the file name of a LoRA, empty for
+// the card of "no LoRA".
+func cardValues(t *testing.T, body string) []map[string]string {
+	t.Helper()
+	var cards []map[string]string
+	for _, tag := range tagsOf(body, "button") {
+		raw, ok := tag["data-mp-values"]
+		if !ok {
+			continue
+		}
+		values := map[string]string{}
+		require.NoError(t, json.Unmarshal([]byte(raw), &values), raw)
+		cards = append(cards, values)
+	}
+	return cards
+}
+
+// filesOf are the LoRA files the cards of a picker choose, "" for the card of "no LoRA".
+func filesOf(t *testing.T, body string) []string {
+	t.Helper()
+	var files []string
+	for _, c := range cardValues(t, body) {
+		files = append(files, c["value"])
+	}
+	return files
+}
+
 // loraField is the markup of the LoRA field of the form (from its box to the card it shows now).
 func loraField(t *testing.T, body string) string {
 	t.Helper()
@@ -106,7 +134,7 @@ func TestTheLoRAFieldCarriesWhatIsKnownOfTheChosenFile(t *testing.T) {
 
 	body := s.fragment(formWith(gentesttest.EditModel, ""))
 	assert.Empty(t, inputOf(t, body, "value"), "none chosen: nothing is posted")
-	assert.Contains(t, body, "LoRA を使わない", "the field says so")
+	_ = loraField(t, body) // the field and the card it shows now are there
 	assert.Contains(t, body, `data-gt-lora-note`, "the place of the note under the choice")
 	assert.NotContains(t, regexp.MustCompile(`<ul[^>]*data-gt-lora-note[^>]*>`).FindString(body), "data-commercial-only")
 }
@@ -159,27 +187,23 @@ func TestTheLoRAPickerListsTheFilesAsCardsAndNarrowsThem(t *testing.T) {
 
 	all := picker(url.Values{})
 	assert.Contains(t, all, "mam-model-picker-bar", "the shared filter bar")
-	assert.Less(t, strings.Index(all, "LoRA を使わない"), strings.Index(all, "bare.safetensors"), "なし is first")
-	for _, name := range []string{"bare.safetensors", "by-hand.safetensors", "mine.safetensors"} {
-		assert.Contains(t, all, name)
-	}
+	assert.Equal(t, []string{"", "bare.safetensors", "by-hand.safetensors", "mine.safetensors"}, filesOf(t, all), "なし is first, then the files of the engine")
 	assert.Contains(t, all, `data-testid="model-badge-installed"`)
 	assert.NotContains(t, all, `data-testid="model-badge-adult"`, "no rating is claimed for a LoRA")
 	assert.NotContains(t, all, `data-testid="model-badge-vram"`)
-	assert.Contains(t, all, `&#34;strength&#34;:&#34;0.7&#34;`, "the card sets what the note reads")
+	for _, c := range cardValues(t, all) {
+		if c["value"] == "mine.safetensors" {
+			assert.Equal(t, "0.7", c["strength"], "the card sets what the note reads")
+		}
+	}
 
 	byTrigger := picker(url.Values{"mf": {"1"}, "q": {"red dress"}})
-	assert.Contains(t, byTrigger, "mine.safetensors")
-	assert.NotContains(t, byTrigger, "bare.safetensors")
+	assert.Equal(t, []string{"", "mine.safetensors"}, filesOf(t, byTrigger), "the search reads the trigger words")
 	byBase := picker(url.Values{"mf": {"1"}, "q": {"flux"}})
-	assert.Contains(t, byBase, "mine.safetensors")
-	assert.NotContains(t, byBase, "by-hand.safetensors")
+	assert.Equal(t, []string{"", "mine.safetensors"}, filesOf(t, byBase), "and the base model")
 
 	conditional := picker(url.Values{"mf": {"1"}, "commercial": {"conditional"}})
-	assert.Contains(t, conditional, "mine.safetensors")
-	assert.NotContains(t, conditional, "by-hand.safetensors")
-	assert.NotContains(t, conditional, "bare.safetensors")
-	assert.Contains(t, conditional, "LoRA を使わない", "なし is a choice, not a model: the filters do not hide it")
+	assert.Equal(t, []string{"", "mine.safetensors"}, filesOf(t, conditional), "なし is a choice, not a model: the filters do not hide it")
 }
 
 // The setting 「商用OKのモデルだけを使う」 does not take the LoRAs out of the choices: the page warns about an unconfirmed one (the old select kept them all too), and only a
@@ -190,11 +214,9 @@ func TestTheCommercialOnlySettingDoesNotEmptyTheLoRAPicker(t *testing.T) {
 	s := newScreen(t, gentesttest.WithReferenceModels(enginesLoRAs(t).URL), gentesttest.WithLoRAMeta(meta))
 
 	all := s.page(paths.ModelPickerSource("lora") + "?media=image")
-	for _, name := range []string{"bare.safetensors", "by-hand.safetensors", "mine.safetensors"} {
-		assert.Contains(t, all, name, "the setting leaves the LoRAs in")
-	}
+	assert.Equal(t, []string{"", "bare.safetensors", "by-hand.safetensors", "mine.safetensors"}, filesOf(t, all), "the setting leaves the LoRAs in")
 	stated := s.page(paths.ModelPickerSource("lora") + "?media=image&mf=1&commercial=ok")
-	assert.NotContains(t, stated, "by-hand.safetensors", "a stated choice still narrows")
+	assert.NotContains(t, filesOf(t, stated), "by-hand.safetensors", "a stated choice still narrows")
 }
 
 // The picker remembers its condition under its own key, as every source does (mam_mf_lora).
@@ -216,8 +238,7 @@ func TestTheLoRAPickerRemembersItsCondition(t *testing.T) {
 	req.AddCookie(s.cookie)
 	req.AddCookie(kept)
 	body := s.send(req).Body.String()
-	assert.Contains(t, body, "mine.safetensors")
-	assert.NotContains(t, body, "bare.safetensors", "the opened picker is as it was left")
+	assert.Equal(t, []string{"", "mine.safetensors"}, filesOf(t, body), "the opened picker is as it was left")
 }
 
 // The model cards say which family of base model their workflow is, so that the page can tell a LoRA made for another one: a model whose workflow does not say has none.

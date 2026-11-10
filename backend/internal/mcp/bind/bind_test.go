@@ -83,3 +83,17 @@ func TestLoadSave_KeepsUnknownKeysAndDefaultRemovesTheFile(t *testing.T) {
 	_, err = bind.Load(path)
 	assert.Error(t, err)
 }
+
+// A file whose content cannot be read (invalid JSON, not an object, bind_address that is not a string) is ErrMalformed, which the person fixes by editing it; a file that
+// cannot be opened is not.
+func TestLoad_AFileThatIsNotReadableAsSettingsIsMalformed(t *testing.T) {
+	for name, content := range map[string]string{"invalid JSON": "{not json", "not an object": "[1]", "not a string": `{"bind_address": 5}`, "empty address": `{"bind_address": " "}`} {
+		path := filepath.Join(t.TempDir(), bind.FileName)
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+		_, err := bind.Load(path)
+		require.ErrorIs(t, err, bind.ErrMalformed, name)
+	}
+	_, err := bind.Load(t.TempDir()) // a directory: it cannot be read, but its content is not the matter
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, bind.ErrMalformed)
+}
