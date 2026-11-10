@@ -132,3 +132,25 @@ func TestPressesThatCannotRunAnythingSayWhy(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "もう使えません")
 	assert.Equal(t, 0, s.batches(), "a card that was turned down never runs")
 }
+
+// Only an id of the wrong shape is refused (410). A well-formed id with no conversation behind it (the app restarted, the conversation was dropped) starts
+// a new conversation that answers, and the cards of the lost one are not in it (404).
+func TestAMessageToALostConversationStartsANewOneAndABadIDIsGone(t *testing.T) {
+	s := newScreen(t)
+	s.llm.queue(estimateStep)
+	old := proposalOf(t, s.say("見積り").Body.String())
+
+	rec := s.post(paths.GenerationTestChat("messages"), url.Values{"session": {"x"}, "content": {"こんにちは"}})
+	assert.Equal(t, http.StatusGone, rec.Code, "an id that is not 32 hex characters")
+	assert.Contains(t, rec.Body.String(), "もう残っていません")
+
+	lost := strings.Repeat("b", 32)
+	s.llm.queue(chooseStep)
+	rec = s.post(paths.GenerationTestChat("messages"), url.Values{"session": {lost}, "content": {"画像を作りたい"}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, 2, strings.Count(rec.Body.String(), `data-testid="gtc-option"`), "the new conversation answered")
+
+	rec = s.post(paths.GenerationTestChat("proposals", old, "confirm"), url.Values{"session": {lost}})
+	assert.Equal(t, http.StatusNotFound, rec.Code, "the new conversation does not have the cards of the lost one")
+	assert.Equal(t, 0, s.batches())
+}

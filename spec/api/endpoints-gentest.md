@@ -12,7 +12,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/chat` | 「チャットで作る」の画面（Issue #1138。[../architecture/gentest/gentest-chat.md](../architecture/gentest/gentest-chat.md)・[../components/gentest-chat.md](../components/gentest-chat.md)）。開くたびに新しい会話の ID（`session`。16 進 32 文字）を持つ。Prompt Planner の LLM のルートが無い設定では案内だけを出し、以下の POST・GET のルートは無い |
 | POST | `/generation-test/chat/messages` | ユーザーの発言（`session`・`content` 1〜2000 文字。選択肢のカードは `reply` を `content` として送る）。LLM が答えるまでの動作（モデルを調べる・見積る）を回し、**スレッドに足す部品**（発言・状態の行・選択肢のカード・確認のカード）を返す（`hx-swap=beforeend`）。何も生成しない。空・長すぎは 422、`session` の形が不正（16 進 32 文字でない）なときだけ 410。形が正しい ID の会話が無い（期限切れ・再起動で捨てた）ときは、**その ID で新しい会話を作って 200**（前の会話の発言・見積りのカードは引き継がない）。LLM の失敗は 200 で赤い状態の行（キー無しは設定へのリンクつき） |
 | POST | `/generation-test/chat/proposals/:id/confirm` | 確認のカードの「この内容で実行する」（`session` だけ。**見積り ID・合計・モデル・プロンプトは読まない**: サーバーが保持した見積りで `Service.Run` する）。実行できたら 202 で、結果のブロックと、閉じたカード（帯域外 `hx-swap-oob`）。見積りの変更・`max_cost_usd` 超過・`max_items` 超過は何も生成せず、カードを閉じて理由の行（200）。使用済み・やめた・置き換わったカードは 409、無い会話・`session` の形が不正は 410、無いカードは 404 |
-| POST | `/generation-test/chat/proposals/:id/dismiss` | 「やめる」（`session`）。閉じたカードを返す。何も生成しない |
+| POST | `/generation-test/chat/proposals/:id/dismiss` | 「やめる」（`session`）。閉じたカードを返す（200）。何も生成しない。使用済み・やめた・置き換わったカードは 409、無い会話・`session` の形が不正は 410、無いカードは 404 |
 | GET | `/generation-test/chat/batches/:id` | 結果のブロック 1 つ（2 秒ごとに自分だけを取り直す。終わると `hx-trigger` が消える） |
 | POST | `/generation-test/recipes` | 今のフォームの設定をレシピとして保存（フォームの全項目＋`recipe_name`・`recipe_easy=1`。プロンプトの本文と入力画像は保存しない）。レシピの区画 `#gt-recipes` を返す（成功 200、名前の重複 409、検査の失敗 422 は理由つきで同じ区画） |
 | POST | `/generation-test/recipes/:id/rename` | 名前を変える（`recipe_rename`）。区画 `#gt-recipes` を返す |
@@ -149,3 +149,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.28 | 2026-11-10 | 「チャットで作る」のルート（`/generation-test/chat` ほか。LLM との会話・確認のカード・結果のブロック）を足した | Issue #1138 |
 | 1.29 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.30 | 2026-11-10 | `POST /generation-test/chat/messages` の 410 を、`session` の形が不正なときだけに直した（形が正しい ID の会話が無いときは、新しい会話を作って 200。実装は `open(…, true)`）。410 は confirm・dismiss（無い会話・不正な形）と messages（不正な形）。仕様が実装と食い違っていた | PR #1141 のレビュー指摘（major） |
+| 1.31 | 2026-11-10 | `POST /generation-test/chat/proposals/:id/dismiss` の行に、状態（200・409・410・404）を書いた（1.30 の「410 は confirm・dismiss」に行が追いついていなかった。実装は `Dismiss` が `open(…, false)` を使い、`refuse` で 409・410・404 にする） | PR #1141 の再レビュー指摘（1.30 の直しが起こした記述の抜け） |
