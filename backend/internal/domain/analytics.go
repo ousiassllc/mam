@@ -32,8 +32,7 @@ const (
 	InterventionSwitchToDirector InterventionKind = "switch_to_director"
 )
 
-// Intervention is one row of human_intervention. ProjectID may be empty when ShotID or TakeID is
-// set: the repository finds the Project from them.
+// Intervention is one row of human_intervention. ProjectID may be empty when ShotID or TakeID is set: the repository finds the Project from them.
 type Intervention struct {
 	ProjectID string
 	ShotID    string

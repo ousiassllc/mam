@@ -73,6 +73,7 @@
 - 理由: MCP にはファイルを渡す経路がある（`create_upload_ticket` が URL を返し、その URL へ multipart で 1 回送る。[mcp-tools.md](../../api/mcp-tools.md)）ので、「ファイルを渡せないから画面だけ」にはならない。#830 の方針（画面の全操作を MCP で操作できるようにする）に従い、画面の操作を対応づける。大きさの上限は画面と同じ 4 GiB（チケットの上限として `max_bytes`）。**ホストのパスを引数に取る形にはしない**（エージェントが PC 上の任意のファイルを読めてしまうため）。
 - アップロードの用途 `model_lora_import`（確認の段が無いので 1 回で追加する）、ツール `list_user_loras`・`update_user_lora`・`delete_user_lora`。入力の値と拒否は画面と同じ（同名は上書きせず `validation`、別の `name` を付けてやり直す）。**ファイルの `__metadata__` が書くベースモデルとトリガー語は、`adopt_metadata=true` を渡したときだけ記録する**（渡さなければ、与えた値だけ。強さとライセンスはどちらの場合もファイルから取らない）。商用の答えに `yes` は渡せない。
 - 単発生成の `list_generation_models` の `loras`（エンジンが持つ LoRA のファイル名）には、追加した LoRA がそのまま出る（`lora.name` に使う）。
+- チャットからも取り込める（#1140）。チャットの添付に `.safetensors` を付けて送ると、確認カード（ファイル名・サイズ・ライセンス）の「はい」の後に、画面と同じ取り込みで追加する。LoRA は全プロジェクトで使えるので、カードにそう書く。経路と上限は [chat-settings-operations.md](../../components/chat-settings-operations.md) §4。
 
 ## 8. 未検証・範囲外
 

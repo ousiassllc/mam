@@ -7,7 +7,7 @@ import (
 )
 
 // ProgressCard shows the live status of a background job. It has no controls; the
-// client replaces it when the server reports a change over WebSocket (no polling).
+// client replaces it when the server reports a change over WebSocket (no polling), except for the card of work that tells how far it is (Detail: an install).
 templ ProgressCard(m domain.ThreadMessage) {
 	{{ tone, label, active := progressView(m.Job) }}
 	@MessageFrame(m) {
@@ -18,6 +18,13 @@ templ ProgressCard(m domain.ThreadMessage) {
 			<span>{ m.Content }</span>
 			@atoms.Badge(tone, label)
 		</p>
+		if m.Detail != "" {
+			<p class="mt-1 text-sm text-mute" data-testid="progress-detail">{ m.Detail }</p>
+			if m.Pending() {
+				// the work behind the card (a model install) tells how far it is, which no job change announces: read the card again until it ends (#1140)
+				<span hidden hx-get={ cardURL(m.ProjectID, m.ID) } hx-trigger="every 2s" hx-target={ "#msg-" + m.ID } hx-swap="outerHTML"></span>
+			}
+		}
 		if m.Job != nil && m.Job.Status == domain.JobFailed && m.Job.Error != "" {
 			<p class="mt-1 text-sm text-danger">{ m.Job.Error }</p>
 		}

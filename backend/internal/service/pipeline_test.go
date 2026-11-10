@@ -82,12 +82,6 @@ func (f *fakeReasoner) lastUser(agent llm.Agent) string {
 	return u[len(u)-1]
 }
 
-func (f *fakeReasoner) setFailure(agent llm.Agent, err error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.fail[agent] = err
-}
-
 type pipelineFixture struct {
 	fixture
 	llm *fakeReasoner

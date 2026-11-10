@@ -54,7 +54,7 @@ func TestRoughCut_ABranchTreatsAnInheritedAdditionalShotAsAdditional(t *testing.
 	// The round is applied on the trunk: the Branch's Rough Cut places the Shot after its anchor, as a reaction.
 	f.selectTakeOf(t, newShot)
 	f.waitCount(t, 10*time.Second, 1, `SELECT COUNT(*) FROM reshoot_request WHERE status = 'applied'`)
-	f.waitEditingWorkerIdle(t) // the worker that applied the round holds the stage until it is done
+	waitEditingWorkerIdle(t, f) // the worker that applied the round holds the stage until it is done
 	f.execSQL(t, `UPDATE project SET state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
 	view, err = f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
 	require.NoError(t, err)
@@ -202,7 +202,7 @@ func TestRoughCut_AFixedShotFollowsItsNewSelectedTake(t *testing.T) {
 	require.NoError(t, f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? AND t.id <> ? ORDER BY t.rowid LIMIT 1`, f.shotID, oldTake).Scan(&newTake))
 	_, err = f.svc.Takes.Select(ctx, newTake)
 	require.NoError(t, err)
-	f.waitEditingWorkerIdle(t) // the Select woke the worker, which may hold the stage
+	waitEditingWorkerIdle(t, f) // the Select woke the worker, which may hold the stage
 
 	again, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
 	require.NoError(t, err)

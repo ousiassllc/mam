@@ -224,7 +224,7 @@ func (w *wiring) wireRepair() {
 func (w *wiring) wireDirector() {
 	w.director = &DirectorService{
 		core: w.c, gens: w.r.gens, locks: w.r.locks, versions: w.r.versions, orch: w.generations.gen,
-		takes: w.r.takes, repair: w.repairs.agent, judges: w.r.judges, brands: w.r.brands,
+		takes: w.r.takes, repair: w.repairs.agent, judges: w.r.judges, brands: w.r.brands, chatOps: newChatOps(),
 	}
 	w.wireDirectorPolicy()
 	if w.deps.LLM != nil {

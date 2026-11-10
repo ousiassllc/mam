@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing/budget"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops"
 )
 
 // answerCard handles a reply to a card whose answer carries something out: a Continue card (the next Shot) or a confirmation card (a setting). done is false when the
@@ -44,14 +45,20 @@ const declinedOperation = "やめました。何も変更していません。"
 // it is then a new message of the user (it still replies to the card, which closes it), and the caller reads it as one.
 func (s *ChatService) answerOperation(ctx context.Context, project domain.Project, card domain.ChatMessage, content string) (ws Workspace, answered bool, err error) {
 	body := domain.DecodeCardBody(card.Content)
-	action, accepted := actionOf(body, content)
+	var (
+		action   json.RawMessage
+		accepted bool
+	)
+	declined := content == confirmNo || chatops.IsDecline(content)
 	switch {
-	case accepted:
-	case content == confirmNo || isDecline(content):
-	case briefing.IsConfirmation(content) && len(body.OptionActions) > 0 && len(body.OptionActions[0]) > 0:
+	case declined:
+		action = declineAction(body) // what the card has to clean up when it is declined (a file that waits); nothing for most
+	case briefing.IsConfirmation(content) && len(body.OptionActions) > 0 && len(body.OptionActions[0]) > 0 && body.Options[0] == confirmYes:
 		action, accepted = body.OptionActions[0], true
 	default:
-		return Workspace{}, false, nil
+		if action, accepted = actionOf(body, content); !accepted {
+			return Workspace{}, false, nil
+		}
 	}
 	if _, busy := s.answering.LoadOrStore(card.ID, struct{}{}); busy {
 		return Workspace{}, true, ErrConflict
@@ -60,13 +67,20 @@ func (s *ChatService) answerOperation(ctx context.Context, project domain.Projec
 	if err := s.openOperationCard(ctx, project.ID, card); err != nil {
 		return Workspace{}, true, err
 	}
-	answer := declinedOperation
-	if accepted {
-		if answer, err = s.director.applyAction(ctx, project, action); err != nil {
+	result := actionResult{text: declinedOperation}
+	switch {
+	case accepted:
+		if result, err = s.director.applyAction(ctx, project, action); err != nil {
 			return Workspace{}, true, err
 		}
+	case len(action) > 0:
+		if done, err := s.director.applyAction(ctx, project, action); err != nil {
+			s.logger.Error("clean up a declined confirmation card failed", "project_id", project.ID, "message_id", card.ID, "err", err) // the answer is still "declined"
+		} else if done.text != "" {
+			result.text = done.text
+		}
 	}
-	turn := repository.Turn{ProjectID: project.ID, Messages: assignIDs([]domain.ChatMessage{userText(content, card.ID, nil), assistantText(answer)})}
+	turn := repository.Turn{ProjectID: project.ID, Messages: assignIDs(append([]domain.ChatMessage{userText(content, card.ID, nil), assistantText(result.text)}, result.messages...))}
 	// the operation was carried out, so the reply that closes the card is recorded whatever happened to ctx
 	if err := s.commit(context.WithoutCancel(ctx), turn); err != nil {
 		return Workspace{}, true, err
@@ -76,6 +90,16 @@ func (s *ChatService) answerOperation(ctx context.Context, project domain.Projec
 	}
 	ws, err = s.workspaceOf(ctx, project.ID, turn.Messages)
 	return ws, true, err
+}
+
+// declineAction is the action of the "やめる" button of a card: nil for a card whose declining only closes it (chatops.Card.Decline).
+func declineAction(body domain.CardBody) json.RawMessage {
+	for i, option := range body.Options {
+		if option == confirmNo && i < len(body.OptionActions) && len(body.OptionActions[i]) > 0 && string(body.OptionActions[i]) != "null" {
+			return body.OptionActions[i]
+		}
+	}
+	return nil
 }
 
 // openOperationCard is nil when the card can still be answered: nobody replied to it and no newer card of the same operation replaced it.
@@ -105,7 +129,7 @@ func (s *ChatService) answerEscalation(ctx context.Context, project domain.Proje
 		return "", false, nil
 	}
 	done, err := s.director.applyAction(ctx, project, action)
-	return "判断を受け付けて、実行しました。\n" + done, err == nil, err
+	return "判断を受け付けて、実行しました。\n" + done.text, err == nil, err
 }
 
 // statedBudgetCards is the confirmation card for the budget a free message states ("予算は $20 で", #1139): what `budget.Stated` reads from the words (the Brief's extraction of a stated budget). The budget is not set

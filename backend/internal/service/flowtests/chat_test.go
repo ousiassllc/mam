@@ -1,11 +1,10 @@
-package service_test
+package flowtests_test
 
 import (
 	"bytes"
 	"context"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,72 +12,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/repository"
-	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
-	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
-
-type fixture struct {
-	svc       *service.Services
-	db        *repository.DB
-	assetsDir string
-}
-
-func newFixture(t *testing.T) fixture {
-	t.Helper()
-	testenv.Parallel(t)
-	db, assets := testdb.Open(t), filepath.Join(t.TempDir(), "assets")
-	return fixture{svc: servicetest.New(t, service.Deps{DB: db, AssetsDir: assets}), db: db, assetsDir: assets}
-}
-
-var (
-	pngBytes = append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{0}, 32)...)
-	mp4Bytes = append([]byte("\x00\x00\x00\x18ftypisom"), bytes.Repeat([]byte{0}, 32)...)
-	movBytes = append([]byte("\x00\x00\x00\x14ftypqt  "), bytes.Repeat([]byte{0}, 32)...)
-)
-
-func upload(name string, data []byte) service.Upload {
-	return service.Upload{Name: name, Size: int64(len(data)), Open: func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(data)), nil
-	}}
-}
-
-func (f fixture) createProject(t *testing.T, content string, uploads ...service.Upload) domain.Project {
-	t.Helper()
-	p, err := f.svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: content, Uploads: uploads})
-	require.NoError(t, err)
-	return p
-}
-
-// thread takes a testenv.TestingT so that an Eventually condition can pass its *assert.CollectT: a failure then retries instead of failing the finished test.
-func (f fixture) thread(t testenv.TestingT, projectID string) []domain.ThreadMessage {
-	t.Helper()
-	ws, err := f.svc.Chat.Workspace(context.Background(), projectID)
-	require.NoError(t, err)
-	return ws.Messages
-}
-
-func (f fixture) brief(t *testing.T, projectID string) domain.Brief {
-	t.Helper()
-	view, err := f.svc.Projects.Brief(context.Background(), projectID)
-	require.NoError(t, err)
-	return view.Brief
-}
-
-func requireInvalid(t *testing.T, err error, field string) {
-	t.Helper()
-	var invalid *service.ValidationError
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, field, invalid.Field)
-}
-
-func lastMessage(t testenv.TestingT, msgs []domain.ThreadMessage) domain.ThreadMessage {
-	t.Helper()
-	require.NotEmpty(t, msgs)
-	return msgs[len(msgs)-1]
-}
 
 func TestCreateProject_ExtractsBriefAndShowsOneSummaryToConfirm(t *testing.T) {
 	f := newFixture(t)

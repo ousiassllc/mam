@@ -59,8 +59,7 @@ const (
 	RefGlobalSettings = "global_settings" // Text notice for a category of the global settings screen: ref_id is its slug (empty or unknown: the overview)
 )
 
-// ChatMessage is one entry of a Project's chat thread. The thread is append-only;
-// only ApprovalStatus changes, when the user responds to an approval card.
+// ChatMessage is one entry of a Project's chat thread. The thread is append-only; only ApprovalStatus changes, when the user responds to an approval card.
 type ChatMessage struct {
 	ID                 string
 	ProjectID          string
@@ -75,22 +74,28 @@ type ChatMessage struct {
 	CreatedAt          time.Time
 }
 
-// IsBlockingApproval reports whether the message is an approval card that holds the
-// Project in AWAITING_APPROVAL until answered (Notes promotions never block).
+// IsBlockingApproval reports whether the message is an approval card that holds the Project in AWAITING_APPROVAL until answered (Notes promotions never block).
 func (m ChatMessage) IsBlockingApproval() bool {
 	return m.Kind == KindApproval && m.RefType != RefNotePromotion
 }
 
-// CardBody is the JSON stored in content of question and escalation cards.
-// The "AIに任せる" button is always added by the renderer and is not stored.
+// CardBody is the JSON stored in content of question and escalation cards. The "AIに任せる" button is always added by the renderer and is not stored.
 type CardBody struct {
 	Text    string   `json:"text"`
 	Options []string `json:"options,omitempty"`
-	// NonBlocking marks an Escalation that was posted without holding the Project (ProjectState.EscalationBlocks
-	// was false): the card is answered like any other, but neither waits for the answer nor resumes the Project.
+	// NonBlocking marks an Escalation that was posted without holding the Project (ProjectState.EscalationBlocks was false): answered like any other card, but it neither waits nor resumes the Project.
 	NonBlocking bool `json:"non_blocking,omitempty"`
 	// OptionActions, index-aligned with Options: the JSON of the commandinterpreter.Operation a button carries out when picked (null or none: it only answers).
 	OptionActions []json.RawMessage `json:"option_actions,omitempty"`
+	// Secret makes the card ask for a secret in a masked field instead of a yes / no: posted to its own endpoint, never as a message (#1140). It names the secret, never holds one.
+	Secret *SecretField `json:"secret,omitempty"`
+}
+
+// SecretField names the secret a card asks for: the ID it is stored under (credential.Store), what the user knows it by, the field's maxlength (0: the store's limit).
+type SecretField struct {
+	Provider string `json:"provider"`
+	Label    string `json:"label"`
+	MaxBytes int    `json:"max_bytes,omitempty"`
 }
 
 // EncodeCardBody serialises a question / escalation card body.
@@ -102,8 +107,7 @@ func EncodeCardBody(b CardBody) string {
 	return string(raw)
 }
 
-// DecodeCardBody parses the content of a question / escalation card. Content that
-// is not a card body is treated as plain text without options.
+// DecodeCardBody parses the content of a question / escalation card. Content that is not a card body is treated as plain text without options.
 func DecodeCardBody(content string) CardBody {
 	var b CardBody
 	if err := json.Unmarshal([]byte(content), &b); err != nil || b.Text == "" {
@@ -143,8 +147,8 @@ func DecodeTakeCardBody(content string) TakeCardBody {
 	return b
 }
 
-// IsLocalPath reports whether p is a same-origin absolute path: the only kind of URL a card may make the browser load.
-// A backslash (browsers read /\host as "//host"), an escaped one, a control character, a scheme or a host is refused.
+// IsLocalPath reports whether p is a same-origin absolute path: the only kind of URL a card may make the browser load. A backslash (browsers read /\host as "//host"),
+// an escaped one, a control character, a scheme or a host is refused.
 func IsLocalPath(p string) bool {
 	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.Contains(strings.ToLower(p), "%5c") {
 		return false
@@ -158,21 +162,19 @@ func IsLocalPath(p string) bool {
 	return err == nil && u.Scheme == "" && u.Host == ""
 }
 
-// ThreadMessage is a chat message prepared for rendering: the message plus what the
-// card needs that is not stored on the row.
+// ThreadMessage is a chat message prepared for rendering: the message plus what the card needs that is not stored on the row.
 type ThreadMessage struct {
 	ChatMessage
 	Attachments []Asset
 	ReplyTo     *ChatMessage // the message this one answers, nil when not a reply
 	Open        bool         // true while a question / escalation card still waits for an answer
 	Job         *Job         // the live job of a progress card (nil when unknown)
+	Detail      string       // how far the work behind a progress card is, when its owner tells (an install: "42% ・ダウンロード中"); "" for none
 	Unrecorded  bool         // a generation approval card of v0.1.34 with no record of what it showed (a bundle does not carry it): never taken as an approval (spec/spec.md §4.3)
 }
 
-// Pending reports whether the card can still change in place (card.updated): a question or
-// escalation waiting for an answer, an approval not yet answered, a progress card whose job has not
-// finished (or is unknown). The client fetches such cards again after a reconnect, when the
-// notification that they changed may have been missed.
+// Pending reports whether the card can still change in place (card.updated): a question or escalation waiting for an answer, an approval not yet answered, a progress card
+// whose job has not finished (or is unknown). The client fetches such cards again after a reconnect, when the notification that they changed may have been missed.
 func (m ThreadMessage) Pending() bool {
 	switch m.Kind {
 	case KindApproval:

@@ -212,3 +212,4 @@
 | 1.205 | 2026-11-10 | 「生成テスト」の呼び名を「単発生成」に改めた（本文の文言だけ。パス・メソッド・パラメーターは変えない。過去の変更履歴の文は当時のまま） | Issue #1137 |
 | 1.206 | 2026-11-10 | 単発生成のチャットのルート `GET /generation-test/chat`・`POST …/chat/messages`・`POST …/chat/proposals/:id/confirm`・`…/dismiss`・`GET …/chat/batches/:id` を足した（[endpoints-gentest.md](endpoints-gentest.md)） | Issue #1138 |
 | 1.207 | 2026-11-10 | §2.1a の `POST /projects/:id/messages` に予算の確認カード（`ref_type=operation`・`ref_id=set_budget`。承認で `PUT /projects/:id/budget` と同じ経路で設定）と、操作を持つ相談カードのボタン（`option_actions`）の返信の扱いを足した。`PUT /projects/:id/budget` の行に、チャットからの設定も同じ値になることを足した | Issue #1139（チャットで伝えた予算を設定する） |
+| 1.208 | 2026-11-10 | §2.1a に `POST /projects/:id/messages/:messageId/secret`（確認カードのマスク入力欄から API キーを受ける専用のエンドポイント）を足し、`POST /projects/:id/messages` に、設定の操作（API キー・動画モデルの API プロバイダー・モデルの導入・モデル／LLM の割り当て・LoRA・書き出し・キャラの参照。確認カード付き）と、キーらしき文字列を含む発言は伏せて記録し読み取らないこと、`.safetensors` の添付を LoRA の取り込みに回すことを足した | Issue #1140。チャットだけで設定の操作ができるように、キーがチャットの履歴・ログに残らないように |

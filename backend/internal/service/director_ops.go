@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/genplan"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops"
 )
 
 // The operations of the registry (commandinterpreter/ops.go) that change a setting of the Project are carried out here. An operation that asks for confirmation
@@ -25,6 +25,8 @@ type opHandler struct {
 	question func(s *DirectorService, ctx context.Context, project domain.Project, op commandinterpreter.Operation) (string, error)
 	// apply carries the operation out, as the user confirmed it or picked it, and says what it did.
 	apply func(s *DirectorService, ctx context.Context, project domain.Project, op commandinterpreter.Operation) (string, error)
+	// chat is the handler of an operation on the global settings (service/chatops, #1140); it replaces question and apply, and its card may be richer than a sentence.
+	chat chatops.Handler
 }
 
 var opHandlers = map[commandinterpreter.OpType]opHandler{
@@ -34,69 +36,121 @@ var opHandlers = map[commandinterpreter.OpType]opHandler{
 }
 
 // errNoChange is the answer of a question that finds the operation already done.
-var errNoChange = errors.New("service: the operation changes nothing")
+var errNoChange = chatops.ErrNoChange
+
+// handlerOf is the handler of an operation: one of the Project's settings (opHandlers) or one of the global settings the app wired (service/chatwire).
+func (s *DirectorService) handlerOf(t commandinterpreter.OpType) (opHandler, bool) {
+	if h, ok := opHandlers[t]; ok {
+		return h, true
+	}
+	if h, ok := s.chatOps.Handler(t); ok {
+		return opHandler{chat: h}, true
+	}
+	return opHandler{}, false
+}
+
+// notWired is what the chat says of an operation on the global settings that this app has no service for (a build without the model manager).
+const notWired = "この環境では、その設定をチャットから変更できません。設定画面から行ってください。"
+
+// actionResult is what carrying out an action did: the sentence for the thread and the messages that follow it.
+type actionResult struct {
+	text     string
+	messages []domain.ChatMessage
+}
 
 // The buttons of a confirmation card, and the words that answer one in the composer.
 const (
-	confirmYes = "はい、この内容で進める"
-	confirmNo  = "やめる"
+	confirmYes = chatops.Yes
+	confirmNo  = chatops.No
 )
-
-var declineWords = []string{"やめる", "やめて", "やめます", "やめとく", "いいえ", "いや", "キャンセル", "違う", "ちがう", "不要", "no"}
-
-// isDecline reports whether text, apart from surrounding blanks and 。.!！, is one of the words that decline.
-func isDecline(text string) bool {
-	return slices.Contains(declineWords, strings.ToLower(strings.Trim(strings.TrimSpace(text), "。.!！ ")))
-}
 
 // confirmCard builds the confirmation card of op. When the operation cannot be asked (it is invalid, or already done) the sentence to tell instead is returned and the
 // card is empty.
 func (s *DirectorService) confirmCard(ctx context.Context, project domain.Project, op commandinterpreter.Operation) (domain.ChatMessage, string, error) {
-	h, ok := opHandlers[op.Type]
-	if !ok || h.question == nil {
-		return domain.ChatMessage{}, "", fmt.Errorf("the operation %q asks for confirmation but has no question (opHandlers)", op.Type)
+	h, ok := s.handlerOf(op.Type)
+	if !ok {
+		if spec, registered := commandinterpreter.SpecOf(op.Type); registered && spec.Global {
+			return domain.ChatMessage{}, notWired, nil
+		}
+		return domain.ChatMessage{}, "", fmt.Errorf("the operation %q asks for confirmation but has no handler (opHandlers)", op.Type)
 	}
-	question, err := h.question(s, ctx, project, op)
-	var ve *ValidationError
+	card, err := s.ask(ctx, project, h, op)
+	var (
+		ve  *ValidationError
+		ref *chatops.Refusal
+	)
 	switch {
 	case errors.Is(err, errNoChange):
 		return domain.ChatMessage{}, "すでにその内容です。変更しませんでした。", nil
 	case errors.As(err, &ve):
 		return domain.ChatMessage{}, "設定できませんでした: " + ve.Message, nil
+	case errors.As(err, &ref):
+		return domain.ChatMessage{}, "設定できませんでした: " + ref.Message, nil
 	case err != nil:
 		return domain.ChatMessage{}, "", err
 	}
-	action, err := json.Marshal(op)
-	if err != nil {
-		return domain.ChatMessage{}, "", err
+	msg, err := chatops.Message(op, card)
+	return msg, "", err
+}
+
+func (s *DirectorService) ask(ctx context.Context, project domain.Project, h opHandler, op commandinterpreter.Operation) (chatops.Card, error) {
+	switch {
+	case h.chat != nil:
+		return h.chat.Question(ctx, project, op)
+	case h.question != nil:
+		text, err := h.question(s, ctx, project, op)
+		return chatops.Card{Text: text}, err
 	}
-	card := domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindQuestion, RefType: domain.RefOperation, RefID: string(op.Type),
-		Content: domain.EncodeCardBody(domain.CardBody{Text: question, Options: []string{confirmYes, confirmNo}, OptionActions: []json.RawMessage{action, nil}}),
-	}
-	return card, "", nil
+	return chatops.Card{}, fmt.Errorf("the operation %q asks for confirmation but has no question (opHandlers)", op.Type)
 }
 
 // applyAction carries out the operation a card button carries (the JSON stored in CardBody.OptionActions). A reason the user can act on (an amount the budget
 // refuses) is the sentence returned; any other failure is the error.
-func (s *DirectorService) applyAction(ctx context.Context, project domain.Project, raw json.RawMessage) (string, error) {
+func (s *DirectorService) applyAction(ctx context.Context, project domain.Project, raw json.RawMessage) (actionResult, error) {
 	var op commandinterpreter.Operation
 	if err := json.Unmarshal(raw, &op); err != nil {
-		return "", fmt.Errorf("read the action of a card: %w", err)
+		return actionResult{}, fmt.Errorf("read the action of a card: %w", err)
 	}
 	if normal, ok := commandinterpreter.Normalize(op); ok {
 		op = normal
 	}
-	h, ok := opHandlers[op.Type]
-	if !ok || h.apply == nil {
-		return "", fmt.Errorf("the action %q of a card is not an operation the chat carries out", op.Type)
+	return s.applyOp(ctx, project, op)
+}
+
+// applyOp carries op out through its handler.
+func (s *DirectorService) applyOp(ctx context.Context, project domain.Project, op commandinterpreter.Operation) (actionResult, error) {
+	h, ok := s.handlerOf(op.Type)
+	if !ok {
+		if spec, registered := commandinterpreter.SpecOf(op.Type); registered && spec.Global {
+			return actionResult{text: notWired}, nil
+		}
+		return actionResult{}, fmt.Errorf("the action %q of a card is not an operation the chat carries out", op.Type)
 	}
-	text, err := h.apply(s, ctx, project, op)
-	var ve *ValidationError
-	if errors.As(err, &ve) {
-		return "実行できませんでした: " + ve.Message, nil
+	var (
+		res actionResult
+		err error
+	)
+	switch {
+	case h.chat != nil:
+		var done chatops.Result
+		done, err = h.chat.Apply(ctx, project, op)
+		res = actionResult{text: done.Text, messages: done.Messages}
+	case h.apply != nil:
+		res.text, err = h.apply(s, ctx, project, op)
+	default:
+		return actionResult{}, fmt.Errorf("the action %q of a card is not an operation the chat carries out", op.Type)
 	}
-	return text, err
+	var (
+		ve  *ValidationError
+		ref *chatops.Refusal
+	)
+	switch {
+	case errors.As(err, &ve):
+		return actionResult{text: "実行できませんでした: " + ve.Message}, nil
+	case errors.As(err, &ref):
+		return actionResult{text: "実行できませんでした: " + ref.Message}, nil
+	}
+	return res, err
 }
 
 // budgetAfter is the ceilings of the Project once op is applied: a ceiling the operation does not name stays, 0 removes it.

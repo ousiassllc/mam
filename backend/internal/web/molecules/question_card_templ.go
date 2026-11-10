@@ -11,10 +11,11 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/secretform"
 )
 
 // QuestionCard asks for a missing Brief item: option buttons, "AIに任せる", or free input in the composer. A Brief question is answered by any message; the Continue question
-// is answered by a reply to it, so only it has the reply button.
+// is answered by a reply to it, so only it has the reply button. A card that asks for a secret (an API key, #1140) has the masked field of secretform.
 func QuestionCard(m domain.ThreadMessage) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -55,7 +56,7 @@ func QuestionCard(m domain.ThreadMessage) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(domain.DecodeCardBody(m.Content).Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/question_card.templ`, Line: 12, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/question_card.templ`, Line: 13, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -66,7 +67,13 @@ func QuestionCard(m domain.ThreadMessage) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if m.Open {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"mt-3 flex flex-wrap gap-2\" data-options>")
+				if secret := domain.DecodeCardBody(m.Content).Secret; secret != nil {
+					templ_7745c5c3_Err = secretform.Form(m, *secret).Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " <div class=\"mt-3 flex flex-wrap gap-2\" data-options>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

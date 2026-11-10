@@ -35,6 +35,14 @@ type Spec struct {
 	AnyMode bool
 	// Confirm is true for an operation that is not carried out at once: the chat posts a confirmation card and carries it out when the user accepts it.
 	Confirm bool
+	// Global is true for an operation on the settings of the whole app (an API key, a model assignment, an install: #1140), not of the Project: the chat reads it in
+	// any state of the Project, a DRAFT one too, and the card says that it affects every Project.
+	Global bool
+	// Immediate is true for an operation that changes nothing and has no card: the chat carries it out at once and tells what it found (a download link).
+	Immediate bool
+	// Detect reads the operations a message plainly asks for without the model, so that the chat can still do them while no LLM is set up (the API key of the LLM
+	// itself is the first thing to set). nil: only the model reads the operation.
+	Detect func(message string) []Operation
 }
 
 var specs = map[OpType]Spec{
@@ -55,6 +63,9 @@ func SpecOf(t OpType) (Spec, bool) { s, ok := specs[t]; return s, ok }
 // Confirms reports whether the operation waits for the user's confirmation before it is carried out.
 func (o Operation) Confirms() bool { return specs[o.Type].Confirm }
 
+// Immediate reports whether the operation is carried out at once without a card (Spec.Immediate).
+func (o Operation) Immediate() bool { return specs[o.Type].Immediate }
+
 // AnyMode reports whether the operation is carried out outside DIRECTOR MODE.
 func (o Operation) AnyMode() bool { return specs[o.Type].AnyMode }
 
@@ -63,6 +74,16 @@ func (o Operation) AnyMode() bool { return specs[o.Type].AnyMode }
 func AsksAnyMode(message string) bool {
 	for t, s := range specs {
 		if s.AnyMode && s.Asked != nil && t != OpCreateNote && s.Asked(message) {
+			return true
+		}
+	}
+	return false
+}
+
+// AsksGlobal reports whether the message is a direction for an operation on the settings of the whole app (Spec.Global): the chat reads it in every state of the Project.
+func AsksGlobal(message string) bool {
+	for _, s := range specs {
+		if s.Global && s.Asked != nil && s.Asked(message) {
 			return true
 		}
 	}

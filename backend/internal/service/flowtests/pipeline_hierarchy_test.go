@@ -1,4 +1,4 @@
-package service_test
+package flowtests_test
 
 import (
 	"context"

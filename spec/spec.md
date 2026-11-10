@@ -1315,7 +1315,7 @@ Generate 3 narrative continuations
 
 AIが文脈から、編集変更で済むか追加Shotが必要かを判断する。
 
-> **実装の範囲**: Command Interpreter が構造化できる操作は、ロック設定・Shot の再生成・部分再生成・モード切替・ノート作成・Branch 作成・予算上限の変更（`set_budget`。確認カード付き）のみで、チャットの発言から Edit Timeline（クリップの尺など）の変更や追加 Shot の要求は導かない。これらは、タイムラインエディタでの編集（`PUT /edit-timelines/:id`）、Editor Judge の NEED_SHOT が出す追加 Shot の提案（Reshoot Loop、`POST /edit-timelines/:id/request-additional-shot`）から行う。この Example 4 の発言には「その操作にはまだ対応していません」と返す。
+> **実装の範囲**: Command Interpreter が構造化できる操作は、ロック設定・Shot の再生成・部分再生成・モード切替・ノート作成・Branch 作成・予算上限の変更（`set_budget`。確認カード付き）・**全体設定の操作**（API キー・動画モデルの API プロバイダー・モデルの導入・モデルと LLM の割り当て・LoRA の取り込み・書き出し・キャラクターの参照。確認カード付き。#1140、`spec/components/chat-settings-operations.md`）のみで、チャットの発言から Edit Timeline（クリップの尺など）の変更や追加 Shot の要求は導かない。これらは、タイムラインエディタでの編集（`PUT /edit-timelines/:id`）、Editor Judge の NEED_SHOT が出す追加 Shot の提案（Reshoot Loop、`POST /edit-timelines/:id/request-additional-shot`）から行う。この Example 4 の発言には「その操作にはまだ対応していません」と返す。
 
 ### Example 5（M2）
 
@@ -1353,6 +1353,18 @@ set_budget project_budget_usd=30   ← 確認カード「予算 $30 で進めま
 ```
 
 予算の変更は**設定を変える操作**なので、操作の登録表（`backend/internal/agent/commandinterpreter/ops.go` の `Spec`）で次のように扱う。①**どのモードでも受ける**（`AnyMode`。AUTO MODE の指示は受けないという上の方針の例外はメモの作成と、この種の設定の操作だけで、DRAFT の間は Brief の抜き出し〔§4.2 項目 8〕が読む）。②**すぐには実行しない**（`Confirm`）: 確認カード（§4.2 項目 8 と同じ Question カード）を出し、承認で実行する。ボタンは実行する操作を `CardBody.option_actions` に持つ。③**発言が求めていないときは捨てる**（`Asked`）: 予算の語（「予算」「上限」「budget」）を含まない発言から、モデルが `set_budget` を返しても無視する（メモの作成が「覚えておいて」を求めるのと同じ）。④`project_budget_usd`・`shot_budget_usd` は名指しした上限だけを持ち、名指しされなかった上限は変えない。0 はその上限を外す。他の通貨は `unsupported`（ドルで教えてもらう）。⑤プロンプトの操作の説明・例・検査は登録表から組み立てる。設定を変える操作を足すときは、`OpType` と `Spec` を 1 つ登録し、サービス側の `opHandlers`（`service/director_ops.go`）に実行を 1 つ足す（確認が要るなら質問文も）。`set_quality_policy` は、予算を超える計画の相談カードのボタン（§4.3）が持つ操作で、モデルには求めない。
+
+### Example 8（#1140）
+
+> OpenAI の API キーを設定したい。
+
+```text
+Action:
+set_credential provider=openai   ← 確認カード（マスク入力欄つき）を出す。LLM が無くても読み取れる
+キーはカードの入力欄に貼り付けて「保存」（専用のエンドポイント。チャットの発言にしない）
+```
+
+設定画面（GUI）か MCP だけでできた**全体設定の操作**は、予算（Example 7）と同じ登録表（`Spec`）で、操作ごとのパッケージ（`backend/internal/service/chatops/<操作>`）が持つ。①**どのモード・どの状態でも受ける**（`Global`。DRAFT の間も。アプリ全体の設定で、Project の状態に依らない）。②**必ず確認カードを先に出す**（`Confirm`。何も変えるのは承認のあと。API キーはカードのマスク入力欄の「保存」が確認で、はいボタンは無い）。全体の設定は**全プロジェクトに効く**ことをカードに書く。③**発言が求めていないときは捨てる**（`Asked`）。④**LLM が無くても読み取れる操作**（`Detect`: API キー・書き出し）は、LLM が未設定でも実行する。⑤**何も変えない操作**（`Immediate`: 書き出した動画・バンドルのダウンロードのリンク）はカードなしで答える。⑥**意図的に GUI だけのもの**（ffmpeg・FaceFusion の実行パス、MCP のトークンと待ち受けの管理）は、チャットでは拒否して設定画面を案内する。承認のあとの実行は、設定画面・MCP のツールと**同じサービス層の関数**を呼ぶ（ロジックを複製しない）。詳細は `spec/components/chat-settings-operations.md`。
 
 ---
 

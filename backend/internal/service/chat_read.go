@@ -227,6 +227,7 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 			if job, ok := jobs[m.RefID]; ok {
 				v.Job = &job
 			}
+			v.Detail = s.director.chatOps.Detail(ctx, m.RefID)
 		}
 		if v.Unrecorded, err = s.genApprovals.Unrecorded(ctx, projectID, m); err != nil {
 			return nil, err

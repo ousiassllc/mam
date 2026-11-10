@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/chatcard"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -33,8 +34,7 @@ func ChatWorkspace(svc *service.ChatService) gin.HandlerFunc {
 	}
 }
 
-// ChatMessages returns the thread fragment (GET /projects/:id/messages?after=<messageId>):
-// every message, or only those after the given one.
+// ChatMessages returns the thread fragment (GET /projects/:id/messages?after=<messageId>): every message, or only those after the given one.
 func ChatMessages(svc *service.ChatService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ws, err := svc.Messages(c.Request.Context(), c.Param("id"), c.Query("after"))
@@ -46,8 +46,7 @@ func ChatMessages(svc *service.ChatService) gin.HandlerFunc {
 	}
 }
 
-// ChatCard returns one card as it is now (GET /projects/:id/messages/:messageId), used to
-// update a progress card in place.
+// ChatCard returns one card as it is now (GET /projects/:id/messages/:messageId), used to update a progress card in place.
 func ChatCard(svc *service.ChatService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		project, m, err := svc.Card(c.Request.Context(), c.Param("id"), c.Param("messageId"))
@@ -59,8 +58,7 @@ func ChatCard(svc *service.ChatService) gin.HandlerFunc {
 	}
 }
 
-// PostMessage appends the user's message and the AI's answer (POST /projects/:id/messages)
-// and returns both as fragments for the thread.
+// PostMessage appends the user's message and the AI's answer (POST /projects/:id/messages) and returns both as fragments for the thread.
 func PostMessage(svc *service.ChatService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		in, err := readPostMessage(c)
@@ -79,12 +77,17 @@ func PostMessage(svc *service.ChatService) gin.HandlerFunc {
 	}
 }
 
+// SubmitSecret is the card of an operation that asks for a secret (an API key): see chatcard.SubmitSecret.
+func SubmitSecret(svc *service.ChatService) gin.HandlerFunc {
+	return chatcard.SubmitSecret(svc, toast, refreshTrigger)
+}
+
 func readPostMessage(c *gin.Context) (service.PostMessageInput, error) {
 	var in service.PostMessageInput
 	// Media types are case-insensitive; middleware.MaxBody normalises the same way to leave a multipart
 	// body to readMultipart's limit, so the two must agree on what counts as multipart.
 	if mediaType, _, _ := mime.ParseMediaType(c.GetHeader("Content-Type")); mediaType == "multipart/form-data" {
-		content, uploads, err := readMessageForm(c)
+		content, uploads, err := readMessageForm(c, maxMessageRequestBytes)
 		if err != nil {
 			return in, err
 		}

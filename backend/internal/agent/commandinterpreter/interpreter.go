@@ -118,6 +118,10 @@ type Operation struct {
 
 	// OpSetQualityPolicy.
 	Quality domain.QualityPolicy `json:"quality_policy,omitempty"`
+
+	// Args is what the operations of the global settings carry (#1140): each is a struct of the package of its operation (NewOperation, DecodeArgs), so that the
+	// operations stay out of this struct.
+	Args json.RawMessage `json:"args,omitempty"`
 }
 
 // Regenerates reports whether the operation makes a new Take of the Shot.
@@ -148,7 +152,7 @@ Convert the director's message into structured operations. Return ONLY one JSON 
     {"type": "set_mode", "project_mode": "auto"},
     {"type": "create_note", "title": "主人公の口調", "content": "主人公は落ち着いた口調で話す。過去の火事の話は序盤では出さない。", "category": "character"},
     {"type": "create_branch", "count": 3, "point_type": "shot", "directions": ["ドアを開ける", "逃げる"]},
-    {"type": "unsupported", "reason": "書き出しはこのチャットからはまだ指示できません"}{{extension_examples}}
+    {"type": "unsupported", "reason": "タイムラインの編集はこのチャットからはまだ指示できません"}{{extension_examples}}
   ]
 }
 
@@ -159,7 +163,7 @@ Operations:
 - "set_mode": "auto" or "director": the director wants the team to lead again (auto) or to only change what is told (director).
 - "create_note": the director asks the team to remember something ("覚えておいて", "メモして", "remember this"): a background, a way of speaking, a tone, or information to keep hidden. "content" is what to remember, in the director's words and language, without the request itself ("覚えておいて") and without the parts that are directions for a shot; "title" is a short title (at most 30 characters); "category" is one of ` + "`character`, `product`, `location`, `world`, `tone`, `other`" + ` and may be omitted when unsure. It is a project-wide note, not an operation on a shot.
 - "create_branch": the director wants alternative developments of the story from this shot or scene ("このカットから別展開を3つ作って"). "count" is how many (default 1). "point_type" is "shot" (after this shot, the default) or "scene" (from the start of this shot's scene). "directions" lists the developments the director named, one per branch, in the director's words; leave it empty when the director named none, the team proposes them.
-{{extension_docs}}- "unsupported": the director asks for something that is not available: exporting, editing the timeline. "reason" is one short Japanese sentence.
+{{extension_docs}}- "unsupported": the director asks for something that is not available: editing the timeline. "reason" is one short Japanese sentence.
 
 Rules:
 - "scene" and "shot" are the numbers the director names ("Scene 2 の Shot 1", "シーン2のショット1"). Use 0 for both when the message does not name a shot. When the input says which shot the message is about, use its numbers.

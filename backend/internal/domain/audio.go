@@ -5,8 +5,7 @@ import (
 	"time"
 )
 
-// Audio models. The values are the canonical identifiers of spec/architecture/model-adapters.md §6,
-// stored in cost_ledger_entry.provider.
+// Audio models. The values are the canonical identifiers of spec/architecture/model-adapters.md §6, stored in cost_ledger_entry.provider.
 const (
 	ModelElevenLabsTTS   ModelName = "elevenlabs-tts"
 	ModelGPTSoVITSTTS    ModelName = "gpt-sovits-tts" // the local voice: no API cost, but the ledger keeps the line

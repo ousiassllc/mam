@@ -21,17 +21,28 @@ func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessa
 	if domain.AsksToRemember(content) || (project.State != domain.StateDraft && commandinterpreter.AsksAnyMode(content)) {
 		return true
 	}
+	// the settings of the whole app (an API key, a model, an export: #1140) are asked for in any state, the first draft of a new app's first Project included; a message
+	// that asks for what the chat refuses on purpose gets its reply there too
+	if _, refused := commandinterpreter.Refused(content); refused || commandinterpreter.AsksGlobal(content) {
+		return true
+	}
 	return project.Mode == domain.ModeDirector && project.State != domain.StateDraft
 }
 
 // Chat interprets a message of the thread (already stored) and carries it out. The result is the AI
 // messages to append to the thread: what was done, what was refused, or what to ask, and the confirmation cards of the operations that wait for the user. Failures the user
 // can act on are reported in the message; an error that is returned (a Brand violation, an
-// unexpected failure) has already been answered in the thread (reportCommandFailure), so that the
-// thread does not end with the user's words alone.
+// unexpected failure) has already been answered in the thread (reportCommandFailure), so that the thread does not end with the user's words alone.
 func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) ([]domain.ChatMessage, error) {
+	if reply, refused := commandinterpreter.Refused(content); refused {
+		return []domain.ChatMessage{assistantText(reply)}, nil
+	}
 	if s.interpreter == nil {
-		return []domain.ChatMessage{assistantText("LLM が設定されていないため、指示を解釈できません（設定画面で API キーを登録してください）。")}, nil
+		// what the message plainly asks for is still done without the model: the API key of the LLM is the first thing to set (#1140)
+		if ops := commandinterpreter.Detected(content); len(ops) > 0 {
+			return s.anyModeOnly(ctx, project, commandinterpreter.Command{Operations: ops})
+		}
+		return []domain.ChatMessage{assistantText("LLM が設定されていないため、指示を解釈できません（設定画面で API キーを登録してください。「OpenAI の API キーを設定したい」のように送ると、ここでキーを入力する欄を出します）。")}, nil
 	}
 	shots, err := s.gens.ListProjectShots(ctx, project.ID)
 	if err != nil {
@@ -59,8 +70,9 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		}
 		return []domain.ChatMessage{assistantText("指示を読み取れませんでした: " + commandFailureReason(err))}, nil
 	}
+	cmd.Operations = withDetected(cmd.Operations, content)
 	if project.Mode != domain.ModeDirector {
-		// Outside DIRECTOR MODE only the operations of any mode are carried out (a note, the budget): AUTO MODE does
+		// Outside DIRECTOR MODE only the operations of any mode are carried out (a note, the budget, a setting): AUTO MODE does
 		// not take Shot directions from the chat.
 		return s.anyModeOnly(ctx, project, cmd)
 	}
@@ -92,7 +104,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 func (s *DirectorService) anyModeOnly(ctx context.Context, project domain.Project, cmd commandinterpreter.Command) ([]domain.ChatMessage, error) {
 	cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return !op.AnyMode() })
 	if len(cmd.Operations) == 0 {
-		return []domain.ChatMessage{assistantText("メモや予算として読み取れる内容が見つかりませんでした。覚えておきたい内容や、予算（例:「予算は $20 で」）を、もう一度教えてください。")}, nil
+		return []domain.ChatMessage{assistantText("メモ・予算・設定として読み取れる内容が見つかりませんでした。覚えておきたい内容や、予算（例:「予算は $20 で」）、変えたい設定（例:「OpenAI の API キーを設定したい」）を、もう一度教えてください。")}, nil
 	}
 	res, err := s.execute(ctx, project, nil, cmd, "", false)
 	if err != nil {
@@ -100,6 +112,17 @@ func (s *DirectorService) anyModeOnly(ctx context.Context, project domain.Projec
 		return nil, err
 	}
 	return res.messages(), nil
+}
+
+// withDetected adds the operations the message plainly asks for (commandinterpreter.Detected) that the model did not return: the model's word wins for an operation
+// of the same type, the rule only fills the gap (a slip of the model must not lose an API key card).
+func withDetected(ops []commandinterpreter.Operation, content string) []commandinterpreter.Operation {
+	for _, d := range commandinterpreter.Detected(content) {
+		if !slices.ContainsFunc(ops, func(op commandinterpreter.Operation) bool { return op.Type == d.Type }) {
+			ops = append(ops, d)
+		}
+	}
+	return ops
 }
 
 // remember keeps what the director asked to remember as a note of the Project (source chat).
@@ -118,8 +141,7 @@ func (s *DirectorService) remember(ctx context.Context, projectID string, op com
 
 // contextShot resolves the Shot a message is about without the words of the message: the Take or
 // Keyframe card it replies to, else the latest Take card of the thread, else the only Shot of the
-// Project. A reply to a card whose Shot is not known resolves to none (the Director asks), never to
-// another Shot.
+// Project. A reply to a card whose Shot is not known resolves to none (the Director asks), never to another Shot.
 func (s *DirectorService) contextShot(ctx context.Context, projectID string, target *domain.ChatMessage, shots []repository.ShotRef) (*repository.ShotRef, error) {
 	if target != nil && target.Kind == domain.KindKeyframe {
 		ref, err := s.gens.ShotOfKeyframe(ctx, projectID, target.RefID)

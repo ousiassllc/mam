@@ -1,9 +1,12 @@
 package molecules_test
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/planadvice"
@@ -47,4 +50,23 @@ func TestProgressCard_OtherJobsAndFailuresHaveNoNextSteps(t *testing.T) {
 	} {
 		assert.NotContains(t, render(t, molecules.ProgressCard(progress(job))), "progress-next-steps", name)
 	}
+}
+
+// The card of work that tells how far it is (an install, #1140) shows it and reads itself again while the job runs.
+func TestProgressCard_ADetailIsShownAndReadAgainWhileTheJobRuns(t *testing.T) {
+	m := domain.ThreadMessage{
+		ChatMessage: domain.ChatMessage{ID: "m1", ProjectID: "p1", Kind: domain.KindProgress, RefID: "j1", Content: "モデルを導入しています"},
+		Job:         &domain.Job{ID: "j1", Status: domain.JobRunning}, Detail: "42% ・ダウンロード中",
+	}
+	var sb strings.Builder
+	require.NoError(t, molecules.ProgressCard(m).Render(context.Background(), &sb))
+	assert.Contains(t, sb.String(), "42% ・ダウンロード中")
+	assert.Contains(t, sb.String(), `hx-trigger="every 2s"`)
+	assert.Contains(t, sb.String(), `hx-get="/projects/p1/messages/m1"`)
+
+	m.Job.Status, m.Detail = domain.JobSucceeded, "完了"
+	sb.Reset()
+	require.NoError(t, molecules.ProgressCard(m).Render(context.Background(), &sb))
+	assert.Contains(t, sb.String(), "完了")
+	assert.NotContains(t, sb.String(), `hx-trigger="every 2s"`, "a finished job is not read again")
 }

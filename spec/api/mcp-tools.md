@@ -41,6 +41,21 @@
 - 1 行の属性は文字列が 2,000 文字で切られる。パースできない行は読み飛ばす。ログを書くときの属性名がそのままキーになる（`project_id`・`shot_id`・`job_id`・`tool`・`err` など）。
 - 秘密の扱い: ログへは書かない（キーストア・トークンのサービス・アダプターは値をロガーに渡さない）。読み取りでは、既知の形と、キーストアにある API キー・Hugging Face トークンの値を伏せる。名前が `token`・`secret`・`password`・`api_key`・`authorization` などの文字列の属性は値を丸ごと `[redacted]` にする。伏せたあとの文字列で絞り込むので、`keyword` や `attrs` で秘密を探り当てることはできない。
 
+### チャットとの対応（#1140）
+
+アプリ内チャットからも、MCP と同じサービスを通して次の設定を頼める（`spec/components/chat-settings-operations.md`）。チャットは確認カードの後に実行し、API キーだけは発言に書かず入力欄のカードで受ける（MCP の `set_credential` に相当）。
+
+| チャットの操作 | 対応する MCP ツール |
+|---|---|
+| `set_credential` / `set_video_provider` | `set_credential` / `set_video_provider` |
+| `install_model` / `install_model_engine` / `install_hf_file` / `install_local_runtime` | 同名のツール（[mcp-tools-model-manager.md](mcp-tools-model-manager.md)） |
+| `set_model_assignment` / `set_llm_assignment` | 同名のツール（[mcp-tools-settings-policy.md](mcp-tools-settings-policy.md)・[mcp-tools-chatgpt.md](mcp-tools-chatgpt.md)） |
+| `add_lora` | LoRA の取り込み（`create_upload_ticket` の `purpose=model_lora_import`・[mcp-tools-model-manager.md](mcp-tools-model-manager.md)） |
+| `export_video` / `get_export_download_url` / `export_project_bundle` | `export_video` / `get_export_download_url` / `export_project_bundle` |
+| `assign_character_reference` | 同名のツール（[mcp-tools-world-notes.md](mcp-tools-world-notes.md)） |
+
+ffmpeg・FaceFusion の実行ファイルの場所と MCP のトークンはチャットでは変えない（MCP も同じ扱い）。
+
 ### プロバイダー ID（`provider`）
 
 `anthropic`・`openai`・`google`・`flux`・`kling`・`kling4`・`seedance`・`runway`・`minimax`・`alibaba`・`luma`・`topaz`・`elevenlabs`・`synclabs`・`typesafe`（画面の「API キー」と同じ。`list_credentials` が返す一覧が正）。未対応の値は `validation`。
@@ -114,3 +129,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.17 | 2026-11-03 | `get_job` / `list_jobs` の `next_steps` が、企画の失敗理由に登場人物の下書き（Brief の添付画像から作ったもの）の文があるときは「下書きを直す」案内になる。`error` にその文が足される | Issue #1022（#1001 の残り） |
 | 1.18 | 2026-11-04 | アップロードの用途の表に `character_voice_training_clip`（登場人物の声の学習に使う音声）を足した | Issue #936。GPT-SoVITS の fine-tune の MCP の入口 |
 | 1.19 | 2026-11-10 | ツールの一覧の「全体設定」の行に、動画モデルの API プロバイダー（`get_video_provider`・`set_video_provider`）を足した。`list_credentials`・`set_credential` の `provider` に `openrouter`・`fal`・`replicate` が増えた | Issue #1136。ツールの詳細は [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
+| 1.20 | 2026-11-10 | 「チャットとの対応」を足した。アプリ内チャットから同じ設定を頼める（#1140） |
