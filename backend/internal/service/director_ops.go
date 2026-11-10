@@ -106,18 +106,16 @@ func (s *DirectorService) ask(ctx context.Context, project domain.Project, h opH
 	return chatops.Card{}, fmt.Errorf("the operation %q asks for confirmation but has no question (opHandlers)", op.Type)
 }
 
-// applyAction carries out the operation a card button carries (the JSON stored in CardBody.OptionActions). A reason the user can act on (an amount the budget
-// refuses) is the sentence returned; any other failure is the error.
+// applyAction carries out the operation a card button carries (the JSON stored in CardBody.OptionActions), only when it is a valid operation of the registry. A reason the user can act on (an amount the budget refuses) is the sentence returned; any other failure is the error.
 func (s *DirectorService) applyAction(ctx context.Context, project domain.Project, raw json.RawMessage) (actionResult, error) {
 	var op commandinterpreter.Operation
 	if err := json.Unmarshal(raw, &op); err != nil {
 		return actionResult{}, fmt.Errorf("read the action of a card: %w", err)
 	}
-	normal, ok := commandinterpreter.Normalize(op)
+	op, ok := commandinterpreter.Normalize(op)
 	if !ok {
 		return actionResult{}, fmt.Errorf("the action %q of a card is not a valid operation", op.Type)
 	}
-	op = normal
 	return s.applyOp(ctx, project, op)
 }
 

@@ -79,8 +79,15 @@ func dropCardActions(row domain.BundleRow) {
 	if row["kind"] != string(domain.KindQuestion) && row["kind"] != string(domain.KindEscalation) {
 		return
 	}
-	if content, ok := row["content"].(string); ok {
-		row["content"] = domain.StripCardActions(content)
+	content, ok := row["content"].(string)
+	if !ok {
+		return
+	}
+	// decoded the way the readers of a card decode it (JSON field names match without regard to case), so what is dropped is what they would have seen
+	body := domain.DecodeCardBody(content)
+	if body.OptionActions != nil || body.Secret != nil {
+		body.OptionActions, body.Secret = nil, nil
+		row["content"] = domain.EncodeCardBody(body)
 	}
 }
 

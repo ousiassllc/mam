@@ -116,19 +116,6 @@ func DecodeCardBody(content string) CardBody {
 	return b
 }
 
-// StripCardActions is the content of a question / escalation card without what its buttons would carry out (OptionActions) and without a masked secret field (Secret):
-// the two parts that make a click do more than answer. It is for a card that does not come from the app itself (an imported bundle), whose buttons the app never
-// made. Content that is not a card body has none of them and is returned as it is. Decoding goes through DecodeCardBody, so what is dropped is exactly what the readers
-// of a card would have seen (the field names match without regard to case).
-func StripCardActions(content string) string {
-	body := DecodeCardBody(content)
-	if body.OptionActions == nil && body.Secret == nil {
-		return content
-	}
-	body.OptionActions, body.Secret = nil, nil
-	return EncodeCardBody(body)
-}
-
 // TakeCardBody is the JSON stored in content of take cards. VideoURL is resolved by the producer of the card (a same-origin path); the Take itself is ref_id.
 type TakeCardBody struct {
 	Title    string   `json:"title"`
