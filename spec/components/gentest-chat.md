@@ -5,7 +5,7 @@
 | 区分 | コンポーネント | 責務 |
 |------|---------------|------|
 | pages（`gentest_chat_page.templ`） | `GenerationChatPage` | 共通の枠 `generationShell`（見出し「単発生成」・「?」・ページ間のタブ。タブは「生成する」「**チャットで作る**」「画像から似せる」「一部だけ描き直す」「履歴」「プロンプト履歴」）に `Chat` を入れる。モーダルのホスト（`modal.Host()`）も置く（結果のタイルが詳細を開くため） |
-| organisms（`organisms/gentest/chat/`） | `Chat`・`Composer`・`Messages`・`ProposalCard`・`ResultBlock`・`Swaps` | スレッド（`#gtc-thread`。`role=log`・`aria-live=polite`・`tabindex=0`。最大高さ 65vh でスクロール）と挨拶のカード・入力欄・スレッドに足す部品 |
+| organisms（`organisms/gentest/chat/`） | `Chat`・`Composer`・`Messages`・`ProposalCard`・`ResultBlock`・`Swaps` | スレッド（`#gtc-thread`。`role=log`・`aria-live=polite`・`tabindex=0`。最大高さ 65vh でスクロール。結果のブロックは、動いている間 `aria-live="off"` で、2 秒ごとの取り直しをスクリーンリーダーが読み直さない。終わったブロックだけが `aria-live` なしで返り、スレッドの追加として 1 度読まれる）と挨拶のカード・入力欄・スレッドに足す部品 |
 | handler（`web/handler/gentest/chatscreen/`） | `Register`・`Page`・`Send`・`Confirm`・`Dismiss`・`Batch` | ルート。サービス（`service/gentest/chat`）の結果を表示用の構造にする（`views.go`）。organism はサービスを import しない |
 | static（`static/src/components/gentest-chat/`） | `chat.ts` | Enter で送信（`isSendKey`。Shift+Enter は改行・IME の確定の Enter は送らない・空は送らない）、送信が通ったら、送った言葉だけを入力欄から消して戻す（拒否されたら言葉を残す。送信中に打った次のメッセージは残す）、新しい部品が足されたらスレッドを末尾へ（結果のブロックが 2 秒ごとに自分を取り直したときは、利用者が末尾の近くにいるときだけ）、**答え済みの選択肢（最新以外）を `inert`** にして薄くする |
 
@@ -33,3 +33,4 @@
 |----|------|---------|---------|
 | 1.0 | 2026-11-10 | 新規作成（スレッド・選択肢のカード・確認のカード・結果のブロック・入力欄・安全・狭い幅） | Issue #1138 |
 | 1.1 | 2026-11-10 | 構成の表の static の行に、入力欄は送った言葉だけを消すこと（送信中に打った次のメッセージを残す）と、スレッドは新しい部品が来たときと利用者が末尾の近くにいるときだけ末尾へ動くこと（結果のブロックの取り直しでは動かさない）を足した | PR #1141 のレビュー指摘 |
+| 1.2 | 2026-11-10 | 構成の表の organisms の行に、結果のブロックは動いている間 `aria-live="off"`（2 秒ごとの `outerHTML` の取り直しが `aria-live=polite`・`aria-relevant=additions` のスレッドで読み上げ直されないように）、終わったブロックだけが `aria-live` なしで 1 度読まれることを足した（`organisms/gentest/chat/result_live_test.go` が確かめる） | PR #1141 のレビュー指摘（major） |

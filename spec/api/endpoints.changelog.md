@@ -218,3 +218,4 @@
 | 1.211 | 2026-11-10 | `GET /projects/:id/scenes` の待機の表示の `data-phase` に `budget_confirm`（予算の確認待ち）を足した（実装と `spec/spec.md` §4.3 に合わせた） | PR #1141 のレビュー指摘（列挙に抜けがあった） |
 | 1.212 | 2026-11-10 | §2.1 の `POST /projects/import` に、質問・Escalation カードのボタンの操作（`option_actions`）とマスク入力欄（`secret`）は取り込まずに外すことを足した（バンドルに仕込まれた操作がボタンで走らないように） | PR #1141 のレビュー指摘（critical） |
 | 1.213 | 2026-11-10 | endpoints-settings.md §3 の `PUT`・`DELETE /credentials/:provider` の成功の本文に、`#api-provider-models`（API プロバイダーの選択の下の一覧）の OOB の差し替えを足した（詳細は endpoints-settings.md 1.21） | PR #1141 のレビュー指摘 |
+| 1.214 | 2026-11-10 | [endpoints-gentest.md](endpoints-gentest.md)（1.30）の `POST /generation-test/chat/messages` を、`session` の形が不正なときだけ 410、形が正しい ID の会話が無いときは新しい会話を作って 200 に直した（実装に合わせた。confirm・dismiss の「無い会話は 410」は変えない） | PR #1141 のレビュー指摘（major） |

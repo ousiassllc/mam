@@ -104,6 +104,9 @@ func TestConversationsExpireAndAreBounded(t *testing.T) {
 	now = now.Add(chat.SessionTTL + time.Minute)
 	_, err = svc.Confirm(ctx, id, p.ID)
 	assert.ErrorIs(t, err, chat.ErrNoSession, "a conversation that was not used for the TTL is gone, and its card with it")
+	s.queue(step(m{"action": "say", "text": "はい"}))
+	_, err = svc.Send(ctx, id, "もう一度")
+	assert.NoError(t, err, "a message to a conversation that is gone starts a new one under the same id (only an id of a wrong shape is refused: 410)")
 	assert.Equal(t, 0, len(mustBatches(t, g)))
 
 	first := chat.NewSessionID()

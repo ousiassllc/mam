@@ -246,7 +246,9 @@ templ ProposalCard(p Proposal) {
 }
 
 // ResultBlock shows the results of a batch the user confirmed: its progress, and a tile per result (a tap opens the result in the modal of the screen). While
-// anything waits or runs it asks for itself, and only itself, again every 2 seconds.
+// anything waits or runs it asks for itself, and only itself, again every 2 seconds. The thread is a polite live region that announces additions, and every
+// swap adds a new block, so a running block turns the announcement off (`aria-live="off"`): a screen reader does not read the progress again every 2 seconds.
+// The block that comes back finished has no such attribute, so it is read once, as an addition to the thread.
 templ ResultBlock(r Result) {
 	<section
 		id={ ResultID(r.BatchID) }
@@ -254,6 +256,7 @@ templ ResultBlock(r Result) {
 		data-testid="gtc-result"
 		data-state={ r.State }
 		if !r.Finished {
+			aria-live="off"
 			hx-get={ batchPath(r.BatchID) }
 			hx-trigger={ Polling }
 			hx-target="this"
