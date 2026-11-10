@@ -50,7 +50,7 @@ func (b Builder) build(ctx context.Context, projectID string, launches Launches,
 	}
 	cfg := b.Config()
 	pack, packModels, packUnpriced := packCost(cfg)
-	plan := Plan{Exists: map[string]bool{}, packUnpriced: packUnpriced, ProjectCeiling: budget.ProjectCeiling, ShotCeiling: budget.ShotCeiling, ProjectSpent: budget.ProjectSpent}
+	plan := Plan{Exists: map[string]bool{}, packUnpriced: packUnpriced, ProjectCeiling: budget.ProjectCeiling, ShotCeiling: budget.ShotCeiling, ProjectSpent: budget.ProjectSpent, ShotSpent: map[string]float64{}}
 	scenes, err := b.Plans.ListScenes(ctx, projectID)
 	if err != nil {
 		return Plan{}, err
@@ -71,6 +71,11 @@ func (b Builder) build(ctx context.Context, projectID string, launches Launches,
 			if !planned(shot, takes[shot.ID], launches[shot.ID]) {
 				continue
 			}
+			held, err := b.Gens.Budget(ctx, projectID, shot.ID)
+			if err != nil {
+				return Plan{}, err
+			}
+			plan.ShotSpent[shot.ID] = held.ShotSpent
 			line := Line{ShotID: shot.ID, Number: number, Seconds: shot.Duration}
 			if _, started := launches[shot.ID][genapprovalrepo.StageReferencePack]; !started && !hasKeyframe(shot) {
 				line.Pack, line.PackModels, line.PackCost = true, packModels, pack

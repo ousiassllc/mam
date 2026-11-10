@@ -34,6 +34,20 @@ func TestOverrun_IsWhatThePlanNeedsOverTheCeilings(t *testing.T) {
 	assert.False(t, plan.Overrun().Any(), "a price that is not known is not counted, as the ceiling does not count it")
 }
 
+// The Reference Pack is charged to its Shot, so what a Shot already holds counts against the Shot ceiling with what the plan adds: a plan under the ceiling
+// by its own price still overruns when the Shot has spent (spec/spec.md §4.3).
+func TestOverrun_CountsWhatTheShotAlreadyHolds(t *testing.T) {
+	plan := genplan.Plan{
+		Lines:       []genplan.Line{{ShotID: "s1", VideoCost: genplan.Cost{USD: 2}}, {ShotID: "s2", VideoCost: genplan.Cost{USD: 2}}},
+		ShotCeiling: usd(3),
+		ShotSpent:   map[string]float64{"s1": 1.5},
+	}
+	assert.Equal(t, genplan.Overrun{ShotNeed: 3.5}, plan.Overrun(), "1.5 held + 2 planned passes 3, though each plan line alone fits")
+
+	plan.ShotSpent["s1"] = 1
+	assert.False(t, plan.Overrun().Any(), "1 held + 2 planned fits 3")
+}
+
 func TestUnpricedNotice_OnlyWithABudget(t *testing.T) {
 	plan := genplan.Plan{Unpriced: []string{"動画: kling-3.0"}}
 	assert.Empty(t, plan.UnpricedNotice(), "no budget: nothing to tell")

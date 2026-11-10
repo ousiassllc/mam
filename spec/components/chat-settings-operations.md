@@ -49,10 +49,10 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 - **キーがどこにも残らない**: 値は `ChatService.SubmitSecret` から `CredentialService.Save` に渡るだけで、チャットの履歴・イベント（WebSocket）・トレース・ログ・エラー文・応答の HTML のどれにも書かない。テストは、保存後に DB の全テーブルとログ、スレッドの全メッセージに値が無いことを確かめる（`service/chatops/chattest/credential_test.go`・`secret_test.go`）。
 - **発言にキーらしき文字列が含まれていたとき**（`secretguard`）: 次のどれかに当たると、その発言は**伏せた形で記録**し（「［API キーらしき文字列は伏せました］」）、モデル（Brief の抜き出し・Command Interpreter）には渡さず、カードで入力するよう案内する。
   - 既知の形: `sk-…`・`sk_…`・`AIza…`・`hf_…`・`r8_…`・`id:secret`・`Bearer …`・JWT（`eyJ….….…`。MiniMax など）・「キー/token の後ろの長い英数字」。
-  - **形が決まっていないキー**（Kling の 32 桁の英数字、Runway の `key_` + 16 進、Luma、Seedance・Flux の UUID、Sync Labs など）: 発言全体が空白を含まない 24 文字以上の 1 語（`A-Za-z0-9_.-`）、または文中にそのような語（英字と数字の両方を含み、パスや URL の一部でないもの）があるとき。
+  - **形が決まっていないキー**（Kling の 32 桁の英数字、Runway の `key_` + 16 進、Luma、Seedance・Flux の UUID、Sync Labs など）: 発言全体が空白を含まない 24 文字以上の 1 語（`A-Za-z0-9_.-`）、または文中にそのような語（英字と数字の両方を含み、パスや URL の一部でないもの）があるとき。**モデルの名前は鍵として扱わない**: ファイル名（`.safetensors`・`.gguf`・`.ckpt`・`.pt`・`.pth`・`.bin`・`.onnx` で終わる語）と、カタログのモデル ID（小文字の語・版・大きさをハイフンでつないだもの。3 つ以上の部分があり、16 進の数字だけでは書けない 4 文字以上の語を含み、英字と数字の混じった長い塊を含まないもの。例 `ltx-2.5-22b-distilled-nvfp4`）は、そのまま Command Interpreter に渡す（発言の「このモデルで作って」が伏せられないように）。上の既知の形（`sk-…` や UUID など）はこれとは別に先に読む。
   - **キーを聞くカード（`set_credential`）が開いている間**（最新のカードに返信が無い）: 空白を含まない 8 文字以上の ASCII の 1 語は、形が分からなくてもキーとして扱う。そのカードへの返信は、「やめる」などの断り以外はすべて伏せて記録し、読み取らない。
 - 伏せて記録した発言は、**カードへの返信としては記録しない**（`reply_to_message_id` を持たない）。キーのカードは開いたままで、あとから入力欄にキーを入れて保存できる。
-- **チャットの発言以外の入口も同じ**: 新規プロジェクトの最初の発言（`ProjectService.Create`）、Shot への指示（`DirectorService.DirectorCommand`）、承認カードのコメント（`ChatService.RespondApproval`）も `secretguard.Redact` を通し、見つかれば伏せた形を記録して、Brief の抜き出し・Command Interpreter には渡さない（承認の決定そのものは実行する）。
+- **チャットの発言以外の入口も同じ**: 新規プロジェクトの最初の発言（`ProjectService.Create`）、Shot への指示（`DirectorService.DirectorCommand`）、承認カードのコメント（`ChatService.RespondApproval`）、単発生成のチャットの発言（`gentest/chat.Service.Send`。伏せた形をスレッドに出し、LLM にも伏せた形を渡す）も `secretguard.Redact` を通し、見つかれば伏せた形を記録して、Brief の抜き出し・Command Interpreter には渡さない（承認の決定そのものは実行する）。
 
 ### 1.2 クラウド動画モデルの API プロバイダー（`set_video_provider`、#1136）
 
@@ -62,7 +62,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 
 ## 2. モデルの導入
 
-実装: `backend/internal/service/chatops/install`（`install_model`・`install_model_engine`・`install_hf_file`・`install_local_runtime`）、つなぎ込み `service/chatwire/install.go`、テスト `chatops/install/installtest`・`service/chatops/chattest/install_test.go`・`service/chatops/chattest/install_real_test.go`（実物のモデルマネージャーに mmtest の偽ホストをつないだ通し）。いずれも**アプリ全体の設定**（`Global`・`Confirm`・`AnyMode`）で、どのモードでも、Brief を作っている最中でも受ける（§0.2）。サービス層は画面（`/model-manager`）・MCP と同じ `modelmanager.Service`・`localruntime.Service` で、導入の可否の判断も実行もそこで行う（ロジックは複製しない）。導入はモデルを読む LLM が要る（`Spec.Detect` は無い）。
+実装: `backend/internal/service/chatops/install`（`install_model`・`install_model_engine`・`install_hf_file`・`install_local_runtime`）、つなぎ込み `service/chatwire/install.go`、テスト `chatops/install/installtest`・`service/chatops/chattest/install_test.go`・`service/chatops/chattest/install_real_test.go`（実物のモデルマネージャーに mmtest の偽ホストをつないだ通し）。いずれも**アプリ全体の設定**（`Global`・`Confirm`・`AnyMode`）で、どのモードでも、Brief を作り終えたあとは受ける。Brief を作っている最中（DRAFT）は受けず（`Setup` ではない。`AsksSetup`）、その発言は Brief への答えとして抜き出しに回る（§0.2）。サービス層は画面（`/model-manager`）・MCP と同じ `modelmanager.Service`・`localruntime.Service` で、導入の可否の判断も実行もそこで行う（ロジックは複製しない）。導入はモデルを読む LLM が要る（`Spec.Detect` は無い）。
 
 ### 2.1 共通の流れ
 
@@ -103,7 +103,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 
 ## 3. モデルと LLM の割り当て
 
-実装: `backend/internal/service/chatops/assign`（`set_model_assignment`）、`chatops/llmroute`（`set_llm_assignment`）、つなぎ込み `service/chatwire/assign.go`。どちらも**アプリ全体の設定**（`Global`）で、DIRECTOR MODE でも AUTO MODE でも、Brief を作っている最中でも受ける（§0.2）。サービス層は設定画面・MCP と同じで、ロジックは複製しない。
+実装: `backend/internal/service/chatops/assign`（`set_model_assignment`）、`chatops/llmroute`（`set_llm_assignment`）、つなぎ込み `service/chatwire/assign.go`。どちらも**アプリ全体の設定**（`Global`）で、DIRECTOR MODE でも AUTO MODE でも、Brief を作り終えたあとは受ける。Brief を作っている最中（DRAFT）に受けるのは `set_llm_assignment` だけ（`Setup`）で、`set_model_assignment` は受けずに Brief への答えとして抜き出しに回す（§0.2）。サービス層は設定画面・MCP と同じで、ロジックは複製しない。
 
 ### 3.1 画像・動画モデルの割り当て（`set_model_assignment`）
 
@@ -263,3 +263,4 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 | 1.0 | 2026-11-10 | 新規。共通の約束（§0）と API キー（§1）を書いた（#1140） |
 | 1.1 | 2026-11-10 | モデルの導入（§2）・割り当て（§3）・LoRA（§4）・書き出し（§5）・キャラクターの参照（§6）を足した。実装は `service/chatwire/` が配線し、サービス層のテストは `service/chatops/chattest/` に置く（#1140） |
 | 1.2 | 2026-11-10 | レビューの指摘を直した: DRAFT 中は設定の操作を API キー・プロバイダー・LLM の割り当てと拒否だけに絞り、モデルの割り当て・導入の `Asked` を対象の名指しに絞った（§0.2）。キーらしき文字列の検出を形の無いキー・開いているキーのカードへの返信まで広げ、伏せた発言をカードへの返信にしないようにし、ほかの入口にも適用した（§1.1）。MCP のトークン・ポートの拒否を語の境界で判定する（§0.4）。実装・テストの名前を実際のものに直した（`chatwire`・`chattest`・`chatcard`・`addFromAsset`）（#1140） |
+| 1.3 | 2026-11-10 | モデルの名前（ファイル名・カタログのモデル ID）をキーとして伏せないことを足し（§1）、`secretguard.Redact` の入口に単発生成のチャットの発言を足した。DRAFT 中の受付を実装（`AsksSetup`）に合わせて直した（§2・§3。API キー・プロバイダー・LLM の割り当てと拒否だけ） | PR #1141 のレビュー指摘 |

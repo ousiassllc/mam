@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/gentestchat"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 )
 
 // Send takes a message of the user and answers it: the LLM acts step by step (it may look at the models and price batches) until it says something, puts
@@ -22,6 +23,7 @@ func (s *Service) Send(ctx context.Context, sessionID, text string) (Reply, erro
 	if text == "" || utf8.RuneCountInString(text) > MaxMessageRunes {
 		return Reply{}, ErrBadMessage
 	}
+	text, _ = secretguard.Redact(text) // an API key is never sent to the LLM nor kept in the thread (spec/spec.md §1.1, #1140)
 	se, err := s.open(sessionID, true)
 	if err != nil {
 		return Reply{}, err

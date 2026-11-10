@@ -56,6 +56,9 @@ type Plan struct {
 	// ProjectCeiling and ShotCeiling are the budget ceilings (nil: none); ProjectSpent is what the ledger and the generations in flight hold.
 	ProjectCeiling, ShotCeiling *float64
 	ProjectSpent                float64
+	// ShotSpent is what each planned Shot already holds (by Shot ID): the ledger and the generations in flight, which the Shot ceiling counts with what the plan adds
+	// (the Reference Pack is charged to the Shot it is made for).
+	ShotSpent map[string]float64
 }
 
 // Pack is the Shots that get a Reference Pack.
@@ -93,7 +96,7 @@ func (p Plan) Total() Cost { return p.PackCost().Add(p.VideoCost()) }
 type Overrun struct {
 	// ProjectNeed is the Project ceiling the plan needs: what was spent and reserved plus the plan; 0 when the plan fits the Project ceiling (or none is set).
 	ProjectNeed float64
-	// ShotNeed is the Shot ceiling the dearest Shot needs; 0 when every Shot fits (or none is set).
+	// ShotNeed is the Shot ceiling the dearest Shot needs (what it holds plus what the plan costs); 0 when every Shot fits (or none is set).
 	ShotNeed float64
 }
 
@@ -108,7 +111,7 @@ func (p Plan) Overrun() Overrun {
 	}
 	if p.ShotCeiling != nil {
 		for _, l := range p.Lines {
-			if need := l.PackCost.USD + l.VideoCost.USD; need > *p.ShotCeiling {
+			if need := p.ShotSpent[l.ShotID] + l.PackCost.USD + l.VideoCost.USD; need > *p.ShotCeiling {
 				o.ShotNeed = max(o.ShotNeed, need)
 			}
 		}

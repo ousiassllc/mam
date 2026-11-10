@@ -219,3 +219,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.17 | 2026-11-07 | §5.2・§5.2.1・§5.2.2 の ffmpeg・FaceFusion のルートの移し替え（#1106）を実装した。状態を「実装済み」にした（`GET /settings/ffmpeg`・`/settings/facefusion` は 303、`PUT`・`POST`・`DELETE` は 404） | Issue #1106 |
 | 1.18 | 2026-11-07 | §5 の `PUT /settings/llm/local`・`POST /settings/llm/local/test` の廃止（#1104）を実装した。状態を「実装済み」にした（ルートは登録しない。404。`GET /settings/llm` はリンクのカード） | Issue #1104 |
 | 1.19 | 2026-11-08 | §6 に、割り当てが使えない行の注意（生成が条件に合うモデルで行われるか、断られるか）を足した | Issue #1113 |
+| 1.20 | 2026-11-10 | §1 に `PUT /settings/api-provider`（動画モデル〔Kling〕の API プロバイダーの選択。`models.json` の `video_provider` に保存して即反映。未知の値は 422、`--model-config` で固定中は 409）を足した | Issue #1136 |

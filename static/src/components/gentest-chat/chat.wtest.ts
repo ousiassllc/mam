@@ -68,10 +68,10 @@ describe('the chat of the single generation (#1138)', () => {
     composer().dispatchEvent(
       new CustomEvent('htmx:afterRequest', {
         bubbles: true,
-        detail: { elt: composer(), successful: false, xhr: { status: 422 } },
+        detail: { elt: composer(), successful: true, xhr: { status: 422 } },
       }),
     );
-    expect(box().value, 'a refused message keeps its words').to.equal('狐を作りたい');
+    expect(box().value, 'a swapped 422 (htmx says successful) keeps the words').to.equal('狐を作りたい');
     composer().dispatchEvent(
       new CustomEvent('htmx:afterRequest', {
         bubbles: true,

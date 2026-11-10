@@ -3,11 +3,13 @@ package chat_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/chat"
 )
 
@@ -208,4 +210,22 @@ func TestAVideoEstimateShowsTheLengthPricedPerSecond(t *testing.T) {
 	assert.Equal(t, "720p", p.Estimate.Breakdown[0].Resolution)
 	assert.InDelta(t, 5.0, p.Estimate.Breakdown[0].Seconds, 1e-9)
 	assert.Equal(t, 0, r.batches(t))
+}
+
+// A key pasted into the chat is hidden before the message is sent to the LLM or put in the thread (spec/spec.md §1.1); the rest of the message goes as it was.
+func TestAPIKeyInAMessageIsNotSentToTheLLM(t *testing.T) {
+	r := newRig(t)
+	key := "sk-proj-AbCdEfGhIjKlMnOpQrStUvWx0123"
+	r.LLM.queue(step(m{"action": "say", "text": "了解です"}))
+
+	rep, err := r.Chat.Send(context.Background(), r.SessID, "このキー "+key+" で夕暮れの狐を作りたい")
+	require.NoError(t, err)
+
+	require.Len(t, r.LLM.asked(), 1)
+	sent := fmt.Sprintf("%+v", r.LLM.asked()[0])
+	assert.NotContains(t, sent, key[len(key)/3:], "the LLM never sees the key")
+	assert.Contains(t, sent, secretguard.Hidden)
+	assert.Contains(t, sent, "夕暮れの狐を作りたい")
+	assert.NotContains(t, rep.Messages[0].Text, key[len(key)/3:], "nor does the thread keep it")
+	assert.Contains(t, rep.Messages[0].Text, secretguard.Hidden)
 }

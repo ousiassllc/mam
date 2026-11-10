@@ -36,7 +36,7 @@ var (
 
 // Redact returns text with every key hidden (Hidden) and whether it found one.
 func Redact(text string) (string, bool) {
-	if token.MatchString(strings.Trim(strings.TrimSpace(text), quoteEdge)) {
+	if whole := strings.Trim(strings.TrimSpace(text), quoteEdge); token.MatchString(whole) && !isModelName(whole) {
 		return Hidden, true
 	}
 	found := false
@@ -64,7 +64,46 @@ func looksLikeKey(text string, from, to int) bool {
 		return false
 	}
 	run := text[from:to]
+	if isModelName(run) {
+		return false
+	}
 	return strings.IndexFunc(run, unicode.IsLetter) >= 0 && strings.IndexFunc(run, unicode.IsDigit) >= 0
+}
+
+// modelFileExts are the endings of the model files the catalog names (Hugging Face / ComfyUI): a key never ends with one.
+var modelFileExts = []string{".safetensors", ".gguf", ".ckpt", ".pt", ".pth", ".bin", ".onnx"}
+
+// isModelName reports whether the run is the name of a model, which a user says when they ask for it ("ltx-2.5-22b-distilled-nvfp4 で作って"; spec/spec.md §2.1), not a
+// key: a file of a model (it ends with .safetensors, .gguf…), or an ID of the catalog (lowercase words, versions and sizes joined by hyphens: at least three parts, one
+// of them a word of four letters or more that no hex digits alone spell, and none of them a long run of letters and digits, as a key's chunk is). What is no key by
+// these rules is still read by patterns (sk-…, hf_…, a UUID…), which run before and apart from this.
+func isModelName(run string) bool {
+	run = strings.TrimRight(run, ".")
+	lower := strings.ToLower(run)
+	for _, ext := range modelFileExts {
+		if strings.HasSuffix(lower, ext) && len(run) > len(ext) {
+			return true
+		}
+	}
+	if run != lower || strings.ContainsAny(run, "_") {
+		return false
+	}
+	parts := strings.Split(run, "-")
+	if len(parts) < 3 {
+		return false
+	}
+	word := false
+	for _, p := range parts {
+		switch {
+		case p == "" || len(p) > 16:
+			return false
+		case len(p) > 8 && strings.IndexFunc(p, unicode.IsLetter) >= 0 && strings.IndexFunc(p, unicode.IsDigit) >= 0:
+			return false
+		case len(p) >= 4 && strings.IndexFunc(p, func(r rune) bool { return r < 'a' || r > 'z' }) < 0 && strings.IndexFunc(p, func(r rune) bool { return r > 'f' }) >= 0:
+			word = true
+		}
+	}
+	return word
 }
 
 // OneToken reports whether text is a single word of printable ASCII (8 characters or more): what a user who types a key of a shape nobody knows into the chat while the card

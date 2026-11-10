@@ -34,8 +34,8 @@ var (
 	// shotPerRe says, before the amount, that it is per Shot: "1 ショットあたり $2", "ショットごとに $2", "毎ショット $2", "per shot $2".
 	shotPerRe = regexp.MustCompile(`(?i)(?:shot|ショット|カット)\s*(?:あたり|当たり|ごと|毎|ずつ|につき)|[毎各]\s*(?:shot|ショット|カット)|per\s*shot`)
 	// shotUnitRe says that the Shot is the unit of the amount, as the last words before it: "1 カット $2 まで", "1 ショットの予算は $2". A count other than one ("3 ショットで",
-	// "3 ショットの予算は") is the size of the Project, which the amount is the budget of; so are the words around it ("3 カット構成 予算 $20").
-	shotUnitRe = regexp.MustCompile(`(?i)(?:^|[^0-9])(?:1\s*|各\s*)?(?:shot|ショット|カット)\s*(?:の?\s*(?:予算|上限|budget)\s*(?:は|が|:)?)?\s*$`)
+	// "3 ショットの予算は") is the size of the Project, which the amount is the budget of; so are the words around it ("3 カット構成 予算 $20"); the count may be spaced from the unit ("3 ショットの予算は $20"), so a digit before the spaces rules the Shot out.
+	shotUnitRe = regexp.MustCompile(`(?i)(?:^|[^0-9\s])\s*(?:1\s*|各\s*)?(?:shot|ショット|カット)\s*(?:の?\s*(?:予算|上限|budget)\s*(?:は|が|:)?)?\s*$`)
 	// shotAfterRe says, right after the amount, that it is per Shot: "$2/shot", "$2 ずつ".
 	shotAfterRe = regexp.MustCompile(`(?i)^\s*(?:/\s*(?:1\s*)?(?:shot|ショット|カット)|あたり|当たり|ごと|毎|ずつ|につき|per\s*shot)`)
 	clauseSplit = regexp.MustCompile(`[。\n!?]+`)

@@ -120,3 +120,4 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | 0.7 | 2026-10-25 | 題の「（下書き）」を外した。`endpoints.md` の行数を実測の 297 行に直し、§1 の `GET /settings/chatgpt` と §6 の質問 5 に、`card` を足さない実装の形を書いた | PR #849 の第 2 周の独立レビューの指摘 |
 | 0.8 | 2026-11-01 | §1 に `GET /settings/audio`（ページ）と `PUT /settings/audio`（保存）を足した | Issue #924 |
 | 0.9 | 2026-11-03 | §1 に `GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider`（設定のカードの「詳細」のモーダル）を足した | Issue #1005 |
+| 0.10 | 2026-11-10 | §1 に `PUT /settings/api-provider`（動画モデルの API プロバイダーの選択。保存して即反映し `#credential-panel` の全体を返す）を足した | Issue #1136 |

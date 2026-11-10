@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 )
 
@@ -83,5 +84,41 @@ func TestOneToken_IsASingleWordOfPrintableASCII(t *testing.T) {
 	}
 	for _, text := range []string{"はい", "yes", "two words here", "日本語のメッセージです", "abc defgh", ""} {
 		assert.False(t, secretguard.OneToken(text), text)
+	}
+}
+
+// What a user says to ask for a model is no key: the ID of every model of the catalog and the name of every file it pins reach the Command Interpreter as they are
+// (spec/spec.md §2.1), alone or in a sentence.
+func TestRedact_LeavesTheModelsOfTheCatalogAlone(t *testing.T) {
+	names := []string{"ltx-2.5-22b-distilled-nvfp4", "qwen-image-21-uncensored-int8", "wan22-t2v-14b-palingenesis", "Wan2.2_Remix_NSFW_i2v_14b_high_lighting_fp8_e4m3fn_v3.0.safetensors"}
+	for _, m := range catalog.Default().Models {
+		names = append(names, m.ID)
+		for _, f := range m.Files {
+			names = append(names, f.Name)
+		}
+	}
+	for _, name := range names {
+		for _, text := range []string{name, "「" + name + "」", "これは " + name + " を使いたい"} {
+			got, found := secretguard.Redact(text)
+			assert.False(t, found, text)
+			assert.Equal(t, text, got)
+		}
+	}
+}
+
+// A key that is built like a model name is still a key: a chunk of random letters and digits, hex groups and the prefixes of the providers are not words.
+func TestRedact_StillHidesAKeyThatIsNotAModelName(t *testing.T) {
+	for _, key := range []string{
+		"a1b2c3d4e5f6a7b8c9d0e1f2-a1b2c3d4e5f6a7b8c9d0e1f2",
+		"12345678-1234-1234-1234-123456789abc",
+		"deadbeef-cafe-babe-feed-0123456789ab",
+		"sk-ant-api03-abcdefghijklmnopqrstuvwx",
+		"sk-abcdefghij-klmnopqrstuvwxyz-0123",
+	} {
+		for _, text := range []string{key, "これです " + key + " お願い"} {
+			got, found := secretguard.Redact(text)
+			assert.True(t, found, text)
+			assert.NotContains(t, got, key[len(key)/3:], "no part of it is left: %q", got)
+		}
 	}
 }

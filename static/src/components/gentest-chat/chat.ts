@@ -8,7 +8,7 @@
  *
  * A generation never starts here: the only thing that does is the button of a confirmation card, a plain form of the server's.
  */
-import { isSendKey } from '../lib/thread';
+import { isSendKey, isSuccessResponse } from '../lib/thread';
 
 const THREAD = '#gtc-thread';
 const COMPOSER = '#gtc-composer';
@@ -42,8 +42,9 @@ export function installGentestChat(doc: Document = document): void {
   });
 
   doc.addEventListener('htmx:afterRequest', (event) => {
-    const { elt, successful } = (event as CustomEvent<{ elt: Element; successful: boolean }>).detail;
-    if (!successful || !elt.matches(COMPOSER)) return;
+    // detail.successful is not used: main.ts swaps the HTML of a 4xx/5xx answer (the alert), which makes htmx report it as successful too.
+    const { elt, xhr } = (event as CustomEvent<{ elt: Element; xhr?: { status: number } }>).detail;
+    if (!isSuccessResponse(xhr) || !elt.matches(COMPOSER)) return;
     const box = elt.querySelector<HTMLTextAreaElement>(CONTENT);
     if (box) {
       box.value = '';
