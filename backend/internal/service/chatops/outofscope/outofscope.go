@@ -10,11 +10,11 @@ import (
 )
 
 var (
-	setting = regexp.MustCompile(`(?i)(設定|変更|変え|にして|にしたい|にする|指定|登録|入れ|選|切り替|切替|追加|発行|作|削除|消|無効|有効|再発行|ローテ|set|change|configure|create|issue|revoke|delete)`)
+	setting = regexp.MustCompile(`(?i)(設定|変更|変え|にして|にしたい|にする|指定|登録|入れ|選|切り替|切替|追加|発行|作|削除|消|無効|有効|再発行|ローテ|\b(?:set|change|configure|create|issue|revoke|delete)\b)`)
 	program = regexp.MustCompile(`(?i)(ffmpeg|ffprobe|facefusion|face\s*fusion|フェイスフュージョン)`)
-	where   = regexp.MustCompile(`(?i)(パス|path|実行ファイル|実行パス|exe|バイナリ|場所|フォルダ|ディレクトリ|ダウンロード先|インストール先)`)
-	mcp     = regexp.MustCompile(`(?i)(mcp|エムシーピー)`)
-	access  = regexp.MustCompile(`(?i)(トークン|token|アクセス権|待ち受け|ポート|port|bind|アドレス|認証)`)
+	where   = regexp.MustCompile(`(?i)(パス|\bpaths?\b|実行ファイル|実行パス|\.exe\b|\bexe\b|バイナリ|場所|フォルダ|ディレクトリ|ダウンロード先|インストール先)`)
+	mcp     = regexp.MustCompile(`(?i)(\bmcp\b|エムシーピー)`)
+	access  = regexp.MustCompile(`(?i)(トークン|\btokens?\b|アクセス権|待ち受け|ポート|\bports?\b|\bbind(?:ing)?\b|アドレス|認証)`)
 )
 
 const (
