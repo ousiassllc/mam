@@ -1,4 +1,4 @@
-# エンドポイント: 生成テスト画面
+# エンドポイント: 単発生成画面
 
 プロジェクトに属さない画像・動画の比較生成の画面 `GET /generation-test`（Issue #835）。意味・見積り・ジョブ・失敗の扱いは [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md)、テーブルは [../architecture/gentest/er-gentest.md](../architecture/gentest/er-gentest.md)。画面の全操作は、同じサービス（`gentest.Service`）を呼ぶ MCP ツールでもできる（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）。入口はプロジェクト一覧（分析・設定の隣）のリンクと、モデルマネージャーの区画「モデル」の「?」ヘルプの中のリンク（#1100 で、試し生成の区画のリンクから移った）。
 
@@ -52,7 +52,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/match` | プロンプトマッチの画面（Issue #916。[../architecture/gentest/prompt-match.md](../architecture/gentest/prompt-match.md)）。参考の画像 1 枚・モデル・進め方（おまかせ / 1回だけ / 調整）・目標の似てる度・上限の回数・言葉の指示。クエリ `ref`（`<source>:<project>:<id>` の画像を参考にして開く）・`model`。プロンプトマッチが無いアプリは 503 |
 | POST | `/generation-test/match/estimate` | プロンプトマッチの見積り（multipart: `upload`（参考の画像）または `ref`・`model`・`mode`（`auto`/`once`/`adjust`）・`target_score`（1〜100）・`max_rounds`（1〜10）・`max_cost_usd`（この実行で使ってよい費用。見積りが超えるなら実行ボタンが無効）・`instruction`（1000 文字まで）・続きは `continue_batch_id`）。確認の区画（最大の回数・モデルの内訳・LLM の呼び出しの行（単価の分かるものは合計に入る。分からないものは「単価なし」で入らない）・上限超過）を返す。拒否は 422・上限超過は確認にそのまま出る。`middleware` のアップロード用ルートの一覧に載せ、本文の上限を広げている |
 | POST | `/generation-test/match/run` | 確認の区画のフォームの送信。見積りをやり直し、`estimate_id` と合計が違う・上限を超えるなら 409、入力の誤りは 422。202 でタイムライン（`#gt-batch`）と、言葉の指示のフォーム（`#gt-match-adjust`。帯域外）を返し、確認の区画は空にする |
-| GET | `/generation-test/match/batches/:id` | タイムライン（いちばん似ている回・目標・各回の画像・似てる度（顔を混ぜているときは点の内訳）・直したところ・違い・プロンプトと直す前のプロンプト・ベストのプロンプトのコピー／生成テストで比べる・各回の「プロンプトで比べる」）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
+| GET | `/generation-test/match/batches/:id` | タイムライン（いちばん似ている回・目標・各回の画像・似てる度（顔を混ぜているときは点の内訳）・直したところ・違い・プロンプトと直す前のプロンプト・ベストのプロンプトのコピー／単発生成で比べる・各回の「プロンプトで比べる」）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
 | POST | `/generation-test/match/batches/:id/cancel` | 取り消し。始めていない回は取り消し、次の回は始まらない（作っている途中の絵は終わるのを待つ） |
 | POST | `/generation-test/match/batches/:id/adjust` | 言葉の指示（`instruction`）と `mode`（`adjust` = 1 回直す・`auto` = 自動で続ける）。**実行中**は次の直しに取り込む（確認の区画に 1 行の通知）。**終わっていれば**続きの見積りを確認の区画に返す（実行は `/match/run` に `continue_batch_id` つきで） |
 | DELETE | `/generation-test/prompts/:id` | プロンプト履歴の削除（結果は残る）。一覧の区画を返す |
@@ -71,7 +71,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | `*PartialImportError`（取り込み済みで、スロットへの割り当てが LOCK 等で拒否された） | 409（メッセージに「画像は取り込みました」） | `locked` 等（メッセージに ID） |
 | `*UpstreamError`（英訳に LLM が使えない・訳せなかった。何も生成していない。Issue #913。リクエストの取り消し・期限切れは対象外: LLM の失敗ではないので 502 にしない。Issue #1072） | 502 | `upstream` |
 | `ErrNotFound` | 404 | `not_found` |
-| `ErrUnavailable`・アプリに生成テストが無い | 503 | `unavailable` |
+| `ErrUnavailable`・アプリに単発生成が無い | 503 | `unavailable` |
 | 画像が大きすぎる | 413 | `validation` |
 
 ## 詳細設定のフィールド（Issue #973・#972）
@@ -113,8 +113,8 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
-| 1.0 | 2026-10-26 | 新規作成（ルート・エラーの対応・画面・テスト） | Issue #835。生成テストの画面 |
-| 1.1 | 2026-11-01 | 「画面」の節で、モデルはカードのタップで選ぶもの（見えないチェックボックス `model` が値を送る）に改め、選べない理由はカードでなく「?」ヘルプと読み上げにあることを足した | Issue #906。生成テスト画面の文字を減らし、モデルをカード選択にした |
+| 1.0 | 2026-10-26 | 新規作成（ルート・エラーの対応・画面・テスト） | Issue #835。単発生成の画面 |
+| 1.1 | 2026-11-01 | 「画面」の節で、モデルはカードのタップで選ぶもの（見えないチェックボックス `model` が値を送る）に改め、選べない理由はカードでなく「?」ヘルプと読み上げにあることを足した | Issue #906。単発生成画面の文字を減らし、モデルをカード選択にした |
 | 1.2 | 2026-11-01 | 見積りの `translate`（英語に訳して送る。無ければ OFF）と確認の「プロンプトの英訳」の行、`/run` の 502（訳せなかった）、エラーの対応の `*UpstreamError` を足した | Issue #913 |
 | 1.3 | 2026-11-02 | 見積りに `strength_<ref>`・`avoid_pose`・`lora`・`lora_strength` と役割 `face`・`style`・`edit`、ブラウザで選んだファイルの `upload::#<n>`、`ref-row` に `?model=` を足した | Issue #933 |
 | 1.4 | 2026-11-02 | `upload::#<n>` の n は届いたファイルの位置とし、空のファイルは保存せず番号を詰めない（その欄は捨てる。範囲外・数でない・同じ番号の 2 つ目も捨てる）。強さの値は範囲外・無限大を 0〜1 に丸める | Issue #933（PR #953 のレビュー） |

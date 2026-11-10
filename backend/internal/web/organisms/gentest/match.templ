@@ -214,7 +214,7 @@ templ matchBestPrompt(b MatchBatch) {
 					"type": "button", "data-copy-source": "gt-match-best-text", "data-copy-status": "gt-match-copy-status", "data-testid": "gt-match-copy",
 				})
 				if b.BestUseURL != "" {
-					@atoms.ButtonLink(atoms.ToneNeutral, "生成テストで比べる", templ.SafeURL(b.BestUseURL), templ.Attributes{"data-testid": "gt-match-use"})
+					@atoms.ButtonLink(atoms.ToneNeutral, "単発生成で比べる", templ.SafeURL(b.BestUseURL), templ.Attributes{"data-testid": "gt-match-use"})
 				}
 			</div>
 		</div>

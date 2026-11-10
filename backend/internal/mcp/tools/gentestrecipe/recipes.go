@@ -21,7 +21,7 @@ import (
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc}
 	mcpkit.Read(r, "list_generation_recipes",
-		"生成テストのレシピ（今の設定に付けた名前）の一覧。モデル・使えるか（usable。使えないときは reason: モデルの削除・未導入・成人ゲート・商用の絞り込み・OS と GPU）・かんたんの選択肢に出ているか（easy）・設定を返す。リクエストの recipe に id を渡すとその設定で作る / List the recipes of the generation test.",
+		"単発生成のレシピ（今の設定に付けた名前）の一覧。モデル・使えるか（usable。使えないときは reason: モデルの削除・未導入・成人ゲート・商用の絞り込み・OS と GPU）・かんたんの選択肢に出ているか（easy）・設定を返す。リクエストの recipe に id を渡すとその設定で作る / List the recipes of the generation test.",
 		h.list)
 	mcpkit.Write(r, "save_generation_recipe",
 		"設定をレシピとして保存する（モデル 1 つの画像の設定: ステップ数・CFG・サンプラー・スケジューラー・シード・ネガティブ・LoRA と強さ・入力画像の強さ・サイズ・品質・画面に出す値）。プロンプトの本文と入力画像は保存しない。easy: true でかんたんの「やりたいこと」の選択肢に並ぶ。同じ名前（大文字小文字を区別しない）は conflict / Save settings of an image model as a recipe.",
@@ -38,7 +38,7 @@ type handlers struct{ svc *service.Services }
 
 func (h handlers) recipes() (*recipe.Service, error) {
 	if h.svc.Gentest == nil {
-		return nil, &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "生成テストはこのアプリでは使えません", Status: http.StatusServiceUnavailable}
+		return nil, &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "単発生成はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
 	}
 	return recipe.New(h.svc.Gentest), nil
 }

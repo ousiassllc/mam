@@ -26,7 +26,7 @@ templ Section(c Card) {
 			@badge(c)
 		</div>
 		<p class="text-sm text-ink" data-testid="mm-face-models-description">
-			生成テストで「顔だけ」の参照画像を使ったときに、出力の顔が参照の顔にどれだけ似ているか（顔の類似度）を数字で測り、参照を顔のまわりに切るための小さなモデルです（YuNet と SFace。OpenCV Zoo）。
+			単発生成で「顔だけ」の参照画像を使ったときに、出力の顔が参照の顔にどれだけ似ているか（顔の類似度）を数字で測り、参照を顔のまわりに切るための小さなモデルです（YuNet と SFace。OpenCV Zoo）。
 			入れなくても生成はできますが、結果に類似度の数字は付きません。ボタン 1 つで、下の取得元から { c.Download } をこの PC に取得します（コミットを固定し、SHA-256 と大きさを確かめます。mam には同梱しません）。導入したあと mam を再起動する必要はありません。
 			if c.Remain != "" && c.Remain != c.Download {
 				<span data-testid="mm-face-models-remain">そろっているファイルは取り直しません。今回は { c.Remain } を取得します。</span>

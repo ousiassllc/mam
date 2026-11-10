@@ -161,7 +161,7 @@ func PanelView(p Panel) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\">生成テストを開く</a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\">単発生成を開く</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -688,7 +688,7 @@ func metaFields(s Staged) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</fieldset><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"mm-lora-strength\"><span>推奨の強さ（0.05〜1。空欄は未設定。選ぶと生成テストの強さの初期値になります）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</fieldset><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"mm-lora-strength\"><span>推奨の強さ（0.05〜1。空欄は未設定。選ぶと単発生成の強さの初期値になります）</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

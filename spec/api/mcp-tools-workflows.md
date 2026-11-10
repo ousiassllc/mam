@@ -27,7 +27,7 @@
 
 ### 画面に出す値（`exposed_inputs`。Issue #977）
 
-`import_workflow_json` の `settings`・`update_workflow_assignment`・`get_workflow` の `settings` に `exposed_inputs[]`（`node`・`input`・`type`（`int`/`float`/`string`/`enum`）・`label?`・`min`＋`max`（int・float。両方必要）・`options`（enum。1 つ以上））がある。生成テストのこだわりに入力欄として出る入力で、**割り当ては変わらない**。グラフに無いノード・入力、ほかのノードがつないでいる入力、割り当てが使っている入力、入力の今の値が型・範囲・選択肢に合わないもの、31 件目以降は `validation`。`update_workflow_assignment` が省くと今のまま（空の配列で全部外す）。使う側は [mcp-tools-generation-test.md](mcp-tools-generation-test.md)（`exposed`）。
+`import_workflow_json` の `settings`・`update_workflow_assignment`・`get_workflow` の `settings` に `exposed_inputs[]`（`node`・`input`・`type`（`int`/`float`/`string`/`enum`）・`label?`・`min`＋`max`（int・float。両方必要）・`options`（enum。1 つ以上））がある。単発生成のこだわりに入力欄として出る入力で、**割り当ては変わらない**。グラフに無いノード・入力、ほかのノードがつないでいる入力、割り当てが使っている入力、入力の今の値が型・範囲・選択肢に合わないもの、31 件目以降は `validation`。`update_workflow_assignment` が省くと今のまま（空の配列で全部外す）。使う側は [mcp-tools-generation-test.md](mcp-tools-generation-test.md)（`exposed`）。
 
 ### 詳細設定（`run_workflow`。Issue #973）
 

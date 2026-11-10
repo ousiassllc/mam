@@ -1,6 +1,6 @@
 # エンドポイント: ジョブ一覧
 
-[endpoints.md](endpoints.md) の続き（Issue #980）。裏で動く作業（モデルの導入・生成テスト・Shot の生成・Judge・Repair・企画・動画の書き出し・音声・Editor の判定・ワークフローの実行・Codex の導入・ffmpeg のダウンロード）の、いま動いているものと直近に終わったものを見る画面。意味・表示・a11y は [../components/jobs-screen.md](../components/jobs-screen.md)。**読み取り専用**で、ジョブを変更するルートは無い（キャンセルは導入・生成テストそれぞれの画面のルート）。
+[endpoints.md](endpoints.md) の続き（Issue #980）。裏で動く作業（モデルの導入・単発生成・Shot の生成・Judge・Repair・企画・動画の書き出し・音声・Editor の判定・ワークフローの実行・Codex の導入・ffmpeg のダウンロード）の、いま動いているものと直近に終わったものを見る画面。意味・表示・a11y は [../components/jobs-screen.md](../components/jobs-screen.md)。**読み取り専用**で、ジョブを変更するルートは無い（キャンセルは導入・単発生成それぞれの画面のルート）。
 
 | メソッド | パス | 内容 |
 |---|---|---|

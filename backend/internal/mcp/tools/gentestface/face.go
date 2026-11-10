@@ -29,7 +29,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"顔の入れ替え（FaceFusion。mam には同梱しない別ソフト）の状態。見つかったか（Python とフォルダ）・保存したパス・FaceFusion のバージョンと自己申告のライセンス・探した場所、選べるモデル（入れ替え・顔検出・復元）とそれぞれのライセンス（class: open 商用の制限なし / conditional 条件つき / noncommercial 商用NG / research 研究用のみ / unknown 商用不明）と既定、すべての入れ替えに付く注意（notes。ArcFace が非商用・成人向けの画像は断られる・本体は OpenRAIL-AS・モデルは FaceFusion が自分で取得する）、ライセンスの一次情報の URL。ready が true なら swap_generation_face を呼べる / The state of FaceFusion, the external face swapper, its models and their licenses.",
 		h.facefusionStatus)
 	mcpkit.Write(r, "swap_generation_face",
-		"画像の顔を、別の画像の顔に入れ替える（FaceFusion の `facefusion.py headless-run`。別プロセスで起動する）。target は顔を入れ替えられる側の画像（生成テストの成功した画像の結果 {source: history, id: result_id} など）、face は入れ替える顔の画像（アップロードした {source: upload, id: reference_id} など。いちばん大きい顔 1 つが使われる）。モデルを省くと既定（入れ替え ghost_2_256・顔検出 yunet・復元 gfpgan_1.4）。復元を使わないなら enhancer に none。結果は元とは別の結果（model が facefusion）として履歴に残り、get_generation_result の face_swap に元の result_id・モデル・ライセンスの注意、face_similarity に顔の類似度（SFace）が入る。ローカルの処理なので見積り・確認は要らず、すぐ始まる。非商用・研究用・商用不明のモデルを選ぶと warnings に注意が返る（実行はする）。FaceFusion は成人向け・ヌードの画像を断る（無効にできない）ので、mam の成人向けモデルの結果には使えない。FaceFusion が見つからないときは unavailable（failure.code が facefusion_unavailable。get_facefusion_status の ready が false）、未知のモデルは validation。16GB VRAM の実機での動作は未確認。job_id・batch_id・result_id を返す。進みは get_job / Swap the face of one picture into another with FaceFusion as a result of its own.",
+		"画像の顔を、別の画像の顔に入れ替える（FaceFusion の `facefusion.py headless-run`。別プロセスで起動する）。target は顔を入れ替えられる側の画像（単発生成の成功した画像の結果 {source: history, id: result_id} など）、face は入れ替える顔の画像（アップロードした {source: upload, id: reference_id} など。いちばん大きい顔 1 つが使われる）。モデルを省くと既定（入れ替え ghost_2_256・顔検出 yunet・復元 gfpgan_1.4）。復元を使わないなら enhancer に none。結果は元とは別の結果（model が facefusion）として履歴に残り、get_generation_result の face_swap に元の result_id・モデル・ライセンスの注意、face_similarity に顔の類似度（SFace）が入る。ローカルの処理なので見積り・確認は要らず、すぐ始まる。非商用・研究用・商用不明のモデルを選ぶと warnings に注意が返る（実行はする）。FaceFusion は成人向け・ヌードの画像を断る（無効にできない）ので、mam の成人向けモデルの結果には使えない。FaceFusion が見つからないときは unavailable（failure.code が facefusion_unavailable。get_facefusion_status の ready が false）、未知のモデルは validation。16GB VRAM の実機での動作は未確認。job_id・batch_id・result_id を返す。進みは get_job / Swap the face of one picture into another with FaceFusion as a result of its own.",
 		h.swapFace)
 }
 
@@ -69,7 +69,7 @@ type Input struct{}
 
 func (h handlers) gt() (*gentest.Service, error) {
 	if h.svc.Gentest == nil {
-		return nil, &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "生成テストはこのアプリでは使えません", Status: http.StatusServiceUnavailable}
+		return nil, &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "単発生成はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
 	}
 	return h.svc.Gentest, nil
 }
@@ -90,7 +90,7 @@ func mapError(err error) error {
 	case errors.Is(err, gterr.ErrNotFound):
 		return &mcpkit.ToolError{Code: mcpkit.CodeNotFound, Message: "対象が見つかりません", Status: http.StatusNotFound}
 	case errors.Is(err, gterr.ErrUnavailable):
-		return &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "生成テストはこのアプリでは使えません", Status: http.StatusServiceUnavailable}
+		return &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "単発生成はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
 	}
 	return mcpkit.MapError(err)
 }

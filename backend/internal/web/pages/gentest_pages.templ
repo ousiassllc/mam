@@ -13,7 +13,7 @@ import (
 
 // generationNav is the links between the pages of the generation test: tabs, the current one lit.
 templ generationNav(current string) {
-	<nav class="flex flex-wrap gap-1 border-b border-border pb-2 text-sm" aria-label="生成テスト">
+	<nav class="flex flex-wrap gap-1 border-b border-border pb-2 text-sm" aria-label="単発生成">
 		for _, l := range []struct{ Key, Label, Href string }{
 			{"new", "生成する", paths.GenerationTest()},
 			{"match", "画像から似せる", paths.GenerationTestMatch()},
@@ -37,7 +37,7 @@ templ generationShell(title, csrfToken, current, lead string) {
 		@pagehead.Main(pagehead.Wide) {
 			@pagehead.Header(title, "", lead)
 			@generationNav(current)
-			<p id="gentest-vs-main-line" class="text-xs text-mute">生成テストは試用の経路です。ここで作った動画は、プロジェクトの Scene / Shot（制作の本線）の Take にはなりません。本線の Shot は、プロジェクトの「Scene / Shot」から「生成」を押して作ります。</p>
+			<p id="gentest-vs-main-line" class="text-xs text-mute">単発生成は試用の経路です。ここで作った動画は、プロジェクトの Scene / Shot（制作の本線）の Take にはなりません。本線の Shot は、プロジェクトの「Scene / Shot」から「生成」を押して作ります。</p>
 			{ children... }
 		}
 	}
@@ -45,7 +45,7 @@ templ generationShell(title, csrfToken, current, lead string) {
 
 // GenerationTestPage is GET /generation-test: choose models and prompts, see the estimate, run, compare.
 templ GenerationTestPage(csrfToken string, c gentest.Compose) {
-	@generationShell("生成テスト", csrfToken, "new", "プロジェクトに属さない画像・動画の生成です。モデルとプロンプトを組み合わせて並べて比べ、気に入った結果だけプロジェクトに取り込めます。結果は Take・コスト台帳には入りません。") {
+	@generationShell("単発生成", csrfToken, "new", "プロジェクトに属さない画像・動画の生成です。モデルとプロンプトを組み合わせて並べて比べ、気に入った結果だけプロジェクトに取り込めます。結果は Take・コスト台帳には入りません。") {
 		if c.Tier.IsComfy() {
 			@gentesttier.Tabs(c.Tier)
 			@gentesttier.ComfyPanel()
@@ -60,7 +60,7 @@ templ GenerationTestPage(csrfToken string, c gentest.Compose) {
 
 // GenerationExposedPage is GET /generation-test/comfy/exposed: the inputs of a model's ComfyUI graph that the form offers as fields of their own (#977).
 templ GenerationExposedPage(csrfToken string, d gentesttier.PickerData) {
-	@generationShell("画面に出す値", csrfToken, "new", "ComfyUI のワークフローのノードの入力を選ぶと、生成テストのこだわりに入力欄として出ます。") {
+	@generationShell("画面に出す値", csrfToken, "new", "ComfyUI のワークフローのノードの入力を選ぶと、単発生成のこだわりに入力欄として出ます。") {
 		@gentesttier.Tabs(gentesttier.Data{Tier: gentesttier.TierComfy})
 		@gentesttier.ExposedPicker(d)
 	}
@@ -85,7 +85,7 @@ templ GenerationMatchPage(csrfToken string, c gentest.MatchCompose) {
 
 // GenerationHistoryPage is GET /generation-test/history.
 templ GenerationHistoryPage(csrfToken string, h gentest.History) {
-	@generationShell("生成テストの履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。") {
+	@generationShell("単発生成の履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。") {
 		@gentest.HistoryList(h)
 		@modal.Host()
 	}
@@ -100,7 +100,7 @@ templ GenerationResultPage(csrfToken string, d gentest.Detail) {
 
 // GenerationPromptsPage is GET /generation-test/prompts.
 templ GenerationPromptsPage(csrfToken string, p gentest.Prompts) {
-	@generationShell("プロンプト履歴", csrfToken, "prompts", "生成テストで使ったプロンプト（同じ組は 1 件）。生成結果とは別に、削除するまで残ります。") {
+	@generationShell("プロンプト履歴", csrfToken, "prompts", "単発生成で使ったプロンプト（同じ組は 1 件）。生成結果とは別に、削除するまで残ります。") {
 		@gentest.PromptHistory(p)
 	}
 }

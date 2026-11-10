@@ -107,7 +107,7 @@ type Item struct {
 func Screens() []Item {
 	return []Item{
 		{Projects, "プロジェクト", paths.Home(), atoms.IconProjects},
-		{GenerationTest, "生成テスト", paths.GenerationTest(), atoms.IconFlask},
+		{GenerationTest, "単発生成", paths.GenerationTest(), atoms.IconFlask},
 		{ModelManager, "モデルマネージャー", paths.ModelManager(), atoms.IconPackage},
 		{Jobs, "ジョブ", paths.Jobs(), atoms.IconJobs},
 		{Workflows, "ワークフロー", paths.Workflows(), atoms.IconWorkflow},

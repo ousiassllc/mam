@@ -71,7 +71,7 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 
 // ReferenceInput is an input image of a batch.
 type ReferenceInput struct {
-	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（生成テストの成功した画像結果の result_id）/ pose_library（ポーズ集 Shisei の画像。id は std_P001_front のような画像 ID で、導入済みのときだけ。役割 pose と使う）/ batch_input（過去のバッチの入力画像。id は結果の詳細の inputs[].input_id。アップロードした画像を同じ条件で使い直すとき）"`
+	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（単発生成の成功した画像結果の result_id）/ pose_library（ポーズ集 Shisei の画像。id は std_P001_front のような画像 ID で、導入済みのときだけ。役割 pose と使う）/ batch_input（過去のバッチの入力画像。id は結果の詳細の inputs[].input_id。アップロードした画像を同じ条件で使い直すとき）"`
 	ID        string `json:"id" jsonschema:"source に応じた ID"`
 	ProjectID string `json:"project_id,omitempty" jsonschema:"project_asset / reference_item のとき"`
 	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）/ pose（ポーズだけ。ポーズ集 Shisei の画像や人形の写真。list_generation_models の reference_roles に pose があるモデルだけ）/ markup（GPT Image 2.6〔API キー〕の編集だけ。1 枚目の入力画像に重ねる透明な PNG で、直したい場所の丸や書き込みを描く。元画像と同じ画素数で、透明な部分があること。1 枚まで、ほかに編集する元の画像が要り、一部だけ描き直すマスクとは一緒に使えない。reference_roles に markup があるモデルだけ。使えないモデルは警告ではなく validation で拒否する）。動画: reference / first_frame / last_frame。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`

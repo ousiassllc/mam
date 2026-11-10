@@ -115,7 +115,7 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 
 ## 5. `mam-mask-paint`（Issue #1045）
 
-生成テストの「一部だけ描き直す」の、描き直す部分を塗るマスクの部品（[gentest-screen.md](gentest-screen.md)）。白が描き直し、黒が残す。契約（キャンバスの大きさ・`mask-src`・`htmx:confirm` での PNG の差し込み）は [gentest-screen.md](gentest-screen.md) と `mask-size.ts`。
+単発生成の「一部だけ描き直す」の、描き直す部分を塗るマスクの部品（[gentest-screen.md](gentest-screen.md)）。白が描き直し、黒が残す。契約（キャンバスの大きさ・`mask-src`・`htmx:confirm` での PNG の差し込み）は [gentest-screen.md](gentest-screen.md) と `mask-size.ts`。
 
 ### 5.1 構成と見た目
 

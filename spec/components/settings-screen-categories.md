@@ -35,7 +35,7 @@
 | `seedance` | 動画生成（Seedance 2.0・2.5。§4） | なし（BytePlus ModelArk。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `runway` | 動画生成（Runway Gen-4.5。§4） | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version`。組織の残高と階層を読むだけ） | 公式の `api.md` に記載。**実キーでは未検証**。`X-Runway-Version` の値は endpoints-settings.md §4 |
 | `elevenlabs` | 音声（TTS・Music・SFX。§5） | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`。契約の状態を読むだけ） | 認証ヘッダーは公式の認証の頁、エンドポイントは記載を確認。**実キーでは未検証** |
-| `topaz` | 動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。生成テストの「動画を大きくする・滑らかにする」。[model-adapters.md](../architecture/model-adapters.md) §15、Issue #1031） | `GET https://api.topazlabs.com/account/v1/credits/balance`（`X-API-Key`。クレジット残高を読むだけ。公式の FAQ「Can I check my credit balance from code?」） | FAQ の記載を確認（2026-11-04）。**実キーでは未検証**。キーの取り方: `https://account.topazlabs.com/manage-api` |
+| `topaz` | 動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。単発生成の「動画を大きくする・滑らかにする」。[model-adapters.md](../architecture/model-adapters.md) §15、Issue #1031） | `GET https://api.topazlabs.com/account/v1/credits/balance`（`X-API-Key`。クレジット残高を読むだけ。公式の FAQ「Can I check my credit balance from code?」） | FAQ の記載を確認（2026-11-04）。**実キーでは未検証**。キーの取り方: `https://account.topazlabs.com/manage-api` |
 | `synclabs` | Lip Sync（§5） | なし（読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `typesafe` | Repair の前段選別（Jev。§4.5） | なし（`POST /v1/systemone` だけ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 

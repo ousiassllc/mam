@@ -74,7 +74,7 @@ flowchart TB
 
 ジョブ一覧画面（`jobs_page` と organisms の `jobs`）のコンポーネントは [jobs-screen.md](jobs-screen.md)。
 
-生成テスト画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)（画像のフォームの 3 段「かんたん / こだわり / ComfyUI」と結果のボタンは [gentest-tiers.md](gentest-tiers.md)）。トップ画面のツールのカード（#846。実装済み）は [home-screen.md](home-screen.md)、カード・アイコンの部品は [shared-ui-parts.md](shared-ui-parts.md)。全体の設定画面のサブページ・モーダル（#847）の画面仕様案（実装前）は [settings-screen.md](settings-screen.md)。
+単発生成画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)（画像のフォームの 3 段「かんたん / こだわり / ComfyUI」と結果のボタンは [gentest-tiers.md](gentest-tiers.md)）。トップ画面のツールのカード（#846。実装済み）は [home-screen.md](home-screen.md)、カード・アイコンの部品は [shared-ui-parts.md](shared-ui-parts.md)。全体の設定画面のサブページ・モーダル（#847）の画面仕様案（実装前）は [settings-screen.md](settings-screen.md)。
 
 初回ガイド（ウォークスルー 3 ページと初期セットアップ。`pages` の `onboarding_page`、organisms の `onboarding`。#863。実装済み）は [onboarding-screen.md](onboarding-screen.md)。ルートは [../api/endpoints-onboarding.md](../api/endpoints-onboarding.md)。設定の保存は設定画面の部品とルートをそのまま使い、ガイド専用の保存経路は持たない。
 
@@ -309,11 +309,11 @@ export class MamComfyFrame extends LitElement {
 | 1.81 | 2026-10-21 | §3 の `global_settings_body` に「バージョンとアップデート」（`updatepanel.Section`。サブパッケージ `organisms/updatepanel/`）を足した | Windows 版の自動更新（`spec/architecture/desktop.md` §6）の状態を設定画面で確かめ、手動で確認できるようにした。区画は `organisms/` の行数基準値のためサブパッケージに置き、`handler/appupdate/` が値を組み立てる |
 | 1.82 | 2026-10-25 | §3 の `global_settings_body` に「ローカル・代替モデル」（`localmodels.Section`）の区画を足した | Issue #831。ComfyUI・OpenAI 互換の接続先とモデルを設定画面で登録するため |
 | 1.83 | 2026-10-25 | §3 にモデルマネージャー画面のコンポーネントの案内を足し、[model-manager-screen.md](model-manager-screen.md) に分けて書いた | Issue #833。ComfyUI エンジンの導入・モデルのカタログ・ライセンスの同意・試し生成の画面 |
-| 1.84 | 2026-10-26 | §3 に生成テスト画面のコンポーネントの案内を足し、[gentest-screen.md](gentest-screen.md) に分けて書いた | Issue #835 |
+| 1.84 | 2026-10-26 | §3 に単発生成画面のコンポーネントの案内を足し、[gentest-screen.md](gentest-screen.md) に分けて書いた | Issue #835 |
 | 1.85 | 2026-10-26 | 1.80 が 2 行あったため、後ろの #831 の行を 1.82 に振り直し、以降を 1.83・1.84 にした。§4.4 に `<mam-comfy-frame>`（ノード画面の iframe。Lit は 3 → 4）を足した | 統合時に版番号が重複した。#834 の `static/src/components/comfy-frame/` が §4 に無く、`architecture/overview.md` §8 の「3 コンポーネント」の例外が仕様から辿れなかった（`comfy/comfy-embedding.md` §4） |
 | 1.86 | 2026-10-25 | §1.1 の Model Adapter の行の画像プロバイダーを、Imagen 4 を外して GPT Image 2 / Nano Banana / Nano Banana Lite / FLUX.2 にした | Imagen 4 の終了と、画像モデルの割り当て・識別子の変更（`model-adapters.md` 1.52。Issue #836・#837） |
 | 1.87 | 2026-10-25 | §3 の atoms に `icon`、molecules に `tool_card`、pages の `projects_page` にツールのカード（7 枚・3 グループ）を足し、トップ画面の文字のリンクを置き換えたことを記録した。画面仕様は [home-screen.md](home-screen.md)、部品は [shared-ui-parts.md](shared-ui-parts.md) | Issue #846 |
-| 1.88 | 2026-10-25 | §3 の「モデルマネージャー画面…」と「生成テスト画面…」の段落の間の空行を戻した | 1.87 の編集で空行が消え、2 つの段落が 1 つに結合していた（独立レビュー（PR #849 の 2 周目）の指摘）。ツールのカードの状態は `modelmanager.Service.Brief()`（ディスクに書かない）から読む |
+| 1.88 | 2026-10-25 | §3 の「モデルマネージャー画面…」と「単発生成画面…」の段落の間の空行を戻した | 1.87 の編集で空行が消え、2 つの段落が 1 つに結合していた（独立レビュー（PR #849 の 2 周目）の指摘）。ツールのカードの状態は `modelmanager.Service.Brief()`（ディスクに書かない）から読む |
 | 1.89 | 2026-10-25 | §3 の `global_settings_body` / `global_settings_page` を、分類ごとのページ（`settings_pages`・`settings_categories`・`settings/overview`）に置き換え、molecules に `settingsui`・`modal`、`tool_card` の `Status`、atoms の `icon` の追加分、organisms の `settings/credentials`・`settings/chatgpt`（`credentialpanel`・`chatgptpanel` の移動）を記録した。§5.2 の 2 つの箇条を 1 つにまとめた（行数上限のため） | Issue #847（設定画面の分類ごとのサブページ。段階 ①・②-1・②-2） |
 | 1.90 | 2026-10-25 | §3 の `global_settings_body` の LLM の割り当て・画像・動画モデルを、`organisms/settings/llm/`・`organisms/settings/media/`（表＋行のモーダル）に置き換え、`molecules/settingsui` に表（`SettingsTable`・`TableRowItem`・`RowHead`・`Cell`）、atoms の `icon` に `IconCopy` を足した（旧 `organisms/llmassign/`・`organisms/modelassignment/` は消した）。`spec/architecture/overview.md` §5 のディレクトリ構成の該当 2 か所も直した（`spec/architecture/` は行数が上限ちょうどで改訂履歴の行を足せないため、ここに書く） | Issue #847 段階 ②-3・②-4 |
 | 1.91 | 2026-10-25 | §3 の organisms に `settings/local`・`settings/mcp`（`localmodels`・`mcppanel` の作り直しと移動）、atoms に `SmallButtonLinkFor`、TypeScript の `copy` を足し、`localmodels` の「`#model-assignment` を添える」の記述を外した | Issue #847 ②-5・②-6 |
@@ -325,7 +325,7 @@ export class MamComfyFrame extends LitElement {
 | 1.97 | 2026-11-02 | §3 の organisms の `settings/overview` の行に `SettingsLicensesBody` を足し、`settings/licenses`（`organisms/settings/licenses/`。全体の設定画面の分類「第三者のライセンス」）を足した | Issue #910。仕様は [settings-screen-licenses.md](settings-screen-licenses.md) |
 | 1.98 | 2026-11-03 | §3 の pages の `projects_page` から、ツールのカード（`tool_section`）を外した | Issue #978 |
 | 1.99 | 2026-11-03 | §3 の pages に `jobs_page`、organisms に `jobs`（`organisms/jobs/`）を足し、ジョブ一覧の画面の仕様 [jobs-screen.md](jobs-screen.md) へのリンクを足した | Issue #980 |
-| 1.100 | 2026-11-03 | §3 に、生成テストの画像のフォームの 3 段（`organisms/gentesttier`・`gentestresult`。[gentest-tiers.md](gentest-tiers.md)）を足した | Issue #977 |
+| 1.100 | 2026-11-03 | §3 に、単発生成の画像のフォームの 3 段（`organisms/gentesttier`・`gentestresult`。[gentest-tiers.md](gentest-tiers.md)）を足した | Issue #977 |
 | 1.101 | 2026-11-03 | §3 の molecules に `character_create`（登場人物を手で作るフォーム）と `progress_card` の「続けるには」の案内を足した | Issue #1001 |
 | 1.102 | 2026-11-03 | §3 の molecules `character_create` の Series の画像の欄（Episode ごとの選択肢）と、`progress_card` の下書きの案内を足した。World State の Character の名前の横に、下書きの「下書き」バッジ（`data-testid="character-draft"`）を出す | Issue #1022 |
 | 1.103 | 2026-11-03 | `voice_reference_form` に、声のコピーには声の持ち主本人の同意を得た音声だけを使う注記（`voice-ref-consent-notice`）を足した | Issue #1015 |

@@ -190,7 +190,7 @@ const engineHelp = "画像・動画のモデルを動かす ComfyUI を、mam �
 	"同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。ブラウザ版・サーバー版や Intel Mac では、別に動かしている ComfyUI の URL を設定の「ローカル・代替モデル」に登録してください。"
 
 // modelsHelpText is the help of the models section (the link to the generation test follows it, body.templ).
-const modelsHelpText = "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。カードをタップすると、出典・ライセンス・ファイル一覧・SHA-256 が見られます。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。導入先の空きが足りないときや、GPU のメモリが足りない見込みのときは、カードにそう出ます。成人向けモデル（非検閲のモデル・LoRA）は、18 歳以上の確認と注意書きへの同意の後に、一覧・導入・生成テストに出ます。"
+const modelsHelpText = "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。カードをタップすると、出典・ライセンス・ファイル一覧・SHA-256 が見られます。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。導入先の空きが足りないときや、GPU のメモリが足りない見込みのときは、カードにそう出ます。成人向けモデル（非検閲のモデル・LoRA）は、18 歳以上の確認と注意書きへの同意の後に、一覧・導入・単発生成に出ます。"
 
 // EngineName is the name of the engine card (the title of its modal and the subject of its buttons).
 const EngineName = "ComfyUI エンジン"

@@ -8,7 +8,7 @@ Issue #1006・#1007。設定を保存しても動いているアプリに反映�
 
 - 画面・MCP の保存（`llmassign.Service.Save` / `Reset`）は、`llm.json` に書いたあと、その設定を実行中のクライアント（`llm.Client`）に渡す（`llmassign.Service.SetApplier` → `llm.Client.Apply`）。**次の呼び出しから**新しい主・代替が使われる。呼び出しの途中のものは、始めたときの割り当てのまま終わる。
 - 渡せるのは `routes` だけ。クライアントは起動時に作ったバックエンド（`base_url`）・タイムアウト・リトライ・サーキットブレーカーを持つので、`llm.json` を手で書き換えてそれらを変えたときだけ、`Apply` が「再起動で反映される設定」を返す（§2）。
-- 生成テストの見積り（`prompttranslate.Translator`・`imagematch.Matcher`）が名指す主のモデルも、呼び出し時の割り当てを読む（`llm.Client.PrimaryOf`）。
+- 単発生成の見積り（`prompttranslate.Translator`・`imagematch.Matcher`）が名指す主のモデルも、呼び出し時の割り当てを読む（`llm.Client.PrimaryOf`）。
 - `--llm-config` / `MAM_LLM_CONFIG` で固定されたファイルは、画面も MCP も書かない（従来どおり）。手で書き換えたら、再起動で反映される。
 
 ## 2. 再起動が要る設定

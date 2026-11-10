@@ -224,7 +224,7 @@ func ComfyPanel() templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"flex flex-col gap-4 rounded-lg border border-border p-4\" aria-labelledby=\"gt-comfy-title\" data-testid=\"gt-comfy\"><h2 id=\"gt-comfy-title\" class=\"text-sm font-semibold text-ink\">ComfyUI で細かく作る</h2><p class=\"text-sm text-ink\">ノードをつないで作るときは、次の画面を使います。ここ（生成テスト）の「かんたん」「こだわり」は、画像のモデルを選んで作る画面です。動画・音声はこれまでどおりです。</p><p class=\"text-sm text-ink\">今のかんたん・こだわりの設定をそのままグラフにして開くには、それぞれのフォームの「今の設定を ComfyUI で開く」を使います。</p><ul class=\"grid gap-3 sm:grid-cols-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"flex flex-col gap-4 rounded-lg border border-border p-4\" aria-labelledby=\"gt-comfy-title\" data-testid=\"gt-comfy\"><h2 id=\"gt-comfy-title\" class=\"text-sm font-semibold text-ink\">ComfyUI で細かく作る</h2><p class=\"text-sm text-ink\">ノードをつないで作るときは、次の画面を使います。ここ（単発生成）の「かんたん」「こだわり」は、画像のモデルを選んで作る画面です。動画・音声はこれまでどおりです。</p><p class=\"text-sm text-ink\">今のかんたん・こだわりの設定をそのままグラフにして開くには、それぞれのフォームの「今の設定を ComfyUI で開く」を使います。</p><ul class=\"grid gap-3 sm:grid-cols-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -299,7 +299,7 @@ type comfyLink struct{ Label, Text, Href, TestID string }
 func comfyLinks() []comfyLink {
 	return []comfyLink{
 		{"ノード画面を開く", "ComfyUI のノードの画面です。つなぎ方を自由に変えられます。", paths.Nodes(), "gt-comfy-nodes"},
-		{"ワークフローを取り込む・直す", "API 形式のワークフローを取り込み、入力の割り当てを決めて、生成テストのモデルとして使います。", paths.Workflows(), "gt-comfy-workflows"},
+		{"ワークフローを取り込む・直す", "API 形式のワークフローを取り込み、入力の割り当てを決めて、単発生成のモデルとして使います。", paths.Workflows(), "gt-comfy-workflows"},
 		{"画面に出す値を選ぶ", "モデルのワークフローのノードの入力（例 KSampler.steps・CLIPTextEncode.text）を選ぶと、こだわりの画面に入力欄として出ます。", ExposedPickerHref(""), "gt-comfy-exposed"},
 		{"モデルの設定", "ローカルのモデルとその ComfyUI のワークフローの設定（ステップ数・サンプラーなどの受け取り方）です。", paths.LocalModels(), "gt-comfy-local"},
 		{"モデルマネージャー", "同梱の ComfyUI と画像・動画のモデルを導入します。", paths.ModelManager(), "gt-comfy-models"},

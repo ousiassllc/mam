@@ -558,7 +558,7 @@ func promptFields(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "プロンプトを追加", "生成テストのプロンプト", templ.Attributes{
+		templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "プロンプトを追加", "単発生成のプロンプト", templ.Attributes{
 			"type": "button", "hx-get": paths.GenerationTestPart("prompt-row"), "hx-target": "#" + PromptsID, "hx-swap": "beforeend",
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

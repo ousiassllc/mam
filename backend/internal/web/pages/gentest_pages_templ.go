@@ -41,7 +41,7 @@ func generationNav(current string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav class=\"flex flex-wrap gap-1 border-b border-border pb-2 text-sm\" aria-label=\"生成テスト\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav class=\"flex flex-wrap gap-1 border-b border-border pb-2 text-sm\" aria-label=\"単発生成\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -166,7 +166,7 @@ func generationShell(title, csrfToken, current, lead string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p id=\"gentest-vs-main-line\" class=\"text-xs text-mute\">生成テストは試用の経路です。ここで作った動画は、プロジェクトの Scene / Shot（制作の本線）の Take にはなりません。本線の Shot は、プロジェクトの「Scene / Shot」から「生成」を押して作ります。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p id=\"gentest-vs-main-line\" class=\"text-xs text-mute\">単発生成は試用の経路です。ここで作った動画は、プロジェクトの Scene / Shot（制作の本線）の Take にはなりません。本線の Shot は、プロジェクトの「Scene / Shot」から「生成」を押して作ります。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -253,7 +253,7 @@ func GenerationTestPage(csrfToken string, c gentest.Compose) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = generationShell("生成テスト", csrfToken, "new", "プロジェクトに属さない画像・動画の生成です。モデルとプロンプトを組み合わせて並べて比べ、気に入った結果だけプロジェクトに取り込めます。結果は Take・コスト台帳には入りません。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = generationShell("単発生成", csrfToken, "new", "プロジェクトに属さない画像・動画の生成です。モデルとプロンプトを組み合わせて並べて比べ、気に入った結果だけプロジェクトに取り込めます。結果は Take・コスト台帳には入りません。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -305,7 +305,7 @@ func GenerationExposedPage(csrfToken string, d gentesttier.PickerData) templ.Com
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = generationShell("画面に出す値", csrfToken, "new", "ComfyUI のワークフローのノードの入力を選ぶと、生成テストのこだわりに入力欄として出ます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = generationShell("画面に出す値", csrfToken, "new", "ComfyUI のワークフローのノードの入力を選ぶと、単発生成のこだわりに入力欄として出ます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -465,7 +465,7 @@ func GenerationHistoryPage(csrfToken string, h gentest.History) templ.Component 
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = generationShell("生成テストの履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = generationShell("単発生成の履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -561,7 +561,7 @@ func GenerationPromptsPage(csrfToken string, p gentest.Prompts) templ.Component 
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = generationShell("プロンプト履歴", csrfToken, "prompts", "生成テストで使ったプロンプト（同じ組は 1 件）。生成結果とは別に、削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = generationShell("プロンプト履歴", csrfToken, "prompts", "単発生成で使ったプロンプト（同じ組は 1 件）。生成結果とは別に、削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

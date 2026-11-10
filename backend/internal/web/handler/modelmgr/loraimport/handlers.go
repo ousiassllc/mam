@@ -184,7 +184,7 @@ func (h Handlers) Commit(c *gin.Context) {
 		var m loraimport.Model
 		m, err = h.svc.LoRAs.Commit(c.Request.Context(), loraimport.Input{Token: c.PostForm(view.FieldToken), Name: strings.TrimSpace(c.PostForm(view.FieldName)), Meta: meta})
 		if err == nil {
-			p := PanelOf(h.svc, nil, "「"+m.Name+"」を追加しました。生成テストの「LoRA と強さ」で選べます。", "")
+			p := PanelOf(h.svc, nil, "「"+m.Name+"」を追加しました。単発生成の「LoRA と強さ」で選べます。", "")
 			render(c, http.StatusCreated, templ.Join(view.PanelView(p), listOOB(h.svc)))
 			return
 		}

@@ -1,4 +1,4 @@
-# 生成テスト（プロジェクトに属さない画像・動画の比較生成）
+# 単発生成（プロジェクトに属さない画像・動画の比較生成）
 
 Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)）、Model Adapter の直接呼び出し（[gentest-adapter.md](gentest-adapter.md)）、テーブル（[er-gentest.md](er-gentest.md)）、ルート（[../../api/endpoints-gentest.md](../../api/endpoints-gentest.md)）の全体の設計。実装は `backend/internal/service/gentest`（サービス。下位に `gterr`・`modelcatalog`・`projectlink`・`history`・`record`・`runner`・`gentesttest` ほか。下の「パッケージの構成」）・`backend/internal/repository/gentestrepo`・`web/handler/gentest`・`web/organisms/gentest`・`mcp/tools/gentest`。
 
@@ -42,7 +42,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 3.1 英訳（`translate_to_english`。Issue #913）
 
-生成モデルは英語のほうが学習分布に合い良い結果が出やすいため、バッチは「プロンプトとネガティブプロンプトを英語に訳して送る」を切り替えられる（`Request.TranslateToEnglish`）。**既定は ON**（画面のスイッチの初期値と MCP の `translate_to_english` の省略時は同じ値 `gentest.DefaultTranslate`）。プロジェクトでの生成は Prompt Planner が Canonical Shot Spec を英語で作っている（§F-06/F-07）ので、生成テストだけが日本語のまま届いていた。
+生成モデルは英語のほうが学習分布に合い良い結果が出やすいため、バッチは「プロンプトとネガティブプロンプトを英語に訳して送る」を切り替えられる（`Request.TranslateToEnglish`）。**既定は ON**（画面のスイッチの初期値と MCP の `translate_to_english` の省略時は同じ値 `gentest.DefaultTranslate`）。プロジェクトでの生成は Prompt Planner が Canonical Shot Spec を英語で作っている（§F-06/F-07）ので、単発生成だけが日本語のまま届いていた。
 
 - **訳すもの**: ON のとき、プロンプトとネガティブプロンプトのうち**ラテン文字以外の文字（日本語・中国語・韓国語・キリル文字・ギリシャ文字など）を 1 字でも含む文だけ**。**文字の体系（Unicode の script）が Latin でも Common でもない「文字（letter）」**を数える。Common の文字（`µ`（U+00B5）・`ʼ`（U+02BC）・長音符 `ー`（U+30FC）などの文字、数字・記号・絵文字・空白）はどの言語の文字でもないので数えない。**Common の文字だけでできた文（`ー`・`ーーー`・`ー 4k`）は訳さない**（かな・漢字・`々` は Common ではないので、`コーヒー`・`ー狐`・`々` は訳す。`ー Ω` のように、ほかに Greek などの文字が 1 つでもあれば訳す）。境界はテストで固定している（`prompttranslate.TestNeedsAtTheBoundaryOfTheCommonScript`）。アクセント付きのラテン文字（café・ü・ñ）と全角のラテン文字（ＡＢＣ）は Latin なので数えない。したがって `5µm particles` のような英語の文は訳さない。`50Ω resistor` のようにギリシャ文字を含む英語の文は訳す対象に数えるが、LLM が原文のまま返したときは下の「訳せなければ止める」の対象にせず、原文のまま送る。すでに英語の文（アクセント付きのラテン文字・数字・記号・絵文字だけの文を含む）は LLM に送らず、そのまま送る（`prompttranslate.Needs`）。訳す文が 1 つも無ければ LLM を呼ばない。
 - **使う LLM**: 設定の「LLM の割り当て」の **Prompt Planner** のルート（`llm.AgentPromptPlanner`。主・代替とフェイルオーバー・再試行・サーキットブレーカーは通常の LLM 呼び出しと同じ。`agent/prompttranslate`）。モデルの割り当てに「英訳」の役割は無く、モデル向けの英語のプロンプトを書く既存の役割を使う（役割を足さない。Issue #1069 で、英訳専用の役割を足す案と LLM の単価表で見積りに入れる案のうち、**後者を採った**: 設定の画面を増やさず、すでにある単価表 `llm.PriceOf`〔似せるモードの LLM の見積り・#965 と同じ表〕を使えるため）。
@@ -104,7 +104,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 成功した画像の結果を **2 倍・4 倍**にする。結果の詳細の「大きくする」（倍率と方式を選んで 1 操作）と、MCP の `upscale_generation_result`（結果 ID＋倍率）が同じ `upscale.Run`（`service/gentest/upscale`）を呼ぶ。**見積り・確認は無い**（アップスケールのワークフローはローカルの ComfyUI のモデルで、無料。`basis=free`）。
 
 - **別の結果として残る**: 元の結果のファイルを入力として新しいバッチ（結果 1 件・入力 1 枚。origin は `history`）に複製し、ジョブ（種別 `gentest`）で動かす。元の結果は変わらず残り、大きくした結果は履歴の別の行・別のファイル。**元へのリンクと使った値**は結果の `params.upscale`（`record.Upscale`: `source_result_id`・`source_model`・`scale`・`model`・`mode`・`native`・元と出力の大きさ）に残し、`ResultView.upscale`・結果の詳細の「拡大」「大きさ」「元の結果」の行と元の結果へのリンク・MCP の `get_generation_result` に出る。元を後で消してもこの結果は残る（リンクだけが切れる）。大きくした結果をもう一度大きくしてもよい。
-- **ワークフロー種別として扱う**: アップスケールは、**画像モデルの選択とは別の「ワークフロー種別」**にした。ComfyUI のワークフロー（`localcfg.Workflow`）の `upscale`（`localcfg/upscale.Spec` = `{label, native, mode, max_output_pixels}`）で印を付け、同じエンジン（同梱の `bundled-comfyui`）の画像ワークフローとして作る。印のあるワークフローは**プロンプトを渡すモデルの一覧に出さない**（`localcfg.IDs`・生成テストの `modelcatalog.Models`・モデルマネージャーの試し生成から除く）。「大きくする」は `modelcatalog.Catalog.Upscalers` が出す専用の一覧から選ぶ。既存の画像モデルの選択 UI・見積り・確認の流れには触れない（最も小さい変更）。
+- **ワークフロー種別として扱う**: アップスケールは、**画像モデルの選択とは別の「ワークフロー種別」**にした。ComfyUI のワークフロー（`localcfg.Workflow`）の `upscale`（`localcfg/upscale.Spec` = `{label, native, mode, max_output_pixels}`）で印を付け、同じエンジン（同梱の `bundled-comfyui`）の画像ワークフローとして作る。印のあるワークフローは**プロンプトを渡すモデルの一覧に出さない**（`localcfg.IDs`・単発生成の `modelcatalog.Models`・モデルマネージャーの試し生成から除く）。「大きくする」は `modelcatalog.Catalog.Upscalers` が出す専用の一覧から選ぶ。既存の画像モデルの選択 UI・見積り・確認の流れには触れない（最も小さい変更）。
 - **方式**（`upscale.mode`）: `model` = `LoadImage` → `UpscaleModelLoader` → `ImageUpscaleWithModel`（内部でタイルに分けて処理する。タイルは 512 から始め、メモリが足りなければ半分にする）→ `ImageScaleBy`（lanczos）→ `SaveImage`。`two_pass` = 同じ拡大のあと、`VAEEncodeTiled` → 低い denoise（0.3）の `KSampler`（SDXL base）→ `VAEDecodeTiled`（どちらもタイル 512・重なり 64）→ `SaveImage`。ComfyUI 本体のノードだけ。
 - **倍率**: モデルの倍率（`upscale.native`。今のカタログは 4 倍）と依頼の倍率の比 `scale / native` を、`ImageScaleBy` の `scale_by` に入れる（値の割り当て `upscale_ratio`。4 倍の依頼はそのまま、2 倍は半分に縮める）。倍率は `UpscaleScales`（2・4）以外なら `validation`。
 - **2 パス仕上げ**: 元の結果の**プロンプト・ネガティブプロンプト・送った文・シード**を引き継ぐ（元が英訳されていたら英訳の記録も）。モデルは SDXL base の固定（元の結果のモデルには依存しない。元が別のモデルでも、プロンプトは文として SDXL に渡す）。CLIP のウェイト構文は効く（`prompt_weight: supported`）。
@@ -139,7 +139,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 3.2 プロンプトマッチ（Issue #916）
 
-参考の画像 1 枚から、AI が英語のプロンプトを作り、生成して、似ているかを測り、違いをもとに直して生成し直す（おまかせ・1回だけ・調整。言葉の指示で直せる）。生成テストのバッチとして動き、各回は結果として履歴に残る。設計は [prompt-match.md](prompt-match.md)。
+参考の画像 1 枚から、AI が英語のプロンプトを作り、生成して、似ているかを測り、違いをもとに直して生成し直す（おまかせ・1回だけ・調整。言葉の指示で直せる）。単発生成のバッチとして動き、各回は結果として履歴に残る。設計は [prompt-match.md](prompt-match.md)。
 
 ## 4. バッチとジョブ
 
@@ -222,7 +222,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 プロンプト履歴は（プロンプト, ネガティブ）で重複排除し、使用回数と最後に使った日時を持つ。**明示の削除だけ**で消え、結果の履歴とは独立（結果を消しても残り、消しても結果に影響しない）。
 
-**本線との違い（Issue #1108）**: 生成テストは試用の経路で、結果はプロジェクトの Scene / Shot の Take にならない（§7 の取り込みで、ユーザーが選んだ結果だけが参照・アセットとして入る）。画面の上部に「生成テストは試用の経路で、ここで作った動画はプロジェクトの Shot（制作の本線）の Take にならない。本線の Shot は Scene / Shot の「生成」で作る」と書く。Scene / Shot 画面にも同じ違いを書く（`#gentest-vs-main-line`）。
+**本線との違い（Issue #1108）**: 単発生成は試用の経路で、結果はプロジェクトの Scene / Shot の Take にならない（§7 の取り込みで、ユーザーが選んだ結果だけが参照・アセットとして入る）。画面の上部に「単発生成は試用の経路で、ここで作った動画はプロジェクトの Shot（制作の本線）の Take にならない。本線の Shot は Scene / Shot の「生成」で作る」と書く。Scene / Shot 画面にも同じ違いを書く（`#gentest-vs-main-line`）。
 
 ## 9. テスト
 

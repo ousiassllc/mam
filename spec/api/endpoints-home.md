@@ -6,7 +6,7 @@
 
 | メソッド | パス | 説明 |
 |---|---|---|
-| GET | `/tools/model-manager/status` | モデルマネージャーのカードの状態の断片（`paths.ToolStatus(paths.ToolModelManager)`）。ほかの `tool`（`nodes`・`workflows`・`settings`・`reviews`・生成テスト・制作指標を含む）のルートは無く、404（#978 でトップ画面のカードと一緒に削除） |
+| GET | `/tools/model-manager/status` | モデルマネージャーのカードの状態の断片（`paths.ToolStatus(paths.ToolModelManager)`）。ほかの `tool`（`nodes`・`workflows`・`settings`・`reviews`・単発生成・制作指標を含む）のルートは無く、404（#978 でトップ画面のカードと一緒に削除） |
 
 - 応答は**常に 200**。本文は `atoms.Badge` の並び（1 行に 1 つ）か、**空**。読めない・サーバー側の締め切り（2 秒）を超えた・サービスがルーターに無い（テスト用）ときは空で、カードは出る。5xx にしないのは、`htmx:responseError` のトーストを避けるため。
 - `Cache-Control: no-store`。状態を変えない GET なので、認証・CSRF は他の GET と同じ。

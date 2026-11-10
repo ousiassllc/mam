@@ -19,7 +19,7 @@ const mebibyte = 1 << 20
 func registerExport(r *mcpkit.Registrar, h handlers) {
 	r.Files.RegisterDownload(KindGentestExport, h.exportFile)
 	mcpkit.Read(r, "export_generation_results",
-		"生成テストの結果を ZIP にまとめるダウンロード URL を発行する（15 分有効）。ZIP は photos/（画像・動画。01_日時_モデル_idの末尾.png のように番号つき）と prompts/prompts.csv（file, created_at（JST）, media, model, seed, prompt, sent_prompt, result_id。UTF-8 BOM つき。file は photos/ のファイル名と同じ）。選び方: result_ids（指定）/ batch_id / latest（直近 N 件、最大 500。何も指定しなければ直近 40 件）に、favorite・models・media・commercial（all / ok / ok_or_conditional。省くと all）が重なる。大きいときは split_items（1 つの ZIP の最大件数）・split_mb（ファイル合計の目安 MB）で複数の ZIP に分けられ、番号は全体で通し番号 / Download URL(s) of a ZIP of generation results: photos/ and prompts/prompts.csv.",
+		"単発生成の結果を ZIP にまとめるダウンロード URL を発行する（15 分有効）。ZIP は photos/（画像・動画。01_日時_モデル_idの末尾.png のように番号つき）と prompts/prompts.csv（file, created_at（JST）, media, model, seed, prompt, sent_prompt, result_id。UTF-8 BOM つき。file は photos/ のファイル名と同じ）。選び方: result_ids（指定）/ batch_id / latest（直近 N 件、最大 500。何も指定しなければ直近 40 件）に、favorite・models・media・commercial（all / ok / ok_or_conditional。省くと all）が重なる。大きいときは split_items（1 つの ZIP の最大件数）・split_mb（ファイル合計の目安 MB）で複数の ZIP に分けられ、番号は全体で通し番号 / Download URL(s) of a ZIP of generation results: photos/ and prompts/prompts.csv.",
 		h.exportResults)
 }
 
