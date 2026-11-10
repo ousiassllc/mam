@@ -4,7 +4,7 @@
 // line limit, and does not import it: its refusals are ErrPinned and *InvalidError.
 //
 // The file holds only what differs from modeladapter.DefaultConfig (the same sparse JSON
-// modeladapter.LoadConfig reads), so that a later change of a default still applies. Every other key of
+// configcheck.Read reads), so that a later change of a default still applies. Every other key of
 // the file (vendors, models, prices, routing, retry, breaker, prefer_openai) is kept as it is. A saved
 // assignment is read when the app starts: the clients are built once.
 package modelsettings
@@ -250,7 +250,7 @@ func (s *Service) committed(raw settingsfile.Object) error {
 	return nil
 }
 
-// checkFile runs configcheck.Load (modeladapter.LoadConfig and Validate) over data, which only reads files.
+// checkFile runs configcheck.Load (configcheck.Read and Validate) over data, which only reads files.
 func checkFile(data []byte) error {
 	tmp, err := os.CreateTemp("", "mam-models-*.json")
 	if err != nil {

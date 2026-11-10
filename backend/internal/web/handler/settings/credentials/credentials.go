@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
@@ -28,6 +29,9 @@ import (
 type Keys struct {
 	Svc    *service.CredentialService
 	Tester *probe.Tester
+	// Models holds the choice of the API provider of the cloud video models (models.json: video_provider). Nil leaves the choice out: the
+	// cards are those of the official provider.
+	Models *modelsettings.Service
 }
 
 const (
@@ -59,7 +63,8 @@ func Data(c *gin.Context, k Keys) view.Data {
 		_ = c.Error(err)
 		return view.Data{Unavailable: true, Providers: providerViews(k, unknownStatuses())}
 	}
-	return view.Data{Providers: providerViews(k, statuses)}
+	choice, selected := providerChoice(c, k, statuses)
+	return view.Data{Providers: providerViews(k, visible(statuses, selected)), Provider: choice}
 }
 
 // unknownStatuses are the providers without a state (the key store cannot be read): every card is "未設定" and cannot be edited.
@@ -244,9 +249,12 @@ func describe(r probe.Result) (atoms.BadgeTone, string) {
 }
 
 // Register adds the routes of the API keys: the modal (GET paths.CredentialEdit), the connection test (POST
-// paths.CredentialTest), and the save and the delete (PUT / DELETE paths.Credential). page answers the modal route for a
-// request that is not HTMX.
+// paths.CredentialTest), and the save and the delete (PUT / DELETE paths.Credential), and, with k.Models, the choice of the API
+// provider (PUT paths.APIProvider). page answers the modal route for a request that is not HTMX.
 func Register(engine *gin.Engine, k Keys, page gin.HandlerFunc) {
+	if k.Models != nil {
+		engine.PUT(paths.APIProvider(), SaveProvider(k))
+	}
 	engine.GET(paths.CredentialEdit(":provider"), Edit(k, page))
 	engine.POST(paths.CredentialTest(":provider"), Test(k.Tester))
 	engine.PUT(paths.Credential(":provider"), Save(k))

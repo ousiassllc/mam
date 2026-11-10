@@ -1,6 +1,8 @@
 package modelcatalog
 
 import (
+	"cmp"
+
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
@@ -134,7 +136,7 @@ func (c Catalog) Availability(id string) (modelfilter.Availability, bool) {
 func (c Catalog) availability(cfg modeladapter.Config, m domain.ModelName, source string, info *modelfilter.CatalogInfo) modelfilter.Availability {
 	reason, msg := c.Adapter.Unavailable(m), ""
 	if reason != "" {
-		msg = unavailableMessage(reason, source)
+		msg = cmp.Or(providerMessage(cfg, m, reason), unavailableMessage(reason, source))
 	} else if info != nil && info.NotInstalled != "" {
 		reason, msg = string(modelfilter.ReasonNotInstalled), info.NotInstalled
 	} else if msg = c.missingNodes(cfg, m); msg != "" {

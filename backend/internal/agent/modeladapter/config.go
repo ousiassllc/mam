@@ -1,16 +1,12 @@
 package modeladapter
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"maps"
-	"os"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gentestcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
-	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/overlay"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -133,9 +129,11 @@ type Config struct {
 	LocalModels map[string]localcfg.Model         `json:"local_models,omitempty"`
 	Workflows   map[string]localcfg.SavedWorkflow `json:"-"` // saved in mam, by identifier; configcheck.Load attaches them
 	// PreferOpenAI routes new references through PurposeUnifiedOpenAI (§3, row "OpenAI系 LLM と認証・請求を統合したい場合").
-	PreferOpenAI bool          `json:"prefer_openai"`
-	Retry        RetryConfig   `json:"retry"`
-	Breaker      BreakerConfig `json:"breaker"`
+	PreferOpenAI bool `json:"prefer_openai"`
+	// VideoProvider is the API provider the cloud video models of viaprovider.Models are called through ("" is the official one; models.json: video_provider).
+	VideoProvider viaprovider.Provider `json:"video_provider,omitempty"`
+	Retry         RetryConfig          `json:"retry"`
+	Breaker       BreakerConfig        `json:"breaker"`
 	// Routing is Multi-model routing on top of Policies (model-adapters-m3.md §13).
 	Routing RoutingConfig     `json:"routing"`
 	Gentest gentestcfg.Limits `json:"gentest"` // the limits of one batch of the generation test screen
@@ -145,16 +143,19 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Vendors: map[Vendor]VendorConfig{
-			VendorGoogle:   {BaseURL: "https://generativelanguage.googleapis.com", MaxConcurrency: 4, TimeoutSeconds: 600},
-			VendorOpenAI:   {BaseURL: "https://api.openai.com", MaxConcurrency: 4, TimeoutSeconds: 180},
-			VendorFlux:     {BaseURL: "https://api.bfl.ai", MaxConcurrency: 4, TimeoutSeconds: 180},
-			VendorKling:    {BaseURL: "https://api.klingai.com", MaxConcurrency: 3, TimeoutSeconds: 900},
-			VendorKling4:   {BaseURL: "https://api-singapore.klingai.com", MaxConcurrency: 3, TimeoutSeconds: 900},
-			VendorSeedance: {BaseURL: "https://ark.ap-southeast.bytepluses.com", MaxConcurrency: 3, TimeoutSeconds: 900},
-			VendorRunway:   {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
-			VendorMiniMax:  {BaseURL: "https://api.minimax.io", MaxConcurrency: 3, TimeoutSeconds: 900},
-			VendorAlibaba:  {BaseURL: alibabaBaseURL, MaxConcurrency: 3, TimeoutSeconds: 1800},
-			VendorLuma:     {BaseURL: "https://agents.lumalabs.ai", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorGoogle:     {BaseURL: "https://generativelanguage.googleapis.com", MaxConcurrency: 4, TimeoutSeconds: 600},
+			VendorOpenAI:     {BaseURL: "https://api.openai.com", MaxConcurrency: 4, TimeoutSeconds: 180},
+			VendorFlux:       {BaseURL: "https://api.bfl.ai", MaxConcurrency: 4, TimeoutSeconds: 180},
+			VendorKling:      {BaseURL: "https://api.klingai.com", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorKling4:     {BaseURL: "https://api-singapore.klingai.com", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorSeedance:   {BaseURL: "https://ark.ap-southeast.bytepluses.com", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorRunway:     {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
+			VendorMiniMax:    {BaseURL: "https://api.minimax.io", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorAlibaba:    {BaseURL: alibabaBaseURL, MaxConcurrency: 3, TimeoutSeconds: 1800},
+			VendorLuma:       {BaseURL: "https://agents.lumalabs.ai", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorOpenRouter: {BaseURL: "https://openrouter.ai/api/v1", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorFal:        {BaseURL: "https://queue.fal.run", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorReplicate:  {BaseURL: "https://api.replicate.com/v1", MaxConcurrency: 3, TimeoutSeconds: 900},
 		},
 		Models: defaultModels(),
 		Images: map[ImagePurpose]ImageRoute{
@@ -187,54 +188,6 @@ func DefaultConfig() Config {
 			},
 		},
 	}
-}
-
-// LoadConfig returns DefaultConfig with the settings of the JSON file applied on top. An empty
-// path selects the defaults. Unknown keys are rejected so a typo does not silently change nothing.
-// The result is not checked: configcheck.Load does that.
-func LoadConfig(path string) (Config, error) {
-	cfg := DefaultConfig()
-	if path == "" {
-		return cfg, nil
-	}
-	data, err := os.ReadFile(path) // #nosec G304 -- the operator chooses the settings file
-	if err != nil {
-		return Config{}, fmt.Errorf("read model config: %w", err)
-	}
-	// The maps of entries are decoded per entry on top of the default entry, so that an entry that
-	// names only some of its fields keeps the defaults of the others (encoding/json would rebuild the
-	// whole entry from the zero value): vendors, models, images, policies and routing.weights. The
-	// embedded Config shares the default maps; Routing shadows its Config field so that the weights
-	// stay raw until they are overlaid.
-	file := struct {
-		Config
-		Vendors  map[Vendor]json.RawMessage               `json:"vendors"`
-		Models   map[domain.ModelName]json.RawMessage     `json:"models"`
-		Images   map[ImagePurpose]json.RawMessage         `json:"images"`
-		Policies map[domain.QualityPolicy]json.RawMessage `json:"policies"`
-		Routing  struct {
-			RoutingConfig
-			Weights map[domain.QualityPolicy]json.RawMessage `json:"weights"`
-		} `json:"routing"`
-	}{Config: cfg}
-	file.Routing.RoutingConfig = cfg.Routing
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&file); err != nil {
-		return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
-	}
-	cfg = file.Config
-	cfg.Routing = file.Routing.RoutingConfig
-	for _, err := range []error{
-		overlay.Entries(cfg.Vendors, file.Vendors), overlay.Entries(cfg.Models, file.Models),
-		overlay.Entries(cfg.Images, file.Images), overlay.Entries(cfg.Policies, file.Policies),
-		overlay.Entries(cfg.Routing.Weights, file.Routing.Weights),
-	} {
-		if err != nil {
-			return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
-		}
-	}
-	return cfg, nil
 }
 
 // VendorSettings are the built-in vendors and the registered endpoints (named by localcfg.VendorKey; their timeout is localcfg.Endpoint.CallLimit).
@@ -277,7 +230,19 @@ func (c Config) VideoCaps(m domain.ModelName) (VideoCapabilities, bool) {
 		caps, isVideo := lm.VideoCaps()
 		return VideoCapabilities(caps), isVideo
 	}
+	if r, ok := viaprovider.RouteOf(c.VideoProvider, m); ok && r.Supported() {
+		return VideoCapabilities(r.Caps), true
+	}
 	return Capabilities(m)
+}
+
+// VendorOf is the vendor of a model with the provider setting applied: the aggregator's for a model it serves, the model's own otherwise
+// (the unit of the circuit breaker and the concurrency limit).
+func (c Config) VendorOf(m domain.ModelName) Vendor {
+	if r, ok := viaprovider.RouteOf(c.VideoProvider, m); ok && r.Supported() {
+		return Vendor(c.VideoProvider.Vendor())
+	}
+	return VendorOf(m)
 }
 
 // negativeModel is m when it is a local model whose workflow takes a negative prompt, else "".
@@ -310,6 +275,9 @@ func (c Config) VideoPerSecond(t VideoTarget) float64 {
 	if lm, _, ok := c.LocalModel(t.Model); ok {
 		return lm.CostPerSecond
 	}
+	if p, ok := viaprovider.PerSecond(c.VideoProvider, t.Model, t.Resolution); ok {
+		return p
+	}
 	return c.Models[t.Model].CostPerSecond[t.Resolution]
 }
 
@@ -318,8 +286,17 @@ func (c Config) VideoCost(t VideoTarget, seconds float64) float64 {
 	if lm, _, ok := c.LocalModel(t.Model); ok {
 		return lm.CostPerSecond * seconds
 	}
+	if p, ok := viaprovider.PerSecond(c.VideoProvider, t.Model, t.Resolution); ok {
+		return p * seconds
+	}
 	if t.Model == domain.ModelLumaRay32 {
 		return lumaCost(c.Models[t.Model].CostPerSecond[t.Resolution], seconds)
 	}
 	return c.Models[t.Model].CostPerSecond[t.Resolution] * seconds
+}
+
+// ProviderRefusal is why the selected API provider does not serve the video model (a sentence for the user, which names the provider
+// and says where the model can be used); empty when it does, and for a model the provider setting does not concern.
+func (c Config) ProviderRefusal(m domain.ModelName) string {
+	return viaprovider.Refusal(c.VideoProvider, m)
 }

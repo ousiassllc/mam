@@ -8,7 +8,17 @@
 
 ## 1. API キーとログイン（`/settings/api-keys`）
 
-### 1.1 API キー（15 プロバイダー。`service.CredentialProviders` の順）
+### 1.0 API プロバイダーの選択（動画モデル。Issue #1136。`/settings/api-keys` の先頭）
+
+Kling などのクラウド動画モデルを、**どこの API で呼ぶか**を 1 つ選ぶ（公式 / OpenRouter / fal.ai / Replicate。規則・単価・呼び方は [model-adapters.md §9.6](../architecture/model-adapters.md)）。API キーの区画（§1.1）の**いちばん上**に置く（`data-testid="api-provider"`、見出し `h4`「動画モデルの API プロバイダー」）。
+
+- **選択**: ラジオ 4 つ（`name="provider"`、値 `official` / `openrouter` / `fal` / `replicate`、`data-testid="api-provider-<値>"`）。**変えた瞬間に保存する**（フォームが `change` で `PUT /settings/api-provider`、`hx-target="#credential-panel"`）。応答は区画の全体（キー欄が選択に追従するため）で、成功は 200 とお知らせ（`data-testid="credential-notice"`）、未知のプロバイダーは 422、`--model-config` で固定されているときは 409（ともに `role="alert"`、`data-testid="credential-error"`）。固定されているときはラジオが `disabled` で、「起動オプションで固定されているため、この画面では変更できません」を出す。`models.json` が読めないときは選択の代わりに理由（`api-provider-problem`）を出し、キー欄は公式のまま。
+- **キー欄が選択に追従する**: 公式は §1.1 のカードのとおり（ベンダーごと）。OpenRouter / fal.ai / Replicate は、そのプロバイダーのカード（`openrouter` / `fal` / `replicate`。キー 1 つ）を**選択のすぐ下（先頭）**に出し、他の 2 社のカードと、公式の Kling のカード（`kling`・`kling4`。保存したキーは残る）は隠す。LLM・画像・Kling 以外の動画・音声のキー欄は常に出る。
+- **モデルごとの状況**（選択の下の `ul`、`data-testid="api-provider-model"`）: 選んだ先が提供するモデルは「使えます」＋単価（「720p $0.084/秒 ・ 1080p $0.112/秒」。見積り・コストと同じ値）＋（公式以外では）キーの有無（「OpenRouter の API キー: 設定済み」／警告の「OpenRouter の API キーが未設定」）。**提供しないモデル**は「このプロバイダーでは使えません」＋理由（`api-provider-why`。例:「OpenRouter は Kling 4.0 を提供していません（…）。fal.ai・Replicate・公式のどれかを選ぶと使えます」）。同じ理由は、モデルの選択肢（生成テスト・Settings の割り当て・見積り・MCP）に `provider_unsupported` として付き、リンクはこの画面（`/settings/api-keys`）へ向く。
+- **レイアウト**: 390px では選択肢が折り返し、理由は折り返して読める。1280px ではカードが 2 列（`xl:grid-cols-2`）。
+- **MCP**: `get_video_provider`・`set_video_provider`（[mcp-tools-settings-policy.md](../api/mcp-tools-settings-policy.md)）。
+
+### 1.1 API キー（18 プロバイダー。`service.CredentialProviders` の順）
 
 方式: **カード（一覧）＋ 設定・変更はモーダル ＋ 削除は `hx-confirm`**。パスワード欄は出しっぱなしにしない。
 
@@ -36,6 +46,9 @@
 | `runway` | 動画生成（Runway Gen-4.5。§4） | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version`。組織の残高と階層を読むだけ） | 公式の `api.md` に記載。**実キーでは未検証**。`X-Runway-Version` の値は endpoints-settings.md §4 |
 | `elevenlabs` | 音声（TTS・Music・SFX。§5） | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`。契約の状態を読むだけ） | 認証ヘッダーは公式の認証の頁、エンドポイントは記載を確認。**実キーでは未検証** |
 | `topaz` | 動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。生成テストの「動画を大きくする・滑らかにする」。[model-adapters.md](../architecture/model-adapters.md) §15、Issue #1031） | `GET https://api.topazlabs.com/account/v1/credits/balance`（`X-API-Key`。クレジット残高を読むだけ。公式の FAQ「Can I check my credit balance from code?」） | FAQ の記載を確認（2026-11-04）。**実キーでは未検証**。キーの取り方: `https://account.topazlabs.com/manage-api` |
+| `openrouter` | 動画生成（Kling 3.0。§1.0 で OpenRouter を選んだとき。[model-adapters.md](../architecture/model-adapters.md) §9.6、Issue #1136） | `GET https://openrouter.ai/api/v1/key`（`Authorization: Bearer`。キーの情報を読むだけ） | 記載を確認。**実キーでは未検証** |
+| `fal` | 動画生成（Kling 3.0・4.0。§1.0 で fal.ai を選んだとき。同上） | なし（キーは `Authorization: Key` に付ける。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
+| `replicate` | 動画生成（Kling 3.0・4.0。§1.0 で Replicate を選んだとき。同上） | `GET https://api.replicate.com/v1/account`（`Authorization: Bearer`。アカウントを読むだけ） | 記載を確認。**実キーでは未検証** |
 | `synclabs` | Lip Sync（§5） | なし（読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `typesafe` | Repair の前段選別（Jev。§4.5） | なし（`POST /v1/systemone` だけ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 
@@ -227,3 +240,4 @@
 | 0.25 | 2026-11-07 | §8 の ffmpeg の分類の移し替え（#1106）を実装した。中身は `companion` の `#mm-ffmpeg` で同じ。状態は「実装済み」 | Issue #1106 |
 | 0.26 | 2026-11-07 | §2 のローカル LLM サーバーのカードを、リンクのカード（`llm-local-link`・`llm-local-state`）に実装した。状態を「実装済み」にした（欄・保存・接続テストはモデルマネージャーの `local-llm`） | Issue #1104 |
 | 0.27 | 2026-11-08 | §3 に、割り当てが使えない行の注意（生成が条件に合うモデルで行われるか、断られるか）を足した | Issue #1113 |
+| 0.28 | 2026-11-10 | §1.0 を新設: API キーの区画の先頭に「動画モデルの API プロバイダー」（公式 / OpenRouter / fal.ai / Replicate）の選択を置き、選択に応じてキー欄が変わる・提供しないモデルは理由を出す。§1.1 に `openrouter`・`fal`・`replicate` の 3 行を足した（15 → 18 プロバイダー） | Issue #1136 |

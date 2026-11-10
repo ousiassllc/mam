@@ -86,12 +86,12 @@ func routingRecordText(c domain.RoutingCandidate) string {
 
 func routingExcludedLabel(reason string) string {
 	switch reason {
-	case "":
-		return ""
 	case domain.ExcludedCircuitOpen:
 		return "サーキットブレーカー OPEN"
 	case domain.ExcludedNoBackend:
 		return "API キー未設定"
+	case domain.ExcludedProvider:
+		return "選んだ API プロバイダーでは使えない"
 	case domain.ExcludedInsufficientEvidence:
 		return "実績不足"
 	case domain.ExcludedBelowMinimumScore:

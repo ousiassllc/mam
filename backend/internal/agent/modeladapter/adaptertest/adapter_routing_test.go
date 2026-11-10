@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -88,7 +89,7 @@ func TestLoadConfigOverridesRoutingAndKeepsTheRestOfTheDefaults(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"routing":{"enabled":false,"min_samples":9,"weights":{"fast":{"quality":1,"cost":0,"fit":0}}}}`), 0o600))
 
-	cfg, err := modeladapter.LoadConfig(path)
+	cfg, err := configcheck.Read(path)
 
 	require.NoError(t, err)
 	assert.False(t, cfg.Routing.Enabled)
@@ -98,7 +99,7 @@ func TestLoadConfigOverridesRoutingAndKeepsTheRestOfTheDefaults(t *testing.T) {
 	assert.Len(t, cfg.Routing.Candidates[domain.QualityMaxQuality], 3)
 
 	require.NoError(t, os.WriteFile(path, []byte(`{"routing":{"enable":true}}`), 0o600))
-	_, err = modeladapter.LoadConfig(path)
+	_, err = configcheck.Read(path)
 	assert.ErrorContains(t, err, "unknown field")
 }
 
@@ -108,7 +109,7 @@ func TestLoadConfigMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
 		t.Helper()
 		path := filepath.Join(t.TempDir(), "models.json")
 		require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
-		cfg, err := modeladapter.LoadConfig(path)
+		cfg, err := configcheck.Read(path)
 		require.NoError(t, err)
 		return cfg
 	}
@@ -156,7 +157,7 @@ func TestLoadConfigMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
 	t.Run("an unknown field of an entry is still rejected", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "models.json")
 		require.NoError(t, os.WriteFile(path, []byte(`{"vendors":{"kling":{"bogus":1}}}`), 0o600))
-		_, err := modeladapter.LoadConfig(path)
+		_, err := configcheck.Read(path)
 		assert.ErrorContains(t, err, "unknown field")
 	})
 }

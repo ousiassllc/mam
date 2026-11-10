@@ -139,7 +139,7 @@ func init() {
 }
 
 func apiKeysBody(c *gin.Context, s Services) templ.Component {
-	keys := credentialshandler.Data(c, credentialshandler.Keys{Svc: s.Keys, Tester: s.Tester})
+	keys := credentialshandler.Data(c, credentialshandler.Keys{Svc: s.Keys, Tester: s.Tester, Models: s.Models})
 	if s.ChatGPT == nil {
 		return pages.SettingsAPIKeysBody(keys, nil)
 	}
