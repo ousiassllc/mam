@@ -2,7 +2,7 @@
 
 [`mcp-tools.md`](mcp-tools.md) の規約に従う、設定系の画面の操作のツール（Issue #830）。対象は、Project の設定画面（制作テンプレート・Quality / Cost Policy・予算・Take のアーカイブ・Brand 制約とテンプレート）、全体設定画面（LLM の割り当て・画像／動画モデルの割り当て・音声・口パクのプロバイダー・アップデート）、制作指標、ヘルスチェック。API キーは基盤の `list_credentials` / `set_credential` / `delete_credential`（[`mcp-tools.md`](mcp-tools.md)）。
 
-実装は `backend/internal/mcp/tools/{policy,brand,analytics,health,settings}`。どれも画面と同じサービスを呼ぶ（`PolicyService`・`BrandService`・`AnalyticsService`・`HealthService`・`llmassign.Service`・`modelsettings.Service`・`appupdate.Service`）。MCP 専用の確認や上限は足さない。
+実装は `backend/internal/mcp/tools/{policy,brand,analytics,health,settings,videoprovider}`（`videoprovider` は `get_video_provider`・`set_video_provider`。`tools/settings` が行数の上限に達したため別のパッケージにした）。どれも画面と同じサービスを呼ぶ（`PolicyService`・`BrandService`・`AnalyticsService`・`HealthService`・`llmassign.Service`・`modelsettings.Service`・`appupdate.Service`）。MCP 専用の確認や上限は足さない。
 
 ## 方針
 
@@ -130,3 +130,4 @@
 | 1.13 | 2026-11-08 | `get_global_settings` の `models` に `routes[]`（保存した割り当てを今実行したらどうなるか）を足した | Issue #1113（既定の割り当てが使えないとき、何で生成が動くか・止まるかを生成せずに知るため） |
 | 1.14 | 2026-11-08 | `get_global_settings` の `models.image_models[].available` と `models.unusable_routes[]` の説明を、#1113 の扱い（既定の割り当ては条件に合う使えるモデルへ替わり、利用者が選んだ・固定した割り当てなら断られる。実際の扱いは `routes[]`）に合わせた。以前の「生成は断られる」の説明を直した | Issue #1113（レビュー指摘） |
 | 1.15 | 2026-11-10 | 全体設定（`tools/settings`）に `get_video_provider`・`set_video_provider` と、ルートの対応（`PUT /settings/api-provider`）を足した。クラウド動画モデル（Kling）の API プロバイダー（公式 / OpenRouter / fal.ai / Replicate）の読み書き。画面と同じサービス（`modelsettings.Service`）を通る | Issue #1136 |
+| 1.16 | 2026-11-10 | 冒頭の実装のパッケージの一覧に `tools/videoprovider`（`get_video_provider`・`set_video_provider` の実装）を足した | PR #1141 のレビュー指摘（一覧に無かった） |
