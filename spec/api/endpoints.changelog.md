@@ -221,3 +221,4 @@
 | 1.214 | 2026-11-10 | [endpoints-gentest.md](endpoints-gentest.md)（1.30）の `POST /generation-test/chat/messages` を、`session` の形が不正なときだけ 410、形が正しい ID の会話が無いときは新しい会話を作って 200 に直した（実装に合わせた。confirm・dismiss の「無い会話は 410」は変えない） | PR #1141 のレビュー指摘（major） |
 | 1.215 | 2026-11-10 | [endpoints-gentest.md](endpoints-gentest.md)（1.31）の `POST /generation-test/chat/proposals/:id/dismiss` の行に、状態（200・409・410・404）を書いた | PR #1141 の再レビュー指摘（1.214 の直しが起こした記述の抜け） |
 | 1.216 | 2026-11-11 | [endpoints-settings.md](endpoints-settings.md)（1.22）の §4 の接続テストの表に `openrouter`・`replicate` を足し、ボタンを出さない行に `fal` を足した（実装の `credential/probe` と揃えた） | PR #1141 のレビュー指摘 |
+| 1.217 | 2026-11-11 | [endpoints-gentest.md](endpoints-gentest.md)（1.32）の `POST /generation-test/chat/proposals/:id/confirm` に、何も生成しなかった失敗のカードの扱いを足した | PR #1141 のレビュー指摘 |

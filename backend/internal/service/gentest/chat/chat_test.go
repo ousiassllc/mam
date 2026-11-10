@@ -157,9 +157,14 @@ func TestAFailedPressDoesNotReviveACardThatAnEstimateReplacedWhileItRan(t *testi
 	require.NoError(t, err)
 	first := proposalOf(t, rep)
 
-	_, err = r.Chat.Confirm(ctx, r.SessID, first.ID)
-	require.Error(t, err, "nothing was generated: the press failed")
+	rep, err = r.Chat.Confirm(ctx, r.SessID, first.ID)
+	require.NoError(t, err, "the answer closes the card for the screen instead of leaving its buttons up")
 	require.NotNil(t, second, "the second estimate was made while the first press ran")
+	require.Len(t, rep.Changed, 1)
+	assert.Equal(t, first.ID, rep.Changed[0].ID)
+	assert.Equal(t, chat.StateSuperseded, rep.Changed[0].State)
+	require.Len(t, rep.Messages, 1)
+	assert.True(t, rep.Messages[0].Failed)
 	assert.Equal(t, 0, r.batches(t))
 
 	got, err := r.Chat.Proposal(r.SessID, first.ID)

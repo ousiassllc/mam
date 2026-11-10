@@ -21,6 +21,11 @@ func TestDetect_AnOrdinaryDirectionThatMentionsTheExportIsNotAnExport(t *testing
 		"プロジェクト全体の雰囲気を暗くして。書き出しは最後にする",
 		"プロジェクト全体のトーンを揃えてから書き出す前に確認させて",
 		"動画を書き出すと EXPORTED になるの？",
+		"動画を書き出す直前に Final QC を通して",
+		"動画を書き出さないで、まず確認したい",
+		"この動画をエクスポートせずに確認したい",
+		"動画を書き出す手前で音量を揃えて",
+		"動画を書き出しする前に確認したい",
 		"Before export, make this video shorter",
 		"Change the mood of the video after exporting",
 	} {
@@ -39,6 +44,9 @@ func TestDetect_ARequestBesideADirectionStillReads(t *testing.T) {
 		"プロジェクト全体の書き出しをお願い":        export.OpExportBundle,
 		"プロジェクト全体を書き出したい":          export.OpExportBundle,
 		"この動画を書き出して。書き出す前に確認はいらない": export.OpExportVideo,
+		"プロジェクト全体を明るくして、動画を書き出して":  export.OpExportVideo,
+		"動画をまるごと書き出して":             export.OpExportVideo,
+		"この動画の書き出しは 1080p でお願い":    export.OpExportVideo,
 	} {
 		got := detect(t, message)
 		require.Len(t, got, 1, message)

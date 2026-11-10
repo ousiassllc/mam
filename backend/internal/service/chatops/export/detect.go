@@ -12,8 +12,10 @@ var (
 	exportWord = regexp.MustCompile(`(?i)(書き出|書出|エクスポート|export)`)
 	// mentionedOnly is an export or download word that places another instruction in time ("書き出す前に…", "書き出したら…", "before export") or says what the export will do ("書き出すと…",
 	// "書き出しは最後に"). It is no request, so the word is dropped before the message is read.
-	mentionedOnly = regexp.MustCompile(`(?i)((書き出|書出|エクスポート|ダウンロード)(する|した|しない|せる|できる|す|し)?(の?(前|まえ|後|あと|時|とき|際|場合|までに|まで|ので|ため|ように)|たら|れば|なら)` +
-		`|(書き出|書出|エクスポート)(する|す|し)?(は|と)` +
+	mentionedOnly = regexp.MustCompile(`(?i)((書き出|書出|エクスポート|ダウンロード)(する|した|しない|せる|できる|す|し|しする)?(の?(前|まえ|直前|直後|手前|より前|後|あと|時|とき|際|場合|までに|まで|ので|ため|ように)|たら|れば|なら)` +
+		`|(書き出|書出|エクスポート)(する|す)と` + // "書き出すと EXPORTED になる": what the export does
+		`|(書き出|書出|エクスポート)(し)?は(最後|最終|後|あと|まだ|別|不要|いらない|しない|しません|しなくて|今は)` + // "書き出しは最後に"; "書き出しは 1080p で" is a request
+		`|(書き出|書出|エクスポート|ダウンロード)(さな|さず|せず|しな|しません)` + // "書き出さないで", "エクスポートせずに": not asking for it
 		`|\b(before|after|until|once|when|while|prior to)\s+(\w+\s+){0,2}?(export|download)\w*|\b(export|download)(ing|ed|s)\b)`)
 	pastExport   = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
 	downloadWord = regexp.MustCompile(`(?i)(ダウンロード|download)`)
@@ -62,7 +64,7 @@ func classify(message string) kind {
 	}
 	video := videoWord.MatchString(message)
 	switch {
-	case bundleWord.MatchString(message) || namesWholeProject(message) || (projectWord.MatchString(message) && !video):
+	case bundleWord.MatchString(message) || (!video && (namesWholeProject(message) || projectWord.MatchString(message))): // a word of the video beside "プロジェクト全体を…" is the video's
 		return kindBundle
 	case downloads:
 		if video || pastFile.MatchString(message) {

@@ -91,19 +91,20 @@ func (b fal) GenerateVideo(ctx context.Context, _ string, req modeladapter.Video
 		return modeladapter.VideoResult{}, err
 	}
 	// A job that failed is COMPLETED too: its result is the error the model returned (an HTTP error status here). A 4xx ends the call at once; a 5xx may be a blip of
-	// the gateway or the model's own failure, so it is asked resultTries times and then is a failed job (retrying it until the deadline would hold a failed job for good).
+	// the gateway or the model's own failure, so it is asked until resultTries answers were 5xx and then is a failed job (retrying it until the deadline would hold a failed job for good).
 	var out struct {
 		Video struct {
 			URL string `json:"url"`
 		} `json:"video"`
 	}
-	tries := 0
+	answered5xx := 0
 	err = b.Poll(ctx, func(ctx context.Context) (bool, error) {
-		tries++
 		err := fetch(ctx, b.API, request, auth, &out)
 		var pe *modeladapter.ProviderError
-		if errors.As(err, &pe) && pe.Status >= http.StatusInternalServerError && tries >= resultTries && ctx.Err() == nil {
-			return true, failedJob(b.API, strconv.Itoa(pe.Status), err.Error())
+		if errors.As(err, &pe) && pe.Status >= http.StatusInternalServerError {
+			if answered5xx++; answered5xx >= resultTries && ctx.Err() == nil {
+				return true, failedJob(b.API, strconv.Itoa(pe.Status), pe.Message)
+			}
 		}
 		return true, err
 	})

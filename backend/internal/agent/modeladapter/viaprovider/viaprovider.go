@@ -143,6 +143,12 @@ func RouteOf(p Provider, m domain.ModelName) (Route, bool) {
 	return Route{}, false
 }
 
+// FoldsNegative is whether the backend of p writes the negative prompt of m into the prompt (Route.FoldsNegative); false when the setting does not concern the model.
+func FoldsNegative(p Provider, m domain.ModelName) bool {
+	r, _ := RouteOf(p, m)
+	return r.FoldsNegative
+}
+
 // Refusal is why p does not serve m (see Route.Why); "" when it does and when the setting does not concern the model.
 func Refusal(p Provider, m domain.ModelName) string {
 	r, _ := RouteOf(p, m)

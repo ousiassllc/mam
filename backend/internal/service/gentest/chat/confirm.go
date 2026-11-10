@@ -15,7 +15,7 @@ import (
 //
 // The reply holds the changed card and, when the batch was queued, the message that shows its results. A refusal that says the confirmation is no good (a
 // changed estimate, a limit) closes the proposal as stale and is a message of the reply, so the user is told in the thread; the LLM is told too, for the next
-// message. Other failures (the translation of the prompts, a fault) are returned and leave the proposal pending: nothing was generated, the user may press again (but if a newer estimate was made while the press ran, the proposal is superseded instead: only the newest card can be pressed).
+// message. Other failures (the translation of the prompts, a fault) are returned and leave the proposal pending: nothing was generated, the user may press again (but if a newer estimate was made while the press ran, the proposal is superseded instead and the reply says so, with no error: only the newest card can be pressed).
 // ErrProposalClosed means it was used, dismissed or replaced already.
 func (s *Service) Confirm(ctx context.Context, sessionID, proposalID string) (Reply, error) {
 	se, err := s.open(sessionID, false)
@@ -46,8 +46,9 @@ func (s *Service) Confirm(ctx context.Context, sessionID, proposalID string) (Re
 		return s.stale(se, p, invalid.Message), nil
 	}
 	p.State = StatePending // nothing was generated: the card can be pressed again, unless a newer estimate was made meanwhile
-	if p.replaced {
+	if p.replaced {        // the card was replaced while it ran: it is closed for good, and the screen is told (an error would leave its buttons up)
 		p.State = StateSuperseded
+		return Reply{Changed: []Proposal{*p}, Messages: []Message{{ID: newID(), Kind: KindStatus, Failed: true, Text: "実行しませんでした: 押している間に新しい見積りが作られたため、このカードは使えなくなりました。新しいカードで実行してください"}}}, nil
 	}
 	return Reply{}, runErr
 }
