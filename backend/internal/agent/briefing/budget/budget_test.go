@@ -62,6 +62,8 @@ func TestStatedReportsABudgetInYenWithoutConverting(t *testing.T) {
 func TestMentionsTellsADirectionAboutTheBudget(t *testing.T) {
 	assert.True(t, budget.Mentions("予算を $30 に変えて"))
 	assert.True(t, budget.Mentions("予算を増やしたい"))
+	assert.True(t, budget.Mentions("予算の上限を外して"), "the example of the interpreter prompt for removing a ceiling")
+	assert.False(t, budget.Mentions("上限を外して"), "a limit alone is no budget, so the prompt does not offer it as an example")
 	assert.True(t, budget.Mentions("Budget to $10"))
 	assert.True(t, budget.Mentions("上限は $30 までにして"), "a limit with an amount is a budget")
 	assert.False(t, budget.Mentions("リトライの上限を増やして"), "a limit without an amount is no budget")

@@ -49,7 +49,7 @@ var specs = map[OpType]Spec{
 	OpCreateNote: {AnyMode: true, Asked: domain.AsksToRemember},
 	OpSetBudget: {
 		Example: `{"type": "set_budget", "project_budget_usd": 30, "shot_budget_usd": 3}`,
-		Doc: `- "set_budget": the director wants the budget ceilings changed ("予算を $30 に変えて", "予算は 50 ドルまで", "1 ショットあたり $3 まで", "上限を外して"). ` +
+		Doc: `- "set_budget": the director wants the budget ceilings changed ("予算を $30 に変えて", "予算は 50 ドルまで", "1 ショットあたり $3 まで", "予算の上限を外して"). ` +
 			`"project_budget_usd" is the ceiling of the whole project and "shot_budget_usd" the ceiling of one shot, in US dollars. Name only the ceiling the director names; ` +
 			`the other one stays as it is. 0 removes a ceiling. Amounts the director states in another currency cannot be set: use "unsupported" with a reason that asks for dollars.` + "\n",
 		Clean: cleanSetBudget, Asked: budget.Mentions, AnyMode: true, Confirm: true,
