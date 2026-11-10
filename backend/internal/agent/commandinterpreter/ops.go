@@ -120,11 +120,14 @@ func cleanRegistered(op Operation) (Operation, bool) {
 	return Operation{}, false
 }
 
-// Normalize validates an operation of the registry, as the model returned it or as a chat card stored it as the action of a button; false when it is none
-// or invalid.
+// Normalize validates an operation of the registry, or the mode switch (the one operation outside the registry a card button carries: the budget Escalation's), as
+// the model returned it or as a chat card stored it as the action of a button; false when it is none or invalid.
 func Normalize(op Operation) (Operation, bool) {
 	if s, ok := specs[op.Type]; ok && s.Clean != nil {
 		return s.Clean(op)
+	}
+	if op.Type == OpSetMode {
+		return clean(op, "")
 	}
 	return Operation{}, false
 }

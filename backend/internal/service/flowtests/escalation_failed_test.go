@@ -83,3 +83,28 @@ func TestChat_AConfirmationCardWithActionsButNoOptionsIsNotCarriedOutOnYes(t *te
 	project, _ := ceilings(t, f.svc, p.ID)
 	assert.Nil(t, project, "the action of a card without options is not run")
 }
+
+// The mode button of the budget Escalation (set_mode) is an operation outside the registry of the interpreter: it still runs, since a card the app made is carried out.
+func TestChat_PickingTheModeButtonOfTheBudgetEscalationSwitchesToDirectorMode(t *testing.T) {
+	f := newFixture(t)
+	p := f.createProject(t, "美容液のCMを作りたい")
+	require.Equal(t, domain.ModeAuto, p.Mode)
+	toDirector, err := json.Marshal(commandinterpreter.Operation{Type: commandinterpreter.OpSetMode, ProjectMode: domain.ModeDirector})
+	require.NoError(t, err)
+	body := domain.CardBody{Text: "予算を超えます", Options: []string{"AUTO をやめて DIRECTOR MODE にする"}, OptionActions: []json.RawMessage{toDirector}}
+	require.NoError(t, f.svc.Chat.RaiseEscalationCard(context.Background(), p.ID, body, ""))
+	var card domain.ThreadMessage
+	for _, m := range f.thread(t, p.ID) {
+		if m.Kind == domain.KindEscalation {
+			card = m
+		}
+	}
+	require.NotEmpty(t, card.ID)
+
+	ws := answer(t, f.svc, p.ID, card.ID, "AUTO をやめて DIRECTOR MODE にする")
+
+	reloaded, err := f.svc.Projects.Get(context.Background(), p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ModeDirector, reloaded.Mode, "the pick was carried out")
+	assert.Contains(t, lastText(ws), "実行しました")
+}

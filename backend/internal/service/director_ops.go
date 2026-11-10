@@ -112,11 +112,11 @@ func (s *DirectorService) applyAction(ctx context.Context, project domain.Projec
 	if err := json.Unmarshal(raw, &op); err != nil {
 		return actionResult{}, fmt.Errorf("read the action of a card: %w", err)
 	}
-	op, ok := commandinterpreter.Normalize(op)
+	normal, ok := commandinterpreter.Normalize(op)
 	if !ok {
 		return actionResult{}, fmt.Errorf("the action %q of a card is not a valid operation", op.Type)
 	}
-	return s.applyOp(ctx, project, op)
+	return s.applyOp(ctx, project, normal)
 }
 
 // applyOp carries op out through its handler.

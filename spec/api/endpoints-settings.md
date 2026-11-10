@@ -86,8 +86,8 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | Method | Path | 変更 |
 |--------|------|------|
 | PUT | `/settings/api-provider` | **#1136**。動画モデル（Kling）の API プロバイダー（[model-adapters.md §9.6](../architecture/model-adapters.md)）。フォーム `provider`（`official` / `openrouter` / `fal` / `replicate`）。`models.json` の `video_provider` に保存し、`localmodels.Service.Reload` で即反映する（`official` はキーを消す）。応答は `#credential-panel` の全体（先頭に選択、選んだ先のキー欄を先頭に）。200＋お知らせ、未知の値は 422、`--model-config` で固定されていると 409（どちらも `role="alert"` の文）。`Cache-Control: no-store`。`Services.Models` がないと登録しない（404）。キー（`openrouter` / `fal` / `replicate`）は `PUT /credentials/:provider` で保存する |
-| PUT | `/credentials/:provider` | 成功の本文が、区画ではなく**カードの OOB ＋成功のトースト＋ `HX-Trigger-After-Swap: modal-close`**。空・空白入り・長すぎるキーは 422（モーダルの断片）、キーストアの拒否は 503（同）、未知の `provider` は 422（赤いトースト）。キーは返さない |
-| DELETE | `/credentials/:provider` | 成功の本文が**カードだけ**（`hx-swap="outerHTML"`）＋成功のトースト。未設定でも 200。未知の `provider` は 422（トースト）、キーストアの拒否は 503（トースト） |
+| PUT | `/credentials/:provider` | 成功の本文が、区画ではなく**カードの OOB ＋成功のトースト＋ `#api-provider-models`（API プロバイダーの選択の下の「モデルごとの状況」。そこに「API キー: 設定済み／未設定」の行がある）の `hx-swap-oob` での差し替え（選択が出ていないときは足さない）＋ `HX-Trigger-After-Swap: modal-close`**。空・空白入り・長すぎるキーは 422（モーダルの断片）、キーストアの拒否は 503（同）、未知の `provider` は 422（赤いトースト）。キーは返さない |
+| DELETE | `/credentials/:provider` | 成功の本文が**カード**（`hx-swap="outerHTML"`）＋成功のトースト＋ `#api-provider-models`（API プロバイダーの選択の下の「モデルごとの状況」。そこに「API キー: 設定済み／未設定」の行がある）の `hx-swap-oob` での差し替え（選択が出ていないときは足さない）。未設定でも 200。未知の `provider` は 422（トースト）、キーストアの拒否は 503（トースト） |
 | POST | `/settings/chatgpt/:kind/login` | 本文が**モーダルの断片**（ブラウザ: 開いたことと認可 URL、デバイスコード: 確認 URL・コード・期限、どちらも 2 秒ごとの取り直しつき）＋区画の OOB。公式のデバイスコードは 422、画像が OFF は 409、エンジンが無い `codex` は 409（モーダルの断片に理由） |
 | POST | `/settings/chatgpt/:kind/login/cancel` | ログインの中止。モーダルを閉じ（`HX-Trigger-After-Swap: modal-close`）、カードを OOB で差し替える |
 | DELETE・PUT・POST | `/settings/chatgpt/…`（ログアウト・画像の ON/OFF・Codex の取得・中断・パス・更新） | 本文は今のまま区画（`#chatgpt-panel`、`hx-swap="outerHTML"`）。区画の中身がカードの一覧になった。**詳細のモーダルから送った操作**（画像の「オンにする」・Codex のパス・「ログアウトして…も削除」。リクエストの `HX-Target` が `mam-modal-body`）: 成功は 200 と `HX-Trigger-After-Swap: modal-close`、本文は区画の OOB（`hx-swap-oob="true"`）。失敗（422 など）は、モーダルの本文に `#mam-modal-error`（`role="alert"`）つきの詳細と、区画の OOB |
@@ -220,3 +220,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.18 | 2026-11-07 | §5 の `PUT /settings/llm/local`・`POST /settings/llm/local/test` の廃止（#1104）を実装した。状態を「実装済み」にした（ルートは登録しない。404。`GET /settings/llm` はリンクのカード） | Issue #1104 |
 | 1.19 | 2026-11-08 | §6 に、割り当てが使えない行の注意（生成が条件に合うモデルで行われるか、断られるか）を足した | Issue #1113 |
 | 1.20 | 2026-11-10 | §1 に `PUT /settings/api-provider`（動画モデル〔Kling〕の API プロバイダーの選択。`models.json` の `video_provider` に保存して即反映。未知の値は 422、`--model-config` で固定中は 409）を足した | Issue #1136 |
+| 1.21 | 2026-11-10 | §3 の `PUT`・`DELETE /credentials/:provider` の成功の本文に、`#api-provider-models` の OOB の差し替えを足した（キーの保存・削除のあと、プロバイダー選択の下の「API キー: 設定済み／未設定」が古いままにならない） | PR #1141 のレビュー指摘 |

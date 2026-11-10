@@ -48,6 +48,14 @@ func TestInterpret_OperationsThatAreNotInThePromptAreNeverInvented(t *testing.T)
 	assert.Equal(t, domain.QualityFast, op.Quality)
 	_, ok = commandinterpreter.Normalize(commandinterpreter.Operation{Type: commandinterpreter.OpSetQualityPolicy, Quality: "cheapest"})
 	assert.False(t, ok)
+
+	mode, ok := commandinterpreter.Normalize(commandinterpreter.Operation{Type: commandinterpreter.OpSetMode, ProjectMode: domain.ModeDirector})
+	assert.True(t, ok, "the mode switch is the action of a button of the budget Escalation")
+	assert.Equal(t, domain.ModeDirector, mode.ProjectMode)
+	_, ok = commandinterpreter.Normalize(commandinterpreter.Operation{Type: commandinterpreter.OpSetMode, ProjectMode: "manual"})
+	assert.False(t, ok)
+	_, ok = commandinterpreter.Normalize(commandinterpreter.Operation{Type: commandinterpreter.OpSetLock, Parameter: domain.ParamCamera, Mode: domain.LockLocked})
+	assert.False(t, ok, "an operation outside the registry is not one a card carries out")
 }
 
 func TestUnaskedDropsASettingTheMessageDoesNotMention(t *testing.T) {

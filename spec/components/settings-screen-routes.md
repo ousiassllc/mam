@@ -45,7 +45,7 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | PUT | `/settings/models/images/:purpose`・`/settings/models/policies/:policy` | **新規（案。categories §7 の質問 4）**。1 行の保存。内容は今の `PUT /settings/models` の 1 行ぶんで、保存の検証は `modelsettings.Service` が行う。固定は 409 |
 | POST | `/settings/credentials/:provider/test` | **新規**。API キーの接続テスト（接続テストのあるプロバイダーだけ。無ければ 404）。フォーム `api_key`（空なら保存済みのキー）。結果の行だけ返す（成功・キーが拒否された・通信できない・上限に達した。いずれも 200。キーそのものは**応答にもログにも出さない**）。保存しない。外部への通信は 10 秒で打ち切る |
 | PUT | `/settings/api-provider` | **新規（#1136）**。動画モデルの API プロバイダーの選択（フォーム `provider` = `official` / `openrouter` / `fal` / `replicate`）。保存して即反映し、区画の全体（`#credential-panel`）を返す。未知の値は 422、`--model-config` で固定されていると 409。`Services.Models` があるときだけ登録 |
-| PUT・DELETE | `/credentials/:provider` | **変更なし**（パス・フォーム・状態コードは今のまま）。応答の本文だけ §2 の形（OOB の行＋ `HX-Trigger-After-Swap`）に変える |
+| PUT・DELETE | `/credentials/:provider` | **変更なし**（パス・フォーム・状態コードは今のまま）。応答の本文だけ §2 の形（OOB の行＋ `HX-Trigger-After-Swap`）に変える。API プロバイダーの選択が出ているときは、その下の `#api-provider-models`（「API キー: 設定済み／未設定」の行）も OOB で差し替える |
 | GET | `/settings/audio/:choice/:provider` | **新規（#1005）**。音声・口パクのカードの「詳細」のモーダル（読み取りだけ）。`:choice` は `voice` / `lip-sync`、`:provider` は `cloud` / `local` |
 | PUT | `/settings/audio` | **新規（#924）**。声・口パクのプロバイダーとフォールバックの保存。フォーム `voice_provider`（`elevenlabs` / `local`）・`lip_sync_provider`（`synclabs` / `local`）・`fallback_to_cloud`（`1`。無ければオフ）。フォームに無い項目は保存済みのまま。この PC で動かせないローカルは 422（ランタイム管理の理由とクラウドの案内）、`audio.json` が読めないときは 409（書き換えない）。応答は分類の本体（`#audio-panel`。成功は 200 と「保存しました。次の音声作成から使われます」） |
 | PUT | `/settings/mcp/bind`・POST `/settings/mcp/tokens`・DELETE `/settings/mcp/tokens/:id` | パス・フォームは今のまま。応答は §2。**発行（201）だけは例外**（§3） |
@@ -121,3 +121,4 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | 0.8 | 2026-11-01 | §1 に `GET /settings/audio`（ページ）と `PUT /settings/audio`（保存）を足した | Issue #924 |
 | 0.9 | 2026-11-03 | §1 に `GET /settings/chatgpt/:kind/detail`・`GET /settings/audio/:choice/:provider`（設定のカードの「詳細」のモーダル）を足した | Issue #1005 |
 | 0.10 | 2026-11-10 | §1 に `PUT /settings/api-provider`（動画モデルの API プロバイダーの選択。保存して即反映し `#credential-panel` の全体を返す）を足した | Issue #1136 |
+| 0.11 | 2026-11-10 | §1 の `PUT`・`DELETE /credentials/:provider` に、`#api-provider-models` の OOB の差し替えを足した | PR #1141 のレビュー指摘 |

@@ -76,21 +76,21 @@ export function installGentestChat(doc: Document = document): void {
     }
   });
 
-  // Whether the reader is at the bottom is read before a swap grows the thread, and what is new is told by the number of entries: a swap that replaces an
-  // entry in place (the result block polling itself) adds none.
+  // Whether the reader is at the bottom and how many entries there are is read before a swap grows the thread: a swap that replaces an entry in place (the
+  // result block polling itself) adds none.
   let pinned = true;
-  const entries = new WeakMap<HTMLElement, number>();
+  let entriesBefore = 0;
   doc.addEventListener('htmx:beforeSwap', (event) => {
     const thread = doc.querySelector<HTMLElement>(THREAD);
-    if (thread && (event.target as Element | null)?.closest(THREAD)) pinned = atBottom(thread);
+    if (!thread || !(event.target as Element | null)?.closest(THREAD)) return;
+    pinned = atBottom(thread);
+    entriesBefore = thread.childElementCount;
   });
 
   doc.addEventListener('htmx:afterSwap', (event) => {
     const thread = doc.querySelector<HTMLElement>(THREAD);
     if (!thread || !(event.target as Element | null)?.closest(THREAD)) return;
     retireAnswered(thread);
-    const added = thread.childElementCount > (entries.get(thread) ?? 0);
-    entries.set(thread, thread.childElementCount);
-    if (added || pinned) follow(thread);
+    if (thread.childElementCount > entriesBefore || pinned) follow(thread);
   });
 }
