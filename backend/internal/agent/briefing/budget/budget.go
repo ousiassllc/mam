@@ -31,10 +31,14 @@ var (
 	yenRe    = regexp.MustCompile(`[0-9][0-9,]*(?:\.[0-9]+)?\s*万?\s*円|[¥￥]\s*[0-9]`)
 	// limitSuffixRe is a limit word right after the amount: "1 ショット $2 まで" needs no 予算 in front.
 	limitSuffixRe = regexp.MustCompile(`^\s*(?:まで|以内|以下)`)
-	// shotBeforeRe / shotAfterRe say that the amount is per Shot: "1 ショットあたり $2", "$2/shot".
-	shotBeforeRe = regexp.MustCompile(`(?i)shot|ショット|カット|1\s*本`)
-	shotAfterRe  = regexp.MustCompile(`(?i)^\s*(?:/\s*(?:1\s*)?(?:shot|ショット|カット)|あたり|ごと|ずつ|につき)`)
-	clauseSplit  = regexp.MustCompile(`[。\n!?]+`)
+	// shotPerRe says, before the amount, that it is per Shot: "1 ショットあたり $2", "ショットごとに $2", "毎ショット $2", "per shot $2".
+	shotPerRe = regexp.MustCompile(`(?i)(?:shot|ショット|カット)\s*(?:あたり|当たり|ごと|毎|ずつ|につき)|[毎各]\s*(?:shot|ショット|カット)|per\s*shot`)
+	// shotUnitRe says that the Shot is the unit of the amount, as the last words before it: "1 カット $2 まで", "1 ショットの予算は $2". A count other than one ("3 ショットで",
+	// "3 ショットの予算は") is the size of the Project, which the amount is the budget of; so are the words around it ("3 カット構成 予算 $20").
+	shotUnitRe = regexp.MustCompile(`(?i)(?:^|[^0-9])(?:1\s*|各\s*)?(?:shot|ショット|カット)\s*(?:の?\s*(?:予算|上限|budget)\s*(?:は|が|:)?)?\s*$`)
+	// shotAfterRe says, right after the amount, that it is per Shot: "$2/shot", "$2 ずつ".
+	shotAfterRe = regexp.MustCompile(`(?i)^\s*(?:/\s*(?:1\s*)?(?:shot|ショット|カット)|あたり|当たり|ごと|毎|ずつ|につき|per\s*shot)`)
+	clauseSplit = regexp.MustCompile(`[。\n!?]+`)
 )
 
 const (
@@ -42,7 +46,7 @@ const (
 	wordReach  = 40
 	wordBefore = 16
 	// shotWindow is the part before the amount that says "per Shot" ("、1 ショットあたり $2").
-	shotWindow = 12
+	shotWindow = 14
 )
 
 // Mentions reports whether the text talks about a budget: a message that is a direction about it, whether or not it names an amount. "上限" alone is no budget
@@ -111,7 +115,8 @@ func isBudget(clause string, words [][]int, start, end int) bool {
 	return false
 }
 
-// perShot reports whether the amount at [start, end) is a ceiling of one Shot.
+// perShot reports whether the amount at [start, end) is a ceiling of one Shot: the words say that it is per Shot (shotPerRe, shotAfterRe), or the Shot is the unit
+// the budget is named for (shotUnitRe). A Shot that only counts the size of the Project ("3 ショットで予算は $20", "5 カットで") does not make it one.
 func perShot(clause string, start, end int) bool {
 	before := []rune(clause[:start])
 	if len(before) > shotWindow {
@@ -121,7 +126,7 @@ func perShot(clause string, start, end int) bool {
 	if i := strings.LastIndexAny(window, "、,"); i >= 0 {
 		window = window[i+1:] // a clause before the comma is about another amount ("予算は、1 ショットあたり…" keeps its own window)
 	}
-	return shotBeforeRe.MatchString(window) || shotAfterRe.MatchString(clause[end:])
+	return shotPerRe.MatchString(window) || shotUnitRe.MatchString(window) || shotAfterRe.MatchString(clause[end:])
 }
 
 // fold writes the full-width digits, letters and signs of text as ASCII ("＄２０" is "$20"), so that the patterns read what the user typed in either width.

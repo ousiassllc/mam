@@ -67,3 +67,30 @@ func TestMentionsTellsADirectionAboutTheBudget(t *testing.T) {
 	assert.False(t, budget.Mentions("リトライの上限を増やして"), "a limit without an amount is no budget")
 	assert.False(t, budget.Mentions("カメラを固定して"))
 }
+
+// A Shot that only counts the size of the Project ("3 ショットで", "CM 1 本の") does not make the amount a ceiling of one Shot: it is the budget of the Project.
+// Only wording that says "per Shot" (あたり / ごと / 毎 / ずつ / につき / per) or names the budget of one Shot makes it one.
+func TestStatedReadsTheSizeOfTheProjectAsTheProjectsBudgetAndPerShotWordsAsAShotCeiling(t *testing.T) {
+	for name, tc := range map[string]struct {
+		text string
+		want budget.Statement
+	}{
+		"a count of Shots then the budget":      {"3ショットで予算は$20", budget.Statement{Project: usd(20)}},
+		"one CM then the budget":                {"CM1本の予算は$20で", budget.Statement{Project: usd(20)}},
+		"a count of cuts then the budget":       {"3カット構成 予算 $20", budget.Statement{Project: usd(20)}},
+		"a count of cuts with a particle":       {"5カットで予算は$20で", budget.Statement{Project: usd(20)}},
+		"the budget of a count of Shots":        {"3ショットの予算は$20", budget.Statement{Project: usd(20)}},
+		"a count of Shots and a ceiling of one": {"3ショットで予算は$20、1ショットあたり$3まで", budget.Statement{Project: usd(20), Shot: usd(3)}},
+		"per Shot, ごと":                          {"ショットごとに予算は$3", budget.Statement{Shot: usd(3)}},
+		"per Shot, 毎":                           {"毎ショット予算は$3まで", budget.Statement{Shot: usd(3)}},
+		"per Shot, ずつ":                          {"予算はショットに$3ずつ", budget.Statement{Shot: usd(3)}},
+		"per Shot, per":                         {"budget $3 per shot", budget.Statement{Shot: usd(3)}},
+		"per cut, あたり":                          {"1カットあたり予算は$3", budget.Statement{Shot: usd(3)}},
+		"the budget of one Shot":                {"1ショットの予算は$2", budget.Statement{Shot: usd(2)}},
+		"the budget of a Shot":                  {"ショットの予算は$2", budget.Statement{Shot: usd(2)}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.want, budget.Stated(tc.text))
+		})
+	}
+}
