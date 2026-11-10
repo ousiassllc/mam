@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/genplan"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
@@ -22,6 +23,9 @@ const (
 	VerdictSupersede                // a generation card of v0.1.34 is still pending: the gate settles it, then goes on
 	VerdictDeclined                 // a card of v0.1.34 was declined: nothing starts until the user writes or the plan changes
 	VerdictStart                    // the generation starts by itself: Next are the starts to make
+	// VerdictAwaitBudget: the user stated a budget in the chat and has not answered the card that asks to confirm it (#1139). A generation started now would run without the
+	// ceiling the user asked for, so nothing starts until they answer.
+	VerdictAwaitBudget
 )
 
 // Step is one start the gate makes.
@@ -67,6 +71,13 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 	}
 	if card != nil && card.Status == domain.ApprovalPending {
 		return Assessment{Verdict: VerdictSupersede, Card: card}, nil // an obsolete card holds the Project: nothing else is looked at before it is settled
+	}
+	awaiting, err := g.d.Repo.OperationCardOpen(ctx, p.ID, string(commandinterpreter.OpSetBudget))
+	if err != nil {
+		return Assessment{}, err
+	}
+	if awaiting {
+		return Assessment{Verdict: VerdictAwaitBudget}, nil
 	}
 	launches, err := g.d.Repo.Launches(ctx, p.ID)
 	if err != nil {
@@ -183,6 +194,8 @@ func (g *Gate) Phase(ctx context.Context, p domain.Project) (mainline.Phase, map
 		return mainline.PhaseManual, nil, err
 	}
 	switch a.Verdict {
+	case VerdictAwaitBudget:
+		return mainline.PhaseBudgetConfirm, nil, nil
 	case VerdictDeclined:
 		if a.Unrecorded {
 			return mainline.PhaseDeclinedUnrecorded, a.Stuck, nil

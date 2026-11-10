@@ -18,7 +18,8 @@ const (
 	// PhaseDeclinedUnrecorded is the same for a card that has no record of what it showed (it came with an imported bundle, or its record was lost): the plan
 	// cannot be compared with the card, so only a message of the user lifts the decline.
 	PhaseDeclinedUnrecorded Phase = "declined_unrecorded"
-	PhaseAuto               Phase = "auto" // the Orchestrator starts the Reference Packs and the Shots
+	PhaseAuto               Phase = "auto"           // the Orchestrator starts the Reference Packs and the Shots
+	PhaseBudgetConfirm      Phase = "budget_confirm" // PhaseAuto held until the user answers the confirmation of the budget they stated in the chat (#1139): the ceiling is not set yet
 )
 
 // DeclinedAck is what the chat says when a generation approval card of v0.1.34 is declined in an AUTO Project (an old card; no new one is posted):
@@ -75,6 +76,8 @@ func (w Wait) Title() string {
 		return "旧方針の生成の承認が差し戻されています。自動では始めません"
 	case PhaseAuto:
 		return "AUTO のため、本線が自動で生成を進めます"
+	case PhaseBudgetConfirm:
+		return "予算の確認を待っています。確認するまで生成は始めません"
 	}
 	return "本線は Shot の生成開始を待っています"
 }
@@ -116,6 +119,8 @@ func (w Wait) Reason() string {
 		if w.Stuck > 0 {
 			text += fmt.Sprintf("うち %d 件は自動では進められません（Reference Pack の失敗・予算上限・起動の失敗。理由はチャットにあります）。", w.Stuck)
 		}
+	case PhaseBudgetConfirm:
+		text = fmt.Sprintf("チャットで伝えられた予算がまだ確認されていません。予算なしで有料の生成を始めないよう、確認カードに答えるまで、Shot %d 件の Reference Pack → 生成は始めません。", w.Shots)
 	default:
 		text = fmt.Sprintf("Shot %d 件が PLANNING（Take なし）のまま、生成の開始を待っています。生成は有料なので自動では始まりません。DIRECTOR / MANUAL（または生成の仕組みが未設定）では、Shot ごとに起動します。", w.Shots)
 	}
@@ -137,6 +142,8 @@ func (w Wait) NextAction() string {
 			return "次にするもの: 進められない Shot は、Shot を選んで「Reference Pack」「生成」を押してください。ほかは何も要りません。起動した生成は Job と Progress で追えます。"
 		}
 		return "次にするもの: ありません。" + BudgetCeilingScope + StopAuto + "起動した生成は Job と Progress で追えます。"
+	case PhaseBudgetConfirm:
+		return "次にするもの: チャットの「予算 $… で進めますね？」カードで「はい」か「やめる」を選んでください。答えると、続きから自動で進みます。"
 	}
 	return "次に押すもの: Scene / Shot で Shot を選び、必要なら先に「Reference Pack」、続けて「生成」を押してください。起動した生成は Job と Progress で追えます。"
 }

@@ -54,6 +54,7 @@ const (
 	RefNotePromotion  = "note_promotion"
 	RefContinue       = "continue"        // Question card of Continue: ref_id is the completed shot ID
 	RefExport         = "export"          // Text notice of a finished export: ref_id is the export ID (the chat draws its download link)
+	RefOperation      = "operation"       // Question card that confirms an operation (#1139): ref_id is the operation type
 	RefSettings       = "settings"        // Text notice that points at the settings page of the Project (no ref_id; the chat draws the link)
 	RefGlobalSettings = "global_settings" // Text notice for a category of the global settings screen: ref_id is its slug (empty or unknown: the overview)
 )
@@ -88,6 +89,8 @@ type CardBody struct {
 	// NonBlocking marks an Escalation that was posted without holding the Project (ProjectState.EscalationBlocks
 	// was false): the card is answered like any other, but neither waits for the answer nor resumes the Project.
 	NonBlocking bool `json:"non_blocking,omitempty"`
+	// OptionActions, index-aligned with Options: the JSON of the commandinterpreter.Operation a button carries out when picked (null or none: it only answers).
+	OptionActions []json.RawMessage `json:"option_actions,omitempty"`
 }
 
 // EncodeCardBody serialises a question / escalation card body.

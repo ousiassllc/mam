@@ -47,7 +47,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	if err != nil {
 		return DirectorCommandResult{}, err
 	}
-	cmd, err := s.interpret(ctx, message, shots, &ref)
+	cmd, err := s.interpret(ctx, ref.ProjectID, message, shots, &ref)
 	if err != nil {
 		return DirectorCommandResult{}, interpretError(err)
 	}
@@ -76,7 +76,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	// The direction was carried out (a regeneration may be queued and paid for): its answer is recorded
 	// whatever happened to the request since (a closed client), as the failure notice is, so that a retry
 	// does not run it a second time for want of seeing it in the thread.
-	if err := s.commitMessages(context.WithoutCancel(ctx), project.ID, assignIDs([]domain.ChatMessage{assistantText(res.text())})); err != nil {
+	if err := s.commitMessages(context.WithoutCancel(ctx), project.ID, assignIDs(res.messages())); err != nil {
 		return DirectorCommandResult{}, err
 	}
 	view, err := s.Inspector(ctx, shotID)

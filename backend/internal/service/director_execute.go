@@ -13,7 +13,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
 )
 
-// execute carries out the operations of a Command: settings first (so that "カメラは固定して、表情だけ
+// execute carries out the operations of a Command: an operation that asks for confirmation (set_budget) becomes a confirmation card and is carried out by the
+// answer (director_ops.go). The rest: settings first (so that "カメラは固定して、表情だけ
 // 変えて" locks before it regenerates), then regenerations, then the mode switch. strict makes a
 // regeneration that would change a LOCKed parameter fail with ErrLocked before anything is done;
 // otherwise it is left out and reported.
@@ -77,16 +78,44 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			out.lines = append(out.lines, unsupportedReply(message, op.Reason))
 		}
 	}
+	if err := s.confirmAndRemember(ctx, project, cmd, &out); err != nil {
+		return out, err
+	}
+	err := s.switchMode(ctx, project, cmd, &out)
+	return out, err
+}
+
+// confirmAndRemember posts the confirmation cards of the operations that ask for confirmation (director_ops.go), then keeps the notes the director asked for.
+func (s *DirectorService) confirmAndRemember(ctx context.Context, project domain.Project, cmd commandinterpreter.Command, out *outcome) error {
+	for _, op := range cmd.Operations {
+		if !op.Confirms() {
+			continue
+		}
+		card, line, err := s.confirmCard(ctx, project, op)
+		if err != nil {
+			return err
+		}
+		if line != "" {
+			out.lines = append(out.lines, line)
+		} else {
+			out.cards = append(out.cards, card)
+		}
+	}
 	for _, op := range cmd.Operations {
 		if op.Type != commandinterpreter.OpCreateNote {
 			continue
 		}
 		line, err := s.remember(ctx, project.ID, op)
 		if err != nil {
-			return out, err
+			return err
 		}
 		out.lines = append(out.lines, line)
 	}
+	return nil
+}
+
+// switchMode carries out the mode switches of the Command.
+func (s *DirectorService) switchMode(ctx context.Context, project domain.Project, cmd commandinterpreter.Command, out *outcome) error {
 	mode := project.Mode
 	for _, op := range cmd.Operations {
 		if op.Type == commandinterpreter.OpSetMode {
@@ -97,7 +126,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			}
 			mode = op.ProjectMode
 			if err := s.applyMode(ctx, project.ID, op.ProjectMode, false); err != nil {
-				return out, err
+				return err
 			}
 			out.lines = append(out.lines, approvalack.ModeNotice(op.ProjectMode))
 			if op.ProjectMode == domain.ModeAuto {
@@ -105,7 +134,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			}
 		}
 	}
-	return out, nil
+	return nil
 }
 
 // lockedRegeneration returns ErrLocked when a regeneration of ops changes a parameter that is

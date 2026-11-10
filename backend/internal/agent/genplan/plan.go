@@ -88,6 +88,34 @@ func (p Plan) VideoCost() (c Cost) {
 // Total is the estimate of the whole plan.
 func (p Plan) Total() Cost { return p.PackCost().Add(p.VideoCost()) }
 
+// Overrun is how a plan passes the budget ceilings (#1139): by the known prices only (a call whose price is unknown is not counted, as the ceiling does not
+// count it), and at the most the plan can cost (every Take of every Shot).
+type Overrun struct {
+	// ProjectNeed is the Project ceiling the plan needs: what was spent and reserved plus the plan; 0 when the plan fits the Project ceiling (or none is set).
+	ProjectNeed float64
+	// ShotNeed is the Shot ceiling the dearest Shot needs; 0 when every Shot fits (or none is set).
+	ShotNeed float64
+}
+
+// Any reports whether the plan passes a ceiling.
+func (o Overrun) Any() bool { return o.ProjectNeed > 0 || o.ShotNeed > 0 }
+
+// Overrun is how the plan passes the budget ceilings.
+func (p Plan) Overrun() Overrun {
+	var o Overrun
+	if p.ProjectCeiling != nil && p.ProjectSpent+p.Total().USD > *p.ProjectCeiling {
+		o.ProjectNeed = p.ProjectSpent + p.Total().USD
+	}
+	if p.ShotCeiling != nil {
+		for _, l := range p.Lines {
+			if need := l.PackCost.USD + l.VideoCost.USD; need > *p.ShotCeiling {
+				o.ShotNeed = max(o.ShotNeed, need)
+			}
+		}
+	}
+	return o
+}
+
 // Only returns the plan of the lines keep accepts: its totals, models and unknown prices are those of these lines.
 func (p Plan) Only(keep func(Line) bool) Plan {
 	q := p

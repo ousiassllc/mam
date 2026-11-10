@@ -76,12 +76,12 @@ func (c *fakeChat) Announce(_ context.Context, _ string, m domain.ChatMessage) e
 	return nil
 }
 
-func (c *fakeChat) RaiseEscalation(ctx context.Context, projectID, text string, _ []string, _ string) error {
+func (c *fakeChat) RaiseEscalationCard(ctx context.Context, projectID string, body domain.CardBody, _ string) error {
 	c.mu.Lock()
-	c.escalations = append(c.escalations, text)
+	c.escalations = append(c.escalations, body.Text)
 	c.mu.Unlock()
 	state := domain.StateAwaitingApproval
-	card := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindEscalation, Content: domain.EncodeCardBody(domain.CardBody{Text: text})}
+	card := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindEscalation, Content: domain.EncodeCardBody(body)}
 	return c.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: []domain.ChatMessage{card}, State: &state})
 }
 

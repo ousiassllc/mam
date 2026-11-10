@@ -75,6 +75,7 @@ type wiring struct {
 	r      repos
 	c      *core
 	chat   *ChatService
+	policy *PolicyService
 	gate   *genstage.Gate // the automatic start of the generation; nil until wirePlan
 
 	generations *GenerationService
@@ -225,6 +226,7 @@ func (w *wiring) wireDirector() {
 		core: w.c, gens: w.r.gens, locks: w.r.locks, versions: w.r.versions, orch: w.generations.gen,
 		takes: w.r.takes, repair: w.repairs.agent, judges: w.r.judges, brands: w.r.brands,
 	}
+	w.wireDirectorPolicy()
 	if w.deps.LLM != nil {
 		w.director.interpreter = commandinterpreter.New(w.deps.LLM)
 	}
@@ -306,9 +308,8 @@ func (w *wiring) services() *Services {
 		Generation:  w.generations,
 		World:       w.worlds,
 		Director:    w.director,
-		Policy: &PolicyService{
-			core: c, freeBytes: d.FreeBytes, policies: w.r.policies, costs: w.r.costs, storage: repository.NewStorageRepository(d.DB),
-		},
+
+		Policy:    w.policyService(),
 		Judge:     w.judges,
 		Repair:    w.repairs,
 		Continue:  w.continues,

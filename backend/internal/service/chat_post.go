@@ -50,8 +50,9 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 		}
 		target = &m
 	}
-	if target != nil && target.Kind == domain.KindQuestion && target.RefType == domain.RefContinue {
-		return s.answerContinue(ctx, project, *target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
+	answered, target, done, err := s.answerCard(ctx, project, target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
+	if done || err != nil {
+		return answered, err
 	}
 	if target != nil && isBriefQuestion(*target) {
 		// A card takes one answer at a time: the reply that arrives while another one to the same
@@ -121,7 +122,7 @@ func (s *ChatService) postDirection(ctx context.Context, project domain.Project,
 		s.logger.Error("director message failed", "project_id", project.ID, "message_id", user.ID, "err", err)
 		return Workspace{}, err
 	}
-	msgs := assignIDs([]domain.ChatMessage{reply})
+	msgs := assignIDs(reply)
 	// The direction was carried out (a regeneration may be queued and paid for): the answer is recorded
 	// whatever happened to the request since, as DirectorCommand's is.
 	if err := s.commit(context.WithoutCancel(ctx), repository.Turn{ProjectID: project.ID, Messages: msgs}); err != nil {
@@ -209,7 +210,13 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 			resume := domain.EscalationResumeState
 			turn.ResumeState = &resume
 		}
-		turn.Messages = append(turn.Messages, assistantText("判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"))
+		answer := "判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"
+		if done, picked, err := s.answerEscalation(ctx, project, *target, user.Content); err != nil {
+			return turn, nil, err
+		} else if picked {
+			answer = done // a button that carries its operation: the answer is done
+		}
+		turn.Messages = append(turn.Messages, assistantText(answer))
 		if err := s.attachToBrief(ctx, &turn, attached); err != nil {
 			return turn, nil, err
 		}
@@ -217,7 +224,12 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	}
 
 	decided, err := chatbrief.Planner{Projects: s.projects, Chat: s.chat, Extractor: s.extractor}.Plan(ctx, project, &turn, target, replied, user.Content, attached)
-	return turn, decided, notFound(err)
+	if err != nil {
+		return turn, nil, notFound(err)
+	}
+	cards, err := s.statedBudgetCards(ctx, project, user.Content)
+	turn.Messages = append(turn.Messages, cards...)
+	return turn, decided, err
 }
 
 // attachToBrief puts the files a message carries into the Brief (images into Assets, videos into
