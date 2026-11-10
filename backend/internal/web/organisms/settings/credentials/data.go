@@ -65,9 +65,6 @@ type ProviderData struct {
 	Models  []ProviderModel
 }
 
-// ProviderID is the id of the choice of the API provider: the form the answer of a change replaces with the panel.
-const ProviderID = "api-provider"
-
 // Form is what the modal of a provider is drawn from: the provider and, after a refusal, why. The key that was typed is
 // not part of it, so that a refusal never writes a key back into the page.
 type Form struct {
