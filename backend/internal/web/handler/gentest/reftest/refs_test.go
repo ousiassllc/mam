@@ -66,7 +66,7 @@ func TestInputControlsFollowTheChosenModels(t *testing.T) {
 		controls := regexp.MustCompile(`<div class="flex flex-col gap-2" data-gt-ref-controls[^>]*>`).FindString(body)
 		assert.Equal(t, len(c.roles) == 0, strings.Contains(controls, " hidden"), "%s: no role or strength for a model that takes no image", c.model)
 		assert.Equal(t, c.lora, !strings.Contains(regexp.MustCompile(`<div[^>]*data-gt-lora[^>]*>`).FindString(body), " hidden"), "%s: LoRA", c.model)
-		assert.Contains(t, body, `<div id="gt-lora-name" class="flex min-w-0 flex-col gap-1" data-model-pick-field`, "the LoRAs of the engine are chosen in a model picker's field")
+		assert.Contains(t, loraField(t, body), "data-model-pick-field", "the LoRAs of the engine are chosen in a model picker's field")
 		assert.NotContains(t, body, `<select id="gt-lora-name"`, "not in a select")
 		fc := card(t, body, c.model)
 		assert.Contains(t, fc, `data-accepts-references="`+strconv.FormatBool(len(c.roles) > 0)+`"`)

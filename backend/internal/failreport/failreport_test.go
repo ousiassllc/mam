@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -70,21 +72,32 @@ func TestMedia_AnUnknownCauseIsLoggedUnderTheErrorIDOfTheSentence(t *testing.T) 
 	assert.Empty(t, logs.String())
 }
 
-// Line is the sentence of a failure that no handler worded: the cause and the remedy, the start of the original message as the detail, and for a
-// failure nobody knows the error ID of its log line; never the raw text alone.
+// Line is the sentence of a failure that no handler worded: the cause and the remedy of the common error, and for a failure nobody knows the error ID of
+// its log line. The original message is never on the screen: it is in the log, for a known failure too.
 func TestLine_IsTheCauseAndTheRemedyNotTheRawText(t *testing.T) {
 	log, logs := logger()
 
 	assert.Empty(t, failreport.Line(log, "x", nil))
 
 	got := failreport.Line(log, "x", errors.New("boom: raw english text"))
-	assert.Contains(t, got, "原因がわかりませんでした")
-	assert.Contains(t, got, "詳細: boom: raw english text")
-	assert.Contains(t, got, "エラー ID: err_")
-	assert.Contains(t, logs.String(), "error_id=err_")
+	assert.True(t, strings.HasPrefix(got, sentenceOf(apperr.CodeUnknown)), "the sentence of the unknown failure")
+	assert.NotContains(t, got, "boom", "the original message is not on the screen")
+	id := regexp.MustCompile(`err_[0-9a-f-]+`).FindString(got)
+	require.NotEmpty(t, id, got)
+	assert.Contains(t, logs.String(), "error_id="+id)
+	assert.Contains(t, logs.String(), "boom: raw english text", "the original message is in the log")
 
 	logs.Reset()
 	known := failreport.Line(log, "x", media.ErrUnavailable)
-	assert.NotContains(t, known, "エラー ID")
-	assert.Empty(t, logs.String(), "a known failure has its code, not a log line")
+	assert.Equal(t, sentenceOf(apperr.CodeFFmpegMissing), known, "a known failure is its sentence, with no error ID")
+	assert.Contains(t, logs.String(), "code="+string(apperr.CodeFFmpegMissing), "and its cause is in the log")
+	assert.NotContains(t, logs.String(), "error_id=")
+
+	logs.Reset()
+	_ = failreport.Line(log, "x", context.Canceled)
+	assert.Empty(t, logs.String(), "a caller that went away is not logged")
+}
+
+func sentenceOf(code apperr.Code) string {
+	return apperr.New(code).View(apperr.LangJa).Sentence(apperr.LangJa)
 }

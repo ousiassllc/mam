@@ -88,12 +88,12 @@ func (m *Manager) Start() error {
 	m.saved = saved
 	host := saved
 	if _, err := m.validate(saved); err != nil {
-		m.problem = fmt.Sprintf("保存済みの待ち受け先 %s を使えないため、127.0.0.1 で待ち受けています: %v", saved, err)
+		m.problem = fmt.Sprintf("保存済みの待ち受け先 %s を使えないため、127.0.0.1 で待ち受けています: %s", saved, m.why("mcp server could not check the saved address", err))
 		host = bind.Default
 	}
 	r, err := m.open(host)
 	if err != nil && host != bind.Default {
-		m.problem += fmt.Sprintf("（%v）", err)
+		m.problem += "（" + m.reason("mcp server could not listen on the saved address", err) + "）"
 		r, err = m.open(bind.Default)
 	}
 	if err != nil {
@@ -112,6 +112,14 @@ func (m *Manager) Start() error {
 // original message as the detail, never the message alone. A failure nobody knows carries an error ID that the log line msg shares.
 func (m *Manager) reason(msg string, err error) string {
 	return failreport.Line(m.opts.Logger, msg, err)
+}
+
+// why is reason, except for the refusal of bind.Validate: that is a Japanese sentence of its own (which address, and why it is not allowed).
+func (m *Manager) why(msg string, err error) string {
+	if errors.Is(err, bind.ErrRejected) {
+		return err.Error()
+	}
+	return m.reason(msg, err)
 }
 
 func (m *Manager) validate(host string) (netip.Addr, error) {

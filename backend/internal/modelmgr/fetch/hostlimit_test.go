@@ -203,6 +203,21 @@ func TestDownloadReleasesItsSlotAfterAnError(t *testing.T) {
 	require.NoError(t, awaitDone(t, next))
 }
 
+// A URL that the check refuses is answered at once: it neither waits for the slot of a full host nor takes one.
+func TestDownloadOfARefusedURLDoesNotWaitForASlot(t *testing.T) {
+	g := newGated()
+	l := fetch.NewHostLimiter(1)
+	ctx := context.Background()
+	held := g.run(ctx, t, l, hfURL, "a")
+	g.awaitStart(t, "huggingface.co")
+
+	refused := g.run(ctx, t, l, hfURL, "b", func(o *fetch.Options) { o.CheckURL = fetch.AllowHosts("github.com") })
+	require.Error(t, awaitDone(t, refused), "the refusal, not a wait for the held slot")
+
+	g.gate <- struct{}{}
+	require.NoError(t, awaitDone(t, held))
+}
+
 // A download that waits for its backoff before it resumes holds no slot: another download to the host runs meanwhile.
 func TestDownloadGivesItsSlotBackWhileItWaitsToResume(t *testing.T) {
 	g := newGated()

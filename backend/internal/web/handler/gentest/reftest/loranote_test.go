@@ -55,6 +55,31 @@ func inputOf(t *testing.T, body, key string) string {
 	return html.UnescapeString(m[1])
 }
 
+// tagsOf are the start tags of the element el in markup, each as its attributes (an attribute without a value, such as disabled, has ""), so that a test reads
+// what a tag says and not how it is written.
+func tagsOf(markup, el string) []map[string]string {
+	var tags []map[string]string
+	attr := regexp.MustCompile(`([\w:-]+)(?:="([^"]*)")?`)
+	for _, m := range regexp.MustCompile(`<`+el+`(\s[^>]*)?>`).FindAllStringSubmatch(markup, -1) {
+		tag := map[string]string{}
+		for _, a := range attr.FindAllStringSubmatch(m[1], -1) {
+			tag[a[1]] = html.UnescapeString(a[2])
+		}
+		tags = append(tags, tag)
+	}
+	return tags
+}
+
+// loraField is the markup of the LoRA field of the form (from its box to the card it shows now).
+func loraField(t *testing.T, body string) string {
+	t.Helper()
+	start := regexp.MustCompile(`<div[^>]*\bid="gt-lora-name"[^>]*>`).FindStringIndex(body)
+	require.NotNil(t, start, "the LoRA field")
+	end := strings.Index(body[start[0]:], "data-mp-current")
+	require.Positive(t, end, "the card of the field")
+	return body[start[0] : start[0]+end]
+}
+
 // A LoRA the user added through the model manager carries what is known of it to the field of the choice in the generation test (the base models, the strength,
 // the trigger words, the answer to commercial use) in the values a card sets, so that the page can show it and warn about a base model that does not fit; one that is
 // not recorded carries nothing, and one recorded without those says so (unset, unknown: never commercial use OK).
@@ -90,25 +115,37 @@ func TestTheLoRAFieldCarriesWhatIsKnownOfTheChosenFile(t *testing.T) {
 func TestOnlyTheFileNameOfTheLoRAFieldIsPosted(t *testing.T) {
 	s := newScreen(t, gentesttest.WithReferenceModels(enginesLoRAs(t).URL), gentesttest.WithLoRAMeta(meta))
 	body := s.page(paths.GenerationTest() + "?model=" + url.QueryEscape(string(gentesttest.EditModel)))
-	field := regexp.MustCompile(`(?s)<div id="gt-lora-name".*?data-mp-current`).FindString(body)
-	require.NotEmpty(t, field)
-	assert.Equal(t, 1, strings.Count(field, ` name="`), "one named input")
-	assert.Contains(t, field, `<input type="hidden" name="lora" value="" data-mp-from="value">`)
-	assert.NotContains(t, field, "disabled", "a model that takes a LoRA is chosen")
+	var named []map[string]string
+	for _, in := range tagsOf(loraField(t, body), "input") {
+		assert.NotContains(t, in, "disabled", "a model that takes a LoRA is chosen")
+		if _, ok := in["name"]; ok {
+			named = append(named, in)
+		}
+	}
+	require.Len(t, named, 1, "one named input")
+	assert.Equal(t, "lora", named[0]["name"])
+	assert.Empty(t, named[0]["value"], "none chosen")
+	assert.Equal(t, "value", named[0]["data-mp-from"], "the file name is what the card sets")
 }
 
 // The LoRA field is not posted while no chosen model takes a LoRA: its inputs and its button are disabled (the form posts neither).
 func TestTheLoRAFieldIsDisabledWhileNoChosenModelTakesOne(t *testing.T) {
 	s := newScreen(t, gentesttest.WithReferenceModels(enginesLoRAs(t).URL), gentesttest.WithLoRAMeta(meta))
 	body := s.page(paths.GenerationTest() + "?model=" + url.QueryEscape(string(gentesttest.PlainModel)))
-	field := regexp.MustCompile(`(?s)<div id="gt-lora-name".*?data-mp-current`).FindString(body)
-	require.NotEmpty(t, field)
-	inputs := regexp.MustCompile(`<input[^>]*>`).FindAllString(field, -1)
-	require.Len(t, inputs, 7)
+	field := loraField(t, body)
+	inputs := tagsOf(field, "input")
+	require.NotEmpty(t, inputs)
 	for _, in := range inputs {
-		assert.Contains(t, in, " disabled", "every input is disabled")
+		assert.Contains(t, in, "disabled", "every input is disabled")
 	}
-	assert.Contains(t, regexp.MustCompile(`<button[^>]*gt-lora-name-button[^>]*>`).FindString(field), "disabled")
+	var button map[string]string
+	for _, b := range tagsOf(field, "button") {
+		if b["id"] == "gt-lora-name-button" {
+			button = b
+		}
+	}
+	require.NotNil(t, button, "the button that opens the picker")
+	assert.Contains(t, button, "disabled")
 }
 
 // The LoRA picker lists the files of the engine as cards of the shared picker (the bar, the badges, the commercial-use icon), with "なし" first; each card sets the file

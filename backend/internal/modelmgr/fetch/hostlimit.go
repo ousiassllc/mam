@@ -76,6 +76,9 @@ func transferLimited(ctx context.Context, part string, have int64, src Source, o
 	if err != nil || u.Hostname() == "" {
 		return transfer(ctx, part, have, src, o) // reports the refused URL
 	}
+	if err := o.check()(u); err != nil {
+		return err // a URL that is refused does not wait for a slot, nor does it leave a host behind in the limiter
+	}
 	release, err := o.limiter().Acquire(ctx, u.Hostname())
 	if err != nil {
 		return err

@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/mcp/bind"
 )
 
@@ -28,6 +29,7 @@ type managerEnv struct {
 	path     string
 	local    []netip.Addr
 	failOpen map[string]error
+	localErr error
 	opened   []string
 	logs     bytes.Buffer
 }
@@ -43,7 +45,7 @@ func newManagerEnv(t *testing.T, preferredPort int) *managerEnv {
 		Logger:       slog.New(slog.NewTextHandler(&e.logs, nil)),
 		Handler:      http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) }),
 		SettingsPath: e.path, PreferredPort: preferredPort,
-		LocalAddrs: func() ([]netip.Addr, error) { return e.local, nil },
+		LocalAddrs: func() ([]netip.Addr, error) { return e.local, e.localErr },
 		Listen: func(network, address string) (net.Listener, error) {
 			host, port, _ := net.SplitHostPort(address)
 			e.opened = append(e.opened, host)
@@ -172,26 +174,55 @@ func TestManager_StartKeepsTheSavedAddressWhenItIsAvailableAndReadsAnUnreadableF
 	assert.Contains(t, broken.m.Status().Problem, bind.FileName)
 }
 
-// A failure nobody knows is not shown as the text of the error (#1010): the person reads that the cause is not known with an error ID, the original
-// message is the start of the detail, and the log line has the same ID.
+// A failure nobody knows is not shown as the text of the error (#1010): the person reads the sentence of the unknown failure with an error ID,
+// the original message is only in the log, and the log line has the same ID. This holds for every reason the saved address is not used.
 func TestManager_StartTellsAnUnknownFailureWithoutItsRawMessage(t *testing.T) {
-	broken := newManagerEnv(t, 0)
-	require.NoError(t, os.WriteFile(broken.path, []byte("{not json"), 0o600))
-	require.NoError(t, broken.m.Start())
-	problem := broken.m.Status().Problem
-	assert.Contains(t, problem, "mcp.json を読み込めないため")
-	assert.Contains(t, problem, "原因がわかりませんでした")
-	id := errorID(t, problem)
-	assert.Contains(t, broken.logs.String(), "error_id="+id)
+	unknown := apperr.New(apperr.CodeUnknown).View(apperr.LangJa).Sentence(apperr.LangJa)
+	told := func(t *testing.T, e *managerEnv, raw string) {
+		t.Helper()
+		problem := e.m.Status().Problem
+		assert.Contains(t, problem, unknown)
+		assert.NotContains(t, problem, raw, "the original message is not on the screen")
+		id := errorID(t, problem)
+		assert.Contains(t, e.logs.String(), "error_id="+id)
+		assert.Contains(t, e.logs.String(), raw, "the original message is in the log")
+	}
+
+	unreadable := newManagerEnv(t, 0)
+	require.NoError(t, os.WriteFile(unreadable.path, []byte("{not json"), 0o600))
+	require.NoError(t, unreadable.m.Start())
+	assert.Contains(t, unreadable.m.Status().Problem, bind.FileName)
+	told(t, unreadable, "invalid character")
+
+	noInterfaces := newManagerEnv(t, 0)
+	require.NoError(t, bind.Save(noInterfaces.path, tailnetIP))
+	noInterfaces.localErr = errors.New("list network interfaces: route ip+net: netlink rib: permission denied")
+	require.NoError(t, noInterfaces.m.Start())
+	assert.Contains(t, noInterfaces.m.Status().Problem, tailnetIP)
+	told(t, noInterfaces, "netlink rib")
+
+	refusedBind := newManagerEnv(t, 0)
+	require.NoError(t, bind.Save(refusedBind.path, tailnetIP))
+	refusedBind.failOpen[tailnetIP] = errors.New("listen tcp: bind: cannot assign requested address")
+	require.NoError(t, refusedBind.m.Start())
+	assert.Equal(t, "127.0.0.1", hostOf(refusedBind.m.Addr()), "the loopback address is the fallback")
+	told(t, refusedBind, "cannot assign requested address")
 
 	dead := newManagerEnv(t, 0)
 	dead.failOpen["127.0.0.1"] = errors.New("socket: too many open files")
 	require.Error(t, dead.m.Start())
-	problem = dead.m.Status().Problem
-	assert.Contains(t, problem, "MCP サーバーを起動できません")
-	assert.Contains(t, problem, "原因がわかりませんでした")
-	assert.Contains(t, problem, "詳細: listen on 127.0.0.1: socket: too many open files", "the original message is kept as the detail")
-	assert.Contains(t, dead.logs.String(), "error_id="+errorID(t, problem))
+	told(t, dead, "too many open files")
+}
+
+// A refusal of bind.Validate is already a sentence of its own (which address, and why it is not allowed): it is told as it is, with no error ID.
+func TestManager_StartTellsTheRefusalOfAnAddressAsItsOwnSentence(t *testing.T) {
+	e := newManagerEnv(t, 0)
+	require.NoError(t, bind.Save(e.path, tailnetIP))
+	e.local = []netip.Addr{netip.MustParseAddr("127.0.0.1")} // the address is not on this machine now
+	require.NoError(t, e.m.Start())
+	problem := e.m.Status().Problem
+	assert.NotRegexp(t, `err_[0-9a-f-]+`, problem, "a refusal is not an unknown failure")
+	assert.NotContains(t, e.logs.String(), "error_id=")
 }
 
 // errorID is the error ID (err_…) that the sentence tells.

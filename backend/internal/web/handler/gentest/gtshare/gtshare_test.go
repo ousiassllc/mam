@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -85,22 +87,23 @@ func TestRefuse(t *testing.T) {
 }
 
 // The line a part of a screen shows for a refusal (the face swap box, the picker of the exposed values, the hint of the easy tier) is the common
-// error (#1010): what the service worded stays, and a failure nobody knows is told as unknown, with the start of the original message as the
-// detail and an error ID that the log line shares, never as the text of the error alone.
+// error (#1010): what the service worded stays, and a failure nobody knows is told as unknown, with an error ID that the log line shares; the original
+// message is in the log and never the text of the line.
 func TestProblem(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
 
 	assert.Equal(t, "グラフを読めません", gtshare.Problem(logger, "x", fmt.Errorf("wrap: %w", gterr.Invalid("グラフを読めません"))), "a sentence the service worded")
 	sentence := gtshare.Problem(logger, "x", fmt.Errorf("wrap: %w", apperr.New(apperr.CodeFaceFusionNone)))
-	assert.Contains(t, sentence, "FaceFusion", "the cause and the remedy of the common error")
+	assert.Equal(t, apperr.New(apperr.CodeFaceFusionNone).View(apperr.LangJa).Sentence(apperr.LangJa), sentence, "the cause and the remedy of the common error")
 	assert.Empty(t, logs.String(), "a failure that is worded is not logged here")
 
 	got := gtshare.Problem(logger, "the part could not tell why", errors.New("pq: connection reset by peer"))
-	assert.Contains(t, got, "原因がわかりませんでした")
-	assert.Contains(t, got, "詳細: pq: connection reset by peer", "the original message is kept as the detail")
-	assert.NotEqual(t, "pq: connection reset by peer", got)
-	assert.Regexp(t, `エラー ID: err_`, got)
+	assert.True(t, strings.HasPrefix(got, apperr.New(apperr.CodeUnknown).View(apperr.LangJa).Sentence(apperr.LangJa)), "the sentence of the unknown failure")
+	assert.NotContains(t, got, "pq:", "the original message is not on the screen")
+	id := regexp.MustCompile(`err_[0-9a-f-]+`).FindString(got)
+	require.NotEmpty(t, id, got)
 	require.Contains(t, logs.String(), "the part could not tell why")
-	assert.Contains(t, logs.String(), "error_id=err_", "the log line has the ID the sentence tells")
+	assert.Contains(t, logs.String(), "error_id="+id, "the log line has the ID the sentence tells")
+	assert.Contains(t, logs.String(), "pq: connection reset by peer", "and the original message")
 }
