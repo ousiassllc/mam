@@ -6,7 +6,10 @@ package secretguard
 import (
 	"regexp"
 	"strings"
+	"sync"
 	"unicode"
+
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 )
 
 // Hidden replaces a key in the message that is recorded.
@@ -70,40 +73,24 @@ func looksLikeKey(text string, from, to int) bool {
 	return strings.IndexFunc(run, unicode.IsLetter) >= 0 && strings.IndexFunc(run, unicode.IsDigit) >= 0
 }
 
-// modelFileExts are the endings of the model files the catalog names (Hugging Face / ComfyUI): a key never ends with one.
-var modelFileExts = []string{".safetensors", ".gguf", ".ckpt", ".pt", ".pth", ".bin", ".onnx"}
+// modelNames are the IDs of the models of the catalog and the names of the files it pins (built once). A user says them to ask for a model ("ltx-2.5-22b-distilled-nvfp4 で作って",
+// "ltx-2.5-audio-vae-bf16.safetensors を使って"; spec/spec.md §2.1), and they are long tokens of letters and digits that would be read as a key. Only a run that is exactly
+// one of them is no key: no shape rule ("it is lowercase words and hyphens", "it ends with .safetensors") is used, as a key can be built like that.
+var modelNames = sync.OnceValue(func() map[string]struct{} {
+	names := map[string]struct{}{}
+	for _, m := range catalog.Default().Models {
+		names[m.ID] = struct{}{}
+		for _, f := range m.Files {
+			names[f.Name] = struct{}{}
+		}
+	}
+	return names
+})
 
-// isModelName reports whether the run is the name of a model, which a user says when they ask for it ("ltx-2.5-22b-distilled-nvfp4 で作って"; spec/spec.md §2.1), not a
-// key: a file of a model (it ends with .safetensors, .gguf…), or an ID of the catalog (lowercase words, versions and sizes joined by hyphens: at least three parts, one
-// of them a word of four letters or more that no hex digits alone spell, and none of them a long run of letters and digits, as a key's chunk is). What is no key by
-// these rules is still read by patterns (sk-…, hf_…, a UUID…), which run before and apart from this.
+// isModelName reports whether the run is exactly the ID of a model of the catalog or the name of one of its files (a trailing "." is the end of a sentence).
 func isModelName(run string) bool {
-	run = strings.TrimRight(run, ".")
-	lower := strings.ToLower(run)
-	for _, ext := range modelFileExts {
-		if strings.HasSuffix(lower, ext) && len(run) > len(ext) {
-			return true
-		}
-	}
-	if run != lower || strings.ContainsAny(run, "_") {
-		return false
-	}
-	parts := strings.Split(run, "-")
-	if len(parts) < 3 {
-		return false
-	}
-	word := false
-	for _, p := range parts {
-		switch {
-		case p == "" || len(p) > 16:
-			return false
-		case len(p) > 8 && strings.IndexFunc(p, unicode.IsLetter) >= 0 && strings.IndexFunc(p, unicode.IsDigit) >= 0:
-			return false
-		case len(p) >= 4 && strings.IndexFunc(p, func(r rune) bool { return r < 'a' || r > 'z' }) < 0 && strings.IndexFunc(p, func(r rune) bool { return r > 'f' }) >= 0:
-			word = true
-		}
-	}
-	return word
+	_, ok := modelNames()[strings.TrimRight(run, ".")]
+	return ok
 }
 
 // OneToken reports whether text is a single word of printable ASCII (8 characters or more): what a user who types a key of a shape nobody knows into the chat while the card

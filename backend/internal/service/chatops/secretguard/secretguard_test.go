@@ -114,6 +114,11 @@ func TestRedact_StillHidesAKeyThatIsNotAModelName(t *testing.T) {
 		"deadbeef-cafe-babe-feed-0123456789ab",
 		"sk-ant-api03-abcdefghijklmnopqrstuvwx",
 		"sk-abcdefghij-klmnopqrstuvwxyz-0123",
+		// built like a model name (lowercase groups joined by hyphens, one group of letters only), or ending like a model file: still keys, as the catalog does not name them
+		"a1b2c3d4-qwertyui-i9j0k1l2-m3n4o5p6",
+		"prod-9f8e7d6c-mypass1-5a4b3c2d-1e0f9a8b",
+		"a1b2c3d4e5f6g7h8i9j0k1l2m3n4.safetensors",
+		"x9y8z7w6v5u4t3s2r1q0p9o8n7m6.bin",
 	} {
 		for _, text := range []string{key, "これです " + key + " お願い"} {
 			got, found := secretguard.Redact(text)
