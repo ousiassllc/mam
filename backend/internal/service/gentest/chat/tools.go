@@ -155,7 +155,8 @@ func (s *Service) estimate(ctx context.Context, se *session, st gentestchat.Step
 	if text == "" {
 		text = "この内容で見積りました。よければカードの「この内容で実行する」を押してください。"
 	}
-	rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindAssistant, Text: text, Proposal: p})
+	card := *p // the reply is read without the session's lock, while Confirm / Dismiss change p: the message gets a snapshot, the later states come as Reply.Changed
+	rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindAssistant, Text: text, Proposal: &card})
 	return true, nil
 }
 

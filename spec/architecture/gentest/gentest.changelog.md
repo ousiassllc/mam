@@ -1,4 +1,4 @@
-# 生成テスト: 改訂履歴
+# 単発生成: 改訂履歴
 
 [gentest.md](gentest.md)・[er-gentest.md](er-gentest.md)・[gentest-adapter.md](gentest-adapter.md) の改訂履歴。
 

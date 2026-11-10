@@ -174,6 +174,28 @@ func TestTwoPressesAtOnceRunTheBatchOnce(t *testing.T) {
 	assert.Equal(t, 1, r.batches(t))
 }
 
+// The card in a reply is read by the handler without the lock of the conversation, while Confirm / Dismiss change the state of the proposal the session
+// keeps: the reply must hold a copy (run with -race), and that copy keeps the state of the moment it was made.
+func TestTheCardOfAReplyIsACopyOfWhatTheSessionKeeps(t *testing.T) {
+	r := newRig(t)
+	ctx := context.Background()
+	r.LLM.queue(estimateStep(1, "flux-2"))
+	rep, err := r.Chat.Send(ctx, r.SessID, "1 枚")
+	require.NoError(t, err)
+	p := proposalOf(t, rep)
+
+	done := make(chan error, 1)
+	go func() { _, err := r.Chat.Dismiss(ctx, r.SessID, p.ID); done <- err }()
+	for range 1000 {
+		_ = p.State // what the handler does with the card of the reply
+	}
+	require.NoError(t, <-done)
+	assert.Equal(t, chat.StatePending, p.State, "the reply's card is a snapshot: the later dismissal reaches the screen through Reply.Changed")
+	got, err := r.Chat.Proposal(r.SessID, p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, chat.StateDismissed, got.State)
+}
+
 func TestAVideoEstimateShowsTheLengthPricedPerSecond(t *testing.T) {
 	r := newRig(t)
 	r.LLM.queue(step(m{"action": "estimate", "request": m{

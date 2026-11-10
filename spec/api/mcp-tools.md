@@ -115,7 +115,7 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.3 | 2026-10-25 | 「ドメイン別」に [mcp-tools-local-models.md](mcp-tools-local-models.md)（ローカル・代替モデル）を足した | Issue #831。ComfyUI・OpenAI 互換の接続先とモデルの操作を MCP ツールにする（#830 の方針: 画面の全操作を MCP で操作できる） |
 | 1.4 | 2026-10-25 | 「ドメイン別」に [mcp-tools-model-manager.md](mcp-tools-model-manager.md)（モデルマネージャー）を足した | Issue #833。ComfyUI エンジン・モデルのカタログ・導入・同意・試し生成を MCP ツールにする（#830 の方針） |
 | 1.5 | 2026-10-25 | 「ドメイン別」に [mcp-tools-workflows.md](mcp-tools-workflows.md)（ComfyUI ワークフロー）を足した | Issue #834。保存したワークフローの一覧・取り込み・実行・Shot への固定を MCP ツールにする（ノード画面は対象外） |
-| 1.6 | 2026-10-26 | 「ドメイン別」に [mcp-tools-generation-test.md](mcp-tools-generation-test.md)（単発生成）を足し、モデルマネージャーの試し生成のツールをそこへ統合した | Issue #835。モデル × プロンプトの比較生成・履歴・取り込みを MCP ツールにする（#830 の方針） |
+| 1.6 | 2026-10-26 | 「ドメイン別」に [mcp-tools-generation-test.md](mcp-tools-generation-test.md)（生成テスト）を足し、モデルマネージャーの試し生成のツールをそこへ統合した | Issue #835。モデル × プロンプトの比較生成・履歴・取り込みを MCP ツールにする（#830 の方針） |
 | 1.7 | 2026-10-31 | `get_job` の出力に `error_code`・`project_id`・`ended_at` を足し、`job_id` が履歴（30 日・10,000 行）に残って再起動後も引けることを書いた。状態の決め方は変えない | Issue #890（親 #889） |
 | 1.8 | 2026-10-31 | 基盤のツールに `get_app_logs`（アプリログの読み取り。レベル・時刻・件数・キーワード・属性で絞り込み、秘密は返さない）を足した | Issue #891（親 #889） |
 | 1.9 | 2026-10-31 | `list_jobs`（履歴の一覧。種別・状態・エラーコード・Project・期間で絞り込み、新しい順・カーソルのページング）を足し、`get_job` に `error_id` を足した。`internal` エラーに相関 ID `error_id` を持たせ、ログの ERROR 行・エラーの文面・ジョブの履歴・`get_job` / `list_jobs` に同じ値を載せ、`get_app_logs` の属性の絞り込みでログ行をたどれることを規約に書いた | Issue #892（親 #889） |

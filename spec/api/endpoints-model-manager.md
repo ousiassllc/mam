@@ -229,7 +229,7 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成（ルート・エラーの対応・画面・テスト） | Issue #833。モデルマネージャーの画面 |
-| 1.1 | 2026-10-26 | 試し生成のルートを、単発生成（[endpoints-gentest.md](endpoints-gentest.md)）の 1 件のバッチを動かすものに改めた（一覧は履歴の結果・`jobs` クエリを廃止・`:id` は結果の ID）。試し生成の区画に単発生成画面へのリンクを足した | Issue #835 |
+| 1.1 | 2026-10-26 | 試し生成のルートを、生成テスト（[endpoints-gentest.md](endpoints-gentest.md)）の 1 件のバッチを動かすものに改めた（一覧は履歴の結果・`jobs` クエリを廃止・`:id` は結果の ID）。試し生成の区画に生成テスト画面へのリンクを足した | Issue #835 |
 | 1.2 | 2026-10-25 | 成人向けモデルの年齢確認のルート（`GET /model-manager/adult/confirm`・`PUT /model-manager/adult`）と、`ErrAdultNotConfirmed`（409）を足した。モデルの一覧・導入・試し生成の選択肢は、確認が無い間は成人向けのモデルを出さず、導入は 409 | Issue #841 |
 | 1.3 | 2026-10-25 | Hugging Face からの導入のルート（`/model-manager/hf`・`hf/install`・`hf/models`・`hf/jobs/:job/cancel`）と区画「Hugging Face から導入」（`#mm-hfi`）を足した。`hf-token` のハンドラは新しいパッケージ `hfimport` に移した（ルートは同じ） | Issue #842。意味は [../architecture/model-manager/model-manager-hf.md](../architecture/model-manager/model-manager-hf.md) |
 | 1.4 | 2026-10-25 | `/model-manager/external` が成人向けのモデルを年齢確認が済むまで出さず、`loras` フォルダを読むようにした。`/model-manager/hf`・`/model-manager/hf/install` の NFAA 判定を、コミットのタグと今の先頭のタグの OR にした（`tree/<commit>` などで古いコミットを指しても 409）。別のフォルダ・名前で導入中の同じファイルは 422 | PR #849 のレビューの指摘（#841・#842）への修正 |

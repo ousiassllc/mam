@@ -52,7 +52,7 @@
 | 1.0 | 2026-10-25 | 新規作成。接続先・API キー・接続テスト・テンプレート・ワークフローの取り込み・モデルの 15 ツールと方針 | Issue #831。ローカル・代替モデルの操作を MCP から行えるようにする（#830 の方針: 画面の全操作を MCP で操作できる。キーは設定済みと末尾だけ） |
 | 1.1 | 2026-10-25 | `create_local_endpoint` の `name` に `new` を使えない（422）ことを書いた | Issue #847。設定画面の接続先のサブページ `/settings/local-models/endpoints/:name` が追加フォームの `…/endpoints/new` に隠れないようにするため |
 | 1.2 | 2026-10-25 | 接続先の入力の検証の文言（`create_local_endpoint`・`update_local_endpoint`・`test_local_endpoint` の `validation`）は、画面と同じ**日本語だけ**の 1 問題 1 行になった（値や英語の項目名、リンクローカルの英語の補足は含まない）。MCP など画面でない呼び出し元も同じ文言を受け取る。検証の意味（名前・種類・`base_url`・同時実行数・タイムアウトの条件と順序）は変わらない | PR #849 第 2 周のレビューの指摘。設定画面の接続先のモーダルが、利用者向けの日本語の理由を出すようにしたため |
-| 1.3 | 2026-11-02 | `list_local_models` の `max_reference_images` を ComfyUI の画像モデルにも出し、`reference_mode`・`supports_lora` を足した（単発生成の `list_generation_models` と同じ値） | Issue #933 |
+| 1.3 | 2026-11-02 | `list_local_models` の `max_reference_images` を ComfyUI の画像モデルにも出し、`reference_mode`・`supports_lora` を足した（生成テストの `list_generation_models` と同じ値） | Issue #933 |
 | 1.4 | 2026-11-02 | `create_local_endpoint` の `timeout_seconds` の既定（ComfyUI）を 3600 から 10800 に変えた | Issue #917 |
 | 1.5 | 2026-11-02 | `create_local_endpoint` の `timeout_seconds` は、ComfyUI では進みが止まってから打ち切るまでの時間（既定は 10800 のまま）と書いた | Issue #961 |
 | 1.6 | 2026-11-04 | `create_local_model`・`update_local_model` と取得に `exposed_inputs`（画面に出す値）を足した | Issue #977（ステージ 2） |
