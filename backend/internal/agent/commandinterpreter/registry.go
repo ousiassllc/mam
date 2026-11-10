@@ -47,6 +47,17 @@ func Detected(message string) []Operation {
 	return ops
 }
 
+// WithDetected adds the operations the message plainly asks for (Detected) that the model did not return: the model's word wins for an operation of the same type, the rule only
+// fills the gap (a slip of the model must not lose an API key card).
+func WithDetected(ops []Operation, message string) []Operation {
+	for _, d := range Detected(message) {
+		if !slices.ContainsFunc(ops, func(op Operation) bool { return op.Type == d.Type }) {
+			ops = append(ops, d)
+		}
+	}
+	return ops
+}
+
 func sortedTypes() []OpType {
 	types := make([]OpType, 0, len(specs))
 	for t := range specs {

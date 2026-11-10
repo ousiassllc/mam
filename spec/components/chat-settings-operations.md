@@ -14,7 +14,7 @@
 
 ### 0.2 どのモード・状態でも受ける
 
-操作は `commandinterpreter.Spec` の `Global` を持つ。DIRECTOR MODE だけでなく AUTO MODE でも、**Brief を作っている最中（DRAFT）でも**受ける（アプリ全体の設定は Project の状態に依らない。初めて使うときに最初に必要なのが LLM の API キーであるため）。発言が求めていないのにモデルが操作を返したときは捨てる（`Spec.Asked`。キーワードの検査）。
+操作は `commandinterpreter.Spec` の `Global` を持つ。DIRECTOR MODE だけでなく AUTO MODE でも、Brief を作り終えたあとは、どの状態でも受ける。**Brief を作っている最中（DRAFT）に受けるのは、初めて使うときに最初に要る設定（API キー・クラウド動画モデルのプロバイダー・LLM の割り当て。`Spec.Setup`）と、§0.4 の拒否だけ**で、それ以外の発言は Brief への答えとして Brief の抜き出しに回す（「動画は縦型の15秒にして」「参照画像を使って」「出演者はプロのモデルを入れて」は Brief の指示で、モデルの割り当てやモデルの導入ではない）。発言が求めていないのにモデルが操作を返したときは捨てる（`Spec.Asked`。キーワードの検査）。`Asked` は、操作の**対象を名指ししている**ときだけ真になる（「画像モデル」「動画のモデル」「用途」「LLM」などの語と、行う動作の組み合わせ。「動画」「画像」「入れて」だけでは足りず、「モデルさん」「プロのモデル」のような人のモデルは数えない）。
 
 ### 0.3 LLM が無くても受ける操作
 
@@ -35,7 +35,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 | `chatops.Handler` | `Question`（確認カードの中身。何も変えない）と `Apply`（承認のあとに、画面・MCP と同じサービス層の関数で実行） |
 | `chatops.SecretSubmitter` | 秘密の値（API キー）を受け取る操作だけ。カードの入力欄から専用のエンドポイントで受ける |
 | `chatops.FileOffer` | 画像・動画以外のファイルが添付されたとき（LoRA）に、そのファイルを引き取る |
-| `Services.ConnectChatOps` | アプリの起動時に、操作をサービスにつなぐ（`app.serve`）。つながっていない環境では「この環境では、その設定をチャットから変更できません」と答える |
+| `chatwire.Connect(services, chatwire.Settings{…})` | アプリの起動時に、操作をサービスにつなぐ（`backend/internal/app/app.go`。実装は `service/chatwire/*.go`）。つながっていない環境では「この環境では、その設定をチャットから変更できません」と答える |
 
 ## 1. API キーとプロバイダー
 
@@ -46,9 +46,13 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 - 発言: 「OpenAI の API キーを設定したい」「Claude のキーを入れ替えたい」。サービス名は `service.CredentialProviders` の ID・名前・通称（Claude・Gemini・fal.ai …）から引く。名指しが無い・曖昧なときは「どのサービスの API キーですか？」と聞き返し、カードは出さない。LLM が無くても読み取れる（§0.3）。
 - **キーはチャットの本文に出さない。** 確認カードが**マスクされた入力欄**（`type=password`・`autocomplete=off`・値を埋め戻さない）を持ち、「保存」で**専用のエンドポイント** `POST /projects/:id/messages/:messageId/secret`（フィールド `secret`。CSRF あり）に送る。カードの本文・`option_actions` にキーは入らない。カードには「はい」ボタンは無く、入力欄の「保存」が確認である（押すまで何も保存しない）。
 - 保存は `CredentialService.Save`（設定画面・MCP `set_credential` と同じ。OS のセキュアストレージ、再起動なしで効く。空・空白を含む・長すぎるキーは 422 で、カードは開いたまま）。成功すると、スレッドには**キーを含まない**発言（「「OpenAI」の API キーを入力しました（値はチャットには残しません）」）と、保存した旨（全プロジェクト共通）が残り、カードは回答済みになる。
-- **キーがどこにも残らない**: 値は `ChatService.SubmitSecret` から `CredentialService.Save` に渡るだけで、チャットの履歴・イベント（WebSocket）・トレース・ログ・エラー文・応答の HTML のどれにも書かない。テストは、保存後に DB の全テーブルとログ、スレッドの全メッセージに値が無いことを確かめる（`service/chat_credential_test.go`）。
-- **発言にキーらしき文字列が含まれていたとき**（`secretguard`: `sk-…`・`AIza…`・`hf_…`・`r8_…`・`id:secret`・`Bearer …`・「キー/token の後ろの長い英数字」）: その発言は**伏せた形で記録**し（「［API キーらしき文字列は伏せました］」）、モデル（Brief の抜き出し・Command Interpreter）には渡さず、カードで入力するよう案内する。
-- カードへの返信でキーを書いても同じ（伏せて記録し、読み取らない）。
+- **キーがどこにも残らない**: 値は `ChatService.SubmitSecret` から `CredentialService.Save` に渡るだけで、チャットの履歴・イベント（WebSocket）・トレース・ログ・エラー文・応答の HTML のどれにも書かない。テストは、保存後に DB の全テーブルとログ、スレッドの全メッセージに値が無いことを確かめる（`service/chatops/chattest/credential_test.go`・`secret_test.go`）。
+- **発言にキーらしき文字列が含まれていたとき**（`secretguard`）: 次のどれかに当たると、その発言は**伏せた形で記録**し（「［API キーらしき文字列は伏せました］」）、モデル（Brief の抜き出し・Command Interpreter）には渡さず、カードで入力するよう案内する。
+  - 既知の形: `sk-…`・`sk_…`・`AIza…`・`hf_…`・`r8_…`・`id:secret`・`Bearer …`・JWT（`eyJ….….…`。MiniMax など）・「キー/token の後ろの長い英数字」。
+  - **形が決まっていないキー**（Kling の 32 桁の英数字、Runway の `key_` + 16 進、Luma、Seedance・Flux の UUID、Sync Labs など）: 発言全体が空白を含まない 24 文字以上の 1 語（`A-Za-z0-9_.-`）、または文中にそのような語（英字と数字の両方を含み、パスや URL の一部でないもの）があるとき。
+  - **キーを聞くカード（`set_credential`）が開いている間**（最新のカードに返信が無い）: 空白を含まない 8 文字以上の ASCII の 1 語は、形が分からなくてもキーとして扱う。そのカードへの返信は、「やめる」などの断り以外はすべて伏せて記録し、読み取らない。
+- 伏せて記録した発言は、**カードへの返信としては記録しない**（`reply_to_message_id` を持たない）。キーのカードは開いたままで、あとから入力欄にキーを入れて保存できる。
+- **チャットの発言以外の入口も同じ**: 新規プロジェクトの最初の発言（`ProjectService.Create`）、Shot への指示（`DirectorService.DirectorCommand`）、承認カードのコメント（`ChatService.RespondApproval`）も `secretguard.Redact` を通し、見つかれば伏せた形を記録して、Brief の抜き出し・Command Interpreter には渡さない（承認の決定そのものは実行する）。
 
 ### 1.2 クラウド動画モデルの API プロバイダー（`set_video_provider`、#1136）
 
@@ -58,7 +62,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 
 ## 2. モデルの導入
 
-実装: `backend/internal/service/chatops/install`（`install_model`・`install_model_engine`・`install_hf_file`・`install_local_runtime`）、つなぎ込み `service/chatops_install.go`、テスト `chatops/install/installtest`・`service/chat_install_test.go`・`service/chat_install_real_test.go`（実物のモデルマネージャーに mmtest の偽ホストをつないだ通し）。いずれも**アプリ全体の設定**（`Global`・`Confirm`・`AnyMode`）で、どのモードでも、Brief を作っている最中でも受ける（§0.2）。サービス層は画面（`/model-manager`）・MCP と同じ `modelmanager.Service`・`localruntime.Service` で、導入の可否の判断も実行もそこで行う（ロジックは複製しない）。導入はモデルを読む LLM が要る（`Spec.Detect` は無い）。
+実装: `backend/internal/service/chatops/install`（`install_model`・`install_model_engine`・`install_hf_file`・`install_local_runtime`）、つなぎ込み `service/chatwire/install.go`、テスト `chatops/install/installtest`・`service/chatops/chattest/install_test.go`・`service/chatops/chattest/install_real_test.go`（実物のモデルマネージャーに mmtest の偽ホストをつないだ通し）。いずれも**アプリ全体の設定**（`Global`・`Confirm`・`AnyMode`）で、どのモードでも、Brief を作っている最中でも受ける（§0.2）。サービス層は画面（`/model-manager`）・MCP と同じ `modelmanager.Service`・`localruntime.Service` で、導入の可否の判断も実行もそこで行う（ロジックは複製しない）。導入はモデルを読む LLM が要る（`Spec.Detect` は無い）。
 
 ### 2.1 共通の流れ
 
@@ -95,11 +99,11 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 ### 2.6 テスト
 
 - `chatops/install/installtest`（偽のサービス）: 名前の解決（ID・名前・表記ゆれ・複数・無い・成人向けの門）・カードの中身（大きさ・ライセンス・商用利用・同意・全プロジェクト）・承認の前に呼ばれないこと・`Apply` の呼び出し 1 回とライセンスの受け渡し・進捗カードと `Detail` の文面・各断り（エンジン無し・設定ファイル固定・空き容量・Hugging Face のトークン・導入中・導入済み・OS）・モデルの返事のガード。
-- `service/chat_install_test.go`（チャット全体・偽のサービス）: 発言 → カード → やめる／無関係な返信（何も導入されない）→ 承認（1 回導入され、スレッドに進捗カードと `Detail`）・同意のボタン・曖昧な名前の選択・カタログに無い名前・導入済み・発言が求めていないときは捨てる・サービスが無い環境。`chat_install_real_test.go`: 実物の `modelmanager.Service`（mmtest）で、エンジン未導入の断り → エンジンのカード → 承認 → ジョブの進捗 → モデルのカード → 導入済み、同意のボタンが同意として記録されること、成人向けの門。
+- `service/chatops/chattest/install_test.go`（チャット全体・偽のサービス）: 発言 → カード → やめる／無関係な返信（何も導入されない）→ 承認（1 回導入され、スレッドに進捗カードと `Detail`）・同意のボタン・曖昧な名前の選択・カタログに無い名前・導入済み・発言が求めていないときは捨てる・サービスが無い環境。`chattest/install_real_test.go`: 実物の `modelmanager.Service`（mmtest）で、エンジン未導入の断り → エンジンのカード → 承認 → ジョブの進捗 → モデルのカード → 導入済み、同意のボタンが同意として記録されること、成人向けの門。
 
 ## 3. モデルと LLM の割り当て
 
-実装: `backend/internal/service/chatops/assign`（`set_model_assignment`）、`chatops/llmroute`（`set_llm_assignment`）、つなぎ込み `service/chatops_assign.go`。どちらも**アプリ全体の設定**（`Global`）で、DIRECTOR MODE でも AUTO MODE でも、Brief を作っている最中でも受ける（§0.2）。サービス層は設定画面・MCP と同じで、ロジックは複製しない。
+実装: `backend/internal/service/chatops/assign`（`set_model_assignment`）、`chatops/llmroute`（`set_llm_assignment`）、つなぎ込み `service/chatwire/assign.go`。どちらも**アプリ全体の設定**（`Global`）で、DIRECTOR MODE でも AUTO MODE でも、Brief を作っている最中でも受ける（§0.2）。サービス層は設定画面・MCP と同じで、ロジックは複製しない。
 
 ### 3.1 画像・動画モデルの割り当て（`set_model_assignment`）
 
@@ -127,15 +131,15 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 
 ### 3.3 つながっていないとき
 
-`ConnectChatOps` に `GlobalSettings.Models`（§3.1）または `LLM`（§3.2）が無い環境では、その操作は登録されず、「この環境では、その設定をチャットから変更できません」と答える（§0.5）。`GlobalSettings.LLMModels` が無いときは、LLM の名前をそのまま受け、一覧の警告を出さない。
+`chatwire.Connect` に渡す `chatwire.Settings` に `Models`（§3.1）または `LLM`（§3.2）が無い環境では、その操作は登録されず、「この環境では、その設定をチャットから変更できません」と答える（§0.5）。`chatwire.Settings.LLMModels` が無いときは、LLM の名前をそのまま受け、一覧の警告を出さない。
 
 ## 4. LoRA の取り込み
 
-実装: `backend/internal/service/chatops/lora`（`add_lora`・`discard_lora`・`chatops.FileOffer`）、つなぎ込み `service/chatops_lora.go`。モデルの管理の「LoRA を追加」（`POST /model-manager/loras/inspect` → `POST /model-manager/loras`）と MCP のアップロード用途 `model_lora_import` と**同じ** `modelmanager.Service.LoRAs`（`loraimport.Service`）の `Stage` / `Commit` / `Discard` を呼ぶ。検査（名前・ヘッダー・大きさ・LoRA のテンソル・空き容量・待ちの数）も、名前の衝突の扱いも、画面と同じ。
+実装: `backend/internal/service/chatops/lora`（`add_lora`・`discard_lora`・`chatops.FileOffer`）、つなぎ込み `service/chatwire/lora.go`。モデルの管理の「LoRA を追加」（`POST /model-manager/loras/inspect` → `POST /model-manager/loras`）と MCP のアップロード用途 `model_lora_import` と**同じ** `modelmanager.Service.LoRAs`（`loraimport.Service`）の `Stage` / `Commit` / `Discard` を呼ぶ。検査（名前・ヘッダー・大きさ・LoRA のテンソル・空き容量・待ちの数）も、名前の衝突の扱いも、画面と同じ。
 
 ### 4.1 添付で引き取る
 
-- **チャットのコンポーザーは `.safetensors` を選べる**（`<input id="composer-files">` の `accept` は `organisms.ChatUploads` ＝ 画像・動画の拡張子 ＋ `.safetensors`。新規プロジェクトの入力欄は従来の `AcceptedUploads` のまま）。ドラッグ＆ドロップも同じ。コンポーザーの JS は拡張子や大きさを検査しないので変更は無い。
+- **チャットのコンポーザーは `.safetensors` を選べる**（`<input id="composer-files">` の `accept` は `AcceptedUploads + ",.safetensors"`（`web/organisms/chat_composer.templ`）＝ 画像・動画の拡張子 ＋ `.safetensors`。新規プロジェクトの入力欄は従来の `AcceptedUploads` のまま）。ドラッグ＆ドロップも同じ。コンポーザーの JS は拡張子や大きさを検査しないので変更は無い。
 - `.safetensors`（大文字小文字は問わない）のファイルが付いたメッセージは、「対応していない添付」として断らず、`chatops.FileOffer`（`lora.Offer.Accepts`）に渡す。画像・動画は従来どおり Brief の添付になる（同じメッセージに両方付けてもよい）。**LoRA は Brief の素材（asset）にならない**。発言の本文は、書いたとおり（空なら「添付: <ファイル名>」）がスレッドに残る。
 - ファイルは `LoRAs.Stage` にストリームで渡され、インポート用のフォルダに置かれる（`loras` フォルダにはまだ置かない）。**1 ファイルにつき 1 枚の確認カード**を返す。複数のファイルの一部だけが断られたときは、通る分のカードと、断られたファイルの理由（「取り込めませんでした: <ファイル名>: …」）を返す。
 
@@ -166,11 +170,11 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 
 ### 4.6 モデルに伝えない操作
 
-`add_lora`・`discard_lora` は `Spec` に `Example`・`Doc` を持たない（プロンプトに載らない）。ボタンの `option_actions` にだけ存在し、モデルが返しても `Clean` の前に捨てる（`cleanRegistered`）。どちらも `Confirm`（`add_lora`）・`Global` を持つ。テスト: `chatops/lora/lora_test.go`（Importer の偽物）、`service/chat_lora_test.go`、`web/handler/message_limit_internal_test.go`。
+`add_lora`・`discard_lora` は `Spec` に `Example`・`Doc` を持たない（プロンプトに載らない）。ボタンの `option_actions` にだけ存在し、モデルが返しても `Clean` の前に捨てる（`cleanRegistered`）。どちらも `Confirm`（`add_lora`）・`Global` を持つ。テスト: `chatops/lora/lora_test.go`（Importer の偽物）、`service/chatops/chattest/lora_test.go`、`web/handler/chatcard/message_limit_test.go`。
 
 ## 5. 書き出し（Export）
 
-パッケージ `service/chatops/export`（`spec.go` `detect.go` `handler.go` `download.go`）。配線は `service/chatops_export.go`。この 3 つの操作は **Project の操作**で `Global` ではない（カードに「全プロジェクト」とは書かない）。`EditorService` が無いと登録しない。これまで「書き出し」は `unsupported`（Command Interpreter のプロンプトの `unsupported` の例・説明はタイムラインの編集だけに直してある）だった。
+パッケージ `service/chatops/export`（`spec.go` `detect.go` `handler.go` `download.go`）。配線は `service/chatwire/export.go`。この 3 つの操作は **Project の操作**で `Global` ではない（カードに「全プロジェクト」とは書かない）。`EditorService` が無いと登録しない。これまで「書き出し」は `unsupported`（Command Interpreter のプロンプトの `unsupported` の例・説明はタイムラインの編集だけに直してある）だった。
 
 | 操作 | 型 | `Spec` | 同じ関数 |
 |---|---|---|---|
@@ -206,16 +210,16 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 
 `Detect` の結果はモデルが同じ型を返さなかったときだけ足される（`withDetected`）。`director_shot_resolution_test.go` の「これを書き出して」は今は `export_video` の読み取りに当たるので、`unsupported` の例には `これを YouTube に投稿して` を使う（テストの文だけ直した）。
 
-テスト: `chatops/export/export_test.go`（偽の `Deps`: 先にカード・承認までは何も呼ばない・はいで 1 回・状態／ffmpeg／音声／選択肢の断り・既に EXPORTED・リンクの有無・バンドル・`Detect`・`Asked`）、`service/chat_export_test.go`（本物の `EditorService` の状態確認と ffmpeg 確認を `ConnectChatOps` 経由で通し、レンダリング自体は `AddChatOp` の偽で置き換える）。
+テスト: `chatops/export/export_test.go`（偽の `Deps`: 先にカード・承認までは何も呼ばない・はいで 1 回・状態／ffmpeg／音声／選択肢の断り・既に EXPORTED・リンクの有無・バンドル・`Detect`・`Asked`）、`service/chatops/chattest/export_test.go`（本物の `EditorService` の状態確認と ffmpeg 確認を `chatwire.Connect` 経由で通し、レンダリング自体は `ChatOps().Handle` で登録した偽（`export_helpers_test.go`）で置き換える）。
 
 ## 6. キャラクターの顔・参照
 
-パッケージ `service/chatops/charref`（`spec.go` `handler.go`）。配線は `service/chatops_charref.go`、Library への登録は `service/reference_from_asset.go` の `ReferenceService.AddFromAsset`（新規ファイル。`reference.go` は変えていない）。操作は `assign_character_reference`（`Confirm`・`AnyMode`・**`Global` ではない**＝この Project の Character だけが変わる。World State が要るので DRAFT 中は読まない）。`WorldService` か `ReferenceService` が無いと登録しない。
+パッケージ `service/chatops/charref`（`spec.go` `handler.go`）。配線は `service/chatwire/charref.go`、Library への登録は `service/chatwire/assetref.go` の `addFromAsset`（保存済みのアセットの場所は `service/reference_from_asset.go` の `ReferenceService.StoredAsset`。`reference.go` は変えていない）。操作は `assign_character_reference`（`Confirm`・`AnyMode`・**`Global` ではない**＝この Project の Character だけが変わる。World State が要るので DRAFT 中は読まない）。`WorldService` か `ReferenceService` が無いと登録しない。
 
 ### 6.1 チャットの添付がどこまで届くか（調べた結果）
 
 - チャットに画像を添付して送ると、`PostMessage` が `storeUploads` で**アセット（`type=image`）として保存**し、`user.AttachmentAssetIDs` に付け、`attachToBrief` で **Brief の `Assets` に加える**（`brief.AttachAssets`）。ここまでは従来どおりで、**Reference Library には入らず、Character にも割り当てられない**。
-- 割り当ての既存の経路は 2 つ: ①Reference Library 画面の `ReferenceService.Upload`（ファイルを取り、`type=reference` のアセットと `reference_item` を作る）→ ②`WorldService.AssignReference(projectID, branchID, target, entityID, slot, referenceID)`（画面・MCP `assign_character_reference` 共通。Library の `ReferenceItem.Kind` が枠の種別と同じ `character` でなければ `ValidationError`、枠が LOCK なら `ErrLocked`）。**既に保存されたアセットから Library の項目を作る関数は無かった**ので、`AddFromAsset` を足した: 保存済みの画像ファイルを `assetPath` で開き、`Upload` に渡す（種別・名前・画像かどうか・中身・サイズの確認を `Upload` と共有）。項目は自分の `type=reference` のアセットを持つので、添付とも Library の項目ともお互いに消えても影響しない。
+- 割り当ての既存の経路は 2 つ: ①Reference Library 画面の `ReferenceService.Upload`（ファイルを取り、`type=reference` のアセットと `reference_item` を作る）→ ②`WorldService.AssignReference(projectID, branchID, target, entityID, slot, referenceID)`（画面・MCP `assign_character_reference` 共通。Library の `ReferenceItem.Kind` が枠の種別と同じ `character` でなければ `ValidationError`、枠が LOCK なら `ErrLocked`）。**既に保存されたアセットから Library の項目を作る関数は無かった**ので、`chatwire/assetref.go` の `addFromAsset` を足した（`ReferenceService.StoredAsset` が保存済みの画像ファイルの場所を返す）: そのファイルを開き、`Upload` に渡す（種別・名前・画像かどうか・中身・サイズの確認を `Upload` と共有）。項目は自分の `type=reference` のアセットを持つので、添付とも Library の項目ともお互いに消えても影響しない。
 - 添付のアセットは、このメッセージの `ctx` にだけある（`chatops.Attachments(ctx)`）。はいのボタンの返事は後で来て添付を持たないので、`Question` がアセット ID と Character の ID を**はいのボタン（`Card.Op`）に入れて運ぶ**。モデルが返した `asset_id` / `character_id` は `Question` が必ず上書きする（モデルの値は信用しない）。
 
 ### 6.2 カードを出すまで
@@ -232,7 +236,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 
 ### 6.3 答え
 
-- **はい**: ①Character と枠をもう一度読み、LOCK されていたら断る（何も登録しない）→ ②`ReferenceService.AddFromAsset(…, character, "<名前>（顔）")`（名前は `MaxReferenceNameRunes` に切る）→ ③`WorldService.AssignReference(…, character, c.ID, slot, referenceID)`。③が断られたら、②で作った Library の項目を `ReferenceService.Remove` で取り除く（何も残さない）。答えは「「<名前>」の顔（face）の参照を設定しました。…この Project の Character だけが変わりました。」
+- **はい**: ①Character と枠をもう一度読み、LOCK されていたら断る（何も登録しない）→ ②`addFromAsset(…, character, "<名前>（顔）")`（`chatwire/assetref.go`。`ReferenceService.Upload` 経由）（名前は `MaxReferenceNameRunes` に切る）→ ③`WorldService.AssignReference(…, character, c.ID, slot, referenceID)`。③が断られたら、②で作った Library の項目を `ReferenceService.Remove` で取り除く（何も残さない）。答えは「「<名前>」の顔（face）の参照を設定しました。…この Project の Character だけが変わりました。」
 - **やめる／カードと関係の無い返信**: 何も登録せず、何も割り当てない（共通の約束 §0.1）。
 - 断り（`charrefRefusal`）: `ErrLocked` →「LOCK されている項目は変更できません。…」、`ErrNotFound` →「Character か画像が見つかりません。…」、`ValidationError`（`refusalOf`）→ その文。「実行できませんでした: …」と答える。
 
@@ -242,7 +246,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 
 ### 6.5 チャットからは届かないもの
 
-- **商品（`assign_product_reference`: geometry / label）・場所（`assign_location_reference`: layout）の参照**: 操作として作っていない（要求は Character の顔・参照だけ。同じ `AddFromAsset` と `AssignReference` で足せるが、この Issue の範囲外）。
+- **商品（`assign_product_reference`: geometry / label）・場所（`assign_location_reference`: layout）の参照**: 操作として作っていない（要求は Character の顔・参照だけ。同じ `addFromAsset` と `AssignReference` で足せるが、この Issue の範囲外）。
 - **Reference Library に既にある項目を名前で指す**（「Library の A を主人公の顔に」）: 作っていない。画像を添付したメッセージだけが入口。
 - **枠を空にする**（MCP は `reference_id` 空で空にできる）: 作っていない。
 - **声の参照（`voicereference`）**: チャットは画像・動画しか添付に取らない（`extensions` に音声が無い）ので、声のサンプル音声はチャットに添付できない。
@@ -250,7 +254,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 - **複数枚の画像**: 1 メッセージ 1 枚だけ（何枚目かを聞く手段が無いため断る）。
 - 以前のメッセージの添付（「さっきの画像を…」）は使わない。このメッセージに添付した画像だけ（`ctx` の添付）。
 
-テスト: `chatops/charref/charref_test.go`（偽の `Deps`: カードの中身・はいのボタンがアセットを運ぶ・承認まで何も登録しない・はいで 1 回・名前の曖昧さ／未知／Character 無し・添付無し／複数枚／動画・LOCK・カードのあとの LOCK・割り当て失敗で Library の項目を戻す・`Detect`・`Asked`・モデルの値を信用しない）、`service/chat_charref_test.go`（本物の `WorldService`・`ReferenceService`・実ファイルのアップロードで、枠への割り当てと Library の項目を確かめる）。
+テスト: `chatops/charref/charref_test.go`（偽の `Deps`: カードの中身・はいのボタンがアセットを運ぶ・承認まで何も登録しない・はいで 1 回・名前の曖昧さ／未知／Character 無し・添付無し／複数枚／動画・LOCK・カードのあとの LOCK・割り当て失敗で Library の項目を戻す・`Detect`・`Asked`・モデルの値を信用しない）、`service/chatops/chattest/charref_test.go`（本物の `WorldService`・`ReferenceService`・実ファイルのアップロードで、枠への割り当てと Library の項目を確かめる）。
 
 ## 7. 変更履歴
 
@@ -258,3 +262,4 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 |---|---|---|
 | 1.0 | 2026-11-10 | 新規。共通の約束（§0）と API キー（§1）を書いた（#1140） |
 | 1.1 | 2026-11-10 | モデルの導入（§2）・割り当て（§3）・LoRA（§4）・書き出し（§5）・キャラクターの参照（§6）を足した。実装は `service/chatwire/` が配線し、サービス層のテストは `service/chatops/chattest/` に置く（#1140） |
+| 1.2 | 2026-11-10 | レビューの指摘を直した: DRAFT 中は設定の操作を API キー・プロバイダー・LLM の割り当てと拒否だけに絞り、モデルの割り当て・導入の `Asked` を対象の名指しに絞った（§0.2）。キーらしき文字列の検出を形の無いキー・開いているキーのカードへの返信まで広げ、伏せた発言をカードへの返信にしないようにし、ほかの入口にも適用した（§1.1）。MCP のトークン・ポートの拒否を語の境界で判定する（§0.4）。実装・テストの名前を実際のものに直した（`chatwire`・`chattest`・`chatcard`・`addFromAsset`）（#1140） |

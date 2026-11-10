@@ -39,6 +39,9 @@ func TestAskedNeedsAnAgentItsLLMAndAChange(t *testing.T) {
 		"生成の画像モデルの 新規参照 を flux にして",
 		"LLM を変えたい",
 		"OpenAI の API キーを設定したい",
+		"動画は縦型の15秒にして",
+		"出演者はプロのモデルを入れて",
+		"Producer みたいなモデルさんを使って",
 		"",
 	} {
 		assert.False(t, Asked(message), message)

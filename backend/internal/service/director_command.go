@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 )
 
 // DirectorCommandResult is what a direction did.
@@ -35,6 +36,14 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	ref, err := s.gens.GetShot(ctx, shotID)
 	if err != nil {
 		return DirectorCommandResult{}, notFound(err)
+	}
+	if hidden, found := secretguard.Redact(message); found {
+		// an API key is never read by the Interpreter (an LLM) nor kept in the thread (#1140)
+		if err := s.commitMessages(ctx, ref.ProjectID, secretRefusal(hidden)); err != nil {
+			return DirectorCommandResult{}, err
+		}
+		view, err := s.Inspector(ctx, shotID)
+		return DirectorCommandResult{Inspector: view}, err
 	}
 	if s.interpreter == nil {
 		return DirectorCommandResult{}, ErrUnavailable

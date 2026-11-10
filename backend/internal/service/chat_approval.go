@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 )
 
 func (s *ChatService) planApprovalReply(ctx context.Context, project domain.Project, card, user domain.ChatMessage) (repository.Turn, error) {
@@ -55,6 +56,7 @@ func (s *ChatService) RespondApproval(ctx context.Context, projectID, messageID 
 	if err := validateMessage(comment, true); err != nil {
 		return domain.Project{}, domain.ThreadMessage{}, err
 	}
+	comment, _ = secretguard.Redact(comment) // an API key is never kept in the thread (#1140); the decision itself stands
 	project, err := s.getProject(ctx, projectID)
 	if err != nil {
 		return domain.Project{}, domain.ThreadMessage{}, err

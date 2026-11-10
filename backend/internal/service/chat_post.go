@@ -11,7 +11,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/chatbrief"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops"
-	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 	"github.com/ousiassllc/mam/backend/internal/service/silence"
 )
 
@@ -41,10 +40,6 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 	if err != nil {
 		return Workspace{}, err
 	}
-	// an API key is never a chat message (#1140): it would stay in the thread and go to the LLM that reads it
-	if hidden, found := secretguard.Redact(content); found {
-		return s.refuseSecret(ctx, project, in, hidden)
-	}
 	var target *domain.ChatMessage
 	if in.ReplyToMessageID != "" {
 		m, err := s.chat.Get(ctx, projectID, in.ReplyToMessageID)
@@ -55,6 +50,10 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 			return Workspace{}, err
 		}
 		target = &m
+	}
+	// an API key is never a chat message (#1140): it would stay in the thread and go to the LLM that reads it
+	if ws, done, err := s.guardSecret(ctx, project, target, content); done || err != nil {
+		return ws, err
 	}
 	answered, target, done, err := s.answerCard(ctx, project, target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
 	if done || err != nil {

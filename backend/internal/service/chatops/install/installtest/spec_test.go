@@ -19,6 +19,13 @@ func TestSpec_AMessageThatDoesNotAskForAnInstallDropsTheModelsOperation(t *testi
 	}
 }
 
+// The words of a Brief (a person who is a model, 入れて beside a medium) are no install: the target has to be named as a model.
+func TestSpec_TheBriefsOwnWordsAreNoInstall(t *testing.T) {
+	for _, message := range []string{"出演者はプロのモデルを入れて", "モデルさんを入れて", "動画に商品を入れて", "参照画像を入れて", "雰囲気は明るい画像にして", "ファッションモデルを入れたい", "女性モデルたちを使って"} {
+		assert.False(t, install.AsksModel(message) || install.AsksEngine(message) || install.AsksRuntime(message) || install.AsksHF(message), message)
+	}
+}
+
 func TestSpec_AMessageThatAsksForAnInstallPassesTheGuard(t *testing.T) {
 	assert.True(t, install.AsksModel("FLUX.1 schnell のモデルを入れて"))
 	assert.True(t, install.AsksModel("Wan 2.2 を導入して"))

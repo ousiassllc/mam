@@ -30,6 +30,8 @@ func TestAskedNeedsAModelAndAChange(t *testing.T) {
 		"BALANCED の代替を seedance-2.0 に変えて",
 		"プレビューのモデルを Nano Banana にしたい",
 		"動画モデルの割り当てを変更して",
+		"画像のモデルを flux にして",
+		"画像モデルを Nano Banana に変えて",
 	} {
 		assert.True(t, Asked(message), message)
 	}
@@ -43,6 +45,25 @@ func TestAskedNeedsAModelAndAChange(t *testing.T) {
 		"Kling は OpenRouter 経由で使いたい",
 		"Kling の API キーを設定したい",
 		"",
+	} {
+		assert.False(t, Asked(message), message)
+	}
+}
+
+// What a Brief says about the video or the images is not a direction for the models (the target has to be named: 画像のモデル, 動画モデル, a purpose, a Quality Policy).
+func TestAskedIsNotFooledByTheBriefsOwnWords(t *testing.T) {
+	for _, message := range []string{
+		"動画は縦型にして",
+		"動画は縦型の15秒にして",
+		"動画の長さを15秒にして",
+		"雰囲気は明るい画像にして",
+		"参照画像を使って",
+		"この参照画像を使いたい",
+		"出演者はプロのモデルを入れて",
+		"動画にモデルさんを使って",
+		"商品画像を切り替えて",
+		"Kling 風の動画にして",
+		"プレビューを見せて",
 	} {
 		assert.False(t, Asked(message), message)
 	}
