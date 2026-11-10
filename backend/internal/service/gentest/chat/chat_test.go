@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/chat"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 )
 
 func kinds(msgs []chat.Message) []chat.Kind {
@@ -133,6 +134,59 @@ func TestACardRunsOnceAndOnlyTheNewestEstimateCanRun(t *testing.T) {
 
 	_, err = r.Chat.Confirm(ctx, r.SessID, "nope")
 	assert.ErrorIs(t, err, chat.ErrNoProposal)
+}
+
+// A press that fails without generating anything puts the card back to pending, unless a newer estimate was made while it ran: then only the newer one may run.
+func TestAFailedPressDoesNotReviveACardThatAnEstimateReplacedWhileItRan(t *testing.T) {
+	var r *rig
+	var second *chat.Proposal
+	llmDown := &gentesttest.FakeLLM{Err: errors.New("the translator is down")}
+	llmDown.OnCall = func() { // the press of the first card is in its translation: the user asks for another estimate
+		if second != nil {
+			return
+		}
+		r.LLM.queue(japaneseEstimateStep("nano-banana"))
+		rep, err := r.Chat.Send(context.Background(), r.SessID, "nano-banana で 2 枚に変えて")
+		require.NoError(t, err)
+		second = proposalOf(t, rep)
+	}
+	r = newRig(t, gentesttest.WithTranslator(llmDown))
+	ctx := context.Background()
+	r.LLM.queue(japaneseEstimateStep("flux-2"))
+	rep, err := r.Chat.Send(ctx, r.SessID, "flux-2 で 1 枚")
+	require.NoError(t, err)
+	first := proposalOf(t, rep)
+
+	_, err = r.Chat.Confirm(ctx, r.SessID, first.ID)
+	require.Error(t, err, "nothing was generated: the press failed")
+	require.NotNil(t, second, "the second estimate was made while the first press ran")
+	assert.Equal(t, 0, r.batches(t))
+
+	got, err := r.Chat.Proposal(r.SessID, first.ID)
+	require.NoError(t, err)
+	assert.Equal(t, chat.StateSuperseded, got.State, "the first card is not pressable beside the newest one")
+	_, err = r.Chat.Confirm(ctx, r.SessID, first.ID)
+	assert.ErrorIs(t, err, chat.ErrProposalClosed)
+	got, err = r.Chat.Proposal(r.SessID, second.ID)
+	require.NoError(t, err)
+	assert.Equal(t, chat.StatePending, got.State, "the newest estimate can still be pressed")
+}
+
+// Without a newer estimate the card can be pressed again after a failure.
+func TestAFailedPressLeavesTheOnlyCardPending(t *testing.T) {
+	llmDown := &gentesttest.FakeLLM{Err: errors.New("the translator is down")}
+	r := newRig(t, gentesttest.WithTranslator(llmDown))
+	ctx := context.Background()
+	r.LLM.queue(japaneseEstimateStep("flux-2"))
+	rep, err := r.Chat.Send(ctx, r.SessID, "flux-2 で 1 枚")
+	require.NoError(t, err)
+	p := proposalOf(t, rep)
+
+	_, err = r.Chat.Confirm(ctx, r.SessID, p.ID)
+	require.Error(t, err)
+	got, err := r.Chat.Proposal(r.SessID, p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, chat.StatePending, got.State)
 }
 
 func TestADismissedCardDoesNotRun(t *testing.T) {

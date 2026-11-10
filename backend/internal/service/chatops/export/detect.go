@@ -9,13 +9,20 @@ import (
 )
 
 var (
-	exportWord   = regexp.MustCompile(`(?i)(書き出|書出|エクスポート|export)`)
+	exportWord = regexp.MustCompile(`(?i)(書き出|書出|エクスポート|export)`)
+	// mentionedOnly is an export or download word that places another instruction in time ("書き出す前に…", "書き出したら…", "before export") or says what the export will do ("書き出すと…",
+	// "書き出しは最後に"). It is no request, so the word is dropped before the message is read.
+	mentionedOnly = regexp.MustCompile(`(?i)((書き出|書出|エクスポート|ダウンロード)(する|した|しない|せる|できる|す|し)?(の?(前|まえ|後|あと|時|とき|際|場合|までに|まで|ので|ため|ように)|たら|れば|なら)` +
+		`|(書き出|書出|エクスポート)(する|す|し)?(は|と)` +
+		`|\b(before|after|until|once|when|while|prior to)\s+(\w+\s+){0,2}?(export|download)\w*|\b(export|download)(ing|ed|s)\b)`)
 	pastExport   = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
 	downloadWord = regexp.MustCompile(`(?i)(ダウンロード|download)`)
 	// videoWord names the finished video; bundleWord the Project as a ZIP. A message about the Project as a whole ("プロジェクトを書き出して") is the bundle too: the app
 	// calls it "プロジェクトの書き出し（バンドル）".
 	videoWord    = regexp.MustCompile(`(?i)(動画|ビデオ|映像|完成|mp4|webm|video|最終版)`)
-	bundleWord   = regexp.MustCompile(`(?i)(バンドル|bundle|zip|ジップ|バックアップ|まるごと|丸ごと|プロジェクトごと|プロジェクト全体|project\s*ごと)`)
+	bundleWord   = regexp.MustCompile(`(?i)(バンドル|bundle|zip|ジップ|バックアップ)`)
+	wholeWord    = regexp.MustCompile(`(?i)(まるごと|丸ごと|プロジェクトごと|プロジェクト全体|project\s*ごと)(の?)`)
+	exportNoun   = regexp.MustCompile(`(?i)^(書き出|書出|エクスポート|ダウンロード|バックアップ|バンドル|zip|ジップ)`)
 	projectWord  = regexp.MustCompile(`(?i)(プロジェクト|project)`)
 	demonstrated = regexp.MustCompile(`(これ|この|それ|その|いま|今の)`)
 	// otherThing is what the words of this operation also mean elsewhere: installing a model ("動画モデルをダウンロード") is the install operation's.
@@ -48,13 +55,14 @@ func classify(message string) kind {
 	if otherThing.MatchString(message) {
 		return kindNone
 	}
+	message = mentionedOnly.ReplaceAllString(message, " ")
 	exports, downloads := exportWord.MatchString(message), downloadWord.MatchString(message)
 	if !exports && !downloads {
 		return kindNone
 	}
 	video := videoWord.MatchString(message)
 	switch {
-	case bundleWord.MatchString(message) || (projectWord.MatchString(message) && !video):
+	case bundleWord.MatchString(message) || namesWholeProject(message) || (projectWord.MatchString(message) && !video):
 		return kindBundle
 	case downloads:
 		if video || pastFile.MatchString(message) {
@@ -66,6 +74,17 @@ func classify(message string) kind {
 		}
 	}
 	return kindNone
+}
+
+// namesWholeProject reports whether the message says "the whole Project" as what is exported ("プロジェクト全体を書き出して", "まるごとダウンロード", "プロジェクト全体の書き出し"). "プロジェクト全体の雰囲気を…" says
+// the whole Project as the thing a direction is about, so a 「の」 after it counts only when an export noun follows.
+func namesWholeProject(message string) bool {
+	for _, m := range wholeWord.FindAllStringSubmatchIndex(message, -1) {
+		if m[5] == m[4] || exportNoun.MatchString(message[m[1]:]) {
+			return true
+		}
+	}
+	return false
 }
 
 // AsksRender reports whether the message asks to render the video: it names the export and the video (or "これ"). A message that tells of an export ("書き出した動画") is not.

@@ -84,7 +84,14 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 
 	body, constraints, avoid := shotprompt.Describe(job.Spec, req.DurationSeconds, len(req.References) > 0 || req.FirstFrame != nil)
 	switch target.Model {
-	case domain.ModelKling3, c.negativeModel(target.Model):
+	case domain.ModelKling3:
+		if c.foldsNegative(target.Model) { // the provider's backend writes the avoid list into the prompt: it counts in the 2400 characters, and the Constraints and the list stay whole
+			req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 2400)
+			break
+		}
+		req.Prompt = shotprompt.Fit(body, constraints, 2400)
+		req.NegativePrompt = textutil.TruncateRunes(strings.Join(avoid, ", "), 400)
+	case c.negativeModel(target.Model):
 		req.Prompt = shotprompt.Fit(body, constraints, 2400)
 		req.NegativePrompt = textutil.TruncateRunes(strings.Join(avoid, ", "), 400)
 	case domain.ModelKling4: // no negative prompt field (the prompt takes negative descriptions); English input up to 26,000 characters

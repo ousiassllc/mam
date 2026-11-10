@@ -2,7 +2,7 @@ import { expect } from '@open-wc/testing';
 import htmx from 'htmx.org';
 import '../../main';
 
-// #1138: the chat of the single generation. The page is what the handlers render (backend/internal/web/gentest_chat_fixture_test.go): the panel, and after it the
+// #1138: the chat of the single generation. The page is what the handlers render (backend/internal/web/organisms/gentest/chat/fixture_test.go): the panel, and after it the
 // entries of a talk, which the test appends to the thread as htmx does (hx-swap="beforeend") and then tells the document the swap happened.
 const TESTDATA = '/src/components/testdata/';
 

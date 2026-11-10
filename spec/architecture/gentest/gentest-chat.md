@@ -39,7 +39,7 @@
 `chat.Service.Send` の `estimate` が通る（`gentest.Estimate` が通り、`OverLimit` が空）と、サーバーは **`Proposal`（カード）** を作る。カードが持つのは、見積りがサーバーで正規化した **リクエスト** と **見積り（`estimate_id`・合計・内訳）**。
 
 - ブラウザが送るのは**カードの id と会話の id だけ**（`POST /generation-test/chat/proposals/:id/confirm`）。見積り ID・合計・モデル・プロンプトを送っても読まない。実行されるのは、カードに出したものと一字一句同じバッチ。
-- `chat.Service.Confirm` は、カードを `pending` から `running` にして（同時の 2 回の押下は片方が `ErrProposalClosed`）、`gentest.Service.Run(request, Confirmation{EstimateID, TotalUSD})` を呼ぶ。`Run` は見積りをやり直し、**見積り ID・合計が違えば 409（`ConflictError`）**、**`max_cost_usd` を超えれば 409**、**`max_items` を超えれば 422（`InvalidError`）** で、何も生成しない。これらの断りはカードを `stale`（理由つき）にし、スレッドに「実行しませんでした: …。もう一度見積りを取ってください」と出し、LLM にも伝える。英訳の失敗などそれ以外の失敗は、何も生成していないのでカードは `pending` に戻り、もう一度押せる。
+- `chat.Service.Confirm` は、カードを `pending` から `running` にして（同時の 2 回の押下は片方が `ErrProposalClosed`）、`gentest.Service.Run(request, Confirmation{EstimateID, TotalUSD})` を呼ぶ。`Run` は見積りをやり直し、**見積り ID・合計が違えば 409（`ConflictError`）**、**`max_cost_usd` を超えれば 409**、**`max_items` を超えれば 422（`InvalidError`）** で、何も生成しない。これらの断りはカードを `stale`（理由つき）にし、スレッドに「実行しませんでした: …。もう一度見積りを取ってください」と出し、LLM にも伝える。英訳の失敗などそれ以外の失敗は、何も生成していないのでカードは `pending` に戻り、もう一度押せる（ただし押している間に新しい見積りが作られていたら、`pending` ではなく `superseded` にする。新しいカードと同時に押せる状態にしない）。
 - **カードは 1 回だけ使え、会話で有効なのは最新の見積りだけ**: 新しい見積りは前の `pending` のカードを `superseded` にする。実行済み（`confirmed`）・やめた（`dismissed`）・置き換わった・`stale` のカードの確認は `ErrProposalClosed`（409）。別の会話・無い id は `ErrNoSession`（410）／`ErrNoProposal`（404）。
 - **言葉では実行しない**: 「実行して」とユーザーが書いても、LLM が JSON で `run` を言っても、実行されない（動作が無い。カードが無ければ押すものも無い）。上限を超える見積り（`OverLimit`）はカードにならず、理由が LLM に返って直させる。
 - `Dismiss`（「やめる」）はカードを閉じ、何も生成しない。
@@ -79,3 +79,4 @@
 | 1.2 | 2026-11-10 | §6 の static の行を、入力欄は送った言葉だけを消すこと・スレッドは新しい部品か末尾の近くのときだけ末尾へ動くことに合わせた | PR #1141 のレビュー指摘 |
 | 1.3 | 2026-11-10 | §5 の会話の寿命に、発言は捨てた会話の ID でも新しい会話を作って答えること（410 は確認・やめると、形が不正な ID）を足した（実装と API 仕様に合わせた） | PR #1141 のレビュー指摘（major） |
 | 1.4 | 2026-11-10 | §5 の会話の寿命に、新しく作り直した会話では古いカードの確認・やめるが 404 になることを足した（`chatscreen_test.go` が確かめる） | PR #1141 の再レビュー指摘（1.3 の足した文が起こした記述の抜け） |
+| 1.5 | 2026-11-11 | §3 の Confirm が失敗して `pending` に戻るとき、押している間に新しい見積りが作られていたら `superseded` にする（最新のカードだけ押せる、を保つ） | PR #1141 のレビュー指摘 |

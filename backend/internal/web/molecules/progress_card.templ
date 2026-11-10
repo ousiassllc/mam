@@ -7,7 +7,8 @@ import (
 )
 
 // ProgressCard shows the live status of a background job. It has no controls; the
-// client replaces it when the server reports a change over WebSocket (no polling), except for the card of work that tells how far it is (Detail: an install).
+// client replaces it when the server reports a change over WebSocket (no polling), except for the card of work that tells how far it is (Detail: an install). That card
+// is switched off for screen readers (MessageFrame: aria-live="off") while it polls: each swap is an addition to the thread, a polite live region, and would be read again.
 templ ProgressCard(m domain.ThreadMessage) {
 	{{ tone, label, active := progressView(m.Job) }}
 	@MessageFrame(m) {
@@ -20,7 +21,7 @@ templ ProgressCard(m domain.ThreadMessage) {
 		</p>
 		if m.Detail != "" {
 			<p class="mt-1 text-sm text-mute" data-testid="progress-detail">{ m.Detail }</p>
-			if m.Pending() {
+			if readsItself(m) {
 				// the work behind the card (a model install) tells how far it is, which no job change announces: read the card again until it ends (#1140)
 				<span hidden hx-get={ cardURL(m.ProjectID, m.ID) } hx-trigger="every 2s" hx-target={ "#msg-" + m.ID } hx-swap="outerHTML"></span>
 			}

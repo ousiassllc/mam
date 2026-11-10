@@ -70,3 +70,22 @@ func TestProgressCard_ADetailIsShownAndReadAgainWhileTheJobRuns(t *testing.T) {
 	assert.Contains(t, sb.String(), "完了")
 	assert.NotContains(t, sb.String(), `hx-trigger="every 2s"`, "a finished job is not read again")
 }
+
+// The thread is a polite live region that announces additions, and a card that reads itself again every 2 seconds replaces its whole element (outerHTML), which is
+// an addition each time. So the element is switched off (aria-live="off") while it polls; the card that comes back finished is read once, as an addition.
+func TestProgressCard_APollingCardIsNotAnnouncedEveryTimeItIsSwapped(t *testing.T) {
+	m := domain.ThreadMessage{
+		ChatMessage: domain.ChatMessage{ID: "m1", ProjectID: "p1", Kind: domain.KindProgress, RefID: "j1", Content: "モデルを導入しています"},
+		Job:         &domain.Job{ID: "j1", Status: domain.JobRunning}, Detail: "42% ・ダウンロード中",
+	}
+	running := render(t, molecules.ProgressCard(m))
+	assert.Contains(t, running, `hx-trigger="every 2s"`)
+	assert.Contains(t, running, `aria-live="off"`)
+
+	m.Job.Status, m.Detail = domain.JobSucceeded, "完了"
+	finished := render(t, molecules.ProgressCard(m))
+	assert.NotContains(t, finished, `aria-live`, "the finished card is announced once, through the polite thread")
+
+	m.Job.Status, m.Detail = domain.JobRunning, ""
+	assert.NotContains(t, render(t, molecules.ProgressCard(m)), `aria-live`, "a card that does not poll changes only when the job does: that is worth reading")
+}

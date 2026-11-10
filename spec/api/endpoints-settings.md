@@ -106,7 +106,9 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | `runway` | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version: 2024-11-06`） | `api.md` に記載（組織の残高と階層） | 未検証 |
 | `elevenlabs` | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`） | 認証ヘッダー `xi-api-key` は公式の認証の頁で確認。このエンドポイントは記載を確認 | 未検証 |
 | `topaz` | `GET https://api.topazlabs.com/account/v1/credits/balance`（`X-API-Key`） | 公式の FAQ に「通常の `X-API-Key` で残高を返す」と記載（2026-11-04）。クレジットを使わず読むだけ | 未検証 |
-| `kling`・`kling4`・`seedance`・`minimax`・`alibaba`・`luma`・`synclabs`・`typesafe` | なし | 読むだけの無料の API を公式資料で確認できなかった。ボタンは出さず「保存したあと、最初の生成で確かめられます」を出す | — |
+| `openrouter` | `GET https://openrouter.ai/api/v1/key`（`Authorization: Bearer`。キーの情報を読むだけ） | 記載を確認（2026-11-10、#1136）。モデルの API プロバイダー（公式 / OpenRouter / fal.ai / Replicate）で OpenRouter を選んだときに使うキー | 未検証 |
+| `replicate` | `GET https://api.replicate.com/v1/account`（`Authorization: Bearer`。アカウントを読むだけ） | 記載を確認（2026-11-10、#1136）。同上で Replicate を選んだときに使うキー | 未検証 |
+| `kling`・`kling4`・`seedance`・`minimax`・`alibaba`・`luma`・`fal`・`synclabs`・`typesafe` | なし | 読むだけの無料の API を公式資料で確認できなかった（`fal` は `Authorization: Key` で呼ぶ動画生成のキーだが、読むだけの無料の API が無い）。ボタンは出さず「保存したあと、最初の生成で確かめられます」を出す | — |
 
 結果の分類: 2xx = 受け付けられた、401/403 = キーが拒否された、429 = 上限に達した、通信の失敗・タイムアウト = 通信できない、そのほか = 想定外の応答（ステータスコードを添える）。
 
@@ -221,3 +223,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.19 | 2026-11-08 | §6 に、割り当てが使えない行の注意（生成が条件に合うモデルで行われるか、断られるか）を足した | Issue #1113 |
 | 1.20 | 2026-11-10 | §1 に `PUT /settings/api-provider`（動画モデル〔Kling〕の API プロバイダーの選択。`models.json` の `video_provider` に保存して即反映。未知の値は 422、`--model-config` で固定中は 409）を足した | Issue #1136 |
 | 1.21 | 2026-11-10 | §3 の `PUT`・`DELETE /credentials/:provider` の成功の本文に、`#api-provider-models` の OOB の差し替えを足した（キーの保存・削除のあと、プロバイダー選択の下の「API キー: 設定済み／未設定」が古いままにならない） | PR #1141 のレビュー指摘 |
+| 1.22 | 2026-11-11 | §4 の接続テストの表に `openrouter`・`replicate`（実装の `credential/probe` にあるが書いていなかった）を足し、ボタンを出さない行に `fal` を足した | PR #1141 のレビュー指摘 |

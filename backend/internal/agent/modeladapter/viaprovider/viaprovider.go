@@ -108,6 +108,8 @@ type Route struct {
 	Variants map[string]Variant
 	// Caps are what the model can do through this provider: they replace the official ones while the provider is selected.
 	Caps videocaps.Capabilities
+	// FoldsNegative says the provider has no field for the negative prompt: its backend writes it into the prompt ("Avoid: ..."), so Prepare must count it in the length of the prompt.
+	FoldsNegative bool
 }
 
 // Supported reports whether the provider serves the model.
@@ -194,10 +196,12 @@ func openRouter(m domain.ModelName) Route {
 	if m == domain.ModelKling4 {
 		return refused(OpenRouter, m, "OpenRouter は Kling 4.0 を提供していません（Kling は v3.0 Pro / Standard と O1 のみ）。fal.ai・Replicate・公式のどれかを選ぶと使えます")
 	}
-	return route(OpenRouter, m, map[string]Variant{
+	r := route(OpenRouter, m, map[string]Variant{
 		"720p":  {Endpoint: "kwaivgi/kling-v3.0-std", USDPerSecond: 0.084},
 		"1080p": {Endpoint: "kwaivgi/kling-v3.0-pro", USDPerSecond: 0.112},
 	})
+	r.FoldsNegative = true
+	return r
 }
 
 func fal(m domain.ModelName) Route {

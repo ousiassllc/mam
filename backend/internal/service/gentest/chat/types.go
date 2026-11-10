@@ -77,6 +77,8 @@ type Proposal struct {
 	// BatchID is the batch of a confirmed proposal; Reason is why a stale one was refused.
 	BatchID string
 	Reason  string
+	// replaced says a newer estimate was made while this proposal was running: if the press then fails, it is superseded, not pending again (only the newest card can be pressed).
+	replaced bool
 }
 
 // Reply is what a call answers: the messages to append to the thread, and the proposals that changed state outside of them (the screen

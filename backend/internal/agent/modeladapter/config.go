@@ -253,6 +253,12 @@ func (c Config) negativeModel(m domain.ModelName) domain.ModelName {
 	return ""
 }
 
+// foldsNegative is whether m is called through a provider that has no field for the negative prompt (its backend folds it into the prompt).
+func (c Config) foldsNegative(m domain.ModelName) bool {
+	r, ok := viaprovider.RouteOf(c.VideoProvider, m)
+	return ok && r.Supported() && r.FoldsNegative
+}
+
 // AcceptsImages reports whether an image model uses reference images.
 func (c Config) AcceptsImages(m domain.ModelName) bool {
 	if lm, kind, ok := c.LocalModel(m); ok {

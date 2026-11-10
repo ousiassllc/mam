@@ -25,6 +25,9 @@ templ MessageFrame(m domain.ThreadMessage) {
 		if isOOB(ctx) {
 			hx-swap-oob="outerHTML"
 		}
+		if readsItself(m) {
+			aria-live="off"
+		}
 		class={ frameClass(m) }
 	>
 		if m.ReplyTo != nil {

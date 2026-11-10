@@ -1,13 +1,16 @@
 package providerbackends_test
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -126,4 +129,63 @@ func TestFalAnErrorOfTheModelIsAnErrorOfTheCall(t *testing.T) {
 
 	require.ErrorIs(t, err, modeladapter.ErrRejected)
 	assert.Contains(t, err.Error(), "content policy")
+}
+
+// A job that failed is COMPLETED, and its result is the error status of the model: a 5xx is a failed job, not a vendor that is unavailable. The result is
+// asked a few times (a gateway may blip), then the call fails; it does not go on until the deadline of the whole call.
+func TestFalAFailedJobWhoseResultIsA5xxFailsAfterAFewTries(t *testing.T) {
+	var results atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost:
+			_, _ = w.Write([]byte(`{"request_id":"r"}`))
+		case strings.HasSuffix(r.URL.Path, "/status"):
+			_, _ = w.Write([]byte(`{"status":"COMPLETED"}`))
+		default:
+			results.Add(1)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"detail":"the model crashed"}`))
+		}
+	}))
+	defer srv.Close()
+	_, b := backends(t, srv, viaprovider.Fal, map[string]string{"fal": "k"})
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	_, err := b.Video[domain.ModelKling3].GenerateVideo(ctx, "ignored", modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 5, Resolution: "720p", AspectRatio: "16:9"})
+
+	require.ErrorIs(t, err, modeladapter.ErrRejected)
+	require.NoError(t, ctx.Err(), "the call failed by itself, not by its deadline")
+	assert.ErrorIs(t, err, modeladapter.ErrAfterSubmit, "the job was submitted: the call is not repeated")
+	assert.Contains(t, err.Error(), "the model crashed")
+	assert.EqualValues(t, 3, results.Load())
+}
+
+// A 5xx of the result that passes is still retried: only a result that keeps failing is a failed job.
+func TestFalABlipOfTheResultIsRetried(t *testing.T) {
+	var results atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost:
+			_, _ = w.Write([]byte(`{"request_id":"r"}`))
+		case strings.HasSuffix(r.URL.Path, "/status"):
+			_, _ = w.Write([]byte(`{"status":"COMPLETED"}`))
+		case r.URL.Path == "/files/out.mp4":
+			w.Header().Set("Content-Type", "video/mp4")
+			_, _ = w.Write([]byte(videoBytes))
+		default:
+			if results.Add(1) < 3 {
+				w.WriteHeader(http.StatusBadGateway)
+				return
+			}
+			_, _ = w.Write([]byte(`{"video":{"url":"http://` + r.Host + `/files/out.mp4"}}`))
+		}
+	}))
+	defer srv.Close()
+	_, b := backends(t, srv, viaprovider.Fal, map[string]string{"fal": "k"})
+
+	res, err := generate(t, b, domain.ModelKling3, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 5, Resolution: "720p", AspectRatio: "16:9"})
+
+	require.NoError(t, err)
+	readVideo(t, res)
 }

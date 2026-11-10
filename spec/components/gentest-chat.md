@@ -25,7 +25,7 @@
 
 ## 3. 狭い幅
 
-375 px で、カード・表・結果が横にはみ出さない（長いモデル名は折り返し、表は自分の箱の中でスクロール）。`gentest-chat/chat-layout.wtest.ts` が 375・1280 px で確かめる（フィクスチャは `web/gentest_chat_fixture_test.go`）。タップの対象（実行ボタン）の高さは 36 px 以上。
+375 px で、カード・表・結果が横にはみ出さない（長いモデル名は折り返し、表は自分の箱の中でスクロール）。`gentest-chat/chat-layout.wtest.ts` が 375・1280 px で確かめる（フィクスチャは `web/organisms/gentest/chat/fixture_test.go`）。タップの対象（実行ボタン）の高さは 36 px 以上。
 
 ## 改訂履歴
 
@@ -34,3 +34,4 @@
 | 1.0 | 2026-11-10 | 新規作成（スレッド・選択肢のカード・確認のカード・結果のブロック・入力欄・安全・狭い幅） | Issue #1138 |
 | 1.1 | 2026-11-10 | 構成の表の static の行に、入力欄は送った言葉だけを消すこと（送信中に打った次のメッセージを残す）と、スレッドは新しい部品が来たときと利用者が末尾の近くにいるときだけ末尾へ動くこと（結果のブロックの取り直しでは動かさない）を足した | PR #1141 のレビュー指摘 |
 | 1.2 | 2026-11-10 | 構成の表の organisms の行に、結果のブロックは動いている間 `aria-live="off"`（2 秒ごとの `outerHTML` の取り直しが `aria-live=polite`・`aria-relevant=additions` のスレッドで読み上げ直されないように）、終わったブロックだけが `aria-live` なしで 1 度読まれることを足した（`organisms/gentest/chat/result_live_test.go` が確かめる） | PR #1141 のレビュー指摘（major） |
+| 1.3 | 2026-11-11 | 構成の表の static の行が指すフィクスチャを、実在する `web/organisms/gentest/chat/fixture_test.go` に直した（`chat-layout.wtest.ts`・`chat.wtest.ts` の先頭のコメントも同じ） | PR #1141 のレビュー指摘 |

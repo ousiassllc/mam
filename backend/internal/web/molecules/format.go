@@ -53,6 +53,12 @@ func cardURL(projectID, messageID string) string {
 	return paths.Project(projectID, "messages", messageID)
 }
 
+// readsItself is whether the card asks for itself again every 2 seconds (the progress card of work that tells how far it is, #1140): each answer replaces the
+// whole element, which the thread (a polite live region of additions) would read out again every time, so the element is announced as "off" while it polls.
+func readsItself(m domain.ThreadMessage) bool {
+	return m.Kind == domain.KindProgress && m.Detail != "" && m.Pending()
+}
+
 // messagesAfterURL fetches the messages newer than messageID (GET /projects/:id/messages?after=<messageId>).
 // The newest card of the thread carries it, so the client never builds the URL itself.
 func messagesAfterURL(projectID, messageID string) string {

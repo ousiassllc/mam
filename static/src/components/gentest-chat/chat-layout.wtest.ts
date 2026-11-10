@@ -3,7 +3,7 @@ import { setViewport } from '@web/test-runner-commands';
 
 // #1138: the chat of the single generation in a phone-width window (375 px) and a desktop one, drawn with the real Tailwind CSS: the page must not scroll
 // sideways. The long names of a model and the table of the breakdown scroll in their own box or wrap; they never push the page wider. The markup is what
-// the Go components render (backend/internal/web/gentest_chat_fixture_test.go).
+// the Go components render (backend/internal/web/organisms/gentest/chat/fixture_test.go).
 describe('the chat of the single generation in a narrow window (#1138)', () => {
   let host: HTMLElement;
   let stylesheet: HTMLLinkElement;

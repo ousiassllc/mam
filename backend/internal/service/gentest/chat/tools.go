@@ -144,9 +144,12 @@ func (s *Service) estimate(ctx context.Context, se *session, st gentestchat.Step
 	}
 	p := &Proposal{ID: newID(), State: StatePending, Request: est.Request, Estimate: est}
 	for _, old := range se.proposals { // only the newest estimate can be confirmed
-		if old.State == StatePending {
+		switch old.State {
+		case StatePending:
 			old.State = StateSuperseded
 			rep.Changed = append(rep.Changed, *old)
+		case StateRunning: // its press may still fail: Confirm then closes it instead of putting it back
+			old.replaced = true
 		}
 	}
 	se.proposals[p.ID] = p

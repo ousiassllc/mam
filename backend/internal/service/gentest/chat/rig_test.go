@@ -71,6 +71,13 @@ func estimateStep(count int, models ...string) string {
 	}})
 }
 
+// japaneseEstimateStep is an estimate whose prompt is Japanese, so that running it asks the translator.
+func japaneseEstimateStep(models ...string) string {
+	return step(m{"action": "estimate", "text": "見積りです", "request": m{
+		"media": "image", "models": models, "prompts": []m{{"prompt": "夕暮れの海辺にいる狐"}}, "count": 1,
+	}})
+}
+
 type rig struct {
 	*gentesttest.Rig
 	Chat   *chat.Service

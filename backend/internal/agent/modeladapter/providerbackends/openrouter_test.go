@@ -5,8 +5,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -128,4 +130,40 @@ func TestOpenRouterFailedJobIsRefusedWithItsReason(t *testing.T) {
 	assert.ErrorIs(t, err, modeladapter.ErrAfterSubmit, "the job exists at the provider: it must not be submitted again")
 	assert.Contains(t, err.Error(), "Content policy violation")
 	assert.NotContains(t, err.Error(), "k\"")
+}
+
+// The prompt Prepare makes for Kling 3.0 is up to 2400 characters and its avoid list up to 400: OpenRouter has no field for the avoid list, so the backend
+// folds it in. What reaches OpenRouter must still be within the 2400 characters of the model, with the Constraints and the avoid list whole.
+func TestOpenRouterKling3PromptOfAShotStaysWithinTheLimitWithTheAvoidListFolded(t *testing.T) {
+	var submitBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/videos":
+			_ = json.NewDecoder(r.Body).Decode(&submitBody)
+			_, _ = w.Write([]byte(`{"id":"j","status":"pending"}`))
+		case r.URL.Path == "/videos/j":
+			_, _ = w.Write([]byte(`{"id":"j","status":"completed"}`))
+		default:
+			w.Header().Set("Content-Type", "video/mp4")
+			_, _ = w.Write([]byte(videoBytes))
+		}
+	}))
+	defer srv.Close()
+	cfg, b := backends(t, srv, viaprovider.OpenRouter, map[string]string{"openrouter": "k"})
+	job := modeladapter.VideoJob{Spec: domain.ShotSpec{ShotObjective: strings.Repeat("A very long objective. ", 150), Constraints: []string{"do_not_add_characters", "preserve_logo"}}, DurationSeconds: 5}
+	for i := range 60 {
+		job.Spec.Acting = append(job.Spec.Acting, domain.ActingBeat{Time: "0.0-0.5", Action: "slowly_turns_the_head_towards_the_window_" + strings.Repeat("x", i%7)})
+	}
+	req, err := cfg.Prepare(modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "720p"}, job)
+	require.NoError(t, err)
+
+	res, err := generate(t, b, domain.ModelKling3, req)
+
+	require.NoError(t, err)
+	res.File.Discard()
+	prompt, _ := submitBody["prompt"].(string)
+	assert.LessOrEqual(t, utf8.RuneCountInString(prompt), 2400)
+	assert.Contains(t, prompt, "Avoid: ", "the avoid list is folded in")
+	assert.Contains(t, prompt, "distorted face", "and kept whole, with the Constraints")
+	assert.Contains(t, prompt, "keep the logo and label text sharp and undistorted")
 }

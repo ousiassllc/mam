@@ -52,7 +52,7 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 | `synclabs` | Lip Sync（§5） | なし（読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `typesafe` | Repair の前段選別（Jev。§4.5） | なし（`POST /v1/systemone` だけ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 
-- 接続テストは、決定事項 5(a)（無料で読むだけの API があるプロバイダーだけ）に沿って付けた（上の 6 つと、Issue #1031 で足した `topaz` の 1 つ）。**実キーでの動作は所有者の実機で確かめる（未検証）**。公式資料で確認できなかった 4 つには接続テストのボタンを出さず、「保存したあと、最初の生成で確かめられます」を出す。
+- 接続テストは、決定事項 5(a)（無料で読むだけの API があるプロバイダーだけ）に沿って付けた（`anthropic`・`openai`・`google`・`flux`・`runway`・`elevenlabs` の 6 つ、Issue #1031 で足した `topaz`、Issue #1136 で足した `openrouter`・`replicate`。計 9 つ。`credential/probe` の対応表と同じ）。**実キーでの動作は所有者の実機で確かめる（未検証）**。公式資料で確認できなかった `kling`・`kling4`・`minimax`・`luma`・`alibaba`・`seedance`・`fal`・`synclabs`・`typesafe` の 9 つには接続テストのボタンを出さず、「保存したあと、最初の生成で確かめられます」を出す。
 - 「キーの取り方のリンク」（各社のコンソール）: anthropic `https://platform.claude.com/settings/keys`、google `https://aistudio.google.com/apikey`、flux `https://dashboard.bfl.ai`、runway `https://dev.runway.com`（公式の setup の頁で確認）、elevenlabs `https://elevenlabs.io/app/api/api-keys`（公式のクイックスタートで確認）。そのほかのプロバイダーはリンクを出さない（公式の取得先を確認できていない）。リンクは `target="_blank" rel="noopener noreferrer"`。接続テストの呼び出しとその結果の分類は [../api/endpoints-settings.md](../api/endpoints-settings.md) §4。
 
 ### 1.2 API キーのモーダル（`GET /settings/credentials/:provider/edit`）
@@ -243,3 +243,4 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 | 0.28 | 2026-11-10 | §1.0 を新設: API キーの区画の先頭に「動画モデルの API プロバイダー」（公式 / OpenRouter / fal.ai / Replicate）の選択を置き、選択に応じてキー欄が変わる・提供しないモデルは理由を出す。§1.1 に `openrouter`・`fal`・`replicate` の 3 行を足した（15 → 18 プロバイダー） | Issue #1136 |
 | 0.29 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 0.30 | 2026-11-10 | §1.0 の「モデルごとの状況」に、キーの保存・削除の応答がこの一覧も差し替えること（カードだけが変わって「設定済み／未設定」が古いままにならない）を足した | PR #1141 のレビュー指摘 |
+| 0.31 | 2026-11-11 | §1.1 の接続テストの注記の数を実装に合わせた（テストあり 9 つ〔`openrouter`・`replicate` を含む〕、ボタンなし 9 つ） | PR #1141 のレビュー指摘 |

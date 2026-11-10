@@ -2,6 +2,8 @@ package providerbackends
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -19,6 +21,9 @@ type fal struct {
 	modeladapter.API
 	route viaprovider.Route
 }
+
+// resultTries is how many times the result of a COMPLETED job is asked while it answers 5xx.
+const resultTries = 3
 
 func (b fal) input(v viaprovider.Variant, req modeladapter.VideoRequest) map[string]any {
 	in := map[string]any{"prompt": req.Prompt}
@@ -85,13 +90,24 @@ func (b fal) GenerateVideo(ctx context.Context, _ string, req modeladapter.Video
 	if err != nil {
 		return modeladapter.VideoResult{}, err
 	}
-	// A job that failed is COMPLETED too: its result is the error the model returned (an HTTP error status here).
+	// A job that failed is COMPLETED too: its result is the error the model returned (an HTTP error status here). A 4xx ends the call at once; a 5xx may be a blip of
+	// the gateway or the model's own failure, so it is asked resultTries times and then is a failed job (retrying it until the deadline would hold a failed job for good).
 	var out struct {
 		Video struct {
 			URL string `json:"url"`
 		} `json:"video"`
 	}
-	if err := b.Poll(ctx, func(ctx context.Context) (bool, error) { return true, fetch(ctx, b.API, request, auth, &out) }); err != nil {
+	tries := 0
+	err = b.Poll(ctx, func(ctx context.Context) (bool, error) {
+		tries++
+		err := fetch(ctx, b.API, request, auth, &out)
+		var pe *modeladapter.ProviderError
+		if errors.As(err, &pe) && pe.Status >= http.StatusInternalServerError && tries >= resultTries && ctx.Err() == nil {
+			return true, failedJob(b.API, strconv.Itoa(pe.Status), err.Error())
+		}
+		return true, err
+	})
+	if err != nil {
 		return modeladapter.VideoResult{}, err
 	}
 	if out.Video.URL == "" {
