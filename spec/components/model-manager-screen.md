@@ -339,3 +339,4 @@
 | 1.39 | 2026-11-09 | 手元の LoRA の取り込み（#1119）の区画 `#mm-lora`「LoRA を追加」を足した（`image-video` ページの「モデルの一覧」の下。選ぶ・確認・結果・追加した LoRA の一覧。生成テスト・レシピの「LoRA と強さ」の注意）。部品は `organisms/modelmgr/loraimport`・`molecules/loraselect`。既存の区画の ID は変えない | Issue #1119 |
 | 1.40 | 2026-11-09 | 「LoRA を追加」の確認の記述を実装に合わせた（ファイルの情報は大きさと SHA-256 で、テンソルの数は出さない。取り下げのボタンは「取り消す」）| #1119 の独立レビュー |
 | 1.41 | 2026-11-09 | 導入できないモデル・ノードのカードの「理由と対処」を、別のボタンから**導入ボタンを押すと開く**形に直した（#1118。利用者の指示）。`organisms/modelmgr/reason` は `OpenButton`・`ButtonLabel` をやめて `OpenAttrs`（導入ボタンに付ける属性）だけにし、`catalog.templ` の `installButton`（`blocked` → 無効、`NeedsNodes` かつ導入済みでない → ポップアップ、`LowDisk` → 無効の順）と `nodecard.nodeActions` の `blocked` の導入ボタンが使う | Issue #1118。押したいボタンが無効のままで分かりにくい |
+| 1.42 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

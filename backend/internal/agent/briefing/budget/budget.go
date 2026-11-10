@@ -26,8 +26,8 @@ var (
 	wordRe = regexp.MustCompile(`(?i)予算|budget|上限|限度額`)
 	// nameRe is the words that name the budget itself.
 	nameRe = regexp.MustCompile(`(?i)予算|budget`)
-	// amountRe reads "$20", "US$20.5", "1,000 ドル", "20 USD".
-	amountRe = regexp.MustCompile(`(?i)(?:US)?\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)|([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:ドル|USD|dollars?)`)
+	// amountRe reads "$20", "US$20.5", "1,000 ドル", "20 USD". A comma is part of the number only between digits: the one after "$20," ends the amount ("予算 $20, per shot $2").
+	amountRe = regexp.MustCompile(`(?i)(?:US)?\$\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]+)?)|([0-9]+(?:,[0-9]+)*(?:\.[0-9]+)?)\s*(?:ドル|USD|dollars?)`)
 	yenRe    = regexp.MustCompile(`[0-9][0-9,]*(?:\.[0-9]+)?\s*万?\s*円|[¥￥]\s*[0-9]`)
 	// limitSuffixRe is a limit word right after the amount: "1 ショット $2 まで" needs no 予算 in front.
 	limitSuffixRe = regexp.MustCompile(`^\s*(?:まで|以内|以下)`)

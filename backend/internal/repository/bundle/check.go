@@ -51,6 +51,9 @@ func checkBundle(data domain.BundleData) error {
 					return err
 				}
 			}
+			if t.Name == "chat_message" {
+				dropCardActions(row)
+			}
 			if err := checkBundleColumns(t.Name, row); err != nil {
 				return err
 			}
@@ -67,6 +70,18 @@ func checkBundle(data domain.BundleData) error {
 		}
 	}
 	return fmt.Errorf("%w: exactly one project row is required", ErrInvalid)
+}
+
+// dropCardActions drops what the buttons of a question / escalation card would carry out when one is picked (domain.CardBody.OptionActions) and the masked field a
+// card may ask a secret in (Secret). The app makes those cards itself; a bundle is not trusted to, so the buttons of an imported card only answer. (An exported open
+// confirmation card thus comes back as a plain question.)
+func dropCardActions(row domain.BundleRow) {
+	if row["kind"] != string(domain.KindQuestion) && row["kind"] != string(domain.KindEscalation) {
+		return
+	}
+	if content, ok := row["content"].(string); ok {
+		row["content"] = domain.StripCardActions(content)
+	}
 }
 
 // checkTakeCardURLs refuses a take card whose video or poster is not a same-origin path: the

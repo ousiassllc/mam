@@ -337,3 +337,4 @@ export class MamComfyFrame extends LitElement {
 | 1.109 | 2026-11-08 | Scene / Shot 画面の待機の表示の `data-phase="declined_unrecorded"` の「次にするもの」に、自分で始めるなら Shot を選んで手動で起動することを足した（`spec/spec.md` §4.3 の記述に合わせた） | Issue #1116: 仕様が約束している手動起動の案内が、画面の文言に無かった |
 | 1.110 | 2026-11-10 | §1.1 の Command Interpreter の行に、予算の変更（`set_budget`、確認カード付き）と、設定を変える操作の登録表（`commandinterpreter.Spec`・サービス側 `opHandlers`）を足した | Issue #1139 |
 | 1.111 | 2026-11-10 | §1.1 の Command Interpreter の行に、全体設定の操作（API キー・プロバイダー・モデルの導入・割り当て・LoRA・書き出し・キャラクターの参照）を足した。操作の登録表は `commandinterpreter.Register` で操作ごとのパッケージ（`service/chatops/*`）が足す | Issue #1140 |
+| 1.112 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

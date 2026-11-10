@@ -216,3 +216,4 @@
 | 1.209 | 2026-11-10 | §2.1a の `POST /projects/:id/messages`（設定の操作）に、Brief の作成中（DRAFT）は API キー・動画プロバイダー・LLM の割り当てと拒否だけを設定の操作として読み、それ以外は Brief への答えにすること、形の決まっていないキーも伏せること、伏せた発言は返信として記録しないことを明記 | #1141 のレビュー指摘（「動画は縦型にして」が Brief に入らない、Kling などのキーが検出されない）の修正 |
 | 1.210 | 2026-11-10 | [endpoints-settings.md](endpoints-settings.md) §1 と [settings-screen-routes.md](../components/settings-screen-routes.md) に `PUT /settings/api-provider`（動画モデル〔Kling〕の API プロバイダーの選択。応答は `#credential-panel` の全体。未知の値は 422、`--model-config` で固定中は 409）を足した | Issue #1136 |
 | 1.211 | 2026-11-10 | `GET /projects/:id/scenes` の待機の表示の `data-phase` に `budget_confirm`（予算の確認待ち）を足した（実装と `spec/spec.md` §4.3 に合わせた） | PR #1141 のレビュー指摘（列挙に抜けがあった） |
+| 1.212 | 2026-11-10 | §2.1 の `POST /projects/import` に、質問・Escalation カードのボタンの操作（`option_actions`）とマスク入力欄（`secret`）は取り込まずに外すことを足した（バンドルに仕込まれた操作がボタンで走らないように） | PR #1141 のレビュー指摘（critical） |

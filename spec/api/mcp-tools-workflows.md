@@ -49,3 +49,4 @@
 | 1.1 | 2026-11-03 | `run_workflow` に `seed`・`sampling`、`assignments[]` の `param` に `steps`・`cfg`・`sampler`・`scheduler` と `ratio` を足した | Issue #973 |
 | 1.2 | 2026-11-04 | `settings` に `exposed_inputs`（画面に出す値）を足した（保存・取得・更新。省くと今のまま） | Issue #977（ステージ 2） |
 | 1.3 | 2026-11-06 | `assignments[]` に `offset`（`frames` だけ。フレーム数に足す整数。−64〜64）を足した（`update_workflow_assignment`・`get_workflow`） | Issue #1076 |
+| 1.4 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

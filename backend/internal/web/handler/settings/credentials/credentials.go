@@ -152,7 +152,7 @@ func Delete(k Keys) gin.HandlerFunc {
 			return
 		}
 		i := slices.IndexFunc(statuses, func(s service.CredentialStatus) bool { return s.Provider == provider })
-		settingshttp.Render(c, http.StatusOK, templ.Join(view.Row(providerView(k, statuses[i])), atoms.ToastOOB("API キーを削除しました")))
+		settingshttp.Render(c, http.StatusOK, templ.Join(view.Row(providerView(k, statuses[i])), atoms.ToastOOB("API キーを削除しました"), providerModelsOOB(c, k, statuses)))
 	}
 }
 
@@ -180,7 +180,7 @@ func done(c *gin.Context, k Keys, provider string, opErr error, saved, savedUnre
 	}
 	settingshttp.CloseModal(c)
 	i := slices.IndexFunc(statuses, func(s service.CredentialStatus) bool { return s.Provider == provider })
-	settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(providerView(k, statuses[i])), atoms.ToastOOB(saved)))
+	settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(providerView(k, statuses[i])), atoms.ToastOOB(saved), providerModelsOOB(c, k, statuses)))
 }
 
 // refuse answers a save that did not happen with the modal again and why: the key field is empty, the reason is told.
@@ -200,6 +200,13 @@ func unreadable(c *gin.Context, k Keys, status int, notice string, statusErr err
 	c.Header("HX-Retarget", "#credential-panel")
 	c.Header("HX-Reswap", "outerHTML")
 	settingshttp.Render(c, status, view.Panel(view.Data{Unavailable: true, Notice: notice, Providers: providerViews(k, unknownStatuses())}))
+}
+
+// providerModelsOOB redraws the list of how the chosen API provider serves each model ("OpenRouter の API キー: 設定済み"), which reads the same key the card above it
+// shows: a key that was saved or deleted changes both.
+func providerModelsOOB(c *gin.Context, k Keys, statuses []service.CredentialStatus) templ.Component {
+	choice, _ := providerChoice(c, k, statuses)
+	return view.ProviderModelsOOB(choice)
 }
 
 func asValidation(err error) *service.ValidationError {

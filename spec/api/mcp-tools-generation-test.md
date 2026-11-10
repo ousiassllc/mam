@@ -211,3 +211,4 @@
 | 1.32 | 2026-11-06 | `swap_generation_face` で FaceFusion が見つからないときの答えを、実装（Issue #1010 から）どおり `unavailable`（`failure.code` が `facefusion_unavailable`）に直した（`validation` のままだった）。ツールの説明文も同じに直した | Issue #995 の見直し（仕様と実装の乖離） |
 | 1.33 | 2026-11-06 | `gpt_image`（GPT Image 2.6 の複雑さ・GIF / SVG）と `references[].role` の `markup` を足し、`list_generation_models` に `gpt_image`・`gpt_image_unsupported` を足した | Issue #1096 |
 | 1.34 | 2026-11-06 | `get_job` の種別 `gentest` の説明から、モデルマネージャーの試し生成を外した（区画の廃止。ツール・引数は変えない。状態は仕様のみ） | Issue #1100 |
+| 1.35 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

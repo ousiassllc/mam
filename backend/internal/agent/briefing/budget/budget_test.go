@@ -28,6 +28,9 @@ func TestStatedReadsTheBudgetOfTheProjectAndOfOneShot(t *testing.T) {
 		"a ceiling of one Shot alone":       {"1 ショットの予算は $2", budget.Statement{Shot: usd(2)}},
 		"per shot suffix":                   {"予算は$2/shot", budget.Statement{Shot: usd(2)}},
 		"a limit word needs no budget word": {"1 カット $2 まで", budget.Statement{Shot: usd(2)}},
+		"a comma ends the amount":           {"予算 $20, per shot $2", budget.Statement{Project: usd(20), Shot: usd(2)}},
+		"a comma ends the amount, Japanese": {"予算は $20、1 ショットあたり $2 まで", budget.Statement{Project: usd(20), Shot: usd(2)}},
+		"a comma ends a dollar amount":      {"予算は 20 ドル, ショットごとに 2 ドル", budget.Statement{Project: usd(20), Shot: usd(2)}},
 		"the first amount of a kind wins":   {"予算は$20。やっぱり予算は$50", budget.Statement{Project: usd(20)}},
 	} {
 		t.Run(name, func(t *testing.T) {

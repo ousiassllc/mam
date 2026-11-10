@@ -14,7 +14,7 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 
 - **選択**: ラジオ 4 つ（`name="provider"`、値 `official` / `openrouter` / `fal` / `replicate`、`data-testid="api-provider-<値>"`）。**変えた瞬間に保存する**（フォームが `change` で `PUT /settings/api-provider`、`hx-target="#credential-panel"`）。応答は区画の全体（キー欄が選択に追従するため）で、成功は 200 とお知らせ（`data-testid="credential-notice"`）、未知のプロバイダーは 422、`--model-config` で固定されているときは 409（ともに `role="alert"`、`data-testid="credential-error"`）。固定されているときはラジオが `disabled` で、「起動オプションで固定されているため、この画面では変更できません」を出す。`models.json` が読めないときは選択の代わりに理由（`api-provider-problem`）を出し、キー欄は公式のまま。
 - **キー欄が選択に追従する**: 公式は §1.1 のカードのとおり（ベンダーごと）。OpenRouter / fal.ai / Replicate は、そのプロバイダーのカード（`openrouter` / `fal` / `replicate`。キー 1 つ）を**選択のすぐ下（先頭）**に出し、他の 2 社のカードと、公式の Kling のカード（`kling`・`kling4`。保存したキーは残る）は隠す。LLM・画像・Kling 以外の動画・音声のキー欄は常に出る。
-- **モデルごとの状況**（選択の下の `ul`、`data-testid="api-provider-model"`）: 選んだ先が提供するモデルは「使えます」＋単価（「720p $0.084/秒 ・ 1080p $0.112/秒」。見積り・コストと同じ値）＋（公式以外では）キーの有無（「OpenRouter の API キー: 設定済み」／警告の「OpenRouter の API キーが未設定」）。**提供しないモデル**は「このプロバイダーでは使えません」＋理由（`api-provider-why`。例:「OpenRouter は Kling 4.0 を提供していません（…）。fal.ai・Replicate・公式のどれかを選ぶと使えます」）。同じ理由は、モデルの選択肢（単発生成・Settings の割り当て・見積り・MCP）に `provider_unsupported` として付き、リンクはこの画面（`/settings/api-keys`）へ向く。
+- **モデルごとの状況**（選択の下の `ul`、`data-testid="api-provider-model"`）: 選んだ先が提供するモデルは「使えます」＋単価（「720p $0.084/秒 ・ 1080p $0.112/秒」。見積り・コストと同じ値）＋（公式以外では）キーの有無（キーの保存・削除の応答が、この一覧も `hx-swap-oob` で差し替えるので、カードと同時に変わる。「OpenRouter の API キー: 設定済み」／警告の「OpenRouter の API キーが未設定」）。**提供しないモデル**は「このプロバイダーでは使えません」＋理由（`api-provider-why`。例:「OpenRouter は Kling 4.0 を提供していません（…）。fal.ai・Replicate・公式のどれかを選ぶと使えます」）。同じ理由は、モデルの選択肢（単発生成・Settings の割り当て・見積り・MCP）に `provider_unsupported` として付き、リンクはこの画面（`/settings/api-keys`）へ向く。
 - **レイアウト**: 390px では選択肢が折り返し、理由は折り返して読める。1280px ではカードが 2 列（`xl:grid-cols-2`）。
 - **MCP**: `get_video_provider`・`set_video_provider`（[mcp-tools-settings-policy.md](../api/mcp-tools-settings-policy.md)）。
 
@@ -241,3 +241,5 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 | 0.26 | 2026-11-07 | §2 のローカル LLM サーバーのカードを、リンクのカード（`llm-local-link`・`llm-local-state`）に実装した。状態を「実装済み」にした（欄・保存・接続テストはモデルマネージャーの `local-llm`） | Issue #1104 |
 | 0.27 | 2026-11-08 | §3 に、割り当てが使えない行の注意（生成が条件に合うモデルで行われるか、断られるか）を足した | Issue #1113 |
 | 0.28 | 2026-11-10 | §1.0 を新設: API キーの区画の先頭に「動画モデルの API プロバイダー」（公式 / OpenRouter / fal.ai / Replicate）の選択を置き、選択に応じてキー欄が変わる・提供しないモデルは理由を出す。§1.1 に `openrouter`・`fal`・`replicate` の 3 行を足した（15 → 18 プロバイダー） | Issue #1136 |
+| 0.29 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 0.30 | 2026-11-10 | §1.0 の「モデルごとの状況」に、キーの保存・削除の応答がこの一覧も差し替えること（カードだけが変わって「設定済み／未設定」が古いままにならない）を足した | PR #1141 のレビュー指摘 |

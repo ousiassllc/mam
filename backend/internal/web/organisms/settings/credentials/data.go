@@ -81,6 +81,9 @@ func RowID(provider string) string { return "credential-row-" + provider }
 // FocusKey names the button that opens the modal of a provider (it stays the same when "設定" becomes "変更").
 func FocusKey(provider string) string { return "credential-" + provider }
 
+// ProviderModelsID is the id of the list of how the chosen API provider serves each model: what a save or a delete of a key replaces out of band.
+const ProviderModelsID = "api-provider-models"
+
 // ListID is the id of the list of cards.
 const ListID = "credential-list"
 

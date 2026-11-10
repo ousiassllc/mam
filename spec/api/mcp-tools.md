@@ -130,3 +130,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.18 | 2026-11-04 | アップロードの用途の表に `character_voice_training_clip`（登場人物の声の学習に使う音声）を足した | Issue #936。GPT-SoVITS の fine-tune の MCP の入口 |
 | 1.19 | 2026-11-10 | ツールの一覧の「全体設定」の行に、動画モデルの API プロバイダー（`get_video_provider`・`set_video_provider`）を足した。`list_credentials`・`set_credential` の `provider` に `openrouter`・`fal`・`replicate` が増えた | Issue #1136。ツールの詳細は [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
 | 1.20 | 2026-11-10 | 「チャットとの対応」を足した。アプリ内チャットから同じ設定を頼める（#1140） |
+| 1.21 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

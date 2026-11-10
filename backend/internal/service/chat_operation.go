@@ -52,7 +52,7 @@ func (s *ChatService) answerOperation(ctx context.Context, project domain.Projec
 	switch {
 	case declined:
 		action = chatops.DeclineAction(body) // what the card has to clean up when it is declined (a file that waits); nothing for most
-	case briefing.IsConfirmation(content) && len(body.OptionActions) > 0 && len(body.OptionActions[0]) > 0 && body.Options[0] == confirmYes:
+	case briefing.IsConfirmation(content) && len(body.OptionActions) > 0 && len(body.OptionActions[0]) > 0 && len(body.Options) > 0 && body.Options[0] == confirmYes:
 		action, accepted = body.OptionActions[0], true
 	default:
 		if action, accepted = chatops.ActionOf(body, content); !accepted {

@@ -185,3 +185,42 @@ func TestTheChoiceIsLeftOutWithoutModelSettings(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), `data-testid="api-provider"`)
 	assert.Contains(t, providers(rec.Body.String()), "kling")
 }
+
+// The list under the choice says whether the key of the chosen provider is stored, and reads the same key as the card: a save and a delete of that key redraw both.
+func TestSaveAndDelete_RedrawTheKeyStateOfTheChosenProviderUnderTheChoice(t *testing.T) {
+	r := newProviderRig(t, false)
+	require.NoError(t, r.models.SaveVideoProvider("openrouter"))
+	require.Contains(t, r.panel(), "OpenRouter の API キーが未設定")
+
+	saved := r.do(http.MethodPut, paths.Credential("openrouter"), url.Values{"api_key": {"or-dummy-key-0123456789"}})
+
+	require.Equal(t, http.StatusOK, saved.Code)
+	assert.Regexp(t, `<ul id="api-provider-models"[^>]*hx-swap-oob="true"`, saved.Body.String(), "the list replaces the one on the page out of band")
+	assert.Contains(t, saved.Body.String(), "OpenRouter の API キー: 設定済み")
+	assert.NotContains(t, saved.Body.String(), "OpenRouter の API キーが未設定")
+	assert.NotContains(t, saved.Body.String(), "or-dummy-key-0123456789")
+
+	deleted := r.do(http.MethodDelete, paths.Credential("openrouter"), nil)
+
+	require.Equal(t, http.StatusOK, deleted.Code)
+	assert.Regexp(t, `<ul id="api-provider-models"[^>]*hx-swap-oob="true"`, deleted.Body.String())
+	assert.Contains(t, deleted.Body.String(), "OpenRouter の API キーが未設定")
+	assert.NotContains(t, deleted.Body.String(), "OpenRouter の API キー: 設定済み")
+}
+
+// With the official provider there is no key line to follow (the cards are the keys), and without model settings there is no list at all: nothing is sent out of band.
+func TestSave_SendsNoModelListWhereThePanelHasNone(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	keys := credentialtest.New()
+	engine := gin.New()
+	credentials.Register(engine, credentials.Keys{Svc: service.NewCredentialService(keys)}, func(*gin.Context) {})
+	req := httptest.NewRequest(http.MethodPut, paths.Credential("anthropic"), strings.NewReader(url.Values{"api_key": {"sk-ant-dummy-0123456789"}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+
+	engine.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "api-provider-models")
+}

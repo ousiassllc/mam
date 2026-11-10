@@ -106,3 +106,4 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 | 1.7 | 2026-11-06 | §5.2: 覚えたドライバーを ChatGPT のアカウント単位にし、認証情報を読めない呼び出し（サインアウト・OFF）で忘れるようにした。`Options.Driver` で固定したモデルが拒否されたときは、`ErrNoImageModel`（「mam を最新版に更新して」）ではなく `ErrImageModelPinned`（固定を直す）で失敗する。`FallbackDrivers` を、コピーを返す関数にした。曲線引用符・`doesn't`・固定／覚えたドライバーへの別モデルの拒否・SSE `response.failed` 経由の 400 のテストを足した。実アカウントでの `/models`・`/responses` の確認（#1070）は未実施 | Issue #1071 |
 | 1.8 | 2026-11-06 | §5.2: サブスク経由の画像モデルに GPT Image 2.6 Flare / Sunburst（`gpt-image-2.6-flare:chatgpt-subscription`・`gpt-image-2.6-sunburst:chatgpt-subscription`）を足した。Codex のツールの `model` に各 API モデル ID をそのまま入れる（ほかのモデルへの黙った差し替えはしない）。Codex のエンドポイントがこの ID を受け付けるかは未検証（`model-adapters.md` §9.5） | Issue #1096 |
 | 1.9 | 2026-11-06 | §5.2: サブスク経由のモデルは 2.6 の複雑さ・GIF・SVG・マークアップを理由つきで断る（送らない・PNG に替えない） | Issue #1096 |
+| 1.10 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

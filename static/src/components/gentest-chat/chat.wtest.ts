@@ -62,23 +62,94 @@ describe('the chat of the single generation (#1138)', () => {
     expect(submits.count(), 'a blank message is not sent').to.equal(1);
   });
 
+  const request = (name: 'htmx:beforeRequest' | 'htmx:afterRequest', status?: number) =>
+    composer().dispatchEvent(
+      new CustomEvent(name, {
+        bubbles: true,
+        detail: { elt: composer(), successful: true, ...(status === undefined ? {} : { xhr: { status } }) },
+      }),
+    );
+
   it('empties the box once the message was taken, and keeps the words of a refused one', async () => {
     await show();
     box().value = '狐を作りたい';
-    composer().dispatchEvent(
-      new CustomEvent('htmx:afterRequest', {
-        bubbles: true,
-        detail: { elt: composer(), successful: true, xhr: { status: 422 } },
-      }),
-    );
+    request('htmx:beforeRequest');
+    request('htmx:afterRequest', 422);
     expect(box().value, 'a swapped 422 (htmx says successful) keeps the words').to.equal('狐を作りたい');
-    composer().dispatchEvent(
-      new CustomEvent('htmx:afterRequest', {
-        bubbles: true,
-        detail: { elt: composer(), successful: true, xhr: { status: 200 } },
-      }),
-    );
+    request('htmx:beforeRequest');
+    request('htmx:afterRequest', 200);
     expect(box().value).to.equal('');
+  });
+
+  it('empties only what was sent: the next message typed while the request ran is kept', async () => {
+    await show();
+    box().value = '狐を作りたい';
+    request('htmx:beforeRequest');
+    box().value = '狐を作りたい。次は猫も';
+    request('htmx:afterRequest', 200);
+    expect(box().value, 'a 2xx answer does not take the message typed meanwhile').to.equal('狐を作りたい。次は猫も');
+
+    request('htmx:beforeRequest');
+    request('htmx:afterRequest', 200);
+    expect(box().value, 'the words that were sent are cleared').to.equal('');
+  });
+
+  describe('the thread follows the conversation', () => {
+    const swap = (target: Element, name: 'htmx:beforeSwap' | 'htmx:afterSwap') =>
+      target.dispatchEvent(
+        new CustomEvent(name, {
+          bubbles: true,
+          detail: { xhr: { status: 200, getResponseHeader: () => 'text/html' }, shouldSwap: true, isError: false },
+        }),
+      );
+
+    /** What the 2-second polling does to the result block: the block is replaced by a new one of the same place (outerHTML). */
+    function pollResult(): void {
+      const old = host.querySelector<HTMLElement>('[data-testid="gtc-result"]')!;
+      swap(old, 'htmx:beforeSwap');
+      const fresh = old.cloneNode(true) as HTMLElement;
+      fresh.style.minHeight = `${old.offsetHeight + 40}px`; // the block grew
+      old.replaceWith(fresh);
+      swap(fresh, 'htmx:afterSwap');
+    }
+
+    async function scrollable(): Promise<void> {
+      await show();
+      thread().style.maxHeight = '120px';
+      thread().style.overflowY = 'auto';
+      expect(thread().scrollHeight, 'the thread overflows').to.be.greaterThan(thread().clientHeight + 200);
+    }
+
+    it('leaves a reader who scrolled up where they are when the result block redraws itself', async () => {
+      await scrollable();
+      thread().scrollTop = 0;
+
+      pollResult();
+
+      expect(thread().scrollTop).to.equal(0);
+    });
+
+    it('stays at the bottom for a reader who is there when the result block redraws itself', async () => {
+      await scrollable();
+      thread().scrollTop = thread().scrollHeight;
+
+      pollResult();
+
+      expect(thread().scrollHeight - thread().scrollTop - thread().clientHeight).to.be.at.most(1);
+    });
+
+    it('goes to a new entry even when the reader scrolled up', async () => {
+      await scrollable();
+      thread().scrollTop = 0;
+
+      swap(thread(), 'htmx:beforeSwap');
+      const entry = document.createElement('article');
+      entry.style.minHeight = '100px';
+      thread().append(entry);
+      swap(thread(), 'htmx:afterSwap');
+
+      expect(thread().scrollHeight - thread().scrollTop - thread().clientHeight).to.be.at.most(1);
+    });
   });
 
   it('turns off the cards of a question that was answered and keeps the newest question live', async () => {
