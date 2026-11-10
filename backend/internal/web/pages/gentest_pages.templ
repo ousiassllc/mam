@@ -16,6 +16,7 @@ templ generationNav(current string) {
 	<nav class="flex flex-wrap gap-1 border-b border-border pb-2 text-sm" aria-label="単発生成">
 		for _, l := range []struct{ Key, Label, Href string }{
 			{"new", "生成する", paths.GenerationTest()},
+			{"chat", "チャットで作る", paths.GenerationTestChat()},
 			{"match", "画像から似せる", paths.GenerationTestMatch()},
 			{"inpaint", "一部だけ描き直す", paths.GenerationTestInpaint()},
 			{"history", "履歴", paths.GenerationTestHistory()},

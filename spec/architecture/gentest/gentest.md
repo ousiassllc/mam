@@ -220,6 +220,8 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 プロジェクト一覧の分析・設定の隣にリンク。画像／動画の切り替え、モデルのカード（タップで選ぶ。選べないものは「選べません」のバッジで、理由は「?」ヘルプと読み上げにある）、プロンプトの追加（複数）とネガティブ、本数・縦横比（動画は解像度・長さ）、入力画像（ドロップゾーン 1 つ＋プロジェクト・履歴のモーダル。サムネイルの格子で番号・外す・並べ替え・拡大。画像は役割（全体・顔だけ・画風だけ・編集対象）と強さを、選んだモデルが使えるときだけ出し、ポーズを真似させない設定と LoRA（名前・強さ）がつく。画像／動画を切り替えると、ブラウザで選んだファイルは外れる（画面ごと入れ替わるため）。モデルのカードに入力画像のアイコン。動画は最初／最後のフレーム・自由な参照の役割）、「見積りを見る」→ 確認（件数・モデルごとの内訳・合計・単価なしの注記・警告・上限超過）→ 「この内容で実行する」→ 進捗（2 秒ごと・取り消し）と比較表（行＝モデル、列＝プロンプト）。`/generation-test/history`（モデル・種類・お気に入りで絞り込み、詳細、削除、お気に入り、ファイルのダウンロード、合計コストの 1 行）、`/generation-test/prompts`（プロンプト履歴: 再利用・削除）。`/generation-test/inpaint`（一部だけ描き直す。§3.5。ナビ「一部だけ描き直す」。結果の詳細の同じ名前のボタンから、その結果を元画像にして開く）。詳細は取り込みフォーム（参照／アセット・種類・名前・タグ・スロット）を持つ。ルートは [endpoints-gentest.md](../../api/endpoints-gentest.md)。英訳のスイッチ「英語に訳して送る」（既定 ON。説明は「?」。§3.1）があり、訳した英語は比較表の列と結果の詳細に出る（入力した文と送った英語の両方）。
 
+**チャットで作る**（`/generation-test/chat`。Issue #1138）: フォームを使わず、LLM と相談しながらモデルの提案・比較 → 見積り → 確認のカード → 実行 → 結果の表示まで進めるタブ。ツールは MCP ツールと同じサービス（`ModelsWhere`・`Estimate`・`Run`）を呼び、有料の生成は確認のカードのボタンでしか始まらない。しくみは [gentest-chat.md](gentest-chat.md)。
+
 プロンプト履歴は（プロンプト, ネガティブ）で重複排除し、使用回数と最後に使った日時を持つ。**明示の削除だけ**で消え、結果の履歴とは独立（結果を消しても残り、消しても結果に影響しない）。
 
 **本線との違い（Issue #1108）**: 単発生成は試用の経路で、結果はプロジェクトの Scene / Shot の Take にならない（§7 の取り込みで、ユーザーが選んだ結果だけが参照・アセットとして入る）。画面の上部に「単発生成は試用の経路で、ここで作った動画はプロジェクトの Shot（制作の本線）の Take にならない。本線の Shot は Scene / Shot の「生成」で作る」と書く。Scene / Shot 画面にも同じ違いを書く（`#gentest-vs-main-line`）。
@@ -242,6 +244,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | `poses` / `posetest` | Shisei のポーズ集（導入・一覧・絞り込み・ファイルの解決。`posestest` は偽の GitHub で導入までを走らせる道具）と、ポーズの画像を入力にした実行のテスト（Issue #986） |
 | `intent` / `qualitytest` | やりたいこと（`intents.json`。埋め込みの選択肢と候補モデル・`Recommend` の選び方。Issue #977）と、品質のプリセット・やりたいことの選択・何も触らないときのグラフを走らせるテスト |
 | `recipe` / `exposedreq` / `exposedpick` / `comfyopen` / `recipetest` | レシピ（保存・一覧・使う・使えない理由）、リクエストの画面に出す値の検査と計画、画面に出す値を選ぶ側、今の設定を ComfyUI で開く、それらのテスト（Issue #977 ステージ 2。§3.7） |
+| `agent/gentestchat` / `service/gentest/chat` / `web/handler/gentest/chatscreen` | 「チャットで作る」（Issue #1138。[gentest-chat.md](gentest-chat.md)）: LLM のエージェントループの動作の型と検査、会話・確認のカード・ツールの実体、画面のルート |
 | `facefusion`（`internal/facefusion`。サービスの外） | FaceFusion の検出・モデルの表とライセンスの級・`headless-run` の起動（[face-swap.md](face-swap.md)）。`runner/faceswap.go`・`runner/facescore.go` が呼ぶ |
 | `face`（`internal/service/gentest/face`） | 顔の入れ替え（`Swap`・`Available`）と、アプリがサービスに渡す顔のモデルの口（`Crop`・`Score`・`Swapper`）。`service/gentest` の行数の上限のため別パッケージ。テストもここ |
 | `venhance` / `videoenhance`（`internal/service/gentest/…`） | 動画の大きさ・コマ数を変える処理（Issue #1031。§3.9）。`venhance` は `Resolve`〔値の検査と出力の予定〕・見積りの置き場 `Estimates`・`Prober`（契約の型 `Op`・`Source`・`Params`・`Cloud` の口は `agent/cloudenhance`。ハンドラーは agent を import できないので `venhance` が `Op` と定数を別名で出す）、`videoenhance` は `Enhancers`・`EstimateEnhance`・`Enhance`。`runner/venhance.go` が結果 1 件を実行する。`service/gentest` の行数の上限のため別パッケージ。テストもここ |

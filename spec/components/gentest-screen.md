@@ -19,6 +19,7 @@
 | 〃（`organisms/gentest/videoenhancebox/`・`web/handler/gentest/venhancescreen/`） | `Box`・`QuoteBox`・`Form`・`Op`・`Quote` / `Register`・`FormFor`・`KVs`・`Estimate`・`Enhance` | 結果の詳細の動画用の箱（Issue #1031。大きくする・滑らかにする。ローカルは 1 段、Topaz は見積り → 確認 → 実行）。ハンドラーは `service/gentest/videoenhance` を呼ぶ（行数の上限のため別パッケージ） |
 | 〃（`match.templ`・`match_data.go`） | `MatchForm`・`MatchBox`・`MatchWords`・`MatchConfirmCleared` | プロンプトマッチ（Issue #916。[../architecture/gentest/prompt-match.md](../architecture/gentest/prompt-match.md)）。`MatchForm`: 参考の画像（ドロップゾーン 1 つ。選ぶとそのまま見える）・モデルの選択・進め方（おまかせ / 1回だけ / 調整のカード）・目標の似てる度（スライダーと大きな数字）・上限の回数（おまかせのときだけ出す）・言葉の指示（省略可）。`MatchBox`: 参考のサムネイル・「いちばん似ている」の大きな数字と目標・状態・取り消し・ベストのプロンプト（コピー・「単発生成で比べる」）・各回のタイムライン（画像・似てる度の数字とバー・直したところ・違い・プロンプトと直す前のプロンプト）。`MatchWords`: 言葉で直すフォーム（ポーリングで描き直す箱の外に置く。入力中の文字を失わないため）。確認は `ConfirmBox`（`Match`・`RunPath`）を使う |
 | 〃 | `PromptHistory` | プロンプト履歴（再利用のリンク・削除） |
+| 〃（`organisms/gentest/chat/`・`web/handler/gentest/chatscreen/`） | `Chat`・`Composer`・`Messages`・`ProposalCard`・`ResultBlock` / `Register`・`Send`・`Confirm`・`Dismiss`・`Batch` | 「チャットで作る」のタブ（Issue #1138。LLM と相談 → モデルの提案・比較 → 見積り → 確認のカード → 実行 → 結果をスレッドで。有料の生成は確認のカードのボタンだけが始める）。部品と挙動は [gentest-chat.md](gentest-chat.md)、しくみは [../architecture/gentest/gentest-chat.md](../architecture/gentest/gentest-chat.md) |
 | handler（`web/handler/gentest/`） | `Handlers` | ルート（`Register`）。`gentest.Service` を呼ぶ。`format.go` が価格・能力・状態を表示用の文字列に直し、`request.go` がフォームを要求に直し、`batch.go` が結果を比較表にする。organism はサービスを import しない |
 | 〃（`web/handler/gentest/matchscreen/`） | `Register`・`Page`・`Estimate`・`Run`・`Batch`・`Cancel`・`Adjust` | プロンプトマッチの画面のルート。`match.Service` を呼ぶ（ディレクトリの行数上限のため別パッケージ）。実行を始めた応答は、タイムライン・言葉の指示のフォーム（帯域外）・空にした確認を返す |
 | 〃（`web/handler/gentest/gtshare/`） | `USD`・`USDPtr`・`PriceText`・`StatusText`・`ConfirmLines`・`Render`・`Refuse` | 単発生成の画面とプロンプトマッチの画面が共有する、金額・単価・状態の言葉（単価は「無料（ローカル）」「単価なし（見積りの合計に入りません）」、秒単価の列挙）・確認の内訳の行・エラーへの応答。2 つの画面が写し合って文言がずれていたのを 1 か所にした（Issue #916 の統合レビュー） |
@@ -138,3 +139,4 @@
 | 1.45 | 2026-11-07 | 再実行しても結果の区画が前回のままだった不具合を直した。結果は 1 つの `#gt-batch` ではなく、実行ごとのブロック（`#gt-batch-<batch_id>`）を `#gt-batches` の下へ足す形にし、各ブロックは自分のバッチだけを取り直す。ブロックに実行の ID・開始時刻・設定を出す（状態は実装済み） | Issue #1109 |
 | 1.46 | 2026-11-07 | 顔の類似度がオフの案内のリンク先（`paths.ModelManagerFaceModels()` = `/model-manager/face-check#mm-face-models`）を実装した | Issue #1101 |
 | 1.47 | 2026-11-10 | 画面名を「生成テスト」から「単発生成」に改めた（見出し・メニュー・文言。ルートと `data-testid` は変えない。過去の変更履歴の文は当時のまま） | Issue #1137 |
+| 1.48 | 2026-11-10 | 「チャットで作る」のタブ（`generationNav` の `chat`）を足した。部品と挙動は [gentest-chat.md](gentest-chat.md) | Issue #1138 |

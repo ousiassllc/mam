@@ -74,7 +74,7 @@ flowchart TB
 
 ジョブ一覧画面（`jobs_page` と organisms の `jobs`）のコンポーネントは [jobs-screen.md](jobs-screen.md)。
 
-単発生成画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)（画像のフォームの 3 段「かんたん / こだわり / ComfyUI」と結果のボタンは [gentest-tiers.md](gentest-tiers.md)）。トップ画面のツールのカード（#846。実装済み）は [home-screen.md](home-screen.md)、カード・アイコンの部品は [shared-ui-parts.md](shared-ui-parts.md)。全体の設定画面のサブページ・モーダル（#847）の画面仕様案（実装前）は [settings-screen.md](settings-screen.md)。
+単発生成画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)（画像のフォームの 3 段「かんたん / こだわり / ComfyUI」と結果のボタンは [gentest-tiers.md](gentest-tiers.md)、チャットで作るタブは [gentest-chat.md](gentest-chat.md)）。トップ画面のツールのカード（#846。実装済み）は [home-screen.md](home-screen.md)、カード・アイコンの部品は [shared-ui-parts.md](shared-ui-parts.md)。全体の設定画面のサブページ・モーダル（#847）の画面仕様案（実装前）は [settings-screen.md](settings-screen.md)。
 
 初回ガイド（ウォークスルー 3 ページと初期セットアップ。`pages` の `onboarding_page`、organisms の `onboarding`。#863。実装済み）は [onboarding-screen.md](onboarding-screen.md)。ルートは [../api/endpoints-onboarding.md](../api/endpoints-onboarding.md)。設定の保存は設定画面の部品とルートをそのまま使い、ガイド専用の保存経路は持たない。
 

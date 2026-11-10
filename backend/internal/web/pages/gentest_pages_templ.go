@@ -47,6 +47,7 @@ func generationNav(current string) templ.Component {
 		}
 		for _, l := range []struct{ Key, Label, Href string }{
 			{"new", "生成する", paths.GenerationTest()},
+			{"chat", "チャットで作る", paths.GenerationTestChat()},
 			{"match", "画像から似せる", paths.GenerationTestMatch()},
 			{"inpaint", "一部だけ描き直す", paths.GenerationTestInpaint()},
 			{"history", "履歴", paths.GenerationTestHistory()},
@@ -60,7 +61,7 @@ func generationNav(current string) templ.Component {
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 25, Col: 92}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 26, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -78,7 +79,7 @@ func generationNav(current string) templ.Component {
 				var templ_7745c5c3_Var3 templ.SafeURL
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(l.Href))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 27, Col: 186}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 28, Col: 186}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -91,7 +92,7 @@ func generationNav(current string) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 27, Col: 198}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 28, Col: 198}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
