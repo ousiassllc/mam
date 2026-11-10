@@ -52,10 +52,12 @@ func (s *DirectorService) handlerOf(t commandinterpreter.OpType) (opHandler, boo
 // notWired is what the chat says of an operation on the global settings that this app has no service for (a build without the model manager).
 const notWired = "この環境では、その設定をチャットから変更できません。設定画面から行ってください。"
 
-// actionResult is what carrying out an action did: the sentence for the thread and the messages that follow it.
+// actionResult is what carrying out an action did: the sentence for the thread and the messages that follow it. failed is true when the operation could not run for a reason
+// the user can act on (text says it): nothing was changed, and the sentence must not be told as "done".
 type actionResult struct {
 	text     string
 	messages []domain.ChatMessage
+	failed   bool
 }
 
 // The buttons of a confirmation card, and the words that answer one in the composer.
@@ -122,7 +124,7 @@ func (s *DirectorService) applyOp(ctx context.Context, project domain.Project, o
 	h, ok := s.handlerOf(op.Type)
 	if !ok {
 		if spec, registered := commandinterpreter.SpecOf(op.Type); registered && spec.Global {
-			return actionResult{text: notWired}, nil
+			return actionResult{text: notWired, failed: true}, nil
 		}
 		return actionResult{}, fmt.Errorf("the action %q of a card is not an operation the chat carries out", op.Type)
 	}
@@ -146,9 +148,9 @@ func (s *DirectorService) applyOp(ctx context.Context, project domain.Project, o
 	)
 	switch {
 	case errors.As(err, &ve):
-		return actionResult{text: "実行できませんでした: " + ve.Message}, nil
+		return actionResult{text: "実行できませんでした: " + ve.Message, failed: true}, nil
 	case errors.As(err, &ref):
-		return actionResult{text: "実行できませんでした: " + ref.Message}, nil
+		return actionResult{text: "実行できませんでした: " + ref.Message, failed: true}, nil
 	}
 	return res, err
 }
