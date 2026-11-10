@@ -111,6 +111,7 @@
 |---|---|---|
 | `no_backend` | API プロバイダーの API キーが未登録（単発生成が前から使っているコード。値は変えない）。登録した接続先のモデルは接続先が使えない | `/settings/api-keys`（接続先のモデルは `/settings/local-models`） |
 | `not_signed_in` | サブスク（ChatGPT）に未ログイン | `/settings/api-keys`（「ChatGPT でログイン」は同じ分類） |
+| `provider_unsupported` | 選んだ API プロバイダー（OpenRouter / fal.ai / Replicate）が、そのクラウド動画モデルを提供しない（`domain.ExcludedProvider`。`unavailable_message` に、どのプロバイダーならそのモデルを使えるかを書く）。プロバイダーを替えるか公式に戻せば使える。単価は出さない（`unknown`） | `/settings/api-keys`（プロバイダーの選択は API キーの区画の先頭） |
 | `not_installed` | ローカルのモデルが未導入・導入中・ファイル欠け（モデルマネージャーのカタログ） | `/model-manager` |
 | `age_gate` | 成人向けのモデルで、年齢確認がオフ（アダプターの理由は文なので、一覧はこのコードで返す） | `/model-manager` |
 | `missing_node` | ワークフローの追加ノードが未導入（単発生成が前から使っているコード） | `/model-manager` |
