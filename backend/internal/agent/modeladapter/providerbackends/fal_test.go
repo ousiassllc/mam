@@ -189,3 +189,35 @@ func TestFalABlipOfTheResultIsRetried(t *testing.T) {
 	require.NoError(t, err)
 	readVideo(t, res)
 }
+
+// Only the 5xx answers count: a 429 of the result in between (asked again, as ever) does not use up a try, and the text of the failed job holds the model's words once.
+func TestFalAFailedJobCountsOnlyTheFiveHundredsAndSaysTheirReasonOnce(t *testing.T) {
+	var results atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost:
+			_, _ = w.Write([]byte(`{"request_id":"r"}`))
+		case strings.HasSuffix(r.URL.Path, "/status"):
+			_, _ = w.Write([]byte(`{"status":"COMPLETED"}`))
+		default:
+			if results.Add(1) == 2 {
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"detail":"the model crashed"}`))
+		}
+	}))
+	defer srv.Close()
+	_, b := backends(t, srv, viaprovider.Fal, map[string]string{"fal": "k"})
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	_, err := b.Video[domain.ModelKling3].GenerateVideo(ctx, "ignored", modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 5, Resolution: "720p", AspectRatio: "16:9"})
+
+	require.Error(t, err)
+	require.NoError(t, ctx.Err())
+	assert.EqualValues(t, 4, results.Load(), "three 5xx answers and the 429 between them")
+	assert.Contains(t, err.Error(), "the model crashed")
+	assert.NotContains(t, err.Error(), "HTTP 500", "the reason is the model's words, not the error of the answer they came in: %s", err)
+}

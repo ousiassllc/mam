@@ -25,6 +25,8 @@ func TestDetect_AnOrdinaryDirectionThatMentionsTheExportIsNotAnExport(t *testing
 		"動画を書き出さないで、まず確認したい",
 		"この動画をエクスポートせずに確認したい",
 		"動画を書き出す手前で音量を揃えて",
+		"この動画の書き出しは終わった？",
+		"動画のエクスポートは完了した？",
 		"動画を書き出しする前に確認したい",
 		"Before export, make this video shorter",
 		"Change the mood of the video after exporting",
@@ -46,6 +48,8 @@ func TestDetect_ARequestBesideADirectionStillReads(t *testing.T) {
 		"この動画を書き出して。書き出す前に確認はいらない": export.OpExportVideo,
 		"プロジェクト全体を明るくして、動画を書き出して":  export.OpExportVideo,
 		"動画をまるごと書き出して":             export.OpExportVideo,
+		"この動画の書き出しは最終版でお願い":        export.OpExportVideo,
+		"この動画をもう一度書き出しなおして":        export.OpExportVideo,
 		"この動画の書き出しは 1080p でお願い":    export.OpExportVideo,
 	} {
 		got := detect(t, message)

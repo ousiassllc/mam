@@ -14,8 +14,8 @@ var (
 	// "書き出しは最後に"). It is no request, so the word is dropped before the message is read.
 	mentionedOnly = regexp.MustCompile(`(?i)((書き出|書出|エクスポート|ダウンロード)(する|した|しない|せる|できる|す|し|しする)?(の?(前|まえ|直前|直後|手前|より前|後|あと|時|とき|際|場合|までに|まで|ので|ため|ように)|たら|れば|なら)` +
 		`|(書き出|書出|エクスポート)(する|す)と` + // "書き出すと EXPORTED になる": what the export does
-		`|(書き出|書出|エクスポート)(し)?は(最後|最終|後|あと|まだ|別|不要|いらない|しない|しません|しなくて|今は)` + // "書き出しは最後に"; "書き出しは 1080p で" is a request
-		`|(書き出|書出|エクスポート|ダウンロード)(さな|さず|せず|しな|しません)` + // "書き出さないで", "エクスポートせずに": not asking for it
+		`|(書き出|書出|エクスポート)(し)?は(最後|最終的|後|あと|まだ|別|不要|いらない|しない|しません|しなくて|今は|終わ|完了|済|できた|できて)` + // "書き出しは最後に"; "書き出しは 1080p で" is a request
+		`|(書き出|書出|エクスポート|ダウンロード)(さな|さず|せず|しない|しなく|しなかった|しません)` + // "書き出さないで", "エクスポートせずに": not asking for it
 		`|\b(before|after|until|once|when|while|prior to)\s+(\w+\s+){0,2}?(export|download)\w*|\b(export|download)(ing|ed|s)\b)`)
 	pastExport   = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
 	downloadWord = regexp.MustCompile(`(?i)(ダウンロード|download)`)

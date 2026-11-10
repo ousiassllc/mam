@@ -48,6 +48,7 @@ func (s *Service) Confirm(ctx context.Context, sessionID, proposalID string) (Re
 	p.State = StatePending // nothing was generated: the card can be pressed again, unless a newer estimate was made meanwhile
 	if p.replaced {        // the card was replaced while it ran: it is closed for good, and the screen is told (an error would leave its buttons up)
 		p.State = StateSuperseded
+		se.turns = append(se.turns, gentestchat.Turn{Role: gentestchat.RoleTool, Text: "The user pressed the first confirmation card but it had been replaced by a newer estimate meanwhile, nothing was generated. The newest card is the one to press."})
 		return Reply{Changed: []Proposal{*p}, Messages: []Message{{ID: newID(), Kind: KindStatus, Failed: true, Text: "実行しませんでした: 押している間に新しい見積りが作られたため、このカードは使えなくなりました。新しいカードで実行してください"}}}, nil
 	}
 	return Reply{}, runErr
