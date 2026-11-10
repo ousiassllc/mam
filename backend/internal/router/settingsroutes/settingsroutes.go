@@ -136,7 +136,7 @@ func registerRestart(engine *gin.Engine, s *Services) {
 func Register(engine *gin.Engine, services *service.Services, s *Services, logger *slog.Logger) {
 	pages := pageServices(services, s)
 	update := pages.Update
-	credentialshandler.Register(engine, credentialshandler.Keys{Svc: services.Credentials, Tester: pages.Tester}, pages.Page(paths.SettingsAPIKeys))
+	credentialshandler.Register(engine, credentialshandler.Keys{Svc: services.Credentials, Tester: pages.Tester, Models: pages.Models}, pages.Page(paths.SettingsAPIKeys))
 	if update != nil {
 		engine.POST(paths.UpdateCheck(), updatehandler.Check(update))
 	}

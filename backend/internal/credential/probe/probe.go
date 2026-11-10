@@ -5,7 +5,7 @@
 //
 // The calls are the ones of the providers' own reference pages (checked 2026-10-25, not run with a real key):
 // Anthropic GET /v1/models, OpenAI GET /v1/models, Google GET /v1beta/models, Black Forest Labs GET /v1/credits,
-// Runway GET /v1/organization, ElevenLabs GET /v1/user/subscription and Topaz Labs GET /account/v1/credits/balance (its FAQ, checked
+// Runway GET /v1/organization, OpenRouter GET /api/v1/key, Replicate GET /v1/account, ElevenLabs GET /v1/user/subscription and Topaz Labs GET /account/v1/credits/balance (its FAQ, checked
 // 2026-11-04). A key is sent in the header the provider's
 // adapter uses and nowhere else: never in a URL, never logged, never part of a result.
 package probe
@@ -79,6 +79,8 @@ var calls = map[string]call{
 	"elevenlabs": {baseURL: "https://api.elevenlabs.io", path: "/v1/user/subscription", headers: func(k string) map[string]string {
 		return map[string]string{"xi-api-key": k}
 	}},
+	"openrouter": {baseURL: "https://openrouter.ai", path: "/api/v1/key", headers: bearer},
+	"replicate":  {baseURL: "https://api.replicate.com", path: "/v1/account", headers: bearer},
 	"topaz": {baseURL: "https://api.topazlabs.com", path: "/account/v1/credits/balance", headers: func(k string) map[string]string {
 		return map[string]string{"X-API-Key": k}
 	}},

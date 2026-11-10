@@ -208,6 +208,10 @@ const (
 	VendorAlibaba Vendor = "alibaba"
 	// VendorLuma is Luma Ray 3.2 on the Agents API (https://agents.lumalabs.ai, one API key as the Bearer token).
 	VendorLuma Vendor = "luma"
+	// The API aggregators of viaprovider: the key and the vendor of their calls, whichever model is called.
+	VendorOpenRouter Vendor = "openrouter"
+	VendorFal        Vendor = "fal"
+	VendorReplicate  Vendor = "replicate"
 )
 
 // VendorOf returns the vendor of a model.
@@ -244,7 +248,7 @@ func VendorOf(m domain.ModelName) Vendor {
 
 // Vendors lists every vendor that has a backend.
 func Vendors() []Vendor {
-	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorKling4, VendorSeedance, VendorRunway, VendorMiniMax, VendorAlibaba, VendorLuma}
+	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorKling4, VendorSeedance, VendorRunway, VendorMiniMax, VendorAlibaba, VendorLuma, VendorOpenRouter, VendorFal, VendorReplicate}
 }
 
 // ImageCost is the most one image of the model can cost (its dearest size): what a budget check holds.

@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/health"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/policy"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/settings"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/videoprovider"
 )
 
 var (
@@ -35,6 +36,7 @@ func TestSpecCoverage_EveryRouteMapsToARegisteredToolAndEveryToolIsDocumented(t 
 		analytics.Register(r, env.Services)
 		health.Register(r, env.Services)
 		settings.Register(r, env.Services)
+		videoprovider.Register(r, env.Services)
 	})
 	registered := env.Registrar.ToolNames()
 	require.NotEmpty(t, registered)

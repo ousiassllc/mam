@@ -79,6 +79,10 @@ Kling 3.0（`kling-3.0`、API の `kling-v3`）は、旧 API の経路（`api.kl
 | `kling-3.0`（`kling-v3`）が新ホスト `api-singapore.klingai.com` と API キー 1 つで通るか（通れば §5.1 のとおり移せる） | **未検証**（§4 と同じ） |
 | Kling 4.0 のネイティブ音声の有無（`NativeAudio` は偽にしてある） | **未確認** |
 
+## 6. API 統合サービス経由の Kling（Issue #1136）
+
+公式の API は最低前払いが重い（二次ソース: Flagship $500〜 / General $700〜、180 日で失効）。OpenRouter・fal.ai・Replicate は従量のクレジットで Kling を使える。設定の「API プロバイダー」で選ぶと、`kling-3.0`・`kling-4.0` の見積りと呼び出しがその先に向く（`klingBackend`・`kling4Backend` は公式を選んだときだけ使う）。提供状況・単価・呼び方・提供しないものの扱いは [model-adapters.md §9.6](../model-adapters.md)。どれも Kling の再販・パートナー提供で、**商用利用は Kuaishou / Kling 側の規約も前提**（本番の前に確認する）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -86,3 +90,4 @@ Kling 3.0（`kling-3.0`、API の `kling-v3`）は、旧 API の経路（`api.kl
 | 1.0 | 2026-10-25 | 新規作成。公式ドキュメントの新旧の形と、`klingBackend` との差、未検証の項目を記録 | Issue #838。コードは変えず、実機で確かめるまでの状態を残すため |
 | 1.1 | 2026-10-25 | 認証の行の出典を直し（認証のページと更新履歴を分けた）、旧ページで確認できなかった項目を明記、ホスト名を最初の確認事項に、「決定」の言い方を直した | 独立レビュー（PR #849）の指摘。過大な言い方の訂正 |
 | 1.2 | 2026-10-28 | §5（Kling 4.0 の公式の形・`kling4Backend` との対応・Kling 3.0 を新ホストへ移さない理由・未検証）を足した | Issue #873 |
+| 1.3 | 2026-11-10 | §6（API 統合サービス経由の Kling。OpenRouter・fal.ai・Replicate）を足した | Issue #1136 |

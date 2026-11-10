@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 )
@@ -90,4 +91,22 @@ func TestEffective_IsTheAssignmentOfTheAdapterAsAStartWouldUseIt(t *testing.T) {
 	assert.Equal(t, localImage, cfg.ImageRouteFor(modeladapter.PurposeNewReference).Primary.Model)
 	assert.Equal(t, localVideo, cfg.Policies[domain.QualityBalanced].Primary.Model, "the plan names and prices the model a start would use")
 	assert.Equal(t, domain.ModelSeedance2, a.Config().Policies[domain.QualityBalanced].Primary.Model, "the running setting is left as it is")
+}
+
+func TestForAdapter_AProviderThatDoesNotServeAModelSaysSoAndTheMissingKeyIsTheProviders(t *testing.T) {
+	publish(t)
+	cfg := localConfig()
+	cfg.VideoProvider = viaprovider.OpenRouter
+	b := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: noop{}, domain.ModelKling4: noop{}}}
+	env := modelroute.ForAdapter(modeladapter.New(cfg, b))
+
+	refused := env.Check(domain.ModelKling4)
+	assert.Equal(t, modelfilter.ReasonProvider, refused.Reason)
+	assert.Contains(t, refused.Message, "OpenRouter は Kling 4.0 を提供していません")
+	assert.Equal(t, "/settings/api-keys", refused.Route)
+
+	assert.True(t, env.Check(domain.ModelKling3).Available, "served, and the stub backend has no key to miss")
+	noBackend := modelroute.ForAdapter(modeladapter.New(cfg, modeladapter.Backends{})).Check(domain.ModelKling3)
+	assert.Equal(t, modelfilter.ReasonNoKey, noBackend.Reason)
+	assert.Contains(t, noBackend.Message, "OpenRouter の API キー")
 }

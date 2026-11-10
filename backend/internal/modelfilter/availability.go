@@ -8,13 +8,14 @@ type Reason string
 // The reasons. no_backend, circuit_open and missing_node are the codes the generation test already used (domain.ExcludedNoBackend, domain.ExcludedCircuitOpen,
 // modelcatalog.ExcludedMissingNode); their values do not change. The adapter's reason for the age gate is a sentence (agegate.Excluded): the lists give age_gate for it.
 const (
-	ReasonNoKey        Reason = "no_backend"        // an API provider without a saved API key (the model has no backend yet)
-	ReasonCircuitOpen  Reason = "circuit_open"      // the vendor failed repeatedly and is paused for a while
-	ReasonAgeGate      Reason = "age_gate"          // an adult model while the age confirmation is off
-	ReasonMissingNode  Reason = "missing_node"      // a ComfyUI workflow whose custom nodes are not installed
-	ReasonNotSignedIn  Reason = "not_signed_in"     // a subscription provider (ChatGPT) without a sign-in, or with image generation off
-	ReasonNotInstalled Reason = "not_installed"     // a local model that is not installed (the model manager's catalog)
-	ReasonEndpoint     Reason = "endpoint_unusable" // a registered ComfyUI / OpenAI-compatible endpoint that cannot be used
+	ReasonNoKey        Reason = "no_backend"           // an API provider without a saved API key (the model has no backend yet)
+	ReasonCircuitOpen  Reason = "circuit_open"         // the vendor failed repeatedly and is paused for a while
+	ReasonProvider     Reason = "provider_unsupported" // the selected API provider (OpenRouter, fal.ai, Replicate) does not serve the model (domain.ExcludedProvider); another provider or the official one does
+	ReasonAgeGate      Reason = "age_gate"             // an adult model while the age confirmation is off
+	ReasonMissingNode  Reason = "missing_node"         // a ComfyUI workflow whose custom nodes are not installed
+	ReasonNotSignedIn  Reason = "not_signed_in"        // a subscription provider (ChatGPT) without a sign-in, or with image generation off
+	ReasonNotInstalled Reason = "not_installed"        // a local model that is not installed (the model manager's catalog)
+	ReasonEndpoint     Reason = "endpoint_unusable"    // a registered ComfyUI / OpenAI-compatible endpoint that cannot be used
 )
 
 // Where a model comes from, for the route of its reason: the same words as modelcatalog.Source*.
@@ -66,7 +67,7 @@ func RouteOf(reason Reason, source string) string {
 			return paths.ModelManagerCategory(paths.MMLocalLLM)
 		}
 		return paths.SettingsCategory(paths.SettingsLocalModels)
-	case ReasonNotSignedIn:
+	case ReasonNotSignedIn, ReasonProvider: // the provider is chosen at the top of the API key category
 		return paths.SettingsCategory(paths.SettingsAPIKeys)
 	case ReasonNoKey:
 		if source == SourceLocal || source == SourceWorkflow {

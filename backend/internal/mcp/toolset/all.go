@@ -35,6 +35,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotgen"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotplan"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/takes"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/videoprovider"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/workflows"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/worldnotes"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -65,6 +66,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	analytics.Register(r, svc)
 	health.Register(r, svc)
 	settings.Register(r, svc)
+	videoprovider.Register(r, svc) // the API provider of the cloud video models (#1136): the package is below settings, which is at its size limit
 	localmodels.Register(r, svc)
 	modelmgr.Register(r, svc)
 	loratools.Register(r, svc) // LoRA を追加 (#1119): the package is below modelmgr, which is at its size limit

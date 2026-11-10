@@ -13,14 +13,15 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// Load is modeladapter.LoadConfig followed by Validate: the Config of the settings file, or an
+// Load is Read followed by Validate: the Config of the settings file, or an
 // error that says what is wrong with it. An empty path selects the (valid) defaults. A file that
 // still names Imagen 4 is read as Nano Banana (migrateLegacyModels).
 func Load(path string) (modeladapter.Config, error) {
-	cfg, err := modeladapter.LoadConfig(path)
+	cfg, err := Read(path)
 	if err != nil {
 		return modeladapter.Config{}, err
 	}
@@ -41,7 +42,7 @@ func Validate(c modeladapter.Config) error {
 	var errs []error
 	for _, check := range []func(modeladapter.Config) []error{
 		validateVendors, validateModels, validateLocal, validateImageRoutes,
-		validatePolicies, validateRouting, validateRetry, func(c modeladapter.Config) []error { return c.Gentest.Validate() },
+		validatePolicies, validateRouting, validateRetry, validateVideoProvider, func(c modeladapter.Config) []error { return c.Gentest.Validate() },
 	} {
 		errs = append(errs, check(c)...)
 	}
@@ -149,6 +150,14 @@ func validateRouting(c modeladapter.Config) []error {
 		errs = append(errs, errors.New("routing: min_samples must be positive, prior_quality within 0-1 and switch_margin not negative"))
 	}
 	return errs
+}
+
+// validateVideoProvider refuses a video_provider that is none of the providers (a typo would otherwise send nothing anywhere).
+func validateVideoProvider(c modeladapter.Config) []error {
+	if p := c.VideoProvider; p != "" && !p.Valid() {
+		return []error{fmt.Errorf("video_provider: %q is not one of %v", p, viaprovider.Providers())}
+	}
+	return nil
 }
 
 func validateRetry(c modeladapter.Config) []error {
