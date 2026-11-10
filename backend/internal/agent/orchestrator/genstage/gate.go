@@ -13,10 +13,10 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/genplan"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/genstage/told"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
@@ -29,8 +29,9 @@ type Chat interface {
 	Supersede(ctx context.Context, projectID, cardID, notice string) (bool, error)
 	// Announce posts an AI message that does not block the Project.
 	Announce(ctx context.Context, projectID string, m domain.ChatMessage) error
-	// RaiseEscalation asks the user for a decision the AI cannot make (the budget ceiling).
-	RaiseEscalation(ctx context.Context, projectID, text string, options []string, shotID string) error
+	// RaiseEscalationCard asks the user for a decision the AI cannot make (the budget ceiling). A button of body may carry the operation it carries out
+	// (domain.CardBody.OptionActions): the answer is then done, not only noted.
+	RaiseEscalationCard(ctx context.Context, projectID string, body domain.CardBody, shotID string) error
 }
 
 // Generator starts the generation of a Shot. *generation.Orchestrator implements it.
@@ -52,14 +53,13 @@ type Deps struct {
 	Logger   *slog.Logger
 }
 
-// Gate is the automatic start of the generation. What it does is derived from what is stored; the one thing it keeps in memory is the causes of the refusals for a model that cannot be used that the user was told (nomodel.go). Until a Generator is set (SetGenerator) it is off: the Orchestrator stops after the Scene / Shot plan and the user starts each Shot by hand.
+// Gate is the automatic start of the generation. What it does is derived from what is stored; the one thing it keeps in memory is the causes of the refusals for a model that cannot be used that the user was told (told). Until a Generator is set (SetGenerator) it is off: the Orchestrator stops after the Scene / Shot plan and the user starts each Shot by hand.
 type Gate struct {
 	d       Deps
 	gen     Generator
 	builder genplan.Builder
 
-	mu      sync.Mutex
-	noModel map[string]map[string]bool // Project ID -> the causes of the refusals for a model that cannot be used, as told
+	told *told.Causes // the causes of the refusals for a model that cannot be used, as told
 }
 
 // New returns a Gate that is off.
@@ -67,7 +67,7 @@ func New(d Deps) *Gate {
 	if d.Logger == nil {
 		d.Logger = slog.New(slog.DiscardHandler)
 	}
-	return &Gate{d: d, noModel: map[string]map[string]bool{}}
+	return &Gate{d: d, told: told.New()}
 }
 
 // SetGenerator turns the gate on. config is the Model Adapter's current setting (the prices). Call it while the application is wired, before the job queue starts.
@@ -103,3 +103,6 @@ func (g *Gate) JobChanged(ctx context.Context, jobID string, kick func(ctx conte
 		kick(ctx, projectID)
 	}
 }
+
+// PlanBuilder is the Builder the gate plans with: the Model Adapter's prices and the Project's policy (the chat reads the models of unknown price from it).
+func (g *Gate) PlanBuilder() genplan.Builder { return g.builder }

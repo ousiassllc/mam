@@ -66,3 +66,21 @@ func packCost(cfg modeladapter.Config) (c Cost, models string, unpriced []string
 	}
 	return c, string(freshModels[0]) + " / " + string(editModels[0]), unpriced
 }
+
+// UnpricedRoutes names the models of the Quality Policy whose price is not known: the image models of a Reference Pack and the video models of the policy (the
+// primary and the alternative), by the prices of cfg. It is the plan's Unpriced for a Project that has no Shot yet (#1139). A video model counts as priced when
+// a second of it costs something (or it is a local model), as for a plan.
+func UnpricedRoutes(cfg modeladapter.Config, q domain.QualityPolicy) []string {
+	_, _, out := packCost(cfg)
+	route, ok := cfg.Policies[q]
+	if !ok {
+		return out
+	}
+	for _, t := range []modeladapter.VideoTarget{route.Primary, route.Fallback} {
+		name := "動画: " + string(t.Model)
+		if priced(cfg, t.Model, cfg.VideoCost(t, 1)).Unknown && !slices.Contains(out, name) {
+			out = append(out, name)
+		}
+	}
+	return out
+}

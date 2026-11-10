@@ -59,6 +59,23 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 		}
 		return domain.Project{}, err
 	}
+	created, err := s.getProject(ctx, projectID)
+	if err != nil {
+		return domain.Project{}, err
+	}
+	// A budget stated in the first message ("予算は $20 で") is asked about before anything starts: the ceiling is set only when the user confirms it (#1139), and the
+	// Orchestrator waits for the answer, so the card is in the thread before the pipeline is kicked.
+	cards, err := s.statedBudgetCards(ctx, created, content)
+	if err != nil {
+		return domain.Project{}, err
+	}
+	if len(cards) > 0 {
+		cards = assignIDs(withProject(cards, projectID))
+		if err := s.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: cards}); err != nil {
+			return domain.Project{}, notFound(err)
+		}
+		s.publishCreated(projectID, cards)
+	}
 	s.kick(ctx, projectID)
 	return s.getProject(ctx, projectID)
 }

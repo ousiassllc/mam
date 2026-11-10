@@ -182,8 +182,8 @@ func refLinkOf(m domain.ThreadMessage) (refLink, bool) {
 // offersDelegate reports whether the question card has the "AIに任せる" button: not the Subject (#1108) and not the Brief summary (#1114).
 func offersDelegate(m domain.ThreadMessage) bool {
 	switch m.RefType {
-	case domain.RefBriefConfirm:
-		return false
+	case domain.RefBriefConfirm, domain.RefOperation:
+		return false // a confirmation is answered by its buttons: yes or no, never "left to the AI"
 	case domain.RefBriefField:
 		return domain.BriefField(m.RefID).CanDelegate()
 	}

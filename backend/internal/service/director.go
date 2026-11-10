@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
@@ -29,4 +31,8 @@ type DirectorService struct {
 	judges *repository.JudgeRepository
 	// brands are the Safety / Brand Constraints checked before a regeneration is queued.
 	brands *repository.BrandRepository
+	// policy sets the budget ceilings and the Quality Policy of a direction that changes them: the same path as the settings screen (director_ops.go).
+	policy *PolicyService
+	// unpriced names the models the Project would use whose price is not known (the Orchestrator's gate); nil without one.
+	unpriced func(ctx context.Context, projectID string) ([]string, error)
 }

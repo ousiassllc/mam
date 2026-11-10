@@ -40,6 +40,8 @@ type Input struct {
 	Spec *domain.ShotSpec
 	// Locks is the setting of the parameters of Target.
 	Locks domain.ParameterLocks
+	// Budget is the budget ceilings now set on the Project, so that "予算を倍に" can be turned into an amount.
+	Budget BudgetCeilings
 }
 
 // OpType is the kind of a structured operation.
@@ -69,6 +71,8 @@ const (
 	// OpUnsupported is a direction that has no operation (exporting, editing the timeline).
 	OpUnsupported OpType = "unsupported"
 )
+
+// The operations that change settings are described in the registry (ops.go): their constants are there, with what the system prompt says of them.
 
 // Operation is one structured operation. Only the fields of its Type are set.
 type Operation struct {
@@ -107,6 +111,13 @@ type Operation struct {
 
 	// OpUnsupported: why, in the user's language.
 	Reason string `json:"reason,omitempty"`
+
+	// OpSetBudget. A ceiling that is not named is left as it is; 0 removes it.
+	ProjectBudgetUSD *float64 `json:"project_budget_usd,omitempty"`
+	ShotBudgetUSD    *float64 `json:"shot_budget_usd,omitempty"`
+
+	// OpSetQualityPolicy.
+	Quality domain.QualityPolicy `json:"quality_policy,omitempty"`
 }
 
 // Regenerates reports whether the operation makes a new Take of the Shot.
@@ -124,26 +135,6 @@ type Command struct {
 	Operations []Operation
 }
 
-// systemPrompt is systemTemplate with the video models filled in from domain.VideoModels. It is built for every
-// call: the models the user registered come and go while the app runs.
-func systemPrompt() string {
-	return strings.Replace(systemTemplate, videoModelsPlaceholder, quotedChoices(domain.VideoModels()), 1)
-}
-
-const videoModelsPlaceholder = "{{video_models}}"
-
-// quotedChoices renders models as `"a", "b" or "c"`.
-func quotedChoices(models []domain.ModelName) string {
-	quoted := make([]string, len(models))
-	for i, m := range models {
-		quoted[i] = `"` + string(m) + `"`
-	}
-	if len(quoted) < 2 {
-		return strings.Join(quoted, "")
-	}
-	return strings.Join(quoted[:len(quoted)-1], ", ") + " or " + quoted[len(quoted)-1]
-}
-
 const systemTemplate = `You are the Command Interpreter of an AI video production team. The director talks to the team in chat.
 Convert the director's message into structured operations. Return ONLY one JSON object:
 {
@@ -157,7 +148,7 @@ Convert the director's message into structured operations. Return ONLY one JSON 
     {"type": "set_mode", "project_mode": "auto"},
     {"type": "create_note", "title": "主人公の口調", "content": "主人公は落ち着いた口調で話す。過去の火事の話は序盤では出さない。", "category": "character"},
     {"type": "create_branch", "count": 3, "point_type": "shot", "directions": ["ドアを開ける", "逃げる"]},
-    {"type": "unsupported", "reason": "書き出しはこのチャットからはまだ指示できません"}
+    {"type": "unsupported", "reason": "書き出しはこのチャットからはまだ指示できません"}{{extension_examples}}
   ]
 }
 
@@ -168,7 +159,7 @@ Operations:
 - "set_mode": "auto" or "director": the director wants the team to lead again (auto) or to only change what is told (director).
 - "create_note": the director asks the team to remember something ("覚えておいて", "メモして", "remember this"): a background, a way of speaking, a tone, or information to keep hidden. "content" is what to remember, in the director's words and language, without the request itself ("覚えておいて") and without the parts that are directions for a shot; "title" is a short title (at most 30 characters); "category" is one of ` + "`character`, `product`, `location`, `world`, `tone`, `other`" + ` and may be omitted when unsure. It is a project-wide note, not an operation on a shot.
 - "create_branch": the director wants alternative developments of the story from this shot or scene ("このカットから別展開を3つ作って"). "count" is how many (default 1). "point_type" is "shot" (after this shot, the default) or "scene" (from the start of this shot's scene). "directions" lists the developments the director named, one per branch, in the director's words; leave it empty when the director named none, the team proposes them.
-- "unsupported": the director asks for something that is not available: exporting, editing the timeline. "reason" is one short Japanese sentence.
+{{extension_docs}}- "unsupported": the director asks for something that is not available: exporting, editing the timeline. "reason" is one short Japanese sentence.
 
 Rules:
 - "scene" and "shot" are the numbers the director names ("Scene 2 の Shot 1", "シーン2のショット1"). Use 0 for both when the message does not name a shot. When the input says which shot the message is about, use its numbers.
@@ -273,7 +264,7 @@ func clean(op Operation, message string) (Operation, bool) {
 	case OpUnsupported:
 		return Operation{Type: OpUnsupported, Reason: strings.TrimSpace(op.Reason)}, true
 	}
-	return Operation{}, false
+	return cleanRegistered(op)
 }
 
 func validParts(in []domain.SpecPart) []domain.SpecPart {
@@ -288,7 +279,7 @@ func validParts(in []domain.SpecPart) []domain.SpecPart {
 
 func userPrompt(in Input) string {
 	var b strings.Builder
-	b.WriteString("## Message of the director\n" + in.Message + "\n\n## Shots of the project\n")
+	b.WriteString("## Message of the director\n" + in.Message + "\n\n## Budget ceilings of the project (USD)\n" + in.Budget.String() + "\n\n## Shots of the project\n")
 	if len(in.Shots) == 0 {
 		b.WriteString("(none yet)\n")
 	}

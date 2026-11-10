@@ -2,6 +2,7 @@ package genplan
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
@@ -36,6 +37,9 @@ func (p Plan) AnnounceText() string {
 	b.WriteString("・" + p.budgetText() + "\n")
 	if len(p.Unpriced) > 0 || p.Total().Unknown {
 		b.WriteString("・単価が分からない分があります。この分は予算上限に数えられず、上限を決めていても止まらないため、費用の上限は保証できません。\n")
+	}
+	if text := p.UnpricedNotice(); text != "" {
+		b.WriteString("・" + text + "\n")
 	}
 	b.WriteString("・見積に含まれないもの: Judge・Prompt Planner・Art Director など LLM の費用、Repair の再生成、Multi-model routing が実行時に入れ替えるモデルの差\n")
 	b.WriteString(mainline.BudgetCeilingScope + mainline.StopAuto)
@@ -97,6 +101,35 @@ func (p Plan) videoGroups() []string {
 			numbers(g.shots), g.line.VideoModel, g.line.Resolution, how, g.line.Takes, g.line.ClipSeconds, g.line.Takes*len(g.shots))
 	}
 	return out
+}
+
+// VideoSummary is the video side of the plan in a few words: "Kling 3.0 720p × 2 Take" for each model, resolution and number of Takes the Shots share.
+func (p Plan) VideoSummary() string {
+	var out []string
+	for _, l := range p.Lines {
+		text := "動画モデル未定"
+		if l.VideoModel != "" {
+			text = fmt.Sprintf("%s %s × %d Take", l.VideoModel, l.Resolution, l.Takes)
+		}
+		if !slices.Contains(out, text) {
+			out = append(out, text)
+		}
+	}
+	return strings.Join(out, " / ")
+}
+
+// UnpricedNotice is what the chat says when a budget ceiling is set and the plan holds a call whose price is not known (#1139): that call cannot be counted
+// against the ceiling. "" when no ceiling is set or every price is known.
+func (p Plan) UnpricedNotice() string {
+	if (p.ProjectCeiling == nil && p.ShotCeiling == nil) || len(p.Unpriced) == 0 {
+		return ""
+	}
+	return UnpricedModelsNotice(p.Unpriced)
+}
+
+// UnpricedModelsNotice is the sentence that tells the models whose price is not known are in the plan, for a Project that has a budget ceiling.
+func UnpricedModelsNotice(models []string) string {
+	return "単価不明のモデルが含まれます（予算が設定されています）: " + strings.Join(models, "、") + "。この呼び出しは予算上限に数えられないため、上限を決めていても止まりません。"
 }
 
 func (p Plan) budgetText() string {

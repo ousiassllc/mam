@@ -113,29 +113,38 @@ func (s *PolicyService) SetProductionTemplate(ctx context.Context, projectID str
 // generation time and the Minimum quality thresholds (UC-8); an invalid field is reported as a
 // *ValidationError and nothing changes. The change is recorded in the thread.
 func (s *PolicyService) SetQualityPolicy(ctx context.Context, projectID string, q domain.QualityPolicy, form *PolicyForm) (PolicyView, error) {
+	view, text, err := s.setQualityPolicy(ctx, projectID, q, form)
+	if err == nil {
+		s.announce(ctx, projectID, text)
+		s.kick(ctx, projectID) // the plan of the automatic start (models, Takes) may have changed
+	}
+	return view, err
+}
+
+// setQualityPolicy changes the policy and returns the sentence that says so, without posting it or kicking the pipeline: the chat that carries the change out says
+// it in its own answer and kicks once (#1139).
+func (s *PolicyService) setQualityPolicy(ctx context.Context, projectID string, q domain.QualityPolicy, form *PolicyForm) (PolicyView, string, error) {
 	if !q.Valid() {
-		return PolicyView{}, invalid("quality_policy", "Quality Policy が正しくありません")
+		return PolicyView{}, "", invalid("quality_policy", "Quality Policy が正しくありません")
 	}
 	var limits *domain.PolicyLimits
 	if form != nil {
 		l, err := form.parse()
 		if err != nil {
-			return PolicyView{}, err
+			return PolicyView{}, "", err
 		}
 		limits = &l
 	}
 	if err := s.policies.SetQualityPolicy(ctx, projectID, q, limits); err != nil {
-		return PolicyView{}, notFound(err)
+		return PolicyView{}, "", notFound(err)
 	}
 	view, err := s.Policy(ctx, projectID)
 	if err != nil {
-		return PolicyView{}, err
+		return PolicyView{}, "", err
 	}
 	e := view.Effective
-	s.announce(ctx, projectID, fmt.Sprintf("Quality Policy を %s にしました（Max retries %d / Max generation time %d 秒 / 合格スコア %d・軸ごと %d 以上）。",
-		q.Label(), e.MaxRetries, int(e.MaxGenerationTime.Seconds()), e.MinAcceptanceScore, e.MinAxisScore))
-	s.kick(ctx, projectID) // the plan of the automatic start (models, Takes) may have changed
-	return view, nil
+	return view, fmt.Sprintf("Quality Policy を %s にしました（Max retries %d / Max generation time %d 秒 / 合格スコア %d・軸ごと %d 以上）。",
+		q.Label(), e.MaxRetries, int(e.MaxGenerationTime.Seconds()), e.MinAcceptanceScore, e.MinAxisScore), nil
 }
 
 func (f PolicyForm) parse() (domain.PolicyLimits, error) {
@@ -173,6 +182,12 @@ func optionalInt(field, label, raw string, lo, hi int) (*int, error) {
 // SetBudget sets the Project budget ceiling and the Shot budget ceiling in USD (F-22). An empty field
 // removes that ceiling. Generation that would exceed a ceiling is refused with ErrBudgetExceeded.
 func (s *PolicyService) SetBudget(ctx context.Context, projectID string, form BudgetForm) (PolicyView, error) {
+	return s.setBudget(ctx, projectID, form, true)
+}
+
+// setBudget is SetBudget; announce says whether the change is recorded in the thread by a message of its own (a change the chat carries out reports itself in its
+// answer, so that the thread says it once). The ceilings are stored the same way whoever sets them: the chat, the settings screen and MCP read the same value.
+func (s *PolicyService) setBudget(ctx context.Context, projectID string, form BudgetForm, announce bool) (PolicyView, error) {
 	project, err := optionalUSD("project_budget", "Project budget", form.Project)
 	if err != nil {
 		return PolicyView{}, err
@@ -184,7 +199,9 @@ func (s *PolicyService) SetBudget(ctx context.Context, projectID string, form Bu
 	if err := s.policies.SetBudget(ctx, projectID, project, shot); err != nil {
 		return PolicyView{}, notFound(err)
 	}
-	s.announce(ctx, projectID, fmt.Sprintf("予算上限を更新しました（Project: %s / Shot: %s）。", usdText(project), usdText(shot)))
+	if announce {
+		s.announce(ctx, projectID, fmt.Sprintf("予算上限を更新しました（Project: %s / Shot: %s）。", usdText(project), usdText(shot)))
+	}
 	return s.Policy(ctx, projectID)
 }
 
