@@ -109,7 +109,7 @@ func Video(ctx context.Context, a *modeladapter.Adapter, target modeladapter.Vid
 		req.NegativePrompt = ""
 	}
 	apiModel := cfg.ModelSettings(target.Model).Model
-	res, err := modeladapter.Call(ctx, a, modeladapter.VendorOf(target.Model), nil, string(target.Model), func(ctx context.Context) (modeladapter.VideoResult, error) {
+	res, err := modeladapter.Call(ctx, a, cfg.VendorOf(target.Model), nil, string(target.Model), func(ctx context.Context) (modeladapter.VideoResult, error) {
 		return backend.GenerateVideo(ctx, apiModel, req)
 	})
 	if err != nil {

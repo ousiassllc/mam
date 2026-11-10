@@ -204,8 +204,9 @@ func queued(results []gentestrepo.Result) []gentestrepo.Result {
 // side by side. A result is started only while the batch is not cancelled and mam is not stopping.
 func (s *Runner) dispatch(ctx context.Context, br *batchRun, results []gentestrepo.Result) {
 	byVendor := map[modeladapter.Vendor][]gentestrepo.Result{}
+	cfg := s.Adapter.Config()
 	for _, r := range results {
-		v := modeladapter.VendorOf(domain.ModelName(r.Model))
+		v := cfg.VendorOf(domain.ModelName(r.Model)) // the selected API provider's vendor for a model it serves
 		byVendor[v] = append(byVendor[v], r)
 	}
 	var wg sync.WaitGroup
