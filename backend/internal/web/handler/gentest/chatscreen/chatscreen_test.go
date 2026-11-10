@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -55,7 +56,11 @@ func TestTheChatAloneGoesFromTheTalkToTheResultsInTheThread(t *testing.T) {
 	assert.Empty(t, s.rig.Fake.Calls())
 	id := proposalOf(t, body)
 
-	// the card is pressed
+	// the card is pressed; the models are held, so that the batch is still running when the answer is drawn (a fake that answers at once would finish it first)
+	var releases []chan struct{}
+	for _, m := range []domain.ModelName{domain.ModelFlux2, domain.ModelNanoBanana} {
+		releases = append(releases, s.rig.Fake.Hold(m))
+	}
 	rec = s.post(paths.GenerationTestChat("proposals", id, "confirm"), url.Values{"session": {s.sess}})
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	body = rec.Body.String()
@@ -67,6 +72,9 @@ func TestTheChatAloneGoesFromTheTalkToTheResultsInTheThread(t *testing.T) {
 	require.Len(t, batch, 2, "a running batch asks for itself again: "+body)
 
 	// the results, until the batch is over
+	for _, release := range releases {
+		close(release)
+	}
 	s.rig.Wait(batch[1])
 	rec = s.get(paths.GenerationTestChat("batches", batch[1]))
 	require.Equal(t, http.StatusOK, rec.Code)
