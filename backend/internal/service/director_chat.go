@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/shotpick"
 )
 
 // wants reports whether a chat message is a direction for the Command Interpreter: a message that asks
@@ -21,12 +22,12 @@ func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessa
 	if domain.AsksToRemember(content) || (project.State != domain.StateDraft && commandinterpreter.AsksAnyMode(content)) {
 		return true
 	}
-	// the settings of the whole app (an API key, a model, an export: #1140) are asked for in any state, the first draft of a new app's first Project included; a message
-	// that asks for what the chat refuses on purpose gets its reply there too
-	if _, refused := commandinterpreter.Refused(content); refused || commandinterpreter.AsksGlobal(content) {
-		return true
+	// While the Brief is drafted every other message answers it: "動画は縦型にして" asks for a vertical video, not for a model assignment, however much it sounds like one (the
+	// settings a new app needs first, and what the chat refuses on purpose, are the exceptions); past it the settings of the whole app are asked for in any mode (#1140)
+	if project.State == domain.StateDraft {
+		return commandinterpreter.AsksSetup(content)
 	}
-	return project.Mode == domain.ModeDirector && project.State != domain.StateDraft
+	return commandinterpreter.AsksGlobal(content) || project.Mode == domain.ModeDirector
 }
 
 // Chat interprets a message of the thread (already stored) and carries it out. The result is the AI
@@ -70,7 +71,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		}
 		return []domain.ChatMessage{assistantText("指示を読み取れませんでした: " + commandFailureReason(err))}, nil
 	}
-	cmd.Operations = withDetected(cmd.Operations, content)
+	cmd.Operations = commandinterpreter.WithDetected(cmd.Operations, content)
 	if project.Mode != domain.ModeDirector {
 		// Outside DIRECTOR MODE only the operations of any mode are carried out (a note, the budget, a setting): AUTO MODE does
 		// not take Shot directions from the chat.
@@ -83,7 +84,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	// latest Take card, then the Project's only Shot (both from contextShot) apply only without
 	// that reply.
 	if target == nil || (target.Kind != domain.KindTake && target.Kind != domain.KindKeyframe) {
-		if shot := shotNamed(shots, ref, cmd.Scene, cmd.Shot); shot != nil {
+		if shot := shotpick.Named(shots, ref, cmd.Scene, cmd.Shot); shot != nil {
 			ref = shot
 		}
 	}
@@ -112,17 +113,6 @@ func (s *DirectorService) anyModeOnly(ctx context.Context, project domain.Projec
 		return nil, err
 	}
 	return res.messages(), nil
-}
-
-// withDetected adds the operations the message plainly asks for (commandinterpreter.Detected) that the model did not return: the model's word wins for an operation
-// of the same type, the rule only fills the gap (a slip of the model must not lose an API key card).
-func withDetected(ops []commandinterpreter.Operation, content string) []commandinterpreter.Operation {
-	for _, d := range commandinterpreter.Detected(content) {
-		if !slices.ContainsFunc(ops, func(op commandinterpreter.Operation) bool { return op.Type == d.Type }) {
-			ops = append(ops, d)
-		}
-	}
-	return ops
 }
 
 // remember keeps what the director asked to remember as a note of the Project (source chat).
@@ -178,22 +168,4 @@ func (s *DirectorService) contextShot(ctx context.Context, projectID string, tar
 		return &shots[0], nil
 	}
 	return nil, nil
-}
-
-// shotNamed finds the Shot by the numbers a message names (1-based); nil when it names none. The
-// numbers of a Branch's story are not unique (a Branch Scene counts from 1 again), so the Shot the
-// context already resolved (target) is the answer when it has those numbers.
-func shotNamed(shots []repository.ShotRef, target *repository.ShotRef, scene, shot int) *repository.ShotRef {
-	if scene < 1 || shot < 1 {
-		return nil
-	}
-	if target != nil && target.Scene.OrderIndex+1 == scene && target.Shot.OrderIndex+1 == shot {
-		return target
-	}
-	for i := range shots {
-		if shots[i].Scene.OrderIndex+1 == scene && shots[i].Shot.OrderIndex+1 == shot {
-			return &shots[i]
-		}
-	}
-	return nil
 }

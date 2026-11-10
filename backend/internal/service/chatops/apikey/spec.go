@@ -33,7 +33,7 @@ func init() {
 		Clean:   cleanProvider(OpSetCredential, func(id string) bool { _, ok := labelOf(id); return ok }),
 		Asked:   AsksKey,
 		Detect:  detectKey,
-		AnyMode: true, Confirm: true, Global: true,
+		AnyMode: true, Confirm: true, Global: true, Setup: true,
 	})
 	commandinterpreter.Register(OpSetVideoProvider, commandinterpreter.Spec{
 		Example: `{"type": "set_video_provider", "args": {"provider": "openrouter"}}`,
@@ -42,7 +42,7 @@ func init() {
 		Clean:   cleanProvider(OpSetVideoProvider, func(id string) bool { return viaprovider.Provider(id).Valid() }),
 		Asked:   AsksVideoProvider,
 		Detect:  detectVideoProvider,
-		AnyMode: true, Confirm: true, Global: true,
+		AnyMode: true, Confirm: true, Global: true, Setup: true,
 	})
 }
 

@@ -40,7 +40,7 @@ func init() {
 		Clean:   clean,
 		Asked:   Asked,
 		Detect:  detect,
-		AnyMode: true, Confirm: true, Global: true,
+		AnyMode: true, Confirm: true, Global: true, Setup: true,
 	})
 }
 
@@ -88,9 +88,13 @@ var (
 	namedModel = regexp.MustCompile(`(?:を|は)\s*(.+?)\s*(?:に|へ)\s*(?:して|する|したい|変|切り替|切替|設定)`)
 )
 
-// Asked reports whether the message asks to change the LLM of an Agent: it names an Agent (by its name or label), says LLM or the role of its route, and does something to it. A
-// question ("Director の LLM は何？") and a message about the image or video models are not.
+// person is the "モデル" of a fashion model or of the cast ("プロのモデル", "モデルさん"): no LLM.
+var person = regexp.MustCompile(`(?:プロ|出演者?|ファッション|専属|人物|女性|男性|外国人|日本人|ヘア|ハンド)の?モデル|モデル(?:さん|ちゃん|君|くん|たち|達)`)
+
+// Asked reports whether the message asks to change the LLM of an Agent: it names an Agent (by its name or label), says LLM, a model or the role of its route, and does something to
+// it. A question ("Director の LLM は何？"), a message about the image or video models and a person who is a model are not.
 func Asked(message string) bool {
+	message = person.ReplaceAllString(message, "")
 	if inquiry.MatchString(strings.TrimSpace(message)) || mediaWord.MatchString(message) {
 		return false
 	}

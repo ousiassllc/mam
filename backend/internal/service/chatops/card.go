@@ -70,3 +70,23 @@ var declineWords = []string{"やめる", "やめて", "やめます", "やめと
 func IsDecline(text string) bool {
 	return slices.Contains(declineWords, strings.ToLower(strings.Trim(strings.TrimSpace(text), "。.!！ ")))
 }
+
+// DeclineAction is the action of the "やめる" button of a card: nil for a card whose declining only closes it (Card.Decline).
+func DeclineAction(body domain.CardBody) json.RawMessage {
+	for i, option := range body.Options {
+		if option == No && i < len(body.OptionActions) && len(body.OptionActions[i]) > 0 && string(body.OptionActions[i]) != "null" {
+			return body.OptionActions[i]
+		}
+	}
+	return nil
+}
+
+// ActionOf is the action of the option the reply picks (CardBody.OptionActions); ok is false when the reply is none of the options or the option has no action.
+func ActionOf(body domain.CardBody, reply string) (action json.RawMessage, ok bool) {
+	for i, option := range body.Options {
+		if option == strings.TrimSpace(reply) && i < len(body.OptionActions) && len(body.OptionActions[i]) > 0 && string(body.OptionActions[i]) != "null" {
+			return body.OptionActions[i], true
+		}
+	}
+	return nil, false
+}

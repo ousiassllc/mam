@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing/budget"
@@ -52,11 +51,11 @@ func (s *ChatService) answerOperation(ctx context.Context, project domain.Projec
 	declined := content == confirmNo || chatops.IsDecline(content)
 	switch {
 	case declined:
-		action = declineAction(body) // what the card has to clean up when it is declined (a file that waits); nothing for most
+		action = chatops.DeclineAction(body) // what the card has to clean up when it is declined (a file that waits); nothing for most
 	case briefing.IsConfirmation(content) && len(body.OptionActions) > 0 && len(body.OptionActions[0]) > 0 && body.Options[0] == confirmYes:
 		action, accepted = body.OptionActions[0], true
 	default:
-		if action, accepted = actionOf(body, content); !accepted {
+		if action, accepted = chatops.ActionOf(body, content); !accepted {
 			return Workspace{}, false, nil
 		}
 	}
@@ -92,16 +91,6 @@ func (s *ChatService) answerOperation(ctx context.Context, project domain.Projec
 	return ws, true, err
 }
 
-// declineAction is the action of the "やめる" button of a card: nil for a card whose declining only closes it (chatops.Card.Decline).
-func declineAction(body domain.CardBody) json.RawMessage {
-	for i, option := range body.Options {
-		if option == confirmNo && i < len(body.OptionActions) && len(body.OptionActions[i]) > 0 && string(body.OptionActions[i]) != "null" {
-			return body.OptionActions[i]
-		}
-	}
-	return nil
-}
-
 // openOperationCard is nil when the card can still be answered: nobody replied to it and no newer card of the same operation replaced it.
 func (s *ChatService) openOperationCard(ctx context.Context, projectID string, card domain.ChatMessage) error {
 	replied, err := s.chat.RepliedMessageIDs(ctx, projectID)
@@ -124,7 +113,7 @@ func (s *ChatService) openOperationCard(ctx context.Context, projectID string, c
 // answerEscalation carries out the operation of the button a reply to an Escalation picks (CardBody.OptionActions), and returns what to tell; picked is false when
 // the reply is none of the buttons (or they carry no operation), and the Escalation is only noted, as before.
 func (s *ChatService) answerEscalation(ctx context.Context, project domain.Project, card domain.ChatMessage, reply string) (text string, picked bool, err error) {
-	action, ok := actionOf(domain.DecodeCardBody(card.Content), reply)
+	action, ok := chatops.ActionOf(domain.DecodeCardBody(card.Content), reply)
 	if !ok {
 		return "", false, nil
 	}
@@ -140,14 +129,4 @@ func (s *core) statedBudgetCards(ctx context.Context, project domain.Project, co
 		return nil, nil
 	}
 	return s.director.budgetCards(ctx, project, stated)
-}
-
-// actionOf is the action of the option the reply picks (CardBody.OptionActions); ok is false when the reply is none of the options or the option has no action.
-func actionOf(body domain.CardBody, reply string) (action json.RawMessage, ok bool) {
-	for i, option := range body.Options {
-		if option == strings.TrimSpace(reply) && i < len(body.OptionActions) && len(body.OptionActions[i]) > 0 && string(body.OptionActions[i]) != "null" {
-			return body.OptionActions[i], true
-		}
-	}
-	return nil, false
 }

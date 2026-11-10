@@ -36,8 +36,11 @@ type Spec struct {
 	// Confirm is true for an operation that is not carried out at once: the chat posts a confirmation card and carries it out when the user accepts it.
 	Confirm bool
 	// Global is true for an operation on the settings of the whole app (an API key, a model assignment, an install: #1140), not of the Project: the chat reads it in
-	// any state of the Project, a DRAFT one too, and the card says that it affects every Project.
+	// any state of the Project past the Brief (while the Brief is drafted only a Setup one), and the card says that it affects every Project.
 	Global bool
+	// Setup is true for a Global operation that the chat reads while the Brief is still being drafted (DRAFT): what a new app needs before anything else (the API key of the LLM,
+	// the route of an LLM). Every other message of a DRAFT Project is an answer to the Brief, however much it sounds like a setting ("動画は縦型にして").
+	Setup bool
 	// Immediate is true for an operation that changes nothing and has no card: the chat carries it out at once and tells what it found (a download link).
 	Immediate bool
 	// Detect reads the operations a message plainly asks for without the model, so that the chat can still do them while no LLM is set up (the API key of the LLM
@@ -80,10 +83,21 @@ func AsksAnyMode(message string) bool {
 	return false
 }
 
-// AsksGlobal reports whether the message is a direction for an operation on the settings of the whole app (Spec.Global): the chat reads it in every state of the Project.
-func AsksGlobal(message string) bool {
+// AsksGlobal reports whether the message is a direction for an operation on the settings of the whole app (Spec.Global), or one the chat refuses on purpose (Refused): the chat
+// reads it in every state of the Project past the Brief.
+func AsksGlobal(message string) bool { return asks(message, func(s Spec) bool { return s.Global }) }
+
+// AsksSetup is AsksGlobal for the Brief that is still drafted: only the operations the new app needs first (Spec.Setup) and the refusals.
+func AsksSetup(message string) bool {
+	return asks(message, func(s Spec) bool { return s.Global && s.Setup })
+}
+
+func asks(message string, wanted func(Spec) bool) bool {
+	if _, refused := Refused(message); refused {
+		return true
+	}
 	for _, s := range specs {
-		if s.Global && s.Asked != nil && s.Asked(message) {
+		if wanted(s) && s.Asked != nil && s.Asked(message) {
 			return true
 		}
 	}
