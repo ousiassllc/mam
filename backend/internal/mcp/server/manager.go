@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -108,9 +109,21 @@ func (m *Manager) Start() error {
 	return nil
 }
 
-// reason is why the listener is not where it should be, as the common error (#1010): the cause and the remedy in Japanese and the start of the
-// original message as the detail, never the message alone. A failure nobody knows carries an error ID that the log line msg shares.
+// reason is why the listener is not where it should be, as the common error (#1010): the cause and the remedy in Japanese, and the original message only in
+// the log. A failure of the machine (the address or the port cannot be opened, mcp.json cannot be opened) has a sentence of its own here: errmap's
+// remedies for a connection or a folder that cannot be written are about a vendor or the bundled ComfyUI, not about this listener. Any other failure
+// nobody knows is told as unknown, with an error ID that the log line msg shares.
 func (m *Manager) reason(msg string, err error) string {
+	var op *net.OpError
+	var path *fs.PathError
+	switch {
+	case errors.As(err, &op):
+		m.opts.Logger.Warn(msg, "err", err)
+		return "アドレスとポートを開けませんでした。そのアドレスがこの PC にあるか、ほかのアプリがポートを使っていないか、ファイアウォールの設定を確かめてください。"
+	case errors.As(err, &path):
+		m.opts.Logger.Warn(msg, "err", err)
+		return "ファイルを開けませんでした。ファイルの場所と、読む権限があるかを確かめてください。"
+	}
 	return failreport.Line(m.opts.Logger, msg, err)
 }
 

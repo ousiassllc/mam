@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -212,6 +213,43 @@ func TestManager_StartTellsAnUnknownFailureWithoutItsRawMessage(t *testing.T) {
 	dead.failOpen["127.0.0.1"] = errors.New("socket: too many open files")
 	require.Error(t, dead.m.Start())
 	told(t, dead, "too many open files")
+}
+
+// The failures of the machine are told in a sentence about this listener, not by errmap's table (whose remedies are about a vendor or the bundled ComfyUI):
+// a real failed listen and a real unreadable mcp.json, the original message in the log only.
+func TestManager_StartTellsARealListenOrReadFailureAboutTheListener(t *testing.T) {
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = busy.Close() })
+	_, inUse := net.Listen("tcp", busy.Addr().String())
+	require.Error(t, inUse)
+
+	notAboutThisListener := func(t *testing.T, problem string) {
+		t.Helper()
+		assert.NotContains(t, problem, "ComfyUI", "a remedy about another feature")
+		assert.NotContains(t, problem, "書き込め", "nothing is written here")
+		assert.NotRegexp(t, `err_[0-9a-f-]+`, problem, "a known failure has no error ID")
+	}
+
+	dead := newManagerEnv(t, 0)
+	dead.failOpen["127.0.0.1"] = fmt.Errorf("listen on 127.0.0.1: %w", inUse)
+	require.Error(t, dead.m.Start())
+	problem := dead.m.Status().Problem
+	assert.Contains(t, problem, "ポートを開けませんでした")
+	notAboutThisListener(t, problem)
+	assert.Contains(t, dead.logs.String(), "address already in use", "the original message is in the log")
+	assert.NotContains(t, problem, "address already in use")
+
+	unreadable := newManagerEnv(t, 0)
+	require.NoError(t, os.WriteFile(unreadable.path, []byte("{}"), 0o000))
+	if _, err := os.ReadFile(unreadable.path); err == nil {
+		t.Skip("the file can be read despite mode 0: the tests run as a user that ignores permissions")
+	}
+	require.NoError(t, unreadable.m.Start())
+	problem = unreadable.m.Status().Problem
+	assert.Contains(t, problem, bind.FileName)
+	assert.Contains(t, problem, "ファイルを開けませんでした")
+	notAboutThisListener(t, problem)
 }
 
 // A refusal of bind.Validate is already a sentence of its own (which address, and why it is not allowed): it is told as it is, with no error ID.
