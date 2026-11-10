@@ -18,7 +18,7 @@
   },
   {
    "name": "SFace（顔の照合）",
-   "description": "face_recognition_sface_2021dec.onnx。顔の特徴（128 次元）を取り出し、2 つの顔が同じ人かをコサイン類似度で測るモデルです（約 37 MB）。生成テストの結果の「顔の類似度」と、動画の Judge の顔の一致の測定に使います。",
+   "description": "face_recognition_sface_2021dec.onnx。顔の特徴（128 次元）を取り出し、2 つの顔が同じ人かをコサイン類似度で測るモデルです（約 37 MB）。単発生成の結果の「顔の類似度」と、動画の Judge の顔の一致の測定に使います。",
    "dest": "face_recognition_sface_2021dec.onnx",
    "url": "https://github.com/opencv/opencv_zoo/raw/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_recognition_sface/face_recognition_sface_2021dec.onnx",
    "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",

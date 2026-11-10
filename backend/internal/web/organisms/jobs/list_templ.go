@@ -41,7 +41,7 @@ func (p Progress) Known() bool { return p.Percent >= 0 }
 type Row struct {
 	// ID is the job's id: it names the "開く" link (jobs-open-<ID>), so that the link keeps the focus when the list is swapped (#980).
 	ID string
-	// Label is the kind of the job ("導入", "生成テスト") and Subject what it works on (a model, a Project); "" when unknown.
+	// Label is the kind of the job ("導入", "単発生成") and Subject what it works on (a model, a Project); "" when unknown.
 	Label   string
 	Subject string
 	// StateText and Tone are the badge of the state.
@@ -213,7 +213,7 @@ func Section(l List) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else if len(l.Rows) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-mute\" data-testid=\"jobs-empty\">ジョブはまだありません。モデルの導入や生成テスト、Shot の生成を始めると、ここに出ます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-mute\" data-testid=\"jobs-empty\">ジョブはまだありません。モデルの導入や単発生成、Shot の生成を始めると、ここに出ます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

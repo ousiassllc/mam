@@ -172,7 +172,7 @@ func (s *Service) poseFile(id string) (string, error) {
 	}
 	path, err := s.Poses.File(id)
 	if errors.Is(err, poses.ErrNotInstalled) {
-		return "", gterr.Invalid("ポーズ集が導入されていません。生成テストの「ポーズを選ぶ」から導入してください")
+		return "", gterr.Invalid("ポーズ集が導入されていません。単発生成の「ポーズを選ぶ」から導入してください")
 	}
 	return path, err
 }

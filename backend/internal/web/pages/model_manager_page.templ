@@ -15,7 +15,7 @@ import (
 templ ModelManagerPage(csrfToken string, o modelmgr.Overview) {
 	@layout.AppLayout("モデルマネージャー", csrfToken, sidenav.InModelManager("", o.Categories())) {
 		@pagehead.Main(pagehead.Medium) {
-			@pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。")
+			@pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入します。導入したモデルは、単発生成で試せます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。")
 			@modelmgr.OverviewBody(o)
 		}
 	}

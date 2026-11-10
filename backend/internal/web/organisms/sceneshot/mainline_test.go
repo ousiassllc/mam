@@ -34,7 +34,7 @@ func TestView_TellsTheGenerationTestApartFromTheMainLine(t *testing.T) {
 	html := renderHTML(t, sceneshot.View(data()))
 
 	assert.Contains(t, html, `id="gentest-vs-main-line"`)
-	assert.Contains(t, html, "生成テスト（/generation-test）の結果は")
+	assert.Contains(t, html, "単発生成（/generation-test）の結果は")
 	assert.Contains(t, html, "ここの Shot にも載りません")
 }
 

@@ -15,10 +15,10 @@ func registerMatch(r *mcpkit.Registrar, h handlers) {
 		"参考画像 1 枚から、画像モデルで似た絵が出るプロンプトを作る「プロンプトマッチ」の見積り。mode: auto（目標の似てる度に届くか max_rounds 回まで、プロンプトを直して生成し直す。既定）/ once（プロンプトを作って 1 回だけ生成）/ adjust（1 回ずつ。続きは continue_batch_id と instruction で）。見積りは「最大の回数 × モデルの単価」（ローカルは無料）に、LLM の呼び出し（プロンプトの作成・修正は match_llm、比較は match_llm_compare の行）をトークン単価で足したもの。単価が確かめられないモデル（ChatGPT のプランなど）の行は合計に入らず、警告 no_price が付く。上限（gentest.max_cost_usd）を超える見積りは over_limit が付き、run_prompt_match は始めない。run_prompt_match に estimate_id と total_usd をそのまま渡す / Price a prompt match without running it.",
 		h.estimateMatch)
 	mcpkit.Write(r, "run_prompt_match",
-		"プロンプトマッチを実行する。estimate_prompt_match と同じ条件に、その estimate_id と confirmed_total_usd（= total_usd）を付ける。サーバーが見積りをやり直し、変わっていたり上限を超えたら conflict で拒否する。job_id と batch_id を返す。進捗は get_job、各回の結果（プロンプト・画像・似てる度・直したところ）は get_prompt_match、取り消しは cancel_generation_test。各回の画像は生成テストの履歴に残る（Take・コスト台帳には入らない）。参考画像はモデルには渡さず、LLM が見るだけ / Run a confirmed prompt match as a job.",
+		"プロンプトマッチを実行する。estimate_prompt_match と同じ条件に、その estimate_id と confirmed_total_usd（= total_usd）を付ける。サーバーが見積りをやり直し、変わっていたり上限を超えたら conflict で拒否する。job_id と batch_id を返す。進捗は get_job、各回の結果（プロンプト・画像・似てる度・直したところ）は get_prompt_match、取り消しは cancel_generation_test。各回の画像は単発生成の履歴に残る（Take・コスト台帳には入らない）。参考画像はモデルには渡さず、LLM が見るだけ / Run a confirmed prompt match as a job.",
 		h.runMatch, mcpkit.OpenWorld())
 	mcpkit.Read(r, "get_prompt_match",
-		"プロンプトマッチの状態と全ての回: 回ごとの英語のプロンプト・生成結果（result_id）・似てる度（0〜100）・残った違い・直したところ・日本語の指示・直す前のプロンプト。best_round / best_prompt は最も似ていた回で、そのプロンプトをそのまま使える（生成テストの prompts に渡す）。stop は終わった理由（reached 目標に届いた / limit 回数を使い切った / cancelled / error）/ A prompt match with every round.",
+		"プロンプトマッチの状態と全ての回: 回ごとの英語のプロンプト・生成結果（result_id）・似てる度（0〜100）・残った違い・直したところ・日本語の指示・直す前のプロンプト。best_round / best_prompt は最も似ていた回で、そのプロンプトをそのまま使える（単発生成の prompts に渡す）。stop は終わった理由（reached 目標に届いた / limit 回数を使い切った / cancelled / error）/ A prompt match with every round.",
 		h.getMatch)
 	mcpkit.Write(r, "instruct_prompt_match",
 		"実行中のプロンプトマッチに、言葉（日本語でよい）の指示を足す。次にプロンプトを直すときに取り込まれ、英語のプロンプトに反映される。終わったマッチには使えない（conflict）。続けるときは estimate_prompt_match / run_prompt_match に continue_batch_id と instruction を渡す / Add words for the next fix of a running match.",
@@ -27,7 +27,7 @@ func registerMatch(r *mcpkit.Registrar, h handlers) {
 
 // MatchReference is the reference image of a prompt match.
 type MatchReference struct {
-	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（生成テストの成功した画像結果の result_id）"`
+	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（単発生成の成功した画像結果の result_id）"`
 	ID        string `json:"id" jsonschema:"source に応じた ID"`
 	ProjectID string `json:"project_id,omitempty" jsonschema:"project_asset / reference_item のとき"`
 }

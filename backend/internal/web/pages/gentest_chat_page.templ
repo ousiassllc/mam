@@ -1,0 +1,15 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	gtchat "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/chat"
+)
+
+// GenerationChatPage is GET /generation-test/chat: talk about what to make, see the models compared and the estimate, confirm on a card and read the
+// results in the thread (#1138).
+templ GenerationChatPage(csrfToken string, p gtchat.Panel) {
+	@generationShell("単発生成", csrfToken, "chat", "作りたいものを話すと、AI がモデルを比べて提案し、プロンプトと金額の見積りを出します。見積りのカードで「この内容で実行する」を押したときだけ生成が始まります。画像の入力・LoRA・サンプリングの細かい指定は「生成する」のフォームで行います。") {
+		@gtchat.Chat(p)
+		@modal.Host()
+	}
+}

@@ -103,7 +103,7 @@ func Section(c Card) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div><p class=\"text-sm text-ink\" data-testid=\"mm-face-models-description\">生成テストで「顔だけ」の参照画像を使ったときに、出力の顔が参照の顔にどれだけ似ているか（顔の類似度）を数字で測り、参照を顔のまわりに切るための小さなモデルです（YuNet と SFace。OpenCV Zoo）。 入れなくても生成はできますが、結果に類似度の数字は付きません。ボタン 1 つで、下の取得元から ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div><p class=\"text-sm text-ink\" data-testid=\"mm-face-models-description\">単発生成で「顔だけ」の参照画像を使ったときに、出力の顔が参照の顔にどれだけ似ているか（顔の類似度）を数字で測り、参照を顔のまわりに切るための小さなモデルです（YuNet と SFace。OpenCV Zoo）。 入れなくても生成はできますが、結果に類似度の数字は付きません。ボタン 1 つで、下の取得元から ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

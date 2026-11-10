@@ -209,7 +209,7 @@ Final QC
 Delivery
 ```
 
-> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）と、その直後の**生成の自動開始**、Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）の本線である。AUTO MODE では、Scene / Shot 計画のあとに、**承認カードを出さずに** Reference Pack → Shot 生成を本線で自動進行する（AUTO を選ぶことが生成を始める同意。#1115 が #1108 の「生成の承認」を置き換えた。#1111）。起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。AUTO では Shot を順に自動で始めるが、起動のたびに予算上限が効き、**1 回の操作で Project 全体を一括で生成する段は持たない**（Shot と段階（Reference Pack・生成）ごとに起動し、重複しない）。生成テスト（`/generation-test`）は試用の経路で、その結果はプロジェクトの Shot の Take にならず、画面にもそう書く。
+> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）と、その直後の**生成の自動開始**、Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）の本線である。AUTO MODE では、Scene / Shot 計画のあとに、**承認カードを出さずに** Reference Pack → Shot 生成を本線で自動進行する（AUTO を選ぶことが生成を始める同意。#1115 が #1108 の「生成の承認」を置き換えた。#1111）。起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。AUTO では Shot を順に自動で始めるが、起動のたびに予算上限が効き、**1 回の操作で Project 全体を一括で生成する段は持たない**（Shot と段階（Reference Pack・生成）ごとに起動し、重複しない）。単発生成（`/generation-test`）は試用の経路で、その結果はプロジェクトの Shot の Take にならず、画面にもそう書く。
 >
 > **AUTO の生成開始（`generation`。#1115 で #1108 の「生成の承認」を置き換えた）**: **AUTO MODE を選ぶことが、有料の生成を始める同意である**。Scene / Shot 計画が終わった直後から、Orchestrator が Reference Pack → Keyframe → Shot 生成を**承認カードを出さずに**自動で始めて進め続ける。確認レベルは生成の開始に影響しない（FULL AUTO の「Finalまで原則確認しない」と矛盾しない。KEY CHECK・CUSTOM CHECK でも AUTO の意図を優先して、生成の開始は確認しない）。脚本・Rough Cut・Final の確認は各レベルの定義どおりで、この変更で増えも減りもしない。確認ポイント `generation`（生成の承認）は廃止した（`domain.Checkpoint` に旧カードを読むための定義だけを残し、`RequiresApproval` は常に偽）。
 >
@@ -464,7 +464,7 @@ Dynamic Camera
 
 > **起動の経路（実装）**: モードは Quality Policy で決まる（MAX QUALITY→Quality、BALANCED→Balanced、FAST→Economy）。Shot カードの「生成」、Continue、Branch、追加撮影（Editor）、Director の再生成は、AI Video Judge が構成済みで Prompt が LOCK されていなければ Candidate 生成（`POST /shots/:id/generate/candidates` と同じ処理）を起動する。Judge が無い、または Spec 済みの Shot の Prompt が LOCK されているときは、Best Take を選べない／Spec を作り直せないため単発の生成（`POST /shots/:id/generate`）になる。`/shots/:id/generate` を直接呼ぶと、常に単発の生成である。 Candidate は撮影戦略ごとに Spec を書き直すが、LOCK の部分と指示で保持する部分に加えて、指示が無いときは MANUAL の部分（ユーザーが指定した値）も変えない（指示があるときの MANUAL は、指示が変えない限り保持するようプランナーに伝える）。戦略の指示は MANUAL の部分には及ばない。
 
-> **手元の LoRA の取り込み（#1119）**: 利用者が Civitai などから自分でダウンロードした LoRA（`.safetensors`）は、モデルの管理（画像・動画モデルの「LoRA を追加」）にファイルの選択かドラッグ＆ドロップで取り込める（この PC の中への取り込みで、公開ではない）。先にファイルを検査し（ヘッダーの形・4 GiB の上限・LoRA のテンソル・名前の安全性・`.safetensors` 以外の拒否）、読み取れた情報を見せてから `data/models/loras/` へ置く。同じ名前は上書きしない。ベースモデルとトリガー語はファイルに書いてあるときだけ候補に出し、無ければ「未設定」とする（強さは読まず、推測もしない。どれも編集できる）。ライセンスは任意で、空は「不明」とし、商用OK にはしない。取り込んだ LoRA は生成テスト・レシピの「LoRA と強さ」で選べ、ワークフローのベースモデルと食い違うときは警告する。取り込みは生成を始めない。画面だけでなく MCP にも同じ操作を持たせる（`spec/architecture/model-manager/model-manager-lora.md`）。
+> **手元の LoRA の取り込み（#1119）**: 利用者が Civitai などから自分でダウンロードした LoRA（`.safetensors`）は、モデルの管理（画像・動画モデルの「LoRA を追加」）にファイルの選択かドラッグ＆ドロップで取り込める（この PC の中への取り込みで、公開ではない）。先にファイルを検査し（ヘッダーの形・4 GiB の上限・LoRA のテンソル・名前の安全性・`.safetensors` 以外の拒否）、読み取れた情報を見せてから `data/models/loras/` へ置く。同じ名前は上書きしない。ベースモデルとトリガー語はファイルに書いてあるときだけ候補に出し、無ければ「未設定」とする（強さは読まず、推測もしない。どれも編集できる）。ライセンスは任意で、空は「不明」とし、商用OK にはしない。取り込んだ LoRA は単発生成・レシピの「LoRA と強さ」で選べ、ワークフローのベースモデルと食い違うときは警告する。取り込みは生成を始めない。画面だけでなく MCP にも同じ操作を持たせる（`spec/architecture/model-manager/model-manager-lora.md`）。
 
 ---
 
@@ -767,7 +767,7 @@ Judge の Face / Character Identity 評価を補うローカル計測。Shot 間
 - **Repair**: `face_identity_drift` は Reference Reinforcement を優先候補とする
 - **Series**: Episode をまたいでも Series 正本の `face_reference` を基準に計測する（F-29）
 - **実行**: ローカル実行。顔画像は外部へ送信しない。YuNet / SFace と ONNX Runtime（purego、CGO なしの Go 単一バイナリ）は M1 で検証済み（`spec/architecture/model-adapters.md` §10.1）。残る確認は SFace の学習データの権利関係（同 §8）。Windows のインストーラーは ONNX Runtime の DLL を同梱しており数値評価が動く。DLL かモデルが無いとき（ポータブル版・モデル未配置）は定性評価にフォールバックする（`spec/requirements/non-functional.md` §1、`spec/architecture/model-adapters.md` §10.1）
-- **生成テストの「画像から似せる」への利用**: 生成した画像の顔と参考の顔のコサイン類似度を、LLM の似てる度に重み付きで混ぜられる（設定 `models.json` の `gentest.match_face`。既定は混ぜない。顔が取れないときは LLM の点だけ。`spec/architecture/gentest/prompt-match.md`）。この用途の閾値は上の Character 別の較正とは別で、固定の写し方（`floor` / `ceil`）を使う
+- **単発生成の「画像から似せる」への利用**: 生成した画像の顔と参考の顔のコサイン類似度を、LLM の似てる度に重み付きで混ぜられる（設定 `models.json` の `gentest.match_face`。既定は混ぜない。顔が取れないときは LLM の点だけ。`spec/architecture/gentest/prompt-match.md`）。この用途の閾値は上の Character 別の較正とは別で、固定の写し方（`floor` / `ceil`）を使う
 
 ---
 

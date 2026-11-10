@@ -26,7 +26,7 @@ templ PanelView(p Panel) {
 			<p class="text-sm text-success" role="status" data-testid="mm-lora-notice">
 				{ p.Notice }
 				if p.GentestHref != "" {
-					<a class="underline" href={ templ.SafeURL(p.GentestHref) }>生成テストを開く</a>
+					<a class="underline" href={ templ.SafeURL(p.GentestHref) }>単発生成を開く</a>
 				}
 			</p>
 		}
@@ -153,7 +153,7 @@ templ metaFields(s Staged) {
 		}
 	</fieldset>
 	<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-strength">
-		<span>推奨の強さ（0.05〜1。空欄は未設定。選ぶと生成テストの強さの初期値になります）</span>
+		<span>推奨の強さ（0.05〜1。空欄は未設定。選ぶと単発生成の強さの初期値になります）</span>
 		@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{"id": "mm-lora-strength", "name": FieldStrength, "type": "number", "min": "0.05", "max": "1", "step": "0.05", "placeholder": "未設定", "inputmode": "decimal", "data-testid": "mm-lora-strength"})
 	</label>
 	<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-triggers">

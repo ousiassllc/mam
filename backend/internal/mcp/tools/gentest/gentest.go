@@ -43,46 +43,46 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	r.Files.RegisterDownload(KindGentestFile, h.file)
 	r.Files.RegisterUpload(mcpkit.UploadSpec{
 		Purpose:     PurposeReference,
-		Description: "生成テストの入力画像（参照画像・動画の最初／最後のフレーム）。PNG・JPEG・WebP。応答の reference_id を estimate_generation_test / run_generation_test の references に {source: upload, id: reference_id} として渡す / Input picture of a generation test; pass the returned reference_id as {source: upload, id}.",
+		Description: "単発生成の入力画像（参照画像・動画の最初／最後のフレーム）。PNG・JPEG・WebP。応答の reference_id を estimate_generation_test / run_generation_test の references に {source: upload, id: reference_id} として渡す / Input picture of a single generation; pass the returned reference_id as {source: upload, id}.",
 		MaxBytes:    gentest.MaxImageBytes,
 		Handle:      h.uploadReference,
 	})
 
 	mcpkit.Read(r, "list_generation_models",
-		"生成テストで選べるモデル（組み込みのクラウドモデルと、ローカル・登録した外部 ComfyUI・保存したワークフロー・ChatGPT サブスクのモデル）。能力・単価（priced / free / unknown）・使えない理由を含む。各モデルの license に商用利用の可否（commercial: yes 商用OK / conditional 条件つき / no 商用NG / unknown 不明）・ライセンス名・条件・出典 URL・確認日がある。available（今選べるか）・unavailable（理由のコード）・unavailable_message（理由。API キー未登録・ChatGPT 未ログイン・ベンダーの停止中・成人向けのゲート・カスタムノード未導入など）・settings_route（直す画面。例 /settings/api-keys）が全モデルに付く（省略時は選べないモデルも返す。available_only: true で選べるものだけ）。inputs（t2i / i2i / t2v / i2v / first_frame / reference_face など。参照の使い方・動画の能力と同じ元から導く）・provider・origin（local / api）・カタログのモデルには catalog（adult・traits〔params_b・uncensored・speed・quality〕・vram_min_gb）が付く。引数で絞り込める（すべて省略可。組み合わせはすべて満たすもの。モデルマネージャー・各画面のフィルターと同じ条件）: kinds・inputs（指定をすべて持つ）・adult（all / general_only / adult_only）・uncensored・params（small / medium / large）・vram_fit・commercial（all / ok / ok_or_conditional、または ok, conditional, unknown, ng のカンマ区切り。省くと設定「商用OKのモデルだけを使う」に従う）・installed・origins・providers・audio・speeds・qualities・available_only・q。画像モデルは参照画像の使い方（reference_mode: edit / img2img、max_reference_images、reference_roles）と LoRA 対応（supports_lora）を持つ。loras は同梱 ComfyUI エンジンの LoRA 名の一覧。速さのモード（蒸留 LoRA）を持つモデルは speed_modes（id・label・default）を持ち、estimate / run の speed_mode で選べる（動画の Wan 2.2 14B + LightX2V の fast = 4 ステップ・cfg 1、standard = 通常の 20 ステップ。画像の Qwen-Image-Edit 2511 の standard = 20 ステップ、lightning-8 / lightning-4 = 8 / 4 ステップ・cfg 1）GPT Image 2.6（Flare・Sunburst の API キー）には gpt_image（対応する複雑さ・GIF / SVG・マークアップの範囲）が付く。サブスク経由の同名モデルには gpt_image_unsupported（使えない理由）が付き、複雑さ・GIF / SVG・マークアップは使えない。単価は公式の価格表がなく unknown（合計に入らない） / Models a generation test can use, with capabilities, reference image support, LoRA support (loras lists the files), speed modes of the distilled-LoRA models (speed_modes; pass speed_mode to estimate / run), unit prices, why one is unavailable, and each model's license (commercial use yes / conditional / no / unknown, name, condition, source, checked date); the commercial argument filters them.",
+		"単発生成で選べるモデル（組み込みのクラウドモデルと、ローカル・登録した外部 ComfyUI・保存したワークフロー・ChatGPT サブスクのモデル）。能力・単価（priced / free / unknown）・使えない理由を含む。各モデルの license に商用利用の可否（commercial: yes 商用OK / conditional 条件つき / no 商用NG / unknown 不明）・ライセンス名・条件・出典 URL・確認日がある。available（今選べるか）・unavailable（理由のコード）・unavailable_message（理由。API キー未登録・ChatGPT 未ログイン・ベンダーの停止中・成人向けのゲート・カスタムノード未導入など）・settings_route（直す画面。例 /settings/api-keys）が全モデルに付く（省略時は選べないモデルも返す。available_only: true で選べるものだけ）。inputs（t2i / i2i / t2v / i2v / first_frame / reference_face など。参照の使い方・動画の能力と同じ元から導く）・provider・origin（local / api）・カタログのモデルには catalog（adult・traits〔params_b・uncensored・speed・quality〕・vram_min_gb）が付く。引数で絞り込める（すべて省略可。組み合わせはすべて満たすもの。モデルマネージャー・各画面のフィルターと同じ条件）: kinds・inputs（指定をすべて持つ）・adult（all / general_only / adult_only）・uncensored・params（small / medium / large）・vram_fit・commercial（all / ok / ok_or_conditional、または ok, conditional, unknown, ng のカンマ区切り。省くと設定「商用OKのモデルだけを使う」に従う）・installed・origins・providers・audio・speeds・qualities・available_only・q。画像モデルは参照画像の使い方（reference_mode: edit / img2img、max_reference_images、reference_roles）と LoRA 対応（supports_lora）を持つ。loras は同梱 ComfyUI エンジンの LoRA 名の一覧。速さのモード（蒸留 LoRA）を持つモデルは speed_modes（id・label・default）を持ち、estimate / run の speed_mode で選べる（動画の Wan 2.2 14B + LightX2V の fast = 4 ステップ・cfg 1、standard = 通常の 20 ステップ。画像の Qwen-Image-Edit 2511 の standard = 20 ステップ、lightning-8 / lightning-4 = 8 / 4 ステップ・cfg 1）GPT Image 2.6（Flare・Sunburst の API キー）には gpt_image（対応する複雑さ・GIF / SVG・マークアップの範囲）が付く。サブスク経由の同名モデルには gpt_image_unsupported（使えない理由）が付き、複雑さ・GIF / SVG・マークアップは使えない。単価は公式の価格表がなく unknown（合計に入らない） / Models a single generation can use, with capabilities, reference image support, LoRA support (loras lists the files), speed modes of the distilled-LoRA models (speed_modes; pass speed_mode to estimate / run), unit prices, why one is unavailable, and each model's license (commercial use yes / conditional / no / unknown, name, condition, source, checked date); the commercial argument filters them.",
 		h.listModels)
 	mcpkit.Read(r, "estimate_generation_test",
-		"生成テスト（モデル × プロンプト × 本数の全組み合わせ）の本数と見積りを返す。モデルごとの内訳・警告・上限を含む。画像は references の role / strength、avoid_reference_pose、lora を付けられる（モデルが使えない分は警告。I2V が first_frame を要るのに無い・添えた画像がどのモデルにも使われないときは、送る前に validation で止める: failure.code が input_missing / input_unused）。画像・動画とも speed_mode（fast / standard / lightning-4 など。モデルの speed_modes）を付けられる。run_generation_test に estimate_id と total_usd をそのまま渡す。単価が分からないモデル（unknown）は合計に入らない。ローカルモデルには所要時間の見込み（time_basis: history は同じモデル・解像度・長さ・速さのモードの過去の実績の中央値 seconds_per_item、unknown は実績なしで見込みなし。合計は total_seconds、実績のないモデルは unknown_time_models）が付く。時間は実績から出すので確認の対象ではない。translate_to_english（既定 true）のとき、日本語などの文を英語に訳す行（model が translate）が単価なしで入る / Price a batch without running it; the translation of non-English prompts is a line without a price.",
+		"単発生成（モデル × プロンプト × 本数の全組み合わせ）の本数と見積りを返す。モデルごとの内訳・警告・上限を含む。画像は references の role / strength、avoid_reference_pose、lora を付けられる（モデルが使えない分は警告。I2V が first_frame を要るのに無い・添えた画像がどのモデルにも使われないときは、送る前に validation で止める: failure.code が input_missing / input_unused）。画像・動画とも speed_mode（fast / standard / lightning-4 など。モデルの speed_modes）を付けられる。run_generation_test に estimate_id と total_usd をそのまま渡す。単価が分からないモデル（unknown）は合計に入らない。ローカルモデルには所要時間の見込み（time_basis: history は同じモデル・解像度・長さ・速さのモードの過去の実績の中央値 seconds_per_item、unknown は実績なしで見込みなし。合計は total_seconds、実績のないモデルは unknown_time_models）が付く。時間は実績から出すので確認の対象ではない。translate_to_english（既定 true）のとき、日本語などの文を英語に訳す行（model が translate）が単価なしで入る / Price a batch without running it; the translation of non-English prompts is a line without a price.",
 		h.estimate)
 	mcpkit.Write(r, "run_generation_test",
-		"生成テストを実行する。estimate_generation_test と同じ条件に、その estimate_id と confirmed_total_usd（= total_usd）を付ける。サーバーが見積りをやり直し、変わっていたり上限（gentest.max_cost_usd / max_items）を超えたら conflict で拒否する。translate_to_english（既定 true。画面と同じ）なら、日本語などのプロンプトを LLM で英語に訳してから送る（訳せなければ何も生成せず upstream）。job_id と batch_id を返す。Take・コスト台帳には入らない / Run a confirmed batch as a job; prompts that are not English are translated first unless translate_to_english is false.",
+		"単発生成を実行する。estimate_generation_test と同じ条件に、その estimate_id と confirmed_total_usd（= total_usd）を付ける。サーバーが見積りをやり直し、変わっていたり上限（gentest.max_cost_usd / max_items）を超えたら conflict で拒否する。translate_to_english（既定 true。画面と同じ）なら、日本語などのプロンプトを LLM で英語に訳してから送る（訳せなければ何も生成せず upstream）。job_id と batch_id を返す。Take・コスト台帳には入らない / Run a confirmed batch as a job; prompts that are not English are translated first unless translate_to_english is false.",
 		h.run, mcpkit.OpenWorld())
 	mcpkit.Read(r, "get_generation_test",
-		"生成テストのバッチの進捗（状態ごとの件数）と、全結果（プロンプト・実際に送った文・シード・状態・失敗の理由・ファイルの有無）/ A batch with its progress and every result.",
+		"単発生成のバッチの進捗（状態ごとの件数）と、全結果（プロンプト・実際に送った文・シード・状態・失敗の理由・ファイルの有無）/ A batch with its progress and every result.",
 		h.get)
 	mcpkit.Write(r, "cancel_generation_test",
-		"生成テストのバッチを取り消す。まだ始めていない分は取り消し、すでに呼んでいるものは終わるのを待つ / Cancel a batch: results not started are cancelled, calls in flight finish.",
+		"単発生成のバッチを取り消す。まだ始めていない分は取り消し、すでに呼んでいるものは終わるのを待つ / Cancel a batch: results not started are cancelled, calls in flight finish.",
 		h.cancel)
 	mcpkit.Read(r, "list_generation_results",
-		"生成テストの履歴（新しい順）。モデル・種類・お気に入りで絞れる。合計コストも返す / The history of results, newest first.",
+		"単発生成の履歴（新しい順）。モデル・種類・お気に入りで絞れる。合計コストも返す / The history of results, newest first.",
 		h.listResults)
 	mcpkit.Read(r, "get_generation_result",
-		"生成テストの結果を 1 件取得する（設定・入力画像・取り込み先・ファイルのダウンロード URL）/ One result with its inputs, its imports and a download URL of the file.",
+		"単発生成の結果を 1 件取得する（設定・入力画像・取り込み先・ファイルのダウンロード URL）/ One result with its inputs, its imports and a download URL of the file.",
 		h.getResult)
 	mcpkit.Destroy(r, "delete_generation_result",
-		"生成テストの結果とそのファイルを削除する。生成中のものは拒否される。バッチの最後の 1 件を消すとバッチも消える / Delete a result and its file; a result that has not finished is refused.",
+		"単発生成の結果とそのファイルを削除する。生成中のものは拒否される。バッチの最後の 1 件を消すとバッチも消える / Delete a result and its file; a result that has not finished is refused.",
 		h.deleteResult)
 	mcpkit.Write(r, "set_generation_favorite",
-		"生成テストの結果のお気に入りを付ける・外す / Mark or unmark a result as a favorite.",
+		"単発生成の結果のお気に入りを付ける・外す / Mark or unmark a result as a favorite.",
 		h.setFavorite)
 	mcpkit.Read(r, "list_generation_prompts",
-		"生成テストのプロンプト履歴（同じプロンプト・ネガティブの組は 1 件にまとめる。使用回数・最後に使った日時つき）/ The prompt history.",
+		"単発生成のプロンプト履歴（同じプロンプト・ネガティブの組は 1 件にまとめる。使用回数・最後に使った日時つき）/ The prompt history.",
 		h.listPrompts)
 	mcpkit.Destroy(r, "delete_generation_prompt",
 		"プロンプト履歴を 1 件削除する（結果の履歴には影響しない）/ Delete a prompt of the history.",
 		h.deletePrompt)
 	mcpkit.Write(r, "import_generation_result",
-		"生成テストの結果（成功したもの）をプロジェクトに取り込む。参照（Reference Library。画像のみ。source=generated）かアセットとして、ファイルをプロジェクトの assets に複製する。参照にはさらに assign で Character の face/body・Product・Location のスロットへ割り当てられる / Import a succeeded result into a Project as a reference or an asset.",
+		"単発生成の結果（成功したもの）をプロジェクトに取り込む。参照（Reference Library。画像のみ。source=generated）かアセットとして、ファイルをプロジェクトの assets に複製する。参照にはさらに assign で Character の face/body・Product・Location のスロットへ割り当てられる / Import a succeeded result into a Project as a reference or an asset.",
 		h.importResult)
 	registerMatch(r, h)
 	registerUpscale(r, h)
@@ -96,7 +96,7 @@ type handlers struct {
 
 func (h handlers) gt() (*gentest.Service, error) {
 	if h.svc.Gentest == nil {
-		return nil, &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "生成テストはこのアプリでは使えません", Status: http.StatusServiceUnavailable}
+		return nil, &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "単発生成はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
 	}
 	return h.svc.Gentest, nil
 }
@@ -131,7 +131,7 @@ func mapError(err error) error {
 	case errors.Is(err, gterr.ErrNotFound):
 		return &mcpkit.ToolError{Code: mcpkit.CodeNotFound, Message: "対象が見つかりません", Status: http.StatusNotFound}
 	case errors.Is(err, gterr.ErrUnavailable):
-		return &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "生成テストはこのアプリでは使えません", Status: http.StatusServiceUnavailable}
+		return &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "単発生成はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
 	}
 	return mcpkit.MapError(err)
 }

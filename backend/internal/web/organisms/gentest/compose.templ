@@ -145,7 +145,7 @@ templ promptFields(c Compose) {
 			@help.Panel(help.ID("ウェイト"), "ウェイト") {
 				@gentestadv.WeightHelp(c.WeightAll)
 			}
-			@atoms.SmallButtonFor(atoms.ToneNeutral, "プロンプトを追加", "生成テストのプロンプト", templ.Attributes{
+			@atoms.SmallButtonFor(atoms.ToneNeutral, "プロンプトを追加", "単発生成のプロンプト", templ.Attributes{
 				"type": "button", "hx-get": paths.GenerationTestPart("prompt-row"), "hx-target": "#" + PromptsID, "hx-swap": "beforeend",
 			})
 		</div>

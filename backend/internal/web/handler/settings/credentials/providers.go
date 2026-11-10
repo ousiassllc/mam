@@ -26,7 +26,7 @@ var providerInfo = map[string]info{
 	"openrouter": {"動画生成（Kling 3.0。「API プロバイダー」で OpenRouter を選んだときに使う。キーは OpenRouter の API キー 1 つ。従量のクレジット課金）", "https://openrouter.ai/settings/keys"},
 	"fal":        {"動画生成（Kling 3.0・4.0。「API プロバイダー」で fal.ai を選んだときに使う。キーは fal の API キー 1 つ。従量課金）", "https://fal.ai/dashboard/keys"},
 	"replicate":  {"動画生成（Kling 3.0・4.0。「API プロバイダー」で Replicate を選んだときに使う。キーは Replicate の API トークン 1 つ。従量課金）", "https://replicate.com/account/api-tokens"},
-	"topaz":      {"動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。生成テストの「動画を大きくする・滑らかにする」で使う）", "https://account.topazlabs.com/manage-api"},
+	"topaz":      {"動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。単発生成の「動画を大きくする・滑らかにする」で使う）", "https://account.topazlabs.com/manage-api"},
 	"elevenlabs": {"音声（TTS・Music・SFX）", "https://elevenlabs.io/app/api/api-keys"},
 	"synclabs":   {"Lip Sync", ""},
 	"typesafe":   {"Repair の前段選別（Jev）", ""},

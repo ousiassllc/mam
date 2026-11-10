@@ -23,7 +23,7 @@
 | 対象 | 置き場所 | 識別子 |
 |---|---|---|
 | ローカルのカタログのモデル | `backend/internal/modelmgr/catalog/data/models/<id>.json` の `license` | カタログ ID → 導入で作るワークフロー名（`comfyui:bundled-comfyui/<name>`） |
-| クラウド・サブスクの組み込みモデル | `backend/internal/domain/modellicense/data/cloud.json`（ID をキーにした 1 つの表） | 生成テストのモデル ID（`kling-3.0`、`gpt-image-2:chatgpt-subscription`） |
+| クラウド・サブスクの組み込みモデル | `backend/internal/domain/modellicense/data/cloud.json`（ID をキーにした 1 つの表） | 単発生成のモデル ID（`kling-3.0`、`gpt-image-2:chatgpt-subscription`） |
 | Hugging Face から足したファイル | 導入のときにモデルカードの `license` タグを記録（`state.json`）。`modellicense.FromHF` が読む。**タグは配布者の自己申告なので、タグだけでは商用OKにしない**: 商用を許すタグ（`apache-2.0`・`mit`・`cc-by-4.0` など）は「条件つき」（条件: 申告どおりで、ベース・LoRA など元のモデルのライセンスにも反しない。OpenRAIL 系はさらに使用制限）、非商用・研究用は商用NG、それ以外・タグなしは不明（#969）。カードの `license_link` は **https の URL だけ**を原文のリンク（`SourceURL`）にし、相対パス・http・`javascript:`・`file:` などは空にする（href に入るため。カタログの `Info.Validate` と同じ規則） | 作ったモデルの ID |
 | 利用者が登録した外部エンドポイントのモデル・保存したワークフロー | **持たない** | `unknown`（注意: 「mam は確認できていません」） |
 
@@ -36,7 +36,7 @@
 
 ローカルの実行環境（GPT-SoVITS・MuseTalk。`data/runtimes/*.json`）と重み・依存ファイル（`data/assets/*.json`）、エンジン（`data/engine.json`）も同じ 4 値を使う（`ResourceLicense.commercial`）。`unclear` は `unknown` になった。
 
-**検知**: ローカルのカタログは `catalog.Validate`（と `TestEveryModelHasItsLicenseWithTheSourceAndTheDateItWasRead`）、クラウドの組み込みモデルは `TestEveryBuiltInModelHasItsCommercialUseLicense`（生成テストのモデル一覧のすべてに `cloud.json` の項目があるか）と `TestEveryEntryOfTheCloudLicensesIsAModel`（表の ID がモデルとして実在するか）が、ライセンスの無いモデルを落とす。
+**検知**: ローカルのカタログは `catalog.Validate`（と `TestEveryModelHasItsLicenseWithTheSourceAndTheDateItWasRead`）、クラウドの組み込みモデルは `TestEveryBuiltInModelHasItsCommercialUseLicense`（単発生成のモデル一覧のすべてに `cloud.json` の項目があるか）と `TestEveryEntryOfTheCloudLicensesIsAModel`（表の ID がモデルとして実在するか）が、ライセンスの無いモデルを落とす。
 
 ## 3. ベースと派生は厳しい方
 
@@ -116,10 +116,10 @@
 
 | 画面 | 出す所 |
 |---|---|
-| 生成テスト: モデルのカード | カードにバッジ。条件つき・不明は 1 行の短い注記。「?」ヘルプにモデルごとのライセンス名と条件 |
-| 生成テスト: 比較の表 | 行の見出し（モデル名）の下にバッジ。各結果のカードにマーク |
-| 生成テスト: プロンプトマッチ（#916） | モデルの選択肢の語（`OptionLabel`）とフィルター（既定は設定に従う）、結果のモデル名にバッジ |
-| 生成テスト: 履歴・結果の詳細 | 履歴の各カードにマーク。詳細にノート |
+| 単発生成: モデルのカード | カードにバッジ。条件つき・不明は 1 行の短い注記。「?」ヘルプにモデルごとのライセンス名と条件 |
+| 単発生成: 比較の表 | 行の見出し（モデル名）の下にバッジ。各結果のカードにマーク |
+| 単発生成: プロンプトマッチ（#916） | モデルの選択肢の語（`OptionLabel`）とフィルター（既定は設定に従う）、結果のモデル名にバッジ |
+| 単発生成: 履歴・結果の詳細 | 履歴の各カードにマーク。詳細にノート |
 | モデルマネージャー: モデルの一覧・同意ダイアログ | 一覧の各カードにバッジとノート。同意ダイアログは「商用利用」の行にバッジ |
 | モデルマネージャー: Hugging Face の導入・足したモデルの一覧 | リポジトリのライセンスの行と各モデルにバッジ（カードの `license` タグから） |
 | モデルマネージャー: ローカル音声・口パクの重み | 重みごとのバッジ（4 値） |
@@ -129,7 +129,7 @@
 ## 5. フィルターと設定
 
 - **フィルター（Issue #1011 で変更）**: 商用利用の絞り込みは、**共通のモデルのフィルターバーの詳細パネルの 1 項目**（すべて / 商用OKのみ / 条件つきまで。`commercial` キー。[model-manager/model-filter.md](model-manager/model-filter.md) §2・§8）。絞るのはサーバー（`modelfilter`）で、スクリプトの `data-commercial` の隠しはなくなった（`static/src/components/commercial-filter` は削除）。履歴（結果は作ったモデルの答えを持つ）は、`molecules/commercial.Choice`（3 択のラジオ。`commercial` をクエリに持ち、ページ送りで保つ）の答えが許すモデルの結果だけを、サーバーが `history.Filter.Models` で絞って返す。選んだモデルは、カード・バッジ（アイコン）で答えを言う。
-- **フィルターを置く画面**: 生成テストのモデルの一覧・プロンプトマッチ・描き直し・設定の画像・動画モデルの欄（モデル選択のモーダル）、モデルマネージャーのモデルの一覧、履歴。
+- **フィルターを置く画面**: 単発生成のモデルの一覧・プロンプトマッチ・描き直し・設定の画像・動画モデルの欄（モデル選択のモーダル）、モデルマネージャーのモデルの一覧、履歴。
 - **設定「商用OKのモデルだけを使う」**（既定はオフ。`state.json` の `commercial_only`）: オンの間、どの画面のフィルターも商用利用の選択だけ「商用OKのみ」から始まり、MCP の `list_generation_models`・`list_model_catalog` は `commercial` 引数を省くと商用OKだけを返す（`modellicense.DefaultFilter`）。**一覧を絞るだけで、生成そのものは止めない**（ほかの答えのモデルを画面で広げて選べる。名指しの生成も断らない。代替のモデルへは切り替えない）。画面はモデルマネージャーの「商用利用で絞り込む」の区画のスイッチ（`PUT /model-manager/commercial`）、MCP は `get_commercial_only` / `set_commercial_only`。
 - **生成が選ぶモデル（Issue #1113）**: 既定の割り当てが使えず、生成が条件に合うモデルへ切り替えるとき、ライセンスが「不可」のモデルと、上の設定（`commercial_only`）が許さないモデルは候補にしない（[model-adapters.md](model-adapters.md) §3.1）。利用者が選んだ割り当てには、この条件で別のモデルを当てない。
 
@@ -144,7 +144,7 @@
 ## 7. 後続のモデル追加（#927・#929〜#931 など）の手順
 
 1. ローカルのモデル: `data/models/<id>.json` の `license` に `commercial`・`commercial_condition`（条件つき）・`checked_at`・`url`（**一次情報**: モデルカードの LICENSE 原文）・`notice` を書く。ベースと派生でライセンスが違うなら `components[]` に部品ごとに書き、全体は最も厳しい答えにする。
-2. クラウドのモデル: `domain/modellicense/data/cloud.json` に、生成テストのモデル ID で 1 項目を足す（`license_name`・`source_url`・`checked_at`・条件つき・不明・商用NG は `notice`）。
+2. クラウドのモデル: `domain/modellicense/data/cloud.json` に、単発生成のモデル ID で 1 項目を足す（`license_name`・`source_url`・`checked_at`・条件つき・不明・商用NG は `notice`）。
 3. 一次情報で確かめられないものは **`unknown` にして `notice` で目立たせる**。推測で `yes` にしない。
 4. テスト（`go test ./internal/modelmgr/catalog/ ./internal/service/gentest/...`）が、項目の欠け・内訳と全体の食い違い・表の ID の誤りを検知する。
 
@@ -178,5 +178,5 @@
 | 1.17 | 2026-11-04 | §3 の答えの表と確認日に、動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`（Apache-2.0）・`rife-v4.25`・`rife-v4.26`（MIT）を足した（商用OK。`checked_at` は 2026-11-04）。版は main の 1.16 の次 | Issue #1031 |
 | 1.18 | 2026-11-06 | §2: HF のカードの `license` タグだけでは商用OKにしない（`FromHF`: 商用を許すタグは「条件つき」、タグは自己申告）。§3: クラウドの 7 モデル（Kling・MiniMax・Seedance・Wan）を原文で確かめて商用OK、`gpt-image-2` の出典を OpenAI Services Agreement に直し、非公式経路の `gpt-image-2:chatgpt-subscription` を不明にした。§8: 「不明の 7 モデル」の注記を外した | Issue #969 |
 | 1.19 | 2026-11-06 | §3 の答えの表と確認日に、`gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` と、それぞれのサブスク経由（`…:chatgpt-subscription`）の 4 件を足した（OpenAI の利用規約 2026-01-01 版。`checked_at` は 2026-11-06） | Issue #1096 |
-| 1.20 | 2026-11-06 | §4 の「モデルマネージャー: 試し生成」の行を消した（試し生成の区画の廃止。生成テストの行は変えない。状態は仕様のみ） | Issue #1100 |
+| 1.20 | 2026-11-06 | §4 の「モデルマネージャー: 試し生成」の行を消した（試し生成の区画の廃止。単発生成の行は変えない。状態は仕様のみ） | Issue #1100 |
 | 1.21 | 2026-11-08 | §5 に、生成が既定の割り当ての代わりにモデルを選ぶときのライセンスの条件を足した | Issue #1113 |

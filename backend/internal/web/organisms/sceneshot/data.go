@@ -34,7 +34,7 @@ type Data struct {
 }
 
 // mainLineNote says how the Shots here differ from the generation test: only a generation started from a Shot card makes a Take of it.
-const mainLineNote = "この画面の Shot が制作の本線です。生成テスト（/generation-test）の結果は、Take・コスト台帳に入らず、ここの Shot にも載りません。"
+const mainLineNote = "この画面の Shot が制作の本線です。単発生成（/generation-test）の結果は、Take・コスト台帳に入らず、ここの Shot にも載りません。"
 
 // SceneInput is the Scene form's rejected input.
 type SceneInput struct{ Title, Location, Time, Objective string }

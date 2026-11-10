@@ -1,4 +1,4 @@
-# ER / データモデル: 生成テスト
+# ER / データモデル: 単発生成
 
 [er.md](../er.md) の続き（`er.md` が行数上限を超えているため別ファイル）。設計は [gentest.md](gentest.md)。マイグレーションは `20261025150000_gentest.sql`（down は 5 テーブルを依存の逆順に削除）。**どのテーブルも Project のテーブルを参照しない**（Project・アセット・参照項目の ID は TEXT）。5 テーブルとも `repository/bundle` の `unbundledTables` に入れ、プロジェクトの書き出し・取り込みには含めない。ファイルは `<data-dir>/gentest/<バッチ ID>/`（アセットのディレクトリではない）。
 

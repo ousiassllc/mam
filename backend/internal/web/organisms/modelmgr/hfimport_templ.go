@@ -1025,7 +1025,7 @@ func hfInstallForm(r HFRepo, f HFFile) templ.Component {
 			}
 		}
 		if f.Family == "sdxl" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<p class=\"text-success\" data-testid=\"mm-hfi-sdxl\">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として生成テストで選べます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<p class=\"text-success\" data-testid=\"mm-hfi-sdxl\">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として単発生成で選べます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

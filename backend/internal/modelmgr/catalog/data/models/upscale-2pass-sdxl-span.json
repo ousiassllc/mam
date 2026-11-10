@@ -5,7 +5,7 @@
  "tier": "standard",
  "content_rating": "general",
  "traits": {"uncensored": false},
- "description": "アップスケール用モデル（SPAN）で大きくしたあと、SDXL で denoise 0.3 の低い値でもう一度サンプリングして仕上げる。VAE はタイル版で、16GB で落とさない作り（実機では未測定）。元の結果のプロンプトとシードを引き継ぐ。生成テストの結果の「大きくする」で選ぶ。出力は最大 4096×4096。",
+ "description": "アップスケール用モデル（SPAN）で大きくしたあと、SDXL で denoise 0.3 の低い値でもう一度サンプリングして仕上げる。VAE はタイル版で、16GB で落とさない作り（実機では未測定）。元の結果のプロンプトとシードを引き継ぐ。単発生成の結果の「大きくする」で選ぶ。出力は最大 4096×4096。",
  "files": [
   {
    "name": "sd_xl_base_1.0.safetensors",

@@ -35,6 +35,7 @@ import { initGentestRecipe } from './components/gentest-tiers/recipe';
 import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
 import { installExportPick } from './components/gentest/export-pick';
+import { installGentestChat } from './components/gentest-chat/chat';
 import { installSlider } from './components/slider/slider';
 import { installRestartRefresh } from './components/restart/refresh';
 
@@ -131,6 +132,10 @@ installPollGuard();
 // The results of the history that are tapped to be saved as a ZIP (#932): the glowing frame, the count, and the choice that survives the
 // history's own refresh.
 installExportPick();
+
+// The chat of the single generation (#1138): Enter sends, the box empties once the message was taken, the thread follows the newest entry, and an answered
+// question's cards are turned off.
+installGentestChat();
 
 // The sliders (every input[type=range]): the rail's fill follows the value (static/src/css/slider.css, #955).
 installSlider();

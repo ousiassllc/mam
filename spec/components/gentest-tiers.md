@@ -2,14 +2,14 @@
 
 > **状態: ステージ 1・2 を実装済み。** Issue #977（親 Issue。関連 #972 #973 #974 #975 #976 #960 #955）。ステージ 2 は、レシピ（§9）、ComfyUI の段の「今の設定をグラフで開く」「画面に出す値」（§10）、プロンプトの語を選んで強さ（ウェイト）を付ける +/−（§4「語のウェイト」）のすべてを実装済み。
 
-[gentest-screen.md](gentest-screen.md)（生成テスト画面の全体）の作成フォームのうち、**画像のフォームだけ**を 3 段にする。動画・音声は今のまま（段は無い）。ルートは [../api/endpoints-gentest.md](../api/endpoints-gentest.md)、仕組みは [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.6、MCP は [../api/mcp-tools-generation-test.md](../api/mcp-tools-generation-test.md)。
+[gentest-screen.md](gentest-screen.md)（単発生成画面の全体）の作成フォームのうち、**画像のフォームだけ**を 3 段にする。動画・音声は今のまま（段は無い）。ルートは [../api/endpoints-gentest.md](../api/endpoints-gentest.md)、仕組みは [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.6、MCP は [../api/mcp-tools-generation-test.md](../api/mcp-tools-generation-test.md)。
 
 ## 1. 今の画面との関係
 
 | 段 | 何をする所 | 実体 |
 |---|---|---|
 | **かんたん**（初期表示） | やりたいことを選ぶ → モデルとおすすめの設定が決まる。品質 3 ボタン・サイズ 3 ボタン・プロンプトと入力画像だけ | 新しい。`organisms/gentesttier`（`easy.templ`） |
-| **こだわり** | 今の生成テスト画面の作成フォームそのもの（モデルのカード・複数のプロンプトとネガティブ・本数・縦横比・**詳細設定（#973）**・入力画像・LoRA）。かんたんで選んだ値が最初から入り、変えた項目に印が付き、「元に戻す」ができる | 今のフォーム（`organisms/gentest`・`gentestadv`）＋ `gentesttier/refine.templ` と `static/src/components/gentest-tiers/refine.ts` |
+| **こだわり** | 今の単発生成画面の作成フォームそのもの（モデルのカード・複数のプロンプトとネガティブ・本数・縦横比・**詳細設定（#973）**・入力画像・LoRA）。かんたんで選んだ値が最初から入り、変えた項目に印が付き、「元に戻す」ができる | 今のフォーム（`organisms/gentest`・`gentestadv`）＋ `gentesttier/refine.templ` と `static/src/components/gentest-tiers/refine.ts` |
 | **ComfyUI** | ノードで作る段。**今ある機能への入口**（ノード画面 `/nodes`・保存したワークフロー `/workflows`・モデルの設定 `/settings/local-models`・モデルマネージャー）と、今の設定をグラフで開く入口・画面に出す値（§10）を出す。偽の UI や「準備中」は出さない | `gentesttier/tabs.templ` の `ComfyPanel` |
 
 - 段の切り替えは、フォームの上のタブ（`nav[aria-label="作り方"]`。ページ間のタブ `generationNav` と同じ流儀: 今の段は `aria-current="page"` の `span`、他は `a`）。かんたん ⇄ こだわりは、フォームを**入力したまま**差し替える（HTMX。入力済みの値を `hx-include` で送り返し、`hx-push-url` でアドレスも変える）。スクリプトが無くても、ただのリンク（`?tier=`）で開ける（入力は持ち越さない）。ComfyUI は別の画面への入口なので、入力を持ち越さない普通のリンク。
@@ -94,7 +94,7 @@
 
 - **URL はクエリ（`?tier=`）**: 段は同じ画面（`/generation-test`）の状態で、パスを分けると、戻る・入力の持ち越し・既存の入口（`?model=` など）が複雑になる。ブラウザの戻る・リロードで同じ段に戻れるよう、段を替えるとアドレスも変える（`hx-push-url`）。
 - **プリセットはテンプレート（ワークフロー）に持たせる**: モデルの性質（steps の既定・蒸留かどうか・どの値が速さに効くか）は、そのグラフと一緒に決まり、テンプレートを足すとき（`localcfg/templates/**`）に同じ場所で直せる。モデルのカタログ（`modelmgr/catalog/data/models`）は「何をダウンロードするか」のデータで、複数のワークフローが同じモデルを別の steps で使い（SDXL の txt2img と img2img など）、導入済みのモデルが持つのは**ワークフロー**なので、カタログに置くとグラフの値と二重管理になる。`Caps`（`list_generation_models` の `sampling`）に載るので、画面と MCP は同じものを読む。
-- **選択肢と対応するモデルのデータは `service/gentest/intent/intents.json`（埋め込み）**: 「やりたいこと → 候補モデル」は**生成テスト（画面と MCP）の選び方**であって、モデルの導入データ（`modelmgr/catalog`）でも、モデルのワークフロー（`localcfg`）でもない。カタログの流儀（埋め込み JSON を `DisallowUnknownFields` で読む）に合わせ、選択肢や候補の追加は JSON の編集だけで済む。候補はカタログのワークフロー名で書き、テスト（`TestTheIntentsNameWorkflowsOfTheCatalog`）が、実在しない名前を許さない。
+- **選択肢と対応するモデルのデータは `service/gentest/intent/intents.json`（埋め込み）**: 「やりたいこと → 候補モデル」は**単発生成（画面と MCP）の選び方**であって、モデルの導入データ（`modelmgr/catalog`）でも、モデルのワークフロー（`localcfg`）でもない。カタログの流儀（埋め込み JSON を `DisallowUnknownFields` で読む）に合わせ、選択肢や候補の追加は JSON の編集だけで済む。候補はカタログのワークフロー名で書き、テスト（`TestTheIntentsNameWorkflowsOfTheCatalog`）が、実在しない名前を許さない。
 - **`quality` は `Request` の 1 項目**（画面の hidden・MCP の引数・見積りの検証が同じ形）。リクエストが steps・cfg を名指ししていればそちらが勝つ（こだわりの値が勝つ）。
 
 - **こだわり → かんたんで詳細設定が消えることは、消すと**画面で言う**（保持しない。Issue #1000）**: かんたんは「何も触らなくても今と同じ品質」が約束で、フォームは詳細設定の欄（seed・steps・cfg・sampler・scheduler・画面に出す値）を持たない。保持するには、かんたんのフォームが hidden でそれらを運んで実行に混ぜる（かんたんで生成した結果が、見えない値で変わる = 約束が壊れる）か、別名の欄で運んでこだわりへ戻るときだけ復元する（欄が倍になり、かんたんで品質ボタンを押したあとの値との優先順位が要る）必要があり、どちらも「元に戻す」の基準（段が始まったときの値）を複雑にする。**消すと言うほうが、約束を守れて単純**。かんたんへのタブを押すときに、ブラウザ（`refine.ts`）が、こだわりで変えた項目のうちかんたんが持たないもの（seed・steps・cfg・sampler・scheduler・画面に出した値）のキーをリクエストに足し（`dropped`。`droppedKeys`）、返ってきたかんたんのフォームの冒頭に「こだわりで変えた詳細設定（シード・ステップ数）は、かんたんでは使わないため消えました。こだわりへ戻っても元には戻りません」と出す（`tierform.State.DroppedNotice`）。プロンプト・ネガティブ・LoRA・入力画像の強さはかんたんが持つので、言わない。何も変えていなければ何も言わない。品質ボタンの値（steps/cfg）は `easy_quality` で運ぶので、変えていなければ消えない。スクリプトが無いリンクの移動は入力ごと持ち越さないので、言うことが無い。

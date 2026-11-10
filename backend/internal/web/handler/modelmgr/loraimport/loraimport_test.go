@@ -94,7 +94,7 @@ func TestUploadACompleteLoRAEndToEnd(t *testing.T) {
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
 	out := rec.Body.String()
 	assert.Contains(t, out, "「my_char.safetensors」を追加しました")
-	assert.Contains(t, out, "生成テストの「LoRA と強さ」で選べます")
+	assert.Contains(t, out, "単発生成の「LoRA と強さ」で選べます")
 	assert.Contains(t, out, `href="/generation-test"`)
 	assert.Contains(t, out, `hx-swap-oob="true"`, "the list is drawn again")
 	assert.Contains(t, out, `data-testid="mm-lora-item"`)

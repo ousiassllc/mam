@@ -940,7 +940,7 @@ func matchBestPrompt(b MatchBatch) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if b.BestUseURL != "" {
-			templ_7745c5c3_Err = atoms.ButtonLink(atoms.ToneNeutral, "生成テストで比べる", templ.SafeURL(b.BestUseURL), templ.Attributes{"data-testid": "gt-match-use"}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.ButtonLink(atoms.ToneNeutral, "単発生成で比べる", templ.SafeURL(b.BestUseURL), templ.Attributes{"data-testid": "gt-match-use"}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

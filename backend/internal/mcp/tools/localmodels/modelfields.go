@@ -19,7 +19,7 @@ type ModelFields struct {
 	WorkflowJSON      string          `json:"workflow_json,omitempty" jsonschema:"ComfyUI: Save (API Format) の JSON。渡すと assignments も渡す必要がある"`
 	Assignments       []Assignment    `json:"assignments,omitempty" jsonschema:"ComfyUI: 入力の割り当て（渡すと全体を置き換える）。prompt が必須"`
 	OutputNode        string          `json:"output_node,omitempty" jsonschema:"ComfyUI: 出力に使うノード ID"`
-	ExposedInputs     []exposed.Input `json:"exposed_inputs,omitempty" jsonschema:"ComfyUI の画像: 画面に出す値（ノードの入力。生成テストの「こだわり」に入力欄として出て、リクエストの exposed に key <ノード ID>.<入力名> で値を渡せる）。渡すと全体を置き換える（空配列で消す）。割り当てが使っている入力・ほかのノードがつないでいる入力は選べない"`
+	ExposedInputs     []exposed.Input `json:"exposed_inputs,omitempty" jsonschema:"ComfyUI の画像: 画面に出す値（ノードの入力。単発生成の「こだわり」に入力欄として出て、リクエストの exposed に key <ノード ID>.<入力名> で値を渡せる）。渡すと全体を置き換える（空配列で消す）。割り当てが使っている入力・ほかのノードがつないでいる入力は選べない"`
 	FPS               int             `json:"fps,omitempty" jsonschema:"ComfyUI 動画: 既定 16"`
 	FramesStep        int             `json:"frames_step,omitempty" jsonschema:"ComfyUI 動画: 正なら総フレーム数を n×step+1 にする（Wan は 4、LTX は 8）"`
 	SizeMultiple      int             `json:"size_multiple,omitempty" jsonschema:"ComfyUI: 幅・高さの倍数。既定 16"`
