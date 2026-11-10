@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 )
 
 // ProjectService manages Projects, their Brief, the Confirmation Level and assets.
@@ -32,6 +33,7 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 	if err := validateMessage(content, len(in.Uploads) > 0); err != nil {
 		return domain.Project{}, err
 	}
+	content, hasKey := secretguard.Redact(content) // an API key is never read by the extractor (an LLM) nor kept in the thread (#1140)
 	projectID := domain.NewID()
 	stored, err := s.storeUploads(projectID, in.Uploads)
 	if err != nil {
@@ -40,11 +42,17 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 	assets := assetsOf(stored)
 
 	var brief domain.Brief
-	briefing.Absorb(&brief, s.extractor.Extract(content), content)
+	if !hasKey {
+		briefing.Absorb(&brief, s.extractor.Extract(content), content)
+	}
 	briefing.Recommend(&brief)
 	brief.AttachAssets(assets)
 
-	messages := assignIDs([]domain.ChatMessage{userText(content, "", assetIDs(assets)), briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)})
+	messages := []domain.ChatMessage{userText(content, "", assetIDs(assets)), briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)}
+	if hasKey {
+		messages = slices.Insert(messages, 1, assistantText(pastedNotice))
+	}
+	messages = assignIDs(messages)
 	project := domain.Project{
 		ID: projectID, State: domain.StateDraft, Mode: domain.ModeAuto,
 		ConfirmationLevel:  domain.ConfirmKeyCheck,

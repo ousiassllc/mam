@@ -1,6 +1,7 @@
 package secretguard_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,10 +40,48 @@ func TestRedact_LeavesOrdinaryMessagesAlone(t *testing.T) {
 		"sk-short",
 		"https://example.com/a-very-long-path-that-is-no-key-0123456789",
 		"ショートカットキーを変えたい",
-		"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6",
+		"https://example.com/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6",
+		"/home/me/clips/final_cut_of_the_first_scene.mp4 を使って",
+		"abcdefg",
 	} {
 		got, found := secretguard.Redact(text)
 		assert.False(t, found, text)
 		assert.Equal(t, text, got)
+	}
+}
+
+// the keys of the providers that have no prefix of their own are built at run time (no real key is in the repository)
+func providerKeys() map[string]string {
+	hex := strings.Repeat("0123456789abcdef", 4)
+	b64 := func(n int) string { return strings.Repeat("AbCdEf0123456789", n)[:n] }
+	return map[string]string{
+		"kling (32 letters and digits)": b64(32),
+		"runway (key_ + hex)":           "key" + "_" + hex[:48],
+		"luma (luma- + uuid)":           "luma" + "-" + "12345678-1234-1234-1234-123456789abc",
+		"minimax (JWT)":                 "ey" + "J" + b64(30) + "." + "ey" + "J" + b64(40) + "." + b64(43),
+		"seedance / flux (uuid)":        "12345678-1234-1234-1234-123456789abc",
+		"sync labs":                     "sk" + "-" + hex[:40],
+		"dotted":                        "A1b2C3d4E5f6G7h8I9j0K1l2M3n4.O5p6",
+	}
+}
+
+func TestRedact_HidesAKeyPastedBareOrInASentenceWhateverTheProvider(t *testing.T) {
+	for name, key := range providerKeys() {
+		t.Run(name, func(t *testing.T) {
+			for _, text := range []string{key, "  " + key + "\n", "「" + key + "」", "これです " + key + " お願い"} {
+				got, found := secretguard.Redact(text)
+				assert.True(t, found, text)
+				assert.NotContains(t, got, key[len(key)/3:], "no part of it is left: %q", got)
+			}
+		})
+	}
+}
+
+func TestOneToken_IsASingleWordOfPrintableASCII(t *testing.T) {
+	for _, text := range []string{"abcdefgh", " Zm9vYmFy+/= ", "\"key_0123456789\""} {
+		assert.True(t, secretguard.OneToken(text), text)
+	}
+	for _, text := range []string{"はい", "yes", "two words here", "日本語のメッセージです", "abc defgh", ""} {
+		assert.False(t, secretguard.OneToken(text), text)
 	}
 }
