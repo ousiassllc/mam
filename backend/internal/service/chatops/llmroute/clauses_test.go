@@ -177,8 +177,25 @@ func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
 		"Director の LLM を Claude Opus にして、Producer は ミストラル 長文版にして",
 		"Director の LLM を Claude Opus にして、Producer は ミストラル の長文版にして",
 		"Director の LLM を Claude Opus にして、Producer は ラマ 3 の 速い版にして",
+		"Director の LLM を Claude Opus にして、Producer は Phi の 速い版にして", // an ASCII token of 3 letters
+		"Director の LLM を Claude Opus にして、Producer は ラー の 速い版にして",  // a katakana run that is 2 characters only with its 「ー」
 		"Director の LLM を Claude Opus にして。Storyboard は R1 の 速いやつにして",
 		"Director の LLM を Claude Opus にして、Producer の代替は o3 mini にして",
+	} {
+		t.Run(message, func(t *testing.T) { assert.Empty(t, detect(message)) })
+	}
+}
+
+// The trade-off for the second route: a name with a katakana word of 2 or more characters may be a model's even beside a count or a degree ("ミストラル 長文版" cannot be told from "リトライ 3 回" without a
+// list), so a single request beside such a clause is left to the model (which asks or answers).
+func TestDetect_KatakanaWithADegreeWordIsLeftToTheModel(t *testing.T) {
+	for _, message := range []string{
+		"Director の LLM を Claude Opus にして、Producer は リトライ 3 回にして",
+		"Director の LLM を Claude Opus にして、Producer は タイムアウト 5 秒にして",
+		"Director の LLM を Claude Opus にして、Producer は ステップ 3 つにして",
+		"Director の LLM を Claude Opus にして、Producer は ミストラル 3 回にして",
+		"Director の LLM を Claude Opus にして、Producer は ミストラル 長文版にして",
+		"Director の LLM を Claude Opus にして、Producer は コード 速い版にして",
 	} {
 		t.Run(message, func(t *testing.T) { assert.Empty(t, detect(message)) })
 	}
