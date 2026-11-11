@@ -52,16 +52,17 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 		target = &m
 	}
 	// an API key is never a chat message (#1140): it would stay in the thread and go to the LLM that reads it
-	if ws, done, err := s.guardSecret(ctx, project, target, content); done || err != nil {
+	if ws, done, err := s.guardSecret(ctx, project, target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0); done || err != nil {
 		return ws, err
 	}
 	answered, target, done, err := s.answerCard(ctx, project, target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
 	if done || err != nil {
 		return answered, err
 	}
-	if target != nil && isBriefQuestion(*target) {
+	if target != nil && (isBriefQuestion(*target) || target.Kind == domain.KindEscalation) {
 		// A card takes one answer at a time: the reply that arrives while another one to the same
 		// card is being recorded (a double click) is a conflict, like a reply to an answered card.
+		// An Escalation button carries out an operation, which must not run twice.
 		if _, busy := s.answering.LoadOrStore(target.ID, struct{}{}); busy {
 			return Workspace{}, ErrConflict
 		}
@@ -221,7 +222,7 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 		}
 		answer := "判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"
 		if done, picked, err := s.answerEscalation(ctx, project, *target, user.Content); err != nil {
-			return turn, nil, err
+			return turn, nil, err // the card stays open and the Project keeps its state: nothing of this turn is recorded
 		} else if picked {
 			answer = done // a button that carries its operation: the answer is done
 		}

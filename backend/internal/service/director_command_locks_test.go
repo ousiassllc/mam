@@ -271,13 +271,6 @@ func (f genFixture) say(t *testing.T, content, replyTo string) service.Workspace
 	return postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: content, ReplyToMessageID: replyTo})
 }
 
-func postMessage(t *testing.T, svc *service.Services, projectID string, in service.PostMessageInput) service.Workspace {
-	t.Helper()
-	ws, err := svc.Chat.PostMessage(context.Background(), projectID, in)
-	require.NoError(t, err)
-	return ws
-}
-
 func TestChat_DirectorModeDirectionAttachmentsJoinTheBrief(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.startDirecting(t)

@@ -62,7 +62,7 @@ func localProvider(l *audiosettings.Local, role localvoice.Role, keySet bool) Lo
 func (h handlers) audioSection(ctx context.Context) (AudioProvidersSection, error) {
 	svc := h.r.Settings.Audio
 	if svc == nil {
-		return AudioProvidersSection{}, unavailable("音声・口パクの設定")
+		return AudioProvidersSection{}, Unavailable("音声・口パクの設定")
 	}
 	v, err := svc.View(ctx)
 	if err != nil {
@@ -91,7 +91,7 @@ type SetAudioInput struct {
 func (h handlers) setAudio(ctx context.Context, in SetAudioInput) (AudioProvidersSection, error) {
 	svc := h.r.Settings.Audio
 	if svc == nil {
-		return AudioProvidersSection{}, unavailable("音声・口パクの設定")
+		return AudioProvidersSection{}, Unavailable("音声・口パクの設定")
 	}
 	if in.VoiceProvider == nil && in.LipSyncProvider == nil && in.FallbackToCloud == nil {
 		return AudioProvidersSection{}, invalidInput("", "変える項目（voice_provider・lip_sync_provider・fallback_to_cloud）を 1 つ以上指定してください")

@@ -74,3 +74,12 @@ func TestOnlyTheAggregatorsHaveAKeyVendor(t *testing.T) {
 	assert.Equal(t, "replicate", viaprovider.Replicate.Vendor())
 	assert.False(t, viaprovider.Provider("x").Valid())
 }
+
+func TestTheRouteTablesAreBuiltOnceNotOnEveryCall(t *testing.T) {
+	assert.Zero(t, testing.AllocsPerRun(100, func() {
+		_, _ = viaprovider.RouteOf(viaprovider.Replicate, domain.ModelKling4)
+		_, _ = viaprovider.PerSecond(viaprovider.Fal, domain.ModelKling3, "720p")
+		_ = viaprovider.FoldsNegative(viaprovider.OpenRouter, domain.ModelKling3)
+		_ = viaprovider.Models()
+	}), "a lookup allocates nothing")
+}

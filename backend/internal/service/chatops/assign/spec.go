@@ -9,16 +9,11 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 )
 
 // OpSetModelAssignment changes one route of the image / video model assignment.
 const OpSetModelAssignment commandinterpreter.OpType = "set_model_assignment"
-
-// The roles of a route.
-const (
-	rolePrimary  = "primary"
-	roleFallback = "fallback"
-)
 
 // Args of the operation. Target is an image purpose (modelsettings.ImagePurposes) or a Quality Policy (domain.QualityPolicies), "" when the message names none (the chat then says
 // what to name). Model is the name the director said: Question resolves it against the models the assignment offers.
@@ -55,7 +50,7 @@ func clean(op commandinterpreter.Operation) (commandinterpreter.Operation, bool)
 	if err := op.DecodeArgs(&a); err != nil {
 		return commandinterpreter.Operation{}, false
 	}
-	a.Target, a.Role = targetOf(a.Target), roleOf(a.Role)
+	a.Target, a.Role = targetOf(a.Target), nlu.RoleOf(a.Role)
 	a.Model, a.Resolution = strings.TrimSpace(a.Model), strings.TrimSpace(a.Resolution)
 	if a.Takes < 0 {
 		a.Takes = 0
@@ -64,47 +59,44 @@ func clean(op commandinterpreter.Operation) (commandinterpreter.Operation, bool)
 	return out, err == nil
 }
 
-// roleOf is primary unless the text says the alternative ("fallback", "代替", "フォールバック", "バックアップ").
-func roleOf(text string) string {
-	n := norm(text)
-	if strings.Contains(n, "fallback") || strings.Contains(n, "代替") || strings.Contains(n, "フォールバック") || strings.Contains(n, "バックアップ") {
-		return roleFallback
-	}
-	return rolePrimary
-}
-
 var (
 	// mediaModel is the model of a medium or of a purpose: "画像モデル", "動画のモデル", "プレビュー用のモデル", "image model". The medium alone ("動画は縦型にして", "参照画像を使って") is a direction
 	// of the Brief, and "モデル" alone is not enough either: the LLM of an Agent is a model too (the operation of package llmroute).
 	mediaModel = regexp.MustCompile(`(?i)(画像|動画|イメージ|image|video|参照|リファレンス|keyframe|キーフレーム|プレビュー|preview|quality|クオリティ|品質|用途)\s*(?:の|用の?)?\s*(?:モデル|models?\b)`)
-	// person is the "モデル" of a fashion model ("モデルさん"), which names no model of the app.
-	person = regexp.MustCompile(`モデル(?:さん|ちゃん|君|くん|たち|達)`)
 	// namedModel is the name of a model of the catalog: with a purpose or a Quality Policy it names the target on its own ("BALANCED の代替を seedance-2.0 に").
 	namedModel = regexp.MustCompile(`(?i)(nano.?banana|flux|gpt.?image|kling|seedance|runway|minimax|wan.?3|luma|gemini.?omni)`)
 	changeWord = regexp.MustCompile(`(?i)(割り当て|割当|にして|にする|にしたい|に変|へ変|変えて|変更|切り替|切替|設定|使って|使いたい|使う|set|assign|switch|use|[にへ]\s*[。.!！]?\s*$)`)
 	policyWord = regexp.MustCompile(`(?i)(quality|クオリティ|品質|\b(?:fast|balanced|max)\b|代替|フォールバック|fallback|プライマリ|primary|新規参照|参照の編集|プレビュー|preview)`)
 	anyModel   = regexp.MustCompile(`(?i)(モデル|\bmodels?\b)`)
+	// redoWord says the shot is to be made again: a number of takes then is how many, not the setting.
+	redoWord   = regexp.MustCompile(`(?i)(作り直|作りなお|やり直|撮り直|生成し直|再生成|もう一度|もう1回|リテイク|retake|regenerate)`)
 	takesWord  = regexp.MustCompile(`(?i)\d+\s*(take|テイク)`)
 	resolution = regexp.MustCompile(`(?i)(\d{3,4}\s*p\b|解像度)`)
 	// otherOp is what another operation owns: the API key of a model's service and the API provider the cloud video models are called through (package apikey).
 	otherOp = regexp.MustCompile(`(?i)(api\s*キー|apiキー|api\s*key|経由|openrouter|fal\.ai|replicate|プロバイダー|provider)`)
-	inquiry = regexp.MustCompile(`(?i)(教えて|見せて|一覧|確認して|とは|何です|なんです|[かが][？?]|\?|？)\s*$`)
 )
 
 // Asked reports whether the message asks to change the assignment: it names the target of the operation (a model of a medium or a purpose, a Quality Policy's model, resolution or
 // number of Takes) and does something to it. A bare 動画 / 画像 / 入れて never suffices (it is a direction of the Brief), and a question about the assignment ("今の画像モデルは何？")
 // is not a request.
 func Asked(message string) bool {
-	message = person.ReplaceAllString(message, "")
-	if inquiry.MatchString(strings.TrimSpace(message)) || otherOp.MatchString(message) {
+	message = nlu.Person.ReplaceAllString(message, "")
+	if nlu.IsInquiry(message) || otherOp.MatchString(message) {
 		return false
 	}
-	// "1080p で 3 Take": a Quality Policy's resolution and Takes, said on their own
-	if takesWord.MatchString(message) || (resolution.MatchString(message) && policyWord.MatchString(message)) {
+	// "1080p で 3 Take": a Quality Policy's resolution and Takes, said on their own. A number of takes beside nothing that sets (「3 テイクで作り直して」) is a request to make the shot again.
+	if takesWord.MatchString(message) && !redoWord.MatchString(message) && (resolution.MatchString(message) || changeWord.MatchString(message)) {
+		return true
+	}
+	if resolution.MatchString(message) && policyWord.MatchString(message) {
 		return true
 	}
 	if !changeWord.MatchString(message) {
 		return false
 	}
-	return mediaModel.MatchString(message) || (policyWord.MatchString(message) && (anyModel.MatchString(message) || namedModel.MatchString(message)))
+	if mediaModel.MatchString(message) {
+		return true
+	}
+	// "代替" and "モデル" of the sentence may belong to the LLM of an Agent ("Producer の代替モデルを Claude に"): that is package llmroute's
+	return policyWord.MatchString(message) && (anyModel.MatchString(message) || namedModel.MatchString(message)) && nlu.AgentIn(message) == ""
 }

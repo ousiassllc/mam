@@ -67,7 +67,7 @@ func (b kling4Backend) GenerateVideo(ctx context.Context, apiModel string, req V
 
 	path, body := b.body(req)
 	raw, _ := json.Marshal(body)
-	data, err := b.request(ctx, http.MethodPost, b.baseURL+path+url.PathEscape(apiModel), jsonHeader(auth), raw, maxJSONBytes)
+	data, err := b.request(ctx, http.MethodPost, b.baseURL+path+url.PathEscape(apiModel), JSONHeader(auth), raw, maxJSONBytes)
 	if err != nil {
 		return VideoResult{}, err
 	}

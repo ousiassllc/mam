@@ -39,6 +39,8 @@ const (
 	MaxSessions = 32
 	// SessionTTL is how long a conversation is kept without use.
 	SessionTTL = 6 * time.Hour
+	// MaxProposals is how many confirmation cards of a conversation are kept: the oldest closed ones are dropped beyond it (a press on one is then ErrNoProposal).
+	MaxProposals = 20
 )
 
 // Agent is the LLM side (gentestchat.Chat; a scripted one in the tests).
@@ -89,12 +91,17 @@ func newID() string {
 	return hex.EncodeToString(b[:])
 }
 
-// session is one conversation. Its mutex serialises the messages of a conversation (a LLM turn is not interleaved with another one).
+// session is one conversation.
 type session struct {
+	// send serialises the messages of a conversation (a LLM turn is not interleaved with another one). It is held for a whole Send.
+	send sync.Mutex
+	// mu guards turns, proposals and order. It is held briefly, never across a LLM call or a Run, so the buttons of a card are not kept waiting while a
+	// message is being answered.
 	mu        sync.Mutex
 	id        string
-	turns     []gentestchat.Turn
+	turns     []gentestchat.Turn // the newest MaxTurns
 	proposals map[string]*Proposal
+	order     []string // the ids of proposals, oldest first
 	used      time.Time
 }
 

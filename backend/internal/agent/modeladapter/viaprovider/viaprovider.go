@@ -33,8 +33,15 @@ const (
 	Replicate  Provider = "replicate"
 )
 
+// The tables of this package, built once; callers read what they return and must not modify it.
+var (
+	providers = []Provider{Official, OpenRouter, Fal, Replicate}
+	models    = []domain.ModelName{domain.ModelKling3, domain.ModelKling4}
+	routes    = buildRoutes() // by provider other than Official, then model
+)
+
 // Providers lists the providers in the order the settings screen shows them.
-func Providers() []Provider { return []Provider{Official, OpenRouter, Fal, Replicate} }
+func Providers() []Provider { return providers }
 
 // Valid reports whether p is one of Providers.
 func (p Provider) Valid() bool { return slices.Contains(Providers(), p) }
@@ -73,7 +80,7 @@ func (p Provider) Vendor() string {
 }
 
 // Models lists the video models a provider other than Official can be asked to serve, in the order the screen lists them.
-func Models() []domain.ModelName { return []domain.ModelName{domain.ModelKling3, domain.ModelKling4} }
+func Models() []domain.ModelName { return models }
 
 // ModelLabel is the name of a model of Models on the screen.
 func ModelLabel(m domain.ModelName) string {
@@ -127,20 +134,22 @@ func Routes(p Provider) []Route {
 }
 
 // RouteOf is the route of m through p. It is false when the provider setting does not concern the model: p is Official (or unset)
-// or m is not one of Models.
+// or m is not one of Models. The route is shared by all callers (its Variants map included): do not modify it.
 func RouteOf(p Provider, m domain.ModelName) (Route, bool) {
-	if !slices.Contains(Models(), m) {
-		return Route{}, false
+	r, ok := routes[p][m]
+	return r, ok
+}
+
+func buildRoutes() map[Provider]map[domain.ModelName]Route {
+	build := map[Provider]func(domain.ModelName) Route{OpenRouter: openRouter, Fal: fal, Replicate: replicate}
+	out := make(map[Provider]map[domain.ModelName]Route, len(build))
+	for p, fn := range build {
+		out[p] = make(map[domain.ModelName]Route, len(models))
+		for _, m := range models {
+			out[p][m] = fn(m)
+		}
 	}
-	switch p {
-	case OpenRouter:
-		return openRouter(m), true
-	case Fal:
-		return fal(m), true
-	case Replicate:
-		return replicate(m), true
-	}
-	return Route{}, false
+	return out
 }
 
 // FoldsNegative is whether the backend of p writes the negative prompt of m into the prompt (Route.FoldsNegative); false when the setting does not concern the model.

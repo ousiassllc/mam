@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 )
 
 // Runtime is the Handler of OpInstallRuntime.
@@ -27,7 +28,7 @@ func (r *Runtime) Question(ctx context.Context, _ domain.Project, op commandinte
 	if err := op.DecodeArgs(&a); err != nil {
 		return chatops.Card{}, err
 	}
-	if key(a.Runtime) == "" {
+	if nlu.Norm(a.Runtime) == "" {
 		return chatops.Card{}, chatops.Refuse("%s", whichRuntime)
 	}
 	list := r.deps.Runtimes(ctx)

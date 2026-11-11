@@ -85,9 +85,10 @@ templ Messages(session string, msgs []Message) {
 templ entry(session string, m Message) {
 	switch m.Kind {
 		case KindUser:
-			<article id={ "gtc-m-" + m.ID } class="max-w-[85%] self-end whitespace-pre-wrap break-words rounded-lg bg-accent-soft px-3 py-2 text-sm text-ink" data-testid="gtc-user">{ m.Text }</article>
+			<article id={ "gtc-m-" + m.ID } class="max-w-[85%] self-end whitespace-pre-wrap break-words rounded-lg bg-accent-soft px-3 py-2 text-sm text-ink" data-testid="gtc-user"><span class="sr-only">あなた: </span>{ m.Text }</article>
 		case KindAssistant:
 			<article id={ "gtc-m-" + m.ID } class="flex max-w-full flex-col gap-3 self-start rounded-lg border border-border bg-surface px-3 py-2 text-sm" data-testid="gtc-assistant">
+				<span class="sr-only">アシスタント: </span>
 				if m.Text != "" {
 					<p class="whitespace-pre-wrap break-words">{ m.Text }</p>
 				}
@@ -107,10 +108,11 @@ templ entry(session string, m Message) {
 	}
 }
 
-// status is a line of the app, not words of a person: what it looked at, why it refused, why the LLM could not answer.
+// status is a line of the app, not words of a person: what it looked at, why it refused, why the LLM could not answer. A failure has no role="alert": the
+// thread is a polite live region that reads every addition, so an alert inside it would be read twice.
 templ status(m Message) {
 	if m.Failed {
-		<p id={ "gtc-m-" + m.ID } class="self-start whitespace-pre-wrap break-words text-sm text-danger" role="alert" data-testid="gtc-status" data-failed="true">
+		<p id={ "gtc-m-" + m.ID } class="self-start whitespace-pre-wrap break-words text-sm text-danger" data-testid="gtc-status" data-failed="true">
 			{ m.Text }
 			if m.SettingsHref != "" {
 				<a class="ml-1 underline focus-visible:focus-ring" href={ templ.SafeURL(m.SettingsHref) }>テキスト生成の設定を開く</a>
@@ -153,7 +155,8 @@ templ optionCards(session string, opts []Option) {
 }
 
 // ProposalCard is the confirmation card of an estimate: what will be made, the total and the breakdown, and the two buttons. While it is open it is the only way a
-// generation starts. The server holds the request and the estimate of the card; the button sends only the id of the card.
+// generation starts. The server holds the request and the estimate of the card; the button sends only the id of the card. Both buttons post to the thread: the
+// closed card comes back out of band, and a refusal is a line added to the thread, so a failed press never takes the live card (and its buttons) away.
 templ ProposalCard(p Proposal) {
 	<section
 		id={ ID(p.ID) }
@@ -225,8 +228,8 @@ templ ProposalCard(p Proposal) {
 				</form>
 				<form
 					hx-post={ dismissPath(p.ID) }
-					hx-target={ "#" + ID(p.ID) }
-					hx-swap="outerHTML"
+					hx-target={ "#" + ThreadID }
+					hx-swap="beforeend"
 					hx-sync="this:drop"
 					hx-disabled-elt="find button"
 				>
@@ -275,7 +278,7 @@ templ ResultBlock(r Result) {
 			<progress class="h-2 w-full" max="100" value={ itoa(r.Percent) } aria-label="生成の進み具合"></progress>
 		}
 		if r.Error != "" {
-			<p class="break-words text-sm text-danger" role="alert">{ r.Error }</p>
+			<p class="break-words text-sm text-danger">{ r.Error }</p>
 		}
 		<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4" data-testid="gtc-tiles">
 			for _, t := range r.Tiles {

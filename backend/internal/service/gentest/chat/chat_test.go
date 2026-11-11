@@ -271,7 +271,7 @@ func TestAVideoEstimateShowsTheLengthPricedPerSecond(t *testing.T) {
 	assert.Equal(t, 0, r.batches(t))
 }
 
-// A key pasted into the chat is hidden before the message is sent to the LLM or put in the thread (spec/spec.md §1.1); the rest of the message goes as it was.
+// A key pasted into the chat is hidden before the message is sent to the LLM or put in the thread (spec/components/chat-settings-operations.md §1.1); the rest of the message goes as it was.
 func TestAPIKeyInAMessageIsNotSentToTheLLM(t *testing.T) {
 	r := newRig(t)
 	key := "sk-proj-AbCdEfGhIjKlMnOpQrStUvWx0123"

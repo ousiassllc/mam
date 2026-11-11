@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops"
+	_ "github.com/ousiassllc/mam/backend/internal/service/chatops/outofscope" // registers the refusal of what is GUI-only on purpose (no handler of its own)
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"

@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 
@@ -43,7 +44,7 @@ var purposeInfo = map[modelsettings.ImagePurpose]struct{ label, note string }{
 	modelsettings.PurposeUnifiedOpenAI: {"OpenAI で統一", "設定ファイルの prefer_openai を有効にしているときだけ、新規リファレンスがこの割り当てを使います。"},
 }
 
-var roleLabels = map[string]string{rolePrimary: "主モデル", roleFallback: "代替モデル"}
+var roleLabels = map[string]string{nlu.RolePrimary: "主モデル", nlu.RoleFallback: "代替モデル"}
 
 const nothingNamed = "どう変えるかが読み取れませんでした。モデル名（高速版かどうか）や、動画なら解像度・Take 数を添えて、「Quality MAX の動画モデルを kling-4.0 に」のように送ってください。"
 
@@ -51,7 +52,7 @@ const nothingNamed = "どう変えるかが読み取れませんでした。モ�
 // changed). It refuses what cannot be done with a reason, and returns *ambiguousError for a model name that fits several.
 func planOf(v modelsettings.View, a Args) (plan, error) {
 	if a.Role == "" {
-		a.Role = rolePrimary
+		a.Role = nlu.RolePrimary
 	}
 	next := modelsettings.Input{Images: maps.Clone(v.Images), Policies: maps.Clone(v.Policies)}
 	for _, p := range modelsettings.ImagePurposes() {
@@ -71,7 +72,7 @@ func planOf(v modelsettings.View, a Args) (plan, error) {
 	for _, q := range domain.QualityPolicies() {
 		names = append(names, "Quality "+q.Label())
 	}
-	return plan{}, chatops.Refuse("どの用途・Quality Policy の割り当てですか？ 選べるもの（画像）: %s、（動画）: %s", few(names[:len(modelsettings.ImagePurposes())], 9), few(names[len(modelsettings.ImagePurposes()):], 9))
+	return plan{}, chatops.Refuse("どの用途・Quality Policy の割り当てですか？ 選べるもの（画像）: %s、（動画）: %s", nlu.Few(names[:len(modelsettings.ImagePurposes())], 9), nlu.Few(names[len(modelsettings.ImagePurposes()):], 9))
 }
 
 func planImage(v modelsettings.View, next modelsettings.Input, a Args, p modelsettings.ImagePurpose) (plan, error) {
@@ -81,7 +82,7 @@ func planImage(v modelsettings.View, next modelsettings.Input, a Args, p modelse
 	cur := v.Images[p]
 	route := cur
 	slot := &route.Primary
-	if a.Role == roleFallback {
+	if a.Role == nlu.RoleFallback {
 		slot = &route.Fallback
 	}
 	t := *slot
@@ -134,7 +135,7 @@ func planPolicy(v modelsettings.View, next modelsettings.Input, a Args, q domain
 	cur := v.Policies[q]
 	route := cur
 	slot := &route.Primary
-	if a.Role == roleFallback {
+	if a.Role == nlu.RoleFallback {
 		slot = &route.Fallback
 	}
 	t := *slot
@@ -194,7 +195,7 @@ func chooseModel(text string, offered []string, gated []domain.ModelName, kind s
 		if len(pickModel(text, hidden)) > 0 {
 			return "", chatops.Refuse("%q は、年齢確認がオフのため選べない成人向けモデルです。年齢確認をオンにするか、別のモデルを選んでください", text)
 		}
-		return "", chatops.Refuse("「%s」という%sは選べません。選べる%s: %s", text, kind, kind, few(offered, 8))
+		return "", chatops.Refuse("「%s」という%sは選べません。選べる%s: %s", text, kind, kind, nlu.Few(offered, 8))
 	default:
 		return "", &ambiguousError{Text: text, Names: found}
 	}
@@ -220,7 +221,7 @@ func resolutionsText(o modelsettings.VideoOption, found bool) string {
 	if !found || len(o.Resolutions) == 0 {
 		return "なし"
 	}
-	return few(o.Resolutions, 8)
+	return nlu.Few(o.Resolutions, 8)
 }
 
 // unusable is the warning for a model that cannot be used now ("" when it can): the assignment is still saved, as the MCP tool does.

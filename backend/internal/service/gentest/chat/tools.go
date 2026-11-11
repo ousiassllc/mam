@@ -56,9 +56,9 @@ func lineOf(m modelcatalog.Info) modelLine {
 }
 
 // listModels is list_generation_models for the LLM: gentest.Service.ModelsWhere, the call of the MCP tool, narrowed by what the step asked and, unless the
-// step says otherwise, to the models that can be used now. It returns the text the LLM reads and the number of models in it. A query the service refuses is
-// told to the LLM (it asks again); only a failure of the service is an error.
-func (s *Service) listModels(ctx context.Context, q gentestchat.ModelQuery) (string, int, error) {
+// step says otherwise, to the models that can be used now. It returns the text the LLM reads and the line the thread shows. A query the service refuses is
+// told to the LLM (it asks again) and to the user; only a failure of the service is an error.
+func (s *Service) listModels(ctx context.Context, q gentestchat.ModelQuery) (text, status string, err error) {
 	cond := modelfilter.Default() // what cannot be chosen now is hidden, as in the pickers
 	if q.AvailableOnly != nil {
 		cond.AvailableOnly = *q.AvailableOnly
@@ -72,9 +72,9 @@ func (s *Service) listModels(ctx context.Context, q gentestchat.ModelQuery) (str
 	if err != nil {
 		var invalid *gterr.InvalidError
 		if errors.As(err, &invalid) {
-			return "list_models refused: " + invalid.Message, 0, nil
+			return "list_models refused: " + invalid.Message, "モデルを調べられませんでした: " + invalid.Message, nil
 		}
-		return "", 0, err
+		return "", "", err
 	}
 	slices.SortStableFunc(models, func(a, b modelcatalog.Info) int { return boolRank(b.Available) - boolRank(a.Available) })
 	listed := models[:min(len(models), maxListed)]
@@ -90,7 +90,7 @@ func (s *Service) listModels(ctx context.Context, q gentestchat.ModelQuery) (str
 		MaxItems         int         `json:"max_items"`
 		MaxCostUSD       float64     `json:"max_cost_usd"`
 	}{lines, len(models) - len(listed), applied.Commercial, items, cost})
-	return "list_models: " + string(raw), len(listed), nil
+	return "list_models: " + string(raw), modelsStatus(q, len(listed)), nil
 }
 
 func boolRank(b bool) int {
@@ -124,7 +124,7 @@ func requestOf(b gentestchat.Batch) gentest.Request {
 
 // estimate is estimate_generation_test for the LLM: gentest.Service.Estimate on the request. A request that cannot run, or whose estimate is over the cost
 // limit, is told to the LLM (it fixes the request and asks again). A priced batch that can run becomes a confirmation card, and the turn is over.
-func (s *Service) estimate(ctx context.Context, se *session, st gentestchat.Step, rep *Reply) (done bool, err error) {
+func (s *Service) estimate(ctx context.Context, x *exchange, st gentestchat.Step, rep *Reply) (done bool, err error) {
 	est, err := s.d.Gentest.Estimate(ctx, requestOf(*st.Request))
 	if err != nil {
 		var (
@@ -133,16 +133,18 @@ func (s *Service) estimate(ctx context.Context, se *session, st gentestchat.Step
 		)
 		switch {
 		case errors.As(err, &invalid):
-			return s.refused(se, rep, invalid.Message), nil
+			return s.refused(x, rep, invalid.Message), nil
 		case errors.As(err, &conflict):
-			return s.refused(se, rep, conflict.Message), nil
+			return s.refused(x, rep, conflict.Message), nil
 		}
 		return false, err
 	}
 	if est.OverLimit != "" {
-		return s.refused(se, rep, est.OverLimit), nil
+		return s.refused(x, rep, est.OverLimit), nil
 	}
 	p := &Proposal{ID: newID(), State: StatePending, Request: est.Request, Estimate: est}
+	se := x.se
+	se.mu.Lock()
 	for _, old := range se.proposals { // only the newest estimate can be confirmed
 		switch old.State {
 		case StatePending:
@@ -153,19 +155,22 @@ func (s *Service) estimate(ctx context.Context, se *session, st gentestchat.Step
 		}
 	}
 	se.proposals[p.ID] = p
-	se.turns = append(se.turns, gentestchat.Turn{Role: gentestchat.RoleTool, Text: estimateText(est) + " A confirmation card with this total is now shown to the user; the user decides. Wait for the user."})
+	se.order = append(se.order, p.ID)
+	card := *p // the reply is read without the session's lock, while Confirm / Dismiss change p: the message gets a snapshot, the later states come as Reply.Changed
+	se.trim()
+	se.mu.Unlock()
+	x.add(gentestchat.RoleTool, estimateText(est)+" A confirmation card with this total is now shown to the user; the user decides. Wait for the user.")
 	text := st.Text
 	if text == "" {
 		text = "この内容で見積りました。よければカードの「この内容で実行する」を押してください。"
 	}
-	card := *p // the reply is read without the session's lock, while Confirm / Dismiss change p: the message gets a snapshot, the later states come as Reply.Changed
 	rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindAssistant, Text: text, Proposal: &card})
 	return true, nil
 }
 
 // refused tells the LLM why an estimate was refused (and shows the user a line), and the LLM goes on.
-func (s *Service) refused(se *session, rep *Reply, why string) bool {
-	se.turns = append(se.turns, gentestchat.Turn{Role: gentestchat.RoleTool, Text: "estimate refused: " + why})
+func (s *Service) refused(x *exchange, rep *Reply, why string) bool {
+	x.add(gentestchat.RoleTool, "estimate refused: "+why)
 	rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindStatus, Text: "この条件では見積りできませんでした: " + why})
 	return false
 }

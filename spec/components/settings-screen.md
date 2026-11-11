@@ -84,7 +84,7 @@
 │ ┌ nav aria-label="設定" 224px ┐ ┌ main（残り 832px）───────────────────────────────┐ │
 │ │ ▌概要            ←current   │ │ 概要                       ← h2                   │ │
 │ │  API キーとログイン         │ │ ┌ [🔑]API キーと… ┐ ┌ [💬]テキスト生成 ┐        │ │
-│ │  テキスト生成（LLM）        │ │ │ API キー 3 / 14 件│ │ 変更 2 / 14 Agent │        │ │
+│ │  テキスト生成（LLM）        │ │ │ API キー 3 / 18 件│ │ 変更 2 / 14 Agent │        │ │
 │ │  画像・動画モデル           │ │ │ 開く ›          │ │ 開く ›          │        │ │
 │ │  ローカル・代替モデル       │ │ └──────────────────┘ └──────────────────┘        │ │
 │ │  MCP サーバー               │ │ ┌ 画像・動画モデル ┐ ┌ ローカル・代替 ┐ …（2 列）  │ │
@@ -106,7 +106,7 @@
 
 | カード | 状態の行（取得元） | 行き先 |
 |--------|------------------|--------|
-| API キーとログイン | API キー n / 14 件（`CredentialService.Status`）、ChatGPT のログイン（`chatgpt.Service.Overview`。`toolstatus.Services.Settings` が組み立てる。[home-screen.md](home-screen.md) §5）。キーストアが読めないときは warn ・ キーストアを利用できません | `/settings/api-keys` |
+| API キーとログイン | API キー n / 18 件（`CredentialService.Status`。分母は `len(service.CredentialProviders)`）、ChatGPT のログイン（`chatgpt.Service.Overview`。`toolstatus.Services.Settings` が組み立てる。[home-screen.md](home-screen.md) §5）。キーストアが読めないときは warn ・ キーストアを利用できません | `/settings/api-keys` |
 | テキスト生成（LLM） | 既定から変えた Agent の数「変更 n / 14 件」（`llmassign.Service.View` の `Route` と `Default` を比べる）。固定（`Pinned`）のときは neutral ・ 起動オプションで固定 | `/settings/llm` |
 | 画像・動画モデル | 「既定のまま」／「変更あり」（`modelsettings` の `Customized`）。固定のときは neutral ・ 起動オプションで固定 | `/settings/models` |
 | ローカル・代替モデル | 接続先 n 件・モデル m 件。接続の状態は **`hx-get` で後から**（`GET /settings/local-models/health`。接続先ごとに並行して既存の `localmodels.Service.TestEndpoint` を呼ぶが、概要では各 3 秒で打ち切る。「n 件中 m 件に接続できます」。取れないときは空）。接続先 0 件は「接続先なし」 | `/settings/local-models` |
@@ -224,3 +224,4 @@
 | 0.16 | 2026-11-03 | §9 の部品の表に、ChatGPT のログインの「詳細」のモーダル（`organisms/settings/chatgpt/detail.templ`）を足した。「API キーとログイン」の ChatGPT と「音声・口パク」のカード化の詳細は [settings-screen-categories.md](settings-screen-categories.md) §1.3・§9 | Issue #1005 |
 | 0.17 | 2026-11-06 | §2 の分類「ffmpeg」「FaceFusion」と §5 の概要のカード 2 枚を、モデルマネージャーの `companion` へ移すと決め、概要に「付随ソフト」の 1 枚を足した（状態は仕様のみ） | Issue #1106 |
 | 0.18 | 2026-11-07 | §2 の分類「ffmpeg」「FaceFusion」と §5 の概要のカード 2 枚を外し、概要に「付随ソフト」の 1 枚を足した（#1106）。状態は「実装済み」 | Issue #1106 |
+| 0.19 | 2026-11-11 | §4 の概要の図と §5 の概要のカードの表の「API キー n / 14 件」を 18 件（`len(service.CredentialProviders)`）に直した | PR #1141 のレビュー指摘 |

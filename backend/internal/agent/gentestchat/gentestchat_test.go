@@ -108,3 +108,12 @@ func TestThePromptCarriesTheLimitsAndQuotesTheConversation(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, s.req.System, "no limit", "a cost limit of 0 is no limit")
 }
+
+func TestBadStepReasonSaysWhatWasWrongWithTheStep(t *testing.T) {
+	_, err := next(t, `{"action":"say"}`)
+	assert.Equal(t, "say without text", gentestchat.BadStepReason(err))
+	_, err = next(t, `{"action":"run"}`)
+	assert.Contains(t, gentestchat.BadStepReason(err), `unknown action "run"`)
+	_, err = next(t, `not json at all`)
+	assert.Equal(t, "it was not valid JSON", gentestchat.BadStepReason(err))
+}

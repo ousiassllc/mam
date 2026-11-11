@@ -56,12 +56,14 @@ func providerView(k Keys, s service.CredentialStatus) view.ProviderView {
 }
 
 // Data is the API keys as the settings screen shows them. A key store that cannot be read leaves the cards without a
-// state: only this panel is lost, and the error is attached to the request for the log.
+// state: only this panel is lost, and the error is attached to the request for the log. The cards still follow the choice of the
+// API provider (§1.0), so the aggregators' cards are not there under the official provider; the choice itself is left out then, for it
+// says whether each key is set.
 func Data(c *gin.Context, k Keys) view.Data {
 	statuses, err := k.Svc.Status()
 	if err != nil {
 		_ = c.Error(err)
-		return view.Data{Unavailable: true, Providers: providerViews(k, unknownStatuses())}
+		return view.Data{Unavailable: true, Providers: providerViews(k, visible(unknownStatuses(), selectedProvider(c, k)))}
 	}
 	choice, selected := providerChoice(c, k, statuses)
 	return view.Data{Providers: providerViews(k, visible(statuses, selected)), Provider: choice}

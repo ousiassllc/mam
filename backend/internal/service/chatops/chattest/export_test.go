@@ -79,7 +79,7 @@ func TestChat_ExportWithoutFFmpegPostsNoCard(t *testing.T) {
 	ws := f.Say("この動画を書き出して", "")
 
 	assert.Empty(t, chatfix.Cards(ws.Messages))
-	assert.Contains(t, chatfix.LastText(ws), "ffmpeg")
+	assert.Contains(t, chatfix.LastText(ws), "「モデルマネージャー」の「付随ソフト」")
 	assert.Equal(t, "READY", projectState(f))
 }
 
@@ -159,5 +159,5 @@ func TestChat_ExportRequestsAreReadWithoutAModel(t *testing.T) {
 
 	ws = f.Say("この動画を書き出して", "")
 	assert.Empty(t, chatfix.Cards(ws.Messages))
-	assert.Contains(t, chatfix.LastText(ws), "ffmpeg")
+	assert.Contains(t, chatfix.LastText(ws), "「モデルマネージャー」の「付随ソフト」")
 }

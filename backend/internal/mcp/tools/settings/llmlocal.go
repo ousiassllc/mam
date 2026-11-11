@@ -64,7 +64,7 @@ type SetLocalServerInput struct {
 func (h handlers) setLocalServer(_ context.Context, in SetLocalServerInput) (LocalServer, error) {
 	svc := h.r.Settings.LLMLocal
 	if svc == nil {
-		return LocalServer{}, unavailable("ローカル LLM サーバーの設定")
+		return LocalServer{}, Unavailable("ローカル LLM サーバーの設定")
 	}
 	if in.BaseURL == "" && in.APIKey == "" && !in.ClearAPIKey && in.UnloadBeforeGeneration == nil && in.UseManagedRuntime == nil && in.UseManagedOllama == nil {
 		return LocalServer{}, invalidInput("base_url", "変える項目（base_url・api_key・clear_api_key・unload_before_generation・use_managed_runtime・use_managed_ollama）を 1 つ以上指定してください")
@@ -107,7 +107,7 @@ type TestLocalServerOutput struct {
 func (h handlers) testLocalServer(ctx context.Context, in TestLocalServerInput) (TestLocalServerOutput, error) {
 	svc := h.r.Settings.LLMLocal
 	if svc == nil {
-		return TestLocalServerOutput{}, unavailable("ローカル LLM サーバーの設定")
+		return TestLocalServerOutput{}, Unavailable("ローカル LLM サーバーの設定")
 	}
 	res, err := svc.Test(ctx, llmlocal.TestInput{BaseURL: in.BaseURL, APIKey: in.APIKey})
 	var invalid *llmlocal.InvalidError

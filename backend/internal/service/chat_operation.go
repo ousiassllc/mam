@@ -39,7 +39,7 @@ func (s *ChatService) answerCard(ctx context.Context, project domain.Project, ta
 const declinedOperation = "やめました。何も変更していません。"
 
 // answerOperation handles a reply to a confirmation card (domain.RefOperation): a button, or its words ("はい", "やめる"). The operation of the card is carried out
-// first and the reply, which closes the card, is recorded after it, as for a Continue card: an operation that fails leaves the card open to be answered again. A
+// first and the reply, which closes the card, is recorded after it, as for a Continue card: an operation that fails with an error leaves the card open to be answered again (a failure the operation reports as its result, a Refusal, is told in the reply, which closes the card). A
 // card takes one answer at a time, and only the newest card of an operation can be answered. answered is false when the reply is neither a yes nor a no ("$30 にして"):
 // it is then a new message of the user (it still replies to the card, which closes it), and the caller reads it as one.
 func (s *ChatService) answerOperation(ctx context.Context, project domain.Project, card domain.ChatMessage, content string) (ws Workspace, answered bool, err error) {
@@ -109,20 +109,26 @@ func (s *ChatService) openOperationCard(ctx context.Context, projectID string, c
 }
 
 // answerEscalation carries out the operation of the button a reply to an Escalation picks (CardBody.OptionActions), and returns what to tell; picked is false when
-// the reply is none of the buttons (or they carry no operation), and the Escalation is only noted, as before.
+// the reply is none of the buttons (or they carry no operation), and the Escalation is only noted, as before. An operation that cannot run (an error, or a reason the user
+// can act on, as a ValidationError) answers nothing: the caller records no reply, so the card stays open.
 func (s *ChatService) answerEscalation(ctx context.Context, project domain.Project, card domain.ChatMessage, reply string) (text string, picked bool, err error) {
 	action, ok := chatops.ActionOf(domain.DecodeCardBody(card.Content), reply)
 	if !ok {
 		return "", false, nil
 	}
 	done, err := s.director.applyAction(ctx, project, action)
-	if done.failed {
-		return done.text, true, nil // the button was picked but its operation could not run: say only that, never "executed"
+	if err != nil {
+		return "", false, err
 	}
-	return "判断を受け付けて、実行しました。\n" + done.text, err == nil, err
+	if done.failed {
+		// the button was picked but its operation could not run: the reason is the error, never an "executed" answer; nothing is recorded, so the card stays open to be
+		// answered again and the Project keeps its state
+		return "", false, invalid("message", "%s", done.text)
+	}
+	return "判断を受け付けて、実行しました。\n" + done.text, true, nil
 }
 
-// statedBudgetCards is the confirmation card for the budget a free message states ("予算は $20 で", #1139): what `budget.Stated` reads from the words (the Brief's extraction of a stated budget). The budget is not set
+// statedBudgetCards is the confirmation card for the budget a free message states ("予算は $20 で", #1139): what `budget.Stated` reads from the words (a deterministic rule; the Brief extractor does not read budgets). The budget is not set
 // before the user answers the card; nothing when the message states none.
 func (s *core) statedBudgetCards(ctx context.Context, project domain.Project, content string) ([]domain.ChatMessage, error) {
 	stated := budget.Stated(content)

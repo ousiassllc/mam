@@ -101,9 +101,10 @@ func TestCreate_ABudgetInYenIsNotConvertedAndTheUserIsToldToUseDollars(t *testin
 	p := f.createProject(t, "30秒の縦型のCMを作りたい。予算は5万円で")
 
 	assert.Empty(t, operationCards(f.thread(t, p.ID)))
+	const yenNotice = "予算は USD（ドル）でしか設定できません。円での指定は換算しないので、「予算は $20 で」のようにドルで教えてください。"
 	var told bool
 	for _, m := range f.thread(t, p.ID) {
-		told = told || (m.Role == domain.RoleAssistant && m.Kind == domain.KindText && assert.ObjectsAreEqual("予算は USD（ドル）でしか設定できません。円での指定は換算しないので、「予算は $20 で」のようにドルで教えてください。", m.Content))
+		told = told || (m.Role == domain.RoleAssistant && m.Kind == domain.KindText && m.Content == yenNotice)
 	}
 	assert.True(t, told)
 }

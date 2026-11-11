@@ -17,56 +17,64 @@ import (
 // Send takes a message of the user and answers it: the LLM acts step by step (it may look at the models and price batches) until it says something, puts
 // options on cards, or an estimate becomes a confirmation card. Nothing is generated here. The reply is the messages to add to the thread, the user's first.
 //
-// An error is returned for a message that cannot be taken (ErrBadMessage, ErrNoSession) or a cancelled request; a failure of the LLM is a message of the reply.
+// An error is returned for a message that cannot be taken (ErrBadMessage, ErrNoSession) or a cancelled request, and then the conversation keeps nothing of the
+// message; a failure of the LLM is a message of the reply (the message is kept: the user said it).
 func (s *Service) Send(ctx context.Context, sessionID, text string) (Reply, error) {
 	text = strings.TrimSpace(text)
 	if text == "" || utf8.RuneCountInString(text) > MaxMessageRunes {
 		return Reply{}, ErrBadMessage
 	}
-	text, _ = secretguard.Redact(text) // an API key is never sent to the LLM nor kept in the thread (spec/spec.md §1.1, #1140)
+	text, _ = secretguard.Redact(text) // an API key is never sent to the LLM nor kept in the thread (spec/components/chat-settings-operations.md §1.1, #1140)
 	se, err := s.open(sessionID, true)
 	if err != nil {
 		return Reply{}, err
 	}
-	se.mu.Lock()
-	defer se.mu.Unlock()
+	se.send.Lock() // the LLM calls below do not hold se.mu: the buttons of the cards work while the message is answered
+	defer se.send.Unlock()
 
 	rep := Reply{Messages: []Message{{ID: newID(), Kind: KindUser, Text: text}}}
-	se.turns = append(se.turns, gentestchat.Turn{Role: gentestchat.RoleUser, Text: text})
+	x := &exchange{se: se}
+	x.add(gentestchat.RoleUser, text)
+	if err := s.answer(ctx, x, &rep); err != nil {
+		return rep, err
+	}
+	x.commit()
+	return rep, nil
+}
+
+// answer runs the steps of the LLM for the message of x until the turn is over.
+func (s *Service) answer(ctx context.Context, x *exchange, rep *Reply) error {
 	items, cost := s.d.Gentest.Limits()
 	limits := gentestchat.Limits{MaxItems: items, MaxCostUSD: cost}
 	retried := false
 	for range MaxSteps {
-		st, err := s.d.Agent.Next(ctx, gentestchat.Input{Turns: recent(se.turns), Limits: limits})
+		st, err := s.d.Agent.Next(ctx, gentestchat.Input{Turns: x.shown(), Limits: limits})
 		if ctx.Err() != nil {
-			return rep, ctx.Err()
+			return ctx.Err()
 		}
 		if err != nil {
 			if gentestchat.IsBadStep(err) && !retried { // one more try, told what was wrong
 				retried = true
-				se.turns = append(se.turns, gentestchat.Turn{Role: gentestchat.RoleTool, Text: "Your last answer was not one of the allowed JSON actions. Answer with exactly one JSON object."})
+				x.add(gentestchat.RoleTool, "Your last answer was not one of the allowed JSON actions ("+gentestchat.BadStepReason(err)+"). Answer with exactly one JSON object.")
 				continue
 			}
 			s.d.Gentest.Logger.Warn("gentest chat: the LLM failed", "err", err)
 			rep.Messages = append(rep.Messages, failure(err))
-			return rep, nil
+			return nil
 		}
-		se.turns = append(se.turns, gentestchat.Turn{Role: gentestchat.RoleAssistant, Text: stepJSON(st)})
-		done, err := s.act(ctx, se, st, &rep)
-		if err != nil {
-			return rep, err
-		}
-		if done {
-			return rep, nil
+		x.add(gentestchat.RoleAssistant, stepJSON(st))
+		done, err := s.act(ctx, x, st, rep)
+		if err != nil || done {
+			return err
 		}
 	}
 	rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindAssistant,
 		Text: "まだ決めきれていません。作りたいものや使いたいモデルを、もう少し具体的に教えてください。"})
-	return rep, nil
+	return nil
 }
 
 // act carries out one step. done says the turn is over (the user has something to read or press).
-func (s *Service) act(ctx context.Context, se *session, st gentestchat.Step, rep *Reply) (done bool, err error) {
+func (s *Service) act(ctx context.Context, x *exchange, st gentestchat.Step, rep *Reply) (done bool, err error) {
 	switch st.Action {
 	case gentestchat.ActionSay:
 		rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindAssistant, Text: st.Text})
@@ -75,15 +83,15 @@ func (s *Service) act(ctx context.Context, se *session, st gentestchat.Step, rep
 		rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindAssistant, Text: st.Text, Options: st.Options})
 		return true, nil
 	case gentestchat.ActionListModels:
-		text, n, err := s.listModels(ctx, st.ModelQuery)
+		text, status, err := s.listModels(ctx, st.ModelQuery)
 		if err != nil {
 			return false, err
 		}
-		se.turns = append(se.turns, gentestchat.Turn{Role: gentestchat.RoleTool, Text: text})
-		rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindStatus, Text: modelsStatus(st.ModelQuery, n)})
+		x.add(gentestchat.RoleTool, text)
+		rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindStatus, Text: status})
 		return false, nil
 	case gentestchat.ActionEstimate:
-		return s.estimate(ctx, se, st, rep)
+		return s.estimate(ctx, x, st, rep)
 	}
 	return true, nil // clean() refuses every other action
 }

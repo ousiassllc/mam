@@ -36,7 +36,7 @@ type DirectorService struct {
 	policy *PolicyService
 	// unpriced names the models the Project would use whose price is not known (the Orchestrator's gate); nil without one.
 	unpriced func(ctx context.Context, projectID string) ([]string, error)
-	// chatOps are the operations of the global settings the chat carries out (service/chatops); set by New, filled by service/chatwire.Connect.
+	// chatOps are the operations of the global settings the chat carries out (service/chatops); set by wireDirector, filled by service/chatwire.Connect.
 	chatOps *chatops.Runtime
 }
 

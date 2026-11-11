@@ -15,6 +15,7 @@ templ Form(m domain.ThreadMessage, field domain.SecretField) {
 	<form
 		class="mt-3 flex flex-col gap-2"
 		method="post"
+		action={ templ.SafeURL(paths.Project(m.ProjectID, "messages", m.ID, "secret")) }
 		hx-post={ paths.Project(m.ProjectID, "messages", m.ID, "secret") }
 		hx-target="#chat-thread"
 		hx-swap="beforeend"
@@ -27,7 +28,7 @@ templ Form(m domain.ThreadMessage, field domain.SecretField) {
 			<span>{ field.Label } の API キー</span>
 			@atoms.Input(atoms.FieldMd, "w-full", secretAttrs(m, field))
 		</label>
-		<p class="text-xs text-mute">入力した値はこのカードから直接保存され、チャットの履歴には残りません。</p>
+		<p id={ "secret-help-" + m.ID } class="text-xs text-mute">入力した値はこのカードから直接保存され、チャットの履歴には残りません。</p>
 		<div class="flex flex-wrap gap-2">
 			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
 		</div>
@@ -37,13 +38,14 @@ templ Form(m domain.ThreadMessage, field domain.SecretField) {
 // secretAttrs: a password field that the browser does not remember and that is never refilled.
 func secretAttrs(m domain.ThreadMessage, field domain.SecretField) templ.Attributes {
 	a := templ.Attributes{
-		"id":           "secret-" + m.ID,
-		"name":         "secret",
-		"type":         "password",
-		"autocomplete": "off",
-		"spellcheck":   "false",
-		"required":     true,
-		"placeholder":  "API キーを貼り付け",
+		"id":               "secret-" + m.ID,
+		"name":             "secret",
+		"type":             "password",
+		"autocomplete":     "off",
+		"aria-describedby": "secret-help-" + m.ID,
+		"spellcheck":       "false",
+		"required":         true,
+		"placeholder":      "API キーを貼り付け",
 	}
 	if field.MaxBytes > 0 {
 		a["maxlength"] = strconv.Itoa(field.MaxBytes)

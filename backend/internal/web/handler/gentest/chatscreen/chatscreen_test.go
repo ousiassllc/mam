@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,6 +59,15 @@ func TestTheChatAloneGoesFromTheTalkToTheResultsInTheThread(t *testing.T) {
 
 	// the card is pressed; the models are held, so that the batch is still running when the answer is drawn (a fake that answers at once would finish it first)
 	var releases []chan struct{}
+	var releaseOnce sync.Once
+	releaseAll := func() { // also when an assertion below stops the test: the held calls must not outlive it
+		releaseOnce.Do(func() {
+			for _, release := range releases {
+				close(release)
+			}
+		})
+	}
+	t.Cleanup(releaseAll)
 	for _, m := range []domain.ModelName{domain.ModelFlux2, domain.ModelNanoBanana} {
 		releases = append(releases, s.rig.Fake.Hold(m))
 	}
@@ -72,14 +82,13 @@ func TestTheChatAloneGoesFromTheTalkToTheResultsInTheThread(t *testing.T) {
 	require.Len(t, batch, 2, "a running batch asks for itself again: "+body)
 
 	// the results, until the batch is over
-	for _, release := range releases {
-		close(release)
-	}
+	releaseAll()
 	s.rig.Wait(batch[1])
 	rec = s.get(paths.GenerationTestChat("batches", batch[1]))
 	require.Equal(t, http.StatusOK, rec.Code)
 	body = rec.Body.String()
-	assert.Equal(t, 4, strings.Count(body, `data-testid="gtc-tiles"`)+strings.Count(body, `data-testid="gt-card"`)-1, "four tiles")
+	assert.Equal(t, 1, strings.Count(body, `data-testid="gtc-tiles"`), "one block of tiles")
+	assert.Equal(t, 4, strings.Count(body, `data-testid="gt-card"`), "four tiles")
 	assert.Contains(t, body, "4 / 4 件")
 	assert.NotContains(t, body, "hx-trigger", "a finished batch does not ask again")
 	assert.Contains(t, body, `/generation-test/results/`)
@@ -150,7 +159,8 @@ func TestAMessageToALostConversationStartsANewOneAndABadIDIsGone(t *testing.T) {
 
 	rec := s.post(paths.GenerationTestChat("messages"), url.Values{"session": {"x"}, "content": {"こんにちは"}})
 	assert.Equal(t, http.StatusGone, rec.Code, "an id that is not 32 hex characters")
-	assert.Contains(t, rec.Body.String(), "もう残っていません")
+	assert.Contains(t, rec.Body.String(), "ID の形が正しくありません", "the cause is the shape of the id: nothing was dropped")
+	assert.NotContains(t, rec.Body.String(), "もう残っていません")
 
 	lost := strings.Repeat("b", 32)
 	s.llm.queue(chooseStep)

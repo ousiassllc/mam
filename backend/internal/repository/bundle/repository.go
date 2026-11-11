@@ -181,6 +181,7 @@ func (r *Repository) Import(ctx context.Context, data domain.BundleData) error {
 	if err := checkBundle(data); err != nil {
 		return err
 	}
+	neutralizeCards(data)
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if err := repository.Exists(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, data.ProjectID); err == nil {
 			return repository.ErrConflict

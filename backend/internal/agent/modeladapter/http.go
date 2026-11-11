@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -105,11 +106,10 @@ func (a api) request(ctx context.Context, method, target string, header map[stri
 	return data, nil
 }
 
-func jsonHeader(h map[string]string) map[string]string {
+// JSONHeader is h with the JSON content type (a copy: h is left as it is).
+func JSONHeader(h map[string]string) map[string]string {
 	out := map[string]string{"Content-Type": "application/json"}
-	for k, v := range h {
-		out[k] = v
-	}
+	maps.Copy(out, h)
 	return out
 }
 

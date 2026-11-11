@@ -209,5 +209,13 @@ func userPrompt(turns []Turn) string {
 	return b.String()
 }
 
+// BadStepReason is why a step could not be read, in words for the model (the service tells it when it asks again).
+func BadStepReason(err error) string {
+	if _, why, ok := strings.Cut(err.Error(), ErrBadStep.Error()+": "); ok && errors.Is(err, ErrBadStep) {
+		return why
+	}
+	return "it was not valid JSON"
+}
+
 // IsBadStep reports whether err is a step that could not be read, which the service may ask again.
 func IsBadStep(err error) bool { return errors.Is(err, llm.ErrInvalidOutput) }

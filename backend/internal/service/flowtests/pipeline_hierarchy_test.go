@@ -16,7 +16,7 @@ import (
 
 func TestPipeline_LLMFailureIsReportedInTheChatAndResumesFromTheFailedStage(t *testing.T) {
 	f := newPipelineFixture(t)
-	f.llm.setFailure(llm.AgentDirector, &llm.APIError{Provider: llm.ProviderAnthropic, Status: 503, Message: "secret-detail"})
+	f.llm.SetFailure(llm.AgentDirector, &llm.APIError{Provider: llm.ProviderAnthropic, Status: 503, Message: "secret-detail"})
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
 	_, err := f.svc.Projects.SetConfirmationLevel(context.Background(), p.ID, domain.ConfirmFullAuto, nil)
 	require.NoError(t, err)
@@ -32,18 +32,18 @@ func TestPipeline_LLMFailureIsReportedInTheChatAndResumesFromTheFailedStage(t *t
 	assert.NotContains(t, notice, "secret-detail", "provider details stay out of the chat")
 	assert.Equal(t, domain.StateVisualDesign, f.state(t, p.ID), "the script stage was completed and kept")
 	assert.Empty(t, f.hierarchy(t, p.ID).Scenes)
-	require.Equal(t, 1, f.llm.count(llm.AgentProducer))
-	f.llm.setFailure(llm.AgentDirector, nil)
+	require.Equal(t, 1, f.llm.Count(llm.AgentProducer))
+	f.llm.SetFailure(llm.AgentDirector, nil)
 	_, err = f.svc.Chat.PostMessage(context.Background(), p.ID, service.PostMessageInput{Content: "続けてください"})
 	require.NoError(t, err)
 	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Len(c, f.hierarchy(c, p.ID).Scenes, 2) }, 5*time.Second, 10*time.Millisecond)
-	assert.Equal(t, 1, f.llm.count(llm.AgentProducer), "the finished stages are not run again")
-	assert.Equal(t, 1, f.llm.count(llm.AgentWriter))
+	assert.Equal(t, 1, f.llm.Count(llm.AgentProducer), "the finished stages are not run again")
+	assert.Equal(t, 1, f.llm.Count(llm.AgentWriter))
 }
 
 func TestPipeline_MissingAPIKeyIsExplained(t *testing.T) {
 	f := newPipelineFixture(t)
-	f.llm.setFailure(llm.AgentProducer, llm.ErrNoAPIKey)
+	f.llm.SetFailure(llm.AgentProducer, llm.ErrNoAPIKey)
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
 	f.completeBrief(t, p.ID)
 	require.EventuallyWithT(t, func(c *assert.CollectT) {

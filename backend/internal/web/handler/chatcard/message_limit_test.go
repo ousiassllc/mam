@@ -1,5 +1,8 @@
 package chatcard_test
 
+// This file tests handler.PostMessage (the request limit of a chat message), not chatcard. It sits in this package because the package handler is at its size limit
+// (.linterly-baseline): a test file there would grow it. It uses the exported handler only, so it moves into handler unchanged once that package has room.
+
 import (
 	"net/http"
 	"net/http/httptest"

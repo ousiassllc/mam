@@ -61,26 +61,10 @@ func dataURI(in modeladapter.Input) string {
 	return "data:" + in.MimeType + ";base64," + base64.StdEncoding.EncodeToString(in.Data)
 }
 
-// promptOf is the prompt with the negative description folded in, for an endpoint without a field for it.
-func promptOf(req modeladapter.VideoRequest) string {
-	if req.NegativePrompt == "" {
-		return req.Prompt
-	}
-	return req.Prompt + " Avoid: " + req.NegativePrompt + "."
-}
-
-func jsonHeader(auth map[string]string) map[string]string {
-	h := map[string]string{"Content-Type": "application/json"}
-	for k, v := range auth {
-		h[k] = v
-	}
-	return h
-}
-
 // submit posts body to target and decodes the answer into out.
 func submit(ctx context.Context, a modeladapter.API, target string, header map[string]string, body map[string]any, out any) error {
 	raw, _ := json.Marshal(body)
-	data, err := a.Request(ctx, http.MethodPost, target, jsonHeader(header), raw)
+	data, err := a.Request(ctx, http.MethodPost, target, modeladapter.JSONHeader(header), raw)
 	if err != nil {
 		return err
 	}

@@ -22,14 +22,25 @@ const (
 	unreadableProvider = "API プロバイダーの設定を読めません。設定ファイル（models.json）を確認してください"
 )
 
-// aggregator says the provider ID is one of the API aggregators: its card is shown while it is the chosen provider. While one is chosen, the cards of the vendors whose
-// models it serves (ownVendors) are hidden: their keys are not used then (the saved keys stay).
+// aggregator says the provider ID is the key of one of the API aggregators (the Vendor of a provider other than the official one): its card is shown while it is the chosen
+// provider. While one is chosen, the cards of the vendors whose models it serves (modelsettings.OwnVendors) are hidden: their keys are not used then (the saved keys stay).
 func aggregator(id string) bool {
-	return slices.Contains([]string{"openrouter", "fal", "replicate"}, id)
+	return slices.ContainsFunc(modelsettings.Providers(), func(p modelsettings.Provider) bool { return p.Vendor() == id })
 }
 
-// ownVendors are the keys of the vendors of viaprovider.Models: their own APIs, which an aggregator replaces.
-var ownVendors = []string{"kling", "kling4"}
+// selectedProvider is the API provider that is chosen: the official one when the app has no model settings or its file cannot be read (the cards are then the usual
+// ones; the error is attached to the request for the log).
+func selectedProvider(c *gin.Context, k Keys) modelsettings.Provider {
+	if k.Models == nil {
+		return modelsettings.ProviderOfficial
+	}
+	v, err := k.Models.VideoProvider()
+	if err != nil {
+		_ = c.Error(err)
+		return modelsettings.ProviderOfficial
+	}
+	return v.Selected
+}
 
 // visible are the cards of the API keys the choice of the provider shows: the official one shows every key of the vendors; an aggregator
 // shows its own key first and not the keys of the vendors it stands in for. The rest (LLM, images, the other video models, audio) is always there.
@@ -41,7 +52,7 @@ func visible(statuses []service.CredentialStatus, selected modelsettings.Provide
 		}
 	}
 	for _, s := range statuses {
-		if aggregator(s.Provider) || (selected != modelsettings.ProviderOfficial && slices.Contains(ownVendors, s.Provider)) {
+		if aggregator(s.Provider) || (selected != modelsettings.ProviderOfficial && slices.Contains(modelsettings.OwnVendors(), s.Provider)) {
 			continue
 		}
 		out = append(out, s)

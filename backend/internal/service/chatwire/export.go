@@ -68,7 +68,7 @@ func exportRefusal(err error) error {
 	case errors.Is(err, service.ErrStageBusy):
 		return &chatops.Refusal{Message: "別の編集処理（Rough Cut・判定・音声・Final QC・書き出し）が実行中です。終わってからやり直してください"}
 	case errors.Is(err, service.ErrUnavailable):
-		return &chatops.Refusal{Message: "ffmpeg / ffprobe が見つからないため、書き出しは使えません。設定画面で ffmpeg を設定してください"}
+		return &chatops.Refusal{Message: "ffmpeg / ffprobe が見つからないため、書き出しは使えません。" + export.WhereToSetFFmpeg}
 	case errors.Is(err, service.ErrNotFound):
 		return &chatops.Refusal{Message: "書き出しに必要な編集と音声が見つかりません。音声を作ってから、もう一度お願いします"}
 	case errors.As(err, &ai):

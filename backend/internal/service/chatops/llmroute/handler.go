@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 )
@@ -39,7 +40,7 @@ const (
 	maxChoices   = 5
 )
 
-var roleLabels = map[string]string{rolePrimary: "プライマリ", roleFallback: "代替"}
+var roleLabels = map[string]string{nlu.RolePrimary: "プライマリ", nlu.RoleFallback: "代替"}
 
 // change is what the operation does to the saved assignment: the arguments with everything resolved (what the yes of the card carries), the Agent, its route before and after,
 // and what to warn about.
@@ -135,7 +136,7 @@ func (h *Handler) Apply(ctx context.Context, _ domain.Project, op commandinterpr
 }
 
 func (c change) target() llmassign.Target {
-	if c.args.Role == roleFallback {
+	if c.args.Role == nlu.RoleFallback {
 		return c.after.Fallback
 	}
 	return c.after.Primary
@@ -147,7 +148,7 @@ func (h *Handler) resolve(ctx context.Context, op commandinterpreter.Operation) 
 	if err := op.DecodeArgs(&a); err != nil {
 		return change{}, err
 	}
-	a.Role = roleOf(a.Role)
+	a.Role = nlu.RoleOf(a.Role)
 	v := h.deps.View()
 	switch {
 	case v.Pinned:
@@ -161,7 +162,7 @@ func (h *Handler) resolve(ctx context.Context, op commandinterpreter.Operation) 
 	}
 	a.Agent = entry.Agent
 	cur := entry.Route.Primary
-	if a.Role == roleFallback {
+	if a.Role == nlu.RoleFallback {
 		cur = entry.Route.Fallback
 	}
 	provider, err := providerFor(v, a, cur)
@@ -177,7 +178,7 @@ func (h *Handler) resolve(ctx context.Context, op commandinterpreter.Operation) 
 	}
 	a.Provider, a.Model = provider, m.id
 	after := entry.Route
-	if a.Role == roleFallback {
+	if a.Role == nlu.RoleFallback {
 		after.Fallback = llmassign.Target{Provider: provider, Model: m.id}
 	} else {
 		after.Primary = llmassign.Target{Provider: provider, Model: m.id}
@@ -200,7 +201,7 @@ func agentOf(v llmassign.View, a Args) (llmassign.Entry, error) {
 		for _, e := range v.Entries {
 			labels = append(labels, e.Label)
 		}
-		return llmassign.Entry{}, chatops.Refuse("どの Agent の LLM ですか？ 選べる Agent: %s", few(labels, len(labels)))
+		return llmassign.Entry{}, chatops.Refuse("どの Agent の LLM ですか？ 選べる Agent: %s", nlu.Few(labels, len(labels)))
 	}
 	amb := &ambiguity{text: a.Agent}
 	for _, e := range found {

@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"testing"
 	"time"
@@ -44,7 +43,7 @@ func selectedFixture(t *testing.T, planner func(string) string, tweak func(*serv
 	f.buildReferencePack(t)
 	f.generateAndWait(t, f.shotID, 2)
 	f.selectTakeOf(t, f.shotID)
-	waitEditingWorkerIdle(t, f) // the Select woke the editing worker: let it end before the state below starts the AUTO chain
+	f.waitEditingWorkerIdle(t) // the Select woke the editing worker: let it end before the state below starts the AUTO chain
 	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
 	return f
 }
@@ -64,38 +63,6 @@ func editedFixtureWith(t *testing.T, judge string, planner func(string) string, 
 	view, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
 	require.NoError(t, err)
 	return f, view.Timeline.EditTimelineVersion
-}
-
-func (f genFixture) execSQL(t *testing.T, q string, args ...any) {
-	t.Helper()
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, q, args...)
-		return err
-	}))
-}
-
-// selectTakeOf makes the newest Take of the Shot its Selected Take.
-func (f genFixture) selectTakeOf(t *testing.T, shotID string) {
-	t.Helper()
-	var takeID string
-	require.NoError(t, f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? ORDER BY t.rowid DESC LIMIT 1`, shotID).Scan(&takeID))
-	_, err := f.svc.Takes.Select(context.Background(), takeID)
-	require.NoError(t, err)
-}
-
-// waitEditingWorkerIdle waits until the worker behind ResumeEditing (woken by a Take selection or a
-// finished job) is idle: it holds the editing stage while it runs, so a stage called meanwhile fails with ErrStageBusy (#608).
-func waitEditingWorkerIdle(t *testing.T, f genFixture) {
-	t.Helper()
-	require.Eventually(t, f.svc.Editor.EditingWorkerIdle, 15*time.Second, 5*time.Millisecond, "the editing worker goes back to waiting")
-}
-
-// waitEditingIdle waits until no editing stage, AUTO chain or ResumeEditing run is going on. A Take selection wakes
-// the worker before it returns, so what the selection started has settled once this returns, and a state asserted
-// then is the settled one (not a state the run has not reached yet).
-func (f genFixture) waitEditingIdle(t *testing.T) {
-	t.Helper()
-	require.Eventually(t, func() bool { return !f.svc.Editor.Busy() }, 15*time.Second, 5*time.Millisecond, "the editing stage, the AUTO chain and the worker are idle")
 }
 
 // editorView waits until the Editor's view of the trunk is EDITING with the version (0: any) and clips of the round saved: EDITING comes before the round is saved, so the state alone does not say it.
@@ -175,7 +142,7 @@ func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnch
 	assert.Zero(t, view.PendingShots)
 
 	// A Rough Cut made again keeps the additional Shot (it is not a story Shot).
-	waitEditingWorkerIdle(t, f) // the worker that put the Shot in holds the stage until it has looked at the Judge too
+	f.waitEditingWorkerIdle(t) // the worker that put the Shot in holds the stage until it has looked at the Judge too
 	again, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
 	require.NoError(t, err)
 	require.Len(t, again.Timeline.Clips, 2)
@@ -194,7 +161,7 @@ func TestEditorReshootLoop_AFinishedShotWaitsForTheBusyStageAndIsPutInWhenItEnds
 	release, err := f.svc.Editor.HoldStage(f.projectID)
 	require.NoError(t, err)
 	f.selectTakeOf(t, newShot)
-	waitEditingWorkerIdle(t, f) // the stage of the user stays held: only the worker that the selection woke has looked at the round
+	f.waitEditingWorkerIdle(t) // the stage of the user stays held: only the worker that the selection woke has looked at the round
 	assert.Equal(t, domain.StateGenerating, f.state(t), "the busy stage keeps the round waiting")
 
 	// Nothing else will start the Reshoot Loop again: the end of the stage does.
@@ -215,7 +182,7 @@ func TestEditorReshootLoop_StopsAtTheRetryPolicyLimitAndEscalates(t *testing.T) 
 	require.NoError(t, err)
 	f.selectTakeOf(t, newShot)
 	f.waitCount(t, 10*time.Second, 1, `SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`)
-	waitEditingWorkerIdle(t, f)
+	f.waitEditingWorkerIdle(t)
 	assert.Equal(t, domain.StateAwaitingApproval, f.state(t), "no second round: the Project waits for the user's decision")
 	assert.Equal(t, 2, f.trunkShots(t), "no further Shot was made")
 	view, err := f.svc.Editor.View(ctx, f.projectID, "")
@@ -241,7 +208,7 @@ func TestEditorReshootLoop_AutoJudgesTheTimelineWithTheAdditionalShotsAndGoesOnO
 	f.selectTakeOf(t, newShot)
 	// JUDGING, EDITING and EDIT_JUDGING come first: wait for the second Judge call and the worker's end.
 	require.Eventually(t, func() bool { return f.llm.calls(llm.AgentEditor) == 2 }, 10*time.Second, 10*time.Millisecond, "the Judge ran by itself")
-	waitEditingWorkerIdle(t, f)
+	f.waitEditingWorkerIdle(t)
 	assert.Equal(t, 2, f.llm.calls(llm.AgentEditor), "once for the Rough Cut, once for the version with the additional Shot")
 	assert.Equal(t, 2, f.trunkShots(t))
 	view, err := f.svc.Editor.View(context.Background(), f.projectID, "")

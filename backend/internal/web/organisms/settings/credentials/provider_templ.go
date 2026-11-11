@@ -14,8 +14,8 @@ import (
 )
 
 // providerChoice is the choice of the API provider the cloud video models (Kling) are called through, at the top of the panel: the
-// provider's own API, or OpenRouter, fal.ai or Replicate, which resell the model by usage. A change is saved at once (the form posts on
-// change) and answers with the whole panel, because the key cards under it follow the choice. Under it, how the choice serves each
+// provider's own API, or OpenRouter, fal.ai or Replicate, which resell the model by usage. A change is saved without a button, once the choice has settled
+// (the form posts 600ms after the last change, so the arrow keys do not save each provider they pass) and answers with the whole panel, because the key cards under it follow the choice. Under it, how the choice serves each
 // model: the price, why not, and whether its key is stored.
 func providerChoice(p *ProviderData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -74,7 +74,7 @@ func providerChoice(p *ProviderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" hx-target=\"#credential-panel\" hx-swap=\"outerHTML\" hx-trigger=\"change\" hx-sync=\"this:replace\" data-testid=\"api-provider-form\"><fieldset class=\"flex flex-wrap gap-2\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" hx-target=\"#credential-panel\" hx-swap=\"outerHTML\" hx-trigger=\"change delay:600ms\" hx-sync=\"this:replace\" data-testid=\"api-provider-form\"><fieldset class=\"flex flex-wrap gap-2\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

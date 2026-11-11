@@ -51,9 +51,6 @@ func checkBundle(data domain.BundleData) error {
 					return err
 				}
 			}
-			if t.Name == "chat_message" {
-				dropCardActions(row)
-			}
 			if err := checkBundleColumns(t.Name, row); err != nil {
 				return err
 			}
@@ -72,12 +69,28 @@ func checkBundle(data domain.BundleData) error {
 	return fmt.Errorf("%w: exactly one project row is required", ErrInvalid)
 }
 
-// dropCardActions drops what the buttons of a question / escalation card would carry out when one is picked (domain.CardBody.OptionActions) and the masked field a
-// card may ask a secret in (Secret). The app makes those cards itself; a bundle is not trusted to, so the buttons of an imported card only answer. (An exported open
-// confirmation card thus comes back as a plain question.)
+// neutralizeCards changes the question / escalation cards of data in place (it is no check: Import calls it once checkBundle has accepted the bundle). The
+// app makes the cards whose buttons carry out an operation (domain.CardBody.OptionActions) or that ask a secret in a masked field (Secret), and a bundle is not
+// trusted to: an imported card keeps its text and options, which only answer, and loses both. The card also loses ref_type / ref_id when it confirms an
+// operation (domain.RefOperation): that card is no confirmation the app is waiting for (a set_budget card that stays open would stop the Orchestrator's paid
+// generation, and "はい" to it would do nothing), so it is a plain question. (An exported open confirmation card thus comes back as one.)
+func neutralizeCards(data domain.BundleData) {
+	for _, t := range data.Tables {
+		if t.Name != "chat_message" {
+			continue
+		}
+		for _, row := range t.Rows {
+			dropCardActions(row)
+		}
+	}
+}
+
 func dropCardActions(row domain.BundleRow) {
 	if row["kind"] != string(domain.KindQuestion) && row["kind"] != string(domain.KindEscalation) {
 		return
+	}
+	if row["ref_type"] == domain.RefOperation {
+		row["ref_type"], row["ref_id"] = nil, nil
 	}
 	content, ok := row["content"].(string)
 	if !ok {

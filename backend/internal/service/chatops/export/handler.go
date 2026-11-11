@@ -44,7 +44,10 @@ type Render struct{ deps Deps }
 // NewRender returns the handler of OpExportVideo.
 func NewRender(d Deps) *Render { return &Render{deps: d} }
 
-const noFFmpeg = "ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。設定画面で ffmpeg を設定してください。"
+// WhereToSetFFmpeg says where ffmpeg is set: the path moved from the settings to the model manager's 「付随ソフト」 (#1106; /model-manager/companion).
+const WhereToSetFFmpeg = "「モデルマネージャー」の「付随ソフト」で ffmpeg を設定してください。"
+
+const noFFmpeg = "ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。" + WhereToSetFFmpeg
 
 // refuseUnexportable says why the Project cannot be exported now, as the editor panel does: no ffmpeg, a state that is not READY / EXPORTED, no audio (or not of the latest edit).
 func refuseUnexportable(v View) error {

@@ -121,10 +121,10 @@ func TestRespondApproval_RequestChangesAnswerSaysWhatHappens(t *testing.T) {
 			_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionRequestChanges, "短く")
 			require.NoError(t, err)
 
-			answer := lastMessage(t, f.thread(t, p.ID)).Content
-			assert.Contains(t, answer, want)
+			reply := lastMessage(t, f.thread(t, p.ID)).Content
+			assert.Contains(t, reply, want)
 			if cp != domain.CheckpointScript {
-				assert.NotContains(t, answer, "やり直します")
+				assert.NotContains(t, reply, "やり直します")
 			}
 		})
 	}

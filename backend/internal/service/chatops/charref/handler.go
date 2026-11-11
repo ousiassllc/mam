@@ -2,6 +2,8 @@ package charref
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -182,7 +184,8 @@ func (h *Handler) Apply(ctx context.Context, project domain.Project, op commandi
 	}
 	if err := h.deps.Assign(ctx, project.ID, c.ID, slot, refID); err != nil {
 		if rmErr := h.deps.RemoveReference(context.WithoutCancel(ctx), project.ID, refID); rmErr != nil {
-			return chatops.Result{}, rmErr
+			// the failure of the assignment is the one the user must hear (a refusal stays one); the Library entry left behind is joined to it
+			return chatops.Result{}, errors.Join(err, fmt.Errorf("remove the Library entry %s: %w", refID, rmErr))
 		}
 		return chatops.Result{}, err
 	}

@@ -182,8 +182,8 @@ func TestAutoStart_AKnownPriceShowsNumbersAndTheBudgetCeilings(t *testing.T) {
 
 	text := r.announcement()
 	for _, want := range []string{
-		"費用の見積: 最大 ", "USD（Reference Pack 最大 ", "動画 最大 6.7500 USD", // 9 clips × 5 s × 0.15 USD
-		"予算上限: Project 50.0000 USD", "Shot あたり 5.0000 USD", "含まれないもの",
+		"費用の見積: 最大 ", "USD（Reference Pack 最大 ", "動画 最大 6.75 USD", // 9 clips × 5 s × 0.15 USD
+		"予算上限: Project 50 USD", "Shot あたり 5 USD", "含まれないもの",
 	} {
 		assert.Contains(t, text, want)
 	}
@@ -197,7 +197,7 @@ func TestAutoStart_AnUnknownPriceKeepsTheRiskLineEvenWithABudgetCeiling(t *testi
 	id := r.planned(domain.ConfirmFullAuto)
 	require.NoError(t, r.policies.SetBudget(context.Background(), id, new(50.0), new(5.0)))
 	r.handle(id)
-	for _, want := range []string{"費用の見積: 不明", "予算上限: Project 50.0000 USD", "単価が分からない分があります", "止まりません", "DIRECTOR"} {
+	for _, want := range []string{"費用の見積: 不明", "予算上限: Project 50 USD", "単価が分からない分があります", "止まりません", "DIRECTOR"} {
 		assert.Contains(t, r.announcement(), want)
 	}
 }

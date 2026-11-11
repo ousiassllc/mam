@@ -77,7 +77,7 @@ func TestAnEstimateOverTheLimitsGivesNoCardAndTheLLMFixesIt(t *testing.T) {
 	rep, err := r.Chat.Send(ctx, r.SessID, "たくさん作って")
 	require.NoError(t, err)
 	assert.Equal(t, []chat.Kind{chat.KindUser, chat.KindStatus, chat.KindStatus, chat.KindAssistant}, kinds(rep.Messages))
-	assert.Contains(t, rep.Messages[1].Text, "5", "the line says the limit of results")
+	assert.Contains(t, rep.Messages[1].Text, "1 回で作れるのは 5 本までです（今の組み合わせは 6 本）", "the line says the limit of results and the size of the batch")
 	assert.Contains(t, rep.Messages[2].Text, "0.1000", "the line says the limit of the cost")
 	p := proposalOf(t, rep)
 	assert.Equal(t, 2, p.Estimate.TotalItems)

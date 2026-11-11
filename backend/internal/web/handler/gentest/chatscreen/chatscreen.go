@@ -7,7 +7,10 @@
 package chatscreen
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +54,10 @@ func (h Handlers) Page(c *gin.Context) {
 func (h Handlers) Send(c *gin.Context) {
 	session := c.PostForm(view.FieldSession)
 	rep, err := h.Chat.Send(c.Request.Context(), session, c.PostForm(view.FieldContent))
+	if errors.Is(err, chat.ErrNoSession) { // Send makes a conversation for any id of the right shape: only a malformed id is refused
+		refuseWith(c, session, http.StatusGone, "この会話の ID の形が正しくありません。ページを読み込み直して、もう一度相談してください")
+		return
+	}
 	if err != nil {
 		refuse(c, session, err)
 		return
@@ -74,7 +81,8 @@ func (h Handlers) Confirm(c *gin.Context) {
 	h.render(c, status, session, rep)
 }
 
-// Dismiss answers POST /generation-test/chat/proposals/:id/dismiss (session): the card, closed.
+// Dismiss answers POST /generation-test/chat/proposals/:id/dismiss (session): the card, closed, in place (out of band). A refusal is a line added to the
+// thread, the card stays as it is.
 func (h Handlers) Dismiss(c *gin.Context) {
 	session := c.PostForm(view.FieldSession)
 	rep, err := h.Chat.Dismiss(c.Request.Context(), session, c.Param("id"))
@@ -82,8 +90,7 @@ func (h Handlers) Dismiss(c *gin.Context) {
 		refuse(c, session, err)
 		return
 	}
-	p := proposalView(session, rep.Changed[0])
-	gtshare.Render(c, http.StatusOK, view.ProposalCard(p))
+	h.render(c, http.StatusOK, session, rep)
 }
 
 // Batch answers GET /generation-test/chat/batches/:id, which the results block asks for every 2 seconds until its batch is over.
@@ -91,7 +98,7 @@ func (h Handlers) Batch(c *gin.Context) {
 	b, err := h.Gentest.Batch(c.Request.Context(), c.Param("id"), true)
 	if err != nil {
 		status, text := gtshare.Refuse(c, err)
-		gtshare.Render(c, status, view.Messages("", []view.Message{{ID: "batch-" + c.Param("id"), Kind: view.KindStatus, Failed: true, Text: text}}))
+		gtshare.Render(c, status, view.Messages("", []view.Message{statusLine(resultLost + "（" + text + "）")}))
 		return
 	}
 	gtshare.Render(c, http.StatusOK, view.ResultBlock(resultView(b)))
@@ -133,12 +140,27 @@ func (h Handlers) messageView(c *gin.Context, session string, m chat.Message) vi
 		v.Proposal = &p
 	}
 	if m.BatchID != "" {
-		if b, err := h.Gentest.Batch(c.Request.Context(), m.BatchID, true); err == nil {
-			r := resultView(b)
-			v.Result = &r
+		b, err := h.Gentest.Batch(c.Request.Context(), m.BatchID, true)
+		if err != nil { // the batch was queued: say where its results are instead of drawing nothing
+			h.Gentest.Logger.Warn("gentest chat: the results block of a queued batch could not be read", "batch", m.BatchID, "err", err)
+			return statusLine(resultLost)
 		}
+		r := resultView(b)
+		v.Result = &r
 	}
 	return v
+}
+
+// resultLost is the line that stands for a results block that cannot be drawn.
+const resultLost = "結果をここに出せませんでした。「履歴」のタブで確認してください"
+
+// statusLine is a failure line of the thread with an id of its own (a thread may hold many).
+func statusLine(text string) view.Message {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic("gentest chat: no random id: " + err.Error()) // crypto/rand does not fail on supported platforms
+	}
+	return view.Message{ID: hex.EncodeToString(b[:]), Kind: view.KindStatus, Failed: true, Text: text}
 }
 
 // refuse answers a call the service did not take with a line in the thread and the status of the cause.
@@ -149,7 +171,7 @@ func refuse(c *gin.Context, session string, err error) {
 	)
 	switch {
 	case errors.Is(err, chat.ErrBadMessage):
-		status, text = http.StatusUnprocessableEntity, "メッセージは 1〜2000 文字で入力してください"
+		status, text = http.StatusUnprocessableEntity, fmt.Sprintf("メッセージは 1〜%d 文字で入力してください", chat.MaxMessageRunes)
 	case errors.Is(err, chat.ErrNoSession):
 		status, text = http.StatusGone, "この会話はもう残っていません（アプリを再起動したか、長く使わなかったため）。ページを読み込み直して、もう一度相談してください"
 	case errors.Is(err, chat.ErrNoProposal):
@@ -161,6 +183,10 @@ func refuse(c *gin.Context, session string, err error) {
 	default:
 		status, text = gtshare.Refuse(c, err)
 	}
-	m := view.Message{ID: "refused", Kind: view.KindStatus, Failed: true, Text: text}
-	gtshare.Render(c, status, view.Messages(session, []view.Message{m}))
+	refuseWith(c, session, status, text)
+}
+
+// refuseWith answers with a failure line added to the thread.
+func refuseWith(c *gin.Context, session string, status int, text string) {
+	gtshare.Render(c, status, view.Messages(session, []view.Message{statusLine(text)}))
 }

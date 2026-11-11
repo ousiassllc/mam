@@ -115,9 +115,9 @@ func (a *Adapter) Reload(cfg Config, backends Backends) {
 // Config returns the setting the Adapter runs with.
 func (a *Adapter) Config() Config { return a.state.Load().cfg }
 
-// Unavailable says why the image or video model cannot be called now (domain.ExcludedNoBackend: it has no
-// backend or no API key is stored for its vendor; domain.ExcludedCircuitOpen: its vendor's circuit
-// breaker is open), or "" when it can. It does not consume the breaker's probe call.
+// Unavailable says why the image or video model cannot be called now (domain.ExcludedNoBackend: no backend or no API key for its vendor; domain.ExcludedCircuitOpen: its
+// vendor's breaker is open; domain.ExcludedProvider: the selected video API provider does not serve it; agegate.Excluded: the age gate), or "" when it can. It does not
+// consume the breaker's probe call.
 func (a *Adapter) Unavailable(m domain.ModelName) string {
 	if a.Gate.Refuses(m) {
 		return agegate.Excluded

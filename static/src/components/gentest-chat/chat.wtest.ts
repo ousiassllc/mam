@@ -152,13 +152,38 @@ describe('the chat of the single generation (#1138)', () => {
     });
   });
 
-  it('turns off the cards of a question that was answered and keeps the newest question live', async () => {
+  it('turns off the cards of the questions that were answered', async () => {
     await show();
     const groups = [...host.querySelectorAll<HTMLElement>('[data-gtc-options]')];
     expect(groups.length, 'the greeting and the question of the talk').to.equal(2);
     expect(groups[0]!.inert, 'the greeting was answered by the talk').to.equal(true);
     expect(groups[0]!.hasAttribute('data-answered')).to.equal(true);
+    expect(groups[1]!.inert, 'the user answered the question with the next entry').to.equal(true);
+  });
+
+  it('keeps the newest question live until the user answers it, even when the assistant then comes back without cards', async () => {
+    await show();
+    const groups = [...host.querySelectorAll<HTMLElement>('[data-gtc-options]')];
+    // the talk as it was before the user answered the question: its answer is not in the thread yet
+    for (const g of groups) {
+      g.inert = false;
+      g.removeAttribute('data-answered');
+    }
+    const answers = host.querySelectorAll('[data-testid="gtc-user"]');
+    answers[answers.length - 1]!.remove();
+    thread().dispatchEvent(new Event('htmx:afterSwap', { bubbles: true }));
+    expect(groups[0]!.inert, 'the greeting was answered by the first message').to.equal(true);
     expect(groups[1]!.inert, 'the newest question is live').to.equal(false);
+
+    // the answer comes as words, and the assistant replies without cards
+    const user = document.createElement('article');
+    user.setAttribute('data-testid', 'gtc-user');
+    const reply = document.createElement('article');
+    reply.setAttribute('data-testid', 'gtc-assistant');
+    thread().append(user, reply);
+    thread().dispatchEvent(new Event('htmx:afterSwap', { bubbles: true }));
+    expect(groups[1]!.inert, 'the answered question is off although no newer cards exist').to.equal(true);
+    expect(groups[1]!.hasAttribute('data-answered')).to.equal(true);
   });
 
   it('shows the confirmation card with the total, the breakdown, and a button that carries only the conversation', async () => {

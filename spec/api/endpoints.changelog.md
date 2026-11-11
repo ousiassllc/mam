@@ -223,3 +223,7 @@
 | 1.216 | 2026-11-11 | [endpoints-settings.md](endpoints-settings.md)（1.22）の §4 の接続テストの表に `openrouter`・`replicate` を足し、ボタンを出さない行に `fal` を足した（実装の `credential/probe` と揃えた） | PR #1141 のレビュー指摘 |
 | 1.217 | 2026-11-11 | [endpoints-gentest.md](endpoints-gentest.md)（1.32）の `POST /generation-test/chat/proposals/:id/confirm` に、何も生成しなかった失敗のカードの扱いを足した | PR #1141 のレビュー指摘 |
 | 1.218 | 2026-11-11 | `POST /projects/:id/messages/:messageId/secret` の説明の保存先を、実際のルート `PUT /credentials/:provider` に直した（`/settings/credentials/:provider` は `…/edit` と `…/test` だけ） | PR #1141 のレビュー指摘 |
+| 1.219 | 2026-11-11 | §2.7 の `PUT /credentials/:provider` の `provider` の列挙に `openrouter`・`fal`・`replicate` を足した（実装の `service.CredentialProviders` に合わせた。#1136 でキーを持つようになったプロバイダー） | PR #1141 のレビュー指摘 |
+| 1.220 | 2026-11-11 | §2.1 の `PUT /projects/:id/budget` の、チャットでの設定の保存の記述を、実装（`PolicyService.setBudget` を、スレッドに設定の記録を足さない指定で呼ぶ。検証と保存は画面・MCP の `SetBudget` と同じ）に合わせて直した | PR #1141 のレビュー指摘 |
+| 1.221 | 2026-11-11 | `POST /projects` に、最初の発言の予算の確認カードが出せなかったときの挙動（201・予算は未設定・スレッドに知らせる・パイプラインは始めない）を足した。`POST /projects/:id/messages` に、Shot が決まらない Command は Shot を要する操作だけ保留して聞き返しほかの操作は実行すること、Escalation のボタンの操作が実行できないときは 422 でカードは開いたまま・状態も発言も変えないこと、同じカードへの同時の 2 件目は 409 であることを足した（実装 `project.go`・`director_execute.go`・`chat_operation.go`・`chat_post.go` に合わせた） | PR #1141 のレビュー指摘 |
+| 1.222 | 2026-11-11 | `POST /projects/import` の質問・Escalation カードの取り込みで `ref_type=operation` も外す（開いている確認カードとして扱わない）ことを足した | PR #1141 のレビュー指摘 |

@@ -41,9 +41,11 @@ type Options struct {
 // setting before it is saved.
 func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapter.Backends {
 	vendorOpts := append([]modeladapter.BackendOption{modeladapter.WithStagingDir(o.StagingDir)}, o.Vendor...)
-	b := modeladapter.NewBackends(cfg, keys, nil, o.PollEvery, vendorOpts...)
+	// One set of HTTP clients (one connection pool each) serves the built-in vendors and the providers.
+	apis := modeladapter.APIs(cfg, keys, nil, o.PollEvery, vendorOpts...)
+	b := modeladapter.BackendsOf(cfg, apis)
 	// The models the provider setting sends to OpenRouter, fal.ai or Replicate are called through it (spec/architecture/model-adapters.md §9.6).
-	providerbackends.Install(b.Video, cfg, modeladapter.APIs(cfg, keys, nil, o.PollEvery, vendorOpts...))
+	providerbackends.Install(b.Video, cfg, apis)
 	if o.ChatGPTImage != nil {
 		for _, e := range chatgptid.Entries() {
 			b.Image[e.Model] = o.ChatGPTImage

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 )
 
 // The operations of this package.
@@ -96,13 +97,10 @@ var (
 	runtimeWord = regexp.MustCompile(`(?i)(ランタイム|runtime|実行環境|gpt-?sovits|sovits|musetalk|irodori|llama\.?cpp|ollama|音声合成|口パク|リップシンク)`)
 )
 
-// person is the "モデル" of a fashion model or of the cast ("プロのモデル", "モデルさん"): it names no model of the catalog.
-var person = regexp.MustCompile(`(?:プロ|出演者?|ファッション|専属|人物|女性|男性|外国人|日本人|ヘア|ハンド)の?モデル|モデル(?:さん|ちゃん|君|くん|たち|達)`)
-
 // AsksModel reports whether the message asks to install a model: an install word beside a word for a model (or the name of a family of the catalog). A person who is a model
 // ("プロのモデルを入れて", "モデルさんを入れて") is not one; the bare 動画 / 画像 / 入れて never suffices.
 func AsksModel(message string) bool {
-	message = person.ReplaceAllString(message, "")
+	message = nlu.Person.ReplaceAllString(message, "")
 	return verbWord.MatchString(message) && modelWord.MatchString(message)
 }
 

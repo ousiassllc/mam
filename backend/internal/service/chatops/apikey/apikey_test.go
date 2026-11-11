@@ -14,13 +14,19 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/apikey"
 )
 
-func detect(t *testing.T, message string) []apikey.Args {
+// detected is an operation the message plainly asks for, with its type.
+type detected struct {
+	Type commandinterpreter.OpType
+	Args apikey.Args
+}
+
+func detect(t *testing.T, message string) []detected {
 	t.Helper()
-	var out []apikey.Args
+	var out []detected
 	for _, op := range commandinterpreter.Detected(message) {
-		var a apikey.Args
-		require.NoError(t, op.DecodeArgs(&a))
-		out = append(out, a)
+		d := detected{Type: op.Type}
+		require.NoError(t, op.DecodeArgs(&d.Args))
+		out = append(out, d)
 	}
 	return out
 }
@@ -37,7 +43,8 @@ func TestDetect_ReadsTheKeyRequestWithoutAModel(t *testing.T) {
 	} {
 		got := detect(t, message)
 		require.Len(t, got, 1, message)
-		assert.Equal(t, provider, got[0].Provider, message)
+		assert.Equal(t, apikey.OpSetCredential, got[0].Type, message)
+		assert.Equal(t, provider, got[0].Args.Provider, message)
 	}
 }
 
@@ -56,11 +63,15 @@ func TestDetect_DoesNotMistakeOtherMessagesForAKeyRequest(t *testing.T) {
 func TestDetect_ReadsTheVideoProvider(t *testing.T) {
 	got := detect(t, "Kling は OpenRouter 経由で使いたい")
 	require.Len(t, got, 1)
-	assert.Equal(t, "openrouter", got[0].Provider)
+	assert.Equal(t, apikey.OpSetVideoProvider, got[0].Type)
+	assert.Equal(t, "openrouter", got[0].Args.Provider)
 	got = detect(t, "Kling は公式に戻して")
 	require.Len(t, got, 1)
-	assert.Equal(t, "official", got[0].Provider)
-	assert.Empty(t, detect(t, "OpenRouter の API キーを設定したい")[1:], "naming the provider of a key is a key request, not a choice of the video provider")
+	assert.Equal(t, apikey.OpSetVideoProvider, got[0].Type)
+	assert.Equal(t, "official", got[0].Args.Provider)
+	got = detect(t, "OpenRouter の API キーを設定したい")
+	require.Len(t, got, 1, "naming the provider of a key is a key request, not a choice of the video provider")
+	assert.Equal(t, apikey.OpSetCredential, got[0].Type)
 }
 
 func TestClean_DropsAProviderTheModelInvented(t *testing.T) {

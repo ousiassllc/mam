@@ -51,9 +51,7 @@ func TestOpenRouterKling3TextToVideoSubmitsPollsAndDownloadsWithTheKey(t *testin
 		}
 	}))
 	defer srv.Close()
-	f := srv
-	cfg, b := backends(t, f, viaprovider.OpenRouter, map[string]string{"openrouter": "or-dummy-key"})
-	_ = cfg
+	_, b := backends(t, srv, viaprovider.OpenRouter, map[string]string{"openrouter": "or-dummy-key"})
 
 	res, err := generate(t, b, domain.ModelKling3, modeladapter.VideoRequest{
 		Prompt: "a fox runs", NegativePrompt: "blur", DurationSeconds: 7, Resolution: "720p", AspectRatio: "16:9",
@@ -121,7 +119,8 @@ func TestOpenRouterFailedJobIsRefusedWithItsReason(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"j","status":"failed","error":"Content policy violation"}`))
 	}))
 	defer srv.Close()
-	_, b := backends(t, srv, viaprovider.OpenRouter, map[string]string{"openrouter": "k"})
+	const secret = "or-secret-7f3a91c2d4e8"
+	_, b := backends(t, srv, viaprovider.OpenRouter, map[string]string{"openrouter": secret})
 
 	_, err := generate(t, b, domain.ModelKling3, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 5, Resolution: "720p", AspectRatio: "16:9"})
 
@@ -129,7 +128,7 @@ func TestOpenRouterFailedJobIsRefusedWithItsReason(t *testing.T) {
 	assert.ErrorIs(t, err, modeladapter.ErrRejected)
 	assert.ErrorIs(t, err, modeladapter.ErrAfterSubmit, "the job exists at the provider: it must not be submitted again")
 	assert.Contains(t, err.Error(), "Content policy violation")
-	assert.NotContains(t, err.Error(), "k\"")
+	assert.NotContains(t, err.Error(), secret, "the key does not leak into the error")
 }
 
 // The prompt Prepare makes for Kling 3.0 is up to 2400 characters and its avoid list up to 400: OpenRouter has no field for the avoid list, so the backend

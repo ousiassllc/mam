@@ -2,6 +2,7 @@ package chattest_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -156,4 +157,29 @@ func TestChat_UpdateTheEngineOnAMachineWithoutAGPUIsRefusedWithTheReason(t *test
 	assert.Empty(t, chatfix.Cards(ws.Messages))
 	assert.Contains(t, chatfix.LastText(ws), "対応する GPU が見つかりません（テスト）")
 	assert.Empty(t, rig.Svc.Engine().InstallJob)
+}
+
+// An engine whose record says installed but whose files are gone (deleted by hand: Broken) is installed again through the chat with the real model manager: the card says the
+// files are missing and names the build the GPU recommends, and accepting reinstalls it.
+func TestChat_ReinstallTheBrokenEngineWithTheRealModelManager(t *testing.T) {
+	old := mmtest.New(t)
+	old.InstallEngine()
+	require.NoError(t, os.RemoveAll(old.Layout.EngineDir()))
+	f, rig := realInstallFixture(t, mmtest.WithLayout(old.Layout))
+	require.True(t, rig.Svc.Engine().Broken, "the record is there and the files are not")
+	require.False(t, rig.Svc.Engine().Installed)
+
+	ws := f.SayOps("ComfyUI のエンジンを入れ直して", `{"type":"install_model_engine","args":{}}`)
+
+	cards := chatfix.Cards(ws.Messages)
+	require.Len(t, cards, 1, "a card, not a refusal or \"nothing to do\": %s", chatfix.LastText(ws))
+	body := chatfix.Body(cards[0])
+	assert.Contains(t, body.Text, "ComfyUI エンジンを入れ直しますね？（導入の記録はありますが、ファイルがありません）")
+	assert.Contains(t, body.Text, "NVIDIA")
+	assert.NotContains(t, chatfix.LastText(ws), "GPU が見つかりません")
+
+	f.Answer(cards[0].ID, body.Options[0])
+	require.Equal(t, domain.JobSucceeded, rig.Wait(rig.Svc.Engine().InstallJob).State)
+	assert.True(t, rig.Svc.Engine().Installed)
+	assert.False(t, rig.Svc.Engine().Broken)
 }

@@ -47,7 +47,7 @@ func newGenerationFixture(t *testing.T, content string) (f pipelineFixture, p do
 	}
 	noSleep := func(context.Context, time.Duration) error { return nil }
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
-	fake := newFakeReasoner()
+	fake := servicetest.NewFakeReasoner()
 	assets := filepath.Join(t.TempDir(), "assets")
 	svc := servicetest.New(t, service.Deps{
 		DB: db, Jobs: jobs, LLM: fake, AssetsDir: assets, FreeBytes: func(string) (uint64, error) { return 1 << 40, nil },
@@ -63,9 +63,9 @@ func newGenerationFixture(t *testing.T, content string) (f pipelineFixture, p do
 	require.NoError(t, projects.Transition(ctx, p.ID, domain.StatePlanning))
 	require.NoError(t, projects.Transition(ctx, p.ID, domain.StateVisualDesign))
 	var plan domain.ScenePlan
-	require.NoError(t, json.Unmarshal([]byte(fakePlan), &plan))
+	require.NoError(t, json.Unmarshal([]byte(servicetest.FakePlan), &plan))
 	var board domain.Storyboard
-	require.NoError(t, json.Unmarshal([]byte(fakeBoard), &board))
+	require.NoError(t, json.Unmarshal([]byte(servicetest.FakeBoard), &board))
 	require.NoError(t, plans.SavePlan(ctx, p.ID, plan, board))
 	return f, p
 }

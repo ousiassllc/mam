@@ -30,7 +30,7 @@ Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 
 ## 4. ネガティブプロンプト
 
-ネガティブの**欄を持つ**モデル（Kling 3.0、ネガティブの割り当てがあるワークフロー）はその欄へ送り、`negative_mode=field`。持たないモデルは、プロンプトの末尾に「Avoid: …」の 1 文として書き足して送り（`direct.Fold`）、`negative_mode=folded`、送った文を `sent_prompt` に残す。ネガティブを入れなければ `none`。
+ネガティブの**欄を持つ**モデル（Kling 3.0、ネガティブの割り当てがあるワークフロー）（OpenRouter 経由の Kling 3.0 は欄を持たず、`folded` になる。[model-adapters.md](../model-adapters.md) §9.6）はその欄へ送り、`negative_mode=field`。持たないモデルは、プロンプトの末尾に「Avoid: …」の 1 文として書き足して送り（`direct.Fold`）、`negative_mode=folded`、送った文を `sent_prompt` に残す。ネガティブを入れなければ `none`。
 
 ## 5. 上限の設定（`gentestcfg`）
 

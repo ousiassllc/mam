@@ -203,7 +203,7 @@ func TestRender_NoCardWhenTheProjectCannotBeExported(t *testing.T) {
 		reason string
 	}{
 		"state":     {func(v *export.View) { v.State = domain.StateAudio }, "AUDIO"},
-		"ffmpeg":    {func(v *export.View) { v.CanRender = false }, "ffmpeg"},
+		"ffmpeg":    {func(v *export.View) { v.CanRender = false }, "「付随ソフト」"},
 		"no audio":  {func(v *export.View) { v.HasAudio, v.AudioCurrent = false, false }, "音声がない"},
 		"old audio": {func(v *export.View) { v.AudioCurrent = false }, "最新の編集"},
 	} {

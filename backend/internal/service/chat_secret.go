@@ -80,13 +80,20 @@ const keyCardOp = "set_credential"
 
 // secretRefusal is what is recorded for a message that carries what looks like an API key: the message with the key hidden, and where to put the key. The message does not reply to a
 // card (that would answer the key card, which has to stay open for the key to be typed). It is not read any further: the Brief extractor and the Interpreter (LLMs) never see it.
-func secretRefusal(hidden string) []domain.ChatMessage {
-	return assignIDs([]domain.ChatMessage{userText(strings.TrimSpace(hidden), "", nil), assistantText(pastedNotice)})
+func secretRefusal(hidden string, hasFiles bool) []domain.ChatMessage {
+	notice := pastedNotice
+	if hasFiles {
+		notice += "\n" + filesNotTakenNotice
+	}
+	return assignIDs([]domain.ChatMessage{userText(strings.TrimSpace(hidden), "", nil), assistantText(notice)})
 }
+
+// filesNotTakenNotice is added to the refusal of a message that carried files: the message is not read, so its files are not taken either (they are not stored).
+const filesNotTakenNotice = "添付したファイルは受け取っていません。キーを除いて、もう一度送ってください。"
 
 // guardSecret records a message that carries what looks like an API key with the key hidden (done is true), whatever mode the Project is in. Besides what secretguard finds, it
 // is a key when the card that waits for one is open and the message is a reply to it that is no decline, or one word of the shape of a key nobody knows.
-func (s *ChatService) guardSecret(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) (ws Workspace, done bool, err error) {
+func (s *ChatService) guardSecret(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string, hasFiles bool) (ws Workspace, done bool, err error) {
 	hidden, found := secretguard.Redact(content)
 	if !found {
 		cardID := ""
@@ -107,7 +114,7 @@ func (s *ChatService) guardSecret(ctx context.Context, project domain.Project, t
 		}
 		hidden = secretguard.Hidden
 	}
-	turn := repository.Turn{ProjectID: project.ID, Messages: secretRefusal(hidden)}
+	turn := repository.Turn{ProjectID: project.ID, Messages: secretRefusal(hidden, hasFiles)}
 	if err := s.commit(ctx, turn); err != nil {
 		return Workspace{}, false, err
 	}

@@ -20,7 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
-	gentestchat "github.com/ousiassllc/mam/backend/internal/service/gentest/chat"
+	gentestchatsvc "github.com/ousiassllc/mam/backend/internal/service/gentest/chat"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
@@ -111,7 +111,7 @@ type Services struct {
 	Gentest *gentest.Service
 	// GentestChat is the chat of the single generation screen (paths.GenerationTestChat, #1138) when a test brings its own; nil builds it from the LLM client of the
 	// app's services (the route of the Prompt Planner), and leaves the page a notice and its routes out when there is none.
-	GentestChat *gentestchat.Service
+	GentestChat *gentestchatsvc.Service
 	// JobList is the job list screen (paths.Jobs): the jobs that run and the latest that ended. Nil leaves the screen out.
 	JobList *joblist.Service
 }

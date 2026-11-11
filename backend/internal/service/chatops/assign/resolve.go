@@ -1,24 +1,12 @@
 package assign
 
 import (
-	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
-
-// norm is text as it is compared: lower case, with only letters and digits ("kling-4.0" and "Kling 4" meet at "kling40" and "kling4").
-func norm(text string) string {
-	var b strings.Builder
-	for _, r := range strings.ToLower(text) {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
-}
 
 // purposeWords are the words that mean an image purpose, beside its ID.
 var purposeWords = []struct {
@@ -43,17 +31,17 @@ var policyWords = []struct {
 
 // targetOf is the ID of the image purpose or the Quality Policy the text names ("新規参照", "Quality MAX", "max_quality"); "" for none.
 func targetOf(text string) string {
-	n := norm(text)
+	n := nlu.Norm(text)
 	if n == "" {
 		return ""
 	}
 	for _, p := range modelsettings.ImagePurposes() {
-		if n == norm(string(p)) {
+		if n == nlu.Norm(string(p)) {
 			return string(p)
 		}
 	}
 	for _, q := range domain.QualityPolicies() {
-		if n == norm(string(q)) {
+		if n == nlu.Norm(string(q)) {
 			return string(q)
 		}
 	}
@@ -72,7 +60,7 @@ func targetOf(text string) string {
 
 func containsAny(n string, words []string) bool {
 	for _, w := range words {
-		if strings.Contains(n, norm(w)) {
+		if strings.Contains(n, nlu.Norm(w)) {
 			return true
 		}
 	}
@@ -81,13 +69,13 @@ func containsAny(n string, words []string) bool {
 
 // pickModel finds the model the text names among names: the one that is called so, else every one whose name holds the text ("flux" is flux-2; "kling" is both Klings).
 func pickModel(text string, names []string) []string {
-	q := norm(text)
+	q := nlu.Norm(text)
 	if q == "" {
 		return nil
 	}
 	var holding []string
 	for _, n := range names {
-		switch nn := norm(n); {
+		switch nn := nlu.Norm(n); {
 		case nn == q:
 			return []string{n}
 		case strings.Contains(nn, q):
@@ -99,19 +87,11 @@ func pickModel(text string, names []string) []string {
 
 // pickResolution finds the resolution the text names among those the model has ("1080" and "1080P" are "1080p").
 func pickResolution(text string, options []string) (string, bool) {
-	q := strings.TrimSuffix(norm(text), "p")
+	q := strings.TrimSuffix(nlu.Norm(text), "p")
 	for _, o := range options {
-		if strings.TrimSuffix(norm(o), "p") == q {
+		if strings.TrimSuffix(nlu.Norm(o), "p") == q {
 			return o, true
 		}
 	}
 	return "", false
-}
-
-// few lists the first n names, and how many more there are.
-func few(names []string, n int) string {
-	if len(names) <= n {
-		return strings.Join(names, "、")
-	}
-	return strings.Join(names[:n], "、") + "、ほか " + strconv.Itoa(len(names)-n) + " 件"
 }

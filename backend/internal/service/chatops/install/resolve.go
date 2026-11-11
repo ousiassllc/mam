@@ -2,34 +2,26 @@ package install
 
 import (
 	"strings"
-	"unicode"
+
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 )
 
 // named is something the director names by its id or its name: a model of the catalog, a runtime, a file of a repository.
 type named struct{ ID, Name string }
 
-// key writes a name the way two spellings of it meet: lower case, without blanks or punctuation ("FLUX.1 schnell" and "flux1-schnell" are "flux1schnell").
-func key(s string) string {
-	var b strings.Builder
-	for _, r := range strings.ToLower(s) {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
-}
-
 // resolve finds what the director named among items, by the most exact reading that finds anything: the id, the name, then a name or id that contains what was said.
 // Several matches are all returned (the chat asks which); none is nil. It never returns something that does not match: a name the model made up finds nothing.
 func resolve(query string, items []named) []named {
-	q := key(query)
+	q := nlu.Norm(query)
 	if q == "" {
 		return nil
 	}
 	tiers := [...]func(named) bool{
 		func(n named) bool { return strings.EqualFold(strings.TrimSpace(query), n.ID) },
-		func(n named) bool { return key(n.ID) == q || key(n.Name) == q },
-		func(n named) bool { return strings.Contains(key(n.Name), q) || strings.Contains(key(n.ID), q) },
+		func(n named) bool { return nlu.Norm(n.ID) == q || nlu.Norm(n.Name) == q },
+		func(n named) bool {
+			return strings.Contains(nlu.Norm(n.Name), q) || strings.Contains(nlu.Norm(n.ID), q)
+		},
 	}
 	for _, match := range tiers {
 		var found []named

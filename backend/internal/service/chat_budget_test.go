@@ -121,3 +121,30 @@ func TestChat_AnEscalationWithoutActionsIsOnlyNotedAsBefore(t *testing.T) {
 
 	assert.Contains(t, lastText(ws), "この判断は自動では実行されません")
 }
+
+// A Command that names no Shot and has an operation on a Shot beside others (a budget, a note) asks which Shot is meant and still carries out the rest: the budget card and
+// the note are not dropped with the regeneration.
+func TestChat_ACommandWithoutAShotKeepsItsOtherOperationsAndAsksWhichShot(t *testing.T) {
+	f := newGenFixture(t, true)
+	_, err := f.svc.Plans.CreateShot(context.Background(), f.sceneID, service.ShotForm{Objective: "ドアを開ける", DurationSeconds: "4"}) // two Shots and no Take card: none is meant
+	require.NoError(t, err)
+	f.startDirecting(t)
+	f.llm.interpreter = opsJSON(
+		`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer."}`,
+		`{"type":"set_budget","project_budget_usd":30}`,
+		`{"type":"create_note","text":"主人公は左利き"}`,
+	)
+
+	ws := f.say(t, "もう少し寄って。予算を $30 に変えて。主人公は左利きだと覚えておいて", "")
+
+	cards := operationCards(ws.Messages)
+	require.Len(t, cards, 1, "the budget card is posted")
+	assert.Equal(t, "set_budget", cards[0].RefID)
+	var texts string
+	for _, m := range ws.Messages {
+		texts += m.Content + "\n"
+	}
+	assert.Contains(t, texts, "どの Shot への指示ですか", "the Shot is asked for")
+	assert.Contains(t, texts, "左利き", "the note was kept and told")
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM job WHERE kind = 'generate'`), "nothing was regenerated")
+}

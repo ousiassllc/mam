@@ -14,11 +14,18 @@ var (
 	// "書き出しは最後に"). It is no request, so the word is dropped before the message is read.
 	mentionedOnly = regexp.MustCompile(`(?i)((書き出|書出|エクスポート|ダウンロード)(する|した|しない|せる|できる|す|し|しする)?(の?(前|まえ|直前|直後|手前|より前|後|あと|時|とき|際|場合|までに|まで|ので|ため|ように)|たら|れば|なら)` +
 		`|(書き出|書出|エクスポート)(する|す)と` + // "書き出すと EXPORTED になる": what the export does
-		`|(書き出|書出|エクスポート)(し)?は(最後|最終的|後|あと|まだ|別|不要|いらない|しない|しません|しなくて|今は|終わ|完了|済|できた|できて)` + // "書き出しは最後に"; "書き出しは 1080p で" is a request
+		`|(書き出|書出|エクスポート)(し)?は(最後|最終的|後|あと|まだ|別|不要|いらない|しない|しません|しなくて|今は)` + // "書き出しは最後に"; "書き出しは 1080p で" is a request
+		// A question about the state of an export or a download ("書き出し終わった？", "書き出しが進んでる？", "書き出しの完了を教えて", "ダウンロードは終わった？"). The words end where the
+		// state is told, so "書き出しは済ませて" and "書き出しは完了させて" (to do it) stay requests.
+		`|(書き出|書出|エクスポート|ダウンロード)(し)?(の|は|が|も|、)?(終わった|終わってる|終わってい|終わりました|終わる|完了した|完了してる|完了してい|完了しました|完了を|済んだ|済んで|済み|できた|できて|進んで|進み|進行|どう|どこまで)` +
+		`|(書き出|書出|エクスポート|ダウンロード)(し)?(は|が)できる` + // "書き出しはできる？": whether it can be done now
 		`|(書き出|書出|エクスポート|ダウンロード)(さな|さず|せず|しない|しなく|しなかった|しません)` + // "書き出さないで", "エクスポートせずに": not asking for it
 		`|\b(before|after|until|once|when|while|prior to)\s+(\w+\s+){0,2}?(export|download)\w*|\b(export|download)(ing|ed|s)\b)`)
-	pastExport   = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
-	downloadWord = regexp.MustCompile(`(?i)(ダウンロード|download)`)
+	pastExport = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
+	// exportThenDownload is one request for both: "動画を書き出してダウンロードしたい", "export the video and download it". The word of the export is a verb that asks for it ("書き出して"),
+	// not the noun of an export that was made ("さっきの書き出しをダウンロード", "書き出した動画をダウンロード").
+	exportThenDownload = regexp.MustCompile(`(?i)((書き出|書出|エクスポート)(し)?(て|たい|てから|つつ|た上で)[^。！？!?\n]*ダウンロード|\bexport\b[^.!?\n]*\band\b[^.!?\n]*\bdownload)`)
+	downloadWord       = regexp.MustCompile(`(?i)(ダウンロード|download)`)
 	// videoWord names the finished video; bundleWord the Project as a ZIP. A message about the Project as a whole ("プロジェクトを書き出して") is the bundle too: the app
 	// calls it "プロジェクトの書き出し（バンドル）".
 	videoWord    = regexp.MustCompile(`(?i)(動画|ビデオ|映像|完成|mp4|webm|video|最終版)`)
@@ -29,7 +36,9 @@ var (
 	demonstrated = regexp.MustCompile(`(これ|この|それ|その|いま|今の)`)
 	// otherThing is what the words of this operation also mean elsewhere: installing a model ("動画モデルをダウンロード") is the install operation's.
 	otherThing = regexp.MustCompile(`(?i)(モデル|model|lora|ollama|comfy|ランタイム|runtime|インストール|install|導入|重み|ノード|ワークフロー|workflow)`)
-	pastFile   = regexp.MustCompile(`(さっき|最新|前の|先ほど|直前|ファイル|mp4|書き出し|書出し|エクスポート|export)`)
+	// person is the "モデル" of a fashion model or of the cast ("プロのモデル", "モデルさん"): it names no model of the catalog, so it is no install (the same words as chatops/install).
+	person   = regexp.MustCompile(`(?:プロ|出演者?|ファッション|専属|人物|女性|男性|外国人|日本人|ヘア|ハンド)の?モデル|モデル(?:さん|ちゃん|君|くん|たち|達)`)
+	pastFile = regexp.MustCompile(`(さっき|最新|前の|先ほど|直前|ファイル|mp4|書き出し|書出し|エクスポート|export)`)
 
 	ratioWord   = regexp.MustCompile(`(16\s*[:：]\s*9|9\s*[:：]\s*16|1\s*[:：]\s*1|4\s*[:：]\s*5)`)
 	resolution  = regexp.MustCompile(`(?i)(720|1080|1440|2160)\s*p`)
@@ -54,7 +63,7 @@ const (
 
 // classify says which of the three requests the message is, if it is one: a word of exporting or downloading beside what is exported (the video, the Project as a bundle).
 func classify(message string) kind {
-	if otherThing.MatchString(message) {
+	if otherThing.MatchString(person.ReplaceAllString(message, "")) {
 		return kindNone
 	}
 	message = mentionedOnly.ReplaceAllString(message, " ")
@@ -66,6 +75,8 @@ func classify(message string) kind {
 	switch {
 	case bundleWord.MatchString(message) || (!video && (namesWholeProject(message) || projectWord.MatchString(message))): // a word of the video beside "プロジェクト全体を…" is the video's
 		return kindBundle
+	case exportThenDownload.MatchString(message) && (video || demonstrated.MatchString(message)): // the render's own reply gives the download
+		return kindRender
 	case downloads:
 		if video || pastFile.MatchString(message) {
 			return kindDownload

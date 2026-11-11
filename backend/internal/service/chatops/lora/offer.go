@@ -54,9 +54,10 @@ func (o *Offer) Offer(ctx context.Context, _ domain.Project, _ string, files []c
 			continue
 		}
 		if err == nil {
+			tokens = append(tokens, st.Token) // staged: a fault of its card discards it too, or it would hold one of the few places (maxStaged) for an hour
 			var card domain.ChatMessage
 			if card, err = o.card(st); err == nil {
-				tokens, cards = append(tokens, st.Token), append(cards, card)
+				cards = append(cards, card)
 				continue
 			}
 		}

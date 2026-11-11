@@ -53,7 +53,7 @@ func (s Stop) card(plan genplan.Plan, current domain.QualityPolicy, buildAs func
 	over := plan.Overrun()
 	var text strings.Builder
 	text.WriteString("AUTO で進める生成は、見積のままでは予算上限を超えるため、始めませんでした。予算を超える生成は、勝手に品質を下げて進めず、選んでもらいます。\n")
-	fmt.Fprintf(&text, "・見積: 最大 %s USD（Shot %d 件。単価が分かる分だけの最大額）\n", usdText(plan.Total().USD), len(plan.Lines))
+	fmt.Fprintf(&text, "・見積: 最大 %s USD（Shot %d 件。単価が分かる分だけの最大額）\n", genplan.USDText(plan.Total().USD), len(plan.Lines))
 	text.WriteString("・" + budgetLine(plan) + "\n")
 	if notice := plan.UnpricedNotice(); notice != "" {
 		text.WriteString("・" + notice + "\n")
@@ -79,7 +79,7 @@ func (s Stop) card(plan genplan.Plan, current domain.QualityPolicy, buildAs func
 		if alt.Overrun().Any() {
 			fits = "それでも予算を超えます"
 		}
-		label := fmt.Sprintf("Quality Policy を %s にする（%s、見積 最大 %s USD。%s）", q.Label(), alt.VideoSummary(), usdText(alt.Total().USD), fits)
+		label := fmt.Sprintf("Quality Policy を %s にする（%s、見積 最大 %s USD。%s）", q.Label(), alt.VideoSummary(), genplan.USDText(alt.Total().USD), fits)
 		if err := add(label, commandinterpreter.Operation{Type: commandinterpreter.OpSetQualityPolicy, Quality: q}); err != nil {
 			return domain.CardBody{}, err
 		}
@@ -89,12 +89,12 @@ func (s Stop) card(plan genplan.Plan, current domain.QualityPolicy, buildAs func
 	if over.ProjectNeed > 0 {
 		need := math.Ceil(over.ProjectNeed)
 		raise.ProjectBudgetUSD = &need
-		raised = append(raised, fmt.Sprintf("Project を $%s", usdText(need)))
+		raised = append(raised, fmt.Sprintf("Project を $%s", genplan.USDText(need)))
 	}
 	if over.ShotNeed > 0 {
 		need := math.Ceil(over.ShotNeed)
 		raise.ShotBudgetUSD = &need
-		raised = append(raised, fmt.Sprintf("Shot あたりを $%s", usdText(need)))
+		raised = append(raised, fmt.Sprintf("Shot あたりを $%s", genplan.USDText(need)))
 	}
 	if err := add("予算上限を引き上げる（"+strings.Join(raised, "、")+"）", raise); err != nil {
 		return domain.CardBody{}, err
@@ -122,15 +122,10 @@ func cheaper(q domain.QualityPolicy) []domain.QualityPolicy {
 func budgetLine(p genplan.Plan) string {
 	var parts []string
 	if p.ProjectCeiling != nil {
-		parts = append(parts, fmt.Sprintf("Project 予算 %s USD（使用済み・予約済み %s USD）", usdText(*p.ProjectCeiling), usdText(p.ProjectSpent)))
+		parts = append(parts, fmt.Sprintf("Project 予算 %s USD（使用済み・予約済み %s USD）", genplan.USDText(*p.ProjectCeiling), genplan.USDText(p.ProjectSpent)))
 	}
 	if p.ShotCeiling != nil {
-		parts = append(parts, fmt.Sprintf("Shot あたり %s USD", usdText(*p.ShotCeiling)))
+		parts = append(parts, fmt.Sprintf("Shot あたり %s USD", genplan.USDText(*p.ShotCeiling)))
 	}
 	return "予算上限: " + strings.Join(parts, " / ")
-}
-
-// usdText writes an amount the way the settings screen does ("20", "12.5"), so that what the chat says is what the screen shows.
-func usdText(v float64) string {
-	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.4f", v), "0"), ".")
 }

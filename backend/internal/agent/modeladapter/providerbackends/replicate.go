@@ -11,7 +11,7 @@ import (
 )
 
 // replicate calls Kling through Replicate's predictions API: POST /models/{owner}/{name}/predictions with {"input": ...}, GET
-// /predictions/{id} until "succeeded", then the output URL (a string, or a list of them). The key is the Bearer token. Kling 3.0
+// /predictions/{id} until "succeeded" ("failed", "canceled" and "aborted" end it without a video), then the output URL (a string, or a list of them). The key is the Bearer token. Kling 3.0
 // (kwaivgi/kling-v3-video) takes the tier as "mode" (standard = 720p, pro = 1080p) and has sound (switched off here: the price is
 // the silent one) and a negative prompt; Kling 4.0 (kwaivgi/kling-v4.0) takes the resolution and folds the negative description into
 // the prompt.
@@ -92,7 +92,7 @@ func (b replicate) GenerateVideo(ctx context.Context, _ string, req modeladapter
 				return false, b.Empty("video")
 			}
 			return true, nil
-		case "failed", "canceled":
+		case "failed", "canceled", "aborted": // aborted: the deadline passed before it started (never billed)
 			return false, failedJob(b.API, st.Status, st.Error)
 		}
 		return false, nil // starting, processing

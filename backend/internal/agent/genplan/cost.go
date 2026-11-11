@@ -1,7 +1,6 @@
 package genplan
 
 import (
-	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -10,9 +9,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
-
-// usd writes an amount the way the screens do.
-func usd(v float64) string { return fmt.Sprintf("%.4f", v) }
 
 // numbers writes the Shot numbers as "1・2・3".
 func numbers(nums []int) string {
@@ -77,6 +73,9 @@ func UnpricedRoutes(cfg modeladapter.Config, q domain.QualityPolicy) []string {
 		return out
 	}
 	for _, t := range []modeladapter.VideoTarget{route.Primary, route.Fallback} {
+		if t.Model == "" { // a route without an alternative names no model
+			continue
+		}
 		name := "動画: " + string(t.Model)
 		if priced(cfg, t.Model, cfg.VideoCost(t, 1)).Unknown && !slices.Contains(out, name) {
 			out = append(out, name)

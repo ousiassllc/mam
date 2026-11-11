@@ -155,21 +155,32 @@ func (p *Provider) Apply(ctx context.Context, project domain.Project, op command
 		return res, nil
 	}
 	set, err := p.deps.Configured(vendor)
-	if err != nil || set {
-		return res, err
-	}
-	ask, err := commandinterpreter.NewOperation(OpSetCredential, Args{Provider: vendor})
-	if err != nil {
+	if set {
 		return res, nil
 	}
-	card, err := (&Key{deps: KeyDeps{Configured: p.deps.Configured}}).Question(ctx, project, ask)
-	if err != nil {
-		return res, err
+	var msg domain.ChatMessage
+	if err == nil {
+		msg, err = p.keyCard(ctx, project, vendor)
 	}
-	msg, err := chatops.Message(ask, card)
 	if err != nil {
-		return res, err
+		// The provider is saved already: a failure to find out about the key (or to build its card) must not turn that success into an error.
+		label, _ := labelOf(vendor)
+		res.Text += "\n" + label + " の API キーが設定済みかどうかを確かめられませんでした。「" + label + " の API キーを設定したい」と送って確かめてください。"
+		return res, nil
 	}
 	res.Messages = append(res.Messages, msg)
 	return res, nil
+}
+
+// keyCard is the card that asks for the key of vendor.
+func (p *Provider) keyCard(ctx context.Context, project domain.Project, vendor string) (domain.ChatMessage, error) {
+	ask, err := commandinterpreter.NewOperation(OpSetCredential, Args{Provider: vendor})
+	if err != nil {
+		return domain.ChatMessage{}, err
+	}
+	card, err := (&Key{deps: KeyDeps{Configured: p.deps.Configured}}).Question(ctx, project, ask)
+	if err != nil {
+		return domain.ChatMessage{}, err
+	}
+	return chatops.Message(ask, card)
 }

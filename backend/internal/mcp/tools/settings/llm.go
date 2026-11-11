@@ -122,7 +122,7 @@ func llmInvalid(err error) (string, bool) {
 func (h handlers) setLLM(ctx context.Context, in SetLLMInput) (SetLLMOutput, error) {
 	svc := h.r.Settings.LLM
 	if svc == nil {
-		return SetLLMOutput{}, unavailable("LLM の割り当て")
+		return SetLLMOutput{}, Unavailable("LLM の割り当て")
 	}
 	if len(in.Routes) == 0 {
 		return SetLLMOutput{}, invalidInput("routes", "変える Agent を 1 つ以上指定してください")
@@ -132,7 +132,7 @@ func (h handlers) setLLM(ctx context.Context, in SetLLMInput) (SetLLMOutput, err
 		routes[r.Agent] = llmassign.Route{Primary: modelTrimmed(r.Primary), Fallback: modelTrimmed(r.Fallback)}
 	}
 	if err := svc.Save(routes); err != nil {
-		return SetLLMOutput{}, mapSaveError(err, llmInvalid, llmassign.ErrPinned)
+		return SetLLMOutput{}, MapSaveError(err, llmInvalid, llmassign.ErrPinned)
 	}
 	return SetLLMOutput{LLMSection: llmSection(svc, h.r.Settings.LLMModels, h.r.Settings.LLMLocal), Warnings: h.unlistedWarnings(ctx, in.Routes)}, nil
 }
@@ -145,10 +145,10 @@ func modelTrimmed(t Target) llmassign.Target {
 func (h handlers) resetLLM(_ context.Context, _ Input) (LLMSection, error) {
 	svc := h.r.Settings.LLM
 	if svc == nil {
-		return LLMSection{}, unavailable("LLM の割り当て")
+		return LLMSection{}, Unavailable("LLM の割り当て")
 	}
 	if err := svc.Reset(); err != nil {
-		return LLMSection{}, mapSaveError(err, llmInvalid, llmassign.ErrPinned)
+		return LLMSection{}, MapSaveError(err, llmInvalid, llmassign.ErrPinned)
 	}
 	return llmSection(svc, h.r.Settings.LLMModels, h.r.Settings.LLMLocal), nil
 }

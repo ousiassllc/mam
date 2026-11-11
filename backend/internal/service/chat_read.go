@@ -75,7 +75,6 @@ func (s *ChatService) workspaceOf(ctx context.Context, projectID string, msgs []
 	return ws, nil
 }
 
-// isBriefQuestion reports whether m is the question card of a Brief item or the summary card of the Brief.
 // questionOpen reports whether the Question card can still be answered: a Continue card until it has a reply, a confirmation card until it has a reply or a newer one of its
 // operation replaces it, a Brief question while what it asks is still open.
 func questionOpen(m domain.ChatMessage, open chatbrief.OpenState, latestOperation map[string]string) bool {
@@ -88,6 +87,7 @@ func questionOpen(m domain.ChatMessage, open chatbrief.OpenState, latestOperatio
 	return chatbrief.Open(m, open.Replied[m.ID], open.Brief, open.State, open.LatestConfirm)
 }
 
+// isBriefQuestion reports whether m is the question card of a Brief item or the summary card of the Brief.
 func isBriefQuestion(m domain.ChatMessage) bool {
 	return m.Kind == domain.KindQuestion && (m.RefType == domain.RefBriefField || m.RefType == domain.RefBriefConfirm)
 }
@@ -224,10 +224,14 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		case domain.KindEscalation:
 			v.Open = !open.Replied[m.ID]
 		case domain.KindProgress:
-			if job, ok := jobs[m.RefID]; ok {
+			job, known := jobs[m.RefID]
+			if known {
 				v.Job = &job
 			}
-			v.Detail = s.director.chatOps.Detail(ctx, m.RefID)
+			// only an install says how far it is (the sources look the job up again: a generation's card would cost a lookup each); a job that is not in the table is asked
+			if !known || job.Kind == domain.JobModelInstall {
+				v.Detail = s.director.chatOps.Detail(ctx, m.RefID)
+			}
 		}
 		if v.Unrecorded, err = s.genApprovals.Unrecorded(ctx, projectID, m); err != nil {
 			return nil, err

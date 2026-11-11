@@ -5,12 +5,10 @@ package videoprovider
 
 import (
 	"context"
-	"errors"
-	"net/http"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
-	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/settings"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
@@ -33,25 +31,6 @@ type handlers struct {
 
 // Input has no field.
 type Input struct{}
-
-const pinnedMessage = "起動オプションで固定されているため、この画面では変更できません"
-
-func unavailable(what string) error {
-	return &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: what + " はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
-}
-
-// saveError turns the refusals of the model settings into the errors the tools map: an invalid input is a validation error, a pinned file a
-// conflict, anything else the common error of a failed save.
-func saveError(err error) error {
-	var invalid *modelsettings.InvalidError
-	switch {
-	case errors.As(err, &invalid):
-		return &service.ValidationError{Message: invalid.Message}
-	case errors.Is(err, modelsettings.ErrPinned):
-		return &service.ConflictError{Message: pinnedMessage}
-	}
-	return errmap.SaveFailure(err)
-}
 
 // Choice is one provider that can be chosen.
 type Choice struct {
@@ -77,9 +56,9 @@ type Model struct {
 	Prices    []Price `json:"prices,omitempty" jsonschema:"選んだプロバイダーの単価（見積り・費用と同じ値）。supported が false のときは空"`
 }
 
-// Section is the API provider of the cloud video models (the top of the API key category).
+// Section is the API provider of the cloud video models (the top of the API key category). An app that has no model settings answers the tools with
+// the unavailable error instead of a section.
 type Section struct {
-	Available bool     `json:"available" jsonschema:"false ならこのアプリには画像・動画モデルの設定がない"`
 	Pinned    bool     `json:"pinned" jsonschema:"起動オプション（--model-config）で固定されていて、変更できない"`
 	Provider  string   `json:"provider" jsonschema:"選んでいるプロバイダー（既定は official）"`
 	Providers []Choice `json:"providers"`
@@ -89,13 +68,13 @@ type Section struct {
 func (h handlers) providerSection() (Section, error) {
 	svc := h.r.Settings.Models
 	if svc == nil {
-		return Section{}, unavailable("API プロバイダーの設定")
+		return Section{}, settings.Unavailable("API プロバイダーの設定")
 	}
 	v, err := svc.VideoProvider()
 	if err != nil {
-		return Section{}, saveError(err)
+		return Section{}, settings.MapSaveError(err, settings.ModelsInvalid, modelsettings.ErrPinned)
 	}
-	out := Section{Available: true, Pinned: v.Pinned, Provider: string(v.Selected), Providers: []Choice{}, Models: []Model{}}
+	out := Section{Pinned: v.Pinned, Provider: string(v.Selected), Providers: []Choice{}, Models: []Model{}}
 	for _, p := range viaprovider.Providers() {
 		c := Choice{Provider: string(p), Label: p.Label(), Selected: p == v.Selected, KeyID: p.Vendor()}
 		if c.KeyID != "" && h.svc != nil {
@@ -127,10 +106,10 @@ type SetProviderInput struct {
 func (h handlers) setProvider(_ context.Context, in SetProviderInput) (Section, error) {
 	svc := h.r.Settings.Models
 	if svc == nil {
-		return Section{}, unavailable("API プロバイダーの設定")
+		return Section{}, settings.Unavailable("API プロバイダーの設定")
 	}
 	if err := svc.SaveVideoProvider(viaprovider.Provider(in.Provider)); err != nil {
-		return Section{}, saveError(err)
+		return Section{}, settings.MapSaveError(err, settings.ModelsInvalid, modelsettings.ErrPinned)
 	}
 	return h.providerSection()
 }

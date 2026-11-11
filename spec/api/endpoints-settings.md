@@ -81,11 +81,16 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 - 全体の保存・リセット（`PUT` / `DELETE /settings/llm`・`/settings/models`）は MCP のツールとテストのために残す。応答は分類の本文（LLM は `#llm-assignment-panel`、画像・動画は `#model-assignment`。`hx-swap="outerHTML"`）で、画面の「すべて既定に戻す」（`hx-confirm` つき）がこの `DELETE` を呼ぶ。
 - 「画像・動画モデル」の選択肢は、ローカルのモデルを足す・消す応答には添えない（`#model-assignment` の OOB は外した。モーダルを開くたびに最新を読む）。
 
+### 新しいルート（Issue #1136）
+
+| Method | Path | 内容 |
+|--------|------|------|
+| PUT | `/settings/api-provider` | **#1136**。動画モデル（Kling）の API プロバイダー（[model-adapters.md §9.6](../architecture/model-adapters.md)）。フォーム `provider`（`official` / `openrouter` / `fal` / `replicate`）。`models.json` の `video_provider` に保存し、`localmodels.Service.Reload` で即反映する（`official` はキーを消す）。応答は `#credential-panel` の全体（先頭に選択、選んだ先のキー欄を先頭に）。200＋お知らせ、未知の値は 422、`--model-config` で固定されていると 409（どちらも `role="alert"` の文）。`Cache-Control: no-store`。`Services.Models` がないと登録しない（404）。キー（`openrouter` / `fal` / `replicate`）は `PUT /credentials/:provider` で保存する |
+
 ### 今のルートに起きた変更（パス・フォーム・状態コードは変えない）
 
 | Method | Path | 変更 |
 |--------|------|------|
-| PUT | `/settings/api-provider` | **#1136**。動画モデル（Kling）の API プロバイダー（[model-adapters.md §9.6](../architecture/model-adapters.md)）。フォーム `provider`（`official` / `openrouter` / `fal` / `replicate`）。`models.json` の `video_provider` に保存し、`localmodels.Service.Reload` で即反映する（`official` はキーを消す）。応答は `#credential-panel` の全体（先頭に選択、選んだ先のキー欄を先頭に）。200＋お知らせ、未知の値は 422、`--model-config` で固定されていると 409（どちらも `role="alert"` の文）。`Cache-Control: no-store`。`Services.Models` がないと登録しない（404）。キー（`openrouter` / `fal` / `replicate`）は `PUT /credentials/:provider` で保存する |
 | PUT | `/credentials/:provider` | 成功の本文が、区画ではなく**カードの OOB ＋成功のトースト＋ `#api-provider-models`（API プロバイダーの選択の下の「モデルごとの状況」。そこに「API キー: 設定済み／未設定」の行がある）の `hx-swap-oob` での差し替え（選択が出ていないときは足さない）＋ `HX-Trigger-After-Swap: modal-close`**。空・空白入り・長すぎるキーは 422（モーダルの断片）、キーストアの拒否は 503（同）、未知の `provider` は 422（赤いトースト）。キーは返さない |
 | DELETE | `/credentials/:provider` | 成功の本文が**カード**（`hx-swap="outerHTML"`）＋成功のトースト＋ `#api-provider-models`（API プロバイダーの選択の下の「モデルごとの状況」。そこに「API キー: 設定済み／未設定」の行がある）の `hx-swap-oob` での差し替え（選択が出ていないときは足さない）。未設定でも 200。未知の `provider` は 422（トースト）、キーストアの拒否は 503（トースト） |
 | POST | `/settings/chatgpt/:kind/login` | 本文が**モーダルの断片**（ブラウザ: 開いたことと認可 URL、デバイスコード: 確認 URL・コード・期限、どちらも 2 秒ごとの取り直しつき）＋区画の OOB。公式のデバイスコードは 422、画像が OFF は 409、エンジンが無い `codex` は 409（モーダルの断片に理由） |
@@ -221,6 +226,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.17 | 2026-11-07 | §5.2・§5.2.1・§5.2.2 の ffmpeg・FaceFusion のルートの移し替え（#1106）を実装した。状態を「実装済み」にした（`GET /settings/ffmpeg`・`/settings/facefusion` は 303、`PUT`・`POST`・`DELETE` は 404） | Issue #1106 |
 | 1.18 | 2026-11-07 | §5 の `PUT /settings/llm/local`・`POST /settings/llm/local/test` の廃止（#1104）を実装した。状態を「実装済み」にした（ルートは登録しない。404。`GET /settings/llm` はリンクのカード） | Issue #1104 |
 | 1.19 | 2026-11-08 | §6 に、割り当てが使えない行の注意（生成が条件に合うモデルで行われるか、断られるか）を足した | Issue #1113 |
-| 1.20 | 2026-11-10 | §1 に `PUT /settings/api-provider`（動画モデル〔Kling〕の API プロバイダーの選択。`models.json` の `video_provider` に保存して即反映。未知の値は 422、`--model-config` で固定中は 409）を足した | Issue #1136 |
+| 1.20 | 2026-11-10 | §3 の「新しいルート」に `PUT /settings/api-provider`（動画モデル〔Kling〕の API プロバイダーの選択。`models.json` の `video_provider` に保存して即反映。未知の値は 422、`--model-config` で固定中は 409）を足した（当初は §1 と書いたが、§1 は GET のページの表なので、1.23 で §3 の「新しいルート」の節に直した） | Issue #1136 |
 | 1.21 | 2026-11-10 | §3 の `PUT`・`DELETE /credentials/:provider` の成功の本文に、`#api-provider-models` の OOB の差し替えを足した（キーの保存・削除のあと、プロバイダー選択の下の「API キー: 設定済み／未設定」が古いままにならない） | PR #1141 のレビュー指摘 |
 | 1.22 | 2026-11-11 | §4 の接続テストの表に `openrouter`・`replicate`（実装の `credential/probe` にあるが書いていなかった）を足し、ボタンを出さない行に `fal` を足した | PR #1141 のレビュー指摘 |
+| 1.23 | 2026-11-11 | §3 の `PUT /settings/api-provider` の行を「今のルートに起きた変更」（パス・フォーム・状態コードは変えない）の表から、新しい節「新しいルート」へ移した（新規のルートで、見出しと食い違っていた）。1.20 の「§1」は誤りで、§3 が正しい。ブラウザは選びが落ち着いてから（`change` の 600ms 後）この PUT を送る（[settings-screen-categories.md](../components/settings-screen-categories.md) §1.0）。キーストアが読めないときのカードの並びも選択に追従する | PR #1141 のレビュー指摘 |

@@ -14,28 +14,45 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
 
-// A button of an Escalation whose operation cannot run (an amount the budget refuses) is told as it is: the chat never says it "executed" the pick, and the ceiling is unchanged.
-func TestChat_PickingAnOptionOfAnEscalationThatCannotRunSaysSoInsteadOfExecuted(t *testing.T) {
+// A button of an Escalation whose operation cannot run (an amount the budget refuses) is refused with the reason, as it is: the chat never says it "executed" the pick, the
+// ceiling is unchanged, the card stays open to be answered again and the Project that waited for the answer keeps waiting.
+func TestChat_PickingAnOptionOfAnEscalationThatCannotRunLeavesTheCardOpenAndTheStateAsItWas(t *testing.T) {
 	f := newFixture(t)
 	p := f.createProject(t, "美容液のCMを作りたい")
 	tooMuch, err := json.Marshal(commandinterpreter.Operation{Type: commandinterpreter.OpSetBudget, ProjectBudgetUSD: new(99999999.0)})
 	require.NoError(t, err)
+	setState(t, f, p.ID, domain.StateGenerating) // a state in which an Escalation holds the Project
 	body := domain.CardBody{Text: "予算を超えます", Options: []string{"予算上限を引き上げる"}, OptionActions: []json.RawMessage{tooMuch}}
 	require.NoError(t, f.svc.Chat.RaiseEscalationCard(context.Background(), p.ID, body, ""))
+	card := escalationCard(t, f, p.ID)
+	before, err := f.svc.Projects.Get(context.Background(), p.ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.StateAwaitingApproval, before.State, "the Project waits for the answer")
+	thread := len(f.thread(t, p.ID))
+
+	_, err = f.svc.Chat.PostMessage(context.Background(), p.ID, service.PostMessageInput{Content: "予算上限を引き上げる", ReplyToMessageID: card.ID})
+
+	requireInvalid(t, err, "message")
+	assert.Contains(t, err.Error(), "実行できませんでした")
+	assert.NotContains(t, err.Error(), "実行しました")
+	project, _ := ceilings(t, f.svc, p.ID)
+	assert.Nil(t, project, "nothing was changed")
+	after, err := f.svc.Projects.Get(context.Background(), p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, before.State, after.State, "the Project keeps waiting: the pick did not resume it")
+	assert.Len(t, f.thread(t, p.ID), thread, "no reply was recorded: the card is still open")
+}
+
+func escalationCard(t *testing.T, f fixture, projectID string) domain.ThreadMessage {
+	t.Helper()
 	var card domain.ThreadMessage
-	for _, m := range f.thread(t, p.ID) {
+	for _, m := range f.thread(t, projectID) {
 		if m.Kind == domain.KindEscalation {
 			card = m
 		}
 	}
 	require.NotEmpty(t, card.ID)
-
-	ws := answer(t, f.svc, p.ID, card.ID, "予算上限を引き上げる")
-
-	assert.Contains(t, lastText(ws), "実行できませんでした")
-	assert.NotContains(t, lastText(ws), "実行しました")
-	project, _ := ceilings(t, f.svc, p.ID)
-	assert.Nil(t, project, "nothing was changed")
+	return card
 }
 
 // A card whose stored action is not a valid operation (the card is not one the app made) is not carried out: the pick is an error, and the ceiling is unchanged.

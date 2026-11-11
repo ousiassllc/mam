@@ -47,7 +47,6 @@ func TestVideoProvider_DefaultsToOfficialAndSetsAtOnceWithThePricesAndReasons(t 
 
 	var before videoprovider.Section
 	env.CallOK("get_video_provider", map[string]any{}, &before)
-	assert.True(t, before.Available)
 	assert.Equal(t, "official", before.Provider)
 	assert.Len(t, before.Providers, 4)
 	assert.True(t, choice(before, "official").Selected)

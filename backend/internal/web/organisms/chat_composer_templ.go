@@ -89,7 +89,7 @@ func ChatComposer(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" aria-label=\"画像・動画を添付\" class=\"peer sr-only\"> <label for=\"composer-files\" class=\"cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-accent-soft peer-focus-visible:focus-ring\" title=\"画像・動画を添付\">＋</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" aria-label=\"画像・動画・LoRA（.safetensors）を添付\" class=\"peer sr-only\"> <label for=\"composer-files\" class=\"cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-accent-soft peer-focus-visible:focus-ring\" title=\"画像・動画・LoRA（.safetensors）を添付\">＋</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

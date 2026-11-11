@@ -85,7 +85,7 @@ func TestUnavailableNamesTheReasonAModelCannotBeCalled(t *testing.T) {
 	assert.Empty(t, a.Unavailable(domain.ModelKling3), "another vendor is not affected")
 }
 
-func TestLoadConfigOverridesRoutingAndKeepsTheRestOfTheDefaults(t *testing.T) {
+func TestReadOverridesRoutingAndKeepsTheRestOfTheDefaults(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"routing":{"enabled":false,"min_samples":9,"weights":{"fast":{"quality":1,"cost":0,"fit":0}}}}`), 0o600))
 
@@ -103,7 +103,7 @@ func TestLoadConfigOverridesRoutingAndKeepsTheRestOfTheDefaults(t *testing.T) {
 	assert.ErrorContains(t, err, "unknown field")
 }
 
-func TestLoadConfigMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
+func TestReadMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
 	def := modeladapter.DefaultConfig()
 	load := func(t *testing.T, body string) modeladapter.Config {
 		t.Helper()

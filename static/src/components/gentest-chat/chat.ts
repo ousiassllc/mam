@@ -4,7 +4,7 @@
  * The thread and the cards come from the server (htmx appends what a message answers to `#gtc-thread`); this does the four things a browser has to do around that:
  * Enter sends the message and Shift+Enter breaks the line (an Enter that confirms an IME conversion does nothing), the box is emptied once the message was
  * taken (a refused message keeps its words), the thread follows a new entry (a swap that only redraws one, the result block asking for itself every 2 seconds, follows only while the reader is at the bottom), and a question that has been answered is turned off: only the option cards
- * of the newest message of the assistant can be tapped, so an old card cannot send a stale answer.
+ * that nobody has answered yet can be tapped, so an old card cannot send a stale answer.
  *
  * A generation never starts here: the only thing that does is the button of a confirmation card, a plain form of the server's.
  */
@@ -16,13 +16,22 @@ const CONTENT = '#gtc-content';
 /** How far (px) from the bottom still counts as "at the bottom": a line of the last entry may be cut off. */
 const NEAR_BOTTOM = 80;
 
-/** Turns off every group of option cards but the last one (the question that is still open). */
+/**
+ * Turns off the option cards of every question that was answered: all but the last group, and the last one too once the user said something after it (the
+ * answer came as words, or the assistant replied without new cards). Only a question nobody has answered yet stays live.
+ */
 export function retireAnswered(thread: ParentNode): void {
   const groups = [...thread.querySelectorAll<HTMLElement>('[data-gtc-options]')];
-  for (const group of groups.slice(0, -1)) {
+  const users = thread.querySelectorAll<HTMLElement>('[data-testid="gtc-user"]');
+  const lastUser = users[users.length - 1];
+  groups.forEach((group, i) => {
+    const answered =
+      i < groups.length - 1 ||
+      (lastUser !== undefined && !!(group.compareDocumentPosition(lastUser) & Node.DOCUMENT_POSITION_FOLLOWING));
+    if (!answered) return;
     group.dataset.answered = '';
     group.inert = true;
-  }
+  });
 }
 
 function follow(thread: HTMLElement): void {

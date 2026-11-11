@@ -27,6 +27,17 @@ const (
 // Providers lists the providers in the order the screen shows them.
 func Providers() []Provider { return viaprovider.Providers() }
 
+// OwnVendors are the credential keys of the vendors of viaprovider.Models, the models an API aggregator stands in for: their own APIs' keys, which are not used while an
+// aggregator is chosen. The handler may not import the agent packages, so it asks here.
+func OwnVendors() []string {
+	models := viaprovider.Models()
+	out := make([]string, 0, len(models))
+	for _, m := range models {
+		out = append(out, string(modeladapter.VendorOf(m)))
+	}
+	return out
+}
+
 // ProviderModel is how the selected provider serves one video model: whether it does, and when it does not, why (a sentence that says
 // where the model can be used).
 type ProviderModel struct {

@@ -50,7 +50,11 @@ func (h *HF) Question(ctx context.Context, _ domain.Project, op commandinterpret
 				return chatops.Card{}, err
 			}
 		}
-		return choiceCard("ファイル", names(candidates), ops), nil
+		card := choiceCard("ファイル", names(candidates), ops)
+		if repo.Truncated {
+			card.Text += "\n" + truncatedNote(repo)
+		}
+		return card, nil
 	}
 	return h.confirm(repo, file, env)
 }
@@ -63,7 +67,7 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 				return f, nil, nil
 			}
 		}
-		return HFFile{}, nil, chatops.Refuse("%s に「%s」というファイルはありません", repo.ID, path)
+		return HFFile{}, nil, chatops.Refuse("%s に「%s」というファイルはありません%s", repo.ID, path, listNote(repo))
 	}
 	if repo.Selected != "" {
 		for _, f := range repo.Files {
@@ -82,7 +86,7 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 	case len(ok) == 1:
 		return ok[0], nil, nil
 	case len(ok) == 0 && len(repo.Files) == 0:
-		return HFFile{}, nil, chatops.Refuse("%s に導入できるファイル（.safetensors）がありません", repo.ID)
+		return HFFile{}, nil, chatops.Refuse("%s に導入できるファイル（.safetensors）がありません%s", repo.ID, listNote(repo))
 	case len(ok) == 0:
 		return repo.Files[0], nil, nil // each is installed already or cannot be: the card of the first says which
 	}
@@ -94,6 +98,19 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 		return HFFile{}, nil, tooMany(repo.ID, names(found))
 	}
 	return HFFile{}, found, nil
+}
+
+// truncatedNote tells that the list of files was cut: what the card offers may not be everything the repository has.
+func truncatedNote(repo HFRepo) string {
+	return "・このリポジトリはファイルが多く、一覧は途中までです。ほかに導入できるファイルがあるかもしれません。リポジトリのページ（" + repo.Page + "）で確かめてください。"
+}
+
+// listNote ends a refusal that says a file is not there: when the list was cut, the file may be beyond it ("" otherwise).
+func listNote(repo HFRepo) string {
+	if repo.Truncated {
+		return "（このリポジトリはファイルが多く、一覧は途中までしか読めていません。リポジトリのページ " + repo.Page + " で確かめてください）"
+	}
+	return ""
 }
 
 // confirm is the card of one file. The yes carries the commit the card shows; when the terms are not confirmed for this commit the button is "同意して導入する", which also
@@ -136,6 +153,9 @@ func (h *HF) confirm(repo HFRepo, f HFFile, env Environment) (chatops.Card, erro
 	}
 	if repo.Gated {
 		text += "・アクセス承認が必要なリポジトリです（設定した Hugging Face のトークンで取得します）。\n"
+	}
+	if repo.Truncated {
+		text += truncatedNote(repo) + "\n"
 	}
 	args := HFArgs{Repo: repo.ID, Path: f.Path, Commit: repo.Commit}
 	if repo.Consented {

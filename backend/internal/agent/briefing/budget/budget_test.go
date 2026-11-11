@@ -48,6 +48,8 @@ func TestStatedLeavesAnAmountThatIsNoBudget(t *testing.T) {
 		"zero":                    "予算は $0 で",
 		"the budget word too far": "予算の話はあとでするとして、まず主役を決めたい。商品は $20 のシャツです",
 		"nothing":                 "",
+		"a limit on the product":  "$20 以下のシャツの CM を作りたい",
+		"a limit and a purchase":  "20 ドル以内で買える商品の CM",
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.False(t, budget.Stated(text).Any())

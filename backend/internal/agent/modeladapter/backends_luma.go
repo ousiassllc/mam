@@ -71,7 +71,7 @@ func (b lumaBackend) GenerateVideo(ctx context.Context, apiModel string, req Vid
 
 	raw, _ := json.Marshal(b.body(apiModel, req))
 	base := b.baseURL + "/v1/generations"
-	data, err := b.request(ctx, http.MethodPost, base, jsonHeader(auth), raw, maxJSONBytes)
+	data, err := b.request(ctx, http.MethodPost, base, JSONHeader(auth), raw, maxJSONBytes)
 	if err != nil {
 		return VideoResult{}, err
 	}

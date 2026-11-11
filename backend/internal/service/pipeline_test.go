@@ -3,7 +3,6 @@ package service_test
 import (
 	"context"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -20,71 +19,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
-// fakeReasoner stands in for the Reasoning LLM Adapter: no external API is called. It answers
-// per Agent with canned JSON, can fail an Agent on demand and records every call in order.
-type fakeReasoner struct {
-	mu    sync.Mutex
-	calls []llm.Agent
-	users map[llm.Agent][]string
-	fail  map[llm.Agent]error
-}
-
-func newFakeReasoner() *fakeReasoner {
-	return &fakeReasoner{users: map[llm.Agent][]string{}, fail: map[llm.Agent]error{}}
-}
-
-const (
-	fakeConcept = `{"title":"朝の一滴","logline":"肌が目覚める朝","concept":"朝の光と美容液","tone":"上品","structure":[{"name":"フック","description":"光","duration_seconds":5}]}`
-	fakeScript  = `{"title":"脚本","scenes":[{"title":"朝","location":"寝室","description":"光が差す"},{"title":"使う","description":"美容液を手に取る"}]}`
-	fakePlan    = `{"scenes":[
-		{"title":"朝","location":"寝室","shots":[{"objective":"窓の光","duration_seconds":5},{"objective":"目覚め","duration_seconds":5}]},
-		{"title":"使う","shots":[{"objective":"美容液","duration_seconds":5}]}]}`
-	fakeBoard = `{"scenes":[{"shots":[{"description":"窓辺の光","framing":"ワイド"},{"description":"目を開ける"}]},{"shots":[{"description":"手のひらの美容液"}]}]}`
-)
-
-func (f *fakeReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.calls = append(f.calls, agent)
-	f.users[agent] = append(f.users[agent], req.User)
-	if err := f.fail[agent]; err != nil {
-		return llm.Response{}, err
-	}
-	text := map[llm.Agent]string{
-		llm.AgentProducer: fakeConcept, llm.AgentWriter: fakeScript, llm.AgentDirector: fakePlan, llm.AgentStoryboard: fakeBoard,
-	}[agent]
-	return llm.Response{Text: text, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
-}
-
-func (f *fakeReasoner) agents() []llm.Agent {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return append([]llm.Agent(nil), f.calls...)
-}
-
-func (f *fakeReasoner) count(agent llm.Agent) int {
-	n := 0
-	for _, a := range f.agents() {
-		if a == agent {
-			n++
-		}
-	}
-	return n
-}
-
-func (f *fakeReasoner) lastUser(agent llm.Agent) string {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	u := f.users[agent]
-	if len(u) == 0 {
-		return ""
-	}
-	return u[len(u)-1]
-}
-
 type pipelineFixture struct {
 	fixture
-	llm *fakeReasoner
+	llm *servicetest.FakeReasoner
 }
 
 func newPipelineFixture(t *testing.T) pipelineFixture {
@@ -92,7 +29,7 @@ func newPipelineFixture(t *testing.T) pipelineFixture {
 	testenv.Parallel(t)
 	db := testdb.Open(t)
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
-	fake := newFakeReasoner()
+	fake := servicetest.NewFakeReasoner()
 	assets := filepath.Join(t.TempDir(), "assets")
 	svc := servicetest.New(t, service.Deps{DB: db, Jobs: jobs, LLM: fake, AssetsDir: assets})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -162,7 +99,7 @@ func TestPipeline_RunsProducerWriterThenHoldsAtTheScriptApproval(t *testing.T) {
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
 	f.completeBrief(t, p.ID)
 	f.waitState(t, p.ID, domain.StateAwaitingApproval)
-	assert.Equal(t, []llm.Agent{llm.AgentProducer, llm.AgentWriter}, f.llm.agents(), "Producer then Writer, nothing after")
+	assert.Equal(t, []llm.Agent{llm.AgentProducer, llm.AgentWriter}, f.llm.Agents(), "Producer then Writer, nothing after")
 
 	card := f.approvalCard(t, p.ID)
 	require.NotNil(t, card)
@@ -173,7 +110,7 @@ func TestPipeline_RunsProducerWriterThenHoldsAtTheScriptApproval(t *testing.T) {
 	f.waitIdle(t, p.ID)
 	assert.Empty(t, f.hierarchy(t, p.ID).Scenes, "no Scene is planned before the script is approved")
 	time.Sleep(100 * time.Millisecond)
-	assert.Zero(t, f.llm.count(llm.AgentDirector), "the next stage does not start while the card is pending")
+	assert.Zero(t, f.llm.Count(llm.AgentDirector), "the next stage does not start while the card is pending")
 	assert.Equal(t, domain.StateAwaitingApproval, f.state(t, p.ID))
 }
 
@@ -188,7 +125,7 @@ func TestPipeline_ApprovalRunsDirectorAndStoryboardAndCreatesScenesAndShots(t *t
 	_, _, err := f.svc.Chat.RespondApproval(context.Background(), p.ID, card.ID, service.DecisionApprove, "")
 	require.NoError(t, err)
 	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Len(c, f.hierarchy(c, p.ID).Scenes, 2) }, 5*time.Second, 10*time.Millisecond)
-	assert.Equal(t, []llm.Agent{llm.AgentProducer, llm.AgentWriter, llm.AgentDirector, llm.AgentStoryboard}, f.llm.agents(),
+	assert.Equal(t, []llm.Agent{llm.AgentProducer, llm.AgentWriter, llm.AgentDirector, llm.AgentStoryboard}, f.llm.Agents(),
 		"Producer → Writer → Director → Storyboard in this order")
 	f.waitState(t, p.ID, domain.StateVisualDesign)
 
@@ -252,11 +189,11 @@ func TestPipeline_ChangeRequestRewritesTheScriptWithTheFeedbackAndAsksAgain(t *t
 
 	second := f.approvalCard(t, p.ID)
 	assert.Contains(t, second.Content, "脚本 v2")
-	assert.Equal(t, 2, f.llm.count(llm.AgentProducer))
-	assert.Equal(t, 2, f.llm.count(llm.AgentWriter))
-	assert.Contains(t, f.llm.lastUser(llm.AgentWriter), "夜のシーンにして", "the user's request reaches the Writer")
-	assert.Contains(t, f.llm.lastUser(llm.AgentWriter), "脚本", "the previous script is given to the Writer")
-	assert.Zero(t, f.llm.count(llm.AgentDirector), "no planning before the script is approved")
+	assert.Equal(t, 2, f.llm.Count(llm.AgentProducer))
+	assert.Equal(t, 2, f.llm.Count(llm.AgentWriter))
+	assert.Contains(t, f.llm.LastUser(llm.AgentWriter), "夜のシーンにして", "the user's request reaches the Writer")
+	assert.Contains(t, f.llm.LastUser(llm.AgentWriter), "脚本", "the previous script is given to the Writer")
+	assert.Zero(t, f.llm.Count(llm.AgentDirector), "no planning before the script is approved")
 	assert.Empty(t, f.hierarchy(t, p.ID).Scenes)
 }
 
@@ -275,6 +212,6 @@ func TestPipeline_DoesNotStartWhileTheBriefIsIncomplete(t *testing.T) {
 	f := newPipelineFixture(t)
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい") // Objective and Target are missing
 	time.Sleep(100 * time.Millisecond)
-	assert.Empty(t, f.llm.agents())
+	assert.Empty(t, f.llm.Agents())
 	assert.Equal(t, domain.StateDraft, f.state(t, p.ID))
 }

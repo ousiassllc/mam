@@ -38,8 +38,8 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 		return DirectorCommandResult{}, notFound(err)
 	}
 	if hidden, found := secretguard.Redact(message); found {
-		// an API key is never read by the Interpreter (an LLM) nor kept in the thread (#1140)
-		if err := s.commitMessages(ctx, ref.ProjectID, secretRefusal(hidden)); err != nil {
+		// an API key is never read by the Interpreter (an LLM) nor kept in the thread (#1140); the refusal is recorded whatever happened to ctx, as a failed direction's notice is
+		if err := s.commitMessages(context.WithoutCancel(ctx), ref.ProjectID, secretRefusal(hidden, false)); err != nil {
 			return DirectorCommandResult{}, err
 		}
 		view, err := s.Inspector(ctx, shotID)

@@ -50,6 +50,9 @@ type Spec struct {
 
 var specs = map[OpType]Spec{
 	OpCreateNote: {AnyMode: true, Asked: domain.AsksToRemember},
+	// Asked: budget.Mentions only checks that the message talks about the budget, not that the amounts the model returned are the ones it states: "予算を倍に" and "もう少し増やして"
+	// name no amount, and the model computes it from Input.Budget. What the model returns is never carried out unseen: Confirm posts a card with the amounts and the current
+	// ceilings, and nothing changes until the user accepts it (spec/components/chat-settings-operations.md: the card is the guard of the amounts).
 	OpSetBudget: {
 		Example: `{"type": "set_budget", "project_budget_usd": 30, "shot_budget_usd": 3}`,
 		Doc: `- "set_budget": the director wants the budget ceilings changed ("予算を $30 に変えて", "予算は 50 ドルまで", "1 ショットあたり $3 まで", "予算の上限を外して"). ` +

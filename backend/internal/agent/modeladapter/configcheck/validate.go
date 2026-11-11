@@ -209,8 +209,9 @@ func checkVendorSettings(c modeladapter.Config, where string, m domain.ModelName
 	if _, saved := c.Workflows[string(m)]; saved {
 		return nil // a saved workflow runs on the endpoint it names, which may not be registered yet: it has no backend until it is
 	}
-	if _, ok := c.VendorSettings()[modeladapter.VendorOf(m)]; !ok {
-		return []error{fmt.Errorf("%s: no vendor settings for %q", where, modeladapter.VendorOf(m))}
+	v := c.VendorOf(m) // the aggregator's when the provider setting sends the model there
+	if _, ok := c.VendorSettings()[v]; !ok {
+		return []error{fmt.Errorf("%s: no vendor settings for %q", where, v)}
 	}
 	return nil
 }

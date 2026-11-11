@@ -77,16 +77,30 @@ var (
 	named = regexp.MustCompile(`(?i)([^\s、。，,「」『』を]{1,30}?)\s*の\s*(顔写真|顔|フェイス|face|全身|ボディー|ボディ|身体|体|body)`)
 )
 
-// notBody are the words with 体 in them that name no body (全体 the whole, 具体 concrete, 主体 the subject, 本体 the unit, 体験 an experience, 体力 stamina and the like, a fixed list): 体 there is no slot. 身体, 体型, 体格, 体重 and 書体 are not in it: they are read as the body, which the card then asks about.
-var notBody = strings.NewReplacer("全体", "＊＊", "具体", "＊＊", "主体", "＊＊", "本体", "＊＊", "体験", "＊＊", "体力", "＊＊", "体制", "＊＊", "体系", "＊＊", "体感", "＊＊", "団体", "＊＊", "物体", "＊＊", "立体", "＊＊")
+// notBodyWords are the words with 体 in them that name no body (全体 the whole, 具体 concrete, 主体 the subject, 本体 the unit, 体験 an experience, 体力 stamina and the like, a fixed list): 体 there is no slot. 身体, 体型, 体格, 体重 and 書体 are not in it: they are read as the body, which the card then asks about.
+// Each is two characters of three bytes, and mask is two of three bytes: the masked text has the offsets of the message (detect reads the name from the message by them; TestNotBody_EveryWordKeepsTheByteLength).
+var notBodyWords = []string{"全体", "具体", "主体", "本体", "体験", "体力", "体制", "体系", "体感", "団体", "物体", "立体"}
+
+const mask = "＊＊"
+
+var notBody = func() *strings.Replacer {
+	pairs := make([]string, 0, 2*len(notBodyWords))
+	for _, w := range notBodyWords {
+		pairs = append(pairs, w, mask)
+	}
+	return strings.NewReplacer(pairs...)
+}()
 
 // slotText is the message as the slot words read it (only for the test of the slot: the name of the Character is read from the message as it was written).
 func slotText(message string) string { return notBody.Replace(message) }
 
 // Asks reports whether the message asks to put an image on the face or the body of a Character: it names a slot and an image (or a reference), and what to do with them, and
 // it is not a direction about how a face looks. A message that only mentions a face ("顔を笑顔にして") is not.
-func Asks(message string) bool {
-	return slotWord.MatchString(slotText(message)) && imageWord.MatchString(message) && assignWord.MatchString(message) && !editsFace.MatchString(message)
+func Asks(message string) bool { return asks(message, slotText(message)) }
+
+// asks is Asks with the masked text (slotText of the message) already made.
+func asks(message, masked string) bool {
+	return slotWord.MatchString(masked) && imageWord.MatchString(message) && assignWord.MatchString(message) && !editsFace.MatchString(message)
 }
 
 // genericNames are the words that stand for "the Character" without naming one.
@@ -96,13 +110,14 @@ var genericNames = map[string]bool{
 }
 
 func detect(message string) []commandinterpreter.Operation {
-	if !Asks(message) {
+	masked := slotText(message)
+	if !asks(message, masked) {
 		return nil
 	}
-	a := Args{Slot: slotOf(slotWord.FindString(slotText(message)))}
+	a := Args{Slot: slotOf(slotWord.FindString(masked))}
 	// the slot is read from the masked text (体 of 体験 is no slot); the name from the text as it was written. notBody swaps two characters for two (as many bytes), so the offsets are the same in both.
-	if m := named.FindStringSubmatchIndex(slotText(message)); m != nil {
-		a.Character, a.Slot = nameOf(message[m[2]:m[3]]), slotOf(slotText(message)[m[4]:m[5]])
+	if m := named.FindStringSubmatchIndex(masked); m != nil {
+		a.Character, a.Slot = nameOf(message[m[2]:m[3]]), slotOf(masked[m[4]:m[5]])
 	}
 	op, err := commandinterpreter.NewOperation(OpAssign, a)
 	if err != nil {
@@ -116,12 +131,28 @@ func nameOf(s string) string {
 	if i := strings.LastIndex(s, "を"); i >= 0 {
 		s = s[i+len("を"):]
 	}
+	stripped := false
 	for _, prefix := range []string{"この画像", "その画像", "この写真", "その写真", "添付の画像", "添付の写真", "添付画像", "添付写真", "画像", "写真"} {
-		s = strings.TrimPrefix(s, prefix)
+		if rest, ok := strings.CutPrefix(s, prefix); ok {
+			s, stripped = rest, true
+		}
 	}
-	s = strings.Trim(strings.TrimSpace(s), "はをがにも ")
+	s = strings.TrimSpace(s)
+	if stripped {
+		s = strings.TrimSpace(trimParticle(s)) // "この画像はミオ" → "はミオ" → "ミオ"; a name that merely starts with は / に ("はるか", "にこ") is left alone
+	}
 	if genericNames[s] {
 		return ""
+	}
+	return s
+}
+
+// trimParticle drops the one particle that follows "この画像" in "この画像はミオ".
+func trimParticle(s string) string {
+	for _, p := range []string{"は", "を", "が", "に", "も"} {
+		if rest, ok := strings.CutPrefix(s, p); ok {
+			return rest
+		}
 	}
 	return s
 }

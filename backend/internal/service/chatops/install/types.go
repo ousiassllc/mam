@@ -2,9 +2,10 @@ package install
 
 import "context"
 
-// The handlers depend on what the service layer says of a model, an engine, a repository or a runtime, in these shapes, not on the services themselves: the app adapts
-// modelmanager.Service and localruntime.Service to them (service/chatops_install.go) and the tests fake them. The refusals of the services (no engine, a pinned settings
-// file, no room) are told with the very sentences the MCP tools give (mmview.Refuse, mmview.RefuseRuntime).
+// The handlers depend on what the service layer says of a model, an engine, a repository or a runtime, in these shapes, not on the services themselves: service/chatwire
+// adapts modelmanager.Service and localruntime.Service to them (chatwire/install.go) and the tests fake them. The package still names the error values of the services
+// (modelmanager.ErrPinned ...) and takes the sentences of the MCP tools (mmview.Refuse, mmview.RefuseRuntime), so that a refusal (no engine, a pinned settings file, no
+// room) is told in the very words the tools use.
 
 // License is what the card says of a license.
 type License struct {

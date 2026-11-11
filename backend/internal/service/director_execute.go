@@ -22,11 +22,13 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 	if cmd.Question != "" {
 		return outcome{lines: []string{cmd.Question}}, nil
 	}
-	needsShot := slices.ContainsFunc(cmd.Operations, func(op commandinterpreter.Operation) bool {
-		return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
-	})
-	if needsShot && ref == nil {
-		return outcome{lines: []string{askWhichShot}}, nil
+	// Without a Shot (nothing says which one is meant) the operations on a Shot wait for the answer to askWhichShot; the others of the same Command (a budget card, a setting,
+	// a note) are carried out, not dropped with them.
+	askShot := false
+	if ref == nil {
+		before := len(cmd.Operations)
+		cmd.Operations = slices.DeleteFunc(slices.Clone(cmd.Operations), needsShot)
+		askShot = len(cmd.Operations) < before
 	}
 
 	var locks domain.ParameterLocks
@@ -81,7 +83,15 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 		return out, err
 	}
 	err := s.switchMode(ctx, project, cmd, &out)
+	if askShot && err == nil {
+		out.lines = append(out.lines, askWhichShot)
+	}
 	return out, err
+}
+
+// needsShot reports whether the operation is carried out on a Shot.
+func needsShot(op commandinterpreter.Operation) bool {
+	return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
 }
 
 // confirmAndRemember posts the confirmation cards of the operations that ask for confirmation (director_ops.go), then keeps the notes the director asked for.

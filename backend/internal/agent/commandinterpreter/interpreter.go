@@ -68,7 +68,7 @@ const (
 	// OpCreateBranch makes Branches at the target Shot (F-17, UC-5): "このカットから別展開を3つ作って"
 	// is three Branches, each a different continuation.
 	OpCreateBranch OpType = "create_branch"
-	// OpUnsupported is a direction that has no operation (exporting, editing the timeline).
+	// OpUnsupported is a direction that has no operation (editing the timeline).
 	OpUnsupported OpType = "unsupported"
 )
 

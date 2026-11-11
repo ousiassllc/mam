@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -30,44 +29,19 @@ const (
 	vagueAnswer  = "商品ではなく、ただの投稿動画"
 )
 
-// fakeReasoner answers the planning Agents with canned JSON, records what each was asked and lets a test change an answer.
-type fakeReasoner struct {
-	mu      sync.Mutex
-	users   map[llm.Agent][]string
-	answers map[llm.Agent]string
-}
-
-func newFakeReasoner() *fakeReasoner {
-	return &fakeReasoner{users: map[llm.Agent][]string{}, answers: map[llm.Agent]string{
-		llm.AgentProducer:   `{"title":"朝の一枚","concept":"朝の支度","protagonist":"ミオ（30代の女性インフルエンサー）","structure":[{"name":"フック","description":"d","duration_seconds":5}]}`,
-		llm.AgentWriter:     `{"title":"脚本","scenes":[{"title":"朝","description":"ミオが起きる"}]}`,
-		llm.AgentDirector:   `{"scenes":[{"title":"朝","shots":[{"objective":"起きる","duration_seconds":5}]}]}`,
-		llm.AgentStoryboard: `{"scenes":[{"shots":[{"description":"ベッド"}]}]}`,
-	}}
-}
-
-func (f *fakeReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.users[agent] = append(f.users[agent], req.User)
-	return llm.Response{Text: f.answers[agent], Provider: llm.ProviderAnthropic, Model: "fake"}, nil
-}
-
-func (f *fakeReasoner) prompts(agent llm.Agent) []string {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return append([]string(nil), f.users[agent]...)
-}
-
-func (f *fakeReasoner) answer(agent llm.Agent, text string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.answers[agent] = text
+// newFakeReasoner answers the planning Agents with canned JSON about the protagonist of this scenario (a test can change an answer: SetAnswer).
+func newFakeReasoner() *servicetest.FakeReasoner {
+	f := servicetest.NewFakeReasoner()
+	f.SetAnswer(llm.AgentProducer, `{"title":"朝の一枚","concept":"朝の支度","protagonist":"ミオ（30代の女性インフルエンサー）","structure":[{"name":"フック","description":"d","duration_seconds":5}]}`)
+	f.SetAnswer(llm.AgentWriter, `{"title":"脚本","scenes":[{"title":"朝","description":"ミオが起きる"}]}`)
+	f.SetAnswer(llm.AgentDirector, `{"scenes":[{"title":"朝","shots":[{"objective":"起きる","duration_seconds":5}]}]}`)
+	f.SetAnswer(llm.AgentStoryboard, `{"scenes":[{"shots":[{"description":"ベッド"}]}]}`)
+	return f
 }
 
 type pipelineFixture struct {
 	fixture
-	llm *fakeReasoner
+	llm *servicetest.FakeReasoner
 }
 
 func newPipelineFixture(t *testing.T) pipelineFixture {
@@ -108,7 +82,7 @@ func (f pipelineFixture) waitProducer(t *testing.T) string {
 	t.Helper()
 	var got []string
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		got = f.llm.prompts(llm.AgentProducer)
+		got = f.llm.Prompts(llm.AgentProducer)
 		assert.NotEmpty(c, got, "the Producer was never asked")
 	}, 5*time.Second, 10*time.Millisecond)
 	return got[0]
@@ -164,9 +138,9 @@ func TestScenario_FirstRequestWithProtagonistThenAVagueAnswer(t *testing.T) {
 	assert.Contains(t, prompt, "制約: 成人・架空・着衣")
 	assert.NotContains(t, prompt, "仮の値", "the confirmed values are the user's")
 	f.settle(t, p.ID)
-	require.NotEmpty(t, f.llm.prompts(llm.AgentWriter))
-	assert.Contains(t, f.llm.prompts(llm.AgentWriter)[0], protagonist)
-	assert.Contains(t, f.llm.prompts(llm.AgentWriter)[0], "ミオ（30代の女性インフルエンサー）", "the Writer reads the protagonist of the Concept")
+	require.NotEmpty(t, f.llm.Prompts(llm.AgentWriter))
+	assert.Contains(t, f.llm.Prompts(llm.AgentWriter)[0], protagonist)
+	assert.Contains(t, f.llm.Prompts(llm.AgentWriter)[0], "ミオ（30代の女性インフルエンサー）", "the Writer reads the protagonist of the Concept")
 }
 
 // FULL AUTO adds no confirmation loop: switching to it while the summary waits starts the planning, the recommended values are adopted as
@@ -174,7 +148,7 @@ func TestScenario_FirstRequestWithProtagonistThenAVagueAnswer(t *testing.T) {
 func TestScenario_FullAutoAdoptsTheRecommendationsWithoutAsking(t *testing.T) {
 	f := newPipelineFixture(t)
 	p := f.create(t, firstRequest)
-	require.Zero(t, len(f.llm.prompts(llm.AgentProducer)), "KEY CHECK waits for the summary")
+	require.Zero(t, len(f.llm.Prompts(llm.AgentProducer)), "KEY CHECK waits for the summary")
 
 	_, err := f.svc.Projects.SetConfirmationLevel(context.Background(), p.ID, domain.ConfirmFullAuto, nil)
 	require.NoError(t, err)
@@ -196,7 +170,7 @@ func TestScenario_FullAutoStopsOnlyForTheSubject(t *testing.T) {
 	cards := f.cards(t, p.ID)
 	require.Len(t, cards, 1)
 	assert.Equal(t, string(domain.BriefSubject), cards[0].RefID)
-	assert.Empty(t, f.llm.prompts(llm.AgentProducer), "no script is written about an unnamed topic")
+	assert.Empty(t, f.llm.Prompts(llm.AgentProducer), "no script is written about an unnamed topic")
 
 	ws := f.post(t, p.ID, "猫の日常", cards[0].ID)
 
@@ -265,7 +239,7 @@ func TestScenario_ContradictionAsksOnlyAboutTheSubject(t *testing.T) {
 // The guard: a plan whose protagonist clearly contradicts the Brief is not stored, and the script is not written.
 func TestScenario_APlanAboutAnotherProtagonistIsNotUsed(t *testing.T) {
 	f := newPipelineFixture(t)
-	f.llm.answer(llm.AgentProducer, `{"title":"t","concept":"c","protagonist":"30代の男性会社員","structure":[{"name":"a","description":"d"}]}`)
+	f.llm.SetAnswer(llm.AgentProducer, `{"title":"t","concept":"c","protagonist":"30代の男性会社員","structure":[{"name":"a","description":"d"}]}`)
 	p := f.create(t, firstRequest)
 	cards := f.cards(t, p.ID)
 
@@ -273,7 +247,7 @@ func TestScenario_APlanAboutAnotherProtagonistIsNotUsed(t *testing.T) {
 
 	f.waitProducer(t)
 	f.settle(t, p.ID)
-	assert.Empty(t, f.llm.prompts(llm.AgentWriter), "the Writer never runs on a plan about someone else")
+	assert.Empty(t, f.llm.Prompts(llm.AgentWriter), "the Writer never runs on a plan about someone else")
 	require.NotEmpty(t, f.state(t, p.ID))
 	assert.Equal(t, domain.StatePlanning, f.state(t, p.ID))
 	ws, err := f.svc.Chat.Workspace(context.Background(), p.ID)

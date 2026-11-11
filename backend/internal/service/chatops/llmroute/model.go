@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/ousiassllc/mam/backend/internal/service/chatops"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 )
@@ -43,7 +44,7 @@ func (h *Handler) modelFor(ctx context.Context, provider string, a Args) (model,
 		}
 		return model{}, amb
 	case len(found) > 1:
-		return model{}, chatops.Refuse("「%s」に当てはまるモデルが多すぎます（%s）。もう少し具体的に言ってください", text, few(modelLabels(found), 8))
+		return model{}, chatops.Refuse("「%s」に当てはまるモデルが多すぎます（%s）。もう少し具体的に言ってください", text, nlu.Few(modelLabels(found), 8))
 	}
 	return model{id: text, list: &l}, checkName(text, l.Models)
 }
@@ -62,7 +63,7 @@ func checkName(text string, candidates []llmmodels.Model) error {
 	case strings.IndexFunc(text, func(r rune) bool { return r > unicode.MaxASCII || unicode.IsSpace(r) || unicode.IsControl(r) }) >= 0:
 		msg := "「" + text + "」はモデル名として読み取れません（モデル名は、空白を含まない半角の英数字と - _ . : / などで書きます）。"
 		if len(candidates) > 0 {
-			msg += "選べるモデル: " + few(modelLabels(candidates), 8)
+			msg += "選べるモデル: " + nlu.Few(modelLabels(candidates), 8)
 		}
 		return &chatops.Refusal{Message: msg}
 	case len(text) > llmassign.MaxModelBytes:

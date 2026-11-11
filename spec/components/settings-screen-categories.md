@@ -12,13 +12,13 @@
 
 Kling などのクラウド動画モデルを、**どこの API で呼ぶか**を 1 つ選ぶ（公式 / OpenRouter / fal.ai / Replicate。規則・単価・呼び方は [model-adapters.md §9.6](../architecture/model-adapters.md)）。API キーの区画（§1.1）の**いちばん上**に置く（`data-testid="api-provider"`、見出し `h4`「動画モデルの API プロバイダー」）。
 
-- **選択**: ラジオ 4 つ（`name="provider"`、値 `official` / `openrouter` / `fal` / `replicate`、`data-testid="api-provider-<値>"`）。**変えた瞬間に保存する**（フォームが `change` で `PUT /settings/api-provider`、`hx-target="#credential-panel"`）。応答は区画の全体（キー欄が選択に追従するため）で、成功は 200 とお知らせ（`data-testid="credential-notice"`）、未知のプロバイダーは 422、`--model-config` で固定されているときは 409（ともに `role="alert"`、`data-testid="credential-error"`）。固定されているときはラジオが `disabled` で、「起動オプションで固定されているため、この画面では変更できません」を出す。`models.json` が読めないときは選択の代わりに理由（`api-provider-problem`）を出し、キー欄は公式のまま。
+- **選択**: ラジオ 4 つ（`name="provider"`、値 `official` / `openrouter` / `fal` / `replicate`、`data-testid="api-provider-<値>"`）。**選びが落ち着いたら保存する**（フォームが `hx-trigger="change delay:600ms"` で `PUT /settings/api-provider`、`hx-target="#credential-panel"`、`hx-sync="this:replace"`。矢印キーでラジオをたどる間は `change` のたびに待ちが仕切り直されるので、通り道のプロバイダーは保存されない。ボタンは置かない）。応答は区画の全体（キー欄が選択に追従するため）で、成功は 200 とお知らせ（`data-testid="credential-notice"`）、未知のプロバイダーは 422、`--model-config` で固定されているときは 409（ともに `role="alert"`、`data-testid="credential-error"`）。固定されているときはラジオが `disabled` で、「起動オプションで固定されているため、この画面では変更できません」を出す。`models.json` が読めないときは選択の代わりに理由（`api-provider-problem`）を出し、キー欄は公式のまま。
 - **キー欄が選択に追従する**: 公式は §1.1 のカードのとおり（ベンダーごと）。OpenRouter / fal.ai / Replicate は、そのプロバイダーのカード（`openrouter` / `fal` / `replicate`。キー 1 つ）を**選択のすぐ下（先頭）**に出し、他の 2 社のカードと、公式の Kling のカード（`kling`・`kling4`。保存したキーは残る）は隠す。LLM・画像・Kling 以外の動画・音声のキー欄は常に出る。
 - **モデルごとの状況**（選択の下の `ul`、`data-testid="api-provider-model"`）: 選んだ先が提供するモデルは「使えます」＋単価（「720p $0.084/秒 ・ 1080p $0.112/秒」。見積り・コストと同じ値）＋（公式以外では）キーの有無（キーの保存・削除の応答が、この一覧も `hx-swap-oob` で差し替えるので、カードと同時に変わる。「OpenRouter の API キー: 設定済み」／警告の「OpenRouter の API キーが未設定」）。**提供しないモデル**は「このプロバイダーでは使えません」＋理由（`api-provider-why`。例:「OpenRouter は Kling 4.0 を提供していません（…）。fal.ai・Replicate・公式のどれかを選ぶと使えます」）。同じ理由は、モデルの選択肢（単発生成・Settings の割り当て・見積り・MCP）に `provider_unsupported` として付き、リンクはこの画面（`/settings/api-keys`）へ向く。
 - **レイアウト**: 390px では選択肢が折り返し、理由は折り返して読める。1280px ではカードが 2 列（`xl:grid-cols-2`）。
 - **MCP**: `get_video_provider`・`set_video_provider`（[mcp-tools-settings-policy.md](../api/mcp-tools-settings-policy.md)）。
 
-### 1.1 API キー（18 プロバイダー。`service.CredentialProviders` の順）
+### 1.1 API キー（18 プロバイダー。表と画面の並びは `service.CredentialProviders` の順）
 
 方式: **カード（一覧）＋ 設定・変更はモーダル ＋ 削除は `hx-confirm`**。パスワード欄は出しっぱなしにしない。
 
@@ -39,21 +39,21 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 | `flux` | 画像生成（FLUX.2。§3） | `GET https://api.bfl.ai/v1/credits`（`x-key`。残高を読むだけ） | 公式の OpenAPI（`docs.bfl.ml`）に記載。**実キーでは未検証** |
 | `kling` | 動画生成（Kling 3.0。§4） | なし（キーは `ACCESS_KEY:SECRET_KEY` で、JWT を作って呼ぶ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。「保存したあと、最初の生成で確かめられます」を出す |
 | `kling4` | 動画生成（Kling 4.0。§4・[kling-api.md](../architecture/kling/kling-api.md) §5） | なし（キーは Kling の API キー 1 つで、そのまま `Bearer` に付ける。Kling 3.0 の `kling` とは別に保存する。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
-| `minimax` | 動画生成（MiniMax H3・H3 Max。§4・[model-adapters.md](../architecture/model-adapters.md) §9.4） | なし（キーは MiniMax の API キー 1 つで、そのまま `Bearer` に付ける。従量課金（Pay-as-you-go）の API が要る。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
-| `luma` | 動画生成（Luma Ray 3.2。§4・[model-adapters.md](../architecture/model-adapters.md) §9.4） | なし（キーは Luma Agents API の API キー 1 つで、そのまま `Bearer` に付ける。Luma のアプリのものとは別。読むだけの無料の API は公式資料の `GET /v1/credits`（残高）があるが、接続テストは未実装） | 候補なし。同上 |
-| `alibaba` | 動画生成（Alibaba Cloud Model Studio の Wan 3.0。§4・[model-adapters.md](../architecture/model-adapters.md) §9.4） | なし（キーは `ワークスペース ID:API キー` の形（Singapore リージョン）で、前半はホスト名に、後半は `Bearer` に使う。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `seedance` | 動画生成（Seedance 2.0・2.5。§4） | なし（BytePlus ModelArk。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `runway` | 動画生成（Runway Gen-4.5。§4） | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version`。組織の残高と階層を読むだけ） | 公式の `api.md` に記載。**実キーでは未検証**。`X-Runway-Version` の値は endpoints-settings.md §4 |
-| `elevenlabs` | 音声（TTS・Music・SFX。§5） | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`。契約の状態を読むだけ） | 認証ヘッダーは公式の認証の頁、エンドポイントは記載を確認。**実キーでは未検証** |
-| `topaz` | 動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。単発生成の「動画を大きくする・滑らかにする」。[model-adapters.md](../architecture/model-adapters.md) §15、Issue #1031） | `GET https://api.topazlabs.com/account/v1/credits/balance`（`X-API-Key`。クレジット残高を読むだけ。公式の FAQ「Can I check my credit balance from code?」） | FAQ の記載を確認（2026-11-04）。**実キーでは未検証**。キーの取り方: `https://account.topazlabs.com/manage-api` |
+| `minimax` | 動画生成（MiniMax H3・H3 Max。§4・[model-adapters.md](../architecture/model-adapters.md) §9.4） | なし（キーは MiniMax の API キー 1 つで、そのまま `Bearer` に付ける。従量課金（Pay-as-you-go）の API が要る。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
+| `alibaba` | 動画生成（Alibaba Cloud Model Studio の Wan 3.0。§4・[model-adapters.md](../architecture/model-adapters.md) §9.4） | なし（キーは `ワークスペース ID:API キー` の形（Singapore リージョン）で、前半はホスト名に、後半は `Bearer` に使う。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
+| `luma` | 動画生成（Luma Ray 3.2。§4・[model-adapters.md](../architecture/model-adapters.md) §9.4） | なし（キーは Luma Agents API の API キー 1 つで、そのまま `Bearer` に付ける。Luma のアプリのものとは別。読むだけの無料の API は公式資料の `GET /v1/credits`（残高）があるが、接続テストは未実装） | 候補なし。同上 |
 | `openrouter` | 動画生成（Kling 3.0。§1.0 で OpenRouter を選んだとき。[model-adapters.md](../architecture/model-adapters.md) §9.6、Issue #1136） | `GET https://openrouter.ai/api/v1/key`（`Authorization: Bearer`。キーの情報を読むだけ） | 記載を確認。**実キーでは未検証** |
 | `fal` | 動画生成（Kling 3.0・4.0。§1.0 で fal.ai を選んだとき。同上） | なし（キーは `Authorization: Key` に付ける。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `replicate` | 動画生成（Kling 3.0・4.0。§1.0 で Replicate を選んだとき。同上） | `GET https://api.replicate.com/v1/account`（`Authorization: Bearer`。アカウントを読むだけ） | 記載を確認。**実キーでは未検証** |
+| `topaz` | 動画のアップスケール・コマ補間（Topaz Video API。有料クラウド。単発生成の「動画を大きくする・滑らかにする」。[model-adapters.md](../architecture/model-adapters.md) §15、Issue #1031） | `GET https://api.topazlabs.com/account/v1/credits/balance`（`X-API-Key`。クレジット残高を読むだけ。公式の FAQ「Can I check my credit balance from code?」） | FAQ の記載を確認（2026-11-04）。**実キーでは未検証**。キーの取り方: `https://account.topazlabs.com/manage-api` |
+| `elevenlabs` | 音声（TTS・Music・SFX。§5） | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`。契約の状態を読むだけ） | 認証ヘッダーは公式の認証の頁、エンドポイントは記載を確認。**実キーでは未検証** |
 | `synclabs` | Lip Sync（§5） | なし（読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `typesafe` | Repair の前段選別（Jev。§4.5） | なし（`POST /v1/systemone` だけ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 
 - 接続テストは、決定事項 5(a)（無料で読むだけの API があるプロバイダーだけ）に沿って付けた（`anthropic`・`openai`・`google`・`flux`・`runway`・`elevenlabs` の 6 つ、Issue #1031 で足した `topaz`、Issue #1136 で足した `openrouter`・`replicate`。計 9 つ。`credential/probe` の対応表と同じ）。**実キーでの動作は所有者の実機で確かめる（未検証）**。公式資料で確認できなかった `kling`・`kling4`・`minimax`・`luma`・`alibaba`・`seedance`・`fal`・`synclabs`・`typesafe` の 9 つには接続テストのボタンを出さず、「保存したあと、最初の生成で確かめられます」を出す。
-- 「キーの取り方のリンク」（各社のコンソール）: anthropic `https://platform.claude.com/settings/keys`、google `https://aistudio.google.com/apikey`、flux `https://dashboard.bfl.ai`、runway `https://dev.runway.com`（公式の setup の頁で確認）、elevenlabs `https://elevenlabs.io/app/api/api-keys`（公式のクイックスタートで確認）。そのほかのプロバイダーはリンクを出さない（公式の取得先を確認できていない）。リンクは `target="_blank" rel="noopener noreferrer"`。接続テストの呼び出しとその結果の分類は [../api/endpoints-settings.md](../api/endpoints-settings.md) §4。
+- 「キーの取り方のリンク」（各社のコンソール。実装は `handler/settings/credentials/providers.go` の `providerInfo`）: anthropic `https://platform.claude.com/settings/keys`、google `https://aistudio.google.com/apikey`、flux `https://dashboard.bfl.ai`、runway `https://dev.runway.com`（公式の setup の頁で確認）、minimax `https://platform.minimax.io/user-center/basic-information/interface-key`、alibaba `https://www.alibabacloud.com/help/en/model-studio/get-api-key`、luma `https://platform.lumalabs.ai`、openrouter `https://openrouter.ai/settings/keys`、fal `https://fal.ai/dashboard/keys`、replicate `https://replicate.com/account/api-tokens`、topaz `https://account.topazlabs.com/manage-api`、elevenlabs `https://elevenlabs.io/app/api/api-keys`（公式のクイックスタートで確認）。そのほかのプロバイダー（openai・kling・kling4・seedance・synclabs・typesafe）はリンクを出さない（公式の取得先を確認できていない）。リンクは `target="_blank" rel="noopener noreferrer"`。接続テストの呼び出しとその結果の分類は [../api/endpoints-settings.md](../api/endpoints-settings.md) §4。
 
 ### 1.2 API キーのモーダル（`GET /settings/credentials/:provider/edit`）
 
@@ -63,7 +63,7 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 - 保存の成功: 行を OOB で差し替え、モーダルを閉じる（`HX-Trigger-After-Swap: modal-close`）。閉じたあとのフォーカスは、押した「設定」「変更」のボタン（行が差し替わるので、同じ `data-focus-key="credential-<provider>"` のボタン）。
 - 失敗: 空・空白入り・長すぎる → 422（今と同じ理由の文）、キーストアの失敗 → 503。どちらもモーダルの断片（`role="alert"`）。
 - 削除: 設定済みの行の「削除」は今のとおり `hx-delete="/credentials/:provider" hx-confirm=…`、行を差し替えるだけ（モーダルは使わない）。
-- キーストアが読めないとき（`Unavailable`）: 区画の先頭に今の `role="alert"` の文を出し、カードの「設定」「変更」は無効（`disabled`、`title` に理由）。
+- キーストアが読めないとき（`Unavailable`）: 区画の先頭に今の `role="alert"` の文を出し、カードの「設定」「変更」は無効（`disabled`、`title` に理由）。カードの並びは読めるときと同じく §1.0 の選択に追従する（公式のあいだは `openrouter`・`fal`・`replicate` のカードを出さない。選んだ先があればそのカードが先頭で、公式の `kling`・`kling4` は隠れる）。ただし選択の欄（ラジオと「モデルごとの状況」。キーの有無を見せる）は、キーの状態が分からないので出さない。
 
 ### 1.3 ChatGPT でログイン（方式ごとのカード）
 
@@ -244,3 +244,4 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 | 0.29 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 0.30 | 2026-11-10 | §1.0 の「モデルごとの状況」に、キーの保存・削除の応答がこの一覧も差し替えること（カードだけが変わって「設定済み／未設定」が古いままにならない）を足した | PR #1141 のレビュー指摘 |
 | 0.31 | 2026-11-11 | §1.1 の接続テストの注記の数を実装に合わせた（テストあり 9 つ〔`openrouter`・`replicate` を含む〕、ボタンなし 9 つ） | PR #1141 のレビュー指摘 |
+| 0.32 | 2026-11-11 | §1.0 の選択の保存を「変えた瞬間」から「選びが落ち着いたら（`change` の 600ms 後。矢印キーの通り道のプロバイダーは保存しない）」に改めた。§1.1 の見出しと表の順を `service.CredentialProviders` に合わせ、キー取得リンクの一覧を実装（`providerInfo`）と同じにした。§1.2 に、キーストアが読めないときもカードが §1.0 の選択に追従することを足した | PR #1141 のレビュー指摘 |

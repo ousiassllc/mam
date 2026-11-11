@@ -45,3 +45,33 @@ func TestRefused_OrdinaryMessagesAreNotRefused(t *testing.T) {
 		assert.False(t, ok, message)
 	}
 }
+
+func TestRefused_ProgramReplyPointsToTheModelManagersCompanionPage(t *testing.T) {
+	reply, ok := commandinterpreter.Refused("ffmpeg のパスを設定して")
+	assert.True(t, ok)
+	assert.Contains(t, reply, "「モデルマネージャー」の「付随ソフト」")
+	assert.Contains(t, reply, "/model-manager/companion")
+	assert.NotContains(t, reply, "全体設定")
+}
+
+// What only shares a word with a refusal is no refusal: a swap is no path being put in, a clause of its own has no program, and 「エクスポート」「レポート」 are no port.
+func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
+	for _, message := range []string{
+		"FaceFusion でフォルダ内の画像の顔を入れ替えて",
+		"ffmpeg のバイナリを使って、出力フォルダを作って",
+		"MCP でエクスポートした動画を作りたい",
+		"MCP のレポートを作って",
+		"MCP のサポートを追加して",
+	} {
+		_, ok := commandinterpreter.Refused(message)
+		assert.False(t, ok, message)
+	}
+	for _, message := range []string{
+		"MCP のポートを変えたい",
+		"MCP のデフォルトポートを 9000 にして",
+		"ffmpeg のバイナリのパスを設定して",
+	} {
+		_, ok := commandinterpreter.Refused(message)
+		assert.True(t, ok, message)
+	}
+}

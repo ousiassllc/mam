@@ -43,6 +43,15 @@ func FitNegative(body, constraints string, avoid []string, promptLimit, negLimit
 	return Fit(body, constraints, promptLimit), textutil.TruncateRunes(strings.Join(avoid, ", "), negLimit)
 }
 
+// Fold writes the negative prompt into the prompt as an "Avoid: ..." sentence (a trailing "." of the negative prompt is not doubled); empty leaves the prompt as it is.
+func Fold(prompt, negative string) string {
+	negative = strings.TrimRight(strings.TrimSpace(negative), ". ")
+	if negative == "" {
+		return prompt
+	}
+	return prompt + AvoidSentence([]string{negative})
+}
+
 // AvoidSentence is the " Avoid: ..." sentence of a prompt without a negative prompt field.
 func AvoidSentence(avoid []string) string { return " Avoid: " + strings.Join(avoid, ", ") + "." }
 

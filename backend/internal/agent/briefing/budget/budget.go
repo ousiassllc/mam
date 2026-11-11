@@ -31,6 +31,8 @@ var (
 	yenRe    = regexp.MustCompile(`[0-9][0-9,]*(?:\.[0-9]+)?\s*万?\s*円|[¥￥]\s*[0-9]`)
 	// limitSuffixRe is a limit word right after the amount: "1 ショット $2 まで" needs no 予算 in front.
 	limitSuffixRe = regexp.MustCompile(`^\s*(?:まで|以内|以下)`)
+	// priceLimitRe is a limit word that describes the thing the amount is the price of, not a ceiling to spend: "$20 以下のシャツ", "20 ドル以内で買える商品".
+	priceLimitRe = regexp.MustCompile(`^\s*(?:まで|以内|以下)\s*(?:の|で\s*(?:買|売|手に入|探))`)
 	// shotPerRe says, before the amount, that it is per Shot: "1 ショットあたり $2", "ショットごとに $2", "毎ショット $2", "per shot $2".
 	shotPerRe = regexp.MustCompile(`(?i)(?:shot|ショット|カット)\s*(?:あたり|当たり|ごと|毎|ずつ|につき)|[毎各]\s*(?:shot|ショット|カット)|per\s*shot`)
 	// shotUnitRe says that the Shot is the unit of the amount, as the last words before it: "1 カット $2 まで", "1 ショットの予算は $2". A count other than one ("3 ショットで",
@@ -99,9 +101,9 @@ func amountOf(clause string, loc []int) (float64, bool) {
 }
 
 // isBudget reports whether the amount at [start, end) of the clause is a budget: a budget word comes shortly before it or right after it, or a limit
-// word ("まで", "以内") follows it.
+// word ("まで", "以内") follows it (unless the limit describes what the amount is the price of: priceLimitRe).
 func isBudget(clause string, words [][]int, start, end int) bool {
-	if limitSuffixRe.MatchString(clause[end:]) {
+	if rest := clause[end:]; limitSuffixRe.MatchString(rest) && !priceLimitRe.MatchString(rest) {
 		return true
 	}
 	for _, w := range words {
@@ -123,8 +125,10 @@ func perShot(clause string, start, end int) bool {
 		before = before[len(before)-shotWindow:]
 	}
 	window := string(before)
+	// a clause before the comma is about another amount ("予算は、1 ショットあたり…" keeps its own window); 、 is three bytes: step over the whole rune
 	if i := strings.LastIndexAny(window, "、,"); i >= 0 {
-		window = window[i+1:] // a clause before the comma is about another amount ("予算は、1 ショットあたり…" keeps its own window)
+		_, width := utf8.DecodeRuneInString(window[i:])
+		window = window[i+width:]
 	}
 	return shotPerRe.MatchString(window) || shotUnitRe.MatchString(window) || shotAfterRe.MatchString(clause[end:])
 }

@@ -44,8 +44,8 @@ templ ChatComposer(p domain.Project) {
 			<input type="hidden" name="reply_to_message_id" id="reply-to" value=""/>
 			<ul id="attachment-names" class="mb-2 flex flex-wrap gap-2 text-xs text-ink"></ul>
 			<div class="flex items-end gap-2">
-				<input id="composer-files" type="file" name="attachments" multiple accept={ AcceptedUploads + ",.safetensors" } aria-label="画像・動画を添付" class="peer sr-only"/>
-				<label for="composer-files" class="cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-accent-soft peer-focus-visible:focus-ring" title="画像・動画を添付">＋</label>
+				<input id="composer-files" type="file" name="attachments" multiple accept={ AcceptedUploads + ",.safetensors" } aria-label="画像・動画・LoRA（.safetensors）を添付" class="peer sr-only"/>
+				<label for="composer-files" class="cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-accent-soft peer-focus-visible:focus-ring" title="画像・動画・LoRA（.safetensors）を添付">＋</label>
 				@atoms.Textarea(atoms.FieldLg, "min-h-10 flex-1 resize-y", templ.Attributes{
 					"id":          "composer-content",
 					"name":        "content",

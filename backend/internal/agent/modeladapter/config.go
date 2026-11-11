@@ -117,7 +117,7 @@ type BreakerConfig struct {
 }
 
 // Config is the Model Adapter setting. DefaultConfig holds the assignment of
-// spec/architecture/model-adapters.md §3, §4; a JSON file (LoadConfig) overrides any part of it.
+// spec/architecture/model-adapters.md §3, §4; a JSON file (configcheck.Read) overrides any part of it.
 type Config struct {
 	Vendors  map[Vendor]VendorConfig              `json:"vendors"`
 	Models   map[domain.ModelName]ModelConfig     `json:"models"`
@@ -269,8 +269,8 @@ func (c Config) ImageRouteFor(p ImagePurpose) ImageRoute {
 	return c.Images[p]
 }
 
-// VideoPerSecond is the unit price of a second of a clip (USD): the price shown for the model. Luma Ray 3.2 bills 5 seconds at a
-// time, so this is the price of a second of a 5 second clip, not of VideoCost(t, 1).
+// VideoPerSecond is the unit price of a second of a clip (USD): the price shown for the model. Luma Ray 3.2 bills 5 seconds at a time, so this is the price of a second of a
+// 5 second clip, not of VideoCost(t, 1). The provider's price replaces cost_per_second_usd while it serves the model; a model it does not serve keeps the official price (§9.6).
 func (c Config) VideoPerSecond(t VideoTarget) float64 {
 	if lm, _, ok := c.LocalModel(t.Model); ok {
 		return lm.CostPerSecond

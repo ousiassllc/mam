@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 )
@@ -46,7 +47,7 @@ func (m *Model) Question(ctx context.Context, _ domain.Project, op commandinterp
 // find is the one model the director named, or the several that match it. The catalog the director may see is the one of Catalog (an adult model only after the age
 // confirmation); a name that finds nothing there is tried as an id, so that the age gate answers for an adult model as it does for the MCP tool.
 func (m *Model) find(query string) (ModelInfo, []named, error) {
-	if key(query) == "" {
+	if nlu.Norm(query) == "" {
 		return ModelInfo{}, nil, chatops.Refuse("%s", whichModel)
 	}
 	models := m.deps.Catalog()

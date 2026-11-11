@@ -1,10 +1,12 @@
 package chatwire
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -40,9 +42,35 @@ func addFromAsset(ctx context.Context, library *service.ReferenceService, projec
 	if err != nil {
 		return domain.ReferenceItem{}, err
 	}
-	for _, it := range view.Items {
-		if !seen[it.ID] {
-			return it, nil
+	return ownEntry(ctx, library, projectID, newEntries(seen, view.Items, kind, strings.TrimSpace(name)), abs)
+}
+
+// newEntries are the entries of the Library that were not there before the upload and are of the kind and the name the upload gave: Upload returns the whole Library, not the entry,
+// and another upload (a second chat, the Library screen) may land at the same time, so "the one that is new" is not enough to tell the entry of this upload.
+func newEntries(seen map[string]bool, items []domain.ReferenceItem, kind domain.ReferenceKind, name string) []domain.ReferenceItem {
+	var out []domain.ReferenceItem
+	for _, it := range items {
+		if !seen[it.ID] && it.Kind == kind && it.Name == name && it.Source == domain.SourceUploaded {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+// ownEntry is the entry of this upload among the candidates: the only one, or (when two uploads of the same kind and name met) the one that holds the file that was uploaded.
+func ownEntry(ctx context.Context, library *service.ReferenceService, projectID string, candidates []domain.ReferenceItem, srcPath string) (domain.ReferenceItem, error) {
+	if len(candidates) == 1 {
+		return candidates[0], nil
+	}
+	want, err := os.ReadFile(srcPath) //nolint:gosec // srcPath is inside the assets directory (StoredAsset)
+	if err != nil {
+		return domain.ReferenceItem{}, service.ErrNotFound
+	}
+	for _, it := range candidates {
+		if _, abs, err := library.StoredAsset(ctx, projectID, it.AssetID); err == nil {
+			if got, err := os.ReadFile(abs); err == nil && bytes.Equal(got, want) { //nolint:gosec // abs is inside the assets directory (StoredAsset)
+				return it, nil
+			}
 		}
 	}
 	return domain.ReferenceItem{}, service.ErrNotFound

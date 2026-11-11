@@ -58,7 +58,7 @@ func (b minimaxBackend) GenerateVideo(ctx context.Context, apiModel string, req 
 		body["ratio"] = ratio
 	}
 	raw, _ := json.Marshal(body)
-	data, err := b.request(ctx, http.MethodPost, b.baseURL+"/v2/video_generation", jsonHeader(auth), raw, maxJSONBytes)
+	data, err := b.request(ctx, http.MethodPost, b.baseURL+"/v2/video_generation", JSONHeader(auth), raw, maxJSONBytes)
 	if err != nil {
 		return VideoResult{}, err
 	}

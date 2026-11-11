@@ -13,8 +13,8 @@ import (
 )
 
 // wants reports whether a chat message is a direction for the Command Interpreter: a message that asks
-// the team to remember something (F-31, in any mode), one that is about the budget past the Brief (in any mode: while the Brief is drafted the extractor reads
-// the budget, #1139), or, in DIRECTOR MODE past the Brief, any message. A message that answers an open card never is.
+// the team to remember something (F-31, in any mode), one that is about the budget past the Brief (in any mode; a budget stated while the Brief is drafted is read by
+// statedBudgetCards from every message, #1139), or, in DIRECTOR MODE past the Brief, any message. A message that answers an open card never is.
 func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessage, content string) bool {
 	if content == "" || (target != nil && isAnswerable(target.Kind)) {
 		return false

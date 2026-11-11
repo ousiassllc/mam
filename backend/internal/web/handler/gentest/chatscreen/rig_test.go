@@ -56,7 +56,6 @@ func (s *script) queue(steps ...string) {
 }
 
 const (
-	sayStep      = `{"action":"say","text":"画像ですね。モデルを調べます"}`
 	chooseStep   = `{"action":"choose","text":"どちらにしますか？","options":[{"label":"画像","detail":"1 枚 約 3 円〜"},{"label":"動画","detail":"高め"}]}`
 	listStep     = `{"action":"list_models","media":"image"}`
 	estimateStep = `{"action":"estimate","text":"2 モデルで見積りました","request":{"media":"image","models":["flux-2","nano-banana"],"prompts":[{"prompt":"a fox at dusk","negative_prompt":"blurry"}],"count":2,"aspect_ratio":"1:1"}}`

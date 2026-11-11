@@ -50,3 +50,12 @@ func TestQuestionCard_AnAnsweredKeyCardHasNoField(t *testing.T) {
 	assert.NotContains(t, html, `type="password"`)
 	assert.Contains(t, html, "回答済み")
 }
+
+// Without scripts the form posts to the card's own endpoint (not the current page), and the field is described by the line that says where the value goes.
+func TestQuestionCard_TheFormHasItsOwnActionAndTheFieldIsDescribed(t *testing.T) {
+	html := render(t, card(true))
+
+	assert.Contains(t, html, `action="/projects/p1/messages/c1/secret"`)
+	assert.Contains(t, html, `aria-describedby="secret-help-c1"`)
+	assert.Contains(t, html, `id="secret-help-c1"`)
+}

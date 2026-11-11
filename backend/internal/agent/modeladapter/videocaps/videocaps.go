@@ -1,6 +1,6 @@
 // Package videocaps holds what each built-in cloud video model can do (spec/spec.md §11 "モデル能力"): the data behind
-// modeladapter.Capabilities, a package of its own because modeladapter is at its size limit. The type has the fields of
-// modeladapter.VideoCapabilities in the same order, so that one converts to the other.
+// modeladapter.Capabilities, a package of its own because modeladapter is at its size limit. modeladapter.VideoCapabilities is
+// defined as this package's Capabilities (a defined type with the same fields), so that one converts to the other.
 package videocaps
 
 import "github.com/ousiassllc/mam/backend/internal/domain"

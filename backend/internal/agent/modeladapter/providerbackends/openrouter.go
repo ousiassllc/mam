@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/shotprompt"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 )
 
@@ -38,7 +39,7 @@ func (b openRouter) GenerateVideo(ctx context.Context, _ string, req modeladapte
 	}
 	auth := map[string]string{"Authorization": "Bearer " + key}
 
-	body := map[string]any{"model": v.Endpoint, "prompt": promptOf(req), "duration": int(req.DurationSeconds), "generate_audio": false}
+	body := map[string]any{"model": v.Endpoint, "prompt": shotprompt.Fold(req.Prompt, req.NegativePrompt), "duration": int(req.DurationSeconds), "generate_audio": false}
 	var frames []map[string]any
 	if req.FirstFrame != nil {
 		frames = append(frames, frameImage(*req.FirstFrame, "first_frame"))

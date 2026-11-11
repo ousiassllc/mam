@@ -8,7 +8,7 @@
 
 | 区分 | コンポーネント | 責務 |
 |------|---------------|------|
-| pages（`gentest_pages.templ`） | `GenerationTestPage`・`GenerationHistoryPage`・`GenerationResultPage`・`GenerationPromptsPage` | 4 つのページ。共通の枠 `generationShell`（戻るリンク・見出しとその横の「?」ヘルプ（リード文はヘルプの中。Issue #866。[shared-ui-parts.md](shared-ui-parts.md) §9・§10）・ページ間のリンク `generationNav`）に organisms を入れる |
+| pages（`gentest_pages.templ`・`gentest_chat_page.templ`） | `GenerationTestPage`・`GenerationExposedPage`・`GenerationInpaintPage`・`GenerationMatchPage`・`GenerationHistoryPage`・`GenerationResultPage`・`GenerationPromptsPage`・`GenerationChatPage` | 単発生成の各ページ。共通の枠 `generationShell`（戻るリンク・見出しとその横の「?」ヘルプ（リード文はヘルプの中。Issue #866。[shared-ui-parts.md](shared-ui-parts.md) §9・§10）・ページ間のリンク `generationNav`。タブは「生成する」「チャットで作る」「画像から似せる」「一部だけ描き直す」「履歴」「プロンプト履歴」の 6 つ）に organisms を入れる |
 | organisms（`organisms/gentest/`） | `ComposeForm`（`modelChoices`（`models.templ`）・`promptFields`・`parameterFields`・`inputFields`（`inputs.templ`）・`refOptions`・`pickerDialog`（`refopts.templ`））・`PromptRowFields`・`RefRow`（`refrow.templ`）・`Picker` | 作成フォーム（画像／動画・モデルのカード（`models.templ` の `modelChoices`・`modelCard`。タップで選ぶ。入力画像のアイコンつき）・複数のプロンプトとネガティブ・本数・縦横比・動画の解像度と長さ・入力画像（ドロップゾーン 1 つ・サムネイルの格子・ポーズを真似させない設定・LoRA））。無効なモデルは選べず、理由はヘルプと読み上げにある |
 | 〃 | `ConfirmBox`・`ConfirmFailed`・`ConfirmEmpty` | 見積りの確認（件数・モデルごとの内訳・合計・単価なしの注記・警告・上限超過）と、実行のフォーム（見積りを hidden で持つ） |
 | 〃 | `BatchList`・`BatchBox`・`resulttile.Tile`（`organisms/gentest/resulttile/`。`Card`・`Tile`・`FavoriteButton`・`Reply`・`Gone`・`Tone`） | 実行ごとのブロックの列 `BatchList` と、1 実行のブロック `BatchBox`（実行の ID・開始時刻・設定・進捗〈状態・件数・取り消し〉）と比較表（行＝モデル、列＝プロンプト、セル＝結果のタイル。Issue #1004: 画像だけで、詳細はモーダル） |
@@ -56,7 +56,7 @@
 - **狭い幅（約 375 px）**: カードは 1 列（`sm:` 以上で 2 列）、文字は `break-words`。`static/src/components/layout/layout.wtest.ts` が画像・動画のフォームを 375 px で開き、横にはみ出さないことを確かめる（フィクスチャは `layout_fixture_test.go`）。カードの選択・キーボード・光る縁取りは `static/src/components/gentest/models.wtest.ts`（実 Chrome）。
 - **入力の長さ**は定数（`MaxAspectLen`・`MaxNameLen`・プロンプトは `gentest.MaxPromptRunes`）で、テンプレートに数字を書かない（`maxlength_test`）。
 - **コントラスト**: 補助の文字は `text-mute` 以上（`text-neutral-500` は使わない。`a11y` のテスト）。
-- **入口**: `projects_page`（プロジェクト一覧）の分析・設定の隣のリンク「単発生成」、モデルマネージャーの区画「モデル」の「?」ヘルプの中のリンク（`mm-open-gentest`。#1100 で、試し生成の区画のリンクから移る）、詳細の「入力画像として使う」。
+- **入口**: 全画面の左メニューの項目「単発生成」（[side-menu.md](side-menu.md)。プロジェクト一覧にはリンクを置かない。#978）、モデルマネージャーの区画「モデル」の「?」ヘルプの中のリンク（`mm-open-gentest`。#1100 で、試し生成の区画のリンクから移る）、詳細の「入力画像として使う」。
 - **入力画像（Issue #933）**: 区画は上から、見出し（「?」にルール）・**ドロップゾーン 1 つ**（画像をドロップ、またはクリックでファイルを選ぶ（複数。PNG・JPEG・WebP）。ゾーンの中に「プロジェクトの画像から選ぶ」「履歴の画像から選ぶ」のボタンがあり、`<dialog data-gt-picker-dialog>` の中に既存の `GET /generation-test/picker` を HTMX で入れる。ルール（形式・最大枚数・使えないモデル）は常時の文では出さず、ゾーンの `title` と「?」に置き、破ったときだけ 1 行の小さなエラー `[data-gt-error]` で言う）・使えないモデルを選んでいて入力画像があるときの 1 行 `[data-gt-noref]`（クライアントが `data-accepts-references` から即座に出す。見積りの警告も残す）・カウンター「3 / 10」・**サムネイルの格子**（`ul#gt-refs`）・参照画像のオプション。
   - サムネイル（`RefRow`）: 番号バッジ（1, 2, 3…。モデルに渡す順で、Qwen の `<image1>` `<image2>` と同じ）・× で外す・ドラッグで並べ替え（HTML5 DnD。キーボードの代わりに ‹ › ボタン）・クリックで拡大（`<dialog data-gt-lightbox>`）。ブラウザで選んだファイルは見積りまでサーバーに無いので、サムネイルは `URL.createObjectURL` で出し、ファイルは `<input name=upload>` に並び順どおり入れ直す。そのサムネイルの `ref` は `upload::#<n>`（`upload` の n 番目のファイル）で、`role_upload::#<n>`・`strength_upload::#<n>` と一緒に送り、サーバー（`refform.Stage`）が保存して id に置き換える。
   - **入力画像の検査（動画。Issue #1009）**: 入力画像の区画の通知 `div#gt-input-check[data-gt-input-check]`（`InputCheckBox`）は、選んだモデルが添えた画像をどう扱うかをサーバーが描く（見積りと同じ検査 `Service.CheckInputs`。画像の中身は見ず、役割とモデルだけ）。必須の最初のフレームが無い（I2V）／添えた画像がすべて使われない（T2V）ときは `errorbox.Box`（原因・直し方・詳細。`input_missing`・`input_unused`）、一部の画像だけが使われないモデルは琥珀色の枠「使われない入力画像があります」。モデルのチェック・役割の select・画像の追加／削除が変わると、`inputs.ts` が `gt-inputs-changed` を送り、通知が `hx-post` で自分を取り直す（`hx-trigger="gt-inputs-changed from:closest form delay:200ms"`）。画像のフォームの通知（`data-gt-noref`）は従来どおり。見積りで止まるときは、確認の位置に同じエラーボックス（`ConfirmBlocked`）。一部だけ使われないときは見積りの上に琥珀色の枠 `gt-confirm-input-warnings`（実行は許す）。
@@ -140,3 +140,4 @@
 | 1.46 | 2026-11-07 | 顔の類似度がオフの案内のリンク先（`paths.ModelManagerFaceModels()` = `/model-manager/face-check#mm-face-models`）を実装した | Issue #1101 |
 | 1.47 | 2026-11-10 | 画面名を「生成テスト」から「単発生成」に改めた（見出し・メニュー・文言。ルートと `data-testid` は変えない。過去の変更履歴の文は当時のまま） | Issue #1137 |
 | 1.48 | 2026-11-10 | 「チャットで作る」のタブ（`generationNav` の `chat`）を足した。部品と挙動は [gentest-chat.md](gentest-chat.md) | Issue #1138 |
+| 1.49 | 2026-11-11 | §3 のページの行を、6 つのタブ（生成する・チャットで作る・画像から似せる・一部だけ描き直す・履歴・プロンプト履歴）と実際のページの部品名に直し、入口を、プロジェクト一覧のリンク（#978 で外れた）から全画面の左メニューの「単発生成」に直した（実装に合わせた） | PR #1141 のレビュー指摘 |

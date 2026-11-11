@@ -3,7 +3,6 @@ package chatwire
 import (
 	"github.com/ousiassllc/mam/backend/internal/service/chatops"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/apikey"
-	_ "github.com/ousiassllc/mam/backend/internal/service/chatops/outofscope" // registers the refusal of what is GUI-only on purpose
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 

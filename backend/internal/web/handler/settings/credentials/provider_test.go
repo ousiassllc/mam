@@ -208,7 +208,8 @@ func TestSaveAndDelete_RedrawTheKeyStateOfTheChosenProviderUnderTheChoice(t *tes
 	assert.NotContains(t, deleted.Body.String(), "OpenRouter の API キー: 設定済み")
 }
 
-// With the official provider there is no key line to follow (the cards are the keys), and without model settings there is no list at all: nothing is sent out of band.
+// Without model settings (Keys.Models is nil) the panel has no choice of the API provider and so no list of how it serves each model: nothing is sent out of band. (With model
+// settings the list is sent, also under the official provider; the tests above.)
 func TestSave_SendsNoModelListWhereThePanelHasNone(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	keys := credentialtest.New()
