@@ -1,6 +1,6 @@
-package chatcard_test
+package messagelimit_test
 
-// This file tests handler.PostMessage (the request limit of a chat message), not chatcard. It sits in this package because the package handler is at its size limit
+// This file tests handler.PostMessage (the request limit of a chat message). It has a directory of its own because the package handler is at its size limit
 // (.linterly-baseline): a test file there would grow it. It uses the exported handler only, so it moves into handler unchanged once that package has room.
 
 import (

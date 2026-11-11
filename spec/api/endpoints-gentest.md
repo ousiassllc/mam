@@ -143,7 +143,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.22 | 2026-11-04 | `POST /generation-test/poses/install-adult`・`/poses/remove-adult` を足した。成人向けのポーズ（`sexy`・`duo`）の画像・一覧・行への追加は、年齢確認がオフの間は 404／出さない。履歴の入力（`GET /generation-test/inputs/:id/file`）は、成人向けのポーズから取った写しをゲートがオフの間は 404 にする | Issue #1020 |
 | 1.23 | 2026-11-04 | `POST /generation-test/results/:id/video-enhance/estimate`・`POST /generation-test/results/:id/video-enhance`（成功した動画の結果を大きくする・コマを増やして滑らかにする。Topaz は見積り → 確認 → 実行）を足した。結果の詳細に動画用の箱 `#gt-video-enhance`、ボタン行に「大きくする」「滑らかにする」、設定の欄に `video_enhance` の行 | Issue #1031 |
 | 1.24 | 2026-11-05 | `POST …/video-enhance` に `adult_confirm`（成人向けの結果を Topaz に送るとき必須）を足した。見積りの画面は警告を出す | Issue #1031（悠太さんの決定 2026-11-05） |
-| 1.25 | 2026-11-06 | 見積りの「プロンプトの英訳」の行は、LLM の単価が分かれば合計に入る（Issue #1069）。英訳中のリクエストの取り消しは 502 にしない（Issue #1072） |
+| 1.25 | 2026-11-06 | 見積りの「プロンプトの英訳」の行は、LLM の単価が分かれば合計に入る。英訳中のリクエストの取り消しは 502 にしない | Issue #1069・#1072 |
 | 1.26 | 2026-11-06 | 入口の記述から「モデルマネージャーの試し生成の区画のリンク」を外し、「?」ヘルプのリンクにした（ルート・フィールドは変えない。状態は仕様のみ） | Issue #1100 |
 | 1.27 | 2026-11-07 | `POST /generation-test/run` の答えを、実行ごとのブロック（`#gt-batch-<batch_id>`）にし、確認のフォームの送り先を `#gt-batches`（`hx-swap=beforeend`）にした。前の実行のブロックは残り、新しい実行は下へ足される。`GET …/batches/:id`・`POST …/batches/:id/cancel` の答えも同じブロックで、自分のブロックだけを置き換える（状態は実装済み） | Issue #1109 |
 | 1.28 | 2026-11-10 | 「チャットで作る」のルート（`/generation-test/chat` ほか。LLM との会話・確認のカード・結果のブロック）を足した | Issue #1138 |

@@ -207,7 +207,7 @@
 | 1.28 | 2026-11-04 | 動画のアップスケール・コマ補間のツール `list_generation_video_enhancers`・`estimate_generation_video_enhance`・`enhance_generation_video` を足した（ローカルの SeedVR2 3B・RIFE と、有料クラウドの Topaz Video API。Topaz は見積り→確認〔`estimate_id`・`confirmed_credits`〕が必須）。結果に `video_enhance` を足した（`get_generation_result`・`get_generation_test`・`list_generation_results`）。画像のツール `list_generation_upscalers`・`upscale_generation_result` は変えない。実装は `tools/gentest` が行数の上限なので別パッケージ `tools/gentestvideo` | Issue #1031 |
 | 1.29 | 2026-11-05 | `estimate_generation_video_enhance` の出力に `adult`・`adult_warning`、`enhance_generation_video` の入力に `adult_confirmed` を足した。成人向けの結果も Topaz に送れるが、警告を見せて確認が取れたときだけ送る | Issue #1031（悠太さんの決定 2026-11-05） |
 | 1.30 | 2026-11-06 | `get_generation_test` に `face_summaries`（役割 `face` の参照を付けたバッチのモデルごとの顔の類似度〔SFace〕の測れた数・測れなかった数・平均・最小・最大・目安以上の数と割合。参照が無いバッチには出ない）を足した。新しいツールは足さない | Issue #998 |
-| 1.31 | 2026-11-06 | `estimate_generation_test` の英訳の行（`translate`）を、LLM の単価が分かれば `priced` で `total_usd` に入れる（分からなければ従来どおり `unknown`。Issue #1069）。英訳中の取り消しは `upstream` にしない（Issue #1072） |
+| 1.31 | 2026-11-06 | `estimate_generation_test` の英訳の行（`translate`）を、LLM の単価が分かれば `priced` で `total_usd` に入れる（分からなければ従来どおり `unknown`）。英訳中の取り消しは `upstream` にしない | Issue #1069・#1072 |
 | 1.32 | 2026-11-06 | `swap_generation_face` で FaceFusion が見つからないときの答えを、実装（Issue #1010 から）どおり `unavailable`（`failure.code` が `facefusion_unavailable`）に直した（`validation` のままだった）。ツールの説明文も同じに直した | Issue #995 の見直し（仕様と実装の乖離） |
 | 1.33 | 2026-11-06 | `gpt_image`（GPT Image 2.6 の複雑さ・GIF / SVG）と `references[].role` の `markup` を足し、`list_generation_models` に `gpt_image`・`gpt_image_unsupported` を足した | Issue #1096 |
 | 1.34 | 2026-11-06 | `get_job` の種別 `gentest` の説明から、モデルマネージャーの試し生成を外した（区画の廃止。ツール・引数は変えない。状態は仕様のみ） | Issue #1100 |
