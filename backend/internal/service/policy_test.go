@@ -166,7 +166,9 @@ func TestGenerateShot_StopsAtMaxGenerationTimeAndReportsIt(t *testing.T) {
 
 	assert.Less(t, time.Since(start), 5*time.Second, "the 10 s limit ran out in 10 ms, not in 10 s")
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take`))
-	assert.Contains(t, lastMessage(t, f.thread(t, f.projectID)).Content, "制限時間")
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Contains(c, lastMessage(c, f.thread(c, f.projectID)).Content, "制限時間")
+	}, 30*time.Second, 10*time.Millisecond) // the Shot is back in Planning before the thread says why
 }
 
 func TestGenerateShot_WarnsBeforeStartingWhenTheDiskIsTooSmall(t *testing.T) {
