@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/facefusionsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	gentestchatsvc "github.com/ousiassllc/mam/backend/internal/service/gentest/chat"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
@@ -36,6 +37,7 @@ import (
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/chatscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/comfyscreen"
 	jobshandler "github.com/ousiassllc/mam/backend/internal/web/handler/jobs"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
@@ -107,6 +109,9 @@ type Services struct {
 	// Gentest is the generation test screen (paths.GenerationTest; service.Services.Gentest) and the face-check models of the model manager
 	// screen. Nil leaves the screen and that section out.
 	Gentest *gentest.Service
+	// GentestChat is the chat of the single generation screen (paths.GenerationTestChat, #1138) when a test brings its own; nil builds it from the LLM client of the
+	// app's services (the route of the Prompt Planner), and leaves the page a notice and its routes out when there is none.
+	GentestChat *gentestchatsvc.Service
 	// JobList is the job list screen (paths.Jobs): the jobs that run and the latest that ended. Nil leaves the screen out.
 	JobList *joblist.Service
 }
@@ -136,7 +141,7 @@ func registerRestart(engine *gin.Engine, s *Services) {
 func Register(engine *gin.Engine, services *service.Services, s *Services, logger *slog.Logger) {
 	pages := pageServices(services, s)
 	update := pages.Update
-	credentialshandler.Register(engine, credentialshandler.Keys{Svc: services.Credentials, Tester: pages.Tester}, pages.Page(paths.SettingsAPIKeys))
+	credentialshandler.Register(engine, credentialshandler.Keys{Svc: services.Credentials, Tester: pages.Tester, Models: pages.Models}, pages.Page(paths.SettingsAPIKeys))
 	if update != nil {
 		engine.POST(paths.UpdateCheck(), updatehandler.Check(update))
 	}
@@ -189,6 +194,8 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 	}
 	if s != nil && s.Gentest != nil {
 		gentesthandler.Register(engine, s.Gentest)
+		// #1138: the chat of the single generation (its page says so when the app has no LLM for it)
+		chatscreen.Register(engine, s.Gentest, chatOf(services, s))
 		comfyscreen.Register(engine, s.Gentest, s.Workflows, s.LocalModels, gentesthandler.RequestOfForm(s.Gentest)) // #977: the ComfyUI tier
 	}
 	if s != nil && s.JobList != nil {

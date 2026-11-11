@@ -1,8 +1,7 @@
 // Package app is the startup of mam, shared by every front: it loads the settings, locks the data
 // directory, opens the logger, wires the services (the DI root), recovers the work an abnormal
 // termination left behind, serves the router on 127.0.0.1 and shuts down gracefully. The fronts
-// (cmd/server opens the default browser, cmd/wails loads the URL in a native window) differ only in
-// what they do with the URL that Options.OnReady receives.
+// (cmd/server opens the default browser, cmd/wails loads the URL in a native window) differ only in what they do with the URL that Options.OnReady receives.
 package app
 
 import (
@@ -27,6 +26,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobrecent"
 	"github.com/ousiassllc/mam/backend/internal/router"
+	"github.com/ousiassllc/mam/backend/internal/service/chatwire"
 	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/version"
 	"github.com/ousiassllc/mam/backend/internal/worktrack"
@@ -123,6 +123,8 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	gin.SetMode(gin.ReleaseMode)
 	settings := newSettings(cfg, services, gpt, ffmpegDL, opts.Restart, repository.NewJobRepository(db), logger)
 	defer settings.Restart.Close()
+	// the chat does the settings operations (API keys, models, assignments, ...) through the same services as the screens and MCP (#1140)
+	chatwire.Connect(services, chatwire.Settings{LLM: settings.LLM, LLMModels: settings.LLMModels, Models: settings.Models})
 	// The works that have no row in the job table (the export, the audio stage and the Editor Judge, workflow runs, the installs of Codex
 	// and ffmpeg) are kept in memory by their owners; the list reads them from there.
 	settings.JobList = joblist.New(joblist.Deps{

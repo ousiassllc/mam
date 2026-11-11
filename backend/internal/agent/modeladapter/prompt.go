@@ -2,12 +2,11 @@ package modeladapter
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/shotprompt"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // VideoJob is a model-independent request for the video of one Shot: the Canonical Shot Spec
@@ -85,8 +84,7 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 	body, constraints, avoid := shotprompt.Describe(job.Spec, req.DurationSeconds, len(req.References) > 0 || req.FirstFrame != nil)
 	switch target.Model {
 	case domain.ModelKling3, c.negativeModel(target.Model):
-		req.Prompt = shotprompt.Fit(body, constraints, 2400)
-		req.NegativePrompt = textutil.TruncateRunes(strings.Join(avoid, ", "), 400)
+		req.Prompt, req.NegativePrompt = shotprompt.FitNegative(body, constraints, avoid, 2400, 400, viaprovider.FoldsNegative(c.VideoProvider, target.Model))
 	case domain.ModelKling4: // no negative prompt field (the prompt takes negative descriptions); English input up to 26,000 characters
 		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 26000)
 	case domain.ModelMiniMaxH3, domain.ModelMiniMaxH3Max: // no negative prompt field; up to 7000 characters

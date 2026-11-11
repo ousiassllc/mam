@@ -125,7 +125,7 @@
 
 | `IconName`（案） | 当初の名前（Lucide。いまの絵は各 `case` のコメントの Iconoir の名前） | 使う場所 | 入れる Issue |
 |------------------|---------------|---------|-------------|
-| `IconFlask` | `flask-conical` | 生成テスト | #846 |
+| `IconFlask` | `flask-conical` | 単発生成 | #846 |
 | `IconNetwork` | `network` | ノード | #846 |
 | `IconWorkflow` | `workflow` | ワークフロー | #846 |
 | `IconPackage` | `package` | モデルマネージャー | #846 |
@@ -231,7 +231,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - **失敗（422）**: 応答の本文はモーダルの断片（`#mam-modal-body` に入り直す）。理由は `#mam-modal-error`、入力は**残す**（`value` を描き戻す）。`aria-invalid="true"` と `aria-describedby="mam-modal-error"` を、問題の欄に付ける。差し替え後は、問題の欄（無ければ `#mam-modal-error`）にフォーカス（`autofocus` を付け直す）。**秘密の値（API キー・トークン）は 422 でも描き戻さない**（入力し直す）。 理由の `#mam-modal-error` を取り除く答え（接続先のモーダルの接続テストの `DraftTestResult`）が入ったときは、同じ入れ替えのうちに、その理由を指していた欄の `aria-invalid` と `aria-describedby` を外す（`modal.ts`。宙に浮いた参照を残さない）。
 - **トースト・アラートは見えない**: `#toast-region` と `#alert-region` は `<body>` の子で、モーダルは最前面の層（top layer）に出るため、モーダルが開いている間のトーストはモーダルの背後に隠れる。そのためモーダル内の失敗は、断片の `role="alert"` に出す。HTML でない失敗（通信断・タイムアウト・5xx の非 HTML）は `htmx:responseError` / `sendError` / `timeout` を `modal/` が聞き、`#mam-modal-failure` に `requestFailureMessage` の文言を出す（トーストは出さない）。
 - **二重送信**: モーダルのフォームは `hx-sync="this:drop"` と `hx-disabled-elt="find button[type=submit]"` を持つ（`double_submit_test`）。削除などの危険な操作は `hx-confirm`（#847 決定事項 8(a)。`destructive_confirm_test`）。
-- **リンクから開く・広いダイアログ**（Issue #1004）: `modal.OpenLinkAttrs(url, focusKey)` は `OpenAttrs` の `<a>` 版（`type` が無く `href` が同じ内容のページ。スクリプトが無い・新しいタブで開く操作はそのページへ行き、ふつうのクリックは本文を求める）。本文の最初のブロックに `data-modal-wide`（`modal.WideAttr`）を付けると、ダイアログがその間だけ広くなる（`has-[[data-modal-wide]]:w-[min(64rem,…)]`。生成テストの結果の詳細が、画像と設定を並べるのに使う）。同じ URL がページとモーダルの本文の両方を返すときは、`HX-Target` が `mam-modal-body` かどうかで分け、`Vary: HX-Request, HX-Target` を付ける。
+- **リンクから開く・広いダイアログ**（Issue #1004）: `modal.OpenLinkAttrs(url, focusKey)` は `OpenAttrs` の `<a>` 版（`type` が無く `href` が同じ内容のページ。スクリプトが無い・新しいタブで開く操作はそのページへ行き、ふつうのクリックは本文を求める）。本文の最初のブロックに `data-modal-wide`（`modal.WideAttr`）を付けると、ダイアログがその間だけ広くなる（`has-[[data-modal-wide]]:w-[min(64rem,…)]`。単発生成の結果の詳細が、画像と設定を並べるのに使う）。同じ URL がページとモーダルの本文の両方を返すときは、`HX-Target` が `mam-modal-body` かどうかで分け、`Vary: HX-Request, HX-Target` を付ける。
 - **置き場所**: `molecules/modal/`（`Host`・`Frame`・`Error`・`Actions`・`Cancel`・`Notice`・`OpenAttrs`）と `static/src/components/modal/`（`modal.ts`・`modal.wtest.ts`。Lit ではなく `focus-restore` と同じ `installModal()`。`main.ts` が呼ぶ）。テストは wtr: 開くとフォーカスが `autofocus` へ・`Esc` で閉じて開いたボタンへ戻る・行が差し替わっても戻る・成功で閉じる・422 で開いたまま入力が残る・閉じると本文が空・履歴の保存で空になる。
 
 ## 5. 一覧の行（`SettingsCard`・`SettingsTable`・`SettingsTableRow`）
@@ -298,6 +298,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.21 | 2026-11-06 | §1 に「プロンプトの重み調整（`mam-prompt-weight`）」を足した（面・文字・ボタン・出る・消える・状態の見せ方・操作・キーボード・アクセシビリティの 8 項目 W1〜W8）。動きは gentest-tiers.md §4 が決めたままで、ここは描き方だけ。実装との差分 6 件を表にし、#1094・#1095 に分けた（修正は別 Issue） | Issue #1046。`mam-prompt-weight` の見た目・操作が案件ガイドに載っていなかった |
 | 0.22 | 2026-11-06 | §4 に、長い本文のモーダルの頭の決まりを足した（閉じるボタンと見出しは、スクロールするダイアログの上端に貼り付く。開くたびに先頭から始まる） | Issue #1097 |
 | 0.23 | 2026-11-06 | §10 のモデルマネージャーの行から「試し生成」の区画を外し、区画「モデル」の「?」に生成テスト画面へのリンクを入れることを書いた（状態は仕様のみ） | Issue #1100 |
+| 0.24 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
@@ -345,7 +346,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | `molecules.SettingsSectionAt(level, title, description)` | **状態を言う 1 行**（バージョンとアップデートの「現在のバージョン…」）だけ。説明には使わない |
 | `settingsui.Category(title, explanation)` | 分類の h2 の横にボタン。`explanation` は `templ.Component`（`help.Text(...)`・`nil` でボタン無し） |
 | `settingsui.Card.Help` | カードのタイトルの横にボタン、その直後にパネル（`SettingsCard`。§5）。パネルの id は `help.ID(カードの ID)`。`HelpPanelElsewhere` を立てると、ボタンだけを描く（パネルは呼び出し側が同じ id で、差し替えの範囲の外に描く。§9.1 の例外。#1005 で ChatGPT のカードは「?」をやめて「詳細」のモーダルにしたので、今これを使うカードは無い） |
-| `help.Row(id, subject, explanation)` | 上の部品を使わない見出し（生成テストのページの h1 など）。子が見出し。ボタンの直後にパネルを置く（`Tab` の順） |
+| `help.Row(id, subject, explanation)` | 上の部品を使わない見出し（単発生成のページの h1 など）。子が見出し。ボタンの直後にパネルを置く（`Tab` の順） |
 
 - パネルの id は主題（見出しの文字・カードの ID）から決まる（`help.ID`。同じ入力は同じ id）。1 ページの主題は重複させない。
 
@@ -367,14 +368,14 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 
 | 画面 | ヘルプへ移した説明（常時表示から） | 本体に残すもの |
 |------|-------------------------------|---------------|
-| モデルマネージャー（[model-manager-screen.md](model-manager-screen.md)） | 各区画（ComfyUI エンジン・モデル・Hugging Face から導入・Hugging Face のトークン・外部の ComfyUI。「試し生成」は #1100 で廃止）の説明。ローカル音声・口パクとモデルの区画の「?」には、カードをタップすると詳細（出典・ライセンス・ファイル一覧・SHA-256）が見られること・実行環境の扱い・自動起動の意味も入る（#954）。区画「モデル」の「?」の末尾には、生成テスト画面へのリンク（`mm-open-gentest`。リンクはパネルに置いてよい。§9.3）も入る（#1100）。**h1 の下の説明は動かさない**（h1 に「?」は付けない。オーナーの決定） | h1・h1 の下の説明・各区画の h2・操作・状態・結果・エラー |
+| モデルマネージャー（[model-manager-screen.md](model-manager-screen.md)） | 各区画（ComfyUI エンジン・モデル・Hugging Face から導入・Hugging Face のトークン・外部の ComfyUI。「試し生成」は #1100 で廃止）の説明。ローカル音声・口パクとモデルの区画の「?」には、カードをタップすると詳細（出典・ライセンス・ファイル一覧・SHA-256）が見られること・実行環境の扱い・自動起動の意味も入る（#954）。区画「モデル」の「?」の末尾には、単発生成画面へのリンク（`mm-open-gentest`。リンクはパネルに置いてよい。§9.3）も入る（#1100）。**h1 の下の説明は動かさない**（h1 に「?」は付けない。オーナーの決定） | h1・h1 の下の説明・各区画の h2・操作・状態・結果・エラー |
 | 設定: API キーとログイン（[settings-screen-categories.md](settings-screen-categories.md)） | 「API キー」「ChatGPT でログイン」の説明（ChatGPT の公式・Codex・画像のカードの長い説明は、#1005 から「?」ではなくカードの「詳細」のモーダル） | h3・カードの名前・状態・要約・操作 |
 | 設定: テキスト生成（LLM） | 分類の説明、反映の補足（次の呼び出しから使われる・再起動で反映される設定）、ChatGPT プランの長文（`llm-chatgpt-note`） | 「保存した割り当ては、次の呼び出しからすぐ使われます」（操作の前提。`llm-apply-note`）・固定・エラー・結果・表 |
 | 設定: 画像・動画モデル | 分類の説明（`models.json` の保存先を含む）、「画像モデル（用途ごと）」「動画モデル（Quality Policy ごと）」の説明 | h2・h3・表 |
 | 設定: ローカル・代替モデル | 分類の説明（`local.Description`） | h2・固定の注意・接続先のカード・エラー |
 | 設定: MCP サーバー | 分類の説明（`mcp.Description`） | h2・待ち受け先・トークンの表・エラー |
 | 設定: 概要 | 分類の説明 | h2・カード（各分類の状態） |
-| 生成テスト（[gentest-screen.md](gentest-screen.md)） | （Issue #977 ステージ 2: かんたんのプロンプトの見出しにも「プロンプトのウェイト」の「?」を足した。書き方とボタンの使い方だけで、モデルごとの効き方は語を選んだときのバーに出る。[gentest-tiers.md](gentest-tiers.md) §4）各ページのリード文（h1 の下）。作成フォームでは、モデル・プロンプト・入力画像の区画の説明、モデルごとの性質（シード・ネガティブ・参照画像）と選べない理由、パラメーター・見積り・実行の補足（Issue #906） | h1・モデルのカード（名前・出どころ・単価・選べないバッジ）・フォーム・結果・エラー |
+| 単発生成（[gentest-screen.md](gentest-screen.md)） | （Issue #977 ステージ 2: かんたんのプロンプトの見出しにも「プロンプトのウェイト」の「?」を足した。書き方とボタンの使い方だけで、モデルごとの効き方は語を選んだときのバーに出る。[gentest-tiers.md](gentest-tiers.md) §4）各ページのリード文（h1 の下）。作成フォームでは、モデル・プロンプト・入力画像の区画の説明、モデルごとの性質（シード・ネガティブ・参照画像）と選べない理由、パラメーター・見積り・実行の補足（Issue #906） | h1・モデルのカード（名前・出どころ・単価・選べないバッジ）・フォーム・結果・エラー |
 | プロジェクトの設定 | Production Template・Quality Policy・ディスク・Brand / Safety Constraints・Brand Templates・プロジェクトバンドルの区画の説明 | h2・フォーム・状態・結果 |
 
 初回ガイド（`organisms/onboarding/`。[onboarding-screen.md](onboarding-screen.md)）は #866 の対象外で、変えない。ただし「API キーとログイン」の区画（`credentials.Section`・`chatgpt.SectionIf`）を共有しているため、そこに入る「?」は初回ガイドにも出る（同じ部品・同じ動き。§9）。

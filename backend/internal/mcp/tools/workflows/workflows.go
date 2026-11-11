@@ -118,7 +118,7 @@ type Settings struct {
 	SizeMultiple int                `json:"size_multiple,omitempty" jsonschema:"幅・高さを丸める倍数（省略: 16）"`
 	Video        *VideoCapabilities `json:"video,omitempty" jsonschema:"動画: 長さと解像度。省略すると既定（3・4・5 秒、480p・720p）"`
 	// ExposedInputs are the inputs the generation test screen offers as fields of their own.
-	ExposedInputs []exposed.Input `json:"exposed_inputs,omitempty" jsonschema:"画像: 画面に出す値（ノードの入力。生成テストのこだわりに入力欄として出て、リクエストの exposed に key <ノード ID>.<入力名> で値を渡せる）。割り当てが使っている入力・ほかのノードがつないでいる入力は選べない"`
+	ExposedInputs []exposed.Input `json:"exposed_inputs,omitempty" jsonschema:"画像: 画面に出す値（ノードの入力。単発生成のこだわりに入力欄として出て、リクエストの exposed に key <ノード ID>.<入力名> で値を渡せる）。割り当てが使っている入力・ほかのノードがつないでいる入力は選べない"`
 }
 
 func settingsOf(s localcfg.WorkflowSpec) Settings {

@@ -102,6 +102,16 @@ func WithClock(now func() time.Time) Option {
 	return func(d *modelmanager.Deps, _ *Rig) { d.Now = now }
 }
 
+// EngineVersion makes the catalog pin that version of the engine (an engine installed under another version is the one to update).
+func EngineVersion(v string) Option {
+	return func(d *modelmanager.Deps, _ *Rig) { d.Catalog.Engine.Version = v }
+}
+
+// WithLayout makes the Service the one of that install directory: it reads the record of what is installed there, as the app does when it starts again.
+func WithLayout(l store.Layout) Option {
+	return func(d *modelmanager.Deps, r *Rig) { d.Layout, r.Layout = l, l }
+}
+
 // NotWindows makes the Service one of an OS without the bundled engine.
 func NotWindows() Option { return func(d *modelmanager.Deps, _ *Rig) { d.Platform = "linux" } }
 

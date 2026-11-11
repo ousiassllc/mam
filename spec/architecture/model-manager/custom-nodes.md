@@ -36,7 +36,7 @@
 | `controlnet-aux`（Fannovel16/comfyui_controlnet_aux） | **導入しない**（`install_blocked`） | `a587a4c1…` | Apache-2.0 | 不明 | opencv・scikit-image・mediapipe・onnxruntime などが同梱の Python に無く、mam は pip を実行しない（§5.1）。さらに、実行時に Hugging Face から前処理のモデルを取得し、その重みのライセンスが `lllyasviel/Annotators` は `other`、Depth-Anything-V2-Large は CC-BY-NC-4.0 で、商用利用の可否が確かめられない（`commercial: unknown`）。**Canny は mam の中で作る**（§5.2）ので、導入しなくても写真から制御画像を作れる。ポーズ（OpenPose・DWPose）・深度は重みが要り、非商用／不明のため作らない |
 | `pulid-flux-chroma`（PaoloC68/ComfyUI-PuLID-Flux-Chroma。#960） | **導入しない**（`install_blocked`。理由は §5.3） | `52dc5068…`（アーカイブ SHA-256 `48d93b51…`、4,490,131 B、展開後 4,822,332 B） | LICENSE は Apache-2.0 の全文（著作権者の欄は雛形のまま）、README は「元の MIT License を引き継ぐ」で食い違う | 不明 | 4 クラス（`PulidFluxModelLoader`・`PulidFluxInsightFaceLoader`・`PulidFluxEvaClipLoader`・`ApplyPulidFlux`）。insightface・facexlib・onnxruntime・timm・ftfy・regex が同梱の Python に無く、mam は pip を実行しない（§5.1）。InsightFace antelopev2 の重みは非商用の研究用途のみで、同梱も自動の取得もしない（§5.3）。実行時に facexlib・EVA02-CLIP の重みを固定・検証なしで取得する。FLUX・Chroma に参照の顔の identity を足すが、**テンプレートは作らない**（同梱の Chroma1-HD での動作は未確認）。顔の identity は、Qwen-Image の編集モデルの `face` の役割（#960）で足りる |
 | `vnccs-utils`（AHEKOT/ComfyUI_VNCCS_Utils） | **導入しない**（`install_blocked`。理由は §5.4） | `334eee54…`（アーカイブ SHA-256 `cc5567fc…`、61,515,840 B、展開後 79,266,802 B、832 ファイル） | MIT（`LICENSE`。取り込んだ ComfyUI-Krea2Edit は Apache-2.0） | 不明 | PoseStudio（`VNCCS_PoseStudio`）はブラウザの画面が `vnccs_req_pose_sync` でポーズを返すのを最長 150 秒待つ作りで、API だけで流す mam のグラフでは動かない（`pose_data` は画面のウィジェットが書く JSON）。`pose_image` を渡す経路（SAM 3D）も画面の取り込みを待つ（§5.4）。さらに、実行時に `huggingface_hub` で Hugging Face からポーズ集（`MIUProject/VNCCS_PoseLibrary_Main`・`Totemistyk/General_Poses_PoseStudio`。画面からの要求で自動更新）・モデルを取得し、`revision` を固定していない箇所がある（mam の固定・SHA-256 検証の方針に合わない）。同梱の Python に cv2・huggingface_hub・omegaconf・yacs・roma・timm・pytorch_lightning・color_matcher・dynamicprompts が無く、mam は pip を実行しない（import 時に要るのは torch・numpy・PIL と ComfyUI 本体だけ）。画面は esm.sh から three・ag-psd を読む。実機の `/object_info` は未確認（入出力は `__init__.py` の `INPUT_TYPES` から読んだ: 必須 `pose_data`、省略可 `pose_image`・`camera_prompt`・`animation_image_batch`、出力 `images`・`lighting_prompt`）。**テンプレートは作らない**。Qwen-Image 2.1 のポーズは、ポーズ集（Shisei）の画像を `pose` の役割の参照として渡し、LoRA（`qwen-image-21-vnccs-pose`）を重ねる方法で足りる（[../gentest/gentest.md](../gentest/gentest.md) §6） |
-| `comfyui-gguf`（leejet/ComfyUI-GGUF。city96/ComfyUI-GGUF の fork。#1016） | **導入しない**（`install_blocked`。理由は §5.5） | `373048b8…`（アーカイブ SHA-256 `692c3670…7169`、38,557 B、展開後 122,247 B） | Apache-2.0 | 可（コードだけ。読み込む GGUF の重みは別のライセンス） | 6 クラス（`UnetLoaderGGUF`・`UnetLoaderGGUFAdvanced`・`CLIPLoaderGGUF` ほか）。import 時に要る `gguf` が同梱の Python に無く、mam は pip を実行しない（§5.1）。ネットワーク・subprocess・`exec`・pickle の読み込みは無い。Qwen-Image 2.1・Krea 2 の GGUF を読めるのは fork だけ（本家は architecture を持たない）。**このノードを要る GGUF のモデルはカタログに載せてあり**（Qwen-Image-2.1-Uncensored の Q4_K_M・Q8_0。`requires_nodes: ["comfyui-gguf"]`）、ノードが導入できるまで導入も選択もできない（理由は画面・MCP・生成テストの一覧に出る。§5.5・§6） |
+| `comfyui-gguf`（leejet/ComfyUI-GGUF。city96/ComfyUI-GGUF の fork。#1016） | **導入しない**（`install_blocked`。理由は §5.5） | `373048b8…`（アーカイブ SHA-256 `692c3670…7169`、38,557 B、展開後 122,247 B） | Apache-2.0 | 可（コードだけ。読み込む GGUF の重みは別のライセンス） | 6 クラス（`UnetLoaderGGUF`・`UnetLoaderGGUFAdvanced`・`CLIPLoaderGGUF` ほか）。import 時に要る `gguf` が同梱の Python に無く、mam は pip を実行しない（§5.1）。ネットワーク・subprocess・`exec`・pickle の読み込みは無い。Qwen-Image 2.1・Krea 2 の GGUF を読めるのは fork だけ（本家は architecture を持たない）。**このノードを要る GGUF のモデルはカタログに載せてあり**（Qwen-Image-2.1-Uncensored の Q4_K_M・Q8_0。`requires_nodes: ["comfyui-gguf"]`）、ノードが導入できるまで導入も選択もできない（理由は画面・MCP・単発生成の一覧に出る。§5.5・§6） |
 
 数値の出典（2026-11-03 に GitHub・Hugging Face で取得）: アーカイブの SHA-256 は github.com と codeload.github.com の両方で同じ値を確かめた。
 
@@ -89,7 +89,7 @@
 - **どこで行うか**: ワークフローの `reference_preprocess`（`localcfg.Workflow.ReferencePreprocess`。今は `canny` だけ。`controlnet` のモードだけに付けられ、`imgprep.Kinds` の外は `Validate` が拒否する）が付いたテンプレートでは、ComfyUI の `/upload/image` に送る**前**に、参照画像（PNG・JPEG・WebP）から制御画像（白い線・黒地の 8 ビットのグレーの PNG）を作って差し替える（`comfyui/graph.go` の `upload`）。長辺 1024 px を超える画像は縮小してから検出する（ControlNet は制御画像を生成のサイズに合わせる）。画像として読めないもの・6,700 万画素を超えるものは 422 で断る。
 - **すでにエッジ画像のもの**（黒と白だけで、白が半分以下: 利用者が作った制御画像）は**そのまま**渡す。二重に輪郭を取ると線が倍になるため。黒い線の白地の絵は、写真と同じく輪郭を取る。
 - **アルゴリズム**: ガウスぼかし（σ=1）→ Sobel（|gx|+|gy|）→ 勾配方向の非極大抑制 → しきい値 100・200 のヒステリシス（`controlnet_aux` の `CannyEdgePreprocessor` の既定と同じしきい値）。OpenCV の実装とは丸めが違い、画素単位では一致しない（ControlNet の制御画像としては同じ役目）。
-- **対象**: テンプレート `txt2img-sdxl-controlnet`（`reference_preprocess: "canny"`）。これにより、画面・MCP の生成テストの参照画像に**写真をそのまま渡せる**（従来は線画を自分で用意する必要があった）。
+- **対象**: テンプレート `txt2img-sdxl-controlnet`（`reference_preprocess: "canny"`）。これにより、画面・MCP の単発生成の参照画像に**写真をそのまま渡せる**（従来は線画を自分で用意する必要があった）。
 
 ### 5.3 PuLID（Issue #997）を導入できるようにしない理由
 
@@ -113,7 +113,7 @@ PuLID-Flux-Chroma を mam から導入できる経路は、**作らない**。�
 ファイルを書いて画面を迂回する方法（`temp/vnccs_debug_*.json` に `captured_images` を書く）は、ノードの内部の取り決めに頼った非公式の経路で、ノードの更新で壊れ、導入できない（§5.1）うえ、人形の絵そのものを mam が作れるわけではないので、**採らない**。
 
 - **ルート③（人形の画像でポーズを写す）**: ノード無しで足りる。Shisei のポーズ集（#986。`pose` の役割）の人形の画像 + LoRA（`qwen-image-21-vnccs-pose`。#985・#984）。
-- **ルート④（PoseStudio で人形を自分で動かす）**: ブラウザの画面が要るため、mam からは提供しない。ComfyUI の画面で PoseStudio を使って作った画像を、生成テストの参照画像（`pose` の役割）として渡す運用は、今のまま可能。
+- **ルート④（PoseStudio で人形を自分で動かす）**: ブラウザの画面が要るため、mam からは提供しない。ComfyUI の画面で PoseStudio を使って作った画像を、単発生成の参照画像（`pose` の役割）として渡す運用は、今のまま可能。
 - **実行時の自動取得の revision・SHA-256 の固定**: ノードのソースを読んだ範囲では、ポーズ集の取得（`api.repo_info`・`hf_hub_download`）に `revision` が無く、manifest の `json_sha256`・`preview_sha256` は取得元のリポジトリが持つ値で、mam が固定した値ではない（`factory3d`・SAM 3D の重みだけが `revision` を固定している）。ノードのコードを書き換えて固定すると、封印したツリーのダイジェスト（§3）が変わり、許可リストの固定（コミット・SHA-256）と合わなくなる。導入しないので、この固定は行わない。将来導入するときの前提は、①画面なしでポーズを渡す公式の経路がノードに入ること、②ポーズ集の取得を `HF_HUB_OFFLINE=1` で止め、mam がポーズ集のファイルを固定して置くこと。
 
 ### 5.5 ComfyUI-GGUF: 導入できない理由、city96 版と leejet 版、GGUF のモデル（Issue #1016）
@@ -161,15 +161,15 @@ NSFW-Wan-UMT5-XXL-V2（`rzgar/NSFW-Wan-UMT5-XXL-V2`、`vocab_size` 257067）は�
 ## 6. ノードを必要とするモデル（`requires_nodes`）
 
 - テンプレートの `model.workflow.requires_nodes`（`localcfg.Workflow.RequiresNodes`）に、必要な許可リストの id を書く。テンプレートの全クラスは、コアのノードか、その `requires_nodes` のノードの `node_classes` でなければならない（`localcfg_test.go`）。
-- `nodegate.Check` が `InstallModel` の入口で、ノードが読み込まれていなければ `InvalidError`（「追加ノード「…」が導入されていないため使えません。モデルマネージャーの「追加ノード」の節…」）で拒否し、ジョブを作らない。同じ理由で、生成テストの一覧（`gentest/modelcatalog`）はそのモデルを `Available=false`・`Unavailable=missing_node` にして、メッセージを付ける。**ノードが `install_blocked`（mam が導入できない。ComfyUI-GGUF など）のときは、「導入してください」という案内ではなく、導入できない理由（`install_blocked` の文）を同じ位置に出す**（`nodegate.Reason`。画面の各モデルのカード・`install_model` の拒否〔MCP〕・生成テストの一覧がすべて同じ文を使う）。`install_blocked` のノードを `requires_nodes` に書いたテンプレートのモデル（GGUF の 2 件）は、ノードが導入できるようになるまで、導入も選択もできない（`TestAModelThatNeedsTheBlockedGGUFNodeIsNeitherInstalledNorChosen`）。**同梱エンジン（`bundled-comfyui`）のモデルだけが対象**で、外部の ComfyUI は自分のノードを持つので止めない。
-- 画面のモデルのカードには「追加ノードが必要」のバッジを出し、導入ボタンを押すと理由と対処のポップアップが開く（導入は走らない。#1118）。モデル選択のモーダル・MCP の `list_model_catalog`／`get_catalog_model`（`available`・`message`）・生成テストの一覧にも同じ理由（`nodegate.Reason`。GGUF なら「導入できないため使えません…」）を出し、既定の「モデルマネージャーで導入します」（行き止まりの案内）にはしない（Issue #1016）。
+- `nodegate.Check` が `InstallModel` の入口で、ノードが読み込まれていなければ `InvalidError`（「追加ノード「…」が導入されていないため使えません。モデルマネージャーの「追加ノード」の節…」）で拒否し、ジョブを作らない。同じ理由で、単発生成の一覧（`gentest/modelcatalog`）はそのモデルを `Available=false`・`Unavailable=missing_node` にして、メッセージを付ける。**ノードが `install_blocked`（mam が導入できない。ComfyUI-GGUF など）のときは、「導入してください」という案内ではなく、導入できない理由（`install_blocked` の文）を同じ位置に出す**（`nodegate.Reason`。画面の各モデルのカード・`install_model` の拒否〔MCP〕・単発生成の一覧がすべて同じ文を使う）。`install_blocked` のノードを `requires_nodes` に書いたテンプレートのモデル（GGUF の 2 件）は、ノードが導入できるようになるまで、導入も選択もできない（`TestAModelThatNeedsTheBlockedGGUFNodeIsNeitherInstalledNorChosen`）。**同梱エンジン（`bundled-comfyui`）のモデルだけが対象**で、外部の ComfyUI は自分のノードを持つので止めない。
+- 画面のモデルのカードには「追加ノードが必要」のバッジを出し、導入ボタンを押すと理由と対処のポップアップが開く（導入は走らない。#1118）。モデル選択のモーダル・MCP の `list_model_catalog`／`get_catalog_model`（`available`・`message`）・単発生成の一覧にも同じ理由（`nodegate.Reason`。GGUF なら「導入できないため使えません…」）を出し、既定の「モデルマネージャーで導入します」（行き止まりの案内）にはしない（Issue #1016）。
 
 ### 6.1 コアのノードだけの ControlNet と IP-Adapter
 
 - ControlNet（コアのノード）: モデル `sdxl-controlnet-canny`（`xinsir/controlnet-canny-sdxl-1.0`、Apache-2.0）。テンプレート `txt2img-sdxl-controlnet`（`LoadImage` → `ControlNetApplyAdvanced`）。**追加ノードは要らない**。参照画像は**写真でも絵でもよい**: テンプレートの `reference_preprocess: "canny"` で、mam が Go で Canny のエッジ画像を作ってから渡す（§5.2。すでにエッジ画像ならそのまま使う）。
 - ControlNet の深度・法線（Issue #1020）: モデル `sdxl-controlnet-depth`（`xinsir/controlnet-depth-sdxl-1.0`）・`sdxl-controlnet-normal`（`xinsir/controlnet-union-sdxl-1.0`。Apache-2.0）。テンプレート `txt2img-sdxl-controlnet-depth`・`-normal`（`reference_preprocess` なし。法線は `ControlNetLoader` → `SetUnionControlNetType`〔コアのノード〕→ `ControlNetApplyAdvanced`）。追加ノードは要らない。ポーズ集（Shisei）の深度・法線マップを参照画像に渡す。
 - IP-Adapter: モデル `sdxl-ipadapter-plus`（`h94/IP-Adapter` の `ip-adapter-plus_sdxl_vit-h` と CLIP ViT-H の画像エンコーダー）。テンプレート `txt2img-sdxl-ipadapter`（`requires_nodes: ["ipadapter-plus"]`）。
-- 参照画像のモード `controlnet`・`ipadapter`（`localcfg.ModeControlNet`・`ModeIPAdapter`）: 参照画像をちょうど 1 枚要求し（ない実行は、制御画像／IP-Adapter の参照画像が要ると言って拒否）、参照の強さ（`reference_strength`、既定 0.7）がノードの強さに入る。生成テストの参照画像の経路（[../gentest/gentest.md](../gentest/gentest.md)）をそのまま使う。
+- 参照画像のモード `controlnet`・`ipadapter`（`localcfg.ModeControlNet`・`ModeIPAdapter`）: 参照画像をちょうど 1 枚要求し（ない実行は、制御画像／IP-Adapter の参照画像が要ると言って拒否）、参照の強さ（`reference_strength`、既定 0.7）がノードの強さに入る。単発生成の参照画像の経路（[../gentest/gentest.md](../gentest/gentest.md)）をそのまま使う。
 
 ## 7. 画面・MCP
 
@@ -188,7 +188,7 @@ NSFW-Wan-UMT5-XXL-V2（`rzgar/NSFW-Wan-UMT5-XXL-V2`、`vocab_size` 257067）は�
 | 同意の文面 | `service/modelnodes/view.go` | 注意事項を変えたら `NoticeVersion` を変える（改めて同意が要る） |
 | 仕様 | このファイルの §2.1 の表と [model-manager.md](model-manager.md) §4.2、[model-manager.changelog.md](model-manager.changelog.md) | 足したノードの行を足す |
 
-カタログのテスト（`catalog.Validate`）と `nodecat.Validate` は、足したものに足りない項目があると失敗する。画面・MCP・`InstallModel` の拒否・生成テストの一覧のガードは、`requires_nodes` を書けば自動で効く。
+カタログのテスト（`catalog.Validate`）と `nodecat.Validate` は、足したものに足りない項目があると失敗する。画面・MCP・`InstallModel` の拒否・単発生成の一覧のガードは、`requires_nodes` を書けば自動で効く。
 
 ## 9. 未確認（実機が要る）
 

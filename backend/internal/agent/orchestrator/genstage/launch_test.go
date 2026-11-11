@@ -169,6 +169,24 @@ func TestAutoStart_TheBudgetCeilingStopsTheStartWithOneEscalationAndNothingFurth
 	assert.Len(t, r.chat.escalations, 1)
 }
 
+// A plan that passes the ceiling before anything was started is held by the Escalation too: the Project is AUTO, so the Scene / Shot screen is not told that it is manual.
+func TestAutoStart_APlanOverTheCeilingHeldBeforeAnyStartIsStillAnAutoProject(t *testing.T) {
+	t.Parallel()
+	r := newRig(t)
+	r.prices.pricesKnown()
+	id := r.planned(domain.ConfirmFullAuto)
+	require.NoError(t, r.policies.SetBudget(context.Background(), id, new(0.5), nil))
+
+	r.handle(id)
+
+	require.Len(t, r.chat.escalations, 1, "the plan costs more than the ceiling: one Escalation")
+	assert.Empty(t, r.gen.started(), "nothing was started")
+	assert.Equal(t, domain.StateAwaitingApproval, r.project1(id).State)
+	phase, _, err := r.gate.Phase(context.Background(), r.project1(id))
+	require.NoError(t, err)
+	assert.Equal(t, mainline.PhaseAuto, phase)
+}
+
 // Cancelling while the Gate starts (the job is cancelled, the process stops) starts nothing more and gives the claim back, so that the next look starts the Shot, once.
 func TestAutoStart_CancellationStopsTheStartAndReleasesTheClaim(t *testing.T) {
 	t.Parallel()

@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
@@ -215,4 +216,36 @@ func TestRoughCut_AFixedShotFollowsItsNewSelectedTake(t *testing.T) {
 	for _, finding := range judged.Timeline.Judge.Findings {
 		assert.NotContains(t, finding.Issue, "採用 Take が編集後に変わっています")
 	}
+}
+
+func (f genFixture) execSQL(t *testing.T, q string, args ...any) {
+	t.Helper()
+	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, q, args...)
+		return err
+	}))
+}
+
+// selectTakeOf makes the newest Take of the Shot its Selected Take.
+func (f genFixture) selectTakeOf(t *testing.T, shotID string) {
+	t.Helper()
+	var takeID string
+	require.NoError(t, f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? ORDER BY t.rowid DESC LIMIT 1`, shotID).Scan(&takeID))
+	_, err := f.svc.Takes.Select(context.Background(), takeID)
+	require.NoError(t, err)
+}
+
+// waitEditingWorkerIdle waits until the worker behind ResumeEditing (woken by a Take selection or a
+// finished job) is idle: it holds the editing stage while it runs, so a stage called meanwhile fails with ErrStageBusy (#608).
+func (f genFixture) waitEditingWorkerIdle(t *testing.T) {
+	t.Helper()
+	require.Eventually(t, f.svc.Editor.EditingWorkerIdle, 15*time.Second, 5*time.Millisecond, "the editing worker goes back to waiting")
+}
+
+// waitEditingIdle waits until no editing stage, AUTO chain or ResumeEditing run is going on. A Take selection wakes
+// the worker before it returns, so what the selection started has settled once this returns, and a state asserted
+// then is the settled one (not a state the run has not reached yet).
+func (f genFixture) waitEditingIdle(t *testing.T) {
+	t.Helper()
+	require.Eventually(t, func() bool { return !f.svc.Editor.Busy() }, 15*time.Second, 5*time.Millisecond, "the editing stage, the AUTO chain and the worker are idle")
 }

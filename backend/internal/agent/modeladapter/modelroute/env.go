@@ -7,6 +7,7 @@ package modelroute
 import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
@@ -41,7 +42,7 @@ func ForAdapter(a *modeladapter.Adapter) Env {
 			if av, ok := a.Usable.Availability(string(m)); ok {
 				return av
 			}
-			return fromAdapter(a.Unavailable(m), m)
+			return fromAdapter(a, m)
 		},
 		Adult:  func(m domain.ModelName) bool { return a.Usable.Adult(string(m)) },
 		Pinned: a.Usable.Pinned(), Refuse: a.Gate.Check,
@@ -100,18 +101,24 @@ func unusable(reason modelfilter.Reason, msg string, m domain.ModelName) modelfi
 }
 
 // fromAdapter words the Adapter's own reason (Adapter.Unavailable) for a model: it is what is known without the application's judgement.
-func fromAdapter(reason string, m domain.ModelName) modelfilter.Availability {
-	switch reason {
+func fromAdapter(a *modeladapter.Adapter, m domain.ModelName) modelfilter.Availability {
+	cfg := a.Config()
+	switch reason := a.Unavailable(m); reason {
 	case "":
 		return modelfilter.Usable()
 	case domain.ExcludedCircuitOpen:
 		return unusable(modelfilter.ReasonCircuitOpen, "ベンダーの呼び出しが続けて失敗したため、しばらく止めています", m)
+	case domain.ExcludedProvider:
+		return unusable(modelfilter.ReasonProvider, cfg.ProviderRefusal(m), m)
 	}
 	switch modelreg.RouteOf(string(m)) {
 	case modelreg.RouteSubscription:
 		return unusable(modelfilter.ReasonNotSignedIn, "ChatGPT にログインしていません（設定の「API キーとログイン」）", m)
 	case modelreg.RouteLocal:
 		return unusable(modelfilter.ReasonNotInstalled, "ローカルのモデルが使える状態ではありません（モデル管理）", m)
+	}
+	if label := viaprovider.KeyLabel(cfg.VideoProvider, m); label != "" {
+		return unusable(modelfilter.ReasonNoKey, label+" の API キーが登録されていません（設定の「API キー」）", m)
 	}
 	return unusable(modelfilter.ReasonNoKey, "API キーが登録されていません（設定の「API キー」）", m)
 }

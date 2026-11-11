@@ -96,11 +96,11 @@ func TestSetMode_DirectorHoldsThePipelineAndAutoResumesIt(t *testing.T) {
 	f.waitIdle(t, p.ID)
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, domain.StateDraft, f.state(t, p.ID), "DIRECTOR MODE: the AI does not go on by itself")
-	assert.Zero(t, f.llm.count(llm.AgentProducer))
+	assert.Zero(t, f.llm.Count(llm.AgentProducer))
 	_, err = f.svc.Director.SetMode(ctx, p.ID, domain.ModeAuto)
 	require.NoError(t, err)
 	f.waitState(t, p.ID, domain.StateAwaitingApproval)
-	assert.Equal(t, 1, f.llm.count(llm.AgentProducer), "back in AUTO the following stages resume")
+	assert.Equal(t, 1, f.llm.Count(llm.AgentProducer), "back in AUTO the following stages resume")
 }
 
 func TestSetShotLock_SetsEveryParameterAndFreezesTheCurrentVideoModel(t *testing.T) {

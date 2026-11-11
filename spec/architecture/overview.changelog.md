@@ -99,3 +99,4 @@
 | 1.92 | 2026-11-03 | §5 の `.github/workflows` に、固定した URL を上流と照合する `upstream-check.yml` を足した | Issue #937 |
 | 1.93 | 2026-11-06 | §5 の `scripts/*_test.sh` に `fetch-onnxruntime/extract_test.sh`（ONNX Runtime の取得の成功経路と展開手段のフォールバック）を足した | Issue #1073 |
 | 1.94 | 2026-11-08 | §5 の `briefing/` に Brief の規則（Subject・上書き・推奨値・確認）を、`chatbrief/` にテスト専用でなくなったこと（`Planner`）を、`organisms/` の `brief_form` が `briefform/` になったことを足した | Issue #1114 |
+| 1.95 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

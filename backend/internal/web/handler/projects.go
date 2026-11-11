@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/lorafile"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -20,8 +21,10 @@ import (
 // maxUploadRequestBytes caps one multipart request: all attachments plus the text.
 const maxUploadRequestBytes = service.MaxAttachments*service.MaxVideoBytes + 1<<20
 
-// Projects renders the project list and the new-project form (GET / and GET /projects).
-// HTMX requests get the list fragment only.
+// maxMessageRequestBytes caps the multipart request of a chat message: a LoRA (up to lorafile.MaxBytes, #1140) may come with it; see spec/components/chat-settings-operations.md §4.5.
+const maxMessageRequestBytes = lorafile.MaxBytes + maxUploadRequestBytes
+
+// Projects renders the project list and the new-project form (GET / and GET /projects). HTMX requests get the list fragment only.
 func Projects(svc *service.ProjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		projects, err := svc.List(c.Request.Context())
@@ -46,7 +49,7 @@ func Projects(svc *service.ProjectService) gin.HandlerFunc {
 // browser is sent to the new Chat Workspace; an invalid input re-renders the form with the error.
 func CreateProject(svc *service.ProjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		content, uploads, err := readMessageForm(c)
+		content, uploads, err := readMessageForm(c, maxUploadRequestBytes)
 		if err == nil {
 			var project domain.Project
 			if project, err = svc.Create(c.Request.Context(), service.CreateProjectInput{Content: content, Uploads: uploads, BrandTemplateID: c.PostForm("brand_template_id")}); err == nil {
@@ -61,9 +64,9 @@ func CreateProject(svc *service.ProjectService) gin.HandlerFunc {
 	}
 }
 
-// readMessageForm reads the content and the attachments of a multipart message form.
-func readMessageForm(c *gin.Context) (string, []service.Upload, error) {
-	form, err := readMultipart(c, maxUploadRequestBytes)
+// readMessageForm reads the content and the attachments of a multipart message form of at most limit bytes.
+func readMessageForm(c *gin.Context, limit int64) (string, []service.Upload, error) {
+	form, err := readMultipart(c, limit)
 	if err != nil {
 		return "", nil, err
 	}
@@ -143,8 +146,7 @@ func briefFormData(view service.BriefView, invalid *service.ValidationError, sav
 	return d
 }
 
-// SetConfirmationLevel changes the Confirmation Level (PUT /projects/:id/confirmation-level)
-// and returns the refreshed control.
+// SetConfirmationLevel changes the Confirmation Level (PUT /projects/:id/confirmation-level) and returns the refreshed control.
 func SetConfirmationLevel(svc *service.ProjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var checkpoints []domain.Checkpoint

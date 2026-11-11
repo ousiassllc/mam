@@ -1,6 +1,6 @@
 # エンドポイント: ジョブ一覧
 
-[endpoints.md](endpoints.md) の続き（Issue #980）。裏で動く作業（モデルの導入・生成テスト・Shot の生成・Judge・Repair・企画・動画の書き出し・音声・Editor の判定・ワークフローの実行・Codex の導入・ffmpeg のダウンロード）の、いま動いているものと直近に終わったものを見る画面。意味・表示・a11y は [../components/jobs-screen.md](../components/jobs-screen.md)。**読み取り専用**で、ジョブを変更するルートは無い（キャンセルは導入・生成テストそれぞれの画面のルート）。
+[endpoints.md](endpoints.md) の続き（Issue #980）。裏で動く作業（モデルの導入・単発生成・Shot の生成・Judge・Repair・企画・動画の書き出し・音声・Editor の判定・ワークフローの実行・Codex の導入・ffmpeg のダウンロード）の、いま動いているものと直近に終わったものを見る画面。意味・表示・a11y は [../components/jobs-screen.md](../components/jobs-screen.md)。**読み取り専用**で、ジョブを変更するルートは無い（キャンセルは導入・単発生成それぞれの画面のルート）。
 
 | メソッド | パス | 内容 |
 |---|---|---|
@@ -20,3 +20,4 @@
 | 1.1 | 2026-11-03 | 読む対象に、`job` の行を持たない 6 種の作業のメモリ上の記録を足した。ルートは変わらない | Issue #1019 |
 | 1.2 | 2026-11-06 | 導入のジョブの行の行き先を、`target` に応じたモデルマネージャーの分類ページにすると決めた（ルートは変わらない。状態は仕様のみ） | Issue #1101 |
 | 1.3 | 2026-11-07 | 導入のジョブの行の行き先（`joblist.Dest.Category`）を実装した。`engine`→`comfyui`・`model:`→`image-video`・`runtime:`→`local-runtimes`・`node:`→`custom-nodes`・`hf:`→`hf-external`、ほかは概要 | Issue #1101 |
+| 1.4 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

@@ -4,7 +4,7 @@
 
 これは**この PC の中への取り込み**（ローカルのコピー）で、ネット上への公開・アップロードではない。Civitai との連携・ログイン・ダウンロードの自動化は範囲外。取り込みと生成は別で、**取り込んだだけでは生成は始まらない**（ジョブも作らない）。
 
-実装: 検査 `backend/internal/modelmgr/lorafile`・取り込み `backend/internal/service/modelmanager/loraimport`（`Service.LoRAs`）・画面 `web/handler/modelmgr/loraimport`＋`web/organisms/modelmgr/loraimport`・生成テストの選択 `web/molecules/loraselect`＋`static/src/components/gentest-lora`・MCP `mcp/tools/modelmgr/loratools`。
+実装: 検査 `backend/internal/modelmgr/lorafile`・取り込み `backend/internal/service/modelmanager/loraimport`（`Service.LoRAs`）・画面 `web/handler/modelmgr/loraimport`＋`web/organisms/modelmgr/loraimport`・単発生成の選択 `web/molecules/loraselect`＋`static/src/components/gentest-lora`・MCP `mcp/tools/modelmgr/loratools`。
 
 ## 1. 流れ（2 段）
 
@@ -51,19 +51,19 @@
 ### 4.1 ライセンスと `commercial_only`
 
 - 入力は任意。**未入力は「不明」**（商用利用の答え `unknown`）。**勝手に商用OKにしない**: 利用者が選べる答えは「不明」「条件つき（配布元で商用可と確認した、利用者の自己申告）」「商用NG」で、`yes`（商用OK）は**選べない**（HF の `FromHF` と同じく、自己申告だけでは商用OKにしない。`modellicense.FromUser`）。
-- 設定「商用OKのモデルだけを使う」（`commercial_only`、[model-license.md](../model-license.md) §5）との整合: この設定は**一覧を絞るだけで、生成そのものは止めない**。LoRA の選択（生成テストの「LoRA と強さ」）は、設定がオンのとき、商用OKと確認できていない LoRA を選ぶと**警告を出す**（選択肢からは外さない。手でフォルダに置いた LoRA はもともと答えが無く、外すと使えなくなるため。生成は止めない）。LoRA の答えはモデルの答え（`commercial`）に合成しない（LoRA は別のファイルとして選ぶ）。
+- 設定「商用OKのモデルだけを使う」（`commercial_only`、[model-license.md](../model-license.md) §5）との整合: この設定は**一覧を絞るだけで、生成そのものは止めない**。LoRA の選択（単発生成の「LoRA と強さ」）は、設定がオンのとき、商用OKと確認できていない LoRA を選ぶと**警告を出す**（選択肢からは外さない。手でフォルダに置いた LoRA はもともと答えが無く、外すと使えなくなるため。生成は止めない）。LoRA の答えはモデルの答え（`commercial`）に合成しない（LoRA は別のファイルとして選ぶ）。
 
 ## 5. 記録（`state.json` の `local_loras`、鍵 `models/loras/<名前>`）
 
-`path`・`name`・`original_name`（選んだファイル名）・`sha256`・`size`・`base_models[]`（`lorafamily` の鍵）・`strength`（無ければ省略）・`trigger_words[]`・`license_name`・`commercial`（`""` = 不明 / `conditional` / `no`）・`added_at`。値の検査（`Meta.check`）: ベースモデルは系統の鍵だけ、強さは 0 より大きく 1 以下（生成テストの LoRA の強さの範囲）、トリガー語は §4 の上限、ライセンス名は 1 行 120 文字まで、`commercial` は上の 3 値だけ。
+`path`・`name`・`original_name`（選んだファイル名）・`sha256`・`size`・`base_models[]`（`lorafamily` の鍵）・`strength`（無ければ省略）・`trigger_words[]`・`license_name`・`commercial`（`""` = 不明 / `conditional` / `no`）・`added_at`。値の検査（`Meta.check`）: ベースモデルは系統の鍵だけ、強さは 0 より大きく 1 以下（単発生成の LoRA の強さの範囲）、トリガー語は §4 の上限、ライセンス名は 1 行 120 文字まで、`commercial` は上の 3 値だけ。
 
 - **削除**（`Delete`）は、**記録のある LoRA だけ**（ファイルと記録を消す）。記録の無いファイル（手で置いたもの・カタログのモデルのもの）は触らず `ErrNotFound`。
 - `List`（新しい順）は `present`（ファイルが実在し大きさが合う）を付ける。ファイルが消えていても記録は残り、画面は「ファイルが見つかりません」と出す。
 - 既存の「Hugging Face から導入」の記録（`user_models`）とは別の表。HF の導入・削除・一覧は変えない。
 
-## 6. 追加した LoRA を使う（生成テスト・レシピ）
+## 6. 追加した LoRA を使う（単発生成・レシピ）
 
-- 追加した LoRA は、エンジンが起動していれば `LoraLoaderModelOnly` の `lora_name` に出るので、生成テストの「LoRA と強さ」（`#gt-lora-name`。**レシピはこのフォームの値を保存する**ので同じ）の選択肢に並ぶ。選択肢の文言は、mam が追加した LoRA だけ「（商用利用の答え）」を付ける（「条件つき」「不明」など）。
+- 追加した LoRA は、エンジンが起動していれば `LoraLoaderModelOnly` の `lora_name` に出るので、単発生成の「LoRA と強さ」（`#gt-lora-name`。**レシピはこのフォームの値を保存する**ので同じ）の選択肢に並ぶ。選択肢の文言は、mam が追加した LoRA だけ「（商用利用の答え）」を付ける（「条件つき」「不明」など）。
 - **選択肢の `data-*` と、選んだ LoRA の下の注記**（`static/src/components/gentest-lora`）: mam が追加した LoRA は `data-known=true` と対応するベースモデル・推奨の強さ・トリガー語・答えを持つ。注記は「対応するベースモデル」「推奨の強さ」「トリガー語（プロンプトに入れてください）」「商用利用」を出し、**未設定は「未設定」「不明」**と書く。mam が追加していないファイル（手で置いたもの）は「未設定」の 1 行だけ。
 - **ベースモデルとの整合（警告）**: LoRA を受けるワークフローは `workflow.lora_family`（`lorafamily` の鍵。ベースのチェックポイントの系統）を持てる（Qwen-Image・FLUX.1 dev・Chroma の LoRA つきテンプレートに付けた）。選んだ LoRA の対応するベースモデルに、チェックされているモデルの系統が**含まれない**とき（両方が分かっていて違うとき）、「○○は △△ 用のモデルです。この LoRA は □□ 用のため、合わない組み合わせです（効かない・画が崩れることがあります）」と**警告する**（止めない）。LoRA のベースモデルが未設定、またはモデルが系統を言わないときは、合う・合わないを判断せず、前者は「未設定のため、選んだモデルに合うか確かめられません」と添える。モデルを選び直す・LoRA を選び直すたびに注記が更新される。
 - **推奨の強さ**: 記録に強さがあれば、LoRA を選んだとき強さのスライダーをその値にする（利用者がスライダーを動かした後は動かさない）。無ければフォームの既定のまま。
@@ -72,7 +72,8 @@
 
 - 理由: MCP にはファイルを渡す経路がある（`create_upload_ticket` が URL を返し、その URL へ multipart で 1 回送る。[mcp-tools.md](../../api/mcp-tools.md)）ので、「ファイルを渡せないから画面だけ」にはならない。#830 の方針（画面の全操作を MCP で操作できるようにする）に従い、画面の操作を対応づける。大きさの上限は画面と同じ 4 GiB（チケットの上限として `max_bytes`）。**ホストのパスを引数に取る形にはしない**（エージェントが PC 上の任意のファイルを読めてしまうため）。
 - アップロードの用途 `model_lora_import`（確認の段が無いので 1 回で追加する）、ツール `list_user_loras`・`update_user_lora`・`delete_user_lora`。入力の値と拒否は画面と同じ（同名は上書きせず `validation`、別の `name` を付けてやり直す）。**ファイルの `__metadata__` が書くベースモデルとトリガー語は、`adopt_metadata=true` を渡したときだけ記録する**（渡さなければ、与えた値だけ。強さとライセンスはどちらの場合もファイルから取らない）。商用の答えに `yes` は渡せない。
-- 生成テストの `list_generation_models` の `loras`（エンジンが持つ LoRA のファイル名）には、追加した LoRA がそのまま出る（`lora.name` に使う）。
+- 単発生成の `list_generation_models` の `loras`（エンジンが持つ LoRA のファイル名）には、追加した LoRA がそのまま出る（`lora.name` に使う）。
+- チャットからも取り込める（#1140）。チャットの添付に `.safetensors` を付けて送ると、確認カード（ファイル名・サイズ・ライセンス）の「はい」の後に、画面と同じ取り込みで追加する。LoRA は全プロジェクトで使えるので、カードにそう書く。経路と上限は [chat-settings-operations.md](../../components/chat-settings-operations.md) §4。
 
 ## 8. 未検証・範囲外
 

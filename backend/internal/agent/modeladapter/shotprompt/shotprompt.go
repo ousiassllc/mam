@@ -34,6 +34,24 @@ func Fit(body, tail string, limit int) string {
 	return textutil.TruncateRunes(strings.TrimSpace(tail), limit)
 }
 
+// FitNegative is the prompt and the negative prompt of a model that has a field for the negative prompt (the avoid list, up to negLimit characters). When the backend has no field
+// (fold: the provider writes the negative prompt into the prompt, " Avoid: ..."), the avoid list is counted in the prompt, which keeps it and the Constraints whole within promptLimit.
+func FitNegative(body, constraints string, avoid []string, promptLimit, negLimit int, fold bool) (prompt, negative string) {
+	if fold {
+		return Fit(body, constraints+AvoidSentence(avoid), promptLimit), ""
+	}
+	return Fit(body, constraints, promptLimit), textutil.TruncateRunes(strings.Join(avoid, ", "), negLimit)
+}
+
+// Fold writes the negative prompt into the prompt as an "Avoid: ..." sentence (a trailing "." of the negative prompt is not doubled); empty leaves the prompt as it is.
+func Fold(prompt, negative string) string {
+	negative = strings.TrimRight(strings.TrimSpace(negative), ". ")
+	if negative == "" {
+		return prompt
+	}
+	return prompt + AvoidSentence([]string{negative})
+}
+
 // AvoidSentence is the " Avoid: ..." sentence of a prompt without a negative prompt field.
 func AvoidSentence(avoid []string) string { return " Avoid: " + strings.Join(avoid, ", ") + "." }
 

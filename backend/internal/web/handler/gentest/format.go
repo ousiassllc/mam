@@ -161,7 +161,7 @@ func unusedText(list []record.UnusedInput) string {
 }
 
 func spendText(s record.Spend) string {
-	t := fmt.Sprintf("これまでの生成テストの合計: %s（%d 件", gtshare.USD(s.PricedUSD), s.Items)
+	t := fmt.Sprintf("これまでの単発生成の合計: %s（%d 件", gtshare.USD(s.PricedUSD), s.Items)
 	if s.UnknownItems > 0 {
 		t += fmt.Sprintf("、うち単価が分からない %d 件は含みません", s.UnknownItems)
 	}

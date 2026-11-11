@@ -35,7 +35,7 @@ type RestartOutput struct {
 func (h handlers) restart(ctx context.Context, in RestartInput) (RestartOutput, error) {
 	svc := h.r.Settings.Restart
 	if svc == nil || !svc.Available() {
-		return RestartOutput{}, unavailable("アプリの再起動")
+		return RestartOutput{}, Unavailable("アプリの再起動")
 	}
 	if !in.Confirm {
 		return RestartOutput{}, invalidInput("confirm", "再起動するには confirm: true を指定してください（確認なしでは再起動しません）")
@@ -53,7 +53,7 @@ func (h handlers) restart(ctx context.Context, in RestartInput) (RestartOutput, 
 	case errors.As(err, &busy):
 		return RestartOutput{}, &service.ConflictError{Message: busy.Error()}
 	case errors.Is(err, apprestart.ErrUnavailable):
-		return RestartOutput{}, unavailable("アプリの再起動")
+		return RestartOutput{}, Unavailable("アプリの再起動")
 	case err != nil:
 		return RestartOutput{}, err
 	}

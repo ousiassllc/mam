@@ -3,14 +3,18 @@ package molecules
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/secretform"
 )
 
 // QuestionCard asks for a missing Brief item: option buttons, "AIに任せる", or free input in the composer. A Brief question is answered by any message; the Continue question
-// is answered by a reply to it, so only it has the reply button.
+// is answered by a reply to it, so only it has the reply button. A card that asks for a secret (an API key, #1140) has the masked field of secretform.
 templ QuestionCard(m domain.ThreadMessage) {
 	@MessageFrame(m) {
 		<p class="whitespace-pre-wrap break-words">{ domain.DecodeCardBody(m.Content).Text }</p>
 		if m.Open {
+			if secret := domain.DecodeCardBody(m.Content).Secret; secret != nil {
+				@secretform.Form(m, *secret)
+			}
 			<div class="mt-3 flex flex-wrap gap-2" data-options>
 				for _, option := range domain.DecodeCardBody(m.Content).Options {
 					@atoms.ButtonFor(atoms.ToneNeutral, option, excerpt(m.ChatMessage), answerAttrs(m, option))

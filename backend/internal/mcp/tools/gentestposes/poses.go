@@ -22,7 +22,7 @@ import (
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc}
 	mcpkit.Read(r, "get_pose_library",
-		"生成テストのポーズ集（Shisei。マネキンの線画と、ControlNet 用の深度・法線マップ）の状態と、導入済みならポーズの検索結果。installed=false のときは、取得元・ダウンロードの大きさ・ライセンス（商用利用の可否つき）を返す。導入済みなら query（名前・分類・番号 P001・英語。すべての語を含むもの）・series（std / upper）・class（分類名）で絞った poses[] を返す。画像 ID（images の値。std_P001_front の形）を run_generation_test の references に {source: pose_library, id, role: pose} として渡す。ControlNet（深度・法線のモデル）には depth_images・normal_images の値（std_P001_front.depth の形）を渡す。ある角度だけ載る / The state of the pose library and, when installed, its poses.",
+		"単発生成のポーズ集（Shisei。マネキンの線画と、ControlNet 用の深度・法線マップ）の状態と、導入済みならポーズの検索結果。installed=false のときは、取得元・ダウンロードの大きさ・ライセンス（商用利用の可否つき）を返す。導入済みなら query（名前・分類・番号 P001・英語。すべての語を含むもの）・series（std / upper）・class（分類名）で絞った poses[] を返す。画像 ID（images の値。std_P001_front の形）を run_generation_test の references に {source: pose_library, id, role: pose} として渡す。ControlNet（深度・法線のモデル）には depth_images・normal_images の値（std_P001_front.depth の形）を渡す。ある角度だけ載る / The state of the pose library and, when installed, its poses.",
 		h.get)
 	mcpkit.Write(r, "install_pose_library",
 		"ポーズ集（Shisei）をダウンロードして導入する。accepted は、get_pose_library が返したライセンス（画像は CC0 1.0）と取得元を利用者が確認して同意したときだけ true にする（false だと何も取得せず拒否する。画面の同意チェックと同じ）。固定したリリースをファイルごとに SHA-256 で検証する。終わるまで応答しない（約 43 MB。以前の導入にファイルが足りないときは、足りない分だけ。get_pose_library の download_remaining）。導入済みなら何もしない。adult=true は成人向けシリーズ（get_pose_library の adult が返るときだけ。年齢確認がオンのときに限る）の導入 / Download and install the pose library; accepted must be true once the user agreed to the licenses and the source.",

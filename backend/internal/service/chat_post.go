@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/chatbrief"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops"
 	"github.com/ousiassllc/mam/backend/internal/service/silence"
 )
 
@@ -50,12 +51,18 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 		}
 		target = &m
 	}
-	if target != nil && target.Kind == domain.KindQuestion && target.RefType == domain.RefContinue {
-		return s.answerContinue(ctx, project, *target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
+	// an API key is never a chat message (#1140): it would stay in the thread and go to the LLM that reads it
+	if ws, done, err := s.guardSecret(ctx, project, target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0); done || err != nil {
+		return ws, err
 	}
-	if target != nil && isBriefQuestion(*target) {
+	answered, target, done, err := s.answerCard(ctx, project, target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
+	if done || err != nil {
+		return answered, err
+	}
+	if target != nil && (isBriefQuestion(*target) || target.Kind == domain.KindEscalation) {
 		// A card takes one answer at a time: the reply that arrives while another one to the same
 		// card is being recorded (a double click) is a conflict, like a reply to an answered card.
+		// An Escalation button carries out an operation, which must not run twice.
 		if _, busy := s.answering.LoadOrStore(target.ID, struct{}{}); busy {
 			return Workspace{}, ErrConflict
 		}
@@ -68,12 +75,16 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 	if len(existing) != len(in.AttachmentAssetIDs) {
 		return Workspace{}, invalid("attachment_asset_ids", "添付ファイルが見つかりません")
 	}
-	stored, err := s.storeUploads(projectID, in.Uploads)
+	uploads, offered := splitFiles(s.director.chatOps, in.Uploads)
+	stored, err := s.storeUploads(projectID, uploads)
 	if err != nil {
 		return Workspace{}, err
 	}
 	attached := slices.Concat(existing, assetsOf(stored))
 	user := userText(content, in.ReplyToMessageID, assetIDs(attached))
+	if len(offered) > 0 {
+		return s.postFiles(ctx, project, user, stored, attached, offered)
+	}
 
 	if s.director.wants(project, target, content) {
 		return s.postDirection(ctx, project, target, user, stored, attached)
@@ -116,12 +127,12 @@ func (s *ChatService) postDirection(ctx context.Context, project domain.Project,
 		discardUploads(stored)
 		return Workspace{}, err
 	}
-	reply, err := s.director.Chat(ctx, project, target, user.Content)
+	reply, err := s.director.Chat(chatops.WithAttachments(ctx, attached), project, target, user.Content)
 	if err != nil {
 		s.logger.Error("director message failed", "project_id", project.ID, "message_id", user.ID, "err", err)
 		return Workspace{}, err
 	}
-	msgs := assignIDs([]domain.ChatMessage{reply})
+	msgs := assignIDs(reply)
 	// The direction was carried out (a regeneration may be queued and paid for): the answer is recorded
 	// whatever happened to the request since, as DirectorCommand's is.
 	if err := s.commit(context.WithoutCancel(ctx), repository.Turn{ProjectID: project.ID, Messages: msgs}); err != nil {
@@ -209,7 +220,13 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 			resume := domain.EscalationResumeState
 			turn.ResumeState = &resume
 		}
-		turn.Messages = append(turn.Messages, assistantText("判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"))
+		answer := "判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"
+		if done, picked, err := s.answerEscalation(ctx, project, *target, user.Content); err != nil {
+			return turn, nil, err // the card stays open and the Project keeps its state: nothing of this turn is recorded
+		} else if picked {
+			answer = done // a button that carries its operation: the answer is done
+		}
+		turn.Messages = append(turn.Messages, assistantText(answer))
 		if err := s.attachToBrief(ctx, &turn, attached); err != nil {
 			return turn, nil, err
 		}
@@ -217,7 +234,12 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	}
 
 	decided, err := chatbrief.Planner{Projects: s.projects, Chat: s.chat, Extractor: s.extractor}.Plan(ctx, project, &turn, target, replied, user.Content, attached)
-	return turn, decided, notFound(err)
+	if err != nil {
+		return turn, nil, notFound(err)
+	}
+	cards, err := s.statedBudgetCards(ctx, project, user.Content)
+	turn.Messages = append(turn.Messages, cards...)
+	return turn, decided, err
 }
 
 // attachToBrief puts the files a message carries into the Brief (images into Assets, videos into

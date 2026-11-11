@@ -53,7 +53,7 @@ func (b geminiImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 		},
 	})
 	data, err := b.request(ctx, http.MethodPost, b.baseURL+"/v1beta/models/"+url.PathEscape(apiModel)+":generateContent",
-		jsonHeader(map[string]string{"x-goog-api-key": key}), body, maxJSONBytes)
+		JSONHeader(map[string]string{"x-goog-api-key": key}), body, maxJSONBytes)
 	if err != nil {
 		return ImageResult{}, err
 	}
@@ -158,7 +158,7 @@ func (b fluxBackend) GenerateImage(ctx context.Context, apiModel string, req Ima
 	}
 	raw, _ := json.Marshal(body)
 	auth := map[string]string{"x-key": key}
-	data, err := b.request(ctx, http.MethodPost, b.baseURL+"/v1/"+url.PathEscape(apiModel), jsonHeader(auth), raw, maxJSONBytes)
+	data, err := b.request(ctx, http.MethodPost, b.baseURL+"/v1/"+url.PathEscape(apiModel), JSONHeader(auth), raw, maxJSONBytes)
 	if err != nil {
 		return ImageResult{}, err
 	}

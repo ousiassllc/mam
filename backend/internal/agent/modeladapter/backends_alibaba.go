@@ -82,7 +82,7 @@ func (b alibabaBackend) GenerateVideo(ctx context.Context, apiModel string, req 
 	auth := map[string]string{"Authorization": "Bearer " + key}
 
 	raw, _ := json.Marshal(b.body(apiModel, req))
-	header := jsonHeader(auth)
+	header := JSONHeader(auth)
 	header["X-DashScope-Async"] = "enable"
 	data, err := a.request(ctx, http.MethodPost, a.baseURL+"/api/v1/services/aigc/video-generation/video-synthesis", header, raw, maxJSONBytes)
 	if err != nil {

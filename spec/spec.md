@@ -157,6 +157,8 @@ DELIVERY
 6. **確認レベルとの関係**: この確認は**生成の承認（`generation`）でも脚本の承認でもない**。承認カード（`domain.Checkpoint`）ではなく Question カードで、Project を AWAITING_APPROVAL にしない。**FULL AUTO** では確認を求めず、推奨値を採用し、未設定の項目を「AIに任せる」にして PLANNING を始める（止まるのは、Subject を決められないときと、Subject の食い違いだけ）。確認レベルを FULL AUTO に切り替えると、確認カードの返事を待っている DRAFT の Project も始まる。**KEY CHECK・CUSTOM CHECK** では、確認カードに答えるまで PLANNING を始めない（利用者が全項目を自分の値にしてあれば、カードは出ず、そのまま始まる）。
 7. **脚本を Brief の主役に合わせる**: Producer / Writer / Director / Storyboard のプロンプトは、Subject（主人公・題材）と Additional Instruction の制約を**固定の条件**として渡し（「別の人物・商品・題材に置き換えない」「性別や年齢などの設定を変えない」）、推奨値は仮の値だと伝える。Producer は `protagonist`（主人公・題材）を答えに含める。**ガード**: Producer の `protagonist` が Brief と**明らかに食い違う**とき（Subject か追加指示が一方の性別を述べているのに、もう一方の性別だけを述べている。追加指示に「成人」とあるのに未成年を述べている。「女性向け」「男性層」のような対象の語、「大人っぽい」「大人向け」「成人式」、「成人ではない」は主人公の性別・成人の指定として数えない）は、その案を保存せず `planning.ErrInvalidPlan`（LLM の出力が使えない）として制作を止め、チャットに知らせる。検査は構造化された `protagonist` 1 項目の語の照合に限る。主人公が空のとき、語が当たらないときの食い違い、脚本の中身が主人公に沿うかどうかは検査できず、プロンプトの固定条件に頼る（既知の限界）。
 
+8. **予算は発言から読み取り、確認してから設定する**（#1139）: 発言に予算（「予算は $20 で」「予算 25 ドル、1 ショットあたり $4 まで」。USD。`backend/internal/agent/briefing/budget` が読む決定的な規則で、LLM は使わない）があれば、Brief の項目ではなく **Project の予算上限**（Project 全体、任意で Shot ごと。§25）として読み取る（`PostMessage` と `POST /projects` の最初の発言のどちらも、チャットのサービス `statedBudgetCards` が `budget.Stated` を直接呼ぶ。Brief の抽出（`Extractor`）は通らない）。金額は数字とその間の桁区切りのカンマまでで、後ろの区切りのカンマは含めない（「予算 $20, per shot $2」は Project $20・Shot $2）。Shot ごとの上限になるのは「ショットあたり」「ショットごと」「毎ショット」「ずつ」「につき」「/shot」「per shot」のような**単位の言い方**があるときか、「1 ショットの予算は」のように 1 Shot の予算と名指しするときだけで、「3 ショットで予算は $20」「CM 1 本の予算は $20」「3 カット構成 予算 $20」のように Shot 数や本数を数えるだけの言及は Project 全体の上限にする。「予算」「上限」「budget」のそばにある金額だけを数え、商品の価格（「$20 のシャツの CM」）は予算にしない。円での指定は換算せず（レートを持たない）、「ドルで教えてください」と返して何も設定しない。読み取っても**その場では設定しない**: 確認カード（Question カード。`ref_type=operation`・`ref_id=set_budget`、「予算 $20 で進めますね？」といまの設定、ボタン「はい、この内容で進める」「やめる」。「はい」「やめる」などの言葉の返事でも答えられる。「AIに任せる」は出さない）を、Brief の確認カードとは別にチャットへ出す。承認すると、設定画面（`PUT /projects/:id/budget`）・MCP `set_project_budget` と**同じ `PolicyService` の経路・同じ検査**で設定し、設定画面の Project budget ceiling に同じ値が入る（発言が触れなかった上限、たとえば Shot の上限は変えない）。「やめる」は何も変えない。金額でも「はい」「やめる」でもない返事（「やっぱり $35 で」）は新しい発言として読み、古いカードは閉じる。同じ操作の確認カードは最新の 1 枚だけが答えられる（古いカードへの返事は 409）。金額が予算の範囲（0 より大きく 1,000,000 以下）を外れるときはカードを出さず、理由を返す。**確認カードに答えるまで、AUTO の生成の自動開始は始まらない**（予算なしで有料の生成が走らないため。§4.3）。カードが答えられたら（「はい」でも「やめる」でも）パイプラインを起こし直し、「やめる」のときは予算を設定しないまま自動開始が進む。最初の発言（`POST /projects`）にも途中の発言にも同じに効く。最初の発言の予算の確認カードが出せなかったとき（カードの保存に失敗したとき）、Project は作られたままで予算は未設定のまま、スレッドに「予算の確認カードを出せませんでした。予算はまだ設定していません。生成も始めていません。…」と書き、パイプラインは始めない（予算を決めたのに誰も確認していない有料の生成を走らせないため。`POST /projects` は失敗にせず 201 を返す。再作成すると Project が 2 つになる）。
+
 従来の #1108 の規則は残る: **Subject は「AIに任せる」を選べない**（題材をAIが決めると、ユーザーの指定と無関係な脚本になるため、Subject の質問カードには「AIに任せる」ボタンを出さず、その答えは受け付けずに同じ質問を理由つきで聞き直す）。Subject が空でも、利用者が書いた Additional Instruction に題材があればそれを題材として扱う（どちらも空なら PLANNING で脚本を作らず、Subject の質問カードを 1 度だけ出して止まる。答えると続きから再開する。発言から読み取ったテーマ・制約の行（`テーマ: …`・`制約: …` だけの行）は題材に数えない。Brief の画面で保存しても、`update_brief` で確定しても、その行が利用者のものになるだけで題材にはならず、利用者が自分で書いた行（これらの接頭辞でない行）だけが題材になる。Producer / Writer / Director のプロンプトも、Subject 未指定を「AIに任せる」とは書かず「Brief に無い題材を作らない」と伝える）。チャットでの回答も編集フォームと同じ値域（Aspect Ratio は 9:16 / 16:9 / 1:1、各項目 200 文字以内）で、範囲外の回答は保存せず同じ質問を聞き直す。発言から抜き出す URL も編集フォームと同じ規則（200 文字以内・空白を含まない）で、外れた URL は References に入れない。Assets / References / Additional Instruction は任意（§23.1）。
 
 ## 4.3 AUTO Pipeline
@@ -207,7 +209,7 @@ Final QC
 Delivery
 ```
 
-> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）と、その直後の**生成の自動開始**、Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）の本線である。AUTO MODE では、Scene / Shot 計画のあとに、**承認カードを出さずに** Reference Pack → Shot 生成を本線で自動進行する（AUTO を選ぶことが生成を始める同意。#1115 が #1108 の「生成の承認」を置き換えた。#1111）。起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。AUTO では Shot を順に自動で始めるが、起動のたびに予算上限が効き、**1 回の操作で Project 全体を一括で生成する段は持たない**（Shot と段階（Reference Pack・生成）ごとに起動し、重複しない）。生成テスト（`/generation-test`）は試用の経路で、その結果はプロジェクトの Shot の Take にならず、画面にもそう書く。
+> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）と、その直後の**生成の自動開始**、Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）の本線である。AUTO MODE では、Scene / Shot 計画のあとに、**承認カードを出さずに** Reference Pack → Shot 生成を本線で自動進行する（AUTO を選ぶことが生成を始める同意。#1115 が #1108 の「生成の承認」を置き換えた。#1111）。起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。AUTO では Shot を順に自動で始めるが、起動のたびに予算上限が効き、**1 回の操作で Project 全体を一括で生成する段は持たない**（Shot と段階（Reference Pack・生成）ごとに起動し、重複しない）。単発生成（`/generation-test`）は試用の経路で、その結果はプロジェクトの Shot の Take にならず、画面にもそう書く。
 >
 > **AUTO の生成開始（`generation`。#1115 で #1108 の「生成の承認」を置き換えた）**: **AUTO MODE を選ぶことが、有料の生成を始める同意である**。Scene / Shot 計画が終わった直後から、Orchestrator が Reference Pack → Keyframe → Shot 生成を**承認カードを出さずに**自動で始めて進め続ける。確認レベルは生成の開始に影響しない（FULL AUTO の「Finalまで原則確認しない」と矛盾しない。KEY CHECK・CUSTOM CHECK でも AUTO の意図を優先して、生成の開始は確認しない）。脚本・Rough Cut・Final の確認は各レベルの定義どおりで、この変更で増えも減りもしない。確認ポイント `generation`（生成の承認）は廃止した（`domain.Checkpoint` に旧カードを読むための定義だけを残し、`RequiresApproval` は常に偽）。
 >
@@ -219,6 +221,7 @@ Delivery
 >
 > - **始めるときに一度だけ知らせる（非ブロッキング）**: Orchestrator は、まだ起動していない Shot を初めて起動するときに、チャットへ**お知らせを 1 件**出す（待たない。承認を求めない）。中身は、同意の事実（AUTO のため承認を待たずに始める。費用がかかる）、対象（Shot 数、Reference Pack を作る Shot（Keyframe の無い Shot）、使うモデル（動画モデルと解像度、Reference Pack の画像モデル）、Shot ごとのおおよその本数）、費用の見積、予算上限（Project・Shot。未設定なら「設定なし」）、予算上限が数えるものと止め方（予算上限が数えるのは単価が分かるモデルの呼び出しだけで、単価が不明の呼び出しは数えず止めない。確実に止めるのは MODE を DIRECTOR にすること。起動済みの生成は終わるまで続く。起動済みの生成を取り消す操作は無い。回の途中で DIRECTOR にしても、まだ起動していない Shot は、1 件目も含めて起動の直前に MODE を読み直して始めない。読み直しと起動の間の一瞬に切り替えた場合の 1 件は止められない）。見積は Reference Pack（Shot ごとに最大 6 枚。Art Director が実際に何枚作るかは実行時に決まるので上限）と動画（Shot ごとの本数 × 1 本の見積。Quality Policy と固定した動画モデルで決める。Multi-model routing が実行時にモデルを入れ替える分は含めない）の合計で、Judge・Prompt Planner・Art Director など LLM の費用と Repair の再生成は含まない。お知らせは「起動の単位」ごとに 1 件で、同じ Shot について何回見直しても、プロセスを再起動しても、Reference Pack のあとの生成の起動でも、重ねて出さない（`generation_launch` に記録のある Shot は、すでにお知らせ済みとして扱う）。あとから Shot を足したときは、その Shot を起動したときに新しいお知らせを 1 件出す。**お知らせを出す順序（正直な制限）**: お知らせは、その見直しの起動を行ったあとに、起動できた Shot の分だけ出す（起動が 1 つも成立しなかった見直しは出さない）。起動の記録（`generation_launch`）は起動の前に書くので、起動の記録を書いてからお知らせを投稿するまでのあいだにプロセスが終わると、起動だけが済んでお知らせが出ないまま残る（その Shot は記録があるため、あとからお知らせし直さない）。お知らせを起動の前に出すことは保証しない。
 > - **単価が不明でも止めない**: 単価が分からないモデル（`models.json` に価格が無いクラウドモデル、ChatGPT の定額枠のモデル）が含まれても、**自動の開始は止まらない**。その分を**「不明」**と正直に書き（でっち上げの数字は出さない。確認できる分だけを併記する）、「単価が不明でも止めずに始める」と明記する。単価を設定していないローカルモデルは 0 USD（無料）として数える。**予算上限は、単価が分かるモデルの呼び出しだけを数える**。単価が不明の呼び出しは数えないので、予算上限を決めていても止まらない（まさにこの「不明でも始める」ケースである）。したがって、単価が不明なモデルが計画に含まれるときは、予算上限を決めているかどうかに関わらず、「この分は予算上限に数えられず、費用の上限は保証できない」というリスクをお知らせに書く（容認したリスクである）。確実に止める手段は MODE を DIRECTOR にすることで、お知らせ・同意の通知・待機の案内・MCP のツール説明は、予算上限を「止める手段」として単独では勧めず、この範囲と DIRECTOR を併せて書く。進行中の Job を取り消す操作は無い。
+> - **予算を決めているとき（#1139）**: ①**確認待ちの予算は待つ**: チャットで伝えられた予算の確認カード（§4.2 項目 8）が未回答のあいだ、Orchestrator は有料の生成を始めない（Scene / Shot 画面は「予算の確認待ち」`data-phase="budget_confirm"` と、次にするもの=確認カードの返事を示す）。答えると続きから自動で進む。②**予算を超える計画は、始める前に止めて選んでもらう**: Project の予算上限か Shot の予算上限があるとき、Orchestrator は、始める前に計画を**最大額**（単価が分かる分だけ。Shot の Take を最大数まで作る額）で見積もり、**使用済み・予約済みと合わせて Project の上限を超える**、または**どれかの Shot の最大額が、その Shot の使用済み・予約済み（Reference Pack の費用を含む）と合わせて Shot の上限を超える**なら、何も始めず、Escalation（`ref_type` なしの相談カード。Project は AWAITING_APPROVAL）で「予算を超えるため始めなかった」ことと、見積・上限・使用済みを告げる。**勝手に品質を下げて進めない**（§8 の Take 数の間引き（Generation Policy）や Fallback モデルへの切替は、利用者が手で起動した生成のためのもので、AUTO の開始前に黙って働かせない）。選択肢は、①安い Quality Policy にする（現在より安い段ごとに「動画モデル・解像度・Take 数」と、その段での見積、予算に収まるか。選ぶと Quality Policy を変えて続ける）、②予算上限を引き上げる（計画が収まる額に切り上げた値。選ぶと予算上限を設定して続ける）、③AUTO をやめて DIRECTOR MODE にし Shot を手動で生成する。各ボタンは実行する操作を持ち（`CardBody.option_actions`）、選んだ時点で実行される。選ぶと予算で止まっていた起動が解かれ、見直した計画で続く（なお超えるなら、もう一度止まって選んでもらう）。入力欄からの返信がどのボタンでもないときは、従来どおり判断を受け付けるだけで実行しない。③**単価不明は「単価不明のモデルが含まれます」と知らせる**: 予算上限が設定されていて、計画に単価の分からないモデル（§4.3 上の「単価が不明でも止めない」）が含まれるとき、始めるときのお知らせ・予算を超える相談カード・予算の設定の返答に、「単価不明のモデルが含まれます（予算が設定されています）: …。この呼び出しは予算上限に数えられないため、上限を決めていても止まりません。」と書く（止めはしない）。予算を設定していないときは、この文を出さない。
 > - **守るもの（変えない）**: ①**予算上限は承認の代わりではなく、AUTO でも効く**: Reference Pack・Shot ごとの起動で `ErrBudgetExceeded` になったら、その起動は始めず、Escalation（Retry Policy の上限と同じ扱い）で人間に判断を求め、答えるまでほかの Shot も新しくは始めない。②**キャンセル**: ジョブのキャンセル（プロセスの停止）で起動の途中だった Shot の記録は返し、残りは起動しない。③**重複しない（冪等）**: 起動した Shot と段階（`reference_pack` / `generate`）を `generation_launch` に記録し、何回見直しても、再起動しても、同じ Shot の同じ段階を再び起動しない。すでに Take がある Shot、Job が走っている Shot（`ErrShotBusy`）は起動しない。Reference Pack の Job が失敗した Shot は自動では生成しない（失敗はチャットに通知済みで、手動で起動できる）。④**使えないモデルの検出**: 起動が使えないモデルで拒否されたときは、ほかの失敗と同じく、理由をチャットに知らせ、その Shot は自動では進めない（起動前に使えるモデルの経路が無いことを分かりやすく返すのは、モデル候補の Preflight の仕事）。
 > - **起動を断られたとき**: 予算上限（`ErrBudgetExceeded`）は上の①のとおり Escalation で止める。使えるモデルが無い（`modelroute.ErrNoUsableModel`。#1113 の起動前の検査）のはモデルの状態であって Shot の問題ではないため、**そのラウンドは断りで止めず、別の用途・メディアの Shot を続けて試す**（画像モデルが無くても、Keyframe を持つ Shot の動画は起動できる）: 原因（用途とメディアで決まる文面）ごとに、最初に断られた Shot だけを「起動に失敗」として記録し（自動では再試行しない。手動で起動する）、同じ原因で断られた別の Shot は記録せず、起動の予約を返して残す。チャットには原因ごとに原因と対処を**1 件だけ**書き、同じ原因のお知らせは、断りに当たらずに起動が 1 つ以上できた見直しか、別の原因になるまで繰り返さない（その間の見直しは、残した Shot を試して断られても記録せず何も書かない）。API キーの登録や割り当ての変更を保存しても、Orchestrator はその場では Project を見ない（保存に見直しの合図は付けない。制限）。続けるには、API キーを登録するか割り当てを直したあと、チャットに何かメッセージを送る（`POST /projects/:id/messages` は Orchestrator に見直しの合図を送る）。次の見直しで、残した Shot から自動で続く。それ以外のエラーは、従来どおり Shot ごとに失敗として記録・通知して次の Shot に進む。お知らせ（始めるときの 1 件）は、起動が 1 つ以上できたときだけ出す（Shot が使用中などで 1 つも始まらなかった見直しは出さない）。
 > - **DIRECTOR / MANUAL（承認は元からない）**: DIRECTOR・MANUAL の Project には、生成の承認は元からなく、新しく加えることもない。生成の開始は自動で行わず、Shot をユーザーが手で起動する（ゲートは何も求めず、何もしない。承認の迂回を足したものではない）。#1115 の「manual による承認」は、この「手で起動し、ゲートは何も尋ねない」の意味である。旧カードに「承認」と答えても、DIRECTOR・MANUAL の Project は自動では始まらず、チャットの返答もそう書く。
@@ -449,7 +452,7 @@ Dynamic Camera
 
 **Quality Mode**
 
-複数Candidateを並列生成し、JudgeがBest Takeを選択。予算が 3 Take 分あれば Stability First / Acting First / Dynamic Camera の 3 戦略すべて。1〜2 本だけ収まるときは先頭からその本数だけ生成し、1 本も収まらなければ生成しない（402）。
+複数Candidateを並列生成し、JudgeがBest Takeを選択。予算が 3 Take 分あれば Stability First / Acting First / Dynamic Camera の 3 戦略すべて。1〜2 本だけ収まるときは先頭からその本数だけ生成し、1 本も収まらなければ生成しない（402）。（AUTO の自動の開始は、この間引きに入る前に、計画の最大額が予算を超えるかを見て、超えるなら止めて利用者に選んでもらう。§4.3 の「予算を決めているとき」）
 
 **Balanced Mode**
 
@@ -461,7 +464,7 @@ Dynamic Camera
 
 > **起動の経路（実装）**: モードは Quality Policy で決まる（MAX QUALITY→Quality、BALANCED→Balanced、FAST→Economy）。Shot カードの「生成」、Continue、Branch、追加撮影（Editor）、Director の再生成は、AI Video Judge が構成済みで Prompt が LOCK されていなければ Candidate 生成（`POST /shots/:id/generate/candidates` と同じ処理）を起動する。Judge が無い、または Spec 済みの Shot の Prompt が LOCK されているときは、Best Take を選べない／Spec を作り直せないため単発の生成（`POST /shots/:id/generate`）になる。`/shots/:id/generate` を直接呼ぶと、常に単発の生成である。 Candidate は撮影戦略ごとに Spec を書き直すが、LOCK の部分と指示で保持する部分に加えて、指示が無いときは MANUAL の部分（ユーザーが指定した値）も変えない（指示があるときの MANUAL は、指示が変えない限り保持するようプランナーに伝える）。戦略の指示は MANUAL の部分には及ばない。
 
-> **手元の LoRA の取り込み（#1119）**: 利用者が Civitai などから自分でダウンロードした LoRA（`.safetensors`）は、モデルの管理（画像・動画モデルの「LoRA を追加」）にファイルの選択かドラッグ＆ドロップで取り込める（この PC の中への取り込みで、公開ではない）。先にファイルを検査し（ヘッダーの形・4 GiB の上限・LoRA のテンソル・名前の安全性・`.safetensors` 以外の拒否）、読み取れた情報を見せてから `data/models/loras/` へ置く。同じ名前は上書きしない。ベースモデルとトリガー語はファイルに書いてあるときだけ候補に出し、無ければ「未設定」とする（強さは読まず、推測もしない。どれも編集できる）。ライセンスは任意で、空は「不明」とし、商用OK にはしない。取り込んだ LoRA は生成テスト・レシピの「LoRA と強さ」で選べ、ワークフローのベースモデルと食い違うときは警告する。取り込みは生成を始めない。画面だけでなく MCP にも同じ操作を持たせる（`spec/architecture/model-manager/model-manager-lora.md`）。
+> **手元の LoRA の取り込み（#1119）**: 利用者が Civitai などから自分でダウンロードした LoRA（`.safetensors`）は、モデルの管理（画像・動画モデルの「LoRA を追加」）にファイルの選択かドラッグ＆ドロップで取り込める（この PC の中への取り込みで、公開ではない）。先にファイルを検査し（ヘッダーの形・4 GiB の上限・LoRA のテンソル・名前の安全性・`.safetensors` 以外の拒否）、読み取れた情報を見せてから `data/models/loras/` へ置く。同じ名前は上書きしない。ベースモデルとトリガー語はファイルに書いてあるときだけ候補に出し、無ければ「未設定」とする（強さは読まず、推測もしない。どれも編集できる）。ライセンスは任意で、空は「不明」とし、商用OK にはしない。取り込んだ LoRA は単発生成・レシピの「LoRA と強さ」で選べ、ワークフローのベースモデルと食い違うときは警告する。取り込みは生成を始めない。画面だけでなく MCP にも同じ操作を持たせる（`spec/architecture/model-manager/model-manager-lora.md`）。
 
 ---
 
@@ -764,7 +767,7 @@ Judge の Face / Character Identity 評価を補うローカル計測。Shot 間
 - **Repair**: `face_identity_drift` は Reference Reinforcement を優先候補とする
 - **Series**: Episode をまたいでも Series 正本の `face_reference` を基準に計測する（F-29）
 - **実行**: ローカル実行。顔画像は外部へ送信しない。YuNet / SFace と ONNX Runtime（purego、CGO なしの Go 単一バイナリ）は M1 で検証済み（`spec/architecture/model-adapters.md` §10.1）。残る確認は SFace の学習データの権利関係（同 §8）。Windows のインストーラーは ONNX Runtime の DLL を同梱しており数値評価が動く。DLL かモデルが無いとき（ポータブル版・モデル未配置）は定性評価にフォールバックする（`spec/requirements/non-functional.md` §1、`spec/architecture/model-adapters.md` §10.1）
-- **生成テストの「画像から似せる」への利用**: 生成した画像の顔と参考の顔のコサイン類似度を、LLM の似てる度に重み付きで混ぜられる（設定 `models.json` の `gentest.match_face`。既定は混ぜない。顔が取れないときは LLM の点だけ。`spec/architecture/gentest/prompt-match.md`）。この用途の閾値は上の Character 別の較正とは別で、固定の写し方（`floor` / `ceil`）を使う
+- **単発生成の「画像から似せる」への利用**: 生成した画像の顔と参考の顔のコサイン類似度を、LLM の似てる度に重み付きで混ぜられる（設定 `models.json` の `gentest.match_face`。既定は混ぜない。顔が取れないときは LLM の点だけ。`spec/architecture/gentest/prompt-match.md`）。この用途の閾値は上の Character 別の較正とは別で、固定の写し方（`floor` / `ceil`）を使う
 
 ---
 
@@ -1261,7 +1264,7 @@ EXPORTED
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
 | Take | 動画プレーヤー（Judge の Issue を時間軸のマーカーで表示）と生成の要約（モデル・解像度・秒数）。スレッドは追記のみなので、Judge が結果を保存するとサーバーはその Take のカードの更新（`card.updated`）を通知して、ライブ中のスレッドでもマーカーを描き直す。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードには載せず、Judge が結果を保存するたびに別の発言として投稿する（「Shot N · Take X の Judge 結果: PASS/FAIL（信頼度）」と、AI Pick が変わったときの「AI Pick: Take X を採用/おすすめ」）。Take ごとの最新の状態は Take 比較で確認する | 再生、返信で指示、Take比較を開く |
 | Progress | 生成・Repair の進捗（Judge の進捗は Shot カード側、結果は発言で通知） | なし（自動更新） |
-| Escalation | Retry Policy 上限到達などで AI が判断を求める内容。回答（選択肢ボタン / 自由入力）は記録されるだけで自動実行されない。回答後は（Project がこの回答待ちで AWAITING_APPROVAL にいたとき）REPAIRING に戻り、AI は「この判断は自動では実行されません」と返すので、ユーザーが設定の変更・Take の採用・Shot の指示の修正を画面から行う | 選択肢ボタン / 自由入力 |
+| Escalation | Retry Policy 上限到達などで AI が判断を求める内容。回答（選択肢ボタン / 自由入力）は記録されるだけで自動実行されない。回答後は（Project がこの回答待ちで AWAITING_APPROVAL にいたとき）REPAIRING に戻り、AI は「この判断は自動では実行されません」と返すので、ユーザーが設定の変更・Take の採用・Shot の指示の修正を画面から行う。ボタンが操作を持つ Escalation（`option_actions`）は、押すとその操作を実行して「判断を受け付けて、実行しました。」と答える。操作が実行できないとき（対象がもう無い・検査で断られるなど）は、実行した旨を答えずエラー（422）で理由を返し、**カードは開いたまま・Project の状態も変えず・この発言も記録しない**（もう一度答えられる）。同じカードへの返信は 1 件ずつ処理し、処理中に同じカードへ届いた 2 件目は 409（`ErrConflict`。操作を二重に実行しないため） | 選択肢ボタン / 自由入力 |
 
 ## 23.3 補助ビュー
 
@@ -1312,7 +1315,9 @@ Generate 3 narrative continuations
 
 AIが文脈から、編集変更で済むか追加Shotが必要かを判断する。
 
-> **実装の範囲**: Command Interpreter が構造化できる操作は、ロック設定・Shot の再生成・部分再生成・モード切替・ノート作成・Branch 作成のみで、チャットの発言から Edit Timeline（クリップの尺など）の変更や追加 Shot の要求は導かない。これらは、タイムラインエディタでの編集（`PUT /edit-timelines/:id`）、Editor Judge の NEED_SHOT が出す追加 Shot の提案（Reshoot Loop、`POST /edit-timelines/:id/request-additional-shot`）から行う。この Example 4 の発言には「その操作にはまだ対応していません」と返す。
+> **実装の範囲**: Command Interpreter が構造化できる操作は、ロック設定・Shot の再生成・部分再生成・モード切替・ノート作成・Branch 作成・予算上限の変更（`set_budget`。確認カード付き）・**全体設定の操作**（API キー・動画モデルの API プロバイダー・モデルの導入・モデルと LLM の割り当て・LoRA の取り込み・書き出し・キャラクターの参照。確認カード付き。#1140、`spec/components/chat-settings-operations.md`）のみで、チャットの発言から Edit Timeline（クリップの尺など）の変更や追加 Shot の要求は導かない。これらは、タイムラインエディタでの編集（`PUT /edit-timelines/:id`）、Editor Judge の NEED_SHOT が出す追加 Shot の提案（Reshoot Loop、`POST /edit-timelines/:id/request-additional-shot`）から行う。この Example 4 の発言には「その操作にはまだ対応していません」と返す。
+
+> **Shot が決まらないとき**: Command が操作を持っても、どの Shot への指示か決まらない（Take カードへの返信でも、Scene・Shot の指定でもない）ときは、**Shot を要する操作（ロック・再生成・部分再生成）だけを保留**して「どの Shot への指示ですか？ Take カードに返信するか、「Scene 1 の Shot 2」のように指定してください。」と聞く。同じ Command のほかの操作（予算・全体設定の確認カード、ノート、モード切替）は Shot に依らないので、保留せずそのまま実行する（`DirectorService.execute`）。
 
 ### Example 5（M2）
 
@@ -1338,6 +1343,30 @@ Preserve character / acting / environment
 ```
 
 区間を名指しした再生成は `partial_regenerate` になる。区間を言わない「カメラ動かしすぎ」は Shot 全体の再生成（Example 2）のまま。
+
+### Example 7（#1139）
+
+> 予算を $30 に変えて。
+
+```text
+Action:
+set_budget project_budget_usd=30   ← 確認カード「予算 $30 で進めますね？」を出す
+承認（「はい、この内容で進める」）で Project budget ceiling = 30（Shot の上限は変えない）
+```
+
+予算の変更は**設定を変える操作**なので、操作の登録表（`backend/internal/agent/commandinterpreter/ops.go` の `Spec`）で次のように扱う。①**どのモードでも受ける**（`AnyMode`。AUTO MODE の指示は受けないという上の方針の例外はメモの作成と、この種の設定の操作だけで、DRAFT の間は Brief の抜き出し〔§4.2 項目 8〕が読む）。②**すぐには実行しない**（`Confirm`）: 確認カード（§4.2 項目 8 と同じ Question カード）を出し、承認で実行する。ボタンは実行する操作を `CardBody.option_actions` に持つ。③**発言が求めていないときは捨てる**（`Asked`）: 予算の語（「予算」「上限」「budget」）を含まない発言から、モデルが `set_budget` を返しても無視する（メモの作成が「覚えておいて」を求めるのと同じ）。④`project_budget_usd`・`shot_budget_usd` は名指しした上限だけを持ち、名指しされなかった上限は変えない。0 はその上限を外す。他の通貨は `unsupported`（ドルで教えてもらう）。⑤プロンプトの操作の説明・例・検査は登録表から組み立てる。設定を変える操作を足すときは、`OpType` と `Spec` を 1 つ登録し、サービス側の `opHandlers`（`service/director_ops.go`）に実行を 1 つ足す（確認が要るなら質問文も）。`set_quality_policy` は、予算を超える計画の相談カードのボタン（§4.3）が持つ操作で、モデルには求めない。
+
+### Example 8（#1140）
+
+> OpenAI の API キーを設定したい。
+
+```text
+Action:
+set_credential provider=openai   ← 確認カード（マスク入力欄つき）を出す。LLM が無くても読み取れる
+キーはカードの入力欄に貼り付けて「保存」（専用のエンドポイント。チャットの発言にしない）
+```
+
+設定画面（GUI）か MCP だけでできた**全体設定の操作**は、予算（Example 7）と同じ登録表（`Spec`）で、操作ごとのパッケージ（`backend/internal/service/chatops/<操作>`）が持つ。①**どのモードでも、Brief を作り終えたあとはどの状態でも受ける**（`Global`。アプリ全体の設定で、Project の状態に依らない。Brief を作っている最中（DRAFT）に受けるのは、最初に要る設定=API キー・クラウド動画モデルのプロバイダー・LLM の割り当て（`Setup`）と拒否だけで、ほかの発言は Brief への答えとして抜き出しに回す。`AsksSetup`）。②**必ず確認カードを先に出す**（`Confirm`。何も変えるのは承認のあと。API キーはカードのマスク入力欄の「保存」が確認で、はいボタンは無い）。全体の設定は**全プロジェクトに効く**ことをカードに書く。③**発言が求めていないときは捨てる**（`Asked`）。④**LLM が無くても読み取れる操作**（`Detect`: API キー・書き出し）は、LLM が未設定でも実行する。⑤**何も変えない操作**（`Immediate`: 書き出した動画・バンドルのダウンロードのリンク）はカードなしで答える。⑥**意図的に GUI だけのもの**（ffmpeg・FaceFusion の実行パス、MCP のトークンと待ち受けの管理）は、チャットでは拒否して設定画面を案内する。承認のあとの実行は、設定画面・MCP のツールと**同じサービス層の関数**を呼ぶ（ロジックを複製しない）。詳細は `spec/components/chat-settings-operations.md`。
 
 ---
 
@@ -1374,6 +1403,8 @@ Preserve character / acting / environment
 - Max retries
 - Max generation time
 - Minimum quality thresholds
+
+予算上限（Project・Shot）は、設定画面（`PUT /projects/:id/budget`）・MCP `set_project_budget`・**チャット**のどれからも、同じ `PolicyService.SetBudget` の経路で設定する（#1139）。チャットでは、最初の発言や途中の発言で「予算は $20 で」「予算を $30 に変えて」と言うと、確認カードのあとで設定され（§4.2 項目 8・§24 Example 7）、設定画面にも同じ値が入る。予算を超えそうなときは、自動で品質を下げず、チャットで止めて選択肢を出す（§4.3）。
 
 ---
 

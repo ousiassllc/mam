@@ -9,13 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/shotprompt"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -109,7 +109,7 @@ func Video(ctx context.Context, a *modeladapter.Adapter, target modeladapter.Vid
 		req.NegativePrompt = ""
 	}
 	apiModel := cfg.ModelSettings(target.Model).Model
-	res, err := modeladapter.Call(ctx, a, modeladapter.VendorOf(target.Model), nil, string(target.Model), func(ctx context.Context) (modeladapter.VideoResult, error) {
+	res, err := modeladapter.Call(ctx, a, cfg.VendorOf(target.Model), nil, string(target.Model), func(ctx context.Context) (modeladapter.VideoResult, error) {
 		return backend.GenerateVideo(ctx, apiModel, req)
 	})
 	if err != nil {
@@ -147,24 +147,18 @@ func SupportsSeed(cfg modeladapter.Config, m domain.ModelName) bool {
 	return modeladapter.SupportsSeed(m)
 }
 
-// NegativeField reports whether the model has a negative prompt field: Kling 3.0, and a ComfyUI model whose workflow has a
-// negative prompt assignment. For any other model the negative prompt is folded into the prompt (Fold).
+// NegativeField reports whether the call of the model has a negative prompt field: Kling 3.0 (unless the selected video API provider has none for it:
+// viaprovider.FoldsNegative, OpenRouter), and a ComfyUI model whose workflow has a negative prompt assignment. For any other model the negative prompt is
+// folded into the prompt (Fold).
 func NegativeField(cfg modeladapter.Config, m domain.ModelName) bool {
 	if lm, kind, ok := cfg.LocalModel(m); ok {
 		return kind == localcfg.KindComfyUI && lm.Workflow != nil && lm.Workflow.Has(localcfg.ParamNegativePrompt)
 	}
-	return m == domain.ModelKling3
+	return m == domain.ModelKling3 && !viaprovider.FoldsNegative(cfg.VideoProvider, m)
 }
 
-// Fold writes the negative prompt into the prompt as an "Avoid: ..." sentence, the wording the Shot prompts use
-// (shotprompt.AvoidSentence). An empty negative prompt leaves the prompt as it is.
-func Fold(prompt, negative string) string {
-	negative = strings.TrimRight(strings.TrimSpace(negative), ". ")
-	if negative == "" {
-		return prompt
-	}
-	return prompt + shotprompt.AvoidSentence([]string{negative})
-}
+// Fold writes the negative prompt into the prompt as an "Avoid: ..." sentence (shotprompt.Fold), as the prompts of a Shot do.
+func Fold(prompt, negative string) string { return shotprompt.Fold(prompt, negative) }
 
 // AspectProblem says why a video model refuses the aspect ratio (empty when it takes it): Runway Gen-4.5 makes 16:9 and 9:16,
 // and 1:1 only from a first frame (its backend answers 422 otherwise; the Adapter's shot path would switch to the alternative,

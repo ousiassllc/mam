@@ -9,96 +9,110 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/shotpick"
 )
 
 // wants reports whether a chat message is a direction for the Command Interpreter: a message that asks
-// the team to remember something (F-31, in any mode), or, in DIRECTOR MODE past the Brief, any message.
-// A message that answers an open card never is.
+// the team to remember something (F-31, in any mode), one that asks for an operation of any mode past the Brief (commandinterpreter.AsksAnyMode: a budget, a setting; a budget stated while the Brief is drafted is read by
+// statedBudgetCards from every message, #1139), or, in DIRECTOR MODE past the Brief, any message. A message that answers an open card never is.
 func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessage, content string) bool {
 	if content == "" || (target != nil && isAnswerable(target.Kind)) {
 		return false
 	}
-	if domain.AsksToRemember(content) {
+	if domain.AsksToRemember(content) || (project.State != domain.StateDraft && commandinterpreter.AsksAnyMode(content)) {
 		return true
 	}
-	return project.Mode == domain.ModeDirector && project.State != domain.StateDraft
+	// While the Brief is drafted every other message answers it: "動画は縦型にして" asks for a vertical video, not for a model assignment, however much it sounds like one (the
+	// settings a new app needs first, and what the chat refuses on purpose, are the exceptions); past it the settings of the whole app are asked for in any mode (#1140)
+	if project.State == domain.StateDraft {
+		return commandinterpreter.AsksSetup(content)
+	}
+	return commandinterpreter.AsksGlobal(content) || project.Mode == domain.ModeDirector
 }
 
 // Chat interprets a message of the thread (already stored) and carries it out. The result is the AI
-// message to append to the thread: what was done, what was refused, or what to ask. Failures the user
+// messages to append to the thread: what was done, what was refused, or what to ask, and the confirmation cards of the operations that wait for the user. Failures the user
 // can act on are reported in the message; an error that is returned (a Brand violation, an
-// unexpected failure) has already been answered in the thread (reportCommandFailure), so that the
-// thread does not end with the user's words alone.
-func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) (domain.ChatMessage, error) {
+// unexpected failure) has already been answered in the thread (reportCommandFailure), so that the thread does not end with the user's words alone.
+func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) ([]domain.ChatMessage, error) {
+	if reply, refused := commandinterpreter.Refused(content); refused {
+		return []domain.ChatMessage{assistantText(reply)}, nil
+	}
 	if s.interpreter == nil {
-		return assistantText("LLM が設定されていないため、指示を解釈できません（設定画面で API キーを登録してください）。"), nil
+		// what the message plainly asks for is still done without the model: the API key of the LLM is the first thing to set (#1140)
+		if ops := commandinterpreter.Detected(content); len(ops) > 0 {
+			return s.anyModeOnly(ctx, project, commandinterpreter.Command{Operations: ops})
+		}
+		return []domain.ChatMessage{assistantText("LLM が設定されていないため、指示を解釈できません（設定画面で API キーを登録してください。「OpenAI の API キーを設定したい」のように送ると、ここでキーを入力する欄を出します）。")}, nil
 	}
 	shots, err := s.gens.ListProjectShots(ctx, project.ID)
 	if err != nil {
-		return domain.ChatMessage{}, err
+		return nil, err
 	}
 	ref, err := s.contextShot(ctx, project.ID, target, shots)
 	if err != nil {
-		return domain.ChatMessage{}, err
+		return nil, err
 	}
 	if ref != nil && ref.Scene.BranchID != "" {
 		// The Shot is on a Branch: the numbers of the message and of the Interpreter's answer are those
 		// of that Branch's story, not of the trunk (whose Scene 1 / Shot 1 is another Shot).
 		if shots, err = s.gens.StoryShots(ctx, project.ID, ref.Scene.BranchID); err != nil {
-			return domain.ChatMessage{}, err
+			return nil, err
 		}
 	}
-	cmd, err := s.interpret(ctx, content, shots, ref)
+	cmd, err := s.interpret(ctx, project.ID, content, shots, ref)
 	if err != nil {
 		if !isInterpreterAIError(err) {
 			// A failure of ours (the repository), not of the model: it is an error, logged and answered
 			// in the thread like any other failure of a direction, never a "success" with a message.
 			s.logger.Error("interpret director message failed", "project_id", project.ID, "err", err)
 			s.reportCommandFailure(ctx, project.ID, outcome{}, err)
-			return domain.ChatMessage{}, err
+			return nil, err
 		}
-		return assistantText("指示を読み取れませんでした: " + commandFailureReason(err)), nil
+		return []domain.ChatMessage{assistantText("指示を読み取れませんでした: " + commandFailureReason(err))}, nil
 	}
-	if project.Mode != domain.ModeDirector {
-		// Outside DIRECTOR MODE only a request to remember something is carried out: AUTO MODE does
-		// not take Shot directions from the chat.
-		return s.rememberOnly(ctx, project, cmd)
+	cmd.Operations = commandinterpreter.WithDetected(cmd.Operations, content)
+	if project.Mode != domain.ModeDirector || (cmd.Question != "" && slices.ContainsFunc(cmd.Operations, commandinterpreter.Operation.AnyMode)) {
+		// Only the operations of any mode are carried out (a note, the budget, a setting) outside DIRECTOR MODE (AUTO MODE does not take Shot directions from the chat) and when the
+		// model asks a question while the message plainly asks for such an operation too (WithDetected: an API key card): the question is told with it, not instead.
+		return s.anyModeOnly(ctx, project, cmd)
 	}
 	if cmd.Question != "" {
-		return assistantText(cmd.Question), nil
+		return []domain.ChatMessage{assistantText(cmd.Question)}, nil
 	}
 	// Reply to a Take or Keyframe card outranks Scene/Shot numbers in the message. Numbers, then the
 	// latest Take card, then the Project's only Shot (both from contextShot) apply only without
 	// that reply.
 	if target == nil || (target.Kind != domain.KindTake && target.Kind != domain.KindKeyframe) {
-		if shot := shotNamed(shots, ref, cmd.Scene, cmd.Shot); shot != nil {
+		if shot := shotpick.Named(shots, ref, cmd.Scene, cmd.Shot); shot != nil {
 			ref = shot
 		}
 	}
 	if err := s.refuseBrand(ctx, project.ID, content, cmd); err != nil {
 		s.reportCommandFailure(ctx, project.ID, outcome{}, err)
-		return domain.ChatMessage{}, err
+		return nil, err
 	}
 	res, err := s.execute(ctx, project, ref, cmd, content, false)
 	if err != nil {
 		s.reportCommandFailure(ctx, project.ID, res, err)
-		return domain.ChatMessage{}, err
+		return nil, err
 	}
-	return assistantText(res.text()), nil
+	return res.messages(), nil
 }
 
-// rememberOnly carries out the create_note operations of a Command (AUTO MODE).
-func (s *DirectorService) rememberOnly(ctx context.Context, project domain.Project, cmd commandinterpreter.Command) (domain.ChatMessage, error) {
-	cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return op.Type != commandinterpreter.OpCreateNote })
+// anyModeOnly carries out the operations of a Command that AUTO MODE takes too (create_note, set_budget: commandinterpreter.Spec.AnyMode); AUTO MODE does not take
+// Shot directions from the chat.
+func (s *DirectorService) anyModeOnly(ctx context.Context, project domain.Project, cmd commandinterpreter.Command) ([]domain.ChatMessage, error) {
+	cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return !op.AnyMode() })
 	if len(cmd.Operations) == 0 {
-		return assistantText("メモとして残せる内容が見つかりませんでした。覚えておきたい内容を、もう一度教えてください。"), nil
+		return []domain.ChatMessage{assistantText("メモ・予算・設定として読み取れる内容が見つかりませんでした。覚えておきたい内容や、予算（例:「予算は $20 で」）、変えたい設定（例:「OpenAI の API キーを設定したい」）を、もう一度教えてください。")}, nil
 	}
 	res, err := s.execute(ctx, project, nil, cmd, "", false)
 	if err != nil {
 		s.reportCommandFailure(ctx, project.ID, res, err)
-		return domain.ChatMessage{}, err
+		return nil, err
 	}
-	return assistantText(res.text()), nil
+	return res.messages(), nil
 }
 
 // remember keeps what the director asked to remember as a note of the Project (source chat).
@@ -117,8 +131,7 @@ func (s *DirectorService) remember(ctx context.Context, projectID string, op com
 
 // contextShot resolves the Shot a message is about without the words of the message: the Take or
 // Keyframe card it replies to, else the latest Take card of the thread, else the only Shot of the
-// Project. A reply to a card whose Shot is not known resolves to none (the Director asks), never to
-// another Shot.
+// Project. A reply to a card whose Shot is not known resolves to none (the Director asks), never to another Shot.
 func (s *DirectorService) contextShot(ctx context.Context, projectID string, target *domain.ChatMessage, shots []repository.ShotRef) (*repository.ShotRef, error) {
 	if target != nil && target.Kind == domain.KindKeyframe {
 		ref, err := s.gens.ShotOfKeyframe(ctx, projectID, target.RefID)
@@ -155,22 +168,4 @@ func (s *DirectorService) contextShot(ctx context.Context, projectID string, tar
 		return &shots[0], nil
 	}
 	return nil, nil
-}
-
-// shotNamed finds the Shot by the numbers a message names (1-based); nil when it names none. The
-// numbers of a Branch's story are not unique (a Branch Scene counts from 1 again), so the Shot the
-// context already resolved (target) is the answer when it has those numbers.
-func shotNamed(shots []repository.ShotRef, target *repository.ShotRef, scene, shot int) *repository.ShotRef {
-	if scene < 1 || shot < 1 {
-		return nil
-	}
-	if target != nil && target.Scene.OrderIndex+1 == scene && target.Shot.OrderIndex+1 == shot {
-		return target
-	}
-	for i := range shots {
-		if shots[i].Scene.OrderIndex+1 == scene && shots[i].Shot.OrderIndex+1 == shot {
-			return &shots[i]
-		}
-	}
-	return nil
 }

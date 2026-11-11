@@ -178,6 +178,47 @@ func (r *Repository) Release(ctx context.Context, shotID string, stage Stage) er
 	return r.update(ctx, `DELETE FROM generation_launch WHERE shot_id = ? AND stage = ? AND job_id IS NULL`, shotID, stage)
 }
 
+// ReleaseBudgetStops gives back the stages of the Project's Shots that the budget ceiling stopped, because the user changed what stopped them (the ceiling,
+// the Quality Policy): the next look tries them again (#1139). A stage whose job was started is never given back.
+func (r *Repository) ReleaseBudgetStops(ctx context.Context, projectID string) error {
+	return r.update(ctx,
+		`DELETE FROM generation_launch WHERE outcome = ? AND job_id IS NULL AND shot_id IN
+		   (SELECT sh.id FROM shot sh JOIN scene sc ON sc.id = sh.scene_id WHERE sc.project_id = ?)`, OutcomeBudget, projectID)
+}
+
+// LatestOperationCards maps each operation (ref_id) the Project asked the user to confirm to the ID of its newest confirmation card (ref_type "operation"): an older
+// card of the same operation shows a request the user has made again since, and can no longer be answered.
+func (r *Repository) LatestOperationCards(ctx context.Context, projectID string) (map[string]string, error) {
+	rows, err := r.db.Reader().QueryContext(ctx,
+		`SELECT ref_id, id FROM chat_message WHERE project_id = ? AND kind = 'question' AND ref_type = ? ORDER BY rowid`, projectID, domain.RefOperation)
+	if err != nil {
+		return nil, fmt.Errorf("list confirmation cards: %w", err)
+	}
+	defer rows.Close()
+	latest := map[string]string{}
+	for rows.Next() {
+		var operation, id string
+		if err := rows.Scan(&operation, &id); err != nil {
+			return nil, fmt.Errorf("scan confirmation card: %w", err)
+		}
+		latest[operation] = id
+	}
+	return latest, rows.Err()
+}
+
+// OperationCardOpen reports whether the newest confirmation card of the operation (chat_message.ref_type "operation", ref_id the operation type) of the Project
+// has not been answered yet (an older card of the same operation is superseded by the newer one). The Orchestrator starts no paid generation while the user's budget waits for their confirmation (#1139).
+func (r *Repository) OperationCardOpen(ctx context.Context, projectID, operation string) (bool, error) {
+	var open bool
+	err := r.db.Reader().QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM (SELECT id FROM chat_message WHERE project_id = ? AND kind = 'question' AND ref_type = ? AND ref_id = ? ORDER BY rowid DESC LIMIT 1) m
+		   WHERE NOT EXISTS (SELECT 1 FROM chat_message r WHERE r.reply_to_message_id = m.id))`, projectID, domain.RefOperation, operation).Scan(&open)
+	if err != nil {
+		return false, fmt.Errorf("find an open confirmation card: %w", err)
+	}
+	return open, nil
+}
+
 func (r *Repository) update(ctx context.Context, query string, args ...any) error {
 	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, query, args...); err != nil {

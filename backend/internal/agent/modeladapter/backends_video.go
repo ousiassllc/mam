@@ -93,7 +93,7 @@ func (b klingBackend) GenerateVideo(ctx context.Context, apiModel string, req Vi
 		}
 	}
 	raw, _ := json.Marshal(body)
-	data, err := b.request(ctx, http.MethodPost, b.baseURL+path, jsonHeader(auth), raw, maxJSONBytes)
+	data, err := b.request(ctx, http.MethodPost, b.baseURL+path, JSONHeader(auth), raw, maxJSONBytes)
 	if err != nil {
 		return VideoResult{}, err
 	}
@@ -159,22 +159,15 @@ type backendOptions struct {
 	stagingDir     string
 }
 
-// WithLocalDownloads lets result files be downloaded from plain http URLs and local addresses, and
-// through the client given to NewBackends. It exists for tests against httptest servers: without
-// it a result URL must be an https URL of a public host.
+// WithLocalDownloads lets result files be downloaded from plain http URLs and local addresses, and through the client given to NewBackends (for tests against
+// httptest servers: otherwise a result URL must be an https URL of a public host).
 func WithLocalDownloads() BackendOption { return func(o *backendOptions) { o.localDownloads = true } }
 
-// WithStagingDir sets where downloaded videos are staged until the caller stores them (see Blob).
-// It should be on the volume the files are stored on, so that storing is a rename.
+// WithStagingDir sets where downloaded videos are staged until the caller stores them (see Blob): the volume they are stored on, so that storing is a rename.
 func WithStagingDir(dir string) BackendOption { return func(o *backendOptions) { o.stagingDir = dir } }
 
-// NewBackends returns the HTTP backend of every model. API keys are read from keys at call time,
-// so a key stored in the settings screen takes effect without a restart. client may be nil (a
-// client without an overall timeout: the Adapter bounds every call). pollEvery is the wait
-// between two status requests of an asynchronous job (zero selects 5 seconds). Result files are
-// downloaded with a client that connects to public addresses only (safefetch.NewClient) when
-// client is nil, otherwise with client; either way the URL must be https (see WithLocalDownloads).
-func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, pollEvery time.Duration, opts ...BackendOption) Backends {
+// APIs returns the HTTP client of a vendor as NewBackends makes it (same arguments), for providerbackends.
+func APIs(cfg Config, keys credential.Store, client httpclient.Doer, pollEvery time.Duration, opts ...BackendOption) func(Vendor) API {
 	var o backendOptions
 	for _, opt := range opts {
 		opt(&o)
@@ -190,12 +183,24 @@ func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, poll
 	if pollEvery <= 0 {
 		pollEvery = 5 * time.Second
 	}
-	mk := func(v Vendor) api {
+	return func(v Vendor) API {
 		return api{
 			vendor: v, baseURL: strings.TrimRight(cfg.Vendors[v].BaseURL, "/"), keys: keys,
 			client: client, fetcher: fetcher, localDownloads: o.localDownloads, pollEvery: pollEvery, stagingDir: o.stagingDir,
 		}
 	}
+}
+
+// NewBackends returns the HTTP backend of every model. API keys are read from keys at call time (a key stored in the settings screen takes effect without a restart).
+// client may be nil (a client without an overall timeout: the Adapter bounds every call); pollEvery is the wait between two status requests of an asynchronous job
+// (zero: 5 seconds). Result files are downloaded with a client that connects to public addresses only (safefetch.NewClient) when client is nil, otherwise with client;
+// either way the URL must be https (see WithLocalDownloads). localbackends.Build then replaces the backends of the models Config.VideoProvider sends to an aggregator.
+func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, pollEvery time.Duration, opts ...BackendOption) Backends {
+	return BackendsOf(cfg, APIs(cfg, keys, client, pollEvery, opts...))
+}
+
+// BackendsOf is NewBackends over APIs that exist already, so that the caller shares their HTTP clients with the backends it adds.
+func BackendsOf(cfg Config, mk func(Vendor) API) Backends {
 	return Backends{
 		Image: map[domain.ModelName]ImageBackend{
 			domain.ModelNanoBanana:      geminiImageBackend{mk(VendorGoogle)},

@@ -69,6 +69,41 @@ func checkBundle(data domain.BundleData) error {
 	return fmt.Errorf("%w: exactly one project row is required", ErrInvalid)
 }
 
+// neutralizeCards changes the question / escalation cards of data in place (it is no check: Import calls it once checkBundle has accepted the bundle). The
+// app makes the cards whose buttons carry out an operation (domain.CardBody.OptionActions) or that ask a secret in a masked field (Secret), and a bundle is not
+// trusted to: an imported card keeps its text and options, which only answer, and loses both. The card also loses ref_type / ref_id when it confirms an
+// operation (domain.RefOperation): that card is no confirmation the app is waiting for (a set_budget card that stays open would stop the Orchestrator's paid
+// generation, and "はい" to it would do nothing), so it is a plain question. (An exported open confirmation card thus comes back as one.)
+func neutralizeCards(data domain.BundleData) {
+	for _, t := range data.Tables {
+		if t.Name != "chat_message" {
+			continue
+		}
+		for _, row := range t.Rows {
+			dropCardActions(row)
+		}
+	}
+}
+
+func dropCardActions(row domain.BundleRow) {
+	if row["kind"] != string(domain.KindQuestion) && row["kind"] != string(domain.KindEscalation) {
+		return
+	}
+	if row["ref_type"] == domain.RefOperation {
+		row["ref_type"], row["ref_id"] = nil, nil
+	}
+	content, ok := row["content"].(string)
+	if !ok {
+		return
+	}
+	// decoded the way the readers of a card decode it (JSON field names match without regard to case), so what is dropped is what they would have seen
+	body := domain.DecodeCardBody(content)
+	if body.OptionActions != nil || body.Secret != nil {
+		body.OptionActions, body.Secret = nil, nil
+		row["content"] = domain.EncodeCardBody(body)
+	}
+}
+
 // checkTakeCardURLs refuses a take card whose video or poster is not a same-origin path: the
 // player would load it from another host.
 func checkTakeCardURLs(row domain.BundleRow) error {

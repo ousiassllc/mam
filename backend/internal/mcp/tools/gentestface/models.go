@@ -14,7 +14,7 @@ import (
 // (face_similarity.models), as the state of the pose library is read from get_pose_library: here it is one more field of a tool the agent calls before every run anyway.
 func registerModels(r *mcpkit.Registrar, h handlers) {
 	mcpkit.Write(r, facemodels.ToolName,
-		"顔チェック用モデル（YuNet の顔検出と SFace の顔照合。OpenCV Zoo の ONNX、約 37 MB）をダウンロードして導入する。導入すると、再起動なしで、役割 face の参照を付けた生成テストの結果に face_similarity の数値が付く。導入前に list_generation_models の face_similarity.models（取得元・大きさ・ライセンス・注意）を利用者に見せ、利用者が確認して同意したときだけ accepted=true にする（false だと何も取得せず validation）。冪等（揃っていれば何もしない。SHA-256 が固定した値と合うことを確かめる）。終わるまで応答しない。ONNX Runtime のライブラリが無いときは、導入しても測れない（face_similarity.models.engine_off が runtime_unavailable）",
+		"顔チェック用モデル（YuNet の顔検出と SFace の顔照合。OpenCV Zoo の ONNX、約 37 MB）をダウンロードして導入する。導入すると、再起動なしで、役割 face の参照を付けた単発生成の結果に face_similarity の数値が付く。導入前に list_generation_models の face_similarity.models（取得元・大きさ・ライセンス・注意）を利用者に見せ、利用者が確認して同意したときだけ accepted=true にする（false だと何も取得せず validation）。冪等（揃っていれば何もしない。SHA-256 が固定した値と合うことを確かめる）。終わるまで応答しない。ONNX Runtime のライブラリが無いときは、導入しても測れない（face_similarity.models.engine_off が runtime_unavailable）",
 		h.installModels, mcpkit.OpenWorld(), mcpkit.Idempotent())
 	mcpkit.Destroy(r, "remove_face_models",
 		"導入した顔チェック用モデルの 2 つのファイルを削除する（フォルダの中のほかのファイルは残す）。導入していなければ何もしない。導入中は conflict。削除すると顔の類似度はオフになり、役割 face の参照を付けた結果の face_similarity.skipped は models_missing になる。履歴の結果は残る",

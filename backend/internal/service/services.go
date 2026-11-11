@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
@@ -100,6 +101,9 @@ type Services struct {
 	LLMClient     *llm.Client           // the Reasoning LLM Adapter the Agents call; the app sets it (a saved LLM assignment is applied to it at once)
 	FFmpeg        *media.Tools          // the ffmpeg / ffprobe of every service (Deps.Media); the app sets it and Reloads it when ffmpeg is set up
 }
+
+// ChatOps are the chat operations of the global settings (#1140): service/chatwire fills them at start, a test of the chat adds its own.
+func (s *Services) ChatOps() *chatops.Runtime { return s.Director.chatOps }
 
 // Close stops the background workers and kills the running Take preview conversions. Call it on shutdown, after the job queue stopped.
 func (s *Services) Close() { s.Takes.previews.Close(); s.Editor.Close() }

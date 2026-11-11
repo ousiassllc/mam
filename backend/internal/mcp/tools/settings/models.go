@@ -149,7 +149,8 @@ type SetModelsInput struct {
 	Policies []PolicyRoute `json:"policies,omitempty" jsonschema:"変える Quality Policy の動画モデルの割り当て"`
 }
 
-func modelsInvalid(err error) (string, bool) {
+// ModelsInvalid reads the refusal of an input of the model settings (modelsettings.InvalidError), for MapSaveError.
+func ModelsInvalid(err error) (string, bool) {
 	var invalid *modelsettings.InvalidError
 	if errors.As(err, &invalid) {
 		return invalid.Message, true
@@ -160,14 +161,14 @@ func modelsInvalid(err error) (string, bool) {
 func (h handlers) setModels(_ context.Context, in SetModelsInput) (ModelsSection, error) {
 	svc := h.r.Settings.Models
 	if svc == nil {
-		return ModelsSection{}, unavailable("画像・動画モデルの割り当て")
+		return ModelsSection{}, Unavailable("画像・動画モデルの割り当て")
 	}
 	if len(in.Images)+len(in.Policies) == 0 {
 		return ModelsSection{}, invalidInput("", "変える用途か Quality Policy を 1 つ以上指定してください")
 	}
 	saved, err := svc.View()
 	if err != nil {
-		return ModelsSection{}, mapSaveError(err, modelsInvalid, modelsettings.ErrPinned)
+		return ModelsSection{}, MapSaveError(err, ModelsInvalid, modelsettings.ErrPinned)
 	}
 	next := modelsettings.Input{Images: maps.Clone(saved.Images), Policies: maps.Clone(saved.Policies)}
 	for _, r := range in.Images {
@@ -192,7 +193,7 @@ func (h handlers) setModels(_ context.Context, in SetModelsInput) (ModelsSection
 		}
 	}
 	if err := svc.Save(next); err != nil {
-		return ModelsSection{}, mapSaveError(err, modelsInvalid, modelsettings.ErrPinned)
+		return ModelsSection{}, MapSaveError(err, ModelsInvalid, modelsettings.ErrPinned)
 	}
 	return modelsSection(svc), nil
 }
@@ -200,10 +201,10 @@ func (h handlers) setModels(_ context.Context, in SetModelsInput) (ModelsSection
 func (h handlers) resetModels(_ context.Context, _ Input) (ModelsSection, error) {
 	svc := h.r.Settings.Models
 	if svc == nil {
-		return ModelsSection{}, unavailable("画像・動画モデルの割り当て")
+		return ModelsSection{}, Unavailable("画像・動画モデルの割り当て")
 	}
 	if err := svc.Reset(); err != nil {
-		return ModelsSection{}, mapSaveError(err, modelsInvalid, modelsettings.ErrPinned)
+		return ModelsSection{}, MapSaveError(err, ModelsInvalid, modelsettings.ErrPinned)
 	}
 	return modelsSection(svc), nil
 }

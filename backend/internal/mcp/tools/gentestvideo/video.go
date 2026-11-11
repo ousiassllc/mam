@@ -24,7 +24,7 @@ import (
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc, registrar: r}
 	mcpkit.Read(r, "list_generation_video_enhancers",
-		"生成テストの動画の結果を大きくする（アップスケール）・コマを増やして滑らかにする（フレーム補間）モデルの一覧。ローカル（ComfyUI の SeedVR2 3B と RIFE。無料。モデルマネージャーで入れたものだけが出る）と、"+
+		"単発生成の動画の結果を大きくする（アップスケール）・コマを増やして滑らかにする（フレーム補間）モデルの一覧。ローカル（ComfyUI の SeedVR2 3B と RIFE。無料。モデルマネージャーで入れたものだけが出る）と、"+
 			"有料クラウドの Topaz Video API（API キーが無いときは available=false で、unavailable_message に直し方が出る）。provider・paid・商用可否（license）・表示が必要な出典（attribution）つき。"+
 			"ローカルの SeedVR2 / RIFE は RTX 4070 Ti SUPER 16GB での動作は実機未確認。Topaz は有料クラウド（見積り→確認が必須）で、表示には「Powered by Topaz Labs」が要る。"+
 			"大きくする倍率の上限は max_scale、コマ補間の倍率は multipliers、Topaz の fps の範囲は cloud_fps_range、この PC（ローカル）の出力 fps の上限は local_max_fps（120）、出力の 1 コマの画素数の上限は max_output_pixels で返る。",
@@ -36,7 +36,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 			"ローカルのコマ補間は元の fps の 2 倍・4 倍だけで、出力は 120 fps まで（それ以外の target_fps や、120 fps を超える倍率は断る。任意の fps や 240 fps までは Topaz で 15〜240 fps）。",
 		h.estimate, mcpkit.OpenWorld())
 	mcpkit.Write(r, "enhance_generation_video",
-		"生成テストの成功した動画の結果を大きくする（op=upscale。scale は 1 より大きく 4 以下、または target_short_side で短い辺を 720 / 1080 などに）か、コマを増やして滑らかにする（op=interpolate。multiplier は 2 か 4、または target_fps）。"+
+		"単発生成の成功した動画の結果を大きくする（op=upscale。scale は 1 より大きく 4 以下、または target_short_side で短い辺を 720 / 1080 などに）か、コマを増やして滑らかにする（op=interpolate。multiplier は 2 か 4、または target_fps）。"+
 			"結果は元とは別の結果（別ファイル）として履歴に残り、get_generation_result の video_enhance に元の result_id・操作・モデル・倍率や fps が入る。大きくした結果をもう一度処理してもよい（拡大のあとに補間、など）。"+
 			"アップスケールとコマ補間は別々の処理で、1 回に 1 つ。進捗は返る job_id を get_job / get_generation_test で読む。"+
 			"ローカルは無料でそのまま実行できる。Topaz（model が topaz:...）は有料クラウドで、estimate_generation_video_enhance の estimate_id と、利用者が確認した confirmed_credits（見積りの credits と同じ値）が無いと実行しない。"+
@@ -55,7 +55,7 @@ type Input struct{}
 
 func (h handlers) gt() (*gentest.Service, error) {
 	if h.svc.Gentest == nil {
-		return nil, &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "生成テストはこのアプリでは使えません", Status: http.StatusServiceUnavailable}
+		return nil, &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "単発生成はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
 	}
 	return h.svc.Gentest, nil
 }
@@ -76,7 +76,7 @@ func mapError(err error) error {
 	case errors.Is(err, gterr.ErrNotFound):
 		return &mcpkit.ToolError{Code: mcpkit.CodeNotFound, Message: "対象が見つかりません", Status: http.StatusNotFound}
 	case errors.Is(err, gterr.ErrUnavailable):
-		return &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "生成テストはこのアプリでは使えません", Status: http.StatusServiceUnavailable}
+		return &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: "単発生成はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
 	}
 	return mcpkit.MapError(err)
 }

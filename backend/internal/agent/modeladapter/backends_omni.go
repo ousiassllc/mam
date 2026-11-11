@@ -119,7 +119,7 @@ func (b geminiOmniBackend) GenerateVideo(ctx context.Context, apiModel string, r
 	if err != nil {
 		return VideoResult{}, err
 	}
-	data, err := b.request(ctx, http.MethodPost, b.baseURL+"/v1beta/interactions", jsonHeader(auth), raw, maxJSONBytes)
+	data, err := b.request(ctx, http.MethodPost, b.baseURL+"/v1beta/interactions", JSONHeader(auth), raw, maxJSONBytes)
 	if err != nil {
 		return VideoResult{}, err
 	}

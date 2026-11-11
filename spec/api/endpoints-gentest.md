@@ -1,4 +1,4 @@
-# エンドポイント: 生成テスト画面
+# エンドポイント: 単発生成画面
 
 プロジェクトに属さない画像・動画の比較生成の画面 `GET /generation-test`（Issue #835）。意味・見積り・ジョブ・失敗の扱いは [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md)、テーブルは [../architecture/gentest/er-gentest.md](../architecture/gentest/er-gentest.md)。画面の全操作は、同じサービス（`gentest.Service`）を呼ぶ MCP ツールでもできる（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）。入口はプロジェクト一覧（分析・設定の隣）のリンクと、モデルマネージャーの区画「モデル」の「?」ヘルプの中のリンク（#1100 で、試し生成の区画のリンクから移った）。
 
@@ -9,6 +9,11 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | メソッド | パス | 内容 |
 |---|---|---|
 | GET | `/generation-test` | 画面（作成フォーム・確認・進捗）。クエリ `model`（そのモデルを選んで開く。動画モデルなら動画のフォーム）・`prompt`（プロンプト履歴の ID でプロンプトを入れる）・`ref`（`<source>:<project>:<id>` の入力画像を足す）・`from_result`（プロンプトマッチの回など、結果の ID。その結果のプロンプト・モデル・縦横比を入れて開き、「モデルを足して実行すると同じプロンプトで比べられます」の案内を出す。Issue #965）・`tier`（`easy`／`detail`／`comfy`。画像のフォームの段。無い・知らない値はかんたん。モデルを名指す入口（`model`・`from_result`・`again`）は `tier` が無ければこだわり。`comfy` はノード画面などへの入口だけの画面。Issue #977）・`again`（結果の ID。その結果の設定を入れてこだわりで開く。`same_seed=1` でシードも入れる。入れられない項目は理由を 1 行で出す）・`ref_role`（`ref` の入力画像の役割。「この顔で作る」は `face`）・`intent`・`quality`（かんたんで選んでおく値） |
+| GET | `/generation-test/chat` | 「チャットで作る」の画面（Issue #1138。[../architecture/gentest/gentest-chat.md](../architecture/gentest/gentest-chat.md)・[../components/gentest-chat.md](../components/gentest-chat.md)）。開くたびに新しい会話の ID（`session`。16 進 32 文字）を持つ。Prompt Planner の LLM のルートが無い設定では案内だけを出し、以下の POST・GET のルートは無い |
+| POST | `/generation-test/chat/messages` | ユーザーの発言（`session`・`content` 1〜2000 文字。選択肢のカードは `reply` を `content` として送る）。LLM が答えるまでの動作（モデルを調べる・見積る）を回し、**スレッドに足す部品**（発言・状態の行・選択肢のカード・確認のカード）を返す（`hx-swap=beforeend`）。何も生成しない。空・長すぎは 422、`session` の形が不正（16 進 32 文字でない）なときだけ 410。形が正しい ID の会話が無い（期限切れ・再起動で捨てた）ときは、**その ID で新しい会話を作って 200**（前の会話の発言・見積りのカードは引き継がない）。LLM の失敗は 200 で赤い状態の行（キー無しは設定へのリンクつき） |
+| POST | `/generation-test/chat/proposals/:id/confirm` | 確認のカードの「この内容で実行する」（`session` だけ。**見積り ID・合計・モデル・プロンプトは読まない**: サーバーが保持した見積りで `Service.Run` する）。実行できたら 202 で、結果のブロックと、閉じたカード（帯域外 `hx-swap-oob`）。見積りの変更・`max_cost_usd` 超過・`max_items` 超過は何も生成せず、カードを閉じて理由の行（200）。英訳の失敗など何も生成しなかったそれ以外の失敗は、カードを `pending` に戻してエラー（上流の失敗は 502）を返す（押している間に新しい見積りが作られたときだけ、カードを `superseded` にして理由の行を 200 で返す）。使用済み・やめた・置き換わったカードは 409、無い会話・`session` の形が不正は 410、無いカードは 404（会話が古いカードを `MaxProposals` で捨てたときも）。閉じたカードは帯域外（`hx-swap-oob`）で返し、フォームの送り先はスレッド（失敗は失敗の行をスレッドの末尾に足すだけで、まだ開いているカードを置き換えない） |
+| POST | `/generation-test/chat/proposals/:id/dismiss` | 「やめる」（`session`）。閉じたカードを返す（200）。何も生成しない。使用済み・やめた・置き換わったカードは 409、無い会話・`session` の形が不正は 410、無いカードは 404 |
+| GET | `/generation-test/chat/batches/:id` | 結果のブロック 1 つ（2 秒ごとに自分だけを取り直す。終わると `hx-trigger` が消える）。取得できないときは、原因つきの失敗の行（「履歴」のタブで確認する案内つき）でブロックを置き換え、取り直しを止める |
 | POST | `/generation-test/recipes` | 今のフォームの設定をレシピとして保存（フォームの全項目＋`recipe_name`・`recipe_easy=1`。プロンプトの本文と入力画像は保存しない）。レシピの区画 `#gt-recipes` を返す（成功 200、名前の重複 409、検査の失敗 422 は理由つきで同じ区画） |
 | POST | `/generation-test/recipes/:id/rename` | 名前を変える（`recipe_rename`）。区画 `#gt-recipes` を返す |
 | POST | `/generation-test/recipes/:id/easy` | かんたんの選択肢に足す（`easy=1`）／外す（`easy=0`）。区画 `#gt-recipes` を返す |
@@ -52,7 +57,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | GET | `/generation-test/match` | プロンプトマッチの画面（Issue #916。[../architecture/gentest/prompt-match.md](../architecture/gentest/prompt-match.md)）。参考の画像 1 枚・モデル・進め方（おまかせ / 1回だけ / 調整）・目標の似てる度・上限の回数・言葉の指示。クエリ `ref`（`<source>:<project>:<id>` の画像を参考にして開く）・`model`。プロンプトマッチが無いアプリは 503 |
 | POST | `/generation-test/match/estimate` | プロンプトマッチの見積り（multipart: `upload`（参考の画像）または `ref`・`model`・`mode`（`auto`/`once`/`adjust`）・`target_score`（1〜100）・`max_rounds`（1〜10）・`max_cost_usd`（この実行で使ってよい費用。見積りが超えるなら実行ボタンが無効）・`instruction`（1000 文字まで）・続きは `continue_batch_id`）。確認の区画（最大の回数・モデルの内訳・LLM の呼び出しの行（単価の分かるものは合計に入る。分からないものは「単価なし」で入らない）・上限超過）を返す。拒否は 422・上限超過は確認にそのまま出る。`middleware` のアップロード用ルートの一覧に載せ、本文の上限を広げている |
 | POST | `/generation-test/match/run` | 確認の区画のフォームの送信。見積りをやり直し、`estimate_id` と合計が違う・上限を超えるなら 409、入力の誤りは 422。202 でタイムライン（`#gt-batch`）と、言葉の指示のフォーム（`#gt-match-adjust`。帯域外）を返し、確認の区画は空にする |
-| GET | `/generation-test/match/batches/:id` | タイムライン（いちばん似ている回・目標・各回の画像・似てる度（顔を混ぜているときは点の内訳）・直したところ・違い・プロンプトと直す前のプロンプト・ベストのプロンプトのコピー／生成テストで比べる・各回の「プロンプトで比べる」）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
+| GET | `/generation-test/match/batches/:id` | タイムライン（いちばん似ている回・目標・各回の画像・似てる度（顔を混ぜているときは点の内訳）・直したところ・違い・プロンプトと直す前のプロンプト・ベストのプロンプトのコピー／単発生成で比べる・各回の「プロンプトで比べる」）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
 | POST | `/generation-test/match/batches/:id/cancel` | 取り消し。始めていない回は取り消し、次の回は始まらない（作っている途中の絵は終わるのを待つ） |
 | POST | `/generation-test/match/batches/:id/adjust` | 言葉の指示（`instruction`）と `mode`（`adjust` = 1 回直す・`auto` = 自動で続ける）。**実行中**は次の直しに取り込む（確認の区画に 1 行の通知）。**終わっていれば**続きの見積りを確認の区画に返す（実行は `/match/run` に `continue_batch_id` つきで） |
 | DELETE | `/generation-test/prompts/:id` | プロンプト履歴の削除（結果は残る）。一覧の区画を返す |
@@ -71,7 +76,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | `*PartialImportError`（取り込み済みで、スロットへの割り当てが LOCK 等で拒否された） | 409（メッセージに「画像は取り込みました」） | `locked` 等（メッセージに ID） |
 | `*UpstreamError`（英訳に LLM が使えない・訳せなかった。何も生成していない。Issue #913。リクエストの取り消し・期限切れは対象外: LLM の失敗ではないので 502 にしない。Issue #1072） | 502 | `upstream` |
 | `ErrNotFound` | 404 | `not_found` |
-| `ErrUnavailable`・アプリに生成テストが無い | 503 | `unavailable` |
+| `ErrUnavailable`・アプリに単発生成が無い | 503 | `unavailable` |
 | 画像が大きすぎる | 413 | `validation` |
 
 ## 詳細設定のフィールド（Issue #973・#972）
@@ -138,6 +143,12 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.22 | 2026-11-04 | `POST /generation-test/poses/install-adult`・`/poses/remove-adult` を足した。成人向けのポーズ（`sexy`・`duo`）の画像・一覧・行への追加は、年齢確認がオフの間は 404／出さない。履歴の入力（`GET /generation-test/inputs/:id/file`）は、成人向けのポーズから取った写しをゲートがオフの間は 404 にする | Issue #1020 |
 | 1.23 | 2026-11-04 | `POST /generation-test/results/:id/video-enhance/estimate`・`POST /generation-test/results/:id/video-enhance`（成功した動画の結果を大きくする・コマを増やして滑らかにする。Topaz は見積り → 確認 → 実行）を足した。結果の詳細に動画用の箱 `#gt-video-enhance`、ボタン行に「大きくする」「滑らかにする」、設定の欄に `video_enhance` の行 | Issue #1031 |
 | 1.24 | 2026-11-05 | `POST …/video-enhance` に `adult_confirm`（成人向けの結果を Topaz に送るとき必須）を足した。見積りの画面は警告を出す | Issue #1031（悠太さんの決定 2026-11-05） |
-| 1.25 | 2026-11-06 | 見積りの「プロンプトの英訳」の行は、LLM の単価が分かれば合計に入る（Issue #1069）。英訳中のリクエストの取り消しは 502 にしない（Issue #1072） |
+| 1.25 | 2026-11-06 | 見積りの「プロンプトの英訳」の行は、LLM の単価が分かれば合計に入る。英訳中のリクエストの取り消しは 502 にしない | Issue #1069・#1072 |
 | 1.26 | 2026-11-06 | 入口の記述から「モデルマネージャーの試し生成の区画のリンク」を外し、「?」ヘルプのリンクにした（ルート・フィールドは変えない。状態は仕様のみ） | Issue #1100 |
 | 1.27 | 2026-11-07 | `POST /generation-test/run` の答えを、実行ごとのブロック（`#gt-batch-<batch_id>`）にし、確認のフォームの送り先を `#gt-batches`（`hx-swap=beforeend`）にした。前の実行のブロックは残り、新しい実行は下へ足される。`GET …/batches/:id`・`POST …/batches/:id/cancel` の答えも同じブロックで、自分のブロックだけを置き換える（状態は実装済み） | Issue #1109 |
+| 1.28 | 2026-11-10 | 「チャットで作る」のルート（`/generation-test/chat` ほか。LLM との会話・確認のカード・結果のブロック）を足した | Issue #1138 |
+| 1.29 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.30 | 2026-11-10 | `POST /generation-test/chat/messages` の 410 を、`session` の形が不正なときだけに直した（形が正しい ID の会話が無いときは、新しい会話を作って 200。実装は `open(…, true)`）。410 は confirm・dismiss（無い会話・不正な形）と messages（不正な形）。仕様が実装と食い違っていた | PR #1141 のレビュー指摘（major） |
+| 1.31 | 2026-11-10 | `POST /generation-test/chat/proposals/:id/dismiss` の行に、状態（200・409・410・404）を書いた（1.30 の「410 は confirm・dismiss」に行が追いついていなかった。実装は `Dismiss` が `open(…, false)` を使い、`refuse` で 409・410・404 にする） | PR #1141 の再レビュー指摘（1.30 の直しが起こした記述の抜け） |
+| 1.32 | 2026-11-11 | `POST /generation-test/chat/proposals/:id/confirm` の失敗の扱いを足した（何も生成しなかった失敗はカードが `pending` に戻る。押している間に置き換わったカードは `superseded` で 200）。PR #1141 のレビュー指摘 | PR #1141 のレビュー指摘 |
+| 1.33 | 2026-11-11 | `POST …/chat/proposals/:id/dismiss` を、スレッドへ送って閉じたカードを帯域外で返すものにした（失敗でカードを置き換えない）。`GET …/chat/batches/:id` の失敗の行と、古いカードの 404 を書いた | PR #1141 のレビュー指摘 |

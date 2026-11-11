@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -32,7 +33,7 @@ func loadModels(t *testing.T, body string) modeladapter.Config {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "models.json")
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
-	cfg, err := modeladapter.LoadConfig(path)
+	cfg, err := configcheck.Read(path)
 	require.NoError(t, err)
 	return pinGPTImage2(cfg)
 }

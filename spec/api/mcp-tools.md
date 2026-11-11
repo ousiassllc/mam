@@ -20,7 +20,7 @@
 | `get_job` | 長い操作の状態・進捗・結果・失敗理由 | `job_id` | `job_id`, `kind`, `target`, `state`（`queued` / `running` / `succeeded` / `failed` / `cancelled`）, `message`, `done`, `total`, `progress`, `result`, `error`, `failure`, `error_code`, `error_id`, `next_steps`, `project_id`, `started_at`, `finished_at`, `ended_at` | はい |
 | `get_app_logs` | mam のアプリログ（`mam.log` とローテーション済みの世代。圧縮されたものも）を新しい順に返す。`internal` エラーの原因はここだけにある。API キー・トークンなどの秘密は返さない（既知の形とキーストアの値を `[redacted]` にしてから絞り込む） | すべて省略可: `level`（`debug` / `info` / `warn` / `error`。省略は `info`）, `since`・`until`（RFC 3339。`until` は含まない）, `keyword`（メッセージ・属性名・属性値。大文字小文字を区別しない）, `attrs`（属性の絞り込み。キーと値の組がすべて一致した行。`project_id`・`shot_id`・`take_id`・`job_id`・`error_id` など。グループの属性は `a.b`。10 個まで）, `limit`（既定 100、上限 500） | `entries[]`: `time`, `level`, `msg`, `attrs`; `truncated`（件数かサイズ（約 200 KB）の上限で、まだ古い行がある）, `next_until`（`truncated` のとき、続きを読む `until`） | はい |
 | `list_jobs` | 長い操作（ジョブ）の履歴を新しく始まった順に返す（再起動後も残る。30 日・10,000 件）。終わっていないものは一覧の前に状態を確かめ直す（終わりが見える）。`result` は含めない（`get_job` で取る） | すべて省略可: `kind`, `state`（`queued` / `running` / `succeeded` / `failed` / `cancelled`）, `error_code`（`validation` / `not_found` / `conflict` / `locked` / `forbidden` / `budget_exceeded` / `rate_limited` / `unavailable` / `upstream` / `internal`）, `project_id`, `since`・`until`（開始時刻。RFC 3339。`until` は含まない）, `limit`（既定 50、上限 200）, `cursor`（前のページの `next_cursor`） | `jobs[]`: `job_id`, `kind`, `target`, `project_id`, `state`, `message`, `done`, `total`, `error`, `error_code`, `error_id`, `next_steps`, `started_at`, `finished_at`, `ended_at`; `next_cursor`（次のページがあるときだけ） | はい |
-| `list_credentials` | 外部モデルの API キーの登録状況。キーの値は返さない | なし | `credentials[]`: `provider`, `label`, `configured`, `last_chars`（末尾 4 文字まで。短いキーは空） | はい |
+| `list_credentials` | 外部モデルの API キーの登録状況（`openrouter`・`fal`・`replicate`〔動画モデルの API プロバイダーのキー。#1136〕を含む）。キーの値は返さない | なし | `credentials[]`: `provider`, `label`, `configured`, `last_chars`（末尾 4 文字まで。短いキーは空） | はい |
 | `set_credential` | API キーを登録・置き換える（OS のセキュアストレージ。再起動不要。冪等。保存の直後に読み戻して確かめ、ストレージが書き込みを拒む・書いたキーを返さないときは `unavailable` で理由を返す。#1006） | `provider`, `api_key` | `provider`, `label`, `configured`, `last_chars`（キーは返さない） | いいえ（破壊的でない） |
 | `delete_credential` | API キーを削除する（未設定でもエラーにならない。冪等） | `provider` | 同上 | いいえ（破壊的） |
 | `list_upload_purposes` | アップロードできる用途と、必須項目・上限サイズ | なし | `purposes[]`: `purpose`, `description`, `max_bytes`, `params[]`（`name`, `description`, `required`） | はい |
@@ -41,9 +41,24 @@
 - 1 行の属性は文字列が 2,000 文字で切られる。パースできない行は読み飛ばす。ログを書くときの属性名がそのままキーになる（`project_id`・`shot_id`・`job_id`・`tool`・`err` など）。
 - 秘密の扱い: ログへは書かない（キーストア・トークンのサービス・アダプターは値をロガーに渡さない）。読み取りでは、既知の形と、キーストアにある API キー・Hugging Face トークンの値を伏せる。名前が `token`・`secret`・`password`・`api_key`・`authorization` などの文字列の属性は値を丸ごと `[redacted]` にする。伏せたあとの文字列で絞り込むので、`keyword` や `attrs` で秘密を探り当てることはできない。
 
+### チャットとの対応（#1140）
+
+アプリ内チャットからも、MCP と同じサービスを通して次の設定を頼める（`spec/components/chat-settings-operations.md`）。チャットは確認カードの後に実行し、API キーだけは発言に書かず入力欄のカードで受ける（MCP の `set_credential` に相当）。
+
+| チャットの操作 | 対応する MCP ツール |
+|---|---|
+| `set_credential` / `set_video_provider` | `set_credential` / `set_video_provider` |
+| `install_model` / `install_model_engine` / `install_hf_file` / `install_local_runtime` | 同名のツール（[mcp-tools-model-manager.md](mcp-tools-model-manager.md)） |
+| `set_model_assignment` / `set_llm_assignment` | 同名のツール（[mcp-tools-settings-policy.md](mcp-tools-settings-policy.md)・[mcp-tools-chatgpt.md](mcp-tools-chatgpt.md)） |
+| `add_lora` | LoRA の取り込み（`create_upload_ticket` の `purpose=model_lora_import`・[mcp-tools-model-manager.md](mcp-tools-model-manager.md)） |
+| `export_video` / `get_export_download_url` / `export_project_bundle` | `export_video` / `get_export_download_url` / `export_project_bundle` |
+| `assign_character_reference` | 同名のツール（[mcp-tools-world-notes.md](mcp-tools-world-notes.md)） |
+
+ffmpeg・FaceFusion の実行ファイルの場所と MCP のトークンはチャットでは変えない（MCP も同じ扱い）。
+
 ### プロバイダー ID（`provider`）
 
-`anthropic`・`openai`・`google`・`flux`・`kling`・`kling4`・`seedance`・`runway`・`minimax`・`alibaba`・`luma`・`topaz`・`elevenlabs`・`synclabs`・`typesafe`（画面の「API キー」と同じ。`list_credentials` が返す一覧が正）。未対応の値は `validation`。
+`anthropic`・`openai`・`google`・`flux`・`kling`・`kling4`・`seedance`・`runway`・`minimax`・`alibaba`・`luma`・`openrouter`・`fal`・`replicate`・`topaz`・`elevenlabs`・`synclabs`・`typesafe`（画面の「API キー」と同じ 18 個。`openrouter`・`fal`・`replicate` は動画モデルの API プロバイダーのキー〔#1136〕。`list_credentials` が返す一覧が正）。未対応の値は `validation`。
 
 ### アップロードの用途（`purpose`）
 
@@ -79,12 +94,12 @@ curl -OJ 'http://100.101.102.103:8788/mcp-files/<ticket>'
 | Project・Brief・チャット・バンドル | [mcp-tools-projects-chat.md](mcp-tools-projects-chat.md) |
 | Scene・Shot・Director・生成・Judge・Repair・Take | [mcp-tools-shots-generation.md](mcp-tools-shots-generation.md) |
 | World State・Reference Library・Branch・バージョン・Series・メモ | [mcp-tools-world-notes.md](mcp-tools-world-notes.md)（対応表: [mcp-tools-world-notes-coverage.md](mcp-tools-world-notes-coverage.md)） |
-| Project 設定・Brand・原価・制作指標・全体設定（LLM・モデル・音声・口パクのプロバイダー・更新） | [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
+| Project 設定・Brand・原価・制作指標・全体設定（LLM・モデル・動画モデルの API プロバイダー・音声・口パクのプロバイダー・更新） | [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
 | ローカル・代替モデル（ComfyUI・OpenAI 互換の接続先とモデル） | [mcp-tools-local-models.md](mcp-tools-local-models.md) |
 | ComfyUI ワークフロー（保存・取り込み・実行・Shot への固定） | [mcp-tools-workflows.md](mcp-tools-workflows.md) |
 | ChatGPT でログイン（ログイン・ログアウト・状態・画像生成の ON/OFF） | [mcp-tools-chatgpt.md](mcp-tools-chatgpt.md) |
 | モデルマネージャー（ComfyUI エンジン・ローカルモデルのカタログと導入・ライセンスの同意） | [mcp-tools-model-manager.md](mcp-tools-model-manager.md) |
-| 生成テスト（プロジェクトに属さない画像・動画の比較生成・履歴・プロンプト履歴・プロジェクトへの取り込み） | [mcp-tools-generation-test.md](mcp-tools-generation-test.md) |
+| 単発生成（プロジェクトに属さない画像・動画の比較生成・履歴・プロンプト履歴・プロジェクトへの取り込み） | [mcp-tools-generation-test.md](mcp-tools-generation-test.md) |
 | 編集（Edit Timeline・音声・書き出し） | [mcp-tools-editor-review.md](mcp-tools-editor-review.md) |
 | レビュー（依頼・受信箱・コメント・判定） | [mcp-tools-editor-review-reviews.md](mcp-tools-editor-review-reviews.md) |
 
@@ -113,3 +128,7 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.16 | 2026-11-03 | `get_job` と `list_jobs` の出力に `next_steps`（企画のジョブが LLM の API キー未設定で失敗したときだけ、続けるためにすること）を足した | Issue #1001。LLM が止まった Project で、何をすれば続けられるかが画面にも MCP にも出ていなかった |
 | 1.17 | 2026-11-03 | `get_job` / `list_jobs` の `next_steps` が、企画の失敗理由に登場人物の下書き（Brief の添付画像から作ったもの）の文があるときは「下書きを直す」案内になる。`error` にその文が足される | Issue #1022（#1001 の残り） |
 | 1.18 | 2026-11-04 | アップロードの用途の表に `character_voice_training_clip`（登場人物の声の学習に使う音声）を足した | Issue #936。GPT-SoVITS の fine-tune の MCP の入口 |
+| 1.19 | 2026-11-10 | ツールの一覧の「全体設定」の行に、動画モデルの API プロバイダー（`get_video_provider`・`set_video_provider`）を足した。`list_credentials`・`set_credential` の `provider` に `openrouter`・`fal`・`replicate` が増えた | Issue #1136。ツールの詳細は [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
+| 1.20 | 2026-11-10 | 「チャットとの対応」を足した。アプリ内チャットから同じ設定を頼める（#1140） | Issue #1140 |
+| 1.21 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.22 | 2026-11-11 | 「プロバイダー ID」の一覧に `openrouter`・`fal`・`replicate` を足した（画面の 18 個と同じ）。1.20 の行に欠けていた変更理由の欄を足した | PR #1141 のレビュー指摘 |

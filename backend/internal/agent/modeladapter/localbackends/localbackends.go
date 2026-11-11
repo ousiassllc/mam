@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/openaicompat"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/providerbackends"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
@@ -39,7 +40,12 @@ type Options struct {
 // left out, so the model has no backend and the Adapter routes around it; configcheck refuses such a
 // setting before it is saved.
 func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapter.Backends {
-	b := modeladapter.NewBackends(cfg, keys, nil, o.PollEvery, append([]modeladapter.BackendOption{modeladapter.WithStagingDir(o.StagingDir)}, o.Vendor...)...)
+	vendorOpts := append([]modeladapter.BackendOption{modeladapter.WithStagingDir(o.StagingDir)}, o.Vendor...)
+	// One set of HTTP clients (one connection pool each) serves the built-in vendors and the providers.
+	apis := modeladapter.APIs(cfg, keys, nil, o.PollEvery, vendorOpts...)
+	b := modeladapter.BackendsOf(cfg, apis)
+	// The models the provider setting sends to OpenRouter, fal.ai or Replicate are called through it (spec/architecture/model-adapters.md §9.6).
+	providerbackends.Install(b.Video, cfg, apis)
 	if o.ChatGPTImage != nil {
 		for _, e := range chatgptid.Entries() {
 			b.Image[e.Model] = o.ChatGPTImage

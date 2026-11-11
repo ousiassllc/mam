@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	gentestrepo "github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 )
@@ -41,6 +42,20 @@ func TestPriceOfKlingIsThePriceOfOneSecond(t *testing.T) {
 	for res, perSecond := range p.PerSecondUSD {
 		assert.InDelta(t, cfg.VideoCost(modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: res}, 1), perSecond, 1e-9, res)
 	}
+}
+
+// A video model the selected API provider does not offer (provider_unsupported) has no price: the maker's own price is not what
+// a run would cost, and it would be added to the estimate.
+func TestPriceOfAModelTheSelectedProviderDoesNotOfferIsUnknown(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	cfg.VideoProvider = viaprovider.OpenRouter
+	require.NotEmpty(t, cfg.ProviderRefusal(domain.ModelKling4), "OpenRouter does not offer Kling 4.0")
+
+	p := priceOf(cfg, domain.ModelKling4, gentestrepo.MediaVideo)
+
+	assert.Equal(t, Price{Basis: BasisUnknown}, p)
+	cfg.VideoProvider = viaprovider.Official
+	assert.Equal(t, BasisPriced, priceOf(cfg, domain.ModelKling4, gentestrepo.MediaVideo).Basis, "the official provider serves it")
 }
 
 // Picking one model out of the catalog asks the Hidden predicate about that model alone: the predicate reads workflow graphs, and

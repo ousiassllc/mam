@@ -39,7 +39,7 @@
 
 ### 画面に出す値（`exposed_inputs`。Issue #977）
 
-`create_local_model`・`update_local_model` に `exposed_inputs[]`（`node`・`input`・`type`・`label?`・`min`/`max`・`options`。形と検査は [mcp-tools-workflows.md](mcp-tools-workflows.md) の同名の節）を足した。ComfyUI の画像モデルの、生成テストのこだわりに出す入力。`get_local_model`・`list_local_models` が返す。同梱の ComfyUI の導入モデルと、取り込んだワークフローが対象（同梱のテンプレートは持たない）。
+`create_local_model`・`update_local_model` に `exposed_inputs[]`（`node`・`input`・`type`・`label?`・`min`/`max`・`options`。形と検査は [mcp-tools-workflows.md](mcp-tools-workflows.md) の同名の節）を足した。ComfyUI の画像モデルの、単発生成のこだわりに出す入力。`get_local_model`・`list_local_models` が返す。同梱の ComfyUI の導入モデルと、取り込んだワークフローが対象（同梱のテンプレートは持たない）。
 
 ### `param`（入力の割り当て）
 
@@ -57,3 +57,4 @@
 | 1.5 | 2026-11-02 | `create_local_endpoint` の `timeout_seconds` は、ComfyUI では進みが止まってから打ち切るまでの時間（既定は 10800 のまま）と書いた | Issue #961 |
 | 1.6 | 2026-11-04 | `create_local_model`・`update_local_model` と取得に `exposed_inputs`（画面に出す値）を足した | Issue #977（ステージ 2） |
 | 1.7 | 2026-11-06 | `assignments[]` に `offset`（`frames` だけ。フレーム数に足す整数。−64〜64。省くと保存済みの同じ割り当ての値のまま）を足した | Issue #1076 |
+| 1.8 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

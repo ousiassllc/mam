@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
@@ -28,6 +29,9 @@ import (
 type Keys struct {
 	Svc    *service.CredentialService
 	Tester *probe.Tester
+	// Models holds the choice of the API provider of the cloud video models (models.json: video_provider). Nil leaves the choice out: the
+	// cards are those of the official provider.
+	Models *modelsettings.Service
 }
 
 const (
@@ -52,14 +56,17 @@ func providerView(k Keys, s service.CredentialStatus) view.ProviderView {
 }
 
 // Data is the API keys as the settings screen shows them. A key store that cannot be read leaves the cards without a
-// state: only this panel is lost, and the error is attached to the request for the log.
+// state: only this panel is lost, and the error is attached to the request for the log. The cards still follow the choice of the
+// API provider (§1.0), so the aggregators' cards are not there under the official provider; the choice itself is left out then, for it
+// says whether each key is set.
 func Data(c *gin.Context, k Keys) view.Data {
 	statuses, err := k.Svc.Status()
 	if err != nil {
 		_ = c.Error(err)
-		return view.Data{Unavailable: true, Providers: providerViews(k, unknownStatuses())}
+		return view.Data{Unavailable: true, Providers: providerViews(k, visible(unknownStatuses(), selectedProvider(c, k)))}
 	}
-	return view.Data{Providers: providerViews(k, statuses)}
+	choice, selected := providerChoice(c, k, statuses)
+	return view.Data{Providers: providerViews(k, visible(statuses, selected)), Provider: choice}
 }
 
 // unknownStatuses are the providers without a state (the key store cannot be read): every card is "未設定" and cannot be edited.
@@ -147,7 +154,7 @@ func Delete(k Keys) gin.HandlerFunc {
 			return
 		}
 		i := slices.IndexFunc(statuses, func(s service.CredentialStatus) bool { return s.Provider == provider })
-		settingshttp.Render(c, http.StatusOK, templ.Join(view.Row(providerView(k, statuses[i])), atoms.ToastOOB("API キーを削除しました")))
+		settingshttp.Render(c, http.StatusOK, templ.Join(view.Row(providerView(k, statuses[i])), atoms.ToastOOB("API キーを削除しました"), providerModelsOOB(c, k, statuses)))
 	}
 }
 
@@ -175,7 +182,7 @@ func done(c *gin.Context, k Keys, provider string, opErr error, saved, savedUnre
 	}
 	settingshttp.CloseModal(c)
 	i := slices.IndexFunc(statuses, func(s service.CredentialStatus) bool { return s.Provider == provider })
-	settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(providerView(k, statuses[i])), atoms.ToastOOB(saved)))
+	settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(providerView(k, statuses[i])), atoms.ToastOOB(saved), providerModelsOOB(c, k, statuses)))
 }
 
 // refuse answers a save that did not happen with the modal again and why: the key field is empty, the reason is told.
@@ -194,7 +201,14 @@ func unreadable(c *gin.Context, k Keys, status int, notice string, statusErr err
 	_ = c.Error(statusErr)
 	c.Header("HX-Retarget", "#credential-panel")
 	c.Header("HX-Reswap", "outerHTML")
-	settingshttp.Render(c, status, view.Panel(view.Data{Unavailable: true, Notice: notice, Providers: providerViews(k, unknownStatuses())}))
+	settingshttp.Render(c, status, view.Panel(view.Data{Unavailable: true, Notice: notice, Providers: providerViews(k, visible(unknownStatuses(), selectedProvider(c, k)))}))
+}
+
+// providerModelsOOB redraws the list of how the chosen API provider serves each model ("OpenRouter の API キー: 設定済み"), which reads the same key the card above it
+// shows: a key that was saved or deleted changes both.
+func providerModelsOOB(c *gin.Context, k Keys, statuses []service.CredentialStatus) templ.Component {
+	choice, _ := providerChoice(c, k, statuses)
+	return view.ProviderModelsOOB(choice)
 }
 
 func asValidation(err error) *service.ValidationError {
@@ -244,9 +258,12 @@ func describe(r probe.Result) (atoms.BadgeTone, string) {
 }
 
 // Register adds the routes of the API keys: the modal (GET paths.CredentialEdit), the connection test (POST
-// paths.CredentialTest), and the save and the delete (PUT / DELETE paths.Credential). page answers the modal route for a
-// request that is not HTMX.
+// paths.CredentialTest), and the save and the delete (PUT / DELETE paths.Credential), and, with k.Models, the choice of the API
+// provider (PUT paths.APIProvider). page answers the modal route for a request that is not HTMX.
 func Register(engine *gin.Engine, k Keys, page gin.HandlerFunc) {
+	if k.Models != nil {
+		engine.PUT(paths.APIProvider(), SaveProvider(k))
+	}
 	engine.GET(paths.CredentialEdit(":provider"), Edit(k, page))
 	engine.POST(paths.CredentialTest(":provider"), Test(k.Tester))
 	engine.PUT(paths.Credential(":provider"), Save(k))

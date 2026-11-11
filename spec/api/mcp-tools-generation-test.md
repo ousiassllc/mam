@@ -1,6 +1,6 @@
-# MCP ツール: 生成テスト
+# MCP ツール: 単発生成
 
-[`mcp-tools.md`](mcp-tools.md) の規約に従う、生成テスト画面（[endpoints-gentest.md](endpoints-gentest.md)）の全操作のツール（Issue #835）。意味は [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md)（画面・ジョブ・失敗の扱い）と [../architecture/gentest/gentest-adapter.md](../architecture/gentest/gentest-adapter.md)（モデルの直接呼び出し・シード）。
+[`mcp-tools.md`](mcp-tools.md) の規約に従う、単発生成画面（[endpoints-gentest.md](endpoints-gentest.md)）の全操作のツール（Issue #835）。意味は [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md)（画面・ジョブ・失敗の扱い）と [../architecture/gentest/gentest-adapter.md](../architecture/gentest/gentest-adapter.md)（モデルの直接呼び出し・シード）。
 
 実装は `backend/internal/mcp/tools/gentest`。画面と同じ `gentest.Service`（`service.Services.Gentest`）を呼ぶ。アプリが持たないとき（`Gentest` が nil）は全ツールが `unavailable`。
 
@@ -29,7 +29,7 @@
 | `run_generation_test` | 確認した見積りどおりに実行する（ジョブ） | 上と同じ + `estimate_id`, `confirmed_total_usd` | `job_id`, `state`, `batch_id`, `total_items` | いいえ（外部へ接続・課金あり） |
 | `estimate_prompt_match` | 参考の画像 1 枚から画像モデルで似た絵を出すプロンプトを作る「プロンプトマッチ」の見積り（Issue #916）。最大の回数 × モデルの単価（ローカルは無料）に、LLM の呼び出しの見積りを足す（Issue #965。プロンプトの作成・修正は `match_llm`、比較は `match_llm_compare` の行。トークン単価は `llm.PriceOf` の表に載った公式の価格だけで、載っていないモデル・ChatGPT のプランの行は単価なしで合計に入らず、警告 `no_price`）。上限超過は `over_limit` つき。実行しない | `reference`（`source`, `id`, `project_id`）, `model`, `mode`（`auto` 既定 / `once` / `adjust`）, `target_score`（1〜100、既定 80）, `max_rounds`（1〜10、既定 5）, `max_cost_usd`（この実行で使ってよい費用。見積りが超えるなら `over_limit`）, `aspect_ratio`, `instruction`、続きは `continue_batch_id` と `mode`・`instruction` | `estimate_id`, `request`, `rounds`, `breakdown[]`, `total_usd`, `warnings[]`, `max_cost_usd`, `over_limit` | はい |
 | `run_prompt_match` | 確認した見積りどおりに実行する（ジョブ。種別 `gentest`）。サーバーが見積りをやり直し、`estimate_id`・合計が違う、上限超過は `conflict`（LLM も呼ばず何も生成しない） | 上と同じ + `estimate_id`, `confirmed_total_usd` | `job_id`, `state`, `batch_id`, `total_items`（最大の回数） | いいえ（外部へ接続・課金あり） |
-| `get_prompt_match` | マッチの状態と全ての回 | `batch_id` | `finished`, `stop`（`reached` / `limit` / `cancelled` / `error`）, `error`, `target_score`, `best_round`, `best_score`, `best_prompt`（そのまま使える。生成テストの `prompts` に渡す）, `rounds[]`（`round`, `result_id`, `status`, `prompt`（英語）, `score`, `scoring`（顔を混ぜているときだけ。`llm` = LLM の点、`face` = `cosine`・`points`・`weight`、顔を使わなかったときは `face_skipped` = `unavailable` / `reference_no_face` / `generated_no_face` / `error`。Issue #964）, `differences[]`, `based_on`, `base_prompt`（直す前）, `change`（直したところ）, `instruction`, `error`, `best`） | はい |
+| `get_prompt_match` | マッチの状態と全ての回 | `batch_id` | `finished`, `stop`（`reached` / `limit` / `cancelled` / `error`）, `error`, `target_score`, `best_round`, `best_score`, `best_prompt`（そのまま使える。単発生成の `prompts` に渡す）, `rounds[]`（`round`, `result_id`, `status`, `prompt`（英語）, `score`, `scoring`（顔を混ぜているときだけ。`llm` = LLM の点、`face` = `cosine`・`points`・`weight`、顔を使わなかったときは `face_skipped` = `unavailable` / `reference_no_face` / `generated_no_face` / `error`。Issue #964）, `differences[]`, `based_on`, `base_prompt`（直す前）, `change`（直したところ）, `instruction`, `error`, `best`） | はい |
 | `instruct_prompt_match` | **実行中**のマッチに、言葉（日本語でよい）の指示を足す。次にプロンプトを直すときに取り込む。終わったマッチは `conflict` | `batch_id`, `instruction` | `status` | いいえ |
 | `get_generation_test` | バッチの進捗と全結果。動いているローカルの ComfyUI の生成があれば、その進み具合 `progress`（`node`, `step`, `max_step`, `percent`, `elapsed_seconds`, `eta_seconds`。取れないときは省く。Issue #966・#1002） | `batch_id` | `state`, `total`, `done`, `queued`, `running`, `succeeded`, `failed`, `cancelled`, `finished`, `estimate`, `progress`, `results[]`（下の結果） | はい |
 | `cancel_generation_test` | バッチを取り消す。始めていない結果は取り消し、呼び出し中のものは終わるのを待つ | `batch_id` | `cancelled`, `running` | いいえ |
@@ -85,7 +85,7 @@
 
 `progress`（`get_job` と `get_generation_test` の両方。Issue #966・#1002）: バッチが `running` の間、バッチのジョブ（`job_id`）が呼んでいるローカルの ComfyUI の呼び出しが報告した最新のステップ（`node`・`step` / `max_step`・`percent`・`elapsed_seconds`・`eta_seconds`。意味は [mcp-tools.md](mcp-tools.md)）。同時に複数の呼び出しが動くときは、最後に進んだもの 1 つ。クラウドのモデル・読み込み中・終わったバッチ・mam の再起動後は**フィールドごと省く**。`done` / `total` の件数は変わらない。
 
-`state`: 結果に動いているものがあれば `running`（まだ何も始まっていなければ `queued`）、終わっていて 1 件でも成功なら `succeeded`、全部失敗なら `failed`（`error` はジョブの理由）、取り消された結果があれば `cancelled`。バッチが削除されると `cancelled`。モデルマネージャーの画面の試し生成は #1100 で廃止するので、種別 `gentest` のジョブは生成テスト画面と MCP から始まったものだけになる（`get_job` の読み方は変わらない）。
+`state`: 結果に動いているものがあれば `running`（まだ何も始まっていなければ `queued`）、終わっていて 1 件でも成功なら `succeeded`、全部失敗なら `failed`（`error` はジョブの理由）、取り消された結果があれば `cancelled`。バッチが削除されると `cancelled`。モデルマネージャーの画面の試し生成は #1100 で廃止するので、種別 `gentest` のジョブは単発生成画面と MCP から始まったものだけになる（`get_job` の読み方は変わらない）。
 
 ## テスト
 
@@ -138,7 +138,7 @@
 
 | ツール | 内容 | 入力 | 出力 |
 |---|---|---|---|
-| `install_face_models` | YuNet・SFace を `model_dir` にダウンロードして導入する（コミット固定・SHA-256 とサイズを検証。冪等。終わるまで応答しない。再起動は要らない: 次の生成テストから数値が付く） | `accepted`（利用者が `face_similarity.models.licenses`〔YuNet は MIT・SFace は Apache-2.0。学習データの権利は一次情報に無いという注意つき〕と取得元を確認して同意したときだけ true。false だと何も取得せず `validation`。エージェントが自分で同意したことにしない） | `face_similarity.models` と同じ（`state`・`engine_ready`・`engine_off` ほか） |
+| `install_face_models` | YuNet・SFace を `model_dir` にダウンロードして導入する（コミット固定・SHA-256 とサイズを検証。冪等。終わるまで応答しない。再起動は要らない: 次の単発生成から数値が付く） | `accepted`（利用者が `face_similarity.models.licenses`〔YuNet は MIT・SFace は Apache-2.0。学習データの権利は一次情報に無いという注意つき〕と取得元を確認して同意したときだけ true。false だと何も取得せず `validation`。エージェントが自分で同意したことにしない） | `face_similarity.models` と同じ（`state`・`engine_ready`・`engine_off` ほか） |
 | `remove_face_models` | 2 つのファイルだけを削除する（フォルダの中のほかのファイルは残る。破壊的・冪等）。顔の類似度はオフになり、結果の `face_similarity.skipped` は `models_missing`。導入中は `conflict`。履歴の結果は残る | なし | 同上 |
 
 `engine_off` が `runtime_unavailable` のとき（モデルは `installed` だが ONNX Runtime のライブラリが使えない）は `install_tool` が付かない。モデルを入れ直しても直らない（ライブラリを用意する。`face_similarity.off.fix` にそう書く）。
@@ -157,7 +157,7 @@
 
 ## レシピと「画面に出す値」（Issue #977 ステージ 2）
 
-画面の「レシピ」（[../components/gentest-tiers.md](../components/gentest-tiers.md) §9）と同じものを、4 つのツールで扱う。実装は `backend/internal/mcp/tools/gentestrecipe`（`tools/gentest` は行数の上限まで来ているため別パッケージ）。サービスは `service/gentest/recipe`。アプリが生成テストを持たないとき（`Gentest` が nil）は `unavailable`。
+画面の「レシピ」（[../components/gentest-tiers.md](../components/gentest-tiers.md) §9）と同じものを、4 つのツールで扱う。実装は `backend/internal/mcp/tools/gentestrecipe`（`tools/gentest` は行数の上限まで来ているため別パッケージ）。サービスは `service/gentest/recipe`。アプリが単発生成を持たないとき（`Gentest` が nil）は `unavailable`。
 
 | ツール | 内容 | 入力 | 出力 |
 |---|---|---|---|
@@ -207,7 +207,8 @@
 | 1.28 | 2026-11-04 | 動画のアップスケール・コマ補間のツール `list_generation_video_enhancers`・`estimate_generation_video_enhance`・`enhance_generation_video` を足した（ローカルの SeedVR2 3B・RIFE と、有料クラウドの Topaz Video API。Topaz は見積り→確認〔`estimate_id`・`confirmed_credits`〕が必須）。結果に `video_enhance` を足した（`get_generation_result`・`get_generation_test`・`list_generation_results`）。画像のツール `list_generation_upscalers`・`upscale_generation_result` は変えない。実装は `tools/gentest` が行数の上限なので別パッケージ `tools/gentestvideo` | Issue #1031 |
 | 1.29 | 2026-11-05 | `estimate_generation_video_enhance` の出力に `adult`・`adult_warning`、`enhance_generation_video` の入力に `adult_confirmed` を足した。成人向けの結果も Topaz に送れるが、警告を見せて確認が取れたときだけ送る | Issue #1031（悠太さんの決定 2026-11-05） |
 | 1.30 | 2026-11-06 | `get_generation_test` に `face_summaries`（役割 `face` の参照を付けたバッチのモデルごとの顔の類似度〔SFace〕の測れた数・測れなかった数・平均・最小・最大・目安以上の数と割合。参照が無いバッチには出ない）を足した。新しいツールは足さない | Issue #998 |
-| 1.31 | 2026-11-06 | `estimate_generation_test` の英訳の行（`translate`）を、LLM の単価が分かれば `priced` で `total_usd` に入れる（分からなければ従来どおり `unknown`。Issue #1069）。英訳中の取り消しは `upstream` にしない（Issue #1072） |
+| 1.31 | 2026-11-06 | `estimate_generation_test` の英訳の行（`translate`）を、LLM の単価が分かれば `priced` で `total_usd` に入れる（分からなければ従来どおり `unknown`）。英訳中の取り消しは `upstream` にしない | Issue #1069・#1072 |
 | 1.32 | 2026-11-06 | `swap_generation_face` で FaceFusion が見つからないときの答えを、実装（Issue #1010 から）どおり `unavailable`（`failure.code` が `facefusion_unavailable`）に直した（`validation` のままだった）。ツールの説明文も同じに直した | Issue #995 の見直し（仕様と実装の乖離） |
 | 1.33 | 2026-11-06 | `gpt_image`（GPT Image 2.6 の複雑さ・GIF / SVG）と `references[].role` の `markup` を足し、`list_generation_models` に `gpt_image`・`gpt_image_unsupported` を足した | Issue #1096 |
 | 1.34 | 2026-11-06 | `get_job` の種別 `gentest` の説明から、モデルマネージャーの試し生成を外した（区画の廃止。ツール・引数は変えない。状態は仕様のみ） | Issue #1100 |
+| 1.35 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

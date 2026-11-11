@@ -1,6 +1,6 @@
-# 生成テスト: Model Adapter の直接呼び出しとシード
+# 単発生成: Model Adapter の直接呼び出しとシード
 
-Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足す、生成テスト向けの追加。`model-adapters.md` は行数が多いため、この追加は別ファイルに書く。実装は `backend/internal/agent/modeladapter`（`ImageRequest`・`VideoRequest`・`Adapter.Unavailable`・`Adapter.Snapshot`・`Call`）と、下位パッケージ `modeladapter/direct`・`modeladapter/gentestcfg`。
+Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足す、単発生成向けの追加。`model-adapters.md` は行数が多いため、この追加は別ファイルに書く。実装は `backend/internal/agent/modeladapter`（`ImageRequest`・`VideoRequest`・`Adapter.Unavailable`・`Adapter.Snapshot`・`Call`）と、下位パッケージ `modeladapter/direct`・`modeladapter/gentestcfg`。
 
 ## 1. 直接呼び出し（`direct.Image` / `direct.Video`）
 
@@ -8,12 +8,12 @@ Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 
 - `direct.Image(ctx, adapter, model, ImageRequest)` / `direct.Video(ctx, adapter, VideoTarget, VideoRequest)`。指定のモデルのバックエンドが無ければ `ErrNoBackend`。結果の `Model` は指定したモデルで、`FellBack` は常に false。
 - **プロンプトはそのまま送る**（補正しない）。ネガティブの欄が無いモデルへの `NegativePrompt` は捨てる（呼び出し側が先に「Avoid: …」をプロンプトに書き足す。`direct.Fold` = `shotprompt.AvoidSentence` と同じ文）。シードを受け付けないモデルへのシードも捨てる。
-- **入力はモデルの能力で検査して拒否する**: 参照画像を使えないモデルに画像があれば `ErrInputsUnsupported`、最初のフレームと自由な参照の併用・最後のフレームだけ・参照が上限超えは `ErrInputsConflict`、モデルが作らない解像度は `ErrResolution`。いずれもベンダーを呼ぶ前なので課金されない。動画の長さは `VideoCapabilities.SnapDuration` で作れる長さに丸める。Runway Gen-4.5 の 1:1 は最初のフレームがあるときだけ（`direct.AspectProblem`。ベンダーは受け付けない。通常の Shot の経路は代替へ切り替えるが、直接呼び出しは失敗する）。生成テストは見積りの時点で警告する。
-- **レジリエンスは共有**: `modeladapter.Call[T](ctx, adapter, vendor, clock, model, fn)`（`call[T]` を公開したもの）を通るので、ベンダーごとのサーキットブレーカー・同時実行数（`resilience.Limiter`）・再試行・タイムアウトは通常の呼び出しと同じ。コスト台帳には書かない（呼び出し側が決める。生成テストは書かない）。
+- **入力はモデルの能力で検査して拒否する**: 参照画像を使えないモデルに画像があれば `ErrInputsUnsupported`、最初のフレームと自由な参照の併用・最後のフレームだけ・参照が上限超えは `ErrInputsConflict`、モデルが作らない解像度は `ErrResolution`。いずれもベンダーを呼ぶ前なので課金されない。動画の長さは `VideoCapabilities.SnapDuration` で作れる長さに丸める。Runway Gen-4.5 の 1:1 は最初のフレームがあるときだけ（`direct.AspectProblem`。ベンダーは受け付けない。通常の Shot の経路は代替へ切り替えるが、直接呼び出しは失敗する）。単発生成は見積りの時点で警告する。
+- **レジリエンスは共有**: `modeladapter.Call[T](ctx, adapter, vendor, clock, model, fn)`（`call[T]` を公開したもの）を通るので、ベンダーごとのサーキットブレーカー・同時実行数（`resilience.Limiter`）・再試行・タイムアウトは通常の呼び出しと同じ。コスト台帳には書かない（呼び出し側が決める。単発生成は書かない）。
 
 ## 2. `Adapter.Unavailable` の拡張
 
-`Adapter.Unavailable(model)` は、これまで動画モデルだけを見ていた。画像モデルにも広げ、画像・動画のどちらのバックエンドにも無ければ `domain.ExcludedNoBackend`、ブレーカーが開いていれば `domain.ExcludedCircuitOpen` を返す（通常の選択・生成テストの一覧が同じ関数で判断する）。`Adapter.Snapshot()` は、いま使っている設定とバックエンド群の組を返す（呼び出しの途中で設定が置き換わっても、1 回の呼び出しは同じ設定を使う）。
+`Adapter.Unavailable(model)` は、これまで動画モデルだけを見ていた。画像モデルにも広げ、画像・動画のどちらのバックエンドにも無ければ `domain.ExcludedNoBackend`、ブレーカーが開いていれば `domain.ExcludedCircuitOpen` を返す（通常の選択・単発生成の一覧が同じ関数で判断する）。`Adapter.Snapshot()` は、いま使っている設定とバックエンド群の組を返す（呼び出しの途中で設定が置き換わっても、1 回の呼び出しは同じ設定を使う）。
 
 ## 3. シード
 
@@ -30,7 +30,7 @@ Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 
 ## 4. ネガティブプロンプト
 
-ネガティブの**欄を持つ**モデル（Kling 3.0、ネガティブの割り当てがあるワークフロー）はその欄へ送り、`negative_mode=field`。持たないモデルは、プロンプトの末尾に「Avoid: …」の 1 文として書き足して送り（`direct.Fold`）、`negative_mode=folded`、送った文を `sent_prompt` に残す。ネガティブを入れなければ `none`。
+ネガティブの**欄を持つ**モデル（Kling 3.0、ネガティブの割り当てがあるワークフロー）（OpenRouter 経由の Kling 3.0 は欄を持たず、`folded` になる。[model-adapters.md](../model-adapters.md) §9.6）はその欄へ送り、`negative_mode=field`。持たないモデルは、プロンプトの末尾に「Avoid: …」の 1 文として書き足して送り（`direct.Fold`）、`negative_mode=folded`、送った文を `sent_prompt` に残す。ネガティブを入れなければ `none`。
 
 ## 5. 上限の設定（`gentestcfg`）
 

@@ -48,7 +48,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	})
 	mcpkit.Read(r, "list_user_loras",
 		"利用者が手元から追加した LoRA の一覧（ファイル名・パス・SHA-256・大きさ・対応するベースモデル・推奨の強さ・トリガー語・ライセンスと商用利用の答え・追加日時・ファイルが今あるか）。"+
-			"未設定の項目は空で、ライセンスを入れていなければ commercial は unknown。生成テストで使うときは、この name を list_generation_models の loras と同じ名前で lora.name に渡す / The LoRAs the user added from their own PC.",
+			"未設定の項目は空で、ライセンスを入れていなければ commercial は unknown。単発生成で使うときは、この name を list_generation_models の loras と同じ名前で lora.name に渡す / The LoRAs the user added from their own PC.",
 		h.list)
 	mcpkit.Write(r, "update_user_lora",
 		"追加した LoRA の、対応するベースモデル・推奨の強さ・トリガー語・ライセンスを置き換える（ファイルには触れない。渡さない項目は未設定になる）。path は list_user_loras の path。ユーザーが指示したときだけ呼ぶ / Replace what is recorded of an added LoRA.",

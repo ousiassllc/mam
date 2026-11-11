@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -263,4 +264,36 @@ func TestSeedAndNegativeFieldCapabilities(t *testing.T) {
 func TestFoldUsesTheAvoidSentence(t *testing.T) {
 	assert.Equal(t, "a fox. Avoid: blurry, text.", direct.Fold("a fox.", " blurry, text. "))
 	assert.Equal(t, "a fox.", direct.Fold("a fox.", "  "))
+}
+
+type failingVideo struct{ err error }
+
+func (f failingVideo) GenerateVideo(context.Context, string, modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
+	return modeladapter.VideoResult{}, f.err
+}
+
+func TestVideoBreakerFollowsTheSelectedProviderNotTheMaker(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	cfg.VideoProvider = viaprovider.Fal
+	cfg.Retry.MaxAttempts = 1
+	cfg.Breaker = modeladapter.BreakerConfig{FailureThreshold: 2, OpenSeconds: 3600}
+	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{
+		domain.ModelKling3: failingVideo{err: perr(modeladapter.Vendor(viaprovider.Fal), http.StatusServiceUnavailable)},
+	}}
+	a := adapter(cfg, backends)
+	target := modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "720p"}
+
+	for range 2 {
+		_, err := direct.Video(t.Context(), a, target, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 5})
+		require.Error(t, err)
+	}
+
+	assert.Equal(t, domain.ExcludedCircuitOpen, a.Unavailable(domain.ModelKling3), "the fal.ai breaker is open")
+	_, err := direct.Video(t.Context(), a, target, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 5})
+	assert.ErrorIs(t, err, modeladapter.ErrCircuitOpen)
+
+	official := cfg
+	official.VideoProvider = viaprovider.Official
+	a.Reload(official, backends) // the breakers are kept by vendor
+	assert.Empty(t, a.Unavailable(domain.ModelKling3), "the official Kling breaker was never opened by the fal.ai failures")
 }

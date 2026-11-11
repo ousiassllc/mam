@@ -28,6 +28,41 @@ type Data struct {
 	Providers   []ProviderView
 	Unavailable bool
 	Notice      string
+	// Error is why the last change of the API provider was refused (role="alert").
+	Error string
+	// Provider is the choice of the API provider of the cloud video models at the top of the panel (spec/architecture/model-adapters.md §9.6);
+	// nil leaves it out (the key store cannot be read, or the app has no model settings).
+	Provider *ProviderData
+}
+
+// ProviderChoice is one radio of the choice of the API provider.
+type ProviderChoice struct {
+	Value, Label string
+	Checked      bool
+}
+
+// ProviderModel is how the chosen provider serves one video model (Kling 3.0, Kling 4.0): whether it does and at what price, why not,
+// and whether the key it needs is stored.
+type ProviderModel struct {
+	Label     string
+	Supported bool
+	// Prices is the unit price by resolution ("720p $0.084/秒 ・ 1080p $0.112/秒"); empty when it is not served.
+	Prices string
+	// Why is why the provider does not serve the model, and where it can be used.
+	Why string
+	// KeyLabel is the provider whose key the model needs now ("OpenRouter"); KeySet whether it is stored. Both empty for the official provider (the keys of the cards below).
+	KeyLabel string
+	KeySet   bool
+}
+
+// ProviderData is the choice of the API provider and how it serves the models.
+type ProviderData struct {
+	Choices []ProviderChoice
+	// Pinned: the settings file was fixed by a start-up option; the choice is shown and cannot be changed.
+	Pinned bool
+	// Problem is a settings file that cannot be read: the choice is not offered.
+	Problem string
+	Models  []ProviderModel
 }
 
 // Form is what the modal of a provider is drawn from: the provider and, after a refusal, why. The key that was typed is
@@ -45,6 +80,9 @@ func RowID(provider string) string { return "credential-row-" + provider }
 
 // FocusKey names the button that opens the modal of a provider (it stays the same when "設定" becomes "変更").
 func FocusKey(provider string) string { return "credential-" + provider }
+
+// ProviderModelsID is the id of the list of how the chosen API provider serves each model: what a save or a delete of a key replaces out of band.
+const ProviderModelsID = "api-provider-models"
 
 // ListID is the id of the list of cards.
 const ListID = "credential-list"

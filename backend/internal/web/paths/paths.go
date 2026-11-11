@@ -152,6 +152,10 @@ func WithBranch(p, branchID string) string {
 // Credential is "/credentials/<provider>", the API key of a provider.
 func Credential(provider string) string { return join("/credentials", provider) }
 
+// APIProvider is "/settings/api-provider", the choice of the API provider of the cloud video models (OpenRouter, fal.ai, Replicate or the
+// official one) at the top of the API key category (PUT, form provider).
+func APIProvider() string { return Settings() + "/api-provider" }
+
 // Settings is the global settings screen (API keys, the LLM and the models), "/settings".
 func Settings() string { return "/settings" }
 

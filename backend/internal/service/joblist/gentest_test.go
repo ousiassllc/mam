@@ -34,7 +34,7 @@ func TestRecent_ABatchNamesItsModelsAndCountsItsResults(t *testing.T) {
 	running, err := list.Recent(t.Context())
 	require.NoError(t, err)
 	require.Len(t, running, 1)
-	assert.Equal(t, "生成テスト", running[0].Label)
+	assert.Equal(t, "単発生成", running[0].Label)
 	assert.Equal(t, joblist.Running, running[0].State)
 	assert.Equal(t, joblist.Dest{Screen: joblist.ScreenGenerationTest}, running[0].Dest)
 	assert.NotEmpty(t, running[0].Subject, "the model of the batch")

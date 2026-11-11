@@ -52,12 +52,12 @@ func TestNotes_WriterAndDirectorGetTheNotesButTheStoryboardDoesNot(t *testing.T)
 	require.NotNil(t, card)
 	_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionApprove, "")
 	require.NoError(t, err)
-	require.Eventually(t, func() bool { return f.llm.count(llm.AgentStoryboard) == 1 }, 5*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return f.llm.Count(llm.AgentStoryboard) == 1 }, 5*time.Second, 10*time.Millisecond)
 
 	for _, agent := range []llm.Agent{llm.AgentWriter, llm.AgentDirector} {
-		assert.Contains(t, f.llm.lastUser(agent), "過去の火事の話は序盤では出さない", string(agent))
+		assert.Contains(t, f.llm.LastUser(agent), "過去の火事の話は序盤では出さない", string(agent))
 	}
 	for _, agent := range []llm.Agent{llm.AgentProducer, llm.AgentStoryboard} {
-		assert.NotContains(t, f.llm.lastUser(agent), "過去の火事の話は序盤では出さない", string(agent))
+		assert.NotContains(t, f.llm.LastUser(agent), "過去の火事の話は序盤では出さない", string(agent))
 	}
 }

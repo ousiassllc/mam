@@ -61,7 +61,7 @@ func liveBatch(done int) gentest.Batch {
 // liveHistory is the history of three results of which `running` still run (the first ones), as the handler draws it at `at`.
 func liveHistory(running int, at string) gentest.History {
 	h := gentest.History{
-		Models: []string{"flux-2", "nano-banana"}, Spend: "これまでの生成テストの合計: $0.0900",
+		Models: []string{"flux-2", "nano-banana"}, Spend: "これまでの単発生成の合計: $0.0900",
 		Refresh: "/generation-test/history?live=1", UpdatedAt: at, Active: running > 0, Export: exportbar.Data{URL: "/generation-test/export", Commercial: "all"},
 	}
 	for n := range 3 {

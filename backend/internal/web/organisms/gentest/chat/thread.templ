@@ -1,0 +1,161 @@
+package chat
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+// starters are the cards of the greeting: what a person may want to begin with.
+var starters = []Option{
+	{Label: "画像を作りたい", Detail: "作りたい絵を話して、モデルと金額を相談する", Reply: "画像を作りたいです。モデルの選び方から相談させてください。"},
+	{Label: "動画を作りたい", Detail: "長さと画質で金額が大きく変わります", Reply: "動画を作りたいです。モデルの選び方から相談させてください。"},
+	{Label: "モデルを比べたい", Detail: "同じプロンプトを複数のモデルで並べる", Reply: "同じプロンプトを複数のモデルで作って比べたいです。"},
+}
+
+// Panel is the chat of the screen: the thread, with the greeting in it, and the box to write in. The conversation belongs to the page that drew it:
+// opening the page again starts a new one (the batches it ran stay in the history).
+templ Chat(p Panel) {
+	if p.Unavailable {
+		<p class="rounded-lg border border-border p-4 text-sm text-warning" role="status" data-testid="gtc-unavailable">チャットに使う LLM が決まっていません。設定の「LLM の割り当て」で Prompt Planner のモデルを選ぶと使えます。それまでは「生成する」のフォームで作れます。</p>
+	} else {
+		@chatPanel(p)
+	}
+}
+
+templ chatPanel(p Panel) {
+	<section class="flex flex-col gap-3" data-testid="gtc" aria-label="チャットで作る" data-gtc>
+		<div
+			id={ ThreadID }
+			class="flex max-h-[65vh] min-h-56 flex-col gap-3 overflow-y-auto rounded-lg border border-border p-3 md:p-4"
+			role="log"
+			aria-live="polite"
+			aria-relevant="additions"
+			aria-label="チャットの会話"
+			tabindex="0"
+			data-testid="gtc-thread"
+		>
+			<article class="flex max-w-full flex-col gap-3 self-start rounded-lg border border-border bg-surface px-3 py-2 text-sm" data-testid="gtc-greeting">
+				<p class="whitespace-pre-wrap break-words">何を作りたいか、話しかけてください。モデルの比べ方や、プロンプトの案、金額の見積りまでお手伝いします。見積りを見て「この内容で実行する」を押すまで、生成は始まりません。</p>
+				@optionCards(p.SessionID, starters)
+			</article>
+		</div>
+		@Composer(p)
+	</section>
+}
+
+// Composer is the box to write in. Enter sends and Shift+Enter breaks the line (static/src/components/gentest-chat/chat.ts); the button works without it.
+templ Composer(p Panel) {
+	<form
+		id={ ComposerID }
+		class="flex items-end gap-2"
+		hx-post={ messagesPath() }
+		hx-target={ "#" + ThreadID }
+		hx-swap="beforeend"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		data-testid="gtc-composer"
+	>
+		<input type="hidden" name={ FieldSession } value={ p.SessionID }/>
+		<label class="sr-only" for="gtc-content">メッセージ</label>
+		@atoms.Textarea(atoms.FieldLg, "min-h-12 flex-1 resize-y", templ.Attributes{
+			"id":          "gtc-content",
+			"name":        FieldContent,
+			"rows":        "2",
+			"maxlength":   itoa(MaxMessageRunes),
+			"required":    true,
+			"placeholder": "例: 夕暮れの海辺にいる狐の画像を、3 つのモデルで比べたい（Enter で送信、Shift+Enter で改行）",
+			"data-testid": "gtc-content",
+		}, "")
+		@atoms.Button(atoms.TonePrimary, "送信", templ.Attributes{"type": "submit", "data-testid": "gtc-send"})
+	</form>
+}
+
+// Messages is the entries to add to the thread: the answer of the server to a message, a card or a press.
+templ Messages(session string, msgs []Message) {
+	for _, m := range msgs {
+		@entry(session, m)
+	}
+}
+
+templ entry(session string, m Message) {
+	switch m.Kind {
+		case KindUser:
+			<article id={ "gtc-m-" + m.ID } class="max-w-[85%] self-end whitespace-pre-wrap break-words rounded-lg bg-accent-soft px-3 py-2 text-sm text-ink" data-testid="gtc-user"><span class="sr-only">あなた: </span>{ m.Text }</article>
+		case KindAssistant:
+			<article id={ "gtc-m-" + m.ID } class="flex max-w-full flex-col gap-3 self-start rounded-lg border border-border bg-surface px-3 py-2 text-sm" data-testid="gtc-assistant">
+				<span class="sr-only">アシスタント: </span>
+				if m.Text != "" {
+					<p class="whitespace-pre-wrap break-words">{ m.Text }</p>
+				}
+				if len(m.Options) > 0 {
+					@optionCards(session, m.Options)
+				}
+				if m.Proposal != nil {
+					@ProposalCard(*m.Proposal)
+				}
+			</article>
+		case KindStatus:
+			@status(m)
+		case KindResult:
+			if m.Result != nil {
+				@ResultBlock(*m.Result)
+			}
+	}
+}
+
+// status is a line of the app, not words of a person: what it looked at, why it refused, why the LLM could not answer. A failure has no role="alert": the
+// thread is a polite live region that reads every addition, so an alert inside it would be read twice.
+templ status(m Message) {
+	if m.Failed {
+		<p id={ "gtc-m-" + m.ID } class="self-start whitespace-pre-wrap break-words text-sm text-danger" data-testid="gtc-status" data-failed="true">
+			{ m.Text }
+			if m.SettingsHref != "" {
+				<a class="ml-1 underline focus-visible:focus-ring" href={ templ.SafeURL(m.SettingsHref) }>テキスト生成の設定を開く</a>
+			}
+		</p>
+	} else {
+		<p id={ "gtc-m-" + m.ID } class="self-start whitespace-pre-wrap break-words text-xs text-mute" data-testid="gtc-status">{ m.Text }</p>
+	}
+}
+
+// optionCards are the cards of a question: a tap sends the card's reply as the user's message. A question that has been answered is turned off by
+// the script (the cards of the newest message of the assistant are the only live ones).
+templ optionCards(session string, opts []Option) {
+	<ul class="grid grid-cols-1 gap-2 data-answered:opacity-60 sm:grid-cols-2" data-gtc-options data-testid="gtc-options">
+		for _, o := range opts {
+			<li>
+				<form
+					hx-post={ messagesPath() }
+					hx-target={ "#" + ThreadID }
+					hx-swap="beforeend"
+					hx-sync="this:drop"
+					hx-disabled-elt="find button"
+				>
+					<input type="hidden" name={ FieldSession } value={ session }/>
+					<input type="hidden" name={ FieldContent } value={ o.Reply }/>
+					<button
+						type="submit"
+						class="flex h-full w-full flex-col gap-1 rounded-lg border border-border px-3 py-2 text-left transition-colors hover:border-accent hover:bg-accent-soft focus-visible:focus-ring disabled:opacity-60 motion-reduce:transition-none"
+						data-testid="gtc-option"
+					>
+						<span class="text-sm font-semibold text-ink">{ o.Label }</span>
+						if o.Detail != "" {
+							<span class="break-words text-xs text-mute">{ o.Detail }</span>
+						}
+					</button>
+				</form>
+			</li>
+		}
+	</ul>
+}
+
+// Swaps are the confirmation cards that changed state (replaced by a newer estimate, closed by a refusal), drawn again where they are in the thread
+// (out of band).
+templ Swaps(ps []Proposal) {
+	for _, p := range ps {
+		@ProposalCard(p)
+	}
+}

@@ -1,4 +1,4 @@
-# 生成テスト: 改訂履歴
+# 単発生成: 改訂履歴
 
 [gentest.md](gentest.md)・[er-gentest.md](er-gentest.md)・[gentest-adapter.md](gentest-adapter.md) の改訂履歴。
 
@@ -55,7 +55,7 @@
 | 1.48 | 2026-11-05 | §3.4・§3.6（やりたいこと）: 「大きくする」を `service/gentest/upscale`（`upscale.Run`・`Scales`・`MaxOutputPixels`）へ、`ApplyIntent` を `service/gentest/intentapply`（`intentapply.Apply`）へ移した（`service/gentest/` 直下が行数の上限に近いため。挙動は変えない）。旧名の `Service.Upscale`・`Service.ApplyIntent`・`UpscaleRequest`・`UpscaleRef`・`UpscaleScales`・`MaxUpscaleOutputPixels` は無い | Issue #1031（行数の上限への対応） |
 | 1.49 | 2026-11-05 | §3.9: 成人向けの印を、結果を作ったときに `ResultParams.adult` へ記録するようにした（モデルをあとで消しても、Topaz に送るときの警告が消えない。印の前に作った結果だけカタログを引く） | Issue #1031（悠太さんの決定: 成人向けの判定の弱点を直す） |
 | 1.50 | 2026-11-06 | §3.8: バッチの結果の顔の類似度をモデルごとにまとめる（`BatchStatus.FaceSummaries`・`record.SummarizeFaces`）。画面のグリッドのモデルの行に「顔の類似度（SFace）: 平均・目安以上の件数」を出す。測れなかった結果は別に数え、平均に入れない | Issue #998 |
-| 1.51 | 2026-11-06 | §3.1: 英訳の見積りを、LLM の単価表（`llm.PriceOf`）による値付けにして合計に入れた（単価が分からないターゲットは従来どおり `unknown`・警告 `no_price`。英訳専用の役割は足さない。Issue #1069）。リクエストの取り消し・期限切れは 502 `upstream` にせず `ctx` のエラーをそのまま返す。Common の文字だけの文（`ー` U+30FC など）は訳さない境界を明記（Issue #1072） |
+| 1.51 | 2026-11-06 | §3.1: 英訳の見積りを、LLM の単価表（`llm.PriceOf`）による値付けにして合計に入れた（単価が分からないターゲットは従来どおり `unknown`・警告 `no_price`。英訳専用の役割は足さない）。リクエストの取り消し・期限切れは 502 `upstream` にせず `ctx` のエラーをそのまま返す。Common の文字だけの文（`ー` U+30FC など）は訳さない境界を明記 | Issue #1069・#1072 |
 | 1.52 | 2026-11-06 | §6: VNCCS PoseStudio のルート ③ の LoRA の版を、カタログが取得する V1.1（`VNCCS_QI2_PoseStudioV1.1.safetensors`）に直した（「V2」と書いていた） | Issue #985 |
 | 1.53 | 2026-11-06 | §3.5: マスク部品の元画像を `<img>` から、キャンバスと同じ大きさ（長辺 2048 まで）に縮めた写しのキャンバスに替えた。ヘッドレス Chrome での 8192 × 8192 の実測（タブの増え 約 400 MiB → 約 120 MiB）を書き、Safari・実機は未実施と残した | Issue #999 |
 | 1.54 | 2026-11-06 | §2: 選べる画像モデルに GPT Image 2.6 Flare / Sunburst（API キーの `gpt-image-2.6-flare` / `gpt-image-2.6-sunburst` と、サブスクの `…:chatgpt-subscription`）を足した。1 枚の見積は価格不明（`model-adapters.md` §9.5） | Issue #1096 |
@@ -63,3 +63,6 @@
 | 1.56 | 2026-11-06 | モデルマネージャーの「試し生成」の区画を廃止し、導入したモデルを試す場所を生成テスト画面だけにした（§1 の「実装は 1 つ」・英訳の項）。バッチ・ジョブ種別・保存先・テーブルは変えない。状態は仕様のみ | Issue #1100 |
 | 1.57 | 2026-11-07 | §8 に、生成テスト画面と Scene / Shot 画面が「生成テストの結果は本線の Shot の Take にならない」ことを書く旨を足した | Issue #1108 |
 | 1.58 | 2026-11-07 | §1・英訳の項の「#1100 で試し生成を廃止する（状態: 仕様のみ。未実装）」を「廃止した（状態: 実装済み（Issue #1100））」に直した（実装は済んでいた。仕様の内容は変えない） | PR #1110 のレビュー（記述の食い違い） |
+| 1.59 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（仕様書・画面の文言・MCP ツールの説明・エラーメッセージ）。ルート `/generation-test`・API パス・MCP ツール名（`*_generation_test`・`*_generation_*`）・パッケージ名 `gentest`・DB のテーブルと保存先は変えない。履歴・設定はそのまま使える。過去の変更履歴の文は当時のまま | Issue #1137 |
+| 1.60 | 2026-11-10 | 「チャットで作る」を足した: LLM のエージェントループ（`agent/gentestchat`・`service/gentest/chat`）と確認のカード。専用の文書 [gentest-chat.md](gentest-chat.md) を新設し、§8（画面）と §10（パッケージ）に参照を足した | Issue #1138 |
+| 1.61 | 2026-11-11 | gentest-adapter.md の「ネガティブの欄」に、OpenRouter 経由の Kling 3.0 は欄を持たず `folded` になることを足した | PR #1141 のレビュー指摘 |
