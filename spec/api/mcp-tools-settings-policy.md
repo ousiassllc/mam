@@ -2,7 +2,7 @@
 
 [`mcp-tools.md`](mcp-tools.md) の規約に従う、設定系の画面の操作のツール（Issue #830）。対象は、Project の設定画面（制作テンプレート・Quality / Cost Policy・予算・Take のアーカイブ・Brand 制約とテンプレート）、全体設定画面（LLM の割り当て・画像／動画モデルの割り当て・音声・口パクのプロバイダー・アップデート）、制作指標、ヘルスチェック。API キーは基盤の `list_credentials` / `set_credential` / `delete_credential`（[`mcp-tools.md`](mcp-tools.md)）。
 
-実装は `backend/internal/mcp/tools/{policy,brand,analytics,health,settings}`。どれも画面と同じサービスを呼ぶ（`PolicyService`・`BrandService`・`AnalyticsService`・`HealthService`・`llmassign.Service`・`modelsettings.Service`・`appupdate.Service`）。MCP 専用の確認や上限は足さない。
+実装は `backend/internal/mcp/tools/{policy,brand,analytics,health,settings,videoprovider}`（`videoprovider` は `get_video_provider`・`set_video_provider`。`tools/settings` が行数の上限に達したため別のパッケージにした）。どれも画面と同じサービスを呼ぶ（`PolicyService`・`BrandService`・`AnalyticsService`・`HealthService`・`llmassign.Service`・`modelsettings.Service`・`appupdate.Service`）。MCP 専用の確認や上限は足さない。
 
 ## 方針
 
@@ -23,7 +23,7 @@
 | `get_project_settings` | 設定画面の内容 | `project_id` | `project_id`, `production_template`, `evaluation_axes[]`（優先度順）, `quality_policy`, `limits`（保存された上書き）, `effective`（既定を重ねた実効値: `max_retries`, `max_generation_seconds`, `min_acceptance_score`, `min_axis_score`）, `project_budget_usd`, `shot_budget_usd`（null は上限なし）, `cost`（Project の合計）, `storage` | はい |
 | `set_production_template` | 制作テンプレートを切り替える（スレッドに記録。冪等） | `project_id`, `production_template`（`product_cm` / `drama` / `anime` / `sns_short`） | `get_project_settings` の方針の部分（`production_template` … `shot_budget_usd`） | いいえ |
 | `set_quality_policy` | Quality Policy を変える。`limits` を付けると 4 項目すべてをその値にする（省略した項目は既定に戻る。画面のフォームと同じ）。付けなければ上限は変えない（コンポーザーの切り替えと同じ）。冪等 | `project_id`, `quality_policy`（`fast` / `balanced` / `max_quality`）, `limits?`（`max_retries` 0〜10, `max_generation_seconds` 10〜3600, `min_acceptance_score` 0〜100, `min_axis_score` 0〜100） | 同上 | いいえ |
-| `set_project_budget` | 予算上限（USD）を設定する。省略した項目は上限なし（画面の空欄と同じ）。超える生成は `budget_exceeded`。冪等 | `project_id`, `project_budget_usd?`, `shot_budget_usd?`（0 より大きく 1,000,000 以下） | 同上 | いいえ |
+| `set_project_budget` | 予算上限（USD）を設定する。省略した項目は上限なし（画面の空欄と同じ）。超える生成は `budget_exceeded`。チャットで予算を伝えたとき（確認カードのあと）も同じ経路で設定する（#1139）。冪等 | `project_id`, `project_budget_usd?`, `shot_budget_usd?`（0 より大きく 1,000,000 以下） | 同上 | いいえ |
 | `get_cost_summary` | Project・Scene・Shot ごとの見積りと実績（USD） | `project_id` | `project`, `unassigned`（`estimated`, `actual`, `entries`, `actual_entries`）, `project_ceiling_usd`, `shot_ceiling_usd`, `scenes[]`（`scene_id`, `branch_id`, `branch_name`, `order_index`, `title`, `totals`, `shots[]`） | はい |
 | `get_storage_usage` | ディスク使用量と保存されている Take | `project_id` | `takes[]`（`take_id`, `shot_id`, `scene_title`, `scene_index`, `shot_index`, `status`, `model_name`, `size_bytes`, `unneeded`, `archivable`。不要なものが先）, `asset_bytes`, `preview_bytes`, `free_bytes`, `free_known`, `unneeded_count`, `unneeded_bytes` | はい |
 | `archive_take` | Take の動画ファイルを手放す（Take は履歴を残して Rejected）。選択中の Take と Timeline が使う Take は `conflict` | `project_id`, `take_id` | `get_storage_usage` と同じ | いいえ（破壊的） |
@@ -54,6 +54,8 @@
 | `test_local_llm_server` | ローカル LLM サーバーへの接続を確かめる（`GET /v1/models`）。引数を省くと保存した設定で試す（`api_key` を省いて別の `base_url` を試すときは、保存済みのキーを送らない）。接続できないときはツールのエラーにせず `ok: false` と `failure`（共通エラー [`errors.md`](../architecture/errors.md) の `local_llm_unreachable`: 原因・直し方・設定画面への導線）を返す | `base_url?`, `api_key?`（保存はしない） | `ok`, `message`, `model_count`, `models[]`（先頭 20 件）, `failure?`（`apperr.View`） | はい（openWorld） |
 | `set_model_assignment` | 指定した画像の用途・Quality Policy のモデルを保存する。冪等 | `images?[]`: `purpose`（`new_reference` / `edit_reference` / `preview` / `unified_openai`）, `primary`, `fallback`（`model`, `fast?`）。`policies?[]`: `quality_policy`, `primary`, `fallback`（`model`, `resolution`）, `takes`（1 以上）。どちらかは必須 | `get_global_settings` の `models` | いいえ |
 | `reset_model_assignment` | 画像・動画モデルの割り当てを既定に戻す（冪等） | なし | 同上 | いいえ（破壊的） |
+| `get_video_provider` | クラウド動画モデル（Kling）を呼ぶ API プロバイダーの設定（画面の「API キー」の先頭の選択。`models.json` の `video_provider`。[model-adapters.md §9.6](../architecture/model-adapters.md)）。選択肢ごとに必要な API キーの有無と、選んだプロバイダーが各モデルを提供するか・提供しない理由・単価を返す | なし | `pinned`, `provider`（`official` / `openrouter` / `fal` / `replicate`）, `providers[]`（`provider`, `label`, `selected`, `key_provider`〔`set_credential` に渡す名前。`official` は空〕, `key_set`）, `models[]`（`model`, `label`, `supported`, `why?`, `prices?[]`〔`resolution`, `usd_per_second`〕） | はい |
+| `set_video_provider` | API プロバイダーを保存する。冪等。すぐに反映され、次の見積りと生成から選んだ先の単価・提供状況で動く。未知の値は `validation`、`--model-config` で固定されていると `conflict`。選んだ先のキーは `set_credential`（`key_provider` の名前）で入れる | `provider`（`official` / `openrouter` / `fal` / `replicate`） | `get_video_provider` と同じ | いいえ |
 | `get_audio_providers` | 音声・口パクのプロバイダーの設定（`audio.json`）と、ローカルの状態。保存済みの設定で、次の音声作成から使われる | なし | `available`, `problem`（`audio.json` が読めない理由）, `voice_provider`（`elevenlabs` / `local`〔GPT-SoVITS〕/ `irodori`〔Irodori-TTS〕）, `lip_sync_provider`（`synclabs` / `local`）, `fallback_to_cloud`, `voice`（GPT-SoVITS）・`irodori`（Irodori-TTS。`model`〔使うモデル〕・`cautions`〔使うときの制限〕つき）・`lip_sync`（`available`, `name`, `runtime_id`, `state`（`unsupported` / `installing` / `not_installed` / `weights_missing` / `ready` / `starting` / `running` / `failed`）, `usable`, `reason`（使えないときの文。画面・実行の失敗と同じ）, `support_reason`（この PC で動かせない理由とクラウドの案内。macOS はここ）, `process_error`, `vram_min_gb`, `vram_estimate`, `source_url`, `license`, `license_url`, `commercial_condition`, `unclear_commercial_use[]`, `cloud_provider`（`elevenlabs` / `synclabs`）, `cloud_key_set`（API キーの有無。値は返さない）） | はい |
 | `set_audio_providers` | 声・口パクのプロバイダーと `fallback_to_cloud` を保存する。指定した項目だけ変わる（`false` も値）。この PC で動かせないローカルを選ぶと `validation`（ランタイム管理の理由つき）、`audio.json` が読めないと `conflict`。`fallback_to_cloud` をオンにすると、ローカルが使えない実行がクラウドで作られ API 費用が出ることがある。冪等 | `voice_provider?`（`elevenlabs` / `local`）, `lip_sync_provider?`（`synclabs` / `local`）, `fallback_to_cloud?`。1 つ以上 | `get_audio_providers` と同じ | いいえ |
 | `get_update_status` | アップデートの状態 | なし | `available`, `version`, `state`（`checking` / `error` / `ready` / `blocked` / `available` / `dev_build` / `no_release` / `up_to_date` / `unchecked`）, `checked_at`, `latest`, `blocked_by`, `error_kind`, `failure?`（`state: "error"` のとき。共通エラー [`errors.md`](../architecture/errors.md) の `update_*`: 原因・直し方・導線。元のエラーの文は返さない。`apperr.View`） | はい |
@@ -96,6 +98,8 @@
 | `POST /model-manager/local-llm/connection/test` | `test_local_llm_server`（#1104。旧 `POST /settings/llm/local/test`） |
 | `PUT /settings/models` | `set_model_assignment` |
 | `DELETE /settings/models` | `reset_model_assignment` |
+| `GET /settings/api-keys` | `get_video_provider`（区画の先頭の「動画モデルの API プロバイダー」の選択。API キーは `list_credentials`） |
+| `PUT /settings/api-provider` | `set_video_provider` |
 | `GET /settings/audio` | `get_audio_providers` |
 | `PUT /settings/audio` | `set_audio_providers` |
 | `POST /settings/update/check` | `check_for_update`（状態の読み取りは `get_update_status`） |
@@ -125,3 +129,6 @@
 | 1.12 | 2026-11-07 | `set_local_llm_server` の `use_managed_ollama`、`get_global_settings` の `llm.local_server` の `use_managed_ollama`・`use` を実装した。状態を「実装済み」にした（一方を true にするともう一方は false になる。両方 true の指定は `validation`。管理する Ollama を持たない app で `use_managed_ollama: true` も `validation`） | Issue #1104 |
 | 1.13 | 2026-11-08 | `get_global_settings` の `models` に `routes[]`（保存した割り当てを今実行したらどうなるか）を足した | Issue #1113（既定の割り当てが使えないとき、何で生成が動くか・止まるかを生成せずに知るため） |
 | 1.14 | 2026-11-08 | `get_global_settings` の `models.image_models[].available` と `models.unusable_routes[]` の説明を、#1113 の扱い（既定の割り当ては条件に合う使えるモデルへ替わり、利用者が選んだ・固定した割り当てなら断られる。実際の扱いは `routes[]`）に合わせた。以前の「生成は断られる」の説明を直した | Issue #1113（レビュー指摘） |
+| 1.15 | 2026-11-10 | 全体設定（`tools/settings`）に `get_video_provider`・`set_video_provider` と、ルートの対応（`PUT /settings/api-provider`）を足した。クラウド動画モデル（Kling）の API プロバイダー（公式 / OpenRouter / fal.ai / Replicate）の読み書き。画面と同じサービス（`modelsettings.Service`）を通る | Issue #1136 |
+| 1.16 | 2026-11-10 | 冒頭の実装のパッケージの一覧に `tools/videoprovider`（`get_video_provider`・`set_video_provider` の実装）を足した | PR #1141 のレビュー指摘（一覧に無かった） |
+| 1.17 | 2026-11-11 | `get_video_provider` の出力から `available` を外した（未提供のときは常にエラーで返り、`false` は現れなかった） | PR #1141 のレビュー指摘 |

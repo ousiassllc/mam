@@ -8,8 +8,7 @@ import (
 	"unicode/utf8"
 )
 
-// BranchPointType is what a Branch starts from (F-17, spec/spec.md §16). The values are the
-// branch_point_type of the branch table.
+// BranchPointType is what a Branch starts from (F-17, spec/spec.md §16). The values are the branch_point_type of the branch table.
 type BranchPointType string
 
 // Branch point types.
@@ -36,8 +35,7 @@ const MaxBranchNameRunes = 100
 // MaxBranchesPerRequest bounds how many Branches one direction ("別展開を3つ作って") creates.
 const MaxBranchesPerRequest = 5
 
-// Branch is a row of branch: another development of the story that starts at a Branch Point and
-// keeps its own World State and derived tree of Scenes.
+// Branch is a row of branch: another development of the story that starts at a Branch Point and keeps its own World State and derived tree of Scenes.
 type Branch struct {
 	ID        string
 	ProjectID string
@@ -86,8 +84,7 @@ func (b Branch) PointText() string {
 	return fmt.Sprintf("Scene %d / Shot %d の後", b.PointSceneNumber, b.PointShotNumber)
 }
 
-// CleanBranchName trims a Branch name and reports whether it is usable: not empty and at most
-// MaxBranchNameRunes characters.
+// CleanBranchName trims a Branch name and reports whether it is usable: not empty and at most MaxBranchNameRunes characters.
 func CleanBranchName(name string) (string, bool) {
 	name = strings.TrimSpace(name)
 	n := utf8.RuneCountInString(name)

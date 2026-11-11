@@ -214,7 +214,7 @@ func label(k domain.JobKind) string {
 	case domain.JobModelInstall:
 		return "導入"
 	case domain.JobGentest:
-		return "生成テスト"
+		return "単発生成"
 	case domain.JobGenerate:
 		return "Shot の生成"
 	case domain.JobJudge:

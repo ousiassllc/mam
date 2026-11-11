@@ -45,7 +45,7 @@ func updateOf(v appupdate.View) UpdateSection {
 
 func (h handlers) updateStatus(_ context.Context, _ Input) (UpdateSection, error) {
 	if h.r.Settings.Update == nil {
-		return UpdateSection{}, unavailable("アップデートの確認")
+		return UpdateSection{}, Unavailable("アップデートの確認")
 	}
 	return updateSection(h.r), nil
 }
@@ -56,7 +56,7 @@ func (h handlers) updateStatus(_ context.Context, _ Input) (UpdateSection, error
 func (h handlers) checkUpdate(ctx context.Context, _ Input) (UpdateSection, error) {
 	svc := h.r.Settings.Update
 	if svc == nil {
-		return UpdateSection{}, unavailable("アップデートの確認")
+		return UpdateSection{}, Unavailable("アップデートの確認")
 	}
 	v, _ := svc.CheckNow(ctx) // CheckNow's service has logged a failure; the view shows it
 	return updateOf(v), nil

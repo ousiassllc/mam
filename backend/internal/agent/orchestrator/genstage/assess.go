@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/genplan"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
@@ -22,6 +23,9 @@ const (
 	VerdictSupersede                // a generation card of v0.1.34 is still pending: the gate settles it, then goes on
 	VerdictDeclined                 // a card of v0.1.34 was declined: nothing starts until the user writes or the plan changes
 	VerdictStart                    // the generation starts by itself: Next are the starts to make
+	// VerdictAwaitBudget: the user stated a budget in the chat and has not answered the card that asks to confirm it (#1139). A generation started now would run without the
+	// ceiling the user asked for, so nothing starts until they answer.
+	VerdictAwaitBudget
 )
 
 // Step is one start the gate makes.
@@ -41,6 +45,8 @@ type Assessment struct {
 	Unrecorded bool
 	// Next are the starts to make now (VerdictStart).
 	Next []Step
+	// Held is set when an Escalation holds the Project while its plan has lines: the Project is AUTO and waits for the user, though nothing was started yet.
+	Held bool
 	// Stuck holds the Shots the gate cannot carry on by itself: a start that was refused or failed, and a Reference Pack that failed.
 	Stuck map[string]bool
 }
@@ -68,6 +74,13 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 	if card != nil && card.Status == domain.ApprovalPending {
 		return Assessment{Verdict: VerdictSupersede, Card: card}, nil // an obsolete card holds the Project: nothing else is looked at before it is settled
 	}
+	awaiting, err := g.d.Repo.OperationCardOpen(ctx, p.ID, string(commandinterpreter.OpSetBudget))
+	if err != nil {
+		return Assessment{}, err
+	}
+	if awaiting {
+		return Assessment{Verdict: VerdictAwaitBudget}, nil
+	}
 	launches, err := g.d.Repo.Launches(ctx, p.ID)
 	if err != nil {
 		return Assessment{}, err
@@ -82,6 +95,7 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 			a.Stuck[shotID] = a.Stuck[shotID] || l.Outcome != genapprovalrepo.OutcomeStarted
 		}
 	}
+	a.Held = len(plan.Lines) > 0 && p.State == domain.StateAwaitingApproval
 	if len(plan.Lines) == 0 || p.State == domain.StateAwaitingApproval {
 		return a, nil // under an Escalation (it is the user's) nothing starts, but the Shots the gate refused or failed still show: the Project is AUTO
 	}
@@ -183,6 +197,8 @@ func (g *Gate) Phase(ctx context.Context, p domain.Project) (mainline.Phase, map
 		return mainline.PhaseManual, nil, err
 	}
 	switch a.Verdict {
+	case VerdictAwaitBudget:
+		return mainline.PhaseBudgetConfirm, nil, nil
 	case VerdictDeclined:
 		if a.Unrecorded {
 			return mainline.PhaseDeclinedUnrecorded, a.Stuck, nil
@@ -191,7 +207,7 @@ func (g *Gate) Phase(ctx context.Context, p domain.Project) (mainline.Phase, map
 	case VerdictSupersede, VerdictStart:
 		return mainline.PhaseAuto, a.Stuck, nil
 	}
-	if len(a.Launches) > 0 {
+	if len(a.Launches) > 0 || a.Held {
 		return mainline.PhaseAuto, a.Stuck, nil // everything left was started or refused
 	}
 	return mainline.PhaseManual, a.Stuck, nil

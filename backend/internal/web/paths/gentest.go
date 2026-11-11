@@ -8,6 +8,13 @@ func GenerationTest() string { return "/generation-test" }
 // GenerationTestPart is "/generation-test/<rest...>": a section or an action of the screen. Every segment is escaped.
 func GenerationTestPart(rest ...string) string { return join(GenerationTest(), rest...) }
 
+// GenerationTestChat is the chat of the single generation, "/generation-test/chat" (#1138): talk to the LLM about what to make, see the models
+// compared and the estimate, confirm on a card and read the results in the thread. "/messages" (POST) sends a message, "/proposals/<id>/confirm" and
+// "/proposals/<id>/dismiss" (POST) answer a confirmation card and "/batches/<id>" (GET) is the results block that asks for itself while the batch runs.
+func GenerationTestChat(rest ...string) string {
+	return GenerationTestPart(append([]string{"chat"}, rest...)...)
+}
+
 // GenerationTestHistory is the history of the generation test, "/generation-test/history".
 func GenerationTestHistory() string { return GenerationTestPart("history") }
 

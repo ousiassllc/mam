@@ -1,10 +1,13 @@
 package service
 
 import (
+	"context"
+
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops"
 )
 
 // DirectorService runs DIRECTOR MODE (F-02, F-05, F-24): the AUTO ⇄ DIRECTOR switch, the
@@ -29,4 +32,13 @@ type DirectorService struct {
 	judges *repository.JudgeRepository
 	// brands are the Safety / Brand Constraints checked before a regeneration is queued.
 	brands *repository.BrandRepository
+	// policy sets the budget ceilings and the Quality Policy of a direction that changes them: the same path as the settings screen (director_ops.go).
+	policy *PolicyService
+	// unpriced names the models the Project would use whose price is not known (the Orchestrator's gate); nil without one.
+	unpriced func(ctx context.Context, projectID string) ([]string, error)
+	// chatOps are the operations of the global settings the chat carries out (service/chatops); set by wireDirector, filled by service/chatwire.Connect.
+	chatOps *chatops.Runtime
 }
+
+// newChatOps is the empty set of chat operations of a DirectorService; service/chatwire.Connect fills it.
+func newChatOps() *chatops.Runtime { return chatops.NewRuntime() }

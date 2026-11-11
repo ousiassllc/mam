@@ -6,7 +6,7 @@
 
 | メソッド | パス | 説明 |
 |---|---|---|
-| GET | `/tools/model-manager/status` | モデルマネージャーのカードの状態の断片（`paths.ToolStatus(paths.ToolModelManager)`）。ほかの `tool`（`nodes`・`workflows`・`settings`・`reviews`・生成テスト・制作指標を含む）のルートは無く、404（#978 でトップ画面のカードと一緒に削除） |
+| GET | `/tools/model-manager/status` | モデルマネージャーのカードの状態の断片（`paths.ToolStatus(paths.ToolModelManager)`）。ほかの `tool`（`nodes`・`workflows`・`settings`・`reviews`・単発生成・制作指標を含む）のルートは無く、404（#978 でトップ画面のカードと一緒に削除） |
 
 - 応答は**常に 200**。本文は `atoms.Badge` の並び（1 行に 1 つ）か、**空**。読めない・サーバー側の締め切り（2 秒）を超えた・サービスがルーターに無い（テスト用）ときは空で、カードは出る。5xx にしないのは、`htmx:responseError` のトーストを避けるため。
 - `Cache-Control: no-store`。状態を変えない GET なので、認証・CSRF は他の GET と同じ。
@@ -18,4 +18,4 @@
 |------|--------------------|
 | `model-manager` | 同梱の ComfyUI が導入済みなら、ok ・ ComfyUI: 起動中 ／ info ・ ComfyUI: 起動しています ／ neutral ・ ComfyUI: 停止中 ／ error ・ ComfyUI: 起動に失敗。未導入・壊れている（`broken`）・非対応（Windows・Apple Silicon の Mac 以外）で外部の ComfyUI が登録済みなら、neutral ・ 外部の ComfyUI: n 件。どちらも無いとき、neutral ・ ComfyUI: 未導入（非対応は 同梱の ComfyUI は Windows 版と Apple Silicon の Mac 版のみ） |
 
-設定画面の概要の「API キーとログイン」のカードの状態（1 行目: info ・ API キー n / 14 件（0 件は warn。キーストアが読めないときは warn ・ キーストアを利用できません）。2 行目（ChatGPT のサービスがあり、読めるとき）: warn ・ ChatGPT: 再ログインが必要 ／ ok ・ ChatGPT: ログイン済み（公式・画像生成（非公式）・Codex 経由のどれか）／ neutral ・ ChatGPT: 未ログイン）は、同じパッケージの `toolstatus.Services.Settings` がサーバーで組み立てる。ルートは無い。
+設定画面の概要の「API キーとログイン」のカードの状態（1 行目: info ・ API キー n / 18 件（分母は `len(service.CredentialProviders)`。0 件は warn。キーストアが読めないときは warn ・ キーストアを利用できません）。2 行目（ChatGPT のサービスがあり、読めるとき）: warn ・ ChatGPT: 再ログインが必要 ／ ok ・ ChatGPT: ログイン済み（公式・画像生成（非公式）・Codex 経由のどれか）／ neutral ・ ChatGPT: 未ログイン）は、同じパッケージの `toolstatus.Services.Settings` がサーバーで組み立てる。ルートは無い。

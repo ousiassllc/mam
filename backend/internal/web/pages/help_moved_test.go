@@ -47,7 +47,7 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 		visible []string
 	}{
 		{"model manager", pages.ModelManagerPage("tok", modelmgr.Overview{}),
-			[]string{"ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます"},
+			[]string{"ローカルの画像・動画モデルを導入します。導入したモデルは、単発生成で試せます"},
 			[]string{"モデルマネージャー"}},
 		{"model manager: the engine", pages.ModelManagerCategoryPage("tok", mmcatOf(mmcat.ComfyUI), nil, modelmgr.Data{}),
 			[]string{"画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します"},
@@ -75,7 +75,7 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 			[]string{"MCP サーバー"}},
 		{"generation test", pages.GenerationTestPage("tok", gentest.Compose{Prompts: []gentest.PromptText{{}}}),
 			[]string{"プロジェクトに属さない画像・動画の生成です", "結果は Take・コスト台帳には入りません", "複数選べます。代替のモデルへは切り替えません", "そのままモデルに送ります", "1 回に", "番号の順にモデルへ渡します"},
-			[]string{"生成テスト", "モデル", "プロンプト", "入力画像（省略可）", "見積りを見る"}},
+			[]string{"単発生成", "モデル", "プロンプト", "入力画像（省略可）", "見積りを見る"}},
 		{"project settings", pages.SettingsPage("tok", organisms.SettingsBodyData{}),
 			[]string{"FAST は少ない Take と高速モデル", "LOCK の制約に違反した Take・成果物はスコアに関係なく不合格", "テンプレートを更新・削除しても既存の Project には反映されません"},
 			[]string{"Quality Policy", "Brand / Safety Constraints", "Brand Templates"}},

@@ -53,6 +53,12 @@ func cardURL(projectID, messageID string) string {
 	return paths.Project(projectID, "messages", messageID)
 }
 
+// readsItself is whether the card asks for itself again every 2 seconds (the progress card of work that tells how far it is, #1140): each answer replaces the
+// whole element, which the thread (a polite live region of additions) would read out again every time, so the element is announced as "off" while it polls.
+func readsItself(m domain.ThreadMessage) bool {
+	return m.Kind == domain.KindProgress && m.Detail != "" && m.Pending()
+}
+
 // messagesAfterURL fetches the messages newer than messageID (GET /projects/:id/messages?after=<messageId>).
 // The newest card of the thread carries it, so the client never builds the URL itself.
 func messagesAfterURL(projectID, messageID string) string {
@@ -182,8 +188,8 @@ func refLinkOf(m domain.ThreadMessage) (refLink, bool) {
 // offersDelegate reports whether the question card has the "AIに任せる" button: not the Subject (#1108) and not the Brief summary (#1114).
 func offersDelegate(m domain.ThreadMessage) bool {
 	switch m.RefType {
-	case domain.RefBriefConfirm:
-		return false
+	case domain.RefBriefConfirm, domain.RefOperation:
+		return false // a confirmation is answered by its buttons: yes or no, never "left to the AI"
 	case domain.RefBriefField:
 		return domain.BriefField(m.RefID).CanDelegate()
 	}

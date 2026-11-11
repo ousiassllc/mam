@@ -9,8 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/config"
 )
 
-// UsageError is a --help request or an invalid command line / MAM_* setting, for the fronts that
-// have no console to print to (cmd/wails shows Text in a dialog).
+// UsageError is a --help request or an invalid command line / MAM_* setting, for the fronts that have no console to print to (cmd/wails shows Text in a dialog).
 type UsageError struct {
 	// Help is true for --help: nothing is wrong, the usage is the answer.
 	Help bool
@@ -20,8 +19,7 @@ type UsageError struct {
 
 func (e *UsageError) Error() string { return e.Text }
 
-// ValidateArgs parses args like Run does, without starting anything. It returns a *UsageError for
-// --help and for every setting config.Load rejects.
+// ValidateArgs parses args like Run does, without starting anything. It returns a *UsageError for --help and for every setting config.Load rejects.
 func ValidateArgs(args []string, getenv func(string) string) error {
 	var out bytes.Buffer
 	_, err := config.Load(args, getenv, &out)

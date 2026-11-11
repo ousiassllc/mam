@@ -8,6 +8,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/genplan"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/budgetstop"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator/genstage/told"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
@@ -27,6 +29,9 @@ func (g *Gate) Step(ctx context.Context, p domain.Project) (bool, error) {
 		_, err := g.d.Chat.Supersede(ctx, p.ID, a.Card.ID, SupersededNotice) // false: the user answered it meanwhile; either way the next look goes on
 		return true, err
 	case a.Verdict == VerdictStart && len(a.Next) > 0:
+		if a.Plan.Overrun().Any() && g.stillAuto(ctx, p.ID) {
+			return false, budgetstop.Stop{Policies: g.d.Policies, Builder: g.builder, Chat: g.d.Chat}.Hold(ctx, p.ID, a.Plan, a.Launches) // the user picks how to stay within it
+		}
 		return g.launch(ctx, p, a)
 	}
 	return false, nil
@@ -74,15 +79,15 @@ type round struct {
 // never started twice. A Shot that is busy (started by hand) is left for the next look. The first start the budget ceiling refuses ends the round:
 // nothing more is started until the user answers the Escalation. A start refused because no model can be used (modelroute.ErrNoUsableModel) is the
 // state of the models and not of the Shot, so it does not end the round: a Shot that needs another purpose or media may still run. Of the Shots
-// refused for one cause only the first is marked and told; the others are released, for a later look (nomodel.go).
+// refused for one cause only the first is marked and told; the others are released, for a later look (told).
 func (g *Gate) launch(ctx context.Context, p domain.Project, a Assessment) (bool, error) {
 	r := round{causes: map[string]bool{}}
 	err := g.run(ctx, p, a, &r)
 	switch {
 	case len(r.causes) > 0:
-		g.noModelRemember(p.ID, r.causes)
+		g.told.Remember(p.ID, r.causes)
 	case len(r.started) > 0:
-		g.noModelCleared(p.ID)
+		g.told.Clear(p.ID)
 	}
 	done := context.WithoutCancel(ctx) // what was started is announced and what was refused is told, even when the job is cancelled
 	g.announce(done, p, a, r.started)
@@ -143,9 +148,9 @@ func (g *Gate) stillAuto(ctx context.Context, projectID string) bool {
 // refuseNoModel handles a start refused because no model can be used. The first Shot of a cause that nobody was told yet is marked and told (report); a
 // Shot refused for a cause that was told already, by a look before or by this round, is not marked: it is given its claim back and tried again later.
 func (g *Gate) refuseNoModel(ctx context.Context, p domain.Project, s Step, err error, r *round) error {
-	first := !r.causes[causeKey(err)]
-	r.causes[causeKey(err)] = true
-	if first && !g.noModelTold(p.ID, err) {
+	first := !r.causes[told.Key(err)]
+	r.causes[told.Key(err)] = true
+	if first && !g.told.Has(p.ID, err) {
 		r.noModel = append(r.noModel, refused{s, err})
 		return nil
 	}
@@ -162,7 +167,7 @@ func (g *Gate) start(ctx context.Context, s Step) (domain.Job, error) {
 // report tells the user about the starts that did not happen and keeps them from being tried again by themselves: the budget ceiling goes
 // to an Escalation (like the Retry Policy's limit), anything else to a notice. The Shot is left to the user. A start that was refused for a model
 // that cannot be used (the preflight of the Generation Orchestrator) is reported with its reason like any other failed start, but once for each cause (the
-// Shots refused for the same cause are released, not marked: refuseNoModel) and, for the same cause, not again by the looks after it (noModelTold).
+// Shots refused for the same cause are released, not marked: refuseNoModel) and, for the same cause, not again by the looks after it (told.Causes).
 func (g *Gate) report(ctx context.Context, p domain.Project, r round) error {
 	for _, f := range r.failed {
 		if err := g.markFailed(ctx, p, f); err != nil {
@@ -191,7 +196,7 @@ func (g *Gate) report(ctx context.Context, p domain.Project, r round) error {
 		"Shot を減らす・Quality Policy を下げるなど、計画を直してから進める",
 		"この Shot は作らない",
 	}
-	return g.d.Chat.RaiseEscalation(ctx, p.ID, text, options, "")
+	return g.d.Chat.RaiseEscalationCard(ctx, p.ID, domain.CardBody{Text: text, Options: options}, "")
 }
 
 // markFailed records that the start of f failed, so that it is not tried again by itself.

@@ -4,7 +4,7 @@
 
 > **#1106 の追記（2026-11-06）— 状態: 実装済み（Issue #1106。FaceFusion の取得・導入のジョブは作っていない）**: 上の「mam は取得しない」は**変えない**。変わるのは**入口**だけで、FaceFusion のパスの欄・探した結果（§2）は設定の分類「FaceFusion」から、モデルマネージャーの分類 `companion`「付随ソフト」の区画 `#mm-facefusion` へ移り、そこに**入れる手順**（公式の conda → `git clone` → `python install.py`。推奨版 `facefusion.RecommendedTag` = `3.9.2`）と「もう一度探す」が加わる（[../../components/model-manager-screen.md](../../components/model-manager-screen.md)「付随ソフトの導入（#1106）」）。**mam が取得する案への変更は CTO の判断待ち**（同節「決定が要ること」。条文の確認・同意の画面・Python の環境の固定が要る）。§2 の「画面」「反映」、§4 の設定へのリンクは、この追記のとおり読み替える。
 
-関連: [gentest.md](gentest.md)（生成テスト。結果は履歴とジョブ一覧に並ぶ）、[../ffmpeg-lookup.md](../ffmpeg-lookup.md)（検出と設定のお手本）、[../local-models.md](../local-models.md) §4.6・§4.9（顔固定と顔の類似度の計測）。
+関連: [gentest.md](gentest.md)（単発生成。結果は履歴とジョブ一覧に並ぶ）、[../ffmpeg-lookup.md](../ffmpeg-lookup.md)（検出と設定のお手本）、[../local-models.md](../local-models.md) §4.6・§4.9（顔固定と顔の類似度の計測）。
 
 ## 1. 方針
 
@@ -37,7 +37,7 @@
 `face.Swap`（`service/gentest/face`。`service/gentest` が行数の上限なので別パッケージで、サービスの公開メソッドだけを使う。画面の POST と MCP の `swap_generation_face` が呼ぶ）。**アップスケールと同じ形**で、既存の仕組み（ジョブ種別 `gentest`・履歴・ジョブ一覧）に載せた。
 
 1. **入力**: 入れ替え先（`Target`）と顔（`Face`）は `RefInput`（history・upload・project_asset・reference_item・pose_library）。どちらも `ResolveInput` で解決し（PNG・JPEG・WebP、20 MiB 以下）、バッチのディレクトリへ複製する。入力の役割は入れ替え先が `edit`、顔が `face`。
-2. **バッチ**: 結果 1 件・入力 2 枚の**独立したバッチ**。結果のモデル識別子は固定の `facefusion`（`face.SwapModel`）、`api_model` は入れ替えモデルの ID。見積り・確認は無い（ローカルの処理で費用が無い。`cost_basis: free`）。ジョブ（`gentest`）にして `SetBatchJob`。ジョブ一覧の「生成テスト」に並び、履歴（ギャラリー）に通常の結果と同じに並ぶ。履歴の「モデル」の絞り込みにも `facefusion` が出る。
+2. **バッチ**: 結果 1 件・入力 2 枚の**独立したバッチ**。結果のモデル識別子は固定の `facefusion`（`face.SwapModel`）、`api_model` は入れ替えモデルの ID。見積り・確認は無い（ローカルの処理で費用が無い。`cost_basis: free`）。ジョブ（`gentest`）にして `SetBatchJob`。ジョブ一覧の「単発生成」に並び、履歴（ギャラリー）に通常の結果と同じに並ぶ。履歴の「モデル」の絞り込みにも `facefusion` が出る。
 3. **実行**（`runner.faceSwap`）: `FaceSwapFunc`（アプリは `facefusion.Install.Swap`）を呼び、返った画像を `<result_id>.png` として保存して成功にする。FaceFusion が使えないときの失敗は `facefusion_unavailable`（導線 `/settings/facefusion`。共通エラー [../errors.md](../errors.md)）として結果の `failure` に出る。
 4. **起動する引数**（`facefusion.Args`。`python` の引数）:
 
@@ -118,3 +118,4 @@
 | 1.3 | 2026-11-06 | §5: `swap_generation_face` で FaceFusion が見つからないときの答えを、実装（1.2 から）どおり `unavailable`（`facefusion_unavailable`）に直した（`validation` のままだった）。ツールの説明文も同じに直した | 仕様と実装の乖離（Issue #995 の見直し） |
 | 1.4 | 2026-11-06 | 冒頭に #1106 の追記: FaceFusion の画面（パスの欄・探した結果）を設定からモデルマネージャーの `companion` へ移し、入れる手順と「もう一度探す」を足す。「mam は取得しない」は変えず、取得する案は CTO の判断待ち。状態は仕様のみ（未実装） | Issue #1106 |
 | 1.5 | 2026-11-07 | #1106 の追記を実装した（入口をモデルマネージャーの `companion` へ移し、入れる手順と「もう一度探す」を足した）。「mam は取得しない」は変えておらず、取得ボタン・導入のジョブは作っていない。状態は「実装済み」 | Issue #1106 |
+| 1.6 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |

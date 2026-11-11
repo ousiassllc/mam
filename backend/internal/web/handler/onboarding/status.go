@@ -19,7 +19,8 @@ import (
 
 // readCredentials reads what the credentials step shows, once: the API keys (a key store that cannot be read leaves the
 // cards without a state and the error in the log) and, when the sign-in is there, the ChatGPT sign-in. The key store can
-// be slow, so the state line and the cards are drawn from the same read.
+// be slow, so the state line and the cards are drawn from the same read. The keys are built without Models on purpose: the guide offers the official
+// providers' cards only (no choice of the API provider, no OpenRouter / fal.ai / Replicate cards); choosing an aggregator is a matter of the settings screen.
 func (h Handlers) readCredentials(c *gin.Context) (keys keysview.Data, login *chatgptview.Data) {
 	keys = credentialshandler.Data(c, credentialshandler.Keys{Svc: h.Keys, Tester: h.Tester})
 	if h.ChatGPT != nil {

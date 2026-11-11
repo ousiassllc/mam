@@ -63,7 +63,7 @@ func providerModelsOf(l llmmodels.List) ProviderModels {
 func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModelsOutput, error) {
 	models, llmSvc := h.r.Settings.LLMModels, h.r.Settings.LLM
 	if models == nil || llmSvc == nil {
-		return ListModelsOutput{}, unavailable("LLM のモデル一覧")
+		return ListModelsOutput{}, Unavailable("LLM のモデル一覧")
 	}
 	providers := llmSvc.View().Providers
 	if in.Provider != "" {

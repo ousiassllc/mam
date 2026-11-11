@@ -2,7 +2,7 @@
  "id": "txt2img-sdxl-controlnet-depth",
  "label": "SDXL: ControlNet（深度マップから画像）",
  "media": "image",
- "description": "ControlNetLoader と ControlNetApplyAdvanced（ComfyUI 標準ノードだけ）で、深度マップ（手前が白・奥が黒の灰色画像）の奥行きの形に沿って SDXL で描く（xinsir の depth 用 ControlNet）。参照画像の 1 枚目が制御画像で、参照の強さが ControlNet の強さ（既定 0.7）。制御画像が無い実行は断る。mam は制御画像を作らない（前処理なし）: 渡した画像をそのまま使うので、深度マップを渡すこと（生成テストの「ポーズを選ぶ」で「深度」を選ぶと、Shisei のポーズ集の深度マップを参照画像に入れられる）。写真や線画を渡しても深度には変換されず、期待した形にならない。GPU では未実行（構造のテストのみ）。",
+ "description": "ControlNetLoader と ControlNetApplyAdvanced（ComfyUI 標準ノードだけ）で、深度マップ（手前が白・奥が黒の灰色画像）の奥行きの形に沿って SDXL で描く（xinsir の depth 用 ControlNet）。参照画像の 1 枚目が制御画像で、参照の強さが ControlNet の強さ（既定 0.7）。制御画像が無い実行は断る。mam は制御画像を作らない（前処理なし）: 渡した画像をそのまま使うので、深度マップを渡すこと（単発生成の「ポーズを選ぶ」で「深度」を選ぶと、Shisei のポーズ集の深度マップを参照画像に入れられる）。写真や線画を渡しても深度には変換されず、期待した形にならない。GPU では未実行（構造のテストのみ）。",
  "model": {
   "media": "image",
   "workflow": {

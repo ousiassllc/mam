@@ -4,7 +4,7 @@
 
 > **#954 の追記（2026-11-02）**: モデルを並べる所（ローカル音声・口パク、カタログのモデル、Hugging Face から追加したファイル、外部の ComfyUI のモデル）は、すべて同じ 1 つのカード（`molecules/modelcard`）＋詳細モーダルになった。カードには名前・アイコン・大きさ・状態・導入ボタンなどだけが出て、出典・ライセンス・ファイル一覧・SHA-256 は、カードをタップして開くモーダルにある。下の「カードと詳細モーダル（#954）」が正で、それより前に書いてある「モデルの一覧はカード」「ローカル音声・口パクの区画」の見た目・構造の記述は、この節に読み替える（ルート・ポーリング・拒否の扱いは変わらない）。
 
-> **#1100 の追記（2026-11-06）— 状態: 実装済み（Issue #1100）**: モデルマネージャーから区画「試し生成」（`#mm-trial`・`#mm-trials`。`TrialSection`・`TrialFormView`・`TrialList`）と、そのルート `/model-manager/trials/…` を**廃止した**。導入したモデルを試す場所は、**生成テスト画面（`GET /generation-test`。Issue の「`/gentest`」は誤記で、実在するルートはこちら）だけ**になる。生成テスト画面・`/generation-test/…`・MCP の生成テストのツール・履歴は変えない。これまでの試し生成の結果は生成テストの履歴にそのまま残る（データの移行・削除はしない）。区画の並びは「ComfyUI エンジン → ローカル音声・口パク・LLM → 追加ノード → 顔チェック用モデル → モデル → Hugging Face から導入 → Hugging Face のトークン → 外部の ComfyUI」になる。区画「モデル」の「?」ヘルプの末尾に、生成テスト画面へのリンク（`data-testid="mm-open-gentest"`。行き先は `paths.GenerationTest()`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つ置く。「導入したモデルは生成テストで試せます」だけで、試し生成のフォーム・結果の一覧・削除は画面に残さない。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
+> **#1100 の追記（2026-11-06）— 状態: 実装済み（Issue #1100）**: モデルマネージャーから区画「試し生成」（`#mm-trial`・`#mm-trials`。`TrialSection`・`TrialFormView`・`TrialList`）と、そのルート `/model-manager/trials/…` を**廃止した**。導入したモデルを試す場所は、**単発生成画面（`GET /generation-test`。Issue の「`/gentest`」は誤記で、実在するルートはこちら）だけ**になる。単発生成画面・`/generation-test/…`・MCP の単発生成のツール・履歴は変えない。これまでの試し生成の結果は単発生成の履歴にそのまま残る（データの移行・削除はしない）。区画の並びは「ComfyUI エンジン → ローカル音声・口パク・LLM → 追加ノード → 顔チェック用モデル → モデル → Hugging Face から導入 → Hugging Face のトークン → 外部の ComfyUI」になる。区画「モデル」の「?」ヘルプの末尾に、単発生成画面へのリンク（`data-testid="mm-open-gentest"`。行き先は `paths.GenerationTest()`。今の `mm-trial-open-gentest` を引き継ぐ）を 1 つ置く。「導入したモデルは単発生成で試せます」だけで、試し生成のフォーム・結果の一覧・削除は画面に残さない。受け入れ条件は [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1・§4。
 
 > **#1106 の追記（2026-11-06）— 状態: 実装済み（Issue #1106）**: 「FaceFusion のインストールがわかりにくい」。FaceFusion に限らず、追加のインストールが要る付随ソフト（ffmpeg・FaceFusion・Ollama・顔チェック用モデルほか）の入口を、モデルマネージャーに集める。新しい分類 `companion`「付随ソフト」（`#mm-companion-index`・`#mm-ffmpeg`・`#mm-facefusion`）を足し、設定の「ffmpeg」「FaceFusion」の分類（パスの手入力）をここへ**移す**。**FaceFusion は mam が取得しない決定（[face-swap.md](../architecture/gentest/face-swap.md) §1）を覆さない**: 画面は「入れる手順」と「見つかったかの確認」を出す。取得する場合の案は、下の節「決定が要ること」（CTO の判断待ち）。下の節「付随ソフトの導入（#1106）」が正。
 
@@ -80,9 +80,9 @@
 
 ## 更新ボタンとエンジンのカード（#962・#970）
 
-- **更新ボタン**（Issue #962。#925 の `RefreshBar` を `molecules/refresh.Bar` に移して、生成テストの履歴と共用）: 更新アイコンだけの小さなボタン（`aria-label`・`title` は「更新」。要求中はアイコンが回る。`id` は `<対象の id>-refresh` で固定、取り直しのあとも htmx がフォーカスを戻す）と、あれば `最終更新 15:04:05`。押すと、対象の区画（`outerHTML`）だけを、その区画の GET で取り直す。`hx-sync="#<対象>:replace"` で、出ている自動更新の要求を置き換える。人が押した要求なので、`poll-guard`（タブが隠れている・動画が再生中のときの自動更新を止める。`static/src/components/poll/poll-guard.ts`）は止めない。
+- **更新ボタン**（Issue #962。#925 の `RefreshBar` を `molecules/refresh.Bar` に移して、単発生成の履歴と共用）: 更新アイコンだけの小さなボタン（`aria-label`・`title` は「更新」。要求中はアイコンが回る。`id` は `<対象の id>-refresh` で固定、取り直しのあとも htmx がフォーカスを戻す）と、あれば `最終更新 15:04:05`。押すと、対象の区画（`outerHTML`）だけを、その区画の GET で取り直す。`hx-sync="#<対象>:replace"` で、出ている自動更新の要求を置き換える。人が押した要求なので、`poll-guard`（タブが隠れている・動画が再生中のときの自動更新を止める。`static/src/components/poll/poll-guard.ts`）は止めない。
 - **置き場所**: エンジンのカード（`#mm-engine`。ボタンのある状態の、ボタンの行の右端）・モデルの一覧（`#mm-catalog`）・ローカル音声・口パクの区画（`#mm-runtimes`。各カードが別々に自動更新するので時刻は出さない）・Hugging Face から追加したファイルの一覧（`#mm-hfi-models`。導入が動いているあいだ自動更新する区画。Issue #962 の取りこぼし）。取り直す区画は、入力中のフォーム（検索・トークン）と、開いているモーダル（ページに 1 つ。区画の外）を含まない。だから、更新と自動更新（`every 2s`）で、入力中の値もモーダルも壊れない。導入中のエンジンのカード・一覧の取り直しの URL は、報告するジョブ（`?job=`・`?jobs=`）を保つ。
-- **ジョブ一覧**: 画面としてのジョブ一覧は #980 で作った（[jobs-screen.md](jobs-screen.md)。`/jobs`）。`#jobs-list` の更新ボタンも同じ `refresh.Bar`。導入のカード・生成テストの履歴・チャットの進捗カードの更新ボタンはそのまま。`refresh.Bar` を使う画面: 生成テストの履歴・モデルマネージャー（エンジン・モデルの一覧）・ジョブ一覧。
+- **ジョブ一覧**: 画面としてのジョブ一覧は #980 で作った（[jobs-screen.md](jobs-screen.md)。`/jobs`）。`#jobs-list` の更新ボタンも同じ `refresh.Bar`。導入のカード・単発生成の履歴・チャットの進捗カードの更新ボタンはそのまま。`refresh.Bar` を使う画面: 単発生成の履歴・モデルマネージャー（エンジン・モデルの一覧）・ジョブ一覧。
 - **エンジンのカード**（Issue #970）: ComfyUI エンジンも、モデルと同じカード（`modelcard.Item`）＋詳細モーダル（`modeldetail.EngineDetail`）にそろえた。カードには、アイコン（`IconWorkflow`）・名前・1 行（導入済みなら「ComfyUI 0.3.10・NVIDIA（CUDA）」、それ以外は「画像・動画のモデルを動かすエンジン」）・状態のバッジ（導入先に書き込めません・導入中・未導入・ファイルが見つかりません・起動中・起動しています・起動に失敗・停止中・この PC では使えません。「更新あり」は別のバッジ）・導入の進捗・起動の失敗の理由・ボタン（起動／停止・更新する・自動起動・削除・中断する）・更新ボタンだけが出る。ボタンは `SmallButtonFor`（`aria-label` が「<操作>: ComfyUI エンジン」）。未導入のカードは、GPU の検出結果と導入フォーム（`GPUBlock`。カードの開く面より上 `z-10`）を中に持つ。`data-engine` は `unsupported`・`readonly`・`installing`・`broken`・`missing`・`installed`。
 - **詳細モーダル**（`GET /model-manager/engine/detail`）: 説明・状態・この PC で使えない理由（Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけ／書き込めない／ファイルが見つからない）・導入済みの版と build・待ち受け（起動中だけ）・更新の案内・導入先と空き・出典とライセンス（GPL-3.0。別のプログラムで mam には含まれない・SHA-256 を確かめてから使う）。今まで画面に置いていたこの長い文は、モーダルへ移した。
 - **説明文は「?」ヘルプに**: 区画「ComfyUI エンジン」の「?」に、カードをタップすると詳細が見られること・GPL-3.0・自動起動と削除の意味・導入の中断と再開・Windows 版と Apple Silicon の Mac（macOS 14 以降）版だけであることを入れた。GPU の導入フォームの下の注意書きも、この「?」へ移した。
@@ -132,15 +132,15 @@
 
   | 場所 | 今 | #1101 のあと |
   |---|---|---|
-  | 生成テストの「顔チェック用モデルを入れる」・「状態と直し方を見る」（`gt-face-off-install`・`gt-face-off-status`。`organisms/gentest/facelock/off.templ`） | `paths.ModelManagerFaceModels()` = `/model-manager#mm-face-models` | `/model-manager/face-check#mm-face-models`（関数の名前と `#mm-face-models` は変えない） |
+  | 単発生成の「顔チェック用モデルを入れる」・「状態と直し方を見る」（`gt-face-off-install`・`gt-face-off-status`。`organisms/gentest/facelock/off.templ`） | `paths.ModelManagerFaceModels()` = `/model-manager#mm-face-models` | `/model-manager/face-check#mm-face-models`（関数の名前と `#mm-face-models` は変えない） |
   | 「HF トークンが必要」のカードの案内（`mm-token-guide`）のトークンの区画へのリンク | `#mm-hf`（同じページ） | `/model-manager/hf-external#mm-hf`（`image-video` ページから別ページへ） |
   | 「追加ノードが必要」のバッジと説明（モデルのカード） | リンクなし | 説明の末尾に `/model-manager/custom-nodes#mm-nodes` へのリンク（`data-testid="mm-node-needed-link"`）。**#1118 で、説明とリンクはカードから「理由と対処」のポップアップの中へ移った**（`mm-reason-link`）。カードにはバッジ「追加ノードが必要」と、押すとポップアップが開く導入ボタンが残る |
   | ジョブ一覧（`/jobs`）の導入のジョブの行 `jobs-open`（`handler/jobs/jobs.go` の `href`） | `paths.ModelManager()` | ジョブの `target` で決める: `engine` → `comfyui`・`model:<id>` → `image-video`・`runtime:<id>` → `local-runtimes`（用途が `llm` の `runtime:llama-cpp`・`runtime:ollama` は `local-llm`）・`ollama:<id>`（#1105）→ `local-llm`・`node:<id>` → `custom-nodes`・`hf:…` → `hf-external`（`joblist.Dest` に分類を足す） |
   | `modelfilter.RouteOf`（モデルが選べない理由の行き先。`ReasonAgeGate`・`ReasonNotInstalled`・`ReasonMissingNode`） | `paths.ModelManager()` | `ReasonAgeGate`・`ReasonNotInstalled` → `image-video`、`ReasonMissingNode` → `custom-nodes` |
-  | 生成テストの「モデルを導入」（`tierform`・`upscale`・`venhancescreen` の `ModelsURL`） | `paths.ModelManager()` | `image-video` |
+  | 単発生成の「モデルを導入」（`tierform`・`upscale`・`venhancescreen` の `ModelsURL`） | `paths.ModelManager()` | `image-video` |
   | 設定「音声・口パク」のカードと詳細の「モデルマネージャーを開く」（`settings/audio`） | `paths.ModelManager()` | `local-runtimes` |
   | 設定「テキスト生成（LLM）」の `llm-local-managed-link`（`settings/llmlocal`）と、同じ設定の「ローカル LLM サーバー」のカード全体 | `paths.ModelManager()`（カードに欄があった） | カードは `llm-local-link`（`paths.ModelManagerPart("local-llm")`）だけになる（節「ローカル LLM の統合（#1104）」）。`modelfilter.RouteOf` の `ReasonEndpoint`（`endpoint_unusable`）で `source == SourceLocalLLM`（プロバイダー `local` に接続できない）の行き先は、今の `/settings/llm`（`paths.SettingsCategory(paths.SettingsLLM)`）から `local-llm` に変わる（ほかのソースの `ReasonEndpoint` は「ローカル・代替モデル」のまま） |
-  | プロジェクト一覧・設定画面・設定の概要の「モデルマネージャー」・メニューの項目・生成テストの作成画面のタブ（`gt-comfy-models`）・ワークフロー画面の `ModelManagerURL` | `paths.ModelManager()` | 変えない（概要が行き先） |
+  | プロジェクト一覧・設定画面・設定の概要の「モデルマネージャー」・メニューの項目・単発生成の作成画面のタブ（`gt-comfy-models`）・ワークフロー画面の `ModelManagerURL` | `paths.ModelManager()` | 変えない（概要が行き先） |
   | 設定の概要の「ffmpeg」「FaceFusion」のカード・分類（`/settings/ffmpeg`・`/settings/facefusion`）と、そこへ向かうリンクすべて（`apperr` の `Place` の行き先の表〔`apperr/code.go` の `PlaceFFmpeg`・`PlaceFaceFusion`。共通エラー `ffmpeg_missing`・`facefusion_unavailable`・`facefusion_failed` の導線〕・`handler/jobs/jobs.go` の `paths.FFmpegSettings()`・`faceswapscreen` の `SettingsURL`〔`paths.FaceFusionSettings()`〕） | `/settings/ffmpeg`・`/settings/facefusion` | `paths.ModelManagerPart("companion") + "#mm-ffmpeg"` / `"#mm-facefusion"`（`paths.FFmpegSettings()`・`FaceFusionSettings()` は新しい行き先を返す関数に置き換える。節「付随ソフトの導入（#1106）」） |
 
   古い `/model-manager#mm-…` のブックマークは、概要に着く（フラグメントはサーバーに届かず、リダイレクトできない。何もしない）。
@@ -250,7 +250,7 @@
 
 - **FaceFusion を mam が取得するか**（**既定: 取得しない**。face-swap.md §1 の決定を維持し、入口と手順だけモデルマネージャーに移す。理由: OpenRAIL-AS は利用の制限が使う人に直接かかり、条文の全文がリポジトリに無く、mam が取得・配布すると mam の側の条件が変わりうる。FaceFusion は初回に ArcFace などのモデルを自分で取得する）。**取得する案**: ①導入先 `<exe のディレクトリ>\localai\facefusion\`（ランタイムの基盤〔[local-runtime.md](../architecture/model-manager/local-runtime.md)〕に載せる）②GitHub のタグ `3.9.2` のコミットを固定した zip（URL・SHA-256・サイズ。実装時に測る）③Python の環境: 公式は conda 前提で、mam は Python を持たない。mam が Python 3.12 の埋め込み版と `install.py` が引く wheel（onnxruntime-gpu など。数 GB）を固定するか、利用者に conda を求めるかを決める（前者は固定すべき wheel が多く、Windows の実機での検証が要る）④**同意のダイアログ**: OpenRAIL-AS（条文へのリンク）・成人向けの画像には使えない・ArcFace は非商用（既定の組み合わせでも商用の作品に使えるとは確かめられない）・初回に FaceFusion がモデルを取得する・本体のライセンス。同意の版を保存する（追加ノードの同意と同じ形）⑤OS: Windows x64 ＋ NVIDIA を先に。macOS（CoreML）・AMD（DirectML）は理由つきで対応外。⑥削除・更新・ジョブ（`model_install`、`target=facefusion`）・MCP。この案は face-swap.md §1 の「mam は取得しない」を書き換える。
 - **設定の「ffmpeg」「FaceFusion」を外すか**（既定: 外して概要の 1 枚に。別案: 設定に分類を残し、状態とモデルマネージャーへのリンクだけにする〔ffmpeg のパスの上書きは上級者向けで、設定にあるほうが探しやすい、という見方〕）。
-- **顔チェック用モデルを `companion` へ寄せるか**（既定: 寄せない。`face-check` のまま、一覧からリンクする。モデルのファイルを mam が SHA-256 つきで取得するもので、#1101 のとおり独立させた。寄せるなら `All()` の 1 行と `#mm-face-models` の移動だけだが、生成テストのリンク〔`paths.ModelManagerFaceModels()`〕とテストを変える）。
+- **顔チェック用モデルを `companion` へ寄せるか**（既定: 寄せない。`face-check` のまま、一覧からリンクする。モデルのファイルを mam が SHA-256 つきで取得するもので、#1101 のとおり独立させた。寄せるなら `All()` の 1 行と `#mm-face-models` の移動だけだが、単発生成のリンク〔`paths.ModelManagerFaceModels()`〕とテストを変える）。
 - **Codex エンジンの取得を `companion` に出すか**（既定: 出さない。ChatGPT のログインの流れの一部なので設定に残し、一覧の 1 行からリンクだけ。別案: ffmpeg と同じ形で `#mm-codex` を足す〔取得の部品 `chatgpt/codex/engine` は同じ作り〕）。
 - **FaceFusion の推奨版**（既定: `3.9.2`。`facefusion.RecommendedTag`。mam のモデルの表は 3.x の `choices` に合わせてある〔face-swap.md §2・§4〕。4.x〔`v4-beta`〕の選択肢は未確認）。
 - **MCP**（既定: 変えない。パスは MCP から設定しない〔[mcp-tools-settings-policy.md](../api/mcp-tools-settings-policy.md)〕。FaceFusion の状態は既存の `get_facefusion_status`）。付随ソフトの状態を 1 回で返す読み取りのツールを足すかは別の判断。
@@ -288,10 +288,10 @@
 - **見出しの横の「?」**: 見出しは `molecules.SettingsSection("LoRA を追加", loraimport.Help)`。説明（ベースモデルとの対応・強さ・トリガー語・ライセンス）は「?」の中に置き、画面に長い文を並べない。
 - **選ぶ**（`data-testid="mm-lora-pick"`）: ファイルの選択（`accept=".safetensors"`）と、ドロップの領域（`mm-lora-zone`）。ドロップしたファイルも同じ入力に入れて送る。ブラウザ側で拡張子と大きさ（4 GiB）を先に確かめ、通らないものは送らずに理由を出す（`mm-lora-client-error`）。送っている間は進捗（`mm-lora-progress`。割合とバイト）を出し、`htmx:xhr:progress` で更新する。
 - **確認**（`mm-lora-staged`）: ファイルの情報（大きさ・SHA-256）、名前（使えない文字を置き換えたときは理由）、ベースモデルの選択（ファイルから読めたときは「ファイルの情報から読み取りました」、無いときは「未設定」）、推奨の強さ、トリガー語（学習で多く使われたタグは候補として別に出し、欄には入れない）、ライセンスの名前と商用利用の答え（不明・条件つき（自己申告）・商用NG。「商用OK」の選択肢は無い）。「追加する」（`mm-lora-commit`）と「取り消す」（`mm-lora-discard`）。同名があるときは確認の上に案内の箱（`mm-lora-conflict`）を出し、別の名前の提案を欄に入れる。
-- **結果**: 追加できたら確認の文（`mm-lora-notice`。生成テストの「LoRA と強さ」で選べること）、拒否は入力欄の上（`mm-lora-msg`）に理由を出す。入力は消えない。上の検査に通らないファイルは、置かずに理由だけを出す（`mm-lora-error`）。
+- **結果**: 追加できたら確認の文（`mm-lora-notice`。単発生成の「LoRA と強さ」で選べること）、拒否は入力欄の上（`mm-lora-msg`）に理由を出す。入力は消えない。上の検査に通らないファイルは、置かずに理由だけを出す（`mm-lora-error`）。
 - **追加した LoRA の一覧**（`#mm-lora-list`）: 1 つが 1 枚のカード。名前・大きさ・ベースモデル・強さ・トリガー語・ライセンス（空は「不明」）。編集のフォームと削除のボタン。空のときは「まだ追加していません。」（`mm-lora-empty`）。
 - **この PC で使えないとき**（バンドルのエンジンが動かない環境）は、区画に理由（`mm-lora-unsupported`）だけを出し、選ぶフォームを出さない。
-- **生成テスト・レシピ側**: `molecules/loraselect`（`Field`・`Note`。`Field` はモデル選択の欄 `modelpick.Field` の枠で、選ぶ UI はモデルと同じ（ソース `lora`。#1011））が「LoRA と強さ」の選択と注意を描く。注意（`data-testid="gt-lora-note"`）は、選んだ LoRA の未設定の項目、ワークフローのベースモデル（`data-lora-family`）との食い違い、`commercial_only` のときの商用の注意を出す。`static/src/components/gentest-lora` が、モデルの切り替え・LoRA の選び直しで注意を更新する。止めはしない。
+- **単発生成・レシピ側**: `molecules/loraselect`（`Field`・`Note`。`Field` はモデル選択の欄 `modelpick.Field` の枠で、選ぶ UI はモデルと同じ（ソース `lora`。#1011））が「LoRA と強さ」の選択と注意を描く。注意（`data-testid="gt-lora-note"`）は、選んだ LoRA の未設定の項目、ワークフローのベースモデル（`data-lora-family`）との食い違い、`commercial_only` のときの商用の注意を出す。`static/src/components/gentest-lora` が、モデルの切り替え・LoRA の選び直しで注意を更新する。止めはしない。
 
 ## 改訂履歴
 
@@ -339,4 +339,5 @@
 | 1.39 | 2026-11-09 | 手元の LoRA の取り込み（#1119）の区画 `#mm-lora`「LoRA を追加」を足した（`image-video` ページの「モデルの一覧」の下。選ぶ・確認・結果・追加した LoRA の一覧。生成テスト・レシピの「LoRA と強さ」の注意）。部品は `organisms/modelmgr/loraimport`・`molecules/loraselect`。既存の区画の ID は変えない | Issue #1119 |
 | 1.40 | 2026-11-09 | 「LoRA を追加」の確認の記述を実装に合わせた（ファイルの情報は大きさと SHA-256 で、テンソルの数は出さない。取り下げのボタンは「取り消す」）| #1119 の独立レビュー |
 | 1.41 | 2026-11-09 | 導入できないモデル・ノードのカードの「理由と対処」を、別のボタンから**導入ボタンを押すと開く**形に直した（#1118。利用者の指示）。`organisms/modelmgr/reason` は `OpenButton`・`ButtonLabel` をやめて `OpenAttrs`（導入ボタンに付ける属性）だけにし、`catalog.templ` の `installButton`（`blocked` → 無効、`NeedsNodes` かつ導入済みでない → ポップアップ、`LowDisk` → 無効の順）と `nodecard.nodeActions` の `blocked` の導入ボタンが使う | Issue #1118。押したいボタンが無効のままで分かりにくい |
-| 1.42 | 2026-11-10 | 生成テスト・レシピ側の LoRA の選択を `molecules/loraselect.Select`（`<select>`）から `loraselect.Field`（モデル選択の欄。ソース `lora`）に替えたことを書いた | Issue #1011 |
+| 1.42 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.43 | 2026-11-10 | 単発生成・レシピ側の LoRA の選択を `molecules/loraselect.Select`（`<select>`）から `loraselect.Field`（モデル選択の欄。ソース `lora`）に替えたことを書いた | Issue #1011 |

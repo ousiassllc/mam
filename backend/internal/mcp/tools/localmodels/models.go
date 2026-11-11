@@ -180,15 +180,15 @@ type Model struct {
 	AcceptsReferences bool               `json:"accepts_references" jsonschema:"参照画像を受け取れる"`
 	ReferenceMode     string             `json:"reference_mode,omitempty" jsonschema:"ComfyUI の画像: 参照画像の使い方。edit / img2img / inpaint（マスクで一部だけ描き直す）。ワークフローが示さなければ空"`
 	SupportsInpaint   bool               `json:"supports_inpaint,omitempty" jsonschema:"一部だけ描き直すに対応する（reference_mode が inpaint）"`
-	SupportsLoRA      bool               `json:"supports_lora,omitempty" jsonschema:"ComfyUI の画像: 生成テストの LoRA を使える（ワークフローに LoRA を差し込むノードがある）"`
+	SupportsLoRA      bool               `json:"supports_lora,omitempty" jsonschema:"ComfyUI の画像: 単発生成の LoRA を使える（ワークフローに LoRA を差し込むノードがある）"`
 	Assignments       []Assignment       `json:"assignments" jsonschema:"ComfyUI: 入力の割り当て"`
 	OutputNode        string             `json:"output_node,omitempty"`
-	ExposedInputs     []exposed.Input    `json:"exposed_inputs,omitempty" jsonschema:"ComfyUI の画像: 画面に出す値（生成テストのこだわりの入力欄）"`
+	ExposedInputs     []exposed.Input    `json:"exposed_inputs,omitempty" jsonschema:"ComfyUI の画像: 画面に出す値（単発生成のこだわりの入力欄）"`
 	FPS               int                `json:"fps,omitempty"`
 	FramesStep        int                `json:"frames_step,omitempty"`
 	SizeMultiple      int                `json:"size_multiple,omitempty"`
 	Video             *VideoCapabilities `json:"video,omitempty"`
-	MaxReferences     int                `json:"max_reference_images,omitempty" jsonschema:"参照画像の上限（割り当てから決まる。ComfyUI の画像・動画）。生成テストの list_generation_models と同じ値"`
+	MaxReferences     int                `json:"max_reference_images,omitempty" jsonschema:"参照画像の上限（割り当てから決まる。ComfyUI の画像・動画）。単発生成の list_generation_models と同じ値"`
 	FirstFrame        bool               `json:"first_frame,omitempty"`
 	LastFrame         bool               `json:"last_frame,omitempty"`
 	CostPerImageUSD   float64            `json:"cost_per_image_usd"`

@@ -118,7 +118,7 @@ func Refuse(c *gin.Context, err error) (status int, msg string) {
 	case errors.Is(err, gterr.ErrNotFound):
 		return http.StatusNotFound, "対象が見つかりません。画面を読み込み直してください"
 	case errors.Is(err, gterr.ErrUnavailable):
-		return http.StatusServiceUnavailable, "生成テストはこのアプリでは使えません"
+		return http.StatusServiceUnavailable, "単発生成はこのアプリでは使えません"
 	}
 	_ = c.Error(err)
 	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"

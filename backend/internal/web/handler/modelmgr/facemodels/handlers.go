@@ -130,7 +130,7 @@ func installedNotice(svc *facemodels.Service) string {
 	if st := svc.Status(); st.Off != nil {
 		return "顔チェック用モデルを導入しました。ただし顔の類似度はまだオフです。理由は下のとおりです"
 	}
-	return "顔チェック用モデルを導入しました。再起動は要りません。次の生成テストから、役割「顔だけ」の参照を付けた結果に顔の類似度が付きます"
+	return "顔チェック用モデルを導入しました。再起動は要りません。次の単発生成から、役割「顔だけ」の参照を付けた結果に顔の類似度が付きます"
 }
 
 // Remove answers DELETE /model-manager/face-models: the two files are deleted and the section comes back as the offer to install (models that are

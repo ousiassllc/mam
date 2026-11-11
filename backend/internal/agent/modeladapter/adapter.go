@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/limitclock"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/usable"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -114,14 +115,17 @@ func (a *Adapter) Reload(cfg Config, backends Backends) {
 // Config returns the setting the Adapter runs with.
 func (a *Adapter) Config() Config { return a.state.Load().cfg }
 
-// Unavailable says why the image or video model cannot be called now (domain.ExcludedNoBackend: it has no
-// backend or no API key is stored for its vendor; domain.ExcludedCircuitOpen: its vendor's circuit
-// breaker is open), or "" when it can. It does not consume the breaker's probe call.
+// Unavailable says why the image or video model cannot be called now (domain.ExcludedNoBackend: no backend or no API key for its vendor; domain.ExcludedCircuitOpen: its
+// vendor's breaker is open; domain.ExcludedProvider: the selected video API provider does not serve it; agegate.Excluded: the age gate), or "" when it can. It does not
+// consume the breaker's probe call.
 func (a *Adapter) Unavailable(m domain.ModelName) string {
 	if a.Gate.Refuses(m) {
 		return agegate.Excluded
 	}
 	st := a.state.Load()
+	if viaprovider.Refusal(st.cfg.VideoProvider, m) != "" {
+		return domain.ExcludedProvider
+	}
 	backend := any(st.backends.Video[m])
 	if backend == nil {
 		if backend = any(st.backends.Image[m]); backend == nil {
@@ -132,7 +136,7 @@ func (a *Adapter) Unavailable(m domain.ModelName) string {
 	if c, ok := backend.(interface{ Configured() bool }); ok && !c.Configured() {
 		return domain.ExcludedNoBackend
 	}
-	if b := st.breakers[VendorOf(m)]; b == nil || b.IsOpen() {
+	if b := st.breakers[st.cfg.VendorOf(m)]; b == nil || b.IsOpen() {
 		return domain.ExcludedCircuitOpen
 	}
 	return ""
@@ -228,7 +232,7 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 			return VideoOutput{}, err
 		}
 		apiModel := st.cfg.ModelSettings(t.Model).Model
-		res, err := call(ctx, a, st, VendorOf(t.Model), clock, func(ctx context.Context) (VideoResult, error) {
+		res, err := call(ctx, a, st, st.cfg.VendorOf(t.Model), clock, func(ctx context.Context) (VideoResult, error) {
 			return backend.GenerateVideo(ctx, apiModel, req)
 		}, string(t.Model))
 		if err == nil {

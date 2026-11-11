@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
@@ -12,8 +11,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
-func (s *DirectorService) interpret(ctx context.Context, message string, shots []repository.ShotRef, target *repository.ShotRef) (commandinterpreter.Command, error) {
+func (s *DirectorService) interpret(ctx context.Context, projectID, message string, shots []repository.ShotRef, target *repository.ShotRef) (commandinterpreter.Command, error) {
 	in := commandinterpreter.Input{Message: message}
+	cur, err := s.policy.Policy(ctx, projectID)
+	if err != nil {
+		return commandinterpreter.Command{}, err
+	}
+	in.Budget = commandinterpreter.BudgetCeilings{Project: cur.Policy.ProjectBudgetCeiling, Shot: cur.Policy.ShotBudgetCeiling}
 	for _, sh := range shots {
 		in.Shots = append(in.Shots, optionOf(sh))
 	}
@@ -33,11 +37,9 @@ func (s *DirectorService) interpret(ctx context.Context, message string, shots [
 	if err != nil {
 		return cmd, err
 	}
-	if !domain.AsksToRemember(message) {
-		// A note is made only when the message asks for it (spec/spec.md §9.4): the model's
-		// word alone is not enough in any mode.
-		cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return op.Type == commandinterpreter.OpCreateNote })
-	}
+	// A note is made only when the message asks for it (spec/spec.md §9.4), and a setting changes only when it names it (§24): the model's word alone is not enough
+	// in any mode (commandinterpreter.Spec.Asked).
+	cmd.Operations = commandinterpreter.Unasked(cmd.Operations, message)
 	return cmd, nil
 }
 
@@ -71,6 +73,17 @@ func optionOf(sh repository.ShotRef) commandinterpreter.ShotOption {
 type outcome struct {
 	lines   []string
 	started bool
+	// cards are the confirmation cards of the operations that ask for confirmation (director_ops.go): they follow the lines in the thread.
+	cards []domain.ChatMessage
+}
+
+// messages is what the thread shows of the outcome: the lines as one message, then the cards. A direction that made only cards needs no line that says nothing was found.
+func (o outcome) messages() []domain.ChatMessage {
+	var msgs []domain.ChatMessage
+	if len(o.lines) > 0 || len(o.cards) == 0 {
+		msgs = append(msgs, assistantText(o.text()))
+	}
+	return append(msgs, o.cards...)
 }
 
 func (o outcome) text() string {

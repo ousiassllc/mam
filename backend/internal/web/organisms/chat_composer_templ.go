@@ -81,15 +81,15 @@ func ChatComposer(p domain.Project) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(AcceptedUploads)
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(AcceptedUploads + ",.safetensors")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 47, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 47, Col: 113}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" aria-label=\"画像・動画を添付\" class=\"peer sr-only\"> <label for=\"composer-files\" class=\"cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-accent-soft peer-focus-visible:focus-ring\" title=\"画像・動画を添付\">＋</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" aria-label=\"画像・動画・LoRA（.safetensors）を添付\" class=\"peer sr-only\"> <label for=\"composer-files\" class=\"cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-accent-soft peer-focus-visible:focus-ring\" title=\"画像・動画・LoRA（.safetensors）を添付\">＋</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,6 +1,6 @@
 # モデルのフィルターと「選べる状態」（Issue #1011・#1013 のバックエンド）
 
-モデルを探す・選ぶ画面（モデルマネージャーのカタログ・導入済み、生成テスト、プロジェクト・Shot の生成設定、LLM の割り当て、参照画像の役割ごとのモデル選択）と、MCP の `list_model_catalog`・`list_generation_models` が**同じ条件・同じ言葉**で絞り込むための土台。画面（フィルターバー・パネル・モデル選択のモーダル・カード・バッジ）は §8 のとおり、ここに書く API の上に作る。この文書は「API」と「画面」の正本。
+モデルを探す・選ぶ画面（モデルマネージャーのカタログ・導入済み、単発生成、プロジェクト・Shot の生成設定、LLM の割り当て、参照画像の役割ごとのモデル選択）と、MCP の `list_model_catalog`・`list_generation_models` が**同じ条件・同じ言葉**で絞り込むための土台。画面（フィルターバー・パネル・モデル選択のモーダル・カード・バッジ）は §8 のとおり、ここに書く API の上に作る。この文書は「API」と「画面」の正本。
 
 ## 1. 構成
 
@@ -8,7 +8,7 @@
 |---|---|---|
 | 条件・一致・相互変換 | `backend/internal/modelfilter`（葉。カタログも画面も知らない） | `Condition`（フィルターパネルの状態）・`Item`（モデルを条件が見る項目に縮めたもの）・`Match`・`Filter`・クエリ文字列と JSON の相互変換・`Availability`（選べる状態）・`RouteOf`（理由から直す画面の道すじ） |
 | カタログの構造化データ | `backend/internal/modelmgr/catalog/traits` | `Traits`（パラメータ数・非検閲・速度/品質の目安・言語）・`Input`（入力の種類）・`Facts`（ワークフローが言う入力）・`Derived`（モデルの入力・音声） |
-| 各画面・ツールの `Item` への変換 | `mmview.Entry.Item`（カタログ）・`modelcatalog.Info.Item`（生成テスト）・`llmmodels.Candidate.Item`（LLM）・`modelsettings.ImageOption.Item` / `VideoOption.Item`（プロジェクト・Shot の生成設定の候補） | 各層が自分のモデルの型を `Item` にする。絞り込みの規則はここに 1 つしか無い |
+| 各画面・ツールの `Item` への変換 | `mmview.Entry.Item`（カタログ）・`modelcatalog.Info.Item`（単発生成）・`llmmodels.Candidate.Item`（LLM）・`modelsettings.ImageOption.Item` / `VideoOption.Item`（プロジェクト・Shot の生成設定の候補） | 各層が自分のモデルの型を `Item` にする。絞り込みの規則はここに 1 つしか無い |
 
 ## 2. 条件（`modelfilter.Condition`）
 
@@ -65,7 +65,7 @@
 
 ### 3.2 `inputs`・`audio`（カタログには**書かない**。ワークフローから導く）
 
-入力と音声つきかは、モデルの `workflows[].template`（`localcfg` のテンプレートの `assignments`・`reference_mode`・`video.native_audio`）から `traits.Derive` が導く。生成テストの `reference_mode`・`reference_roles`・`video`（`first_frame`・`last_frame`・`native_audio`）も**同じ事実（`traits.Facts`）**から読むので、二重管理にならず食い違わない。
+入力と音声つきかは、モデルの `workflows[].template`（`localcfg` のテンプレートの `assignments`・`reference_mode`・`video.native_audio`）から `traits.Derive` が導く。単発生成の `reference_mode`・`reference_roles`・`video`（`first_frame`・`last_frame`・`native_audio`）も**同じ事実（`traits.Facts`）**から読むので、二重管理にならず食い違わない。
 
 | `traits.Input` | 導く元 |
 |---|---|
@@ -78,7 +78,7 @@
 | `reference_whole` / `reference_face` / `reference_style` / `reference_pose` | 画像の参照の役割（`reference` / `face` / `style` / `pose`。編集のモデルは 4 つ、img2img・IP-Adapter は全体だけ） |
 | `reference_control` | ControlNet の制御画像 |
 
-モデルの入力は**そのモデルのワークフローすべての和**（例: `wan22-ti2v-5b` は `t2v`・`i2v`・`first_frame`、`ltx-2.5-22b-distilled` は `t2v`・`i2v`・`first_frame`・`last_frame`）。`audio` は、どれかのワークフローの `video.native_audio` が真（LTX-2.5）。API は `mmview.Entry.Inputs`・`Entry.Audio`（カタログ）、`modelcatalog.Info.Inputs`・`Info.Video.NativeAudio`（生成テスト）。
+モデルの入力は**そのモデルのワークフローすべての和**（例: `wan22-ti2v-5b` は `t2v`・`i2v`・`first_frame`、`ltx-2.5-22b-distilled` は `t2v`・`i2v`・`first_frame`・`last_frame`）。`audio` は、どれかのワークフローの `video.native_audio` が真（LTX-2.5）。API は `mmview.Entry.Inputs`・`Entry.Audio`（カタログ）、`modelcatalog.Info.Inputs`・`Info.Video.NativeAudio`（単発生成）。
 
 ### 3.3 検証（`catalog.Validate`・`traits.Traits.Validate`）
 
@@ -95,11 +95,11 @@
 | 用途 | 使うもの |
 |---|---|
 | モデルマネージャーのカタログ（導入済み・未導入） | `mmview.Where(svc, cond) []Entry`。`Entry` は `ModelView` に `traits`・`inputs`・`audio`・`available`・`unavailable`・`unavailable_message`・`settings_route` を足したもの。`mmview.Entries(svc)`（全件）・`mmview.EntryOf(svc, view)`（1 件）。**モデルマネージャーは `cond` のゼロ値から始める**（未導入も見せる）。導入済みだけを選ぶ画面は `installed=installed_only` |
-| 生成テスト・プロジェクト・Shot の生成設定のモデル選択 | `gentest.Service.ModelsWhere(ctx, media, cond)`（`modelcatalog.Info` の一覧。選択画面は `Default()` から）。`Info` に `available`・`unavailable`・`unavailable_message`・`settings_route`・`inputs`・`provider`・`origin`・`catalog`（カタログのモデルの成人向け・`traits`・`vram_min_gb`）。1 件の可否は `Service.Availability(id)` |
+| 単発生成・プロジェクト・Shot の生成設定のモデル選択 | `gentest.Service.ModelsWhere(ctx, media, cond)`（`modelcatalog.Info` の一覧。選択画面は `Default()` から）。`Info` に `available`・`unavailable`・`unavailable_message`・`settings_route`・`inputs`・`provider`・`origin`・`catalog`（カタログのモデルの成人向け・`traits`・`vram_min_gb`）。1 件の可否は `Service.Availability(id)` |
 | 割り当て（設定の画像・動画モデル、Quality Policy）の候補 | `modelsettings.View.ImageModels` / `VideoModels` の各候補に `Availability`。`View.ImageModelsWhere(cond)` / `VideoModelsWhere(cond)`。今の割り当てが使えないモデルを指すとき `View.Unusable[]`（§5.3） |
 | ローカルの実行環境のモデル（Irodori-TTS の声・llama.cpp の LLM。#1015） | `runtimechoices.Where(views, cond)`（`View.Item()` が `kind: tts` を `audio`、`llm` を `llm` にし、`languages` を渡す）。MCP は `list_local_runtime_models`（`runtime_id` を省くと実行環境をまたいで絞れる）、画面は実行環境のカードの詳細（`GET /model-manager/runtimes/:id/models`）。[local-runtime.md §14.8](local-runtime.md) |
 | LLM の割り当ての候補 | `llmmodels.Service.Candidates(ctx, cond)`（`Candidate` の一覧。選択画面は `Default()` から）。プロバイダー 1 つの可否は `Availability(provider)`、各 `List` に `Availability` |
-| 入力画像を添えたときのモデルの並べ替え（#1009） | `modelfilter.InputsOfRoles(roles []string) []traits.Input`（添えた画像の役割 `reference`・`face`・`style`・`edit`・`pose`・`first_frame`・`last_frame` から、モデルが受け付けるべき入力 `reference_whole`・`reference_face`・…・`first_frame`・`last_frame` を返す。重複なし）と `modelfilter.PreferForInputs[T](list []T, item func(T) Item, attached []traits.Input) []T`（`Item.Inputs` が `attached` を多く持つモデルを先に並べる**安定ソート**。同じ数ならもとの順。何も隠さない（持たないモデルは最後に残る）。`attached` が空なら並びは変えない。`list` を並べ替えて返す）。生成テストのモデル選択は、添えた画像の役割を `InputsOfRoles` に渡し、`ModelsWhere` の結果を `PreferForInputs` に通す |
+| 入力画像を添えたときのモデルの並べ替え（#1009） | `modelfilter.InputsOfRoles(roles []string) []traits.Input`（添えた画像の役割 `reference`・`face`・`style`・`edit`・`pose`・`first_frame`・`last_frame` から、モデルが受け付けるべき入力 `reference_whole`・`reference_face`・…・`first_frame`・`last_frame` を返す。重複なし）と `modelfilter.PreferForInputs[T](list []T, item func(T) Item, attached []traits.Input) []T`（`Item.Inputs` が `attached` を多く持つモデルを先に並べる**安定ソート**。同じ数ならもとの順。何も隠さない（持たないモデルは最後に残る）。`attached` が空なら並びは変えない。`list` を並べ替えて返す）。単発生成のモデル選択は、添えた画像の役割を `InputsOfRoles` に渡し、`ModelsWhere` の結果を `PreferForInputs` に通す |
 
 ## 5. 選べる状態（Issue #1013）
 
@@ -109,16 +109,18 @@
 
 | 理由のコード | 意味 | 道すじ（`RouteOf`） |
 |---|---|---|
-| `no_backend` | API プロバイダーの API キーが未登録（生成テストが前から使っているコード。値は変えない）。登録した接続先のモデルは接続先が使えない | `/settings/api-keys`（接続先のモデルは `/settings/local-models`） |
+| `no_backend` | API プロバイダーの API キーが未登録（単発生成が前から使っているコード。値は変えない）。登録した接続先のモデルは接続先が使えない | `/settings/api-keys`（接続先のモデルは `/settings/local-models`） |
 | `not_signed_in` | サブスク（ChatGPT）に未ログイン | `/settings/api-keys`（「ChatGPT でログイン」は同じ分類） |
-| `not_installed` | ローカルのモデルが未導入・導入中・ファイル欠け（モデルマネージャーのカタログ） | `/model-manager` |
-| `age_gate` | 成人向けのモデルで、年齢確認がオフ（アダプターの理由は文なので、一覧はこのコードで返す） | `/model-manager` |
-| `missing_node` | ワークフローの追加ノードが未導入（生成テストが前から使っているコード） | `/model-manager` |
+| `provider_unsupported` | 選んだ API プロバイダー（OpenRouter / fal.ai / Replicate）が、そのクラウド動画モデルを提供しない（`domain.ExcludedProvider`。`unavailable_message` に、どのプロバイダーならそのモデルを使えるかを書く）。プロバイダーを替えるか公式に戻せば使える。単価は出さない（`unknown`） | `/settings/api-keys`（プロバイダーの選択は API キーの区画の先頭） |
+| `not_installed` | ローカルのモデルが未導入・導入中・ファイル欠け（モデルマネージャーのカタログ） | `/model-manager/image-video` |
+| `age_gate` | 成人向けのモデルで、年齢確認がオフ（アダプターの理由は文なので、一覧はこのコードで返す） | `/model-manager/image-video` |
+| `missing_node` | ワークフローの追加ノードが未導入（単発生成が前から使っているコード） | `/model-manager/custom-nodes` |
+| `endpoint_unusable` | 登録した接続先（ComfyUI・OpenAI 互換のローカル LLM サーバー）が使えない（`modelfilter.ReasonEndpoint`。いまはローカル LLM の割り当ての候補〔`llmmodels`。`FallbackLocalDown`〕が、サーバーに接続できないときに返す。`unavailable_message` は「ローカルサーバーに接続できません（モデルマネージャーの「ローカル LLM」で確かめます）」） | `/settings/local-models`（ローカル LLM サーバーのモデルは `/model-manager/local-llm`） |
 | `circuit_open` | ベンダーの失敗が続き、しばらく止めている（自然に戻る） | なし（空） |
 
 ### 5.2 初期状態は「選べるものだけ」
 
-モデルを選ぶ画面（LLM の割り当て・生成テスト・プロジェクト・Shot の生成設定）は、`modelfilter.Default()`（`available_only` がオン）から始め、使えないものを隠す。フィルターの「使えないものも表示」（`available_only` をオフ）で出し、そのとき各モデルの `unavailable_message` と `settings_route`（設定画面への導線）を見せる。「N 件は今は選べません」の件数は、`available_only` をオフにした一覧と `Default()` の一覧の差。**設定画面の API キーのカード（`credentials` の一覧）は今まで通り全プロバイダーを出す**（ここは隠さない。このバックエンドは変えていない）。
+モデルを選ぶ画面（LLM の割り当て・単発生成・プロジェクト・Shot の生成設定）は、`modelfilter.Default()`（`available_only` がオン）から始め、使えないものを隠す。フィルターの「使えないものも表示」（`available_only` をオフ）で出し、そのとき各モデルの `unavailable_message` と `settings_route`（設定画面への導線）を見せる。「N 件は今は選べません」の件数は、`available_only` をオフにした一覧と `Default()` の一覧の差。**設定画面の API キーのカード（`credentials` の一覧）は今まで通り全プロバイダーを出す**（ここは隠さない。このバックエンドは変えていない）。
 
 ### 5.3 今の割り当てが使えないものを指しているとき
 
@@ -144,17 +146,17 @@
 | 部品 | 置き場所 | 中身 |
 |---|---|---|
 | フィルターバー | `molecules/modelpick`（`Bar`・`Panel`・`Summary`・`Oob`・`Filter`・`Facets`） | 検索ボックス（名前・タグ。`q`）と漏斗のボタン。漏斗には絞り込み中の数のバッジ（`Condition.Active`）。漏斗で**詳細フィルターのパネル**が開く（`aria-expanded`。Esc で閉じてフォーカスを漏斗へ戻す）。パネルの項目は画面ごとの `Facets` で出し入れする: 種類・入力・成人向け（すべて / 一般向けのみ / 成人向けのみ）・非検閲・パラメータ数（小・中・大）・16GB で動くか・商用利用・導入済み・ローカル / API・提供元・音声つき・速度・品質・選べるものだけ。変えるたびにその場で一覧が絞られる（ボタンで確定しない）。一覧の上に、かかっている条件を**チップ**で出し（各チップの × で 1 つずつ外す）、「すべてクリア」がある。「N 件」「（全 M 件のうち）」と、選べるものだけがオンのときの「K 件は今は選べません」・「使えないものも表示」 |
-| モデルのカード | `molecules/modelcard`（`PickItem`・`Summary`。モデルマネージャーの開くカードは `Item`） | 絵・名前・種類と価格か大きさの 1 行・商用利用のアイコン・バッジ（成人向け・パラメータ数・VRAM・導入済み。`Facts`）。選べないモデルは薄くし、**理由**と設定画面への導線（`Reason.Route`）を下に出す（`aria-describedby`）。選び方は 2 つ: チェックボックス（`PickMany`。生成テストのモデル。複数選べる。枠と光る縁取りと ✓ で示す）、ボタン（`PickOne`。モデル選択のモーダル。いま欄に入っているモデルは枠と面で示す） |
+| モデルのカード | `molecules/modelcard`（`PickItem`・`Summary`。モデルマネージャーの開くカードは `Item`） | 絵・名前・種類と価格か大きさの 1 行・商用利用のアイコン・バッジ（成人向け・パラメータ数・VRAM・導入済み。`Facts`）。選べないモデルは薄くし、**理由**と設定画面への導線（`Reason.Route`）を下に出す（`aria-describedby`）。選び方は 2 つ: チェックボックス（`PickMany`。単発生成のモデル。複数選べる。枠と光る縁取りと ✓ で示す）、ボタン（`PickOne`。モデル選択のモーダル。いま欄に入っているモデルは枠と面で示す） |
 | モデル選択の欄 | `molecules/modelpick.Field` と `Host` | 選んだモデルを**カードの要約**で見せるボタン（「変更」）。押すと `GET /model-picker/:source` が応え、ページに 1 つの `<dialog>`（`Host`）がバーとカードの一覧で開く。カードを押すとそのカードが持つ値（`data-mp-values`）が欄の隠し `<input>`（`data-mp-from`）に入って閉じ、欄に `change` が飛ぶ。背景のクリックでは閉じない（Esc と「閉じる」で閉じる）。設定のモーダルの上に重なる |
 | スクリプト | `static/src/components/model-pick` | パネルとダイアログの開閉・選んだモデルを欄へ入れる・選んだカードの印だけ。絞り込みはしない |
 
 ### 8.2 画面ごとの条件の記憶
 
-条件は**画面ごとに** Cookie `mam_mf_<キー>`（クエリ文字列。1 年。`HttpOnly`・`SameSite=Lax`）に覚え、条件を持たずに開いたときに読む（`handler/pickfilter`）。localStorage でなく Cookie なのは、デスクトップ版が使うループバックのポートが変わっても共有でき、初回から絞った一覧をサーバーが描けるため。キー: `model-manager`（モデルマネージャーのカタログ）・`gentest-image` / `gentest-video`（生成テストのモデル。メディアごと）・モデル選択の欄は §8.3 の `<source>`。出発点は、モデルを選ぶ画面は `modelfilter.Default()`（選べるものだけ）、モデルマネージャーのカタログはゼロ値（導入前のモデルも並べる）。設定「商用OKのモデルだけを使う」がオンなら、どの画面も**商用の選択だけ**「商用OKのみ」から始まる（パネルの「すべて」は別の選択になる）。
+条件は**画面ごとに** Cookie `mam_mf_<キー>`（クエリ文字列。1 年。`HttpOnly`・`SameSite=Lax`）に覚え、条件を持たずに開いたときに読む（`handler/pickfilter`）。localStorage でなく Cookie なのは、デスクトップ版が使うループバックのポートが変わっても共有でき、初回から絞った一覧をサーバーが描けるため。キー: `model-manager`（モデルマネージャーのカタログ）・`gentest-image` / `gentest-video`（単発生成のモデル。メディアごと）・モデル選択の欄は §8.3 の `<source>`。出発点は、モデルを選ぶ画面は `modelfilter.Default()`（選べるものだけ）、モデルマネージャーのカタログはゼロ値（導入前のモデルも並べる）。設定「商用OKのモデルだけを使う」がオンなら、どの画面も**商用の選択だけ**「商用OKのみ」から始まる（パネルの「すべて」は別の選択になる）。
 
-生成テストのフォームは、**条件に合わないモデルでも、フォームが選択済みとして持つモデル**（リンクの `?model=`・「もう一度」・レシピの「使う」・プロンプトマッチの引き継ぎ）のカードは描く（チェック済み）。カードが DOM に無いと POST にも載らず、記憶した条件のせいで選んだモデルが黙って外れるため。選択済みでないモデルは、これまでどおり条件に合うものだけを描く。
+単発生成のフォームは、**条件に合わないモデルでも、フォームが選択済みとして持つモデル**（リンクの `?model=`・「もう一度」・レシピの「使う」・プロンプトマッチの引き継ぎ）のカードは描く（チェック済み）。カードが DOM に無いと POST にも載らず、記憶した条件のせいで選んだモデルが黙って外れるため。選択済みでないモデルは、これまでどおり条件に合うものだけを描く。
 
-設定「Quality Policy」の動画モデルの欄（`settings-video`）の件数（「N 件（全 M 件のうち）」「K 件は今は選べません」）は、カードと同じ集合（`modelsettings.View.VideoModels` にある動画モデル）を**モデル単位**で数える（カードは解像度ごとに出るが、数は解像度の数ではない。生成テストの動画モデルすべてを数えない）。設定「画像」の欄（`settings-image`）と同じ数え方。
+設定「Quality Policy」の動画モデルの欄（`settings-video`）の件数（「N 件（全 M 件のうち）」「K 件は今は選べません」）は、カードと同じ集合（`modelsettings.View.VideoModels` にある動画モデル）を**モデル単位**で数える（カードは解像度ごとに出るが、数は解像度の数ではない。単発生成の動画モデルすべてを数えない）。設定「画像」の欄（`settings-image`）と同じ数え方。
 
 ### 8.3 モデル選択の欄とそのソース（`GET /model-picker/:source`）
 
@@ -162,13 +164,13 @@
 
 | `<source>` | 置き場所 | 選ぶもの（欄が入れる値） |
 |---|---|---|
-| `match` | 生成テスト「画像から似せる」 | 画像モデル（`model`） |
+| `match` | 単発生成「画像から似せる」 | 画像モデル（`model`） |
 | `inpaint` | 「一部だけ描き直す」 | 描き直せる画像モデル（`model`。描き直せないモデルは理由つきで出る） |
 | `shot-video` | Shot の Video Model（MANUAL・LOCK） | 動画モデル（`value`。保存したワークフローも出る） |
 | `settings-image` | 設定「画像・動画モデル」の画像の用途 | `modelsettings.View.ImageModels` にあるモデル（`image_<用途>_<primary or fallback>_model`） |
 | `settings-video` | 同 Quality Policy | 動画モデルと解像度（`policy_<方針>_<primary or fallback>`。値は `<モデル>@<解像度>`） |
 | `video-enhance` | 生成結果の詳細（動画）「大きくする」「滑らかにする」（Issue #1031・#1011） | その操作（`op=upscale`・`interpolate`）と場所（`cloud=1` は Topaz、無ければこの PC）のモデル（`model`。`modelcatalog.VideoEnhancer.Item`・`Availability`。種類は `video_upscale`・`video_interpolate`。Topaz のキーが無いものは「選べません」で、API キーの設定への導線つき）。パネルは商用利用と選べるものだけ |
-| `lora` | 生成テスト（画像）「LoRA と強さ」の LoRA（Issue #1011・#1119） | エンジンの LoRA のファイル（`value`。ほかに注記が読む `known`・`families`・`family_labels`・`strength`・`triggers`・`commercial`。`loras.Choice.Item`、カードは `modelcards.FromLoRA`）。先頭に「LoRA を使わない」（`value` が空。条件で隠さない）。`media=image` を欄が運ぶ。LoRA には種類・入力・大きさ・VRAM・速度・品質・成人向けの値が無いので、パネルは**商用利用だけ**（利用者が答えた値。答えの無いファイルは「不明」）で、探すのは検索（名前・ベースモデル・トリガー語）。選べないものは無いので「選べるものだけ」は出さない。強さ（`lora_strength`）は欄の外のスライダーのまま 設定「商用OKのモデルだけを使う」は**この一覧を狭めない**（条件の商用利用が空なら「すべて」。LoRA は選択肢から外さず、確認できていないものは画面が注意を出す。[model-manager-lora.md](model-manager-lora.md) §4.1）。利用者が商用利用の選択を決めたときだけ狭める |
+| `lora` | 単発生成（画像）「LoRA と強さ」の LoRA（Issue #1011・#1119） | エンジンの LoRA のファイル（`value`。ほかに注記が読む `known`・`families`・`family_labels`・`strength`・`triggers`・`commercial`。`loras.Choice.Item`、カードは `modelcards.FromLoRA`）。先頭に「LoRA を使わない」（`value` が空。条件で隠さない）。`media=image` を欄が運ぶ。LoRA には種類・入力・大きさ・VRAM・速度・品質・成人向けの値が無いので、パネルは**商用利用だけ**（利用者が答えた値。答えの無いファイルは「不明」）で、探すのは検索（名前・ベースモデル・トリガー語）。選べないものは無いので「選べるものだけ」は出さない。強さ（`lora_strength`）は欄の外のスライダーのまま 設定「商用OKのモデルだけを使う」は**この一覧を狭めない**（条件の商用利用が空なら「すべて」。LoRA は選択肢から外さず、確認できていないものは画面が注意を出す。[model-manager-lora.md](model-manager-lora.md) §4.1）。利用者が商用利用の選択を決めたときだけ狭める |
 | `upscale` | 生成結果の詳細「大きくする」 | アップスケールのワークフロー（`upscale_model`。今は動かせないものは理由つきで出る） |
 | `settings-llm` | 設定「テキスト生成（LLM）」の Agent | プロバイダーとモデルを**一緒に**（`<role>.provider`・`<role>.model`）。API キーのないプロバイダー・ログインしていないものは「選べません」で、理由と設定画面への導線つき（§5）。一覧にない名前は `<role>.model_custom` に入れる |
 
@@ -179,9 +181,9 @@
 | 画面 | 一覧のリクエスト | 欄 |
 |---|---|---|
 | モデルマネージャー（カタログ・導入済み） | `GET /model-manager/models`（`mmview.Where`。ジョブ中の導入は条件に関わらず報告する） | — |
-| 生成テスト | `GET /generation-test/models?media=image\|video`（`gentest.Service.ModelsWhere`。添えた入力画像を受け付けるモデルを先に並べる） | モデルは一覧のカード（複数選択）。カードの `<li>` は `data-requires-first-frame`（最初のフレームが無いと動かない I2V。#1009）ほか、入力欄・詳細設定のスクリプトが読む `data-*` を持つ。動画の入力欄の通知 `#gt-input-check`（#1009）は、一覧を描き直しても残る。かんたんは一覧を持たず、選んだ 1 つを隠しカードで送る |
-| 生成テスト「履歴」 | `GET /generation-test/history`（商用利用の 3 択を `commercial` で送り、サーバーが答えのモデルで絞る） | モデルの `<select>` は履歴にあるモデルの名前の絞り込みで残す（モデルを**選ぶ**のではない） |
+| 単発生成 | `GET /generation-test/models?media=image\|video`（`gentest.Service.ModelsWhere`。添えた入力画像を受け付けるモデルを先に並べる） | モデルは一覧のカード（複数選択）。カードの `<li>` は `data-requires-first-frame`（最初のフレームが無いと動かない I2V。#1009）ほか、入力欄・詳細設定のスクリプトが読む `data-*` を持つ。動画の入力欄の通知 `#gt-input-check`（#1009）は、一覧を描き直しても残る。かんたんは一覧を持たず、選んだ 1 つを隠しカードで送る |
+| 単発生成「履歴」 | `GET /generation-test/history`（商用利用の 3 択を `commercial` で送り、サーバーが答えのモデルで絞る） | モデルの `<select>` は履歴にあるモデルの名前の絞り込みで残す（モデルを**選ぶ**のではない） |
 | 設定の画像・動画モデル・LLM、Shot の Video Model、「画像から似せる」・「一部だけ描き直す」・「大きくする」 | §8.3 | §8.3 |
-| 生成テストの LoRA（`lora`。画像だけ。エンジンに LoRA があり、選んだモデルが LoRA に対応するときだけ有効） | §8.3 の `lora`（`GET /model-picker/lora?media=image`。Cookie `mam_mf_lora`） | `molecules/loraselect.Field`（`modelpick.Field`）。送るのはファイル名の `lora` だけ。強さ `lora_strength` と注記 `gt-lora-note` は欄の隣 |
+| 単発生成の LoRA（`lora`。画像だけ。エンジンに LoRA があり、選んだモデルが LoRA に対応するときだけ有効） | §8.3 の `lora`（`GET /model-picker/lora?media=image`。Cookie `mam_mf_lora`） | `molecules/loraselect.Field`（`modelpick.Field`）。送るのはファイル名の `lora` だけ。強さ `lora_strength` と注記 `gt-lora-note` は欄の隣 |
 
 LoRA の選択も上の `lora` ソースで、モデルと同じ選択 UI にした。モデルを探す・選ぶ画面ではない選択（履歴のモデル名の絞り込み、ポーズの分類、倍率、FaceFusion の部品（swapper・detector・enhancer））は `<select>` のままにする。

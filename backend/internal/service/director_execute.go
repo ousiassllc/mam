@@ -13,20 +13,25 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
 )
 
-// execute carries out the operations of a Command: settings first (so that "カメラは固定して、表情だけ
+// execute carries out the operations of a Command: an operation that asks for confirmation (set_budget) becomes a confirmation card and is carried out by the
+// answer (director_ops.go). The rest: settings first (so that "カメラは固定して、表情だけ
 // 変えて" locks before it regenerates), then regenerations, then the mode switch. strict makes a
-// regeneration that would change a LOCKed parameter fail with ErrLocked before anything is done;
-// otherwise it is left out and reported.
+// regeneration that would change a LOCKed parameter fail with ErrLocked before anything is done; otherwise it is left out and reported.
 func (s *DirectorService) execute(ctx context.Context, project domain.Project, ref *repository.ShotRef, cmd commandinterpreter.Command, message string, strict bool) (outcome, error) {
 	var out outcome
-	if cmd.Question != "" {
-		return outcome{lines: []string{cmd.Question}}, nil
+	if cmd.Question != "" { // the model asks; what the message plainly asks for (WithDetected) is still carried out
+		out.lines = []string{cmd.Question}
+		if len(cmd.Operations) == 0 {
+			return out, nil
+		}
 	}
-	needsShot := slices.ContainsFunc(cmd.Operations, func(op commandinterpreter.Operation) bool {
-		return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
-	})
-	if needsShot && ref == nil {
-		return outcome{lines: []string{askWhichShot}}, nil
+	// Without a Shot (nothing says which one is meant) the operations on a Shot wait for the answer to askWhichShot; the others of the same Command (a budget card, a setting,
+	// a note) are carried out, not dropped with them.
+	askShot := false
+	if ref == nil {
+		before := len(cmd.Operations)
+		cmd.Operations = slices.DeleteFunc(slices.Clone(cmd.Operations), needsShot)
+		askShot = len(cmd.Operations) < before
 	}
 
 	var locks domain.ParameterLocks
@@ -77,16 +82,61 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			out.lines = append(out.lines, unsupportedReply(message, op.Reason))
 		}
 	}
+	if err := s.confirmAndRemember(ctx, project, cmd, &out); err != nil {
+		return out, err
+	}
+	err := s.switchMode(ctx, project, cmd, &out)
+	if askShot && err == nil {
+		out.lines = append(out.lines, askWhichShot)
+	}
+	return out, err
+}
+
+// needsShot reports whether the operation is carried out on a Shot.
+func needsShot(op commandinterpreter.Operation) bool {
+	return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
+}
+
+// confirmAndRemember posts the confirmation cards of the operations that ask for confirmation (director_ops.go), then keeps the notes the director asked for.
+func (s *DirectorService) confirmAndRemember(ctx context.Context, project domain.Project, cmd commandinterpreter.Command, out *outcome) error {
+	for _, op := range cmd.Operations {
+		if op.Immediate() { // nothing changes: what it found (a download link) is told at once
+			res, err := s.applyOp(ctx, project, op)
+			if err != nil {
+				return err
+			}
+			out.lines = append(out.lines, res.text)
+			out.cards = append(out.cards, res.messages...)
+			continue
+		}
+		if !op.Confirms() {
+			continue
+		}
+		card, line, err := s.confirmCard(ctx, project, op)
+		if err != nil {
+			return err
+		}
+		if line != "" {
+			out.lines = append(out.lines, line)
+		} else {
+			out.cards = append(out.cards, card)
+		}
+	}
 	for _, op := range cmd.Operations {
 		if op.Type != commandinterpreter.OpCreateNote {
 			continue
 		}
 		line, err := s.remember(ctx, project.ID, op)
 		if err != nil {
-			return out, err
+			return err
 		}
 		out.lines = append(out.lines, line)
 	}
+	return nil
+}
+
+// switchMode carries out the mode switches of the Command.
+func (s *DirectorService) switchMode(ctx context.Context, project domain.Project, cmd commandinterpreter.Command, out *outcome) error {
 	mode := project.Mode
 	for _, op := range cmd.Operations {
 		if op.Type == commandinterpreter.OpSetMode {
@@ -97,7 +147,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			}
 			mode = op.ProjectMode
 			if err := s.applyMode(ctx, project.ID, op.ProjectMode, false); err != nil {
-				return out, err
+				return err
 			}
 			out.lines = append(out.lines, approvalack.ModeNotice(op.ProjectMode))
 			if op.ProjectMode == domain.ModeAuto {
@@ -105,11 +155,10 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			}
 		}
 	}
-	return out, nil
+	return nil
 }
 
-// lockedRegeneration returns ErrLocked when a regeneration of ops changes a parameter that is
-// LOCKed once the ops' own settings are applied.
+// lockedRegeneration returns ErrLocked when a regeneration of ops changes a parameter that is LOCKed once the ops' own settings are applied.
 func lockedRegeneration(locks domain.ParameterLocks, ops []commandinterpreter.Operation) error {
 	effective := domain.ParameterLocks{}
 	for p, v := range locks {
@@ -132,8 +181,7 @@ func lockedRegeneration(locks domain.ParameterLocks, ops []commandinterpreter.Op
 	return nil
 }
 
-// lockedParameters lists the LOCKed parameters that the regeneration changes: the parameter of
-// each changed part, and Prompt, which covers the whole spec.
+// lockedParameters lists the LOCKed parameters that the regeneration changes: the parameter of each changed part, and Prompt, which covers the whole spec.
 func lockedParameters(locks domain.ParameterLocks, op commandinterpreter.Operation) []domain.LockParameter {
 	var hit []domain.LockParameter
 	for _, part := range op.Changes {

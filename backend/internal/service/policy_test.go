@@ -15,9 +15,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
-
-func fp(v float64) *float64 { return &v }
 
 func (f genFixture) generate(t *testing.T) {
 	t.Helper()
@@ -103,6 +102,7 @@ func TestSetBudget_ParsesCeilingsAndBlocksGenerationThatDoesNotFit(t *testing.T)
 	view, err := f.svc.Policy.SetBudget(ctx, f.projectID, service.BudgetForm{Project: "$50", Shot: "0.01"})
 	require.NoError(t, err)
 	assert.InDelta(t, 50, *view.Policy.ProjectBudgetCeiling, 1e-9)
+	assert.Contains(t, lastMessage(t, f.thread(t, f.projectID)).Content, "Project: $50 / Shot: $0.01", "the amounts read as the screen and the chat write them")
 	_, err = f.svc.Generation.GenerateShot(ctx, f.shotID, "")
 	assert.ErrorIs(t, err, service.ErrBudgetExceeded, "the Shot ceiling blocks a generation that cannot afford one Take")
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM job`))
@@ -124,7 +124,7 @@ func TestSetBudget_ParsesCeilingsAndBlocksGenerationThatDoesNotFit(t *testing.T)
 func TestCostSummary_ShowsEstimatedAndVendorReportedCostByShotSceneAndProject(t *testing.T) {
 	f := newGenFixture(t, true)
 	ctx := context.Background()
-	f.models.actual = fp(0.30)
+	f.models.actual = new(0.30)
 
 	f.generate(t) // BALANCED: 3 Takes of 4 s at 0.15 USD/s
 
@@ -166,7 +166,7 @@ func TestGenerateShot_StopsAtMaxGenerationTimeAndReportsIt(t *testing.T) {
 
 	assert.Less(t, time.Since(start), 5*time.Second, "the 10 s limit ran out in 10 ms, not in 10 s")
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take`))
-	assert.Contains(t, lastMessage(t, f.thread(t, f.projectID)).Content, "制限時間")
+	servicetest.WaitLastMessage(t, f.thread, f.projectID, "制限時間") // the Shot is back in Planning before the thread says why
 }
 
 func TestGenerateShot_WarnsBeforeStartingWhenTheDiskIsTooSmall(t *testing.T) {

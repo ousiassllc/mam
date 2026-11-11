@@ -65,7 +65,7 @@ func ModelManagerPage(csrfToken string, o modelmgr.Overview) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入します。導入したモデルは、生成テストで試せます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pagehead.Header("モデルマネージャー", "", "ローカルの画像・動画モデルを導入します。導入したモデルは、単発生成で試せます。すべてのプロジェクトで共通です。接続先の登録は設定で行います。").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

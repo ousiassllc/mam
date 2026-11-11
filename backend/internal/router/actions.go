@@ -8,8 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// registerActions registers action routes (POST/PUT/DELETE, never branch on
-// HX-Request, return HTML fragments only). All of them are behind the CSRF middleware.
+// registerActions registers action routes (POST/PUT/DELETE, never branch on HX-Request, return HTML fragments only). All of them are behind the CSRF middleware.
 func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST(paths.Projects(), handler.CreateProject(services.Projects))
 	engine.PUT("/projects/:id/brief", handler.UpdateBrief(services.Projects))
@@ -69,6 +68,7 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/projects/:id/final-qc", handler.FinalQC(services.Editor))
 	engine.POST("/projects/:id/export", handler.Export(services.Editor))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
+	engine.POST("/projects/:id/messages/:messageId/secret", handler.SubmitSecret(services.Chat))
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
 	engine.POST("/shots/:id/branch", handler.CreateBranch(services.Branch))
 	engine.PUT("/branches/:id", handler.UpdateBranch(services.Branch))

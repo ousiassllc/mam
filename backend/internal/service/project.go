@@ -10,7 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
-	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 )
 
 // ProjectService manages Projects, their Brief, the Confirmation Level and assets.
@@ -24,27 +24,38 @@ type CreateProjectInput struct {
 	BrandTemplateID string
 }
 
-// Create starts a Project from the user's first message: the Brief is extracted from
-// it (with where each value came from and the recommended Duration / Aspect Ratio of the platform), attachments become
-// Assets/References, and the AI answers in the new thread (the Subject question, or the Brief summary to confirm; #1114).
+// Create starts a Project from the user's first message: the Brief is extracted from it (with where each value came from and the recommended Duration / Aspect Ratio of the platform),
+// attachments become Assets/References, and the AI answers in the new thread (the Subject question, or the Brief summary to confirm; #1114). A message that carries an API key is
+// handled as in the chat: the key is hidden, the message is not read, and its attachments are not taken (the thread says so); the Project is still created.
 func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (domain.Project, error) {
 	content := strings.TrimSpace(in.Content)
 	if err := validateMessage(content, len(in.Uploads) > 0); err != nil {
 		return domain.Project{}, err
 	}
+	content, hasKey := secretguard.Redact(content) // an API key is never read by the extractor (an LLM) nor kept in the thread (#1140)
+	uploads := in.Uploads
+	if hasKey {
+		uploads = nil // as in the chat: the message is not read, so its files are not taken (filesNotTakenNotice)
+	}
 	projectID := domain.NewID()
-	stored, err := s.storeUploads(projectID, in.Uploads)
+	stored, err := s.storeUploads(projectID, uploads)
 	if err != nil {
 		return domain.Project{}, err
 	}
 	assets := assetsOf(stored)
-
 	var brief domain.Brief
-	briefing.Absorb(&brief, s.extractor.Extract(content), content)
+	if !hasKey {
+		briefing.Absorb(&brief, s.extractor.Extract(content), content)
+	}
 	briefing.Recommend(&brief)
 	brief.AttachAssets(assets)
-
-	messages := assignIDs([]domain.ChatMessage{userText(content, "", assetIDs(assets)), briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)})
+	var messages []domain.ChatMessage
+	if hasKey {
+		messages = secretRefusal(content, len(in.Uploads) > 0)
+	} else {
+		messages = []domain.ChatMessage{userText(content, "", assetIDs(assets))}
+	}
+	messages = assignIDs(append(messages, briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)))
 	project := domain.Project{
 		ID: projectID, State: domain.StateDraft, Mode: domain.ModeAuto,
 		ConfirmationLevel:  domain.ConfirmKeyCheck,
@@ -59,7 +70,15 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 		}
 		return domain.Project{}, err
 	}
-	s.kick(ctx, projectID)
+	created, err := s.getProject(ctx, projectID)
+	if err != nil {
+		return domain.Project{}, err
+	}
+	// A budget stated in the first message ("予算は $20 で") is asked about before anything starts (#1139): the pipeline is kicked only once its card is in the thread. A message with a key is
+	// not read (as in the chat), so it states no budget.
+	if hasKey || s.askStatedBudget(ctx, created, content) {
+		s.kick(ctx, projectID)
+	}
 	return s.getProject(ctx, projectID)
 }
 
@@ -97,8 +116,7 @@ func (s *ProjectService) Brief(ctx context.Context, projectID string) (BriefView
 	return BriefView{Project: project, Brief: brief, Assets: assets}, nil
 }
 
-// BriefForm is the editable part of the Brief (PUT /projects/:id/brief). Assets and
-// video references keep their identity; References (one URL per line) replaces the URL references.
+// BriefForm is the editable part of the Brief (PUT /projects/:id/brief). Assets and video references keep their identity; References (one URL per line) replaces the URL references.
 type BriefForm struct {
 	Values                map[domain.BriefField]string
 	AdditionalInstruction string
@@ -112,9 +130,7 @@ type BriefForm struct {
 	Given []domain.BriefField
 }
 
-// UpdateBrief validates and saves the edited Brief and records the change in the thread.
-// On a ValidationError the returned BriefView holds the unsaved input so the form can be
-// shown again with the user's values.
+// UpdateBrief validates and saves the edited Brief and records the change in the thread. On a ValidationError the returned BriefView holds the unsaved input so the form can be shown again with the user's values.
 func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form BriefForm) (BriefView, error) {
 	view, err := s.Brief(ctx, projectID)
 	if err != nil {
@@ -132,7 +148,6 @@ func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form
 		view.Brief = edited
 		return view, err
 	}
-
 	note := assistantText("Brief を更新しました。")
 	msgs := assignIDs([]domain.ChatMessage{note})
 	if err := s.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: msgs, Brief: &edited}); err != nil {
@@ -182,70 +197,6 @@ func ParseReferenceURLs(text string) ([]string, error) {
 	return urls, nil
 }
 
-// ConfirmationSetting is the Confirmation Level with the CUSTOM CHECK selection.
-type ConfirmationSetting struct {
-	Level       domain.ConfirmationLevel
-	Checkpoints []domain.Checkpoint
-}
-
-// defaultCustomCheckpoints is used when CUSTOM CHECK is chosen without a selection:
-// the script and the final result.
-var defaultCustomCheckpoints = []domain.Checkpoint{domain.CheckpointScript, domain.CheckpointFinal}
-
-// SetConfirmationLevel changes when approval cards are shown (F-03) and records the
-// change in the thread. For CUSTOM CHECK an empty selection keeps the previous one
-// (or the default), so the setting never silently equals FULL AUTO.
-func (s *ProjectService) SetConfirmationLevel(ctx context.Context, projectID string, level domain.ConfirmationLevel, checkpoints []domain.Checkpoint) (domain.Project, error) {
-	if !level.Valid() {
-		return domain.Project{}, invalid("level", "確認レベルが正しくありません")
-	}
-	for _, c := range checkpoints {
-		if !c.Valid() {
-			return domain.Project{}, invalid("checkpoints", "確認ポイントが正しくありません: %s", c)
-		}
-		if !c.Selectable() {
-			return domain.Project{}, invalid("checkpoints", "この確認ポイントはまだ選べません: %s", c.Label())
-		}
-	}
-	project, err := s.getProject(ctx, projectID)
-	if err != nil {
-		return domain.Project{}, err
-	}
-	selected := checkpoints
-	if level == domain.ConfirmCustomCheck && len(selected) == 0 {
-		selected = project.CustomCheckpoints
-		if len(selected) == 0 {
-			selected = defaultCustomCheckpoints
-		}
-	}
-	if level != domain.ConfirmCustomCheck {
-		selected = project.CustomCheckpoints // remembered for when CUSTOM CHECK is chosen again
-	}
-	selected = sortedCheckpoints(selected)
-
-	msgs := assignIDs([]domain.ChatMessage{assistantText(approvalack.ConfirmationNotice(level, selected))})
-	err = s.projects.Apply(ctx, repository.Turn{
-		ProjectID: projectID, Messages: msgs,
-		Confirmation: &repository.Confirmation{Level: level, Checkpoints: selected},
-	})
-	if err != nil {
-		return domain.Project{}, notFound(err)
-	}
-	s.publishCreated(projectID, msgs)
-	s.kick(ctx, projectID) // a Brief waiting for confirmation does not wait at FULL AUTO (#1114)
-	return s.getProject(ctx, projectID)
-}
-
-func sortedCheckpoints(in []domain.Checkpoint) []domain.Checkpoint {
-	out := make([]domain.Checkpoint, 0, len(in))
-	for _, c := range domain.SelectableCheckpoints() {
-		if slices.Contains(in, c) {
-			out = append(out, c)
-		}
-	}
-	return out
-}
-
 // AssetFile is an asset with the absolute path of its file.
 type AssetFile struct {
 	Asset domain.Asset
@@ -288,4 +239,32 @@ func withProject(msgs []domain.ChatMessage, projectID string) []domain.ChatMessa
 		msgs[i].ProjectID = projectID
 	}
 	return msgs
+}
+
+// budgetNotAsked is what the thread says when the confirmation card of the budget stated in the first message could not be posted: the Project exists, nothing was started
+// and no ceiling is set.
+const budgetNotAsked = "予算の確認カードを出せませんでした。予算はまだ設定していません。生成も始めていません。「予算は $20 で」のようにもう一度伝えてください。"
+
+// askStatedBudget posts the confirmation card of the budget the first message of a new Project states (#1139). It is a second write after the Project was created (the card
+// is asked of the stored Project), so a failure must not fail Create: the Project exists and a retry would create a second one. The failure is logged and the thread says
+// that no card could be posted; ok is false then, and the caller does not start the pipeline: a paid generation never starts past a budget the user stated and nobody confirmed.
+func (s *ProjectService) askStatedBudget(ctx context.Context, project domain.Project, content string) (ok bool) {
+	cards, err := s.statedBudgetCards(ctx, project, content)
+	if err == nil && len(cards) > 0 {
+		cards = assignIDs(withProject(cards, project.ID))
+		if err = s.projects.Apply(ctx, repository.Turn{ProjectID: project.ID, Messages: cards}); err == nil {
+			s.publishCreated(project.ID, cards)
+		}
+	}
+	if err == nil {
+		return true
+	}
+	s.logger.Error("post the confirmation card of the stated budget failed", "project_id", project.ID, "err", err)
+	notice := assignIDs(withProject([]domain.ChatMessage{assistantText(budgetNotAsked)}, project.ID))
+	if err := s.projects.Apply(ctx, repository.Turn{ProjectID: project.ID, Messages: notice}); err != nil {
+		s.logger.Error("tell that the stated budget was not asked failed", "project_id", project.ID, "err", err)
+		return false
+	}
+	s.publishCreated(project.ID, notice)
+	return false
 }

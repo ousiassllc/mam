@@ -34,7 +34,7 @@ func TestView_TellsTheGenerationTestApartFromTheMainLine(t *testing.T) {
 	html := renderHTML(t, sceneshot.View(data()))
 
 	assert.Contains(t, html, `id="gentest-vs-main-line"`)
-	assert.Contains(t, html, "生成テスト（/generation-test）の結果は")
+	assert.Contains(t, html, "単発生成（/generation-test）の結果は")
 	assert.Contains(t, html, "ここの Shot にも載りません")
 }
 
@@ -45,6 +45,7 @@ func TestView_SaysWhichPhaseTheAutomaticStartIsIn(t *testing.T) {
 		mainline.PhaseDeclined:           {`data-phase="declined"`, "差し戻されています", "メッセージを送ってください"},
 		mainline.PhaseDeclinedUnrecorded: {`data-phase="declined_unrecorded"`, "差し戻されています", "メッセージを送ってください", "記録が無い"},
 		mainline.PhaseAuto:               {`data-phase="auto"`, "承認を待たずに", "自動で生成を進めます"},
+		mainline.PhaseBudgetConfirm:      {`data-phase="budget_confirm"`, "予算の確認を待っています", "確認カードに答えるまで", "予算 $… で進めますね？"},
 		mainline.PhaseManual:             {`data-testid="main-line-wait"`, "自動では始まりません"},
 	} {
 		d := data()

@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
 )
 
 func (s *ChatService) planApprovalReply(ctx context.Context, project domain.Project, card, user domain.ChatMessage) (repository.Turn, error) {
@@ -55,6 +56,7 @@ func (s *ChatService) RespondApproval(ctx context.Context, projectID, messageID 
 	if err := validateMessage(comment, true); err != nil {
 		return domain.Project{}, domain.ThreadMessage{}, err
 	}
+	comment, _ = secretguard.Redact(comment) // an API key is never kept in the thread (#1140); the decision itself stands
 	project, err := s.getProject(ctx, projectID)
 	if err != nil {
 		return domain.Project{}, domain.ThreadMessage{}, err
@@ -161,7 +163,13 @@ func (s *ChatService) Supersede(ctx context.Context, projectID, cardID, notice s
 // RaiseEscalation asks the user for a decision the AI cannot make (Retry Policy limit
 // reached, ...). It is posted at every Confirmation Level, including FULL AUTO.
 func (s *ChatService) RaiseEscalation(ctx context.Context, projectID, text string, options []string, shotID string) error {
-	if strings.TrimSpace(text) == "" {
+	return s.RaiseEscalationCard(ctx, projectID, domain.CardBody{Text: text, Options: options}, shotID)
+}
+
+// RaiseEscalationCard is RaiseEscalation for a card whose buttons carry what they do (domain.CardBody.OptionActions): the answer that picks one is carried out
+// by the chat (answerEscalation), not only noted.
+func (s *ChatService) RaiseEscalationCard(ctx context.Context, projectID string, body domain.CardBody, shotID string) error {
+	if strings.TrimSpace(body.Text) == "" {
 		return invalid("text", "相談内容が空です")
 	}
 	project, err := s.getProject(ctx, projectID)
@@ -171,7 +179,7 @@ func (s *ChatService) RaiseEscalation(ctx context.Context, projectID, text strin
 	blocks := project.State.EscalationBlocks()
 	card := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindEscalation,
-		Content: domain.EncodeCardBody(domain.CardBody{Text: text, Options: options, NonBlocking: !blocks}),
+		Content: domain.EncodeCardBody(withBlocking(body, blocks)),
 	}
 	if shotID != "" {
 		card.RefType, card.RefID = domain.RefShot, shotID
@@ -185,6 +193,12 @@ func (s *ChatService) RaiseEscalation(ctx context.Context, projectID, text strin
 		return s.commit(ctx, repository.Turn{ProjectID: projectID, Messages: assignIDs([]domain.ChatMessage{card})})
 	}
 	return s.postBlocking(ctx, projectID, card)
+}
+
+// withBlocking marks the card non-blocking when the Project is in a state an Escalation does not hold.
+func withBlocking(body domain.CardBody, blocks bool) domain.CardBody {
+	body.NonBlocking = !blocks
+	return body
 }
 
 func (s *ChatService) postBlocking(ctx context.Context, projectID string, card domain.ChatMessage) error {

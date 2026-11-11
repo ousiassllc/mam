@@ -13,14 +13,15 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// Load is modeladapter.LoadConfig followed by Validate: the Config of the settings file, or an
+// Load is Read followed by Validate: the Config of the settings file, or an
 // error that says what is wrong with it. An empty path selects the (valid) defaults. A file that
 // still names Imagen 4 is read as Nano Banana (migrateLegacyModels).
 func Load(path string) (modeladapter.Config, error) {
-	cfg, err := modeladapter.LoadConfig(path)
+	cfg, err := Read(path)
 	if err != nil {
 		return modeladapter.Config{}, err
 	}
@@ -41,7 +42,7 @@ func Validate(c modeladapter.Config) error {
 	var errs []error
 	for _, check := range []func(modeladapter.Config) []error{
 		validateVendors, validateModels, validateLocal, validateImageRoutes,
-		validatePolicies, validateRouting, validateRetry, func(c modeladapter.Config) []error { return c.Gentest.Validate() },
+		validatePolicies, validateRouting, validateRetry, validateVideoProvider, func(c modeladapter.Config) []error { return c.Gentest.Validate() },
 	} {
 		errs = append(errs, check(c)...)
 	}
@@ -151,6 +152,14 @@ func validateRouting(c modeladapter.Config) []error {
 	return errs
 }
 
+// validateVideoProvider refuses a video_provider that is none of the providers (a typo would otherwise send nothing anywhere).
+func validateVideoProvider(c modeladapter.Config) []error {
+	if p := c.VideoProvider; p != "" && !p.Valid() {
+		return []error{fmt.Errorf("video_provider: %q is not one of %v", p, viaprovider.Providers())}
+	}
+	return nil
+}
+
 func validateRetry(c modeladapter.Config) []error {
 	if c.Retry.MaxAttempts <= 0 || c.Retry.BaseDelayMillis <= 0 || c.Retry.MaxDelayMillis < c.Retry.BaseDelayMillis ||
 		c.Breaker.FailureThreshold <= 0 || c.Breaker.OpenSeconds <= 0 {
@@ -200,8 +209,9 @@ func checkVendorSettings(c modeladapter.Config, where string, m domain.ModelName
 	if _, saved := c.Workflows[string(m)]; saved {
 		return nil // a saved workflow runs on the endpoint it names, which may not be registered yet: it has no backend until it is
 	}
-	if _, ok := c.VendorSettings()[modeladapter.VendorOf(m)]; !ok {
-		return []error{fmt.Errorf("%s: no vendor settings for %q", where, modeladapter.VendorOf(m))}
+	v := c.VendorOf(m) // the aggregator's when the provider setting sends the model there
+	if _, ok := c.VendorSettings()[v]; !ok {
+		return []error{fmt.Errorf("%s: no vendor settings for %q", where, v)}
 	}
 	return nil
 }

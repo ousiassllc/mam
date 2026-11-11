@@ -20,7 +20,7 @@ const (
 )
 
 // Description is what the section says behind its "?" button.
-const Description = "FaceFusion（https://facefusion.io）は、顔の入れ替えをする別のソフトです。mam は取得せず、同梱もしません。自分で入れたものを、mam が別のプロセスとして `facefusion.py headless-run` で呼びます。入れ方は下の手順のとおりです。入れたあとは「もう一度探す」で見つかるか確かめるか、Python（FaceFusion の環境のもの）と FaceFusion のフォルダを指定すると、生成テストの結果の画面から顔を入れ替えられます。保存したパスは次の入れ替えからすぐ使われます。"
+const Description = "FaceFusion（https://facefusion.io）は、顔の入れ替えをする別のソフトです。mam は取得せず、同梱もしません。自分で入れたものを、mam が別のプロセスとして `facefusion.py headless-run` で呼びます。入れ方は下の手順のとおりです。入れたあとは「もう一度探す」で見つかるか確かめるか、Python（FaceFusion の環境のもの）と FaceFusion のフォルダを指定すると、単発生成の結果の画面から顔を入れ替えられます。保存したパスは次の入れ替えからすぐ使われます。"
 
 // StepsID is the id of the instructions to install FaceFusion by hand, and FindAgainID of the button that looks for it again.
 const (

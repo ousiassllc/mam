@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -95,4 +97,15 @@ func TestSeedIsPutIntoTheBodyOfFluxAndRunway(t *testing.T) {
 	require.NoError(t, err)
 	res.File.Discard()
 	assert.EqualValues(t, 4000000000, got.get("/v1/text_to_video")["seed"])
+}
+
+// OpenRouter has no field for the negative prompt of Kling 3.0 (its backend folds it in), so the generation test folds it before the call and records it as folded.
+func TestNegativeFieldOfKling3FollowsTheProviderThatServesIt(t *testing.T) {
+	for p, want := range map[viaprovider.Provider]bool{"": true, viaprovider.Official: true, viaprovider.Fal: true, viaprovider.Replicate: true, viaprovider.OpenRouter: false} {
+		cfg := modeladapter.DefaultConfig()
+		cfg.VideoProvider = p
+		assert.Equal(t, want, direct.NegativeField(cfg, domain.ModelKling3), "provider %q", p)
+		assert.False(t, direct.NegativeField(cfg, domain.ModelKling4), "Kling 4.0 has none at any provider (%q)", p)
+	}
+	assert.Equal(t, "a fox. Avoid: blurry, text.", direct.Fold("a fox.", "blurry, text.. "), "the full stop of the sentence is the only one")
 }

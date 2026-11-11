@@ -69,7 +69,8 @@ type Input struct{}
 // pinnedMessage is what the screen says for a file the operator fixed with a start-up option.
 const pinnedMessage = "起動オプションで固定されているため、この画面では変更できません"
 
-func unavailable(what string) error {
+// Unavailable is the error of a tool whose section the app does not have.
+func Unavailable(what string) error {
 	return &mcpkit.ToolError{Code: mcpkit.CodeUnavailable, Message: what + " はこのアプリでは使えません", Status: http.StatusServiceUnavailable}
 }
 
@@ -97,10 +98,10 @@ func (h handlers) overview(_ context.Context, _ Input) (Overview, error) {
 	return out, nil
 }
 
-// mapSaveError turns the refusals of the settings services into the errors the tools map: an invalid input
+// MapSaveError turns the refusals of the settings services (also for the tools beside this package, videoprovider) into the errors the tools map: an invalid input
 // is a validation error, a pinned file a conflict. Anything else (a file that cannot be written) is the common error of a failed save (errmap.SaveFailure: the
 // same cause and remedy as the screens give).
-func mapSaveError(err error, invalid func(error) (string, bool), pinned error) error {
+func MapSaveError(err error, invalid func(error) (string, bool), pinned error) error {
 	if msg, ok := invalid(err); ok {
 		return invalidInput("", msg)
 	}

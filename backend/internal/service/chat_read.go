@@ -75,6 +75,18 @@ func (s *ChatService) workspaceOf(ctx context.Context, projectID string, msgs []
 	return ws, nil
 }
 
+// questionOpen reports whether the Question card can still be answered: a Continue card until it has a reply, a confirmation card until it has a reply or a newer one of its
+// operation replaces it, a Brief question while what it asks is still open.
+func questionOpen(m domain.ChatMessage, open chatbrief.OpenState, latestOperation map[string]string) bool {
+	switch m.RefType {
+	case domain.RefContinue:
+		return !open.Replied[m.ID]
+	case domain.RefOperation:
+		return !open.Replied[m.ID] && latestOperation[m.RefID] == m.ID
+	}
+	return chatbrief.Open(m, open.Replied[m.ID], open.Brief, open.State, open.LatestConfirm)
+}
+
 // isBriefQuestion reports whether m is the question card of a Brief item or the summary card of the Brief.
 func isBriefQuestion(m domain.ChatMessage) bool {
 	return m.Kind == domain.KindQuestion && (m.RefType == domain.RefBriefField || m.RefType == domain.RefBriefConfirm)
@@ -176,9 +188,13 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 	}
 
 	var open chatbrief.OpenState
+	var latestOperation map[string]string // the newest confirmation card of each operation: only it can be answered
 	if needsAnswer {
 		if open, err = chatbrief.LoadOpenState(ctx, s.chat, s.projects, projectID); err != nil {
 			return nil, notFound(err)
+		}
+		if latestOperation, err = s.genApprovals.LatestOperationCards(ctx, projectID); err != nil {
+			return nil, err
 		}
 	}
 
@@ -204,16 +220,17 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		}
 		switch m.Kind {
 		case domain.KindQuestion:
-			if m.RefType == domain.RefContinue {
-				v.Open = !open.Replied[m.ID]
-			} else {
-				v.Open = chatbrief.Open(m, open.Replied[m.ID], open.Brief, open.State, open.LatestConfirm)
-			}
+			v.Open = questionOpen(m, open, latestOperation)
 		case domain.KindEscalation:
 			v.Open = !open.Replied[m.ID]
 		case domain.KindProgress:
-			if job, ok := jobs[m.RefID]; ok {
+			job, known := jobs[m.RefID]
+			if known {
 				v.Job = &job
+			}
+			// only an install says how far it is (the sources look the job up again: a generation's card would cost a lookup each); a job that is not in the table is asked
+			if !known || job.Kind == domain.JobModelInstall {
+				v.Detail = s.director.chatOps.Detail(ctx, m.RefID)
 			}
 		}
 		if v.Unrecorded, err = s.genApprovals.Unrecorded(ctx, projectID, m); err != nil {

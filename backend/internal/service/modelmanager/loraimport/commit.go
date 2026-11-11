@@ -20,7 +20,7 @@ func (m Meta) check() (families []string, words []string, err error) {
 		return nil, nil, invalid("対応するベースモデルの値が正しくありません")
 	}
 	if m.Strength != nil && !(*m.Strength > 0 && *m.Strength <= 1) { // false for NaN too, which every comparison passes otherwise
-		return nil, nil, invalid("推奨の強さは 0 より大きく 1 以下の数にしてください（生成テストの LoRA の強さの範囲です）")
+		return nil, nil, invalid("推奨の強さは 0 より大きく 1 以下の数にしてください（単発生成の LoRA の強さの範囲です）")
 	}
 	if words, err = lorafile.ParseWords(m.TriggerWords); err != nil {
 		return nil, nil, invalid("%s", err.Error())

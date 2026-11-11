@@ -45,7 +45,7 @@ func (b runwayBackend) GenerateVideo(ctx context.Context, apiModel string, req V
 		}}
 	}
 	raw, _ := json.Marshal(body)
-	data, err := b.request(ctx, http.MethodPost, b.baseURL+path, jsonHeader(auth), raw, maxJSONBytes)
+	data, err := b.request(ctx, http.MethodPost, b.baseURL+path, JSONHeader(auth), raw, maxJSONBytes)
 	if err != nil {
 		return VideoResult{}, err
 	}
