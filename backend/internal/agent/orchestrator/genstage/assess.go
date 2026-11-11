@@ -45,6 +45,8 @@ type Assessment struct {
 	Unrecorded bool
 	// Next are the starts to make now (VerdictStart).
 	Next []Step
+	// Held is set when an Escalation holds the Project while its plan has lines: the Project is AUTO and waits for the user, though nothing was started yet.
+	Held bool
 	// Stuck holds the Shots the gate cannot carry on by itself: a start that was refused or failed, and a Reference Pack that failed.
 	Stuck map[string]bool
 }
@@ -93,6 +95,7 @@ func (g *Gate) Assess(ctx context.Context, p domain.Project) (Assessment, error)
 			a.Stuck[shotID] = a.Stuck[shotID] || l.Outcome != genapprovalrepo.OutcomeStarted
 		}
 	}
+	a.Held = len(plan.Lines) > 0 && p.State == domain.StateAwaitingApproval
 	if len(plan.Lines) == 0 || p.State == domain.StateAwaitingApproval {
 		return a, nil // under an Escalation (it is the user's) nothing starts, but the Shots the gate refused or failed still show: the Project is AUTO
 	}
@@ -204,7 +207,7 @@ func (g *Gate) Phase(ctx context.Context, p domain.Project) (mainline.Phase, map
 	case VerdictSupersede, VerdictStart:
 		return mainline.PhaseAuto, a.Stuck, nil
 	}
-	if len(a.Launches) > 0 {
+	if len(a.Launches) > 0 || a.Held {
 		return mainline.PhaseAuto, a.Stuck, nil // everything left was started or refused
 	}
 	return mainline.PhaseManual, a.Stuck, nil

@@ -201,7 +201,7 @@ func unreadable(c *gin.Context, k Keys, status int, notice string, statusErr err
 	_ = c.Error(statusErr)
 	c.Header("HX-Retarget", "#credential-panel")
 	c.Header("HX-Reswap", "outerHTML")
-	settingshttp.Render(c, status, view.Panel(view.Data{Unavailable: true, Notice: notice, Providers: providerViews(k, unknownStatuses())}))
+	settingshttp.Render(c, status, view.Panel(view.Data{Unavailable: true, Notice: notice, Providers: providerViews(k, visible(unknownStatuses(), selectedProvider(c, k)))}))
 }
 
 // providerModelsOOB redraws the list of how the chosen API provider serves each model ("OpenRouter の API キー: 設定済み"), which reads the same key the card above it
