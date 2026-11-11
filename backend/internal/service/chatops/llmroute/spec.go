@@ -97,9 +97,17 @@ func Asked(message string) bool {
 	return llmWord.MatchString(message) && changeWord.MatchString(message) && nlu.AgentIn(message) != ""
 }
 
-// namesRouteModel reports whether one sentence puts a model on a route without saying LLM: it names an Agent or a role (代替, バックアップ ...) and the model ("Producer は GPT にして").
+// namesRouteModel reports whether one sentence puts a model on a route without saying LLM: it names an Agent or a role (代替, バックアップ ...) and a name that can be a model's
+// ("Producer は GPT にして"). A word that is no model name ("Producer は据え置きにして", "モデルはそのままにして") is no second route.
 func namesRouteModel(sentence string) bool {
-	return !nlu.IsInquiry(sentence) && namedModel.MatchString(sentence) && (nlu.AgentIn(sentence) != "" || llmWord.MatchString(sentence))
+	m := namedModel.FindStringSubmatch(sentence)
+	return m != nil && !nlu.IsInquiry(sentence) && modelLike(m[1]) && (nlu.AgentIn(sentence) != "" || llmWord.MatchString(sentence))
+}
+
+// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus") or is a model ID as the handler accepts it (checkName: no blanks or Japanese).
+func modelLike(name string) bool {
+	_, named := providerOf(name)
+	return named || checkName(name, nil) == nil
 }
 
 // detect reads "Director の LLM を Claude Opus にして" without the model, so that the LLM itself can be assigned while none is set up.
@@ -115,17 +123,21 @@ func detect(message string) []commandinterpreter.Operation {
 			asked = append(asked, sentence)
 		}
 	}
-	switch {
-	case len(asked) > 1:
+	if len(asked) > 1 {
 		return nil
-	case len(asked) == 1:
-		message = asked[0]
 	}
-	m := namedModel.FindStringSubmatch(message)
+	sentence := message
+	if len(asked) == 1 {
+		sentence = asked[0]
+	}
+	m := namedModel.FindStringSubmatch(sentence)
 	if m == nil {
 		return nil
 	}
-	a := Args{Agent: nlu.AgentIn(message), Role: nlu.RoleOf(message), Model: m[1]}
+	a := Args{Agent: nlu.AgentIn(sentence), Role: nlu.RoleOf(sentence), Model: m[1]}
+	if a.Agent == "" { // the Agent stands in another clause ("Director は、LLM を Claude Opus にして"): the one sentence that asks has the model, the message the Agent and the role
+		a.Agent, a.Role = nlu.AgentIn(message), nlu.RoleOf(message)
+	}
 	if id, ok := providerOf(m[1]); ok {
 		a.Provider = id
 	}

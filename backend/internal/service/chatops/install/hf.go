@@ -59,7 +59,8 @@ func (h *HF) Question(ctx context.Context, _ domain.Project, op commandinterpret
 	return h.confirm(repo, file, env)
 }
 
-// pickFile is the file the director named, or the only one that can be installed, or the files to choose from (the installable ones, or the ones that share the name given).
+// pickFile is the file the director named, or the only one that can be installed, or the files to choose from: the ones still to install, which share the name given when one is named. A name
+// that files of other folders share is never taken as the first.
 func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 	if path = strings.TrimSpace(path); path != "" {
 		for _, f := range repo.Files { // the exact path first: "model.safetensors" is also the Name of "a/model.safetensors"
@@ -67,11 +68,12 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 				return f, nil, nil
 			}
 		}
-		var same, ok []HFFile // the files of that name in other folders: which one is asked, not taken as the first; only the installable ones are offered
+		// the files of that name in other folders: which one is asked, not taken as the first; only the ones still to install (installable, not installed yet) are offered, as without a path
+		var same, ok []HFFile
 		for _, f := range repo.Files {
 			if strings.EqualFold(f.Name, path) {
 				same = append(same, f)
-				if f.Installable {
+				if f.Installable && !f.Installed {
 					ok = append(ok, f)
 				}
 			}
@@ -80,9 +82,9 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 		case len(same) == 1:
 			return same[0], nil, nil
 		case len(ok) == 1:
-			return ok[0], nil, nil // the others cannot be installed
-		case len(same) > 1 && len(ok) == 0:
-			return same[0], nil, nil // none can be installed: the card of the first says why
+			return ok[0], nil, nil // the others are installed already or cannot be
+		case len(same) > 0 && len(ok) == 0:
+			return firstInstallable(same), nil, nil // each is installed already or cannot be: the card of that one says which
 		case len(ok) > chatops.MaxChoices:
 			return HFFile{}, nil, tooManySameName(path, ok)
 		case len(ok) > 1:
@@ -115,6 +117,16 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 		return HFFile{}, nil, tooMany(repo.ID, names(pathChoices(ok)))
 	}
 	return HFFile{}, pathChoices(ok), nil
+}
+
+// firstInstallable is the first file that can be installed, or the first file: the card of either says why nothing is to be done.
+func firstInstallable(files []HFFile) HFFile {
+	for _, f := range files {
+		if f.Installable {
+			return f
+		}
+	}
+	return files[0]
 }
 
 // pathChoices lists the files as choices named by their path (the path with its folders is what tells same-named files apart).

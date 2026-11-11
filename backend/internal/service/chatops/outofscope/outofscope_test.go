@@ -63,6 +63,13 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"ffmpeg の出力フォルダを作って",
 		"FaceFusion の結果を保存する場所を選びたい",
 		"FaceFusion の一時ファイルのフォルダを作って",
+		"ffmpeg の出力ファイルを入れるフォルダを選びたい", // where results are put, with the verb that puts them
+		"ffmpeg の出力を置くフォルダを変えたい",
+		"FaceFusion が結果を書き出すフォルダを変えて",
+		"FaceFusion の一時ファイルを置く場所を変更したい",
+		"ffmpeg のログを置くフォルダを変えたい",
+		"ffmpeg のキャッシュを置くフォルダを設定して",
+		"ffmpeg の出力先を入れるフォルダを指定して",
 		"ffmpeg のパスの入ったフォルダを作成して",
 		"FaceFusion のフォルダを作成したい",
 		"MCP でエクスポートした動画を作りたい",

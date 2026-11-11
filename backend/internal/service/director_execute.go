@@ -20,7 +20,8 @@ import (
 func (s *DirectorService) execute(ctx context.Context, project domain.Project, ref *repository.ShotRef, cmd commandinterpreter.Command, message string, strict bool) (outcome, error) {
 	var out outcome
 	if cmd.Question != "" { // the model asks; what the message plainly asks for (WithDetected) is still carried out
-		if out.lines = []string{cmd.Question}; len(cmd.Operations) == 0 {
+		out.lines = []string{cmd.Question}
+		if len(cmd.Operations) == 0 {
 			return out, nil
 		}
 	}

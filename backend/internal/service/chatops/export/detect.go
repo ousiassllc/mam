@@ -22,10 +22,18 @@ var (
 		`|(書き出|書出|エクスポート|ダウンロード)(さな|さず|せず|しない|しなく|しなかった|しません)` + // "書き出さないで", "エクスポートせずに": not asking for it
 		`|\b(before|after|until|once|when|while|prior to)\s+(\w+\s+){0,2}?(export|download)\w*|\b(export|download)(ing|ed|s)\b)`)
 	pastExport = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
-	// exportAgain is a verb that asks for an export, beside 「書き出した動画」 (which tells of one) it makes the message a request ("さっき書き出した動画をもう一度書き出して", "…エクスポートする。",
-	// "…書き出していただけますか", "…書き出していい？"). 「する」「して」 must end the sentence or be followed by a form that asks (ください, ほしい, くれる, もらえ, いただ, いい, たい, から); a narration ("書き出してます",
-	// "書き出してみたけど", "書き出してあるはず", "書き出して終わった", "書き出してよかった？", "書き出していた") is none.
-	exportAgain = regexp.MustCompile(`(書き出|書出|エクスポート)(し(て(ください|下さい|ほしい|欲しい|くれ(る|ます|ない|ません)|もらえ|もらいたい|いただ|頂|(も)?いい|ちょうだい|おいて|から|[ねよ]?([。、！!？?\s]|$))|たい|ます)|す(る)?([。、！!？?\s]|$))`)
+	// exportWant, exportTe and exportSuru are the verbs of the export that can ask for it: 「書き出したい」「書き出します」, 「書き出して」, 「書き出す」「エクスポートする」. Beside 「書き出した動画」 (which tells of an export) such a verb makes the
+	// message a request ("さっき書き出した動画をもう一度書き出して", "…を 720p で書き出したい"), unless the narration forms below follow it. 「書き出した」 and 「書き出していた」 are no verb of this kind.
+	exportWant = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:したい|します)`)
+	exportTe   = regexp.MustCompile(`(?:書き出|書出|エクスポート)して`)
+	exportSuru = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:する|す)`)
+	// askedTe is what follows 「して」 and still asks ("書き出していただけますか", "書き出していい？"; 「い」 alone is 「書き出していた」). narratedTe is what follows 「して」 when the export is told of
+	// ("書き出してます", "書き出してる", "書き出してた", "書き出してない", "書き出してみた", "書き出してあげた", "書き出してあるはず", "書き出して終わった", "書き出してよかった", "書き出してもらった", "書き出してくれた",
+	// "書き出してしまった", "書き出しておいた"): none of them asks. Anything else after 「して」 (a space, a symbol, "確認して", "お願い", "くれ", "くれたら", "みて") is the request.
+	askedTe    = regexp.MustCompile(`^い(?:ただ|い)`)
+	narratedTe = regexp.MustCompile(`^(?:い|る|た|な(?:い|かっ|く|けれ)|ま(?:す|し|せん)|み(?:た(?:[^い]|$)|まし)|あげ(?:た|まし)|あ(?:る|っ|り)|終わ(?:っ|りまし)|(?:よ|良)かっ|もらっ(?:た|ち)|もらいまし|くれ(?:た(?:[^らり]|$)|なかっ|まし|ませんでし)|しまっ|おいた(?:[^らり]|$)|おきまし)`)
+	// narratedSuru is what follows 「する」「す」 when it is no ask but a plan or a reason ("書き出すつもり", "書き出すのを忘れた", "書き出すかどうか", "書き出すはず").
+	narratedSuru = regexp.MustCompile(`^(?:の|と|か|が|は|を|も|に|で|けど|けれど|つもり|はず|こと|たび|のに|べき|でき|だけ|ほど|予定)`)
 	// exportThenDownload is one request for both: "動画を書き出してダウンロードしたい", "export the video and download it". The word of the export is a verb that asks for it ("書き出して"),
 	// not the noun of an export that was made ("さっきの書き出しをダウンロード", "書き出した動画をダウンロード").
 	exportThenDownload = regexp.MustCompile(`(?i)((書き出|書出|エクスポート)(し)?(て|たい|てから|つつ|た上で)[^。！？!?\n]*ダウンロード|\bexport\b[^.!?\n]*\band\b[^.!?\n]*\bdownload)`)
@@ -85,12 +93,30 @@ func classify(message string) kind {
 		if video || pastFile.MatchString(message) {
 			return kindDownload
 		}
-	case exports && (!pastExport.MatchString(message) || exportAgain.MatchString(message)):
+	case exports && (!pastExport.MatchString(message) || asksExportAgain(message)):
 		if video || demonstrated.MatchString(message) {
 			return kindRender
 		}
 	}
 	return kindNone
+}
+
+// asksExportAgain reports whether the message holds a verb that asks for an export (exportWant, 「書き出して」, 「書き出す」) that no narration follows (narratedTe, narratedSuru).
+func asksExportAgain(message string) bool {
+	if exportWant.MatchString(message) {
+		return true
+	}
+	for _, m := range exportTe.FindAllStringIndex(message, -1) {
+		if rest := message[m[1]:]; askedTe.MatchString(rest) || !narratedTe.MatchString(rest) {
+			return true
+		}
+	}
+	for _, m := range exportSuru.FindAllStringIndex(message, -1) {
+		if !narratedSuru.MatchString(message[m[1]:]) {
+			return true
+		}
+	}
+	return false
 }
 
 // namesWholeProject reports whether the message says "the whole Project" as what is exported ("プロジェクト全体を書き出して", "まるごとダウンロード", "プロジェクト全体の書き出し"). "プロジェクト全体の雰囲気を…" says

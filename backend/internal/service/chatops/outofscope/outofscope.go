@@ -25,9 +25,12 @@ var (
 	// making is 「作る」「作って」「作り」「作成」: a setting word for the tokens of MCP, but it puts no path in, so a clause that names a program does not count it. A bare 「作」 is no setting
 	// word (「動作」「作動」「作業」「作者」), and 「操作」 is one only as 「操作し…」「操作する」「操作できる」.
 	making = regexp.MustCompile(`作(?:る|って|った|ろう|ら|り|れ|成)`)
-	// outputPlace is a folder or place that a word for what a program writes qualifies directly ("出力フォルダ", "結果を保存する場所", "一時ファイルのフォルダ", "ログの場所"): it is where results go, no
-	// program path. The word must stand right before the place, so a path set in the same clause ("ffmpeg のパスを設定して保存して", "…のパスを結果フォルダにして") still counts.
-	outputPlace = regexp.MustCompile(`(?i)(?:出力|保存|結果|書き出し?|生成|作業|一時|ログ|キャッシュ|テンポラリ|\boutput\b|\btemp\b)(?:ファイル|データ)?(?:する|した|される|用|先)?\s*の?\s*(?:場所|フォルダ|ディレクトリ|パス|\bpaths?\b)(?:の?パス)?`)
+	// outputPlace is a folder or place that a word for what a program writes qualifies directly ("出力フォルダ", "保存先フォルダ", "結果を保存する場所", "一時ファイルのフォルダ", "ログの場所"), or
+	// that is where it is put ("出力ファイルを入れるフォルダ", "結果を書き出すフォルダ", "キャッシュを置く場所"): it is where results go, no program path. The output word must stand right before the
+	// place or its putting verb, so a path set in the same clause ("ffmpeg のパスを設定して保存して", "…のパスを結果フォルダにして") still counts.
+	outputPlace = regexp.MustCompile(`(?i)(?:出力|保存|結果|書き出し?|生成|作業|一時|ログ|キャッシュ|テンポラリ|\boutput\b|\btemp\b)(?:ファイル|データ|先)?` +
+		`(?:(?:する|した|される|用)?\s*の?|[をはが]?\s*(?:置く|入れる|書き出す|書く|保存する|出す|出力する|生成する|作る)(?:ための?)?\s*の?)\s*` +
+		`(?:場所|フォルダ|ディレクトリ|パス|\bpaths?\b)(?:の?パス)?`)
 )
 
 const (

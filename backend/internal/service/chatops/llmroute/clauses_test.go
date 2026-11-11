@@ -92,3 +92,38 @@ func TestFallback_TheButtonsOfAModelNameStopAtTheCardLimit(t *testing.T) {
 	assert.Contains(t, refusal(t, err), "多すぎます")
 	assert.Empty(t, card.Choices)
 }
+
+// The Agent may stand in a clause of its own ("Director は、LLM を Claude Opus にして"): the one clause that asks has the model, the message has the Agent and the role.
+func TestDetect_TheAgentInAnotherClauseIsTheAgentOfTheOneRequest(t *testing.T) {
+	for message, want := range map[string]Args{
+		"Director は、LLM を Claude Opus にして":       {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director、LLM を Claude Opus にして":         {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director に、LLM を Claude Opus にして":       {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"まず Director は、LLM を Claude Opus に切り替えて": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Producer は、代替を GPT にして":                 {Agent: "producer", Role: "fallback", Provider: "openai", Model: "GPT"},
+		"LLM を Claude Opus にして、Director で":       {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director の代替は、LLM を GPT にして":            {Agent: "director", Role: "fallback", Provider: "openai", Model: "GPT"},
+	} {
+		ops := detect(message)
+		require.Len(t, ops, 1, message)
+		var a Args
+		require.NoError(t, ops[0].DecodeArgs(&a))
+		assert.Equal(t, want, a, message)
+	}
+}
+
+// A word that is no model name is no second route: it is not counted as a clause that changes a model.
+func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
+	for _, message := range []string{
+		"Director の LLM を Claude Opus にして、Producer は据え置きにして",
+		"Director の LLM を Claude Opus にして。モデルはそのままにして",
+		"Director の LLM を Claude Opus にして。Director は慎重な性格にして",
+	} {
+		ops := detect(message)
+		require.Len(t, ops, 1, message)
+		var a Args
+		require.NoError(t, ops[0].DecodeArgs(&a))
+		assert.Equal(t, "Claude Opus", a.Model, message)
+	}
+	assert.Empty(t, detect("Director の LLM を Claude Opus にして、Producer は gpt-4o にして"), "a model ID is a second route")
+}

@@ -205,3 +205,23 @@ func TestHF_TooManyFilesWithTheSameNameAreAskedToBeNarrowed(t *testing.T) {
 	require.NoError(t, card.Choices[0].Op.DecodeArgs(&a))
 	assert.Equal(t, "d0/model.safetensors", a.Path)
 }
+
+// A file of the name given that is installed already is no button, as without a path: the one still to install is the file, and when none is the card says so.
+func TestHF_ASameNamedFileThatIsInstalledAlreadyIsNotOffered(t *testing.T) {
+	h := newHub()
+	h.repo.Files = []install.HFFile{
+		{Path: "a/model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Installed: true, Folder: "loras"},
+		{Path: "b/model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Folder: "loras"},
+		{Path: "c/model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Installed: true, Folder: "loras"},
+	}
+	card, err := h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
+	require.NoError(t, err)
+	require.Len(t, card.Choices, 1) // the confirmation of that one file, not the buttons that choose among files
+	var a install.HFArgs
+	require.NoError(t, card.Choices[0].Op.DecodeArgs(&a))
+	assert.Equal(t, "b/model.safetensors", a.Path)
+
+	h.repo.Files[1].Installed = true
+	_, err = h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
+	assert.ErrorIs(t, err, chatops.ErrNoChange)
+}
