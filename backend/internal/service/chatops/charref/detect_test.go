@@ -38,6 +38,8 @@ func TestDetect_ReadsTheCharacterAndTheSlotWithoutAModel(t *testing.T) {
 		"この画像をミオの体にして":          {Character: "ミオ", Slot: "body"},
 		"この画像を体の参照にして":          {Slot: "body"},
 		"この画像を主人公の身体の参照にして":     {Character: "主人公", Slot: "body"},
+		"この画像をミオの体型の参照にして":      {Character: "ミオ", Slot: "body"},
+		"この画像を全体の顔にして":          {Character: "全体", Slot: "face"},
 	} {
 		got := detect(t, message)
 		require.Len(t, got, 1, message)

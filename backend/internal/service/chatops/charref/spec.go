@@ -77,20 +77,16 @@ var (
 	named = regexp.MustCompile(`(?i)([^\s、。，,「」『』を]{1,30}?)\s*の\s*(顔写真|顔|フェイス|face|全身|ボディー|ボディ|身体|体|body)`)
 )
 
-// compoundBody is 体 inside a word (全体, 具体, 主体, 体験, 体力): not the body slot. 身体 is the slot and is kept (written as ボディ before this runs).
-var compoundBody = regexp.MustCompile(`\p{Han}体|体\p{Han}`)
+// notBody are the words with 体 in them that name no body (全体 the whole, 具体 concrete, 主体 the subject, 本体 the unit, 体験 an experience, 体力 stamina...): 体 there is no slot. 身体, 体型 and 体格 are the body.
+var notBody = strings.NewReplacer("全体", "＊＊", "具体", "＊＊", "主体", "＊＊", "本体", "＊＊", "体験", "＊＊", "体力", "＊＊", "体制", "＊＊", "体系", "＊＊", "体感", "＊＊", "団体", "＊＊", "物体", "＊＊", "立体", "＊＊")
 
-// slotText is the message as the slot words read it: 体 of a compound word is hidden, 身体 stays the body.
-func slotText(message string) string {
-	message = strings.ReplaceAll(message, "身体", "ボディ")
-	return compoundBody.ReplaceAllStringFunc(message, func(m string) string { return strings.ReplaceAll(m, "体", "＊") })
-}
+// slotText is the message as the slot words read it (only for the test of the slot: the name of the Character is read from the message as it was written).
+func slotText(message string) string { return notBody.Replace(message) }
 
 // Asks reports whether the message asks to put an image on the face or the body of a Character: it names a slot and an image (or a reference), and what to do with them, and
 // it is not a direction about how a face looks. A message that only mentions a face ("顔を笑顔にして") is not.
 func Asks(message string) bool {
-	message = slotText(message)
-	return slotWord.MatchString(message) && imageWord.MatchString(message) && assignWord.MatchString(message) && !editsFace.MatchString(message)
+	return slotWord.MatchString(slotText(message)) && imageWord.MatchString(message) && assignWord.MatchString(message) && !editsFace.MatchString(message)
 }
 
 // genericNames are the words that stand for "the Character" without naming one.
@@ -103,8 +99,7 @@ func detect(message string) []commandinterpreter.Operation {
 	if !Asks(message) {
 		return nil
 	}
-	message = slotText(message)
-	a := Args{Slot: slotOf(slotWord.FindString(message))}
+	a := Args{Slot: slotOf(slotWord.FindString(slotText(message)))}
 	if m := named.FindStringSubmatch(message); m != nil {
 		a.Character, a.Slot = nameOf(m[1]), slotOf(m[2])
 	}
