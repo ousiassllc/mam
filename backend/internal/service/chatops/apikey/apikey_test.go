@@ -67,6 +67,10 @@ func TestDetect_AQuestionAboutAKeyIsNotAKeyRequest(t *testing.T) {
 		"OpenAI の API キーを教えてください？",
 		"Claude のキーの設定はどこですか？",
 		"API キーを設定するにはどうしたらいい？",
+		"API キーはどこで設定できますか？", // a where-word, or a past 「くれた」, makes it a question again
+		"API キーを変更できるのはどこ？",
+		"API キーを変更したいけどどこ？",
+		"API キーを設定してくれた？",
 	} {
 		assert.Empty(t, detect(t, message), message)
 		assert.False(t, apikey.AsksKey(message), message)

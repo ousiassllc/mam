@@ -2,6 +2,7 @@ package installtest_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -155,4 +156,41 @@ func TestRuntime_PickingACandidateAsksItsConfirmationAndInstallsNothing(t *testi
 	assert.Empty(t, r.installs)
 	require.Len(t, res.Messages, 1)
 	assert.Contains(t, res.Messages[0].Content, "MuseTalk")
+}
+
+// A name that fits more runtimes than a card holds as buttons asks to be narrowed down, with no button; as many as the card holds are asked as buttons.
+func TestRuntime_TooManyRuntimesAreAskedToBeNarrowed(t *testing.T) {
+	r := newRuntimes()
+	for i := range chatops.MaxChoices + 1 {
+		r.list = append(r.list, install.RuntimeInfo{ID: fmt.Sprintf("mega-%d", i), Name: fmt.Sprintf("Mega %d", i)})
+	}
+
+	card, err := r.ask(t, "mega")
+
+	assert.Contains(t, refusal(t, err), "7 件")
+	assert.Empty(t, card.Choices)
+
+	r.list = r.list[:len(r.list)-1]
+	card, err = r.ask(t, "mega")
+	require.NoError(t, err)
+	assert.Len(t, card.Choices, chatops.MaxChoices)
+}
+
+// Files that share the Name given are asked as buttons up to the card limit; more are asked to be narrowed down by Path, with no button.
+func TestHF_TooManyFilesWithTheSameNameAreAskedToBeNarrowed(t *testing.T) {
+	h := newHub()
+	h.repo.Files = nil
+	for i := range chatops.MaxChoices + 1 {
+		h.repo.Files = append(h.repo.Files, install.HFFile{Path: fmt.Sprintf("d%d/model.safetensors", i), Name: "model.safetensors", Size: gb, Installable: true, Folder: "loras"})
+	}
+
+	card, err := h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
+
+	assert.Contains(t, refusal(t, err), "7 件")
+	assert.Empty(t, card.Choices)
+
+	h.repo.Files = h.repo.Files[:chatops.MaxChoices]
+	card, err = h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
+	require.NoError(t, err)
+	assert.Len(t, card.Choices, chatops.MaxChoices)
 }

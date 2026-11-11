@@ -67,6 +67,13 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"FaceFusion のフォルダを作成したい",
 		"MCP でエクスポートした動画を作りたい",
 		"MCP のレポートを作って",
+		"ffmpeg の動作するパスを教えて", // 「動作」「作動」「作業」「作者」「操作方法」 have a 「作」 and are no setting
+		"FaceFusion の動作確認用のフォルダを教えて",
+		"ffmpeg のバイナリが作動しない",
+		"ffmpeg のバイナリで作業したい",
+		"ffmpeg のバイナリの動作を確認して",
+		"ffmpeg のバイナリの作者は？",
+		"ffmpeg のパスの操作方法",
 		"MCP のサポートを追加して",
 	} {
 		_, ok := commandinterpreter.Refused(message)

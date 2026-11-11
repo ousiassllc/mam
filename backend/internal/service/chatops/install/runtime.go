@@ -44,6 +44,8 @@ func (r *Runtime) Question(ctx context.Context, _ domain.Project, op commandinte
 			all[i] = it.Name
 		}
 		return chatops.Card{}, chatops.Refuse("「%s」という実行環境はありません。導入できるのは %s です", a.Runtime, strings.Join(all, "、"))
+	case len(found) > chatops.MaxChoices:
+		return chatops.Card{}, tooMany(a.Runtime, labels(found))
 	case len(found) > 1:
 		ops := make([]commandinterpreter.Operation, len(found))
 		for i, f := range found {

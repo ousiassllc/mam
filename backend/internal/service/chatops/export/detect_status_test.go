@@ -61,7 +61,7 @@ func TestDetect_ACatalogModelIsStillNotAnExport(t *testing.T) {
 
 // 「書き出した動画」 tells of an export, but a verb that asks for one after it ("もう一度書き出して") makes the message a request.
 func TestDetect_ARequestVerbAfterThePastFormIsARequest(t *testing.T) {
-	for _, message := range []string{"さっき書き出した動画をもう一度書き出して", "書き出した動画を 720p で書き出したい"} {
+	for _, message := range []string{"さっき書き出した動画をもう一度書き出して", "書き出した動画を 720p で書き出したい", "さっき書き出した動画をもう一度書き出していただけますか", "書き出した動画をもう一度書き出していい？", "書き出した動画をもう一度書き出していって"} {
 		got := detect(t, message)
 		require.Len(t, got, 1, message)
 		assert.Contains(t, got, export.OpExportVideo, message)

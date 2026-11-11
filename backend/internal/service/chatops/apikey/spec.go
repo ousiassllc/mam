@@ -76,16 +76,20 @@ var (
 	weakKey = regexp.MustCompile(`キー(?:を|は|が|に)`)
 	keyVerb = regexp.MustCompile(`(?i)(設定|登録|入力|入れ|いれ|変更|変え|置き換|差し替|追加|セット|更新|渡|set|register|enter|replace)`)
 	// keyRequest is a key-entry verb in a form that asks for it, which a question mark does not make a question: "登録してくれる？", "更新してもらえますか？", "入力できる？",
-	// "入れ替えたいんだけど？". A verb that is not one of these ("設定画面はどこ？", "教えて", "設定するにはどうしたらいい？") stays a question.
-	keyRequest = regexp.MustCompile(`(?:設定|登録|入力|入れ替え|入れ換え|入れ変え|入れ|いれ|変更|変え|置き換え|差し替え|追加|セット|更新|渡)(?:し)?(?:て(?:くれ|もらえ|もらいたい|ください|下さい|いただ|頂)|たい|(?:でき|られ)(?:る|ます|ない))`)
-	videoWord  = regexp.MustCompile(`(?i)(kling|クリング|動画モデル|クラウド動画|video model)`)
-	viaWord    = regexp.MustCompile(`(?i)(経由|プロバイダー|provider|公式に|公式へ|使いたい|使って|切り替え|切替|変えて|変更|にして|に戻)`)
+	// "入れ替えたいんだけど？", "設定してほしいんだけど？". A verb that is not one of these ("設定画面はどこ？", "教えて", "設定するにはどうしたらいい？") stays a question.
+	keyRequest = regexp.MustCompile(`(?:設定|登録|入力|入れ替え|入れ換え|入れ変え|入れ|いれ|変更|変え|置き換え|差し替え|追加|セット|更新|渡)(?:し)?(?:て(?:くれ(?:る|ま|な|ん)|もらえ(?:る|ま|な)|もらいたい|ください|下さい|いただ|頂|ほしい|欲しい)|たい|(?:でき|られ)(?:る|ます|ない))`)
+	// askWhere is a word that asks where, which or when ("どこで設定できますか？", "変更したいけどどこ？"): the message asks to be told, not to set a key.
+	askWhere = regexp.MustCompile(`どこ|どれ|どの|いつ|何|なに|どう`)
+	// askedPast is a question about what was done ("設定してくれた？"): nlu.IsInquiry reads 「〜してくれ」 as a request, but this is past.
+	askedPast = regexp.MustCompile(`て(?:くれた|もらえた|もらった)\s*[？?]\s*$`)
+	videoWord = regexp.MustCompile(`(?i)(kling|クリング|動画モデル|クラウド動画|video model)`)
+	viaWord   = regexp.MustCompile(`(?i)(経由|プロバイダー|provider|公式に|公式へ|使いたい|使って|切り替え|切替|変えて|変更|にして|に戻)`)
 )
 
 // AsksKey reports whether the message asks to set an API key: it names a key and does something to it. A message that only mentions the word ("API キーは持っている") is not, and neither
 // is a question ("API キーの設定画面はどこ？", "OpenAI の API キーを教えて"); a request in the form of a question ("API キーを登録してくれる？") is one.
 func AsksKey(message string) bool {
-	if (nlu.IsInquiry(message) && !keyRequest.MatchString(message)) || !keyVerb.MatchString(message) || asksVideoProvider(message) {
+	if askedPast.MatchString(message) || (nlu.IsInquiry(message) && (!keyRequest.MatchString(message) || askWhere.MatchString(message))) || !keyVerb.MatchString(message) || asksVideoProvider(message) {
 		return false
 	}
 	if keyWord.MatchString(message) {
