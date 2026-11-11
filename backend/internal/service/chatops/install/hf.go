@@ -67,24 +67,26 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 				return f, nil, nil
 			}
 		}
-		var same []HFFile // the files of that name in other folders: which one is asked, not taken as the first
+		var same, ok []HFFile // the files of that name in other folders: which one is asked, not taken as the first; only the installable ones are offered
 		for _, f := range repo.Files {
 			if strings.EqualFold(f.Name, path) {
 				same = append(same, f)
+				if f.Installable {
+					ok = append(ok, f)
+				}
 			}
 		}
-		if len(same) == 1 {
+		switch {
+		case len(same) == 1:
 			return same[0], nil, nil
-		}
-		if len(same) > 1 {
-			found := make([]named, len(same))
-			for i, f := range same {
-				found[i] = named{ID: f.Path, Name: f.Path}
-			}
-			if len(found) > chatops.MaxChoices {
-				return HFFile{}, nil, tooMany(path, names(found))
-			}
-			return HFFile{}, found, nil
+		case len(ok) == 1:
+			return ok[0], nil, nil // the others cannot be installed
+		case len(same) > 1 && len(ok) == 0:
+			return same[0], nil, nil // none can be installed: the card of the first says why
+		case len(ok) > chatops.MaxChoices:
+			return HFFile{}, nil, tooManySameName(path, ok)
+		case len(ok) > 1:
+			return HFFile{}, pathChoices(ok), nil
 		}
 		return HFFile{}, nil, chatops.Refuse("%s に「%s」というファイルはありません%s", repo.ID, path, listNote(repo))
 	}
@@ -109,14 +111,19 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 	case len(ok) == 0:
 		return repo.Files[0], nil, nil // each is installed already or cannot be: the card of the first says which
 	}
-	found := make([]named, len(ok))
-	for i, f := range ok {
+	if len(ok) > chatops.MaxChoices {
+		return HFFile{}, nil, tooMany(repo.ID, names(pathChoices(ok)))
+	}
+	return HFFile{}, pathChoices(ok), nil
+}
+
+// pathChoices lists the files as choices named by their path (the path with its folders is what tells same-named files apart).
+func pathChoices(files []HFFile) []named {
+	found := make([]named, len(files))
+	for i, f := range files {
 		found[i] = named{ID: f.Path, Name: f.Path}
 	}
-	if len(found) > chatops.MaxChoices {
-		return HFFile{}, nil, tooMany(repo.ID, names(found))
-	}
-	return HFFile{}, found, nil
+	return found
 }
 
 // truncatedNote tells that the list of files was cut: what the card offers may not be everything the repository has.

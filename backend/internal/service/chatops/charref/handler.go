@@ -96,7 +96,7 @@ func (h *Handler) Question(ctx context.Context, project domain.Project, op comma
 		return chatops.Card{}, refuseLocked(found[0], slot)
 	}
 	if len(open) > chatops.MaxChoices {
-		return chatops.Card{}, chatops.Refuse("Character が多すぎて選べません（%d 人）。Character の名前を言ってもう一度送ってください。候補: %s", len(open), names(open[:chatops.MaxChoices]))
+		return chatops.Card{}, chatops.Refuse("Character が多すぎて選べません（%d 人）。Character の名前を言って、画像ももう一度添付して送ってください。候補: %s", len(open), names(open[:chatops.MaxChoices]))
 	}
 	if len(open) > 1 {
 		return choices(open, slot, asset.ID)

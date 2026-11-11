@@ -19,6 +19,7 @@ func TestQuestion_TooManyCharactersAreAskedToBeNamed(t *testing.T) {
 	var ref *chatops.Refusal
 	require.ErrorAs(t, err, &ref)
 	assert.Contains(t, ref.Message, "多すぎ")
+	assert.Contains(t, ref.Message, "画像ももう一度添付して", "the image is read from the attachment of the turn, so the next message needs it again")
 	assert.Contains(t, ref.Message, "「ミオ1」")
 	assert.NotContains(t, ref.Message, "「ミオ7」", "only the first few are listed")
 	assert.Empty(t, card.Choices)

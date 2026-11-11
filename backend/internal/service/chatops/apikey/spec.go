@@ -75,9 +75,10 @@ var (
 	keyWord = regexp.MustCompile(`(?i)(api\s*キー|apiキー|api\s*key|アクセスキー|シークレットキー)`)
 	weakKey = regexp.MustCompile(`キー(?:を|は|が|に)`)
 	keyVerb = regexp.MustCompile(`(?i)(設定|登録|入力|入れ|いれ|変更|変え|置き換|差し替|追加|セット|更新|渡|set|register|enter|replace)`)
-	// keyRequest is a key-entry verb in a form that asks for it, which a question mark does not make a question: "登録してくれる？", "更新してもらえますか？", "入力できる？",
-	// "入れ替えたいんだけど？", "設定してほしいんだけど？". A verb that is not one of these ("設定画面はどこ？", "教えて", "設定するにはどうしたらいい？") stays a question.
-	keyRequest = regexp.MustCompile(`(?:設定|登録|入力|入れ替え|入れ換え|入れ変え|入れ|いれ|変更|変え|置き換え|差し替え|追加|セット|更新|渡)(?:し)?(?:て(?:くれ|もらえ|もらいたい|ください|下さい|いただ|頂|ほしい|欲しい)|たい|(?:でき|られ)(?:る|ます|ない))`)
+	// keyRequest is a key-entry verb in a form that asks for it, which a question mark does not make a question: "登録してくれる？", "更新してもらえますか？", "設定してもらっていいですか？",
+	// "登録しておいて？" (not 「しておいてって言った？」), "入力できる？", "入れ替えたいんだけど？", "入れ直したいんだけど？", "設定してほしいんだけど？". A verb that is not one of these ("設定画面はどこ？", "教えて",
+	// "設定するにはどうしたらいい？") stays a question.
+	keyRequest = regexp.MustCompile(`(?:設定|登録|入力|入れ替え|入れ換え|入れ変え|入れ|いれ|変更|変え|置き換え|差し替え|追加|セット|更新|渡)(?:し)?(?:(?:直|なお)し)?(?:て(?:くれ|もらえ|もらいたい|もらっ(?:て|ても)(?:いい|よい|良い)|おいて(?:くれ|もらえ|もらいたい|ください|下さい|いただ|頂|ほしい|欲しい|[ねよ]?[？?！!。]*\s*$)|ください|下さい|いただ|頂|ほしい|欲しい)|といて|たい|(?:でき|られ)(?:る|ます|ない))`)
 	// askWhere is a form that asks where, which, when, what or how ("どこで設定できますか？", "変更したいけどどこ？", "どうしたらいい？"): the message asks to be told, not to set a key.
 	// 「いつでも」「どうしても」「どうぞ」「何度も」 are no question.
 	askWhere = regexp.MustCompile(`どこ|どれ|どの|いつ(?:から|まで|の|に|なら|が|は|[？?])|何(?:を|が|で|の|と|に)|どう(?:やって|したら|すれば|すると|すれ|する)`)

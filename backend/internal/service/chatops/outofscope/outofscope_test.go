@@ -93,6 +93,10 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"MCP のトークンを作って",
 		"ffmpeg のバイナリの場所を選びたい",
 		"FaceFusion のフォルダを指定して",
+		"ffmpeg のパスを設定して保存して", // an output word elsewhere in the clause does not cancel a path being set
+		"ffmpeg のパスを変更して保存したい",
+		"ffmpeg のパスを結果フォルダにして",
+		"FaceFusion のフォルダを一時的に変更して",
 	} {
 		_, ok := commandinterpreter.Refused(message)
 		assert.True(t, ok, message)

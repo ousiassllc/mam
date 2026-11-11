@@ -98,6 +98,7 @@ describe('the chat of the single generation (#1138)', () => {
     /** The form of the first card of the newest question, as htmx reports its request: the button was disabled by hx-disabled-elt, so the focus is on <body>. */
     function tapped(): HTMLFormElement {
       const group = [...host.querySelectorAll<HTMLElement>('[data-gtc-options]')].pop()!;
+      group.inert = false; // the card as it was when it was tapped: this fixture talk has already moved on, which retired the card, and a retired one cannot take the focus
       const form = group.querySelector<HTMLFormElement>('form')!;
       form.querySelector('button')!.focus();
       (document.activeElement as HTMLElement).blur();
@@ -115,6 +116,18 @@ describe('the chat of the single generation (#1138)', () => {
       await show();
       const form = tapped();
       expect(document.activeElement === document.body, 'the focus fell to the body').to.equal(true);
+
+      finished(form, 200);
+
+      expect(document.activeElement === box(), 'the box has the focus').to.equal(true);
+    });
+
+    it('moves the focus to the box when it is still on a control inside the card that was answered', async () => {
+      await show();
+      const form = tapped();
+      const control = form.querySelector<HTMLElement>('button')!;
+      control.focus();
+      expect(document.activeElement === control, 'the focus is inside the submitted card').to.equal(true);
 
       finished(form, 200);
 

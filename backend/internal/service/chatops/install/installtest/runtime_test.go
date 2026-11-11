@@ -187,10 +187,21 @@ func TestHF_TooManyFilesWithTheSameNameAreAskedToBeNarrowed(t *testing.T) {
 	card, err := h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
 
 	assert.Contains(t, refusal(t, err), "7 件")
+	assert.Contains(t, refusal(t, err), "フォルダ込みのパス（例: d0/model.safetensors）")
 	assert.Empty(t, card.Choices)
 
-	h.repo.Files = h.repo.Files[:chatops.MaxChoices]
+	// a file of that name that cannot be installed is no button and does not count toward the limit
+	h.repo.Files = append(h.repo.Files[:chatops.MaxChoices], install.HFFile{Path: "x/model.safetensors", Name: "model.safetensors", Size: gb})
 	card, err = h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
 	require.NoError(t, err)
 	assert.Len(t, card.Choices, chatops.MaxChoices)
+
+	// and the one installable file among them is that file
+	h.repo.Files = []install.HFFile{h.repo.Files[0], h.repo.Files[chatops.MaxChoices]}
+	card, err = h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
+	require.NoError(t, err)
+	require.Len(t, card.Choices, 1)
+	var a install.HFArgs
+	require.NoError(t, card.Choices[0].Op.DecodeArgs(&a))
+	assert.Equal(t, "d0/model.safetensors", a.Path)
 }

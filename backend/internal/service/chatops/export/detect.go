@@ -22,8 +22,10 @@ var (
 		`|(書き出|書出|エクスポート|ダウンロード)(さな|さず|せず|しない|しなく|しなかった|しません)` + // "書き出さないで", "エクスポートせずに": not asking for it
 		`|\b(before|after|until|once|when|while|prior to)\s+(\w+\s+){0,2}?(export|download)\w*|\b(export|download)(ing|ed|s)\b)`)
 	pastExport = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
-	// exportAgain is a verb that asks for an export ("書き出して", "書き出したい", "書き出す。"; not the narration "書き出してた", "書き出してない", "書き出していた"; "書き出していただけますか", "書き出していい？" are requests): beside 「書き出した動画」 it makes the message a request ("さっき書き出した動画をもう一度書き出して").
-	exportAgain = regexp.MustCompile(`(書き出|書出|エクスポート)(して(?:[^たいな]|い(?:ただ|い)|$)|したい|します|す([。、！!？?\s]|$))`)
+	// exportAgain is a verb that asks for an export, beside 「書き出した動画」 (which tells of one) it makes the message a request ("さっき書き出した動画をもう一度書き出して", "…エクスポートする。",
+	// "…書き出していただけますか", "…書き出していい？"). 「する」「して」 must end the sentence or be followed by a form that asks (ください, ほしい, くれる, もらえ, いただ, いい, たい, から); a narration ("書き出してます",
+	// "書き出してみたけど", "書き出してあるはず", "書き出して終わった", "書き出してよかった？", "書き出していた") is none.
+	exportAgain = regexp.MustCompile(`(書き出|書出|エクスポート)(し(て(ください|下さい|ほしい|欲しい|くれ(る|ます|ない|ません)|もらえ|もらいたい|いただ|頂|(も)?いい|ちょうだい|おいて|から|[ねよ]?([。、！!？?\s]|$))|たい|ます)|す(る)?([。、！!？?\s]|$))`)
 	// exportThenDownload is one request for both: "動画を書き出してダウンロードしたい", "export the video and download it". The word of the export is a verb that asks for it ("書き出して"),
 	// not the noun of an export that was made ("さっきの書き出しをダウンロード", "書き出した動画をダウンロード").
 	exportThenDownload = regexp.MustCompile(`(?i)((書き出|書出|エクスポート)(し)?(て|たい|てから|つつ|た上で)[^。！？!?\n]*ダウンロード|\bexport\b[^.!?\n]*\band\b[^.!?\n]*\bdownload)`)

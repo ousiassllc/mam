@@ -79,8 +79,9 @@ var (
 	llmWord    = regexp.MustCompile(`(?i)(llm|言語モデル|代替|フォールバック|fallback|プライマリ|primary|モデル)`)
 	changeWord = regexp.MustCompile(`(?i)(割り当て|割当|にして|にする|にしたい|に変|へ変|変えて|変更|切り替|切替|設定|使って|使いたい|set|assign|switch)`)
 	mediaWord  = regexp.MustCompile(`(?i)(画像|動画|イメージ|image|video|quality|クオリティ|品質|参照|リファレンス|keyframe|プレビュー)`)
-	// the model the message names: "…を Claude Opus にして". The greedy prefix takes the name after the last を/は ("Director は LLM を Claude Opus にして" names Claude Opus).
-	namedModel = regexp.MustCompile(`.*(?:を|は)\s*(.+?)\s*(?:に|へ)\s*(?:して|する|したい|変|切り替|切替|設定)`)
+	// the model the message names: "…を Claude Opus にして". The greedy prefix takes the name after the last を/は ("Director は LLM を Claude Opus にして" names Claude Opus); a comma or
+	// space between the particle and the name is not part of it ("Director の LLM を、Claude Opus にして").
+	namedModel = regexp.MustCompile(`.*(?:を|は)[\s、,，]*(.+?)\s*(?:に|へ)\s*(?:して|する|したい|変|切り替|切替|設定)`)
 )
 
 // sentences splits a message where a clause ends (the same ends as outofscope: nlu.ClauseEnd).
@@ -96,15 +97,21 @@ func Asked(message string) bool {
 	return llmWord.MatchString(message) && changeWord.MatchString(message) && nlu.AgentIn(message) != ""
 }
 
+// namesRouteModel reports whether one sentence puts a model on a route without saying LLM: it names an Agent or a role (代替, バックアップ ...) and the model ("Producer は GPT にして").
+func namesRouteModel(sentence string) bool {
+	return !nlu.IsInquiry(sentence) && namedModel.MatchString(sentence) && (nlu.AgentIn(sentence) != "" || llmWord.MatchString(sentence))
+}
+
 // detect reads "Director の LLM を Claude Opus にして" without the model, so that the LLM itself can be assigned while none is set up.
 func detect(message string) []commandinterpreter.Operation {
 	if !Asked(message) {
 		return nil
 	}
-	// One sentence is read for its own Agent, role and model. A message that changes two routes is left to the model (the values of one sentence must not be mixed with another's).
+	// One sentence is read for its own Agent, role and model. A message that changes two routes is left to the model (the values of one sentence must not be mixed with another's), also when
+	// the second sentence only names an Agent or a role and the model ("Director の LLM を Claude Opus にして、Producer は GPT にして").
 	var asked []string
 	for _, sentence := range sentences.Split(message, -1) {
-		if Asked(sentence) {
+		if Asked(sentence) || namesRouteModel(sentence) {
 			asked = append(asked, sentence)
 		}
 	}

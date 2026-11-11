@@ -75,6 +75,7 @@ func TestDetect_AQuestionAboutAKeyIsNotAKeyRequest(t *testing.T) {
 		"API キーを設定してくれたかな",
 		"API キーを設定してくれましたか？",
 		"API キーを設定してくれたの？",
+		"API キーを設定しておいてくれた？", "API キーを設定してもらってよかった？", "API キーを設定しておいてって言った？",
 	} {
 		assert.Empty(t, detect(t, message), message)
 		assert.False(t, apikey.AsksKey(message), message)
@@ -101,6 +102,8 @@ func TestDetect_AQuestionAboutAKeyIsNotAKeyRequest(t *testing.T) {
 		"API キーを登録してくれたりする？":         "",
 		"API キーを入力してくれよ？":            "",
 		"Claude のキーを入れ替えてくれる？":       "anthropic",
+		"API キーを設定してもらっていいですか？":      "", "API キーを設定してもらってもいい？": "", "API キーを登録しておいて？": "", "API キーを登録しておいてくれる？": "", "API キーを入れ直したいんだけど？": "",
+		"何度でも API キーを設定したい": "", "いつでも API キーを登録してください": "",
 	} {
 		assert.True(t, apikey.AsksKey(message), message)
 		got := detect(t, message)

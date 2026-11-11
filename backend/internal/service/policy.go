@@ -197,7 +197,7 @@ func (s *PolicyService) setBudget(ctx context.Context, projectID string, form Bu
 		return PolicyView{}, notFound(err)
 	}
 	if announce {
-		s.announce(ctx, projectID, fmt.Sprintf("予算上限を更新しました（Project: %s / Shot: %s）。", usdText(project), usdText(shot)))
+		s.announce(ctx, projectID, fmt.Sprintf("予算上限を更新しました（Project: %s / Shot: %s）。", dollars(project), dollars(shot)))
 	}
 	return s.Policy(ctx, projectID)
 }
@@ -213,13 +213,6 @@ func optionalUSD(field, label, raw string) (*float64, error) {
 		return nil, invalid(field, "%s は 0 より大きく %d 以下の金額（USD）で入力してください", label, maxBudgetUSD)
 	}
 	return &v, nil
-}
-
-func usdText(v *float64) string {
-	if v == nil {
-		return "上限なし"
-	}
-	return fmt.Sprintf("$%.2f", *v)
 }
 
 // announce records a change in the thread. The change itself is already saved, so a failure is logged only.

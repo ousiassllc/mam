@@ -148,3 +148,8 @@ func choiceCard(what string, names []string, ops []commandinterpreter.Operation)
 func tooMany(what string, names []string) error {
 	return chatops.Refuse("「%s」に当てはまるものが %d 件あります（%s ほか）。もう少し具体的な名前で言ってください", what, len(names), strings.Join(names[:chatops.MaxChoices], "、"))
 }
+
+// tooManySameName is the refusal for a file name that more installable files have than the buttons of a card can hold: only the path with its folders tells them apart.
+func tooManySameName(name string, files []HFFile) error {
+	return chatops.Refuse("「%s」と同じ名前のファイルが %d 件あり、多すぎて選べません。フォルダ込みのパス（例: %s）で指定してください", name, len(files), files[0].Path)
+}

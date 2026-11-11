@@ -49,6 +49,8 @@ func TestDetect_AMessageThatChangesTwoRoutesIsNotReadAsOneWhateverEndsTheClause(
 		"Director の LLM を Claude Opus にして! Producer の代替を GPT にして",
 		"Director の LLM を Claude Opus にして. Producer の代替を GPT にして",
 		"Director の LLM を Claude Opus にして、Producer の代替を GPT にして",
+		"Director の LLM を Claude Opus にして、Producer は GPT にして", // the second sentence has no LLM word, only an Agent and a model
+		"Director の LLM を Claude Opus にして、代替は GPT にして",
 	} {
 		assert.Empty(t, detect(message), message)
 	}
@@ -57,8 +59,10 @@ func TestDetect_AMessageThatChangesTwoRoutesIsNotReadAsOneWhateverEndsTheClause(
 // The model is the name after the last は/を particle before 「にして」: 「Director は LLM を Claude Opus にして」 names Claude Opus.
 func TestDetect_TheModelIsTheNameAfterTheLastParticle(t *testing.T) {
 	for message, model := range map[string]string{
-		"Director は LLM を Claude Opus にして": "Claude Opus",
-		"Producer は代替を GPT にして":            "GPT",
+		"Director は LLM を Claude Opus にして":  "Claude Opus",
+		"Producer は代替を GPT にして":             "GPT",
+		"Director の LLM を、Claude Opus にして":  "Claude Opus", // no comma in the name
+		"Director の LLM を， Claude Opus にして": "Claude Opus",
 	} {
 		ops := detect(message)
 		require.Len(t, ops, 1, message)

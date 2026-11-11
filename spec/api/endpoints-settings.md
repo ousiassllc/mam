@@ -85,7 +85,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 | Method | Path | 内容 |
 |--------|------|------|
-| PUT | `/settings/api-provider` | **#1136**。動画モデル（Kling）の API プロバイダー（[model-adapters.md §9.6](../architecture/model-adapters.md)）。フォーム `provider`（`official` / `openrouter` / `fal` / `replicate`）。`models.json` の `video_provider` に保存し、`localmodels.Service.Reload` で即反映する（`official` はキーを消す）。応答は `#credential-panel` の全体（先頭に選択、選んだ先のキー欄を先頭に）。200＋お知らせ、未知の値は 422、`--model-config` で固定されていると 409（どちらも `role="alert"` の文）。`Cache-Control: no-store`。`Services.Models` がないと登録しない（404）。キー（`openrouter` / `fal` / `replicate`）は `PUT /credentials/:provider` で保存する |
+| PUT | `/settings/api-provider` | **#1136**。動画モデル（Kling）の API プロバイダー（[model-adapters.md §9.6](../architecture/model-adapters.md)）。フォーム `provider`（`official` / `openrouter` / `fal` / `replicate`）。`models.json` の `video_provider` に保存し、`localmodels.Service.Reload` で即反映する（`official` はキーを消す）。応答は `#credential-panel` の全体（先頭に選択、選んだ先のキー欄を先頭に）。200＋お知らせ、未知の値は 422、`--model-config` で固定されていると 409、`models.json` が読めないときも 422（`credential-error` に「画像・動画モデルの設定ファイルを読み込めません: …」。ファイルは書き換えず、区画は選択の代わりに理由〔`api-provider-problem`〕を出すまま。判定の順は、不正な値の 422、固定の 409、読めない 422）（いずれも `role="alert"` の文）。`Cache-Control: no-store`。`Services.Models` がないと登録しない（404）。キー（`openrouter` / `fal` / `replicate`）は `PUT /credentials/:provider` で保存する |
 
 ### 今のルートに起きた変更（パス・フォーム・状態コードは変えない）
 
@@ -230,3 +230,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.21 | 2026-11-10 | §3 の `PUT`・`DELETE /credentials/:provider` の成功の本文に、`#api-provider-models` の OOB の差し替えを足した（キーの保存・削除のあと、プロバイダー選択の下の「API キー: 設定済み／未設定」が古いままにならない） | PR #1141 のレビュー指摘 |
 | 1.22 | 2026-11-11 | §4 の接続テストの表に `openrouter`・`replicate`（実装の `credential/probe` にあるが書いていなかった）を足し、ボタンを出さない行に `fal` を足した | PR #1141 のレビュー指摘 |
 | 1.23 | 2026-11-11 | §3 の `PUT /settings/api-provider` の行を「今のルートに起きた変更」（パス・フォーム・状態コードは変えない）の表から、新しい節「新しいルート」へ移した（新規のルートで、見出しと食い違っていた）。1.20 の「§1」は誤りで、§3 が正しい。ブラウザは選びが落ち着いてから（`change` の 600ms 後）この PUT を送る（[settings-screen-categories.md](../components/settings-screen-categories.md) §1.0）。キーストアが読めないときのカードの並びも選択に追従する | PR #1141 のレビュー指摘 |
+| 1.24 | 2026-11-11 | §3 の `PUT /settings/api-provider` の行に、`models.json` が読めないときは 422 で断り、ファイルを書き換えず、区画は読めないときの表示（`api-provider-problem`）のままであること、判定の順（不正な値の 422 → 固定の 409 → 読めない 422）を足した（実装の `SaveVideoProvider` と `TestSaveProvider_AnUnreadableSettingsFileIsRefusedAndLeftAsItIs` に合わせた） | PR #1141 のレビュー指摘 |

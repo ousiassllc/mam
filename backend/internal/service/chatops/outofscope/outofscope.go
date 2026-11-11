@@ -13,7 +13,7 @@ import (
 var (
 	setting = regexp.MustCompile(`(?i)(設定|変更|変え|にして|にしたい|にする|指定|登録|入れ|選|切り替|切替|追加|発行|作(?:る|って|った|ろう|ら|り|れ|成)|操作(?:し|する|できる)|削除|消|無効|有効|再発行|ローテ|\b(?:set|change|configure|create|issue|revoke|delete)\b)`)
 	program = regexp.MustCompile(`(?i)(ffmpeg|ffprobe|facefusion|face\s*fusion|フェイスフュージョン)`)
-	// exeWhere is what is the program itself; placeWhere is a word for a path or a place that is the program's only when no output word is beside it.
+	// exeWhere is what is the program itself; placeWhere is a word for a path or a place that is the program's unless an output word qualifies it (outputPlace).
 	exeWhere   = regexp.MustCompile(`(?i)(実行ファイル|実行パス|\.exe\b|\bexe\b|バイナリ)`)
 	placeWhere = regexp.MustCompile(`(?i)(パス|\bpaths?\b|場所|フォルダ|ディレクトリ|ダウンロード先|インストール先)`)
 	mcp        = regexp.MustCompile(`(?i)(\bmcp\b|エムシーピー)`)
@@ -25,8 +25,9 @@ var (
 	// making is 「作る」「作って」「作り」「作成」: a setting word for the tokens of MCP, but it puts no path in, so a clause that names a program does not count it. A bare 「作」 is no setting
 	// word (「動作」「作動」「作業」「作者」), and 「操作」 is one only as 「操作し…」「操作する」「操作できる」.
 	making = regexp.MustCompile(`作(?:る|って|った|ろう|ら|り|れ|成)`)
-	// outputWord is what a program writes ("ffmpeg の出力フォルダを作って", "FaceFusion の結果を保存する場所を選びたい"): a folder or place beside it is where results go, no program path.
-	outputWord = regexp.MustCompile(`(?i)(出力|保存|結果|書き出|生成|作業|一時|ログ|キャッシュ|テンポラリ|\boutput\b|\btemp\b)`)
+	// outputPlace is a folder or place that a word for what a program writes qualifies directly ("出力フォルダ", "結果を保存する場所", "一時ファイルのフォルダ", "ログの場所"): it is where results go, no
+	// program path. The word must stand right before the place, so a path set in the same clause ("ffmpeg のパスを設定して保存して", "…のパスを結果フォルダにして") still counts.
+	outputPlace = regexp.MustCompile(`(?i)(?:出力|保存|結果|書き出し?|生成|作業|一時|ログ|キャッシュ|テンポラリ|\boutput\b|\btemp\b)(?:ファイル|データ)?(?:する|した|される|用|先)?\s*の?\s*(?:場所|フォルダ|ディレクトリ|パス|\bpaths?\b)(?:の?パス)?`)
 )
 
 const (
@@ -57,7 +58,7 @@ func refuse(message string) (string, bool) {
 func setsProgramPath(message string) bool {
 	for _, clause := range nlu.ClauseEnd.Split(message, -1) {
 		clause = swap.ReplaceAllString(clause, "")
-		places := exeWhere.MatchString(clause) || (placeWhere.MatchString(clause) && !outputWord.MatchString(clause))
+		places := exeWhere.MatchString(clause) || placeWhere.MatchString(outputPlace.ReplaceAllString(clause, ""))
 		if program.MatchString(clause) && places && setting.MatchString(making.ReplaceAllString(clause, "")) {
 			return true
 		}

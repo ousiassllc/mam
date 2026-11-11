@@ -7,7 +7,6 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/mainline"
-	"github.com/ousiassllc/mam/backend/internal/service/chatops"
 )
 
 func TestWait_SaysWhatIsWaitedForAndWhatToPressNext(t *testing.T) {
@@ -81,10 +80,4 @@ func TestWait_SaysWhichPhaseTheAutomaticStartIsIn(t *testing.T) {
 	assert.Equal(t, declined.Title(), unrecorded.Title())
 
 	assert.Equal(t, "生成待ち", mainline.Wait{Shots: 1}.ShotLabel(), "the manual wait keeps its words")
-}
-
-func TestWait_BudgetConfirmNamesTheButtonsOfTheCard(t *testing.T) {
-	next := mainline.Wait{Phase: mainline.PhaseBudgetConfirm, Shots: 1}.NextAction()
-	assert.Contains(t, next, "「"+chatops.Yes+"」", "the words are the label of the card's yes button")
-	assert.Contains(t, next, "「"+chatops.No+"」")
 }

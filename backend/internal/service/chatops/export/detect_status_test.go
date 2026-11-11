@@ -61,12 +61,12 @@ func TestDetect_ACatalogModelIsStillNotAnExport(t *testing.T) {
 
 // 「書き出した動画」 tells of an export, but a verb that asks for one after it ("もう一度書き出して") makes the message a request.
 func TestDetect_ARequestVerbAfterThePastFormIsARequest(t *testing.T) {
-	for _, message := range []string{"さっき書き出した動画をもう一度書き出して", "書き出した動画を 720p で書き出したい", "さっき書き出した動画をもう一度書き出していただけますか", "書き出した動画をもう一度書き出していい？"} {
+	for _, message := range []string{"さっき書き出した動画をもう一度書き出して", "書き出した動画を 720p で書き出したい", "さっき書き出した動画をもう一度書き出していただけますか", "書き出した動画をもう一度書き出していい？", "書き出した動画をもう一度エクスポートする", "書き出した動画をもう一度書き出してください", "書き出した動画をもう一度書き出してから確認して"} {
 		got := detect(t, message)
 		require.Len(t, got, 1, message)
 		assert.Contains(t, got, export.OpExportVideo, message)
 	}
-	for _, message := range []string{"さっき書き出した動画を確認して", "書き出した動画は良かった", "書き出した動画をエクスポートしてた？", "書き出した動画と書き出してない動画", "書き出した動画を書き出していた", "書き出した動画を書き出していった", "書き出した動画を書き出していっている"} {
+	for _, message := range []string{"さっき書き出した動画を確認して", "書き出した動画は良かった", "書き出した動画をエクスポートしてた？", "書き出した動画と書き出してない動画", "書き出した動画を書き出していた", "書き出した動画を書き出していった", "書き出した動画を書き出していっている", "書き出した動画はもう書き出してます", "さっき書き出した動画を書き出してよかった？", "書き出した動画をエクスポートしてみたけど音がない", "書き出した動画を書き出して終わった", "書き出した動画をエクスポートしてあるはず"} {
 		assert.Empty(t, detect(t, message), message)
 	}
 }
