@@ -77,11 +77,12 @@ var (
 	keyVerb = regexp.MustCompile(`(?i)(設定|登録|入力|入れ|いれ|変更|変え|置き換|差し替|追加|セット|更新|渡|set|register|enter|replace)`)
 	// keyRequest is a key-entry verb in a form that asks for it, which a question mark does not make a question: "登録してくれる？", "更新してもらえますか？", "入力できる？",
 	// "入れ替えたいんだけど？", "設定してほしいんだけど？". A verb that is not one of these ("設定画面はどこ？", "教えて", "設定するにはどうしたらいい？") stays a question.
-	keyRequest = regexp.MustCompile(`(?:設定|登録|入力|入れ替え|入れ換え|入れ変え|入れ|いれ|変更|変え|置き換え|差し替え|追加|セット|更新|渡)(?:し)?(?:て(?:くれ(?:る|ま|な|ん)|もらえ(?:る|ま|な)|もらいたい|ください|下さい|いただ|頂|ほしい|欲しい)|たい|(?:でき|られ)(?:る|ます|ない))`)
-	// askWhere is a word that asks where, which or when ("どこで設定できますか？", "変更したいけどどこ？"): the message asks to be told, not to set a key.
-	askWhere = regexp.MustCompile(`どこ|どれ|どの|いつ|何|なに|どう`)
-	// askedPast is a question about what was done ("設定してくれた？"): nlu.IsInquiry reads 「〜してくれ」 as a request, but this is past.
-	askedPast = regexp.MustCompile(`て(?:くれた|もらえた|もらった)\s*[？?]\s*$`)
+	keyRequest = regexp.MustCompile(`(?:設定|登録|入力|入れ替え|入れ換え|入れ変え|入れ|いれ|変更|変え|置き換え|差し替え|追加|セット|更新|渡)(?:し)?(?:て(?:くれ|もらえ|もらいたい|ください|下さい|いただ|頂|ほしい|欲しい)|たい|(?:でき|られ)(?:る|ます|ない))`)
+	// askWhere is a form that asks where, which, when, what or how ("どこで設定できますか？", "変更したいけどどこ？", "どうしたらいい？"): the message asks to be told, not to set a key.
+	// 「いつでも」「どうしても」「どうぞ」「何度も」 are no question.
+	askWhere = regexp.MustCompile(`どこ|どれ|どの|いつ(?:から|まで|の|に|なら|が|は|[？?])|何(?:を|が|で|の|と|に)|どう(?:やって|したら|すれば|すると|すれ|する)`)
+	// askedPast ends a question about what was done ("設定してくれた？", "設定してくれたっけ", "設定してくれましたか？"): the 「くれ」 of keyRequest is past here, so it is no request.
+	askedPast = regexp.MustCompile(`て(?:くれた|くれました|もらえた|もらえました|もらった|もらいました)(?:っけ|かな|の|か|かい)?\s*[？?]?\s*$`)
 	videoWord = regexp.MustCompile(`(?i)(kling|クリング|動画モデル|クラウド動画|video model)`)
 	viaWord   = regexp.MustCompile(`(?i)(経由|プロバイダー|provider|公式に|公式へ|使いたい|使って|切り替え|切替|変えて|変更|にして|に戻)`)
 )

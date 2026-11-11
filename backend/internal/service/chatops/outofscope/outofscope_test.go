@@ -84,7 +84,11 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"MCP のデフォルトポートを 9000 にして",
 		"ffmpeg のバイナリのパスを設定して",
 		"ffmpeg の場所を選びたい",
-		"ffmpeg のパスを操作したい", // 「操作」 keeps its 「作」: it is no 「作る」
+		"ffmpeg のパスを操作したい", // 「操作し」「操作する」「操作できる」 are setting forms; 「操作方法」 is not (above)
+		"ffmpeg のパスを操作する",
+		"ffmpeg のパスを操作できる？",
+		"MCP のトークンを操作する",
+		"MCP のトークンを操作したい",
 		"MCP のトークンを作成して",
 		"MCP のトークンを作って",
 		"ffmpeg のバイナリの場所を選びたい",

@@ -71,20 +71,36 @@ func TestDetect_AQuestionAboutAKeyIsNotAKeyRequest(t *testing.T) {
 		"API キーを変更できるのはどこ？",
 		"API キーを変更したいけどどこ？",
 		"API キーを設定してくれた？",
+		"API キーを設定してくれたっけ？",
+		"API キーを設定してくれたかな",
+		"API キーを設定してくれましたか？",
+		"API キーを設定してくれたの？",
 	} {
 		assert.Empty(t, detect(t, message), message)
 		assert.False(t, apikey.AsksKey(message), message)
 	}
 	// a request in the form of a question is a request: read by Detect, and kept by Asked when the model returns the operation
 	for message, provider := range map[string]string{
-		"API キーを設定したい":             "",
-		"OpenAI の API キーを入力します":    "openai",
-		"API キーを設定してくれる？":          "",
-		"OpenAI の API キーを登録してくれる？": "openai",
-		"API キーを入力できる？":            "",
-		"API キーを更新してもらえますか？":       "",
-		"API キーを入れ替えたいんだけど？":       "",
-		"Claude のキーを入れ替えてくれる？":     "anthropic",
+		"API キーを設定したい":               "",
+		"OpenAI の API キーを入力します":      "openai",
+		"API キーを設定してくれる？":            "",
+		"OpenAI の API キーを登録してくれる？":   "openai",
+		"API キーを入力できる？":              "",
+		"API キーを更新してもらえますか？":         "",
+		"API キーを入れ替えたいんだけど？":         "",
+		"API キーを設定してほしいんだけど？":        "",
+		"API キーを設定して欲しいんだけど？":        "",
+		"いつでもいいので API キーを入れ替えてくれる？":  "",
+		"どうしても API キーを入れ替えたいんだけど？":   "",
+		"何度も API キーを入れ替えたいんだけど？":     "",
+		"どうぞ API キーを登録してください？":       "",
+		"API キーを登録してもらえたら助かるんだけど？":   "",
+		"API キーを更新してくれたら嬉しいんだけど？":    "",
+		"API キーを入れ替えてくれれば早いんだけど？":    "",
+		"API キーを登録してもらえればありがたいんだけど？": "",
+		"API キーを登録してくれたりする？":         "",
+		"API キーを入力してくれよ？":            "",
+		"Claude のキーを入れ替えてくれる？":       "anthropic",
 	} {
 		assert.True(t, apikey.AsksKey(message), message)
 		got := detect(t, message)
