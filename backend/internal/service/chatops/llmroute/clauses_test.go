@@ -1,10 +1,14 @@
 package llmroute
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/service/chatops"
+	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 )
 
 func TestAsked_ARequestInTheFormOfAQuestionIsARequest(t *testing.T) {
@@ -55,7 +59,6 @@ func TestDetect_TheModelIsTheNameAfterTheLastParticle(t *testing.T) {
 	for message, model := range map[string]string{
 		"Director は LLM を Claude Opus にして": "Claude Opus",
 		"Producer は代替を GPT にして":            "GPT",
-		"Director の LLM を Claude Opus にして": "Claude Opus",
 	} {
 		ops := detect(message)
 		require.Len(t, ops, 1, message)
@@ -63,4 +66,25 @@ func TestDetect_TheModelIsTheNameAfterTheLastParticle(t *testing.T) {
 		require.NoError(t, ops[0].DecodeArgs(&a))
 		assert.Equal(t, model, a.Model, message)
 	}
+}
+
+// A model name that fits as many models as a card holds as buttons (chatops.MaxChoices) is asked as buttons; one more is asked to be narrowed down, with no button.
+func TestFallback_TheButtonsOfAModelNameStopAtTheCardLimit(t *testing.T) {
+	list := func(n int) llmmodels.List {
+		l := llmmodels.List{Provider: "openai", Source: llmmodels.SourceAPI}
+		for i := range n {
+			l.Models = append(l.Models, llmmodels.Model{ID: fmt.Sprintf("mega-%d", i)})
+		}
+		return l
+	}
+	f := newFake()
+	f.lists["openai"] = list(chatops.MaxChoices)
+	card, err := ask(t, f, Args{Agent: "producer", Provider: "openai", Model: "mega"})
+	require.NoError(t, err)
+	assert.Len(t, card.Choices, chatops.MaxChoices)
+
+	f.lists["openai"] = list(chatops.MaxChoices + 1)
+	card, err = ask(t, f, Args{Agent: "producer", Provider: "openai", Model: "mega"})
+	assert.Contains(t, refusal(t, err), "多すぎます")
+	assert.Empty(t, card.Choices)
 }

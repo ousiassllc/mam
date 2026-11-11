@@ -63,6 +63,8 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"ffmpeg の出力フォルダを作って",
 		"FaceFusion の結果を保存する場所を選びたい",
 		"FaceFusion の一時ファイルのフォルダを作って",
+		"ffmpeg のパスの入ったフォルダを作成して",
+		"FaceFusion のフォルダを作成したい",
 		"MCP でエクスポートした動画を作りたい",
 		"MCP のレポートを作って",
 		"MCP のサポートを追加して",
@@ -75,6 +77,9 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"MCP のデフォルトポートを 9000 にして",
 		"ffmpeg のバイナリのパスを設定して",
 		"ffmpeg の場所を選びたい",
+		"ffmpeg のパスを操作したい", // 「操作」 keeps its 「作」: it is no 「作る」
+		"MCP のトークンを作成して",
+		"MCP のトークンを作って",
 		"ffmpeg のバイナリの場所を選びたい",
 		"FaceFusion のフォルダを指定して",
 	} {

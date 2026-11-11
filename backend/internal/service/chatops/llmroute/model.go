@@ -35,7 +35,7 @@ func (h *Handler) modelFor(ctx context.Context, provider string, a Args) (model,
 	switch found := pickModels(l, text); {
 	case len(found) == 1:
 		return model{id: found[0].ID, list: &l}, nil
-	case len(found) > 1 && len(found) <= maxChoices:
+	case len(found) > 1 && len(found) <= chatops.MaxChoices:
 		amb := &ambiguity{text: text}
 		for _, f := range found {
 			pick := a

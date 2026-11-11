@@ -59,7 +59,7 @@ func (h *HF) Question(ctx context.Context, _ domain.Project, op commandinterpret
 	return h.confirm(repo, file, env)
 }
 
-// pickFile is the file the director named, or the only one that can be installed, or the installable ones to choose from.
+// pickFile is the file the director named, or the only one that can be installed, or the files to choose from (the installable ones, or the ones that share the name given).
 func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 	if path = strings.TrimSpace(path); path != "" {
 		for _, f := range repo.Files { // the exact path first: "model.safetensors" is also the Name of "a/model.safetensors"
@@ -67,10 +67,24 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 				return f, nil, nil
 			}
 		}
+		var same []HFFile // the files of that name in other folders: which one is asked, not taken as the first
 		for _, f := range repo.Files {
 			if strings.EqualFold(f.Name, path) {
-				return f, nil, nil
+				same = append(same, f)
 			}
+		}
+		if len(same) == 1 {
+			return same[0], nil, nil
+		}
+		if len(same) > 1 {
+			found := make([]named, len(same))
+			for i, f := range same {
+				found[i] = named{ID: f.Path, Name: f.Path}
+			}
+			if len(found) > chatops.MaxChoices {
+				return HFFile{}, nil, tooMany(path, names(found))
+			}
+			return HFFile{}, found, nil
 		}
 		return HFFile{}, nil, chatops.Refuse("%s に「%s」というファイルはありません%s", repo.ID, path, listNote(repo))
 	}
@@ -99,7 +113,7 @@ func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 	for i, f := range ok {
 		found[i] = named{ID: f.Path, Name: f.Path}
 	}
-	if len(found) > maxChoices {
+	if len(found) > chatops.MaxChoices {
 		return HFFile{}, nil, tooMany(repo.ID, names(found))
 	}
 	return HFFile{}, found, nil

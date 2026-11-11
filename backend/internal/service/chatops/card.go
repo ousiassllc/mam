@@ -15,6 +15,9 @@ const (
 	No  = "やめる"
 )
 
+// MaxChoices is how many candidates a card offers as buttons; a name that fits more is asked to be narrowed down (every operation that offers a choice uses this one number).
+const MaxChoices = 6
+
 // Body is the body of the confirmation card of op: a yes that carries op (or what the card says it carries: Card.Op), or one button per choice, or the masked field of a
 // secret with no yes at all. "やめる" is always there and carries Card.Decline (nothing for most cards).
 func Body(op commandinterpreter.Operation, card Card) (domain.CardBody, error) {

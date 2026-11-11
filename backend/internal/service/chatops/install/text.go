@@ -20,9 +20,6 @@ const consentLabel = "同意して導入する"
 // globalNote ends every card: an install is a setting of the whole app.
 const globalNote = "・導入はアプリ全体の設定です。全プロジェクトで使えるようになり、ディスクの空きとネットワークを使います。"
 
-// maxChoices is how many candidates a card offers as buttons; more are asked to be narrowed down by name.
-const maxChoices = 6
-
 // bytesText writes a size the way the model manager shows it: 1.2 GB, 340 MB.
 func bytesText(n int64) string {
 	const mb, gb = 1 << 20, 1 << 30
@@ -149,5 +146,5 @@ func choiceCard(what string, names []string, ops []commandinterpreter.Operation)
 
 // tooMany is the refusal for a name that matches more than the buttons of a card can hold.
 func tooMany(what string, names []string) error {
-	return chatops.Refuse("「%s」に当てはまるものが %d 件あります（%s ほか）。もう少し具体的な名前で言ってください", what, len(names), strings.Join(names[:maxChoices], "、"))
+	return chatops.Refuse("「%s」に当てはまるものが %d 件あります（%s ほか）。もう少し具体的な名前で言ってください", what, len(names), strings.Join(names[:chatops.MaxChoices], "、"))
 }

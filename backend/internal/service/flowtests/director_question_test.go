@@ -1,6 +1,7 @@
 package flowtests_test
 
 import (
+	"database/sql"
 	"encoding/json"
 	"path/filepath"
 	"slices"
@@ -54,4 +55,29 @@ func TestChat_AYesToACardWhoseButtonCarriesNoActionIsNotCarriedOut(t *testing.T)
 	assert.NotContains(t, chatfix.LastText(ws), "実行しました")
 	assert.NotContains(t, chatfix.LastText(ws), "やめました")
 	assert.True(t, slices.ContainsFunc(ws.Updated, func(m domain.ThreadMessage) bool { return m.ID == "card1" && !m.Open }), "a new message replies to the card, which closes it, as for any other reply that is no option")
+}
+
+// The yes button is found by its words, wherever it stands in the card: a yes that is not the first button runs its own action, and when that action is the stored "null" the action of
+// another button is not run in its place.
+func TestChat_TheYesButtonThatIsNotFirstRunsItsOwnActionOnly(t *testing.T) {
+	budget := json.RawMessage(`{"type":"set_budget","project_budget_usd":99}`)
+	for name, tc := range map[string]struct {
+		actions []json.RawMessage
+		want    sql.NullFloat64
+	}{
+		"its own action":       {actions: []json.RawMessage{json.RawMessage("null"), budget}, want: sql.NullFloat64{Float64: 99, Valid: true}},
+		"no action of its own": {actions: []json.RawMessage{budget, json.RawMessage("null")}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := chatfix.New(t)
+			body := domain.EncodeCardBody(domain.CardBody{Text: "進めますか？", Options: []string{chatops.No, chatops.Yes}, OptionActions: tc.actions})
+			f.SQL(`INSERT INTO chat_message (id, project_id, role, kind, content, ref_type, ref_id) VALUES ('card1', ?, 'assistant', 'question', ?, 'operation', 'set_budget')`, f.ProjectID, body)
+
+			f.Say(chatops.Yes, "card1")
+
+			var ceiling sql.NullFloat64
+			require.NoError(t, f.DB.Reader().QueryRow(`SELECT project_budget_ceiling FROM project WHERE id = ?`, f.ProjectID).Scan(&ceiling))
+			assert.Equal(t, tc.want, ceiling)
+		})
+	}
 }

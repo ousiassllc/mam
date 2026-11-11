@@ -190,7 +190,7 @@ func TestPolicyRoute_AResolutionTheModelDoesNotMakeIsRefused(t *testing.T) {
 // A name that fits more models than a card holds as buttons asks to be narrowed down, and offers none.
 func TestModelNameResolution_TooManyModelsAreAskedToBeNarrowed(t *testing.T) {
 	f := newFake()
-	for i := range maxChoices + 1 {
+	for i := range chatops.MaxChoices + 1 {
 		f.view.VideoModels = append(f.view.VideoModels, modelsettings.VideoOption{Model: domain.ModelName(fmt.Sprintf("mega-%d", i)), Resolutions: []string{"720p"}, Availability: modelfilter.Usable()})
 	}
 

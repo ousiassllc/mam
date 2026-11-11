@@ -66,7 +66,7 @@ func TestDetect_ARequestVerbAfterThePastFormIsARequest(t *testing.T) {
 		require.Len(t, got, 1, message)
 		assert.Contains(t, got, export.OpExportVideo, message)
 	}
-	for _, message := range []string{"さっき書き出した動画を確認して", "書き出した動画は良かった"} {
+	for _, message := range []string{"さっき書き出した動画を確認して", "書き出した動画は良かった", "書き出した動画をエクスポートしてた？", "書き出した動画と書き出してない動画", "書き出した動画を書き出していた"} {
 		assert.Empty(t, detect(t, message), message)
 	}
 }

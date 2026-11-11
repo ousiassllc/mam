@@ -5,7 +5,6 @@ package outofscope
 
 import (
 	"regexp"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
@@ -23,6 +22,8 @@ var (
 	otherPort = regexp.MustCompile(`(エクス|イン|レ|リ|サ|パス|トランス)ポート`)
 	// swap is 「入れ替え」, which the setting word 「入れ」 would otherwise read as putting a path in ("顔を入れ替えて").
 	swap = regexp.MustCompile(`入れ(?:替|換|変)`)
+	// making is 「作る」「作って」「作り」「作成」: it puts no path in, so it is no setting word (「操作」「作業」 keep their 「作」).
+	making = regexp.MustCompile(`作(?:る|って|った|ろう|ら|り|れ|成)`)
 	// outputWord is what a program writes ("ffmpeg の出力フォルダを作って", "FaceFusion の結果を保存する場所を選びたい"): a folder or place beside it is where results go, no program path.
 	outputWord = regexp.MustCompile(`(?i)(出力|保存|結果|書き出|生成|作業|一時|ログ|キャッシュ|テンポラリ|\boutput\b|\btemp\b)`)
 )
@@ -51,12 +52,12 @@ func refuse(message string) (string, bool) {
 }
 
 // setsProgramPath reports whether one clause of the message names a program, a word for its path and a setting word ("ffmpeg のパスを設定して"). The three words must come from one
-// clause (nlu.ClauseEnd), or "ffmpeg のバイナリを使って、出力フォルダを作って" reads as a path being set. Making something (作って) puts no path in, so it is no setting word here.
+// clause (nlu.ClauseEnd), or "ffmpeg のバイナリを使って、出力フォルダを作って" reads as a path being set. Making something (作って, 作成) puts no path in, so it is no setting word here.
 func setsProgramPath(message string) bool {
 	for _, clause := range nlu.ClauseEnd.Split(message, -1) {
 		clause = swap.ReplaceAllString(clause, "")
 		places := exeWhere.MatchString(clause) || (placeWhere.MatchString(clause) && !outputWord.MatchString(clause))
-		if program.MatchString(clause) && places && setting.MatchString(strings.ReplaceAll(clause, "作", "")) {
+		if program.MatchString(clause) && places && setting.MatchString(making.ReplaceAllString(clause, "")) {
 			return true
 		}
 	}

@@ -59,7 +59,7 @@ func (m *Model) find(query string) (ModelInfo, []named, error) {
 	switch {
 	case len(found) == 1:
 		return m.byID(found[0].ID)
-	case len(found) > maxChoices:
+	case len(found) > chatops.MaxChoices:
 		return ModelInfo{}, nil, tooMany(query, names(found))
 	case len(found) > 1:
 		return ModelInfo{}, found, nil

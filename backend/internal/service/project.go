@@ -49,9 +49,11 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 	}
 	briefing.Recommend(&brief)
 	brief.AttachAssets(assets)
-	messages := []domain.ChatMessage{userText(content, "", assetIDs(assets))}
+	var messages []domain.ChatMessage
 	if hasKey {
 		messages = secretRefusal(content, len(in.Uploads) > 0)
+	} else {
+		messages = []domain.ChatMessage{userText(content, "", assetIDs(assets))}
 	}
 	messages = assignIDs(append(messages, briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)))
 	project := domain.Project{
@@ -72,8 +74,9 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 	if err != nil {
 		return domain.Project{}, err
 	}
-	// A budget stated in the first message ("予算は $20 で") is asked about before anything starts (#1139): the pipeline is kicked only once its card is in the thread.
-	if s.askStatedBudget(ctx, created, content) {
+	// A budget stated in the first message ("予算は $20 で") is asked about before anything starts (#1139): the pipeline is kicked only once its card is in the thread. A message with a key is
+	// not read (as in the chat), so it states no budget.
+	if hasKey || s.askStatedBudget(ctx, created, content) {
 		s.kick(ctx, projectID)
 	}
 	return s.getProject(ctx, projectID)
@@ -113,8 +116,7 @@ func (s *ProjectService) Brief(ctx context.Context, projectID string) (BriefView
 	return BriefView{Project: project, Brief: brief, Assets: assets}, nil
 }
 
-// BriefForm is the editable part of the Brief (PUT /projects/:id/brief). Assets and
-// video references keep their identity; References (one URL per line) replaces the URL references.
+// BriefForm is the editable part of the Brief (PUT /projects/:id/brief). Assets and video references keep their identity; References (one URL per line) replaces the URL references.
 type BriefForm struct {
 	Values                map[domain.BriefField]string
 	AdditionalInstruction string
@@ -128,9 +130,7 @@ type BriefForm struct {
 	Given []domain.BriefField
 }
 
-// UpdateBrief validates and saves the edited Brief and records the change in the thread.
-// On a ValidationError the returned BriefView holds the unsaved input so the form can be
-// shown again with the user's values.
+// UpdateBrief validates and saves the edited Brief and records the change in the thread. On a ValidationError the returned BriefView holds the unsaved input so the form can be shown again with the user's values.
 func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form BriefForm) (BriefView, error) {
 	view, err := s.Brief(ctx, projectID)
 	if err != nil {

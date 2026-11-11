@@ -38,13 +38,21 @@ func unpricedVideo(q domain.QualityPolicy) (modeladapter.Config, string) {
 	return cfg, "動画: " + string(model)
 }
 
-// A video model of the policy that has no price is named, once: the primary and the alternative can be the same model.
+// A video model of the policy that has no price is named.
 func TestUnpricedRoutes_AVideoModelWithoutAPriceIsNamed(t *testing.T) {
 	cfg, name := unpricedVideo(domain.QualityBalanced)
 	assert.NotContains(t, genplan.UnpricedRoutes(modeladapter.DefaultConfig(), domain.QualityBalanced), name, "the same model with its price is not unpriced")
+	assert.Contains(t, genplan.UnpricedRoutes(cfg, domain.QualityBalanced), name)
+}
+
+// The primary and the alternative of a route can be the same model: it is named once.
+func TestUnpricedRoutes_AModelThatIsBothPrimaryAndAlternativeIsNamedOnce(t *testing.T) {
+	cfg, name := unpricedVideo(domain.QualityBalanced)
+	route := cfg.Policies[domain.QualityBalanced]
+	route.Fallback = route.Primary
+	cfg.Policies[domain.QualityBalanced] = route
 
 	got := genplan.UnpricedRoutes(cfg, domain.QualityBalanced)
-	assert.Contains(t, got, name)
 	assert.Len(t, slices.DeleteFunc(slices.Clone(got), func(s string) bool { return s != name }), 1, "named once")
 }
 

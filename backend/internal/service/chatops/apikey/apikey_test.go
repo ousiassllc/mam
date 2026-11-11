@@ -71,8 +71,21 @@ func TestDetect_AQuestionAboutAKeyIsNotAKeyRequest(t *testing.T) {
 		assert.Empty(t, detect(t, message), message)
 		assert.False(t, apikey.AsksKey(message), message)
 	}
-	for _, message := range []string{"API キーを設定したい", "OpenAI の API キーを入力します", "API キーを設定してくれる？"} {
+	// a request in the form of a question is a request: read by Detect, and kept by Asked when the model returns the operation
+	for message, provider := range map[string]string{
+		"API キーを設定したい":             "",
+		"OpenAI の API キーを入力します":    "openai",
+		"API キーを設定してくれる？":          "",
+		"OpenAI の API キーを登録してくれる？": "openai",
+		"API キーを入力できる？":            "",
+		"API キーを更新してもらえますか？":       "",
+		"API キーを入れ替えたいんだけど？":       "",
+		"Claude のキーを入れ替えてくれる？":     "anthropic",
+	} {
 		assert.True(t, apikey.AsksKey(message), message)
+		got := detect(t, message)
+		require.Len(t, got, 1, message)
+		assert.Equal(t, provider, got[0].Args.Provider, message)
 	}
 }
 

@@ -134,7 +134,7 @@ type Command struct {
 	// Scene and Shot name the Shot the direction is about (1-based); 0 when it did not say.
 	Scene, Shot int
 	// Question is what to ask the user when the direction cannot be carried out as it stands
-	// (which Shot?), in the user's language. When set, Operations is empty.
+	// (which Shot?), in the user's language. The model's own Operations are empty then; WithDetected may still add the operations the message plainly asks for.
 	Question   string
 	Operations []Operation
 }

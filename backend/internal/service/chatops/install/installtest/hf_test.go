@@ -194,3 +194,30 @@ func TestHF_AnExactPathIsPickedBeforeAFileThatOnlyHasThatName(t *testing.T) {
 	require.NoError(t, card.Choices[0].Op.DecodeArgs(&a))
 	assert.Equal(t, "model.safetensors", a.Path)
 }
+
+// Two files that share the Name given (and neither is that exact Path) are asked as buttons, one per Path, not taken as the first; a Name only one file has is that file.
+func TestHF_SeveralFilesWithTheSameNameAreAsked(t *testing.T) {
+	h := newHub()
+	h.repo.Files = []install.HFFile{
+		{Path: "a/model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Folder: "loras"},
+		{Path: "b/model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Folder: "loras"},
+		{Path: "c/other.safetensors", Name: "other.safetensors", Size: gb, Installable: true, Folder: "loras"},
+	}
+
+	card, err := h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
+
+	require.NoError(t, err)
+	require.Len(t, card.Choices, 2)
+	assert.Equal(t, "a/model.safetensors", card.Choices[0].Label)
+	assert.Equal(t, "b/model.safetensors", card.Choices[1].Label)
+	var a install.HFArgs
+	require.NoError(t, card.Choices[1].Op.DecodeArgs(&a))
+	assert.Equal(t, "b/model.safetensors", a.Path)
+	assert.True(t, a.Pick)
+
+	card, err = h.ask(t, install.HFArgs{Repo: "owner/style", Path: "other.safetensors"})
+	require.NoError(t, err)
+	require.Len(t, card.Choices, 1, "the one file of that name goes to its confirmation card")
+	require.NoError(t, card.Choices[0].Op.DecodeArgs(&a))
+	assert.Equal(t, "c/other.safetensors", a.Path)
+}

@@ -228,3 +228,20 @@ func TestRespondApproval_AKeyInTheCommentIsHiddenAndTheDecisionStands(t *testing
 		})
 	}
 }
+
+// As in the chat (a message with a key is not read), the first message of a new Project that carries a key states no budget: no confirmation card of it is asked, while the Project
+// and the notice are there. The same message without the key asks the card.
+func TestProjectCreate_AFirstMessageWithAKeyAsksNoBudgetCard(t *testing.T) {
+	key := keyfixture.ProviderKeys()["kling (32 letters and digits)"]
+	f, _ := keyFixture(t)
+	cardsOf := func(content string) []domain.ThreadMessage {
+		p, err := f.Svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: content})
+		require.NoError(t, err)
+		ws, err := f.Svc.Chat.Workspace(context.Background(), p.ID)
+		require.NoError(t, err)
+		return chatfix.Cards(ws.Messages)
+	}
+
+	assert.NotEmpty(t, cardsOf("美容液のCMを作りたい。予算は $20 で"), "without a key the stated budget is asked")
+	assert.Empty(t, cardsOf("美容液のCMを作りたい。予算は $20 で。キーは "+key), "a message that is not read states no budget")
+}

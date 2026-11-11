@@ -1,9 +1,11 @@
 package credentials_test
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
 )
@@ -29,6 +31,10 @@ func TestPanel_TheProviderFormCarriesTheDebouncedChangeTrigger(t *testing.T) {
 func TestPanel_EachProviderRadioHasAStableIDSoTheFocusSurvivesTheSwap(t *testing.T) {
 	html := providerPanel(t)
 
-	assert.Regexp(t, `<input[^>]*id="api-provider-choice-official"[^>]*type="radio"`, html)
-	assert.Regexp(t, `<input[^>]*id="api-provider-choice-openrouter"[^>]*type="radio"`, html)
+	for _, value := range []string{"official", "openrouter"} {
+		radio := regexp.MustCompile(`<input[^>]*id="api-provider-choice-` + value + `"[^>]*>`).FindString(html)
+		require.NotEmpty(t, radio, value)
+		assert.Contains(t, radio, `name="provider"`, value)
+		assert.Contains(t, radio, `type="radio"`, value)
+	}
 }

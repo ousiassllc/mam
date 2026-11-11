@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,8 +16,8 @@ import (
 )
 
 func TestAProviderWithoutItsKeyFailsBeforeAnyRequest(t *testing.T) {
-	var hits int
-	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hits++ }))
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hits.Add(1) }))
 	defer srv.Close()
 	for _, p := range []viaprovider.Provider{viaprovider.OpenRouter, viaprovider.Fal, viaprovider.Replicate} {
 		// The maker's own key is stored; the aggregator's is not: it must not be used in its place.
@@ -26,12 +27,12 @@ func TestAProviderWithoutItsKeyFailsBeforeAnyRequest(t *testing.T) {
 
 		require.ErrorIs(t, err, modeladapter.ErrNoAPIKey, string(p))
 	}
-	assert.Zero(t, hits)
+	assert.Zero(t, hits.Load())
 }
 
 func TestAModelTheProviderDoesNotServeRefusesWithoutAnyRequest(t *testing.T) {
-	var hits int
-	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hits++ }))
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hits.Add(1) }))
 	defer srv.Close()
 	// Every key is stored, including Kling 4.0's own: the call still must not go to the maker's account.
 	_, b := backends(t, srv, viaprovider.OpenRouter, map[string]string{"openrouter": "k", "kling4": "k", "kling": "A:S"})
@@ -40,7 +41,7 @@ func TestAModelTheProviderDoesNotServeRefusesWithoutAnyRequest(t *testing.T) {
 
 	require.ErrorIs(t, err, modeladapter.ErrRejected)
 	assert.Contains(t, err.Error(), "OpenRouter は Kling 4.0 を提供していません")
-	assert.Zero(t, hits)
+	assert.Zero(t, hits.Load())
 }
 
 func TestAResolutionTheProviderHasNoVariantOfIsRefused(t *testing.T) {
@@ -55,10 +56,10 @@ func TestAResolutionTheProviderHasNoVariantOfIsRefused(t *testing.T) {
 }
 
 func TestTheOfficialProviderKeepsTheMakersBackends(t *testing.T) {
-	var kling4Hits int
+	var kling4Hits atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/text-to-video/") {
-			kling4Hits++
+			kling4Hits.Add(1)
 		}
 		w.WriteHeader(http.StatusTeapot)
 	}))
@@ -68,5 +69,5 @@ func TestTheOfficialProviderKeepsTheMakersBackends(t *testing.T) {
 	_, err := generate(t, b, domain.ModelKling4, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 5, Resolution: "720p", AspectRatio: "16:9"})
 
 	require.Error(t, err)
-	assert.Equal(t, 1, kling4Hits, "Kling 4.0 went to its own API")
+	assert.EqualValues(t, 1, kling4Hits.Load(), "Kling 4.0 went to its own API")
 }

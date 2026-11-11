@@ -178,7 +178,7 @@ func TestSaveProvider_AnUnreadableSettingsFileIsRefusedAndLeftAsItIs(t *testing.
 
 	rec := r.do(http.MethodPut, paths.APIProvider(), url.Values{"provider": {"fal"}})
 
-	assert.GreaterOrEqual(t, rec.Code, http.StatusBadRequest)
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), `data-testid="credential-error"`)
 	assert.Contains(t, rec.Body.String(), `data-testid="api-provider-problem"`)
 	assert.NotContains(t, rec.Body.String(), "API プロバイダーを保存しました")

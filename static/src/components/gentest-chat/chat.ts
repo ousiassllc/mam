@@ -1,10 +1,10 @@
 /**
  * The chat of the single generation screen (#1138; the Templ `organisms/gentest/chat`).
  *
- * The thread and the cards come from the server (htmx appends what a message answers to `#gtc-thread`); this does the four things a browser has to do around that:
+ * The thread and the cards come from the server (htmx appends what a message answers to `#gtc-thread`); this does the five things a browser has to do around that:
  * Enter sends the message and Shift+Enter breaks the line (an Enter that confirms an IME conversion does nothing), the box is emptied once the message was
  * taken (a refused message keeps its words), the thread follows a new entry (a swap that only redraws one, the result block asking for itself every 2 seconds, follows only while the reader is at the bottom), and a question that has been answered is turned off: only the option cards
- * that nobody has answered yet can be tapped, so an old card cannot send a stale answer.
+ * that nobody has answered yet can be tapped, so an old card cannot send a stale answer, and once a tap on an option card has been answered the focus (dropped to <body> by the disabled button) returns to the box `#gtc-content`.
  *
  * A generation never starts here: the only thing that does is the button of a confirmation card, a plain form of the server's.
  */

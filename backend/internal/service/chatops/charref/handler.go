@@ -45,9 +45,6 @@ const (
 	needSlot  = "顔（face）と体（body）のどちらの参照にするか教えてください。例:「この画像を主人公の顔にして」「この画像をミオの全身の参照にして」"
 )
 
-// maxChoices is how many Characters a card offers as buttons (as chatops/install does); more are asked to be named.
-const maxChoices = 6
-
 func slotLabel(slot string) string {
 	if slot == SlotBody {
 		return "体（body）"
@@ -98,8 +95,8 @@ func (h *Handler) Question(ctx context.Context, project domain.Project, op comma
 	if len(open) == 0 {
 		return chatops.Card{}, refuseLocked(found[0], slot)
 	}
-	if len(open) > maxChoices {
-		return chatops.Card{}, chatops.Refuse("Character が多すぎて選べません（%d 人）。Character の名前を言ってもう一度送ってください。候補: %s", len(open), names(open[:maxChoices]))
+	if len(open) > chatops.MaxChoices {
+		return chatops.Card{}, chatops.Refuse("Character が多すぎて選べません（%d 人）。Character の名前を言ってもう一度送ってください。候補: %s", len(open), names(open[:chatops.MaxChoices]))
 	}
 	if len(open) > 1 {
 		return choices(open, slot, asset.ID)

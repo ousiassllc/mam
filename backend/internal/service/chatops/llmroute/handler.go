@@ -37,7 +37,6 @@ const (
 	globalNote   = "この設定は全プロジェクトに効きます（アプリ全体の設定です）。"
 	liveNote     = "保存すると、次の LLM 呼び出しからすぐ使われます（再起動は要りません）。"
 	restartNote  = "保存した割り当ては、次にアプリを起動したときから使われます。"
-	maxChoices   = 5
 )
 
 var roleLabels = map[string]string{nlu.RolePrimary: "プライマリ", nlu.RoleFallback: "代替"}
