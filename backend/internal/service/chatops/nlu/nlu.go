@@ -5,6 +5,7 @@ package nlu
 
 import (
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -88,4 +89,25 @@ func AgentIn(message string) string {
 		}
 	}
 	return best
+}
+
+// AgentsIn lists the Agents a message names, each once: a name that stands inside a longer one of another Agent ("Director" in "Art Director") is not counted for the shorter.
+func AgentsIn(message string) []string {
+	type key struct{ id, name string }
+	var keys []key
+	for _, a := range llm.Agents() {
+		for _, k := range AgentKeys(string(a), failmsg.Label(a)) {
+			keys = append(keys, key{string(a), k})
+		}
+	}
+	sort.SliceStable(keys, func(i, j int) bool { return len(keys[i].name) > len(keys[j].name) })
+	n, seen, out := Norm(message), map[string]bool{}, []string(nil)
+	for _, k := range keys {
+		if !seen[k.id] && strings.Contains(n, k.name) {
+			seen[k.id] = true
+			out = append(out, k.id)
+			n = strings.ReplaceAll(n, k.name, "|")
+		}
+	}
+	return out
 }

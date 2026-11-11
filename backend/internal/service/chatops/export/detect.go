@@ -27,13 +27,23 @@ var (
 	exportWant = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:したい|します)`)
 	exportTe   = regexp.MustCompile(`(?:書き出|書出|エクスポート)して`)
 	exportSuru = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:する|す)`)
-	// askedTe is what follows 「して」 and still asks ("書き出していただけますか", "書き出していい？"; 「い」 alone is 「書き出していた」). narratedTe is what follows 「して」 when the export is told of
-	// ("書き出してます", "書き出してる", "書き出してた", "書き出してない", "書き出してみた", "書き出してあげた", "書き出してあるはず", "書き出して終わった", "書き出してよかった", "書き出してもらった", "書き出してくれた",
-	// "書き出してしまった", "書き出しておいた"): none of them asks. Anything else after 「して」 (a space, a symbol, "確認して", "お願い", "くれ", "くれたら", "みて") is the request.
-	askedTe    = regexp.MustCompile(`^い(?:ただ|い)`)
-	narratedTe = regexp.MustCompile(`^(?:い|る|た|な(?:い|かっ|く|けれ)|ま(?:す|し|せん)|み(?:た(?:[^い]|$)|まし)|あげ(?:た|まし)|あ(?:る|っ|り)|終わ(?:っ|りまし)|(?:よ|良)かっ|もらっ(?:た|ち)|もらいまし|くれ(?:た(?:[^らり]|$)|なかっ|まし|ませんでし)|しまっ|おいた(?:[^らり]|$)|おきまし)`)
-	// narratedSuru is what follows 「する」「す」 when it is no ask but a plan or a reason ("書き出すつもり", "書き出すのを忘れた", "書き出すかどうか", "書き出すはず").
-	narratedSuru = regexp.MustCompile(`^(?:の|と|か|が|は|を|も|に|で|けど|けれど|つもり|はず|こと|たび|のに|べき|でき|だけ|ほど|予定)`)
+	// narratedTe is what follows 「して」 when the export is told of or the sentence goes on with something else: "書き出してます／てる／てた／てない／ません", "してみた", "してあげた", "してあるはず",
+	// "して終わり／終わった／完了／済んだ／失敗／満足／正解／問題なかった", "してよかった", "してもらった／もらいたくない", "してくれた／くれて助かった／くれたら良かった", "しておいた", "してしまった",
+	// "して確認したら／見たけど", "して初めて", "して意味ある？／どう／何", "してはいけない／はだめ", "しても音がない／もだめ", "してて気づいた". None of them asks. Anything else after 「して」 (a space,
+	// a symbol, "確認して", "お願い", "くれ", "くれたら嬉しい", "みて") is the request.
+	narratedTe = regexp.MustCompile(`^(?:い|る|た|な(?:い|かっ|く|けれ)|ま(?:す|し|せん)|み(?:た(?:[^い]|$)|まし)|あげ(?:た|まし)|あ(?:る|っ|り)|終わ(?:っ|り|る|りまし)|終了|完了(?:し|だ|で|[。、！!？?\s]|$)|済(?:ん|み)|失敗|満足|正解|問題(?:な|が|は|も|あ)|` +
+		`(?:よ|良)かっ|もらっ(?:た|ち)|もらいまし|もらいたくな|くれ(?:た(?:[^らり]|$)|たら(?:よ|良)かっ|て|なかっ|まし|ませんでし)|しまっ|おいた(?:[^らり]|$)|おきまし|` +
+		`(?:確認し|再生し|チェックし|見|聞い|試し)た|初めて|意味|どう|何|は(?:いけ|だめ|ダメ|ならな)|も(?:だめ|ダメ|音|ない|同じ|変わら)|て)`)
+	// askedTe is what follows 「して」 and still asks ("書き出していただけますか", "書き出していい？"; 「い」 alone is 「書き出していた」): it keeps the narration list from taking "していい" for "している".
+	askedTe = regexp.MustCompile(`^い(?:ただ|い)`)
+	// narratedSuru is what follows 「する」「す」 when it is no ask but a plan, a reason, a noun it qualifies or a statement ("書き出すつもり", "書き出すのを忘れた", "書き出す方法／手順／設定／場所／人",
+	// "書き出す必要がある", "書き出すな", "書き出すより", "書き出すしかない", "書き出すんだよね", "書き出すよ", "書き出すってこと", "書き出す気がない").
+	narratedSuru = regexp.MustCompile(`^(?:の|と|か|が|は|を|も|に|で|けど|けれど|つもり|はず|こと|たび|のに|べき|でき|だけ|ほど|予定|方法|手順|設定|場所|人|必要|ほか|より|しかない|なんて|ってこと|って|んだ|ん|気が|` +
+		`[なよ]あ?(?:[。、！!？?\s]|$))`)
+	// explicitAsk is a form that asks in a question too ("書き出していただけますか", "書き出してくれる？", "書き出していい？", "書き出したい？"); "書き出す？" and "書き出しますか" are no ask but a question.
+	explicitAsk = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:したい|して(?:いただ|もらえ|もらいたい|くれる|くれます|くれない|くれませんか|くださ|下さい|ほしい|欲しい|ちょうだい|も?(?:いい|よい|良い)))`)
+	// asked ends a question: "…？", "…か", "…かな", "…っけ", "…の".
+	asked = regexp.MustCompile(`(?:[？?]|か|かな|かい|っけ|の)[？?\s]*$`)
 	// exportThenDownload is one request for both: "動画を書き出してダウンロードしたい", "export the video and download it". The word of the export is a verb that asks for it ("書き出して"),
 	// not the noun of an export that was made ("さっきの書き出しをダウンロード", "書き出した動画をダウンロード").
 	exportThenDownload = regexp.MustCompile(`(?i)((書き出|書出|エクスポート)(し)?(て|たい|てから|つつ|た上で)[^。！？!?\n]*ダウンロード|\bexport\b[^.!?\n]*\band\b[^.!?\n]*\bdownload)`)
@@ -101,8 +111,11 @@ func classify(message string) kind {
 	return kindNone
 }
 
-// asksExportAgain reports whether the message holds a verb that asks for an export (exportWant, 「書き出して」, 「書き出す」) that no narration follows (narratedTe, narratedSuru).
+// asksExportAgain reports whether the message holds a verb that asks for an export (exportWant, 「書き出して」, 「書き出す」) that no narration follows (narratedTe, narratedSuru), and that is not asked about (asked) without an explicit ask (explicitAsk).
 func asksExportAgain(message string) bool {
+	if asked.MatchString(message) && !explicitAsk.MatchString(message) { // a question about the export, not a request for it
+		return false
+	}
 	if exportWant.MatchString(message) {
 		return true
 	}

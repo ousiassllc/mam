@@ -96,13 +96,18 @@ func TestFallback_TheButtonsOfAModelNameStopAtTheCardLimit(t *testing.T) {
 // The Agent may stand in a clause of its own ("Director は、LLM を Claude Opus にして"): the one clause that asks has the model, the message has the Agent and the role.
 func TestDetect_TheAgentInAnotherClauseIsTheAgentOfTheOneRequest(t *testing.T) {
 	for message, want := range map[string]Args{
-		"Director は、LLM を Claude Opus にして":       {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		"Director、LLM を Claude Opus にして":         {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		"Director に、LLM を Claude Opus にして":       {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		"まず Director は、LLM を Claude Opus に切り替えて": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		"Producer は、代替を GPT にして":                 {Agent: "producer", Role: "fallback", Provider: "openai", Model: "GPT"},
-		"LLM を Claude Opus にして、Director で":       {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		"Director の代替は、LLM を GPT にして":            {Agent: "director", Role: "fallback", Provider: "openai", Model: "GPT"},
+		"Director は、LLM を Claude Opus にして":         {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director、LLM を Claude Opus にして":           {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director に、LLM を Claude Opus にして":         {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"まず Director は、LLM を Claude Opus に切り替えて":   {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Producer は、代替を GPT にして":                   {Agent: "producer", Role: "fallback", Provider: "openai", Model: "GPT"},
+		"LLM を Claude Opus にして、Director で":         {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director の代替は、LLM を GPT にして":              {Agent: "director", Role: "primary", Provider: "openai", Model: "GPT"}, // the role is the request clause's own
+		"Director の代替は残して、LLM を Claude Opus にして":   {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director の代替はそのままで、LLM を Claude Opus にして": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director の代替は触らずに、LLM を Claude Opus にして":  {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		// two Agents are named and the sentence that asks names none: the Agent is left empty (the chat asks which), the role is still the sentence's
+		"Producer のバックアップはそのまま。Director は、LLM を Claude Opus にして": {Agent: "", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
 	} {
 		ops := detect(message)
 		require.Len(t, ops, 1, message)
@@ -125,5 +130,14 @@ func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
 		require.NoError(t, ops[0].DecodeArgs(&a))
 		assert.Equal(t, "Claude Opus", a.Model, message)
 	}
-	assert.Empty(t, detect("Director の LLM を Claude Opus にして、Producer は gpt-4o にして"), "a model ID is a second route")
+	for _, message := range []string{ // an ASCII letter or digit, or a katakana, makes a name a model's
+		"Director の LLM を Claude Opus にして、Producer は gpt-4o にして",
+		"Director の LLM を Claude Opus にして、Producer は o3 mini にして",
+		"Director の LLM を Claude Opus にして、Producer は Llama 3 にして",
+		"Director の LLM を Claude Opus にして、Producer は Mistral Large にして",
+		"Director の LLM を Claude Opus にして、Producer は ミストラル にして",
+		"Director の LLM を Claude Opus にして、Producer の代替は o3 mini にして",
+	} {
+		assert.Empty(t, detect(message), message)
+	}
 }

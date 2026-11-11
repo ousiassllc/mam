@@ -70,6 +70,11 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"ffmpeg のログを置くフォルダを変えたい",
 		"ffmpeg のキャッシュを置くフォルダを設定して",
 		"ffmpeg の出力先を入れるフォルダを指定して",
+		"ffmpeg の出力ファイル先のフォルダを選びたい", // two qualifiers
+		"ffmpeg の出力データ先のフォルダを選びたい",
+		"ffmpeg の temp を置く場所を変えたい", // a blank between an ASCII word and the particle
+		"ffmpeg の output を置く場所を変えたい",
+		"ffmpeg の temp フォルダを変えたい",
 		"ffmpeg のパスの入ったフォルダを作成して",
 		"FaceFusion のフォルダを作成したい",
 		"MCP でエクスポートした動画を作りたい",
@@ -100,7 +105,8 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"MCP のトークンを作って",
 		"ffmpeg のバイナリの場所を選びたい",
 		"FaceFusion のフォルダを指定して",
-		"ffmpeg のパスを設定して保存して", // an output word elsewhere in the clause does not cancel a path being set
+		"ffmpeg のバイナリを置く場所を変えたい", // a putting verb does not make the binary an output
+		"ffmpeg のパスを設定して保存して",    // an output word elsewhere in the clause does not cancel a path being set
 		"ffmpeg のパスを変更して保存したい",
 		"ffmpeg のパスを結果フォルダにして",
 		"FaceFusion のフォルダを一時的に変更して",

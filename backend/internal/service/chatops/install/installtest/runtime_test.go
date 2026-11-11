@@ -225,3 +225,19 @@ func TestHF_ASameNamedFileThatIsInstalledAlreadyIsNotOffered(t *testing.T) {
 	_, err = h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
 	assert.ErrorIs(t, err, chatops.ErrNoChange)
 }
+
+// Among same-named files the first cannot be installed, the second is installed already and the third can be installed: the third is the file.
+func TestHF_TheInstallableOneAmongSameNamedFilesIsChosen(t *testing.T) {
+	h := newHub()
+	h.repo.Files = []install.HFFile{
+		{Path: "a/model.safetensors", Name: "model.safetensors", Size: gb, Folder: "loras"},
+		{Path: "b/model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Installed: true, Folder: "loras"},
+		{Path: "c/model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Folder: "loras"},
+	}
+	card, err := h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
+	require.NoError(t, err)
+	require.Len(t, card.Choices, 1)
+	var a install.HFArgs
+	require.NoError(t, card.Choices[0].Op.DecodeArgs(&a))
+	assert.Equal(t, "c/model.safetensors", a.Path)
+}

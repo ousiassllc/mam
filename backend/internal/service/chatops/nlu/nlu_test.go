@@ -49,3 +49,11 @@ func TestClauseEnd_SplitsAtEveryEndOfAClause(t *testing.T) {
 	assert.Equal(t, []string{"a", " b", " c", " d", "e", "f"}, nlu.ClauseEnd.Split("a、 b！ c? d. e\nf", -1))
 	assert.Equal(t, []string{"Gemini 2.5 Flash"}, nlu.ClauseEnd.Split("Gemini 2.5 Flash", -1), "a period inside a name is no end")
 }
+
+func TestAgentsIn(t *testing.T) {
+	assert.Equal(t, []string{"director"}, nlu.AgentsIn("Director は、LLM を Claude Opus にして"))
+	assert.Equal(t, []string{"art_director"}, nlu.AgentsIn("Art Director の LLM を GPT にして"))
+	assert.ElementsMatch(t, []string{"art_director", "director"}, nlu.AgentsIn("Art Director と Director の LLM"))
+	assert.ElementsMatch(t, []string{"producer", "director"}, nlu.AgentsIn("Producer のバックアップはそのまま。Director は、LLM を Claude Opus にして"))
+	assert.Empty(t, nlu.AgentsIn("LLM を Claude Opus にして"))
+}

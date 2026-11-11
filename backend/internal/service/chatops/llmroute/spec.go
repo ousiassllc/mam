@@ -7,6 +7,7 @@ package llmroute
 import (
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -104,10 +105,15 @@ func namesRouteModel(sentence string) bool {
 	return m != nil && !nlu.IsInquiry(sentence) && modelLike(m[1]) && (nlu.AgentIn(sentence) != "" || llmWord.MatchString(sentence))
 }
 
-// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus") or is a model ID as the handler accepts it (checkName: no blanks or Japanese).
+// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus") or has an ASCII letter or digit ("o3 mini", "Llama 3", "gpt-4o") or a katakana ("ミストラル").
+// A word of hiragana and kanji only ("据え置き", "そのまま", "慎重な性格") is none.
 func modelLike(name string) bool {
-	_, named := providerOf(name)
-	return named || checkName(name, nil) == nil
+	if _, named := providerOf(name); named {
+		return true
+	}
+	return strings.IndexFunc(name, func(r rune) bool {
+		return (r < unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r))) || unicode.Is(unicode.Katakana, r)
+	}) >= 0
 }
 
 // detect reads "Director の LLM を Claude Opus にして" without the model, so that the LLM itself can be assigned while none is set up.
@@ -134,9 +140,11 @@ func detect(message string) []commandinterpreter.Operation {
 	if m == nil {
 		return nil
 	}
+	// The role is the one the sentence that asks says, never another clause's ("Director の代替は残して、LLM を Claude Opus にして" is the primary). The Agent may stand in another clause
+	// ("Director は、LLM を Claude Opus にして"): it is taken from the whole message only when the message names one Agent (two Agents: the chat asks which).
 	a := Args{Agent: nlu.AgentIn(sentence), Role: nlu.RoleOf(sentence), Model: m[1]}
-	if a.Agent == "" { // the Agent stands in another clause ("Director は、LLM を Claude Opus にして"): the one sentence that asks has the model, the message the Agent and the role
-		a.Agent, a.Role = nlu.AgentIn(message), nlu.RoleOf(message)
+	if agents := nlu.AgentsIn(message); a.Agent == "" && len(agents) == 1 {
+		a.Agent = agents[0]
 	}
 	if id, ok := providerOf(m[1]); ok {
 		a.Provider = id
