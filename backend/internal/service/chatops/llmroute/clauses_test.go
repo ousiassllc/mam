@@ -148,13 +148,16 @@ func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
 		"Director の LLM を Claude Opus にして、Producer は Director より速いのにして",
 		"Director の LLM を Claude Opus にして、Producer はそのままにして",
 	} {
-		ops := detect(message)
-		require.Len(t, ops, 1, message)
-		var a Args
-		require.NoError(t, ops[0].DecodeArgs(&a))
-		assert.Equal(t, "Claude Opus", a.Model, message)
+		t.Run(message, func(t *testing.T) {
+			ops := detect(message)
+			if assert.Len(t, ops, 1) {
+				var a Args
+				require.NoError(t, ops[0].DecodeArgs(&a))
+				assert.Equal(t, "Claude Opus", a.Model)
+			}
+		})
 	}
-	for _, message := range []string{ // an ASCII letter or digit, or a katakana, makes a name a model's
+	for _, message := range []string{ // an ASCII letter or digit, or a katakana, makes a name a model's; a degree word does not take that away when a model token stands in the name
 		"Director の LLM を Claude Opus にして、Producer は gpt-4o にして",
 		"Director の LLM を Claude Opus にして、Producer は o3 mini にして",
 		"Director の LLM を Claude Opus にして、Producer は Llama 3 にして",
@@ -164,8 +167,19 @@ func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
 		"Director の LLM を Claude Opus にして、Producer は Llama 3 の 70B にして",
 		"Director の LLM を Claude Opus にして、Producer は DeepSeek 最新にして",
 		"Director の LLM を Claude Opus にして、Producer は軽い Gemma にして",
+		"Director の LLM を Claude Opus にして、Producer は速い Gemma にして",
+		"Director の LLM を Claude Opus にして、Producer は遅い Mistral にして",
+		"Director の LLM を Claude Opus にして、Producer は Mixtral 8x7B にして",
+		"Director の LLM を Claude Opus にして、Producer は R1 の 高速版にして",
+		"Director の LLM を Claude Opus にして、Producer は o1 の 長考版にして",
+		"Director の LLM を Claude Opus にして、Producer は o3 の 速いやつにして",
+		"Director の LLM を Claude Opus にして、Producer は o4 の 速い方にして",
+		"Director の LLM を Claude Opus にして、Producer は ミストラル 長文版にして",
+		"Director の LLM を Claude Opus にして、Producer は ミストラル の長文版にして",
+		"Director の LLM を Claude Opus にして、Producer は ラマ 3 の 速い版にして",
+		"Director の LLM を Claude Opus にして。Storyboard は R1 の 速いやつにして",
 		"Director の LLM を Claude Opus にして、Producer の代替は o3 mini にして",
 	} {
-		assert.Empty(t, detect(message), message)
+		t.Run(message, func(t *testing.T) { assert.Empty(t, detect(message)) })
 	}
 }

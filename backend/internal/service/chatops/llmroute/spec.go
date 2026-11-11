@@ -105,10 +105,10 @@ func namesRouteModel(sentence string) bool {
 	return m != nil && !nlu.IsInquiry(sentence) && modelLike(m[1]) && (nlu.AgentIn(sentence) != "" || llmWord.MatchString(sentence))
 }
 
-// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus"), or has an ASCII letter or digit ("o3 mini", "Qwen 3 の 32B", "軽い Gemma") or a katakana ("ミストラル").
-// It is none when it is clearly something else: a word that keeps the route ("キープ", "据え置き"), says "the same" or a limit ("Director と同じ", "デフォルトのまま", "3 回まで", "JSON で返すように"), names an Agent
-// ("Director の設定", "Director より速い"), or is a count, a duration or a degree ("3 回", "5 秒", "丁寧な English", "一緒") with no model word of 3 or more ASCII letters in it (so "軽い Gemma" is a model's).
-// A word of hiragana and kanji only ("慎重な性格") is none.
+// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus"), or has an ASCII letter or digit ("o3 mini", "Qwen 3 の 32B", "速い Gemma") or a katakana ("ミストラル").
+// It is none when it is clearly something else: a word that keeps the route ("キープ", "据え置き"), says "the same" or a limit ("Director と同じ", "デフォルトのまま", "3 回まで", "JSON で返すように"), or names an
+// Agent ("Director の設定", "Director より速い"); and a count, a duration or a degree ("3 回", "5 秒", "丁寧な English", "一緒") is none unless a model token stands in it (hasModelToken: "R1 の 高速版",
+// "速い Gemma", "ミストラル 長文版"). A word of hiragana and kanji only ("慎重な性格") is none.
 func modelLike(name string) bool {
 	if _, named := providerOf(name); named {
 		return true
@@ -116,12 +116,23 @@ func modelLike(name string) bool {
 	if keepWord.MatchString(name) || notModel.MatchString(name) || len(nlu.AgentsIn(name)) > 0 {
 		return false
 	}
-	if degreeWord.MatchString(name) && !modelWord.MatchString(genericWord.ReplaceAllString(name, "")) {
+	if degreeWord.MatchString(name) && !hasModelToken(name) {
 		return false
 	}
 	return strings.IndexFunc(name, func(r rune) bool {
 		return (r < unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r))) || unicode.Is(unicode.Katakana, r)
 	}) >= 0
+}
+
+// hasModelToken reports whether a name holds a word of a model's name: an ASCII word with a letter and a digit ("R1", "o3", "32B") or with 3 or more letters ("Gemma"), or a katakana run of 2 or more
+// characters ("ミストラル", "ラマ"), once the names of languages and formats (genericWord) are taken out.
+func hasModelToken(name string) bool {
+	for _, w := range modelToken.FindAllString(genericWord.ReplaceAllString(name, " "), -1) {
+		if strings.IndexFunc(w, unicode.IsLetter) >= 0 && (len(w) >= 3 || strings.IndexFunc(w, unicode.IsDigit) >= 0) {
+			return true
+		}
+	}
+	return false
 }
 
 var (
@@ -132,10 +143,11 @@ var (
 	keepWord = regexp.MustCompile(`(?i)残|そのまま|のまま|触|変え(?:ず|ない)|維持|据え置き|キープ|keep`)
 	// notModel is what a word that sets no model says: "Director と同じ", "デフォルト", "3 回まで", "返すように".
 	notModel = regexp.MustCompile(`同じ|デフォルト|まで|ように|返す`)
-	// degreeWord is a count, a duration or a degree ("3 回", "5 秒", "一緒", "より速い"); genericWord is a name of a language or a format, no model's; modelWord is a word of a model's name (3 or more ASCII letters).
+	// degreeWord is a count, a duration or a degree ("3 回", "5 秒", "一緒", "より速い"); genericWord is a name of a language or a format, no model's; modelToken finds the words that may be a model's
+	// (an ASCII run of letters and digits, or a katakana run of 2 or more characters: hasModelToken tells which are).
 	degreeWord  = regexp.MustCompile(`回|秒|分|個|つ|一緒|同様|設定|より|丁寧|速|遅|短|長`)
 	genericWord = regexp.MustCompile(`(?i)\b(?:English|Japanese|JSON|XML|YAML|Markdown)\b`)
-	modelWord   = regexp.MustCompile(`[A-Za-z]{3,}`)
+	modelToken  = regexp.MustCompile(`[A-Za-z0-9]+|[\p{Katakana}ー]{2,}`)
 )
 
 // roleOf is the role the sentence that asks says; a sentence with no role word takes the role from the clause just before it when that is a topic of the role ("Producer の代替は、LLM を Gemini に
