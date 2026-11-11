@@ -10,6 +10,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
@@ -79,7 +80,8 @@ func (h handlers) list(ctx context.Context, in ListInput) (ListOutput, error) {
 	}
 	cond := in.Normalize()
 	if err := cond.Validate(); err != nil {
-		return ListOutput{}, &service.ValidationError{Message: err.Error()}
+		// the value that is no word of the condition is told in English by the filter: it is the detail of the common error (#1010), the sentence is Japanese
+		return ListOutput{}, apperr.New(apperr.CodeInvalidInput).WithCause("絞り込みの条件に、選べない値があります。").Wrap(err)
 	}
 	if cond.Commercial == "" { // without commercial the setting "商用OKのモデルだけを使う" decides, as list_model_catalog does
 		cond.Commercial = string(modellicense.DefaultFilter())

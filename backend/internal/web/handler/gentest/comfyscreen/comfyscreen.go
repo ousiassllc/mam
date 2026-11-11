@@ -5,7 +5,6 @@ package comfyscreen
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/url"
 	"slices"
@@ -95,11 +94,7 @@ func (h Handlers) data(ctx context.Context, model, notice, refusal string) gente
 	}
 	rows, err := p.Rows(ctx, d.Model)
 	if err != nil {
-		d.Err = err.Error()
-		var invalid *gterr.InvalidError
-		if errors.As(err, &invalid) {
-			d.Err = invalid.Message
-		}
+		d.Err = gtshare.Problem(h.Gentest.Logger, "exposed value picker could not read the rows of the model", err)
 		return d
 	}
 	for _, r := range rows {

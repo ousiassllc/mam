@@ -53,6 +53,9 @@ type Options struct {
 	Retry Retry
 	// OnRetry is told before a download is resumed (it must not block; ctx belongs to the download). Nil: nothing.
 	OnRetry func(ctx context.Context, e RetryEvent)
+	// Limiter caps the concurrent downloads per host. Nil selects the limiter of the process (MaxPerHost per host, shared by every
+	// download); a test passes its own.
+	Limiter *HostLimiter
 }
 
 // Failures of a download. A wrapped *HTTPError, ErrChecksum, ErrSize and *NoSpaceError are definitive (the part

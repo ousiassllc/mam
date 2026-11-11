@@ -10,12 +10,17 @@ import (
 templ Field(f FieldData) {
 	<div id={ f.ID } class="flex min-w-0 flex-col gap-1" data-model-pick-field data-testid={ f.TestID }>
 		for _, in := range f.Inputs {
-			<input type="hidden" name={ in.Name } value={ in.Value } data-mp-from={ in.Key }/>
+			if in.Name == "" {
+				<input type="hidden" value={ in.Value } data-mp-from={ in.Key } disabled?={ f.Disabled }/>
+			} else {
+				<input type="hidden" name={ in.Name } value={ in.Value } data-mp-from={ in.Key } disabled?={ f.Disabled }/>
+			}
 		}
 		<button
 			type="button"
 			id={ f.buttonID() }
 			class={ "flex w-full cursor-pointer items-center gap-3 rounded-md border bg-bone px-3 py-2 text-left text-sm text-ink hover:border-accent focus-visible:focus-ring", fieldBorder(f.Invalid) }
+			disabled?={ f.Disabled }
 			aria-haspopup="dialog"
 			aria-label={ f.Label + "を選ぶ" }
 			hx-get={ f.URL }

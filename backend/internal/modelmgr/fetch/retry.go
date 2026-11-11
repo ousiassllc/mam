@@ -127,7 +127,7 @@ func connectionLost(err error) bool {
 func transferResuming(ctx context.Context, dest, part string, have int64, src Source, o Options) error {
 	limit := o.Retry.attempts()
 	for attempt := 1; ; attempt++ {
-		err := transfer(ctx, part, have, src, o)
+		err := transferLimited(ctx, part, have, src, o)
 		var he *HTTPError
 		lost := connectionLost(err)
 		transient := errors.As(err, &he) && he.Transient()

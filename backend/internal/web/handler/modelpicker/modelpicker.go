@@ -3,7 +3,7 @@
 // answers the dialog's body, and GET /model-picker/<source>?part=results the cards alone for a changed filter. The list is narrowed by the server's
 // modelfilter (a Source calls it on its own service); each source remembers its condition (pickfilter) under its own key, so a screen opens as it was left.
 //
-// The sources are the screens that choose one model: the prompt match and the partial redraw of the generation test, a Shot's video model, the image and video assignment of the settings and the LLM assignment. The generation test's form, which chooses several, and the model manager's
+// The sources are the screens that choose one model: the prompt match and the partial redraw of the generation test, a Shot's video model, the image and video assignment of the settings, the LLM assignment and the LoRA of the generation test's form (sources_lora.go). The generation test's form, which chooses several, and the model manager's
 // catalog, which lists, draw the same bar and panel in their own pages (handler/gentest, handler/modelmgr) and are not sources.
 package modelpicker
 
@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
@@ -48,9 +49,25 @@ type Services struct {
 // source is one list a field chooses from.
 type source struct {
 	title, empty string
+	// keepAll: the setting 「商用OKのモデルだけを使う」 does not narrow this source until the user states a commercial-use choice. A LoRA is a file next to a model, not a
+	// model on its own: the page warns about one that is not confirmed commercial (data-commercial-only) rather than leaving it out of the choices (model-manager-lora.md §4.1).
+	keepAll bool
 	// facets are the sections of the panel; list the cards of the models that pass the condition, with the numbers of the line above them.
 	facets func(ctx context.Context, svc Services) modelpick.Facets
 	list   func(ctx context.Context, svc Services, q url.Values, cond modelfilter.Condition) ([]modelcard.Card, pickfilter.Counts, error)
+}
+
+// resolver is how the condition of a request becomes the one the list is narrowed by: the setting decides the commercial part left empty, unless the source keeps all.
+func (s source) resolver() func(modelfilter.Condition) modelfilter.Condition {
+	if !s.keepAll {
+		return pickfilter.Resolve
+	}
+	return func(cond modelfilter.Condition) modelfilter.Condition {
+		if cond.Commercial == "" {
+			cond.Commercial = string(modellicense.FilterAll)
+		}
+		return cond.Normalize()
+	}
 }
 
 // sources are the sources by key.
@@ -77,12 +94,17 @@ func Handler(svc Services) gin.HandlerFunc {
 		}
 		cond, problem := screen.Read(c)
 		screen.Remember(c, cond)
-		cards, counts, err := src.list(ctx, svc, c.Request.URL.Query(), pickfilter.Resolve(cond))
+		resolve := src.resolver()
+		cards, counts, err := src.list(ctx, svc, c.Request.URL.Query(), resolve(cond))
 		if err != nil { // a condition the source cannot take: the start
 			problem, cond = err.Error(), screen.Start
-			cards, counts, _ = src.list(ctx, svc, c.Request.URL.Query(), pickfilter.Resolve(cond))
+			cards, counts, _ = src.list(ctx, svc, c.Request.URL.Query(), resolve(cond))
 		}
-		p := modelpick.Picker{Title: src.title, Bar: pickfilter.Sync(screen.Filter(cond, problem, counts), c), ResultsID: resultsID, Cards: cards, Empty: src.empty}
+		bar := screen.Filter(cond, problem, counts)
+		if src.keepAll {
+			bar.Cond, bar.DefaultCommercial = resolve(cond), modellicense.FilterAll
+		}
+		p := modelpick.Picker{Title: src.title, Bar: pickfilter.Sync(bar, c), ResultsID: resultsID, Cards: cards, Empty: src.empty}
 		c.Header("Cache-Control", "no-store")
 		if c.Query("part") == "results" {
 			gtshare.Render(c, http.StatusOK, modelpick.PickerAnswer(p))

@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/apperr/errmap"
+	"github.com/ousiassllc/mam/backend/internal/logging"
 )
 
 // Media is a failed run of ffmpeg (the Rough Cut, the export, composing a Take, the audio mix) on the work that what names (the catalog key
@@ -19,20 +20,51 @@ import (
 // remedy). A failure of ffmpeg that no cause is known for (media_failed) gets an error ID and is logged under it.
 func Media(logger *slog.Logger, what string, err error) (*apperr.Error, string) {
 	e := errmap.Media(what, err)
-	settle(logger, e, "media processing failed")
+	_ = settle(logger, e, "media processing failed")
 	return e, reason(e, true)
 }
 
+// Line is err, a failure that no handler worded, as the one line a screen or a status text shows (#1010): errmap's cause and remedy and, for a
+// failure nobody could put a cause to (unknown), an error ID that the log line msg shares. The original message is not on the screen (it is
+// English and a line has no "詳細を見る"): the log line has it, for a failure that is known too. nil gives "".
+func Line(logger *slog.Logger, msg string, err error) string {
+	e := errmap.Explain(err)
+	if e == nil {
+		return ""
+	}
+	if settle(logger, e, msg) && logger != nil {
+		logger.Warn(msg, "code", string(e.Code), "err", Logged(e.Unwrap()))
+	}
+	return reason(e, false)
+}
+
+// Logged is err as the text a log line carries: the secrets in it hidden (logging.Redact), because the file handler writes what it is given and only the
+// reader hides a secret. nil gives "".
+func Logged(err error) string {
+	if err == nil {
+		return ""
+	}
+	return logging.Redact(err.Error())
+}
+
 // settle gives a failure nobody could put a cause to (unknown, media_failed) an error ID and writes its cause to the log under it. The other
-// failures are not logged here (their cause is their code). A caller that went away (a preview that was left) did not fail.
-func settle(logger *slog.Logger, e *apperr.Error, msg string) {
-	if errors.Is(e, context.Canceled) || (e.Code != apperr.CodeUnknown && e.Code != apperr.CodeMediaFailed) || e.ID != "" {
-		return
+// failures are not logged here (their cause is their code). A caller that went away (a preview that was left) did not fail. It reports whether e
+// is such a known failure that settle left alone (so that a caller that wants the original message in the log can write it).
+func settle(logger *slog.Logger, e *apperr.Error, msg string) (known bool) {
+	if errors.Is(e, context.Canceled) {
+		return false
+	}
+	if e.Code != apperr.CodeUnknown && e.Code != apperr.CodeMediaFailed {
+		return true
+	}
+	if e.ID != "" {
+		return false
 	}
 	e.ID = apperr.NewID()
 	if logger != nil {
-		logger.Error(msg, "error_id", e.ID, "code", string(e.Code), "err", e.Unwrap())
+		logger.Error(msg, "error_id", e.ID, "code", string(e.Code), "err", Logged(e.Unwrap()))
 	}
+	return false
 }
 
 // reason is the sentence a screen, a chat message and a tool error say: the cause and the remedy, with the start of the detail when withDetail

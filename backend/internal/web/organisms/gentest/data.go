@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules/loraselect"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagination"
@@ -155,11 +154,10 @@ type Compose struct {
 	Picked                                       []Ref
 	Spend                                        string
 	MaxImageBytes                                int // the largest input image; the browser checks it when an image is chosen
-	// AvoidPose is the checkbox "do not copy the pose of the references". LoRAs are the LoRA files of the engine (none: the choice
-	// is not drawn), LoRA the one chosen ("" for none) and LoRAStrength its strength (nil: not given, so the default).
+	// AvoidPose is the checkbox "do not copy the pose of the references". LoRAField is the choice of a LoRA file of the engine, a field of the model picker that
+	// shows the one chosen (nil: the engine has none, so the choice is not drawn; #1119, #1011) and LoRAStrength its strength (nil: not given, so the default).
 	AvoidPose    bool
-	LoRAs        []loraselect.Option // what the model manager knows of each: the base model, strength, trigger words and license (#1119)
-	LoRA         string
+	LoRAField    *modelpick.FieldData
 	LoRAStrength *float64
 	// CommercialOnly: the setting "商用OKのモデルだけを使う" is on, so the LoRA note warns about a LoRA that is not 商用OK (#1119).
 	CommercialOnly bool

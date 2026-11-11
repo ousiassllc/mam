@@ -23,6 +23,13 @@ const FORM = `
     <textarea name="prompt">a fox</textarea>
     <textarea name="negative"></textarea>
   </div>
+  <div data-gt-lora>
+    <div id="gt-lora-name" data-model-pick-field>
+      <input type="hidden" name="lora" value="a.safetensors" data-mp-from="value">
+      <input type="hidden" value="true" data-mp-from="known">
+      <span data-mp-current><b>a.safetensors</b></span>
+    </div>
+  </div>
   <details data-gt-advanced open>
     <div data-gt-adv-field="seed"><input type="number" name="seed" value=""></div>
     <div data-gt-adv-field="steps">
@@ -109,6 +116,21 @@ describe('the こだわり tier marks what was changed and puts it back (spec/co
     expect(q<HTMLInputElement>('[data-gt-adv-range]').value).to.equal('15');
     expect(q<HTMLInputElement>('input[name="seed"]').value).to.equal('');
     expect(q<HTMLSelectElement>('select[name="sampler"]').value).to.equal('');
+  });
+
+  it('puts the LoRA of the model picker field back: the file, what the note reads and the card it shows (#1011)', () => {
+    const field = q<HTMLElement>('#gt-lora-name');
+    const value = q<HTMLInputElement>('input[name="lora"]');
+    value.value = 'b.safetensors';
+    q<HTMLInputElement>('[data-mp-from="known"]').value = 'false';
+    field.querySelector('[data-mp-current]')!.innerHTML = '<b>b.safetensors</b>';
+    value.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(items()).to.deep.equal(['lora']);
+    q<HTMLButtonElement>('[data-gt-reset="lora"]').click();
+    expect(items()).to.deep.equal([]);
+    expect(value.value).to.equal('a.safetensors');
+    expect(q<HTMLInputElement>('[data-mp-from="known"]').value).to.equal('true');
+    expect(field.querySelector('[data-mp-current]')!.textContent).to.equal('a.safetensors');
   });
 
   it('keeps the list as it is while the same items differ, and writes only the words that moved', () => {
