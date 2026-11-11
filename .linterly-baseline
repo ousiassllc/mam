@@ -4,7 +4,6 @@
 4905	backend/internal/agent/generation/
 415	backend/internal/agent/generation/orchestrator_candidates_test.go
 384	backend/internal/agent/generation/orchestrator_refpack_regen_test.go
-354	backend/internal/agent/jobqueue/queue_test.go
 3009	backend/internal/agent/judge/
 3223	backend/internal/agent/modeladapter/
 2948	backend/internal/agent/repair/
