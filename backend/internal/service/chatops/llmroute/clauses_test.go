@@ -102,12 +102,20 @@ func TestDetect_TheAgentInAnotherClauseIsTheAgentOfTheOneRequest(t *testing.T) {
 		"まず Director は、LLM を Claude Opus に切り替えて":   {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
 		"Producer は、代替を GPT にして":                   {Agent: "producer", Role: "fallback", Provider: "openai", Model: "GPT"},
 		"LLM を Claude Opus にして、Director で":         {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		"Director の代替は、LLM を GPT にして":              {Agent: "director", Role: "primary", Provider: "openai", Model: "GPT"}, // the role is the request clause's own
-		"Director の代替は残して、LLM を Claude Opus にして":   {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director の代替は、LLM を GPT にして":              {Agent: "director", Role: "fallback", Provider: "openai", Model: "GPT"}, // a topic clause names the role
+		"Producer の代替は、LLM を Gemini にして":           {Agent: "producer", Role: "fallback", Provider: "google", Model: "Gemini"},
+		"Director のバックアップは、LLM を GPT にして":          {Agent: "director", Role: "fallback", Provider: "openai", Model: "GPT"},
+		"Producer のフォールバックは、LLM を Gemini にして":      {Agent: "producer", Role: "fallback", Provider: "google", Model: "Gemini"},
+		"Producer の fallback は、LLM を Gemini にして":   {Agent: "producer", Role: "fallback", Provider: "google", Model: "Gemini"},
+		"Producer の代替は、LLM を Claude Opus に切り替えて":   {Agent: "producer", Role: "fallback", Provider: "anthropic", Model: "Claude Opus"},
+		"Director の代替は残して、LLM を Claude Opus にして":   {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"}, // a clause that keeps it names no role to change
+		"Director の代替は変えずに、LLM を Claude Opus にして":  {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
 		"Director の代替はそのままで、LLM を Claude Opus にして": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
 		"Director の代替は触らずに、LLM を Claude Opus にして":  {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		// two Agents are named and the sentence that asks names none: the Agent is left empty (the chat asks which), the role is still the sentence's
-		"Producer のバックアップはそのまま。Director は、LLM を Claude Opus にして": {Agent: "", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		// the Agent is the one the clause before the request names ("Director は、"), though another Agent is named after or before it
+		"Producer のバックアップはそのまま。Director は、LLM を Claude Opus にして": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Director は、LLM を Claude Opus にして。Producer のバックアップはそのまま": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Art Director と Director は、LLM を Gemini にして":             {Agent: "", Role: "primary", Provider: "google", Model: "Gemini"}, // two Agents: the chat asks which
 	} {
 		ops := detect(message)
 		require.Len(t, ops, 1, message)
@@ -123,6 +131,11 @@ func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
 		"Director の LLM を Claude Opus にして、Producer は据え置きにして",
 		"Director の LLM を Claude Opus にして。モデルはそのままにして",
 		"Director の LLM を Claude Opus にして。Director は慎重な性格にして",
+		"Director の LLM を Claude Opus にして、Producer はキープにして", // a name with Japanese in it is no model's, though an ASCII word or a katakana stands in it
+		"Director の LLM を Claude Opus にして、Producer はデフォルトのままにして",
+		"Director の LLM を Claude Opus にして、Producer は JSON で返すようにして",
+		"Director の LLM を Claude Opus にして、Producer は 3 回までにして",
+		"Director の LLM を Claude Opus にして、Producer は Director と同じにして",
 	} {
 		ops := detect(message)
 		require.Len(t, ops, 1, message)

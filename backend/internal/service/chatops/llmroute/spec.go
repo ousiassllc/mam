@@ -105,15 +105,37 @@ func namesRouteModel(sentence string) bool {
 	return m != nil && !nlu.IsInquiry(sentence) && modelLike(m[1]) && (nlu.AgentIn(sentence) != "" || llmWord.MatchString(sentence))
 }
 
-// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus") or has an ASCII letter or digit ("o3 mini", "Llama 3", "gpt-4o") or a katakana ("ミストラル").
-// A word of hiragana and kanji only ("据え置き", "そのまま", "慎重な性格") is none.
+// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus") or has an ASCII letter or digit ("o3 mini", "Llama 3", "gpt-4o") or a katakana ("ミストラル") and no hiragana or kanji beside them.
+// A word with Japanese in it ("据え置き", "そのまま", "慎重な性格", "デフォルトのまま", "JSON で返す", "3 回まで", "Director と同じ") is none, unless the provider table knows it; a word that keeps the route ("キープ") is none either.
 func modelLike(name string) bool {
 	if _, named := providerOf(name); named {
 		return true
 	}
-	return strings.IndexFunc(name, func(r rune) bool {
+	return !hasJapanese(name) && !keepWord.MatchString(name) && strings.IndexFunc(name, func(r rune) bool {
 		return (r < unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r))) || unicode.Is(unicode.Katakana, r)
 	}) >= 0
+}
+
+// hasJapanese reports whether the text holds a hiragana or a kanji (a katakana word is a name: "ミストラル").
+func hasJapanese(text string) bool {
+	return strings.IndexFunc(text, func(r rune) bool { return unicode.Is(unicode.Hiragana, r) || unicode.Is(unicode.Han, r) }) >= 0
+}
+
+var (
+	roleWord = regexp.MustCompile(`(?i)(fallback|代替|フォールバック|バックアップ)`)
+	// topicRole is a clause that ends on a role as a topic ("Producer の代替は", "Director のバックアップって", "代替なら"): the clause after it says what is done to it.
+	topicRole = regexp.MustCompile(`(?i)(?:fallback|代替|フォールバック|バックアップ)\s*(?:は|って|なら|について|の件)\s*$`)
+	// keepWord says a route is left as it is ("代替はそのままで", "残して", "触らずに", "変えずに"): such a clause names a role without asking to change it.
+	keepWord = regexp.MustCompile(`(?i)残|そのまま|触|変え(?:ず|ない)|維持|据え置き|キープ|keep`)
+)
+
+// roleOf is the role the sentence that asks says; a sentence with no role word takes the role from the clause just before it when that is a topic of the role ("Producer の代替は、LLM を Gemini に
+// して" is the fallback) that keeps nothing ("Director の代替は残して、LLM を Claude Opus にして" is the primary). No other clause is read.
+func roleOf(sentence, before string) string {
+	if roleWord.MatchString(sentence) || !topicRole.MatchString(before) || keepWord.MatchString(before) {
+		return nlu.RoleOf(sentence)
+	}
+	return nlu.RoleOf(before)
 }
 
 // detect reads "Director の LLM を Claude Opus にして" without the model, so that the LLM itself can be assigned while none is set up.
@@ -123,28 +145,34 @@ func detect(message string) []commandinterpreter.Operation {
 	}
 	// One sentence is read for its own Agent, role and model. A message that changes two routes is left to the model (the values of one sentence must not be mixed with another's), also when
 	// the second sentence only names an Agent or a role and the model ("Director の LLM を Claude Opus にして、Producer は GPT にして").
-	var asked []string
-	for _, sentence := range sentences.Split(message, -1) {
+	clauses := sentences.Split(message, -1)
+	var asked []int
+	for i, sentence := range clauses {
 		if Asked(sentence) || namesRouteModel(sentence) {
-			asked = append(asked, sentence)
+			asked = append(asked, i)
 		}
 	}
 	if len(asked) > 1 {
 		return nil
 	}
-	sentence := message
+	sentence, before := message, ""
 	if len(asked) == 1 {
-		sentence = asked[0]
+		sentence = clauses[asked[0]]
+		if asked[0] > 0 {
+			before = clauses[asked[0]-1]
+		}
 	}
 	m := namedModel.FindStringSubmatch(sentence)
 	if m == nil {
 		return nil
 	}
-	// The role is the one the sentence that asks says, never another clause's ("Director の代替は残して、LLM を Claude Opus にして" is the primary). The Agent may stand in another clause
-	// ("Director は、LLM を Claude Opus にして"): it is taken from the whole message only when the message names one Agent (two Agents: the chat asks which).
-	a := Args{Agent: nlu.AgentIn(sentence), Role: nlu.RoleOf(sentence), Model: m[1]}
-	if agents := nlu.AgentsIn(message); a.Agent == "" && len(agents) == 1 {
-		a.Agent = agents[0]
+	a := Args{Agent: nlu.AgentIn(sentence), Role: roleOf(sentence, before), Model: m[1]}
+	if a.Agent == "" { // the Agent stands in another clause ("Director は、LLM を Claude Opus にして"): the one the clause before names, else the one the message names (two: the chat asks which)
+		if agents := nlu.AgentsIn(before + "、" + sentence); len(agents) == 1 {
+			a.Agent = agents[0]
+		} else if agents = nlu.AgentsIn(message); len(agents) == 1 {
+			a.Agent = agents[0]
+		}
 	}
 	if id, ok := providerOf(m[1]); ok {
 		a.Provider = id
