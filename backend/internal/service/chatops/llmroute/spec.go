@@ -105,13 +105,18 @@ func namesRouteModel(sentence string) bool {
 	return m != nil && !nlu.IsInquiry(sentence) && modelLike(m[1]) && (nlu.AgentIn(sentence) != "" || llmWord.MatchString(sentence))
 }
 
-// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus"), or has an ASCII letter or digit ("o3 mini", "Qwen 3 の 32B", "軽い Gemma") or a katakana ("ミストラル"). A word that
-// is clearly no model ("キープ", "据え置き", "デフォルトのまま", "3 回まで", "Director と同じ", "JSON で返すように") is none, nor is a word of hiragana and kanji only ("慎重な性格").
+// modelLike reports whether a name can be a model's: it names a provider's model ("Claude Opus"), or has an ASCII letter or digit ("o3 mini", "Qwen 3 の 32B", "軽い Gemma") or a katakana ("ミストラル").
+// It is none when it is clearly something else: a word that keeps the route ("キープ", "据え置き"), says "the same" or a limit ("Director と同じ", "デフォルトのまま", "3 回まで", "JSON で返すように"), names an Agent
+// ("Director の設定", "Director より速い"), or is a count, a duration or a degree ("3 回", "5 秒", "丁寧な English", "一緒") with no model word of 3 or more ASCII letters in it (so "軽い Gemma" is a model's).
+// A word of hiragana and kanji only ("慎重な性格") is none.
 func modelLike(name string) bool {
 	if _, named := providerOf(name); named {
 		return true
 	}
-	if keepWord.MatchString(name) || notModel.MatchString(name) {
+	if keepWord.MatchString(name) || notModel.MatchString(name) || len(nlu.AgentsIn(name)) > 0 {
+		return false
+	}
+	if degreeWord.MatchString(name) && !modelWord.MatchString(genericWord.ReplaceAllString(name, "")) {
 		return false
 	}
 	return strings.IndexFunc(name, func(r rune) bool {
@@ -127,6 +132,10 @@ var (
 	keepWord = regexp.MustCompile(`(?i)残|そのまま|のまま|触|変え(?:ず|ない)|維持|据え置き|キープ|keep`)
 	// notModel is what a word that sets no model says: "Director と同じ", "デフォルト", "3 回まで", "返すように".
 	notModel = regexp.MustCompile(`同じ|デフォルト|まで|ように|返す`)
+	// degreeWord is a count, a duration or a degree ("3 回", "5 秒", "一緒", "より速い"); genericWord is a name of a language or a format, no model's; modelWord is a word of a model's name (3 or more ASCII letters).
+	degreeWord  = regexp.MustCompile(`回|秒|分|個|つ|一緒|同様|設定|より|丁寧|速|遅|短|長`)
+	genericWord = regexp.MustCompile(`(?i)\b(?:English|Japanese|JSON|XML|YAML|Markdown)\b`)
+	modelWord   = regexp.MustCompile(`[A-Za-z]{3,}`)
 )
 
 // roleOf is the role the sentence that asks says; a sentence with no role word takes the role from the clause just before it when that is a topic of the role ("Producer の代替は、LLM を Gemini に

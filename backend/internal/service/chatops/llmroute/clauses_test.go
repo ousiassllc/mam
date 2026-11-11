@@ -135,11 +135,17 @@ func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
 		"Director の LLM を Claude Opus にして、Producer は据え置きにして",
 		"Director の LLM を Claude Opus にして。モデルはそのままにして",
 		"Director の LLM を Claude Opus にして。Director は慎重な性格にして",
-		"Director の LLM を Claude Opus にして、Producer はキープにして", // a name with Japanese in it is no model's, though an ASCII word or a katakana stands in it
+		"Director の LLM を Claude Opus にして、Producer はキープにして", // no model's name
 		"Director の LLM を Claude Opus にして、Producer はデフォルトのままにして",
 		"Director の LLM を Claude Opus にして、Producer は JSON で返すようにして",
 		"Director の LLM を Claude Opus にして、Producer は 3 回までにして",
 		"Director の LLM を Claude Opus にして、Producer は Director と同じにして",
+		"Director の LLM を Claude Opus にして、Producer は 3 回にして", // a count, a duration, an Agent's name or a degree is no model's
+		"Director の LLM を Claude Opus にして、Producer は 5 秒にして",
+		"Director の LLM を Claude Opus にして、Producer は Director と一緒にして",
+		"Director の LLM を Claude Opus にして、Producer は Director の設定にして",
+		"Director の LLM を Claude Opus にして、Producer は丁寧な English にして",
+		"Director の LLM を Claude Opus にして、Producer は Director より速いのにして",
 		"Director の LLM を Claude Opus にして、Producer はそのままにして",
 	} {
 		ops := detect(message)
