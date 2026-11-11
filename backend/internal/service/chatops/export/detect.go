@@ -22,17 +22,17 @@ var (
 		`|(書き出|書出|エクスポート|ダウンロード)(さな|さず|せず|しない|しなく|しなかった|しません)` + // "書き出さないで", "エクスポートせずに": not asking for it
 		`|\b(before|after|until|once|when|while|prior to)\s+(\w+\s+){0,2}?(export|download)\w*|\b(export|download)(ing|ed|s)\b)`)
 	pastExport = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
-	// exportWant, exportTe and exportSuru are the verbs of the export that can ask for it: 「書き出したい」「書き出します」, 「書き出して」, 「書き出す」「エクスポートする」. Beside 「書き出した動画」 (which tells of an export) such a verb makes the
+	// exportWant, exportTe and exportSuru are the verbs of the export that can ask for it: 「書き出したい」「書き出します」「書き出しましょう」「書き出し直して」, 「書き出して」, 「書き出す」「エクスポートする」. Beside 「書き出した動画」 (which tells of an export) such a verb makes the
 	// message a request ("さっき書き出した動画をもう一度書き出して", "…を 720p で書き出したい"), unless the narration forms below follow it. 「書き出した」 and 「書き出していた」 are no verb of this kind.
-	exportWant = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:したい|します)`)
+	exportWant = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:したい|します|しましょう|し(?:直|なお)(?:して|す|したい|します|しましょう))`)
 	exportTe   = regexp.MustCompile(`(?:書き出|書出|エクスポート)して`)
 	exportSuru = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:する|す)`)
 	// narratedTe is what follows 「して」 when the export is told of in a form that cannot ask: "書き出してます／てる／てた／てない／ません／いた／いる／いった", "してみた(けど)", "してあげた", "してある／あった",
 	// "して終わった／完了した／終了した／失敗した／満足した", "してよかった", "してもらった", "してくれた／くれなかった", "しておいた", "してしまった", "して確認した／見た／聞いた／試した". A past form that goes on with
 	// 「ら」 or 「い」 ("終了したら知らせて", "確認したい") asks. Anything else after 「して」 is a request: a space, a symbol, "確認して", "お願い", "くれ", "くれて、…", "みて", "問題ないか確認して", "何分かかるか教えて".
 	// The export needs a confirmation before it starts (Confirm), so a sentence that only looks like a request costs one card, while a request that is dropped costs the director the answer.
-	narratedTe = regexp.MustCompile(`^(?:ま(?:す|し|せん)|る|てた|い(?:た|る|っ|て)|た(?:[^ら]|$)|な(?:い|かっ)|み(?:た(?:[^いら]|$)|まし)|あげ(?:た|まし)|あ(?:る|っ|り)|` +
-		`(?:終わっ|完了し|終了し|失敗し|満足し|確認し|再生し|チェックし|見|聞い|試し)た(?:[^いら]|$)|(?:よ|良)かった(?:[^ら]|$)|もらった(?:[^ら]|$)|くれ(?:た(?:[^らり]|$)|なかっ|まし|ませんでし)|しまっ(?:た(?:[^らり]|$))|おいた(?:[^らり]|$)|おきまし)`)
+	narratedTe = regexp.MustCompile(`^(?:ま(?:す|した|せん)|る|てた|い(?:た|る|っ|て)|た(?:[^ら]|$)|な(?:い|かっ)|み(?:た(?:[^いら]|$)|ました)|あげ(?:た|ました)|あ(?:る|っ|り)|` +
+		`(?:終わっ|完了し|終了し|失敗し|満足し|確認し|再生し|チェックし|試し)た(?:[^いら]|$)|見た(?:[^いら目]|$)|聞いた(?:[^いら感]|$)|(?:よ|良)かった(?:[^ら]|$)|もらった(?:[^ら]|$)|くれ(?:た(?:[^らり]|$)|なかっ|ました|ませんでし)|しまっ(?:た(?:[^らり]|$))|おいた(?:[^らり]|$)|おきました)`)
 	// askedTe is what follows 「して」 and still asks ("書き出していただけますか", "書き出していい？"; 「い」 alone is 「書き出していた」).
 	askedTe = regexp.MustCompile(`^い(?:ただ|い)`)
 	// narratedSuru is what follows 「する」「す」 when it is no ask but a noun it qualifies, a plan or a statement ("書き出す方法／手順／設定／場所／人", "書き出す必要がある", "書き出すより", "書き出すしかない",

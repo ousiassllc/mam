@@ -115,7 +115,11 @@ func TestDetect_TheAgentInAnotherClauseIsTheAgentOfTheOneRequest(t *testing.T) {
 		// the Agent is the one the clause before the request names ("Director は、"), though another Agent is named after or before it
 		"Producer のバックアップはそのまま。Director は、LLM を Claude Opus にして": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
 		"Director は、LLM を Claude Opus にして。Producer のバックアップはそのまま": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		"Art Director と Director は、LLM を Gemini にして":             {Agent: "", Role: "primary", Provider: "google", Model: "Gemini"}, // two Agents: the chat asks which
+		// the Agent of a clause that keeps a route is not the one asked: two Agents are named, so the chat asks which (never Producer)
+		"Producer は据え置きで、LLM を Claude Opus にして、Director に": {Agent: "", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Producer は触らずに、LLM を Gemini にして。Director で":       {Agent: "", Role: "primary", Provider: "google", Model: "Gemini"},
+		"Producer の代替は、Director の LLM を GPT にして":           {Agent: "director", Role: "fallback", Provider: "openai", Model: "GPT"},
+		"Art Director と Director は、LLM を Gemini にして":       {Agent: "", Role: "primary", Provider: "google", Model: "Gemini"}, // two Agents: the chat asks which
 	} {
 		ops := detect(message)
 		require.Len(t, ops, 1, message)
@@ -136,6 +140,7 @@ func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
 		"Director の LLM を Claude Opus にして、Producer は JSON で返すようにして",
 		"Director の LLM を Claude Opus にして、Producer は 3 回までにして",
 		"Director の LLM を Claude Opus にして、Producer は Director と同じにして",
+		"Director の LLM を Claude Opus にして、Producer はそのままにして",
 	} {
 		ops := detect(message)
 		require.Len(t, ops, 1, message)
@@ -149,6 +154,10 @@ func TestDetect_AWordThatIsNoModelNameIsNotASecondRoute(t *testing.T) {
 		"Director の LLM を Claude Opus にして、Producer は Llama 3 にして",
 		"Director の LLM を Claude Opus にして、Producer は Mistral Large にして",
 		"Director の LLM を Claude Opus にして、Producer は ミストラル にして",
+		"Director の LLM を Claude Opus にして、Producer は Qwen 3 の 32B にして", // an ASCII word beside Japanese is a model's name
+		"Director の LLM を Claude Opus にして、Producer は Llama 3 の 70B にして",
+		"Director の LLM を Claude Opus にして、Producer は DeepSeek 最新にして",
+		"Director の LLM を Claude Opus にして、Producer は軽い Gemma にして",
 		"Director の LLM を Claude Opus にして、Producer の代替は o3 mini にして",
 	} {
 		assert.Empty(t, detect(message), message)
