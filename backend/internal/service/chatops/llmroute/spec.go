@@ -79,12 +79,12 @@ var (
 	llmWord    = regexp.MustCompile(`(?i)(llm|言語モデル|代替|フォールバック|fallback|プライマリ|primary|モデル)`)
 	changeWord = regexp.MustCompile(`(?i)(割り当て|割当|にして|にする|にしたい|に変|へ変|変えて|変更|切り替|切替|設定|使って|使いたい|set|assign|switch)`)
 	mediaWord  = regexp.MustCompile(`(?i)(画像|動画|イメージ|image|video|quality|クオリティ|品質|参照|リファレンス|keyframe|プレビュー)`)
-	// the model the message names: "…を Claude Opus にして"
-	namedModel = regexp.MustCompile(`(?:を|は)\s*(.+?)\s*(?:に|へ)\s*(?:して|する|したい|変|切り替|切替|設定)`)
+	// the model the message names: "…を Claude Opus にして". The greedy prefix takes the name after the last を/は ("Director は LLM を Claude Opus にして" names Claude Opus).
+	namedModel = regexp.MustCompile(`.*(?:を|は)\s*(.+?)\s*(?:に|へ)\s*(?:して|する|したい|変|切り替|切替|設定)`)
 )
 
-// sentences splits a message where a sentence ends.
-var sentences = regexp.MustCompile(`[。．\n]+`)
+// sentences splits a message where a clause ends (the same ends as outofscope: nlu.ClauseEnd).
+var sentences = nlu.ClauseEnd
 
 // Asked reports whether the message asks to change the LLM of an Agent: it names an Agent (by its name or label), says LLM, a model or the role of its route, and does something to
 // it. A question ("Director の LLM は何？"), a message about the image or video models and a person who is a model are not.

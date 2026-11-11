@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -129,5 +128,3 @@ func stepJSON(st gentestchat.Step) string {
 	}
 	return string(raw)
 }
-
-func itoa(n int) string { return strconv.Itoa(n) }

@@ -22,6 +22,8 @@ var (
 		`|(書き出|書出|エクスポート|ダウンロード)(さな|さず|せず|しない|しなく|しなかった|しません)` + // "書き出さないで", "エクスポートせずに": not asking for it
 		`|\b(before|after|until|once|when|while|prior to)\s+(\w+\s+){0,2}?(export|download)\w*|\b(export|download)(ing|ed|s)\b)`)
 	pastExport = regexp.MustCompile(`書き出した([^い]|$)`) // 「書き出した動画」 tells of an export, 「書き出したい」 asks for one
+	// exportAgain is a verb that asks for an export ("書き出して", "書き出したい", "書き出す。"): beside 「書き出した動画」 it makes the message a request ("さっき書き出した動画をもう一度書き出して").
+	exportAgain = regexp.MustCompile(`(書き出|書出|エクスポート)(して|したい|します|す([。、！!？?\s]|$))`)
 	// exportThenDownload is one request for both: "動画を書き出してダウンロードしたい", "export the video and download it". The word of the export is a verb that asks for it ("書き出して"),
 	// not the noun of an export that was made ("さっきの書き出しをダウンロード", "書き出した動画をダウンロード").
 	exportThenDownload = regexp.MustCompile(`(?i)((書き出|書出|エクスポート)(し)?(て|たい|てから|つつ|た上で)[^。！？!?\n]*ダウンロード|\bexport\b[^.!?\n]*\band\b[^.!?\n]*\bdownload)`)
@@ -81,7 +83,7 @@ func classify(message string) kind {
 		if video || pastFile.MatchString(message) {
 			return kindDownload
 		}
-	case exports && !pastExport.MatchString(message):
+	case exports && (!pastExport.MatchString(message) || exportAgain.MatchString(message)):
 		if video || demonstrated.MatchString(message) {
 			return kindRender
 		}

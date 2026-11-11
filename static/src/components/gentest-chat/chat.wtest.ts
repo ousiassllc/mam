@@ -42,7 +42,7 @@ describe('the chat of the single generation (#1138)', () => {
   const key = (init: KeyboardEventInit) =>
     box().dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
 
-  afterEach(() => host.remove());
+  afterEach(() => host?.remove()); // a failed fetch in show() leaves host undefined: do not hide that error behind a TypeError
 
   it('sends on Enter, breaks the line on Shift+Enter, and waits for an IME conversion', async () => {
     await show();
@@ -92,6 +92,48 @@ describe('the chat of the single generation (#1138)', () => {
     request('htmx:beforeRequest');
     request('htmx:afterRequest', 200);
     expect(box().value, 'the words that were sent are cleared').to.equal('');
+  });
+
+  describe('after a tap on an option card', () => {
+    /** The form of the first card of the newest question, as htmx reports its request: the button was disabled by hx-disabled-elt, so the focus is on <body>. */
+    function tapped(): HTMLFormElement {
+      const group = [...host.querySelectorAll<HTMLElement>('[data-gtc-options]')].pop()!;
+      const form = group.querySelector<HTMLFormElement>('form')!;
+      form.querySelector('button')!.focus();
+      (document.activeElement as HTMLElement).blur();
+      return form;
+    }
+    const finished = (form: HTMLFormElement, status: number) =>
+      form.dispatchEvent(
+        new CustomEvent('htmx:afterRequest', {
+          bubbles: true,
+          detail: { elt: form, successful: true, xhr: { status } },
+        }),
+      );
+
+    it('moves the focus to the box, where the focus of a sent message goes', async () => {
+      await show();
+      const form = tapped();
+      expect(document.activeElement === document.body, 'the focus fell to the body').to.equal(true);
+
+      finished(form, 200);
+
+      expect(document.activeElement === box(), 'the box has the focus').to.equal(true);
+    });
+
+    it('leaves the focus where the user put it, and a refused answer does not take it', async () => {
+      await show();
+      const elsewhere = document.createElement('button');
+      host.append(elsewhere);
+      const form = tapped();
+      elsewhere.focus();
+      finished(form, 200);
+      expect(document.activeElement === elsewhere, 'the user moved on').to.equal(true);
+
+      (document.activeElement as HTMLElement).blur();
+      finished(form, 422);
+      expect(document.activeElement === document.body, 'a refusal keeps the cards as they are').to.equal(true);
+    });
   });
 
   describe('the thread follows the conversation', () => {

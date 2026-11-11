@@ -19,8 +19,10 @@ import (
 // regeneration that would change a LOCKed parameter fail with ErrLocked before anything is done; otherwise it is left out and reported.
 func (s *DirectorService) execute(ctx context.Context, project domain.Project, ref *repository.ShotRef, cmd commandinterpreter.Command, message string, strict bool) (outcome, error) {
 	var out outcome
-	if cmd.Question != "" {
-		return outcome{lines: []string{cmd.Question}}, nil
+	if cmd.Question != "" { // the model asks; what the message plainly asks for (WithDetected) is still carried out
+		if out.lines = []string{cmd.Question}; len(cmd.Operations) == 0 {
+			return out, nil
+		}
 	}
 	// Without a Shot (nothing says which one is meant) the operations on a Shot wait for the answer to askWhichShot; the others of the same Command (a budget card, a setting,
 	// a note) are carried out, not dropped with them.

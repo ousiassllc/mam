@@ -1,13 +1,13 @@
 package secretguard_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard/keyfixture"
 )
 
 func TestRedact_HidesTheShapesOfTheKeysTheScreenManages(t *testing.T) {
@@ -51,23 +51,8 @@ func TestRedact_LeavesOrdinaryMessagesAlone(t *testing.T) {
 	}
 }
 
-// the keys of the providers that have no prefix of their own are built at run time (no real key is in the repository)
-func providerKeys() map[string]string {
-	hex := strings.Repeat("0123456789abcdef", 4)
-	b64 := func(n int) string { return strings.Repeat("AbCdEf0123456789", n)[:n] }
-	return map[string]string{
-		"kling (32 letters and digits)": b64(32),
-		"runway (key_ + hex)":           "key" + "_" + hex[:48],
-		"luma (luma- + uuid)":           "luma" + "-" + "12345678-1234-1234-1234-123456789abc",
-		"minimax (JWT)":                 "ey" + "J" + b64(30) + "." + "ey" + "J" + b64(40) + "." + b64(43),
-		"seedance / flux (uuid)":        "12345678-1234-1234-1234-123456789abc",
-		"sync labs":                     "sk" + "-" + hex[:40],
-		"dotted":                        "A1b2C3d4E5f6G7h8I9j0K1l2M3n4.O5p6",
-	}
-}
-
 func TestRedact_HidesAKeyPastedBareOrInASentenceWhateverTheProvider(t *testing.T) {
-	for name, key := range providerKeys() {
+	for name, key := range keyfixture.ProviderKeys() {
 		t.Run(name, func(t *testing.T) {
 			for _, text := range []string{key, "  " + key + "\n", "「" + key + "」", "これです " + key + " お願い"} {
 				got, found := secretguard.Redact(text)

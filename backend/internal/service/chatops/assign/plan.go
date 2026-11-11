@@ -197,6 +197,9 @@ func chooseModel(text string, offered []string, gated []domain.ModelName, kind s
 		}
 		return "", chatops.Refuse("「%s」という%sは選べません。選べる%s: %s", text, kind, kind, nlu.Few(offered, 8))
 	default:
+		if len(found) > maxChoices {
+			return "", chatops.Refuse("「%s」に当てはまるモデルが多すぎます（%s）。もう少し具体的に言ってください", text, nlu.Few(found, 8))
+		}
 		return "", &ambiguousError{Text: text, Names: found}
 	}
 }

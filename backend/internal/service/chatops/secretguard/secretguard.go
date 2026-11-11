@@ -26,7 +26,7 @@ var patterns = []*regexp.Regexp{
 	regexp.MustCompile(`\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{32}\b`),
 	regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._\-]{24,}`),
 	regexp.MustCompile(`\beyJ[A-Za-z0-9_\-]{6,}\.[A-Za-z0-9_\-]{6,}\.[A-Za-z0-9_\-]{6,}`),
-	regexp.MustCompile(`(?i)(?:api[ _\-]?key|access[ _\-]?token|secret|キー|トークン)\s*(?:は|が|=|:|：|は\s*)?\s*[「"'` + "`" + `]?[A-Za-z0-9_\-]{32,}`),
+	regexp.MustCompile(`(?i)(?:api[ _\-]?key|access[ _\-]?token|secret|キー|トークン)\s*(?:は|が|=|:|：)?\s*[「"'` + "`" + `]?[A-Za-z0-9_\-]{32,}`),
 }
 
 // A key whose provider has no shape of its own (Kling's 32 letters and digits, Runway's key_ + hex, Luma's, Seedance's and Flux's UUID, Sync Labs') is found by what every

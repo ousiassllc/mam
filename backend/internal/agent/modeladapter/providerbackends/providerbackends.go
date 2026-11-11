@@ -63,7 +63,10 @@ func dataURI(in modeladapter.Input) string {
 
 // submit posts body to target and decodes the answer into out.
 func submit(ctx context.Context, a modeladapter.API, target string, header map[string]string, body map[string]any, out any) error {
-	raw, _ := json.Marshal(body)
+	raw, err := json.Marshal(body)
+	if err != nil { // a value that has no JSON (NaN) must not go out as an empty body
+		return fmt.Errorf("encode the request to %s: %w", target, err)
+	}
 	data, err := a.Request(ctx, http.MethodPost, target, modeladapter.JSONHeader(header), raw)
 	if err != nil {
 		return err

@@ -22,6 +22,7 @@ func TestStatedReadsTheBudgetOfTheProjectAndOfOneShot(t *testing.T) {
 		"amount before the word":            {"$30 の予算で作って", budget.Statement{Project: usd(30)}},
 		"thousands separator":               {"予算は$1,200 まで", budget.Statement{Project: usd(1200)}},
 		"full width":                        {"予算は＄２０で", budget.Statement{Project: usd(20)}},
+		"ideographic space (U+3000)":        {"予算は 20　ドル", budget.Statement{Project: usd(20)}},
 		"a budget after a comma":            {"予算は、できれば $15 くらいで", budget.Statement{Project: usd(15)}},
 		"English":                           {"budget is $40 for this one", budget.Statement{Project: usd(40)}},
 		"a total and a ceiling of one Shot": {"予算は全体で$20、1ショットあたり$3まで", budget.Statement{Project: usd(20), Shot: usd(3)}},

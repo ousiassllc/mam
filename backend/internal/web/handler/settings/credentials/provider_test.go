@@ -162,7 +162,7 @@ func TestSaveProvider_APinnedFileIs409AndTheChoiceIsDisabled(t *testing.T) {
 	assert.Contains(t, providers(body), "openrouter", "the pinned file's provider is still the one shown")
 }
 
-func TestSaveProvider_AnUnreadableFileLeavesTheOfficialCardsAndSaysWhy(t *testing.T) {
+func TestPanel_AnUnreadableSettingsFileLeavesTheOfficialCardsAndSaysWhy(t *testing.T) {
 	r := newProviderRig(t, false)
 	require.NoError(t, os.WriteFile(r.path, []byte(`{not json`), 0o600))
 
@@ -170,6 +170,22 @@ func TestSaveProvider_AnUnreadableFileLeavesTheOfficialCardsAndSaysWhy(t *testin
 
 	assert.Contains(t, body, `data-testid="api-provider-problem"`)
 	assert.Contains(t, providers(body), "kling")
+}
+
+func TestSaveProvider_AnUnreadableSettingsFileIsRefusedAndLeftAsItIs(t *testing.T) {
+	r := newProviderRig(t, false)
+	require.NoError(t, os.WriteFile(r.path, []byte(`{not json`), 0o600))
+
+	rec := r.do(http.MethodPut, paths.APIProvider(), url.Values{"provider": {"fal"}})
+
+	assert.GreaterOrEqual(t, rec.Code, http.StatusBadRequest)
+	assert.Contains(t, rec.Body.String(), `data-testid="credential-error"`)
+	assert.Contains(t, rec.Body.String(), `data-testid="api-provider-problem"`)
+	assert.NotContains(t, rec.Body.String(), "API プロバイダーを保存しました")
+	assert.Zero(t, r.applied)
+	raw, err := os.ReadFile(r.path)
+	require.NoError(t, err)
+	assert.Equal(t, `{not json`, string(raw))
 }
 
 func TestTheChoiceIsLeftOutWithoutModelSettings(t *testing.T) {

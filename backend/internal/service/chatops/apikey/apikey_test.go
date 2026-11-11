@@ -60,6 +60,22 @@ func TestDetect_DoesNotMistakeOtherMessagesForAKeyRequest(t *testing.T) {
 	}
 }
 
+func TestDetect_AQuestionAboutAKeyIsNotAKeyRequest(t *testing.T) {
+	for _, message := range []string{
+		"API キーの設定画面はどこ？",
+		"OpenAI の API キーを教えて",
+		"OpenAI の API キーを教えてください？",
+		"Claude のキーの設定はどこですか？",
+		"API キーを設定するにはどうしたらいい？",
+	} {
+		assert.Empty(t, detect(t, message), message)
+		assert.False(t, apikey.AsksKey(message), message)
+	}
+	for _, message := range []string{"API キーを設定したい", "OpenAI の API キーを入力します", "API キーを設定してくれる？"} {
+		assert.True(t, apikey.AsksKey(message), message)
+	}
+}
+
 func TestDetect_ReadsTheVideoProvider(t *testing.T) {
 	got := detect(t, "Kling は OpenRouter 経由で使いたい")
 	require.Len(t, got, 1)

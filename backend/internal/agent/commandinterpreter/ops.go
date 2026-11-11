@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing/budget"
+	"github.com/ousiassllc/mam/backend/internal/agent/genplan"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -176,7 +177,7 @@ func usdText(v *float64) string {
 	if v == nil {
 		return "none"
 	}
-	return fmt.Sprintf("$%.2f", *v)
+	return "$" + genplan.USDText(*v) // the way the announcement and the settings screen say it: a ceiling of $0.125 is not rounded to $0.13
 }
 
 // cleanSetBudget keeps the ceilings the model named: a number that is not finite or is negative is not an amount. 0 stays, it removes the ceiling.

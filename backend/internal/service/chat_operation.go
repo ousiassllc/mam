@@ -44,16 +44,14 @@ const declinedOperation = "やめました。何も変更していません。"
 // it is then a new message of the user (it still replies to the card, which closes it), and the caller reads it as one.
 func (s *ChatService) answerOperation(ctx context.Context, project domain.Project, card domain.ChatMessage, content string) (ws Workspace, answered bool, err error) {
 	body := domain.DecodeCardBody(card.Content)
-	var (
-		action   json.RawMessage
-		accepted bool
-	)
+	var action json.RawMessage
+	var accepted bool
 	declined := content == confirmNo || chatops.IsDecline(content)
-	switch {
+	switch yes, hasYes := chatops.ActionOf(body, confirmYes); { // the yes button, with the same "has an action" test as any option
 	case declined:
 		action = chatops.DeclineAction(body) // what the card has to clean up when it is declined (a file that waits); nothing for most
-	case briefing.IsConfirmation(content) && len(body.OptionActions) > 0 && len(body.OptionActions[0]) > 0 && len(body.Options) > 0 && body.Options[0] == confirmYes:
-		action, accepted = body.OptionActions[0], true
+	case briefing.IsConfirmation(content) && hasYes:
+		action, accepted = yes, true
 	default:
 		if action, accepted = chatops.ActionOf(body, content); !accepted {
 			return Workspace{}, false, nil

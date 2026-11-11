@@ -98,6 +98,23 @@ type Batch struct {
 	Quality         string   `json:"quality,omitempty"`
 }
 
+// maxQueryWords is the most words of one list of a model query (inputs, providers): the service checks the words, here they are bounded, since a refusal of the
+// service quotes the word to the LLM and to the thread.
+const maxQueryWords = 8
+
+func cleanWords(in []string) []string {
+	var out []string
+	for _, w := range in {
+		if w = clip(strings.TrimSpace(w), maxLabelRunes); w == "" {
+			continue
+		}
+		if out = append(out, w); len(out) == maxQueryWords {
+			break
+		}
+	}
+	return out
+}
+
 // ModelQuery is the narrowing of list_models: the conditions of the model pickers (modelfilter.Condition) the chat offers.
 type ModelQuery struct {
 	Media         string   `json:"media,omitempty"`
@@ -160,6 +177,8 @@ func clean(s Step) (Step, error) {
 			return Step{}, fmt.Errorf("%w: media must be image or video", ErrBadStep)
 		}
 		q.Text = clip(strings.TrimSpace(q.Text), maxLabelRunes)
+		q.Commercial = clip(strings.TrimSpace(q.Commercial), maxLabelRunes)
+		q.Inputs, q.Providers = cleanWords(q.Inputs), cleanWords(q.Providers)
 		return Step{Action: s.Action, ModelQuery: q}, nil
 	case ActionEstimate:
 		if s.Request == nil {

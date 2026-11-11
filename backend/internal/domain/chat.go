@@ -147,8 +147,8 @@ func DecodeTakeCardBody(content string) TakeCardBody {
 	return b
 }
 
-// IsLocalPath reports whether p is a same-origin absolute path: the only kind of URL a card may make the browser load. A backslash (browsers read /\host as "//host"),
-// an escaped one, a control character, a scheme or a host is refused.
+// IsLocalPath reports whether p is a same-origin absolute path: the only kind of URL a card may make the browser load.
+// A backslash (browsers read /\host as "//host"), an escaped one, a control character, a scheme or a host is refused.
 func IsLocalPath(p string) bool {
 	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.Contains(strings.ToLower(p), "%5c") {
 		return false

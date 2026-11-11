@@ -92,6 +92,12 @@ func TestBudgetCard_EveryAnswerThatClosesTheCardResumesTheGeneration(t *testing.
 			f, p := newGenerationFixture(t, "美容液のCMを作りたい。予算は$20で")
 			card := operationCards(f.thread(t, p.ID))[0]
 			require.True(t, card.Open)
+			// Back in AUTO the Orchestrator looks at the Project; once that look is over (waitIdle), "not started" says something about the open card and not about a look that never happened.
+			for _, mode := range []domain.Mode{domain.ModeDirector, domain.ModeAuto} {
+				_, err := f.svc.Director.SetMode(context.Background(), p.ID, mode)
+				require.NoError(t, err)
+			}
+			f.waitIdle(t, p.ID)
 			require.False(t, f.autoStarted(t, p.ID), "nothing is started while the card is open")
 
 			answer(t, f.svc, p.ID, card.ID, reply)

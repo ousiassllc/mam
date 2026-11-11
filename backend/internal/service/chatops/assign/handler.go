@@ -29,6 +29,9 @@ const (
 	globalNote   = "この設定は全プロジェクトに効きます（アプリ全体の設定です）。"
 )
 
+// maxChoices is how many models a card offers as buttons (as chatops/install does); a name that fits more is asked to be narrowed down.
+const maxChoices = 6
+
 // Question shows the route before and after and warns about a model that cannot be used now; nothing is saved. A model name that fits several models is asked as buttons.
 func (h *Handler) Question(_ context.Context, _ domain.Project, op commandinterpreter.Operation) (chatops.Card, error) {
 	p, a, err := h.plan(op)

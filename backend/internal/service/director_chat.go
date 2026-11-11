@@ -13,7 +13,7 @@ import (
 )
 
 // wants reports whether a chat message is a direction for the Command Interpreter: a message that asks
-// the team to remember something (F-31, in any mode), one that is about the budget past the Brief (in any mode; a budget stated while the Brief is drafted is read by
+// the team to remember something (F-31, in any mode), one that asks for an operation of any mode past the Brief (commandinterpreter.AsksAnyMode: a budget, a setting; a budget stated while the Brief is drafted is read by
 // statedBudgetCards from every message, #1139), or, in DIRECTOR MODE past the Brief, any message. A message that answers an open card never is.
 func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessage, content string) bool {
 	if content == "" || (target != nil && isAnswerable(target.Kind)) {
@@ -72,9 +72,9 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		return []domain.ChatMessage{assistantText("指示を読み取れませんでした: " + commandFailureReason(err))}, nil
 	}
 	cmd.Operations = commandinterpreter.WithDetected(cmd.Operations, content)
-	if project.Mode != domain.ModeDirector {
-		// Outside DIRECTOR MODE only the operations of any mode are carried out (a note, the budget, a setting): AUTO MODE does
-		// not take Shot directions from the chat.
+	if project.Mode != domain.ModeDirector || (cmd.Question != "" && slices.ContainsFunc(cmd.Operations, commandinterpreter.Operation.AnyMode)) {
+		// Only the operations of any mode are carried out (a note, the budget, a setting) outside DIRECTOR MODE (AUTO MODE does not take Shot directions from the chat) and when the
+		// model asks a question while the message plainly asks for such an operation too (WithDetected: an API key card): the question is told with it, not instead.
 		return s.anyModeOnly(ctx, project, cmd)
 	}
 	if cmd.Question != "" {

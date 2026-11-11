@@ -2,6 +2,8 @@ package chattest
 
 import (
 	"context"
+	"io/fs"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -14,22 +16,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/chatfix"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/secretguard/keyfixture"
 	"github.com/ousiassllc/mam/backend/internal/service/chatwire"
 )
-
-// providerKeys are keys of the shapes of the providers that have no prefix of their own, built at run time (no real key is in the repository).
-func providerKeys() map[string]string {
-	hex := strings.Repeat("0123456789abcdef", 4)
-	mixed := func(n int) string { return strings.Repeat("AbCdEf0123456789", n)[:n] }
-	return map[string]string{
-		"kling (32 letters and digits)": mixed(32),
-		"runway (key_ + hex)":           "key" + "_" + hex[:48],
-		"luma (luma- + uuid)":           "luma" + "-" + "12345678-1234-1234-1234-123456789abc",
-		"minimax (JWT)":                 "ey" + "J" + mixed(30) + "." + "ey" + "J" + mixed(40) + "." + mixed(43),
-		"seedance / flux (uuid)":        "12345678-1234-1234-1234-123456789abc",
-		"sync labs":                     "sk" + "-" + hex[:40],
-	}
-}
 
 // recordingBriefing is the Brief extractor of the fixture: it keeps every text it was given.
 type recordingBriefing struct{ seen []string }
@@ -72,7 +61,7 @@ func keyFixture(t *testing.T) (*chatfix.Fixture, *recordingBriefing) {
 // A key whose provider has no shape of its own (Kling, Runway, Luma, MiniMax, Seedance, Flux, Sync Labs) is found by being one long token: pasted bare, in a sentence, or typed into
 // the composer while no card is open, it is recorded hidden and read by no model.
 func TestChat_AKeyOfAnyProviderShapeIsRecordedHiddenAndReadByNoModel(t *testing.T) {
-	for name, key := range providerKeys() {
+	for name, key := range keyfixture.ProviderKeys() {
 		t.Run(name, func(t *testing.T) {
 			for _, message := range []string{key, "これを使って " + key + " お願いします"} {
 				f, extractor := keyFixture(t)
@@ -139,7 +128,7 @@ func TestChat_AKeyCardClosedOrDeclinedTakesOrdinaryWordsAgain(t *testing.T) {
 
 // The other entrances of a user's words keep the key out of the thread and away from the models as PostMessage does.
 func TestProjectCreate_AKeyInTheFirstMessageIsHiddenAndNotExtracted(t *testing.T) {
-	for name, key := range providerKeys() {
+	for name, key := range keyfixture.ProviderKeys() {
 		t.Run(name, func(t *testing.T) {
 			f, extractor := keyFixture(t)
 
@@ -159,8 +148,32 @@ func TestProjectCreate_AKeyInTheFirstMessageIsHiddenAndNotExtracted(t *testing.T
 	}
 }
 
+// As in the chat, the files of a first message that carries a key are not taken: no Asset and no file is stored, and the thread says so. The Project is still created.
+func TestProjectCreate_TheFilesOfAFirstMessageWithAKeyAreNotTaken(t *testing.T) {
+	key := keyfixture.ProviderKeys()["kling (32 letters and digits)"]
+	f, _ := keyFixture(t)
+
+	p, err := f.Svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: "美容液のCMを作りたい。キーは " + key, Uploads: []service.Upload{loraUpload("look.png", loraPNG)}})
+
+	require.NoError(t, err)
+	ws, err := f.Svc.Chat.Workspace(context.Background(), p.ID)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(ws.Messages), 3)
+	assert.Contains(t, ws.Messages[1].Content, "添付したファイルは受け取っていません")
+	assert.Empty(t, ws.Messages[0].Attachments, "the message does not refer to an Asset")
+	assert.Zero(t, countRows(f, `SELECT COUNT(*) FROM asset WHERE project_id = ?`, p.ID))
+	var stored []string
+	_ = filepath.WalkDir(f.AssetsDir, func(path string, d fs.DirEntry, err error) error { // the directory is not made when nothing is stored
+		if err == nil && !d.IsDir() {
+			stored = append(stored, path)
+		}
+		return nil
+	})
+	assert.Empty(t, stored, "no file was written")
+}
+
 func TestDirectorCommand_AKeyInADirectionIsHiddenAndNotInterpreted(t *testing.T) {
-	for name, key := range providerKeys() {
+	for name, key := range keyfixture.ProviderKeys() {
 		t.Run(name, func(t *testing.T) {
 			f, extractor := keyFixture(t)
 			ctx := context.Background()
@@ -185,7 +198,7 @@ func TestDirectorCommand_AKeyInADirectionIsHiddenAndNotInterpreted(t *testing.T)
 }
 
 func TestRespondApproval_AKeyInTheCommentIsHiddenAndTheDecisionStands(t *testing.T) {
-	for name, key := range providerKeys() {
+	for name, key := range keyfixture.ProviderKeys() {
 		t.Run(name, func(t *testing.T) {
 			f, extractor := keyFixture(t)
 			ctx := context.Background()

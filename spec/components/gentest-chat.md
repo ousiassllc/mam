@@ -7,7 +7,7 @@
 | pages（`gentest_chat_page.templ`） | `GenerationChatPage` | 共通の枠 `generationShell`（見出し「単発生成」・「?」・ページ間のタブ。タブは「生成する」「**チャットで作る**」「画像から似せる」「一部だけ描き直す」「履歴」「プロンプト履歴」）に `Chat` を入れる。モーダルのホスト（`modal.Host()`）も置く（結果のタイルが詳細を開くため） |
 | organisms（`organisms/gentest/chat/`） | `Chat`・`Composer`・`Messages`・`ProposalCard`・`ResultBlock`・`Swaps` | スレッド（`#gtc-thread`。`role=log`・`aria-live=polite`・`tabindex=0`。最大高さ 65vh でスクロール。結果のブロックは、動いている間 `aria-live="off"` で、2 秒ごとの取り直しをスクリーンリーダーが読み直さない。終わったブロックだけが `aria-live` なしで返り、スレッドの追加として 1 度読まれる）と挨拶のカード・入力欄・スレッドに足す部品 |
 | handler（`web/handler/gentest/chatscreen/`） | `Register`・`Page`・`Send`・`Confirm`・`Dismiss`・`Batch` | ルート。サービス（`service/gentest/chat`）の結果を表示用の構造にする（`views.go`）。organism はサービスを import しない |
-| static（`static/src/components/gentest-chat/`） | `chat.ts` | Enter で送信（`isSendKey`。Shift+Enter は改行・IME の確定の Enter は送らない・空は送らない）、送信が通ったら、送った言葉だけを入力欄から消して戻す（拒否されたら言葉を残す。送信中に打った次のメッセージは残す）、新しい部品が足されたらスレッドを末尾へ（結果のブロックが 2 秒ごとに自分を取り直したときは、利用者が末尾の近くにいるときだけ）、**答え済みの選択肢（最新以外。最新の質問も、そのあとにユーザーの発言があれば）を `inert`** にして薄くする |
+| static（`static/src/components/gentest-chat/`） | `chat.ts` | Enter で送信（`isSendKey`。Shift+Enter は改行・IME の確定の Enter は送らない・空は送らない）、送信が通ったら、送った言葉だけを入力欄から消して戻す（拒否されたら言葉を残す。送信中に打った次のメッセージは残す）、選択肢のカードの送信が通ったら、フォーカスが `<body>` に落ちていれば入力欄（`#gtc-content`）へ戻す（利用者が別の所へ動かしていたら触らない）、新しい部品が足されたらスレッドを末尾へ（結果のブロックが 2 秒ごとに自分を取り直したときは、利用者が末尾の近くにいるときだけ）、**答え済みの選択肢（最新以外。最新の質問も、そのあとにユーザーの発言があれば）を `inert`** にして薄くする |
 
 ## 1. スレッドの部品
 
@@ -36,3 +36,4 @@
 | 1.2 | 2026-11-10 | 構成の表の organisms の行に、結果のブロックは動いている間 `aria-live="off"`（2 秒ごとの `outerHTML` の取り直しが `aria-live=polite`・`aria-relevant=additions` のスレッドで読み上げ直されないように）、終わったブロックだけが `aria-live` なしで 1 度読まれることを足した（`organisms/gentest/chat/result_live_test.go` が確かめる） | PR #1141 のレビュー指摘（major） |
 | 1.3 | 2026-11-11 | 構成の表の static の行が指すフィクスチャを、実在する `web/organisms/gentest/chat/fixture_test.go` に直した（`chat-layout.wtest.ts`・`chat.wtest.ts` の先頭のコメントも同じ） | PR #1141 のレビュー指摘 |
 | 1.4 | 2026-11-11 | 構成の表の static の行と §1 に、最新の質問も答えられたら（そのあとにユーザーの発言があれば）無効にすること、発言に `sr-only` の話し手、失敗の行に `role=alert` を付けないこと、2 つのボタンの送り先がスレッドであること（やめるの失敗でカードを消さない）を足した | PR #1141 のレビュー指摘 |
+| 1.5 | 2026-11-11 | 構成の表の static の行に、選択肢のカードの送信が通ったらフォーカスを入力欄へ戻すことを足した（ボタンが無効になり、答え済みのカードが `inert` になるとフォーカスが `<body>` に落ちるため） | PR #1141 のレビュー指摘 |

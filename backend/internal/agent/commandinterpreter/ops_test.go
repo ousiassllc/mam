@@ -14,13 +14,13 @@ func usd(v float64) *float64 { return &v }
 
 func TestInterpret_SetBudgetKeepsTheCeilingsTheDirectorNamed(t *testing.T) {
 	cmd, f := interpret(t, `{"operations":[{"type":"set_budget","project_budget_usd":30}]}`,
-		commandinterpreter.Input{Message: "予算を $30 に変えて", Budget: commandinterpreter.BudgetCeilings{Project: usd(20)}})
+		commandinterpreter.Input{Message: "予算を $30 に変えて", Budget: commandinterpreter.BudgetCeilings{Project: usd(20), Shot: usd(0.125)}})
 
 	require.Len(t, cmd.Operations, 1)
 	assert.Equal(t, commandinterpreter.Operation{Type: commandinterpreter.OpSetBudget, ProjectBudgetUSD: usd(30)}, cmd.Operations[0])
 	assert.True(t, cmd.Operations[0].Confirms(), "a ceiling is money: the chat asks first")
 	assert.Contains(t, f.system, `"set_budget"`, "the registry documents the operation in the prompt")
-	assert.Contains(t, f.user, "project: $20.00 / shot: none", "the ceilings now set are given to the model")
+	assert.Contains(t, f.user, "project: $20 / shot: $0.125", "the ceilings now set are given to the model the way the announcement says them, not rounded to cents")
 }
 
 func TestInterpret_SetBudgetDropsWhatIsNoAmount(t *testing.T) {

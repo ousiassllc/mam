@@ -3,6 +3,7 @@ package assign
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"testing"
 
@@ -184,6 +185,19 @@ func TestPolicyRoute_AResolutionTheModelDoesNotMakeIsRefused(t *testing.T) {
 	_, err = ask(t, f, Args{Target: "fast", Role: "fallback", Model: "kling-3.0"})
 	assert.Contains(t, refusal(t, err), "解像度を添えて", "the resolution of the old model is not one of the new model's: ask which")
 	assert.Empty(t, f.saved)
+}
+
+// A name that fits more models than a card holds as buttons asks to be narrowed down, and offers none.
+func TestModelNameResolution_TooManyModelsAreAskedToBeNarrowed(t *testing.T) {
+	f := newFake()
+	for i := range maxChoices + 1 {
+		f.view.VideoModels = append(f.view.VideoModels, modelsettings.VideoOption{Model: domain.ModelName(fmt.Sprintf("mega-%d", i)), Resolutions: []string{"720p"}, Availability: modelfilter.Usable()})
+	}
+
+	card, err := ask(t, f, Args{Target: "fast", Model: "mega", Resolution: "720p"})
+
+	assert.Contains(t, refusal(t, err), "多すぎます")
+	assert.Empty(t, card.Choices)
 }
 
 // A model name is resolved against the models the assignment offers: exact, by what it holds, several (the card asks which), none (the refusal lists what is offered).

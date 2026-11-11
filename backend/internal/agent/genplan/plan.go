@@ -103,15 +103,19 @@ type Overrun struct {
 // Any reports whether the plan passes a ceiling.
 func (o Overrun) Any() bool { return o.ProjectNeed > 0 || o.ShotNeed > 0 }
 
+// ceilingSlack is the slack with which a cost fits a ceiling, the one the start of a generation gives (repository: inflightSpend.reserve): a plan that costs
+// exactly the ceiling fits it, though its float64 sum (0.1 + 0.2 against 0.3) may be a hair over.
+const ceilingSlack = 1e-9
+
 // Overrun is how the plan passes the budget ceilings.
 func (p Plan) Overrun() Overrun {
 	var o Overrun
-	if p.ProjectCeiling != nil && p.ProjectSpent+p.Total().USD > *p.ProjectCeiling {
+	if p.ProjectCeiling != nil && p.ProjectSpent+p.Total().USD > *p.ProjectCeiling+ceilingSlack {
 		o.ProjectNeed = p.ProjectSpent + p.Total().USD
 	}
 	if p.ShotCeiling != nil {
 		for _, l := range p.Lines {
-			if need := p.ShotSpent[l.ShotID] + l.PackCost.USD + l.VideoCost.USD; need > *p.ShotCeiling {
+			if need := p.ShotSpent[l.ShotID] + l.PackCost.USD + l.VideoCost.USD; need > *p.ShotCeiling+ceilingSlack {
 				o.ShotNeed = max(o.ShotNeed, need)
 			}
 		}

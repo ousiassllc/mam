@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,18 +16,18 @@ import (
 )
 
 func TestReplicateKling4SendsTheInputAndReadsTheOutputURL(t *testing.T) {
-	var submit seen
-	var polls int
+	var submit latest[seen]
+	var polls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost:
-			submit = seen{method: r.Method, path: r.URL.Path, auth: r.Header.Get("Authorization")}
-			_ = json.NewDecoder(r.Body).Decode(&submit.body)
+			s := seen{method: r.Method, path: r.URL.Path, auth: r.Header.Get("Authorization")}
+			_ = json.NewDecoder(r.Body).Decode(&s.body)
+			submit.set(s)
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"pred1","status":"starting"}`))
 		case r.URL.Path == "/predictions/pred1":
-			polls++
-			if polls < 2 {
+			if polls.Add(1) < 2 {
 				_, _ = w.Write([]byte(`{"id":"pred1","status":"processing"}`))
 				return
 			}
@@ -45,9 +46,10 @@ func TestReplicateKling4SendsTheInputAndReadsTheOutputURL(t *testing.T) {
 
 	require.NoError(t, err)
 	readVideo(t, res)
-	assert.Equal(t, "/models/kwaivgi/kling-v4.0/predictions", submit.path)
-	assert.Equal(t, "Bearer r8_dummy", submit.auth)
-	input, _ := submit.body["input"].(map[string]any)
+	got := submit.get()
+	assert.Equal(t, "/models/kwaivgi/kling-v4.0/predictions", got.path)
+	assert.Equal(t, "Bearer r8_dummy", got.auth)
+	input, _ := got.body["input"].(map[string]any)
 	assert.Equal(t, "1080p", input["resolution"])
 	assert.EqualValues(t, 6, input["duration"])
 	assert.Equal(t, dataURI("A"), input["start_image"])
@@ -56,7 +58,7 @@ func TestReplicateKling4SendsTheInputAndReadsTheOutputURL(t *testing.T) {
 }
 
 func TestReplicateKling3UsesTheModeAndAcceptsAListOutput(t *testing.T) {
-	var input map[string]any
+	var submitted latest[map[string]any]
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost:
@@ -65,7 +67,7 @@ func TestReplicateKling3UsesTheModeAndAcceptsAListOutput(t *testing.T) {
 				Input map[string]any `json:"input"`
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
-			input = body.Input
+			submitted.set(body.Input)
 			_, _ = w.Write([]byte(`{"id":"p"}`))
 		case r.URL.Path == "/predictions/p":
 			_, _ = w.Write([]byte(`{"id":"p","status":"succeeded","output":["http://` + r.Host + `/files/out.mp4"]}`))
@@ -83,6 +85,7 @@ func TestReplicateKling3UsesTheModeAndAcceptsAListOutput(t *testing.T) {
 
 	require.NoError(t, err)
 	readVideo(t, res)
+	input := submitted.get()
 	assert.Equal(t, "standard", input["mode"], "720p is the standard tier")
 	assert.Equal(t, false, input["generate_audio"])
 	assert.Equal(t, "blur", input["negative_prompt"])

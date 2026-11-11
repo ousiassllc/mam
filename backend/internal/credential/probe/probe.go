@@ -6,7 +6,7 @@
 // The calls are the ones of the providers' own reference pages (not run with a real key). Checked 2026-10-25: Anthropic
 // GET /v1/models, OpenAI GET /v1/models, Google GET /v1beta/models, Black Forest Labs GET /v1/credits, Runway
 // GET /v1/organization and ElevenLabs GET /v1/user/subscription. Topaz Labs GET /account/v1/credits/balance (its FAQ) was
-// checked 2026-11-04, and OpenRouter GET /api/v1/key and Replicate GET /v1/account on 2026-11-11. A key is sent in the header the provider's
+// checked 2026-11-04, and OpenRouter GET /api/v1/key and Replicate GET /v1/account on 2026-11-10. A key is sent in the header the provider's
 // adapter uses and nowhere else: never in a URL, never logged, never part of a result.
 package probe
 

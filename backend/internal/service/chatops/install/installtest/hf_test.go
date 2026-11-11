@@ -177,3 +177,20 @@ func TestHF_ApplyWithoutAPinnedCommitInstallsNothing(t *testing.T) {
 	assert.Contains(t, refusal(t, err), "コミットが決まっていません")
 	assert.Empty(t, h.installs)
 }
+
+// "model.safetensors" is the Name of "a/model.safetensors" and the whole Path of the file in the root: the exact Path wins, whatever the order of the files.
+func TestHF_AnExactPathIsPickedBeforeAFileThatOnlyHasThatName(t *testing.T) {
+	h := newHub()
+	h.repo.Files = []install.HFFile{
+		{Path: "a/model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Folder: "loras"},
+		{Path: "model.safetensors", Name: "model.safetensors", Size: gb, Installable: true, Folder: "loras"},
+	}
+
+	card, err := h.ask(t, install.HFArgs{Repo: "owner/style", Path: "model.safetensors"})
+
+	require.NoError(t, err)
+	require.Len(t, card.Choices, 1)
+	var a install.HFArgs
+	require.NoError(t, card.Choices[0].Op.DecodeArgs(&a))
+	assert.Equal(t, "model.safetensors", a.Path)
+}

@@ -113,7 +113,8 @@ type Route struct {
 	Why string
 	// Variants are the ways to serve the model, by mam resolution (the resolutions of Caps).
 	Variants map[string]Variant
-	// Caps are what the model can do through this provider: they replace the official ones while the provider is selected.
+	// Caps are what the model can do through this provider: they replace the official ones while the provider is selected. Like the route, they are shared by
+	// all callers (Config.VideoCaps returns them as they are, the Durations and Resolutions slices included, as it does for a local model): read them, do not modify.
 	Caps videocaps.Capabilities
 	// FoldsNegative says the provider has no field for the negative prompt: its backend writes it into the prompt ("Avoid: ..."), so Prepare must count it in the length of the prompt.
 	FoldsNegative bool

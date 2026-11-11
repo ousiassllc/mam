@@ -16,13 +16,8 @@ const keyVideoProvider = "video_provider"
 // Provider is an API provider (viaprovider.Provider): "official", "openrouter", "fal" or "replicate".
 type Provider = viaprovider.Provider
 
-// The providers, and ProviderOfficial the default (viaprovider's): the handler may not import the agent packages.
-const (
-	ProviderOfficial   = viaprovider.Official
-	ProviderOpenRouter = viaprovider.OpenRouter
-	ProviderFal        = viaprovider.Fal
-	ProviderReplicate  = viaprovider.Replicate
-)
+// ProviderOfficial is the default provider (viaprovider's): the handler may not import the agent packages.
+const ProviderOfficial = viaprovider.Official
 
 // Providers lists the providers in the order the screen shows them.
 func Providers() []Provider { return viaprovider.Providers() }

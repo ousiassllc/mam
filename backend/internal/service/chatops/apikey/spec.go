@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops/nlu"
 )
 
 // The operations of this package.
@@ -73,14 +74,15 @@ func cleanProvider(t commandinterpreter.OpType, valid func(string) bool) func(co
 var (
 	keyWord   = regexp.MustCompile(`(?i)(api\s*キー|apiキー|api\s*key|アクセスキー|シークレットキー)`)
 	weakKey   = regexp.MustCompile(`キー(?:を|は|が|に)`)
-	keyVerb   = regexp.MustCompile(`(?i)(設定|登録|入力|入れ|いれ|変更|変え|置き換|差し替|追加|セット|更新|教え|渡|set|register|enter|replace)`)
+	keyVerb   = regexp.MustCompile(`(?i)(設定|登録|入力|入れ|いれ|変更|変え|置き換|差し替|追加|セット|更新|渡|set|register|enter|replace)`)
 	videoWord = regexp.MustCompile(`(?i)(kling|クリング|動画モデル|クラウド動画|video model)`)
 	viaWord   = regexp.MustCompile(`(?i)(経由|プロバイダー|provider|公式に|公式へ|使いたい|使って|切り替え|切替|変えて|変更|にして|に戻)`)
 )
 
-// AsksKey reports whether the message asks to set an API key: it names a key and does something to it. A message that only mentions the word ("API キーは持っている") is not.
+// AsksKey reports whether the message asks to set an API key: it names a key and does something to it. A message that only mentions the word ("API キーは持っている") is not, and neither
+// is a question ("API キーの設定画面はどこ？", "OpenAI の API キーを教えて").
 func AsksKey(message string) bool {
-	if !keyVerb.MatchString(message) || asksVideoProvider(message) {
+	if nlu.IsInquiry(message) || !keyVerb.MatchString(message) || asksVideoProvider(message) {
 		return false
 	}
 	if keyWord.MatchString(message) {

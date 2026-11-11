@@ -76,11 +76,13 @@ func TestOpenRouterKling3TextToVideoSubmitsPollsAndDownloadsWithTheKey(t *testin
 }
 
 func TestOpenRouterKling3ImageToVideoSendsFramesAndTheProTier(t *testing.T) {
-	var submitBody map[string]any
+	var sent latest[map[string]any]
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/videos":
-			_ = json.NewDecoder(r.Body).Decode(&submitBody)
+			var m map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&m)
+			sent.set(m)
 			_, _ = w.Write([]byte(`{"id":"j","status":"pending"}`))
 		case r.URL.Path == "/videos/j":
 			_, _ = w.Write([]byte(`{"id":"j","status":"completed"}`))
@@ -98,6 +100,7 @@ func TestOpenRouterKling3ImageToVideoSendsFramesAndTheProTier(t *testing.T) {
 
 	require.NoError(t, err)
 	readVideo(t, res)
+	submitBody := sent.get()
 	assert.Equal(t, "kwaivgi/kling-v3.0-pro", submitBody["model"], "1080p is the pro tier")
 	assert.NotContains(t, submitBody, "aspect_ratio", "the frame sets the ratio")
 	frames, _ := submitBody["frame_images"].([]any)
@@ -134,11 +137,13 @@ func TestOpenRouterFailedJobIsRefusedWithItsReason(t *testing.T) {
 // The prompt Prepare makes for Kling 3.0 is up to 2400 characters and its avoid list up to 400: OpenRouter has no field for the avoid list, so the backend
 // folds it in. What reaches OpenRouter must still be within the 2400 characters of the model, with the Constraints and the avoid list whole.
 func TestOpenRouterKling3PromptOfAShotStaysWithinTheLimitWithTheAvoidListFolded(t *testing.T) {
-	var submitBody map[string]any
+	var sent latest[map[string]any]
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/videos":
-			_ = json.NewDecoder(r.Body).Decode(&submitBody)
+			var m map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&m)
+			sent.set(m)
 			_, _ = w.Write([]byte(`{"id":"j","status":"pending"}`))
 		case r.URL.Path == "/videos/j":
 			_, _ = w.Write([]byte(`{"id":"j","status":"completed"}`))
@@ -160,6 +165,7 @@ func TestOpenRouterKling3PromptOfAShotStaysWithinTheLimitWithTheAvoidListFolded(
 
 	require.NoError(t, err)
 	res.File.Discard()
+	submitBody := sent.get()
 	prompt, _ := submitBody["prompt"].(string)
 	assert.LessOrEqual(t, utf8.RuneCountInString(prompt), 2400)
 	assert.Contains(t, prompt, "Avoid: ", "the avoid list is folded in")

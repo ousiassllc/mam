@@ -117,3 +117,15 @@ func TestBadStepReasonSaysWhatWasWrongWithTheStep(t *testing.T) {
 	_, err = next(t, `not json at all`)
 	assert.Equal(t, "it was not valid JSON", gentestchat.BadStepReason(err))
 }
+
+// The words of a model query are bounded: the service refuses a word it does not know by quoting it, to the LLM and to the thread.
+func TestNextBoundsTheWordsOfAModelQuery(t *testing.T) {
+	long := strings.Repeat("あ", 500)
+	st, err := next(t, `{"action":"list_models","commercial":" `+long+` ","inputs":[" text ",""," `+long+`"],"providers":["a","b","c","d","e","f","g","h","i","j"]}`)
+	require.NoError(t, err)
+	assert.Len(t, []rune(st.Commercial), 80)
+	require.Len(t, st.Inputs, 2, "blank words are dropped")
+	assert.Equal(t, "text", st.Inputs[0])
+	assert.Len(t, []rune(st.Inputs[1]), 80)
+	assert.Len(t, st.Providers, 8, "a list is cut at the most")
+}

@@ -62,8 +62,13 @@ func (h *HF) Question(ctx context.Context, _ domain.Project, op commandinterpret
 // pickFile is the file the director named, or the only one that can be installed, or the installable ones to choose from.
 func pickFile(repo HFRepo, path string) (HFFile, []named, error) {
 	if path = strings.TrimSpace(path); path != "" {
+		for _, f := range repo.Files { // the exact path first: "model.safetensors" is also the Name of "a/model.safetensors"
+			if strings.EqualFold(f.Path, path) {
+				return f, nil, nil
+			}
+		}
 		for _, f := range repo.Files {
-			if strings.EqualFold(f.Path, path) || strings.EqualFold(f.Name, path) {
+			if strings.EqualFold(f.Name, path) {
 				return f, nil, nil
 			}
 		}

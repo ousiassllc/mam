@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,6 +24,24 @@ const videoBytes = "FAKE-MP4"
 type seen struct {
 	method, path, auth string
 	body               map[string]any
+}
+
+// latest keeps the last value a handler of a fake server stored: the handler runs on the goroutine of the server and the test reads it after the call.
+type latest[T any] struct {
+	mu sync.Mutex
+	v  T
+}
+
+func (l *latest[T]) set(v T) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.v = v
+}
+
+func (l *latest[T]) get() T {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.v
 }
 
 // backends builds the backends of the whole setting with every vendor at the fake server and the provider selected.

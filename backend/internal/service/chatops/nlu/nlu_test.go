@@ -44,3 +44,8 @@ func TestAgentIn_TheLongestNameWins(t *testing.T) {
 	assert.Equal(t, "producer", nlu.AgentIn("Producer の代替"))
 	assert.Empty(t, nlu.AgentIn("カメラを固定して"))
 }
+
+func TestClauseEnd_SplitsAtEveryEndOfAClause(t *testing.T) {
+	assert.Equal(t, []string{"a", " b", " c", " d", "e", "f"}, nlu.ClauseEnd.Split("a、 b！ c? d. e\nf", -1))
+	assert.Equal(t, []string{"Gemini 2.5 Flash"}, nlu.ClauseEnd.Split("Gemini 2.5 Flash", -1), "a period inside a name is no end")
+}

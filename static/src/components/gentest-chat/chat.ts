@@ -74,6 +74,15 @@ export function installGentestChat(doc: Document = document): void {
 
   doc.addEventListener('htmx:afterRequest', (event) => {
     const { elt, xhr } = (event as CustomEvent<{ elt: Element; xhr?: { status: number } }>).detail;
+    if (elt.closest('[data-gtc-options]')) {
+      // A tap on an option card disables the button (hx-disabled-elt) and the swap turns the answered cards off (inert), so the focus drops to <body>: it
+      // goes to the box, as after a sent message. Focus the user has put somewhere else meanwhile is left alone.
+      const active = doc.activeElement;
+      if (isSuccessResponse(xhr) && (!active || active === doc.body || elt.contains(active))) {
+        doc.querySelector<HTMLTextAreaElement>(CONTENT)?.focus();
+      }
+      return;
+    }
     if (!elt.matches(COMPOSER)) return;
     const was = sent;
     sent = undefined;

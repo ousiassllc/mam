@@ -6,7 +6,7 @@
 // The file holds only what differs from modeladapter.DefaultConfig (the same sparse JSON
 // configcheck.Read reads), so that a later change of a default still applies. Every other key of
 // the file (vendors, models, prices, routing, retry, breaker, prefer_openai) is kept as it is. A saved
-// assignment is read when the app starts: the clients are built once.
+// assignment is applied at once: the app reloads its clients when it is saved (SetOnChange).
 package modelsettings
 
 import (
@@ -144,8 +144,8 @@ func (s *Service) changed() {
 // are shown and nothing can be saved.
 func New(path string, pinned bool) *Service { return &Service{path: path, pinned: pinned} }
 
-// View returns the saved assignment: the file's, else the defaults (not the running one: a saved
-// change applies after a restart). It fails when the file cannot be read as a Model Adapter setting.
+// View returns the saved assignment: the file's, else the defaults (a saved
+// change is applied at once, SetOnChange). It fails when the file cannot be read as a Model Adapter setting.
 func (s *Service) View() (View, error) {
 	defer settingsfile.Lock(s.path)()
 	cfg, err := s.load()

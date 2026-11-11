@@ -80,12 +80,13 @@ func TestFalKling3SubmitsToTheQueueAndReadsTheResult(t *testing.T) {
 }
 
 func TestFalKling4UsesTheNewEndpointWithAnIntegerLengthAndTheResolution(t *testing.T) {
-	var submit seen
+	var submit latest[seen]
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost:
-			submit = seen{method: r.Method, path: r.URL.Path}
-			_ = json.NewDecoder(r.Body).Decode(&submit.body)
+			s := seen{method: r.Method, path: r.URL.Path}
+			_ = json.NewDecoder(r.Body).Decode(&s.body)
+			submit.set(s)
 			_, _ = w.Write([]byte(`{"request_id":"r4"}`))
 		case r.URL.Path == "/kling/v4/requests/r4/status":
 			_, _ = w.Write([]byte(`{"status":"COMPLETED"}`))
@@ -103,11 +104,12 @@ func TestFalKling4UsesTheNewEndpointWithAnIntegerLengthAndTheResolution(t *testi
 
 	require.NoError(t, err)
 	readVideo(t, res)
-	assert.Equal(t, "/kling/v4/text-to-video", submit.path)
-	assert.EqualValues(t, 12, submit.body["duration"])
-	assert.Equal(t, "720p", submit.body["resolution"])
-	assert.Equal(t, "9:16", submit.body["aspect_ratio"])
-	assert.NotContains(t, submit.body, "generate_audio")
+	got := submit.get()
+	assert.Equal(t, "/kling/v4/text-to-video", got.path)
+	assert.EqualValues(t, 12, got.body["duration"])
+	assert.Equal(t, "720p", got.body["resolution"])
+	assert.Equal(t, "9:16", got.body["aspect_ratio"])
+	assert.NotContains(t, got.body, "generate_audio")
 }
 
 func TestFalAnErrorOfTheModelIsAnErrorOfTheCall(t *testing.T) {

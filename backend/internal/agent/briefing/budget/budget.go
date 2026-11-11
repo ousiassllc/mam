@@ -133,10 +133,13 @@ func perShot(clause string, start, end int) bool {
 	return shotPerRe.MatchString(window) || shotUnitRe.MatchString(window) || shotAfterRe.MatchString(clause[end:])
 }
 
-// fold writes the full-width digits, letters and signs of text as ASCII ("＄２０" is "$20"), so that the patterns read what the user typed in either width.
+// fold writes the full-width digits, letters, signs and space of text as ASCII ("＄２０" is "$20", "20　ドル" is "20 ドル"), so that the patterns read what the user typed in either width.
 func fold(text string) string {
 	return strings.Map(func(r rune) rune {
-		if r >= '！' && r <= '～' {
+		switch {
+		case r == '　': // U+3000: \s does not match it
+			return ' '
+		case r >= '！' && r <= '～':
 			return r - ('！' - '!')
 		}
 		return r

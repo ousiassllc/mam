@@ -59,6 +59,10 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 	for _, message := range []string{
 		"FaceFusion でフォルダ内の画像の顔を入れ替えて",
 		"ffmpeg のバイナリを使って、出力フォルダを作って",
+		"ffmpeg のバイナリを使って! 出力フォルダを作って",
+		"ffmpeg の出力フォルダを作って",
+		"FaceFusion の結果を保存する場所を選びたい",
+		"FaceFusion の一時ファイルのフォルダを作って",
 		"MCP でエクスポートした動画を作りたい",
 		"MCP のレポートを作って",
 		"MCP のサポートを追加して",
@@ -70,6 +74,9 @@ func TestRefused_WordsThatOnlySoundLikeASettingAreLeftAlone(t *testing.T) {
 		"MCP のポートを変えたい",
 		"MCP のデフォルトポートを 9000 にして",
 		"ffmpeg のバイナリのパスを設定して",
+		"ffmpeg の場所を選びたい",
+		"ffmpeg のバイナリの場所を選びたい",
+		"FaceFusion のフォルダを指定して",
 	} {
 		_, ok := commandinterpreter.Refused(message)
 		assert.True(t, ok, message)

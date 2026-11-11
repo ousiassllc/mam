@@ -24,34 +24,36 @@ type CreateProjectInput struct {
 	BrandTemplateID string
 }
 
-// Create starts a Project from the user's first message: the Brief is extracted from
-// it (with where each value came from and the recommended Duration / Aspect Ratio of the platform), attachments become
-// Assets/References, and the AI answers in the new thread (the Subject question, or the Brief summary to confirm; #1114).
+// Create starts a Project from the user's first message: the Brief is extracted from it (with where each value came from and the recommended Duration / Aspect Ratio of the platform),
+// attachments become Assets/References, and the AI answers in the new thread (the Subject question, or the Brief summary to confirm; #1114). A message that carries an API key is
+// handled as in the chat: the key is hidden, the message is not read, and its attachments are not taken (the thread says so); the Project is still created.
 func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (domain.Project, error) {
 	content := strings.TrimSpace(in.Content)
 	if err := validateMessage(content, len(in.Uploads) > 0); err != nil {
 		return domain.Project{}, err
 	}
 	content, hasKey := secretguard.Redact(content) // an API key is never read by the extractor (an LLM) nor kept in the thread (#1140)
+	uploads := in.Uploads
+	if hasKey {
+		uploads = nil // as in the chat: the message is not read, so its files are not taken (filesNotTakenNotice)
+	}
 	projectID := domain.NewID()
-	stored, err := s.storeUploads(projectID, in.Uploads)
+	stored, err := s.storeUploads(projectID, uploads)
 	if err != nil {
 		return domain.Project{}, err
 	}
 	assets := assetsOf(stored)
-
 	var brief domain.Brief
 	if !hasKey {
 		briefing.Absorb(&brief, s.extractor.Extract(content), content)
 	}
 	briefing.Recommend(&brief)
 	brief.AttachAssets(assets)
-
-	messages := []domain.ChatMessage{userText(content, "", assetIDs(assets)), briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)}
+	messages := []domain.ChatMessage{userText(content, "", assetIDs(assets))}
 	if hasKey {
-		messages = slices.Insert(messages, 1, assistantText(pastedNotice))
+		messages = secretRefusal(content, len(in.Uploads) > 0)
 	}
-	messages = assignIDs(messages)
+	messages = assignIDs(append(messages, briefing.FollowUp(brief, domain.ConfirmKeyCheck, true)))
 	project := domain.Project{
 		ID: projectID, State: domain.StateDraft, Mode: domain.ModeAuto,
 		ConfirmationLevel:  domain.ConfirmKeyCheck,
@@ -70,8 +72,7 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 	if err != nil {
 		return domain.Project{}, err
 	}
-	// A budget stated in the first message ("予算は $20 で") is asked about before anything starts: the ceiling is set only when the user confirms it (#1139), and the
-	// Orchestrator waits for the answer, so the card is in the thread before the pipeline is kicked.
+	// A budget stated in the first message ("予算は $20 で") is asked about before anything starts (#1139): the pipeline is kicked only once its card is in the thread.
 	if s.askStatedBudget(ctx, created, content) {
 		s.kick(ctx, projectID)
 	}
@@ -147,7 +148,6 @@ func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form
 		view.Brief = edited
 		return view, err
 	}
-
 	note := assistantText("Brief を更新しました。")
 	msgs := assignIDs([]domain.ChatMessage{note})
 	if err := s.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: msgs, Brief: &edited}); err != nil {

@@ -107,8 +107,8 @@ func TestChat_TheModelsExportOperationAsksTheSameCardAsTheWords(t *testing.T) {
 
 func TestChat_DownloadAnswersAtOnceWithTheLatestExportAndChangesNothing(t *testing.T) {
 	f, fake := newExportFixture(t)
-	insertExport(f, "e1", "16:9", "1080p")
-	insertExport(f, "e2", "9:16", "720p")
+	insertExport(f, "e1", "2026-11-01", "16:9", "1080p")
+	insertExport(f, "e2", "2026-11-02", "9:16", "720p")
 
 	ws := f.Say("さっきの書き出しをダウンロードしたい", "")
 

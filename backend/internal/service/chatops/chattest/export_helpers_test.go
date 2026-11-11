@@ -43,10 +43,11 @@ func newExportFixture(t *testing.T) (*chatfix.Fixture, *exportFake) {
 	return f, fake
 }
 
-func insertExport(f *chatfix.Fixture, id, ratio, resolution string) {
+// insertExport adds an export made on the given day (YYYY-MM-DD): the latest day is the latest export.
+func insertExport(f *chatfix.Fixture, id, day, ratio, resolution string) {
 	f.T.Helper()
 	f.SQL(`INSERT INTO export (id, project_id, file_path, resolution, aspect_ratio, codec, exported_at) VALUES (?, ?, ?, ?, ?, 'h264', ?)`,
-		id, f.ProjectID, f.ProjectID+"/exports/"+id+".mp4", resolution, ratio, "2026-11-0"+id[len(id)-1:]+"T09:00:00.000Z")
+		id, f.ProjectID, f.ProjectID+"/exports/"+id+".mp4", resolution, ratio, day+"T09:00:00.000Z")
 }
 
 func projectState(f *chatfix.Fixture) string {

@@ -63,13 +63,7 @@ func TestChat_AnActionThatIsNotAValidOperationIsNotCarriedOut(t *testing.T) {
 	require.NoError(t, err)
 	body := domain.CardBody{Text: "予算を変えますか", Options: []string{"変える"}, OptionActions: []json.RawMessage{negative}}
 	require.NoError(t, f.svc.Chat.RaiseEscalationCard(context.Background(), p.ID, body, ""))
-	var card domain.ThreadMessage
-	for _, m := range f.thread(t, p.ID) {
-		if m.Kind == domain.KindEscalation {
-			card = m
-		}
-	}
-	require.NotEmpty(t, card.ID)
+	card := escalationCard(t, f, p.ID)
 
 	_, err = f.svc.Chat.PostMessage(context.Background(), p.ID, service.PostMessageInput{Content: "変える", ReplyToMessageID: card.ID})
 
@@ -110,13 +104,7 @@ func TestChat_PickingTheModeButtonOfTheBudgetEscalationSwitchesToDirectorMode(t 
 	require.NoError(t, err)
 	body := domain.CardBody{Text: "予算を超えます", Options: []string{"AUTO をやめて DIRECTOR MODE にする"}, OptionActions: []json.RawMessage{toDirector}}
 	require.NoError(t, f.svc.Chat.RaiseEscalationCard(context.Background(), p.ID, body, ""))
-	var card domain.ThreadMessage
-	for _, m := range f.thread(t, p.ID) {
-		if m.Kind == domain.KindEscalation {
-			card = m
-		}
-	}
-	require.NotEmpty(t, card.ID)
+	card := escalationCard(t, f, p.ID)
 
 	ws := answer(t, f.svc, p.ID, card.ID, "AUTO をやめて DIRECTOR MODE にする")
 

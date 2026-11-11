@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/gentestchat"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -38,7 +39,7 @@ func (s *Service) Confirm(ctx context.Context, sessionID, proposalID string) (Re
 	switch {
 	case runErr == nil:
 		p.State, p.BatchID = StateConfirmed, ref.BatchID
-		se.note(gentestchat.RoleTool, "The user confirmed the card. The batch was started: "+itoa(ref.TotalItems)+" results; the results are shown in the chat by the app.")
+		se.note(gentestchat.RoleTool, "The user confirmed the card. The batch was started: "+strconv.Itoa(ref.TotalItems)+" results; the results are shown in the chat by the app.")
 		return Reply{Changed: []Proposal{*p}, Messages: []Message{{ID: newID(), Kind: KindResult, BatchID: ref.BatchID}}}, nil
 	case errors.As(runErr, &conflict):
 		return s.stale(se, p, conflict.Message), nil

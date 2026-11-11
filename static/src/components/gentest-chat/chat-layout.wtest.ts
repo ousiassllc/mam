@@ -7,6 +7,7 @@ import { setViewport } from '@web/test-runner-commands';
 describe('the chat of the single generation in a narrow window (#1138)', () => {
   let host: HTMLElement;
   let stylesheet: HTMLLinkElement;
+  const original = { width: window.innerWidth, height: window.innerHeight };
 
   beforeEach(async function () {
     this.timeout(60_000); // the first request waits for the build of the CSS
@@ -27,16 +28,17 @@ describe('the chat of the single generation in a narrow window (#1138)', () => {
     host.querySelector('#gtc-thread')!.append(...[...host.children].filter((el) => el !== panel));
   });
 
-  afterEach(() => {
-    host.remove();
-    stylesheet.remove();
+  afterEach(async () => {
+    host?.remove();
+    stylesheet?.remove();
+    await setViewport(original); // the window is shared with the other test files of the run
   });
 
   for (const width of [375, 1280]) {
     it(`keeps the thread, the card and the results inside the page at ${width} px`, async () => {
       await setViewport({ width, height: 900 });
       const page = document.documentElement;
-      expect(page.clientWidth).to.equal(width);
+      expect(window.innerWidth, 'the viewport was set').to.equal(width); // not clientWidth: a scrollbar takes some of it
       expect(page.scrollWidth - page.clientWidth, 'the page scrolls sideways').to.be.at.most(0);
       for (const id of ['gtc-proposal', 'gtc-result', 'gtc-composer']) {
         const el = host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!;

@@ -48,6 +48,22 @@ func TestOverrun_CountsWhatTheShotAlreadyHolds(t *testing.T) {
 	assert.False(t, plan.Overrun().Any(), "1 held + 2 planned fits 3")
 }
 
+// A plan that costs exactly the ceiling fits it: 0.1 + 0.2 is a hair over 0.3 as float64, and the start of a generation (which reserves with the same slack) lets it
+// through, so the plan must not stop for it.
+func TestOverrun_ACostThatEqualsTheCeilingFits(t *testing.T) {
+	plan := genplan.Plan{
+		Lines:          []genplan.Line{{ShotID: "s1", VideoCost: genplan.Cost{USD: 0.2}}},
+		ProjectSpent:   0.1,
+		ProjectCeiling: usd(0.3),
+		ShotSpent:      map[string]float64{"s1": 0.1},
+		ShotCeiling:    usd(0.3),
+	}
+	assert.False(t, plan.Overrun().Any(), "0.1 held + 0.2 planned is 0.3, not over it")
+
+	plan.ProjectCeiling, plan.ShotCeiling = usd(0.29), usd(0.29)
+	assert.True(t, plan.Overrun().Any(), "a real overrun still stops")
+}
+
 func TestUnpricedNotice_OnlyWithABudget(t *testing.T) {
 	plan := genplan.Plan{Unpriced: []string{"動画: kling-3.0"}}
 	assert.Empty(t, plan.UnpricedNotice(), "no budget: nothing to tell")

@@ -38,6 +38,10 @@ func Few(names []string, n int) string {
 	return strings.Join(names[:n], "、") + "、ほか " + strconv.Itoa(len(names)-n) + " 件"
 }
 
+// ClauseEnd is where a clause of a message ends (a comma, a stop, a ! or ? of either width, a semicolon, a line break, or an ASCII period before a space). The operations read the
+// words of one request from one clause, so that the values of one clause are not mixed with another's ("Director の LLM を Claude にして、Producer の LLM を GPT にして").
+var ClauseEnd = regexp.MustCompile(`[、。，．！？!?;；\n]|[,.]\s`)
+
 // Person is the "モデル" of a fashion model or of the cast ("プロのモデル", "モデルさん"): it names no model of the program, so a sentence is read without it.
 var Person = regexp.MustCompile(`(?:プロ|出演者?|ファッション|専属|人物|女性|男性|外国人|日本人|ヘア|ハンド)の?モデル|モデル(?:さん|ちゃん|君|くん|たち|達)`)
 

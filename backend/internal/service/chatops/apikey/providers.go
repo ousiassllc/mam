@@ -10,7 +10,7 @@ import (
 // uses for it.
 type provider struct {
 	ID, Label string
-	// Names are the lower-case words of the message that mean this provider, longest first within one provider.
+	// Names are the lower-case words of the message that mean this provider (providerOf picks the longest match found, whatever the order here).
 	Names []string
 }
 

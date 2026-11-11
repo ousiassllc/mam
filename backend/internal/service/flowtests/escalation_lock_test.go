@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,7 +59,11 @@ func TestChat_AnEscalationCardTakesOneAnswerAtATime(t *testing.T) {
 		_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "実行する", ReplyToMessageID: card.ID})
 		first <- err
 	}()
-	<-h.entered // the first answer is being carried out
+	select {
+	case <-h.entered: // the first answer is being carried out
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first answer never reached the handler")
+	}
 
 	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "実行する", ReplyToMessageID: card.ID})
 

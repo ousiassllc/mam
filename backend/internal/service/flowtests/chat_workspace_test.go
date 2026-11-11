@@ -245,9 +245,12 @@ func TestChatService_TakeJudgedRefreshesOnlyTheCardsOfThatTake(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("no card.updated for the Take card")
 	}
+	// A sentinel message after the judged Take: events arrive in the order they were published, so the next one being the sentinel's means no other card was told to redraw.
+	require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindText, Content: "sentinel"}))
 	select {
 	case e := <-events:
-		t.Fatalf("unexpected second event %+v", e)
-	case <-time.After(50 * time.Millisecond):
+		assert.Equal(t, service.EventMessageCreated, e.Type, "the next event is the sentinel's, not a second card.updated")
+	case <-time.After(time.Second):
+		t.Fatal("no message.created for the sentinel")
 	}
 }
