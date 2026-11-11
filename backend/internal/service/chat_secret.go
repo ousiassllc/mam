@@ -13,7 +13,7 @@ import (
 )
 
 // typedIntoCard is what the thread records for a secret typed into a card: the value never is.
-const typedIntoCard = "入力しました（値はチャットには残しません）"
+const typedIntoCard = "の API キーを入力しました（値はチャットには残しません）"
 
 // pastedNotice is what the chat says to a message that carries what looks like an API key.
 const pastedNotice = "API キーらしき文字列が含まれていたため、伏せて記録しました（この発言は読み取っていません）。キーはチャットに書かず、「OpenAI の API キーを設定したい」のように送ってください。キーを入力する欄のあるカードを出します。"

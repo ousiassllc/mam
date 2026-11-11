@@ -104,7 +104,8 @@ func engineDeps(m *modelmanager.Service) install.EngineDeps {
 			for _, v := range e.Variants {
 				out.Variants = append(out.Variants, install.Variant{ID: string(v.Variant), Label: v.Label, Size: v.Size, ExtractedSize: v.ExtractedSize, NeedBytes: v.NeedBytes})
 			}
-			if e.Supported && !e.Installed {
+			// the install, and the update of an installed engine, choose the build by the GPU (Service.chooseVariant): the card must name the same one, so an update has a recommendation too
+			if e.Supported && (!e.Installed || e.Broken || e.UpdateAvailable) {
 				rec := m.DetectGPU(ctx).Recommendation
 				out.RecommendedVariant, out.RecommendationUnavailable = string(rec.Variant), rec.Guidance
 			}

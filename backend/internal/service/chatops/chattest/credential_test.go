@@ -122,7 +122,7 @@ func TestChat_AnAPIKeyIsTypedIntoTheCardAndNeverIntoTheThread(t *testing.T) {
 	assert.Equal(t, plainKey, got, "stored through the key store")
 	require.Len(t, ws.Messages, 2)
 	assert.Equal(t, card.ID, ws.Messages[0].ReplyToMessageID)
-	assert.Contains(t, ws.Messages[0].Content, "値はチャットには残しません")
+	assert.Equal(t, "「OpenAI」の API キーを入力しました（値はチャットには残しません）", ws.Messages[0].Content, "the whole line the spec gives, with the name of the key")
 	assert.Contains(t, ws.Messages[1].Content, "保存しました")
 	require.Len(t, ws.Updated, 1)
 	assert.False(t, ws.Updated[0].Open, "the card is closed")

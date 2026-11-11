@@ -222,3 +222,4 @@
 | 1.215 | 2026-11-10 | [endpoints-gentest.md](endpoints-gentest.md)（1.31）の `POST /generation-test/chat/proposals/:id/dismiss` の行に、状態（200・409・410・404）を書いた | PR #1141 の再レビュー指摘（1.214 の直しが起こした記述の抜け） |
 | 1.216 | 2026-11-11 | [endpoints-settings.md](endpoints-settings.md)（1.22）の §4 の接続テストの表に `openrouter`・`replicate` を足し、ボタンを出さない行に `fal` を足した（実装の `credential/probe` と揃えた） | PR #1141 のレビュー指摘 |
 | 1.217 | 2026-11-11 | [endpoints-gentest.md](endpoints-gentest.md)（1.32）の `POST /generation-test/chat/proposals/:id/confirm` に、何も生成しなかった失敗のカードの扱いを足した | PR #1141 のレビュー指摘 |
+| 1.218 | 2026-11-11 | `POST /projects/:id/messages/:messageId/secret` の説明の保存先を、実際のルート `PUT /credentials/:provider` に直した（`/settings/credentials/:provider` は `…/edit` と `…/test` だけ） | PR #1141 のレビュー指摘 |

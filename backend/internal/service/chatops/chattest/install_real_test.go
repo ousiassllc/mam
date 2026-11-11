@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/chatops/chatfix"
 	"github.com/ousiassllc/mam/backend/internal/service/chatwire"
@@ -16,10 +17,10 @@ import (
 
 // realInstallFixture wires the install operations of the chat to a real model manager over fakes (mmtest: a fake host for the engine archive and the model files), as the app
 // does: the same modelmanager.Service the MCP tools use.
-func realInstallFixture(t *testing.T) (*chatfix.Fixture, *mmtest.Rig) {
+func realInstallFixture(t *testing.T, opts ...mmtest.Option) (*chatfix.Fixture, *mmtest.Rig) {
 	t.Helper()
 	f := chatfix.New(t)
-	rig := mmtest.New(t, mmtest.WithDB(f.DB))
+	rig := mmtest.New(t, append([]mmtest.Option{mmtest.WithDB(f.DB)}, opts...)...)
 	f.Svc.ModelManager = rig.Svc
 	chatwire.Connect(f.Svc, chatwire.Settings{})
 	f.Direct()
@@ -118,4 +119,41 @@ func TestChat_InstallConsentAndAdultGateWithTheRealModelManager(t *testing.T) {
 	rig.ConfirmAdult()
 	cards := chatfix.Cards(f.SayOps("D のモデルを入れて", `{"type":"install_model","args":{"model":"D"}}`).Messages)
 	require.Len(t, cards, 1, "offered once the age is confirmed")
+}
+
+// An engine that is installed (an older pinned version) is updated through the chat with the real model manager: the card names the build the GPU recommends, as the
+// install does (an installed engine has no recommendation of its own, which once made every update a "no GPU" refusal).
+func TestChat_UpdateTheInstalledEngineWithTheRealModelManager(t *testing.T) {
+	old := mmtest.New(t, mmtest.EngineVersion("v0.9.0"))
+	old.InstallEngine()
+	f, rig := realInstallFixture(t, mmtest.WithLayout(old.Layout))
+	require.True(t, rig.Svc.Engine().UpdateAvailable, "the catalog pins v1.0.0 and v0.9.0 is installed")
+
+	ws := f.SayOps("ComfyUI のエンジンを入れ直して", `{"type":"install_model_engine","args":{}}`)
+
+	cards := chatfix.Cards(ws.Messages)
+	require.Len(t, cards, 1, "a card, not a refusal: %s", chatfix.LastText(ws))
+	body := chatfix.Body(cards[0])
+	assert.Contains(t, body.Text, "ComfyUI エンジンを更新しますね？（導入済み v0.9.0 → v1.0.0）")
+	assert.Contains(t, body.Text, "NVIDIA")
+	assert.NotContains(t, chatfix.LastText(ws), "GPU が見つかりません")
+
+	f.Answer(cards[0].ID, body.Options[0])
+	require.Equal(t, domain.JobSucceeded, rig.Wait(rig.Svc.Engine().InstallJob).State)
+	assert.False(t, rig.Svc.Engine().UpdateAvailable)
+	assert.Equal(t, "v1.0.0", rig.Svc.Engine().Version)
+}
+
+// A machine with no supported GPU is refused with the reason also when the engine is installed and an update is pending: nothing is queued.
+func TestChat_UpdateTheEngineOnAMachineWithoutAGPUIsRefusedWithTheReason(t *testing.T) {
+	old := mmtest.New(t, mmtest.EngineVersion("v0.9.0"))
+	old.InstallEngine()
+	f, rig := realInstallFixture(t, mmtest.WithLayout(old.Layout))
+	rig.GPUReport.Recommendation = gpu.Recommendation{Guidance: "対応する GPU が見つかりません（テスト）"}
+
+	ws := f.SayOps("ComfyUI のエンジンを入れ直して", `{"type":"install_model_engine","args":{}}`)
+
+	assert.Empty(t, chatfix.Cards(ws.Messages))
+	assert.Contains(t, chatfix.LastText(ws), "対応する GPU が見つかりません（テスト）")
+	assert.Empty(t, rig.Svc.Engine().InstallJob)
 }

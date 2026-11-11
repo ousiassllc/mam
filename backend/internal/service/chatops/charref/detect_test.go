@@ -35,6 +35,9 @@ func TestDetect_ReadsTheCharacterAndTheSlotWithoutAModel(t *testing.T) {
 		"この画像をヒロインのフェイスにして":     {Character: "ヒロイン", Slot: "face"},
 		"この画像を Mio の face にして":  {Character: "Mio", Slot: "face"},
 		"この画像を Mio の顔の参照に割り当てて": {Character: "Mio", Slot: "face"},
+		"この画像をミオの体にして":          {Character: "ミオ", Slot: "body"},
+		"この画像を体の参照にして":          {Slot: "body"},
+		"この画像を主人公の身体の参照にして":     {Character: "主人公", Slot: "body"},
 	} {
 		got := detect(t, message)
 		require.Len(t, got, 1, message)
@@ -52,6 +55,13 @@ func TestDetect_DoesNotMistakeADirectionAboutAFaceForAReference(t *testing.T) {
 		"カメラを固定して",
 		"画像を添付しました",
 		"ミオの表情を変えて",
+		// words with 体 in them are no body slot
+		"全体の雰囲気はこの参照画像にして",
+		"この参照画像を全体に使って",
+		"この写真を具体的な参考にして",
+		"この写真を体験版の参考にして",
+		"この画像を主体にして",
+		"この画像をシーン全体の参照にして",
 	} {
 		assert.Empty(t, detect(t, message), message)
 		assert.False(t, charref.Asks(message), message)

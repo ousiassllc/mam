@@ -77,9 +77,19 @@ var (
 	named = regexp.MustCompile(`(?i)([^\s、。，,「」『』を]{1,30}?)\s*の\s*(顔写真|顔|フェイス|face|全身|ボディー|ボディ|身体|体|body)`)
 )
 
+// compoundBody is 体 inside a word (全体, 具体, 主体, 体験, 体力): not the body slot. 身体 is the slot and is kept (written as ボディ before this runs).
+var compoundBody = regexp.MustCompile(`\p{Han}体|体\p{Han}`)
+
+// slotText is the message as the slot words read it: 体 of a compound word is hidden, 身体 stays the body.
+func slotText(message string) string {
+	message = strings.ReplaceAll(message, "身体", "ボディ")
+	return compoundBody.ReplaceAllStringFunc(message, func(m string) string { return strings.ReplaceAll(m, "体", "＊") })
+}
+
 // Asks reports whether the message asks to put an image on the face or the body of a Character: it names a slot and an image (or a reference), and what to do with them, and
 // it is not a direction about how a face looks. A message that only mentions a face ("顔を笑顔にして") is not.
 func Asks(message string) bool {
+	message = slotText(message)
 	return slotWord.MatchString(message) && imageWord.MatchString(message) && assignWord.MatchString(message) && !editsFace.MatchString(message)
 }
 
@@ -93,6 +103,7 @@ func detect(message string) []commandinterpreter.Operation {
 	if !Asks(message) {
 		return nil
 	}
+	message = slotText(message)
 	a := Args{Slot: slotOf(slotWord.FindString(message))}
 	if m := named.FindStringSubmatch(message); m != nil {
 		a.Character, a.Slot = nameOf(m[1]), slotOf(m[2])
