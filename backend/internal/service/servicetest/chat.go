@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,6 +51,12 @@ func LastMessage(t testenv.TestingT, msgs []domain.ThreadMessage) domain.ThreadM
 	t.Helper()
 	require.NotEmpty(t, msgs)
 	return msgs[len(msgs)-1]
+}
+
+// WaitLastMessage waits until the last message of the thread says want: a state of the project that a job sets can be seen before the line that tells why is in the thread.
+func WaitLastMessage(t *testing.T, thread func(testenv.TestingT, string) []domain.ThreadMessage, projectID, want string) {
+	t.Helper()
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Contains(c, LastMessage(c, thread(c, projectID)).Content, want) }, 30*time.Second, 10*time.Millisecond)
 }
 
 // LastText is the text of the last message of the workspace.

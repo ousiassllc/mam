@@ -15,9 +15,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
-
-func fp(v float64) *float64 { return &v }
 
 func (f genFixture) generate(t *testing.T) {
 	t.Helper()
@@ -124,7 +123,7 @@ func TestSetBudget_ParsesCeilingsAndBlocksGenerationThatDoesNotFit(t *testing.T)
 func TestCostSummary_ShowsEstimatedAndVendorReportedCostByShotSceneAndProject(t *testing.T) {
 	f := newGenFixture(t, true)
 	ctx := context.Background()
-	f.models.actual = fp(0.30)
+	f.models.actual = new(0.30)
 
 	f.generate(t) // BALANCED: 3 Takes of 4 s at 0.15 USD/s
 
@@ -166,9 +165,7 @@ func TestGenerateShot_StopsAtMaxGenerationTimeAndReportsIt(t *testing.T) {
 
 	assert.Less(t, time.Since(start), 5*time.Second, "the 10 s limit ran out in 10 ms, not in 10 s")
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take`))
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Contains(c, lastMessage(c, f.thread(c, f.projectID)).Content, "制限時間")
-	}, 30*time.Second, 10*time.Millisecond) // the Shot is back in Planning before the thread says why
+	servicetest.WaitLastMessage(t, f.thread, f.projectID, "制限時間") // the Shot is back in Planning before the thread says why
 }
 
 func TestGenerateShot_WarnsBeforeStartingWhenTheDiskIsTooSmall(t *testing.T) {
