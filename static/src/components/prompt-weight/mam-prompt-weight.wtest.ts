@@ -128,6 +128,39 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
     expect(weight.hidden).to.equal(true);
   });
 
+  it('closes on Esc from a focused button and puts the focus back in the prompt box (W7)', async () => {
+    const { weight, box } = await form('a cat');
+    await select(weight, box, 2, 5);
+    button(weight, 'up').focus();
+    expect(document.activeElement).to.equal(button(weight, 'up'));
+    button(weight, 'up').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    await weight.updateComplete;
+    expect(weight.hidden).to.equal(true);
+    expect(document.activeElement).to.equal(box);
+    box.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true })); // the release of the key does not open the bar again
+    await weight.updateComplete;
+    expect(weight.hidden).to.equal(true);
+    await select(weight, box, 2, 5); // a new selection does
+    expect(weight.hidden).to.equal(false);
+  });
+
+  it('has the role="status" note region in the DOM before the bar shows, and only its content changes (W8)', async () => {
+    const { weight, box } = await form('a cat', ['unsupported']);
+    const note = () => weight.querySelector<HTMLElement>('[data-testid="gt-weight-note"]');
+    const before = note();
+    expect(before).to.not.equal(null);
+    expect(before!.getAttribute('role')).to.equal('status');
+    expect(weight.hidden).to.equal(true);
+    expect(before!.textContent!.trim()).to.equal('');
+    await select(weight, box, 2, 5);
+    expect(weight.hidden).to.equal(false);
+    expect(note()).to.equal(before); // the same node: not drawn together with the bar
+    expect(before!.textContent).to.contain('m0');
+    expect(button(weight, 'up').getAttribute('aria-describedby')).to.equal(before!.id);
+  });
+
   it('does nothing for the negative prompt', async () => {
     const { weight, negative } = await form('a cat');
     negative.value = 'blurry';
@@ -211,6 +244,40 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
     el.replaceWith(copy);
     const weight = copy.querySelector<MamPromptWeight>('mam-prompt-weight')!;
     await weight.updateComplete;
-    expect(weight.querySelectorAll('[data-testid="gt-weight-bar"]').length).to.equal(0);
+    expect(stale.isConnected).to.equal(false); // the kept bar is gone: the element drew its own
+    expect(weight.querySelectorAll('[data-testid="gt-weight-bar"]').length).to.equal(1);
+  });
+});
+
+// The bar drawn with the real Tailwind CSS of the app (the classes of the component are scanned into it).
+describe('<mam-prompt-weight>: the look of the bar (spec/components/shared-ui-parts.md §1, W2 and W3)', () => {
+  let stylesheet: HTMLLinkElement | undefined;
+  async function tailwind() {
+    stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = '/__tailwind.css';
+    const loaded = new Promise<void>((resolve, reject) => {
+      stylesheet!.onload = () => resolve();
+      stylesheet!.onerror = () => reject(new Error('the Tailwind CSS could not be built'));
+    });
+    document.head.append(stylesheet);
+    await loaded;
+  }
+  afterEach(() => stylesheet?.remove());
+
+  it('buttons are 32px or taller and have a ripple, the figure is monospace (W2, W3; #1094)', async function () {
+    this.timeout(60_000); // the first request waits for the build of the CSS
+    await tailwind();
+    const { weight, box } = await form('a cat');
+    await select(weight, box, 2, 5);
+    for (const dir of ['up', 'down'] as const) {
+      const b = button(weight, dir);
+      expect(b.getAttribute('aria-disabled')).to.equal('false');
+      expect(b.getBoundingClientRect().height).to.be.at.least(32);
+      expect(b.hasAttribute('data-ripple')).to.equal(true);
+    }
+    const now = weight.querySelector<HTMLElement>('[data-testid="gt-weight-now"]')!;
+    expect(now.tagName).to.equal('OUTPUT');
+    expect(getComputedStyle(now).fontFamily).to.match(/mono/i);
   });
 });
