@@ -101,7 +101,7 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 		return Workspace{}, err
 	}
 	// The thread must not end with the user's words alone (#1107): say what happens, or why nothing does.
-	told, err := silence.Guard{Chat: s.chat, Projects: s.projects, Logger: s.logger, PipelineOn: s.pipeline != nil}.Answer(ctx, projectID, turn.Messages, s.startPipeline(ctx, projectID))
+	told, err := silence.Guard{Chat: s.chat, Projects: s.projects, Logger: s.logger, PipelineOn: s.pipeline != nil, Running: s.pipeline.Running}.Answer(ctx, projectID, turn.Messages, s.startPipeline(ctx, projectID))
 	if err != nil {
 		return Workspace{}, err
 	}

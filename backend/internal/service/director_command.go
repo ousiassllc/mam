@@ -79,8 +79,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	}
 	res, err := s.execute(ctx, project, &ref, cmd, message, true)
 	if err != nil {
-		s.reportCommandFailure(ctx, project.ID, res, err)
-		return DirectorCommandResult{}, err
+		return DirectorCommandResult{}, s.reportCommandFailure(ctx, project.ID, res, err)
 	}
 	// The direction was carried out (a regeneration may be queued and paid for): its answer is recorded
 	// whatever happened to the request since (a closed client), as the failure notice is, so that a retry
@@ -95,8 +94,10 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 // reportCommandFailure answers a direction that failed after it was recorded (a Planner spec that
 // breaks a LOCK Brand constraint, an unexpected error), so that the thread does not end with the
 // director's words alone. What was done before the failure is told too. The error is still returned
-// to the caller. A failure to record the answer is only logged.
-func (s *DirectorService) reportCommandFailure(ctx context.Context, projectID string, done outcome, cause error) {
+// to the caller. A failure to record the answer is only logged. The cause is logged here with the project_id (#1107) and returned,
+// so that a caller returns it as `return s.reportCommandFailure(...)`.
+func (s *DirectorService) reportCommandFailure(ctx context.Context, projectID string, done outcome, cause error) error {
+	s.logger.Error("director command failed", "project_id", projectID, "err", cause)
 	reason := commandFailureReason(cause)
 	lines := append(slices.Clone(done.lines), "指示を実行できませんでした: "+reason)
 	msg := assignIDs([]domain.ChatMessage{assistantText(strings.Join(lines, "\n"))})
@@ -104,6 +105,7 @@ func (s *DirectorService) reportCommandFailure(ctx context.Context, projectID st
 	if err := s.commitMessages(context.WithoutCancel(ctx), projectID, msg); err != nil {
 		s.logger.Error("post director command failure notice failed", "project_id", projectID, "err", err)
 	}
+	return cause
 }
 
 // commandFailureReason is the one line the thread gives for why a direction (or the reading of it)

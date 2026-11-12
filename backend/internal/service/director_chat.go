@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/shotpick"
+	"github.com/ousiassllc/mam/backend/internal/service/silence"
 )
 
 // wants reports whether a chat message is a direction for the Command Interpreter: a message that asks
@@ -34,7 +35,8 @@ func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessa
 // messages to append to the thread: what was done, what was refused, or what to ask, and the confirmation cards of the operations that wait for the user. Failures the user
 // can act on are reported in the message; an error that is returned (a Brand violation, an
 // unexpected failure) has already been answered in the thread (reportCommandFailure), so that the thread does not end with the user's words alone.
-func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) ([]domain.ChatMessage, error) {
+func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) (msgs []domain.ChatMessage, err error) {
+	defer silence.Recover(s.logger, project.ID, func(err error) error { return s.reportCommandFailure(ctx, project.ID, outcome{}, err) }, &err)
 	if reply, refused := commandinterpreter.Refused(content); refused {
 		return []domain.ChatMessage{assistantText(reply)}, nil
 	}
@@ -47,17 +49,17 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	}
 	shots, err := s.gens.ListProjectShots(ctx, project.ID)
 	if err != nil {
-		return nil, err
+		return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
 	}
 	ref, err := s.contextShot(ctx, project.ID, target, shots)
 	if err != nil {
-		return nil, err
+		return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
 	}
 	if ref != nil && ref.Scene.BranchID != "" {
 		// The Shot is on a Branch: the numbers of the message and of the Interpreter's answer are those
 		// of that Branch's story, not of the trunk (whose Scene 1 / Shot 1 is another Shot).
 		if shots, err = s.gens.StoryShots(ctx, project.ID, ref.Scene.BranchID); err != nil {
-			return nil, err
+			return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
 		}
 	}
 	cmd, err := s.interpret(ctx, project.ID, content, shots, ref)
@@ -65,9 +67,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		if !isInterpreterAIError(err) {
 			// A failure of ours (the repository), not of the model: it is an error, logged and answered
 			// in the thread like any other failure of a direction, never a "success" with a message.
-			s.logger.Error("interpret director message failed", "project_id", project.ID, "err", err)
-			s.reportCommandFailure(ctx, project.ID, outcome{}, err)
-			return nil, err
+			return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
 		}
 		return []domain.ChatMessage{assistantText("指示を読み取れませんでした: " + commandFailureReason(err))}, nil
 	}
@@ -89,13 +89,11 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		}
 	}
 	if err := s.refuseBrand(ctx, project.ID, content, cmd); err != nil {
-		s.reportCommandFailure(ctx, project.ID, outcome{}, err)
-		return nil, err
+		return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
 	}
 	res, err := s.execute(ctx, project, ref, cmd, content, false)
 	if err != nil {
-		s.reportCommandFailure(ctx, project.ID, res, err)
-		return nil, err
+		return nil, s.reportCommandFailure(ctx, project.ID, res, err)
 	}
 	return res.messages(), nil
 }
@@ -109,8 +107,7 @@ func (s *DirectorService) anyModeOnly(ctx context.Context, project domain.Projec
 	}
 	res, err := s.execute(ctx, project, nil, cmd, "", false)
 	if err != nil {
-		s.reportCommandFailure(ctx, project.ID, res, err)
-		return nil, err
+		return nil, s.reportCommandFailure(ctx, project.ID, res, err)
 	}
 	return res.messages(), nil
 }

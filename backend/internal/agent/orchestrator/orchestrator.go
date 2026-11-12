@@ -141,6 +141,17 @@ func (o *Orchestrator) Kick(ctx context.Context, projectID string) error {
 	return nil
 }
 
+// Running (false on a nil Orchestrator: no pipeline) reports whether a plan job of the Project is queued or running: a Kick then adds no job and no Progress card of its own, the job already
+// there looks at the Project once more before it ends.
+func (o *Orchestrator) Running(projectID string) bool {
+	if o == nil {
+		return false
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.active[projectID]
+}
+
 // finish ends the job's claim on the Project. It reports whether a decision came in meanwhile,
 // in which case the claim is kept and the caller MUST advance the Project again.
 func (o *Orchestrator) finish(projectID string) (again bool) {

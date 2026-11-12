@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
@@ -22,6 +23,9 @@ type Guard struct {
 	Logger   *slog.Logger
 	// PipelineOn reports that the AUTO pipeline is wired (it needs the job queue and a Reasoning LLM).
 	PipelineOn bool
+	// Running reports that a plan job of the Project is queued or running (nil: never). A message that arrives meanwhile starts no job
+	// and no Progress card, the job on the Project serves it.
+	Running func(projectID string) bool
 }
 
 // Answer returns the messages it recorded after msgs, what the turn stored (the user's message among
@@ -48,6 +52,11 @@ func (g Guard) Answer(ctx context.Context, projectID string, msgs []domain.ChatM
 	} else if len(later) > 0 {
 		return nil, nil
 	}
+	if g.Running != nil && g.Running(projectID) {
+		log.Info("a message was stored while a plan job is on the project; told in the thread")
+		m := text("メッセージは保存しました。制作の処理がすでに進行中のため、新しい処理は始めていません。上の進捗カードで状況を確認できます。失敗した場合は、ここに理由を伝えます。")
+		return g.post(ctx, projectID, m)
+	}
 	project, err := g.Projects.Get(ctx, projectID)
 	if err != nil {
 		return nil, err
@@ -59,6 +68,15 @@ func (g Guard) Answer(ctx context.Context, projectID string, msgs []domain.ChatM
 	log.Warn("a message was stored with no answer, progress or failure; told in the thread",
 		"state", project.State, "mode", project.Mode, "pipeline", g.PipelineOn)
 	return g.post(ctx, projectID, Notice(project, g.PipelineOn, briefing.ReadyToPlan(brief, project.ConfirmationLevel)))
+}
+
+// Recover is deferred by a handler of a message already stored: a panic is logged with the project_id and the stack, answered in the thread
+// (report records the failure and returns it) and returned as the error of the handler, so that the request does not end with the user's words alone.
+func Recover(logger *slog.Logger, projectID string, report func(error) error, err *error) {
+	if r := recover(); r != nil {
+		logger.Error("handling a message panicked", "project_id", projectID, "panic", r, "stack", string(debug.Stack()))
+		*err = report(fmt.Errorf("handling a message panicked: %v", r))
+	}
 }
 
 // post records the AI message whatever happened to the request since.
