@@ -54,7 +54,7 @@ func (g Guard) Answer(ctx context.Context, projectID string, msgs []domain.ChatM
 	}
 	if g.Running != nil && g.Running(projectID) {
 		log.Info("a message was stored while a plan job is on the project; told in the thread")
-		m := text("メッセージは保存しました。制作の処理がすでに進行中のため、新しい処理は始めていません。上の進捗カードで状況を確認できます。失敗した場合は、ここに理由を伝えます。")
+		m := text("メッセージは保存しました。制作の処理がすでに進行中のため、新しい処理は始めていません。処理が失敗した場合は、ここに理由を伝えます。")
 		return g.post(ctx, projectID, m)
 	}
 	project, err := g.Projects.Get(ctx, projectID)
@@ -70,11 +70,11 @@ func (g Guard) Answer(ctx context.Context, projectID string, msgs []domain.ChatM
 	return g.post(ctx, projectID, Notice(project, g.PipelineOn, briefing.ReadyToPlan(brief, project.ConfirmationLevel)))
 }
 
-// Recover is deferred by a handler of a message already stored: a panic is logged with the project_id and the stack, answered in the thread
+// Recover is deferred by a handler of the message messageID, already stored: a panic is logged with the project_id, the message_id and the stack, answered in the thread
 // (report records the failure and returns it) and returned as the error of the handler, so that the request does not end with the user's words alone.
-func Recover(logger *slog.Logger, projectID string, report func(error) error, err *error) {
+func Recover(logger *slog.Logger, projectID, messageID string, report func(error) error, err *error) {
 	if r := recover(); r != nil {
-		logger.Error("handling a message panicked", "project_id", projectID, "panic", r, "stack", string(debug.Stack()))
+		logger.Error("handling a message panicked", "project_id", projectID, "message_id", messageID, "panic", r, "stack", string(debug.Stack()))
 		*err = report(fmt.Errorf("handling a message panicked: %v", r))
 	}
 }

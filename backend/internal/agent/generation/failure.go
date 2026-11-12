@@ -38,9 +38,9 @@ func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Actio
 	}
 	shot := fmt.Sprintf("Shot %d の%s", ref.Shot.OrderIndex+1, what) // a failure with an ID of its own is one of its kind; any other is told once per burst of jobs (failburst)
 	if failure.ID != "" || o.burst.First(ref.ProjectID, reason, shot) {
-		notice := failmsg.Notice(err, fmt.Sprintf("%sに失敗しました: %s\n対処したら、もう一度実行してください。", shot, reason))
-		if aerr := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); aerr != nil {
+		if aerr := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, failmsg.Notice(err, fmt.Sprintf("%sに失敗しました: %s\n対処したら、もう一度実行してください。", shot, reason))); aerr != nil {
 			o.logger.Error("post failure notice failed", "shot_id", ref.Shot.ID, "err", aerr)
+			o.burst.Failed(ref.ProjectID, reason) // not told: the next Shot that fails for the cause tells it
 		}
 	}
 	o.notify(Progress{ShotID: ref.Shot.ID, Action: a, Stage: StageFailed, Message: reason})

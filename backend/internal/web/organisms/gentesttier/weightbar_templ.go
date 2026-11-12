@@ -9,7 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 // WeightBar is the "強める + / 弱める −" of the words selected in the prompt boxes of the fieldset it stands in (the easy tier's and the detail
-// tier's; static/src/components/prompt-weight/mam-prompt-weight.ts draws the bar while words are selected, and hides itself otherwise). What the
+// tier's; static/src/components/prompt-weight/mam-prompt-weight.ts draws the bar while words are selected; the element itself is never hidden, so that its role=status note is in the accessibility tree, W8). What the
 // chosen models do with weights is read from their cards (data-prompt-weight, data-prompt-weight-title).
 func WeightBar() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -32,7 +32,7 @@ func WeightBar() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<mam-prompt-weight class=\"block\" scope=\"fieldset\" hidden data-testid=\"gt-weight\"></mam-prompt-weight>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<mam-prompt-weight class=\"contents\" scope=\"fieldset\" data-testid=\"gt-weight\"></mam-prompt-weight>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

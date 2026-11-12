@@ -67,7 +67,8 @@ func TestAnnounceText_NamesTheRouteOfEachModelAndWhyTheAssignmentWasPassedOver(t
 
 	text := plan.AnnounceText()
 
-	assert.Contains(t, text, "使うモデルと経路")
+	assert.Contains(t, text, "現在の割当で使う見込みのモデルと経路")
+	assert.Contains(t, text, "実行時の状況で変わることがあります", "an expectation, not the model a Shot will use")
 	assert.Contains(t, text, "gpt-image-2.6-flare:chatgpt-subscription（"+modelreg.RouteSubscription.Label())
 	assert.Contains(t, text, "gpt-image-2.6-flare＝API キーが登録されていません、nano-banana＝API キーが登録されていません", "which models of the assignment were passed over, and why")
 	assert.Contains(t, text, "品質で選んだものではありません")
@@ -77,7 +78,7 @@ func TestAnnounceText_NamesTheRouteOfEachModelAndWhyTheAssignmentWasPassedOver(t
 }
 
 func TestAnnounceText_WithoutRoutesNamesNone(t *testing.T) {
-	assert.NotContains(t, genplan.Plan{Lines: []genplan.Line{{ShotID: "s1", Number: 1}}}.AnnounceText(), "使うモデルと経路")
+	assert.NotContains(t, genplan.Plan{Lines: []genplan.Line{{ShotID: "s1", Number: 1}}}.AnnounceText(), "現在の割当で使う見込み")
 }
 
 type reporter struct{}

@@ -127,7 +127,7 @@ func (s *ChatService) postDirection(ctx context.Context, project domain.Project,
 		discardUploads(stored)
 		return Workspace{}, err
 	}
-	reply, err := s.director.Chat(chatops.WithAttachments(ctx, attached), project, target, user.Content)
+	reply, err := s.director.Chat(chatops.WithAttachments(ctx, attached), project, target, user)
 	if err != nil {
 		s.logger.Error("director message failed", "project_id", project.ID, "message_id", user.ID, "err", err)
 		return Workspace{}, err

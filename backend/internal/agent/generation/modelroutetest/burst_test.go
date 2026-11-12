@@ -2,6 +2,7 @@ package modelroutetest_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -70,6 +71,60 @@ func TestHandle_AFailureOfTheSameCauseAfterTheBurstIsToldAgain(t *testing.T) {
 	for _, n := range notices {
 		assert.Contains(t, n, "Shot 1 のReference Pack の作成に失敗しました")
 	}
+}
+
+// The notice of the first failure could not be posted: nobody was told the cause, so the next Shot that fails for it tells it, instead of being summed up as
+// "the same as the notice before" (#1112).
+func TestHandle_ACauseWhoseFirstNoticeWasLostIsToldByTheNextFailure(t *testing.T) {
+	r := newRigShots(t, nil, 3)
+	ctx := context.Background()
+	jobs := make([]domain.Job, 0, len(r.shotIDs))
+	for _, id := range r.shotIDs {
+		job, err := r.orch.StartReferencePack(ctx, id)
+		require.NoError(t, err)
+		jobs = append(jobs, job)
+	}
+	r.usable = nothingUsable
+	r.chat.lose = 1
+
+	for _, job := range jobs {
+		require.Error(t, r.orch.Handle(ctx, job))
+	}
+
+	notices := r.failureNotices()
+	require.Len(t, notices, 2, "the second failure tells the cause, one notice names the third: %v", notices)
+	assert.Contains(t, notices[0], "Shot 2 のReference Pack の作成に失敗しました")
+	assert.Contains(t, notices[0], "使えるモデルがありません")
+	assert.Contains(t, notices[1], "ほかにも失敗しました（1 件）")
+	assert.Contains(t, notices[1], "Shot 3 のReference Pack の作成")
+}
+
+// A job that could not be queued ends the burst when it is the last one open: the Shots that failed meanwhile for the cause already told are named then, not lost.
+func TestStart_AQueueFailureThatEndsTheBurstTellsTheHeldSummary(t *testing.T) {
+	r := newRigShots(t, nil, 3)
+	ctx := context.Background()
+	var jobs []domain.Job
+	for _, id := range r.shotIDs[:2] {
+		job, err := r.orch.StartReferencePack(ctx, id)
+		require.NoError(t, err)
+		jobs = append(jobs, job)
+	}
+	r.jobs.refuse = func() error { // while the third job is being queued the first two run and fail: it is the last one of the burst
+		r.usable = nothingUsable
+		for _, job := range jobs {
+			assert.Error(t, r.orch.Handle(ctx, job))
+		}
+		return errors.New("queue is full")
+	}
+
+	_, err := r.orch.StartReferencePack(ctx, r.shotIDs[2])
+	require.ErrorContains(t, err, "queue is full")
+
+	notices := r.failureNotices()
+	require.Len(t, notices, 2, "the first failure, and the summary held for the second: %v", notices)
+	assert.Contains(t, notices[0], "Shot 1 のReference Pack の作成に失敗しました")
+	assert.Contains(t, notices[1], "ほかにも失敗しました（1 件）")
+	assert.Contains(t, notices[1], "Shot 2 のReference Pack の作成")
 }
 
 // RouteReports is what the announcement of an automatic start names: with no API key at all, the models that can be used are named with their route.

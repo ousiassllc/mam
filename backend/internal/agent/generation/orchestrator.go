@@ -192,7 +192,7 @@ func (o *Orchestrator) enqueue(ctx context.Context, ref repository.ShotRef, p pa
 	o.burst.Enter(ref.ProjectID) // before the job is queued: the queue may run it at once
 	job, err := o.jobs.Enqueue(ctx, domain.JobGenerate, p)
 	if err != nil {
-		o.burst.Leave(ref.ProjectID)
+		o.endBurst(ctx, ref.ProjectID) // this job never ran: if it was the last of the burst, the summary held for the others is told now
 		o.release(ctx, ref.Shot.ID)
 		return domain.Job{}, fmt.Errorf("enqueue generate job: %w", err)
 	}

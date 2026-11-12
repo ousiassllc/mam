@@ -35,31 +35,32 @@ func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessa
 // messages to append to the thread: what was done, what was refused, or what to ask, and the confirmation cards of the operations that wait for the user. Failures the user
 // can act on are reported in the message; an error that is returned (a Brand violation, an
 // unexpected failure) has already been answered in the thread (reportCommandFailure), so that the thread does not end with the user's words alone.
-func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) (msgs []domain.ChatMessage, err error) {
-	defer silence.Recover(s.logger, project.ID, func(err error) error { return s.reportCommandFailure(ctx, project.ID, outcome{}, err) }, &err)
+func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage) (msgs []domain.ChatMessage, err error) {
+	content := user.Content
+	defer silence.Recover(s.logger, project.ID, user.ID, func(err error) error { return s.reportCommandFailure(ctx, project.ID, user.ID, outcome{}, err) }, &err)
 	if reply, refused := commandinterpreter.Refused(content); refused {
 		return []domain.ChatMessage{assistantText(reply)}, nil
 	}
 	if s.interpreter == nil {
 		// what the message plainly asks for is still done without the model: the API key of the LLM is the first thing to set (#1140)
 		if ops := commandinterpreter.Detected(content); len(ops) > 0 {
-			return s.anyModeOnly(ctx, project, commandinterpreter.Command{Operations: ops})
+			return s.anyModeOnly(ctx, project, user.ID, commandinterpreter.Command{Operations: ops})
 		}
 		return []domain.ChatMessage{assistantText("LLM が設定されていないため、指示を解釈できません（設定画面で API キーを登録してください。「OpenAI の API キーを設定したい」のように送ると、ここでキーを入力する欄を出します）。")}, nil
 	}
 	shots, err := s.gens.ListProjectShots(ctx, project.ID)
 	if err != nil {
-		return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
+		return nil, s.reportCommandFailure(ctx, project.ID, user.ID, outcome{}, err)
 	}
 	ref, err := s.contextShot(ctx, project.ID, target, shots)
 	if err != nil {
-		return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
+		return nil, s.reportCommandFailure(ctx, project.ID, user.ID, outcome{}, err)
 	}
 	if ref != nil && ref.Scene.BranchID != "" {
 		// The Shot is on a Branch: the numbers of the message and of the Interpreter's answer are those
 		// of that Branch's story, not of the trunk (whose Scene 1 / Shot 1 is another Shot).
 		if shots, err = s.gens.StoryShots(ctx, project.ID, ref.Scene.BranchID); err != nil {
-			return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
+			return nil, s.reportCommandFailure(ctx, project.ID, user.ID, outcome{}, err)
 		}
 	}
 	cmd, err := s.interpret(ctx, project.ID, content, shots, ref)
@@ -67,7 +68,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		if !isInterpreterAIError(err) {
 			// A failure of ours (the repository), not of the model: it is an error, logged and answered
 			// in the thread like any other failure of a direction, never a "success" with a message.
-			return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
+			return nil, s.reportCommandFailure(ctx, project.ID, user.ID, outcome{}, err)
 		}
 		return []domain.ChatMessage{assistantText("指示を読み取れませんでした: " + commandFailureReason(err))}, nil
 	}
@@ -75,7 +76,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	if project.Mode != domain.ModeDirector || (cmd.Question != "" && slices.ContainsFunc(cmd.Operations, commandinterpreter.Operation.AnyMode)) {
 		// Only the operations of any mode are carried out (a note, the budget, a setting) outside DIRECTOR MODE (AUTO MODE does not take Shot directions from the chat) and when the
 		// model asks a question while the message plainly asks for such an operation too (WithDetected: an API key card): the question is told with it, not instead.
-		return s.anyModeOnly(ctx, project, cmd)
+		return s.anyModeOnly(ctx, project, user.ID, cmd)
 	}
 	if cmd.Question != "" {
 		return []domain.ChatMessage{assistantText(cmd.Question)}, nil
@@ -89,25 +90,25 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		}
 	}
 	if err := s.refuseBrand(ctx, project.ID, content, cmd); err != nil {
-		return nil, s.reportCommandFailure(ctx, project.ID, outcome{}, err)
+		return nil, s.reportCommandFailure(ctx, project.ID, user.ID, outcome{}, err)
 	}
 	res, err := s.execute(ctx, project, ref, cmd, content, false)
 	if err != nil {
-		return nil, s.reportCommandFailure(ctx, project.ID, res, err)
+		return nil, s.reportCommandFailure(ctx, project.ID, user.ID, res, err)
 	}
 	return res.messages(), nil
 }
 
 // anyModeOnly carries out the operations of a Command that AUTO MODE takes too (create_note, set_budget: commandinterpreter.Spec.AnyMode); AUTO MODE does not take
 // Shot directions from the chat.
-func (s *DirectorService) anyModeOnly(ctx context.Context, project domain.Project, cmd commandinterpreter.Command) ([]domain.ChatMessage, error) {
+func (s *DirectorService) anyModeOnly(ctx context.Context, project domain.Project, messageID string, cmd commandinterpreter.Command) ([]domain.ChatMessage, error) {
 	cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return !op.AnyMode() })
 	if len(cmd.Operations) == 0 {
 		return []domain.ChatMessage{assistantText("メモ・予算・設定として読み取れる内容が見つかりませんでした。覚えておきたい内容や、予算（例:「予算は $20 で」）、変えたい設定（例:「OpenAI の API キーを設定したい」）を、もう一度教えてください。")}, nil
 	}
 	res, err := s.execute(ctx, project, nil, cmd, "", false)
 	if err != nil {
-		return nil, s.reportCommandFailure(ctx, project.ID, res, err)
+		return nil, s.reportCommandFailure(ctx, project.ID, messageID, res, err)
 	}
 	return res.messages(), nil
 }

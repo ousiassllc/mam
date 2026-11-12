@@ -32,3 +32,31 @@ func TestBurst_TheFirstFailureOfACauseIsToldAndTheRestAreNamedAtTheEnd(t *testin
 	assert.Equal(t, map[string][]string{"cause": {"Shot 2"}, "other": nil}, b.Leave("p"), "the last job of the burst hands over what was not told")
 	assert.True(t, b.First("p", "cause", "Shot 1"), "a failure after the burst is told again")
 }
+
+// The notice of a cause that could not be posted was told to nobody: the next failure of the cause tells it, and the names kept meanwhile still reach the summary.
+func TestBurst_ACauseWhoseNoticeFailedIsToldByTheNextFailure(t *testing.T) {
+	var b failburst.Burst
+	for range 4 {
+		b.Enter("p")
+	}
+
+	assert.True(t, b.First("p", "cause", "Shot 1"))
+	b.Failed("p", "cause")
+	assert.True(t, b.First("p", "cause", "Shot 2"), "the first notice was lost: this one tells the cause")
+	assert.False(t, b.First("p", "cause", "Shot 3"), "told now: the rest are kept")
+	assert.Nil(t, b.Leave("p"))
+	assert.Nil(t, b.Leave("p"))
+	assert.Nil(t, b.Leave("p"))
+	assert.Equal(t, map[string][]string{"cause": {"Shot 3"}}, b.Leave("p"))
+}
+
+// Failed after the burst ended, or for a cause the burst does not know, changes nothing.
+func TestBurst_FailedOutsideABurstIsIgnored(t *testing.T) {
+	var b failburst.Burst
+	b.Failed("p", "cause")
+	b.Enter("p")
+	assert.True(t, b.First("p", "cause", "Shot 1"))
+	assert.Nil(t, b.Leave("p")["cause"])
+	b.Failed("p", "cause")
+	assert.True(t, b.First("p", "cause", "Shot 1"))
+}

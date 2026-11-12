@@ -298,7 +298,16 @@ func TestADirectorMessageThatFailsWhileItIsReadIsAnsweredInTheThread(t *testing.
 			last := msgs[len(msgs)-1]
 			assert.Equal(t, domain.RoleAssistant, last.Role, "the thread does not end with the user's words alone")
 			assert.Contains(t, last.Content, "指示を実行できませんでした")
-			assert.Contains(t, f.logs.String(), "project_id="+p.ID)
+			var user domain.ThreadMessage
+			for _, m := range msgs {
+				if m.Role == domain.RoleUser {
+					user = m
+				}
+			}
+			require.NotEmpty(t, user.ID)
+			logs := f.logs.String()
+			assert.Contains(t, logs, "project_id="+p.ID)
+			assert.Contains(t, logs, "message_id="+user.ID, "the log names the message that failed")
 		})
 	}
 }

@@ -15,8 +15,14 @@ import (
 // Burst holds the jobs in flight and the failures not told, by Project ID. The zero value is ready; it is safe for concurrent use.
 type Burst struct {
 	mu      sync.Mutex
-	running map[string]int                 // the generate jobs queued or running
-	kept    map[string]map[string][]string // by cause: the names of the Shots whose failure was not told
+	running map[string]int               // the generate jobs queued or running
+	kept    map[string]map[string]*cause // by cause: what is known of it in the burst
+}
+
+// cause is one kind of failure of a burst: whether its notice was posted, and the names of the Shots whose failure was not told.
+type cause struct {
+	told  bool
+	names []string
 }
 
 // Enter counts a generate job of the Project as queued. Call it before the job is enqueued, so that a job the queue runs at once is counted.
@@ -37,31 +43,48 @@ func (b *Burst) Leave(projectID string) map[string][]string {
 		return nil
 	}
 	delete(b.running, projectID)
-	rest := b.kept[projectID]
+	rest := map[string][]string{}
+	for text, c := range b.kept[projectID] {
+		rest[text] = c.names
+	}
 	delete(b.kept, projectID)
 	return rest
 }
 
-// First reports whether the failure of the cause is the first of the burst, which is told. Another failure of the same cause is kept, named by what, for Leave.
-func (b *Burst) First(projectID, cause, what string) bool {
+// First reports whether the failure of the cause is the first of the burst, which is told. Another failure of the same cause is kept, named by what, for Leave. The
+// caller that tells it reports it with Failed when the notice could not be posted.
+func (b *Burst) First(projectID, text, what string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.running[projectID] == 0 {
 		return true // no burst is open (a job that was not queued through Enter): nothing would end it, so nothing is held back
 	}
 	if b.kept == nil {
-		b.kept = map[string]map[string][]string{}
+		b.kept = map[string]map[string]*cause{}
 	}
 	if b.kept[projectID] == nil {
-		b.kept[projectID] = map[string][]string{}
+		b.kept[projectID] = map[string]*cause{}
 	}
-	names, seen := b.kept[projectID][cause]
-	if !seen {
-		b.kept[projectID][cause] = nil // told: the later ones are named here
+	c := b.kept[projectID][text]
+	if c == nil {
+		b.kept[projectID][text] = &cause{told: true} // told: the later ones are named here
 		return true
 	}
-	b.kept[projectID][cause] = append(names, what)
+	if !c.told {
+		c.told = true // the notice of an earlier failure was lost: this one tells it
+		return true
+	}
+	c.names = append(c.names, what)
 	return false
+}
+
+// Failed reports that the notice of the cause could not be posted: nobody has been told it, so the next failure of the cause in the burst is told instead of kept.
+func (b *Burst) Failed(projectID, text string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if c := b.kept[projectID][text]; c != nil {
+		c.told = false
+	}
 }
 
 // Distinct drops the errors whose text an earlier one has: the images of a Reference Pack that fail for one cause say the same thing once for each image, and the job's

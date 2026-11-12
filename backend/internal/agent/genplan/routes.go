@@ -42,7 +42,8 @@ func relevantRoutes(all []modelroute.RouteReport, q domain.QualityPolicy, lines 
 	return out
 }
 
-// routesText is the models the plan runs on, each with its route (API / ChatGPT サブスク / ローカル), how its price is known, and, for a model that is not the
+// routesText is the models the plan is expected to run on under the current assignment (a route is reported per image purpose and Quality Policy, not per Shot input, so it is
+// told as an expectation, never as the model a Shot will use), each with its route (API / ChatGPT サブスク / ローカル), how its price is known, and, for a model that is not the
 // assignment's, which model of the assignment was passed over and why. A model chosen in place of the assignment is said to match the conditions; it is never called
 // the best one. "" when the plan carries no routes.
 func (p Plan) routesText() string {
@@ -64,7 +65,7 @@ func (p Plan) routesText() string {
 	if b.Len() == 0 {
 		return ""
 	}
-	return "・使うモデルと経路:\n" + b.String()
+	return "・現在の割当で使う見込みのモデルと経路（Shot ごとの入力や実行時の状況で変わることがあります）:\n" + b.String()
 }
 
 // passedText says why the assignment's own model is not the one used ("" when it is).

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -94,11 +95,16 @@ func (reasoner) Complete(_ context.Context, agent llm.Agent, _ llm.Request) (llm
 type chatFake struct {
 	mu   sync.Mutex
 	msgs []domain.ChatMessage
+	lose int // how many of the next failure notices (not the progress cards) are not posted
 }
 
 func (c *chatFake) Announce(_ context.Context, _ string, m domain.ChatMessage) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if m.Kind != domain.KindProgress && c.lose > 0 {
+		c.lose--
+		return errors.New("chat is down")
+	}
 	c.msgs = append(c.msgs, m)
 	return nil
 }
@@ -121,9 +127,14 @@ func (c *chatFake) text() string {
 type jobsFake struct {
 	mu   sync.Mutex
 	jobs []domain.Job
+	// refuse, when set, is called instead of queueing (without the lock): a test that makes the queue fail runs what else happens meanwhile in it.
+	refuse func() error
 }
 
 func (q *jobsFake) Enqueue(_ context.Context, kind domain.JobKind, payload any) (domain.Job, error) {
+	if q.refuse != nil {
+		return domain.Job{}, q.refuse()
+	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	raw, err := json.Marshal(payload)
