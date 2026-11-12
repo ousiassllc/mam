@@ -27,11 +27,14 @@ var (
 	exportWant = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:(?:し(?:直|なお))?したい|(?:し(?:直|なお))?します|(?:し(?:直|なお))?しましょう)`)
 	exportTe   = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:し(?:直|なお))?して`)
 	exportSuru = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:し(?:直|なお))?(?:する|す)`)
+	// exportCommand is the verb that urges the export: the volitional "書き出そう／書き出し直そう／エクスポートしよう（か／よ／ぜ／ね）" and the imperative "書き出せ／書き出し直せ／エクスポートしろ／エクスポートせよ" (with "よ"). They count only
+	// at the end of a clause: "書き出せる／書き出せない／書き出せば／書き出そうと思った／書き出そうかな" are no request.
+	exportCommand = regexp.MustCompile(`(?:(?:書き出|書出)(?:し(?:直|なお))?(?:そう[かよぜね]?|せよ?)|エクスポート(?:し(?:直|なお)(?:そう[かよぜね]?|せよ?)|しよう[かよぜね]?|しろ|せよ))(?:[。、！!？?\s]|$)`)
 	// narratedTe is what follows 「して」 when the export is told of in a form that cannot ask: "書き出してます／てる／てた／てない／ません／いた／いる／いった", "してみた(けど)", "してあげた", "してある／あった",
 	// "して終わった／完了した／終了した／失敗した／満足した", "してよかった", "してもらった", "してくれた／くれなかった", "しておいた", "してしまった", "して確認した／見た／聞いた／試した". A past form that goes on with
 	// 「ら」 or 「い」 ("終了したら知らせて", "確認したい") asks. Anything else after 「して」 is a request: a space, a symbol, "確認して", "お願い", "くれ", "くれて、…", "みて", "問題ないか確認して", "何分かかるか教えて".
 	// The export needs a confirmation before it starts (Confirm), so a sentence that only looks like a request costs one card, while a request that is dropped costs the director the answer.
-	narratedTe = regexp.MustCompile(`^(?:ま(?:す|した|せん|して)|る|てた|い(?:た|る|っ|て)|た(?:[^ら]|$)|な(?:い|かっ)|み(?:た(?:[^いら]|$)|まし(?:た|て))|あげ(?:た|まし(?:た|て))|あ(?:る|っ|り)|` +
+	narratedTe = regexp.MustCompile(`^(?:ま(?:す(?:[^ぐ]|$)|した|せん|して)|る|てた|い(?:た|る|っ|て)|た(?:[^ら]|$)|な(?:い|かっ)|み(?:た(?:[^いら]|$)|まし(?:た|て))|あげ(?:た|まし(?:た|て))|あ(?:る|っ|り)|` +
 		`(?:終わっ|完了し|終了し|失敗し|満足し|確認し|再生し|チェックし|試し)た(?:[^いら]|$)|見た(?:[^いら目]|$)|聞いた(?:[^いら感]|$)|(?:よ|良)かった(?:[^ら]|$)|もらった(?:[^ら]|$)|くれ(?:た(?:[^らり]|$)|なかっ|ました|ませんでし)|しまっ(?:た(?:[^らり]|$))|おいた(?:[^らり]|$)|おきまし(?:た|て))`)
 	// askedTe is what follows 「して」 and still asks ("書き出していただけますか", "書き出していい？"; 「い」 alone is 「書き出していた」).
 	askedTe = regexp.MustCompile(`^い(?:ただ|い)`)
@@ -106,9 +109,10 @@ func classify(message string) kind {
 	return kindNone
 }
 
-// asksExportAgain reports whether the message holds a verb that asks for an export (exportWant, 「書き出して」, 「書き出す」) that no narration follows (narratedTe, narratedSuru).
+// asksExportAgain reports whether the message holds a verb that asks for an export (exportWant, exportCommand, 「書き出して」, 「書き出す」) that no narration follows (narratedTe, narratedSuru). 「書き出してますぐ確認して」 is
+// 「書き出して」 and 「すぐ」, not 「書き出してます」.
 func asksExportAgain(message string) bool {
-	if exportWant.MatchString(message) {
+	if exportWant.MatchString(message) || exportCommand.MatchString(message) {
 		return true
 	}
 	for _, m := range exportTe.FindAllStringIndex(message, -1) {
