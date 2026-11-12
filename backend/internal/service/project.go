@@ -116,7 +116,8 @@ func (s *ProjectService) Brief(ctx context.Context, projectID string) (BriefView
 	return BriefView{Project: project, Brief: brief, Assets: assets}, nil
 }
 
-// BriefForm is the editable part of the Brief (PUT /projects/:id/brief). Assets and video references keep their identity; References (one URL per line) replaces the URL references.
+// BriefForm is the editable part of the Brief (PUT /projects/:id/brief). Assets and
+// video references keep their identity; References (one URL per line) replaces the URL references.
 type BriefForm struct {
 	Values                map[domain.BriefField]string
 	AdditionalInstruction string

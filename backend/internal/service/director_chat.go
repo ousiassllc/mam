@@ -131,7 +131,8 @@ func (s *DirectorService) remember(ctx context.Context, projectID string, op com
 
 // contextShot resolves the Shot a message is about without the words of the message: the Take or
 // Keyframe card it replies to, else the latest Take card of the thread, else the only Shot of the
-// Project. A reply to a card whose Shot is not known resolves to none (the Director asks), never to another Shot.
+// Project. A reply to a card whose Shot is not known resolves to none (the Director asks), never to
+// another Shot.
 func (s *DirectorService) contextShot(ctx context.Context, projectID string, target *domain.ChatMessage, shots []repository.ShotRef) (*repository.ShotRef, error) {
 	if target != nil && target.Kind == domain.KindKeyframe {
 		ref, err := s.gens.ShotOfKeyframe(ctx, projectID, target.RefID)

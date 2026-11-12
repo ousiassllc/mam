@@ -213,6 +213,8 @@ ComfyUI・OpenAI 互換の接続先とそのモデル（`spec/architecture/local
 
 ディレクトリ上限（2000 行）も同じ基準値方式で扱い、Go のフラットなパッケージ向けの別基準（ファイル数など）は設けない。超過しているパッケージは、その直下の合計行数を増やせない（ファイルの追加・既存ファイルの行増で CI が落ちる）。新しいコードは新しいパッケージへ置くか、パッケージを責務ごとに分割して満たす。分割できたら基準値から外す。
 
+警告（`warn`: 上限を超えて上限に `warning_threshold` を足した値以下。1 ファイル 301〜330 行、1 ディレクトリ 2001〜2200 行）は CI も pre-commit も止めず、`.linterly-baseline` にも載せない。これらは、触るついでに分けられる範囲で直すが、行数だけのために分割する義務は設けない（Issue #1146 の判断）。#1146 で対象にした `commandinterpreter/interpreter.go`（310 行）は `userPrompt` を `prompt.go` へ移して 282 行に、`chatops/charref/charref_test.go`（301）・`chatops/export/export_test.go`（329）・`chatops/llmroute/llmroute_test.go`（305）はそれぞれ `apply_test.go`・`download_test.go`・`apply_outcome_test.go` へ分けて 300 行以下にした。`backend/internal/logging/reader.go`（302 行）はこの Issue の範囲外で、分けていない。なお、`service/` の基準値は直下のファイル（サブパッケージは数えない）の合計で、PR #1141 で折り返したコメントのうち、基準値に収まる 5 行ぶんだけを元の折り返しに戻した（残りの折り返しは、`domain/`・`router/`・`repository/` が基準値と同数で、`app/` が警告の上限 2200 行ちょうどのため戻せない）。
+
 ドキュメント（Markdown）は行数チェックの対象外で、`linterly` の計測にも `.linterly-baseline` にも載らない（Issue #850 の判断。仕様書は 1 つの話題を 1 ファイルに保つため、行数で分割する必要はない）。このため `spec/architecture/er.md`・`spec/spec.md` は基準値から外した。すでに分割してある `*.changelog.md`（`overview.md`・`endpoints.md`・`er.md`・`model-adapters.md` ほか）は、そのまま使ってよい（新しい版はそれぞれの `*.changelog.md` の末尾に足す）。ただし、行数のために分割する義務はない。
 
 pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対象のファイルが超過していれば基準値の有無に関わらず止める。
@@ -290,3 +292,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.54 | 2026-11-03 | 「タスク」表に `make upstream-check` を、「CI」節に定期照合の `upstream-check.yml`（週 1 回・手動・PR では走らせない）を足した | Issue #937 |
 | 1.55 | 2026-11-06 | タスク表の `scripts/fetch-onnxruntime.sh` に展開手段の順を、`make test-scripts` に `scripts/fetch-onnxruntime/extract_test.sh`（成功経路とフォールバックの検証）を記した | Issue #1073 |
 | 1.56 | 2026-11-06 | `ci.yml` の `macos` ジョブの `go test` を `-v` にして出力を保存し、Skip の一覧をログに出して、macOS 固有・実 ffmpeg のテスト（隔離属性・実行ビット・実物の ffmpeg の導入と探索）が `--- PASS` を出したことを `scripts/require-tests-passed.sh` で確かめるようにした。CI 節に「どのテストがどの OS で動くか」の表と Skip の確認手順、Homebrew の ffmpeg を zip に写して動かす前提の安定性の判断を足した | Issue #1049 |
+| 1.57 | 2026-11-12 | 「Linterly」節に、警告（301〜330 行・2001〜2200 行）は基準値に載せず行数のためだけの分割は義務にしないこと、#1146 で分割したファイルと、戻せたコメントの折り返しの範囲を書いた | Issue #1146（#1141 で残った行数まわりの指摘） |

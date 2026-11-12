@@ -16,7 +16,8 @@ import (
 // execute carries out the operations of a Command: an operation that asks for confirmation (set_budget) becomes a confirmation card and is carried out by the
 // answer (director_ops.go). The rest: settings first (so that "カメラは固定して、表情だけ
 // 変えて" locks before it regenerates), then regenerations, then the mode switch. strict makes a
-// regeneration that would change a LOCKed parameter fail with ErrLocked before anything is done; otherwise it is left out and reported.
+// regeneration that would change a LOCKed parameter fail with ErrLocked before anything is done;
+// otherwise it is left out and reported.
 func (s *DirectorService) execute(ctx context.Context, project domain.Project, ref *repository.ShotRef, cmd commandinterpreter.Command, message string, strict bool) (outcome, error) {
 	var out outcome
 	if cmd.Question != "" { // the model asks; what the message plainly asks for (WithDetected) is still carried out
@@ -158,7 +159,8 @@ func (s *DirectorService) switchMode(ctx context.Context, project domain.Project
 	return nil
 }
 
-// lockedRegeneration returns ErrLocked when a regeneration of ops changes a parameter that is LOCKed once the ops' own settings are applied.
+// lockedRegeneration returns ErrLocked when a regeneration of ops changes a parameter that is
+// LOCKed once the ops' own settings are applied.
 func lockedRegeneration(locks domain.ParameterLocks, ops []commandinterpreter.Operation) error {
 	effective := domain.ParameterLocks{}
 	for p, v := range locks {
@@ -181,7 +183,8 @@ func lockedRegeneration(locks domain.ParameterLocks, ops []commandinterpreter.Op
 	return nil
 }
 
-// lockedParameters lists the LOCKed parameters that the regeneration changes: the parameter of each changed part, and Prompt, which covers the whole spec.
+// lockedParameters lists the LOCKed parameters that the regeneration changes: the parameter of
+// each changed part, and Prompt, which covers the whole spec.
 func lockedParameters(locks domain.ParameterLocks, op commandinterpreter.Operation) []domain.LockParameter {
 	var hit []domain.LockParameter
 	for _, part := range op.Changes {
