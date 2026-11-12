@@ -76,7 +76,7 @@
 | 項目 | 要件 |
 |------|------|
 | 生成トレース | 各 Take について Source Shot Spec / World State version / Prompt version / Model / Model parameters / Model routing（選択理由、M3） / References / Output / Judge result / Repair history を保存する（F-27） |
-| ログ | Go バックエンドは構造化ログ（レベル別）をローカルファイル（`<ログのディレクトリ>/mam.log`。JSON、10 MB ごとに最大 5 世代、30 日、古い世代は gzip）にローテーション出力する。外部へは送らない（§5）。**MCP から読める**: `get_app_logs`（[mcp-tools.md](../api/mcp-tools.md)）が `mam.log` とローテーション済みの世代（圧縮されたものも）を読み、レベル・時刻・件数・キーワード・属性（`project_id`・`shot_id`・`job_id`・`error_id` など）で絞って新しい順に返す。読み取りだけで、1 回の応答は件数（最大 500）とサイズ（約 200 KB）で頭打ちにする。**秘密はログに書かない**（API キー・MCP トークン・Hugging Face トークン・ChatGPT / Codex のトークンはロガーに渡さない。テストで確かめる）うえで、読み取りも多重に防ぐ: 既知の形（MCP トークン・`hf_`・ベンダーのキー・Bearer・JWT・`key=` や `api_key` 風のフィールド）と、キーストアにある API キー・Hugging Face トークンの値そのものを `[redacted]` に置き換えてから、絞り込みと返却を行う（絞り込みで秘密の有無を探れない）。保存期間の 30 日は、ジョブの履歴（`mcp_job_history`）と揃えている |
+| ログ | Go バックエンドは構造化ログ（レベル別）をローカルファイル（`<ログのディレクトリ>/mam.log`。JSON、10 MB ごとに最大 5 世代、30 日、古い世代は gzip）にローテーション出力する。外部へは送らない（§5）。**MCP から読める**: `get_app_logs`（[mcp-tools.md](../api/mcp-tools.md)）が `mam.log` とローテーション済みの世代（圧縮されたものも）を読み、レベル・時刻・件数・キーワード・属性（`project_id`・`shot_id`・`job_id`・`error_id` など）で絞って新しい順に返す。読み取りだけで、1 回の応答は件数（最大 500）とサイズ（約 200 KB）で頭打ちにする。**秘密はログに書かない**（API キー・MCP トークン・Hugging Face トークン・ChatGPT / Codex のトークンはロガーに渡さない。テストで確かめる）うえで、読み取りも多重に防ぐ: 既知の形（MCP トークン・`hf_`・ベンダーのキー・Bearer・JWT・`key=` や `api_key` 風のフィールド、署名付き URL の署名 `Signature=`・`X-Amz-Signature=` の値（同じ URL のほかのクエリは残す））と、キーストアにある API キー・Hugging Face トークンの値そのものを `[redacted]` に置き換えてから、絞り込みと返却を行う（絞り込みで秘密の有無を探れない）。保存期間の 30 日は、ジョブの履歴（`mcp_job_history`）と揃えている |
 | バージョン復元 | Shot / Take / Branch / World State の主要変更を Version 化し、以前の状態へ復元できる（F-28）。復元は指定バージョンの内容を新バージョンとして追記する（履歴を消さない）。LOCK 中の項目を変える復元は行わない |
 | 制作指標（Production Analytics） | MVP Success Metrics（`spec/spec.md` §28）はローカルの SQLite（Take / Judge Result / Repair Action / Cost Ledger / Export / Edit Timeline / `human_intervention`）だけから集計し、外部へ送信しない（§5）。人間の介入・上書きの記録も同じ DB に追記する。`GET /projects/:id/analytics`・`GET /analytics` で表示する |
 
@@ -147,3 +147,4 @@
 | 1.45 | 2026-11-01 | §1 の配布の行の ffmpeg の記述を、「PATH への導入を案内する」だけから、アプリ内のダウンロード（Windows x64・macOS arm64）・自分で入れたもの・探す順に改めた | PR #911 のレビューの指摘（Issue #900 で実装済みなのにこの行が古かった） |
 | 1.46 | 2026-11-01 | §1 のアーキテクチャの行の「Windows では顔同一性の定量評価が使えない」を、Windows のインストーラーが ONNX Runtime の DLL を同梱して動くことに改めた | Issue #910 |
 | 1.47 | 2026-11-08 | §8 のエクスポート/インポートに、インポートは AUTO の Project を DIRECTOR として作り（AUTO の同意は選んだ環境のもので、バンドルは運ばない）、その旨をチャットに書くことを足した（自分のバックアップの取り込み直しも DIRECTOR で戻る） | Issue #1115: 他人のバンドルの AUTO が、取り込んだ環境での最初の見直しで有料の生成を始める課金の迂回を防ぐため |
+| 1.48 | 2026-11-12 | §7 のログの行の、読み取りで伏せる既知の形に、署名付き URL の署名（`Signature=`・`X-Amz-Signature=` の値）を足した | Issue #1147。`logging.Redact` の実装に合わせた |

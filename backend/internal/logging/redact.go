@@ -25,6 +25,9 @@ var secretPatterns = []struct {
 	{regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*`), redacted},
 	{regexp.MustCompile(`(?i)\b((?:x-goog-api-key|x-api-key|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|id[_-]?token|client[_-]?secret|secret|password|passwd|token|authorization)["']?\s*[:=]\s*["']?)[^\s"'&,;}]+`), "${1}" + redacted},
 	{regexp.MustCompile(`(?i)([?&]key=)[^\s&"']+`), "${1}" + redacted},
+	// The signature of a signed URL (S3-style X-Amz-Signature, the older Signature): only its value, up to the next
+	// "&", so the other parameters of the URL (X-Amz-Credential, X-Amz-Date, Expires, ...) stay readable.
+	{regexp.MustCompile(`(?i)\b((?:x-amz-)?signature=)[^\s&"']+`), "${1}" + redacted},
 }
 
 // sensitiveKey names an attribute whose string value is never returned.

@@ -111,26 +111,8 @@ func (r *CostRepository) ledgerByShot(ctx context.Context, projectID string) (ma
 // Director checks its spending against (F-22).
 func (r *CostRepository) ProjectBudget(ctx context.Context, projectID string) (*float64, float64, error) {
 	reserved, _ := r.db.inflight.reserved(projectID, "") // before the ledger: see inflightSpend.reserved
-	ceiling, spent, err := r.ledgerProjectBudget(ctx, projectID)
-	return ceiling, spent + reserved, err
-}
-
-// ledgerProjectBudget is ProjectBudget without the reservations.
-func (r *CostRepository) ledgerProjectBudget(ctx context.Context, projectID string) (*float64, float64, error) {
-	var ceiling sql.NullFloat64
-	err := r.db.Reader().QueryRowContext(ctx, `SELECT project_budget_ceiling FROM project WHERE id = ?`, projectID).Scan(&ceiling)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, 0, ErrNotFound
-	}
-	if err != nil {
-		return nil, 0, fmt.Errorf("get ceiling: %w", err)
-	}
-	var spent float64
-	if err := r.db.Reader().QueryRowContext(ctx,
-		`SELECT COALESCE(SUM(COALESCE(actual_cost, estimated_cost)), 0) FROM cost_ledger_entry WHERE project_id = ?`, projectID).Scan(&spent); err != nil {
-		return nil, 0, fmt.Errorf("sum cost ledger: %w", err)
-	}
-	return floatOrNil(ceiling), spent, nil
+	b, err := (&GenerationRepository{db: r.db}).ledgerBudget(ctx, projectID, "")
+	return b.ProjectCeiling, b.ProjectSpent + reserved, err
 }
 
 // AddCost appends an entry to the cost ledger.

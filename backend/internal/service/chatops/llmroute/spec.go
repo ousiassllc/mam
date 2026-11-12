@@ -159,6 +159,24 @@ func roleOf(sentence, before string) string {
 	return nlu.RoleOf(before)
 }
 
+// keepsAgent reports whether a clause leaves a whole Agent as it is ("Producer は据え置きで", "Producer は触らずに"): it has a word that keeps and no role word. A clause that keeps one role
+// ("Director の代替は残して") names the Agent whose other role is changed, so it is not one.
+func keepsAgent(clause string) bool {
+	return keepWord.MatchString(clause) && !roleWord.MatchString(clause)
+}
+
+// agentsOfRequest lists the Agents the clauses of a message name, but those a clause leaves as they are (keepsAgent): "Producer は据え置きで、LLM を GPT にして" names no Agent to change, so the
+// chat asks which, and never takes the Agent that is kept.
+func agentsOfRequest(clauses []string) []string {
+	var asked []string
+	for _, c := range clauses {
+		if !keepsAgent(c) {
+			asked = append(asked, c)
+		}
+	}
+	return nlu.AgentsIn(strings.Join(asked, "、"))
+}
+
 // detect reads "Director の LLM を Claude Opus にして" without the model, so that the LLM itself can be assigned while none is set up.
 func detect(message string) []commandinterpreter.Operation {
 	if !Asked(message) {
@@ -195,7 +213,7 @@ func detect(message string) []commandinterpreter.Operation {
 		}
 		if agents := nlu.AgentsIn(near); len(agents) == 1 {
 			a.Agent = agents[0]
-		} else if agents = nlu.AgentsIn(message); len(agents) == 1 {
+		} else if agents = agentsOfRequest(clauses); len(agents) == 1 {
 			a.Agent = agents[0]
 		}
 	}

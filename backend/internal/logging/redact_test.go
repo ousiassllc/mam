@@ -44,6 +44,26 @@ func TestRedact_HidesTheShapesOfTheSecretsMamHandles(t *testing.T) {
 	assert.Equal(t, "tokens used: 12", logging.Redact("tokens used: 12"), "a word is not a field")
 }
 
+func TestRedact_HidesTheSignatureOfASignedURLAndKeepsTheRestOfTheQuery(t *testing.T) {
+	for name, tc := range map[string]struct{ in, want string }{
+		"aws v4 in the middle": {
+			"GET https://b.s3.example.test/o?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIDEXAMPLE%2F20261112%2Fus%2Fs3%2Faws4_request&X-Amz-Date=20261112T000000Z&X-Amz-Expires=300&X-Amz-Signature=FAKESIG0123456789abcdef&X-Amz-SignedHeaders=host failed",
+			"GET https://b.s3.example.test/o?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIDEXAMPLE%2F20261112%2Fus%2Fs3%2Faws4_request&X-Amz-Date=20261112T000000Z&X-Amz-Expires=300&X-Amz-Signature=[redacted]&X-Amz-SignedHeaders=host failed",
+		},
+		"aws v4 at the end":     {"https://h.test/o?X-Amz-Date=20261112T000000Z&X-Amz-Signature=FAKESIG0123", "https://h.test/o?X-Amz-Date=20261112T000000Z&X-Amz-Signature=[redacted]"},
+		"lower case":            {"https://h.test/o?x-amz-signature=FAKESIG0123&expires=1", "https://h.test/o?x-amz-signature=[redacted]&expires=1"},
+		"plain signature first": {"https://h.test/o?Signature=FAKESIG0123&Expires=1700000000&AWSAccessKeyId=AKIDEXAMPLE", "https://h.test/o?Signature=[redacted]&Expires=1700000000&AWSAccessKeyId=AKIDEXAMPLE"},
+		"quoted in an error":    {`Get "https://h.test/o?Signature=FAKESIG0123": timeout`, `Get "https://h.test/o?Signature=[redacted]": timeout`},
+		// Not a signature value: other parameters and words must pass untouched.
+		"credential and date only": {"https://h.test/o?X-Amz-Credential=AKIDEXAMPLE&X-Amz-Date=20261112T000000Z&expires=300", "https://h.test/o?X-Amz-Credential=AKIDEXAMPLE&X-Amz-Date=20261112T000000Z&expires=300"},
+		"signed headers name":      {"https://h.test/o?X-Amz-SignedHeaders=host&SignatureVersion=2", "https://h.test/o?X-Amz-SignedHeaders=host&SignatureVersion=2"},
+		"the word":                 {"signature verification failed for shot s-1", "signature verification failed for shot s-1"},
+		"empty value":              {"https://h.test/o?Signature=&Expires=1", "https://h.test/o?Signature=&Expires=1"},
+	} {
+		assert.Equal(t, tc.want, logging.Redact(tc.in), name)
+	}
+}
+
 func TestReader_NeverReturnsOrConfirmsASecretInTheLog(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, "mam.log",

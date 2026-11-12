@@ -280,31 +280,3 @@ func validParts(in []domain.SpecPart) []domain.SpecPart {
 	}
 	return out
 }
-
-func userPrompt(in Input) string {
-	var b strings.Builder
-	b.WriteString("## Message of the director\n" + in.Message + "\n\n## Budget ceilings of the project (USD)\n" + in.Budget.String() + "\n\n## Shots of the project\n")
-	if len(in.Shots) == 0 {
-		b.WriteString("(none yet)\n")
-	}
-	for _, s := range in.Shots {
-		fmt.Fprintf(&b, "- Scene %d / Shot %d: %s\n", s.Scene, s.Shot, s.Objective)
-	}
-	if in.Target != nil {
-		fmt.Fprintf(&b, "\n## The message is about Scene %d / Shot %d\n", in.Target.Scene, in.Target.Shot)
-		if in.Spec != nil {
-			spec, _ := json.Marshal(in.Spec)
-			b.WriteString("Current Canonical Shot Spec: " + string(spec) + "\n")
-		}
-		var settings []string
-		for _, p := range domain.ShotLockParameters() {
-			if m := in.Locks.Mode(p); m != domain.LockAuto {
-				settings = append(settings, string(p)+"="+string(m))
-			}
-		}
-		if len(settings) > 0 {
-			b.WriteString("Parameter settings: " + strings.Join(settings, ", ") + "\n")
-		}
-	}
-	return b.String()
-}

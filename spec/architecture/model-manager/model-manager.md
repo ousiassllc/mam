@@ -69,6 +69,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 - **待つあいだ**: 枠を待つことは失敗ではない（エラーにも再開の回数にもならず、アイドルの中断も枠を取った後の取得から数える）。進捗は動かず、ジョブは `running` で待つ（待ちを示す専用の表示は無い）。待つあいだも `ctx` の取り消しが効き、取り消しは枠を取らずに `ctx` の理由で返る（取っていない枠は返さない）。
 - **枠を持つ時間**: 1 回の通信（要求から本体の書き込み・検証の終わりまで）だけ。通信が切れて次の再開まで待つ（`Retry` の待ち時間。上の「自動再開」）あいだは枠を返し、再開のたびに取り直す。空き容量の確認・検証済みファイルの判定・最後のリネームは枠の外。
 - 全体の同時実行数はジョブのワーカー数（`jobqueue.DefaultWorkers` = 4）が上限で、ホストごとの上限はその中でさらに絞る。
+- **待ちの数**: `HostLimiter.Waiting(host)` が、そのホストの枠を待って止まっている `Acquire` の数を返す（枠が空いていて待たなかった呼び出しは数えない）。テストが固定の待ち時間でなく、この数が目的の値になるまでの上限つきの待ちで「待っている」状態を確かめるための読み取りで、挙動は変えない。
 
 取得できるホストは `huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com` だけで、リダイレクト先も同じ規則で調べる（`fetch.AllowedURL`。Windows のエンジンのアーカイブとカタログのモデルの取得）。**macOS のエンジンの部品だけ**は、これに `python.org`・`pythonhosted.org`・`pytorch.org`・`openmmlab.com` を足した `fetch.PackageURL` を使う（PyTorch ほかの wheel は `files.pythonhosted.org`。ローカルランタイムの MuseTalk と同じ。§3.7）。**Hugging Face の導入経路（`hf` のクライアントと導入したファイルの取得）は `huggingface.co` と `*.hf.co` だけ**（`fetch.HFAllowedURL`。GitHub へのリダイレクトは断る。[model-manager-hf.md](model-manager-hf.md) §2）。`Authorization` は最初の要求の宛先ホストにだけ付け、ホストが変わると外す（§5.3）。
 

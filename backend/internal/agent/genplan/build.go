@@ -55,6 +55,12 @@ func (b Builder) build(ctx context.Context, projectID string, launches Launches,
 	if err != nil {
 		return Plan{}, err
 	}
+	type plannedShot struct {
+		shot   domain.Shot
+		number int
+	}
+	var todo []plannedShot
+	var todoIDs []string
 	number := 0
 	for _, sc := range scenes {
 		shots, err := b.Plans.ListShots(ctx, sc.ID)
@@ -71,23 +77,31 @@ func (b Builder) build(ctx context.Context, projectID string, launches Launches,
 			if !planned(shot, takes[shot.ID], launches[shot.ID]) {
 				continue
 			}
-			held, err := b.Gens.Budget(ctx, projectID, shot.ID)
-			if err != nil {
-				return Plan{}, err
-			}
-			plan.ShotSpent[shot.ID] = held.ShotSpent
-			line := Line{ShotID: shot.ID, Number: number, Seconds: shot.Duration}
-			if _, started := launches[shot.ID][genapprovalrepo.StageReferencePack]; !started && !hasKeyframe(shot) {
-				line.Pack, line.PackModels, line.PackCost = true, packModels, pack
-				plan.PackImageModels = packModels
-			}
-			candidates, err := b.video(ctx, cfg, policy, shot, &line)
-			if err != nil {
-				return Plan{}, err
-			}
-			plan.Candidates = plan.Candidates || candidates
-			plan.Lines = append(plan.Lines, line)
+			todo = append(todo, plannedShot{shot, number})
+			todoIDs = append(todoIDs, shot.ID)
 		}
+	}
+	var spends map[string]float64 // one ledger query for all the Shots to be made (none: nothing to look up)
+	if len(todoIDs) > 0 {
+		var err error
+		if spends, err = b.Gens.ShotSpends(ctx, projectID, todoIDs); err != nil {
+			return Plan{}, err
+		}
+	}
+	for _, p := range todo {
+		shot := p.shot
+		plan.ShotSpent[shot.ID] = spends[shot.ID]
+		line := Line{ShotID: shot.ID, Number: p.number, Seconds: shot.Duration}
+		if _, started := launches[shot.ID][genapprovalrepo.StageReferencePack]; !started && !hasKeyframe(shot) {
+			line.Pack, line.PackModels, line.PackCost = true, packModels, pack
+			plan.PackImageModels = packModels
+		}
+		candidates, err := b.video(ctx, cfg, policy, shot, &line)
+		if err != nil {
+			return Plan{}, err
+		}
+		plan.Candidates = plan.Candidates || candidates
+		plan.Lines = append(plan.Lines, line)
 	}
 	plan.Unpriced = plan.unpriced()
 	return plan, nil

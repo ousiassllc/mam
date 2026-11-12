@@ -70,11 +70,32 @@ jobs:
       # The Go tests that need ffmpeg / ffprobe (Judge frame extraction, media, Audio Director mixing,
       # Take / partial regeneration) fail without them (testenv). The GitHub-hosted ubuntu-latest image does
       # not ship them: install via apt when missing (the runner user has passwordless sudo).
+      # The Ubuntu mirrors sometimes fail to resolve ("Temporary failure resolving 'azure.archive.ubuntu.com'"):
+      # apt retries each download itself (Acquire::Retries, per-connection timeouts), and the whole
+      # update + install is retried a few times with a pause; if every attempt fails the step ends with an
+      # explicit ::error:: instead of hanging (timeout-minutes bounds the total).
       - name: Ensure ffmpeg
+        timeout-minutes: 10
         run: |
           if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
-            sudo -n apt-get update
-            sudo -n apt-get install -y --no-install-recommends ffmpeg
+            apt_opts=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+            max_attempts=3
+            installed=false
+            for attempt in $(seq 1 "$max_attempts"); do
+              if sudo -n apt-get "${apt_opts[@]}" update &&
+                sudo -n apt-get "${apt_opts[@]}" install -y --no-install-recommends ffmpeg; then
+                installed=true
+                break
+              fi
+              echo "::warning::Ensure ffmpeg (apt): attempt ${attempt}/${max_attempts} failed"
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                sleep $((attempt * 10))
+              fi
+            done
+            if [ "$installed" != true ]; then
+              echo "::error::Ensure ffmpeg (apt): apt-get update/install ffmpeg failed after ${max_attempts} attempts (see the Ubuntu mirror / DNS errors above)"
+              exit 1
+            fi
           fi
           ffmpeg -version | head -1
           ffprobe -version | head -1

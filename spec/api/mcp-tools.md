@@ -39,7 +39,7 @@
 
 - 不正な `level`・時刻・`limit`・`attrs` は `validation`。ログのディレクトリが無いビルドは `unavailable`。
 - 1 行の属性は文字列が 2,000 文字で切られる。パースできない行は読み飛ばす。ログを書くときの属性名がそのままキーになる（`project_id`・`shot_id`・`job_id`・`tool`・`err` など）。
-- 秘密の扱い: ログへは書かない（キーストア・トークンのサービス・アダプターは値をロガーに渡さない）。読み取りでは、既知の形と、キーストアにある API キー・Hugging Face トークンの値を伏せる。名前が `token`・`secret`・`password`・`api_key`・`authorization` などの文字列の属性は値を丸ごと `[redacted]` にする。伏せたあとの文字列で絞り込むので、`keyword` や `attrs` で秘密を探り当てることはできない。
+- 秘密の扱い: ログへは書かない（キーストア・トークンのサービス・アダプターは値をロガーに渡さない）。読み取りでは、既知の形（署名付き URL の署名 `Signature=`・`X-Amz-Signature=` の値を含む。同じ URL の `X-Amz-Credential`・`X-Amz-Date`・`Expires` など、ほかのクエリは残す）と、キーストアにある API キー・Hugging Face トークンの値を伏せる。名前が `token`・`secret`・`password`・`api_key`・`authorization` などの文字列の属性は値を丸ごと `[redacted]` にする。伏せたあとの文字列で絞り込むので、`keyword` や `attrs` で秘密を探り当てることはできない。
 
 ### チャットとの対応（#1140）
 
