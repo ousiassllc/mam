@@ -30,6 +30,12 @@ func RouteOf(id string) RouteKind {
 	return RouteAPI
 }
 
+// NameWithoutRoute is the model's identifier without the part that only says how it is reached ("gpt-image-2.6-flare:chatgpt-subscription" is
+// "gpt-image-2.6-flare"), for a text that already names the route beside it. Any other identifier is returned as it is.
+func NameWithoutRoute(id string) string {
+	return strings.TrimSuffix(id, subscriptionSuffix)
+}
+
 // Label is the word the screens show for the route.
 func (k RouteKind) Label() string {
 	switch k {

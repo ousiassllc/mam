@@ -129,11 +129,11 @@ export class MamTimelineEditor extends LitElement {
 M1 の実装（F-18 Simple。`static/src/components/timeline-editor/`）:
 
 - 編集項目は Shot Selection（クリップのドラッグ or ↑↓での並べ替え、「外す」）・Cut Point（開始/終了秒）・Timing（区間の長さ、最短 0.5 秒）・Transition（`cut`/`fade`/`fade_black`/`dissolve` と長さ、先頭クリップにはなし）。範囲は `spec/requirements/functional.md` §3.6。純関数は `lib/edit-model.ts`（並べ替え・トリム・Transition・開始時刻の再計算・保存 payload）に置き、サーバー（`domain.EditTimeline.Normalize`）が最終判定する
-- 保存は PUT で「次の版」を作る。表示中の版より新しい版があるとサーバーが 409 を返し、エディタは変更を保持したままエラーを表示する（変更を戻す/読み直しで最新を取得）。保存に成功したら最新の版を再読込し、再読込にも成功したら `timeline-updated`（detail: `{id}`）を発火する。再読込に失敗したときは「保存は完了しましたが、最新の版の再読込に失敗しました。「変更を戻す」で再読込してください（<原因>）」とエラーに出し、`timeline-updated` は発火しない（画面は古い版のまま「未保存の変更あり」になり、「変更を戻す」で読み直せる）。編集画面の `#editor-actions` が `hx-trigger="timeline-updated from:body"`（`hx-swap="none"`）で各ステージの結果の領域を再取得する
-- サーバーの Rough Cut 作成・Editor Judge・Final QC がタイムラインを差し替えたり Judge 結果・編集可否を変えたときは、応答の `HX-Trigger: timeline-reload` で `htmx` が発火するイベントを受けて読み直す。読み直しで未保存の編集は失われない: サーバーの版が表示中の版と同じなら、編集中の内容を保ったまま `readonly` などサーバー由来の値だけを更新し、新しい版に差し替わっていた（Rough Cut の作り直し）ときだけ編集を破棄して「未保存の変更は破棄されました」と通知する。「変更を戻す」と保存後の再読込は従来どおり最新の版で置き換える
+- 保存は PUT で「次の版」を作る。表示中の版より新しい版があるとサーバーが 409 を返し、エディタは変更を保持したままエラーのアラート（`#alert-region`。エディタの中に通知の箱は持たない）を出す（変更を戻す/読み直しで最新を取得）。保存に成功したら最新の版を再読込し、再読込にも成功したら「保存しました」のトースト（`showToast()`）を出して `timeline-updated`（detail: `{id}`）を発火する。再読込に失敗したときは「保存は完了しましたが、最新の版の再読込に失敗しました。「変更を戻す」で再読込してください（<原因>）」とエラーのアラートに出し、`timeline-updated` は発火しない（画面は古い版のまま「未保存の変更あり」になり、「変更を戻す」で読み直せる）。編集画面の `#editor-actions` が `hx-trigger="timeline-updated from:body"`（`hx-swap="none"`）で各ステージの結果の領域を再取得する
+- サーバーの Rough Cut 作成・Editor Judge・Final QC がタイムラインを差し替えたり Judge 結果・編集可否を変えたときは、応答の `HX-Trigger: timeline-reload` で `htmx` が発火するイベントを受けて読み直す。読み直しで未保存の編集は失われない: サーバーの版が表示中の版と同じなら、編集中の内容を保ったまま `readonly` などサーバー由来の値だけを更新し、新しい版に差し替わっていた（Rough Cut の作り直し）ときだけ編集を破棄して「最新の版に差し替わったため、未保存の変更は破棄されました」を注意のアラート（`#alert-warning-template`）で通知する。「変更を戻す」は確認のモーダル（`confirmDialog()`。「未保存の変更を破棄して、最新の版を読み直しますか？」）で確かめてから最新の版で置き換える（取り消せないため。キャンセルなら何もしない）。保存後の再読込は従来どおり最新の版で置き換える
 - プレビューは `<mam-video-player video-src=preview_url>`（保存済みの版の Rough Cut を下書き品質でレンダリングしたもの）。未保存の編集はプレビューに反映されない
 - M3（F-18 Advanced）: クリップごとに字幕（Caption、最大 60 文字）を編集でき、追加 Shot 由来のクリップ（`kind` が `insert`/`reaction`）にはバッジを表示する。`kind`・`caption` は保存に含める。Editor Judge の結果（指摘と `need_shot` の追加 Shot）はこのコンポーネントでは描かず、編集画面の Templ（`editorpanel.Actions`。`organisms/editorpanel/panel.templ`）だけが表示する（読み取り専用の表示に Lit を使わない。文言は 1 か所）。追加 Shot の要求は編集画面のボタン（`POST /edit-timelines/:id/request-additional-shot`）から行う。Edit Timeline は Branch ごとに読み込む（`api-url` に `?branch_id=` を付ける）
-- サーバー応答の `readonly`（HATEOAS。属性では渡さない）が真、または保存中は編集できない。Rough Cut がまだないときは案内を表示し、エラーにはしない
+- サーバー応答の `readonly`（HATEOAS。属性では渡さない）が真、または保存中は編集できない。Rough Cut がまだないときは破線の枠（案件ガイド W9）に案内を表示し、エラーにはしない
 - クリップの「外す」ボタンは、見える文言のまま `aria-label` を「外す: <クリップ名>」にする（`timeline-clip.ts`。↑↓も「<クリップ名> を上へ / を下へ」）。行ボタンを同じ名前で並べない（Templ の `atoms.RowLabel` と同じ規約）。
 
 ### 4.3 `<mam-take-comparator>`
@@ -185,7 +185,7 @@ export class MamComfyFrame extends LitElement {
 | `edit-model.ts` | 編集タイムラインの純関数（並べ替え・トリム・Transition・開始時刻の再計算・保存 payload。`mam-timeline-editor`用） |
 | `errors.ts` | API エラー応答を利用者向けメッセージに変換する（`errorMessage`。各コンポーネントで共有） |
 | `toast.ts` | トースト（`#toast-region`。成功の 1 行）の生成と 3 秒の自動消去（出るときフェードイン・消えるときフェードアウト）。同時に 1 つで、新しいものが前を置き換える。マークアップは `atoms.Toast` の 1 か所だけで定義し、`AppLayout` が埋め込む `#toast-template` を複製してメッセージだけ差し込む。サーバーが返すトースト（`atoms.ToastOOB`）も同じ時間で消す |
-| `alert.ts` | エラーのアラート（`#alert-region`、ページ上部）の生成・同じ文の重複排除・閉じるボタン。マークアップは `atoms.Alert` の 1 か所だけで定義し、`AppLayout` が埋め込む `#alert-template` を複製してメッセージだけ差し込む。アラートは利用者が閉じるまで残り、自動では消えない（長い文を読み終えるため） |
+| `alert.ts` | エラーと注意のアラート（`#alert-region`、ページ上部。注意は `#alert-warning-template`）の生成・同じ文の重複排除・閉じるボタン。マークアップは `atoms.Alert` の 1 か所だけで定義し、`AppLayout` が埋め込む `#alert-template` を複製してメッセージだけ差し込む。アラートは利用者が閉じるまで残り、自動では消えない（長い文を読み終えるため） |
 | `confirm.ts` | 確認のモーダル（`confirmDialog`）と、`hx-confirm` を OS の `confirm()` でなくそのモーダルで受ける（`htmx:confirm`）。マークアップは `modal.Confirm` の 1 か所で、`AppLayout` が `#confirm-template` に埋め込む |
 | `scrim.ts` | モーダル `<dialog>` のスクラム（外側）クリックで閉じる。欄を変更したダイアログは先に確認のモーダルを出す |
 | `connection-notice.ts` | 接続断念通知（「接続が切れました」＋「再接続」「再読み込み」）の表示。マークアップは `atoms.ConnectionNotice` の 1 か所だけで定義し、`AppLayout` が埋め込む `#connection-notice-template` を複製してメッセージとボタンの動作だけ差し込む。チャット・Shot カード・`mam-video-player` が共通で使う |
@@ -218,7 +218,7 @@ export class MamComfyFrame extends LitElement {
 - `hx-swap-oob` で領域を差し替える操作（編集画面のステージボタン、Brand 制約・Brand Template・Note の追加フォーム）では、押したコントロールが `hx-target` の外にあっても、それを含む `id` 付きの祖先を `id` で探し直し、その中の同じコントロールへ戻す。チャットの返信先の「×」（`#reply-cancel`）は swap ではなく自分で非表示にするため、`chat.ts` が押したときに入力欄へフォーカスを戻す（返信を始めたときの動作と揃える）
 - Lit コンポーネント（`mam-take-comparator`・`mam-timeline-editor`）は htmx を通らないため、操作の結果の描画が終わった後（`updateComplete`）に `focus-restore/lit-focus.ts` の `focusAfterUpdate()` でフォーカスを戻す。フォーカスが `<body>` に落ちたとき、または `disabled` になったコントロールに残っているときだけ動き（Chrome 155 は `disabled` にしたボタンを、しばらく `document.activeElement` のまま残してから `<body>` へ落とす）、利用者が別へ移していれば触らない。戻し先は、(1) 同じ行の同じ種類のボタン、(2) 同じ行の別のボタン、(3) 行・パネル・一覧（`tabindex="-1"` を付けて）の順:
   - Take の「選択」「除外」→ 同じ行の残ったボタン、なければ行見出し。「この区間で合成」→ 選択パネル、区間の「×」→ 次の区間の「×」（最後なら 1 つ前）
-  - Timeline の「↑」「↓」→ 動かしたクリップの同じ向きのボタン（動かせなくなったら反対向き）。「外す」→ 代わりに同じ位置に来たクリップの「外す」（残りが 1 つで押せなければ行）。「保存」→ 保存失敗なら「保存」、成功なら「保存しました」の通知。「変更を戻す」→ クリップ一覧
+  - Timeline の「↑」「↓」→ 動かしたクリップの同じ向きのボタン（動かせなくなったら反対向き）。「外す」→ 代わりに同じ位置に来たクリップの「外す」（残りが 1 つで押せなければ行）。「保存」→ 保存失敗なら「保存」、成功ならクリップ一覧（成功はトーストで知らせ、トーストはフォーカスを受けない）。「変更を戻す」→ クリップ一覧
   - Timeline の行は `shot_id` をキーに描画し（`repeat`）、行を入れ替えても DOM がクリップと一緒に動く（フォーカス中のボタンが別のクリップの `aria-label` に変わらない）。並べ替え・削除の結果は `role="status"` の `data-announce` で「X を N 番目へ移動しました」「X を外しました」と読み上げる
 
 ## 改訂履歴
@@ -339,3 +339,4 @@ export class MamComfyFrame extends LitElement {
 | 1.111 | 2026-11-10 | §1.1 の Command Interpreter の行に、全体設定の操作（API キー・プロバイダー・モデルの導入・割り当て・LoRA・書き出し・キャラクターの参照）を足した。操作の登録表は `commandinterpreter.Register` で操作ごとのパッケージ（`service/chatops/*`）が足す | Issue #1140 |
 | 1.112 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.113 | 2026-11-11 | §1.1 の Command Interpreter の行の「どのモード・状態でも受け、必ず確認カードを先に出す」を、実装に合わせた（Brief を作っている最中〔DRAFT〕は最初に要る設定と拒否だけ。確認が要る操作だけカードを先に出し、`Immediate` の読み取りはカードなし） | PR #1141 のレビュー指摘 |
+| 1.114 | 2026-11-12 | §4.2 の `<mam-timeline-editor>` の通知・確認を案件ガイド（`lit-widgets-guide.md` W8・W10）に合わせた: 成功はトースト、エラーと版の差し替えで未保存の編集を破棄した旨はアラート（`alert.ts` に注意の種別を足し、`AppLayout` に `#alert-warning-template` を足した）、「変更を戻す」は確認のモーダル付き、空状態は破線の枠。保存成功後のフォーカスはクリップ一覧（§5.2） | Issue #1091 |

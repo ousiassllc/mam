@@ -7,7 +7,7 @@ import { adjust, read, WEIGHT_MAX, WEIGHT_MIN, type Direction, type Reading } fr
 const PROMPT = 'textarea[name="prompt"]';
 
 const BUTTON =
-  'inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-semibold text-ink transition-colors hover:bg-accent-soft ' +
+  'inline-flex items-center justify-center rounded-md border border-border min-h-8 px-2 py-1 text-xs font-semibold text-ink transition-colors motion-reduce:transition-none hover:bg-accent-soft ' +
   'aria-disabled:cursor-not-allowed aria-disabled:opacity-40 ' +
   'focus-visible:focus-ring';
 
@@ -18,7 +18,8 @@ const BUTTON =
  * says what they weigh now and puts "(語:1.2)" around them, a step of 0.1 at a time, between 0.5 and 1.5; the selection stays on the changed part,
  * so that the button can be pressed again. Ctrl/⌘ + ↑ / ↓ does the same from the box. Whether the chosen models read weights comes from their cards
  * (weight-facts.ts): when none does, the buttons are off and the note says why (it is the same wording as the "?" of the prompts).
- * The text rules are weight-model.ts. It renders into the light DOM (the page's Tailwind classes apply) and hides itself while nothing is selected.
+ * The text rules are weight-model.ts. It renders into the light DOM (the page's Tailwind classes apply). The element itself is never hidden (its
+ * `role="status"` note must be in the accessibility tree before the bar shows, W8): while nothing is selected only the bar body is hidden.
  */
 @customElement('mam-prompt-weight')
 export class MamPromptWeight extends LitElement {
@@ -79,7 +80,12 @@ export class MamPromptWeight extends LitElement {
 
   private onSelect = (event: Event): void => {
     const box = MamPromptWeight.promptBox(event.target);
-    if (box) this.refresh(box);
+    if (!box) return;
+    // Esc closes the bar and puts the focus back in the box (onKey): the focus coming back from the bar, and the key's release, do not open it again.
+    if (event instanceof FocusEvent && event.relatedTarget instanceof Node && this.contains(event.relatedTarget))
+      return;
+    if (event instanceof KeyboardEvent && event.key === 'Escape') return;
+    this.refresh(box);
   };
 
   private onFocusOut = (event: FocusEvent): void => {
@@ -94,14 +100,21 @@ export class MamPromptWeight extends LitElement {
   };
 
   private onKey = (event: KeyboardEvent): void => {
-    const box = MamPromptWeight.promptBox(event.target);
-    if (!box) return;
-    if (event.key === 'Escape' && this.reading) {
+    if (
+      event.key === 'Escape' &&
+      this.reading &&
+      ((event.target instanceof Node && this.contains(event.target)) || MamPromptWeight.promptBox(event.target))
+    ) {
       event.preventDefault();
+      const back = this.target;
       this.target = null;
       this.reading = null;
+      // From a button of the bar the focus goes back to the prompt box it works on (W7); from the box it stays there.
+      if (back && event.target !== back) back.focus();
       return;
     }
+    const box = MamPromptWeight.promptBox(event.target);
+    if (!box) return;
     if (!(event.ctrlKey || event.metaKey) || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
     this.refresh(box);
     if (!this.reading) return;
@@ -133,10 +146,6 @@ export class MamPromptWeight extends LitElement {
     this.refresh(box);
   }
 
-  protected override updated(): void {
-    this.hidden = !this.reading;
-  }
-
   private button(label: string, dir: Direction, off: boolean, noteID: string) {
     return html`<button
       type="button"
@@ -145,29 +154,37 @@ export class MamPromptWeight extends LitElement {
       aria-describedby=${noteID}
       data-gt-weight=${dir > 0 ? 'up' : 'down'}
       data-testid=${dir > 0 ? 'gt-weight-up' : 'gt-weight-down'}
+      data-ripple
       @click=${() => !off && this.press(dir)}
     >
       ${label}
     </button>`;
   }
 
+  /**
+   * The element itself is never `hidden`: the `role="status"` note region is in the DOM and in the accessibility tree before the bar shows, and
+   * only its text changes (W8). While nothing is selected only the `role="group"` bar body is hidden and the box around it is `sr-only`.
+   */
   protected override render() {
     const r = this.reading;
-    if (!r) return nothing;
-    const facts = this.facts();
-    const notes = this.notice ? [...notesOf(facts), this.notice] : notesOf(facts);
+    const facts = r ? this.facts() : null;
+    const notes = facts ? (this.notice ? [...notesOf(facts), this.notice] : notesOf(facts)) : [];
     const noteID = `${this.id || 'gt-weight'}-note`;
     return html`<div
-      role="group"
-      aria-label="選んだ語のウェイト"
-      class="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface p-2 text-xs text-ink"
+      class=${r ? 'flex flex-col gap-2 rounded-md border border-border bg-surface p-2 text-xs text-ink' : 'sr-only'}
       data-testid="gt-weight-bar"
       @mousedown=${(e: Event) => e.preventDefault()}
     >
-      <span class="text-mute">選んだ語の強さ <output class="tabular-nums text-ink" data-testid="gt-weight-now">${r.weight.toFixed(1)}</output> 倍</span>
-      ${this.button('強める +', 1, !facts.usable || !r.canRaise, noteID)} ${this.button('弱める −', -1, !facts.usable || !r.canLower, noteID)}
-      <span class="text-mute">${WEIGHT_MIN}〜${WEIGHT_MAX}。Ctrl/⌘ + ↑ ↓ でも変えられます</span>
-      <div id=${noteID} role="status" class="basis-full" data-testid="gt-weight-note">
+      <div role="group" aria-label="選んだ語のウェイト" class="flex flex-wrap items-center gap-2" ?hidden=${!r} data-testid="gt-weight-group">
+        ${
+          r && facts
+            ? html`<span class="text-mute">選んだ語の強さ <output class="font-mono tabular-nums text-ink" data-testid="gt-weight-now">${r.weight.toFixed(1)}</output> 倍</span>
+              ${this.button('強める +', 1, !facts.usable || !r.canRaise, noteID)} ${this.button('弱める −', -1, !facts.usable || !r.canLower, noteID)}
+              <span class="text-mute">${WEIGHT_MIN}〜${WEIGHT_MAX}。Ctrl/⌘ + ↑ ↓ でも変えられます</span>`
+            : nothing
+        }
+      </div>
+      <div id=${noteID} role="status" data-testid="gt-weight-note">
         ${notes.map((n) => html`<p class="text-warning">${n}</p>`)}
       </div>
     </div>`;

@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -155,4 +158,47 @@ func TestKick_AFailingProgressCardDoesNotFailTheKick(t *testing.T) {
 
 	require.NoError(t, f.orch.Kick(context.Background(), id))
 	assert.Equal(t, 1, f.jobs.count())
+}
+
+// warnLog sends the job_id of each warning of the orchestrator.
+type warnLog struct{ jobs chan string }
+
+func (h warnLog) Enabled(context.Context, slog.Level) bool { return true }
+func (h warnLog) WithAttrs([]slog.Attr) slog.Handler       { return h }
+func (h warnLog) WithGroup(string) slog.Handler            { return h }
+func (h warnLog) Handle(_ context.Context, r slog.Record) error {
+	if r.Level == slog.LevelWarn {
+		r.Attrs(func(a slog.Attr) bool {
+			if a.Key == "job_id" {
+				h.jobs <- a.Value.String()
+			}
+			return true
+		})
+	}
+	return nil
+}
+
+// A plan job that no worker has taken within the time is logged as not started, with the project and the job; one that a worker took in time is not (#1107).
+func TestKick_AJobThatStaysQueuedIsLoggedAndOneThatStartedIsNot(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	warned := warnLog{jobs: make(chan string, 4)}
+	f.orch = orchestrator.New(orchestrator.Deps{
+		Projects: f.projects, Plans: f.plans, ChatRepo: f.chatRepo, Chat: f.chat, Jobs: f.jobs, LLM: f.llm, Notes: f.notes,
+		Logger: slog.New(warned), QueuedWarnAfter: 20 * time.Millisecond,
+	})
+	ctx := context.Background()
+	started, queued := f.project(t, seed{brief: completeBrief()}), f.project(t, seed{brief: completeBrief()})
+
+	require.NoError(t, f.orch.Kick(ctx, started)) // job-1: a worker takes it at once
+	payload, _ := json.Marshal(map[string]string{"project_id": started})
+	require.NoError(t, f.orch.Handle(ctx, domain.Job{ID: "job-1", Kind: domain.JobPlan, Payload: payload}))
+	require.NoError(t, f.orch.Kick(ctx, queued)) // job-2: nobody takes it
+
+	select {
+	case id := <-warned.jobs:
+		assert.Equal(t, "job-2", id, "the job that started is not warned about, and the first warning is the one that waits (it was queued later with the same time)")
+	case <-time.After(5 * time.Second):
+		t.Fatal("no warning for the job that stayed queued")
+	}
 }

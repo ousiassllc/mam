@@ -3,6 +3,14 @@ import { live } from 'lit/directives/live.js';
 import { CLIP_KIND_LABEL, TRANSITION_LABEL, type EditClip, type TransitionType } from '../lib/edit-model';
 import type { EditTimelineBody } from './timeline-api';
 
+const RING = 'focus-visible:focus-ring';
+/** The digits of a number that lines up (W7): seconds, lengths. */
+const NUM = 'font-mono tabular-nums';
+/** The ↑ ↓ buttons (W4): `atoms.IconButton` with a target of 24px or more (WCAG 2.5.8). */
+const ICON_BUTTON = `min-h-6 min-w-6 rounded-md text-mute transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none ${RING}`;
+/** The "外す" button (W3): the text of `atoms.LinkButton`, no ripple. */
+const LINK_BUTTON = `text-xs text-mute underline transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none ${RING}`;
+
 /** What a clip row shows and does: the editor owns the clips, the drag and the requests; the row only renders. */
 export interface ClipRowView {
   locked: boolean;
@@ -32,7 +40,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
   const { locked } = view;
   const t = c.transition;
   return html`<li
-    class="flex flex-col gap-2 rounded-lg border p-3 ${view.over ? 'border-accent' : 'border-border'} ${view.dragging ? 'opacity-50' : ''}"
+    class="flex flex-col gap-2 rounded-lg border bg-surface p-3 ${view.over ? 'border-accent' : 'border-border'} ${view.dragging ? 'opacity-50' : ''}"
     data-clip=${c.shot_id}
     draggable=${locked ? 'false' : 'true'}
     @dragstart=${(e: DragEvent) => view.dragStart(i, e)}
@@ -48,31 +56,31 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
       ${c.thumbnail_url ? html`<img class="h-10 w-auto rounded-md" src=${c.thumbnail_url} alt="" />` : nothing}
       <div class="min-w-40 flex-1">
         <p class="text-sm">
-          ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded-sm bg-info/20 px-2 py-1 text-[10px] text-info" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
+          ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded-full bg-info/20 px-2 py-1 text-xs text-info" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
         </p>
         ${c.objective ? html`<p class="text-xs text-mute">${c.objective}</p>` : nothing}
       </div>
-      <span class="text-xs text-mute" data-start>${c.start.toFixed(1)} 秒〜 / ${(c.out_point - c.in_point).toFixed(1)} 秒</span>
-      <button type="button" aria-label="${c.label} を上へ" data-action="up" class="px-1 text-mute hover:text-ink disabled:opacity-30" ?disabled=${locked || i === 0} @click=${() => view.move(i, i - 1)}>↑</button>
-      <button type="button" aria-label="${c.label} を下へ" data-action="down" class="px-1 text-mute hover:text-ink disabled:opacity-30" ?disabled=${locked || i === view.count - 1} @click=${() => view.move(i, i + 1)}>↓</button>
-      <button type="button" aria-label="外す: ${c.label}" data-action="remove" class="text-xs text-mute underline disabled:opacity-30" ?disabled=${locked || view.count <= 1} @click=${() => view.remove(i)}>外す</button>
+      <span class="text-xs text-mute" data-start><span class=${NUM}>${c.start.toFixed(1)}</span> 秒〜 / <span class=${NUM}>${(c.out_point - c.in_point).toFixed(1)}</span> 秒</span>
+      <button type="button" aria-label="${c.label} を上へ" data-action="up" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === 0} @click=${() => view.move(i, i - 1)}>↑</button>
+      <button type="button" aria-label="${c.label} を下へ" data-action="down" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === view.count - 1} @click=${() => view.move(i, i + 1)}>↓</button>
+      <button type="button" aria-label="外す: ${c.label}" data-action="remove" class=${LINK_BUTTON} ?disabled=${locked || view.count <= 1} @click=${() => view.remove(i)}>外す</button>
     </div>
     <div class="flex flex-wrap items-end gap-3 text-xs text-mute">
       <label class="flex flex-col gap-1">
         開始（秒）
-        <input type="number" data-field="in" step="0.1" min="0" class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(c.in_point))} ?disabled=${locked} @change=${(e: Event) => view.trim(i, 'in', e.target as HTMLInputElement)} />
+        <input type="number" data-field="in" step="0.1" min="0" class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink disabled:opacity-40 focus-visible:focus-ring" .value=${live(String(c.in_point))} ?disabled=${locked} @change=${(e: Event) => view.trim(i, 'in', e.target as HTMLInputElement)} />
       </label>
       <label class="flex flex-col gap-1">
         終了（秒）
-        <input type="number" data-field="out" step="0.1" min="0" class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(c.out_point))} ?disabled=${locked} @change=${(e: Event) => view.trim(i, 'out', e.target as HTMLInputElement)} />
+        <input type="number" data-field="out" step="0.1" min="0" class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink disabled:opacity-40 focus-visible:focus-ring" .value=${live(String(c.out_point))} ?disabled=${locked} @change=${(e: Event) => view.trim(i, 'out', e.target as HTMLInputElement)} />
       </label>
-      ${c.source_seconds ? html`<span>Take の長さ ${c.source_seconds.toFixed(1)} 秒</span>` : nothing}
+      ${c.source_seconds ? html`<span>Take の長さ <span class=${NUM}>${c.source_seconds.toFixed(1)}</span> 秒</span>` : nothing}
       ${
         i === 0
           ? nothing
           : html`<label class="flex flex-col gap-1">
               前のクリップからの切り替え
-              <select data-field="transition" class="rounded-md border border-mute bg-surface px-2 py-1 text-ink" ?disabled=${locked} @change=${(e: Event) => view.transition(i, (e.target as HTMLSelectElement).value as TransitionType)}>
+              <select data-field="transition" class="rounded-md border border-mute bg-surface px-2 py-1 text-ink disabled:opacity-40 focus-visible:focus-ring" ?disabled=${locked} @change=${(e: Event) => view.transition(i, (e.target as HTMLSelectElement).value as TransitionType)}>
                 ${body.transitions.map((v) => html`<option value=${v} .selected=${live(v === t.type)}>${TRANSITION_LABEL[v] ?? v}</option>`)}
               </select>
             </label>
@@ -81,7 +89,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
                 ? nothing
                 : html`<label class="flex flex-col gap-1">
                   長さ（秒）
-                  <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink" .value=${live(String(t.seconds))} ?disabled=${locked} @change=${(e: Event) => view.transition(i, t.type, (e.target as HTMLInputElement).value)} />
+                  <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded-md border border-mute bg-surface px-2 py-1 text-ink disabled:opacity-40 focus-visible:focus-ring" .value=${live(String(t.seconds))} ?disabled=${locked} @change=${(e: Event) => view.transition(i, t.type, (e.target as HTMLInputElement).value)} />
                 </label>`
             }`
       }
@@ -93,7 +101,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
         rows="2"
         maxlength=${body.limits.max_caption_runes * 2}
         placeholder="この区間に重ねる文字。空なら字幕なし"
-        class="rounded-md border border-mute bg-surface px-2 py-1 text-ink"
+        class="rounded-md border border-mute bg-surface px-2 py-1 text-ink disabled:opacity-40 focus-visible:focus-ring"
         .value=${live(view.captionDraft ?? c.caption ?? '')}
         ?disabled=${locked}
         @change=${(e: Event) => view.caption(i, e.target as HTMLTextAreaElement)}

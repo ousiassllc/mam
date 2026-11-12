@@ -13,7 +13,7 @@ import (
 // static/src/main.ts reads it and attaches it to every HTMX request, and
 // components/lib/api.ts attaches it to every fetch. #toast-region receives the out-of-band toast of an action that worked
 // (one at a time, gone after 3 seconds); #alert-region, at the top of #content, receives the out-of-band alerts of failed
-// actions. #toast-template, #alert-template and #confirm-template are the markup that the scripts clone for the ones they raise
+// actions. #toast-template, #alert-template, #alert-warning-template and #confirm-template are the markup that the scripts clone for the ones they raise
 // themselves, so each is defined only in atoms.Toast, atoms.Alert and modal.Confirm. The same goes for
 // #connection-notice-template (atoms.ConnectionNotice), cloned by connection-notice.ts.
 //
@@ -62,6 +62,9 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 			</template>
 			<template id="alert-template">
 				@atoms.Alert(atoms.AlertError, atoms.ErrorAlertTitle, "")
+			</template>
+			<template id="alert-warning-template">
+				@atoms.Alert(atoms.AlertWarning, atoms.WarningAlertTitle, "")
 			</template>
 			<template id="confirm-template">
 				@modal.Confirm()

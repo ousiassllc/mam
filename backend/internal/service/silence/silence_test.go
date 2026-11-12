@@ -32,11 +32,22 @@ const (
 )
 
 // reasoner stands in for the Reasoning LLM Adapter (no external API): it answers the Producer and the Writer,
-// and panics when asked to (panicking).
-type reasoner struct{ panicking bool }
+// and panics when asked to (panicking). It waits for gate to be closed first when there is one (a plan job that is still running).
+type reasoner struct {
+	panicking bool
+	panicOn   llm.Agent // panics when this Agent is asked (the Command Interpreter: a message of DIRECTOR MODE)
+	gate      <-chan struct{}
+}
 
-func (r reasoner) Complete(_ context.Context, agent llm.Agent, _ llm.Request) (llm.Response, error) {
-	if r.panicking {
+func (r reasoner) Complete(ctx context.Context, agent llm.Agent, _ llm.Request) (llm.Response, error) {
+	if r.gate != nil {
+		select {
+		case <-r.gate:
+		case <-ctx.Done():
+			return llm.Response{}, ctx.Err()
+		}
+	}
+	if r.panicking || (r.panicOn != "" && r.panicOn == agent) {
 		panic("boom")
 	}
 	text := map[llm.Agent]string{llm.AgentProducer: conceptJSON, llm.AgentWriter: scriptJSON}[agent]
@@ -227,4 +238,76 @@ func TestAPlanJobPanicIsToldInTheThreadAndLoggedWithTheProject(t *testing.T) {
 	f.waitIdle(t, p.ID)
 	assert.Contains(t, f.logs.String(), "planning pipeline panicked")
 	assert.Contains(t, f.logs.String(), "project_id="+p.ID)
+}
+
+// A message that arrives while a plan job is on the Project starts no job and no Progress card: the thread says so
+// instead of the "nothing to do in this state" notice, which would be wrong while the work goes on.
+func TestAMessageWhileAPlanJobRunsIsToldThatTheJobGoesOn(t *testing.T) {
+	gate := make(chan struct{})
+	f := newFixture(t, true, reasoner{gate: gate})
+	p := f.newProject(t) // the Brief is complete: the plan job starts and waits for the gate
+	released := false
+	release := func() {
+		if !released {
+			close(gate)
+			released = true
+		}
+	}
+	t.Cleanup(release)
+
+	user, after, _ := f.say(t, p.ID, "続けて")
+	require.Len(t, after, 1)
+	assert.Equal(t, domain.RoleAssistant, after[0].Role)
+	assert.Contains(t, after[0].Content, "進行中")
+	assert.NotContains(t, after[0].Content, "自動で行う処理はありません")
+	assert.Contains(t, f.logs.String(), "message_id="+user.ID)
+	release()
+	f.waitIdle(t, p.ID)
+}
+
+// directing puts a Project that has no Shot into DIRECTOR MODE after the Brief (the messages are read by the Command Interpreter).
+func (f fixture) directing(t *testing.T) domain.Project {
+	t.Helper()
+	p := f.newProject(t)
+	f.waitState(t, p.ID, domain.StateAwaitingApproval)
+	f.waitIdle(t, p.ID)
+	f.exec(t, `UPDATE project SET mode = 'director', state = 'GENERATING' WHERE id = ?`, p.ID)
+	return p
+}
+
+// A message of DIRECTOR MODE is stored before it is read: a failure of the repository while the Shots are listed for the Command
+// Interpreter, and a panic while it is read, are answered in the thread and returned as errors, never left to end it with the user's words alone.
+func TestADirectorMessageThatFailsWhileItIsReadIsAnsweredInTheThread(t *testing.T) {
+	for name, tc := range map[string]struct {
+		r       reasoner
+		breakDB string
+	}{
+		"the Shots cannot be listed": {breakDB: `ALTER TABLE scene RENAME TO scene_gone`},
+		"the Interpreter panics":     {r: reasoner{panicOn: llm.AgentCommandInterpreter}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t, true, tc.r)
+			p := f.directing(t)
+			if tc.breakDB != "" {
+				f.exec(t, tc.breakDB)
+			}
+			_, err := f.svc.Chat.PostMessage(context.Background(), p.ID, service.PostMessageInput{Content: "カメラを寄せて"})
+			require.Error(t, err)
+
+			msgs := f.thread(t, p.ID)
+			last := msgs[len(msgs)-1]
+			assert.Equal(t, domain.RoleAssistant, last.Role, "the thread does not end with the user's words alone")
+			assert.Contains(t, last.Content, "指示を実行できませんでした")
+			var user domain.ThreadMessage
+			for _, m := range msgs {
+				if m.Role == domain.RoleUser {
+					user = m
+				}
+			}
+			require.NotEmpty(t, user.ID)
+			logs := f.logs.String()
+			assert.Contains(t, logs, "project_id="+p.ID)
+			assert.Contains(t, logs, "message_id="+user.ID, "the log names the message that failed")
+		})
+	}
 }

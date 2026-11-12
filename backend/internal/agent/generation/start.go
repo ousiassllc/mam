@@ -113,7 +113,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
-	p := payload{Action: action, ShotID: shotID, Instruction: instruction, Preserve: preserve, models: o.videoModels(strategy)}
+	p := payload{Action: action, ShotID: shotID, Instruction: instruction, Preserve: preserve, models: "使う動画モデル: " + o.routes().Named(strategy.Models, strategy.Primary.Model, strategy.Fallback.Model, "video")}
 	switch action {
 	case ActionCandidates:
 		p.CandidateSpecs, err = o.prepareCandidates(ctx, ref, instruction, preserve, strategy)
@@ -197,7 +197,7 @@ func (o *Orchestrator) StartReferencePack(ctx context.Context, shotID string) (d
 	if err != nil {
 		return domain.Job{}, err
 	}
-	cheapest, models, err := o.checkPackModels()
+	cheapest, models, err := o.routes().PackPreflight()
 	if err != nil {
 		return domain.Job{}, err
 	}

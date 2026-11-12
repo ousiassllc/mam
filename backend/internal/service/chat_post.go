@@ -101,7 +101,7 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 		return Workspace{}, err
 	}
 	// The thread must not end with the user's words alone (#1107): say what happens, or why nothing does.
-	told, err := silence.Guard{Chat: s.chat, Projects: s.projects, Logger: s.logger, PipelineOn: s.pipeline != nil}.Answer(ctx, projectID, turn.Messages, s.startPipeline(ctx, projectID))
+	told, err := silence.Guard{Chat: s.chat, Projects: s.projects, Logger: s.logger, PipelineOn: s.pipeline != nil, Running: s.pipeline.Running}.Answer(ctx, projectID, turn.Messages, s.startPipeline(ctx, projectID))
 	if err != nil {
 		return Workspace{}, err
 	}
@@ -127,7 +127,7 @@ func (s *ChatService) postDirection(ctx context.Context, project domain.Project,
 		discardUploads(stored)
 		return Workspace{}, err
 	}
-	reply, err := s.director.Chat(chatops.WithAttachments(ctx, attached), project, target, user.Content)
+	reply, err := s.director.Chat(chatops.WithAttachments(ctx, attached), project, target, user)
 	if err != nil {
 		s.logger.Error("director message failed", "project_id", project.ID, "message_id", user.ID, "err", err)
 		return Workspace{}, err

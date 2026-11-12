@@ -1,6 +1,8 @@
 package molecules
 
 import (
+	"time"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/planadvice"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
@@ -9,6 +11,7 @@ import (
 // ProgressCard shows the live status of a background job. It has no controls; the
 // client replaces it when the server reports a change over WebSocket (no polling), except for the card of work that tells how far it is (Detail: an install). That card
 // is switched off for screen readers (MessageFrame: aria-live="off") while it polls: each swap is an addition to the thread, a polite live region, and would be read again.
+// The card of a plan job that is queued polls too, every 10 seconds: when it has waited long it says that it has not started (planadvice.Waiting, #1107).
 templ ProgressCard(m domain.ThreadMessage) {
 	{{ tone, label, active := progressView(m.Job) }}
 	@MessageFrame(m) {
@@ -33,6 +36,13 @@ templ ProgressCard(m domain.ThreadMessage) {
 			if steps := planadvice.For(*m.Job, false); steps != "" {
 				<p class="mt-1 text-sm text-ink" data-testid="progress-next-steps">{ steps }</p>
 			}
+			if waiting := planadvice.Waiting(*m.Job, time.Now()); waiting != "" {
+				<p class="mt-1 text-sm text-ink" data-testid="progress-waiting">{ waiting }</p>
+			}
+		}
+		if waitsToStart(m) {
+			// a plan job that has not started changes nothing the page hears of until it does: read the card again, so that the note above appears when the wait is long (#1107)
+			<span hidden hx-get={ cardURL(m.ProjectID, m.ID) } hx-trigger="every 10s" hx-target={ "#msg-" + m.ID } hx-swap="outerHTML"></span>
 		}
 	}
 }

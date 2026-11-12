@@ -1,7 +1,7 @@
 import { expect, waitUntil } from '@open-wc/testing';
 import { expectFocusOn } from '../focus-restore/focus-assert';
 import { stubFetch } from '../testdata/fakes';
-import { API, editor, order, text, three, timeline } from './timeline-fixtures';
+import { API, alerts, editor, installChrome, order, text, three, timeline, toastMessage } from './timeline-fixtures';
 
 /** Focuses a control and presses it, as a keyboard user does. */
 function press(el: Element, selector: string): void {
@@ -12,7 +12,12 @@ function press(el: Element, selector: string): void {
 
 describe('mam-timeline-editor: focus (spec §5.2)', () => {
   let stub: ReturnType<typeof stubFetch>;
-  afterEach(() => stub.restore());
+  let chrome: ReturnType<typeof installChrome>;
+  beforeEach(() => (chrome = installChrome()));
+  afterEach(() => {
+    stub.restore();
+    chrome.restore();
+  });
 
   it('keeps the focus on the "↑" of the clip that was moved up, and says where it went', async () => {
     stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three()) } });
@@ -64,7 +69,7 @@ describe('mam-timeline-editor: focus (spec §5.2)', () => {
     expectFocusOn(el.querySelector('[data-clip="b"]'));
   });
 
-  it('puts the focus on the notice once the save made the Save button disabled', async () => {
+  it('puts the focus on the list once the save made the Save button disabled, and says it in a toast (which takes no focus)', async () => {
     let gets = 0;
     stub = stubFetch({
       [`GET ${API}`]: () => ({ body: timeline(`e${++gets}`, three(), { version_number: gets }) }),
@@ -75,10 +80,12 @@ describe('mam-timeline-editor: focus (spec §5.2)', () => {
     await waitUntil(() => order(el).join() === 'b,a,c');
 
     press(el, '[data-action="save"]');
-    await waitUntil(() => text(el, '[data-notice]') === '保存しました');
+    await waitUntil(() => toastMessage() === '保存しました');
+    await el.updateComplete;
 
     expect(el.querySelector('[data-action="save"]')?.hasAttribute('disabled')).to.equal(true);
-    expectFocusOn(el.querySelector('[data-notice]'));
+    expectFocusOn(el.querySelector('[data-clips]'));
+    expect(document.querySelector('#toast-region [data-toast]')!.contains(document.activeElement)).to.equal(false);
   });
 
   it('keeps the focus on the Save button when the save failed and it can be pressed again', async () => {
@@ -91,7 +98,7 @@ describe('mam-timeline-editor: focus (spec §5.2)', () => {
     await waitUntil(() => order(el).join() === 'b,a,c');
 
     press(el, '[data-action="save"]');
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts().length === 1);
 
     expectFocusOn(el.querySelector('[data-action="save"]'));
   });
@@ -104,6 +111,7 @@ describe('mam-timeline-editor: focus (spec §5.2)', () => {
 
     press(el, '[data-action="revert"]');
     await waitUntil(() => order(el).join() === 'a,b,c');
+    expect(chrome.questions).to.deep.equal(['未保存の変更を破棄して、最新の版を読み直しますか？']);
 
     expectFocusOn(el.querySelector('[data-clips]'));
   });
@@ -121,7 +129,7 @@ describe('mam-timeline-editor: focus (spec §5.2)', () => {
     const elsewhere = document.createElement('input');
     el.after(elsewhere);
     elsewhere.focus();
-    await waitUntil(() => text(el, '[data-notice]') === '保存しました');
+    await waitUntil(() => toastMessage() === '保存しました');
     await el.updateComplete;
 
     expectFocusOn(elsewhere);

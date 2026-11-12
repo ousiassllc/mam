@@ -1,6 +1,8 @@
-import { LitElement, html, nothing } from 'lit';
+import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { appendAlert } from '../alert/alert';
+import { confirmDialog } from '../confirm/confirm';
 import { get, put } from '../lib/api';
 import {
   captionProblem,
@@ -18,13 +20,23 @@ import {
 } from '../lib/edit-model';
 import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
+import { showToast } from '../toast/toast';
 import '../video-player/mam-video-player';
 import { type EditTimelineBody, TIMELINE_RELOAD_EVENT, TIMELINE_UPDATED_EVENT } from './timeline-api';
 import { clipKey, renderClipRow } from './timeline-clip';
-import { focusMoved, focusRemoved, focusToolbar } from './timeline-focus';
+import { focusLoaded, focusMoved, focusRemoved, focusToolbar } from './timeline-focus';
+import { renderLoadFailed } from './timeline-load-failed';
 import { renderToolbar } from './timeline-toolbar';
 
 const log = createLogger('timeline-editor');
+
+const REVERT_CONFIRM = '未保存の変更を破棄して、最新の版を読み直しますか？';
+const DISCARDED = '最新の版に差し替わったため、未保存の変更は破棄されました';
+
+/** What the user has to read again goes to the page's #alert-region (spec/components/lit-widgets-guide.md W8); the same text is not piled up. */
+function alertUser(message: string, kind: 'error' | 'warning' = 'error'): void {
+  appendAlert(document.getElementById('alert-region'), message, kind);
+}
 
 /**
  * `<mam-timeline-editor>`: the Edit Timeline of a Project (spec/components/overview.md §4.2, F-18 Simple).
@@ -45,9 +57,10 @@ export class MamTimelineEditor extends LitElement {
 
   @state() private body: EditTimelineBody | null = null;
   @state() private clips: EditClip[] = [];
-  @state() private error = '';
-  @state() private notice = '';
   @state() private announce = '';
+  /** The first load failed (the alert says why): there is nothing to show, and it is not "no Rough Cut yet". */
+  @state() private loadFailed = false;
+  @state() private retrying = false; // the retry of a failed first load is under way
   @state() private busy = false;
   @state() private loaded = false;
   @state() private dragIndex = -1;
@@ -81,42 +94,50 @@ export class MamTimelineEditor extends LitElement {
    * Loads the latest timeline again, dropping unsaved changes (unless `keepEdits`, see below). Resolves false when the
    * request failed (the timeline on screen is then the old one); a superseded load or a 404 (no Rough Cut) is not a failure.
    * With `keepEdits` (`timeline-reload`) unsaved changes stay while the server has the version they were made on (only
-   * its `readonly` etc. are taken); a newer version (a new Rough Cut) drops them, and the notice says so.
+   * its `readonly` etc. are taken); a newer version (a new Rough Cut) drops them, and a warning alert says so.
+   * A failure is shown as an alert here.
    */
-  async load({ keepEdits = false }: { keepEdits?: boolean } = {}): Promise<boolean> {
+  async load(options: { keepEdits?: boolean } = {}): Promise<boolean> {
+    const failure = await this.fetchLatest(options);
+    if (failure !== null) alertUser(failure);
+    return failure === null;
+  }
+
+  /** `load` without showing the failure: the message of the failure, or null when it went well. */
+  private async fetchLatest({ keepEdits = false }: { keepEdits?: boolean } = {}): Promise<string | null> {
     const token = ++this.loadToken;
-    if (!this.apiUrl) return true;
-    let ok = true;
+    if (!this.apiUrl) return null;
+    let failure: string | null = null;
     try {
       const body = await get<EditTimelineBody>(this.apiUrl);
-      if (token !== this.loadToken) return true;
+      if (token !== this.loadToken) return null;
       const previous = this.body;
       const unsaved = keepEdits && previous !== null && isDirty(previous.clips, this.clips);
       this.body = body;
       if (!(unsaved && previous.version_number === body.version_number)) {
         this.clips = withStarts(body.clips);
         this.captionDraft = null;
-        if (unsaved) this.notice = '最新の版に差し替わったため、未保存の変更は破棄されました';
+        if (unsaved) alertUser(DISCARDED, 'warning');
       }
-      this.error = '';
+      this.loadFailed = false;
     } catch (error) {
-      if (token !== this.loadToken) return true;
+      if (token !== this.loadToken) return null;
       if ((error as { status?: number }).status === 404) {
         // There is no Rough Cut (any more), which is not an error to shout about.
         this.body = null;
         this.clips = [];
         this.captionDraft = null;
-        this.error = '';
+        this.loadFailed = false;
       } else {
         // Any other failure says nothing about the timeline: keep the one on screen (and its unsaved edits).
-        this.error = errorMessage(error);
-        ok = false;
+        failure = errorMessage(error);
+        this.loadFailed = true;
       }
       log.warn('could not load the Edit Timeline', error);
     } finally {
       if (token === this.loadToken) this.loaded = true;
     }
-    return ok;
+    return failure;
   }
 
   private get locked(): boolean {
@@ -132,15 +153,14 @@ export class MamTimelineEditor extends LitElement {
     this.captionDraft = null;
     if (next !== this.clips) {
       this.clips = next;
-      this.notice = this.announce = '';
-      this.error = '';
+      this.announce = '';
     }
     this.requestUpdate();
   }
 
   /** Refuses an edit: shows why, and (re-render) puts the last accepted value back into the field. */
   private refuse(clip: EditClip, problem: string): void {
-    this.error = `${clip.label}: ${problem}`;
+    alertUser(`${clip.label}: ${problem}`);
     this.requestUpdate();
   }
 
@@ -191,25 +211,42 @@ export class MamTimelineEditor extends LitElement {
     const body = this.body;
     if (!body || this.locked) return;
     this.busy = true;
-    this.error = '';
     try {
       await put(body.save_url, toPayload(this.clips));
       this.busy = false;
-      if (!(await this.load())) {
+      const failure = await this.fetchLatest();
+      if (failure !== null) {
         // Saved, but the screen still shows the old version (unsaved changes, a save from it would be refused as stale): not "updated".
-        this.error = `保存は完了しましたが、最新の版の再読込に失敗しました。「変更を戻す」で再読込してください（${this.error}）`;
+        alertUser(
+          `保存は完了しましたが、最新の版の再読込に失敗しました。「変更を戻す」で再読込してください（${failure}）`,
+        );
         return;
       }
-      this.notice = '保存しました';
+      showToast('保存しました');
       this.dispatchEvent(
         new CustomEvent(TIMELINE_UPDATED_EVENT, { detail: { id: this.body?.id ?? '' }, bubbles: true, composed: true }),
       );
     } catch (error) {
-      this.error = errorMessage(error);
+      alertUser(errorMessage(error));
     } finally {
       this.busy = false;
       focusToolbar(this);
     }
+  }
+
+  /** "変更を戻す": drops the unsaved edits for the latest version, which cannot be taken back, so it is asked first (W10). */
+  private async revert(): Promise<void> {
+    if (!(await confirmDialog(REVERT_CONFIRM))) return;
+    await this.load();
+    focusToolbar(this);
+  }
+
+  /** "もう一度読み込む" of a failed first load: the alert says why when it fails once more. */
+  private async retry(): Promise<void> {
+    if (this.retrying) return;
+    this.retrying = true;
+    await this.load().finally(() => (this.retrying = false));
+    focusLoaded(this);
   }
 
   private moveTo(from: number, to: number): void {
@@ -232,16 +269,14 @@ export class MamTimelineEditor extends LitElement {
     if (!this.loaded) return html`<p class="text-sm text-mute" role="status">読み込み中…</p>`;
     const body = this.body;
     if (!body) {
-      // Only a 404 (no error) means "no Rough Cut yet"; a failed first load shows its error alone.
-      if (this.error) return this.renderError();
-      return html`<p class="text-sm text-mute" data-empty>
+      // A failed first load says why in #alert-region; here is the way on. Only a 404 means "no Rough Cut yet".
+      if (this.loadFailed) return renderLoadFailed(this.retrying, () => void this.retry());
+      return html`<p class="rounded-lg border border-dashed border-border p-6 text-sm text-mute" data-empty>
           Rough Cut がまだありません。各 Shot の採用 Take を選んでから「Rough Cut を作成」を押してください。
         </p>`;
     }
     return html`
       <div class="flex flex-col gap-4">
-        ${this.renderError()}
-        ${this.notice ? html`<p class="text-xs text-success" role="status" data-notice>${this.notice}</p>` : nothing}
         <p class="sr-only" role="status" data-announce>${this.announce}</p>
         <mam-video-player video-src=${body.preview_url}></mam-video-player>
         <ol class="flex flex-col gap-2" data-clips>
@@ -253,16 +288,10 @@ export class MamTimelineEditor extends LitElement {
           busy: this.busy,
           readonly: body.readonly,
           save: () => void this.save(),
-          revert: () => void this.load().then(() => focusToolbar(this)),
+          revert: () => void this.revert(),
         })}
       </div>
     `;
-  }
-
-  private renderError() {
-    return this.error
-      ? html`<p class="rounded-md border border-danger/60 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert" data-error>${this.error}</p>`
-      : nothing;
   }
 
   private renderClip(c: EditClip, i: number, body: EditTimelineBody) {

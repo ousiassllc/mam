@@ -1,14 +1,18 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { confirmDialog } from '../confirm/confirm';
 import { sliderStyle } from '../slider/slider-model';
+import { meanLuminance, overlayToken, overlayWhite, strokeLine, type Point } from './mask-draw';
 import { canvasSize } from './mask-size';
 
-type Point = { x: number; y: number };
-
+/** A small sub button of the guide (W3): 32px high, 14px text, a ripple on press (`data-ripple` in the markup). */
 const BUTTON =
-  'inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-semibold text-ink transition-colors hover:bg-accent-soft ' +
-  'focus-visible:focus-ring';
+  'inline-flex min-h-8 items-center justify-center rounded-md border px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft ' +
+  'focus-visible:focus-ring motion-reduce:transition-none';
+const PLAIN = 'border-border';
 const SELECTED = 'border-accent bg-accent-soft';
+/** The question before the mask is wiped: it cannot be taken back (W10). */
+const CLEAR_CONFIRM = '塗った部分をすべて消しますか？';
 const MAX_SIZE = 128;
 
 /**
@@ -25,6 +29,10 @@ const MAX_SIZE = 128;
  * shown as a copy of the canvases' size (a third canvas under the view), not as an `<img>`: Chrome kept an `<img>` of an 8192 × 8192
  * picture decoded at its own size (about 256 MiB more for the tab), the copy is 16 MiB. `mask-src` is a mask to start from (the
  * black/white picture of an earlier redraw, "この設定でもう一度"): it is drawn on the canvases once the picture is.
+ *
+ * What is painted shows as a red overlay in the colour of the `--overlay-deep` token over a bright picture and `--overlay-pale` over a dark one (the
+ * picture's mean luminance decides, read when it is shown; the two keep 3:1 against the picture where they apply, color-rules.md §4.2; the exported
+ * mask is data, black and white, not a colour of the screen). Without a picture there is no canvas, only an empty state (lit-widgets-guide §5).
  *
  * A drag draws a round-capped line from the previous position, so a fast drag leaves no gaps.
  * Keyboard: B brush, E eraser, [ ] thickness, arrows draw a line one thickness long from the cursor (kept inside
@@ -49,6 +57,8 @@ export class MamMaskPaint extends LitElement {
   private last: Point | null = null;
   private cursor: Point = { x: 32, y: 32 };
   private builtFor = '';
+  /** The token of the overlay colour: it follows the brightness of the picture. */
+  private token = overlayToken(null);
 
   protected override createRenderRoot(): HTMLElement {
     return this;
@@ -108,6 +118,7 @@ export class MamMaskPaint extends LitElement {
     if (!g) return;
     g.imageSmoothingQuality = 'high';
     g.drawImage(img, 0, 0, this.picture.width, this.picture.height);
+    this.token = overlayToken(meanLuminance(this.picture));
   }
 
   /** Draws the mask to start from on the canvases: white (what the picture says is redrawn) becomes red on the view. */
@@ -121,30 +132,24 @@ export class MamMaskPaint extends LitElement {
       const v = this.view.getContext('2d');
       if (!g || !v) return;
       g.drawImage(img, 0, 0, w, h);
-      const mask = g.getImageData(0, 0, w, h).data;
-      const red = v.createImageData(w, h);
-      for (let i = 0; i < mask.length; i += 4) {
-        red.data[i] = 0xff;
-        red.data[i + 1] = 0x33;
-        red.data[i + 2] = 0x33;
-        red.data[i + 3] = mask[i] ?? 0;
-      }
-      v.putImageData(red, 0, 0);
+      overlayWhite(v, g, this.overlayColor());
     };
     img.src = this.maskSrc;
   }
 
   private resize(w: number, h: number, key: string): void {
-    if (!this.view || !this.mask) return;
-    this.view.width = w;
-    this.view.height = h;
+    if (!this.mask) return;
+    if (this.view) {
+      this.view.width = w;
+      this.view.height = h;
+    }
     this.mask.width = w;
     this.mask.height = h;
     const g = this.mask.getContext('2d');
     if (!g) return;
     g.fillStyle = '#000';
     g.fillRect(0, 0, w, h);
-    this.view.getContext('2d')?.clearRect(0, 0, w, h);
+    this.view?.getContext('2d')?.clearRect(0, 0, w, h);
     this.cursor = { x: Math.floor(w / 2), y: Math.floor(h / 2) };
     this.builtFor = key;
   }
@@ -166,9 +171,21 @@ export class MamMaskPaint extends LitElement {
     this.size = Math.min(MAX_SIZE, Math.max(1, Math.round(n)));
   }
 
+  /** Wipes the mask once the user confirmed: the painting cannot be brought back. */
+  private askClear(): void {
+    void confirmDialog(CLEAR_CONFIRM).then((yes) => {
+      if (yes) this.clear();
+    });
+  }
+
   private clear(): void {
     if (!this.view || !this.mask) return;
     this.resize(this.view.width, this.view.height, this.builtFor);
+  }
+
+  /** The colour of the overlay: the token that suits the picture (`--overlay-deep` or `--overlay-pale`). */
+  private overlayColor(): string {
+    return getComputedStyle(this).getPropertyValue(this.token).trim();
   }
 
   private pos(e: PointerEvent): Point {
@@ -205,28 +222,9 @@ export class MamMaskPaint extends LitElement {
   private line(from: Point, to: Point): void {
     if (!this.view || !this.mask) return;
     const brush = this.tool === 'brush';
-    this.stroke(this.mask, from, to, brush ? '#fff' : '#000', 'source-over');
-    this.stroke(this.view, from, to, '#f33', brush ? 'source-over' : 'destination-out');
+    strokeLine(this.mask, from, to, this.size, brush ? '#fff' : '#000', 'source-over');
+    strokeLine(this.view, from, to, this.size, this.overlayColor(), brush ? 'source-over' : 'destination-out');
     this.cursor = to;
-  }
-
-  private stroke(canvas: HTMLCanvasElement, from: Point, to: Point, color: string, op: GlobalCompositeOperation): void {
-    const g = canvas.getContext('2d');
-    if (!g) return;
-    g.save();
-    g.globalCompositeOperation = op;
-    g.fillStyle = color;
-    g.strokeStyle = color;
-    g.lineWidth = this.size;
-    g.lineCap = 'round';
-    g.beginPath();
-    g.arc(from.x, from.y, this.size / 2, 0, Math.PI * 2);
-    g.fill();
-    g.beginPath();
-    g.moveTo(from.x, from.y);
-    g.lineTo(to.x, to.y);
-    g.stroke();
-    g.restore();
   }
 
   private step(dx: number, dy: number): void {
@@ -273,17 +271,17 @@ export class MamMaskPaint extends LitElement {
       .then(() => issue());
   };
 
-  private toolButton(label: string, tool: 'brush' | 'eraser') {
+  private toolButton(label: string, tool: 'brush' | 'eraser', key: string) {
     const on = this.tool === tool;
-    return html`<button type="button" class="${BUTTON} ${on ? SELECTED : ''}" aria-pressed=${String(on)} @click=${() => this.setTool(tool)}>${label}</button>`;
+    return html`<button type="button" class="${BUTTON} ${on ? SELECTED : PLAIN}" aria-pressed=${String(on)} aria-keyshortcuts=${key} data-ripple @click=${() => this.setTool(tool)}>${label}</button>`;
   }
 
   protected override render() {
     return html`
       <div class="flex flex-col gap-2" data-testid="gt-mask-paint">
         <div role="group" aria-label="描き方" class="flex flex-wrap items-center gap-2">
-          ${this.toolButton('筆', 'brush')} ${this.toolButton('消しゴム', 'eraser')}
-          <button type="button" class=${BUTTON} @click=${() => this.clear()}>全部消す</button>
+          ${this.toolButton('筆', 'brush', 'B')} ${this.toolButton('消しゴム', 'eraser', 'E')}
+          <button type="button" class="${BUTTON} ${PLAIN} disabled:cursor-not-allowed disabled:opacity-40" data-ripple ?disabled=${!this.src} @click=${() => this.askClear()}>全部消す</button>
         </div>
         <label class="flex items-center gap-2 text-xs text-mute">
           太さ
@@ -296,21 +294,26 @@ export class MamMaskPaint extends LitElement {
             aria-label="太さ"
             @input=${(e: Event) => this.setSize(Number((e.target as HTMLInputElement).value))}
           />
+          <output class="inline-block w-8 text-right font-mono tabular-nums text-ink" data-size>${this.size}</output>
         </label>
-        <div class="relative inline-block max-w-full">
-          <canvas
-            tabindex="0"
-            aria-label="描き直す部分。白く塗ったところが描き直されます"
-            class=${this.src ? 'absolute inset-0 h-full w-full' : ''}
-            style="touch-action: none; cursor: crosshair; opacity: 0.55"
-            @pointerdown=${this.down}
-            @pointermove=${this.move}
-            @pointerup=${this.up}
-            @pointercancel=${this.up}
-            @keydown=${this.key}
-          ></canvas>
-          ${this.src ? html`<canvas data-picture aria-hidden="true" class="block max-w-full"></canvas>` : ''}
-        </div>
+        ${
+          this.src
+            ? html`<div class="relative inline-block max-w-full self-start has-[canvas:focus-visible]:focus-ring" data-stage>
+              <canvas
+                tabindex="0"
+                aria-label="描き直す部分。白く塗ったところが描き直されます"
+                class="absolute inset-0 h-full w-full focus-visible:outline-none"
+                style="touch-action: none; cursor: crosshair; opacity: 0.55"
+                @pointerdown=${this.down}
+                @pointermove=${this.move}
+                @pointerup=${this.up}
+                @pointercancel=${this.up}
+                @keydown=${this.key}
+              ></canvas>
+              <canvas data-picture aria-hidden="true" class="block max-w-full"></canvas>
+            </div>`
+            : html`<p class="rounded-lg border border-dashed border-border p-6 text-sm text-mute" data-empty>画像を選ぶと、描き直す部分を塗れます</p>`
+        }
       </div>
     `;
   }

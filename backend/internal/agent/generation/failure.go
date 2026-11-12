@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/failburst"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
@@ -35,9 +36,12 @@ func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Actio
 	if a == ActionReferencePack {
 		what = "Reference Pack の作成"
 	}
-	notice := failmsg.Notice(err, fmt.Sprintf("Shot %d の%sに失敗しました: %s\n対処したら、もう一度実行してください。", ref.Shot.OrderIndex+1, what, reason))
-	if aerr := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); aerr != nil {
-		o.logger.Error("post failure notice failed", "shot_id", ref.Shot.ID, "err", aerr)
+	shot := fmt.Sprintf("Shot %d の%s", ref.Shot.OrderIndex+1, what) // a failure with an ID of its own is one of its kind; any other is told once per burst of jobs (failburst)
+	if failure.ID != "" || o.burst.First(ref.ProjectID, reason, shot) {
+		if aerr := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, failmsg.Notice(err, fmt.Sprintf("%sに失敗しました: %s\n対処したら、もう一度実行してください。", shot, reason))); aerr != nil {
+			o.logger.Error("post failure notice failed", "shot_id", ref.Shot.ID, "err", aerr)
+			o.burst.Failed(ref.ProjectID, reason) // not told: the next Shot that fails for the cause tells it
+		}
 	}
 	o.notify(Progress{ShotID: ref.Shot.ID, Action: a, Stage: StageFailed, Message: reason})
 	return apperr.WithText(reason, failure)
@@ -75,4 +79,13 @@ func Failure(err error) *apperr.Error {
 		return apperr.New(apperr.CodeLLMInvalidOutput).Wrap(err)
 	}
 	return errmap.Explain(err)
+}
+
+// endBurst is the end of a generate job of the Project. The last job of a burst tells once which other Shots failed for the same causes as the notices before (failburst).
+func (o *Orchestrator) endBurst(ctx context.Context, projectID string) {
+	for _, text := range failburst.Summaries(o.burst.Leave(projectID)) {
+		if err := o.chat.Announce(context.WithoutCancel(ctx), projectID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: text}); err != nil {
+			o.logger.Error("post failure summary failed", "project_id", projectID, "err", err)
+		}
+	}
 }

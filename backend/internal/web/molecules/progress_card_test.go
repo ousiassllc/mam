@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,6 +41,28 @@ func TestProgressCard_ADraftedPlanFailureTellsWhatToDoWithTheDrafts(t *testing.T
 	assert.Contains(t, html, `data-testid="progress-next-steps"`)
 	assert.Contains(t, html, "「下書き」の印")
 	assert.Contains(t, html, "チャットに何かメッセージを送ると", "and the way with an LLM")
+}
+
+// A plan job still queued after a while says so on its card, and the card reads itself again so that the note appears without a reload (#1107).
+func TestProgressCard_APlanJobQueuedForLongSaysItHasNotStarted(t *testing.T) {
+	waited := render(t, molecules.ProgressCard(progress(domain.Job{ID: "j1", Kind: domain.JobPlan, Status: domain.JobQueued, CreatedAt: time.Now().Add(-2 * time.Minute)})))
+	assert.Contains(t, waited, `data-testid="progress-waiting"`)
+	assert.Contains(t, waited, "まだ始まっていません")
+	assert.Contains(t, waited, `hx-trigger="every 10s"`)
+	assert.Contains(t, waited, `aria-live="off"`, "each swap would be read out again")
+
+	fresh := render(t, molecules.ProgressCard(progress(domain.Job{ID: "j1", Kind: domain.JobPlan, Status: domain.JobQueued, CreatedAt: time.Now()})))
+	assert.NotContains(t, fresh, "progress-waiting", "a job that has just been queued says nothing yet")
+	assert.Contains(t, fresh, `hx-trigger="every 10s"`, "but it is read again until it starts")
+
+	for name, job := range map[string]domain.Job{
+		"running":      {ID: "j2", Kind: domain.JobPlan, Status: domain.JobRunning, CreatedAt: time.Now().Add(-time.Hour)},
+		"another kind": {ID: "j3", Kind: domain.JobGenerate, Status: domain.JobQueued, CreatedAt: time.Now().Add(-time.Hour)},
+	} {
+		html := render(t, molecules.ProgressCard(progress(job)))
+		assert.NotContains(t, html, "progress-waiting", name)
+		assert.NotContains(t, html, "every 10s", name)
+	}
 }
 
 func TestProgressCard_OtherJobsAndFailuresHaveNoNextSteps(t *testing.T) {

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/failmsg"
@@ -63,6 +64,8 @@ type Deps struct {
 	// Gate starts the generation by itself after the Scene / Shot plan (spec/spec.md §4.3). Nil: off; the user starts each Shot.
 	Gate   *genstage.Gate
 	Logger *slog.Logger
+	// QueuedWarnAfter is how long a plan job may stay queued before a warning is logged (zero: planadvice.QueuedAfter, the time after which its progress card says it has not started).
+	QueuedWarnAfter time.Duration
 }
 
 // Orchestrator drives the planning pipeline. It is safe for concurrent use.
@@ -74,10 +77,13 @@ type Orchestrator struct {
 	jobs     Jobs
 	logger   *slog.Logger
 
-	mu     sync.Mutex
-	active map[string]bool // a plan job of the Project is queued or running
-	rerun  map[string]bool // something happened while that job was running
-	locks  keylock.Locker  // one advance at a time per Project
+	queuedWarnAfter time.Duration
+
+	mu      sync.Mutex
+	waiting map[string]*time.Timer // plan job ID -> the timer that warns when it is still queued; ended when a worker starts the job
+	active  map[string]bool        // a plan job of the Project is queued or running
+	rerun   map[string]bool        // something happened while that job was running
+	locks   keylock.Locker         // one advance at a time per Project
 }
 
 // New returns an Orchestrator.
@@ -86,13 +92,18 @@ func New(d Deps) *Orchestrator {
 	if logger == nil {
 		logger = slog.New(slog.DiscardHandler)
 	}
+	warnAfter := d.QueuedWarnAfter
+	if warnAfter <= 0 {
+		warnAfter = planadvice.QueuedAfter
+	}
 	return &Orchestrator{
-		projects: d.Projects, drafts: d.Drafts, chat: d.Chat, jobs: d.Jobs, logger: logger,
+		projects: d.Projects, drafts: d.Drafts, chat: d.Chat, jobs: d.Jobs, logger: logger, queuedWarnAfter: warnAfter,
 		stages: stages.New(stages.Deps{
 			Projects: d.Projects, Plans: d.Plans, ChatRepo: d.ChatRepo, Chat: d.Chat, LLM: d.LLM, Notes: d.Notes, Facts: d.Facts, Gate: d.Gate, Logger: logger,
 		}),
-		active: make(map[string]bool),
-		rerun:  make(map[string]bool),
+		waiting: make(map[string]*time.Timer),
+		active:  make(map[string]bool),
+		rerun:   make(map[string]bool),
 	}
 }
 
@@ -134,11 +145,49 @@ func (o *Orchestrator) Kick(ctx context.Context, projectID string) error {
 		o.release(projectID)
 		return fmt.Errorf("enqueue plan job: %w", err)
 	}
+	o.watchQueued(projectID, job.ID)
 	card := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindProgress, Content: progressText, RefID: job.ID}
 	if err := o.chat.Announce(ctx, projectID, card); err != nil {
 		o.logger.Error("post progress card failed", "project_id", projectID, "job_id", job.ID, "err", err)
 	}
 	return nil
+}
+
+// watchQueued logs a warning when the job is still queued after queuedWarnAfter (every worker of the queue is busy, or the queue is not running): the progress card says the
+// same to the user (planadvice.Waiting, #1107), and the log keeps it for whoever looks later.
+func (o *Orchestrator) watchQueued(projectID, jobID string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.waiting[jobID] = time.AfterFunc(o.queuedWarnAfter, func() {
+		o.mu.Lock()
+		_, stillQueued := o.waiting[jobID]
+		delete(o.waiting, jobID)
+		o.mu.Unlock()
+		if stillQueued {
+			o.logger.Warn("plan job has not started: it is still queued", "project_id", projectID, "job_id", jobID, "queued_for", o.queuedWarnAfter.String())
+		}
+	})
+}
+
+// started ends the watch of a job a worker has taken.
+func (o *Orchestrator) started(jobID string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if t, ok := o.waiting[jobID]; ok {
+		t.Stop()
+		delete(o.waiting, jobID)
+	}
+}
+
+// Running (false on a nil Orchestrator: no pipeline) reports whether a plan job of the Project is queued or running: a Kick then adds no job and no Progress card of its own, the job already
+// there looks at the Project once more before it ends.
+func (o *Orchestrator) Running(projectID string) bool {
+	if o == nil {
+		return false
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.active[projectID]
 }
 
 // finish ends the job's claim on the Project. It reports whether a decision came in meanwhile,
@@ -175,6 +224,7 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 		return fmt.Errorf("plan job %s: invalid payload", job.ID)
 	}
 	id := payload.ProjectID
+	o.started(job.ID)
 	ctx = o.withFallbackNotice(ctx, id)
 	unlock, err := o.locks.Lock(ctx, id)
 	if err != nil {

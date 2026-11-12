@@ -10,12 +10,17 @@ const log = createLogger('alert');
 const CLOSE = '[data-alert-close]';
 const MESSAGE = '[data-alert-message]';
 
-/** An error alert for `message`, not yet in the document; null when the page has no #alert-template. */
-export function createAlert(message: string): HTMLElement | null {
-  const template = document.getElementById('alert-template');
+/** The kinds of alert the scripts raise: what went wrong (#alert-template) and what the user has to know about (#alert-warning-template). */
+export type AlertKind = 'error' | 'warning';
+
+const TEMPLATE_ID: Record<AlertKind, string> = { error: 'alert-template', warning: 'alert-warning-template' };
+
+/** An alert of `kind` (an error by default) for `message`, not yet in the document; null when the page has no template for it. */
+export function createAlert(message: string, kind: AlertKind = 'error'): HTMLElement | null {
+  const template = document.getElementById(TEMPLATE_ID[kind]);
   const alert = template instanceof HTMLTemplateElement ? template.content.firstElementChild?.cloneNode(true) : null;
   if (!(alert instanceof HTMLElement)) {
-    log.warn('#alert-template is missing; cannot show', message);
+    log.warn(`#${TEMPLATE_ID[kind]} is missing; cannot show`, message);
     return null;
   }
   const text = alert.querySelector(MESSAGE);
@@ -33,12 +38,12 @@ export function hasAlert(region: Element, message: string): boolean {
 }
 
 /**
- * Appends an error alert for `message` unless the region already shows one with the same message: a failure that repeats (the 15s Cost Summary poll
+ * Appends an alert (an error by default) for `message` unless the region already shows one with the same message: a failure that repeats (the 15s Cost Summary poll
  * while the server is down) must not pile up alerts that stay until closed one by one.
  */
-export function appendAlert(region: Element | null, message: string): void {
+export function appendAlert(region: Element | null, message: string, kind: AlertKind = 'error'): void {
   if (!region || hasAlert(region, message)) return;
-  const alert = createAlert(message);
+  const alert = createAlert(message, kind);
   if (alert) region.append(alert);
 }
 

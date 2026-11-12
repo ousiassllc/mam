@@ -56,7 +56,13 @@ func cardURL(projectID, messageID string) string {
 // readsItself is whether the card asks for itself again every 2 seconds (the progress card of work that tells how far it is, #1140): each answer replaces the
 // whole element, which the thread (a polite live region of additions) would read out again every time, so the element is announced as "off" while it polls.
 func readsItself(m domain.ThreadMessage) bool {
-	return m.Kind == domain.KindProgress && m.Detail != "" && m.Pending()
+	return m.Kind == domain.KindProgress && m.Detail != "" && m.Pending() || waitsToStart(m)
+}
+
+// waitsToStart is whether the card is the one of a plan job that is queued: it reads itself again every 10 seconds (planadvice.Waiting), and so, like the card of
+// readsItself, is switched off for screen readers meanwhile.
+func waitsToStart(m domain.ThreadMessage) bool {
+	return m.Kind == domain.KindProgress && m.Job != nil && m.Job.Kind == domain.JobPlan && m.Job.Status == domain.JobQueued
 }
 
 // messagesAfterURL fetches the messages newer than messageID (GET /projects/:id/messages?after=<messageId>).

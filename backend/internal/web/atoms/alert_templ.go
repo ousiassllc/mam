@@ -22,6 +22,9 @@ const (
 // ErrorAlertTitle is the heading of the alert that says an action did not go through.
 const ErrorAlertTitle = "操作を完了できませんでした"
 
+// WarningAlertTitle is the heading of the alert that says something happened that the user has to know about (an edit that was dropped).
+const WarningAlertTitle = "ご確認ください"
+
 func alertClass(kind AlertKind) string {
 	base := "pointer-events-auto flex items-start gap-3 rounded-md border p-3 text-sm "
 	switch kind {
@@ -117,7 +120,7 @@ func Alert(kind AlertKind, title, body string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(alertRole(kind))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/alert.templ`, Line: 67, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/alert.templ`, Line: 70, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -130,7 +133,7 @@ func Alert(kind AlertKind, title, body string) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(kind))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/alert.templ`, Line: 67, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/alert.templ`, Line: 70, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -173,7 +176,7 @@ func Alert(kind AlertKind, title, body string) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/alert.templ`, Line: 70, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/alert.templ`, Line: 73, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -186,7 +189,7 @@ func Alert(kind AlertKind, title, body string) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(body)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/alert.templ`, Line: 71, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/alert.templ`, Line: 74, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {

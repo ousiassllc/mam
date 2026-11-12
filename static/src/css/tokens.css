@@ -24,6 +24,12 @@
   --danger: #7a4545;
   --info: #4a5a6a;
 
+  /* The paint over a picture (the mask painter, mam-mask-paint; spec/components/color-rules.md §4.2). It lies on the picture, not on the surface of the
+     theme, so it is the same in both themes: --overlay-deep over a bright picture, --overlay-pale over a dark one (the painter measures the picture). Drawn at
+     .55 opacity, each keeps 3:1 against the picture where it applies (a mid-tone picture cannot: no colour at .55 does); backend/internal/web/a11y/overlay_test.go checks it. */
+  --overlay-deep: #5a0000;
+  --overlay-pale: #ff8c96;
+
   /* The scrim behind a modal (O1): black in both themes. */
   --scrim: rgb(0 0 0 / 0.7);
 

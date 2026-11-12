@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/artdirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/failburst"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/fanout"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
@@ -74,7 +75,7 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 
 	if failed := o.generateImages(ctx, b); len(failed) > 0 {
 		o.removeMade(b)
-		return Progress{}, errors.Join(failed...)
+		return Progress{}, errors.Join(failburst.Distinct(failed)...)
 	}
 
 	pack := b.assemblePack()

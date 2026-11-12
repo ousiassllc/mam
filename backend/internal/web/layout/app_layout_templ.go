@@ -21,7 +21,7 @@ import (
 // static/src/main.ts reads it and attaches it to every HTMX request, and
 // components/lib/api.ts attaches it to every fetch. #toast-region receives the out-of-band toast of an action that worked
 // (one at a time, gone after 3 seconds); #alert-region, at the top of #content, receives the out-of-band alerts of failed
-// actions. #toast-template, #alert-template and #confirm-template are the markup that the scripts clone for the ones they raise
+// actions. #toast-template, #alert-template, #alert-warning-template and #confirm-template are the markup that the scripts clone for the ones they raise
 // themselves, so each is defined only in atoms.Toast, atoms.Alert and modal.Confirm. The same goes for
 // #connection-notice-template (atoms.ConnectionNotice), cloned by connection-notice.ts.
 //
@@ -257,7 +257,15 @@ func AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</template><template id=\"confirm-template\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</template><template id=\"alert-warning-template\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = atoms.Alert(atoms.AlertWarning, atoms.WarningAlertTitle, "").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</template><template id=\"confirm-template\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -265,7 +273,7 @@ func AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</template><template id=\"connection-notice-template\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</template><template id=\"connection-notice-template\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -273,7 +281,7 @@ func AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</template></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</template></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -305,12 +313,12 @@ func Shell(nav sidenav.State) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if !nav.Hidden {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<a href=\"#content\" class=\"sr-only rounded-md bg-accent-soft px-3 py-2 text-sm text-ink focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-toast focus-visible:focus-ring\">本文へ</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<a href=\"#content\" class=\"sr-only rounded-md bg-accent-soft px-3 py-2 text-sm text-ink focus-visible:not-sr-only focus-visible:fixed focus-visible:left-2 focus-visible:top-2 focus-visible:z-toast focus-visible:focus-ring\">本文へ</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"flex min-h-screen\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"flex min-h-screen\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -318,7 +326,7 @@ func Shell(nav sidenav.State) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div id=\"content\" class=\"min-w-0 flex-1\"><div id=\"alert-region\" class=\"sticky top-0 z-sticky flex flex-col gap-2 px-4 pt-4 empty:hidden md:px-8\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div id=\"content\" class=\"min-w-0 flex-1\"><div id=\"alert-region\" class=\"sticky top-0 z-sticky flex flex-col gap-2 px-4 pt-4 empty:hidden md:px-8\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -326,7 +334,7 @@ func Shell(nav sidenav.State) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
