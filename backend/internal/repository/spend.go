@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 )
@@ -91,6 +92,29 @@ func (s *inflightSpend) reserve(projectID, shotID string, cost float64, remainin
 	}, true, nil
 }
 
+// ShotSpends is Budget(projectID, id).ShotSpent of each of shotIDs from one ledger query (0 for a Shot with nothing on it).
+func (r *GenerationRepository) ShotSpends(ctx context.Context, projectID string, shotIDs []string) (map[string]float64, error) {
+	spends := make(map[string]float64, len(shotIDs))
+	for _, id := range shotIDs {
+		_, spends[id] = r.db.inflight.reserved(projectID, id) // before the ledger: see inflightSpend.reserved
+	}
+	type shotSum struct {
+		id  string
+		sum float64
+	}
+	rows, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (s shotSum, err error) { return s, row.Scan(&s.id, &s.sum) },
+		`SELECT shot_id, SUM(COALESCE(actual_cost, estimated_cost)) FROM cost_ledger_entry WHERE project_id = ? AND shot_id IS NOT NULL GROUP BY shot_id`, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("sum cost ledger by shot: %w", err)
+	}
+	for _, s := range rows {
+		if _, ok := spends[s.id]; ok {
+			spends[s.id] += s.sum
+		}
+	}
+	return spends, nil
+}
+
 // Reserve holds cost (the estimate of one generation about to be ordered) for the Project and the
 // Shot until release is called, and reports ok=false when it does not fit under the ceilings next to
 // the ledger and the other reservations. The check and the reservation are one step, so of several
@@ -100,12 +124,9 @@ func (s *inflightSpend) reserve(projectID, shotID string, cost float64, remainin
 func (r *GenerationRepository) Reserve(ctx context.Context, projectID, shotID string, cost float64) (release func(), ok bool, err error) {
 	return r.db.inflight.reserve(projectID, shotID, cost, func(reservedProject, reservedShot float64) (float64, error) {
 		b, err := r.ledgerBudget(ctx, projectID, shotID)
-		if err != nil {
-			return 0, err
-		}
 		b.ProjectSpent += reservedProject
 		b.ShotSpent += reservedShot
-		return b.Remaining(), nil
+		return b.Remaining(), err // reserve drops the value when err != nil
 	})
 }
 
@@ -117,11 +138,8 @@ func (r *GenerationRepository) Reserve(ctx context.Context, projectID, shotID st
 // is in the ledger or the call has ended without one; it is safe to call more than once.
 func (r *CostRepository) Reserve(ctx context.Context, projectID string, cost float64) (release func(), ok bool, err error) {
 	return r.db.inflight.reserve(projectID, "", cost, func(reservedProject, _ float64) (float64, error) {
-		ceiling, spent, err := r.ledgerProjectBudget(ctx, projectID)
-		if err != nil {
-			return 0, err
-		}
-		return Budget{ProjectCeiling: ceiling, ProjectSpent: spent + reservedProject}.Remaining(), nil
+		b, err := (&GenerationRepository{db: r.db}).ledgerBudget(ctx, projectID, "")
+		return Budget{ProjectCeiling: b.ProjectCeiling, ProjectSpent: b.ProjectSpent + reservedProject}.Remaining(), err // err: reserve drops the value
 	})
 }
 
