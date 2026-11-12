@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 )
 
 // packImages is the most images a Reference Pack has: a Character, a Product, a Location, a Style, a Lighting and a Keyframe (the Art Director
@@ -56,6 +58,8 @@ type Plan struct {
 	// ProjectCeiling and ShotCeiling are the budget ceilings (nil: none); ProjectSpent is what the ledger and the generations in flight hold.
 	ProjectCeiling, ShotCeiling *float64
 	ProjectSpent                float64
+	// Routes are the models the plan runs on with their route and why they were chosen (modelroute.Env.Report; nil: the plan does not name them).
+	Routes []modelroute.RouteReport
 	// ShotSpent is what each planned Shot already holds (by Shot ID): the ledger and the generations in flight, which the Shot ceiling counts with what the plan adds
 	// (the Reference Pack is charged to the Shot it is made for).
 	ShotSpent map[string]float64

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/artdirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation/assetfile"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/failburst"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/promptplanner"
@@ -120,6 +121,7 @@ type Orchestrator struct {
 	freeDisk  func(path string) (uint64, error)
 	notify    func(Progress)
 	logger    *slog.Logger
+	burst     failburst.Burst
 }
 
 // New returns an Orchestrator.
@@ -157,6 +159,8 @@ type payload struct {
 	// CandidateSpecs are the Prompt Candidate specs already checked, in CandidateStrategies order.
 	// The job uses these instead of planning them again; strategies past the end are planned in the job.
 	CandidateSpecs []domain.ShotSpec `json:"candidate_specs,omitempty"`
+	// ProjectID is the Project of the Shot: the failures of the jobs of one Project that end together are told once (failburst).
+	ProjectID string `json:"project_id,omitempty"`
 	// models names the models a start chose, for the progress card (#1113); it is not kept with the job.
 	models string
 }
@@ -184,8 +188,11 @@ func (o *Orchestrator) enqueue(ctx context.Context, ref repository.ShotRef, p pa
 	if !claimed {
 		return domain.Job{}, ErrShotBusy
 	}
+	p.ProjectID = ref.ProjectID
+	o.burst.Enter(ref.ProjectID) // before the job is queued: the queue may run it at once
 	job, err := o.jobs.Enqueue(ctx, domain.JobGenerate, p)
 	if err != nil {
+		o.burst.Leave(ref.ProjectID)
 		o.release(ctx, ref.Shot.ID)
 		return domain.Job{}, fmt.Errorf("enqueue generate job: %w", err)
 	}
@@ -210,6 +217,9 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	var p payload
 	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ShotID == "" || (p.Action != ActionGenerate && p.Action != ActionReferencePack && p.Action != ActionCandidates) {
 		return fmt.Errorf("generate job %s: invalid payload", job.ID)
+	}
+	if p.ProjectID != "" {
+		defer o.endBurst(ctx, p.ProjectID) // after fail has told the failure
 	}
 	// The Shot was claimed (GENERATING) before this job was queued. Whichever way the handler ends, an
 	// error before the work starts or a panic included, it gives the Shot back: only a restart

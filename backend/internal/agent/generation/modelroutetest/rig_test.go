@@ -153,12 +153,16 @@ type rig struct {
 	jobs      *jobsFake
 	projectID string
 	shotID    string
+	shotIDs   []string // every Shot of the Project, in order (shotID is the first)
 	// usable says which models can be used now; a test changes it as the machine changes.
 	usable func(domain.ModelName) modelfilter.Availability
 }
 
 // newRig builds the rig. config changes the Model Adapter setting (the observed local models are in it); it may be nil.
-func newRig(t *testing.T, config func(*modeladapter.Config)) *rig {
+func newRig(t *testing.T, config func(*modeladapter.Config)) *rig { return newRigShots(t, config, 1) }
+
+// newRigShots is newRig for a Project of n Shots in one Scene.
+func newRigShots(t *testing.T, config func(*modeladapter.Config), n int) *rig {
 	t.Helper()
 	routetest.Publish(t)
 	ctx := context.Background()
@@ -174,15 +178,22 @@ func newRig(t *testing.T, config func(*modeladapter.Config)) *rig {
 		Brief:    domain.Brief{Subject: "美容液"},
 		Messages: []domain.ChatMessage{{ProjectID: projectID, Role: domain.RoleUser, Kind: domain.KindText, Content: "美容液のCMを作りたい"}},
 	}))
+	planned, boards := make([]domain.PlannedShot, n), make([]domain.ShotStoryboard, n)
+	for i := range planned {
+		planned[i], boards[i] = domain.PlannedShot{Objective: "主人公が振り返って走り出す", DurationSeconds: 4}, domain.ShotStoryboard{Description: "x"}
+	}
 	require.NoError(t, plans.SavePlan(ctx, projectID,
-		domain.ScenePlan{Scenes: []domain.PlannedScene{{Title: "Street", Shots: []domain.PlannedShot{{Objective: "主人公が振り返って走り出す", DurationSeconds: 4}}}}},
-		domain.Storyboard{Shots: [][]domain.ShotStoryboard{{{Description: "x"}}}}))
+		domain.ScenePlan{Scenes: []domain.PlannedScene{{Title: "Street", Shots: planned}}},
+		domain.Storyboard{Shots: [][]domain.ShotStoryboard{boards}}))
 	scenes, err := plans.ListScenes(ctx, projectID)
 	require.NoError(t, err)
 	shots, err := plans.ListShots(ctx, scenes[0].ID)
 	require.NoError(t, err)
 
 	r := &rig{db: db, gens: gens, policies: policies, log: &calls{}, chat: &chatFake{}, jobs: &jobsFake{}, projectID: projectID, shotID: shots[0].ID, usable: routetest.NoAPIKey()}
+	for _, sh := range shots {
+		r.shotIDs = append(r.shotIDs, sh.ID)
+	}
 	cfg := routetest.LocalConfig()
 	if config != nil {
 		config(&cfg)

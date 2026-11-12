@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/genplan"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 )
 
 func TestUSDTextWritesAnAmountTheWayTheSettingsScreenDoes(t *testing.T) {
@@ -39,4 +41,52 @@ func TestAnnounceText_AnUnpricedModelWithoutACeilingKeepsTheListAndTheRiskLine(t
 
 	assert.Equal(t, 1, strings.Count(text, "動画: kling-3.0"))
 	assert.Contains(t, text, "費用の上限は保証できません")
+}
+
+// The announcement names the route of each model and, for a model that is not the assignment's, which model was passed over and why: a match of
+// conditions, never "the best model" (#1112).
+func TestAnnounceText_NamesTheRouteOfEachModelAndWhyTheAssignmentWasPassedOver(t *testing.T) {
+	unusable := func(m string) modelroute.AssignedModel {
+		return modelroute.AssignedModel{Model: m, RouteKind: modelreg.RouteAPI, UnavailableMessage: "API キーが登録されていません"}
+	}
+	plan := genplan.Plan{
+		Lines: []genplan.Line{{ShotID: "s1", Number: 1, Pack: true}},
+		Routes: []modelroute.RouteReport{
+			{
+				Media: "image", Key: "new_reference", Status: modelroute.StatusCondition, Reason: "既定の割当が使えないため、条件に合う利用可能なモデルを選びました",
+				Assigned: []modelroute.AssignedModel{unusable("gpt-image-2.6-flare"), unusable("nano-banana")},
+				Use:      &modelroute.Candidate{Model: "gpt-image-2.6-flare:chatgpt-subscription", Route: modelreg.RouteSubscription, Basis: modelreg.CostUnknown},
+			},
+			{
+				Media: "video", Key: "balanced", Status: modelroute.StatusAssignment,
+				Assigned: []modelroute.AssignedModel{{Model: "seedance-2.0", Available: true}},
+				Use:      &modelroute.Candidate{Model: "seedance-2.0", Route: modelreg.RouteAPI, Basis: modelreg.CostPriced},
+			},
+		},
+	}
+
+	text := plan.AnnounceText()
+
+	assert.Contains(t, text, "使うモデルと経路")
+	assert.Contains(t, text, "gpt-image-2.6-flare:chatgpt-subscription（"+modelreg.RouteSubscription.Label())
+	assert.Contains(t, text, "gpt-image-2.6-flare＝API キーが登録されていません、nano-banana＝API キーが登録されていません", "which models of the assignment were passed over, and why")
+	assert.Contains(t, text, "品質で選んだものではありません")
+	assert.Contains(t, text, "seedance-2.0（"+modelreg.RouteAPI.Label())
+	assert.NotContains(t, text, "最高", "no claim of the best model")
+	assert.NotContains(t, text, "おすすめ")
+}
+
+func TestAnnounceText_WithoutRoutesNamesNone(t *testing.T) {
+	assert.NotContains(t, genplan.Plan{Lines: []genplan.Line{{ShotID: "s1", Number: 1}}}.AnnounceText(), "使うモデルと経路")
+}
+
+type reporter struct{}
+
+func (reporter) RouteReports() []modelroute.RouteReport {
+	return []modelroute.RouteReport{{Media: "video", Key: "fast"}}
+}
+
+func TestRoutesOf_IsTheReportOfAGeneratorThatHasOneAndNilForOneThatHasNot(t *testing.T) {
+	assert.Len(t, genplan.RoutesOf(reporter{})(), 1)
+	assert.Nil(t, genplan.RoutesOf(struct{}{}))
 }

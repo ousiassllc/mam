@@ -73,7 +73,7 @@ func New(d Deps) *Gate {
 // SetGenerator turns the gate on. config is the Model Adapter's current setting (the prices). Call it while the application is wired, before the job queue starts.
 func (g *Gate) SetGenerator(gen Generator, config func() modeladapter.Config) {
 	g.gen = gen
-	g.builder = genplan.Builder{Plans: g.d.Plans, Gens: g.d.Gens, Policies: g.d.Policies, Config: config, Candidates: gen.UsesCandidates}
+	g.builder = genplan.Builder{Plans: g.d.Plans, Gens: g.d.Gens, Policies: g.d.Policies, Config: config, Routes: genplan.RoutesOf(gen), Candidates: gen.UsesCandidates}
 }
 
 // On reports whether the gate can start generations.

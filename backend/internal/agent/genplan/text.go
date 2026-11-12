@@ -36,6 +36,7 @@ func (p Plan) AnnounceText() string {
 	for _, g := range p.videoGroups() {
 		fmt.Fprintf(&b, "・動画: %s\n", g)
 	}
+	b.WriteString(p.routesText())
 	fmt.Fprintf(&b, "・費用の見積: %s（Reference Pack %s、動画 %s）\n", p.Total().Text(), p.PackCost().Text(), p.VideoCost().Text())
 	// With a ceiling the notice names the models and says that the ceiling does not count them, so the list is not given again and the risk line is the short one (the scope of
 	// the ceiling, below, is the same for every plan). Without a ceiling the list and the whole risk line stand.

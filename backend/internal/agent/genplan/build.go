@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/genapprovalrepo"
@@ -21,6 +22,8 @@ type Builder struct {
 	Policies *repository.PolicyRepository
 	// Config is the Model Adapter's current setting (prices, routes).
 	Config func() modeladapter.Config
+	// Routes is what the models of a generation would be if it started now, with their route and why (modelroute.Env.Report). nil: the plan does not name them.
+	Routes func() []modelroute.RouteReport
 	// Candidates reports whether the generation of the Shot goes through Prompt Candidate Generation (generation.Orchestrator.UsesCandidates).
 	Candidates func(ctx context.Context, shot domain.Shot) (bool, error)
 }
@@ -104,6 +107,9 @@ func (b Builder) build(ctx context.Context, projectID string, launches Launches,
 		plan.Lines = append(plan.Lines, line)
 	}
 	plan.Unpriced = plan.unpriced()
+	if b.Routes != nil {
+		plan.Routes = relevantRoutes(b.Routes(), policy.Quality, plan.Lines)
+	}
 	return plan, nil
 }
 

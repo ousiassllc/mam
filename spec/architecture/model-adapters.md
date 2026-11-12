@@ -103,6 +103,14 @@
 - Take の Trace パネル（`GET /takes/:id/trace`。[endpoints.md](../api/endpoints.md)）と MCP `get_take_trace` の `model_use`
 - 設定画面・MCP `get_global_settings`（`models.routes`）は、保存してある割り当てを今実行したらどうなるか（`assignment_usable` / `condition_match` / `blocked`）を、生成せずに（読み取りだけで）示す。API は [mcp-tools-settings-policy.md](../api/mcp-tools-settings-policy.md)
 
+**自動の開始のお知らせに使うモデルと経路・理由を書く（Issue #1112）**: AUTO の開始のお知らせ（[spec.md](../spec.md) §4.3）は、Reference Pack の画像（`new_reference` / `edit_reference`）と Quality Policy の動画について、使うモデル・経路（API / ChatGPT サブスク / ローカル）・費用の基準（従量課金 / 無料 / 単価不明）と、割り当てのモデルを使わなかった理由（使えないモデルとその理由）を 1 行ずつ書く。内容は `modelroute.Env.Report`（設定画面・MCP `get_global_settings` の `models.routes` と同じもの）で、`Orchestrator.RouteReports` が読み取りだけで返し、`genplan.Builder.Routes` が計画に載せる。切り替えたときは「条件に合うモデルを選んだ（品質で選んだものではない）」と書き、「最高の」「おすすめ」とは書かない。
+
+**同じ失敗をまとめる（Issue #1112）**: 使えるモデルが全滅したときは起動前に 1 度だけ断る（上）。起動後に同じ原因で失敗する場合（ジョブが待つあいだにキーが消えた、サービスが止まったなど）に、Shot ごと・画像ごとに同じ文を繰り返さない。
+
+- 同じ Project の生成ジョブが積まれて終わるまでを 1 つのまとまりとして、同じ原因（利用者に見せる文）の失敗は、まとまりの中の最初の 1 件だけを「Shot N の〜に失敗しました: 原因と対処」としてチャットに書く。まとまりの最後のジョブが終わったときに、同じ原因で失敗したほかの Shot を 1 件のお知らせ（「先にお知らせした失敗と同じ原因で、ほかにも失敗しました（N 件）: Shot …」）にまとめる。まとまりのあとに起きた失敗（利用者の再試行）はまた書く。原因を特定できない失敗（エラー ID を持つもの）は、ID が違うので 1 件ずつ書く
+- 1 つの Reference Pack の複数の画像が同じ原因で失敗したときは、ジョブのエラー・ログに同じ文を 1 度だけ残す
+- 失敗したジョブを自動では再試行しない（ジョブは再開しない。生成は課金されうるため）。AUTO の自動の開始は、失敗した Shot を記録して自動では進めない（[spec.md](../spec.md) §4.3）
+
 実装は `internal/agent/modeladapter/modelroute`（判定・選択・見積）、`internal/agent/modeladapter/usable`（使えるかの判定の供給）、`internal/agent/generation`（開始前の確認と実行）。
 
 ## 4. 動画生成 Model Adapter（Take生成）
