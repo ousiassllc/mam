@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { appendAlert, type AlertKind } from '../alert/alert';
 import { confirmDialog } from '../confirm/confirm';
 import { del, get, post } from '../lib/api';
 import { errorMessage } from '../lib/errors';
@@ -47,7 +48,6 @@ export class MamTakeComparator extends LitElement {
   @state() private instruction = '';
   @state() private drag: Drag | null = null;
   @state() private busy = false;
-  @state() private error = '';
   @state() private loaded = false;
 
   private shotDuration = 0;
@@ -86,9 +86,8 @@ export class MamTakeComparator extends LitElement {
       this.limits = body.limits;
       const usable = new Set(body.takes.filter((t) => t.partial_usable).map((t) => t.id));
       this.selection = this.selection.filter((s) => usable.has(s.take_id));
-      this.error = '';
     } catch (error) {
-      if (token === this.loadToken) this.error = errorMessage(error);
+      if (token === this.loadToken) this.notify(errorMessage(error));
       log.warn('could not load the Takes', error);
     } finally {
       if (token === this.loadToken) this.loaded = true;
@@ -123,13 +122,12 @@ export class MamTakeComparator extends LitElement {
   private async act(run: () => Promise<unknown>, focusTo: () => (Element | null)[]): Promise<boolean> {
     if (this.busy) return false;
     this.busy = true;
-    this.error = '';
     try {
       await run();
       await this.load();
       return true;
     } catch (error) {
-      this.error = errorMessage(error);
+      this.notify(errorMessage(error));
       return false;
     } finally {
       this.busy = false;
@@ -184,27 +182,32 @@ export class MamTakeComparator extends LitElement {
     const segment = dragToSegment(drag.clip, drag.fromX, drag.toX, drag.width);
     const next = addSegment(this.selection, segment, this.clips(), this.limits);
     if (next === this.selection) {
-      this.error =
+      this.notify(
         this.selection.length >= this.limits.max_segments
           ? `区間は最大 ${this.limits.max_segments} 個までです`
-          : `${this.limits.min_segment_seconds} 秒以上の区間をドラッグしてください`;
+          : `${this.limits.min_segment_seconds} 秒以上の区間をドラッグしてください`,
+        'warning',
+      );
       return;
     }
-    this.error = '';
     this.selection = next;
+  }
+
+  /** Says what went wrong (an error) or what the picked part cannot do (a warning) in the page's alert region (W8); it stays until it is closed. */
+  private notify(message: string, kind: AlertKind = 'error'): void {
+    appendAlert(document.getElementById('alert-region'), message, kind);
   }
 
   protected override render() {
     if (!this.loaded) return html`<p class="text-sm text-mute" role="status">読み込み中…</p>`;
     if (this.takes.length === 0) {
-      return html`${this.renderError()}<p class="text-sm text-mute" data-empty>この Shot にはまだ Take がありません</p>`;
+      return html`<p class="rounded-lg border border-dashed border-border p-6 text-sm text-mute" data-empty>この Shot にはまだ Take がありません</p>`;
     }
     const clips = this.clips();
     const clipById = new Map(clips.map((c) => [c.id, c]));
     const canMerge = this.selection.length >= 2 && !this.busy;
     return html`
       <div class="flex flex-col gap-4">
-        ${this.renderError()}
         <div class="overflow-x-auto">${renderTakeTable(this.takes, this.limits?.min_axis_score ?? 0, {
           busy: this.busy,
           select: (take) =>
@@ -244,12 +247,6 @@ export class MamTakeComparator extends LitElement {
     if (instruction && !this.busy) void this.confirmPartial({ instruction });
   }
 
-  private renderError() {
-    return this.error
-      ? html`<p class="rounded-md border border-danger/60 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert" data-error>${this.error}</p>`
-      : nothing;
-  }
-
   private renderLane(t: TakeScore, clipById: Map<string, Clip>) {
     const clip = clipById.get(t.id);
     if (!clip || !t.video_url) return nothing;
@@ -282,7 +279,7 @@ export class MamTakeComparator extends LitElement {
       >
         ${this.selection.map((s, i) =>
           s.take_id === t.id
-            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-success/70 text-[10px] leading-7 text-bone" style=${bar(s)} data-picked>${i + 1}</div>`
+            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-success/70 text-xs leading-7 text-bone" style=${bar(s)} data-picked>${i + 1}</div>`
             : nothing,
         )}
         ${preview ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-info/70" style=${bar(preview)} data-drag></div>` : nothing}

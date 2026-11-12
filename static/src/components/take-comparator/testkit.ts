@@ -61,3 +61,32 @@ export function dragLane(el: HTMLElement, takeId: string, x0: number, x1: number
 }
 
 export const text = (el: Element, selector: string) => el.querySelector(selector)?.textContent?.trim();
+
+/**
+ * The alert region and the two alert templates that AppLayout embeds (`#alert-region`, `#alert-template`, `#alert-warning-template`): the comparator
+ * says its errors and warnings there (W8) instead of in a box of its own. `restore()` removes them.
+ */
+/** What `stubAlerts()` gives the test. */
+export interface AlertStub {
+  /** The messages of the alerts shown, with their kind. */
+  shown(): { kind: string | undefined; message: string }[];
+  restore(): void;
+}
+
+export function stubAlerts(): AlertStub {
+  const root = document.createElement('div');
+  root.innerHTML =
+    '<div id="alert-region"></div>' +
+    '<template id="alert-template"><div role="alert" data-alert data-kind="error"><p data-alert-message></p></div></template>' +
+    '<template id="alert-warning-template"><div role="alert" data-alert data-kind="warning"><p data-alert-message></p></div></template>';
+  document.body.append(root);
+  const region = root.querySelector('#alert-region')!;
+  return {
+    shown: () =>
+      Array.from(region.querySelectorAll<HTMLElement>('[data-alert]')).map((a) => ({
+        kind: a.dataset.kind,
+        message: a.querySelector('[data-alert-message]')?.textContent ?? '',
+      })),
+    restore: () => root.remove(),
+  };
+}

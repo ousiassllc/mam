@@ -1,11 +1,16 @@
 import { aTimeout, expect, oneEvent, waitUntil } from '@open-wc/testing';
 import { snapToFrame, DEFAULT_FPS } from '../lib/video';
 import { stubFetch, type RecordedRequest } from '../testdata/fakes';
-import { API, body, comparator, dragLane, take, text } from './testkit';
+import { API, body, comparator, dragLane, stubAlerts, take, text, type AlertStub } from './testkit';
 
 describe('mam-take-comparator: Partial Take Use', () => {
   let stub: ReturnType<typeof stubFetch>;
-  afterEach(() => stub.restore());
+  let alerts: AlertStub;
+  beforeEach(() => (alerts = stubAlerts()));
+  afterEach(() => {
+    stub.restore();
+    alerts.restore();
+  });
 
   const takes = () => [take('t1', 'A'), take('t2', 'B')];
 
@@ -56,7 +61,8 @@ describe('mam-take-comparator: Partial Take Use', () => {
     dragLane(el, 't1', 0.2, 0.22); // 0.08 s
     await aTimeout(30);
     expect(el.querySelectorAll('[data-segment]').length).to.equal(0);
-    expect(text(el, '[data-error]')).to.contain('0.3 秒以上');
+    expect(alerts.shown()).to.deep.equal([{ kind: 'warning', message: '0.3 秒以上の区間をドラッグしてください' }]); // a warning in the alert region, not a box of the widget
+    expect(el.querySelector('[data-error]')).to.equal(null);
 
     dragLane(el, 't1', 0, 0.5);
     dragLane(el, 't2', 0.5, 1);
@@ -79,7 +85,7 @@ describe('mam-take-comparator: Partial Take Use', () => {
     dragLane(el, 't1', 0.1, 0.3); // 0.8 s: long enough for 0.3 s, too short for 1 s
     await aTimeout(30);
     expect(el.querySelectorAll('[data-segment]').length).to.equal(0);
-    expect(text(el, '[data-error]')).to.contain('1 秒以上');
+    expect(alerts.shown().map((a) => a.message)).to.deep.equal(['1 秒以上の区間をドラッグしてください']);
 
     dragLane(el, 't1', 0, 0.5);
     dragLane(el, 't2', 0.5, 1);
@@ -87,7 +93,11 @@ describe('mam-take-comparator: Partial Take Use', () => {
     dragLane(el, 't1', 0, 0.5);
     await aTimeout(30);
     expect(el.querySelectorAll('[data-segment]').length).to.equal(2);
-    expect(text(el, '[data-error]')).to.contain('最大 2 個');
+    expect(alerts.shown().map((a) => a.message)).to.deep.equal([
+      '1 秒以上の区間をドラッグしてください',
+      '区間は最大 2 個までです',
+    ]);
+    expect(alerts.shown().every((a) => a.kind === 'warning')).to.equal(true);
   });
 
   it('sends words to the server as they are', async () => {
@@ -126,9 +136,9 @@ describe('mam-take-comparator: Partial Take Use', () => {
     await waitUntil(() => el.querySelectorAll('[data-segment]').length === 2);
 
     (el.querySelector('[data-action="confirm-partial"]') as HTMLButtonElement).click();
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts.shown().length === 1);
 
-    expect(text(el, '[data-error]')).to.contain('有効になっていません');
+    expect(alerts.shown()).to.deep.equal([{ kind: 'error', message: '生成機能が有効になっていません' }]);
     expect(el.querySelectorAll('[data-segment]').length).to.equal(2);
   });
 

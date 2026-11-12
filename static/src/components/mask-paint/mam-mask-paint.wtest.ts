@@ -2,23 +2,8 @@ import { expect, fixture, html, waitUntil } from '@open-wc/testing';
 import htmx from 'htmx.org';
 import './mam-mask-paint';
 import type { MamMaskPaint } from './mam-mask-paint';
-
-async function paint(): Promise<MamMaskPaint> {
-  const el = await fixture<MamMaskPaint>(html`<mam-mask-paint width="32" height="32"></mam-mask-paint>`);
-  await el.updateComplete;
-  return el;
-}
-
-async function pixel(blob: Blob, x: number, y: number): Promise<{ r: number; g: number; b: number }> {
-  const bmp = await createImageBitmap(blob);
-  const c = document.createElement('canvas');
-  c.width = bmp.width;
-  c.height = bmp.height;
-  const g = c.getContext('2d')!;
-  g.drawImage(bmp, 0, 0);
-  const p = g.getImageData(x, y, 1, 1).data;
-  return { r: p[0] ?? 0, g: p[1] ?? 0, b: p[2] ?? 0 };
-}
+import { stubConfirm } from '../confirm/testkit';
+import { clearButton, flat, paint, pixel } from '../testdata/mask-kit';
 
 describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
   it('exports white where the brush painted and black elsewhere', async () => {
@@ -57,9 +42,29 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
   it('clears the mask to black', async () => {
     const el = await paint();
     el.querySelector('canvas')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-    [...el.querySelectorAll('button')].find((b) => b.textContent === '全部消す')!.click();
-    const mid = await pixel(await el.maskPNG(), 16, 16);
-    expect(mid.r).to.equal(0);
+    const ask = stubConfirm(true);
+    try {
+      clearButton(el).click();
+      await waitUntil(() => ask.messages.length === 1, 'the question was not asked');
+      await waitUntil(async () => (await pixel(await el.maskPNG(), 16, 16)).r === 0, 'the mask was not cleared');
+      expect(ask.messages).to.deep.equal(['塗った部分をすべて消しますか？']);
+    } finally {
+      ask.restore();
+    }
+  });
+
+  it('keeps the painting when the question before 全部消す is answered no (W10)', async () => {
+    const el = await paint();
+    el.querySelector('canvas')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    const ask = stubConfirm(false);
+    try {
+      clearButton(el).click();
+      await waitUntil(() => ask.messages.length === 1, 'the question was not asked');
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); // the answer was delivered
+      expect((await pixel(await el.maskPNG(), 16, 16)).r, 'still painted').to.be.greaterThan(200);
+    } finally {
+      ask.restore();
+    }
   });
 
   it('keeps a fast drag as one connected stroke', async () => {
@@ -202,8 +207,13 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
         html`<mam-mask-paint src=${source()} mask-src=${halfMask()}></mam-mask-paint>`,
       );
       await waitUntil(async () => (await pixel(await el.maskPNG(), 8, 32)).r > 200, 'the mask was not drawn');
-      [...el.querySelectorAll('button')].find((b) => b.textContent === '全部消す')!.click();
-      expect((await pixel(await el.maskPNG(), 8, 32)).r).to.equal(0);
+      const ask = stubConfirm(true);
+      try {
+        clearButton(el).click();
+        await waitUntil(async () => (await pixel(await el.maskPNG(), 8, 32)).r === 0, 'the mask was not cleared');
+      } finally {
+        ask.restore();
+      }
     });
   });
 
@@ -237,14 +247,14 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
     it('sends the form once, with the mask, and never lets the first submit go without it', async () => {
       const form = await fixture<HTMLFormElement>(html`
         <form hx-post="/mask-paint-test" hx-sync="this:drop" hx-encoding="multipart/form-data" enctype="multipart/form-data" hx-swap="none">
-          <mam-mask-paint width="32" height="32"></mam-mask-paint>
+          <mam-mask-paint src=${flat(32)}></mam-mask-paint>
           <input type="file" name="mask" hidden />
           <button type="submit">送る</button>
         </form>
       `);
       htmx.process(form);
       const el = form.querySelector('mam-mask-paint') as MamMaskPaint;
-      await el.updateComplete;
+      await waitUntil(() => el.querySelector('canvas')?.width === 32, 'the picture was not read');
       el.querySelector('canvas')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
       let submits = 0;
       form.addEventListener('submit', () => (submits += 1));

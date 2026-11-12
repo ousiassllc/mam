@@ -2,11 +2,16 @@ import { expect, fixture, html, waitUntil } from '@open-wc/testing';
 import { holdFetch, stubFetch } from '../testdata/fakes';
 import type { MamTakeComparator } from './mam-take-comparator';
 import { stubConfirm } from '../confirm/testkit';
-import { API, body, comparator, scored, take, text } from './testkit';
+import { API, body, comparator, scored, stubAlerts, take, text, type AlertStub } from './testkit';
 
 describe('mam-take-comparator: score table', () => {
   let stub: ReturnType<typeof stubFetch>;
-  afterEach(() => stub.restore());
+  let alerts: AlertStub;
+  beforeEach(() => (alerts = stubAlerts()));
+  afterEach(() => {
+    stub.restore();
+    alerts.restore();
+  });
 
   it('lists the Takes with their four scores and status', async () => {
     stub = stubFetch({
@@ -37,7 +42,7 @@ describe('mam-take-comparator: score table', () => {
     expect(text(b, '[data-score="product"]')).to.equal('—スコアなし'); // not judged yet: read out as "no score"
     expect(b.querySelector('[data-score="product"] [data-no-score] .sr-only')?.textContent).to.equal('スコアなし');
     expect(text(b, '[data-status]')).to.equal('採用');
-    expect(b.querySelector('[data-adopted]')).to.not.equal(null);
+    expect(text(b, '[data-adopted]')).to.equal('使用中');
     expect(b.querySelector('[data-action="select"]')).to.equal(null); // already selected
 
     const c = el.querySelector('[data-take="t3"]')!;
@@ -137,14 +142,20 @@ describe('mam-take-comparator: score table', () => {
   it('shows the server error when the Takes cannot be loaded', async () => {
     stub = stubFetch({ [`GET ${API}`]: { status: 404, body: '<div>対象が見つかりません</div>' } });
     const el = await fixture<MamTakeComparator>(html`<mam-take-comparator api-url=${API}></mam-take-comparator>`);
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
-    expect(text(el, '[data-error]')).to.equal('対象が見つかりません');
+    await waitUntil(() => alerts.shown().length === 1);
+    expect(alerts.shown()).to.deep.equal([{ kind: 'error', message: '対象が見つかりません' }]);
+    expect(el.querySelector('[data-error]')).to.equal(null); // no box of the widget's own (W8)
   });
 });
 
 describe('mam-take-comparator: choosing a Take', () => {
   let stub: ReturnType<typeof stubFetch>;
-  afterEach(() => stub.restore());
+  let alerts: AlertStub;
+  beforeEach(() => (alerts = stubAlerts()));
+  afterEach(() => {
+    stub.restore();
+    alerts.restore();
+  });
 
   it('selects and rejects through the URLs the server gave, then reloads', async () => {
     let listed = 0;
@@ -216,9 +227,9 @@ describe('mam-take-comparator: choosing a Take', () => {
     const el = await comparator();
 
     (el.querySelector('[data-action="select"]') as HTMLButtonElement).click();
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts.shown().length === 1);
 
-    expect(text(el, '[data-error]')).to.contain('アーカイブされている');
+    expect(alerts.shown()[0]!.message).to.contain('アーカイブされている');
     expect(el.querySelector('[data-scores]')).to.not.equal(null);
   });
 
