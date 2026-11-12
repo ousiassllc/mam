@@ -96,3 +96,4 @@
 | 1.89 | 2026-11-10 | [model-filter.md](model-filter.md) §8.3 の `lora`: 設定「商用OKのモデルだけを使う」が LoRA の一覧を狭めないことを明記した（商用利用が空なら「すべて」。`modelpicker` の `source.keepAll`）。1.88 の実装で設定がオンのとき LoRA が 1 つも出なくなっていたのを直した（[model-manager-lora.md](model-manager-lora.md) §4.1 の「選択肢からは外さない」と合わせた） | Issue #1011（PR #1135 のレビュー） |
 | 1.90 | 2026-11-10 | §3.3: 同じホストの枠は、URL の許可リストの検査のあとで取る（拒否される URL は枠を待たず、ホストの枠の表に残らない）。`fetch.transferLimited` の順序を直した | Issue #1060（PR #1135 のレビューの minor） |
 | 1.91 | 2026-11-10 | §3.3: `fetch.HostLimiter` に、枠を待っているダウンロードの数を返す `Waiting(host)` を足した（テストが固定の待ち時間でなく、待ちの状態を見て確かめるため。挙動は変わらない） | Issue #1060（PR #1135 の再レビューの minor） |
+| 1.92 | 2026-11-12 | §3.3 の本文に、1.91 が書いていた `fetch.HostLimiter.Waiting(host)`（枠を待っているダウンロードの数）の説明を足した（変更履歴は §3.3 と書くのに本文に無かった） | Issue #1147（PR #1135 の最終レビューの minor） |
