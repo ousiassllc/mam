@@ -3,6 +3,7 @@ import { sendKeys } from '@web/test-runner-commands';
 import './mam-mask-paint';
 import type { MamMaskPaint } from './mam-mask-paint';
 import { loadTailwind } from '../testdata/tailwind';
+import { stubConfirm } from '../confirm/testkit';
 import { clearButton, flat, paint, pixel } from '../testdata/mask-kit';
 
 describe('against lit-widgets-guide §5 (#1093)', () => {
@@ -25,6 +26,25 @@ describe('against lit-widgets-guide §5 (#1093)', () => {
     el.src = flat(32); // a picture is chosen: the canvas replaces the empty state
     await waitUntil(() => el.querySelector('canvas')?.width === 32, 'the picture was not read');
     expect(el.querySelector('[data-empty]')).to.equal(null);
+  });
+
+  it('turns 全部消す off while there is no picture, so it opens no question that does nothing (W10)', async () => {
+    const el = await fixture<MamMaskPaint>(html`<mam-mask-paint></mam-mask-paint>`);
+    const clear = clearButton(el);
+    expect(clear.disabled).to.equal(true);
+    expect(parseFloat(getComputedStyle(clear).opacity), 'drawn dimmed').to.be.lessThan(1);
+    const ask = stubConfirm(true);
+    try {
+      clear.click(); // a disabled button gets no click: the question is not asked
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      expect(ask.messages).to.deep.equal([]);
+    } finally {
+      ask.restore();
+    }
+
+    el.src = flat(32); // a picture is chosen: the button works
+    await waitUntil(() => el.querySelector('canvas')?.width === 32, 'the picture was not read');
+    expect(clearButton(el).disabled).to.equal(false);
   });
 
   it('still exports a black mask without a picture, so a form can be sent', async () => {

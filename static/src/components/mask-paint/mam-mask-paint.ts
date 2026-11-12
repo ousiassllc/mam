@@ -277,7 +277,7 @@ export class MamMaskPaint extends LitElement {
       <div class="flex flex-col gap-2" data-testid="gt-mask-paint">
         <div role="group" aria-label="描き方" class="flex flex-wrap items-center gap-2">
           ${this.toolButton('筆', 'brush', 'B')} ${this.toolButton('消しゴム', 'eraser', 'E')}
-          <button type="button" class="${BUTTON} ${PLAIN}" data-ripple @click=${() => this.askClear()}>全部消す</button>
+          <button type="button" class="${BUTTON} ${PLAIN} disabled:cursor-not-allowed disabled:opacity-40" data-ripple ?disabled=${!this.src} @click=${() => this.askClear()}>全部消す</button>
         </div>
         <label class="flex items-center gap-2 text-xs text-mute">
           太さ

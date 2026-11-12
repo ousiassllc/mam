@@ -42,14 +42,17 @@ async function select(weight: MamPromptWeight, box: HTMLTextAreaElement, start: 
 const button = (el: HTMLElement, dir: 'up' | 'down') =>
   el.querySelector<HTMLButtonElement>(`[data-gt-weight="${dir}"]`)!;
 
+/** The bar body (the `role="group"`) is shown; the element itself is never hidden (W8). */
+const shown = (el: HTMLElement) => !el.querySelector<HTMLElement>('[role="group"]')!.hidden;
+
 describe('<mam-prompt-weight>: 強める + / 弱める − for the words selected in a prompt (spec/components/gentest-tiers.md)', () => {
   it('is hidden until words are selected, and hides again when the selection is gone', async () => {
     const { weight, box } = await form('a cat on a sofa');
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
     await select(weight, box, 2, 5);
-    expect(weight.hidden).to.equal(false);
+    expect(shown(weight)).to.equal(true);
     await select(weight, box, 3, 3);
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
   });
 
   it('puts (語:1.1) round the selected word, and goes on with the same selection', async () => {
@@ -112,20 +115,20 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
     await select(weight, box, 2, 5);
     button(weight, 'up').focus();
     await weight.updateComplete;
-    expect(weight.hidden).to.equal(false);
+    expect(shown(weight)).to.equal(true);
     button(weight, 'up').click();
     await weight.updateComplete;
     expect(box.value).to.equal('a (cat:1.1)');
-    expect(weight.hidden).to.equal(false); // the box did not lose its selection
+    expect(shown(weight)).to.equal(true); // the box did not lose its selection
     const other = document.createElement('button');
     el.append(other);
     other.focus();
     await weight.updateComplete;
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
     await select(weight, box, 2, 5);
     box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     await weight.updateComplete;
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
   });
 
   it('closes on Esc from a focused button and puts the focus back in the prompt box (W7)', async () => {
@@ -137,13 +140,13 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
     );
     await weight.updateComplete;
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
     expect(document.activeElement).to.equal(box);
     box.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true })); // the release of the key does not open the bar again
     await weight.updateComplete;
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
     await select(weight, box, 2, 5); // a new selection does
-    expect(weight.hidden).to.equal(false);
+    expect(shown(weight)).to.equal(true);
   });
 
   it('has the role="status" note region in the DOM before the bar shows, and only its content changes (W8)', async () => {
@@ -152,11 +155,17 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
     const before = note();
     expect(before).to.not.equal(null);
     expect(before!.getAttribute('role')).to.equal('status');
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
+    expect(weight.hidden, 'the element itself is not hidden').to.equal(false);
+    // not display:none, so that it is in the accessibility tree before the bar appears (the note of a hidden element is not announced)
+    expect(getComputedStyle(before!).display).to.not.equal('none');
+    expect(getComputedStyle(weight).display).to.not.equal('none');
+    expect(before!.closest('[role="group"]'), 'the note is not inside the bar body').to.equal(null);
     expect(before!.textContent!.trim()).to.equal('');
     await select(weight, box, 2, 5);
-    expect(weight.hidden).to.equal(false);
+    expect(shown(weight)).to.equal(true);
     expect(note()).to.equal(before); // the same node: not drawn together with the bar
+    expect(getComputedStyle(before!).display).to.not.equal('none');
     expect(before!.textContent).to.contain('m0');
     expect(button(weight, 'up').getAttribute('aria-describedby')).to.equal(before!.id);
   });
@@ -168,7 +177,7 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
     negative.setSelectionRange(0, 6);
     negative.dispatchEvent(new Event('select', { bubbles: true }));
     await weight.updateComplete;
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
   });
 
   it('does not add a weight that would pass the length limit of the box', async () => {
@@ -183,7 +192,7 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
   it('turns the buttons off and says why for a model that does not read weights', async () => {
     const { weight, box } = await form('a cat', ['unsupported']);
     await select(weight, box, 2, 5);
-    expect(weight.hidden).to.equal(false);
+    expect(shown(weight)).to.equal(true);
     expect(button(weight, 'up').getAttribute('aria-disabled')).to.equal('true');
     button(weight, 'up').click();
     box.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', ctrlKey: true, bubbles: true, cancelable: true }));
@@ -219,10 +228,10 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
     const parent = weight.parentElement!;
     weight.remove();
     await select(weight, box, 2, 5);
-    expect(weight.hidden).to.equal(true);
+    expect(shown(weight)).to.equal(false);
     parent.append(weight);
     await select(weight, box, 2, 5);
-    expect(weight.hidden).to.equal(false);
+    expect(shown(weight)).to.equal(true);
     button(weight, 'up').click();
     await weight.updateComplete;
     expect(box.value).to.equal('a (cat:1.1)');

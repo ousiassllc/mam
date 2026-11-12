@@ -18,7 +18,8 @@ const BUTTON =
  * says what they weigh now and puts "(語:1.2)" around them, a step of 0.1 at a time, between 0.5 and 1.5; the selection stays on the changed part,
  * so that the button can be pressed again. Ctrl/⌘ + ↑ / ↓ does the same from the box. Whether the chosen models read weights comes from their cards
  * (weight-facts.ts): when none does, the buttons are off and the note says why (it is the same wording as the "?" of the prompts).
- * The text rules are weight-model.ts. It renders into the light DOM (the page's Tailwind classes apply) and hides itself while nothing is selected.
+ * The text rules are weight-model.ts. It renders into the light DOM (the page's Tailwind classes apply). The element itself is never hidden (its
+ * `role="status"` note must be in the accessibility tree before the bar shows, W8): while nothing is selected only the bar body is hidden.
  */
 @customElement('mam-prompt-weight')
 export class MamPromptWeight extends LitElement {
@@ -145,10 +146,6 @@ export class MamPromptWeight extends LitElement {
     this.refresh(box);
   }
 
-  protected override updated(): void {
-    this.hidden = !this.reading;
-  }
-
   private button(label: string, dir: Direction, off: boolean, noteID: string) {
     return html`<button
       type="button"
@@ -164,27 +161,30 @@ export class MamPromptWeight extends LitElement {
     </button>`;
   }
 
-  /** The bar is always drawn (the element itself is `hidden` while nothing is selected), so that the `role="status"` region is in the DOM before it shows and only its content changes (W8). */
+  /**
+   * The element itself is never `hidden`: the `role="status"` note region is in the DOM and in the accessibility tree before the bar shows, and
+   * only its text changes (W8). While nothing is selected only the `role="group"` bar body is hidden and the box around it is `sr-only`.
+   */
   protected override render() {
     const r = this.reading;
     const facts = r ? this.facts() : null;
     const notes = facts ? (this.notice ? [...notesOf(facts), this.notice] : notesOf(facts)) : [];
     const noteID = `${this.id || 'gt-weight'}-note`;
     return html`<div
-      role="group"
-      aria-label="選んだ語のウェイト"
-      class="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface p-2 text-xs text-ink"
+      class=${r ? 'flex flex-col gap-2 rounded-md border border-border bg-surface p-2 text-xs text-ink' : 'sr-only'}
       data-testid="gt-weight-bar"
       @mousedown=${(e: Event) => e.preventDefault()}
     >
-      ${
-        r && facts
-          ? html`<span class="text-mute">選んだ語の強さ <output class="font-mono tabular-nums text-ink" data-testid="gt-weight-now">${r.weight.toFixed(1)}</output> 倍</span>
-            ${this.button('強める +', 1, !facts.usable || !r.canRaise, noteID)} ${this.button('弱める −', -1, !facts.usable || !r.canLower, noteID)}
-            <span class="text-mute">${WEIGHT_MIN}〜${WEIGHT_MAX}。Ctrl/⌘ + ↑ ↓ でも変えられます</span>`
-          : nothing
-      }
-      <div id=${noteID} role="status" class="basis-full" data-testid="gt-weight-note">
+      <div role="group" aria-label="選んだ語のウェイト" class="flex flex-wrap items-center gap-2" ?hidden=${!r} data-testid="gt-weight-group">
+        ${
+          r && facts
+            ? html`<span class="text-mute">選んだ語の強さ <output class="font-mono tabular-nums text-ink" data-testid="gt-weight-now">${r.weight.toFixed(1)}</output> 倍</span>
+              ${this.button('強める +', 1, !facts.usable || !r.canRaise, noteID)} ${this.button('弱める −', -1, !facts.usable || !r.canLower, noteID)}
+              <span class="text-mute">${WEIGHT_MIN}〜${WEIGHT_MAX}。Ctrl/⌘ + ↑ ↓ でも変えられます</span>`
+            : nothing
+        }
+      </div>
+      <div id=${noteID} role="status" data-testid="gt-weight-note">
         ${notes.map((n) => html`<p class="text-warning">${n}</p>`)}
       </div>
     </div>`;
