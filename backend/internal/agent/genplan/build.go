@@ -81,9 +81,12 @@ func (b Builder) build(ctx context.Context, projectID string, launches Launches,
 			todoIDs = append(todoIDs, shot.ID)
 		}
 	}
-	spends, err := b.Gens.ShotSpends(ctx, projectID, todoIDs) // one ledger query for all the Shots to be made
-	if err != nil {
-		return Plan{}, err
+	var spends map[string]float64 // one ledger query for all the Shots to be made (none: nothing to look up)
+	if len(todoIDs) > 0 {
+		var err error
+		if spends, err = b.Gens.ShotSpends(ctx, projectID, todoIDs); err != nil {
+			return Plan{}, err
+		}
 	}
 	for _, p := range todo {
 		shot := p.shot

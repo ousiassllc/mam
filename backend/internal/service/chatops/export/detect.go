@@ -28,8 +28,9 @@ var (
 	exportTe   = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:し(?:直|なお))?して`)
 	exportSuru = regexp.MustCompile(`(?:書き出|書出|エクスポート)(?:し(?:直|なお))?(?:する|す)`)
 	// exportCommand is the verb that urges the export: the volitional "書き出そう／書き出し直そう／エクスポートしよう（か／よ／ぜ／ね）" and the imperative "書き出せ／書き出し直せ／エクスポートしろ／エクスポートせよ" (with "よ"). They count only
-	// at the end of a clause: "書き出せる／書き出せない／書き出せば／書き出そうと思った／書き出そうかな" are no request.
-	exportCommand = regexp.MustCompile(`(?:(?:書き出|書出)(?:し(?:直|なお))?(?:そう[かよぜね]?|せよ?)|エクスポート(?:し(?:直|なお)(?:そう[かよぜね]?|せよ?)|しよう[かよぜね]?|しろ|せよ))(?:[。、！!？?\s]|$)`)
+	// at the end of a clause: "書き出せる／書き出せない／書き出せば／書き出そうと思った／書き出そうかな" are no request. A 「、」 ends the clause unless 「と」「って」 follows it ("書き出そう、と思った", "書き出そう、って思った": thinking or
+	// quoting); "書き出そう、お願い" and "書き出せ、すぐに" ask. RE2 has no lookahead, so the 「、」 takes the next character along (a space between them is read past).
+	exportCommand = regexp.MustCompile(`(?:(?:書き出|書出)(?:し(?:直|なお))?(?:そう[かよぜね]?|せよ?)|エクスポート(?:し(?:直|なお)(?:そう[かよぜね]?|せよ?)|しよう[かよぜね]?|しろ|せよ))(?:[。！!？?\s]|$|、\s*(?:[^とっ\s]|$))`)
 	// narratedTe is what follows 「して」 when the export is told of in a form that cannot ask: "書き出してます／てる／てた／てない／ません／いた／いる／いった", "してみた(けど)", "してあげた", "してある／あった",
 	// "して終わった／完了した／終了した／失敗した／満足した", "してよかった", "してもらった", "してくれた／くれなかった", "しておいた", "してしまった", "して確認した／見た／聞いた／試した". A past form that goes on with
 	// 「ら」 or 「い」 ("終了したら知らせて", "確認したい") asks. Anything else after 「して」 is a request: a space, a symbol, "確認して", "お願い", "くれ", "くれて、…", "みて", "問題ないか確認して", "何分かかるか教えて".

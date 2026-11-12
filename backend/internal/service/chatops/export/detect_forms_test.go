@@ -34,6 +34,10 @@ func TestDetect_UrgingFormsAndImmediatelyAreRequests(t *testing.T) {
 		"書き出した動画を書き出してますぐ確認して",
 		"書き出した動画をエクスポートしてますぐ確認して",
 		"書き出した動画を書き出してますぐ",
+		"書き出した動画を書き出そう、お願い",
+		"書き出した動画を書き出せ、すぐに",
+		"書き出した動画をエクスポートしよう、",
+		"書き出した動画を書き出そう、 お願い",
 	} {
 		assert.Contains(t, detect(t, message), export.OpExportVideo, message)
 		assert.True(t, export.AsksRender(message), message)
@@ -60,6 +64,11 @@ func TestDetect_NarrationAndConfirmationBesideAPastExportAreNotRequests(t *testi
 		"書き出した動画をエクスポートしようとしたけど",
 		"書き出した動画をエクスポートしようかな",
 		"書き出した動画をエクスポートしろと言われた",
+		"書き出した動画を書き出そう、と思ったけど",
+		"書き出した動画を書き出そう、って思ったけど",
+		"書き出した動画を書き出そう、 と思った",
+		"書き出した動画を書き出せ、と言われた",
+		"書き出した動画をエクスポートしよう、って思った",
 	} {
 		assert.Empty(t, detect(t, message), message)
 		assert.False(t, export.AsksRender(message), message)
