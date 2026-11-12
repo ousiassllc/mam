@@ -37,6 +37,8 @@ func TestAppLayout_ToastTemplateHoldsTheServerToastMarkup(t *testing.T) {
 	alert := render(context.Background(), t, atoms.Alert(atoms.AlertError, atoms.ErrorAlertTitle, ""))
 	assert.Contains(t, page, `<template id="alert-template">`+alert+`</template>`)
 	assert.Contains(t, page, `<div id="alert-region"`)
+	warning := render(context.Background(), t, atoms.Alert(atoms.AlertWarning, atoms.WarningAlertTitle, ""))
+	assert.Contains(t, page, `<template id="alert-warning-template">`+warning+`</template>`)
 	confirm := render(context.Background(), t, modal.Confirm())
 	assert.Contains(t, page, `<template id="confirm-template">`+confirm+`</template>`)
 }

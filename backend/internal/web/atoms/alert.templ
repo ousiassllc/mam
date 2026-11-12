@@ -14,6 +14,9 @@ const (
 // ErrorAlertTitle is the heading of the alert that says an action did not go through.
 const ErrorAlertTitle = "操作を完了できませんでした"
 
+// WarningAlertTitle is the heading of the alert that says something happened that the user has to know about (an edit that was dropped).
+const WarningAlertTitle = "ご確認ください"
+
 func alertClass(kind AlertKind) string {
 	base := "pointer-events-auto flex items-start gap-3 rounded-md border p-3 text-sm "
 	switch kind {

@@ -1,6 +1,17 @@
 import { expect, oneEvent, waitUntil } from '@open-wc/testing';
 import { stubFetch } from '../testdata/fakes';
-import { API, clip, editor, order, text, three, timeline } from './timeline-fixtures';
+import {
+  API,
+  alerts,
+  clip,
+  editor,
+  installChrome,
+  order,
+  text,
+  three,
+  timeline,
+  toastMessage,
+} from './timeline-fixtures';
 
 function type(input: HTMLInputElement | HTMLSelectElement, value: string): void {
   input.value = value;
@@ -9,7 +20,12 @@ function type(input: HTMLInputElement | HTMLSelectElement, value: string): void 
 
 describe('mam-timeline-editor', () => {
   let stub: ReturnType<typeof stubFetch>;
-  afterEach(() => stub.restore());
+  let chrome: ReturnType<typeof installChrome>;
+  beforeEach(() => (chrome = installChrome()));
+  afterEach(() => {
+    stub.restore();
+    chrome.restore();
+  });
 
   it('lists the clips in order with their total length and the preview of the saved cut', async () => {
     stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three()) } });
@@ -25,13 +41,17 @@ describe('mam-timeline-editor', () => {
     stub = stubFetch({});
     const el = await editor();
     expect(el.querySelector('[data-empty]')).to.not.equal(null);
-    expect(el.querySelector('[data-error]')).to.equal(null);
+    expect(alerts()).to.deep.equal([]);
+    // W9: a dashed frame with room (p-6), not bare text.
+    const classes = el.querySelector('[data-empty]')!.classList;
+    expect([...classes]).to.include.members(['rounded-lg', 'border', 'border-dashed', 'border-border', 'p-6']);
   });
 
   it('shows the error, not "no Rough Cut yet", when the first load fails with something other than 404', async () => {
     stub = stubFetch({ [`GET ${API}`]: { status: 503, body: { title: 'Service Unavailable' } } });
     const el = await editor();
-    expect(el.querySelector('[data-error]')).to.not.equal(null);
+    expect(alerts()).to.have.length(1);
+    expect(alerts()[0]!.kind).to.equal('error');
     expect(el.querySelector('[data-empty]')).to.equal(null);
   });
 
@@ -47,7 +67,7 @@ describe('mam-timeline-editor', () => {
 
     fail = true;
     document.dispatchEvent(new CustomEvent('timeline-reload')); // a Rough Cut was made: the page asks for the timeline again
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts().length === 1);
     expect(order(el)).to.deep.equal(['a', 'c', 'b']);
     expect(el.querySelector('[data-empty]')).to.equal(null);
 
@@ -55,11 +75,12 @@ describe('mam-timeline-editor', () => {
     await waitUntil(() => stub.requests.filter((r) => r.method === 'GET').length === 3);
     await el.updateComplete;
     expect(order(el)).to.deep.equal(['a', 'c', 'b']);
-    expect(el.querySelector('[data-error]')).to.not.equal(null);
+    expect(alerts()).to.have.length(1); // the same sentence is not piled up
 
     fail = false;
     (el.querySelector('[data-action="revert"]') as HTMLButtonElement).click();
-    await waitUntil(() => order(el).join() === 'a,b,c' && el.querySelector('[data-error]') === null);
+    await waitUntil(() => order(el).join() === 'a,b,c');
+    expect(chrome.questions).to.have.length(2); // each 変更を戻す asked first
   });
 
   it('reloads to the empty state when the timeline is gone (404)', async () => {
@@ -72,7 +93,7 @@ describe('mam-timeline-editor', () => {
     document.dispatchEvent(new CustomEvent('timeline-reload'));
     await waitUntil(() => el.querySelector('[data-empty]') !== null);
     expect(el.querySelector('[data-clips]')).to.equal(null);
-    expect(el.querySelector('[data-error]')).to.equal(null);
+    expect(alerts()).to.deep.equal([]);
   });
 
   it('reorders with the arrows, sets a Cut Point and a Transition, and saves the clips to the server URL', async () => {
@@ -98,7 +119,7 @@ describe('mam-timeline-editor', () => {
     (el.querySelector('[data-clip="b"] [data-action="up"]') as HTMLButtonElement).click(); // b a c
     await waitUntil(() => order(el).join() === 'b,a,c');
     type(el.querySelector('[data-clip="a"] [data-field="in"]') as HTMLInputElement, '1');
-    await waitUntil(() => text(el, '[data-total]')?.includes('未保存') === true);
+    await waitUntil(() => el.querySelector('[data-dirty]') !== null);
     type(el.querySelector('[data-clip="a"] [data-field="transition"]') as HTMLSelectElement, 'fade');
     await waitUntil(() => el.querySelector('[data-clip="a"] [data-field="transition-seconds"]') !== null);
 
@@ -123,9 +144,9 @@ describe('mam-timeline-editor', () => {
 
     const input = el.querySelector('[data-clip="a"] [data-field="out"]') as HTMLInputElement;
     type(input, '9');
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts().length === 1);
 
-    expect(text(el, '[data-error]')).to.contain('Take の長さ');
+    expect(alerts()[0]!.message).to.contain('Take の長さ');
     expect(input.value).to.equal('4');
     expect((el.querySelector('[data-action="save"]') as HTMLButtonElement).disabled).to.equal(true);
   });
@@ -140,9 +161,10 @@ describe('mam-timeline-editor', () => {
     await waitUntil(() => order(el).join() === 'a,c,b');
 
     (el.querySelector('[data-action="save"]') as HTMLButtonElement).click();
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts().length === 1);
 
-    expect(text(el, '[data-error]')).to.equal('別の編集が保存されています');
+    expect(alerts()[0]).to.deep.equal({ kind: 'error', message: '別の編集が保存されています' });
+    expect(toastMessage()).to.equal(undefined);
     expect(order(el)).to.deep.equal(['a', 'c', 'b']);
   });
 
@@ -162,13 +184,13 @@ describe('mam-timeline-editor', () => {
     await waitUntil(() => order(el).join() === 'a,c,b');
 
     (el.querySelector('[data-action="save"]') as HTMLButtonElement).click();
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts().length === 1);
     await el.updateComplete;
 
-    expect(text(el, '[data-error]')).to.contain('再読込に失敗しました');
-    expect(el.querySelector('[data-notice]')).to.equal(null);
+    expect(alerts()[0]!.message).to.contain('再読込に失敗しました');
+    expect(toastMessage()).to.equal(undefined);
     expect(updated).to.equal(false);
-    expect(text(el, '[data-total]')).to.contain('未保存');
+    expect(el.querySelector('[data-dirty]')).to.not.equal(null);
   });
 
   it('cannot be edited once the server says the timeline is read-only', async () => {
@@ -212,7 +234,7 @@ describe('mam-timeline-editor', () => {
       el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement as unknown as HTMLInputElement,
       '  朝が来た ',
     );
-    await waitUntil(() => text(el, '[data-total]')?.includes('未保存') === true);
+    await waitUntil(() => el.querySelector('[data-dirty]') !== null);
     (el.querySelector('[data-action="save"]') as HTMLButtonElement).click();
     await waitUntil(() => stub.requests.some((r) => r.method === 'PUT'));
 
@@ -230,9 +252,9 @@ describe('mam-timeline-editor', () => {
       el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement as unknown as HTMLInputElement,
       'あ'.repeat(11),
     );
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts().length === 1);
 
-    expect(text(el, '[data-error]')).to.contain('10 文字以内');
+    expect(alerts()[0]!.message).to.contain('10 文字以内');
     expect((el.querySelector('[data-action="save"]') as HTMLButtonElement).disabled).to.equal(true);
   });
 
@@ -242,15 +264,13 @@ describe('mam-timeline-editor', () => {
     const box = el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement;
 
     type(box as unknown as HTMLInputElement, 'あ'.repeat(11));
-    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await waitUntil(() => alerts().length === 1);
     await el.updateComplete;
     expect(box.value).to.equal('あ'.repeat(11)); // stays in the box so it can be shortened
 
     (el.querySelector('[data-action="revert"]') as HTMLButtonElement | null)?.click();
     document.dispatchEvent(new CustomEvent('timeline-reload'));
-    await waitUntil(() => el.querySelector('[data-error]') === null);
-    await el.updateComplete;
-    expect(box.value).to.equal(''); // the model's caption
+    await waitUntil(() => box.value === ''); // the model's caption
   });
 
   it('writes the clamped transition length back into the input, also when the model does not change', async () => {

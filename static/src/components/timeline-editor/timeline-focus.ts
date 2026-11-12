@@ -28,11 +28,13 @@ export function focusRemoved(host: LitElement, shotId: string | undefined): void
   void focusAfterUpdate(host, () => clipTargets(host, shotId, 'remove', 'up', 'down'));
 }
 
-/** After a save or a reload: the Save button when it is enabled again (the save failed), else the "保存しました" notice, else the list. */
+/**
+ * After a save or a reload: the Save button when it is enabled again (the save failed), else the list (a successful save
+ * shows a toast, which does not take the focus; the toast and the alerts are outside of this component).
+ */
 export function focusToolbar(host: LitElement): void {
   void focusAfterUpdate(host, () => [
     host.querySelector('[data-action="save"]'),
-    host.querySelector('[data-notice]'),
     host.querySelector('[data-clips]'),
     host,
   ]);

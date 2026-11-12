@@ -58,6 +58,19 @@ describe('error alert', () => {
     expect(region.textContent).not.to.contain('予算を超えています');
   });
 
+  it('raises a warning from its own template, and says when the page has none', () => {
+    expect(createAlert('x', 'warning')).to.equal(null);
+    const warning = document.createElement('template');
+    warning.id = 'alert-warning-template';
+    warning.innerHTML = ALERT.replace('data-alert>', 'data-alert data-kind="warning">');
+    root.append(warning);
+
+    appendAlert(region, '破棄しました', 'warning');
+    const alert = region.querySelector('[data-alert]')!;
+    expect(alert.getAttribute('data-kind')).to.equal('warning');
+    expect(alert.querySelector('[data-alert-message]')!.textContent).to.equal('破棄しました');
+  });
+
   it('closes a alert that the server swapped in', () => {
     region.innerHTML = ALERT;
     (region.querySelector('[data-alert-close]') as HTMLButtonElement).click();

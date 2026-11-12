@@ -69,7 +69,7 @@
 | スクラムで閉じる（O1） | モーダルの `<dialog>` は、外側（スクラム）のクリックで閉じる（`static/src/components/scrim`。Esc・閉じるボタンも）。欄を変更した（`input` が起きた）ダイアログは、先に確認のモーダル「入力した内容は保存されません。閉じますか？」を出し、入力途中の内容を巻き込んで消さない。スクラムはダイアログと一緒にフェードする（M5） |
 | 確認・破壊的操作（O2） | 確認は OS 標準の `confirm()` でなく、中央のモーダル（`modal.Confirm`。`--r-xl`・`shadow-modal`・危険ボタン「実行する」と「キャンセル」）。`hx-confirm` の要素は `htmx:confirm` をこのモーダルが受けてから送る（`static/src/components/confirm`）。`AppLayout` が `#confirm-template` を埋め込む。モデルマネージャーの年齢確認・ライセンス確認もページ内の枠でなく同じ `<dialog>`（`modal.InlineHost`。`showModal()` で開く） |
 | トースト（O3） | 「保存しました」のような **1 行の短い成功の文だけ**。画面下中央（下から 24）・高さ 40・ピル・`bg-ink text-bone`・同時に 1 つ（新しいものが前を置き換える）・3 秒で自動消去。閉じるボタンも持たない。サーバーが返す成功は `atoms.ToastOOB`（`#toast-region` の中身を置き換える） |
-| インラインアラート（O3） | エラー・業務エラー（403 / 409 / 423・予算超過・LOCK 違反など）・エラー詳細は、ページ上部（`#content` の先頭の `#alert-region`）に `atoms.Alert`（お知らせ / 成功 / 注意 / エラーの 4 種。アイコン＋見出し＋本文）で出す。閉じるまで残る（長い文を読み終えるため。WCAG 2.2.1）。同じ文は重ねない。サーバーは `atoms.ErrorAlertOOB`（`beforeend`）、スクリプトは `lib/alert.ts`（`#alert-template`） |
+| インラインアラート（O3） | エラー・業務エラー（403 / 409 / 423・予算超過・LOCK 違反など）・エラー詳細は、ページ上部（`#content` の先頭の `#alert-region`）に `atoms.Alert`（お知らせ / 成功 / 注意 / エラーの 4 種。アイコン＋見出し＋本文）で出す。閉じるまで残る（長い文を読み終えるため。WCAG 2.2.1）。同じ文は重ねない。サーバーは `atoms.ErrorAlertOOB`（`beforeend`）、スクリプトは `lib/alert.ts`（エラーは `#alert-template`、注意は `#alert-warning-template`） |
 | 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `--surface` の地に `border-warning/60` の枠（スナックバー。影なし）。トーストではない |
 | ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`） |
 | 独自ウィジェット（Lit。P3） | `mam-timeline-editor`・`mam-take-comparator`・`mam-mask-paint` は共通ガイドに無い独自ウィジェットで、見た目・状態表示・操作・文言は案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) が決める（ボタン・入力・バッジ・通知・数値は上の表と同じ部品を使う） |
@@ -103,18 +103,7 @@
 | キーボード（W7） | **プロンプト欄の中で `Ctrl/⌘ + ↑` が強める、`Ctrl/⌘ + ↓` が弱める**（ComfyUI の画面と同じ。バーの 1 行の説明にもこの順で書く）。`Esc` でバーを消す。ボタンは本物の `<button>`（`Tab` で届き、`Enter`・`Space` で押せる）。**バーの中（ボタンにフォーカスがあるとき）でも `Esc` で消え、フォーカスはプロンプト欄へ戻る**。矢印キー単独は、プロンプト欄の本来の動き（カーソル移動）を奪わない |
 | アクセシビリティ（W8） | バーは `role="group"` と `aria-label="選んだ語のウェイト"`。注は `role="status"`（スクリーンリーダーに伝える領域。**バーが現れる前から DOM にあり、中身だけが変わる**ようにする。現れると同時に作った領域は、読み上げられないことがある）。ボタンは `aria-describedby` で注に結ぶ。タッチの的は高さ 32 以上（W3）、WCAG 2.5.8 の 24 を超える。ダーク・ライトとも `tokens.css` のトークンだけで、`prefers-reduced-motion` で変わる動きは無い（動かさないため） |
 
-**実装との差分（2026-11-06 時点。直すのは #1094・#1095。#1046 では実装を変えない）**: 上の表に対し、`mam-prompt-weight.ts`（`BUTTON` の定数とバーの描画）は次の点で違う。
-
-| # | 決まり | いまの実装 | 直し方 |
-|---|--------|-----------|--------|
-| 1 | W3: 高さ 32 以上（`min-h-8`） | ボタンは `px-2 py-1 text-xs` で、高さは文字の高さ＋余白まで（12px × 行間 1.6 + 8 + 枠 2 ≒ 29px）。`min-h-8` が無い | `BUTTON` に `min-h-8` を足す |
-| 2 | W3 / M1: `motion-reduce:transition-none` | `transition-colors` だけで、`prefers-reduced-motion` で止めない | `BUTTON` に `motion-reduce:transition-none` を足す |
-| 3 | W3 / M4: `data-ripple` | 付いていない（ほかのボタンは押すと波紋が出る） | ボタンに `data-ripple` を足す（`ripple.ts` は `:disabled, [aria-disabled="true"]` には波紋を出さないので、押せないボタンでも動きは出ない） |
-| 4 | W2 / T5: 数値は `font-mono tabular-nums` | `<output>` は `tabular-nums` だけで、`font-mono` が無い | `<output>` に `font-mono` を足す |
-| 5 | W7: バーの中の `Esc` | `Esc` を受けるのは区画の `keydown` のうちプロンプト欄が対象のものだけ（`onKey` の `promptBox(event.target)`）。ボタンにフォーカスがあると、`Esc` で消えない | `onKey` の対象にバーの中を加え、消したあとフォーカスを直前のプロンプト欄へ戻す |
-| 6 | W8: 注の `role="status"` | 領域（`gt-weight-note`）はバーと一緒に描かれるため、バーが現れた時点で中身がすでにある（読み上げの対象になりにくい） | 領域だけは常に DOM に置き（`hidden` のバーの中に空で持つ）、中身だけを更新する |
-
-差分は 2 件の Issue に分けて起票した: 見た目（1〜4）は #1094、操作・アクセシビリティ（5・6）は #1095（#1046 の受け入れ条件「差分が洗い出されている」を満たす）。`mam-weight-note`（`text-xs text-warning`・`role="status"`）と `mam-weight-help` は、この表のとおりで差分は無い。
+**実装との差分（2026-11-12 時点）: 無し。** #1046 で洗い出した 6 件（ボタンの高さ `min-h-8`・`motion-reduce:transition-none`・`data-ripple`、いまの強さの `font-mono`、バーの中のボタンからの `Esc`、バーが現れる前から DOM にある注の `role="status"`）は、見た目の 4 件が #1094、操作・アクセシビリティの 2 件が #1095 で直り、`mam-prompt-weight.ts` は上の表のとおり。`mam-prompt-weight.wtest.ts` が、押せるボタンの高さ 32 以上・`data-ripple`・`<output>` の等幅、ボタンからの `Esc`（バーが消えてフォーカスがプロンプト欄へ戻る）、注の領域がバーより先にあることを確かめている。`mam-weight-note`（`text-xs text-warning`・`role="status"`）と `mam-weight-help` も、この表のとおりで差分は無い。
 
 ## 2. `atoms.Icon`
 
@@ -299,6 +288,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.22 | 2026-11-06 | §4 に、長い本文のモーダルの頭の決まりを足した（閉じるボタンと見出しは、スクロールするダイアログの上端に貼り付く。開くたびに先頭から始まる） | Issue #1097 |
 | 0.23 | 2026-11-06 | §10 のモデルマネージャーの行から「試し生成」の区画を外し、区画「モデル」の「?」に生成テスト画面へのリンクを入れることを書いた（状態は仕様のみ） | Issue #1100 |
 | 0.24 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 0.25 | 2026-11-12 | §1「プロンプトの重み調整」の「実装との差分」6 件を解消済みにした（差分の表を外し、直った点とそれを確かめるテストの記述に置き換えた）。W7 の「バーの中の `Esc`」は、押したあとにフォーカスが戻るプロンプト欄をバーが作用している欄と書いた（実装: `onKey`）。W8 の注の領域は、バーを描くときに常に置き、中身だけを更新する（実装: `render`） | Issues #1094・#1095 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
