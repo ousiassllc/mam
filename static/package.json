@@ -30,7 +30,7 @@
     "@web/test-runner-chrome": "^1.0.1",
     "concurrently": "^10.0.6",
     "esbuild": "^0.28.2",
-    "tailwindcss": "^4.1.0",
+    "tailwindcss": "^4.3.4",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   }
