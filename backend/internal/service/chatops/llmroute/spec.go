@@ -125,7 +125,7 @@ func modelLike(name string) bool {
 }
 
 // hasModelToken reports whether a name holds a word of a model's name: an ASCII word with a letter and a digit ("R1", "o3", "32B") or with 3 or more letters ("Gemma"), or a katakana run of 2 or more
-// characters ("ミストラル", "ラマ"), once the names of languages and formats (genericWord) are taken out.
+// characters ("ミストラル", "ラマ", "ﾗｰ"; the half-width 「ｰ」「ﾞ」「ﾟ」 are part of a run like the full-width 「ー」), once the names of languages and formats (genericWord) are taken out.
 func hasModelToken(name string) bool {
 	for _, w := range modelToken.FindAllString(genericWord.ReplaceAllString(name, " "), -1) {
 		if strings.IndexFunc(w, unicode.IsLetter) >= 0 && (len(w) >= 3 || strings.IndexFunc(w, unicode.IsDigit) >= 0) {
@@ -147,7 +147,7 @@ var (
 	// (an ASCII run of letters and digits, or a katakana run of 2 or more characters: hasModelToken tells which are).
 	degreeWord  = regexp.MustCompile(`回|秒|分|個|つ|一緒|同様|設定|より|丁寧|速|遅|短|長`)
 	genericWord = regexp.MustCompile(`(?i)\b(?:English|Japanese|JSON|XML|YAML|Markdown)\b`)
-	modelToken  = regexp.MustCompile(`[A-Za-z0-9]+|[\p{Katakana}ー]{2,}`)
+	modelToken  = regexp.MustCompile(`[A-Za-z0-9]+|[\p{Katakana}ーｰﾞﾟ]{2,}`)
 )
 
 // roleOf is the role the sentence that asks says; a sentence with no role word takes the role from the clause just before it when that is a topic of the role ("Producer の代替は、LLM を Gemini に
