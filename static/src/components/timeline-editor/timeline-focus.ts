@@ -39,3 +39,13 @@ export function focusToolbar(host: LitElement): void {
     host,
   ]);
 }
+
+/** After "もう一度読み込む": the list when the timeline is there, else the button again (it stays while the load fails) or the component (an empty state replaced it). */
+export function focusLoaded(host: LitElement): void {
+  void focusAfterUpdate(host, () => [
+    host.querySelector('[data-clips]'),
+    host.querySelector('[data-action="retry"]'),
+    host.querySelector('[data-empty]'),
+    host,
+  ]);
+}

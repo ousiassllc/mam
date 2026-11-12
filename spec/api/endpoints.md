@@ -25,7 +25,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects` | プロジェクト一覧・新規作成導線 | フルページ / プロジェクト一覧フラグメント |
 | GET | `/projects/:id` | Chat Workspace（標準画面。`chat_thread` + `chat_composer`。Take カード内に `mam-video-player` を埋め込み、履歴は `GET /projects/:id/messages` と同じ内容を初期表示） | フルページ / ワークスペースフラグメント |
 | GET | `/projects/:id/messages` | チャット履歴のフラグメント取得。クエリ `after`（メッセージID、省略時=全履歴）で新着のみ取得（「それ以降」は ID の大小ではなく、この環境が行を作った順＝`rowid` で決める。取り込んだメッセージの ID は巨大なことがあるため。`spec/spec.md` §4.3）。応答済みになったカードは `hx-swap-oob` で差し替え、Project 状態バッジも同梱する | フラグメントのみ |
-| GET | `/projects/:id/messages/:messageId` | 1 枚のカードの現在の描画（進捗カードの自動更新・応答済み Approval カードの再描画用） | フラグメントのみ |
+| GET | `/projects/:id/messages/:messageId` | 1 枚のカードの現在の描画（進捗カードの自動更新・応答済み Approval カードの再描画用）。企画のジョブ（`plan`）が `queued` のままの進捗カードは 10 秒ごとにこれを取り直し（`hx-trigger="every 10s"`。`running` になると止まる）、受け付けて 30 秒たっても始まらないとき、カードに「まだ始まっていません」と待っている理由・「ジョブ」画面への案内を出す（Issue #1107。`planadvice.Waiting`）。同じ待ちはログにも `warn`（`project_id`・`job_id`）で残る | フラグメントのみ |
 | GET | `/projects/:id/assets/:assetId` | アップロード済みアセットの配信（当該 Project のアセットのみ。`X-Content-Type-Options: nosniff`、`Content-Security-Policy: sandbox`） | ファイル |
 | GET | `/projects/:id/brief` | Creative Brief の確認・編集ページ（補助ビュー。Brief は通常チャットで作成する、F-01） | フルページ / フォームフラグメント |
 | GET | `/projects/:id/scenes` | Scene / Shot / Take 階層（先頭 Scene を選択。Scene がなければ追加フォームのみ）。PLANNING・Take なしの Shot があるときは上部に待機の表示（`data-testid="main-line-wait"`、`data-phase` = `declined`（旧「生成の承認」カードの差戻し）/ `declined_unrecorded`（記録の無い旧カードの差戻し。計画を直しても解けず、メッセージだけで解ける）/ `budget_confirm`（予算の確認待ち。チャットで伝えた予算の確認カードが未回答で、答えるまで有料の生成を始めない）/ `auto` / 空（DIRECTOR・MANUAL））を出し、その Shot のカードには「自動開始待ち」「自動開始を保留」「生成待ち」のバッジを出す（`spec/spec.md` §4.3）。補助ビュー | フルページ / 階層フラグメント |

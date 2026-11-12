@@ -2,6 +2,7 @@ import { expect, fixture, html, waitUntil } from '@open-wc/testing';
 import { sendKeys } from '@web/test-runner-commands';
 import './mam-mask-paint';
 import type { MamMaskPaint } from './mam-mask-paint';
+import { meanLuminance, overlayToken } from './mask-draw';
 import { loadTailwind } from '../testdata/tailwind';
 import { stubConfirm } from '../confirm/testkit';
 import { clearButton, flat, paint, pixel } from '../testdata/mask-kit';
@@ -115,9 +116,10 @@ describe('against lit-widgets-guide §5 (#1093)', () => {
     expect([view.width, view.height]).to.deep.equal([picture.width, picture.height]);
   });
 
-  it('paints the overlay in the colour of the --danger token, not in a colour of its own (MP-3)', async () => {
-    const el = await fixture<MamMaskPaint>(html`<mam-mask-paint src=${flat(32)}></mam-mask-paint>`);
-    el.style.setProperty('--danger', 'rgb(1, 2, 3)');
+  it('paints the overlay in the --overlay-deep token over a bright picture, not in a colour of its own (MP-3)', async () => {
+    const el = await fixture<MamMaskPaint>(html`<mam-mask-paint src=${flat(32, '#e6dccb')}></mam-mask-paint>`);
+    el.style.setProperty('--overlay-deep', 'rgb(1, 2, 3)');
+    el.style.setProperty('--overlay-pale', 'rgb(250, 250, 250)');
     await waitUntil(() => el.querySelector('canvas')?.width === 32, 'the picture was not read');
     const view = el.querySelector('canvas')!;
     view.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
@@ -127,7 +129,35 @@ describe('against lit-widgets-guide §5 (#1093)', () => {
     expect((await pixel(await el.maskPNG(), 20, 16)).r, 'the mask itself stays white').to.be.greaterThan(200);
   });
 
-  it('draws the mask to start from in the --danger colour too (MP-3)', async () => {
+  it('paints the overlay in the --overlay-pale token over a dark picture (MP-3)', async () => {
+    const el = await fixture<MamMaskPaint>(html`<mam-mask-paint src=${flat(32, '#101010')}></mam-mask-paint>`);
+    el.style.setProperty('--overlay-deep', 'rgb(1, 2, 3)');
+    el.style.setProperty('--overlay-pale', 'rgb(250, 240, 230)');
+    await waitUntil(() => el.querySelector('canvas')?.width === 32, 'the picture was not read');
+    const view = el.querySelector('canvas')!;
+    view.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect([...view.getContext('2d')!.getImageData(16, 16, 1, 1).data]).to.deep.equal([250, 240, 230, 255]);
+  });
+
+  it('chooses the token by the picture brightness: a mid-grey is on the deep side, the pale one starts below a grey of 96', () => {
+    const lum = (colour: string): number | null => {
+      const c = document.createElement('canvas');
+      c.width = 8;
+      c.height = 8;
+      const g = c.getContext('2d')!;
+      g.fillStyle = colour;
+      g.fillRect(0, 0, 8, 8);
+      return meanLuminance(c);
+    };
+    expect(overlayToken(lum('#000'))).to.equal('--overlay-pale');
+    expect(overlayToken(lum('#404040'))).to.equal('--overlay-pale');
+    expect(overlayToken(lum('#808080'))).to.equal('--overlay-deep');
+    expect(overlayToken(lum('#fff'))).to.equal('--overlay-deep');
+    expect(overlayToken(null), 'a picture that cannot be read').to.equal('--overlay-deep');
+    expect(lum('#fff')).to.be.closeTo(1, 0.01);
+  });
+
+  it('draws the mask to start from in the overlay colour too (MP-3)', async () => {
     const mask = document.createElement('canvas');
     mask.width = 32;
     mask.height = 32;
@@ -139,7 +169,7 @@ describe('against lit-widgets-guide §5 (#1093)', () => {
     const el = await fixture<MamMaskPaint>(
       html`<mam-mask-paint src=${flat(32)} mask-src=${mask.toDataURL('image/png')}></mam-mask-paint>`,
     );
-    el.style.setProperty('--danger', 'rgb(9, 8, 7)'); // before the images are read
+    el.style.setProperty('--overlay-deep', 'rgb(9, 8, 7)'); // before the images are read
     await waitUntil(async () => (await pixel(await el.maskPNG(), 4, 16)).r > 200, 'the mask was not drawn');
     const view = el.querySelector('canvas')!.getContext('2d')!;
     expect([...view.getImageData(4, 16, 1, 1).data], 'the white part').to.deep.equal([9, 8, 7, 255]);

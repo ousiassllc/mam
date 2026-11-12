@@ -6,7 +6,7 @@
 
 ## 1. 方針
 
-- **色は Ousiass 共通デザインガイド（brand-guide `622ea73`）のトークンだけ。** `static/src/css/tokens.css` が唯一の「値を書く場所」で、`--ink` `--bone` `--mute` `--surface` `--border` `--accent` `--accent-soft` `--focus` と状態色 `--success` `--warning` `--danger` `--info` を、ライト（`:root`）とダーク（`:root[data-theme="dark"]`）の両方で定義する。Tailwind 4 の `@theme inline` が `--color-*: initial` で既定のパレットを消し、トークンを `bg-bone` `text-ink` `border-border` のクラスにする。**`bg-neutral-900` や `text-indigo-300` のような既定パレットのクラスは、コンパイルされず、テストも落とす。**
+- **色は Ousiass 共通デザインガイド（brand-guide `622ea73`）のトークンだけ。** `static/src/css/tokens.css` が唯一の「値を書く場所」で、`--ink` `--bone` `--mute` `--surface` `--border` `--accent` `--accent-soft` `--focus` と状態色 `--success` `--warning` `--danger` `--info` を、ライト（`:root`）とダーク（`:root[data-theme="dark"]`）の両方で定義する。写真の上に重ねる塗りだけは、写真が下地でテーマの面ではないので、テーマで変わらない専用のトークン `--overlay-deep`・`--overlay-pale` を `:root` に 1 組だけ持つ（§4.2）。Tailwind 4 の `@theme inline` が `--color-*: initial` で既定のパレットを消し、トークンを `bg-bone` `text-ink` `border-border` のクラスにする。**`bg-neutral-900` や `text-indigo-300` のような既定パレットのクラスは、コンパイルされず、テストも落とす。**
 - **ライト / ダークの切り替え**: `<html data-theme="light|dark">`（左メニューのテーマボタンが `mam_theme` クッキーと `data-theme` を書き、サーバーが次のページを同じテーマで描く。`backend/internal/web/themestate`）。クッキーが無いときは OS の設定（`prefers-color-scheme`）に従う。クラスに `dark:` は付けない（トークンが切り替わる）。
 - 意味は色相でなく**トークン**で決める: **危険 = `danger`・警告 = `warning`・成功 = `success`・情報／進行中 = `info`・主アクション／リンク／選択 = `accent`（インク色）・それ以外 = `ink` / `mute` / `border` / `surface` / `bone`**。状態色は彩度を落とした無彩色寄りで、色だけで意味を伝えない（文言とアイコン `atoms.Icon` を添える）。
 - **同じ意味に新しいクラスや `/opacity` を足さない。** 枠は `-/60`、薄い面は `/10`（弱い）か `/20`（バッジのような塗り）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
@@ -106,6 +106,20 @@
 
 - **プロンプトの重み調整（`mam-prompt-weight`・`mam-weight-note`。Issue #1046）**: バーの色は上の表の既存のクラスだけ（面 `bg-surface`・枠 `border-border`・文字 `text-ink` / `text-mute`・押せる所のホバー `hover:bg-accent-soft`・モデルの注 `text-warning`）。新しいクラスを足さない。用途ごとの決まり（W1〜W8）は [shared-ui-parts.md](shared-ui-parts.md) §1「プロンプトの重み調整」。
 
+### 4.2 写真の上の重ね塗り（`--overlay-deep`・`--overlay-pale`。Issue #1093 の MP-3）
+
+マスク描画（`mam-mask-paint`。[lit-widgets-guide.md](lit-widgets-guide.md) §5・§6.3）は、描き直す部分を写真の上に不透明度 .55 の赤で重ねる。`--danger` は面（カード・文字）の上で 3:1 を保つ色で、写真の上では下地によって見えなくなる（ライトの `#7a4545` は中間のグレーの写真で 1.4:1、ダークの `#c49a9a` は明るい壁で 1.4:1）ので、重ね塗りには次の専用トークンを使う。
+
+| トークン | 値 | 使う下地 | 3:1 を保つ下地（不透明度 .55） |
+|---------|----|----------|------------------------------|
+| `--overlay-deep` | `#5a0000` | 平均の相対輝度が 0.11 以上の写真（読めない写真も） | 白 4.0:1・明るい壁 3.6:1・空色 3.5:1 |
+| `--overlay-pale` | `#ff8c96` | 平均の相対輝度が 0.11 より暗い写真 | ほぼ黒 3.3:1・黒 3.3:1 |
+
+- 写真の上にあり、テーマの面の上ではないので、**ライト・ダークで値は同じ**。クラスには使わず（Tailwind の `@theme` に足さない）、キャンバスが `getComputedStyle` で読む。直書きの原色は使わない（§2）。
+- **限界**: 半透明の 1 色で、あらゆる下地に 3:1 を保つことはできない（中間のグレーでは .55 のどんな色でも届かない）。2 つの切り替え（0.11）は、2 つが同じ見え方になる輝度で、中間調（輝度 0.02〜0.4）の写真では 3:1 に届かない。色相（赤）で見分けられることは変わらない。不透明度を上げる・縁取りを足す案は、写真の見えやすさと部品の形が変わるので採っていない。
+- 検査: `backend/internal/web/a11y/overlay_test.go`（値・切り替えの位置）、`mam-mask-paint-look.wtest.ts`（写真の明るさでトークンを選ぶこと）。
+- 共通ガイド（brand-guide `622ea73`）の本体には、この 2 つのトークンはまだ無い。mam の `tokens.css` が先に持ち、ガイドへの追加は別に提案する。
+
 ## 5. #865・#866 の UI もこの表に従う
 
 #865（モデルマネージャーのモデルのカード。`organisms/modelmgr/catalog.templ`・`settingsui.Card`）と #866（「?」ヘルプ。`molecules/help`・ポップオーバーのパネル・`atoms.IconHelp`・`SettingsSection` のヘルプ）で足した UI は、この表に従う。カードの面は `bg-surface border-border`、状態は `Badge`、同意の注意は `text-warning`、「?」ボタンは `border-border text-ink`・ホバー `hover:border-mute`・フォーカス輪 `focus-visible:focus-ring`。**これから足す画面・部品も同じ**（表に無い色が要るなら §1 の方針に従って表を変える）。
@@ -121,3 +135,4 @@
 | 2.0 | 2026-11-05 | 色を Ousiass 共通デザインガイド（brand-guide `622ea73`）のトークンへ移した。§1 を「トークンだけ。`static/src/css/tokens.css` が値を書く唯一の場所」に改め、§3・§4 の許可クラスを `bg-bone` `text-ink` `border-border` などへ、フォーカスの輪を `focus-ring` へ、§4.1 のスライダーをトークンの変数へ置き換えた。ライト / ダークの切り替え（`data-theme`）を足した。テストの許可表・入力欄の枠のコントラスト検査も同じ版で改めた | Issue #1036 |
 | 2.1 | 2026-11-06 | §3 の「ホバー面」に `peer-not-checked:hover:border-mute` を足した（選ぶカードのホバーの枠は、選んでいないカードだけ。`hover:border-mute` は `peer-checked:border-accent` より後に描かれて、選んだカードの枠をホバーで灰色に戻していた）。新しい色は足していない | Issue #1061 |
 | 2.2 | 2026-11-06 | §5 に、プロンプトの重み調整（`mam-prompt-weight`）が既存のクラスだけで描かれることと、決まりの置き場所（shared-ui-parts.md §1）を足した。許可クラスの表（§3・§4）は変えていない | Issue #1046 |
+| 2.3 | 2026-11-12 | §4.2 を足した（写真の上の重ね塗りの専用トークン `--overlay-deep`・`--overlay-pale`。`tokens.css` に追加。`--danger` の .55 は写真の上で弱いため）。§1 に一文を足した。許可クラスの表（§3・§4）は変えていない | Issue #1093（MP-3） |

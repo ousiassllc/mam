@@ -6,6 +6,7 @@ package planadvice
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -55,4 +56,18 @@ func For(j domain.Job, forMCP bool) string {
 	}
 	return choose + llm +
 		"(2) LLM なしで進める。World State の「登場人物を追加」、または Series の Characters の「登場人物を追加」から、登場人物を直接作る。"
+}
+
+// QueuedAfter is how long a plan job may be queued before the card says that it has not started (#1107) and the orchestrator logs it.
+const QueuedAfter = 30 * time.Second
+
+// Waiting is what the progress card of a planning job says when the job has been queued for QueuedAfter and has not started (every worker of the queue is busy with
+// other jobs, or the queue is stopped): that nothing is wrong with the Project, why the job waits, and where to look. "" for any other job or a job that has not waited
+// that long.
+func Waiting(j domain.Job, now time.Time) string {
+	if j.Kind != domain.JobPlan || j.Status != domain.JobQueued || j.CreatedAt.IsZero() || now.Sub(j.CreatedAt) < QueuedAfter {
+		return ""
+	}
+	return fmt.Sprintf("企画・脚本の作成は、まだ始まっていません（受け付けてから %d 秒）。ほかの処理（生成・判定・モデルの導入など）が先に動いていると、空くまで待ちます。"+
+		"サイドメニューの「ジョブ」で動いている処理を確かめられます。始まれば、このカードが「実行中」に変わります。", int(now.Sub(j.CreatedAt).Seconds()))
 }

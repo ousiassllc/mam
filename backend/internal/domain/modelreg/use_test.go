@@ -23,6 +23,12 @@ func TestRouteOf_ReadsTheRouteFromTheIdentifier(t *testing.T) {
 	}
 }
 
+func TestNameWithoutRoute_DropsOnlyTheSuffixThatSaysHowTheModelIsReached(t *testing.T) {
+	assert.Equal(t, "gpt-image-2.6-flare", modelreg.NameWithoutRoute("gpt-image-2.6-flare:chatgpt-subscription"))
+	assert.Equal(t, "seedance-2.0", modelreg.NameWithoutRoute("seedance-2.0"))
+	assert.Equal(t, "comfyui:bundled-comfyui/wan22-i2v-14b", modelreg.NameWithoutRoute("comfyui:bundled-comfyui/wan22-i2v-14b"))
+}
+
 func TestUse_NilReceiverSaysNothing(t *testing.T) {
 	var u *modelreg.Use
 	assert.Empty(t, u.Suffix())

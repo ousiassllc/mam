@@ -2,7 +2,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { confirmDialog } from '../confirm/confirm';
 import { sliderStyle } from '../slider/slider-model';
-import { overlayWhite, strokeLine, type Point } from './mask-draw';
+import { meanLuminance, overlayToken, overlayWhite, strokeLine, type Point } from './mask-draw';
 import { canvasSize } from './mask-size';
 
 /** A small sub button of the guide (W3): 32px high, 14px text, a ripple on press (`data-ripple` in the markup). */
@@ -30,7 +30,8 @@ const MAX_SIZE = 128;
  * picture decoded at its own size (about 256 MiB more for the tab), the copy is 16 MiB. `mask-src` is a mask to start from (the
  * black/white picture of an earlier redraw, "この設定でもう一度"): it is drawn on the canvases once the picture is.
  *
- * What is painted shows as a red overlay in the colour of the `--danger` token (read when it is drawn, so the theme decides it; the exported
+ * What is painted shows as a red overlay in the colour of the `--overlay-deep` token over a bright picture and `--overlay-pale` over a dark one (the
+ * picture's mean luminance decides, read when it is shown; the two keep 3:1 against the picture where they apply, color-rules.md §4.2; the exported
  * mask is data, black and white, not a colour of the screen). Without a picture there is no canvas, only an empty state (lit-widgets-guide §5).
  *
  * A drag draws a round-capped line from the previous position, so a fast drag leaves no gaps.
@@ -56,6 +57,8 @@ export class MamMaskPaint extends LitElement {
   private last: Point | null = null;
   private cursor: Point = { x: 32, y: 32 };
   private builtFor = '';
+  /** The token of the overlay colour: it follows the brightness of the picture. */
+  private token = overlayToken(null);
 
   protected override createRenderRoot(): HTMLElement {
     return this;
@@ -115,6 +118,7 @@ export class MamMaskPaint extends LitElement {
     if (!g) return;
     g.imageSmoothingQuality = 'high';
     g.drawImage(img, 0, 0, this.picture.width, this.picture.height);
+    this.token = overlayToken(meanLuminance(this.picture));
   }
 
   /** Draws the mask to start from on the canvases: white (what the picture says is redrawn) becomes red on the view. */
@@ -179,9 +183,9 @@ export class MamMaskPaint extends LitElement {
     this.resize(this.view.width, this.view.height, this.builtFor);
   }
 
-  /** The colour of the overlay: the `--danger` token of the theme the widget is in. */
+  /** The colour of the overlay: the token that suits the picture (`--overlay-deep` or `--overlay-pale`). */
   private overlayColor(): string {
-    return getComputedStyle(this).getPropertyValue('--danger').trim();
+    return getComputedStyle(this).getPropertyValue(this.token).trim();
   }
 
   private pos(e: PointerEvent): Point {

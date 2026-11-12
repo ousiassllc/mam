@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 )
 
 // RoutesOf is the Builder.Routes of a Generator that can say which models a generation would run on and why (*generation.Orchestrator.RouteReports), nil for one that
@@ -56,7 +57,7 @@ func (p Plan) routesText() string {
 		if r.Media == "video" {
 			role = "動画（Quality Policy: " + r.Key + "）"
 		}
-		fmt.Fprintf(&b, "  - %s: %s（%s・%s）", role, r.Use.Model, r.Use.Route.Label(), r.Use.Basis.Label())
+		fmt.Fprintf(&b, "  - %s: %s（%s・%s）", role, modelreg.NameWithoutRoute(string(r.Use.Model)), r.Use.Route.Label(), r.Use.Basis.Label())
 		if why := passedText(r); why != "" {
 			b.WriteString("。" + why)
 		}
@@ -66,6 +67,16 @@ func (p Plan) routesText() string {
 		return ""
 	}
 	return "・現在の割当で使う見込みのモデルと経路（Shot ごとの入力や実行時の状況で変わることがあります）:\n" + b.String()
+}
+
+// namesImageRoutes is whether routesText already names the image models of the Reference Pack (with their route), so that the Reference Pack's line does not name them again.
+func (p Plan) namesImageRoutes() bool {
+	for _, r := range p.Routes {
+		if r.Media == "image" && r.Use != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // passedText says why the assignment's own model is not the one used ("" when it is).

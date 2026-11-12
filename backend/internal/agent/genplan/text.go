@@ -76,8 +76,13 @@ func (p Plan) packText() string {
 	for i, l := range pack {
 		nums[i] = l.Number
 	}
-	return fmt.Sprintf("・Reference Pack を作る Shot: %d 件（Shot %s）。画像モデル: %s。1 Shot あたり最大 %d 枚（何枚作るかは Art Director が実行時に決めます）\n",
-		len(pack), numbers(nums), p.PackImageModels, packImages)
+	// The models and their route are said once: below, in the list of routes, when the plan has one.
+	models := ""
+	if !p.namesImageRoutes() {
+		models = "。画像モデル: " + p.PackImageModels
+	}
+	return fmt.Sprintf("・Reference Pack を作る Shot: %d 件（Shot %s）%s。1 Shot あたり最大 %d 枚（何枚作るかは Art Director が実行時に決めます）\n",
+		len(pack), numbers(nums), models, packImages)
 }
 
 // videoGroups lists the Shots that share a video model, resolution and number of Takes, in the order of their first Shot.

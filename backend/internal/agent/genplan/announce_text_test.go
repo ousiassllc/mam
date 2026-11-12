@@ -69,12 +69,26 @@ func TestAnnounceText_NamesTheRouteOfEachModelAndWhyTheAssignmentWasPassedOver(t
 
 	assert.Contains(t, text, "現在の割当で使う見込みのモデルと経路")
 	assert.Contains(t, text, "実行時の状況で変わることがあります", "an expectation, not the model a Shot will use")
-	assert.Contains(t, text, "gpt-image-2.6-flare:chatgpt-subscription（"+modelreg.RouteSubscription.Label())
+	assert.Contains(t, text, "gpt-image-2.6-flare（"+modelreg.RouteSubscription.Label())
+	assert.NotContains(t, text, ":chatgpt-subscription", "the route is said by its label, not again by the suffix of the model")
 	assert.Contains(t, text, "gpt-image-2.6-flare＝API キーが登録されていません、nano-banana＝API キーが登録されていません", "which models of the assignment were passed over, and why")
 	assert.Contains(t, text, "品質で選んだものではありません")
 	assert.Contains(t, text, "seedance-2.0（"+modelreg.RouteAPI.Label())
 	assert.NotContains(t, text, "最高", "no claim of the best model")
 	assert.NotContains(t, text, "おすすめ")
+}
+
+// The models of the Reference Pack are told once: in the list of routes when the plan has one, on the Reference Pack's line when it has none.
+func TestAnnounceText_TheModelsOfTheReferencePackAreToldOnce(t *testing.T) {
+	lines := []genplan.Line{{ShotID: "s1", Number: 1, Pack: true}}
+	route := modelroute.RouteReport{Media: "image", Key: "new_reference", Use: &modelroute.Candidate{Model: "nano-banana", Route: modelreg.RouteAPI, Basis: modelreg.CostPriced}}
+
+	with := genplan.Plan{Lines: lines, PackImageModels: "nano-banana / nano-banana", Routes: []modelroute.RouteReport{route}}.AnnounceText()
+	without := genplan.Plan{Lines: lines, PackImageModels: "nano-banana / nano-banana"}.AnnounceText()
+
+	assert.Equal(t, 1, strings.Count(with, "nano-banana"), "named by the list of routes only")
+	assert.NotContains(t, with, "画像モデル:")
+	assert.Contains(t, without, "画像モデル: nano-banana / nano-banana", "named by the Reference Pack's line when there is no list")
 }
 
 func TestAnnounceText_WithoutRoutesNamesNone(t *testing.T) {

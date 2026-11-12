@@ -2,6 +2,7 @@ package planadvice_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -60,4 +61,32 @@ func TestFor_SaysWhatToDoWithTheDraftsWhenTheReasonTellsThem(t *testing.T) {
 
 	assert.Contains(t, planadvice.DraftNote(3), "3 件", "the note carries the number")
 	assert.NotContains(t, planadvice.For(plan(domain.JobFailed, noKeyReason), true), "draft", "no draft: the plain advice")
+}
+
+func TestWaiting_SaysAPlanJobQueuedForLongHasNotStarted(t *testing.T) {
+	now := time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC)
+	queued := func(age time.Duration) domain.Job {
+		return domain.Job{Kind: domain.JobPlan, Status: domain.JobQueued, CreatedAt: now.Add(-age)}
+	}
+
+	text := planadvice.Waiting(queued(95*time.Second), now)
+	assert.Contains(t, text, "まだ始まっていません")
+	assert.Contains(t, text, "95 秒", "how long it has waited")
+	assert.Contains(t, text, "「ジョブ」", "where to look")
+
+	assert.NotEmpty(t, planadvice.Waiting(queued(planadvice.QueuedAfter), now), "at the limit")
+	assert.Empty(t, planadvice.Waiting(queued(planadvice.QueuedAfter-time.Second), now), "a job that has not waited long is not alarming")
+}
+
+func TestWaiting_IsEmptyForAnyOtherJob(t *testing.T) {
+	now := time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC)
+	old := now.Add(-time.Hour)
+	for name, j := range map[string]domain.Job{
+		"running":      {Kind: domain.JobPlan, Status: domain.JobRunning, CreatedAt: old},
+		"failed":       {Kind: domain.JobPlan, Status: domain.JobFailed, CreatedAt: old},
+		"another kind": {Kind: domain.JobGenerate, Status: domain.JobQueued, CreatedAt: old},
+		"no time":      {Kind: domain.JobPlan, Status: domain.JobQueued},
+	} {
+		assert.Empty(t, planadvice.Waiting(j, now), name)
+	}
 }

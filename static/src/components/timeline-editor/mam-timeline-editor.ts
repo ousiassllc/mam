@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'lit';
+import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { appendAlert } from '../alert/alert';
@@ -24,7 +24,8 @@ import { showToast } from '../toast/toast';
 import '../video-player/mam-video-player';
 import { type EditTimelineBody, TIMELINE_RELOAD_EVENT, TIMELINE_UPDATED_EVENT } from './timeline-api';
 import { clipKey, renderClipRow } from './timeline-clip';
-import { focusMoved, focusRemoved, focusToolbar } from './timeline-focus';
+import { focusLoaded, focusMoved, focusRemoved, focusToolbar } from './timeline-focus';
+import { renderLoadFailed } from './timeline-load-failed';
 import { renderToolbar } from './timeline-toolbar';
 
 const log = createLogger('timeline-editor');
@@ -59,6 +60,7 @@ export class MamTimelineEditor extends LitElement {
   @state() private announce = '';
   /** The first load failed (the alert says why): there is nothing to show, and it is not "no Rough Cut yet". */
   @state() private loadFailed = false;
+  @state() private retrying = false; // the retry of a failed first load is under way
   @state() private busy = false;
   @state() private loaded = false;
   @state() private dragIndex = -1;
@@ -239,6 +241,14 @@ export class MamTimelineEditor extends LitElement {
     focusToolbar(this);
   }
 
+  /** "もう一度読み込む" of a failed first load: the alert says why when it fails once more. */
+  private async retry(): Promise<void> {
+    if (this.retrying) return;
+    this.retrying = true;
+    await this.load().finally(() => (this.retrying = false));
+    focusLoaded(this);
+  }
+
   private moveTo(from: number, to: number): void {
     const clip = this.clips[from];
     this.change(moveClip(this.clips, from, to));
@@ -259,8 +269,8 @@ export class MamTimelineEditor extends LitElement {
     if (!this.loaded) return html`<p class="text-sm text-mute" role="status">読み込み中…</p>`;
     const body = this.body;
     if (!body) {
-      // A failed first load is an alert in #alert-region and nothing here; only a 404 means "no Rough Cut yet".
-      if (this.loadFailed) return nothing;
+      // A failed first load says why in #alert-region; here is the way on. Only a 404 means "no Rough Cut yet".
+      if (this.loadFailed) return renderLoadFailed(this.retrying, () => void this.retry());
       return html`<p class="rounded-lg border border-dashed border-border p-6 text-sm text-mute" data-empty>
           Rough Cut がまだありません。各 Shot の採用 Take を選んでから「Rough Cut を作成」を押してください。
         </p>`;
