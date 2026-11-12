@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -125,15 +126,21 @@ func modelLike(name string) bool {
 }
 
 // hasModelToken reports whether a name holds a word of a model's name: an ASCII word with a letter and a digit ("R1", "o3", "32B") or with 3 or more letters ("Gemma"), or a katakana run of 2 or more
-// characters ("ミストラル", "ラマ"), once the names of languages and formats (genericWord) are taken out.
+// characters ("ミストラル", "ラマ"), once the names of languages and formats (genericWord) are taken out. A katakana run is full-width or half-width katakana ("ﾐｽﾄﾗﾙ") with the long vowel mark
+// 「ー」 (「ｰ」) and the voiced marks (「ﾞ」「ﾟ」) that belong to it ("ラー", "ﾗｰ", "ﾊﾞｰｼﾞｮﾝ"); a run that is only such marks ("ーー", "ｰｰ") holds no katakana and is no token.
 func hasModelToken(name string) bool {
 	for _, w := range modelToken.FindAllString(genericWord.ReplaceAllString(name, " "), -1) {
-		if strings.IndexFunc(w, unicode.IsLetter) >= 0 && (len(w) >= 3 || strings.IndexFunc(w, unicode.IsDigit) >= 0) {
+		switch {
+		case strings.IndexFunc(w, isKatakana) >= 0:
+			return true
+		case w[0] < utf8.RuneSelf && strings.IndexFunc(w, unicode.IsLetter) >= 0 && (len(w) >= 3 || strings.IndexFunc(w, unicode.IsDigit) >= 0):
 			return true
 		}
 	}
 	return false
 }
+
+func isKatakana(r rune) bool { return unicode.Is(unicode.Katakana, r) }
 
 var (
 	roleWord = regexp.MustCompile(`(?i)(fallback|代替|フォールバック|バックアップ)`)
@@ -147,7 +154,7 @@ var (
 	// (an ASCII run of letters and digits, or a katakana run of 2 or more characters: hasModelToken tells which are).
 	degreeWord  = regexp.MustCompile(`回|秒|分|個|つ|一緒|同様|設定|より|丁寧|速|遅|短|長`)
 	genericWord = regexp.MustCompile(`(?i)\b(?:English|Japanese|JSON|XML|YAML|Markdown)\b`)
-	modelToken  = regexp.MustCompile(`[A-Za-z0-9]+|[\p{Katakana}ー]{2,}`)
+	modelToken  = regexp.MustCompile(`[A-Za-z0-9]+|[\p{Katakana}ーｰﾞﾟ]{2,}`)
 )
 
 // roleOf is the role the sentence that asks says; a sentence with no role word takes the role from the clause just before it when that is a topic of the role ("Producer の代替は、LLM を Gemini に
@@ -157,6 +164,24 @@ func roleOf(sentence, before string) string {
 		return nlu.RoleOf(sentence)
 	}
 	return nlu.RoleOf(before)
+}
+
+// keepsAgent reports whether a clause leaves a whole Agent as it is ("Producer は据え置きで", "Producer は触らずに"): it has a word that keeps and no role word. A clause that keeps one role
+// ("Director の代替は残して") names the Agent whose other role is changed, so it is not one.
+func keepsAgent(clause string) bool {
+	return keepWord.MatchString(clause) && !roleWord.MatchString(clause)
+}
+
+// agentsOfRequest lists the Agents the clauses of a message name, but those a clause leaves as they are (keepsAgent): "Producer は据え置きで、LLM を GPT にして" names no Agent to change, so the
+// chat asks which, and never takes the Agent that is kept.
+func agentsOfRequest(clauses []string) []string {
+	var asked []string
+	for _, c := range clauses {
+		if !keepsAgent(c) {
+			asked = append(asked, c)
+		}
+	}
+	return nlu.AgentsIn(strings.Join(asked, "、"))
 }
 
 // detect reads "Director の LLM を Claude Opus にして" without the model, so that the LLM itself can be assigned while none is set up.
@@ -195,7 +220,7 @@ func detect(message string) []commandinterpreter.Operation {
 		}
 		if agents := nlu.AgentsIn(near); len(agents) == 1 {
 			a.Agent = agents[0]
-		} else if agents = nlu.AgentsIn(message); len(agents) == 1 {
+		} else if agents = agentsOfRequest(clauses); len(agents) == 1 {
 			a.Agent = agents[0]
 		}
 	}

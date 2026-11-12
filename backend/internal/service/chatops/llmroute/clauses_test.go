@@ -115,9 +115,9 @@ func TestDetect_TheAgentInAnotherClauseIsTheAgentOfTheOneRequest(t *testing.T) {
 		// the Agent is the one the clause before the request names ("Director は、"), though another Agent is named after or before it
 		"Producer のバックアップはそのまま。Director は、LLM を Claude Opus にして": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
 		"Director は、LLM を Claude Opus にして。Producer のバックアップはそのまま": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		// the Agent of a clause that keeps a route is not the one asked: two Agents are named, so the chat asks which (never Producer)
-		"Producer は据え置きで、LLM を Claude Opus にして、Director に": {Agent: "", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
-		"Producer は触らずに、LLM を Gemini にして。Director で":       {Agent: "", Role: "primary", Provider: "google", Model: "Gemini"},
+		// the Agent of a clause that keeps a route is not the one asked (#1144): the other Agent the message names is (never Producer)
+		"Producer は据え置きで、LLM を Claude Opus にして、Director に": {Agent: "director", Role: "primary", Provider: "anthropic", Model: "Claude Opus"},
+		"Producer は触らずに、LLM を Gemini にして。Director で":       {Agent: "director", Role: "primary", Provider: "google", Model: "Gemini"},
 		"Producer の代替は、Director の LLM を GPT にして":           {Agent: "director", Role: "fallback", Provider: "openai", Model: "GPT"},
 		"Art Director と Director は、LLM を Gemini にして":       {Agent: "", Role: "primary", Provider: "google", Model: "Gemini"}, // two Agents: the chat asks which
 	} {
