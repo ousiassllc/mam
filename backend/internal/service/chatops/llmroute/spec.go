@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -126,21 +125,15 @@ func modelLike(name string) bool {
 }
 
 // hasModelToken reports whether a name holds a word of a model's name: an ASCII word with a letter and a digit ("R1", "o3", "32B") or with 3 or more letters ("Gemma"), or a katakana run of 2 or more
-// characters ("ミストラル", "ラマ"), once the names of languages and formats (genericWord) are taken out. A katakana run is full-width or half-width katakana ("ﾐｽﾄﾗﾙ") with the long vowel mark
-// 「ー」 (「ｰ」) and the voiced marks (「ﾞ」「ﾟ」) that belong to it ("ラー", "ﾗｰ", "ﾊﾞｰｼﾞｮﾝ"); a run that is only such marks ("ーー", "ｰｰ") holds no katakana and is no token.
+// characters ("ミストラル", "ラマ"), once the names of languages and formats (genericWord) are taken out.
 func hasModelToken(name string) bool {
 	for _, w := range modelToken.FindAllString(genericWord.ReplaceAllString(name, " "), -1) {
-		switch {
-		case strings.IndexFunc(w, isKatakana) >= 0:
-			return true
-		case w[0] < utf8.RuneSelf && strings.IndexFunc(w, unicode.IsLetter) >= 0 && (len(w) >= 3 || strings.IndexFunc(w, unicode.IsDigit) >= 0):
+		if strings.IndexFunc(w, unicode.IsLetter) >= 0 && (len(w) >= 3 || strings.IndexFunc(w, unicode.IsDigit) >= 0) {
 			return true
 		}
 	}
 	return false
 }
-
-func isKatakana(r rune) bool { return unicode.Is(unicode.Katakana, r) }
 
 var (
 	roleWord = regexp.MustCompile(`(?i)(fallback|代替|フォールバック|バックアップ)`)
@@ -154,7 +147,7 @@ var (
 	// (an ASCII run of letters and digits, or a katakana run of 2 or more characters: hasModelToken tells which are).
 	degreeWord  = regexp.MustCompile(`回|秒|分|個|つ|一緒|同様|設定|より|丁寧|速|遅|短|長`)
 	genericWord = regexp.MustCompile(`(?i)\b(?:English|Japanese|JSON|XML|YAML|Markdown)\b`)
-	modelToken  = regexp.MustCompile(`[A-Za-z0-9]+|[\p{Katakana}ーｰﾞﾟ]{2,}`)
+	modelToken  = regexp.MustCompile(`[A-Za-z0-9]+|[\p{Katakana}ー]{2,}`)
 )
 
 // roleOf is the role the sentence that asks says; a sentence with no role word takes the role from the clause just before it when that is a topic of the role ("Producer の代替は、LLM を Gemini に
