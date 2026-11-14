@@ -1,0 +1,44 @@
+{
+ "id": "txt2video-wan22-vace-fun-14b", "label": "Wan 2.2 VACE Fun 14B: テキストから動画", "media": "video",
+ "description": "Wan 2.2 VACE Fun A14B（alibaba-pai/Wan2.2-VACE-Fun-A14B を Comfy-Org が fp8 にした wan2.2_fun_vace_high_noise_14B_fp8_scaled.safetensors と wan2.2_fun_vace_low_noise_14B_fp8_scaled.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、VAE wan_2.1_vae.safetensors）でテキストだけから動画を作る、標準ノードだけのワークフロー。Comfy 公式のテンプレートは無い（workflow_templates の VACE は Wan 2.1 のものだけ）ので、構造は Wan 2.2 14B T2V の公式テンプレートと Wan 2.1 VACE の公式テンプレートの組み合わせ（UNETLoader ×2 → ModelSamplingSD3 → WanVaceToVideo → 高ノイズ→低ノイズの KSamplerAdvanced ×2 → TrimVideoLatent → VAEDecode）、値はモデルの作者（aigc-apps/VideoX-Fun の公式ワークフロー・サンプル）に従う: shift 12・cfg 6・euler（作者の Flow スケジューラー）・高ノイズ→低ノイズの切り替えは境界 0.875。mam は 20 ステップにするので、境界 0.875 は shift 12 の ComfyUI の simple スケジュールで 13 ステップ目（steps × 0.65）になる。16fps。GPU では未実行（構造のテストのみ）。",
+ "model": {"media": "video", "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]}, "workflow": {
+  "prompt_weight": "weak",
+  "graph": {
+   "95": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_fun_vace_high_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
+   "96": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_fun_vace_low_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
+   "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+   "39": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+   "54": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 12, "model": ["95", 0]}},
+   "55": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 12, "model": ["96", 0]}},
+   "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+   "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+   "49": {"class_type": "WanVaceToVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1, "strength": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["39", 0]}},
+   "3": {"class_type": "KSamplerAdvanced", "inputs": {"add_noise": "enable", "noise_seed": 0, "steps": 20, "cfg": 6, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 0, "end_at_step": 13, "return_with_leftover_noise": "enable", "model": ["54", 0], "positive": ["49", 0], "negative": ["49", 1], "latent_image": ["49", 2]}},
+   "4": {"class_type": "KSamplerAdvanced", "inputs": {"add_noise": "disable", "noise_seed": 0, "steps": 20, "cfg": 6, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 13, "end_at_step": 10000, "return_with_leftover_noise": "disable", "model": ["55", 0], "positive": ["49", 0], "negative": ["49", 1], "latent_image": ["3", 0]}},
+   "58": {"class_type": "TrimVideoLatent", "inputs": {"samples": ["4", 0], "trim_amount": ["49", 3]}},
+   "8": {"class_type": "VAEDecode", "inputs": {"samples": ["58", 0], "vae": ["39", 0]}},
+   "68": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+   "60": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["68", 0]}}
+  },
+  "assignments": [
+   {"param": "prompt", "node": "6", "input": "text"},
+   {"param": "negative_prompt", "node": "7", "input": "text"},
+   {"param": "seed", "node": "3", "input": "noise_seed"},
+   {"param": "width", "node": "49", "input": "width"},
+   {"param": "height", "node": "49", "input": "height"},
+   {"param": "frames", "node": "49", "input": "length"},
+   {"param": "fps", "node": "68", "input": "fps"},
+   {"param": "steps", "node": "3", "input": "steps"},
+   {"param": "cfg", "node": "3", "input": "cfg"},
+   {"param": "sampler", "node": "3", "input": "sampler_name"},
+   {"param": "scheduler", "node": "3", "input": "scheduler"},
+   {"param": "steps", "node": "3", "input": "end_at_step", "ratio": 0.65},
+   {"param": "steps", "node": "4", "input": "steps"},
+   {"param": "cfg", "node": "4", "input": "cfg"},
+   {"param": "sampler", "node": "4", "input": "sampler_name"},
+   {"param": "scheduler", "node": "4", "input": "scheduler"},
+   {"param": "steps", "node": "4", "input": "start_at_step", "ratio": 0.65}
+  ],
+  "output_node": "60", "fps": 16, "frames_step": 4, "size_multiple": 16
+ }}
+}
