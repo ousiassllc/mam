@@ -24,7 +24,7 @@ func TestACatalogModelRunsWithTheSamplingItsAuthorRecommends(t *testing.T) {
 		"wai-illustrious-sdxl-v17": {25, 7, "euler_ancestral", "karras"},
 		"realvisxl-v50":            {30, 7, "dpmpp_sde", "karras"},
 		"cyberrealistic-pony-v18":  {30, 5, "dpmpp_2m", "karras"},
-		"cyberrealistic-xl-v10":    std, // the author's ranges contain the template's values
+		"cyberrealistic-xl-v10":    {30, 4, "dpmpp_2m_sde", "karras"},
 		"sdxl-base":                std,
 	} {
 		m, ok := c.Model(id)

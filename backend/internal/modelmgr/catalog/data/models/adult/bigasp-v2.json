@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": true, "speed": "standard"},
- "description": "【実写】写真風の成人向け画像に特化した SDXL チェックポイント（約 6.9 GB）。JoyTag のタグを理解し、自然文でも書ける（作者の例は「Photo of …」の書き出しと、ネガティブの low quality）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "description": "【実写】写真風の成人向け画像に特化した SDXL チェックポイント（約 6.9 GB）。JoyTag のタグを理解し、自然文でも書ける（作者の例は「Photo of …」の書き出しと、ネガティブの low quality）。作者（Civitai のページ）の推奨は DPM++ 2M SDE（または 3M SDE）・Karras か Exponential（Normal は崩れた絵になると警告）・40 ステップ・cfg 2 か 3（v1 よりずっと低い）。テンプレートは SDXL 標準だが、作者の推奨に合わせて 40 ステップ・cfg 2・DPM++ 2M SDE（dpmpp_2m_sde）で動かす（スケジューラーは karras のまま。cfg は「2 か 3」の先に書かれた 2。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
  "files": [
   {
    "name": "bigasp_v20.safetensors",
@@ -37,12 +37,22 @@
   {
    "name": "bigasp-v2",
    "template": "txt2img-sdxl",
-   "model_file": "bigasp_v20.safetensors"
+   "model_file": "bigasp_v20.safetensors",
+   "sampling": {
+    "steps": 40,
+    "cfg": 2,
+    "sampler": "dpmpp_2m_sde"
+   }
   },
   {
    "name": "bigasp-v2-img2img",
    "template": "img2img-sdxl",
-   "model_file": "bigasp_v20.safetensors"
+   "model_file": "bigasp_v20.safetensors",
+   "sampling": {
+    "steps": 40,
+    "cfg": 2,
+    "sampler": "dpmpp_2m_sde"
+   }
   }
  ]
 }

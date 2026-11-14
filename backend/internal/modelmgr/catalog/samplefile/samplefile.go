@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 )
 
 // Model is the model with the sampling values of s written in place of the ones its graph holds (the literal at the first assignment of
@@ -70,8 +71,37 @@ func Model(m localcfg.Model, s localcfg.SamplingSettings) (localcfg.Model, error
 	}
 	wf := *m.Workflow
 	wf.Graph = graph
+	if s.Steps != nil {
+		wf.QualityPresets = presetsAround(wf.QualityPresets, *s.Steps)
+	}
 	m.Workflow = &wf
 	return m, nil
+}
+
+// presetsAround is p without the steps of a preset that no longer lie on their side of the workflow's steps: the author's steps can reach or pass
+// the template's high ones (bigASP's 40), and then the "high" button would not be higher (localcfg refuses such a workflow). A preset left with
+// nothing is dropped, and a workflow left with no preset has no quality to choose. p is the template's and is not changed.
+func presetsAround(p *sampling.Presets, steps int) *sampling.Presets {
+	if p == nil {
+		return nil
+	}
+	trim := func(q *sampling.Preset, keep func(int) bool) *sampling.Preset {
+		if q == nil || q.Steps == nil || keep(*q.Steps) {
+			return q
+		}
+		if q.CFG == nil {
+			return nil
+		}
+		return &sampling.Preset{CFG: q.CFG}
+	}
+	out := &sampling.Presets{
+		Fast: trim(p.Fast, func(n int) bool { return n < steps }),
+		High: trim(p.High, func(n int) bool { return n > steps }),
+	}
+	if out.None() {
+		return nil
+	}
+	return out
 }
 
 // ptrAny is the value p points to, or nil (any, so that a nil pointer is "not given" and not a typed nil).

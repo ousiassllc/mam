@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": true, "speed": "standard"},
- "description": "【アニメ・イラスト】実写ではない。Pony 系の元になった SDXL チェックポイント（成人向け。約 6.9 GB）。プロンプトは score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, 描きたいこと、の形で書き、ネガティブはほとんど要らない（作者の説明）。作者は clip skip 2 で読み込むよう求めるため、clip skip 2 のテンプレートを使う。参照画像からの画像（img2img）にも使える。",
+ "description": "【アニメ・イラスト】実写ではない。Pony 系の元になった SDXL チェックポイント（成人向け。約 6.9 GB）。プロンプトは score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, 描きたいこと、の形で書き、ネガティブはほとんど要らない（作者の説明）。作者は clip skip 2 で読み込むよう求めるため、clip skip 2 のテンプレートを使う。作者（Civitai のページ）の推奨は Euler a・25 ステップ・解像度 1024px で、テンプレートは 25 ステップなので、作者の推奨に合わせて Euler a（euler_ancestral）で動かす（cfg とスケジューラーは作者が書いていないので標準の cfg 7・karras のまま。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
  "files": [
   {
    "name": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors",
@@ -37,12 +37,18 @@
   {
    "name": "pony-diffusion-v6-xl",
    "template": "txt2img-sdxl-clipskip2",
-   "model_file": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors"
+   "model_file": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors",
+   "sampling": {
+    "sampler": "euler_ancestral"
+   }
   },
   {
    "name": "pony-diffusion-v6-xl-img2img",
    "template": "img2img-sdxl-clipskip2",
-   "model_file": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors"
+   "model_file": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors",
+   "sampling": {
+    "sampler": "euler_ancestral"
+   }
   }
  ]
 }

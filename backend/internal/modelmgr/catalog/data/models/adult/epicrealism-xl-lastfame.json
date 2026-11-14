@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
- "description": "【実写】フォトリアル向けの定番 SDXL チェックポイント epiCRealism XL の VXVI「LastFAME（Realism++）」（成人向け。約 6.9 GB）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。最新の Pure_fix は同じ SHA-256 のミラーが見つからず入れていない。",
+ "description": "【実写】フォトリアル向けの定番 SDXL チェックポイント epiCRealism XL の VXVI「LastFAME（Realism++）」（成人向け。約 6.9 GB）。作者（Civitai の LastFAME の版の説明）が書く推奨は CFG 2〜5（高いほど作風が強く芸術的）だけで、ステップ数とサンプラーは書いていない。テンプレートは SDXL 標準だが、作者の推奨に合わせて cfg 3.5（2〜5 の中間）で動かす（25 ステップ・dpmpp_2m/karras は標準のまま。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。最新の Pure_fix は同じ SHA-256 のミラーが見つからず入れていない。",
  "files": [
   {
    "name": "epicrealismXL_vxviLastfameRealism.safetensors",
@@ -37,12 +37,18 @@
   {
    "name": "epicrealism-xl-lastfame",
    "template": "txt2img-sdxl",
-   "model_file": "epicrealismXL_vxviLastfameRealism.safetensors"
+   "model_file": "epicrealismXL_vxviLastfameRealism.safetensors",
+   "sampling": {
+    "cfg": 3.5
+   }
   },
   {
    "name": "epicrealism-xl-lastfame-img2img",
    "template": "img2img-sdxl",
-   "model_file": "epicrealismXL_vxviLastfameRealism.safetensors"
+   "model_file": "epicrealismXL_vxviLastfameRealism.safetensors",
+   "sampling": {
+    "cfg": 3.5
+   }
   }
  ]
 }

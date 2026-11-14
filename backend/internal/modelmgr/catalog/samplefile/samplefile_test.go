@@ -53,3 +53,34 @@ func TestModelRefusesWhatTheWorkflowCannotTake(t *testing.T) {
 		assert.Error(t, err, name)
 	}
 }
+
+// The author's steps can reach the template's high ones: the "high" button must not stay at or below the workflow's steps (localcfg refuses
+// that), and the buttons that still lie on their side stay. The template is not changed.
+func TestModelDropsAQualityPresetThatIsNoLongerOnItsSide(t *testing.T) {
+	base := templateModel(t, "txt2img-sdxl")
+	require.Equal(t, 15, *base.Workflow.QualityPresets.Fast.Steps)
+	require.Equal(t, 40, *base.Workflow.QualityPresets.High.Steps)
+
+	for name, tc := range map[string]struct {
+		steps      int
+		fast, high bool
+	}{
+		"between the presets": {30, true, true},
+		"as high as the high": {40, true, false},
+		"above the high":      {45, true, false},
+		"as low as the fast":  {15, false, true},
+		"below the fast":      {10, false, true},
+	} {
+		m, err := samplefile.Model(base, localcfg.SamplingSettings{Steps: &tc.steps})
+		require.NoError(t, err, name)
+		p := m.Workflow.QualityPresets
+		assert.Equal(t, tc.fast, p != nil && p.Fast != nil, name+": fast")
+		assert.Equal(t, tc.high, p != nil && p.High != nil, name+": high")
+		assert.Empty(t, localcfg.ValidateSaved(m), name)
+	}
+	assert.Equal(t, 40, *base.Workflow.QualityPresets.High.Steps, "the template is not changed")
+
+	m, err := samplefile.Model(base, localcfg.SamplingSettings{Sampler: "euler_ancestral"})
+	require.NoError(t, err)
+	assert.Equal(t, base.Workflow.QualityPresets, m.Workflow.QualityPresets, "steps not named, presets untouched")
+}
