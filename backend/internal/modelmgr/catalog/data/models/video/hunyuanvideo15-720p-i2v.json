@@ -12,9 +12,7 @@
   "uncensored": false,
   "speed": "slow",
   "quality": "high",
-  "video_modes": [
-   "i2v"
-  ]
+  "video_modes": ["i2v"]
  },
  "description": "【中ティア・非検閲ではない標準モデル】HunyuanVideo 1.5（8.3B）の 720p の先頭フレームから動画（cfg 蒸留版の fp8、約 8.3 GB）。拡散モデル・テキストエンコーダー 2 つ・CLIP Vision（sigclip、約 0.86 GB）・VAE で合計約 21.5 GB（テキストエンコーダーと VAE は hunyuanvideo15-480p と共有）。24fps・音声なし・1280×720 の 121 フレーム。得意: 1 枚の絵から高解像度で動かす（8.3 GB の fp8 なので 16 GB の GPU にも載りやすい）。注意: 公式のテンプレートは cfg 蒸留でない fp16・cfg 6 だが、mam は蒸留版の fp8 を cfg 1 で使う（既存の 480p の蒸留版と同じ推定値で、mam の実機では未検証）。テキストだけから作るのは hunyuanvideo15-720p-t2v。ライセンス: Tencent Hunyuan Community License。EU・英国・韓国では使えない（導入しない）。月間アクティブユーザーが 1 億を超える製品は Tencent の許諾が要る。生成物を他の AI モデルの改良に使うことは禁止。macOS（Apple Silicon）は未確認で、Windows（NVIDIA）のみ。同意が要る（導入時に確認）。",
  "files": [

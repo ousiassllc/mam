@@ -9,9 +9,7 @@
   "params_label": "14B",
   "uncensored": true,
   "speed": "slow",
-  "video_modes": [
-   "t2v"
-  ]
+  "video_modes": ["t2v"]
  },
  "description": "【中（〜14B）・T2V・音声なし】eddy1111111 の WAN22.XX Palingenesis（Wan 2.2 T2V 14B の微調整の最終版。高ノイズ用・低ノイズ用の fp8）に、非検閲のテキストエンコーダー（NSFW-Wan-UMT5-XXL。rzgar が ComfyUI の標準の形式に直した bf16 版）を組み合わせた構成（成人向け）。得意: 公式の Wan 2.2 T2V（wan22-t2v-14b）と同じ組み立てで、成人向けの語彙も読めるテキストエンコーダーに替えた中ティアの T2V（拡散モデル各約 14.5 GB・テキストエンコーダー約 11.4 GB・VAE を合わせて約 40.7 GB）。注意: Palingenesis 自体は NSFW 専用のマージではなく品質の微調整で（作者のカードは画像とワークフローへのリンクだけで説明が無い）、非検閲にしているのはテキストエンコーダー。成人向けの動きは別の LoRA を併用する前提。作者が同梱するテキストエンコーダー（fp8_fully_uncensored）は元の Wan の形式（blocks.N.attn.*）で ComfyUI の標準の CLIPLoader が認識しないため使わず、標準の形式（encoder.block.N.layer.*）で配られている rzgar のものを使う。作者の同梱のワークフローは WanVideoWrapper（カスタムノード）用で、推奨のサンプラー値は一次情報に無いので、公式の値（20 ステップ・euler/simple・cfg 3.5）を使う。16 GB の GPU では、高ノイズ→低ノイズの入れ替えとテキストエンコーダーのオフロードが前提で遅い。ライセンスはカードが Apache-2.0 と宣言するだけで本文も微調整の説明も無いため、商用利用の可否は「不明」（商用には使わない）。macOS（Apple Silicon）は未確認（Windows（NVIDIA）を想定。拡散モデルが fp8 のため動かない可能性はある）。",
  "files": [

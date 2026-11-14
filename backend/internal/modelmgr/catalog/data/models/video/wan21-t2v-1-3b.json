@@ -10,9 +10,7 @@
   "uncensored": false,
   "speed": "fast",
   "quality": "standard",
-  "video_modes": [
-   "t2v"
-  ]
+  "video_modes": ["t2v"]
  },
  "description": "【小ティア・非検閲ではない標準モデル】Wan 2.1 の公式の軽量 T2V（テキストから動画。1.3B）。拡散モデル（fp16、約 2.8 GB）・テキストエンコーダー（fp8、約 6.7 GB、他の Wan と共有）・VAE（他の Wan と共有）の合計約 9.8 GB。480p・16fps・音声なし。得意: 試し・プレビュー向きの軽さと速さ（公式は 8.19 GB の VRAM で動くと書き、RTX 4090 で 5 秒の 480P が約 4 分）。注意: 品質は 14B の Wan 2.2 より落ちる。720p でも作れるが、公式は学習が少なく不安定と書くので 480p のみにした。先頭フレームは使わない。Wan 2.1 の VAE（wan_2.1_vae）は Wan 2.2 の 14B と共有し、5B（wan2.2_vae）とは別。ライセンス: Apache-2.0 で商用を含めて自由に使える。",
  "files": [
