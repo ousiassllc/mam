@@ -208,6 +208,9 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | `nsfw-wan21-14b-t2v` | `t2v` | 文字だけ |
 | `nsfw-wan21-1b3-t2v` | `t2v` | 文字だけ |
 | `hunyuanvideo-t2v-nsfw-lora` | `t2v` | 文字だけ |
+| `skyreels-v2-i2v-1-3b-540p` | `i2v` | 先頭フレームが要る |
+| `ltxv-13b-0.9.8-distilled` | `t2v`・`i2v` | T2V と I2V のワークフロー |
+| `wan22-vace-fun-14b` | `t2v`・`vace`・`r2v` | 文字だけ（`t2v`）と参照画像（`r2v`）の 2 ワークフロー。VACE の系統 |
 
 ### 4.2 v1 のモデル
 
