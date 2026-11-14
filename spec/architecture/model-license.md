@@ -51,6 +51,7 @@
 - **2026-11-03**: `qwen-image-edit-2511`・`sdxl-controlnet-canny`・`sdxl-ipadapter-plus`・`upscale-*` の 3 つ、成人向けのモデル 14 件（#984。`realvisxl-v50` から `qwen-image-21-uncensored-int8` まで）、非検閲の動画 7 件（#1012。`nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b`・`wan22-ti2v-5b-cowgirl-lora`・`wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v`・`wan22-t2v-14b-mystic-xxx-lora`・`hunyuanvideo-t2v-nsfw-lora`。上の `wan22-*` の 2026-11-02 の分には含まない）。
 - **2026-11-04**（#1028）: 非検閲の動画の 15 件すべて（上の 13 件に `nsfw-wan21-14b-t2v`・`wan22-t2v-14b-palingenesis` を足した分）を一次の情報（カードの `license:`・LICENSE 本文・ベースモデルのカード）で見直した。答えが変わったのは `nsfw-anime-wan22-5b`（不明 → 商用OK。注意つき。LICENSE の本文がある）だけ。それ以外は不明のまま（カードの宣言だけで本文が無いもの、混ぜた・焼き込んだ LoRA、ライセンスの記載が無い LoRA）。
 - **2026-11-04**（#1031。モデルごとの JSON の `checked_at` も 2026-11-04）: 動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`・`rife-v4.25`・`rife-v4.26`。配布元のモデルカード・LICENSE・README を読んだ（SeedVR2 は `ByteDance-Seed/SeedVR2-3B` と再配布の `Comfy-Org/SeedVR2` のカード、RIFE は `hzwer/Practical-RIFE` の LICENSE と README と再配布の `Comfy-Org/Frame-Interpolation` のカード）。Issue #1031 の調査で商用NGとされた Upscale-A-Video・GIMM-VFI・4x-UltraSharp は、カタログに載せない（mam はこの 3 件の原文を読み直していない）。
+- **2026-11-14**（#1014。モデルごとの JSON の `checked_at` も 2026-11-14）: 標準の動画 3 件。`skyreels-v2-i2v-1-3b-540p`（不明。カードは `license: other`＝`skywork-license`、HF の LICENSE は 0 バイト）・`wan22-vace-fun-14b`（商用OK。Apache-2.0）・`ltxv-13b-0.9.8-distilled`（条件つき。LTXV Open Weights License 0.X の第 2 条）。配布元のカードと LICENSE 本文を読んだ。
 
 | モデル | 答え | 根拠（一次情報） |
 |---|---|---|
@@ -184,3 +185,4 @@
 | 1.20 | 2026-11-06 | §4 の「モデルマネージャー: 試し生成」の行を消した（試し生成の区画の廃止。生成テストの行は変えない。状態は仕様のみ） | Issue #1100 |
 | 1.21 | 2026-11-08 | §5 に、生成が既定の割り当ての代わりにモデルを選ぶときのライセンスの条件を足した | Issue #1113 |
 | 1.22 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.23 | 2026-11-14 | §3 の表に動画 3 件（`skyreels-v2-i2v-1-3b-540p`・`wan22-vace-fun-14b`・`ltxv-13b-0.9.8-distilled`）の答えを足した | Issue #1014 |
