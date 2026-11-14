@@ -35,11 +35,13 @@ var std = run{25, 7, "dpmpp_2m", "karras"} // txt2img-sdxl and img2img-sdxl, and
 
 // The author's values were read at the primary source on 2026-11-14 (the model-manager spec, the adult SDXL section, has the URLs).
 var adultSDXL = map[string]recommendation{
+	// The four of the earlier work (d68f59a7) keep the values they were saved with: the middle of the author's range where the template's value is
+	// outside it (cfg 5.5 of 5 to 6, 30 steps of "30 or more"). That is a guess the ten below do not make; it stays open (see the spec).
+	"noobai-xl-v11":            {&localcfg.SamplingSettings{CFG: new(5.5), Sampler: "euler_ancestral"}, run{25, 5.5, "euler_ancestral", "karras"}},
+	"wai-illustrious-sdxl-v17": {&localcfg.SamplingSettings{Sampler: "euler_ancestral"}, run{25, 7, "euler_ancestral", "karras"}},
+	"realvisxl-v50":            {&localcfg.SamplingSettings{Steps: new(30), Sampler: "dpmpp_sde"}, run{30, 7, "dpmpp_sde", "karras"}},
+	"cyberrealistic-pony-v18":  {&localcfg.SamplingSettings{Steps: new(30), CFG: new(5.0)}, run{30, 5, "dpmpp_2m", "karras"}},
 	// Stated by the author as a single value (the first of "A or B", the value for "everything else" where the cfg is given per use).
-	"noobai-xl-v11":               {&localcfg.SamplingSettings{Sampler: "euler_ancestral"}, run{25, 7, "euler_ancestral", "karras"}},
-	"wai-illustrious-sdxl-v17":    {&localcfg.SamplingSettings{Sampler: "euler_ancestral"}, run{25, 7, "euler_ancestral", "karras"}},
-	"realvisxl-v50":               {&localcfg.SamplingSettings{Sampler: "dpmpp_sde"}, run{25, 7, "dpmpp_sde", "karras"}},
-	"cyberrealistic-pony-v18":     {&localcfg.SamplingSettings{CFG: new(5.0)}, run{25, 5, "dpmpp_2m", "karras"}},
 	"bigasp-v2":                   {&localcfg.SamplingSettings{Steps: new(40), CFG: new(2.0), Sampler: "dpmpp_2m_sde"}, run{40, 2, "dpmpp_2m_sde", "karras"}},
 	"cyberrealistic-xl-v10":       {&localcfg.SamplingSettings{Sampler: "dpmpp_2m_sde"}, run{25, 7, "dpmpp_2m_sde", "karras"}},
 	"juggernaut-xl-ragnarok":      {&localcfg.SamplingSettings{Steps: new(30), CFG: new(6.0), Sampler: "dpmpp_2m_sde"}, run{30, 6, "dpmpp_2m_sde", "karras"}},
