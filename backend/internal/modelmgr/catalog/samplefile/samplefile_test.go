@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/samplefile"
 )
 
@@ -83,4 +84,28 @@ func TestModelDropsAQualityPresetThatIsNoLongerOnItsSide(t *testing.T) {
 	m, err := samplefile.Model(base, localcfg.SamplingSettings{Sampler: "euler_ancestral"})
 	require.NoError(t, err)
 	assert.Equal(t, base.Workflow.QualityPresets, m.Workflow.QualityPresets, "steps not named, presets untouched")
+}
+
+// A preset whose steps the author's steps passed keeps the cfg it has (the buttons still differ in cfg), and one left with nothing is dropped; the
+// workflow left with no preset has no quality to choose. A preset set made for the test, so that the template's cfg values do not matter.
+func TestModelKeepsTheCFGOfAPresetWhoseStepsAreDropped(t *testing.T) {
+	steps, cfg := 40, 7.0
+	base := templateModel(t, "txt2img-sdxl")
+	withPresets := func(p *sampling.Presets) localcfg.Model {
+		wf := *base.Workflow
+		wf.QualityPresets = p
+		m := base
+		m.Workflow = &wf
+		return m
+	}
+
+	m, err := samplefile.Model(withPresets(&sampling.Presets{High: &sampling.Preset{Steps: &steps, CFG: &cfg}}), localcfg.SamplingSettings{Steps: &steps})
+	require.NoError(t, err)
+	require.NotNil(t, m.Workflow.QualityPresets)
+	assert.Equal(t, &sampling.Preset{CFG: &cfg}, m.Workflow.QualityPresets.High, "the steps are dropped, the cfg stays")
+	assert.Nil(t, m.Workflow.QualityPresets.Fast)
+
+	m, err = samplefile.Model(withPresets(&sampling.Presets{High: &sampling.Preset{Steps: &steps}}), localcfg.SamplingSettings{Steps: &steps})
+	require.NoError(t, err)
+	assert.Nil(t, m.Workflow.QualityPresets, "a preset with nothing left is dropped, and so are the presets with it")
 }
