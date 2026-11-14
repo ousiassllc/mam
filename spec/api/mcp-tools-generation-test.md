@@ -51,6 +51,8 @@
 | `get_facefusion_status` | 顔の入れ替え（FaceFusion。mam に同梱しない外部ツール）の状態（Issue #995。[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md)）。`ready`（Python とフォルダが見つかった）・保存したパスと探した結果・FaceFusion の版と自己申告のライセンス・探した場所・選べるモデル（`swappers`・`detectors`・`enhancers`。それぞれ `class`: open / conditional / noncommercial / research / unknown とライセンス名）・既定・標準の注意 `notes`（ArcFace が非商用・成人向けの画像は断られる・本体は OpenRAIL-AS・モデルは FaceFusion が取得する）・出典の URL |
 | `swap_generation_face` | `target`（顔を入れ替えられる側の画像）の顔を `face`（顔の画像）の顔に入れ替える（Issue #995）。`{source, id}` で指す。任意の `swapper`・`detector`・`enhancer`（既定 ghost_2_256・yunet・gfpgan_1.4。`none` で復元しない）。結果は別の結果（`model: facefusion`）で、`face_swap`（元の結果・モデル・ライセンスの警告）と `face_similarity` が付く。見積り・確認なし。非商用・研究用・商用不明のモデルは `warnings` で知らせて実行する。FaceFusion が見つからないときは `unavailable`（`failure.code` が `facefusion_unavailable`）、未知のモデルは `validation`。`job_id`・`batch_id`・`result_id`・`warnings` |
 
+**動画モデルの種類 `video_modes`（Issue #1014）**: `list_generation_models` の入力に `video_modes[]`（`t2v`・`i2v`・`flf2v`・`vace`・`s2v`・`r2v` のどれか。モデルマネージャーのカタログに種類が書いてあるローカルの動画モデルだけが入る。クラウドの動画モデル・画像モデルは種類を持たないので、指定すると出ない。言葉が不正なら `validation`）を足した。モデルの `catalog.traits.video_modes[]` が種類（カタログのモデルだけ）。画面の動画モデルの選択（単発生成・設定・Shot）の「動画の種類」の欄と同じ条件で、意味は [model-filter.md](../architecture/model-manager/model-filter.md)。
+
 ### アップロードの用途とダウンロードの種類
 
 | 種類 | 名前 | 内容 |
@@ -212,3 +214,4 @@
 | 1.33 | 2026-11-06 | `gpt_image`（GPT Image 2.6 の複雑さ・GIF / SVG）と `references[].role` の `markup` を足し、`list_generation_models` に `gpt_image`・`gpt_image_unsupported` を足した | Issue #1096 |
 | 1.34 | 2026-11-06 | `get_job` の種別 `gentest` の説明から、モデルマネージャーの試し生成を外した（区画の廃止。ツール・引数は変えない。状態は仕様のみ） | Issue #1100 |
 | 1.35 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.36 | 2026-11-14 | `list_generation_models` の入力に `video_modes[]`、モデルの `catalog.traits.video_modes[]` を足した（Issue #1014） | Issue #1014・#1011 |
