@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
- "description": "【実写】フォトリアル向けの SDXL チェックポイント（約 8.7 GB で、ほかの SDXL より大きい）。成人向けの画像も作れるため成人向けに分類する（作者は成人向けに特化したとは書いていない）。作者（Civitai のページの v3.0 の項）の推奨は DPM++ 2M SDE Karras・30〜35 ステップ・cfg 5.5〜7・1024×1536。テンプレートは SDXL 標準だが、作者の推奨に合わせて 30 ステップ（範囲の下限）・DPM++ 2M SDE（dpmpp_2m_sde）で動かす（cfg 7 とスケジューラー karras は作者の範囲内なのでそのまま。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
+ "description": "【実写】フォトリアル向けの SDXL チェックポイント（約 8.7 GB で、ほかの SDXL より大きい）。成人向けの画像も作れるため成人向けに分類する（作者は成人向けに特化したとは書いていない）。作者（Civitai のページの v3.0 の項）の推奨は DPM++ 2M SDE Karras・30〜35 ステップ・cfg 5.5〜7・1024×1536。テンプレートは SDXL 標準だが、作者の推奨に合わせて DPM++ 2M SDE（dpmpp_2m_sde）で動かす（ステップ数は 30〜35、cfg は 5.5〜7 の範囲で単一の値ではないので、標準の 25 ステップ・cfg 7 のまま〔cfg 7 は作者の範囲内〕。スケジューラー karras は作者と同じ。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
  "files": [
   {
    "name": "thisisrealSDXL_v3.safetensors",
@@ -39,7 +39,6 @@
    "template": "txt2img-sdxl",
    "model_file": "thisisrealSDXL_v3.safetensors",
    "sampling": {
-    "steps": 30,
     "sampler": "dpmpp_2m_sde"
    }
   },
@@ -48,7 +47,6 @@
    "template": "img2img-sdxl",
    "model_file": "thisisrealSDXL_v3.safetensors",
    "sampling": {
-    "steps": 30,
     "sampler": "dpmpp_2m_sde"
    }
   }

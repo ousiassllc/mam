@@ -24,7 +24,8 @@ type run struct {
 
 // recommendation is what the catalog says about one adult SDXL checkpoint. sampling is what the workflows carry (nil: nothing, because the author
 // states nothing, or because the template already is what the author states); run is what the saved graph holds in the end. Only what the author
-// states goes into sampling: a value of the template inside the author's range stays the template's.
+// states as one number goes into sampling (a range is not one: "30 or more", "5 to 6" and the like are left to the template, and so is a value of
+// the template inside the author's range).
 type recommendation struct {
 	sampling *localcfg.SamplingSettings
 	run      run
@@ -34,23 +35,24 @@ var std = run{25, 7, "dpmpp_2m", "karras"} // txt2img-sdxl and img2img-sdxl, and
 
 // The author's values were read at the primary source on 2026-11-14 (the model-manager spec, the adult SDXL section, has the URLs).
 var adultSDXL = map[string]recommendation{
-	// Stated by the author. Where the author gives a range the middle goes in, where the template's value is inside the range it stays.
-	"noobai-xl-v11":               {&localcfg.SamplingSettings{CFG: new(5.5), Sampler: "euler_ancestral"}, run{25, 5.5, "euler_ancestral", "karras"}},
+	// Stated by the author as a single value (the first of "A or B", the value for "everything else" where the cfg is given per use).
+	"noobai-xl-v11":               {&localcfg.SamplingSettings{Sampler: "euler_ancestral"}, run{25, 7, "euler_ancestral", "karras"}},
 	"wai-illustrious-sdxl-v17":    {&localcfg.SamplingSettings{Sampler: "euler_ancestral"}, run{25, 7, "euler_ancestral", "karras"}},
-	"realvisxl-v50":               {&localcfg.SamplingSettings{Steps: new(30), Sampler: "dpmpp_sde"}, run{30, 7, "dpmpp_sde", "karras"}},
-	"cyberrealistic-pony-v18":     {&localcfg.SamplingSettings{Steps: new(30), CFG: new(5.0)}, run{30, 5, "dpmpp_2m", "karras"}},
+	"realvisxl-v50":               {&localcfg.SamplingSettings{Sampler: "dpmpp_sde"}, run{25, 7, "dpmpp_sde", "karras"}},
+	"cyberrealistic-pony-v18":     {&localcfg.SamplingSettings{CFG: new(5.0)}, run{25, 5, "dpmpp_2m", "karras"}},
 	"bigasp-v2":                   {&localcfg.SamplingSettings{Steps: new(40), CFG: new(2.0), Sampler: "dpmpp_2m_sde"}, run{40, 2, "dpmpp_2m_sde", "karras"}},
-	"cyberrealistic-xl-v10":       {&localcfg.SamplingSettings{Steps: new(30), CFG: new(4.0), Sampler: "dpmpp_2m_sde"}, run{30, 4, "dpmpp_2m_sde", "karras"}},
-	"epicrealism-xl-lastfame":     {&localcfg.SamplingSettings{CFG: new(3.5)}, run{25, 3.5, "dpmpp_2m", "karras"}},
+	"cyberrealistic-xl-v10":       {&localcfg.SamplingSettings{Sampler: "dpmpp_2m_sde"}, run{25, 7, "dpmpp_2m_sde", "karras"}},
 	"juggernaut-xl-ragnarok":      {&localcfg.SamplingSettings{Steps: new(30), CFG: new(6.0), Sampler: "dpmpp_2m_sde"}, run{30, 6, "dpmpp_2m_sde", "karras"}},
 	"pony-diffusion-v6-xl":        {&localcfg.SamplingSettings{Sampler: "euler_ancestral"}, run{25, 7, "euler_ancestral", "karras"}},
-	"realism-sdxl-stable-yogi-v8": {&localcfg.SamplingSettings{Steps: new(27), CFG: new(4.5), Sampler: "dpmpp_sde"}, run{27, 4.5, "dpmpp_sde", "karras"}},
-	"thisisreal-sdxl-v3":          {&localcfg.SamplingSettings{Steps: new(30), Sampler: "dpmpp_2m_sde"}, run{30, 7, "dpmpp_2m_sde", "karras"}},
+	"realism-sdxl-stable-yogi-v8": {&localcfg.SamplingSettings{Steps: new(27), Sampler: "dpmpp_sde"}, run{27, 7, "dpmpp_sde", "karras"}},
+	"thisisreal-sdxl-v3":          {&localcfg.SamplingSettings{Sampler: "dpmpp_2m_sde"}, run{25, 7, "dpmpp_2m_sde", "karras"}},
 	// The template of the Lightning model already is the author's (5 steps, cfg 1 to 2, DPM++ SDE Karras), so there is nothing to put on top.
 	"realvisxl-v50-lightning": {nil, run{5, 1.5, "dpmpp_sde", "karras"}},
-	// The author states no value (Civitai page and version notes, 2026-11-14): the model runs with the template's, and a value must not be invented.
-	"big-lust-v16":           {nil, std},
-	"lustify-sdxl-zenith-v9": {nil, std},
+	// The author states no single value (Civitai page and version notes, 2026-11-14; epiCRealism gives the cfg as the range 2 to 5 only): the model
+	// runs with the template's, and a value must not be invented.
+	"big-lust-v16":            {nil, std},
+	"lustify-sdxl-zenith-v9":  {nil, std},
+	"epicrealism-xl-lastfame": {nil, std},
 }
 
 // isSDXLCheckpoint says the template is one of the SDXL checkpoint ones (txt2img/img2img, clip skip 2, Lightning).
@@ -147,7 +149,7 @@ func TestAdultSDXLSamplingNamesAreOnesComfyUIHas(t *testing.T) {
 // table above is the place to change it together with the source in the spec.
 func TestAdultSDXLModelsWithoutAStatedRecommendationCarryNoSampling(t *testing.T) {
 	c := catalog.Default()
-	for _, id := range []string{"big-lust-v16", "lustify-sdxl-zenith-v9", "realvisxl-v50-lightning"} {
+	for _, id := range []string{"big-lust-v16", "lustify-sdxl-zenith-v9", "epicrealism-xl-lastfame", "realvisxl-v50-lightning"} {
 		m, ok := c.Model(id)
 		require.True(t, ok, id)
 		for _, w := range m.Workflows {
