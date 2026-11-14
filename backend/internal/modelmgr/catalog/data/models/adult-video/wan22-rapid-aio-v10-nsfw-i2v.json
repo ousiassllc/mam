@@ -8,7 +8,10 @@
   "params_b": 14,
   "params_label": "14B",
   "uncensored": true,
-  "speed": "fast"
+  "speed": "fast",
+  "video_modes": [
+   "i2v"
+  ]
  },
  "description": "【中（〜14B）・I2V・音声なし・作者のメンテ終了】Phr00t の WAN2.2 Rapid AllInOne の I2V v10 NSFW（成人向け）。Wan 2.2 14B の I2V と Wan 系のモデルに、加速 LoRA（Lightning・LightX2V）と多数の成人向け LoRA を低い強さでマージし、モデル・テキストエンコーダー・VAE を 1 つにした fp8 のチェックポイント（約 23.4 GB・1 ファイル）。得意: 4 ステップ・cfg 1・euler_ancestral/beta という作者の推奨設定で速く、「何でもそこそこ」の手軽な非検閲 I2V（先頭フレーム 1 枚から作る）。既存の wan22-rapid-mega-nsfw-t2v（Mega 版の T2V）とは別のファイルで、こちらは I2V 専用の旧系統（v10）。16fps。作者は 8 GB の VRAM でも動くと書く（4 ステップ）が、mam の想定は 16 GB の GPU。注意: 作者は「メンテはもうしておらず、これらのモデルは非推奨（deprecated）」と書く。作者は v10 の I2V が、動画が進むほど先頭の画像から離れ、プロンプトの場面へズームしやすいと書く。Mega 版の I2V・最初から最後のフレームの指定は、カスタムノード（WanVideoVACEStartToEndFrame）が要るので載せていない。ライセンスはカードが Apache-2.0 と宣言するだけで、マージした成人向け LoRA の出所・ライセンスが確かめられないため、商用利用の可否は不明。macOS（Apple Silicon）は未確認（fp8 のチェックポイントで、mam では動作の報告を確かめていない）。",
  "files": [

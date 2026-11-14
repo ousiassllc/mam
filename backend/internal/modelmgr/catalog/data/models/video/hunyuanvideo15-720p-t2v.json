@@ -11,7 +11,10 @@
   "params_label": "8.3B",
   "uncensored": false,
   "speed": "slow",
-  "quality": "high"
+  "quality": "high",
+  "video_modes": [
+   "t2v"
+  ]
  },
  "description": "【中ティア・非検閲ではない標準モデル】HunyuanVideo 1.5（8.3B）の 720p のテキストから動画（hunyuanvideo15-480p の上位）。拡散モデル（fp16、約 16.7 GB。720p の T2V は fp16 しか配布されていない）・テキストエンコーダー 2 つ・VAE（この 3 つは hunyuanvideo15-480p と共有）で合計約 29 GB（480p を導入済みなら取得は約 16.7 GB だけ）。24fps・音声なし・1280×720 の 121 フレーム（約 5 秒）。得意: 高解像度で品質の高いテキストからの動画。注意: fp16 の拡散モデルが 16 GB を超えるため ComfyUI の offload が前提で、遅い（公式の 20 ステップ・cfg 6）。VRAM は ComfyUI の公式ガイドの 24 GB を目安にした。先頭フレームから作るのは hunyuanvideo15-720p-i2v。ライセンス: Tencent Hunyuan Community License。EU・英国・韓国では使えない（導入しない）。月間アクティブユーザーが 1 億を超える製品は Tencent の許諾が要る。生成物を他の AI モデルの改良に使うことは禁止。macOS（Apple Silicon）は未確認で、Windows（NVIDIA）のみ。同意が要る（導入時に確認）。",
  "files": [

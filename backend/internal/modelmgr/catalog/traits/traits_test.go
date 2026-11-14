@@ -90,3 +90,40 @@ func TestUncensoredFile(t *testing.T) {
 		assert.Equal(t, want, traits.UncensoredFile(name), name)
 	}
 }
+
+func TestVideoModes(t *testing.T) {
+	assert.Equal(t, []traits.VideoMode{"t2v", "i2v", "flf2v", "vace", "s2v", "r2v"}, traits.AllVideoModes())
+	for _, m := range traits.AllVideoModes() {
+		assert.True(t, m.Valid(), string(m))
+		assert.NotEqual(t, string(m), m.Label(), "a mode has a label of its own")
+	}
+	assert.False(t, traits.VideoMode("v2v").Valid())
+	assert.Equal(t, "FLF2V（先頭・最後のフレーム）", traits.ModeFLF2V.Label())
+}
+
+func TestValidateVideoModes(t *testing.T) {
+	in := func(in ...traits.Input) traits.Derived { return traits.Derived{Inputs: in} }
+	t2v := in(traits.T2V)
+	for name, tc := range map[string]struct {
+		modes   []traits.VideoMode
+		video   bool
+		derived traits.Derived
+		errs    int
+	}{
+		"image model without modes":     {nil, false, in(traits.T2I), 0},
+		"image model with a mode":       {[]traits.VideoMode{traits.ModeT2V}, false, in(traits.T2I), 1},
+		"video model without modes":     {nil, true, t2v, 1},
+		"text to video":                 {[]traits.VideoMode{traits.ModeT2V}, true, t2v, 0},
+		"first frame only":              {[]traits.VideoMode{traits.ModeI2V}, true, in(traits.I2V, traits.FirstFrame), 0},
+		"first and last frame":          {[]traits.VideoMode{traits.ModeFLF2V}, true, in(traits.I2V, traits.FirstFrame, traits.LastFrame), 0},
+		"all three":                     {[]traits.VideoMode{traits.ModeT2V, traits.ModeI2V, traits.ModeFLF2V}, true, in(traits.T2V, traits.I2V, traits.FirstFrame, traits.LastFrame), 0},
+		"vace with a reference":         {[]traits.VideoMode{traits.ModeT2V, traits.ModeVACE, traits.ModeR2V}, true, in(traits.T2V, traits.I2V, traits.ReferenceWhole), 0},
+		"reference images are not i2v":  {[]traits.VideoMode{traits.ModeVACE, traits.ModeI2V}, true, in(traits.I2V, traits.ReferenceWhole), 2},
+		"modes listed twice":            {[]traits.VideoMode{traits.ModeT2V, traits.ModeT2V}, true, t2v, 1},
+		"a mode that is none":           {[]traits.VideoMode{traits.ModeT2V, "v2v"}, true, t2v, 1},
+		"vace and s2v take any inputs":  {[]traits.VideoMode{traits.ModeT2V, traits.ModeVACE, traits.ModeS2V}, true, t2v, 0},
+		"text-only workflow says flf2v": {[]traits.VideoMode{traits.ModeT2V, traits.ModeFLF2V}, true, t2v, 1},
+	} {
+		assert.Len(t, traits.ValidateVideoModes("m", tc.modes, tc.video, tc.derived), tc.errs, name)
+	}
+}
