@@ -36,5 +36,5 @@ func TestEveryStandardVideoModelDescribesItsTierStrengthsAndCautions(t *testing.
 		assert.Contains(t, m.Description, "音声", m.ID+": sound or not is said")
 		assert.Contains(t, m.Description, "ライセンス", m.ID+": the license is summed up")
 	}
-	assert.Equal(t, 16, n, "the standard video models of the catalog")
+	assert.Equal(t, 17, n, "the standard video models of the catalog")
 }
