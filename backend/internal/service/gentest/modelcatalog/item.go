@@ -14,7 +14,7 @@ import (
 // CatalogTraits is what the model manager's catalog says of a model it installed (Info.Catalog).
 type CatalogTraits struct {
 	Adult     bool          `json:"adult" jsonschema:"成人向け（content_rating が adult）"`
-	Traits    traits.Traits `json:"traits" jsonschema:"パラメータ数・非検閲・速度と品質の目安（カタログの traits）"`
+	Traits    traits.Traits `json:"traits" jsonschema:"パラメータ数・非検閲・速度と品質の目安・動画モデルの種類 video_modes（カタログの traits）"`
 	VRAMMinGB int           `json:"vram_min_gb" jsonschema:"VRAM の目安（最小。GB）"`
 	// MissingOptional are the optional files that are not in place (the model is installed and usable without them).
 	MissingOptional []string `json:"missing_optional_files,omitempty" jsonschema:"導入済みで、まだ無い任意のファイル（速さのモードの Lightning LoRA など）。モデルは使えるが、それを使う速さのモードは使えない"`
@@ -86,6 +86,7 @@ func (i Info) Item() modelfilter.Item {
 	}
 	if c := i.Catalog; c != nil {
 		it.Adult, it.Uncensored, it.ParamsB, it.VRAMMinGB, it.Speed, it.Quality = c.Adult, c.Traits.Uncensored, c.Traits.ParamsB, c.VRAMMinGB, c.Traits.Speed, c.Traits.Quality
+		it.VideoModes = c.Traits.VideoModes
 	}
 	return it
 }

@@ -109,7 +109,7 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 func modelData(ctx context.Context, svc *modelmanager.Service, e mmview.Entry, free, gpuVRAM uint64, tokenMissing bool) view.Model {
 	m := e.ModelView
 	out := view.Model{
-		ParamsLabel: e.Traits.ParamsLabel, VRAMMinGB: e.VRAM.MinGB,
+		ParamsLabel: e.Traits.ParamsLabel, VideoModes: e.Traits.VideoModes, VRAMMinGB: e.VRAM.MinGB,
 		ID: m.ID, Name: m.Name, Kind: string(m.Kind), KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
 		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM),

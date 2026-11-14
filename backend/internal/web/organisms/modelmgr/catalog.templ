@@ -85,7 +85,7 @@ func ModelCardID(id string) string { return "mm-model-" + id }
 // modelBadges are the labels beside the state that must not be missed: an adult model, the login a model needs, a disk that is too full to
 // install it, a GPU below what the model needs, and an OS / GPU generation it is not made for.
 func modelBadges(m Model) []modelcard.Badge {
-	out := modelcard.Facts{Adult: m.Adult, ParamsLabel: m.ParamsLabel, VRAMMinGB: m.VRAMMinGB}.Badges() // the badges every model card shares (成人向け, parameters, VRAM)
+	out := modelcard.Facts{Adult: m.Adult, ParamsLabel: m.ParamsLabel, VideoModes: m.VideoModes, VRAMMinGB: m.VRAMMinGB}.Badges() // the badges every model card shares (成人向け, parameters, video modes, VRAM)
 	if m.NeedsToken {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "HF トークンが必要", Attrs: templ.Attributes{"data-testid": "mm-token-badge"}})
 	}

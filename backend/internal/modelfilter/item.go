@@ -35,6 +35,8 @@ type Item struct {
 	// Languages are the languages (ISO 639-1) a model that makes speech speaks (traits.Traits.Languages; a runtime's model: choice.Choice.Languages); none for a model that has no language.
 	Languages      []string
 	Speed, Quality traits.Level
+	// VideoModes are the kinds of a local video model (traits.Traits.VideoModes); none for any other model (a cloud video model has none).
+	VideoModes []traits.VideoMode
 	// Tags are the words the text search reads besides the name (the tags, the trigger words, the vendor).
 	Tags []string
 	// Available is false when the model cannot be chosen now; Reason says why (the same words as the screens and the MCP tools).
@@ -86,9 +88,10 @@ func (c Condition) matchesWhere(it Item) bool {
 	return (len(c.Origins) == 0 || slices.Contains(c.Origins, it.Origin)) && (len(c.Providers) == 0 || slices.Contains(c.Providers, it.Provider))
 }
 
-// matchesGuides: the speed and quality guides; a model with no guide matches none.
+// matchesGuides: the speed and quality guides and the kinds of a video model; a model with no value matches none.
 func (c Condition) matchesGuides(it Item) bool {
-	return (len(c.Speeds) == 0 || slices.Contains(c.Speeds, it.Speed)) && (len(c.Qualities) == 0 || slices.Contains(c.Qualities, it.Quality))
+	return (len(c.Speeds) == 0 || slices.Contains(c.Speeds, it.Speed)) && (len(c.Qualities) == 0 || slices.Contains(c.Qualities, it.Quality)) &&
+		(len(c.VideoModes) == 0 || slices.ContainsFunc(it.VideoModes, func(m traits.VideoMode) bool { return slices.Contains(c.VideoModes, m) }))
 }
 
 // Apply keeps the items that match, in their order. A nil result is an empty list.
@@ -156,7 +159,7 @@ func (c Condition) Active() int {
 	for _, set := range []bool{
 		len(c.Kinds) > 0, len(c.Inputs) > 0, c.Adult != "" && c.Adult != AdultAll, c.Uncensored != "" && c.Uncensored != UncensoredAll,
 		len(c.Params) > 0, c.VRAMFit, len(c.CommercialSet()) > 0, c.Installed != "" && c.Installed != InstalledAll, len(c.Origins) > 0, len(c.Providers) > 0,
-		c.Audio, len(c.Languages) > 0, len(c.Speeds) > 0, len(c.Qualities) > 0, strings.TrimSpace(c.Text) != "",
+		c.Audio, len(c.Languages) > 0, len(c.Speeds) > 0, len(c.Qualities) > 0, len(c.VideoModes) > 0, strings.TrimSpace(c.Text) != "",
 	} {
 		if set {
 			n++

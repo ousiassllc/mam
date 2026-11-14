@@ -39,6 +39,8 @@ func TestListModelCatalog_CarriesTheTraitsAndTheInputsOfEachModel(t *testing.T) 
 	assert.False(t, a.Traits.Uncensored)
 	assert.Equal(t, []traits.Input{traits.T2I, traits.I2I, traits.ReferenceWhole}, a.Inputs, "text-to-image and the img2img workflow of the model")
 	assert.Equal(t, []traits.Input{traits.T2V}, b.Inputs, "the video workflow has no first frame")
+	assert.Equal(t, []traits.VideoMode{traits.ModeT2V}, b.Traits.VideoModes, "the kind of a video model is the entry's own item")
+	assert.Empty(t, a.Traits.VideoModes, "an image model has none")
 	assert.False(t, b.Audio)
 	assert.False(t, a.Available, "not installed: not available yet")
 	assert.Equal(t, "not_installed", string(a.Reason))
@@ -68,6 +70,10 @@ func TestListModelCatalog_FiltersByTheConditionsOfTheFilterPanel(t *testing.T) {
 		"installed":                       {map[string]any{"installed": "installed_only"}, []string{}},
 		"available only":                  {map[string]any{"available_only": true}, []string{}},
 		"fast":                            {map[string]any{"speeds": []string{"fast"}}, []string{"m-c"}},
+		"video mode t2v":                  {map[string]any{"video_modes": []string{"t2v"}}, []string{"m-b"}},
+		"video mode any-of":               {map[string]any{"video_modes": []string{"flf2v", "t2v"}}, []string{"m-b"}},
+		"video mode none has":             {map[string]any{"video_modes": []string{"flf2v"}}, []string{}},
+		"video mode with an image kind":   {map[string]any{"video_modes": []string{"t2v"}, "kinds": []string{"image"}}, []string{}},
 		"search by name":                  {map[string]any{"q": "b"}, []string{"m-b"}},
 		"cloud only: none of the catalog": {map[string]any{"origins": []string{"api"}}, []string{}},
 		"combined: image and small":       {map[string]any{"kinds": []string{"image"}, "params": []string{"small"}}, []string{"m-a"}},
@@ -78,6 +84,7 @@ func TestListModelCatalog_FiltersByTheConditionsOfTheFilterPanel(t *testing.T) {
 	assert.Contains(t, env.CallError("list_model_catalog", map[string]any{"adult": "maybe"}), "validation")
 	assert.Contains(t, env.CallError("list_model_catalog", map[string]any{"inputs": []string{"t2x"}}), "validation")
 	assert.Contains(t, env.CallError("list_model_catalog", map[string]any{"commercial": "yes"}), "validation")
+	assert.Contains(t, env.CallError("list_model_catalog", map[string]any{"video_modes": []string{"v2v"}}), "validation")
 }
 
 // The adult filters read the content rating and the uncensored filter reads the flag: both apply only after the age confirmation shows the adult model at all.

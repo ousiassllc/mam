@@ -131,26 +131,27 @@ const (
 )
 
 // Condition is the state of the filter panel. The zero value narrows nothing. Within one list (kinds, origins, providers, bands, speeds,
-// qualities, commercial) a model matches when it has one of the values; the inputs must all be there (a model that takes T2V and a first frame is
+// qualities, video_modes, commercial) a model matches when it has one of the values; the inputs must all be there (a model that takes T2V and a first frame is
 // asked for with both); every part that is set must match. A model whose value is not known (no parameter count, no speed guide) does not match a
 // condition on that value.
 //
 // The field names are the JSON keys, the query keys and the MCP argument names.
 type Condition struct {
-	Kinds      []Kind           `json:"kinds,omitempty" jsonschema:"種類で絞り込む（どれか）: image / video / image_edit（画像編集）/ upscale / llm / audio"`
-	Inputs     []traits.Input   `json:"inputs,omitempty" jsonschema:"入力で絞り込む（指定したものをすべて持つモデル）: t2i / i2i / inpaint / edit / t2v / i2v / first_frame / last_frame / reference_whole / reference_face / reference_style / reference_pose / reference_control"`
-	Adult      AdultFilter      `json:"adult,omitempty" jsonschema:"成人向け（content_rating）: all（省略と同じ）/ general_only（一般向けだけ）/ adult_only（成人向けだけ）"`
-	Uncensored UncensoredFilter `json:"uncensored,omitempty" jsonschema:"非検閲（traits.uncensored。成人向けとは別）: all（省略と同じ）/ censored_only / uncensored_only"`
-	Params     []Band           `json:"params,omitempty" jsonschema:"パラメータ数の帯（どれか）: small（5B 以下）/ medium（5B より大きく 14B 未満）/ large（14B 以上）。数が分からないモデルは入らない"`
-	VRAMFit    bool             `json:"vram_fit,omitempty" jsonschema:"true なら、VRAM 16GB の GPU で動く（vram.min_gb が 16 以下。vram_fit の enough か limited にあたる）ローカルモデルだけ。VRAM の目安が無いモデル（クラウド・LLM）は入らない"`
-	Commercial string           `json:"commercial,omitempty" jsonschema:"商用利用で絞り込む。all / ok（商用OK）/ ok_or_conditional（商用OKと条件つき）。ok / conditional / unknown / ng をカンマで並べるとそれらのどれか（例: ok,unknown）"`
-	Installed  InstalledFilter  `json:"installed,omitempty" jsonschema:"導入済み: all（省略と同じ）/ installed_only / not_installed_only（クラウドのモデルは導入済み扱い）"`
-	Origins    []Origin         `json:"origins,omitempty" jsonschema:"ローカルか API か（どれか）: local / api"`
-	Providers  []string         `json:"providers,omitempty" jsonschema:"提供元（プロバイダー。どれか。例: local, anthropic, openai, google, chatgpt-subscription）"`
-	Audio      bool             `json:"audio,omitempty" jsonschema:"true なら、音声つきの動画モデルだけ"`
-	Languages  []string         `json:"languages,omitempty" jsonschema:"音声モデルの話す言語（どれか。ISO 639-1 の 2 字。例: ja, en）。言語が分からないモデル（画像・動画など）は入らない"`
-	Speeds     []traits.Level   `json:"speeds,omitempty" jsonschema:"速度の目安（どれか）: fast / standard / slow。目安が無いモデルは入らない"`
-	Qualities  []traits.Level   `json:"qualities,omitempty" jsonschema:"品質の目安（どれか）: basic / standard / high。目安が無いモデルは入らない"`
+	Kinds      []Kind             `json:"kinds,omitempty" jsonschema:"種類で絞り込む（どれか）: image / video / image_edit（画像編集）/ upscale / llm / audio"`
+	Inputs     []traits.Input     `json:"inputs,omitempty" jsonschema:"入力で絞り込む（指定したものをすべて持つモデル）: t2i / i2i / inpaint / edit / t2v / i2v / first_frame / last_frame / reference_whole / reference_face / reference_style / reference_pose / reference_control"`
+	Adult      AdultFilter        `json:"adult,omitempty" jsonschema:"成人向け（content_rating）: all（省略と同じ）/ general_only（一般向けだけ）/ adult_only（成人向けだけ）"`
+	Uncensored UncensoredFilter   `json:"uncensored,omitempty" jsonschema:"非検閲（traits.uncensored。成人向けとは別）: all（省略と同じ）/ censored_only / uncensored_only"`
+	Params     []Band             `json:"params,omitempty" jsonschema:"パラメータ数の帯（どれか）: small（5B 以下）/ medium（5B より大きく 14B 未満）/ large（14B 以上）。数が分からないモデルは入らない"`
+	VRAMFit    bool               `json:"vram_fit,omitempty" jsonschema:"true なら、VRAM 16GB の GPU で動く（vram.min_gb が 16 以下。vram_fit の enough か limited にあたる）ローカルモデルだけ。VRAM の目安が無いモデル（クラウド・LLM）は入らない"`
+	Commercial string             `json:"commercial,omitempty" jsonschema:"商用利用で絞り込む。all / ok（商用OK）/ ok_or_conditional（商用OKと条件つき）。ok / conditional / unknown / ng をカンマで並べるとそれらのどれか（例: ok,unknown）"`
+	Installed  InstalledFilter    `json:"installed,omitempty" jsonschema:"導入済み: all（省略と同じ）/ installed_only / not_installed_only（クラウドのモデルは導入済み扱い）"`
+	Origins    []Origin           `json:"origins,omitempty" jsonschema:"ローカルか API か（どれか）: local / api"`
+	Providers  []string           `json:"providers,omitempty" jsonschema:"提供元（プロバイダー。どれか。例: local, anthropic, openai, google, chatgpt-subscription）"`
+	Audio      bool               `json:"audio,omitempty" jsonschema:"true なら、音声つきの動画モデルだけ"`
+	Languages  []string           `json:"languages,omitempty" jsonschema:"音声モデルの話す言語（どれか。ISO 639-1 の 2 字。例: ja, en）。言語が分からないモデル（画像・動画など）は入らない"`
+	Speeds     []traits.Level     `json:"speeds,omitempty" jsonschema:"速度の目安（どれか）: fast / standard / slow。目安が無いモデルは入らない"`
+	Qualities  []traits.Level     `json:"qualities,omitempty" jsonschema:"品質の目安（どれか）: basic / standard / high。目安が無いモデルは入らない"`
+	VideoModes []traits.VideoMode `json:"video_modes,omitempty" jsonschema:"動画モデルの種類（どれか）: t2v（文字から動画）/ i2v（画像から動画）/ flf2v（先頭・最後のフレーム）/ vace（制御・参照つき）/ s2v（音声から動画）/ r2v（参照画像から動画）。種類が無いモデル（画像・クラウドの動画など）は入らない"`
 	// AvailableOnly hides what cannot be chosen now (no API key, not signed in, not installed...). The zero value shows everything with its
 	// reason; a screen that offers models to choose from starts at Default (this on) and offers "使えないものも表示" to turn it off (#1013).
 	AvailableOnly bool   `json:"available_only,omitempty" jsonschema:"true なら、今は選べないモデル（API キー未登録・未ログイン・未導入など）を除く。省略は選べないものも理由つきで返す"`
@@ -276,6 +277,11 @@ func (c Condition) Validate() error {
 	for _, l := range c.Qualities {
 		if l == "" || !l.Valid(false) {
 			return fmt.Errorf("qualities: %q is not basic, standard or high", l)
+		}
+	}
+	for _, m := range c.VideoModes {
+		if !m.Valid() {
+			return fmt.Errorf("video_modes: %q is not t2v, i2v, flf2v, vace, s2v or r2v", m)
 		}
 	}
 	return nil

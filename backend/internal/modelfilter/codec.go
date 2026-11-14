@@ -31,13 +31,14 @@ const (
 	keyLanguages     = "languages"
 	keySpeeds        = "speeds"
 	keyQualities     = "qualities"
+	keyVideoModes    = "video_modes"
 	keyAvailableOnly = "available_only"
 	keyText          = "q"
 )
 
 // Keys lists the query keys of the condition; a form that posts the filter, and the handler that stores a screen's choice, use them.
 func Keys() []string {
-	return []string{keyKinds, keyInputs, keyAdult, keyUncensored, keyParams, keyVRAMFit, keyCommercial, keyInstalled, keyOrigins, keyProviders, keyAudio, keyLanguages, keySpeeds, keyQualities, keyAvailableOnly, keyText}
+	return []string{keyKinds, keyInputs, keyAdult, keyUncensored, keyParams, keyVRAMFit, keyCommercial, keyInstalled, keyOrigins, keyProviders, keyAudio, keyLanguages, keySpeeds, keyQualities, keyVideoModes, keyAvailableOnly, keyText}
 }
 
 // words is a list of the values of key: the repeated key and the comma-separated words, trimmed, lower case, empty ones left out.
@@ -85,6 +86,9 @@ func ParseQuery(v url.Values) (Condition, error) {
 	}
 	for _, w := range words(v, keyQualities) {
 		c.Qualities = append(c.Qualities, traits.Level(w))
+	}
+	for _, w := range words(v, keyVideoModes) {
+		c.VideoModes = append(c.VideoModes, traits.VideoMode(w))
 	}
 	return c.finish()
 }
@@ -137,6 +141,7 @@ func (c Condition) Query(start Condition) url.Values {
 	set(keyLanguages, c.Languages)
 	set(keySpeeds, strs(c.Speeds))
 	set(keyQualities, strs(c.Qualities))
+	set(keyVideoModes, strs(c.VideoModes))
 	switch {
 	case c.AvailableOnly:
 		v.Set(keyAvailableOnly, "1")
@@ -191,6 +196,7 @@ func (c Condition) Normalize() Condition {
 	c.Languages = uniq(lower(c.Languages))
 	c.Speeds = sorted(lower(c.Speeds), []traits.Level{traits.Fast, traits.Standard, traits.Slow})
 	c.Qualities = sorted(lower(c.Qualities), []traits.Level{traits.Basic, traits.Standard, traits.High})
+	c.VideoModes = sorted(lower(c.VideoModes), traits.AllVideoModes())
 	if c.Adult = AdultFilter(strings.ToLower(strings.TrimSpace(string(c.Adult)))); c.Adult == AdultAll {
 		c.Adult = ""
 	}

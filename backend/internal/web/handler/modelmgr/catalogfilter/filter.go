@@ -23,7 +23,7 @@ func Screen() pickfilter.Screen {
 		Facets: modelpick.Facets{
 			Kinds:  []modelfilter.Kind{modelfilter.KindImage, modelfilter.KindVideo, modelfilter.KindImageEdit, modelfilter.KindUpscale, modelfilter.KindVideoUpscale, modelfilter.KindVideoInterpolate},
 			Inputs: []traits.Input{traits.T2I, traits.I2I, traits.Edit, traits.Inpaint, traits.T2V, traits.I2V, traits.FirstFrame, traits.LastFrame, traits.ReferenceWhole, traits.ReferenceFace, traits.ReferenceStyle, traits.ReferencePose},
-			Adult:  true, Uncensored: true, Params: true, VRAM: true, Commercial: true, Installed: true, Audio: true, Speed: true, Quality: true,
+			Adult:  true, Uncensored: true, Params: true, VRAM: true, Commercial: true, Installed: true, Audio: true, VideoModes: true, Speed: true, Quality: true,
 		},
 	}
 }
