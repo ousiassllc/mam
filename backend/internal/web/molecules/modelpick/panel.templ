@@ -50,6 +50,9 @@ templ Panel(b Filter, oob bool) {
 			if b.Facets.Installed {
 				@radios("導入済み", "installed", installedOptions(), orWord(string(b.Cond.Installed), string(modelfilter.InstalledAll)))
 			}
+			if b.Facets.VideoModes {
+				@checks("動画の種類", "video_modes", videoModeOptions(), videoModeWords(b.Cond.VideoModes))
+			}
 			if b.Facets.Speed {
 				@checks("速度の目安", "speeds", levelOptions(true), levelWords(b.Cond.Speeds))
 			}

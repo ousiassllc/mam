@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
- "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け。作者のカードは「ヌードなどの成人向けも作れる」と注意書きを付ける）。VAE を fp32 で持つ fp16 の 1 ファイル（約 7.1 GB）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け。作者のカードは「ヌードなどの成人向けも作れる」と注意書きを付ける）。VAE を fp32 で持つ fp16 の 1 ファイル（約 7.1 GB）。作者のカード（Hugging Face）の推奨は DPM++ 2M SDE・Karras・30 ステップ・cfg 5（人物）か 6（それ以外）で、ネガティブは付けずに始める（Civitai のページは 30〜40 ステップ・cfg 3〜6）。テンプレートは SDXL 標準だが、作者の推奨に合わせて 30 ステップ・cfg 6・DPM++ 2M SDE（dpmpp_2m_sde）で動かす（スケジューラーは karras のまま。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
  "files": [
   {
    "name": "juggernautXL_ragnarok.safetensors",
@@ -36,12 +36,22 @@
   {
    "name": "juggernaut-xl-ragnarok",
    "template": "txt2img-sdxl",
-   "model_file": "juggernautXL_ragnarok.safetensors"
+   "model_file": "juggernautXL_ragnarok.safetensors",
+   "sampling": {
+    "steps": 30,
+    "cfg": 6,
+    "sampler": "dpmpp_2m_sde"
+   }
   },
   {
    "name": "juggernaut-xl-ragnarok-img2img",
    "template": "img2img-sdxl",
-   "model_file": "juggernautXL_ragnarok.safetensors"
+   "model_file": "juggernautXL_ragnarok.safetensors",
+   "sampling": {
+    "steps": 30,
+    "cfg": 6,
+    "sampler": "dpmpp_2m_sde"
+   }
   }
  ]
 }

@@ -1,6 +1,6 @@
 {
- "id": "wan22-remix-nsfw-t2v",
- "name": "Wan2.2-Remix NSFW T2V v2.0 (fp8)",
+ "id": "wan22-remix-nsfw-i2v",
+ "name": "Wan2.2-Remix NSFW I2V v3.0 (fp8)",
  "kind": "video",
  "tier": "advanced",
  "content_rating": "adult",
@@ -8,25 +8,26 @@
   "params_b": 14,
   "params_label": "14B",
   "uncensored": true,
-  "speed": "slow"
+  "speed": "slow",
+  "video_modes": ["i2v"]
  },
- "description": "【中（〜14B）・T2V・音声なし】Wan 2.2 14B を成人向けの表現に寄せてマージした Remix の T2V v2.0（成人向け）。テキストだけから動画を作る（先頭フレームは使わない。先頭フレームから作るのは wan22-remix-nsfw-i2v）。高ノイズ用と低ノイズ用の拡散モデル（fp8、各約 14.3 GB）。テキストエンコーダー・VAE は wan22-remix-nsfw-i2v と共有し、合計約 35.6 GB。得意: 非検閲の T2V を LoRA なしで、Lightning 系の 12 ステップ・cfg 1 で作る。注意: マージの出所の LoRA が不明で、ライセンスは不明（商用には使わない）。16fps。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。",
+ "description": "【中（〜14B）・I2V・音声なし】Wan 2.2 14B を成人向けの表現に寄せてマージした Remix の I2V v3.0（成人向け）。高ノイズ用と低ノイズ用の拡散モデル（fp8、各約 14.3 GB）。テキストエンコーダー・VAE は wan22-i2v-14b と共有し、合計約 35.6 GB。得意: 成人向けの表現をマージで最初から持ち、LoRA を足さずに先頭フレーム 1 枚から作れる。Lightning 系の 12 ステップ・cfg 1 で、LightX2V の LoRA は要らない（すでに入っている）。注意: マージの出所の LoRA が不明で、ライセンスは不明（商用には使わない）。テキストだけから作るのは wan22-remix-nsfw-t2v。16fps。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。",
  "files": [
   {
-   "name": "Wan2.2_Remix_NSFW_t2v_14b_high_lighting_v2.0.safetensors",
+   "name": "Wan2.2_Remix_NSFW_i2v_14b_high_lighting_fp8_e4m3fn_v3.0.safetensors",
    "folder": "diffusion_models",
-   "url": "https://huggingface.co/FX-FeiHou/wan2.2-Remix/resolve/4369125a0f1157c6b8768df18b7e81bacd5fdc1f/NSFW/Wan2.2_Remix_NSFW_t2v_14b_high_lighting_v2.0.safetensors",
-   "sha256": "b1c4725cfe80ea3a01f9af518f7a2f343320e1173482b8d8fb08858ddc72c69a",
-   "size": 14289633736,
-   "source_note": "第三者のミラー。原本は Civitai の Wan2.2-Remix（model 2003153 の T2V v2.0）で、SHA-256 が一致することを 2026-11-02 に確かめた（Civitai の API の hashes と HF の LFS の oid）。"
+   "url": "https://huggingface.co/FX-FeiHou/wan2.2-Remix/resolve/4369125a0f1157c6b8768df18b7e81bacd5fdc1f/NSFW/Wan2.2_Remix_NSFW_i2v_14b_high_lighting_fp8_e4m3fn_v3.0.safetensors",
+   "sha256": "2ac60c97ca6911090cdbdf055b685af3646b7bd93c19c9aae0f86f4ea018e97d",
+   "size": 14291272136,
+   "source_note": "第三者のミラー。原本は Civitai の Wan2.2-Remix（model 2003153 の I2V v3.0）で、SHA-256 が一致することを 2026-10-25 に確かめた。"
   },
   {
-   "name": "Wan2.2_Remix_NSFW_t2v_14b_low_lighting_v2.0.safetensors",
+   "name": "Wan2.2_Remix_NSFW_i2v_14b_low_lighting_fp8_e4m3fn_v3.0.safetensors",
    "folder": "diffusion_models",
-   "url": "https://huggingface.co/FX-FeiHou/wan2.2-Remix/resolve/4369125a0f1157c6b8768df18b7e81bacd5fdc1f/NSFW/Wan2.2_Remix_NSFW_t2v_14b_low_lighting_v2.0.safetensors",
-   "sha256": "d9457044066af43e24c1d215842e1540ecc29b724ac6a7b96f0ddaee0d56950e",
-   "size": 14289633736,
-   "source_note": "第三者のミラー。原本は Civitai の Wan2.2-Remix（model 2003153 の T2V v2.0）で、SHA-256 が一致することを 2026-11-02 に確かめた（Civitai の API の hashes と HF の LFS の oid）。"
+   "url": "https://huggingface.co/FX-FeiHou/wan2.2-Remix/resolve/4369125a0f1157c6b8768df18b7e81bacd5fdc1f/NSFW/Wan2.2_Remix_NSFW_i2v_14b_low_lighting_fp8_e4m3fn_v3.0.safetensors",
+   "sha256": "a239063c377e530229c4e5b1fecdcbe9de1201a30126dd42297435287e713229",
+   "size": 14291272136,
+   "source_note": "第三者のミラー。原本は Civitai の Wan2.2-Remix（model 2003153 の I2V v3.0）で、SHA-256 が一致することを 2026-10-25 に確かめた。"
   },
   {
    "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
@@ -45,7 +46,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "Wan 14B fp8 と同じ。Remix I2V と同じ大きさ。16 GB の RTX 4070 で Remix I2V が 576×864・81 フレームで約 326 秒という報告（Issue #930 のコミュニティ報告。mam の実測ではない）。mam の実機では未検証",
+  "source": "Wan 14B fp8 と同じ。16〜24 GB 以上の目安。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
   "estimate": true
  },
  "license": {
@@ -76,8 +77,8 @@
  "requires_hf_token": false,
  "workflows": [
   {
-   "name": "wan22-remix-nsfw-t2v",
-   "template": "txt2video-wan22-14b-remix"
+   "name": "wan22-remix-nsfw-i2v",
+   "template": "img2video-wan22-14b-remix"
   }
  ],
  "unsupported": {

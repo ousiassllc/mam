@@ -4,7 +4,7 @@
 // The data is split in two so that nothing is kept twice. What follows from the workflows (the inputs, whether a video comes with sound)
 // is derived from the workflow templates (Facts, Derived), the same assignments the generation test reads its capabilities from, so a
 // catalog entry cannot say T2V while its workflow takes a first frame. What no workflow says (the parameter count, uncensored, the
-// speed and quality guides, the languages of a voice) is the catalog entry's own "traits" object (Traits).
+// speed and quality guides, the languages of a voice, the kinds of a video model) is the catalog entry's own "traits" object (Traits).
 //
 // It is a package of its own because the catalog directory is full (linterly), and it imports nothing of the catalog so that the catalog
 // can hold its type (like package platform).
@@ -79,6 +79,9 @@ type Traits struct {
 	Quality Level `json:"quality,omitempty"`
 	// Languages are the language codes (ISO 639-1: "ja", "en") a model that makes sound speaks; only for a model that has sound.
 	Languages []string `json:"languages,omitempty"`
+	// VideoModes are the kinds of a video model (t2v, i2v, flf2v, vace, s2v, r2v; Issue #1014): required for a model whose catalog kind is video,
+	// forbidden for any other (ValidateVideoModes). It is the author's item, not computed: the workflows only check it.
+	VideoModes []VideoMode `json:"video_modes,omitempty"`
 }
 
 var (

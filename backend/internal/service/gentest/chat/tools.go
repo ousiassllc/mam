@@ -39,6 +39,7 @@ type modelLine struct {
 	NativeAudio bool               `json:"native_audio,omitempty"`
 	Speed       string             `json:"speed,omitempty"`
 	Quality     string             `json:"quality,omitempty"`
+	VideoModes  []traits.VideoMode `json:"video_modes,omitempty"`
 }
 
 func lineOf(m modelcatalog.Info) modelLine {
@@ -50,7 +51,7 @@ func lineOf(m modelcatalog.Info) modelLine {
 		l.Resolutions, l.Durations, l.NativeAudio = m.Video.Resolutions, m.Video.Durations, m.Video.NativeAudio
 	}
 	if m.Catalog != nil {
-		l.Speed, l.Quality = string(m.Catalog.Traits.Speed), string(m.Catalog.Traits.Quality)
+		l.Speed, l.Quality, l.VideoModes = string(m.Catalog.Traits.Speed), string(m.Catalog.Traits.Quality), m.Catalog.Traits.VideoModes
 	}
 	return l
 }

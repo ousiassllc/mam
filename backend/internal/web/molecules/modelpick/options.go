@@ -77,6 +77,22 @@ func levelOptions(speed bool) []Option {
 	return []Option{{string(traits.Basic), traits.Basic.Label()}, {string(traits.Standard), traits.Standard.Label()}, {string(traits.High), traits.High.Label()}}
 }
 
+func videoModeOptions() []Option {
+	var out []Option
+	for _, m := range traits.AllVideoModes() {
+		out = append(out, Option{string(m), m.Label()})
+	}
+	return out
+}
+
+func videoModeWords(modes []traits.VideoMode) []string {
+	out := make([]string, len(modes))
+	for i, m := range modes {
+		out[i] = string(m)
+	}
+	return out
+}
+
 func levelWords(levels []traits.Level) []string {
 	out := make([]string, len(levels))
 	for i, l := range levels {

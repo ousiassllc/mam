@@ -59,6 +59,20 @@ func TestEntries_TraitsInputsAndTheFilterOfTheCatalog(t *testing.T) {
 	assert.Equal(t, []string{"m-c"}, ids(mmview.Where(rig.Svc, modelfilter.Condition{Params: []modelfilter.Band{modelfilter.BandMedium}})))
 }
 
+// The kinds of a video model (Issue #1014) are the catalog entry's item: the filter finds a model by them, and an image model has none to be found by.
+func TestEntries_VideoModesOfTheCatalogAreWhatTheFilterReads(t *testing.T) {
+	rig := mmtest.New(t)
+	by := map[string]mmview.Entry{}
+	for _, e := range mmview.Entries(rig.Svc) {
+		by[e.ID] = e
+	}
+	assert.Equal(t, []traits.VideoMode{traits.ModeT2V}, by["m-b"].Traits.VideoModes)
+	assert.Equal(t, []traits.VideoMode{traits.ModeT2V}, by["m-b"].Item().VideoModes)
+	assert.Empty(t, by["m-a"].Item().VideoModes)
+	assert.Equal(t, []string{"m-b"}, ids(mmview.Where(rig.Svc, modelfilter.Condition{VideoModes: []traits.VideoMode{traits.ModeI2V, traits.ModeT2V}})))
+	assert.Empty(t, mmview.Where(rig.Svc, modelfilter.Condition{VideoModes: []traits.VideoMode{traits.ModeFLF2V}}))
+}
+
 func TestInfoOf_FindsACatalogModelByTheNameOfItsWorkflow(t *testing.T) {
 	rig := mmtest.New(t)
 	info := mmview.InfoOf(rig.Svc)

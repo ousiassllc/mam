@@ -3,9 +3,11 @@ package modelcard
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
 
 	"github.com/a-h/templ"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
@@ -63,6 +65,8 @@ type Facts struct {
 	Adult bool
 	// ParamsLabel is "14B" (traits.params_label); "" when the count is not known.
 	ParamsLabel string
+	// VideoModes are the kinds of a local video model (traits.video_modes: T2V, I2V...); none for any other model.
+	VideoModes []traits.VideoMode
 	// VRAMMinGB is the least VRAM the guideline gives (0: none: a cloud model).
 	VRAMMinGB int
 	// Installed says a local model is on this PC: the card of a list that offers models to choose from says so (the model manager's cards have their own state badge).
@@ -73,11 +77,12 @@ type Facts struct {
 const (
 	TestIDAdult     = "model-badge-adult"
 	TestIDParams    = "model-badge-params"
+	TestIDVideoMode = "model-badge-video-mode"
 	TestIDVRAM      = "model-badge-vram"
 	TestIDInstalled = "model-badge-installed"
 )
 
-// Badges are the badges of the facts, in the order the cards show them: 成人向け, the parameter count, the VRAM, 導入済み.
+// Badges are the badges of the facts, in the order the cards show them: 成人向け, the parameter count, the kinds of a video model (T2V, I2V...), the VRAM, 導入済み.
 func (f Facts) Badges() []Badge {
 	var out []Badge
 	if f.Adult {
@@ -85,6 +90,9 @@ func (f Facts) Badges() []Badge {
 	}
 	if f.ParamsLabel != "" {
 		out = append(out, Badge{Tone: atoms.BadgeNeutral, Label: f.ParamsLabel, Attrs: templ.Attributes{"data-testid": TestIDParams, "title": "パラメータ数"}})
+	}
+	for _, m := range f.VideoModes {
+		out = append(out, Badge{Tone: atoms.BadgeNeutral, Label: strings.ToUpper(string(m)), Attrs: templ.Attributes{"data-testid": TestIDVideoMode, "title": "動画の種類: " + m.Label()}})
 	}
 	if f.VRAMMinGB > 0 {
 		out = append(out, Badge{Tone: atoms.BadgeNeutral, Label: "VRAM " + strconv.Itoa(f.VRAMMinGB) + "GB〜", Attrs: templ.Attributes{"data-testid": TestIDVRAM, "title": "動かすのに要る VRAM（最小）"}})

@@ -67,6 +67,7 @@ func TestListModelsFiltersByInputsAdultUncensoredAndParameters(t *testing.T) {
 	assert.Equal(t, []traits.Input{traits.T2V}, by[remix].Inputs)
 	assert.Contains(t, by[qwenEdit].Inputs, traits.ReferenceFace)
 	require.NotNil(t, by[wan].Catalog)
+	assert.Equal(t, []traits.VideoMode{traits.ModeI2V}, by[wan].Catalog.Traits.VideoModes)
 	assert.InDelta(t, 14, by[wan].Catalog.Traits.ParamsB, 1e-9)
 	assert.False(t, by[wan].Catalog.Adult)
 	assert.True(t, by[remix].Catalog.Adult, "the adult flag comes from the catalog entry")
@@ -90,8 +91,12 @@ func TestListModelsFiltersByInputsAdultUncensoredAndParameters(t *testing.T) {
 	assert.Equal(t, []string{qwenEdit}, only(map[string]any{"inputs": []string{"reference_face", "edit"}}))
 	assert.Equal(t, []string{wan, remix}, only(map[string]any{"vram_fit": true, "media": "video"}), "VRAM 16GB: the two 14B at 16 GB; the cloud models have no guideline")
 	assert.Equal(t, []string{wan}, only(map[string]any{"q": "WAN22-i2v"}))
+	assert.Equal(t, []string{wan}, only(map[string]any{"video_modes": []string{"i2v"}}), "the kind of a local video model; the cloud models have none")
+	assert.Equal(t, []string{remix}, only(map[string]any{"video_modes": []string{"t2v", "flf2v"}}))
+	assert.Empty(t, only(map[string]any{"video_modes": []string{"vace"}}))
 	assert.Contains(t, r.CallError("list_generation_models", map[string]any{"adult": "yes"}), "validation")
 	assert.Contains(t, r.CallError("list_generation_models", map[string]any{"params": []string{"huge"}}), "validation")
+	assert.Contains(t, r.CallError("list_generation_models", map[string]any{"video_modes": []string{"v2v"}}), "validation")
 }
 
 // #1013: every model says whether it can be chosen now, why not, and where to fix it; a picker's "選べるものだけ" is available_only.

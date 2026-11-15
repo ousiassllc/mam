@@ -1,0 +1,34 @@
+{
+ "id": "txt2video-ltx-13b-distilled", "label": "LTX-Video 13B 0.9.8 Distilled: テキストから動画", "media": "video",
+ "description": "Lightricks の LTX-Video 13B 0.9.8 Distilled（fp8 の ltxv-13b-0.9.8-distilled-fp8.safetensors。映像の VAE を含む 1 ファイル。テキストエンコーダーは t5xxl_fp8_e4m3fn.safetensors）の、テキストから動画を作る、標準ノードだけのワークフロー（CheckpointLoaderSimple → CLIPLoader（ltxv）→ EmptyLTXVLatentVideo → LTXVConditioning → CFGGuider → SamplerCustomAdvanced → VAEDecode）。Lightricks の公式の 13B 蒸留のワークフロー（ComfyUI-LTXVideo の 13b-distilled）はカスタムノード（STGGuiderAdvanced・LTXVBaseSampler など）を使うので使わず、その中の値を標準ノードに写した: 蒸留の 8 つのシグマ（1.0000, 0.9937, 0.9875, 0.9812, 0.9750, 0.9094, 0.7250, 0.4219, 0.0。ManualSigmas。公式のワークフローの注記の「蒸留モデルのシグマの全部」）・cfg 1（公式の設定 ltxv-13b-0.9.8-distilled-fp8.yaml の guidance_scale 1・stg_scale 0 なので STG は要らない）・euler_ancestral（公式のワークフローの KSamplerSelect）・24fps（公式のワークフローの LTXVConditioning）。公式の既定は 2/3 に縮めた解像度の 1 段目と潜在の拡大＋ 2 段目のマルチスケールだが、mam は拡大モデルを使わず、指定した解像度のまま 1 段で作る（品質はマルチスケールより落ちる場合がある。LTX-2.3 の蒸留 1 段と同じ割り切り）。VAE のデコードのノイズ（decode_timestep 0.05・decode_noise_scale 0.025）は公式の設定の値が ComfyUI の VAE の既定と同じ。フレーム数は 8n+1、解像度は 32 の倍数。GPU では未実行（構造のテストのみ）。",
+ "model": {"media": "video", "video": {"durations": [2, 3, 4, 5], "resolutions": ["480p", "720p"]}, "workflow": {
+  "prompt_weight": "weak",
+  "graph": {
+   "44": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "ltxv-13b-0.9.8-distilled-fp8.safetensors"}},
+   "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "t5xxl_fp8_e4m3fn.safetensors", "type": "ltxv", "device": "default"}},
+   "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+   "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+   "84": {"class_type": "EmptyLTXVLatentVideo", "inputs": {"width": 768, "height": 512, "length": 97, "batch_size": 1}},
+   "69": {"class_type": "LTXVConditioning", "inputs": {"frame_rate": 24, "positive": ["6", 0], "negative": ["7", 0]}},
+   "97": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler_ancestral"}},
+   "100": {"class_type": "ManualSigmas", "inputs": {"sigmas": "1.0, 0.9937, 0.9875, 0.9812, 0.975, 0.9094, 0.725, 0.4219, 0.0"}},
+   "99": {"class_type": "CFGGuider", "inputs": {"cfg": 1, "model": ["44", 0], "positive": ["69", 0], "negative": ["69", 1]}},
+   "102": {"class_type": "RandomNoise", "inputs": {"noise_seed": 0}},
+   "101": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["102", 0], "guider": ["99", 0], "sampler": ["97", 0], "sigmas": ["100", 0], "latent_image": ["84", 0]}},
+   "8": {"class_type": "VAEDecode", "inputs": {"samples": ["101", 1], "vae": ["44", 2]}},
+   "80": {"class_type": "CreateVideo", "inputs": {"fps": 24, "images": ["8", 0]}},
+   "81": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["80", 0]}}
+  },
+  "assignments": [
+   {"param": "prompt", "node": "6", "input": "text"},
+   {"param": "negative_prompt", "node": "7", "input": "text"},
+   {"param": "seed", "node": "102", "input": "noise_seed"},
+   {"param": "width", "node": "84", "input": "width"},
+   {"param": "height", "node": "84", "input": "height"},
+   {"param": "frames", "node": "84", "input": "length"},
+   {"param": "fps", "node": "80", "input": "fps"},
+   {"param": "fps", "node": "69", "input": "frame_rate"}
+  ],
+  "output_node": "81", "fps": 24, "frames_step": 8, "size_multiple": 32
+ }}
+}

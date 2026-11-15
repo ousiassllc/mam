@@ -169,7 +169,7 @@ func testCatalog(h *Host) *catalog.Catalog {
 				License: lic("apache-2.0", modellicense.Yes), Workflows: []catalog.Workflow{{Name: "wf-a", Template: "txt2img-sdxl"}, {Name: "wf-a-i2i", Template: "img2img-sdxl"}},
 			},
 			{
-				ID: "m-b", Name: "B", Kind: localcfg.MediaVideo, Tier: catalog.TierStandard, Description: "d", Traits: traits.Traits{ParamsB: 5, ParamsLabel: "5B", Speed: traits.Standard}, Files: []catalog.File{cf(UnetB), cf(VaeBC)}, VRAM: vram,
+				ID: "m-b", Name: "B", Kind: localcfg.MediaVideo, Tier: catalog.TierStandard, Description: "d", Traits: traits.Traits{ParamsB: 5, ParamsLabel: "5B", Speed: traits.Standard, VideoModes: []traits.VideoMode{traits.ModeT2V}}, Files: []catalog.File{cf(UnetB), cf(VaeBC)}, VRAM: vram,
 				License: lic("apache-2.0", modellicense.Yes), Workflows: []catalog.Workflow{{Name: "wf-b", Template: "txt2video-wan22-5b"}},
 			},
 			{

@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -34,8 +35,10 @@ type Model struct {
 	// Adult is the badge 成人向け; TriggerWords are the words a LoRA of the model needs in the prompt.
 	Adult bool
 	// ParamsLabel is the parameter count ("14B"; "" when it is not known) and VRAMMinGB the least VRAM of the guideline (0: none): badges every model card shares.
-	ParamsLabel  string
-	VRAMMinGB    int
+	ParamsLabel string
+	VRAMMinGB   int
+	// VideoModes are the kinds of a video model (T2V, I2V...), shown as badges.
+	VideoModes   []traits.VideoMode
 	TriggerWords []string
 	// Sources are the places of the originals of the mirrored files (each once).
 	Sources     []string

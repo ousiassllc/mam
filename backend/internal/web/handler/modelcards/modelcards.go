@@ -56,7 +56,7 @@ func FromInfo(m modelcatalog.Info) modelcard.Card {
 func FactsOf(m modelcatalog.Info) modelcard.Facts {
 	f := modelcard.Facts{Installed: m.Origin == string(modelfilter.OriginLocal)}
 	if c := m.Catalog; c != nil {
-		f.Adult, f.ParamsLabel, f.VRAMMinGB = c.Adult, c.Traits.ParamsLabel, c.VRAMMinGB
+		f.Adult, f.ParamsLabel, f.VRAMMinGB, f.VideoModes = c.Adult, c.Traits.ParamsLabel, c.VRAMMinGB, c.Traits.VideoModes
 	}
 	return f
 }
@@ -92,7 +92,7 @@ func Facets(media string, models []modelcatalog.Info) modelpick.Facets {
 	}
 	if media == "video" {
 		f.Inputs = []traits.Input{traits.T2V, traits.I2V, traits.FirstFrame, traits.LastFrame, traits.ReferenceWhole}
-		f.Audio = true
+		f.Audio, f.VideoModes = true, true
 		return f
 	}
 	f.Kinds = []modelfilter.Kind{modelfilter.KindImage, modelfilter.KindImageEdit}

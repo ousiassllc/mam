@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/traits"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
@@ -80,4 +81,17 @@ func TestActions_AreRaisedAboveTheClickAreaOfTheCard(t *testing.T) {
 func TestGridClass_IsOneTwoThreeColumns(t *testing.T) {
 	assert.Equal(t, "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3", modelcard.GridClass)
 	assert.NotContains(t, modelcard.GridClass, "lg:")
+}
+
+// The kinds of a video model are badges between the parameter count and the VRAM, in the order of the catalog; any other model has none.
+func TestFacts_VideoModesAreBadgesWithTheFullNameAsTheirTitle(t *testing.T) {
+	badges := modelcard.Facts{ParamsLabel: "1.3B", VideoModes: []traits.VideoMode{traits.ModeT2V, traits.ModeVACE, traits.ModeR2V}, VRAMMinGB: 8}.Badges()
+	var labels []string
+	for _, b := range badges {
+		labels = append(labels, b.Label)
+	}
+	assert.Equal(t, []string{"1.3B", "T2V", "VACE", "R2V", "VRAM 8GB〜"}, labels)
+	assert.Equal(t, modelcard.TestIDVideoMode, badges[2].Attrs["data-testid"])
+	assert.Equal(t, "動画の種類: VACE（制御・参照つき）", badges[2].Attrs["title"])
+	assert.Empty(t, modelcard.Facts{ParamsLabel: "12B"}.Badges()[1:], "an image model has no video mode badge")
 }

@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": true, "speed": "standard"},
- "description": "【実写】写真風の成人向け SDXL チェックポイント LUSTIFY! の SDXL 版の最新 ZENITH（V9。約 6.9 GB）。Krea 2 版の v10 は別のテンプレートと追加ノードが要るため入れていない。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "description": "【実写】写真風の成人向け SDXL チェックポイント LUSTIFY! の SDXL 版の最新 ZENITH（V9。約 6.9 GB）。Krea 2 版の v10 は別のテンプレートと追加ノードが要るため入れていない。作者は Civitai のページ・V9 の版の説明に推奨の設定（ステップ数・cfg・サンプラー）を書いていない（2026-11-14 に確認。作者のワークフロー配布ページは追加ノード前提の別物）ので、テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）のままで、参照画像からの画像（img2img）にも使える。",
  "files": [
   {
    "name": "lustifyNSFWCheckpoint_zenithV9.safetensors",

@@ -76,7 +76,8 @@ func Validate(c *Catalog, template func(id string) (localcfg.Template, bool)) []
 		}
 		seenModel[m.ID] = true
 		errs = append(errs, validateModel(m, shared)...)
-		errs = append(errs, m.Traits.Validate(where, m.Derived().Audio)...)
+		derived := m.Derived()
+		errs = append(errs, m.Traits.Validate(where, derived.Audio)...)
 		used := map[string]bool{} // the files some workflow of the model loads: a model may carry files only some of its workflows need (FLF2V does not load the upscaler)
 		for _, w := range m.Workflows {
 			if seenWorkflow[w.Name] {
@@ -90,6 +91,7 @@ func Validate(c *Catalog, template func(id string) (localcfg.Template, bool)) []
 				errs = append(errs, fmt.Errorf("%s: the file %s/%s is not loaded by the workflow of the model", where, f.Folder, f.Name))
 			}
 		}
+		errs = append(errs, traits.ValidateVideoModes(where, m.Traits.VideoModes, m.Kind == localcfg.MediaVideo, derived)...)
 	}
 	return errs
 }

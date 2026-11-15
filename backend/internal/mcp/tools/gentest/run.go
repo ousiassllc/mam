@@ -21,7 +21,7 @@ import (
 
 // ListModelsInput narrows the models. The conditions are the ones every model picker has (modelfilter.Condition, #1011): kinds, inputs, adult,
 // uncensored, params, vram_fit, commercial (as before: all / ok / ok_or_conditional, and a list of ok, conditional, unknown, ng), installed, origins,
-// providers, audio, speeds, qualities, available_only and q.
+// providers, audio, speeds, qualities, video_modes, available_only and q.
 type ListModelsInput struct {
 	Media string `json:"media,omitempty" jsonschema:"image / video。省くと両方"`
 	modelfilter.Condition

@@ -192,7 +192,7 @@ func TestQueryAndJSONRoundTrip(t *testing.T) {
 			Kinds: []modelfilter.Kind{modelfilter.KindImage, modelfilter.KindVideo}, Inputs: []traits.Input{traits.T2V, traits.FirstFrame},
 			Adult: modelfilter.AdultOnly, Uncensored: modelfilter.CensoredOnly, Params: []modelfilter.Band{modelfilter.BandSmall, modelfilter.BandLarge}, VRAMFit: true,
 			Commercial: "ok_or_conditional", Installed: modelfilter.InstalledOnly, Origins: []modelfilter.Origin{modelfilter.OriginLocal}, Providers: []string{"local", "google"},
-			Audio: true, Speeds: []traits.Level{traits.Fast}, Qualities: []traits.Level{traits.High}, AvailableOnly: true, Text: "wan 14b",
+			Audio: true, Speeds: []traits.Level{traits.Fast}, Qualities: []traits.Level{traits.High}, VideoModes: []traits.VideoMode{traits.ModeT2V, traits.ModeVACE}, AvailableOnly: true, Text: "wan 14b",
 		},
 		"show everything from a picker": {Commercial: "ok,unknown"},
 	} {

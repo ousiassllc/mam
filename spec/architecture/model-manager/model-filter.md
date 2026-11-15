@@ -7,7 +7,7 @@
 | 層 | 置き場所 | 中身 |
 |---|---|---|
 | 条件・一致・相互変換 | `backend/internal/modelfilter`（葉。カタログも画面も知らない） | `Condition`（フィルターパネルの状態）・`Item`（モデルを条件が見る項目に縮めたもの）・`Match`・`Filter`・クエリ文字列と JSON の相互変換・`Availability`（選べる状態）・`RouteOf`（理由から直す画面の道すじ） |
-| カタログの構造化データ | `backend/internal/modelmgr/catalog/traits` | `Traits`（パラメータ数・非検閲・速度/品質の目安・言語）・`Input`（入力の種類）・`Facts`（ワークフローが言う入力）・`Derived`（モデルの入力・音声） |
+| カタログの構造化データ | `backend/internal/modelmgr/catalog/traits` | `Traits`（パラメータ数・非検閲・速度/品質の目安・言語・動画モデルの種類）・`Input`（入力の種類）・`VideoMode`（動画モデルの種類）・`Facts`（ワークフローが言う入力）・`Derived`（モデルの入力・音声） |
 | 各画面・ツールの `Item` への変換 | `mmview.Entry.Item`（カタログ）・`modelcatalog.Info.Item`（単発生成）・`llmmodels.Candidate.Item`（LLM）・`modelsettings.ImageOption.Item` / `VideoOption.Item`（プロジェクト・Shot の生成設定の候補） | 各層が自分のモデルの型を `Item` にする。絞り込みの規則はここに 1 つしか無い |
 
 ## 2. 条件（`modelfilter.Condition`）
@@ -29,6 +29,7 @@
 | `audio` | 真偽値 | 音声つきの動画モデルだけ |
 | `languages` | ISO 639-1 の小文字 2 字の一覧 | 音声モデルの言語（**どれか**。`ja`・`en`）。言語を持たないモデル（画像・動画など）は入らない（Issue #1015。実行環境のモデル `runtimechoices.View.Item` が `Choice.Languages` を渡す。カタログのモデルは `traits.languages`）。パネルは、その画面のモデルの言語が分かれるときだけ「言語」の欄を出す（`Facets.Languages`） |
 | `speeds` / `qualities` | `fast`・`standard`・`slow` / `basic`・`standard`・`high` の一覧 | 速度・品質の目安（**どれか**）。目安が無いモデルは入らない |
+| `video_modes` | `t2v`・`i2v`・`flf2v`・`vace`・`s2v`・`r2v` の一覧 | 動画モデルの種類（**どれか**。Issue #1014。`inputs` と違い、モデルの作者がカタログに書いた「種類」の項目）。種類を持たないモデル（画像・アップスケール・クラウドの動画モデル）は入らない。パネルは動画モデルを並べる画面（モデルマネージャーのカタログと、`modelcards.Facets("video", …)` を使う単発生成・設定・Shot の動画）だけ「動画の種類」の欄を出す（`Facets.VideoModes`）。チップは `動画の種類: T2V（文字から動画）` |
 | `available_only` | 真偽値 | 今選べるものだけ（§5）。画面の「選べるものだけ」。**モデルを選ぶ画面は `modelfilter.Default()`（これがオン）から始め、「使えないものも表示」でオフにする**。ゼロ値（オフ）は使えないものも理由つきで返す（モデルマネージャーのカタログ・MCP） |
 | `q` | 文字列 | テキスト検索。空白で区切った語を**すべて**含む（大文字小文字は区別しない）。名前・ID・提供元・タグ（種別・区分・トリガー語など）を見る |
 
@@ -62,6 +63,7 @@
 | `speed` | `fast` / `standard` / `slow`（省略可） | 速度の目安。`fast` は蒸留・少ステップ（Lightning・Turbo・LightX2V・schnell・klein）、`slow` は 14B 級の動画・22B 級。カタログの作者の目安で、計測ではない（実測は §4.5 の表） |
 | `quality` | `basic` / `standard` / `high`（省略可） | 品質の目安（作者の目安。付けるのは説明が「質を優先するならこちら」と言うモデルだけ） |
 | `languages` | ISO 639-1 の小文字 2 字の一覧（省略可） | 音声を作るモデルの言語（`ja`・`en`）。**音声つきのモデルだけ**（検証が拒む）。今のカタログに音声を作る画像・動画モデルの言語表は無く、空 |
+| `video_modes` | `t2v`・`i2v`・`flf2v`・`vace`・`s2v`・`r2v` の一覧 | 動画モデルの種類（Issue #1014。[model-manager.md](model-manager.md) の「動画モデルの種類」に値の表）。**ローカルの動画モデル（`kind` が `video`）は必須**で、それ以外は持てない。ワークフローから計算せず作者が書き、`inputs` との矛盾だけを検証が拒む |
 
 ### 3.2 `inputs`・`audio`（カタログには**書かない**。ワークフローから導く）
 
@@ -82,7 +84,7 @@
 
 ### 3.3 検証（`catalog.Validate`・`traits.Traits.Validate`）
 
-`params_b` と `params_label` は両方か両方なし、`params_label` は形に合う、`speed`・`quality` は上の語、`languages` は音声つきのモデルだけで 2 字のコード、`uncensored` なら `adult`、非検閲の語を持つファイル・テンプレートがあれば `uncensored`。テスト: `traitstest`（全件に `traits` と `uncensored` がある・入力がワークフローに従う・パラメータ数・非検閲の一覧・矛盾の拒否）。
+`params_b` と `params_label` は両方か両方なし、`params_label` は形に合う、`speed`・`quality` は上の語、`languages` は音声つきのモデルだけで 2 字のコード、`video_modes`（`traits.ValidateVideoModes`）は動画モデルだけ・空でない・語が正しい・重複なし・ワークフローの入力と矛盾しない（`t2v` は文字だけで動くワークフローがあるときだけ、`i2v` は先頭フレームを受けるワークフローが要り、先頭フレームを受けるなら `i2v` か `flf2v` が要る、`flf2v` は先頭と最後のフレームを受けるワークフローが要り、最後のフレームを受けるなら `flf2v` が要る、`r2v` は参照画像を受けるワークフローがあるときだけ。`vace`・`s2v` は入力に縛られない）、`uncensored` なら `adult`、非検閲の語を持つファイル・テンプレートがあれば `uncensored`。テスト: `traitstest`（全件に `traits` と `uncensored` がある・入力がワークフローに従う・パラメータ数・非検閲の一覧・動画モデルの全件に `video_modes` がある・矛盾の拒否）。
 
 ### 3.4 既存のカタログを埋めた結果（2026-11-03）
 
@@ -145,8 +147,8 @@
 
 | 部品 | 置き場所 | 中身 |
 |---|---|---|
-| フィルターバー | `molecules/modelpick`（`Bar`・`Panel`・`Summary`・`Oob`・`Filter`・`Facets`） | 検索ボックス（名前・タグ。`q`）と漏斗のボタン。漏斗には絞り込み中の数のバッジ（`Condition.Active`）。漏斗で**詳細フィルターのパネル**が開く（`aria-expanded`。Esc で閉じてフォーカスを漏斗へ戻す）。パネルの項目は画面ごとの `Facets` で出し入れする: 種類・入力・成人向け（すべて / 一般向けのみ / 成人向けのみ）・非検閲・パラメータ数（小・中・大）・16GB で動くか・商用利用・導入済み・ローカル / API・提供元・音声つき・速度・品質・選べるものだけ。変えるたびにその場で一覧が絞られる（ボタンで確定しない）。一覧の上に、かかっている条件を**チップ**で出し（各チップの × で 1 つずつ外す）、「すべてクリア」がある。「N 件」「（全 M 件のうち）」と、選べるものだけがオンのときの「K 件は今は選べません」・「使えないものも表示」 |
-| モデルのカード | `molecules/modelcard`（`PickItem`・`Summary`。モデルマネージャーの開くカードは `Item`） | 絵・名前・種類と価格か大きさの 1 行・商用利用のアイコン・バッジ（成人向け・パラメータ数・VRAM・導入済み。`Facts`）。選べないモデルは薄くし、**理由**と設定画面への導線（`Reason.Route`）を下に出す（`aria-describedby`）。選び方は 2 つ: チェックボックス（`PickMany`。単発生成のモデル。複数選べる。枠と光る縁取りと ✓ で示す）、ボタン（`PickOne`。モデル選択のモーダル。いま欄に入っているモデルは枠と面で示す） |
+| フィルターバー | `molecules/modelpick`（`Bar`・`Panel`・`Summary`・`Oob`・`Filter`・`Facets`） | 検索ボックス（名前・タグ。`q`）と漏斗のボタン。漏斗には絞り込み中の数のバッジ（`Condition.Active`）。漏斗で**詳細フィルターのパネル**が開く（`aria-expanded`。Esc で閉じてフォーカスを漏斗へ戻す）。パネルの項目は画面ごとの `Facets` で出し入れする: 種類・入力・成人向け（すべて / 一般向けのみ / 成人向けのみ）・非検閲・パラメータ数（小・中・大）・16GB で動くか・商用利用・導入済み・ローカル / API・提供元・音声つき・動画の種類（動画モデルを並べる画面だけ）・速度・品質・選べるものだけ。変えるたびにその場で一覧が絞られる（ボタンで確定しない）。一覧の上に、かかっている条件を**チップ**で出し（各チップの × で 1 つずつ外す）、「すべてクリア」がある。「N 件」「（全 M 件のうち）」と、選べるものだけがオンのときの「K 件は今は選べません」・「使えないものも表示」 |
+| モデルのカード | `molecules/modelcard`（`PickItem`・`Summary`。モデルマネージャーの開くカードは `Item`） | 絵・名前・種類と価格か大きさの 1 行・商用利用のアイコン・バッジ（成人向け・パラメータ数・動画の種類〔`T2V`・`I2V`・`FLF2V`・`VACE`・`S2V`・`R2V` を種類ごとに 1 つ。`title` に `動画の種類: T2V（文字から動画）`。カタログの動画モデルだけ〕・VRAM・導入済み。`Facts`）。選べないモデルは薄くし、**理由**と設定画面への導線（`Reason.Route`）を下に出す（`aria-describedby`）。選び方は 2 つ: チェックボックス（`PickMany`。単発生成のモデル。複数選べる。枠と光る縁取りと ✓ で示す）、ボタン（`PickOne`。モデル選択のモーダル。いま欄に入っているモデルは枠と面で示す） |
 | モデル選択の欄 | `molecules/modelpick.Field` と `Host` | 選んだモデルを**カードの要約**で見せるボタン（「変更」）。押すと `GET /model-picker/:source` が応え、ページに 1 つの `<dialog>`（`Host`）がバーとカードの一覧で開く。カードを押すとそのカードが持つ値（`data-mp-values`）が欄の隠し `<input>`（`data-mp-from`）に入って閉じ、欄に `change` が飛ぶ。背景のクリックでは閉じない（Esc と「閉じる」で閉じる）。設定のモーダルの上に重なる |
 | スクリプト | `static/src/components/model-pick` | パネルとダイアログの開閉・選んだモデルを欄へ入れる・選んだカードの印だけ。絞り込みはしない |
 

@@ -51,6 +51,8 @@ type Facets struct {
 	Audio     bool
 	Speed     bool
 	Quality   bool
+	// VideoModes is the section 動画の種類 (T2V, I2V...): for a screen that lists video models (traits.Traits.VideoModes).
+	VideoModes bool
 	// Available is the switch "選べるものだけ" (the list that offers models to choose from starts with it on).
 	Available bool
 }

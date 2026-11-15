@@ -1,0 +1,47 @@
+{
+ "id": "img2video-skyreels-v2-1-3b",
+ "label": "SkyReels V2 I2V 1.3B 540P: 画像から動画",
+ "media": "video",
+ "description": "SkyReels V2 I2V 1.3B 540P（Skywork 製。Wan 2.1 と同じ構造・同じ VAE／T5／CLIP を使う。fp32 の skyreels_v2_i2v_1.3B_540P_fp32.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、CLIP Vision の clip_vision_h.safetensors、VAE wan_2.1_vae.safetensors）で、最初の 1 枚の画像から動画を作る標準ノードだけのワークフロー。グラフは ComfyUI の公式テンプレート（image_to_video_wan）の Wan 2.1 I2V と同じ: CLIPVisionEncode（crop は none）→WanImageToVideo→1 つの KSampler（uni_pc/simple）。モデルの重みは Wan 2.1 の I2V と同じ形式（ComfyUI 本体が dim 1536・in_dim 36 の Wan 2.1 I2V として読む）。値は SkyReels-V2 の公式の説明（モデルカードと generate_video.py）に従う: 544×960（mam の 540p）・97 フレーム・24fps、I2V の推奨は cfg（guidance_scale）5.0・shift 3.0、ステップ数の既定は 30。公式のスケジューラーは Wan と同じ FlowUniPC。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [2, 3, 4], "resolutions": ["540p"]},
+  "workflow": {
+   "prompt_weight": "weak",
+   "graph": {
+    "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "skyreels_v2_i2v_1.3B_540P_fp32.safetensors", "weight_dtype": "default"}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+    "49": {"class_type": "CLIPVisionLoader", "inputs": {"clip_name": "clip_vision_h.safetensors"}},
+    "54": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 3, "model": ["37", 0]}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "52": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "51": {"class_type": "CLIPVisionEncode", "inputs": {"crop": "none", "clip_vision": ["49", 0], "image": ["52", 0]}},
+    "50": {"class_type": "WanImageToVideo", "inputs": {"width": 960, "height": 544, "length": 97, "batch_size": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["39", 0], "clip_vision_output": ["51", 0], "start_image": ["52", 0]}},
+    "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 30, "cfg": 5, "sampler_name": "uni_pc", "scheduler": "simple", "denoise": 1, "model": ["54", 0], "positive": ["50", 0], "negative": ["50", 1], "latent_image": ["50", 2]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["39", 0]}},
+    "55": {"class_type": "CreateVideo", "inputs": {"fps": 24, "images": ["8", 0]}},
+    "56": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["55", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "seed"},
+    {"param": "width", "node": "50", "input": "width"},
+    {"param": "height", "node": "50", "input": "height"},
+    {"param": "frames", "node": "50", "input": "length"},
+    {"param": "fps", "node": "55", "input": "fps"},
+    {"param": "first_frame", "node": "52", "input": "image"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"}
+   ],
+   "output_node": "56",
+   "fps": 24,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}

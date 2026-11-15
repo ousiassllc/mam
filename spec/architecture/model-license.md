@@ -51,6 +51,7 @@
 - **2026-11-03**: `qwen-image-edit-2511`・`sdxl-controlnet-canny`・`sdxl-ipadapter-plus`・`upscale-*` の 3 つ、成人向けのモデル 14 件（#984。`realvisxl-v50` から `qwen-image-21-uncensored-int8` まで）、非検閲の動画 7 件（#1012。`nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b`・`wan22-ti2v-5b-cowgirl-lora`・`wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v`・`wan22-t2v-14b-mystic-xxx-lora`・`hunyuanvideo-t2v-nsfw-lora`。上の `wan22-*` の 2026-11-02 の分には含まない）。
 - **2026-11-04**（#1028）: 非検閲の動画の 15 件すべて（上の 13 件に `nsfw-wan21-14b-t2v`・`wan22-t2v-14b-palingenesis` を足した分）を一次の情報（カードの `license:`・LICENSE 本文・ベースモデルのカード）で見直した。答えが変わったのは `nsfw-anime-wan22-5b`（不明 → 商用OK。注意つき。LICENSE の本文がある）だけ。それ以外は不明のまま（カードの宣言だけで本文が無いもの、混ぜた・焼き込んだ LoRA、ライセンスの記載が無い LoRA）。
 - **2026-11-04**（#1031。モデルごとの JSON の `checked_at` も 2026-11-04）: 動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`・`rife-v4.25`・`rife-v4.26`。配布元のモデルカード・LICENSE・README を読んだ（SeedVR2 は `ByteDance-Seed/SeedVR2-3B` と再配布の `Comfy-Org/SeedVR2` のカード、RIFE は `hzwer/Practical-RIFE` の LICENSE と README と再配布の `Comfy-Org/Frame-Interpolation` のカード）。Issue #1031 の調査で商用NGとされた Upscale-A-Video・GIMM-VFI・4x-UltraSharp は、カタログに載せない（mam はこの 3 件の原文を読み直していない）。
+- **2026-11-14**（#1014。モデルごとの JSON の `checked_at` も 2026-11-14）: 標準の動画 3 件。`skyreels-v2-i2v-1-3b-540p`（不明。カードは `license: other`＝`skywork-license`、HF の LICENSE は 0 バイト）・`wan22-vace-fun-14b`（商用OK。Apache-2.0）・`ltxv-13b-0.9.8-distilled`（条件つき。LTXV Open Weights License 0.X の第 2 条）。配布元のカードと LICENSE 本文を読んだ。
 
 | モデル | 答え | 根拠（一次情報） |
 |---|---|---|
@@ -82,6 +83,9 @@
 | `wan22-t2v-14b-palingenesis` | **不明**（#1028 で追加） | Palingenesis（eddy1111111）のカードは `license: apache-2.0` と宣言するだけで、本文も、微調整の元データ・方法の説明も無い。非検閲のテキストエンコーダー（NSFW-Wan-UMT5-XXL の標準形式版。rzgar のカードは `license: apache-2.0` の宣言だけ）も追加学習のデータ・方法が書かれていない。ベースの Wan 2.2 T2V 14B と google/umt5-xxl は Apache-2.0。#1028 |
 | `wan22-t2v-14b-mystic-xxx-lora` | **不明** | ベースの Wan 2.2 T2V 14B は Apache-2.0。LoRA（Mystic XXX v1。ミラー）は HF に本文が無く、原本（Civitai の model 1295758）の表示は販売まで可でも本文の根拠にしない。#1012 |
 | `hunyuanvideo-t2v-nsfw-lora` | **不明** | ベースは Tencent Hunyuan Community License（EU・英国・韓国では適用外、月間 1 億人超は許諾。条件つき）。LoRA（nsfw-e7）はカードが `license: unknown`。厳しい方の不明。#1012 |
+| `skyreels-v2-i2v-1-3b-540p` | **不明**（#1014。2026-11-14） | `Skywork/SkyReels-V2-I2V-1.3B-540P` のカードは `license: other`・`license_name: skywork-license`・`license_link: LICENSE` だが、HF の `LICENSE` は 0 バイトで本文が無い。公式の GitHub（`SkyworkAI/SkyReels-V2`）の `LICENSE.txt` は「商用利用を支持する。Skywork Community License の条項を守ること」と書き、その許諾書（PDF）は商用を認める一方、「Skywork Model」を Skywork-13B モデルと定義するので、SkyReels の重みに及ぶことを確かめられない。厳しい方の「不明」。ベースの Wan 2.1 のエンコーダー・CLIP Vision・VAE（Comfy-Org の再配布）は Apache-2.0。上級・同意あり（非 `yes` は上級の規則）。同じ配布元の `SkyReels-V3-R2V-14B` は見送り（動かせないため。同じ「不明」） |
+| `wan22-vace-fun-14b` | 商用OK（#1014。2026-11-14） | Alibaba PAI の `alibaba-pai/Wan2.2-VACE-Fun-A14B` のカードが `license: apache-2.0`、README_en の License 欄も Apache License 2.0（このリポジトリに LICENSE ファイルは無く、GitHub の `aigc-apps/VideoX-Fun` の LICENSE が Apache License 2.0 の本文）。取得元の `Comfy-Org/Wan-2.2`（fp8 の変換）のカードも `license: apache-2.0` |
+| `ltxv-13b-0.9.8-distilled` | 条件つき（#1014。2026-11-14） | `Lightricks/LTX-Video` のカードは `license: other` で、0.9.8 Distilled(-fp8) の許諾として `LTX-Video-Open-Weights-License-0.X.txt`（License date: April 15, 2025）を挙げる。本文の第 2 条は、Attachment A の使用制限のもとで許諾しつつ、年間売上 1,000 万 US ドル以上の事業者は Lightricks との有償の商用ライセンス（`ltxv-licensing@lightricks.com`）を別に結ぶと定め、違反は使用料の 2 倍の違約金。それ未満は商用を含めて使える。テキストエンコーダー（T5-XXL）は Apache-2.0。同意あり |
 | `realvisxl-v50` | 商用OK | 作者 SG161222 のモデルカード（`SG161222/RealVisXL_V5.0`）の `license: openrail++`。ベースの SDXL も同じ OpenRAIL++-M。成人向けなので同意必須（#984） |
 | `cyberrealistic-xl-v10` | 商用OK | 作者 Cyberdelia のモデルカード（`cyberdelia/CyberRealisticXL`）が「CreativeML Open RAIL++-M License」と書き、`license: creativeml-openrail-m`（#984） |
 | `juggernaut-xl-ragnarok` | 商用OK | 作者 KandooAI のモデルカード（`Kandoo/Juggernaut-XL-Ragnarok`）の `license: creativeml-openrail-m` と本文「モデルも生成物も商用で使える。使用制限に挙げた目的には使えない」。法人向けの商用ライセンスの相談先は別に載る（#984） |
@@ -181,3 +185,4 @@
 | 1.20 | 2026-11-06 | §4 の「モデルマネージャー: 試し生成」の行を消した（試し生成の区画の廃止。生成テストの行は変えない。状態は仕様のみ） | Issue #1100 |
 | 1.21 | 2026-11-08 | §5 に、生成が既定の割り当ての代わりにモデルを選ぶときのライセンスの条件を足した | Issue #1113 |
 | 1.22 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.23 | 2026-11-14 | §3 の表に動画 3 件（`skyreels-v2-i2v-1-3b-540p`・`wan22-vace-fun-14b`・`ltxv-13b-0.9.8-distilled`）の答えを足した | Issue #1014 |

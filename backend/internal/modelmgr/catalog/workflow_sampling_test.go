@@ -20,11 +20,11 @@ func TestACatalogModelRunsWithTheSamplingItsAuthorRecommends(t *testing.T) {
 	std := want{25, 7, "dpmpp_2m", "karras"}
 	c := catalog.Default()
 	for id, w := range map[string]want{
-		"noobai-xl-v11":            {25, 5.5, "euler_ancestral", "karras"},
+		"noobai-xl-v11":            {25, 7, "euler_ancestral", "karras"},
 		"wai-illustrious-sdxl-v17": {25, 7, "euler_ancestral", "karras"},
-		"realvisxl-v50":            {30, 7, "dpmpp_sde", "karras"},
-		"cyberrealistic-pony-v18":  {30, 5, "dpmpp_2m", "karras"},
-		"cyberrealistic-xl-v10":    std, // the author's ranges contain the template's values
+		"realvisxl-v50":            {25, 7, "dpmpp_sde", "karras"},
+		"cyberrealistic-pony-v18":  {25, 5, "dpmpp_2m", "karras"},
+		"cyberrealistic-xl-v10":    {25, 7, "dpmpp_2m_sde", "karras"},
 		"sdxl-base":                std,
 	} {
 		m, ok := c.Model(id)

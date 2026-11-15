@@ -5,7 +5,7 @@
  "tier": "advanced",
  "content_rating": "adult",
  "traits": {"params_b": 2.6, "params_label": "2.6B（UNet）", "uncensored": false, "speed": "standard"},
- "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け）。ポートレート・ファッション・写真風の場面が得意で、VAE 入りの fp16（約 6.9 GB）。作者のカードの推奨は 25〜30 ステップ・cfg 7〜8。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け）。ポートレート・ファッション・写真風の場面が得意で、VAE 入りの fp16（約 6.9 GB）。作者の推奨は、Civitai のモデルページで DPM++ 2M SDE Karras・30 ステップ以上・cfg 3〜5・clip skip 1。Hugging Face のカードは古い版（v5.7）のままで 25〜30 ステップ・cfg 7〜8・DPM++ 3M SDE Karras か Euler a と食い違うため、現行の版を載せる Civitai のページ（作者は Hugging Face をバックアップと書く）に従い、単一の値で書かれたサンプラーだけを採る。テンプレートは SDXL 標準だが、作者の推奨に合わせて DPM++ 2M SDE（dpmpp_2m_sde）で動かす（ステップ数は「30 以上」、cfg は 3〜5 の範囲で、どちらも単一の値ではないので標準の 25 ステップ・cfg 7 のまま。スケジューラーは karras のまま。リクエストで変えられる）。参照画像からの画像（img2img）にも使える。",
  "files": [
   {
    "name": "CyberRealisticXLPlay_V10.0_FP16.safetensors",
@@ -50,12 +50,18 @@
   {
    "name": "cyberrealistic-xl-v10",
    "template": "txt2img-sdxl",
-   "model_file": "CyberRealisticXLPlay_V10.0_FP16.safetensors"
+   "model_file": "CyberRealisticXLPlay_V10.0_FP16.safetensors",
+   "sampling": {
+    "sampler": "dpmpp_2m_sde"
+   }
   },
   {
    "name": "cyberrealistic-xl-v10-img2img",
    "template": "img2img-sdxl",
-   "model_file": "CyberRealisticXLPlay_V10.0_FP16.safetensors"
+   "model_file": "CyberRealisticXLPlay_V10.0_FP16.safetensors",
+   "sampling": {
+    "sampler": "dpmpp_2m_sde"
+   }
   }
  ]
 }

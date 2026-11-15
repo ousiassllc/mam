@@ -152,6 +152,7 @@ func (b Filter) ClearAll() modelfilter.Condition {
 func without(c modelfilter.Condition, edit func(*modelfilter.Condition)) modelfilter.Condition {
 	c.Kinds, c.Inputs, c.Params = slices.Clone(c.Kinds), slices.Clone(c.Inputs), slices.Clone(c.Params)
 	c.Origins, c.Providers, c.Languages, c.Speeds, c.Qualities = slices.Clone(c.Origins), slices.Clone(c.Providers), slices.Clone(c.Languages), slices.Clone(c.Speeds), slices.Clone(c.Qualities)
+	c.VideoModes = slices.Clone(c.VideoModes)
 	edit(&c)
 	return c
 }
@@ -203,6 +204,9 @@ func (b Filter) Chips() []Chip {
 	}
 	if c.Audio {
 		add("音声つき", func(x *modelfilter.Condition) { x.Audio = false })
+	}
+	for _, m := range c.VideoModes {
+		add("動画の種類: "+m.Label(), func(x *modelfilter.Condition) { x.VideoModes = dropValue(x.VideoModes, m) })
 	}
 	for _, l := range c.Speeds {
 		add("速度: "+l.Label(), func(x *modelfilter.Condition) { x.Speeds = dropValue(x.Speeds, l) })
