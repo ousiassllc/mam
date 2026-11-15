@@ -182,6 +182,24 @@ func TestTheConcurrencyLimitOfTheVendorStaysInForce(t *testing.T) {
 	assert.Equal(t, int32(1), flux.peak.Load())
 }
 
+func TestVideoShortensAnOmniClipWithTwoFramesToTheInterpolationLimit(t *testing.T) {
+	omni := &fakeVideo{}
+	a := adapter(modeladapter.DefaultConfig(), modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelGeminiOmniFlash: omni}})
+	target := modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
+	frame := &modeladapter.Input{Data: []byte("f"), MimeType: "image/png"}
+
+	out, err := direct.Video(t.Context(), a, target, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 14, FirstFrame: frame, LastFrame: frame})
+	require.NoError(t, err)
+	out.File.Discard()
+	assert.Equal(t, 10.0, out.DurationSeconds, "the interpolation of two frames makes up to 10 seconds: the API refuses more")
+	assert.Equal(t, 10.0, omni.reqs[0].DurationSeconds)
+
+	out, err = direct.Video(t.Context(), a, target, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 14, FirstFrame: frame})
+	require.NoError(t, err)
+	out.File.Discard()
+	assert.Equal(t, 14.0, out.DurationSeconds, "one frame goes up to 15 seconds")
+}
+
 func TestVideoSnapsTheLengthChecksTheInputsAndKeepsTheSeedForRunwayOnly(t *testing.T) {
 	runway, kling := &fakeVideo{}, &fakeVideo{}
 	a := adapter(modeladapter.DefaultConfig(), modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{

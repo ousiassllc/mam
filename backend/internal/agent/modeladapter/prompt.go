@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/shotprompt"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/videocaps"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -70,7 +71,7 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 	if caps.LastFrame && !useReferences {
 		req.LastFrame = job.LastFrame
 	}
-	req.DurationSeconds = clipSeconds(target.Model, req.DurationSeconds, req.FirstFrame != nil || req.LastFrame != nil)
+	req.DurationSeconds = clipSeconds(target.Model, videocaps.InterpolationSeconds(target.Model, req.DurationSeconds, req.FirstFrame != nil && req.LastFrame != nil), req.FirstFrame != nil || req.LastFrame != nil)
 	// A model reads either the frames or the free references, never both: Seedance 2.0 treats first
 	// frame, first-and-last frame and reference-to-video as mutually exclusive scenarios and rejects
 	// a request that mixes them. The frames win here unless the job prefers the references (Reference

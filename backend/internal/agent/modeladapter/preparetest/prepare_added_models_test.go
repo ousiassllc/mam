@@ -87,13 +87,25 @@ func TestPrepareForGeminiOmniFlashSnapsToTheClipLengthsAndKeepsOneKindOfImage(t 
 	assert.Empty(t, req.References, "a model reads either the frames or the references")
 	assert.Empty(t, req.NegativePrompt, "Omni has no negative prompt: the avoid list is part of the prompt")
 	assert.Contains(t, req.Prompt, "Avoid: blurry")
-	assert.Contains(t, req.Prompt, "Duration 7 seconds", "the length is asked for in the prompt: there is no length parameter")
+	assert.Contains(t, req.Prompt, "Duration 7 seconds", "the prompt names the length too; the API field (response_format.duration) is what the model obeys")
 	assert.False(t, cjk.MatchString(req.Prompt))
+
+	job.DurationSeconds = 12
+	req, err = modeladapter.Prepare(omniTarget, job)
+	require.NoError(t, err)
+	assert.Equal(t, 10.0, req.DurationSeconds, "the interpolation of two frames makes up to 10 seconds: the API refuses more")
+	assert.NotNil(t, req.LastFrame, "both frames are kept")
+	assert.Contains(t, req.Prompt, "Duration 10 seconds")
+	job.LastFrame = nil
+	req, err = modeladapter.Prepare(omniTarget, job)
+	require.NoError(t, err)
+	assert.Equal(t, 12.0, req.DurationSeconds, "one frame goes up to 15 seconds")
 
 	job.FirstFrame, job.LastFrame = nil, nil
 	req, err = modeladapter.Prepare(omniTarget, job)
 	require.NoError(t, err)
 	assert.Len(t, req.References, 6)
+	assert.Equal(t, 12.0, req.DurationSeconds)
 
 	job.DurationSeconds = 14.2
 	req, err = modeladapter.Prepare(omni1080Target, job)

@@ -20,6 +20,18 @@ type Capabilities struct {
 	NativeAudio bool
 }
 
+// InterpolationSeconds is the length of a clip that carries both a first and a last frame (both: whether it does). Gemini Omni
+// Flash makes such a clip up to 10 seconds (the official Omni guide, "First and last frame interpolation" and "Limitations": two
+// frames with a longer duration make the API return an invalid argument error, while one image or text goes up to 15 seconds), so
+// a longer length is shortened to that and both frames are kept, like Prepare keeps the frame of a 5 second Luma clip. Any other
+// request or model keeps its length.
+func InterpolationSeconds(m domain.ModelName, seconds float64, both bool) float64 {
+	if m == domain.ModelGeminiOmniFlash && both {
+		return min(seconds, 10)
+	}
+	return seconds
+}
+
 // WholeSeconds lists the lengths from..to in whole seconds.
 func WholeSeconds(from, to int) []float64 {
 	out := make([]float64, 0, to-from+1)
@@ -54,8 +66,8 @@ func Of(m domain.ModelName) (Capabilities, bool) {
 		return Capabilities{Durations: []float64{2, 3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"}, FirstFrame: true}, true
 	case domain.ModelGeminiOmniFlash:
 		// 3-15 s in whole seconds, 24 FPS, with native sound. 360p and 4K exist too, but only 720p and 1080p (upscaled) are offered:
-		// they are the sizes of a video of a Shot. First and last frame, or free reference images (the two are exclusive in Prepare); no length
-		// parameter is sent: the length is asked for in the prompt. The official documentation states a limit of 6 reference images.
+		// they are the sizes of a video of a Shot. First and last frame, or free reference images (the two are exclusive in Prepare); the length is sent as
+		// response_format.duration. The two frames make up to 10 s only (InterpolationSeconds). The official documentation states a limit of 6 reference images.
 		return Capabilities{
 			Durations: WholeSeconds(3, 15), Resolutions: []string{"720p", "1080p"},
 			MaxReferenceImages: 6, FirstFrame: true, LastFrame: true, NativeAudio: true,
