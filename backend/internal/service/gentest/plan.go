@@ -52,6 +52,8 @@ type modelPlan struct {
 	seconds    float64
 	// used are the indexes of the request's References this model is given.
 	used []int
+	// bothFrames says the model is given a first and a last frame (the length of such a clip can be limited: videocaps.CheckInterpolation).
+	bothFrames bool
 	// lora says the request's LoRA is sent to the model, avoidPose that the pose negative is added to its negative prompt.
 	lora, avoidPose bool
 	// speedMode is the speed mode the model is asked for ("" for its default).

@@ -3,7 +3,12 @@
 // defined as this package's Capabilities (a defined type with the same fields), so that one converts to the other.
 package videocaps
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/domain"
+)
 
 // Capabilities is what a video model can do (modeladapter.VideoCapabilities).
 type Capabilities struct {
@@ -20,16 +25,17 @@ type Capabilities struct {
 	NativeAudio bool
 }
 
-// InterpolationSeconds is the length of a clip that carries both a first and a last frame (both: whether it does). Gemini Omni
-// Flash makes such a clip up to 10 seconds (the official Omni guide, "First and last frame interpolation" and "Limitations": two
-// frames with a longer duration make the API return an invalid argument error, while one image or text goes up to 15 seconds), so
-// a longer length is shortened to that and both frames are kept, like Prepare keeps the frame of a 5 second Luma clip. Any other
-// request or model keeps its length.
-func InterpolationSeconds(m domain.ModelName, seconds float64, both bool) float64 {
-	if m == domain.ModelGeminiOmniFlash && both {
-		return min(seconds, 10)
+// CheckInterpolation refuses (apperr input_unsupported, HTTP 422) a clip with both a first and a last frame (both) that is longer than
+// Gemini Omni Flash makes from two frames, 10 seconds (the official Omni guide, "Limitations": the API returns invalid argument; one
+// image or text goes up to 15 seconds). The length is not shortened and no frame is dropped. Any other request or model passes (nil).
+func CheckInterpolation(m domain.ModelName, seconds float64, both bool) error {
+	const limit = 10
+	if m != domain.ModelGeminiOmniFlash || !both || seconds <= limit {
+		return nil
 	}
-	return seconds
+	return apperr.New(apperr.CodeInputUnsupported).
+		WithCause(fmt.Sprintf("最初と最後のフレームの両方を使うと、Gemini Omni Flash は %d 秒までの動画しか作れません（指定は %g 秒）。長さを %d 秒以下にするか、どちらかのフレームを外してください。", limit, seconds, limit)).
+		WithDetail(fmt.Sprintf("%s makes at most %d seconds from a first and a last frame, the request is %g seconds", m, limit, seconds))
 }
 
 // WholeSeconds lists the lengths from..to in whole seconds.
@@ -67,7 +73,7 @@ func Of(m domain.ModelName) (Capabilities, bool) {
 	case domain.ModelGeminiOmniFlash:
 		// 3-15 s in whole seconds, 24 FPS, with native sound. 360p and 4K exist too, but only 720p and 1080p (upscaled) are offered:
 		// they are the sizes of a video of a Shot. First and last frame, or free reference images (the two are exclusive in Prepare); the length is sent as
-		// response_format.duration. The two frames make up to 10 s only (InterpolationSeconds). The official documentation states a limit of 6 reference images.
+		// response_format.duration. The two frames make up to 10 s only (CheckInterpolation refuses more). The official documentation states a limit of 6 reference images.
 		return Capabilities{
 			Durations: WholeSeconds(3, 15), Resolutions: []string{"720p", "1080p"},
 			MaxReferenceImages: 6, FirstFrame: true, LastFrame: true, NativeAudio: true,

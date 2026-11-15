@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -90,12 +91,18 @@ func TestPrepareForGeminiOmniFlashSnapsToTheClipLengthsAndKeepsOneKindOfImage(t 
 	assert.Contains(t, req.Prompt, "Duration 7 seconds", "the prompt names the length too; the API field (response_format.duration) is what the model obeys")
 	assert.False(t, cjk.MatchString(req.Prompt))
 
-	job.DurationSeconds = 12
+	job.DurationSeconds = 10
 	req, err = modeladapter.Prepare(omniTarget, job)
 	require.NoError(t, err)
-	assert.Equal(t, 10.0, req.DurationSeconds, "the interpolation of two frames makes up to 10 seconds: the API refuses more")
-	assert.NotNil(t, req.LastFrame, "both frames are kept")
-	assert.Contains(t, req.Prompt, "Duration 10 seconds")
+	assert.Equal(t, 10.0, req.DurationSeconds, "two frames make up to 10 seconds")
+	assert.NotNil(t, req.LastFrame)
+
+	job.DurationSeconds = 12
+	_, err = modeladapter.Prepare(omniTarget, job)
+	var refused *apperr.Error
+	require.ErrorAs(t, err, &refused, "the interpolation of two frames over 10 seconds is refused, not shortened: the API refuses it")
+	assert.Equal(t, apperr.CodeInputUnsupported, refused.Code)
+	assert.Contains(t, refused.Cause, "10 秒")
 	job.LastFrame = nil
 	req, err = modeladapter.Prepare(omniTarget, job)
 	require.NoError(t, err)

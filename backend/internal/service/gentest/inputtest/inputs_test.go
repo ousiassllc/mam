@@ -3,6 +3,7 @@ package inputtest_test
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -200,4 +201,26 @@ func TestDefaultInputRoleIsTheFirstFrameForAnI2VModel(t *testing.T) {
 	assert.Equal(t, "reference", r.Svc.DefaultInputRole("video", []string{i2v}, []gentest.RefInput{{Role: "first_frame"}}), "one first frame is enough")
 	assert.Equal(t, "reference", r.Svc.DefaultInputRole("video", nil, nil))
 	assert.Equal(t, "reference", r.Svc.DefaultInputRole("image", []string{string(gentesttest.ControlModel)}, nil), "an image model's pictures are whole pictures by default")
+}
+
+// Gemini Omni Flash makes at most 10 seconds from a first and a last frame: a longer clip is refused (HTTP 422), not shortened, in the estimate and in the form's notice.
+func TestAnOmniClipOfTwoFramesOverTenSecondsIsRefused(t *testing.T) {
+	r := gentesttest.New(t)
+	req := videoReq([]string{"gemini-omni-flash"}, staged(t, r, "first_frame"), staged(t, r, "last_frame"))
+	req.Resolution, req.DurationSeconds = "720p", 12
+
+	_, err := r.Svc.Estimate(context.Background(), req)
+	e := failure(t, err)
+	assert.Equal(t, apperr.CodeInputUnsupported, e.Code)
+	assert.Equal(t, http.StatusUnprocessableEntity, e.Status())
+	assert.Contains(t, e.View(apperr.LangJa).Cause, "10 秒")
+	require.NotNil(t, r.Svc.CheckInputs(req).Block, "the form's notice says the same as the estimate")
+	assert.Equal(t, e.View(apperr.LangJa), r.Svc.CheckInputs(req).Block.View(apperr.LangJa))
+
+	req.DurationSeconds = 10
+	_, err = r.Svc.Estimate(context.Background(), req)
+	require.NoError(t, err, "10 seconds is the limit itself")
+	req.DurationSeconds, req.References = 12, req.References[:1]
+	_, err = r.Svc.Estimate(context.Background(), req)
+	require.NoError(t, err, "one frame goes up to 15 seconds")
 }

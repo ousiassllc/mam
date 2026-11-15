@@ -3,6 +3,7 @@ package gentest
 import (
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/videocaps"
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -39,6 +40,10 @@ func checkInputs(r Request, plans []modelPlan) *apperr.Error {
 		if e := inputcheck.Missing(r.Media == gentestrepo.MediaVideo, roles, models[i]); e != nil {
 			return e
 		}
+		if err := videocaps.CheckInterpolation(domain.ModelName(p.info.ID), p.seconds, p.bothFrames); err != nil { // a clip the model cannot make is stopped, not shortened
+			e, _ := apperr.As(err)
+			return e
+		}
 	}
 	return inputcheck.AllUnused(roles, models, uses)
 }
@@ -69,6 +74,7 @@ func (s *Service) CheckInputs(r Request) InputCheck {
 			s.planImage(r, &plans[i])
 		} else {
 			caps, _ := s.Adapter.Config().VideoCaps(domain.ModelName(m.ID))
+			plans[i].seconds = caps.SnapDuration(r.DurationSeconds)
 			plans[i].applyInputs(inputcheck.Video(caps, m.Label, rolesOf(r)))
 		}
 		for _, w := range plans[i].warnings {
@@ -83,7 +89,7 @@ func (s *Service) CheckInputs(r Request) InputCheck {
 
 // applyInputs puts the decision of inputcheck into the plan: the images the model is given and not, and a warning for each kind it leaves out.
 func (p *modelPlan) applyInputs(in inputcheck.Plan) {
-	p.used, p.unused = in.Used, in.Unused
+	p.used, p.unused, p.bothFrames = in.Used, in.Unused, in.FirstFrame && in.LastFrame
 	for _, n := range in.Notes {
 		p.warnings = append(p.warnings, Warning{Model: p.info.ID, Code: n.Code, Message: n.Message})
 	}
