@@ -114,7 +114,8 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 	case FromStaged:
 		p, m, err := s.StagedFile(ref.ID)
 		if err != nil {
-			return Source{}, gterr.Invalid("アップロードした画像 %q はありません（使用済みか、24 時間を過ぎて消えました）。もう一度アップロードしてください", ref.ID)
+			what := map[bool]string{false: "画像", true: "音声ファイル"}[ref.Role == RoleAudio]
+			return Source{}, gterr.Invalid("アップロードした%s %q はありません（使用済みか、24 時間を過ぎて消えました）。もう一度アップロードしてください", what, ref.ID)
 		}
 		path, mime = p, m
 	case FromProjectAsset, FromReferenceItem:

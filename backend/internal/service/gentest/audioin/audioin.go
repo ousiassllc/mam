@@ -47,7 +47,7 @@ func Sniff(data []byte) (mime string, ok bool) {
 	switch {
 	case len(data) >= 12 && string(data[0:4]) == "RIFF" && string(data[8:12]) == "WAVE":
 		return WAV, true
-	case len(data) >= 3 && string(data[0:3]) == "ID3":
+	case len(data) >= 10 && string(data[0:3]) == "ID3" && data[3] <= 4 && data[4] != 0xFF && data[6]|data[7]|data[8]|data[9] < 0x80: // an ID3v2 tag: version 2.2-2.4 and a 28 bit size in 7 bit bytes
 		return MP3, true
 	case len(data) >= 4 && data[0] == 0xFF && data[1]&0xE0 == 0xE0 && data[1]>>3&3 != 1 && data[1]>>1&3 == 1 && data[2]>>4 != 0xF && data[2]>>2&3 != 3:
 		return MP3, true

@@ -112,3 +112,15 @@ func TestStageRefusesAnEmptyOversizedOrNotAudioFileAndWritesNothing(t *testing.T
 	_, _, err := audioin.Stage(filepath.Join(t.TempDir(), "staging"), atLimit, func() string { return "id0001" })
 	assert.NoError(t, err)
 }
+
+// An ID3 prefix alone is not an MP3: a FLAC with an ID3v2 tag, or a text that happens to start with "ID3", has no valid tag header (version, flags, size bytes of 7 bits).
+func TestSniffRefusesAnID3PrefixThatIsNoTagHeader(t *testing.T) {
+	for name, data := range map[string][]byte{
+		"text starting with ID3":   []byte("ID3 is the name of a tag"),
+		"size bytes over 7 bits":   []byte("ID3\x04\x00\x00\xff\xff\xff\xff"),
+		"a version that is no tag": []byte("ID3\x09\x00\x00\x00\x00\x00\x00"),
+	} {
+		_, ok := audioin.Sniff(data)
+		assert.False(t, ok, name)
+	}
+}

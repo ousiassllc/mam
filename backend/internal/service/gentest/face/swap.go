@@ -79,6 +79,9 @@ func Swap(ctx context.Context, g *gentest.Service, r SwapRequest) (SwapRef, erro
 	if err != nil {
 		return SwapRef{}, gterr.Invalid("%v", err)
 	}
+	if r.Target.Role == gentest.RoleAudio || r.Face.Role == gentest.RoleAudio { // a sound is no picture: ResolveInput takes it only for the audio input of a video batch
+		return SwapRef{}, gterr.Invalid("顔の入れ替えに音声ファイルは使えません")
+	}
 	target, err := g.ResolveInput(ctx, r.Target)
 	if err != nil {
 		return SwapRef{}, err
