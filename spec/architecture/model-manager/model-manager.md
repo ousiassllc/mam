@@ -262,7 +262,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 
 **標準の動画モデルの第 2 弾（Issue #1014 の残り。2026-11-04）**。第 1 弾で見送った候補を、HF の API・応答ヘッダー・ComfyUI の公式の資料で確かめ直した。**追加したのは、2026-11-04 に 2 モデル**（`wan21-vace-1-3b`・`ltx-2.3-22b-distilled`）、**2026-11-14 にさらに 3 モデル**（`skyreels-v2-i2v-1-3b-540p`・`wan22-vace-fun-14b`・`ltxv-13b-0.9.8-distilled`）。新しいカスタムノードは許可リスト（`nodecat`）に足していない（許可リストの追加は別の作業。#1016 の ComfyUI-GGUF は別の担当）。
 
-確かめ方（以下の「確認」はすべてこの方法。日付は 2026-11-04）:
+確かめ方（以下の「確認」はすべてこの方法。日付は各行に書いた。2026-11-04 と、確かめ直した 2026-11-14）:
 
 - **URL・SHA-256・サイズ**: `https://huggingface.co/api/models/<repo>/tree/<コミット>` の `lfs.oid`（SHA-256）と `size`。固定した URL の HEAD（`x-linked-etag`・`x-linked-size`）が一致することも確認した。ファイルの本体は取得していない。
 - **dtype**: `.safetensors` の先頭の JSON ヘッダーを `Range` で取り、テンソルの型を数えた（fp8・fp4 の有無で macOS〔MPS は fp8 非対応〕の「非対応」を決める）。

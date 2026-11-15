@@ -8,7 +8,7 @@ import (
 // VideoMode is the kind of a video model (Issue #1014): what the model is made to be given and to make. It is an item of the catalog entry
 // of its own ("traits.video_modes"), written by the catalog author, and not computed from the workflows: the same inputs can come from
 // different kinds of model (a VACE model takes a reference image like an image-to-video one does, but is not one). What the workflows say is
-// only a check on it (CheckVideoModes). The names are the ones of the filter, the query string and the MCP tools.
+// only a check on it (ValidateVideoModes). The names are the ones of the filter, the query string and the MCP tools.
 type VideoMode string
 
 // The video modes.
