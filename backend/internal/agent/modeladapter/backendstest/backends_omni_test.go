@@ -17,7 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-const omniAPIModel = "gemini-omni-1.1-flash"
+const omniAPIModel = "gemini-omni-1.2-flash"
 
 func omniRequest() modeladapter.VideoRequest {
 	return modeladapter.VideoRequest{Prompt: "A cat on a windowsill.", DurationSeconds: 5, Resolution: "720p", AspectRatio: "16:9"}

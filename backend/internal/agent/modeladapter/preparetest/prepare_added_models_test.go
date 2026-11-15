@@ -15,9 +15,10 @@ import (
 // by their identifier, but the default Quality Policies and Multi-model routing candidates do not use them.
 
 var (
-	omniTarget   = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
-	kling4Target = modeladapter.VideoTarget{Model: domain.ModelKling4, Resolution: "1080p"}
-	seed25Target = modeladapter.VideoTarget{Model: domain.ModelSeedance25, Resolution: "720p"}
+	omniTarget     = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
+	omni1080Target = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "1080p"}
+	kling4Target   = modeladapter.VideoTarget{Model: domain.ModelKling4, Resolution: "1080p"}
+	seed25Target   = modeladapter.VideoTarget{Model: domain.ModelSeedance25, Resolution: "720p"}
 )
 
 func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *testing.T) {
@@ -27,7 +28,7 @@ func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *te
 		vendor modeladapter.Vendor
 		apiID  string
 	}{
-		{domain.ModelGeminiOmniFlash, modeladapter.VendorGoogle, "gemini-omni-1.1-flash"},
+		{domain.ModelGeminiOmniFlash, modeladapter.VendorGoogle, "gemini-omni-1.2-flash"},
 		{domain.ModelKling4, modeladapter.VendorKling4, "kling-4.0"},
 		{domain.ModelSeedance25, modeladapter.VendorSeedance, "dreamina-seedance-2-5-260628"},
 		{domain.ModelMiniMaxH3, modeladapter.VendorMiniMax, "MiniMax-H3"},
@@ -60,18 +61,21 @@ func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *te
 
 func TestGeminiOmniFlashIsPricedFromTheOfficialTokenRate(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
-	// 5,792 tokens per second of 720p video at USD 17.50 per million output tokens is 0.1014 USD; Google states "approximately $0.10".
-	assert.InDelta(t, 0.5, cfg.VideoCost(omniTarget, 5), 1e-9)
-	assert.InDelta(t, 5792*17.5/1e6, cfg.Models[domain.ModelGeminiOmniFlash].CostPerSecond["720p"], 0.002)
+	// $12.00 per million output tokens: 5,792 tokens per second of 720p video is 0.0695 USD, 8,688 tokens per second of 1080p is 0.104 USD.
+	assert.InDelta(t, 0.0695*5, cfg.VideoCost(omniTarget, 5), 1e-9)
+	assert.InDelta(t, 0.104*5, cfg.VideoCost(omni1080Target, 5), 1e-9)
+	assert.InDelta(t, 5792*12.0/1e6, cfg.Models[domain.ModelGeminiOmniFlash].CostPerSecond["720p"], 0.0001)
+	assert.InDelta(t, 8688*12.0/1e6, cfg.Models[domain.ModelGeminiOmniFlash].CostPerSecond["1080p"], 0.0005)
 }
 
 func TestPrepareForGeminiOmniFlashSnapsToTheClipLengthsAndKeepsOneKindOfImage(t *testing.T) {
 	caps, ok := modeladapter.Capabilities(domain.ModelGeminiOmniFlash)
 	require.True(t, ok)
-	assert.Equal(t, []string{"720p"}, caps.Resolutions)
+	assert.Equal(t, []string{"720p", "1080p"}, caps.Resolutions)
 	assert.True(t, caps.NativeAudio)
-	assert.Equal(t, 3.0, caps.SnapDuration(1), "clips are 3 to 10 seconds")
-	assert.Equal(t, 10.0, caps.SnapDuration(30))
+	assert.Equal(t, 3.0, caps.SnapDuration(1), "clips are 3 to 15 seconds")
+	assert.Equal(t, 12.0, caps.SnapDuration(11.5))
+	assert.Equal(t, 15.0, caps.SnapDuration(30))
 
 	job := fullJob()
 	job.DurationSeconds = 6.2
@@ -90,6 +94,13 @@ func TestPrepareForGeminiOmniFlashSnapsToTheClipLengthsAndKeepsOneKindOfImage(t 
 	req, err = modeladapter.Prepare(omniTarget, job)
 	require.NoError(t, err)
 	assert.Len(t, req.References, 6)
+
+	job.DurationSeconds = 14.2
+	req, err = modeladapter.Prepare(omni1080Target, job)
+	require.NoError(t, err)
+	assert.Equal(t, 15.0, req.DurationSeconds, "Omni 1.2 makes up to 15 seconds")
+	assert.Equal(t, "1080p", req.Resolution)
+	assert.Contains(t, req.Prompt, "Duration 15 seconds")
 }
 
 func TestKling4IsPricedFromTheOfficialUnitPrice(t *testing.T) {
