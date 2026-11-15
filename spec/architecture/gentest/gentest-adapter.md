@@ -8,7 +8,7 @@ Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 
 - `direct.Image(ctx, adapter, model, ImageRequest)` / `direct.Video(ctx, adapter, VideoTarget, VideoRequest)`。指定のモデルのバックエンドが無ければ `ErrNoBackend`。結果の `Model` は指定したモデルで、`FellBack` は常に false。
 - **プロンプトはそのまま送る**（補正しない）。ネガティブの欄が無いモデルへの `NegativePrompt` は捨てる（呼び出し側が先に「Avoid: …」をプロンプトに書き足す。`direct.Fold` = `shotprompt.AvoidSentence` と同じ文）。シードを受け付けないモデルへのシードも捨てる。
-- **入力はモデルの能力で検査して拒否する**: 参照画像を使えないモデルに画像があれば `ErrInputsUnsupported`、最初のフレームと自由な参照の併用・最後のフレームだけ・参照が上限超えは `ErrInputsConflict`、モデルが作らない解像度は `ErrResolution`。いずれもベンダーを呼ぶ前なので課金されない。動画の長さは `VideoCapabilities.SnapDuration` で作れる長さに丸める。Runway Gen-4.5 の 1:1 は最初のフレームがあるときだけ（`direct.AspectProblem`。ベンダーは受け付けない。通常の Shot の経路は代替へ切り替えるが、直接呼び出しは失敗する）。単発生成は見積りの時点で警告する。
+- **入力はモデルの能力で検査して拒否する**: 参照画像を使えないモデルに画像があれば `ErrInputsUnsupported`、**音声（`VideoRequest.Audio`）を使えないモデル（`VideoCapabilities.AudioInput` が false）に音声があるときも `ErrInputsUnsupported`**（Issue #1153）、最初のフレームと自由な参照の併用・最後のフレームだけ・参照が上限超えは `ErrInputsConflict`、モデルが作らない解像度は `ErrResolution`。いずれもベンダーを呼ぶ前なので課金されない。動画の長さは `VideoCapabilities.SnapDuration` で作れる長さに丸める。Runway Gen-4.5 の 1:1 は最初のフレームがあるときだけ（`direct.AspectProblem`。ベンダーは受け付けない。通常の Shot の経路は代替へ切り替えるが、直接呼び出しは失敗する）。単発生成は見積りの時点で警告する。
 - **レジリエンスは共有**: `modeladapter.Call[T](ctx, adapter, vendor, clock, model, fn)`（`call[T]` を公開したもの）を通るので、ベンダーごとのサーキットブレーカー・同時実行数（`resilience.Limiter`）・再試行・タイムアウトは通常の呼び出しと同じ。コスト台帳には書かない（呼び出し側が決める。単発生成は書かない）。
 
 ## 2. `Adapter.Unavailable` の拡張

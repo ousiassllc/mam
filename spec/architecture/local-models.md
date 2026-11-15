@@ -64,8 +64,8 @@ openai-compat:lmstudio/flux-schnell
 
 ## 4. ComfyUI
 
-- **割り当て表（`assignments`）**: `param` の値をノード `node` の入力 `input` に入れる。使える `param`: `prompt`、`negative_prompt`、`seed`（実行ごとに乱数。単発生成と `run_workflow` は固定もできる）、`steps`・`cfg`・`sampler`・`scheduler`（§4.3）、`width`、`height`、`frames`（`offset` でフレーム数に整数を足せる。§4.3.1）、`fps`、`reference_image`（`index` で何枚目か。`optional: true` なら、その枚数が無い実行ではノードごと外れる）、`reference_denoise`（画像のみ。§4.2）、`first_frame`、`last_frame`。画像は `frames`・`fps`・`first_frame`・`last_frame` を使えない。幅・高さは縦横比と解像度から決め、`size_multiple` の倍数に丸める。
-- **入力画像**: 参照画像・最初／最後のフレームは `POST /upload/image` に**元の拡張子のまま**アップロードし、返った名前を入力に入れる。
+- **割り当て表（`assignments`）**: `param` の値をノード `node` の入力 `input` に入れる。使える `param`: `prompt`、`negative_prompt`、`seed`（実行ごとに乱数。単発生成と `run_workflow` は固定もできる）、`steps`・`cfg`・`sampler`・`scheduler`（§4.3）、`width`、`height`、`frames`（`offset` でフレーム数に整数を足せる。§4.3.1）、`fps`、`reference_image`（`index` で何枚目か。`optional: true` なら、その枚数が無い実行ではノードごと外れる）、`reference_denoise`（画像のみ。§4.2）、`first_frame`、`last_frame`、`audio`（動画のみ。音声ファイル。§4.11）。画像は `frames`・`fps`・`first_frame`・`last_frame`・`audio` を使えない。幅・高さは縦横比と解像度から決め、`size_multiple` の倍数に丸める。
+- **入力画像**: 参照画像・最初／最後のフレームは `POST /upload/image` に**元の拡張子のまま**アップロードし、返った名前を入力に入れる。音声ファイル（`audio`）も同じ経路で、拡張子は `.wav` / `.mp3`（§4.11）。
 - **実行**: `/ws?clientId=…` を開いてから `POST /prompt`（`prompt_id` と `client_id` は mam が決める）。`/ws` の `progress`・`executing` から割合を求め、`/history/<id>` を確認して完了を待つ。結果は `GET /view` で取る（動画は `.mp4`・`.m4v`・`.webm`・`.mov` のみ。それ以外は投入後のエラー）。
 - **進捗**: 割合は Shot の進捗（`/ws/shots/:id`、チャットの進捗カード、Take カード）のメッセージに「動画を生成しています（42%）」の形で入る。モデル呼び出しの文脈に進捗の関数を持たせ（`modeladapter/progress`）、`generation/relay` が Orchestrator の通知（Take 数など）のメッセージに割合を足して配信する（`Progress` の型は変えない）。
 - **取り消し**: Take の生成を止めたときは、**自分の `prompt_id` だけ**を止める。まず `POST /api/jobs/<id>/cancel`、失敗（ルートが無い 404、画面の静的ファイルが先に答える 405 など）なら `GET /queue` で見て、実行中なら `POST /interrupt {"prompt_id"}`、待機中なら `POST /queue {"delete":[id]}`。対象を指さない割り込み・キューの全消しはしない。呼び出しがタイムアウトで打ち切られたときも同じ手順で ComfyUI 側のジョブを止め、後ろで待つジョブが始まる。接続テストは ComfyUI が 0.3.57 未満だと「取り消しが他のジョブを止めうる」と注意を出す。
@@ -237,6 +237,13 @@ openai-compat:lmstudio/flux-schnell
 - **一覧**: `IsUpscale()` と同じく、`Model.IsVideoEnhance()` のワークフローは `localcfg.IDs`（画像・動画のモデルの識別子）・単発生成のモデルの一覧には**出ない**（プロンプトを渡すモデルではない）。
 - **実行（`modeladapter`）**: `enhancevideo.Run(ctx, adapter, model, enhancevideo.Request{Source, Scale, Multiplier, OutputFPS})`（パッケージ `modeladapter/enhancevideo`。`modeladapter` 本体は行数上限のため増やさない） が ComfyUI の `comfyui.Backend.EnhanceVideo` を呼ぶ（代替モデルへの切り替えはしない。印の無いモデルは `enhancevideo.ErrNotEnhance`）。元の動画は `POST /upload/image` に**コンテナに合う拡張子**（`video/mp4` は `.mp4`、`video/webm` は `.webm`、`video/quicktime` は `.mov`、`video/x-matroska` は `.mkv`。`LoadVideo` が入力ディレクトリのファイルを内容の種類で選ぶため）でアップロードし、返った名前を `source_video` に入れ、依頼の値（倍率・整数倍・fps）を割り当てへ入れて実行し、`SaveVideo` の動画を取って返す（上限 `localhttp.MaxFileBytes`＝300 MB）。依頼の値が足りない（倍率が 1 以下・整数倍が 2〜16 の外・出力 fps が無い・元の動画が空）ときは、アップロードの前に断る。ジョブが走り出したあとの失敗は `AfterSubmit`（同じ動画を二重に走らせない）。
 - **テンプレートとカタログ**: `templates/videoenhance/`（`video-upscale-seedvr2-3b`・`video-interpolate-rife-v4.25`・`-v4.26`）。コアのノード（`LoadVideo`・`GetVideoComponents`・`ResizeImageMaskNode`・`SeedVR2Preprocess`・`SeedVR2Conditioning`・`SeedVR2TemporalChunk`・`SeedVR2TemporalMerge`・`SeedVR2PostProcessing`・`FrameInterpolationModelLoader`・`FrameInterpolate` など）だけで、ComfyUI v0.42.1 の `nodes.py` が読み込む `comfy_extras` のソースで node_id を確かめた。モデルは [model-manager/model-manager.md](model-manager/model-manager.md) §4.7。**GPU では動かしていない**（実機未確認。値の差し込みと構造のテストまで）。
+
+### 4.11 音声ファイルの入力（`audio`。Issue #1153）
+
+- **割り当て（動画のワークフローだけ。画像は使えない）**: `audio`（アップロードした音声のファイル名。`LoadAudio.audio`）。`first_frame` と同じく、割り当てがあれば**そのワークフローは音声を必須の入力として取る**（`localcfg.Workflow.RequiredImages` が `audio`〔`localcfg.RequiredAudio`〕を返す。`optional` は無い）。能力は `VideoCapabilities.AudioInput`（`localcfg.Model.VideoCaps`。割り当て `audio` の有無から決まる。音声つきで作る `native_audio` とは別）。カタログの `traits.video_modes` の `s2v` は、音声を取るワークフローを持つことと一致させる（[model-manager/model-manager.md](model-manager/model-manager.md) §4.1）。
+- **実行（`modeladapter`）**: `VideoRequest.Audio`（`*Input`。バイト列と `audio/wav` / `audio/mpeg`）を、`comfyui` が `POST /upload/image` に**音声の拡張子**（`audio/wav` は `.wav`、`audio/mpeg` は `.mp3`。`LoadAudio` が入力ディレクトリのファイルを拡張子から選ぶため）でアップロードし、返った名前を `audio` の割り当てへ入れる。音声が要るワークフローで `Audio` が無い実行は、アップロードの前に `missing` が断る。音声を使えないモデルに `Audio` を渡す呼び出しは `direct.checkInputs` が `ErrInputsUnsupported` で断る（[gentest/gentest-adapter.md](gentest/gentest-adapter.md)）。mam は音声をデコードも測りもせず、そのまま ComfyUI へ渡す（長さの検査・切り詰めは無い。後者は `TrimAudioDuration` を使う案でフォローアップ）。
+- **ルーティング**: Project の Shot は音声が要るモデルへ回さない（`modelroute`）。保存・取り込みのワークフローの実行（`run_workflow`）は音声を渡せず、断る（[comfy/comfy-workflows.md](comfy/comfy-workflows.md) §5）。
+- **GPU では動かしていない**（実機未確認）。ComfyUI が WAV・MP3 以外の拡張子を `LoadAudio` の一覧に出すかも未確認（だから WAV・MP3 だけを受ける）。
 
 ## 5. 接続テスト
 

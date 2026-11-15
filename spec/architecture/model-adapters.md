@@ -74,7 +74,7 @@
 
 - 今使える（上の判定）。成人向けモデルでない。ライセンスが「不可」でなく、「商用 OK のモデルだけを使う」設定（[model-license.md](model-license.md)）を通る
 - 用途: 画像は `edit_reference` なら参照画像を受け取れるモデルだけ。入力の画像がないと動かないワークフローは、画像には自動では選ばない（すべての画像に入力があるとは限らないため）。動画は動画モデルだけ
-- 入力: Shot に Keyframe（First Frame）があるなら First Frame を受け取れる動画モデルだけ。First Frame を必須とするワークフローは Keyframe があるときだけ。Last Frame・参照画像を必須とするワークフローは自動では選ばない
+- 入力: Shot に Keyframe（First Frame）があるなら First Frame を受け取れる動画モデルだけ。First Frame を必須とするワークフローは Keyframe があるときだけ。Last Frame・参照画像・**音声ファイル**（Wan 2.2 S2V 14B など。Issue #1153）を必須とするワークフローは自動では選ばない（理由は「mam が渡さない入力（最後のフレーム・参照画像・音声）が必須」。Project のパイプラインには音声ファイルを入力にする経路が無い。Audio Director の声の生成は別の機能）
 - 解像度・長さ: Quality Policy の解像度に対応し、最長のクリップが Shot の長さ以上の動画モデルだけ
 - Quality Policy: 解像度は Quality Policy が決める（上の「解像度」）。Policy ごとに別の割り当てを持つので、切り替えは Policy の経路が使えないときだけ働く
 
@@ -125,6 +125,7 @@
 - **M1 実装順**: コスト効率と音声同時生成による検証のしやすさを優先し、Kling 3.0 + Seedance 2.0 の2アダプタを先行実装する。Runway Gen-4.5 は M2 で追加した（§9.1、MAX QUALITY のプライマリ）
 - OpenAI Sora 2 は候補から除外: API提供が2026-09-24付で終了済みのため
 - ローカルの動画モデルは ComfyUI の接続先に登録したワークフローで、Quality Policy の主・代替に割り当てられる。OpenAI 互換の動画は対象外（公式 Videos API が 2026-09-24 に終了し、互換サーバーごとに仕様が違うため。[local-models.md](local-models.md) §1）
+- 音声ファイルを入力にする動画モデル（音声から動画を作る S2V。Wan 2.2 S2V 14B）は、単発生成だけが音声を渡せる（[gentest/gentest.md](gentest/gentest.md) §6.1）。`modeladapter.VideoRequest.Audio`（`*Input`）と `VideoCapabilities.AudioInput`（ワークフローの割り当て `audio` から決まる）を足し、`direct` は音声を使えないモデルへの音声を `ErrInputsUnsupported` で断る。ComfyUI へは `POST /upload/image` に `.wav` / `.mp3` の拡張子で上げて `LoadAudio` に渡す（[local-models.md](local-models.md) §4.11）。クラウドの動画モデルは音声ファイルを入力に取らない（`native_audio` は映像と一緒に音声を作る能力で、別物）
 
 **追加の動画モデル（Issue #872・#873・#874・#875・#876・#878）**: 次の動画モデルは組み込みの識別子（§6）で呼べるが、上の Quality/Cost Policy の既定の主・代替にも Multi-model routing の既定の候補にも**入れていない**（実機で品質と単価を見たうえで別途判断する。使うときは設定画面の「画像・動画モデル」か `models.json` の `policies` で割り当てる）。API・制約・単価は §9.4。
 

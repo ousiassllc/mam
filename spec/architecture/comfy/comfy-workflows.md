@@ -41,7 +41,7 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 
 ## 5. 実行（`run_workflow`・画面なしの試し実行）
 
-保存したグラフと割り当てを、Shot と同じ `comfyui.Backend` で実行する。入力: プロンプト・ネガティブ・縦横比・（動画）解像度と長さ（ワークフローが作れる長さに丸める）・参照画像／最初と最後のフレーム（Project の素材）。Project には何も書かず、Cost Ledger の行も作らない（ワークフロー単体の試し）。結果は `<data-dir>/workflow-runs/<run id>/` に置き、7 日で消す。MCP は `job_id` を返し、`get_job` が進捗と結果（トークン付きのダウンロード URL）を返す。mam の再起動で止まった実行は失敗として扱う。
+保存したグラフと割り当てを、Shot と同じ `comfyui.Backend` で実行する。入力: プロンプト・ネガティブ・縦横比・（動画）解像度と長さ（ワークフローが作れる長さに丸める）・参照画像／最初と最後のフレーム（Project の素材）。Project には何も書かず、Cost Ledger の行も作らない（ワークフロー単体の試し）。結果は `<data-dir>/workflow-runs/<run id>/` に置き、7 日で消す。MCP は `job_id` を返し、`get_job` が進捗と結果（トークン付きのダウンロード URL）を返す。mam の再起動で止まった実行は失敗として扱う。**音声の割り当て（`audio`。`LoadAudio` の `audio`。[../local-models.md](../local-models.md) §4.11。Issue #1153）を持つ保存・取り込みのワークフローは、ここでは実行できない**（この実行には音声の入力元が無いので、音声が必須の入力を満たせず、断る）。音声を渡して動かせるのは単発生成だけ（[../gentest/gentest.md](../gentest/gentest.md) §6.1）。ワークフロー単体の試しに音声を入力する道はフォローアップ。
 
 ## 6. プロジェクトバンドル
 
@@ -54,3 +54,7 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 ## 7. 検証できていないこと
 
 実機の ComfyUI と GPU では実行していない（偽の ComfyUI `comfyuitest` が `/object_info`・`/userdata`・`/history`・`/models/<folder>` と実行を再現する）。一部だけ描き直す（#974。`inpaint-sdxl`・`inpaint-flux-dev`）も同じで、マスクの外が元の画素のままかはグラフの `ImageCompositeMasked` のリンクまでを確かめ、画素の比較はしていない。`/history` の記録の形（`prompt` タプルと `extra_data.extra_pnginfo.workflow`）は ComfyUI のソースから読んだもので、実機での確認が残っている。
+
+## 8. 音声の割り当て（Issue #1153）
+
+動画のワークフローの割り当てに、音声ファイルの `audio`（`LoadAudio` の `audio` 入力）を足した。mam が ComfyUI の `POST /upload/image` で音声を上げ、返ったファイル名をこの入力に入れる（画像と同じ送り方）。ComfyUI は `input` ディレクトリのファイルを拡張子から種類を決めて `LoadAudio` の一覧に出すので、ファイル名の拡張子は `.wav` / `.mp3` にして上げる（WAV・MP3 以外が一覧に載るかは**未確認**なので、mam は WAV と MP3 だけを受ける）。ノード側の警告（§4）は `AudioEncoderLoader` の `audio_encoder_name` を `GET /models/audio_encoders` で照合する。`audio` の割り当てがあるワークフローは**音声が必須**（公開したモデルの `requires_inputs` に `audio`・`video.audio_input` が true）。音声の長さは測らない（切り詰めもしない）。実機の ComfyUI では確かめていない。

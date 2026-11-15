@@ -22,7 +22,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 **成人向けモデルの年齢確認（Issue #841）**: モデルマネージャーの成人向けのモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）は、年齢確認のゲートが閉じている間、一覧（`Models`・`Model`）に出ず、名指しの要求は不明なモデル（`ErrNotFound`）として断る。`gentest.Deps.Hidden`（`modelmanager.Service.HidesModel`）が決める。ゲートはモデルマネージャーの Service が持つ（[../model-manager/model-manager.md](../model-manager/model-manager.md) §6.2）。直接呼び出し（`direct.Image`・`direct.Video`）も、一覧と始まる時の確認をすり抜けたモデルを `agegate.ErrRefused` で断る（何も呼ばない。§6.1 の「導入済みでも、年齢確認がオフの間は使えない」）。
 
-モデルごとに次の能力を返す: 参照画像を使えるか（画像）、動画の長さ・解像度・参照枚数・最初／最後のフレーム・音声、**シード**（FLUX.2・Runway Gen-4.5 と、シードの割り当てがあるローカルのワークフロー）、**ネガティブの欄**（Kling・ネガティブの割り当てがあるワークフロー）、単価。
+モデルごとに次の能力を返す: 参照画像を使えるか（画像）、動画の長さ・解像度・参照枚数・最初／最後のフレーム・音声（映像と一緒に音声を作るか `native_audio`。音声ファイルを入力に取るか `audio_input`。後者は §6.1）、**シード**（FLUX.2・Runway Gen-4.5 と、シードの割り当てがあるローカルのワークフロー）、**ネガティブの欄**（Kling・ネガティブの割り当てがあるワークフロー）、単価。
 
 ## 3. 見積り（`Estimate`）
 
@@ -75,6 +75,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **やりたいこと**: `service/gentest/intent`（`intents.json`。埋め込み）が、選択肢（`photo`・`anime`・`landscape`・`face`）ごとに、モデルの候補（カタログのワークフロー名）を好みの順に持つ。`Service.Recommend(intent, hasReferences)` は、導入済みで呼べる（`Info.Available`。成人ゲートが閉じていれば成人向けは一覧に無い）・商用フィルター（`DefaultFilter`）に合う・この PC の OS／GPU の列の外でない（`Deps.PlatformWarning` = `mmview.PlatformWarning`。#979）・入力画像があれば画像を使える（顔の役割が要る選択肢は `face` を読める）最初の候補を選ぶ。選べなければ `Reason`（導入されていない／条件に合わない）。`intentapply.Apply(service, request, intent)`（`service/gentest/intentapply`） は `Models` を埋める（`models` と同時には指定できない。画像だけ。顔の写真が要る選択肢は入力画像が無ければ `validation`。「同じ顔で」は役割 `reference` の入力を `face` にする）。画面の見積りと MCP の `estimate_generation_test`・`run_generation_test` が使う。
 - **復元**（結果の「もう1枚」「もう一度」）: `record.ResultDetail`（`TranslateToEnglish` を足した）から、画面の `redo.Of` が入力に戻す（`SpeedMode` を含む。モデルが今そのモードを持たなければ `redo.SpeedGone` のメモを添えて既定で作る。描き直しの結果は `inpaintscreen/again.go` が、同じシードのとき英訳つきなら送った英訳を入れて英訳を切る）。新しいサービスの呼び出しは無い（画面のハンドラだけ）。
 - **前のバッチの入力（Issue #977 の残り）**: 入力の出どころに `batch_input`（`gentest.FromBatchInput`。`RefInput.id` は結果の詳細の `inputs[].input_id`）を足した。アップロードした画像はバッチの入力として保存されている（`gentest_input`。`GET /generation-test/inputs/:id/file`）ので、それを別のバッチの入力にできる（`ResolveInput` が `Repo.GetInput` のファイルを返し、その結果の入力は出どころ `batch_input` で残る）。これで、アップロードした画像を使った結果も「この設定でもう一度」で入力ごと戻せる（`redo.RefOf`）。コピーはバッチのディレクトリにあり、その結果をすべて削除すると消える（消えたあとは `validation`「過去の入力画像は残っていません」）。MCP の `references[].source` も同じ値を取る。描き直し・アップスケールの結果の「もう一度」は画面のハンドラだけ（[../../components/gentest-tiers.md](../../components/gentest-tiers.md) §5）。
+  - **音声の入力（Issue #1153）**: 役割 `audio` の入力も `batch_input` で別のバッチへ使い回せる（取得元に使えるのは `upload` と `batch_input` だけ。§6.1）。
 
 ## 3.7 レシピと「画面に出す値」（Issue #977 ステージ 2）
 
@@ -164,8 +165,10 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | 状態 | 扱い | コード（`apperr`） |
 |---|---|---|
 | **モデルが必ず使う入力がリクエストに無い**（`modelcatalog.Info.requires_inputs`: I2V のワークフローは `first_frame`。ワークフローの割り当てが `optional` でないもの。`localcfg.Workflow.RequiredImages`）。画像が 1 枚も無い／添えた画像の役割が違う（`reference` のまま） | **止める**（送らない。見積り・実行とも 422 / MCP `validation`） | `input_missing`（`param`: `first_frame` など）。原因は「「<モデル>」は最初のフレームの画像が必要です。添えた画像が「参照」になっています。「最初のフレーム」に変えてください。」（画像が無いときは「画像を添えて、役割を「最初のフレーム」にしてください。」）、直し方は `input_missing.remedy` |
+| **音声から動画を作るモデル（S2V）に、音声ファイルが無い**（`requires_inputs` に `audio`。ワークフローに `audio` の割り当てがある。Issue #1153。§6.1）。参照画像（役割 `reference`）も要るので、画像が無いときは `reference_image` でも同じ | **止める**（送らない。見積り・実行とも 422 / MCP `validation`） | `input_missing`（`param`: `audio`）。原因は「「<モデル>」は音声ファイルが必要です。WAV か MP3 を添えて、役割を「音声」にしてください。」、直し方は `input_missing.remedy`（音声から動画を作るモデルは音声ファイル〔WAV か MP3〕が要る、と言う） |
 | **添えた画像が、選んだどのモデルにも 1 枚も使われない**（T2V に `first_frame`、参照画像 0 枚のモデル・自由参照 0 枚のモデルに参照画像、など） | **止める** | `input_unused`。原因は T2V なら「「<モデル>」は文章だけから作るモデルなので、添えた画像は使われません。」、直し方は「画像から作るなら、I2V（画像から動画）や参照画像に対応したモデルを選んでください。画像を使わずに作るなら、画像を外してから実行してください。」 |
 | **一部の画像だけ、あるモデルに使われない**（最後のフレームを使えないモデルに first + last、枚数超過、フレームと自由参照の併用、あるモデルだけ参照を使えない比較バッチ） | **警告のまま実行を許す**（`warnings` の `inputs_dropped` / `too_many_refs` / `frames_over_refs`。画面は確認の上に琥珀色の枠「使われない入力画像があります」、動画の入力欄の通知にも出す）。結果にそのモデルの**使われなかった入力**を記録する | — |
+| **音声だけ、あるモデルに使われない**（音声を使えないモデルを含む比較バッチ。Issue #1153） | **警告のまま実行を許す**（`inputs_dropped`「<モデル> は音声を使えないため、使いません（音声から動画を作るのは S2V のモデルです）」）。結果の `unused_inputs` に「このモデルは音声を使えません」を記録する。音声が選んだどのモデルにも使われないとき（文章だけのモデルしか選んでいない、など）は、上の「どのモデルにも使われない」と同じ `input_unused` で止める | — |
 
 境界の理由: 添えた画像が 1 枚も使われないバッチは、ほぼ確実に選び間違い（モデルかの役割）で、成功扱いの結果を作ると「画像が効いていない」と誤解される（#1009 の追記）ので止める。複数モデルの比較や、フレーム 2 枚のうち 1 枚だけ使えないモデルは、意図した使い方がありうるので警告に留め、結果ごとに何が使われなかったかを残す。画像モデルは、選んだモデルのうち 1 つでも使えば実行を許す（使えないモデルは `inputs_dropped` の警告と結果の記録）。
 
@@ -177,9 +180,9 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 6. 入力画像
 
-入力は、アップロード（画面は見積り時に、MCP は `gentest_reference` で `_staging/` に置く）、プロジェクトのアセット・Reference Library の項目（`project_asset` / `reference_item`）、履歴の成功した画像結果（`history`）。選んだ画像は**バッチの `gentest_input` に複製**する（`origin` に元を記録）ので、元のプロジェクトや結果を後で消しても履歴は読める。画像は PNG・JPEG・WebP を中身で検査し、1 枚 20 MiB まで・1 バッチ 10 枚まで。
+入力は、アップロード（画面は見積り時に、MCP は `gentest_reference` で `_staging/` に置く）、プロジェクトのアセット・Reference Library の項目（`project_asset` / `reference_item`）、履歴の成功した画像結果（`history`）。選んだ画像は**バッチの `gentest_input` に複製**する（`origin` に元を記録）ので、元のプロジェクトや結果を後で消しても履歴は読める。画像は PNG・JPEG・WebP を中身で検査し、1 枚 20 MiB まで・1 バッチ 10 枚まで。音声ファイル（役割 `audio`）だけは画像ではなく、置き場・取得元・検査が別（§6.1）。
 
-動画の役割は `reference`（自由な参照）/ `first_frame` / `last_frame`。モデルの能力（`Capabilities`）で、使えない役割は**そのモデルからだけ外して警告**する。ただし必須の入力が無い、または添えた画像が選んだどのモデルにも使われないときは、外さずに**送る前に止める**（§5.1）。
+動画の役割は `reference`（自由な参照）/ `first_frame` / `last_frame` / `audio`（音声ファイル。§6.1）。モデルの能力（`Capabilities`）で、使えない役割は**そのモデルからだけ外して警告**する。ただし必須の入力が無い、または添えた画像・音声が選んだどのモデルにも使われないときは、外さずに**送る前に止める**（§5.1）。
 
 **速さのモード（Issue #930・#991）**: リクエストの `speed_mode`（動画も画像も）（`fast` / `standard` など。省くと各モデルの既定）は、ComfyUI のワークフローが `speed_modes`（[local-models.md](../local-models.md) §3）を持つモデルだけに効く（動画の Wan 2.2 14B + LightX2V: `fast` = 4 ステップ・cfg 1、`standard` = LoRA なしの通常 20 ステップ・cfg 3.5。画像の Qwen-Image-Edit 2511 + Lightning: `standard` = 20 ステップ・cfg 4、`lightning-8` = 8 ステップ・cfg 1、`lightning-4` = 4 ステップ・cfg 1）。モードは `modelcatalog.Info.speed_modes`（`id`・`label`・`default`。#991 で動画の `video.speed_modes` から画像と共通のモデル直下へ移した）にあり、**steps・cfg はモードが決める**（#973 の決定。`sampling.steps`・`sampling.cfg` の `locked` が `speed_mode`。リクエストの steps・cfg・かんたんの品質は警告 `sampling_ignored` で使わず、画面は詳細設定のステップ数・CFG の欄を出さずに「速さのモードが決めるため、指定は使いません」と理由を出し、かんたんの品質の欄は「このモデルは速さのモードがステップ数・CFG を決めるため、品質は選べません」と言う）。画面は動画・画像どちらのフォームにも「速さ」の選択（`data-testid="gt-speed-mode"`。どれかのモデルが持つときだけ描く。選択肢は「モデルの既定」とモードのラベル）を、MCP は `list_generation_models` の `speed_modes` と `estimate_generation_test`・`run_generation_test` の `speed_mode` を出す。そのモードを持たないモデルは **警告 `speed_mode_unsupported`（拒否ではない）で既定のまま**作り（モードを持つが、そのモードが使う任意ファイル〔Lightning LoRA〕が導入されていないモデルも同じ。警告に理由が入り、`blocked_speed_modes[]` に載る。Issue #1025）、名前が `^[a-z0-9][a-z0-9-]{0,39}$` でなければ 400（`invalid`）。画像のフォームの選択肢は画像のモデルのモードだけ（動画のモードは出ない）。選んだモードは見積りの確認（hidden の `speed_mode`）を通って結果の `params.speed_mode` に残り、`get_generation_test` の結果の `speed_mode` に出る。見積りの ID（`estimate_id`）はリクエスト全体の要約なので、モードを変えると別の見積りになる。
 
@@ -201,6 +204,26 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 **VNCCS PoseStudio（Issue #985・#993）**: ルート ①（T2I + LoRA）と ②（Edit）は、コアのノードだけの既存テンプレート（`txt2img-qwen-image21`・`txt2img-qwen-image-edit-2511`）と LoRA の差し込み（`lora_model_node`）で動く。ルート ③（3D 人形の画像でポーズを写す）は、**ノード無し**で、Shisei のポーズ集（`pose_library`。人形の画像）を 1 枚目の参照に、人物の画像を 2 枚目の参照に渡し、LoRA `MIUProject/VNCCS_PoseStudio_QI2.1`（V1.1 の `VNCCS_QI2_PoseStudioV1.1.safetensors`。約 159 MB。ライセンスの記載なし。V1.1 を選んだ理由は [model-manager/model-manager.md](../model-manager/model-manager.md) §4.2）を重ねたモデル `qwen-image-21-vnccs-pose`（テンプレート `txt2img-qwen-image21-vnccs-pose`。作者のワークフローのプロンプト「replace the pose of <image 2> with the pose of <image 1>. keep the character of <image 2>」、強さ 1.0）で動く。Shisei の線画の人形との組み合わせの出来は実機で未確認。ルート ④（`VNCCS_PoseStudio` のノードで人形を動かす）は、追加ノード `vnccs-utils`（[model-manager/custom-nodes.md](../model-manager/custom-nodes.md) §2.1）が要るが、ノードがブラウザの画面でポーズを取り込むのを待つ作りで（`pose_image` の経路も画面が要る）、画面なしでポーズを渡す経路が無く、実行時の自動取得も固定できないため、**mam は提供しない**（導入できず、テンプレートも作らない。理由は custom-nodes.md §5.4）。ComfyUI の画面で作った人形の画像は、`pose` の役割の参照として渡せる。
 
+## 6.1 音声の入力（Wan 2.2 S2V。Issue #1153）
+
+音声から動画を作るモデル（Wan 2.2 S2V 14B〔`wan22-s2v-14b`〕。参照画像 1 枚と、話し声や音楽の音声ファイルから動画を作る。[../model-manager/model-manager.md](../model-manager/model-manager.md) §4.2）のために、入力に**音声ファイル**を足した。画像ではない入力だが、入力の一覧（`Request.references[]`）の 1 件として**役割 `audio`**（`gentestrepo.RoleAudio`）で持つ。別のフィールドは足していない（見積り・確認・バッチ・履歴・MCP が同じ 1 組の型を通る）。
+
+| 項目 | 内容 |
+|---|---|
+| 形式・大きさ | **WAV（`audio/wav`）と MP3（`audio/mpeg`）だけ**。1 バイト以上 50 MiB 以下（`audioin.MaxBytes`）。種類は**ファイルの中身から読み**（`audioin.Sniff`）、名前や送り手の申告は信じない。外れると「音声ファイル … は WAV か MP3 にしてください」「… は 1 バイト以上 50 MiB 以下にしてください」で 422。mam は音声を**デコードも測りもしない**（長さの検査・切り詰めは無い）。FLAC・OGG・M4A は未対応（フォローアップ）: ComfyUI の `LoadAudio` は `input` ディレクトリのファイルを拡張子から（Python の mimetypes で）選んで並べるので、WAV・MP3 以外が一覧に載るかは**未確認** |
+| 役割・数 | `RefInput.role = "audio"`。1 バッチに 1 つまで（超えると「音声ファイルは 1 つまでです」）。**動画だけ**（画像のバッチは「音声は動画だけで使えます」）。強さは無い（付けると断る） |
+| 取得元（`source`） | `upload`（`FromStaged`。アップロードした音声）と `batch_input`（`FromBatchInput`。以前のバッチが保存した音声の入力を使い回す）**だけ**。`project_asset` / `reference_item` / `history` / `pose_library` は「音声ファイルの取得元は upload か batch_input です」で断る（Project の音声アセットを取得元にするのはフォローアップ） |
+| 置き場 | ステージング `_staging/<ID>.wav` / `.mp3`（`Service.StageAudio` が音声の種類を読んで ID を返す。24 時間で消す・Run で取り込む。画像のステージングと同じ掃除）。Run は `<gentest のディレクトリ>/<バッチ ID>/in-<入力 ID>.wav` / `.mp3` に複製し、`gentest_input` の行（`role = audio`・`mime_type` が `audio/wav` / `audio/mpeg`・`size_bytes`・`origin` の `{kind,id}`）に記録する。バッチの最後の結果を消すとファイルも行も消える。マイグレーション `20261115100000_gentest_input_role_audio.sql` が `role` の CHECK に `audio` を足した（[er-gentest.md](er-gentest.md)） |
+| アップロード | **画面**: 動画のフォームのファイル入力 `upload_audio`（最初／最後のフレームの入力と同じく、見積りの送信時にステージングし、確認の画面が隠しフィールド〔参照と役割〕で持ち回る。[../../components/gentest-screen.md](../../components/gentest-screen.md)）。**MCP**: `create_upload_ticket` の用途 `gentest_audio`（WAV・MP3、50 MiB。応答 `{audio_id, mime_type}`）で置き、`references: [{source: "upload", id: <audio_id>, role: "audio"}]` に入れる。用途 `gentest_reference` は画像だけのまま（[../../api/mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)） |
+
+**検査（§5.1。画像と同じ関数・同じ文）**: 音声が必要なモデル（ワークフローに `audio` の割り当てがある。`requires_inputs` に `audio`、`video.audio_input` が true）にリクエストが音声を持たなければ、送る前に `input_missing`（`param` は `audio`。「WAV か MP3 を添えて、役割を「音声」にしてください」）で止める。音声が必要なモデルは**参照画像（役割 `reference`・1 枚）も必要**（S2V のワークフローの `reference_image` は必須）。音声を添えたのに選んだどのモデルも使わなければ `input_unused`、一部のモデルだけが使わなければ警告 `inputs_dropped` と結果の `unused_inputs`（「このモデルは音声を使えません」）。音声を使うのは `video.audio_input` が true のモデルだけで、`direct.checkInputs` も、音声を使えないモデルへの音声を `ErrInputsUnsupported` で断る（[gentest-adapter.md](gentest-adapter.md)）。
+
+**実行**: ジョブの種別は `gentest` のまま。`runner.video` が音声の入力のバイト列を読み（顔の切り出しはしない）、`modeladapter.VideoRequest.Audio` に渡す。アダプタ側（ワークフローの割り当て `audio`・ComfyUI への送り方）は [../comfy/comfy-workflows.md](../comfy/comfy-workflows.md)・[../local-models.md](../local-models.md)・[../model-adapters.md](../model-adapters.md)。**費用**はローカルなので無料（見積りは `free`）。結果・履歴は音声の入力を残し（`gentest_input` の行・`used_inputs`）、結果の詳細は音声を `<audio controls>` で再生する（役割の表示名は「音声」）。
+
+**本線（Project）には音声の入力が無い**: Project の Shot は音声が要るモデルへ回さない（`modelroute`。理由「mam が渡さない入力（最後のフレーム・参照画像・音声）が必須」）。Project の音声ディレクター（台詞の声の生成）は別の機能で、この入力とは関係ない。保存したワークフロー・取り込んだワークフローが音声の割り当てを持つときは、ワークフローの実行（[../comfy/comfy-workflows.md](../comfy/comfy-workflows.md)）に音声の入力元が無いので、実行を断る（フォローアップ）。
+
+**この版に含めないもの（フォローアップ）**: 長い動画（公式テンプレートの Extend）、先頭フレームの二重化、LightX2V の 4 ステップ LoRA による速いモード、FLAC・OGG・M4A、Project の音声アセットを取得元にすること、保存したワークフローの実行での音声、音声の長さの検査・切り詰め（`TrimAudioDuration`）、ポーズ・制御動画の入力（`control_video`・`ref_motion`）。
+
 ## 7. プロジェクトへの取り込み（`projectlink`）
 
 成功した結果ならどれでも取り込める（お気に入りは目印にすぎない）。取り込み先: **参照**（Reference Library の項目。画像のみ。`source='generated'`、`source_shot_id` は NULL、`kind`・`name`・`tags`）か**アセット**（画像・動画）。ファイルはプロジェクトの assets ディレクトリへ複製する。続けて、参照を Character の face/body・Product・Location のスロットに割り当てられる（`WorldService.AssignReference`。スロットの種類と参照の種類が合わなければ入力の誤り、LOCK されていれば 409）。割り当てに失敗しても取り込みは残り、そのことを知らせる（`PartialImportError`）。取り込み先は `gentest_import` に残す（TEXT の ID のみ）。
@@ -218,7 +241,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 ## 8. 画面（`/generation-test`）
 
-プロジェクト一覧の分析・設定の隣にリンク。画像／動画の切り替え、モデルのカード（タップで選ぶ。選べないものは「選べません」のバッジで、理由は「?」ヘルプと読み上げにある）、プロンプトの追加（複数）とネガティブ、本数・縦横比（動画は解像度・長さ）、入力画像（ドロップゾーン 1 つ＋プロジェクト・履歴のモーダル。サムネイルの格子で番号・外す・並べ替え・拡大。画像は役割（全体・顔だけ・画風だけ・編集対象）と強さを、選んだモデルが使えるときだけ出し、ポーズを真似させない設定と LoRA（名前・強さ）がつく。画像／動画を切り替えると、ブラウザで選んだファイルは外れる（画面ごと入れ替わるため）。モデルのカードに入力画像のアイコン。動画は最初／最後のフレーム・自由な参照の役割）、「見積りを見る」→ 確認（件数・モデルごとの内訳・合計・単価なしの注記・警告・上限超過）→ 「この内容で実行する」→ 進捗（2 秒ごと・取り消し）と比較表（行＝モデル、列＝プロンプト）。`/generation-test/history`（モデル・種類・お気に入りで絞り込み、詳細、削除、お気に入り、ファイルのダウンロード、合計コストの 1 行）、`/generation-test/prompts`（プロンプト履歴: 再利用・削除）。`/generation-test/inpaint`（一部だけ描き直す。§3.5。ナビ「一部だけ描き直す」。結果の詳細の同じ名前のボタンから、その結果を元画像にして開く）。詳細は取り込みフォーム（参照／アセット・種類・名前・タグ・スロット）を持つ。ルートは [endpoints-gentest.md](../../api/endpoints-gentest.md)。英訳のスイッチ「英語に訳して送る」（既定 ON。説明は「?」。§3.1）があり、訳した英語は比較表の列と結果の詳細に出る（入力した文と送った英語の両方）。
+プロジェクト一覧の分析・設定の隣にリンク。画像／動画の切り替え、モデルのカード（タップで選ぶ。選べないものは「選べません」のバッジで、理由は「?」ヘルプと読み上げにある）、プロンプトの追加（複数）とネガティブ、本数・縦横比（動画は解像度・長さ）、入力画像（ドロップゾーン 1 つ＋プロジェクト・履歴のモーダル。サムネイルの格子で番号・外す・並べ替え・拡大。画像は役割（全体・顔だけ・画風だけ・編集対象）と強さを、選んだモデルが使えるときだけ出し、ポーズを真似させない設定と LoRA（名前・強さ）がつく。画像／動画を切り替えると、ブラウザで選んだファイルは外れる（画面ごと入れ替わるため）。モデルのカードに入力画像のアイコン。動画は最初／最後のフレーム・自由な参照の役割。動画のフォームには**音声ファイル**（WAV か MP3。S2V のモデル用。§6.1）の入力が別にある）、「見積りを見る」→ 確認（件数・モデルごとの内訳・合計・単価なしの注記・警告・上限超過）→ 「この内容で実行する」→ 進捗（2 秒ごと・取り消し）と比較表（行＝モデル、列＝プロンプト）。`/generation-test/history`（モデル・種類・お気に入りで絞り込み、詳細、削除、お気に入り、ファイルのダウンロード、合計コストの 1 行）、`/generation-test/prompts`（プロンプト履歴: 再利用・削除）。`/generation-test/inpaint`（一部だけ描き直す。§3.5。ナビ「一部だけ描き直す」。結果の詳細の同じ名前のボタンから、その結果を元画像にして開く）。詳細は取り込みフォーム（参照／アセット・種類・名前・タグ・スロット）を持つ。ルートは [endpoints-gentest.md](../../api/endpoints-gentest.md)。英訳のスイッチ「英語に訳して送る」（既定 ON。説明は「?」。§3.1）があり、訳した英語は比較表の列と結果の詳細に出る（入力した文と送った英語の両方）。
 
 **チャットで作る**（`/generation-test/chat`。Issue #1138）: フォームを使わず、LLM と相談しながらモデルの提案・比較 → 見積り → 確認のカード → 実行 → 結果の表示まで進めるタブ。ツールは MCP ツールと同じサービス（`ModelsWhere`・`Estimate`・`Run`）を呼び、有料の生成は確認のカードのボタンでしか始まらない。しくみは [gentest-chat.md](gentest-chat.md)。
 
@@ -249,6 +272,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | `face`（`internal/service/gentest/face`） | 顔の入れ替え（`Swap`・`Available`）と、アプリがサービスに渡す顔のモデルの口（`Crop`・`Score`・`Swapper`）。`service/gentest` の行数の上限のため別パッケージ。テストもここ |
 | `venhance` / `videoenhance`（`internal/service/gentest/…`） | 動画の大きさ・コマ数を変える処理（Issue #1031。§3.9）。`venhance` は `Resolve`〔値の検査と出力の予定〕・見積りの置き場 `Estimates`・`Prober`（契約の型 `Op`・`Source`・`Params`・`Cloud` の口は `agent/cloudenhance`。ハンドラーは agent を import できないので `venhance` が `Op` と定数を別名で出す）、`videoenhance` は `Enhancers`・`EstimateEnhance`・`Enhance`。`runner/venhance.go` が結果 1 件を実行する。`service/gentest` の行数の上限のため別パッケージ。テストもここ |
 | `gentesttest` / `servicetest` / `localtest` / `speedtest` | テストの道具と、パッケージをまたぐテスト |
+| `audioin`（`internal/service/gentest/audioin`） | 音声の入力（§6.1）: 形式の定数（`WAV`・`MP3`・`MaxBytes`）、中身からの種類の判定（`Sniff`）、ステージング（`Stage`）。`service/gentest` の行数の上限のため別パッケージ |
 
 `Service` は `projectlink.Link`・`runner.Runner`・`history.Store` を埋め込み、これらのメソッドを自分のものとして公開する。`Deps.Extra`（プロンプトマッチ）は `runner.Runner` のフィールドで、`match.New` が組み立てるときに入れる。
 
