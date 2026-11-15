@@ -38,7 +38,7 @@ func (l LoRA) Sent() localcfg.LoRA {
 // models only (modelcatalog.ReferenceCapsOf), so it is not one of the roles of a workflow's model: it is listed after them.
 var ImageRoles = []string{gentestrepo.RoleReference, gentestrepo.RoleFace, gentestrepo.RoleStyle, gentestrepo.RoleEdit, gentestrepo.RolePose, gentestrepo.RoleMarkup}
 
-// CheckRole fills the role ("" is the whole picture) and refuses a role the media has not (first / last frame are video
+// CheckRole fills the role ("" is the whole picture) and refuses a role the media has not (first / last frame and audio are video
 // only, face / style / edit / pose / markup image only) and a strength that is out of range, or given to a video input.
 func CheckRole(media, role string, strength *float64) (string, error) {
 	if role == "" {
@@ -50,6 +50,10 @@ func CheckRole(media, role string, strength *float64) (string, error) {
 	case gentestrepo.RoleFirstFrame, gentestrepo.RoleLastFrame:
 		if !isVideo {
 			return role, gterr.Invalid("最初・最後のフレームは動画だけで使えます")
+		}
+	case gentestrepo.RoleAudio:
+		if !isVideo {
+			return role, gterr.Invalid("音声は動画だけで使えます")
 		}
 	case gentestrepo.RoleFace, gentestrepo.RoleStyle, gentestrepo.RoleEdit, gentestrepo.RolePose:
 		if isVideo {
@@ -63,7 +67,7 @@ func CheckRole(media, role string, strength *float64) (string, error) {
 			return role, gterr.Invalid("マークアップに強さは指定できません（元の画像の上に重ねるだけです）")
 		}
 	default:
-		return role, gterr.Invalid("入力画像の役割が正しくありません: %q（reference / face / style / edit / pose / markup / first_frame / last_frame）", role)
+		return role, gterr.Invalid("入力画像の役割が正しくありません: %q（reference / face / style / edit / pose / markup / first_frame / last_frame / audio）", role)
 	}
 	if strength != nil {
 		if isVideo {

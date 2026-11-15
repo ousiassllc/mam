@@ -27,6 +27,7 @@ type values struct {
 	frames, fps      int
 	references       []modeladapter.Input
 	first, last      *modeladapter.Input
+	audio            *modeladapter.Input // the sound of a speech-to-video workflow (uploaded like an image; the extension tells the server it is audio)
 	opts             localcfg.ImageOptions
 	mask             *modeladapter.Input // inpaint mask (nil: none); redraw is its strength (nil: the graph's denoise)
 	redraw           *float64
@@ -65,7 +66,7 @@ func videoValues(wf localcfg.Workflow, req modeladapter.VideoRequest) values {
 	return values{
 		prompt: req.Prompt, negative: req.NegativePrompt, seed: seedOr(req.Seed), width: w, height: h,
 		frames: wf.Frames(req.DurationSeconds), fps: wf.FPSOrDefault(),
-		references: req.References, first: req.FirstFrame, last: req.LastFrame, speedMode: req.SpeedMode, sampling: req.Sampling,
+		references: req.References, first: req.FirstFrame, last: req.LastFrame, audio: req.Audio, speedMode: req.SpeedMode, sampling: req.Sampling,
 	}
 }
 
@@ -96,6 +97,8 @@ func (v values) input(a localcfg.Assignment) (in *modeladapter.Input, isImage bo
 		return v.mask, true
 	case localcfg.ParamSourceVideo:
 		return v.source, true
+	case localcfg.ParamAudio:
+		return v.audio, true
 	}
 	return nil, false
 }

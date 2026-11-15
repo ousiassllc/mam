@@ -1,6 +1,7 @@
 package gentest
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/audioin"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/poses"
 
@@ -27,10 +29,16 @@ const (
 // inputTypes are the image types a batch takes, with the extension of the stored file.
 var inputTypes = map[string]string{"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 
-// InputExt is the extension of the stored file of an image type a batch takes ("" for any other).
-func InputExt(mime string) string { return inputTypes[mime] }
+// InputExt is the extension of the stored file of an image or audio type a batch takes ("" for any other).
+func InputExt(mime string) string { return cmp.Or(inputTypes[mime], audioin.Ext(mime)) }
 
-var stagedPattern = regexp.MustCompile(`^[0-9A-Za-z-]{8,64}(\.png|\.jpg|\.webp)$`)
+// StageAudio stores an uploaded audio file (WAV or MP3, 1 byte to 50 MiB; package audioin) until a batch takes it, as StageReference does an image: the staged id is
+// RefInput.ID with Source FromStaged and Role audio. Issue #1153.
+func (s *Service) StageAudio(data []byte) (id, mime string, err error) {
+	return audioin.Stage(filepath.Join(s.dir(), stagingDirName), data, domain.NewID)
+}
+
+var stagedPattern = regexp.MustCompile(`^[0-9A-Za-z-]{8,64}(\.png|\.jpg|\.webp|\.wav|\.mp3)$`)
 
 // StageReference stores an uploaded image until a batch takes it and returns the staged id (RefInput.ID with Source
 // FromStaged) and the type. The image must be a PNG, JPEG or WebP of 1 byte to 20 MiB. One that no batch took within 24 hours
@@ -70,6 +78,9 @@ func (s *Service) StagedFile(id string) (path, mime string, err error) {
 		if ext == m[1] {
 			return path, mime, nil
 		}
+	}
+	if mime, ok := audioin.MimeOfExt(m[1]); ok {
+		return path, mime, nil
 	}
 	return "", "", gterr.ErrNotFound
 }
@@ -144,14 +155,27 @@ func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error
 	if err != nil {
 		return Source{}, gterr.Invalid("入力画像 %q のファイルが見つかりません", ref.ID)
 	}
-	if info.Size() == 0 || info.Size() > MaxImageBytes {
-		return Source{}, gterr.Invalid("入力画像 %q は 1 バイト以上 %d MiB 以下にしてください", ref.ID, MaxImageBytes>>20)
-	}
-	if _, ok := inputTypes[mime]; !ok {
-		return Source{}, gterr.Invalid("入力画像 %q は PNG・JPEG・WebP にしてください（今は %s）", ref.ID, mime)
+	if err := checkInputFile(ref, mime, info.Size()); err != nil {
+		return Source{}, err
 	}
 	origin, _ := json.Marshal(map[string]string{"kind": ref.Source, "id": ref.ID, "project_id": ref.ProjectID})
 	return Source{Path: path, Mime: mime, Size: info.Size(), Origin: origin}, nil
+}
+
+// checkInputFile refuses a file of the wrong size or kind for its role: an audio input is a WAV or an MP3 of at most audioin.MaxBytes, any other input an image.
+func checkInputFile(ref RefInput, mime string, size int64) error {
+	switch {
+	case ref.Role == RoleAudio && (size == 0 || size > audioin.MaxBytes):
+		return gterr.Invalid("音声ファイル %q は 1 バイト以上 %d MiB 以下にしてください", ref.ID, audioin.MaxBytes>>20)
+	case ref.Role == RoleAudio && !audioin.Is(mime):
+		return gterr.Invalid("音声ファイル %q は WAV か MP3 にしてください（今は %s）", ref.ID, mime)
+	case ref.Role == RoleAudio:
+	case size == 0 || size > MaxImageBytes:
+		return gterr.Invalid("入力画像 %q は 1 バイト以上 %d MiB 以下にしてください", ref.ID, MaxImageBytes>>20)
+	case inputTypes[mime] == "":
+		return gterr.Invalid("入力画像 %q は PNG・JPEG・WebP にしてください（今は %s）", ref.ID, mime)
+	}
+	return nil
 }
 
 // mimeLabel names the type of a result file for a refusal: GIF and SVG are the ones a model can make besides the three input types.

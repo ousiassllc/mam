@@ -1,0 +1,42 @@
+package audioinput
+
+import "strconv"
+
+// File is the file input of the audio of a video form. The notice says when no ticked model uses it, so the help says only what the file is for.
+templ File() {
+	<div class="flex max-w-sm flex-col gap-1" data-testid="gt-audio">
+		<label class="flex flex-col gap-1 text-xs text-mute" for={ InputID }>
+			<span>音声ファイル（S2V・WAV か MP3）</span>
+			<input id={ InputID } type="file" name={ Field } accept={ Accept } class="text-sm" aria-describedby="gt-audio-help" data-testid="gt-audio-file"/>
+		</label>
+		<p id="gt-audio-help" class="text-xs text-mute">音声から動画を作るモデル（S2V）だけが使います。音声の先頭から動画の長さ分を使います。WAV・MP3、{ strconv.Itoa(MaxMiB) } MiB まで。</p>
+	</div>
+}
+
+// Body is what an audio input that is already chosen (a batch's input put back by "もう一度") shows inside the <li> of the list of inputs: its name, a
+// player when the file has an address, and the × that takes it out. It has no picture, no zoom, no strength and no role to choose: roleField posts the
+// role, and the badge is what the script numbers the rows by.
+templ Body(roleField, label, url string) {
+	<input type="hidden" name={ roleField } value={ Role }/>
+	<div class="relative flex flex-col gap-2 pr-8">
+		<span class="flex items-center gap-2">
+			<span class="min-w-5 rounded-sm bg-accent px-2 text-center text-xs leading-5 text-bone" data-gt-badge></span>
+			<span class="min-w-0 truncate text-ink" title={ label }>{ label }</span>
+		</span>
+		if url != "" {
+			@Player(url)
+		}
+		<button
+			type="button"
+			class="absolute right-0 top-0 rounded-md bg-surface px-2 text-xs leading-5 text-ink hover:text-ink focus-visible:focus-ring"
+			data-gt-remove
+			aria-label={ "取り除く: " + label }
+			title="取り除く"
+		>×</button>
+	</div>
+}
+
+// Player plays an audio input; the file is not fetched until the user plays it (a result's page lists inputs of up to 50 MiB).
+templ Player(url string) {
+	<audio controls preload="none" class="w-full" src={ url } data-testid="gt-audio-player"></audio>
+}

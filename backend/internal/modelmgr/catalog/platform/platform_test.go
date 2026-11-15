@@ -116,6 +116,8 @@ func TestCatalogColumns(t *testing.T) {
 			require.NotNil(t, m.Unsupported, m.ID)
 			assert.Equal(t, []string{platform.OSDarwin}, m.Unsupported.OS, m.ID)
 			assert.Contains(t, m.Unsupported.Source, "#10292", m.ID)
+		case m.ID == "wan22-s2v-14b": // the fp8 diffusion model has 468 F8_E4M3 tensors (read from the header of the pinned file, Issue #1153); the same MPS fp8 report (it also loads umt5_xxl_fp8_e4m3fn_scaled, so the first case already holds)
+			require.NotNil(t, m.Unsupported, m.ID)
 		default:
 			assert.Nil(t, m.Unsupported, "%s: no report says it fails on a Mac", m.ID)
 			assert.Nil(t, m.Requires, m.ID)

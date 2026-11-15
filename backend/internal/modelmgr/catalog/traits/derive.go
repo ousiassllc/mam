@@ -86,6 +86,8 @@ type Facts struct {
 	// model. A ComfyUI workflow cannot (its frame is an input of the graph), so its text-to-video and image-to-video are two workflows.
 	FrameOptional bool
 	NativeAudio   bool
+	// AudioInput: the workflow takes a sound file (speech to video, Wan 2.2 S2V; Issue #1153). It is not an Input of the filter: the video mode s2v says it.
+	AudioInput bool
 }
 
 // FactsOf reads the facts of a workflow of a local model (a ComfyUI workflow of a catalog template).
@@ -95,7 +97,7 @@ func FactsOf(m localcfg.Model) Facts {
 		return f
 	}
 	w := m.Workflow
-	f.FirstFrame, f.LastFrame = w.Has(localcfg.ParamFirstFrame), w.Has(localcfg.ParamLastFrame)
+	f.FirstFrame, f.LastFrame, f.AudioInput = w.Has(localcfg.ParamFirstFrame), w.Has(localcfg.ParamLastFrame), w.Has(localcfg.ParamAudio)
 	if m.Video != nil {
 		f.NativeAudio = m.Video.NativeAudio
 	}
@@ -157,10 +159,12 @@ func (f Facts) Inputs() []Input {
 	return out
 }
 
-// Derived is what the workflows of a model say, joined: the inputs (the union over the workflows) and whether any of them has sound.
+// Derived is what the workflows of a model say, joined: the inputs (the union over the workflows), whether any of them has sound (Audio: it makes the sound
+// together with the picture) and whether any of them takes a sound file as an input (AudioInput: speech to video).
 type Derived struct {
-	Inputs []Input
-	Audio  bool
+	Inputs     []Input
+	Audio      bool
+	AudioInput bool
 }
 
 // Derive joins the facts of the workflows of one model.
@@ -168,7 +172,7 @@ func Derive(facts []Facts) Derived {
 	var d Derived
 	have := map[Input]bool{}
 	for _, f := range facts {
-		d.Audio = d.Audio || f.NativeAudio
+		d.Audio, d.AudioInput = d.Audio || f.NativeAudio, d.AudioInput || f.AudioInput
 		for _, i := range f.Inputs() {
 			have[i] = true
 		}

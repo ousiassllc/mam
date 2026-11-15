@@ -58,6 +58,7 @@ type Caps struct {
 	FirstFrame         bool
 	LastFrame          bool
 	NativeAudio        bool
+	AudioInput         bool // the workflow takes an audio file (ParamAudio)
 }
 
 // VideoCaps are the capabilities of a video model: lengths, sizes and sound from its settings, first /
@@ -70,7 +71,7 @@ func (m Model) VideoCaps() (Caps, bool) {
 	w := m.Workflow
 	return Caps{
 		Durations: m.Video.Durations, Resolutions: m.Video.Resolutions, MaxReferenceImages: w.Count(ParamReferenceImage),
-		FirstFrame: w.Has(ParamFirstFrame), LastFrame: w.Has(ParamLastFrame), NativeAudio: m.Video.NativeAudio,
+		FirstFrame: w.Has(ParamFirstFrame), LastFrame: w.Has(ParamLastFrame), NativeAudio: m.Video.NativeAudio, AudioInput: w.Has(ParamAudio),
 	}, true
 }
 

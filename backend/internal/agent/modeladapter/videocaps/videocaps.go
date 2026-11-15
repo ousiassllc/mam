@@ -18,6 +18,8 @@ type Capabilities struct {
 	LastFrame          bool
 	// NativeAudio means the model generates sound together with the picture.
 	NativeAudio bool
+	// AudioInput means the model is given a sound file (speech to video: Wan 2.2 S2V; VideoRequest.Audio).
+	AudioInput bool
 }
 
 // WholeSeconds lists the lengths from..to in whole seconds.

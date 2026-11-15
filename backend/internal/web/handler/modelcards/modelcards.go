@@ -48,6 +48,9 @@ func FromInfo(m modelcatalog.Info) modelcard.Card {
 		card.Badges = append(card.Badges, RefBadge(m.ReferenceMode, m.ReferenceRoles))
 	}
 	card.Badges = append(card.Badges, FactsOf(m).Badges()...)
+	if b, ok := AudioBadge(m); ok {
+		card.Badges = append(card.Badges, b)
+	}
 	return card
 }
 

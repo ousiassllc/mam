@@ -125,7 +125,7 @@ func Video(ctx context.Context, a *modeladapter.Adapter, target modeladapter.Vid
 // never both (Seedance 2.0 rejects a request that mixes the scenarios), and a last frame needs a first frame.
 func checkInputs(caps modeladapter.VideoCapabilities, req modeladapter.VideoRequest) error {
 	switch {
-	case req.FirstFrame != nil && !caps.FirstFrame, req.LastFrame != nil && !caps.LastFrame:
+	case req.FirstFrame != nil && !caps.FirstFrame, req.LastFrame != nil && !caps.LastFrame, req.Audio != nil && !caps.AudioInput:
 		return ErrInputsUnsupported
 	case len(req.References) > caps.MaxReferenceImages:
 		return ErrInputsUnsupported

@@ -14,6 +14,7 @@ const (
 	RoleReference   = gentestrepo.RoleReference
 	RoleFirstFrame  = gentestrepo.RoleFirstFrame
 	RoleLastFrame   = gentestrepo.RoleLastFrame
+	RoleAudio       = gentestrepo.RoleAudio
 	RoleFace        = gentestrepo.RoleFace
 	RoleStyle       = gentestrepo.RoleStyle
 	RoleEdit        = gentestrepo.RoleEdit

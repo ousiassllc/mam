@@ -139,6 +139,7 @@ const (
 	RequiredFirstFrame = "first_frame"
 	RequiredLastFrame  = "last_frame"
 	RequiredReference  = "reference"
+	RequiredAudio      = "audio"
 )
 
 // RequiredImages are the input images the workflow cannot run without (the adapter refuses a request that lacks one: comfyui's missing):
@@ -157,6 +158,8 @@ func (w Workflow) RequiredImages() []string {
 			add(RequiredFirstFrame)
 		case a.Param == ParamLastFrame:
 			add(RequiredLastFrame)
+		case a.Param == ParamAudio:
+			add(RequiredAudio)
 		case a.Param == ParamReferenceImage && !a.Optional && len(w.NoReference) == 0:
 			add(RequiredReference)
 		}

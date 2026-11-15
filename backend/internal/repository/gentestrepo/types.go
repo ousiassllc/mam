@@ -30,6 +30,8 @@ const (
 	RolePose = "pose"
 	// RoleMarkup is the markup layer of GPT Image 2.6 (a transparent PNG laid over the first other input image of an edit: circles and sketches that show where to change).
 	RoleMarkup = "markup"
+	// RoleAudio is the sound a speech-to-video model makes the clip from (Wan 2.2 S2V; Issue #1153): a video batch takes one, as an audio file (service/gentest/audioin), not an image.
+	RoleAudio = "audio"
 )
 
 // Status of a result. queued -> running -> succeeded | failed; a queued result can also be cancelled.

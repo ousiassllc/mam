@@ -17,7 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// Input is an image handed to a model (a reference or a first / last frame).
+// Input is a file handed to a model: an image (a reference or a first / last frame) or, for VideoRequest.Audio, a sound.
 type Input struct {
 	Data     []byte
 	MimeType string
@@ -72,6 +72,7 @@ type VideoRequest struct {
 	FirstFrame      *Input
 	LastFrame       *Input
 	References      []Input
+	Audio           *Input // the sound of a speech-to-video model (Wan 2.2 S2V; VideoCapabilities.AudioInput); the others are refused it
 	Seed            *int64
 	SpeedMode       string                    // a ComfyUI speed mode ("": the workflow's first); other models ignore it
 	Sampling        localcfg.SamplingSettings // steps, cfg, sampler, scheduler a workflow takes; others ignore it
@@ -196,8 +197,7 @@ const (
 	VendorOpenAI Vendor = "openai"
 	VendorFlux   Vendor = "flux"
 	VendorKling  Vendor = "kling"
-	// VendorKling4 is Kling 4.0 on the new API (https://api-singapore.klingai.com, one API key as the Bearer token). Kling 3.0
-	// stays on the old one (VendorKling: ACCESS_KEY:SECRET_KEY, JWT), so the two keys and base URLs cannot share a vendor.
+	// VendorKling4 is Kling 4.0 on the new API (https://api-singapore.klingai.com, one API key as the Bearer token); Kling 3.0 is VendorKling (the old one: ACCESS_KEY:SECRET_KEY, JWT).
 	VendorKling4   Vendor = "kling4"
 	VendorSeedance Vendor = "seedance"
 	VendorRunway   Vendor = "runway"

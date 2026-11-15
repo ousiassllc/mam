@@ -25,7 +25,7 @@ func rolesOf(r Request) []string {
 func modelOf(info modelcatalog.Info) inputcheck.Model {
 	m := inputcheck.Model{ID: info.ID, Label: info.Label, Video: info.Media == gentestrepo.MediaVideo, Requires: info.RequiresInputs, TakesImages: info.AcceptsReferences}
 	if v := info.Video; v != nil {
-		m.TakesImages = v.FirstFrame || v.LastFrame || v.MaxReferenceImages > 0
+		m.TakesImages = v.FirstFrame || v.LastFrame || v.MaxReferenceImages > 0 || v.AudioInput
 	}
 	return m
 }

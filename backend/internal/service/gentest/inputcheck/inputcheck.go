@@ -53,7 +53,7 @@ type Model struct {
 	ID, Label string
 	// Video: a video model. TakesImages: it takes input images at all (an image to video model, a model with reference images).
 	Video, TakesImages bool
-	// Requires are the inputs it cannot run without: "first_frame", "last_frame", RequiredReference.
+	// Requires are the inputs it cannot run without: "first_frame", "last_frame", RequiredReference, "audio" (a speech-to-video model).
 	Requires []string
 }
 
@@ -87,18 +87,41 @@ func indexesOf(roles []string, keep func(role string) bool) []int {
 	return out
 }
 
-// Video decides which input images (by role) a video model is given. A model that takes no image at all (text to video) is given none, with the
-// words that name what to do instead.
+// Video decides which input images (by role) a video model is given. A model that takes no input at all (text to video) is given none, with the
+// words that name what to do instead. The sound (role audio) is the business of a speech-to-video model only: withAudio decides it after the frames.
 func Video(caps modeladapter.VideoCapabilities, label string, roles []string) Plan {
+	switch {
+	case len(roles) == 0:
+		return Plan{}
+	case !caps.FirstFrame && !caps.LastFrame && caps.MaxReferenceImages == 0 && !caps.AudioInput:
+		return textOnly(label, slices.Contains(roles, gentestrepo.RoleAudio), len(roles))
+	}
+	return withAudio(frames(caps, label, roles), caps, label, roles)
+}
+
+// withAudio adds the sound to the plan: a model with an audio input is given it, any other leaves it out with a warning and a reason that the result records.
+func withAudio(p Plan, caps modeladapter.VideoCapabilities, label string, roles []string) Plan {
+	idx := indexesOf(roles, func(r string) bool { return r == gentestrepo.RoleAudio })
+	switch {
+	case len(idx) == 0:
+	case caps.AudioInput:
+		p.Used = append(p.Used, idx...)
+		slices.Sort(p.Used)
+		p.Unused = slices.DeleteFunc(p.Unused, func(u Unused) bool { return slices.Contains(idx, u.Index) })
+	default:
+		p.Notes = append(p.Notes, Note{WarnInputsDropped, fmt.Sprintf("%s は音声を使えないため、使いません（音声から動画を作るのは S2V のモデルです）", label)})
+		for i := range p.Unused {
+			if slices.Contains(idx, p.Unused[i].Index) {
+				p.Unused[i].Reason = "このモデルは音声を使えません"
+			}
+		}
+	}
+	return p
+}
+
+// frames decides the frames and the free references of a video model that takes some input.
+func frames(caps modeladapter.VideoCapabilities, label string, roles []string) Plan {
 	var p Plan
-	if len(roles) == 0 {
-		return p
-	}
-	if !caps.FirstFrame && !caps.LastFrame && caps.MaxReferenceImages == 0 {
-		p.Notes = []Note{{WarnInputsDropped, fmt.Sprintf("%s は文章だけから作るモデルなので、添えた画像は使われません。画像から作るなら I2V のモデルを選んでください", label)}}
-		p.Unused = UnusedOf(len(roles), nil, func(int) string { return "文章だけから作るモデルなので、画像は使われません" })
-		return p
-	}
 	has := func(role string) bool { return slices.Contains(roles, role) }
 	first := caps.FirstFrame && has(gentestrepo.RoleFirstFrame)
 	last := caps.LastFrame && has(gentestrepo.RoleLastFrame) && first
@@ -146,10 +169,24 @@ func Video(caps modeladapter.VideoCapabilities, label string, roles []string) Pl
 	return p
 }
 
+// textOnly is the plan of a model that takes no input at all (text to video): it is given none, and the notice says what the model is (an attached sound is named too).
+func textOnly(label string, withAudio bool, n int) Plan {
+	what := "画像"
+	if withAudio {
+		what = "画像・音声"
+	}
+	return Plan{
+		Notes: []Note{{WarnInputsDropped, fmt.Sprintf("%s は文章だけから作るモデルなので、添えた%sは使われません。画像から作るなら I2V のモデルを選んでください", label, what)}},
+		Unused: UnusedOf(n, nil, func(int) string {
+			return "文章だけから作るモデルなので、" + what + "は使われません"
+		}),
+	}
+}
+
 var (
-	inputLabel = map[string]string{gentestrepo.RoleFirstFrame: "最初のフレーム", gentestrepo.RoleLastFrame: "最後のフレーム", RequiredReference: "参照画像"}
+	inputLabel = map[string]string{gentestrepo.RoleFirstFrame: "最初のフレーム", gentestrepo.RoleLastFrame: "最後のフレーム", RequiredReference: "参照画像", gentestrepo.RoleAudio: "音声ファイル"}
 	// inputParam is the parameter of the workflow a required input fills (the word the adapter's 422 and errmap use).
-	inputParam = map[string]string{gentestrepo.RoleFirstFrame: "first_frame", gentestrepo.RoleLastFrame: "last_frame", RequiredReference: "reference_image"}
+	inputParam = map[string]string{gentestrepo.RoleFirstFrame: "first_frame", gentestrepo.RoleLastFrame: "last_frame", RequiredReference: "reference_image", gentestrepo.RoleAudio: "audio"}
 )
 
 // Missing is the error of a request that lacks an input the model cannot run without, nil when it has all of them. For a first or last frame the words
@@ -164,6 +201,8 @@ func Missing(video bool, roles []string, m Model) *apperr.Error {
 		switch {
 		case need == RequiredReference:
 			cause = fmt.Sprintf("「%s」は参照画像が必要です。画像を添えてください。", m.Label)
+		case need == gentestrepo.RoleAudio:
+			cause = fmt.Sprintf("「%s」は音声ファイルが必要です。WAV か MP3 を添えて、役割を「音声」にしてください。", m.Label)
 		case slices.Contains(roles, gentestrepo.RoleReference):
 			cause += fmt.Sprintf("添えた画像が「参照」になっています。「%s」に変えてください。", what)
 		default:

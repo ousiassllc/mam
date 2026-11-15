@@ -41,8 +41,9 @@ const unspecifiedLicense = "unspecified"
 
 // modelFolders are the ComfyUI model folders a catalog file goes to. latent_upscale_models is the folder of the spatial upscaler
 // the LTX-2.5 workflow loads (LatentUpscaleModelLoader). frame_interpolation is the folder of the RIFE models of the frame interpolation
-// workflows (FrameInterpolationModelLoader, Issue #1031).
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter", "upscale_models", "frame_interpolation"}
+// workflows (FrameInterpolationModelLoader, Issue #1031). audio_encoders is the folder of the wav2vec2 audio encoder of the speech-to-video workflow
+// (AudioEncoderLoader, Issue #1153; folder_paths.py of ComfyUI v0.42.1 registers it).
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "controlnet", "clip_vision", "ipadapter", "upscale_models", "frame_interpolation", "audio_encoders"}
 
 // loaderInputs are the inputs of the core loader nodes that name a model file, with the folder the file is in.
 var loaderInputs = map[string]map[string]string{
@@ -57,7 +58,8 @@ var loaderInputs = map[string]map[string]string{
 	"LoraLoaderModelOnly":      {"lora_name": "loras"},
 	"LatentUpscaleModelLoader": {"model_name": "latent_upscale_models"},
 	"ControlNetLoader":         {"control_net_name": "controlnet"}, "CLIPVisionLoader": {"clip_name": "clip_vision"}, "IPAdapterModelLoader": {"ipadapter_file": "ipadapter"}, "UpscaleModelLoader": {"model_name": "upscale_models"},
-	"FrameInterpolationModelLoader": {"model_name": "frame_interpolation"}, // RIFE, FILM (Issue #1031)
+	"FrameInterpolationModelLoader": {"model_name": "frame_interpolation"},    // RIFE, FILM (Issue #1031)
+	"AudioEncoderLoader":            {"audio_encoder_name": "audio_encoders"}, // wav2vec2 of Wan 2.2 S2V (Issue #1153)
 }
 
 // Validate checks the catalog: the pins (https URL at a commit or tag, SHA-256, size), the licenses, the

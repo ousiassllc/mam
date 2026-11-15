@@ -141,6 +141,8 @@ func (br *batchRun) video(ctx context.Context, r gentestrepo.Result, p record.Re
 			req.FirstFrame = &img
 		case gentestrepo.RoleLastFrame:
 			req.LastFrame = &img
+		case gentestrepo.RoleAudio: // a sound file, not an image: the engine's LoadAudio reads it
+			req.Audio = &img
 		default:
 			req.References = append(req.References, img)
 		}

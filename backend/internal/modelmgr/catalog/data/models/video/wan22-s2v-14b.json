@@ -1,0 +1,80 @@
+{
+ "id": "wan22-s2v-14b",
+ "name": "Wan 2.2 S2V 14B (fp8)（参照画像と音声から動画）",
+ "kind": "video",
+ "tier": "standard",
+ "content_rating": "general",
+ "traits": {
+  "params_b": 14,
+  "params_label": "14B",
+  "uncensored": false,
+  "speed": "slow",
+  "quality": "high",
+  "video_modes": [
+   "s2v",
+   "r2v"
+  ]
+ },
+ "description": "【中ティア・非検閲ではない標準モデル】Wan 2.2 の S2V（Wan-AI/Wan2.2-S2V-14B。音声から動画を作る 14B。Comfy-Org が fp8 にして配っている）。参照画像 1 枚（話す人・歌う人）と音声ファイル 1 つ（WAV か MP3。話し声・音楽）を渡すと、音声に合わせて口や体が動く動画を作る（S2V）。mam では単発生成の「音声ファイル」（画面の動画の入力・チャットの purpose gentest_audio）で音声を渡す。音声は必須で、参照画像（役割「参照」）も 1 枚必須。拡散モデル 1 つ（fp8 約 16.4 GB）、テキストエンコーダー（他の Wan と共有・約 6.7 GB）、音声エンコーダー wav2vec2（約 0.6 GB）、Wan 2.1 の VAE を含め、合計約 24 GB。16fps・1 回 5 秒（81 フレーム）・480p / 720p。20 ステップ・cfg 6・uni_pc / simple・shift 8（ComfyUI の公式テンプレートの lightx2v なしの値）。得意: 音声に合わせた人物の口・表情・体の動き。注意: 公式テンプレートの Extend（77 フレームずつ足して長くする）と先頭フレームを 2 重にして切る処理は入れていないので、長い動画は作れない。音声は先頭から動画の長さの分だけが使われるが、保存される動画の音声は入力の音声のまま（切り詰めない）。音声ファイルの長さは mam では調べない。14B で重く、最低 16 GB（メインメモリへの出し入れ前提）・推奨 24 GB（推定）。実機での生成は未確認。音声は動画に入る: 生成した動画には入力の音声がそのまま付く。ライセンス: Apache License 2.0（Wan-AI/Wan2.2-S2V-14B のカード。商用を含めて自由に使え、生成物の権利は主張しない）。",
+ "files": [
+  {
+   "name": "wan2.2_s2v_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_s2v_14B_fp8_scaled.safetensors",
+   "sha256": "140e75af5534ac3d91e710d9df756f7032addd64b341ba2c1c70e3e6da9aa216",
+   "size": 16394832474
+  },
+  {
+   "name": "wav2vec2_large_english_fp16.safetensors",
+   "folder": "audio_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/audio_encoders/wav2vec2_large_english_fp16.safetensors",
+   "sha256": "f0017a43ea57ef6b3d4866be607844bbd8cada6d30966f7d70044ed0d63d3f9e",
+   "size": 630997322
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "recommended_gb": 24,
+  "limits": "16 GB では拡散モデル（約 16.4 GB）が VRAM に収まらず、ComfyUI が重みを通常のメモリへ出し入れするので、さらに遅くなる。解像度も 480p に絞るのが現実的。",
+  "source": "公式のカード（Wan-AI/Wan2.2-S2V-14B）は単一 GPU で 80 GB（--offload_model True --convert_model_dtype を付けた実行）と書き、ComfyUI の文書にこのモデルの VRAM の記述は無い。mam は、同じ Wan 2.2 14B の fp8 の wan22-vace-fun-14b（拡散モデル約 17.3 GB・最低 16 GB・推奨 24 GB）と拡散モデルの大きさ（約 16.4 GB）が近いことから、最低 16 GB（offload 前提）・推奨 24 GB とした（推定）。mam の実機では未検証",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://www.apache.org/licenses/LICENSE-2.0",
+  "summary": "Wan-AI/Wan2.2-S2V-14B のモデルカードは license: apache-2.0（本文は「Apache 2.0 License … We claim no rights over your generated contents」。この Hugging Face リポジトリに LICENSE ファイルは無く、公式の GitHub Wan-Video/Wan2.2 の LICENSE.txt は Apache License 2.0 の本文）。Comfy-Org/Wan-2.2 のカードも apache-2.0。音声エンコーダーの元の jonatasgrosman/wav2vec2-large-xlsr-53-english も apache-2.0。いずれも 2026-11-15 に確認。商用を含めて自由に使える。著作権表示とライセンス文を保つ。",
+  "commercial": "yes",
+  "checked_at": "2026-11-15"
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-s2v-14b-s2v",
+   "template": "audio2video-wan22-s2v-14b"
+  }
+ ],
+ "unsupported": {
+  "os": [
+   "darwin"
+  ],
+  "reason": "fp8（Float8_e4m3fn）の重みを持つファイルを含むため、Mac（Apple Silicon の MPS）の ComfyUI では「Trying to convert Float8_e4m3fn to the MPS backend but it does not have support for that dtype」で止まる報告があります。",
+  "source": "Comfy-Org/ComfyUI の Issue #10292（MPS は FP8 非対応。umt5_xxl_fp8_e4m3fn_scaled で同じエラー。FP16/BF16 を使う回避策）・#9255（Wan 2.2 の公式テンプレート）・#11626（Wan 2.2 14B のテンプレート）。2026-11-03 に確認。このモデルの拡散モデルに F8_E4M3 のテンソルがあることは safetensors のヘッダーで確認（2026-11-15。F8_E4M3 468 個）。Mac の実機では未確認"
+ }
+}

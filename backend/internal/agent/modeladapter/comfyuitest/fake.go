@@ -30,6 +30,7 @@ type Fake struct {
 	submitted []map[string]json.RawMessage
 	uploads   []string // file names uploaded
 	bodies    [][]byte // the bytes of those files
+	types     []string // the Content-Type each file was uploaded with
 	requests  []string // "METHOD path" of every request
 	auths     []string // Authorization header of every request
 	cancelled []string
@@ -93,6 +94,7 @@ func (f *Fake) serve(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		f.uploads = append(f.uploads, hdr.Filename)
 		f.bodies = append(f.bodies, body)
+		f.types = append(f.types, hdr.Header.Get("Content-Type"))
 		f.mu.Unlock()
 		_ = json.NewEncoder(w).Encode(map[string]string{"name": hdr.Filename, "subfolder": "", "type": "input"})
 	case r.URL.Path == "/prompt" && r.Method == http.MethodPost:

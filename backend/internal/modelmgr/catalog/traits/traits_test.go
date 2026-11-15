@@ -110,19 +110,22 @@ func TestValidateVideoModes(t *testing.T) {
 		derived traits.Derived
 		errs    int
 	}{
-		"image model without modes":     {nil, false, in(traits.T2I), 0},
-		"image model with a mode":       {[]traits.VideoMode{traits.ModeT2V}, false, in(traits.T2I), 1},
-		"video model without modes":     {nil, true, t2v, 1},
-		"text to video":                 {[]traits.VideoMode{traits.ModeT2V}, true, t2v, 0},
-		"first frame only":              {[]traits.VideoMode{traits.ModeI2V}, true, in(traits.I2V, traits.FirstFrame), 0},
-		"first and last frame":          {[]traits.VideoMode{traits.ModeFLF2V}, true, in(traits.I2V, traits.FirstFrame, traits.LastFrame), 0},
-		"all three":                     {[]traits.VideoMode{traits.ModeT2V, traits.ModeI2V, traits.ModeFLF2V}, true, in(traits.T2V, traits.I2V, traits.FirstFrame, traits.LastFrame), 0},
-		"vace with a reference":         {[]traits.VideoMode{traits.ModeT2V, traits.ModeVACE, traits.ModeR2V}, true, in(traits.T2V, traits.I2V, traits.ReferenceWhole), 0},
-		"reference images are not i2v":  {[]traits.VideoMode{traits.ModeVACE, traits.ModeI2V}, true, in(traits.I2V, traits.ReferenceWhole), 2},
-		"modes listed twice":            {[]traits.VideoMode{traits.ModeT2V, traits.ModeT2V}, true, t2v, 1},
-		"a mode that is none":           {[]traits.VideoMode{traits.ModeT2V, "v2v"}, true, t2v, 1},
-		"vace and s2v take any inputs":  {[]traits.VideoMode{traits.ModeT2V, traits.ModeVACE, traits.ModeS2V}, true, t2v, 0},
-		"text-only workflow says flf2v": {[]traits.VideoMode{traits.ModeT2V, traits.ModeFLF2V}, true, t2v, 1},
+		"image model without modes":        {nil, false, in(traits.T2I), 0},
+		"image model with a mode":          {[]traits.VideoMode{traits.ModeT2V}, false, in(traits.T2I), 1},
+		"video model without modes":        {nil, true, t2v, 1},
+		"text to video":                    {[]traits.VideoMode{traits.ModeT2V}, true, t2v, 0},
+		"first frame only":                 {[]traits.VideoMode{traits.ModeI2V}, true, in(traits.I2V, traits.FirstFrame), 0},
+		"first and last frame":             {[]traits.VideoMode{traits.ModeFLF2V}, true, in(traits.I2V, traits.FirstFrame, traits.LastFrame), 0},
+		"all three":                        {[]traits.VideoMode{traits.ModeT2V, traits.ModeI2V, traits.ModeFLF2V}, true, in(traits.T2V, traits.I2V, traits.FirstFrame, traits.LastFrame), 0},
+		"vace with a reference":            {[]traits.VideoMode{traits.ModeT2V, traits.ModeVACE, traits.ModeR2V}, true, in(traits.T2V, traits.I2V, traits.ReferenceWhole), 0},
+		"reference images are not i2v":     {[]traits.VideoMode{traits.ModeVACE, traits.ModeI2V}, true, in(traits.I2V, traits.ReferenceWhole), 2},
+		"modes listed twice":               {[]traits.VideoMode{traits.ModeT2V, traits.ModeT2V}, true, t2v, 1},
+		"a mode that is none":              {[]traits.VideoMode{traits.ModeT2V, "v2v"}, true, t2v, 1},
+		"vace takes any inputs":            {[]traits.VideoMode{traits.ModeT2V, traits.ModeVACE}, true, t2v, 0},
+		"s2v for a sound workflow":         {[]traits.VideoMode{traits.ModeS2V, traits.ModeR2V}, true, traits.Derived{Inputs: []traits.Input{traits.I2V, traits.ReferenceWhole}, AudioInput: true}, 0},
+		"s2v without a sound workflow":     {[]traits.VideoMode{traits.ModeT2V, traits.ModeS2V}, true, t2v, 1},
+		"a sound workflow that is not s2v": {[]traits.VideoMode{traits.ModeR2V}, true, traits.Derived{Inputs: []traits.Input{traits.I2V, traits.ReferenceWhole}, AudioInput: true}, 1},
+		"text-only workflow says flf2v":    {[]traits.VideoMode{traits.ModeT2V, traits.ModeFLF2V}, true, t2v, 1},
 	} {
 		assert.Len(t, traits.ValidateVideoModes("m", tc.modes, tc.video, tc.derived), tc.errs, name)
 	}

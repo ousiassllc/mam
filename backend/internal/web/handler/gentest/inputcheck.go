@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 )
 
@@ -34,5 +35,5 @@ func (h Handlers) InputCheck(c *gin.Context) {
 		c.AbortWithStatus(status)
 		return
 	}
-	gtshare.Render(c, http.StatusOK, inputnotice.CheckBox(inputCheckOf(h.Svc.CheckInputs(gentest.Request{Media: f.media, Models: f.models, References: f.refs}))))
+	gtshare.Render(c, http.StatusOK, inputnotice.CheckBox(inputCheckOf(h.Svc.CheckInputs(gentest.Request{Media: f.media, Models: f.models, References: refform.WithChosenAudio(f.refs, c.Request.Form)}))))
 }

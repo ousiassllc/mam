@@ -62,6 +62,7 @@ func run(t *testing.T, tpl localcfg.Template, edit func(*localcfg.Workflow), s l
 		res, verr := b.GenerateVideo(ctx, "", modeladapter.VideoRequest{
 			Prompt: "waves", AspectRatio: "16:9", Resolution: "480p", DurationSeconds: 3, Seed: &seed, SpeedMode: speedMode, Sampling: s,
 			FirstFrame: &img, LastFrame: &img, References: []modeladapter.Input{img},
+			Audio: &modeladapter.Input{Data: []byte("RIFF\x00\x00\x00\x00WAVE"), MimeType: "audio/wav"}, // a speech-to-video workflow cannot run without its sound
 		})
 		err = verr
 		if verr == nil {

@@ -25,7 +25,7 @@ func (h Handlers) Estimate(c *gin.Context) {
 	var req gentest.Request
 	var est gentest.Estimate
 	if err == nil {
-		if f.refs, err = refform.Stage(f.refs, c.Request.MultipartForm, h.stage); err == nil {
+		if f.refs, err = refform.Stage(f.refs, c.Request.MultipartForm, h.stage, h.stageAudio); err == nil {
 			if req, err = f.request(); err == nil {
 				if req, err = tierform.Resolve(ctx, h.Svc, f.tier, req); err == nil { // the easy tier's model is its intent's
 					est, err = h.Svc.Estimate(ctx, req)

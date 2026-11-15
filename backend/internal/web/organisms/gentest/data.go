@@ -10,9 +10,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagination"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/audioinput"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/faceswapbox"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputcard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/rolenotice"
@@ -57,6 +59,7 @@ const (
 	FieldUpload     = "upload"
 	FieldFirst      = "upload_first"
 	FieldLast       = "upload_last"
+	FieldAudio      = audioinput.Field
 	FieldEstimateID = "estimate_id"
 	FieldTotal      = "confirmed_total_usd"
 )
@@ -260,12 +263,8 @@ type History struct {
 // KV is a line of the settings of a result.
 type KV struct{ Key, Value string }
 
-// InputCard is an input image of a batch.
-type InputCard struct {
-	Role   string
-	Origin string
-	URL    string
-}
+// InputCard is an input of a batch: an image, or the audio of a speech-to-video model.
+type InputCard = inputcard.Card
 
 // ImportRow is where a result was imported to.
 type ImportRow struct {

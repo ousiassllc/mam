@@ -239,7 +239,7 @@ func (s *Service) checkReferences(r Request) error {
 	if len(r.References) > MaxReferences {
 		return gterr.Invalid("入力画像は %d 枚までです", MaxReferences)
 	}
-	firsts, lasts := 0, 0
+	firsts, lasts, audios := 0, 0, 0
 	for i := range r.References {
 		ref := &r.References[i]
 		var err error
@@ -248,12 +248,16 @@ func (s *Service) checkReferences(r Request) error {
 		}
 		firsts += btoi(ref.Role == gentestrepo.RoleFirstFrame)
 		lasts += btoi(ref.Role == gentestrepo.RoleLastFrame)
+		audios += btoi(ref.Role == gentestrepo.RoleAudio)
 		if err := checkSource(*ref); err != nil {
 			return err
 		}
 	}
 	if firsts > 1 || lasts > 1 {
 		return gterr.Invalid("最初のフレーム・最後のフレームは 1 枚ずつまでです")
+	}
+	if audios > 1 {
+		return gterr.Invalid("音声ファイルは 1 つまでです")
 	}
 	return nil
 }
@@ -268,6 +272,9 @@ func btoi(b bool) int {
 func checkSource(ref RefInput) error {
 	if ref.ID == "" {
 		return gterr.Invalid("入力画像の ID がありません")
+	}
+	if ref.Role == RoleAudio && ref.Source != FromStaged && ref.Source != FromBatchInput {
+		return gterr.Invalid("音声ファイルの取得元は upload か batch_input です: %q", ref.Source)
 	}
 	switch ref.Source {
 	case FromStaged, FromHistory, FromPoseLibrary, FromBatchInput:

@@ -288,7 +288,12 @@ func (h Handlers) refRow(ctx context.Context, in gentest.RefInput) (view.Ref, bo
 		if _, err := h.Svc.InputFile(ctx, r.ID); err != nil {
 			return row, false
 		}
-		row = view.Ref{Value: r.String(), Label: "アップロードした画像（前の生成の入力）", ThumbURL: paths.GenerationTestPart("inputs", r.ID, "file")}
+		row = refform.BatchInputRow(r, in.Role)
+	case gentest.FromStaged: // only the audio that is staged for the form: an image of the browser's own is in no list (the browser keeps it)
+		if _, _, err := h.Svc.StagedFile(r.ID); err != nil || in.Role != gentest.RoleAudio {
+			return row, false
+		}
+		row = refform.StagedAudioRow(r)
 	case gentest.FromPoseLibrary:
 		var ok bool
 		if row, ok = posescreen.RefOf(h.Svc, r.ID); !ok {
